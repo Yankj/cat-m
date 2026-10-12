@@ -26,7 +26,7 @@ import AppIntents
             do {
                 let root=FileManager.default.urls(for:.applicationSupportDirectory,in:.userDomainMask)[0].appendingPathComponent("CatpawP0-qa-"+id)
                 let repository=try Repository(persistence:SwiftDataPersistence(url:root.appendingPathComponent("local.store")))
-                p0Model=ConversationFirstModel(repository:repository,service:ConversationSessionService(repository:repository,backend:P0ExperienceBackend(scenario:scenario)))
+                p0Model=ConversationFirstModel(repository:repository,service:ConversationSessionService(repository:repository,backend:P0ExperienceBackend(scenario:scenario)),imageStore:try FileConversationImageByteStore(root:root.appendingPathComponent("image-bytes")))
             } catch { self.error=error.localizedDescription }
             return
         }
@@ -62,6 +62,19 @@ import AppIntents
                 try await pending.service.saveDraft(scope:pending.scope,conversationID:id,text:"Saved local draft")
             }
             await pending.start();model=pending
+            if P0ExperienceFixture.scenario == "p0-ui-large-autoplay" {
+                Task {
+                    try? await Task.sleep(nanoseconds:1_000_000_000)
+                    pending.editDraft("Synthetic offline automatic render diagnostic")
+                    P0PerformanceLog.shared.mark("synthetic_autoplay_action");pending.prepareSend()
+                    try? await Task.sleep(nanoseconds:6_000_000_000)
+                    P0ExperienceProbe.shared.exportMetrics()
+                    if let id=ProcessInfo.processInfo.environment["CF_UI_TEST_STORE"] {
+                        let url=FileManager.default.urls(for:.applicationSupportDirectory,in:.userDomainMask)[0].appendingPathComponent("P0-perf-"+id+".json")
+                        try? Data(P0ExperienceProbe.shared.json.utf8).write(to:url,options:.atomic)
+                    }
+                }
+            }
         } catch { self.error=error.localizedDescription }
         #endif
     }
@@ -81,7 +94,7 @@ import AppIntents
                 #if DEBUG
                 if let model = synthetic.chat {
                     ConversationFirstView(model:model,accountLabel:synthetic.fixtureIdentity,restrictToFrozenFixture:true)
-                        .safeAreaInset(edge:.top) { VStack { Text(synthetic.fixtureIdentity ?? "明确合成测试").font(.caption).accessibilityIdentifier("fixture.identity"); Button("运行冻结合成报告") { Task { await synthetic.sendFrozenCase() } }.disabled(!synthetic.ready || synthetic.submitted).accessibilityIdentifier("fixture.run"); if let error = synthetic.error { Text(error).accessibilityIdentifier("fixture.error") } }.padding(8).background(CatpawColors.panel) }
+                        .safeAreaInset(edge:.top) { VStack { Text(synthetic.fixtureIdentity ?? ui("明确合成测试")).font(.caption).accessibilityIdentifier("fixture.identity"); Button(ui("运行冻结合成报告")) { Task { await synthetic.sendFrozenCase() } }.disabled(!synthetic.ready || synthetic.submitted).accessibilityIdentifier("fixture.run"); if let error = synthetic.error { Text(error).accessibilityIdentifier("fixture.error") } }.padding(8).background(CatpawColors.panel) }
                         .task { await synthetic.loadFrozenCase() }
                 } else { primaryView }
                 #else
@@ -94,21 +107,21 @@ import AppIntents
     @ViewBuilder private var primaryView: some View {
         if let model = bootstrap.model {
             #if DEBUG
-            ConversationFirstView(model:model).environment(\.dynamicTypeSize,P0ExperienceFixture.scenario == "p0-ui-large" ? .accessibility5 : .large)
+            ConversationFirstView(model:model).environment(\.dynamicTypeSize,P0ExperienceFixture.scenario?.hasPrefix("p0-ui-large") == true ? .accessibility5 : .large)
             #else
             ConversationFirstView(model:model)
             #endif
         }
         else if bootstrap.isP0Fixture { ProgressView("Offline fixture loading").accessibilityIdentifier("qa.p0Fixture.loading") }
-        else if let model = auth.chat { ConversationFirstView(model:model,accountLabel:auth.isFixture ? "合成登录测试 · 无真实 Auth/模型" : (auth.state.user?.isAnonymous == true ? "体验账号" : auth.state.user?.email),onSignOut:{ Task { await auth.signOut() } },isAnonymousAccount:auth.state.user?.isAnonymous == true) }
+        else if let model = auth.chat { ConversationFirstView(model:model,accountLabel:auth.isFixture ? ui("合成登录测试 · 无真实 Auth/模型") : (auth.state.user?.isAnonymous == true ? ui("体验账号") : auth.state.user?.email),onSignOut:{ Task { await auth.signOut() } },isAnonymousAccount:auth.state.user?.isAnonymous == true) }
         else { NativeLoginView(auth:auth) }
     }
 }
 
 /// A foreground-only entry point. Opening never creates an identity or sends a message.
 struct OpenCatpawConversationIntent: AppIntent {
-    static var title: LocalizedStringResource = "打开 Catpaw 对话"
-    static var description = IntentDescription("打开 Catpaw，继续对话或编辑消息。不会自动发送消息。")
+    static var title: LocalizedStringResource = "Open Catpaw Conversation"
+    static var description = IntentDescription("Open Catpaw to continue a conversation or edit a message. Opening does not send messages.")
     static var openAppWhenRun = true
     func perform() async throws -> some IntentResult { .result() }
 }
@@ -116,7 +129,7 @@ struct OpenCatpawConversationIntent: AppIntent {
 struct CatpawAppShortcuts: AppShortcutsProvider {
     static var appShortcuts: [AppShortcut] {
         AppShortcut(intent: OpenCatpawConversationIntent(),
-                    phrases: ["在 \(.applicationName) 打开对话", "打开 \(.applicationName)"],
-                    shortTitle: "打开对话", systemImageName: "bubble.left.and.bubble.right")
+                    phrases: ["Open a conversation in \(.applicationName)", "Open \(.applicationName)"],
+                    shortTitle: "Open conversation", systemImageName: "bubble.left.and.bubble.right")
     }
 }

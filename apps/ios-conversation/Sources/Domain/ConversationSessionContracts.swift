@@ -23,7 +23,8 @@ public struct ConversationConnection: Codable, Sendable {
     public let provider: String
     public let model: String?
     public let detail: String
-    public init(state: State, provider: String, model: String? = nil, detail: String) { self.state = state; self.provider = provider; self.model = model; self.detail = detail }
+    public let verifiedReplyAt:Date?
+    public init(state: State, provider: String, model: String? = nil, detail: String,verifiedReplyAt:Date?=nil) { self.state = state; self.provider = provider; self.model = model; self.detail = detail;self.verifiedReplyAt=verifiedReplyAt }
 }
 public struct ConversationTranscriptMessage: Codable, Sendable, Identifiable {
     public enum Role: String, Codable, Sendable { case user, assistant, tool }
@@ -34,8 +35,9 @@ public struct ConversationTranscriptMessage: Codable, Sendable, Identifiable {
     public let toolName: String?
     public var complete: Bool
     public var failure: String? = nil
-    public init(id: UUID = UUID(), role: Role, content: String, toolCallID: String? = nil, toolName: String? = nil, complete: Bool = true) {
-        self.id = id; self.role = role; self.content = content; self.toolCallID = toolCallID; self.toolName = toolName; self.complete = complete
+    public var image:ConversationImageReceipt? = nil
+    public init(id: UUID = UUID(), role: Role, content: String, toolCallID: String? = nil, toolName: String? = nil, complete: Bool = true,image:ConversationImageReceipt?=nil) {
+        self.image=image;self.id = id; self.role = role; self.content = content; self.toolCallID = toolCallID; self.toolName = toolName; self.complete = complete
     }
 }
 public struct ConversationGoalProjection: Codable, Sendable, Identifiable {
@@ -95,12 +97,16 @@ public struct ConversationTurnRequest: Codable, Sendable {
     public let epoch: Int
     public let history: [ConversationTranscriptMessage]
     public let context: [ConversationExplicitContext]
-    public init(scope: DataScope, conversationID: UUID, threadID: String?, operationID: UUID, epoch: Int, history: [ConversationTranscriptMessage], context: [ConversationExplicitContext] = []) { self.scope = scope; self.conversationID = conversationID; self.threadID = threadID; self.operationID = operationID; self.epoch = epoch; self.history = history; self.context = context }
+    public let image:ConversationVisionReference?
+    public private(set) var imageBytes:Data? = nil
+    private enum CodingKeys:String,CodingKey {case scope,conversationID,threadID,operationID,epoch,history,context,image}
+    public func withImageBytes(_ bytes:Data?) -> Self {var value=self;value.imageBytes=bytes;return value}
+    public init(scope: DataScope, conversationID: UUID, threadID: String?, operationID: UUID, epoch: Int, history: [ConversationTranscriptMessage], context: [ConversationExplicitContext] = [],image:ConversationVisionReference?=nil,imageBytes:Data?=nil) { self.image=image;self.imageBytes=imageBytes;self.scope = scope; self.conversationID = conversationID; self.threadID = threadID; self.operationID = operationID; self.epoch = epoch; self.history = history; self.context = context }
 }
 public struct ConversationTurnEvent: Sendable {
     public enum Payload: Sendable {
-        case thread(String), started(requestHash: String, conversationRevision: Int, grantEpoch: Int), textDelta(messageID: UUID, text: String), toolStarted(callID: String, name: String, arguments: String)
-        case toolResult(ConversationToolResult), completed(messageID: UUID, finalTextHash: String), failed(message: String, reconciliationRequired: Bool)
+        case thread(String), started(requestHash: String, conversationRevision: Int, grantEpoch: Int,attachmentReceipts:[ConversationImageReceipt]?=nil), textDelta(messageID: UUID, text: String), toolStarted(callID: String, name: String, arguments: String)
+        case toolResult(ConversationToolResult), completed(messageID: UUID, finalTextHash: String,visionReceipt:ConversationVisionProviderReceipt?=nil), failed(message: String, reconciliationRequired: Bool)
     }
     public let operationID: UUID
     public let epoch: Int
@@ -119,6 +125,7 @@ public struct ConversationTurnRecord: Codable, Sendable, Identifiable {
     public var serverRequestHash: String? = nil
     public var serverGrantEpoch: Int? = nil
     public var serverConversationRevision: Int? = nil
+    public var visionProviderReceipt:ConversationVisionProviderReceipt? = nil
 }
 public struct ConversationSession: Codable, Sendable {
     public let scope: DataScope
@@ -149,9 +156,14 @@ public struct ConversationModelConsent: Sendable, Identifiable {
     public let expectedRevision: Int
 }
 public protocol ConversationBackend: Sendable {
+    func imageCapabilities(scope:DataScope,conversationID:UUID) async throws -> ConversationImageCapability
+    func imageConsent(scope:DataScope,conversationID:UUID,previewID:UUID,previewHash:String) async throws -> ConversationImageConsent
+    func allowImageConsent(scope:DataScope,consent:ConversationImageConsent,nonSensitiveConfirmed:Bool) async throws -> Int
     func modelConsent(scope: DataScope, conversationID: UUID) async throws -> ConversationModelConsent?
     func allowModelConsent(scope: DataScope, consent: ConversationModelConsent) async throws
     func connection(scope: DataScope) async -> ConversationConnection
+    func recordCommittedReply(_ request:ConversationTurnRequest) async
+    func recordedReplyEvidence(scope:DataScope) async -> ConversationConnection?
     func reply(_ request: ConversationTurnRequest) async throws -> AsyncThrowingStream<ConversationTurnEvent, Error>
     func observe(_ request: ConversationTurnRequest) async throws -> ConversationObservation
 }
@@ -165,6 +177,8 @@ public struct UnconfiguredConversationBackend: ConversationBackend {
 }
 
 public extension ConversationBackend {
+    func recordCommittedReply(_ request:ConversationTurnRequest) async {}
+    func recordedReplyEvidence(scope:DataScope) async -> ConversationConnection? {nil}
     func modelConsent(scope: DataScope, conversationID: UUID) async throws -> ConversationModelConsent? { nil }
     func allowModelConsent(scope: DataScope, consent: ConversationModelConsent) async throws { throw ConversationSessionError.notConfigured }
 }

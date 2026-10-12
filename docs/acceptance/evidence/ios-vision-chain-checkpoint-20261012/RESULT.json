@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "phase": "native vision chain code checkpoint",
+  "product_release": "BLOCKED",
+  "native_tests": {
+    "passed": 40,
+    "failed": 0,
+    "excluded": 1,
+    "new_vision_cases": 9,
+    "layer": "actual iOS XCTest, injected offline backend"
+  },
+  "log_sha256": "78a82cf710ab2bf4e6a2fbd9bd4bfeec59091d4826e678538fed8b30c4bb2da5",
+  "source_dictionary_sha256": "b00532185e38bedd41d8ef44c0fc5da29c3331eee83f922a64a22f3732e4e40f",
+  "localization": {
+    "status": "FAIL",
+    "owned_literals": 97,
+    "missing_resources": 0,
+    "new_image_entries": 19
+  },
+  "not_run": [
+    "HTTP v2 wire",
+    "image permission/Send UI",
+    "Simulator Home5s/30s image chain",
+    "full App cold restart",
+    "physical presentation/IME/VO/weak network",
+    "real provider and visual semantics"
+  ]
+}

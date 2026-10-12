@@ -1,0 +1,146 @@
+{
+  "schema_version": 1,
+  "created_at_utc": "2026-10-12T15:45:06.341464+00:00",
+  "frozen_code_commit": "4750142e9999bcf39a2231bd321169fe73e5e014",
+  "protocol_fix_commit": "be60f24aaf8ebfb34666c8e3d5a5226fe04ee83f",
+  "source_files": 161,
+  "source_dictionary_sha256": "fe59e45f6b34402c9f0f00a84e5f374a59f6c832e9f5ce94aac896b01c4517a5",
+  "release_status": "BLOCKED; source candidate frozen, no physical overwrite",
+  "build": {
+    "result": "PASS",
+    "configuration": "DeviceTrial",
+    "compile_condition": "DEVICE_TRIAL; no DEBUG",
+    "sdk": "iPhoneOS27.1",
+    "destination": "generic/platform=iOS",
+    "signing": "CODE_SIGNING_ALLOWED=NO; not an installable signed App",
+    "version": "0.3.0",
+    "build": "15",
+    "bundle": "com.example.CatpawM.OpenMuseDemo",
+    "executable_sha256": "2264c0dc19b65e371a4de0025bfde7a762e19f90c13069fe217b3020c42c671a",
+    "both_locale_resource_tables_in_built_app": true
+  },
+  "actual_ios_test_summaries": {
+    "native": {
+      "result": "Passed",
+      "totalTestCount": 33,
+      "passedTests": 33,
+      "failedTests": 0,
+      "skippedTests": 0
+    },
+    "core-auth": {
+      "result": "Passed",
+      "totalTestCount": 13,
+      "passedTests": 10,
+      "failedTests": 0,
+      "skippedTests": 3
+    },
+    "main-ui": {
+      "result": "Passed",
+      "totalTestCount": 3,
+      "passedTests": 3,
+      "failedTests": 0,
+      "skippedTests": 0
+    },
+    "photo-ui": {
+      "result": "Passed",
+      "totalTestCount": 1,
+      "passedTests": 1,
+      "failedTests": 0,
+      "skippedTests": 0
+    }
+  },
+  "native_layer": "Actual iOS XCTest, explicit in-process synthetic backends/owned data; 43 passed, 3 skipped; separately excluded one Keychain test",
+  "skipped_tests": [
+    "testScheduledProjectionStateAndSameIDReadbackInsideSimulator",
+    "testV4SyntheticHTTPAdapterInsideSimulator",
+    "testV5FrozenSyntheticHTTPAdapterInsideSimulator"
+  ],
+  "skipped_reason": "Requires its explicit independent loopback harness; not started in this run",
+  "excluded_test": "NativeAuthNativeTests/testNativeKeychainRoundTripAccessibilityAndExactDeletion",
+  "actual_ui_layer": "4 actual Simulator UI actions: routes/search/draft/native back, edge/panel/scrim, largest-type footer, system PhotosPicker cancel/owned synthetic preview/remove/unavailable gate. Image grant+Send not covered",
+  "portable_checks": {
+    "readiness": 8,
+    "main_locale": 14,
+    "conversation": 7,
+    "queue": 9,
+    "layer": "Foundation synthetic; no Simulator or HTTP"
+  },
+  "locale": {
+    "status": "PASS static/portable gate",
+    "lookups": 630,
+    "bilingual_entries": 653,
+    "missing": 0,
+    "unlocalized_owned_literals": 0,
+    "expanded_exemptions": false,
+    "english_runtime_visual_acceptance": "NOT_RUN"
+  },
+  "previous_sidebar_package": {
+    "passed": 12,
+    "scope": "same package logic; final rendering conditional localization only follows the recorded package run"
+  },
+  "independent_qa_retained": {
+    "input": "e5ad1efd7292ada566a902276c8cd896c464a6fd",
+    "wire_report": "56879b6; root-lookup FAIL retained",
+    "text_recovery_report": "bde470dc22da8fb84f339ac145f5e13fdd1e8317",
+    "text_cases_passed": 3,
+    "turn_posts_each": 1,
+    "turn_gets": [
+      3,
+      3,
+      2
+    ],
+    "final_candidate_confirmed": false,
+    "not_proof_of": "active-stream interruption, real cloud/model or final candidate acceptance"
+  },
+  "existing_phone_and_signing": {
+    "physical_phone_connected": true,
+    "model": "iPhone 13",
+    "installed_build": "14",
+    "same_bundle": true,
+    "existing_valid_signing_identity_count": 1,
+    "original_certificate_sha256": "215e5076c2e0469090175e7047eb470b29f90932f4bc9f8998fe38ace6d62b59",
+    "original_profile_match": true,
+    "profile_expiry_utc": "2026-10-18T13:11:47Z",
+    "device_eligible_in_profile": true,
+    "new_signing_identity_or_credentials": false,
+    "phone_install": "NOT_RUN; old data/build preserved"
+  },
+  "external_blocker": {
+    "vision_live_flag": "disabled",
+    "observed_at_utc": "2026-10-12T15:37:14.415897+00:00",
+    "image_input": false,
+    "available": false,
+    "required_next": "Enable authorized live vision route then verify normal App independent image approval/explicit Send, matching provider/hash/zero-cost/terminal and pixel semantics"
+  },
+  "unverified_acceptance": [
+    "QA fixed/final source URLSession/TCP v2 wire and final text lifecycle confirmation",
+    "actual image grant/explicit Send UI and real synthetic-image receipt/semantics",
+    "active SSE interruption, real weak network and physical Home recovery",
+    "physical presented frames, real Chinese IME/VoiceOver and reading anchor",
+    "English runtime visual inspection",
+    "same final signed binary installation/launch identity"
+  ],
+  "runtime_calls": {
+    "real_model": 0,
+    "real_auth": 0,
+    "consent_mutations": 0,
+    "worker_tick": 0,
+    "public_readyz_get": 1
+  },
+  "simulator": "Coordinator-released E81A1EAB device used exclusively and shut down after final run; ID omitted from published evidence",
+  "log_sha256": {
+    ".build-final15-device.log": "c661357c84ea4502c5c37770e664d8d8dfffe37e86c54a1ab8ad4b067f24c91e",
+    ".build-final15-source.log": "e1f28562aa8aee731a0b08cccad3ddf9cf316222623d04c49779a7df350f0048",
+    ".build-final15-native.log": "338cc44d1741e3e2cab37755d10868af595cde5b6fe22cba78d2d51dd3b26f6f",
+    ".build-final15-core-auth.log": "96c1940d0c7ef16ed0febd7c01d976f52e78e02e12099bf587372d45b897c935",
+    ".build-final15-main-ui.log": "905095849eddaa6815f571743fc466f37d3006125d08b65e7d4fcbde20f497f8",
+    ".build-final15-photo-ui.log": "69d652fdfa845687ea0a6078b1f3e43324c351dff876e0c5fa563b1bcb8c6834",
+    ".build-final15-readiness.log": "6fb1d59290ea18bcee81c384238bb0bf2c617da6158397684aae40194b9d0ac3",
+    ".build-final15-locale.log": "e139f878b54d4dcc08e733b08ec07dc154e434e18e7d46b2acaeb8e3744d55ce",
+    ".build-final15-conversation.log": "35552b709c6738ae350e7a57cd73539c5dbe3f899d7c13f2bc5ab1c6cd8bcbb9",
+    ".build-final15-queue.log": "a4c4118360986d3ca62da65d753cb1e4d71e614fb9e511be5f4889f9ebdb3889"
+  },
+  "source_typecheck_and_project_membership": "PASS; 66 App sources/3 targets",
+  "integrity_sensitivity_whitespace": "PASS before frozen code commit; run again for documentation",
+  "cross_thread_message": "Auto-review rejected tool send; no retry or indirect message; final platform notification is the handoff"
+}
