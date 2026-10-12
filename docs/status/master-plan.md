@@ -8,6 +8,8 @@
 
 **下一版第二小批（2026-10-12，对抗审查921e693）：** 旧实现5个对抗断言0过5失败，复现停止时跨subject/scope binding、伪造approved投影、最后审批await后lease过期、删除后旧Goal/批准恢复。修复权威run/task归属、不可变Decision链、最终lease时间检查与逻辑删除tombstone，并检查unknown效果key。Node共36/36完成：35个功能/安全断言通过＋1个明确的整库回滚不安全复现（不计恢复安全PASS）。获用户授权后取得官方Deno2.9.6/发布方校验和与frozen-lock公开依赖；deny-net/ignore-env完整Edge回归97/97完成，其中96个功能/安全断言＋同一个剩余风险复现。真实PG原子性、多实例、物理删除与独立恢复屏障、held-out语义仍NOT RUN；生产kernel仍拒绝，无真实模型/邮箱/调度/部署。[复核限制与精选证据](../acceptance/proactive-goal-adversarial-review.md)。本批已获授权正常push此feature分支；发布结果以远端读回交付为准，不合并main或修改默认分支。
 
+**下一版第三小批（2026-10-12）：** [恢复派发屏障与PG证据](../acceptance/proactive-restore-dispatch-barrier.md)已补：可信库外marker/人工恢复锁注入，缺失/失联/locked/过期/指针不匹配禁止副作用，旧批准不沿用，保留只读核对。不是复制DB表当独立权威；真实外部权威/所有恢复路径覆盖仍未建立，未标记的回滚保留反例，生产继续关闭。Node47/47、deny-net Edge108/108，分别46/107功能安全断言＋同一风险复现。Docker官方临时PG17.11、network=none/tmpfs，真实6项CAS/同连接原子回滚/lease与撤销竞争/审批CAS锁等待/通知唯一约束＋1项生产关闭检查7/7，容器已清理；production角色/RLS、完整kernel、崩溃/COMMIT确认丢失/真实恢复及held-out未验。视觉规格已单独commit/push `3b3a56f`，本批不扩UI或部署。仅正常push同一feature，远端SHA/tree以交付读回为准。
+
 **最新真机产品验收FAIL，暂停R1放行。** 用户build13反馈连接待验证、发送慢、流式卡顿、后台回来断会话、图片输入缺失；天气问题得到重复任务进展和技术恢复提示。P0补为[连续多模态对话问题单MM01–MM05](../acceptance/r1-continuous-multimodal-issues.md)：即时本地响应、真实流式、前后台自动同turn续接、真图片送视觉模型、实时查询/不可用诚实说明。短CATPAW_OK不代表可用；既有一页是反馈前快照，不作为当前通过声明。
 
 **交付目标：对话唯一主入口 → 自然形成目标/任务 → 可追踪执行 → 成果回到对话与收件箱 → 记忆可查看、更正、删除。** 不用手填委托表单替代自然任务，不新增独立执行状态机，保留现有黑灰/顶部入口/任务卡/阅读器设计。

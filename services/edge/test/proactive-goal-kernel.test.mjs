@@ -11,6 +11,8 @@ import { stableUUID } from '../supabase/functions/_shared/core/src/local-output-
 import { assertConsent, consentId } from '../supabase/functions/_shared/consent.mjs';
 import { membershipOwner } from '../supabase/functions/_shared/authority.mjs';
 import { SyntheticGoalAdapter } from './fixtures/synthetic-goal-adapter.mjs';
+import { RestoreDispatchBarrier } from '../supabase/functions/_shared/core/integration/server-foundation/src/restore-dispatch-barrier.mjs';
+import { SyntheticRestoreAuthority } from './fixtures/synthetic-restore-authority.mjs';
 
 const uid = label => stableUUID(`synthetic-goal-kernel:${label}`);
 const start = Date.parse('2026-10-12T12:00:00Z');
@@ -26,6 +28,10 @@ async function fixture({ completion = arrival, quiet_until = null } = {}) {
   const foundation = new Foundation(repository, { guardKey: 'synthetic-goal-guard-placeholder', clock: () => new Date(millis) });
   await foundation.bootstrapScope(principal, scope.scope_id);
   const owner = foundation.identity(principal, scope.scope_id).owner, authOwner = membershipOwner(principal.issuer);
+  const restoreAuthority = new SyntheticRestoreAuthority({ scope_id: scope.scope_id, incarnation_id: uid('incarnation-1'), valid_until: new Date(start + 86400000).toISOString() });
+  const restoreBarrier = new RestoreDispatchBarrier({ readMarker: restoreAuthority.readMarker, authorizeBinding: restoreAuthority.authorizeBinding, clock: () => new Date(millis) });
+  await foundation.scoped(principal, scope.scope_id, tx => restoreBarrier.bind(tx.records, owner, scope.scope_id, { expected_revision: 0, review_id: 'synthetic-reviewed-bootstrap' }));
+  restoreAuthority.open();
   const authorize = async (tx, { principal: actor, scope: identity }) => {
     const session = await tx.get(authOwner, 'app-sessions', actor.session_id);
     const membership = await tx.get(authOwner, 'scope-memberships', actor.subject_id);
@@ -58,7 +64,7 @@ async function fixture({ completion = arrival, quiet_until = null } = {}) {
     await assertConsent(tx, actor, admitted.run.frozen_request.source_auth, cid, 'synthetic-route');
     return admitted;
   };
-  const makeKernel = (f = foundation, auth = authorize) => new ProactiveGoalKernel({ foundation: f, authorize: auth, admitTask });
+  const makeKernel = (f = foundation, auth = authorize, barrier = restoreBarrier) => new ProactiveGoalKernel({ foundation: f, authorize: auth, admitTask, restoreBarrier: barrier });
   const kernel = makeKernel();
   const initial = await kernel.confirmGoal(principal, scope.scope_id, goalId, { schema_version: 1, expected_revision: 1, completion, quiet_until });
   const control = { assertLive: () => ensure(millis < start + 50000, 'invocation_closed', 409) };
@@ -77,7 +83,7 @@ async function fixture({ completion = arrival, quiet_until = null } = {}) {
   const dispatch = (a, aAdapter = adapter, k = kernel) => k.dispatchSynthetic(principal, scope.scope_id, a.id, { lease_id: leaseId, control }, aAdapter);
   const change = async (state, extra = {}) => kernel.changeGoal(principal, scope.scope_id, goalId, { schema_version: 1, expected_revision: (await goal()).revision, state, ...extra });
   return { repository, foundation, kernel, scope, principal, owner, authOwner, facade, goalId, taskId, leaseId, control, adapter, initial,
-    makeKernel, goal, action, events, observe, propose, decide, dispatch, change, now: () => millis, advance: ms => { millis += ms; } };
+    makeKernel, goal, action, events, observe, propose, decide, dispatch, change, restoreAuthority, restoreBarrier, now: () => millis, advance: ms => { millis += ms; } };
 }
 const delayedArrival = f => f.observe('arrival_estimate', { location: '合成会场', at: '2026-10-12T17:00:00Z' });
 
@@ -441,7 +447,7 @@ test('adversarial: logical deletion is atomic; unknown remains audit-reconcilabl
   assert.equal(adapter.dispatch_calls, 1);
 });
 
-test('known limitation: rolling back ALL authority ledgers can replay; production restore requires independent barrier', async () => {
+test('known limitation: undetected full rollback with unchanged trusted external marker can replay', async () => {
   const f = await fixture(), e = await delayedArrival(f), a = await f.propose(e); await f.decide(a);
   const stale = f.repository.snapshot(), first = new SyntheticGoalAdapter({ loseAcknowledgement: true });
   await f.dispatch(a, first); assert.equal(first.effect_calls, 1);
@@ -460,4 +466,122 @@ test('adversarial: corrupt effect key cannot bypass unknown reservation or misdi
   await assert.rejects(f.propose(e), error('proposal_corrupt'));
   await assert.rejects(f.kernel.reconcileSynthetic(f.principal, f.scope.scope_id, a.id, adapter), error('proposal_corrupt'));
   assert.equal(adapter.dispatch_calls, 1); assert.equal(adapter.reconcile_calls, 0);
+});
+
+test('restore barrier: missing authority fails closed while effect inspection stays read-only', async () => {
+  const f = await fixture(), e = await delayedArrival(f), a = await f.propose(e); await f.decide(a);
+  const missing = f.makeKernel(f.foundation, undefined, null);
+  await assert.rejects(f.dispatch(a, f.adapter, missing), error('restore_authority_missing'));
+  const before = f.repository.snapshot();
+  const read = await missing.inspectEffectSynthetic(f.principal, f.scope.scope_id, a.id, f.adapter);
+  assert.equal(read.read_only, true); assert.equal(read.receipt.state, 'unknown');
+  assert.deepEqual(f.repository.snapshot(), before); assert.equal(f.adapter.dispatch_calls, 0);
+});
+
+test('restore barrier: locked, missing, expired, wrong-scope and unavailable markers forbid dispatch', async () => {
+  for (const mode of ['locked', 'missing', 'expired', 'scope', 'unavailable']) {
+    const f = await fixture(), e = await delayedArrival(f), a = await f.propose(e); await f.decide(a);
+    const expected = { locked: 'restore_dispatch_locked', missing: 'restore_authority_missing', expired: 'restore_marker_expired', scope: 'restore_marker_scope_conflict', unavailable: 'restore_authority_unavailable' }[mode];
+    if (mode === 'locked') f.restoreAuthority.lock();
+    if (mode === 'missing') f.restoreAuthority.available = false;
+    if (mode === 'expired') f.restoreAuthority.current.valid_until = new Date(f.now()).toISOString();
+    if (mode === 'scope') f.restoreAuthority.current.scope_id = uid('foreign-marker-scope');
+    if (mode === 'unavailable') f.restoreBarrier.readMarker = async () => { throw new Error('synthetic_external_unavailable'); };
+    await assert.rejects(f.dispatch(a), error(expected)); assert.equal(f.adapter.dispatch_calls, 0);
+    assert.equal((await f.kernel.inspectEffectSynthetic(f.principal, f.scope.scope_id, a.id, f.adapter)).read_only, true);
+  }
+});
+
+test('restore barrier: absent database binding and marker mismatch cannot fall back to same-DB epochs', async () => {
+  const f = await fixture(), e = await delayedArrival(f), a = await f.propose(e); await f.decide(a);
+  const snapshot = f.repository.snapshot(); snapshot.records = snapshot.records.filter(([key]) => JSON.parse(key)[1] !== 'catpaw-recovery-bindings');
+  const restored = new TestRepository(snapshot), foundation = new Foundation(restored, { guardKey: 'synthetic-restored-marker-placeholder', clock: () => new Date(f.now()) });
+  await assert.rejects(f.dispatch(a, f.adapter, f.makeKernel(foundation)), error('restore_binding_missing'));
+  f.restoreAuthority.current.recovery_epoch++;
+  await assert.rejects(f.dispatch(a), error('restore_binding_mismatch')); assert.equal(f.adapter.effect_calls, 0);
+});
+
+test('restore barrier: whole rollback with trusted external restore lock/rotation rejects old approved action', async () => {
+  const f = await fixture(), e = await delayedArrival(f), a = await f.propose(e); await f.decide(a);
+  const stale = f.repository.snapshot(), first = new SyntheticGoalAdapter({ loseAcknowledgement: true });
+  await f.dispatch(a, first); assert.equal(first.effect_calls, 1);
+  await f.kernel.deleteGoal(f.principal, f.scope.scope_id, f.goalId, { schema_version: 1, expected_revision: (await f.goal()).revision });
+  f.restoreAuthority.restore(uid('incarnation-after-full-restore'));
+  const restored = new TestRepository(stale), foundation = new Foundation(restored, { guardKey: 'synthetic-restored-barrier-placeholder', clock: () => new Date(f.now()) }), kernel = f.makeKernel(foundation), second = new SyntheticGoalAdapter();
+  await assert.rejects(f.dispatch(a, second, kernel), error('restore_dispatch_locked'));
+  const inspection = await kernel.inspectEffectSynthetic(f.principal, f.scope.scope_id, a.id, first);
+  assert.equal(inspection.receipt.state, 'confirmed'); assert.equal((await restored.transaction(tx => tx.get(f.owner, 'actions', a.id))).status, 'approved');
+  f.restoreAuthority.open();
+  await assert.rejects(f.dispatch(a, second, kernel), error('restore_binding_mismatch'));
+  f.restoreAuthority.lock();
+  await foundation.scoped(f.principal, f.scope.scope_id, tx => f.restoreBarrier.bind(tx.records, f.owner, f.scope.scope_id, { expected_revision: 1, review_id: 'synthetic-reviewed-full-restore' }));
+  f.restoreAuthority.open();
+  await assert.rejects(f.dispatch(a, second, kernel), error('restore_fence_mismatch'));
+  assert.equal(second.dispatch_calls, 0); assert.equal(second.effect_calls, 0);
+});
+
+test('restore barrier: operator review is required, binding only runs while locked, and old approvals expire after rebind', async () => {
+  const f = await fixture(), e = await delayedArrival(f), a = await f.propose(e); await f.decide(a);
+  const bind = review_id => f.foundation.scoped(f.principal, f.scope.scope_id, tx => f.restoreBarrier.bind(tx.records, f.owner, f.scope.scope_id, { expected_revision: 1, review_id }));
+  await assert.rejects(bind('synthetic-reviewed-open'), error('restore_dispatch_locked'));
+  f.restoreAuthority.lock(); await assert.rejects(bind('unreviewed'), error('restore_binding_operator_required'));
+  await bind('synthetic-reviewed-manual-lock'); f.restoreAuthority.open();
+  await assert.rejects(f.dispatch(a), error('restore_fence_mismatch')); assert.equal(f.adapter.effect_calls, 0);
+});
+
+test('restore barrier: marker change during operator binding rolls back database marker update', async () => {
+  const f = await fixture(); f.restoreAuthority.lock();
+  const barrier = new RestoreDispatchBarrier({ readMarker: f.restoreAuthority.readMarker, authorizeBinding: async () => { f.restoreAuthority.restore(uid('racing-restore')); return true; }, clock: () => new Date(f.now()) });
+  await assert.rejects(f.foundation.scoped(f.principal, f.scope.scope_id, tx => barrier.bind(tx.records, f.owner, f.scope.scope_id, { expected_revision: 1, review_id: 'synthetic-reviewed-race' })), error('restore_marker_changed'));
+  assert.equal((await f.repository.transaction(tx => tx.get(f.owner, 'catpaw-recovery-bindings', f.scope.scope_id))).revision, 1);
+});
+
+test('restore barrier: lock at transport boundary prevents effect; lock after effect retains unknown for reconciliation', async () => {
+  for (const phase of ['before', 'after']) {
+    const f = await fixture(), e = await delayedArrival(f), a = await f.propose(e); await f.decide(a);
+    const adapter = new SyntheticGoalAdapter({ ...(phase === 'before' ? { beforeEffect: async () => f.restoreAuthority.lock() } : { afterEffect: async () => f.restoreAuthority.lock() }) });
+    assert.equal((await f.dispatch(a, adapter)).status, 'outcome_unknown'); assert.equal(adapter.effect_calls, phase === 'before' ? 0 : 1);
+    const read = await f.kernel.inspectEffectSynthetic(f.principal, f.scope.scope_id, a.id, adapter); assert.equal(read.read_only, true);
+    const reconciled = await f.kernel.reconcileSynthetic(f.principal, f.scope.scope_id, a.id, adapter);
+    assert.equal(reconciled.status, phase === 'before' ? 'outcome_unknown' : 'succeeded'); assert.equal((await f.goal()).proactive.state, 'active');
+    assert.equal(adapter.dispatch_calls, 1);
+  }
+});
+
+test('restore barrier: external lock during final database binding read is checked again before effect', async () => {
+  const f = await fixture(), e = await delayedArrival(f), a = await f.propose(e); await f.decide(a);
+  const original = f.repository.transaction.bind(f.repository); let reads = 0;
+  f.repository.transaction = (scope, fn) => typeof scope === 'function' ? original(scope) : original(scope, async tx => {
+    const get = tx.records.get.bind(tx.records);
+    tx.records.get = async (...args) => { const row = await get(...args); if (args[1] === 'catpaw-recovery-bindings' && ++reads === 4) f.restoreAuthority.lock(); return row; };
+    return fn(tx);
+  });
+  assert.equal((await f.dispatch(a)).status, 'outcome_unknown'); assert.equal(f.adapter.effect_calls, 0);
+});
+
+test('restore barrier: slow trusted marker reader cannot carry dispatch beyond finalization reserve', async () => {
+  const f = await fixture(), e = await delayedArrival(f), a = await f.propose(e); await f.decide(a); let reads = 0;
+  const original = f.restoreBarrier.readMarker;
+  f.restoreBarrier.readMarker = async args => { const marker = await original(args); if (++reads === 2) f.advance(50000); return marker; };
+  await assert.rejects(f.dispatch(a), error('invocation_closed')); assert.equal(f.adapter.dispatch_calls, 0);
+});
+
+test('restore barrier: client cannot supply recovery authority and legacy approved Action without a fence is blocked', async () => {
+  const f = await fixture(), e = await delayedArrival(f);
+  await assert.rejects(f.propose(e, { recovery_binding: { schema_version: 1, state: 'open' } }), error('schema_invalid'));
+  const a = await f.propose(e); await f.decide(a); const snapshot = f.repository.snapshot();
+  const action = snapshot.records.find(([key]) => JSON.parse(key)[1] === 'actions' && JSON.parse(key)[2] === a.id)[1];
+  delete action.data.recovery_binding; action.hash = hash({ data: action.data, task_id: action.taskId, expires_at: action.expiresAt });
+  const binding = snapshot.records.find(([key]) => JSON.parse(key)[1] === 'catpaw-approval-bindings' && JSON.parse(key)[2] === a.id)[1]; binding.action_digest = action.hash;
+  const decision = snapshot.rows.find(([key]) => JSON.parse(key)[1] === 'events' && JSON.parse(key)[2] === binding.decision_event_id)[1]; decision.refs.action_digest = action.hash;
+  const restored = new TestRepository(snapshot), foundation = new Foundation(restored, { guardKey: 'synthetic-legacy-fence-placeholder', clock: () => new Date(f.now()) });
+  await assert.rejects(f.dispatch(a, f.adapter, f.makeKernel(foundation)), error('restore_fence_missing'));
+  assert.equal(f.adapter.dispatch_calls, 0);
+});
+
+test('restore barrier: malformed external marker fails closed and cannot update frozen proposal', async () => {
+  const f = await fixture(), e = await delayedArrival(f), a = await f.propose(e); await f.decide(a);
+  f.restoreAuthority.current.schema_version = 2;
+  await assert.rejects(f.dispatch(a), error('restore_marker_invalid'));
+  assert.equal((await f.action(a.id)).data.recovery_binding.schema_version, 1); assert.equal(f.adapter.effect_calls, 0);
 });

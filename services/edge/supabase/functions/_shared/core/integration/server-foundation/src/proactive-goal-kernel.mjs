@@ -13,10 +13,10 @@ const deletionKey = (scopeId, goalId) => hash({ scope_id: scopeId, goal_id: goal
  * Authority/admitTask are the composition root's existing fresh session/consent and worker hooks.
  */
 export class ProactiveGoalKernel {
-  constructor({ foundation, authorize, admitTask }) {
+  constructor({ foundation, authorize, admitTask, restoreBarrier }) {
     ensure(foundation?.repository?.transaction && typeof authorize === 'function' && typeof admitTask === 'function', 'goal_authority_missing', 503);
     ensure(foundation.repository.execution_layer === GOAL_CONTRACT.execution_layer, 'production_kernel_disabled', 403);
-    Object.assign(this, { foundation, authorize, admitTask, repository: foundation.repository });
+    Object.assign(this, { foundation, authorize, admitTask, restoreBarrier, repository: foundation.repository });
   }
   now() { return this.foundation.now(); }
   async transaction(principal, scopeId, operation, fn, finalize = async () => {}) {
@@ -207,8 +207,10 @@ export class ProactiveGoalKernel {
       const goal = await this.goal(tx, principal, goalId); liveGoal(goal); ensure(goal.revision === input.goal_version, 'goal_version_conflict', 409);
       await this.evidence(tx, goal, input.evidence_ids); await this.workerFence(tx, owner, principal, goal, input.task_id, input.lease_id, control);
       ensure(Date.parse(input.expires_at) > Date.parse(this.now()), 'proposal_expired', 409);
+      ensure(this.restoreBarrier, 'restore_authority_missing', 503);
+      const recovery_binding = await this.restoreBarrier.snapshot(tx.records, owner, scopeId, control);
       const data = { schema_version: 1, synthetic: true, scope_id: scopeId, goal_id: goalId, goal_version: goal.revision, subject_id: principal.subject_id,
-        evidence_ids: clone(input.evidence_ids), operation: input.operation, arguments: clone(input.arguments), summary: input.summary };
+        evidence_ids: clone(input.evidence_ids), operation: input.operation, arguments: clone(input.arguments), summary: input.summary, recovery_binding };
       const digest = hash({ data, task_id: input.task_id, expires_at: input.expires_at }), effectKey = hash({ scope_id: scopeId, goal_id: goalId, operation: input.operation, arguments: input.arguments });
       const old = await tx.records.get(owner, 'actions', input.proposal_id);
       if (old) { ensure(old.kind === GOAL_CONTRACT.action_kind && old.hash === digest && old.taskId === input.task_id && old.expiresAt === input.expires_at, 'proposal_conflict', 409); return old; }
@@ -228,7 +230,11 @@ export class ProactiveGoalKernel {
         subject_id: principal.subject_id, scope_id: scopeId, task_id: action.taskId, action_digest: digest, decision: null }), 'proposal_conflict', 409);
       await this.emit(tx, goal, 'goal_proposal_ready', { action_id: action.id, action_digest: digest, evidence_ids: data.evidence_ids }, true);
       control.assertLive(); return action;
-    }, async (tx, owner) => { await this.current(tx, owner, principal, input.proposal_id, { leaseId: input.lease_id, control }); });
+    }, async (tx, owner) => {
+      const { action, worker_task } = await this.current(tx, owner, principal, input.proposal_id, { leaseId: input.lease_id, control });
+      await this.restoreBarrier.assert(tx.records, owner, scopeId, action.data.recovery_binding, control); control.assertLive();
+      ensure(Date.parse(worker_task.leaseUntil) > Date.parse(this.now()), 'lease_lost', 409);
+    });
   }
   async action(tx, owner, principal, actionId, options = {}) {
     const action = await tx.records.get(owner, 'actions', uuid(actionId));
@@ -273,6 +279,8 @@ export class ProactiveGoalKernel {
     ensure(b.decision === 'approve' && decision?.type === 'goal_action_decided' && decision.refs.schema_version === 1 &&
       decision.refs.goal_id === current.goal.id && decision.refs.goal_version === current.goal.revision && decision.refs.actor_id === principal.subject_id &&
       decision.refs.action_id === actionId && decision.refs.action_digest === current.action.hash && decision.refs.decision === 'approve', 'action_permission_required', 403);
+    ensure(this.restoreBarrier, 'restore_authority_missing', 503);
+    await this.restoreBarrier.assert(tx.records, owner, tx.scopeId, current.action.data.recovery_binding, control);
     // The binding/Decision reads above may consume the remaining task lease, even under a live invocation.
     if (leaseId) { control.assertLive(); ensure(Date.parse(current.worker_task.leaseUntil) > Date.parse(this.now()), 'lease_lost', 409); }
     return current;
@@ -326,6 +334,17 @@ export class ProactiveGoalKernel {
       ensure(next, 'action_conflict', 409);
       await this.emit(tx, goal, 'goal_action_reconciled', { action_id: actionId, state: next.status }); return next;
     });
+  }
+  async inspectEffectSynthetic(principal, scopeId, actionId, adapter) {
+    this.synthetic(adapter);
+    const action = await this.transaction(principal, scopeId, 'effect_read', async (tx, owner) => (await this.action(tx, owner, principal, actionId, { audit: true })).action);
+    const receipt = await adapter.reconcile({ effect_key: action.effect_key });
+    ensure(receipt?.schema_version === 1 && receipt.synthetic === true && receipt.effect_key === action.effect_key && ['confirmed', 'not_applied', 'unknown'].includes(receipt.state), 'invalid_reconciliation', 422);
+    await this.transaction(principal, scopeId, 'effect_read_validate', async (tx, owner) => {
+      const current = (await this.action(tx, owner, principal, actionId, { audit: true })).action;
+      ensure(current.hash === action.hash && current.effect_key === action.effect_key, 'proposal_corrupt', 409);
+    });
+    return { schema_version: 1, synthetic: true, read_only: true, action_id: action.id, receipt }; // No status/Goal/permission mutation.
   }
   async publishSyntheticInbox(principal, scopeId, { limit = 10 } = {}) {
     ensure(this.repository.execution_layer === GOAL_CONTRACT.execution_layer, 'real_adapter_disabled', 403); integer(limit, 1, 100);

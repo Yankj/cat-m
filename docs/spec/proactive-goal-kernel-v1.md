@@ -63,6 +63,8 @@ Proposal 命令显式给出 `{schema_version, proposal_id, goal_version, task_id
 
 必须保留恢复边界：如果恢复整个派发前 snapshot，且同时丢失 tombstone、Action executing/unknown 和通知去重账本，内核无法知道之后发生了什么。本批有具名测试实际复现两个合成 adapter 对同一意图各执行一次；这是未解决风险复现，不能算恢复安全通过。生产恢复需独立于被恢复库的最新删除/撤权/效果清单及隔离恢复门槛，未达到前保持 production_kernel_disabled。通知一次性同样仅在最新 inbox 去重记录保留时成立；外部推送回执、跨系统 exactly-once 和整库回滚未证明。
 
+第三小批新增[恢复派发屏障](../acceptance/proactive-restore-dispatch-barrier.md)：外部可信readMarker/操作员bind注入，库内只存期望指针。外部locked、缺失/失联/过期、scope错误、DB binding或旧Action指针不匹配均拒绝副作用；只读效果核对仍可用。规范恢复要先外部锁定并更新incarnation/epoch、隔离核对独立删除/撤权/效果账本、人工授权bind，再开放；库内复制表不算独立权威。指针检查已实现，真实外部权威/全恢复路径覆盖尚未实现；未锁定且外部标记未变化的回滚仍保留反例，生产继续关闭。
+
 预算直接消费既有 `control.assertLive`，不创造新的平台时限。原 boundedTick 的 30,000ms 上限及 settleReserve、lease 校验保持不动；worker-kick 的总推进预算不被扩大。上线还需按实际部署计划重核 [Supabase Edge limits](https://supabase.com/docs/guides/functions/limits) 和 [changelog](https://supabase.com/changelog)。本批没有更改 Edge 配置或 Supabase SDK。
 
 ## 两个固定场景
@@ -76,6 +78,8 @@ Proposal 命令显式给出 `{schema_version, proposal_id, goal_version, task_id
 构造器仅接受 `synthetic_test_double` Repository，真实 Postgres kernel 显式返回 `production_kernel_disabled`；非 synthetic adapter 返回 `real_adapter_disabled`。没有注册 kernel 到 API/bootstrap/runtime，没有外部真实 adapter、邮箱/账号接入、Cron/tick、模型、UI、部署、生产 SQL 或凭据。scoped Postgres CAS 增量只做参数化序列化验证；不代表数据库已迁移或并发验收通过。
 
 对抗复核与新验证层见[第二小批记录](../acceptance/proactive-goal-adversarial-review.md)。在用户随后授权补官方依赖后，Deno 2.9.6 从[官方发布](https://github.com/denoland/deno/releases/tag/v2.9.6)下载并按发布方 SHA256 校验；jose/postgres 只缓存 deno.lock 固定版本且启用 frozen lock，无 lifecycle scripts。仅测试阶段 deny-net/ignore-env。完整 Edge 合成回归覆盖实际 Store/serializer 分支，但 TestRepository 仍把整个 scope/owner 写入串行化，lock 是空操作；无法证明 PostgreSQL 行锁顺序/死锁、跨实例 CAS、SQL+records 原子提交、提交确认丢失、RLS/隔离级别、进程 crash、备份恢复。生产构造器拒绝 PostgreSQL，因此这些测试也没有执行真实 kernel SQL。
+
+第三小批另外执行临时真实Postgres17.11：6项实际存储/CAS/lease撤销/通知唯一性及锁等待验证＋1项生产关闭检查，7/7；同连接Goal/Event/records异常回滚通过。该层不是mock，但仍为superuser/minimal fixture schema下的Repository/BoundedStore/Facade存储原语，不代表生产RLS、完整kernel、多实例崩溃或COMMIT确认丢失通过。测试容器network=none、tmpfs、无端口/host mount，已清理；生产DB未连接。
 
 下一批按小批顺序：设计 task/run 的 Goal binding 更新与生产 fresh authority/长期撤销协议；用独立测试 PG 验证 scope锁、CAS、outbox、多实例重启、删除/恢复屏障；补真实 ingress 来源身份与 source revision 协议；设计 purchase/send 的 adapter 幂等/receipt/reconcile 与人工签收；最后才考虑自然语言目标抽取、事件影响与建议生成、原生回流和经过授权的唤醒/部署。
 

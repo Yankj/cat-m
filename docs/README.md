@@ -13,7 +13,7 @@
 | 侧栏独立组件 | [接入契约](../packages/ios-navigation/README.md)、[合成验收](acceptance/ios-sidebar-navigation.md) |
 | 独立 QA | [iOS 冻结补丁](../qa/ios-dialogue-p0/REPORT.md)、[后端撤权收尾](../qa/backend-finalization-p0/REPORT.md) |
 | 运行时研究与待评审决策 | [研究索引](research/README.md)、[ADR-005](architecture/adr-005-runtime-reuse-and-hosting.md)、[2026-10-12现状快照](architecture/runtime-state-2026-10-12.md) |
-| 下一版主动目标领域 | [中文规格与源码gap矩阵](spec/proactive-goal-kernel-v1.md)、[首批合成验收](acceptance/proactive-goal-kernel.md)、[对抗复核与恢复限制](acceptance/proactive-goal-adversarial-review.md)；实时进度见主计划 |
+| 下一版主动目标领域 | [中文规格与源码gap矩阵](spec/proactive-goal-kernel-v1.md)、[首批合成验收](acceptance/proactive-goal-kernel.md)、[对抗复核](acceptance/proactive-goal-adversarial-review.md)、[恢复屏障与临时PG](acceptance/proactive-restore-dispatch-barrier.md)；实时进度见主计划 |
 | 历史架构、合同与来源 | [架构索引](architecture/README.md)、[冻结合同](../services/facade/contract/native-contract-v1.json)、[导入来源](status/import-provenance.json) |
 
 v1/r2/r3 与各分支报告描述其当时输入和实测层；保留原文，不把历史计数改成当前通过。固定目录不包含 canonical 未跟踪候选资产，也未替代仍在装机/云端验证的 owner 工作目录。
