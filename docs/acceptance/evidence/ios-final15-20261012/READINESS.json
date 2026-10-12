@@ -1,0 +1,41 @@
+{
+  "observed_at_utc": "2026-10-12T15:37:14.415897+00:00",
+  "url": "https://dbyklgxdvjbutxzsjeth.supabase.co/functions/v1/catpaw-api/readyz",
+  "status": 200,
+  "ready": true,
+  "root_vision_contract_present": false,
+  "chat_capabilities": {
+    "schema_version": 1,
+    "text_input": true,
+    "image_input": false,
+    "vision_contract": {
+      "schema_version": 2,
+      "available": false,
+      "state": "disabled",
+      "request_scoped": true,
+      "persistent_image_history": false,
+      "requires_text_caption": true,
+      "limits": {
+        "max_count": 1,
+        "max_image_bytes": 5242880,
+        "max_total_image_bytes": 5242880,
+        "max_side": 2048,
+        "max_pixels": 4194304,
+        "max_request_bytes": 7100000,
+        "mime_types": [
+          "image/png",
+          "image/jpeg"
+        ]
+      }
+    },
+    "live_weather": false,
+    "web_search": false,
+    "tools": [
+      "delegate_task",
+      "agent_status"
+    ],
+    "durable_acceptance": "turn_started",
+    "cursor_events": true
+  },
+  "method": "one public unauthenticated GET; no model, tick or consent mutation"
+}

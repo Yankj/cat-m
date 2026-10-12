@@ -7,6 +7,9 @@ public actor ConversationSessionService {
     private var active: [UUID: UUID] = [:]
     private static let selectionKey = "conversation_first_selected"
     public init(repository: Repository, backend: any ConversationBackend = UnconfiguredConversationBackend()) { self.repository = repository; self.backend = backend }
+    public func imageCapabilities(scope:DataScope,conversationID:UUID) async throws -> ConversationImageCapability { try await backend.imageCapabilities(scope:scope,conversationID:conversationID) }
+    public func imageConsent(scope:DataScope,conversationID:UUID,previewID:UUID,previewHash:String) async throws -> ConversationImageConsent {try await backend.imageConsent(scope:scope,conversationID:conversationID,previewID:previewID,previewHash:previewHash)}
+    public func allowImageConsent(scope:DataScope,consent:ConversationImageConsent,nonSensitiveConfirmed:Bool) async throws -> Int {try await backend.allowImageConsent(scope:scope,consent:consent,nonSensitiveConfirmed:nonSensitiveConfirmed)}
     public func modelConsent(scope: DataScope, conversationID: UUID) async throws -> ConversationModelConsent? { try await backend.modelConsent(scope:scope,conversationID:conversationID) }
     public func allowModelConsent(scope: DataScope, consent: ConversationModelConsent) async throws { try await backend.allowModelConsent(scope:scope,consent:consent) }
     public func openLatest(scope: DataScope) async throws -> UUID {
@@ -55,13 +58,14 @@ public actor ConversationSessionService {
         return (value, record.header.revision)
     }
     public func connection(scope: DataScope) async -> ConversationConnection { await backend.connection(scope: scope) }
+    public func recordedReplyEvidence(scope:DataScope) async -> ConversationConnection? {await backend.recordedReplyEvidence(scope:scope)}
     public func saveDraft(scope: DataScope, conversationID: UUID, text: String) async throws {
         let record = try await repository.record(conversationID, scope: scope)
         guard var value = record.conversation else { throw CatpawError.missing }
         value.draftText = text
         try await repository.commit(scope: scope, mutations: [.update(record.id, record.header.revision, .core(.conversation(value)))])
     }
-    public func send(scope: DataScope, conversationID: UUID, text: String, operationID: UUID, context: [ConversationExplicitContext] = [], preserveDraft:Bool = false) async throws -> UUID {
+    public func send(scope: DataScope, conversationID: UUID, text: String, operationID: UUID, context: [ConversationExplicitContext] = [], preserveDraft:Bool = false,image:ConversationVisionPayload?=nil) async throws -> UUID {
         guard active[conversationID] == nil else { throw ConversationSessionError.busy }
         let connection = await backend.connection(scope: scope)
         guard [.connected, .providerUnverified].contains(connection.state) else {
@@ -75,19 +79,21 @@ public actor ConversationSessionService {
         let epoch: Int
         if let index = session.turns.firstIndex(where: { $0.id == operationID }) {
             let prior = session.turns[index]
+            guard prior.request.image == image?.reference else {throw CatpawError.conflict}
             guard prior.request.history.last?.content == text, try Self.encode(prior.request.context) == Self.encode(context) else { throw CatpawError.conflict }
             guard prior.state != .cancelledBeforeSend else { throw CatpawError.conflict }
             guard prior.state == .notSent else { return operationID }
             guard session.unresolved == nil, try Self.encode(prior.request.history) == Self.encode(session.messages) else { throw ConversationSessionError.unresolvedOperation }
-            request = prior.request; epoch = request.epoch
+            request = prior.request.withImageBytes(image?.bytes); epoch = request.epoch
             session.turns[index].state = .dispatched; session.turns[index].error = nil
         } else {
             guard session.unresolved == nil else { throw ConversationSessionError.unresolvedOperation }
             guard session.pendingUnsent == nil else { throw ConversationSessionError.pendingUnsent }
             epoch = session.turns.count + 1
             guard context.count <= 8, Set(context.map(\.id)).count == context.count, context.allSatisfy({ !$0.id.isEmpty && $0.id.utf16.count <= 80 && $0.text.utf16.count <= 8000 }) else { throw CatpawError.invalid("附加上下文超过服务范围。") }
-            session.messages.append(ConversationTranscriptMessage(id: stableID("conversation-user-\(operationID)"), role: .user, content: text))
-            request = ConversationTurnRequest(scope: scope, conversationID: conversationID, threadID: session.threadID, operationID: operationID, epoch: epoch, history: session.messages, context: context)
+            session.messages.append(ConversationTranscriptMessage(id: stableID("conversation-user-\(operationID)"), role: .user, content: text,image:image?.reference.receipt))
+            request = ConversationTurnRequest(scope: scope, conversationID: conversationID, threadID: session.threadID, operationID: operationID, epoch: epoch, history: session.messages, context: context,image:image?.reference,imageBytes:image?.bytes)
+            if let image,let message=request.history.last {try image.reference.validate(image.bytes,messageID:message.id)}
             session.turns.append(ConversationTurnRecord(id: operationID, request: request, state: .dispatched, lastSequence: 0, error: nil))
         }
         guard active[conversationID] == nil else { throw ConversationSessionError.busy }
@@ -107,7 +113,7 @@ public actor ConversationSessionService {
                 if let turn = saved.turns.last, [.completed, .failed, .unknown].contains(turn.state) { break }
             }
             let saved = try await read(scope: scope, conversationID: conversationID)
-            if saved.turns.last?.state == .completed { return operationID }
+            if saved.turns.last?.state == .completed { await backend.recordCommittedReply(request);return operationID }
             if saved.turns.last?.state == .failed { throw CatpawError.unavailable(saved.turns.last?.error ?? "服务请求失败。") }
             throw ConversationSessionError.unresolvedOperation
         } catch {
@@ -136,7 +142,8 @@ public actor ConversationSessionService {
         switch event.payload {
         case .thread(let id):
             guard !id.isEmpty, session.threadID == nil || session.threadID == id else { throw ConversationSessionError.invalidEvent }; session.threadID = id
-        case .started(let hash, let revision, let grant):
+        case .started(let hash, let revision, let grant,let receipts):
+            if let image=request.image {guard receipts == [image.receipt] else {throw ConversationSessionError.invalidEvent}} else {guard receipts == nil || receipts?.isEmpty == true else {throw ConversationSessionError.invalidEvent}}
             guard hash.count == 64, revision > 0, grant > 0, turn.serverRequestHash == nil || turn.serverRequestHash == hash, turn.serverGrantEpoch == nil || turn.serverGrantEpoch == grant else { throw ConversationSessionError.invalidEvent }
             turn.serverRequestHash = hash; turn.serverConversationRevision = revision; turn.serverGrantEpoch = grant; session.threadID = request.conversationID.uuidString
         case .textDelta(let id, let text):
@@ -145,11 +152,13 @@ public actor ConversationSessionService {
             guard let message = session.messages.firstIndex(where: { $0.id == id }) else { throw ConversationSessionError.invalidEvent }
             session.messages[message].content += text
         case .toolStarted(let call, let name, let arguments):
+            guard request.image==nil else {throw ConversationSessionError.invalidEvent}
             guard ["delegate_task", "agent_status"].contains(name), !call.isEmpty else { throw ConversationSessionError.invalidEvent }
             let id = stableID("conversation-call-\(request.operationID)-\(call)")
             guard !session.messages.contains(where: { $0.id == id }) else { throw ConversationSessionError.invalidEvent }
             session.messages.append(ConversationTranscriptMessage(id: id, role: .assistant, content: arguments, toolCallID: call, toolName: name, complete: false))
         case .toolResult(let result):
+            guard request.image==nil else {throw ConversationSessionError.invalidEvent}
             let callID = stableID("conversation-call-\(request.operationID)-\(result.callID)")
             guard let call = session.messages.firstIndex(where: { $0.id == callID }), session.messages[call].toolName == result.name, !session.messages[call].complete else { throw ConversationSessionError.invalidEvent }
             session.messages[call].complete = true
@@ -158,7 +167,8 @@ public actor ConversationSessionService {
                 guard !goal.id.isEmpty, goal.revision > 0, goal.revision >= (session.goals[goal.id]?.revision ?? 0) else { throw ConversationSessionError.invalidEvent }
                 try Self.merge(goal, into: &session)
             }
-        case .completed(let id, let hash):
+        case .completed(let id, let hash,let visionReceipt):
+            if let image=request.image {guard let visionReceipt,visionReceipt.matches(image) else {throw ConversationSessionError.invalidEvent};turn.visionProviderReceipt=visionReceipt} else {guard visionReceipt == nil else {throw ConversationSessionError.invalidEvent}}
             guard session.messages.filter({ Self.isToolAttempt($0, for: request) && !$0.complete }).isEmpty else { throw ConversationSessionError.invalidEvent }
             if turn.assistantMessageID == nil { guard !session.messages.contains(where: { $0.id == id }) else { throw ConversationSessionError.invalidEvent }; turn.assistantMessageID = id; session.messages.append(ConversationTranscriptMessage(id: id, role: .assistant, content: "")) }
             guard turn.assistantMessageID == id, let message = session.messages.firstIndex(where: { $0.id == id }), textHash(session.messages[message].content) == hash else { throw ConversationSessionError.invalidEvent }
@@ -213,6 +223,7 @@ public actor ConversationSessionService {
         guard try Self.encode(observation.request) == Self.encode(turn.request) else { throw ConversationSessionError.invalidEvent }
         guard turn.serverRequestHash == nil || observation.requestHash == turn.serverRequestHash, turn.serverGrantEpoch == nil || observation.grantEpoch == turn.serverGrantEpoch else { throw ConversationSessionError.invalidEvent }
         for event in observation.events { guard active[conversationID] == observationToken else { throw CancellationError() }; try await apply(event, request: turn.request, observing: true, observationToken: observationToken) }
+        if try await read(scope:scope,conversationID:conversationID).turns.first(where:{$0.id==turn.id})?.state == .completed {await backend.recordCommittedReply(turn.request)}
         if !observation.goals.isEmpty { var (current, revision) = try await readVersioned(scope: scope, conversationID: conversationID); for goal in observation.goals { try Self.merge(goal, into: &current) }; try await save(current, expectedRevision: revision, fence: turn.request, observationToken: observationToken) }
     }
     private static func merge(_ goal: ConversationGoalProjection, into session: inout ConversationSession) throws {

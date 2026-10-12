@@ -54,6 +54,11 @@ public enum ImageAttachmentPhase: Equatable, Sendable {
         work?.cancel(); work = nil; epoch = UUID(); selectionID = nil
         sourceData = nil; attachment = nil; phase = .empty
     }
+    /// Host restoration accepts only a packet already validated by the local encoder.
+    /// It does not grant transmission authority or resume a business request.
+    public func restorePrepared(_ value:PreparedImageAttachment) {
+        clear();selectionID=value.id;attachment=value;phase = .ready
+    }
     public func sendBlock(caption: String, messageID: UUID, gate: ImageSendGate = .unavailable) -> ImageSendBlock? {
         guard gate.available && gate.liveTransmissionAvailable else { return .unavailable }
         guard !isProcessing else { return .processing }

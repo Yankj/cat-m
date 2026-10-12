@@ -25,10 +25,10 @@ import UIKit
     func makeUIView(context:Context) -> ConversationTextView {
         let view=ConversationTextView();view.delegate=context.coordinator
         view.backgroundColor = .clear;view.textColor=UIColor(CatpawColors.ink)
-        view.font=preferredFont(context.environment.dynamicTypeSize);view.adjustsFontForContentSizeCategory=true
+        view.font=ConversationTypeScale.font(context.environment.dynamicTypeSize);view.adjustsFontForContentSizeCategory=true
         view.textContainerInset=UIEdgeInsets(top:8,left:0,bottom:8,right:0)
         view.textContainer.lineFragmentPadding=0;view.returnKeyType = .default
-        view.accessibilityLabel="消息";view.accessibilityIdentifier="chat.input"
+        view.accessibilityLabel=AppLanguage(locale:context.environment.locale).ui("消息");view.accessibilityIdentifier="chat.input"
         view.setContentCompressionResistancePriority(.defaultLow,for:.horizontal)
         view.submit=submit;view.compositionChanged={ [weak model] in model?.updateInputComposition($0) }
         #if DEBUG
@@ -37,14 +37,47 @@ import UIKit
         return view
     }
     func updateUIView(_ view:ConversationTextView,context:Context) {
+        #if DEBUG
+        let updateStart=ProcessInfo.processInfo.systemUptime
+        defer {P0PerformanceLog.shared.record("composer_update",start:updateStart,end:ProcessInfo.processInfo.systemUptime,main:true)}
+        #endif
         context.coordinator.parent=self;view.submit=submit;view.isEditable=enabled
-        view.font=preferredFont(context.environment.dynamicTypeSize)
+        view.accessibilityLabel=AppLanguage(locale:context.environment.locale).ui("消息")
+        let font=ConversationTypeScale.font(context.environment.dynamicTypeSize)
+        if view.font?.isEqual(font) != true {view.font=font}
         guard view.markedTextRange == nil,view.text != model.draft else { return }
         let old=view.selectedRange;context.coordinator.replacing=true;view.text=model.draft
         view.selectedRange=NSRange(location:min(old.location,view.text.utf16.count),length:0)
         context.coordinator.replacing=false
     }
-    private func preferredFont(_ size:DynamicTypeSize) -> UIFont {
+    func sizeThatFits(_ proposal:ProposedViewSize,uiView:ConversationTextView,context:Context) -> CGSize? {
+        #if DEBUG
+        let start=ProcessInfo.processInfo.systemUptime
+        defer {P0PerformanceLog.shared.record("composer_size_fit",start:start,end:ProcessInfo.processInfo.systemUptime,main:true)}
+        #endif
+        let width=proposal.width ?? 240,line=uiView.font?.lineHeight ?? 22
+        let desired=uiView.sizeThatFits(CGSize(width:width,height:.greatestFiniteMagnitude))
+        return CGSize(width:width,height:min(max(line+16,desired.height),line*(context.environment.dynamicTypeSize.isAccessibilitySize ? 3 : 5)+16))
+    }
+    @MainActor final class Coordinator:NSObject,UITextViewDelegate {
+        var parent:NativeConversationComposer
+        var replacing=false
+        init(_ parent:NativeConversationComposer){self.parent=parent}
+        func textViewDidChange(_ textView:UITextView) {
+            #if DEBUG
+            let changeStart=ProcessInfo.processInfo.systemUptime
+            defer {P0PerformanceLog.shared.record("composer_text_delegate",start:changeStart,end:ProcessInfo.processInfo.systemUptime,main:true)}
+            #endif
+            guard !replacing else { return }
+            parent.model.updateInputComposition(textView.markedTextRange != nil)
+            parent.model.editDraft(textView.text);textView.invalidateIntrinsicContentSize()
+        }
+        func textViewDidChangeSelection(_ textView:UITextView) { parent.model.updateInputComposition(textView.markedTextRange != nil) }
+    }
+}
+
+@MainActor enum ConversationTypeScale {
+    static func font(_ size:DynamicTypeSize) -> UIFont {
         let category:UIContentSizeCategory
         switch size {
         case .xSmall:category = .extraSmall
@@ -61,21 +94,5 @@ import UIKit
         default:category = .accessibilityExtraExtraExtraLarge
         }
         return UIFont.preferredFont(forTextStyle:.body,compatibleWith:UITraitCollection(preferredContentSizeCategory:category))
-    }
-    func sizeThatFits(_ proposal:ProposedViewSize,uiView:ConversationTextView,context:Context) -> CGSize? {
-        let width=proposal.width ?? 240,line=uiView.font?.lineHeight ?? 22
-        let desired=uiView.sizeThatFits(CGSize(width:width,height:.greatestFiniteMagnitude))
-        return CGSize(width:width,height:min(max(line+16,desired.height),line*(context.environment.dynamicTypeSize.isAccessibilitySize ? 3 : 5)+16))
-    }
-    @MainActor final class Coordinator:NSObject,UITextViewDelegate {
-        var parent:NativeConversationComposer
-        var replacing=false
-        init(_ parent:NativeConversationComposer){self.parent=parent}
-        func textViewDidChange(_ textView:UITextView) {
-            guard !replacing else { return }
-            parent.model.updateInputComposition(textView.markedTextRange != nil)
-            parent.model.editDraft(textView.text);textView.invalidateIntrinsicContentSize()
-        }
-        func textViewDidChangeSelection(_ textView:UITextView) { parent.model.updateInputComposition(textView.markedTextRange != nil) }
     }
 }

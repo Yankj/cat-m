@@ -1,0 +1,15 @@
+{
+  "base": "e5ad1efd7292ada566a902276c8cd896c464a6fd",
+  "passed": 8,
+  "layer": "Foundation pure contract assertions; no Simulator/Auth/model",
+  "schema_path": "chat_capabilities.vision_contract",
+  "root_alias_accepted": false,
+  "log_sha256": "6fb1d59290ea18bcee81c384238bb0bf2c617da6158397684aae40194b9d0ac3",
+  "source_sha256": {
+    "apps/ios-conversation/Sources/Domain/ConversationImageCapability.swift": "044f5f9fc5af79e458f8c25d20f615c596ddcfcb6ea9f0e217dba12b2e6ee49e",
+    "apps/ios-conversation/Sources/Providers/NativeChatHTTPBackend.swift": "07de7bd84c0a1a8fe6ee2e2aa02779ac4302fb2ca2dc04670be019325894d771",
+    "apps/ios-conversation/Tests/ImageReadinessRunner.swift": "458130eeb774b8707e37e195ad7d28ea3035adbe352318f43ab48f58bf6bae80",
+    "apps/ios-conversation/Scripts/test-image-readiness.sh": "4e3b8abf95b1e106ba17a6f765a9a47d366bc6781f49059cd2ded7d58d1a2781"
+  },
+  "public_readiness": "one unauthenticated GET, status200, root contract absent, image_input=false at recorded UTC; not a deployment-identity or vision-model acceptance"
+}
