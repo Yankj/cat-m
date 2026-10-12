@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "observed_at_utc": "2026-10-12T17:50:50.752345+00:00",
+  "source_base": "ee0f4bd8469b8b0865d7cac55e7a0f50f3d14307",
+  "modified_source_sha256": {
+    "apps/ios-conversation/Sources/Features/ConversationFirstView.swift": "b9cb1f8bc059e453ecc8c1b29ab373b098bec59c8e2118844fec20698cf4261b",
+    "apps/ios-conversation/Sources/Features/NativeConversationComposer.swift": "6232dc01896ff545c42b88e133964f9b2078425af26933afe0692b7962a81ef8",
+    "apps/ios-conversation/Sources/App/P0ExperienceFixture.swift": "a1cfb21b6776406f5ce2e24c89abcb3b5ad5900ed2686cc2451587d7fa1db6c0",
+    "apps/ios-conversation/Sources/App/P0ExperienceProbe.swift": "be07b346011b75910e15d3df4859f6564292789fc1a5686eb93cb3630c3da34f",
+    "apps/ios-conversation/Tests/P0NativeExperienceUITests.swift": "1d9046e193bb47a274af452bdce57ab7937850047573a395f3fbd3fb940ecca7",
+    "apps/ios-conversation/Resources/UIStrings.json": "edb2031e28028dd099fa7e2d38ed33c6e2e418c4f5a8669932bb5eadf6706e7d"
+  },
+  "evidence_kind": "native_simulator_real_user_scroll_synthetic_in_process_stream",
+  "tests": {
+    "reading_anchor": "PASS",
+    "consent_alert_shared_view": "PASS",
+    "count": 2,
+    "process_exit": 0
+  },
+  "assertions": [
+    "swipe above bottom exposes jump control and disables following",
+    "1000 more characters arrive while reply frame origin remains within 12pt",
+    "jump returns near bottom and resumes following",
+    "terminal arrives with exactly one synthetic reply call",
+    "actual consent alert dispatches original synthetic message once"
+  ],
+  "private_log_sha256": "b22b0cef67901592d95148c46003b143eca234672c6f1959a720ccf0e755a11c",
+  "non_debug_source_and_localization": "PASS; zsh check-source.sh exit0; 666 bilingual entries, no missing owned UI strings",
+  "physical_device": "NOT_RUN",
+  "real_provider": "NOT_RUN",
+  "candidate_build16": "unchanged; reading patch is not in the prepared build16",
+  "cloud_deployments": 0,
+  "phone_installations": 0
+}

@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "created_at_utc": "2026-10-12T17:42:55.799621+00:00",
+  "source_commit": "a905b47eb4201e21758fba8a66b6ff01d682e844",
+  "source_tree": "74400a57aeb9cdef72c846726b6f90e0609ceff9",
+  "native_source_manifest_sha256": "961aed3998ef181a4a5ccba854f79be50656f950d92da3e8f986d82816b47b29",
+  "build": {
+    "status": "PASS",
+    "version": "0.3.0",
+    "build": "16",
+    "configuration": "DeviceTrial",
+    "conditions": "DEVICE_TRIAL; no DEBUG",
+    "bundle": "com.example.CatpawM.OpenMuseDemo"
+  },
+  "signature": {
+    "strict_verify": "PASS",
+    "original_profile_match": true,
+    "original_entitlements_match": true,
+    "certificate_sha256": "215e5076c2e0469090175e7047eb470b29f90932f4bc9f8998fe38ace6d62b59",
+    "profile_expiry_utc": "2026-10-18T13:11:47Z",
+    "cached_profile_only": true,
+    "provisioning_updates_allowed": false
+  },
+  "runtime_configuration": "Only five existing public Info fields from verified old build15; no token, account or user-data extraction",
+  "binary_sha256": "e1fc81a28fadb6cf061c447e4fa57c9fc0636e350a2bb927e8de2725cf32c86a",
+  "ipa": {
+    "filename": "Catpaw-m-0.3.0-build16-a905b47.ipa",
+    "sha256": "e4c79e35025042c03cc06872ff1cb9216820126deb195f082d2e5296537626dc",
+    "bytes": 6123236,
+    "all_app_files_match": true
+  },
+  "phone_install": "NOT_RUN; fresh approval required",
+  "real_model": "NOT_RUN",
+  "cloud_deployments": 0
+}
