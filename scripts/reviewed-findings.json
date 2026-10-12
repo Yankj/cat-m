@@ -249,6 +249,27 @@
       "category": "unexpected_binary",
       "sha256": "558e36ee3285ccf7732a59d807f374b4fc13b4c1b2a9b15ca999cea898d77124",
       "reason": "Reviewed UX-1 browser capture from our self-contained synthetic proposal. Only authored fixture content is visible; no real phone/user conversation. JPEG APP0 is the standard 14-byte JFIF header, with no EXIF/XMP/comment or other APP segments. Exact-path/hash binary asset approval; any byte change requires renewed review."
+    },
+    {
+      "path": "docs/planning/AF-1/goal-evidence-map.json",
+      "category": "credential_prefix",
+      "line": 120,
+      "sha256": "9deec789daffefe61b1c2b18263431a331e69166c1fabad566e4c1e6e6cd39da",
+      "reason": "Reviewed literal historical research filename: catdesk- suffix matches broad sk- credential pattern; no credential value or content is present."
+    },
+    {
+      "path": "docs/planning/AF-1/goal-evidence-map.json",
+      "category": "credential_prefix",
+      "line": 146,
+      "sha256": "9deec789daffefe61b1c2b18263431a331e69166c1fabad566e4c1e6e6cd39da",
+      "reason": "Reviewed literal historical research filename: catdesk- suffix matches broad sk- credential pattern; no credential value or content is present."
+    },
+    {
+      "path": "docs/planning/AF-1/goal-evidence-map.json",
+      "category": "credential_prefix",
+      "line": 174,
+      "sha256": "9deec789daffefe61b1c2b18263431a331e69166c1fabad566e4c1e6e6cd39da",
+      "reason": "Reviewed literal historical research filename: catdesk- suffix matches broad sk- credential pattern; no credential value or content is present."
     }
   ]
 }
