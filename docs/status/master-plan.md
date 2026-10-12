@@ -2,6 +2,8 @@
 
 更新：2026-10-12；本文件是唯一实时状态页。[对应spec](../product/conversation-first-delivery-spec.md)定义页面、4条用户故事、状态和API；[验收清单](../acceptance/README.md)定义测试，[一页用户说明](../product/Catpaw-m_Product_Delivery_Baseline_2026-10-12.md)是此次快照。
 
+**下一版视觉文档归档（2026-10-12）：** 单独文档提交保存[聊天视觉与微交互原创规格](../design/chat-microinteractions-next.md)，只读核对turn_started/text_delta/tool/terminal/unknown/cursor和原生apply/stopObserving。图标、等待气泡、首段过渡、Reduce Motion/VO与动态字号的数值均为下一版提案；不复制参考截图或聊天原文，不改iOS UI/品牌tokens，不扩大冻结修复版或本轮领域内核修复。真机触控、帧率、键盘及无障碍仍NOT_RUN。
+
 **下一版独立云端小批（2026-10-12）：** `feat/proactive-goal-kernel` 从发布快照 `c1e23c28` 开发，后核实 main `78d9002f` 的分支规范但保留原基线。已交[中文spec/源码gap矩阵](../spec/proactive-goal-kernel-v1.md)及 opt-in 合成领域内核：原位Goal/CAS、原Event/Action/approval/task lease复用、事件修订与审批失效、派发fencing、unknown先reconcile、原子outbox/quiet抑制、暂停/撤销/用户自行完成停止。新23项＋既有logout1项，Node合成24/24；[本批证据](../acceptance/proactive-goal-kernel.md)不代替真实PG/多实例、held-out语义或产品验收。当前无Deno/显式公开cache，原62项完整Edge回归NOT RUN。生产kernel/adapter默认拒绝，HTTP/真实邮箱/模型/持续调度/迁移/部署/原生未接线。冻结修复版范围及以下R1状态保持不变；本批只提交独立本地分支，未授权合并/push。
 
 **下一版第二小批（2026-10-12，对抗审查921e693）：** 旧实现5个对抗断言0过5失败，复现停止时跨subject/scope binding、伪造approved投影、最后审批await后lease过期、删除后旧Goal/批准恢复。修复权威run/task归属、不可变Decision链、最终lease时间检查与逻辑删除tombstone，并检查unknown效果key。Node共36/36完成：35个功能/安全断言通过＋1个明确的整库回滚不安全复现（不计恢复安全PASS）。获用户授权后取得官方Deno2.9.6/发布方校验和与frozen-lock公开依赖；deny-net/ignore-env完整Edge回归97/97完成，其中96个功能/安全断言＋同一个剩余风险复现。真实PG原子性、多实例、物理删除与独立恢复屏障、held-out语义仍NOT RUN；生产kernel仍拒绝，无真实模型/邮箱/调度/部署。[复核限制与精选证据](../acceptance/proactive-goal-adversarial-review.md)。本批已获授权正常push此feature分支；发布结果以远端读回交付为准，不合并main或修改默认分支。
