@@ -2,7 +2,7 @@
 
 更新：2026-10-13；唯一实时状态页。旧主计划完整保存在[2026-10-12快照](master-plan-2026-10-12.md)，旧失败与证据边界不改写。
 
-**Goal：交付Swift优先的通用主动Agent底座，体验对标Codex、能力对标Dot，并从唯一维护主仓持续同步GitHub。** 通用能力以研究交付、变化跟进、本地日程动作三条组合路径签收。当前产品仍未通过，真实模型路径待新包复验。云电脑第一阶段用途为网页调研＋文件处理；用户已选先现有Supabase、后托管执行器/沙箱，新增计算预算0。托管实施仍待确认。
+**当前Goal（AF-1-G3-UX1）：交付可日常使用的Swift优先通用主动Agent iPhone App，体验对标Codex、能力对标Dot，并从唯一维护主仓持续同步GitHub。** 用户从自然对话交付目标，能够查看/修改计划、处理可找回审批、查收带来源版本的成果、管理记忆和持续跟进、从原生提醒回同事项；完整定义见[goal.md](../planning/AF-1/goal.md)。设计与功能同步推进，AF-GD为必需阶段；同版AF-A01–18、AF-U01–12及研究交付/变化跟进/本地日程三条CP路径全部通过才完成。当前Goal保持active，产品尚未签收。云电脑用途为公开网页调研＋文件处理；现有Supabase先行、新增计算预算0，托管实施待确认。
 
 需求：[AF-1 spec](../product/agent-foundation-spec.md)；验收：[AF-A01–18与AF-C01–03](../acceptance/agent-foundation-acceptance.md)；执行切片：[delivery-slices.json](delivery-slices.json)；云电脑提案：[Proposed](../architecture/cloud-computer-proposal.md)；接手：[handoff](../../handoff.md)。
 
@@ -41,6 +41,8 @@ S01通过后S02/S03/S04代码可在合同明确时独立推进；同一文件/�
 ## Goal 推进规则
 
 ### AF-1 可验收 Goal 与详细执行合同
+
+2026-10-13用户要求将design/research、截图调用/观察、对标问题表、UX-1及12项体验验收纳入当前Goal。已更新[执行定义](../planning/AF-1/goal.md)、[16项输入的hash与映射](../planning/AF-1/goal-evidence-map.json)和D00–D50逐片设计线；本次不改变产品PASS/FAIL。可点按提案为设计基线，仍须原生同版验证。旧一周Demo/今天首页/飞书候选与旧预算估算不扩大范围。未来截图按用户要求保存并记录版本，私人原图只留本机。
 
 [新计划与 AF-G0–G5](../planning/AF-1/plan.md)、[详细 spec / 用户故事](../planning/AF-1/spec-details.md)、[18 项操作脚本与 CP-01–03](../planning/AF-1/acceptance-scenarios.md)、[机器映射](../planning/AF-1/contract.json)细化现有 AF-R/AF-A/S00–S08，不建立第二份实时状态。本文仍是当前状态权威。
 

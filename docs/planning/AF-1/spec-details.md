@@ -1,6 +1,6 @@
 # AF-1 详细功能规格
 
-版本：AF-1-G1，2026-10-13。细化 [主 spec](../../product/agent-foundation-spec.md) 的 AF-R01–12；历史 v1/v2 HTTP 合同、上游受控来源和已交付 v1 保持身份。本文定义预期行为，不宣称实现已完成；当前进展仅见 [master-plan](../../status/master-plan.md)。
+版本：AF-1-G3-UX1，2026-10-13。细化 [主 spec](../../product/agent-foundation-spec.md) 的 AF-R01–12；历史 v1/v2 HTTP 合同、上游受控来源和已交付 v1 保持身份。本文定义预期行为，不宣称实现已完成；当前进展仅见 [master-plan](../../status/master-plan.md)。
 
 ## 1. 用户问题与解决方案
 
