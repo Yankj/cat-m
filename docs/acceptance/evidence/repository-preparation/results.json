@@ -1,0 +1,68 @@
+{
+  "date": "2026-10-11",
+  "runtime_versions": {
+    "git": "git version 2.39.3 (Apple Git-146)",
+    "node": "v22.17.1"
+  },
+  "checks": [
+    {
+      "command": "python3 scripts/check-repository.py",
+      "exit_code": 0,
+      "result": "188 imported files, final v1 41 items, 10 frozen specs, contract, 44 upstream originals and patch reconstruction match"
+    },
+    {
+      "command": "zsh apps/ios/Scripts/check-source.sh",
+      "exit_code": 0,
+      "result": "macOS conditional typecheck, iOS syntax parse, 36 sources/project, 463 bilingual entries and localization negative audit pass"
+    },
+    {
+      "command": "zsh apps/ios/Scripts/test-portable.sh",
+      "exit_code": 0,
+      "tests": 186,
+      "passed": 186,
+      "failed": 0,
+      "scope": "Foundation/Codable disk driver"
+    },
+    {
+      "command": "node --experimental-transform-types --test services/facade/test/facade.test.mjs services/facade/qa/tests/negative.test.mjs services/facade/qa/tests/edges.test.mjs",
+      "exit_code": 0,
+      "tests": 42,
+      "passed": 42,
+      "failed": 0,
+      "scope": "In-process; no listener or real SQL/model"
+    },
+    {
+      "command": "node services/offline/tests/run.mjs",
+      "exit_code": 0,
+      "tests": 29,
+      "passed": 29,
+      "failed": 0,
+      "scope": "Pure synthetic adapter; no upstream runtime"
+    },
+    {
+      "command": "DEVELOPER_DIR=<existing Xcode Contents/Developer> zsh apps/ios/Scripts/test-gateway-portable.sh contract",
+      "exit_code": 0,
+      "result": "Contract runner, project-reply ownership and gateway safety regressions passed; no service listener",
+      "scope": "Existing full Xcode selected only in this process",
+      "prior_attempt": "Default Command Line Tools linker assertion failed before contract assertions; not counted as pass"
+    }
+  ],
+  "unrun": [
+    "Simulator/iOS SDK build",
+    "HTTP/loopback/restart tests",
+    "active OpenMuse client latest source",
+    "real SQL/Intelligence/model/deployment"
+  ],
+  "source_preservation": [
+    {
+      "source": "ios-v1",
+      "checked_files": 91,
+      "changed_files": []
+    },
+    {
+      "source": "facade-r2",
+      "checked_files": 26,
+      "changed_files": []
+    }
+  ]
+}

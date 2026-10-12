@@ -1,0 +1,1 @@
+Queue behavior derives from OpenMuse under MIT, pinned upstream source retained in ../../vendor/openmuse. Existing source headers and exact MIT text at docs/conversation-first/upstream-review/LICENSE are preserved. No new third-party dependency.

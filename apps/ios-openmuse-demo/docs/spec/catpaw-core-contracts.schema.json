@@ -1,0 +1,2237 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:catpaw:core-contracts:1.0",
+  "title": "Catpaw-m proposed core server records",
+  "description": "Design contract only, not an implemented API. Server ownership fields are not accepted from an untrusted client. JSON Schema checks shape; authorization, digest recomputation, lifecycle transitions, expiry, revocation and cross-record invariants MUST be checked in deterministic server code.",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/Delegation"
+    },
+    {
+      "$ref": "#/$defs/Run"
+    },
+    {
+      "$ref": "#/$defs/Event"
+    },
+    {
+      "$ref": "#/$defs/MemoryItem"
+    },
+    {
+      "$ref": "#/$defs/Grant"
+    },
+    {
+      "$ref": "#/$defs/ActionEnvelope"
+    },
+    {
+      "$ref": "#/$defs/Approval"
+    },
+    {
+      "$ref": "#/$defs/ExecutionReceipt"
+    },
+    {
+      "$ref": "#/$defs/ArtifactVersion"
+    },
+    {
+      "$ref": "#/$defs/ForgetSuppression"
+    },
+    {
+      "$ref": "#/$defs/ArtifactView"
+    },
+    {
+      "$ref": "#/$defs/AttentionPolicy"
+    }
+  ],
+  "$defs": {
+    "ArtifactRef": {
+      "type": "object",
+      "properties": {
+        "artifact_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "content_hash": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "artifact_id",
+        "version",
+        "content_hash"
+      ],
+      "additionalProperties": false
+    },
+    "Target": {
+      "type": "object",
+      "properties": {
+        "provider": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "account_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "target_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "display": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        }
+      },
+      "required": [
+        "provider",
+        "account_id",
+        "target_id",
+        "display"
+      ],
+      "additionalProperties": false
+    },
+    "SourceRef": {
+      "type": "object",
+      "properties": {
+        "source_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "source_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "evidence_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        }
+      },
+      "required": [
+        "source_id",
+        "source_version",
+        "evidence_id"
+      ],
+      "additionalProperties": false
+    },
+    "Scope": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "run",
+            "delegation",
+            "project",
+            "user"
+          ]
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        }
+      },
+      "required": [
+        "type",
+        "id"
+      ],
+      "additionalProperties": false
+    },
+    "Budget": {
+      "type": "object",
+      "properties": {
+        "max_runs_per_day": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "max_pages_per_run": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000
+        },
+        "max_model_tokens_per_run": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_tool_calls_per_run": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_elapsed_seconds_per_run": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": [
+        "max_runs_per_day",
+        "max_pages_per_run",
+        "max_model_tokens_per_run",
+        "max_tool_calls_per_run",
+        "max_elapsed_seconds_per_run"
+      ],
+      "additionalProperties": false
+    },
+    "TriggerSpec": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "scheduled_poll",
+            "event_subscription",
+            "manual"
+          ]
+        },
+        "timezone": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "cadence": {
+          "type": "string",
+          "enum": [
+            "manual",
+            "hourly",
+            "daily",
+            "weekly",
+            "event"
+          ]
+        },
+        "local_time": {
+          "type": "string",
+          "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$"
+        },
+        "missed_run_policy": {
+          "type": "string",
+          "enum": [
+            "coalesce_latest",
+            "catch_up_bounded",
+            "skip"
+          ]
+        },
+        "source_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "minItems": 0,
+          "maxItems": 1000
+        }
+      },
+      "required": [
+        "kind",
+        "timezone",
+        "cadence",
+        "missed_run_policy",
+        "source_ids"
+      ],
+      "additionalProperties": false
+    },
+    "Delegation": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": "1.0"
+        },
+        "record_type": {
+          "const": "delegation"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "tenant_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "owner_user_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "goal": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 5000
+        },
+        "source_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "minItems": 0,
+          "maxItems": 1000
+        },
+        "allowed_output_kinds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "comparison",
+              "draft",
+              "brief"
+            ]
+          },
+          "minItems": 1,
+          "maxItems": 1000
+        },
+        "success_criteria": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000
+          },
+          "minItems": 0,
+          "maxItems": 1000
+        },
+        "stop_conditions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000
+          },
+          "minItems": 1,
+          "maxItems": 1000
+        },
+        "trigger_spec": {
+          "$ref": "#/$defs/TriggerSpec"
+        },
+        "notification_mode": {
+          "type": "string",
+          "enum": [
+            "in_app_only",
+            "meaningful_change_digest",
+            "explicit_urgent_only"
+          ]
+        },
+        "budget": {
+          "$ref": "#/$defs/Budget"
+        },
+        "memory_scope": {
+          "$ref": "#/$defs/Scope"
+        },
+        "grant_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "minItems": 0,
+          "maxItems": 1000
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "draft",
+            "active",
+            "paused",
+            "completed",
+            "cancelled",
+            "expired"
+          ]
+        },
+        "health": {
+          "type": "string",
+          "enum": [
+            "healthy",
+            "degraded",
+            "blocked",
+            "unverified"
+          ]
+        },
+        "next_check_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "last_healthy_check_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "source_user_message_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "archived_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "discarded_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "schema_version",
+        "record_type",
+        "id",
+        "tenant_id",
+        "owner_user_id",
+        "revision",
+        "created_at",
+        "updated_at",
+        "title",
+        "goal",
+        "source_ids",
+        "allowed_output_kinds",
+        "success_criteria",
+        "stop_conditions",
+        "trigger_spec",
+        "notification_mode",
+        "budget",
+        "memory_scope",
+        "grant_ids",
+        "state",
+        "health",
+        "source_user_message_id"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "archived_at"
+            ]
+          },
+          "then": {
+            "properties": {
+              "state": {
+                "type": "string",
+                "enum": [
+                  "completed",
+                  "cancelled",
+                  "expired"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "discarded_at"
+            ]
+          },
+          "then": {
+            "properties": {
+              "state": {
+                "const": "draft"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "Run": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": "1.0"
+        },
+        "record_type": {
+          "const": "run"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "tenant_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "owner_user_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "delegation_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "delegation_revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "trigger_event_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "minItems": 0,
+          "maxItems": 1000
+        },
+        "task_kind": {
+          "type": "string",
+          "enum": [
+            "check_sources",
+            "update_artifact",
+            "execute_action",
+            "reconcile_action"
+          ]
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "queued",
+            "preparing",
+            "running",
+            "verifying",
+            "succeeded",
+            "waiting_approval",
+            "waiting_dependency",
+            "retry_scheduled",
+            "cancel_requested",
+            "cancelled",
+            "failed",
+            "outcome_unknown"
+          ]
+        },
+        "outcome": {
+          "type": "string",
+          "enum": [
+            "changed",
+            "no_change",
+            "verified_effect",
+            "partial",
+            "unknown"
+          ]
+        },
+        "context_manifest_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "attempt_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "fencing_token": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "lease_expires_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "next_attempt_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "deadline_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "artifact_refs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ArtifactRef"
+          },
+          "minItems": 0,
+          "maxItems": 1000
+        },
+        "trace_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "context_epochs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "scope": {
+                "$ref": "#/$defs/Scope"
+              },
+              "epoch": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "scope",
+              "epoch"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 0,
+          "maxItems": 1000
+        }
+      },
+      "required": [
+        "schema_version",
+        "record_type",
+        "id",
+        "tenant_id",
+        "owner_user_id",
+        "revision",
+        "created_at",
+        "updated_at",
+        "delegation_id",
+        "delegation_revision",
+        "trigger_event_ids",
+        "task_kind",
+        "state",
+        "attempt_count",
+        "fencing_token",
+        "deadline_at",
+        "artifact_refs",
+        "trace_id",
+        "context_epochs"
+      ],
+      "additionalProperties": false
+    },
+    "Event": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": "1.0"
+        },
+        "record_type": {
+          "const": "event"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "tenant_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "owner_user_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "source_kind": {
+          "type": "string",
+          "enum": [
+            "user_command",
+            "webhook",
+            "poll",
+            "schedule",
+            "internal"
+          ]
+        },
+        "source_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "provider_event_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "source_object_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "source_revision": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "event_type": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "occurred_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "observed_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "received_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "payload_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "payload_hash": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "dedupe_key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        },
+        "trust_class": {
+          "type": "string",
+          "enum": [
+            "authenticated_user",
+            "verified_provider_event",
+            "external_content",
+            "internal_scheduler"
+          ]
+        },
+        "signature_status": {
+          "type": "string",
+          "enum": [
+            "verified",
+            "not_applicable",
+            "failed"
+          ]
+        },
+        "ingest_status": {
+          "type": "string",
+          "enum": [
+            "accepted",
+            "duplicate",
+            "quarantined",
+            "processed"
+          ]
+        },
+        "causation_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "correlation_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        }
+      },
+      "required": [
+        "schema_version",
+        "record_type",
+        "id",
+        "tenant_id",
+        "owner_user_id",
+        "revision",
+        "created_at",
+        "updated_at",
+        "source_kind",
+        "source_id",
+        "event_type",
+        "observed_at",
+        "received_at",
+        "payload_ref",
+        "payload_hash",
+        "dedupe_key",
+        "trust_class",
+        "signature_status",
+        "ingest_status",
+        "correlation_id"
+      ],
+      "additionalProperties": false
+    },
+    "MemoryItem": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": "1.0"
+        },
+        "record_type": {
+          "const": "memory"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "tenant_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "owner_user_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "explicit_user_preference",
+            "delegation_requirement",
+            "source_fact",
+            "tentative_inference"
+          ]
+        },
+        "scope": {
+          "$ref": "#/$defs/Scope"
+        },
+        "content": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 8000
+        },
+        "source_refs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SourceRef"
+          },
+          "minItems": 0,
+          "maxItems": 1000
+        },
+        "source_user_message_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "asserted_by": {
+          "type": "string",
+          "enum": [
+            "user",
+            "source",
+            "model_inference"
+          ]
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "valid_from": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "valid_until": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "last_verified_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "sensitivity": {
+          "type": "string",
+          "enum": [
+            "public",
+            "ordinary_personal",
+            "sensitive"
+          ]
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "candidate",
+            "active",
+            "superseded",
+            "disputed",
+            "expired",
+            "deleted"
+          ]
+        },
+        "derived_from": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "minItems": 0,
+          "maxItems": 1000
+        },
+        "supersedes": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "deletion_epoch": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "schema_version",
+        "record_type",
+        "id",
+        "tenant_id",
+        "owner_user_id",
+        "revision",
+        "created_at",
+        "updated_at",
+        "kind",
+        "scope",
+        "content",
+        "source_refs",
+        "asserted_by",
+        "confidence",
+        "valid_from",
+        "sensitivity",
+        "status",
+        "derived_from",
+        "deletion_epoch"
+      ],
+      "additionalProperties": false
+    },
+    "Grant": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": "1.0"
+        },
+        "record_type": {
+          "const": "grant"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "tenant_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "owner_user_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "subject_user_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "source_user_message_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "purpose": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 3000
+        },
+        "allowed_effects": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "read_public",
+              "read_private",
+              "internal_private_write",
+              "external_send",
+              "share",
+              "publish",
+              "delete"
+            ]
+          },
+          "minItems": 1,
+          "maxItems": 1000
+        },
+        "source_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "minItems": 0,
+          "maxItems": 1000
+        },
+        "resource_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "minItems": 0,
+          "maxItems": 1000
+        },
+        "recipient_constraints": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Target"
+          },
+          "minItems": 0,
+          "maxItems": 1000
+        },
+        "data_categories": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "minItems": 0,
+          "maxItems": 1000
+        },
+        "expires_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "active",
+            "revoked",
+            "expired"
+          ]
+        },
+        "revoked_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "revocation_epoch": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "schema_version",
+        "record_type",
+        "id",
+        "tenant_id",
+        "owner_user_id",
+        "revision",
+        "created_at",
+        "updated_at",
+        "subject_user_id",
+        "source_user_message_id",
+        "purpose",
+        "allowed_effects",
+        "source_ids",
+        "resource_ids",
+        "recipient_constraints",
+        "data_categories",
+        "state",
+        "revocation_epoch"
+      ],
+      "additionalProperties": false
+    },
+    "ActionEnvelope": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": "1.0"
+        },
+        "record_type": {
+          "const": "action"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "tenant_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "owner_user_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "operation_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "delegation_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "delegation_revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "tool_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "tool_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "actor_account_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "effect_class": {
+          "type": "string",
+          "enum": [
+            "read_public",
+            "read_private",
+            "internal_private_write",
+            "external_send",
+            "share",
+            "publish",
+            "delete",
+            "financial",
+            "account_security"
+          ]
+        },
+        "resolved_targets": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Target"
+          },
+          "minItems": 0,
+          "maxItems": 1000
+        },
+        "arguments_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "arguments_hash": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "artifact_refs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ArtifactRef"
+          },
+          "minItems": 0,
+          "maxItems": 1000
+        },
+        "data_categories": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "minItems": 0,
+          "maxItems": 1000
+        },
+        "preconditions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000
+          },
+          "minItems": 0,
+          "maxItems": 1000
+        },
+        "grant_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "grant_revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "policy_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "expires_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "idempotency_key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "required_confirmation": {
+          "type": "string",
+          "enum": [
+            "none",
+            "explicit",
+            "handoff"
+          ]
+        },
+        "action_digest": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "schema_version",
+        "record_type",
+        "id",
+        "tenant_id",
+        "owner_user_id",
+        "revision",
+        "created_at",
+        "updated_at",
+        "operation_id",
+        "delegation_id",
+        "delegation_revision",
+        "tool_id",
+        "tool_version",
+        "actor_account_id",
+        "effect_class",
+        "resolved_targets",
+        "arguments_ref",
+        "arguments_hash",
+        "artifact_refs",
+        "data_categories",
+        "preconditions",
+        "grant_id",
+        "grant_revision",
+        "policy_version",
+        "expires_at",
+        "idempotency_key",
+        "required_confirmation",
+        "action_digest"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "effect_class": {
+                "enum": [
+                  "external_send",
+                  "share",
+                  "publish"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "required_confirmation": {
+                "const": "explicit"
+              },
+              "resolved_targets": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/Target"
+                },
+                "minItems": 1,
+                "maxItems": 1000
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "effect_class": {
+                "enum": [
+                  "financial",
+                  "account_security"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "required_confirmation": {
+                "const": "handoff"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "Approval": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": "1.0"
+        },
+        "record_type": {
+          "const": "approval"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "tenant_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "owner_user_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "action_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "operation_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "action_digest": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "grant_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "grant_revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "policy_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "approved",
+            "rejected",
+            "expired",
+            "invalidated",
+            "consumed",
+            "revoked"
+          ]
+        },
+        "expires_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "decided_by_user_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "decided_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "decision_source": {
+          "type": "string",
+          "enum": [
+            "authenticated_app",
+            "authenticated_conversation"
+          ]
+        },
+        "execution_claimed_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "revoked_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "dispatch_commit_seq": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "dispatch_committed_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "schema_version",
+        "record_type",
+        "id",
+        "tenant_id",
+        "owner_user_id",
+        "revision",
+        "created_at",
+        "updated_at",
+        "action_id",
+        "operation_id",
+        "action_digest",
+        "grant_id",
+        "grant_revision",
+        "policy_version",
+        "status",
+        "expires_at"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "enum": [
+                  "approved",
+                  "rejected",
+                  "consumed"
+                ]
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "decided_by_user_id",
+              "decided_at",
+              "decision_source"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "consumed"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "execution_claimed_at",
+              "dispatch_commit_seq",
+              "dispatch_committed_at"
+            ]
+          }
+        }
+      ]
+    },
+    "ExecutionReceipt": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": "1.0"
+        },
+        "record_type": {
+          "const": "receipt"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "tenant_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "owner_user_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "operation_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "run_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "attempt_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "adapter_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "adapter_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "action_digest": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "authorization_decision_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "request_started_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "provider_request_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "provider_operation_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "not_started",
+            "reserved",
+            "dispatch_committed",
+            "accepted",
+            "verified",
+            "failed_definite",
+            "unknown",
+            "cancelled_before_dispatch",
+            "cancelled_before_transport"
+          ]
+        },
+        "response_class": {
+          "type": "string",
+          "enum": [
+            "not_sent",
+            "success_response",
+            "definite_rejection",
+            "ambiguous_timeout",
+            "ambiguous_error"
+          ]
+        },
+        "observed_effect": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 5000
+        },
+        "verification_method": {
+          "type": "string",
+          "enum": [
+            "none",
+            "fixed_version_readback",
+            "provider_status_query",
+            "authoritative_readback",
+            "environment_postcondition"
+          ]
+        },
+        "verification_evidence_refs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "minItems": 0,
+          "maxItems": 1000
+        },
+        "verified_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "error_code": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "retry_safety": {
+          "type": "string",
+          "enum": [
+            "safe_read",
+            "same_key_only",
+            "reconcile_first",
+            "do_not_retry"
+          ]
+        },
+        "reconcile_after": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "dispatch_commit_seq": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "dispatch_committed_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "cancel_commit_seq": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "transport_state": {
+          "type": "string",
+          "enum": [
+            "not_started",
+            "provably_not_sent",
+            "may_have_sent",
+            "response_received"
+          ]
+        }
+      },
+      "required": [
+        "schema_version",
+        "record_type",
+        "id",
+        "tenant_id",
+        "owner_user_id",
+        "revision",
+        "created_at",
+        "updated_at",
+        "operation_id",
+        "run_id",
+        "attempt_id",
+        "adapter_id",
+        "adapter_version",
+        "action_digest",
+        "authorization_decision_id",
+        "status",
+        "response_class",
+        "verification_method",
+        "verification_evidence_refs",
+        "retry_safety",
+        "transport_state"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "verified"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "verified_at",
+              "observed_effect"
+            ],
+            "properties": {
+              "verification_evidence_refs": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128
+                },
+                "minItems": 1,
+                "maxItems": 1000
+              },
+              "verification_method": {
+                "not": {
+                  "const": "none"
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "unknown"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "retry_safety": {
+                "enum": [
+                  "reconcile_first",
+                  "do_not_retry"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "enum": [
+                  "dispatch_committed",
+                  "accepted",
+                  "verified",
+                  "unknown",
+                  "cancelled_before_transport"
+                ]
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "dispatch_commit_seq",
+              "dispatch_committed_at"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "cancelled_before_transport"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "transport_state": {
+                "const": "provably_not_sent"
+              },
+              "retry_safety": {
+                "const": "do_not_retry"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "ArtifactVersion": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": "1.0"
+        },
+        "record_type": {
+          "const": "artifact_version"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "tenant_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "owner_user_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "artifact_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "parent_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "comparison",
+            "draft",
+            "brief"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "visibility": {
+          "const": "private"
+        },
+        "content_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "content_hash": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "evidence_refs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "minItems": 0,
+          "maxItems": 1000
+        },
+        "generated_from_run_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "user_edits_base_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "draft",
+            "ready",
+            "stale",
+            "superseded",
+            "withdrawn"
+          ]
+        },
+        "quality_check_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "minItems": 0,
+          "maxItems": 1000
+        }
+      },
+      "required": [
+        "schema_version",
+        "record_type",
+        "id",
+        "tenant_id",
+        "owner_user_id",
+        "revision",
+        "created_at",
+        "updated_at",
+        "artifact_id",
+        "version",
+        "kind",
+        "title",
+        "visibility",
+        "content_ref",
+        "content_hash",
+        "evidence_refs",
+        "generated_from_run_id",
+        "state",
+        "quality_check_ids"
+      ],
+      "additionalProperties": false
+    },
+    "ForgetSuppression": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": "1.0"
+        },
+        "record_type": {
+          "const": "forget_suppression"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "tenant_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "owner_user_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "deleted_memory_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "scope": {
+          "$ref": "#/$defs/Scope"
+        },
+        "source_message_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "minItems": 0,
+          "maxItems": 1000
+        },
+        "source_span_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "minItems": 0,
+          "maxItems": 1000
+        },
+        "derived_lineage_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "minItems": 0,
+          "maxItems": 1000
+        },
+        "subject_predicate_hmac": {
+          "type": "string",
+          "pattern": "^hmac-sha256:[a-f0-9]{64}$"
+        },
+        "deletion_epoch": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "purpose": {
+          "const": "prevent_automatic_relearning"
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "active",
+            "cleared_by_explicit_user"
+          ]
+        },
+        "cleared_by_new_user_message_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "cleared_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "schema_version",
+        "record_type",
+        "id",
+        "tenant_id",
+        "owner_user_id",
+        "revision",
+        "created_at",
+        "updated_at",
+        "deleted_memory_id",
+        "scope",
+        "source_message_ids",
+        "source_span_ids",
+        "derived_lineage_ids",
+        "deletion_epoch",
+        "purpose",
+        "state"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "state": {
+                "const": "cleared_by_explicit_user"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "cleared_by_new_user_message_id",
+              "cleared_at"
+            ]
+          }
+        }
+      ]
+    },
+    "ArtifactView": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": "1.0"
+        },
+        "record_type": {
+          "const": "artifact_view"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "tenant_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "owner_user_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "artifact_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "artifact_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "viewer_user_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "first_viewed_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "last_viewed_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "schema_version",
+        "record_type",
+        "id",
+        "tenant_id",
+        "owner_user_id",
+        "revision",
+        "created_at",
+        "updated_at",
+        "artifact_id",
+        "artifact_version",
+        "viewer_user_id",
+        "first_viewed_at",
+        "last_viewed_at"
+      ],
+      "additionalProperties": false
+    },
+    "AttentionPolicy": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": "1.0"
+        },
+        "record_type": {
+          "const": "attention_policy"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "tenant_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "owner_user_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "timezone": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "max_nonurgent_digests_per_day": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10,
+          "default": 1
+        },
+        "aggregate_across_delegations": {
+          "const": true
+        },
+        "quiet_hours_start": {
+          "type": "string",
+          "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$"
+        },
+        "quiet_hours_end": {
+          "type": "string",
+          "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$"
+        },
+        "urgent_bypass_enabled": {
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "required": [
+        "schema_version",
+        "record_type",
+        "id",
+        "tenant_id",
+        "owner_user_id",
+        "revision",
+        "created_at",
+        "updated_at",
+        "timezone",
+        "max_nonurgent_digests_per_day",
+        "aggregate_across_delegations",
+        "urgent_bypass_enabled"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

@@ -1,0 +1,71 @@
+TAP version 13
+# (node:73190) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# H01 actual 409 approval_consumed expired
+# Subtest: H01 real HTTP expired approval returns 409 and commits expiry
+ok 1 - H01 real HTTP expired approval returns 409 and commits expiry
+  ---
+  duration_ms: 266.704333
+  type: 'test'
+  ...
+# H02 actual null 422 schema_invalid
+# Subtest: H02 real HTTP rejects reconciliation null
+ok 2 - H02 real HTTP rejects reconciliation null
+  ---
+  duration_ms: 185.428292
+  type: 'test'
+  ...
+# H02 actual array 422 schema_invalid
+# Subtest: H02 real HTTP rejects reconciliation array
+ok 3 - H02 real HTTP rejects reconciliation array
+  ---
+  duration_ms: 221.458583
+  type: 'test'
+  ...
+# H02 actual empty string 422 schema_invalid
+# Subtest: H02 real HTTP rejects reconciliation empty string
+ok 4 - H02 real HTTP rejects reconciliation empty string
+  ---
+  duration_ms: 198.429375
+  type: 'test'
+  ...
+# H02 actual number 422 schema_invalid
+# Subtest: H02 real HTTP rejects reconciliation number
+ok 5 - H02 real HTTP rejects reconciliation number
+  ---
+  duration_ms: 238.471458
+  type: 'test'
+  ...
+# Subtest: H03 real HTTP unknown duplicate decision and repeated reconciliation never dispatch again
+ok 6 - H03 real HTTP unknown duplicate decision and repeated reconciliation never dispatch again
+  ---
+  duration_ms: 300.541375
+  type: 'test'
+  ...
+# Subtest: H04 real HTTP simultaneous identical admission is 201 then 200; conflict leaves one task
+ok 7 - H04 real HTTP simultaneous identical admission is 201 then 200; conflict leaves one task
+  ---
+  duration_ms: 395.498875
+  type: 'test'
+  ...
+# Subtest: H05 real HTTP pause-resume fences pending old approval and requires a fresh Run
+ok 8 - H05 real HTTP pause-resume fences pending old approval and requires a fresh Run
+  ---
+  duration_ms: 379.656
+  type: 'test'
+  ...
+# Subtest: real HTTP + process restart: persistent run, approval, artifact and unknown receipt survive independently of clients
+ok 9 - real HTTP + process restart: persistent run, approval, artifact and unknown receipt survive independently of clients
+  ---
+  duration_ms: 1847.104167
+  type: 'test'
+  ...
+1..9
+# tests 9
+# suites 0
+# pass 9
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 2285.095666

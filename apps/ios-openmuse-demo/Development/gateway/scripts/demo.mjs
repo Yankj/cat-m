@@ -1,0 +1,22 @@
+import {resolve} from 'node:path';
+import {randomUUID} from 'node:crypto';
+import {mkdirSync,writeFileSync} from 'node:fs';
+import {DurableStore} from '../src/store.mjs';
+import {AssistantService} from '../src/assistant.mjs';
+import {LocalWorker} from '../src/worker.mjs';
+import {DEMO_SCOPE} from '../src/server.mjs';
+const output=resolve(process.argv[2]??'../evidence');mkdirSync(output,{recursive:true});
+const statePath=resolve(output,`demo-state-${randomUUID()}.json`);
+let now=Date.parse('2026-10-11T09:00:00Z');
+const service=new AssistantService(new DurableStore(statePath),{clock:()=>now});
+const d=service.createDelegation(DEMO_SCOPE,{title:'合成资料周报',goal:'整理合成输入供审阅',requirements:'只做私有草稿',stop_conditions:['用户停止'],interval_ms:3600000,model_id:'qwen-beijing'},'demo-create-v1');
+service.enqueue(DEMO_SCOPE,d.id,'demo-run-v1');
+const first=await new LocalWorker(service).tick();
+// Reopen persisted state and advance a simulated clock; no background service or cloud is started.
+now+=3600000;
+const recovered=new AssistantService(new DurableStore(statePath),{clock:()=>now});
+const second=await new LocalWorker(recovered).tick();
+const projection=recovered.projection(DEMO_SCOPE);
+writeFileSync(resolve(output,'native-projection.json'),JSON.stringify(projection,null,2));
+writeFileSync(resolve(output,'demo-result.json'),JSON.stringify({mode:'local_synthetic',real_api_calls:0,first,second,delegation_state:recovered.getDelegation(DEMO_SCOPE,d.id).state},null,2));
+process.stdout.write(JSON.stringify({first,second,projection:resolve(output,'native-projection.json'),real_api_calls:0})+'\n');

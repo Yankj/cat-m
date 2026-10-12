@@ -1,0 +1,127 @@
+{
+  "schema_version": 1,
+  "checked_at": "2026-10-11",
+  "candidates": [
+    {
+      "id": "qwen-beijing",
+      "provider": "bailian",
+      "model": "qwen3.8-max-0902",
+      "region": "cn-beijing",
+      "endpoint": "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
+      "capabilities": {
+        "text": true,
+        "images": false,
+        "tools": true,
+        "json_schema": false
+      },
+      "price": {
+        "currency": "CNY",
+        "input_per_million": 12,
+        "output_per_million": 36
+      },
+      "free": {
+        "kind": "new_account_quota",
+        "total_tokens": 1000000,
+        "valid_days": 90,
+        "eligibility": "unverified",
+        "expires_at": null,
+        "requires_effective_stop": true
+      },
+      "sources": [
+        "https://help.aliyun.com/zh/model-studio/new-free-quota",
+        "https://help.aliyun.com/zh/model-studio/model-pricing",
+        "https://help.aliyun.com/zh/model-studio/compatibility-of-openai-with-dashscope"
+      ],
+      "documentation_status": "verified_public_docs",
+      "capability_status": "documented_compatibility_not_live_tested"
+    },
+    {
+      "id": "dots-free",
+      "provider": "openrouter",
+      "model": "dots-studio/dots-3-note-preview:free",
+      "region": "provider_managed",
+      "endpoint": "https://openrouter.ai/api/v1/chat/completions",
+      "capabilities": {
+        "text": true,
+        "images": true,
+        "tools": true,
+        "json_schema": true
+      },
+      "price": {
+        "currency": "USD",
+        "input_per_million": 0,
+        "output_per_million": 0
+      },
+      "free": {
+        "kind": "zero_price_model",
+        "eligibility": "unverified",
+        "expires_at": "2026-12-31T00:00:00Z",
+        "requires_effective_stop": false
+      },
+      "sources": [
+        "https://openrouter.ai/dots-studio/dots-3-note-preview:free"
+      ],
+      "documentation_status": "verified_public_docs",
+      "capability_status": "documented_compatibility_not_live_tested"
+    },
+    {
+      "id": "nemotron-free",
+      "provider": "openrouter",
+      "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+      "region": "provider_managed",
+      "endpoint": "https://openrouter.ai/api/v1/chat/completions",
+      "capabilities": {
+        "text": true,
+        "images": false,
+        "tools": true,
+        "json_schema": false
+      },
+      "price": {
+        "currency": "USD",
+        "input_per_million": 0,
+        "output_per_million": 0
+      },
+      "free": {
+        "kind": "zero_price_model",
+        "eligibility": "unverified",
+        "expires_at": null,
+        "requires_effective_stop": false
+      },
+      "sources": [
+        "https://openrouter.ai/nvidia/nemotron-3-ultra-550b-a55b:free"
+      ],
+      "documentation_status": "verified_public_docs",
+      "capability_status": "documented_compatibility_not_live_tested"
+    },
+    {
+      "id": "glm-flash",
+      "provider": "zhipu",
+      "model": "glm-4.7-flash",
+      "region": "china",
+      "endpoint": "https://open.bigmodel.cn/api/paas/v4/chat/completions",
+      "capabilities": {
+        "text": true,
+        "images": false,
+        "tools": true,
+        "json_schema": false
+      },
+      "price": {
+        "currency": "CNY",
+        "input_per_million": 0,
+        "output_per_million": 0,
+        "status": "candidate_unverified"
+      },
+      "free": {
+        "kind": "zero_price_model",
+        "eligibility": "unverified",
+        "expires_at": null,
+        "requires_effective_stop": false
+      },
+      "sources": [
+        "https://docs.bigmodel.cn/cn/guide/models/free/glm-4.7-flash"
+      ],
+      "documentation_status": "candidate_requires_official_recheck",
+      "capability_status": "candidate_not_live_tested"
+    }
+  ]
+}

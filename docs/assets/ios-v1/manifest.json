@@ -1,0 +1,35 @@
+{
+  "screenshots": [
+    {
+      "path": "docs/assets/ios-v1/CatpawM-v1-final-light-input.png",
+      "sha256": "b889b6bd0a8c349481f4eae8ddeac9d8a1a9bee42a561c3dcb6d8189a7ab4920",
+      "bytes": 182503,
+      "synthetic_only": true,
+      "unaltered_pixels": true,
+      "version": "ios-delivered-v1",
+      "source_test": "NativeUITests/testContrastKeyboardAndApprovalAtCurrentDynamicType()",
+      "source_attachment_label": "final-contrast-normal-15-testContrastKeyboardAndApprovalAtCurrentDynamicType-contrast-light-placeholder.png"
+    },
+    {
+      "path": "docs/assets/ios-v1/CatpawM-v1-final-light-approval.png",
+      "sha256": "f2267b18f737fe97b9d0b6103a9d67464939e29f9b19332994272ed2870ee4ab",
+      "bytes": 315266,
+      "synthetic_only": true,
+      "unaltered_pixels": true,
+      "version": "ios-delivered-v1",
+      "source_test": "NativeUITests/testContrastKeyboardAndApprovalAtCurrentDynamicType()",
+      "source_attachment_label": "final-contrast-normal-15-testContrastKeyboardAndApprovalAtCurrentDynamicType-contrast-light-approval-warning.png"
+    },
+    {
+      "path": "docs/assets/ios-v1/CatpawM-v1-final-max-dark-approval.png",
+      "sha256": "a5d22976319527b01115b6e51878da08823b0c63b19a86c8f8945aef8d0805d3",
+      "bytes": 404329,
+      "synthetic_only": true,
+      "unaltered_pixels": true,
+      "version": "ios-delivered-v1",
+      "source_test": "NativeUITests/testContrastKeyboardAndApprovalAtCurrentDynamicType()",
+      "source_attachment_label": "final-max-tests-16-testContrastKeyboardAndApprovalAtCurrentDynamicType-contrast-dark-approval-version.png"
+    }
+  ],
+  "review": "Visually reviewed: synthetic task names and example.invalid destination only; no personal/device identifiers shown."
+}

@@ -1,0 +1,197 @@
+TAP version 13
+# (node:73055) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: real TaskWorker: admit -> disconnect -> status read -> immutable report; operation/task/lease IDs stay distinct
+ok 1 - real TaskWorker: admit -> disconnect -> status read -> immutable report; operation/task/lease IDs stay distinct
+  ---
+  duration_ms: 4.5125
+  type: 'test'
+  ...
+# Subtest: same frozen operation is idempotent under simultaneous requests; changed run is rejected
+ok 2 - same frozen operation is idempotent under simultaneous requests; changed run is rejected
+  ---
+  duration_ms: 0.790708
+  type: 'test'
+  ...
+# Subtest: server model configuration is frozen and cannot silently replace same operation
+ok 3 - server model configuration is frozen and cannot silently replace same operation
+  ---
+  duration_ms: 0.336834
+  type: 'test'
+  ...
+# Subtest: scope isolation includes identical object IDs; client owner injection is rejected
+ok 4 - scope isolation includes identical object IDs; client owner injection is rejected
+  ---
+  duration_ms: 0.281708
+  type: 'test'
+  ...
+# Subtest: pause wins before output commit: old worker/artifact/event/lease cannot write
+ok 5 - pause wins before output commit: old worker/artifact/event/lease cannot write
+  ---
+  duration_ms: 1.830625
+  type: 'test'
+  ...
+# Subtest: revoke wins before output commit: old worker/artifact/event/lease cannot write
+ok 6 - revoke wins before output commit: old worker/artifact/event/lease cannot write
+  ---
+  duration_ms: 1.072
+  type: 'test'
+  ...
+# Subtest: resume creates a fresh admission and never unpauses the superseded task
+ok 7 - resume creates a fresh admission and never unpauses the superseded task
+  ---
+  duration_ms: 1.9875
+  type: 'test'
+  ...
+# Subtest: old approval denied on artifact replacement; new proposal binds version and succeeds once
+ok 8 - old approval denied on artifact replacement; new proposal binds version and succeeds once
+  ---
+  duration_ms: 3.856
+  type: 'test'
+  ...
+# Subtest: unknown acknowledgement stays unknown: read/reconcile is evidence-only and never dispatches again
+ok 9 - unknown acknowledgement stays unknown: read/reconcile is evidence-only and never dispatches again
+  ---
+  duration_ms: 2.277041
+  type: 'test'
+  ...
+# Subtest: revoked pending proposal and modified digest cannot dispatch
+ok 10 - revoked pending proposal and modified digest cannot dispatch
+  ---
+  duration_ms: 2.049333
+  type: 'test'
+  ...
+# Subtest: expired lease recovery maps another actual worker attempt into the original stable run
+ok 11 - expired lease recovery maps another actual worker attempt into the original stable run
+  ---
+  duration_ms: 1.202375
+  type: 'test'
+  ...
+# Subtest: HTTP DTOs: auth, explicit errors, scope gate, unknown methods and unknown fields
+ok 12 - HTTP DTOs: auth, explicit errors, scope gate, unknown methods and unknown fields
+  ---
+  duration_ms: 9.35825
+  type: 'test'
+  ...
+# Subtest: transaction failure commits neither task nor operation nor run
+ok 13 - transaction failure commits neither task nor operation nor run
+  ---
+  duration_ms: 0.282666
+  type: 'test'
+  ...
+# Subtest: restart never re-dispatches an interrupted executing proposal
+ok 14 - restart never re-dispatches an interrupted executing proposal
+  ---
+  duration_ms: 2.038
+  type: 'test'
+  ...
+# (node:73056) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# N01 actual {"status":409,"body":{"schema_version":1,"error":{"code":"approval_consumed","message":"approval_consumed","retryable":false,"reconciliation_required":false}},"stored_status":"expired"}
+# N02 actual null 422 {"schema_version":1,"error":{"code":"schema_invalid","message":"schema_invalid","retryable":false,"reconciliation_required":false}}
+# N02 actual array 422 {"schema_version":1,"error":{"code":"schema_invalid","message":"schema_invalid","retryable":false,"reconciliation_required":false}}
+# N02 actual string 422 {"schema_version":1,"error":{"code":"schema_invalid","message":"schema_invalid","retryable":false,"reconciliation_required":false}}
+# N02 actual number 422 {"schema_version":1,"error":{"code":"schema_invalid","message":"schema_invalid","retryable":false,"reconciliation_required":false}}
+# N08 actual {"results":[{"status":"fulfilled","run":{"id":"20728728-ee0b-4e44-ba70-c80554d1a61a","run_id":"20728728-ee0b-4e44-ba70-c80554d1a61a","operation_id":"57b382b0-8313-4023-8504-9bd878205929","delegation_id":"f813f7a6-a633-4628-b044-c4d8d397b604","delegation_revision":1,"grant_epoch":1,"request_hash":"44f131ba007f3050d41c548060cbc4c975a5cb0923b1350937fdf794a3d0dd76","task_id":"1c2dd6a3a31eff64b188d9b3a077f5e1219ae01cfca1a169f34af3786a529d3d","artifact_references":[],"approval_ids":[],"created_at":"2026-10-11T08:14:33.093Z","state":"queued","authorization_state":"current","attempts":[]}},{"status":"rejected","error":"operation_conflict"}],"operations":[{"id":"57b382b0-8313-4023-8504-9bd878205929","run_id":"20728728-ee0b-4e44-ba70-c80554d1a61a","request_hash":"44f131ba007f3050d41c548060cbc4c975a5cb0923b1350937fdf794a3d0dd76"}],"runs":[{"id":"20728728-ee0b-4e44-ba70-c80554d1a61a","run_id":"20728728-ee0b-4e44-ba70-c80554d1a61a","operation_id":"57b382b0-8313-4023-8504-9bd878205929","delegation_id":"f813f7a6-a633-4628-b044-c4d8d397b604","delegation_revision":1,"grant_epoch":1,"request_hash":"44f131ba007f3050d41c548060cbc4c975a5cb0923b1350937fdf794a3d0dd76","task_id":"1c2dd6a3a31eff64b188d9b3a077f5e1219ae01cfca1a169f34af3786a529d3d","frozen_request":{"scope":{"scope_id":"11111111-2222-4222-8222-111111111111","profile_id":"11111111-1111-4111-8111-111111111111","workspace_id":"11111111-2222-4222-8222-111111111111"},"delegation":{"id":"f813f7a6-a633-4628-b044-c4d8d397b604","revision":1,"grant_epoch":1,"state":"active","request_hash":"41aa6bcce73ccb96d804a5883201c4d6cc77b139bd21a02995633bbc6cfe4e04","delegation_id":"f813f7a6-a633-4628-b044-c4d8d397b604","title":"Synthetic comparison","goal":"Compare fixed Alpha and Beta records","requirements":"Use fixed synthetic data","stop_conditions":["Stop after one report"],"synthetic_fixture_id":"report","created_at":"2026-10-11T08:14:33.093Z"},"admission":{"operation_id":"57b382b0-8313-4023-8504-9bd878205929","run_id":"20728728-ee0b-4e44-ba70-c80554d1a61a","expected_revision":1,"expected_grant_epoch":1},"model_configuration":{"backend":"synthetic","model":null},"policy":"synthetic-only-v1"},"artifact_references":[],"approval_ids":[],"created_at":"2026-10-11T08:14:33.093Z"}],"tasks":[{"id":"1c2dd6a3a31eff64b188d9b3a077f5e1219ae01cfca1a169f34af3786a529d3d","title":"Synthetic comparison","prompt":"Compare fixed Alpha and Beta records","kind":"agent","status":"queued","plan":[],"evidence":[],"input":{"synthetic_fixture_id":"report"},"state":{"catpaw":{"run_id":"20728728-ee0b-4e44-ba70-c80554d1a61a","operation_id":"57b382b0-8313-4023-8504-9bd878205929","delegation_id":"f813f7a6-a633-4628-b044-c4d8d397b604","delegation_revision":1,"grant_epoch":1,"request_hash":"44f131ba007f3050d41c548060cbc4c975a5cb0923b1350937fdf794a3d0dd76"}},"createdAt":"2026-10-11T08:14:33.093Z","updatedAt":"2026-10-11T08:14:33.093Z","attempts":0,"leaseId":null,"leaseUntil":null,"artifactIds":[]}]}
+# N09 actual {"results":[{"status":"fulfilled","run":{"id":"3ee587d3-4163-4fa9-a615-874172cf5287","run_id":"3ee587d3-4163-4fa9-a615-874172cf5287","operation_id":"a5e06ee1-e06d-40b3-ae5b-fabbb81ba701","delegation_id":"3e6b49c6-f179-492b-aeab-3ced15dccbf1","delegation_revision":1,"grant_epoch":1,"request_hash":"deef395715e636c4b033bd7332f3c3c9b5d5e7edd44132515d889df3d6972c57","task_id":"b13ffc6fa1c8a2d740091e975f47cc06a379ff8496746b88ff0d1ff7c7fe95c3","artifact_references":[],"approval_ids":[],"created_at":"2026-10-11T08:14:33.094Z","state":"queued","authorization_state":"current","attempts":[]}},{"status":"rejected","error":"run_conflict"}],"tasks":[{"id":"b13ffc6fa1c8a2d740091e975f47cc06a379ff8496746b88ff0d1ff7c7fe95c3","title":"Synthetic comparison","prompt":"Compare fixed Alpha and Beta records","kind":"agent","status":"queued","plan":[],"evidence":[],"input":{"synthetic_fixture_id":"report"},"state":{"catpaw":{"run_id":"3ee587d3-4163-4fa9-a615-874172cf5287","operation_id":"a5e06ee1-e06d-40b3-ae5b-fabbb81ba701","delegation_id":"3e6b49c6-f179-492b-aeab-3ced15dccbf1","delegation_revision":1,"grant_epoch":1,"request_hash":"deef395715e636c4b033bd7332f3c3c9b5d5e7edd44132515d889df3d6972c57"}},"createdAt":"2026-10-11T08:14:33.094Z","updatedAt":"2026-10-11T08:14:33.094Z","attempts":0,"leaseId":null,"leaseUntil":null,"artifactIds":[]}],"operations":[{"id":"a5e06ee1-e06d-40b3-ae5b-fabbb81ba701","run_id":"3ee587d3-4163-4fa9-a615-874172cf5287","request_hash":"deef395715e636c4b033bd7332f3c3c9b5d5e7edd44132515d889df3d6972c57"},{"id":"fe67eff6-9b9a-43f8-9f13-e828d2f85de2","run_id":"3ee587d3-4163-4fa9-a615-874172cf5287","request_hash":"8c0f62e816810c4a0b5837272306f0feb341b9b788ca2e1b1b7bc68ae8fc3ccc"}]}
+# N10 actual {"view":{"schema_version":1,"run":{"id":"76543a27-0bea-41d0-a708-6f521580ad79","run_id":"76543a27-0bea-41d0-a708-6f521580ad79","operation_id":"b59545b9-08b1-4208-a1b6-c83cec93af2c","delegation_id":"41c4d23a-4147-49c5-a127-f65f86d4cc60","delegation_revision":1,"grant_epoch":1,"request_hash":"3af2efd941d74a7738e5b652ce34684d706ce2c675d2eb9ffdc96c248b540820","task_id":"439a487437e4891e8e89c2920b0fb4009c4be407af70106a7efbd0ae704d5866","artifact_references":[{"artifact_id":"4fca55879663c492ce0958b863e2f604bec2bd4d2d255ab2bad1eee302ed5ddb","version":1,"content_hash":"7aacbbec0a04258fece9141af9b2d3f7db88848c184569df6ea48cd66346d8e1"}],"approval_ids":[],"created_at":"2026-10-11T08:14:33.094Z","state":"succeeded","authorization_state":"current","attempts":[{"upstream_run_id":"497730be-633f-44d0-9c79-7f83cf08d3bb","started_at":"2026-10-11T08:14:33.095Z","finished_at":"2026-10-11T08:14:33.095Z","status":"succeeded"}]},"task":{"id":"439a487437e4891e8e89c2920b0fb4009c4be407af70106a7efbd0ae704d5866","status":"succeeded","attempts":1},"execution_layer":"actual_upstream_taskworker_inprocess"},"events":[{"id":"5d17981a21adc6c870fdc83ba749deb6f1589d000ed00c69a026ed8256946683","taskId":"439a487437e4891e8e89c2920b0fb4009c4be407af70106a7efbd0ae704d5866","leaseId":"497730be-633f-44d0-9c79-7f83cf08d3bb","date":"2026-10-11T08:14:33.095Z","kind":"plan","title":"Use synthetic fixture","detail":"No source connectors, network tools or external writes"},{"id":"928ab301-a934-4d26-a05f-c3a11dba35c0","taskId":"439a487437e4891e8e89c2920b0fb4009c4be407af70106a7efbd0ae704d5866","leaseId":"497730be-633f-44d0-9c79-7f83cf08d3bb","date":"2026-10-11T08:14:33.095Z","kind":"step","title":"Independent handler progress","detail":"fixed local test"}]}
+# N11 actual {"view":{"schema_version":1,"run":{"id":"6b2eb615-c998-4c98-9bb3-5ab5b65c3daf","run_id":"6b2eb615-c998-4c98-9bb3-5ab5b65c3daf","operation_id":"0c74d596-bf83-44be-99cb-b0f167f9a1a2","delegation_id":"781346cf-1207-48e3-9a11-5ef7f9ac53ef","delegation_revision":1,"grant_epoch":1,"request_hash":"8cadf89cf2e00ded0d5ea691adc809b74bcac5d5c54b286adc3f6346772b995d","task_id":"8f289675636392562bfab6907ca3ba61b18ee9d66e2946032f10f28a7e345878","artifact_references":[],"approval_ids":[],"created_at":"2026-10-11T08:14:33.095Z","state":"failed","authorization_state":"current","attempts":[{"upstream_run_id":"fedc4625-f19d-4662-a8b9-372ef2c006f0","started_at":"2026-10-11T08:14:33.096Z","finished_at":"2026-10-11T08:14:33.096Z","status":"failed"}]},"task":{"id":"8f289675636392562bfab6907ca3ba61b18ee9d66e2946032f10f28a7e345878","status":"failed","attempts":1},"execution_layer":"actual_upstream_taskworker_inprocess"},"events":[{"id":"613ef12fd803205c2f11b11d3dfd33e541e487b9efd04393948750d4b5d46e23","taskId":"8f289675636392562bfab6907ca3ba61b18ee9d66e2946032f10f28a7e345878","leaseId":"fedc4625-f19d-4662-a8b9-372ef2c006f0","date":"2026-10-11T08:14:33.096Z","kind":"plan","title":"Use synthetic fixture","detail":"No source connectors, network tools or external writes"},{"id":"35a5e8d9-b09c-473c-8ed5-aa3ee3fc7e51","taskId":"8f289675636392562bfab6907ca3ba61b18ee9d66e2946032f10f28a7e345878","leaseId":"fedc4625-f19d-4662-a8b9-372ef2c006f0","date":"2026-10-11T08:14:33.096Z","kind":"error","title":"Task needs attention","detail":"Independent synthetic handler failure"}]}
+# Subtest: N01 expired approval is a defined 409 response and stays expired
+ok 15 - N01 expired approval is a defined 409 response and stays expired
+  ---
+  duration_ms: 14.660125
+  type: 'test'
+  ...
+# Subtest: N02 reconciliation rejects null body as 422
+ok 16 - N02 reconciliation rejects null body as 422
+  ---
+  duration_ms: 3.051791
+  type: 'test'
+  ...
+# Subtest: N02 reconciliation rejects array body as 422
+ok 17 - N02 reconciliation rejects array body as 422
+  ---
+  duration_ms: 1.943583
+  type: 'test'
+  ...
+# Subtest: N02 reconciliation rejects string body as 422
+ok 18 - N02 reconciliation rejects string body as 422
+  ---
+  duration_ms: 2.416417
+  type: 'test'
+  ...
+# Subtest: N02 reconciliation rejects number body as 422
+ok 19 - N02 reconciliation rejects number body as 422
+  ---
+  duration_ms: 2.184625
+  type: 'test'
+  ...
+# Subtest: N03 simultaneous approvals record one effect and reject the loser
+ok 20 - N03 simultaneous approvals record one effect and reject the loser
+  ---
+  duration_ms: 1.970833
+  type: 'test'
+  ...
+# Subtest: N04 pause followed by approval leaves zero effects and old binding unusable after resume
+ok 21 - N04 pause followed by approval leaves zero effects and old binding unusable after resume
+  ---
+  duration_ms: 1.650209
+  type: 'test'
+  ...
+# Subtest: N04 revoke followed by approval leaves zero effects and old binding unusable after resume
+ok 22 - N04 revoke followed by approval leaves zero effects and old binding unusable after resume
+  ---
+  duration_ms: 1.500834
+  type: 'test'
+  ...
+# Subtest: N05 former lease cannot publish after a second actual worker claims the task
+ok 23 - N05 former lease cannot publish after a second actual worker claims the task
+  ---
+  duration_ms: 2.026083
+  type: 'test'
+  ...
+# Subtest: N06 artifact integrity corruption fails closed
+ok 24 - N06 artifact integrity corruption fails closed
+  ---
+  duration_ms: 0.981917
+  type: 'test'
+  ...
+# Subtest: N07 scope isolation covers run, operation, artifact, approval and reconciliation
+ok 25 - N07 scope isolation covers run, operation, artifact, approval and reconciliation
+  ---
+  duration_ms: 1.607292
+  type: 'test'
+  ...
+# Subtest: N08 conflicting operation across different delegations is rejected under row-level interleaving
+ok 26 - N08 conflicting operation across different delegations is rejected under row-level interleaving
+  ---
+  duration_ms: 0.616417
+  type: 'test'
+  ...
+# Subtest: N09 conflicting run across different delegations is rejected under row-level interleaving
+ok 27 - N09 conflicting run across different delegations is rejected under row-level interleaving
+  ---
+  duration_ms: 0.374417
+  type: 'test'
+  ...
+# Subtest: N10 pinned TaskContext.event remains usable through the fenced store
+ok 28 - N10 pinned TaskContext.event remains usable through the fenced store
+  ---
+  duration_ms: 1.309875
+  type: 'test'
+  ...
+# Subtest: N11 handler failure persists a usable error event as well as failed task state
+ok 29 - N11 handler failure persists a usable error event as well as failed task state
+  ---
+  duration_ms: 0.774083
+  type: 'test'
+  ...
+1..29
+# tests 29
+# suites 0
+# pass 29
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 143.94075

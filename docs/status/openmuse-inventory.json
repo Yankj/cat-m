@@ -1,0 +1,48 @@
+{
+  "version": "openmuse-client-demo-in-progress",
+  "read_only_inventory": true,
+  "final_snapshot_integrated": false,
+  "ios_build_of_latest_source_verified_by_this_task": false,
+  "delta_vs_delivered_v1": {
+    "added": [
+      "Scripts/build-openmuse-http-runner.sh",
+      "Scripts/openmuse-loopback.mjs",
+      "Scripts/test-openmuse-http.mjs",
+      "Scripts/test-openmuse-portable.sh",
+      "Scripts/test-openmuse-snapshot.sh",
+      "Sources/Domain/OpenMuseTaskContracts.swift",
+      "Sources/Features/OpenMuseDemoView.swift",
+      "Sources/Features/OpenMuseTaskService.swift",
+      "Sources/Providers/OpenMuseAgentProvider.swift",
+      "Sources/Providers/OpenMuseFacadeHTTPTransport.swift",
+      "Sources/Providers/OpenMuseFixtureTransport.swift",
+      "Sources/Providers/OpenMuseTaskTransport.swift",
+      "Tests/Fixtures/OpenMuseSnapshot/artifact.json",
+      "Tests/Fixtures/OpenMuseSnapshot/capabilities.json",
+      "Tests/Fixtures/OpenMuseSnapshot/delegation.json",
+      "Tests/Fixtures/OpenMuseSnapshot/operation.json",
+      "Tests/Fixtures/OpenMuseSnapshot/provenance.json",
+      "Tests/Fixtures/OpenMuseSnapshot/run.json",
+      "Tests/OpenMuseHTTPRunner.swift",
+      "Tests/OpenMuseSnapshotRunner.swift",
+      "Tests/OpenMuseTaskRunner.swift"
+    ],
+    "removed": [],
+    "changed": [
+      "CatpawM.xcodeproj/project.pbxproj",
+      "Resources/Info.plist",
+      "Resources/UIStrings.json",
+      "Scripts/generate-project.py",
+      "Scripts/validate-project.py",
+      "Sources/App/AppModel.swift",
+      "Sources/App/CatpawApp.swift",
+      "Sources/Features/RootView.swift",
+      "Sources/Features/SettingsView.swift",
+      "Tests/NativeUITests.swift"
+    ]
+  },
+  "observed_files": 79,
+  "note": "Historical point-in-time inventory before client freeze; superseded by the integrated r3 final provenance, not a current source/build status.",
+  "historical_only": true,
+  "superseded_by": "openmuse-r3-provenance.json"
+}

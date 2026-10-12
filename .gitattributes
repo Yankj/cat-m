@@ -1,0 +1,14 @@
+# Preserve frozen byte identities even when a checkout uses newline conversion.
+apps/ios/docs/spec/** -text
+apps/ios-openmuse-demo/docs/spec/** -text
+apps/ios-openmuse-demo/docs/openmuse-facade-v1/native-contract-v1.json -text
+services/facade/contract/native-contract-v1.json -text
+vendor/openmuse/** -text
+services/facade/patched-openmuse/** -text
+services/facade/patches/local-preview.patch -text
+
+# Frozen Markdown has intentional two-space hard breaks and an original final blank line.
+apps/ios/docs/spec/*.md whitespace=-blank-at-eol,-blank-at-eof
+apps/ios-openmuse-demo/docs/spec/*.md whitespace=-blank-at-eol,-blank-at-eof
+# A unified diff's blank context line is a literal single space.
+services/facade/patches/local-preview.patch whitespace=-blank-at-eol

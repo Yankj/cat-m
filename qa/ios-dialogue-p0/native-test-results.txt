@@ -1,0 +1,16 @@
+native-final: Test Case '-[CatpawMTests.QAIndependentTests testCompositionModelGuard]' passed (0.110 seconds).
+native-final: Test Case '-[CatpawMTests.QAIndependentTests testDuplicateTapsAndIdenticalIntentFIFO]' passed (0.055 seconds).
+native-final: Test Case '-[CatpawMTests.QAIndependentTests testHeldConsentStableFeedback]' passed (2.060 seconds).
+native-final: Test Case '-[CatpawMTests.QAIndependentTests testHeldReadDedupAndUnknownRecovery]' passed (0.057 seconds).
+native-final: Test Case '-[CatpawMTests.QAIndependentTests testLateObserverCannotClearReplacement]' passed (0.120 seconds).
+native-final: Test Case '-[CatpawMTests.QAIndependentTests testLegacyEightScenariosOnFrozenPending]' passed (0.377 seconds).
+native-final: Test Case '-[CatpawMTests.QAIndependentTests testReadIndependentOfReadiness]' passed (0.042 seconds).
+native-final: Test Case '-[CatpawMTests.QAIndependentTests testSwiftDataFailedAdmissionRollback]' passed (0.043 seconds).
+native-final: Test Case '-[CatpawMTests.QAIndependentTests testSwiftDataUserPauseAndExactDraftReopen]' passed (0.040 seconds).
+native-final: 	 Executed 9 tests, with 0 failures (0 unexpected) in 2.904 (2.907) seconds
+native-final: 	 Executed 9 tests, with 0 failures (0 unexpected) in 2.904 (2.909) seconds
+native-final: 	 Executed 9 tests, with 0 failures (0 unexpected) in 2.904 (2.909) seconds
+native-ui: Test Case '-[CatpawMUITests.QAFeedbackUITests testFrozenViewKeepsPreparingAndQueuedTextDuringHeldConsent]' passed (14.352 seconds).
+native-ui: 	 Executed 1 test, with 0 failures (0 unexpected) in 14.352 (14.354) seconds
+native-ui: 	 Executed 1 test, with 0 failures (0 unexpected) in 14.352 (14.357) seconds
+native-ui: 	 Executed 1 test, with 0 failures (0 unexpected) in 14.352 (14.358) seconds

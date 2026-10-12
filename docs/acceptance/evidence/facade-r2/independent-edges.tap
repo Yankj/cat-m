@@ -1,0 +1,90 @@
+TAP version 13
+# (node:76758) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: C01 operation collision rolls back loser identities in committed-row model
+ok 1 - C01 operation collision rolls back loser identities in committed-row model
+  ---
+  duration_ms: 10.355208
+  type: 'test'
+  ...
+# Subtest: C01 run collision rolls back loser identities in committed-row model
+ok 2 - C01 run collision rolls back loser identities in committed-row model
+  ---
+  duration_ms: 0.597875
+  type: 'test'
+  ...
+# Subtest: C02 captured event crosses guard then pause: rejects old lease, preserves terminal state
+ok 3 - C02 captured event crosses guard then pause: rejects old lease, preserves terminal state
+  ---
+  duration_ms: 1.984209
+  type: 'test'
+  ...
+# Subtest: C02 captured event crosses guard then revoke: rejects old lease, preserves terminal state
+ok 4 - C02 captured event crosses guard then revoke: rejects old lease, preserves terminal state
+  ---
+  duration_ms: 1.013542
+  type: 'test'
+  ...
+# Subtest: C02 captured event crosses guard then takeover: rejects old lease, preserves terminal state
+ok 5 - C02 captured event crosses guard then takeover: rejects old lease, preserves terminal state
+  ---
+  duration_ms: 2.48125
+  type: 'test'
+  ...
+# Subtest: C03 ordinary progress storage exception is not swallowed; failure and its diagnostic persist
+ok 6 - C03 ordinary progress storage exception is not swallowed; failure and its diagnostic persist
+  ---
+  duration_ms: 1.314208
+  type: 'test'
+  ...
+# Subtest: C04 expired deny returns consumed and persists expiry; wrong digest fails before authority
+ok 7 - C04 expired deny returns consumed and persists expiry; wrong digest fails before authority
+  ---
+  duration_ms: 2.969
+  type: 'test'
+  ...
+# Subtest: C05 unrelated upstream error rolls back even with expired input=false
+ok 8 - C05 unrelated upstream error rolls back even with expired input=false
+  ---
+  duration_ms: 1.757667
+  type: 'test'
+  ...
+# Subtest: C05 unrelated upstream error rolls back even with expired input=true
+ok 9 - C05 unrelated upstream error rolls back even with expired input=true
+  ---
+  duration_ms: 1.466709
+  type: 'test'
+  ...
+# Subtest: C06 failure after reserving operation and run rolls both back
+ok 10 - C06 failure after reserving operation and run rolls both back
+  ---
+  duration_ms: 0.513666
+  type: 'test'
+  ...
+# Subtest: C07 expired old approval permits v2 but never permits its old authorization
+ok 11 - C07 expired old approval permits v2 but never permits its old authorization
+  ---
+  duration_ms: 2.728417
+  type: 'test'
+  ...
+# Subtest: C08 missing event lease remains rejected; captured good event has exact attempt lease
+ok 12 - C08 missing event lease remains rejected; captured good event has exact attempt lease
+  ---
+  duration_ms: 1.124083
+  type: 'test'
+  ...
+# Subtest: C09 authority observes already-expired status between facade read and claim: still 409, no effect
+ok 13 - C09 authority observes already-expired status between facade read and claim: still 409, no effect
+  ---
+  duration_ms: 1.606084
+  type: 'test'
+  ...
+1..13
+# tests 13
+# suites 0
+# pass 13
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 185.840041

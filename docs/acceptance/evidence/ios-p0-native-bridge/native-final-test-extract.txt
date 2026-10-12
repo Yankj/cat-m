@@ -1,0 +1,90 @@
+Test Suite 'Selected tests' started at 2026-10-12 16:28:45.428.
+Test Suite 'CatpawMTests.xctest' started at 2026-10-12 16:28:45.428.
+Test Suite 'DeviceTrialNativeTests' started at 2026-10-12 16:28:45.428.
+Test Case '-[CatpawMTests.DeviceTrialNativeTests testAnonymousEntranceRestoreStorageCancellationAndHTTPBoundaries]' started.
+PASS: startup never creates an anonymous identity
+PASS: explicit entrance verifies and persists one real-shaped anonymous identity
+PASS: cold restore and entrance reuse the verified identity without another signup
+PASS: expired anonymous credential refreshes the same subject
+PASS: failed and uncertain restore never substitutes a new identity
+PASS: double taps create once and cancelled late response cannot reauthenticate
+PASS: save retry persists the pending identity without another anonymous signup
+PASS: explicit logout barrier survives restart without restoring old anonymous credential
+PASS: official anonymous HTTP contract uses POST signup empty body and modern public key
+PASS: anonymous identity still requires official user verification and refresh contract
+PASS: account bootstrap reads the deployed permissions.local_output wire contract
+PASS: top-level local_output cannot override a denied nested server permission
+PASS: workspace failure exposes only validated HTTP status and safe error code
+Test Case '-[CatpawMTests.DeviceTrialNativeTests testAnonymousEntranceRestoreStorageCancellationAndHTTPBoundaries]' passed (0.009 seconds).
+Test Case '-[CatpawMTests.DeviceTrialNativeTests testEdgePrefixAndModernPublicHeaderInsideNativeApp]' started.
+Test Case '-[CatpawMTests.DeviceTrialNativeTests testEdgePrefixAndModernPublicHeaderInsideNativeApp]' passed (0.001 seconds).
+Test Case '-[CatpawMTests.DeviceTrialNativeTests testLegacyR3SnapshotRoundTripPreservesRecordsAndScopeInsideSwiftData]' started.
+Test Case '-[CatpawMTests.DeviceTrialNativeTests testLegacyR3SnapshotRoundTripPreservesRecordsAndScopeInsideSwiftData]' passed (0.074 seconds).
+Test Case '-[CatpawMTests.DeviceTrialNativeTests testOfficialAuthRequestsKeepDefaultRegionRouting]' started.
+Test Case '-[CatpawMTests.DeviceTrialNativeTests testOfficialAuthRequestsKeepDefaultRegionRouting]' passed (0.001 seconds).
+Test Case '-[CatpawMTests.DeviceTrialNativeTests testP0BackgroundBeforeAdmissionPreservesOriginalPendingIntent]' started.
+Test Case '-[CatpawMTests.DeviceTrialNativeTests testP0BackgroundBeforeAdmissionPreservesOriginalPendingIntent]' passed (0.013 seconds).
+Test Case '-[CatpawMTests.DeviceTrialNativeTests testP0CompositionBlocksSubmissionWithoutAlteringDraft]' started.
+Test Case '-[CatpawMTests.DeviceTrialNativeTests testP0CompositionBlocksSubmissionWithoutAlteringDraft]' passed (0.002 seconds).
+Test Case '-[CatpawMTests.DeviceTrialNativeTests testP0ConversationSelectionCannotMoveMarkedDraftToAnotherConversation]' started.
+Test Case '-[CatpawMTests.DeviceTrialNativeTests testP0ConversationSelectionCannotMoveMarkedDraftToAnotherConversation]' passed (0.002 seconds).
+Test Case '-[CatpawMTests.DeviceTrialNativeTests testP0DeactivateClosesAdmissionBeforeLateForegroundTask]' started.
+Test Case '-[CatpawMTests.DeviceTrialNativeTests testP0DeactivateClosesAdmissionBeforeLateForegroundTask]' passed (0.003 seconds).
+Test Case '-[CatpawMTests.DeviceTrialNativeTests testP0ExistingLocalConversationAppearsWhileAuthValidationIsHeld]' started.
+Test Case '-[CatpawMTests.DeviceTrialNativeTests testP0ExistingLocalConversationAppearsWhileAuthValidationIsHeld]' passed (0.039 seconds).
+Test Case '-[CatpawMTests.DeviceTrialNativeTests testP0FailedLocalAdmissionRollsBackQueueAndDoesNotRequestProvider]' started.
+Test Case '-[CatpawMTests.DeviceTrialNativeTests testP0FailedLocalAdmissionRollsBackQueueAndDoesNotRequestProvider]' passed (0.024 seconds).
+Test Case '-[CatpawMTests.DeviceTrialNativeTests testP0ForegroundReadsOriginalBeforeSlowReadinessAndResumesPendingOnlyOnce]' started.
+Test Case '-[CatpawMTests.DeviceTrialNativeTests testP0ForegroundReadsOriginalBeforeSlowReadinessAndResumesPendingOnlyOnce]' passed (2.014 seconds).
+Test Case '-[CatpawMTests.DeviceTrialNativeTests testP0LocalReceiptCannotOpenAnotherSubjectOrAfterLogout]' started.
+Test Case '-[CatpawMTests.DeviceTrialNativeTests testP0LocalReceiptCannotOpenAnotherSubjectOrAfterLogout]' passed (0.002 seconds).
+Test Case '-[CatpawMTests.DeviceTrialNativeTests testP0NativeMarkedTextAndReturnDoNotAccidentallySubmit]' started.
+Test Case '-[CatpawMTests.DeviceTrialNativeTests testP0NativeMarkedTextAndReturnDoNotAccidentallySubmit]' passed (0.092 seconds).
+Test Case '-[CatpawMTests.DeviceTrialNativeTests testP0RapidIdenticalSubmissionsKeepIndependentIDsFIFOAndLatestDraft]' started.
+Test Case '-[CatpawMTests.DeviceTrialNativeTests testP0RapidIdenticalSubmissionsKeepIndependentIDsFIFOAndLatestDraft]' passed (0.010 seconds).
+Test Case '-[CatpawMTests.DeviceTrialNativeTests testP0RapidSceneEventsKeepLatestForegroundAndInactiveKeepsObserver]' started.
+Test Case '-[CatpawMTests.DeviceTrialNativeTests testP0RapidSceneEventsKeepLatestForegroundAndInactiveKeepsObserver]' passed (0.009 seconds).
+Test Case '-[CatpawMTests.DeviceTrialNativeTests testP0UserPauseSurvivesBackgroundAndReopen]' started.
+Test Case '-[CatpawMTests.DeviceTrialNativeTests testP0UserPauseSurvivesBackgroundAndReopen]' passed (0.001 seconds).
+Test Case '-[CatpawMTests.DeviceTrialNativeTests testRegionHeaderOnlyCurrentEdgeAndConfigurable]' started.
+Test Case '-[CatpawMTests.DeviceTrialNativeTests testRegionHeaderOnlyCurrentEdgeAndConfigurable]' passed (0.001 seconds).
+Test Case '-[CatpawMTests.DeviceTrialNativeTests testSelectedConversationSurvivesDraftUpdatesAndFailedSelectionSave]' started.
+Test Case '-[CatpawMTests.DeviceTrialNativeTests testSelectedConversationSurvivesDraftUpdatesAndFailedSelectionSave]' passed (0.001 seconds).
+Test Case '-[CatpawMTests.DeviceTrialNativeTests testStoppedObserverCannotReviveOrClearForegroundReplacement]' started.
+PASS: stopped old observer cannot clear or complete a replacement; same request recovered once, POST count1
+Test Case '-[CatpawMTests.DeviceTrialNativeTests testStoppedObserverCannotReviveOrClearForegroundReplacement]' passed (0.006 seconds).
+Test Suite 'DeviceTrialNativeTests' passed at 2026-10-12 16:28:47.739.
+	 Executed 19 tests, with 0 failures (0 unexpected) in 2.306 (2.311) seconds
+Test Suite 'NativeAuthNativeTests' started at 2026-10-12 16:28:47.741.
+Test Case '-[CatpawMTests.NativeAuthNativeTests testAuthenticatedPartitionsUseSeparateSwiftDataStores]' started.
+Test Case '-[CatpawMTests.NativeAuthNativeTests testAuthenticatedPartitionsUseSeparateSwiftDataStores]' passed (0.039 seconds).
+Test Case '-[CatpawMTests.NativeAuthNativeTests testColdExpiredRefreshKeepsIdentityPending]' started.
+Test Case '-[CatpawMTests.NativeAuthNativeTests testColdExpiredRefreshKeepsIdentityPending]' passed (0.001 seconds).
+Test Case '-[CatpawMTests.NativeAuthNativeTests testColdSavedValidationCannotAuthorizeBeforeRejection]' started.
+Test Case '-[CatpawMTests.NativeAuthNativeTests testColdSavedValidationCannotAuthorizeBeforeRejection]' passed (0.000 seconds).
+Test Case '-[CatpawMTests.NativeAuthNativeTests testConcurrentExpiryRefreshAndCancelledConsumerInsideSimulator]' started.
+Test Case '-[CatpawMTests.NativeAuthNativeTests testConcurrentExpiryRefreshAndCancelledConsumerInsideSimulator]' passed (0.101 seconds).
+Test Case '-[CatpawMTests.NativeAuthNativeTests testDirectLoginTaskCancellationCannotSaveOrPublish]' started.
+Test Case '-[CatpawMTests.NativeAuthNativeTests testDirectLoginTaskCancellationCannotSaveOrPublish]' passed (0.001 seconds).
+Test Case '-[CatpawMTests.NativeAuthNativeTests testLogoutBarrierSurvivesNativeRestartAfterVaultDeletionFailure]' started.
+Test Case '-[CatpawMTests.NativeAuthNativeTests testLogoutBarrierSurvivesNativeRestartAfterVaultDeletionFailure]' passed (0.005 seconds).
+Test Suite 'NativeAuthNativeTests' passed at 2026-10-12 16:28:47.890.
+	 Executed 6 tests, with 0 failures (0 unexpected) in 0.148 (0.149) seconds
+Test Suite 'P0ConversationBehaviorTests' started at 2026-10-12 16:28:47.890.
+Test Case '-[CatpawMTests.P0ConversationBehaviorTests testP0ConversationBehaviorWithoutNetwork]' started.
+PASS: consent_preflight_requires_stable_visible_pending_state
+PASS: stream_32_characters_exact_body_single_message_terminal_hash
+PASS: stream_4096_characters_exact_body_single_message_terminal_hash
+PASS: stream_16384_characters_exact_body_single_message_terminal_hash
+PASS: detached_remote_progress_same_turn_resume_5s_scenario
+PASS: detached_remote_progress_same_turn_resume_30s_scenario
+PASS: unknown_or_completed_same_operation_never_replies_again
+PASS: foreign_observation_rejected_without_text_mutation
+Test Case '-[CatpawMTests.P0ConversationBehaviorTests testP0ConversationBehaviorWithoutNetwork]' passed (0.272 seconds).
+Test Suite 'P0ConversationBehaviorTests' passed at 2026-10-12 16:28:48.163.
+	 Executed 1 test, with 0 failures (0 unexpected) in 0.272 (0.272) seconds
+Test Suite 'CatpawMTests.xctest' passed at 2026-10-12 16:28:48.163.
+	 Executed 26 tests, with 0 failures (0 unexpected) in 2.726 (2.735) seconds
+Test Suite 'Selected tests' passed at 2026-10-12 16:28:48.163.
+	 Executed 26 tests, with 0 failures (0 unexpected) in 2.726 (2.735) seconds
+** TEST SUCCEEDED **

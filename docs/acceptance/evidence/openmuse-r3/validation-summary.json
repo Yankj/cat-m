@@ -1,0 +1,53 @@
+{
+  "stage": "r3 last-source validated",
+  "portable_fixture_checks": 15,
+  "synthetic_HTTP_response_replay_checks": 5,
+  "live_HTTP_chain_client_processes": 4,
+  "live_HTTP_chain_server_processes": 4,
+  "native_UI_testcases": 2,
+  "native_UI_durations_seconds": {
+    "actual_HTTP": 88.981,
+    "fixture": 59.425
+  },
+  "native_UI_failures": 0,
+  "native_screenshot_count": 10,
+  "Intelligence_calls": 0,
+  "real_model_calls": 0,
+  "external_writes": 0,
+  "IOS_build": {
+    "Xcode": "27.1 27A9269",
+    "Swift_compiler": "6.4",
+    "language_mode": "5",
+    "SDK": "iOS Simulator 27.1",
+    "deployment_target": "17.0",
+    "architecture": "arm64",
+    "signing": "disabled"
+  },
+  "portable_compiler": {
+    "Swift": "5.10",
+    "SDK": "macOS 14.4",
+    "target": "arm64-apple-macosx14.0"
+  },
+  "native_server_counts": {
+    "catpaw-delegations": 1,
+    "catpaw-operations": 1,
+    "catpaw-runs": 1,
+    "tasks": 1,
+    "runs": 2,
+    "actions": 1,
+    "catpaw-approval-bindings": 1,
+    "catpaw-preview-effects": 1
+  },
+  "protected_original_files": 70,
+  "original_v1_unchanged": true,
+  "new_cloud_or_auth_setup": false,
+  "native_action_status": "outcome_unknown",
+  "native_worker_attempt_records": 2,
+  "runtime_family": "iOS27.0 Simulator",
+  "cleanup": {
+    "owned_services_stopped": true,
+    "owned_simulator_shutdown_reported": true,
+    "other_devices_untouched": true
+  },
+  "evidence_source": "Client task r3 final report/logs; read and byte-verified here, not independently rerun on Simulator by repository-preparation task."
+}
