@@ -19,7 +19,7 @@
 | 未知效果 | `core/src/model-handler.mjs`、bounded store 的 dispatched/unknown；facade preview reconcile | 模型派发不盲重放，preview 仅合成局部账本查询 | Action 在效果前持久 executing；unknown 只 lookup reconcile。同意、重启、新 goal version 均不能绕过未知效果 |
 | 持续执行/预算 | `worker-kick.mjs:kickTurnTasks`、`bounded-tick.mjs` | 有界推进，非独立持续调度；原实现保留 finalization reserve | 本批只手动调用领域方法/Store CAS，不调用 tick/start；control 由既有 worker 注入，不新增运行时长数值 |
 | 通知/outbox | `bounded-store.mjs:acknowledge` 的 onCommit hook；product spec R2 候选 | 存在事务 hook；此 checkout 无完整 notification outbox 实现 | 在原 `public.records` Store 增加 outbox/inbox kind，事务原子发布 refs，去重与静默期抑制；HTTP/App/APNs/远端通知未接入 |
-| 删除/恢复 | `core/src/purge-plan.mjs` | 有 plan，无完整可执行 purge/backup 屏障 | 不扩大删除能力；新种类的生产删除/恢复屏障必须另补后才可接线 |
+| 删除/恢复 | `core/src/purge-plan.mjs` | 有 plan，无完整可执行 purge/backup 屏障 | 第二小批新增逻辑删除与原 Record Store tombstone；保留最新 tombstone 时拒绝旧 Goal/批准恢复。未实现物理清除或独立备份恢复屏障；整库回滚已复现重放风险，仍阻断生产接线 |
 
 ## 版本化领域契约
 
@@ -57,6 +57,12 @@ Proposal 命令显式给出 `{schema_version, proposal_id, goal_version, task_id
 8. unknown 的只读效果核对允许在 Goal 停止或租约变化之后进行，但只保存审计 Outcome，不恢复权限，也不完成 Goal。已进入派发窗口的外部效果未来无法靠数据库撤销保证召回，真实 adapter 必须给出幂等/取消/对账契约。
 9. `goal_proposal_ready` 和当前 `goal_action_outcome` 的 Event 与 outbox 同事务提交。outbox ID 绑定 scope/event/channel。合成 inbox insertIfAbsent 和 outbox published 在同事务完成；重启/重复发布只产生一条通知。静默期内保留 pending；过期 Goal version 或 stopped Goal 的 pending 在消费时 cancelled，无通知发送。仅 refs，不发信、不调用 APNs。静默期到期也没有定时自动唤醒。
 
+第二小批强化：停止工作前也必须核对 binding 对应的权威 run subject/scope/operation/request hash 和 task tag，并沿既有 scope→delegation→task 顺序锁 task。审批 binding 必须指向不可变、同 Goal/version/action digest 的直接用户 Decision；binding 的 approved 投影不能独立授权。最后 binding/Decision await 后复查捕获 leaseUntil 与 control。unknown 的 effect key 必须与保存的原参数重算一致，防止损坏的 key 绕过意图保留或把 reconcile 指向其他效果。
+
+逻辑删除命令 `{schema_version, expected_revision}` 通过 Goal CAS、停止旧工作和写 `catpaw-goal-tombstones` 同事务完成。它仅封住执行，不声称物理删除内容。删除后最新 tombstone 会阻止旧 Goal、旧批准和旧 pending outbox 复活；只读 unknown 审计可使用 subject/scope 绑定的 tombstone 投影，不恢复 Goal 内容或权限。原 Foundation Store 的 remove/put 是受信维护端口，绕开逻辑删除协议不受保护。
+
+必须保留恢复边界：如果恢复整个派发前 snapshot，且同时丢失 tombstone、Action executing/unknown 和通知去重账本，内核无法知道之后发生了什么。本批有具名测试实际复现两个合成 adapter 对同一意图各执行一次；这是未解决风险复现，不能算恢复安全通过。生产恢复需独立于被恢复库的最新删除/撤权/效果清单及隔离恢复门槛，未达到前保持 production_kernel_disabled。通知一次性同样仅在最新 inbox 去重记录保留时成立；外部推送回执、跨系统 exactly-once 和整库回滚未证明。
+
 预算直接消费既有 `control.assertLive`，不创造新的平台时限。原 boundedTick 的 30,000ms 上限及 settleReserve、lease 校验保持不动；worker-kick 的总推进预算不被扩大。上线还需按实际部署计划重核 [Supabase Edge limits](https://supabase.com/docs/guides/functions/limits) 和 [changelog](https://supabase.com/changelog)。本批没有更改 Edge 配置或 Supabase SDK。
 
 ## 两个固定场景
@@ -68,6 +74,8 @@ Proposal 命令显式给出 `{schema_version, proposal_id, goal_version, task_id
 ## 本批边界和下一批
 
 构造器仅接受 `synthetic_test_double` Repository，真实 Postgres kernel 显式返回 `production_kernel_disabled`；非 synthetic adapter 返回 `real_adapter_disabled`。没有注册 kernel 到 API/bootstrap/runtime，没有外部真实 adapter、邮箱/账号接入、Cron/tick、模型、UI、部署、生产 SQL 或凭据。scoped Postgres CAS 增量只做参数化序列化验证；不代表数据库已迁移或并发验收通过。
+
+对抗复核与新验证层见[第二小批记录](../acceptance/proactive-goal-adversarial-review.md)。在用户随后授权补官方依赖后，Deno 2.9.6 从[官方发布](https://github.com/denoland/deno/releases/tag/v2.9.6)下载并按发布方 SHA256 校验；jose/postgres 只缓存 deno.lock 固定版本且启用 frozen lock，无 lifecycle scripts。仅测试阶段 deny-net/ignore-env。完整 Edge 合成回归覆盖实际 Store/serializer 分支，但 TestRepository 仍把整个 scope/owner 写入串行化，lock 是空操作；无法证明 PostgreSQL 行锁顺序/死锁、跨实例 CAS、SQL+records 原子提交、提交确认丢失、RLS/隔离级别、进程 crash、备份恢复。生产构造器拒绝 PostgreSQL，因此这些测试也没有执行真实 kernel SQL。
 
 下一批按小批顺序：设计 task/run 的 Goal binding 更新与生产 fresh authority/长期撤销协议；用独立测试 PG 验证 scope锁、CAS、outbox、多实例重启、删除/恢复屏障；补真实 ingress 来源身份与 source revision 协议；设计 purchase/send 的 adapter 幂等/receipt/reconcile 与人工签收；最后才考虑自然语言目标抽取、事件影响与建议生成、原生回流和经过授权的唤醒/部署。
 

@@ -318,3 +318,146 @@ test('scoped CAS SQL uses scope predicate and parameterized JSON; serializer tes
   await assert.rejects(tx.compareAndSwap('events', uid('immutable'), {}, {}), error('immutable_or_duplicate'));
   await assert.rejects(tx.compareAndSwap('goals', uid('sql-goal'), {}, { scope_id: uid('other-scope') }), error('identity_patch_forbidden'));
 });
+
+test('adversarial: stopping a goal rejects a binding to another subject task before clearing its lease', async () => {
+  const f = await fixture();
+  await f.repository.transaction(async tx => {
+    const run = await tx.get(f.owner, 'catpaw-runs', uid('run'));
+    await tx.put(f.owner, 'catpaw-runs', { ...run, frozen_request: { ...run.frozen_request, subject_id: uid('victim-subject') } });
+  });
+  await assert.rejects(f.change('revoked'), error('goal_task_binding_conflict'));
+  const task = await f.repository.transaction(tx => tx.get(f.owner, 'tasks', f.taskId));
+  assert.equal(task.status, 'running'); assert.equal(task.leaseId, f.leaseId);
+  assert.equal((await f.goal()).proactive.state, 'active');
+});
+
+test('adversarial: binding and run scope mismatch cannot cancel another scope task', async () => {
+  const f = await fixture();
+  await f.repository.transaction(async tx => {
+    const run = await tx.get(f.owner, 'catpaw-runs', uid('run'));
+    await tx.put(f.owner, 'catpaw-runs', { ...run, frozen_request: { ...run.frozen_request, scope: { ...run.frozen_request.scope, scope_id: uid('victim-scope') } } });
+  });
+  await assert.rejects(f.change('paused'), error('goal_task_binding_conflict'));
+  assert.equal((await f.repository.transaction(tx => tx.get(f.owner, 'tasks', f.taskId))).leaseId, f.leaseId);
+});
+
+test('adversarial: approved projection without immutable user Decision cannot grant action permission', async () => {
+  const f = await fixture(), e = await delayedArrival(f), a = await f.propose(e);
+  await f.repository.transaction(async tx => {
+    await tx.compareAndSwap(f.owner, 'actions', a.id, { status: 'awaiting_review' }, { status: 'approved' });
+    const b = await tx.get(f.owner, 'catpaw-approval-bindings', a.id);
+    await tx.put(f.owner, 'catpaw-approval-bindings', { ...b, decision: 'approve' });
+  });
+  await assert.rejects(f.dispatch(a), error('action_permission_required')); assert.equal(f.adapter.effect_calls, 0);
+});
+
+test('adversarial: lease expiry during last approval read prevents synchronous adapter effect', async () => {
+  const f = await fixture(), e = await delayedArrival(f), a = await f.propose(e); await f.decide(a);
+  f.control.assertLive = () => {}; // Isolate task lease from the shorter invocation budget.
+  const original = f.repository.transaction.bind(f.repository); let reads = 0;
+  f.repository.transaction = (scope, fn) => typeof scope === 'function' ? original(scope) : original(scope, async tx => {
+    const get = tx.records.get.bind(tx.records);
+    tx.records.get = async (...args) => {
+      const row = await get(...args);
+      if (args[1] === 'catpaw-approval-bindings' && ++reads === 4) f.advance(60001);
+      return row;
+    };
+    return fn(tx);
+  });
+  assert.equal((await f.dispatch(a)).status, 'outcome_unknown');
+  assert.equal(f.adapter.effect_calls, 0);
+});
+
+test('adversarial: latest deletion tombstone blocks restoring stale Goal and approved Action', async () => {
+  const f = await fixture(), e = await delayedArrival(f), a = await f.propose(e); await f.decide(a);
+  const staleGoal = await f.goal(), staleAction = await f.action(a.id);
+  if (typeof f.kernel.deleteGoal === 'function') {
+    await f.kernel.deleteGoal(f.principal, f.scope.scope_id, f.goalId, { schema_version: 1, expected_revision: staleGoal.revision });
+  } else await f.foundation.scoped(f.principal, f.scope.scope_id, tx => tx.remove('goals', f.goalId));
+  await f.foundation.scoped(f.principal, f.scope.scope_id, tx => tx.put('goals', staleGoal));
+  await f.repository.transaction(tx => tx.put(f.owner, 'actions', staleAction));
+  // Only authority/tombstone is current; stale content restored through the privileged store path.
+  await assert.rejects(f.dispatch(a), error('goal_deleted'));
+  assert.equal(f.adapter.effect_calls, 0);
+});
+
+test('adversarial: cross-goal and cross-scope evidence references reject before proposal persistence', async () => {
+  const f = await fixture(), otherGoal = uid('other-goal');
+  await f.foundation.createGoal(f.principal, f.scope.scope_id, { goal_id: otherGoal, title: 'Synthetic other goal', description: 'Synthetic unrelated scope evidence' });
+  await f.kernel.confirmGoal(f.principal, f.scope.scope_id, otherGoal, { schema_version: 1, expected_revision: 1, completion: arrival });
+  const e = await f.kernel.ingestSyntheticEvent(f.principal, f.scope.scope_id, otherGoal, { schema_version: 1, source_key: 'other-source', revision: 1, type: 'arrival_estimate', payload: { location: '合成会场', at: '2026-10-12T17:00:00Z' } }, f.adapter);
+  await assert.rejects(f.propose(e), error('evidence_superseded'));
+  const foreignScope = { ...f.scope, scope_id: uid('foreign-scope') };
+  f.principal.scopes.push(foreignScope); await f.foundation.bootstrapScope(f.principal, foreignScope.scope_id);
+  const foreign = await f.foundation.scoped(f.principal, foreignScope.scope_id, tx => f.foundation.emit(tx, 'goal_observed', { goal_id: f.goalId }));
+  await assert.rejects(f.propose({ event: foreign }), error('not_found'));
+  assert.equal((await f.repository.transaction(tx => tx.list(f.owner, 'actions'))).length, 0);
+});
+
+test('adversarial: concurrent user approval and revoke leave no usable approval or worker lease', async () => {
+  const f = await fixture(), e = await delayedArrival(f), a = await f.propose(e);
+  const results = await Promise.allSettled([f.decide(a), f.change('revoked')]);
+  assert.equal(results[1].status, 'fulfilled'); assert.equal((await f.goal()).proactive.state, 'revoked');
+  await assert.rejects(f.dispatch(a), error('goal_stopped')); assert.equal(f.adapter.effect_calls, 0);
+  assert.equal((await f.repository.transaction(tx => tx.get(f.owner, 'tasks', f.taskId))).leaseId, null);
+});
+
+test('adversarial: competing dispatches and restored unknown never replay a single effect', async () => {
+  const f = await fixture(), e = await delayedArrival(f), a = await f.propose(e); await f.decide(a);
+  const adapter = new SyntheticGoalAdapter({ loseAcknowledgement: true });
+  const results = await Promise.allSettled([f.dispatch(a, adapter), f.dispatch(a, adapter)]);
+  assert.equal(results.filter(r => r.status === 'fulfilled').length, 1);
+  assert.equal(results.find(r => r.status === 'rejected').reason.code, 'reconciliation_required');
+  assert.equal(adapter.effect_calls, 1);
+  const restored = new TestRepository(f.repository.snapshot()), foundation = new Foundation(restored, { guardKey: 'synthetic-restored-guard-placeholder', clock: () => new Date(f.now()) });
+  await assert.rejects(f.dispatch(a, adapter, f.makeKernel(foundation)), error('reconciliation_required'));
+  assert.equal(adapter.dispatch_calls, 1);
+});
+
+test('adversarial: concurrent inbox publishers and stale outbox restore preserve one stored notification', async () => {
+  const f = await fixture(), e = await delayedArrival(f); await f.propose(e);
+  const pending = await f.repository.transaction(tx => tx.list(f.owner, 'catpaw-notification-outbox'));
+  const results = await Promise.all([f.kernel.publishSyntheticInbox(f.principal, f.scope.scope_id), f.kernel.publishSyntheticInbox(f.principal, f.scope.scope_id)]);
+  assert.equal(results.flat().length, 1);
+  // Keep latest inbox uniqueness ledger while restoring only stale pending outbox rows.
+  await f.repository.transaction(async tx => { for (const row of pending) await tx.put(f.owner, 'catpaw-notification-outbox', row); });
+  assert.deepEqual(await f.kernel.publishSyntheticInbox(f.principal, f.scope.scope_id), []);
+  assert.equal((await f.repository.transaction(tx => tx.list(f.owner, 'catpaw-notifications'))).length, 1);
+});
+
+test('adversarial: logical deletion is atomic; unknown remains audit-reconcilable after Goal body removal', async () => {
+  const f = await fixture(), e = await delayedArrival(f), a = await f.propose(e); await f.decide(a);
+  const adapter = new SyntheticGoalAdapter({ loseAcknowledgement: true }); await f.dispatch(a, adapter);
+  let checks = 0; const failed = f.makeKernel(f.foundation, async () => { ensure(++checks < 2, 'session_revoked', 401); });
+  const input = { schema_version: 1, expected_revision: (await f.goal()).revision };
+  await assert.rejects(failed.deleteGoal(f.principal, f.scope.scope_id, f.goalId, input), error('session_revoked'));
+  assert.equal((await f.repository.transaction(tx => tx.list(f.owner, 'catpaw-goal-tombstones'))).length, 0);
+  await f.kernel.deleteGoal(f.principal, f.scope.scope_id, f.goalId, input);
+  await assert.rejects(f.foundation.scoped(f.principal, f.scope.scope_id, tx => f.kernel.goal(tx, { subject_id: uid('foreign-deleted-subject') }, f.goalId)), error('not_found'));
+  await f.foundation.scoped(f.principal, f.scope.scope_id, tx => tx.remove('goals', f.goalId));
+  assert.equal((await f.kernel.reconcileSynthetic(f.principal, f.scope.scope_id, a.id, adapter)).status, 'succeeded');
+  await assert.rejects(f.dispatch(a, adapter), error('goal_deleted'));
+  assert.deepEqual(await f.kernel.publishSyntheticInbox(f.principal, f.scope.scope_id), []);
+  assert.equal(adapter.dispatch_calls, 1);
+});
+
+test('known limitation: rolling back ALL authority ledgers can replay; production restore requires independent barrier', async () => {
+  const f = await fixture(), e = await delayedArrival(f), a = await f.propose(e); await f.decide(a);
+  const stale = f.repository.snapshot(), first = new SyntheticGoalAdapter({ loseAcknowledgement: true });
+  await f.dispatch(a, first); assert.equal(first.effect_calls, 1);
+  await f.kernel.deleteGoal(f.principal, f.scope.scope_id, f.goalId, { schema_version: 1, expected_revision: (await f.goal()).revision });
+  // Deliberately unsafe test-only full rollback loses tombstone AND executing/unknown effects ledger.
+  const rolledBack = new TestRepository(stale), foundation = new Foundation(rolledBack, { guardKey: 'synthetic-unsafe-restore-placeholder', clock: () => new Date(f.now()) });
+  const second = new SyntheticGoalAdapter(); await f.dispatch(a, second, f.makeKernel(foundation));
+  assert.equal(second.effect_calls, 1, 'This reproduces duplicate intent after an unsafe full rollback, not a safety PASS');
+  assert.equal((await rolledBack.transaction(tx => tx.list(f.owner, 'catpaw-goal-tombstones'))).length, 0);
+});
+
+test('adversarial: corrupt effect key cannot bypass unknown reservation or misdirect reconciliation', async () => {
+  const f = await fixture(), e = await delayedArrival(f), a = await f.propose(e); await f.decide(a);
+  const adapter = new SyntheticGoalAdapter({ loseAcknowledgement: true }); await f.dispatch(a, adapter);
+  await f.repository.transaction(tx => tx.compareAndSwap(f.owner, 'actions', a.id, { status: 'outcome_unknown' }, { effect_key: hash('synthetic-corrupted-key') }));
+  await assert.rejects(f.propose(e), error('proposal_corrupt'));
+  await assert.rejects(f.kernel.reconcileSynthetic(f.principal, f.scope.scope_id, a.id, adapter), error('proposal_corrupt'));
+  assert.equal(adapter.dispatch_calls, 1); assert.equal(adapter.reconcile_calls, 0);
+});

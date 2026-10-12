@@ -4,6 +4,8 @@
 
 **下一版独立云端小批（2026-10-12）：** `feat/proactive-goal-kernel` 从发布快照 `c1e23c28` 开发，后核实 main `78d9002f` 的分支规范但保留原基线。已交[中文spec/源码gap矩阵](../spec/proactive-goal-kernel-v1.md)及 opt-in 合成领域内核：原位Goal/CAS、原Event/Action/approval/task lease复用、事件修订与审批失效、派发fencing、unknown先reconcile、原子outbox/quiet抑制、暂停/撤销/用户自行完成停止。新23项＋既有logout1项，Node合成24/24；[本批证据](../acceptance/proactive-goal-kernel.md)不代替真实PG/多实例、held-out语义或产品验收。当前无Deno/显式公开cache，原62项完整Edge回归NOT RUN。生产kernel/adapter默认拒绝，HTTP/真实邮箱/模型/持续调度/迁移/部署/原生未接线。冻结修复版范围及以下R1状态保持不变；本批只提交独立本地分支，未授权合并/push。
 
+**下一版第二小批（2026-10-12，对抗审查921e693）：** 旧实现5个对抗断言0过5失败，复现停止时跨subject/scope binding、伪造approved投影、最后审批await后lease过期、删除后旧Goal/批准恢复。修复权威run/task归属、不可变Decision链、最终lease时间检查与逻辑删除tombstone，并检查unknown效果key。Node共36/36完成：35个功能/安全断言通过＋1个明确的整库回滚不安全复现（不计恢复安全PASS）。获用户授权后取得官方Deno2.9.6/发布方校验和与frozen-lock公开依赖；deny-net/ignore-env完整Edge回归97/97完成，其中96个功能/安全断言＋同一个剩余风险复现。真实PG原子性、多实例、物理删除与独立恢复屏障、held-out语义仍NOT RUN；生产kernel仍拒绝，无真实模型/邮箱/调度/部署。[复核限制与精选证据](../acceptance/proactive-goal-adversarial-review.md)。本批已获授权正常push此feature分支；发布结果以远端读回交付为准，不合并main或修改默认分支。
+
 **最新真机产品验收FAIL，暂停R1放行。** 用户build13反馈连接待验证、发送慢、流式卡顿、后台回来断会话、图片输入缺失；天气问题得到重复任务进展和技术恢复提示。P0补为[连续多模态对话问题单MM01–MM05](../acceptance/r1-continuous-multimodal-issues.md)：即时本地响应、真实流式、前后台自动同turn续接、真图片送视觉模型、实时查询/不可用诚实说明。短CATPAW_OK不代表可用；既有一页是反馈前快照，不作为当前通过声明。
 
 **交付目标：对话唯一主入口 → 自然形成目标/任务 → 可追踪执行 → 成果回到对话与收件箱 → 记忆可查看、更正、删除。** 不用手填委托表单替代自然任务，不新增独立执行状态机，保留现有黑灰/顶部入口/任务卡/阅读器设计。

@@ -1,0 +1,150 @@
+{
+  "schema_version": 1,
+  "synthetic_only": true,
+  "date": "2026-10-12",
+  "branch": "feat/proactive-goal-kernel",
+  "reviewed_commit": "921e693c73555e9a54e0b99144a5c77ae014b7d0",
+  "base_kernel_sha256": "2b5a32b61075f16629f9392bfe76b3cb585b3928d6f8b9ddc31c38eb0ddc5c13",
+  "before": {
+    "command": "node --experimental-transform-types --test --test-reporter=tap --test-name-pattern=adversarial: services/edge/test/proactive-goal-kernel.test.mjs",
+    "cases": [
+      "adversarial: stopping a goal rejects a binding to another subject task before clearing its lease",
+      "adversarial: binding and run scope mismatch cannot cancel another scope task",
+      "adversarial: approved projection without immutable user Decision cannot grant action permission",
+      "adversarial: lease expiry during last approval read prevents synchronous adapter effect",
+      "adversarial: latest deletion tombstone blocks restoring stale Goal and approved Action"
+    ],
+    "tests": 5,
+    "passed": 0,
+    "failed": 5,
+    "before_test_file_sha256": "NOT_CAPTURED; final test includes later additional cases"
+  },
+  "node": {
+    "tests": 36,
+    "failed": 0,
+    "functional_safety_assertions_passed": 35,
+    "known_unsafe_restore_reproductions": 1,
+    "command": "node --experimental-transform-types --test --test-reporter=tap services/edge/test/proactive-goal-kernel.test.mjs services/edge/test/logout-owner-regression.test.mjs"
+  },
+  "deno": {
+    "version": "2.9.6",
+    "tests": 97,
+    "failed": 0,
+    "original_edge_cases": 62,
+    "goal_kernel_cases": 35,
+    "functional_safety_assertions_passed": 96,
+    "known_unsafe_restore_reproductions": 1,
+    "test_network": "deny-net",
+    "test_environment": "ignore-env",
+    "cached_only": true,
+    "command": "CATPAW_DENO_BIN=<verified official Deno> CATPAW_PUBLIC_NPM_CACHE=<public cache> sh scripts/test-edge-offline.sh"
+  },
+  "official_dependency_provenance": {
+    "deno_release": "https://github.com/denoland/deno/releases/tag/v2.9.6",
+    "deno_archive_sha256": "394f07f4da2bebe6ce6f1e7ce0fa16429b29b08c35e3fac3fe25972676dff4b2",
+    "deno_binary_sha256": "bceb5b6a6239b0b010418406d8c77a508f67cf4337d94288f1c19fe71304aab0",
+    "deno_checksum_url": "https://github.com/denoland/deno/releases/download/v2.9.6/deno-x86_64-unknown-linux-gnu.zip.sha256sum",
+    "npm_registry": "https://registry.npmjs.org",
+    "versions": {
+      "jose": "6.2.12",
+      "postgres": "3.4.7"
+    },
+    "lock_mode": "frozen-lockfile; original bytes unchanged",
+    "lifecycle_scripts": false,
+    "runtime_location": "ignored build directory only; no system installation"
+  },
+  "fixed_findings": [
+    "foreign-subject task cancellation through forged binding",
+    "foreign-scope task cancellation through forged binding",
+    "approved projection without immutable user Decision",
+    "lease expiry during final approval read",
+    "stale Goal/Action restore while latest deletion tombstone is retained",
+    "corrupt effect key bypass or reconciliation misdirection",
+    "stale outbox restore returning duplicate publication while latest inbox row exists"
+  ],
+  "known_remaining_blocker": {
+    "code": "full_authority_ledger_rollback_unsafe",
+    "reproduction": "Restore all pre-dispatch records and use second empty synthetic adapter; each adapter performs same intent once. This is risk reproduction, NOT recovery safety PASS.",
+    "required_future_control": "Independent current deletion/revocation/effect ledger and quarantined restore protocol before production enablement."
+  },
+  "verification_limits": [
+    "TestRepository globally serializes transactions; lock() is a no-op",
+    "SQL checks inject a connection/serializer; no real PG execution",
+    "No evidence for multi-instance lock/CAS, scope+records atomic COMMIT, commit-ack loss, RLS or isolation levels",
+    "Logical deletion is not physical erasure",
+    "Whole inbox/notification ledger rollback and external delivery are not verified",
+    "Held-out semantic evaluation NOT_RUN",
+    "Production kernel remains explicitly disabled"
+  ],
+  "checks": {
+    "integrity": "PASS",
+    "sensitivity": "PASS; no blocking or manual-review hits",
+    "whitespace": "PASS"
+  },
+  "cases": [
+    "logout writes delegation and task under resource owner, preserving system-owner shadows and other sessions",
+    "travel: evidence-bound alternative waits for explicit approval; estimate 14:00 is not actual arrival",
+    "report generation, provider acceptance and reconciled effect do not mean confirmed delivery",
+    "event duplicate is idempotent; conflicting same revision rejects; later-ingested older revision cannot replace head",
+    "CAS version race has one winner; goal update expires both suggestion and approval",
+    "accepted event correction expires approvals and excludes superseded evidence from new proposals",
+    "cross tenant and same-scope other subject cannot adopt goals, approve or dispatch",
+    "paused stops existing task lease, actions and pending notifications",
+    "revoked stops existing task lease, actions and pending notifications",
+    "user completes independently: cancel pending purchase and never regain permissions on new observation",
+    "worker lease loss, lease replacement and invocation reserve close prevent effects",
+    "revocation at transport boundary checks again; no effect and durable unknown is read-only reconcilable",
+    "fresh session and existing provider consent are checked before effect",
+    "unknown acknowledgement survives repository restore; never replay, including a new goal version",
+    "lost lease after effect records unknown instead of acknowledging success or repeating",
+    "unknown/no-effect lookup does not authorize retry; not-applied receipt needs a fresh proposal",
+    "quiet period suppresses notification; restored outbox publishes one deduplicated inbox entry",
+    "outbox + proposal roll back atomically if authority fails after writes",
+    "final authority await cannot carry proposal across worker lease expiry",
+    "approved proposal expires by clock; user denial is idempotent and cannot dispatch",
+    "arrival after 16:00 fails time-bound completion and a stale quiet-period message is cancelled",
+    "outcome publication cannot consume finalization reserve after its final authority await",
+    "unsupported version, third-party permission text, expired proposals and non-synthetic adapters fail closed",
+    "scoped CAS SQL uses scope predicate and parameterized JSON; serializer test is not real PG evidence",
+    "adversarial: stopping a goal rejects a binding to another subject task before clearing its lease",
+    "adversarial: binding and run scope mismatch cannot cancel another scope task",
+    "adversarial: approved projection without immutable user Decision cannot grant action permission",
+    "adversarial: lease expiry during last approval read prevents synchronous adapter effect",
+    "adversarial: latest deletion tombstone blocks restoring stale Goal and approved Action",
+    "adversarial: cross-goal and cross-scope evidence references reject before proposal persistence",
+    "adversarial: concurrent user approval and revoke leave no usable approval or worker lease",
+    "adversarial: competing dispatches and restored unknown never replay a single effect",
+    "adversarial: concurrent inbox publishers and stale outbox restore preserve one stored notification",
+    "adversarial: logical deletion is atomic; unknown remains audit-reconcilable after Goal body removal",
+    "known limitation: rolling back ALL authority ledgers can replay; production restore requires independent barrier",
+    "adversarial: corrupt effect key cannot bypass unknown reservation or misdirect reconciliation"
+  ],
+  "files_sha256": {
+    "services/edge/supabase/functions/_shared/core/integration/server-foundation/src/proactive-goal-kernel.mjs": "9f8825f6db8a01ec45269c2534bf8a66f9ff4bb35cafa1af0a8cdf965f66370b",
+    "services/edge/test/proactive-goal-kernel.test.mjs": "14bd54a3cac8a114cc2283a926ed2c1f7654d8af1166c0e84e1297e86f98e489",
+    "services/edge/test/logout-owner-regression.test.mjs": "ee640555519c9f3279addebb5cdd9e6ff0ff810af82f44530b15ac457297e52e",
+    "services/edge/test/fixtures/synthetic-goal-adapter.mjs": "193137984ccdfa30138b0df6ddc913a6a4aece11ee0756cc3b6dc057260e99cf",
+    "docs/spec/proactive-goal-kernel-v1.md": "5e5c9a29ed41291f6854e5a0d813134ac70b50607ab2b5f4ef94effe2520ced9",
+    "docs/acceptance/proactive-goal-adversarial-review.md": "de3da8edc8eadd087ecf39388c62fdb0d1353ead3417932fd9c033d23334f5e4",
+    "docs/status/master-plan.md": "92c65136aa58bb0bc089dd7044153ea5c784eee6ead3322cea6c0c9c009ad1aa",
+    "docs/README.md": "cbb0e9903c4eb96b8ddd4c7db2d16c0f4cdac2d6c8108a9956884d9e7c395fe6",
+    "services/edge/supabase/functions/deno.lock": "fd9d62137782f681177bd09b5aa632c4e70617ade055deeae6aac4f9a3f53f15"
+  },
+  "raw_logs_sha256": {
+    "services/edge/build/proactive-goal-review/before.tap": "a3cc0242d9c272c05e2aee4f9b6e579052a71652f5b8dce01488cd16f23cec6c",
+    "services/edge/build/proactive-goal-review/after.tap": "24ad25816516353dafdb576c44b06b0ac25aa1e642b7c805bc68cb78b4cb5330",
+    "services/edge/build/proactive-goal-review/edge-all-final.txt": "f5d55156409abee6ce501369fdad130a2e0e7787b04917864016b4c0611b0b96",
+    "services/edge/build/proactive-goal-review/cache.txt": "fada599f3f805740d679558175ac1338e6626892edaf703622940ab238f8ac67",
+    "services/edge/build/proactive-goal-review/integrity.txt": "1bb67173eb0b659474afd45ac05604e9fb8492515d9f2408006c25fb5bf3865d",
+    "services/edge/build/proactive-goal-review/sensitivity.txt": "1e7e4d4449e4824c0926b4d3dbb24ff8930e29b29b60cbc436fbec48e1b45e3b",
+    "services/edge/build/proactive-goal-review/sensitivity.json": "0f101f926b694ce31367456c8d6a9449299cab76f9514128df841caab1038f99"
+  },
+  "publication_scope": {
+    "authorized_branch": "feat/proactive-goal-kernel",
+    "method": "normal Git push; remote commit/tree must be independently read back",
+    "no_force": true,
+    "no_merge_main": true,
+    "no_default_branch_change": true,
+    "no_deploy": true
+  }
+}
