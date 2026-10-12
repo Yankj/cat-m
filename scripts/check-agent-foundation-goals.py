@@ -12,6 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 BASE = ROOT / 'docs/planning/AF-1'
 contract = json.loads((BASE / 'contract.json').read_text())
 canonical = json.loads((BASE / contract['authorities']['acceptance']).read_text())
+ux_contract = json.loads((BASE / contract['authorities']['ux_acceptance']).read_text())
 slicing = json.loads((BASE / contract['authorities']['slices']).read_text())
 cases = {item['id']: item for item in canonical['cases']}
 slices = {item['id']: item for item in slicing['slices']}
@@ -47,6 +48,8 @@ def dag(items, label):
 goals = unique(contract['goals'], 'goal')
 units = unique(contract['work_units'], 'work unit')
 scenarios = unique(contract['scenarios'], 'scenario')
+ux_cases = unique(ux_contract['cases'], 'UX case')
+required_ux = {item['id'] for item in ux_cases.values() if item['required']}
 dag(goals, 'goal')
 dag(units, 'work unit')
 assert set(contract['requirements']) == {f'AF-R{i:02d}' for i in range(1, 13)}
@@ -71,6 +74,22 @@ final = goals[contract['release_rules']['final_goal']]
 assert set(final['acceptance_ids']) == required, 'final goal must cover exactly all required cases'
 assert set(final['scenario_ids']) == {item['id'] for item in scenarios.values() if item['required']}
 assert final['coverage_mode'] == 'all_required_cases_and_scenarios_same_release'
+assert required_ux == {f'AF-U{i:02d}' for i in range(1, 13)}, 'all twelve UX cases are mandatory'
+assert set(final['ux_ids']) == required_ux and 'AF-GD' in final['depends_on']
+assert set(goals['AF-GD']['ux_ids']) == required_ux
+assert goals['AF-GD']['coverage_mode'] == 'complete_native_ux_subcontract'
+assert set(units['W70']['ux_ids']) == required_ux and set(units['W71']['ux_ids']) == required_ux
+subcontract = cases['AF-A17']['required_subcontract']
+assert set(subcontract['case_ids']) == required_ux
+assert (BASE / contract['authorities']['acceptance']).parent.joinpath(subcontract['path']).resolve() == (BASE / contract['authorities']['ux_acceptance']).resolve()
+assert ux_contract['same_release_required'] and not ux_contract['prototype_can_replace_native']
+for item in ux_cases.values():
+    assert item['parent_case'] == 'AF-A17' and item['owner_slice'] == cases['AF-A17']['owner_slice']
+    assert set(item['supporting_acceptance_ids']) <= cases.keys()
+    assert set(item['implementation_slices']) <= slices.keys()
+    assert {'physical_device', 'native_rendered_ui'} <= set(item['minimum_evidence'])
+    procedure = (BASE / contract['authorities']['ux_acceptance']).parent / item['procedure']
+    assert procedure.is_file() and item['id'] in procedure.read_text()
 assert not goals['AF-G0']['closes_full_acceptance_cases'], 'baseline preparation must not close release cases'
 for item in scenarios.values():
     assert (BASE / item['procedure']).is_file(), item['id']
@@ -81,6 +100,7 @@ for item in contract['extensions']:
 
 rules = contract['release_rules']
 assert rules['same_release_manifest'] and rules['all_required_cases'] and rules['all_required_scenarios']
+assert rules['all_required_ux']
 assert not rules['missing_evidence_is_pass'] and not rules['synthetic_can_replace_real_evidence']
 assert rules['unchanged_provider_route_first'] and not rules['unknown_may_auto_replay']
 for path in contract['authorities'].values():
@@ -96,6 +116,7 @@ for doc in BASE.glob('*.md'):
             assert (doc.parent / target).exists(), f'broken local link in {doc.name}: {target}'
 assert all(key in (BASE / 'plan.md').read_text() for key in [*goals, *units])
 assert all(key in (BASE / 'acceptance-scenarios.md').read_text() for key in [*required, *scenarios])
-print(f'PASS AF-1-G1 planning: {len(goals)} goals, {len(units)} work units, '
-      f'{len(required)} required cases, {len(scenarios)} scenarios; DAG/ownership/links valid')
+print(f'PASS {contract["version"]} planning: {len(goals)} goals, {len(units)} work units, '
+      f'{len(required)} required cases, {len(required_ux)} UX cases, '
+      f'{len(scenarios)} scenarios; DAG/ownership/links valid')
 print('LIMIT planning integrity only; no product, model, database, deployment or device acceptance executed')

@@ -60,6 +60,27 @@ final class P0NativeExperienceUITests:XCTestCase {
         // Record the actual values. No GPU/physical first-frame or performance PASS is inferred here.
         attach(app,name:"P0-Simulator-action-geometry-callback-20-samples")
     }
+    func testReadingAboveBottomSurvivesStreamAndJumpResumesFollowing() {
+        let app=launch("p0-ui-reading"),input=app.textViews["chat.input"]
+        clear(input);input.typeText("Synthetic long reading");app.buttons["chat.send"].tap()
+        let reader=app.descendants(matching:.any)["chat.assistantMessage"].firstMatch
+        XCTAssertTrue(reader.waitForExistence(timeout:5))
+        wait({reader.label.count >= 3000},seconds:8)
+        app.scrollViews["chat.transcript"].swipeDown()
+        let jump=app.buttons["chat.jumpToLatest"]
+        XCTAssertTrue(jump.waitForExistence(timeout:3))
+        XCTAssertEqual(probe(app)["reading_following_latest"] as? Bool,false)
+        let originalY=reader.frame.minY,originalCount=reader.label.count
+        wait({reader.label.count >= originalCount+1000},seconds:4)
+        XCTAssertEqual(reader.frame.minY,originalY,accuracy:12,"New deltas must not move the reading anchor")
+        XCTAssertTrue(jump.exists);XCTAssertEqual(probe(app)["reading_following_latest"] as? Bool,false)
+        jump.tap()
+        wait({self.probe(app)["reading_following_latest"] as? Bool == true && (self.probe(app)["reading_distance_from_bottom"] as? Int ?? 9999) <= 80},seconds:3)
+        wait({self.probe(app)["turn_state"] as? String == "completed"},seconds:18)
+        XCTAssertEqual(probe(app)["synthetic_reply_calls"] as? Int,1)
+        XCTAssertFalse(jump.exists)
+        attach(app,name:"Reading-anchor-real-scroll-Simulator-synthetic-stream")
+    }
     func testNativeMarkedTextPreventsSendAndCommandReturn(){
         let app=launch("p0-ui-ime"),input=app.textViews["chat.input"];clear(input)
         app.buttons["qa.p0IME.mark"].tap();wait({self.probe(app)["composition_active"] as? Bool == true})

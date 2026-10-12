@@ -2654,5 +2654,13 @@
   "正在重新连接": {
     "zh-Hans": "正在重新连接",
     "en": "Reconnecting"
+  },
+  "回到最新": {
+    "en": "Jump to latest",
+    "zh-Hans": "回到最新"
+  },
+  "返回对话底部，继续跟随新回复": {
+    "en": "Return to the bottom and follow new replies",
+    "zh-Hans": "返回对话底部，继续跟随新回复"
   }
 }

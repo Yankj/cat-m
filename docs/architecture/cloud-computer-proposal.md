@@ -41,7 +41,7 @@ Supabase Edge当前官方限制为256MB内存、每请求CPU2s、worker wall-clo
 
 托管worker候选Render提供后台worker进程，负责消费队列；不要求迁移Supabase数据库。[Render worker](https://render.com/docs/background-workers)。沙箱候选E2B提供按需Linux环境、文件/终端与pause/resume，Desktop支持截图/点击和VNC。[E2B](https://docs.e2b.dev/)、[Desktop](https://docs.e2b.dev/use-cases/computer-use)。这些是研究候选，未创建账户或测试。
 
-当前E2B Hobby基础价$0/月但运行算力按秒计费，连续运行上限1小时；Pro基础价$150/月再加使用量。个人原型优先评估Hobby按需使用，不为“24小时负责”直接购买Pro。[官方计费](https://docs.e2b.dev/billing)。暂停可以保存状态，不保证网站会话/网络连接无限有效；文件成果应独立保存到权威存储。
+当前E2B Hobby基础价$0/月但运行算力按秒计费，连续运行上限1小时；Pro基础价$150/月再加使用量。这说明基础价0不等于运行费用0；当前预算不启动该服务，未来资源/预算重新确认后才评估。[官方计费](https://docs.e2b.dev/billing)。暂停可以保存状态，不保证网站会话/网络连接无限有效；文件成果应独立保存到权威存储。
 
 ## 用户需要准备什么
 
