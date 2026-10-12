@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "recorded_at_utc": "2026-10-12T18:00:23.459632+00:00",
+  "source_commit": "a905b47eb4201e21758fba8a66b6ff01d682e844",
+  "source_tree": "74400a57aeb9cdef72c846726b6f90e0609ceff9",
+  "user_authorization": "Explicit approval to update existing iPhone and run at most two short text checks from normal App with current route and model consent",
+  "install": {
+    "status": "PASS",
+    "method": "devicectl device install app (update same bundle; no uninstall/reset)",
+    "before_version": "0.3.0(15)",
+    "after_version": "0.3.0(16)",
+    "same_bundle": true,
+    "binary_sha256": "e1fc81a28fadb6cf061c447e4fa57c9fc0636e350a2bb927e8de2725cf32c86a",
+    "started_at_utc": "2026-10-12T17:59:05.268214+00:00"
+  },
+  "data_preservation": {
+    "destructive_commands": 0,
+    "same_signing_and_bundle": true,
+    "existing_data_visible_after_update": "PENDING_UI_CONNECTION"
+  },
+  "model_check": {
+    "short_text_submissions": 0,
+    "provider_calls_issued_by_agent": 0,
+    "status": "NOT_RUN; iPhone Mirroring cannot connect, user asked to restore original device"
+  },
+  "backend_deployments": 0,
+  "private_receipt_sha256": {
+    "before-install.json": "72eabc663cea3670fe601413e7d32a089934c144d8c756b628b14348d793d0ef",
+    "install.json": "f022b10ebafa5b9b757bdcadec43a2fd28b694fc43b87deccb609a837ccdcc6d",
+    "after-install.json": "3717a39af422389c2406eada147d7a1e527099c18c8d4bd8edde4cac28a84bac"
+  }
+}
