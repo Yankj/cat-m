@@ -1,6 +1,104 @@
 import XCTest
+import UIKit
+import CatpawImageComposer
 @testable import CatpawM
 final class DeviceTrialNativeTests: XCTestCase {
+ @MainActor func testVisionConsentCancelAndUnconfirmedCheckboxNeverSend() async throws {
+  let (model,backend,_,_)=try makeVisionModel();let hash=try await selectVisionImage(model)
+  model.requestImageConsent();try await p0Until {model.pendingImageConsent != nil};let consent=try XCTUnwrap(model.pendingImageConsent)
+  model.allowPendingImageConsent(consent,confirmed:false);await Task.yield();var counts=await backend.counts();XCTAssertEqual(counts[0],0);XCTAssertEqual(counts[2],0)
+  model.cancelImageConsent();model.prepareSend();counts=await backend.counts();XCTAssertEqual(counts[0],0);XCTAssertEqual(model.draft,"Synthetic image caption");XCTAssertEqual(model.imageDraft.attachment?.sha256,hash);XCTAssertFalse(model.canAcceptDraft);await model.deactivate()
+ }
+ @MainActor func testVisionExactPreviewApprovalV2MetadataAndTerminalReceipt() async throws {
+  let (model,backend,service,_)=try makeVisionModel();let hash=try await selectVisionImage(model);try await approveVisionImage(model)
+  XCTAssertTrue(model.canAcceptDraft);model.prepareSend();try await p0Until {model.session?.turns.last?.state == .completed && !model.busy}
+  let turn=try XCTUnwrap(model.session?.turns.last),image=try XCTUnwrap(turn.request.image),message=try XCTUnwrap(turn.request.history.last)
+  XCTAssertEqual(image.receipt.sha256,hash);XCTAssertNotEqual(image.receipt.id,message.id);XCTAssertNotNil(turn.visionProviderReceipt);XCTAssertNil(turn.request.imageBytes)
+  let stored=try await service.read(scope:model.scope,conversationID:try XCTUnwrap(model.conversationID));let encoded=try JSONEncoder().encode(stored)
+  XCTAssertFalse(String(decoding:encoded,as:UTF8.self).contains("base64"));let counts=await backend.counts();XCTAssertEqual(counts[0],1);XCTAssertEqual(counts[2],1);XCTAssertEqual(model.draft,"");await model.deactivate()
+ }
+ @MainActor func testVisionExpiredConsentRefusesPostAndPreservesExactInputAndImage() async throws {
+  let (model,backend,_,_)=try makeVisionModel();let hash=try await selectVisionImage(model);try await approveVisionImage(model);await backend.expireConsent()
+  model.prepareSend();try await p0Until {model.followups.paused && !model.enqueueing && !model.busy && model.imageDraft.phase == .ready}
+  let counts=await backend.counts();XCTAssertEqual(counts[0],0);XCTAssertEqual(model.draft,"Synthetic image caption");XCTAssertEqual(model.imageDraft.attachment?.sha256,hash);XCTAssertEqual(model.session?.turns.last?.state,.notSent);await model.deactivate()
+ }
+ @MainActor func testVisionLateGrantAfterDraftChangeCannotAuthorizeAnotherVersion() async throws {
+  let (model,backend,_,_)=try makeVisionModel();let hash=try await selectVisionImage(model);model.requestImageConsent();try await p0Until {model.pendingImageConsent != nil}
+  await backend.holdGrant();model.allowPendingImageConsent(try XCTUnwrap(model.pendingImageConsent),confirmed:true);try await p0Until {await backend.isGrantWaiting()}
+  model.editDraft("Changed after review");await backend.releaseGrant();await Task.yield();await Task.yield()
+  XCTAssertFalse(model.imageGate.imageConsentMatchesCurrentRoute);XCTAssertEqual(model.draft,"Changed after review");XCTAssertEqual(model.imageDraft.attachment?.sha256,hash);let counts=await backend.counts();XCTAssertEqual(counts[0],0);await model.deactivate()
+ }
+ @MainActor func testVisionMalformedImageNeverReachesPermissionOrTransport() async throws {
+  let (model,backend,_,_)=try makeVisionModel();await model.start();await model.refreshConnection();model.editDraft("Invalid image caption");let ticket=model.imageDraft.beginSelection();model.imageDraft.receiveSelectedData(Data([1,2,3]),ticket:ticket)
+  try await p0Until {if case .failed=model.imageDraft.phase{return true};return false};model.requestImageConsent();model.prepareSend()
+  let counts=await backend.counts();XCTAssertEqual(counts[0],0);XCTAssertEqual(counts[2],0);XCTAssertEqual(model.draft,"Invalid image caption");await model.deactivate()
+ }
+ @MainActor func testVisionSaveFailureRollsBackBeforeProviderAndKeepsDraft() async throws {
+  let storage=SelectedConversationTestStorage(),backend=VisionFlowTestBackend(),repository=try Repository(persistence:storage),service=ConversationSessionService(repository:repository,backend:backend),model=ConversationFirstModel(repository:repository,service:service)
+  let hash=try await selectVisionImage(model);try await approveVisionImage(model);let before=await repository.read(scope:model.scope);storage.rejectNextSave();model.prepareSend();try await p0Until {!model.enqueueing}
+  let after=await repository.read(scope:model.scope),counts=await backend.counts();XCTAssertEqual(after.sequence,before.sequence);XCTAssertEqual(counts[0],0);XCTAssertEqual(model.draft,"Synthetic image caption");XCTAssertEqual(model.imageDraft.attachment?.sha256,hash);await model.deactivate()
+ }
+ @MainActor func testVisionUnknownResumesOriginalTurnAfterBackgroundWithoutSecondPost() async throws {
+  let (model,backend,service,_)=try makeVisionModel();await backend.setEOF();let hash=try await selectVisionImage(model);try await approveVisionImage(model);model.prepareSend()
+  try await p0Until {await backend.counts()[0] == 1};model.setNetworkAdmissionAllowed(false);try await p0Until {model.session?.turns.last?.state == .unknown && !model.busy}
+  let original=try XCTUnwrap(model.session?.turns.last?.id),cid=try XCTUnwrap(model.conversationID);await model.suspend();model.setNetworkAdmissionAllowed(true);await model.resumeForeground()
+  try await p0Until {model.session?.turns.last?.state == .completed && !model.busy};let counts=await backend.counts()
+  XCTAssertEqual(counts[0],1);XCTAssertGreaterThanOrEqual(counts[1],1);XCTAssertEqual(model.session?.turns.last?.id,original);XCTAssertEqual(model.conversationID,cid)
+  let stored=try await service.read(scope:model.scope,conversationID:cid);XCTAssertEqual(stored.turns.last?.request.image?.receipt.sha256,hash);XCTAssertEqual(stored.messages.filter{$0.role == .assistant}.count,1);await model.deactivate()
+ }
+ @MainActor func testVisionWrongProviderReceiptNeverCompletes() async throws {
+  let (model,backend,_,_)=try makeVisionModel();await backend.setWrongReceipt();_ = try await selectVisionImage(model);try await approveVisionImage(model);model.prepareSend()
+  try await p0Until {await backend.counts()[0] == 1};model.setNetworkAdmissionAllowed(false);try await p0Until {model.session?.turns.last?.state == .unknown && !model.busy}
+  XCTAssertNil(model.session?.turns.last?.visionProviderReceipt);XCTAssertFalse(model.session?.messages.last?.complete ?? true);let counts=await backend.counts();XCTAssertEqual(counts[0],1);await model.deactivate()
+ }
+ @MainActor func testVisionLocalByteVaultSurvivesRestartAndRejectsForeignOperation() async throws {
+  let root=FileManager.default.temporaryDirectory.appendingPathComponent("VisionBytes-"+UUID().uuidString),store=try FileConversationImageByteStore(root:root),encoder=SystemImageAttachmentEncoder()
+  let raw=UIGraphicsImageRenderer(size:CGSize(width:16,height:16)).pngData{ctx in UIColor.blue.setFill();ctx.fill(CGRect(x:0,y:0,width:16,height:16))},packet=try await encoder.encode(raw,id:UUID(),format:.png,limits:.init()),cid=UUID(),operation=UUID()
+  let ref=ConversationVisionReference(receipt:.init(id:packet.id,mimeType:packet.mimeType,sha256:packet.sha256,size:packet.encodedData.count,width:packet.width,height:packet.height),routeHash:textHash("Synthetic route"),consentRevision:1)
+  try await store.save(.init(reference:ref,bytes:packet.encodedData),conversationID:cid,operationID:operation)
+  let reopened=try FileConversationImageByteStore(root:root),bytes=try await reopened.read(reference:ref,conversationID:cid,operationID:operation),normalized=try await encoder.encode(bytes,id:packet.id,format:.png,limits:.init())
+  XCTAssertEqual(bytes,packet.encodedData);XCTAssertEqual(normalized.sha256,packet.sha256)
+  do {_ = try await reopened.read(reference:ref,conversationID:UUID(),operationID:operation);XCTFail("Foreign operation cannot read image")}catch CatpawError.missing{}
+  try await reopened.remove(conversationID:cid,operationID:operation)
+ }
+
+ @MainActor func testImageSelectionStaysLocalAndUnavailableGateKeepsCaption() async throws {
+  let (model,backend,_,_)=try makeP0Model();await model.start();model.editDraft("Synthetic image question")
+  let image=UIGraphicsImageRenderer(size:CGSize(width:16,height:16)).pngData {ctx in UIColor.systemBlue.setFill();ctx.fill(CGRect(x:0,y:0,width:16,height:16))}
+  let ticket=model.imageDraft.beginSelection();model.imageDraft.receiveSelectedData(image,ticket:ticket)
+  try await p0Until {model.imageDraft.phase == .ready}
+  let id=model.imageDraft.attachment?.id,hash=model.imageDraft.attachment?.sha256;XCTAssertNotNil(id);XCTAssertNotNil(hash)
+  XCTAssertEqual(model.imageSendBlock,.unavailable);let imageID=model.imageDraft.attachment?.id;try await model.select(try XCTUnwrap(model.conversationID));XCTAssertEqual(model.imageDraft.attachment?.id,imageID)
+  XCTAssertFalse(model.canAcceptDraft);model.prepareSend()
+  XCTAssertEqual(model.draft,"Synthetic image question");XCTAssertEqual(model.imageDraft.attachment?.id,id);XCTAssertTrue(model.outgoingMessages.isEmpty)
+  let counts=await backend.counts();XCTAssertEqual(counts[0],0)
+  model.imageDraft.clear();XCTAssertTrue(model.canAcceptDraft);await model.deactivate()
+ }
+ @MainActor func testImageContextChangeRejectsLateSelectionAndDoesNotLeakCaption() async throws {
+  let (model,_,service,_)=try makeP0Model();await model.start();let other=try await service.create(scope:Profiles.user),ticket=model.imageDraft.beginSelection()
+  try await model.select(other);model.imageDraft.receiveSelectedData(Data([1,2,3]),ticket:ticket)
+  XCTAssertEqual(model.imageDraft.phase,.empty);XCTAssertNil(model.imageDraft.attachment);XCTAssertEqual(model.conversationID,other)
+  await model.deactivate()
+ }
+ @MainActor func testImageGateNeverSilentlyFallsBackToTextDuringProcessing() async throws {
+  let (model,backend,_,_)=try makeP0Model();await model.start();model.editDraft("Synthetic processing caption");_ = model.imageDraft.beginSelection()
+  model.prepareSend();XCTAssertTrue(model.outgoingMessages.isEmpty);XCTAssertEqual(model.draft,"Synthetic processing caption");let counts=await backend.counts();XCTAssertEqual(counts[0],0);await model.deactivate()
+ }
+
+ @MainActor func testIncrementalReaderKeepsExactUnicodeAcrossAppendsAndReplacement() {
+  let reader=IncrementalConversationTextView(),font=UIFont.systemFont(ofSize:17),prefix="Unicode e\u{301} and \u{1F43E}\n",tail=String(repeating:"Exact \u{4E2D}\u{6587} \u{1F468}\u{200D}\u{1F469}\u{200D}\u{1F467}\n",count:256)
+  reader.apply(prefix,font:font,color:.label);reader.apply(prefix+tail,font:font,color:.label)
+  XCTAssertEqual(Data(reader.textStorage.string.utf8),Data((prefix+tail).utf8));XCTAssertEqual(textHash(reader.textStorage.string),textHash(prefix+tail))
+  reader.apply("Confirmed final replacement",font:font,color:.label);XCTAssertEqual(reader.textStorage.string,"Confirmed final replacement")
+ }
+ @MainActor func testIncrementalReaderRetainsSelectionAndReflowsAtAccessibleSize() {
+  let reader=IncrementalConversationTextView(),text=String(repeating:"Synthetic readable paragraph.\n",count:64)
+  reader.apply(text,font:ConversationTypeScale.font(.large),color:.label);reader.selectedRange=NSRange(location:5,length:12);let initial=reader.measured(320)
+  reader.apply(text+"More",font:ConversationTypeScale.font(.large),color:.label);XCTAssertEqual(reader.selectedRange,NSRange(location:5,length:12))
+  reader.apply(text+"More",font:ConversationTypeScale.font(.accessibility5),color:.label);let larger=reader.measured(320)
+  XCTAssertGreaterThan(larger.height,initial.height);XCTAssertEqual(reader.measured(320),larger);XCTAssertEqual(reader.textStorage.string,text+"More")
+ }
+
  @MainActor func testP0ConversationSelectionCannotMoveMarkedDraftToAnotherConversation() async throws {
   let (model,_,service,_)=try makeP0Model();await model.start();let original=model.conversationID,other=try await service.create(scope:Profiles.user)
   model.editDraft("Synthetic composing draft");model.updateInputComposition(true)
@@ -179,6 +277,67 @@ final class DeviceTrialNativeTests: XCTestCase {
   XCTAssertThrowsError(try config.makeRequest(route:"//unapproved.example/leak",authorization:"Bearer token"))
   XCTAssertThrowsError(try NativeChatConfiguration(origin:base,localScope:Profiles.user,serverScopeID:UUID(),publishableKey:"sb_secret_never_a_client_key"))
  }
+ @MainActor func testTextConsentSurvivesPresentationBindingClearAndRejectsDuplicate() async throws {
+  let repo=try Repository(persistence:SelectedConversationTestStorage()),backend=P0ExperienceBackend(scenario:"p0-ui-consent"),service=ConversationSessionService(repository:repo,backend:backend)
+  let model=ConversationFirstModel(repository:repo,service:service);await model.start();model.editDraft("Owned synthetic permission")
+  model.prepareSend();try await p0Until {model.pendingModelConsent != nil}
+  let consent=try XCTUnwrap(model.pendingModelConsent);model.pendingModelConsent=nil
+  model.allowPendingModelConsent(consent);try await p0Until {model.session?.turns.last?.state == .completed && !model.busy}
+  model.allowPendingModelConsent(consent);await Task.yield()
+  let counts=await backend.consentInvocationCounts();XCTAssertEqual(counts,[1,1]);await model.deactivate()
+ }
+ @MainActor func testDeferredConsentCanBeReopenedAndDispatchesOriginalOnce() async throws {
+  let repo=try Repository(persistence:SelectedConversationTestStorage()),backend=P0ExperienceBackend(scenario:"p0-ui-consent"),service=ConversationSessionService(repository:repo,backend:backend)
+  let model=ConversationFirstModel(repository:repo,service:service);await model.start();model.editDraft("Owned deferred permission")
+  model.prepareSend();try await p0Until {model.pendingModelConsent != nil}
+  model.deferModelConsent(try XCTUnwrap(model.pendingModelConsent));try await p0Until {model.followups.paused}
+  let before=await backend.consentInvocationCounts();XCTAssertEqual(before,[0,0])
+  model.requestModelConsentReview();try await p0Until {model.pendingModelConsent != nil}
+  model.allowPendingModelConsent(try XCTUnwrap(model.pendingModelConsent));try await p0Until {model.session?.turns.last?.state == .completed && !model.busy}
+  let after=await backend.consentInvocationCounts();XCTAssertEqual(after,[1,1]);XCTAssertEqual(model.session?.turns.count,1)
+  await model.deactivate()
+ }
+ @MainActor func testChangedConsentRevisionCannotDispatch() async throws {
+  let repo=try Repository(persistence:SelectedConversationTestStorage()),backend=P0ExperienceBackend(scenario:"p0-ui-consent"),service=ConversationSessionService(repository:repo,backend:backend)
+  let model=ConversationFirstModel(repository:repo,service:service);await model.start();model.editDraft("Owned stale permission")
+  model.prepareSend();try await p0Until {model.pendingModelConsent != nil}
+  let review=try XCTUnwrap(model.pendingModelConsent)
+  let stale=ConversationModelConsent(conversationID:review.conversationID,title:review.title,body:review.body,routeHash:review.routeHash,expectedRevision:review.expectedRevision+1)
+  model.allowPendingModelConsent(stale);await Task.yield()
+  let counts=await backend.consentInvocationCounts();XCTAssertEqual(counts,[0,0]);XCTAssertNotNil(model.pendingModelConsent)
+  await model.deactivate()
+ }
+ @MainActor func testColdQueuedPermissionIsPresentedWhileExplicitPauseSurvives() async throws {
+  for paused in [false,true] {
+   let repo=try Repository(persistence:SelectedConversationTestStorage()),backend=P0ExperienceBackend(scenario:"p0-ui-consent"),service=ConversationSessionService(repository:repo,backend:backend)
+   let cid=try await service.create(scope:Profiles.user),queue=ConversationFollowupQueueService(repository:repo,scope:Profiles.user,conversationID:cid)
+   try await queue.enqueue(.init(text:"Owned restored pending"));if paused {try await queue.pause()}
+   let model=ConversationFirstModel(repository:repo,service:service);await model.start()
+   if paused {try await Task.sleep(nanoseconds:20_000_000);XCTAssertNil(model.pendingModelConsent);XCTAssertTrue(model.followups.paused)}
+   else {try await p0Until {model.pendingModelConsent != nil};XCTAssertTrue(model.needsModelConsentReview)}
+   let counts=await backend.consentInvocationCounts();XCTAssertEqual(counts,[0,0]);await model.deactivate()
+  }
+ }
+ @MainActor func testReadinessRetriesAreBoundedPublishBeforeImageAndRejectLateAuth() async throws {
+  let repo=try Repository(persistence:SelectedConversationTestStorage()),backend=Consent16ReadinessBackend(),service=ConversationSessionService(repository:repo,backend:backend),model=ConversationFirstModel(repository:repo,service:service)
+  await model.start();try await p0Until {await backend.waitingForImage()}
+  XCTAssertEqual(model.connectionLifecycle,.available);let before=await backend.calls();XCTAssertEqual(before,3)
+  model.setNetworkAdmissionAllowed(false);await backend.releaseImage();await Task.yield();await Task.yield()
+  XCTAssertFalse(model.networkAdmissionAllowed);XCTAssertEqual(model.connectionLifecycle,.checking)
+  let after=await backend.calls();XCTAssertEqual(after,3);await model.deactivate()
+ }
+ func testReplyEvidenceRequiresValidatedDurableTerminal() async throws {
+  for terminal in [true,false] {
+   let repo=try Repository(persistence:SelectedConversationTestStorage()),backend=Consent16TerminalBackend(valid:terminal),service=ConversationSessionService(repository:repo,backend:backend)
+   let cid=try await service.create(scope:Profiles.user)
+   do {_=try await service.send(scope:Profiles.user,conversationID:cid,text:"Owned synthetic terminal",operationID:UUID());XCTAssertTrue(terminal)}
+   catch {XCTAssertFalse(terminal)}
+   let count=await backend.records(),evidence=await service.recordedReplyEvidence(scope:Profiles.user)
+   XCTAssertEqual(count,terminal ? 1 : 0);XCTAssertEqual(evidence != nil,terminal)
+   if terminal {XCTAssertNotNil(evidence?.verifiedReplyAt)}
+  }
+ }
+
 }
 
 private final class SelectedConversationTestStorage: SnapshotPersistence, @unchecked Sendable {
@@ -206,4 +365,88 @@ private actor P0LifecycleBackend: ConversationBackend {
  func has(_ id:UUID) async -> Bool { await backend.has(id) }
  func counts() async -> [Int] { await backend.counts() }
  func finish(_ id:UUID,_ text:String) async throws { try await backend.finish(id,text) }
+}
+
+@MainActor private func makeVisionModel() throws -> (ConversationFirstModel,VisionFlowTestBackend,ConversationSessionService,Repository) {
+ let repository=try Repository(persistence:SelectedConversationTestStorage()),backend=VisionFlowTestBackend(),service=ConversationSessionService(repository:repository,backend:backend)
+ return (ConversationFirstModel(repository:repository,service:service),backend,service,repository)
+}
+@MainActor private func selectVisionImage(_ model:ConversationFirstModel) async throws -> String {
+ await model.start();await model.refreshConnection();model.editDraft("Synthetic image caption")
+ let raw=UIGraphicsImageRenderer(size:CGSize(width:16,height:16)).pngData{ctx in UIColor.blue.setFill();ctx.fill(CGRect(x:0,y:0,width:16,height:16))},ticket=model.imageDraft.beginSelection();model.imageDraft.receiveSelectedData(raw,ticket:ticket)
+ try await p0Until {model.imageDraft.phase == .ready};return try XCTUnwrap(model.imageDraft.attachment?.sha256)
+}
+@MainActor private func approveVisionImage(_ model:ConversationFirstModel) async throws {
+ model.requestImageConsent();try await p0Until {model.pendingImageConsent != nil};model.allowPendingImageConsent(try XCTUnwrap(model.pendingImageConsent),confirmed:true)
+ try await p0Until {model.imageGate.imageConsentMatchesCurrentRoute && !model.checkingImageConsent}
+}
+/// Named offline synthetic provider; no URLSession/Auth or actual model request.
+private actor VisionFlowTestBackend:ConversationBackend {
+ private let route=textHash("P0-only-synthetic-image-route"),body="Synthetic image reply; no real model."
+ private var revision=0,posts=0,reads=0,grants=0,eof=false,wrong=false,grantHeld=false,grantWaiting=false
+ private var grantWait:CheckedContinuation<Void,Never>?
+ private var originals:[UUID:ConversationTurnRequest]=[:]
+ func counts()->[Int]{[posts,reads,grants]}
+ func expireConsent(){revision += 1}
+ func setEOF(){eof=true}
+ func setWrongReceipt(){wrong=true}
+ func holdGrant(){grantHeld=true}
+ func isGrantWaiting()->Bool{grantWaiting}
+ func releaseGrant(){grantHeld=false;grantWait?.resume();grantWait=nil}
+ func connection(scope:DataScope) async ->ConversationConnection {.init(state:.providerUnverified,provider:"Explicit synthetic offline vision",detail:"No HTTP/Auth/model")}
+ func imageCapabilities(scope:DataScope,conversationID:UUID) async throws ->ConversationImageCapability {.init(available:true,liveTransmissionAvailable:true,routeHash:route,state:"injected_synthetic_offline",detail:"No real transmission")}
+ func imageConsent(scope:DataScope,conversationID:UUID,previewID:UUID,previewHash:String) async throws ->ConversationImageConsent {
+  .init(conversationID:conversationID,previewID:previewID,previewHash:previewHash,routeHash:route,expectedRevision:revision,title:"Synthetic image permission",body:"Offline fixture only; OpenRouter/Google AI Studio, 55 days, possible human review are contract labels; no transmission.",confirmation:"I confirm this synthetic fixture has no sensitive content",allowLabel:"Allow synthetic fixture",denyLabel:"Cancel")
+ }
+ func allowImageConsent(scope:DataScope,consent:ConversationImageConsent,nonSensitiveConfirmed:Bool) async throws ->Int {
+  guard nonSensitiveConfirmed,consent.expectedRevision==revision,consent.routeHash==route else {throw CatpawError.conflict}
+  grants += 1
+  if grantHeld {grantWaiting=true;await withCheckedContinuation{grantWait=$0}}
+  revision += 1;return revision
+ }
+ private func script(_ r:ConversationTurnRequest,complete:Bool)->[ConversationTurnEvent] {
+  let id=stableID("VisionFlowTest-assistant-"+r.operationID.uuidString),ref=r.image!
+  let receipt=ConversationVisionProviderReceipt(requested_model:"google/gemma-4-31b-it:free",actual_model:"google/gemma-4-31b-it",actual_provider:wrong ? "Unapproved fixture recipient" : "Google AI Studio",cost:0,image_count:1,image_hashes:[ref.receipt.sha256],image_bytes:ref.receipt.size_bytes,route_hash:ref.routeHash,terminal_validated:true,response_id:"synthetic-only-response")
+  var values:[ConversationTurnEvent.Payload]=[.started(requestHash:textHash("VisionFlowTest:"+r.operationID.uuidString),conversationRevision:1,grantEpoch:1,attachmentReceipts:[ref.receipt]),.textDelta(messageID:id,text:body)]
+  if complete {values.append(.completed(messageID:id,finalTextHash:textHash(body),visionReceipt:receipt))}
+  return values.enumerated().map{.init(operationID:r.operationID,epoch:r.epoch,sequence:$0.offset+1,payload:$0.element)}
+ }
+ func reply(_ r:ConversationTurnRequest) async throws ->AsyncThrowingStream<ConversationTurnEvent,Error> {
+  guard let image=r.image,let bytes=r.imageBytes,image.consentRevision==revision else {throw ConversationDispatchFailure.notSent(reason:"Synthetic image consent expired")}
+  try image.validate(bytes,messageID:r.history.last!.id);posts += 1;originals[r.operationID]=r.withImageBytes(nil)
+  return AsyncThrowingStream{continuation in for e in script(r,complete:!eof){continuation.yield(e)};continuation.finish()}
+ }
+ func observe(_ r:ConversationTurnRequest) async throws ->ConversationObservation {
+  guard let original=originals[r.operationID],original.image==r.image,r.imageBytes==nil else {throw CatpawError.missing};reads += 1
+  return .init(request:r,events:script(r,complete:true),requestHash:textHash("VisionFlowTest:"+r.operationID.uuidString),grantEpoch:1,goals:[])
+ }
+}
+
+private actor Consent16ReadinessBackend:ConversationBackend {
+ private var count=0;private var image:CheckedContinuation<ConversationImageCapability,Never>?
+ func connection(scope:DataScope) async -> ConversationConnection {count += 1;return .init(state:count<3 ? .unavailable : .providerUnverified,provider:"Owned synthetic readiness",detail:"No network/model")}
+ func imageCapabilities(scope:DataScope,conversationID:UUID) async throws -> ConversationImageCapability {await withCheckedContinuation{image=$0}}
+ func waitingForImage()->Bool {image != nil}
+ func releaseImage(){image?.resume(returning:.init());image=nil}
+ func calls()->Int {count}
+ func reply(_ request:ConversationTurnRequest) async throws -> AsyncThrowingStream<ConversationTurnEvent,Error> {throw ConversationSessionError.notConfigured}
+ func observe(_ request:ConversationTurnRequest) async throws -> ConversationObservation {throw ConversationSessionError.notConfigured}
+}
+private actor Consent16TerminalBackend:ConversationBackend {
+ let valid:Bool;private var count=0;private var evidence:ConversationConnection?
+ init(valid:Bool){self.valid=valid}
+ func connection(scope:DataScope) async -> ConversationConnection {.init(state:.providerUnverified,provider:"Owned terminal fixture",detail:"No network/model")}
+ func reply(_ r:ConversationTurnRequest) async throws -> AsyncThrowingStream<ConversationTurnEvent,Error> {
+  let valid=self.valid,id=UUID(),body="Owned synthetic response"
+  return AsyncThrowingStream {c in
+   c.yield(.init(operationID:r.operationID,epoch:r.epoch,sequence:1,payload:.started(requestHash:textHash("owned"),conversationRevision:1,grantEpoch:1)))
+   c.yield(.init(operationID:r.operationID,epoch:r.epoch,sequence:2,payload:.textDelta(messageID:id,text:body)))
+   c.yield(.init(operationID:r.operationID,epoch:r.epoch,sequence:3,payload:.completed(messageID:id,finalTextHash:textHash(valid ? body : "Invalid terminal"))))
+   c.finish()
+  }
+ }
+ func recordCommittedReply(_ request:ConversationTurnRequest) async {count += 1;evidence = .init(state:.connected,provider:"Explicit injected evidence",detail:"Synthetic unit only",verifiedReplyAt:Date())}
+ func recordedReplyEvidence(scope:DataScope) async -> ConversationConnection? {evidence}
+ func records()->Int {count}
+ func observe(_ request:ConversationTurnRequest) async throws -> ConversationObservation {throw ConversationSessionError.notConfigured}
 }

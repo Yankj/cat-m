@@ -46,9 +46,9 @@ struct SidebarGestureBridge: UIViewRepresentable {
         init(_ owner: SidebarGestureBridge) { self.owner = owner }
         func attach(_ view: AnchorView) {
             anchor = view
-            guard target !== view.superview else { return }
+            guard target !== view.window else { return }
             detach()
-            guard let parent = view.superview else { return }
+            guard let parent = view.window else { return }
             target = parent
             let pan: UIPanGestureRecognizer
             if owner.direction == .opening {
@@ -65,7 +65,10 @@ struct SidebarGestureBridge: UIViewRepresentable {
             if tracking { tracking = false; owner.onEnded(0, true) }
         }
         func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
-            guard owner.enabled, let anchor else { return false }
+            guard owner.enabled, let anchor, anchor.window != nil else { return false }
+            // The window receives touches from both the host and presented system pickers.
+            // Restrict to this live anchor and leave any UIKit modal to its own recognizers.
+            if anchor.window?.rootViewController?.presentedViewController != nil { return false }
             let point = touch.location(in: anchor)
             guard anchor.bounds.contains(point), !owner.excludedAreas.contains(where: { $0.contains(point) }) else { return false }
             var node = touch.view

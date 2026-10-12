@@ -1,0 +1,31 @@
+{
+  "utc": "2026-10-12T15:03:59.189346+00:00",
+  "http_status": 200,
+  "ready": true,
+  "root_vision_contract_present": false,
+  "chat_capabilities": {
+    "text_input": true,
+    "image_input": false,
+    "cursor_events": true,
+    "vision_contract": {
+      "schema_version": 2,
+      "available": false,
+      "state": "disabled",
+      "request_scoped": true,
+      "persistent_image_history": false,
+      "requires_text_caption": true,
+      "limits": {
+        "max_count": 1,
+        "max_image_bytes": 5242880,
+        "max_total_image_bytes": 5242880,
+        "max_side": 2048,
+        "max_pixels": 4194304,
+        "max_request_bytes": 7100000,
+        "mime_types": [
+          "image/png",
+          "image/jpeg"
+        ]
+      }
+    }
+  }
+}

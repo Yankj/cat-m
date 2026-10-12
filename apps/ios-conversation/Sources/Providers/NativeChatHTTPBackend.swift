@@ -45,17 +45,20 @@ public actor NativeChatHTTPBackend: ConversationBackend {
     private var bindingCache: [UUID: [String: ConversationTaskBinding]] = [:]
     private var toolTitles: [UUID: [String: String]] = [:]
     private var observedModelState: ConversationConnection.State?
-    public init(configuration: NativeChatConfiguration, credentials: any NativeChatSessionCredentials = MissingNativeChatSession()) {
+    private var verifiedReplyAt:Date?
+    private var verifiedModel:String?
+    private struct ReplyCandidate {let model:String?}
+    private var replyCandidates:[UUID:ReplyCandidate]=[:]
+    public init(configuration: NativeChatConfiguration, credentials: any NativeChatSessionCredentials = MissingNativeChatSession(),sessionConfiguration:URLSessionConfiguration?=nil) {
         self.configuration = configuration; self.credentials = credentials
-        let policy = URLSessionConfiguration.ephemeral; policy.urlCache = nil; policy.requestCachePolicy = .reloadIgnoringLocalCacheData
+        let policy = (sessionConfiguration?.copy() as? URLSessionConfiguration) ?? URLSessionConfiguration.ephemeral; policy.urlCache = nil; policy.requestCachePolicy = .reloadIgnoringLocalCacheData
         session = URLSession(configuration: policy, delegate: NativeChatNoRedirect(), delegateQueue: nil)
     }
-    public func close() { session.invalidateAndCancel(); bindingCache.removeAll(); toolTitles.removeAll(); observedModelState = nil }
+    public func close() { session.invalidateAndCancel(); bindingCache.removeAll(); toolTitles.removeAll(); observedModelState = nil;verifiedReplyAt=nil;verifiedModel=nil;replyCandidates.removeAll() }
     public func connection(scope: DataScope) async -> ConversationConnection {
         let auth: String
         do { auth = try await authorization(scope) }
         catch { return ConversationConnection(state: .notConfigured, provider: "OpenRouter", detail: "缺少有效后台登录会话；模型 key 由服务端管理。") }
-        if observedModelState == .notConfigured { return ConversationConnection(state: .notConfigured, provider: "OpenRouter", detail: "后台返回 not_configured；服务端模型尚未配置。") }
         do {
             if configuration.useFrozenFixtureMetadata {
                 let metadata = try await json("/catpaw/testing/v1/fixture", auth: auth)
@@ -63,10 +66,66 @@ public actor NativeChatHTTPBackend: ConversationBackend {
                 let live = configuration.fixtureExpectedReality == "provider_unverified"
                 return ConversationConnection(state: .providerUnverified, provider: live ? "OpenRouter free synthetic" : "scripted_ios_fixture", detail: live ? "明确的合成测试身份；免费真实模型链路待验，正式登录未验。" : "明确的合成测试身份；无真实 Auth 或模型调用。")
             }
-            let readiness = try await json("/readyz", auth: auth)
+            let readiness = try await json("/readyz", auth: auth,timeout:6)
             guard readiness["ready"] as? Bool == true else { return ConversationConnection(state: .unavailable, provider: "OpenRouter", detail: "后台有界执行入口尚未准备好，未发送模型请求。") }
-            return ConversationConnection(state: .providerUnverified, provider: "OpenRouter", detail: "后台 readiness 与登录会话可用；真实模型回答仍待验证。")
+            if let evidence=await recordedReplyEvidence(scope:scope) {return evidence}
+            return ConversationConnection(state: .providerUnverified, provider: "OpenRouter", detail: "服务与登录状态可用；确认处理方式后即可发送消息。")
         } catch { return ConversationConnection(state: .unavailable, provider: "OpenRouter", detail: Self.friendlyTransportMessage(error) + "原请求与输入保留。") }
+    }
+    public func recordCommittedReply(_ request:ConversationTurnRequest) async {
+        guard request.scope==configuration.localScope,!configuration.useFrozenFixtureMetadata,!configuration.allowInjectedTestProvider,
+              let candidate=replyCandidates.removeValue(forKey:request.operationID) else{return}
+        verifiedReplyAt=Date();verifiedModel=candidate.model;observedModelState = .connected
+    }
+    public func recordedReplyEvidence(scope:DataScope) async -> ConversationConnection? {
+        guard scope==configuration.localScope,let at=verifiedReplyAt else{return nil}
+        return .init(state:.connected,provider:"OpenRouter",model:verifiedModel,detail:"已收到并保存完整回复。",verifiedReplyAt:at)
+    }
+    public func imageCapabilities(scope:DataScope,conversationID:UUID) async throws -> ConversationImageCapability {
+        let auth=try await authorization(scope),ready=try await json("/readyz",auth:auth)
+        let advertised=try ConversationImageReadiness.decode(Self.jsonData(ready))
+        guard advertised.available else {return .init(state:advertised.state)}
+        let route=try await json("/catpaw/privacy/v1/image-model-route",auth:auth)
+        guard route["live_transmission_available"] as? Bool == true,let hash=route["route_hash"] as? String,hash.range(of:"^[0-9a-f]{64}$",options:.regularExpression) != nil else {return .init(state:"route_unavailable")}
+        return .init(available:true,liveTransmissionAvailable:true,routeHash:hash,state:"requires_image_consent",detail:"Image route available; separate image consent required")
+    }
+    private func imageConsentPath(_ id:UUID)->String {"/catpaw/privacy/v1/scopes/"+configuration.serverScopeID.uuidString.lowercased()+"/conversations/"+id.uuidString.lowercased()+"/image-model-consent"}
+    public func imageConsent(scope:DataScope,conversationID:UUID,previewID:UUID,previewHash:String) async throws -> ConversationImageConsent {
+        guard configuration.publishableKey != nil,ConversationImageReceipt.isSHA(previewHash) else {throw ConversationSessionError.notConfigured}
+        let capability=try await imageCapabilities(scope:scope,conversationID:conversationID)
+        guard capability.available,capability.liveTransmissionAvailable,let routeHash=capability.routeHash else {throw ConversationSessionError.notConfigured}
+        let auth=try await authorization(scope),metadata=try await json("/catpaw/privacy/v1/image-model-route",auth:auth)
+        try Self.validateImageRoute(metadata,hash:routeHash)
+        let ui=try Self.object(metadata["ui"]),stored=try await json(imageConsentPath(conversationID),auth:auth)
+        let revision:Int
+        if let raw=stored["consent"],!(raw is NSNull) {let row=try Self.imageConsentRow(raw);guard row.scope_id==configuration.serverScopeID,row.conversation_id==conversationID else {throw ConversationSessionError.invalidEvent};revision=row.revision} else {revision=0}
+        func label(_ key:String,max:Int=512) throws -> String {guard let v=ui[key] as? String,!v.isEmpty,v.utf8.count<=max else {throw ConversationSessionError.invalidEvent};return v}
+        return try .init(conversationID:conversationID,previewID:previewID,previewHash:previewHash,routeHash:routeHash,expectedRevision:revision,title:label("title"),body:label("body",max:12000),confirmation:label("content_confirmation"),allowLabel:label("allow"),denyLabel:label("deny"))
+    }
+    public func allowImageConsent(scope:DataScope,consent:ConversationImageConsent,nonSensitiveConfirmed:Bool) async throws -> Int {
+        guard nonSensitiveConfirmed,ConversationImageReceipt.isSHA(consent.previewHash),consent.expectedRevision>=0 else {throw ConversationSessionError.invalidEvent}
+        let auth=try await authorization(scope),metadata=try await json("/catpaw/privacy/v1/image-model-route",auth:auth)
+        try Self.validateImageRoute(metadata,hash:consent.routeHash)
+        let response=try await json(imageConsentPath(consent.conversationID),auth:auth,body:["decision":"allow","expected_revision":consent.expectedRevision,"route_hash":consent.routeHash,"non_sensitive_confirmed":true])
+        let row=try Self.imageConsentRow(response["consent"])
+        guard row.scope_id==configuration.serverScopeID,row.conversation_id==consent.conversationID,row.decision=="allow",row.non_sensitive_confirmed,row.route_hash==consent.routeHash,row.revision==consent.expectedRevision+1 else {throw ConversationSessionError.invalidEvent}
+        return row.revision
+    }
+    private static func imageConsentRow(_ raw:Any?) throws -> NativeImageConsentRow {
+        let row=try JSONDecoder().decode(NativeImageConsentRow.self,from:jsonData(object(raw)))
+        guard ["allow","deny"].contains(row.decision),row.revision>=0,ConversationImageReceipt.isSHA(row.route_hash) else {throw ConversationSessionError.invalidEvent};return row
+    }
+    private static func validateImageRoute(_ metadata:[String:Any],hash:String) throws {
+        guard metadata["route_hash"] as? String==hash,metadata["consent_default"] as? String=="deny",metadata["live_transmission_available"] as? Bool==true,metadata["non_sensitive_confirmation_required"] as? Bool==true else {throw ConversationSessionError.notConfigured}
+        let route=try JSONDecoder().decode(NativeFixedVisionRoute.self,from:jsonData(object(metadata["route"])))
+        guard route.matchesSupportedNotice else {throw ConversationSessionError.invalidEvent}
+    }
+    private static func validateImageSnapshot(_ turn:[String:Any],request:ConversationTurnRequest) throws {
+        if let image=request.image {
+            guard let raw=turn["image_attachments"] else {throw ConversationSessionError.invalidEvent}
+            let receipts=try JSONDecoder().decode([ConversationImageReceipt].self,from:jsonData(raw))
+            guard receipts==[image.receipt] else {throw ConversationSessionError.invalidEvent}
+        }
     }
     public func modelConsent(scope: DataScope, conversationID: UUID) async throws -> ConversationModelConsent? {
         guard configuration.publishableKey != nil else { return nil }
@@ -103,7 +162,7 @@ public actor NativeChatHTTPBackend: ConversationBackend {
                     if http.mimeType == "application/json" {
                         var data = Data(); for try await b in bytes { guard data.count < 2_000_000 else { throw ConversationSessionError.invalidEvent }; data.append(b) }
                         let snapshot = try Self.object(JSONSerialization.jsonObject(with: data)); try Self.chatEnvelope(snapshot)
-                        let turn = try Self.object(snapshot["turn"])
+                        let turn = try Self.object(snapshot["turn"]);try Self.validateImageSnapshot(turn,request:request)
                         for event in try Self.array(turn["events"]) { continuation.yield(try await self.decode(event, request: request, grant: grant, auth: auth)) }
                     } else {
                         guard http.mimeType == "text/event-stream" else { throw ConversationSessionError.invalidEvent }
@@ -150,9 +209,20 @@ public actor NativeChatHTTPBackend: ConversationBackend {
             guard UUID(uuidString: wire["id"] as? String ?? "") == local.id, wire["role"] as? String == local.role.rawValue, wire["content"] as? String == local.content else { throw CatpawError.conflict }
         }
         guard let message = request.history.last, message.role == .user else { throw ConversationSessionError.invalidEvent }
-        let body: [String: Any] = ["turn_id": request.operationID.uuidString.lowercased(), "expected_revision": revision, "expected_grant_epoch": grant,
+        var body: [String: Any] = ["turn_id": request.operationID.uuidString.lowercased(), "expected_revision": revision, "expected_grant_epoch": grant,
                                  "message": ["id": message.id.uuidString.lowercased(), "text": message.content], "context": request.context.map { ["id": $0.id, "text": $0.text] }]
-        let bytes = try Self.jsonData(body); guard bytes.count <= 40000 else { throw CatpawError.invalid("本轮上下文超过后台请求上限。") }
+        guard try Self.jsonData(body).count <= 40000 else {throw CatpawError.invalid("本轮上下文超过后台请求上限。")}
+        if let image=request.image {
+            guard configuration.publishableKey != nil,let imageBytes=request.imageBytes else {throw ConversationSessionError.notConfigured}
+            let capability=try await imageCapabilities(scope:request.scope,conversationID:request.conversationID)
+            guard capability.available,capability.liveTransmissionAvailable,capability.routeHash==image.routeHash else {throw ConversationSessionError.notConfigured}
+            guard try await modelConsent(scope:request.scope,conversationID:request.conversationID)==nil else {throw ConversationSessionError.notConfigured}
+            let row=try Self.imageConsentRow(try await json(imageConsentPath(request.conversationID),auth:auth)["consent"])
+            guard row.scope_id==configuration.serverScopeID,row.conversation_id==request.conversationID,row.decision=="allow",row.non_sensitive_confirmed,row.route_hash==image.routeHash,row.revision==image.consentRevision else {throw ConversationSessionError.notConfigured}
+            body["schema_version"]=2;body["message"]=["id":message.id.uuidString.lowercased(),"text":message.content,"attachments":[try image.wire(imageBytes,messageID:message.id)]]
+        } else {guard request.imageBytes==nil else {throw ConversationSessionError.invalidEvent}}
+        let bytes=try Self.jsonData(body);guard bytes.count <= (request.image==nil ? 40000 : 7_100_000) else {throw CatpawError.invalid("本轮上下文超过后台请求上限。")}
+
         var upload = try self.request(path(request) + "/turns", auth: auth); upload.httpMethod = "POST"; upload.httpBody = bytes
         try Task.checkCancellation()
         return (auth, grant, upload)
@@ -163,7 +233,7 @@ public actor NativeChatHTTPBackend: ConversationBackend {
         let currentGrant = try Self.positive(conversation["grant_epoch"])
         let wrapper = try await json(path(request) + "/turns/" + request.operationID.uuidString.lowercased(), auth: auth)
         try Self.chatEnvelope(wrapper)
-        let turn = try Self.object(wrapper["turn"])
+        let turn = try Self.object(wrapper["turn"]);try Self.validateImageSnapshot(turn,request:request)
         guard UUID(uuidString: turn["id"] as? String ?? "") == request.operationID,
               UUID(uuidString: turn["conversation_id"] as? String ?? "") == request.conversationID,
               UUID(uuidString: turn["scope_id"] as? String ?? "") == configuration.serverScopeID,
@@ -213,15 +283,21 @@ public actor NativeChatHTTPBackend: ConversationBackend {
         let data = try Self.object(wire["data"]), type = wire["type"] as? String
         let payload: ConversationTurnEvent.Payload
         switch type {
-        case "turn_started": payload = .started(requestHash: try Self.sha(data["request_hash"]), conversationRevision: try Self.positive(data["conversation_revision"]), grantEpoch: grant)
+        case "turn_started":
+            let receipts:[ConversationImageReceipt]?
+            if let raw=data["attachment_receipts"] {receipts=try JSONDecoder().decode([ConversationImageReceipt].self,from:Self.jsonData(raw))} else {receipts=nil}
+            if let image=request.image {guard receipts==[image.receipt] else {throw ConversationSessionError.invalidEvent}} else {guard receipts==nil || receipts?.isEmpty==true else {throw ConversationSessionError.invalidEvent}}
+            payload = .started(requestHash: try Self.sha(data["request_hash"]), conversationRevision: try Self.positive(data["conversation_revision"]), grantEpoch: grant,attachmentReceipts:receipts)
         case "text_delta":
             guard reality != "not_configured", let id = UUID(uuidString: data["message_id"] as? String ?? ""), let text = data["text"] as? String else { throw ConversationSessionError.invalidEvent }
             payload = .textDelta(messageID: id, text: text)
         case "tool_call":
+            guard request.image==nil else {throw ConversationSessionError.invalidEvent}
             guard reality != "not_configured", let name = data["name"] as? String, ["delegate_task", "agent_status"].contains(name), let id = data["call_id"] as? String, !id.isEmpty else { throw ConversationSessionError.invalidEvent }
             if name == "delegate_task", let args = data["arguments"] as? [String: Any], let title = args["title"] as? String, title.utf16.count <= 160 { toolTitles[request.operationID, default: [:]][id] = title }
             payload = .toolStarted(callID: id, name: name, arguments: String(decoding: try Self.jsonData(Self.object(data["arguments"])), as: UTF8.self))
         case "tool_result":
+            guard request.image==nil else {throw ConversationSessionError.invalidEvent}
             guard reality != "not_configured", let name = data["name"] as? String, let call = data["call_id"] as? String, !call.isEmpty else { throw ConversationSessionError.invalidEvent }
             let result = try Self.object(data["result"]); var goals: [ConversationGoalProjection] = []
             if name == "delegate_task" {
@@ -249,7 +325,11 @@ public actor NativeChatHTTPBackend: ConversationBackend {
             let known = bindingCache[request.operationID, default: [:]]
             guard confirmed.count == known.count, Set(confirmed.map(\.call_id)).count == confirmed.count,
                   confirmed.allSatisfy({ $0.grant_epoch == grant && known[$0.call_id] == $0 }) else { throw ConversationSessionError.invalidEvent }
-            payload = .completed(messageID: id, finalTextHash: try Self.sha(data["final_text_hash"]))
+            let receipt:ConversationVisionProviderReceipt?
+            if let image=request.image {let value=try JSONDecoder().decode(ConversationVisionProviderReceipt.self,from:Self.jsonData(Self.object(data["provider_receipt"])));guard value.matches(image) else {throw ConversationSessionError.invalidEvent};receipt=value} else {receipt=nil}
+            payload = .completed(messageID: id, finalTextHash: try Self.sha(data["final_text_hash"]),visionReceipt:receipt)
+            replyCandidates[request.operationID] = .init(model:receipt?.actual_model)
+            if replyCandidates.count>64,let oldest=replyCandidates.keys.first {replyCandidates.removeValue(forKey:oldest)}
         case "turn_failed":
             guard let code = data["code"] as? String, let reconciliation = data["reconciliation_required"] as? Bool else { throw ConversationSessionError.invalidEvent }
             payload = .failed(message: code, reconciliationRequired: reconciliation)
@@ -317,8 +397,9 @@ public actor NativeChatHTTPBackend: ConversationBackend {
     private func request(_ path: String, auth: String) throws -> URLRequest {
         try configuration.makeRequest(route:path,authorization:auth)
     }
-    private func json(_ path: String, auth: String, body: [String: Any]? = nil) async throws -> [String: Any] {
+    private func json(_ path: String, auth: String, body: [String: Any]? = nil,timeout:TimeInterval=60) async throws -> [String: Any] {
         var request = try request(path, auth: auth)
+        request.timeoutInterval=timeout
         if let body { request.httpMethod = "POST"; request.httpBody = try Self.jsonData(body) }
         let (data, response) = try await session.data(for: request)
         if (response as? HTTPURLResponse)?.statusCode == 401 { await credentials.rejected(scope: configuration.localScope) }
@@ -347,4 +428,12 @@ private enum NativeChatHTTPFailure: Error, LocalizedError {
 }
 private final class NativeChatNoRedirect: NSObject, URLSessionTaskDelegate, @unchecked Sendable {
     func urlSession(_ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse, newRequest request: URLRequest, completionHandler: @escaping (URLRequest?) -> Void) { completionHandler(nil) }
+}
+
+private struct NativeImageConsentRow:Decodable {let scope_id:UUID;let conversation_id:UUID;let decision:String;let route_hash:String;let revision:Int;let non_sensitive_confirmed:Bool}
+private struct NativeFixedVisionRoute:Decodable {
+ struct Retention:Decodable {let days:Int;let human_review_possible:Bool}
+ struct Policy:Decodable {let only:[String];let allow_fallbacks:Bool;let require_parameters:Bool;let data_collection:String;let max_price:[String:Double]}
+ let provider:String;let downstream_provider:String;let model:String;let free:Bool;let zero_retention_claim:Bool;let privacy_notice_version:Int;let retention:Retention;let routing_policy:Policy
+ var matchesSupportedNotice:Bool {provider=="OpenRouter" && downstream_provider=="Google AI Studio" && model=="google/gemma-4-31b-it:free" && free && !zero_retention_claim && privacy_notice_version==1 && retention.days==55 && retention.human_review_possible && routing_policy.only==["google-ai-studio"] && !routing_policy.allow_fallbacks && routing_policy.require_parameters && routing_policy.data_collection=="deny" && routing_policy.max_price==["prompt":0,"completion":0,"request":0,"image":0]}
 }

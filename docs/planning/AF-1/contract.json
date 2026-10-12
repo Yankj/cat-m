@@ -1,0 +1,451 @@
+{
+  "schema_version": 1,
+  "version": "AF-1-G1",
+  "created_on": "2026-10-13",
+  "timezone": "Asia/Shanghai",
+  "scope": "AF-1 detailed planning supplement; execution results remain in master-plan",
+  "authorities": {
+    "spec": "../../product/agent-foundation-spec.md",
+    "acceptance": "../../acceptance/agent-foundation-acceptance.json",
+    "slices": "../../status/delivery-slices.json",
+    "current_state": "../../status/master-plan.md"
+  },
+  "documents": {
+    "plan": "plan.md",
+    "spec_details": "spec-details.md",
+    "procedures": "acceptance-scenarios.md"
+  },
+  "requirements": [
+    "AF-R01",
+    "AF-R02",
+    "AF-R03",
+    "AF-R04",
+    "AF-R05",
+    "AF-R06",
+    "AF-R07",
+    "AF-R08",
+    "AF-R09",
+    "AF-R10",
+    "AF-R11",
+    "AF-R12"
+  ],
+  "goals": [
+    {
+      "id": "AF-G0",
+      "title": "可追溯开发基线",
+      "depends_on": [],
+      "acceptance_ids": [
+        "AF-A01",
+        "AF-A18"
+      ],
+      "coverage_mode": "preparation_assertions_only",
+      "closes_full_acceptance_cases": false,
+      "extension": false
+    },
+    {
+      "id": "AF-G1",
+      "title": "真实对话可用",
+      "depends_on": [
+        "AF-G0"
+      ],
+      "acceptance_ids": [
+        "AF-A02",
+        "AF-A03",
+        "AF-A04",
+        "AF-A05"
+      ],
+      "supplemental_assertions": [
+        "AF-A17.input_and_consent"
+      ],
+      "coverage_mode": "complete_cases",
+      "extension": false
+    },
+    {
+      "id": "AF-G2",
+      "title": "可恢复执行闭环",
+      "depends_on": [
+        "AF-G1"
+      ],
+      "acceptance_ids": [
+        "AF-A07",
+        "AF-A08",
+        "AF-A09",
+        "AF-A10"
+      ],
+      "scenario_parts": [
+        "CP-01.execution"
+      ],
+      "coverage_mode": "complete_cases",
+      "extension": false
+    },
+    {
+      "id": "AF-G3",
+      "title": "记忆与持续责任",
+      "depends_on": [
+        "AF-G2"
+      ],
+      "acceptance_ids": [
+        "AF-A11",
+        "AF-A12",
+        "AF-A13"
+      ],
+      "scenario_ids": [
+        "CP-02"
+      ],
+      "coverage_mode": "complete_cases",
+      "extension": false
+    },
+    {
+      "id": "AF-G4",
+      "title": "原生完整体验",
+      "depends_on": [
+        "AF-G2"
+      ],
+      "acceptance_ids": [
+        "AF-A06",
+        "AF-A14",
+        "AF-A15",
+        "AF-A16",
+        "AF-A17"
+      ],
+      "scenario_ids": [
+        "CP-03"
+      ],
+      "coverage_mode": "complete_cases",
+      "extension": false
+    },
+    {
+      "id": "AF-G5",
+      "title": "通用主动Agent底座签收",
+      "depends_on": [
+        "AF-G3",
+        "AF-G4"
+      ],
+      "acceptance_ids": [
+        "AF-A01",
+        "AF-A02",
+        "AF-A03",
+        "AF-A04",
+        "AF-A05",
+        "AF-A06",
+        "AF-A07",
+        "AF-A08",
+        "AF-A09",
+        "AF-A10",
+        "AF-A11",
+        "AF-A12",
+        "AF-A13",
+        "AF-A14",
+        "AF-A15",
+        "AF-A16",
+        "AF-A17",
+        "AF-A18"
+      ],
+      "scenario_ids": [
+        "CP-01",
+        "CP-02",
+        "CP-03"
+      ],
+      "coverage_mode": "all_required_cases_and_scenarios_same_release",
+      "extension": false
+    }
+  ],
+  "work_units": [
+    {
+      "id": "W00",
+      "parent_slice": "S00",
+      "delivery": "来源和构建准备",
+      "depends_on": [],
+      "acceptance_ids": [
+        "AF-A01",
+        "AF-A18"
+      ],
+      "coverage_mode": "preparation",
+      "procedure": "acceptance-scenarios.md"
+    },
+    {
+      "id": "W10",
+      "parent_slice": "S01",
+      "delivery": "许可可找回，批准原意图一次",
+      "depends_on": [
+        "W00"
+      ],
+      "acceptance_ids": [
+        "AF-A02"
+      ],
+      "coverage_mode": "complete_cases",
+      "procedure": "acceptance-scenarios.md"
+    },
+    {
+      "id": "W11",
+      "parent_slice": "S01",
+      "delivery": "真实回复追问持久化",
+      "depends_on": [
+        "W10"
+      ],
+      "acceptance_ids": [
+        "AF-A03"
+      ],
+      "coverage_mode": "complete_cases",
+      "procedure": "acceptance-scenarios.md"
+    },
+    {
+      "id": "W12",
+      "parent_slice": "S01",
+      "delivery": "真流式与只读恢复",
+      "depends_on": [
+        "W11"
+      ],
+      "acceptance_ids": [
+        "AF-A04",
+        "AF-A05"
+      ],
+      "coverage_mode": "complete_cases",
+      "procedure": "acceptance-scenarios.md"
+    },
+    {
+      "id": "W20",
+      "parent_slice": "S02",
+      "delivery": "真实图像理解与恢复",
+      "depends_on": [
+        "W11",
+        "W12"
+      ],
+      "acceptance_ids": [
+        "AF-A06"
+      ],
+      "coverage_mode": "complete_cases",
+      "procedure": "acceptance-scenarios.md"
+    },
+    {
+      "id": "W30",
+      "parent_slice": "S03",
+      "delivery": "自然目标与同任务计划修改",
+      "depends_on": [
+        "W11"
+      ],
+      "acceptance_ids": [
+        "AF-A07"
+      ],
+      "coverage_mode": "complete_cases",
+      "procedure": "acceptance-scenarios.md"
+    },
+    {
+      "id": "W31",
+      "parent_slice": "S03",
+      "delivery": "真实读取与成果回流",
+      "depends_on": [
+        "W30"
+      ],
+      "acceptance_ids": [
+        "AF-A08"
+      ],
+      "coverage_mode": "complete_cases",
+      "procedure": "acceptance-scenarios.md"
+    },
+    {
+      "id": "W32",
+      "parent_slice": "S03",
+      "delivery": "版本绑定审批与真实效果",
+      "depends_on": [
+        "W30"
+      ],
+      "acceptance_ids": [
+        "AF-A09"
+      ],
+      "coverage_mode": "complete_cases",
+      "procedure": "acceptance-scenarios.md"
+    },
+    {
+      "id": "W33",
+      "parent_slice": "S03",
+      "delivery": "PG竞争、重启、撤权与unknown核对",
+      "depends_on": [
+        "W31",
+        "W32"
+      ],
+      "acceptance_ids": [
+        "AF-A10"
+      ],
+      "coverage_mode": "complete_cases",
+      "procedure": "acceptance-scenarios.md"
+    },
+    {
+      "id": "W40",
+      "parent_slice": "S04",
+      "delivery": "记忆保存更正删除",
+      "depends_on": [
+        "W11"
+      ],
+      "acceptance_ids": [
+        "AF-A11"
+      ],
+      "coverage_mode": "complete_cases",
+      "procedure": "acceptance-scenarios.md"
+    },
+    {
+      "id": "W50",
+      "parent_slice": "S05",
+      "delivery": "离线跨实际due的服务端调度",
+      "depends_on": [
+        "W33"
+      ],
+      "acceptance_ids": [
+        "AF-A12"
+      ],
+      "coverage_mode": "complete_cases",
+      "procedure": "acceptance-scenarios.md"
+    },
+    {
+      "id": "W51",
+      "parent_slice": "S05",
+      "delivery": "条件变化去重退避停止",
+      "depends_on": [
+        "W50"
+      ],
+      "acceptance_ids": [
+        "AF-A13"
+      ],
+      "coverage_mode": "complete_cases",
+      "procedure": "acceptance-scenarios.md"
+    },
+    {
+      "id": "W60",
+      "parent_slice": "S06",
+      "delivery": "EventKit精确确认写入",
+      "depends_on": [
+        "W32"
+      ],
+      "acceptance_ids": [
+        "AF-A14"
+      ],
+      "coverage_mode": "complete_cases",
+      "procedure": "acceptance-scenarios.md"
+    },
+    {
+      "id": "W61",
+      "parent_slice": "S06",
+      "delivery": "系统提醒与原事项返回",
+      "depends_on": [
+        "W60"
+      ],
+      "acceptance_ids": [
+        "AF-A15"
+      ],
+      "coverage_mode": "complete_cases",
+      "procedure": "acceptance-scenarios.md"
+    },
+    {
+      "id": "W70",
+      "parent_slice": "S07",
+      "delivery": "六类原生卡与完整导航体验",
+      "depends_on": [
+        "W20",
+        "W31",
+        "W32",
+        "W40",
+        "W51",
+        "W61"
+      ],
+      "acceptance_ids": [
+        "AF-A16",
+        "AF-A17"
+      ],
+      "coverage_mode": "complete_cases",
+      "procedure": "acceptance-scenarios.md"
+    },
+    {
+      "id": "W71",
+      "parent_slice": "S07",
+      "delivery": "同版组合签收与来源交付",
+      "depends_on": [
+        "W12",
+        "W33",
+        "W40",
+        "W51",
+        "W61",
+        "W70"
+      ],
+      "acceptance_ids": [
+        "AF-A01",
+        "AF-A18"
+      ],
+      "coverage_mode": "complete_cases",
+      "procedure": "acceptance-scenarios.md"
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "CP-01",
+      "title": "研究交付与改稿",
+      "acceptance_ids": [
+        "AF-A03",
+        "AF-A05",
+        "AF-A07",
+        "AF-A08",
+        "AF-A11",
+        "AF-A16"
+      ],
+      "required": true,
+      "procedure": "acceptance-scenarios.md"
+    },
+    {
+      "id": "CP-02",
+      "title": "无人提问的变化跟进",
+      "acceptance_ids": [
+        "AF-A07",
+        "AF-A08",
+        "AF-A12",
+        "AF-A13"
+      ],
+      "required": true,
+      "procedure": "acceptance-scenarios.md"
+    },
+    {
+      "id": "CP-03",
+      "title": "本地日程与可控提醒",
+      "acceptance_ids": [
+        "AF-A07",
+        "AF-A09",
+        "AF-A14",
+        "AF-A15"
+      ],
+      "required": true,
+      "procedure": "acceptance-scenarios.md"
+    }
+  ],
+  "extensions": [
+    {
+      "id": "AF-C",
+      "acceptance_ids": [
+        "AF-C01",
+        "AF-C02",
+        "AF-C03"
+      ],
+      "required_for_AF_G5": false,
+      "activation": "cloud-computer scope, hosting, region and budget confirmed"
+    },
+    {
+      "id": "AF-P",
+      "required_for_AF_G5": false,
+      "activation": "APNs remote-change scope and concrete deployment confirmed",
+      "existing_acceptance_ids": [],
+      "note": "local known-time notification and persistent inbox are AF-1; remote immediate push requires a new acceptance contract"
+    },
+    {
+      "id": "AF-V",
+      "required_for_AF_G5": false,
+      "activation": "voice scope and acceptance contract confirmed"
+    }
+  ],
+  "release_rules": {
+    "final_goal": "AF-G5",
+    "all_required_cases": true,
+    "all_required_scenarios": true,
+    "same_release_manifest": true,
+    "missing_evidence_is_pass": false,
+    "synthetic_can_replace_real_evidence": false,
+    "unchanged_provider_route_first": true,
+    "unknown_may_auto_replay": false
+  }
+}
