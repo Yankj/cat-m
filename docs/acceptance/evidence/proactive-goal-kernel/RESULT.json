@@ -1,0 +1,99 @@
+{
+  "schema_version": 1,
+  "synthetic_only": true,
+  "date": "2026-10-12",
+  "branch": "feat/proactive-goal-kernel",
+  "base_commit": "c1e23c287dd0e1da36067dfea2f1712555f56d0d",
+  "base_tracked_files": 622,
+  "remote_main_observed": "78d9002fb57706f8663d3812f146d60e61b75897",
+  "remote_default_branch_observed": "prepare/local-assets",
+  "baseline_policy": "Keep c1e23c28 per delegated steering; read later main branch policy without reset/merge.",
+  "runtime": "Node v24.19.0; existing runtime; no installed dependencies",
+  "execution_layer": "serialized_synthetic_test_repository_and_adapter",
+  "tests": {
+    "new_goal_kernel": 23,
+    "existing_logout_regression": 1,
+    "total": 24,
+    "passed": 24,
+    "failed": 0,
+    "command": "node --experimental-transform-types --test --test-reporter=tap services/edge/test/proactive-goal-kernel.test.mjs services/edge/test/logout-owner-regression.test.mjs",
+    "cases": [
+      "logout writes delegation and task under resource owner, preserving system-owner shadows and other sessions",
+      "travel: evidence-bound alternative waits for explicit approval; estimate 14:00 is not actual arrival",
+      "report generation, provider acceptance and reconciled effect do not mean confirmed delivery",
+      "event duplicate is idempotent; conflicting same revision rejects; later-ingested older revision cannot replace head",
+      "CAS version race has one winner; goal update expires both suggestion and approval",
+      "accepted event correction expires approvals and excludes superseded evidence from new proposals",
+      "cross tenant and same-scope other subject cannot adopt goals, approve or dispatch",
+      "paused stops existing task lease, actions and pending notifications",
+      "revoked stops existing task lease, actions and pending notifications",
+      "user completes independently: cancel pending purchase and never regain permissions on new observation",
+      "worker lease loss, lease replacement and invocation reserve close prevent effects",
+      "revocation at transport boundary checks again; no effect and durable unknown is read-only reconcilable",
+      "fresh session and existing provider consent are checked before effect",
+      "unknown acknowledgement survives repository restore; never replay, including a new goal version",
+      "lost lease after effect records unknown instead of acknowledging success or repeating",
+      "unknown/no-effect lookup does not authorize retry; not-applied receipt needs a fresh proposal",
+      "quiet period suppresses notification; restored outbox publishes one deduplicated inbox entry",
+      "outbox + proposal roll back atomically if authority fails after writes",
+      "final authority await cannot carry proposal across worker lease expiry",
+      "approved proposal expires by clock; user denial is idempotent and cannot dispatch",
+      "arrival after 16:00 fails time-bound completion and a stale quiet-period message is cancelled",
+      "outcome publication cannot consume finalization reserve after its final authority await",
+      "unsupported version, third-party permission text, expired proposals and non-synthetic adapters fail closed",
+      "scoped CAS SQL uses scope predicate and parameterized JSON; serializer test is not real PG evidence"
+    ]
+  },
+  "checks": {
+    "repository_integrity": "PASS",
+    "sensitivity": "PASS; zero blocking/manual-review hits",
+    "diff_whitespace": "PASS",
+    "git_fsck": "PASS exit 0; later fetched main was initially dangling because fetch had no tracking ref"
+  },
+  "files_sha256": {
+    "services/edge/supabase/functions/_shared/core/integration/server-foundation/src/foundation.mjs": "9c1834f670bde296dbaa64060cd1284aee581a8e25c7fbe6dc0692e2e1247dfd",
+    "services/edge/supabase/functions/_shared/core/integration/server-foundation/src/test-repository.mjs": "a19e03f7f635db01d302a01f0ebaf5571b5933ffdcac9d68e4db29cc108e8786",
+    "services/edge/supabase/functions/_shared/core/integration/server-foundation/src/postgres-repository.mjs": "abd4c44d76876986087057b5db826718b0546105416c1808ca13c1d663b8439d",
+    "services/edge/supabase/functions/_shared/core/integration/server-foundation/src/proactive-goal-kernel.mjs": "2b5a32b61075f16629f9392bfe76b3cb585b3928d6f8b9ddc31c38eb0ddc5c13",
+    "services/edge/test/fixtures/synthetic-goal-adapter.mjs": "193137984ccdfa30138b0df6ddc913a6a4aece11ee0756cc3b6dc057260e99cf",
+    "services/edge/test/proactive-goal-kernel.test.mjs": "43c840acfaef7d65e884154d120771c456eb739a87ba035c341bff89e34bc786",
+    "services/edge/test/logout-owner-regression.test.mjs": "ee640555519c9f3279addebb5cdd9e6ff0ff810af82f44530b15ac457297e52e",
+    "docs/spec/proactive-goal-kernel-v1.md": "ac0aabe8c06f084e844b6f3c7ccf2bef0859f950b980d7c1aeb1eb9993d43794",
+    "docs/acceptance/proactive-goal-kernel.md": "9bf080f45e0e76a2df24808260f2104c377435dcc09ac23bd435599bb5db9be7",
+    "docs/status/master-plan.md": "68a3f84d78d4989dd635679fec62a097b810087bc04659ef1e982a76830e14d3",
+    "docs/README.md": "6b63e3b135e85c9016aa7dc3788e1b21ae7ab6e6c0f8bc5baaac5a6cabd18752"
+  },
+  "raw_logs_sha256": {
+    "services/edge/build/proactive-goal-kernel/tests.tap": "0e0e2d367ee343dfd85e419abaa169e050e669fa76cf4b7a20f0c451e07b171f",
+    "services/edge/build/proactive-goal-kernel/integrity.txt": "1bb67173eb0b659474afd45ac05604e9fb8492515d9f2408006c25fb5bf3865d",
+    "services/edge/build/proactive-goal-kernel/sensitivity.txt": "a653f321ea5b14266dbe712d782b5716c978acfeddf581f278fbce7dc273b70d",
+    "services/edge/build/proactive-goal-kernel/sensitivity.json": "e0fb3dd615749a5b2680bf78cea8eca325a1ccc4b6d6a1cc9668a6c339b2b4ea"
+  },
+  "full_edge_regression": {
+    "status": "NOT_RUN",
+    "reason": "Deno executable unavailable and explicit public dependency cache not supplied",
+    "observed_error": "scripts/test-edge-offline.sh: 6: CATPAW_PUBLIC_NPM_CACHE: Set CATPAW_PUBLIC_NPM_CACHE to an existing public Deno cache; no automatic install"
+  },
+  "not_verified": [
+    "real PostgreSQL concurrency/durability",
+    "multiple worker processes",
+    "held-out semantic accuracy",
+    "production authority or long-lived goal grants",
+    "real adapter reconciliation/delivery evidence",
+    "deletion/backup fences",
+    "native UI/product acceptance"
+  ],
+  "disabled": [
+    "production kernel",
+    "real adapters",
+    "HTTP integration",
+    "model calls",
+    "user-content access",
+    "email access",
+    "Cron/tick/start",
+    "production database migration",
+    "deployment",
+    "credentials",
+    "push/merge"
+  ]
+}

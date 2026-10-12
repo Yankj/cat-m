@@ -39,6 +39,13 @@ class TestTransaction {
     this.rows.set(this.key(kind, value.id), clone(value)); return clone(value);
   }
   async remove(kind, id) { ensure(!immutableKinds.has(kind), 'immutable_or_duplicate', 409); this.rows.delete(this.key(kind, id)); }
+  async compareAndSwap(kind, id, expected, patch) {
+    ensure(!immutableKinds.has(kind), 'immutable_or_duplicate', 409);
+    const old = await this.get(kind, id);
+    if (!old || !Object.entries(expected).every(([k, v]) => Object.hasOwn(old, k) && hash(old[k]) === hash(v))) return null;
+    ensure(!Object.hasOwn(patch, 'id') && !Object.hasOwn(patch, 'scope_id'), 'identity_patch_forbidden', 409);
+    return this.put(kind, { ...old, ...clone(patch) });
+  }
   async search(queryTokens) {
     return (await this.list('facts')).filter(v => queryTokens.some(t => v.search_text.split(' ').includes(t)));
   }

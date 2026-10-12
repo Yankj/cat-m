@@ -331,7 +331,7 @@ export class Foundation {
   }
   async createGoal(principal, scopeId, input) {
     exact(input, ['goal_id', 'title', 'description']); uuid(input.goal_id); text(input.title, 160); text(input.description, 4000);
-    return this.scoped(principal, scopeId, async tx => { const row = { id: input.goal_id, scope_id: scopeId, title: input.title, description: input.description, revision: 1, created_at: this.now() }; await tx.put('goals', row, { insert: true }); await this.emit(tx, 'goal_recorded', { goal_id: row.id }); return row; });
+    return this.scoped(principal, scopeId, async tx => { const row = { id: input.goal_id, scope_id: scopeId, subject_id: principal.subject_id, title: input.title, description: input.description, revision: 1, created_at: this.now() }; await tx.put('goals', row, { insert: true }); await this.emit(tx, 'goal_recorded', { goal_id: row.id }); return row; });
   }
   async linkExecution(principal, scopeId, input) {
     exact(input, ['conversation_id', 'turn_id', 'call_id', 'delegation_id', 'operation_id', 'run_id', 'task_id', 'request_hash', 'delegation_revision', 'grant_epoch'], ['goal_id']);

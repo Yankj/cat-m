@@ -54,6 +54,12 @@ export class PostgresTransaction {
     return value;
   }
   async remove(kind, id) { ensure(!immutableKinds.has(kind), 'immutable_or_duplicate', 409); await this.connection.query(`DELETE FROM ${this.table(kind)} WHERE scope_id=$1 AND id=$2`, [this.scopeId, id]); }
+  async compareAndSwap(kind, id, expected, patch) {
+    ensure(!immutableKinds.has(kind), 'immutable_or_duplicate', 409);
+    ensure(!Object.hasOwn(patch, 'id') && !Object.hasOwn(patch, 'scope_id'), 'identity_patch_forbidden', 409);
+    const r = await this.connection.query(`UPDATE ${this.table(kind)} SET data=data || $4::jsonb WHERE scope_id=$1 AND id=$2 AND NOT EXISTS(SELECT 1 FROM jsonb_each($3::jsonb) AS e WHERE data->e.key IS DISTINCT FROM e.value) RETURNING data`, [this.scopeId, id, JSON.stringify(expected), JSON.stringify(patch)]);
+    return r.rows[0]?.data ?? null;
+  }
   async search(queryTokens) {
     if (!queryTokens.length) return [];
     // queryTokens come from the deterministic tokenizer, NEVER raw tsquery/SQL supplied by a model.
