@@ -1,8 +1,10 @@
 # AF-1 新交付计划与可验收 Goal
 
-版本：AF-1-G2-UX1，2026-10-13。本文是当前 [AF-1 spec](../../product/agent-foundation-spec.md) 和 [S00–S08 切片](../../status/delivery-slices.json) 的详细执行合同，不维护另一份实时进度。当前结果、负责人和阻塞只更新 [master-plan](../../status/master-plan.md)。功能细则见 [spec-details](spec-details.md)，执行脚本见 [acceptance-scenarios](acceptance-scenarios.md)，对应关系见 [contract.json](contract.json)。
+版本：AF-1-G3-UX1，2026-10-13。本文是当前 [AF-1 spec](../../product/agent-foundation-spec.md) 和 [S00–S08 切片](../../status/delivery-slices.json) 的详细执行合同，不维护另一份实时进度。当前结果、负责人和阻塞只更新 [master-plan](../../status/master-plan.md)。功能细则见 [spec-details](spec-details.md)，执行脚本见 [acceptance-scenarios](acceptance-scenarios.md)，对应关系见 [contract.json](contract.json)。
 
 ## 1. 总 Goal：交付可日常使用的通用主动 Agent 底座
+
+当前持续Goal的完整执行定义见[goal.md](goal.md)。本轮将design/research全部输入及截图调用/观察边界收齐到[来源映射](goal-evidence-map.json)，D00–D50设计线与S01–S07同步推进；对应表与范围取舍以该定义为准。不新建Goal，不以本次合同更新关闭产品验收。
 
 **AF-G5 的可验收表述：在同一版 Swift 优先的 iPhone App 和对应服务端上，用户从正常对话入口提出目标，Agent 能形成可修改计划、调用已登记工具、在需要时等待决定、在离开 App 后继续已受理的云端工作，并把可核对成果交回原会话；用户能管理记忆、时间/条件跟进和本地日程动作。全部 AF-A01–18、AF-U01–12 与 CP-01–03 同版通过，源码、包、部署和证据对应，才关闭本 Goal。**
 
