@@ -13,6 +13,7 @@ import UIKit
     private var witnesses:[UUID:WeakWitness]=[:]
     private var samples:[[String:Any]]=[]
     private var identity:[String:Any]=[:]
+    private var readingPosition:[String:Any]=[:]
     private var exported=false
     private var callbackPoints:[[String:Any]]=[]
     private struct WeakWitness { weak var view:UIView? }
@@ -47,10 +48,17 @@ import UIKit
         return !visible.isEmpty && !visible.isNull
     }
     func exportMetrics(){exported=true;P0PerformanceLog.shared.freeze();revision += 1}
+    func reading(followingLatest:Bool,distance:CGFloat) {
+        guard enabled else {return}
+        let rounded=Int(distance.rounded())
+        guard readingPosition["reading_following_latest"] as? Bool != followingLatest || readingPosition["reading_distance_from_bottom"] as? Int != rounded else {return}
+        readingPosition=["reading_following_latest":followingLatest,"reading_distance_from_bottom":rounded];revision += 1
+    }
     var json:String {
         let start=ProcessInfo.processInfo.systemUptime
         defer {P0PerformanceLog.shared.record("probe_json_encode",start:start,end:ProcessInfo.processInfo.systemUptime,main:true)}
         var result=identity
+        result.merge(readingPosition){_,new in new}
         result["fixture_reality"]="injected_synthetic_offline";result["external_network_enabled"]=false
         result["measurement_kind"]="simulator_action_to_visible_geometry_at_display_link_callback"
         result["is_presented_frame_proof"]=false;result["frame_sample_kind"]="active_main_run_loop_display_link_callback_intervals"
