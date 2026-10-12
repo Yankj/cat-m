@@ -273,7 +273,24 @@
       "minimum_evidence": [
         "real_service",
         "physical_device"
-      ]
+      ],
+      "required_subcontract": {
+        "path": "ios-codex-experience-acceptance.json",
+        "case_ids": [
+          "AF-U01",
+          "AF-U02",
+          "AF-U03",
+          "AF-U04",
+          "AF-U05",
+          "AF-U06",
+          "AF-U07",
+          "AF-U08",
+          "AF-U09",
+          "AF-U10",
+          "AF-U11",
+          "AF-U12"
+        ]
+      }
     },
     {
       "id": "AF-A18",

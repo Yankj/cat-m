@@ -1,0 +1,284 @@
+{
+  "schema_version": 1,
+  "spec_version": "UX-1",
+  "spec_path": "../design/ios-codex-experience-spec.md",
+  "procedure_path": "ios-codex-experience-acceptance.md",
+  "parent_case": "AF-A17",
+  "goal": "AF-GD",
+  "result_authority": "../status/master-plan.md",
+  "same_release_required": true,
+  "prototype_can_replace_native": false,
+  "evidence_record_required": [
+    "sourceCommit_or_dirtyFilesSHA256",
+    "appBuild",
+    "caseID",
+    "device",
+    "width",
+    "textSize",
+    "theme",
+    "actualSteps",
+    "result",
+    "evidenceKind",
+    "evidenceSHA256",
+    "knownLimitations"
+  ],
+  "cases": [
+    {
+      "id": "AF-U01",
+      "title": "信息架构",
+      "required": true,
+      "parent_case": "AF-A17",
+      "owner_slice": "S07",
+      "implementation_slices": [
+        "S01",
+        "S07"
+      ],
+      "supporting_acceptance_ids": [
+        "AF-A17"
+      ],
+      "procedure": "ios-codex-experience-acceptance.md",
+      "procedure_id": "AF-U01",
+      "minimum_evidence": [
+        "physical_device",
+        "native_rendered_ui"
+      ]
+    },
+    {
+      "id": "AF-U02",
+      "title": "主对话",
+      "required": true,
+      "parent_case": "AF-A17",
+      "owner_slice": "S07",
+      "implementation_slices": [
+        "S01",
+        "S07"
+      ],
+      "supporting_acceptance_ids": [
+        "AF-A17"
+      ],
+      "procedure": "ios-codex-experience-acceptance.md",
+      "procedure_id": "AF-U02",
+      "minimum_evidence": [
+        "physical_device",
+        "native_rendered_ui"
+      ]
+    },
+    {
+      "id": "AF-U03",
+      "title": "输入与附件",
+      "required": true,
+      "parent_case": "AF-A17",
+      "owner_slice": "S07",
+      "implementation_slices": [
+        "S01",
+        "S02"
+      ],
+      "supporting_acceptance_ids": [
+        "AF-A02",
+        "AF-A06",
+        "AF-A17"
+      ],
+      "procedure": "ios-codex-experience-acceptance.md",
+      "procedure_id": "AF-U03",
+      "minimum_evidence": [
+        "physical_device",
+        "native_rendered_ui",
+        "parent_case_real_evidence"
+      ]
+    },
+    {
+      "id": "AF-U04",
+      "title": "流式阅读",
+      "required": true,
+      "parent_case": "AF-A17",
+      "owner_slice": "S07",
+      "implementation_slices": [
+        "S01"
+      ],
+      "supporting_acceptance_ids": [
+        "AF-A04",
+        "AF-A05",
+        "AF-A17"
+      ],
+      "procedure": "ios-codex-experience-acceptance.md",
+      "procedure_id": "AF-U04",
+      "minimum_evidence": [
+        "physical_device",
+        "native_rendered_ui",
+        "parent_case_real_evidence"
+      ]
+    },
+    {
+      "id": "AF-U05",
+      "title": "侧栏",
+      "required": true,
+      "parent_case": "AF-A17",
+      "owner_slice": "S07",
+      "implementation_slices": [
+        "S07"
+      ],
+      "supporting_acceptance_ids": [
+        "AF-A17"
+      ],
+      "procedure": "ios-codex-experience-acceptance.md",
+      "procedure_id": "AF-U05",
+      "minimum_evidence": [
+        "physical_device",
+        "native_rendered_ui"
+      ]
+    },
+    {
+      "id": "AF-U06",
+      "title": "任务与计划",
+      "required": true,
+      "parent_case": "AF-A17",
+      "owner_slice": "S07",
+      "implementation_slices": [
+        "S03"
+      ],
+      "supporting_acceptance_ids": [
+        "AF-A07",
+        "AF-A10",
+        "AF-A17"
+      ],
+      "procedure": "ios-codex-experience-acceptance.md",
+      "procedure_id": "AF-U06",
+      "minimum_evidence": [
+        "physical_device",
+        "native_rendered_ui",
+        "parent_case_real_evidence"
+      ]
+    },
+    {
+      "id": "AF-U07",
+      "title": "审批",
+      "required": true,
+      "parent_case": "AF-A17",
+      "owner_slice": "S07",
+      "implementation_slices": [
+        "S01",
+        "S03",
+        "S06"
+      ],
+      "supporting_acceptance_ids": [
+        "AF-A02",
+        "AF-A09",
+        "AF-A17"
+      ],
+      "procedure": "ios-codex-experience-acceptance.md",
+      "procedure_id": "AF-U07",
+      "minimum_evidence": [
+        "physical_device",
+        "native_rendered_ui",
+        "parent_case_real_evidence"
+      ]
+    },
+    {
+      "id": "AF-U08",
+      "title": "成果",
+      "required": true,
+      "parent_case": "AF-A17",
+      "owner_slice": "S07",
+      "implementation_slices": [
+        "S03",
+        "S07"
+      ],
+      "supporting_acceptance_ids": [
+        "AF-A08",
+        "AF-A16",
+        "AF-A17"
+      ],
+      "procedure": "ios-codex-experience-acceptance.md",
+      "procedure_id": "AF-U08",
+      "minimum_evidence": [
+        "physical_device",
+        "native_rendered_ui",
+        "parent_case_real_evidence"
+      ]
+    },
+    {
+      "id": "AF-U09",
+      "title": "记忆与跟进",
+      "required": true,
+      "parent_case": "AF-A17",
+      "owner_slice": "S07",
+      "implementation_slices": [
+        "S04",
+        "S05"
+      ],
+      "supporting_acceptance_ids": [
+        "AF-A11",
+        "AF-A13",
+        "AF-A17"
+      ],
+      "procedure": "ios-codex-experience-acceptance.md",
+      "procedure_id": "AF-U09",
+      "minimum_evidence": [
+        "physical_device",
+        "native_rendered_ui",
+        "parent_case_real_evidence"
+      ]
+    },
+    {
+      "id": "AF-U10",
+      "title": "视觉一致性",
+      "required": true,
+      "parent_case": "AF-A17",
+      "owner_slice": "S07",
+      "implementation_slices": [
+        "S07"
+      ],
+      "supporting_acceptance_ids": [
+        "AF-A17"
+      ],
+      "procedure": "ios-codex-experience-acceptance.md",
+      "procedure_id": "AF-U10",
+      "minimum_evidence": [
+        "physical_device",
+        "native_rendered_ui"
+      ]
+    },
+    {
+      "id": "AF-U11",
+      "title": "尺寸与可访问性",
+      "required": true,
+      "parent_case": "AF-A17",
+      "owner_slice": "S07",
+      "implementation_slices": [
+        "S07"
+      ],
+      "supporting_acceptance_ids": [
+        "AF-A17"
+      ],
+      "procedure": "ios-codex-experience-acceptance.md",
+      "procedure_id": "AF-U11",
+      "minimum_evidence": [
+        "physical_device",
+        "native_rendered_ui"
+      ]
+    },
+    {
+      "id": "AF-U12",
+      "title": "转场与恢复",
+      "required": true,
+      "parent_case": "AF-A17",
+      "owner_slice": "S07",
+      "implementation_slices": [
+        "S01",
+        "S07"
+      ],
+      "supporting_acceptance_ids": [
+        "AF-A04",
+        "AF-A05",
+        "AF-A17"
+      ],
+      "procedure": "ios-codex-experience-acceptance.md",
+      "procedure_id": "AF-U12",
+      "minimum_evidence": [
+        "physical_device",
+        "native_rendered_ui",
+        "parent_case_real_evidence"
+      ]
+    }
+  ]
+}

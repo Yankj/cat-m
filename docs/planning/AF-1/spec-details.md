@@ -128,3 +128,7 @@ CopilotKit spike 只做现有 runner→事件→Swift 解码→一张真实卡�
 任意电脑操作/浏览器登录、通用 MCP OAuth/工具商店、语音通话、多个 Specialist 独立学习、自动多 Agent、复杂空间编辑器、多设备实时协作和全量动态生成页面另立扩展 Goal。AF-1 只保证已登记工具可组合；不宣称覆盖所有 dot/Muse 功能。
 
 参考输入：[本轮三仓核验](../../../research/openmuse-opendots-copilotkit-assessment-2026-10-13.md)、[复盘](../../../design/catpaw-restart-review-and-plan-2026-10-13.md)、[handoff](../../../handoff.md)、[执行器/云电脑待确认方案](../../architecture/cloud-computer-proposal.md)。
+
+## iPhone设计必需合同
+
+用户确定以iPhone体验为主，借鉴桌面Codex信息结构。[UX-1](../../design/ios-codex-experience-spec.md)规定主对话、输入/附件、侧栏、任务审批、成果、记忆跟进、视觉和全状态布局；[前期画面对照](../../design/ios-codex-reference-review-2026-10-13.md)区分原图与会话观察。AF-GD及AF-U01–12是AF-A17/最终AF-G5的必需条件；可点按网页只评审设计方向。原生实施在各片推进，不留到全部功能完成后再改体验。
