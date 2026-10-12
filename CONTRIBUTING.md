@@ -16,4 +16,4 @@ git diff --cached --check
 git status --short
 ```
 
-扫描只给出风险线索，必须审阅每个命中。不得纳入 key/token、`.env`、真实用户记录、内部资料、设备身份、绝对个人路径、构建产物或大归档；测试使用 `example.invalid`、具名合成身份和隔离数据目录。上游 LICENSE、固定 commit、原文与 patched 差异必须保留。未来实际发布前再次获取远端引用，确认无新用户修改，再按用户授权行动。本轮只准备本地待提交差异。
+扫描只给出风险线索，必须审阅每个命中。不得纳入 key/token、`.env`、真实用户记录、内部资料、设备身份、绝对个人路径、构建产物或大归档；测试使用 `example.invalid`、具名合成身份和隔离数据目录。上游 LICENSE、固定 commit、原文与 patched 差异必须保留。未来实际发布前再次获取远端引用，确认无新用户修改，再按用户授权行动。分支用途、历史隔离与同步流程见 [分支管理](docs/development/branch-management.md)。
