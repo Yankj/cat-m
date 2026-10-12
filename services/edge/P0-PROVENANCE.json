@@ -1,0 +1,121 @@
+{
+  "schema_version": 1,
+  "kind": "undeployed-dialogue-p0-owner-provenance",
+  "base_commit": "b7fa4ee5f8d144208d51f6d0dcdee9259c4315b7",
+  "frozen_archive_sha256": "04507ff3f7cbdb226563e36960c0f90b514a747770406222793384a59b42553e",
+  "frozen_manifest_sha256": "e35f45d51701d83f4459361b08ad1b65b54965f6597269297297b811cc47a1d8",
+  "owner_saved_regression": "44 passed / 1 failed; cached notification revocation cleanup",
+  "files": [
+    {
+      "path": "supabase/functions/_shared/api.mjs",
+      "source_sha256": "c03e5ea054a698c2187b7b46b00abd9f2e1c09f5e97639cd40de53dc32a4c4ec",
+      "sha256": "c03e5ea054a698c2187b7b46b00abd9f2e1c09f5e97639cd40de53dc32a4c4ec",
+      "transformed": false
+    },
+    {
+      "path": "supabase/functions/_shared/core/integration/server-foundation/src/postgres-repository.mjs",
+      "source_sha256": "2b9b38becaa7743598bc0a0a304278c4ad19c1610ebb864631183265392f4d46",
+      "sha256": "2b9b38becaa7743598bc0a0a304278c4ad19c1610ebb864631183265392f4d46",
+      "transformed": false
+    },
+    {
+      "path": "supabase/functions/_shared/core/integration/server-foundation/src/test-repository.mjs",
+      "source_sha256": "9de68fb86a263f8326d9016b10b7fce29820c8f5aed725b61f545881a44594c5",
+      "sha256": "9de68fb86a263f8326d9016b10b7fce29820c8f5aed725b61f545881a44594c5",
+      "transformed": false
+    },
+    {
+      "path": "supabase/functions/_shared/core/src/chat-metrics.mjs",
+      "source_sha256": "f4c2c94bded2042dda8cc44466f1f41129910d2df766af27746b73e48adcb711",
+      "sha256": "f4c2c94bded2042dda8cc44466f1f41129910d2df766af27746b73e48adcb711",
+      "transformed": false
+    },
+    {
+      "path": "supabase/functions/_shared/core/src/chat-service.mjs",
+      "source_sha256": "472b1904cc9a368739ca0a4beaced42367aceee6e9b1f8fd64ff93e647eeac6a",
+      "sha256": "472b1904cc9a368739ca0a4beaced42367aceee6e9b1f8fd64ff93e647eeac6a",
+      "transformed": false
+    },
+    {
+      "path": "supabase/functions/_shared/core/src/http.mjs",
+      "source_sha256": "5c624dd594cd7b78683b9a2e16cfce3d54e1f21db73cedff925b7e1fa48f410a",
+      "sha256": "5c624dd594cd7b78683b9a2e16cfce3d54e1f21db73cedff925b7e1fa48f410a",
+      "transformed": false
+    },
+    {
+      "path": "supabase/functions/_shared/core/src/openrouter-provider.mjs",
+      "source_sha256": "6877d045c7d5d1e187648ff6a951ab0645f2a62f8254599bad88a1a98e3c9319",
+      "sha256": "6877d045c7d5d1e187648ff6a951ab0645f2a62f8254599bad88a1a98e3c9319",
+      "transformed": false
+    },
+    {
+      "path": "supabase/functions/_shared/core/src/tools.mjs",
+      "source_sha256": "9a4f2a7d9bfad47d85e18741b6f42a1e3bcf66daf07f8c4d53a7165793274aee",
+      "sha256": "9a4f2a7d9bfad47d85e18741b6f42a1e3bcf66daf07f8c4d53a7165793274aee",
+      "transformed": false
+    },
+    {
+      "path": "supabase/functions/deno.lock",
+      "source_sha256": "fd9d62137782f681177bd09b5aa632c4e70617ade055deeae6aac4f9a3f53f15",
+      "sha256": "fd9d62137782f681177bd09b5aa632c4e70617ade055deeae6aac4f9a3f53f15",
+      "transformed": false
+    },
+    {
+      "path": "test/anonymous-auth.test.mjs",
+      "source_sha256": "3a5174a68058aa8e8bc3dfe3325eb57e00d24cbdee2b636a30769b851b410b21",
+      "sha256": "3a5174a68058aa8e8bc3dfe3325eb57e00d24cbdee2b636a30769b851b410b21",
+      "transformed": false
+    },
+    {
+      "path": "test/auto-kick.test.mjs",
+      "source_sha256": "489d03c943bed385a30aae6fd9dc246fea49c04472a9a0559f04fe97d163e8d1",
+      "sha256": "489d03c943bed385a30aae6fd9dc246fea49c04472a9a0559f04fe97d163e8d1",
+      "transformed": false
+    },
+    {
+      "path": "test/chat-stream-budget.test.mjs",
+      "source_sha256": "5b1a2fa18ef67a21ee4f6b427eb8c78dda8a33d768037f6cd756853203285286",
+      "sha256": "5b1a2fa18ef67a21ee4f6b427eb8c78dda8a33d768037f6cd756853203285286",
+      "transformed": false
+    },
+    {
+      "path": "test/dialogue-p0.test.mjs",
+      "source_sha256": "c48c798d85cc40d2cff2fae1fc224d6fb2560c123c3f24901c54bd48e394dfc6",
+      "sha256": "c48c798d85cc40d2cff2fae1fc224d6fb2560c123c3f24901c54bd48e394dfc6",
+      "transformed": false
+    },
+    {
+      "path": "test/logout-owner-regression.test.mjs",
+      "source_sha256": "ee640555519c9f3279addebb5cdd9e6ff0ff810af82f44530b15ac457297e52e",
+      "sha256": "ee640555519c9f3279addebb5cdd9e6ff0ff810af82f44530b15ac457297e52e",
+      "transformed": false
+    },
+    {
+      "path": "test/minimum.test.mjs",
+      "source_sha256": "780e07a28c9af1dea5e814fc92ad96fe981f4ab6cf9163c863367dd071f13232",
+      "sha256": "780e07a28c9af1dea5e814fc92ad96fe981f4ab6cf9163c863367dd071f13232",
+      "transformed": false
+    },
+    {
+      "path": "test/postgres-json-binding.test.mjs",
+      "source_sha256": "423d82b429e5027ef396075ad8be498af4ec7a766e9ffb506001070cba6e6906",
+      "sha256": "104e7536eb3e687ad570a7d3c3cd4db1d51d04fe4d0f7355d239f7450a822aff",
+      "transformed": true
+    },
+    {
+      "path": "test/short-task-chain.test.mjs",
+      "source_sha256": "784b12e9b83e7d6627e5d0fcadc4fb2068be4f7a9b2083e03851560bda7ae6e4",
+      "sha256": "784b12e9b83e7d6627e5d0fcadc4fb2068be4f7a9b2083e03851560bda7ae6e4",
+      "transformed": false
+    },
+    {
+      "path": "docs/NATIVE-HANDOFF.md",
+      "source_sha256": "ee78f90609dedf4ee8e0b776c2dbfd33a0974774d7d56560262889fb7d01b6f8",
+      "sha256": "ee78f90609dedf4ee8e0b776c2dbfd33a0974774d7d56560262889fb7d01b6f8",
+      "transformed": false
+    }
+  ],
+  "transformation": "Only postgres serializer test import moved from runtime/cache to ignored build/cache. Production bytes equal frozen P0 delta. Published local config, pinned upstream and v14 worker remain unchanged.",
+  "deployed": false,
+  "worker_stall_candidate_included": false
+}

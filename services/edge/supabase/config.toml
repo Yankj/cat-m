@@ -1,0 +1,6 @@
+project_id = "catpaw-local"
+
+[functions.catpaw-api]
+# v14 validates the bearer/session, scope, consent and revocation inside the API.
+# Preserve that authority path; this gateway setting does not grant access.
+verify_jwt = false

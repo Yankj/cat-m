@@ -1,0 +1,102 @@
+(node:68353) ExperimentalWarning: The test runner is an experimental feature. This feature could change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+TAP version 13
+ok 1 - a Qwen request without effective free-tier protection is denied before credentials or transport
+  ---
+  duration_ms: 0.0019325
+  ...
+ok 2 - free routes freeze exact payload bytes and do not change when the active model changes
+  ---
+  duration_ms: 0.000612042
+  ...
+ok 3 - Qwen protection evidence must bind region, model, credential type, account and unexpired quota
+  ---
+  duration_ms: 0.000283708
+  ...
+ok 4 - expiry and unsupported capabilities fail at admission
+  ---
+  duration_ms: 0.000204792
+  ...
+ok 5 - UTF8 and CRLF split at every byte preserve deltas and require explicit terminal
+  ---
+  duration_ms: 0.006130667
+  ...
+ok 6 - indexed tool argument fragments are assembled without granting execution
+  ---
+  duration_ms: 0.002472167
+  ...
+ok 7 - quota denial, 429 and errors in a 200 stream never complete a task
+  ---
+  duration_ms: 0.001207125
+  ...
+ok 8 - timeout and cancellation have explicit terminal events even if injected transport hangs
+  ---
+  duration_ms: 0.011260459
+  ...
+ok 9 - malformed arguments, length finish and unterminated frames retain partial text and fail
+  ---
+  duration_ms: 0.002878
+  ...
+ok 10 - the real transport refuses mock requests; the gateway refuses real calls by default
+  ---
+  duration_ms: 0.000397042
+  ...
+ok 11 - real admission rechecks protection immediately before credentials and binds the credential account
+  ---
+  duration_ms: 0.000231667
+  ...
+ok 12 - cancelling a partially streamed response keeps the partial text and never resends
+  ---
+  duration_ms: 0.000333708
+  ...
+ok 13 - a delegation persists separately from a run; a lease prevents duplicate claim across restart
+  ---
+  duration_ms: 0.06782575
+  ...
+ok 14 - pause, resume and source revocation fence in-flight publication without restoring a grant
+  ---
+  duration_ms: 0.101084125
+  ...
+ok 15 - memory deletion purges persisted replay context, blocks old provenance and rejects late results
+  ---
+  duration_ms: 0.061443792
+  ...
+ok 16 - approval binds exact artifact version and hash; editing invalidates it and duplicates do not dispatch
+  ---
+  duration_ms: 0.079988667
+  ...
+ok 17 - scheduler coalesces missed checks across restart; run success does not end the delegation
+  ---
+  duration_ms: 0.0667325
+  ...
+ok 18 - idempotency conflicts, scope boundaries and per-run max three model calls survive restart
+  ---
+  duration_ms: 0.058970417
+  ...
+ok 19 - actual process exit restores a mock run with fencing and recovers a dead transaction lock
+  ---
+  duration_ms: 0.165316791
+  ...
+ok 20 - parallel process claimants admit one winning lease
+  ---
+  duration_ms: 0.068498959
+  ...
+ok 21 - HTTP local protocol closes delegation -> worker -> versioned artifact -> projection and denies dispatch
+  ---
+  duration_ms: 0.07605975
+  ...
+ok 22 - chat HTTP replay returns the same frozen events and never silently resumes an unknown admission
+  ---
+  duration_ms: 0.070565458
+  ...
+ok 23 - four candidates each run five mock tasks; persisted ledger refuses a fourth invocation per task
+  ---
+  duration_ms: 0.579282209
+  ...
+1..23
+# tests 23
+# pass 23
+# fail 0
+# skipped 0
+# todo 0
+# duration_ms 1.459958584

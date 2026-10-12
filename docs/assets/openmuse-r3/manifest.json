@@ -1,0 +1,45 @@
+{
+  "review": "Reviewed original synthetic screenshots visually and every eXIf/iTXt metadata byte: local preview, operation hashes and source labels; generic Screenshot/orientation/dimensions only, no personal or device identity. Original pixels and metadata bytes retained unchanged.",
+  "screenshots": [
+    {
+      "path": "docs/assets/openmuse-r3/CatpawM-r3-openmuse-http-02-original-task-recovered.png",
+      "test": "NativeUITests/testOpenMuseActualLoopbackApprovalAndRestart()",
+      "name": "openmuse-http-02-original-task-recovered",
+      "sha256": "e001904af01159151f8a3c47742c7b1f6893f45fb511014d1372c75c590c9d0d",
+      "bytes": 243933,
+      "synthetic_only": true,
+      "unaltered_pixels": true,
+      "version": "openmuse-client-demo-r3-final"
+    },
+    {
+      "path": "docs/assets/openmuse-r3/CatpawM-r3-openmuse-http-03-version-bound-preview.png",
+      "test": "NativeUITests/testOpenMuseActualLoopbackApprovalAndRestart()",
+      "name": "openmuse-http-03-version-bound-preview",
+      "sha256": "1a664de030f4b8c377946d815ccd6ff75349201e301667c7ce9568a7e3c876df",
+      "bytes": 262981,
+      "synthetic_only": true,
+      "unaltered_pixels": true,
+      "version": "openmuse-client-demo-r3-final"
+    },
+    {
+      "path": "docs/assets/openmuse-r3/CatpawM-r3-openmuse-http-04-unknown-original-receipt.png",
+      "test": "NativeUITests/testOpenMuseActualLoopbackApprovalAndRestart()",
+      "name": "openmuse-http-04-unknown-original-receipt",
+      "sha256": "f93c94df404e5f11223790dd215cba140842d2bd79cfd9278ec0a6fc9d807e20",
+      "bytes": 264581,
+      "synthetic_only": true,
+      "unaltered_pixels": true,
+      "version": "openmuse-client-demo-r3-final"
+    },
+    {
+      "path": "docs/assets/openmuse-r3/CatpawM-r3-openmuse-http-05-native-artifact-provenance.png",
+      "test": "NativeUITests/testOpenMuseActualLoopbackApprovalAndRestart()",
+      "name": "openmuse-http-05-native-artifact-provenance",
+      "sha256": "619df6e501e29d9112c85eb296a0411002d91e641956ce38166a3c621043cfc2",
+      "bytes": 439527,
+      "synthetic_only": true,
+      "unaltered_pixels": true,
+      "version": "openmuse-client-demo-r3-final"
+    }
+  ]
+}

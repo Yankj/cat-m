@@ -1,0 +1,93 @@
+{
+  "date": "2026-10-11",
+  "stage": "r3 frozen snapshot integration after base repository preparation",
+  "runtime_versions": {
+    "Swift": "Apple Swift version 5.10 (swiftlang-5.10.0.13 clang-1500.3.9.4)\nTarget: arm64-apple-darwin27.0.0",
+    "macOS_SDK": "14.4"
+  },
+  "checks": [
+    {
+      "command": "python3 scripts/check-repository.py",
+      "exit_code": 0,
+      "result": "188 base imports + 121 r3 imports, 101 source identities, 10 specs, contract, pinned 44 upstream originals/MIT/patch and 7 screenshots verified"
+    },
+    {
+      "command": "zsh apps/ios-openmuse-demo/Scripts/test-openmuse-portable.sh",
+      "exit_code": 0,
+      "tests": 15,
+      "passed": 15,
+      "failed": 0,
+      "scope": "pure fixture transport/disk; external requests 0"
+    },
+    {
+      "command": "zsh apps/ios-openmuse-demo/Scripts/test-openmuse-snapshot.sh",
+      "exit_code": 0,
+      "tests": 5,
+      "passed": 5,
+      "failed": 0,
+      "scope": "synthetic response replay; live network/worker/cloud/model 0"
+    },
+    {
+      "command": "zsh apps/ios-openmuse-demo/Scripts/check-source.sh",
+      "exit_code": 0,
+      "result": "macOS conditional typecheck, iOS parse, 43 sources/project, 10 spec, 513 bilingual entries/488 lookups and negative localization audit pass",
+      "scope": "no iOS SDK/API/macros/link/XCTest/UI validation"
+    },
+    {
+      "command": "zsh apps/ios-openmuse-demo/Scripts/build-openmuse-http-runner.sh",
+      "exit_code": 0,
+      "result": "HTTP Swift runner compiled with existing default CLT",
+      "scope": "compile only; no service/listener",
+      "binary_sha256": "f41bb072e9373bf4b906a98310a0fd5c2e9b889fb17fbe739610e486b32eddc3"
+    },
+    {
+      "command": "zsh -n Scripts/*.sh; node --check migrated HTTP tools",
+      "exit_code": 0,
+      "result": "each r3 shell script and both HTTP MJS tools syntax checked"
+    },
+    {
+      "command": "Maintained Markdown local link validation",
+      "exit_code": 0,
+      "result": "all maintained file links resolve; frozen specs remain unchanged"
+    }
+  ],
+  "source_preservation": [
+    {
+      "source": "ios-v1",
+      "checked_files": 91,
+      "changed_files": []
+    },
+    {
+      "source": "facade-r2",
+      "checked_files": 26,
+      "changed_files": []
+    },
+    {
+      "source": "openmuse-client-r3-final",
+      "checked_files": 251,
+      "changed_files": []
+    }
+  ],
+  "selected_current_output": [
+    {
+      "path": "docs/acceptance/evidence/repository-preparation/openmuse-r3-fixture.txt",
+      "sha256": "45f4feb0b8863a9851fbda81d19cb2fbf9c61c8937d6c1278091ff4f242d2859"
+    },
+    {
+      "path": "docs/acceptance/evidence/repository-preparation/openmuse-r3-snapshot.txt",
+      "sha256": "b3e5e8ba18027d733a1e2bc6a2fbae450ab3df74e10b331656549d05c00c661a"
+    },
+    {
+      "path": "docs/acceptance/evidence/repository-preparation/openmuse-r3-source-check.txt",
+      "sha256": "9910a24167556ce0e34a1f4d34b503fc4d3dc32e7abc29b696d1b4ef7bea908a"
+    }
+  ],
+  "unrun_by_this_integration": [
+    "Simulator/iOS SDK build",
+    "HTTP listener/restart/UI tests (client final evidence separately verified)",
+    "real model/Intelligence/SQL/deployment"
+  ],
+  "remote_writes": false,
+  "dependencies_installed": false,
+  "credentials_added": false
+}

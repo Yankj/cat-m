@@ -1,0 +1,31 @@
+{"first":{"status":"published","run_id":"b54c195e-19c6-424e-8d95-5ef240eab9ed","artifact":{"artifact_id":"cd3b3836-d3af-41a5-8331-0654556412af","version":1,"content_hash":"6953b4d00f6ec57d0b7812456420e05e426bff53eec3a7da1f424d12e73f5e49"},"reality":"simulated"},"second":{"status":"published","run_id":"e5a821d9-3665-4597-a395-e97c4dd01c97","artifact":{"artifact_id":"cd3b3836-d3af-41a5-8331-0654556412af","version":1,"content_hash":"6953b4d00f6ec57d0b7812456420e05e426bff53eec3a7da1f424d12e73f5e49"},"reality":"simulated"},"projection":"[ios-v1-source]/.build/gateway-check/evidence/native-projection.json","real_api_calls":0}
+PASS generated reply preserves conversation and Project A ownership/index, excludes Project B
+PASS accepted remote EOF stays outcomeUnknown without a result
+PASS unknown result refuses a new epoch/provider invocation
+PASS restart preserves original unknown operation for verification
+PASS recovery of accepted in-flight work becomes unknown without resending
+PASS accepted connection loss preserves unknown
+PASS local cancel stops observation and retains unknown remote outcome
+PASS synthetic mode cannot route demo data to an external HTTPS host
+PASS: native adapter marks synthetic loopback
+PASS: SSE byte fragments map into existing ProviderEvent/reducer
+PASS: native adapter marks synthetic loopback
+PASS: native adapter rejects missing terminal
+PASS: native configuration refuses insecure non-loopback endpoint
+PASS: backend projection commits into native Repository
+PASS: duplicate sync is idempotent without another commit
+PASS: native reader opens same artifact version/hash
+PASS: native imported runs recover after restart
+PASS: projection rejects other profile scope
+PASS: tampered artifact does not publish
+PASS: failed import preserves Repository sequence
+PASS: default fixture reducer refuses wire-driven reality upgrade
+PASS: real request is unknown until explicit remote acceptance
+PASS: composition root pins remote accepted mode
+PASS: remote accepted mode refuses forged remote verified event
+PASS: real mode still fences runtime epoch
+PASS: preflight failure does not claim remote acceptance
+PASS: patched runtime preserves admitted provider reality through completion
+PASS: gateway result gets explicit source label
+PASS: URLSession Swift client interoperates with actual loopback gateway SSE
+Native gateway contract checks completed; no external model API called.

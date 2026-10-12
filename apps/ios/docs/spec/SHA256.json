@@ -1,0 +1,12 @@
+{
+  "catpaw-product-spec.md": "c275ed05dbb21b571bca295acbcca0722823ca129613ed7dffc0909b96ac05ad",
+  "catpaw-ios-implementation-plan.md": "78f6cd54f7d0557bf8a3bf224e64c081507cab6b06e59a63a8aacc1e544c41c0",
+  "catpaw-ios-contracts.swift": "77003c57bd0ba09b4c4f82ec67f592db4289226e6a5c7a977879fa2ef5f0df42",
+  "catpaw-ios-agent-contracts.swift": "6a6da670c53bcf8b4bd45ce4cb9e408e99822d143352ab3711858ab27ca38e8b",
+  "catpaw-ios-start-review.md": "7258dd357460b37aebe2f7983590519cb00eb1512cc2418643e1b9c213485338",
+  "catpaw-technical-spec.md": "f44e92e76ffec3c577f715ce2288d842c3547663e8d7cd86740ed53201943693",
+  "catpaw-core-contracts.schema.json": "a4f87c088e3472cadb1b403518ebc9b43747a118ec73bb37d49528dea6c3bf58",
+  "catpaw-core-contracts.examples.json": "f211bbf0b252439e452eb8183d4f74f6d2eb8befa2e3cc4f74abbe438b497449",
+  "catpaw-voice-contracts.schema.json": "d7816adc15c7064226ae761fbe420258e40c94e23204426f521ee0bb433e65c7",
+  "catpaw-voice-contracts.examples.json": "c879fe097f1cb781a958281b8a6506d59d997559f088f5f8b11b4cad915ab86b"
+}

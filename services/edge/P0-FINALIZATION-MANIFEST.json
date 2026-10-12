@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "kind": "undeployed-p0-failure-finalization",
+  "base_commit": "b7fa4ee5f8d144208d51f6d0dcdee9259c4315b7",
+  "provenance_commit": "9d22974dd71ba7e122317c6968836dcfb4dd03b4",
+  "source_files": {
+    "supabase/functions/_shared/api.mjs": "a0ab4a9a80b4c82c7bd6113fc58f6de7922068b1a6f4cb521a656fd015050f9a",
+    "supabase/functions/_shared/core/src/chat-service.mjs": "80913ed481ea7deea90def3eee7aa7a5e7ad1e380dd47f09f08cd810f18c1f72",
+    "test/dialogue-p0.test.mjs": "11eb4e1dc92f9ebd6b9301c1b73507b66e0f7561f6b3601a049bd0c943094243",
+    "test/postgres-json-binding.test.mjs": "9e2c05c625d1b7c7aefd5ca459ab51ed40d0906775b2118bbf24f1485877fe69"
+  },
+  "preserved_baseline_files": {
+    "_shared/config.mjs": "8da16598c4bc38747551608bc15300d60325895af947aec3c9f35c3cd325d695",
+    "_shared/worker-kick.mjs": "02e85731e8395f87b6ed49e3e6562a6aae4a4da2134ef947db9628e446e881a5",
+    "_shared/core/integration/edge-adapter/src/bounded-tick.mjs": "999aca145346926c21e5b2403fb20254637744d388a65df27e2b4c4dd7bb0be8",
+    "_shared/core/integration/edge-adapter/src/bounded-store.mjs": "6184cde0200095509d0614176006901a846bc67824c08e960bc9e77b1ebdcd8f",
+    "_shared/core/integration/edge-adapter/vendor/openmuse/runtime/engine/worker.mjs": "51973696df9b39cdda99366b31f663b86771ab4a44cce5dc2b02e12aa35a13ef",
+    "_shared/core/integration/edge-adapter/vendor/openmuse/runtime/log.mjs": "63e9674fae8ab5f090253f9018c4bbec162b79d14eb3ab33fc05dc8358e4abcc"
+  },
+  "scope": "Two production modules; failure metadata only, existing normal publication and observation authorization retained. Two test modules changed. No new task worker, scheduler, model route, protocol version or grant.",
+  "verification": {
+    "before": {
+      "suite": "dialogue-p0",
+      "passed": 12,
+      "failed": 1,
+      "failure": "cached commit notification cannot reveal late text after session revocation"
+    },
+    "after": {
+      "execution_layer": "serialized synthetic TestRepository, injected transport and offline Postgres serializers",
+      "passed": 62,
+      "failed": 0,
+      "suites": {
+        "anonymous-auth": 3,
+        "auto-kick": 1,
+        "chat-stream-budget": 11,
+        "dialogue-p0": 30,
+        "logout-owner-regression": 1,
+        "minimum": 4,
+        "postgres-json-binding": 7,
+        "short-task-chain": 5
+      }
+    },
+    "deno_check": "PASS API index and dialogue-p0 graph; checkJs=false as preserved in deno.json",
+    "log_sha256": {
+      "p0-before.log": "d5af36f6b3272d65533adac6f9f2534c329e5dec240b502703d83820d6d224b4",
+      "full-regression.log": "f3cbcd1bae6c9cab9f8fc0ab2e394fd9dbb4da4daaf9776d153bea895d1feb92",
+      "deno-check.log": "7b47d220de37b6040e616adc92dc9edda32905d4840e4c25f6bb83d213a062c8"
+    }
+  },
+  "not_executed": [
+    "live PostgreSQL transactions or multi-instance concurrency",
+    "cloud deployment",
+    "real model calls",
+    "tick/recovery POST",
+    "device or MM01-MM05 product acceptance"
+  ],
+  "external_mutations": {
+    "push": false,
+    "merge": false,
+    "deploy": false,
+    "tick": false,
+    "credentials_read": false
+  },
+  "dependencies": "Existing official npm cache only: jose 6.2.12 and postgres 3.4.7. No install or network."
+}

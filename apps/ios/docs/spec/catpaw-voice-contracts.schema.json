@@ -1,0 +1,1536 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:catpaw:voice-contracts:1.0",
+  "title": "Catpaw-m voice design contracts",
+  "description": "Design only. No deployed service is implied. Shape validation is not authorization. Server and local control plane must verify current epochs, owner, active consent, specific provider locality, artifact version, user intent and deletion suppression before transfer or use. Raw audio is not persisted by default.",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/VoiceProviderCapability"
+    },
+    {
+      "$ref": "#/$defs/VoiceTransportConsent"
+    },
+    {
+      "$ref": "#/$defs/VoiceSession"
+    },
+    {
+      "$ref": "#/$defs/VoiceTurn"
+    },
+    {
+      "$ref": "#/$defs/ReadoutRequest"
+    },
+    {
+      "$ref": "#/$defs/VoiceStreamEvent"
+    },
+    {
+      "$ref": "#/$defs/VoiceControl"
+    }
+  ],
+  "$defs": {
+    "ArtifactRef": {
+      "type": "object",
+      "properties": {
+        "artifact_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "content_hash": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "artifact_id",
+        "version",
+        "content_hash"
+      ],
+      "additionalProperties": false
+    },
+    "VoiceProviderCapability": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": "1.0"
+        },
+        "record_type": {
+          "const": "voice_provider_capability"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "tts",
+            "asr"
+          ]
+        },
+        "provider_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "provider_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "engine_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "locality": {
+          "type": "string",
+          "enum": [
+            "verified_on_device",
+            "controlled_server",
+            "third_party",
+            "unknown"
+          ]
+        },
+        "network_required": {
+          "type": "boolean"
+        },
+        "languages": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "minItems": 1,
+          "maxItems": 100
+        },
+        "available_voice_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "minItems": 0,
+          "maxItems": 100
+        },
+        "verification_status": {
+          "type": "string",
+          "enum": [
+            "verified",
+            "unverified",
+            "unavailable"
+          ]
+        },
+        "verified_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "offline_tested": {
+          "type": "boolean"
+        },
+        "supports": {
+          "type": "object",
+          "properties": {
+            "stream_input": {
+              "type": "boolean"
+            },
+            "stream_output": {
+              "type": "boolean"
+            },
+            "partial_results": {
+              "type": "boolean"
+            },
+            "word_timestamps": {
+              "type": "boolean"
+            },
+            "cancellation": {
+              "type": "boolean"
+            },
+            "pause_resume": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "stream_input",
+            "stream_output",
+            "partial_results",
+            "word_timestamps",
+            "cancellation",
+            "pause_resume"
+          ],
+          "additionalProperties": false
+        },
+        "transports": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "local_native",
+              "browser_device",
+              "authenticated_stream",
+              "http_batch"
+            ]
+          },
+          "minItems": 1,
+          "maxItems": 100
+        },
+        "allowed_data_categories": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "public_demo",
+              "microphone_audio",
+              "transcript",
+              "research_topic",
+              "private_artifact",
+              "sensitive_personal"
+            ]
+          },
+          "minItems": 1,
+          "maxItems": 100
+        },
+        "raw_audio_retention": {
+          "type": "string",
+          "enum": [
+            "none_persistent",
+            "incompatible",
+            "unknown"
+          ]
+        },
+        "max_input_characters": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_session_seconds": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "deployment_status": {
+          "type": "string",
+          "enum": [
+            "proposal",
+            "fixture",
+            "available"
+          ]
+        }
+      },
+      "required": [
+        "schema_version",
+        "record_type",
+        "id",
+        "created_at",
+        "kind",
+        "provider_id",
+        "provider_version",
+        "locality",
+        "network_required",
+        "languages",
+        "available_voice_ids",
+        "verification_status",
+        "offline_tested",
+        "supports",
+        "transports",
+        "allowed_data_categories",
+        "raw_audio_retention",
+        "deployment_status"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "locality": {
+                "const": "verified_on_device"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "network_required": {
+                "const": false
+              },
+              "verification_status": {
+                "const": "verified"
+              },
+              "offline_tested": {
+                "const": true
+              }
+            },
+            "required": [
+              "verified_at"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "locality": {
+                "const": "unknown"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "allowed_data_categories": {
+                "type": "array",
+                "items": {
+                  "const": "public_demo"
+                },
+                "minItems": 1,
+                "maxItems": 100
+              }
+            }
+          }
+        }
+      ]
+    },
+    "VoiceTransportConsent": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": "1.0"
+        },
+        "record_type": {
+          "const": "voice_transport_consent"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tenant_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "owner_user_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "provider_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "provider_policy_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "purposes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "speech_recognition",
+              "speech_synthesis"
+            ]
+          },
+          "minItems": 1,
+          "maxItems": 100
+        },
+        "data_categories": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "public_demo",
+              "microphone_audio",
+              "transcript",
+              "research_topic",
+              "private_artifact",
+              "sensitive_personal"
+            ]
+          },
+          "minItems": 1,
+          "maxItems": 100
+        },
+        "scope": {
+          "type": "string",
+          "enum": [
+            "session",
+            "explicit_bounded_standing"
+          ]
+        },
+        "session_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "scope_description": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 3000
+        },
+        "retention_disclosure_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "source_user_action_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "consent_epoch": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "expires_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "active",
+            "revoked",
+            "expired"
+          ]
+        },
+        "revoked_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "schema_version",
+        "record_type",
+        "id",
+        "created_at",
+        "tenant_id",
+        "owner_user_id",
+        "provider_id",
+        "provider_policy_version",
+        "purposes",
+        "data_categories",
+        "scope",
+        "scope_description",
+        "retention_disclosure_ref",
+        "source_user_action_id",
+        "revision",
+        "consent_epoch",
+        "expires_at",
+        "state"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "scope": {
+                "const": "session"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "session_id"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "state": {
+                "const": "revoked"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "revoked_at"
+            ]
+          }
+        }
+      ]
+    },
+    "VoiceSession": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": "1.0"
+        },
+        "record_type": {
+          "const": "voice_session"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tenant_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "owner_user_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "conversation_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "mode": {
+          "type": "string",
+          "enum": [
+            "dictation",
+            "foreground_conversation",
+            "readout"
+          ]
+        },
+        "lifecycle": {
+          "type": "string",
+          "enum": [
+            "awaiting_permission",
+            "active",
+            "interrupted",
+            "stopping",
+            "ended",
+            "failed"
+          ]
+        },
+        "capture_state": {
+          "type": "string",
+          "enum": [
+            "inactive",
+            "capturing",
+            "finalizing",
+            "reviewable",
+            "aborted",
+            "failed"
+          ]
+        },
+        "playback_state": {
+          "type": "string",
+          "enum": [
+            "idle",
+            "preparing",
+            "buffering",
+            "playing",
+            "paused",
+            "completed",
+            "cancelled",
+            "failed"
+          ]
+        },
+        "session_epoch": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "capture_epoch": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "playback_epoch": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "consent_epoch": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "current_turn_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "asr_provider_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "tts_provider_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "consent_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "minItems": 0,
+          "maxItems": 100
+        },
+        "mic_permission": {
+          "type": "string",
+          "enum": [
+            "not_requested",
+            "granted",
+            "denied",
+            "revoked",
+            "unavailable"
+          ]
+        },
+        "foreground": {
+          "type": "boolean"
+        },
+        "auto_submit_final": {
+          "type": "boolean"
+        },
+        "auto_submit_user_action_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "raw_audio_retention": {
+          "const": "none_persistent"
+        },
+        "max_session_seconds": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "expires_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "generation_epoch": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "auto_submit_suspended": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "schema_version",
+        "record_type",
+        "id",
+        "created_at",
+        "tenant_id",
+        "owner_user_id",
+        "conversation_id",
+        "mode",
+        "lifecycle",
+        "capture_state",
+        "playback_state",
+        "session_epoch",
+        "capture_epoch",
+        "playback_epoch",
+        "consent_epoch",
+        "consent_ids",
+        "mic_permission",
+        "foreground",
+        "auto_submit_final",
+        "raw_audio_retention",
+        "max_session_seconds",
+        "expires_at",
+        "generation_epoch",
+        "auto_submit_suspended"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "capture_state": {
+                "const": "capturing"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "mic_permission": {
+                "const": "granted"
+              },
+              "foreground": {
+                "const": true
+              },
+              "lifecycle": {
+                "const": "active"
+              }
+            },
+            "required": [
+              "asr_provider_id"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "auto_submit_final": {
+                "const": true
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "mode": {
+                "const": "foreground_conversation"
+              }
+            },
+            "required": [
+              "auto_submit_user_action_id"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "lifecycle": {
+                "enum": [
+                  "ended",
+                  "failed"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "capture_state": {
+                "enum": [
+                  "inactive",
+                  "aborted",
+                  "failed"
+                ]
+              },
+              "playback_state": {
+                "enum": [
+                  "idle",
+                  "completed",
+                  "cancelled",
+                  "failed"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "anyOf": [
+              {
+                "properties": {
+                  "foreground": {
+                    "const": false
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "lifecycle": {
+                    "enum": [
+                      "interrupted",
+                      "stopping",
+                      "ended",
+                      "failed"
+                    ]
+                  }
+                }
+              }
+            ]
+          },
+          "then": {
+            "properties": {
+              "auto_submit_suspended": {
+                "const": true
+              },
+              "capture_state": {
+                "enum": [
+                  "inactive",
+                  "reviewable",
+                  "aborted",
+                  "failed"
+                ]
+              },
+              "playback_state": {
+                "enum": [
+                  "idle",
+                  "paused",
+                  "completed",
+                  "cancelled",
+                  "failed"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "VoiceTurn": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": "1.0"
+        },
+        "record_type": {
+          "const": "voice_turn"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tenant_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "owner_user_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "session_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "session_epoch": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "turn_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "utterance_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "capture_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "capture_epoch": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "transcript_revision": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "transcript_state": {
+          "type": "string",
+          "enum": [
+            "partial",
+            "final_reviewable",
+            "submitted",
+            "aborted",
+            "failed",
+            "no_speech"
+          ]
+        },
+        "transcript_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "submitted_message_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "auto_submitted": {
+          "type": "boolean"
+        },
+        "edit_target": {
+          "$ref": "#/$defs/ArtifactRef"
+        },
+        "edit_selection_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "generation_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "playback_epoch": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "cancelled_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "generation_epoch": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "edit_revision": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "submitted_revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "submitted_text_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "submitted_text_hash": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "schema_version",
+        "record_type",
+        "id",
+        "created_at",
+        "tenant_id",
+        "owner_user_id",
+        "session_id",
+        "session_epoch",
+        "turn_id",
+        "utterance_id",
+        "capture_id",
+        "capture_epoch",
+        "transcript_revision",
+        "transcript_state",
+        "auto_submitted",
+        "playback_epoch",
+        "generation_epoch",
+        "edit_revision"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "transcript_state": {
+                "const": "submitted"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "submitted_message_id",
+              "submitted_text_ref",
+              "submitted_text_hash",
+              "submitted_revision"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "transcript_state": {
+                "const": "aborted"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "cancelled_at"
+            ],
+            "properties": {
+              "auto_submitted": {
+                "const": false
+              }
+            },
+            "not": {
+              "required": [
+                "submitted_message_id"
+              ]
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "transcript_state": {
+                "not": {
+                  "const": "submitted"
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "auto_submitted": {
+                "const": false
+              }
+            },
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "submitted_message_id"
+                  ]
+                },
+                {
+                  "required": [
+                    "submitted_revision"
+                  ]
+                },
+                {
+                  "required": [
+                    "submitted_text_ref"
+                  ]
+                },
+                {
+                  "required": [
+                    "submitted_text_hash"
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "ReadoutRequest": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": "1.0"
+        },
+        "record_type": {
+          "const": "readout_request"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tenant_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "owner_user_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "session_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "session_epoch": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "turn_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "playback_epoch": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "artifact": {
+          "$ref": "#/$defs/ArtifactRef"
+        },
+        "reading_mode": {
+          "type": "string",
+          "enum": [
+            "full",
+            "summary",
+            "selection"
+          ]
+        },
+        "selection_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "provider_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "voice_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "locale": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "source_user_action_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "privacy_class": {
+          "type": "string",
+          "enum": [
+            "public_demo",
+            "ordinary_private",
+            "sensitive"
+          ]
+        },
+        "provider_locality": {
+          "type": "string",
+          "enum": [
+            "verified_on_device",
+            "controlled_server",
+            "third_party",
+            "unknown"
+          ]
+        },
+        "consent_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "consent_revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "deletion_epoch": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "expires_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "schema_version",
+        "record_type",
+        "id",
+        "created_at",
+        "tenant_id",
+        "owner_user_id",
+        "session_id",
+        "session_epoch",
+        "turn_id",
+        "playback_epoch",
+        "artifact",
+        "reading_mode",
+        "provider_id",
+        "voice_id",
+        "locale",
+        "source_user_action_id",
+        "privacy_class",
+        "provider_locality",
+        "deletion_epoch",
+        "expires_at"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "reading_mode": {
+                "const": "selection"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "selection_ref"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "provider_locality": {
+                "enum": [
+                  "controlled_server",
+                  "third_party"
+                ]
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "consent_id",
+              "consent_revision"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "provider_locality": {
+                "const": "unknown"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "privacy_class": {
+                "const": "public_demo"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "VoiceStreamEvent": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": "1.0"
+        },
+        "record_type": {
+          "const": "voice_stream_event"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "session_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "session_epoch": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "turn_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "stream_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "direction": {
+          "type": "string",
+          "enum": [
+            "client_to_provider",
+            "provider_to_client",
+            "local_event"
+          ]
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "capture_epoch": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "playback_epoch": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "consent_epoch": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "event_type": {
+          "type": "string",
+          "enum": [
+            "capture_started",
+            "audio_chunk",
+            "input_finished",
+            "asr_partial",
+            "asr_final",
+            "tts_segment",
+            "playback_started",
+            "playback_ended",
+            "interrupted",
+            "cancel_ack",
+            "stream_error"
+          ]
+        },
+        "payload_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "payload_storage": {
+          "const": "ephemeral_memory_only"
+        },
+        "codec": {
+          "type": "string",
+          "enum": [
+            "pcm_s16le",
+            "pcm_f32le",
+            "opus",
+            "wav",
+            "device_handle",
+            "text_event"
+          ]
+        },
+        "sample_rate": {
+          "type": "integer",
+          "minimum": 8000,
+          "maximum": 192000
+        },
+        "channels": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2
+        },
+        "segment_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "segment_index": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "text_hash": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "error_code": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "generation_epoch": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "schema_version",
+        "record_type",
+        "id",
+        "created_at",
+        "session_id",
+        "session_epoch",
+        "turn_id",
+        "stream_id",
+        "direction",
+        "seq",
+        "capture_epoch",
+        "playback_epoch",
+        "consent_epoch",
+        "event_type",
+        "payload_storage",
+        "generation_epoch"
+      ],
+      "additionalProperties": false,
+      "description": "Transient wire/event shape; raw payload and audio bytes are not business-log records. Persist only redacted metrics where permitted.",
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "event_type": {
+                "const": "tts_segment"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "segment_id",
+              "segment_index",
+              "text_hash",
+              "payload_ref"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "event_type": {
+                "const": "audio_chunk"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "payload_ref",
+              "codec",
+              "sample_rate",
+              "channels"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "event_type": {
+                "const": "stream_error"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "error_code"
+            ]
+          }
+        }
+      ]
+    },
+    "VoiceControl": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": "1.0"
+        },
+        "record_type": {
+          "const": "voice_control"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "session_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "expected_session_epoch": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "expected_capture_epoch": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "expected_playback_epoch": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "expected_generation_epoch": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "command": {
+          "type": "string",
+          "enum": [
+            "finish_utterance",
+            "abort_capture",
+            "stop_playback",
+            "interrupt_turn",
+            "end_session",
+            "system_interrupt",
+            "resume_session"
+          ]
+        },
+        "source": {
+          "type": "string",
+          "enum": [
+            "user_interface",
+            "authenticated_voice",
+            "system_event"
+          ]
+        },
+        "reason": {
+          "type": "string",
+          "enum": [
+            "user_requested",
+            "background",
+            "lock",
+            "incoming_call",
+            "audio_focus_loss",
+            "route_changed",
+            "permission_revoked",
+            "network_lost"
+          ]
+        }
+      },
+      "required": [
+        "schema_version",
+        "record_type",
+        "id",
+        "created_at",
+        "session_id",
+        "expected_session_epoch",
+        "expected_capture_epoch",
+        "expected_playback_epoch",
+        "expected_generation_epoch",
+        "command",
+        "source",
+        "reason"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "command": {
+                "const": "resume_session"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "source": {
+                "const": "user_interface"
+              },
+              "reason": {
+                "const": "user_requested"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "command": {
+                "const": "system_interrupt"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "source": {
+                "const": "system_event"
+              },
+              "reason": {
+                "not": {
+                  "const": "user_requested"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

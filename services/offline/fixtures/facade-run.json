@@ -1,0 +1,13 @@
+{
+  "kind": "synthetic_facade_run_read",
+  "notice": "Proposed facade extension; NO OpenMuse public endpoint returns this object.",
+  "run": {
+    "id": "77777777-1111-4111-8111-111111111111",
+    "taskId": "13e0b45e2d658f841ee9f03a16cd908963408f013de8eb535f1553fa36f16657",
+    "startedAt": "2026-10-11T13:00:10.000Z",
+    "status": "running"
+  },
+  "businessRunID": "99999999-1111-4111-8111-111111111111",
+  "operationID": "33333333-1111-4111-8111-111111111111",
+  "requestHash": "70693be4c2c787c3f11a0fbda70ed455a3412a785a44630ce3bf16058bf3adae"
+}

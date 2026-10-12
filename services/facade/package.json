@@ -1,0 +1,12 @@
+{
+  "name":"catpaw-openmuse-facade-v1",
+  "private":true,
+  "type":"module",
+  "engines":{"node":">=22.17.1"},
+  "scripts":{
+    "start:synthetic":"node --experimental-transform-types src/server.mjs",
+    "test:inprocess":"node --experimental-transform-types --test test/facade.test.mjs",
+    "test:loopback":"node --experimental-transform-types --test test/process-http.test.mjs"
+  },
+  "description":"Synthetic local facade; real pinned OpenMuse TaskWorker and controlled preview ActionService; no installed dependencies"
+}

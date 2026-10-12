@@ -1,0 +1,31 @@
+OFFLINE SYNTHETIC CONTRACT TESTS — no upstream runtime, HTTP, credentials or model calls
+PASS SHA256 known vector and stable canonical Unicode JSON
+PASS frozen request matches independently generated golden hash and resists caller edits
+PASS wire create uses exact source keys; no invented model/scope/run fields
+PASS requestId changes for model, source revision, scope, grant and delegation revision
+PASS tampered frozen request, ungranted source and autonomous schedule rejected
+PASS 64-hex provider ID maps to scoped Catpaw UUID without replacing raw ID
+PASS create response id and frozen prompt are checked
+PASS PUBLIC API SHAPE: stable Catpaw Run/task link survives App close; task GET restores status only
+PASS PUBLIC API GAP: close before observing a lease cannot reconstruct any upstream Run ID
+PASS PROPOSED FACADE ONLY: private Run row codec requires stable business/operation/hash association
+PASS lost create response reconciles predicted task ID; 404 does not silently POST
+PASS Run history HTTP and Last-Event-ID replay remain explicitly unsupported
+PASS cross-profile, operation, task and payload relationships are isolated
+PASS stale generation, timestamp conflict and successor lease require reconciliation
+PASS artifact versions hash content, preserve old body and do not bump for createdAt
+PASS duplicate artifacts and unknown task status never publish partial projections
+PASS old approval rejected after artifact version changes
+PASS approval binds frozen request, target, args, policy, connection and upstream hash
+PASS new approval builds exact inert response request, then unknown receipt forbids duplicate
+PASS expired or changed request approvals rejected; 200/succeeded is not verified
+PASS pause/revoke fences late artifacts and approvals; resume cannot restore old grant
+PASS disconnect drops late events from old observation, never cancels cloud task
+PASS persistent task terminal prevents later nonterminal or successor events
+PASS SSE handles every UTF8 byte split, comments, id and CRLF without replay assumptions
+PASS truncated SSE, malformed UTF8 and oversized frame rejected
+PASS AG-UI runId stays distinct from persistent lease, and terminal only ends model stream
+PASS tool/unknown events are nonexecutable; stream errors trigger status read
+PASS A2UI reservation permits reference cards and rejects script/tool expansion
+PASS control descriptor validates actual source enum and encodes no local cancel inference
+RESULT tests=29 pass=29 fail=0 external_requests=0 upstream_runtime_executed=false

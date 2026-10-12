@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+<key>CFBundleDevelopmentRegion</key><string>zh-Hans</string>
+<key>CFBundleExecutable</key><string>$(EXECUTABLE_NAME)</string>
+<key>CFBundleIdentifier</key><string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+<key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
+<key>CFBundleName</key><string>CatpawM</string>
+<key>CFBundleDisplayName</key><string>Catpaw-m</string>
+<key>CFBundlePackageType</key><string>APPL</string>
+<key>CFBundleShortVersionString</key><string>$(MARKETING_VERSION)</string>
+<key>CFBundleVersion</key><string>$(CURRENT_PROJECT_VERSION)</string>
+<key>LSRequiresIPhoneOS</key><true/>
+<key>CFBundleURLTypes</key><array><dict><key>CFBundleURLName</key><string>com.example.CatpawM.resource</string><key>CFBundleURLSchemes</key><array><string>catpawm</string></array></dict></array>
+<key>UILaunchScreen</key><dict/>
+<key>UIApplicationSceneManifest</key><dict><key>UIApplicationSupportsMultipleScenes</key><false/></dict>
+<key>UISupportedInterfaceOrientations</key><array><string>UIInterfaceOrientationPortrait</string><string>UIInterfaceOrientationLandscapeLeft</string><string>UIInterfaceOrientationLandscapeRight</string></array>
+<key>NSMicrophoneUsageDescription</key><string>仅在你主动开始说话时采集本句声音，用于设备支持的本地转写。原音不保存到长期记录。</string>
+<key>NSSpeechRecognitionUsageDescription</key><string>仅在你主动启用且设备支持本地识别时，将本句转成可编辑文字；不使用云端识别回退。</string>
+<key>NSCameraUsageDescription</key><string>仅在你主动选择拍照时打开相机，把确认的图片保存到当前本地项目；不会自动上传。</string>
+<key>NSPhotoLibraryUsageDescription</key><string>仅在你主动选择相册图片时将该图片保存到当前本地项目；不会自动上传相册内容。</string>
+</dict></plist>

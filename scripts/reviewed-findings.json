@@ -1,0 +1,230 @@
+{
+  "reviewed_utc_date": "2026-10-11",
+  "policy": "An exception applies only to the exact path, category, line and file SHA256. Any byte change requires fresh review.",
+  "findings": [
+    {
+      "path": "docs/assets/ios-v1/CatpawM-v1-final-light-approval.png",
+      "category": "png_metadata_requires_review",
+      "sha256": "f2267b18f737fe97b9d0b6103a9d67464939e29f9b19332994272ed2870ee4ab",
+      "reason": "Reviewed all eXIf/iTXt bytes: generic Screenshot label, orientation, dimensions and XMP namespaces only; no device/user identity. Pixel and metadata bytes retained unchanged."
+    },
+    {
+      "path": "docs/assets/ios-v1/CatpawM-v1-final-light-input.png",
+      "category": "png_metadata_requires_review",
+      "sha256": "b889b6bd0a8c349481f4eae8ddeac9d8a1a9bee42a561c3dcb6d8189a7ab4920",
+      "reason": "Reviewed all eXIf/iTXt bytes: generic Screenshot label, orientation, dimensions and XMP namespaces only; no device/user identity. Pixel and metadata bytes retained unchanged."
+    },
+    {
+      "path": "docs/assets/ios-v1/CatpawM-v1-final-max-dark-approval.png",
+      "category": "png_metadata_requires_review",
+      "sha256": "a5d22976319527b01115b6e51878da08823b0c63b19a86c8f8945aef8d0805d3",
+      "reason": "Reviewed all eXIf/iTXt bytes: generic Screenshot label, orientation, dimensions and XMP namespaces only; no device/user identity. Pixel and metadata bytes retained unchanged."
+    },
+    {
+      "path": "vendor/openmuse/apps/server/src/auth.ts",
+      "category": "signed_url",
+      "line": 47,
+      "sha256": "c66e1af78a2fb0c0e605f94308063d015897a6e286471a06deb8983ecd6ab919",
+      "reason": "Pinned upstream source builds a signed URL from runtime variables; no concrete URL or signature value is stored."
+    },
+    {
+      "path": "vendor/openmuse/apps/server/src/demo/entry.ts",
+      "category": "secret_assignment_review",
+      "line": 85,
+      "sha256": "5598863f1761bc03d4565bbac089ef89ce74fc1163bf5e60a93423c39c5c3052",
+      "reason": "Pinned upstream demo uses explicit noncredential literal local-aimock-demo-only."
+    },
+    {
+      "path": "vendor/openmuse/apps/server/src/workspace.ts",
+      "category": "email_review",
+      "line": 188,
+      "sha256": "4398640e071a7ec02594ad093f038aa4b16c691c849a0cce0474152a6d93c14a",
+      "reason": "Pinned upstream synthetic workspace fixture uses reserved .example domain; not a user address."
+    },
+    {
+      "path": "vendor/openmuse/apps/server/src/workspace.ts",
+      "category": "email_review",
+      "line": 214,
+      "sha256": "4398640e071a7ec02594ad093f038aa4b16c691c849a0cce0474152a6d93c14a",
+      "reason": "Pinned upstream synthetic workspace fixture uses reserved .example domain; not a user address."
+    },
+    {
+      "path": "vendor/openmuse/apps/server/src/workspace.ts",
+      "category": "email_review",
+      "line": 227,
+      "sha256": "4398640e071a7ec02594ad093f038aa4b16c691c849a0cce0474152a6d93c14a",
+      "reason": "Pinned upstream synthetic workspace fixture uses reserved .example domain; not a user address."
+    },
+    {
+      "path": "docs/assets/openmuse-r3/CatpawM-r3-openmuse-http-02-original-task-recovered.png",
+      "category": "png_metadata_requires_review",
+      "sha256": "e001904af01159151f8a3c47742c7b1f6893f45fb511014d1372c75c590c9d0d",
+      "reason": "Reviewed every eXIf/iTXt byte: generic Screenshot label, orientation, dimensions and XMP namespaces only; no device/user identity. Synthetic pixels visually reviewed. Original file bytes retained unchanged."
+    },
+    {
+      "path": "docs/assets/openmuse-r3/CatpawM-r3-openmuse-http-03-version-bound-preview.png",
+      "category": "png_metadata_requires_review",
+      "sha256": "1a664de030f4b8c377946d815ccd6ff75349201e301667c7ce9568a7e3c876df",
+      "reason": "Reviewed every eXIf/iTXt byte: generic Screenshot label, orientation, dimensions and XMP namespaces only; no device/user identity. Synthetic pixels visually reviewed. Original file bytes retained unchanged."
+    },
+    {
+      "path": "docs/assets/openmuse-r3/CatpawM-r3-openmuse-http-04-unknown-original-receipt.png",
+      "category": "png_metadata_requires_review",
+      "sha256": "f93c94df404e5f11223790dd215cba140842d2bd79cfd9278ec0a6fc9d807e20",
+      "reason": "Reviewed every eXIf/iTXt byte: generic Screenshot label, orientation, dimensions and XMP namespaces only; no device/user identity. Synthetic pixels visually reviewed. Original file bytes retained unchanged."
+    },
+    {
+      "path": "docs/assets/openmuse-r3/CatpawM-r3-openmuse-http-05-native-artifact-provenance.png",
+      "category": "png_metadata_requires_review",
+      "sha256": "619df6e501e29d9112c85eb296a0411002d91e641956ce38166a3c621043cfc2",
+      "reason": "Reviewed every eXIf/iTXt byte: generic Screenshot label, orientation, dimensions and XMP namespaces only; no device/user identity. Synthetic pixels visually reviewed. Original file bytes retained unchanged."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/AuthTestSupport.swift",
+      "category": "deployment_public_key",
+      "line": 85,
+      "sha256": "1d1b6295320014339846ec787dc415819c12ee5caba340e278f0f7f0f588b0be",
+      "reason": "Explicit synthetic fixture public key in local/mock-only test; no real deployment key."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/DeviceTrialEndpointRunner.swift",
+      "category": "deployment_public_key",
+      "line": 4,
+      "sha256": "8ed62849bf5a6c6cb882ecc48de60284640c8d849e15ddadce246a4b56e725f6",
+      "reason": "Explicit synthetic fixture public key in local/mock-only test; no real deployment key."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/DeviceTrialEndpointRunner.swift",
+      "category": "credential_url",
+      "line": 12,
+      "sha256": "8ed62849bf5a6c6cb882ecc48de60284640c8d849e15ddadce246a4b56e725f6",
+      "reason": "Intentional invalid URL with synthetic user/pass at example.invalid; negative parser test and no HTTP."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/AuthBoundaryRunner.swift",
+      "category": "secret_assignment_review",
+      "line": 11,
+      "sha256": "d3ef4e1b264dd402e291efc38f43c160fab4a06a14b804ba344c5e32cb8e99c9",
+      "reason": "Explicit mock-only test token/password literal; test storage/transport has no real credential."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/AuthBoundaryRunner.swift",
+      "category": "secret_assignment_review",
+      "line": 32,
+      "sha256": "d3ef4e1b264dd402e291efc38f43c160fab4a06a14b804ba344c5e32cb8e99c9",
+      "reason": "Explicit mock-only test token/password literal; test storage/transport has no real credential."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/AuthBoundaryRunner.swift",
+      "category": "secret_assignment_review",
+      "line": 45,
+      "sha256": "d3ef4e1b264dd402e291efc38f43c160fab4a06a14b804ba344c5e32cb8e99c9",
+      "reason": "Explicit mock-only test token/password literal; test storage/transport has no real credential."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/AuthSessionRunner.swift",
+      "category": "secret_assignment_review",
+      "line": 8,
+      "sha256": "9ffcf0fc20e02110c22f37c86ad5ee9e4f6f244460340aa2209e0ddd95803928",
+      "reason": "Explicit mock-only test token/password literal; test storage/transport has no real credential."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/AuthSessionRunner.swift",
+      "category": "secret_assignment_review",
+      "line": 13,
+      "sha256": "9ffcf0fc20e02110c22f37c86ad5ee9e4f6f244460340aa2209e0ddd95803928",
+      "reason": "Explicit mock-only test token/password literal; test storage/transport has no real credential."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/AuthSessionRunner.swift",
+      "category": "secret_assignment_review",
+      "line": 29,
+      "sha256": "9ffcf0fc20e02110c22f37c86ad5ee9e4f6f244460340aa2209e0ddd95803928",
+      "reason": "Explicit mock-only test token/password literal; test storage/transport has no real credential."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/AuthSessionRunner.swift",
+      "category": "secret_assignment_review",
+      "line": 41,
+      "sha256": "9ffcf0fc20e02110c22f37c86ad5ee9e4f6f244460340aa2209e0ddd95803928",
+      "reason": "Explicit mock-only test token/password literal; test storage/transport has no real credential."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/AuthSessionRunner.swift",
+      "category": "secret_assignment_review",
+      "line": 46,
+      "sha256": "9ffcf0fc20e02110c22f37c86ad5ee9e4f6f244460340aa2209e0ddd95803928",
+      "reason": "Explicit mock-only test token/password literal; test storage/transport has no real credential."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/AuthTestSupport.swift",
+      "category": "secret_assignment_review",
+      "line": 25,
+      "sha256": "1d1b6295320014339846ec787dc415819c12ee5caba340e278f0f7f0f588b0be",
+      "reason": "Explicit mock-only test token/password literal; test storage/transport has no real credential."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/AuthTestSupport.swift",
+      "category": "secret_assignment_review",
+      "line": 26,
+      "sha256": "1d1b6295320014339846ec787dc415819c12ee5caba340e278f0f7f0f588b0be",
+      "reason": "Explicit mock-only test token/password literal; test storage/transport has no real credential."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/AuthTestSupport.swift",
+      "category": "secret_assignment_review",
+      "line": 39,
+      "sha256": "1d1b6295320014339846ec787dc415819c12ee5caba340e278f0f7f0f588b0be",
+      "reason": "Explicit mock-only test token/password literal; test storage/transport has no real credential."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/DeviceTrialEndpointRunner.swift",
+      "category": "email_review",
+      "line": 12,
+      "sha256": "8ed62849bf5a6c6cb882ecc48de60284640c8d849e15ddadce246a4b56e725f6",
+      "reason": "Intentional malformed URL in negative test; not a real recipient."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeAuthNativeTests.swift",
+      "category": "secret_assignment_review",
+      "line": 22,
+      "sha256": "4e3ddd5dea7c96cfe458419ccfadfea2cad2501652b12216f7639cf3fdc4b886",
+      "reason": "Explicit mock-only test token/password literal; test storage/transport has no real credential."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeChatWireRunner.swift",
+      "category": "secret_assignment_review",
+      "line": 14,
+      "sha256": "c56bbda43313116110b690182705139c965982d2ba9fabd1a8601a9e3a3ec65f",
+      "reason": "Explicit mock-only test token/password literal; test storage/transport has no real credential."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeChatWireRunner.swift",
+      "category": "secret_assignment_review",
+      "line": 20,
+      "sha256": "c56bbda43313116110b690182705139c965982d2ba9fabd1a8601a9e3a3ec65f",
+      "reason": "Explicit mock-only test token/password literal; test storage/transport has no real credential."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeChatWireRunner.swift",
+      "category": "secret_assignment_review",
+      "line": 24,
+      "sha256": "c56bbda43313116110b690182705139c965982d2ba9fabd1a8601a9e3a3ec65f",
+      "reason": "Explicit mock-only test token/password literal; test storage/transport has no real credential."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/DeviceTrialNativeTests.swift",
+      "category": "deployment_public_key",
+      "line": 134,
+      "sha256": "2bcef9daa167400ea6f3a0bdd60a107c84149f656e58f068b549f010c9bb88e3",
+      "reason": "Explicit synthetic fixture public key in mock-only native test; no real deployment key."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/DeviceTrialNativeTests.swift",
+      "category": "deployment_public_key",
+      "line": 175,
+      "sha256": "2bcef9daa167400ea6f3a0bdd60a107c84149f656e58f068b549f010c9bb88e3",
+      "reason": "Explicit synthetic fixture public key in mock-only native test; no real deployment key."
+    }
+  ]
+}

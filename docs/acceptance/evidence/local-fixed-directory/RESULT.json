@@ -1,0 +1,136 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-12",
+  "kind": "local-fixed-directory-integration",
+  "source_map": "docs/status/local-integration-source.json",
+  "source_trees": {
+    "native": {
+      "commit": "d9a897cc7881b7145fedb74b7af0dd5b5d8c4776",
+      "path": "apps/ios-conversation/Sources",
+      "git_tree": "cc4c076239c4bfdd8ae848227a15f19d860d9d1a"
+    },
+    "backend": {
+      "commit": "14495bede7dcdb66956c52add6aca78b48764464",
+      "path": "services/edge/supabase",
+      "git_tree": "331df31798d80df6637886f9c8a479755c304778"
+    },
+    "sidebar": {
+      "commit": "d92bfeceb510785fd03544692a48a6ab6ced44ad",
+      "path": "packages/ios-navigation",
+      "git_tree": "7553d481328616474efb5088a296ef047489e21f"
+    },
+    "qa": {
+      "commit": "5e7cf41cbd81265fbc781f964a27aba126f57f84",
+      "path": "qa",
+      "git_tree": "419d335128f83a39feba736fd14fddb0743b8cf9"
+    }
+  },
+  "checks": [
+    {
+      "name": "Git fsck --full / independent object store",
+      "result": "PASS",
+      "detail": "Exit 0; no alternates or object hardlinks; two dangling conflict trees retained, no gc/reset"
+    },
+    {
+      "name": "Selected production and QA byte identity",
+      "result": "PASS",
+      "detail": "Native sources/resources/tests/project/config match d9a897c; backend implementation/test match 14495be; sidebar matches d92bfec; QA matches 5e7cf41"
+    },
+    {
+      "name": "DeviceTrial generic iOS Simulator build",
+      "result": "PASS",
+      "detail": "Xcode 27.1 / iOS SDK 27.1; CODE_SIGNING_ALLOWED=NO; no App launch/install"
+    },
+    {
+      "name": "Native source validation",
+      "result": "PARTIAL / FAIL",
+      "detail": "iOS SDK typecheck, syntax parse, 63 App sources/3 targets/scheme membership PASS; localization checker reports 99 unregistered Chinese literals across 3 files; overall script exits 1"
+    },
+    {
+      "name": "Conversation Foundation suite",
+      "result": "PASS",
+      "passed": 7,
+      "failed": 0
+    },
+    {
+      "name": "Queue Foundation suite",
+      "result": "PASS",
+      "passed": 9,
+      "failed": 0
+    },
+    {
+      "name": "Sidebar SwiftPM suite",
+      "result": "PASS",
+      "passed": 12,
+      "failed": 0,
+      "detail": "macOS, no host integration"
+    },
+    {
+      "name": "Sidebar iOS SDK library compile/link",
+      "result": "PASS",
+      "detail": "No Simulator device or UI execution in this batch"
+    },
+    {
+      "name": "Backend offline Deno suite",
+      "result": "PASS",
+      "passed": 62,
+      "failed": 0,
+      "detail": "Existing Deno 2.9.6; readonly public cached jose 6.2.12/postgres 3.4.7 through import map; --deny-net --ignore-env; no real PG/provider"
+    },
+    {
+      "name": "Repository integrity/sensitivity/whitespace",
+      "result": "PASS",
+      "detail": "Frozen provenance/contract checked; no blocking or pending manual scan hits"
+    }
+  ],
+  "runtime_log_identity": {
+    "ios-build": {
+      "path": "build/local-integration/ios-build.log",
+      "sha256": "ce0b98967b71de971aff743b8e50d8223b41c8a31b829ce7471cda2ce19ff0e8"
+    },
+    "ios-source-check-initial": {
+      "path": "build/local-integration/ios-source-check-initial.log",
+      "sha256": "07f172725bd2d11e05aae9e139de5c9fb6278b8eae79b8a7b8dba7fc5c43e03d"
+    },
+    "ios-source-check-final": {
+      "path": "build/local-integration/ios-source-check-final.log",
+      "sha256": "4c2aff3d1945ed89103ef24e5d75c847e94f9ab2792f6abde0ac1babd1956400"
+    },
+    "conversation": {
+      "path": "build/local-integration/conversation.log",
+      "sha256": "35552b709c6738ae350e7a57cd73539c5dbe3f899d7c13f2bc5ab1c6cd8bcbb9"
+    },
+    "queue": {
+      "path": "build/local-integration/queue.log",
+      "sha256": "a4c4118360986d3ca62da65d753cb1e4d71e614fb9e511be5f4889f9ebdb3889"
+    },
+    "edge-offline": {
+      "path": "build/local-integration/edge-offline.log",
+      "sha256": "03c4698dad9f871b3207471d4b0aef9f4abd49ee0e2f65873da98b333c7898b3"
+    },
+    "sidebar": {
+      "path": "build/local-integration/sidebar.log",
+      "sha256": "d712f66fc0f85e348ed3b3516a0852338c279ffa85ea464306b017b124950ead"
+    },
+    "sidebar-ios-sdk": {
+      "path": "build/local-integration/sidebar-ios-sdk.log",
+      "sha256": "afce76f19ef5a6057c57f8f161c898d2886e0dbf8401db1a361a2f65bb302b93"
+    }
+  },
+  "production_files_modified_by_integrator": false,
+  "network_or_model_requests": 0,
+  "app_installs": 0,
+  "deployments": 0,
+  "pushes": 0,
+  "not_run": [
+    "Native/UI/Keychain/physical device validation in this fixed directory",
+    "Sidebar host wiring and actual root/detail gesture/accessibility validation",
+    "Original QA red-green full rerun requiring pinned archives",
+    "Real PostgreSQL/multi-instance, cloud/model/tick/vision or long task checks"
+  ],
+  "limits": [
+    "99 is a localization-checker finding count, not 99 independently verified user-facing defects",
+    "Backend import map is local test tooling only; original npm imports and lock unchanged",
+    "Runtime logs/build products are ignored and are not repository deliverables"
+  ]
+}

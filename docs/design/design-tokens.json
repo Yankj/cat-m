@@ -1,0 +1,79 @@
+{
+  "colors": {
+    "background": {
+      "light": "#F7F8FA",
+      "dark": "#111214"
+    },
+    "panel": {
+      "light": "#FFFFFF",
+      "dark": "#1B1D21"
+    },
+    "input": {
+      "light": "#ECEEF2",
+      "dark": "#24272D"
+    },
+    "ink": {
+      "light": "#202329",
+      "dark": "#F1F2F4"
+    },
+    "onInk": {
+      "light": "#FFFFFF",
+      "dark": "#15171A"
+    },
+    "secondary": {
+      "light": "#606570",
+      "dark": "#A7ADB8"
+    },
+    "accent": {
+      "light": "#2855B6",
+      "dark": "#ADC5FF"
+    },
+    "separator": {
+      "light": "#DADDE3",
+      "dark": "#393E48"
+    },
+    "success": {
+      "light": "#267146",
+      "dark": "#9BD4AF"
+    },
+    "attention": {
+      "light": "#895700",
+      "dark": "#E9BC69"
+    },
+    "failure": {
+      "light": "#B23840",
+      "dark": "#F6A4A7"
+    }
+  },
+  "type": {
+    "pageHeading": "title2 / semibold",
+    "section": "headline",
+    "body": "body / regular",
+    "row": "body / medium",
+    "secondary": "subheadline",
+    "status": "caption / medium"
+  },
+  "layout": {
+    "pageInset": 20,
+    "sectionGap": 28,
+    "rowGap": 12,
+    "cardRadius": 20,
+    "controlRadius": 14,
+    "composerRadius": 24,
+    "touchMinimum": 44,
+    "readableWidth": 680
+  },
+  "icons": {
+    "rendering": "monochrome",
+    "weight": "medium",
+    "baseBodySize": 19,
+    "scale": "medium",
+    "resize": "ScaledMetric relativeTo body"
+  },
+  "motion": {
+    "pressOpacity": 0.78,
+    "durationSeconds": 0.12,
+    "reduceMotion": "no animated press transition"
+  },
+  "material": "system navigation and controls; opaque content surfaces"
+}

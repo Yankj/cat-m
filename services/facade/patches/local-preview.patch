@@ -1,0 +1,107 @@
+--- a/apps/server/src/actions.ts
++++ b/apps/server/src/actions.ts
+@@ -1,14 +1,15 @@
+ import { createHash, randomUUID } from "node:crypto";
+-import {
+-  type ActionProposal,
+-  type CalendarEvent,
+-  type ProposalInput,
+-  proposalSchema,
++import type {
++  ActionProposal,
++  CalendarEvent,
++  ProposalInput,
+ } from "../../../packages/domain/src/index.ts";
+ import type { Store } from "./db.ts";
+ import { AppError } from "./errors.ts";
+ 
+ interface Options {
++  // Explicit parser port for the local-only preview extension; no SDK/config import.
++  parsePreview?: (raw: unknown) => ProposalInput;
+   execute: (
+     owner: string,
+     input: ProposalInput,
+@@ -36,6 +37,14 @@
+   ) {
+     this.now = options.now ?? Date.now;
+   }
++  private async parse(raw: unknown): Promise<ProposalInput> {
++    if (raw && typeof raw === "object" && "kind" in raw && raw.kind === "catpaw.preview") {
++      if (!this.options.parsePreview) throw new AppError("Preview parser is unavailable", 503);
++      return this.options.parsePreview(raw);
++    }
++    const { proposalSchema } = await import("../../../packages/domain/src/index.ts");
++    return proposalSchema.parse(raw);
++  }
+   async propose(
+     owner: string,
+     raw: unknown,
+@@ -50,14 +59,16 @@
+       const existing = await this.db.get<ActionProposal>(owner, "actions", id);
+       if (existing) return existing;
+     }
+-    const parsed = proposalSchema.parse(raw);
+-    const connection = await this.options.connection?.(owner);
+-    if (this.options.connection && !connection)
++    const parsed = await this.parse(raw);
++    const connection = parsed.kind === "catpaw.preview" ? undefined : await this.options.connection?.(owner);
++    if (parsed.kind !== "catpaw.preview" && this.options.connection && !connection)
+       throw new AppError("Connect Google before preparing an action", 409);
+-    const prepared = await this.options.prepare?.(owner, parsed, connection?.id);
+-    const input = proposalSchema.parse(prepared?.input ?? parsed);
++    const prepared = parsed.kind === "catpaw.preview" ? undefined : await this.options.prepare?.(owner, parsed, connection?.id);
++    const input = await this.parse(prepared?.input ?? parsed);
+     const title =
+-      input.kind === "email.send"
++      input.kind === "catpaw.preview"
++        ? `Preview ${input.data.title}`
++        : input.kind === "email.send"
+         ? `Send “${input.data.subject}”`
+         : input.kind === "calendar.delete"
+           ? `Delete ${input.data.title}`
+@@ -133,9 +144,9 @@
+       }
+       throw new AppError("This review expired. Create a fresh proposal.", 409);
+     }
+-    if (decision === "approve" && !(await this.options.connected(owner)))
++    if (decision === "approve" && proposal.kind !== "catpaw.preview" && !(await this.options.connected(owner)))
+       throw new AppError("Google is disconnected. Reconnect before approving this action.", 409);
+-    if (decision === "approve" && this.options.connection) {
++    if (decision === "approve" && proposal.kind !== "catpaw.preview" && this.options.connection) {
+       const connection = await this.options.connection(owner);
+       if (
+         !connection ||
+@@ -182,7 +193,7 @@
+     }
+     let finished: ActionProposal;
+     try {
+-      const input = proposalSchema.parse({ kind: claimed.kind, data: claimed.data });
++      const input = await this.parse({ kind: claimed.kind, data: claimed.data });
+       const result = await this.options.execute(
+         owner,
+         input,
+--- a/packages/domain/src/index.ts
++++ b/packages/domain/src/index.ts
+@@ -126,6 +126,12 @@
+     }
+   });
+ export const proposalSchema = z.discriminatedUnion("kind", [
++  z.object({ kind: z.literal("catpaw.preview"), data: z.object({
++    artifactId: z.string().regex(/^[a-f0-9]{64}$/),
++    version: z.number().int().positive(),
++    contentHash: z.string().regex(/^[a-f0-9]{64}$/),
++    title: z.string().min(1).max(160),
++  }).strict() }).strict(),
+   z.object({ kind: z.literal("email.send"), data: emailDraftSchema }),
+   z.object({ kind: z.literal("calendar.create"), data: eventDraftSchema }),
+   z.object({
+--- a/apps/server/src/engine/worker.ts
++++ b/apps/server/src/engine/worker.ts
+@@ -164,6 +164,7 @@
+       await this.db.put(owner, "run-events", {
+         id: randomUUID(),
+         taskId,
++        leaseId, // captured attempt identity; never substitute the current task lease
+         date: new Date(this.now()).toISOString(),
+         kind,
+         title,
