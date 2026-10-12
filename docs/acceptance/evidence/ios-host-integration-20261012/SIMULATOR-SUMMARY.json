@@ -1,0 +1,172 @@
+[
+  {
+    "fixture_reality": "injected_synthetic_offline",
+    "external_network_enabled": false,
+    "conversation_id": "CC608F12-EE0B-42EE-89B6-ED33540D412E",
+    "turn_id": "",
+    "turn_state": "",
+    "synthetic_reply_calls": 0,
+    "synthetic_observe_calls": 0,
+    "draft_hash": "1b0d72bc66c78832220990adfbc8c922fbdc33e4427213d838943385fe5035ca",
+    "composition_active": false,
+    "is_presented_frame_proof": false,
+    "case": "P0NativeExperienceUITests/testIntegratedActualPhotosPickerCancelPreviewAndClosedGate()",
+    "raw_probe_sha256": "e36be615a1dd1714a1363a25387c9d70d678fc59c6560f2fc3728373578d66d3",
+    "frame_intervals_ms": {
+      "count": 750,
+      "maximum": 166.724124996108,
+      "p95": 32.473625004058704
+    }
+  },
+  {
+    "fixture_reality": "injected_synthetic_offline",
+    "external_network_enabled": false,
+    "conversation_id": "CC608F12-EE0B-42EE-89B6-ED33540D412E",
+    "turn_id": "",
+    "turn_state": "",
+    "synthetic_reply_calls": 0,
+    "synthetic_observe_calls": 0,
+    "draft_hash": "1b0d72bc66c78832220990adfbc8c922fbdc33e4427213d838943385fe5035ca",
+    "composition_active": false,
+    "is_presented_frame_proof": false,
+    "case": "P0NativeExperienceUITests/testIntegratedLargestTypeSidebarFooterIsReachable()",
+    "raw_probe_sha256": "c903076d91ef75cff78f8da3bcb39595840223a782dfbc2c5fbf4b3a37651683",
+    "frame_intervals_ms": {
+      "count": 529,
+      "maximum": 528.1742916558869,
+      "p95": 33.30004165763967
+    }
+  },
+  {
+    "fixture_reality": "injected_synthetic_offline",
+    "external_network_enabled": false,
+    "conversation_id": "CC608F12-EE0B-42EE-89B6-ED33540D412E",
+    "turn_id": "",
+    "turn_state": "",
+    "synthetic_reply_calls": 0,
+    "synthetic_observe_calls": 0,
+    "draft_hash": "1b0d72bc66c78832220990adfbc8c922fbdc33e4427213d838943385fe5035ca",
+    "composition_active": false,
+    "is_presented_frame_proof": false,
+    "case": "P0NativeExperienceUITests/testIntegratedRootEdgeAndPanelClosingGestures()",
+    "raw_probe_sha256": "8b8c26827482256daca4eee147849994f62c59a00d89b5daceb5e6a303f6057a",
+    "frame_intervals_ms": {
+      "count": 550,
+      "maximum": 99.7076666681096,
+      "p95": 20.93766667530872
+    }
+  },
+  {
+    "fixture_reality": "injected_synthetic_offline",
+    "external_network_enabled": false,
+    "conversation_id": "CC608F12-EE0B-42EE-89B6-ED33540D412E",
+    "turn_id": "",
+    "turn_state": "",
+    "synthetic_reply_calls": 0,
+    "synthetic_observe_calls": 0,
+    "draft_hash": "1b0d72bc66c78832220990adfbc8c922fbdc33e4427213d838943385fe5035ca",
+    "composition_active": false,
+    "is_presented_frame_proof": false,
+    "case": "P0NativeExperienceUITests/testIntegratedSidebarRoutesSearchAndNativeBackPreserveSavedDraft()",
+    "raw_probe_sha256": "62c5bc361e3725571888e837ee957402f2aa88d104fe507b928766cc04a915f0",
+    "frame_intervals_ms": {
+      "count": 1186,
+      "maximum": 360.6828749907436,
+      "p95": 32.89545833831653
+    }
+  },
+  {
+    "fixture_reality": "injected_synthetic_offline",
+    "external_network_enabled": false,
+    "conversation_id": "CC608F12-EE0B-42EE-89B6-ED33540D412E",
+    "turn_id": "E415298E-F38F-4D46-9761-8FC44C976686",
+    "turn_state": "completed",
+    "synthetic_reply_calls": 1,
+    "synthetic_observe_calls": 0,
+    "draft_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "composition_active": false,
+    "is_presented_frame_proof": false,
+    "case": "P0NativeExperienceUITests/testLargestDynamicTypeComposerAndStreamRemainAccessible()",
+    "raw_probe_sha256": "83679b4b67626bd5bd9c2b649a76e6fd58336095fc57ebadaa6be52c53adc115",
+    "frame_intervals_ms": {
+      "count": 309,
+      "maximum": 223.47887500654906,
+      "p95": 66.66875000519212
+    },
+    "local_echo_geometry": {
+      "count": 1,
+      "maximum_ms": 72.26275000721216,
+      "p95_ms": 72.26275000721216,
+      "presented_frame_proof": false
+    }
+  },
+  {
+    "fixture_reality": "injected_synthetic_offline",
+    "external_network_enabled": false,
+    "conversation_id": "CC608F12-EE0B-42EE-89B6-ED33540D412E",
+    "turn_id": "",
+    "turn_state": "",
+    "synthetic_reply_calls": 0,
+    "synthetic_observe_calls": 0,
+    "draft_hash": "1d5e7e1986f4412772e3a2bc2317cdbd87764f257d951b4ad420f3c044460520",
+    "composition_active": false,
+    "is_presented_frame_proof": false,
+    "case": "P0NativeExperienceUITests/testNativeMarkedTextPreventsSendAndCommandReturn()",
+    "raw_probe_sha256": "3d346c79f09ebc5105a3a17a8bab14796a40f737b23d5dfa0ca2a865b1258f84",
+    "frame_intervals_ms": {
+      "count": 296,
+      "maximum": 181.6781666566385,
+      "p95": 34.418666662531905
+    }
+  },
+  {
+    "fixture_reality": "injected_synthetic_offline",
+    "external_network_enabled": false,
+    "conversation_id": "CC608F12-EE0B-42EE-89B6-ED33540D412E",
+    "turn_id": "ABA82660-FA08-48C3-8456-935932A4306E",
+    "turn_state": "completed",
+    "synthetic_reply_calls": 1,
+    "synthetic_observe_calls": 4,
+    "draft_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "composition_active": false,
+    "is_presented_frame_proof": false,
+    "case": "P0NativeExperienceUITests/testSimulatorHomeFiveSecondsRecoversSameSyntheticTurn()",
+    "raw_probe_sha256": "a8d3b26fc43676eb10290d5fd6c1a52d047b14e13e1ab5a553923f8a1e07819f",
+    "frame_intervals_ms": {
+      "count": 596,
+      "maximum": 200.6227083329577,
+      "p95": 49.42283332638908
+    },
+    "local_echo_geometry": {
+      "count": 1,
+      "maximum_ms": 34.24787499534432,
+      "p95_ms": 34.24787499534432,
+      "presented_frame_proof": false
+    }
+  },
+  {
+    "fixture_reality": "injected_synthetic_offline",
+    "external_network_enabled": false,
+    "conversation_id": "CC608F12-EE0B-42EE-89B6-ED33540D412E",
+    "turn_id": "9A2AC4D8-54C6-41F4-8D35-05C1879A7A33",
+    "turn_state": "completed",
+    "synthetic_reply_calls": 20,
+    "synthetic_observe_calls": 0,
+    "draft_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "composition_active": false,
+    "is_presented_frame_proof": false,
+    "case": "P0NativeExperienceUITests/testStableLocalEchoDuringPermissionAndTwentyCallbackSamples()",
+    "raw_probe_sha256": "eb4a28e2e18d28ed63922ba3b74cd2a1f21b47e0539cad76f60558c71ee429f3",
+    "frame_intervals_ms": {
+      "count": 1500,
+      "maximum": 261.4824583288282,
+      "p95": 42.214875007630326
+    },
+    "local_echo_geometry": {
+      "count": 20,
+      "maximum_ms": 87.00987500196788,
+      "p95_ms": 87.00987500196788,
+      "presented_frame_proof": false
+    }
+  }
+]
