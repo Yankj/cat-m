@@ -53,13 +53,14 @@ public struct SidebarPressStyle: ButtonStyle {
 }
 public struct SidebarMenuButton: View {
     let action: () -> Void
+    let localize:(String)->String
     var enabled: Bool
-    public init(enabled: Bool = true, action: @escaping () -> Void) { self.enabled = enabled; self.action = action }
+    public init(enabled: Bool = true,localize:@escaping (String)->String = {$0}, action: @escaping () -> Void) { self.enabled = enabled; self.action = action;self.localize=localize }
     public var body: some View {
         Button(action: action) {
-            Image(systemName: "line.3.horizontal").font(.body).frame(minWidth: 44, minHeight: 44).contentShape(Rectangle())
+            Image(systemName: "line.3.horizontal").font(.system(size:20)).frame(minWidth: 44, minHeight: 44).contentShape(Rectangle())
         }.buttonStyle(SidebarPressStyle()).disabled(!enabled)
-            .accessibilityLabel("打开侧栏").accessibilityHint("切换对话、任务和成果")
+            .accessibilityLabel(localize("打开侧栏")).accessibilityHint(localize("切换对话、任务和成果"))
             .accessibilityIdentifier("sidebar.open")
     }
 }

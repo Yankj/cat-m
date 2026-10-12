@@ -15,6 +15,12 @@
 *.dSYM/
 
 # Credentials, personal state and local service data
+local-audit/
+# Working research may contain machine context; publish only curated restart inputs.
+/design/*
+!/design/catpaw-restart-review-and-plan-2026-10-13.md
+/research/*
+!/research/openmuse-opendots-copilotkit-assessment-2026-10-13.md
 .env
 .env.*
 **/.env
@@ -38,3 +44,12 @@ services/facade/qa/data/*
 !services/facade/qa/data/.gitkeep
 services/offline/evidence/*
 !services/offline/evidence/.gitkeep
+
+# Large historical synthetic sampling traces remain on disk and in legacy Git history.
+/docs/acceptance/evidence/ios-p0-performance/baseline-large-type.json
+/docs/acceptance/evidence/ios-p0-performance/final-echo20.json
+/docs/acceptance/evidence/ios-p0-performance/final-home5s.json
+/docs/acceptance/evidence/ios-p0-performance/final-ime.json
+/docs/acceptance/evidence/ios-p0-performance/final-large-type.json
+/docs/acceptance/evidence/ios-p0-performance/no-xctest-after.json
+/docs/acceptance/evidence/ios-p0-performance/no-xctest-baseline.json

@@ -2050,5 +2050,609 @@
   "默认项目 · 本机保存": {
     "en": "Default project · saved locally",
     "zh-Hans": "默认项目 · 本机保存"
+  },
+  "附带图片": {
+    "zh-Hans": "附带图片",
+    "en": "Image attached"
+  },
+  "确认图片处理方式": {
+    "zh-Hans": "确认图片处理方式",
+    "en": "Review image processing"
+  },
+  "正在读取图片处理方式…": {
+    "zh-Hans": "正在读取图片处理方式…",
+    "en": "Reading image processing details…"
+  },
+  "待确认的图片预览": {
+    "zh-Hans": "待确认的图片预览",
+    "en": "Image preview for confirmation"
+  },
+  "确认后返回输入区，点击发送才会传输图片。": {
+    "zh-Hans": "确认后返回输入区，点击发送才会传输图片。",
+    "en": "Confirmation returns you to the composer. The image is transmitted only when you tap Send."
+  },
+  "正在保存确认…": {
+    "zh-Hans": "正在保存确认…",
+    "en": "Saving confirmation…"
+  },
+  "选择图片": {
+    "zh-Hans": "选择图片",
+    "en": "Choose image"
+  },
+  "更换图片": {
+    "zh-Hans": "更换图片",
+    "en": "Replace image"
+  },
+  "移除图片": {
+    "zh-Hans": "移除图片",
+    "en": "Remove image"
+  },
+  "只读取你选择的一张图片，选择后不会发送": {
+    "zh-Hans": "只读取你选择的一张图片，选择后不会发送",
+    "en": "Only the image you select is read. Selecting it does not send it."
+  },
+  "上次处理完成的图片，尚未替换": {
+    "zh-Hans": "上次处理完成的图片，尚未替换",
+    "en": "Previously processed image; not replaced yet"
+  },
+  "已选图片预览，尚未发送": {
+    "zh-Hans": "已选图片预览，尚未发送",
+    "en": "Selected image preview; not sent"
+  },
+  "正在读取所选图片…": {
+    "zh-Hans": "正在读取所选图片…",
+    "en": "Reading the selected image…"
+  },
+  "正在处理图片…": {
+    "zh-Hans": "正在处理图片…",
+    "en": "Processing the image…"
+  },
+  "上次处理完成的图片仍保留，当前附件不可发送。": {
+    "zh-Hans": "上次处理完成的图片仍保留，当前附件不可发送。",
+    "en": "The previous processed image is retained. The current attachment cannot be sent."
+  },
+  "重新处理图片": {
+    "zh-Hans": "重新处理图片",
+    "en": "Process image again"
+  },
+  "重新读取所选图片": {
+    "zh-Hans": "重新读取所选图片",
+    "en": "Read selected image again"
+  },
+  "所选图片仅在你发送并确认处理方式后外发。": {
+    "zh-Hans": "所选图片仅在你发送并确认处理方式后外发。",
+    "en": "The selected image leaves this device only after you confirm processing and tap Send."
+  },
+  "图片发送暂不可用。所选图片仅保留在本机。": {
+    "zh-Hans": "图片发送暂不可用。所选图片仅保留在本机。",
+    "en": "Image sending is currently unavailable. The selected image stays on this device."
+  },
+  "你的个人助理": {
+    "zh-Hans": "你的个人助理",
+    "en": "Your personal assistant"
+  },
+  "点击即可开始。此设备会安全保存体验身份，回来时继续你的对话。": {
+    "zh-Hans": "点击即可开始。此设备会安全保存体验身份，回来时继续你的对话。",
+    "en": "Tap to get started. This device securely saves your experience account so you can return to your conversations."
+  },
+  "合成登录测试 · 无真实 Auth 或模型调用": {
+    "zh-Hans": "合成登录测试 · 无真实 Auth 或模型调用",
+    "en": "Synthetic sign-in test · No real Auth or model calls"
+  },
+  "邮箱": {
+    "zh-Hans": "邮箱",
+    "en": "Email"
+  },
+  "密码": {
+    "zh-Hans": "密码",
+    "en": "Password"
+  },
+  "登录": {
+    "zh-Hans": "登录",
+    "en": "Sign in"
+  },
+  "正在复核登录…": {
+    "zh-Hans": "正在复核登录…",
+    "en": "Checking your session…"
+  },
+  "开始体验": {
+    "zh-Hans": "开始体验",
+    "en": "Get started"
+  },
+  "请保留此设备的登录状态。退出或更换设备后，暂时无法找回体验身份。": {
+    "zh-Hans": "请保留此设备的登录状态。退出或更换设备后，暂时无法找回体验身份。",
+    "en": "Keep this device signed in. Signing out or changing devices currently prevents recovery of this experience account."
+  },
+  "退出未恢复的会话": {
+    "zh-Hans": "退出未恢复的会话",
+    "en": "Sign out of the unrecovered session"
+  },
+  "取消登录": {
+    "zh-Hans": "取消登录",
+    "en": "Cancel sign-in"
+  },
+  "重试安全保存": {
+    "zh-Hans": "重试安全保存",
+    "en": "Retry secure save"
+  },
+  "问一个问题，或说一件想做的事。": {
+    "zh-Hans": "问一个问题，或说一件想做的事。",
+    "en": "Ask a question or tell me what you want to do."
+  },
+  "回复完成": {
+    "zh-Hans": "回复完成",
+    "en": "Reply complete"
+  },
+  "此轮回复未完成": {
+    "zh-Hans": "此轮回复未完成",
+    "en": "This reply did not complete"
+  },
+  "原请求状态待确认": {
+    "zh-Hans": "原请求状态待确认",
+    "en": "Original request status needs verification"
+  },
+  "发送结果尚未确认。先读取原请求，避免重复发送；草稿会保留。": {
+    "zh-Hans": "发送结果尚未确认。先读取原请求，避免重复发送；草稿会保留。",
+    "en": "The send outcome is unconfirmed. Read the original request to avoid sending it again. Your draft is retained."
+  },
+  "读取原请求进展": {
+    "zh-Hans": "读取原请求进展",
+    "en": "Read original request"
+  },
+  "只查询原请求，不重新发送消息": {
+    "zh-Hans": "只查询原请求，不重新发送消息",
+    "en": "Read the original request without sending another message"
+  },
+  "打开对话": {
+    "zh-Hans": "打开对话",
+    "en": "Open conversation"
+  },
+  "新对话": {
+    "zh-Hans": "新对话",
+    "en": "New conversation"
+  },
+  "允许此对话": {
+    "zh-Hans": "允许此对话",
+    "en": "Allow this conversation"
+  },
+  "暂不允许": {
+    "zh-Hans": "暂不允许",
+    "en": "Not now"
+  },
+  "解锁后查看对话": {
+    "zh-Hans": "解锁后查看对话",
+    "en": "Unlock to view conversations"
+  },
+  "退出此账号": {
+    "zh-Hans": "退出此账号",
+    "en": "Sign out"
+  },
+  "退出此账号？": {
+    "zh-Hans": "退出此账号？",
+    "en": "Sign out of this account?"
+  },
+  "确认退出": {
+    "zh-Hans": "确认退出",
+    "en": "Confirm sign-out"
+  },
+  "体验身份暂时无法找回。退出后，你将无法继续访问这些对话。": {
+    "zh-Hans": "体验身份暂时无法找回。退出后，你将无法继续访问这些对话。",
+    "en": "This experience account currently cannot be recovered. After signing out, you will lose access to these conversations."
+  },
+  "退出后需重新登录才能继续访问此账号的对话。": {
+    "zh-Hans": "退出后需重新登录才能继续访问此账号的对话。",
+    "en": "Sign in again after signing out to access this account’s conversations."
+  },
+  "已连接": {
+    "zh-Hans": "已连接",
+    "en": "Connected"
+  },
+  "连接待验证": {
+    "zh-Hans": "连接待验证",
+    "en": "Connection unverified"
+  },
+  "连接暂不可用": {
+    "zh-Hans": "连接暂不可用",
+    "en": "Connection unavailable"
+  },
+  "模型未连接": {
+    "zh-Hans": "模型未连接",
+    "en": "Model not connected"
+  },
+  "合成测试协议证据": {
+    "zh-Hans": "合成测试协议证据",
+    "en": "Synthetic contract evidence"
+  },
+  "后续消息已暂停": {
+    "zh-Hans": "后续消息已暂停",
+    "en": "Follow-up messages paused"
+  },
+  "后续消息 · 仅在前台发送": {
+    "zh-Hans": "后续消息 · 仅在前台发送",
+    "en": "Follow-up messages · Sent only in the foreground"
+  },
+  "移除后续消息": {
+    "zh-Hans": "移除后续消息",
+    "en": "Remove follow-up message"
+  },
+  "继续发送后续消息": {
+    "zh-Hans": "继续发送后续消息",
+    "en": "Resume follow-up messages"
+  },
+  "暂停后续消息": {
+    "zh-Hans": "暂停后续消息",
+    "en": "Pause follow-up messages"
+  },
+  "正在准备发送…": {
+    "zh-Hans": "正在准备发送…",
+    "en": "Preparing to send…"
+  },
+  "消息过长。请缩短后再发送（长度上限 8000）。": {
+    "zh-Hans": "消息过长。请缩短后再发送（长度上限 8000）。",
+    "en": "Message too long. Shorten it before sending (limit: 8000)."
+  },
+  "排队发送": {
+    "zh-Hans": "排队发送",
+    "en": "Queue message"
+  },
+  "发送": {
+    "zh-Hans": "发送",
+    "en": "Send"
+  },
+  "先读取原请求进展，当前草稿不会重发": {
+    "zh-Hans": "先读取原请求进展，当前草稿不会重发",
+    "en": "Read the original request first. The current draft will not be sent again."
+  },
+  "保存在后续消息队列，仅在前台发送": {
+    "zh-Hans": "保存在后续消息队列，仅在前台发送",
+    "en": "Save to the follow-up queue and send only in the foreground"
+  },
+  "发送当前消息": {
+    "zh-Hans": "发送当前消息",
+    "en": "Send current message"
+  },
+  "模型连接设置": {
+    "zh-Hans": "模型连接设置",
+    "en": "Model connection settings"
+  },
+  "正在本机保存": {
+    "zh-Hans": "正在本机保存",
+    "en": "Saving on this device"
+  },
+  "已保存在本机 · 待发送": {
+    "zh-Hans": "已保存在本机 · 待发送",
+    "en": "Saved on this device · Awaiting send"
+  },
+  "等待许可": {
+    "zh-Hans": "等待许可",
+    "en": "Awaiting permission"
+  },
+  "发送中": {
+    "zh-Hans": "发送中",
+    "en": "Sending"
+  },
+  "确认发送状态": {
+    "zh-Hans": "确认发送状态",
+    "en": "Verifying send status"
+  },
+  "本机保存未完成": {
+    "zh-Hans": "本机保存未完成",
+    "en": "Local save did not complete"
+  },
+  "已发送": {
+    "zh-Hans": "已发送",
+    "en": "Sent"
+  },
+  "任务请求失败 · ": {
+    "zh-Hans": "任务请求失败 · ",
+    "en": "Task request failed · "
+  },
+  "任务进展已读取": {
+    "zh-Hans": "任务进展已读取",
+    "en": "Task progress read"
+  },
+  "读取任务进展…": {
+    "zh-Hans": "读取任务进展…",
+    "en": "Reading task progress…"
+  },
+  "任务请求已记录": {
+    "zh-Hans": "任务请求已记录",
+    "en": "Task request recorded"
+  },
+  "等待后台保存任务…": {
+    "zh-Hans": "等待后台保存任务…",
+    "en": "Waiting for the server to save the task…"
+  },
+  "已排队": {
+    "zh-Hans": "已排队",
+    "en": "Queued"
+  },
+  "正在进行": {
+    "zh-Hans": "正在进行",
+    "en": "In progress"
+  },
+  "等待反馈": {
+    "zh-Hans": "等待反馈",
+    "en": "Awaiting feedback"
+  },
+  "需要处理": {
+    "zh-Hans": "需要处理",
+    "en": "Needs attention"
+  },
+  "状态待确认": {
+    "zh-Hans": "状态待确认",
+    "en": "Status unconfirmed"
+  },
+  "读取最新进展": {
+    "zh-Hans": "读取最新进展",
+    "en": "Read latest progress"
+  },
+  "最近读取 · ": {
+    "zh-Hans": "最近读取 · ",
+    "en": "Last read · "
+  },
+  "对话历史": {
+    "zh-Hans": "对话历史",
+    "en": "Conversation history"
+  },
+  "，草稿，": {
+    "zh-Hans": "，草稿，",
+    "en": ", draft, "
+  },
+  "草稿 · ": {
+    "zh-Hans": "草稿 · ",
+    "en": "Draft · "
+  },
+  "未连接": {
+    "zh-Hans": "未连接",
+    "en": "Not connected"
+  },
+  "待验证": {
+    "zh-Hans": "待验证",
+    "en": "Unverified"
+  },
+  "暂不可用": {
+    "zh-Hans": "暂不可用",
+    "en": "Unavailable"
+  },
+  "模型连接": {
+    "zh-Hans": "模型连接",
+    "en": "Model connection"
+  },
+  "状态": {
+    "zh-Hans": "状态",
+    "en": "Status"
+  },
+  "已验证模型": {
+    "zh-Hans": "已验证模型",
+    "en": "Verified model"
+  },
+  "重新检查连接": {
+    "zh-Hans": "重新检查连接",
+    "en": "Check connection again"
+  },
+  "数据": {
+    "zh-Hans": "数据",
+    "en": "Data"
+  },
+  "当前未连接云端；输入保存在此设备。": {
+    "zh-Hans": "当前未连接云端；输入保存在此设备。",
+    "en": "Cloud is not connected. Input is saved on this device."
+  },
+  "此设备保存对话副本；发送的消息会交给已连接的云端服务处理。": {
+    "zh-Hans": "此设备保存对话副本；发送的消息会交给已连接的云端服务处理。",
+    "en": "This device stores a conversation copy. Sent messages are processed by the connected cloud service."
+  },
+  "离开 App 后不会发送排队中的消息。任务后台执行的状态需要重新读取确认。": {
+    "zh-Hans": "离开 App 后不会发送排队中的消息。任务后台执行的状态需要重新读取确认。",
+    "en": "Queued messages are not sent after you leave the app. Read task status again to confirm background progress."
+  },
+  "诊断": {
+    "zh-Hans": "诊断",
+    "en": "Diagnostics"
+  },
+  "服务": {
+    "zh-Hans": "服务",
+    "en": "Service"
+  },
+  "版本 {0} ({1})": {
+    "zh-Hans": "版本 {0} ({1})",
+    "en": "Version {0} ({1})"
+  },
+  "真实模型尚未配置；不会使用演示回复代替模型。": {
+    "zh-Hans": "真实模型尚未配置；不会使用演示回复代替模型。",
+    "en": "A real model is not configured. Demo replies will not replace it."
+  },
+  "当前对话还没有任务": {
+    "zh-Hans": "当前对话还没有任务",
+    "en": "This conversation has no tasks yet"
+  },
+  "任务进展": {
+    "zh-Hans": "任务进展",
+    "en": "Task progress"
+  },
+  "当前对话还没有成果": {
+    "zh-Hans": "当前对话还没有成果",
+    "en": "This conversation has no results yet"
+  },
+  "明确合成测试": {
+    "zh-Hans": "明确合成测试",
+    "en": "Explicit synthetic fixture"
+  },
+  "运行冻结合成报告": {
+    "zh-Hans": "运行冻结合成报告",
+    "en": "Run frozen synthetic report"
+  },
+  "合成登录测试 · 无真实 Auth/模型": {
+    "zh-Hans": "合成登录测试 · 无真实 Auth/模型",
+    "en": "Synthetic sign-in test · No real Auth/model"
+  },
+  "体验账号": {
+    "zh-Hans": "体验账号",
+    "en": "Experience account"
+  },
+  "消息": {
+    "zh-Hans": "消息",
+    "en": "Message"
+  },
+  "关闭侧栏": {
+    "zh-Hans": "关闭侧栏",
+    "en": "Close sidebar"
+  },
+  "搜索对话": {
+    "zh-Hans": "搜索对话",
+    "en": "Search conversations"
+  },
+  "对话": {
+    "zh-Hans": "对话",
+    "en": "Conversations"
+  },
+  "还没有对话": {
+    "zh-Hans": "还没有对话",
+    "en": "No conversations yet"
+  },
+  "没有找到对话": {
+    "zh-Hans": "没有找到对话",
+    "en": "No conversations found"
+  },
+  "未命名对话": {
+    "zh-Hans": "未命名对话",
+    "en": "Untitled conversation"
+  },
+  "当前对话": {
+    "zh-Hans": "当前对话",
+    "en": "Current conversation"
+  },
+  "记忆": {
+    "zh-Hans": "记忆",
+    "en": "Memory"
+  },
+  "切换对话、任务和成果": {
+    "zh-Hans": "切换对话、任务和成果",
+    "en": "Switch conversations, tasks and results"
+  },
+  "未能读取所选图片。请重试或重新选择。": {
+    "zh-Hans": "未能读取所选图片。请重试或重新选择。",
+    "en": "Could not read the selected image. Retry or select it again."
+  },
+  "原图过大。请选择小于 50 MiB 的图片。": {
+    "zh-Hans": "原图过大。请选择小于 50 MiB 的图片。",
+    "en": "The source image is too large. Choose an image smaller than 50 MiB."
+  },
+  "原图像素过大。请选择尺寸较小的图片。": {
+    "zh-Hans": "原图像素过大。请选择尺寸较小的图片。",
+    "en": "The source image has too many pixels. Choose a smaller image."
+  },
+  "无法读取这张图片。请选择其他静态图片。": {
+    "zh-Hans": "无法读取这张图片。请选择其他静态图片。",
+    "en": "Cannot read this image. Choose another still image."
+  },
+  "暂不支持动画或多帧图片。请选择静态图片。": {
+    "zh-Hans": "暂不支持动画或多帧图片。请选择静态图片。",
+    "en": "Animated and multiframe images are not supported. Choose a still image."
+  },
+  "图片处理失败。请重试或重新选择。": {
+    "zh-Hans": "图片处理失败。请重试或重新选择。",
+    "en": "Image processing failed. Retry or select it again."
+  },
+  "压缩后仍超过图片上限。请选择其他图片。": {
+    "zh-Hans": "压缩后仍超过图片上限。请选择其他图片。",
+    "en": "The compressed image still exceeds the limit. Choose another image."
+  },
+  "已取消处理，原有附件保留。": {
+    "zh-Hans": "已取消处理，原有附件保留。",
+    "en": "Processing canceled. The existing attachment is retained."
+  },
+  "图片尚未准备好，请重新选择。": {
+    "zh-Hans": "图片尚未准备好，请重新选择。",
+    "en": "The image is not ready. Select it again."
+  },
+  "请等待图片处理完成。": {
+    "zh-Hans": "请等待图片处理完成。",
+    "en": "Wait for image processing to finish."
+  },
+  "请先完成图片处理，或移除图片后发送文字。": {
+    "zh-Hans": "请先完成图片处理，或移除图片后发送文字。",
+    "en": "Finish image processing, or remove the image to send text."
+  },
+  "发送图片前需要确认本次图片处理方式。": {
+    "zh-Hans": "发送图片前需要确认本次图片处理方式。",
+    "en": "Confirm how this image will be processed before sending it."
+  },
+  "请先确认此对话的文字处理方式。": {
+    "zh-Hans": "请先确认此对话的文字处理方式。",
+    "en": "Confirm text processing for this conversation first."
+  },
+  "请添加你想问的问题。": {
+    "zh-Hans": "请添加你想问的问题。",
+    "en": "Add the question you want to ask."
+  },
+  "文字过长，请缩短后再发送。": {
+    "zh-Hans": "文字过长，请缩短后再发送。",
+    "en": "Text is too long. Shorten it before sending."
+  },
+  "附件状态已变化，请重新准备发送。": {
+    "zh-Hans": "附件状态已变化，请重新准备发送。",
+    "en": "Attachment state changed. Prepare it again before sending."
+  },
+  "允许发送这张图片到云端模型？": {
+    "zh-Hans": "允许发送这张图片到云端模型？",
+    "en": "Allow this image to be sent to a cloud model?"
+  },
+  "图片、本轮文字、最近文字会话及主动加入的文字上下文将发送给 OpenRouter 和 Google AI Studio，使用固定的免费 Gemma 4 31B 路线。请求禁止训练、限制费用为0并禁止回退；路线不可用时拒绝发送。Google 安全策略会为安全审查保留输入、上下文和输出55天，并可能人工审核；这不是零保留。服务器不保存图片字节历史，但保存文字回复和附件回执，直到你删除来源。请勿发送敏感、机密或含凭据的图片。撤销不能收回已发出的数据；断开流也不保证上游停止处理。": {
+    "zh-Hans": "图片、本轮文字、最近文字会话及主动加入的文字上下文将发送给 OpenRouter 和 Google AI Studio，使用固定的免费 Gemma 4 31B 路线。请求禁止训练、限制费用为0并禁止回退；路线不可用时拒绝发送。Google 安全策略会为安全审查保留输入、上下文和输出55天，并可能人工审核；这不是零保留。服务器不保存图片字节历史，但保存文字回复和附件回执，直到你删除来源。请勿发送敏感、机密或含凭据的图片。撤销不能收回已发出的数据；断开流也不保证上游停止处理。",
+    "en": "The image, current message, recent conversation text and any text context you add will be sent to OpenRouter and Google AI Studio using the fixed free Gemma 4 31B route. Requests disallow training, cap cost at zero and prohibit fallback; unavailable routes refuse transmission. Google safety policies retain inputs, context and outputs for 55 days and may involve human review. This is not zero retention. The server does not store image-byte history, but keeps text replies and attachment receipts until you delete the source. Do not send sensitive, confidential or credential-containing images. Revocation cannot recall data already sent, and disconnecting the stream does not guarantee upstream processing stops."
+  },
+  "允许此会话图片传输": {
+    "zh-Hans": "允许此会话图片传输",
+    "en": "Allow image processing for this conversation"
+  },
+  "我确认所发图片不包含敏感、机密或凭据信息": {
+    "zh-Hans": "我确认所发图片不包含敏感、机密或凭据信息",
+    "en": "I confirm this image contains no sensitive, confidential or credential information"
+  },
+  "消息尚未发送，需要确认处理方式。": {
+    "zh-Hans": "消息尚未发送，需要确认处理方式。",
+    "en": "This message has not been sent. Review how it will be processed."
+  },
+  "确认发送许可": {
+    "zh-Hans": "确认发送许可",
+    "en": "Review send permission"
+  },
+  "待发送 · {0} 条": {
+    "zh-Hans": "待发送 · {0} 条",
+    "en": "Awaiting send · {0}"
+  },
+  "服务可达": {
+    "zh-Hans": "服务可达",
+    "en": "Service reachable"
+  },
+  "回复已确认": {
+    "zh-Hans": "回复已确认",
+    "en": "Reply confirmed"
+  },
+  "最近确认回复": {
+    "zh-Hans": "最近确认回复",
+    "en": "Last confirmed reply"
+  },
+  "服务与登录状态可用；确认处理方式后即可发送消息。": {
+    "zh-Hans": "服务与登录状态可用；确认处理方式后即可发送消息。",
+    "en": "The service and your session are available. Review processing permissions to send."
+  },
+  "已收到并保存完整回复。": {
+    "zh-Hans": "已收到并保存完整回复。",
+    "en": "A complete reply has been received and saved."
+  },
+  "所选图片完整预览": {
+    "zh-Hans": "所选图片完整预览",
+    "en": "Full preview of the selected image"
+  },
+  "正在检查连接": {
+    "zh-Hans": "正在检查连接",
+    "en": "Checking connection"
+  },
+  "正在重新连接": {
+    "zh-Hans": "正在重新连接",
+    "en": "Reconnecting"
   }
 }

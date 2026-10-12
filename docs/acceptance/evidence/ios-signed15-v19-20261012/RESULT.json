@@ -1,0 +1,74 @@
+{
+  "schema_version": 1,
+  "created_at_utc": "2026-10-12T16:03:30.903031+00:00",
+  "frozen_code_commit": "4750142e9999bcf39a2231bd321169fe73e5e014",
+  "source_files_verified": 161,
+  "source_dictionary_sha256": "fe59e45f6b34402c9f0f00a84e5f374a59f6c832e9f5ce94aac896b01c4517a5",
+  "build": {
+    "result": "PASS",
+    "configuration": "DeviceTrial",
+    "sdk": "iPhoneOS27.1",
+    "conditions": "DEVICE_TRIAL; no DEBUG",
+    "version": "0.3.0",
+    "build": "15",
+    "bundle": "com.example.CatpawM.OpenMuseDemo",
+    "runtime_config": "Only five existing public values copied from verified old14 Info; no token or credential read/export",
+    "origin_old14_binary_sha256": "209278f7b814eba9be3004e5cab13bc5a07e3644314c920eac442d8b8d0dfd8b"
+  },
+  "signature": {
+    "verified": "valid on disk; designated requirement satisfied",
+    "certificate_sha256": "215e5076c2e0469090175e7047eb470b29f90932f4bc9f8998fe38ace6d62b59",
+    "original_profile_match": true,
+    "profile_uuid_sha256": "97c43624f1b14e3bfa7a9d6e79d6df0c15f29a5f864e28c80fd36d2164d56413",
+    "profile_expiry_utc": "2026-10-18T13:11:47Z",
+    "exact_original_entitlements": true,
+    "signed_binary_sha256": "f38bd2519ccf26d17dd1f8b9da7d8041a02b6387e97c1a8182d567054031ef61",
+    "cached_profile_only": true,
+    "provisioning_updates_allowed": false,
+    "new_certificate_profile_account_permissions": false
+  },
+  "ipa": {
+    "filename": "Catpaw-m-0.3.0-build15-4750142.ipa",
+    "sha256": "8373faea0951b96fffc2d4e53d18d1c93c58bb3b68ed7cc4075800a5a154d483",
+    "size_bytes": 6108230,
+    "verified_signed_app_files": 22,
+    "crc": "PASS",
+    "library_file_id": "libfile_5266b37675588191830e1fad1c867046",
+    "file_id": "file_00000000540c81f59dc96e5668729970",
+    "library_version": 0
+  },
+  "readiness": {
+    "status": 200,
+    "ready": true,
+    "image_input": true,
+    "available": true,
+    "state": "live_configured",
+    "live_validation": "catalog_only_until_real_fixture",
+    "observed_at_utc": "2026-10-12T15:58:55.364426+00:00",
+    "claimed_api_version": 19,
+    "api_version_evidence": "parent and backend deployment receipt; public response has no deployment version"
+  },
+  "installation": "NOT_RUN; latest instruction requires real-chain release before overwriting phone; build14 and data preserved",
+  "real_end_to_end": "NOT_RUN; normal App existing login + independent image consent + explicit Send on owned synthetic image still required after release. No token export or new identity",
+  "real_model_calls": 0,
+  "real_auth_calls": 0,
+  "phone_app_before_handoff": "0.3.0 (14)",
+  "initial_build_attempts": [
+    {
+      "result": "FAIL",
+      "reason": "Managed profile incompatible with Manual mode"
+    },
+    {
+      "result": "FAIL",
+      "reason": "Automatic mode requires Apple Development category, not explicit certificate hash"
+    }
+  ],
+  "final_build_attempt": "PASS; same Automatic cached-profile form as old14, actual certificate/profile then strictly matched",
+  "private_log_sha256": {
+    "build15-sign.private.log": "23bb580591442a0f4a675bbc399eb78569a8b77163c1958fb275914751129d05",
+    "build15-sign-cached.private.log": "1c280c47afe1703ad7a1ec3a09cc15f7c2c1e8028d5728f0d8e35b8fd4a7096d",
+    "build15-sign-original.private.log": "a8f861b60f157bfe2158ceb6eb4ddbb1c26072145af31311c7421d829a6669ab",
+    "signature-verify.private.log": "8bb3a151c0d27bbb1ffc6c0dae955de97957411df812bf7a72951252f6c7192c"
+  },
+  "old_dated_disabled_evidence": "Preserved as historic observation; superseded by this live_configured receipt, not an active external blocker"
+}

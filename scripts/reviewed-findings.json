@@ -215,16 +215,28 @@
     {
       "path": "apps/ios-conversation/Tests/DeviceTrialNativeTests.swift",
       "category": "deployment_public_key",
-      "line": 134,
-      "sha256": "2bcef9daa167400ea6f3a0bdd60a107c84149f656e58f068b549f010c9bb88e3",
+      "line": 232,
+      "sha256": "0b31c4190e24a874983918e7a91b85e1602d568d6200d086bbedc16a472d2e64",
       "reason": "Explicit synthetic fixture public key in mock-only native test; no real deployment key."
     },
     {
       "path": "apps/ios-conversation/Tests/DeviceTrialNativeTests.swift",
       "category": "deployment_public_key",
-      "line": 175,
-      "sha256": "2bcef9daa167400ea6f3a0bdd60a107c84149f656e58f068b549f010c9bb88e3",
+      "line": 273,
+      "sha256": "0b31c4190e24a874983918e7a91b85e1602d568d6200d086bbedc16a472d2e64",
       "reason": "Explicit synthetic fixture public key in mock-only native test; no real deployment key."
+    },
+    {
+      "path": "docs/acceptance/evidence/ios-host-integration-20261012/largest-type-sidebar.png",
+      "category": "png_metadata_requires_review",
+      "sha256": "ffd03c5202ad62e54eeb343dd77d6a23e402a7f6461e2acda36db88ee49ce16b",
+      "reason": "Reviewed every eXIf/iTXt byte: Screenshot label, orientation, dimensions and XMP namespaces only; no device/user identity. Native Simulator pixels contain only isolated offline fixture and owned synthetic image; unaltered bytes retained."
+    },
+    {
+      "path": "docs/acceptance/evidence/ios-host-integration-20261012/local-image-preview.png",
+      "category": "png_metadata_requires_review",
+      "sha256": "0e7a986192c1fc21570d177a26889502e8b2a2a9d4fab314e96c4c8ef770c81b",
+      "reason": "Reviewed every eXIf/iTXt byte: Screenshot label, orientation, dimensions and XMP namespaces only; no device/user identity. Native Simulator pixels contain only isolated offline fixture and owned synthetic image; unaltered bytes retained."
     }
   ]
 }

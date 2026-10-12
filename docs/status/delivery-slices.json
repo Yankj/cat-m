@@ -1,0 +1,207 @@
+{
+  "schema_version": 1,
+  "spec": "../product/agent-foundation-spec.md",
+  "acceptance": "../acceptance/agent-foundation-acceptance.json",
+  "current_state_authority": "master-plan.md",
+  "slices": [
+    {
+      "id": "S00",
+      "title": "唯一维护目录与安全来源同步",
+      "kind": "bootstrap",
+      "depends_on": [],
+      "requirements": [
+        "AF-R12"
+      ],
+      "acceptance_ids": [],
+      "components": [
+        "repository",
+        "docs/status",
+        "GitHub publication"
+      ]
+    },
+    {
+      "id": "S01",
+      "title": "稳定许可与真实连续对话",
+      "kind": "feature",
+      "depends_on": [
+        "S00"
+      ],
+      "requirements": [
+        "AF-R01",
+        "AF-R02",
+        "AF-R03",
+        "AF-R11",
+        "AF-R12"
+      ],
+      "acceptance_ids": [
+        "AF-A02",
+        "AF-A03",
+        "AF-A04",
+        "AF-A05"
+      ],
+      "components": [
+        "ConversationFirstModel",
+        "ConversationFirstView",
+        "ConversationSessionService",
+        "NativeChatHTTPBackend"
+      ]
+    },
+    {
+      "id": "S02",
+      "title": "真实图片输入与恢复",
+      "kind": "feature",
+      "depends_on": [
+        "S01"
+      ],
+      "requirements": [
+        "AF-R02",
+        "AF-R03"
+      ],
+      "acceptance_ids": [
+        "AF-A06"
+      ],
+      "components": [
+        "ios-image-composer",
+        "vision contract",
+        "provider receipt"
+      ]
+    },
+    {
+      "id": "S03",
+      "title": "计划执行审批成果闭环",
+      "kind": "feature",
+      "depends_on": [
+        "S01"
+      ],
+      "requirements": [
+        "AF-R03",
+        "AF-R04",
+        "AF-R05",
+        "AF-R06",
+        "AF-R10"
+      ],
+      "acceptance_ids": [
+        "AF-A07",
+        "AF-A08",
+        "AF-A09",
+        "AF-A10"
+      ],
+      "components": [
+        "TaskWorker adapter",
+        "Postgres store",
+        "effect/approval",
+        "task/artifact/inbox UI"
+      ]
+    },
+    {
+      "id": "S04",
+      "title": "记忆保存更正删除闭环",
+      "kind": "feature",
+      "depends_on": [
+        "S01"
+      ],
+      "requirements": [
+        "AF-R07"
+      ],
+      "acceptance_ids": [
+        "AF-A11"
+      ],
+      "components": [
+        "memory store/context",
+        "memory UI"
+      ]
+    },
+    {
+      "id": "S05",
+      "title": "定时与条件主动跟进",
+      "kind": "feature",
+      "depends_on": [
+        "S03"
+      ],
+      "requirements": [
+        "AF-R08",
+        "AF-R06"
+      ],
+      "acceptance_ids": [
+        "AF-A12",
+        "AF-A13"
+      ],
+      "components": [
+        "trigger records",
+        "scheduler adapter",
+        "outbox",
+        "activity UI"
+      ],
+      "implementation_requires": "hosting/deployment selection confirmed before provisioning"
+    },
+    {
+      "id": "S06",
+      "title": "本地日程动作与提醒",
+      "kind": "feature",
+      "depends_on": [
+        "S03"
+      ],
+      "requirements": [
+        "AF-R09",
+        "AF-R08"
+      ],
+      "acceptance_ids": [
+        "AF-A14",
+        "AF-A15"
+      ],
+      "components": [
+        "EventKit adapter",
+        "notification adapter",
+        "deep links"
+      ]
+    },
+    {
+      "id": "S07",
+      "title": "原生智能UI整体签收与交付",
+      "kind": "feature",
+      "depends_on": [
+        "S02",
+        "S03",
+        "S04",
+        "S05",
+        "S06"
+      ],
+      "requirements": [
+        "AF-R10",
+        "AF-R11",
+        "AF-R12"
+      ],
+      "acceptance_ids": [
+        "AF-A01",
+        "AF-A16",
+        "AF-A17",
+        "AF-A18"
+      ],
+      "components": [
+        "native card contract",
+        "navigation/reader",
+        "release manifest"
+      ]
+    },
+    {
+      "id": "S08",
+      "title": "按需云电脑扩展",
+      "kind": "feature",
+      "depends_on": [
+        "S03"
+      ],
+      "requirements": [],
+      "acceptance_ids": [
+        "AF-C01",
+        "AF-C02",
+        "AF-C03"
+      ],
+      "components": [
+        "environment port",
+        "worker hosting",
+        "sandbox adapter"
+      ],
+      "implementation_requires": "explicit user confirmation of scope, provider, region and budget"
+    }
+  ]
+}

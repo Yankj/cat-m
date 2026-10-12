@@ -1,0 +1,331 @@
+{
+  "schema_version": 1,
+  "spec_version": "AF-1",
+  "spec_path": "../product/agent-foundation-spec.md",
+  "procedure_path": "agent-foundation-acceptance.md",
+  "allowed_status": [
+    "PASS",
+    "FAIL",
+    "NOT_RUN",
+    "BLOCKED"
+  ],
+  "result_authority": "../status/master-plan.md",
+  "evidence_record_required": [
+    "sourceCommit_or_dirtyFilesSHA256",
+    "apiDeployment",
+    "protocolVersion",
+    "appBuild",
+    "environment",
+    "caseID",
+    "startedAt",
+    "endedAt",
+    "result",
+    "evidenceKind",
+    "knownLimitations"
+  ],
+  "cases": [
+    {
+      "id": "AF-A01",
+      "required": true,
+      "requirements": [
+        "AF-R12"
+      ],
+      "owner_slice": "S07",
+      "procedure": "agent-foundation-acceptance.md",
+      "procedure_id": "AF-A01",
+      "minimum_evidence": [
+        "source_tree_readback",
+        "native_build",
+        "release_manifest"
+      ]
+    },
+    {
+      "id": "AF-A02",
+      "required": true,
+      "requirements": [
+        "AF-R03",
+        "AF-R11"
+      ],
+      "owner_slice": "S01",
+      "procedure": "agent-foundation-acceptance.md",
+      "procedure_id": "AF-A02",
+      "minimum_evidence": [
+        "real_service",
+        "physical_device"
+      ]
+    },
+    {
+      "id": "AF-A03",
+      "required": true,
+      "requirements": [
+        "AF-R01",
+        "AF-R12"
+      ],
+      "owner_slice": "S01",
+      "procedure": "agent-foundation-acceptance.md",
+      "procedure_id": "AF-A03",
+      "minimum_evidence": [
+        "real_service",
+        "physical_device"
+      ]
+    },
+    {
+      "id": "AF-A04",
+      "required": true,
+      "requirements": [
+        "AF-R01",
+        "AF-R02",
+        "AF-R11"
+      ],
+      "owner_slice": "S01",
+      "procedure": "agent-foundation-acceptance.md",
+      "procedure_id": "AF-A04",
+      "minimum_evidence": [
+        "real_service",
+        "physical_device"
+      ]
+    },
+    {
+      "id": "AF-A05",
+      "required": true,
+      "requirements": [
+        "AF-R01",
+        "AF-R05"
+      ],
+      "owner_slice": "S01",
+      "procedure": "agent-foundation-acceptance.md",
+      "procedure_id": "AF-A05",
+      "minimum_evidence": [
+        "real_service",
+        "physical_device"
+      ]
+    },
+    {
+      "id": "AF-A06",
+      "required": true,
+      "requirements": [
+        "AF-R02",
+        "AF-R03"
+      ],
+      "owner_slice": "S02",
+      "procedure": "agent-foundation-acceptance.md",
+      "procedure_id": "AF-A06",
+      "minimum_evidence": [
+        "real_service",
+        "physical_device"
+      ]
+    },
+    {
+      "id": "AF-A07",
+      "required": true,
+      "requirements": [
+        "AF-R04"
+      ],
+      "owner_slice": "S03",
+      "procedure": "agent-foundation-acceptance.md",
+      "procedure_id": "AF-A07",
+      "minimum_evidence": [
+        "real_service",
+        "physical_device"
+      ]
+    },
+    {
+      "id": "AF-A08",
+      "required": true,
+      "requirements": [
+        "AF-R04",
+        "AF-R05",
+        "AF-R06"
+      ],
+      "owner_slice": "S03",
+      "procedure": "agent-foundation-acceptance.md",
+      "procedure_id": "AF-A08",
+      "minimum_evidence": [
+        "real_service",
+        "physical_device"
+      ]
+    },
+    {
+      "id": "AF-A09",
+      "required": true,
+      "requirements": [
+        "AF-R03",
+        "AF-R05",
+        "AF-R10"
+      ],
+      "owner_slice": "S03",
+      "procedure": "agent-foundation-acceptance.md",
+      "procedure_id": "AF-A09",
+      "minimum_evidence": [
+        "real_service",
+        "physical_device"
+      ]
+    },
+    {
+      "id": "AF-A10",
+      "required": true,
+      "requirements": [
+        "AF-R05"
+      ],
+      "owner_slice": "S03",
+      "procedure": "agent-foundation-acceptance.md",
+      "procedure_id": "AF-A10",
+      "minimum_evidence": [
+        "real_postgres",
+        "controlled_effect_receipt"
+      ]
+    },
+    {
+      "id": "AF-A11",
+      "required": true,
+      "requirements": [
+        "AF-R07"
+      ],
+      "owner_slice": "S04",
+      "procedure": "agent-foundation-acceptance.md",
+      "procedure_id": "AF-A11",
+      "minimum_evidence": [
+        "real_postgres",
+        "two_scope_context"
+      ]
+    },
+    {
+      "id": "AF-A12",
+      "required": true,
+      "requirements": [
+        "AF-R08"
+      ],
+      "owner_slice": "S05",
+      "procedure": "agent-foundation-acceptance.md",
+      "procedure_id": "AF-A12",
+      "minimum_evidence": [
+        "real_scheduler",
+        "real_service"
+      ]
+    },
+    {
+      "id": "AF-A13",
+      "required": true,
+      "requirements": [
+        "AF-R08",
+        "AF-R06"
+      ],
+      "owner_slice": "S05",
+      "procedure": "agent-foundation-acceptance.md",
+      "procedure_id": "AF-A13",
+      "minimum_evidence": [
+        "real_scheduler",
+        "real_service"
+      ]
+    },
+    {
+      "id": "AF-A14",
+      "required": true,
+      "requirements": [
+        "AF-R09"
+      ],
+      "owner_slice": "S06",
+      "procedure": "agent-foundation-acceptance.md",
+      "procedure_id": "AF-A14",
+      "minimum_evidence": [
+        "real_service",
+        "physical_device"
+      ]
+    },
+    {
+      "id": "AF-A15",
+      "required": true,
+      "requirements": [
+        "AF-R09",
+        "AF-R08"
+      ],
+      "owner_slice": "S06",
+      "procedure": "agent-foundation-acceptance.md",
+      "procedure_id": "AF-A15",
+      "minimum_evidence": [
+        "real_service",
+        "physical_device"
+      ]
+    },
+    {
+      "id": "AF-A16",
+      "required": true,
+      "requirements": [
+        "AF-R10"
+      ],
+      "owner_slice": "S07",
+      "procedure": "agent-foundation-acceptance.md",
+      "procedure_id": "AF-A16",
+      "minimum_evidence": [
+        "real_service",
+        "physical_device"
+      ]
+    },
+    {
+      "id": "AF-A17",
+      "required": true,
+      "requirements": [
+        "AF-R11"
+      ],
+      "owner_slice": "S07",
+      "procedure": "agent-foundation-acceptance.md",
+      "procedure_id": "AF-A17",
+      "minimum_evidence": [
+        "real_service",
+        "physical_device"
+      ]
+    },
+    {
+      "id": "AF-A18",
+      "required": true,
+      "requirements": [
+        "AF-R12"
+      ],
+      "owner_slice": "S07",
+      "procedure": "agent-foundation-acceptance.md",
+      "procedure_id": "AF-A18",
+      "minimum_evidence": [
+        "static"
+      ]
+    },
+    {
+      "id": "AF-C01",
+      "required": false,
+      "requirements": [],
+      "owner_slice": "S08",
+      "activation_requires": "explicit cloud-computer implementation confirmation",
+      "procedure": "agent-foundation-acceptance.md",
+      "procedure_id": "AF-C01",
+      "minimum_evidence": [
+        "real_sandbox",
+        "real_service"
+      ]
+    },
+    {
+      "id": "AF-C02",
+      "required": false,
+      "requirements": [],
+      "owner_slice": "S08",
+      "activation_requires": "explicit cloud-computer implementation confirmation",
+      "procedure": "agent-foundation-acceptance.md",
+      "procedure_id": "AF-C02",
+      "minimum_evidence": [
+        "real_sandbox",
+        "real_service"
+      ]
+    },
+    {
+      "id": "AF-C03",
+      "required": false,
+      "requirements": [],
+      "owner_slice": "S08",
+      "activation_requires": "explicit cloud-computer implementation confirmation",
+      "procedure": "agent-foundation-acceptance.md",
+      "procedure_id": "AF-C03",
+      "minimum_evidence": [
+        "real_sandbox",
+        "real_service"
+      ]
+    }
+  ]
+}

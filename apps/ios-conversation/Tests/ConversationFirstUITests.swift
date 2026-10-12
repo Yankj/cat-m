@@ -65,7 +65,7 @@ final class ConversationFirstUITests: XCTestCase {
             if observe.exists && observe.isEnabled { observe.tap() }
             XCTAssertTrue(completed.waitForExistence(timeout:20),"Observe the same turn only; this case never re-posts the request")
         }
-        let answer = app.staticTexts["chat.assistantMessage"].firstMatch;XCTAssertTrue(answer.exists);let text = answer.label
+        let answer = app.descendants(matching:.any)["chat.assistantMessage"].firstMatch;XCTAssertTrue(answer.exists);let text = answer.label
         XCTAssertEqual(text.trimmingCharacters(in:.whitespacesAndNewlines),"CATPAW_OK")
         XCTAssertFalse(app.staticTexts["chat.unresolved"].exists);XCTAssertFalse(app.staticTexts["chat.reply.failed"].exists);attach(app,"anonymous-v13-explicit-completed-reply")
         app.buttons["chat.history"].tap()
@@ -90,7 +90,7 @@ final class ConversationFirstUITests: XCTestCase {
             let enabled = XCTNSPredicateExpectation(predicate:NSPredicate(format:"enabled == true"),object:observe)
             XCTAssertEqual(XCTWaiter.wait(for:[enabled],timeout:20),.completed);observe.tap()
         }
-        let answer = app.staticTexts["chat.assistantMessage"].firstMatch
+        let answer = app.descendants(matching:.any)["chat.assistantMessage"].firstMatch
         let full = XCTNSPredicateExpectation(predicate:NSPredicate(format:"label CONTAINS %@","CATPAW ANONYMOUS LIVE OK"),object:answer)
         let status = XCTWaiter.wait(for:[full],timeout:45)
         attach(app,"anonymous-existing-original-turn-read-only")
@@ -130,7 +130,7 @@ final class ConversationFirstUITests: XCTestCase {
         XCTAssertTrue(consent.waitForExistence(timeout:20),"New isolated anonymous scope must require explicit provider consent")
         attach(app,"anonymous-real-synthetic-provider-consent")
         let allow = consent.buttons["允许此对话"];XCTAssertTrue(allow.exists);allow.tap()
-        let answer = app.staticTexts["chat.assistantMessage"].firstMatch
+        let answer = app.descendants(matching:.any)["chat.assistantMessage"].firstMatch
         XCTAssertTrue(answer.waitForExistence(timeout:70),"A real explicit provider terminal is required; an EOF or error is not success")
         let received = answer.label;XCTAssertTrue(received.contains("CATPAW ANONYMOUS LIVE OK"))
         attach(app,"anonymous-real-chat-terminal")
@@ -366,7 +366,7 @@ final class ConversationFirstUITests: XCTestCase {
         app.buttons["chat.send"].tap()
         XCTAssertTrue(app.staticTexts["chat.error"].waitForExistence(timeout: 15))
         XCTAssertEqual(input.value as? String, "Plan Friday's customer presentation")
-        XCTAssertFalse(app.staticTexts["chat.assistantMessage"].exists)
+        XCTAssertFalse(app.descendants(matching:.any)["chat.assistantMessage"].exists)
         attach(app, "chat-unconfigured-input-preserved")
         app.buttons["chat.settings"].tap()
         let connection = app.descendants(matching: .any)["connection.state"].firstMatch
@@ -392,7 +392,7 @@ final class ConversationFirstUITests: XCTestCase {
         draftRow.tap()
         XCTAssertTrue(input.waitForExistence(timeout: 10))
         XCTAssertEqual(input.value as? String, "Plan Friday's customer presentation")
-        XCTAssertFalse(app.staticTexts["chat.assistantMessage"].exists)
+        XCTAssertFalse(app.descendants(matching:.any)["chat.assistantMessage"].exists)
         attach(app, "restored-original-conversation")
     }
 
@@ -471,7 +471,7 @@ final class ConversationFirstUITests: XCTestCase {
         XCTAssertTrue(validation.waitForExistence(timeout:10))
         XCTAssertEqual((input.value as? String)?.utf16.count,8001)
         XCTAssertFalse(app.buttons["chat.send"].isEnabled)
-        XCTAssertFalse(app.staticTexts["chat.assistantMessage"].exists)
+        XCTAssertFalse(app.descendants(matching:.any)["chat.assistantMessage"].exists)
         attach(app,"experience-overlong-inline-error")
         XCUIDevice.shared.press(.home); app.terminate(); app.launch()
         XCTAssertTrue(input.waitForExistence(timeout:20))

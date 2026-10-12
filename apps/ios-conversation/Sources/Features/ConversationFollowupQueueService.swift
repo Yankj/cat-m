@@ -4,7 +4,8 @@ import Foundation
 public struct ConversationFollowup: Codable, Sendable, Identifiable {
     public let id: UUID
     public let text: String
-    public init(id: UUID = UUID(), text: String) { self.id = id; self.text = text }
+    public let image:ConversationVisionReference?
+    public init(id: UUID = UUID(), text: String,image:ConversationVisionReference?=nil) { self.id = id; self.text = text;self.image=image }
 }
 public enum FollowupPauseReason: String, Codable, Sendable { case user, background, preflight, recovery }
 public struct ConversationFollowupState: Codable, Sendable {
@@ -40,7 +41,7 @@ public actor ConversationFollowupQueueService {
         await lockState();defer { unlockState() }
         guard !message.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, message.text.utf16.count <= 8000 else { throw CatpawError.invalid("后续消息超过范围。") }
         var (state, record) = try await load()
-        if let same = (state.pending + [state.inflight].compactMap { $0 }).first(where: { $0.id == message.id }) { guard same.text == message.text else { throw CatpawError.conflict }; return }
+        if let same = (state.pending + [state.inflight].compactMap { $0 }).first(where: { $0.id == message.id }) { guard same.text == message.text,same.image == message.image else { throw CatpawError.conflict }; return }
         state.pending.append(message)
         var additional: [Mutation] = []
         if let remainingDraft {

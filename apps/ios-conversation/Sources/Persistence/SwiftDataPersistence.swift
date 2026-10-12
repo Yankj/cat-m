@@ -45,6 +45,10 @@ private func waitForPersistence<Value: Sendable>(_ body: @escaping @Sendable () 
         do { result.set(.success(try await body())) } catch { result.set(.failure(error)) }
         finished.signal()
     }
+    #if DEBUG
+    let waitStart=ProcessInfo.processInfo.systemUptime
+    defer {P0PerformanceLog.shared.record("swiftdata_bridge_wait",start:waitStart,end:ProcessInfo.processInfo.systemUptime,main:Thread.isMainThread)}
+    #endif
     finished.wait()
     return try result.get()
 }
@@ -87,6 +91,10 @@ final class SwiftDataPersistence: SnapshotPersistence {
     }
     func save(_ snapshot: StoreSnapshot) throws { modelContext.autosaveEnabled = false; try saveOnQueue(snapshot) }
     private func saveOnQueue(_ snapshot: StoreSnapshot) throws {
+        #if DEBUG
+        let saveStart=ProcessInfo.processInfo.systemUptime
+        defer {P0PerformanceLog.shared.record("swiftdata_save",start:saveStart,end:ProcessInfo.processInfo.systemUptime,main:Thread.isMainThread,count:snapshot.records.count)}
+        #endif
         do {
             let rows = try modelContext.fetch(FetchDescriptor<CatpawSchemaV1.EntityRow>())
             var existing = Dictionary(uniqueKeysWithValues: rows.map { ($0.id, $0) })
