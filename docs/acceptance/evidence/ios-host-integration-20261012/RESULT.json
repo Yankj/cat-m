@@ -1,0 +1,106 @@
+{
+  "schema_version": 1,
+  "release_id": "catpaw-ios-host-20261012-checkpoint1",
+  "overall_release_status": "BLOCKED",
+  "phase": "sidebar and local image host integration",
+  "base_commit": "cc10a72206710ad514e935a8313cdd2761b09299",
+  "performance_source_commit": "6e77d4e5375665688eb9bbe250e2c060d1956f44",
+  "performance_import_commit": "be3605dfcd11bd14b185bfe3ea61ed2ba4890d22",
+  "branch": "integration/ios-composer-navigation",
+  "source_file_count": 153,
+  "source_dictionary_sha256": "7c5f0a48012687d2a7592e3ce2b17d47079eada33903ad5db826f238ffdb6453",
+  "native_units": {
+    "passed": 31,
+    "failed": 0,
+    "excluded": 1,
+    "exclusion": "Existing Simulator Keychain entitlement limitation; no entitlement/signing change",
+    "run": ".build-ios/Integrated-checkpoint.xcresult",
+    "scope": "Model/domain/HTTP/tests unchanged after this run; only DEBUG sidebar instrumentation and icon/view refinements followed, covered by final UI runs"
+  },
+  "simulator_ui": {
+    "unique_cases_passed": 8,
+    "failed_final": 0,
+    "full_suite": ".build-ios/Integrated-ui-final2.xcresult",
+    "latest_sidebar_retest": ".build-ios/Integrated-sidebar-final.xcresult",
+    "latest_retest_cases": 4,
+    "fixture": "injected_synthetic_offline",
+    "external_network_enabled": false,
+    "device": "iPhone 17 Simulator / iOS 27.0",
+    "tool": "Xcode 27.1 / iOS Simulator SDK 27.1",
+    "scope": "Actual system picker and gestures. Final DEBUG diagnostic visibility refinement reruns all four affected sidebar cases; other four do not open sidebar."
+  },
+  "packages": {
+    "navigation_passed": 12,
+    "image_composer_passed": 16,
+    "layer": "macOS SwiftPM logic/encoding; iOS host build and UI recorded separately"
+  },
+  "portable": {
+    "conversation_passed": 7,
+    "queue_passed": 9,
+    "layer": "Foundation test runners, synthetic persistence and injected transport"
+  },
+  "device_trial": {
+    "status": "PASS",
+    "signed": false,
+    "installed": false,
+    "platform": "generic iOS Simulator",
+    "bundle": "com.example.CatpawM.OpenMuseDemo",
+    "version": "0.3.0",
+    "build": "13",
+    "binary_sha256": "4caf3f9acd4b64d324ea4719a567867f97a3dd616c039fc8771fa31817a78f92",
+    "note": "Unsigned stage artifact using existing DeviceTrial config; not the phone build14 and not a final release identity"
+  },
+  "source_check": {
+    "ios_sdk_typecheck": "PASS",
+    "syntax": "PASS",
+    "project_membership": "PASS 66 App sources / 3 targets",
+    "localization": "FAIL 97 literal hits; original gate retained"
+  },
+  "backend_context": {
+    "live_deployment": "v15, image_input=false",
+    "source": "ae3b9c04969fdfefe34cea0acffca6ee6e750776",
+    "graph_sha256": "cad4ac2dedd766dce88a6b960632fa1af3030ba0282247e34965f1ea85c58600",
+    "evidence": "QA bd72ecc api-v15-smoke REPORT, read by this task; four no-model GET checks only; deployment identity uses coordinator receipt",
+    "local_backend_code": "Existing fixed-directory P0 baseline; not changed by this native phase"
+  },
+  "not_run": [
+    "real image provider, independent image consent and v2 upload/receipt",
+    "real authenticated terminal/cursor and cold startup",
+    "physical presented frames / true Chinese IME / VoiceOver / Reduce Motion",
+    "Home30s / weak network / cold restart",
+    "real PostgreSQL and multi-instance fences"
+  ],
+  "known_gap": "Automatic follow-to-bottom can steal a reading anchor; no performance release PASS",
+  "private_runtime_logs": {
+    ".build-integrated-unit.log": "215b00bbcfc1969d9ffb801bb86234f65e443582716cbeb6f95c6deac433830a",
+    ".build-integrated-unit2.log": "f7a47efff8cbdedd343f0aac846c2ab58741375690cebaec104fab8647f6c239",
+    ".build-integrated-ui1.log": "9aee0bc92630c8fe5e601507d81167e3d82c6989ad17917914074fdf88ef1f04",
+    ".build-integrated-ui2.log": "1e33f49e829879ae6756600449900d4644c970245da2b170ad95ce34f12731b1",
+    ".build-integrated-ui-final.log": "310b08a3dfd420865a495224dd973039040aa0aa46f7f57f6894e85245ad8c38",
+    ".build-integrated-ui-final2.log": "aba562cb38274976c913829ac0a00c8cd3aa1c33b531083d27638d4fdb113405",
+    ".build-integrated-checkpoint.log": "295a863f1266c71df900dc3c1f5180fab14c504eb791bcbccc9d494938178e9c",
+    ".build-integrated-sidebar-final.log": "954b058493cb7bbc49191428b13d272b80d85844725e2a778989b0b886d27327",
+    ".build-integrated-device-trial-checkpoint.log": "dda0b819c053b7e5728bc2b585c50e9bcafe40dc5d9519d71509a6469feaf15f",
+    ".build-integrated-source-final.log": "455b9dc05cb56556cd7c2c09cf8ab25e947484f07bd581004b32b98a8c8f7440",
+    ".build-integrated-portable.log": "35552b709c6738ae350e7a57cd73539c5dbe3f899d7c13f2bc5ab1c6cd8bcbb9",
+    ".build-integrated-queue.log": "a4c4118360986d3ca62da65d753cb1e4d71e614fb9e511be5f4889f9ebdb3889"
+  },
+  "package_logs": {
+    ".build/navigation-test-final.log": "5e12e9b582c0beb4344c9819f3db3d75d6419590c6e2af3e5761b07f8b7ed79a",
+    ".build/image-test-final.log": "09d14dcbef0f236baed8bb0a8653d8947464add47e578691e1d3c895774ecdfb"
+  },
+  "curated_screenshots": [
+    {
+      "path": "docs/acceptance/evidence/ios-host-integration-20261012/local-image-preview.png",
+      "sha256": "0e7a986192c1fc21570d177a26889502e8b2a2a9d4fab314e96c4c8ef770c81b",
+      "synthetic_only": true,
+      "unaltered_pixels": true
+    },
+    {
+      "path": "docs/acceptance/evidence/ios-host-integration-20261012/largest-type-sidebar.png",
+      "sha256": "ffd03c5202ad62e54eeb343dd77d6a23e402a7f6461e2acda36db88ee49ce16b",
+      "synthetic_only": true,
+      "unaltered_pixels": true
+    }
+  ]
+}

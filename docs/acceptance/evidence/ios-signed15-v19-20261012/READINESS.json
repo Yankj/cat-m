@@ -1,0 +1,51 @@
+{
+  "at_utc": "2026-10-12T15:58:55.364426+00:00",
+  "method": "one unauthenticated public GET; zero model/Auth/tick/consent mutations",
+  "status": 200,
+  "ready": true,
+  "chat_capabilities": {
+    "schema_version": 1,
+    "text_input": true,
+    "image_input": true,
+    "vision_contract": {
+      "schema_version": 2,
+      "available": true,
+      "state": "live_configured",
+      "request_scoped": true,
+      "persistent_image_history": false,
+      "requires_text_caption": true,
+      "limits": {
+        "max_count": 1,
+        "max_image_bytes": 5242880,
+        "max_total_image_bytes": 5242880,
+        "max_side": 2048,
+        "max_pixels": 4194304,
+        "max_request_bytes": 7100000,
+        "mime_types": [
+          "image/png",
+          "image/jpeg"
+        ]
+      },
+      "live_validation": "catalog_only_until_real_fixture",
+      "catalog": {
+        "checked_at": 1791820734875,
+        "model": "google/gemma-4-31b-it:free",
+        "provider": "Google AI Studio",
+        "provider_tag": "google-ai-studio",
+        "prompt_price": 0,
+        "completion_price": 0,
+        "training_filter_required": "deny",
+        "zero_retention_claim": false
+      }
+    },
+    "live_weather": false,
+    "web_search": false,
+    "tools": [
+      "delegate_task",
+      "agent_status"
+    ],
+    "durable_acceptance": "turn_started",
+    "cursor_events": true
+  },
+  "body_sha256": "ed1afa0435b0da808af6318c7bb4c862a0edfd40bb3b30218a943f43efa70a5a"
+}

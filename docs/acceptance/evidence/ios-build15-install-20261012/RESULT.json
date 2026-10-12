@@ -1,0 +1,20 @@
+{
+  "created_at_utc": "2026-10-12T16:16:08.060159+00:00",
+  "install_result": "success",
+  "launch_result": "success",
+  "bundle": "com.example.CatpawM.OpenMuseDemo",
+  "version": "0.3.0",
+  "build": "15",
+  "normal_app_launch_environment": "No fixture/scenario/login override; normal existing storage and Keychain",
+  "source_commit": "4750142e9999bcf39a2231bd321169fe73e5e014",
+  "signed_binary_sha256": "f38bd2519ccf26d17dd1f8b9da7d8041a02b6387e97c1a8182d567054031ef61",
+  "ui_observation": "Prior conversation restored; text-model consent alert visible; no allowance or Send action performed",
+  "private_screenshot_sha256": "885e5189966059724c15a2e57621b62edf3a7341d2dcab6eca88a7f4d9b99bf8",
+  "private_screenshot_published": false,
+  "uninstall_data_reset_new_identity_token_export": false,
+  "real_synthetic_image_e2e": "NOT_RUN",
+  "real_image_models_called": 0,
+  "wire_qa_commit": "5485aa31e60d42d13a47dbb139d8d5480eb36a05",
+  "wire_qa_result": "8/8 actual TCP/URLSession loopback; real model=0",
+  "physical_ui_blocker": "Available devicectl supports installation/launch/capture, not tap/type/photo selection. No existing test runner/WDA on phone; only original App profile cached. Existing Mac AX trust was checked without prompt, Inspector explored but no reliable phone input channel established. No system permissions or profiles changed."
+}

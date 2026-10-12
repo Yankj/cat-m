@@ -6,6 +6,7 @@ public struct SidebarHost<Content: View>: View {
     private let isAtRoot: Bool
     private let snapshot: SidebarSnapshot
     private let theme: SidebarTheme
+    private let localize:(String)->String
     private let excludedGestureAreas: [CGRect]
     private let onSelect: (SidebarDestination) -> Void
     private let onWillOpen: () -> Void
@@ -19,11 +20,11 @@ public struct SidebarHost<Content: View>: View {
     /// isAtRoot must also be false while another modal owns interaction. Exclusion areas
     /// use host-local coordinates for custom code/content views that cannot be detected as UIScrollView.
     public init(isPresented: Binding<Bool>, isAtRoot: Bool, snapshot: SidebarSnapshot,
-                theme: SidebarTheme = .catpaw, excludedGestureAreas: [CGRect] = [],
+                theme: SidebarTheme = .catpaw,localize:@escaping (String)->String = {$0}, excludedGestureAreas: [CGRect] = [],
                 onWillOpen: @escaping () -> Void = {}, onDismissed: @escaping () -> Void = {},
                 onSelect: @escaping (SidebarDestination) -> Void, @ViewBuilder content: () -> Content) {
         _isPresented = isPresented; self.isAtRoot = isAtRoot; self.snapshot = snapshot
-        self.theme = theme; self.excludedGestureAreas = excludedGestureAreas
+        self.theme = theme;self.localize=localize; self.excludedGestureAreas = excludedGestureAreas
         self.onWillOpen = onWillOpen; self.onDismissed = onDismissed
         self.onSelect = onSelect; self.content = content()
     }
@@ -38,9 +39,9 @@ public struct SidebarHost<Content: View>: View {
                 if active {
                     Button { close() } label: {
                         Color.black.opacity(0.22 * Double(progress)).contentShape(Rectangle())
-                    }.buttonStyle(.plain).accessibilityLabel("关闭侧栏")
+                    }.buttonStyle(.plain).accessibilityLabel(localize("关闭侧栏"))
                         .accessibilityIdentifier("sidebar.scrim")
-                    SidebarPanel(snapshot: snapshot, query: $query, theme: theme,
+                    SidebarPanel(snapshot: snapshot, query: $query, theme: theme,localize:localize,
                                  onSelect: { destination in
                                      guard snapshot.permits(destination) else { return }
                                      close(); onSelect(destination)

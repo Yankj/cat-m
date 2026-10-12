@@ -33,6 +33,7 @@ def key(parts):
  for kind,val in parts:
   if kind=='expr':out+='{'+str(n)+'}';n+=1
   else:
+   val=re.sub(r'\\u\{([0-9A-Fa-f]+)\}',lambda m:chr(int(m[1],16)),val)
    out+=val.replace('\\n','\n').replace('\\t','\t').replace('\\"','"').replace('\\\\','\\')
  return out
 
@@ -40,7 +41,7 @@ import plistlib,subprocess,hashlib
 root=Path(__file__).resolve().parents[1]
 catalog=json.loads((root/'Resources/UIStrings.json').read_text())
 exemptions=json.loads((root/'Resources/UIStringExemptions.json').read_text())
-ui=list(root.glob('Sources/Features/*View*.swift'))+[root/'Sources/Voice/VoiceViews.swift',root/'Sources/App/CatpawApp.swift']
+ui=list(root.glob('Sources/Features/*View*.swift'))+[root/'Sources/Features/NativeConversationComposer.swift',root/'Sources/Voice/VoiceViews.swift',root/'Sources/App/CatpawApp.swift']
 def issues(s,name):
  errors=[];lookups=0
  for a,b,parts in literals(s):
@@ -61,6 +62,16 @@ for p in [root/'Sources/DesignSystem/DisplayNames.swift',root/'Sources/Voice/Nat
  for a,b,parts in literals(p.read_text()):
   k=key(parts)
   if HAN.search(k) and not k.startswith('本周持续跟进 AI 助理') and k not in catalog:errors.append(p.name+': missing dynamic resource: '+k)
+# Audit the shared native widgets with the same strict key rules.
+package_root=root.parents[1]/'packages'
+widgets=[package_root/'ios-navigation/Sources/CatpawNavigation'/name for name in ['SidebarHost.swift','SidebarPanel.swift','SidebarTheme.swift']]
+widgets.append(package_root/'ios-image-composer/Sources/CatpawImageComposer/ImageAttachmentPicker.swift')
+for p in widgets:
+ found,count=issues(p.read_text().replace('localize(', 'ui('),p.name)
+ errors.extend(str(p.relative_to(package_root))+': '+e for e in found);lookups+=count
+for a,b,parts in literals((package_root/'ios-image-composer/Sources/CatpawImageComposer/ImageAttachment.swift').read_text()):
+ k=key(parts)
+ if HAN.search(k) and k not in catalog:errors.append('ImageAttachment.swift: missing dynamic resource: '+k)
 assert not errors,'\n'.join(errors)
 print('PASS L10 UI literal scan: %d locale-bound lookups; 0 missing resources; 0 unlocalized owned literals' % lookups)
 assert issues('Text("遗漏文案")','Probe.swift')[0]
@@ -69,6 +80,8 @@ assert not issues('Text(ui("设置"))','Probe.swift')[0]
 assert not issues('Text(ui("设置")).accessibilityIdentifier("固定验收标识")','Probe.swift')[0]
 assert issues('Text("固定验收标识").accessibilityIdentifier("固定验收标识")','Probe.swift')[0]
 assert not issues('Text("帮我整理这份文档的要点")','LibraryViews.swift')[0]
+assert issues(r'Text("\u{9057}\u{6F0F}")','Probe.swift')[0]
+assert not issues(r'Text(ui("\u{8BBE}\u{7F6E}"))','Probe.swift')[0]
 print('PASS L10 audit detects missing key and unlocalized literal while preserving declared source content')
 for k,values in catalog.items():
  assert set(values)=={'zh-Hans','en'} and all(values.values()),k
@@ -94,3 +107,17 @@ for name,content in protected.items():
 print('PASS L10 original prompt, diagram and transcript content preserved')
 assert hashlib.sha256((root/'Sources/Providers/FixtureProvider.swift').read_bytes()).hexdigest()=='cde6bc09ea560c9a16cd8a7e70fe55209d8e826f451fc3d420b4ac43235bd39d'
 print('PASS L10 FixtureProvider source unchanged from 169-check snapshot')
+
+for table,keys in {
+ 'Localizable':['Open Catpaw Conversation','Open conversation','Open Catpaw to continue a conversation or edit a message. Opening does not send messages.'],
+ 'AppShortcuts':['Open a conversation in ${applicationName}','Open ${applicationName}']}.items():
+ values_by_locale={}
+ for language in ['en','zh-Hans']:
+  p=root/('Resources/'+language+'.lproj/'+table+'.strings')
+  values=json.loads(subprocess.check_output(['plutil','-convert','json','-o','-',str(p)]))
+  assert set(values)==set(keys) and all(values.values()),str(p)
+  if language=='en':assert all(not HAN.search(v) for v in values.values()),str(p)
+  for k,v in values.items():assert k.count('${applicationName}')==v.count('${applicationName}'),k
+  values_by_locale[language]=values
+ assert all(values_by_locale['zh-Hans'][k]!=values_by_locale['en'][k] for k in keys),table
+print('PASS L10 native AppIntent and shortcut bilingual tables and applicationName parity')

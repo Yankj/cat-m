@@ -1,0 +1,143 @@
+{
+  "base_source_commit": "d9a897cc7881b7145fedb74b7af0dd5b5d8c4776",
+  "branch": "fix/ios-p0-conversation",
+  "diagnosis": [
+    "Instrumented original renderer reproduces909.94ms callback gap before Send; main-queue heartbeat660.81ms: real scheduling delay, not only display-link dropout.",
+    "Captured Catpaw-only Time Profiler subset:4525 main samples,1406 inclusive UIApplication Accessibility init samples. Most private symbols unsymbolicated; does not prove every900ms interval is that single function.",
+    "No-XCTest AX/input standalone original render still shows frame146.00ms/main163.03ms, demonstrating separate real App work.",
+    "History rebuild max0.105ms; composer size-fit max0.953ms; probe JSON max0.418ms; SwiftData token saves background max29.43ms, not the900ms main blocker.",
+    "Intermediate native UITextView exposed per-character AX snapshot; reading4096char body added5.8s main delay. Host single complete-text AX element fixes that path; direct text selection and explicit copy preserved."
+  ],
+  "fixes": [
+    "Incremental TextKit storage/layout and cached width/revision sizing, stable transcript ID",
+    "50ms stream display coalescing, terminal flush immediately",
+    "100ms coalesced scroll calls",
+    "No history-list rebuild on journal-only token commits",
+    "Avoid equivalent font reassignment in marked-text composer"
+  ],
+  "actual_tests": {
+    "native_xctest": {
+      "passed": 28,
+      "failed": 0,
+      "excluded": 1,
+      "layer": "Actual iOS Simulator",
+      "source_scope": "FinalAX source; original26+2 new Unicode/selection/font reader tests"
+    },
+    "ui": {
+      "passed": 4,
+      "failed": 0,
+      "layer": "Final independent serial actual offline Simulator run",
+      "cases": "4096char complete AX label, largest font, markedText injection, same-turnHome5s,20echo callbacks"
+    },
+    "device_trial_unsigned_compile": "PASS finalAX source",
+    "keychain_probe": "Still blocked OSStatus-34018 unsigned entitlement, not changed",
+    "intermediate_overlap": "Earlier finalUIAX last case failed when an owned unit run prematurely overlapped same Simulator. Kept locally, not counted. Final independent serial4/4 used."
+  },
+  "metrics": [
+    {
+      "case": "autoplay-baseline",
+      "frame_count": 341,
+      "frame_max_ms": 146.0033333278261,
+      "frame_p95_ms": 16.742624997277744,
+      "main_queue_max_ms": 163.03262500150595,
+      "main_queue_p95_ms": 46.513333334587514,
+      "echo_count": 0,
+      "echo_max_ms": null,
+      "echo_p95_ms": null,
+      "is_presented_frame_proof": false
+    },
+    {
+      "case": "autoplay-after",
+      "frame_count": 384,
+      "frame_max_ms": 58.4250833344413,
+      "frame_p95_ms": 16.90279167087283,
+      "main_queue_max_ms": 136.42974999675062,
+      "main_queue_p95_ms": 0.811125006293878,
+      "echo_count": 0,
+      "echo_max_ms": null,
+      "echo_p95_ms": null,
+      "is_presented_frame_proof": false
+    },
+    {
+      "case": "baseline-large-type",
+      "frame_count": 276,
+      "frame_max_ms": 909.9385416629957,
+      "frame_p95_ms": 70.05645832396112,
+      "main_queue_max_ms": 660.8091249945574,
+      "main_queue_p95_ms": 132.98958333325572,
+      "echo_count": 1,
+      "echo_max_ms": 71.45399998989888,
+      "echo_p95_ms": 71.45399998989888,
+      "is_presented_frame_proof": false,
+      "raw": "docs/acceptance/evidence/ios-p0-performance/baseline-large-type.json"
+    },
+    {
+      "case": "final-large-type",
+      "frame_count": 274,
+      "frame_max_ms": 658.016375004081,
+      "frame_p95_ms": 76.63304166635498,
+      "main_queue_max_ms": 446.4060833415715,
+      "main_queue_p95_ms": 117.6431666535791,
+      "echo_count": 1,
+      "echo_max_ms": 85.81816666992381,
+      "echo_p95_ms": 85.81816666992381,
+      "is_presented_frame_proof": false,
+      "raw": "docs/acceptance/evidence/ios-p0-performance/final-large-type.json"
+    },
+    {
+      "case": "final-ime",
+      "frame_count": 295,
+      "frame_max_ms": 497.99712499952875,
+      "frame_p95_ms": 35.15008332033176,
+      "main_queue_max_ms": 237.6067500008503,
+      "main_queue_p95_ms": 53.88220834720414,
+      "echo_count": 0,
+      "echo_max_ms": null,
+      "echo_p95_ms": null,
+      "is_presented_frame_proof": false,
+      "raw": "docs/acceptance/evidence/ios-p0-performance/final-ime.json"
+    },
+    {
+      "case": "final-home5s",
+      "frame_count": 582,
+      "frame_max_ms": 201.75233333429787,
+      "frame_p95_ms": 49.41295833850745,
+      "main_queue_max_ms": 176.4251666754717,
+      "main_queue_p95_ms": 21.564416674664244,
+      "echo_count": 1,
+      "echo_max_ms": 34.54475000035018,
+      "echo_p95_ms": 34.54475000035018,
+      "is_presented_frame_proof": false,
+      "raw": "docs/acceptance/evidence/ios-p0-performance/final-home5s.json"
+    },
+    {
+      "case": "final-echo20",
+      "frame_count": 1500,
+      "frame_max_ms": 229.57025001232978,
+      "frame_p95_ms": 47.96770833490882,
+      "main_queue_max_ms": 238.04579165880568,
+      "main_queue_p95_ms": 31.46066666522529,
+      "echo_count": 20,
+      "echo_max_ms": 82.07816666981671,
+      "echo_p95_ms": 79.74470833141822,
+      "is_presented_frame_proof": false,
+      "raw": "docs/acceptance/evidence/ios-p0-performance/final-echo20.json"
+    }
+  ],
+  "acceptance": {
+    "gpu_first_frame": "NOT_MEASURED",
+    "physical_phone": "NOT_RUN this batch, no reinstall",
+    "callback_threshold": "Not globally passed; UI AX/keyboard runs retain gaps over100ms even after improvement",
+    "install_candidate": "NO: not full integrated sidebar/media/serverP0 and performance/physical acceptance incomplete",
+    "real_chinese_ime": "NOT_RUN: UIKit actual markedText injection verified, not actual Chinese keyboard IME",
+    "sidebars": "Contract read, not yet host integrated",
+    "media": "Host network boundary commit4343a4e only; component/provider capability pending"
+  },
+  "external_effects": {
+    "phone_installations": 0,
+    "model_calls": 0,
+    "real_auth_calls": 0,
+    "canonical_written": false
+  },
+  "reproduce": "Use existing Xcode/owned Simulator; run P0NativeExperienceUITests with namedCF_UI_TEST_STORE fixtures. Standalone no-AX: SIMCTL_CHILD_CF_UI_TEST_SCENARIO=p0-ui-large-autoplay plus valid uniqueCF_UI_TEST_STORE andP0_PERF_RECORDING=1; wait7s, copy only knownUUID P0-perf-UUID.json from fixture App support. Do not use DeviceTrial/phone/real account."
+}

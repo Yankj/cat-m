@@ -87,7 +87,7 @@ public struct AuthenticatedNativeChatCredentials: NativeChatSessionCredentials {
             let repository=try Repository(persistence:SwiftDataPersistence(url:url))
             // The local receipt conveys local reading only; it never authorizes HTTP.
             let backend=NativeChatHTTPBackend(configuration:try NativeChatConfiguration(origin:configuration.backendOrigin,localScope:partition.scope,serverScopeID:receipt.serverScopeID,publishableKey:configuration.publishableKey),credentials:AuthenticatedNativeChatCredentials(manager:manager!,partition:partition))
-            let preview=ConversationFirstModel(repository:repository,service:ConversationSessionService(repository:repository,backend:backend),scope:partition.scope)
+            let preview=ConversationFirstModel(repository:repository,service:ConversationSessionService(repository:repository,backend:backend),scope:partition.scope,imageStore:try FileConversationImageByteStore(root:url.deletingLastPathComponent().appendingPathComponent("image-bytes")))
             preview.setNetworkAdmissionAllowed(false);await preview.start();self.backend=backend;chat=preview;namespace=partition.namespace
         } catch { self.error=NativeAuthError.storage.localizedDescription }
     }
@@ -136,7 +136,7 @@ public struct AuthenticatedNativeChatCredentials: NativeChatSessionCredentials {
                 let http = NativeChatHTTPBackend(configuration:try NativeChatConfiguration(origin:configuration.backendOrigin,localScope:partition.scope,serverScopeID:serverScope,publishableKey:configuration.publishableKey,edgeRegion:region),credentials:AuthenticatedNativeChatCredentials(manager:manager,partition:partition))
                 backend = http
                 let selected: any ConversationBackend = isFixture ? UnconfiguredConversationBackend() : http
-                chat = ConversationFirstModel(repository:repository,service:ConversationSessionService(repository:repository,backend:selected),scope:partition.scope)
+                chat = ConversationFirstModel(repository:repository,service:ConversationSessionService(repository:repository,backend:selected),scope:partition.scope,imageStore:try FileConversationImageByteStore(root:directory.appendingPathComponent("image-bytes")))
                 namespace = partition.namespace; error = nil
                 try saveLocalReceipt(.init(issuer:configuration.issuer,subject:user.id,serverScopeID:serverScope))
             } catch { self.error = "此账号的本地存储无法打开；原文件已保留。" }
