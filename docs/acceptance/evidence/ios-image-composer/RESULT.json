@@ -1,0 +1,81 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-12",
+  "base_commit": "a1fd7e83603be8e3552e0d8ded5568377180db9a",
+  "branch": "feat/ios-image-composer",
+  "contract_source_commit": "8ce77b450f51c93faf5e1fee100d7c0968086b98",
+  "validator_sha256": "932dda958e8d1936173e4b3df4eaff8b8c5bc0d7f2fde685875d8e62a9c0cd58",
+  "checks": [
+    {
+      "name": "macOS SwiftPM codec/draft tests",
+      "result": "PASS",
+      "passed": 16,
+      "failed": 0
+    },
+    {
+      "name": "iOS17 simulator SDK full component library compile/link including PhotosPicker",
+      "result": "PASS",
+      "tool": "Installed Xcode27.1 / SDK27.1; final no component compiler warnings"
+    },
+    {
+      "name": "Existing dedicated iOS27.0 arm64 Simulator spawn",
+      "result": "PASS",
+      "detail": "Synthetic JPEG/PNG reencode, direction6, EXIF/GPS removal, limits; no App/UI/library access"
+    },
+    {
+      "name": "Pinned backend v2 pure validator",
+      "result": "PASS",
+      "cases": 2,
+      "detail": "Actual synthetic PNG and JPEG bytes/hash/container accepted; no API/provider/PG execution"
+    }
+  ],
+  "source_sha256": {
+    "packages/ios-image-composer/Package.swift": "bf3c21ae5aa87bf074088188fbf925c6bfcfb11f2f9e84749fd1d83c4633011d",
+    "packages/ios-image-composer/README.md": "d58483e4d091e4b6b9a77293a4829f4f47dbe2e9ee385c4c97f5f5bb44ee5738",
+    "packages/ios-image-composer/Scripts/verify-ios-sdk.sh": "7a795b0c96f255801e30659792c3a70aa06079f86137c5be69db6fe68d2c8a2b",
+    "packages/ios-image-composer/Scripts/verify-v2-interop.sh": "cf4ece42e155b765da7ae5d21927abe9a1cce65647e1894ab2436d7ed777e77d",
+    "packages/ios-image-composer/Sources/CatpawImageComposer/ImageAttachment.swift": "d17110ac56fe86349101816413e33281dd9c062b20a968c23e6947472d819703",
+    "packages/ios-image-composer/Sources/CatpawImageComposer/ImageAttachmentDraft.swift": "6a77497d8340f89eeb57377c27c627209fca3c21b642d54629b0c03f18f8d539",
+    "packages/ios-image-composer/Sources/CatpawImageComposer/ImageAttachmentPicker.swift": "dd2dadd75b952b8ca813d6353a1b5f716c0bcded18125e267df502c73106fb56",
+    "packages/ios-image-composer/Sources/CatpawImageComposer/SystemImageAttachmentEncoder.swift": "95be1b799d66c6eb29bc8eb02a974e0ac2c710a23ea16515fad05f1717e0daf7",
+    "packages/ios-image-composer/Tests/CatpawImageComposerTests/DraftTests.swift": "060714d404c31268c0219b5b01072fa29ade35d1ca589caa5db8ea71b22a7ed2",
+    "packages/ios-image-composer/Tests/CatpawImageComposerTests/EncodingTests.swift": "603f7792110065969b6e3e9b3b1464ec2365ff63f98892dc15383505b4295694",
+    "packages/ios-image-composer/Tests/CatpawImageComposerTests/SyntheticImages.swift": "843ffd40c069d58cb9bfc8a0779b62f561f79ba20a5f6a6e27d29001cd0e302e",
+    "packages/ios-image-composer/Verification/CodecSmoke.swift": "e10447c8cde30c2ecb77d3bb6c293970f44a22ea31c22da73a5aff8963f6d962",
+    "packages/ios-image-composer/Verification/vision-v2-interop.mjs": "08fbd850330b2730bf87f9c0ac148f813482240982b4e2d45054a214eec5dbf0"
+  },
+  "runtime_logs": {
+    "swift-tests": {
+      "path": "packages/ios-image-composer/.build-verification/curated-run/swift-tests.log",
+      "sha256": "3e628323996dc0586d08e2f8a313a0e1f407c671f92fc39c3b42ef87f929f6e8"
+    },
+    "ios-sdk-smoke": {
+      "path": "packages/ios-image-composer/.build-verification/curated-run/ios-sdk-smoke.log",
+      "sha256": "4a6c68b91e646617664d19f17f88f497be3be0a2104bbef4ef9d0cafd4ca05e5"
+    },
+    "pinned-interop": {
+      "path": "packages/ios-image-composer/.build-verification/curated-run/pinned-interop.log",
+      "sha256": "95a2c896cae1705a6a76a71c07f0f41728e12866c53e53f41063b8a368656064"
+    }
+  },
+  "not_run": [
+    "PhotosPicker actual selected-photo/iCloud interaction",
+    "HEIC/RAW and HDR/wide-color fidelity on device",
+    "Preview/removal/VoiceOver/Dynamic Type UI and press-to-frame timing",
+    "Native host/DTO/consent/network/unknown integration",
+    "Production vision route/model and MM04 on device"
+  ],
+  "boundaries": {
+    "host_or_main_model_or_network_or_lifecycle_modified": false,
+    "photo_library_read": false,
+    "real_model_calls": 0,
+    "app_installations": 0,
+    "deployments": 0,
+    "default_live_send_allowed": false
+  },
+  "initial_validation_notes": [
+    "Initial library build preceded test source creation; test-target warning then cleared",
+    "Initial iOS build warned that PhotosPicker Sendable label captured an actor property; changed label to a String snapshot and final compile is clean",
+    "Initial interop used a mutable owner file; hash review detected drift; final interop uses Git8ce exact snapshot, not that mutable file"
+  ]
+}

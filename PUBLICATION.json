@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "source_commit": "cc10a72206710ad514e935a8313cdd2761b09299",
+  "source_tree": "a50938dbffb0cc7b5775c7e5fc19e2c17e56912e",
+  "kind": "safe integration source snapshot",
+  "publication_changes": [
+    {
+      "path": "apps/ios-conversation/Configuration/SimulatorAcceptance.entitlements",
+      "original_sha256": "ec905b7fdbc7e21bb83620a9c1f4fcb3e81fcbbe50951760e2a0ae4b38250e9d",
+      "published_sha256": "39b47c252f6636c87ee06b18971b9e8ed995d00774e82be61ce6725b7ca8f195",
+      "reason": "parameterize concrete Apple signing identities with Xcode build variables"
+    },
+    {
+      "path": "apps/ios-conversation/Configuration/SimulatorFixtureAcceptance.entitlements",
+      "original_sha256": "4a1eb995ee8f5c6814b3886b51ef66b8c00c6de862fbf0d8f53f79d8b9c113d1",
+      "published_sha256": "39b47c252f6636c87ee06b18971b9e8ed995d00774e82be61ce6725b7ca8f195",
+      "reason": "parameterize concrete Apple signing identities with Xcode build variables"
+    }
+  ],
+  "source_files_unchanged": 619,
+  "source_worktree_modified": false,
+  "subsequent_native_performance_host_commit_included": false,
+  "subsequent_native_commit": "6e77d4e5375665688eb9bbe250e2c060d1956f44",
+  "validation": "Source sensitivity and frozen integrity passed; signing template compilation not run; product acceptance unchanged."
+}

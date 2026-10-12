@@ -1,0 +1,6 @@
+PASS: deterministic completion during multi-GET rejects torn references and publishes only the next checked final task/artifact snapshot
+PASS: three changing reads end with explicit recoverable budget error and retained original admission; no spinner or redispatch loop
+PASS: a later explicit original-task read recovers after exhausted budget without another Run POST
+PASS: hash mismatch is a strict failure rather than a retryable snapshot publication race
+PASS: scope mismatch is a strict failure rather than a retryable snapshot publication race
+layer=synthetic_HTTP_response_replay live_network=0 worker_execution=0 cloud=0 real_model=0

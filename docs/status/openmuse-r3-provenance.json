@@ -1,0 +1,1106 @@
+{
+  "version": "openmuse-client-demo-r3-final",
+  "frozen_utc_date": "2026-10-11",
+  "base": "ios-delivered-v1",
+  "final_archive_sha256": "a5bf5e0eb77800257a8f928b33db29b9b58e97b099a010486d08ed8187ee7af5",
+  "final_archive_bytes": 6401200,
+  "archive_verified_files": 194,
+  "original_source_manifest_files": 101,
+  "original_source_and_archive_match": true,
+  "business_source_modified_during_integration": false,
+  "simulator_app_copied": false,
+  "archive_copied": false,
+  "source_source_dir_modified": false,
+  "contract_sha256": "08b79075636a8c70b90df82a6d02e6ffee2a0f36e138e88a56eb50576bd1f7a9",
+  "files": [
+    {
+      "path": "apps/ios-openmuse-demo/Sources/App/AppModel.swift",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Sources/App/AppModel.swift",
+      "source_sha256": "f4f632756aefb5bd1b150562061b0ef316dd1afa928798cad69d14330e31ee44",
+      "sha256": "f4f632756aefb5bd1b150562061b0ef316dd1afa928798cad69d14330e31ee44",
+      "bytes": 16030,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Sources/App/CatpawApp.swift",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Sources/App/CatpawApp.swift",
+      "source_sha256": "51649d65d8103b154dbddd0d7dc763ad4364ceaaedf6fe593cad808a56c07f18",
+      "sha256": "51649d65d8103b154dbddd0d7dc763ad4364ceaaedf6fe593cad808a56c07f18",
+      "bytes": 1844,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Sources/DesignSystem/Components.swift",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Sources/DesignSystem/Components.swift",
+      "source_sha256": "279fb094dffc68562096f908d82bbd1ea4e1614a2be5c7a67af272a894d77976",
+      "sha256": "279fb094dffc68562096f908d82bbd1ea4e1614a2be5c7a67af272a894d77976",
+      "bytes": 7556,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Sources/DesignSystem/DisplayNames.swift",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Sources/DesignSystem/DisplayNames.swift",
+      "source_sha256": "33d00a8eae8a36abd9791b097d19ea41e2808bd411922f08f7f6095441d30aa4",
+      "sha256": "33d00a8eae8a36abd9791b097d19ea41e2808bd411922f08f7f6095441d30aa4",
+      "bytes": 2543,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Sources/Domain/AgentContracts.swift",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Sources/Domain/AgentContracts.swift",
+      "source_sha256": "6a6da670c53bcf8b4bd45ce4cb9e408e99822d143352ab3711858ab27ca38e8b",
+      "sha256": "6a6da670c53bcf8b4bd45ce4cb9e408e99822d143352ab3711858ab27ca38e8b",
+      "bytes": 12176,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Sources/Domain/CSV.swift",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Sources/Domain/CSV.swift",
+      "source_sha256": "e381e990c5581aa157a7c6e7539f121a2d9235887dcd1f77a5bac80de37539e4",
+      "sha256": "e381e990c5581aa157a7c6e7539f121a2d9235887dcd1f77a5bac80de37539e4",
+      "bytes": 1524,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Sources/Domain/CoreContracts.swift",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Sources/Domain/CoreContracts.swift",
+      "source_sha256": "bfd679a2ee94efb3f09b091c41a180dff8a4f826da7f8a43568eb46412721a37",
+      "sha256": "bfd679a2ee94efb3f09b091c41a180dff8a4f826da7f8a43568eb46412721a37",
+      "bytes": 28013,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Sources/Domain/DeepLinks.swift",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Sources/Domain/DeepLinks.swift",
+      "source_sha256": "d0392f05cbab1646f6a160866e6edf23847215873ed2a9a86a62b5971ee6433f",
+      "sha256": "d0392f05cbab1646f6a160866e6edf23847215873ed2a9a86a62b5971ee6433f",
+      "bytes": 1520,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Sources/Domain/LocalPolicies.swift",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Sources/Domain/LocalPolicies.swift",
+      "source_sha256": "e5c1a658d4a1144f1729c022871b5b914c2171747ae24cee34fcf4342a17e5d9",
+      "sha256": "e5c1a658d4a1144f1729c022871b5b914c2171747ae24cee34fcf4342a17e5d9",
+      "bytes": 6151,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Sources/Domain/OpenMuseTaskContracts.swift",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Sources/Domain/OpenMuseTaskContracts.swift",
+      "source_sha256": "67a8c0d045049263fb95f03fed538791b8a363adf93659bdbd6da41a337ecfd0",
+      "sha256": "67a8c0d045049263fb95f03fed538791b8a363adf93659bdbd6da41a337ecfd0",
+      "bytes": 14865,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Sources/Domain/OperationReducer.swift",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Sources/Domain/OperationReducer.swift",
+      "source_sha256": "ba312217abcea943880d918640733e9bf20483f4dcce24de270b7aec3968da40",
+      "sha256": "ba312217abcea943880d918640733e9bf20483f4dcce24de270b7aec3968da40",
+      "bytes": 5534,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Sources/Domain/ReadoutPolicy.swift",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Sources/Domain/ReadoutPolicy.swift",
+      "source_sha256": "b1521bfe10e01847c81a95f99902f4676e6ecff7f889c6abdcc1faf8e0e277ee",
+      "sha256": "b1521bfe10e01847c81a95f99902f4676e6ecff7f889c6abdcc1faf8e0e277ee",
+      "bytes": 2906,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Sources/Domain/StoreTypes.swift",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Sources/Domain/StoreTypes.swift",
+      "source_sha256": "aec0baf006f2a6ca3097f465704e6736a2f485818550b83eddbf17c6145cee33",
+      "sha256": "aec0baf006f2a6ca3097f465704e6736a2f485818550b83eddbf17c6145cee33",
+      "bytes": 7208,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Sources/Domain/VoiceGuard.swift",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Sources/Domain/VoiceGuard.swift",
+      "source_sha256": "29fde3436e19341da84ae10861e4eb267eb4fb75510537269e55f460e3efaaf2",
+      "sha256": "29fde3436e19341da84ae10861e4eb267eb4fb75510537269e55f460e3efaaf2",
+      "bytes": 1775,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Sources/Domain/VoiceSession.swift",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Sources/Domain/VoiceSession.swift",
+      "source_sha256": "97d1c46c3fa46d5e8a02e139027401e0d98cd67abf334c56aa01c6504d474d6c",
+      "sha256": "97d1c46c3fa46d5e8a02e139027401e0d98cd67abf334c56aa01c6504d474d6c",
+      "bytes": 5992,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Sources/Features/AssistantService.swift",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Sources/Features/AssistantService.swift",
+      "source_sha256": "56f95cbcedda66c1c6dd3fff03fcb97b9c331b9e09dda24b8b78f61f82323737",
+      "sha256": "56f95cbcedda66c1c6dd3fff03fcb97b9c331b9e09dda24b8b78f61f82323737",
+      "bytes": 14209,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Sources/Features/AssistantViews.swift",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Sources/Features/AssistantViews.swift",
+      "source_sha256": "62cfc6e8b8392d0d5d8ce06d5e0bb97bca103c57971ecc08122c544075adde86",
+      "sha256": "62cfc6e8b8392d0d5d8ce06d5e0bb97bca103c57971ecc08122c544075adde86",
+      "bytes": 26877,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Sources/Features/ConversationView.swift",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Sources/Features/ConversationView.swift",
+      "source_sha256": "8d5c6ba97ba618d9579ec8b5117393001637daf9cd01c5089d2b6b59c9ba4dd4",
+      "sha256": "8d5c6ba97ba618d9579ec8b5117393001637daf9cd01c5089d2b6b59c9ba4dd4",
+      "bytes": 19718,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Sources/Features/DocumentView.swift",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Sources/Features/DocumentView.swift",
+      "source_sha256": "bbea043ff9e4cd841658ae4a401df5aa4e728636ade4c6ec12068419415fb1a3",
+      "sha256": "bbea043ff9e4cd841658ae4a401df5aa4e728636ade4c6ec12068419415fb1a3",
+      "bytes": 17378,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Sources/Features/GatewayAssistantImporter.swift",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Sources/Features/GatewayAssistantImporter.swift",
+      "source_sha256": "00b87825b27d324db3bb569bd5c489e1f710f6a282a7efdbe22bb82bca88989a",
+      "sha256": "00b87825b27d324db3bb569bd5c489e1f710f6a282a7efdbe22bb82bca88989a",
+      "bytes": 12090,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Sources/Features/LibraryViews.swift",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Sources/Features/LibraryViews.swift",
+      "source_sha256": "e4a2bc471d6f6dad0516ebf4f0601d845566b116177cc918c69917eebec8d67e",
+      "sha256": "e4a2bc471d6f6dad0516ebf4f0601d845566b116177cc918c69917eebec8d67e",
+      "bytes": 9902,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Sources/Features/LocalGatewayService.swift",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Sources/Features/LocalGatewayService.swift",
+      "source_sha256": "ecba41549f65926eab171ca290ac561e2199d8df186d5694fb763a316e5e2373",
+      "sha256": "ecba41549f65926eab171ca290ac561e2199d8df186d5694fb763a316e5e2373",
+      "bytes": 2397,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Sources/Features/LocalGatewayViews.swift",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Sources/Features/LocalGatewayViews.swift",
+      "source_sha256": "e9506b8d04267cdda0317ba3639ddaa9425dec7824dfd1daffca575896cc25be",
+      "sha256": "e9506b8d04267cdda0317ba3639ddaa9425dec7824dfd1daffca575896cc25be",
+      "bytes": 6334,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Sources/Features/NativeMediaPicker.swift",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Sources/Features/NativeMediaPicker.swift",
+      "source_sha256": "721de0aa9f293696115c16f6fae5e7c38dd8ba822a3d0fdbbccd0335cf1c685c",
+      "sha256": "721de0aa9f293696115c16f6fae5e7c38dd8ba822a3d0fdbbccd0335cf1c685c",
+      "bytes": 1162,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Sources/Features/OpenMuseDemoView.swift",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Sources/Features/OpenMuseDemoView.swift",
+      "source_sha256": "10b600c71cd2d8340d697f81b76cdf4faff0d2a056226635af5155af05b5afc4",
+      "sha256": "10b600c71cd2d8340d697f81b76cdf4faff0d2a056226635af5155af05b5afc4",
+      "bytes": 16981,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Sources/Features/OpenMuseTaskService.swift",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Sources/Features/OpenMuseTaskService.swift",
+      "source_sha256": "eb18b44905911d8c83dc2e0a2cc19b3809d66f2f0a6354fde7f2f0edb16d9834",
+      "sha256": "eb18b44905911d8c83dc2e0a2cc19b3809d66f2f0a6354fde7f2f0edb16d9834",
+      "bytes": 32355,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Sources/Features/ReadReceiptService.swift",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Sources/Features/ReadReceiptService.swift",
+      "source_sha256": "a504441e33cf9b54f0c87d2c1048ae21a991bcb960f0ccae305094be4a898765",
+      "sha256": "a504441e33cf9b54f0c87d2c1048ae21a991bcb960f0ccae305094be4a898765",
+      "bytes": 1697,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Sources/Features/RootView.swift",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Sources/Features/RootView.swift",
+      "source_sha256": "af4605f0728f069604f18ce738ed4afe72ea55fc41d2a25da9360ee31857dcd9",
+      "sha256": "af4605f0728f069604f18ce738ed4afe72ea55fc41d2a25da9360ee31857dcd9",
+      "bytes": 6482,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Sources/Features/SchedulesView.swift",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Sources/Features/SchedulesView.swift",
+      "source_sha256": "70190855f48923159e3118e86e0effa9d5b637da3220f478c7ced5d1cc630120",
+      "sha256": "70190855f48923159e3118e86e0effa9d5b637da3220f478c7ced5d1cc630120",
+      "bytes": 8225,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Sources/Features/SettingsView.swift",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Sources/Features/SettingsView.swift",
+      "source_sha256": "2ab4213f5f97988898a321db49da92c7ab687fbdd5d8f52e4ee8edf8630c272c",
+      "sha256": "2ab4213f5f97988898a321db49da92c7ab687fbdd5d8f52e4ee8edf8630c272c",
+      "bytes": 9840,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Sources/Features/WorkspaceService.swift",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Sources/Features/WorkspaceService.swift",
+      "source_sha256": "4d73ff106bc6897c65394cc50d347b01f7c54c446f9a0c99fe3ddf6f14af34d6",
+      "sha256": "4d73ff106bc6897c65394cc50d347b01f7c54c446f9a0c99fe3ddf6f14af34d6",
+      "bytes": 18510,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Sources/Persistence/BlobStore.swift",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Sources/Persistence/BlobStore.swift",
+      "source_sha256": "24341d4ffeadc8e2ed67ac20f6fdda452aa0264bda0eddfae5484de7612735ee",
+      "sha256": "24341d4ffeadc8e2ed67ac20f6fdda452aa0264bda0eddfae5484de7612735ee",
+      "bytes": 1324,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Sources/Persistence/Repository.swift",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Sources/Persistence/Repository.swift",
+      "source_sha256": "48a59c259771bea5cdfb7a646f5d0b35f8d0773846f831e9ad317239f58ebf5f",
+      "sha256": "48a59c259771bea5cdfb7a646f5d0b35f8d0773846f831e9ad317239f58ebf5f",
+      "bytes": 14044,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Sources/Persistence/SwiftDataPersistence.swift",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Sources/Persistence/SwiftDataPersistence.swift",
+      "source_sha256": "627a27bcbe8ab5daf71b7633773501ac726ebc0037f466dcaa997e0ecb950160",
+      "sha256": "627a27bcbe8ab5daf71b7633773501ac726ebc0037f466dcaa997e0ecb950160",
+      "bytes": 5955,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Sources/Providers/ChatRuntime.swift",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Sources/Providers/ChatRuntime.swift",
+      "source_sha256": "6c1bef9b857234807eadefecbaecf2dfc8a9b0ff61325f6a57d3023cf6a1ee88",
+      "sha256": "6c1bef9b857234807eadefecbaecf2dfc8a9b0ff61325f6a57d3023cf6a1ee88",
+      "bytes": 20520,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Sources/Providers/FixtureProvider.swift",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Sources/Providers/FixtureProvider.swift",
+      "source_sha256": "cde6bc09ea560c9a16cd8a7e70fe55209d8e826f451fc3d420b4ac43235bd39d",
+      "sha256": "cde6bc09ea560c9a16cd8a7e70fe55209d8e826f451fc3d420b4ac43235bd39d",
+      "bytes": 4867,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Sources/Providers/GatewayAgentProvider.swift",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Sources/Providers/GatewayAgentProvider.swift",
+      "source_sha256": "386d0f0b6f417ebec8819763b46dce4590fe30bbb4855ced68c6097be37e7211",
+      "sha256": "386d0f0b6f417ebec8819763b46dce4590fe30bbb4855ced68c6097be37e7211",
+      "bytes": 15054,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Sources/Providers/OpenMuseAgentProvider.swift",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Sources/Providers/OpenMuseAgentProvider.swift",
+      "source_sha256": "37e5c0181a913b148e9d13b0646f77ff2c10a7226daa4a6cf80ba3bed8bcc4ba",
+      "sha256": "37e5c0181a913b148e9d13b0646f77ff2c10a7226daa4a6cf80ba3bed8bcc4ba",
+      "bytes": 4598,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Sources/Providers/OpenMuseFacadeHTTPTransport.swift",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Sources/Providers/OpenMuseFacadeHTTPTransport.swift",
+      "source_sha256": "94bfe89101d08bec780c540c3c2473dd45fbf0cd986cd3750cde42c0bdd72fe5",
+      "sha256": "94bfe89101d08bec780c540c3c2473dd45fbf0cd986cd3750cde42c0bdd72fe5",
+      "bytes": 23961,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Sources/Providers/OpenMuseFixtureTransport.swift",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Sources/Providers/OpenMuseFixtureTransport.swift",
+      "source_sha256": "3d7a287d73cd45231b74c0256510b7a2179139c306dd83db4309475fa8da0fb4",
+      "sha256": "3d7a287d73cd45231b74c0256510b7a2179139c306dd83db4309475fa8da0fb4",
+      "bytes": 9318,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Sources/Providers/OpenMuseTaskTransport.swift",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Sources/Providers/OpenMuseTaskTransport.swift",
+      "source_sha256": "695ff48690c36bb48e67d9836a138bcb6f9268a3c1a70b6d8104085e1afabf37",
+      "sha256": "695ff48690c36bb48e67d9836a138bcb6f9268a3c1a70b6d8104085e1afabf37",
+      "bytes": 2966,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Sources/Voice/NativeVoiceController.swift",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Sources/Voice/NativeVoiceController.swift",
+      "source_sha256": "32fe1df433a6c7fd2aded14bbe4ec1f3d14c6bc5c879a93ddc7469f51c666653",
+      "sha256": "32fe1df433a6c7fd2aded14bbe4ec1f3d14c6bc5c879a93ddc7469f51c666653",
+      "bytes": 16835,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Sources/Voice/VoiceViews.swift",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Sources/Voice/VoiceViews.swift",
+      "source_sha256": "f39842f2673603991c3ea4c8894a387464ba5e48647dc737b66ab313bdd3899d",
+      "sha256": "f39842f2673603991c3ea4c8894a387464ba5e48647dc737b66ab313bdd3899d",
+      "bytes": 6607,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Resources/Info.plist",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Resources/Info.plist",
+      "source_sha256": "0546a9d711cc90196570c70801cd0febdb3833634d399966372fbf2f533feab0",
+      "sha256": "0546a9d711cc90196570c70801cd0febdb3833634d399966372fbf2f533feab0",
+      "bytes": 2030,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Resources/UIStringExemptions.json",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Resources/UIStringExemptions.json",
+      "source_sha256": "82dc16d010cb855ccc3a1275b238b29bfd1adf9a4740d7bc72677357d43fb828",
+      "sha256": "82dc16d010cb855ccc3a1275b238b29bfd1adf9a4740d7bc72677357d43fb828",
+      "bytes": 434,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Resources/UIStrings.json",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Resources/UIStrings.json",
+      "source_sha256": "762757fede7ab61723693d945e8311eab9caa9ba2812f56c125bfb008e0979c1",
+      "sha256": "762757fede7ab61723693d945e8311eab9caa9ba2812f56c125bfb008e0979c1",
+      "bytes": 66025,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Resources/en.lproj/InfoPlist.strings",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Resources/en.lproj/InfoPlist.strings",
+      "source_sha256": "2f7eecb634e6f587dd097cab13cb620c1801603a9b2f3c9016edf8c56afaabfa",
+      "sha256": "2f7eecb634e6f587dd097cab13cb620c1801603a9b2f3c9016edf8c56afaabfa",
+      "bytes": 685,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Resources/zh-Hans.lproj/InfoPlist.strings",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Resources/zh-Hans.lproj/InfoPlist.strings",
+      "source_sha256": "bf88d33296841a2f1a659c66cde97f389ca9af0997408f9fbc3b677323cd18d6",
+      "sha256": "bf88d33296841a2f1a659c66cde97f389ca9af0997408f9fbc3b677323cd18d6",
+      "bytes": 615,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Tests/DomainRunner.swift",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Tests/DomainRunner.swift",
+      "source_sha256": "8fe5141b12a939e0363556c1919ca5ee52b2d7f18de8c4d211643042dc1cb9c7",
+      "sha256": "8fe5141b12a939e0363556c1919ca5ee52b2d7f18de8c4d211643042dc1cb9c7",
+      "bytes": 40333,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Tests/Fixtures/OpenMuseSnapshot/artifact.json",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Tests/Fixtures/OpenMuseSnapshot/artifact.json",
+      "source_sha256": "fee0f850fe75bed16a0975af6841622d513e07fb62e53027a7cbda3400178c4e",
+      "sha256": "fee0f850fe75bed16a0975af6841622d513e07fb62e53027a7cbda3400178c4e",
+      "bytes": 743,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Tests/Fixtures/OpenMuseSnapshot/capabilities.json",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Tests/Fixtures/OpenMuseSnapshot/capabilities.json",
+      "source_sha256": "8cf291aca25e1f9f2ecb00b66691fe5aeb47823715b871c0b8498ac781576f6a",
+      "sha256": "8cf291aca25e1f9f2ecb00b66691fe5aeb47823715b871c0b8498ac781576f6a",
+      "bytes": 520,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Tests/Fixtures/OpenMuseSnapshot/delegation.json",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Tests/Fixtures/OpenMuseSnapshot/delegation.json",
+      "source_sha256": "88762fd3ac7918a1d2d207b98cdc3e733c795e5cfbcc3e9b5fe996589b3e121c",
+      "sha256": "88762fd3ac7918a1d2d207b98cdc3e733c795e5cfbcc3e9b5fe996589b3e121c",
+      "bytes": 645,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Tests/Fixtures/OpenMuseSnapshot/operation.json",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Tests/Fixtures/OpenMuseSnapshot/operation.json",
+      "source_sha256": "0725fdba45f2f19ae6f81357255a043191c7d8d1ca570789fd6e668f8f0f867d",
+      "sha256": "0725fdba45f2f19ae6f81357255a043191c7d8d1ca570789fd6e668f8f0f867d",
+      "bytes": 1333,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Tests/Fixtures/OpenMuseSnapshot/provenance.json",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Tests/Fixtures/OpenMuseSnapshot/provenance.json",
+      "source_sha256": "3e86eb5a01118c4ce6abb57cdfc02ef889bb34a3c746397563e8f8cb63fe9523",
+      "sha256": "3e86eb5a01118c4ce6abb57cdfc02ef889bb34a3c746397563e8f8cb63fe9523",
+      "bytes": 915,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Tests/Fixtures/OpenMuseSnapshot/run.json",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Tests/Fixtures/OpenMuseSnapshot/run.json",
+      "source_sha256": "0725fdba45f2f19ae6f81357255a043191c7d8d1ca570789fd6e668f8f0f867d",
+      "sha256": "0725fdba45f2f19ae6f81357255a043191c7d8d1ca570789fd6e668f8f0f867d",
+      "bytes": 1333,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Tests/GatewayRunner.swift",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Tests/GatewayRunner.swift",
+      "source_sha256": "63defc0d0b9b06f31ea114345e0afef3dc88edc64a4dedee3f34ec68283c142b",
+      "sha256": "63defc0d0b9b06f31ea114345e0afef3dc88edc64a4dedee3f34ec68283c142b",
+      "bytes": 12898,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Tests/GatewaySafetyRegression.swift",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Tests/GatewaySafetyRegression.swift",
+      "source_sha256": "fe5d49197bf461acb6469cd590da659cbc1562d3dab506ed8f495a3c4b0dfaa5",
+      "sha256": "fe5d49197bf461acb6469cd590da659cbc1562d3dab506ed8f495a3c4b0dfaa5",
+      "bytes": 7762,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Tests/NativeTests.swift",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Tests/NativeTests.swift",
+      "source_sha256": "68efb5603b399d048490b5b8f9c85c16997c3ec9e339cac348f12638333f70c6",
+      "sha256": "68efb5603b399d048490b5b8f9c85c16997c3ec9e339cac348f12638333f70c6",
+      "bytes": 27716,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Tests/NativeUITests.swift",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Tests/NativeUITests.swift",
+      "source_sha256": "eb2f67b51adb1b21bf518494195ff410f002719a1806e786257559134efd9dc5",
+      "sha256": "eb2f67b51adb1b21bf518494195ff410f002719a1806e786257559134efd9dc5",
+      "bytes": 41183,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Tests/OpenMuseHTTPRunner.swift",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Tests/OpenMuseHTTPRunner.swift",
+      "source_sha256": "09ac4e71e3e0034c79c5f16ecfcbe78c5cd82d24a67880702712a9ac3b82107c",
+      "sha256": "09ac4e71e3e0034c79c5f16ecfcbe78c5cd82d24a67880702712a9ac3b82107c",
+      "bytes": 7654,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Tests/OpenMuseSnapshotRunner.swift",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Tests/OpenMuseSnapshotRunner.swift",
+      "source_sha256": "4cd74a336fa61486c6b58eb32f273b307e655e7c1b9d49b7a5b31da3e4684454",
+      "sha256": "4cd74a336fa61486c6b58eb32f273b307e655e7c1b9d49b7a5b31da3e4684454",
+      "bytes": 8655,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Tests/OpenMuseTaskRunner.swift",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Tests/OpenMuseTaskRunner.swift",
+      "source_sha256": "e51789dbbb1083cb1e8e0734d7f0f6ab23beda73c03d23b469034c40061cdb88",
+      "sha256": "e51789dbbb1083cb1e8e0734d7f0f6ab23beda73c03d23b469034c40061cdb88",
+      "bytes": 24132,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Tests/ProductRegression.swift",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Tests/ProductRegression.swift",
+      "source_sha256": "ef5f94d3f48d2e9115ddcc6467d492522c885a9bd6517b47f8edcd7181a205b3",
+      "sha256": "ef5f94d3f48d2e9115ddcc6467d492522c885a9bd6517b47f8edcd7181a205b3",
+      "bytes": 39054,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/CatpawM.xcodeproj/project.pbxproj",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "CatpawM.xcodeproj/project.pbxproj",
+      "source_sha256": "0b87a7b634f3f32656c849697e47c5cc78b161ec354ca69ec712d03495004f99",
+      "sha256": "0b87a7b634f3f32656c849697e47c5cc78b161ec354ca69ec712d03495004f99",
+      "bytes": 22796,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/CatpawM.xcodeproj/xcshareddata/xcschemes/CatpawM.xcscheme",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "CatpawM.xcodeproj/xcshareddata/xcschemes/CatpawM.xcscheme",
+      "source_sha256": "e1bce81fc5bac38f38736e445b0b2a0b6bafc5044b2a9fccc27874dbce476ef8",
+      "sha256": "e1bce81fc5bac38f38736e445b0b2a0b6bafc5044b2a9fccc27874dbce476ef8",
+      "bytes": 2582,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Development/gateway/config/models.json",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Development/gateway/config/models.json",
+      "source_sha256": "4710845a319a7af1ea49573cc176f23bbf7f0ad0abe2df491f4c6c4357844137",
+      "sha256": "4710845a319a7af1ea49573cc176f23bbf7f0ad0abe2df491f4c6c4357844137",
+      "bytes": 3781,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Development/gateway/package.json",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Development/gateway/package.json",
+      "source_sha256": "f51cb2267cd53a444cd967eaeb38070d9e2d5f890894fdd9f978ea5152360133",
+      "sha256": "f51cb2267cd53a444cd967eaeb38070d9e2d5f890894fdd9f978ea5152360133",
+      "bytes": 390,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Development/gateway/scripts/demo.mjs",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Development/gateway/scripts/demo.mjs",
+      "source_sha256": "16d74aeb9cb69deee047a75f71a5df1b910a1d2c796ea146b894adb23826b206",
+      "sha256": "16d74aeb9cb69deee047a75f71a5df1b910a1d2c796ea146b894adb23826b206",
+      "bytes": 1651,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Development/gateway/scripts/evaluate.mjs",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Development/gateway/scripts/evaluate.mjs",
+      "source_sha256": "306df2cafdfe7232f026de2b9879dbf549861ce2a1acf60eae0e4cd02a08743b",
+      "sha256": "306df2cafdfe7232f026de2b9879dbf549861ce2a1acf60eae0e4cd02a08743b",
+      "bytes": 5373,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Development/gateway/scripts/native-http.mjs",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Development/gateway/scripts/native-http.mjs",
+      "source_sha256": "fa3a2311133936c43a12738d7f074f44ee8c930b4627a8128994cc4318743451",
+      "sha256": "fa3a2311133936c43a12738d7f074f44ee8c930b4627a8128994cc4318743451",
+      "bytes": 807,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Development/gateway/scripts/native-ui-server.mjs",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Development/gateway/scripts/native-ui-server.mjs",
+      "source_sha256": "a062d09673ef2fd3d5f805b8222481734e9d5464be50be4653407f6d00f342a6",
+      "sha256": "a062d09673ef2fd3d5f805b8222481734e9d5464be50be4653407f6d00f342a6",
+      "bytes": 1351,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Development/gateway/src/assistant.mjs",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Development/gateway/src/assistant.mjs",
+      "source_sha256": "f91c7de37a6181671addc7a9acaad2669cafca9ce0c04484c57c63e2d890c5b4",
+      "sha256": "f91c7de37a6181671addc7a9acaad2669cafca9ce0c04484c57c63e2d890c5b4",
+      "bytes": 19410,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Development/gateway/src/mock.mjs",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Development/gateway/src/mock.mjs",
+      "source_sha256": "ffec28f3adb594e82cad3436d6550315f751eb0e20c52c1f4c89103ab237e2ea",
+      "sha256": "ffec28f3adb594e82cad3436d6550315f751eb0e20c52c1f4c89103ab237e2ea",
+      "bytes": 1022,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Development/gateway/src/models.mjs",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Development/gateway/src/models.mjs",
+      "source_sha256": "59159dcc6eccd3f7b36c14fdc70342b55bcb333fdf992bdb3ceb08f91ee451ed",
+      "sha256": "59159dcc6eccd3f7b36c14fdc70342b55bcb333fdf992bdb3ceb08f91ee451ed",
+      "bytes": 5609,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Development/gateway/src/server.mjs",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Development/gateway/src/server.mjs",
+      "source_sha256": "7cb9c3ad9bf38e2eb84ff11918cf456dae1cfd8ed8b55d7a0753f29e2c1bc9ce",
+      "sha256": "7cb9c3ad9bf38e2eb84ff11918cf456dae1cfd8ed8b55d7a0753f29e2c1bc9ce",
+      "bytes": 8854,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Development/gateway/src/store.mjs",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Development/gateway/src/store.mjs",
+      "source_sha256": "40a9180acb23adcd2f9a7e52a858a543edb88707cc98dd53fc98daa43af33670",
+      "sha256": "40a9180acb23adcd2f9a7e52a858a543edb88707cc98dd53fc98daa43af33670",
+      "bytes": 3083,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Development/gateway/src/transport.mjs",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Development/gateway/src/transport.mjs",
+      "source_sha256": "48ea423c5788e0628d4ea6c1073b72c69d9a167942f3a91155cc946817520b11",
+      "sha256": "48ea423c5788e0628d4ea6c1073b72c69d9a167942f3a91155cc946817520b11",
+      "bytes": 9400,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Development/gateway/src/worker-cli.mjs",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Development/gateway/src/worker-cli.mjs",
+      "source_sha256": "049fedcb1509ba131805e4ae3926aba3a1682efa7980d47062714b94f07ccfd5",
+      "sha256": "049fedcb1509ba131805e4ae3926aba3a1682efa7980d47062714b94f07ccfd5",
+      "bytes": 940,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Development/gateway/src/worker.mjs",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Development/gateway/src/worker.mjs",
+      "source_sha256": "f86e9c25679fae698d62fdeec6ea4d39111e3c82abf369fcf35fe1db819cebf0",
+      "sha256": "f86e9c25679fae698d62fdeec6ea4d39111e3c82abf369fcf35fe1db819cebf0",
+      "bytes": 1812,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Development/gateway/test/all.mjs",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Development/gateway/test/all.mjs",
+      "source_sha256": "eef240434c03ba55ab086ccc533ca832b3deff2b3a67b606615752be6918ffc2",
+      "sha256": "eef240434c03ba55ab086ccc533ca832b3deff2b3a67b606615752be6918ffc2",
+      "bytes": 146,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Development/gateway/test/evaluation.test.mjs",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Development/gateway/test/evaluation.test.mjs",
+      "source_sha256": "ee4b597259433339f71e5dfb511fd35678d367d674f3e4465689636e234c995c",
+      "sha256": "ee4b597259433339f71e5dfb511fd35678d367d674f3e4465689636e234c995c",
+      "bytes": 1086,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Development/gateway/test/models.test.mjs",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Development/gateway/test/models.test.mjs",
+      "source_sha256": "0b8aa0ec326e77a404162188e4ec06776732bf30b4aad10a825f0d08cc5abf4e",
+      "sha256": "0b8aa0ec326e77a404162188e4ec06776732bf30b4aad10a825f0d08cc5abf4e",
+      "bytes": 3419,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Development/gateway/test/process-helper.mjs",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Development/gateway/test/process-helper.mjs",
+      "source_sha256": "f2856bb295fdc0560d0e98bb8e0aaeb72dfd4f5409bd688d1d1cde9c012177d0",
+      "sha256": "f2856bb295fdc0560d0e98bb8e0aaeb72dfd4f5409bd688d1d1cde9c012177d0",
+      "bytes": 656,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Development/gateway/test/server.test.mjs",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Development/gateway/test/server.test.mjs",
+      "source_sha256": "127a0560899a6dd3955d51185c4ed1bf9b9d00fd03b909d59cf461b1720ccb2f",
+      "sha256": "127a0560899a6dd3955d51185c4ed1bf9b9d00fd03b909d59cf461b1720ccb2f",
+      "bytes": 3745,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Development/gateway/test/store.test.mjs",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Development/gateway/test/store.test.mjs",
+      "source_sha256": "3592adc6326a98106608a4dd9af0d06fc06393af1c88483ad7808f2b8bfdd388",
+      "sha256": "3592adc6326a98106608a4dd9af0d06fc06393af1c88483ad7808f2b8bfdd388",
+      "bytes": 9344,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Development/gateway/test/transport.test.mjs",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Development/gateway/test/transport.test.mjs",
+      "source_sha256": "39eedc54c88b4768dc37ee476fa03782b2f98b7a41baaee57910da2e5e497773",
+      "sha256": "39eedc54c88b4768dc37ee476fa03782b2f98b7a41baaee57910da2e5e497773",
+      "bytes": 7070,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/docs/spec/README.txt",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "docs/spec/README.txt",
+      "source_sha256": "61aae281a1aa6695c6eb61995e251e28eec15dbfb12fab30bf0f2b646cf8cc8b",
+      "sha256": "61aae281a1aa6695c6eb61995e251e28eec15dbfb12fab30bf0f2b646cf8cc8b",
+      "bytes": 3292,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/docs/spec/SHA256.json",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "docs/spec/SHA256.json",
+      "source_sha256": "f2c5ae1a951e6e583d061a834e6cbb82b5d68dd983160f86059c20ecbd9cb0e0",
+      "sha256": "f2c5ae1a951e6e583d061a834e6cbb82b5d68dd983160f86059c20ecbd9cb0e0",
+      "bytes": 1044,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/docs/spec/catpaw-core-contracts.examples.json",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "docs/spec/catpaw-core-contracts.examples.json",
+      "source_sha256": "f211bbf0b252439e452eb8183d4f74f6d2eb8befa2e3cc4f74abbe438b497449",
+      "sha256": "f211bbf0b252439e452eb8183d4f74f6d2eb8befa2e3cc4f74abbe438b497449",
+      "bytes": 2649,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/docs/spec/catpaw-core-contracts.schema.json",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "docs/spec/catpaw-core-contracts.schema.json",
+      "source_sha256": "a4f87c088e3472cadb1b403518ebc9b43747a118ec73bb37d49528dea6c3bf58",
+      "sha256": "a4f87c088e3472cadb1b403518ebc9b43747a118ec73bb37d49528dea6c3bf58",
+      "bytes": 51497,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/docs/spec/catpaw-ios-agent-contracts.swift",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "docs/spec/catpaw-ios-agent-contracts.swift",
+      "source_sha256": "6a6da670c53bcf8b4bd45ce4cb9e408e99822d143352ab3711858ab27ca38e8b",
+      "sha256": "6a6da670c53bcf8b4bd45ce4cb9e408e99822d143352ab3711858ab27ca38e8b",
+      "bytes": 12176,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/docs/spec/catpaw-ios-contracts.swift",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "docs/spec/catpaw-ios-contracts.swift",
+      "source_sha256": "77003c57bd0ba09b4c4f82ec67f592db4289226e6a5c7a977879fa2ef5f0df42",
+      "sha256": "77003c57bd0ba09b4c4f82ec67f592db4289226e6a5c7a977879fa2ef5f0df42",
+      "bytes": 27605,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/docs/spec/catpaw-ios-implementation-plan.md",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "docs/spec/catpaw-ios-implementation-plan.md",
+      "source_sha256": "78f6cd54f7d0557bf8a3bf224e64c081507cab6b06e59a63a8aacc1e544c41c0",
+      "sha256": "78f6cd54f7d0557bf8a3bf224e64c081507cab6b06e59a63a8aacc1e544c41c0",
+      "bytes": 32234,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/docs/spec/catpaw-ios-start-review.md",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "docs/spec/catpaw-ios-start-review.md",
+      "source_sha256": "7258dd357460b37aebe2f7983590519cb00eb1512cc2418643e1b9c213485338",
+      "sha256": "7258dd357460b37aebe2f7983590519cb00eb1512cc2418643e1b9c213485338",
+      "bytes": 4415,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/docs/spec/catpaw-product-spec.md",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "docs/spec/catpaw-product-spec.md",
+      "source_sha256": "c275ed05dbb21b571bca295acbcca0722823ca129613ed7dffc0909b96ac05ad",
+      "sha256": "c275ed05dbb21b571bca295acbcca0722823ca129613ed7dffc0909b96ac05ad",
+      "bytes": 99372,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/docs/spec/catpaw-technical-spec.md",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "docs/spec/catpaw-technical-spec.md",
+      "source_sha256": "f44e92e76ffec3c577f715ce2288d842c3547663e8d7cd86740ed53201943693",
+      "sha256": "f44e92e76ffec3c577f715ce2288d842c3547663e8d7cd86740ed53201943693",
+      "bytes": 113800,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/docs/spec/catpaw-voice-contracts.examples.json",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "docs/spec/catpaw-voice-contracts.examples.json",
+      "source_sha256": "c879fe097f1cb781a958281b8a6506d59d997559f088f5f8b11b4cad915ab86b",
+      "sha256": "c879fe097f1cb781a958281b8a6506d59d997559f088f5f8b11b4cad915ab86b",
+      "bytes": 2833,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/docs/spec/catpaw-voice-contracts.schema.json",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "docs/spec/catpaw-voice-contracts.schema.json",
+      "source_sha256": "d7816adc15c7064226ae761fbe420258e40c94e23204426f521ee0bb433e65c7",
+      "sha256": "d7816adc15c7064226ae761fbe420258e40c94e23204426f521ee0bb433e65c7",
+      "bytes": 35473,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/docs/openmuse-facade-v1/native-contract-v1.json",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "docs/openmuse-facade-v1/native-contract-v1.json",
+      "source_sha256": "08b79075636a8c70b90df82a6d02e6ffee2a0f36e138e88a56eb50576bd1f7a9",
+      "sha256": "08b79075636a8c70b90df82a6d02e6ffee2a0f36e138e88a56eb50576bd1f7a9",
+      "bytes": 5056,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Scripts/build-openmuse-http-runner.sh",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Scripts/build-openmuse-http-runner.sh",
+      "source_sha256": "784d9b7dd4af4ca99ae163c6c863485364f10decaa876debe868ce429f871f94",
+      "sha256": "598a54f7483dba0ed1a8884abbcd6efb30d0c0cc3c14a6ab16f3d7ea780a906a",
+      "bytes": 538,
+      "transformed": true
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Scripts/check-localization.py",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Scripts/check-localization.py",
+      "source_sha256": "a4016e34a5377e7ec3f929ec13b24a1b002b76aa7f5e7845ea6f6527387373c1",
+      "sha256": "a4016e34a5377e7ec3f929ec13b24a1b002b76aa7f5e7845ea6f6527387373c1",
+      "bytes": 5023,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Scripts/check-source.sh",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Scripts/check-source.sh",
+      "source_sha256": "1b4ba2eed52fb4952bfe5711aeb641d5cf6977528333c2344b054d996abc1bd1",
+      "sha256": "1b4ba2eed52fb4952bfe5711aeb641d5cf6977528333c2344b054d996abc1bd1",
+      "bytes": 692,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Scripts/generate-project.py",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Scripts/generate-project.py",
+      "source_sha256": "6aebc1f0466147dfb2612f0592199615eac1518481a6f19ce6cd08c6ac8b875c",
+      "sha256": "6aebc1f0466147dfb2612f0592199615eac1518481a6f19ce6cd08c6ac8b875c",
+      "bytes": 9589,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Scripts/openmuse-loopback.mjs",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Scripts/openmuse-loopback.mjs",
+      "source_sha256": "282514551ffd601e22139bddd58a630a986eecb1b769a8d33d7d90a6ab96dca4",
+      "sha256": "282514551ffd601e22139bddd58a630a986eecb1b769a8d33d7d90a6ab96dca4",
+      "bytes": 1308,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Scripts/test-gateway-portable.sh",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Scripts/test-gateway-portable.sh",
+      "source_sha256": "afa33732e30b4c03cda69b415c442ef42736fbbbf7ac0ff42ed12e8083684370",
+      "sha256": "70be15a8b73bb7b7b0e217ba3c1de59dc0d864b74d5e04676d4c6ee152ccb859",
+      "bytes": 1337,
+      "transformed": true
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Scripts/test-ios.sh",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Scripts/test-ios.sh",
+      "source_sha256": "4bdaac0796c272a85a0a29434a892e478e94a40568dcc3a2b3c518e0c07f122c",
+      "sha256": "a4c3bdd05c40ef5efcda9818ed6e326f96fcea5e1391dce6fdd54942cdaa27e8",
+      "bytes": 1179,
+      "transformed": true
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Scripts/test-openmuse-http.mjs",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Scripts/test-openmuse-http.mjs",
+      "source_sha256": "a3da7935b771a2361cb7d6044448cc612eaea418e6746ac391f18b21d106324c",
+      "sha256": "2525fed9c4477cd85e40893953798dde9388b7a00bcf0a564f9d3d01477ce680",
+      "bytes": 3030,
+      "transformed": true
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Scripts/test-openmuse-portable.sh",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Scripts/test-openmuse-portable.sh",
+      "source_sha256": "c387fa13f494e191ec957b427144854c113c37ec89fba30aa3231afeb9b0554a",
+      "sha256": "c387fa13f494e191ec957b427144854c113c37ec89fba30aa3231afeb9b0554a",
+      "bytes": 643,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Scripts/test-openmuse-snapshot.sh",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Scripts/test-openmuse-snapshot.sh",
+      "source_sha256": "7e4a4e8cb8a29886d7e6327c9cb8aa9068f0e6f9cf2be6103607e01e7427f25c",
+      "sha256": "7e4a4e8cb8a29886d7e6327c9cb8aa9068f0e6f9cf2be6103607e01e7427f25c",
+      "bytes": 682,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Scripts/test-portable.sh",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Scripts/test-portable.sh",
+      "source_sha256": "91e9a380fb25731298fa9d8c7ff36ded73a7776672264581ce43c6ff12077bba",
+      "sha256": "91e9a380fb25731298fa9d8c7ff36ded73a7776672264581ce43c6ff12077bba",
+      "bytes": 567,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Scripts/validate-project.py",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "Scripts/validate-project.py",
+      "source_sha256": "488619d2793fc88968cdd953798e4bdf8ac6e8fa5998118c106b9848ebecdf24",
+      "sha256": "488619d2793fc88968cdd953798e4bdf8ac6e8fa5998118c106b9848ebecdf24",
+      "bytes": 2653,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/Tests/ProjectReplyOwnershipRegression.swift",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "docs/reports/project-reply-ownership-regression.swift",
+      "source_sha256": "8932862d6d0f5995327f6d66a7cf9d7ba78836dcbb659a8f430459c5eea914ba",
+      "sha256": "8932862d6d0f5995327f6d66a7cf9d7ba78836dcbb659a8f430459c5eea914ba",
+      "bytes": 3000,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/docs/openmuse-client-implementation-contract.md",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "docs/openmuse-client-implementation-contract.md",
+      "source_sha256": "2fdeba9e77fa652fab5f1091b43004f016e017f677748aa5c2cc8df7ae70cbae",
+      "sha256": "2fdeba9e77fa652fab5f1091b43004f016e017f677748aa5c2cc8df7ae70cbae",
+      "bytes": 1869,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios-openmuse-demo/docs/openmuse-native-adapter.md",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "docs/openmuse-native-adapter.md",
+      "source_sha256": "8bd456edded8c940dbbf6b299c854f288ab93c91739267875361692d2f645cf6",
+      "sha256": "7ee5c9e27a4e19e98a2887c63020b42f45c914b361bdeab9bc8a03551f222ec1",
+      "bytes": 5068,
+      "transformed": true
+    },
+    {
+      "path": "docs/acceptance/evidence/openmuse-r3/last-source-sha256.json",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "docs/reports/openmuse-demo/last-source-sha256.json",
+      "source_sha256": "57d59ab3cff454b7495856d71d798afe77ac7817fcf71588bf4ea54f61f80264",
+      "sha256": "57d59ab3cff454b7495856d71d798afe77ac7817fcf71588bf4ea54f61f80264",
+      "bytes": 11086,
+      "transformed": false
+    },
+    {
+      "path": "docs/acceptance/evidence/openmuse-r3/build-openmuse-resume-fixture-15.txt",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "docs/reports/openmuse-demo/build-openmuse-resume-fixture-15.log",
+      "source_sha256": "45f4feb0b8863a9851fbda81d19cb2fbf9c61c8937d6c1278091ff4f242d2859",
+      "sha256": "45f4feb0b8863a9851fbda81d19cb2fbf9c61c8937d6c1278091ff4f242d2859",
+      "bytes": 1540,
+      "transformed": false
+    },
+    {
+      "path": "docs/acceptance/evidence/openmuse-r3/build-openmuse-snapshot-02.txt",
+      "source_label": "openmuse-client-demo-r3-frozen",
+      "source_relative_path": "docs/reports/openmuse-demo/build-openmuse-snapshot-02.log",
+      "source_sha256": "b3e5e8ba18027d733a1e2bc6a2fbae450ab3df74e10b331656549d05c00c661a",
+      "sha256": "b3e5e8ba18027d733a1e2bc6a2fbae450ab3df74e10b331656549d05c00c661a",
+      "bytes": 642,
+      "transformed": false
+    },
+    {
+      "path": "docs/assets/openmuse-r3/CatpawM-r3-openmuse-http-02-original-task-recovered.png",
+      "source_label": "openmuse-r3-selected-synthetic-native-screenshot",
+      "source_relative_path": "CatpawM-r3-openmuse-http-02-original-task-recovered.png",
+      "source_sha256": "e001904af01159151f8a3c47742c7b1f6893f45fb511014d1372c75c590c9d0d",
+      "sha256": "e001904af01159151f8a3c47742c7b1f6893f45fb511014d1372c75c590c9d0d",
+      "bytes": 243933,
+      "transformed": false
+    },
+    {
+      "path": "docs/assets/openmuse-r3/CatpawM-r3-openmuse-http-03-version-bound-preview.png",
+      "source_label": "openmuse-r3-selected-synthetic-native-screenshot",
+      "source_relative_path": "CatpawM-r3-openmuse-http-03-version-bound-preview.png",
+      "source_sha256": "1a664de030f4b8c377946d815ccd6ff75349201e301667c7ce9568a7e3c876df",
+      "sha256": "1a664de030f4b8c377946d815ccd6ff75349201e301667c7ce9568a7e3c876df",
+      "bytes": 262981,
+      "transformed": false
+    },
+    {
+      "path": "docs/assets/openmuse-r3/CatpawM-r3-openmuse-http-04-unknown-original-receipt.png",
+      "source_label": "openmuse-r3-selected-synthetic-native-screenshot",
+      "source_relative_path": "CatpawM-r3-openmuse-http-04-unknown-original-receipt.png",
+      "source_sha256": "f93c94df404e5f11223790dd215cba140842d2bd79cfd9278ec0a6fc9d807e20",
+      "sha256": "f93c94df404e5f11223790dd215cba140842d2bd79cfd9278ec0a6fc9d807e20",
+      "bytes": 264581,
+      "transformed": false
+    },
+    {
+      "path": "docs/assets/openmuse-r3/CatpawM-r3-openmuse-http-05-native-artifact-provenance.png",
+      "source_label": "openmuse-r3-selected-synthetic-native-screenshot",
+      "source_relative_path": "CatpawM-r3-openmuse-http-05-native-artifact-provenance.png",
+      "source_sha256": "619df6e501e29d9112c85eb296a0411002d91e641956ce38166a3c621043cfc2",
+      "sha256": "619df6e501e29d9112c85eb296a0411002d91e641956ce38166a3c621043cfc2",
+      "bytes": 439527,
+      "transformed": false
+    }
+  ]
+}

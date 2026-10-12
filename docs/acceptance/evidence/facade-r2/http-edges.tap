@@ -1,0 +1,36 @@
+TAP version 13
+# (node:76335) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: HE01 expired deny returns HTTP 409 and durable expired; wrong digest stays fenced
+ok 1 - HE01 expired deny returns HTTP 409 and durable expired; wrong digest stays fenced
+  ---
+  duration_ms: 246.655708
+  type: 'test'
+  ...
+# Subtest: HE02 strict JSON, body size, empty-object shape and auth hold over real HTTP
+ok 2 - HE02 strict JSON, body size, empty-object shape and auth hold over real HTTP
+  ---
+  duration_ms: 56.444208
+  type: 'test'
+  ...
+# Subtest: HE03 unrelated authority error known=true remains an error and rolls back writes
+ok 3 - HE03 unrelated authority error known=true remains an error and rolls back writes
+  ---
+  duration_ms: 191.555041
+  type: 'test'
+  ...
+# Subtest: HE03 unrelated authority error known=false remains an error and rolls back writes
+ok 4 - HE03 unrelated authority error known=false remains an error and rolls back writes
+  ---
+  duration_ms: 222.256334
+  type: 'test'
+  ...
+1..4
+# tests 4
+# suites 0
+# pass 4
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 836.838041

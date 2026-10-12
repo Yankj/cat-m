@@ -1,0 +1,54 @@
+{
+  "source": "independent facade acceptance r2",
+  "changes": "Import roots made relative; restart temp directory moved to OS tmpdir. Assertion text preserved.",
+  "files": [
+    {
+      "path": "services/facade/qa/tests/child-loopback.mjs",
+      "source_label": "facade-independent-qa-r2",
+      "source_sha256": "137ac80c8f32ab42281a7f883d5e23ede59062b4c4d047a7958510bdb0150f07",
+      "sha256": "74ff733258696ffed9782918fdec5281ba2b0e23eb76a314b537da04065b922c",
+      "bytes": 256,
+      "transformed": true
+    },
+    {
+      "path": "services/facade/qa/tests/edges.test.mjs",
+      "source_label": "facade-independent-qa-r2",
+      "source_sha256": "ca3f22ab7ab934222c3717a12eaabd127f3a5a8ed249724c2d994d1c59c249a9",
+      "sha256": "323516476c7b575b447ee5255ba4b109281430e6ba4a5b6a7e600da612c8a5d1",
+      "bytes": 11650,
+      "transformed": true
+    },
+    {
+      "path": "services/facade/qa/tests/http-edges.test.mjs",
+      "source_label": "facade-independent-qa-r2",
+      "source_sha256": "58f8c01bf845e3684cc4568419bfcd57ddf25869782d6d190a45a681722e8dd5",
+      "sha256": "c75d2b7bcfc44ece293ddfcc18fbd87d8db3634a05ccc7404df7a0c3de0cb4fa",
+      "bytes": 5232,
+      "transformed": true
+    },
+    {
+      "path": "services/facade/qa/tests/loopback-negative.test.mjs",
+      "source_label": "facade-independent-qa-r2",
+      "source_sha256": "5c8bd4036ba02787f245fd084c9dddb11dff89fc1ca379dfe1249bfc7fd26210",
+      "sha256": "185f79f19f510444c34d3d156ddcd7d024255bd7ebbd2fe0b0852acd30e330b0",
+      "bytes": 6429,
+      "transformed": true
+    },
+    {
+      "path": "services/facade/qa/tests/negative.test.mjs",
+      "source_label": "facade-independent-qa-r2",
+      "source_sha256": "32ecacd24122e2c90428efe202c47f04de56243865117394c059af4576cc5962",
+      "sha256": "7808f23c84991463898658ee8deee942e400f72c8db3c155e4ccc7b0a1b8013b",
+      "bytes": 10138,
+      "transformed": true
+    },
+    {
+      "path": "services/facade/qa/tests/process-http.test.mjs",
+      "source_label": "facade-independent-qa-r2",
+      "source_sha256": "b62d53d438b924a0ab3e621b05a7e99cf148ab1eecdbe10e3e484460006da9ef",
+      "sha256": "e5514ce53f93beceff75b36cdfbd2f091a21548941cc9f2c04a1c3b5c7b8d449",
+      "bytes": 4901,
+      "transformed": true
+    }
+  ]
+}

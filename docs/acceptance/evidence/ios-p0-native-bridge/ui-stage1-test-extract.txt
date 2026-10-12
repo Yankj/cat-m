@@ -1,0 +1,18 @@
+Test Suite 'Selected tests' started at 2026-10-12 15:56:33.690.
+Test Suite 'CatpawMUITests.xctest' started at 2026-10-12 15:56:33.692.
+Test Suite 'P0NativeExperienceUITests' started at 2026-10-12 15:56:33.692.
+Test Case '-[CatpawMUITests.P0NativeExperienceUITests testLargestDynamicTypeComposerAndStreamRemainAccessible]' started.
+Test Case '-[CatpawMUITests.P0NativeExperienceUITests testLargestDynamicTypeComposerAndStreamRemainAccessible]' passed (16.266 seconds).
+Test Case '-[CatpawMUITests.P0NativeExperienceUITests testNativeMarkedTextPreventsSendAndCommandReturn]' started.
+Test Case '-[CatpawMUITests.P0NativeExperienceUITests testNativeMarkedTextPreventsSendAndCommandReturn]' passed (11.764 seconds).
+Test Case '-[CatpawMUITests.P0NativeExperienceUITests testSimulatorHomeFiveSecondsRecoversSameSyntheticTurn]' started.
+Test Case '-[CatpawMUITests.P0NativeExperienceUITests testSimulatorHomeFiveSecondsRecoversSameSyntheticTurn]' passed (22.747 seconds).
+Test Case '-[CatpawMUITests.P0NativeExperienceUITests testStableLocalEchoDuringPermissionAndTwentyCallbackSamples]' started.
+Test Case '-[CatpawMUITests.P0NativeExperienceUITests testStableLocalEchoDuringPermissionAndTwentyCallbackSamples]' passed (69.171 seconds).
+Test Suite 'P0NativeExperienceUITests' passed at 2026-10-12 15:58:33.645.
+	 Executed 4 tests, with 0 failures (0 unexpected) in 119.948 (119.953) seconds
+Test Suite 'CatpawMUITests.xctest' passed at 2026-10-12 15:58:33.646.
+	 Executed 4 tests, with 0 failures (0 unexpected) in 119.948 (119.953) seconds
+Test Suite 'Selected tests' passed at 2026-10-12 15:58:33.649.
+	 Executed 4 tests, with 0 failures (0 unexpected) in 119.948 (119.959) seconds
+** TEST SUCCEEDED **

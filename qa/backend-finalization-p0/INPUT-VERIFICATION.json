@@ -1,0 +1,25 @@
+{
+  "commits": {
+    "before": "9d22974dd71ba7e122317c6968836dcfb4dd03b4",
+    "after": "14495bede7dcdb66956c52add6aca78b48764464"
+  },
+  "verified_owner_and_committed_files": {
+    "services/edge/supabase/functions/_shared/api.mjs": "a0ab4a9a80b4c82c7bd6113fc58f6de7922068b1a6f4cb521a656fd015050f9a",
+    "services/edge/supabase/functions/_shared/core/src/chat-service.mjs": "80913ed481ea7deea90def3eee7aa7a5e7ad1e380dd47f09f08cd810f18c1f72",
+    "services/edge/test/dialogue-p0.test.mjs": "11eb4e1dc92f9ebd6b9301c1b73507b66e0f7561f6b3601a049bd0c943094243",
+    "services/edge/test/postgres-json-binding.test.mjs": "9e2c05c625d1b7c7aefd5ca459ab51ed40d0906775b2118bbf24f1485877fe69",
+    "services/edge/supabase/functions/_shared/config.mjs": "8da16598c4bc38747551608bc15300d60325895af947aec3c9f35c3cd325d695",
+    "services/edge/supabase/functions/_shared/worker-kick.mjs": "02e85731e8395f87b6ed49e3e6562a6aae4a4da2134ef947db9628e446e881a5",
+    "services/edge/supabase/functions/_shared/core/integration/edge-adapter/src/bounded-tick.mjs": "999aca145346926c21e5b2403fb20254637744d388a65df27e2b4c4dd7bb0be8",
+    "services/edge/supabase/functions/_shared/core/integration/edge-adapter/src/bounded-store.mjs": "6184cde0200095509d0614176006901a846bc67824c08e960bc9e77b1ebdcd8f",
+    "services/edge/supabase/functions/_shared/core/integration/edge-adapter/vendor/openmuse/runtime/engine/worker.mjs": "51973696df9b39cdda99366b31f663b86771ab4a44cce5dc2b02e12aa35a13ef",
+    "services/edge/supabase/functions/_shared/core/integration/edge-adapter/vendor/openmuse/runtime/log.mjs": "63e9674fae8ab5f090253f9018c4bbec162b79d14eb3ab33fc05dc8358e4abcc"
+  },
+  "dependency": "Existing official public jose 6.2.12 cache, no installation",
+  "synthetic_only": true,
+  "provenance_manifest_files_verified": 18,
+  "production_diff_paths": [
+    "services/edge/supabase/functions/_shared/api.mjs",
+    "services/edge/supabase/functions/_shared/core/src/chat-service.mjs"
+  ]
+}

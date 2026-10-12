@@ -1,0 +1,152 @@
+{
+  "branch": "fix/ios-p0-conversation",
+  "base_commit": "b7fa4ee5f8d144208d51f6d0dcdee9259c4315b7",
+  "frozen_import_commit": "b733ec7",
+  "environment": {
+    "device": "Owned iPhone17 Simulator",
+    "runtime": "iOS27.0",
+    "sdk": "iOS27.1",
+    "app_configuration": "Debug, explicit offline fixture; DeviceTrial unsigned compile separate"
+  },
+  "native_xctest_final": {
+    "passed": 26,
+    "failed": 0,
+    "excluded": 1,
+    "excluded_case": "NativeAuthNativeTests/testNativeKeychainRoundTripAccessibilityAndExactDeletion",
+    "excluded_reason": "Earlier run failed OSStatus -34018 in unsigned Simulator. No signing/account/resource change made; blocked capability retained."
+  },
+  "native_ui": {
+    "passed": 4,
+    "failed": 0,
+    "layer": "Actual Simulator UI with in-process synthetic backend",
+    "cases": [
+      "Slow permission / stable local echo / 20 action-geometry callback samples",
+      "Actual UITextInput marked-text injection and CmdReturn guard; not real Chinese IME keyboard",
+      "Largest DynamicType controls and4096-character synthetic stream domain completion; rendered body hash not checked",
+      "Actual Simulator Home5s / same conversation+turn / synthetic reply1 and observe3; in-process backend, not cloud continuation"
+    ]
+  },
+  "portable": {
+    "queue": 9,
+    "conversation": 7,
+    "layer": "Actual macOS Foundation Swift logic, not iOS display"
+  },
+  "measurements": [
+    {
+      "case": "home5s",
+      "raw_path": "docs/acceptance/evidence/ios-p0-native-bridge/home5s-raw.json",
+      "raw_sha256": "d395b635b453021b470c88f53c19a8f044665cb4d090ab80548b31fb8349528d",
+      "echo_samples": 1,
+      "echo_callback_p95_ms": 220.19079166057054,
+      "echo_callback_max_ms": 220.19079166057054,
+      "echo_callbacks_over_100ms": 1,
+      "active_callback_intervals": 463,
+      "interval_p95_ms": 49.542499997187406,
+      "interval_max_ms": 535.7716250000522,
+      "intervals_over_100ms": 7,
+      "frame_window": "First1500 active main-run-loop callbacks maximum; not every frame over the entire test.",
+      "synthetic_reply_calls": 1,
+      "synthetic_observe_calls": 3
+    },
+    {
+      "case": "large-type",
+      "raw_path": "docs/acceptance/evidence/ios-p0-native-bridge/large-type-raw.json",
+      "raw_sha256": "90d65272c86a6d9da30c20b18a8d70f3442ef03d592594217d0c578209ad4bd7",
+      "echo_samples": 1,
+      "echo_callback_p95_ms": 107.36479166371282,
+      "echo_callback_max_ms": 107.36479166371282,
+      "echo_callbacks_over_100ms": 1,
+      "active_callback_intervals": 258,
+      "interval_p95_ms": 66.6263333405368,
+      "interval_max_ms": 899.943374999566,
+      "intervals_over_100ms": 8,
+      "frame_window": "First1500 active main-run-loop callbacks maximum; not every frame over the entire test.",
+      "synthetic_reply_calls": 1,
+      "synthetic_observe_calls": 0
+    },
+    {
+      "case": "ime",
+      "raw_path": "docs/acceptance/evidence/ios-p0-native-bridge/ime-raw.json",
+      "raw_sha256": "14240f020107df1713dc1dbd4940361fe1b98f46500b62b517f25d1f979b5723",
+      "echo_samples": 0,
+      "echo_callback_p95_ms": null,
+      "echo_callback_max_ms": null,
+      "echo_callbacks_over_100ms": 0,
+      "active_callback_intervals": 360,
+      "interval_p95_ms": 34.38399999868125,
+      "interval_max_ms": 242.60270832746755,
+      "intervals_over_100ms": 4,
+      "frame_window": "First1500 active main-run-loop callbacks maximum; not every frame over the entire test.",
+      "synthetic_reply_calls": 0,
+      "synthetic_observe_calls": 0
+    },
+    {
+      "case": "echo20",
+      "raw_path": "docs/acceptance/evidence/ios-p0-native-bridge/echo20-raw.json",
+      "raw_sha256": "58b5313c8a7cb773e87e495b9ec47991bce48cbe2e594da3a6861e350bd7bce0",
+      "echo_samples": 20,
+      "echo_callback_p95_ms": 93.99850000045262,
+      "echo_callback_max_ms": 113.34925000846852,
+      "echo_callbacks_over_100ms": 1,
+      "active_callback_intervals": 1500,
+      "interval_p95_ms": 40.894708334235474,
+      "interval_max_ms": 218.38783334533218,
+      "intervals_over_100ms": 12,
+      "frame_window": "First1500 active main-run-loop callbacks maximum; not every frame over the entire test.",
+      "synthetic_reply_calls": 20,
+      "synthetic_observe_calls": 0
+    }
+  ],
+  "performance_verdict": {
+    "presented_first_frame_under_100ms": "NOT_MEASURED: action to geometry-at-display-link callback is a proxy, not physical touch/GPU presentation",
+    "callback_proxy_threshold": "FAIL: echo20 max113.349ms; slow scene case220.191ms; large-type107.365ms",
+    "main_callback_gap_threshold": "FAIL: gaps over100ms observed; echo20 max218.388ms, large-type899.943ms",
+    "root_cause": "NOT_PROFILED; no claim that callback jitter proves a specific storage/rendering cause"
+  },
+  "not_verified": [
+    "Physical iPhone first-frame latency and Instruments",
+    "Real Chinese IME and VoiceOver",
+    "Physical/remote backend Home5s/30s continuation",
+    "WiFi/cellular handover",
+    "Rendered full-stream hash and preserved reading anchor",
+    "Media/weather capability",
+    "First legacy cold launch without a prior receipt still waits for Auth; fast local preview available after a prior verified workspace receipt"
+  ],
+  "external_effects": {
+    "real_model_calls": 0,
+    "real_signups": 0,
+    "phone_installations": 0,
+    "canonical_working_tree_modified": false,
+    "global_xcode_select_changed": false,
+    "signing_resources_changed": false
+  },
+  "local_runtime_paths": {
+    "unit_result": "apps/ios-conversation/.build-ios/P0-unit-final26.xcresult",
+    "ui_result": "apps/ios-conversation/.build-ios/P0-experience-ui-stage1.xcresult"
+  },
+  "product_acceptance": "FAIL retained; local functional small batch is reviewable, full P0 not released.",
+  "ui_binary_sha256": "5fc77c52c6eaa90ab9bd3099e05d4b8b5bca869f54a04aba7130b9985cd5c3cf",
+  "ui_source_manifest": "source-sha256.json",
+  "device_trial_unsigned_ios_compile": "PASS final source",
+  "ui_tests_code_boundary": "4 UI cases ran before the final Model terminal-admission/composing-selection guards. View, composer, probe and fixture source unchanged. Final26 XCTest covers the new guards; the4 UI cases were not rerun after that final Model-only safety change.",
+  "ui_unverified_transition": "savingLocal label is wired from outgoingMessages in production View; UI fixture observes stable local echo during held consent, but does not force storage to hold savingLocal for a separate rendering assertion.",
+  "final_debug_binary_sha256": "5fc77c52c6eaa90ab9bd3099e05d4b8b5bca869f54a04aba7130b9985cd5c3cf",
+  "independent_qa_comparison": {
+    "reviewed_commit": "dc655574",
+    "input": "qa/ios-dialogue-p0/REPORT.md in independent QA branch",
+    "closed_in_this_code": [
+      "Production View calls synchronous sceneChanged rather than inactive suspend",
+      "Production View consumes immutable outgoingMessages with stable transcript user IDs",
+      "Native UITextView markedText bridge / Return newline / CmdReturn guard",
+      "Send enabled while permission pending for additional local intent",
+      "Prior verified local workspace preview during held Auth with cloud admission closed"
+    ],
+    "still_open": [
+      "Actual Chinese IME / VoiceOver",
+      "SavingLocal-specific forced storage-delay UI assertion",
+      "GPU/physical first-frame100ms and Instruments",
+      "Physical5s/30s/weak network",
+      "Full rendered stream hash/reading anchor/media/weather"
+    ]
+  }
+}

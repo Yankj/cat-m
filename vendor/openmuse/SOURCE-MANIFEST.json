@@ -1,0 +1,316 @@
+{
+  "repository": "https://github.com/CopilotKit/openmuse",
+  "commit": "1ac68f3909f2478ab6280883f1ab5ea65eb5719d",
+  "source_subset_only": true,
+  "verification": "Copied stored upstream originals; SHA-256 and Git blob SHA-1 rechecked locally. No new source authentication or full upstream execution.",
+  "files": [
+    {
+      "path": "LICENSE",
+      "bytes": 1078,
+      "git_blob_sha1": "a3366dc2633aa74760c26210963ec8a11df02894",
+      "sha256": "399a9cccf1b228c9e8ad348ef66a0a5802d438d46735d0d068390925aee5ee36",
+      "url": "https://github.com/CopilotKit/openmuse/blob/1ac68f3909f2478ab6280883f1ab5ea65eb5719d/LICENSE"
+    },
+    {
+      "path": "apps/mobile/src/agent-workspace.tsx",
+      "bytes": 3140,
+      "git_blob_sha1": "9ddf2a397b4b57dd44e6243cafcee51d16e41151",
+      "sha256": "4e8b30636d065b52fa845d26883656e9f0064ea6057cd6878a80e376157fdd01",
+      "url": "https://github.com/CopilotKit/openmuse/blob/1ac68f3909f2478ab6280883f1ab5ea65eb5719d/apps/mobile/src/agent-workspace.tsx"
+    },
+    {
+      "path": "apps/mobile/src/api.ts",
+      "bytes": 1458,
+      "git_blob_sha1": "ab831d2a22d9fe775e652e7973edf9faaa0614c1",
+      "sha256": "ff665d9062413d3061a14261517b1dec4335b3513f6be4ad2f734ac2f5c5773a",
+      "url": "https://github.com/CopilotKit/openmuse/blob/1ac68f3909f2478ab6280883f1ab5ea65eb5719d/apps/mobile/src/api.ts"
+    },
+    {
+      "path": "apps/mobile/src/background-updates.tsx",
+      "bytes": 2258,
+      "git_blob_sha1": "76fb20cd8cdd1565548b6a90c1957152498b73b0",
+      "sha256": "db1169dca24e5d8fabb6e261d7b39958e2485a8696d9c90b37379490019e02ad",
+      "url": "https://github.com/CopilotKit/openmuse/blob/1ac68f3909f2478ab6280883f1ab5ea65eb5719d/apps/mobile/src/background-updates.tsx"
+    },
+    {
+      "path": "apps/mobile/src/chat.tsx",
+      "bytes": 36844,
+      "git_blob_sha1": "746ce12d2e438ed73e400ffb049b0a20badb8706",
+      "sha256": "336c35b2119c94a5eed5863872391d9961c912cd7df3e4c0f9552098fcd329c9",
+      "url": "https://github.com/CopilotKit/openmuse/blob/1ac68f3909f2478ab6280883f1ab5ea65eb5719d/apps/mobile/src/chat.tsx"
+    },
+    {
+      "path": "apps/server/src/actions.ts",
+      "bytes": 7608,
+      "git_blob_sha1": "e430a3d10b8e3be2e7c44122974520e0eb495572",
+      "sha256": "e1e69c6df791b0f4f03fb4bc4e4ef7061b3e1b1e671b8f105b4b50171a792b19",
+      "url": "https://github.com/CopilotKit/openmuse/blob/1ac68f3909f2478ab6280883f1ab5ea65eb5719d/apps/server/src/actions.ts"
+    },
+    {
+      "path": "apps/server/src/agent.ts",
+      "bytes": 2451,
+      "git_blob_sha1": "4a5a7586585b207455a784767112a73d75028ffa",
+      "sha256": "9a83cb16282f8546db4998710a66780b9750a409da20a78fd05281b5a3db1240",
+      "url": "https://github.com/CopilotKit/openmuse/blob/1ac68f3909f2478ab6280883f1ab5ea65eb5719d/apps/server/src/agent.ts"
+    },
+    {
+      "path": "apps/server/src/app.ts",
+      "bytes": 14741,
+      "git_blob_sha1": "258d7a22bf568fc2e42b706885c1e78a5f90e52e",
+      "sha256": "e1bb0db0228ea60ba7832c8914f2e81de6c472af67f7b1f808fb38911fa054e4",
+      "url": "https://github.com/CopilotKit/openmuse/blob/1ac68f3909f2478ab6280883f1ab5ea65eb5719d/apps/server/src/app.ts"
+    },
+    {
+      "path": "apps/server/src/auth.ts",
+      "bytes": 3543,
+      "git_blob_sha1": "2d4f73edebf3f283ae7fe7d66305a62722b7ed56",
+      "sha256": "c66e1af78a2fb0c0e605f94308063d015897a6e286471a06deb8983ecd6ab919",
+      "url": "https://github.com/CopilotKit/openmuse/blob/1ac68f3909f2478ab6280883f1ab5ea65eb5719d/apps/server/src/auth.ts"
+    },
+    {
+      "path": "apps/server/src/browser-console.ts",
+      "bytes": 5502,
+      "git_blob_sha1": "a21566ea79fec74854c56d6080d8e23b43cebb95",
+      "sha256": "5b52787ca5a3fbe600bcda8567fe39f0266942664916cd3572608d1265b62453",
+      "url": "https://github.com/CopilotKit/openmuse/blob/1ac68f3909f2478ab6280883f1ab5ea65eb5719d/apps/server/src/browser-console.ts"
+    },
+    {
+      "path": "apps/server/src/browser.ts",
+      "bytes": 10517,
+      "git_blob_sha1": "0be1cd1c4ac30fc964f5eb874bb003b356fc8d6e",
+      "sha256": "0f17aaa7c91c48afa0490ab7c3891e1b42d4b7c651c86c5d4917c72b0f526420",
+      "url": "https://github.com/CopilotKit/openmuse/blob/1ac68f3909f2478ab6280883f1ab5ea65eb5719d/apps/server/src/browser.ts"
+    },
+    {
+      "path": "apps/server/src/computer-backend.ts",
+      "bytes": 11929,
+      "git_blob_sha1": "ec614e8ad2e4293543d7aac787cd09b5c29e4aeb",
+      "sha256": "dba4501e943d2bf4d5813d85de1cbc818d595ef7ed088a2332412531b456acdd",
+      "url": "https://github.com/CopilotKit/openmuse/blob/1ac68f3909f2478ab6280883f1ab5ea65eb5719d/apps/server/src/computer-backend.ts"
+    },
+    {
+      "path": "apps/server/src/computer-e2b-desktop.ts",
+      "bytes": 27685,
+      "git_blob_sha1": "624dafef55e244daf73380647172d4bfa03e77e8",
+      "sha256": "d376871de1b33be2cbbfa362b98d9f5539f638d21802ed82658cd9caba23b4e4",
+      "url": "https://github.com/CopilotKit/openmuse/blob/1ac68f3909f2478ab6280883f1ab5ea65eb5719d/apps/server/src/computer-e2b-desktop.ts"
+    },
+    {
+      "path": "apps/server/src/computer-routes.ts",
+      "bytes": 3008,
+      "git_blob_sha1": "cfc9191e1e7784b6ddbf2be45bdc8cd81285c34e",
+      "sha256": "451cf6e32cb789d497a474b276d5782486ef6d1fbe67e04c48c95f43d27ad5a5",
+      "url": "https://github.com/CopilotKit/openmuse/blob/1ac68f3909f2478ab6280883f1ab5ea65eb5719d/apps/server/src/computer-routes.ts"
+    },
+    {
+      "path": "apps/server/src/computer-tools.ts",
+      "bytes": 9837,
+      "git_blob_sha1": "99f8469cd06e8e60c1e90a83bb73cf2448a751cc",
+      "sha256": "3c3d7dcd5ba7474891a18582271bbb49ffcd5afed9a66f0211764551f52bbd9b",
+      "url": "https://github.com/CopilotKit/openmuse/blob/1ac68f3909f2478ab6280883f1ab5ea65eb5719d/apps/server/src/computer-tools.ts"
+    },
+    {
+      "path": "apps/server/src/computer.ts",
+      "bytes": 28765,
+      "git_blob_sha1": "d4eab19e20165bb2ea60437ade1ec2794fd37c82",
+      "sha256": "21d7d42f01d95c60ea1638c3be46d515411f548dd8fcb1a55a4e4b3173f01327",
+      "url": "https://github.com/CopilotKit/openmuse/blob/1ac68f3909f2478ab6280883f1ab5ea65eb5719d/apps/server/src/computer.ts"
+    },
+    {
+      "path": "apps/server/src/config.ts",
+      "bytes": 7887,
+      "git_blob_sha1": "d34a9092950466081f5b96189a58b2fb0fa26070",
+      "sha256": "f4c97d49f6a9658d8a8345cdba0eece48f27e4fca0edfa50362d4a58f84a007a",
+      "url": "https://github.com/CopilotKit/openmuse/blob/1ac68f3909f2478ab6280883f1ab5ea65eb5719d/apps/server/src/config.ts"
+    },
+    {
+      "path": "apps/server/src/db.ts",
+      "bytes": 7650,
+      "git_blob_sha1": "4f057b6c96c60720b4bf812d137d70f293e32ed8",
+      "sha256": "76435f770de711668e1b3280318de377ac473183da39a5ed011756796c3e1f6e",
+      "url": "https://github.com/CopilotKit/openmuse/blob/1ac68f3909f2478ab6280883f1ab5ea65eb5719d/apps/server/src/db.ts"
+    },
+    {
+      "path": "apps/server/src/demo/entry.ts",
+      "bytes": 5637,
+      "git_blob_sha1": "d399c618255ccbe00fe7919d8cf2812d72f35d6e",
+      "sha256": "5598863f1761bc03d4565bbac089ef89ce74fc1163bf5e60a93423c39c5c3052",
+      "url": "https://github.com/CopilotKit/openmuse/blob/1ac68f3909f2478ab6280883f1ab5ea65eb5719d/apps/server/src/demo/entry.ts"
+    },
+    {
+      "path": "apps/server/src/demo/jev-fixture.ts",
+      "bytes": 1862,
+      "git_blob_sha1": "c4234fc2326e35b0c102f6d048a894a7697e6cf9",
+      "sha256": "dba55a336787f3fb835a9b879f8656c7ffece8d3f5cee37c66f6f737b67a2a73",
+      "url": "https://github.com/CopilotKit/openmuse/blob/1ac68f3909f2478ab6280883f1ab5ea65eb5719d/apps/server/src/demo/jev-fixture.ts"
+    },
+    {
+      "path": "apps/server/src/demo/model.ts",
+      "bytes": 24425,
+      "git_blob_sha1": "f862eb45b4c8e1360ef79a7cfbdca596e9969b61",
+      "sha256": "c1f81aaa0a381fd9cc8e7c51824102149b91dd694284d4f88648e499cd060351",
+      "url": "https://github.com/CopilotKit/openmuse/blob/1ac68f3909f2478ab6280883f1ab5ea65eb5719d/apps/server/src/demo/model.ts"
+    },
+    {
+      "path": "apps/server/src/engine/conversation.ts",
+      "bytes": 23657,
+      "git_blob_sha1": "e2c0a57b76b99de870c14c7441711468e2134393",
+      "sha256": "1cb0cb750ac5ae284b948825030d3716b8da90093a82f6e390a8da1b3e31bd83",
+      "url": "https://github.com/CopilotKit/openmuse/blob/1ac68f3909f2478ab6280883f1ab5ea65eb5719d/apps/server/src/engine/conversation.ts"
+    },
+    {
+      "path": "apps/server/src/engine/finance.ts",
+      "bytes": 3907,
+      "git_blob_sha1": "f7704ee7cfdd397c3c55d5ce907db64913c7f0b9",
+      "sha256": "22ffabdedf3d09327812ae33b25e8b6442ca3470bcf28139ca4648df42b86d9e",
+      "url": "https://github.com/CopilotKit/openmuse/blob/1ac68f3909f2478ab6280883f1ab5ea65eb5719d/apps/server/src/engine/finance.ts"
+    },
+    {
+      "path": "apps/server/src/engine/model.ts",
+      "bytes": 15117,
+      "git_blob_sha1": "2813def1909114058a2b1d539e6fd624903c282f",
+      "sha256": "9289e36978f2d1326e5076bacb0fd06ebbf153a8b948f3141a5fae6bc57f3173",
+      "url": "https://github.com/CopilotKit/openmuse/blob/1ac68f3909f2478ab6280883f1ab5ea65eb5719d/apps/server/src/engine/model.ts"
+    },
+    {
+      "path": "apps/server/src/engine/page-diff.ts",
+      "bytes": 3598,
+      "git_blob_sha1": "b516473295ac85bb87c827130c199147aaffdcbf",
+      "sha256": "d1e74b2529f6b2f786bfdc3095a478957b1d0c75f40ed9e85fb03f8190988891",
+      "url": "https://github.com/CopilotKit/openmuse/blob/1ac68f3909f2478ab6280883f1ab5ea65eb5719d/apps/server/src/engine/page-diff.ts"
+    },
+    {
+      "path": "apps/server/src/engine/routes.ts",
+      "bytes": 6107,
+      "git_blob_sha1": "0d616aa9db5eb312a28911bba71f2c19f3f6e0ba",
+      "sha256": "0d59b830acf8fe5f5b8e283c88582ec206c05a7a49c12c8d1d82ea890624a174",
+      "url": "https://github.com/CopilotKit/openmuse/blob/1ac68f3909f2478ab6280883f1ab5ea65eb5719d/apps/server/src/engine/routes.ts"
+    },
+    {
+      "path": "apps/server/src/engine/service.ts",
+      "bytes": 45272,
+      "git_blob_sha1": "0e071ba870792c2c1fda7edb1f32ea928bec83aa",
+      "sha256": "ea8901e4222e6a974b3aa5caab9e4a9b7a197d69c6c0b5f852e37a112f21170f",
+      "url": "https://github.com/CopilotKit/openmuse/blob/1ac68f3909f2478ab6280883f1ab5ea65eb5719d/apps/server/src/engine/service.ts"
+    },
+    {
+      "path": "apps/server/src/engine/tanstack-agent.ts",
+      "bytes": 9662,
+      "git_blob_sha1": "9ebf2bf85d18ddc73db507856f41f31e8ce145ac",
+      "sha256": "cd2662b6fcf1ac092d33c926b051de1c0832bb1282bce26565684ed247fde60e",
+      "url": "https://github.com/CopilotKit/openmuse/blob/1ac68f3909f2478ab6280883f1ab5ea65eb5719d/apps/server/src/engine/tanstack-agent.ts"
+    },
+    {
+      "path": "apps/server/src/engine/worker.ts",
+      "bytes": 8788,
+      "git_blob_sha1": "b69fe63486dbdd3f8617aed59bbd1e48b92e344a",
+      "sha256": "769ccdc02e3c5aa14c729cf0f6d745d408d4089e932dcdca71c5b36077642195",
+      "url": "https://github.com/CopilotKit/openmuse/blob/1ac68f3909f2478ab6280883f1ab5ea65eb5719d/apps/server/src/engine/worker.ts"
+    },
+    {
+      "path": "apps/server/src/errors.ts",
+      "bytes": 233,
+      "git_blob_sha1": "63d6be2816a67e5fd553b4e5981b43b2cefe4006",
+      "sha256": "1b9236cd303b2958dd30e5f9ec376847be30b37826f621ab02404f6e3104bc31",
+      "url": "https://github.com/CopilotKit/openmuse/blob/1ac68f3909f2478ab6280883f1ab5ea65eb5719d/apps/server/src/errors.ts"
+    },
+    {
+      "path": "apps/server/src/files.ts",
+      "bytes": 5611,
+      "git_blob_sha1": "14453455caa4a3425c255a21810710b2e4436e50",
+      "sha256": "ba71615f47df8a760e9d6de75c80d7259a869c93023488b42c10f2350c7dfa4a",
+      "url": "https://github.com/CopilotKit/openmuse/blob/1ac68f3909f2478ab6280883f1ab5ea65eb5719d/apps/server/src/files.ts"
+    },
+    {
+      "path": "apps/server/src/google-auth.ts",
+      "bytes": 9710,
+      "git_blob_sha1": "ae56eb481b6cab1a52b3994d59090156ba97e193",
+      "sha256": "ccae311bccaf48669c654846a5abbe5a8dfa90c433dda1fb5db75092f27e9077",
+      "url": "https://github.com/CopilotKit/openmuse/blob/1ac68f3909f2478ab6280883f1ab5ea65eb5719d/apps/server/src/google-auth.ts"
+    },
+    {
+      "path": "apps/server/src/index.ts",
+      "bytes": 824,
+      "git_blob_sha1": "6a355b29222461a1b0434e8bdc78fe4e72f377b1",
+      "sha256": "4d01fb301f92f5826a956dbd411eb9795eadc6c754b3d5f20b9b9eae0dbb3f9c",
+      "url": "https://github.com/CopilotKit/openmuse/blob/1ac68f3909f2478ab6280883f1ab5ea65eb5719d/apps/server/src/index.ts"
+    },
+    {
+      "path": "apps/server/src/jev/adapter.ts",
+      "bytes": 7838,
+      "git_blob_sha1": "1054914155bd4e91dc75d290d060adde89417dea",
+      "sha256": "89fa3ab500945391e5eb14d364f305a101edad4361aa57867c499ec86eda7b63",
+      "url": "https://github.com/CopilotKit/openmuse/blob/1ac68f3909f2478ab6280883f1ab5ea65eb5719d/apps/server/src/jev/adapter.ts"
+    },
+    {
+      "path": "apps/server/src/jev/service.ts",
+      "bytes": 13943,
+      "git_blob_sha1": "c2fbd95a6fa96c3628d4f92354693a43b5b09d73",
+      "sha256": "659b50226371352aa95a2e8bf326dd074d75a3dc31e65383adc66ad813c39c75",
+      "url": "https://github.com/CopilotKit/openmuse/blob/1ac68f3909f2478ab6280883f1ab5ea65eb5719d/apps/server/src/jev/service.ts"
+    },
+    {
+      "path": "apps/server/src/jev/tools.ts",
+      "bytes": 4365,
+      "git_blob_sha1": "3ec131ea7d79bd8270111322e20493bcc778bd38",
+      "sha256": "84704c7e2e62e6486b22237da0cd08fb8721c3108bb33559351910deaf20c331",
+      "url": "https://github.com/CopilotKit/openmuse/blob/1ac68f3909f2478ab6280883f1ab5ea65eb5719d/apps/server/src/jev/tools.ts"
+    },
+    {
+      "path": "apps/server/src/log.ts",
+      "bytes": 1214,
+      "git_blob_sha1": "1e9afc296f4eae268462329b3d8e75031b504c01",
+      "sha256": "9debacc65d2da0fb12fa2861f1ae77e0343ec285d74a19e0d1c1b7e1fbf44337",
+      "url": "https://github.com/CopilotKit/openmuse/blob/1ac68f3909f2478ab6280883f1ab5ea65eb5719d/apps/server/src/log.ts"
+    },
+    {
+      "path": "apps/server/src/rate-limit.ts",
+      "bytes": 2842,
+      "git_blob_sha1": "95c1f5ff6a2be4a1b4a1f9ee0fc09b6e5eabae59",
+      "sha256": "d56e27f9174383f8e4f1fe8a4b6d290a1f0c74b5d7810b3698d9766dd1c04052",
+      "url": "https://github.com/CopilotKit/openmuse/blob/1ac68f3909f2478ab6280883f1ab5ea65eb5719d/apps/server/src/rate-limit.ts"
+    },
+    {
+      "path": "apps/server/src/search.ts",
+      "bytes": 6990,
+      "git_blob_sha1": "6f70602ed153c22f978471f60fcbefe91a3aa085",
+      "sha256": "13cbc40de356e999fe53cf12fe3eb1967be4636c5422897c0cb58d5367f7cbd7",
+      "url": "https://github.com/CopilotKit/openmuse/blob/1ac68f3909f2478ab6280883f1ab5ea65eb5719d/apps/server/src/search.ts"
+    },
+    {
+      "path": "apps/server/src/worker-entry.ts",
+      "bytes": 781,
+      "git_blob_sha1": "a1d500a41a492e45fc64c69bdc5d373be9eef293",
+      "sha256": "ea0f81722d7d9509ac450cc04b52da1a7d36b4bcc275e2bdec571e88c4de5e86",
+      "url": "https://github.com/CopilotKit/openmuse/blob/1ac68f3909f2478ab6280883f1ab5ea65eb5719d/apps/server/src/worker-entry.ts"
+    },
+    {
+      "path": "apps/server/src/workspace.ts",
+      "bytes": 20097,
+      "git_blob_sha1": "1bbe4ae511c1ecf25f5f9be8e696b89d6cf489e3",
+      "sha256": "4398640e071a7ec02594ad093f038aa4b16c691c849a0cce0474152a6d93c14a",
+      "url": "https://github.com/CopilotKit/openmuse/blob/1ac68f3909f2478ab6280883f1ab5ea65eb5719d/apps/server/src/workspace.ts"
+    },
+    {
+      "path": "package.json",
+      "bytes": 2172,
+      "git_blob_sha1": "3110886c96b01f2608420cacfc5b1f24d016ea60",
+      "sha256": "b1eb2d41ead969b5ebda8d49240fe764b17aff491c89f40ef788b3c36f962547",
+      "url": "https://github.com/CopilotKit/openmuse/blob/1ac68f3909f2478ab6280883f1ab5ea65eb5719d/package.json"
+    },
+    {
+      "path": "packages/domain/src/agent.ts",
+      "bytes": 4388,
+      "git_blob_sha1": "c2d869bdac39090c70133ede66b7ffffa028ad49",
+      "sha256": "aa0ef3efc3abb5e6f4ee6ad590243b6f831106dcdf33e303e9695bac93d66dca",
+      "url": "https://github.com/CopilotKit/openmuse/blob/1ac68f3909f2478ab6280883f1ab5ea65eb5719d/packages/domain/src/agent.ts"
+    },
+    {
+      "path": "packages/domain/src/index.ts",
+      "bytes": 6007,
+      "git_blob_sha1": "764ab9c8aafb18c0bab16cf199d41ecaf721c418",
+      "sha256": "a7ac6e56518acb74ac3312c3e073f67d6d78ade1c47aa3b898e3f55f86fc3063",
+      "url": "https://github.com/CopilotKit/openmuse/blob/1ac68f3909f2478ab6280883f1ab5ea65eb5719d/packages/domain/src/index.ts"
+    }
+  ]
+}

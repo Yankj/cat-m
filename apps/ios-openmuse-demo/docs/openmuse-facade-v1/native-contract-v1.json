@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "contract": "catpaw.facade.v1",
+  "status": "frozen-for-native-adapter",
+  "upstream_commit": "1ac68f3909f2478ab6280883f1ab5ea65eb5719d",
+  "transport": "HTTP JSON, snake_case, RFC3339 UTC, no SSE/replay promise",
+  "authentication": "Authorization: Bearer <session>; server principal resolves allowed scope_id to profile_id/workspace_id and internal owner; request never accepts owner",
+  "synthetic_auth": "Loopback-only in-process mode accepts Bearer synthetic-only, scope 11111111-2222-4222-8222-111111111111; this is an explicitly synthetic session, not a real credential",
+  "base": "/catpaw/v1/scopes/{scope_id}",
+  "routes": [
+    {"method":"GET","path":"/catpaw/v1/capabilities","response":"{schema_version,contract,execution_layer,upstream_commit,allowed_scopes:[{scope_id,profile_id,workspace_id}],supports:{task_status_read,stable_run_read,artifact_versions,approval_projection,grant_revoke,sse_replay:false,external_writes:false}}"},
+    {"method":"POST","path":"/delegations","request":{"delegation_id":"UUID","title":"1..160","goal":"1..4000","requirements":"0..4000","stop_conditions":["1..300"],"synthetic_fixture_id":"report|preview|preview_unknown"},"response":"201 {schema_version,delegation:{id,revision,grant_epoch,state,request_hash,title,goal,synthetic_fixture_id},execution_layer}"},
+    {"method":"GET","path":"/delegations/{delegation_id}","response":"200 delegation envelope"},
+    {"method":"POST","path":"/delegations/{delegation_id}/runs","request":{"operation_id":"UUID (persist before send)","run_id":"UUID (stable business ID, distinct from operation/task/lease/AGUI)","expected_revision":1,"expected_grant_epoch":1},"response":"201 run envelope; idempotent identical retry returns 200; different frozen input at same operation/run returns 409; retry must first GET operation"},
+    {"method":"GET","path":"/operations/{operation_id}","response":"200 same stable run envelope; 404 does not authorize blind POST"},
+    {"method":"GET","path":"/runs/{run_id}","response":"200 {schema_version,run:{id,operation_id,delegation_id,delegation_revision,grant_epoch,task_id,request_hash,state,authorization_state,attempts:[{upstream_run_id,started_at,finished_at?,status}],artifact_references:[{artifact_id,version,content_hash}],approval_ids:[]},task:{id,status,attempts},execution_layer}"},
+    {"method":"POST","path":"/delegations/{delegation_id}/control","request":{"action":"pause|resume|revoke","expected_revision":1,"expected_grant_epoch":1},"response":"200 delegation envelope; increments revision and grant_epoch; revocation atomically invalidates pending task leases and approval bindings; resume needs a fresh Run admission"},
+    {"method":"GET","path":"/artifacts/{artifact_id}/versions/{version}","response":"200 {schema_version,artifact:{artifact_id,version,content_hash,mime_type:application/json,body,run_id,task_id,created_at},execution_layer}; content_hash=SHA256(UTF8(body)); immutable"},
+    {"method":"GET","path":"/approvals/{approval_id}","response":"200 {schema_version,approval:{id,run_id,operation_id,task_id,status,upstream_hash,action_digest,grant_epoch,artifact_reference,expires_at,receipt_status,reconciliation:{state,can_retry:false}},execution_layer}; no mail/calendar/workspace reads"},
+    {"method":"POST","path":"/approvals/{approval_id}/decisions","request":{"decision":"approve|deny","upstream_hash":"opaque upstream proposal hash","action_digest":"Catpaw binding hash","expected_grant_epoch":1},"response":"200 approval envelope; only catpaw.preview permitted; no external writes; consumed/unknown requests never dispatch again"},
+    {"method":"POST","path":"/approvals/{approval_id}/reconciliation-checks","request":{},"response":"200 approval envelope; read-only evidence check for synthetic preview effect; updates reconciliation projection, never dispatches or creates a new proposal"}
+  ],
+  "error_envelope": {"schema_version":1,"error":{"code":"machine_code","message":"safe description","retryable":false,"reconciliation_required":false}},
+  "errors": {"401":"session_required","403":"scope_forbidden","404":"not_found","409":"revision_conflict|grant_conflict|operation_conflict|run_conflict|approval_stale|approval_consumed|outcome_unknown","422":"schema_invalid|unsupported_fixture|external_write_denied","503":"dependency_not_ready|configuration_missing"},
+  "source_routes_are_distinct": "These /catpaw/v1 endpoints are NEW implemented facade routes, not claims about upstream existing endpoints. They read/write the same records store and use real TaskWorker plus a controlled ActionService preview extension.",
+  "execution_layers": ["facade_inprocess_test_double","actual_upstream_taskworker_inprocess","actual_upstream_sql_runtime_unverified","intelligence_service_unverified","real_model_unconfigured"],
+  "pilot_tools": ["read_synthetic_fixture","save_immutable_artifact","request_preview_approval","finish_task"],
+  "excluded": ["mail","calendar","E2B","browser","desktop","private_sources","autonomous_external_writes","second_scheduler"]
+}

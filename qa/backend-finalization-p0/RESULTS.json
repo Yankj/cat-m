@@ -1,0 +1,137 @@
+{
+  "conclusion": "No blocker found in this patch at the audited synthetic layer; no cloud/product release approval",
+  "runs": [
+    {
+      "version": "before",
+      "commit": "9d22974dd71ba7e122317c6968836dcfb4dd03b4",
+      "counts": {
+        "tests": 1,
+        "pass": 0,
+        "fail": 1,
+        "cancelled": 0,
+        "skipped": 0
+      },
+      "cases": [
+        {
+          "case": "revocation permits one static receipt but no text, tool, completion, or observation",
+          "status": "FAIL"
+        }
+      ],
+      "raw_log_sha256": "253672c89176aea26f87c78605cc4a820366d488df827e150663dbf1b2d25deb",
+      "runtime_evidence": "build/before-stage2.tap"
+    },
+    {
+      "version": "after",
+      "commit": "14495bede7dcdb66956c52add6aca78b48764464",
+      "counts": {
+        "tests": 20,
+        "pass": 20,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0
+      },
+      "cases": [
+        {
+          "case": "revocation permits one static receipt but no text, tool, completion, or observation",
+          "status": "PASS"
+        },
+        {
+          "case": "consent denial permits static failure and still forbids publication",
+          "status": "PASS"
+        },
+        {
+          "case": "revocation cannot bypass expired fence",
+          "status": "PASS"
+        },
+        {
+          "case": "revocation cannot bypass new-holder fence",
+          "status": "PASS"
+        },
+        {
+          "case": "revocation cannot bypass new-generation fence",
+          "status": "PASS"
+        },
+        {
+          "case": "revocation cannot bypass new-turn-holder fence",
+          "status": "PASS"
+        },
+        {
+          "case": "fresh terminal row after conversation lock is preserved",
+          "status": "PASS"
+        },
+        {
+          "case": "fresh unknown row after conversation lock is preserved",
+          "status": "PASS"
+        },
+        {
+          "case": "fresh redacted row after conversation lock is preserved",
+          "status": "PASS"
+        },
+        {
+          "case": "fresh deleted row after conversation lock is preserved",
+          "status": "PASS"
+        },
+        {
+          "case": "metadata put crossing lease expiry rolls back the write and notification",
+          "status": "PASS"
+        },
+        {
+          "case": "foreign-owner cannot use denial exception",
+          "status": "PASS"
+        },
+        {
+          "case": "foreign-source-subject cannot use denial exception",
+          "status": "PASS"
+        },
+        {
+          "case": "foreign-source-scope cannot use denial exception",
+          "status": "PASS"
+        },
+        {
+          "case": "only typed expected denial is exempt: Error/409/grant_conflict",
+          "status": "PASS"
+        },
+        {
+          "case": "only typed expected denial is exempt: Error/503/grant_conflict",
+          "status": "PASS"
+        },
+        {
+          "case": "only typed expected denial is exempt: Error/409/unexpected_code",
+          "status": "PASS"
+        },
+        {
+          "case": "dispatched timeout remains unknown through repeated failure and duplicate POST",
+          "status": "PASS"
+        },
+        {
+          "case": "concurrent and sequential fail produce one event and one notification",
+          "status": "PASS"
+        },
+        {
+          "case": "integration without beforeFailure retains strict beforeWrite fallback",
+          "status": "PASS"
+        }
+      ],
+      "raw_log_sha256": "c313c1a2a6c03254c3cbdee8b805d006c769cc6e2cb619c962dc79af3b92729c",
+      "runtime_evidence": "build/after-stage2.tap"
+    }
+  ],
+  "runtime": "Existing Node 22.17.1 with transform-types and offline npm loader",
+  "database": "Serialized TestRepository and deterministic in-transaction fault injection",
+  "fixture": "Independent QA manually seeded admitted-shaped running turn; real production beforeFailure/fail/append/executeTool/complete/read gates",
+  "provider_dispatch_attempts": 0,
+  "real_auth_or_model_requests": 0,
+  "real_pg_connections": 0,
+  "tick_calls": 0,
+  "deployment": false,
+  "post_test_git_source_identity": "PASS",
+  "not_run": [
+    "live PostgreSQL transaction isolation, row locks, concurrent multi-instance owner takeover",
+    "database disconnect/restart or process crash after COMMIT before notification",
+    "actual provider timeout and network delivery",
+    "real source authority/session/consent database checks",
+    "Deno runtime/full owner 62-case suite",
+    "cloud deployment and device/product acceptance"
+  ],
+  "harness_only_initial_failure": "First invocation omitted Node transform-types: ERR_UNKNOWN_FILE_EXTENSION, no test body executed; flags corrected, raw before.tap/after.tap retained and not counted as patch failures"
+}

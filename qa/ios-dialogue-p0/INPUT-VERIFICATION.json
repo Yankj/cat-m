@@ -1,0 +1,31 @@
+[
+  {
+    "artifact": "Catpaw-iOS-Build13-Verified-Source.zip",
+    "sha256": "018395c17900d3fdea83256e33de0b16c412246588e88c286c3cdeae3e68764d",
+    "bytes": 1342590,
+    "entries": 144,
+    "verified_manifest_entries": {
+      "SOURCE-SHA256.json": 132,
+      "ALL-SOURCE-SHA256.json": 140
+    },
+    "status": "PASS"
+  },
+  {
+    "artifact": "Catpaw-iOS-P0-State-Pending-Source-Patch-Tests.zip",
+    "sha256": "8ca70538aed8f0bc96f872d459bad02130de752b3cc460f296ccf192aae0af40",
+    "bytes": 1399596,
+    "entries": 157,
+    "verified_manifest_entries": {
+      "SOURCE-SHA256.json": 144
+    },
+    "status": "PASS"
+  },
+  {
+    "legacy_test": "P0ConversationScenarios.swift",
+    "sha256": "9c053b9ba6afe14719ac73d88f2cc4e857640b3840edda9c3f204e9edf2618fb"
+  },
+  {
+    "legacy_test": "P0PortableRunner.swift",
+    "sha256": "bbd200cc54764c7cacb00397e553dbf109638fbfdef7700871fff0b2ee09e49b"
+  }
+]

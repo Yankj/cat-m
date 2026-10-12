@@ -1,0 +1,15 @@
+{
+  "INPUT-VERIFICATION.json": "e561d9faa00e367599a43da1059e57a12d3a4799e9f25199805c1ba37bc9ce1d",
+  "NATIVE-RESULTS.json": "f2dd44e4018e0c8239b4f08c0cb3509bd00342a72571d4a65a5d4a3b6d15f498",
+  "PORTABLE-RESULTS.json": "c15e7c91b867cdc6c820555abae8624ff76a5149c9e152ab9e2ca97f63310736",
+  "QAConversationScenarios.swift": "473a32911f37ad384527a0a3b0494fabd4f0648b4019c17f33d1e88aff5f6ca8",
+  "QAFeedbackUITests.swift": "3ef6e89f14aa65be60454743d5f47e8e4bd7a87653b39bcc0a41eb32d16e3b8d",
+  "QAHost.swift": "0dd14bb1c8dd67b745480732bae277a631d1cba5efe9f8e5f4a363da0cd86c9b",
+  "QAIndependentTests.swift": "ef3a2b29d5287db41df1e56562196cd93e8add3141a5785e69e297ed27b39769",
+  "QAPortableRunner.swift": "e4d23c674d5b505926a1b0ad4df05980186d9b65a0dca0651fafe7d12edfed05",
+  "REPORT.md": "a0a65dcb1c87461bb44e2e8581ae4f6bdb956e3f44b8264981068446e9988750",
+  "collect-results.py": "9330b61cee977a5970c07b504b414f1adec8e349468e8075495bd04f30252ed1",
+  "native-test-results.txt": "68a798c7f093962777d8607790165370d9530970f321e93b51da860d65de5eeb",
+  "prepare.py": "7bb5eb2ff3683705ca2b2fd399d1ce26fa1ab63670324477d2f4acfb733d0ff3",
+  "run-portable.py": "cf599be094380d89aee72f885438be66edfe0d66b5a85d9a5b94470989d367c7"
+}

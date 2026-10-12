@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "created_on": "2026-10-12",
+  "branch": "integration/local-fixed-directory",
+  "base_commit": "b7fa4ee5f8d144208d51f6d0dcdee9259c4315b7",
+  "clone_method": "local Git transport, --no-local --no-hardlinks; no alternates; object file link count 1",
+  "source_remote": "canonical-source (local path retained in Git config)",
+  "origin_url": "https://github.com/Yankj/catpaw-m.git",
+  "commits": [
+    {
+      "module": "ios-import",
+      "source_commit": "b733ec72b80ce59f565e4baeeca85e46966e2175",
+      "integrated_commit": "f15169210c6f2fd9579aea61398dc25d7ff98b6f"
+    },
+    {
+      "module": "ios-p0-bridge",
+      "source_commit": "d9a897cc7881b7145fedb74b7af0dd5b5d8c4776",
+      "integrated_commit": "24ecea894b81a6eff7cafa119b64253c18952587"
+    },
+    {
+      "module": "backend-p0-source",
+      "source_commit": "9d22974dd71ba7e122317c6968836dcfb4dd03b4",
+      "integrated_commit": "e39ffcb83531cfd2780617b682c24fed40414a48"
+    },
+    {
+      "module": "backend-p0-finalization",
+      "source_commit": "14495bede7dcdb66956c52add6aca78b48764464",
+      "integrated_commit": "f1712651986da5f653007a86ca40812f91e69a44"
+    },
+    {
+      "module": "sidebar",
+      "source_commit": "d92bfeceb510785fd03544692a48a6ab6ced44ad",
+      "integrated_commit": "b4464ad9276dc056894a86224feab5bae090b906"
+    },
+    {
+      "module": "qa-ios",
+      "source_commit": "dc655574bd28965a33b53089ac040dbf555697b6",
+      "integrated_commit": "680961995bc7d1a3d05d3c361f8c898f63e3b218"
+    },
+    {
+      "module": "qa-backend",
+      "source_commit": "5e7cf41cbd81265fbc781f964a27aba126f57f84",
+      "integrated_commit": "780d7c51abb9ccba509a2411630dd3d85fd0425b"
+    }
+  ],
+  "conflicts_reviewed": [
+    "Only master-plan append sections for backend source and sidebar; both sides retained in full."
+  ],
+  "untracked_source_assets_imported": false,
+  "sidebar_host_integrated": false,
+  "new_integration_changes": [
+    "Root README and AGENTS entry map, docs index and local validation record",
+    "Missing native project validator added without changing existing imported sources",
+    "Offline backend runner maps existing public dependencies without copying or installing",
+    "Native check-source target corrected from macOS to iOS SDK; imported production sources unchanged; real localization gate retained"
+  ],
+  "not_integrated": [
+    "Canonical untracked candidates/assets/research/tooling",
+    "Later owner changes outside the seven selected commits",
+    "Backend vision-route branch after the selected finalization commit",
+    "Sidebar host wiring, worker-stall and long task authority candidates"
+  ]
+}

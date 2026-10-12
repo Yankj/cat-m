@@ -1,0 +1,187 @@
+PASS IOS04 disk reopen restores draft and ID
+PASS IOS06 cross-profile read rejected
+PASS IOS03 injected save failure
+PASS IOS03 failure emits no success and rolls back candidate
+PASS IOS03 subscription only sees committed record
+PASS IOS03 operation idempotency
+PASS IOS03 failed insert never leaks into next save
+PASS IOS03 optimistic revision conflict
+PASS IOS08 fixture success explicit terminal
+PASS IOS08 fixture failure explicit terminal
+PASS IOS08 fixture unexpectedEOF explicit terminal
+PASS IOS08 fixture cancelled explicit terminal
+PASS IOS08 fixture unknown explicit terminal
+PASS IOS08 cancelled epoch rejects late output
+PASS IOS19 fixture cannot become remote verified
+PASS IOS08 wrong final hash rejected
+PASS M1 double submit stores one user and one assistant message
+PASS M1 runtime commits explicit success
+PASS M1 task result reads same immutable document hash
+PASS M1 disk reopen restores ordered messages and cleared submitted draft
+PASS F02 workspace environment isolation
+PASS F07 foreign environment project rejected
+PASS F04 F15 submitted configuration snapshot frozen
+PASS F15 settings changes do not rewrite old requests
+PASS F09 CSV quoted comma newline escaped quote
+PASS F09 malformed CSV rejected
+PASS F09 fictional screenshot values preserved
+PASS IOS09 DST nonexistent time advances to next valid time
+PASS F12 missing weekly days rejected
+PASS F12 interval ignores unused calendar fields
+PASS F12 nonpositive interval rejected
+PASS F12 empty prompt rejected
+PASS IOS09 resume skips missed run without fake history
+PASS IOS09 foreground due rule claimed once
+PASS F11 pause persists schedule state
+PASS IOS12 resume and source replacement never regrant
+PASS IOS11 finished run does not end delegation
+PASS IOS10 old artifact preserves preparation snapshot
+PASS IOS12 editing invalidates old approval
+PASS IOS12 old approval cannot dispatch
+PASS IOS10 modified preview and artifact version agree
+PASS IOS12 two previews cannot both be accepted
+PASS IOS12 accepted record blocks fresh send
+PASS IOS12 unknown record survives edit and blocks resend
+PASS IOS12 query preserves original operation/version/history and simulation
+PASS IOS13 forgotten memory is redacted tombstone
+PASS IOS13 suppression prevents source re-extraction
+PASS IOS16 edited transcript rejects late recognition
+PASS IOS17 stopping playback preserves submitted text
+PASS IOS16 transcript submission once
+PASS IOS17 aborted capture rejects background final
+PASS IOS17 stopping playback does not invalidate live capture
+PASS F06 actual runtime cancellation commits cancelled state
+PASS F06 retry reuses operation and user message IDs
+PASS F06 old cancelled attempt remains in archive
+PASS R4 project save failure rejects context change
+PASS R4 failure preserves A context and creates no B key
+PASS R4 A B A retains separate conversation IDs and drafts
+PASS R4 historical messages and tasks stay in A
+PASS R4 direct project mutation denied
+PASS R1 environment draft batch save failure
+PASS R1 failed batch rolls back every draft and retains input snapshot
+PASS R1 successful batch is durable before context handoff
+PASS R2 actual provider receives frozen project model safety experts skills on retry
+PASS R2 provider retry receives original body hash and operation ID
+PASS R6 retry gets fresh epoch so old worker cannot write into retry
+PASS R6 suspended pre commit admission rejected
+PASS R6 old admission never starts provider after suspend false
+PASS R6 suspended post commit admission rejected
+PASS R6 old admission never starts provider after suspend true
+PASS R7 result save failure leaves failed task never success without result
+PASS R7 retry atomically publishes success and immutable result
+PASS R8 forget invalidates in-flight publication
+PASS R8 no stale run or artifact after forget
+PASS R8 pause invalidates in-flight publication
+PASS R8 no stale run or artifact after pause
+PASS R8 source invalidates in-flight publication
+PASS R8 no stale run or artifact after source
+PASS R3 exact bundled public sample may reach TTS
+PASS R3 imported and private fixture sources denied
+PASS R3 changed body and edited version denied
+PASS R9 own category change and interruption ended do not clear transcript
+PASS R9 unplug and interruption began stop current epoch only
+PASS IOS10 startup removes unreferenced staged blobs
+PASS IOS10 reconciliation preserves all immutable versions
+PASS IOS05 unknown schema rejected without reset
+PASS IOS05 unsupported migration preserves original bytes
+PASS IOS07 deep link resolves exact local version
+PASS IOS06 deep link rejects cross workspace
+PASS IOS07 deep link rejects private content parameters
+PASS IOS06 demo reset preserves user partition
+PASS A1 profile preferences shared in 11111111-2222-4222-8222-111111111111
+PASS A1 profile preferences shared in E42D7D76-FFFC-4B18-830A-2E3806E10E6E
+PASS A1 profile preferences shared in 64D886FE-A603-4121-8449-17C98FB2068D
+PASS A1 preferences isolated across profiles
+PASS A1 existing conversation ignores new Subagents default
+PASS A1 writes use explicit profile scope
+PASS A1 failed profile preference save
+PASS A1 failure rolls back value and sequence
+PASS A1 workspace observer only gets durable profile event
+PASS A1 profile preferences survive disk restart
+PASS A1 legacy workspace defaults read consistently without rewriting bytes
+PASS A1 arbitrary profile never collapses into user profile
+PASS A1 unsupported language rejected
+PASS A2 data fetch and preparation do not mark viewed
+PASS A2 explicit reader open persists version receipt
+PASS A2 viewed does not change ready delegation or approval
+PASS A2 repeated open keeps original durable receipt
+PASS A2 view receipt survives disk restart
+PASS A2 v2 never inherits v1 viewed state
+PASS A2 receipt save failure
+PASS A2 failed save never reports viewed
+PASS A2 another profile cannot mark private version viewed
+PASS A2 simultaneous reader opens create one receipt without error
+PASS A3 old run cannot publish after requirements edit
+PASS A3 goal stop and requirement revision persist
+PASS A3 requirements saved in delegation scope
+PASS A3 old artifact retains frozen requirement body
+PASS A3 stale editor revision rejected
+PASS A3 edit save failure
+PASS A3 failure rolls back agreement without touching artifacts
+PASS A3 editing requirements preserves unknown scope and authorization fields
+PASS A4 actual expert metadata combines category and case insensitive query
+PASS A4 skill category never inferred from item type
+PASS A4 combined filters require both matches
+PASS A4 catalog labels route through persisted language enum
+PASS A5 positive interval is typed input with no arbitrary 168 hour ceiling
+PASS A5 invalid interval 0
+PASS A5 invalid interval -1
+PASS A5 invalid interval 1.5
+PASS A5 invalid interval letters
+PASS A5 invalid interval 9223372036854775807
+PASS A5 ISO weekday 1 is Monday
+PASS A5 ISO weekday 7 is Sunday
+PASS A5 old Calendar weekday snapshot preserves Sunday semantics
+PASS A5 legacy invalid weekday is rejected rather than normalized
+PASS A5 explicit ISO convention survives persistence
+PASS R6 provider cancelled terminal persists
+PASS R6 provider cancelled worker cleans live so same task retries
+PASS R6 cancelled retry has distinct attempt identity
+PASS R6 retry A never invalidates gated B send admission
+PASS R6 both retry A and unrelated B reach actual provider
+PASS R6 old worker cleanup cannot remove new retry attempt
+PASS R6 repository rejects stale attempt publication
+PASS A6 next voice turn rejects late previous transcript
+PASS A6 two foreground turns share session and have independent submissions
+PASS A6 two turns persist in same conversation through actual runtime
+PASS A6 frozen transcript cannot submit twice
+PASS A6 stop playback preserves business submissions
+PASS A6 voice rewrite adapter identifies deterministic fixture
+PASS A6 voice edit binds same document version and invalidates old approval
+PASS A6 duplicate voice submission creates no extra version
+PASS A6 voice target cannot be redirected to other document
+PASS A6 stale same document version rejected before publication
+PASS A6 bound voice receipt and revision survive restart
+PASS A6 voice revision save failure
+PASS A6 failed voice save publishes neither receipt nor version
+PASS A6 temporary oral requirements never become profile preferences
+PASS A6 full summary and selected paragraph route exact fixed text
+PASS A6 speed change preserves fixed version and paragraph cursor
+PASS A6 private full route never reaches TTS adapter
+PASS A6 private summary route never reaches TTS adapter
+PASS A6 private selection route never reaches TTS adapter
+PASS A6 private TTS gate remains closed for every readout mode
+PASS A6 public fake TTS records explicit mode and rate
+PASS A6 stale content hash rejects readout plan
+PASS A6 out of range paragraph rejected
+PASS A6 unsupported speed rejected
+PASS A6 leaving foreground invalidates session and bound target
+PASS R9 registration belongs to one active audio session
+PASS R9 stopping session removes native-source observation token
+PASS R9 restarted session captures a new registration generation
+PASS R9 queued old interruption and unplug cannot stop new session
+PASS R9 current category change and ended notification preserve capture
+PASS R9 current no-route stops and revokes registration
+PASS R9 late callbacks after stop never restart or interrupt again
+PASS R9 new current interruption began still stops
+PASS R9 new current unplug still stops
+PASS L10 UI resources retain baseline and have nonempty Chinese and English values
+PASS L10 English interface resources contain no untranslated Chinese
+PASS L10 all bilingual interpolation placeholders agree
+PASS L10 dynamic labels select requested language and preserve numbers
+PASS L10 interpolation does not translate or reinterpret inserted content
+PASS L10 unregistered user or source content stays unchanged
+PASS L10 locale routes English and Chinese interface selection
+PASS L10 staged executable bundle loads actual UI resource
+RESULT 186 passed, 0 failed. Portable Foundation/disk driver only; iOS/SwiftData runtime unverified.

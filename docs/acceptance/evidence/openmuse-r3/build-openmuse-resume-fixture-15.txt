@@ -1,0 +1,16 @@
+PASS: a frozen draft is durable before admission and survives a new service/repository
+PASS: accepted task restart reads server authority without creating another task
+PASS: a success read buffered before pause cannot publish after the control fence
+PASS: approval preview reads the same immutable server version/body/hash and destination
+PASS: lost decision response retains a consumed original approval as unknown
+PASS: restart reconciles original receipt without repeating a decision or claiming independent verification
+PASS: AG-UI turn completion and tool proposals require task reads, never task completion or tool execution
+PASS: resume never reactivates old Run; fresh scope-bound identities are only prepared until explicit admission
+PASS: actual disk save failure rolls back dispatch and sequence before any transport call
+PASS: unknown admission plus original missing result never authorizes another create
+PASS: new artifact version preserves v1 and invalidates the old approval without dispatch
+PASS: corrupt server body is rejected atomically while previously checked artifact versions survive
+PASS: revocation fences a late success, blocks silent regrant, and rejects another local scope
+PASS: named fixture and client use independent disk files and restore their original synthetic result
+PASS: AgentProvider bridge EOF is admission-only; status and observation cancellation never claim task completion, remote verification or business cancellation
+layer=pure_fixture_transport external_requests=0 real_cloud=0 real_model=0

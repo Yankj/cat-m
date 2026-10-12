@@ -1,0 +1,13 @@
+PASS macOS conditional typecheck; iOS-only bodies excluded
+<unknown>:0: warning: using sysroot for 'MacOSX' but targeting 'iPhone'
+PASS iOS syntax parse only; no SDK/API/macro/link validation
+PASS 43 app sources, 1 native XCTest and 1 XCUITest source, shared scheme resolved
+PASS 10 frozen spec SHA-256 checks; no background modes
+PASS UIStrings and both InfoPlist localizations registered in app resources
+LIMIT plist/source validation only; no iOS build, macros, linking, XCTest or UI run
+PASS L10 UI literal scan: 488 locale-bound lookups; 0 missing resources; 0 unlocalized owned literals
+PASS L10 audit detects missing key and unlocalized literal while preserving declared source content
+PASS L10 513 bilingual entries and interpolation parity
+PASS L10 four unchanged permission keys have English and Chinese InfoPlist resources
+PASS L10 original prompt, diagram and transcript content preserved
+PASS L10 FixtureProvider source unchanged from 169-check snapshot

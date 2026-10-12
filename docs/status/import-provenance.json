@@ -1,0 +1,1519 @@
+{
+  "prepared_utc_date": "2026-10-11",
+  "sources": [
+    "ios-delivered-v1",
+    "facade-r2",
+    "facade-independent-qa-r2",
+    "openmuse-pinned-original-subset"
+  ],
+  "ios_source_modified": false,
+  "facade_runtime_source_modified": false,
+  "openmuse_client_demo_integrated": true,
+  "files": [
+    {
+      "path": "apps/ios/Sources/App/AppModel.swift",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "0904614676c6e19a3db2fd535ec61edff933ff86fa4f578a9c3ce8e5daa4935c",
+      "sha256": "0904614676c6e19a3db2fd535ec61edff933ff86fa4f578a9c3ce8e5daa4935c",
+      "bytes": 15492,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/Sources/App/CatpawApp.swift",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "4cddd23b44989f0e4376b45f747bb574ca8f2e39c3878becdd63eae4b6ca0d1d",
+      "sha256": "4cddd23b44989f0e4376b45f747bb574ca8f2e39c3878becdd63eae4b6ca0d1d",
+      "bytes": 1623,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/Sources/DesignSystem/Components.swift",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "279fb094dffc68562096f908d82bbd1ea4e1614a2be5c7a67af272a894d77976",
+      "sha256": "279fb094dffc68562096f908d82bbd1ea4e1614a2be5c7a67af272a894d77976",
+      "bytes": 7556,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/Sources/DesignSystem/DisplayNames.swift",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "33d00a8eae8a36abd9791b097d19ea41e2808bd411922f08f7f6095441d30aa4",
+      "sha256": "33d00a8eae8a36abd9791b097d19ea41e2808bd411922f08f7f6095441d30aa4",
+      "bytes": 2543,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/Sources/Domain/AgentContracts.swift",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "6a6da670c53bcf8b4bd45ce4cb9e408e99822d143352ab3711858ab27ca38e8b",
+      "sha256": "6a6da670c53bcf8b4bd45ce4cb9e408e99822d143352ab3711858ab27ca38e8b",
+      "bytes": 12176,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/Sources/Domain/CSV.swift",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "e381e990c5581aa157a7c6e7539f121a2d9235887dcd1f77a5bac80de37539e4",
+      "sha256": "e381e990c5581aa157a7c6e7539f121a2d9235887dcd1f77a5bac80de37539e4",
+      "bytes": 1524,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/Sources/Domain/CoreContracts.swift",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "bfd679a2ee94efb3f09b091c41a180dff8a4f826da7f8a43568eb46412721a37",
+      "sha256": "bfd679a2ee94efb3f09b091c41a180dff8a4f826da7f8a43568eb46412721a37",
+      "bytes": 28013,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/Sources/Domain/DeepLinks.swift",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "d0392f05cbab1646f6a160866e6edf23847215873ed2a9a86a62b5971ee6433f",
+      "sha256": "d0392f05cbab1646f6a160866e6edf23847215873ed2a9a86a62b5971ee6433f",
+      "bytes": 1520,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/Sources/Domain/LocalPolicies.swift",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "e5c1a658d4a1144f1729c022871b5b914c2171747ae24cee34fcf4342a17e5d9",
+      "sha256": "e5c1a658d4a1144f1729c022871b5b914c2171747ae24cee34fcf4342a17e5d9",
+      "bytes": 6151,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/Sources/Domain/OperationReducer.swift",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "ba312217abcea943880d918640733e9bf20483f4dcce24de270b7aec3968da40",
+      "sha256": "ba312217abcea943880d918640733e9bf20483f4dcce24de270b7aec3968da40",
+      "bytes": 5534,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/Sources/Domain/ReadoutPolicy.swift",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "b1521bfe10e01847c81a95f99902f4676e6ecff7f889c6abdcc1faf8e0e277ee",
+      "sha256": "b1521bfe10e01847c81a95f99902f4676e6ecff7f889c6abdcc1faf8e0e277ee",
+      "bytes": 2906,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/Sources/Domain/StoreTypes.swift",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "aec0baf006f2a6ca3097f465704e6736a2f485818550b83eddbf17c6145cee33",
+      "sha256": "aec0baf006f2a6ca3097f465704e6736a2f485818550b83eddbf17c6145cee33",
+      "bytes": 7208,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/Sources/Domain/VoiceGuard.swift",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "29fde3436e19341da84ae10861e4eb267eb4fb75510537269e55f460e3efaaf2",
+      "sha256": "29fde3436e19341da84ae10861e4eb267eb4fb75510537269e55f460e3efaaf2",
+      "bytes": 1775,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/Sources/Domain/VoiceSession.swift",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "97d1c46c3fa46d5e8a02e139027401e0d98cd67abf334c56aa01c6504d474d6c",
+      "sha256": "97d1c46c3fa46d5e8a02e139027401e0d98cd67abf334c56aa01c6504d474d6c",
+      "bytes": 5992,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/Sources/Features/AssistantService.swift",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "56f95cbcedda66c1c6dd3fff03fcb97b9c331b9e09dda24b8b78f61f82323737",
+      "sha256": "56f95cbcedda66c1c6dd3fff03fcb97b9c331b9e09dda24b8b78f61f82323737",
+      "bytes": 14209,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/Sources/Features/AssistantViews.swift",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "62cfc6e8b8392d0d5d8ce06d5e0bb97bca103c57971ecc08122c544075adde86",
+      "sha256": "62cfc6e8b8392d0d5d8ce06d5e0bb97bca103c57971ecc08122c544075adde86",
+      "bytes": 26877,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/Sources/Features/ConversationView.swift",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "8d5c6ba97ba618d9579ec8b5117393001637daf9cd01c5089d2b6b59c9ba4dd4",
+      "sha256": "8d5c6ba97ba618d9579ec8b5117393001637daf9cd01c5089d2b6b59c9ba4dd4",
+      "bytes": 19718,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/Sources/Features/DocumentView.swift",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "bbea043ff9e4cd841658ae4a401df5aa4e728636ade4c6ec12068419415fb1a3",
+      "sha256": "bbea043ff9e4cd841658ae4a401df5aa4e728636ade4c6ec12068419415fb1a3",
+      "bytes": 17378,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/Sources/Features/GatewayAssistantImporter.swift",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "00b87825b27d324db3bb569bd5c489e1f710f6a282a7efdbe22bb82bca88989a",
+      "sha256": "00b87825b27d324db3bb569bd5c489e1f710f6a282a7efdbe22bb82bca88989a",
+      "bytes": 12090,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/Sources/Features/LibraryViews.swift",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "e4a2bc471d6f6dad0516ebf4f0601d845566b116177cc918c69917eebec8d67e",
+      "sha256": "e4a2bc471d6f6dad0516ebf4f0601d845566b116177cc918c69917eebec8d67e",
+      "bytes": 9902,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/Sources/Features/LocalGatewayService.swift",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "ecba41549f65926eab171ca290ac561e2199d8df186d5694fb763a316e5e2373",
+      "sha256": "ecba41549f65926eab171ca290ac561e2199d8df186d5694fb763a316e5e2373",
+      "bytes": 2397,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/Sources/Features/LocalGatewayViews.swift",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "e9506b8d04267cdda0317ba3639ddaa9425dec7824dfd1daffca575896cc25be",
+      "sha256": "e9506b8d04267cdda0317ba3639ddaa9425dec7824dfd1daffca575896cc25be",
+      "bytes": 6334,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/Sources/Features/NativeMediaPicker.swift",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "721de0aa9f293696115c16f6fae5e7c38dd8ba822a3d0fdbbccd0335cf1c685c",
+      "sha256": "721de0aa9f293696115c16f6fae5e7c38dd8ba822a3d0fdbbccd0335cf1c685c",
+      "bytes": 1162,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/Sources/Features/ReadReceiptService.swift",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "a504441e33cf9b54f0c87d2c1048ae21a991bcb960f0ccae305094be4a898765",
+      "sha256": "a504441e33cf9b54f0c87d2c1048ae21a991bcb960f0ccae305094be4a898765",
+      "bytes": 1697,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/Sources/Features/RootView.swift",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "4a97dbaabfcc879cb23ac6c32b5689025c84584ca5557abcde728b2d69a3a781",
+      "sha256": "4a97dbaabfcc879cb23ac6c32b5689025c84584ca5557abcde728b2d69a3a781",
+      "bytes": 6423,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/Sources/Features/SchedulesView.swift",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "70190855f48923159e3118e86e0effa9d5b637da3220f478c7ced5d1cc630120",
+      "sha256": "70190855f48923159e3118e86e0effa9d5b637da3220f478c7ced5d1cc630120",
+      "bytes": 8225,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/Sources/Features/SettingsView.swift",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "144e072c966e229ac3b8c6ff929ad6f3cf0c50d4102671345315e1ac578cbc16",
+      "sha256": "144e072c966e229ac3b8c6ff929ad6f3cf0c50d4102671345315e1ac578cbc16",
+      "bytes": 9671,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/Sources/Features/WorkspaceService.swift",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "4d73ff106bc6897c65394cc50d347b01f7c54c446f9a0c99fe3ddf6f14af34d6",
+      "sha256": "4d73ff106bc6897c65394cc50d347b01f7c54c446f9a0c99fe3ddf6f14af34d6",
+      "bytes": 18510,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/Sources/Persistence/BlobStore.swift",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "24341d4ffeadc8e2ed67ac20f6fdda452aa0264bda0eddfae5484de7612735ee",
+      "sha256": "24341d4ffeadc8e2ed67ac20f6fdda452aa0264bda0eddfae5484de7612735ee",
+      "bytes": 1324,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/Sources/Persistence/Repository.swift",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "48a59c259771bea5cdfb7a646f5d0b35f8d0773846f831e9ad317239f58ebf5f",
+      "sha256": "48a59c259771bea5cdfb7a646f5d0b35f8d0773846f831e9ad317239f58ebf5f",
+      "bytes": 14044,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/Sources/Persistence/SwiftDataPersistence.swift",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "627a27bcbe8ab5daf71b7633773501ac726ebc0037f466dcaa997e0ecb950160",
+      "sha256": "627a27bcbe8ab5daf71b7633773501ac726ebc0037f466dcaa997e0ecb950160",
+      "bytes": 5955,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/Sources/Providers/ChatRuntime.swift",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "6c1bef9b857234807eadefecbaecf2dfc8a9b0ff61325f6a57d3023cf6a1ee88",
+      "sha256": "6c1bef9b857234807eadefecbaecf2dfc8a9b0ff61325f6a57d3023cf6a1ee88",
+      "bytes": 20520,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/Sources/Providers/FixtureProvider.swift",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "cde6bc09ea560c9a16cd8a7e70fe55209d8e826f451fc3d420b4ac43235bd39d",
+      "sha256": "cde6bc09ea560c9a16cd8a7e70fe55209d8e826f451fc3d420b4ac43235bd39d",
+      "bytes": 4867,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/Sources/Providers/GatewayAgentProvider.swift",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "386d0f0b6f417ebec8819763b46dce4590fe30bbb4855ced68c6097be37e7211",
+      "sha256": "386d0f0b6f417ebec8819763b46dce4590fe30bbb4855ced68c6097be37e7211",
+      "bytes": 15054,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/Sources/Voice/NativeVoiceController.swift",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "32fe1df433a6c7fd2aded14bbe4ec1f3d14c6bc5c879a93ddc7469f51c666653",
+      "sha256": "32fe1df433a6c7fd2aded14bbe4ec1f3d14c6bc5c879a93ddc7469f51c666653",
+      "bytes": 16835,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/Sources/Voice/VoiceViews.swift",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "f39842f2673603991c3ea4c8894a387464ba5e48647dc737b66ab313bdd3899d",
+      "sha256": "f39842f2673603991c3ea4c8894a387464ba5e48647dc737b66ab313bdd3899d",
+      "bytes": 6607,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/Resources/Info.plist",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "e03ed004e2fea7c311234e023bc20d46abc512fec1540e526f11d600e0d37be8",
+      "sha256": "e03ed004e2fea7c311234e023bc20d46abc512fec1540e526f11d600e0d37be8",
+      "bytes": 2025,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/Resources/UIStringExemptions.json",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "82dc16d010cb855ccc3a1275b238b29bfd1adf9a4740d7bc72677357d43fb828",
+      "sha256": "82dc16d010cb855ccc3a1275b238b29bfd1adf9a4740d7bc72677357d43fb828",
+      "bytes": 434,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/Resources/UIStrings.json",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "94bbef0f050e7626bfcf80cbeecc14179fd4f11064bde4ff8434ae1a8eb7f099",
+      "sha256": "94bbef0f050e7626bfcf80cbeecc14179fd4f11064bde4ff8434ae1a8eb7f099",
+      "bytes": 58807,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/Resources/en.lproj/InfoPlist.strings",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "2f7eecb634e6f587dd097cab13cb620c1801603a9b2f3c9016edf8c56afaabfa",
+      "sha256": "2f7eecb634e6f587dd097cab13cb620c1801603a9b2f3c9016edf8c56afaabfa",
+      "bytes": 685,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/Resources/zh-Hans.lproj/InfoPlist.strings",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "bf88d33296841a2f1a659c66cde97f389ca9af0997408f9fbc3b677323cd18d6",
+      "sha256": "bf88d33296841a2f1a659c66cde97f389ca9af0997408f9fbc3b677323cd18d6",
+      "bytes": 615,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/Tests/DomainRunner.swift",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "8fe5141b12a939e0363556c1919ca5ee52b2d7f18de8c4d211643042dc1cb9c7",
+      "sha256": "8fe5141b12a939e0363556c1919ca5ee52b2d7f18de8c4d211643042dc1cb9c7",
+      "bytes": 40333,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/Tests/GatewayRunner.swift",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "63defc0d0b9b06f31ea114345e0afef3dc88edc64a4dedee3f34ec68283c142b",
+      "sha256": "63defc0d0b9b06f31ea114345e0afef3dc88edc64a4dedee3f34ec68283c142b",
+      "bytes": 12898,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/Tests/GatewaySafetyRegression.swift",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "fe5d49197bf461acb6469cd590da659cbc1562d3dab506ed8f495a3c4b0dfaa5",
+      "sha256": "fe5d49197bf461acb6469cd590da659cbc1562d3dab506ed8f495a3c4b0dfaa5",
+      "bytes": 7762,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/Tests/NativeTests.swift",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "68efb5603b399d048490b5b8f9c85c16997c3ec9e339cac348f12638333f70c6",
+      "sha256": "68efb5603b399d048490b5b8f9c85c16997c3ec9e339cac348f12638333f70c6",
+      "bytes": 27716,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/Tests/NativeUITests.swift",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "1c75b30f534a243239fe0a72956bea77115bb994081af6b30f9805a03a7a5974",
+      "sha256": "1c75b30f534a243239fe0a72956bea77115bb994081af6b30f9805a03a7a5974",
+      "bytes": 34027,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/Tests/ProductRegression.swift",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "ef5f94d3f48d2e9115ddcc6467d492522c885a9bd6517b47f8edcd7181a205b3",
+      "sha256": "ef5f94d3f48d2e9115ddcc6467d492522c885a9bd6517b47f8edcd7181a205b3",
+      "bytes": 39054,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/CatpawM.xcodeproj/project.pbxproj",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "31d7ec302f0ac4a212c570ef406b5a1d943e39bee25dd42a93b8bc4add6476a5",
+      "sha256": "31d7ec302f0ac4a212c570ef406b5a1d943e39bee25dd42a93b8bc4add6476a5",
+      "bytes": 20533,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/CatpawM.xcodeproj/xcshareddata/xcschemes/CatpawM.xcscheme",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "e1bce81fc5bac38f38736e445b0b2a0b6bafc5044b2a9fccc27874dbce476ef8",
+      "sha256": "e1bce81fc5bac38f38736e445b0b2a0b6bafc5044b2a9fccc27874dbce476ef8",
+      "bytes": 2582,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/Development/gateway/config/models.json",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "4710845a319a7af1ea49573cc176f23bbf7f0ad0abe2df491f4c6c4357844137",
+      "sha256": "4710845a319a7af1ea49573cc176f23bbf7f0ad0abe2df491f4c6c4357844137",
+      "bytes": 3781,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/Development/gateway/package.json",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "f51cb2267cd53a444cd967eaeb38070d9e2d5f890894fdd9f978ea5152360133",
+      "sha256": "f51cb2267cd53a444cd967eaeb38070d9e2d5f890894fdd9f978ea5152360133",
+      "bytes": 390,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/Development/gateway/scripts/demo.mjs",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "16d74aeb9cb69deee047a75f71a5df1b910a1d2c796ea146b894adb23826b206",
+      "sha256": "16d74aeb9cb69deee047a75f71a5df1b910a1d2c796ea146b894adb23826b206",
+      "bytes": 1651,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/Development/gateway/scripts/evaluate.mjs",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "306df2cafdfe7232f026de2b9879dbf549861ce2a1acf60eae0e4cd02a08743b",
+      "sha256": "306df2cafdfe7232f026de2b9879dbf549861ce2a1acf60eae0e4cd02a08743b",
+      "bytes": 5373,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/Development/gateway/scripts/native-http.mjs",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "fa3a2311133936c43a12738d7f074f44ee8c930b4627a8128994cc4318743451",
+      "sha256": "fa3a2311133936c43a12738d7f074f44ee8c930b4627a8128994cc4318743451",
+      "bytes": 807,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/Development/gateway/scripts/native-ui-server.mjs",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "a062d09673ef2fd3d5f805b8222481734e9d5464be50be4653407f6d00f342a6",
+      "sha256": "a062d09673ef2fd3d5f805b8222481734e9d5464be50be4653407f6d00f342a6",
+      "bytes": 1351,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/Development/gateway/src/assistant.mjs",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "f91c7de37a6181671addc7a9acaad2669cafca9ce0c04484c57c63e2d890c5b4",
+      "sha256": "f91c7de37a6181671addc7a9acaad2669cafca9ce0c04484c57c63e2d890c5b4",
+      "bytes": 19410,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/Development/gateway/src/mock.mjs",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "ffec28f3adb594e82cad3436d6550315f751eb0e20c52c1f4c89103ab237e2ea",
+      "sha256": "ffec28f3adb594e82cad3436d6550315f751eb0e20c52c1f4c89103ab237e2ea",
+      "bytes": 1022,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/Development/gateway/src/models.mjs",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "59159dcc6eccd3f7b36c14fdc70342b55bcb333fdf992bdb3ceb08f91ee451ed",
+      "sha256": "59159dcc6eccd3f7b36c14fdc70342b55bcb333fdf992bdb3ceb08f91ee451ed",
+      "bytes": 5609,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/Development/gateway/src/server.mjs",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "7cb9c3ad9bf38e2eb84ff11918cf456dae1cfd8ed8b55d7a0753f29e2c1bc9ce",
+      "sha256": "7cb9c3ad9bf38e2eb84ff11918cf456dae1cfd8ed8b55d7a0753f29e2c1bc9ce",
+      "bytes": 8854,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/Development/gateway/src/store.mjs",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "40a9180acb23adcd2f9a7e52a858a543edb88707cc98dd53fc98daa43af33670",
+      "sha256": "40a9180acb23adcd2f9a7e52a858a543edb88707cc98dd53fc98daa43af33670",
+      "bytes": 3083,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/Development/gateway/src/transport.mjs",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "48ea423c5788e0628d4ea6c1073b72c69d9a167942f3a91155cc946817520b11",
+      "sha256": "48ea423c5788e0628d4ea6c1073b72c69d9a167942f3a91155cc946817520b11",
+      "bytes": 9400,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/Development/gateway/src/worker-cli.mjs",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "049fedcb1509ba131805e4ae3926aba3a1682efa7980d47062714b94f07ccfd5",
+      "sha256": "049fedcb1509ba131805e4ae3926aba3a1682efa7980d47062714b94f07ccfd5",
+      "bytes": 940,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/Development/gateway/src/worker.mjs",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "f86e9c25679fae698d62fdeec6ea4d39111e3c82abf369fcf35fe1db819cebf0",
+      "sha256": "f86e9c25679fae698d62fdeec6ea4d39111e3c82abf369fcf35fe1db819cebf0",
+      "bytes": 1812,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/Development/gateway/test/all.mjs",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "eef240434c03ba55ab086ccc533ca832b3deff2b3a67b606615752be6918ffc2",
+      "sha256": "eef240434c03ba55ab086ccc533ca832b3deff2b3a67b606615752be6918ffc2",
+      "bytes": 146,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/Development/gateway/test/evaluation.test.mjs",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "ee4b597259433339f71e5dfb511fd35678d367d674f3e4465689636e234c995c",
+      "sha256": "ee4b597259433339f71e5dfb511fd35678d367d674f3e4465689636e234c995c",
+      "bytes": 1086,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/Development/gateway/test/models.test.mjs",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "0b8aa0ec326e77a404162188e4ec06776732bf30b4aad10a825f0d08cc5abf4e",
+      "sha256": "0b8aa0ec326e77a404162188e4ec06776732bf30b4aad10a825f0d08cc5abf4e",
+      "bytes": 3419,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/Development/gateway/test/process-helper.mjs",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "f2856bb295fdc0560d0e98bb8e0aaeb72dfd4f5409bd688d1d1cde9c012177d0",
+      "sha256": "f2856bb295fdc0560d0e98bb8e0aaeb72dfd4f5409bd688d1d1cde9c012177d0",
+      "bytes": 656,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/Development/gateway/test/server.test.mjs",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "127a0560899a6dd3955d51185c4ed1bf9b9d00fd03b909d59cf461b1720ccb2f",
+      "sha256": "127a0560899a6dd3955d51185c4ed1bf9b9d00fd03b909d59cf461b1720ccb2f",
+      "bytes": 3745,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/Development/gateway/test/store.test.mjs",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "3592adc6326a98106608a4dd9af0d06fc06393af1c88483ad7808f2b8bfdd388",
+      "sha256": "3592adc6326a98106608a4dd9af0d06fc06393af1c88483ad7808f2b8bfdd388",
+      "bytes": 9344,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/Development/gateway/test/transport.test.mjs",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "39eedc54c88b4768dc37ee476fa03782b2f98b7a41baaee57910da2e5e497773",
+      "sha256": "39eedc54c88b4768dc37ee476fa03782b2f98b7a41baaee57910da2e5e497773",
+      "bytes": 7070,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/docs/spec/README.txt",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "61aae281a1aa6695c6eb61995e251e28eec15dbfb12fab30bf0f2b646cf8cc8b",
+      "sha256": "61aae281a1aa6695c6eb61995e251e28eec15dbfb12fab30bf0f2b646cf8cc8b",
+      "bytes": 3292,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/docs/spec/SHA256.json",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "f2c5ae1a951e6e583d061a834e6cbb82b5d68dd983160f86059c20ecbd9cb0e0",
+      "sha256": "f2c5ae1a951e6e583d061a834e6cbb82b5d68dd983160f86059c20ecbd9cb0e0",
+      "bytes": 1044,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/docs/spec/catpaw-core-contracts.examples.json",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "f211bbf0b252439e452eb8183d4f74f6d2eb8befa2e3cc4f74abbe438b497449",
+      "sha256": "f211bbf0b252439e452eb8183d4f74f6d2eb8befa2e3cc4f74abbe438b497449",
+      "bytes": 2649,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/docs/spec/catpaw-core-contracts.schema.json",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "a4f87c088e3472cadb1b403518ebc9b43747a118ec73bb37d49528dea6c3bf58",
+      "sha256": "a4f87c088e3472cadb1b403518ebc9b43747a118ec73bb37d49528dea6c3bf58",
+      "bytes": 51497,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/docs/spec/catpaw-ios-agent-contracts.swift",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "6a6da670c53bcf8b4bd45ce4cb9e408e99822d143352ab3711858ab27ca38e8b",
+      "sha256": "6a6da670c53bcf8b4bd45ce4cb9e408e99822d143352ab3711858ab27ca38e8b",
+      "bytes": 12176,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/docs/spec/catpaw-ios-contracts.swift",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "77003c57bd0ba09b4c4f82ec67f592db4289226e6a5c7a977879fa2ef5f0df42",
+      "sha256": "77003c57bd0ba09b4c4f82ec67f592db4289226e6a5c7a977879fa2ef5f0df42",
+      "bytes": 27605,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/docs/spec/catpaw-ios-implementation-plan.md",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "78f6cd54f7d0557bf8a3bf224e64c081507cab6b06e59a63a8aacc1e544c41c0",
+      "sha256": "78f6cd54f7d0557bf8a3bf224e64c081507cab6b06e59a63a8aacc1e544c41c0",
+      "bytes": 32234,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/docs/spec/catpaw-ios-start-review.md",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "7258dd357460b37aebe2f7983590519cb00eb1512cc2418643e1b9c213485338",
+      "sha256": "7258dd357460b37aebe2f7983590519cb00eb1512cc2418643e1b9c213485338",
+      "bytes": 4415,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/docs/spec/catpaw-product-spec.md",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "c275ed05dbb21b571bca295acbcca0722823ca129613ed7dffc0909b96ac05ad",
+      "sha256": "c275ed05dbb21b571bca295acbcca0722823ca129613ed7dffc0909b96ac05ad",
+      "bytes": 99372,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/docs/spec/catpaw-technical-spec.md",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "f44e92e76ffec3c577f715ce2288d842c3547663e8d7cd86740ed53201943693",
+      "sha256": "f44e92e76ffec3c577f715ce2288d842c3547663e8d7cd86740ed53201943693",
+      "bytes": 113800,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/docs/spec/catpaw-voice-contracts.examples.json",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "c879fe097f1cb781a958281b8a6506d59d997559f088f5f8b11b4cad915ab86b",
+      "sha256": "c879fe097f1cb781a958281b8a6506d59d997559f088f5f8b11b4cad915ab86b",
+      "bytes": 2833,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/docs/spec/catpaw-voice-contracts.schema.json",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "d7816adc15c7064226ae761fbe420258e40c94e23204426f521ee0bb433e65c7",
+      "sha256": "d7816adc15c7064226ae761fbe420258e40c94e23204426f521ee0bb433e65c7",
+      "bytes": 35473,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/Scripts/check-localization.py",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "a4016e34a5377e7ec3f929ec13b24a1b002b76aa7f5e7845ea6f6527387373c1",
+      "sha256": "a4016e34a5377e7ec3f929ec13b24a1b002b76aa7f5e7845ea6f6527387373c1",
+      "bytes": 5023,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/Scripts/check-source.sh",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "1b4ba2eed52fb4952bfe5711aeb641d5cf6977528333c2344b054d996abc1bd1",
+      "sha256": "1b4ba2eed52fb4952bfe5711aeb641d5cf6977528333c2344b054d996abc1bd1",
+      "bytes": 692,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/Scripts/generate-project.py",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "3fad817f741f9f7d9e8c6109b3bbd341de1954f6968bc60efb737ab49ccdb606",
+      "sha256": "3fad817f741f9f7d9e8c6109b3bbd341de1954f6968bc60efb737ab49ccdb606",
+      "bytes": 9548,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/Scripts/test-gateway-portable.sh",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "afa33732e30b4c03cda69b415c442ef42736fbbbf7ac0ff42ed12e8083684370",
+      "sha256": "70be15a8b73bb7b7b0e217ba3c1de59dc0d864b74d5e04676d4c6ee152ccb859",
+      "bytes": 1337,
+      "transformed": true
+    },
+    {
+      "path": "apps/ios/Scripts/test-ios.sh",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "4bdaac0796c272a85a0a29434a892e478e94a40568dcc3a2b3c518e0c07f122c",
+      "sha256": "a4c3bdd05c40ef5efcda9818ed6e326f96fcea5e1391dce6fdd54942cdaa27e8",
+      "bytes": 1179,
+      "transformed": true
+    },
+    {
+      "path": "apps/ios/Scripts/test-portable.sh",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "91e9a380fb25731298fa9d8c7ff36ded73a7776672264581ce43c6ff12077bba",
+      "sha256": "91e9a380fb25731298fa9d8c7ff36ded73a7776672264581ce43c6ff12077bba",
+      "bytes": 567,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/Scripts/validate-project.py",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "7f26a8bac3801a01d9fe0c5b5a9dd42422e43a607fa29f59517e4a0a9cd1cf36",
+      "sha256": "7f26a8bac3801a01d9fe0c5b5a9dd42422e43a607fa29f59517e4a0a9cd1cf36",
+      "bytes": 2653,
+      "transformed": false
+    },
+    {
+      "path": "apps/ios/Tests/ProjectReplyOwnershipRegression.swift",
+      "source_label": "ios-delivered-v1",
+      "source_sha256": "8932862d6d0f5995327f6d66a7cf9d7ba78836dcbb659a8f430459c5eea914ba",
+      "sha256": "8932862d6d0f5995327f6d66a7cf9d7ba78836dcbb659a8f430459c5eea914ba",
+      "bytes": 3000,
+      "transformed": false
+    },
+    {
+      "path": "docs/acceptance/evidence/ios-v1/final-source-snapshot.json",
+      "source_label": "ios-v1-historical-evidence",
+      "source_sha256": "0f786e267bfc2716918e0ef9d1eb2042540ee2dbc921a6b692f53e0e2d60b43b",
+      "sha256": "0f786e267bfc2716918e0ef9d1eb2042540ee2dbc921a6b692f53e0e2d60b43b",
+      "bytes": 4713,
+      "transformed": false
+    },
+    {
+      "path": "docs/acceptance/evidence/ios-v1/final-tests-14-source-snapshot.json",
+      "source_label": "ios-v1-historical-evidence",
+      "source_sha256": "15051f9370e2879f65a83e78ea512f5e2399783d460ac53df7d34cd306a0f88a",
+      "sha256": "15051f9370e2879f65a83e78ea512f5e2399783d460ac53df7d34cd306a0f88a",
+      "bytes": 4649,
+      "transformed": false
+    },
+    {
+      "path": "docs/acceptance/evidence/ios-v1/final-portable-05.txt",
+      "source_label": "ios-v1-historical-evidence-sanitized",
+      "source_sha256": "7202e89904fd75ecc7a6cb593961bc7abfbf20fbd1477f681b147ade2952eef7",
+      "sha256": "7202e89904fd75ecc7a6cb593961bc7abfbf20fbd1477f681b147ade2952eef7",
+      "bytes": 10087,
+      "transformed": false
+    },
+    {
+      "path": "docs/acceptance/evidence/ios-v1/node-tests-03.txt",
+      "source_label": "ios-v1-historical-evidence-sanitized",
+      "source_sha256": "24b57d42d849ef831896eafb21a248a17b12dc90fb217eb0238994150fc970e1",
+      "sha256": "24b57d42d849ef831896eafb21a248a17b12dc90fb217eb0238994150fc970e1",
+      "bytes": 3340,
+      "transformed": false
+    },
+    {
+      "path": "docs/acceptance/evidence/ios-v1/gateway-contract-06.txt",
+      "source_label": "ios-v1-historical-evidence-sanitized",
+      "source_sha256": "098ac83375fde75fba7293b656c459f578e47d4a9b8e467ed42a70ddbf4fff73",
+      "sha256": "70ccfb4b7b2aa3989527c2ec2caa0e8e42baf4950c7bb976924ce8fc33ca6f26",
+      "bytes": 2335,
+      "transformed": true
+    },
+    {
+      "path": "docs/acceptance/evidence/ios-v1/gateway-http-02.txt",
+      "source_label": "ios-v1-historical-evidence-sanitized",
+      "source_sha256": "30e9b863d3e93b6bbad49d3d735c660fbfef462394e1b6af631778adec646c1d",
+      "sha256": "cdcbc2823a52a18cb1cc7f659905bf153cb2bbbe853e16388a01dfbbc4d4f4c7",
+      "bytes": 2412,
+      "transformed": true
+    },
+    {
+      "path": "docs/design/design-tokens.json",
+      "source_label": "ios-v1-design",
+      "source_sha256": "7d9295da8123e7d0b9b57f278567109e49044e9d1e7dc559e018ff3b5a578851",
+      "sha256": "7d9295da8123e7d0b9b57f278567109e49044e9d1e7dc559e018ff3b5a578851",
+      "bytes": 1605,
+      "transformed": false
+    },
+    {
+      "path": "docs/design/icon-semantics.json",
+      "source_label": "ios-v1-design",
+      "source_sha256": "550fded28a43c6f5254f45d3ff53ab4e6c0ed1690106810ea64327bea43223a5",
+      "sha256": "550fded28a43c6f5254f45d3ff53ab4e6c0ed1690106810ea64327bea43223a5",
+      "bytes": 1929,
+      "transformed": false
+    },
+    {
+      "path": "services/facade/src/common.mjs",
+      "source_label": "facade-r2",
+      "source_sha256": "57482b53644a3e4c0e2e274b49e28b1c57d7570001896b6db756a9958665e9ab",
+      "sha256": "57482b53644a3e4c0e2e274b49e28b1c57d7570001896b6db756a9958665e9ab",
+      "bytes": 1992,
+      "transformed": false
+    },
+    {
+      "path": "services/facade/src/facade.mjs",
+      "source_label": "facade-r2",
+      "source_sha256": "d66b2b996b8546251b5462d659bdcca1d9d35ef04704fd147f64579979079919",
+      "sha256": "d66b2b996b8546251b5462d659bdcca1d9d35ef04704fd147f64579979079919",
+      "bytes": 18505,
+      "transformed": false
+    },
+    {
+      "path": "services/facade/src/fenced-worker-store.mjs",
+      "source_label": "facade-r2",
+      "source_sha256": "a71727615ed436db9416125ee435d97b9cafa692d77b954938af0c1080e2a021",
+      "sha256": "a71727615ed436db9416125ee435d97b9cafa692d77b954938af0c1080e2a021",
+      "bytes": 2943,
+      "transformed": false
+    },
+    {
+      "path": "services/facade/src/file-repository.mjs",
+      "source_label": "facade-r2",
+      "source_sha256": "dbc7ca3dcdeaea57f81fb5175d3e4d142452b3777e59dde3d010cffcb1877724",
+      "sha256": "dbc7ca3dcdeaea57f81fb5175d3e4d142452b3777e59dde3d010cffcb1877724",
+      "bytes": 1176,
+      "transformed": false
+    },
+    {
+      "path": "services/facade/src/http.mjs",
+      "source_label": "facade-r2",
+      "source_sha256": "b00cfc48b829de79ca09c06d063c8c17592e9d46893306283079b01a4bf7d528",
+      "sha256": "b00cfc48b829de79ca09c06d063c8c17592e9d46893306283079b01a4bf7d528",
+      "bytes": 2878,
+      "transformed": false
+    },
+    {
+      "path": "services/facade/src/memory-repository.mjs",
+      "source_label": "facade-r2",
+      "source_sha256": "d93c5580aa8ba7885fdeeffb541961d4aa16147e5fa86a7cb7e72af9cb5ac595",
+      "sha256": "d93c5580aa8ba7885fdeeffb541961d4aa16147e5fa86a7cb7e72af9cb5ac595",
+      "bytes": 2314,
+      "transformed": false
+    },
+    {
+      "path": "services/facade/src/runtime.mjs",
+      "source_label": "facade-r2",
+      "source_sha256": "7c7a80e1b54be83d5cdb8372822ce464a57256318521bb76fd6960410cc52948",
+      "sha256": "7c7a80e1b54be83d5cdb8372822ce464a57256318521bb76fd6960410cc52948",
+      "bytes": 1280,
+      "transformed": false
+    },
+    {
+      "path": "services/facade/src/server.mjs",
+      "source_label": "facade-r2",
+      "source_sha256": "bb4c3c81d0cfa14457d3ca619ddabedfbb0b7bf4ea46ca34575a3c6d181a551d",
+      "sha256": "bb4c3c81d0cfa14457d3ca619ddabedfbb0b7bf4ea46ca34575a3c6d181a551d",
+      "bytes": 2857,
+      "transformed": false
+    },
+    {
+      "path": "services/facade/src/sql-repository.mjs",
+      "source_label": "facade-r2",
+      "source_sha256": "8f488f9d60a84be2ecff2addbf965962b592f3d228c5c2cc115ff920176d2282",
+      "sha256": "8f488f9d60a84be2ecff2addbf965962b592f3d228c5c2cc115ff920176d2282",
+      "bytes": 3036,
+      "transformed": false
+    },
+    {
+      "path": "services/facade/src/sql-runtime.mjs",
+      "source_label": "facade-r2",
+      "source_sha256": "b17639dbfb0b25e6f14b4a456b32304b220ed80862f2d116c4dad80e72eb449e",
+      "sha256": "b17639dbfb0b25e6f14b4a456b32304b220ed80862f2d116c4dad80e72eb449e",
+      "bytes": 649,
+      "transformed": false
+    },
+    {
+      "path": "services/facade/src/synthetic-handler.mjs",
+      "source_label": "facade-r2",
+      "source_sha256": "0b81d2fa4214d03fe34ec834e7b2039a73e2eb4e674b46dbc44c089e29561efb",
+      "sha256": "0b81d2fa4214d03fe34ec834e7b2039a73e2eb4e674b46dbc44c089e29561efb",
+      "bytes": 1509,
+      "transformed": false
+    },
+    {
+      "path": "services/facade/src/upstream-actions.mjs",
+      "source_label": "facade-r2",
+      "source_sha256": "cb17f1974147d2ed248d64c36481f726bd2261d359441739f233963ab7a4a3f0",
+      "sha256": "cb17f1974147d2ed248d64c36481f726bd2261d359441739f233963ab7a4a3f0",
+      "bytes": 959,
+      "transformed": false
+    },
+    {
+      "path": "services/facade/test/child-loopback.mjs",
+      "source_label": "facade-r2",
+      "source_sha256": "4480759fff5ff4df6283caf8b06753e6e6b2338da6c54323e302df1df9279f47",
+      "sha256": "4480759fff5ff4df6283caf8b06753e6e6b2338da6c54323e302df1df9279f47",
+      "bytes": 255,
+      "transformed": false
+    },
+    {
+      "path": "services/facade/test/facade.test.mjs",
+      "source_label": "facade-r2",
+      "source_sha256": "c9dd680d7b109f1cb88ad9368d5d8c4ee642a6e7fc5a187bbe92b9a7edfd99dc",
+      "sha256": "c9dd680d7b109f1cb88ad9368d5d8c4ee642a6e7fc5a187bbe92b9a7edfd99dc",
+      "bytes": 13111,
+      "transformed": false
+    },
+    {
+      "path": "services/facade/test/harness.mjs",
+      "source_label": "facade-r2",
+      "source_sha256": "59dc67f97b5c037216476635319ec76004e811e77b5f6b0ae0cde6f5fcc16f0a",
+      "sha256": "59dc67f97b5c037216476635319ec76004e811e77b5f6b0ae0cde6f5fcc16f0a",
+      "bytes": 2041,
+      "transformed": false
+    },
+    {
+      "path": "services/facade/test/process-http.test.mjs",
+      "source_label": "facade-r2",
+      "source_sha256": "68016a9ed7807c567cf4983ea00dafbbbd79e3b1618801c93ff0466e2edbb024",
+      "sha256": "68016a9ed7807c567cf4983ea00dafbbbd79e3b1618801c93ff0466e2edbb024",
+      "bytes": 4894,
+      "transformed": false
+    },
+    {
+      "path": "services/facade/test/revision2.test.mjs",
+      "source_label": "facade-r2",
+      "source_sha256": "5cbf9e47ca7870215ecf93e0d18a060e7bd4d565b7fa5a58c66dc9304f8ee962",
+      "sha256": "5cbf9e47ca7870215ecf93e0d18a060e7bd4d565b7fa5a58c66dc9304f8ee962",
+      "bytes": 8539,
+      "transformed": false
+    },
+    {
+      "path": "services/facade/contract/native-contract-v1.json",
+      "source_label": "facade-r2",
+      "source_sha256": "08b79075636a8c70b90df82a6d02e6ffee2a0f36e138e88a56eb50576bd1f7a9",
+      "sha256": "08b79075636a8c70b90df82a6d02e6ffee2a0f36e138e88a56eb50576bd1f7a9",
+      "bytes": 5056,
+      "transformed": false
+    },
+    {
+      "path": "services/facade/patched-openmuse/LICENSE",
+      "source_label": "facade-r2",
+      "source_sha256": "399a9cccf1b228c9e8ad348ef66a0a5802d438d46735d0d068390925aee5ee36",
+      "sha256": "399a9cccf1b228c9e8ad348ef66a0a5802d438d46735d0d068390925aee5ee36",
+      "bytes": 1078,
+      "transformed": false
+    },
+    {
+      "path": "services/facade/patched-openmuse/apps/server/src/actions.ts",
+      "source_label": "facade-r2",
+      "source_sha256": "7a446dcce73708b01913e85ce20b05f75a8d71e9eab79eabf62f8a45427d55d3",
+      "sha256": "7a446dcce73708b01913e85ce20b05f75a8d71e9eab79eabf62f8a45427d55d3",
+      "bytes": 8421,
+      "transformed": false
+    },
+    {
+      "path": "services/facade/patched-openmuse/apps/server/src/engine/worker.ts",
+      "source_label": "facade-r2",
+      "source_sha256": "b057c54cda12a2ff88d6c2b0cda6835bd973ed98b30d186d593ea583cebf72b4",
+      "sha256": "b057c54cda12a2ff88d6c2b0cda6835bd973ed98b30d186d593ea583cebf72b4",
+      "bytes": 8875,
+      "transformed": false
+    },
+    {
+      "path": "services/facade/patched-openmuse/apps/server/src/errors.ts",
+      "source_label": "facade-r2",
+      "source_sha256": "1b9236cd303b2958dd30e5f9ec376847be30b37826f621ab02404f6e3104bc31",
+      "sha256": "1b9236cd303b2958dd30e5f9ec376847be30b37826f621ab02404f6e3104bc31",
+      "bytes": 233,
+      "transformed": false
+    },
+    {
+      "path": "services/facade/patched-openmuse/apps/server/src/log.ts",
+      "source_label": "facade-r2",
+      "source_sha256": "9debacc65d2da0fb12fa2861f1ae77e0343ec285d74a19e0d1c1b7e1fbf44337",
+      "sha256": "9debacc65d2da0fb12fa2861f1ae77e0343ec285d74a19e0d1c1b7e1fbf44337",
+      "bytes": 1214,
+      "transformed": false
+    },
+    {
+      "path": "services/facade/patched-openmuse/package.json",
+      "source_label": "facade-r2",
+      "source_sha256": "cedb801310697e4b9bba2517f5e4e55b03748f3fe72e9e753e121e1ff781e555",
+      "sha256": "cedb801310697e4b9bba2517f5e4e55b03748f3fe72e9e753e121e1ff781e555",
+      "bytes": 135,
+      "transformed": false
+    },
+    {
+      "path": "services/facade/patched-openmuse/packages/domain/src/index.ts",
+      "source_label": "facade-r2",
+      "source_sha256": "f09c6da73ca758525303f9737dbf4923c6e7b2c053e6bd1fcf620ca6d8b3fe89",
+      "sha256": "f09c6da73ca758525303f9737dbf4923c6e7b2c053e6bd1fcf620ca6d8b3fe89",
+      "bytes": 6285,
+      "transformed": false
+    },
+    {
+      "path": "services/facade/patches/local-preview.patch",
+      "source_label": "facade-r2",
+      "source_sha256": "53464f472d81fb93e27e440a6e6da611af6a58e702a34f8f97aa6ff80355a9c3",
+      "sha256": "53464f472d81fb93e27e440a6e6da611af6a58e702a34f8f97aa6ff80355a9c3",
+      "bytes": 4462,
+      "transformed": false
+    },
+    {
+      "path": "services/facade/package.json",
+      "source_label": "facade-r2",
+      "source_sha256": "8cf8b983a91984e9df6ab19770c9f31aa92a4437cc346105cf9056c4032aa302",
+      "sha256": "8cf8b983a91984e9df6ab19770c9f31aa92a4437cc346105cf9056c4032aa302",
+      "bytes": 526,
+      "transformed": false
+    },
+    {
+      "path": "vendor/openmuse/LICENSE",
+      "source_label": "openmuse-pinned-original-subset",
+      "source_sha256": "399a9cccf1b228c9e8ad348ef66a0a5802d438d46735d0d068390925aee5ee36",
+      "sha256": "399a9cccf1b228c9e8ad348ef66a0a5802d438d46735d0d068390925aee5ee36",
+      "bytes": 1078,
+      "transformed": false
+    },
+    {
+      "path": "vendor/openmuse/apps/mobile/src/agent-workspace.tsx",
+      "source_label": "openmuse-pinned-original-subset",
+      "source_sha256": "4e8b30636d065b52fa845d26883656e9f0064ea6057cd6878a80e376157fdd01",
+      "sha256": "4e8b30636d065b52fa845d26883656e9f0064ea6057cd6878a80e376157fdd01",
+      "bytes": 3140,
+      "transformed": false
+    },
+    {
+      "path": "vendor/openmuse/apps/mobile/src/api.ts",
+      "source_label": "openmuse-pinned-original-subset",
+      "source_sha256": "ff665d9062413d3061a14261517b1dec4335b3513f6be4ad2f734ac2f5c5773a",
+      "sha256": "ff665d9062413d3061a14261517b1dec4335b3513f6be4ad2f734ac2f5c5773a",
+      "bytes": 1458,
+      "transformed": false
+    },
+    {
+      "path": "vendor/openmuse/apps/mobile/src/background-updates.tsx",
+      "source_label": "openmuse-pinned-original-subset",
+      "source_sha256": "db1169dca24e5d8fabb6e261d7b39958e2485a8696d9c90b37379490019e02ad",
+      "sha256": "db1169dca24e5d8fabb6e261d7b39958e2485a8696d9c90b37379490019e02ad",
+      "bytes": 2258,
+      "transformed": false
+    },
+    {
+      "path": "vendor/openmuse/apps/mobile/src/chat.tsx",
+      "source_label": "openmuse-pinned-original-subset",
+      "source_sha256": "336c35b2119c94a5eed5863872391d9961c912cd7df3e4c0f9552098fcd329c9",
+      "sha256": "336c35b2119c94a5eed5863872391d9961c912cd7df3e4c0f9552098fcd329c9",
+      "bytes": 36844,
+      "transformed": false
+    },
+    {
+      "path": "vendor/openmuse/apps/server/src/actions.ts",
+      "source_label": "openmuse-pinned-original-subset",
+      "source_sha256": "e1e69c6df791b0f4f03fb4bc4e4ef7061b3e1b1e671b8f105b4b50171a792b19",
+      "sha256": "e1e69c6df791b0f4f03fb4bc4e4ef7061b3e1b1e671b8f105b4b50171a792b19",
+      "bytes": 7608,
+      "transformed": false
+    },
+    {
+      "path": "vendor/openmuse/apps/server/src/agent.ts",
+      "source_label": "openmuse-pinned-original-subset",
+      "source_sha256": "9a83cb16282f8546db4998710a66780b9750a409da20a78fd05281b5a3db1240",
+      "sha256": "9a83cb16282f8546db4998710a66780b9750a409da20a78fd05281b5a3db1240",
+      "bytes": 2451,
+      "transformed": false
+    },
+    {
+      "path": "vendor/openmuse/apps/server/src/app.ts",
+      "source_label": "openmuse-pinned-original-subset",
+      "source_sha256": "e1bb0db0228ea60ba7832c8914f2e81de6c472af67f7b1f808fb38911fa054e4",
+      "sha256": "e1bb0db0228ea60ba7832c8914f2e81de6c472af67f7b1f808fb38911fa054e4",
+      "bytes": 14741,
+      "transformed": false
+    },
+    {
+      "path": "vendor/openmuse/apps/server/src/auth.ts",
+      "source_label": "openmuse-pinned-original-subset",
+      "source_sha256": "c66e1af78a2fb0c0e605f94308063d015897a6e286471a06deb8983ecd6ab919",
+      "sha256": "c66e1af78a2fb0c0e605f94308063d015897a6e286471a06deb8983ecd6ab919",
+      "bytes": 3543,
+      "transformed": false
+    },
+    {
+      "path": "vendor/openmuse/apps/server/src/browser-console.ts",
+      "source_label": "openmuse-pinned-original-subset",
+      "source_sha256": "5b52787ca5a3fbe600bcda8567fe39f0266942664916cd3572608d1265b62453",
+      "sha256": "5b52787ca5a3fbe600bcda8567fe39f0266942664916cd3572608d1265b62453",
+      "bytes": 5502,
+      "transformed": false
+    },
+    {
+      "path": "vendor/openmuse/apps/server/src/browser.ts",
+      "source_label": "openmuse-pinned-original-subset",
+      "source_sha256": "0f17aaa7c91c48afa0490ab7c3891e1b42d4b7c651c86c5d4917c72b0f526420",
+      "sha256": "0f17aaa7c91c48afa0490ab7c3891e1b42d4b7c651c86c5d4917c72b0f526420",
+      "bytes": 10517,
+      "transformed": false
+    },
+    {
+      "path": "vendor/openmuse/apps/server/src/computer-backend.ts",
+      "source_label": "openmuse-pinned-original-subset",
+      "source_sha256": "dba4501e943d2bf4d5813d85de1cbc818d595ef7ed088a2332412531b456acdd",
+      "sha256": "dba4501e943d2bf4d5813d85de1cbc818d595ef7ed088a2332412531b456acdd",
+      "bytes": 11929,
+      "transformed": false
+    },
+    {
+      "path": "vendor/openmuse/apps/server/src/computer-e2b-desktop.ts",
+      "source_label": "openmuse-pinned-original-subset",
+      "source_sha256": "d376871de1b33be2cbbfa362b98d9f5539f638d21802ed82658cd9caba23b4e4",
+      "sha256": "d376871de1b33be2cbbfa362b98d9f5539f638d21802ed82658cd9caba23b4e4",
+      "bytes": 27685,
+      "transformed": false
+    },
+    {
+      "path": "vendor/openmuse/apps/server/src/computer-routes.ts",
+      "source_label": "openmuse-pinned-original-subset",
+      "source_sha256": "451cf6e32cb789d497a474b276d5782486ef6d1fbe67e04c48c95f43d27ad5a5",
+      "sha256": "451cf6e32cb789d497a474b276d5782486ef6d1fbe67e04c48c95f43d27ad5a5",
+      "bytes": 3008,
+      "transformed": false
+    },
+    {
+      "path": "vendor/openmuse/apps/server/src/computer-tools.ts",
+      "source_label": "openmuse-pinned-original-subset",
+      "source_sha256": "3c3d7dcd5ba7474891a18582271bbb49ffcd5afed9a66f0211764551f52bbd9b",
+      "sha256": "3c3d7dcd5ba7474891a18582271bbb49ffcd5afed9a66f0211764551f52bbd9b",
+      "bytes": 9837,
+      "transformed": false
+    },
+    {
+      "path": "vendor/openmuse/apps/server/src/computer.ts",
+      "source_label": "openmuse-pinned-original-subset",
+      "source_sha256": "21d7d42f01d95c60ea1638c3be46d515411f548dd8fcb1a55a4e4b3173f01327",
+      "sha256": "21d7d42f01d95c60ea1638c3be46d515411f548dd8fcb1a55a4e4b3173f01327",
+      "bytes": 28765,
+      "transformed": false
+    },
+    {
+      "path": "vendor/openmuse/apps/server/src/config.ts",
+      "source_label": "openmuse-pinned-original-subset",
+      "source_sha256": "f4c97d49f6a9658d8a8345cdba0eece48f27e4fca0edfa50362d4a58f84a007a",
+      "sha256": "f4c97d49f6a9658d8a8345cdba0eece48f27e4fca0edfa50362d4a58f84a007a",
+      "bytes": 7887,
+      "transformed": false
+    },
+    {
+      "path": "vendor/openmuse/apps/server/src/db.ts",
+      "source_label": "openmuse-pinned-original-subset",
+      "source_sha256": "76435f770de711668e1b3280318de377ac473183da39a5ed011756796c3e1f6e",
+      "sha256": "76435f770de711668e1b3280318de377ac473183da39a5ed011756796c3e1f6e",
+      "bytes": 7650,
+      "transformed": false
+    },
+    {
+      "path": "vendor/openmuse/apps/server/src/demo/entry.ts",
+      "source_label": "openmuse-pinned-original-subset",
+      "source_sha256": "5598863f1761bc03d4565bbac089ef89ce74fc1163bf5e60a93423c39c5c3052",
+      "sha256": "5598863f1761bc03d4565bbac089ef89ce74fc1163bf5e60a93423c39c5c3052",
+      "bytes": 5637,
+      "transformed": false
+    },
+    {
+      "path": "vendor/openmuse/apps/server/src/demo/jev-fixture.ts",
+      "source_label": "openmuse-pinned-original-subset",
+      "source_sha256": "dba55a336787f3fb835a9b879f8656c7ffece8d3f5cee37c66f6f737b67a2a73",
+      "sha256": "dba55a336787f3fb835a9b879f8656c7ffece8d3f5cee37c66f6f737b67a2a73",
+      "bytes": 1862,
+      "transformed": false
+    },
+    {
+      "path": "vendor/openmuse/apps/server/src/demo/model.ts",
+      "source_label": "openmuse-pinned-original-subset",
+      "source_sha256": "c1f81aaa0a381fd9cc8e7c51824102149b91dd694284d4f88648e499cd060351",
+      "sha256": "c1f81aaa0a381fd9cc8e7c51824102149b91dd694284d4f88648e499cd060351",
+      "bytes": 24425,
+      "transformed": false
+    },
+    {
+      "path": "vendor/openmuse/apps/server/src/engine/conversation.ts",
+      "source_label": "openmuse-pinned-original-subset",
+      "source_sha256": "1cb0cb750ac5ae284b948825030d3716b8da90093a82f6e390a8da1b3e31bd83",
+      "sha256": "1cb0cb750ac5ae284b948825030d3716b8da90093a82f6e390a8da1b3e31bd83",
+      "bytes": 23657,
+      "transformed": false
+    },
+    {
+      "path": "vendor/openmuse/apps/server/src/engine/finance.ts",
+      "source_label": "openmuse-pinned-original-subset",
+      "source_sha256": "22ffabdedf3d09327812ae33b25e8b6442ca3470bcf28139ca4648df42b86d9e",
+      "sha256": "22ffabdedf3d09327812ae33b25e8b6442ca3470bcf28139ca4648df42b86d9e",
+      "bytes": 3907,
+      "transformed": false
+    },
+    {
+      "path": "vendor/openmuse/apps/server/src/engine/model.ts",
+      "source_label": "openmuse-pinned-original-subset",
+      "source_sha256": "9289e36978f2d1326e5076bacb0fd06ebbf153a8b948f3141a5fae6bc57f3173",
+      "sha256": "9289e36978f2d1326e5076bacb0fd06ebbf153a8b948f3141a5fae6bc57f3173",
+      "bytes": 15117,
+      "transformed": false
+    },
+    {
+      "path": "vendor/openmuse/apps/server/src/engine/page-diff.ts",
+      "source_label": "openmuse-pinned-original-subset",
+      "source_sha256": "d1e74b2529f6b2f786bfdc3095a478957b1d0c75f40ed9e85fb03f8190988891",
+      "sha256": "d1e74b2529f6b2f786bfdc3095a478957b1d0c75f40ed9e85fb03f8190988891",
+      "bytes": 3598,
+      "transformed": false
+    },
+    {
+      "path": "vendor/openmuse/apps/server/src/engine/routes.ts",
+      "source_label": "openmuse-pinned-original-subset",
+      "source_sha256": "0d59b830acf8fe5f5b8e283c88582ec206c05a7a49c12c8d1d82ea890624a174",
+      "sha256": "0d59b830acf8fe5f5b8e283c88582ec206c05a7a49c12c8d1d82ea890624a174",
+      "bytes": 6107,
+      "transformed": false
+    },
+    {
+      "path": "vendor/openmuse/apps/server/src/engine/service.ts",
+      "source_label": "openmuse-pinned-original-subset",
+      "source_sha256": "ea8901e4222e6a974b3aa5caab9e4a9b7a197d69c6c0b5f852e37a112f21170f",
+      "sha256": "ea8901e4222e6a974b3aa5caab9e4a9b7a197d69c6c0b5f852e37a112f21170f",
+      "bytes": 45272,
+      "transformed": false
+    },
+    {
+      "path": "vendor/openmuse/apps/server/src/engine/tanstack-agent.ts",
+      "source_label": "openmuse-pinned-original-subset",
+      "source_sha256": "cd2662b6fcf1ac092d33c926b051de1c0832bb1282bce26565684ed247fde60e",
+      "sha256": "cd2662b6fcf1ac092d33c926b051de1c0832bb1282bce26565684ed247fde60e",
+      "bytes": 9662,
+      "transformed": false
+    },
+    {
+      "path": "vendor/openmuse/apps/server/src/engine/worker.ts",
+      "source_label": "openmuse-pinned-original-subset",
+      "source_sha256": "769ccdc02e3c5aa14c729cf0f6d745d408d4089e932dcdca71c5b36077642195",
+      "sha256": "769ccdc02e3c5aa14c729cf0f6d745d408d4089e932dcdca71c5b36077642195",
+      "bytes": 8788,
+      "transformed": false
+    },
+    {
+      "path": "vendor/openmuse/apps/server/src/errors.ts",
+      "source_label": "openmuse-pinned-original-subset",
+      "source_sha256": "1b9236cd303b2958dd30e5f9ec376847be30b37826f621ab02404f6e3104bc31",
+      "sha256": "1b9236cd303b2958dd30e5f9ec376847be30b37826f621ab02404f6e3104bc31",
+      "bytes": 233,
+      "transformed": false
+    },
+    {
+      "path": "vendor/openmuse/apps/server/src/files.ts",
+      "source_label": "openmuse-pinned-original-subset",
+      "source_sha256": "ba71615f47df8a760e9d6de75c80d7259a869c93023488b42c10f2350c7dfa4a",
+      "sha256": "ba71615f47df8a760e9d6de75c80d7259a869c93023488b42c10f2350c7dfa4a",
+      "bytes": 5611,
+      "transformed": false
+    },
+    {
+      "path": "vendor/openmuse/apps/server/src/google-auth.ts",
+      "source_label": "openmuse-pinned-original-subset",
+      "source_sha256": "ccae311bccaf48669c654846a5abbe5a8dfa90c433dda1fb5db75092f27e9077",
+      "sha256": "ccae311bccaf48669c654846a5abbe5a8dfa90c433dda1fb5db75092f27e9077",
+      "bytes": 9710,
+      "transformed": false
+    },
+    {
+      "path": "vendor/openmuse/apps/server/src/index.ts",
+      "source_label": "openmuse-pinned-original-subset",
+      "source_sha256": "4d01fb301f92f5826a956dbd411eb9795eadc6c754b3d5f20b9b9eae0dbb3f9c",
+      "sha256": "4d01fb301f92f5826a956dbd411eb9795eadc6c754b3d5f20b9b9eae0dbb3f9c",
+      "bytes": 824,
+      "transformed": false
+    },
+    {
+      "path": "vendor/openmuse/apps/server/src/jev/adapter.ts",
+      "source_label": "openmuse-pinned-original-subset",
+      "source_sha256": "89fa3ab500945391e5eb14d364f305a101edad4361aa57867c499ec86eda7b63",
+      "sha256": "89fa3ab500945391e5eb14d364f305a101edad4361aa57867c499ec86eda7b63",
+      "bytes": 7838,
+      "transformed": false
+    },
+    {
+      "path": "vendor/openmuse/apps/server/src/jev/service.ts",
+      "source_label": "openmuse-pinned-original-subset",
+      "source_sha256": "659b50226371352aa95a2e8bf326dd074d75a3dc31e65383adc66ad813c39c75",
+      "sha256": "659b50226371352aa95a2e8bf326dd074d75a3dc31e65383adc66ad813c39c75",
+      "bytes": 13943,
+      "transformed": false
+    },
+    {
+      "path": "vendor/openmuse/apps/server/src/jev/tools.ts",
+      "source_label": "openmuse-pinned-original-subset",
+      "source_sha256": "84704c7e2e62e6486b22237da0cd08fb8721c3108bb33559351910deaf20c331",
+      "sha256": "84704c7e2e62e6486b22237da0cd08fb8721c3108bb33559351910deaf20c331",
+      "bytes": 4365,
+      "transformed": false
+    },
+    {
+      "path": "vendor/openmuse/apps/server/src/log.ts",
+      "source_label": "openmuse-pinned-original-subset",
+      "source_sha256": "9debacc65d2da0fb12fa2861f1ae77e0343ec285d74a19e0d1c1b7e1fbf44337",
+      "sha256": "9debacc65d2da0fb12fa2861f1ae77e0343ec285d74a19e0d1c1b7e1fbf44337",
+      "bytes": 1214,
+      "transformed": false
+    },
+    {
+      "path": "vendor/openmuse/apps/server/src/rate-limit.ts",
+      "source_label": "openmuse-pinned-original-subset",
+      "source_sha256": "d56e27f9174383f8e4f1fe8a4b6d290a1f0c74b5d7810b3698d9766dd1c04052",
+      "sha256": "d56e27f9174383f8e4f1fe8a4b6d290a1f0c74b5d7810b3698d9766dd1c04052",
+      "bytes": 2842,
+      "transformed": false
+    },
+    {
+      "path": "vendor/openmuse/apps/server/src/search.ts",
+      "source_label": "openmuse-pinned-original-subset",
+      "source_sha256": "13cbc40de356e999fe53cf12fe3eb1967be4636c5422897c0cb58d5367f7cbd7",
+      "sha256": "13cbc40de356e999fe53cf12fe3eb1967be4636c5422897c0cb58d5367f7cbd7",
+      "bytes": 6990,
+      "transformed": false
+    },
+    {
+      "path": "vendor/openmuse/apps/server/src/worker-entry.ts",
+      "source_label": "openmuse-pinned-original-subset",
+      "source_sha256": "ea0f81722d7d9509ac450cc04b52da1a7d36b4bcc275e2bdec571e88c4de5e86",
+      "sha256": "ea0f81722d7d9509ac450cc04b52da1a7d36b4bcc275e2bdec571e88c4de5e86",
+      "bytes": 781,
+      "transformed": false
+    },
+    {
+      "path": "vendor/openmuse/apps/server/src/workspace.ts",
+      "source_label": "openmuse-pinned-original-subset",
+      "source_sha256": "4398640e071a7ec02594ad093f038aa4b16c691c849a0cce0474152a6d93c14a",
+      "sha256": "4398640e071a7ec02594ad093f038aa4b16c691c849a0cce0474152a6d93c14a",
+      "bytes": 20097,
+      "transformed": false
+    },
+    {
+      "path": "vendor/openmuse/package.json",
+      "source_label": "openmuse-pinned-original-subset",
+      "source_sha256": "b1eb2d41ead969b5ebda8d49240fe764b17aff491c89f40ef788b3c36f962547",
+      "sha256": "b1eb2d41ead969b5ebda8d49240fe764b17aff491c89f40ef788b3c36f962547",
+      "bytes": 2172,
+      "transformed": false
+    },
+    {
+      "path": "vendor/openmuse/packages/domain/src/agent.ts",
+      "source_label": "openmuse-pinned-original-subset",
+      "source_sha256": "aa0ef3efc3abb5e6f4ee6ad590243b6f831106dcdf33e303e9695bac93d66dca",
+      "sha256": "aa0ef3efc3abb5e6f4ee6ad590243b6f831106dcdf33e303e9695bac93d66dca",
+      "bytes": 4388,
+      "transformed": false
+    },
+    {
+      "path": "vendor/openmuse/packages/domain/src/index.ts",
+      "source_label": "openmuse-pinned-original-subset",
+      "source_sha256": "a7ac6e56518acb74ac3312c3e073f67d6d78ade1c47aa3b898e3f55f86fc3063",
+      "sha256": "a7ac6e56518acb74ac3312c3e073f67d6d78ade1c47aa3b898e3f55f86fc3063",
+      "bytes": 6007,
+      "transformed": false
+    },
+    {
+      "path": "services/facade/qa/tests/child-loopback.mjs",
+      "source_label": "facade-independent-qa-r2",
+      "source_sha256": "137ac80c8f32ab42281a7f883d5e23ede59062b4c4d047a7958510bdb0150f07",
+      "sha256": "74ff733258696ffed9782918fdec5281ba2b0e23eb76a314b537da04065b922c",
+      "bytes": 256,
+      "transformed": true
+    },
+    {
+      "path": "services/facade/qa/tests/edges.test.mjs",
+      "source_label": "facade-independent-qa-r2",
+      "source_sha256": "ca3f22ab7ab934222c3717a12eaabd127f3a5a8ed249724c2d994d1c59c249a9",
+      "sha256": "323516476c7b575b447ee5255ba4b109281430e6ba4a5b6a7e600da612c8a5d1",
+      "bytes": 11650,
+      "transformed": true
+    },
+    {
+      "path": "services/facade/qa/tests/http-edges.test.mjs",
+      "source_label": "facade-independent-qa-r2",
+      "source_sha256": "58f8c01bf845e3684cc4568419bfcd57ddf25869782d6d190a45a681722e8dd5",
+      "sha256": "c75d2b7bcfc44ece293ddfcc18fbd87d8db3634a05ccc7404df7a0c3de0cb4fa",
+      "bytes": 5232,
+      "transformed": true
+    },
+    {
+      "path": "services/facade/qa/tests/loopback-negative.test.mjs",
+      "source_label": "facade-independent-qa-r2",
+      "source_sha256": "5c8bd4036ba02787f245fd084c9dddb11dff89fc1ca379dfe1249bfc7fd26210",
+      "sha256": "185f79f19f510444c34d3d156ddcd7d024255bd7ebbd2fe0b0852acd30e330b0",
+      "bytes": 6429,
+      "transformed": true
+    },
+    {
+      "path": "services/facade/qa/tests/negative.test.mjs",
+      "source_label": "facade-independent-qa-r2",
+      "source_sha256": "32ecacd24122e2c90428efe202c47f04de56243865117394c059af4576cc5962",
+      "sha256": "7808f23c84991463898658ee8deee942e400f72c8db3c155e4ccc7b0a1b8013b",
+      "bytes": 10138,
+      "transformed": true
+    },
+    {
+      "path": "services/facade/qa/tests/process-http.test.mjs",
+      "source_label": "facade-independent-qa-r2",
+      "source_sha256": "b62d53d438b924a0ab3e621b05a7e99cf148ab1eecdbe10e3e484460006da9ef",
+      "sha256": "e5514ce53f93beceff75b36cdfbd2f091a21548941cc9f2c04a1c3b5c7b8d449",
+      "bytes": 4901,
+      "transformed": true
+    },
+    {
+      "path": "services/offline/adapter/guards.mjs",
+      "source_label": "offline-adapter-v1",
+      "source_sha256": "6f8ca825633b5161ec3af100cc5a725cd7a5873d585456106db160a3b504e973",
+      "sha256": "6f8ca825633b5161ec3af100cc5a725cd7a5873d585456106db160a3b504e973",
+      "bytes": 9338,
+      "transformed": false
+    },
+    {
+      "path": "services/offline/adapter/openmuse.mjs",
+      "source_label": "offline-adapter-v1",
+      "source_sha256": "176ee45a8486b6faae17f400399df88ffc36aabb8378df78a62b9d4bc4b9f259",
+      "sha256": "176ee45a8486b6faae17f400399df88ffc36aabb8378df78a62b9d4bc4b9f259",
+      "bytes": 13379,
+      "transformed": false
+    },
+    {
+      "path": "services/offline/fixtures/facade-run.json",
+      "source_label": "offline-adapter-v1",
+      "source_sha256": "937109a252cb9369e56b6c2894b013bb101132c4e730131a76017bf4af1b60c0",
+      "sha256": "937109a252cb9369e56b6c2894b013bb101132c4e730131a76017bf4af1b60c0",
+      "bytes": 551,
+      "transformed": false
+    },
+    {
+      "path": "services/offline/fixtures/scenario.json",
+      "source_label": "offline-adapter-v1",
+      "source_sha256": "50758526c085f33c9856fe07d7091bed7e66e9163dc9708c9ece26515b14d2f9",
+      "sha256": "50758526c085f33c9856fe07d7091bed7e66e9163dc9708c9ece26515b14d2f9",
+      "bytes": 13591,
+      "transformed": false
+    },
+    {
+      "path": "services/offline/tests/run.mjs",
+      "source_label": "offline-adapter-v1",
+      "source_sha256": "288d8f584966a3c817276c76380110d643ccc6e192c85895312ed69d434ab732",
+      "sha256": "288d8f584966a3c817276c76380110d643ccc6e192c85895312ed69d434ab732",
+      "bytes": 20629,
+      "transformed": false
+    },
+    {
+      "path": "docs/acceptance/evidence/facade-r2/http-edges.tap",
+      "source_label": "facade-independent-qa-r2-historical-tap",
+      "source_sha256": "6842e3c45e7d0ad97e674be8527108e410a15e58dea0f0f96b1ac55d1ca13a45",
+      "sha256": "6842e3c45e7d0ad97e674be8527108e410a15e58dea0f0f96b1ac55d1ca13a45",
+      "bytes": 1227,
+      "transformed": false
+    },
+    {
+      "path": "docs/acceptance/evidence/facade-r2/independent-edges.tap",
+      "source_label": "facade-independent-qa-r2-historical-tap",
+      "source_sha256": "a57ae6dadea0b81eb85749962a0b93dcc04eb6839a2311a3e629d958b45e3db6",
+      "sha256": "a57ae6dadea0b81eb85749962a0b93dcc04eb6839a2311a3e629d958b45e3db6",
+      "bytes": 3321,
+      "transformed": false
+    },
+    {
+      "path": "docs/acceptance/evidence/facade-r2/loopback.tap",
+      "source_label": "facade-independent-qa-r2-historical-tap",
+      "source_sha256": "f86b2aa5f279bd7f710fc6d70fbab9bb2690b7d18f4dc028a1b7de01e22b29fb",
+      "sha256": "f86b2aa5f279bd7f710fc6d70fbab9bb2690b7d18f4dc028a1b7de01e22b29fb",
+      "bytes": 2374,
+      "transformed": false
+    },
+    {
+      "path": "docs/acceptance/evidence/facade-r2/offline.tap",
+      "source_label": "facade-independent-qa-r2-historical-tap",
+      "source_sha256": "c88b258ab590e73c9970f151896294f329e0482a269bce9d10902272cd19dbc1",
+      "sha256": "c88b258ab590e73c9970f151896294f329e0482a269bce9d10902272cd19dbc1",
+      "bytes": 2536,
+      "transformed": false
+    },
+    {
+      "path": "docs/acceptance/evidence/facade-r2/original-and-independent.tap",
+      "source_label": "facade-independent-qa-r2-historical-tap",
+      "source_sha256": "4d41a01565dfd175b6e3413b42d75dd9f34196e77baf484b47a59512c3defce1",
+      "sha256": "4d41a01565dfd175b6e3413b42d75dd9f34196e77baf484b47a59512c3defce1",
+      "bytes": 15643,
+      "transformed": false
+    },
+    {
+      "path": "docs/assets/ios-v1/CatpawM-v1-final-light-input.png",
+      "source_label": "ios-v1-selected-synthetic-screenshot",
+      "source_sha256": "b889b6bd0a8c349481f4eae8ddeac9d8a1a9bee42a561c3dcb6d8189a7ab4920",
+      "sha256": "b889b6bd0a8c349481f4eae8ddeac9d8a1a9bee42a561c3dcb6d8189a7ab4920",
+      "bytes": 182503,
+      "transformed": false
+    },
+    {
+      "path": "docs/assets/ios-v1/CatpawM-v1-final-light-approval.png",
+      "source_label": "ios-v1-selected-synthetic-screenshot",
+      "source_sha256": "f2267b18f737fe97b9d0b6103a9d67464939e29f9b19332994272ed2870ee4ab",
+      "sha256": "f2267b18f737fe97b9d0b6103a9d67464939e29f9b19332994272ed2870ee4ab",
+      "bytes": 315266,
+      "transformed": false
+    },
+    {
+      "path": "docs/assets/ios-v1/CatpawM-v1-final-max-dark-approval.png",
+      "source_label": "ios-v1-selected-synthetic-screenshot",
+      "source_sha256": "a5d22976319527b01115b6e51878da08823b0c63b19a86c8f8945aef8d0805d3",
+      "sha256": "a5d22976319527b01115b6e51878da08823b0c63b19a86c8f8945aef8d0805d3",
+      "bytes": 404329,
+      "transformed": false
+    }
+  ],
+  "openmuse_client_provenance": "docs/status/openmuse-r3-provenance.json"
+}

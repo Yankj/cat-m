@@ -1,0 +1,1854 @@
+{
+  "\n原文件已保留，未重置存储。请在完整 Xcode 下排查迁移或恢复。": {
+    "zh-Hans": "\n原文件已保留，未重置存储。请在完整 Xcode 下排查迁移或恢复。",
+    "en": "\nThe original file is preserved. Storage was not reset. Investigate migration or recovery with full Xcode."
+  },
+  "CSV 格式错误，无法安全解析。": {
+    "zh-Hans": "CSV 格式错误，无法安全解析。",
+    "en": "Invalid CSV format; unable to parse safely."
+  },
+  "Catpaw-m 原生本地版 0.1.0": {
+    "zh-Hans": "Catpaw-m 原生本地版 0.1.0",
+    "en": "Catpaw-m native local edition 0.1.0"
+  },
+  "Catpaw-m 本地会话 {0}\n": {
+    "zh-Hans": "Catpaw-m 本地会话 {0}\n",
+    "en": "Catpaw-m local conversation {0}\n"
+  },
+  "Fixture · 模拟": {
+    "zh-Hans": "Fixture · 模拟",
+    "en": "Fixture · simulated"
+  },
+  "Subagents · 仅新对话配置": {
+    "zh-Hans": "Subagents · 仅新对话配置",
+    "en": "Subagents · new conversations only"
+  },
+  "http(s) 来源": {
+    "zh-Hans": "http(s) 来源",
+    "en": "http(s) source"
+  },
+  "iOS 系统朗读尚未运行验证。": {
+    "zh-Hans": "iOS 系统朗读尚未运行验证。",
+    "en": "iOS system readout has not been run or verified."
+  },
+  "local_session_only · 真实云调度未连接。安全屋只是配置，尚不代表已启用执行沙箱。": {
+    "zh-Hans": "local_session_only · 真实云调度未连接。安全屋只是配置，尚不代表已启用执行沙箱。",
+    "en": "local_session_only · real cloud scheduling is disconnected. Safety is configuration, not an active execution sandbox."
+  },
+  "{0} · 模拟": {
+    "zh-Hans": "{0} · 模拟",
+    "en": "{0} · simulated"
+  },
+  "{0} · 模拟运行": {
+    "zh-Hans": "{0} · 模拟运行",
+    "en": "{0} · simulated run"
+  },
+  "{0} 项": {
+    "zh-Hans": "{0} 项",
+    "en": "{0} items"
+  },
+  "{0}视图 · 服务未连接": {
+    "zh-Hans": "{0}视图 · 服务未连接",
+    "en": "{0} view · service disconnected"
+  },
+  "下次机会：{0}": {
+    "zh-Hans": "下次机会：{0}",
+    "en": "Next opportunity: {0}"
+  },
+  "不会向外部应用发送内容。": {
+    "zh-Hans": "不会向外部应用发送内容。",
+    "en": "No content is sent to an external app."
+  },
+  "不会安装任何软件。能力尚未接通。": {
+    "zh-Hans": "不会安装任何软件。能力尚未接通。",
+    "en": "No software is installed. Execution is disconnected."
+  },
+  "不可用": {
+    "zh-Hans": "不可用",
+    "en": "Unavailable"
+  },
+  "专家": {
+    "zh-Hans": "专家",
+    "en": "Experts"
+  },
+  "专家、技能与项目": {
+    "zh-Hans": "专家、技能与项目",
+    "en": "Experts, skills and projects"
+  },
+  "个人助理": {
+    "zh-Hans": "个人助理",
+    "en": "Personal assistant"
+  },
+  "中文": {
+    "zh-Hans": "中文",
+    "en": "Chinese"
+  },
+  "主题": {
+    "zh-Hans": "主题",
+    "en": "Theme"
+  },
+  "主题与语言等偏好在同一用户的云端、电脑、本机视图共享；会话配置保持创建时快照。": {
+    "zh-Hans": "主题与语言等偏好在同一用户的云端、电脑、本机视图共享；会话配置保持创建时快照。",
+    "en": "Theme, language and other preferences are shared across this profile's environments. Conversation configuration stays frozen at creation."
+  },
+  "云同步显式关闭": {
+    "zh-Hans": "云同步显式关闭",
+    "en": "Cloud sync is explicitly off"
+  },
+  "云端": {
+    "zh-Hans": "云端",
+    "en": "Cloud"
+  },
+  "仅 App 活跃时模拟检查；关闭期间跳过，不补造历史。": {
+    "zh-Hans": "仅 App 活跃时模拟检查；关闭期间跳过，不补造历史。",
+    "en": "Simulation checks only while the app is active. Closed periods are skipped without fabricated history."
+  },
+  "仅为这件事记住": {
+    "zh-Hans": "仅为这件事记住",
+    "en": "Remember only for this task"
+  },
+  "从相册选择一张图片": {
+    "zh-Hans": "从相册选择一张图片",
+    "en": "Choose one photo"
+  },
+  "代码审查": {
+    "zh-Hans": "代码审查",
+    "en": "Code review"
+  },
+  "任务": {
+    "zh-Hans": "任务",
+    "en": "Tasks"
+  },
+  "任务不可用": {
+    "zh-Hans": "任务不可用",
+    "en": "Task unavailable"
+  },
+  "任务名称": {
+    "zh-Hans": "任务名称",
+    "en": "Task name"
+  },
+  "任务状态": {
+    "zh-Hans": "任务状态",
+    "en": "Task status"
+  },
+  "任务进度": {
+    "zh-Hans": "任务进度",
+    "en": "Task progress"
+  },
+  "会话": {
+    "zh-Hans": "会话",
+    "en": "Conversations"
+  },
+  "会话不可用": {
+    "zh-Hans": "会话不可用",
+    "en": "Conversation unavailable"
+  },
+  "会话与文件使用同一项目 ID": {
+    "zh-Hans": "会话与文件使用同一项目 ID",
+    "en": "Conversations and files share the same project ID"
+  },
+  "会话配置": {
+    "zh-Hans": "会话配置",
+    "en": "Conversation configuration"
+  },
+  "你 · 本机保存": {
+    "zh-Hans": "你 · 本机保存",
+    "en": "You · saved locally"
+  },
+  "使用专家": {
+    "zh-Hans": "使用专家",
+    "en": "Use expert"
+  },
+  "使用示例转写 · 模拟": {
+    "zh-Hans": "使用示例转写 · 模拟",
+    "en": "Use example transcript · simulated"
+  },
+  "保存": {
+    "zh-Hans": "保存",
+    "en": "Save"
+  },
+  "保存常用提示词，再带入会话编辑。": {
+    "zh-Hans": "保存常用提示词，再带入会话编辑。",
+    "en": "Save a common prompt, then bring it into a conversation for editing."
+  },
+  "保存新版本": {
+    "zh-Hans": "保存新版本",
+    "en": "Save new version"
+  },
+  "保存约定": {
+    "zh-Hans": "保存约定",
+    "en": "Save agreement"
+  },
+  "修改": {
+    "zh-Hans": "修改",
+    "en": "Edit"
+  },
+  "修改草稿": {
+    "zh-Hans": "修改草稿",
+    "en": "Edit draft"
+  },
+  "修改记忆": {
+    "zh-Hans": "修改记忆",
+    "en": "Edit memory"
+  },
+  "做总结": {
+    "zh-Hans": "做总结",
+    "en": "Summarize"
+  },
+  "停止条件": {
+    "zh-Hans": "停止条件",
+    "en": "Stop conditions"
+  },
+  "停读": {
+    "zh-Hans": "停读",
+    "en": "Stop readout"
+  },
+  "允许用于后续模拟准备": {
+    "zh-Hans": "允许用于后续模拟准备",
+    "en": "Allow use in later simulated preparation"
+  },
+  "先建立工作约定。成果、运行与委托分别记录。": {
+    "zh-Hans": "先建立工作约定。成果、运行与委托分别记录。",
+    "en": "Start with a work agreement. Artifacts, runs and delegations have separate records."
+  },
+  "先聊一件事": {
+    "zh-Hans": "先聊一件事",
+    "en": "Talk about one thing"
+  },
+  "全文": {
+    "zh-Hans": "全文",
+    "en": "Full text"
+  },
+  "全部": {
+    "zh-Hans": "全部",
+    "en": "All"
+  },
+  "全部任务": {
+    "zh-Hans": "全部任务",
+    "en": "All tasks"
+  },
+  "关闭": {
+    "zh-Hans": "关闭",
+    "en": "Close"
+  },
+  "内容不可用": {
+    "zh-Hans": "内容不可用",
+    "en": "Content unavailable"
+  },
+  "内容已删除或不属于当前环境。": {
+    "zh-Hans": "内容已删除或不属于当前环境。",
+    "en": "Content was deleted or belongs to another environment."
+  },
+  "内容检查": {
+    "zh-Hans": "内容检查",
+    "en": "Review content"
+  },
+  "写文章": {
+    "zh-Hans": "写文章",
+    "en": "Write an article"
+  },
+  "准备中": {
+    "zh-Hans": "准备中",
+    "en": "Preparing"
+  },
+  "准备播放": {
+    "zh-Hans": "准备播放",
+    "en": "Starting playback"
+  },
+  "分享": {
+    "zh-Hans": "分享",
+    "en": "Share"
+  },
+  "分享本地文本": {
+    "zh-Hans": "分享本地文本",
+    "en": "Share local text"
+  },
+  "分类": {
+    "zh-Hans": "分类",
+    "en": "Category"
+  },
+  "分钟 {0}": {
+    "zh-Hans": "分钟 {0}",
+    "en": "Minute {0}"
+  },
+  "切换到{0}本地视图": {
+    "zh-Hans": "切换到{0}本地视图",
+    "en": "Switch to the local {0} view"
+  },
+  "切换项目会打开该项目的独立会话，原会话的历史与草稿保留。": {
+    "zh-Hans": "切换项目会打开该项目的独立会话，原会话的历史与草稿保留。",
+    "en": "Switching projects opens a separate conversation. The original history and draft remain saved."
+  },
+  "创建": {
+    "zh-Hans": "创建",
+    "en": "Create"
+  },
+  "创建定时任务": {
+    "zh-Hans": "创建定时任务",
+    "en": "Create scheduled task"
+  },
+  "创建本地命令": {
+    "zh-Hans": "创建本地命令",
+    "en": "Create local command"
+  },
+  "创建规则后会真实保存到本机。": {
+    "zh-Hans": "创建规则后会真实保存到本机。",
+    "en": "Rules are saved to this device after creation."
+  },
+  "删除": {
+    "zh-Hans": "删除",
+    "en": "Delete"
+  },
+  "删除会话": {
+    "zh-Hans": "删除会话",
+    "en": "Delete conversation"
+  },
+  "单次模拟操作 · v{0}": {
+    "zh-Hans": "单次模拟操作 · v{0}",
+    "en": "One simulated action · v{0}"
+  },
+  "卸载本地模拟记录": {
+    "zh-Hans": "卸载本地模拟记录",
+    "en": "Remove local simulation record"
+  },
+  "历史": {
+    "zh-Hans": "历史",
+    "en": "History"
+  },
+  "历史版本": {
+    "zh-Hans": "历史版本",
+    "en": "Version history"
+  },
+  "历史：{0}": {
+    "zh-Hans": "历史：{0}",
+    "en": "History: {0}"
+  },
+  "原音只在内存处理，最长 45 秒。仅创建 requiresOnDeviceRecognition 请求；不可用时回文字，不转云端识别。": {
+    "zh-Hans": "原音只在内存处理，最长 45 秒。仅创建 requiresOnDeviceRecognition 请求；不可用时回文字，不转云端识别。",
+    "en": "Audio is processed in memory for up to 45 seconds. Only requiresOnDeviceRecognition requests are created. If unavailable, use text; no cloud fallback."
+  },
+  "发送一条消息会建立可追踪的模拟运行。": {
+    "zh-Hans": "发送一条消息会建立可追踪的模拟运行。",
+    "en": "Sending a message creates a traceable simulated run."
+  },
+  "发送并运行模拟回复": {
+    "zh-Hans": "发送并运行模拟回复",
+    "en": "Send and run simulated reply"
+  },
+  "取消": {
+    "zh-Hans": "取消",
+    "en": "Cancel"
+  },
+  "取消模拟运行": {
+    "zh-Hans": "取消模拟运行",
+    "en": "Cancel simulated run"
+  },
+  "取消置顶": {
+    "zh-Hans": "取消置顶",
+    "en": "Unpin"
+  },
+  "受限": {
+    "zh-Hans": "受限",
+    "en": "Restricted"
+  },
+  "口述改稿 · 模拟模型": {
+    "zh-Hans": "口述改稿 · 模拟模型",
+    "en": "Voice revision · simulated model"
+  },
+  "口述输入": {
+    "zh-Hans": "口述输入",
+    "en": "Voice input"
+  },
+  "只在你主动播放时朗读固定版本。停止声音不会取消文字任务。": {
+    "zh-Hans": "只在你主动播放时朗读固定版本。停止声音不会取消文字任务。",
+    "en": "Reads a fixed version only when you tap Play. Stopping audio does not cancel text tasks."
+  },
+  "只重置全部演示环境；用户分区保留。": {
+    "zh-Hans": "只重置全部演示环境；用户分区保留。",
+    "en": "Reset all demo environments only. Keep user data."
+  },
+  "可以通过系统分享导出原文件；不会当作可执行文本打开。": {
+    "zh-Hans": "可以通过系统分享导出原文件；不会当作可执行文本打开。",
+    "en": "Export the original file through system sharing. It will not be opened as executable text."
+  },
+  "可编辑转写": {
+    "zh-Hans": "可编辑转写",
+    "en": "Editable transcript"
+  },
+  "名称": {
+    "zh-Hans": "名称",
+    "en": "Name"
+  },
+  "名称与提示词必填。": {
+    "zh-Hans": "名称与提示词必填。",
+    "en": "Name and prompt are required."
+  },
+  "启用中": {
+    "zh-Hans": "启用中",
+    "en": "Enabled"
+  },
+  "启用本地识别并开始说话": {
+    "zh-Hans": "启用本地识别并开始说话",
+    "en": "Enable local recognition and start speaking"
+  },
+  "命令为本地提示词模板；创建表单是补充流程，不执行 shell。": {
+    "zh-Hans": "命令为本地提示词模板；创建表单是补充流程，不执行 shell。",
+    "en": "Commands are local prompt templates. The creation form is an added flow and does not run shell commands."
+  },
+  "回到会话": {
+    "zh-Hans": "回到会话",
+    "en": "Back to conversation"
+  },
+  "回复已完成": {
+    "zh-Hans": "回复已完成",
+    "en": "Reply completed"
+  },
+  "回复未完成": {
+    "zh-Hans": "回复未完成",
+    "en": "Reply incomplete"
+  },
+  "回收站为空": {
+    "zh-Hans": "回收站为空",
+    "en": "Trash is empty"
+  },
+  "固定流程图示例 · 不支持任意 Mermaid 渲染": {
+    "zh-Hans": "固定流程图示例 · 不支持任意 Mermaid 渲染",
+    "en": "Fixed diagram example · arbitrary Mermaid rendering is unsupported"
+  },
+  "固定版本 v{0} · {1}": {
+    "zh-Hans": "固定版本 v{0} · {1}",
+    "en": "Fixed version v{0} · {1}"
+  },
+  "复制会话 ID": {
+    "zh-Hans": "复制会话 ID",
+    "en": "Copy conversation ID"
+  },
+  "外观": {
+    "zh-Hans": "外观",
+    "en": "Appearance"
+  },
+  "好": {
+    "zh-Hans": "好",
+    "en": "OK"
+  },
+  "委托不可用": {
+    "zh-Hans": "委托不可用",
+    "en": "Delegation unavailable"
+  },
+  "安全屋 · 仅新对话配置": {
+    "zh-Hans": "安全屋 · 仅新对话配置",
+    "en": "Safety · new conversations only"
+  },
+  "安全屋模式 · 配置": {
+    "zh-Hans": "安全屋模式 · 配置",
+    "en": "Safety mode · configuration"
+  },
+  "完成": {
+    "zh-Hans": "完成",
+    "en": "Done"
+  },
+  "定时任务": {
+    "zh-Hans": "定时任务",
+    "en": "Scheduled tasks"
+  },
+  "导入文件": {
+    "zh-Hans": "导入文件",
+    "en": "Import file"
+  },
+  "导出当前 workspace 本地数据": {
+    "zh-Hans": "导出当前 workspace 本地数据",
+    "en": "Export this workspace's local data"
+  },
+  "将检查后的文字放入输入": {
+    "zh-Hans": "将检查后的文字放入输入",
+    "en": "Use reviewed text in input"
+  },
+  "小时 {0}": {
+    "zh-Hans": "小时 {0}",
+    "en": "Hour {0}"
+  },
+  "尚未接执行沙箱或协作 worker。本地偏好不授予 OS 或服务权限。": {
+    "zh-Hans": "尚未接执行沙箱或协作 worker。本地偏好不授予 OS 或服务权限。",
+    "en": "Execution sandbox and collaboration workers are disconnected. Local preferences grant no OS or service permissions."
+  },
+  "尚未提交": {
+    "zh-Hans": "尚未提交",
+    "en": "Not submitted"
+  },
+  "工作目标": {
+    "zh-Hans": "工作目标",
+    "en": "Work goal"
+  },
+  "工作空间": {
+    "zh-Hans": "工作空间",
+    "en": "Workspace"
+  },
+  "工作约定": {
+    "zh-Hans": "工作约定",
+    "en": "Work agreement"
+  },
+  "工作约定 · r{0}": {
+    "zh-Hans": "工作约定 · r{0}",
+    "en": "Work agreement · r{0}"
+  },
+  "工作记忆": {
+    "zh-Hans": "工作记忆",
+    "en": "Work memory"
+  },
+  "已保存到本机": {
+    "zh-Hans": "已保存到本机",
+    "en": "Saved on this device"
+  },
+  "已停止": {
+    "zh-Hans": "已停止",
+    "en": "Stopped"
+  },
+  "已允许": {
+    "zh-Hans": "已允许",
+    "en": "Allowed"
+  },
+  "已到期": {
+    "zh-Hans": "已到期",
+    "en": "Expired"
+  },
+  "已取消": {
+    "zh-Hans": "已取消",
+    "en": "Cancelled"
+  },
+  "已受理，待核验": {
+    "zh-Hans": "已受理，待核验",
+    "en": "Accepted; verification pending"
+  },
+  "已安装": {
+    "zh-Hans": "已安装",
+    "en": "Installed"
+  },
+  "已完成": {
+    "zh-Hans": "已完成",
+    "en": "Finished"
+  },
+  "已撤销": {
+    "zh-Hans": "已撤销",
+    "en": "Revoked"
+  },
+  "已暂停": {
+    "zh-Hans": "已暂停",
+    "en": "Paused"
+  },
+  "已有 v{0}，当前继续显示固定旧版。": {
+    "zh-Hans": "已有 v{0}，当前继续显示固定旧版。",
+    "en": "Version v{0} is available. This reader still shows the fixed older version."
+  },
+  "已核验": {
+    "zh-Hans": "已核验",
+    "en": "Verified"
+  },
+  "已结束": {
+    "zh-Hans": "已结束",
+    "en": "Ended"
+  },
+  "已读回执未保存：{0}": {
+    "zh-Hans": "已读回执未保存：{0}",
+    "en": "Read receipt was not saved: {0}"
+  },
+  "已预约": {
+    "zh-Hans": "已预约",
+    "en": "Reserved"
+  },
+  "市场": {
+    "zh-Hans": "市场",
+    "en": "Market"
+  },
+  "带入输入": {
+    "zh-Hans": "带入输入",
+    "en": "Use in input"
+  },
+  "帮我整理这份文档的要点": {
+    "zh-Hans": "帮我整理这份文档的要点",
+    "en": "Help me summarize the key points of this document"
+  },
+  "应用": {
+    "zh-Hans": "应用",
+    "en": "App"
+  },
+  "建立持续委托": {
+    "zh-Hans": "建立持续委托",
+    "en": "Create ongoing delegation"
+  },
+  "当前 macOS 类型检查环境不提供 iOS 权限结果": {
+    "zh-Hans": "当前 macOS 类型检查环境不提供 iOS 权限结果",
+    "en": "The macOS type-check environment does not provide iOS permission results"
+  },
+  "当前中文 on-device 识别不可用。可使用文字，或明确的示例转写。": {
+    "zh-Hans": "当前中文 on-device 识别不可用。可使用文字，或明确的示例转写。",
+    "en": "On-device Chinese recognition is unavailable. Use text or the clearly labeled example transcript."
+  },
+  "当前会话上下文": {
+    "zh-Hans": "当前会话上下文",
+    "en": "Current conversation context"
+  },
+  "当前持续执行来自本地模拟，App 关闭期间不会运行。": {
+    "zh-Hans": "当前持续执行来自本地模拟，App 关闭期间不会运行。",
+    "en": "Ongoing execution is simulated locally. It does not run while the app is closed."
+  },
+  "当前段落 {0}": {
+    "zh-Hans": "当前段落 {0}",
+    "en": "Current paragraph {0}"
+  },
+  "当前环境没有该委托。": {
+    "zh-Hans": "当前环境没有该委托。",
+    "en": "This environment has no such delegation."
+  },
+  "当前环境没有这项内容。": {
+    "zh-Hans": "当前环境没有这项内容。",
+    "en": "This environment has no such content."
+  },
+  "当前环境的本地项目": {
+    "zh-Hans": "当前环境的本地项目",
+    "en": "Local projects in this environment"
+  },
+  "当前设备没有可用相机。可从文件导入图片。": {
+    "zh-Hans": "当前设备没有可用相机。可从文件导入图片。",
+    "en": "No camera is available on this device. Import an image from files instead."
+  },
+  "当前选择来自系统可用声音列表，不申请 Personal Voice，不下载音色。音频输出与离线表现需真机验证。": {
+    "zh-Hans": "当前选择来自系统可用声音列表，不申请 Personal Voice，不下载音色。音频输出与离线表现需真机验证。",
+    "en": "Voices come from the available system list. No Personal Voice permission or voice downloads. Audio output and offline behavior need device testing."
+  },
+  "录音中": {
+    "zh-Hans": "录音中",
+    "en": "Recording"
+  },
+  "忘记": {
+    "zh-Hans": "忘记",
+    "en": "Forget"
+  },
+  "恢复": {
+    "zh-Hans": "恢复",
+    "en": "Resume"
+  },
+  "恢复原 ID": {
+    "zh-Hans": "恢复原 ID",
+    "en": "Restore original ID"
+  },
+  "想一起完成什么？": {
+    "zh-Hans": "想一起完成什么？",
+    "en": "What would you like to do together?"
+  },
+  "想问什么？": {
+    "zh-Hans": "想问什么？",
+    "en": "What would you like to ask?"
+  },
+  "感想共创": {
+    "zh-Hans": "感想共创",
+    "en": "Develop ideas together"
+  },
+  "成果审阅": {
+    "zh-Hans": "成果审阅",
+    "en": "Review artifact"
+  },
+  "成果提醒 · App 内偏好": {
+    "zh-Hans": "成果提醒 · App 内偏好",
+    "en": "Result notices · in-app preference"
+  },
+  "我的": {
+    "zh-Hans": "我的",
+    "en": "Mine"
+  },
+  "我的设备": {
+    "zh-Hans": "我的设备",
+    "en": "My devices"
+  },
+  "打开侧栏": {
+    "zh-Hans": "打开侧栏",
+    "en": "Open sidebar"
+  },
+  "打开成果 v{0}": {
+    "zh-Hans": "打开成果 v{0}",
+    "en": "Open artifact v{0}"
+  },
+  "打断本轮": {
+    "zh-Hans": "打断本轮",
+    "en": "Interrupt this turn"
+  },
+  "执行频率": {
+    "zh-Hans": "执行频率",
+    "en": "Frequency"
+  },
+  "技能": {
+    "zh-Hans": "技能",
+    "en": "Skills"
+  },
+  "把想继续做的事，\n交给个人助理。": {
+    "zh-Hans": "把想继续做的事，\n交给个人助理。",
+    "en": "Give your personal assistant\nsomething to keep working on."
+  },
+  "拍照 · 主动开启系统相机": {
+    "zh-Hans": "拍照 · 主动开启系统相机",
+    "en": "Take photo · open system camera"
+  },
+  "持续执行交给云调度\n受理、完成与未知分开\n改稿后重新确认目的地": {
+    "zh-Hans": "持续执行交给云调度\n受理、完成与未知分开\n改稿后重新确认目的地",
+    "en": "Ongoing work requires cloud scheduling\nAcceptance, completion and unknown outcomes stay distinct\nConfirm the destination again after revising"
+  },
+  "持续约定": {
+    "zh-Hans": "持续约定",
+    "en": "Ongoing agreement"
+  },
+  "按原请求快照重试模拟运行": {
+    "zh-Hans": "按原请求快照重试模拟运行",
+    "en": "Retry simulation with the original request snapshot"
+  },
+  "提交中，先核验": {
+    "zh-Hans": "提交中，先核验",
+    "en": "Submitting; verify first"
+  },
+  "提交前已取消": {
+    "zh-Hans": "提交前已取消",
+    "en": "Cancelled before submission"
+  },
+  "提取摘要 · 首个非空段落": {
+    "zh-Hans": "提取摘要 · 首个非空段落",
+    "en": "Extracted summary · first non-empty paragraph"
+  },
+  "提示词": {
+    "zh-Hans": "提示词",
+    "en": "Prompt"
+  },
+  "搜索专家": {
+    "zh-Hans": "搜索专家",
+    "en": "Search experts"
+  },
+  "搜索技能": {
+    "zh-Hans": "搜索技能",
+    "en": "Search skills"
+  },
+  "播放": {
+    "zh-Hans": "播放",
+    "en": "Play"
+  },
+  "播放未完成": {
+    "zh-Hans": "播放未完成",
+    "en": "Playback failed"
+  },
+  "操作未完成": {
+    "zh-Hans": "操作未完成",
+    "en": "Action incomplete"
+  },
+  "改用文字": {
+    "zh-Hans": "改用文字",
+    "en": "Use text instead"
+  },
+  "放大": {
+    "zh-Hans": "放大",
+    "en": "Zoom in"
+  },
+  "数据分析": {
+    "zh-Hans": "数据分析",
+    "en": "Data analysis"
+  },
+  "整理会议要点": {
+    "zh-Hans": "整理会议要点",
+    "en": "Organize meeting notes"
+  },
+  "整理工作日志，生成日报摘要": {
+    "zh-Hans": "整理工作日志，生成日报摘要",
+    "en": "Organize work logs and create a daily summary"
+  },
+  "整理待办": {
+    "zh-Hans": "整理待办",
+    "en": "Organize to-dos"
+  },
+  "整理日程": {
+    "zh-Hans": "整理日程",
+    "en": "Organize calendar"
+  },
+  "整理邮件摘要": {
+    "zh-Hans": "整理邮件摘要",
+    "en": "Summarize email"
+  },
+  "文件不可用": {
+    "zh-Hans": "文件不可用",
+    "en": "File unavailable"
+  },
+  "文件删除确认": {
+    "zh-Hans": "文件删除确认",
+    "en": "Confirm file deletion"
+  },
+  "文件已删除或不属于当前数据分区。": {
+    "zh-Hans": "文件已删除或不属于当前数据分区。",
+    "en": "The file was deleted or belongs to another data partition."
+  },
+  "文件超过本地导入上限 20 MB。": {
+    "zh-Hans": "文件超过本地导入上限 20 MB。",
+    "en": "File exceeds the 20 MB local import limit."
+  },
+  "文档处理 · Office 文档 · PDF 处理": {
+    "zh-Hans": "文档处理 · Office 文档 · PDF 处理",
+    "en": "Document processing · Office documents · PDF processing"
+  },
+  "文档编辑器": {
+    "zh-Hans": "文档编辑器",
+    "en": "Document editor"
+  },
+  "新任务": {
+    "zh-Hans": "新任务",
+    "en": "New task"
+  },
+  "新对话模型配置": {
+    "zh-Hans": "新对话模型配置",
+    "en": "Model for new conversations"
+  },
+  "新建本地项目": {
+    "zh-Hans": "新建本地项目",
+    "en": "New local project"
+  },
+  "无专家": {
+    "zh-Hans": "无专家",
+    "en": "No expert"
+  },
+  "无法读取文件": {
+    "zh-Hans": "无法读取文件",
+    "en": "Unable to read file"
+  },
+  "无项目": {
+    "zh-Hans": "无项目",
+    "en": "No project"
+  },
+  "日常办公": {
+    "zh-Hans": "日常办公",
+    "en": "Office"
+  },
+  "时区": {
+    "zh-Hans": "时区",
+    "en": "Time zone"
+  },
+  "明确失败": {
+    "zh-Hans": "明确失败",
+    "en": "Explicit failure"
+  },
+  "明确记住的要求": {
+    "zh-Hans": "明确记住的要求",
+    "en": "Requirement to explicitly remember"
+  },
+  "星期一": {
+    "zh-Hans": "星期一",
+    "en": "Monday"
+  },
+  "星期三": {
+    "zh-Hans": "星期三",
+    "en": "Wednesday"
+  },
+  "星期二": {
+    "zh-Hans": "星期二",
+    "en": "Tuesday"
+  },
+  "星期五": {
+    "zh-Hans": "星期五",
+    "en": "Friday"
+  },
+  "星期六": {
+    "zh-Hans": "星期六",
+    "en": "Saturday"
+  },
+  "星期四": {
+    "zh-Hans": "星期四",
+    "en": "Thursday"
+  },
+  "星期日": {
+    "zh-Hans": "星期日",
+    "en": "Sunday"
+  },
+  "普通进展留在 App 内。只在有成果或重要变化时提示。跨任务记忆默认关闭。": {
+    "zh-Hans": "普通进展留在 App 内。只在有成果或重要变化时提示。跨任务记忆默认关闭。",
+    "en": "Routine progress stays in the app. Only results or important changes trigger a notice. Cross-task memory is off by default."
+  },
+  "暂停": {
+    "zh-Hans": "暂停",
+    "en": "Pause"
+  },
+  "暂无{0}任务": {
+    "zh-Hans": "暂无{0}任务",
+    "en": "No {0} tasks"
+  },
+  "暂无已安装技能": {
+    "zh-Hans": "暂无已安装技能",
+    "en": "No installed skills"
+  },
+  "暂无所选专家": {
+    "zh-Hans": "暂无所选专家",
+    "en": "No selected experts"
+  },
+  "暂无自定义命令": {
+    "zh-Hans": "暂无自定义命令",
+    "en": "No custom commands"
+  },
+  "替换来源": {
+    "zh-Hans": "替换来源",
+    "en": "Replace source"
+  },
+  "替换来源 · 保留现有权限": {
+    "zh-Hans": "替换来源 · 保留现有权限",
+    "en": "Replace source · keep current permissions"
+  },
+  "服务未连接 · 状态未核验": {
+    "zh-Hans": "服务未连接 · 状态未核验",
+    "en": "Service disconnected · status unverified"
+  },
+  "朗读": {
+    "zh-Hans": "朗读",
+    "en": "Read aloud"
+  },
+  "朗读 · v{0}": {
+    "zh-Hans": "朗读 · v{0}",
+    "en": "Read aloud · v{0}"
+  },
+  "朗读范围": {
+    "zh-Hans": "朗读范围",
+    "en": "Readout scope"
+  },
+  "未保存约定": {
+    "zh-Hans": "未保存约定",
+    "en": "Agreement not saved"
+  },
+  "未允许": {
+    "zh-Hans": "未允许",
+    "en": "Denied"
+  },
+  "未决定": {
+    "zh-Hans": "未决定",
+    "en": "Not determined"
+  },
+  "未完成": {
+    "zh-Hans": "未完成",
+    "en": "Incomplete"
+  },
+  "未知错误": {
+    "zh-Hans": "未知错误",
+    "en": "Unknown error"
+  },
+  "未验证 iOS 音频": {
+    "zh-Hans": "未验证 iOS 音频",
+    "en": "iOS audio unverified"
+  },
+  "本周结束或我主动结束时停止": {
+    "zh-Hans": "本周结束或我主动结束时停止",
+    "en": "Stop at the end of this week or when I end it"
+  },
+  "本地中文识别能力：{0}": {
+    "zh-Hans": "本地中文识别能力：{0}",
+    "en": "On-device Chinese recognition: {0}"
+  },
+  "本地创建委托与修改草稿可用；真实研究和持续云执行未连接。": {
+    "zh-Hans": "本地创建委托与修改草稿可用；真实研究和持续云执行未连接。",
+    "en": "Local agreements and draft edits are available. Real research and ongoing cloud execution are disconnected."
+  },
+  "本地回收站": {
+    "zh-Hans": "本地回收站",
+    "en": "Local trash"
+  },
+  "本地存储无法打开": {
+    "zh-Hans": "本地存储无法打开",
+    "en": "Unable to open local storage"
+  },
+  "本地目录 · 执行与安装均为模拟": {
+    "zh-Hans": "本地目录 · 执行与安装均为模拟",
+    "en": "Local catalog · execution and installation are simulated"
+  },
+  "本地补充的恢复流程": {
+    "zh-Hans": "本地补充的恢复流程",
+    "en": "Local restore flow"
+  },
+  "本地识别不可用，未创建网络识别请求。": {
+    "zh-Hans": "本地识别不可用，未创建网络识别请求。",
+    "en": "Local recognition is unavailable. No network recognition request was created."
+  },
+  "本地配置 · 执行未接真实服务": {
+    "zh-Hans": "本地配置 · 执行未接真实服务",
+    "en": "Local configuration · real execution disconnected"
+  },
+  "本机": {
+    "zh-Hans": "本机",
+    "en": "This device"
+  },
+  "本机保存 · 云同步关闭": {
+    "zh-Hans": "本机保存 · 云同步关闭",
+    "en": "Saved locally · cloud sync off"
+  },
+  "本机文件": {
+    "zh-Hans": "本机文件",
+    "en": "Local file"
+  },
+  "本机消息 · Catpaw Fixture v1 模拟回复": {
+    "zh-Hans": "本机消息 · Catpaw Fixture v1 模拟回复",
+    "en": "Local messages · Catpaw Fixture v1 simulated replies"
+  },
+  "本机私有数据可用": {
+    "zh-Hans": "本机私有数据可用",
+    "en": "Local private data available"
+  },
+  "本次已允许": {
+    "zh-Hans": "本次已允许",
+    "en": "Allowed this time"
+  },
+  "本次朗读文本 · 完整原文仍在阅读器": {
+    "zh-Hans": "本次朗读文本 · 完整原文仍在阅读器",
+    "en": "Text for this readout · full original remains in the reader"
+  },
+  "本次未允许": {
+    "zh-Hans": "本次未允许",
+    "en": "Not allowed this time"
+  },
+  "本次确认已使用": {
+    "zh-Hans": "本次确认已使用",
+    "en": "Confirmation used"
+  },
+  "本次要求": {
+    "zh-Hans": "本次要求",
+    "en": "Requirements for this run"
+  },
+  "本轮已完成": {
+    "zh-Hans": "本轮已完成",
+    "en": "This run completed"
+  },
+  "权限": {
+    "zh-Hans": "权限",
+    "en": "Permissions"
+  },
+  "来源与分项权限": {
+    "zh-Hans": "来源与分项权限",
+    "en": "Sources and individual permissions"
+  },
+  "来源版本 {0} · URL 尚未实际读取": {
+    "zh-Hans": "来源版本 {0} · URL 尚未实际读取",
+    "en": "Source revision {0} · URL has not been fetched"
+  },
+  "查看工作记忆": {
+    "zh-Hans": "查看工作记忆",
+    "en": "View work memory"
+  },
+  "核验 {0} 次": {
+    "zh-Hans": "核验 {0} 次",
+    "en": "Verified {0} times"
+  },
+  "核验中": {
+    "zh-Hans": "核验中",
+    "en": "Verifying"
+  },
+  "检查转写": {
+    "zh-Hans": "检查转写",
+    "en": "Review transcript"
+  },
+  "模型选择 · 配置": {
+    "zh-Hans": "模型选择 · 配置",
+    "en": "Model selection · configuration"
+  },
+  "模拟准备一轮": {
+    "zh-Hans": "模拟准备一轮",
+    "en": "Simulate one preparation run"
+  },
+  "模拟安装到当前环境": {
+    "zh-Hans": "模拟安装到当前环境",
+    "en": "Simulate installation in this environment"
+  },
+  "模拟成果": {
+    "zh-Hans": "模拟成果",
+    "en": "Simulated artifact"
+  },
+  "模拟核验原记录": {
+    "zh-Hans": "模拟核验原记录",
+    "en": "Simulate checking the original record"
+  },
+  "模拟目的地": {
+    "zh-Hans": "模拟目的地",
+    "en": "Simulated destination"
+  },
+  "模拟结果未知": {
+    "zh-Hans": "模拟结果未知",
+    "en": "Simulate unknown outcome"
+  },
+  "模板": {
+    "zh-Hans": "模板",
+    "en": "Templates"
+  },
+  "正在取消": {
+    "zh-Hans": "正在取消",
+    "en": "Cancelling"
+  },
+  "正在播放": {
+    "zh-Hans": "正在播放",
+    "en": "Playing"
+  },
+  "正在模拟回复": {
+    "zh-Hans": "正在模拟回复",
+    "en": "Simulated reply streaming"
+  },
+  "正在等待模拟回复…": {
+    "zh-Hans": "正在等待模拟回复…",
+    "en": "Waiting for simulated reply…"
+  },
+  "此版本尚未记录已读": {
+    "zh-Hans": "此版本尚未记录已读",
+    "en": "This version has no saved read receipt"
+  },
+  "此版本已读": {
+    "zh-Hans": "此版本已读",
+    "en": "This version has been read"
+  },
+  "此版本未读": {
+    "zh-Hans": "此版本未读",
+    "en": "This version is unread"
+  },
+  "段落": {
+    "zh-Hans": "段落",
+    "en": "Paragraph"
+  },
+  "每周": {
+    "zh-Hans": "每周",
+    "en": "Weekly"
+  },
+  "每日": {
+    "zh-Hans": "每日",
+    "en": "Daily"
+  },
+  "没有工作记忆": {
+    "zh-Hans": "没有工作记忆",
+    "en": "No work memory"
+  },
+  "没有模拟在线设备。电脑配对、云账号和心跳接口尚未接入。": {
+    "zh-Hans": "没有模拟在线设备。电脑配对、云账号和心跳接口尚未接入。",
+    "en": "No devices are shown as falsely online. Computer pairing, cloud accounts and heartbeat APIs are disconnected."
+  },
+  "沿用原操作 ID 与输入配置，旧失败记录单独保留。": {
+    "zh-Hans": "沿用原操作 ID 与输入配置，旧失败记录单独保留。",
+    "en": "The original operation ID and input configuration are reused. The previous failed attempt is kept separately."
+  },
+  "浅色 · 本地补充": {
+    "zh-Hans": "浅色 · 本地补充",
+    "en": "Light · local addition"
+  },
+  "深色": {
+    "zh-Hans": "深色",
+    "en": "Dark"
+  },
+  "添加内容": {
+    "zh-Hans": "添加内容",
+    "en": "Add content"
+  },
+  "添加来源配置": {
+    "zh-Hans": "添加来源配置",
+    "en": "Add source configuration"
+  },
+  "清理文档": {
+    "zh-Hans": "清理文档",
+    "en": "Clean up documents"
+  },
+  "演示数据分区": {
+    "zh-Hans": "演示数据分区",
+    "en": "Demo data partition"
+  },
+  "版本 v{0} · 附件：无 · 仅此一次": {
+    "zh-Hans": "版本 v{0} · 附件：无 · 仅此一次",
+    "en": "Version v{0} · no attachment · one time only"
+  },
+  "版本 {0}": {
+    "zh-Hans": "版本 {0}",
+    "en": "Version {0}"
+  },
+  "版本与数据": {
+    "zh-Hans": "版本与数据",
+    "en": "Version and data"
+  },
+  "环境": {
+    "zh-Hans": "环境",
+    "en": "Environment"
+  },
+  "环境已固定，后续切换侧栏不会改变这件任务。": {
+    "zh-Hans": "环境已固定，后续切换侧栏不会改变这件任务。",
+    "en": "The environment is fixed. Switching the sidebar later does not move this task."
+  },
+  "生成周报": {
+    "zh-Hans": "生成周报",
+    "en": "Create weekly report"
+  },
+  "用户明确要求 · revision {0}": {
+    "zh-Hans": "用户明确要求 · revision {0}",
+    "en": "Explicit user requirement · revision {0}"
+  },
+  "电脑": {
+    "zh-Hans": "电脑",
+    "en": "Computer"
+  },
+  "界面控件提供中英文；文档、用户内容、示例正文及系统或服务错误保留原文。英文布局与原生音频仍需设备验收。": {
+    "zh-Hans": "界面控件提供中英文；文档、用户内容、示例正文及系统或服务错误保留原文。英文布局与原生音频仍需设备验收。",
+    "en": "Interface controls support Chinese and English. Documents, user content, example bodies and system or service errors stay in their original language. English layouts and native audio still need device testing."
+  },
+  "界面语言": {
+    "zh-Hans": "界面语言",
+    "en": "Interface language"
+  },
+  "目录": {
+    "zh-Hans": "目录",
+    "en": "Catalog"
+  },
+  "目录中的配置与当前环境独立保存。": {
+    "zh-Hans": "目录中的配置与当前环境独立保存。",
+    "en": "Catalog configuration is saved separately for each environment."
+  },
+  "目录内容不可用": {
+    "zh-Hans": "目录内容不可用",
+    "en": "Catalog content unavailable"
+  },
+  "目录参考版本 v2.0.3": {
+    "zh-Hans": "目录参考版本 v2.0.3",
+    "en": "Catalog reference version v2.0.3"
+  },
+  "目的地：{0}": {
+    "zh-Hans": "目的地：{0}",
+    "en": "Destination: {0}"
+  },
+  "相机和相册仅在你主动选择对应入口时使用系统选择器；不会在启动时申请权限。图片只保存在当前本地项目，设备采集路径尚需真机验收。": {
+    "zh-Hans": "相机和相册仅在你主动选择对应入口时使用系统选择器；不会在启动时申请权限。图片只保存在当前本地项目，设备采集路径尚需真机验收。",
+    "en": "Camera and photos use the system picker only when you choose them. No permissions are requested at launch. Images stay in this local project; device capture still needs testing."
+  },
+  "看资讯": {
+    "zh-Hans": "看资讯",
+    "en": "Read updates"
+  },
+  "真实 Provider 未配置，远端执行均标明模拟。": {
+    "zh-Hans": "真实 Provider 未配置，远端执行均标明模拟。",
+    "en": "No real provider is configured. Remote execution is marked as simulated."
+  },
+  "短稿准备好了，\n随时可以继续改。": {
+    "zh-Hans": "短稿准备好了，\n随时可以继续改。",
+    "en": "Your draft is ready.\nYou can keep revising it."
+  },
+  "确认已到期": {
+    "zh-Hans": "确认已到期",
+    "en": "Confirmation expired"
+  },
+  "确认模拟受理": {
+    "zh-Hans": "确认模拟受理",
+    "en": "Confirm simulated acceptance"
+  },
+  "确认状态：{0}": {
+    "zh-Hans": "确认状态：{0}",
+    "en": "Confirmation status: {0}"
+  },
+  "确认这一次模拟操作": {
+    "zh-Hans": "确认这一次模拟操作",
+    "en": "Confirm this one simulated action"
+  },
+  "示例转写 · 模拟": {
+    "zh-Hans": "示例转写 · 模拟",
+    "en": "Example transcript · simulated"
+  },
+  "示例问法": {
+    "zh-Hans": "示例问法",
+    "en": "Example request"
+  },
+  "移到本地回收站？消息和 ID 可恢复。": {
+    "zh-Hans": "移到本地回收站？消息和 ID 可恢复。",
+    "en": "Move to local trash? Messages and IDs can be restored."
+  },
+  "稿件已变化，请重新预览": {
+    "zh-Hans": "稿件已变化，请重新预览",
+    "en": "Draft changed; preview again"
+  },
+  "空闲": {
+    "zh-Hans": "空闲",
+    "en": "Idle"
+  },
+  "等待开始": {
+    "zh-Hans": "等待开始",
+    "en": "Waiting to start"
+  },
+  "等待本次确认": {
+    "zh-Hans": "等待本次确认",
+    "en": "Waiting for this confirmation"
+  },
+  "等待模拟回复": {
+    "zh-Hans": "等待模拟回复",
+    "en": "Waiting for simulated reply"
+  },
+  "等待资料": {
+    "zh-Hans": "等待资料",
+    "en": "Waiting for materials"
+  },
+  "等待重试": {
+    "zh-Hans": "等待重试",
+    "en": "Waiting to retry"
+  },
+  "类型不匹配。": {
+    "zh-Hans": "类型不匹配。",
+    "en": "Content type does not match."
+  },
+  "系统中文音色": {
+    "zh-Hans": "系统中文音色",
+    "en": "System Chinese voice"
+  },
+  "系统推送与持久云调度尚未连接，不会自动申请通知权限。": {
+    "zh-Hans": "系统推送与持久云调度尚未连接，不会自动申请通知权限。",
+    "en": "System push and persistent cloud scheduling are disconnected. Notification permission is not requested automatically."
+  },
+  "系统朗读未在时限内开始。": {
+    "zh-Hans": "系统朗读未在时限内开始。",
+    "en": "System readout did not start within the time limit."
+  },
+  "系统设置 · 本地偏好": {
+    "zh-Hans": "系统设置 · 本地偏好",
+    "en": "System settings · local preferences"
+  },
+  "素材采集": {
+    "zh-Hans": "素材采集",
+    "en": "Collect material"
+  },
+  "结束后先检查转写，再放入当前会话输入。你仍需主动点击发送。": {
+    "zh-Hans": "结束后先检查转写，再放入当前会话输入。你仍需主动点击发送。",
+    "en": "Review the transcript before putting it into this conversation. You still need to tap Send."
+  },
+  "结束委托": {
+    "zh-Hans": "结束委托",
+    "en": "End delegation"
+  },
+  "结束本句": {
+    "zh-Hans": "结束本句",
+    "en": "Finish this utterance"
+  },
+  "结果未知，先核验": {
+    "zh-Hans": "结果未知，先核验",
+    "en": "Outcome unknown; verify first"
+  },
+  "继续": {
+    "zh-Hans": "继续",
+    "en": "Continue"
+  },
+  "继续在跟进": {
+    "zh-Hans": "继续在跟进",
+    "en": "Still following up"
+  },
+  "继续跟进": {
+    "zh-Hans": "继续跟进",
+    "en": "Following up"
+  },
+  "继续这件事的对话": {
+    "zh-Hans": "继续这件事的对话",
+    "en": "Continue this conversation"
+  },
+  "编辑": {
+    "zh-Hans": "编辑",
+    "en": "Edit"
+  },
+  "编辑与删除记忆": {
+    "zh-Hans": "编辑与删除记忆",
+    "en": "Edit and delete memory"
+  },
+  "编辑工作约定": {
+    "zh-Hans": "编辑工作约定",
+    "en": "Edit work agreement"
+  },
+  "编辑目标、要求与停止条件": {
+    "zh-Hans": "编辑目标、要求与停止条件",
+    "en": "Edit goal, requirements and stop conditions"
+  },
+  "缩小": {
+    "zh-Hans": "缩小",
+    "en": "Zoom out"
+  },
+  "缩放 {0}%": {
+    "zh-Hans": "缩放 {0}%",
+    "en": "Zoom {0}%"
+  },
+  "置顶": {
+    "zh-Hans": "置顶",
+    "en": "Pin"
+  },
+  "翻译": {
+    "zh-Hans": "翻译",
+    "en": "Translate"
+  },
+  "自定义命令": {
+    "zh-Hans": "自定义命令",
+    "en": "Custom commands"
+  },
+  "草稿": {
+    "zh-Hans": "草稿",
+    "en": "Draft"
+  },
+  "表格，可左右滚动查看所有列": {
+    "zh-Hans": "表格，可左右滚动查看所有列",
+    "en": "Table; scroll horizontally to see all columns"
+  },
+  "记忆只来自你明确保存的要求，作用于对应委托。": {
+    "zh-Hans": "记忆只来自你明确保存的要求，作用于对应委托。",
+    "en": "Memory comes only from requirements you explicitly save, and applies to its delegation."
+  },
+  "设备报告支持，尚需实际验收": {
+    "zh-Hans": "设备报告支持，尚需实际验收",
+    "en": "Device reports support; device testing is still required"
+  },
+  "设备音频路径与离线表现尚未验收。当前仅允许内置公开示例；导入文件、会话和私有成果的朗读暂不可用。": {
+    "zh-Hans": "设备音频路径与离线表现尚未验收。当前仅允许内置公开示例；导入文件、会话和私有成果的朗读暂不可用。",
+    "en": "Device audio and offline behavior have not been accepted. Only the built-in public sample can play. Imported files, conversations and private artifacts cannot be read aloud yet."
+  },
+  "设置": {
+    "zh-Hans": "设置",
+    "en": "Settings"
+  },
+  "设计创作": {
+    "zh-Hans": "设计创作",
+    "en": "Design"
+  },
+  "识别超时，保留已转写文字供检查。": {
+    "zh-Hans": "识别超时，保留已转写文字供检查。",
+    "en": "Recognition timed out. The transcript is kept for review."
+  },
+  "该格式暂不支持预览": {
+    "zh-Hans": "该格式暂不支持预览",
+    "en": "Preview is unavailable for this format"
+  },
+  "详情": {
+    "zh-Hans": "详情",
+    "en": "Details"
+  },
+  "语速 · 待设备校准": {
+    "zh-Hans": "语速 · 待设备校准",
+    "en": "Speed · requires device calibration"
+  },
+  "说给助理听": {
+    "zh-Hans": "说给助理听",
+    "en": "Speak to your assistant"
+  },
+  "请主动选择": {
+    "zh-Hans": "请主动选择",
+    "en": "Choose a voice"
+  },
+  "请主动选择可用的系统中文音色。": {
+    "zh-Hans": "请主动选择可用的系统中文音色。",
+    "en": "Choose an available system Chinese voice."
+  },
+  "请从当前环境的会话重新打开。": {
+    "zh-Hans": "请从当前环境的会话重新打开。",
+    "en": "Reopen it from a conversation in this environment."
+  },
+  "请在 iOS 设备上验证本地识别与权限。": {
+    "zh-Hans": "请在 iOS 设备上验证本地识别与权限。",
+    "en": "Verify on-device recognition and permissions on an iOS device."
+  },
+  "请返回当前环境目录。": {
+    "zh-Hans": "请返回当前环境目录。",
+    "en": "Return to this environment's catalog."
+  },
+  "请选择工作区": {
+    "zh-Hans": "请选择工作区",
+    "en": "Select a workspace"
+  },
+  "请选择工作空间。": {
+    "zh-Hans": "请选择工作空间。",
+    "en": "Select a workspace."
+  },
+  "读取本机文件": {
+    "zh-Hans": "读取本机文件",
+    "en": "Reading local file"
+  },
+  "读研究短稿": {
+    "zh-Hans": "读研究短稿",
+    "en": "Read research draft"
+  },
+  "跟随系统": {
+    "zh-Hans": "跟随系统",
+    "en": "Follow system"
+  },
+  "跨任务记忆默认关闭。": {
+    "zh-Hans": "跨任务记忆默认关闭。",
+    "en": "Cross-task memory is off by default."
+  },
+  "转写中": {
+    "zh-Hans": "转写中",
+    "en": "Transcribing"
+  },
+  "输入会保存在当前会话。选择专家与技能可记录工作配置。": {
+    "zh-Hans": "输入会保存在当前会话。选择专家与技能可记录工作配置。",
+    "en": "Input stays in this conversation. Expert and skill selections record work configuration."
+  },
+  "过程与进度来自当前任务记录；没有远程工具执行。": {
+    "zh-Hans": "过程与进度来自当前任务记录；没有远程工具执行。",
+    "en": "Progress comes from this task record. No remote tools are running."
+  },
+  "还原": {
+    "zh-Hans": "还原",
+    "en": "Reset zoom"
+  },
+  "还没有任务": {
+    "zh-Hans": "还没有任务",
+    "en": "No tasks yet"
+  },
+  "还没有准备好的成果": {
+    "zh-Hans": "还没有准备好的成果",
+    "en": "No ready artifacts yet"
+  },
+  "还没有本地文件。可从会话加号导入。": {
+    "zh-Hans": "还没有本地文件。可从会话加号导入。",
+    "en": "No local files yet. Import one from the conversation's plus menu."
+  },
+  "这件事的记忆": {
+    "zh-Hans": "这件事的记忆",
+    "en": "Memory for this task"
+  },
+  "这份内容来自具名本地模拟，尚未进行真实研究。": {
+    "zh-Hans": "这份内容来自具名本地模拟，尚未进行真实研究。",
+    "en": "This content comes from a named local fixture. No real research has run."
+  },
+  "这里只显示当前环境的本地删除项。": {
+    "zh-Hans": "这里只显示当前环境的本地删除项。",
+    "en": "Only locally deleted items from this environment appear here."
+  },
+  "进度 {0}/{1}": {
+    "zh-Hans": "进度 {0}/{1}",
+    "en": "Progress {0}/{1}"
+  },
+  "进度 · {0}": {
+    "zh-Hans": "进度 · {0}",
+    "en": "Progress · {0}"
+  },
+  "进行中": {
+    "zh-Hans": "进行中",
+    "en": "Running"
+  },
+  "选中段落": {
+    "zh-Hans": "选中段落",
+    "en": "Selected paragraph"
+  },
+  "选定图片-{0}.jpg": {
+    "zh-Hans": "选定图片-{0}.jpg",
+    "en": "Selected-image-{0}.jpg"
+  },
+  "选择是本地配置；不会授予工具权限或下载技能。": {
+    "zh-Hans": "选择是本地配置；不会授予工具权限或下载技能。",
+    "en": "Selections are local configuration. They grant no tool permissions and download no skills."
+  },
+  "配置": {
+    "zh-Hans": "配置",
+    "en": "Configuration"
+  },
+  "重命名": {
+    "zh-Hans": "重命名",
+    "en": "Rename"
+  },
+  "重点筛选": {
+    "zh-Hans": "重点筛选",
+    "en": "Select key points"
+  },
+  "重置演示": {
+    "zh-Hans": "重置演示",
+    "en": "Reset demo"
+  },
+  "重置演示分区": {
+    "zh-Hans": "重置演示分区",
+    "en": "Reset demo partition"
+  },
+  "间隔": {
+    "zh-Hans": "间隔",
+    "en": "Interval"
+  },
+  "间隔小时 · 正整数": {
+    "zh-Hans": "间隔小时 · 正整数",
+    "en": "Interval hours · positive integer"
+  },
+  "阅读与修改": {
+    "zh-Hans": "阅读与修改",
+    "en": "Read and edit"
+  },
+  "阅读器": {
+    "zh-Hans": "阅读器",
+    "en": "Reader"
+  },
+  "项目": {
+    "zh-Hans": "项目",
+    "en": "Projects"
+  },
+  "项目不可用": {
+    "zh-Hans": "项目不可用",
+    "en": "Project unavailable"
+  },
+  "项目创建为独立 App 补充流程，原图未展示创建表单。": {
+    "zh-Hans": "项目创建为独立 App 补充流程，原图未展示创建表单。",
+    "en": "Project creation is an added app flow; the reference images did not show its form."
+  },
+  "项目文件": {
+    "zh-Hans": "项目文件",
+    "en": "Project files"
+  },
+  "预览单次模拟外发": {
+    "zh-Hans": "预览单次模拟外发",
+    "en": "Preview one simulated send"
+  },
+  "频率": {
+    "zh-Hans": "频率",
+    "en": "Frequency"
+  },
+  "麦克风/识别：{0}": {
+    "zh-Hans": "麦克风/识别：{0}",
+    "en": "Microphone / recognition: {0}"
+  },
+  "麦克风权限未开启，文字输入仍可用。": {
+    "zh-Hans": "麦克风权限未开启，文字输入仍可用。",
+    "en": "Microphone permission is denied. Text input is still available."
+  },
+  "麦克风音频格式不可用。": {
+    "zh-Hans": "麦克风音频格式不可用。",
+    "en": "Microphone audio format is unavailable."
+  },
+  "麦克风：{0} · 识别：{1}": {
+    "zh-Hans": "麦克风：{0} · 识别：{1}",
+    "en": "Microphone: {0} · recognition: {1}"
+  },
+  "开发联调": {
+    "zh-Hans": "开发联调",
+    "en": "Development testing"
+  },
+  "本地 Gateway · 合成数据": {
+    "zh-Hans": "本地 Gateway · 合成数据",
+    "en": "Local Gateway · synthetic data"
+  },
+  "这是服务成果的只读回流；修改与控制由服务端保存。": {
+    "zh-Hans": "这是服务成果的只读回流；修改与控制由服务端保存。",
+    "en": "This is a read-only service result. Edits and controls are saved by the service."
+  },
+  "本机合成 Gateway · 非真实模型": {
+    "zh-Hans": "本机合成 Gateway · 非真实模型",
+    "en": "Local synthetic Gateway · no real model"
+  },
+  "Gateway · 本地合成": {
+    "zh-Hans": "Gateway · 本地合成",
+    "en": "Gateway · local synthetic"
+  },
+  "尚未检查本地连接": {
+    "zh-Hans": "尚未检查本地连接",
+    "en": "Local connection not checked"
+  },
+  "正在检查本地连接": {
+    "zh-Hans": "正在检查本地连接",
+    "en": "Checking local connection"
+  },
+  "合成 Gateway 已连接 · 真实调用关闭": {
+    "zh-Hans": "合成 Gateway 已连接 · 真实调用关闭",
+    "en": "Synthetic Gateway connected · real calls disabled"
+  },
+  "正在读取合成成果": {
+    "zh-Hans": "正在读取合成成果",
+    "en": "Reading synthetic results"
+  },
+  "合成成果已保存到演示分区": {
+    "zh-Hans": "合成成果已保存到演示分区",
+    "en": "Synthetic results saved in the demo workspace"
+  },
+  "成果版本未变化": {
+    "zh-Hans": "成果版本未变化",
+    "en": "Result versions are unchanged"
+  },
+  "联调未完成，原记录保留": {
+    "zh-Hans": "联调未完成，原记录保留",
+    "en": "Testing did not complete. Original records are preserved."
+  },
+  "默认仍是本机 Fixture；此入口只连接 127.0.0.1:8787。": {
+    "zh-Hans": "默认仍是本机 Fixture；此入口只连接 127.0.0.1:8787。",
+    "en": "The default remains the local Fixture. This entry connects only to 127.0.0.1:8787."
+  },
+  "四个模型名称均为合成测试配置，不代表真实模型质量、免费资格或在线调用。": {
+    "zh-Hans": "四个模型名称均为合成测试配置，不代表真实模型质量、免费资格或在线调用。",
+    "en": "All four model names are synthetic test configurations. They do not indicate real model quality, free eligibility, or live calls."
+  },
+  "检查本地连接": {
+    "zh-Hans": "检查本地连接",
+    "en": "Check local connection"
+  },
+  "合成模型配置": {
+    "zh-Hans": "合成模型配置",
+    "en": "Synthetic model configuration"
+  },
+  "新建 Gateway 演示会话": {
+    "zh-Hans": "新建 Gateway 演示会话",
+    "en": "New Gateway demo conversation"
+  },
+  "同步本地成果": {
+    "zh-Hans": "同步本地成果",
+    "en": "Sync local results"
+  },
+  "服务端生成的委托和版本只读回流；本地输入与会话回复使用同一 Repository。": {
+    "zh-Hans": "服务端生成的委托和版本只读回流；本地输入与会话回复使用同一 Repository。",
+    "en": "Service delegations and versions are mirrored read-only. Local input and conversation replies use the same repository."
+  },
+  "请先在设置中开启演示数据分区，并选择本机环境。用户分区不会发送给联调服务。": {
+    "zh-Hans": "请先在设置中开启演示数据分区，并选择本机环境。用户分区不会发送给联调服务。",
+    "en": "Enable the demo workspace in Settings and select the local environment first. The user workspace is never sent to this test service."
+  },
+  "App 不启动常驻服务；没有真实账号、模型密钥、云执行或系统推送。": {
+    "zh-Hans": "App 不启动常驻服务；没有真实账号、模型密钥、云执行或系统推送。",
+    "en": "The app does not start a persistent service. Real accounts, model keys, cloud execution, and system push are not connected."
+  },
+  "本地 Gateway 联调": {
+    "zh-Hans": "本地 Gateway 联调",
+    "en": "Local Gateway testing"
+  },
+  "Gateway 合成委托 · 只读回流": {
+    "zh-Hans": "Gateway 合成委托 · 只读回流",
+    "en": "Gateway synthetic delegation · read-only mirror"
+  },
+  "暂停、撤权、修改和新运行由服务端保存，本机镜像不授予执行权限。": {
+    "zh-Hans": "暂停、撤权、修改和新运行由服务端保存，本机镜像不授予执行权限。",
+    "en": "Pause, revocation, edits, and new runs are saved by the service. The native mirror grants no execution permission."
+  },
+  "阅读合成成果 v{0}": {
+    "zh-Hans": "阅读合成成果 v{0}",
+    "en": "Read synthetic result v{0}"
+  },
+  "查看本地联调状态": {
+    "zh-Hans": "查看本地联调状态",
+    "en": "View local test status"
+  },
+  "这一轮来自服务端合成运行；本机只读。": {
+    "zh-Hans": "这一轮来自服务端合成运行；本机只读。",
+    "en": "This round comes from a synthetic service run and is read-only here."
+  },
+  "本机保存 · 尚未同步": {
+    "zh-Hans": "本机保存 · 尚未同步",
+    "en": "Saved locally · not synced"
+  },
+  "默认项目 · 本机保存": {
+    "zh-Hans": "默认项目 · 本机保存",
+    "en": "Default project · saved locally"
+  },
+  "本机保存": {
+    "zh-Hans": "本机保存",
+    "en": "Saved locally"
+  },
+  "调试：模拟回复场景": {
+    "zh-Hans": "调试：模拟回复场景",
+    "en": "Debug: simulated reply scenario"
+  },
+  "成功完成": {
+    "zh-Hans": "成功完成",
+    "en": "Completed successfully"
+  },
+  "缺少完成事件": {
+    "zh-Hans": "缺少完成事件",
+    "en": "Missing completion event"
+  },
+  "服务端记忆 · 本机只读": {
+    "zh-Hans": "服务端记忆 · 本机只读",
+    "en": "Service memory · read-only here"
+  },
+  "仅在你主动操作或应用活跃时模拟准备；云端持续执行尚未接入": {
+    "zh-Hans": "仅在你主动操作或应用活跃时模拟准备；云端持续执行尚未接入",
+    "en": "Synthetic preparation runs only on your action or while the app is active. Continuous cloud execution is not connected."
+  },
+  "仅用户主动或 App 活跃时模拟准备；云 worker 未接": {
+    "zh-Hans": "仅在你主动操作或应用活跃时模拟准备；云端持续执行尚未接入",
+    "en": "Synthetic preparation runs only on your action or while the app is active. Continuous cloud execution is not connected."
+  },
+  "结果未知": {
+    "zh-Hans": "结果未知",
+    "en": "Outcome unknown"
+  },
+  "让重要的事，继续向前。": {
+    "zh-Hans": "让重要的事，继续向前。",
+    "en": "Keep important work moving."
+  },
+  "聊一件事，或建立持续跟进的工作约定。": {
+    "zh-Hans": "聊一件事，或建立持续跟进的工作约定。",
+    "en": "Start a conversation or set up ongoing work."
+  },
+  "需要你确认": {
+    "zh-Hans": "需要你确认",
+    "en": "Needs your approval"
+  },
+  "预览并确认这一次操作": {
+    "zh-Hans": "预览并确认这一次操作",
+    "en": "Review and approve this action"
+  },
+  "最新成果": {
+    "zh-Hans": "最新成果",
+    "en": "Latest result"
+  },
+  "成果已准备好": {
+    "zh-Hans": "成果已准备好",
+    "en": "Ready to review"
+  },
+  "本地模拟成果 · v{0}": {
+    "zh-Hans": "本地模拟成果 · v{0}",
+    "en": "Local simulated result · v{0}"
+  },
+  "从一件事开始，准备好的内容会出现在这里。": {
+    "zh-Hans": "从一件事开始，准备好的内容会出现在这里。",
+    "en": "Start with one thing. Your results will appear here."
+  },
+  "你可以随时调整目标、暂停或结束跟进。": {
+    "zh-Hans": "你可以随时调整目标、暂停或结束跟进。",
+    "en": "You can change the goal, pause, or stop at any time."
+  },
+  "本地模拟 · 真实研究与后台执行未连接": {
+    "zh-Hans": "本地模拟 · 真实研究与后台执行未连接",
+    "en": "Local simulation · research and background execution are disconnected"
+  },
+  "本地模拟 · 关闭 App 后不会继续运行": {
+    "zh-Hans": "本地模拟 · 关闭 App 后不会继续运行",
+    "en": "Local simulation · stops running when the app closes"
+  },
+  "最近进展": {
+    "zh-Hans": "最近进展",
+    "en": "Recent activity"
+  },
+  "查看进度与恢复操作": {
+    "zh-Hans": "查看进度与恢复操作",
+    "en": "View progress and recovery options"
+  },
+  "成果": {
+    "zh-Hans": "成果",
+    "en": "Results"
+  },
+  "准备好后，你可以在这里阅读、修改和确认下一步。": {
+    "zh-Hans": "准备好后，你可以在这里阅读、修改和确认下一步。",
+    "en": "Read, edit, and approve next steps here when a result is ready."
+  },
+  "单次模拟操作": {
+    "zh-Hans": "单次模拟操作",
+    "en": "One simulated action"
+  },
+  "操作与确认": {
+    "zh-Hans": "操作与确认",
+    "en": "Actions and approvals"
+  },
+  "操作记录": {
+    "zh-Hans": "操作记录",
+    "en": "Action history"
+  },
+  "模拟回复 · 未连接真实模型": {
+    "zh-Hans": "模拟回复 · 未连接真实模型",
+    "en": "Simulated replies · no live model connected"
+  },
+  "从一个问题、一份资料，或一个想法开始。": {
+    "zh-Hans": "从一个问题、一份资料，或一个想法开始。",
+    "en": "Start with a question, a document, or an idea."
+  },
+  "模拟回复 · 本机保存": {
+    "zh-Hans": "模拟回复 · 本机保存",
+    "en": "Simulated replies · saved on this device"
+  },
+  "你": {
+    "zh-Hans": "你",
+    "en": "You"
+  },
+  "助理 · 模拟回复": {
+    "zh-Hans": "助理 · 模拟回复",
+    "en": "Assistant · simulated reply"
+  },
+  "更多操作": {
+    "zh-Hans": "更多操作",
+    "en": "More actions"
+  },
+  "文件校验信息": {
+    "zh-Hans": "文件校验信息",
+    "en": "File verification details"
+  }
+}

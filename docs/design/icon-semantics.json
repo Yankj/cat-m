@@ -1,0 +1,31 @@
+{
+  "policy": "Use system SF Symbols for standard UI actions. No new app icon or brand mark is included.",
+  "rendering": "monochrome", "weight": "medium", "scale": "medium", "body_size": 19,
+  "dynamic_type": "ScaledMetric(relativeTo: body); status symbols use caption metrics",
+  "decorative_symbols": "accessibilityHidden; the adjacent label names the action",
+  "icon_only_buttons": "explicit localized accessibilityLabel and minimum 44pt target",
+  "symbols": [
+    {"context":"sidebar open","name":"line.3.horizontal"},
+    {"context":"new conversation","name":"square.and.pencil"},
+    {"context":"assistant destination","name":"person.crop.circle","existing_identifier":"sidebar.sparkles"},
+    {"context":"conversation","name":"bubble.left"},
+    {"context":"ongoing delegation","name":"arrow.triangle.branch"},
+    {"context":"project","name":"folder"},
+    {"context":"document / artifact","name":"doc.text"},
+    {"context":"source","name":"link"},
+    {"context":"memory","name":"bookmark"},
+    {"context":"configuration","name":"slider.horizontal.3"},
+    {"context":"voice input","name":"waveform"},
+    {"context":"send","name":"arrow.up","treatment":"ink fill, onInk symbol"},
+    {"context":"pending approval","name":"hand.raised","tone":"attention"},
+    {"context":"active","name":"clock","tone":"active"},
+    {"context":"paused","name":"pause.circle","tone":"attention"},
+    {"context":"completed","name":"checkmark.circle","tone":"success"},
+    {"context":"failed","name":"exclamationmark.circle","tone":"failure"},
+    {"context":"unknown / simulation boundary","name":"info.circle","tone":"neutral"},
+    {"context":"edit draft","name":"pencil"},
+    {"context":"read aloud","name":"speaker.wave.2"},
+    {"context":"system share","name":"square.and.arrow.up"}
+  ],
+  "motion": "Only primary press opacity animates for 120ms; disabled when Reduce Motion is enabled. No decorative symbol animation."
+}

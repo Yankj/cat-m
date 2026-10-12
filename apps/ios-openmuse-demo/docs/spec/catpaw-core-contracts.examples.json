@@ -1,0 +1,72 @@
+{
+  "notice": "Synthetic examples only. Digests are illustrative valid-format placeholders, not computed signatures or live authorizations.",
+  "records": [
+    {
+      "schema_version": "1.0",
+      "id": "act_example",
+      "tenant_id": "tenant_example",
+      "owner_user_id": "user_example",
+      "revision": 1,
+      "created_at": "2026-10-10T12:00:00Z",
+      "updated_at": "2026-10-10T12:00:00Z",
+      "record_type": "action",
+      "operation_id": "op_example",
+      "delegation_id": "del_example",
+      "delegation_revision": 1,
+      "tool_id": "artifact.private_write",
+      "tool_version": "1.0",
+      "actor_account_id": "user_example",
+      "effect_class": "internal_private_write",
+      "resolved_targets": [],
+      "arguments_ref": "args_example",
+      "arguments_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "artifact_refs": [],
+      "data_categories": [
+        "public_source_summary",
+        "user_research_topic"
+      ],
+      "preconditions": [
+        "delegation_active",
+        "grant_active",
+        "expected_base_version_matches"
+      ],
+      "grant_id": "grant_example",
+      "grant_revision": 1,
+      "policy_version": "policy_v1",
+      "expires_at": "2026-10-10T13:00:00Z",
+      "idempotency_key": "op_example",
+      "required_confirmation": "none",
+      "action_digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    {
+      "schema_version": "1.0",
+      "id": "receipt_example",
+      "tenant_id": "tenant_example",
+      "owner_user_id": "user_example",
+      "revision": 1,
+      "created_at": "2026-10-10T12:00:00Z",
+      "updated_at": "2026-10-10T12:00:00Z",
+      "record_type": "receipt",
+      "operation_id": "op_example",
+      "run_id": "run_example",
+      "attempt_id": "attempt_1",
+      "adapter_id": "artifact.private_write",
+      "adapter_version": "1.0",
+      "action_digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "authorization_decision_id": "authz_example",
+      "request_started_at": "2026-10-10T12:01:00Z",
+      "status": "verified",
+      "response_class": "success_response",
+      "observed_effect": "Private artifact version 2 read back with expected content hash.",
+      "verification_method": "fixed_version_readback",
+      "verification_evidence_refs": [
+        "evidence_readback_example"
+      ],
+      "verified_at": "2026-10-10T12:01:01Z",
+      "retry_safety": "same_key_only",
+      "dispatch_commit_seq": 412,
+      "dispatch_committed_at": "2026-10-10T12:00:59Z",
+      "transport_state": "response_received"
+    }
+  ]
+}
