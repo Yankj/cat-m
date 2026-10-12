@@ -1,5 +1,7 @@
 # 原生交互与设计约束
 
+2026-10-13重启设计入口：[iPhone对标规格UX-1](ios-codex-experience-spec.md)、[前期截图与观察对照](ios-codex-reference-review-2026-10-13.md)、[可点按布局提案](prototypes/catpaw-ios-ux/index.html)、[AF-U01–12验收](../acceptance/ios-codex-experience-acceptance.md)。当前结果只在主计划；以下保留历史设计身份。
+
 当前交互裁决与验收以 [主交付计划](../status/master-plan.md) 为唯一索引：conversation-first替代散装Demo/手建委托；外围r4暂停，A1正式图标选择保留。当前原生owner独立开发，未冻结源码/图标不在本轮复制；图标选择/接入声明与实际iOS资产编译/真机呈现分开记账。
 
 以下约束、tokens及截图属于v1/r3历史实现。新主屏以一条自然对话、消息输入、服务端任务/审批/产物投影为中心，不能把旧委托表单或截图作为新体验通过证明。

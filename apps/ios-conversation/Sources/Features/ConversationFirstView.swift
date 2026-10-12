@@ -14,6 +14,8 @@ import CatpawImageComposer
     @Environment(\.locale) private var uiLocale
     private func ui(_ key:String,arguments:[String]=[])->String {AppLanguage(locale:uiLocale).ui(key,arguments:arguments)}
     @State private var scrollTask:Task<Void,Never>?
+    @State private var followingLatest=true
+    @State private var latestVisible=true
     @State private var sidebarPresented=false
     @State private var path:[ConversationHostDestination]=[]
     @AccessibilityFocusState private var menuFocused:Bool
@@ -71,9 +73,35 @@ import CatpawImageComposer
                         } else { ProgressView(ui("打开对话")) }
                         Color.clear.frame(height: 1).id("latest")
                     }.padding(20).frame(maxWidth: 680).frame(maxWidth: .infinity)
+                        .background(ConversationScrollObserver { distance,userScrolled in
+                            latestVisible=distance <= 48
+                            if userScrolled {
+                                followingLatest=latestVisible
+                                if !followingLatest {scrollTask?.cancel();scrollTask=nil}
+                            }
+                            #if DEBUG
+                            probe.reading(followingLatest:followingLatest,distance:distance)
+                            #endif
+                        }.frame(width:0,height:0).accessibilityHidden(true))
                 }.scrollDismissesKeyboard(.interactively)
+                    .accessibilityIdentifier("chat.transcript")
+                    .overlay(alignment:.bottomTrailing) {
+                        if !followingLatest && !latestVisible {
+                            Button {
+                                followingLatest=true;scrollTask?.cancel();scrollTask=nil
+                                proxy.scrollTo("latest",anchor:.bottom)
+                            } label: {Label(ui("回到最新"),systemImage:"arrow.down").font(.footnote).padding(.horizontal,14).frame(minHeight:44)}
+                                .buttonStyle(CatpawPressButtonStyle()).background(CatpawColors.panel,in:Capsule())
+                                .overlay(Capsule().strokeBorder(CatpawColors.separator)).padding(12)
+                                .accessibilityHint(ui("返回对话底部，继续跟随新回复")).accessibilityIdentifier("chat.jumpToLatest")
+                        }
+                    }
                     .onChange(of: model.session?.messages.last?.content) { _, _ in scheduleScroll(proxy) }
                     .onChange(of: displayMessages.count) { _, _ in scheduleScroll(proxy) }
+                    .onChange(of:model.conversationID) { _,_ in
+                        scrollTask?.cancel();scrollTask=nil;followingLatest=true;latestVisible=true
+                        scheduleScroll(proxy)
+                    }
                     .safeAreaInset(edge: .bottom, spacing: 0) { composer }
             }
             .background(CatpawColors.background).navigationTitle("Catpaw").navigationBarTitleDisplayMode(.inline)
@@ -97,8 +125,8 @@ import CatpawImageComposer
         }
     }
     private func scheduleScroll(_ proxy:ScrollViewProxy) {
-        guard scrollTask == nil else {return}
-        scrollTask=Task {try? await Task.sleep(nanoseconds:100_000_000);guard !Task.isCancelled else{return};P0ScrollTiming.scroll {proxy.scrollTo("latest",anchor:.bottom)};scrollTask=nil}
+        guard followingLatest,scrollTask == nil else {return}
+        scrollTask=Task {try? await Task.sleep(nanoseconds:100_000_000);guard !Task.isCancelled,followingLatest else{return};P0ScrollTiming.scroll {proxy.scrollTo("latest",anchor:.bottom)};scrollTask=nil}
     }
     private var feedbackNavigation: some View {
         chatNavigation.tint(CatpawColors.ink).foregroundStyle(CatpawColors.ink)
@@ -238,6 +266,7 @@ import CatpawImageComposer
         return messages
     }
     private func submitDraft() {
+        if canSendDraft {followingLatest=true}
         let time=ProcessInfo.processInfo.systemUptime,old=Set(model.outgoingMessages.map(\.id))
         model.prepareSend()
         #if DEBUG

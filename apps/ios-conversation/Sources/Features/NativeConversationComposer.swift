@@ -96,3 +96,55 @@ import UIKit
         return UIFont.preferredFont(forTextStyle:.body,compatibleWith:UITraitCollection(preferredContentSizeCategory:category))
     }
 }
+
+/// Observe the owning scroll view without replacing SwiftUI's delegate.
+/// Layout/content growth reports visibility; only a user's scroll changes following.
+@MainActor struct ConversationScrollObserver:UIViewRepresentable {
+    var position:(CGFloat,Bool)->Void
+    func makeUIView(context:Context)->ConversationScrollTrackingView {
+        let view=ConversationScrollTrackingView();view.position=position;return view
+    }
+    func updateUIView(_ view:ConversationScrollTrackingView,context:Context) {view.position=position;view.attachIfNeeded()}
+    static func dismantleUIView(_ view:ConversationScrollTrackingView,coordinator:()) {view.detach()}
+}
+
+@MainActor final class ConversationScrollTrackingView:UIView {
+    var position:((CGFloat,Bool)->Void)?
+    private weak var scroll:UIScrollView?
+    private var offsetObservation:NSKeyValueObservation?
+    private var sizeObservation:NSKeyValueObservation?
+    override init(frame:CGRect) {super.init(frame:frame);isUserInteractionEnabled=false}
+    required init?(coder:NSCoder) {fatalError("init(coder:) is unavailable")}
+    override func didMoveToWindow() {super.didMoveToWindow();attachIfNeeded()}
+    override func didMoveToSuperview() {super.didMoveToSuperview();attachIfNeeded()}
+    func attachIfNeeded() {
+        guard window != nil else {detach();return}
+        var ancestor=superview
+        while let view=ancestor {
+            if let candidate=view as? UIScrollView {
+                guard scroll !== candidate else {return}
+                detach();scroll=candidate
+                offsetObservation=candidate.observe(\.contentOffset,options:[.new]) { [weak self] _,_ in
+                    MainActor.assumeIsolated {self?.report(allowUserScroll:true)}
+                }
+                sizeObservation=candidate.observe(\.contentSize,options:[.new]) { [weak self] _,_ in
+                    MainActor.assumeIsolated {self?.report(allowUserScroll:false)}
+                }
+                report(allowUserScroll:false);return
+            }
+            ancestor=view.superview
+        }
+    }
+    func detach() {offsetObservation?.invalidate();sizeObservation?.invalidate();offsetObservation=nil;sizeObservation=nil;scroll=nil}
+    private func report(allowUserScroll:Bool) {
+        guard let scroll else {return}
+        let bottom=scroll.contentSize.height+scroll.adjustedContentInset.bottom
+        let distance=max(0,bottom-scroll.contentOffset.y-scroll.bounds.height)
+        let userScrolled=allowUserScroll && (scroll.isDragging || scroll.isDecelerating)
+        // KVO may run during SwiftUI layout; deliver state after that update.
+        DispatchQueue.main.async { [weak self,weak scroll] in
+            guard let self,let scroll,self.scroll === scroll,self.window != nil else {return}
+            self.position?(distance,userScrolled)
+        }
+    }
+}

@@ -15,8 +15,9 @@
 | 最终handoff | 已读旧主仓handoff；用户确认相关任务停止。原文保存在忽略的local-audit；12项WIP与编译阻塞均相符 |
 | 首个修复 | 新仓已复现并修复getter缺return；候选包含许可review与弹窗分离、稳定确认入口、队列折叠、持久回复证据；新增拒绝重开/旧revision回归，最终合成验证通过 |
 | 本地检查 | 冻结合同/上游/历史来源完整性PASS；便携对话7/7、队列9/9 PASS；最终39/39原生＋1/1实际弹窗UI PASS，DeviceTrial无签名产品配置build PASS；证据限合成/Simulator，物理手机与provider未验 |
-| GitHub | 已核main `78d9002`、默认prepare/local-assets；HTTPS Git无终端认证，SSH主机校验不匹配，未绕过。已有连接器可读写，将以main为父发布安全差异，不推原始本地历史 |
-| 手机/API | 手机旧0.3.0(15)，来源 `4750142`；APIv19/tick7是旧handoff归属，未刷新部署。新候选未安装，不当作手机现状 |
+| GitHub | PR #1已合入main `a905b47`，候选提交 `ee0f4bd`；远端、维护分支和本地main源码tree一致 `74400a57`。默认分支仍prepare/local-assets；终端无认证、SSH校验不匹配，未绕过。原始历史仅本地保留 |
+| 手机/API | 手机仍旧0.3.0(15)，来源 `4750142`；Supabase只读确认APIv19/tick7 ACTIVE，实际50/43文件源码已捕获，14个共享文件有差异。新候选未安装，未部署 |
+| 新候选包 | 0.3.0(16)，独立Git archive绑定main `a905b47`；DeviceTrial非DEBUG构建、严格签名、原证书/profile/entitlements及IPA逐字节检查PASS。仅复用五项原公开配置，安装确认待回复；见[包证据](../acceptance/restart-build16-2026-10-13.md) |
 | 真实链路 | 旧build15人工新会话同意后仍等待，未观察完整回复。许可→发送FAIL，模型UNVERIFIED；先复验现有路由 |
 
 旧仓不删除、用户数据不重置、签名凭据不发布。原始机器记录和大型旧性能采样保留本机/legacy历史，发布经扫描的spec、源码、合成摘要与原始trace hash。远端既有参数化签名模板与治理文档保留。
@@ -25,8 +26,8 @@
 
 | 切片 | 用户可见交付 | 依赖 | 门槛 / 当前 |
 |---|---|---|---|
-| S00 维护入口与同步 | 单一维护目录、GitHub源码、plan/spec/验收/handoff齐备 | 无 | hash/tree一致与扫描通过；迁移完成，同步验证中 |
-| S01 真对话与稳定许可 | 允许后能回答/追问/重开；许可可找回，队列轻量，状态诚实 | S00 | AF-A02–05与A17相关回归；修getter→候选单测/UI→同版真实路径。IN_PROGRESS；真模型NOT_RUN |
+| S00 维护入口与同步 | 单一维护目录、GitHub源码、plan/spec/验收/handoff齐备 | 无 | 首轮PASS：PR #1 main已同步且源码tree相同，候选包准备完成；追加实际部署来源与体验合同后再同步 |
+| S01 真对话与稳定许可 | 允许后能回答/追问/重开；许可可找回，队列轻量，状态诚实 | S00 | IN_PROGRESS：许可39项原生与实际弹窗PASS；追加向上阅读保持位置/回到最新修复，实际滚动＋许可UI 2/2 PASS。build16用于先复验现有路由，安装确认待回复；真模型NOT_RUN |
 | S02 真图片与连续体验 | 合成图真实理解；长文/前后台可用 | S01 | AF-A06与A04/05；NOT_RUN，不自行放宽视觉路由 |
 | S03 执行审批成果 | 自然形成计划，可改/停/恢复；等待有入口；成果回对话/活动 | S01 | AF-A07–10；映射现有worker/store，先同task恢复试验。NOT_RUN |
 | S04 记忆闭环 | 保存/来源/更正/删除，新会话生效 | S01 | AF-A11；接既有端口与真实PG，NOT_RUN |
@@ -45,6 +46,8 @@ S01通过后S02/S03/S04代码可在合同明确时独立推进；同一文件/�
 
 总 Goal AF-G5 只有在同版源码/包/服务上，AF-A01–18 和研究交付、变化跟进、本地日程三条组合路径全部通过才完成。AF-G0–G4 可以分阶段签收；基线准备、短模型探针和组件通过均不关闭总 Goal。即时云端变化推送与云电脑分别按扩展范围验收；已知时间本地提醒不作 APNs 证据。
 
+用户已明确以iPhone体验为主、借鉴桌面Codex信息结构。新增必需设计Goal AF-GD及[UX-1规格](../design/ios-codex-experience-spec.md) / [AF-U01–12](../acceptance/ios-codex-experience-acceptance.md)，并纳入AF-A17和总AF-G5。同版18项父验收、12项UX细分及三条组合路径全部通过才签收。前期Catpaw原图与ChatGPT/dot观察已核对，具体[对照记录](../design/ios-codex-reference-review-2026-10-13.md)保留证据边界；[可点按提案](../design/prototypes/catpaw-ios-ux/index.html)已准备，[浏览器样例交互检查](../acceptance/ios-ux-proposal-review-2026-10-13.md)通过；设计方向待用户审阅，原生UX验收NOT_RUN。设计逐片推进，许可/模型首片继续。
+
 1. 每片固定source/合同/case；交源码、证据层、未验项与下一步，实时状态只更新本页。
 2. 真实模型试验限定数量与结束条件；旧unknown只读核对。现有路由失败后才讨论切换。
 3. 验证范围因变更、失败或风险扩大，不为测试数重复跑。构建与真机性能分别记录。
@@ -54,4 +57,4 @@ S01通过后S02/S03/S04代码可在合同明确时独立推进；同一文件/�
 
 ## 最近验证
 
-新仓复现getter编译FAIL，已修正；最终39原生＋1 UI、产品配置build、便携对话/队列、源码/本地化、完整性与敏感扫描PASS。当前未运行真实模型、签名、手机安装、云部署或tick。原始日志在忽略build目录；精简绑定hash结果在[首片验收](../acceptance/restart-permission-2026-10-13.md)完成后归档。
+新仓复现getter编译FAIL，已修正；最终39原生＋1 UI、产品配置build、便携对话/队列、源码/本地化、完整性与敏感扫描PASS。追加[阅读锚点回归](../acceptance/restart-reading-2026-10-13.md)真实滚动＋共用许可UI 2/2、非DEBUG SDK源码检查与666双语资源PASS；该修复不在冻结build16中。新build16非DEBUG设备配置签名构建与原签名身份核对PASS，来源绑定main；没有运行真实模型、手机安装、云部署或tick。实际部署源码通过只读API获取，50/43文件hash及14项差异校验PASS。原始日志和IPA在忽略build目录；精简证据见[许可回归](../acceptance/restart-permission-2026-10-13.md)、[build16](../acceptance/restart-build16-2026-10-13.md)和[部署来源](../../services/edge/deployed-baselines/README.md)。

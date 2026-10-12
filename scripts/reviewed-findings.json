@@ -1,5 +1,5 @@
 {
-  "reviewed_utc_date": "2026-10-11",
+  "reviewed_utc_date": "2026-10-13",
   "policy": "An exception applies only to the exact path, category, line and file SHA256. Any byte change requires fresh review.",
   "findings": [
     {
@@ -237,6 +237,18 @@
       "category": "png_metadata_requires_review",
       "sha256": "0e7a986192c1fc21570d177a26889502e8b2a2a9d4fab314e96c4c8ef770c81b",
       "reason": "Reviewed every eXIf/iTXt byte: Screenshot label, orientation, dimensions and XMP namespaces only; no device/user identity. Native Simulator pixels contain only isolated offline fixture and owned synthetic image; unaltered bytes retained."
+    },
+    {
+      "path": "docs/acceptance/evidence/ios-ux-proposal-20261013/chat-light.jpg",
+      "category": "unexpected_binary",
+      "sha256": "52e9294e77bd74c2eafaf017311ebc3a906a52fb34249449da09ae117baa89d8",
+      "reason": "Reviewed UX-1 browser capture from our self-contained synthetic proposal. Only authored fixture content is visible; no real phone/user conversation. JPEG APP0 is the standard 14-byte JFIF header, with no EXIF/XMP/comment or other APP segments. Exact-path/hash binary asset approval; any byte change requires renewed review."
+    },
+    {
+      "path": "docs/acceptance/evidence/ios-ux-proposal-20261013/approval-dark-large.jpg",
+      "category": "unexpected_binary",
+      "sha256": "558e36ee3285ccf7732a59d807f374b4fc13b4c1b2a9b15ca999cea898d77124",
+      "reason": "Reviewed UX-1 browser capture from our self-contained synthetic proposal. Only authored fixture content is visible; no real phone/user conversation. JPEG APP0 is the standard 14-byte JFIF header, with no EXIF/XMP/comment or other APP segments. Exact-path/hash binary asset approval; any byte change requires renewed review."
     }
   ]
 }
