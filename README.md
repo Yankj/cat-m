@@ -46,4 +46,4 @@ CATPAW_DENO_BIN=<已有Deno路径> CATPAW_PUBLIC_NPM_CACHE=<已有Deno公开cach
 
 该脚本在忽略的 `services/edge/build/` 生成 import map，将固定版本 jose/postgres 指向已有公开缓存；原生产源码/测试/lock 不改。没有缓存时明确失败，不联网补齐。原 QA `prepare.py` 需要相应冻结输入，且会重写其报告；不要在当前目录随意运行它或用新版本替换旧证据。
 
-运行时 public config、凭据、设备安装、侧栏宿主接线、云部署与 GitHub push 均另由协调安排。`origin` 只设置为指定 GitHub URL；本批未认证或访问远端。具体本次结果见 [固定目录验收](docs/acceptance/local-fixed-directory.md)。维护约定见 [CONTRIBUTING.md](CONTRIBUTING.md)。
+运行时 public config、凭据、设备安装、侧栏宿主接线、云部署与 GitHub push 均另由协调安排。首次整合记录中的远端状态是当时的快照；当前 GitHub 分支按分支管理约定维护。具体本次结果见 [固定目录验收](docs/acceptance/local-fixed-directory.md)。维护约定见 [CONTRIBUTING.md](CONTRIBUTING.md)，分支职责与同步方式见 [分支管理](docs/development/branch-management.md)。
