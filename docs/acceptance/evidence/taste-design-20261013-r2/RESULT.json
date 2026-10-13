@@ -1,0 +1,988 @@
+{
+  "schema_version": 1,
+  "recorded_on": "2026-10-13",
+  "design_revision": "UX-1-R2",
+  "evidence_layer": "synthetic_interactive_design_review",
+  "scope": "User-requested taste-skill visual, interaction and motion design on existing Catpaw framework; no native implementation or runtime Goal execution.",
+  "git_head": "9dc9cd921b002035f6b6430ffd56ddd93137a949",
+  "branch": "docs/restart-design-integration",
+  "inherited_wip_preserved": true,
+  "skill": {
+    "name": "design-taste-frontend",
+    "user_source": "https://github.com/leonxlnx/taste-skill",
+    "read_local_sha256": "2136ed83016bfada39f7b8013b2aafd9f78fcbd9799110ed222a79c6419ba5fb",
+    "remote_commit_equivalence_claimed": false,
+    "applied": "Brief inference, audit first, typography/color/shape consistency, motivated finite motion, complete states. Native mobile exception uses Apple HIG.",
+    "not_applicable": "Marketing photography/hero layouts/web default libraries/Lighthouse targets; this is a native design proposal harness."
+  },
+  "inputs": [
+    {
+      "path": "docs/design/taste-visual-motion-r2.md",
+      "sha256": "35cc1b992245da042cdbee43d66949bc303942cd472d78358a9c7cedad55a648"
+    },
+    {
+      "path": "docs/design/taste-visual-motion-r2.json",
+      "sha256": "7ee09a5f99be86d1f5391bc047b846b82419f1ebdfd3bd55889c204bb1f86f60"
+    },
+    {
+      "path": "docs/design/prototypes/catpaw-taste/index.html",
+      "sha256": "a27d2248a7ebc35cfcfda20de2e87f4d617ba3e98e9a44007d1486590f610f7c"
+    },
+    {
+      "path": "docs/design/prototypes/catpaw-taste/styles.css",
+      "sha256": "b463004e6aa7abf1dcfe2c29cec21143e1833f4e755f8f93d3ab90408d038edd"
+    },
+    {
+      "path": "docs/design/prototypes/catpaw-taste/app.js",
+      "sha256": "cfd4fd875eca1e4ed4ef7620ad6ea51a3c8f5fecef1456e2bd9fa95d0e6fbfb7"
+    },
+    {
+      "path": "docs/design/prototypes/catpaw-taste/README.md",
+      "sha256": "cdf7f0f9c9458012764189af0f402d3e528cb28ada482b7e3b99636bc67ec735"
+    },
+    {
+      "path": "docs/design/ios-codex-experience-spec.md",
+      "sha256": "9619bedbdffc5b9cc8f2bfd1beeda94de3ccea58644a33cb9a45f664b594c966"
+    },
+    {
+      "path": "docs/design/README.md",
+      "sha256": "1c2e715689a24387df6593491b6881e74bff1da616a199b2c532fdea75b09028"
+    },
+    {
+      "path": "docs/acceptance/ios-codex-experience-acceptance.md",
+      "sha256": "4930422f46c00ba8e13e793171dfee73d3c8eff45a8c5f15a98686fe0fc26d8f"
+    },
+    {
+      "path": "docs/acceptance/ios-codex-experience-acceptance.json",
+      "sha256": "f70cb3c34e3ef3fd2f0740e90d633282455b1b743c9c196c41ed4ea993812b6f"
+    },
+    {
+      "path": "docs/planning/AF-1/development-start-contract.md",
+      "sha256": "f456d4669b8788faab0aca40ef8bfb76807364f0646ae35ab511b9183765f446"
+    },
+    {
+      "path": "docs/planning/AF-1/long-task-development-prompt.md",
+      "sha256": "ddda57f6b0c8236eb9c281452dcb78afb68fbdf04ea2696c294b04d271c4ffb9"
+    },
+    {
+      "path": "docs/planning/AF-1/goal-evidence-map.json",
+      "sha256": "332fe8b0595940bb3b89de418c1ba3854df22504b9e188dea14740b678cf526a"
+    },
+    {
+      "path": "docs/status/master-plan.md",
+      "sha256": "25937294e54efbc70a24acaa9bb0c996d78605544ab7c355d0d9de5da4f0bfc6"
+    },
+    {
+      "path": "scripts/reviewed-findings.json",
+      "sha256": "21850643459b4d07e8c48c854b070b512598d0c044b5aa67ac955fd0f044c2f0"
+    }
+  ],
+  "pre_run_wip_inputs": [
+    {
+      "path": "docs/design/ios-codex-experience-spec.md",
+      "sha256": "4a6c5d8da06d19a20eaf6c88312b224baf648552fea8e24735dda7322eb7cd95"
+    },
+    {
+      "path": "docs/design/README.md",
+      "sha256": "92748a46d5ab0fe9691f61ef21f0b8b5ed6bebc5816e4d77d6487b17dc6d45e9"
+    },
+    {
+      "path": "docs/acceptance/ios-codex-experience-acceptance.md",
+      "sha256": "0df4bf4415f05a78074bfb00d6288a0a1143aaef82776fe963d0840a61fc61a3"
+    },
+    {
+      "path": "docs/acceptance/ios-codex-experience-acceptance.json",
+      "sha256": "03318e612c9a36932acf424e273152b6748a19da3728d63ae5ace6d90fe0d485"
+    },
+    {
+      "path": "docs/planning/AF-1/development-start-contract.md",
+      "sha256": "42712d178fca2eb76bb8b9555c92d81369a336a15994f46a6886890d795191fa"
+    },
+    {
+      "path": "docs/planning/AF-1/long-task-development-prompt.md",
+      "sha256": "ccda61f705cf8745db260465e54b94476bd242c470b5d0d9abb75f748ad5c12e"
+    },
+    {
+      "path": "docs/planning/AF-1/goal-evidence-map.json",
+      "sha256": "755ad87c77be975f160fb6e80d09914630685a87dc64c7f8d4b36ce16126c6a1"
+    },
+    {
+      "path": "docs/status/master-plan.md",
+      "sha256": "dfada2cdef9bd48af8bf90421cf0eb85a36b09c47265be0fa5e2318f5edd36fb"
+    },
+    {
+      "path": "scripts/reviewed-findings.json",
+      "sha256": "f249461bb2e600461e81975ecf50e3f0fe91e6bcab2a3c28b08318fa1e746022"
+    }
+  ],
+  "checks": [
+    {
+      "name": "plan",
+      "chunk_id": "ff2c1a",
+      "wall_time_seconds": 0.036158,
+      "exit_code": 0,
+      "original_token_count": 28,
+      "output": "PASS AF-1: 12 requirements, 21 owned criteria, 9 acyclic slices; this is plan integrity, not product acceptance\n"
+    },
+    {
+      "name": "goals",
+      "chunk_id": "452e83",
+      "wall_time_seconds": 0.07829925,
+      "exit_code": 0,
+      "original_token_count": 84,
+      "output": "PASS AF-1-G3-UX1 planning: 7 goals, 16 work units, 18 required cases, 12 UX cases, 3 scenarios; DAG/ownership/links valid\nPASS 6 concurrent design lanes, 41 hash-bound Goal inputs; 0 local-only input(s) unavailable in this checkout\nLIMIT planning integrity only; no product, model, database, deployment or device acceptance executed\n"
+    },
+    {
+      "name": "final",
+      "chunk_id": "bf5ba9",
+      "wall_time_seconds": 0.042283708,
+      "exit_code": 0,
+      "original_token_count": 76,
+      "output": "PASS FINAL-1: 3 goals; 9 mandatory quality checks; 8 comparison cases; 4 named comparators\nPASS 18 functional / 12 UX / 3 scenario mappings; work/design ownership; closure, thresholds and links\nLIMIT planning validation only; no native, model, database, scheduler, daily-use or competitor acceptance run\n"
+    },
+    {
+      "name": "cgui",
+      "chunk_id": "fa5223",
+      "wall_time_seconds": 0.062102375,
+      "exit_code": 0,
+      "original_token_count": 85,
+      "output": "PASS CGUI-1: 10 mandatory cases; 6 domain cards; 3 presentations/actions; final release traceability\nPASS deterministic truth fixtures, zero automatic requests, source identities and links; 6/6 cached source bytes checked\nLIMIT static planning integrity only; no renderer, model, database, device, SDK installation or acceptance execution\n"
+    },
+    {
+      "name": "frozen",
+      "chunk_id": "7be3c8",
+      "wall_time_seconds": 0.250046209,
+      "exit_code": 0,
+      "original_token_count": 116,
+      "output": "PASS frozen contract, 44 pinned originals (SHA256 + Git blob SHA1), MIT identity\nPASS exact patch reconstruction and all runtime TypeScript copies\nPASS 188 imported bytes/provenance, final v1 source identity, 10 frozen specs, 3 screenshots\nPASS 121 frozen r3 imports, 43 App sources/101-item final manifest, contract/spec/replay and 4 synthetic screenshots\nLIMIT no iOS SDK build, Simulator, service listener, real model/Intelligence/SQL or deployment executed\n"
+    },
+    {
+      "name": "layout",
+      "chunk_id": "f94cae",
+      "wall_time_seconds": 0.105457709,
+      "exit_code": 0,
+      "original_token_count": 43,
+      "output": "PASS one active native entry, two local packages, declared maintenance/history/source paths\nPASS Domain imports and package host/network boundaries; layout validation only\n"
+    },
+    {
+      "name": "whitespace",
+      "chunk_id": "ded109",
+      "wall_time_seconds": 0.357657584,
+      "exit_code": 0,
+      "original_token_count": 0,
+      "output": ""
+    }
+  ],
+  "additional_checks": {
+    "javascript_syntax": "PASS node --check; no library/dependency installation",
+    "markdown_links": {
+      "result": "PASS",
+      "count": 85,
+      "fences": "balanced"
+    },
+    "network_adapter": "PASS no fetch/XMLHttpRequest/WebSocket/EventSource/execution adapter in harness"
+  },
+  "prototype_browser": {
+    "tool": "Codex in-app browser via CUA",
+    "url": "http://127.0.0.1:8847/",
+    "scope": "Memory-only artificial scenes; CSS geometry, DOM interactions and visual review.",
+    "viewport_observed_css": {
+      "width": 1600,
+      "height": 900
+    },
+    "phone_frame_height_css": 844,
+    "matrix_style_source_sha256": "b463004e6aa7abf1dcfe2c29cec21143e1833f4e755f8f93d3ab90408d038edd",
+    "approval_matrix": [
+      {
+        "bodyFont": "17px",
+        "bodyHeight": 406,
+        "buttons": [
+          {
+            "height": 47.998046875,
+            "label": "确认创建"
+          },
+          {
+            "height": 43.994140625,
+            "label": "修改内容"
+          },
+          {
+            "height": 43.994140625,
+            "label": "拒绝这次写入"
+          }
+        ],
+        "footerContained": true,
+        "horizontalOverflow": false,
+        "theme": "light",
+        "width": 375
+      },
+      {
+        "bodyFont": "17px",
+        "bodyHeight": 406,
+        "buttons": [
+          {
+            "height": 47.998046875,
+            "label": "确认创建"
+          },
+          {
+            "height": 43.994140625,
+            "label": "修改内容"
+          },
+          {
+            "height": 43.994140625,
+            "label": "拒绝这次写入"
+          }
+        ],
+        "footerContained": true,
+        "horizontalOverflow": false,
+        "theme": "dark",
+        "width": 375
+      },
+      {
+        "bodyFont": "30px",
+        "bodyHeight": 506,
+        "buttons": [
+          {
+            "height": 55.87890625,
+            "label": "确认创建"
+          },
+          {
+            "height": 59.677734375,
+            "label": "修改内容"
+          },
+          {
+            "height": 43.994140625,
+            "label": "拒绝这次写入"
+          }
+        ],
+        "footerContained": true,
+        "horizontalOverflow": false,
+        "theme": "light",
+        "width": 375
+      },
+      {
+        "bodyFont": "30px",
+        "bodyHeight": 506,
+        "buttons": [
+          {
+            "height": 55.87890625,
+            "label": "确认创建"
+          },
+          {
+            "height": 59.677734375,
+            "label": "修改内容"
+          },
+          {
+            "height": 43.994140625,
+            "label": "拒绝这次写入"
+          }
+        ],
+        "footerContained": true,
+        "horizontalOverflow": false,
+        "theme": "dark",
+        "width": 375
+      },
+      {
+        "bodyFont": "17px",
+        "bodyHeight": 406,
+        "buttons": [
+          {
+            "height": 47.998046875,
+            "label": "确认创建"
+          },
+          {
+            "height": 43.994140625,
+            "label": "修改内容"
+          },
+          {
+            "height": 43.994140625,
+            "label": "拒绝这次写入"
+          }
+        ],
+        "footerContained": true,
+        "horizontalOverflow": false,
+        "theme": "light",
+        "width": 390
+      },
+      {
+        "bodyFont": "17px",
+        "bodyHeight": 406,
+        "buttons": [
+          {
+            "height": 47.998046875,
+            "label": "确认创建"
+          },
+          {
+            "height": 43.994140625,
+            "label": "修改内容"
+          },
+          {
+            "height": 43.994140625,
+            "label": "拒绝这次写入"
+          }
+        ],
+        "footerContained": true,
+        "horizontalOverflow": false,
+        "theme": "dark",
+        "width": 390
+      },
+      {
+        "bodyFont": "30px",
+        "bodyHeight": 506,
+        "buttons": [
+          {
+            "height": 55.87890625,
+            "label": "确认创建"
+          },
+          {
+            "height": 59.677734375,
+            "label": "修改内容"
+          },
+          {
+            "height": 43.994140625,
+            "label": "拒绝这次写入"
+          }
+        ],
+        "footerContained": true,
+        "horizontalOverflow": false,
+        "theme": "light",
+        "width": 390
+      },
+      {
+        "bodyFont": "30px",
+        "bodyHeight": 506,
+        "buttons": [
+          {
+            "height": 55.87890625,
+            "label": "确认创建"
+          },
+          {
+            "height": 59.677734375,
+            "label": "修改内容"
+          },
+          {
+            "height": 43.994140625,
+            "label": "拒绝这次写入"
+          }
+        ],
+        "footerContained": true,
+        "horizontalOverflow": false,
+        "theme": "dark",
+        "width": 390
+      },
+      {
+        "bodyFont": "17px",
+        "bodyHeight": 406,
+        "buttons": [
+          {
+            "height": 47.998046875,
+            "label": "确认创建"
+          },
+          {
+            "height": 43.994140625,
+            "label": "修改内容"
+          },
+          {
+            "height": 43.994140625,
+            "label": "拒绝这次写入"
+          }
+        ],
+        "footerContained": true,
+        "horizontalOverflow": false,
+        "theme": "light",
+        "width": 430
+      },
+      {
+        "bodyFont": "17px",
+        "bodyHeight": 406,
+        "buttons": [
+          {
+            "height": 47.998046875,
+            "label": "确认创建"
+          },
+          {
+            "height": 43.994140625,
+            "label": "修改内容"
+          },
+          {
+            "height": 43.994140625,
+            "label": "拒绝这次写入"
+          }
+        ],
+        "footerContained": true,
+        "horizontalOverflow": false,
+        "theme": "dark",
+        "width": 430
+      },
+      {
+        "bodyFont": "30px",
+        "bodyHeight": 506,
+        "buttons": [
+          {
+            "height": 55.87890625,
+            "label": "确认创建"
+          },
+          {
+            "height": 59.677734375,
+            "label": "修改内容"
+          },
+          {
+            "height": 43.994140625,
+            "label": "拒绝这次写入"
+          }
+        ],
+        "footerContained": true,
+        "horizontalOverflow": false,
+        "theme": "light",
+        "width": 430
+      },
+      {
+        "bodyFont": "30px",
+        "bodyHeight": 506,
+        "buttons": [
+          {
+            "height": 55.87890625,
+            "label": "确认创建"
+          },
+          {
+            "height": 59.677734375,
+            "label": "修改内容"
+          },
+          {
+            "height": 43.994140625,
+            "label": "拒绝这次写入"
+          }
+        ],
+        "footerContained": true,
+        "horizontalOverflow": false,
+        "theme": "dark",
+        "width": 430
+      }
+    ],
+    "geometry_note": "Observed button heights 43.994 CSSpx are rounding of specified 44px at browser zoom; not a native pt/hit-area measurement.",
+    "observations": [
+      {
+        "scenario": "streaming decision",
+        "observed": "Selected personal use while copy still continued; selected card compressed, later artifact present; chat draft retained."
+      },
+      {
+        "scenario": "distinct drafts",
+        "observed": "Exit change restored chat draft; reopen work change restored separate modification draft."
+      },
+      {
+        "scenario": "approval close and unknown",
+        "observed": "Close/reopen preserved pending action; submit then artificial lost receipt showed only reconciliation/later options, no create-again action."
+      },
+      {
+        "scenario": "375 dark 30 CSSpx plus keyboard reservation",
+        "observed": "Body clientHeight 266 and scrollHeight 812; all 3 footer buttons contained and reachable above reservation."
+      },
+      {
+        "scenario": "reduced motion",
+        "observed": "Computed sheet animationName none after switch enabled. Browser is not native Reduce Motion operation."
+      },
+      {
+        "scenario": "follow-up draft",
+        "observed": "Edited frequency and condition survived quiet toggle, close and reopen; values and false quiet state read back."
+      },
+      {
+        "scenario": "deterministic calculator",
+        "observed": "90-15-5*20 = -25 with over-budget explanation; count 3.5 disabled explicit continue."
+      },
+      {
+        "scenario": "offline and search",
+        "observed": "Offline draft present with zero user-bubble duplicates; search no-match exposes clear-search and return."
+      },
+      {
+        "scenario": "console",
+        "observed": "No error entries returned at checked state; not an exhaustive native runtime check."
+      },
+      {
+        "scenario": "calculator same-work continuation",
+        "observed": "Explicit continue restored a budget draft bound to the release-preparation work, with matching conversation, context and work-detail titles; no approval or write action was introduced."
+      },
+      {
+        "scenario": "read recovery",
+        "observed": "Re-read opened the same research report without repeating execution."
+      },
+      {
+        "scenario": "first-use example",
+        "observed": "Example filled the draft with zero submitted message bubbles."
+      }
+    ],
+    "dated_screenshots": [
+      {
+        "path": "docs/acceptance/evidence/taste-design-20261013-r2/r2-studio.jpg",
+        "sha256": "6914df271182509da022e0508db6167854ca89d8af6013b8196b25c0c2d2b65a",
+        "size": 92632,
+        "metadata": [
+          {
+            "marker": "0xe0",
+            "bytes": 14,
+            "payload_hex": "4a46494600010100000100010000"
+          }
+        ],
+        "pixels": "manually reviewed synthetic design harness; no private device/reference content"
+      },
+      {
+        "path": "docs/acceptance/evidence/taste-design-20261013-r2/r2-conversation.jpg",
+        "sha256": "3455d567a17a4e262a7ac346781c743128b7c8c1ddf2db42bde37c3934b9663b",
+        "size": 42270,
+        "metadata": [
+          {
+            "marker": "0xe0",
+            "bytes": 14,
+            "payload_hex": "4a46494600010100000100010000"
+          }
+        ],
+        "pixels": "manually reviewed synthetic design harness; no private device/reference content"
+      },
+      {
+        "path": "docs/acceptance/evidence/taste-design-20261013-r2/r2-artifact.jpg",
+        "sha256": "5700fc76134148a50146d8e614e61b6332fb621e4b448ddc4ab0d017b755d40b",
+        "size": 100938,
+        "metadata": [
+          {
+            "marker": "0xe0",
+            "bytes": 14,
+            "payload_hex": "4a46494600010100000100010000"
+          }
+        ],
+        "pixels": "manually reviewed synthetic design harness; no private device/reference content"
+      },
+      {
+        "path": "docs/acceptance/evidence/taste-design-20261013-r2/r2-approval-dark.jpg",
+        "sha256": "2e9097a100d2288cd39ca205f13010a67e3d55c15030949fe949a449751449e0",
+        "size": 90533,
+        "metadata": [
+          {
+            "marker": "0xe0",
+            "bytes": 14,
+            "payload_hex": "4a46494600010100000100010000"
+          }
+        ],
+        "pixels": "manually reviewed synthetic design harness; no private device/reference content"
+      }
+    ],
+    "screenshot_crop_note": "Conversation crop captured by browser screenshot API with coordinate scaling compensation; complete phone and caption visually reviewed. Original full studio capture retained. Failed clipping attempts remain ignored in build, excluded from evidence.",
+    "screenshot_capture_inputs": [
+      {
+        "path": "docs/design/prototypes/catpaw-taste/index.html",
+        "sha256": "a27d2248a7ebc35cfcfda20de2e87f4d617ba3e98e9a44007d1486590f610f7c"
+      },
+      {
+        "path": "docs/design/prototypes/catpaw-taste/styles.css",
+        "sha256": "b463004e6aa7abf1dcfe2c29cec21143e1833f4e755f8f93d3ab90408d038edd"
+      },
+      {
+        "path": "docs/design/prototypes/catpaw-taste/app.js",
+        "sha256": "c16cdfa2b57b3e5d848a52c25f989d4c14ebe070011201f7f98efd819bdc7498"
+      }
+    ],
+    "capture_version_note": "Screenshots preceded the final calculator same-work refinement; HTML/CSS and depicted scenes are unchanged. Their exact captured source binding is retained separately from current implementation inputs."
+  },
+  "contrast_calculation": {
+    "result": "PASS",
+    "combinations": 44,
+    "text_minimum": 5.0319,
+    "essential_boundary_minimum": 3.0682,
+    "rows": [
+      {
+        "theme": "light",
+        "foreground": "ink",
+        "background": "background",
+        "ratio": 14.816,
+        "minimum": 4.5
+      },
+      {
+        "theme": "light",
+        "foreground": "ink",
+        "background": "panel",
+        "ratio": 15.7439,
+        "minimum": 4.5
+      },
+      {
+        "theme": "light",
+        "foreground": "ink",
+        "background": "input",
+        "ratio": 13.5537,
+        "minimum": 4.5
+      },
+      {
+        "theme": "light",
+        "foreground": "secondary",
+        "background": "background",
+        "ratio": 5.5005,
+        "minimum": 4.5
+      },
+      {
+        "theme": "light",
+        "foreground": "secondary",
+        "background": "panel",
+        "ratio": 5.845,
+        "minimum": 4.5
+      },
+      {
+        "theme": "light",
+        "foreground": "secondary",
+        "background": "input",
+        "ratio": 5.0319,
+        "minimum": 4.5
+      },
+      {
+        "theme": "light",
+        "foreground": "accent",
+        "background": "background",
+        "ratio": 6.4475,
+        "minimum": 4.5
+      },
+      {
+        "theme": "light",
+        "foreground": "accent",
+        "background": "panel",
+        "ratio": 6.8513,
+        "minimum": 4.5
+      },
+      {
+        "theme": "light",
+        "foreground": "accent",
+        "background": "input",
+        "ratio": 5.8982,
+        "minimum": 4.5
+      },
+      {
+        "theme": "light",
+        "foreground": "success",
+        "background": "background",
+        "ratio": 5.5938,
+        "minimum": 4.5
+      },
+      {
+        "theme": "light",
+        "foreground": "success",
+        "background": "panel",
+        "ratio": 5.9441,
+        "minimum": 4.5
+      },
+      {
+        "theme": "light",
+        "foreground": "success",
+        "background": "input",
+        "ratio": 5.1172,
+        "minimum": 4.5
+      },
+      {
+        "theme": "light",
+        "foreground": "attention",
+        "background": "background",
+        "ratio": 5.7667,
+        "minimum": 4.5
+      },
+      {
+        "theme": "light",
+        "foreground": "attention",
+        "background": "panel",
+        "ratio": 6.1279,
+        "minimum": 4.5
+      },
+      {
+        "theme": "light",
+        "foreground": "attention",
+        "background": "input",
+        "ratio": 5.2754,
+        "minimum": 4.5
+      },
+      {
+        "theme": "light",
+        "foreground": "failure",
+        "background": "background",
+        "ratio": 5.5941,
+        "minimum": 4.5
+      },
+      {
+        "theme": "light",
+        "foreground": "failure",
+        "background": "panel",
+        "ratio": 5.9445,
+        "minimum": 4.5
+      },
+      {
+        "theme": "light",
+        "foreground": "failure",
+        "background": "input",
+        "ratio": 5.1175,
+        "minimum": 4.5
+      },
+      {
+        "theme": "light",
+        "foreground": "onInk",
+        "background": "ink",
+        "ratio": 15.7439,
+        "minimum": 4.5
+      },
+      {
+        "theme": "light",
+        "foreground": "controlBoundary",
+        "background": "background",
+        "ratio": 3.354,
+        "minimum": 3
+      },
+      {
+        "theme": "light",
+        "foreground": "controlBoundary",
+        "background": "panel",
+        "ratio": 3.5641,
+        "minimum": 3
+      },
+      {
+        "theme": "light",
+        "foreground": "controlBoundary",
+        "background": "input",
+        "ratio": 3.0682,
+        "minimum": 3
+      },
+      {
+        "theme": "dark",
+        "foreground": "ink",
+        "background": "background",
+        "ratio": 16.7319,
+        "minimum": 4.5
+      },
+      {
+        "theme": "dark",
+        "foreground": "ink",
+        "background": "panel",
+        "ratio": 15.0665,
+        "minimum": 4.5
+      },
+      {
+        "theme": "dark",
+        "foreground": "ink",
+        "background": "input",
+        "ratio": 13.3612,
+        "minimum": 4.5
+      },
+      {
+        "theme": "dark",
+        "foreground": "secondary",
+        "background": "background",
+        "ratio": 8.3115,
+        "minimum": 4.5
+      },
+      {
+        "theme": "dark",
+        "foreground": "secondary",
+        "background": "panel",
+        "ratio": 7.4842,
+        "minimum": 4.5
+      },
+      {
+        "theme": "dark",
+        "foreground": "secondary",
+        "background": "input",
+        "ratio": 6.6371,
+        "minimum": 4.5
+      },
+      {
+        "theme": "dark",
+        "foreground": "accent",
+        "background": "background",
+        "ratio": 10.895,
+        "minimum": 4.5
+      },
+      {
+        "theme": "dark",
+        "foreground": "accent",
+        "background": "panel",
+        "ratio": 9.8105,
+        "minimum": 4.5
+      },
+      {
+        "theme": "dark",
+        "foreground": "accent",
+        "background": "input",
+        "ratio": 8.7002,
+        "minimum": 4.5
+      },
+      {
+        "theme": "dark",
+        "foreground": "success",
+        "background": "background",
+        "ratio": 11.0938,
+        "minimum": 4.5
+      },
+      {
+        "theme": "dark",
+        "foreground": "success",
+        "background": "panel",
+        "ratio": 9.9896,
+        "minimum": 4.5
+      },
+      {
+        "theme": "dark",
+        "foreground": "success",
+        "background": "input",
+        "ratio": 8.859,
+        "minimum": 4.5
+      },
+      {
+        "theme": "dark",
+        "foreground": "attention",
+        "background": "background",
+        "ratio": 10.5867,
+        "minimum": 4.5
+      },
+      {
+        "theme": "dark",
+        "foreground": "attention",
+        "background": "panel",
+        "ratio": 9.533,
+        "minimum": 4.5
+      },
+      {
+        "theme": "dark",
+        "foreground": "attention",
+        "background": "input",
+        "ratio": 8.4541,
+        "minimum": 4.5
+      },
+      {
+        "theme": "dark",
+        "foreground": "failure",
+        "background": "background",
+        "ratio": 9.6271,
+        "minimum": 4.5
+      },
+      {
+        "theme": "dark",
+        "foreground": "failure",
+        "background": "panel",
+        "ratio": 8.6689,
+        "minimum": 4.5
+      },
+      {
+        "theme": "dark",
+        "foreground": "failure",
+        "background": "input",
+        "ratio": 7.6877,
+        "minimum": 4.5
+      },
+      {
+        "theme": "dark",
+        "foreground": "onInk",
+        "background": "ink",
+        "ratio": 16.0321,
+        "minimum": 4.5
+      },
+      {
+        "theme": "dark",
+        "foreground": "controlBoundary",
+        "background": "background",
+        "ratio": 4.5184,
+        "minimum": 3
+      },
+      {
+        "theme": "dark",
+        "foreground": "controlBoundary",
+        "background": "panel",
+        "ratio": 4.0686,
+        "minimum": 3
+      },
+      {
+        "theme": "dark",
+        "foreground": "controlBoundary",
+        "background": "input",
+        "ratio": 3.6081,
+        "minimum": 3
+      }
+    ],
+    "limit": "Token calculations; no native rendered pixel/system material contrast measured."
+  },
+  "sensitivity": {
+    "initial": {
+      "candidate_files": 846,
+      "candidate_bytes": 11212682,
+      "blocking_hits": [
+        {
+          "path": "docs/acceptance/evidence/taste-design-20261013-r2/r2-approval-dark.jpg",
+          "category": "unexpected_binary"
+        },
+        {
+          "path": "docs/acceptance/evidence/taste-design-20261013-r2/r2-artifact.jpg",
+          "category": "unexpected_binary"
+        },
+        {
+          "path": "docs/acceptance/evidence/taste-design-20261013-r2/r2-conversation.jpg",
+          "category": "unexpected_binary"
+        },
+        {
+          "path": "docs/acceptance/evidence/taste-design-20261013-r2/r2-studio.jpg",
+          "category": "unexpected_binary"
+        },
+        {
+          "path": "docs/planning/AF-1/goal-evidence-map.json",
+          "category": "credential_prefix",
+          "line": 120
+        },
+        {
+          "path": "docs/planning/AF-1/goal-evidence-map.json",
+          "category": "credential_prefix",
+          "line": 146
+        },
+        {
+          "path": "docs/planning/AF-1/goal-evidence-map.json",
+          "category": "credential_prefix",
+          "line": 174
+        }
+      ],
+      "manual_review_hits": [],
+      "reviewed_false_positives": 40,
+      "png_files": 10
+    },
+    "reviewed": {
+      "candidate_files": 846,
+      "candidate_bytes": 11213425,
+      "blocking_hits": [],
+      "manual_review_hits": [],
+      "reviewed_false_positives": 47,
+      "png_files": 10
+    },
+    "resolution": "Four synthetic JPEG pixel/metadata reviews and three unchanged historical filename false positives renewed by exact path/line/hash; no rule weakening.",
+    "delivery": {
+      "candidate_files": 847,
+      "candidate_bytes": 11248393,
+      "blocking_hits": [],
+      "manual_review_hits": [],
+      "reviewed_false_positives": 47,
+      "png_files": 10
+    }
+  },
+  "not_run": [
+    "native build/implementation",
+    "physical device/system keyboard/IME",
+    "native maximum Dynamic Type",
+    "VoiceOver",
+    "native gestures/haptics/frame measurement",
+    "model/Auth/PG requests",
+    "scheduler/background continuity",
+    "installation/deployment/push/publication",
+    "daily use/competitor comparison"
+  ],
+  "product_acceptance_changed": false,
+  "runtime_goal_status_changed": false,
+  "new_compute_budget": 0,
+  "a1_and_frozen_tokens_preserved": true,
+  "actual_request_counts": {
+    "model": 0,
+    "database": 0,
+    "device_install": 0,
+    "deployment": 0,
+    "publication": 0
+  },
+  "live_status_authority": "docs/status/master-plan.md",
+  "delivery_recheck": {
+    "goal_bindings": "PASS 41",
+    "javascript_syntax": "PASS",
+    "whitespace": "PASS",
+    "frozen_and_layout": "PASS unchanged native/backend sources"
+  }
+}

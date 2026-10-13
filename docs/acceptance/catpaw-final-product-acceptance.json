@@ -1,0 +1,716 @@
+{
+  "schema_version": 1,
+  "version": "FINAL-1",
+  "recorded_on": "2026-10-13",
+  "scope": "Product and comparison contract only; execution state stays in master-plan",
+  "documents": {
+    "spec": "../product/catpaw-final-product-spec.md",
+    "procedures": "catpaw-final-product-acceptance.md",
+    "current_state": "../status/master-plan.md",
+    "foundation_goal": "../planning/AF-1/goal.md",
+    "foundation_contract": "../planning/AF-1/contract.json",
+    "foundation_acceptance": "agent-foundation-acceptance.json",
+    "ux_acceptance": "ios-codex-experience-acceptance.json",
+    "design_proposal": "../design/prototypes/catpaw-final/index.html",
+    "conversation_ui_spec": "../design/conversation-generative-ui-spec.md",
+    "conversation_ui_procedures": "conversation-generative-ui-acceptance.md",
+    "conversation_ui_acceptance": "conversation-generative-ui-acceptance.json",
+    "development_start_contract": "../planning/AF-1/development-start-contract.md",
+    "development_prompt": "../planning/AF-1/long-task-development-prompt.md"
+  },
+  "foundation_contract_version": "AF-1-G3-UX1",
+  "foundation_final_goal": "AF-G5",
+  "foundation_required": {
+    "acceptance_ids": [
+      "AF-A01",
+      "AF-A02",
+      "AF-A03",
+      "AF-A04",
+      "AF-A05",
+      "AF-A06",
+      "AF-A07",
+      "AF-A08",
+      "AF-A09",
+      "AF-A10",
+      "AF-A11",
+      "AF-A12",
+      "AF-A13",
+      "AF-A14",
+      "AF-A15",
+      "AF-A16",
+      "AF-A17",
+      "AF-A18"
+    ],
+    "ux_ids": [
+      "AF-U01",
+      "AF-U02",
+      "AF-U03",
+      "AF-U04",
+      "AF-U05",
+      "AF-U06",
+      "AF-U07",
+      "AF-U08",
+      "AF-U09",
+      "AF-U10",
+      "AF-U11",
+      "AF-U12"
+    ],
+    "scenario_ids": [
+      "CP-01",
+      "CP-02",
+      "CP-03"
+    ]
+  },
+  "goals": [
+    {
+      "id": "FINAL-G1",
+      "title": "日常可信体验",
+      "depends_on": [],
+      "requires_foundation_goal": "AF-G5",
+      "quality_ids": [
+        "FQ-01",
+        "FQ-02",
+        "FQ-03",
+        "FQ-04",
+        "FQ-05",
+        "FQ-06",
+        "FQ-07",
+        "FQ-08",
+        "FQ-09"
+      ],
+      "comparison_ids": [],
+      "closure": "all_foundation_and_quality_checks_same_candidate",
+      "required_subcontract_version": "CGUI-1"
+    },
+    {
+      "id": "FINAL-G2",
+      "title": "限定任务与版本上的可证明优势",
+      "depends_on": [
+        "FINAL-G1"
+      ],
+      "quality_ids": [],
+      "comparison_ids": [
+        "BP-01",
+        "BP-02",
+        "BP-03",
+        "BP-04",
+        "BP-05",
+        "BP-06",
+        "BP-07",
+        "BP-08"
+      ],
+      "closure": "all_comparator_records_and_each_named_comparator_meets_claim_rules"
+    },
+    {
+      "id": "FINAL-G3",
+      "title": "终版总Goal",
+      "depends_on": [
+        "FINAL-G1",
+        "FINAL-G2"
+      ],
+      "quality_ids": [],
+      "comparison_ids": [],
+      "closure": "both_goals_same_release_candidate"
+    }
+  ],
+  "card_types": [
+    "choice",
+    "form",
+    "plan",
+    "approval",
+    "artifact",
+    "comparison"
+  ],
+  "quality_checks": [
+    {
+      "id": "FQ-01",
+      "title": "流中可交互",
+      "required": true,
+      "acceptance_ids": [
+        "AF-A04",
+        "AF-A16"
+      ],
+      "ux_ids": [
+        "AF-U04",
+        "AF-U06",
+        "AF-U07",
+        "AF-U08"
+      ],
+      "work_units": [
+        "W12",
+        "W30",
+        "W32",
+        "W70"
+      ],
+      "design_units": [
+        "D20",
+        "D30"
+      ],
+      "assertions": [
+        "complete_schema_and_authoritative_object_enable_before_other_text_finishes",
+        "incomplete_args_never_enable_submit",
+        "stable_card_id_input_focus_and_reading_anchor",
+        "real_model_to_decision_to_same_task_continuation"
+      ],
+      "minimum_evidence": [
+        "physical_device",
+        "native_rendered_ui",
+        "real_model",
+        "persistent_decision",
+        "event_trace"
+      ],
+      "required_subcontract": {
+        "path": "conversation-generative-ui-acceptance.json",
+        "case_ids": [
+          "CG-A01",
+          "CG-A02",
+          "CG-A03",
+          "CG-A04",
+          "CG-A05",
+          "CG-A06",
+          "CG-A07",
+          "CG-A08",
+          "CG-A09",
+          "CG-A10"
+        ]
+      }
+    },
+    {
+      "id": "FQ-02",
+      "title": "Human-in-loop恢复与精确决定",
+      "required": true,
+      "acceptance_ids": [
+        "AF-A02",
+        "AF-A09",
+        "AF-A10"
+      ],
+      "ux_ids": [
+        "AF-U07",
+        "AF-U12"
+      ],
+      "work_units": [
+        "W10",
+        "W32",
+        "W33"
+      ],
+      "design_units": [
+        "D10",
+        "D30"
+      ],
+      "assertions": [
+        "close_is_not_decision",
+        "persistent_waiting_entry_after_restart",
+        "changed_payload_invalidates_old_approval",
+        "rejection_not_bypassed_by_new_tool_call",
+        "unknown_reconciles_same_effect",
+        "saved_receipt_only_resumes_delivery",
+        "one_actual_write_object"
+      ],
+      "minimum_evidence": [
+        "physical_device",
+        "real_database",
+        "effect_receipt",
+        "negative_path_trace"
+      ]
+    },
+    {
+      "id": "FQ-03",
+      "title": "手机内主动闭环",
+      "required": true,
+      "acceptance_ids": [
+        "AF-A12",
+        "AF-A13",
+        "AF-A15"
+      ],
+      "ux_ids": [
+        "AF-U09",
+        "AF-U12"
+      ],
+      "work_units": [
+        "W50",
+        "W51",
+        "W61"
+      ],
+      "design_units": [
+        "D40"
+      ],
+      "assertions": [
+        "phone_edits_trigger_timezone_frequency_conditions_and_stop",
+        "server_due_without_phone_or_mac",
+        "one_logical_run_per_due",
+        "one_inbox_item_per_change",
+        "no_change_silent",
+        "quiet_preserves_result_pause_blocks_new_due",
+        "why_source_next_due_visible",
+        "local_notification_is_not_remote_change_push"
+      ],
+      "minimum_evidence": [
+        "physical_device",
+        "real_server_scheduler",
+        "real_database",
+        "two_offline_due_runs",
+        "public_change_fixture"
+      ]
+    },
+    {
+      "id": "FQ-04",
+      "title": "记忆来源与遗忘",
+      "required": true,
+      "acceptance_ids": [
+        "AF-A11"
+      ],
+      "ux_ids": [
+        "AF-U09"
+      ],
+      "work_units": [
+        "W40"
+      ],
+      "design_units": [
+        "D40"
+      ],
+      "assertions": [
+        "candidate_is_not_confirmed_fact",
+        "source_scope_and_used_revision_visible",
+        "edit_preserves_source",
+        "late_job_cannot_revive_deleted_memory",
+        "old_work_snapshot_explained"
+      ],
+      "minimum_evidence": [
+        "physical_device",
+        "real_database",
+        "real_model",
+        "late_job_deletion_trace"
+      ]
+    },
+    {
+      "id": "FQ-05",
+      "title": "可验收成果",
+      "required": true,
+      "acceptance_ids": [
+        "AF-A07",
+        "AF-A08",
+        "AF-A16"
+      ],
+      "ux_ids": [
+        "AF-U06",
+        "AF-U08"
+      ],
+      "work_units": [
+        "W30",
+        "W31",
+        "W70"
+      ],
+      "design_units": [
+        "D30"
+      ],
+      "assertions": [
+        "all_frozen_critical_facts_correct_and_sources_valid",
+        "step_completion_has_evidence",
+        "both_entries_open_same_artifact_revision",
+        "expired_link_retrieved_again",
+        "revision_conflict_preserves_draft",
+        "no_fake_success"
+      ],
+      "minimum_evidence": [
+        "physical_device",
+        "frozen_truth_set",
+        "real_read_tool_receipt",
+        "artifact_hash_revision",
+        "real_database"
+      ]
+    },
+    {
+      "id": "FQ-06",
+      "title": "原生视觉与可访问性",
+      "required": true,
+      "acceptance_ids": [
+        "AF-A17"
+      ],
+      "ux_ids": [
+        "AF-U01",
+        "AF-U02",
+        "AF-U03",
+        "AF-U04",
+        "AF-U05",
+        "AF-U06",
+        "AF-U07",
+        "AF-U08",
+        "AF-U09",
+        "AF-U10",
+        "AF-U11",
+        "AF-U12"
+      ],
+      "work_units": [
+        "W70",
+        "W71"
+      ],
+      "design_units": [
+        "D00",
+        "D10",
+        "D20",
+        "D30",
+        "D40",
+        "D50"
+      ],
+      "assertions": [
+        "light_dark_375_390_430_points",
+        "chinese_ime_and_keyboard_safe_area",
+        "largest_accessibility_size",
+        "voiceover_actual_navigation",
+        "reduce_motion_system_setting",
+        "minimum_44pt_touch",
+        "text_4_5_and_controls_3_contrast",
+        "no_whole_page_horizontal_overflow"
+      ],
+      "minimum_evidence": [
+        "physical_device",
+        "native_rendered_ui",
+        "native_visual_matrix",
+        "accessibility_operation_record"
+      ]
+    },
+    {
+      "id": "FQ-07",
+      "title": "真机响应与真实短答性能",
+      "required": true,
+      "acceptance_ids": [
+        "AF-A04",
+        "AF-A05",
+        "AF-A16",
+        "AF-A17"
+      ],
+      "ux_ids": [
+        "AF-U03",
+        "AF-U04",
+        "AF-U06",
+        "AF-U12"
+      ],
+      "work_units": [
+        "W12",
+        "W70",
+        "W71"
+      ],
+      "design_units": [
+        "D10",
+        "D20",
+        "D30"
+      ],
+      "assertions": [
+        "actual_presented_frame_timing",
+        "cold_warm_network_and_consent_time_separated",
+        "nearest_rank_p95_with_failures_and_timeouts_included",
+        "two_probes_do_not_prove_p95"
+      ],
+      "minimum_evidence": [
+        "physical_device",
+        "real_model",
+        "authorized_sample_manifest",
+        "raw_timing_summary"
+      ]
+    },
+    {
+      "id": "FQ-08",
+      "title": "持久与可控执行",
+      "required": true,
+      "acceptance_ids": [
+        "AF-A05",
+        "AF-A09",
+        "AF-A10",
+        "AF-A12",
+        "AF-A18"
+      ],
+      "ux_ids": [
+        "AF-U06",
+        "AF-U07",
+        "AF-U12"
+      ],
+      "work_units": [
+        "W12",
+        "W33",
+        "W50",
+        "W71"
+      ],
+      "design_units": [
+        "D30",
+        "D40"
+      ],
+      "assertions": [
+        "two_real_pg_workers_one_valid_committer",
+        "old_lease_and_scope_fenced",
+        "same_object_identity_after_recovery",
+        "unknown_never_auto_replays",
+        "cancel_at_safe_checkpoint_explains_prior_effects",
+        "capability_state_has_actual_evidence"
+      ],
+      "minimum_evidence": [
+        "real_database",
+        "multi_instance_trace",
+        "physical_device",
+        "negative_path_trace"
+      ]
+    },
+    {
+      "id": "FQ-09",
+      "title": "连续日用",
+      "required": true,
+      "acceptance_ids": [
+        "AF-A01",
+        "AF-A02",
+        "AF-A03",
+        "AF-A04",
+        "AF-A05",
+        "AF-A06",
+        "AF-A07",
+        "AF-A08",
+        "AF-A09",
+        "AF-A10",
+        "AF-A11",
+        "AF-A12",
+        "AF-A13",
+        "AF-A14",
+        "AF-A15",
+        "AF-A16",
+        "AF-A17",
+        "AF-A18"
+      ],
+      "ux_ids": [
+        "AF-U01",
+        "AF-U02",
+        "AF-U03",
+        "AF-U04",
+        "AF-U05",
+        "AF-U06",
+        "AF-U07",
+        "AF-U08",
+        "AF-U09",
+        "AF-U10",
+        "AF-U11",
+        "AF-U12"
+      ],
+      "scenario_ids": [
+        "CP-01",
+        "CP-02",
+        "CP-03"
+      ],
+      "work_units": [
+        "W71"
+      ],
+      "design_units": [
+        "D50"
+      ],
+      "assertions": [
+        "same_candidate_seven_days_at_least_ten_real_sessions",
+        "cross_day_due_quiet_and_return_path",
+        "zero_no_change_or_duplicate_messages",
+        "no_unapproved_actions",
+        "no_required_failure_or_p0_p1"
+      ],
+      "minimum_evidence": [
+        "physical_device",
+        "authorized_run_manifest",
+        "seven_day_journal",
+        "same_release_manifest"
+      ]
+    }
+  ],
+  "quantitative_rules": {
+    "due_acceptance_max_seconds": 120,
+    "minimum_touch_points": 44,
+    "text_contrast_minimum": 4.5,
+    "control_contrast_minimum": 3,
+    "performance": {
+      "local_echo_p95_ms": 150,
+      "local_decision_feedback_p95_ms": 500,
+      "valid_card_to_render_p95_ms": 250,
+      "readonly_restore_start_max_seconds": 5,
+      "short_reply_first_text_p95_seconds": 10,
+      "short_reply_complete_p95_seconds": 60,
+      "local_samples_per_metric_minimum": 30,
+      "real_short_reply_samples_minimum": 20,
+      "percentile_method": "nearest_rank",
+      "include_failures_and_timeouts": true
+    },
+    "daily_use": {
+      "consecutive_days": 7,
+      "real_sessions_minimum": 10,
+      "all_three_scenarios_required": true
+    }
+  },
+  "comparators": [
+    {
+      "id": "codex_mobile",
+      "identity": "OpenAI Codex in ChatGPT iPhone app",
+      "primary_source": "https://openai.com/index/work-with-codex-from-anywhere/"
+    },
+    {
+      "id": "openai_dots",
+      "identity": "OpenAI dots",
+      "primary_source": "https://openai.com/index/introducing-dots/"
+    },
+    {
+      "id": "xai_grok_bot",
+      "identity": "xAI Grok Bot in actual iPhone app",
+      "primary_source": "https://docs.x.ai/grok-bot/mobile"
+    },
+    {
+      "id": "meta_muse",
+      "identity": "Meta Muse actual iPhone app",
+      "primary_source": "https://about.fb.com/news/2026/09/introducing-muse-personal-ai-agent/"
+    }
+  ],
+  "comparison_checks": [
+    {
+      "id": "BP-01",
+      "title": "对话阅读",
+      "metrics": [
+        "correctness",
+        "first_text_seconds",
+        "completion_seconds",
+        "anchor_failures",
+        "repair_actions"
+      ]
+    },
+    {
+      "id": "BP-02",
+      "title": "流中决定",
+      "metrics": [
+        "first_actionable_decision_seconds",
+        "required_actions",
+        "navigation_changes",
+        "lost_inputs",
+        "same_work_continuation"
+      ]
+    },
+    {
+      "id": "BP-03",
+      "title": "审批找回",
+      "metrics": [
+        "decision_return_seconds",
+        "required_actions",
+        "old_approval_rejected",
+        "actual_effect_count"
+      ]
+    },
+    {
+      "id": "BP-04",
+      "title": "手机改计划与跟进",
+      "metrics": [
+        "phone_only_completion",
+        "desktop_dependency",
+        "correctness",
+        "active_user_seconds"
+      ]
+    },
+    {
+      "id": "BP-05",
+      "title": "成果查收与修改",
+      "metrics": [
+        "critical_fact_correctness",
+        "valid_sources",
+        "required_actions",
+        "artifact_open_seconds",
+        "revision_consistency"
+      ]
+    },
+    {
+      "id": "BP-06",
+      "title": "克制主动",
+      "metrics": [
+        "valid_updates",
+        "missed_updates",
+        "duplicate_updates",
+        "no_change_noise",
+        "due_delay",
+        "why_now_explanation"
+      ]
+    },
+    {
+      "id": "BP-07",
+      "title": "记忆使用与控制",
+      "metrics": [
+        "visible_source",
+        "correct_use",
+        "deleted_value_revival",
+        "required_actions",
+        "active_user_seconds"
+      ]
+    },
+    {
+      "id": "BP-08",
+      "title": "离开与工作接续",
+      "metrics": [
+        "completion_rate",
+        "restore_seconds",
+        "duplicate_intent_or_effect",
+        "understood_next_step",
+        "repair_actions"
+      ]
+    }
+  ],
+  "comparison_rules": {
+    "all_checks_have_applicability_record_for_each_comparator": true,
+    "common_executable_cases_per_comparator_minimum": 4,
+    "paired_groups_per_case_minimum": 5,
+    "alternate_ab_ba": true,
+    "inputs_truth_and_end_conditions_frozen_before_run": true,
+    "record_product_version_date_platform_account_plan_model_and_capability": true,
+    "model_differences_reported": true,
+    "no_regression_dimensions": [
+      "critical_correctness",
+      "authorization",
+      "actual_effects",
+      "data_preservation",
+      "recovery"
+    ],
+    "preregistered_experience_dimensions": [
+      "active_user_seconds",
+      "required_actions",
+      "navigation_changes",
+      "decision_return_seconds",
+      "artifact_open_seconds"
+    ],
+    "improved_dimensions_minimum": 2,
+    "median_improvement_minimum_percent": 20,
+    "unsupported_is_coverage_difference_not_speed_win": true,
+    "not_run_or_blocked_can_be_win": false,
+    "normal_ui_and_fault_injection_separate": true,
+    "claim_scope": "Only named tested tasks and versions; no market-wide or statistical-significance claim"
+  },
+  "release_rules": {
+    "same_release_candidate_required": true,
+    "all_foundation_cases_required": true,
+    "all_quality_checks_required": true,
+    "no_required_failures": true,
+    "no_p0_or_p1": true,
+    "missing_evidence_is_pass": false,
+    "prototype_replaces_native_acceptance": false,
+    "synthetic_replaces_real_model_or_database": false,
+    "additional_model_calls_authorized_by_this_document": false,
+    "new_packages_paid_resources_or_accounts_authorized_by_this_document": false,
+    "unchanged_provider_route_first": true,
+    "additional_compute_budget": 0,
+    "runtime_goal_status_changed": false,
+    "all_conversation_ui_cases_required": true
+  },
+  "conversation_ui_subcontract": {
+    "version": "CGUI-1",
+    "path": "conversation-generative-ui-acceptance.json",
+    "case_ids": [
+      "CG-A01",
+      "CG-A02",
+      "CG-A03",
+      "CG-A04",
+      "CG-A05",
+      "CG-A06",
+      "CG-A07",
+      "CG-A08",
+      "CG-A09",
+      "CG-A10"
+    ],
+    "required_for_goals": [
+      "FINAL-G1",
+      "FINAL-G3"
+    ],
+    "foundation_goal_replaced": false
+  }
+}

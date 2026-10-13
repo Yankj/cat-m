@@ -41,6 +41,9 @@
       "minimum_evidence": [
         "physical_device",
         "native_rendered_ui"
+      ],
+      "design_assertions": [
+        "Activity unifies pending decisions, unread artifacts and running work; management destinations remain reachable in an expandable group; no empty priority cards or duplicate object counts."
       ]
     },
     {
@@ -61,6 +64,21 @@
       "minimum_evidence": [
         "physical_device",
         "native_rendered_ui"
+      ],
+      "design_assertions": [
+        "First use allows a draft and at most two supported draft-only examples; required Auth/configuration is explained without claiming unauthenticated cloud use.",
+        "Use adjustable defaults for noncritical format; only missing information affecting correctness, scope or actual consequences blocks work.",
+        "Plain questions remain text; one current summary per work and contextual presentation avoid a dashboard of equally emphasized cards.",
+        "R2 roles distinguish readable text, compact work, active decision and artifact; use native semantic styles."
+      ],
+      "interaction_scenario_ids": [
+        "I09",
+        "I19",
+        "I20",
+        "I25",
+        "I26",
+        "I27",
+        "I29"
       ]
     },
     {
@@ -84,6 +102,19 @@
         "physical_device",
         "native_rendered_ui",
         "parent_case_real_evidence"
+      ],
+      "design_assertions": [
+        "Chat and work-change drafts remain distinct; exiting change mode restores chat draft without submitting or cancelling work.",
+        "R2 composer respects IME, safe area, distinct drafts, at least 44pt hit targets and stable focus through context changes."
+      ],
+      "interaction_scenario_ids": [
+        "I05",
+        "I15",
+        "I20",
+        "I23",
+        "I28",
+        "I38",
+        "I41"
       ]
     },
     {
@@ -106,6 +137,17 @@
         "physical_device",
         "native_rendered_ui",
         "parent_case_real_evidence"
+      ],
+      "design_assertions": [
+        "R2 finite card transitions preserve object identity, editing focus and compensated reading anchor; no token animation or replay of historic artifact entry."
+      ],
+      "interaction_scenario_ids": [
+        "I07",
+        "I08",
+        "I10",
+        "I12",
+        "I21",
+        "I22"
       ]
     },
     {
@@ -125,6 +167,18 @@
       "minimum_evidence": [
         "physical_device",
         "native_rendered_ui"
+      ],
+      "design_assertions": [
+        "Compact Activity and expandable management preserve direct destinations, original position and shared object counts.",
+        "R2 drawer gesture and native back do not conflict; background focus is isolated and restored; reduced motion preserves actions."
+      ],
+      "interaction_scenario_ids": [
+        "I01",
+        "I02",
+        "I03",
+        "I04",
+        "I05",
+        "I06"
       ]
     },
     {
@@ -147,6 +201,23 @@
         "physical_device",
         "native_rendered_ui",
         "parent_case_real_evidence"
+      ],
+      "design_assertions": [
+        "Current work identity matches summary, decisions and artifacts; routine plan details are secondary; answered cards compact without losing history.",
+        "Explicit work-change context can be exited; accepted change and applied revision have separate truthful feedback; additional decisions retain a count and entry."
+      ],
+      "interaction_scenario_ids": [
+        "I07",
+        "I09",
+        "I10",
+        "I11",
+        "I19",
+        "I22",
+        "I24",
+        "I27",
+        "I29",
+        "I31",
+        "I38"
       ]
     },
     {
@@ -171,6 +242,20 @@
         "physical_device",
         "native_rendered_ui",
         "parent_case_real_evidence"
+      ],
+      "design_assertions": [
+        "Pending decision does not automatically interrupt reading with a sheet; explicit preview separates scrollable content and reachable decision controls.",
+        "Unknown has no success feedback; actual receipt produces one accessible completion feedback.",
+        "R2 approval body scrolls with reachable decision footer at 375pt, maximum native type and keyboard; only new real receipt produces success feedback once."
+      ],
+      "interaction_scenario_ids": [
+        "I13",
+        "I31",
+        "I32",
+        "I33",
+        "I34",
+        "I35",
+        "I36"
       ]
     },
     {
@@ -194,6 +279,21 @@
         "physical_device",
         "native_rendered_ui",
         "parent_case_real_evidence"
+      ],
+      "design_assertions": [
+        "Readable actual conclusions precede metadata; partial completion explains omissions.",
+        "Copy and system share use the current readable version; unsupported file exports are not advertised; sharing does not invoke domain writes.",
+        "R2 content-first artifact keeps readable version/source, tools and same-work revision; table scroll is confined."
+      ],
+      "interaction_scenario_ids": [
+        "I15",
+        "I16",
+        "I17",
+        "I24",
+        "I30",
+        "I36",
+        "I37",
+        "I38"
       ]
     },
     {
@@ -217,6 +317,14 @@
         "physical_device",
         "native_rendered_ui",
         "parent_case_real_evidence"
+      ],
+      "design_assertions": [
+        "Toggling quiet settings preserves unsaved follow-up fields; unsaved state never displays saved; return summary requires actual changes.",
+        "R2 native follow-up/memory controls keep unsaved fields through quiet-setting changes and expose same-object recovery."
+      ],
+      "interaction_scenario_ids": [
+        "I39",
+        "I40"
       ]
     },
     {
@@ -236,6 +344,14 @@
       "minimum_evidence": [
         "physical_device",
         "native_rendered_ui"
+      ],
+      "design_assertions": [
+        "Visual hierarchy prioritizes content, current decision, work summary and metadata; materials on navigation/controls preserve stable opaque reading surfaces.",
+        "R2 preserves A1 and frozen palette; essential nontext boundary >=3:1 and text >=4.5:1 measured from rendered combinations."
+      ],
+      "interaction_scenario_ids": [
+        "I18",
+        "I42"
       ]
     },
     {
@@ -255,6 +371,18 @@
       "minimum_evidence": [
         "physical_device",
         "native_rendered_ui"
+      ],
+      "design_assertions": [
+        "Increase Contrast and Reduce Transparency are respected; VoiceOver receives meaningful stage changes without token-by-token interruptions or focus theft.",
+        "R2 native sizes, maximum type, VoiceOver and Reduce Motion/Transparency/Increase Contrast are actually operated; CSS samples do not close them."
+      ],
+      "interaction_scenario_ids": [
+        "I06",
+        "I14",
+        "I23",
+        "I25",
+        "I26",
+        "I42"
       ]
     },
     {
@@ -278,7 +406,36 @@
         "physical_device",
         "native_rendered_ui",
         "parent_case_real_evidence"
+      ],
+      "design_assertions": [
+        "Disabling haptics preserves understandable outcomes; change-mode exit restores the original draft and return location; unknown does not show success.",
+        "R2 M01-M10 use finite local state feedback and system navigation/sheet/keyboard transitions; old receipts do not replay completion feedback."
+      ],
+      "interaction_scenario_ids": [
+        "I01",
+        "I03",
+        "I05",
+        "I12",
+        "I13",
+        "I14",
+        "I15",
+        "I16",
+        "I17",
+        "I18",
+        "I30",
+        "I32",
+        "I36",
+        "I37",
+        "I39",
+        "I41",
+        "I42"
       ]
     }
-  ]
+  ],
+  "design_revision": "UX-1 R3",
+  "design_review_path": "../design/product-experience-review-2026-10-13.md",
+  "visual_motion_appendix": "../design/taste-visual-motion-r2.md",
+  "visual_motion_tokens": "../design/taste-visual-motion-r2.json",
+  "interaction_appendix": "docs/design/interaction-scenarios-r3.md",
+  "interaction_scenarios": "docs/design/interaction-scenarios-r3.json"
 }
