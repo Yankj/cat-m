@@ -1,55 +1,34 @@
-# Local execution and tool output
-**/.build*/
-**/build/
-**/DerivedData/
-**/node_modules/
-**/.runtime/
-**/xcuserdata/
-*.xcuserstate
+# Xcode / macOS
 .DS_Store
-*.xcresult/
-*.app/
+*.xcuserstate
+xcuserdata/
+DerivedData/
+.build/
 *.ipa
-*.zip
-*.log
-*.dSYM/
+*.dSYM.zip
+*.dSYM
 
-# Credentials, personal state and local service data
-local-audit/
-# Working research may contain machine context; publish only curated restart inputs.
-/design/*
-!/design/catpaw-restart-review-and-plan-2026-10-13.md
-/research/*
-!/research/openmuse-opendots-copilotkit-assessment-2026-10-13.md
-.env
-.env.*
-**/.env
-**/.env.*
-!**/.env.example
-**/.env.local
-**/Configuration/runtime-public.json
-**/Configuration/Local.xcconfig
+# Swift Package Manager
+.swiftpm/
+Packages/
+Package.resolved
+
+# CocoaPods / Carthage
+Pods/
+Carthage/Build/
+
+# fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/**/*.png
+fastlane/test_output
+
+# Secrets
+*.env
 *.pem
-*.key
-*.p12
-*.mobileprovision
-**/.aws/
-**/.codex/
-**/.library-transfer*/
-services/facade/evidence/*
-!services/facade/evidence/.gitkeep
-services/facade/qa/evidence/*
-!services/facade/qa/evidence/.gitkeep
-services/facade/qa/data/*
-!services/facade/qa/data/.gitkeep
-services/offline/evidence/*
-!services/offline/evidence/.gitkeep
+GoogleService-Info.plist
 
-# Large historical synthetic sampling traces remain on disk and in legacy Git history.
-/docs/acceptance/evidence/ios-p0-performance/baseline-large-type.json
-/docs/acceptance/evidence/ios-p0-performance/final-echo20.json
-/docs/acceptance/evidence/ios-p0-performance/final-home5s.json
-/docs/acceptance/evidence/ios-p0-performance/final-ime.json
-/docs/acceptance/evidence/ios-p0-performance/final-large-type.json
-/docs/acceptance/evidence/ios-p0-performance/no-xctest-after.json
-/docs/acceptance/evidence/ios-p0-performance/no-xctest-baseline.json
+# IDE
+.idea/
+*.swp
+*~
