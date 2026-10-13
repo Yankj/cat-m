@@ -215,15 +215,15 @@
     {
       "path": "apps/ios-conversation/Tests/DeviceTrialNativeTests.swift",
       "category": "deployment_public_key",
-      "line": 232,
-      "sha256": "0b31c4190e24a874983918e7a91b85e1602d568d6200d086bbedc16a472d2e64",
+      "line": 243,
+      "sha256": "2b9cc45014ecb5a4132631e57f9bed629f4de3bcfd11c88201a5c7c9166ec99f",
       "reason": "Explicit synthetic fixture public key in mock-only native test; no real deployment key."
     },
     {
       "path": "apps/ios-conversation/Tests/DeviceTrialNativeTests.swift",
       "category": "deployment_public_key",
-      "line": 273,
-      "sha256": "0b31c4190e24a874983918e7a91b85e1602d568d6200d086bbedc16a472d2e64",
+      "line": 284,
+      "sha256": "2b9cc45014ecb5a4132631e57f9bed629f4de3bcfd11c88201a5c7c9166ec99f",
       "reason": "Explicit synthetic fixture public key in mock-only native test; no real deployment key."
     },
     {
