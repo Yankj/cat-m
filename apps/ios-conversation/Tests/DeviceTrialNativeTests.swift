@@ -3,6 +3,45 @@ import UIKit
 import CatpawImageComposer
 @testable import CatpawM
 final class DeviceTrialNativeTests: XCTestCase {
+ @MainActor func testConversationSwitchPreservesEachImageDraftWithoutReusingApproval() async throws {
+  let (model,backend,service,_)=try makeVisionModel();let firstHash=try await selectVisionImage(model)
+  let first=try XCTUnwrap(model.conversationID),firstDraft=model.imageDraft,firstImage=try XCTUnwrap(firstDraft.attachment?.id)
+  try await approveVisionImage(model);let second=try await service.create(scope:model.scope)
+  try await model.select(second);XCTAssertEqual(model.draft,"");XCTAssertEqual(model.imageDraft.phase,.empty)
+  model.editDraft("Second independent unsent image caption")
+  let raw=UIGraphicsImageRenderer(size:CGSize(width:24,height:12)).pngData{ctx in UIColor.red.setFill();ctx.fill(CGRect(x:0,y:0,width:24,height:12))}
+  let ticket=model.imageDraft.beginSelection();model.imageDraft.receiveSelectedData(raw,ticket:ticket)
+  try await p0Until {model.imageDraft.phase == .ready};let secondDraft=model.imageDraft,secondHash=try XCTUnwrap(secondDraft.attachment?.sha256)
+  try await model.select(first);XCTAssertEqual(model.draft,"Synthetic image caption");XCTAssertTrue(model.imageDraft === firstDraft)
+  XCTAssertEqual(model.imageDraft.attachment?.sha256,firstHash);XCTAssertEqual(model.imageDraft.attachment?.id,firstImage)
+  XCTAssertFalse(model.imageGate.imageConsentMatchesCurrentRoute);XCTAssertFalse(model.canAcceptDraft)
+  try await model.select(second);XCTAssertEqual(model.draft,"Second independent unsent image caption")
+  XCTAssertTrue(model.imageDraft === secondDraft);XCTAssertEqual(model.imageDraft.attachment?.sha256,secondHash)
+  let counts=await backend.counts();XCTAssertEqual(counts[0],0)
+  await model.deactivate();XCTAssertEqual(firstDraft.phase,.empty);XCTAssertEqual(secondDraft.phase,.empty)
+ }
+ @MainActor func testFailedConversationSwitchKeepsExactTextAndImage() async throws {
+  let storage=SelectedConversationTestStorage(),repo=try Repository(persistence:storage),service=ConversationSessionService(repository:repo)
+  let model=ConversationFirstModel(repository:repo,service:service);await model.start()
+  let first=try XCTUnwrap(model.conversationID),second=try await service.create(scope:model.scope)
+  let raw=UIGraphicsImageRenderer(size:CGSize(width:16,height:16)).pngData{ctx in UIColor.blue.setFill();ctx.fill(CGRect(x:0,y:0,width:16,height:16))}
+  let ticket=model.imageDraft.beginSelection();model.imageDraft.receiveSelectedData(raw,ticket:ticket)
+  try await p0Until {model.imageDraft.phase == .ready};let original=model.imageDraft,hash=original.attachment?.sha256
+  model.editDraft("Unsent draft retained after failed switch");storage.rejectNextSave()
+  do {try await model.select(second);XCTFail("Storage rejection must prevent selection")} catch CatpawError.unavailable { }
+  XCTAssertEqual(model.conversationID,first);XCTAssertEqual(model.draft,"Unsent draft retained after failed switch")
+  XCTAssertTrue(model.imageDraft === original);XCTAssertEqual(model.imageDraft.attachment?.sha256,hash);await model.deactivate()
+ }
+ @MainActor func testLatePhotoSelectionCannotEnterAnotherConversation() async throws {
+  let (model,backend,service,_)=try makeVisionModel();let hash=try await selectVisionImage(model)
+  let first=try XCTUnwrap(model.conversationID),original=model.imageDraft,ticket=original.beginSelection()
+  let second=try await service.create(scope:model.scope);try await model.select(second)
+  let raw=UIGraphicsImageRenderer(size:CGSize(width:32,height:16)).pngData{ctx in UIColor.red.setFill();ctx.fill(CGRect(x:0,y:0,width:32,height:16))}
+  original.receiveSelectedData(raw,ticket:ticket);XCTAssertEqual(model.imageDraft.phase,.empty)
+  try await model.select(first);XCTAssertEqual(model.imageDraft.attachment?.sha256,hash)
+  XCTAssertEqual(model.imageDraft.phase,.failed(.cancelled));XCTAssertFalse(model.canAcceptDraft)
+  let counts=await backend.counts();XCTAssertEqual(counts[0],0);await model.deactivate()
+ }
  @MainActor func testVisionConsentCancelAndUnconfirmedCheckboxNeverSend() async throws {
   let (model,backend,_,_)=try makeVisionModel();let hash=try await selectVisionImage(model)
   model.requestImageConsent();try await p0Until {model.pendingImageConsent != nil};let consent=try XCTUnwrap(model.pendingImageConsent)

@@ -66,7 +66,7 @@ public enum SidebarGesturePolicy {
     /// Our interaction defaults, not measured latency or HIG-mandated values.
     public static let edgeWidth: CGFloat = 24
     public static func drawerWidth(available: CGFloat) -> CGFloat {
-        max(0, min(360, max(240, available * 0.84), available - 44))
+        max(0, min(320, available * 0.86, available - 44))
     }
     public static func mayOpen(isAtRoot: Bool, isPresented: Bool,
                                startX: CGFloat, inHorizontalContent: Bool, inEditableControl: Bool) -> Bool {

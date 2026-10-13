@@ -1,0 +1,93 @@
+{
+  "schema_version": 1,
+  "recorded_at_utc": "2026-10-13T02:50:42.917428+00:00",
+  "source_base": "0b1c973d2c770ef9e3bb6a5db371ea4dd7f7c10b",
+  "modified_source_sha256": {
+    "apps/ios-conversation/Resources/UIStrings.json": "a422ad3f835ed754ba209f8cd7c69b8bb0544a8d9e8cc93d93c46c2a5920602c",
+    "apps/ios-conversation/Sources/App/ConversationFirstModel.swift": "e9820c40c50243719c4b8222b6f082594500f97eeb3ba5a1d7efb438e43da19e",
+    "apps/ios-conversation/Tests/DeviceTrialNativeTests.swift": "c612e307fb7dcfbaf7eca2610929cf39bf48c43d6542f72e70dfb89003c31a94",
+    "apps/ios-conversation/Tests/P0NativeExperienceUITests.swift": "ef228caf822eb09d831339729edb67c1cdd3da3b3f6f6d77a2fd29f9f3d7fe79",
+    "packages/ios-navigation/Sources/CatpawNavigation/SidebarModel.swift": "c6f3983ea4e64a1946b6deea94726f298f7cf5aec4868160ecb752a6d9ee8b37",
+    "packages/ios-navigation/Sources/CatpawNavigation/SidebarPanel.swift": "2fb5eb714c8e013d658eeee4b8dfbea2957c84fe435b5abb9819e1eb1b8894f0",
+    "packages/ios-navigation/Tests/CatpawNavigationTests/SidebarTests.swift": "b0db40893c06b49c91e8473998f0442fbf02629ab1aae2b15a39d4588bbbdee1"
+  },
+  "scope": "D10/S01 sidebar and scoped draft navigation; AF-U03/05/12 contributing assertions only",
+  "results": {
+    "native_cases": 43,
+    "actual_ui_cases": 5,
+    "xcodebuild_exit": 0,
+    "xcodebuild_terminal": "TEST SUCCEEDED",
+    "sidebar_package_cases": 12,
+    "non_debug_source_and_localization": "PASS; 680 bilingual entries"
+  },
+  "ui_cases": [
+    "testIntegratedActualPhotosPickerCancelPreviewAndClosedGate",
+    "testIntegratedLargestTypeSidebarFooterIsReachable",
+    "testIntegratedRootEdgeAndPanelClosingGestures",
+    "testIntegratedSidebarRoutesSearchAndNativeBackPreserveSavedDraft",
+    "testSidebarSearchClearAndTwoUnsentDraftsRemainInTheirConversations"
+  ],
+  "native_new_cases": [
+    "testConversationSwitchPreservesEachImageDraftWithoutReusingApproval",
+    "testFailedConversationSwitchKeepsExactTextAndImage",
+    "testLatePhotoSelectionCannotEnterAnotherConversation"
+  ],
+  "reality": "native_Simulator_actual_system_PhotosPicker_and_native_navigation_with_in_process_synthetic_backend",
+  "simulator_geometry_pt": [
+    402,
+    874
+  ],
+  "screenshots": [
+    {
+      "label": "native-image-draft-restored",
+      "file": "native-image-draft-restored-2026-10-13T02-47-52.378+00-00.png",
+      "sha256": "b0c97768518944a4d1c7ca56a1e24caee620b32be9c97fa7823f82380bf58328",
+      "captured_at_utc": "2026-10-13T02:47:52.378+00:00",
+      "test": "P0NativeExperienceUITests/testIntegratedActualPhotosPickerCancelPreviewAndClosedGate()"
+    },
+    {
+      "label": "native-second-draft-restored",
+      "file": "native-second-draft-restored-2026-10-13T02-49-24.322+00-00.png",
+      "sha256": "e655a6b5e0bff8c3a65b27523e52b5957fabf0b17af6872c4f99d3d27d5fad96",
+      "captured_at_utc": "2026-10-13T02:49:24.322+00:00",
+      "test": "P0NativeExperienceUITests/testSidebarSearchClearAndTwoUnsentDraftsRemainInTheirConversations()"
+    },
+    {
+      "label": "native-sidebar-two-drafts",
+      "file": "native-sidebar-two-drafts-2026-10-13T02-49-17.675+00-00.png",
+      "sha256": "2bbdb45ea75bb068886b01ab66dfb67bd36037d42936ffbabf6975e47f78585f",
+      "captured_at_utc": "2026-10-13T02:49:17.675+00:00",
+      "test": "P0NativeExperienceUITests/testSidebarSearchClearAndTwoUnsentDraftsRemainInTheirConversations()"
+    }
+  ],
+  "private_log_sha256": {
+    "final.log": "739da24f87806475ded59c551d47c81482b7538c86258111a8099130d21d029f",
+    "native-first.log": "78aa4f1073760a0518d46362a9dde54d9386b3ed4299186b9869d651cedc8912",
+    "source.log": "33c73bea326e6fbce02b25f7e62be0f7d44762de8459d2fad5e5071fc2e21f58",
+    "package.log": "03867d64544cfd6b822ae3711afbef9af3f11cb007a0bb2b3135e07016e6cd48",
+    "first-attachments-manifest.json": "1fc9a1c5722f8301f59efe67aa0f94cae9b41feb0416ae4c0a0a14ce3f2ac781",
+    "final-attachments-manifest.json": "5ae3025ea9b83171dcf54d3f7d0dce248e1732f9b16cc27af37c113f96fd1982"
+  },
+  "earlier_run": {
+    "xcodebuild_exit": 65,
+    "native_cases_pass": 43,
+    "actual_ui_cases_pass": 4,
+    "actual_ui_cases_failed": 1,
+    "cause": "Actual system cancel label was Chinese; prior locator matched only English. Exact native AX hierarchy retained."
+  },
+  "limits": [
+    "Unsent attachment retention within current App session; new cold-start attachment persistence not implemented",
+    "Full AF-U03/05/12 not closed; conversation reading-position restore not covered by this slice",
+    "402x874 Simulator only; physical iPhone, three-width/appearance/VoiceOver full matrix NOT_RUN"
+  ],
+  "physical_phone": {
+    "installed_build": "0.3.0(16)",
+    "source_commit": "a905b47eb4201e21758fba8a66b6ff01d682e844",
+    "includes_this_change": false,
+    "current_mirror": "Mac Touch ID authentication required"
+  },
+  "real_model_calls": 0,
+  "phone_installations_this_slice": 0,
+  "cloud_deployments": 0,
+  "full_AF_U03_U05_U12": "NOT_RUN"
+}

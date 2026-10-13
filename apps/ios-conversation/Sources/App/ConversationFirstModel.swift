@@ -19,7 +19,8 @@ enum ConversationObserverLifecycle: String { case foregroundIdle, streaming, rec
     let service: ConversationSessionService
     let imageStore:any ConversationImageByteStore
     let scope: DataScope
-    let imageDraft=ImageAttachmentDraft()
+    @Published private(set) var imageDraft=ImageAttachmentDraft()
+    private var imageDrafts:[UUID:ImageAttachmentDraft]=[:]
     @Published private(set) var imageCapability=ConversationImageCapability()
     private var imageSubscription:AnyCancellable?
     @Published var pendingImageConsent:ConversationImageConsent?
@@ -81,6 +82,10 @@ enum ConversationObserverLifecycle: String { case foregroundIdle, streaming, rec
     private var reflectedReplyID:UUID?
     init(repository:Repository,service:ConversationSessionService,scope:DataScope = Profiles.user,imageStore:any ConversationImageByteStore = MemoryConversationImageByteStore()) {
         self.repository=repository;self.service=service;self.scope=scope;self.imageStore=imageStore
+        subscribeToImageDraft()
+    }
+    private func subscribeToImageDraft() {
+        imageSubscription?.cancel()
         imageSubscription=imageDraft.objectWillChange.sink { [weak self] _ in Task { @MainActor in self?.imageSelectionChanged();self?.objectWillChange.send() } }
     }
     private var approvedImageMatchesDraft:Bool {
@@ -222,7 +227,13 @@ enum ConversationObserverLifecycle: String { case foregroundIdle, streaming, rec
         try await service.rememberSelection(scope:scope,conversationID:id)
         permissionTask?.cancel();permissionID=nil;pendingModelConsent=nil;modelConsentReview=nil;checkingModelConsent=false;consentReady=false
         queue=ConversationFollowupQueueService(repository:repository,scope:scope,conversationID:id)
-        cancelImageConsent();imageRecoveryTask?.cancel();imageRecoveryTask=nil;imageRecoveryToken=nil;imageDraft.clear();imageCapability=ConversationImageCapability()
+        cancelImageConsent();imageRecoveryTask?.cancel();imageRecoveryTask=nil;imageRecoveryToken=nil
+        if let prior=conversationID {
+            if imageDraft.phase == .empty {imageDrafts.removeValue(forKey:prior)}
+            else {imageDraft.cancelProcessing();imageDrafts[prior]=imageDraft}
+        }
+        imageDraft=imageDrafts.removeValue(forKey:id) ?? ImageAttachmentDraft();subscribeToImageDraft()
+        recoveredImageOperation=nil;imageCapability=ConversationImageCapability()
         conversationID=id;session=selected;draft=saved.conversation?.draftText ?? "";outgoingMessages=[];tapTimes=[:];isInputComposing=false;error=nil;await refresh();if loaded && foreground && networkAdmissionAllowed {connectionTask?.cancel();connectionTask=Task{await refreshConnection()}}
     }
     func newConversation() { guard !isInputComposing else { return };Task { do { await persistenceTask?.value;try await flushDraft();let id=try await service.create(scope:scope);try await select(id) } catch { self.error=error.localizedDescription } } }
@@ -470,7 +481,8 @@ enum ConversationObserverLifecycle: String { case foregroundIdle, streaming, rec
     }
     func deactivate() async {
         // Close admission before any await; a queued foreground Task cannot revive logout.
-        loaded=false;networkAdmissionAllowed=false;cancelImageConsent();imageRecoveryTask?.cancel();imageRecoveryTask=nil;imageRecoveryToken=nil;imageDraft.clear();imageCapability=ConversationImageCapability()
+        loaded=false;networkAdmissionAllowed=false;cancelImageConsent();imageRecoveryTask?.cancel();imageRecoveryTask=nil;imageRecoveryToken=nil
+        imageDraft.clear();for value in imageDrafts.values {value.clear()};imageDrafts.removeAll();imageCapability=ConversationImageCapability()
         await suspend();subscription?.cancel();subscription=nil;draftTask?.cancel();draftTask=nil
         draft="";history=[];session=nil;conversationID=nil;followups=ConversationFollowupState();queue=nil;outgoingMessages=[];tapTimes=[:];isInputComposing=false;error=nil;loaded=false
     }
