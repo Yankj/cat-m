@@ -339,7 +339,7 @@
     {
       "id": "E13",
       "file": "docs/design/ios-codex-experience-spec.md",
-      "sha256": "8d56252a7396745f4541b4fe6b0af3c07c57c5ad48e5901325be6e0be2564041",
+      "sha256": "24f1a5ff3c6c771933e1f91eaa22c19c5b75b5475603f1750e15bc3fe199fc09",
       "publication_scope": "versioned",
       "evidence_kind": "normative_ux_spec",
       "adopted": "UX-1布局、状态、返回、视觉和原生行为合同；2026-10-13四仓核读细化卡生成/后台待决/成果恢复状态；R1首用、默认值、当前待决层级、修改草稿、可用成果与克制反馈；R2视觉层级/有限运动/可访问性与原12U接线；R3开合/过程/稳定卡/表图/HIL场景映射原验收",
@@ -1170,7 +1170,7 @@
     {
       "id": "E34",
       "file": "docs/planning/AF-1/development-start-contract.md",
-      "sha256": "0e53bbabd5fee76efbbe8c915f16b8d6d7d884b8abf9545017bb347cf1a8290f",
+      "sha256": "c7c52d2cf87beb5623e03fb5e7d7b6b698a066185343eece3160e53d5086d494",
       "publication_scope": "versioned",
       "evidence_kind": "development_entry_contract",
       "adopted": "统一spec/验收/执行单元、开工入口、外部资源门和证据责任；R1明确规格分工、CP01先贯通与既有Goal/资源边界；R2视觉层级/有限运动/可访问性与原12U接线；R3开合/过程/稳定卡/表图/HIL场景映射原验收",
@@ -1227,7 +1227,7 @@
     {
       "id": "E35",
       "file": "docs/planning/AF-1/long-task-development-prompt.md",
-      "sha256": "bdb263d011e7df1e16e52cd56b4e81d81076b328cbb58396a555a9a29100b722",
+      "sha256": "528a19c418bb88d6b4dc5967a00a06bcec82ee132b93db95cb71c84e9b7b860a",
       "publication_scope": "versioned",
       "evidence_kind": "user_copyable_development_prompt",
       "adopted": "长任务执行与持续交付输入、完整放行门、统一主仓；R1持续开发prompt含产品取舍，不在本轮执行；R2视觉层级/有限运动/可访问性与原12U接线；R3开合/过程/稳定卡/表图/HIL场景映射原验收",
@@ -2329,6 +2329,240 @@
         "AF-U05",
         "AF-U06",
         "AF-U07",
+        "AF-U11",
+        "AF-U12"
+      ],
+      "final_goal_ids": [
+        "FINAL-G1",
+        "FINAL-G3"
+      ]
+    },
+    {
+      "id": "E67",
+      "file": "docs/design/mobile-conversation-reference-r5.md",
+      "sha256": "7789e1c40390789df0a5cd0a2906ceac6a515a1458cb2a0d731d4c30872c403e",
+      "publication_scope": "versioned",
+      "evidence_kind": "synthetic_mobile_reference_design",
+      "adopted": "Mobile reading typography, localized blue actions, input states, factual process summaries and scoped menus",
+      "limits_or_deferred": "User references are private static captures; no native/material/keyboard/task/model acceptance; voice conversation excluded",
+      "goal_ids": [
+        "AF-GD",
+        "AF-G5"
+      ],
+      "acceptance_ids": [
+        "AF-A02",
+        "AF-A04",
+        "AF-A06",
+        "AF-A07",
+        "AF-A08",
+        "AF-A09",
+        "AF-A16",
+        "AF-A17"
+      ],
+      "ux_ids": [
+        "AF-U02",
+        "AF-U03",
+        "AF-U04",
+        "AF-U05",
+        "AF-U06",
+        "AF-U07",
+        "AF-U08",
+        "AF-U10",
+        "AF-U11",
+        "AF-U12"
+      ],
+      "final_goal_ids": [
+        "FINAL-G1",
+        "FINAL-G3"
+      ]
+    },
+    {
+      "id": "E68",
+      "file": "docs/design/mobile-conversation-reference-r5.json",
+      "sha256": "243c4bfd136c253dcdd2b8c717c73f87057514c290babc34ced6d3e96788e1df",
+      "publication_scope": "versioned",
+      "evidence_kind": "synthetic_mobile_reference_design",
+      "adopted": "Mobile reading typography, localized blue actions, input states, factual process summaries and scoped menus",
+      "limits_or_deferred": "User references are private static captures; no native/material/keyboard/task/model acceptance; voice conversation excluded",
+      "goal_ids": [
+        "AF-GD",
+        "AF-G5"
+      ],
+      "acceptance_ids": [
+        "AF-A02",
+        "AF-A04",
+        "AF-A06",
+        "AF-A07",
+        "AF-A08",
+        "AF-A09",
+        "AF-A16",
+        "AF-A17"
+      ],
+      "ux_ids": [
+        "AF-U02",
+        "AF-U03",
+        "AF-U04",
+        "AF-U05",
+        "AF-U06",
+        "AF-U07",
+        "AF-U08",
+        "AF-U10",
+        "AF-U11",
+        "AF-U12"
+      ],
+      "final_goal_ids": [
+        "FINAL-G1",
+        "FINAL-G3"
+      ]
+    },
+    {
+      "id": "E69",
+      "file": "docs/design/prototypes/catpaw-mobile-reference-r5/README.md",
+      "sha256": "b9488ec3a380395868ff5fd53ccc5b55e9d9e76b38f5c06554124b0d3681ded2",
+      "publication_scope": "versioned",
+      "evidence_kind": "synthetic_mobile_reference_design",
+      "adopted": "Mobile reading typography, localized blue actions, input states, factual process summaries and scoped menus",
+      "limits_or_deferred": "User references are private static captures; no native/material/keyboard/task/model acceptance; voice conversation excluded",
+      "goal_ids": [
+        "AF-GD",
+        "AF-G5"
+      ],
+      "acceptance_ids": [
+        "AF-A02",
+        "AF-A04",
+        "AF-A06",
+        "AF-A07",
+        "AF-A08",
+        "AF-A09",
+        "AF-A16",
+        "AF-A17"
+      ],
+      "ux_ids": [
+        "AF-U02",
+        "AF-U03",
+        "AF-U04",
+        "AF-U05",
+        "AF-U06",
+        "AF-U07",
+        "AF-U08",
+        "AF-U10",
+        "AF-U11",
+        "AF-U12"
+      ],
+      "final_goal_ids": [
+        "FINAL-G1",
+        "FINAL-G3"
+      ]
+    },
+    {
+      "id": "E70",
+      "file": "docs/design/prototypes/catpaw-mobile-reference-r5/index.html",
+      "sha256": "913ef7f7ca498a8f5a6088f791a90b08e803f61cdaa1c118ff986a15a20eb559",
+      "publication_scope": "versioned",
+      "evidence_kind": "synthetic_mobile_reference_design",
+      "adopted": "Mobile reading typography, localized blue actions, input states, factual process summaries and scoped menus",
+      "limits_or_deferred": "User references are private static captures; no native/material/keyboard/task/model acceptance; voice conversation excluded",
+      "goal_ids": [
+        "AF-GD",
+        "AF-G5"
+      ],
+      "acceptance_ids": [
+        "AF-A02",
+        "AF-A04",
+        "AF-A06",
+        "AF-A07",
+        "AF-A08",
+        "AF-A09",
+        "AF-A16",
+        "AF-A17"
+      ],
+      "ux_ids": [
+        "AF-U02",
+        "AF-U03",
+        "AF-U04",
+        "AF-U05",
+        "AF-U06",
+        "AF-U07",
+        "AF-U08",
+        "AF-U10",
+        "AF-U11",
+        "AF-U12"
+      ],
+      "final_goal_ids": [
+        "FINAL-G1",
+        "FINAL-G3"
+      ]
+    },
+    {
+      "id": "E71",
+      "file": "docs/design/prototypes/catpaw-mobile-reference-r5/mobile.css",
+      "sha256": "6aaa7124141aff5697158b46e6d1af0ccebc61b0d92f8143dcfb3e5ab0fea819",
+      "publication_scope": "versioned",
+      "evidence_kind": "synthetic_mobile_reference_design",
+      "adopted": "Mobile reading typography, localized blue actions, input states, factual process summaries and scoped menus",
+      "limits_or_deferred": "User references are private static captures; no native/material/keyboard/task/model acceptance; voice conversation excluded",
+      "goal_ids": [
+        "AF-GD",
+        "AF-G5"
+      ],
+      "acceptance_ids": [
+        "AF-A02",
+        "AF-A04",
+        "AF-A06",
+        "AF-A07",
+        "AF-A08",
+        "AF-A09",
+        "AF-A16",
+        "AF-A17"
+      ],
+      "ux_ids": [
+        "AF-U02",
+        "AF-U03",
+        "AF-U04",
+        "AF-U05",
+        "AF-U06",
+        "AF-U07",
+        "AF-U08",
+        "AF-U10",
+        "AF-U11",
+        "AF-U12"
+      ],
+      "final_goal_ids": [
+        "FINAL-G1",
+        "FINAL-G3"
+      ]
+    },
+    {
+      "id": "E72",
+      "file": "docs/design/prototypes/catpaw-mobile-reference-r5/mobile.js",
+      "sha256": "1be22dde827d28249f5c289f79667cd0418579b4416682be19029c315d649be0",
+      "publication_scope": "versioned",
+      "evidence_kind": "synthetic_mobile_reference_design",
+      "adopted": "Mobile reading typography, localized blue actions, input states, factual process summaries and scoped menus",
+      "limits_or_deferred": "User references are private static captures; no native/material/keyboard/task/model acceptance; voice conversation excluded",
+      "goal_ids": [
+        "AF-GD",
+        "AF-G5"
+      ],
+      "acceptance_ids": [
+        "AF-A02",
+        "AF-A04",
+        "AF-A06",
+        "AF-A07",
+        "AF-A08",
+        "AF-A09",
+        "AF-A16",
+        "AF-A17"
+      ],
+      "ux_ids": [
+        "AF-U02",
+        "AF-U03",
+        "AF-U04",
+        "AF-U05",
+        "AF-U06",
+        "AF-U07",
+        "AF-U08",
+        "AF-U10",
         "AF-U11",
         "AF-U12"
       ],
