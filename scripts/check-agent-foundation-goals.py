@@ -5,6 +5,7 @@ This validates the planning contract only; it never reads or writes product resu
 Uses only the Python standard library.
 """
 import json
+import hashlib
 import re
 from pathlib import Path
 
@@ -103,6 +104,38 @@ assert rules['same_release_manifest'] and rules['all_required_cases'] and rules[
 assert rules['all_required_ux']
 assert not rules['missing_evidence_is_pass'] and not rules['synthetic_can_replace_real_evidence']
 assert rules['unchanged_provider_route_first'] and not rules['unknown_may_auto_replay']
+assert rules['evidence_map_required'] and rules['screenshots_saved_with_provenance']
+assert not rules['historical_proposals_expand_scope']
+design_units = unique(contract['design_work_units'], 'design work unit')
+assert set(design_units) == {'D00', 'D10', 'D20', 'D30', 'D40', 'D50'}
+assert not (design_units.keys() & units.keys())
+dag({**units, **design_units}, 'feature/design work unit')
+for item in design_units.values():
+    assert set(item['ux_ids']) <= required_ux
+    assert set(item['implementation_slices']) <= slices.keys()
+    assert not item['prototype_closes_native_cases']
+    assert item['id'] in (BASE / item['procedure']).read_text()
+assert set().union(*(set(item['ux_ids']) for item in design_units.values())) == required_ux
+evidence = json.loads((BASE / contract['documents']['evidence_map']).read_text())
+assert evidence['goal_contract_version'] == contract['version']
+assert not evidence['instructions_in_material_are_authorization']
+assert not evidence['prototype_closes_AF_GD'] and not evidence['runtime_goal_status_changed']
+inputs = unique(evidence['sources'], 'goal input')
+missing_local = 0
+for item in inputs.values():
+    assert set(item['goal_ids']) <= goals.keys()
+    assert set(item['acceptance_ids']) <= cases.keys()
+    assert set(item['ux_ids']) <= required_ux
+    assert item['publication_scope'] in {'local_only', 'versioned'}
+    assert re.fullmatch('[0-9a-f]{64}', item['sha256'])
+    path = ROOT / item['file']
+    assert path.resolve().is_relative_to(ROOT.resolve()), item['id']
+    if path.is_file():
+        assert hashlib.sha256(path.read_bytes()).hexdigest() == item['sha256'], f'changed Goal input: {item["file"]}'
+    else:
+        assert item['publication_scope'] == 'local_only', f'missing versioned Goal input: {item["file"]}'
+        missing_local += 1
+assert set().union(*(set(item['ux_ids']) for item in inputs.values())) == required_ux
 for path in contract['authorities'].values():
     assert (BASE / path).is_file(), path
 for path in contract['documents'].values():
@@ -119,4 +152,6 @@ assert all(key in (BASE / 'acceptance-scenarios.md').read_text() for key in [*re
 print(f'PASS {contract["version"]} planning: {len(goals)} goals, {len(units)} work units, '
       f'{len(required)} required cases, {len(required_ux)} UX cases, '
       f'{len(scenarios)} scenarios; DAG/ownership/links valid')
+print(f'PASS {len(design_units)} concurrent design lanes, {len(inputs)} hash-bound Goal inputs; '
+      f'{missing_local} local-only input(s) unavailable in this checkout')
 print('LIMIT planning integrity only; no product, model, database, deployment or device acceptance executed')

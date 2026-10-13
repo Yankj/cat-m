@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "version": "AF-1-G2-UX1",
+  "version": "AF-1-G3-UX1",
   "created_on": "2026-10-13",
   "timezone": "Asia/Shanghai",
   "scope": "AF-1 detailed planning supplement; execution results remain in master-plan",
@@ -9,7 +9,8 @@
     "acceptance": "../../acceptance/agent-foundation-acceptance.json",
     "slices": "../../status/delivery-slices.json",
     "current_state": "../../status/master-plan.md",
-    "ux_acceptance": "../../acceptance/ios-codex-experience-acceptance.json"
+    "ux_acceptance": "../../acceptance/ios-codex-experience-acceptance.json",
+    "goal_definition": "goal.md"
   },
   "documents": {
     "plan": "plan.md",
@@ -17,7 +18,8 @@
     "procedures": "acceptance-scenarios.md",
     "ux_spec": "../../design/ios-codex-experience-spec.md",
     "ux_procedures": "../../acceptance/ios-codex-experience-acceptance.md",
-    "reference_review": "../../design/ios-codex-reference-review-2026-10-13.md"
+    "reference_review": "../../design/ios-codex-reference-review-2026-10-13.md",
+    "evidence_map": "goal-evidence-map.json"
   },
   "requirements": [
     "AF-R01",
@@ -520,6 +522,159 @@
     "synthetic_can_replace_real_evidence": false,
     "unchanged_provider_route_first": true,
     "unknown_may_auto_replay": false,
-    "all_required_ux": true
-  }
+    "all_required_ux": true,
+    "evidence_map_required": true,
+    "screenshots_saved_with_provenance": true,
+    "historical_proposals_expand_scope": false
+  },
+  "design_work_units": [
+    {
+      "id": "D00",
+      "title": "设计基线",
+      "depends_on": [
+        "W00"
+      ],
+      "implementation_slices": [
+        "S00"
+      ],
+      "ux_ids": [
+        "AF-U01",
+        "AF-U02",
+        "AF-U03",
+        "AF-U04",
+        "AF-U05",
+        "AF-U06",
+        "AF-U07",
+        "AF-U08",
+        "AF-U09",
+        "AF-U10",
+        "AF-U11",
+        "AF-U12"
+      ],
+      "coverage_mode": "design_input_only",
+      "procedure": "goal.md",
+      "prototype_closes_native_cases": false
+    },
+    {
+      "id": "D10",
+      "title": "对话输入侧栏",
+      "depends_on": [
+        "D00",
+        "W10"
+      ],
+      "implementation_slices": [
+        "S01"
+      ],
+      "ux_ids": [
+        "AF-U01",
+        "AF-U02",
+        "AF-U03",
+        "AF-U04",
+        "AF-U05",
+        "AF-U07",
+        "AF-U12"
+      ],
+      "coverage_mode": "contributing_native_assertions",
+      "procedure": "goal.md",
+      "prototype_closes_native_cases": false
+    },
+    {
+      "id": "D20",
+      "title": "图片连续阅读",
+      "depends_on": [
+        "D10",
+        "W20"
+      ],
+      "implementation_slices": [
+        "S02"
+      ],
+      "ux_ids": [
+        "AF-U03",
+        "AF-U04",
+        "AF-U12"
+      ],
+      "coverage_mode": "contributing_native_assertions",
+      "procedure": "goal.md",
+      "prototype_closes_native_cases": false
+    },
+    {
+      "id": "D30",
+      "title": "计划审批成果",
+      "depends_on": [
+        "D10",
+        "W30"
+      ],
+      "implementation_slices": [
+        "S03"
+      ],
+      "ux_ids": [
+        "AF-U06",
+        "AF-U07",
+        "AF-U08",
+        "AF-U12"
+      ],
+      "coverage_mode": "contributing_native_assertions",
+      "procedure": "goal.md",
+      "prototype_closes_native_cases": false
+    },
+    {
+      "id": "D40",
+      "title": "记忆跟进设备入口",
+      "depends_on": [
+        "D30",
+        "W40",
+        "W50",
+        "W60"
+      ],
+      "implementation_slices": [
+        "S04",
+        "S05",
+        "S06"
+      ],
+      "ux_ids": [
+        "AF-U01",
+        "AF-U09",
+        "AF-U12"
+      ],
+      "coverage_mode": "contributing_native_assertions",
+      "procedure": "goal.md",
+      "prototype_closes_native_cases": false
+    },
+    {
+      "id": "D50",
+      "title": "全状态与辅助功能",
+      "depends_on": [
+        "D20",
+        "D30",
+        "D40",
+        "W70"
+      ],
+      "implementation_slices": [
+        "S01",
+        "S02",
+        "S03",
+        "S04",
+        "S05",
+        "S06",
+        "S07"
+      ],
+      "ux_ids": [
+        "AF-U01",
+        "AF-U02",
+        "AF-U03",
+        "AF-U04",
+        "AF-U05",
+        "AF-U06",
+        "AF-U07",
+        "AF-U08",
+        "AF-U09",
+        "AF-U10",
+        "AF-U11",
+        "AF-U12"
+      ],
+      "coverage_mode": "contributing_native_assertions",
+      "procedure": "goal.md",
+      "prototype_closes_native_cases": false
+    }
+  ]
 }
