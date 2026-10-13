@@ -555,6 +555,69 @@
       "reason": "Re-reviewed unchanged historical source filename after long-term prompt hash update. Source identifier only, not a credential; exact path, line and file hash. Scanner rules unchanged."
     },
     {
+      "path": "docs/acceptance/evidence/mobile-reference-20261013-r5/r5-dark-approval.jpg",
+      "category": "unexpected_binary",
+      "sha256": "94914496f06836fb26448e51b7802b7c25e3864188d96ef2693df3067f4e5622",
+      "reason": "Reviewed synthetic R5 browser capture pixels and every JPEG metadata segment: only generic 14-byte JFIF APP0; no EXIF, XMP, comments, private reference pixels or personal data. Exact unmodified browser screenshot bytes."
+    },
+    {
+      "path": "docs/acceptance/evidence/mobile-reference-20261013-r5/r5-dark-input-keyboard.jpg",
+      "category": "unexpected_binary",
+      "sha256": "ba72e53926de666427e5dbc5847f68b9f07c533cac945bf7bf4a0a57d1359808",
+      "reason": "Reviewed synthetic R5 browser capture pixels and every JPEG metadata segment: only generic 14-byte JFIF APP0; no EXIF, XMP, comments, private reference pixels or personal data. Exact unmodified browser screenshot bytes."
+    },
+    {
+      "path": "docs/acceptance/evidence/mobile-reference-20261013-r5/r5-dark-message-menu.jpg",
+      "category": "unexpected_binary",
+      "sha256": "3052c055f290eb36952ad6290d9f2879c870872fcbfe43de12e4ee49fb477496",
+      "reason": "Reviewed synthetic R5 browser capture pixels and every JPEG metadata segment: only generic 14-byte JFIF APP0; no EXIF, XMP, comments, private reference pixels or personal data. Exact unmodified browser screenshot bytes."
+    },
+    {
+      "path": "docs/acceptance/evidence/mobile-reference-20261013-r5/r5-dark-process.jpg",
+      "category": "unexpected_binary",
+      "sha256": "af3a8393c9387f33af3106ed6a36467682e45cdb8eccc4acdbb8c0d8111dbd4c",
+      "reason": "Reviewed synthetic R5 browser capture pixels and every JPEG metadata segment: only generic 14-byte JFIF APP0; no EXIF, XMP, comments, private reference pixels or personal data. Exact unmodified browser screenshot bytes."
+    },
+    {
+      "path": "docs/acceptance/evidence/mobile-reference-20261013-r5/r5-dark-reading.jpg",
+      "category": "unexpected_binary",
+      "sha256": "451a7fee50986b744637fd7803ef9c282479ef578445a255e4db92c672f7a814",
+      "reason": "Reviewed synthetic R5 browser capture pixels and every JPEG metadata segment: only generic 14-byte JFIF APP0; no EXIF, XMP, comments, private reference pixels or personal data. Exact unmodified browser screenshot bytes."
+    },
+    {
+      "path": "docs/acceptance/evidence/mobile-reference-20261013-r5/r5-dark-thread-menu.jpg",
+      "category": "unexpected_binary",
+      "sha256": "28d6636dca0b84341feaca0751d41c177fd79d8c56fff1c9d8c79c64d3bc1fcd",
+      "reason": "Reviewed synthetic R5 browser capture pixels and every JPEG metadata segment: only generic 14-byte JFIF APP0; no EXIF, XMP, comments, private reference pixels or personal data. Exact unmodified browser screenshot bytes."
+    },
+    {
+      "path": "docs/acceptance/evidence/mobile-reference-20261013-r5/r5-light-reading.jpg",
+      "category": "unexpected_binary",
+      "sha256": "cef81b56d4c3da6a8a62fcc95b7ad46472579906676267aad1ac91d28fed4410",
+      "reason": "Reviewed synthetic R5 browser capture pixels and every JPEG metadata segment: only generic 14-byte JFIF APP0; no EXIF, XMP, comments, private reference pixels or personal data. Exact unmodified browser screenshot bytes."
+    },
+    {
+      "path": "docs/planning/AF-1/goal-evidence-map.json",
+      "category": "credential_prefix",
+      "line": 120,
+      "sha256": "edf3021467473f405d33d5029bfe0926724b791b8f06b82fd8e219dbb80f3988",
+      "reason": "Re-reviewed historical source filename field after R5 source hashes were appended/refreshed. Literal catdesk filename prefix matches generic sk- heuristic; source identifier, no credential. Exact path, line and hash; scanner rules unchanged."
+    },
+    {
+      "path": "docs/planning/AF-1/goal-evidence-map.json",
+      "category": "credential_prefix",
+      "line": 146,
+      "sha256": "edf3021467473f405d33d5029bfe0926724b791b8f06b82fd8e219dbb80f3988",
+      "reason": "Re-reviewed historical source filename field after R5 source hashes were appended/refreshed. Literal catdesk filename prefix matches generic sk- heuristic; source identifier, no credential. Exact path, line and hash; scanner rules unchanged."
+    },
+    {
+      "path": "docs/planning/AF-1/goal-evidence-map.json",
+      "category": "credential_prefix",
+      "line": 174,
+      "sha256": "edf3021467473f405d33d5029bfe0926724b791b8f06b82fd8e219dbb80f3988",
+      "reason": "Re-reviewed historical source filename field after R5 source hashes were appended/refreshed. Literal catdesk filename prefix matches generic sk- heuristic; source identifier, no credential. Exact path, line and hash; scanner rules unchanged."
+    },
+    {
       "path": "docs/planning/AF-1/goal-evidence-map.json",
       "category": "credential_prefix",
       "line": 120,
@@ -574,6 +637,27 @@
       "line": 174,
       "sha256": "dba9a2d64bc9c713bfe1e1ab3e37d3a3de239e05a3fa951af600f461a8b2c3f2",
       "reason": "Stable publication snapshot: unchanged historical catdesk source filename, not a credential. Exact path/line/hash re-reviewed after removing one trailing space in the synthetic FINAL proposal; scanner rules unchanged."
+    },
+    {
+      "path": "docs/planning/AF-1/goal-evidence-map.json",
+      "category": "credential_prefix",
+      "line": 120,
+      "sha256": "d8a93d219890416c09de1b04887441eb57f9fd53184a2e87aec4418490afbe2d",
+      "reason": "R5 main integration: re-reviewed unchanged historical catdesk source filename; not a credential. Exact path/line/hash after preserving the already-published FINAL whitespace fix. Scanner rules unchanged."
+    },
+    {
+      "path": "docs/planning/AF-1/goal-evidence-map.json",
+      "category": "credential_prefix",
+      "line": 146,
+      "sha256": "d8a93d219890416c09de1b04887441eb57f9fd53184a2e87aec4418490afbe2d",
+      "reason": "R5 main integration: re-reviewed unchanged historical catdesk source filename; not a credential. Exact path/line/hash after preserving the already-published FINAL whitespace fix. Scanner rules unchanged."
+    },
+    {
+      "path": "docs/planning/AF-1/goal-evidence-map.json",
+      "category": "credential_prefix",
+      "line": 174,
+      "sha256": "d8a93d219890416c09de1b04887441eb57f9fd53184a2e87aec4418490afbe2d",
+      "reason": "R5 main integration: re-reviewed unchanged historical catdesk source filename; not a credential. Exact path/line/hash after preserving the already-published FINAL whitespace fix. Scanner rules unchanged."
     }
   ]
 }

@@ -23,7 +23,7 @@
 | 最终handoff | 已读旧主仓handoff；用户确认相关任务停止。原文保存在忽略的local-audit；12项WIP与编译阻塞均相符 |
 | 首个修复 | 新仓已复现并修复getter缺return；候选包含许可review与弹窗分离、稳定确认入口、队列折叠、持久回复证据；新增拒绝重开/旧revision回归，最终合成验证通过 |
 | 本地检查 | 冻结合同/上游/历史来源完整性PASS；便携对话7/7、队列9/9 PASS；最终39/39原生＋1/1实际弹窗UI PASS，DeviceTrial无签名产品配置build PASS；证据限合成/Simulator，物理手机与provider未验 |
-| GitHub | 本轮21项治理资料已由[PR #7](https://github.com/Yankj/catpaw-m/pull/7)合入main `9dc9cd9`，tree `cd961a8`与候选核对；本地main/origin/main/临时docs分支已对齐，所有工作文件原样保留。默认main、合并后自动删head已启用；8个已整合远端/4个本地短分支已清理，legacy-local的9个来源引用与旧工作树保留。稳定的R4.1及此前规划／设计／研究已收齐到docs/restart-design-integration候选，R5仍由其他聊天编辑并留作本地WIP；本次远端同步结果以Git分支／PR读回为准；规则采用本地hooks＋PR读回，当前私有仓库服务器保护不执行。详见[架构审查](../architecture/repository-review-2026-10-13.md)与[分支快照](branch-inventory-2026-10-13.json) |
+| GitHub | 产品规划、源码调研、R1–R5设计与日期合成证据统一经[PR #8](https://github.com/Yankj/catpaw-m/pull/8)整合；实际合并提交以PR与main读回为准。main保持唯一主干；功能开发使用短分支，既有feat/conversation-genui及同期改动保留。默认main、合并后自动删head、本地hooks与PR核验沿用；当前私有仓库服务器保护不执行。legacy-local来源与旧工作树保留，详见[分支规范](../development/branch-management.md) |
 | 手机/API | 用户明确批准后，同bundle覆盖安装0.3.0(16)成功，系统读回16；未卸载/重置数据，原有内容待UI核对。镜像从连接失败进入Mac认证锁定页，待用户Touch ID解锁；截图已保存到本机忽略目录。Supabase APIv19/tick7无部署变化；实际50/43文件、14项共享差异已同步 |
 | 新候选包 | 0.3.0(16)，独立Git archive绑定原main `a905b47`；非DEBUG、严格签名、原证书/profile/entitlements及IPA逐字节PASS。已获安装及最多2次短文本原路由许可；尚未发送。见[包证据](../acceptance/restart-build16-2026-10-13.md)、[安装证据](../acceptance/restart-install16-2026-10-13.md)。PR #2阅读修复进入后续包 |
 | 真实链路 | 旧build15人工新会话同意后仍等待，未观察完整回复。许可→发送FAIL，模型UNVERIFIED；先复验现有路由 |
@@ -66,6 +66,12 @@ S01通过后S02/S03/S04代码可在合同明确时独立推进；同一文件/�
 6. AF-A01–18全部必需项签收后Goal才complete；云电脑扩展按独立确认范围。缺证据不算通过。
 
 ## 最近验证
+
+2026-10-14按用户要求收齐最新内容并通过PR #8整合main。R5日期记录的47项输入／截图／保留R4来源hash逐项匹配；保留前次已发布的FINAL原型行尾空格修正，刷新当前Goal映射与精确误报复核，不改写日期证据。目录／冻结／部署来源、AF／Goal／FINAL／CG规划、敏感扫描与完整候选空白检查通过。候选不含同期GenUI业务开发改动；原生／真实模型／SQL／设备与产品签收状态不变。
+
+2026-10-14根据用户提供的10张手机截图完成[UX-1 R5移动端对话设计](../design/mobile-conversation-reference-r5.md)、[参数](../design/mobile-conversation-reference-r5.json)和[可操作样机](../design/prototypes/catpaw-mobile-reference-r5/index.html)。图1–9与图10的视觉系统分别分析，不冒称Codex官方tokens或动效证据；私人原图仅在忽略目录按版本／hash归档。当前方向为白／近黑阅读面、深蓝本人消息、亮蓝操作、17号／1.6行高／24段间距，补紧凑／多行／全屏输入、来源、消息／会话／附件菜单与处理事件。停止正文与暂停工作独立；相机／正式分支／重新回答等保留候选合同边界，语音对话不纳入。UX-1、启动合同／prompt及72项来源同步；R4／R4.1和其他作者同期prompt改进保留。
+
+45组不透明语义色计算通过（所列小字最低4.8543、必要轮廓最低3.4444）；54组375／390／430 CSS视口的浅深色／普通放大字／阅读输入审批及菜单无横溢出，可见目标与决定区可达。复查全屏保稿、工具追加草稿、来源关闭回焦、各会话附件／草稿恢复、失败禁用停止、流中权重75与草稿保留、暂停申请等待独立人工回执，保存7张默认视口截图，见[日期证据](../acceptance/evidence/mobile-reference-20261013-r5/RESULT.json)。这些是人工浏览器样机和静态检查，原生玻璃／触觉／系统键盘／光标选区／VO／真实执行和所有release门保持未验。未修改App／后端、增加依赖或进行模型／SQL／安装／部署／发布；没有关闭运行Goal。
 
 2026-10-13按用户要求，综合当前docs产品／UI交互／架构／研究／验收与历史索引，完善既有[长期目标与可验收prompt](../planning/AF-1/long-task-development-prompt.md)。补现状日期摘要、文档职责、AF-G5／FINAL-G1–G3分层终点、CP-01–03实际步骤、GenUI边界／算法真值、持久与unknown语义、原生矩阵／性能样本、7天日用和BP配对规则。保留同期另一作者新增的R4.1配色、R4连续机制、R3完整状态及已有WIP；未另建规格或运行Goal。现场本聊天get_goal返回空，交接usageLimited不被推定为本聊天当前状态；其他聊天未查询。
 

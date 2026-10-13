@@ -13,7 +13,7 @@
 | 本轮产品取舍 | [设计评审R1](../../design/product-experience-review-2026-10-13.md)是理由记录；体验承诺/默认值见FINAL-1，具体层级/交互见UX-1 R2，呈现选择见CGUI-1；原验收ID保留 |
 | 视觉/运动实施 | [UX-1 R2附录](../../design/taste-visual-motion-r2.md)、[机器参数](../../design/taste-visual-motion-r2.json)、[可点按提案](../../design/prototypes/catpaw-taste/index.html)；原生SF/系统转场、有限运动/锚点/草稿与M01–M10并入原12U；提案不替代设备验收 |
 | 连续交互与新视觉方向 | [UX-1 R4](../../design/native-interaction-motion-r4.md)、[视觉／参数](../../design/interaction-motion-r4.json)、[独立样机](../../design/prototypes/catpaw-motion-study-r4/index.html)及App专用skill方向图；重点跟手、反向打断、可取消返回、分档固定确认、锚点菜单和图片回源。系统物理／玻璃／触觉用原生API，原12U／10CG身份不变 |
-| 配色与UI细节修订 | [R4.1](../../design/codex-color-detail-r4-1.md)、[语义参数](../../design/codex-color-detail-r4-1.json)、[新版样机](../../design/prototypes/catpaw-codex-color-r4-1/index.html)；中性白灰／炭黑、局部紫色图标发送、黑白审批、可读辅助字。用户研究采样不是官方tokens，原R4连续机制保留 |
+| 移动端视觉与对话细节 | [R5](../../design/mobile-conversation-reference-r5.md)、[参数](../../design/mobile-conversation-reference-r5.json)、[新版样机](../../design/prototypes/catpaw-mobile-reference-r5/index.html)；亮蓝动作／深蓝本人消息、正文17行高1.6段间24起点、三态输入、来源与三类菜单；真实事件摘要／耗时／停止与暂停有独立合同，语音对话不纳入本轮。R4.1保留日期输入，R4机制保留 |
 | 完整交互实施 | [UX-1 R3](../../design/interaction-scenarios-r3.md)、[42项场景表](../../design/interaction-scenarios-r3.json)、[14入口Demo](../../design/prototypes/catpaw-interaction-r3/index.html)；开合/手势/过程/稳定卡/表图/HIL逐项映射原12U和10CG，未新增产品门或启动Goal |
 | 终版产品／视觉／技术与质量／优势 | [FINAL-1](../../product/catpaw-final-product-spec.md)、[FQ/BP验收](../../acceptance/catpaw-final-product-acceptance.md)及[机器合同](../../acceptance/catpaw-final-product-acceptance.json) |
 | 对话内生成式交互 | [CGUI-1](../../design/conversation-generative-ui-spec.md)、[CG-A01–10](../../acceptance/conversation-generative-ui-acceptance.md)及[机器合同](../../acceptance/conversation-generative-ui-acceptance.json) |
@@ -30,7 +30,7 @@
 
 R1体验承诺为“把你交代的事变成可用成果；需要你时说清楚，回来时接得上”。原路由首片后，先贯通CP-01资料报告与同成果改稿，再按依赖完成CP-02/03；这只是价值展示顺序，所有必需范围与终版门槛保持。每片先说明当前事实、用户下一步、可修改/停止入口与返回/失败恢复；把默认值、正文/待决层级、修改草稿和可用成果一起交付，不只数组件。
 
-规格分工：AF-1管领域与执行不变量，FINAL-1管产品承诺与质量，UX-1 R4管呈现机制与连续运动，R4.1管当前配色和UI细节；R3保留完整状态场景、R2保留日期视觉输入，CGUI-1管受控呈现/算法。冻结合同与既有人类授权边界优先；旧HTML/研究提案不能覆盖新版规格，发现与稳定ID不兼容的冲突先形成精确变更，不凭模糊“终版”重写执行栈。产品展示可以渐进开放已证实能力，不能以隐藏必需能力关闭Goal。
+规格分工：AF-1管领域与执行不变量，FINAL-1管产品承诺与质量，UX-1 R4管呈现机制与连续运动，R5管当前移动端配色、排版、输入、过程与菜单，R4.1保留日期输入；R3保留完整状态场景、R2保留日期视觉输入，CGUI-1管受控呈现/算法。冻结合同与既有人类授权边界优先；旧HTML/研究提案不能覆盖新版规格，发现与稳定ID不兼容的冲突先形成精确变更，不凭模糊“终版”重写执行栈。产品展示可以渐进开放已证实能力，不能以隐藏必需能力关闭Goal。
 
 若后续用户复制prompt允许内部子agent，可按不同文件/明确端口分配独立单元，由主agent集成；不为并行创建其他用户聊天、不派发旧任务。启动读取运行Goal实际状态，`usageLimited`等需要用户恢复的状态不能由prompt或文档绕过，不能默默创建替代Goal。
 
