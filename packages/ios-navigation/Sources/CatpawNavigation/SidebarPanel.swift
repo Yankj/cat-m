@@ -31,10 +31,18 @@ public struct SidebarPanel: View {
                                 .frame(minWidth: 44, minHeight: 44).contentShape(Rectangle())
                         }.accessibilityLabel(localize("关闭侧栏")).accessibilityIdentifier("sidebar.close")
                     }
-                    TextField(localize("搜索对话"), text: $query)
-                        .font(.body).padding(12).frame(minHeight: 44)
+                    HStack(spacing: 4) {
+                        TextField(localize("搜索对话"), text: $query)
+                            .font(.body).padding(.leading,12).frame(minHeight: 44)
+                            .accessibilityLabel(localize("搜索对话")).accessibilityIdentifier("sidebar.search")
+                        if !query.isEmpty {
+                            Button { query = "" } label: {
+                                Image(systemName:"xmark.circle.fill").foregroundStyle(theme.secondary)
+                                    .frame(width:44,height:44).contentShape(Rectangle())
+                            }.accessibilityLabel(localize("清除搜索")).accessibilityIdentifier("sidebar.search.clear")
+                        }
+                    }
                         .background(theme.input, in: RoundedRectangle(cornerRadius: 14))
-                        .accessibilityLabel(localize("搜索对话")).accessibilityIdentifier("sidebar.search")
                     route(localize("新对话"), icon: "square.and.pencil", destination: .newConversation, identifier: "sidebar.new")
                     route(localize("任务"), icon: "checklist", destination: .tasks, identifier: "sidebar.tasks")
                     route(localize("成果"), icon: "tray", destination: .results, identifier: "sidebar.results")
@@ -51,8 +59,13 @@ public struct SidebarPanel: View {
                         let selected = snapshot.selectedConversationID == record.id
                         Button { select(.conversation(record.id)) } label: {
                             HStack(alignment: .firstTextBaseline, spacing: 8) {
-                                Text(record.title.isEmpty ? localize("未命名对话") : record.title)
-                                    .font(.body).frame(maxWidth: .infinity, alignment: .leading)
+                                VStack(alignment: .leading,spacing:4) {
+                                    Text(record.title.isEmpty ? localize("未命名对话") : record.title).font(.body)
+                                    if let preview=record.preview,!preview.isEmpty {
+                                        Text(localize("草稿 · ")+preview).font(.caption).lineLimit(2)
+                                            .foregroundStyle(theme.secondary)
+                                    }
+                                }.frame(maxWidth: .infinity, alignment: .leading)
                                 if selected { Image(systemName: "checkmark").font(.body).accessibilityHidden(true) }
                             }.padding(12).frame(minHeight: 44)
                                 .background(selected ? theme.input : Color.clear, in: RoundedRectangle(cornerRadius: 14))
