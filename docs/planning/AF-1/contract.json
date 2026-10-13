@@ -19,7 +19,16 @@
     "ux_spec": "../../design/ios-codex-experience-spec.md",
     "ux_procedures": "../../acceptance/ios-codex-experience-acceptance.md",
     "reference_review": "../../design/ios-codex-reference-review-2026-10-13.md",
-    "evidence_map": "goal-evidence-map.json"
+    "evidence_map": "goal-evidence-map.json",
+    "final_product_spec": "../../product/catpaw-final-product-spec.md",
+    "final_product_acceptance": "../../acceptance/catpaw-final-product-acceptance.json",
+    "final_product_procedures": "../../acceptance/catpaw-final-product-acceptance.md",
+    "final_design_proposal": "../../design/prototypes/catpaw-final/index.html",
+    "conversation_ui_spec": "../../design/conversation-generative-ui-spec.md",
+    "conversation_ui_acceptance": "../../acceptance/conversation-generative-ui-acceptance.json",
+    "conversation_ui_procedures": "../../acceptance/conversation-generative-ui-acceptance.md",
+    "development_start_contract": "development-start-contract.md",
+    "development_prompt": "long-task-development-prompt.md"
   },
   "requirements": [
     "AF-R01",
@@ -676,5 +685,55 @@
       "procedure": "goal.md",
       "prototype_closes_native_cases": false
     }
-  ]
+  ],
+  "final_product_contract": {
+    "version": "FINAL-1",
+    "foundation_goal": "AF-G5",
+    "daily_quality_goal": "FINAL-G1",
+    "comparative_goal": "FINAL-G2",
+    "total_goal": "FINAL-G3",
+    "runtime_goal_replaced": false,
+    "required_quality_ids": [
+      "FQ-01",
+      "FQ-02",
+      "FQ-03",
+      "FQ-04",
+      "FQ-05",
+      "FQ-06",
+      "FQ-07",
+      "FQ-08",
+      "FQ-09"
+    ],
+    "comparison_ids": [
+      "BP-01",
+      "BP-02",
+      "BP-03",
+      "BP-04",
+      "BP-05",
+      "BP-06",
+      "BP-07",
+      "BP-08"
+    ],
+    "state_only_in_master_plan": true,
+    "conversation_ui_subcontract": {
+      "version": "CGUI-1",
+      "required_for_goals": [
+        "FINAL-G1",
+        "FINAL-G3"
+      ],
+      "required_case_ids": [
+        "CG-A01",
+        "CG-A02",
+        "CG-A03",
+        "CG-A04",
+        "CG-A05",
+        "CG-A06",
+        "CG-A07",
+        "CG-A08",
+        "CG-A09",
+        "CG-A10"
+      ],
+      "foundation_goal_replaced": false
+    }
+  }
 }

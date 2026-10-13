@@ -85,6 +85,8 @@ AF-1 保留 SwiftUI 交互与现有数据身份，把对话、持久执行、审
 
 ## 7. 原生智能 UI 合同
 
+终版新增的[CGUI-1](../../design/conversation-generative-ui-spec.md)／[CG-A01–10](../../acceptance/conversation-generative-ui-acceptance.md)固定正文和六类卡中的table/bar/line／两种确定试算、局部状态和三类动作。它细分FINAL-G1的FQ质量门；不改以下六类领域身份。初片按现有toolStarted/toolResult、成果投影、operation/epoch/sequence映射并固定兼容codec。输入调节不发模型请求，显式跟进新turn／安全点接续；持久写走已有决定／effect权威。
+
 | 类型 | 首版行为 | 权威对象 |
 |---|---|---|
 | choice | 选择缺失条件，提交后继续同任务 | input request / plan revision |
@@ -95,6 +97,19 @@ AF-1 保留 SwiftUI 交互与现有数据身份，把对话、持久执行、审
 | comparison | 展示有来源的对比，选择后修改同计划 | Artifact/version + typed decision |
 
 卡片公共字段采用主 spec 的 cardID、kind、schemaVersion、objectID、objectRevision、actionID 和 typed payload。未知 kind、过期对象或失配 schema 显示可读文本并重取状态；不能执行模型生成的任意脚本。卡片动画/关闭不改变持久审批。
+
+### 四仓源码核读后的合同补充（2026-10-13）
+
+依据[固定版本源码报告](../../research/copilotkit-four-repo-decision-update-2026-10-13.md)细化既有要求；以下是设计合同，不声称当前实现或修改冻结 HTTP 合同。
+
+- **组件与能力。** 六种 kind 映射到编译内的 SwiftUI renderer、参数 schema 和允许的 typed action；客户端支持清单区分 kind/schema、展示能力与交互能力。增量参数尚未结束只可预览，完整校验后才读取权威对象并启用动作。模型选择组件不提供执行权限；陌生 schema/kind 降级为正文和原对象入口。
+- **后台待决。** 展示类卡可持久保存引用；选择/表单/审批必须创建服务端等待记录，不能由 headless runner 虚构答案或依赖前台 hook。批准/拒绝和同任务恢复意图须持久关联；本轮拒绝不能通过新 toolCallID 对等价动作绕过。新参数/目标/revision 需要新决定。
+- **执行与续聊。** 原 action 已消费但无真实结果时进入 unknown 并只读核对；有持久 receipt、但后续消息交付失败时只重交同结果。读取刷新错误不覆盖执行成功。两种失败给不同下一步，禁止通用 Retry 把两者混合。
+- **计划进度。** 每步成功来自独立执行记录/回执；finish_task 不把未执行项批量标成功。任务完成仍由服务端按约定、成果版本和必需回执判定。
+- **成果恢复与修改。** 消息/活动保存 objectID/version，重开读取真实内容与新访问链接，不持久保存短期 signed URL。请求携带对象与 generation，旧回复/旧 revision 不覆盖新对象或草稿；expectedRevision 冲突保留草稿，删除记录拦住迟到读取复活。继续修改在当前版本上创建新成果版本，保留来源和原会话。
+- **调度与失败分类。** 持久 due occurrence 的去重键在完成后仍拦住晚到重复。一次 firing 内的恢复 attempts 与跨多次 firing 连续失败分别计数；等待用户/正常暂停不是失败。通知与轮询只提示重读状态，不承担调度权威。现有 monitor 的条件游标、静默、去重和退避要求继续适用。
+
+落地先映射现有类型和数据库；新增字段/消息必须走兼容设计。OpenDots Pages 算法、OpenBot Approval/Work schema 及 OpenIntelligentUI registry 是候选参考，不另建第二套存储或执行状态机。
 
 ## 8. 状态与协议实现决策
 

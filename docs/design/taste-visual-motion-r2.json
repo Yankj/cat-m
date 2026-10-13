@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "design_revision": "UX-1-R2",
+  "purpose": "Visual implementation overlay; product and execution authority remain UX-1, FINAL-1 and CGUI-1.",
+  "base_tokens": "docs/design/design-tokens.json",
+  "icon_semantics": "docs/design/icon-semantics.json",
+  "keep_app_icon": "A1",
+  "minimum_ios_version_unchanged": "17.0",
+  "dials": {"DESIGN_VARIANCE": 4, "MOTION_INTENSITY": 4, "VISUAL_DENSITY": 4},
+  "colors_added": {"controlBoundary": {"light": "#828893", "dark": "#757D8B"}},
+  "type_default_pt": {"body": 17, "subheadline": 15, "footnote": 13, "title2": 22, "empty_title": 28, "artifact_lead": 19, "calculation_number": 34},
+  "type_policy": "System Dynamic Type; numeric results use tabular figures; never fixed text height.",
+  "spacing_pt": [4, 8, 12, 16, 20, 24, 28],
+  "component_metrics_pt": {"page_inset": 20, "card_inset": 16, "card_radius": 20, "control_radius": 14, "composer_radius": 24, "touch_minimum": 44, "decision_option_minimum": 66, "work_symbol_visual": 36},
+  "motion": {
+    "press": {"duration_ms": 120, "opacity": 0.78, "optional_scale": 0.98, "reduced": "no animated press transition or scale"},
+    "decision": {"out_duration_ms": 180, "in_duration_ms": 240, "reduced": "instant replacement or <=120ms opacity", "scroll_anchor_compensation": true},
+    "artifact": {"duration_ms": 240, "max_translation_pt": 8, "replay_same_version": false, "reduced": "instant or opacity only"},
+    "drawer": {"duration_ms": 280, "swiftui": "smooth(duration: 0.28, extraBounce: 0)", "interactive": "direct gesture displacement", "reduced": "opacity <=120ms, no slide"},
+    "receipt": {"duration_ms": 180, "success_feedback_requires": "new real receipt once", "unknown_success_feedback": false},
+    "context": {"duration_ms": 180, "reduced": "instant"},
+    "navigation_sheet_keyboard": "system controls own transitions; web preview durations are illustrative",
+    "streaming_text": "stable incremental content; no per-token animation or announcement",
+    "continuous_decoration_allowed": false
+  },
+  "accessibility": {"body_contrast_minimum": 4.5, "body_contrast_target": 7, "essential_nontext_minimum": 3, "large_text_can_wrap": true, "graph_table_alternative": true, "reduce_transparency_opaque_fallback": true, "focus_not_stolen_by_stream": true},
+  "prototype": {"path": "docs/design/prototypes/catpaw-taste/index.html", "layer": "synthetic interactive design proposal", "scenes": ["decision", "empty", "result", "approval", "calculator", "follow", "error", "offline"], "widths_css": [375, 390, 430], "type_sizes_css": [17, 22, 30], "refresh_resets": true, "production_effects": false, "new_model_requests": 0},
+  "native_acceptance_closed_by_prototype": false
+}
