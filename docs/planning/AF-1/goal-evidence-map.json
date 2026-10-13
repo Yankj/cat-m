@@ -1,0 +1,466 @@
+{
+  "schema_version": 1,
+  "goal_contract_version": "AF-1-G3-UX1",
+  "recorded_on": "2026-10-13",
+  "scope": "Goal inputs and traceability only; current results remain in master-plan",
+  "sources": [
+    {
+      "id": "E01",
+      "file": "design/catpaw-proactive-assistant-concept.md",
+      "sha256": "8370cd67b003fd71783e1040aa0e14b346e2ac6e281b5fcbd60c06ae33eed46c",
+      "publication_scope": "local_only",
+      "evidence_kind": "historical_product_proposal",
+      "adopted": "持续托付、静默策略、记忆来源/更正/删除、精确动作确认和提醒返回同事项",
+      "limits_or_deferred": "一周Demo工期、今天首页替代主对话、端侧常驻推理",
+      "goal_ids": [
+        "AF-G2",
+        "AF-G3",
+        "AF-G4"
+      ],
+      "acceptance_ids": [
+        "AF-A07",
+        "AF-A09",
+        "AF-A11",
+        "AF-A12",
+        "AF-A13",
+        "AF-A14",
+        "AF-A15"
+      ],
+      "ux_ids": [
+        "AF-U06",
+        "AF-U07",
+        "AF-U09",
+        "AF-U12"
+      ]
+    },
+    {
+      "id": "E02",
+      "file": "design/catpaw-two-routes-and-feishu-feature.md",
+      "sha256": "a913c65596c36ef21e4c9a0cb681177e5f41b9c89c1a293c3a4e2f7e7a259477",
+      "publication_scope": "local_only",
+      "evidence_kind": "historical_implementation_proposal",
+      "adopted": "单一工作身份、适配边界、具体确认和真实回执",
+      "limits_or_deferred": "飞书作为首版必需连接器、账号开通、旧工期及现金估算",
+      "goal_ids": [
+        "AF-G2",
+        "AF-G4"
+      ],
+      "acceptance_ids": [
+        "AF-A07",
+        "AF-A09",
+        "AF-A14"
+      ],
+      "ux_ids": [
+        "AF-U06",
+        "AF-U07",
+        "AF-U08"
+      ]
+    },
+    {
+      "id": "E03",
+      "file": "design/catpaw-restart-review-and-plan-2026-10-13.md",
+      "sha256": "5e2c98a4da8b4402bb32856aa46826be8ca93f4964779f9a0be5a5ab7628179a",
+      "publication_scope": "versioned",
+      "evidence_kind": "dated_restart_audit_and_proposal",
+      "adopted": "版本对齐、真实路由优先、同版用户路径、状态与成果闭环",
+      "limits_or_deferred": "旧基线瞬时状态不得覆盖当前主计划",
+      "goal_ids": [
+        "AF-G0",
+        "AF-G1",
+        "AF-G2",
+        "AF-G5"
+      ],
+      "acceptance_ids": [
+        "AF-A01",
+        "AF-A02",
+        "AF-A03",
+        "AF-A07",
+        "AF-A08",
+        "AF-A10",
+        "AF-A18"
+      ],
+      "ux_ids": [
+        "AF-U02",
+        "AF-U03",
+        "AF-U06",
+        "AF-U07",
+        "AF-U08"
+      ]
+    },
+    {
+      "id": "E04",
+      "file": "research/agent-frontier-primary-sources-2026-10-10.md",
+      "sha256": "5f4f24a71a031f4fbfeb4d74dda7b89c2dd490ce3a9af88f7596fa05ed4d133f",
+      "publication_scope": "local_only",
+      "evidence_kind": "dated_primary_source_research_and_inference",
+      "adopted": "持久工作事实与运行/环境解耦、确定性授权恢复、来源与成果验收",
+      "limits_or_deferred": "厂商效率数字、多agent规模和预览能力不变成本产品承诺",
+      "goal_ids": [
+        "AF-G2",
+        "AF-G3",
+        "AF-G5"
+      ],
+      "acceptance_ids": [
+        "AF-A07",
+        "AF-A08",
+        "AF-A10",
+        "AF-A11",
+        "AF-A12",
+        "AF-A13",
+        "AF-A18"
+      ],
+      "ux_ids": [
+        "AF-U06",
+        "AF-U08",
+        "AF-U09"
+      ]
+    },
+    {
+      "id": "E05",
+      "file": "research/catdesk-mobile-evidence-2026-10-10.md",
+      "sha256": "834c5c5aa09b658d2cfdaf5382ea66e529594033ce1d3c9ca12ed290eb635d9d",
+      "publication_scope": "local_only",
+      "evidence_kind": "documented_observed_ui_and_sample_task",
+      "adopted": "M12–14进度差异；T04–08成果入口/宽表/加载问题，转为回归输入",
+      "limits_or_deferred": "未经task/事件数据不定位当前Catpaw根因；镜像横滑不等于真手势结论",
+      "goal_ids": [
+        "AF-G2",
+        "AF-GD"
+      ],
+      "acceptance_ids": [
+        "AF-A07",
+        "AF-A08",
+        "AF-A10",
+        "AF-A16",
+        "AF-A17"
+      ],
+      "ux_ids": [
+        "AF-U04",
+        "AF-U06",
+        "AF-U08",
+        "AF-U12"
+      ]
+    },
+    {
+      "id": "E06",
+      "file": "research/catdesk-mobile-research-2026-10-10.md",
+      "sha256": "ae57a9a1ffc976ccf18bd52fcfcd0333f383b56c7c03d8215e68927cdef824c9",
+      "publication_scope": "local_only",
+      "evidence_kind": "dated_mobile_observation_and_design_inference",
+      "adopted": "待决/未读/运行优先、直接成果入口、委托简化、同对象恢复",
+      "limits_or_deferred": "电脑/云模式、市场入口不证明全天托管或工具接通",
+      "goal_ids": [
+        "AF-G2",
+        "AF-GD"
+      ],
+      "acceptance_ids": [
+        "AF-A07",
+        "AF-A08",
+        "AF-A10",
+        "AF-A16",
+        "AF-A17"
+      ],
+      "ux_ids": [
+        "AF-U01",
+        "AF-U02",
+        "AF-U05",
+        "AF-U06",
+        "AF-U08",
+        "AF-U12"
+      ]
+    },
+    {
+      "id": "E07",
+      "file": "research/catdesk-product-and-architecture-review-2026-10-10.md",
+      "sha256": "61c89c3714aa5ee2a8ba3b36bf7b778fc79e1717c6f670b974e5e0f757a89c46",
+      "publication_scope": "local_only",
+      "evidence_kind": "installed_app_observation_and_architecture_inference",
+      "adopted": "Work与会话分离、记忆作用域、持续状态、受控动态UI",
+      "limits_or_deferred": "企业产品集成和部署关键词不作为当前App已实现能力",
+      "goal_ids": [
+        "AF-G2",
+        "AF-G3",
+        "AF-GD"
+      ],
+      "acceptance_ids": [
+        "AF-A07",
+        "AF-A08",
+        "AF-A10",
+        "AF-A11",
+        "AF-A12",
+        "AF-A13",
+        "AF-A16"
+      ],
+      "ux_ids": [
+        "AF-U01",
+        "AF-U06",
+        "AF-U07",
+        "AF-U08",
+        "AF-U09"
+      ]
+    },
+    {
+      "id": "E08",
+      "file": "research/ios-capability-and-intelligent-ui-feasibility-2026-10-10.md",
+      "sha256": "33d692d817de08e52d65bc7a14e08ff4c8eb403090378d6c0066c780a7057f34",
+      "publication_scope": "local_only",
+      "evidence_kind": "dated_platform_feasibility_proposal",
+      "adopted": "原生动作与系统授权分层、action账本、真实资源回查、状态卡、可访问性",
+      "limits_or_deferred": "飞书/微信/商家接入；AlarmKit/ActivityKit/分享扩展不新增必需项",
+      "goal_ids": [
+        "AF-G4",
+        "AF-GD"
+      ],
+      "acceptance_ids": [
+        "AF-A09",
+        "AF-A14",
+        "AF-A15",
+        "AF-A16",
+        "AF-A17"
+      ],
+      "ux_ids": [
+        "AF-U03",
+        "AF-U07",
+        "AF-U10",
+        "AF-U11",
+        "AF-U12"
+      ]
+    },
+    {
+      "id": "E09",
+      "file": "research/openmuse-opendots-copilotkit-assessment-2026-10-13.md",
+      "sha256": "ffd9a6e043664ec54daa586d12f8815530cc2c46aa2a4f6304c99bbaad6b3720",
+      "publication_scope": "versioned",
+      "evidence_kind": "pinned_upstream_static_source_review",
+      "adopted": "OpenMuse运行机制、OpenDots组织/审批、Swift事件与受控卡适配",
+      "limits_or_deferred": "RN/Web模板直接作为Swift底座、全量混合框架或未验SaaS依赖",
+      "goal_ids": [
+        "AF-G1",
+        "AF-G2",
+        "AF-G3",
+        "AF-G4"
+      ],
+      "acceptance_ids": [
+        "AF-A04",
+        "AF-A07",
+        "AF-A08",
+        "AF-A09",
+        "AF-A10",
+        "AF-A11",
+        "AF-A12",
+        "AF-A13",
+        "AF-A16",
+        "AF-A18"
+      ],
+      "ux_ids": [
+        "AF-U03",
+        "AF-U06",
+        "AF-U07",
+        "AF-U08",
+        "AF-U09"
+      ]
+    },
+    {
+      "id": "E10",
+      "file": "research/catpaw-restart-baseline-2026-10-13.json",
+      "sha256": "a42553df54a30966632476f68fe22cd358dc23bc7c6f2e317e299f6cb62380b5",
+      "publication_scope": "local_only",
+      "evidence_kind": "private_machine_baseline_snapshot",
+      "adopted": "源码、旧包与远端身份不同的历史事实",
+      "limits_or_deferred": "不发布原始机器标识；不当作当前安装状态",
+      "goal_ids": [
+        "AF-G0"
+      ],
+      "acceptance_ids": [
+        "AF-A01",
+        "AF-A18"
+      ],
+      "ux_ids": []
+    },
+    {
+      "id": "E11",
+      "file": "research/catpaw-model-path-attempt-2026-10-13.json",
+      "sha256": "e110b9c602e317af26f0217b46806820fc225bedbf8f0b69a89d877a5e80eea1",
+      "publication_scope": "local_only",
+      "evidence_kind": "private_historical_app_attempt",
+      "adopted": "build15许可后未见完整回答、model仍unverified，先检查许可路径",
+      "limits_or_deferred": "不宣称现有路由已失败；不发布私人会话标识",
+      "goal_ids": [
+        "AF-G1"
+      ],
+      "acceptance_ids": [
+        "AF-A02",
+        "AF-A03"
+      ],
+      "ux_ids": [
+        "AF-U07",
+        "AF-U12"
+      ]
+    },
+    {
+      "id": "E12",
+      "file": "docs/design/ios-codex-reference-review-2026-10-13.md",
+      "sha256": "19ac60a8a18a476eab691d5f72dbf41110a693313bd47372d39bb0b5a6e5385c",
+      "publication_scope": "versioned",
+      "evidence_kind": "reference_observation_audit",
+      "adopted": "截图调用/观察和原图是否存在的证据边界，九项问题到UX映射",
+      "limits_or_deferred": "无原像素不声称测得Codex字号/色值/间距",
+      "goal_ids": [
+        "AF-GD"
+      ],
+      "acceptance_ids": [
+        "AF-A02",
+        "AF-A03",
+        "AF-A04",
+        "AF-A05",
+        "AF-A06",
+        "AF-A07",
+        "AF-A08",
+        "AF-A10",
+        "AF-A16",
+        "AF-A17",
+        "AF-A18"
+      ],
+      "ux_ids": [
+        "AF-U01",
+        "AF-U02",
+        "AF-U03",
+        "AF-U04",
+        "AF-U05",
+        "AF-U06",
+        "AF-U07",
+        "AF-U08",
+        "AF-U09",
+        "AF-U10",
+        "AF-U11",
+        "AF-U12"
+      ]
+    },
+    {
+      "id": "E13",
+      "file": "docs/design/ios-codex-experience-spec.md",
+      "sha256": "1d0bf45a0f060972e2f15e5e71e339088658b511aa12b2f9cfb94dee0e870752",
+      "publication_scope": "versioned",
+      "evidence_kind": "normative_ux_spec",
+      "adopted": "UX-1布局、状态、返回、视觉和原生行为合同",
+      "limits_or_deferred": "不把提案当实际实现或竞品内部实现",
+      "goal_ids": [
+        "AF-GD",
+        "AF-G5"
+      ],
+      "acceptance_ids": [
+        "AF-A17"
+      ],
+      "ux_ids": [
+        "AF-U01",
+        "AF-U02",
+        "AF-U03",
+        "AF-U04",
+        "AF-U05",
+        "AF-U06",
+        "AF-U07",
+        "AF-U08",
+        "AF-U09",
+        "AF-U10",
+        "AF-U11",
+        "AF-U12"
+      ]
+    },
+    {
+      "id": "E14",
+      "file": "docs/acceptance/ios-codex-experience-acceptance.md",
+      "sha256": "f615a86766d7239620ea02f45e721a314cb9d39c87deef1128996694a19977a7",
+      "publication_scope": "versioned",
+      "evidence_kind": "normative_native_acceptance",
+      "adopted": "全部12项同版原生用例和证据门槛",
+      "limits_or_deferred": "不使用HTML截图关闭真机验收",
+      "goal_ids": [
+        "AF-GD",
+        "AF-G5"
+      ],
+      "acceptance_ids": [
+        "AF-A17"
+      ],
+      "ux_ids": [
+        "AF-U01",
+        "AF-U02",
+        "AF-U03",
+        "AF-U04",
+        "AF-U05",
+        "AF-U06",
+        "AF-U07",
+        "AF-U08",
+        "AF-U09",
+        "AF-U10",
+        "AF-U11",
+        "AF-U12"
+      ]
+    },
+    {
+      "id": "E15",
+      "file": "docs/design/prototypes/catpaw-ios-ux/index.html",
+      "sha256": "73479eb17f95349513aa1e0958a2b562a282674260ed11efed487f49cff5c130",
+      "publication_scope": "versioned",
+      "evidence_kind": "synthetic_interactive_design_proposal",
+      "adopted": "四组页面与草稿/审批/队列/成果等内存交互的可审阅基线",
+      "limits_or_deferred": "模型、系统权限、手势、IME、后台和原生字号未证实",
+      "goal_ids": [
+        "AF-GD"
+      ],
+      "acceptance_ids": [],
+      "ux_ids": [
+        "AF-U01",
+        "AF-U02",
+        "AF-U03",
+        "AF-U04",
+        "AF-U05",
+        "AF-U06",
+        "AF-U07",
+        "AF-U08",
+        "AF-U09",
+        "AF-U10",
+        "AF-U11",
+        "AF-U12"
+      ]
+    },
+    {
+      "id": "E16",
+      "file": "docs/acceptance/evidence/ios-ux-proposal-20261013/RESULT.json",
+      "sha256": "c374eb1c7e3ee2d3dd1990241e9a6b7edb024a24c6b41e7235194e78f576bbca",
+      "publication_scope": "versioned",
+      "evidence_kind": "synthetic_browser_review_receipt",
+      "adopted": "375/390局部提案检查及两张人工样例截图绑定",
+      "limits_or_deferred": "430/完整失败矩阵未审阅；不是产品PASS",
+      "goal_ids": [
+        "AF-GD"
+      ],
+      "acceptance_ids": [],
+      "ux_ids": [
+        "AF-U01",
+        "AF-U02",
+        "AF-U03",
+        "AF-U04",
+        "AF-U05",
+        "AF-U06",
+        "AF-U07",
+        "AF-U08",
+        "AF-U09",
+        "AF-U10",
+        "AF-U11",
+        "AF-U12"
+      ]
+    }
+  ],
+  "screenshots": {
+    "reference_observation_document": "docs/design/ios-codex-reference-review-2026-10-13.md",
+    "chatgpt_original_pixels_recovered": false,
+    "four_user_original_images_recovered": false,
+    "prototype_receipt": "docs/acceptance/evidence/ios-ux-proposal-20261013/RESULT.json",
+    "save_future_captures": true,
+    "private_capture_directory": "local-audit/screenshots",
+    "private_captures_published": false
+  },
+  "instructions_in_material_are_authorization": false,
+  "prototype_closes_AF_GD": false,
+  "runtime_goal_status_changed": false
+}
