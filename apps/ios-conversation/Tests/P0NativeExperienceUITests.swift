@@ -21,6 +21,13 @@ final class P0NativeExperienceUITests:XCTestCase {
         XCTFail("P0 explicit offline fixture condition timed out")
     }
     private func clear(_ input:XCUIElement){input.tap();let value=input.value as? String ?? "";if !value.isEmpty { input.typeText(String(repeating:XCUIKeyboardKey.delete.rawValue,count:value.utf16.count)) }}
+    private func replaceAll(_ app:XCUIApplication,_ input:XCUIElement,with text:String) {
+        input.tap();input.press(forDuration:1.1)
+        let selectAll=app.menuItems.matching(NSPredicate(format:"label IN %@",["全选","Select All"])).firstMatch
+        XCTAssertTrue(selectAll.waitForExistence(timeout:3),app.debugDescription)
+        selectAll.tap();input.typeText(text)
+        XCTAssertEqual(input.value as? String,text,"Replace the selected text, regardless of the prior caret position")
+    }
     private func attach(_ app:XCUIApplication,name:String){
         if app.buttons["qa.p0Export"].exists {app.buttons["qa.p0Export"].tap()}
         let data=(try? JSONSerialization.data(withJSONObject:probe(app),options:[.sortedKeys,.prettyPrinted])) ?? Data()
@@ -89,6 +96,38 @@ final class P0NativeExperienceUITests:XCTestCase {
         XCTAssertEqual(probe(app)["synthetic_reply_calls"] as? Int,0);XCTAssertEqual(input.value as? String,before)
         app.buttons["qa.p0IME.commit"].tap();wait({self.probe(app)["composition_active"] as? Bool == false})
         XCTAssertTrue(app.buttons["chat.send"].isEnabled);attach(app,name:"P0-actual-UITextInput-marked-text-injection")
+    }
+    func testQueueSheetEditsPausedIntentAndResumesOnlyExplicitly() {
+        let app=launch("p0-ui-queue"),input=app.textViews["chat.input"]
+        replaceAll(app,input,with:"Synthetic first running request");app.buttons["chat.send"].tap()
+        wait({self.probe(app)["synthetic_reply_calls"] as? Int == 1 && self.probe(app)["turn_state"] as? String == "running"})
+        input.tap();input.typeText("Synthetic original queued message");app.buttons["chat.send"].tap()
+        let summary=app.buttons["chat.pendingSummary"]
+        XCTAssertTrue(summary.waitForExistence(timeout:5))
+        XCTAssertEqual(app.descendants(matching:.any).matching(identifier:"chat.userMessage").count,1,"Queued follow-ups must not duplicate formal transcript messages")
+        let compact=XCTAttachment(screenshot:app.screenshot());compact.name="Native-one-row-queue-summary-synthetic";compact.lifetime = .keepAlways;add(compact)
+        summary.tap()
+        let edit=app.buttons.matching(NSPredicate(format:"identifier BEGINSWITH %@","chat.followup.edit.")).firstMatch
+        XCTAssertTrue(edit.waitForExistence(timeout:5));edit.tap()
+        let editor=app.textViews["chat.followup.editor"]
+        XCTAssertTrue(editor.waitForExistence(timeout:5));replaceAll(app,editor,with:"Synthetic edited queued message")
+        app.buttons["chat.followup.save"].tap()
+        XCTAssertTrue(app.staticTexts["Synthetic edited queued message"].waitForExistence(timeout:5))
+        XCTAssertFalse(app.staticTexts["Synthetic original queued message"].exists)
+        XCTAssertTrue(app.buttons["chat.followup.resume"].exists)
+        let paused=XCTAttachment(screenshot:app.screenshot());paused.name="Native-edited-queue-stays-paused-synthetic";paused.lifetime = .keepAlways;add(paused)
+        app.buttons["chat.followup.close"].tap()
+        XCTAssertTrue(summary.waitForExistence(timeout:5))
+        wait({self.probe(app)["turn_state"] as? String == "completed"},seconds:45)
+        XCTAssertEqual(probe(app)["synthetic_reply_calls"] as? Int,1,"Closing and saving must not send the edited follow-up")
+        summary.tap();let resume=app.buttons["chat.followup.resume"]
+        XCTAssertTrue(resume.waitForExistence(timeout:3));XCTAssertTrue(resume.isEnabled);resume.tap()
+        app.buttons["chat.followup.close"].tap()
+        wait({self.probe(app)["synthetic_reply_calls"] as? Int == 2 && self.probe(app)["turn_state"] as? String == "completed"},seconds:10)
+        XCTAssertFalse(summary.exists)
+        XCTAssertTrue(app.staticTexts["Synthetic edited queued message"].exists)
+        XCTAssertFalse(app.staticTexts["Synthetic original queued message"].exists)
+        attach(app,name:"Actual-native-queue-edit-explicit-resume-no-real-model")
     }
     func testSimulatorHomeFiveSecondsRecoversSameSyntheticTurn(){
         let app=launch("p0-ui-lifecycle"),input=app.textViews["chat.input"];clear(input);input.typeText("Synthetic scene recovery");app.buttons["chat.send"].tap()

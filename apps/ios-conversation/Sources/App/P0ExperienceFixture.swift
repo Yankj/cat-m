@@ -5,7 +5,7 @@ import Foundation
     static var scenario:String? {
         let env=ProcessInfo.processInfo.environment
         guard let id=env["CF_UI_TEST_STORE"],UUID(uuidString:id) != nil,
-              let s=env["CF_UI_TEST_SCENARIO"],["p0-ui-echo","p0-ui-consent","p0-ui-ime","p0-ui-lifecycle","p0-ui-large","p0-ui-large-autoplay","p0-ui-reading"].contains(s) else { return nil };return s
+              let s=env["CF_UI_TEST_SCENARIO"],["p0-ui-echo","p0-ui-consent","p0-ui-ime","p0-ui-lifecycle","p0-ui-large","p0-ui-large-autoplay","p0-ui-reading","p0-ui-queue"].contains(s) else { return nil };return s
     }
     static var replyCalls=0,observeCalls=0,consentCalls=0
 }
@@ -47,7 +47,7 @@ actor P0ExperienceBackend:ConversationBackend {
         emit(.started(requestHash:textHash("P0-UI:"+r.operationID.uuidString),conversationRevision:1,grantEpoch:1),request:r)
         let message=stableID("P0-UI-assistant-"+r.operationID.uuidString)
         let body=scenario == "p0-ui-reading" ? (1...180).map {"Synthetic reading paragraph \($0). Keep this reading position while new paragraphs arrive.\n\n"}.joined() : (scenario.hasPrefix("p0-ui-large") ? String(repeating:"合成流式正文🐾\n",count:512) : (scenario == "p0-ui-consent" ? String(repeating:"Synthetic streamed segment. ",count:64) : "Synthetic offline reply; no model call."))
-        let delay:UInt64=scenario == "p0-ui-lifecycle" ? 10_000_000_000 : 100_000_000
+        let delay:UInt64=scenario == "p0-ui-lifecycle" ? 10_000_000_000 : (scenario == "p0-ui-queue" && r.epoch == 1 ? 30_000_000_000 : 100_000_000)
         try? await Task.sleep(nanoseconds:delay)
         var remaining=body
         while !remaining.isEmpty {
