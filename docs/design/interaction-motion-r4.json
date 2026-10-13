@@ -1,0 +1,41 @@
+{
+  "version": "UX-1-R4-motion-study",
+  "recorded_on": "2026-10-13",
+  "authority": "ios-codex-experience-spec.md",
+  "implementation_appendix": "native-interaction-motion-r4.md",
+  "prototype": "prototypes/catpaw-motion-study-r4/index.html",
+  "role": "visual direction and continuous presentation study; no new release gate",
+  "skill": {"name": "imagegen-frontend-mobile", "upstream": "https://github.com/Leonxlnx/taste-skill/tree/main/skills/imagegen-frontend-mobile", "output": "synthetic screen references only"},
+  "visual_direction": {
+    "mode": "iOS native reading, calm control, progressive disclosure",
+    "colors_light": {"canvas":"#FAF9F5","ink":"#272A30","secondary":"#5F6671","action":"#344CA4","interactive_surface":"#EAEDF8","drawer":"#F1F0E9"},
+    "colors_dark": {"canvas":"#191C22","ink":"#F3F3EF","secondary":"#A6ABB7","action":"#A3B6FF","interactive_surface":"#2C354E","drawer":"#24272E"},
+    "typography": "SF/PingFang system; normal body17, emphasis27, title25/32; semantic Dynamic Type in native",
+    "layers": ["matte reading content", "system material for navigation/control", "foreground sheet/drawer with continuous scrim"],
+    "frozen_assets_changed": false,
+    "canonical_historical_tokens_changed": false,
+    "note": "New direction supersedes R2/R3 composition for review. Frozen historical tokens/A1 and old evidence stay intact; native maps these roles to semantic styles alongside the feature slice. Generated references approximate the palette and are not pixel specifications."
+  },
+  "motion_engine": {
+    "integration": "analytic damped spring, persistent continuous value, velocity-preserving retarget",
+    "pan": {"direction_threshold_px":6,"axis_ratio":1.25,"edge_px":26,"gesture_cancel":"return to prior target", "release_projection_seconds":0.18},
+    "drawer": {"stiffness":440,"damping":42,"mass":1,"precision_px":0.1,"root_translation_px":32},
+    "detail": {"stiffness":430,"damping":42,"precision_progress":0.001,"velocity_precision":0.01},
+    "sheet": {"stiffness":440,"damping":43,"large_top_px":62,"medium_top":"43% of inner frame height","dismiss_top":"inner frame height","release_projection_seconds":0.14,"fixed_footer":true},
+    "zoom": {"stiffness":410,"damping":40,"precision_progress":0.001,"velocity_precision":0.01,"reduced_motion":"fixed fit image plus opacity; no long-distance zoom"},
+    "popover": {"stiffness":600,"damping":48,"precision_progress":0.001,"scale_from":0.94,"offset_px":5,"anchor":"trigger bounds, above/below according to available space"},
+    "native_rule": "System navigation, detents, scrolling, zoom, keyboard, material and haptics use platform behavior. Web constants are study choices, not Apple specifications or fixed native duration requirements."
+  },
+  "review_units": [
+    {"id":"RM-01","component":"direct drawer + spring handoff","ux_ids":["AF-U02","AF-U03","AF-U11","AF-U12"]},
+    {"id":"RM-02","component":"cancelable detail return + preserved origin","ux_ids":["AF-U02","AF-U05","AF-U09"]},
+    {"id":"RM-03","component":"detents + fixed precise decision + draft","ux_ids":["AF-U04","AF-U07","AF-U11","AF-U12"]},
+    {"id":"RM-04","component":"shared image source + reversible zoom","ux_ids":["AF-U04","AF-U05","AF-U09","AF-U12"]},
+    {"id":"RM-05","component":"anchored popover and object context menu","ux_ids":["AF-U02","AF-U06","AF-U09","AF-U12"]},
+    {"id":"RM-06","component":"observable process + stable blocks + local comparison","ux_ids":["AF-U05","AF-U06","AF-U11","AF-U12"],"cg_ids":["CG-A01","CG-A06","CG-A07","CG-A08"]}
+  ],
+  "invariants": ["gesture owner stays fixed until ended/cancelled","root drawer disabled in detail/foreground","close is not approval/refusal","submit and receipt are separate from presentation","no request on local comparison","explicit continuation only populates draft in this study","no hidden chain-of-thought","persistent View/node identity for existing controls","zero replacement of user data/A1/HTTP/source manifests"],
+  "limitations": ["RAM fixtures reset on refresh","no actual model/effect/backend","no native optical material/haptic/keyboard proof","browser scroll is not iOS bounce/deceleration proof","no pinch viewer or cold-start acceptance","not complete CGUI or HIL production implementation"],
+  "prototype_closes_native_acceptance": false,
+  "runtime_goal_status_changed": false
+}

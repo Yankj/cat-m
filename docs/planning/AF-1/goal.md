@@ -51,3 +51,11 @@ ChatGPT 独立原图和用户前期四张图未全部恢复，沿用已记录的
 4. AF-1必需项包括服务端独立调度、持久收件箱和已知时间本地提醒。远端未知变化即时APNs、云电脑、语音、多Specialist、任意MCP、第三方账户登录另列扩展。
 5. 旧“今天首页＋会前就绪一周Demo”、飞书/微信/商家连接器及旧工期/现金估算是历史候选。会前/日程细节转为CP-03输入，不替换当前对话优先的通用底座，不新增账户、连接器或预算承诺。
 6. 状态只维护master-plan；研究快照不被改写为最新安装或线上事实。总Goal保持进行中，只有全部同版必需验收通过才完成。
+
+## 终版产品目标与当前执行 Goal 的关系
+
+用户补充 xAI 实际 Grok 应用／Agent 为对标对象后，[FINAL-1终版规格](../../product/catpaw-final-product-spec.md)综合 Grok 分支与本地设计，固定流中可操作六卡、同工作修改、可找回决定、解释型主动、手机内跟进编辑和可见记忆。对应[终版验收](../../acceptance/catpaw-final-product-acceptance.md)及[机器合同](../../acceptance/catpaw-final-product-acceptance.json)。
+
+当前运行 AF-1-G3-UX1 仍按上述18A／12U／3CP闭合，不以文档更新替换运行 Goal 或改变状态。AF-G5成为 FINAL-G1 的基础门；终版日常可信体验还需FQ-01–09及7天日用证据。FINAL-G2用BP-01–08对具名竞品测量限定优势；FINAL-G3只在两者同候选成立时完成。追加真实测试的资源／操作清单另固定；竞品未验不算胜出。
+
+用户本轮补充的[CGUI-1](../../design/conversation-generative-ui-spec.md)及[10项细分验收](../../acceptance/conversation-generative-ui-acceptance.md)归入FINAL-G1／G3必需质量门：表图、确定试算、本地零请求、显式同工作跟进及原生恢复。对当前Goal的六卡与冻结合同身份保持；[启动合同](development-start-contract.md)和[长任务prompt](long-task-development-prompt.md)统一下一轮开发输入，不由本次文档操作创建／替换运行Goal。
