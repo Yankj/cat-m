@@ -15,7 +15,7 @@
 | 最终handoff | 已读旧主仓handoff；用户确认相关任务停止。原文保存在忽略的local-audit；12项WIP与编译阻塞均相符 |
 | 首个修复 | 新仓已复现并修复getter缺return；候选包含许可review与弹窗分离、稳定确认入口、队列折叠、持久回复证据；新增拒绝重开/旧revision回归，最终合成验证通过 |
 | 本地检查 | 冻结合同/上游/历史来源完整性PASS；便携对话7/7、队列9/9 PASS；最终39/39原生＋1/1实际弹窗UI PASS，DeviceTrial无签名产品配置build PASS；证据限合成/Simulator，物理手机与provider未验 |
-| GitHub | 迁移/许可、阅读/部署来源/UX合同、build16安装记录及Goal映射已通过PR #1–4合入main；本地主仓与远端引用/源码tree逐项核对。默认分支仍prepare/local-assets；终端无认证、SSH校验不匹配，未绕过。原始历史仅本地保留 |
+| GitHub | 迁移/许可、阅读/部署来源/UX合同、build16安装记录、Goal映射及原生队列已通过PR合入main；本地主仓与远端引用/源码tree逐项核对。默认分支仍prepare/local-assets；终端无认证、SSH校验不匹配，未绕过。原始历史仅本地保留 |
 | 手机/API | 用户明确批准后，同bundle覆盖安装0.3.0(16)成功，系统读回16；未卸载/重置数据，原有内容待UI核对。镜像从连接失败进入Mac认证锁定页，待用户Touch ID解锁；截图已保存到本机忽略目录。Supabase APIv19/tick7无部署变化；实际50/43文件、14项共享差异已同步 |
 | 新候选包 | 0.3.0(16)，独立Git archive绑定原main `a905b47`；非DEBUG、严格签名、原证书/profile/entitlements及IPA逐字节PASS。已获安装及最多2次短文本原路由许可；尚未发送。见[包证据](../acceptance/restart-build16-2026-10-13.md)、[安装证据](../acceptance/restart-install16-2026-10-13.md)。PR #2阅读修复进入后续包 |
 | 真实链路 | 旧build15人工新会话同意后仍等待，未观察完整回复。许可→发送FAIL，模型UNVERIFIED；先复验现有路由 |
@@ -27,7 +27,7 @@
 | 切片 | 用户可见交付 | 依赖 | 门槛 / 当前 |
 |---|---|---|---|
 | S00 维护入口与同步 | 单一维护目录、GitHub源码、plan/spec/验收/handoff齐备 | 无 | PASS：PR #1/2源码tree与本地引用核对，部署来源和体验合同已同步；包/源码版本区分明确 |
-| S01 真对话与稳定许可 | 允许后能回答/追问/重开；许可可找回，队列轻量，状态诚实 | S00 | IN_PROGRESS：追加原生队列sheet/暂停编辑/明确继续/unknown发送约束；最终40原生＋4实际UI、16本机队列检查PASS，见[本片证据](../acceptance/restart-queue-ux-2026-10-13.md)。冻结build16已更新原手机，不含阅读与新队列片；镜像待Touch ID解锁；真实模型0次，NOT_RUN |
+| S01 真对话与稳定许可 | 允许后能回答/追问/重开；许可可找回，队列轻量，状态诚实 | S00 | IN_PROGRESS：[队列sheet/暂停编辑/明确继续/unknown发送约束](../acceptance/restart-queue-ux-2026-10-13.md)已交付；追加[侧栏尺寸/搜索清空/按会话保留文字与图片草稿](../acceptance/restart-sidebar-drafts-2026-10-13.md)，最终43原生＋5实际UI、12侧栏包检查PASS。冻结build16已更新原手机，不含阅读、队列与本片；镜像待Touch ID解锁；真实模型0次，NOT_RUN |
 | S02 真图片与连续体验 | 合成图真实理解；长文/前后台可用 | S01 | AF-A06与A04/05；NOT_RUN，不自行放宽视觉路由 |
 | S03 执行审批成果 | 自然形成计划，可改/停/恢复；等待有入口；成果回对话/活动 | S01 | AF-A07–10；映射现有worker/store，先同task恢复试验。NOT_RUN |
 | S04 记忆闭环 | 保存/来源/更正/删除，新会话生效 | S01 | AF-A11；接既有端口与真实PG，NOT_RUN |
@@ -58,5 +58,7 @@ S01通过后S02/S03/S04代码可在合同明确时独立推进；同一文件/�
 6. AF-A01–18全部必需项签收后Goal才complete；云电脑扩展按独立确认范围。缺证据不算通过。
 
 ## 最近验证
+
+本轮追加侧栏/草稿片：同源码43原生＋5实际Simulator UI、侧栏包12项、non-DEBUG SDK源码和680双语资源PASS；首次中文系统取消定位失败已留档并完整复验。三张原生截图与source/log hash保存。未发图片切换保留限当前App会话，未扩展冷启动持久化范围。物理手机/真实模型0次，全部AF-U05及总Goal尚未签收，见[本片证据](../acceptance/restart-sidebar-drafts-2026-10-13.md)。
 
 新仓复现getter编译FAIL，已修正；最终39原生＋1 UI、产品配置build、便携对话/队列、源码/本地化、完整性与敏感扫描PASS。追加[阅读锚点回归](../acceptance/restart-reading-2026-10-13.md)真实滚动＋共用许可UI 2/2、非DEBUG SDK源码检查与666双语资源PASS；该修复不在冻结build16中。build16签名构建及同身份覆盖安装PASS，系统读回16；镜像待恢复，真实模型0次，未部署云端或tick。实际部署源码50/43文件hash及14项差异PASS。原始日志和IPA在忽略build目录；精简证据见[许可回归](../acceptance/restart-permission-2026-10-13.md)、[build16](../acceptance/restart-build16-2026-10-13.md)、[安装](../acceptance/restart-install16-2026-10-13.md)和[部署来源](../../services/edge/deployed-baselines/README.md)。
