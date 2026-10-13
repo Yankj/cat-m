@@ -48,9 +48,10 @@ enum ConversationObserverLifecycle: String { case foregroundIdle, streaming, rec
     private var queue: ConversationFollowupQueueService?
     @Published private(set) var sending = false
     @Published private(set) var enqueueing = false
+    @Published private(set) var editingFollowup = false
     var imageGate:ImageSendGate { .init(available:imageCapability.available,liveTransmissionAvailable:imageCapability.liveTransmissionAvailable,textConsentGranted:consentReady,imageConsentMatchesCurrentRoute:approvedImageMatchesDraft) }
     var imageSendBlock:ImageSendBlock? { imageDraft.phase == .empty ? nil : imageDraft.sendBlock(caption:draft,messageID:UUID(),gate:imageGate) }
-    var canAcceptDraft: Bool { (imageDraft.phase == .empty || canAdmitImage) && imageSendBlock == nil && loaded && !isInputComposing && !draft.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty && draft.utf16.count <= 8000 && outgoingMessages.count < 20 }
+    var canAcceptDraft: Bool { (imageDraft.phase == .empty || canAdmitImage) && imageSendBlock == nil && loaded && !isInputComposing && session?.unresolved?.state != .unknown && !draft.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty && draft.utf16.count <= 8000 && outgoingMessages.count < 20 }
     @Published var pendingModelConsent: ConversationModelConsent?
     @Published private(set) var checkingModelConsent = false
     @Published private(set) var isInputComposing = false
@@ -342,9 +343,21 @@ enum ConversationObserverLifecycle: String { case foregroundIdle, streaming, rec
         }
     }
     func pauseFollowups() { Task { do { try await queue?.pause();await refresh() } catch { self.error=error.localizedDescription } } }
+    func pauseQueueForEditing(_ message:ConversationFollowup) async throws {
+        guard loaded,foreground,!editingFollowup,let queue,let id=conversationID else {throw ConversationSessionError.busy}
+        try await queue.pause();await refresh()
+        guard conversationID == id,followups.pending.contains(where:{$0.id == message.id && $0.text == message.text && $0.image == message.image}) else {throw CatpawError.conflict}
+    }
+    func editFollowup(_ message:ConversationFollowup,text:String) async throws {
+        guard loaded,foreground,!editingFollowup,let queue,let id=conversationID else {throw ConversationSessionError.busy}
+        editingFollowup=true;defer {editingFollowup=false}
+        _=try await queue.edit(message,text:text,session:service)
+        guard conversationID == id else {return}
+        outgoingMessages.removeAll {$0.id == message.id};await refresh()
+    }
     func removeFollowup(_ id:UUID) { Task { do { if let conversationID { try await service.discardUnsent(scope:scope,conversationID:conversationID,operationID:id) };try await queue?.remove(id);if let conversationID {try await imageStore.remove(conversationID:conversationID,operationID:id)};outgoingMessages.removeAll { $0.id == id };await refresh() } catch { self.error=error.localizedDescription } } }
     func resumeFollowups() {
-        guard foreground,!busy,session?.unresolved == nil,let queue else { return }
+        guard foreground,!busy,!editingFollowup,session?.unresolved == nil,let queue else { return }
         Task { do {
             let state=try await queue.state()
             if let original=state.inflight,let id=conversationID { let saved=try await service.read(scope:scope,conversationID:id);try await queue.reconcileInflight(admitted:saved.turns.contains { $0.id == original.id && ![.notSent,.cancelledBeforeSend].contains($0.state) }) }
