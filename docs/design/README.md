@@ -1,6 +1,6 @@
 # 原生交互与设计约束
 
-当前配色与UI细节见[R4.1参考修订](codex-color-detail-r4-1.md)、[语义参数](codex-color-detail-r4-1.json)和[新版样机](prototypes/catpaw-codex-color-r4-1/index.html)：中性阅读面、局部紫色动作、辅助字与决定区清楚可读。原R4保留对照，以下连续机制仍适用。
+当前移动端视觉与对话细节见[R5截图参考修订](mobile-conversation-reference-r5.md)、[语义参数](mobile-conversation-reference-r5.json)和[新版样机](prototypes/catpaw-mobile-reference-r5/index.html)：中性阅读面、亮蓝动作、深蓝本人消息、字体与段落间距、三态输入、过程与对象菜单。语音对话不纳入；[R4.1](codex-color-detail-r4-1.md)和原R4保留日期对照，连续机制仍适用。
 
 连续机制评审见[UX-1 R4原生交互／动效](native-interaction-motion-r4.md)、[视觉方向与参数](interaction-motion-r4.json)及[独立交互样机](prototypes/catpaw-motion-study-r4/index.html)。采用 taste-skill 的 App 专用 `imagegen-frontend-mobile` 生成[对话](prototypes/catpaw-motion-study-r4/assets/mobile-conversation-concept-r4.png)与[审批](prototypes/catpaw-motion-study-r4/assets/mobile-approval-concept-r4.png)方向图；样机单独验证跟手／可打断／分档／回源／锚点。R3的[42项状态场景](interaction-scenarios-r3.json)与[R2日期视觉输入](taste-visual-motion-r2.md)保留；新方向不修改A1、冻结tokens或领域合同。实时状态与原生未验项只见master-plan，合成图和网页不能关闭产品验收。
 

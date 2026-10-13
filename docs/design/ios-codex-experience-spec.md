@@ -1,6 +1,6 @@
 # Catpaw iPhone 产品、布局与交互规格
 
-版本：UX-1，2026-10-13，设计修订R4.1；保留AF-U01–12身份与门槛。[视觉、交互与动效附录R2](taste-visual-motion-r2.md)与[新提案](prototypes/catpaw-taste/index.html)细化实施；产品取舍继续沿用R1。[产品评审](product-experience-review-2026-10-13.md)记录本轮理由。用户明确：**以 iPhone 体验为主，借鉴桌面 Codex 的信息结构。** 本文是 [AF-1 spec](../product/agent-foundation-spec.md) 的必需设计合同；实时状态只见 [master-plan](../status/master-plan.md)。验收见 [UX 验收合同](../acceptance/ios-codex-experience-acceptance.md)，早期布局提案保留在 [历史预览](prototypes/catpaw-ios-ux/index.html)，本轮视觉与连续交互以[R4实施附录](native-interaction-motion-r4.md)、[机器方向与参数](interaction-motion-r4.json)及[独立交互样机](prototypes/catpaw-motion-study-r4/index.html)评审，当前配色与UI细节以[R4.1修订](codex-color-detail-r4-1.md)、[语义色](codex-color-detail-r4-1.json)及[新样机](prototypes/catpaw-codex-color-r4-1/index.html)为准：中性白灰／炭黑、局部紫色动作、13–15px辅助字起点，R4保留连续机制与日期视觉输入；旧R2保留为日期视觉输入。完整对象状态、过程、卡片与HIL继续参考[R3交互附录](interaction-scenarios-r3.md)、[机器场景表](interaction-scenarios-r3.json)和[可操作提案](prototypes/catpaw-interaction-r3/index.html)审阅。
+版本：UX-1，2026-10-13，设计修订R5；保留AF-U01–12身份与门槛。[视觉、交互与动效附录R2](taste-visual-motion-r2.md)与[新提案](prototypes/catpaw-taste/index.html)细化实施；产品取舍继续沿用R1。[产品评审](product-experience-review-2026-10-13.md)记录本轮理由。用户明确：**以 iPhone 体验为主，借鉴桌面 Codex 的信息结构。** 本文是 [AF-1 spec](../product/agent-foundation-spec.md) 的必需设计合同；实时状态只见 [master-plan](../status/master-plan.md)。验收见 [UX 验收合同](../acceptance/ios-codex-experience-acceptance.md)，早期布局提案保留在 [历史预览](prototypes/catpaw-ios-ux/index.html)，本轮视觉与连续交互以[R4实施附录](native-interaction-motion-r4.md)、[机器方向与参数](interaction-motion-r4.json)及[独立交互样机](prototypes/catpaw-motion-study-r4/index.html)评审，当前移动端视觉、字体间距、输入、过程与菜单以[R5截图参考修订](mobile-conversation-reference-r5.md)、[语义参数](mobile-conversation-reference-r5.json)及[新样机](prototypes/catpaw-mobile-reference-r5/index.html)为准：中性白／近黑、局部亮蓝动作、深蓝本人消息、正文17／行高1.6／段间24的调试起点；语音对话不纳入本轮。R4保留连续机制，[R4.1](codex-color-detail-r4-1.md)与旧R2保留日期视觉输入。完整对象状态、过程、卡片与HIL继续参考[R3交互附录](interaction-scenarios-r3.md)、[机器场景表](interaction-scenarios-r3.json)和[可操作提案](prototypes/catpaw-interaction-r3/index.html)审阅。
 
 ## 1. 设计 Goal 与对标依据
 
@@ -37,7 +37,7 @@
 
 导航栏左侧44pt菜单，中间会话/助理名称与可选次级菜单，右侧44pt新会话动作。普通导航内容高度以系统导航栏为准；名称超长截断，完整名称在详情可读。模型供应商、连接诊断、预算和内部状态不常驻主标题或底部。
 
-用户消息采用靠右轻灰气泡，普通字号最大宽度为内容区86%；助理回复直接排版在内容区，不用大外框包住每条回复。角色不重复画大头像。正文间距稳定，时间/状态按需出现，工具步骤默认折叠成一行，展开才看细节。
+用户消息采用靠右轻色气泡（R5浅色轻蓝、深色深蓝），普通字号最大宽度为内容区86%；助理回复直接排版在内容区，不用大外框包住每条回复。角色不重复画大头像。正文间距稳定，时间/状态按需出现，工具步骤默认折叠成一行，展开才看细节。
 
 任务卡首层只保留标题、真实状态/当前步骤和一个最相关动作；成果卡显示标题、类型/版本及“查看成果”。内部 operation/hash/epoch 等只在“详细信息”中可查；技术字段不挤占常规阅读。
 
