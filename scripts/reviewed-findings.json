@@ -270,6 +270,13 @@
       "line": 174,
       "sha256": "9deec789daffefe61b1c2b18263431a331e69166c1fabad566e4c1e6e6cd39da",
       "reason": "Reviewed literal historical research filename: catdesk- suffix matches broad sk- credential pattern; no credential value or content is present."
+    },
+    {
+      "path": "scripts/check-git-policy.py",
+      "category": "email_review",
+      "line": 43,
+      "sha256": "0c13be37aa4fe89fadd3e1ff722b8cdfbb455b5a67f3cbe21cf591d1ec343b4b",
+      "reason": "Read-only review of a concurrently added policy file: the literal is the public SSH Git transport account in the verified origin URL, not a private email or recipient. No policy code changed; exact path/line/hash only."
     }
   ]
 }

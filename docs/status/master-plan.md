@@ -15,7 +15,7 @@
 | 最终handoff | 已读旧主仓handoff；用户确认相关任务停止。原文保存在忽略的local-audit；12项WIP与编译阻塞均相符 |
 | 首个修复 | 新仓已复现并修复getter缺return；候选包含许可review与弹窗分离、稳定确认入口、队列折叠、持久回复证据；新增拒绝重开/旧revision回归，最终合成验证通过 |
 | 本地检查 | 冻结合同/上游/历史来源完整性PASS；便携对话7/7、队列9/9 PASS；最终39/39原生＋1/1实际弹窗UI PASS，DeviceTrial无签名产品配置build PASS；证据限合成/Simulator，物理手机与provider未验 |
-| GitHub | 迁移/许可、阅读/部署来源/UX合同、build16安装记录、Goal映射及原生队列已通过PR合入main；本地主仓与远端引用/源码tree逐项核对。默认分支仍prepare/local-assets；终端无认证、SSH校验不匹配，未绕过。原始历史仅本地保留 |
+| GitHub | 默认main、合并后自动删head已启用；8个已整合远端/4个本地短分支已清理，legacy-local的9个来源引用与旧工作树保留。当前WIP在临时docs/restart-design-integration，未全量提交；规则采用本地hooks＋PR读回，当前私有仓库服务器保护不执行。详见[架构审查](../architecture/repository-review-2026-10-13.md)与[分支快照](branch-inventory-2026-10-13.json) |
 | 手机/API | 用户明确批准后，同bundle覆盖安装0.3.0(16)成功，系统读回16；未卸载/重置数据，原有内容待UI核对。镜像从连接失败进入Mac认证锁定页，待用户Touch ID解锁；截图已保存到本机忽略目录。Supabase APIv19/tick7无部署变化；实际50/43文件、14项共享差异已同步 |
 | 新候选包 | 0.3.0(16)，独立Git archive绑定原main `a905b47`；非DEBUG、严格签名、原证书/profile/entitlements及IPA逐字节PASS。已获安装及最多2次短文本原路由许可；尚未发送。见[包证据](../acceptance/restart-build16-2026-10-13.md)、[安装证据](../acceptance/restart-install16-2026-10-13.md)。PR #2阅读修复进入后续包 |
 | 真实链路 | 旧build15人工新会话同意后仍等待，未观察完整回复。许可→发送FAIL，模型UNVERIFIED；先复验现有路由 |
@@ -62,3 +62,7 @@ S01通过后S02/S03/S04代码可在合同明确时独立推进；同一文件/�
 本轮追加侧栏/草稿片：同源码43原生＋5实际Simulator UI、侧栏包12项、non-DEBUG SDK源码和680双语资源PASS；首次中文系统取消定位失败已留档并完整复验。三张原生截图与source/log hash保存。未发图片切换保留限当前App会话，未扩展冷启动持久化范围。物理手机/真实模型0次，全部AF-U05及总Goal尚未签收，见[本片证据](../acceptance/restart-sidebar-drafts-2026-10-13.md)。
 
 新仓复现getter编译FAIL，已修正；最终39原生＋1 UI、产品配置build、便携对话/队列、源码/本地化、完整性与敏感扫描PASS。追加[阅读锚点回归](../acceptance/restart-reading-2026-10-13.md)真实滚动＋共用许可UI 2/2、非DEBUG SDK源码检查与666双语资源PASS；该修复不在冻结build16中。build16签名构建及同身份覆盖安装PASS，系统读回16；镜像待恢复，真实模型0次，未部署云端或tick。实际部署源码50/43文件hash及14项差异PASS。原始日志和IPA在忽略build目录；精简证据见[许可回归](../acceptance/restart-permission-2026-10-13.md)、[build16](../acceptance/restart-build16-2026-10-13.md)、[安装](../acceptance/restart-install16-2026-10-13.md)和[部署来源](../../services/edge/deployed-baselines/README.md)。
+
+## 仓库架构与开发规则（2026-10-13）
+
+已核对目录、主App依赖、GitHub分支/PR及旧工作树；目录角色、分层AGENTS、CLI hooks与分支规范已建立。8个远端/4个本地已整合分支已删除，tip/完整历史bundle/51项原WIP已备份；新增规范按独立文件清单经PR同步，不夹带其他作者正在写入的规划/设计。未改业务源码、模型、包、部署或运行Goal；产品验收保持原未验结论。维护入口为catpaw-api＋_shared，tick独立入口仅存在部署来源，后续源对齐仍待逐片验收。[完整审查](../architecture/repository-review-2026-10-13.md)、[分支规范](../development/branch-management.md)。
