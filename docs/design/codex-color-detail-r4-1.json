@@ -1,0 +1,525 @@
+{
+  "version": "UX-1-R4.1-color-detail",
+  "recorded_on": "2026-10-13",
+  "authority": "ios-codex-experience-spec.md",
+  "appendix": "codex-color-detail-r4-1.md",
+  "prototype": "prototypes/catpaw-codex-color-r4-1/index.html",
+  "scope": "Color and UI refinement only; R4 continuous mechanisms and original release IDs retained",
+  "reference": {
+    "title": "移动端 Agent 对话交互研究",
+    "docx_sha256": "e0af1f5e9e0685cd13956a173037faae191dee5e828278e3865b7b8e18d6c9a5",
+    "complete_extracted_text_chars": 8782,
+    "embedded_images_reviewed": 6,
+    "source_storage": "ignored local-audit, not published",
+    "limits": "User-supplied report and sample images, not official Codex tokens; external versions and temporal claims not reverified"
+  },
+  "colors": {
+    "light": {
+      "bg": "#FFFFFF",
+      "ink": "#202020",
+      "secondary": "#626262",
+      "line": "#DEDEDE",
+      "tint": "#6D45B8",
+      "tintsoft": "#EFEFEF",
+      "card": "#F7F7F7",
+      "panel": "#F7F7F7",
+      "drawer": "#F5F5F5",
+      "control_edge": "#8A8A8A",
+      "selection_edge": "#626262",
+      "track": "#DEDEDE",
+      "bar_secondary": "#707070",
+      "send": "#A57DF0",
+      "send_ink": "#FFFFFF",
+      "primary": "#202020",
+      "primary_ink": "#FFFFFF",
+      "error": "#B3261E"
+    },
+    "dark": {
+      "bg": "#0D0D0D",
+      "ink": "#F2F2F2",
+      "secondary": "#A3A3A3",
+      "line": "#383838",
+      "tint": "#B7A0F3",
+      "tintsoft": "#292929",
+      "card": "#212121",
+      "panel": "#181818",
+      "drawer": "#151515",
+      "control_edge": "#777777",
+      "selection_edge": "#B8B8B8",
+      "track": "#383838",
+      "bar_secondary": "#969696",
+      "send": "#A57DF0",
+      "send_ink": "#16121D",
+      "primary": "#F2F2F2",
+      "primary_ink": "#151515",
+      "error": "#FFB4AB"
+    }
+  },
+  "roles": {
+    "user_message": "neutral gray identity surface",
+    "assistant": "open reading text",
+    "intelligence": "neutral panel with explicit selected outline and numbers",
+    "process": "neutral observable summary",
+    "send": "local purple icon-only action",
+    "approval": "high-contrast monochrome explicit decision",
+    "refusal": "named action and error semantic color"
+  },
+  "typography": {
+    "body_css_px": 17,
+    "ordinary_conclusion_css_px": 21,
+    "auxiliary_body_relative_em": [
+      0.765,
+      0.824,
+      0.882
+    ],
+    "normal_auxiliary_css_px_approximately": [
+      13,
+      14,
+      15
+    ],
+    "native": "semantic scalable fonts, not literal screenshot pixels"
+  },
+  "geometry": {
+    "body_inset_css_px": 20,
+    "interactive_panel_radius_css_px": 18,
+    "composer_radius_css_px": 25,
+    "approval_radius_css_px": 28,
+    "target_minimum_css_px": 44,
+    "native": "system safe area and platform presentation"
+  },
+  "contrast": {
+    "method": "sRGB relative luminance, WCAG ratio",
+    "opaque_semantic_pairs": [
+      {
+        "mode": "light",
+        "role": "ink/bg",
+        "foreground": "#202020",
+        "background": "#FFFFFF",
+        "ratio": 16.2933,
+        "minimum": 4.5
+      },
+      {
+        "mode": "light",
+        "role": "ink/card",
+        "foreground": "#202020",
+        "background": "#F7F7F7",
+        "ratio": 15.2088,
+        "minimum": 4.5
+      },
+      {
+        "mode": "light",
+        "role": "ink/panel",
+        "foreground": "#202020",
+        "background": "#F7F7F7",
+        "ratio": 15.2088,
+        "minimum": 4.5
+      },
+      {
+        "mode": "light",
+        "role": "ink/drawer",
+        "foreground": "#202020",
+        "background": "#F5F5F5",
+        "ratio": 14.9448,
+        "minimum": 4.5
+      },
+      {
+        "mode": "light",
+        "role": "ink/tintsoft",
+        "foreground": "#202020",
+        "background": "#EFEFEF",
+        "ratio": 14.1698,
+        "minimum": 4.5
+      },
+      {
+        "mode": "light",
+        "role": "secondary/bg",
+        "foreground": "#626262",
+        "background": "#FFFFFF",
+        "ratio": 6.0997,
+        "minimum": 4.5
+      },
+      {
+        "mode": "light",
+        "role": "secondary/card",
+        "foreground": "#626262",
+        "background": "#F7F7F7",
+        "ratio": 5.6937,
+        "minimum": 4.5
+      },
+      {
+        "mode": "light",
+        "role": "secondary/panel",
+        "foreground": "#626262",
+        "background": "#F7F7F7",
+        "ratio": 5.6937,
+        "minimum": 4.5
+      },
+      {
+        "mode": "light",
+        "role": "secondary/drawer",
+        "foreground": "#626262",
+        "background": "#F5F5F5",
+        "ratio": 5.5949,
+        "minimum": 4.5
+      },
+      {
+        "mode": "light",
+        "role": "secondary/tintsoft",
+        "foreground": "#626262",
+        "background": "#EFEFEF",
+        "ratio": 5.3048,
+        "minimum": 4.5
+      },
+      {
+        "mode": "light",
+        "role": "tint/bg",
+        "foreground": "#6D45B8",
+        "background": "#FFFFFF",
+        "ratio": 6.5756,
+        "minimum": 4.5
+      },
+      {
+        "mode": "light",
+        "role": "tint/card",
+        "foreground": "#6D45B8",
+        "background": "#F7F7F7",
+        "ratio": 6.1379,
+        "minimum": 4.5
+      },
+      {
+        "mode": "light",
+        "role": "tint/panel",
+        "foreground": "#6D45B8",
+        "background": "#F7F7F7",
+        "ratio": 6.1379,
+        "minimum": 4.5
+      },
+      {
+        "mode": "light",
+        "role": "tint/drawer",
+        "foreground": "#6D45B8",
+        "background": "#F5F5F5",
+        "ratio": 6.0314,
+        "minimum": 4.5
+      },
+      {
+        "mode": "light",
+        "role": "tint/tintsoft",
+        "foreground": "#6D45B8",
+        "background": "#EFEFEF",
+        "ratio": 5.7186,
+        "minimum": 4.5
+      },
+      {
+        "mode": "light",
+        "role": "error/bg",
+        "foreground": "#B3261E",
+        "background": "#FFFFFF",
+        "ratio": 6.5365,
+        "minimum": 4.5
+      },
+      {
+        "mode": "light",
+        "role": "error/card",
+        "foreground": "#B3261E",
+        "background": "#F7F7F7",
+        "ratio": 6.1014,
+        "minimum": 4.5
+      },
+      {
+        "mode": "light",
+        "role": "error/panel",
+        "foreground": "#B3261E",
+        "background": "#F7F7F7",
+        "ratio": 6.1014,
+        "minimum": 4.5
+      },
+      {
+        "mode": "light",
+        "role": "error/drawer",
+        "foreground": "#B3261E",
+        "background": "#F5F5F5",
+        "ratio": 5.9955,
+        "minimum": 4.5
+      },
+      {
+        "mode": "light",
+        "role": "error/tintsoft",
+        "foreground": "#B3261E",
+        "background": "#EFEFEF",
+        "ratio": 5.6846,
+        "minimum": 4.5
+      },
+      {
+        "mode": "light",
+        "role": "primary_ink/primary",
+        "foreground": "#FFFFFF",
+        "background": "#202020",
+        "ratio": 16.2933,
+        "minimum": 4.5
+      },
+      {
+        "mode": "light",
+        "role": "send_ink/send",
+        "foreground": "#FFFFFF",
+        "background": "#A57DF0",
+        "ratio": 3.0921,
+        "minimum": 3
+      },
+      {
+        "mode": "light",
+        "role": "selection_edge/tintsoft",
+        "foreground": "#626262",
+        "background": "#EFEFEF",
+        "ratio": 5.3048,
+        "minimum": 3
+      },
+      {
+        "mode": "light",
+        "role": "control_edge/card",
+        "foreground": "#8A8A8A",
+        "background": "#F7F7F7",
+        "ratio": 3.2224,
+        "minimum": 3
+      },
+      {
+        "mode": "light",
+        "role": "ink/track",
+        "foreground": "#202020",
+        "background": "#DEDEDE",
+        "ratio": 12.1107,
+        "minimum": 3
+      },
+      {
+        "mode": "light",
+        "role": "bar_secondary/track",
+        "foreground": "#707070",
+        "background": "#DEDEDE",
+        "ratio": 3.6809,
+        "minimum": 3
+      },
+      {
+        "mode": "dark",
+        "role": "ink/bg",
+        "foreground": "#F2F2F2",
+        "background": "#0D0D0D",
+        "ratio": 17.361,
+        "minimum": 4.5
+      },
+      {
+        "mode": "dark",
+        "role": "ink/card",
+        "foreground": "#F2F2F2",
+        "background": "#212121",
+        "ratio": 14.3834,
+        "minimum": 4.5
+      },
+      {
+        "mode": "dark",
+        "role": "ink/panel",
+        "foreground": "#F2F2F2",
+        "background": "#181818",
+        "ratio": 15.861,
+        "minimum": 4.5
+      },
+      {
+        "mode": "dark",
+        "role": "ink/drawer",
+        "foreground": "#F2F2F2",
+        "background": "#151515",
+        "ratio": 16.312,
+        "minimum": 4.5
+      },
+      {
+        "mode": "dark",
+        "role": "ink/tintsoft",
+        "foreground": "#F2F2F2",
+        "background": "#292929",
+        "ratio": 12.9953,
+        "minimum": 4.5
+      },
+      {
+        "mode": "dark",
+        "role": "secondary/bg",
+        "foreground": "#A3A3A3",
+        "background": "#0D0D0D",
+        "ratio": 7.7049,
+        "minimum": 4.5
+      },
+      {
+        "mode": "dark",
+        "role": "secondary/card",
+        "foreground": "#A3A3A3",
+        "background": "#212121",
+        "ratio": 6.3834,
+        "minimum": 4.5
+      },
+      {
+        "mode": "dark",
+        "role": "secondary/panel",
+        "foreground": "#A3A3A3",
+        "background": "#181818",
+        "ratio": 7.0391,
+        "minimum": 4.5
+      },
+      {
+        "mode": "dark",
+        "role": "secondary/drawer",
+        "foreground": "#A3A3A3",
+        "background": "#151515",
+        "ratio": 7.2393,
+        "minimum": 4.5
+      },
+      {
+        "mode": "dark",
+        "role": "secondary/tintsoft",
+        "foreground": "#A3A3A3",
+        "background": "#292929",
+        "ratio": 5.7674,
+        "minimum": 4.5
+      },
+      {
+        "mode": "dark",
+        "role": "tint/bg",
+        "foreground": "#B7A0F3",
+        "background": "#0D0D0D",
+        "ratio": 8.6405,
+        "minimum": 4.5
+      },
+      {
+        "mode": "dark",
+        "role": "tint/card",
+        "foreground": "#B7A0F3",
+        "background": "#212121",
+        "ratio": 7.1586,
+        "minimum": 4.5
+      },
+      {
+        "mode": "dark",
+        "role": "tint/panel",
+        "foreground": "#B7A0F3",
+        "background": "#181818",
+        "ratio": 7.8939,
+        "minimum": 4.5
+      },
+      {
+        "mode": "dark",
+        "role": "tint/drawer",
+        "foreground": "#B7A0F3",
+        "background": "#151515",
+        "ratio": 8.1184,
+        "minimum": 4.5
+      },
+      {
+        "mode": "dark",
+        "role": "tint/tintsoft",
+        "foreground": "#B7A0F3",
+        "background": "#292929",
+        "ratio": 6.4677,
+        "minimum": 4.5
+      },
+      {
+        "mode": "dark",
+        "role": "error/bg",
+        "foreground": "#FFB4AB",
+        "background": "#0D0D0D",
+        "ratio": 11.4471,
+        "minimum": 4.5
+      },
+      {
+        "mode": "dark",
+        "role": "error/card",
+        "foreground": "#FFB4AB",
+        "background": "#212121",
+        "ratio": 9.4839,
+        "minimum": 4.5
+      },
+      {
+        "mode": "dark",
+        "role": "error/panel",
+        "foreground": "#FFB4AB",
+        "background": "#181818",
+        "ratio": 10.4581,
+        "minimum": 4.5
+      },
+      {
+        "mode": "dark",
+        "role": "error/drawer",
+        "foreground": "#FFB4AB",
+        "background": "#151515",
+        "ratio": 10.7554,
+        "minimum": 4.5
+      },
+      {
+        "mode": "dark",
+        "role": "error/tintsoft",
+        "foreground": "#FFB4AB",
+        "background": "#292929",
+        "ratio": 8.5686,
+        "minimum": 4.5
+      },
+      {
+        "mode": "dark",
+        "role": "primary_ink/primary",
+        "foreground": "#151515",
+        "background": "#F2F2F2",
+        "ratio": 16.312,
+        "minimum": 4.5
+      },
+      {
+        "mode": "dark",
+        "role": "send_ink/send",
+        "foreground": "#16121D",
+        "background": "#A57DF0",
+        "ratio": 5.966,
+        "minimum": 3
+      },
+      {
+        "mode": "dark",
+        "role": "selection_edge/tintsoft",
+        "foreground": "#B8B8B8",
+        "background": "#292929",
+        "ratio": 7.334,
+        "minimum": 3
+      },
+      {
+        "mode": "dark",
+        "role": "control_edge/card",
+        "foreground": "#777777",
+        "background": "#212121",
+        "ratio": 3.5958,
+        "minimum": 3
+      },
+      {
+        "mode": "dark",
+        "role": "ink/track",
+        "foreground": "#F2F2F2",
+        "background": "#383838",
+        "ratio": 10.4742,
+        "minimum": 3
+      },
+      {
+        "mode": "dark",
+        "role": "bar_secondary/track",
+        "foreground": "#969696",
+        "background": "#383838",
+        "ratio": 3.9643,
+        "minimum": 3
+      }
+    ],
+    "pair_count": 52,
+    "result": "PASS",
+    "excluded": "Decorative separators and track-to-panel fill; disabled controls; system glass compositing; actual native/VO validation",
+    "send_note": "White arrow on sample purple is approximately3.09:1; icon only, no small white text, no opacity reduction"
+  },
+  "reuse": {
+    "motion": "prototypes/catpaw-motion-study-r4/motion.js",
+    "presentation": "prototypes/catpaw-motion-study-r4/app.js",
+    "base_css": "prototypes/catpaw-motion-study-r4/style.css",
+    "illustration": "prototypes/catpaw-motion-study-r4/assets/mountain-study.svg",
+    "original_r4_bytes_changed": false
+  },
+  "frozen_assets_changed": false,
+  "runtime_goal_status_changed": false,
+  "closes_native_acceptance": false
+}

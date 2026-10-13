@@ -1,0 +1,1054 @@
+{
+  "revision": "UX-1-R4.1-codex-color-detail",
+  "recorded_on": "2026-10-13",
+  "head_before_design": "9dc9cd921b002035f6b6430ffd56ddd93137a949",
+  "branch": "docs/restart-design-integration",
+  "scope": "Synthetic browser palette and UI-detail design review. No native or release acceptance.",
+  "reference": {
+    "source": "User-supplied mobile Agent conversation research DOCX",
+    "sha256": "e0af1f5e9e0685cd13956a173037faae191dee5e828278e3865b7b8e18d6c9a5",
+    "read": "Full extracted body, color table and all six embedded images",
+    "private_material": "Extraction and images retained only in ignored local-audit",
+    "attribution": "Images 1–3 are labeled Codex Remote samples in the report; remaining samples have distinct attribution. Sampled colors are not official tokens. External version claims were not refreshed."
+  },
+  "design_delivery": {
+    "prototype": "docs/design/prototypes/catpaw-codex-color-r4-1/index.html",
+    "spec": "docs/design/codex-color-detail-r4-1.md",
+    "parameters": "docs/design/codex-color-detail-r4-1.json",
+    "development_prompt": "docs/planning/AF-1/long-task-development-prompt.md",
+    "direction": "Neutral white/gray/charcoal reading and interaction surfaces, localized purple actions, monochrome approval primary action",
+    "motion": "Reuses unchanged R4 engine, base CSS and illustration; no new motion-test claim"
+  },
+  "inputs": [
+    {
+      "path": "docs/design/README.md",
+      "bytes": 5601,
+      "sha256": "7e823540d4e8c3d3948da429f3ac3c3267ac536d7435f03da5375395ba9ab806"
+    },
+    {
+      "path": "docs/design/codex-color-detail-r4-1.json",
+      "bytes": 13421,
+      "sha256": "0345f29de4f6703f3a26a33bd417976d7ac508472c759087205b22802da25ff1"
+    },
+    {
+      "path": "docs/design/codex-color-detail-r4-1.md",
+      "bytes": 5322,
+      "sha256": "570b402f0bff84c08be9ce2aafbf998f2f15296974ef560ba984761399fd1f56"
+    },
+    {
+      "path": "docs/design/ios-codex-experience-spec.md",
+      "bytes": 21629,
+      "sha256": "8d56252a7396745f4541b4fe6b0af3c07c57c5ad48e5901325be6e0be2564041"
+    },
+    {
+      "path": "docs/design/prototypes/catpaw-codex-color-r4-1/README.md",
+      "bytes": 1192,
+      "sha256": "8cf066263a1734ceae441fd8b145bfe9b714fb5bd270bfd10801d5576e52c4e0"
+    },
+    {
+      "path": "docs/design/prototypes/catpaw-codex-color-r4-1/index.html",
+      "bytes": 13903,
+      "sha256": "073a25fb5aa0692b5a3963e70b29451c5d6d3ba401512beb89fe11609f2a2d2f"
+    },
+    {
+      "path": "docs/design/prototypes/catpaw-codex-color-r4-1/refinement.css",
+      "bytes": 7611,
+      "sha256": "5991e3bb66621d5f94c73d642053548ee8a9b8d08bb68529e6623f49ff86e528"
+    },
+    {
+      "path": "docs/planning/AF-1/development-start-contract.md",
+      "bytes": 8640,
+      "sha256": "0e53bbabd5fee76efbbe8c915f16b8d6d7d884b8abf9545017bb347cf1a8290f"
+    },
+    {
+      "path": "docs/planning/AF-1/goal-evidence-map.json",
+      "bytes": 67677,
+      "sha256": "2828a3d3db685f2b3908ab9e68b4ee7b8ae5028a86d3cb0b118c3a6cbbd1bd52"
+    },
+    {
+      "path": "docs/planning/AF-1/long-task-development-prompt.md",
+      "bytes": 21558,
+      "sha256": "599c526134821366606c1408a2d5bddc0e34ea783716a70f2b18f0a6732f694c"
+    },
+    {
+      "path": "docs/status/master-plan.md",
+      "bytes": 24332,
+      "sha256": "8e889d1f166023812abb6315c01bc4bf7642a0c4690306c7398aa58c22a59b87"
+    },
+    {
+      "path": "scripts/reviewed-findings.json",
+      "bytes": 33519,
+      "sha256": "03de428541898e0cf16599b2028abd3ae9cf33e1b79848aae288bf0901ff32ce"
+    }
+  ],
+  "preserved_r4_inputs": [
+    {
+      "path": "docs/acceptance/evidence/motion-design-20261013-r4/RESULT.json",
+      "sha256": "44533171fc73a6f7987ec04c3ae2a31b93beb8a085fb7a36568651a13b7837ee"
+    },
+    {
+      "path": "docs/acceptance/evidence/motion-design-20261013-r4/r4-approval-dark.jpg",
+      "sha256": "d450ce52928182d8b5a300920fbbdf9cb6c71b581744646beb085fb16f83be63"
+    },
+    {
+      "path": "docs/acceptance/evidence/motion-design-20261013-r4/r4-approval-detail.jpg",
+      "sha256": "fc3feb5f175743949485aa148e037333c4c03b4d673e592ab076aa2b4d1b4137"
+    },
+    {
+      "path": "docs/acceptance/evidence/motion-design-20261013-r4/r4-drawer.jpg",
+      "sha256": "dcf1c6794ea46efd98536af1fa0f1bfbce73fe536b23e21208f068fae170fd67"
+    },
+    {
+      "path": "docs/acceptance/evidence/motion-design-20261013-r4/r4-overview.jpg",
+      "sha256": "1431b03615d279ede99a3d006beb045da577036f176d563f67ae4861e1af4366"
+    },
+    {
+      "path": "docs/design/interaction-motion-r4.json",
+      "sha256": "5d82f485884201e86767035ac20748262d87114c416f9d04c7ee489952e3e5d6"
+    },
+    {
+      "path": "docs/design/native-interaction-motion-r4.md",
+      "sha256": "0c76d25089daf0bb587358da97506e0159fbfb5118ebeb649cc10582987577b9"
+    },
+    {
+      "path": "docs/design/prototypes/catpaw-motion-study-r4/README.md",
+      "sha256": "fd434f58057cc61347ee119d35698782df8198f064d8e4a2988ffee98fad3ab8"
+    },
+    {
+      "path": "docs/design/prototypes/catpaw-motion-study-r4/app.js",
+      "sha256": "eaa5ee930dd41e97a25f55dbe85816751e703d08d9478dc373fc47f66213f203"
+    },
+    {
+      "path": "docs/design/prototypes/catpaw-motion-study-r4/assets/concept-generation-prompts-r4.md",
+      "sha256": "c00662c6b33eec9f892a5ef573f0917392228f31fde4f90e08f04d4012b299f8"
+    },
+    {
+      "path": "docs/design/prototypes/catpaw-motion-study-r4/assets/concepts-provenance.json",
+      "sha256": "20046b006ed18dec4e0f89f79722b88b16f9184f4b5a5167e0c43ef92604d1e5"
+    },
+    {
+      "path": "docs/design/prototypes/catpaw-motion-study-r4/assets/mobile-approval-concept-r4.png",
+      "sha256": "e4fb1c3fa1a4528d04d927389708bc87c133a5a7f1a86fb0f89bf21031500516"
+    },
+    {
+      "path": "docs/design/prototypes/catpaw-motion-study-r4/assets/mobile-conversation-concept-r4.png",
+      "sha256": "82abd50ca0cf0290ac4aca76b6e009e19eb4fa56e2cc53331973a12337172a7a"
+    },
+    {
+      "path": "docs/design/prototypes/catpaw-motion-study-r4/assets/mountain-study.svg",
+      "sha256": "f00953940560e63228a5bfd5baac62eaf4c17397b7a63e721f02636bb428c95b"
+    },
+    {
+      "path": "docs/design/prototypes/catpaw-motion-study-r4/index.html",
+      "sha256": "15cb30fdb18402505be121321430019a1b717d6723d4c0026ee7f3edca4a2c8c"
+    },
+    {
+      "path": "docs/design/prototypes/catpaw-motion-study-r4/motion.js",
+      "sha256": "c97ff115930bc0277df0995c7be1dc0d44c5f6d1650e76f972c83d6114e4184d"
+    },
+    {
+      "path": "docs/design/prototypes/catpaw-motion-study-r4/style.css",
+      "sha256": "23a8c62cc2bb26efe8a5e0f45c14f3af100acd44607186cd9b24dce5c018c00f"
+    }
+  ],
+  "wip_snapshot": {
+    "local_record": "build/codex-color-r4-1/before.json",
+    "individually_hashed_files": 877,
+    "changed_explicit_paths": [
+      "docs/planning/AF-1/development-start-contract.md",
+      "docs/planning/AF-1/long-task-development-prompt.md",
+      "docs/design/README.md",
+      "docs/design/ios-codex-experience-spec.md",
+      "docs/planning/AF-1/goal-evidence-map.json",
+      "docs/status/master-plan.md",
+      "scripts/reviewed-findings.json"
+    ],
+    "unchanged_files": 870,
+    "scope": "All tracked and individually enumerated nonignored candidates, including files inside untracked directories. Ignored private/runtime material excluded."
+  },
+  "checks": {
+    "scripts": [
+      {
+        "path": "scripts/check-agent-foundation-plan.py",
+        "exit_code": 0,
+        "output": "PASS AF-1: 12 requirements, 21 owned criteria, 9 acyclic slices; this is plan integrity, not product acceptance\n"
+      },
+      {
+        "path": "scripts/check-agent-foundation-goals.py",
+        "exit_code": 0,
+        "output": "PASS AF-1-G3-UX1 planning: 7 goals, 16 work units, 18 required cases, 12 UX cases, 3 scenarios; DAG/ownership/links valid\nPASS 6 concurrent design lanes, 66 hash-bound Goal inputs; 0 local-only input(s) unavailable in this checkout\nLIMIT planning integrity only; no product, model, database, deployment or device acceptance executed\n"
+      },
+      {
+        "path": "scripts/check-final-product-plan.py",
+        "exit_code": 0,
+        "output": "PASS FINAL-1: 3 goals; 9 mandatory quality checks; 8 comparison cases; 4 named comparators\nPASS 18 functional / 12 UX / 3 scenario mappings; work/design ownership; closure, thresholds and links\nLIMIT planning validation only; no native, model, database, scheduler, daily-use or competitor acceptance run\n"
+      },
+      {
+        "path": "scripts/check-conversation-ui-plan.py",
+        "exit_code": 0,
+        "output": "PASS CGUI-1: 10 mandatory cases; 6 domain cards; 3 presentations/actions; final release traceability\nPASS deterministic truth fixtures, zero automatic requests, source identities and links; 6/6 cached source bytes checked\nLIMIT static planning integrity only; no renderer, model, database, device, SDK installation or acceptance execution\n"
+      },
+      {
+        "path": "scripts/check-repository.py",
+        "exit_code": 0,
+        "output": "PASS frozen contract, 44 pinned originals (SHA256 + Git blob SHA1), MIT identity\nPASS exact patch reconstruction and all runtime TypeScript copies\nPASS 188 imported bytes/provenance, final v1 source identity, 10 frozen specs, 3 screenshots\nPASS 121 frozen r3 imports, 43 App sources/101-item final manifest, contract/spec/replay and 4 synthetic screenshots\nLIMIT no iOS SDK build, Simulator, service listener, real model/Intelligence/SQL or deployment executed\n"
+      },
+      {
+        "path": "scripts/check-repository-layout.py",
+        "exit_code": 0,
+        "output": "PASS one active native entry, two local packages, declared maintenance/history/source paths\nPASS Domain imports and package host/network boundaries; layout validation only\n"
+      }
+    ],
+    "source_hash_inputs": 66,
+    "diff_whitespace": "PASS",
+    "local_markdown_links": {
+      "result": "PASS",
+      "count": 187,
+      "scope": "Seven deliberately updated linked documents; file existence only"
+    },
+    "html_local_resources": {
+      "result": "PASS",
+      "count": 10
+    },
+    "sensitivity": {
+      "result": "PASS",
+      "blocking_hits": 0,
+      "manual_review_hits": 0,
+      "new_exact_hash_review_records": 7,
+      "scanner_policy_changed": false,
+      "scope": "Git candidate files; known-pattern check, not exhaustive"
+    }
+  },
+  "contrast": {
+    "result": "PASS",
+    "classification": "Calculated opaque sRGB semantic colors",
+    "pairs": 52,
+    "minimum_text": 5.3048,
+    "minimum_necessary_graphic": 3.0921,
+    "details": "docs/design/codex-color-detail-r4-1.json",
+    "limits": "No translucent composite or native screenshot sampling; decorative separators/track backgrounds excluded."
+  },
+  "browser_layout": {
+    "classification": "Synthetic browser read-only DOM geometry after actual UI input",
+    "result": "PASS",
+    "rows": [
+      {
+        "targetCssWidth": 375,
+        "d": false,
+        "large": false,
+        "scene": "conversation",
+        "actualViewport": [
+          375,
+          900
+        ],
+        "approvalTop": "803.000",
+        "computedBg": "#FFFFFF",
+        "computedCaption": "13.005px",
+        "conversationOverflow": 0,
+        "documentOverflow": 0,
+        "footerInside": null,
+        "foreground": "root",
+        "foregroundOverflow": 0,
+        "phone": {
+          "h": 810,
+          "w": 359.00390625
+        },
+        "sheetOverflow": 0,
+        "smallControls": []
+      },
+      {
+        "targetCssWidth": 375,
+        "d": false,
+        "large": false,
+        "scene": "approval",
+        "actualViewport": [
+          375,
+          900
+        ],
+        "approvalTop": "345.000",
+        "computedBg": "#FFFFFF",
+        "computedCaption": "13.005px",
+        "conversationOverflow": 0,
+        "documentOverflow": 0,
+        "footerInside": true,
+        "foreground": "sheet",
+        "foregroundOverflow": 0,
+        "phone": {
+          "h": 810,
+          "w": 359.00390625
+        },
+        "sheetOverflow": 0,
+        "smallControls": []
+      },
+      {
+        "targetCssWidth": 375,
+        "d": false,
+        "large": true,
+        "scene": "conversation",
+        "actualViewport": [
+          375,
+          900
+        ],
+        "approvalTop": "803.000",
+        "computedBg": "#FFFFFF",
+        "computedCaption": "16.065px",
+        "conversationOverflow": 0,
+        "documentOverflow": 0,
+        "footerInside": null,
+        "foreground": "root",
+        "foregroundOverflow": 0,
+        "phone": {
+          "h": 810,
+          "w": 359.00390625
+        },
+        "sheetOverflow": 0,
+        "smallControls": []
+      },
+      {
+        "targetCssWidth": 375,
+        "d": false,
+        "large": true,
+        "scene": "approval",
+        "actualViewport": [
+          375,
+          900
+        ],
+        "approvalTop": "62.000",
+        "computedBg": "#FFFFFF",
+        "computedCaption": "16.065px",
+        "conversationOverflow": 0,
+        "documentOverflow": 0,
+        "footerInside": true,
+        "foreground": "sheet",
+        "foregroundOverflow": 0,
+        "phone": {
+          "h": 810,
+          "w": 359.00390625
+        },
+        "sheetOverflow": 0,
+        "smallControls": []
+      },
+      {
+        "targetCssWidth": 375,
+        "d": true,
+        "large": false,
+        "scene": "conversation",
+        "actualViewport": [
+          375,
+          900
+        ],
+        "approvalTop": "803.000",
+        "computedBg": "#0D0D0D",
+        "computedCaption": "13.005px",
+        "conversationOverflow": 0,
+        "documentOverflow": 0,
+        "footerInside": null,
+        "foreground": "root",
+        "foregroundOverflow": 0,
+        "phone": {
+          "h": 810,
+          "w": 359.00390625
+        },
+        "sheetOverflow": 0,
+        "smallControls": []
+      },
+      {
+        "targetCssWidth": 375,
+        "d": true,
+        "large": false,
+        "scene": "approval",
+        "actualViewport": [
+          375,
+          900
+        ],
+        "approvalTop": "345.000",
+        "computedBg": "#0D0D0D",
+        "computedCaption": "13.005px",
+        "conversationOverflow": 0,
+        "documentOverflow": 0,
+        "footerInside": true,
+        "foreground": "sheet",
+        "foregroundOverflow": 0,
+        "phone": {
+          "h": 810,
+          "w": 359.00390625
+        },
+        "sheetOverflow": 0,
+        "smallControls": []
+      },
+      {
+        "targetCssWidth": 375,
+        "d": true,
+        "large": true,
+        "scene": "conversation",
+        "actualViewport": [
+          375,
+          900
+        ],
+        "approvalTop": "803.000",
+        "computedBg": "#0D0D0D",
+        "computedCaption": "16.065px",
+        "conversationOverflow": 0,
+        "documentOverflow": 0,
+        "footerInside": null,
+        "foreground": "root",
+        "foregroundOverflow": 0,
+        "phone": {
+          "h": 810,
+          "w": 359.00390625
+        },
+        "sheetOverflow": 0,
+        "smallControls": []
+      },
+      {
+        "targetCssWidth": 375,
+        "d": true,
+        "large": true,
+        "scene": "approval",
+        "actualViewport": [
+          375,
+          900
+        ],
+        "approvalTop": "62.000",
+        "computedBg": "#0D0D0D",
+        "computedCaption": "16.065px",
+        "conversationOverflow": 0,
+        "documentOverflow": 0,
+        "footerInside": true,
+        "foreground": "sheet",
+        "foregroundOverflow": 0,
+        "phone": {
+          "h": 810,
+          "w": 359.00390625
+        },
+        "sheetOverflow": 0,
+        "smallControls": []
+      },
+      {
+        "targetCssWidth": 390,
+        "d": false,
+        "large": false,
+        "scene": "conversation",
+        "actualViewport": [
+          390,
+          900
+        ],
+        "approvalTop": "803.000",
+        "computedBg": "#FFFFFF",
+        "computedCaption": "13.005px",
+        "conversationOverflow": 0,
+        "documentOverflow": 0,
+        "footerInside": null,
+        "foreground": "root",
+        "foregroundOverflow": 0,
+        "phone": {
+          "h": 810,
+          "w": 374.00390625
+        },
+        "sheetOverflow": 0,
+        "smallControls": []
+      },
+      {
+        "targetCssWidth": 390,
+        "d": false,
+        "large": false,
+        "scene": "approval",
+        "actualViewport": [
+          390,
+          900
+        ],
+        "approvalTop": "345.000",
+        "computedBg": "#FFFFFF",
+        "computedCaption": "13.005px",
+        "conversationOverflow": 0,
+        "documentOverflow": 0,
+        "footerInside": true,
+        "foreground": "sheet",
+        "foregroundOverflow": 0,
+        "phone": {
+          "h": 810,
+          "w": 374.00390625
+        },
+        "sheetOverflow": 0,
+        "smallControls": []
+      },
+      {
+        "targetCssWidth": 390,
+        "d": false,
+        "large": true,
+        "scene": "conversation",
+        "actualViewport": [
+          390,
+          900
+        ],
+        "approvalTop": "803.000",
+        "computedBg": "#FFFFFF",
+        "computedCaption": "16.065px",
+        "conversationOverflow": 0,
+        "documentOverflow": 0,
+        "footerInside": null,
+        "foreground": "root",
+        "foregroundOverflow": 0,
+        "phone": {
+          "h": 810,
+          "w": 374.00390625
+        },
+        "sheetOverflow": 0,
+        "smallControls": []
+      },
+      {
+        "targetCssWidth": 390,
+        "d": false,
+        "large": true,
+        "scene": "approval",
+        "actualViewport": [
+          390,
+          900
+        ],
+        "approvalTop": "62.000",
+        "computedBg": "#FFFFFF",
+        "computedCaption": "16.065px",
+        "conversationOverflow": 0,
+        "documentOverflow": 0,
+        "footerInside": true,
+        "foreground": "sheet",
+        "foregroundOverflow": 0,
+        "phone": {
+          "h": 810,
+          "w": 374.00390625
+        },
+        "sheetOverflow": 0,
+        "smallControls": []
+      },
+      {
+        "targetCssWidth": 390,
+        "d": true,
+        "large": false,
+        "scene": "conversation",
+        "actualViewport": [
+          390,
+          900
+        ],
+        "approvalTop": "803.000",
+        "computedBg": "#0D0D0D",
+        "computedCaption": "13.005px",
+        "conversationOverflow": 0,
+        "documentOverflow": 0,
+        "footerInside": null,
+        "foreground": "root",
+        "foregroundOverflow": 0,
+        "phone": {
+          "h": 810,
+          "w": 374.00390625
+        },
+        "sheetOverflow": 0,
+        "smallControls": []
+      },
+      {
+        "targetCssWidth": 390,
+        "d": true,
+        "large": false,
+        "scene": "approval",
+        "actualViewport": [
+          390,
+          900
+        ],
+        "approvalTop": "345.000",
+        "computedBg": "#0D0D0D",
+        "computedCaption": "13.005px",
+        "conversationOverflow": 0,
+        "documentOverflow": 0,
+        "footerInside": true,
+        "foreground": "sheet",
+        "foregroundOverflow": 0,
+        "phone": {
+          "h": 810,
+          "w": 374.00390625
+        },
+        "sheetOverflow": 0,
+        "smallControls": []
+      },
+      {
+        "targetCssWidth": 390,
+        "d": true,
+        "large": true,
+        "scene": "conversation",
+        "actualViewport": [
+          390,
+          900
+        ],
+        "approvalTop": "803.000",
+        "computedBg": "#0D0D0D",
+        "computedCaption": "16.065px",
+        "conversationOverflow": 0,
+        "documentOverflow": 0,
+        "footerInside": null,
+        "foreground": "root",
+        "foregroundOverflow": 0,
+        "phone": {
+          "h": 810,
+          "w": 374.00390625
+        },
+        "sheetOverflow": 0,
+        "smallControls": []
+      },
+      {
+        "targetCssWidth": 390,
+        "d": true,
+        "large": true,
+        "scene": "approval",
+        "actualViewport": [
+          390,
+          900
+        ],
+        "approvalTop": "62.000",
+        "computedBg": "#0D0D0D",
+        "computedCaption": "16.065px",
+        "conversationOverflow": 0,
+        "documentOverflow": 0,
+        "footerInside": true,
+        "foreground": "sheet",
+        "foregroundOverflow": 0,
+        "phone": {
+          "h": 810,
+          "w": 374.00390625
+        },
+        "sheetOverflow": 0,
+        "smallControls": []
+      },
+      {
+        "targetCssWidth": 430,
+        "d": false,
+        "large": false,
+        "scene": "conversation",
+        "actualViewport": [
+          430,
+          900
+        ],
+        "approvalTop": "833.000",
+        "computedBg": "#FFFFFF",
+        "computedCaption": "13.005px",
+        "conversationOverflow": 0,
+        "documentOverflow": 0,
+        "footerInside": null,
+        "foreground": "root",
+        "foregroundOverflow": 0,
+        "phone": {
+          "h": 843.994140625,
+          "w": 390
+        },
+        "sheetOverflow": 0,
+        "smallControls": []
+      },
+      {
+        "targetCssWidth": 430,
+        "d": false,
+        "large": false,
+        "scene": "approval",
+        "actualViewport": [
+          430,
+          900
+        ],
+        "approvalTop": "358.000",
+        "computedBg": "#FFFFFF",
+        "computedCaption": "13.005px",
+        "conversationOverflow": 0,
+        "documentOverflow": 0,
+        "footerInside": true,
+        "foreground": "sheet",
+        "foregroundOverflow": 0,
+        "phone": {
+          "h": 843.994140625,
+          "w": 390
+        },
+        "sheetOverflow": 0,
+        "smallControls": []
+      },
+      {
+        "targetCssWidth": 430,
+        "d": false,
+        "large": true,
+        "scene": "conversation",
+        "actualViewport": [
+          430,
+          900
+        ],
+        "approvalTop": "833.000",
+        "computedBg": "#FFFFFF",
+        "computedCaption": "16.065px",
+        "conversationOverflow": 0,
+        "documentOverflow": 0,
+        "footerInside": null,
+        "foreground": "root",
+        "foregroundOverflow": 0,
+        "phone": {
+          "h": 843.994140625,
+          "w": 390
+        },
+        "sheetOverflow": 0,
+        "smallControls": []
+      },
+      {
+        "targetCssWidth": 430,
+        "d": false,
+        "large": true,
+        "scene": "approval",
+        "actualViewport": [
+          430,
+          900
+        ],
+        "approvalTop": "62.000",
+        "computedBg": "#FFFFFF",
+        "computedCaption": "16.065px",
+        "conversationOverflow": 0,
+        "documentOverflow": 0,
+        "footerInside": true,
+        "foreground": "sheet",
+        "foregroundOverflow": 0,
+        "phone": {
+          "h": 843.994140625,
+          "w": 390
+        },
+        "sheetOverflow": 0,
+        "smallControls": []
+      },
+      {
+        "targetCssWidth": 430,
+        "d": true,
+        "large": false,
+        "scene": "conversation",
+        "actualViewport": [
+          430,
+          900
+        ],
+        "approvalTop": "833.000",
+        "computedBg": "#0D0D0D",
+        "computedCaption": "13.005px",
+        "conversationOverflow": 0,
+        "documentOverflow": 0,
+        "footerInside": null,
+        "foreground": "root",
+        "foregroundOverflow": 0,
+        "phone": {
+          "h": 843.994140625,
+          "w": 390
+        },
+        "sheetOverflow": 0,
+        "smallControls": []
+      },
+      {
+        "targetCssWidth": 430,
+        "d": true,
+        "large": false,
+        "scene": "approval",
+        "actualViewport": [
+          430,
+          900
+        ],
+        "approvalTop": "358.000",
+        "computedBg": "#0D0D0D",
+        "computedCaption": "13.005px",
+        "conversationOverflow": 0,
+        "documentOverflow": 0,
+        "footerInside": true,
+        "foreground": "sheet",
+        "foregroundOverflow": 0,
+        "phone": {
+          "h": 843.994140625,
+          "w": 390
+        },
+        "sheetOverflow": 0,
+        "smallControls": []
+      },
+      {
+        "targetCssWidth": 430,
+        "d": true,
+        "large": true,
+        "scene": "conversation",
+        "actualViewport": [
+          430,
+          900
+        ],
+        "approvalTop": "833.000",
+        "computedBg": "#0D0D0D",
+        "computedCaption": "16.065px",
+        "conversationOverflow": 0,
+        "documentOverflow": 0,
+        "footerInside": null,
+        "foreground": "root",
+        "foregroundOverflow": 0,
+        "phone": {
+          "h": 843.994140625,
+          "w": 390
+        },
+        "sheetOverflow": 0,
+        "smallControls": []
+      },
+      {
+        "targetCssWidth": 430,
+        "d": true,
+        "large": true,
+        "scene": "approval",
+        "actualViewport": [
+          430,
+          900
+        ],
+        "approvalTop": "62.000",
+        "computedBg": "#0D0D0D",
+        "computedCaption": "16.065px",
+        "conversationOverflow": 0,
+        "documentOverflow": 0,
+        "footerInside": true,
+        "foreground": "sheet",
+        "foregroundOverflow": 0,
+        "phone": {
+          "h": 843.994140625,
+          "w": 390
+        },
+        "sheetOverflow": 0,
+        "smallControls": []
+      }
+    ],
+    "default_viewport": {
+      "width": 651,
+      "height": 1235
+    },
+    "viewport_override_reset": true,
+    "limits": "Requested CSS viewports are 375/390/430 wide, with inset phone frames; browser px do not prove native device pt or maximum Dynamic Type."
+  },
+  "presentation_observations": {
+    "rows": [
+      {
+        "case": "new_palette_fixed_decision_footer",
+        "before": {
+          "confirmBottom": 1006.611328125,
+          "footerBottom": 1080.595703125,
+          "top": "358.000"
+        },
+        "after": {
+          "confirmBottom": 1006.6015625,
+          "footerBottom": 1080.5859375,
+          "top": "62.000"
+        }
+      },
+      {
+        "case": "refined_drawer_geometry",
+        "actualViewport": [
+          651,
+          1235
+        ],
+        "approvalTop": "833.000",
+        "computedBg": "#FFFFFF",
+        "computedCaption": "13.005px",
+        "conversationOverflow": 0,
+        "documentOverflow": 0,
+        "footerInside": null,
+        "foreground": "drawer",
+        "foregroundOverflow": 0,
+        "phone": {
+          "h": 843.994140625,
+          "w": 390
+        },
+        "sheetOverflow": 0,
+        "smallControls": []
+      },
+      {
+        "case": "drawer_close_keeps_local_draft",
+        "result": {
+          "draft": "保留这段配色评审草稿",
+          "focus": "openDrawer"
+        }
+      },
+      {
+        "case": "refined_anchored_menu",
+        "actualViewport": [
+          651,
+          1235
+        ],
+        "approvalTop": "833.000",
+        "computedBg": "#FFFFFF",
+        "computedCaption": "13.005px",
+        "conversationOverflow": 0,
+        "documentOverflow": 0,
+        "footerInside": null,
+        "foreground": "popover",
+        "foregroundOverflow": 0,
+        "phone": {
+          "h": 843.994140625,
+          "w": 390
+        },
+        "sheetOverflow": 0,
+        "smallControls": []
+      },
+      {
+        "case": "refined_detail_geometry",
+        "actualViewport": [
+          651,
+          1235
+        ],
+        "approvalTop": "833.000",
+        "computedBg": "#FFFFFF",
+        "computedCaption": "13.005px",
+        "conversationOverflow": 0,
+        "documentOverflow": 0,
+        "footerInside": null,
+        "foreground": "detail",
+        "foregroundOverflow": 0,
+        "phone": {
+          "h": 843.994140625,
+          "w": 390
+        },
+        "sheetOverflow": 0,
+        "smallControls": []
+      },
+      {
+        "case": "detail_return_position",
+        "before": 767.5,
+        "result": {
+          "focus": "openDrawer",
+          "scroll": 767.5
+        }
+      },
+      {
+        "case": "image_returns_to_retained_source",
+        "before": 767.5,
+        "result": {
+          "focus": "openDrawer",
+          "scroll": 767.5,
+          "sourceOpacity": ""
+        }
+      },
+      {
+        "case": "actual_in_app_image_return_settled",
+        "focus": "imageThumb",
+        "scroll": 636.875,
+        "zoomHidden": true
+      },
+      {
+        "case": "actual_in_app_detail_return_settled",
+        "beforeScroll": 761.875,
+        "detailHidden": true,
+        "focus": "openDetail",
+        "scroll": 761.875
+      }
+    ],
+    "decision_footer_delta_css_px": -0.009765625,
+    "focus_note": "Studio scene buttons are outside the phone and retain the previous in-phone focus origin. Those observations returned to openDrawer. Separate actual in-App source-button checks settled at openDetail and imageThumb; detail scroll was unchanged. Studio behavior is retained explicitly, not counted as native focus acceptance."
+  },
+  "screenshots": [
+    {
+      "path": "docs/acceptance/evidence/codex-color-20261013-r4-1/r4-1-dark-approval.jpg",
+      "sha256": "a9387fb95f67492174b05958ba21a4a7bb64e9f9c07609fb8e25035bb2e82d64",
+      "bytes": 54859,
+      "dimensions": {
+        "width": 651,
+        "height": 1235
+      },
+      "metadata": [
+        {
+          "marker": "0xe0",
+          "bytes": 14,
+          "hex": "4a46494600010100000100010000"
+        }
+      ],
+      "provenance": {
+        "kind": "synthetic live browser screenshot",
+        "capture": "cua_repl screenshot of local R4.1 DOM",
+        "reference_pixels_included": false,
+        "resized_or_postprocessed": false,
+        "pixels_visually_reviewed": true,
+        "metadata_review": "Only generic 14-byte JFIF APP0; no EXIF, XMP or comments"
+      }
+    },
+    {
+      "path": "docs/acceptance/evidence/codex-color-20261013-r4-1/r4-1-dark-conversation.jpg",
+      "sha256": "244550630ae02e07b4218fe139871c4a4428ec22be21aa60f4ef58981ebaebea",
+      "bytes": 52499,
+      "dimensions": {
+        "width": 651,
+        "height": 1235
+      },
+      "metadata": [
+        {
+          "marker": "0xe0",
+          "bytes": 14,
+          "hex": "4a46494600010100000100010000"
+        }
+      ],
+      "provenance": {
+        "kind": "synthetic live browser screenshot",
+        "capture": "cua_repl screenshot of local R4.1 DOM",
+        "reference_pixels_included": false,
+        "resized_or_postprocessed": false,
+        "pixels_visually_reviewed": true,
+        "metadata_review": "Only generic 14-byte JFIF APP0; no EXIF, XMP or comments"
+      }
+    },
+    {
+      "path": "docs/acceptance/evidence/codex-color-20261013-r4-1/r4-1-light-conversation.jpg",
+      "sha256": "9c9e09549931f6678ac8472ad1ca2714d581d622b40d474369987a2218ae5c0a",
+      "bytes": 54180,
+      "dimensions": {
+        "width": 651,
+        "height": 1235
+      },
+      "metadata": [
+        {
+          "marker": "0xe0",
+          "bytes": 14,
+          "hex": "4a46494600010100000100010000"
+        }
+      ],
+      "provenance": {
+        "kind": "synthetic live browser screenshot",
+        "capture": "cua_repl screenshot of local R4.1 DOM",
+        "reference_pixels_included": false,
+        "resized_or_postprocessed": false,
+        "pixels_visually_reviewed": true,
+        "metadata_review": "Only generic 14-byte JFIF APP0; no EXIF, XMP or comments"
+      }
+    },
+    {
+      "path": "docs/acceptance/evidence/codex-color-20261013-r4-1/r4-1-light-drawer.jpg",
+      "sha256": "d9776d8bc5aa699b8258745bce0ed82a814ed3c1d75016b60f1f091aa70972e2",
+      "bytes": 43874,
+      "dimensions": {
+        "width": 651,
+        "height": 1235
+      },
+      "metadata": [
+        {
+          "marker": "0xe0",
+          "bytes": 14,
+          "hex": "4a46494600010100000100010000"
+        }
+      ],
+      "provenance": {
+        "kind": "synthetic live browser screenshot",
+        "capture": "cua_repl screenshot of local R4.1 DOM",
+        "reference_pixels_included": false,
+        "resized_or_postprocessed": false,
+        "pixels_visually_reviewed": true,
+        "metadata_review": "Only generic 14-byte JFIF APP0; no EXIF, XMP or comments"
+      }
+    }
+  ],
+  "console_errors": [],
+  "iteration": "Initial palette swatch accidentally inherited the base surface layout class; renamed it to neutral before the final layout matrix and screenshots. No R4 engine bytes changed.",
+  "unverified": [
+    "Native Liquid Glass and scroll-edge composition",
+    "Native keyboard and haptics",
+    "VoiceOver and maximum Dynamic Type",
+    "Real streaming/model execution",
+    "Persistence, SQL and durable effects",
+    "Release gates, daily use and named competitor comparison"
+  ],
+  "production_source_changed": false,
+  "model_requests": 0,
+  "sql_requests": 0,
+  "device_install": false,
+  "deployment": false,
+  "publication": false,
+  "runtime_goal_status_changed": false,
+  "closes_native_acceptance": false
+}

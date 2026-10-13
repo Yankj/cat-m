@@ -1,0 +1,526 @@
+{
+  "schema_version": 1,
+  "snapshot_kind": "dated_handoff_not_live_progress",
+  "recorded_at": "2026-10-13T16:07:14.407074+08:00",
+  "timezone": "Asia/Shanghai",
+  "maintenance_root": "Desktop/ai-work/catpaw-m (user-selected local workspace)",
+  "branch": "main",
+  "head": "42a4504e2f260745ebf6acb9a320bb59541781e6",
+  "head_tree": "b4ef0dd911de4d0016b5b1c790cd7ed81947b1a0",
+  "origin_main_local_ref": "42a4504e2f260745ebf6acb9a320bb59541781e6",
+  "remote_verification_scope": "Previously read-back merged GitHub commit/tree; this handoff rechecks local refs, not a new network fetch.",
+  "runtime_goal": {
+    "observed_at": "2026-10-13T16:06:14+08:00",
+    "status": "usageLimited",
+    "contract": "AF-1-G3-UX1",
+    "product_complete": false,
+    "required_closure": [
+      "AF-A01-18",
+      "AF-U01-12",
+      "CP-01-03"
+    ],
+    "status_not_changed_by_handoff": true
+  },
+  "phone": {
+    "version": "0.3.0 (16)",
+    "source_commit": "a905b47eb4201e21758fba8a66b6ff01d682e844",
+    "source_tree": "74400a57aeb9cdef72c846726b6f90e0609ceff9",
+    "model_checks_sent": 0,
+    "allowed_short_text_checks_maximum": 2,
+    "last_mirror_observed_at": "2026-10-13T10:44:05.913+08:00",
+    "last_mirror_observation": "Mac Touch ID authentication lock; not re-observed during handoff"
+  },
+  "cloud": {
+    "scope": "last captured deployed baseline, not a new live deployment query",
+    "api_version": 19,
+    "tick_version": 7,
+    "deployment_changed_this_restart": false
+  },
+  "process_observation": {
+    "observed_at": "2026-10-13T16:06:14+08:00",
+    "port_8843_listener_found": false,
+    "xcodebuild_process_found": false,
+    "method": "read-only lsof and ps; no process stopped"
+  },
+  "pre_handoff_pending": {
+    "tracked_modified_count": 19,
+    "untracked_file_count": 13,
+    "files": [
+      {
+        "path": "docs/README.md",
+        "git_status": " M",
+        "bytes": 2886,
+        "sha256": "189837658ca5d4d16dde21bec8c87ca4746d396678aaff5dd8601734dad6df9f"
+      },
+      {
+        "path": "docs/acceptance/agent-foundation-acceptance.md",
+        "git_status": " M",
+        "bytes": 7806,
+        "sha256": "74dfa0d7b96f0edcd50d4f0d177de1f71cb5676a5f1093059f554643c9dd4bf7"
+      },
+      {
+        "path": "docs/acceptance/ios-codex-experience-acceptance.md",
+        "git_status": " M",
+        "bytes": 5175,
+        "sha256": "b2bebf4ea6eacb5db0d492ad9aae86342cda7146b425c66f46b7120a0739f0a1"
+      },
+      {
+        "path": "docs/architecture/README.md",
+        "git_status": " M",
+        "bytes": 3609,
+        "sha256": "d2b6666adb04fc61600c26dcef4388470a870ab31f17ddbd554a379bd23c334e"
+      },
+      {
+        "path": "docs/architecture/adr-005-runtime-reuse-and-hosting.md",
+        "git_status": " M",
+        "bytes": 4011,
+        "sha256": "e074738fd35ea31260975d359a1151c9f35b743227d18b794becbb5b369829f6"
+      },
+      {
+        "path": "docs/design/README.md",
+        "git_status": " M",
+        "bytes": 3853,
+        "sha256": "8b6f268972d612521920839d65ed6ae3ef7f371af8fd4558ec8ae41d6122bf59"
+      },
+      {
+        "path": "docs/design/ios-codex-experience-spec.md",
+        "git_status": " M",
+        "bytes": 14920,
+        "sha256": "432a1a360a6c8babd4b51b5df8db757f68b9ea775b8b5248844209da70e098f6"
+      },
+      {
+        "path": "docs/planning/AF-1/acceptance-scenarios.md",
+        "git_status": " M",
+        "bytes": 15675,
+        "sha256": "d802a0c41d5c90a9c2ab4a8439ac595eeade924b59a1bc520a2cd8210b65f582"
+      },
+      {
+        "path": "docs/planning/AF-1/contract.json",
+        "git_status": " M",
+        "bytes": 15714,
+        "sha256": "4ab3d2237db67c41e55d069e11f4d69483d496c389cf9710c0de7b57dafc237a"
+      },
+      {
+        "path": "docs/planning/AF-1/goal-evidence-map.json",
+        "git_status": " M",
+        "bytes": 26316,
+        "sha256": "b7c6ffa92b62412cada954a7e705eead1d34b7f6ca3fd81ebacff9b32b946c1d"
+      },
+      {
+        "path": "docs/planning/AF-1/goal.md",
+        "git_status": " M",
+        "bytes": 8148,
+        "sha256": "60aff6cdc376a4d8d039ef9822b50cce91bafe7e0d2c71b5fb09e5087afbe35b"
+      },
+      {
+        "path": "docs/planning/AF-1/plan.md",
+        "git_status": " M",
+        "bytes": 13144,
+        "sha256": "eb8571cd6675d9d3d50635aa97fc2c551d6dfe072c270217759baa45e46ca91a"
+      },
+      {
+        "path": "docs/planning/AF-1/spec-details.md",
+        "git_status": " M",
+        "bytes": 17192,
+        "sha256": "6ff60d61fcbb6ef05b188d9e9f510a311b93bbde9ad33d9a2f605d185fb4712c"
+      },
+      {
+        "path": "docs/product/README.md",
+        "git_status": " M",
+        "bytes": 3807,
+        "sha256": "f66a68a60e5b7fdf43c103e41b2463b1d678aeb48905143c0449ebcc79f505cd"
+      },
+      {
+        "path": "docs/product/agent-foundation-spec.md",
+        "git_status": " M",
+        "bytes": 10124,
+        "sha256": "9cace6fe5503082e5c555be5d3ba1f7d24b7444361dffff1721ad55b355c97d6"
+      },
+      {
+        "path": "docs/research/README.md",
+        "git_status": " M",
+        "bytes": 2659,
+        "sha256": "27fa9052279e61e8e1db0f765fb165592be7fd8587e3e299542c2f7be2d6335a"
+      },
+      {
+        "path": "docs/research/opendot-runtime-assessment.md",
+        "git_status": " M",
+        "bytes": 9313,
+        "sha256": "232c5dcdab1cbe9550ccd9d6fe78e117abbe07f0044f3209537b3de6baa2a426"
+      },
+      {
+        "path": "docs/status/master-plan.md",
+        "git_status": " M",
+        "bytes": 13304,
+        "sha256": "15ddc33744b9bb738f24354893e020ceb52f44b299a48c5266833bb2e6040a86"
+      },
+      {
+        "path": "scripts/reviewed-findings.json",
+        "git_status": " M",
+        "bytes": 15354,
+        "sha256": "b7b932d23faae0c753345f23dd81995525757bd536468551e6e560526452c4d3"
+      },
+      {
+        "path": "docs/acceptance/catpaw-final-product-acceptance.json",
+        "git_status": "??",
+        "bytes": 11989,
+        "sha256": "36dbc82bdf4b5a6dca345d7d01d41b12e02b0b3e6d29b9cc8abd87a549bbda55"
+      },
+      {
+        "path": "docs/acceptance/catpaw-final-product-acceptance.md",
+        "git_status": "??",
+        "bytes": 9305,
+        "sha256": "bd74e04759646ad84646521ce240d6c3efa91f41a87d1a63012794641e9eaac3"
+      },
+      {
+        "path": "docs/design/prototypes/catpaw-final/index.html",
+        "git_status": "??",
+        "bytes": 29077,
+        "sha256": "7c128252fd04e0a113598eb1d17d6b30f8bafac0e5e72508bbc56bae61a8be10"
+      },
+      {
+        "path": "docs/product/catpaw-final-product-spec.md",
+        "git_status": "??",
+        "bytes": 17561,
+        "sha256": "0d349e0905b4941418b414f47c3ca188a4045497a38adbca1ec1e025dcb4bea4"
+      },
+      {
+        "path": "docs/research/copilotkit-four-repo-decision-update-2026-10-13.md",
+        "git_status": "??",
+        "bytes": 13733,
+        "sha256": "db698f5504e97105e6df4423a64486cd8c61f4de785cbb3461a281bbc7b44fe4"
+      },
+      {
+        "path": "docs/research/copilotkit-four-repo-source-manifest-2026-10-13.json",
+        "git_status": "??",
+        "bytes": 21626,
+        "sha256": "4103aac90baddba521736670a4c2568b15bdfcbd9bbeee806a5db55a51783d9f"
+      },
+      {
+        "path": "docs/research/grok-companion-integration-review-2026-10-13.md",
+        "git_status": "??",
+        "bytes": 23703,
+        "sha256": "b258656531763e6e010cac56f0faf626b082992a659e296aeceed5a184c17324"
+      },
+      {
+        "path": "docs/research/grok-companion-source-manifest-2026-10-13.json",
+        "git_status": "??",
+        "bytes": 6508,
+        "sha256": "df2b2a07df14bd6a97d8487be4db88efcbf54855871af778a145817f0cf6b07f"
+      },
+      {
+        "path": "docs/research/openbot-code-review-2026-10-13.md",
+        "git_status": "??",
+        "bytes": 21993,
+        "sha256": "d10194cb25c4cfcbc9e2dfe9bdb6ebfd4376c1bd981c6d738d1ae4cb966f8588"
+      },
+      {
+        "path": "docs/research/opendots-code-review-2026-10-13.md",
+        "git_status": "??",
+        "bytes": 22531,
+        "sha256": "c675bfffdf219089c27bb64cdc26e339322d98307e2408c4ecf540e2df64f983"
+      },
+      {
+        "path": "docs/research/openintelligentui-code-review-2026-10-13.md",
+        "git_status": "??",
+        "bytes": 23572,
+        "sha256": "abdf1664889b5dfb7ebba3d1f5b834593151fab7f8cf0fd076686bfd216bfe39"
+      },
+      {
+        "path": "docs/research/openmuse-code-gap-review-2026-10-13.md",
+        "git_status": "??",
+        "bytes": 6079,
+        "sha256": "e90ddeee035372cdf63085d29125b5afa5acc35c1fad6332d46a141316a97e8f"
+      },
+      {
+        "path": "scripts/check-final-product-plan.py",
+        "git_status": "??",
+        "bytes": 6411,
+        "sha256": "d2b2d771e9e4d16b47e4cfbb5f1d56889133988d6ad038f7e9e05b4815a6ef56"
+      }
+    ],
+    "hashes_describe_worktree_before_handoff_edits": true
+  },
+  "preservation": {
+    "backup_directory": "local-audit/handoff/2026-10-13T160714+0800",
+    "tracked_patch": "tracked-worktree.patch",
+    "file_copies": "pending-files/",
+    "original_handoff": "handoff-before.md",
+    "ignored_local_only": true,
+    "ephemeral_sidebar_package_log_preserved": true
+  },
+  "existing_local_evidence_verified": [
+    {
+      "path": "apps/ios-conversation/.build/restart-sidebar-ux/final.log",
+      "exists": true,
+      "bytes": 121316,
+      "sha256": "739da24f87806475ded59c551d47c81482b7538c86258111a8099130d21d029f"
+    },
+    {
+      "path": "apps/ios-conversation/.build/restart-sidebar-source.log",
+      "exists": true,
+      "bytes": 3024,
+      "sha256": "33c73bea326e6fbce02b25f7e62be0f7d44762de8459d2fad5e5071fc2e21f58"
+    },
+    {
+      "path": "apps/ios-conversation/.build/restart-signed16/Catpaw-m-0.3.0-build16-a905b47.ipa",
+      "exists": true,
+      "bytes": 6123236,
+      "sha256": "e4c79e35025042c03cc06872ff1cb9216820126deb195f082d2e5296537626dc"
+    },
+    {
+      "path": "local-audit/screenshots/2026-10-13/sidebar-verification-phone-2026-10-13T02-44-05-913Z.png",
+      "exists": true,
+      "bytes": 95354,
+      "sha256": "fdd4694ce3f59b13a24f1fd6e22be682c46fd2af12758255780a1fe24a89630e"
+    }
+  ],
+  "handoff_edits": [
+    "handoff.md",
+    "docs/status/handoff-snapshot-2026-10-13.json",
+    "docs/status/master-plan.md"
+  ],
+  "publication": {
+    "handoff_published": false,
+    "pre_handoff_pending_published": false,
+    "no_commit_or_push_in_this_handoff": true
+  },
+  "validation": {
+    "status": "PASS_handoff_document_checks_only",
+    "completion_observation_started_at": "2026-10-13T16:20:22.697900+08:00",
+    "completed_at": "2026-10-13T16:20:22.776295+08:00",
+    "earlier_document_checks": [
+      {
+        "name": "repository_integrity",
+        "exit_code": 0,
+        "result": "PASS",
+        "scope": "Dated earlier run; concurrent later draft edits not covered"
+      },
+      {
+        "name": "foundation_plan",
+        "exit_code": 0,
+        "result": "PASS",
+        "scope": "Dated earlier run; concurrent later draft edits not covered"
+      },
+      {
+        "name": "foundation_goals",
+        "exit_code": 0,
+        "result": "PASS",
+        "scope": "Dated earlier run; concurrent later draft edits not covered"
+      },
+      {
+        "name": "final_product_plan",
+        "exit_code": 0,
+        "result": "PASS",
+        "scope": "Dated earlier run; concurrent later draft edits not covered"
+      },
+      {
+        "name": "sensitivity",
+        "exit_code": 0,
+        "result": "PASS",
+        "scope": "Dated earlier run; concurrent later draft edits not covered"
+      },
+      {
+        "name": "diff_whitespace",
+        "exit_code": 0,
+        "result": "PASS",
+        "scope": "Dated earlier run; concurrent later draft edits not covered"
+      },
+      {
+        "name": "handoff_links_preservation",
+        "exit_code": 0,
+        "result": "PASS",
+        "scope": "Dated earlier run; concurrent later draft edits not covered"
+      }
+    ],
+    "private_details_report": "local-audit/handoff/2026-10-13T160714+0800/document-checks-final.json",
+    "private_sensitivity_report": "local-audit/handoff/2026-10-13T160714+0800/scan-handoff.json",
+    "root_handoff_and_master_local_links_at_completion": 74,
+    "initial_files_backed_up": 32,
+    "later_initial_drafts_backed_up": 7,
+    "initial_files_changed_since_backup": [
+      "docs/status/master-plan.md"
+    ],
+    "later_initial_five_drafts_changed_by_concurrent_work": [
+      "docs/design/conversation-generative-ui-spec.md"
+    ],
+    "no_staged_changes_at_check": true,
+    "head_unchanged_at_check": true,
+    "native_tests_rerun": false,
+    "model_requests_sent": 0,
+    "phone_installs": 0,
+    "cloud_deployments": 0,
+    "product_acceptance_closed": false,
+    "later_draft_external_sources_independently_verified": false,
+    "no_claim_of_atomic_worktree_freeze": true
+  },
+  "observed_during_handoff_pending": {
+    "observed_at": "2026-10-13T16:15:58.418584+08:00",
+    "file_count": 5,
+    "files": [
+      {
+        "path": "docs/acceptance/conversation-generative-ui-acceptance.json",
+        "git_status": "??",
+        "bytes": 5826,
+        "sha256": "f33d3a3a83051c1bdc9057da924e3841ccf389d61a0fc751fc5921f2cc2e4593"
+      },
+      {
+        "path": "docs/acceptance/conversation-generative-ui-acceptance.md",
+        "git_status": "??",
+        "bytes": 5577,
+        "sha256": "62f59b6336c82cfaadf108bf746be173f8fe0c5519d1f4277e489ed73e40e089"
+      },
+      {
+        "path": "docs/design/conversation-generative-ui-spec.md",
+        "git_status": "??",
+        "bytes": 9720,
+        "sha256": "29b9e30422f593b09d98d839b618ef3e8c6bb3d5116601b309cfa92271932903"
+      },
+      {
+        "path": "docs/research/copilotkit-conversation-ui-onboarding-review-2026-10-13.md",
+        "git_status": "??",
+        "bytes": 17777,
+        "sha256": "2623bef48a73a0327b0e36bf5e17619e54ad99ca22dbd82e9c1d27b7b1f0c775"
+      },
+      {
+        "path": "docs/research/copilotkit-conversation-ui-source-manifest-2026-10-13.json",
+        "git_status": "??",
+        "bytes": 3623,
+        "sha256": "77530a1339b3d13253848f07ed769c51a6e9342c7c6a4d01f6b3a44bad2c3776"
+      }
+    ],
+    "backup_file_copies": "late-pending-files/",
+    "scope": "New local planning/research/acceptance drafts appeared during handoff; preserved without edits or adoption as runtime authorization/product acceptance."
+  },
+  "additional_pending_observed": {
+    "observed_at": "2026-10-13T16:20:22.709027+08:00",
+    "file_count": 2,
+    "files": [
+      {
+        "path": "docs/planning/AF-1/development-start-contract.md",
+        "git_status": "??",
+        "bytes": 5661,
+        "sha256": "fa969a66b8691446c4346b78f98562b27c08f21f485f0a918dd82648abfa31bc"
+      },
+      {
+        "path": "docs/planning/AF-1/long-task-development-prompt.md",
+        "git_status": "??",
+        "bytes": 4010,
+        "sha256": "4baf5fcbc90d1557d75f61922c82c6687c541cc672a18beccf0093f8336463a7"
+      }
+    ],
+    "backup_file_copies": "additional-pending-files/",
+    "document_instructions_executed": false
+  },
+  "concurrent_draft_observation": {
+    "latest_copies": [
+      {
+        "path": "docs/acceptance/conversation-generative-ui-acceptance.json",
+        "sha256": "f33d3a3a83051c1bdc9057da924e3841ccf389d61a0fc751fc5921f2cc2e4593",
+        "bytes": 5826,
+        "backup_path": "latest-draft-versions/f33d3a3a83051c1bdc9057da924e3841ccf389d61a0fc751fc5921f2cc2e4593/docs/acceptance/conversation-generative-ui-acceptance.json",
+        "read_at": "2026-10-13T16:20:22.709344+08:00"
+      },
+      {
+        "path": "docs/acceptance/conversation-generative-ui-acceptance.md",
+        "sha256": "62f59b6336c82cfaadf108bf746be173f8fe0c5519d1f4277e489ed73e40e089",
+        "bytes": 5577,
+        "backup_path": "latest-draft-versions/62f59b6336c82cfaadf108bf746be173f8fe0c5519d1f4277e489ed73e40e089/docs/acceptance/conversation-generative-ui-acceptance.md",
+        "read_at": "2026-10-13T16:20:22.709671+08:00"
+      },
+      {
+        "path": "docs/design/conversation-generative-ui-spec.md",
+        "sha256": "d3277fb8310fea3aaf72c822e1e74f2e7345a80da1853eba006b4a9137cd866e",
+        "bytes": 11762,
+        "backup_path": "latest-draft-versions/d3277fb8310fea3aaf72c822e1e74f2e7345a80da1853eba006b4a9137cd866e/docs/design/conversation-generative-ui-spec.md",
+        "read_at": "2026-10-13T16:20:22.709965+08:00"
+      },
+      {
+        "path": "docs/research/copilotkit-conversation-ui-onboarding-review-2026-10-13.md",
+        "sha256": "2623bef48a73a0327b0e36bf5e17619e54ad99ca22dbd82e9c1d27b7b1f0c775",
+        "bytes": 17777,
+        "backup_path": "latest-draft-versions/2623bef48a73a0327b0e36bf5e17619e54ad99ca22dbd82e9c1d27b7b1f0c775/docs/research/copilotkit-conversation-ui-onboarding-review-2026-10-13.md",
+        "read_at": "2026-10-13T16:20:22.710258+08:00"
+      },
+      {
+        "path": "docs/research/copilotkit-conversation-ui-source-manifest-2026-10-13.json",
+        "sha256": "77530a1339b3d13253848f07ed769c51a6e9342c7c6a4d01f6b3a44bad2c3776",
+        "bytes": 3623,
+        "backup_path": "latest-draft-versions/77530a1339b3d13253848f07ed769c51a6e9342c7c6a4d01f6b3a44bad2c3776/docs/research/copilotkit-conversation-ui-source-manifest-2026-10-13.json",
+        "read_at": "2026-10-13T16:20:22.710563+08:00"
+      },
+      {
+        "path": "docs/planning/AF-1/development-start-contract.md",
+        "sha256": "fa969a66b8691446c4346b78f98562b27c08f21f485f0a918dd82648abfa31bc",
+        "bytes": 5661,
+        "backup_path": "latest-draft-versions/fa969a66b8691446c4346b78f98562b27c08f21f485f0a918dd82648abfa31bc/docs/planning/AF-1/development-start-contract.md",
+        "read_at": "2026-10-13T16:20:22.710871+08:00"
+      },
+      {
+        "path": "docs/planning/AF-1/long-task-development-prompt.md",
+        "sha256": "4baf5fcbc90d1557d75f61922c82c6687c541cc672a18beccf0093f8336463a7",
+        "bytes": 4010,
+        "backup_path": "latest-draft-versions/4baf5fcbc90d1557d75f61922c82c6687c541cc672a18beccf0093f8336463a7/docs/planning/AF-1/long-task-development-prompt.md",
+        "read_at": "2026-10-13T16:20:22.711205+08:00"
+      }
+    ],
+    "changed_since_first_five_draft_backup": [
+      "docs/design/conversation-generative-ui-spec.md"
+    ],
+    "scope": "Concurrent draft writing observed; copies bind exact bytes at each read, not an atomic freeze or assurance that live files remain unchanged."
+  },
+  "post_handoff_pending_summary": {
+    "observed_at": "2026-10-13T16:20:22.775772+08:00",
+    "tracked_modified_count": 20,
+    "untracked_file_count": 21,
+    "total_file_count": 41,
+    "paths": [
+      "docs/README.md",
+      "docs/acceptance/agent-foundation-acceptance.md",
+      "docs/acceptance/ios-codex-experience-acceptance.md",
+      "docs/architecture/README.md",
+      "docs/architecture/adr-005-runtime-reuse-and-hosting.md",
+      "docs/design/README.md",
+      "docs/design/ios-codex-experience-spec.md",
+      "docs/planning/AF-1/acceptance-scenarios.md",
+      "docs/planning/AF-1/contract.json",
+      "docs/planning/AF-1/goal-evidence-map.json",
+      "docs/planning/AF-1/goal.md",
+      "docs/planning/AF-1/plan.md",
+      "docs/planning/AF-1/spec-details.md",
+      "docs/product/README.md",
+      "docs/product/agent-foundation-spec.md",
+      "docs/research/README.md",
+      "docs/research/opendot-runtime-assessment.md",
+      "docs/status/master-plan.md",
+      "handoff.md",
+      "scripts/reviewed-findings.json",
+      "docs/acceptance/catpaw-final-product-acceptance.json",
+      "docs/acceptance/catpaw-final-product-acceptance.md",
+      "docs/acceptance/conversation-generative-ui-acceptance.json",
+      "docs/acceptance/conversation-generative-ui-acceptance.md",
+      "docs/design/conversation-generative-ui-spec.md",
+      "docs/design/prototypes/catpaw-final/index.html",
+      "docs/planning/AF-1/development-start-contract.md",
+      "docs/planning/AF-1/long-task-development-prompt.md",
+      "docs/product/catpaw-final-product-spec.md",
+      "docs/research/copilotkit-conversation-ui-onboarding-review-2026-10-13.md",
+      "docs/research/copilotkit-conversation-ui-source-manifest-2026-10-13.json",
+      "docs/research/copilotkit-four-repo-decision-update-2026-10-13.md",
+      "docs/research/copilotkit-four-repo-source-manifest-2026-10-13.json",
+      "docs/research/grok-companion-integration-review-2026-10-13.md",
+      "docs/research/grok-companion-source-manifest-2026-10-13.json",
+      "docs/research/openbot-code-review-2026-10-13.md",
+      "docs/research/opendots-code-review-2026-10-13.md",
+      "docs/research/openintelligentui-code-review-2026-10-13.md",
+      "docs/research/openmuse-code-gap-review-2026-10-13.md",
+      "docs/status/handoff-snapshot-2026-10-13.json",
+      "scripts/check-final-product-plan.py"
+    ],
+    "scope": "Dated observation; later concurrent changes are not covered."
+  },
+  "handoff_document_hashes": {
+    "handoff.md": "4a24e9df26561b4a78e1c48ea5b34cf3eb8f832406939d7bcb23ecb2f8a0c0fe",
+    "docs/status/master-plan.md": "9629c65338a921cf2c969b94ed5c4792cbf92f7798211ebe49542952a7e66e86"
+  }
+}
