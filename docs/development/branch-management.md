@@ -1,67 +1,59 @@
-# 分支与同步约定
+# 开发分支与整合规范
 
-本仓库采用一个主干与短期功能分支。分支记录源码集成状态；产品可用性和验收结论仍以 [主计划](../status/master-plan.md) 为准。
+2026-10-13按本地Git、旧工作树、GitHub分支/PR和管理页重新核对。当前唯一主干是 `main`；GitHub默认分支已设为main，合并后自动删除head分支已启用。[本轮审查](../architecture/repository-review-2026-10-13.md)与[分支快照](../status/branch-inventory-2026-10-13.json)记录实际操作。
 
-## 分支职责
+## 分支与工作树
 
-| 分支 | 用途 | 合并与保留 |
-|---|---|---|
-| `main` | 已检查、可追溯的 GitHub 源码基线 | 从功能分支通过 PR 合入；不直接推送功能开发，不强制推送 |
-| `integration/local-fixed-directory` | 首次整理发布快照 `c1e23c28` | 保留来源锚点，后续开发从 main 新建分支 |
-| `feat/<topic>`、`fix/<topic>`、`docs/<topic>` | 单一主题的功能、修复、文档 | 合入且无未提交改动后，才删除对应分支和工作树 |
-| `test/<topic>` | 独立 QA，绑定被测源码提交 | 保留报告与被测 SHA；验收结果不自动并入产品源码 |
-| `local/*`、`import/*` | 早期本地历史、来源导入 | 本地保留；不把原始历史直接推送到 GitHub |
-| `prepare/local-assets` | 首次初始化分支 | 临时保留；将 GitHub 默认分支切到 main 后再评估清理 |
+| 分支/引用 | 规则 |
+|---|---|
+| `main` | 已集成、可追溯源码；功能通过PR进入。源码集成不等于真实产品签收 |
+| `feat/<slice-topic>` | 一片可验收功能，例如 `feat/s03-plan-persistence` |
+| `fix/<topic>`、`refactor/<topic>` | 一个故障或一个有回归证据的结构调整 |
+| `docs/<topic>`、`chore/<topic>` | 规格/治理、工具与维护；不夹带未审阅业务实现 |
+| `test/<topic>` | 独立验证，固定被测SHA；结果注明真实/合成层 |
+| `docs/restart-design-integration` | 本轮把原51项未提交文档从main原样带出的临时整合分支；收齐后PR合入并删除，不发展为第二主干 |
+| `refs/remotes/legacy-local/*` | 9个只读原始来源引用，与GitHub历史无共同祖先，永不整段推送或强行merge |
 
-现有 owner 工作树继续由原任务维护。正在使用、存在未提交修改或尚未整合的分支不能自动删除或重置。
+分支名用小写英文/数字/短横线，可有一个子路径；一个分支一个主题。当前不设长期develop、integration或按人员命名的维护分支。多人/多任务并行时一份工作树只有一个写入者；共享工作树里的WIP不能直接全量暂存、重置、stash或拿去他处发布。
 
-## 首次发布的历史边界
+新工作从已核对的origin/main建立短分支。已有未提交内容先按明确文件清单保存/提交；不要切换分支让别人的改动进入main。可用CLI身份时先fetch并用 `pull --ff-only`；无身份时使用既有GitHub连接器，读回commit/tree，不能提取token或绕过SSH主机校验。新分支首次实际发布后才设upstream。
 
-本地原始代码历史从 `358d689b` 开始；GitHub 的初始化历史从 `c1075e10` 开始。二者没有共同祖先。首次发布通过连接器创建了 `c1e23c28`，其源码对应本地 `cc10a722`，两份签名配置已参数化，具体差异见 [PUBLICATION.json](../../PUBLICATION.json)。
+## PR与验收
 
-同名分支不代表同一条历史。禁止将早期本地 integration 分支直接设置为远端同名分支的 upstream，禁止用 force push 或 merge --allow-unrelated-histories 连接两套历史。原始历史包含只应保留在本地的签名和机器记录。
+PR默认base为main，提交一个可审阅结果：具体问题、修改后行为、验证命令/结果、源码/包/部署身份及未验范围。使用[模板](../../.github/pull_request_template.md)，已有commit与合成结果不能替代真实模型/数据库/设备验收。
 
-后续发布以 GitHub main 为基线，逐次导入经过检查的源码差异和文档；提交注明来源 SHA、验证层和剩余门槛。不要整段推送早期本地历史。
-
-## 日常开发
-
-已有可用 Git CLI 身份时：
+合入前至少运行：
 
 ```sh
-git fetch origin --prune
-git switch main
-git pull --ff-only
-git switch -c feat/topic
-# 修改、检查、提交
-git push -u origin HEAD
+python3 scripts/check-repository-layout.py
+python3 scripts/check-repository.py
+python3 scripts/check-deployed-source.py
+python3 scripts/scan-repository.py
+git diff --check
 ```
 
-为并行任务创建独立工作树：
+规划/验收变更加跑相关AF/FINAL/CGUI检查；业务代码按受影响组件及用户路径验证。测试数不作为完成指标。连接器创建PR后附到当前任务，合并后读回远端commit/tree；本地仅在安全保留WIP后对齐，禁止硬重置代替整合。
 
-```sh
-git worktree add -b fix/topic ../catpaw-topic origin/main
-git worktree list
-git branch -vv
-```
+默认保留merge commit，方便来源和祖先回溯。若使用squash，另记录原SHA/PR/tree；删除前核对内容已合入，不能只看旧branch祖先。不得对公开分支force push，也不得用allow-unrelated-histories连接旧本地历史；从旧来源选取经审核字节，并保存provenance。
 
-当前发布使用已有 GitHub 连接器。连接器身份不会自动提供给终端；终端没有现成认证时由连接器发布，再读回验证 commit/tree。不要通过复制 token、绕过 SSH 主机校验或新增凭据解决分支问题。
+## 清理规则与本次结果
 
-本地建议配置：
+删除前确认：无活动工作树占用、无未保留WIP、branch SHA已记录、无未整合独有提交/开放PR。先归档，再用 `git branch -d`，不使用-D。远端分支删除后只移除相同SHA的缓存引用；main与未合入候选不批量删除。
 
-```sh
-git config --local pull.ff only
-git config --local push.default simple
-git config --local push.autoSetupRemote false
-git config --local fetch.prune true
-git config --local remote.pushDefault origin
-```
+本轮已清理6个合入PR #1–6的远端短分支，加上已被main包含的prepare/local-assets与integration/local-fixed-directory，共8个；4个对应本地短分支及旧origin缓存已移除。全部tip在main历史中，完整本地历史bundle与原WIP已在local-audit备份，旧主仓/6个旧工作树与legacy-local引用未动。
 
-新功能分支仅在首次明确发布后建立 upstream。本地历史分支没有 GitHub upstream；导入来源 remote 仅用于读取，不向来源工作区推送。
+远端保留：
 
-## 提交与清理
+- `main`：当前源码基线。
+- `feat/grok-cat-companion`：3个独有提交、落后main4个；产品/视觉参考，另一套内存App不合入宿主，保留固定来源。
+- `feat/proactive-goal-kernel`：4个独有提交、落后main13个；合成内核和恢复屏障候选。先选取与现有领域接口相容的机制，按S03/S05单独移植/验证，不直接覆盖主计划、存储或协议。
 
-提交前运行 CONTRIBUTING 中的完整性、敏感信息和 diff 检查；仅有源码快照不代表编译、CI、真实模型或产品验收通过。PR 写清触发问题、修改后行为、实际检查和未验范围。
+## 已启用规则与实际限制
 
-清理顺序：确认远端 PR 已合入 main，确认工作树干净，确认分支没有未保留提交，再移除工作树、用 `git branch -d` 删除本地分支，最后删除对应远端分支。不要使用 `-D`、强制覆盖或无范围的批量删除。验收证据和来源分支按实际归档需要保留。
+本仓配置：pull.ff=only、push.default=simple、push.autoSetupRemote=false、fetch.prune=true、remote.pushDefault=origin、core.hooksPath=.githooks。legacy-local的push地址禁用；9个来源引用保留。
 
-GitHub 默认分支应为 main。现有连接器未提供修改默认分支及分支保护的接口；在仓库 Settings → General → Default branch 将其设为 main。可随后在 Rulesets 要求通过 PR 合入并禁止删除和强推；未实际设置前不要声称这些服务器规则已生效。
+[pre-commit](../../.githooks/pre-commit)拒绝main/不规范分支与明显私有/生成文件路径；[pre-push](../../.githooks/pre-push)限制origin目标、拒绝直接写main、非快进和无关历史。9个只读正反例已核对。内容敏感扫描仍需单独运行；hooks不读取真实账号、模型或数据库。
+
+这些是本机CLI防误操作规则，可被绕过且不覆盖连接器、API、浏览器或另一台机器。新checkout需运行 `git config --local core.hooksPath .githooks` 并复核本仓配置，不覆盖已有自定义hook而不检查。
+
+GitHub当前私有仓库的rulesets读请求返回403，classic页面明确提示“该私有仓库规则不会执行，需迁移到相应组织套餐”。未升级套餐、未改公开、未创建假生效规则。因此服务器强制PR/禁止force/delete **尚未生效**；当前按PR规范、本地hook及人工读回执行，不能称全面受保护。

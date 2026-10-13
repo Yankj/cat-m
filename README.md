@@ -6,14 +6,17 @@ Swift优先的通用主动Agent应用：自然对话、可恢复任务、审批�
 
 | 内容 | 入口 |
 |---|---|
+| 长任务开发与对话交互 | [启动合同](docs/planning/AF-1/development-start-contract.md)、[可复制prompt](docs/planning/AF-1/long-task-development-prompt.md)、[CGUI-1](docs/design/conversation-generative-ui-spec.md)、[10项验收](docs/acceptance/conversation-generative-ui-acceptance.md) |
 | Goal与唯一实时进度 | [master-plan](docs/status/master-plan.md) |
 | 新spec / 验收 | [AF-1 spec](docs/product/agent-foundation-spec.md) / [验收标准](docs/acceptance/agent-foundation-acceptance.md) |
 | 切片与依赖 | [delivery-slices.json](docs/status/delivery-slices.json) |
 | iOS主工程 | [apps/ios-conversation](apps/ios-conversation/README.md)，CatpawM.xcodeproj |
-| 服务端 | [services/edge](services/edge/README.md)，supabase/functions/catpaw-api与catpaw-worker |
+| 服务端 | [services/edge](services/edge/README.md)，supabase/functions/ 下 catpaw-api＋_shared；独立tick入口见部署来源快照 |
 | 云电脑讨论 | [Proposed方案](docs/architecture/cloud-computer-proposal.md)，确认前不实施 |
 | 接手 / 来源 | [handoff](handoff.md) / [候选hash](docs/status/restart-import-candidate-2026-10-13.json) |
+| 架构与目录职责 | [本轮审查](docs/architecture/repository-review-2026-10-13.md) / [布局表](docs/development/repository-layout.json) |
 | Git治理 / 文档 | [branch-management](docs/development/branch-management.md) / [docs](docs/README.md) |
+| 历史过程资料 | [归档索引](docs/archive/README.md)，旧规格与阶段报告保留追溯，不作为当前开工入口 |
 
 ## 本地验证
 

@@ -1,0 +1,259 @@
+{
+  "recorded_at": "2026-10-13T16:28:11.425778+08:00",
+  "scope": "Regenerable ignored compiler caches only; historical documents logically archived with original paths/bytes preserved.",
+  "removed_cache_directories": [
+    {
+      "path": "apps/ios-conversation/.build/module-cache",
+      "files": 208,
+      "bytes": 97297734,
+      "kind": "regenerable_compiler_cache"
+    },
+    {
+      "path": "apps/ios-conversation/.build/restart-device-trial/SDKStatCaches.noindex",
+      "files": 1,
+      "bytes": 1617572,
+      "kind": "regenerable_compiler_cache"
+    },
+    {
+      "path": "apps/ios-conversation/.build/restart-device-trial/SDKExplicitPrecompiledModules",
+      "files": 321,
+      "bytes": 266205288,
+      "kind": "regenerable_compiler_cache"
+    },
+    {
+      "path": "apps/ios-conversation/.build/restart-device-trial/ModuleCache.noindex",
+      "files": 448,
+      "bytes": 32824631,
+      "kind": "regenerable_compiler_cache"
+    },
+    {
+      "path": "apps/ios-conversation/.build/restart-device-trial/CompilationCache.noindex",
+      "files": 7,
+      "bytes": 16736,
+      "kind": "regenerable_compiler_cache"
+    },
+    {
+      "path": "apps/ios-conversation/.build/restart-device-trial/Build/Intermediates.noindex",
+      "files": 909,
+      "bytes": 127056253,
+      "kind": "regenerable_compiler_cache"
+    },
+    {
+      "path": "apps/ios-conversation/.build/restart-signed16/DerivedData/SDKStatCaches.noindex",
+      "files": 1,
+      "bytes": 1581900,
+      "kind": "regenerable_compiler_cache"
+    },
+    {
+      "path": "apps/ios-conversation/.build/restart-signed16/DerivedData/SDKExplicitPrecompiledModules",
+      "files": 161,
+      "bytes": 133712016,
+      "kind": "regenerable_compiler_cache"
+    },
+    {
+      "path": "apps/ios-conversation/.build/restart-signed16/DerivedData/ModuleCache.noindex",
+      "files": 225,
+      "bytes": 16755659,
+      "kind": "regenerable_compiler_cache"
+    },
+    {
+      "path": "apps/ios-conversation/.build/restart-signed16/DerivedData/CompilationCache.noindex",
+      "files": 7,
+      "bytes": 16736,
+      "kind": "regenerable_compiler_cache"
+    },
+    {
+      "path": "apps/ios-conversation/.build/restart-signed16/DerivedData/Build/Intermediates.noindex",
+      "files": 493,
+      "bytes": 52045163,
+      "kind": "regenerable_compiler_cache"
+    },
+    {
+      "path": "apps/ios-conversation/.build/restart-verification/SDKStatCaches.noindex",
+      "files": 1,
+      "bytes": 1617572,
+      "kind": "regenerable_compiler_cache"
+    },
+    {
+      "path": "apps/ios-conversation/.build/restart-verification/Index.noindex",
+      "files": 2512,
+      "bytes": 33727360,
+      "kind": "regenerable_compiler_cache"
+    },
+    {
+      "path": "apps/ios-conversation/.build/restart-verification/SDKExplicitPrecompiledModules",
+      "files": 161,
+      "bytes": 132502280,
+      "kind": "regenerable_compiler_cache"
+    },
+    {
+      "path": "apps/ios-conversation/.build/restart-verification/ModuleCache.noindex",
+      "files": 371,
+      "bytes": 28042295,
+      "kind": "regenerable_compiler_cache"
+    },
+    {
+      "path": "apps/ios-conversation/.build/restart-verification/CompilationCache.noindex",
+      "files": 7,
+      "bytes": 16736,
+      "kind": "regenerable_compiler_cache"
+    },
+    {
+      "path": "apps/ios-conversation/.build/restart-verification/Build/Intermediates.noindex",
+      "files": 819,
+      "bytes": 81857123,
+      "kind": "regenerable_compiler_cache"
+    },
+    {
+      "path": "packages/ios-navigation/.build/out/SDKStatCaches.noindex",
+      "files": 1,
+      "bytes": 15290384,
+      "kind": "regenerable_compiler_cache"
+    },
+    {
+      "path": "packages/ios-navigation/.build/out/Intermediates.noindex",
+      "files": 101,
+      "bytes": 5317101,
+      "kind": "regenerable_compiler_cache"
+    },
+    {
+      "path": "packages/ios-navigation/.build/out/SDKExplicitPrecompiledModules",
+      "files": 70,
+      "bytes": 78188464,
+      "kind": "regenerable_compiler_cache"
+    },
+    {
+      "path": "packages/ios-navigation/.build/out/ModuleCache.noindex",
+      "files": 136,
+      "bytes": 13335261,
+      "kind": "regenerable_compiler_cache"
+    },
+    {
+      "path": "packages/ios-navigation/.build/out/CompilationCache.noindex",
+      "files": 7,
+      "bytes": 16736,
+      "kind": "regenerable_compiler_cache"
+    }
+  ],
+  "removed_file_count": 6967,
+  "removed_logical_bytes": 1119041000,
+  "bytes_are_logical_not_measured_free_disk_space": true,
+  "protected_file_checks": 3675,
+  "protected_files_changed": [],
+  "original_pending_file_count": 41,
+  "original_pending_files_deleted": 0,
+  "unexpected_pending_file_changes": [
+    "docs/acceptance/agent-foundation-acceptance.md",
+    "docs/acceptance/ios-codex-experience-acceptance.md",
+    "docs/design/README.md",
+    "docs/planning/AF-1/contract.json",
+    "docs/research/README.md",
+    "docs/acceptance/catpaw-final-product-acceptance.json",
+    "docs/design/conversation-generative-ui-spec.md",
+    "scripts/check-final-product-plan.py"
+  ],
+  "pending_backup": "local-audit/cleanup/2026-10-13T162533+0800",
+  "head_unchanged": true,
+  "git_index_modified": false,
+  "model_calls": 0,
+  "installations": 0,
+  "deployments": 0,
+  "remote_publication": false,
+  "checks_status": "PASS_cleanup_document_and_source_integrity_only",
+  "verified_at": "2026-10-13T16:31:21.171042+08:00",
+  "checks": [
+    {
+      "name": "repository_integrity",
+      "exit_code": 0,
+      "status": "PASS"
+    },
+    {
+      "name": "foundation_plan",
+      "exit_code": 0,
+      "status": "PASS"
+    },
+    {
+      "name": "foundation_goals",
+      "exit_code": 0,
+      "status": "PASS"
+    },
+    {
+      "name": "final_product_plan",
+      "exit_code": 0,
+      "status": "PASS"
+    },
+    {
+      "name": "sensitivity",
+      "exit_code": 0,
+      "status": "PASS"
+    },
+    {
+      "name": "diff_whitespace",
+      "exit_code": 0,
+      "status": "PASS"
+    },
+    {
+      "name": "cleanup_links_and_preservation",
+      "exit_code": 0,
+      "status": "PASS"
+    }
+  ],
+  "checks_private_report": "local-audit/cleanup/2026-10-13T162533+0800/document-checks.json",
+  "sensitivity_private_report": "local-audit/cleanup/2026-10-13T162533+0800/scan-final.json",
+  "local_document_links_checked": 161,
+  "legacy_documents_logically_archived": [
+    {
+      "path": "docs/product/conversation-first-delivery-spec.md",
+      "sha256": "f33f80448ddc30aaa426a00899ed553094c82b581bd12a465a3518e957e94b60",
+      "physical_move_or_delete": false
+    },
+    {
+      "path": "docs/product/Catpaw-m_Product_Delivery_Baseline_2026-10-12.md",
+      "sha256": "c1d62c68be4034b74ded95edeaf54d2233f05d1f1f6d74a754ca615127a97ee9",
+      "physical_move_or_delete": false
+    },
+    {
+      "path": "docs/status/master-plan-2026-10-12.md",
+      "sha256": "0b95f6df08bc762ee1ac6b0cc9b0e68813d4f9cba1a89cb74fddf4c4b6d3a5e0",
+      "physical_move_or_delete": false
+    },
+    {
+      "path": "docs/status/openmuse-integration.md",
+      "sha256": "0bd0c804c5de88e09677b7e20f4f69abc40e85ab5262bd3faeba6c783a5d37db",
+      "physical_move_or_delete": false
+    },
+    {
+      "path": "docs/status/openmuse-inventory.json",
+      "sha256": "2fc1dbe65a402661b7b285c58aae2746b399499292f55d18789434f89479b0a8",
+      "physical_move_or_delete": false
+    },
+    {
+      "path": "docs/architecture/runtime-state-2026-10-12.md",
+      "sha256": "e86c0d0674c65b0fd806c745cc6084340296bf1beb1d2874d9194010c9158529",
+      "physical_move_or_delete": false
+    },
+    {
+      "path": "docs/architecture/server-first-delivery-design.md",
+      "sha256": "d2df88bd5c850d827b55c5444b5132392348da83f2d68cfcba225ce1130ecc73",
+      "physical_move_or_delete": false
+    },
+    {
+      "path": "docs/architecture/memory-brief-v1.md",
+      "sha256": "985ffc8ef26d432bee84e4ddb24b05741f181ba733fd2d596c6e6ac12abae1c9",
+      "physical_move_or_delete": false
+    },
+    {
+      "path": "docs/research/opendot-runtime-assessment.md",
+      "sha256": "232c5dcdab1cbe9550ccd9d6fe78e117abbe07f0044f3209537b3de6baa2a426",
+      "physical_move_or_delete": false
+    },
+    {
+      "path": "docs/acceptance/r1-continuous-multimodal-issues.md",
+      "sha256": "625113c24fae8e4cfaf5ca494abdad6df44d656873955f990f4ea7030b4fafb2",
+      "physical_move_or_delete": false
+    }
+  ],
+  "product_acceptance_claimed": false,
+  "concurrent_document_writing_observed": true,
+  "verification_scope": "Dated check; concurrent later edits are not covered. Cleanup did not modify other owner drafts."
+}
