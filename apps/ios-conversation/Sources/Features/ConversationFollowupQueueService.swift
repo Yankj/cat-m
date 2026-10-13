@@ -53,6 +53,20 @@ public actor ConversationFollowupQueueService {
         try await save(state, record, additional:additional)
     }
     public func remove(_ id: UUID) async throws { await lockState();defer { unlockState() }; var (s,r) = try await load(); s.pending.removeAll { $0.id == id }; try await save(s,r) }
+    /// Pause is explicit and persists after editing/closing. Claim and edit share the same lock.
+    public func edit(_ expected:ConversationFollowup,text:String,session:ConversationSessionService) async throws -> ConversationFollowup {
+        await lockState();defer {unlockState()}
+        guard !text.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty,text.utf16.count <= 8000 else {throw CatpawError.invalid("请输入不超过 8000 字符的内容。")}
+        var (s,r)=try await load()
+        guard s.paused,let i=s.pending.firstIndex(where:{$0.id == expected.id}),s.pending[i].text == expected.text,s.pending[i].image == expected.image else {throw CatpawError.conflict}
+        // Image authorization is bound to its caption and must be reviewed in the composer.
+        guard expected.image == nil else {throw CatpawError.invalid("图片处理许可绑定当前文字。请移除后在输入器重新编辑。")}
+        let cancellation=try await session.cancellationForQueueEdit(scope:scope,conversationID:conversationID,operationID:expected.id)
+        let replacement=ConversationFollowup(text:text)
+        s.pending[i]=replacement
+        try await save(s,r,additional:cancellation.map{[$0]} ?? [])
+        return replacement
+    }
     public func pause(reason:FollowupPauseReason = .user) async throws { await lockState();defer { unlockState() }; var (s,r) = try await load();if reason == .background,s.paused,s.pauseReason == .user || s.pauseReason == nil { return };s.paused = true;s.pauseReason=reason;try await save(s,r) }
     public func resume(backgroundOnly:Bool = false) async throws { await lockState();defer { unlockState() }; var (s,r) = try await load();if backgroundOnly,s.pauseReason != .background { return };guard s.inflight == nil else { throw ConversationSessionError.unresolvedOperation };s.paused = false;s.pauseReason=nil;try await save(s,r) }
     /// Called only after checking the durable conversation's exact original operation ID.

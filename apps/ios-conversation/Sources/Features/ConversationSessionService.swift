@@ -204,6 +204,17 @@ public actor ConversationSessionService {
         saved.messages.removeAll { $0.id == stableID("conversation-user-\(operationID)") }
         try await save(saved, expectedRevision: revision)
     }
+    /// The queue commits this cancellation together with the replacement intent.
+    /// A changed payload gets a new operation ID; an admitted/unknown request is immutable.
+    public func cancellationForQueueEdit(scope:DataScope,conversationID:UUID,operationID:UUID) async throws -> Mutation? {
+        var (saved,revision)=try await readVersioned(scope:scope,conversationID:conversationID)
+        guard let i=saved.turns.firstIndex(where:{$0.id == operationID}) else {return nil}
+        guard saved.turns[i].state == .notSent else {throw ConversationSessionError.unresolvedOperation}
+        guard active[conversationID] == nil else {throw ConversationSessionError.busy}
+        saved.turns[i].state = .cancelledBeforeSend
+        saved.messages.removeAll {$0.id == stableID("conversation-user-\(operationID)")}
+        return .update(Self.journalID(conversationID),revision,.preference(Preference(key:"conversation_session:\(conversationID)",value:try Self.encode(saved))))
+    }
     private func markUnknown(_ request: ConversationTurnRequest, reason: String, observationToken: UUID) async throws {
         var (session, journalRevision) = try await readVersioned(scope: request.scope, conversationID: request.conversationID)
         guard let i = session.turns.firstIndex(where: { $0.id == request.operationID }), ![.completed, .failed].contains(session.turns[i].state) else { return }
