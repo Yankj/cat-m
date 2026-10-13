@@ -1,0 +1,471 @@
+{
+  "schema_version": 1,
+  "version": "CGUI-1",
+  "recorded_on": "2026-10-13",
+  "spec_path": "../design/conversation-generative-ui-spec.md",
+  "procedure_path": "conversation-generative-ui-acceptance.md",
+  "result_authority": "../status/master-plan.md",
+  "required_for_goals": [
+    "FINAL-G1",
+    "FINAL-G3"
+  ],
+  "foundation_goal_replaced": false,
+  "presentation_types": [
+    "table",
+    "chart",
+    "calculator"
+  ],
+  "chart_types": [
+    "bar",
+    "line"
+  ],
+  "calculator_kernels": [
+    "duration_budget_v1",
+    "weighted_comparison_v1"
+  ],
+  "domain_card_types": [
+    "choice",
+    "form",
+    "plan",
+    "approval",
+    "artifact",
+    "comparison"
+  ],
+  "action_classes": [
+    "local_interaction",
+    "agent_followup",
+    "domain_command"
+  ],
+  "limits": {
+    "payload_utf8_bytes": 65536,
+    "table_columns": 12,
+    "table_rows": 200,
+    "cell_characters": 2000,
+    "chart_series": 4,
+    "points_per_series": 200,
+    "source_references": 20,
+    "title_characters": 200,
+    "label_characters": 80,
+    "finite_numbers_only": true
+  },
+  "local_interaction_rules": {
+    "automatic_model_calls": 0,
+    "automatic_network_requests": 0,
+    "automatic_turns": 0,
+    "automatic_domain_effects": 0,
+    "feedback_p95_ms": 150,
+    "physical_local_samples_minimum": 30
+  },
+  "truth_fixtures": {
+    "duration": {
+      "unit": "minutes",
+      "total": 60,
+      "reserved": 10,
+      "step_count": 4,
+      "per_step": 8,
+      "remaining": 18,
+      "second_reserved": 15,
+      "second_remaining": 13,
+      "negative_remaining_visible": true
+    },
+    "weighted": {
+      "scores_a": [
+        80,
+        40
+      ],
+      "scores_b": [
+        60,
+        90
+      ],
+      "weights": [
+        3,
+        1
+      ],
+      "result_a": 70,
+      "result_b": 67.5,
+      "second_weights": [
+        1,
+        3
+      ],
+      "second_result_a": 50,
+      "second_result_b": 82.5,
+      "scores_are_synthetic_not_product_ranking": true
+    }
+  },
+  "cases": [
+    {
+      "id": "CG-A01",
+      "required": true,
+      "title": "路由与registry",
+      "supporting_acceptance_ids": [
+        "AF-A16",
+        "AF-A18"
+      ],
+      "ux_ids": [
+        "AF-U06"
+      ],
+      "quality_ids": [
+        "FQ-01",
+        "FQ-08"
+      ],
+      "work_units": [
+        "W70"
+      ],
+      "design_units": [
+        "D30"
+      ],
+      "minimum_evidence": [
+        "native_rendered_ui",
+        "schema_boundary_replay",
+        "fallback_record"
+      ],
+      "interaction_scenario_ids": [
+        "I19",
+        "I30"
+      ]
+    },
+    {
+      "id": "CG-A02",
+      "required": true,
+      "title": "流中稳定",
+      "supporting_acceptance_ids": [
+        "AF-A04",
+        "AF-A16"
+      ],
+      "ux_ids": [
+        "AF-U04",
+        "AF-U06"
+      ],
+      "quality_ids": [
+        "FQ-01"
+      ],
+      "work_units": [
+        "W12",
+        "W70"
+      ],
+      "design_units": [
+        "D20",
+        "D30"
+      ],
+      "minimum_evidence": [
+        "physical_device",
+        "native_rendered_ui",
+        "partial_complete_and_stale_event_trace"
+      ],
+      "interaction_scenario_ids": [
+        "I08",
+        "I19",
+        "I20",
+        "I21",
+        "I22"
+      ]
+    },
+    {
+      "id": "CG-A03",
+      "required": true,
+      "title": "真实结构闭环",
+      "supporting_acceptance_ids": [
+        "AF-A03",
+        "AF-A07",
+        "AF-A16"
+      ],
+      "ux_ids": [
+        "AF-U06"
+      ],
+      "quality_ids": [
+        "FQ-01"
+      ],
+      "work_units": [
+        "W11",
+        "W30",
+        "W70"
+      ],
+      "design_units": [
+        "D30"
+      ],
+      "minimum_evidence": [
+        "physical_device",
+        "real_model",
+        "real_service",
+        "persistent_intent",
+        "same_work_continuation_trace"
+      ]
+    },
+    {
+      "id": "CG-A04",
+      "required": true,
+      "title": "本地确定试算",
+      "supporting_acceptance_ids": [
+        "AF-A16"
+      ],
+      "ux_ids": [
+        "AF-U06"
+      ],
+      "quality_ids": [
+        "FQ-01",
+        "FQ-07"
+      ],
+      "work_units": [
+        "W70"
+      ],
+      "design_units": [
+        "D30"
+      ],
+      "minimum_evidence": [
+        "physical_device",
+        "native_rendered_ui",
+        "frozen_algorithm_truth",
+        "request_and_effect_counter_delta",
+        "presented_frame_timing"
+      ],
+      "interaction_scenario_ids": [
+        "I27",
+        "I28",
+        "I29"
+      ]
+    },
+    {
+      "id": "CG-A05",
+      "required": true,
+      "title": "动作与HIL",
+      "supporting_acceptance_ids": [
+        "AF-A09",
+        "AF-A10",
+        "AF-A14",
+        "AF-A16"
+      ],
+      "ux_ids": [
+        "AF-U07"
+      ],
+      "quality_ids": [
+        "FQ-02"
+      ],
+      "work_units": [
+        "W32",
+        "W33",
+        "W60",
+        "W70"
+      ],
+      "design_units": [
+        "D30"
+      ],
+      "minimum_evidence": [
+        "physical_device",
+        "real_database",
+        "effect_receipt",
+        "explicit_submit_and_unknown_trace"
+      ],
+      "interaction_scenario_ids": [
+        "I09",
+        "I11",
+        "I23",
+        "I24",
+        "I29",
+        "I31",
+        "I32",
+        "I33",
+        "I34",
+        "I35",
+        "I36",
+        "I38"
+      ]
+    },
+    {
+      "id": "CG-A06",
+      "required": true,
+      "title": "同数据表图",
+      "supporting_acceptance_ids": [
+        "AF-A08",
+        "AF-A16"
+      ],
+      "ux_ids": [
+        "AF-U08"
+      ],
+      "quality_ids": [
+        "FQ-05"
+      ],
+      "work_units": [
+        "W31",
+        "W70"
+      ],
+      "design_units": [
+        "D30"
+      ],
+      "minimum_evidence": [
+        "physical_device",
+        "native_rendered_ui",
+        "frozen_source_truth",
+        "artifact_revision_hash"
+      ],
+      "interaction_scenario_ids": [
+        "I25",
+        "I26"
+      ]
+    },
+    {
+      "id": "CG-A07",
+      "required": true,
+      "title": "持久与冲突",
+      "supporting_acceptance_ids": [
+        "AF-A05",
+        "AF-A08",
+        "AF-A10"
+      ],
+      "ux_ids": [
+        "AF-U08",
+        "AF-U12"
+      ],
+      "quality_ids": [
+        "FQ-05",
+        "FQ-08"
+      ],
+      "work_units": [
+        "W12",
+        "W31",
+        "W33",
+        "W70"
+      ],
+      "design_units": [
+        "D20",
+        "D30"
+      ],
+      "minimum_evidence": [
+        "physical_device",
+        "real_database",
+        "native_restart_scope_and_conflict_trace"
+      ],
+      "interaction_scenario_ids": [
+        "I30",
+        "I33",
+        "I37"
+      ]
+    },
+    {
+      "id": "CG-A08",
+      "required": true,
+      "title": "原生视觉与可访问性",
+      "supporting_acceptance_ids": [
+        "AF-A17"
+      ],
+      "ux_ids": [
+        "AF-U10",
+        "AF-U11"
+      ],
+      "quality_ids": [
+        "FQ-06"
+      ],
+      "work_units": [
+        "W70",
+        "W71"
+      ],
+      "design_units": [
+        "D50"
+      ],
+      "minimum_evidence": [
+        "physical_device",
+        "native_rendered_ui",
+        "accessibility_operation_record",
+        "native_visual_matrix"
+      ],
+      "interaction_scenario_ids": [
+        "I42"
+      ]
+    },
+    {
+      "id": "CG-A09",
+      "required": true,
+      "title": "降级与诚实状态",
+      "supporting_acceptance_ids": [
+        "AF-A04",
+        "AF-A05",
+        "AF-A16",
+        "AF-A18"
+      ],
+      "ux_ids": [
+        "AF-U06",
+        "AF-U12"
+      ],
+      "quality_ids": [
+        "FQ-01",
+        "FQ-08"
+      ],
+      "work_units": [
+        "W12",
+        "W33",
+        "W70"
+      ],
+      "design_units": [
+        "D20",
+        "D30"
+      ],
+      "minimum_evidence": [
+        "native_rendered_ui",
+        "protocol_error_trace",
+        "effect_vs_delivery_state_record"
+      ],
+      "interaction_scenario_ids": [
+        "I10",
+        "I12",
+        "I24",
+        "I28",
+        "I30",
+        "I35",
+        "I36"
+      ]
+    },
+    {
+      "id": "CG-A10",
+      "required": true,
+      "title": "组合交付",
+      "supporting_acceptance_ids": [
+        "AF-A07",
+        "AF-A08",
+        "AF-A16",
+        "AF-A17"
+      ],
+      "ux_ids": [
+        "AF-U06",
+        "AF-U08"
+      ],
+      "quality_ids": [
+        "FQ-01",
+        "FQ-05",
+        "FQ-06"
+      ],
+      "scenario_ids": [
+        "CP-01"
+      ],
+      "work_units": [
+        "W70",
+        "W71"
+      ],
+      "design_units": [
+        "D30",
+        "D50"
+      ],
+      "minimum_evidence": [
+        "physical_device",
+        "real_model",
+        "real_service",
+        "both_composition_paths",
+        "same_release_manifest"
+      ]
+    }
+  ],
+  "release_rules": {
+    "same_candidate_required": true,
+    "all_cases_required": true,
+    "all_cases_pass_before_FINAL_G1": true,
+    "at_least_one_real_model_native_followup_path": true,
+    "synthetic_replaces_real_acceptance": false,
+    "frozen_http_overwritten": false,
+    "same_work_requires_same_sse_run": false,
+    "local_ui_authorizes_writes": false,
+    "arbitrary_generated_code_required": false,
+    "copilotkit_sdk_or_intelligence_required": false,
+    "onboarding_cli_executed": false,
+    "new_model_calls_or_installations_authorized_by_document": false
+  },
+  "interaction_appendix": "docs/design/interaction-scenarios-r3.md",
+  "interaction_scenarios": "docs/design/interaction-scenarios-r3.json"
+}

@@ -1,0 +1,57 @@
+{
+  "schema": "catpaw.synthetic-mobile-concepts.v1",
+  "design_identity": "UX-1-R4-motion-study",
+  "created_date": "2026-10-13",
+  "generator": "built-in image_gen.imagegen",
+  "generation_batch": "01a134e1-2edf-73b1-9c9e-e168141b7ba1",
+  "skills": ["imagegen-frontend-mobile", "imagegen"],
+  "classification": "generated synthetic visual proposal",
+  "native_acceptance": false,
+  "contains_private_device_capture": false,
+  "runtime_or_external_write_evidence": false,
+  "full_prompts": "concept-generation-prompts-r4.md",
+  "design_bible": {
+    "platform": "iOS-native premium",
+    "composition": "One independent readable portrait phone per image; consistent graphite frame and slim ivory outer margins",
+    "palette": {"canvas": "#F8F7F3", "body": "#1B1D23", "action": "#293D68", "secondary": "#666B76"},
+    "typography": "System San Francisco/PingFang-like; comfortable 17 pt Chinese body and 22 pt title concept targets",
+    "spacing": "20 pt page margins; 24 pt vertical rhythm; generous touch controls",
+    "surfaces": "Matte reading content; restrained optical translucency limited to navigation and composer; approval uses foreground sheet and dimmed background",
+    "navigation": "Conversation-first root, sidebar trigger, object review as dismissible sheet",
+    "identity": "No generated replacement icon or mascot; preserved A1 remains outside these concept images",
+    "avoid": ["purple-blue gradients", "dashboard composition", "many floating cards", "glowing outlines", "tiny typography", "implementation labels"]
+  },
+  "images": [
+    {
+      "file": "mobile-conversation-concept-r4.png",
+      "format": "PNG",
+      "width": 887,
+      "height": 1774,
+      "sha256": "82abd50ca0cf0290ac4aca76b6e009e19eb4fa56e2cc53331973a12337172a7a",
+      "generator_output_filename": "exec-d86a54a6-3a6c-4921-a9cf-d5554ce52827.png",
+      "role": "Independent conversation and intelligent-UI visual direction",
+      "reference_images": [],
+      "review": {
+        "Chinese_copy": "Specified core text visibly readable; no private content",
+        "strengths": ["Warm canvas, near-black text and indigo actions read as one restrained system", "Assistant prose is printed directly on the canvas", "Local comparison and explicit continuation are distinct"],
+        "limitations": ["Generated candidate rows have extra enclosing borders; flatten into divided rows in the interaction prototype", "Static art does not prove glass optics, Dynamic Type, touch dimensions, gestures or reading stability", "The 887 px composition is a reference, not a native pixel specification"]
+      }
+    },
+    {
+      "file": "mobile-approval-concept-r4.png",
+      "format": "PNG",
+      "width": 887,
+      "height": 1774,
+      "sha256": "e4fb1c3fa1a4528d04d927389708bc87c133a5a7f1a86fb0f89bf21031500516",
+      "generator_output_filename": "exec-0f69528c-3303-41fe-a0ad-7e69bfa2c7bf.png",
+      "role": "Independent exact-action human-in-the-loop sheet visual direction",
+      "reference_images": [{"file": "mobile-conversation-concept-r4.png", "role": "Design bible, device scale, palette and typography reference only; no crop"}],
+      "review": {
+        "Chinese_copy": "Specified object, time, target calendar, revision, impact and four actions visibly readable",
+        "strengths": ["Scrim preserves the originating conversation", "Grabber and dismiss X are distinct from refusal", "Confirmation, edit, later and refusal are all visible in the lower action area", "Pending approval has no success mark"],
+        "limitations": ["Static art does not prove fixed-footer behavior at alternate detents, keyboard or accessibility sizes", "Date, target and content are synthetic fixture data", "Actual effect and receipt remain subject to existing typed contracts"]
+      }
+    }
+  ],
+  "scope_note": "Concept images guide visual direction only. They do not replace UX-1 or CGUI-1 behavior contracts, do not grant execution authority and cannot close native or final product acceptance. Current progress remains only in docs/status/master-plan.md."
+}
