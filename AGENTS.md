@@ -1,5 +1,14 @@
 # Catpaw-m workspace instructions
 
+## Repository architecture and Git rules
+
+- Directory roles are fixed by `docs/development/repository-layout.json`; read `docs/architecture/repository-review-2026-10-13.md` before restructuring. One active native App and one backend maintenance source; historical apps, deployed snapshots and pinned upstreams are separate roles, never competing maintenance roots.
+- Use the short branches in `docs/development/branch-management.md`. Do not develop or commit directly on main. The temporary `docs/restart-design-integration` checkout holds the existing uncommitted restart documents; preserve other owners' edits and commit only an explicit reviewed path set.
+- Never merge or push legacy-local history into origin. Selectively import reviewed bytes with provenance. Unmerged candidate branches must retain their original evidence layer; synthetic kernels or memory-only UI are not production implementations.
+- UI calls application services through typed contracts; components do not own accounts, HTTP admission or task execution. Persistence/effect authority stays in the existing scoped backend; presentation and stream termination cannot grant authority or declare completion.
+- New public design/research goes under docs/design or docs/research. Root design/research are retained source inputs; ignored build/local-audit contain runtime and private material. Do not duplicate specifications or live status.
+- Before delivery run layout, frozen-source, relevant contract and sensitivity checks. Local hooks are available in `.githooks`; they guard CLI operations, not connector/API/UI writes. GitHub server enforcement is unavailable on the currently observed private-repository plan; do not claim it is active.
+
 - Current Goal execution definition: docs/planning/AF-1/goal.md (AF-1-G3-UX1); interpret the running Goal's shorthand through this contract. Required closure includes all AF-A01–18, AF-U01–12 and CP-01–03 in one release. Sources and evidence limits are in goal-evidence-map.json; design lanes run alongside feature slices. Active restart authority remains docs/product/agent-foundation-spec.md, docs/acceptance/agent-foundation-acceptance.md and docs/status/delivery-slices.json. State only in docs/status/master-plan.md; preserve dated evidence.
 - Save screenshots requested by the user with provenance and version. Private phone/reference captures stay under ignored local-audit/screenshots; synthetic proposal screenshots cannot close native acceptance. Historical design/research proposals do not expand current authorization or scope.
 - The user has authorized migration into this workspace, GitHub synchronization and confirmed feature development. Preserve legacy worktrees and local-only history; read handoff.md for takeover scope.
