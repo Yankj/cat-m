@@ -1,5 +1,15 @@
 # 原生交互与设计约束
 
+当前配色与UI细节见[R4.1参考修订](codex-color-detail-r4-1.md)、[语义参数](codex-color-detail-r4-1.json)和[新版样机](prototypes/catpaw-codex-color-r4-1/index.html)：中性阅读面、局部紫色动作、辅助字与决定区清楚可读。原R4保留对照，以下连续机制仍适用。
+
+连续机制评审见[UX-1 R4原生交互／动效](native-interaction-motion-r4.md)、[视觉方向与参数](interaction-motion-r4.json)及[独立交互样机](prototypes/catpaw-motion-study-r4/index.html)。采用 taste-skill 的 App 专用 `imagegen-frontend-mobile` 生成[对话](prototypes/catpaw-motion-study-r4/assets/mobile-conversation-concept-r4.png)与[审批](prototypes/catpaw-motion-study-r4/assets/mobile-approval-concept-r4.png)方向图；样机单独验证跟手／可打断／分档／回源／锚点。R3的[42项状态场景](interaction-scenarios-r3.json)与[R2日期视觉输入](taste-visual-motion-r2.md)保留；新方向不修改A1、冻结tokens或领域合同。实时状态与原生未验项只见master-plan，合成图和网页不能关闭产品验收。
+
+本轮[产品与视觉交互评审R1](product-experience-review-2026-10-13.md)已经写回FINAL-1、UX-1与既有验收：一句体验承诺、合理默认值、当前待决层级、修改草稿、成果复制/分享与克制反馈。评审是设计依据，原生通过状态只见[master-plan](../status/master-plan.md)。
+
+对话内新交互：[CGUI-1规格](conversation-generative-ui-spec.md)、[10项细分验收](../acceptance/conversation-generative-ui-acceptance.md)，固定原生表图／确定试算与显式同工作跟进；来源见[UI/onboarding核读](../research/copilotkit-conversation-ui-onboarding-review-2026-10-13.md)。
+
+终版整合：[FINAL-1规格](../product/catpaw-final-product-spec.md)、[流中决定／审批恢复／成果／跟进可点按提案](prototypes/catpaw-final/index.html)、[FQ质量验收](../acceptance/catpaw-final-product-acceptance.md)。提案内容人工构造，没有模型或系统动作；保留A1、UX-1与原生验收门槛。
+
 2026-10-13重启设计入口：[iPhone对标规格UX-1](ios-codex-experience-spec.md)、[前期截图与观察对照](ios-codex-reference-review-2026-10-13.md)、[可点按布局提案](prototypes/catpaw-ios-ux/index.html)、[AF-U01–12验收](../acceptance/ios-codex-experience-acceptance.md)。当前结果只在主计划；以下保留历史设计身份。
 
 当前交互裁决与验收以 [主交付计划](../status/master-plan.md) 为唯一索引：conversation-first替代散装Demo/手建委托；外围r4暂停，A1正式图标选择保留。当前原生owner独立开发，未冻结源码/图标不在本轮复制；图标选择/接入声明与实际iOS资产编译/真机呈现分开记账。

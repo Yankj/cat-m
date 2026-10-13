@@ -96,6 +96,8 @@ AF-GD贯穿S01–S07，由W70/W71汇总关闭，不等功能全部完成才美�
 
 阶段性规模上限：个人使用、一个已配置模型路由、给定公开 URL 读取/轻量文本成果、一个 EventKit 写能力、两种 trigger、六类原生卡。浏览器沙箱、第三方登录、复杂空间编辑器、自动多 Agent 和通用工具商店另立扩展 Goal。
 
+2026-10-13 [四仓核读](../../research/copilotkit-four-repo-decision-update-2026-10-13.md)补入既有单元的执行输入：W30 持久计划与逐步证据；W31 成果引用重取及版本冲突；W32/W33 审批消费、unknown 与结果续聊分别恢复；W50/W51 due 去重保留及失败次数分类；D30/W70 受控 registry、增量参数不启用动作、后台待决重开与降级。每片先完成现有类型/存储/schema 映射，再移植最小算法和故障用例；需要 AG-UI/SDK adapter 时先用捕获事件做离线兼容试验，不替换当前 provider 或 wire。完整框架/任意 HTML/电脑托管不进入本轮关键路径，W10→W11→W12 的首道门槛不变。
+
 ## 6. 放行判定
 
 - PASS：全部规定断言成立且证据达到相应环境层；同版新改动影响该断言时重验。
@@ -108,3 +110,15 @@ AF-GD贯穿S01–S07，由W70/W71汇总关闭，不等功能全部完成才美�
 最终交付包含 release manifest、源码位置、对应包、部署身份、三条完整路径记录、各 AF-A / AF-U 的证据索引和实际限制。用户可以核对和复现，不必依赖开发者口头解释。
 
 本轮资源边界：用户已选现有Supabase先完善底座，新增云电脑计算预算0；以后托管执行器/沙箱的可持续资源来源再确认，不购买付费资源或把试用赠额视为长期免费。
+
+## 7. FINAL-1终版设计与可比较交付
+
+[Grok分支核读](../../research/grok-companion-integration-review-2026-10-13.md)与[终版规格](../../product/catpaw-final-product-spec.md)进入现有单元，不新增第二个App／Store：W12/D20贯通流中卡；W30/D30同工作引导；W32/W33决定与回执；W40/D40记忆控制；W50/W51/D40手机编辑跟进、why-now、静默与暂停；W70/D50原生全状态；W71同版放行。当前W10→W11→W12关键路径保留。
+
+终版分五道演示门：真实对话→一条完整可操作工作→持续责任与原生动作→全部基础验收＋FQ-01–09日用质量→BP-01–08具名对照。设计线随功能推进，[可点按状态提案](../../design/prototypes/catpaw-final/index.html)先帮助审阅入口和恢复。
+
+终版FQ另含[CGUI-1对话交互](../../design/conversation-generative-ui-spec.md)及[10项细分验收](../../acceptance/conversation-generative-ui-acceptance.md)：W12/D20稳定结构投影，W30/D30显式同工作跟进，W31/D30表图来源与版本，W32/W33精确决定与效果核对，W70/D30/D50原生registry／两种计算器／表图，W71同候选汇总。纯本地实现可与W10–12真实路由核验同行，不等S07末尾才做；不安装CLI或引入Intelligence作为开工前提。
+
+持续开发入口见[启动合同](development-start-contract.md)与[可复制长任务prompt](long-task-development-prompt.md)。规格、算法与正常／失败断言可检查，真实模型、PG、调度、真机、日用和竞品资源仍需实测；启动合同不是运行结果或新增测试许可。
+
+FINAL-G1/G2/G3定义和质量／比较门槛见[终版验收](../../acceptance/catpaw-final-product-acceptance.md)，机器映射列出每项对应W/D单元。当前运行AF-G5的18A／12U／3CP完成规则不被替换。后续性能样本、7天日用和竞品配对以具体测试资源清单执行；设计文件不授权追加模型、安装或账户操作。结果仍只维护master-plan。

@@ -339,10 +339,10 @@
     {
       "id": "E13",
       "file": "docs/design/ios-codex-experience-spec.md",
-      "sha256": "1d0bf45a0f060972e2f15e5e71e339088658b511aa12b2f9cfb94dee0e870752",
+      "sha256": "8d56252a7396745f4541b4fe6b0af3c07c57c5ad48e5901325be6e0be2564041",
       "publication_scope": "versioned",
       "evidence_kind": "normative_ux_spec",
-      "adopted": "UX-1布局、状态、返回、视觉和原生行为合同",
+      "adopted": "UX-1布局、状态、返回、视觉和原生行为合同；2026-10-13四仓核读细化卡生成/后台待决/成果恢复状态；R1首用、默认值、当前待决层级、修改草稿、可用成果与克制反馈；R2视觉层级/有限运动/可访问性与原12U接线；R3开合/过程/稳定卡/表图/HIL场景映射原验收",
       "limits_or_deferred": "不把提案当实际实现或竞品内部实现",
       "goal_ids": [
         "AF-GD",
@@ -369,10 +369,10 @@
     {
       "id": "E14",
       "file": "docs/acceptance/ios-codex-experience-acceptance.md",
-      "sha256": "f615a86766d7239620ea02f45e721a314cb9d39c87deef1128996694a19977a7",
+      "sha256": "2747f4af0afd4a037de4b63c727df91296d0ff0edffc71b84735b120732935ec",
       "publication_scope": "versioned",
       "evidence_kind": "normative_native_acceptance",
-      "adopted": "全部12项同版原生用例和证据门槛",
+      "adopted": "全部12项同版原生用例和证据门槛；2026-10-13四仓核读细化卡生成/后台待决/成果恢复状态；R1补充断言归既有AF-U01–12，不改变真实证据门；R2视觉层级/有限运动/可访问性与原12U接线；R3开合/过程/稳定卡/表图/HIL场景映射原验收",
       "limits_or_deferred": "不使用HTML截图关闭真机验收",
       "goal_ids": [
         "AF-GD",
@@ -448,6 +448,1893 @@
         "AF-U10",
         "AF-U11",
         "AF-U12"
+      ]
+    },
+    {
+      "id": "E17",
+      "file": "docs/research/copilotkit-four-repo-decision-update-2026-10-13.md",
+      "sha256": "db698f5504e97105e6df4423a64486cd8c61f4de785cbb3461a281bbc7b44fe4",
+      "publication_scope": "versioned",
+      "evidence_kind": "pinned_four_repository_decision_synthesis",
+      "adopted": "模块复用、后台审批、成果版本、受控registry与故障用例",
+      "limits_or_deferred": "整仓融合、SDK替换、Intelligence/Jev、未确认托管和任意生成UI",
+      "goal_ids": [
+        "AF-G2",
+        "AF-G3",
+        "AF-G4",
+        "AF-GD"
+      ],
+      "acceptance_ids": [
+        "AF-A07",
+        "AF-A08",
+        "AF-A09",
+        "AF-A10",
+        "AF-A11",
+        "AF-A12",
+        "AF-A13",
+        "AF-A16"
+      ],
+      "ux_ids": [
+        "AF-U06",
+        "AF-U07",
+        "AF-U08",
+        "AF-U09",
+        "AF-U12"
+      ]
+    },
+    {
+      "id": "E18",
+      "file": "docs/research/copilotkit-four-repo-source-manifest-2026-10-13.json",
+      "sha256": "4103aac90baddba521736670a4c2568b15bdfcbd9bbeee806a5db55a51783d9f",
+      "publication_scope": "versioned",
+      "evidence_kind": "public_pinned_source_identity",
+      "adopted": "四仓commit、54个关键源码blob/byte hash与MIT身份",
+      "limits_or_deferred": "研究来源身份不是产品release或既有vendor manifest",
+      "goal_ids": [
+        "AF-G0",
+        "AF-G5"
+      ],
+      "acceptance_ids": [
+        "AF-A01",
+        "AF-A18"
+      ],
+      "ux_ids": []
+    },
+    {
+      "id": "E19",
+      "file": "docs/research/openmuse-code-gap-review-2026-10-13.md",
+      "sha256": "e90ddeee035372cdf63085d29125b5afa5acc35c1fad6332d46a141316a97e8f",
+      "publication_scope": "versioned",
+      "evidence_kind": "pinned_upstream_static_source_review",
+      "adopted": "set_plan、逐步证据、成果引用重取、有限monitor与现有tools缺口",
+      "limits_or_deferred": "finish批量成功/operations缓存不证明逐步完成或外部写exactly-once",
+      "goal_ids": [
+        "AF-G2",
+        "AF-G3",
+        "AF-GD"
+      ],
+      "acceptance_ids": [
+        "AF-A07",
+        "AF-A08",
+        "AF-A10",
+        "AF-A13",
+        "AF-A16"
+      ],
+      "ux_ids": [
+        "AF-U06",
+        "AF-U08",
+        "AF-U12"
+      ]
+    },
+    {
+      "id": "E20",
+      "file": "docs/research/opendots-code-review-2026-10-13.md",
+      "sha256": "c675bfffdf219089c27bb64cdc26e339322d98307e2408c4ecf540e2df64f983",
+      "publication_scope": "versioned",
+      "evidence_kind": "pinned_upstream_static_source_review",
+      "adopted": "明确CopilotKit/OpenDots身份；成果revision/generation/tombstone；审批恢复界限",
+      "limits_or_deferred": "SQLite runner、全局memory、客户端HITL不满足全部恢复/调度要求",
+      "goal_ids": [
+        "AF-G2",
+        "AF-G3",
+        "AF-G4",
+        "AF-GD"
+      ],
+      "acceptance_ids": [
+        "AF-A08",
+        "AF-A09",
+        "AF-A10",
+        "AF-A11",
+        "AF-A12",
+        "AF-A13",
+        "AF-A16"
+      ],
+      "ux_ids": [
+        "AF-U06",
+        "AF-U07",
+        "AF-U08",
+        "AF-U09",
+        "AF-U12"
+      ]
+    },
+    {
+      "id": "E21",
+      "file": "docs/research/openbot-code-review-2026-10-13.md",
+      "sha256": "d10194cb25c4cfcbc9e2dfe9bdb6ebfd4376c1bd981c6d738d1ae4cb966f8588",
+      "publication_scope": "versioned",
+      "evidence_kind": "pinned_upstream_static_source_review",
+      "adopted": "审批消费/结果/续聊分层恢复、PG due领取与失败分类、后台卡能力",
+      "limits_or_deferred": "强依赖Intelligence；电脑托管、完整Bun应用与追加模型路线不采纳",
+      "goal_ids": [
+        "AF-G2",
+        "AF-G3",
+        "AF-G4",
+        "AF-GD"
+      ],
+      "acceptance_ids": [
+        "AF-A08",
+        "AF-A09",
+        "AF-A10",
+        "AF-A12",
+        "AF-A13",
+        "AF-A14",
+        "AF-A16"
+      ],
+      "ux_ids": [
+        "AF-U06",
+        "AF-U07",
+        "AF-U08",
+        "AF-U09"
+      ]
+    },
+    {
+      "id": "E22",
+      "file": "docs/research/openintelligentui-code-review-2026-10-13.md",
+      "sha256": "abdf1664889b5dfb7ebba3d1f5b834593151fab7f8cf0fd076686bfd216bfe39",
+      "publication_scope": "versioned",
+      "evidence_kind": "pinned_upstream_static_source_review",
+      "adopted": "受控registry/schema、分阶段呈现、同对话交互、非法数据降级",
+      "limits_or_deferred": "Next/Python/Jev与内存checkpoint不替代底座；WebSandbox另立实验",
+      "goal_ids": [
+        "AF-G1",
+        "AF-G2",
+        "AF-G4",
+        "AF-GD"
+      ],
+      "acceptance_ids": [
+        "AF-A04",
+        "AF-A05",
+        "AF-A08",
+        "AF-A09",
+        "AF-A10",
+        "AF-A14",
+        "AF-A16",
+        "AF-A18"
+      ],
+      "ux_ids": [
+        "AF-U04",
+        "AF-U06",
+        "AF-U07",
+        "AF-U08",
+        "AF-U10",
+        "AF-U11",
+        "AF-U12"
+      ]
+    },
+    {
+      "id": "E23",
+      "file": "docs/research/grok-companion-integration-review-2026-10-13.md",
+      "sha256": "b258656531763e6e010cac56f0faf626b082992a659e296aeceed5a184c17324",
+      "publication_scope": "versioned",
+      "evidence_kind": "pinned_branch_static_review_with_primary_product_references",
+      "adopted": "可解释主动、可控记忆、动作预览与真实状态语义",
+      "limits_or_deferred": "不采用四Tab/第二AppStore/假执行/无来源竞品排名",
+      "goal_ids": [
+        "AF-G1",
+        "AF-G2",
+        "AF-G3",
+        "AF-G4",
+        "AF-GD",
+        "AF-G5"
+      ],
+      "acceptance_ids": [
+        "AF-A01",
+        "AF-A02",
+        "AF-A03",
+        "AF-A04",
+        "AF-A05",
+        "AF-A06",
+        "AF-A07",
+        "AF-A08",
+        "AF-A09",
+        "AF-A10",
+        "AF-A11",
+        "AF-A12",
+        "AF-A13",
+        "AF-A14",
+        "AF-A15",
+        "AF-A16",
+        "AF-A17",
+        "AF-A18"
+      ],
+      "ux_ids": [
+        "AF-U01",
+        "AF-U02",
+        "AF-U03",
+        "AF-U04",
+        "AF-U05",
+        "AF-U06",
+        "AF-U07",
+        "AF-U08",
+        "AF-U09",
+        "AF-U10",
+        "AF-U11",
+        "AF-U12"
+      ],
+      "final_goal_ids": [
+        "FINAL-G1",
+        "FINAL-G2",
+        "FINAL-G3"
+      ]
+    },
+    {
+      "id": "E24",
+      "file": "docs/research/grok-companion-source-manifest-2026-10-13.json",
+      "sha256": "df2b2a07df14bd6a97d8487be4db88efcbf54855871af778a145817f0cf6b07f",
+      "publication_scope": "versioned",
+      "evidence_kind": "pinned_source_manifest",
+      "adopted": "17文件commit/blob/byte身份固定",
+      "limits_or_deferred": "静态选读范围不是完整仓库或可构建证明",
+      "goal_ids": [
+        "AF-G1",
+        "AF-G2",
+        "AF-G3",
+        "AF-G4",
+        "AF-GD",
+        "AF-G5"
+      ],
+      "acceptance_ids": [
+        "AF-A01",
+        "AF-A02",
+        "AF-A03",
+        "AF-A04",
+        "AF-A05",
+        "AF-A06",
+        "AF-A07",
+        "AF-A08",
+        "AF-A09",
+        "AF-A10",
+        "AF-A11",
+        "AF-A12",
+        "AF-A13",
+        "AF-A14",
+        "AF-A15",
+        "AF-A16",
+        "AF-A17",
+        "AF-A18"
+      ],
+      "ux_ids": [
+        "AF-U01",
+        "AF-U02",
+        "AF-U03",
+        "AF-U04",
+        "AF-U05",
+        "AF-U06",
+        "AF-U07",
+        "AF-U08",
+        "AF-U09",
+        "AF-U10",
+        "AF-U11",
+        "AF-U12"
+      ],
+      "final_goal_ids": [
+        "FINAL-G1",
+        "FINAL-G2",
+        "FINAL-G3"
+      ]
+    },
+    {
+      "id": "E25",
+      "file": "docs/product/catpaw-final-product-spec.md",
+      "sha256": "a5a5a18cc508689c033bb33e58ee23c5b010b9e0ae79f3476c6cd9f27924213b",
+      "publication_scope": "versioned",
+      "evidence_kind": "final_product_design_contract",
+      "adopted": "流中交互、同工作决定、手机主动闭环、产品与比较Goal；R1体验承诺、主要用户、首个价值路径及信息层级",
+      "limits_or_deferred": "不改变运行Goal/路由/预算或增加外部授权",
+      "goal_ids": [
+        "AF-G1",
+        "AF-G2",
+        "AF-G3",
+        "AF-G4",
+        "AF-GD",
+        "AF-G5"
+      ],
+      "acceptance_ids": [
+        "AF-A01",
+        "AF-A02",
+        "AF-A03",
+        "AF-A04",
+        "AF-A05",
+        "AF-A06",
+        "AF-A07",
+        "AF-A08",
+        "AF-A09",
+        "AF-A10",
+        "AF-A11",
+        "AF-A12",
+        "AF-A13",
+        "AF-A14",
+        "AF-A15",
+        "AF-A16",
+        "AF-A17",
+        "AF-A18"
+      ],
+      "ux_ids": [
+        "AF-U01",
+        "AF-U02",
+        "AF-U03",
+        "AF-U04",
+        "AF-U05",
+        "AF-U06",
+        "AF-U07",
+        "AF-U08",
+        "AF-U09",
+        "AF-U10",
+        "AF-U11",
+        "AF-U12"
+      ],
+      "final_goal_ids": [
+        "FINAL-G1",
+        "FINAL-G2",
+        "FINAL-G3"
+      ]
+    },
+    {
+      "id": "E26",
+      "file": "docs/acceptance/catpaw-final-product-acceptance.md",
+      "sha256": "753ad8250e9d647b8b081518f88bbd51ffd85163e116c32252e3393c75004bbd",
+      "publication_scope": "versioned",
+      "evidence_kind": "final_quality_and_comparison_procedures",
+      "adopted": "9FQ、8BP与绝对质量/具名优势分别签收",
+      "limits_or_deferred": "未执行；合成与广告不能替代真实对照",
+      "goal_ids": [
+        "AF-G1",
+        "AF-G2",
+        "AF-G3",
+        "AF-G4",
+        "AF-GD",
+        "AF-G5"
+      ],
+      "acceptance_ids": [
+        "AF-A01",
+        "AF-A02",
+        "AF-A03",
+        "AF-A04",
+        "AF-A05",
+        "AF-A06",
+        "AF-A07",
+        "AF-A08",
+        "AF-A09",
+        "AF-A10",
+        "AF-A11",
+        "AF-A12",
+        "AF-A13",
+        "AF-A14",
+        "AF-A15",
+        "AF-A16",
+        "AF-A17",
+        "AF-A18"
+      ],
+      "ux_ids": [
+        "AF-U01",
+        "AF-U02",
+        "AF-U03",
+        "AF-U04",
+        "AF-U05",
+        "AF-U06",
+        "AF-U07",
+        "AF-U08",
+        "AF-U09",
+        "AF-U10",
+        "AF-U11",
+        "AF-U12"
+      ],
+      "final_goal_ids": [
+        "FINAL-G1",
+        "FINAL-G2",
+        "FINAL-G3"
+      ]
+    },
+    {
+      "id": "E27",
+      "file": "docs/acceptance/catpaw-final-product-acceptance.json",
+      "sha256": "068a67abcd30500b8136e0d00bff7ec02b4b36329c4a8b761bef096eefe08239",
+      "publication_scope": "versioned",
+      "evidence_kind": "final_machine_acceptance_contract",
+      "adopted": "映射现有18A/12U/3CP和W/D单元，限定比较规则",
+      "limits_or_deferred": "当前2探针不够p95；后续实测需固定资源清单",
+      "goal_ids": [
+        "AF-G1",
+        "AF-G2",
+        "AF-G3",
+        "AF-G4",
+        "AF-GD",
+        "AF-G5"
+      ],
+      "acceptance_ids": [
+        "AF-A01",
+        "AF-A02",
+        "AF-A03",
+        "AF-A04",
+        "AF-A05",
+        "AF-A06",
+        "AF-A07",
+        "AF-A08",
+        "AF-A09",
+        "AF-A10",
+        "AF-A11",
+        "AF-A12",
+        "AF-A13",
+        "AF-A14",
+        "AF-A15",
+        "AF-A16",
+        "AF-A17",
+        "AF-A18"
+      ],
+      "ux_ids": [
+        "AF-U01",
+        "AF-U02",
+        "AF-U03",
+        "AF-U04",
+        "AF-U05",
+        "AF-U06",
+        "AF-U07",
+        "AF-U08",
+        "AF-U09",
+        "AF-U10",
+        "AF-U11",
+        "AF-U12"
+      ],
+      "final_goal_ids": [
+        "FINAL-G1",
+        "FINAL-G2",
+        "FINAL-G3"
+      ]
+    },
+    {
+      "id": "E28",
+      "file": "docs/design/prototypes/catpaw-final/index.html",
+      "sha256": "8e0b2aa1b6f38dd6cabe9181ef3c4204596210f0a9a79925cadafbedb353ab46",
+      "publication_scope": "versioned",
+      "evidence_kind": "synthetic_interaction_design_proposal",
+      "adopted": "流中决定、审批找回/过期/unknown、成果冲突、跟进控制；R1人工提案修正工作身份、计划摘要、修改模式和跟进字段保留",
+      "limits_or_deferred": "人工场景，无模型/DB/设备；不能关闭原生产品验收",
+      "goal_ids": [
+        "AF-G1",
+        "AF-G2",
+        "AF-G3",
+        "AF-G4",
+        "AF-GD",
+        "AF-G5"
+      ],
+      "acceptance_ids": [
+        "AF-A01",
+        "AF-A02",
+        "AF-A03",
+        "AF-A04",
+        "AF-A05",
+        "AF-A06",
+        "AF-A07",
+        "AF-A08",
+        "AF-A09",
+        "AF-A10",
+        "AF-A11",
+        "AF-A12",
+        "AF-A13",
+        "AF-A14",
+        "AF-A15",
+        "AF-A16",
+        "AF-A17",
+        "AF-A18"
+      ],
+      "ux_ids": [
+        "AF-U01",
+        "AF-U02",
+        "AF-U03",
+        "AF-U04",
+        "AF-U05",
+        "AF-U06",
+        "AF-U07",
+        "AF-U08",
+        "AF-U09",
+        "AF-U10",
+        "AF-U11",
+        "AF-U12"
+      ],
+      "final_goal_ids": [
+        "FINAL-G1",
+        "FINAL-G2",
+        "FINAL-G3"
+      ]
+    },
+    {
+      "id": "E29",
+      "file": "docs/research/copilotkit-conversation-ui-onboarding-review-2026-10-13.md",
+      "sha256": "2623bef48a73a0327b0e36bf5e17619e54ad99ca22dbd82e9c1d27b7b1f0c775",
+      "publication_scope": "versioned",
+      "evidence_kind": "pinned_source_and_onboarding_static_review",
+      "adopted": "注册式原生GenUI与显式跟进、SDK/AG-UI互通边界",
+      "limits_or_deferred": "静态核读；CLI、完整run配置、资源收费和执行可用性未验",
+      "goal_ids": [
+        "AF-G1",
+        "AF-G2",
+        "AF-G4",
+        "AF-GD",
+        "AF-G5"
+      ],
+      "acceptance_ids": [
+        "AF-A03",
+        "AF-A04",
+        "AF-A05",
+        "AF-A07",
+        "AF-A08",
+        "AF-A09",
+        "AF-A10",
+        "AF-A14",
+        "AF-A16",
+        "AF-A17",
+        "AF-A18"
+      ],
+      "ux_ids": [
+        "AF-U04",
+        "AF-U06",
+        "AF-U07",
+        "AF-U08",
+        "AF-U10",
+        "AF-U11",
+        "AF-U12"
+      ],
+      "final_goal_ids": [
+        "FINAL-G1",
+        "FINAL-G3"
+      ]
+    },
+    {
+      "id": "E30",
+      "file": "docs/research/copilotkit-conversation-ui-source-manifest-2026-10-13.json",
+      "sha256": "77530a1339b3d13253848f07ed769c51a6e9342c7c6a4d01f6b3a44bad2c3776",
+      "publication_scope": "versioned",
+      "evidence_kind": "source_response_identity_manifest",
+      "adopted": "6个固定源码blob/字节身份、onboarding响应hash与只读范围",
+      "limits_or_deferred": "来源身份不替代协议/原生/模型/托管验收",
+      "goal_ids": [
+        "AF-G1",
+        "AF-G2",
+        "AF-G4",
+        "AF-GD",
+        "AF-G5"
+      ],
+      "acceptance_ids": [
+        "AF-A03",
+        "AF-A04",
+        "AF-A05",
+        "AF-A07",
+        "AF-A08",
+        "AF-A09",
+        "AF-A10",
+        "AF-A14",
+        "AF-A16",
+        "AF-A17",
+        "AF-A18"
+      ],
+      "ux_ids": [
+        "AF-U04",
+        "AF-U06",
+        "AF-U07",
+        "AF-U08",
+        "AF-U10",
+        "AF-U11",
+        "AF-U12"
+      ],
+      "final_goal_ids": [
+        "FINAL-G1",
+        "FINAL-G3"
+      ]
+    },
+    {
+      "id": "E31",
+      "file": "docs/design/conversation-generative-ui-spec.md",
+      "sha256": "3002bac7873399ec62f1e2a9ad9744d9576f04d9dff5069af48de7d90625358e",
+      "publication_scope": "versioned",
+      "evidence_kind": "mandatory_final_conversation_ui_spec",
+      "adopted": "三种presentation、确定内核、三类动作、布局/恢复与兼容映射；R1按任务选择表图试算，不强制仪表盘或无关参数；R3开合/过程/稳定卡/表图/HIL场景映射原验收",
+      "limits_or_deferred": "实施合同；不证明已部署，不扩大真实调用/依赖/安装许可",
+      "goal_ids": [
+        "AF-G1",
+        "AF-G2",
+        "AF-G4",
+        "AF-GD",
+        "AF-G5"
+      ],
+      "acceptance_ids": [
+        "AF-A03",
+        "AF-A04",
+        "AF-A05",
+        "AF-A07",
+        "AF-A08",
+        "AF-A09",
+        "AF-A10",
+        "AF-A14",
+        "AF-A16",
+        "AF-A17",
+        "AF-A18"
+      ],
+      "ux_ids": [
+        "AF-U04",
+        "AF-U06",
+        "AF-U07",
+        "AF-U08",
+        "AF-U10",
+        "AF-U11",
+        "AF-U12"
+      ],
+      "final_goal_ids": [
+        "FINAL-G1",
+        "FINAL-G3"
+      ]
+    },
+    {
+      "id": "E32",
+      "file": "docs/acceptance/conversation-generative-ui-acceptance.md",
+      "sha256": "3104c7396a3d4b499d1ce2837a0455267fb0d3e7c574daecf2a3972ff1d14cf2",
+      "publication_scope": "versioned",
+      "evidence_kind": "mandatory_final_conversation_ui_procedures",
+      "adopted": "10项正常/失败/原生/真实闭环与两条组合路径；R3开合/过程/稳定卡/表图/HIL场景映射原验收",
+      "limits_or_deferred": "待执行；回放不替代真机/模型/DB",
+      "goal_ids": [
+        "AF-G1",
+        "AF-G2",
+        "AF-G4",
+        "AF-GD",
+        "AF-G5"
+      ],
+      "acceptance_ids": [
+        "AF-A03",
+        "AF-A04",
+        "AF-A05",
+        "AF-A07",
+        "AF-A08",
+        "AF-A09",
+        "AF-A10",
+        "AF-A14",
+        "AF-A16",
+        "AF-A17",
+        "AF-A18"
+      ],
+      "ux_ids": [
+        "AF-U04",
+        "AF-U06",
+        "AF-U07",
+        "AF-U08",
+        "AF-U10",
+        "AF-U11",
+        "AF-U12"
+      ],
+      "final_goal_ids": [
+        "FINAL-G1",
+        "FINAL-G3"
+      ]
+    },
+    {
+      "id": "E33",
+      "file": "docs/acceptance/conversation-generative-ui-acceptance.json",
+      "sha256": "b513570888d1cd07a2d689028b6390c3c31fa856e8aeb04d4478a15ec7b6447f",
+      "publication_scope": "versioned",
+      "evidence_kind": "mandatory_final_conversation_ui_machine_contract",
+      "adopted": "FINAL-G1/G3必需CG映射、固定算法真值和零自动请求；R3开合/过程/稳定卡/表图/HIL场景映射原验收",
+      "limits_or_deferred": "规划校验不关闭产品；不替代基础18A/12U/3CP",
+      "goal_ids": [
+        "AF-G1",
+        "AF-G2",
+        "AF-G4",
+        "AF-GD",
+        "AF-G5"
+      ],
+      "acceptance_ids": [
+        "AF-A03",
+        "AF-A04",
+        "AF-A05",
+        "AF-A07",
+        "AF-A08",
+        "AF-A09",
+        "AF-A10",
+        "AF-A14",
+        "AF-A16",
+        "AF-A17",
+        "AF-A18"
+      ],
+      "ux_ids": [
+        "AF-U04",
+        "AF-U06",
+        "AF-U07",
+        "AF-U08",
+        "AF-U10",
+        "AF-U11",
+        "AF-U12"
+      ],
+      "final_goal_ids": [
+        "FINAL-G1",
+        "FINAL-G3"
+      ]
+    },
+    {
+      "id": "E34",
+      "file": "docs/planning/AF-1/development-start-contract.md",
+      "sha256": "0e53bbabd5fee76efbbe8c915f16b8d6d7d884b8abf9545017bb347cf1a8290f",
+      "publication_scope": "versioned",
+      "evidence_kind": "development_entry_contract",
+      "adopted": "统一spec/验收/执行单元、开工入口、外部资源门和证据责任；R1明确规格分工、CP01先贯通与既有Goal/资源边界；R2视觉层级/有限运动/可访问性与原12U接线；R3开合/过程/稳定卡/表图/HIL场景映射原验收",
+      "limits_or_deferred": "开发合同ready与运行/发布可用分开；实际状态只在主计划",
+      "goal_ids": [
+        "AF-G1",
+        "AF-G2",
+        "AF-G4",
+        "AF-GD",
+        "AF-G5",
+        "AF-G0",
+        "AF-G3"
+      ],
+      "acceptance_ids": [
+        "AF-A01",
+        "AF-A02",
+        "AF-A03",
+        "AF-A04",
+        "AF-A05",
+        "AF-A06",
+        "AF-A07",
+        "AF-A08",
+        "AF-A09",
+        "AF-A10",
+        "AF-A11",
+        "AF-A12",
+        "AF-A13",
+        "AF-A14",
+        "AF-A15",
+        "AF-A16",
+        "AF-A17",
+        "AF-A18"
+      ],
+      "ux_ids": [
+        "AF-U01",
+        "AF-U02",
+        "AF-U03",
+        "AF-U04",
+        "AF-U05",
+        "AF-U06",
+        "AF-U07",
+        "AF-U08",
+        "AF-U09",
+        "AF-U10",
+        "AF-U11",
+        "AF-U12"
+      ],
+      "final_goal_ids": [
+        "FINAL-G1",
+        "FINAL-G2",
+        "FINAL-G3"
+      ]
+    },
+    {
+      "id": "E35",
+      "file": "docs/planning/AF-1/long-task-development-prompt.md",
+      "sha256": "bdb263d011e7df1e16e52cd56b4e81d81076b328cbb58396a555a9a29100b722",
+      "publication_scope": "versioned",
+      "evidence_kind": "user_copyable_development_prompt",
+      "adopted": "长任务执行与持续交付输入、完整放行门、统一主仓；R1持续开发prompt含产品取舍，不在本轮执行；R2视觉层级/有限运动/可访问性与原12U接线；R3开合/过程/稳定卡/表图/HIL场景映射原验收",
+      "limits_or_deferred": "供用户复制；本次编写不启动Goal/子任务/调度或扩大授权",
+      "goal_ids": [
+        "AF-G1",
+        "AF-G2",
+        "AF-G4",
+        "AF-GD",
+        "AF-G5",
+        "AF-G0",
+        "AF-G3"
+      ],
+      "acceptance_ids": [
+        "AF-A01",
+        "AF-A02",
+        "AF-A03",
+        "AF-A04",
+        "AF-A05",
+        "AF-A06",
+        "AF-A07",
+        "AF-A08",
+        "AF-A09",
+        "AF-A10",
+        "AF-A11",
+        "AF-A12",
+        "AF-A13",
+        "AF-A14",
+        "AF-A15",
+        "AF-A16",
+        "AF-A17",
+        "AF-A18"
+      ],
+      "ux_ids": [
+        "AF-U01",
+        "AF-U02",
+        "AF-U03",
+        "AF-U04",
+        "AF-U05",
+        "AF-U06",
+        "AF-U07",
+        "AF-U08",
+        "AF-U09",
+        "AF-U10",
+        "AF-U11",
+        "AF-U12"
+      ],
+      "final_goal_ids": [
+        "FINAL-G1",
+        "FINAL-G2",
+        "FINAL-G3"
+      ]
+    },
+    {
+      "id": "E36",
+      "file": "docs/design/product-experience-review-2026-10-13.md",
+      "sha256": "8f50078fa3ebdaa09cb392121973e477796e5838988eca76fb36392da5f931d0",
+      "publication_scope": "versioned",
+      "evidence_kind": "dated_product_and_interaction_design_review",
+      "adopted": "R1聚焦承诺、合理默认值、层级/修改/成果/首用规则；已回写三份既有规格与原验收",
+      "limits_or_deferred": "设计判断与人工浏览器提案不关闭原生/模型/PG/调度/日用/竞品；不扩大资源或操作授权",
+      "goal_ids": [
+        "AF-G1",
+        "AF-G2",
+        "AF-G3",
+        "AF-G4",
+        "AF-GD",
+        "AF-G5"
+      ],
+      "acceptance_ids": [
+        "AF-A02",
+        "AF-A03",
+        "AF-A04",
+        "AF-A07",
+        "AF-A08",
+        "AF-A09",
+        "AF-A12",
+        "AF-A13",
+        "AF-A14",
+        "AF-A16",
+        "AF-A17",
+        "AF-A18"
+      ],
+      "ux_ids": [
+        "AF-U01",
+        "AF-U02",
+        "AF-U03",
+        "AF-U04",
+        "AF-U05",
+        "AF-U06",
+        "AF-U07",
+        "AF-U08",
+        "AF-U09",
+        "AF-U10",
+        "AF-U11",
+        "AF-U12"
+      ],
+      "final_goal_ids": [
+        "FINAL-G1",
+        "FINAL-G2",
+        "FINAL-G3"
+      ]
+    },
+    {
+      "id": "E37",
+      "file": "docs/design/taste-visual-motion-r2.md",
+      "sha256": "35cc1b992245da042cdbee43d66949bc303942cd472d78358a9c7cedad55a648",
+      "publication_scope": "versioned",
+      "evidence_kind": "ux_visual_motion_implementation_appendix",
+      "adopted": "用户指定taste-skill审阅后的UX-1 R2原生视觉/运动附录和人工可交互提案；保留R1行为、A1与冻结tokens",
+      "limits_or_deferred": "网页与参数检查不关闭模型/PG/真机/系统手势/VoiceOver/帧/日用或竞品验收；未导入上游生产代码",
+      "goal_ids": [
+        "AF-GD",
+        "AF-G5"
+      ],
+      "acceptance_ids": [
+        "AF-A04",
+        "AF-A16",
+        "AF-A17"
+      ],
+      "ux_ids": [
+        "AF-U02",
+        "AF-U03",
+        "AF-U04",
+        "AF-U05",
+        "AF-U07",
+        "AF-U08",
+        "AF-U09",
+        "AF-U10",
+        "AF-U11",
+        "AF-U12"
+      ],
+      "final_goal_ids": [
+        "FINAL-G1",
+        "FINAL-G3"
+      ]
+    },
+    {
+      "id": "E38",
+      "file": "docs/design/taste-visual-motion-r2.json",
+      "sha256": "7ee09a5f99be86d1f5391bc047b846b82419f1ebdfd3bd55889c204bb1f86f60",
+      "publication_scope": "versioned",
+      "evidence_kind": "ux_visual_motion_parameters",
+      "adopted": "用户指定taste-skill审阅后的UX-1 R2原生视觉/运动附录和人工可交互提案；保留R1行为、A1与冻结tokens",
+      "limits_or_deferred": "网页与参数检查不关闭模型/PG/真机/系统手势/VoiceOver/帧/日用或竞品验收；未导入上游生产代码",
+      "goal_ids": [
+        "AF-GD",
+        "AF-G5"
+      ],
+      "acceptance_ids": [
+        "AF-A04",
+        "AF-A16",
+        "AF-A17"
+      ],
+      "ux_ids": [
+        "AF-U02",
+        "AF-U03",
+        "AF-U04",
+        "AF-U05",
+        "AF-U07",
+        "AF-U08",
+        "AF-U09",
+        "AF-U10",
+        "AF-U11",
+        "AF-U12"
+      ],
+      "final_goal_ids": [
+        "FINAL-G1",
+        "FINAL-G3"
+      ]
+    },
+    {
+      "id": "E39",
+      "file": "docs/design/prototypes/catpaw-taste/index.html",
+      "sha256": "a27d2248a7ebc35cfcfda20de2e87f4d617ba3e98e9a44007d1486590f610f7c",
+      "publication_scope": "versioned",
+      "evidence_kind": "synthetic_visual_motion_proposal",
+      "adopted": "用户指定taste-skill审阅后的UX-1 R2原生视觉/运动附录和人工可交互提案；保留R1行为、A1与冻结tokens",
+      "limits_or_deferred": "网页与参数检查不关闭模型/PG/真机/系统手势/VoiceOver/帧/日用或竞品验收；未导入上游生产代码",
+      "goal_ids": [
+        "AF-GD",
+        "AF-G5"
+      ],
+      "acceptance_ids": [
+        "AF-A04",
+        "AF-A16",
+        "AF-A17"
+      ],
+      "ux_ids": [
+        "AF-U02",
+        "AF-U03",
+        "AF-U04",
+        "AF-U05",
+        "AF-U07",
+        "AF-U08",
+        "AF-U09",
+        "AF-U10",
+        "AF-U11",
+        "AF-U12"
+      ],
+      "final_goal_ids": [
+        "FINAL-G1",
+        "FINAL-G3"
+      ]
+    },
+    {
+      "id": "E40",
+      "file": "docs/design/prototypes/catpaw-taste/styles.css",
+      "sha256": "b463004e6aa7abf1dcfe2c29cec21143e1833f4e755f8f93d3ab90408d038edd",
+      "publication_scope": "versioned",
+      "evidence_kind": "synthetic_visual_motion_proposal_styles",
+      "adopted": "用户指定taste-skill审阅后的UX-1 R2原生视觉/运动附录和人工可交互提案；保留R1行为、A1与冻结tokens",
+      "limits_or_deferred": "网页与参数检查不关闭模型/PG/真机/系统手势/VoiceOver/帧/日用或竞品验收；未导入上游生产代码",
+      "goal_ids": [
+        "AF-GD",
+        "AF-G5"
+      ],
+      "acceptance_ids": [
+        "AF-A04",
+        "AF-A16",
+        "AF-A17"
+      ],
+      "ux_ids": [
+        "AF-U02",
+        "AF-U03",
+        "AF-U04",
+        "AF-U05",
+        "AF-U07",
+        "AF-U08",
+        "AF-U09",
+        "AF-U10",
+        "AF-U11",
+        "AF-U12"
+      ],
+      "final_goal_ids": [
+        "FINAL-G1",
+        "FINAL-G3"
+      ]
+    },
+    {
+      "id": "E41",
+      "file": "docs/design/prototypes/catpaw-taste/app.js",
+      "sha256": "cfd4fd875eca1e4ed4ef7620ad6ea51a3c8f5fecef1456e2bd9fa95d0e6fbfb7",
+      "publication_scope": "versioned",
+      "evidence_kind": "synthetic_visual_motion_proposal_interactions",
+      "adopted": "用户指定taste-skill审阅后的UX-1 R2原生视觉/运动附录和人工可交互提案；保留R1行为、A1与冻结tokens",
+      "limits_or_deferred": "网页与参数检查不关闭模型/PG/真机/系统手势/VoiceOver/帧/日用或竞品验收；未导入上游生产代码",
+      "goal_ids": [
+        "AF-GD",
+        "AF-G5"
+      ],
+      "acceptance_ids": [
+        "AF-A04",
+        "AF-A16",
+        "AF-A17"
+      ],
+      "ux_ids": [
+        "AF-U02",
+        "AF-U03",
+        "AF-U04",
+        "AF-U05",
+        "AF-U07",
+        "AF-U08",
+        "AF-U09",
+        "AF-U10",
+        "AF-U11",
+        "AF-U12"
+      ],
+      "final_goal_ids": [
+        "FINAL-G1",
+        "FINAL-G3"
+      ]
+    },
+    {
+      "id": "E42",
+      "file": "docs/design/interaction-scenarios-r3.md",
+      "sha256": "4fd79ce05b007933969764d00a2b05099b92bb465de7fc5f0a3714b0d1b1ab6f",
+      "publication_scope": "versioned",
+      "evidence_kind": "synthetic_interaction_design",
+      "adopted": "UX-1 R3完整开合/过程/稳定卡/表图/HIL交互与42项审阅索引；R2视觉基线保留",
+      "limits_or_deferred": "人工内存状态不关闭真实模型/执行/系统手势/持久化/VO/性能验收；部分效果仅实施说明",
+      "goal_ids": [
+        "AF-GD",
+        "AF-G5"
+      ],
+      "acceptance_ids": [
+        "AF-A04",
+        "AF-A16",
+        "AF-A17"
+      ],
+      "ux_ids": [
+        "AF-U02",
+        "AF-U03",
+        "AF-U04",
+        "AF-U05",
+        "AF-U06",
+        "AF-U07",
+        "AF-U08",
+        "AF-U09",
+        "AF-U10",
+        "AF-U11",
+        "AF-U12"
+      ],
+      "final_goal_ids": [
+        "FINAL-G1",
+        "FINAL-G3"
+      ]
+    },
+    {
+      "id": "E43",
+      "file": "docs/design/interaction-scenarios-r3.json",
+      "sha256": "09e3f8500e75b0934f036601faa5905e7f2cbccb6e57d8a88c410945b85c221d",
+      "publication_scope": "versioned",
+      "evidence_kind": "synthetic_interaction_design",
+      "adopted": "UX-1 R3完整开合/过程/稳定卡/表图/HIL交互与42项审阅索引；R2视觉基线保留",
+      "limits_or_deferred": "人工内存状态不关闭真实模型/执行/系统手势/持久化/VO/性能验收；部分效果仅实施说明",
+      "goal_ids": [
+        "AF-GD",
+        "AF-G5"
+      ],
+      "acceptance_ids": [
+        "AF-A04",
+        "AF-A16",
+        "AF-A17"
+      ],
+      "ux_ids": [
+        "AF-U02",
+        "AF-U03",
+        "AF-U04",
+        "AF-U05",
+        "AF-U06",
+        "AF-U07",
+        "AF-U08",
+        "AF-U09",
+        "AF-U10",
+        "AF-U11",
+        "AF-U12"
+      ],
+      "final_goal_ids": [
+        "FINAL-G1",
+        "FINAL-G3"
+      ]
+    },
+    {
+      "id": "E44",
+      "file": "docs/design/prototypes/catpaw-interaction-r3/README.md",
+      "sha256": "c17ec6da9f1795cd747825ee7937b3adb33f74459b68677687966442ca372d4f",
+      "publication_scope": "versioned",
+      "evidence_kind": "synthetic_interaction_design",
+      "adopted": "UX-1 R3完整开合/过程/稳定卡/表图/HIL交互与42项审阅索引；R2视觉基线保留",
+      "limits_or_deferred": "人工内存状态不关闭真实模型/执行/系统手势/持久化/VO/性能验收；部分效果仅实施说明",
+      "goal_ids": [
+        "AF-GD",
+        "AF-G5"
+      ],
+      "acceptance_ids": [
+        "AF-A04",
+        "AF-A16",
+        "AF-A17"
+      ],
+      "ux_ids": [
+        "AF-U02",
+        "AF-U03",
+        "AF-U04",
+        "AF-U05",
+        "AF-U06",
+        "AF-U07",
+        "AF-U08",
+        "AF-U09",
+        "AF-U10",
+        "AF-U11",
+        "AF-U12"
+      ],
+      "final_goal_ids": [
+        "FINAL-G1",
+        "FINAL-G3"
+      ]
+    },
+    {
+      "id": "E45",
+      "file": "docs/design/prototypes/catpaw-interaction-r3/app.js",
+      "sha256": "ed6be84bd268987e5f44ea30a524d9205dd7c4ab7f562a2f26cd27d726805077",
+      "publication_scope": "versioned",
+      "evidence_kind": "synthetic_interaction_design",
+      "adopted": "UX-1 R3完整开合/过程/稳定卡/表图/HIL交互与42项审阅索引；R2视觉基线保留",
+      "limits_or_deferred": "人工内存状态不关闭真实模型/执行/系统手势/持久化/VO/性能验收；部分效果仅实施说明",
+      "goal_ids": [
+        "AF-GD",
+        "AF-G5"
+      ],
+      "acceptance_ids": [
+        "AF-A04",
+        "AF-A16",
+        "AF-A17"
+      ],
+      "ux_ids": [
+        "AF-U02",
+        "AF-U03",
+        "AF-U04",
+        "AF-U05",
+        "AF-U06",
+        "AF-U07",
+        "AF-U08",
+        "AF-U09",
+        "AF-U10",
+        "AF-U11",
+        "AF-U12"
+      ],
+      "final_goal_ids": [
+        "FINAL-G1",
+        "FINAL-G3"
+      ]
+    },
+    {
+      "id": "E46",
+      "file": "docs/design/prototypes/catpaw-interaction-r3/index.html",
+      "sha256": "26d1138eb814cd1584b5d22146e3f2ed77956fadb0b5b5893c0d34d38f91c40f",
+      "publication_scope": "versioned",
+      "evidence_kind": "synthetic_interaction_design",
+      "adopted": "UX-1 R3完整开合/过程/稳定卡/表图/HIL交互与42项审阅索引；R2视觉基线保留",
+      "limits_or_deferred": "人工内存状态不关闭真实模型/执行/系统手势/持久化/VO/性能验收；部分效果仅实施说明",
+      "goal_ids": [
+        "AF-GD",
+        "AF-G5"
+      ],
+      "acceptance_ids": [
+        "AF-A04",
+        "AF-A16",
+        "AF-A17"
+      ],
+      "ux_ids": [
+        "AF-U02",
+        "AF-U03",
+        "AF-U04",
+        "AF-U05",
+        "AF-U06",
+        "AF-U07",
+        "AF-U08",
+        "AF-U09",
+        "AF-U10",
+        "AF-U11",
+        "AF-U12"
+      ],
+      "final_goal_ids": [
+        "FINAL-G1",
+        "FINAL-G3"
+      ]
+    },
+    {
+      "id": "E47",
+      "file": "docs/design/prototypes/catpaw-interaction-r3/interaction.css",
+      "sha256": "da6e4e808679e1ae976e5243c264fbf4b7e6c64fe41b2edd5a996466c6f81abf",
+      "publication_scope": "versioned",
+      "evidence_kind": "synthetic_interaction_design",
+      "adopted": "UX-1 R3完整开合/过程/稳定卡/表图/HIL交互与42项审阅索引；R2视觉基线保留",
+      "limits_or_deferred": "人工内存状态不关闭真实模型/执行/系统手势/持久化/VO/性能验收；部分效果仅实施说明",
+      "goal_ids": [
+        "AF-GD",
+        "AF-G5"
+      ],
+      "acceptance_ids": [
+        "AF-A04",
+        "AF-A16",
+        "AF-A17"
+      ],
+      "ux_ids": [
+        "AF-U02",
+        "AF-U03",
+        "AF-U04",
+        "AF-U05",
+        "AF-U06",
+        "AF-U07",
+        "AF-U08",
+        "AF-U09",
+        "AF-U10",
+        "AF-U11",
+        "AF-U12"
+      ],
+      "final_goal_ids": [
+        "FINAL-G1",
+        "FINAL-G3"
+      ]
+    },
+    {
+      "id": "E48",
+      "file": "docs/design/prototypes/catpaw-interaction-r3/interaction.js",
+      "sha256": "398fb8acb9982bae31fdee3b756c71e143992f68d103b917c1c6c9b83de7de64",
+      "publication_scope": "versioned",
+      "evidence_kind": "synthetic_interaction_design",
+      "adopted": "UX-1 R3完整开合/过程/稳定卡/表图/HIL交互与42项审阅索引；R2视觉基线保留",
+      "limits_or_deferred": "人工内存状态不关闭真实模型/执行/系统手势/持久化/VO/性能验收；部分效果仅实施说明",
+      "goal_ids": [
+        "AF-GD",
+        "AF-G5"
+      ],
+      "acceptance_ids": [
+        "AF-A04",
+        "AF-A16",
+        "AF-A17"
+      ],
+      "ux_ids": [
+        "AF-U02",
+        "AF-U03",
+        "AF-U04",
+        "AF-U05",
+        "AF-U06",
+        "AF-U07",
+        "AF-U08",
+        "AF-U09",
+        "AF-U10",
+        "AF-U11",
+        "AF-U12"
+      ],
+      "final_goal_ids": [
+        "FINAL-G1",
+        "FINAL-G3"
+      ]
+    },
+    {
+      "id": "E49",
+      "file": "docs/design/prototypes/catpaw-interaction-r3/styles.css",
+      "sha256": "b463004e6aa7abf1dcfe2c29cec21143e1833f4e755f8f93d3ab90408d038edd",
+      "publication_scope": "versioned",
+      "evidence_kind": "synthetic_interaction_design",
+      "adopted": "UX-1 R3完整开合/过程/稳定卡/表图/HIL交互与42项审阅索引；R2视觉基线保留",
+      "limits_or_deferred": "人工内存状态不关闭真实模型/执行/系统手势/持久化/VO/性能验收；部分效果仅实施说明",
+      "goal_ids": [
+        "AF-GD",
+        "AF-G5"
+      ],
+      "acceptance_ids": [
+        "AF-A04",
+        "AF-A16",
+        "AF-A17"
+      ],
+      "ux_ids": [
+        "AF-U02",
+        "AF-U03",
+        "AF-U04",
+        "AF-U05",
+        "AF-U06",
+        "AF-U07",
+        "AF-U08",
+        "AF-U09",
+        "AF-U10",
+        "AF-U11",
+        "AF-U12"
+      ],
+      "final_goal_ids": [
+        "FINAL-G1",
+        "FINAL-G3"
+      ]
+    },
+    {
+      "id": "E50",
+      "file": "docs/design/native-interaction-motion-r4.md",
+      "sha256": "0c76d25089daf0bb587358da97506e0159fbfb5118ebeb649cc10582987577b9",
+      "publication_scope": "versioned",
+      "evidence_kind": "synthetic_visual_and_motion_study",
+      "adopted": "UX-1 R4暖白阅读/控制层，以及跟手、可打断、可取消返回、分档固定确认、锚点菜单、图片回源和稳定阅读；App专用skill方向图",
+      "limits_or_deferred": "合成图/RAM样机与浏览器数值验证不关闭原生/模型/effect/键盘/触觉/性能/冷启动验收；冻结tokens/A1与旧证据保留",
+      "goal_ids": [
+        "AF-GD",
+        "AF-G5"
+      ],
+      "acceptance_ids": [
+        "AF-A04",
+        "AF-A16",
+        "AF-A17"
+      ],
+      "ux_ids": [
+        "AF-U02",
+        "AF-U03",
+        "AF-U04",
+        "AF-U05",
+        "AF-U06",
+        "AF-U07",
+        "AF-U09",
+        "AF-U11",
+        "AF-U12"
+      ],
+      "final_goal_ids": [
+        "FINAL-G1",
+        "FINAL-G3"
+      ]
+    },
+    {
+      "id": "E51",
+      "file": "docs/design/interaction-motion-r4.json",
+      "sha256": "5d82f485884201e86767035ac20748262d87114c416f9d04c7ee489952e3e5d6",
+      "publication_scope": "versioned",
+      "evidence_kind": "synthetic_visual_and_motion_study",
+      "adopted": "UX-1 R4暖白阅读/控制层，以及跟手、可打断、可取消返回、分档固定确认、锚点菜单、图片回源和稳定阅读；App专用skill方向图",
+      "limits_or_deferred": "合成图/RAM样机与浏览器数值验证不关闭原生/模型/effect/键盘/触觉/性能/冷启动验收；冻结tokens/A1与旧证据保留",
+      "goal_ids": [
+        "AF-GD",
+        "AF-G5"
+      ],
+      "acceptance_ids": [
+        "AF-A04",
+        "AF-A16",
+        "AF-A17"
+      ],
+      "ux_ids": [
+        "AF-U02",
+        "AF-U03",
+        "AF-U04",
+        "AF-U05",
+        "AF-U06",
+        "AF-U07",
+        "AF-U09",
+        "AF-U11",
+        "AF-U12"
+      ],
+      "final_goal_ids": [
+        "FINAL-G1",
+        "FINAL-G3"
+      ]
+    },
+    {
+      "id": "E52",
+      "file": "docs/design/prototypes/catpaw-motion-study-r4/README.md",
+      "sha256": "fd434f58057cc61347ee119d35698782df8198f064d8e4a2988ffee98fad3ab8",
+      "publication_scope": "versioned",
+      "evidence_kind": "synthetic_visual_and_motion_study",
+      "adopted": "UX-1 R4暖白阅读/控制层，以及跟手、可打断、可取消返回、分档固定确认、锚点菜单、图片回源和稳定阅读；App专用skill方向图",
+      "limits_or_deferred": "合成图/RAM样机与浏览器数值验证不关闭原生/模型/effect/键盘/触觉/性能/冷启动验收；冻结tokens/A1与旧证据保留",
+      "goal_ids": [
+        "AF-GD",
+        "AF-G5"
+      ],
+      "acceptance_ids": [
+        "AF-A04",
+        "AF-A16",
+        "AF-A17"
+      ],
+      "ux_ids": [
+        "AF-U02",
+        "AF-U03",
+        "AF-U04",
+        "AF-U05",
+        "AF-U06",
+        "AF-U07",
+        "AF-U09",
+        "AF-U11",
+        "AF-U12"
+      ],
+      "final_goal_ids": [
+        "FINAL-G1",
+        "FINAL-G3"
+      ]
+    },
+    {
+      "id": "E53",
+      "file": "docs/design/prototypes/catpaw-motion-study-r4/app.js",
+      "sha256": "eaa5ee930dd41e97a25f55dbe85816751e703d08d9478dc373fc47f66213f203",
+      "publication_scope": "versioned",
+      "evidence_kind": "synthetic_visual_and_motion_study",
+      "adopted": "UX-1 R4暖白阅读/控制层，以及跟手、可打断、可取消返回、分档固定确认、锚点菜单、图片回源和稳定阅读；App专用skill方向图",
+      "limits_or_deferred": "合成图/RAM样机与浏览器数值验证不关闭原生/模型/effect/键盘/触觉/性能/冷启动验收；冻结tokens/A1与旧证据保留",
+      "goal_ids": [
+        "AF-GD",
+        "AF-G5"
+      ],
+      "acceptance_ids": [
+        "AF-A04",
+        "AF-A16",
+        "AF-A17"
+      ],
+      "ux_ids": [
+        "AF-U02",
+        "AF-U03",
+        "AF-U04",
+        "AF-U05",
+        "AF-U06",
+        "AF-U07",
+        "AF-U09",
+        "AF-U11",
+        "AF-U12"
+      ],
+      "final_goal_ids": [
+        "FINAL-G1",
+        "FINAL-G3"
+      ]
+    },
+    {
+      "id": "E54",
+      "file": "docs/design/prototypes/catpaw-motion-study-r4/assets/concept-generation-prompts-r4.md",
+      "sha256": "c00662c6b33eec9f892a5ef573f0917392228f31fde4f90e08f04d4012b299f8",
+      "publication_scope": "versioned",
+      "evidence_kind": "synthetic_visual_and_motion_study",
+      "adopted": "UX-1 R4暖白阅读/控制层，以及跟手、可打断、可取消返回、分档固定确认、锚点菜单、图片回源和稳定阅读；App专用skill方向图",
+      "limits_or_deferred": "合成图/RAM样机与浏览器数值验证不关闭原生/模型/effect/键盘/触觉/性能/冷启动验收；冻结tokens/A1与旧证据保留",
+      "goal_ids": [
+        "AF-GD",
+        "AF-G5"
+      ],
+      "acceptance_ids": [
+        "AF-A04",
+        "AF-A16",
+        "AF-A17"
+      ],
+      "ux_ids": [
+        "AF-U02",
+        "AF-U03",
+        "AF-U04",
+        "AF-U05",
+        "AF-U06",
+        "AF-U07",
+        "AF-U09",
+        "AF-U11",
+        "AF-U12"
+      ],
+      "final_goal_ids": [
+        "FINAL-G1",
+        "FINAL-G3"
+      ]
+    },
+    {
+      "id": "E55",
+      "file": "docs/design/prototypes/catpaw-motion-study-r4/assets/concepts-provenance.json",
+      "sha256": "20046b006ed18dec4e0f89f79722b88b16f9184f4b5a5167e0c43ef92604d1e5",
+      "publication_scope": "versioned",
+      "evidence_kind": "synthetic_visual_and_motion_study",
+      "adopted": "UX-1 R4暖白阅读/控制层，以及跟手、可打断、可取消返回、分档固定确认、锚点菜单、图片回源和稳定阅读；App专用skill方向图",
+      "limits_or_deferred": "合成图/RAM样机与浏览器数值验证不关闭原生/模型/effect/键盘/触觉/性能/冷启动验收；冻结tokens/A1与旧证据保留",
+      "goal_ids": [
+        "AF-GD",
+        "AF-G5"
+      ],
+      "acceptance_ids": [
+        "AF-A04",
+        "AF-A16",
+        "AF-A17"
+      ],
+      "ux_ids": [
+        "AF-U02",
+        "AF-U03",
+        "AF-U04",
+        "AF-U05",
+        "AF-U06",
+        "AF-U07",
+        "AF-U09",
+        "AF-U11",
+        "AF-U12"
+      ],
+      "final_goal_ids": [
+        "FINAL-G1",
+        "FINAL-G3"
+      ]
+    },
+    {
+      "id": "E56",
+      "file": "docs/design/prototypes/catpaw-motion-study-r4/assets/mobile-approval-concept-r4.png",
+      "sha256": "e4fb1c3fa1a4528d04d927389708bc87c133a5a7f1a86fb0f89bf21031500516",
+      "publication_scope": "versioned",
+      "evidence_kind": "synthetic_visual_and_motion_study",
+      "adopted": "UX-1 R4暖白阅读/控制层，以及跟手、可打断、可取消返回、分档固定确认、锚点菜单、图片回源和稳定阅读；App专用skill方向图",
+      "limits_or_deferred": "合成图/RAM样机与浏览器数值验证不关闭原生/模型/effect/键盘/触觉/性能/冷启动验收；冻结tokens/A1与旧证据保留",
+      "goal_ids": [
+        "AF-GD",
+        "AF-G5"
+      ],
+      "acceptance_ids": [
+        "AF-A04",
+        "AF-A16",
+        "AF-A17"
+      ],
+      "ux_ids": [
+        "AF-U02",
+        "AF-U03",
+        "AF-U04",
+        "AF-U05",
+        "AF-U06",
+        "AF-U07",
+        "AF-U09",
+        "AF-U11",
+        "AF-U12"
+      ],
+      "final_goal_ids": [
+        "FINAL-G1",
+        "FINAL-G3"
+      ]
+    },
+    {
+      "id": "E57",
+      "file": "docs/design/prototypes/catpaw-motion-study-r4/assets/mobile-conversation-concept-r4.png",
+      "sha256": "82abd50ca0cf0290ac4aca76b6e009e19eb4fa56e2cc53331973a12337172a7a",
+      "publication_scope": "versioned",
+      "evidence_kind": "synthetic_visual_and_motion_study",
+      "adopted": "UX-1 R4暖白阅读/控制层，以及跟手、可打断、可取消返回、分档固定确认、锚点菜单、图片回源和稳定阅读；App专用skill方向图",
+      "limits_or_deferred": "合成图/RAM样机与浏览器数值验证不关闭原生/模型/effect/键盘/触觉/性能/冷启动验收；冻结tokens/A1与旧证据保留",
+      "goal_ids": [
+        "AF-GD",
+        "AF-G5"
+      ],
+      "acceptance_ids": [
+        "AF-A04",
+        "AF-A16",
+        "AF-A17"
+      ],
+      "ux_ids": [
+        "AF-U02",
+        "AF-U03",
+        "AF-U04",
+        "AF-U05",
+        "AF-U06",
+        "AF-U07",
+        "AF-U09",
+        "AF-U11",
+        "AF-U12"
+      ],
+      "final_goal_ids": [
+        "FINAL-G1",
+        "FINAL-G3"
+      ]
+    },
+    {
+      "id": "E58",
+      "file": "docs/design/prototypes/catpaw-motion-study-r4/assets/mountain-study.svg",
+      "sha256": "f00953940560e63228a5bfd5baac62eaf4c17397b7a63e721f02636bb428c95b",
+      "publication_scope": "versioned",
+      "evidence_kind": "synthetic_visual_and_motion_study",
+      "adopted": "UX-1 R4暖白阅读/控制层，以及跟手、可打断、可取消返回、分档固定确认、锚点菜单、图片回源和稳定阅读；App专用skill方向图",
+      "limits_or_deferred": "合成图/RAM样机与浏览器数值验证不关闭原生/模型/effect/键盘/触觉/性能/冷启动验收；冻结tokens/A1与旧证据保留",
+      "goal_ids": [
+        "AF-GD",
+        "AF-G5"
+      ],
+      "acceptance_ids": [
+        "AF-A04",
+        "AF-A16",
+        "AF-A17"
+      ],
+      "ux_ids": [
+        "AF-U02",
+        "AF-U03",
+        "AF-U04",
+        "AF-U05",
+        "AF-U06",
+        "AF-U07",
+        "AF-U09",
+        "AF-U11",
+        "AF-U12"
+      ],
+      "final_goal_ids": [
+        "FINAL-G1",
+        "FINAL-G3"
+      ]
+    },
+    {
+      "id": "E59",
+      "file": "docs/design/prototypes/catpaw-motion-study-r4/index.html",
+      "sha256": "15cb30fdb18402505be121321430019a1b717d6723d4c0026ee7f3edca4a2c8c",
+      "publication_scope": "versioned",
+      "evidence_kind": "synthetic_visual_and_motion_study",
+      "adopted": "UX-1 R4暖白阅读/控制层，以及跟手、可打断、可取消返回、分档固定确认、锚点菜单、图片回源和稳定阅读；App专用skill方向图",
+      "limits_or_deferred": "合成图/RAM样机与浏览器数值验证不关闭原生/模型/effect/键盘/触觉/性能/冷启动验收；冻结tokens/A1与旧证据保留",
+      "goal_ids": [
+        "AF-GD",
+        "AF-G5"
+      ],
+      "acceptance_ids": [
+        "AF-A04",
+        "AF-A16",
+        "AF-A17"
+      ],
+      "ux_ids": [
+        "AF-U02",
+        "AF-U03",
+        "AF-U04",
+        "AF-U05",
+        "AF-U06",
+        "AF-U07",
+        "AF-U09",
+        "AF-U11",
+        "AF-U12"
+      ],
+      "final_goal_ids": [
+        "FINAL-G1",
+        "FINAL-G3"
+      ]
+    },
+    {
+      "id": "E60",
+      "file": "docs/design/prototypes/catpaw-motion-study-r4/motion.js",
+      "sha256": "c97ff115930bc0277df0995c7be1dc0d44c5f6d1650e76f972c83d6114e4184d",
+      "publication_scope": "versioned",
+      "evidence_kind": "synthetic_visual_and_motion_study",
+      "adopted": "UX-1 R4暖白阅读/控制层，以及跟手、可打断、可取消返回、分档固定确认、锚点菜单、图片回源和稳定阅读；App专用skill方向图",
+      "limits_or_deferred": "合成图/RAM样机与浏览器数值验证不关闭原生/模型/effect/键盘/触觉/性能/冷启动验收；冻结tokens/A1与旧证据保留",
+      "goal_ids": [
+        "AF-GD",
+        "AF-G5"
+      ],
+      "acceptance_ids": [
+        "AF-A04",
+        "AF-A16",
+        "AF-A17"
+      ],
+      "ux_ids": [
+        "AF-U02",
+        "AF-U03",
+        "AF-U04",
+        "AF-U05",
+        "AF-U06",
+        "AF-U07",
+        "AF-U09",
+        "AF-U11",
+        "AF-U12"
+      ],
+      "final_goal_ids": [
+        "FINAL-G1",
+        "FINAL-G3"
+      ]
+    },
+    {
+      "id": "E61",
+      "file": "docs/design/prototypes/catpaw-motion-study-r4/style.css",
+      "sha256": "23a8c62cc2bb26efe8a5e0f45c14f3af100acd44607186cd9b24dce5c018c00f",
+      "publication_scope": "versioned",
+      "evidence_kind": "synthetic_visual_and_motion_study",
+      "adopted": "UX-1 R4暖白阅读/控制层，以及跟手、可打断、可取消返回、分档固定确认、锚点菜单、图片回源和稳定阅读；App专用skill方向图",
+      "limits_or_deferred": "合成图/RAM样机与浏览器数值验证不关闭原生/模型/effect/键盘/触觉/性能/冷启动验收；冻结tokens/A1与旧证据保留",
+      "goal_ids": [
+        "AF-GD",
+        "AF-G5"
+      ],
+      "acceptance_ids": [
+        "AF-A04",
+        "AF-A16",
+        "AF-A17"
+      ],
+      "ux_ids": [
+        "AF-U02",
+        "AF-U03",
+        "AF-U04",
+        "AF-U05",
+        "AF-U06",
+        "AF-U07",
+        "AF-U09",
+        "AF-U11",
+        "AF-U12"
+      ],
+      "final_goal_ids": [
+        "FINAL-G1",
+        "FINAL-G3"
+      ]
+    },
+    {
+      "id": "E62",
+      "file": "docs/design/codex-color-detail-r4-1.md",
+      "sha256": "570b402f0bff84c08be9ce2aafbf998f2f15296974ef560ba984761399fd1f56",
+      "publication_scope": "versioned",
+      "evidence_kind": "synthetic_color_and_ui_refinement",
+      "adopted": "R4.1中性白灰/炭黑阅读面、局部紫色图标发送、黑白审批、13–15辅助字与选中轮廓；用户研究的来源角色限制",
+      "limits_or_deferred": "采样不是官方tokens；浏览器/实色对比计算不关闭原生/玻璃/VO/键盘/真实执行验收；原R4引擎/日期证据/A1/冻结合同保留",
+      "goal_ids": [
+        "AF-GD",
+        "AF-G5"
+      ],
+      "acceptance_ids": [
+        "AF-A04",
+        "AF-A16",
+        "AF-A17"
+      ],
+      "ux_ids": [
+        "AF-U02",
+        "AF-U03",
+        "AF-U04",
+        "AF-U05",
+        "AF-U06",
+        "AF-U07",
+        "AF-U11",
+        "AF-U12"
+      ],
+      "final_goal_ids": [
+        "FINAL-G1",
+        "FINAL-G3"
+      ]
+    },
+    {
+      "id": "E63",
+      "file": "docs/design/codex-color-detail-r4-1.json",
+      "sha256": "0345f29de4f6703f3a26a33bd417976d7ac508472c759087205b22802da25ff1",
+      "publication_scope": "versioned",
+      "evidence_kind": "synthetic_color_and_ui_refinement",
+      "adopted": "R4.1中性白灰/炭黑阅读面、局部紫色图标发送、黑白审批、13–15辅助字与选中轮廓；用户研究的来源角色限制",
+      "limits_or_deferred": "采样不是官方tokens；浏览器/实色对比计算不关闭原生/玻璃/VO/键盘/真实执行验收；原R4引擎/日期证据/A1/冻结合同保留",
+      "goal_ids": [
+        "AF-GD",
+        "AF-G5"
+      ],
+      "acceptance_ids": [
+        "AF-A04",
+        "AF-A16",
+        "AF-A17"
+      ],
+      "ux_ids": [
+        "AF-U02",
+        "AF-U03",
+        "AF-U04",
+        "AF-U05",
+        "AF-U06",
+        "AF-U07",
+        "AF-U11",
+        "AF-U12"
+      ],
+      "final_goal_ids": [
+        "FINAL-G1",
+        "FINAL-G3"
+      ]
+    },
+    {
+      "id": "E64",
+      "file": "docs/design/prototypes/catpaw-codex-color-r4-1/README.md",
+      "sha256": "8cf066263a1734ceae441fd8b145bfe9b714fb5bd270bfd10801d5576e52c4e0",
+      "publication_scope": "versioned",
+      "evidence_kind": "synthetic_color_and_ui_refinement",
+      "adopted": "R4.1中性白灰/炭黑阅读面、局部紫色图标发送、黑白审批、13–15辅助字与选中轮廓；用户研究的来源角色限制",
+      "limits_or_deferred": "采样不是官方tokens；浏览器/实色对比计算不关闭原生/玻璃/VO/键盘/真实执行验收；原R4引擎/日期证据/A1/冻结合同保留",
+      "goal_ids": [
+        "AF-GD",
+        "AF-G5"
+      ],
+      "acceptance_ids": [
+        "AF-A04",
+        "AF-A16",
+        "AF-A17"
+      ],
+      "ux_ids": [
+        "AF-U02",
+        "AF-U03",
+        "AF-U04",
+        "AF-U05",
+        "AF-U06",
+        "AF-U07",
+        "AF-U11",
+        "AF-U12"
+      ],
+      "final_goal_ids": [
+        "FINAL-G1",
+        "FINAL-G3"
+      ]
+    },
+    {
+      "id": "E65",
+      "file": "docs/design/prototypes/catpaw-codex-color-r4-1/index.html",
+      "sha256": "073a25fb5aa0692b5a3963e70b29451c5d6d3ba401512beb89fe11609f2a2d2f",
+      "publication_scope": "versioned",
+      "evidence_kind": "synthetic_color_and_ui_refinement",
+      "adopted": "R4.1中性白灰/炭黑阅读面、局部紫色图标发送、黑白审批、13–15辅助字与选中轮廓；用户研究的来源角色限制",
+      "limits_or_deferred": "采样不是官方tokens；浏览器/实色对比计算不关闭原生/玻璃/VO/键盘/真实执行验收；原R4引擎/日期证据/A1/冻结合同保留",
+      "goal_ids": [
+        "AF-GD",
+        "AF-G5"
+      ],
+      "acceptance_ids": [
+        "AF-A04",
+        "AF-A16",
+        "AF-A17"
+      ],
+      "ux_ids": [
+        "AF-U02",
+        "AF-U03",
+        "AF-U04",
+        "AF-U05",
+        "AF-U06",
+        "AF-U07",
+        "AF-U11",
+        "AF-U12"
+      ],
+      "final_goal_ids": [
+        "FINAL-G1",
+        "FINAL-G3"
+      ]
+    },
+    {
+      "id": "E66",
+      "file": "docs/design/prototypes/catpaw-codex-color-r4-1/refinement.css",
+      "sha256": "5991e3bb66621d5f94c73d642053548ee8a9b8d08bb68529e6623f49ff86e528",
+      "publication_scope": "versioned",
+      "evidence_kind": "synthetic_color_and_ui_refinement",
+      "adopted": "R4.1中性白灰/炭黑阅读面、局部紫色图标发送、黑白审批、13–15辅助字与选中轮廓；用户研究的来源角色限制",
+      "limits_or_deferred": "采样不是官方tokens；浏览器/实色对比计算不关闭原生/玻璃/VO/键盘/真实执行验收；原R4引擎/日期证据/A1/冻结合同保留",
+      "goal_ids": [
+        "AF-GD",
+        "AF-G5"
+      ],
+      "acceptance_ids": [
+        "AF-A04",
+        "AF-A16",
+        "AF-A17"
+      ],
+      "ux_ids": [
+        "AF-U02",
+        "AF-U03",
+        "AF-U04",
+        "AF-U05",
+        "AF-U06",
+        "AF-U07",
+        "AF-U11",
+        "AF-U12"
+      ],
+      "final_goal_ids": [
+        "FINAL-G1",
+        "FINAL-G3"
       ]
     }
   ],

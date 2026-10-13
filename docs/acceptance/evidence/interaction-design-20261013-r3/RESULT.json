@@ -1,0 +1,413 @@
+{
+  "revision": "UX-1 R3",
+  "recorded_on": "2026-10-13",
+  "head_before_design": "9dc9cd921b002035f6b6430ffd56ddd93137a949",
+  "branch": "docs/restart-design-integration",
+  "scope": "synthetic design review and browser interaction, no native product acceptance",
+  "design_delivery": {
+    "scenario_entries": 14,
+    "scenario_review_ids": 42,
+    "prototype": "docs/design/prototypes/catpaw-interaction-r3/index.html",
+    "appendix": "docs/design/interaction-scenarios-r3.md",
+    "visual_baseline": "UX-1 R2 unchanged",
+    "web_state": "memory only; refresh resets"
+  },
+  "inputs": [
+    {
+      "path": "docs/design/interaction-scenarios-r3.md",
+      "sha256": "4fd79ce05b007933969764d00a2b05099b92bb465de7fc5f0a3714b0d1b1ab6f"
+    },
+    {
+      "path": "docs/design/interaction-scenarios-r3.json",
+      "sha256": "09e3f8500e75b0934f036601faa5905e7f2cbccb6e57d8a88c410945b85c221d"
+    },
+    {
+      "path": "docs/design/prototypes/catpaw-interaction-r3/README.md",
+      "sha256": "c17ec6da9f1795cd747825ee7937b3adb33f74459b68677687966442ca372d4f"
+    },
+    {
+      "path": "docs/design/prototypes/catpaw-interaction-r3/app.js",
+      "sha256": "ed6be84bd268987e5f44ea30a524d9205dd7c4ab7f562a2f26cd27d726805077"
+    },
+    {
+      "path": "docs/design/prototypes/catpaw-interaction-r3/index.html",
+      "sha256": "26d1138eb814cd1584b5d22146e3f2ed77956fadb0b5b5893c0d34d38f91c40f"
+    },
+    {
+      "path": "docs/design/prototypes/catpaw-interaction-r3/interaction.css",
+      "sha256": "da6e4e808679e1ae976e5243c264fbf4b7e6c64fe41b2edd5a996466c6f81abf"
+    },
+    {
+      "path": "docs/design/prototypes/catpaw-interaction-r3/interaction.js",
+      "sha256": "398fb8acb9982bae31fdee3b756c71e143992f68d103b917c1c6c9b83de7de64"
+    },
+    {
+      "path": "docs/design/prototypes/catpaw-interaction-r3/styles.css",
+      "sha256": "b463004e6aa7abf1dcfe2c29cec21143e1833f4e755f8f93d3ab90408d038edd"
+    },
+    {
+      "path": "docs/design/ios-codex-experience-spec.md",
+      "sha256": "2e83da5a22e7d846d4fa513705e1ba804b314e22b199a74c69c41018d9866d50"
+    },
+    {
+      "path": "docs/design/conversation-generative-ui-spec.md",
+      "sha256": "3002bac7873399ec62f1e2a9ad9744d9576f04d9dff5069af48de7d90625358e"
+    },
+    {
+      "path": "docs/acceptance/ios-codex-experience-acceptance.md",
+      "sha256": "2747f4af0afd4a037de4b63c727df91296d0ff0edffc71b84735b120732935ec"
+    },
+    {
+      "path": "docs/acceptance/ios-codex-experience-acceptance.json",
+      "sha256": "f772828b268538a0aca3927664453f68b1ee598b4915155c169f9a1b3a38bebf"
+    },
+    {
+      "path": "docs/acceptance/conversation-generative-ui-acceptance.md",
+      "sha256": "3104c7396a3d4b499d1ce2837a0455267fb0d3e7c574daecf2a3972ff1d14cf2"
+    },
+    {
+      "path": "docs/acceptance/conversation-generative-ui-acceptance.json",
+      "sha256": "b513570888d1cd07a2d689028b6390c3c31fa856e8aeb04d4478a15ec7b6447f"
+    },
+    {
+      "path": "docs/planning/AF-1/development-start-contract.md",
+      "sha256": "1834f6c4431cacc09b733ea2165ab98a8caff8b44b008cddff8d918de871fe0f"
+    },
+    {
+      "path": "docs/planning/AF-1/long-task-development-prompt.md",
+      "sha256": "b8a89f5522677db65ccd921ccb0daf5bd0efe8be88ab4bc04f75c27c31a81bb3"
+    },
+    {
+      "path": "docs/planning/AF-1/goal-evidence-map.json",
+      "sha256": "3da5996cfc01996704bbc92a3145bbb317ff5d0a82fe8910d0fbc82203c31d9e"
+    }
+  ],
+  "wip_snapshot": {
+    "path": "build/interaction-design-20261013-r3/before/manifest.json",
+    "sha256": "d7a7501051af7a9b5aaf7d276174bb65dd6dac4acfeb09d0e5079a9532d4ec15",
+    "files": 23
+  },
+  "checks": [
+    {
+      "command": "python3 scripts/check-agent-foundation-plan.py",
+      "result": "PASS",
+      "scope": "planning / frozen source / layout, not runtime product acceptance"
+    },
+    {
+      "command": "python3 scripts/check-agent-foundation-goals.py",
+      "result": "PASS",
+      "scope": "planning / frozen source / layout, not runtime product acceptance"
+    },
+    {
+      "command": "python3 scripts/check-final-product-plan.py",
+      "result": "PASS",
+      "scope": "planning / frozen source / layout, not runtime product acceptance"
+    },
+    {
+      "command": "python3 scripts/check-conversation-ui-plan.py",
+      "result": "PASS",
+      "scope": "planning / frozen source / layout, not runtime product acceptance"
+    },
+    {
+      "command": "python3 scripts/check-repository.py",
+      "result": "PASS",
+      "scope": "planning / frozen source / layout, not runtime product acceptance"
+    },
+    {
+      "command": "python3 scripts/check-repository-layout.py",
+      "result": "PASS",
+      "scope": "planning / frozen source / layout, not runtime product acceptance"
+    },
+    {
+      "command": "node --check app.js / interaction.js",
+      "result": "PASS"
+    },
+    {
+      "command": "git diff --check",
+      "result": "PASS"
+    },
+    {
+      "command": "R3 scenario mapping / 41 local links / no request adapter",
+      "result": "PASS"
+    }
+  ],
+  "browser_layout": {
+    "rows": 72,
+    "widths": [
+      375,
+      390,
+      430
+    ],
+    "appearances": [
+      "light",
+      "dark"
+    ],
+    "type_sizes_px": [
+      17,
+      30
+    ],
+    "screen_or_phone_horizontal_overflow": 0,
+    "screen_button_under_43_8px": 0,
+    "native_hit_area_measured": false
+  },
+  "approval_layout": {
+    "base_rows": 12,
+    "keyboard_case": "375 dark 30",
+    "fixed_actions": 4,
+    "keyboard_initial_overlap_px": 25,
+    "keyboard_final_body_client_px": 180,
+    "keyboard_final_body_scroll_px": 748,
+    "keyboard_final_footer_above_placeholder": true,
+    "native_safe_area_measured": false
+  },
+  "interaction_observations": [
+    {
+      "bodyClient": 180,
+      "bodyScroll": 748,
+      "case": "375 dark 30 keyboard corrected",
+      "footerAboveKeyboard": true
+    },
+    {
+      "case": "stale_approval_disabled",
+      "value": true
+    },
+    {
+      "case": "unknown_actions",
+      "text": "先核对原操作\n×\n\n可能已经创建。读取原操作结果后再决定下一步。\n\n核对执行结果\n稍后核对"
+    },
+    {
+      "case": "single_operation",
+      "text": "原操作已核对\n×\n日程已创建\n\n同一演示操作 #1，没有再次创建。\n\n返回同一工作"
+    },
+    {
+      "case": "duration_truth",
+      "result": "18"
+    },
+    {
+      "case": "duration_invalid",
+      "disabled": true
+    },
+    {
+      "case": "weighted_truth",
+      "chart": "甲50乙82.5加权分数／分 · 0–100；所有分数为人工输入。"
+    },
+    {
+      "case": "line_raw_point",
+      "text": "甲 · 质量 · 80分 · 分／100 · 人工输入 · 数据 v1"
+    },
+    {
+      "case": "table_empty_count",
+      "text": "显示 0 / 2 行 · 质量、省心、加权分／分"
+    },
+    {
+      "case": "table_all_rows_sorted",
+      "text": "方案质量省心加权甲804050乙609082.5"
+    },
+    {
+      "case": "invalid_weight_no_result",
+      "chart": "补齐有效权重后再计算。",
+      "disabled": true
+    },
+    {
+      "case": "explicit_follow_same_work",
+      "changeTitle": "研究助手方案比较",
+      "draft": "按质量权重 3、省心权重 1 继续比较；保留原始分数、来源与局限。",
+      "nav": "研究助手方案比较"
+    },
+    {
+      "case": "required_field_error",
+      "error": "请填写报告标题。",
+      "focus": "cardTitle"
+    },
+    {
+      "case": "background_stream_preserves_editor",
+      "before": {
+        "errorHidden": true,
+        "focus": "cardNote",
+        "top": 699.00390625
+      },
+      "after": {
+        "focus": "cardNote",
+        "note": "手机内的完整工作循环",
+        "paragraphCount": 4,
+        "title": "可用的一页报告",
+        "top": 699.35546875
+      }
+    },
+    {
+      "case": "accepted_not_applied",
+      "text": "↳已受理，等待安全点生效查看要求",
+      "summary": "已受理，等待安全点"
+    },
+    {
+      "case": "applied_then_artifact",
+      "text": "✓一页报告· v2可用的一页报告已按你确认的要求整理，正文与依据可以继续修改。查看成果预览人工成果样例 · 原工作内交付"
+    },
+    {
+      "case": "edge_drag_open_final",
+      "open": true
+    },
+    {
+      "case": "drawer_search_empty",
+      "text": "没有找到对话。清除搜索后返回。"
+    },
+    {
+      "case": "drawer_drag_close_final",
+      "closed": false,
+      "draft": "回来继续检查来源",
+      "focus": ""
+    },
+    {
+      "case": "thread_draft_restore",
+      "draft": "回来继续检查来源",
+      "scene": "侧滑抽屉"
+    },
+    {
+      "case": "drawer_scope_after_clear",
+      "text": "需要你1最近对话公开资料整理工作与资料活动资料与管理工作成果跟进记忆"
+    },
+    {
+      "audit": [
+        "越过阈值 · 已关闭",
+        "浮层已关闭 · 草稿保留 · 无领域提交"
+      ],
+      "case": "drawer_close_after_transition",
+      "focus": "navLeft",
+      "hidden": true
+    },
+    {
+      "case": "sheet_drag_preserves_draft",
+      "text": "下拖关闭后还可以接回。"
+    },
+    {
+      "case": "single_sheet_source_back",
+      "dialogs": 1,
+      "title": "资料与依据"
+    },
+    {
+      "case": "pause_requested",
+      "summary": "已申请暂停，等待安全点"
+    },
+    {
+      "case": "pause_confirmed_at_checkpoint",
+      "summary": "已在安全点暂停"
+    },
+    {
+      "case": "stream_end_keeps_work",
+      "summary": "文字流已结束，工作仍未结束"
+    },
+    {
+      "case": "pause_and_text_end_independent_final",
+      "summary": "工作已暂停 · 正文流已结束"
+    }
+  ],
+  "iteration_limits": [
+    "Browser observations span iterative refinement, not an atomic product release test. Final screenshots and source hashes bind the final proposal.",
+    "drawer_drag_close_final.hidden=false was sampled during its 220ms closing animation; drawer_close_after_transition is the final closed/focus result.",
+    "Fast short native drags may close by velocity. Slow short-drag and pointercancel policy were reviewed in code, not independently measured as physical iPhone gestures.",
+    "Partial effects compound operations, native detents, native sharing/permissions, cold start persistence, VoiceOver, haptics and performance are specification-only in this design delivery."
+  ],
+  "console_errors": [],
+  "screenshots": [
+    {
+      "path": "docs/acceptance/evidence/interaction-design-20261013-r3/r3-drawer.jpg",
+      "sha256": "20fd470e557c9c2354d53833915c9053f3718439dea664d42b929e035c5fefdc",
+      "bytes": 37781,
+      "dimensions": {
+        "width": 651,
+        "height": 1235
+      },
+      "metadata": [
+        {
+          "marker": "0xe0",
+          "bytes": 14,
+          "hex": "4a46494600010100000100010000"
+        }
+      ],
+      "pixel_review": "synthetic browser fixture only, no personal account or device data"
+    },
+    {
+      "path": "docs/acceptance/evidence/interaction-design-20261013-r3/r3-hil.jpg",
+      "sha256": "052bd3b047dd1f67982c9c77968ffb3aad3873a37dd3cc8c489d2565207e38fc",
+      "bytes": 54842,
+      "dimensions": {
+        "width": 651,
+        "height": 1235
+      },
+      "metadata": [
+        {
+          "marker": "0xe0",
+          "bytes": 14,
+          "hex": "4a46494600010100000100010000"
+        }
+      ],
+      "pixel_review": "synthetic browser fixture only, no personal account or device data"
+    },
+    {
+      "path": "docs/acceptance/evidence/interaction-design-20261013-r3/r3-intelligence.jpg",
+      "sha256": "e449f9d2277f27ae447f0e055b77c518d64c476126e6cd5dbb7fd644efcaaf78",
+      "bytes": 53586,
+      "dimensions": {
+        "width": 651,
+        "height": 1235
+      },
+      "metadata": [
+        {
+          "marker": "0xe0",
+          "bytes": 14,
+          "hex": "4a46494600010100000100010000"
+        }
+      ],
+      "pixel_review": "synthetic browser fixture only, no personal account or device data"
+    },
+    {
+      "path": "docs/acceptance/evidence/interaction-design-20261013-r3/r3-process.jpg",
+      "sha256": "d2530958ddde66370a3cdd652084750a35eade6c6d042eabde0750f59247098b",
+      "bytes": 58747,
+      "dimensions": {
+        "width": 651,
+        "height": 1235
+      },
+      "metadata": [
+        {
+          "marker": "0xe0",
+          "bytes": 14,
+          "hex": "4a46494600010100000100010000"
+        }
+      ],
+      "pixel_review": "synthetic browser fixture only, no personal account or device data"
+    }
+  ],
+  "screenshots_source_binding": {
+    "docs/design/prototypes/catpaw-interaction-r3/README.md": "c17ec6da9f1795cd747825ee7937b3adb33f74459b68677687966442ca372d4f",
+    "docs/design/prototypes/catpaw-interaction-r3/app.js": "ed6be84bd268987e5f44ea30a524d9205dd7c4ab7f562a2f26cd27d726805077",
+    "docs/design/prototypes/catpaw-interaction-r3/index.html": "26d1138eb814cd1584b5d22146e3f2ed77956fadb0b5b5893c0d34d38f91c40f",
+    "docs/design/prototypes/catpaw-interaction-r3/interaction.css": "da6e4e808679e1ae976e5243c264fbf4b7e6c64fe41b2edd5a996466c6f81abf",
+    "docs/design/prototypes/catpaw-interaction-r3/interaction.js": "398fb8acb9982bae31fdee3b756c71e143992f68d103b917c1c6c9b83de7de64",
+    "docs/design/prototypes/catpaw-interaction-r3/styles.css": "b463004e6aa7abf1dcfe2c29cec21143e1833f4e755f8f93d3ab90408d038edd"
+  },
+  "execution_observations_file": {
+    "path": "build/interaction-design-20261013-r3/browser-observations.json",
+    "sha256": "a6c47ceee730e263aa0e7a6bf3ee44cee82c6f77362187fc44e4c56a585df281"
+  },
+  "real_requests": {
+    "model": 0,
+    "auth": 0,
+    "sql": 0,
+    "effect": 0,
+    "deployment": 0,
+    "phone_install": 0,
+    "push_or_pr": 0
+  },
+  "runtime_goal_status_changed": false,
+  "native_source_changed": false,
+  "added_dependencies": 0,
+  "acceptance_closed": [],
+  "native_product_result": "NOT_RUN",
+  "sensitivity_scan": {
+    "candidate_files": 860,
+    "candidate_bytes": 11650385,
+    "blocking_hits": [],
+    "manual_review_hits": []
+  }
+}

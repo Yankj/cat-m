@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Catpaw — Codex Color & Detail Study 4.1</title>
+<link rel="stylesheet" href="../catpaw-motion-study-r4/style.css">
+<link rel="stylesheet" href="refinement.css">
+<script src="../catpaw-motion-study-r4/motion.js" defer></script><script src="../catpaw-motion-study-r4/app.js" defer></script>
+</head>
+<body>
+<svg class="symbols" aria-hidden="true"><defs>
+<symbol id="menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h11M4 18h16"/></symbol>
+<symbol id="edit" viewBox="0 0 24 24"><path d="m15 5 4 4M5 19l4-1L20 7a2.8 2.8 0 0 0-4-4L5 14z"/></symbol>
+<symbol id="arrow" viewBox="0 0 24 24"><path d="M12 19V5m-6 6 6-6 6 6"/></symbol>
+<symbol id="chevron" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></symbol>
+<symbol id="back" viewBox="0 0 24 24"><path d="m15 5-7 7 7 7"/></symbol>
+<symbol id="plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+<symbol id="close" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+<symbol id="check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
+<symbol id="more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></symbol>
+<symbol id="search" viewBox="0 0 24 24"><circle cx="10" cy="10" r="6"/><path d="m15 15 5 5"/></symbol>
+<symbol id="calendar" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="16" rx="3"/><path d="M8 3v4m8-4v4M4 11h16"/></symbol>
+<symbol id="document" viewBox="0 0 24 24"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9zm0 0v6h6M8 13h8M8 17h6"/></symbol>
+<symbol id="pause" viewBox="0 0 24 24"><path d="M9 6v12M15 6v12"/></symbol>
+</defs></svg>
+<header class="studio-nav"><a href="./" class="wordmark">Catpaw<span>COLOR & DETAIL / 04.1</span></a><a href="../../codex-color-detail-r4-1.md">设计与原生落点 ↗</a></header>
+<main class="studio">
+<aside class="direction">
+<p class="eyebrow">QUIET INTERFACE. CLEAR CONTROL.</p>
+<h1>界面退后，<br>事情清楚。</h1>
+<p class="intro">中性阅读面，局部强调动作。<br>保留连续手势，让内容更好读。</p>
+<nav class="study-nav" aria-label="体验场景">
+<button data-study="conversation" class="selected"><span>01</span><div>对话与智能交互<small>过程展开 · 稳定阅读 · 本地试算</small></div></button>
+<button data-study="drawer"><span>02</span><div>跟手抽屉<small>边缘拖开 · 反向打断 · 速度吸附</small></div></button>
+<button data-study="detail"><span>03</span><div>连续进入与返回<small>详情推入 · 可取消返回</small></div></button>
+<button data-study="approval"><span>04</span><div>需要你时，清楚一点<small>两档面板 · 固定确认 · 关闭保留</small></div></button>
+<button data-study="image"><span>05</span><div>从这里，展开<small>共享元素 · 下拉返回 · 中途反向</small></div></button>
+<button data-study="menu"><span>06</span><div>贴着对象出现<small>锚点浮层 · 长按菜单</small></div></button>
+</nav>
+<div class="preferences"><label><input id="dark" type="checkbox">深色</label><label><input id="reduced" type="checkbox">减弱动态</label><label><input id="solid" type="checkbox">降低透明度</label><label><input id="largeText" type="checkbox">放大文字</label></div>
+<button id="streamPulse" class="reset">回放流式补充</button><button id="reset" class="reset">重置体验</button>
+</aside>
+<section class="stage" aria-label="交互样机">
+<div class="phone" id="phone">
+<div class="root surface" id="root">
+<div class="status" aria-hidden="true"><span>9:41</span><span class="island"></span><span>▴ ▰</span></div>
+<header class="topbar"><button id="openDrawer" class="circle" aria-label="打开侧栏"><svg><use href="#menu"/></svg></button><button id="titleMenu" class="title-button" aria-label="此对话菜单"><strong>Catpaw</strong><small>周末去山里 <svg><use href="#chevron"/></svg></small></button><button id="newChat" class="circle" aria-label="新对话"><svg><use href="#edit"/></svg></button></header>
+<div class="conversation" id="conversation" tabindex="-1">
+<p class="date">今天 · 09:41</p>
+<div class="user-message">周末想去山里走走，帮我选一个不赶时间的安排。</div>
+<section class="assistant-message">
+<button class="process-summary" id="processToggle" aria-expanded="false"><span class="orbit" aria-hidden="true"></span><span id="processTitle">已整理两种安排</span><svg><use href="#chevron"/></svg></button>
+<div class="process-track" id="processTrack" hidden><div><i></i><strong>找到两个合适去处</strong><small>公开资料 · 人工样例</small></div><div><i></i><strong>比较路程与停留时间</strong><small>2条路线，采用相同口径</small></div><div><i></i><strong>给你留出决定空间</strong><small>没有创建日程或预订</small></div><div class="process-actions"><button id="stopText">停止正文</button><button id="pauseWork">暂停工作</button></div></div>
+<p class="lead"><strong>龙王山更适合这次周末。</strong></p>
+<p class="answer">路上多花一点时间，但步道更安静，周日上午不用赶着返程。</p>
+<article class="intelligence" id="intelligenceCard">
+<div class="section-head"><h2>你更在意什么？</h2><button id="cardMenu" class="plain-icon" aria-label="路线比较操作"><svg><use href="#more"/></svg></button></div>
+<div class="segmented" aria-label="路线偏好"><button data-priority="relaxed" aria-pressed="true">慢一点</button><button data-priority="near" aria-pressed="false">近一点</button></div>
+<div class="comparison-row"><div><strong>龙王山</strong><small>更安静 · 车程 2h</small></div><div class="bar-wrap"><div class="bar" id="barA"></div></div><b id="scoreA">86</b></div>
+<div class="comparison-row"><div><strong>莫干山</strong><small>更方便 · 车程 1.5h</small></div><div class="bar-wrap"><div class="bar secondary" id="barB"></div></div><b id="scoreB">72</b></div>
+<div class="weight-control"><label for="weight">安静程度 <span id="weightValue">70%</span></label><input id="weight" type="range" min="0" max="100" step="5" value="70"><div><span>路程优先</span><span>安静优先</span></div></div>
+<p class="data-caption">人工评分 / 100 · 调整只在本地试算</p><button id="continuePlan" class="text-action">用这个偏好继续 <svg><use href="#chevron"/></svg></button>
+</article>
+<div class="result-head"><h2>一份可以直接用的安排</h2><p>时间留白，事情安排好。</p></div>
+<article class="artifact" id="artifactCard"><button id="imageThumb" class="image-thumb" aria-label="展开山间插图"><img src="../catpaw-motion-study-r4/assets/mountain-study.svg" alt="山间路线插图，人工设计素材"></button><button id="openDetail" class="artifact-text"><span class="artifact-kind">周末安排 · v1</span><strong>在山里，慢慢过两天</strong><span>路线、时间与行前清单 <svg><use href="#chevron"/></svg></span></button></article>
+<article class="pending-card" id="pendingCard"><div class="pending-icon"><svg><use href="#calendar"/></svg></div><div><span>需要你确认</span><h3>把出发时间记下来？</h3><p>周六 08:30 · 你的个人日历</p><button id="openApproval">查看并确认 <svg><use href="#chevron"/></svg></button></div></article>
+<div id="streamTail"></div><button id="appendStream" class="stream-replay">追加一段正文 · 人工回放</button>
+</section>
+</div>
+<button id="jumpLatest" class="jump-latest" hidden>有新内容 <svg><use href="#arrow"/></svg></button>
+<footer class="composer-wrap"><div id="editContext" class="edit-context" hidden><span>继续「周末去山里」</span><button id="exitEdit" aria-label="退出修改">×</button></div><div class="composer"><textarea id="draft" rows="1" aria-label="消息草稿" placeholder="说说你的想法…"></textarea><div><button id="attach" class="plain-icon" aria-label="附件"><svg><use href="#plus"/></svg></button><button id="send" class="send" aria-label="保存到本地待发"><svg><use href="#arrow"/></svg></button></div></div><div class="home-indicator" aria-hidden="true"></div></footer>
+</div>
+<div class="drawer-shade shade" id="drawerShade" hidden></div>
+<aside class="drawer" id="drawer" aria-label="侧栏" hidden><div class="drawer-header"><strong>你的 Catpaw</strong><button id="closeDrawer" class="plain-icon" aria-label="关闭侧栏"><svg><use href="#close"/></svg></button></div><label class="search-box"><svg><use href="#search"/></svg><input id="drawerSearch" placeholder="搜索对话" aria-label="搜索对话"></label><button id="drawerNew" class="drawer-new"><svg><use href="#edit"/></svg>新对话</button><button id="drawerPending" class="drawer-activity"><span class="nav-dot"></span>需要你<span>1</span></button><p class="drawer-group">今天</p><button class="thread current" data-thread="周末去山里"><span>周末去山里</span><small>两种安排，等你选一个</small></button><button class="thread" data-thread="把读书笔记整理成一页"><span>把读书笔记整理成一页</span><small>已经整理好</small></button><p class="drawer-group">昨天</p><button class="thread" data-thread="下周的工作安排"><span>下周的工作安排</span><small>上次读到：周三的重点</small></button><p id="searchEmpty" hidden>没有匹配的对话</p><div class="drawer-bottom"><button id="drawerActivity"><svg><use href="#document"/></svg>活动与成果</button><button id="drawerSettings">偏好与记忆 <svg><use href="#chevron"/></svg></button><div class="account"><span>K</span><div><strong>我的空间</strong><small>对话、成果与草稿</small></div></div></div></aside>
+<section class="detail surface" id="detail" hidden aria-label="成果详情"><div class="status" aria-hidden="true"><span>9:41</span><span class="island"></span><span>▰</span></div><header class="detail-nav"><button id="backDetail" class="plain-icon" aria-label="返回对话"><svg><use href="#back"/></svg></button><span>周末安排</span><button id="detailMenu" class="circle" aria-label="成果操作"><svg><use href="#more"/></svg></button></header><div class="detail-scroll" id="detailScroll"><p class="artifact-kind">成果 · v1 · 人工内容样例</p><h1>在山里，<br>慢慢过两天。</h1><p class="detail-deck">少一个景点，多一些留白。</p><button id="detailImage" class="detail-image" aria-label="展开成果插图"><img src="../catpaw-motion-study-r4/assets/mountain-study.svg" alt="安静的山间路线插图"></button><div class="itinerary"><div><time>周六 08:30</time><h2>出发，不着急</h2><p>预留两小时路程，中途休息一次。抵达后先安顿，再慢慢吃午饭。</p></div><div><time>周六 14:00</time><h2>走一段山间步道</h2><p>当天按体力调整，保留折返余量。出行前重新核实天气、开放与路线条件。</p></div><div><time>周日 10:00</time><h2>让上午空着</h2><p>吃完早餐再决定散步或读书。下午返程，不安排赶时间的打卡。</p></div></div><h2>出发前，带好这些</h2><ul><li>防滑鞋与轻便雨衣</li><li>水、简单食物与充电设备</li><li>确认路线、天气与开放信息</li></ul><p class="source-note">这份内容用于交互设计，不是已核实的出行建议。产品版在同位置显示真实来源与资料时间。</p></div><footer class="detail-footer"><button id="reviseArtifact">继续修改这个安排 <svg><use href="#edit"/></svg></button><div class="home-indicator"></div></footer></section>
+<div class="sheet-shade shade" id="sheetShade" hidden></div>
+<section class="sheet" id="sheet" hidden role="dialog" aria-modal="true" aria-labelledby="sheetTitle"><div class="sheet-handle" id="sheetHandle"><span id="sheetDetent" role="button" tabindex="0" aria-label="切换面板档位"></span><button id="closeSheet" class="circle" aria-label="关闭，保留待确认"><svg><use href="#close"/></svg></button></div><div class="sheet-body" id="sheetBody"></div><footer class="sheet-footer" id="sheetFooter"></footer></section>
+<div class="popover-shade" id="popoverShade" hidden></div><div class="popover" id="popover" hidden role="dialog" aria-label="对象操作"></div>
+<div class="zoom" id="zoom" hidden role="dialog" aria-modal="true" aria-label="图片查看器"><div class="zoom-bg" id="zoomBg"></div><img id="zoomImage" alt="展开的山间插图"><button id="closeZoom" class="circle" aria-label="返回缩略图"><svg><use href="#close"/></svg></button><p>山间路线插图 · 人工设计素材</p></div>
+<div id="toast" class="toast" hidden role="status"></div><div id="live" class="sr-only" aria-live="polite"></div>
+</div>
+<p class="stage-tip" id="stageTip">从左边缘慢慢拖开，再反向拖回，试试中途接手。</p>
+</section>
+<aside class="notes"><span class="note-index">THE FEEL</span><h2 id="noteTitle">连贯，才自然。</h2><p id="noteText">元素跟着手指移动，松手以后才由弹簧接力。中途反向，保留正在发生的位置与速度。</p><div class="note-rule"></div><p class="scope">这是独立的设计样机。内容与状态均为人工样例，按钮不会调用模型、日历或后台。磨砂是网页示意；系统玻璃、触觉、惯性与键盘体验需要原生验收。</p><details open><summary>本轮配色</summary><div class="palette" aria-label="中性阅读与局部紫色动作"><span class="swatch reading">阅读</span><span class="swatch neutral">内容</span><span class="swatch action">动作</span></div><a href="../../codex-color-detail-r4-1.md">参考与取舍 ↗</a><a href="../catpaw-motion-study-r4/">查看原 R4 ↗</a></details><details><summary>当前手势状态</summary><output id="telemetry">就绪</output></details></aside>
+</main>
+</body></html>
