@@ -177,6 +177,32 @@ final class P0NativeExperienceUITests:XCTestCase {
         XCTAssertEqual(input.value as? String,original);XCTAssertEqual(probe(app)["synthetic_reply_calls"] as? Int,0)
         attach(app,name:"Integrated-sidebar-real-root-routes-native-back")
     }
+    func testSidebarSearchClearAndTwoUnsentDraftsRemainInTheirConversations(){
+        let app=launch("p0-ui-lifecycle"),input=app.textViews["chat.input"]
+        let firstText="First unsent sidebar draft",secondText="Second independent sidebar draft"
+        replaceAll(app,input,with:firstText)
+        app.buttons["sidebar.open"].tap();app.buttons["sidebar.new"].tap()
+        wait({(input.value as? String) != firstText},seconds:5)
+        input.tap();input.typeText(secondText)
+        app.buttons["sidebar.open"].tap()
+        let firstRow=app.buttons.matching(NSPredicate(format:"identifier BEGINSWITH %@ AND label CONTAINS %@","sidebar.conversation.",firstText)).firstMatch
+        let secondRow=app.buttons.matching(NSPredicate(format:"identifier BEGINSWITH %@ AND label CONTAINS %@","sidebar.conversation.",secondText)).firstMatch
+        XCTAssertTrue(firstRow.waitForExistence(timeout:5));XCTAssertTrue(secondRow.waitForExistence(timeout:5))
+        let firstID=firstRow.identifier,secondID=secondRow.identifier
+        let drafts=XCTAttachment(screenshot:app.screenshot());drafts.name="Native-sidebar-two-scoped-unsent-drafts";drafts.lifetime = .keepAlways;add(drafts)
+        let search=app.textFields["sidebar.search"];search.tap();search.typeText("No matching conversation")
+        XCTAssertTrue(app.staticTexts["sidebar.empty"].waitForExistence(timeout:3))
+        app.buttons["sidebar.search.clear"].tap()
+        XCTAssertFalse(app.staticTexts["sidebar.empty"].exists);XCTAssertEqual(search.value as? String,search.placeholderValue)
+        search.tap();search.typeText(firstText)
+        XCTAssertEqual(app.buttons.matching(NSPredicate(format:"identifier BEGINSWITH %@","sidebar.conversation.")).count,1)
+        app.buttons[firstID].tap();XCTAssertEqual(input.value as? String,firstText)
+        app.buttons["sidebar.open"].tap();app.buttons["sidebar.search.clear"].tap();app.buttons[secondID].tap()
+        XCTAssertEqual(input.value as? String,secondText)
+        XCTAssertEqual(probe(app)["synthetic_reply_calls"] as? Int,0)
+        let restored=XCTAttachment(screenshot:app.screenshot());restored.name="Native-sidebar-returned-to-second-exact-draft";restored.lifetime = .keepAlways;add(restored)
+        attach(app,name:"Native-sidebar-clear-search-scope-isolation-no-send")
+    }
     func testIntegratedRootEdgeAndPanelClosingGestures(){
         let app=launch("p0-ui-lifecycle"),input=app.textViews["chat.input"],original=input.value as? String
         let start=app.coordinate(withNormalizedOffset:CGVector(dx:0.01,dy:0.40))
@@ -193,20 +219,29 @@ final class P0NativeExperienceUITests:XCTestCase {
     func testIntegratedActualPhotosPickerCancelPreviewAndClosedGate(){
         let app=launch("p0-ui-lifecycle"),input=app.textViews["chat.input"],original=input.value as? String
         app.buttons["attachment.pick"].tap()
-        let cancel=app.buttons["Cancel"].firstMatch
+        let cancel=app.buttons.matching(NSPredicate(format:"label IN %@",["Cancel","取消"])).firstMatch
         XCTAssertTrue(cancel.waitForExistence(timeout:5));cancel.tap()
         XCTAssertEqual(input.value as? String,original);XCTAssertFalse(app.images["attachment.preview"].exists)
         app.buttons["attachment.pick"].tap();XCTAssertTrue(cancel.waitForExistence(timeout:5))
         let pickerShot=XCTAttachment(screenshot:app.screenshot());pickerShot.name="Actual-PhotosPicker-owned-synthetic-media";pickerShot.lifetime = .keepAlways;add(pickerShot)
         print("OWNED_SYNTHETIC_PHOTOS_PICKER_TREE " + app.debugDescription)
         let photos=app.images.matching(identifier:"PXGGridLayout-Info")
-        XCTAssertTrue(photos.firstMatch.waitForExistence(timeout:5))
+        XCTAssertTrue(photos.firstMatch.waitForExistence(timeout:15),app.debugDescription)
         XCTAssertTrue(photos.firstMatch.label.contains("10月12日"),"Only the new seeded synthetic media may be selected; stop for any other first image")
         photos.firstMatch.tap()
         XCTAssertTrue(app.images["attachment.preview"].waitForExistence(timeout:8))
         XCTAssertFalse(app.buttons["chat.send"].isEnabled);XCTAssertTrue(app.staticTexts["attachment.localOnly"].exists)
         XCTAssertEqual(input.value as? String,original);XCTAssertEqual(probe(app)["synthetic_reply_calls"] as? Int,0)
         let shot=XCTAttachment(screenshot:app.screenshot());shot.name="Local-preview-server-vision-disabled-no-fallback";shot.lifetime = .keepAlways;add(shot)
+        app.buttons["sidebar.open"].tap();app.buttons["sidebar.new"].tap()
+        wait({(input.value as? String) != original},seconds:5);XCTAssertFalse(app.images["attachment.preview"].exists)
+        input.tap();input.typeText("Second conversation keeps its own text")
+        app.buttons["sidebar.open"].tap()
+        let first=app.buttons.matching(NSPredicate(format:"identifier BEGINSWITH %@ AND label CONTAINS %@","sidebar.conversation.",original ?? "Saved local draft")).firstMatch
+        XCTAssertTrue(first.waitForExistence(timeout:5));first.tap()
+        XCTAssertEqual(input.value as? String,original);XCTAssertTrue(app.images["attachment.preview"].waitForExistence(timeout:3))
+        XCTAssertFalse(app.buttons["chat.send"].isEnabled)
+        let retained=XCTAttachment(screenshot:app.screenshot());retained.name="Native-PhotosPicker-draft-restored-to-original-conversation";retained.lifetime = .keepAlways;add(retained)
         app.buttons["attachment.remove"].tap();XCTAssertFalse(app.images["attachment.preview"].exists)
         XCTAssertEqual(input.value as? String,original);XCTAssertTrue(app.buttons["chat.send"].isEnabled)
         XCTAssertEqual(probe(app)["synthetic_reply_calls"] as? Int,0);attach(app,name:"Actual-PhotosPicker-local-only-cancel-preview-remove")
