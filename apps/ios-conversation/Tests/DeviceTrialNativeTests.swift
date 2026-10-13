@@ -184,6 +184,17 @@ final class DeviceTrialNativeTests: XCTestCase {
   let counts=await backend.counts();XCTAssertEqual(counts[0],0)
   model.updateInputComposition(false);XCTAssertTrue(model.canAcceptDraft);await model.deactivate()
  }
+ @MainActor func testP0UnknownKeepsNewDraftUntilOriginalIsRead() async throws {
+  let (model,backend,_,_)=try makeP0Model();await model.start()
+  model.editDraft("Synthetic original request");model.prepareSend();let original=try XCTUnwrap(model.outgoingMessages.first?.id)
+  try await p0Until {await backend.has(original)};await model.suspend()
+  try await p0Until {model.session?.unresolved?.state == .unknown && !model.busy}
+  model.editDraft("Retained new draft while original is unknown")
+  let before=model.outgoingMessages.map(\.id);model.prepareSend()
+  XCTAssertFalse(model.canAcceptDraft);XCTAssertEqual(model.draft,"Retained new draft while original is unknown")
+  XCTAssertEqual(model.outgoingMessages.map(\.id),before);XCTAssertEqual(model.session?.unresolved?.id,original)
+  let counts=await backend.counts();XCTAssertEqual(counts[0],1);await model.deactivate()
+ }
  func testP0UserPauseSurvivesBackgroundAndReopen() async throws {
   let repo=try Repository(persistence:SelectedConversationTestStorage()),service=ConversationSessionService(repository:repo),cid=try await service.openLatest(scope:Profiles.user)
   let queue=ConversationFollowupQueueService(repository:repo,scope:Profiles.user,conversationID:cid)

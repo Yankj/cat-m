@@ -327,6 +327,8 @@ final class ConversationFirstUITests: XCTestCase {
         input.tap(); input.typeText("Second pending message")
         XCTAssertTrue(send.isEnabled)
         send.tap()
+        let summary=app.buttons["chat.pendingSummary"]
+        XCTAssertTrue(summary.waitForExistence(timeout:10));summary.tap()
         let pause = app.buttons["chat.followup.pause"]
         XCTAssertTrue(pause.waitForExistence(timeout: 10))
         attach(app, "r6-active-native-followup-enqueued")
@@ -337,13 +339,17 @@ final class ConversationFirstUITests: XCTestCase {
         let remove = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "chat.followup.remove.")).firstMatch
         XCTAssertTrue(remove.exists); remove.tap()
         expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: remove); waitForExpectations(timeout: 10)
+        app.buttons["chat.followup.close"].tap()
         input.tap(); input.typeText("Third retained message")
         XCTAssertTrue(send.isEnabled); send.tap()
+        XCTAssertTrue(summary.waitForExistence(timeout:10));summary.tap()
         XCTAssertTrue(resume.waitForExistence(timeout: 10))
         attach(app, "r6-native-queue-paused-after-removal")
+        app.buttons["chat.followup.close"].tap()
         XCUIDevice.shared.press(.home); app.activate()
         XCTAssertTrue(app.staticTexts["chat.unresolved"].waitForExistence(timeout: 15))
-        XCTAssertTrue(resume.exists); XCTAssertFalse(resume.isEnabled)
+        XCTAssertTrue(summary.exists);summary.tap();XCTAssertTrue(resume.exists);XCTAssertFalse(resume.isEnabled)
+        app.buttons["chat.followup.close"].tap()
         input.tap(); input.typeText("Must not dispatch while unknown")
         XCTAssertFalse(send.isEnabled)
         XCTAssertEqual(app.otherElements.matching(identifier: "chat.userMessage").count + app.staticTexts.matching(identifier: "chat.userMessage").count, 1)
