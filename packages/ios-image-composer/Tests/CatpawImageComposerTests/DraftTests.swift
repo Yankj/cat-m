@@ -35,6 +35,31 @@ import XCTest
         draft.receiveSelectedData(try SyntheticImages.source(), ticket: current); await draft.waitForCurrentWork()
         XCTAssertEqual(draft.phase, .ready)
     }
+    func testDisappearingPickerCannotCancelAnotherPickerPendingSelection() async throws {
+        let draft=ImageAttachmentDraft(),old=draft.beginSelection(),current=draft.beginSelection()
+        draft.cancelPendingSelection(ticket:old)
+        XCTAssertEqual(draft.phase,.loading)
+        draft.receiveSelectedData(try SyntheticImages.source(),ticket:current)
+        await draft.waitForCurrentWork()
+        XCTAssertEqual(draft.phase,.ready)
+        let later=draft.beginSelection()
+        draft.cancelPendingSelection(ticket:later)
+        XCTAssertEqual(draft.phase,.failed(.cancelled))
+        draft.receiveSelectedData(try SyntheticImages.source(),ticket:later)
+        XCTAssertEqual(draft.phase,.failed(.cancelled),"A cancelled read cannot deliver its late bytes")
+    }
+    func testAcceptedEncodingOutlivesPickerPresentationAndRemainsScoped() async throws {
+        let template=try await SystemImageAttachmentEncoder().encode(SyntheticImages.source(),id:UUID(),format:.png,limits:.init())
+        let encoder=GateEncoder(template:template),draft=ImageAttachmentDraft(encoder:encoder),ticket=draft.beginSelection()
+        draft.receiveSelectedData(try SyntheticImages.source(),ticket:ticket)
+        let ids=await encoder.started(1)
+        draft.cancelPendingSelection(ticket:ticket)
+        XCTAssertEqual(draft.phase,.encoding,"The accepting draft owns encoding after the read delivers bytes")
+        await encoder.finish(ids[0]);await draft.waitForCurrentWork()
+        XCTAssertEqual(draft.phase,.ready);XCTAssertEqual(draft.attachment?.id,ids[0])
+        draft.clear();draft.cancelPendingSelection(ticket:ticket)
+        XCTAssertEqual(draft.phase,.empty);XCTAssertNil(draft.attachment)
+    }
     func testEncodingFailureKeepsPreviousPreviewAndBlocksSilentTextFallback() async throws {
         let draft = ImageAttachmentDraft(), first = draft.beginSelection()
         draft.receiveSelectedData(try SyntheticImages.source(), ticket: first); await draft.waitForCurrentWork()

@@ -1,0 +1,141 @@
+{
+  "kind": "entire_app_bundle_including_debug_dylib_and_signature",
+  "bundle_sha256": "60f56979891c652e7a09f90baed50b7439e2757c7754540df7d428767341be86",
+  "files": [
+    {
+      "path": "AppIcon60x60@2x.png",
+      "bytes": 17938,
+      "sha256": "2972060d13cf370b585ff992e15ad841cf259b9d5e41db5279b87ba37ebc6092"
+    },
+    {
+      "path": "AppIcon76x76@2x~ipad.png",
+      "bytes": 27810,
+      "sha256": "40cf23c5eaf1c5d87ea50f8fc3a1ee627bca60e5655b8ade5f6c13e49efcf576"
+    },
+    {
+      "path": "Assets.car",
+      "bytes": 1465464,
+      "sha256": "4a0b0622403d514242295b9bff8c5b330c2f73de49cb6e69cadca44ea4900e1b"
+    },
+    {
+      "path": "CatpawM",
+      "bytes": 40512,
+      "sha256": "b9fe66079b9e8ad26d3097ead19ab07e2963025c74ea625f1e1b3985ff794b87"
+    },
+    {
+      "path": "CatpawM.debug.dylib",
+      "bytes": 32557648,
+      "sha256": "b891d53d53fc51f80f16fd4c6a6abd13807d3a0be3065a7a8555c528cdf5980e"
+    },
+    {
+      "path": "Info.plist",
+      "bytes": 1749,
+      "sha256": "51c49f8d8a8bdb4291cdaf2407f77e55beea3585b8060985b7799bc52a934009"
+    },
+    {
+      "path": "Metadata.appintents/extract.actionsdata",
+      "bytes": 1822,
+      "sha256": "c732883d97729810a319560cf7a70221cf5730e4399e4cb24206566355d72d9d"
+    },
+    {
+      "path": "Metadata.appintents/root.ssu.yaml",
+      "bytes": 1239,
+      "sha256": "bfd46651e43002e0d76d8663e85ef1814ffc3126f969ddc56b3eb03dd2cea9bd"
+    },
+    {
+      "path": "Metadata.appintents/version.json",
+      "bytes": 53,
+      "sha256": "3940f1530d00561b32387dbc299f7dab36b517962e6e0d3887791d16e1c6a916"
+    },
+    {
+      "path": "PkgInfo",
+      "bytes": 8,
+      "sha256": "82502191c9484b04d685374f9879a0066069c49b8acae7a04b01d38d07e8eca0"
+    },
+    {
+      "path": "PlugIns/CatpawMTests.xctest/CatpawMTests",
+      "bytes": 7539328,
+      "sha256": "cefd2ac7b5f277098d947a1ee1155529626b2e6e4ed98f7e03e40a7b91e2cf96"
+    },
+    {
+      "path": "PlugIns/CatpawMTests.xctest/Info.plist",
+      "bytes": 775,
+      "sha256": "939a90be18ab152124f4cd3f8856d047e3ec8396df42561ceb50308087cf4ee6"
+    },
+    {
+      "path": "PlugIns/CatpawMTests.xctest/_CodeSignature/CodeResources",
+      "bytes": 2038,
+      "sha256": "f463f29455935fe6aff2a3c04eb35c1578a425cac51e77ab9ca6d180d0109aed"
+    },
+    {
+      "path": "PlugIns/CatpawMTests.xctest/legacy-r3-snapshot.json",
+      "bytes": 8099,
+      "sha256": "9c832d8e0edd66d2b5545d413ad212652fe3e5678f8a79ab9b7c0e1dcf4f2c2a"
+    },
+    {
+      "path": "UIStrings.json",
+      "bytes": 134438,
+      "sha256": "1bf8a629ba2acb8c1485f18b4008a86973124f78ab00dd7126f6932f9d6eb986"
+    },
+    {
+      "path": "_CodeSignature/CodeResources",
+      "bytes": 8795,
+      "sha256": "a387df46b383cbd1728bd03d548537efb296aaa68c726d123dce06555b25f6d0"
+    },
+    {
+      "path": "__preview.dylib",
+      "bytes": 16800,
+      "sha256": "ca8e9c83f3ba63d3203a36d2b6a694b768e40513084cdd0722fd5603a03e3430"
+    },
+    {
+      "path": "en.lproj/AppShortcuts.strings",
+      "bytes": 118,
+      "sha256": "104567d61b07467426b1dc3ef66f64890b2f969dbcad1265fb8fd342eb39968a"
+    },
+    {
+      "path": "en.lproj/InfoPlist.strings",
+      "bytes": 740,
+      "sha256": "75f5f1c340deebeb13b7b480788c30499e3c9aafba809c150782ab7a2a2d04b1"
+    },
+    {
+      "path": "en.lproj/Localizable.strings",
+      "bytes": 190,
+      "sha256": "dffc32bacad87aec83537938b84ba94182e2ad05e318f2045d0badb779befc3a"
+    },
+    {
+      "path": "en.lproj/nlu.appintents/1e383a20006b9b96e704f4686f92f66a.version",
+      "bytes": 1,
+      "sha256": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d"
+    },
+    {
+      "path": "en.lproj/nlu.appintents/nlu.lzfse",
+      "bytes": 2177,
+      "sha256": "16c6ebd1bc9bb81f4af0d6839e4d17559fa4c0be15988179b10c19ccdab03adf"
+    },
+    {
+      "path": "zh-Hans.lproj/AppShortcuts.strings",
+      "bytes": 218,
+      "sha256": "4c51465d8657add632e20ae4964853cc203398dc41ad81c3f9b49d429003debf"
+    },
+    {
+      "path": "zh-Hans.lproj/InfoPlist.strings",
+      "bytes": 516,
+      "sha256": "a870751c9bdcc51f75ecef67f4bf680fbf4f9ca965a3e028afbb6ac000d2c8bc"
+    },
+    {
+      "path": "zh-Hans.lproj/Localizable.strings",
+      "bytes": 288,
+      "sha256": "a314fac425da7ccd2e26429ce38e02b2717d354bbe14d77ffd4c61d4210f11e9"
+    },
+    {
+      "path": "zh-Hans.lproj/nlu.appintents/49d35eb9c1a0eb6d2b5b0b1159d36ae9.version",
+      "bytes": 1,
+      "sha256": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d"
+    },
+    {
+      "path": "zh-Hans.lproj/nlu.appintents/nlu.lzfse",
+      "bytes": 332,
+      "sha256": "fe80e50f0e97958d2fd99136b894ac92ca35b9ee2adc2854f9e4c19a36a5e289"
+    }
+  ]
+}

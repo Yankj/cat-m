@@ -1,5 +1,6 @@
 import { LostLeaseError } from '../vendor/openmuse/runtime/engine/worker.mjs';
 import { clone, ensure, id, iso, hash, checkpointHash, dispatched, AdapterError } from './common.mjs';
+import {captureTaskExecutionFence,assertTaskExecutionFence} from '../../../src/task-execution-fence.mjs';
 
 const denied = error => ['grant_conflict', 'scope_forbidden', 'lease_lost', 'operation_conflict', 'unmanaged_task', 'memory_generation_conflict', 'memory_fenced'].includes(error?.code);
 const terminal = new Set(['scheduled', 'succeeded', 'failed', 'outcome_unknown', 'waiting_input', 'waiting_approval']);
@@ -25,7 +26,9 @@ export class BoundedStore {
     if (options.running) {
       if (task.status !== 'running' || task.leaseId !== options.leaseId || Date.parse(task.leaseUntil) <= this.now()) throw new LostLeaseError();
       const attempt = await tx.get(owner, 'runs', options.leaseId);
-      ensure(attempt?.slice?.authority_hash === hash(task.state.catpaw), 'operation_conflict');
+      if(attempt?.taskId!==taskId||attempt.status!=='running'||attempt.slice?.acknowledged)throw new LostLeaseError();
+      assertTaskExecutionFence(task,options.leaseId,this.now(),
+        {authority_hash:attempt?.slice?.authority_hash,revision:attempt?.slice?.execution_revision});
     }
     return { ...admitted, task };
   }
@@ -107,7 +110,8 @@ export class BoundedStore {
     });
   }
   validatePatch(previous, patch) {
-    if (patch.state) ensure(hash(patch.state.catpaw) === hash(previous.state.catpaw), 'authority_patch_forbidden');
+    if (patch.state) ensure(hash(patch.state.catpaw) === hash(previous.state.catpaw) &&
+      hash(patch.state.task_control??null) === hash(previous.state.task_control??null), 'authority_patch_forbidden');
     ensure(!Object.hasOwn(patch, 'id') && !Object.hasOwn(patch, 'input'), 'authority_patch_forbidden');
   }
   async claimAttempt(tx, owner, task, businessRun) {
@@ -115,7 +119,8 @@ export class BoundedStore {
     for (const r of (await tx.list(owner, 'runs')).filter(r => r.taskId === task.id && r.status === 'running' && r.id !== task.leaseId)) {
       await tx.compareAndSwap(owner, 'runs', r.id, { status: 'running' }, { status: 'interrupted', finishedAt: iso(this.now()), recoveryReason: 'superseded_lease' });
     }
-    await tx.insertIfAbsent(owner, 'runs', { id: task.leaseId, taskId: task.id, startedAt: iso(this.now()), status: 'running', slice: { authority_hash: hash(task.state.catpaw), checkpoint_in: checkpointHash(task), acknowledged: false } });
+    const execution=captureTaskExecutionFence(task);
+    await tx.insertIfAbsent(owner, 'runs', { id: task.leaseId, taskId: task.id, startedAt: iso(this.now()), status: 'running', slice: { authority_hash: execution.authority_hash, execution_revision:execution.revision, checkpoint_in: checkpointHash(task), acknowledged: false } });
     await tx.insertIfAbsent(owner, 'catpaw-run-links', { id: task.leaseId, run_id: businessRun.id, operation_id: businessRun.operation_id, task_id: task.id, grant_epoch: businessRun.grant_epoch });
   }
   async acknowledge(tx, owner, previous, next) {

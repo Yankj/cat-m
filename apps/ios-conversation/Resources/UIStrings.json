@@ -2718,5 +2718,1157 @@
   "正在保存…": {
     "zh-Hans": "正在保存…",
     "en": "Saving…"
+  },
+  "复制回复": {
+    "zh-Hans": "复制回复",
+    "en": "Copy reply"
+  },
+  "分享回复": {
+    "zh-Hans": "分享回复",
+    "en": "Share reply"
+  },
+  "引用到草稿": {
+    "zh-Hans": "引用到草稿",
+    "en": "Quote in draft"
+  },
+  "保留现有草稿，不自动发送": {
+    "zh-Hans": "保留现有草稿，不自动发送",
+    "en": "Keep the current draft without sending"
+  },
+  "正在准备交互内容…": {
+    "zh-Hans": "正在准备交互内容…",
+    "en": "Preparing interactive content…"
+  },
+  "交互内容与当前对话不匹配，未启用操作。": {
+    "zh-Hans": "交互内容与当前对话不匹配，未启用操作。",
+    "en": "This content does not match the current conversation; controls are unavailable."
+  },
+  "交互内容暂不可用": {
+    "zh-Hans": "交互内容暂不可用",
+    "en": "Interactive content is unavailable"
+  },
+  "查看完整表": {
+    "zh-Hans": "查看完整表",
+    "en": "View full table"
+  },
+  "来源与说明": {
+    "zh-Hans": "来源与说明",
+    "en": "Sources and notes"
+  },
+  "人工假设": {
+    "zh-Hans": "人工假设",
+    "en": "Synthetic assumption"
+  },
+  "筛选表格": {
+    "zh-Hans": "筛选表格",
+    "en": "Filter table"
+  },
+  "显示 {0} / {1} 行": {
+    "zh-Hans": "显示 {0} / {1} 行",
+    "en": "Showing {0} / {1} rows"
+  },
+  "按此列排序": {
+    "zh-Hans": "按此列排序",
+    "en": "Sort by this column"
+  },
+  "重置": {
+    "zh-Hans": "重置",
+    "en": "Reset"
+  },
+  "图表；原值见下方数据选择": {
+    "zh-Hans": "图表；原值见下方数据选择",
+    "en": "Chart; original values are available in the data selectors below"
+  },
+  "数据序列": {
+    "zh-Hans": "数据序列",
+    "en": "Series"
+  },
+  "数据点": {
+    "zh-Hans": "数据点",
+    "en": "Data point"
+  },
+  "查看数据表": {
+    "zh-Hans": "查看数据表",
+    "en": "View data table"
+  },
+  "剩余时间": {
+    "zh-Hans": "剩余时间",
+    "en": "Remaining time"
+  },
+  "分钟": {
+    "zh-Hans": "分钟",
+    "en": "minutes"
+  },
+  "已超出总时长，请调整参数。": {
+    "zh-Hans": "已超出总时长，请调整参数。",
+    "en": "The budget is exceeded. Adjust the inputs."
+  },
+  "请输入范围内的数值；步骤数量须为整数。": {
+    "zh-Hans": "请输入范围内的数值；步骤数量须为整数。",
+    "en": "Enter numbers within the allowed range; the step count must be an integer."
+  },
+  "总时长（分钟）": {
+    "zh-Hans": "总时长（分钟）",
+    "en": "Total time (minutes)"
+  },
+  "保留时长（分钟）": {
+    "zh-Hans": "保留时长（分钟）",
+    "en": "Reserved time (minutes)"
+  },
+  "步骤数量": {
+    "zh-Hans": "步骤数量",
+    "en": "Step count"
+  },
+  "单步时长（分钟）": {
+    "zh-Hans": "单步时长（分钟）",
+    "en": "Time per step (minutes)"
+  },
+  "剩余 = 总时长 − 保留 − 步骤数 × 单步时长": {
+    "zh-Hans": "剩余 = 总时长 − 保留 − 步骤数 × 单步时长",
+    "en": "Remaining = total − reserved − steps × time per step"
+  },
+  "仅本地试算，不创建日程或发送请求。": {
+    "zh-Hans": "仅本地试算，不创建日程或发送请求。",
+    "en": "Local calculation only; no calendar event or request is created."
+  },
+  "权重须为 0–100，且总权重不能为零。": {
+    "zh-Hans": "权重须为 0–100，且总权重不能为零。",
+    "en": "Weights must be 0–100 and their total must be greater than zero."
+  },
+  "权重": {
+    "zh-Hans": "权重",
+    "en": "Weight"
+  },
+  "加权结果 = 得分 × 权重之和 / 总权重": {
+    "zh-Hans": "加权结果 = 得分 × 权重之和 / 总权重",
+    "en": "Weighted score = sum of score × weight / total weight"
+  },
+  "这些数值无法准确绘图，请查看原始数据表。": {
+    "zh-Hans": "这些数值无法准确绘图，请查看原始数据表。",
+    "en": "These values cannot be plotted accurately. View the original data table."
+  },
+  "该内容暂时无法展示。原回答仍可阅读，请从原工作查看完整成果。": {
+    "zh-Hans": "该内容暂时无法展示。原回答仍可阅读，请从原工作查看完整成果。",
+    "en": "This content is unavailable. The original answer remains readable; open the original work for the complete result."
+  },
+  "保存修改": {
+    "en": "Save amendment",
+    "zh-Hans": "保存修改"
+  },
+  "保留草稿并以新版继续": {
+    "en": "Keep draft and continue with the new version",
+    "zh-Hans": "保留草稿并以新版继续"
+  },
+  "修改尚未提交；草稿已保留。": {
+    "en": "The amendment has not been submitted; your draft is kept.",
+    "zh-Hans": "修改尚未提交；草稿已保留。"
+  },
+  "修改已受理，等待在安全点生效。": {
+    "en": "The amendment was accepted and will apply at a safe checkpoint.",
+    "zh-Hans": "修改已受理，等待在安全点生效。"
+  },
+  "修改已在安全点生效。": {
+    "en": "The amendment applied at a safe checkpoint.",
+    "zh-Hans": "修改已在安全点生效。"
+  },
+  "修改此工作，聊天草稿会保留。": {
+    "en": "Edit this task. Your chat draft will be kept.",
+    "zh-Hans": "修改此工作，聊天草稿会保留。"
+  },
+  "修改结果尚未确认。只核对原修改，请勿重复提交。": {
+    "en": "The amendment result is unknown. Check the original amendment before submitting again.",
+    "zh-Hans": "修改结果尚未确认。只核对原修改，请勿重复提交。"
+  },
+  "修改草稿已保留；尚未提交。": {
+    "en": "Amendment draft saved; not submitted yet.",
+    "zh-Hans": "修改草稿已保留；尚未提交。"
+  },
+  "修改要求": {
+    "en": "Edit requirements",
+    "zh-Hans": "修改要求"
+  },
+  "具体要求": {
+    "en": "Requirements",
+    "zh-Hans": "具体要求"
+  },
+  "工作结果未知，先核对原工作。": {
+    "en": "The task result is unknown. Check the original task first.",
+    "zh-Hans": "工作结果未知，先核对原工作。"
+  },
+  "工作编号": {
+    "en": "Task ID",
+    "zh-Hans": "工作编号"
+  },
+  "工作计划": {
+    "en": "Task plan",
+    "zh-Hans": "工作计划"
+  },
+  "当前执行版本": {
+    "en": "Current execution version",
+    "zh-Hans": "当前执行版本"
+  },
+  "放弃草稿": {
+    "en": "Discard draft",
+    "zh-Hans": "放弃草稿"
+  },
+  "放弃这份修改草稿？": {
+    "en": "Discard this amendment draft?",
+    "zh-Hans": "放弃这份修改草稿？"
+  },
+  "数据版本已更新；旧版本输入仍保留，当前使用新数据。": {
+    "en": "The data version changed. Old inputs are kept; this view uses the new data.",
+    "zh-Hans": "数据版本已更新；旧版本输入仍保留，当前使用新数据。"
+  },
+  "新计划已受理，当前仍执行上一版本。": {
+    "en": "The new plan was accepted; execution still uses the previous version.",
+    "zh-Hans": "新计划已受理，当前仍执行上一版本。"
+  },
+  "显示已保存计划；尚未完成当前读取。": {
+    "en": "Showing the saved plan; the current read has not completed.",
+    "zh-Hans": "显示已保存计划；尚未完成当前读取。"
+  },
+  "本地选择尚未保存，输入仍保留。": {
+    "en": "Local choices have not been saved; the inputs are kept.",
+    "zh-Hans": "本地选择尚未保存，输入仍保留。"
+  },
+  "本地选择暂时无法恢复，原记录已保留；点重置后可重新保存。": {
+    "en": "Local choices could not be restored. The original record is kept; reset to save again.",
+    "zh-Hans": "本地选择暂时无法恢复，原记录已保留；点重置后可重新保存。"
+  },
+  "本地选择读取失败，原记录已保留。": {
+    "en": "Local choices could not be read. The original record is kept.",
+    "zh-Hans": "本地选择读取失败，原记录已保留。"
+  },
+  "查看计划": {
+    "en": "View plan",
+    "zh-Hans": "查看计划"
+  },
+  "核对原修改": {
+    "en": "Check original amendment",
+    "zh-Hans": "核对原修改"
+  },
+  "正在恢复本地选择…": {
+    "en": "Restoring local choices…",
+    "zh-Hans": "正在恢复本地选择…"
+  },
+  "正在读取计划": {
+    "en": "Reading plan",
+    "zh-Hans": "正在读取计划"
+  },
+  "版本与核对信息": {
+    "en": "Version and verification",
+    "zh-Hans": "版本与核对信息"
+  },
+  "目标": {
+    "en": "Goal",
+    "zh-Hans": "目标"
+  },
+  "结束条件": {
+    "en": "Stop conditions",
+    "zh-Hans": "结束条件"
+  },
+  "计划尚未读取。": {
+    "en": "The plan has not been read yet.",
+    "zh-Hans": "计划尚未读取。"
+  },
+  "计划已更新；草稿仍保留，请核对版本。": {
+    "en": "The plan changed. Your draft is kept; check the version.",
+    "zh-Hans": "计划已更新；草稿仍保留，请核对版本。"
+  },
+  "计划版本": {
+    "en": "Plan version",
+    "zh-Hans": "计划版本"
+  },
+  "读取最新计划": {
+    "en": "Read latest plan",
+    "zh-Hans": "读取最新计划"
+  },
+  "返回计划，保留草稿": {
+    "en": "Return to plan and keep draft",
+    "zh-Hans": "返回计划，保留草稿"
+  },
+  "目标最多 4000 字，修改草稿已保留。请缩短后保存修改。": {
+    "en": "The goal is limited to 4000 characters. Your amendment draft is kept; shorten it to submit.",
+    "zh-Hans": "目标最多 4000 字，修改草稿已保留。请缩短后保存修改。"
+  },
+  "具体要求最多 4000 字，修改草稿已保留。请缩短后保存修改。": {
+    "en": "Requirements are limited to 4000 characters. Your amendment draft is kept; shorten them to submit.",
+    "zh-Hans": "具体要求最多 4000 字，修改草稿已保留。请缩短后保存修改。"
+  },
+  "本地修改草稿每项最多 8000 字。请缩短或明确放弃，尚未关闭编辑。": {
+    "en": "Each local draft field is limited to 8000 characters. Shorten it or explicitly discard it; editing remains open.",
+    "zh-Hans": "本地修改草稿每项最多 8000 字。请缩短或明确放弃，尚未关闭编辑。"
+  },
+  "修改草稿尚未保存，请重试或明确放弃。": {
+    "en": "Your amendment draft has not been saved. Retry or explicitly discard it.",
+    "zh-Hans": "修改草稿尚未保存，请重试或明确放弃。"
+  },
+  "分享当前成果": {
+    "en": "Share this result",
+    "zh-Hans": "分享当前成果"
+  },
+  "原始网址": {
+    "en": "Requested URL",
+    "zh-Hans": "原始网址"
+  },
+  "实际读取网址": {
+    "en": "Read URL",
+    "zh-Hans": "实际读取网址"
+  },
+  "对应成果版本": {
+    "en": "Result version",
+    "zh-Hans": "对应成果版本"
+  },
+  "已读来源": {
+    "en": "Read sources",
+    "zh-Hans": "已读来源"
+  },
+  "当前阅读版本": {
+    "en": "Currently reading",
+    "zh-Hans": "当前阅读版本"
+  },
+  "成果内容": {
+    "en": "Result content",
+    "zh-Hans": "成果内容"
+  },
+  "成果暂不可读": {
+    "en": "This result is unavailable.",
+    "zh-Hans": "成果暂不可读"
+  },
+  "成果更新时间": {
+    "en": "Result updated",
+    "zh-Hans": "成果更新时间"
+  },
+  "成果更新时间未提供": {
+    "en": "Result update time not provided",
+    "zh-Hans": "成果更新时间未提供"
+  },
+  "成果版本或内容核对失败，未切换到其他版本。": {
+    "en": "The result version or content could not be verified. No other version was opened.",
+    "zh-Hans": "成果版本或内容核对失败，未切换到其他版本。"
+  },
+  "成果编号": {
+    "en": "Result ID",
+    "zh-Hans": "成果编号"
+  },
+  "打开实际读取网页": {
+    "en": "Open the read webpage",
+    "zh-Hans": "打开实际读取网页"
+  },
+  "最近读取": {
+    "en": "Last read",
+    "zh-Hans": "最近读取"
+  },
+  "来源信息尚未验证，原正文仍可阅读。": {
+    "en": "Source information could not be verified. The original report is still readable.",
+    "zh-Hans": "来源信息尚未验证，原正文仍可阅读。"
+  },
+  "来源编号": {
+    "en": "Source ID",
+    "zh-Hans": "来源编号"
+  },
+  "来源详情": {
+    "en": "Source details",
+    "zh-Hans": "来源详情"
+  },
+  "查看已读来源": {
+    "en": "View read sources",
+    "zh-Hans": "查看已读来源"
+  },
+  "查看成果": {
+    "en": "View result",
+    "zh-Hans": "查看成果"
+  },
+  "此成果版本尚未保存在本机。请返回原工作读取。": {
+    "en": "This result version is not stored locally. Return to the original task to read it.",
+    "zh-Hans": "此成果版本尚未保存在本机。请返回原工作读取。"
+  },
+  "读取回执信息": {
+    "en": "Read receipt information",
+    "zh-Hans": "读取回执信息"
+  },
+  "读取摘录": {
+    "en": "Read excerpt",
+    "zh-Hans": "读取摘录"
+  },
+  "读取时间": {
+    "en": "Read time",
+    "zh-Hans": "读取时间"
+  },
+  "读取编号": {
+    "en": "Read ID",
+    "zh-Hans": "读取编号"
+  },
+  "这份成果暂无可展示的网页读取来源。": {
+    "en": "This result has no webpage read sources to display.",
+    "zh-Hans": "这份成果暂无可展示的网页读取来源。"
+  },
+  "阅读版本": {
+    "en": "Read version",
+    "zh-Hans": "阅读版本"
+  },
+  "查看审批事项": {
+    "en": "Review decisions",
+    "zh-Hans": "查看审批事项"
+  },
+  "待决定事项": {
+    "en": "Decisions to review",
+    "zh-Hans": "待决定事项"
+  },
+  "批准仅记录这份精确事项的决定；设备执行结果会另行核对。": {
+    "en": "Approval records a decision for this exact item. Device execution is checked separately.",
+    "zh-Hans": "批准仅记录这份精确事项的决定；设备执行结果会另行核对。"
+  },
+  "正在读取审批事项": {
+    "en": "Reading decisions",
+    "zh-Hans": "正在读取审批事项"
+  },
+  "显示已保存事项；当前性尚未核对。": {
+    "en": "Showing saved items. Their current validity has not been checked.",
+    "zh-Hans": "显示已保存事项；当前性尚未核对。"
+  },
+  "当前没有可查看的审批事项。": {
+    "en": "There are no decisions to review.",
+    "zh-Hans": "当前没有可查看的审批事项。"
+  },
+  "当前服务尚不支持提交决定，可继续查看事项。": {
+    "en": "This service cannot accept decisions yet. Saved items remain readable.",
+    "zh-Hans": "当前服务尚不支持提交决定，可继续查看事项。"
+  },
+  "核对原决定": {
+    "en": "Check original decision",
+    "zh-Hans": "核对原决定"
+  },
+  "读取最新事项": {
+    "en": "Read latest items",
+    "zh-Hans": "读取最新事项"
+  },
+  "新建日历事件": {
+    "en": "Create a calendar event",
+    "zh-Hans": "新建日历事件"
+  },
+  "日历": {
+    "en": "Calendar",
+    "zh-Hans": "日历"
+  },
+  "开始时间": {
+    "en": "Starts",
+    "zh-Hans": "开始时间"
+  },
+  "结束时间": {
+    "en": "Ends",
+    "zh-Hans": "结束时间"
+  },
+  "提醒": {
+    "en": "Reminder",
+    "zh-Hans": "提醒"
+  },
+  "相对开始时间（秒）": {
+    "en": "Offset from start (seconds)",
+    "zh-Hans": "相对开始时间（秒）"
+  },
+  "无提醒": {
+    "en": "No reminder",
+    "zh-Hans": "无提醒"
+  },
+  "设备与日历身份": {
+    "en": "Device and calendar",
+    "zh-Hans": "设备与日历身份"
+  },
+  "设备编号": {
+    "en": "Device ID",
+    "zh-Hans": "设备编号"
+  },
+  "环境编号": {
+    "en": "Environment ID",
+    "zh-Hans": "环境编号"
+  },
+  "日历编号": {
+    "en": "Calendar ID",
+    "zh-Hans": "日历编号"
+  },
+  "此版本无法决定这类事项，保留原始内容供查看。": {
+    "en": "This version cannot decide this item type. Its original content remains readable.",
+    "zh-Hans": "此版本无法决定这类事项，保留原始内容供查看。"
+  },
+  "原始事项内容": {
+    "en": "Original item content",
+    "zh-Hans": "原始事项内容"
+  },
+  "决定期限": {
+    "en": "Decision deadline",
+    "zh-Hans": "决定期限"
+  },
+  "拒绝": {
+    "en": "Deny",
+    "zh-Hans": "拒绝"
+  },
+  "批准这份事项": {
+    "en": "Approve this item",
+    "zh-Hans": "批准这份事项"
+  },
+  "精确绑定与核对信息": {
+    "en": "Exact item and verification",
+    "zh-Hans": "精确绑定与核对信息"
+  },
+  "事项编号": {
+    "en": "Item ID",
+    "zh-Hans": "事项编号"
+  },
+  "事项版本": {
+    "en": "Item revision",
+    "zh-Hans": "事项版本"
+  },
+  "参数哈希": {
+    "en": "Parameters hash",
+    "zh-Hans": "参数哈希"
+  },
+  "计划哈希": {
+    "en": "Plan hash",
+    "zh-Hans": "计划哈希"
+  },
+  "账户编号": {
+    "en": "Account ID",
+    "zh-Hans": "账户编号"
+  },
+  "分区编号": {
+    "en": "Scope ID",
+    "zh-Hans": "分区编号"
+  },
+  "对话编号": {
+    "en": "Conversation ID",
+    "zh-Hans": "对话编号"
+  },
+  "原消息编号": {
+    "en": "Original turn ID",
+    "zh-Hans": "原消息编号"
+  },
+  "原工作编号": {
+    "en": "Original run ID",
+    "zh-Hans": "原工作编号"
+  },
+  "原请求哈希": {
+    "en": "Original request hash",
+    "zh-Hans": "原请求哈希"
+  },
+  "委派编号": {
+    "en": "Delegation ID",
+    "zh-Hans": "委派编号"
+  },
+  "委派版本": {
+    "en": "Delegation revision",
+    "zh-Hans": "委派版本"
+  },
+  "许可版本": {
+    "en": "Grant epoch",
+    "zh-Hans": "许可版本"
+  },
+  "原决定编号": {
+    "en": "Original decision ID",
+    "zh-Hans": "原决定编号"
+  },
+  "已批准；等待设备，尚未执行。": {
+    "en": "Approved; waiting for the device. Execution has not occurred.",
+    "zh-Hans": "已批准；等待设备，尚未执行。"
+  },
+  "已批准；当前授权已失效，尚未执行。": {
+    "en": "Approved; current authority is no longer valid. Execution has not occurred.",
+    "zh-Hans": "已批准；当前授权已失效，尚未执行。"
+  },
+  "已拒绝；尚未执行。": {
+    "en": "Denied; execution has not occurred.",
+    "zh-Hans": "已拒绝；尚未执行。"
+  },
+  "已过期；尚未决定或执行。": {
+    "en": "Expired; no decision or execution.",
+    "zh-Hans": "已过期；尚未决定或执行。"
+  },
+  "事项已失效；尚未执行。": {
+    "en": "Item invalidated; execution has not occurred.",
+    "zh-Hans": "事项已失效；尚未执行。"
+  },
+  "等待你的决定；尚未执行。": {
+    "en": "Awaiting your decision; execution has not occurred.",
+    "zh-Hans": "等待你的决定；尚未执行。"
+  },
+  "事项已过期或当前性不足；尚未执行。": {
+    "en": "Item expired or not verified as current; execution has not occurred.",
+    "zh-Hans": "事项已过期或当前性不足；尚未执行。"
+  },
+  "未知事项状态；仅供查看。": {
+    "en": "Unknown item state; read only.",
+    "zh-Hans": "未知事项状态；仅供查看。"
+  },
+  "决定期限已过，请读取最新事项。": {
+    "en": "The deadline has passed. Read the latest item.",
+    "zh-Hans": "决定期限已过，请读取最新事项。"
+  },
+  "目标或参数已有新版，这份事项不能批准。": {
+    "en": "The target or parameters have changed. This item cannot be approved.",
+    "zh-Hans": "目标或参数已有新版，这份事项不能批准。"
+  },
+  "计划已变化，这份事项不能批准。": {
+    "en": "The plan has changed. This item cannot be approved.",
+    "zh-Hans": "计划已变化，这份事项不能批准。"
+  },
+  "成果版本已变化，这份事项不能批准。": {
+    "en": "The artifact has changed. This item cannot be approved.",
+    "zh-Hans": "成果版本已变化，这份事项不能批准。"
+  },
+  "原许可已变化，这份事项不能批准。": {
+    "en": "The original grant has changed. This item cannot be approved.",
+    "zh-Hans": "原许可已变化，这份事项不能批准。"
+  },
+  "工作当前不可执行，这份事项不能批准。": {
+    "en": "The task is currently not executable. This item cannot be approved.",
+    "zh-Hans": "工作当前不可执行，这份事项不能批准。"
+  },
+  "当前性无法确认，这份事项不能批准。": {
+    "en": "Current validity is unconfirmed. This item cannot be approved.",
+    "zh-Hans": "当前性无法确认，这份事项不能批准。"
+  },
+  "尚未找到原决定记录；结果仍未知，请继续核对或寻求帮助。": {
+    "en": "The original decision record has not been found. The outcome remains unknown; check again or seek help.",
+    "zh-Hans": "尚未找到原决定记录；结果仍未知，请继续核对或寻求帮助。"
+  },
+  "决定结果尚未确认；只核对原决定，请勿重复提交。": {
+    "en": "The decision outcome is unconfirmed. Check the original decision and do not submit it again.",
+    "zh-Hans": "决定结果尚未确认；只核对原决定，请勿重复提交。"
+  },
+  "决定尚未发送；这份事项仍保留。": {
+    "en": "The decision was not sent. This item is retained.",
+    "zh-Hans": "决定尚未发送；这份事项仍保留。"
+  },
+  "决定未获受理；请读取最新事项后核对。": {
+    "en": "The decision was not accepted. Read the latest item before reviewing it.",
+    "zh-Hans": "决定未获受理；请读取最新事项后核对。"
+  },
+  "审批服务尚未连接，已保存事项仍可查看。": {
+    "en": "The decision service is not connected. Saved items remain readable.",
+    "zh-Hans": "审批服务尚未连接，已保存事项仍可查看。"
+  },
+  "审批对象或校验信息不匹配，未记录决定。": {
+    "en": "The item or verification data does not match. No decision has been recorded.",
+    "zh-Hans": "审批对象或校验信息不匹配，未记录决定。"
+  },
+  "原决定尚在核对，请勿重复提交。": {
+    "en": "The original decision is being checked. Do not submit it again.",
+    "zh-Hans": "原决定尚在核对，请勿重复提交。"
+  },
+  "审批已过期或内容已更新，请读取最新事项。": {
+    "en": "The review has expired or changed. Read the latest item.",
+    "zh-Hans": "审批已过期或内容已更新，请读取最新事项。"
+  },
+  "你编辑的版本；来源保留原资料快照，新增内容尚未重新核验。": {
+    "en": "Your edited version. Sources retain the original snapshots; new content has not been verified again.",
+    "zh-Hans": "你编辑的版本；来源保留原资料快照，新增内容尚未重新核验。"
+  },
+  "编辑成果": {
+    "en": "Edit artifact",
+    "zh-Hans": "编辑成果"
+  },
+  "成果修改尚未发送，草稿已保留。": {
+    "en": "The artifact edit was not sent. Your draft is retained.",
+    "zh-Hans": "成果修改尚未发送，草稿已保留。"
+  },
+  "成果修改服务尚未连接，修改草稿会保留。": {
+    "en": "The artifact edit service is not connected. Your draft is retained.",
+    "zh-Hans": "成果修改服务尚未连接，修改草稿会保留。"
+  },
+  "成果版本、来源或修改回执不匹配，尚未记录保存成功。": {
+    "en": "The artifact version, sources, or edit receipt do not match. A successful save has not been recorded.",
+    "zh-Hans": "成果版本、来源或修改回执不匹配，尚未记录保存成功。"
+  },
+  "原成果修改尚待核对，请勿重复提交。": {
+    "en": "The original artifact edit is awaiting reconciliation. Do not submit it again.",
+    "zh-Hans": "原成果修改尚待核对，请勿重复提交。"
+  },
+  "成果已有新版，原修改草稿仍保留。请核对后明确换用新版。": {
+    "en": "A newer artifact exists. Your original draft is retained. Review it before explicitly adopting the newer version.",
+    "zh-Hans": "成果已有新版，原修改草稿仍保留。请核对后明确换用新版。"
+  },
+  "这份成果当前不能修改，草稿会保留。": {
+    "en": "This artifact cannot currently be edited. Your draft is retained.",
+    "zh-Hans": "这份成果当前不能修改，草稿会保留。"
+  },
+  "先读取当前成果，再保存修改。草稿会保留。": {
+    "en": "Read the current artifact before saving edits. Your draft is retained.",
+    "zh-Hans": "先读取当前成果，再保存修改。草稿会保留。"
+  },
+  "本地修改草稿过长。请缩短或明确放弃，尚未关闭编辑。": {
+    "en": "The local edit draft is too long. Shorten it or explicitly discard it before closing.",
+    "zh-Hans": "本地修改草稿过长。请缩短或明确放弃，尚未关闭编辑。"
+  },
+  "开始前 {0} 分钟": {
+    "en": "{0} minutes before start",
+    "zh-Hans": "开始前 {0} 分钟"
+  },
+  "开始前 {0} 秒": {
+    "en": "{0} seconds before start",
+    "zh-Hans": "开始前 {0} 秒"
+  },
+  "开始时提醒": {
+    "en": "At start",
+    "zh-Hans": "开始时提醒"
+  },
+  "开始前 {0} 天": {
+    "en": "{0} days before start",
+    "zh-Hans": "开始前 {0} 天"
+  },
+  "开始前 {0} 小时": {
+    "en": "{0} hours before start",
+    "zh-Hans": "开始前 {0} 小时"
+  },
+  "精确开始时间": {
+    "en": "Exact start time",
+    "zh-Hans": "精确开始时间"
+  },
+  "精确结束时间": {
+    "en": "Exact end time",
+    "zh-Hans": "精确结束时间"
+  },
+  "提醒偏移（秒）": {
+    "en": "Reminder offset (seconds)",
+    "zh-Hans": "提醒偏移（秒）"
+  },
+  "这是你的人工修改，不会重新调用模型或读取来源。": {
+    "en": "This is your manual edit. It does not call the model or read sources again.",
+    "zh-Hans": "这是你的人工修改，不会重新调用模型或读取来源。"
+  },
+  "修改基于版本": {
+    "en": "Editing version",
+    "zh-Hans": "修改基于版本"
+  },
+  "当前成果版本": {
+    "en": "Current artifact version",
+    "zh-Hans": "当前成果版本"
+  },
+  "沿用给定材料，改后正文未经重新核对。": {
+    "en": "Uses the supplied material. The edited text has not been verified again.",
+    "zh-Hans": "沿用给定材料，改后正文未经重新核对。"
+  },
+  "来源沿用原版本快照，不为改后正文重新担保。": {
+    "en": "Sources retain the original version snapshots. They do not newly verify the edited text.",
+    "zh-Hans": "来源沿用原版本快照，不为改后正文重新担保。"
+  },
+  "正在读取成果": {
+    "en": "Reading artifact",
+    "zh-Hans": "正在读取成果"
+  },
+  "标题": {
+    "en": "Title",
+    "zh-Hans": "标题"
+  },
+  "摘要": {
+    "en": "Summary",
+    "zh-Hans": "摘要"
+  },
+  "正文": {
+    "en": "Content",
+    "zh-Hans": "正文"
+  },
+  "成果已有新版，原稿和输入仍保留。核对后才能换用新版继续。": {
+    "en": "A newer version exists. Your original and edits are retained. Review it before continuing from the newer version.",
+    "zh-Hans": "成果已有新版，原稿和输入仍保留。核对后才能换用新版继续。"
+  },
+  "保留输入并明确换用新版": {
+    "en": "Keep edits and adopt the newer version",
+    "zh-Hans": "保留输入并明确换用新版"
+  },
+  "读取当前成果": {
+    "en": "Read current artifact",
+    "zh-Hans": "读取当前成果"
+  },
+  "修改成果": {
+    "en": "Edit artifact",
+    "zh-Hans": "修改成果"
+  },
+  "关闭并保留草稿": {
+    "en": "Close and keep draft",
+    "zh-Hans": "关闭并保留草稿"
+  },
+  "保存为成果新版本": {
+    "en": "Save a new artifact version",
+    "zh-Hans": "保存为成果新版本"
+  },
+  "修改草稿已保存在本机，尚未提交。": {
+    "en": "Your edit draft is saved locally and has not been submitted.",
+    "zh-Hans": "修改草稿已保存在本机，尚未提交。"
+  },
+  "正在保存本地修改草稿…": {
+    "en": "Saving your edit draft locally…",
+    "zh-Hans": "正在保存本地修改草稿…"
+  },
+  "保存结果尚未确认。只核对原修改，不重复提交。": {
+    "en": "The save outcome is unconfirmed. Check the original edit without submitting again.",
+    "zh-Hans": "保存结果尚未确认。只核对原修改，不重复提交。"
+  },
+  "人工修改已保存": {
+    "en": "Your manual edit is saved",
+    "zh-Hans": "人工修改已保存"
+  },
+  "此次修改尚未保存，原输入仍保留。请先读取当前成果。": {
+    "en": "This edit has not been saved. Your input is retained. Read the current artifact first.",
+    "zh-Hans": "此次修改尚未保存，原输入仍保留。请先读取当前成果。"
+  },
+  "显示本机保存的成果信息，尚未完成当前读取。": {
+    "en": "Showing locally saved artifact information. The current read has not completed.",
+    "zh-Hans": "显示本机保存的成果信息，尚未完成当前读取。"
+  },
+  "标题最多 160 字，修改草稿会保留。": {
+    "en": "The title allows up to 160 characters. Your edit draft is retained.",
+    "zh-Hans": "标题最多 160 字，修改草稿会保留。"
+  },
+  "摘要最多 8000 字，修改草稿会保留。": {
+    "en": "The summary allows up to 8,000 characters. Your edit draft is retained.",
+    "zh-Hans": "摘要最多 8000 字，修改草稿会保留。"
+  },
+  "正文最多 16000 字，修改草稿会保留。": {
+    "en": "The content allows up to 16,000 characters. Your edit draft is retained.",
+    "zh-Hans": "正文最多 16000 字，修改草稿会保留。"
+  },
+  "标题、摘要和正文不能为空，也不能含不支持的控制字符。": {
+    "en": "Title, summary, and content must be nonempty and contain no unsupported control characters.",
+    "zh-Hans": "标题、摘要和正文不能为空，也不能含不支持的控制字符。"
+  },
+  "成果已保存，但工作展示尚未更新。请核对原修改。": {
+    "en": "The artifact is saved, but the task display has not updated. Check the original edit.",
+    "zh-Hans": "成果已保存，但工作展示尚未更新。请核对原修改。"
+  },
+  "本次原决定编号": {
+    "en": "This original decision ID",
+    "zh-Hans": "本次原决定编号"
+  },
+  "有修改草稿未能保存，请核对此前已保存的版本。": {
+    "en": "Some editing drafts could not be saved. Check the previously saved version.",
+    "zh-Hans": "有修改草稿未能保存，请核对此前已保存的版本。"
+  },
+  "已保稿": {
+    "en": "Draft saved",
+    "zh-Hans": "已保稿"
+  },
+  "保稿中": {
+    "en": "Saving draft",
+    "zh-Hans": "保稿中"
+  },
+  "未保存": {
+    "en": "Unsaved",
+    "zh-Hans": "未保存"
+  },
+  "待核对": {
+    "en": "Pending",
+    "zh-Hans": "待核对"
+  },
+  "正在提交": {
+    "en": "Submitting",
+    "zh-Hans": "正在提交"
+  },
+  "正在提交原修改，请勿重复发送。": {
+    "en": "Submitting the original revision. Do not send it again.",
+    "zh-Hans": "正在提交原修改，请勿重复发送。"
+  },
+  "原修改待核对，草稿已保存在本机。": {
+    "en": "The original revision awaits verification. Your draft is saved on this device.",
+    "zh-Hans": "原修改待核对，草稿已保存在本机。"
+  },
+  "新稿未提交": {
+    "en": "New draft unsent",
+    "zh-Hans": "新稿未提交"
+  },
+  "新稿尚未提交；原修改待核对，草稿已保存在本机。": {
+    "en": "The new draft has not been submitted. The original revision awaits verification; your draft is saved on this device.",
+    "zh-Hans": "新稿尚未提交；原修改待核对，草稿已保存在本机。"
+  },
+  "保留这份输入并恢复普通聊天草稿，不取消已提交的修改。": {
+    "en": "Keep this input and restore your ordinary chat draft. Submitted work continues.",
+    "zh-Hans": "保留这份输入并恢复普通聊天草稿，不取消已提交的修改。"
+  },
+  "修改这版": {
+    "en": "Revise this version",
+    "zh-Hans": "修改这版"
+  },
+  "当前会话已关闭，原输入会保留。": {
+    "en": "This conversation is closed. Your input is kept.",
+    "zh-Hans": "当前会话已关闭，原输入会保留。"
+  },
+  "当前连接暂不支持针对成果继续，草稿已保留。": {
+    "en": "This connection does not support continuing from a result yet. Your draft is kept.",
+    "zh-Hans": "当前连接暂不支持针对成果继续，草稿已保留。"
+  },
+  "正在保存本地输入…": {
+    "en": "Saving input locally…",
+    "zh-Hans": "正在保存本地输入…"
+  },
+  "请 Agent 修改这版": {
+    "en": "Ask Agent to revise this version",
+    "zh-Hans": "请 Agent 修改这版"
+  },
+  "请先读取这项工作的最新计划，再选择要继续的成果版本。": {
+    "en": "Read the current plan, then choose the result version to continue.",
+    "zh-Hans": "请先读取这项工作的最新计划，再选择要继续的成果版本。"
+  },
+  "输入已更新，请保留当前内容后重试。": {
+    "en": "Your input changed. Keep it before trying again.",
+    "zh-Hans": "输入已更新，请保留当前内容后重试。"
+  },
+  "这份成果的版本信息尚未核对，原输入会保留。": {
+    "en": "This result version is not verified yet. Your input is kept.",
+    "zh-Hans": "这份成果的版本信息尚未核对，原输入会保留。"
+  },
+  "这项工作当前不能继续，原版本和输入会保留。": {
+    "en": "This work cannot continue yet. The original version and your input are kept.",
+    "zh-Hans": "这项工作当前不能继续，原版本和输入会保留。"
+  },
+  "追问这版": {
+    "en": "Ask about this version",
+    "zh-Hans": "追问这版"
+  },
+  "退出针对成果的输入": {
+    "en": "Return to ordinary chat",
+    "zh-Hans": "退出针对成果的输入"
+  },
+  "针对当前版本继续": {
+    "en": "Continue from this version",
+    "zh-Hans": "针对当前版本继续"
+  },
+  "针对这版追问": {
+    "en": "Ask about this version",
+    "zh-Hans": "针对这版追问"
+  },
+  "暂不可发送": {
+    "en": "Cannot send yet",
+    "zh-Hans": "暂不可发送"
+  },
+  "公开来源读取": {
+    "en": "Public source read",
+    "zh-Hans": "公开来源读取"
+  },
+  "原工作授权已变化，不能恢复这份工作。": {
+    "en": "The original task authorization has changed. This task cannot resume.",
+    "zh-Hans": "原工作授权已变化，不能恢复这份工作。"
+  },
+  "原控制尚在核对，请勿重复提交。": {
+    "en": "The original control is being checked. Do not submit it again.",
+    "zh-Hans": "原控制尚在核对，请勿重复提交。"
+  },
+  "原操作结果尚未确认，请先核对原结果。": {
+    "en": "The original operation outcome is unconfirmed. Check that original outcome first.",
+    "zh-Hans": "原操作结果尚未确认，请先核对原结果。"
+  },
+  "原操作编号": {
+    "en": "Original operation ID",
+    "zh-Hans": "原操作编号"
+  },
+  "原操作身份记录不足，无法确认结果；不能恢复或重复执行。": {
+    "en": "The original operation identity is incomplete. Its outcome cannot be confirmed; this task cannot resume or repeat the operation.",
+    "zh-Hans": "原操作身份记录不足，无法确认结果；不能恢复或重复执行。"
+  },
+  "原来源许可已变化，不能恢复这份工作。": {
+    "en": "The original source authorization has changed. This task cannot resume.",
+    "zh-Hans": "原来源许可已变化，不能恢复这份工作。"
+  },
+  "回执核对时间": {
+    "en": "Receipt verification time",
+    "zh-Hans": "回执核对时间"
+  },
+  "外部操作": {
+    "en": "External operation",
+    "zh-Hans": "外部操作"
+  },
+  "尚未找到原控制记录；结果仍未知，请继续核对。": {
+    "en": "The original control record has not been found. Its outcome remains unknown; keep checking.",
+    "zh-Hans": "尚未找到原控制记录；结果仍未知，请继续核对。"
+  },
+  "工作失败": {
+    "en": "Task failed",
+    "zh-Hans": "工作失败"
+  },
+  "工作已取消": {
+    "en": "Task cancelled",
+    "zh-Hans": "工作已取消"
+  },
+  "工作已完成": {
+    "en": "Task completed",
+    "zh-Hans": "工作已完成"
+  },
+  "工作已按申请暂停；恢复仍受原许可和当前计划约束。": {
+    "en": "The task is paused as requested. Resuming remains subject to the original authorization and current plan.",
+    "zh-Hans": "工作已按申请暂停；恢复仍受原许可和当前计划约束。"
+  },
+  "工作已排队": {
+    "en": "Task queued",
+    "zh-Hans": "工作已排队"
+  },
+  "工作已暂停": {
+    "en": "Task paused",
+    "zh-Hans": "工作已暂停"
+  },
+  "工作当前不允许恢复，请读取最新状态。": {
+    "en": "The task cannot resume right now. Read the latest status.",
+    "zh-Hans": "工作当前不允许恢复，请读取最新状态。"
+  },
+  "工作控制": {
+    "en": "Task controls",
+    "zh-Hans": "工作控制"
+  },
+  "工作控制服务尚未连接，已保存状态仍可查看。": {
+    "en": "Task controls are not connected. Saved status remains available.",
+    "zh-Hans": "工作控制服务尚未连接，已保存状态仍可查看。"
+  },
+  "工作状态尚未确认": {
+    "en": "Task status is unconfirmed",
+    "zh-Hans": "工作状态尚未确认"
+  },
+  "工作状态或计划已变化，请读取最新状态。": {
+    "en": "The task status or plan has changed. Read the latest status.",
+    "zh-Hans": "工作状态或计划已变化，请读取最新状态。"
+  },
+  "工作等待输入": {
+    "en": "Task awaiting input",
+    "zh-Hans": "工作等待输入"
+  },
+  "工作身份或控制回执不匹配，未确认控制结果。": {
+    "en": "The task identity or control receipt does not match. The outcome has not been confirmed.",
+    "zh-Hans": "工作身份或控制回执不匹配，未确认控制结果。"
+  },
+  "工作进行中": {
+    "en": "Task in progress",
+    "zh-Hans": "工作进行中"
+  },
+  "已保存的控制记录达到本机上限，请先保留并核对原记录。": {
+    "en": "Saved control records have reached the local limit. Preserve and check the original records first.",
+    "zh-Hans": "已保存的控制记录达到本机上限，请先保留并核对原记录。"
+  },
+  "已发出，结果尚未确认": {
+    "en": "Dispatched; outcome unconfirmed",
+    "zh-Hans": "已发出，结果尚未确认"
+  },
+  "已有发出但未确认的操作；恢复前必须核对原结果，不重复执行。": {
+    "en": "Dispatched operations remain unconfirmed. Check their original outcomes before resuming; do not execute them again.",
+    "zh-Hans": "已有发出但未确认的操作；恢复前必须核对原结果，不重复执行。"
+  },
+  "当前服务尚不支持控制工作，可继续查看状态。": {
+    "en": "The current service does not support task controls. You can still view the status.",
+    "zh-Hans": "当前服务尚不支持控制工作，可继续查看状态。"
+  },
+  "当前没有已核对的工作状态。": {
+    "en": "No verified task status is available.",
+    "zh-Hans": "当前没有已核对的工作状态。"
+  },
+  "当前许可版本": {
+    "en": "Current authorization version",
+    "zh-Hans": "当前许可版本"
+  },
+  "恢复回执已保存；不代表成果已完成。": {
+    "en": "The resume receipt is saved. This does not mean the result is complete.",
+    "zh-Hans": "恢复回执已保存；不代表成果已完成。"
+  },
+  "恢复已暂停工作": {
+    "en": "Resume paused task",
+    "zh-Hans": "恢复已暂停工作"
+  },
+  "执行中，结果尚未确认": {
+    "en": "Executing; outcome unconfirmed",
+    "zh-Hans": "执行中，结果尚未确认"
+  },
+  "控制回执已保存，工作展示尚未更新。请读取最新工作。": {
+    "en": "The control receipt is saved, but the task display has not updated. Read the latest task.",
+    "zh-Hans": "控制回执已保存，工作展示尚未更新。请读取最新工作。"
+  },
+  "控制尚未发送，工作状态未获确认。": {
+    "en": "The control has not been sent. The task status has not been confirmed.",
+    "zh-Hans": "控制尚未发送，工作状态未获确认。"
+  },
+  "控制未获受理；请读取最新状态后核对。": {
+    "en": "The control was not accepted. Read the latest status to check.",
+    "zh-Hans": "控制未获受理；请读取最新状态后核对。"
+  },
+  "控制版本": {
+    "en": "Control version",
+    "zh-Hans": "控制版本"
+  },
+  "控制结果尚未确认；只核对原控制，请勿重复提交。": {
+    "en": "The control outcome is unconfirmed. Check only the original control; do not submit it again.",
+    "zh-Hans": "控制结果尚未确认；只核对原控制，请勿重复提交。"
+  },
+  "撤回授权回执已保存；已发出的操作仍须核对。": {
+    "en": "The authorization withdrawal receipt is saved. Dispatched operations still need verification.",
+    "zh-Hans": "撤回授权回执已保存；已发出的操作仍须核对。"
+  },
+  "撤回这份工作授权": {
+    "en": "Withdraw authorization for this task",
+    "zh-Hans": "撤回这份工作授权"
+  },
+  "显示已保存状态；当前性尚未核对。": {
+    "en": "Showing saved status; its current state has not been checked.",
+    "zh-Hans": "显示已保存状态；当前性尚未核对。"
+  },
+  "暂停、恢复或撤回授权": {
+    "en": "Pause, resume, or revoke permission",
+    "zh-Hans": "暂停、恢复或撤回授权"
+  },
+  "暂停保留原许可；撤回授权会停止后续步骤。已发出的操作仍须核对，不能借此回滚。": {
+    "en": "Pausing preserves the original authorization. Withdrawing it stops future steps. Dispatched operations still need verification and cannot be rolled back this way.",
+    "zh-Hans": "暂停保留原许可；撤回授权会停止后续步骤。已发出的操作仍须核对，不能借此回滚。"
+  },
+  "暂停回执已保存；以最新工作状态为准。": {
+    "en": "The pause receipt is saved. Refer to the latest task status.",
+    "zh-Hans": "暂停回执已保存；以最新工作状态为准。"
+  },
+  "暂停工作": {
+    "en": "Pause task",
+    "zh-Hans": "暂停工作"
+  },
+  "本次原控制编号": {
+    "en": "Original ID for this control",
+    "zh-Hans": "本次原控制编号"
+  },
+  "查看输入详情": {
+    "en": "View input details",
+    "zh-Hans": "查看输入详情"
+  },
+  "核对原控制": {
+    "en": "Check original control",
+    "zh-Hans": "核对原控制"
+  },
+  "模型请求": {
+    "en": "Model request",
+    "zh-Hans": "模型请求"
+  },
+  "正在申请控制，尚未确认结果": {
+    "en": "Requesting control; outcome not yet confirmed",
+    "zh-Hans": "正在申请控制，尚未确认结果"
+  },
+  "正在读取工作状态": {
+    "en": "Reading task status",
+    "zh-Hans": "正在读取工作状态"
+  },
+  "结果尚未确认": {
+    "en": "Outcome unconfirmed",
+    "zh-Hans": "结果尚未确认"
+  },
+  "记忆范围已变化，不能恢复这份工作。": {
+    "en": "The memory scope has changed. This task cannot resume.",
+    "zh-Hans": "记忆范围已变化，不能恢复这份工作。"
+  },
+  "读取最新状态": {
+    "en": "Read latest status",
+    "zh-Hans": "读取最新状态"
+  },
+  "输入详情": {
+    "en": "Input details",
+    "zh-Hans": "输入详情"
+  },
+  "工作已取消；已发出的操作仍需核对。": {
+    "zh-Hans": "工作已取消；已发出的操作仍需核对。",
+    "en": "Work is cancelled. Operations already dispatched still need reconciliation."
+  },
+  "任务已保存；进展来自原任务读取。": {
+    "zh-Hans": "任务已保存；进展来自原任务读取。",
+    "en": "The task is saved. Progress is read from the original task."
+  },
+  "授权已变更；当前状态待核验。": {
+    "zh-Hans": "授权已变更；当前状态待核验。",
+    "en": "Authorization has changed. The current state needs verification."
   }
 }

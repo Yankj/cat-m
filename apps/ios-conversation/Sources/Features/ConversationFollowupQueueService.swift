@@ -1,19 +1,6 @@
 import Foundation
 // State-machine behavior adapted from OpenMuse conversation-queue.ts, MIT.
 // Copyright (c) 2026 OpenMuse contributors. Full attribution: docs/conversation-first/upstream-review/LICENSE.
-public struct ConversationFollowup: Codable, Sendable, Identifiable {
-    public let id: UUID
-    public let text: String
-    public let image:ConversationVisionReference?
-    public init(id: UUID = UUID(), text: String,image:ConversationVisionReference?=nil) { self.id = id; self.text = text;self.image=image }
-}
-public enum FollowupPauseReason: String, Codable, Sendable { case user, background, preflight, recovery }
-public struct ConversationFollowupState: Codable, Sendable {
-    public var pending: [ConversationFollowup] = []
-    public var paused = false
-    public var pauseReason: FollowupPauseReason?
-    public var inflight: ConversationFollowup?
-}
 public actor ConversationFollowupQueueService {
     public enum Disposition: Sendable, Equatable { case sent, heldBeforeAdmission }
     private let repository: Repository
@@ -37,13 +24,19 @@ public actor ConversationFollowupQueueService {
         if !draining && value.inflight != nil && !value.paused { value.paused = true;value.pauseReason = .recovery }
         return value
     }
-    public func enqueue(_ message: ConversationFollowup, remainingDraft: String? = nil) async throws {
+    public func enqueue(_ message: ConversationFollowup, remainingDraft: String? = nil,remainingContinuationDraft:ConversationArtifactContinuationDraft?=nil,continuationService:ConversationArtifactContinuationService?=nil) async throws {
         await lockState();defer { unlockState() }
         guard !message.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, message.text.utf16.count <= 8000 else { throw CatpawError.invalid("后续消息超过范围。") }
+        if let intent=message.continuation {try intent.validate();guard message.image==nil,remainingDraft==nil else {throw ConversationArtifactContinuationError.invalidReference}}
+        else {guard remainingContinuationDraft==nil else {throw ConversationArtifactContinuationError.invalidReference}}
         var (state, record) = try await load()
-        if let same = (state.pending + [state.inflight].compactMap { $0 }).first(where: { $0.id == message.id }) { guard same.text == message.text,same.image == message.image else { throw CatpawError.conflict }; return }
+        if let same = (state.pending + [state.inflight].compactMap { $0 }).first(where: { $0.id == message.id }) { guard same==message else { throw CatpawError.conflict }; return }
         state.pending.append(message)
         var additional: [Mutation] = []
+        if let target=remainingContinuationDraft,let continuationService,let intent=message.continuation {
+            guard continuationService.scope==scope,target.reference.binding.conversation_id==conversationID else {throw CatpawError.scopeMismatch}
+            additional.append(try await continuationService.queueMutation(remainingDraft:target,intent:intent))
+        } else if remainingContinuationDraft != nil {throw ConversationArtifactContinuationError.invalidReference}
         if let remainingDraft {
             let conversation = try await repository.record(conversationID,scope:scope)
             guard var value = conversation.conversation else { throw CatpawError.missing }
@@ -58,11 +51,11 @@ public actor ConversationFollowupQueueService {
         await lockState();defer {unlockState()}
         guard !text.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty,text.utf16.count <= 8000 else {throw CatpawError.invalid("请输入不超过 8000 字符的内容。")}
         var (s,r)=try await load()
-        guard s.paused,let i=s.pending.firstIndex(where:{$0.id == expected.id}),s.pending[i].text == expected.text,s.pending[i].image == expected.image else {throw CatpawError.conflict}
+        guard s.paused,let i=s.pending.firstIndex(where:{$0.id == expected.id}),s.pending[i]==expected else {throw CatpawError.conflict}
         // Image authorization is bound to its caption and must be reviewed in the composer.
         guard expected.image == nil else {throw CatpawError.invalid("图片处理许可绑定当前文字。请移除后在输入器重新编辑。")}
         let cancellation=try await session.cancellationForQueueEdit(scope:scope,conversationID:conversationID,operationID:expected.id)
-        let replacement=ConversationFollowup(text:text)
+        let replacement=ConversationFollowup(text:text,continuation:expected.continuation)
         s.pending[i]=replacement
         try await save(s,r,additional:cancellation.map{[$0]} ?? [])
         return replacement
@@ -92,7 +85,7 @@ public actor ConversationFollowupQueueService {
     }
     private func settle(_ message:ConversationFollowup,held:Bool=false,failed:Bool=false) async throws {
         await lockState();defer { unlockState() }
-        var (s,r) = try await load();guard s.inflight?.id == message.id else { throw CatpawError.conflict }
+        var (s,r) = try await load();guard s.inflight == message else { throw CatpawError.conflict }
         s.inflight=nil
         if held { s.pending.insert(message,at:0) }
         if held || failed { s.paused=true;if s.pauseReason != .background && s.pauseReason != .user { s.pauseReason = held ? .preflight : .recovery } }
@@ -110,6 +103,8 @@ public actor ConversationFollowupQueueService {
         let encoder = JSONEncoder(); encoder.outputFormatting = [.sortedKeys]
         let payload = Payload.preference(Preference(key: "conversation_followups:\(conversationID)", value: String(decoding: try encoder.encode(value), as: UTF8.self)))
         let mutation: Mutation = record.map { .update($0.id,$0.header.revision,payload) } ?? .create(recordID,payload)
-        try await repository.commit(scope: scope, mutations: [mutation] + additional)
+        let conversation=try await repository.record(conversationID,scope:scope)
+        guard conversation.conversation != nil else {throw CatpawError.missing}
+        try await repository.commit(scope: scope, mutations: [.requireRevision(conversation.id,conversation.header.revision),mutation] + additional)
     }
 }

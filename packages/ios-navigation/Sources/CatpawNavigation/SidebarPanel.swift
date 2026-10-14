@@ -22,7 +22,7 @@ public struct SidebarPanel: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(alignment: .top, spacing: 8) {
-                        Text("Catpaw").font(.title2.weight(.semibold))
+                        Text("Catpaw").font(theme.titleFont.weight(.semibold))
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(.vertical, 8).accessibilityAddTraits(.isHeader)
                             .accessibilityFocused($headingFocused)
@@ -33,7 +33,7 @@ public struct SidebarPanel: View {
                     }
                     HStack(spacing: 4) {
                         TextField(localize("搜索对话"), text: $query)
-                            .font(.body).padding(.leading,12).frame(minHeight: 44)
+                            .font(theme.bodyFont).padding(.leading,12).frame(minHeight: 44)
                             .accessibilityLabel(localize("搜索对话")).accessibilityIdentifier("sidebar.search")
                         if !query.isEmpty {
                             Button { query = "" } label: {
@@ -47,12 +47,12 @@ public struct SidebarPanel: View {
                     route(localize("任务"), icon: "checklist", destination: .tasks, identifier: "sidebar.tasks")
                     route(localize("成果"), icon: "tray", destination: .results, identifier: "sidebar.results")
                     Divider().overlay(theme.separator).padding(.vertical, 8)
-                    Text(localize("对话")).font(.headline).accessibilityAddTraits(.isHeader)
+                    Text(localize("对话")).font(theme.headingFont).accessibilityAddTraits(.isHeader)
                         .padding(.horizontal, 12)
                     let records = snapshot.matching(query)
                     if records.isEmpty {
                         Text(query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? localize("还没有对话") : localize("没有找到对话"))
-                            .font(.body).foregroundStyle(theme.secondary)
+                            .font(theme.bodyFont).foregroundStyle(theme.secondary)
                             .padding(12).accessibilityIdentifier("sidebar.empty")
                     }
                     ForEach(records) { record in
@@ -60,13 +60,13 @@ public struct SidebarPanel: View {
                         Button { select(.conversation(record.id)) } label: {
                             HStack(alignment: .firstTextBaseline, spacing: 8) {
                                 VStack(alignment: .leading,spacing:4) {
-                                    Text(record.title.isEmpty ? localize("未命名对话") : record.title).font(.body)
+                                    Text(record.title.isEmpty ? localize("未命名对话") : record.title).font(theme.bodyFont)
                                     if let preview=record.preview,!preview.isEmpty {
-                                        Text(localize("草稿 · ")+preview).font(.caption).lineLimit(2)
+                                        Text(localize("草稿 · ")+preview).font(theme.captionFont).lineLimit(2)
                                             .foregroundStyle(theme.secondary)
                                     }
                                 }.frame(maxWidth: .infinity, alignment: .leading)
-                                if selected { Image(systemName: "checkmark").font(.body).accessibilityHidden(true) }
+                                if selected { Image(systemName: "checkmark").font(theme.bodyFont).accessibilityHidden(true) }
                             }.padding(12).frame(minHeight: 44)
                                 .background(selected ? theme.input : Color.clear, in: RoundedRectangle(cornerRadius: 14))
                                 .contentShape(Rectangle())
@@ -91,10 +91,10 @@ public struct SidebarPanel: View {
         let available = snapshot.permits(destination)
         return Button { select(destination) } label: {
             HStack(alignment: .firstTextBaseline, spacing: 12) {
-                Image(systemName: icon).font(.body).frame(width: iconWidth).accessibilityHidden(true)
+                Image(systemName: icon).font(theme.bodyFont).frame(width: iconWidth).accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(title).font(.body)
-                    if !available { Text(localize("暂不可用")).font(.subheadline).foregroundStyle(theme.secondary) }
+                    Text(title).font(theme.bodyFont)
+                    if !available { Text(localize("暂不可用")).font(theme.secondaryFont).foregroundStyle(theme.secondary) }
                 }.frame(maxWidth: .infinity, alignment: .leading)
             }.padding(12).frame(minHeight: 44).contentShape(Rectangle())
         }.disabled(!available).accessibilityIdentifier(identifier)

@@ -9,6 +9,7 @@ final class P0ConversationUITests:XCTestCase {
   continueAfterFailure=false;let app=XCUIApplication(bundleIdentifier:"com.example.CatpawM.ConversationFirst.Auth")
   app.launchEnvironment["CF_UI_TEST_STORE"]=UUID().uuidString
   app.launchEnvironment["CF_UI_TEST_SCENARIO"]=scenario;app.launchEnvironment["P0_MEASURE_PRESENTATION"]="1"
+  if scenario.hasPrefix("p0-ui-large") {app.launchEnvironment["CATPAW_UI_TEST_TEXT_SIZE"]="accessibility5"}
   app.launch();XCTAssertTrue(app.textFields["chat.input"].waitForExistence(timeout:15))
   guard app.staticTexts["qa.p0Fixture"].waitForExistence(timeout:3) else{XCTFail("Isolated offline P0 fixture missing; stop before typing or sending");throw NSError(domain:"P0FixtureMissing",code:1)}
   let initial=try probe(app);guard initial["fixture_reality"] as? String=="injected_synthetic_offline",initial["external_network_enabled"] as? Bool==false else{XCTFail("Offline fixture proof missing; no Send action permitted");throw NSError(domain:"P0FixtureMissing",code:2)}
