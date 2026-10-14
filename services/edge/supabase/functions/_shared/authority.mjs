@@ -1,5 +1,6 @@
 import {ApiError,check,hash,UUID,iso} from './core/facade-r2/src/common.mjs';import {stableUUID} from './core/src/local-output-facade.mjs';
 import {invalidatePendingTaskActionsInTransaction} from './core/src/task-action-service.mjs';
+import {TASK_WORK_GRANT_CONTRACT,TASK_WORK_GRANT_KINDS,validateWorkGrantTerms,validateWorkGrantRunBinding,workGrantReference,workGrantReceiptHash} from './core/src/task-work-grant-contract.mjs';
 export const membershipOwner=issuer=>`system:supabase:${hash(issuer)}`;
 // Called only AFTER signed JWT + official GET /auth/v1/user validation. No managed Auth SQL or tokens persisted.
 export class AppScopeAuthority{
@@ -39,11 +40,58 @@ export class AppScopeAuthority{
   }finally{c?.release();}
  }
 }
-export async function assertSourceAuthority(tx,source,scope){
+async function currentSourceRows(tx,source,scope){
  check(source&&source.scope_id===scope.scope_id&&UUID.test(source.subject_id)&&UUID.test(source.session_id),409,'grant_conflict');const c=tx.connection;check(c?.query,503,'postgres_authority_required');const owner=membershipOwner(source.issuer);await c.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))',[owner+source.subject_id]);
  const session=(await c.query("SELECT data FROM public.records WHERE owner=$1 AND kind='app-sessions' AND id=$2",[owner,source.session_id])).rows[0]?.data;
  const m=(await c.query("SELECT data FROM public.records WHERE owner=$1 AND kind='scope-memberships' AND id=$2",[owner,source.subject_id])).rows[0]?.data;
- check(session?.subject_id===source.subject_id&&session.state==='active'&&session.expires_at>Math.floor(Date.now()/1000)&&m?.state==='active'&&source.issued_at>=m.tokens_valid_after&&!m.revoked_session_ids?.includes(source.session_id)&&m.scopes?.some(s=>s.scope_id===scope.scope_id&&s.profile_id===scope.profile_id&&s.workspace_id===scope.workspace_id&&s.local_output===true),409,'grant_conflict');
+ check(session?.subject_id===source.subject_id&&session.state==='active'&&m?.state==='active'&&source.issued_at>=m.tokens_valid_after&&!m.revoked_session_ids?.includes(source.session_id)&&m.scopes?.some(s=>s.scope_id===scope.scope_id&&s.profile_id===scope.profile_id&&s.workspace_id===scope.workspace_id&&s.local_output===true),409,'grant_conflict');
+ return {session,m};
+}
+// Every new command and historical viewer still needs current authentication.
+export async function assertSourceAuthority(tx,source,scope){
+ const {session}=await currentSourceRows(tx,source,scope);
+ check(session.expires_at>Math.floor(Date.now()/1000),409,'grant_conflict');
+}
+/** Original accepted work only. This is a source-authority check, never a dispatch,
+ * completion or lease permit. Trusted composition must additionally enforce consent,
+ * cumulative reservation budgets and the exact current executor/settlement fence.
+ * No API path enables this port yet; legacy runs keep assertSourceAuthority.
+ * A caller boolean or merely matching reference cannot relax JWT expiry: all facts
+ * are re-read from the original immutable run and finite grant in this transaction. */
+export async function assertAcceptedWorkSourceAuthority(tx,source,scope,reference,{now=Date.now}={}){
+ const conflict=condition=>check(condition,409,'accepted_work_grant_conflict');
+ const same=(a,b)=>a!==undefined&&b!==undefined&&hash(a)===hash(b);
+ conflict(reference?.schema_version===1&&reference.contract===TASK_WORK_GRANT_CONTRACT&&UUID.test(reference.grant_id));
+ const owner=`catpaw:${hash({profile:scope.profile_id,workspace:scope.workspace_id})}`;
+ conflict(scope.owner===owner&&typeof now==='function');
+ let lastClock=now();conflict(Number.isSafeInteger(lastClock));
+ const grantLive=terms=>{const timestamp=now();conflict(Number.isSafeInteger(timestamp)&&timestamp>=lastClock&&timestamp>=Date.parse(terms.accepted_at)&&timestamp<Date.parse(terms.not_after));lastClock=timestamp;};
+ // Match existing scope -> subject authority lock order before grant locks.
+ await tx.withScope(scope.scope_id,async scoped=>{const s=await scoped.scope();conflict(s.enabled&&same(s.identity,scope));});
+ await currentSourceRows(tx,source,scope);
+ const proof=async()=>{
+  await tx.lock(owner,TASK_WORK_GRANT_KINDS.grants,reference.grant_id);
+  const row=await tx.get(owner,TASK_WORK_GRANT_KINDS.terms,reference.grant_id);
+  let terms;try{terms=validateWorkGrantTerms(row?.terms);}catch{conflict(false);}
+  const state=await tx.get(owner,TASK_WORK_GRANT_KINDS.grants,reference.grant_id),r=row.receipt;
+  conflict(same(reference,workGrantReference(terms))&&row.id===terms.grant_id&&row.terms_hash===reference.terms_hash&&same(terms.scope,scope)&&same(terms.source_auth,source));
+  conflict(state?.state==='active'&&state.id===row.id&&same(state.reference,reference)&&same(state.run_binding,row.run_binding));
+  conflict(Number.isSafeInteger(state.revision)&&state.revision>0&&['due','model','source'].every(k=>Number.isSafeInteger(state.consumed?.[k])&&state.consumed[k]>=0&&state.consumed[k]<=terms.limits[k]));
+  grantLive(terms);
+  conflict(r?.contract===TASK_WORK_GRANT_CONTRACT&&r.grant_id===row.id&&r.terms_hash===row.terms_hash&&r.accepted_at===terms.accepted_at&&r.task_completed===false&&same(r.run_binding,row.run_binding)&&workGrantReceiptHash(r)===r.receipt_hash);
+  await tx.withScope(scope.scope_id,async scoped=>{const s=await scoped.scope();conflict(s.enabled&&same(s.identity,scope)&&s.generation===terms.memory_generation);});
+  const run=await tx.get(owner,'catpaw-runs',terms.origin.run_id),f=run?.frozen_request;
+  let binding;try{binding=validateWorkGrantRunBinding(terms,run);}catch{conflict(false);}
+  conflict(same(row.run_binding,binding)&&row.scope_id===scope.scope_id&&row.subject_id===source.subject_id&&row.conversation_id===terms.conversation_id&&row.run_id===run.id&&row.task_id===run.task_id);
+  conflict(state.scope_id===row.scope_id&&state.subject_id===row.subject_id&&state.conversation_id===row.conversation_id&&state.run_id===row.run_id&&state.task_id===row.task_id);
+  const operation=await tx.get(owner,'catpaw-operations',run.operation_id),task=await tx.get(owner,'tasks',run.task_id);
+  conflict(operation?.run_id===run.id&&operation.request_hash===run.request_hash&&same(task?.state?.catpaw,{operation_id:run.operation_id,run_id:run.id,delegation_id:run.delegation_id,request_hash:run.request_hash,grant_epoch:run.grant_epoch,delegation_revision:run.delegation_revision}));
+  const delegation=await tx.get(owner,'catpaw-delegations',run.delegation_id),conversation=await tx.get(owner,'native-chat-conversations',terms.conversation_id);
+  conflict(delegation?.state==='active'&&delegation.subject_id===source.subject_id&&delegation.conversation_id===terms.conversation_id&&delegation.grant_epoch===run.grant_epoch&&delegation.revision===run.delegation_revision);
+  conflict(conversation?.state==='active'&&conversation.subject_id===source.subject_id&&conversation.scope_id===scope.scope_id&&conversation.grant_epoch===f.conversation_epoch);
+  grantLive(terms);
+ };
+ await proof();await currentSourceRows(tx,source,scope);await proof();
 }
 export async function revokeAppSession(repository,claims,runtime){const stopped=await repository.transaction(async tx=>{
  const stopped=[];

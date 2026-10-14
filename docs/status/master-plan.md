@@ -2,7 +2,7 @@
 
 更新：2026-10-15；唯一实时状态页。旧主计划完整保存在[2026-10-12快照](master-plan-2026-10-12.md)，旧失败与证据边界不改写。16:07交接事实与待提交文件见[handoff](../../handoff.md)和[快照](handoff-snapshot-2026-10-13.json)；快照不另维护实时进度。
 
-**当前长期Goal：FINAL-G3；控制器仍PAUSED，用户已授权自主续行，基础执行合同保持AF-1-G3-UX1。** 用户最新明确授权“解决完问题后可以自行启动、优化长期目标”，此前暂停意图被本次继续授权撤回。`get_goal`仍读回PAUSED；现有Goal工具没有resume接口，电脑控制对Codex本体返回安全禁控，已请求用户在同一Goal控件点一次继续。当前前台工作继续，不能把明确续行授权说成控制器已ACTIVE；不重复创建、替换或用其他定时任务绕过既有Goal。长期目标、零新增计算预算和全部验收门保留，只优化执行顺序、并行边界、证据和分版本交付。长期目标是可日常使用的Swift优先、iPhone体验优先通用主动Agent：自然对话交代目标，查看/修改计划，找回审批，离开后继续已受理工作，回来查收有来源版本、可修改成果，并管理记忆、持续跟进和本地日程。[基础定义](../planning/AF-1/goal.md)与[开发入口](../planning/AF-1/development-start-contract.md)／[长期prompt](../planning/AF-1/long-task-development-prompt.md)共同约束执行。
+**当前长期Goal：FINAL-G3；控制器已ACTIVE，基础执行合同保持AF-1-G3-UX1。** 2026-10-15自动续行后`get_goal`重新读回同一Goal为ACTIVE（updatedAt=1791996592），原暂停记录保留为日期事实；没有重复创建、替换或使用其他定时任务。上一轮完成代码发布与来源核对，属于实质进展，本轮继续已授权三路开发。长期目标、零新增计算预算和全部验收门保留，只优化执行顺序、并行边界、证据和分版本交付。长期目标是可日常使用的Swift优先、iPhone体验优先通用主动Agent：自然对话交代目标，查看/修改计划，找回审批，离开后继续已受理工作，回来查收有来源版本、可修改成果，并管理记忆、持续跟进和本地日程。[基础定义](../planning/AF-1/goal.md)与[开发入口](../planning/AF-1/development-start-contract.md)／[长期prompt](../planning/AF-1/long-task-development-prompt.md)共同约束执行。
 
 2026-10-14本聊天先读回运行Goal为空，核对既有合同与交接后按用户本次明确指令建立一个FINAL-G3长期Goal；未重复创建或替换现存运行Goal。2026-10-13 16:06的`usageLimited`保留为交接日期事实，不作为当前运行状态。AF-G5须同候选18A/12U/3CP全部通过；FINAL-G1再含9FQ/10CG与七天真实日用；FINAL-G2依8BP原合同完成具名配对并证明限定优势，两者同候选成立才签收FINAL-G3。必需FAIL/NOT_RUN/BLOCKED或证据不足不能算完成。现有Supabase、模型路由、A1和用户数据沿用，新增计算预算0；云电脑仅公开网页调研＋文件处理提案，托管实施待资源/区域/供应商确认。
 
@@ -17,6 +17,8 @@
 | FINAL-G3 终版产品签收 | 依赖G1/G2同候选；NOT_RUN，设计/静态检查不关闭产品目标 |
 
 ## 当前执行片与下一步
+
+2026-10-15交付[有限已受理工作与设备效果合同准备片](../acceptance/restart-bounded-work-contracts-2026-10-15.md)：候选`AF-W50-W60-CONTRACTS-20261015-01`，15项明确审阅source/test/config加日期证据。Root、execution_fences、native_controls实现，native_layout独立反例审查；冻结请求/run绑定提炼同一纯校验，来源与执行规则不再分别维护，许可时钟同一次观察满足上下界并拒绝回拨。严格新命令expiry语义保留；独立accepted-work source端口只读原有限授权与当前撤权事实，不续session、不生成dispatch许可、尚无API/tick调用。W50拆新dispatch、原attempt终态ack与durable received本地收尾，两种实际维护Store测试级CAS组合PASS，unknown不退款/补发，公开来源单次回执验证缺失继续拒绝。最终维护303/303含W50 37、设备原语34、来源7全部PASS；独立最终11/11、同10项旧来源对照1/10（9项真实拒绝缺失FAIL）、共享helper 6组/59拒绝变体/2有效基线PASS，旧RED保留。W60 v2 strict原生DTO/codec的15个实际Node合成响应与8组portable PASS，旧v1 28项PASS；登记当前宿主后non-DEBUG SDK/100 App成员/3target/968双语PASS，99默认语义source/10具名legacy保持。初次SDK宏IPC失败、初次29个合成设备标识扫描命中均保留，Root按fixture精确hash/行号复核，最终扫描无阻断或待审。原生HTTP/service journal/producer/OS、API/worker/purge/独立调度及真实Auth/PG仍未接线，W50/W60与CP/总Goal未签收；没有新包安装或生产请求。当前可点测仍build23，下一片接明确用户有限意图与初始run/grant同事务受理，再贯通worker/原回执/撤权清理，原生日程接线按依赖并行。三条具名模型只读审阅无已证完全兼容替代，不修改provider或消耗第二额度；截图授权待答，0补传。按新授权本片将及时本地提交并同步功能分支，固定源码与日期证据对应。
 
 2026-10-15代码同步：用户已明确授权“及时提交、推送代码”，后续每片完成适用检查后，在原短功能分支本地提交明确路径并及时同步origin，不等待终版；main仍按PR整合，不能借此合并、部署或扩大手机/模型测试。现有私有`Yankj/catpaw-m`与push权限已连接器核对；HTTPS缺CLI身份、严格SSH主机校验失败，均未绕过或提取凭据。已通过既有GitHub连接器发布[当前源码分支](https://github.com/Yankj/catpaw-m/tree/feat/s05-bounded-work)，源码快照远端`db1cf680c54eaf6062320f645dcfc8daaeb3a53b`读回正确，获授权180个源码/测试/文字证据文件的tree=`d88d72ce8441272319c29e05064df62f51c495a6`与独立本地计算一致。连接器提交metadata不同，原十个本地commit/tree与build23源码身份保留，见[日期发布记录](../acceptance/evidence/source-publication-20261014/RESULT.json)。自动审批拒绝首次合成截图blob上传，认为代码推送未明确包含截图披露；22张新PNG保持本地、0上传，已按具名清单单独询问。文字报告/原hash仍保留，但不能称完整媒体证据发布或产品签收；六个未集成WIP未混入发布。本轮布局/冻结/部署快照/AF/FINAL/CG规划/语义字体/敏感/空白通过，未重复跑产品测试。
 

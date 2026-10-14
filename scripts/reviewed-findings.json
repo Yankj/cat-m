@@ -1042,6 +1042,209 @@
       "sha256": "260334ef85ff0246019728bb021217b62dfa024ea4de01a8c9ad056807ffae40",
       "reason": "Reviewed generated Xcode icon raster filename: the at-sign denotes image scale, not an email address. Exact hash manifest stores no App bytes or credential values.",
       "line": 6
+    },
+    {
+      "path": "apps/ios-conversation/Tests/Fixtures/device-effect-contract-v2.json",
+      "category": "device_identity",
+      "line": 65,
+      "sha256": "9fc74cd27abf382da55295c74877afc1affe53afc05879a3616a9576ebb8f804",
+      "reason": "Reviewed fixed synthetic device UUID id(10) from the checked-in deny-net fixture generator; explicit TestRepository/OS port doubles, no real device identity or private phone input. Strict match applies only to this fixture byte hash and exact line."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/Fixtures/device-effect-contract-v2.json",
+      "category": "device_identity",
+      "line": 115,
+      "sha256": "9fc74cd27abf382da55295c74877afc1affe53afc05879a3616a9576ebb8f804",
+      "reason": "Reviewed fixed synthetic device UUID id(10) from the checked-in deny-net fixture generator; explicit TestRepository/OS port doubles, no real device identity or private phone input. Strict match applies only to this fixture byte hash and exact line."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/Fixtures/device-effect-contract-v2.json",
+      "category": "device_identity",
+      "line": 176,
+      "sha256": "9fc74cd27abf382da55295c74877afc1affe53afc05879a3616a9576ebb8f804",
+      "reason": "Reviewed fixed synthetic device UUID id(10) from the checked-in deny-net fixture generator; explicit TestRepository/OS port doubles, no real device identity or private phone input. Strict match applies only to this fixture byte hash and exact line."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/Fixtures/device-effect-contract-v2.json",
+      "category": "device_identity",
+      "line": 258,
+      "sha256": "9fc74cd27abf382da55295c74877afc1affe53afc05879a3616a9576ebb8f804",
+      "reason": "Reviewed fixed synthetic device UUID id(10) from the checked-in deny-net fixture generator; explicit TestRepository/OS port doubles, no real device identity or private phone input. Strict match applies only to this fixture byte hash and exact line."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/Fixtures/device-effect-contract-v2.json",
+      "category": "device_identity",
+      "line": 371,
+      "sha256": "9fc74cd27abf382da55295c74877afc1affe53afc05879a3616a9576ebb8f804",
+      "reason": "Reviewed fixed synthetic device UUID id(10) from the checked-in deny-net fixture generator; explicit TestRepository/OS port doubles, no real device identity or private phone input. Strict match applies only to this fixture byte hash and exact line."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/Fixtures/device-effect-contract-v2.json",
+      "category": "device_identity",
+      "line": 472,
+      "sha256": "9fc74cd27abf382da55295c74877afc1affe53afc05879a3616a9576ebb8f804",
+      "reason": "Reviewed fixed synthetic device UUID id(10) from the checked-in deny-net fixture generator; explicit TestRepository/OS port doubles, no real device identity or private phone input. Strict match applies only to this fixture byte hash and exact line."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/Fixtures/device-effect-contract-v2.json",
+      "category": "device_identity",
+      "line": 573,
+      "sha256": "9fc74cd27abf382da55295c74877afc1affe53afc05879a3616a9576ebb8f804",
+      "reason": "Reviewed fixed synthetic device UUID id(10) from the checked-in deny-net fixture generator; explicit TestRepository/OS port doubles, no real device identity or private phone input. Strict match applies only to this fixture byte hash and exact line."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/Fixtures/device-effect-contract-v2.json",
+      "category": "device_identity",
+      "line": 626,
+      "sha256": "9fc74cd27abf382da55295c74877afc1affe53afc05879a3616a9576ebb8f804",
+      "reason": "Reviewed fixed synthetic device UUID id(10) from the checked-in deny-net fixture generator; explicit TestRepository/OS port doubles, no real device identity or private phone input. Strict match applies only to this fixture byte hash and exact line."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/Fixtures/device-effect-contract-v2.json",
+      "category": "device_identity",
+      "line": 685,
+      "sha256": "9fc74cd27abf382da55295c74877afc1affe53afc05879a3616a9576ebb8f804",
+      "reason": "Reviewed fixed synthetic device UUID id(10) from the checked-in deny-net fixture generator; explicit TestRepository/OS port doubles, no real device identity or private phone input. Strict match applies only to this fixture byte hash and exact line."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/Fixtures/device-effect-contract-v2.json",
+      "category": "device_identity",
+      "line": 738,
+      "sha256": "9fc74cd27abf382da55295c74877afc1affe53afc05879a3616a9576ebb8f804",
+      "reason": "Reviewed fixed synthetic device UUID id(10) from the checked-in deny-net fixture generator; explicit TestRepository/OS port doubles, no real device identity or private phone input. Strict match applies only to this fixture byte hash and exact line."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/Fixtures/device-effect-contract-v2.json",
+      "category": "device_identity",
+      "line": 828,
+      "sha256": "9fc74cd27abf382da55295c74877afc1affe53afc05879a3616a9576ebb8f804",
+      "reason": "Reviewed fixed synthetic device UUID id(10) from the checked-in deny-net fixture generator; explicit TestRepository/OS port doubles, no real device identity or private phone input. Strict match applies only to this fixture byte hash and exact line."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/Fixtures/device-effect-contract-v2.json",
+      "category": "device_identity",
+      "line": 881,
+      "sha256": "9fc74cd27abf382da55295c74877afc1affe53afc05879a3616a9576ebb8f804",
+      "reason": "Reviewed fixed synthetic device UUID id(10) from the checked-in deny-net fixture generator; explicit TestRepository/OS port doubles, no real device identity or private phone input. Strict match applies only to this fixture byte hash and exact line."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/Fixtures/device-effect-contract-v2.json",
+      "category": "device_identity",
+      "line": 959,
+      "sha256": "9fc74cd27abf382da55295c74877afc1affe53afc05879a3616a9576ebb8f804",
+      "reason": "Reviewed fixed synthetic device UUID id(10) from the checked-in deny-net fixture generator; explicit TestRepository/OS port doubles, no real device identity or private phone input. Strict match applies only to this fixture byte hash and exact line."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/Fixtures/device-effect-contract-v2.json",
+      "category": "device_identity",
+      "line": 1012,
+      "sha256": "9fc74cd27abf382da55295c74877afc1affe53afc05879a3616a9576ebb8f804",
+      "reason": "Reviewed fixed synthetic device UUID id(10) from the checked-in deny-net fixture generator; explicit TestRepository/OS port doubles, no real device identity or private phone input. Strict match applies only to this fixture byte hash and exact line."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/Fixtures/device-effect-contract-v2.json",
+      "category": "device_identity",
+      "line": 1090,
+      "sha256": "9fc74cd27abf382da55295c74877afc1affe53afc05879a3616a9576ebb8f804",
+      "reason": "Reviewed fixed synthetic device UUID id(10) from the checked-in deny-net fixture generator; explicit TestRepository/OS port doubles, no real device identity or private phone input. Strict match applies only to this fixture byte hash and exact line."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/Fixtures/device-effect-contract-v2.json",
+      "category": "device_identity",
+      "line": 1143,
+      "sha256": "9fc74cd27abf382da55295c74877afc1affe53afc05879a3616a9576ebb8f804",
+      "reason": "Reviewed fixed synthetic device UUID id(10) from the checked-in deny-net fixture generator; explicit TestRepository/OS port doubles, no real device identity or private phone input. Strict match applies only to this fixture byte hash and exact line."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/Fixtures/device-effect-contract-v2.json",
+      "category": "device_identity",
+      "line": 1182,
+      "sha256": "9fc74cd27abf382da55295c74877afc1affe53afc05879a3616a9576ebb8f804",
+      "reason": "Reviewed fixed synthetic device UUID id(10) from the checked-in deny-net fixture generator; explicit TestRepository/OS port doubles, no real device identity or private phone input. Strict match applies only to this fixture byte hash and exact line."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/Fixtures/device-effect-contract-v2.json",
+      "category": "device_identity",
+      "line": 1230,
+      "sha256": "9fc74cd27abf382da55295c74877afc1affe53afc05879a3616a9576ebb8f804",
+      "reason": "Reviewed fixed synthetic device UUID id(10) from the checked-in deny-net fixture generator; explicit TestRepository/OS port doubles, no real device identity or private phone input. Strict match applies only to this fixture byte hash and exact line."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/Fixtures/device-effect-contract-v2.json",
+      "category": "device_identity",
+      "line": 1287,
+      "sha256": "9fc74cd27abf382da55295c74877afc1affe53afc05879a3616a9576ebb8f804",
+      "reason": "Reviewed fixed synthetic device UUID id(10) from the checked-in deny-net fixture generator; explicit TestRepository/OS port doubles, no real device identity or private phone input. Strict match applies only to this fixture byte hash and exact line."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/Fixtures/device-effect-contract-v2.json",
+      "category": "device_identity",
+      "line": 1365,
+      "sha256": "9fc74cd27abf382da55295c74877afc1affe53afc05879a3616a9576ebb8f804",
+      "reason": "Reviewed fixed synthetic device UUID id(10) from the checked-in deny-net fixture generator; explicit TestRepository/OS port doubles, no real device identity or private phone input. Strict match applies only to this fixture byte hash and exact line."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/Fixtures/device-effect-contract-v2.json",
+      "category": "device_identity",
+      "line": 1422,
+      "sha256": "9fc74cd27abf382da55295c74877afc1affe53afc05879a3616a9576ebb8f804",
+      "reason": "Reviewed fixed synthetic device UUID id(10) from the checked-in deny-net fixture generator; explicit TestRepository/OS port doubles, no real device identity or private phone input. Strict match applies only to this fixture byte hash and exact line."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/Fixtures/device-effect-contract-v2.json",
+      "category": "device_identity",
+      "line": 1461,
+      "sha256": "9fc74cd27abf382da55295c74877afc1affe53afc05879a3616a9576ebb8f804",
+      "reason": "Reviewed fixed synthetic device UUID id(10) from the checked-in deny-net fixture generator; explicit TestRepository/OS port doubles, no real device identity or private phone input. Strict match applies only to this fixture byte hash and exact line."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/Fixtures/device-effect-contract-v2.json",
+      "category": "device_identity",
+      "line": 1533,
+      "sha256": "9fc74cd27abf382da55295c74877afc1affe53afc05879a3616a9576ebb8f804",
+      "reason": "Reviewed fixed synthetic device UUID id(10) from the checked-in deny-net fixture generator; explicit TestRepository/OS port doubles, no real device identity or private phone input. Strict match applies only to this fixture byte hash and exact line."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/Fixtures/device-effect-contract-v2.json",
+      "category": "device_identity",
+      "line": 1583,
+      "sha256": "9fc74cd27abf382da55295c74877afc1affe53afc05879a3616a9576ebb8f804",
+      "reason": "Reviewed fixed synthetic device UUID id(10) from the checked-in deny-net fixture generator; explicit TestRepository/OS port doubles, no real device identity or private phone input. Strict match applies only to this fixture byte hash and exact line."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/Fixtures/device-effect-contract-v2.json",
+      "category": "device_identity",
+      "line": 1631,
+      "sha256": "9fc74cd27abf382da55295c74877afc1affe53afc05879a3616a9576ebb8f804",
+      "reason": "Reviewed fixed synthetic device UUID id(10) from the checked-in deny-net fixture generator; explicit TestRepository/OS port doubles, no real device identity or private phone input. Strict match applies only to this fixture byte hash and exact line."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/Fixtures/device-effect-contract-v2.json",
+      "category": "device_identity",
+      "line": 1713,
+      "sha256": "9fc74cd27abf382da55295c74877afc1affe53afc05879a3616a9576ebb8f804",
+      "reason": "Reviewed fixed synthetic device UUID id(10) from the checked-in deny-net fixture generator; explicit TestRepository/OS port doubles, no real device identity or private phone input. Strict match applies only to this fixture byte hash and exact line."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/Fixtures/device-effect-contract-v2.json",
+      "category": "device_identity",
+      "line": 1826,
+      "sha256": "9fc74cd27abf382da55295c74877afc1affe53afc05879a3616a9576ebb8f804",
+      "reason": "Reviewed fixed synthetic device UUID id(10) from the checked-in deny-net fixture generator; explicit TestRepository/OS port doubles, no real device identity or private phone input. Strict match applies only to this fixture byte hash and exact line."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/Fixtures/device-effect-contract-v2.json",
+      "category": "device_identity",
+      "line": 1927,
+      "sha256": "9fc74cd27abf382da55295c74877afc1affe53afc05879a3616a9576ebb8f804",
+      "reason": "Reviewed fixed synthetic device UUID id(10) from the checked-in deny-net fixture generator; explicit TestRepository/OS port doubles, no real device identity or private phone input. Strict match applies only to this fixture byte hash and exact line."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/Fixtures/device-effect-contract-v2.json",
+      "category": "device_identity",
+      "line": 1980,
+      "sha256": "9fc74cd27abf382da55295c74877afc1affe53afc05879a3616a9576ebb8f804",
+      "reason": "Reviewed fixed synthetic device UUID id(10) from the checked-in deny-net fixture generator; explicit TestRepository/OS port doubles, no real device identity or private phone input. Strict match applies only to this fixture byte hash and exact line."
     }
   ]
 }
