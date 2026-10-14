@@ -7,6 +7,7 @@ import { TextBatcher } from './text-batcher.mjs';
 import { createChatMetrics } from './chat-metrics.mjs';
 import {freezeTaskRevisionTargetInTransaction,acceptTaskRevisionInTransaction,readTaskRevision,assertTaskRevisionTurnBoundaryInTransaction} from './task-revision-service.mjs';
 import {validateTaskRevisionRequest,TASK_REVISION_CONTRACT} from './task-revision-contract.mjs';
+import {ACCEPTED_WORK_INTENT_CONTRACT,validateAcceptedWorkRequest,freezeAcceptedWorkIntent} from './accepted-work-intent-contract.mjs';
 const positive=v=>Number.isSafeInteger(v)&&v>0;
 const terminal=s=>s!=='running';
 export class ChatService {
@@ -30,12 +31,19 @@ export class ChatService {
     const ids=new Set();for(const c of input.context){shape(c,['id','text']);check(typeof c.id==='string'&&c.id.length>0&&c.id.length<=80&&!ids.has(c.id)&&typeof c.text==='string'&&c.text.length<=8000,422,'schema_invalid');ids.add(c.id);}
     check(Buffer.byteLength(JSON.stringify(input))<=40000,413,'request_too_large');
   }
+  async startAcceptedWorkTurn(auth,scopeID,conversationID,input){
+    const request=validateAcceptedWorkRequest(input);this.validateInput(request.turn);
+    check(this.facade.workGrantService&&this.facade.acceptedWorkExecutionReady===true,503,'accepted_work_execution_not_configured');
+    if(request.work.tool_policy==='public_sources_v1')check(this.facade.publicSourcesEnabled===true&&this.facade.workGrantService.sourceService,503,'accepted_public_source_work_not_configured');
+    return this.startTurn(auth,scopeID,conversationID,request.turn,{workIntent:request.work});
+  }
   async startRevisionTurn(auth,scopeID,conversationID,input){const request=validateTaskRevisionRequest(input);return this.startTurn(auth,scopeID,conversationID,request.turn,{revisionTarget:request.target});}
   async readRevision(auth,scopeID,runID,operationID){return readTaskRevision(this.facade,auth,scopeID,runID,operationID);}
-  async startTurn(auth,scopeID,conversationID,input,{revisionTarget=null}={}){
+  async startTurn(auth,scopeID,conversationID,input,{revisionTarget=null,workIntent=null}={}){
+    check(!(revisionTarget&&workIntent),422,'work_intent_revision_not_supported');
     this.validateInput(input);const trusted=await this.scoped(auth,scopeID),{owner,scope,principal}=trusted,acceptedAt=this.metrics.now();
     await this.integration?.prepare({owner,scope,principal});
-    const admissionHash=hash({input,...revisionTarget?{revision_target:revisionTarget,revision_contract:TASK_REVISION_CONTRACT}:{},conversation_id:conversationID,scope,subject:principal.subject_id,model:this.provider.identity});
+    const admissionHash=hash({input,...workIntent?{work_intent:workIntent,work_intent_contract:ACCEPTED_WORK_INTENT_CONTRACT}:{},...revisionTarget?{revision_target:revisionTarget,revision_contract:TASK_REVISION_CONTRACT}:{},conversation_id:conversationID,scope,subject:principal.subject_id,model:this.provider.identity});
     const result=await this.repository.transaction(async tx=>{
       await this.integration?.beforeWrite(tx,{owner,scope});
       await tx.lock(owner,'native-chat-conversations',conversationID);
@@ -53,6 +61,11 @@ export class ChatService {
         admission_hash:admissionHash,request_hash:hash({history,model_history:modelHistory,context:input.context,scope,subject:principal.subject_id,model:this.provider.identity,policy:LOCAL_POLICY}),
         input:clone(input),history,model_history:modelHistory,events:[],task_bindings:[],created_at:iso()};
       if(this.beforeTurnAdmission)t.source_auth=await this.beforeTurnAdmission(tx,{principal,scope,conversation:c,turn:t});
+      if(workIntent){
+        check(this.facade.workGrantService&&this.facade.acceptedWorkExecutionReady===true&&t.source_auth,503,'accepted_work_execution_not_configured');
+        t.work_intent=freezeAcceptedWorkIntent(workIntent,{turn:t,scope,principal,conversation:c,routeHash:this.facade.acceptedWorkRouteHash,now:this.facade.workGrantService.now()});
+        t.request_hash=hash({original_chat_request_hash:t.request_hash,work_intent:t.work_intent});
+      }
       if(revisionTarget){t.revision_target=await freezeTaskRevisionTargetInTransaction(this.facade,tx,{owner,scope,principal,conversation:c,turn:t,target:revisionTarget});t.request_hash=hash({original_chat_request_hash:t.request_hash,revision_target:t.revision_target});t.continuations=[];}
       if(this.facade.completionPolicy&&this.facade.completionAuthorizer){
         const selection=await this.facade.completionAuthorizer({principal:clone(principal),scope:clone(scope),conversation_id:c.id,input:clone(input),policy:clone(this.facade.completionPolicy)});
@@ -106,7 +119,7 @@ export class ChatService {
       }else if(['delegate_task','delegate_plan_v1','delegate_sources_v1'].includes(call.name)){
         check(!t.revision_target,422,'revision_tool_not_allowed');
         check(t.task_bindings.length<1,422,'turn_task_limit');
-        result=await this.facade.admitChatTask(tx,{owner:env.owner,scope:env.scope,conversation:c,turn:t,call});
+        result=await this.facade.admitChatTask(tx,{owner:env.owner,scope:env.scope,principal:env.principal,conversation:c,turn:t,call});
       } else {
         const runs=(await tx.list(env.owner,'catpaw-runs')).filter(r=>r.frozen_request?.conversation_id===c.id&&r.frozen_request.subject_id===c.subject_id);
         result={tasks:await Promise.all(runs.map(r=>this.facade.runProjection(tx,env.owner,r.id)))};

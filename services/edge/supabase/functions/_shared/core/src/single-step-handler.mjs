@@ -16,6 +16,7 @@ export function singleStepHandler(facade,provider,{finishOnArtifactReceipt=false
    return {status:'scheduled',state:clone(applied.task.state)};
   }
   const frozen=await facade.effectiveRequest(owner,task.id);ctx.assertLive();
+  if(frozen.work_grant_reference)check(ctx.workGrant?.executor==='bounded_single_step_v1'&&typeof ctx.beforeTransport==='function',503,'accepted_work_executor_not_configured');
   check(frozen.policy===LOCAL_POLICY,409,'unmanaged_task');
   const prompt=workerPromptFor(frozen),tools=workerToolsFor(frozen);
   let state=clone(task.state.local_model??{step:0,messages:[{role:'user',content:JSON.stringify(workerInputContent(frozen))}],round:null,artifact:null});
@@ -25,7 +26,7 @@ export function singleStepHandler(facade,provider,{finishOnArtifactReceipt=false
    check(state.step<3,503,'model_step_limit');check(hash(frozen.model_configuration)===hash(provider.identity),409,'model_configuration_changed');provider.assertReady?.();
    if(ctx.remainingMs()<25)return {status:'scheduled',state:statePatch()};
    await ctx.checkpoint({state:statePatch()});await ctx.beforeDispatch(hash({model:provider.identity,messages:state.messages,prompt,tools}));
-   ctx.assertLive();const output=await collectRound(provider,{messages:clone(state.messages),system_prompt:prompt,tools,signal:ctx.signal,provider_context:workerProviderContext(frozen,state.messages)});ctx.assertLive();
+   if(frozen.work_grant_reference)await ctx.beforeTransport();ctx.assertLive();const output=await collectRound(provider,{messages:clone(state.messages),system_prompt:prompt,tools,signal:ctx.signal,provider_context:workerProviderContext(frozen,state.messages)});ctx.assertLive();
    for(const call of output.calls)validateProvidedToolCall(call,'worker',tools);const stop=output.calls.findIndex(c=>['finish_task','ask_user'].includes(c.name));check(stop<0||stop===output.calls.length-1,422,'tool_after_task_terminal');
    const saved=await ctx.received({...output,next:0,results:[]});state=clone(saved.state.local_model);
    await facade.recordModelPlanReceipt(owner,task.id,task.leaseId,{assertLive:ctx.assertLive});ctx.assertLive();

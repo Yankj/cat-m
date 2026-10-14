@@ -31,7 +31,7 @@ async function fixture({limits={due:1,model:2,source:0},legacy=false,lifetime=60
  const authorize=async(_tx,ctx)=>{if(!authorized)throw new ApiError(403,'fictional_authority_revoked');if(['admission','read'].includes(ctx.phase))assert.equal(ctx.principal?.subject_id,subject);return {authorized:true};};
  const service=new TaskWorkGrantService({repository,authorize,now:()=>clock}),identity={owner:scope.owner,scope_id:scope.scope_id,subject_id:subject,grant_id:terms.grant_id};
  let execution;
- const claim=async(whole=true)=>{const lease=randomUUID(),facade=new LocalOutputFacade({repository,authenticate:()=>{throw Error('HTTP authentication unused');}}),store=whole?new TaskExecutionStore(facade,{now:()=>clock}):new BoundedStore({repository,owners:[scope.owner],admitTask:facade.admittedTask.bind(facade),now:()=>clock,invocation:{open:true,deadline:clock+60000}});assert.ok(await store.compareAndSwap(scope.owner,'tasks',ids.task_id,{status:'queued'},{status:'running',leaseId:lease,leaseUntil:new Date(clock+60000).toISOString(),attempts:1}));execution={run_id:ids.run_id,task_id:ids.task_id,run_request_hash:requestHash,lease_id:lease,execution_revision:0};return execution;};
+ const claim=async(whole=false)=>{const lease=randomUUID(),facade=new LocalOutputFacade({repository,authenticate:()=>{throw Error('HTTP authentication unused');}}),store=whole?new TaskExecutionStore(facade,{now:()=>clock}):new BoundedStore({repository,owners:[scope.owner],admitTask:facade.admittedTask.bind(facade),now:()=>clock,invocation:{open:true,deadline:clock+60000},workGrantService:service});assert.ok(await store.compareAndSwap(scope.owner,'tasks',ids.task_id,{status:'queued'},{status:'running',leaseId:lease,leaseUntil:new Date(clock+60000).toISOString(),attempts:1}));execution={run_id:ids.run_id,task_id:ids.task_id,run_request_hash:requestHash,lease_id:lease,execution_revision:0};return execution;};
  return {repository,service,terms,principal,identity,ids,requestHash,claim,execution:()=>clone(execution),now:()=>clock,advance:ms=>{clock+=ms;},deny:()=>{authorized=false;},allow:()=>{authorized=true;}};
 }
 
@@ -58,36 +58,37 @@ test('a write permission rejects backward clocks and invalid initial instants wi
 // store/domain integration evidence, not a claim that API/production is wired.
 async function maintainedStore(f,whole){
  const facade=new LocalOutputFacade({repository:f.repository,authenticate:()=>{throw Error('HTTP authentication unused');}}),base=facade.admittedTask.bind(facade);
+ facade.workGrantService=f.service;
  facade.admittedTask=async(tx,owner,id,options)=>{
   const admitted=await base(tx,owner,id,options);
   await f.service.assertAcceptedGrantCurrentInTransaction(tx,f.identity);
   return admitted;
  };
- const store=whole?new TaskExecutionStore(facade,{now:f.now}):new BoundedStore({repository:f.repository,owners:[f.identity.owner],admitTask:facade.admittedTask.bind(facade),now:f.now,invocation:{open:true,deadline:f.now()+60000}});
+ const store=whole?new TaskExecutionStore(facade,{now:f.now}):new BoundedStore({repository:f.repository,owners:[f.identity.owner],admitTask:facade.admittedTask.bind(facade),now:f.now,invocation:{open:true,deadline:f.now()+60000},workGrantService:f.service});
  return {facade,store};
 }
 async function completedReport(f,whole){
  await f.service.admit({identity:f.identity,principal:f.principal,terms:f.terms});await f.service.reserve(f.identity,due(f));const {facade,store}=await maintainedStore(f,whole),lease=randomUUID();
  const claimed=await store.compareAndSwap(f.identity.owner,'tasks',f.ids.task_id,{status:'queued'},{status:'running',leaseId:lease,leaseUntil:new Date(f.now()+60000).toISOString(),attempts:1});assert.ok(claimed);
- const state={...claimed.state,local_model:{step:0,messages:[],round:{state:'received',request_hash:hash('synthetic already received model'),text:'Fictional supplied-data report',calls:[],next:0,results:[]}}};
- assert.ok(await store.compareAndSwap(f.identity.owner,'tasks',f.ids.task_id,{status:'running',leaseId:lease},{state}));
+ const control={signal:new AbortController().signal,open:true,deadline:f.now()+5000};await store.beginModelDispatch(f.identity.owner,f.ids.task_id,lease,hash('synthetic already received model'),control);await store.receiveModel(f.identity.owner,f.ids.task_id,lease,{text:'Fictional supplied-data report',calls:[],next:0,results:[]},control);
  await facade.recordModelPlanReceipt(f.identity.owner,f.ids.task_id,lease);
  const artifact=await facade.publishArtifact(f.identity.owner,f.ids.task_id,{kind:'report',title:'Fictional result',summary:'Supplied data only',data:{content:'A useful synthetic report based exclusively on supplied fictional records.'}},lease);
+ const current=await f.repository.transaction(tx=>tx.get(f.identity.owner,'tasks',f.ids.task_id));assert.ok(await store.compareAndSwap(f.identity.owner,'tasks',f.ids.task_id,{status:'running',leaseId:lease},{state:{...current.state,local_model:{...current.state.local_model,artifact}}}));
  const validation=await facade.assertTaskCompletion(f.identity.owner,f.ids.task_id,artifact,lease);assert.equal(validation.valid,true);
  const previous=await f.repository.transaction(tx=>tx.get(f.identity.owner,'tasks',f.ids.task_id)),verify=await f.repository.transaction(tx=>tx.get(f.identity.owner,'catpaw-task-plan-receipts',f.ids.run_id+':1:verify'));
  const proof={artifact_reference:artifact,plan_reference:clone(previous.state.plan_binding),verification_receipt:{id:verify.id,receipt_hash:verify.receipt_hash}};
  return {facade,store,previous,proof};
 }
-for(const whole of [true,false])test(`maintained ${whole?'whole':'bounded'} store commits a validated terminal CAS and its original acknowledgement`,async()=>{
+for(const whole of [false])test(`maintained ${whole?'whole':'bounded'} store commits a validated terminal CAS and its original acknowledgement`,async()=>{
  const f=await fixture(),{store,previous}=await completedReport(f,whole),next=await store.compareAndSwap(f.identity.owner,'tasks',f.ids.task_id,{status:'running',leaseId:previous.leaseId},{status:'succeeded',leaseId:null,leaseUntil:null,state:{...previous.state,local_model:{...previous.state.local_model,finished:true}}});
  assert.ok(next,'valid terminal CAS must commit');assert.equal(next.status,'succeeded');
  const attempt=await f.repository.transaction(tx=>tx.get(f.identity.owner,'runs',previous.leaseId));assert.equal(attempt.status,'succeeded');assert.equal(whole?attempt.execution.acknowledged:attempt.slice.acknowledged,true);
 });
-for(const whole of [true,false])test(`the original due settles against the maintained ${whole?'whole':'bounded'} attempt acknowledgement after terminal lease cleanup`,async()=>{
+for(const whole of [false])test(`the original due settles against the maintained ${whole?'whole':'bounded'} attempt acknowledgement after terminal lease cleanup`,async()=>{
  const f=await fixture(),{store,previous,proof}=await completedReport(f,whole);assert.ok(await store.compareAndSwap(f.identity.owner,'tasks',f.ids.task_id,{status:'running',leaseId:previous.leaseId},{status:'succeeded',leaseId:null,leaseUntil:null,state:{...previous.state,local_model:{...previous.state.local_model,finished:true}}}));
  const input={previous_task:previous,attempt_id:previous.leaseId,completion_receipt:proof};
  const settled=await f.repository.transaction(tx=>f.service.settleOriginalAttemptInTransaction(tx,f.identity,input));
- assert.equal(settled.created,true);assert.equal(settled.reservation.state,'received');assert.equal(settled.reservation.outcome.acknowledgement.task_status,'succeeded');
+ assert.equal(settled.created,false);assert.equal(settled.reservation.state,'received');assert.equal(settled.reservation.outcome.acknowledgement.task_status,'succeeded');
  const read=await f.service.read(f.identity,{principal:f.principal});assert.equal(read.grant.task_completed,false);assert.equal(read.grant.consumed.due,1);
  assert.equal((await f.repository.transaction(tx=>f.service.settleOriginalAttemptInTransaction(tx,f.identity,input))).created,false);
 });
@@ -96,18 +97,18 @@ function attachAttemptAcknowledgement(f,store,proof,options={}){
  if(store instanceof TaskExecutionStore){const original=store.acknowledge.bind(store);store.acknowledge=async(tx,owner,previous,next)=>{await original(tx,owner,previous,next);await close(tx,previous,next);};}
  else store.onCommit=async(tx,{previous,task})=>close(tx,previous,task);
 }
-for(const whole of [true,false])test(`actual ${whole?'whole':'bounded'} ack port atomically commits domain-validated Task, attempt and original due`,async()=>{
+for(const whole of [false])test(`actual ${whole?'whole':'bounded'} ack port atomically commits domain-validated Task, attempt and original due`,async()=>{
  const f=await fixture(),{store,previous,proof}=await completedReport(f,whole);attachAttemptAcknowledgement(f,store,proof);
  assert.ok(await store.compareAndSwap(f.identity.owner,'tasks',f.ids.task_id,{status:'running',leaseId:previous.leaseId},{status:'succeeded',leaseId:null,leaseUntil:null}));
  const read=await f.service.read(f.identity,{principal:f.principal});assert.equal(read.reservations.find(r=>r.id===f.ids.operation_id).state,'received');assert.equal(read.grant.task_completed,false);
 });
-for(const whole of [true,false])test(`actual ${whole?'whole':'bounded'} final ack write rolls back Task, attempt and due together on cancel, timeout or source withdrawal`,async()=>{
+for(const whole of [false])test(`actual ${whole?'whole':'bounded'} final ack write rolls back Task, attempt and due together on cancel, timeout or source withdrawal`,async()=>{
  for(const boundary of ['cancel','deadline','authority']){
   const f=await fixture(),{store,previous,proof}=await completedReport(f,whole),controller=new AbortController();attachAttemptAcknowledgement(f,store,proof,{signal:controller.signal});
   const before=f.repository.snapshot(),transaction=f.repository.transaction.bind(f.repository);let injected=false;
   f.repository.transaction=fn=>transaction(async tx=>{const put=tx.put.bind(tx);tx.put=async(owner,kind,row)=>{const result=await put(owner,kind,row);if(!injected&&kind===TASK_WORK_GRANT_KINDS.reservations&&row.id===f.ids.operation_id&&row.state==='received'){injected=true;if(boundary==='cancel')controller.abort();if(boundary==='deadline')f.advance(TASK_WORK_GRANT_LIMITS.write_budget_ms);if(boundary==='authority')f.deny();}return result;};return fn(tx);});
   const action=()=>store.compareAndSwap(f.identity.owner,'tasks',f.ids.task_id,{status:'running',leaseId:previous.leaseId},{status:'succeeded',leaseId:null,leaseUntil:null});
-  if(whole)assert.equal(await action(),null);else await assert.rejects(action(),e=>e.code==='commit_hook_failed');assert.equal(injected,true,boundary);assert.deepEqual(f.repository.snapshot(),before,boundary);
+  if(whole)assert.equal(await action(),null);else await assert.rejects(action(),e=>e.code===({cancel:'commit_hook_failed',deadline:'work_grant_write_deadline',authority:'fictional_authority_revoked'}[boundary]));assert.equal(injected,true,boundary);assert.deepEqual(f.repository.snapshot(),before,boundary);
  }
 });
 
@@ -126,7 +127,7 @@ test('a durable received result finishes in a fresh maintained bounded slice aft
 });
 test('a longer live grant and lease cannot extend the original accepted due execution deadline',async()=>{
  const f=await fixture({lifetime:120000});await f.service.admit({identity:f.identity,principal:f.principal,terms:f.terms});await f.service.reserve(f.identity,due(f));await f.claim();const request=model(f);await f.service.reserve(f.identity,request,{execution:f.execution()});await checkpointReceived(f,request);await f.service.settle(f.identity,received(request),{execution:f.execution()});
- const {store}=await maintainedStore(f,true);assert.ok(await store.compareAndSwap(f.identity.owner,'tasks',f.ids.task_id,{status:'running',leaseId:f.execution().lease_id},{leaseUntil:new Date(f.now()+120000).toISOString()}));f.advance(60000);assert.equal((await f.service.read(f.identity,{principal:f.principal})).grant.expired,false);const before=f.repository.snapshot();let mutated=false;
+ const {store}=await maintainedStore(f,false);assert.ok(await store.compareAndSwap(f.identity.owner,'tasks',f.ids.task_id,{status:'running',leaseId:f.execution().lease_id},{leaseUntil:new Date(f.now()+120000).toISOString()}));f.advance(60000);assert.equal((await f.service.read(f.identity,{principal:f.principal})).grant.expired,false);const before=f.repository.snapshot();let mutated=false;
  await assert.rejects(f.repository.transaction(tx=>f.service.commitReceivedContinuationInTransaction(tx,f.identity,request.operation_id,async record=>{mutated=true;await record.put(f.identity.owner,'fictional-work-results',{id:request.operation_id,text:'Beyond original due'});},{execution:f.execution(),currentSliceDeadline:f.now()+5000})),e=>e.code==='work_grant_continuation_deadline');assert.equal(mutated,false);assert.deepEqual(f.repository.snapshot(),before);
 });
 test('fresh received continuation final awaits fence slice time, payload, source, control, takeover and generation',async()=>{
@@ -142,7 +143,7 @@ test('fresh received continuation final awaits fence slice time, payload, source
 
 const due=f=>({operation_id:f.ids.operation_id,operation_key:hash({accepted_run:f.ids.run_id}),kind:'due',request_hash:f.requestHash,deadline_at:new Date(Math.min(Date.parse(f.terms.not_after),Date.parse(f.terms.accepted_at)+f.terms.execution_budget_ms)).toISOString()});
 const model=(f,key='first')=>({operation_id:randomUUID(),operation_key:hash(key),kind:'model',request_hash:hash('fictional-model:'+key),deadline_at:new Date(f.now()+30000).toISOString()});
-async function originalDispatch(f,kind='model',whole=true){
+async function originalDispatch(f,kind='model',whole=false){
  await f.service.admit({identity:f.identity,principal:f.principal,terms:f.terms});await f.service.reserve(f.identity,due(f));await f.claim(whole);let request=model(f),checkpoint;
  await f.repository.transaction(async tx=>{
   const task=await tx.get(f.identity.owner,'tasks',f.ids.task_id),run=await tx.get(f.identity.owner,'catpaw-runs',f.ids.run_id);
@@ -178,7 +179,7 @@ test('one accepted due and each original operation consume budget once across du
 const receivedRound=request=>({state:'received',request_hash:request.request_hash,text:'Fictional supplied-data response',calls:[],next:0,results:[]});
 const received=(request,round=receivedRound(request))=>({operation_id:request.operation_id,request_hash:request.request_hash,outcome:'received',receipt_reference:{receipt_id:request.operation_id,receipt_hash:hash(round)}});
 async function checkpointReceived(f,request){
- const facade=new LocalOutputFacade({repository:f.repository,authenticate:()=>{throw Error('HTTP authentication unused');}}),store=new TaskExecutionStore(facade,{now:f.now}),task=await f.repository.transaction(tx=>tx.get(f.identity.owner,'tasks',f.ids.task_id));
+ const facade=new LocalOutputFacade({repository:f.repository,authenticate:()=>{throw Error('HTTP authentication unused');}}),store=new BoundedStore({repository:f.repository,owners:[f.identity.owner],admitTask:facade.admittedTask.bind(facade),now:f.now,invocation:{open:true,deadline:f.now()+60000},workGrantService:f.service}),task=await f.repository.transaction(tx=>tx.get(f.identity.owner,'tasks',f.ids.task_id));
  assert.ok(await store.compareAndSwap(f.identity.owner,'tasks',f.ids.task_id,{status:'running',leaseId:f.execution().lease_id},{state:{...task.state,local_model:{step:0,messages:[],round:receivedRound(request)}}}));return received(request);
 }
 test('a transport received self-hash and a missing original unknown checkpoint cannot acknowledge a reservation',async()=>{
@@ -195,9 +196,9 @@ test('a received continuation requires the original durable payload and refuses 
  }
 });
 test('terminal unknown cannot replace a missing original dispatch reservation with a new identity',async()=>{
- const f=await fixture();await f.service.admit({identity:f.identity,principal:f.principal,terms:f.terms});await f.service.reserve(f.identity,due(f));await f.claim();const {store}=await maintainedStore(f,true),task=await f.repository.transaction(tx=>tx.get(f.identity.owner,'tasks',f.ids.task_id));await store.compareAndSwap(f.identity.owner,'tasks',f.ids.task_id,{status:'running',leaseId:task.leaseId},{state:{...task.state,local_model:{step:0,messages:[],round:{state:'dispatched',request_hash:hash('lost original operation identity')}}}});const previous=await f.repository.transaction(tx=>tx.get(f.identity.owner,'tasks',f.ids.task_id));assert.equal((await store.compareAndSwap(f.identity.owner,'tasks',f.ids.task_id,{status:'running',leaseId:previous.leaseId},{status:'failed',leaseId:null,leaseUntil:null})).status,'outcome_unknown');const before=f.repository.snapshot();await assert.rejects(f.repository.transaction(tx=>f.service.settleOriginalAttemptInTransaction(tx,f.identity,{previous_task:previous,attempt_id:previous.leaseId,completion_receipt:null})),e=>e.code==='work_grant_original_unknown_required');assert.deepEqual(f.repository.snapshot(),before);
+ const f=await fixture();await f.service.admit({identity:f.identity,principal:f.principal,terms:f.terms});await f.service.reserve(f.identity,due(f));await f.claim();const {store}=await maintainedStore(f,false),task=await f.repository.transaction(tx=>tx.get(f.identity.owner,'tasks',f.ids.task_id));await store.compareAndSwap(f.identity.owner,'tasks',f.ids.task_id,{status:'running',leaseId:task.leaseId},{state:{...task.state,local_model:{step:0,messages:[],round:{state:'dispatched',request_hash:hash('lost original operation identity')}}}});const previous=await f.repository.transaction(tx=>tx.get(f.identity.owner,'tasks',f.ids.task_id)),before=f.repository.snapshot();await assert.rejects(store.compareAndSwap(f.identity.owner,'tasks',f.ids.task_id,{status:'running',leaseId:previous.leaseId},{status:'failed',leaseId:null,leaseUntil:null}),e=>e.code==='work_grant_original_unknown_required');assert.deepEqual(f.repository.snapshot(),before);
 });
-for(const whole of [true,false])test(`actual ${whole?'whole':'bounded'} unknown acknowledgement keeps the original operation and cannot masquerade as succeeded`,async()=>{
+for(const whole of [false])test(`actual ${whole?'whole':'bounded'} unknown acknowledgement keeps the original operation and cannot masquerade as succeeded`,async()=>{
  for(const kind of ['model','source']){const f=await fixture({limits:{due:1,model:1,source:1}}),{request}=await originalDispatch(f,kind,whole),{store}=await maintainedStore(f,whole),previous=await f.repository.transaction(tx=>tx.get(f.identity.owner,'tasks',f.ids.task_id));
  attachAttemptAcknowledgement(f,store,null);const next=await store.compareAndSwap(f.identity.owner,'tasks',f.ids.task_id,{status:'running',leaseId:previous.leaseId},{status:'outcome_unknown',leaseId:null,leaseUntil:null});assert.equal(next.status,'outcome_unknown');
  const read=await f.service.read(f.identity,{principal:f.principal}),original=read.reservations.find(r=>r.id===request.operation_id);assert.equal(original.state,'reserved');assert.equal(original.frozen.input.request_hash,request.request_hash);assert.equal(read.reservations.find(r=>r.id===f.ids.operation_id).state,'unknown');assert.equal(read.grant.consumed[kind],1);assert.equal((await f.service.reserve(f.identity,request)).may_dispatch,false);
@@ -205,7 +206,7 @@ for(const whole of [true,false])test(`actual ${whole?'whole':'bounded'} unknown 
 });
 test('typed terminal acknowledgement rejects stale attempt, control revision and fabricated domain completion receipt',async()=>{
  for(const defect of ['attempt','revision','verify_self_hash','plan','missing_verify','missing_proof']){
-  const f=await fixture(),{store,previous,proof}=await completedReport(f,true);assert.ok(await store.compareAndSwap(f.identity.owner,'tasks',f.ids.task_id,{status:'running',leaseId:previous.leaseId},{status:'succeeded',leaseId:null,leaseUntil:null}));const input={previous_task:clone(previous),attempt_id:previous.leaseId,completion_receipt:clone(proof)};
+  const f=await fixture(),{store,previous,proof}=await completedReport(f,false);assert.ok(await store.compareAndSwap(f.identity.owner,'tasks',f.ids.task_id,{status:'running',leaseId:previous.leaseId},{status:'succeeded',leaseId:null,leaseUntil:null}));const input={previous_task:clone(previous),attempt_id:previous.leaseId,completion_receipt:clone(proof)};
   if(defect==='attempt'){input.attempt_id=randomUUID();input.previous_task.leaseId=input.attempt_id;}
   if(defect==='revision')input.previous_task.state.task_control={revision:1};
   if(defect==='verify_self_hash'){input.completion_receipt.verification_receipt.receipt_hash=hash('independent forged validation');await f.repository.transaction(async tx=>{const row=await tx.get(f.identity.owner,'catpaw-task-plan-receipts',proof.verification_receipt.id);await tx.put(f.identity.owner,'catpaw-task-plan-receipts',{...row,receipt_hash:input.completion_receipt.verification_receipt.receipt_hash});});}
@@ -250,7 +251,7 @@ test('all duration and cumulative limits are explicit bounded terms without recu
 
 test('legacy, started and stale runs cannot receive retroactive work authorization',async()=>{
  const legacy=await fixture({legacy:true}),before=legacy.repository.snapshot();await assert.rejects(legacy.service.admit({identity:legacy.identity,principal:legacy.principal,terms:legacy.terms}),e=>e.code==='work_grant_run_binding_conflict');assert.deepEqual(legacy.repository.snapshot(),before);
- for(const reason of ['started','stale']){const f=await fixture();if(reason==='started')await f.claim();else f.advance(TASK_WORK_GRANT_LIMITS.write_budget_ms);const original=f.repository.snapshot();await assert.rejects(f.service.admit({identity:f.identity,principal:f.principal,terms:f.terms}),e=>e.code==='work_grant_late_admission');assert.deepEqual(f.repository.snapshot(),original);}
+ for(const reason of ['started','stale']){const f=await fixture();if(reason==='started')await f.repository.transaction(async tx=>{const task=await tx.get(f.identity.owner,'tasks',f.ids.task_id);await tx.put(f.identity.owner,'tasks',{...task,status:'running',leaseId:randomUUID(),leaseUntil:new Date(f.now()+60000).toISOString()});});else f.advance(TASK_WORK_GRANT_LIMITS.write_budget_ms);const original=f.repository.snapshot();await assert.rejects(f.service.admit({identity:f.identity,principal:f.principal,terms:f.terms}),e=>e.code==='work_grant_late_admission');assert.deepEqual(f.repository.snapshot(),original);}
 });
 
 test('grant admission and viewing require their own principal and a configured trusted authority port',async()=>{

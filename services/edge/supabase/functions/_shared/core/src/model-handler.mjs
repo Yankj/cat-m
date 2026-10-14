@@ -14,6 +14,7 @@ export function modelHandler(facade,provider,{finishOnArtifactReceipt=false}={})
       const applied=await facade.repository.transaction(tx=>facade.applyPlanCheckpoint(tx,owner,task.id,task.leaseId,{assertLive:()=>check(!ctx.signal.aborted,409,'lease_lost')}));await ctx.guard();return {status:'scheduled',state:clone(applied.task.state)};
     }
     const frozen=await facade.effectiveRequest(owner,task.id);
+    check(frozen.work_grant_reference===undefined,409,'accepted_work_whole_executor_unsupported');
     check(frozen.policy===LOCAL_POLICY&&task.input.policy===LOCAL_POLICY,409,'unmanaged_task');
     let state=task.state.local_model??{step:0,messages:[{role:'user',content:JSON.stringify(workerInputContent(frozen))}],round:null,artifact:null};
     if(state.round?.state==='dispatched')return {status:'outcome_unknown',error:'model_dispatch_outcome_unknown; do not automatically resend'};

@@ -24,7 +24,7 @@ export async function kickTurnTasks(runtime,{owner,principal,turnId},{maxSlices=
   const eligible=tasks.filter(t=>t&&['queued','scheduled'].includes(t.status));const next=Math.min(...eligible.map(t=>t.status==='queued'?now():Date.parse(t.nextRunAt)));
   if(next>now()){if(next>=deadline)return {slices,reason:'future_work',outcomes};await sleep(Math.min(next-now(),deadline-now()));if(now()+800>=deadline)break;continue;}
   const budget=Math.min(30000,deadline-now());if(budget<=800)break;
-  const result=await boundedTick({repository:runtime.repository,owners:[owner],admitTask:admit,runStep,budgetMs:budget,settleReserveMs:750,leaseMs:60000,now});slices++;outcomes.push(...result.settled.map(t=>({task_id:t.task_id,status:t.status})));
+  const result=await boundedTick({repository:runtime.repository,workGrantService:runtime.facade.workGrantService,owners:[owner],admitTask:admit,runStep,budgetMs:budget,settleReserveMs:750,leaseMs:60000,now});slices++;outcomes.push(...result.settled.map(t=>({task_id:t.task_id,status:t.status})));
   if(now()+800>=deadline)break;
   if(!result.claimed)return {slices,reason:'busy_or_fenced',outcomes};
  }
