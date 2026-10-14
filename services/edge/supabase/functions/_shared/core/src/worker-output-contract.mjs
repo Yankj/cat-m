@@ -13,7 +13,7 @@ export function workerInputContent(frozen){
 }
 export function workerProviderContext(frozen,messages){
  const revision=frozen.task_revision_context,inputs=frozen.public_sources?messages.filter(m=>m.role==='tool').map(m=>({text:m.content})):[];
- return {source_auth:frozen.source_auth,scope_id:frozen.scope.scope_id,conversation_id:frozen.conversation_id,...frozen.task_execution?{task_execution:clone(frozen.task_execution)}:{},...revision?{revision_source_auth:revision.source_auth,revision_original_source_auth:revision.original_source_auth,revision_memory_generation:revision.memory_generation}: {},...inputs.length||revision?{input_context:[...inputs,...revision?[{text:revision.raw_instruction},{text:revision.base_body}]:[]]}:{}};
+ return {source_auth:frozen.source_auth,scope_id:frozen.scope.scope_id,conversation_id:frozen.conversation_id,...frozen.task_execution?{task_execution:clone(frozen.task_execution)}:{},...frozen.work_grant_reference?{work_grant_reference:clone(frozen.work_grant_reference)}:{},...revision?{revision_source_auth:revision.source_auth,revision_original_source_auth:revision.original_source_auth,revision_memory_generation:revision.memory_generation}: {},...inputs.length||revision?{input_context:[...inputs,...revision?[{text:revision.raw_instruction},{text:revision.base_body}]:[]]}:{}};
 }
 export function describeReportRequirements(policy){
  const p=validateReportPolicy(policy);

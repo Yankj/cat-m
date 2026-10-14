@@ -711,6 +711,28 @@ extension NativeChatHTTPBackend:ConversationTaskActionBackend {
               (receipt.decision == .approve && result.action.approval_status=="approved") || (receipt.decision == .deny && result.action.approval_status=="denied") else {throw ConversationTaskActionError.invalidResponse}
     }
     /// Authentication/encoding failures before URLSession starts are distinct from a lost POST response.
+    /// Reuse this backend's scoped credentials/session. Typed effect decoding and
+    /// durable delivery belong to the application service, never this wire bridge.
+    private func deviceEffectPath(_ reference:ConversationDeviceEffectReference) throws -> String {
+        guard reference.scope==configuration.localScope,reference.binding.scope_id==configuration.serverScopeID,
+              configuration.expectedSubjectID?.uuidString.lowercased()==reference.subjectID else {throw ConversationDeviceEffectError.referenceMismatch}
+        return "/catpaw/device-effects/v1/scopes/"+configuration.serverScopeID.uuidString.lowercased()+"/runs/"+reference.binding.run_id.uuidString.lowercased()+"/actions/"+reference.actionID+"/effects/"+(try reference.effectID)
+    }
+    func deviceEffectReadinessWire(reference:ConversationDeviceEffectReference) async throws -> Data {
+        _=try deviceEffectPath(reference)
+        return try await taskReviewWire("/readyz",scope:reference.scope,limit:128_000)
+    }
+    func deviceEffectWire(reference:ConversationDeviceEffectReference,suffix:String,body:Data?=nil,limit:Int=512_000) async throws -> Data {
+        let path:String
+        do {
+            let allowed = body == nil ? suffix.isEmpty : ["admissions","dispatches","results","stop"].contains(suffix)
+            guard allowed,limit>0,limit<=512_000 else {throw ConversationDeviceEffectError.referenceMismatch}
+            path=try deviceEffectPath(reference)+(suffix.isEmpty ? "" : "/"+suffix)
+        } catch {if body != nil {throw ConversationDeviceEffectDispatchFailure.notSent};throw error}
+        do {return try await taskReviewWire(path,scope:reference.scope,body:body,limit:limit)}
+        catch is NativeTaskReviewPreflightFailure {throw ConversationDeviceEffectDispatchFailure.notSent}
+        catch NativeChatHTTPFailure.status(404) {if body == nil {throw ConversationDeviceEffectServiceError.originalNotFound};throw NativeChatHTTPFailure.status(404)}
+    }
     private func taskReviewWire(_ path:String,scope:DataScope,body:Data?=nil,limit:Int) async throws -> Data {
         let wire:URLRequest
         do {

@@ -1,6 +1,7 @@
 import {ApiError,check,hash,UUID,iso} from './core/facade-r2/src/common.mjs';import {stableUUID} from './core/src/local-output-facade.mjs';
 import {invalidatePendingTaskActionsInTransaction} from './core/src/task-action-service.mjs';
 import {TASK_WORK_GRANT_CONTRACT,TASK_WORK_GRANT_KINDS,validateWorkGrantTerms,validateWorkGrantRunBinding,workGrantReference,workGrantReceiptHash} from './core/src/task-work-grant-contract.mjs';
+import {revokeTaskWorkGrantsForSourceInTransaction} from './core/src/task-work-grant-lifecycle.mjs';
 export const membershipOwner=issuer=>`system:supabase:${hash(issuer)}`;
 // Called only AFTER signed JWT + official GET /auth/v1/user validation. No managed Auth SQL or tokens persisted.
 export class AppScopeAuthority{
@@ -55,10 +56,19 @@ export async function assertSourceAuthority(tx,source,scope){
 /** Original accepted work only. This is a source-authority check, never a dispatch,
  * completion or lease permit. Trusted composition must additionally enforce consent,
  * cumulative reservation budgets and the exact current executor/settlement fence.
- * No API path enables this port yet; legacy runs keep assertSourceAuthority.
+ * Only trusted finite-work composition may select this port; legacy runs keep
+ * assertSourceAuthority. HTTP admission/viewer authentication remains separate.
  * A caller boolean or merely matching reference cannot relax JWT expiry: all facts
  * are re-read from the original immutable run and finite grant in this transaction. */
 export async function assertAcceptedWorkSourceAuthority(tx,source,scope,reference,{now=Date.now}={}){
+ return acceptedWorkSourceProof(tx,source,scope,reference,{now},['active']);
+}
+// A fresh authenticated control command may inspect its original paused finite
+// source. This fixed port grants no execution permission and cannot admit work.
+export async function assertAcceptedWorkControlSourceAuthority(tx,source,scope,reference,{now=Date.now}={}){
+ return acceptedWorkSourceProof(tx,source,scope,reference,{now},['active','paused']);
+}
+async function acceptedWorkSourceProof(tx,source,scope,reference,{now},allowedStates){
  const conflict=condition=>check(condition,409,'accepted_work_grant_conflict');
  const same=(a,b)=>a!==undefined&&b!==undefined&&hash(a)===hash(b);
  conflict(reference?.schema_version===1&&reference.contract===TASK_WORK_GRANT_CONTRACT&&UUID.test(reference.grant_id));
@@ -75,7 +85,7 @@ export async function assertAcceptedWorkSourceAuthority(tx,source,scope,referenc
   let terms;try{terms=validateWorkGrantTerms(row?.terms);}catch{conflict(false);}
   const state=await tx.get(owner,TASK_WORK_GRANT_KINDS.grants,reference.grant_id),r=row.receipt;
   conflict(same(reference,workGrantReference(terms))&&row.id===terms.grant_id&&row.terms_hash===reference.terms_hash&&same(terms.scope,scope)&&same(terms.source_auth,source));
-  conflict(state?.state==='active'&&state.id===row.id&&same(state.reference,reference)&&same(state.run_binding,row.run_binding));
+  conflict(allowedStates.includes(state?.state)&&state.id===row.id&&same(state.reference,reference)&&same(state.run_binding,row.run_binding));
   conflict(Number.isSafeInteger(state.revision)&&state.revision>0&&['due','model','source'].every(k=>Number.isSafeInteger(state.consumed?.[k])&&state.consumed[k]>=0&&state.consumed[k]<=terms.limits[k]));
   grantLive(terms);
   conflict(r?.contract===TASK_WORK_GRANT_CONTRACT&&r.grant_id===row.id&&r.terms_hash===row.terms_hash&&r.accepted_at===terms.accepted_at&&r.task_completed===false&&same(r.run_binding,row.run_binding)&&workGrantReceiptHash(r)===r.receipt_hash);
@@ -100,7 +110,8 @@ export async function revokeAppSession(repository,claims,runtime){const stopped=
  for(const scope of [...(membership?.scopes??[])].sort((a,b)=>a.scope_id.localeCompare(b.scope_id)))if(tx.connection){await tx.connection.query("SELECT set_config('catpaw.scope_id',$1,true)",[scope.scope_id]);await tx.connection.query('SELECT data FROM catpaw.scopes WHERE scope_id=$1 FOR UPDATE',[scope.scope_id]);}
  if(tx.connection)await tx.connection.query('SELECT pg_advisory_xact_lock(hashtextextended($1,0))',[owner+claims.sub]);
  const row=await tx.get(owner,'app-sessions',claims.session_id);check(!row||row.subject_id===claims.sub,401,'session_revoked');await tx.put(owner,'app-sessions',{id:claims.session_id,subject_id:claims.sub,issuer:claims.iss,state:'revoked',expires_at:claims.exp,revoked_at:iso()});
- for(const scope of membership?.scopes??[]){const resourceOwner=`catpaw:${hash({profile:scope.profile_id,workspace:scope.workspace_id})}`;
+ for(const scope of [...(membership?.scopes??[])].sort((a,b)=>a.scope_id.localeCompare(b.scope_id))){const resourceOwner=`catpaw:${hash({profile:scope.profile_id,workspace:scope.workspace_id})}`;
+  await revokeTaskWorkGrantsForSourceInTransaction(tx,{owner:resourceOwner,scope_id:scope.scope_id,subject_id:claims.sub,session_id:claims.session_id});
   for(const run of await tx.list(resourceOwner,'catpaw-runs')){
    if(run.frozen_request?.subject_id!==claims.sub)continue;
    const task=await tx.get(resourceOwner,'tasks',run.task_id),original=run.frozen_request.source_auth?.session_id===claims.session_id;

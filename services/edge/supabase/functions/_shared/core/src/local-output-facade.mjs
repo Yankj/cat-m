@@ -6,6 +6,8 @@ import {freezePublicSourceCatalog,policyTargetForURL} from './public-source-cont
 import {invalidatePendingTaskActionsInTransaction} from './task-action-service.mjs';
 import {createTaskPlan,planSnapshot,readTaskPlan,amendTaskPlan,applyPendingPlan,effectiveTaskRequest,recordPlanReceipt,completionPlanCheck,taskPlanCheckpointReady,taskPlanExecutionDisposition} from './task-plan-service.mjs';
 import {taskRevisionContextInTransaction,recordTaskRevisionResultInTransaction,recordTaskRevisionArtifactReceiptInTransaction} from './task-revision-service.mjs';
+import {TASK_WORK_GRANT_CONTRACT,validateWorkGrantTerms,workGrantReference} from './task-work-grant-contract.mjs';
+import {validateFrozenAcceptedWorkIntent,assertAcceptedWorkNewRunWindow} from './accepted-work-intent-contract.mjs';
 import {workerExecutionContext} from './task-control-contract.mjs';
 export const LOCAL_POLICY='conversation-local-output-v1';
 export function stableUUID(text) {
@@ -39,7 +41,10 @@ export class LocalOutputFacade extends Facade {
     const r=await tx.get(owner,'catpaw-runs',id);
     check(r?.frozen_request?.subject_id===principal.subject_id&&(!scopeID||r.frozen_request.scope.scope_id===scopeID),404,'not_found');
     const c=await tx.get(owner,'native-chat-conversations',r.frozen_request.conversation_id);
-    check(c?.subject_id===principal.subject_id,404,'not_found');return r;
+    check(c?.subject_id===principal.subject_id,404,'not_found');
+    // Shared public-service lock prologue precedes delegation/task locks. The
+    // trusted hook only orders fact reads; it never grants execution authority.
+    await this.beforeOwnedRunLocks?.(tx,{owner,run:r,principal,scopeID});return r;
   }
   async ownedDelegation(tx,owner,id,principal,{lock=false,scopeID}={}) {
     const d=await this.delegation(tx,owner,id,{lock});
@@ -172,10 +177,17 @@ export class LocalOutputFacade extends Facade {
       check(validation.valid,422,'report_completion_condition_not_met');return completed(validation);
     });
   }
-  async admitChatTask(tx,{owner,scope,conversation,turn,call}) {
+  async admitChatTask(tx,{owner,scope,principal,conversation,turn,call}) {
     const ids=Object.fromEntries(['delegation_id','operation_id','run_id'].map(k=>[k,stableUUID(`${turn.id}:${call.id}:${k}`)]));
     let memoryGeneration=null;if(this.memoryGenerationEnabled)await tx.withScope(scope.scope_id,async scoped=>{memoryGeneration=(await scoped.scope()).generation;});
     const taskID=hash(`catpaw-task:${owner}:${ids.operation_id}`),runBinding={...ids,task_id:taskID};
+    let workIntent=null,acceptedScope=scope,workTerms=null;
+    if(turn.work_intent){
+      check(this.workGrantService&&this.acceptedWorkExecutionReady===true&&principal,503,'accepted_work_execution_not_configured');
+      acceptedScope=await tx.withScope(scope.scope_id,async scoped=>(await scoped.scope()).identity);
+      check(acceptedScope.owner===owner&&owner===this.owner(scope),403,'work_intent_subject_conflict');
+      workIntent=validateFrozenAcceptedWorkIntent(turn.work_intent,{turn,scope:acceptedScope,conversation,routeHash:this.acceptedWorkRouteHash,callName:call.name});
+    }
     const intent=turn.completion_intent;
     const completionContract={schema_version:1,version:1,mode:this.completionPolicy?(intent?'single_local_report':'explicit_intent_required'):'model_finish_local_artifact'};
     const authority=intent?{...clone(intent),...runBinding}:null;
@@ -187,13 +199,20 @@ export class LocalOutputFacade extends Facade {
       for(const source of publicSources.sources)policyTargetForURL(reader.policy,source.requested_url);
       delete args.source_urls;
     }
-    const frozen={...turn.source_auth?{source_auth:clone(turn.source_auth)}:{},completion_contract:completionContract,run_binding:runBinding,current_input_hash:hash(turn.input),...authority?{completion_authority:authority}:{},...memoryGeneration?{memory_generation:memoryGeneration}:{},...publicSources?{public_sources:publicSources}:{},scope,subject_id:conversation.subject_id,conversation_id:conversation.id,conversation_epoch:conversation.grant_epoch,
+    let frozen={...turn.source_auth?{source_auth:clone(turn.source_auth)}:{},completion_contract:completionContract,run_binding:runBinding,current_input_hash:hash(turn.input),...authority?{completion_authority:authority}:{},...memoryGeneration?{memory_generation:memoryGeneration}:{},...publicSources?{public_sources:publicSources}:{},scope:acceptedScope,subject_id:conversation.subject_id,conversation_id:conversation.id,conversation_epoch:conversation.grant_epoch,
       turn_id:turn.id,user_message_id:turn.input.message.id,call_id:call.id,args,messages:clone(turn.history),context:clone(turn.input.context),
       model_configuration:this.modelConfiguration,policy:LOCAL_POLICY,...this.completionPolicy?{completion_policy:clone(this.completionPolicy)}:{}};
-    const requestHash=hash(frozen),prior=await tx.get(owner,'catpaw-operations',ids.operation_id);
+    const prior=await tx.get(owner,'catpaw-operations',ids.operation_id),original=prior?await tx.get(owner,'catpaw-runs',prior.run_id):null;
+    if(prior)check(original?.id===ids.run_id&&original.task_id===taskID,409,'tool_call_conflict');
+    const at=workIntent?this.workGrantService.now():null,now=workIntent?(original?.created_at??new Date(at).toISOString()):iso();
+    if(workIntent&&!prior)assertAcceptedWorkNewRunWindow(workIntent,at);
+    if(workIntent){
+      workTerms=validateWorkGrantTerms({schema_version:1,contract:TASK_WORK_GRANT_CONTRACT,mode:'accepted_run',grant_id:workIntent.decision_id,scope:acceptedScope,subject_id:conversation.subject_id,conversation_id:conversation.id,source_auth:clone(turn.source_auth),origin:runBinding,input_hash:hash(turn.input),args_hash:hash(args),model_configuration_hash:hash(this.modelConfiguration),route_hash:workIntent.route_hash,source_catalog_hash:publicSources?hash(publicSources):null,memory_generation:memoryGeneration,accepted_at:now,not_after:workIntent.not_after,execution_budget_ms:workIntent.execution_budget_ms,limits:clone(workIntent.limits),allowed_tools:publicSources?['read_public_sources_v1','save_sourced_report_v1','finish_task','ask_user']:['save_artifact','finish_task','ask_user']});
+      frozen={...frozen,work_grant_reference:workGrantReference(workTerms),work_intent_reference:{contract:workIntent.contract,decision_id:workIntent.decision_id,intent_hash:hash(workIntent)}};
+    }
+    const requestHash=hash(frozen);
     if(prior){check(prior.request_hash===requestHash,409,'tool_call_conflict');return this.binding(scope,conversation,turn,call,await tx.get(owner,'catpaw-runs',prior.run_id));}
     check(!await tx.get(owner,'catpaw-runs',ids.run_id),409,'run_conflict');
-    const now=iso();
     const d={id:ids.delegation_id,revision:1,grant_epoch:1,state:'active',request_hash:hash({...frozen,kind:'delegation'}),
       ...args,policy:LOCAL_POLICY,subject_id:conversation.subject_id,conversation_id:conversation.id,created_at:now};
     const tag={...ids,delegation_revision:1,grant_epoch:1,request_hash:requestHash};
@@ -205,6 +224,13 @@ export class LocalOutputFacade extends Facade {
     check(await tx.insertIfAbsent(owner,'catpaw-runs',run),409,'run_conflict');
     task=await createTaskPlan(tx,owner,run,task);
     check(await tx.insertIfAbsent(owner,'tasks',task),409,'operation_conflict');
+    if(workTerms){
+      check(typeof this.beforeWorkGrantAdmission==='function',503,'work_grant_authority_not_configured');
+      await this.beforeWorkGrantAdmission(tx,{owner,scope:acceptedScope,principal,turn,run,task,terms:workTerms});
+      await this.workGrantService.admitInTransaction(tx,{identity:{owner,scope_id:acceptedScope.scope_id,subject_id:conversation.subject_id,grant_id:workTerms.grant_id},principal,terms:workTerms});
+      // The initial request, delegation, task, finite terms and receipt all commit atomically.
+      await this.beforeWorkGrantAdmission(tx,{owner,scope:acceptedScope,principal,turn,run,task,terms:workTerms});
+    }
     return this.binding(scope,conversation,turn,call,run);
   }
   binding(scope,c,t,call,r){return {scope_id:scope.scope_id,conversation_id:c.id,turn_id:t.id,call_id:call.id,delegation_id:r.delegation_id,

@@ -3870,5 +3870,9 @@
   "授权已变更；当前状态待核验。": {
     "zh-Hans": "授权已变更；当前状态待核验。",
     "en": "Authorization has changed. The current state needs verification."
+  },
+  "原有限工作期限已结束，需要重新明确受理。": {
+    "en": "The original work deadline has ended. A new explicit acceptance is required.",
+    "zh-Hans": "原有限工作期限已结束，需要重新明确受理。"
   }
 }

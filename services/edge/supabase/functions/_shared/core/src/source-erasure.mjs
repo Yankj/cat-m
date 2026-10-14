@@ -1,4 +1,5 @@
 import { check,hash,iso } from '../facade-r2/src/common.mjs';
+import {collectTaskWorkGrantPurgeRecordsInTransaction} from './task-work-grant-lifecycle.mjs';
 // Current-primary-store erasure only. An execution/artifact purge journal is a separate unresolved contract.
 export async function eraseChatSource({records,principal,scope_id,source}){
   const scope=principal.scopes.find(s=>s.scope_id===scope_id);check(scope,403,'scope_forbidden');
@@ -10,7 +11,8 @@ export async function eraseChatSource({records,principal,scope_id,source}){
   const plans=(await records.list(owner,'catpaw-task-plan-heads')).filter(r=>r.conversation_id===c.id);
   let retainedExecution=false;
   for(const kind of ['catpaw-task-source-reads','catpaw-task-source-receipts','catpaw-task-actions','catpaw-task-action-proposals','catpaw-task-action-decisions','catpaw-task-artifact-operations','catpaw-task-artifact-receipts','catpaw-task-revision-operations','catpaw-task-revision-results','catpaw-task-revision-artifact-receipts','catpaw-task-control-operations'])if((await records.list(owner,kind)).some(r=>r.conversation_id===c.id||r.frozen?.conversation_id===c.id))retainedExecution=true;
-  check(runs.length===0&&plans.length===0&&!retainedExecution,409,'source_eraser_requires_execution_purge');
+  const work=await collectTaskWorkGrantPurgeRecordsInTransaction(records,{owner,scope_id,subject_id:principal.subject_id,conversation_id:c.id,runs});
+  check(runs.length===0&&plans.length===0&&!retainedExecution&&work.records.length===0&&work.blocked.length===0,409,'source_eraser_requires_execution_purge');
   const turns=(await records.list(owner,'native-chat-turns')).filter(t=>t.conversation_id===c.id);
   const affected=turns.filter(t=>t.id===source.turn_id||t.history.some(m=>m.id===source.id));
   const assistantIDs=new Set(affected.flatMap(t=>t.events.filter(e=>e.type==='turn_completed').map(e=>e.data.message_id)));
