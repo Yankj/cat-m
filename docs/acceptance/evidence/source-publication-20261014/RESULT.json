@@ -1,0 +1,1726 @@
+{
+  "schema_version": 1,
+  "recorded_at_utc": "2026-10-14T15:59:31Z",
+  "stage": "SOURCE_SNAPSHOT_PUBLISHED; not deployment or product acceptance",
+  "repository": "Yankj/catpaw-m",
+  "branch": "feat/s05-bounded-work",
+  "url": "https://github.com/Yankj/catpaw-m/tree/feat/s05-bounded-work",
+  "transport": "Existing GitHub connector; CLI HTTPS identity unavailable; strict SSH host verification failure preserved",
+  "source": {
+    "base_commit": "63447d1fb44b6b1c99fae20cb10c907e58d2a595",
+    "local_commit": "9d0b53d9180ae555b0dcd7ccb0e610b0622f0fb9",
+    "local_full_tree": "cfb769e58cc6e61eb4913e5b71acd4e671b8d59e",
+    "published_source_commit": "db1cf680c54eaf6062320f645dcfc8daaeb3a53b",
+    "published_code_tree": "d88d72ce8441272319c29e05064df62f51c495a6",
+    "original_local_commits": [
+      {
+        "sha": "8104cf2b40bfaa9eed12c2284db6967d5a14f3eb",
+        "tree": "278a93c817def856259eed1802e5e751945b765f",
+        "subject": "feat: start agent delivery with fenced conversation and native GenUI"
+      },
+      {
+        "sha": "1c3bb15392f2d893db5ae2be0288822af796878c",
+        "tree": "bd449d5a3b5ba69d4cc0c67a7e814e903f6034cd",
+        "subject": "feat: persist task plans and native editing state"
+      },
+      {
+        "sha": "483f7ad9db0101bf4929d671f2448726e4be6348",
+        "tree": "fdd91cc89c57fd24949b83df3ab6b82213caa2be",
+        "subject": "feat: add sourced task results and exact action contracts"
+      },
+      {
+        "sha": "d02f1e7a37de75ccaf1292440698e3781afc5abf",
+        "tree": "9a762500f070b98c64bc313a2d53c671dceb1546",
+        "subject": "feat: add recoverable artifact edits and exact action review"
+      },
+      {
+        "sha": "a444e4ff5af7da81132f1fe647d6379319913c7f",
+        "tree": "2a538bf1f474eb348e108a2b7ec679885021ef09",
+        "subject": "feat: continue selected reports through the original task"
+      },
+      {
+        "sha": "cb63a3afda2abeedc603d5d1b77d95a977cc8dcd",
+        "tree": "6a0177f5bb0fd9c3bba563c584dd1ad6f99794b2",
+        "subject": "feat: preserve task control authority and native editing state"
+      },
+      {
+        "sha": "004c8a511daa8c2d35d0a2b7b7f93d87472853ff",
+        "tree": "4f6079a13681bd6c8c711108cb85d195227fc94c",
+        "subject": "docs: record local authority recovery candidate"
+      },
+      {
+        "sha": "7ac5518aa8d64d58707f9a093c2fd24ac48fee98",
+        "tree": "8d386330936d00fb03990377b334517d028e81d7",
+        "subject": "Unify native typography and recover editors within committed viewports"
+      },
+      {
+        "sha": "c24901d8589f75b768f4c97114d7330397eddfe9",
+        "tree": "1669ea86eac68443a962e74b6e642c29cbb2b9d3",
+        "subject": "Pin build23 stage source and simulator package readback"
+      },
+      {
+        "sha": "9d0b53d9180ae555b0dcd7ccb0e610b0622f0fb9",
+        "tree": "cfb769e58cc6e61eb4913e5b71acd4e671b8d59e",
+        "subject": "docs: record autonomous FINAL-G3 continuation plan"
+      }
+    ],
+    "identity_rule": "Connector commit metadata differs. Original local history remains intact; all selected Git blobs and exact scoped tree match. 22 new PNGs withheld; this is not a complete media/evidence export or same-version product release."
+  },
+  "verification": {
+    "remote_head_readback": "db1cf680c54eaf6062320f645dcfc8daaeb3a53b",
+    "compare_status": "ahead",
+    "merge_base": "63447d1fb44b6b1c99fae20cb10c907e58d2a595",
+    "remote_changed_paths": 180,
+    "selected_path_set_match": true,
+    "exact_scoped_tree_match": true,
+    "checks": [
+      "repository layout",
+      "frozen sources",
+      "deployed-source snapshots",
+      "AF plan",
+      "AF goals",
+      "FINAL plan",
+      "CGUI plan",
+      "semantic typography",
+      "sensitivity",
+      "git whitespace"
+    ],
+    "sensitivity_blocking_hits": 0,
+    "manual_review_hits": 0,
+    "new_business_source_changes": 0,
+    "new_runtime_tests": 0
+  },
+  "published_files": [
+    {
+      "path": "apps/ios-conversation/CatpawM.xcodeproj/project.pbxproj",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "adb1aa15127ae1a8ebbb6f45e9720a3087eb8073",
+      "sha256": "83bd5c0f429a716a0e5702c0157b4ffa1cb73888adffba0c752b6c49738ec6fc",
+      "bytes": 55120
+    },
+    {
+      "path": "apps/ios-conversation/Resources/UIStrings.json",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "9da32bdd1c0e3bd017e8b5c7b769f61070f811a7",
+      "sha256": "1bf8a629ba2acb8c1485f18b4008a86973124f78ab00dd7126f6932f9d6eb986",
+      "bytes": 134438
+    },
+    {
+      "path": "apps/ios-conversation/Scripts/check-source.sh",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "ec1b296e4c0e33faf6bbf352658c01b67174c431",
+      "sha256": "8374d1ca4a7bdf246740c4429988014c90e83302eda90c3d63755073a0fd785f",
+      "bytes": 1647
+    },
+    {
+      "path": "apps/ios-conversation/Scripts/run-simulator-review.sh",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "d6ce55a554781a43229d48179caeab8269003821",
+      "sha256": "0e492d37c7800d32a020f2adb0e4d7570cbf1c7235dd263893f7d9947f414f70",
+      "bytes": 3797
+    },
+    {
+      "path": "apps/ios-conversation/Scripts/test-artifact-edit-portable.sh",
+      "mode": "100755",
+      "type": "blob",
+      "git_blob_sha": "50fd2119aaafdf283ea585476c23d23d73c39546",
+      "sha256": "f0981ff0c575886fbbf205e6efa01e87c231a2794d141053c0c890e261d07d98",
+      "bytes": 929
+    },
+    {
+      "path": "apps/ios-conversation/Scripts/test-artifact-projection-portable.sh",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "ef439a0c71497d83256e5587b0e21384cfec4bbf",
+      "sha256": "a9b3c48b0304a83b3f49f92510acde959c1a81a5306c77f8c09db21fbb4e460c",
+      "bytes": 616
+    },
+    {
+      "path": "apps/ios-conversation/Scripts/test-artifact-sources-portable.sh",
+      "mode": "100755",
+      "type": "blob",
+      "git_blob_sha": "2942cd8af20f0f7d73dd928bc74c8fe850bebd25",
+      "sha256": "16fb1589c9a8f4e3b56b578144a47d36bfc9fb63d386c73cb08e23f587456aac",
+      "bytes": 551
+    },
+    {
+      "path": "apps/ios-conversation/Scripts/test-conversation-portable.sh",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "cc94644a09967416cc7ce36e78527c795f7c4b33",
+      "sha256": "af030914a7959e6f24792070a13a2a4342d2b20a61070fec52c147fa7c5307e5",
+      "bytes": 721
+    },
+    {
+      "path": "apps/ios-conversation/Scripts/test-conversation-queue.sh",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "ac73625643a849c1cb42d60239249bda8e9b7364",
+      "sha256": "0d58f6e1e2a7f20697ef49b4b1f367ff8d0303a96868f08fed2762eb3461c6bd",
+      "bytes": 763
+    },
+    {
+      "path": "apps/ios-conversation/Scripts/test-generative-ui-portable.sh",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "493c2632808583730d373ef46ca7dd8c17af9d59",
+      "sha256": "8f0c1bd2e3fe155a4a3997d9ac39d27063a3c6a2a62eaa03637b5d3f60d7e00b",
+      "bytes": 489
+    },
+    {
+      "path": "apps/ios-conversation/Scripts/test-generative-ui-state-portable.sh",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "99c3e66a6f19407b7d6ffd2a025046880624373b",
+      "sha256": "db659db40a2d556eb1b23da7612e753ebaa0e6b056406db3e36fd54c623e23f0",
+      "bytes": 651
+    },
+    {
+      "path": "apps/ios-conversation/Scripts/test-native-chat-wire.sh",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "dcbfee7af95457fe555284ef2efdb9388319777c",
+      "sha256": "7162e01982d881f35f10c0720949fcece99ef1904ad408a3d0b33edb0a198a96",
+      "bytes": 1196
+    },
+    {
+      "path": "apps/ios-conversation/Scripts/test-strict-json-portable.sh",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "18676f89c52c6372d81fa5a4ef9813f29c28d2d2",
+      "sha256": "112e6e83010fd37ab21e8c7a174f70fb21e0180e8c17cf04c1c425a1b1eba34a",
+      "bytes": 526
+    },
+    {
+      "path": "apps/ios-conversation/Scripts/test-task-actions-portable.sh",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "15fdf8887bdafbebaaf0234650eca1647df257f9",
+      "sha256": "e5ac89b6436ee1c60258bf8b9f96d8cc39c3dd15a2d3d7978ef93f24ce9c459e",
+      "bytes": 1306
+    },
+    {
+      "path": "apps/ios-conversation/Scripts/test-task-plan-portable.sh",
+      "mode": "100755",
+      "type": "blob",
+      "git_blob_sha": "b88ec7cc720c33f1143dfe3f92cf2cab125bbd0a",
+      "sha256": "860ad939f8115dd369991653873357ce0ac8bda807983ad41ddae4719abff20b",
+      "bytes": 947
+    },
+    {
+      "path": "apps/ios-conversation/Sources/App/CatpawApp.swift",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "a2eff2c733e48e1f568bdc0034149f89e71bd5a4",
+      "sha256": "58ffa234a3610c6cab6e775414e97e744927f4da36a08091ffc60099df861f0b",
+      "bytes": 12318
+    },
+    {
+      "path": "apps/ios-conversation/Sources/App/ConversationArtifactEditFixture.swift",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "ec36191b64d2f5981a970220df8038ae381d8224",
+      "sha256": "afefe58b196267e517db3d93a1a8e85f686f77fa302ce4c9569c440cd8ac5afa",
+      "bytes": 9248
+    },
+    {
+      "path": "apps/ios-conversation/Sources/App/ConversationFirstModel.swift",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "ce2398d807bfde37ad3bec03da2d0bc25374ef0c",
+      "sha256": "2f458c6efe53adb1a35fac8fdcf99942b3365145470724eac14bc361c873987e",
+      "bytes": 57115
+    },
+    {
+      "path": "apps/ios-conversation/Sources/App/ConversationTaskActionFixture.swift",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "05dc7298dccbc516f278d61ef9bbef66b95b389d",
+      "sha256": "042bfd298668be52d3e43fdbc1be0639443048f7ae93ab6c45a4529b6371b7f6",
+      "bytes": 7912
+    },
+    {
+      "path": "apps/ios-conversation/Sources/App/ConversationTaskControlFixture.swift",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "0e40c1f2f0fba7fda567a2a496332b2f6907f37a",
+      "sha256": "2efdc87ef5e8e8fe3e9940cf65977edde0679232376059dfc450e5f81d9c9da9",
+      "bytes": 11527
+    },
+    {
+      "path": "apps/ios-conversation/Sources/App/ConversationTaskPlanFixture.swift",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "1883d9acf6c5f5892e4e4783106c4ab3ae2d37f3",
+      "sha256": "c04373986802e2d8310fdb4341d85449cff02f6c0e42d698a064afc744f36ef0",
+      "bytes": 3761
+    },
+    {
+      "path": "apps/ios-conversation/Sources/App/NativeAuthApplicationModel.swift",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "929c6e8cac39306507bcebc2729f37972ae1cd39",
+      "sha256": "b9f8ac4a46a593bc8f2520d7e32cf52e17c2f21dd68c9988243b452f6651c8fa",
+      "bytes": 20268
+    },
+    {
+      "path": "apps/ios-conversation/Sources/App/P0ExperienceFixture.swift",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "85406dca8a853699874b6da40e7e05ee41ecd3bf",
+      "sha256": "b88ffabbb4db43fc4cdf1a47e0240924674d2a5b19211ed36f786b3d076b412d",
+      "bytes": 14711
+    },
+    {
+      "path": "apps/ios-conversation/Sources/App/P0ExperienceProbe.swift",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "559c4a2d3398a34f078e8ad803ede428d7166a33",
+      "sha256": "0c36d0ff02e5e9318379b72b504c824b679eedbc31c8194b1a538de0bf93f710",
+      "bytes": 7202
+    },
+    {
+      "path": "apps/ios-conversation/Sources/DesignSystem/AdaptiveTextLayout.swift",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "7ae9b0141a61dbfd55a0327bf5a1c1a1f5ce28ac",
+      "sha256": "a57c3fdfe7c8b6feedcef4f1f84999f7e5ac046209f0ca972cb8d428b17f45df",
+      "bytes": 34667
+    },
+    {
+      "path": "apps/ios-conversation/Sources/DesignSystem/Components.swift",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "091181075fb254d3c0eabe5fac85fe4bbd22d0bd",
+      "sha256": "e57b3775c0be200304bb42742d97a3975169542bd0da1fee1dab9de1283b51e1",
+      "bytes": 7933
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Domain/ConversationArtifactContinuation.swift",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "63d858c43f6d07a0a025e6c2523a9d513741284c",
+      "sha256": "3fb78b38861b45c6d15519d2b75b1d44a09f721a68936ce70bce97c8ce422fcf",
+      "bytes": 6873
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Domain/ConversationArtifactEditing.swift",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "f8446750b9bf99c1ddb5bcb96711c3452de0098e",
+      "sha256": "30c3b971d35a116a5b7189d88924df99b3328f647031c024130770c48a2fa6f4",
+      "bytes": 23867
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Domain/ConversationArtifactSources.swift",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "b15a703b4c1f64c7537a658bed7e53c46e98047c",
+      "sha256": "f14067d0908788c8dec324a4b3c0699e663b7b799ce354921290ce6f96fb0431",
+      "bytes": 9077
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Domain/ConversationFollowupQueue.swift",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "1c8046156126726a235c2b312710fb852cb32c6d",
+      "sha256": "401fe4124d5bdf6c5d7aeb0b8d8e897e2f067fd87b8918773a3cdd7703bf4949",
+      "bytes": 1020
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Domain/ConversationGenerativeUI.swift",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "5ef89a216a712a614d1d57f340ba4960464832f8",
+      "sha256": "d0faa77c614ad9d32756e3fd7cd601382b79ca68530f65a92a1eed4e94c03666",
+      "bytes": 45376
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Domain/ConversationGenerativeUIState.swift",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "43e403087c3e01ae0f607d28f1795896f0ae4e74",
+      "sha256": "7e05aab561c6946997e9d0b49ceff3463bbf508fcb3c7dc10c5406b9813716fb",
+      "bytes": 5459
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Domain/ConversationSessionContracts.swift",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "4323eadb0ff1a82cd6e72dc4f7bc3075bc03f782",
+      "sha256": "a9da203c24bee6cb87f5ff8db81863938d8ed09a8084003e1b7cff7383b3b1ad",
+      "bytes": 18783
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Domain/ConversationStrictJSON.swift",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "ddc74911fdbc54f0561063ac030a4111c9ac4fee",
+      "sha256": "f5c5c153714c3e51d2ca08e64136ed3740c8bff832ba82e0f21ce3d128bce5f8",
+      "bytes": 4754
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Domain/ConversationTaskActions.swift",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "27cbfb7f497efbc9a6f219cc1fab24f11f8ea594",
+      "sha256": "e072c1d623e83ce57d3ff414d72118301800c6b542cd993c093c72f7b81f6251",
+      "bytes": 24178
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Domain/ConversationTaskControl.swift",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "1b833fef1b535277d728cd0100353aebade63ee3",
+      "sha256": "e03f56b29e88293de54ab3445ef25aa9739d610275ba6c6e39f56980cc28adb8",
+      "bytes": 18961
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Domain/ConversationTaskPlanContracts.swift",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "b19de56aebb2459a168efa7ed6effaab024c8d06",
+      "sha256": "98162c66eb6f54ada12ddb67a91a6480125f44eb64936c18930de55c11b3ad6a",
+      "bytes": 11454
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Domain/StoreTypes.swift",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "6945ce6a466426e1f8c960cfc6189846e7fb69f3",
+      "sha256": "5baaab077e09f2df57b876f1310c30b66c93435353bf1240146eae734ca58ddb",
+      "bytes": 7323
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Features/ConversationAnswerView.swift",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "7335bc59743fd633fe75133e0b7142cad9076f42",
+      "sha256": "f687d8caead31172505f2297e5425092d124192d763c6cc4d24e8a4addc40442",
+      "bytes": 1967
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Features/ConversationArtifactContinuationService.swift",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "7c8431e6de0cd8c45625482c95b5a72bc0977af9",
+      "sha256": "c8c79c4fbc490868252cf8f84c8922902a55f83ec1c96e46084347e5aecd3283",
+      "bytes": 7718
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Features/ConversationArtifactEditModel.swift",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "db1a490f1ad990a03c7358327dc7accf4f5ce206",
+      "sha256": "3709f953e90f000c85a5e62c9c1811e54cd72408a4de9de34620c9156bca9728",
+      "bytes": 8908
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Features/ConversationArtifactEditService.swift",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "9d440da4c59dd17ee8b70fd8925ee0063d6035de",
+      "sha256": "9f01640f8c97379e86b3e9dd0571428519f5a5cfdc3e123d1d0c15169010a48a",
+      "bytes": 18282
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Features/ConversationArtifactEditView.swift",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "d1ea2a8a3a9736052c97a93a3f6b70877da2e94a",
+      "sha256": "c2d3ef2fbba9f7c35580246e91de45e5c8f3be1a058d2ae88683891478085a89",
+      "bytes": 13395
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Features/ConversationArtifactReaderView.swift",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "04652543835b30fca1c67f14f03e524b8bb99089",
+      "sha256": "f67252ae1f9e30580c7890b6e6a3eb1f9d47aa01152a74b60e37bd0cd2cff99f",
+      "bytes": 11489
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Features/ConversationFirstView.swift",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "4d54fe5d472ef243a407fdcc5d9b2b8b1e4b7902",
+      "sha256": "88cfcaba5cef72a881c3f9e9376d1ad03e6f025bf28c64f05ddb0a43494b72b1",
+      "bytes": 59391
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Features/ConversationFollowupQueueService.swift",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "8e8b9839b34a443cea29f99ada3987daedd9c0eb",
+      "sha256": "f2252f13d8b83d362aeaf1351eeec8655f5754c0b1f34cf9adc24d7508288d7b",
+      "bytes": 8971
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Features/ConversationGenerativeUIStateService.swift",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "586d938bc04f7a3d4e896307da57703e725afcdb",
+      "sha256": "ed500c4746e97e7a4b143d4e259540171b6ec3886fad652b94f583f2c5c89ca3",
+      "bytes": 7735
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Features/ConversationGenerativeUIView.swift",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "cb654e05e10d8fe8f5727864ae51780d9b4168bd",
+      "sha256": "0a22df03111b11e84cc95db8f46f94c95ba81fca67de4e4f7bfd7ca733abad06",
+      "bytes": 24000
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Features/ConversationGoalCard.swift",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "95e6e5e1c593998270298a75b9086898d54b5f4b",
+      "sha256": "d982f153f10cc12971bf740cbd96d4747cf4b5e8d0d40e2a8d69f2b6bb5cbf95",
+      "bytes": 2900
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Features/ConversationLocalDraftDrains.swift",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "ffb76d579429f9871145e7f469cf785100abaed8",
+      "sha256": "fe5a226bf830996ec0f196996159f8d10dc12670ef293f0814cfdd79b4ca2d05",
+      "bytes": 1745
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Features/ConversationSessionService.swift",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "93914b4ceb1591e8e93a908d6fde59e70badcded",
+      "sha256": "855f9bb90bc8e051d4c9298cac1374e2183108954c5105d1767f89177ba651a9",
+      "bytes": 35839
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Features/ConversationTaskActionService.swift",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "42fc401437ae12786e23afd5293eb478f5021706",
+      "sha256": "177188e831cdf3932d9a484360960ceddbae6a75fa29a295f3f589588325ecc5",
+      "bytes": 15434
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Features/ConversationTaskActionsView.swift",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "84d6e4c760115857c89c844d68454ddbb952296e",
+      "sha256": "1c047dbc7a0f9522fd87d15f08dd05565583c8001f6f11d6cf5fd0b59f00fa08",
+      "bytes": 15863
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Features/ConversationTaskControlModel.swift",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "c6335e3f526bfbad09715b7a690e1228760b20ce",
+      "sha256": "77ac0c7df56806f9b838ae702b1656fdb6bbdab414706b19634813daa4d9954a",
+      "bytes": 3280
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Features/ConversationTaskControlService.swift",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "1890043a6921fd1f78cc38b2ce249533be24b006",
+      "sha256": "4706c1d1bd5fcc8b538ea54a40ff9470a6fbcfd35d6ce59c5cf0c8f288ee2a4f",
+      "bytes": 15520
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Features/ConversationTaskControlView.swift",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "4a299f49446bd475a300e88d73d12e8d0e1928ab",
+      "sha256": "ca300abdfc23216bed5d5ea6a4bb8ea09675521a0d3233079ac618c734fc1241",
+      "bytes": 11545
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Features/ConversationTaskPlanModel.swift",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "0e0b6a9cfd1cbec418a7ede9ba7a9f31f37adb1e",
+      "sha256": "110ec95c9799e769b61fbd5c11bdc7e9862c42ccc4d1ce06696c72ab47ab588c",
+      "bytes": 7460
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Features/ConversationTaskPlanService.swift",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "f9b1da68ae9f81980b0554ef2639d533108d6fea",
+      "sha256": "c885a788745c98ac508b7eaa65229e2cfbd64219f9f0e3d47952a5f4d39671f0",
+      "bytes": 14739
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Features/ConversationTaskPlanView.swift",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "c762496e662e10e2ac6c976c9162e33c82780d6a",
+      "sha256": "6e9234ce2616df4f2aa426c1bd93a6bdaf86ec23278b3291c8644c8658f38992",
+      "bytes": 9316
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Features/NativeConversationComposer.swift",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "ad179119e545c53957d7657d9a778866e971dac8",
+      "sha256": "a1447e38f398bcbc3c109fd107d54076deb937acab3da4869f9fa6b452682a03",
+      "bytes": 8452
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Providers/NativeChatHTTPBackend.swift",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "8a54501fd2cbf06ba475aa730b68565a83b4e610",
+      "sha256": "50bf2af42e4a25f0cba42755e04667f6dad867493db5e160268b5fe16a1ac6ca",
+      "bytes": 82652
+    },
+    {
+      "path": "apps/ios-conversation/Tests/CatpawTextLayoutTests.swift",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "0fc811434ac6f29bcdb9b7668a624c38ac0c72f6",
+      "sha256": "d3f02efcb32be1de8ef3a31bbdd896130e73d7bddaa75cc1eb88d780cc3036e3",
+      "bytes": 22097
+    },
+    {
+      "path": "apps/ios-conversation/Tests/ConversationArtifactContinuationComposerTests.swift",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "1458c11dbe7bd7ea1a4f4cdefc006875a305072e",
+      "sha256": "03bc01cefbd5433e37895b487512ef5300be0c05c5ede76574694cc6e5acf161",
+      "bytes": 9972
+    },
+    {
+      "path": "apps/ios-conversation/Tests/ConversationArtifactContinuationProjectionTests.swift",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "459c8950f82e47c04747b7d283e2fc56a05859e6",
+      "sha256": "dcaf6795685fb048568a2bc8663a79209ee3d65524c2500420717129079f50df",
+      "bytes": 7973
+    },
+    {
+      "path": "apps/ios-conversation/Tests/ConversationArtifactContinuationQueueTests.swift",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "45127450c5b3c484a364a939400c0eed1df27d3c",
+      "sha256": "a64e7cd281d0bd904f711c8876a8c5b00cb932ff92811b9e9aba48d45f6ed3ef",
+      "bytes": 3923
+    },
+    {
+      "path": "apps/ios-conversation/Tests/ConversationArtifactContinuationUITests.swift",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "59e43141b60e53ca51b9e0a8bb26b8ea38c4578c",
+      "sha256": "0f0b612c5a2969f85b3fbab22deaf18de61e8667b904ce5f6c10f2faabbda63f",
+      "bytes": 14076
+    },
+    {
+      "path": "apps/ios-conversation/Tests/ConversationArtifactEditTests.swift",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "a2b36cfba5dbf6125e79f2107a026a70a829a4dc",
+      "sha256": "8db214739786838ee98aac00561dbd0c736c1767c7b79e41e755c92ff0aa3482",
+      "bytes": 35484
+    },
+    {
+      "path": "apps/ios-conversation/Tests/ConversationArtifactEditUITests.swift",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "9c897606975a16461a9d3a61610255d771f12106",
+      "sha256": "562d307c073926cdcf2fbcab1e8866d9fabe98d8164deff3f99d42720944c278",
+      "bytes": 20585
+    },
+    {
+      "path": "apps/ios-conversation/Tests/ConversationArtifactProjectionTests.swift",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "1136c2ad699560515b2cbece589bb6a7e24d0938",
+      "sha256": "9ae83d3c173fd0cde748775bf1504f0fe5c54ffe2ed850edf4bfd9e86cc670b4",
+      "bytes": 15517
+    },
+    {
+      "path": "apps/ios-conversation/Tests/ConversationArtifactReaderUITests.swift",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "3afa6e2dc39a9096b3833d113e80206c10452bb7",
+      "sha256": "e224834bc5bdb41b617de435d4f6699389cba295af98ad70baa6c701e87ec288",
+      "bytes": 9489
+    },
+    {
+      "path": "apps/ios-conversation/Tests/ConversationArtifactSourcesTests.swift",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "c7fef553d0e65fbbc3ecea60729e2f43aa1af16f",
+      "sha256": "6d4028c94cccd219e691e04ca3944f15eba12c97a50eea0e3e04de26861473c8",
+      "bytes": 11250
+    },
+    {
+      "path": "apps/ios-conversation/Tests/ConversationFirstUITests.swift",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "c7d6e185f2148aa6abdebfc1e2cc6c86a1fd6069",
+      "sha256": "a498ce8e174367aa97628c2bf0b95cbd3f54c8bbf4d9a1c6b956869d92ac35e2",
+      "bytes": 45380
+    },
+    {
+      "path": "apps/ios-conversation/Tests/ConversationGenerativeUIStateTests.swift",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "23ef56e8ad54196a8a6c896f32f285ce9f959887",
+      "sha256": "70b6a8f083e92438e4c2d4d33e7c68cc7573109147e1ab204d823644515602f8",
+      "bytes": 27454
+    },
+    {
+      "path": "apps/ios-conversation/Tests/ConversationGenerativeUITests.swift",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "fa9f56f526c017a2d56568e47f4deb72c3115e0a",
+      "sha256": "c283b3581dcad9a757d5613b9ee479b4694283a2d43ffe12b81201f6ea905ab7",
+      "bytes": 27675
+    },
+    {
+      "path": "apps/ios-conversation/Tests/ConversationSessionRunner.swift",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "b4208dc74859c2cc8c180ed48ad1a4c013fe4f85",
+      "sha256": "986e9c12d6aee02616dc128309e9078eb51be4a3d3247076f3e0e0799596b61d",
+      "bytes": 26115
+    },
+    {
+      "path": "apps/ios-conversation/Tests/ConversationStrictJSONTests.swift",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "4c0a329bd290ce8ebd8cc0fd4e2c545cf2dc2f2c",
+      "sha256": "dc945641c42ec30d009670dd3e2e9a2350b7414e732d85faff7438b51d74d423",
+      "bytes": 2035
+    },
+    {
+      "path": "apps/ios-conversation/Tests/ConversationTaskActionTests.swift",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "a6af8aa0f510f425b4922eb6a8e2de60e5f791d0",
+      "sha256": "8c82f2015430ddf12f61ddb5eeffa4ed9ef94487a58d693870cbb7cfdeddae1a",
+      "bytes": 29014
+    },
+    {
+      "path": "apps/ios-conversation/Tests/ConversationTaskActionUITests.swift",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "2cf673ad13896a788d7ea410a7ff8264bd9d3bb1",
+      "sha256": "c3532b56d30c5c3018793bd8cce8440decafd38b953d042c1b9d3a3357d45145",
+      "bytes": 11564
+    },
+    {
+      "path": "apps/ios-conversation/Tests/ConversationTaskControlDeliveryTests.swift",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "e3b211c24ffa6b529f1faa00826b826a4c2db679",
+      "sha256": "ea65273d0d4cf52cef4a546a7a9558fcdddccf6f75548b700b24ed46759692a1",
+      "bytes": 15320
+    },
+    {
+      "path": "apps/ios-conversation/Tests/ConversationTaskControlTests.swift",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "3646249035c56c52cae9ac59acb1352cbbab48a2",
+      "sha256": "4041e8bc137028d3cfb9f1670d950f921a12192f99029ba6f21d5bc4d8f27328",
+      "bytes": 30662
+    },
+    {
+      "path": "apps/ios-conversation/Tests/ConversationTaskControlUITests.swift",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "fae301958074ce481980e2d13b3a80e8224e748a",
+      "sha256": "3de800a6c8738f31f4a1a80f97aa5a75198a16fae88559dce26fa9db89bd4743",
+      "bytes": 12131
+    },
+    {
+      "path": "apps/ios-conversation/Tests/ConversationTaskPlanTests.swift",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "dd891201c60580125a89b95db71f9e67f3fc21bb",
+      "sha256": "e1a596c0364198f8aaf04c2da5a92df072b10afeca969095e695f261f057580d",
+      "bytes": 38055
+    },
+    {
+      "path": "apps/ios-conversation/Tests/DeviceTrialNativeTests.swift",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "941fef5ab4831419f97adc4a8700adf583b8d3b6",
+      "sha256": "75ca6fe8c6ef4776f2f87247f508e0dfd53a21488687ae82d643316080690e5f",
+      "bytes": 52702
+    },
+    {
+      "path": "apps/ios-conversation/Tests/Fixtures/report-continuation-cold.json",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "40c1f33dab6870c556ff6a597bb282d83a0abacf",
+      "sha256": "e8b9cd811b28f4d2a941d62450ec39bd5e728fc8594650f757fed3a4a052eb7e",
+      "bytes": 45816
+    },
+    {
+      "path": "apps/ios-conversation/Tests/Fixtures/task-control-cold.json",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "5b063fe9103f94794914a42f2450b781153006ea",
+      "sha256": "bc573a66445ccc230cd8b278c10e408dd00b728d2ca6f65b98b4f88f454fc99b",
+      "bytes": 27111
+    },
+    {
+      "path": "apps/ios-conversation/Tests/Fixtures/task-control-report-reopen.json",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "398217b08ac61a5c903eab1c2abb47e5a171a0dc",
+      "sha256": "7bccce0eeb8254f3414b7e6debbd473b20a71a7fb79fff258e3f836bf1c14e30",
+      "bytes": 13366
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeArtifactContinuationTransportTests.swift",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "6e35f15ad585a239c3bd161dca9cb0bd114f115f",
+      "sha256": "9506e556d4ad758e59d886d5a58e5b1d04660fd956bd912ade51de413b65e583",
+      "bytes": 13889
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeArtifactEditTransportTests.swift",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "2261a03b2841a125e4186aabff42103b06669ecf",
+      "sha256": "35fb738e8f08841b07690f8096a13659ffc1051405155acbb970e8587002cc6a",
+      "bytes": 15514
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "4776851fb7f8b44765481f4db27027d310b2afed",
+      "sha256": "a62258afa72548b75f9532616306fffd45c3a1d73d9bf69b4af7568a07abdee0",
+      "bytes": 9614
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeChatWireRunner.swift",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "a5905f5bc9f405dd026b14f4c6df08def6121da3",
+      "sha256": "87c56ad28c9605d6139ae17e811ac6b883a7177096cb3678c6fdbd7782ab2f38",
+      "bytes": 21263
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeTaskActionTransportTests.swift",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "a21fad0f8ba92d211d52f4b6529c3a4ab1c58fd6",
+      "sha256": "245739940610051475fd69eca3cef909e94ba01edfa8fa2aa0ba545d4839e890",
+      "bytes": 15318
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeTaskControlProjectionTests.swift",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "83a8348056e4e737ef52b146a6ba4d11e06db2b1",
+      "sha256": "ca02b8a36650fa17e9cf4a060559e162654c612c5a5d5bd3424352f38760caad",
+      "bytes": 9110
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeTaskControlTransportTests.swift",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "fa6a22ecc1cf09d00ec22a41b0336eb39a2943dc",
+      "sha256": "9862c2d4e4688eb4a2814e7d126936948896f4a3b6a17210c479ecbec25fcd3a",
+      "bytes": 12458
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeTaskPlanTransportTests.swift",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "87fd5c96bdd418dd61ebcf078e9e9a95b7ba99c1",
+      "sha256": "f1f248b079306574570ba52b1d4feec8790fe79dc3980eaf4b55021b25d7cdf9",
+      "bytes": 10172
+    },
+    {
+      "path": "apps/ios-conversation/Tests/P0ConversationUITests.swift",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "f4d656d0235f6fdd1914135decf48c397d0f66a6",
+      "sha256": "2a931bfed9f51503a6bbb6eaae2090916bc3bd70dbecadb2000c4d88892d05d2",
+      "bytes": 7048
+    },
+    {
+      "path": "apps/ios-conversation/Tests/P0NativeExperienceUITests.swift",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "659000e4334188ad04c8c91312ed1c146e5fec82",
+      "sha256": "d2af17217e1f103ad481250e9d5ce9a45adbce4b14cfbe2838133bca6b130bfb",
+      "bytes": 38028
+    },
+    {
+      "path": "apps/ios-conversation/Tests/native-chat-wire-server.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "bbd81ab2e1e53940009c67c2e3c855dbf935518b",
+      "sha256": "0c849326d31f303752ed3602ce7b51124eb7fc8424bca4f73e6707b0a757c137",
+      "bytes": 7974
+    },
+    {
+      "path": "docs/acceptance/evidence/agent-start-20261014/RESULT.json",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "528f7637a9e67f7d069b7f2ea273ab2a01b521cd",
+      "sha256": "0ebdbe57d22ed4c3bd5815ebd7cf7953f0f053636cca0db6d71d208e0a1c62b1",
+      "bytes": 14222
+    },
+    {
+      "path": "docs/acceptance/evidence/authority-recovery-20261014/RESULT.json",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "b66174b5cc96ce51d7b0f0fb14465c3cc1e350b9",
+      "sha256": "4fdf943446c226b0c6850b42411926437dde14efa08717412e382baf84d20b7e",
+      "bytes": 16120
+    },
+    {
+      "path": "docs/acceptance/evidence/authority-recovery-20261014/backend-inputs.json",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "8a73e6bd8d2457e040ba2365199f478f10844394",
+      "sha256": "a08213bc969a597df04003d9d19a98a85e0937cd977d690a6c0851eebd2a2082",
+      "bytes": 17204
+    },
+    {
+      "path": "docs/acceptance/evidence/authority-recovery-20261014/layout-metrics.json",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "5fd383f0e1bf82fbd6ff856833fe46859d5d880a",
+      "sha256": "93389a2ff95d0b6f352b9a07cc4ad7a8796202cb0d9b8932b323d8c424b172c4",
+      "bytes": 2280
+    },
+    {
+      "path": "docs/acceptance/evidence/authority-recovery-20261014/measured-long-edit.txt",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "5507173505d4908288e8701e560cfd85f2f59c0d",
+      "sha256": "dea66f22123d2954b2718edcfc9a906b87ef5db4e98ffdc47c95bea60afab5cb",
+      "bytes": 13107
+    },
+    {
+      "path": "docs/acceptance/evidence/authority-recovery-20261014/native-cases.json",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "b4044ecca130f07c7e7fb9d1d789017150abc674",
+      "sha256": "b79a7550e5e4fcd109186351c9fe1c3ae0718b2b49e5a8202dbb63d7b70060cb",
+      "bytes": 20068
+    },
+    {
+      "path": "docs/acceptance/evidence/authority-recovery-20261014/native-final-inputs.json",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "8b4ca42d078a937eb84d3b85933b5f0f3e245fb1",
+      "sha256": "b110f7c8db301cc9c7860244117bc28e764f8388ece145454515329102150ea5",
+      "bytes": 46151
+    },
+    {
+      "path": "docs/acceptance/evidence/authority-recovery-20261014/native-r3-inputs.json",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "05ff4a6441057e2988246593d7715904ab9c0dce",
+      "sha256": "1b06383e2c8c2a12f934e82d7ad9807facaa924b6a07313aaa50f81223cf1e6f",
+      "bytes": 46025
+    },
+    {
+      "path": "docs/acceptance/evidence/authority-recovery-20261014/release-readback.json",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "ed81b5cdba1acb09172103d9bc9bb88e99728a35",
+      "sha256": "1f4d7404d7aca6b64e87ce22f690150233a796584d08121ef2ec8f1ebf85ba2e",
+      "bytes": 460
+    },
+    {
+      "path": "docs/acceptance/evidence/authority-recovery-20261014/screenshots.json",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "bbc0f3c011abd260f69362152f7127e9125e0148",
+      "sha256": "37b2d2426ed92726c754c669c75580fcb579d19a9cef8eb24abb6f9a9cd7da77",
+      "bytes": 9777
+    },
+    {
+      "path": "docs/acceptance/evidence/native-typography-20261014/RESULT.json",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "6777daded4cc84934ae9b7f7a431e58fc17f937c",
+      "sha256": "307c92046658dbe7ffb83b4e41d4355f8738667951d7fdc4a3b676775118752c",
+      "bytes": 7871
+    },
+    {
+      "path": "docs/acceptance/evidence/native-typography-20261014/editor-geometry.json",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "acc59669dd41606ae68c13afdad741331bf170bb",
+      "sha256": "96ef5b13b68e170c43bda0cf7745bae0744819076fb07aeafc57e46aff0aa53d",
+      "bytes": 1728
+    },
+    {
+      "path": "docs/acceptance/evidence/native-typography-20261014/final-package-files.json",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "c13b0e1ab105b17bf146873e7c26824c90a31f81",
+      "sha256": "2158958d9a67df433cc06e4e0139879a95b6fefdcc4206039b852baf4ed97108",
+      "bytes": 4475
+    },
+    {
+      "path": "docs/acceptance/evidence/native-typography-20261014/inputs.json",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "04a690da9b20c1008efa6e81225b319d99ea9aaf",
+      "sha256": "5b797da90fb79d29a7cebe9a37daadf0f8f8a23b216df28f84f2ef2b1ecd5d52",
+      "bytes": 46281
+    },
+    {
+      "path": "docs/acceptance/evidence/native-typography-20261014/prior-visual-fail-package-files.json",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "23471fea7fc8bbd78351a5e1053bff030c649366",
+      "sha256": "260334ef85ff0246019728bb021217b62dfa024ea4de01a8c9ad056807ffae40",
+      "bytes": 4643
+    },
+    {
+      "path": "docs/acceptance/evidence/native-typography-20261014/screenshots.json",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "3580c0ba5d400e91eb6ca414e0e86b7acdaf8d6e",
+      "sha256": "f64f060b297193966080c384792c7682e59eab7d6d3a1cce007f2e0553131b01",
+      "bytes": 4126
+    },
+    {
+      "path": "docs/acceptance/evidence/native-typography-20261014/system-text-witness.json",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "2196b791f266e569c4038c0da151596aa144b28b",
+      "sha256": "94769e177d6886c4dc5ca77fab1fc4b53f5c1259775e61a9428fd45eb10cf7b7",
+      "bytes": 863
+    },
+    {
+      "path": "docs/acceptance/evidence/plan-recovery-20261014/RESULT.json",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "6e9896dd1789f9784fd0037bd13d9359488769a9",
+      "sha256": "a5053242197ec42cd6cce1a98e02d833318a352372f9462e7138c0a48ee80d6e",
+      "bytes": 20461
+    },
+    {
+      "path": "docs/acceptance/evidence/report-continuation-20261014/RESULT.json",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "917a25521752d5da60b7a15df3f1ca886f914a7d",
+      "sha256": "42b42a4a664d5f75b6c7702db3d3e8c5957aacb5ff5470d6aeae8f2b0363809a",
+      "bytes": 63045
+    },
+    {
+      "path": "docs/acceptance/evidence/sourced-results-20261014/RESULT.json",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "d402622688962966bcb4a373087828c15407e4bb",
+      "sha256": "e710021954a1a00c0ea87188e48a03dd15f3b5fd0fe5364a7af7428a4e9811d3",
+      "bytes": 22557
+    },
+    {
+      "path": "docs/acceptance/evidence/task-review-20261014/RESULT.json",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "3f00f14e22f03a37fe551f8b3b322188de78d10f",
+      "sha256": "1798c2c7ef06788f4aec5d29e9ff367c81d9cdc7f88bcc7e7adc33bd43577f58",
+      "bytes": 59577
+    },
+    {
+      "path": "docs/acceptance/restart-agent-start-2026-10-14.md",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "20fef91d144c58748d104ad24e91022bb1882161",
+      "sha256": "be01deab246b3b2bb4ff22b854312cab0f6bb525e99b7a0513a6baaabf2f1e98",
+      "bytes": 4685
+    },
+    {
+      "path": "docs/acceptance/restart-artifact-decisions-2026-10-14.md",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "0b459f7c6e4ee44b940509fa6333d4eedf382e4d",
+      "sha256": "1dbb6d43f4015161f8bc3ebfeed7df07d70df46338c30118ba85d2228415a9f1",
+      "bytes": 8493
+    },
+    {
+      "path": "docs/acceptance/restart-authority-recovery-2026-10-14.md",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "1dfab3bc79b3f810040b27ce613e7d2eed63e23f",
+      "sha256": "f116141653fb67114d9e4aa164ff7a9e035a898319a9b2fc569a666b8bc9bfcb",
+      "bytes": 8115
+    },
+    {
+      "path": "docs/acceptance/restart-plan-recovery-2026-10-14.md",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "5a0ad8da3651faaedca169f8ca7ee1740bbf07ab",
+      "sha256": "9789fdb0aa4991eaa5ba0305dcf471a28764eabf51b1f983137377ca266687a3",
+      "bytes": 5981
+    },
+    {
+      "path": "docs/acceptance/restart-report-continuations-2026-10-14.md",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "57342b917e6ccfa53567346b3d9a3d713dea96ae",
+      "sha256": "5993e559913dae9da934daf683ccb174943a8cfdaf7c306aab5d1b7623d4135c",
+      "bytes": 5736
+    },
+    {
+      "path": "docs/acceptance/restart-sourced-results-2026-10-14.md",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "2f26e4e207d5f889614c6eea4bc6667d227b8555",
+      "sha256": "685cad75f7417d0bd7c5bb4a960fd6386d0dd10ec7b73765e14a2a0ce91315e4",
+      "bytes": 8363
+    },
+    {
+      "path": "docs/acceptance/restart-typography-stage23-2026-10-14.md",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "aa56a0595c74d2a7cd1d73fce7dfb2dd6335094a",
+      "sha256": "aee2fbd5fa928fe239bac775326452336559625363bd3d4ddfdfb41b11f1ccf3",
+      "bytes": 6765
+    },
+    {
+      "path": "docs/status/master-plan.md",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "0465ee8d1ac0b26760c5691f880d0cfacacec0a1",
+      "sha256": "3b78f2984f484dc5b0c722202e72e83bae0b4acc638d7971ec46b71ef82754df",
+      "bytes": 56748
+    },
+    {
+      "path": "packages/ios-image-composer/Sources/CatpawImageComposer/ImageAttachmentDraft.swift",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "c9d3d835bef2499f98793e8d6b21ee92146893a2",
+      "sha256": "7531b12b9abcd25d1bf9ce9c31124992211cf305622951ae3534b97650149263",
+      "bytes": 4996
+    },
+    {
+      "path": "packages/ios-image-composer/Sources/CatpawImageComposer/ImageAttachmentPicker.swift",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "cfa55ea052d461d291ab6d0fd3dc67f504665c63",
+      "sha256": "cc34f129e1c9dae59ea94ab634552fd90dea0b92d9ce80c64e40d2a30793e9c7",
+      "bytes": 6706
+    },
+    {
+      "path": "packages/ios-image-composer/Tests/CatpawImageComposerTests/DraftTests.swift",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "145a0d910d3199e30ec5ff1428b002f2c378c796",
+      "sha256": "283f621d64e4c136f2a2f12d4c22ec385c7553327f6e05719a1b182c84abbd61",
+      "bytes": 9740
+    },
+    {
+      "path": "packages/ios-navigation/Sources/CatpawNavigation/SidebarPanel.swift",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "07e6aff5aba79a07ad751714c3224d247644c9be",
+      "sha256": "e75df6081d8479abdfcb69dc9bab4b0d287997bc02ecbc9ad5a7f3a1aff4c398",
+      "bytes": 6968
+    },
+    {
+      "path": "packages/ios-navigation/Sources/CatpawNavigation/SidebarTheme.swift",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "05fe434340c4405dd6426e08d8b2912267ef467b",
+      "sha256": "69a432b8d181a069cbcfc23259f020ee8402d5fc88ddb2ce71ccb9ce9af9abe6",
+      "bytes": 3739
+    },
+    {
+      "path": "scripts/check-typography.py",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "434dfe19447d990279f30abc74cf9dcc73e572cf",
+      "sha256": "b3a6175a9a6bd5e9dd8263bdc3cdf160c3e22a12766082984f7fe5289c95a80e",
+      "bytes": 14410
+    },
+    {
+      "path": "scripts/reviewed-findings.json",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "49a175a8ff755d5ecb255b8563cd0372a064cc84",
+      "sha256": "4c917ae5d6d1b7c5ebac8b49dd1e82c5d7fab274fb82ca3671737882b798bd2b",
+      "bytes": 68245
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/api.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "13fa6070f080afee9413d08d7c1ca348fa1f4e1a",
+      "sha256": "6b92e0f31e931aecad700094c4303b3a15264bf22d4b6bb090d0708ad7e7dea5",
+      "bytes": 28433
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/authority.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "4ea11f1469498b64e40492d66b8ef57c519ae6e7",
+      "sha256": "4108c59a8a0f1b7e134025c549d40a1e70379561206cfc4c846428b8c07189d0",
+      "bytes": 9385
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/config.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "8bd131fa965975cd9d1e5143c92bd97fd96860c2",
+      "sha256": "468eaab57ba393fb350aa63023238e26d436ffb7ab411232e1ac0e9c322f7ff0",
+      "bytes": 4287
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/integration/edge-adapter/src/bounded-store.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "85a07562fd1f537723eb9e6ca399fd2121d31490",
+      "sha256": "25dfc3317b4f56e3ddc371641299552066fe3dae3abcbf0f1b6f39902e22ffd6",
+      "bytes": 14893
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/chat-service.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "e55cebb660466b8885b3f536d6c49f6bb8fbdc64",
+      "sha256": "9e8be3b5807dd3ca7beabd84abd1b4cb5bb60d1d64cf9c69954226f67d4afcaa",
+      "bytes": 30788
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/foundation-http.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "9e9da705bea0597508f522a832d2f03aa5a4d6ad",
+      "sha256": "e020d7166ad568d87ee59bc9f08b5ad4c5d413252a531961f4aaf4ea4df4b138",
+      "bytes": 3030
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/foundation-runtime.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "33c777100c59ff7868fbf17fda4487fd0c34c1aa",
+      "sha256": "6363bad07bd2da39c0ef5b13fdcc7448cdfc2e2139a1b2a57a4968242e70fb64",
+      "bytes": 6845
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/http.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "2ffde888c98e9f446b4e57041a8a068e5e49fff2",
+      "sha256": "4fad927a6e65725780f054c249397e99abf00fa9954cbad1e53e8b4857520d02",
+      "bytes": 6382
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/local-output-facade.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "e215a996e78525d472b17284346b78b34d2249a5",
+      "sha256": "c9d9c07df4fe6f23dd075f298298e9a105f554b903b48799c7df6a568048fc41",
+      "bytes": 22826
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/model-handler.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "ff81fdfa65f683fd43de9d7bdb5fe8f58f6a6dfb",
+      "sha256": "bec13d71ea0a4c243e08e9644252689226208e7159462f702982ae5f8d77b22d",
+      "bytes": 8592
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/plan-contract.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "bad5c31783cba461c38283b23e71a89d95d91574",
+      "sha256": "f78a14ea9fe3987b1e60dcf486dccad125fd14481344c5f8629afc279c030b20",
+      "bytes": 2393
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/projection-adapter.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "59613021d253598e59463d885b6791faf2b467dd",
+      "sha256": "86b1006b7fb39d5678e404bbf1c53c24d58e0b602b4ee21c0b847d6de8992eb8",
+      "bytes": 3277
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/public-source-contract.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "22e6f0c4f17e0121d33359692acb9240ce0a7c11",
+      "sha256": "e04ea3847d1b622cdd069a47b152e854e838947795b946eedd4ab3ad618fab41",
+      "bytes": 7281
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/purge-plan.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "7cdbebae41a4fa34e2e213c8632cab1b6b63a1a1",
+      "sha256": "134ef79c249374709fa274dfa2884fcd11bc1ca9f54908bd0dcfc31d8500bf16",
+      "bytes": 5577
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/runtime.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "4ca2115195a7dd70035b1944d0fbbad70cc39771",
+      "sha256": "d46cfbc97e2c55974d1ff72eca7d1d63c90b1e60c13c4fb2abc8d661ae3b1f94",
+      "bytes": 1870
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/single-step-handler.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "a4da27d75bbb2ef81790cd252fe3f7c423738954",
+      "sha256": "586fe50321d44fa94fabff26a3144709d6fd2a19822e1c9cda270e136dbe0d6d",
+      "bytes": 6941
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/source-erasure.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "db6ea0abb7dd8a50b7525543810d18a16fb6b0f3",
+      "sha256": "e343207ac354a8a5b3517cbeb892c3247cba8721144fdde33266a71c6d1fdb51",
+      "bytes": 3807
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/sourced-worker-tools.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "ef99cb368bf47de5715059a5160380c220099d0e",
+      "sha256": "ebfa84e84a44ba0d2dea2b64a7534ae283578f7668511dedfbbffc8c2cb8201e",
+      "bytes": 2381
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/task-action-contract.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "b8c7ef5a8e0b1f3ffa6b2faf9e67a8054978bee3",
+      "sha256": "cac7f24dfface85b550f28cd9311e4df73e4938d5fd5a28a6c4433b452024502",
+      "bytes": 5464
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/task-action-service.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "9cfdeab474ae6cef85478e482fea71cf264ef619",
+      "sha256": "0794def66e129ce29774dc30f900983ebb5caa6019c741bbfb14afab330658a9",
+      "bytes": 17038
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/task-artifact-contract.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "ea1d2d0c0b1d4893638f65ac737a5c7af42b5a3f",
+      "sha256": "24ce2e17866c4068f396c0e9144e7c371795262d1ba34cd3ba96d6e22d8264c5",
+      "bytes": 3096
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/task-artifact-service.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "7a4ebe68b84d338902bc7396121e5a7fccdb4692",
+      "sha256": "0816a4a22cff50e3404745a850e82fcb01d5994b47b0449dd1f3db31416b01e4",
+      "bytes": 20350
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/task-control-contract.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "aeb2ba9b9915e2c7b379253d42e62f9f195b8167",
+      "sha256": "a2e3fbca9bfaca8261b2bc08b056b20bcb480f87d597715d3620d20fd49f6521",
+      "bytes": 3332
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/task-control-service.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "951e929264b55f11f11d5a6c913b58cf1bbe4f10",
+      "sha256": "9cee737cf0bdb18299573c98a5ef116195b29e9cdb12347d7d1c5cefc39ed043",
+      "bytes": 13165
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/task-execution-fence.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "e99206250077f1de39bb004c64a06ac3a794b20e",
+      "sha256": "1ecceaf4bbd048d649da668fe7fb548b291f2a8be8874661de52c17da727514d",
+      "bytes": 849
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/task-execution-store.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "2b142baa9c73dcded87c4e0a8fa9a333bf81585f",
+      "sha256": "8e4bd5c05d8277ee2caa1138de136eefa5bc8156bd2d0076aba1f6774e291cc3",
+      "bytes": 9353
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/task-plan-service.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "53b496c326ba3ddd70a65a6e17ac8ba132980fca",
+      "sha256": "57b9241e2ae0793a8279948de155ab82dcd0456d06e88c77f8a00699da057389",
+      "bytes": 17377
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/task-revision-contract.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "4a918aa643a598bd64be49f0b07997446cf433d7",
+      "sha256": "95a6f245758de49536ccd8b136b30d9d1888b826c887c367c50a7dfeb7ce798a",
+      "bytes": 2118
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/task-revision-service.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "698552e47d70f0b50e6e8e6f6eaeff32c1695011",
+      "sha256": "3bbb3d65553d04f284b5da6c6b2210be9d39fdc29d68c90cb6fd97ad7db844ed",
+      "bytes": 22545
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/task-source-service.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "7c3acf9190678382e2d7dff8920352d20085d99e",
+      "sha256": "00c23e84a133a256d6f8331af67a0be82f64b0693fb033cd16e76ffe5c525e92",
+      "bytes": 16768
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/tools.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "8ec320a18cdd49ed793fb35f5aaf95d81484d3e4",
+      "sha256": "b7007216144aec50a38fdd85b518d7c205585cf2b4a32d5949fc132c6f9f08c1",
+      "bytes": 11557
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/worker-output-contract.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "a46c6651a4ecf2c2ee581e68015a53e9c3a6c06e",
+      "sha256": "ebd49073f856f8e9486fbb7202ee466e4f503ab63003a293264c6d3dca2ecacc",
+      "bytes": 6317
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/public-web-reader.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "7c9ff253e86d933a9cc52c8bfb858c8cb04d2a6e",
+      "sha256": "6e75fa1cc8ae41dc7b90ab8c6fd328bda2d5ce04dbd177244c5ad79c7c418ac5",
+      "bytes": 11950
+    },
+    {
+      "path": "services/edge/test/dialogue-p0.test.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "1c38a31becb81c3838e91b766900554f04234726",
+      "sha256": "db4efdad4354db040ceaf2370521da092fc5797a46ddc56a402f6f8b8c7e6cde",
+      "bytes": 30833
+    },
+    {
+      "path": "services/edge/test/short-task-chain.test.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "e7081819ce41d4027189501b31c497d76313bf66",
+      "sha256": "8b9a64ded965f4bdc6891027fe8c3e86c72b35024cacae277d223a5eedd1814e",
+      "bytes": 10934
+    },
+    {
+      "path": "services/edge/test/task-action-http.test.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "1555c2dabec2017b05e07d3dae96729e2595a6d4",
+      "sha256": "49b6b24bb6d829372f71f1c4fbb180f5ba5566cf3c4b4c3d29cd9cceaeb78a76",
+      "bytes": 13141
+    },
+    {
+      "path": "services/edge/test/task-action.test.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "1376e6adbd6f67503e8298486154fa3b730032af",
+      "sha256": "ad9d3b0e3965fa4636dd36e98e570a99c16d5536507296c2e47e7e5501e7b10e",
+      "bytes": 26015
+    },
+    {
+      "path": "services/edge/test/task-artifact-http.test.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "8872cb14e399daec09a2f747d062405d7a7aa6cd",
+      "sha256": "fc5ee18a290eed364656ea69ad86d13648ab4f70c7317b9b4e187f0be5216f95",
+      "bytes": 20056
+    },
+    {
+      "path": "services/edge/test/task-artifact.test.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "bdc143db82802dbf71001d4b5b202598a7c31373",
+      "sha256": "c624a42de8f5f4d6ae8b491405d31cd13471f115437727648a2884e2c413d4a3",
+      "bytes": 23686
+    },
+    {
+      "path": "services/edge/test/task-control.test.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "ef6249a8d2d6bed64931cf2bdff0a0fdd0e8d08b",
+      "sha256": "fa613757d1c5ddc90d2a3fb4fd791fb1e314c974ed0362560446ceea7fd9dbad",
+      "bytes": 34614
+    },
+    {
+      "path": "services/edge/test/task-plan-http.test.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "ab932d49c922776db32c7e664416cd5de9d37c7b",
+      "sha256": "a5aa421905ba2269a129577a34b8747aa04c34e612fc1eb57c9a7be3778266ff",
+      "bytes": 14963
+    },
+    {
+      "path": "services/edge/test/task-plan.test.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "db1de1ed4de066ada4d8cba26e425af40c91a397",
+      "sha256": "b516631ebf9da81f0587767ff627373b8c9869e4af57e08a3852a353cdeae508",
+      "bytes": 21115
+    },
+    {
+      "path": "services/edge/test/task-public-sources.test.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "1066ec91e728c31779ae5ef8fde5ceaf34b8d29c",
+      "sha256": "54b7be223c9c6a1931bd2d544c781e4ad80634e07c4e5ff6cdd646787b3511a2",
+      "bytes": 24482
+    },
+    {
+      "path": "services/edge/test/task-revision-http.test.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "4d111cbb76d59cd682bbb617273221e50a0964bb",
+      "sha256": "9b513e7a7119ab7014511fdef66ee18f781631aa877ac41944239490d1210709",
+      "bytes": 27879
+    },
+    {
+      "path": "services/edge/test/task-revision.test.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "dc4c6ee0a6012ad7deea89552eb611166c0d0b35",
+      "sha256": "cdee1bbe231a3c509655048289cfa4e51b946326339fb03824436aeab0567b86",
+      "bytes": 21824
+    },
+    {
+      "path": "services/edge/test/task-source-http.test.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "af4713d1d83c1de3620bddc39fcbe2f5c1d5fdef",
+      "sha256": "de1439868f331b5cca231d5b6f37d63efb95f4824e748b73cef41a266032d5c7",
+      "bytes": 13711
+    },
+    {
+      "path": "services/edge/test/task-sourced-report.test.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "git_blob_sha": "a82338f8b978ff39d44cfa25c28f0d971aa07062",
+      "sha256": "3fef61fca3a3ba9235bb2916ec708b9d6223fb8e2462e375bd3db5f0d071bc76",
+      "bytes": 14799
+    }
+  ],
+  "held_screenshots": [
+    {
+      "path": "docs/acceptance/evidence/agent-start-20261014/duration-local-native.png",
+      "git_blob_sha": "5f63bdda9e9dcca7a8e9f759c43bcaa8cf58ce36",
+      "sha256": "a775d6a715e522ef624db384ce1be43b9a0ed2fb9b9632385472ad05dd18415d",
+      "bytes": 669046,
+      "scope": "Curated synthetic native/Simulator evidence; original private phone captures not in publication scope",
+      "status": "HELD_PENDING_EXPLICIT_MEDIA_AUTHORIZATION"
+    },
+    {
+      "path": "docs/acceptance/evidence/agent-start-20261014/table-filter-native.png",
+      "git_blob_sha": "69e0b5a06ce0c4084f76dcd1e2224ceeb1241508",
+      "sha256": "6c79834d8418226e49ca0e1d08e5d7efd52f343293f6c2adf049635e6fcbe843",
+      "bytes": 516202,
+      "scope": "Curated synthetic native/Simulator evidence; original private phone captures not in publication scope",
+      "status": "HELD_PENDING_EXPLICIT_MEDIA_AUTHORIZATION"
+    },
+    {
+      "path": "docs/acceptance/evidence/authority-recovery-20261014/continuation-maximum-keyboard.png",
+      "git_blob_sha": "4a28da7ae16ef29df60962d543254a6b2b4a9ef8",
+      "sha256": "9e8d384c7bb21ce1bb9a649ae65bdfc2719e0115414fd4e8a09656570a4cc734",
+      "bytes": 661331,
+      "scope": "Curated synthetic native/Simulator evidence; original private phone captures not in publication scope",
+      "status": "HELD_PENDING_EXPLICIT_MEDIA_AUTHORIZATION"
+    },
+    {
+      "path": "docs/acceptance/evidence/authority-recovery-20261014/control-cold-resume.png",
+      "git_blob_sha": "b941a69beafa6fc2b83445656ccefcbbadca1f6d",
+      "sha256": "342b18f398d860419c3f0d69acde42921b8e440bbabdd8d123be2c840707df0a",
+      "bytes": 294079,
+      "scope": "Curated synthetic native/Simulator evidence; original private phone captures not in publication scope",
+      "status": "HELD_PENDING_EXPLICIT_MEDIA_AUTHORIZATION"
+    },
+    {
+      "path": "docs/acceptance/evidence/authority-recovery-20261014/control-maximum-cancelled.png",
+      "git_blob_sha": "116eca1d32d78508caf4b69e94e9f9806e547c98",
+      "sha256": "a287aee65767621bc3ffd3727a26234d3a15f05ad0f1709200a024a521ea7858",
+      "bytes": 373473,
+      "scope": "Curated synthetic native/Simulator evidence; original private phone captures not in publication scope",
+      "status": "HELD_PENDING_EXPLICIT_MEDIA_AUTHORIZATION"
+    },
+    {
+      "path": "docs/acceptance/evidence/authority-recovery-20261014/control-maximum-unknown.png",
+      "git_blob_sha": "f009565d8a9374933bbd63cd2a4f3066c419b37a",
+      "sha256": "15f2a0dfe6c5efb483cfd8df0e3d1ddeaca0d8192d6eab3d7287013bedaf45af",
+      "bytes": 656506,
+      "scope": "Curated synthetic native/Simulator evidence; original private phone captures not in publication scope",
+      "status": "HELD_PENDING_EXPLICIT_MEDIA_AUTHORIZATION"
+    },
+    {
+      "path": "docs/acceptance/evidence/authority-recovery-20261014/control-original-get.png",
+      "git_blob_sha": "9a8585056772cd4e9e36883a6477bd4ec3e21d6c",
+      "sha256": "154a95dff02b8af9524df03af11db4ae69bd002567d24912bcc36449fce7504f",
+      "bytes": 292503,
+      "scope": "Curated synthetic native/Simulator evidence; original private phone captures not in publication scope",
+      "status": "HELD_PENDING_EXPLICIT_MEDIA_AUTHORIZATION"
+    },
+    {
+      "path": "docs/acceptance/evidence/authority-recovery-20261014/control-paused.png",
+      "git_blob_sha": "4c308c513490d586425f5a4b1604355e35c26ff5",
+      "sha256": "7af21cc7205b6e6dfdb5bf59cd35a8413a29c6f36a29482e47301bd3442d2e60",
+      "bytes": 293097,
+      "scope": "Curated synthetic native/Simulator evidence; original private phone captures not in publication scope",
+      "status": "HELD_PENDING_EXPLICIT_MEDIA_AUTHORIZATION"
+    },
+    {
+      "path": "docs/acceptance/evidence/authority-recovery-20261014/manual-editor-maximum-keyboard.png",
+      "git_blob_sha": "f95b5b654b7ba9803ff46d846e5997ba74e65249",
+      "sha256": "7e9572a9a5d526e29c811e008b34ae33823ded3ad85b7ec4a11b0709d0f6780e",
+      "bytes": 489767,
+      "scope": "Curated synthetic native/Simulator evidence; original private phone captures not in publication scope",
+      "status": "HELD_PENDING_EXPLICIT_MEDIA_AUTHORIZATION"
+    },
+    {
+      "path": "docs/acceptance/evidence/authority-recovery-20261014/source-reader-maximum.png",
+      "git_blob_sha": "98653e003f8b6999c0cc058bfbef6fecc57a6510",
+      "sha256": "dd3894c9e0088d612c29cc2139e72156018239618ad83f52ade168b8c375d6b6",
+      "bytes": 576270,
+      "scope": "Curated synthetic native/Simulator evidence; original private phone captures not in publication scope",
+      "status": "HELD_PENDING_EXPLICIT_MEDIA_AUTHORIZATION"
+    },
+    {
+      "path": "docs/acceptance/evidence/native-typography-20261014/default-editor-keyboard.png",
+      "git_blob_sha": "acca956607c52fb1568c1fed0183f3b678432e58",
+      "sha256": "ef1f818a93122bacd6c17c0c7e8640f9370acb5bb53865671c97b3c5f2dc46b8",
+      "bytes": 422296,
+      "scope": "Curated synthetic native/Simulator evidence; original private phone captures not in publication scope",
+      "status": "HELD_PENDING_EXPLICIT_MEDIA_AUTHORIZATION"
+    },
+    {
+      "path": "docs/acceptance/evidence/native-typography-20261014/default-input.png",
+      "git_blob_sha": "04974e507b1f078f932a9e2ab7f39b7c030fd080",
+      "sha256": "6ec9878603cd315ca18cf810a4af6f13a4367abbd24d1913d2024ea0c3e074b9",
+      "bytes": 142081,
+      "scope": "Curated synthetic native/Simulator evidence; original private phone captures not in publication scope",
+      "status": "HELD_PENDING_EXPLICIT_MEDIA_AUTHORIZATION"
+    },
+    {
+      "path": "docs/acceptance/evidence/native-typography-20261014/maximum-editor-keyboard.png",
+      "git_blob_sha": "73958175922d4c5ff87bea6112ac891c62fc191d",
+      "sha256": "f74d45ddebfbfb1e80e827c29b9231fc6277641d66b5e1e00e984d035ea8690c",
+      "bytes": 489385,
+      "scope": "Curated synthetic native/Simulator evidence; original private phone captures not in publication scope",
+      "status": "HELD_PENDING_EXPLICIT_MEDIA_AUTHORIZATION"
+    },
+    {
+      "path": "docs/acceptance/evidence/native-typography-20261014/maximum-title-cancelled.png",
+      "git_blob_sha": "2dd4aeed6e750faf5efec1f76513547e72c3e76b",
+      "sha256": "02e86d2419fad1a207e7c1330c0d11809ea9c9419656dea632ad9253224714a9",
+      "bytes": 453499,
+      "scope": "Curated synthetic native/Simulator evidence; original private phone captures not in publication scope",
+      "status": "HELD_PENDING_EXPLICIT_MEDIA_AUTHORIZATION"
+    },
+    {
+      "path": "docs/acceptance/evidence/native-typography-20261014/normal-no-fixture.png",
+      "git_blob_sha": "62aa0c3522c882520a703de1ac2e637da804c2a6",
+      "sha256": "0457e03b18116dc0576ea464fee242bcce020065b11f821eda074eea9656940f",
+      "bytes": 157900,
+      "scope": "Curated synthetic native/Simulator evidence; original private phone captures not in publication scope",
+      "status": "HELD_PENDING_EXPLICIT_MEDIA_AUTHORIZATION"
+    },
+    {
+      "path": "docs/acceptance/evidence/native-typography-20261014/prior-default-editor-visual-fail.png",
+      "git_blob_sha": "11a33bb90ae7e56982c0a96754b3820bab6fadcb",
+      "sha256": "ca3e4bf6111f00ff3fc4d221ba870d0cc2a91a26bbf7eb80a6e5d592bf3914cc",
+      "bytes": 449616,
+      "scope": "Curated synthetic native/Simulator evidence; original private phone captures not in publication scope",
+      "status": "HELD_PENDING_EXPLICIT_MEDIA_AUTHORIZATION"
+    },
+    {
+      "path": "docs/acceptance/evidence/report-continuation-20261014/large-cold-target.png",
+      "git_blob_sha": "0731811295d2f603d170f5884af422f928a86108",
+      "sha256": "29d82fdb69a48782874a065c629adddf593c0ced2f17dd76f1dc18f19b8e8024",
+      "bytes": 262801,
+      "scope": "Curated synthetic native/Simulator evidence; original private phone captures not in publication scope",
+      "status": "HELD_PENDING_EXPLICIT_MEDIA_AUTHORIZATION"
+    },
+    {
+      "path": "docs/acceptance/evidence/report-continuation-20261014/large-readonly-draft.png",
+      "git_blob_sha": "121e41d203cfcf98e9e0ab571d1443dc26e62a2d",
+      "sha256": "e7066d61425f4222ac94548cc643201bdce0d796c6d9f3e181ae829659fa4a05",
+      "bytes": 536443,
+      "scope": "Curated synthetic native/Simulator evidence; original private phone captures not in publication scope",
+      "status": "HELD_PENDING_EXPLICIT_MEDIA_AUTHORIZATION"
+    },
+    {
+      "path": "docs/acceptance/evidence/report-continuation-20261014/large-selected-input.png",
+      "git_blob_sha": "aab3fa2050f917f15fcbd7b2e64f23b69cb013aa",
+      "sha256": "7ad44e08be36ae5bf1ff04695b53e49401b79b1a6d11cf4d5bdfe326828dbc70",
+      "bytes": 725211,
+      "scope": "Curated synthetic native/Simulator evidence; original private phone captures not in publication scope",
+      "status": "HELD_PENDING_EXPLICIT_MEDIA_AUTHORIZATION"
+    },
+    {
+      "path": "docs/acceptance/evidence/report-continuation-20261014/standard-cold-target.png",
+      "git_blob_sha": "923dc5cb5c84a113a32ba16552fd8e31bbcb46eb",
+      "sha256": "86244dcd235443009f3aac83ad74a64efc09df3790e3194a5c06d7aa1f048518",
+      "bytes": 251720,
+      "scope": "Curated synthetic native/Simulator evidence; original private phone captures not in publication scope",
+      "status": "HELD_PENDING_EXPLICIT_MEDIA_AUTHORIZATION"
+    },
+    {
+      "path": "docs/acceptance/evidence/report-continuation-20261014/standard-readonly-draft.png",
+      "git_blob_sha": "bf30a03f0f454a59bc311b8b87340a84ba323d9e",
+      "sha256": "782e31b3b3d401b0c4d99ba4d2980c8dca67ac2b180da65bb51d7a0c8055f113",
+      "bytes": 272701,
+      "scope": "Curated synthetic native/Simulator evidence; original private phone captures not in publication scope",
+      "status": "HELD_PENDING_EXPLICIT_MEDIA_AUTHORIZATION"
+    },
+    {
+      "path": "docs/acceptance/evidence/report-continuation-20261014/standard-selected-input.png",
+      "git_blob_sha": "1b0e231738d5c3dbf1b98f4b5d460b2bf7915542",
+      "sha256": "b775428d20dc78855721a29458962dcbe680be40326b8adf2f33f0beaa3eef74",
+      "bytes": 351056,
+      "scope": "Curated synthetic native/Simulator evidence; original private phone captures not in publication scope",
+      "status": "HELD_PENDING_EXPLICIT_MEDIA_AUTHORIZATION"
+    }
+  ],
+  "unintegrated_local_wip": [
+    "services/edge/supabase/functions/_shared/core/src/task-work-grant-contract.mjs",
+    "services/edge/supabase/functions/_shared/core/src/task-work-grant-service.mjs",
+    "services/edge/test/task-work-grant.test.mjs",
+    "services/edge/supabase/functions/_shared/core/src/device-effect-contract.mjs",
+    "services/edge/supabase/functions/_shared/core/src/device-effect-service.mjs",
+    "services/edge/test/device-effect.test.mjs"
+  ],
+  "authorization": {
+    "code_push": "User explicitly requested timely commits and code push; future reviewed slices may sync on feature branches",
+    "media": "Automatic approval rejected initial PNG upload; do not disguise or re-encode media as code. Explicit bounded media permission pending.",
+    "main": "No direct main push, merge, PR, production deployment, phone install, model/Auth/SQL request or paid compute performed"
+  }
+}
