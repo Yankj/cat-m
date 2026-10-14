@@ -12,6 +12,18 @@ public struct SidebarTheme {
     public var ink: Color
     public var secondary: Color
     public var separator: Color
+    public var titleFont:Font = .title2
+    public var headingFont:Font = .headline
+    public var bodyFont:Font = .body
+    public var secondaryFont:Font = .subheadline
+    public var captionFont:Font = .footnote
+    /// Host-supplied semantic styles keep this package independent of App types.
+    public func typography(title:Font,heading:Font,body:Font,secondary:Font,caption:Font)->SidebarTheme {
+        var result=self
+        result.titleFont=title;result.headingFont=heading;result.bodyFont=body
+        result.secondaryFont=secondary;result.captionFont=caption
+        return result
+    }
     public init(panel: Color, input: Color, ink: Color, secondary: Color, separator: Color) {
         self.panel = panel; self.input = input; self.ink = ink
         self.secondary = secondary; self.separator = separator

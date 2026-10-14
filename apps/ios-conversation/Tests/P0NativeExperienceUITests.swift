@@ -1,10 +1,48 @@
 import XCTest
+import UIKit
 
 final class P0NativeExperienceUITests:XCTestCase {
+    func testNormalReviewLaunchHasNoFixtureOrCloudAdmission() {
+        let app=XCUIApplication(bundleIdentifier:"com.example.CatpawM.ConversationFirst.Auth")
+        app.launchEnvironment=[:];app.launch()
+        let start=app.buttons["auth.startExperience"]
+        XCTAssertTrue(start.waitForExistence(timeout:12),app.debugDescription)
+        XCTAssertFalse(start.isEnabled,"Offline review package cannot admit Auth or model requests")
+        XCTAssertTrue(app.staticTexts["auth.error"].exists)
+        XCTAssertFalse(app.staticTexts["qa.p0Fixture"].exists)
+        XCTAssertFalse(app.staticTexts["auth.fixture"].exists)
+        XCTAssertFalse(app.textViews["chat.input"].exists)
+        let screenshot=XCTAttachment(screenshot:app.screenshot());screenshot.name="Build23-normal-launch-no-fixture-no-cloud-config";screenshot.lifetime = .keepAlways;add(screenshot)
+    }
+    func testSystemTextCategoryIsRespectedWithoutScenarioSizeOverride() {
+        let app=XCUIApplication(bundleIdentifier:"com.example.CatpawM.ConversationFirst.Auth")
+        app.launchEnvironment=["CF_UI_TEST_STORE":UUID().uuidString,"CF_UI_TEST_SCENARIO":"p0-ui-large"]
+        app.launch();XCTAssertTrue(app.staticTexts["qa.p0Fixture"].waitForExistence(timeout:12))
+        let input=app.textViews["chat.input"];XCTAssertTrue(input.waitForExistence(timeout:6))
+        let limit=Date().addingTimeInterval(6)
+        var measured:[String:Any]=[:]
+        while Date()<limit {
+            let raw=app.staticTexts["qa.p0Probe"].value as? String ?? "{}"
+            measured=(try? JSONSerialization.jsonObject(with:Data(raw.utf8))) as? [String:Any] ?? [:]
+            if measured["input_font_point_size"] as? Double != nil {break}
+            RunLoop.current.run(until:Date().addingTimeInterval(0.05))
+        }
+        guard let rawCategory=measured["input_system_category"] as? String,let actual=measured["input_font_point_size"] as? Double else {XCTFail("Actual UIKit typography observation missing");return}
+        let category=UIContentSizeCategory(rawValue:rawCategory)
+        let expected=UIFont.preferredFont(forTextStyle:.body,compatibleWith:UITraitCollection(preferredContentSizeCategory:category))
+        XCTAssertEqual(actual,Double(expected.pointSize),accuracy:0.01,"Scenario identity cannot force a font different from the actual system category")
+        XCTAssertGreaterThanOrEqual(input.frame.height,expected.lineHeight+16-1)
+        let raw="中文草稿 English remains local";replaceAll(app,input,with:raw)
+        XCTAssertEqual(input.value as? String,raw)
+        XCTAssertGreaterThanOrEqual(app.buttons["chat.send"].frame.height,44)
+        let screenshot=XCTAttachment(screenshot:app.screenshot());screenshot.name="Simulator-system-text-category-"+rawCategory+"-no-scenario-clamp";screenshot.lifetime = .keepAlways;add(screenshot)
+        let evidence=XCTAttachment(string:"actual_system_category="+rawCategory+";input_point_size="+String(actual)+";QA_size_override=absent;fixture=explicit_offline;model_requests=0");evidence.name="Actual-UIKit-system-category-witness";evidence.lifetime = .keepAlways;add(evidence)
+    }
     override func setUp(){continueAfterFailure=false}
     private func launch(_ scenario:String)->XCUIApplication {
         let app=XCUIApplication(bundleIdentifier:"com.example.CatpawM.ConversationFirst.Auth")
         app.launchEnvironment=["CF_UI_TEST_STORE":UUID().uuidString,"CF_UI_TEST_SCENARIO":scenario,"P0_PERF_RECORDING":"1"]
+        if scenario.hasPrefix("p0-ui-large") || scenario=="p0-ui-genui-large" {app.launchEnvironment["CATPAW_UI_TEST_TEXT_SIZE"]="accessibility5"}
         app.launch();XCTAssertTrue(app.staticTexts["qa.p0Fixture"].waitForExistence(timeout:12))
         XCTAssertTrue(app.textViews["chat.input"].waitForExistence(timeout:5))
         XCTAssertEqual(probe(app)["fixture_reality"] as? String,"injected_synthetic_offline")
@@ -21,12 +59,44 @@ final class P0NativeExperienceUITests:XCTestCase {
         XCTFail("P0 explicit offline fixture condition timed out")
     }
     private func clear(_ input:XCUIElement){input.tap();let value=input.value as? String ?? "";if !value.isEmpty { input.typeText(String(repeating:XCUIKeyboardKey.delete.rawValue,count:value.utf16.count)) }}
+    private func revealEarlier(_ app:XCUIApplication,_ element:XCUIElement) {
+        NativeUIScrollReveal.reveal(app,element)
+    }
     private func replaceAll(_ app:XCUIApplication,_ input:XCUIElement,with text:String) {
         input.tap();input.press(forDuration:1.1)
         let selectAll=app.menuItems.matching(NSPredicate(format:"label IN %@",["全选","Select All"])).firstMatch
         XCTAssertTrue(selectAll.waitForExistence(timeout:3),app.debugDescription)
         selectAll.tap();input.typeText(text)
         XCTAssertEqual(input.value as? String,text,"Replace the selected text, regardless of the prior caret position")
+    }
+    private func verifyPickerEntry(_ app:XCUIApplication) {
+        let input=app.textViews["chat.input"],raw=input.value as? String ?? ""
+        let inline=app.buttons["attachment.pick"],context=app.scrollViews["chat.input.context.viewport"]
+        let inlineVisible=inline.exists && context.exists ? inline.frame.intersection(context.frame).height:0
+        let usesDetails = !inline.exists || !inline.isHittable || inlineVisible<44
+        if usesDetails {
+            let details=app.buttons["chat.input.context.open"]
+            XCTAssertTrue(details.exists && details.isHittable,"Adaptive context must keep a real image-picker route")
+            XCTAssertGreaterThanOrEqual(details.frame.height,44);details.tap()
+            XCTAssertTrue(app.buttons["chat.input.context.close"].waitForExistence(timeout:5))
+        }
+        let picker=usesDetails ? app.scrollViews["chat.input.context.scroll"].buttons["attachment.pick"]:inline
+        XCTAssertTrue(picker.waitForExistence(timeout:5),app.debugDescription)
+        if usesDetails {NativeUIScrollReveal.reveal(app,picker)}
+        XCTAssertTrue(picker.isHittable);XCTAssertGreaterThanOrEqual(picker.frame.height,44)
+        picker.tap()
+        let cancel=app.buttons["Cancel"]
+        XCTAssertTrue(cancel.waitForExistence(timeout:5),"The details action opens the actual system PhotosPicker")
+        XCTAssertTrue(cancel.isHittable);cancel.tap()
+        wait({!cancel.exists})
+        if usesDetails {
+            let close=app.buttons["chat.input.context.close"]
+            wait({close.exists && close.isHittable && !cancel.exists})
+            close.tap();wait({!close.exists && !app.scrollViews["chat.input.context.scroll"].exists})
+        }
+        wait({input.exists && input.isHittable && !cancel.exists})
+        XCTAssertEqual(input.value as? String,raw,"Cancelling image selection leaves the exact conversation draft intact")
+        XCTAssertFalse(app.images["attachment.preview"].exists)
     }
     private func attach(_ app:XCUIApplication,name:String){
         if app.buttons["qa.p0Export"].exists {app.buttons["qa.p0Export"].tap()}
@@ -49,6 +119,145 @@ final class P0NativeExperienceUITests:XCTestCase {
         wait({self.probe(app)["turn_state"] as? String == "completed"},seconds:12)
         XCTAssertEqual(probe(app)["synthetic_reply_calls"] as? Int,1)
         attach(app,name:"Actual-alert-button-consent-before-original-dispatch-no-real-model")
+    }
+    func testReplyActionsQuotePreservesDraftWithoutDispatch() {
+        let app=launch("p0-ui-echo"),input=app.textViews["chat.input"]
+        clear(input);input.typeText("Synthetic message action check");app.buttons["chat.send"].tap()
+        wait({self.probe(app)["turn_state"] as? String == "completed"},seconds:10)
+        input.tap();input.typeText("Preserve my unfinished draft")
+        let quote=app.buttons.matching(NSPredicate(format:"identifier BEGINSWITH %@","chat.answer.quote.")).firstMatch
+        XCTAssertTrue(quote.waitForExistence(timeout:3));quote.tap()
+        let draft=input.value as? String ?? ""
+        XCTAssertTrue(draft.hasPrefix("Preserve my unfinished draft"))
+        XCTAssertTrue(draft.contains("> Synthetic offline reply; no model call."))
+        XCTAssertEqual(probe(app)["synthetic_reply_calls"] as? Int,1)
+        XCTAssertTrue(app.buttons.matching(NSPredicate(format:"identifier BEGINSWITH %@","chat.answer.copy.")).firstMatch.exists)
+        XCTAssertTrue(app.buttons.matching(NSPredicate(format:"identifier BEGINSWITH %@","chat.answer.share.")).firstMatch.exists)
+        attach(app,name:"Reply-quote-keeps-draft-no-additional-dispatch")
+    }
+    private func openPlan(_ app:XCUIApplication) {
+        XCTAssertFalse(app.buttons["Cancel"].exists,"A system PhotosPicker cannot still own interaction when opening a task plan")
+        XCTAssertFalse(app.buttons["chat.input.context.close"].exists,"Close the input details before opening another sheet")
+        let action=app.buttons.matching(NSPredicate(format:"identifier BEGINSWITH %@","chat.goal.plan.")).firstMatch
+        if !action.exists {
+            let card=app.buttons.matching(NSPredicate(format:"label CONTAINS %@","Synthetic local report")).firstMatch
+            XCTAssertTrue(card.waitForExistence(timeout:6),app.debugDescription);revealEarlier(app,card);card.tap()
+        }
+        XCTAssertTrue(action.waitForExistence(timeout:5),app.debugDescription);revealEarlier(app,action);action.tap()
+        XCTAssertTrue(app.staticTexts["chat.plan.revision"].waitForExistence(timeout:5),app.debugDescription)
+    }
+    func testTaskPlanDraftSurvivesSheetCloseAndEditsOriginalTask() {
+        let app=launch("p0-ui-plan"),input=app.textViews["chat.input"]
+        clear(input);input.typeText("Synthetic local report plan");app.buttons["chat.send"].tap()
+        wait({self.probe(app)["turn_state"] as? String == "completed"},seconds:10)
+        input.tap();input.typeText("Keep the chat draft")
+        verifyPickerEntry(app)
+        openPlan(app);app.buttons["chat.plan.edit"].tap()
+        let requirements=app.textViews["chat.plan.requirementsField"]
+        XCTAssertTrue(requirements.waitForExistence(timeout:3));requirements.tap()
+        requirements.typeText(" Add a risks section from supplied fictional data.")
+        let exact=requirements.value as? String ?? ""
+        app.buttons["chat.plan.keepDraft"].tap();app.buttons["chat.plan.close"].tap()
+        wait({!app.staticTexts["chat.plan.revision"].exists && !app.buttons["chat.plan.close"].exists && input.isHittable})
+        XCTAssertEqual(input.value as? String,"Keep the chat draft")
+        openPlan(app);XCTAssertTrue(app.staticTexts["chat.plan.savedDraft"].exists)
+        app.buttons["chat.plan.edit"].tap()
+        XCTAssertEqual(requirements.value as? String,exact)
+        app.buttons["chat.plan.save"].tap()
+        XCTAssertTrue(app.staticTexts["chat.plan.applied"].waitForExistence(timeout:5),app.debugDescription)
+        XCTAssertTrue(app.staticTexts["chat.plan.revision"].label.contains("v2"))
+        let shot=XCTAttachment(screenshot:app.screenshot());shot.name="Native-plan-same-task-applied-v2-offline";shot.lifetime = .keepAlways;add(shot)
+        app.buttons["chat.plan.close"].tap()
+        XCTAssertEqual(input.value as? String,"Keep the chat draft")
+        XCTAssertEqual(probe(app)["synthetic_reply_calls"] as? Int,1)
+        attach(app,name:"Plan amendment draft preserved on reopen with original work and no conversation dispatch")
+    }
+    func testTaskPlanUnknownKeepsOriginalAmendmentAndBlocksResubmit() {
+        let app=launch("p0-ui-plan-unknown"),input=app.textViews["chat.input"]
+        clear(input);input.typeText("Synthetic unknown plan amendment");app.buttons["chat.send"].tap()
+        wait({self.probe(app)["turn_state"] as? String == "completed"},seconds:10)
+        verifyPickerEntry(app)
+        openPlan(app);app.buttons["chat.plan.edit"].tap()
+        let requirements=app.textViews["chat.plan.requirementsField"];requirements.tap();requirements.typeText(" Add risks.")
+        app.buttons["chat.plan.save"].tap()
+        XCTAssertTrue(app.staticTexts["chat.plan.unknown"].waitForExistence(timeout:5),app.debugDescription)
+        XCTAssertFalse(app.buttons["chat.plan.save"].isEnabled)
+        app.buttons["chat.plan.keepDraft"].tap()
+        let refresh=app.buttons["chat.plan.refresh"]
+        if !refresh.isHittable {app.swipeUp()}
+        refresh.tap()
+        XCTAssertTrue(app.staticTexts["chat.plan.revision"].label.contains("v2"))
+        XCTAssertFalse(app.buttons["chat.plan.edit"].exists)
+        XCTAssertEqual(probe(app)["synthetic_reply_calls"] as? Int,1)
+        attach(app,name:"Plan-unknown-read-original-no-resubmit")
+    }
+    func testGenerativeInvalidRawInputSurvivesNativeColdRelaunch() {
+        let app=launch("p0-ui-genui"),input=app.textViews["chat.input"]
+        clear(input);input.typeText("Synthetic persisted local input");app.buttons["chat.send"].tap()
+        let total=app.textFields["chat.genui.duration.field.0"]
+        revealEarlier(app,total);total.tap()
+        total.typeText(String(repeating:XCUIKeyboardKey.delete.rawValue,count:8)+"-")
+        XCTAssertEqual(total.value as? String,"-")
+        wait({self.probe(app)["turn_state"] as? String == "completed"},seconds:16)
+        XCUIDevice.shared.press(.home);app.terminate();app.launch()
+        XCTAssertTrue(app.staticTexts["qa.p0Fixture"].waitForExistence(timeout:12))
+        revealEarlier(app,total)
+        XCTAssertEqual(total.value as? String,"-","Cold reopen must retain the incomplete raw input")
+        XCTAssertTrue(app.staticTexts["chat.genui.duration.error"].exists)
+        XCTAssertEqual(probe(app)["synthetic_reply_calls"] as? Int,0,"Reopening local state must not generate another reply")
+        attach(app,name:"Native-SwiftData-cold-reopen-keeps-invalid-local-input")
+    }
+    func testGenerativeDurationLocalEditSurvivesStreamingWithoutDispatch() {
+        let app=launch("p0-ui-genui"),input=app.textViews["chat.input"]
+        clear(input);input.typeText("Synthetic local time budget");app.buttons["chat.send"].tap()
+        let total=app.textFields["chat.genui.duration.field.0"]
+        wait({self.probe(app)["synthetic_reply_calls"] as? Int == 1},seconds:8)
+        revealEarlier(app,total);total.tap()
+        total.typeText(String(repeating:XCUIKeyboardKey.delete.rawValue,count:8)+"61")
+        XCTAssertEqual(total.value as? String,"61")
+        XCTAssertEqual(probe(app)["reading_following_latest"] as? Bool,false)
+        wait({self.probe(app)["turn_state"] as? String == "completed"},seconds:16)
+        XCTAssertEqual(total.value as? String,"61","Streaming text must not recreate local inputs")
+        XCTAssertTrue(app.staticTexts["chat.genui.duration.result"].label.contains("19.00"))
+        XCTAssertEqual(probe(app)["synthetic_reply_calls"] as? Int,1)
+        let shot=XCTAttachment(screenshot:app.screenshot());shot.name="Native-local-duration-stable-during-synthetic-stream";shot.lifetime = .keepAlways;add(shot)
+        total.tap();total.typeText(String(repeating:XCUIKeyboardKey.delete.rawValue,count:8)+"0")
+        XCTAssertTrue(app.staticTexts["chat.genui.duration.result"].label.contains("-42.00"),"Over-budget stays negative")
+        total.tap();total.typeText(String(repeating:XCUIKeyboardKey.delete.rawValue,count:8))
+        XCTAssertTrue(app.staticTexts["chat.genui.duration.error"].exists)
+        XCTAssertEqual(probe(app)["synthetic_reply_calls"] as? Int,1)
+        for (index,value) in [(0,"0"),(1,"0.004"),(2,"0")] {
+            let field=app.textFields["chat.genui.duration.field."+String(index)]
+            revealEarlier(app,field);field.tap();field.typeText(String(repeating:XCUIKeyboardKey.delete.rawValue,count:8)+value)
+        }
+        XCTAssertTrue(app.staticTexts["chat.genui.duration.result"].label.contains("0.00"))
+        XCTAssertTrue(app.staticTexts["chat.genui.duration.overBudget"].exists,"A negative exact remainder must stay over budget after display rounding")
+        XCTAssertTrue(app.staticTexts["-0.004 分钟"].exists || app.staticTexts["-0.004 minutes"].exists)
+        XCTAssertEqual(probe(app)["synthetic_reply_calls"] as? Int,1)
+        attach(app,name:"Native-local-duration-invalid-negative-no-dispatch")
+    }
+    func testGenerativeTableFiltersCompleteDatasetLocally() {
+        let app=launch("p0-ui-genui-table"),input=app.textViews["chat.input"]
+        clear(input);input.typeText("Synthetic local table");app.buttons["chat.send"].tap()
+        let filter=app.textFields["chat.genui.filter"]
+        wait({self.probe(app)["synthetic_reply_calls"] as? Int == 1},seconds:8)
+        revealEarlier(app,filter);filter.tap();filter.typeText("Option 6")
+        wait({self.probe(app)["turn_state"] as? String == "completed"},seconds:16)
+        XCTAssertEqual(filter.value as? String,"Option 6")
+        XCTAssertTrue(app.staticTexts["Option 6"].exists,"Filtering must include rows outside the five-row preview")
+        XCTAssertFalse(app.staticTexts["Option 1"].exists)
+        XCTAssertEqual(probe(app)["synthetic_reply_calls"] as? Int,1)
+        let shot=XCTAttachment(screenshot:app.screenshot());shot.name="Native-filter-all-six-synthetic-rows";shot.lifetime = .keepAlways;add(shot)
+        let full=app.buttons["chat.genui.fullTable"];revealEarlier(app,full);full.tap()
+        let expandedFilter=app.textFields["chat.genui.fullFilter"]
+        XCTAssertEqual(expandedFilter.value as? String,"Option 6")
+        expandedFilter.tap();expandedFilter.typeText(String(repeating:XCUIKeyboardKey.delete.rawValue,count:8)+"Option 5")
+        XCTAssertTrue(app.staticTexts["Option 5"].exists);XCTAssertFalse(app.staticTexts["Option 6"].exists)
+        let done=app.navigationBars.buttons.matching(NSPredicate(format:"label IN %@",["完成","Done"])).firstMatch
+        XCTAssertTrue(done.exists);done.tap()
+        XCTAssertEqual(filter.value as? String,"Option 5","Full sheet and preview must share local state")
+        XCTAssertEqual(probe(app)["synthetic_reply_calls"] as? Int,1)
+        attach(app,name:"Native-table-filter-no-model-or-domain-dispatch")
     }
     func testStableLocalEchoDuringPermissionAndTwentyCallbackSamples() {
         let app=launch("p0-ui-echo"),input=app.textViews["chat.input"]

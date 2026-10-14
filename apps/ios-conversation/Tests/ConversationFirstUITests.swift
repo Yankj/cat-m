@@ -26,11 +26,11 @@ final class ConversationFirstUITests: XCTestCase {
         attach(app,"natural-v14-task-settled-or-checkpoint")
         XCTAssertTrue(succeeded,"Task did not succeed; preserve original binding/checkpoint, no tick or re-post. Status: \(blocked.isEmpty ? goal.label : blocked)")
         goal.tap()
-        let artifact=app.buttons.matching(NSPredicate(format:"identifier BEGINSWITH %@ AND label CONTAINS %@","chat.artifact.","合成出门清单")).firstMatch
-        XCTAssertTrue(artifact.waitForExistence(timeout:15));XCTAssertTrue(artifact.label.contains("v1"));let artifactID=artifact.identifier
+        let artifact=app.buttons.matching(NSPredicate(format:"identifier BEGINSWITH %@","chat.artifact.open.")).firstMatch
+        XCTAssertTrue(artifact.waitForExistence(timeout:15));XCTAssertTrue(app.staticTexts["合成出门清单 · v1"].exists);let artifactID=artifact.identifier
         artifact.tap()
-        let hashElement=app.staticTexts.matching(NSPredicate(format:"identifier BEGINSWITH %@","chat.artifact.hash.")).firstMatch
-        XCTAssertTrue(hashElement.waitForExistence(timeout:10));let hash=hashElement.label
+        XCTAssertEqual(app.staticTexts["chat.artifact.reader.version"].label,"v1")
+        let hashElement=readerHash(app);let hash=hashElement.label
         XCTAssertNotNil(hash.range(of:"^SHA-256 [a-f0-9]{64}$",options:.regularExpression))
         XCTAssertTrue(app.staticTexts.matching(NSPredicate(format:"label CONTAINS %@","CATPAW_TASK_OK")).firstMatch.exists)
         XCTAssertTrue(app.staticTexts.matching(NSPredicate(format:"label CONTAINS %@","安排")).firstMatch.exists)
@@ -39,8 +39,8 @@ final class ConversationFirstUITests: XCTestCase {
         attach(app,"natural-v14-artifact-v1-body-hash")
         app.terminate();app.launch();XCTAssertTrue(input.waitForExistence(timeout:40));XCTAssertFalse(app.buttons["auth.startExperience"].exists)
         let sameGoal=app.buttons[originalGoalID];XCTAssertTrue(sameGoal.waitForExistence(timeout:30));XCTAssertTrue(sameGoal.label.contains("已完成"));sameGoal.tap()
-        let sameArtifact=app.buttons[artifactID];XCTAssertTrue(sameArtifact.waitForExistence(timeout:10));XCTAssertTrue(sameArtifact.label.contains("v1"));sameArtifact.tap()
-        XCTAssertTrue(hashElement.waitForExistence(timeout:10));XCTAssertEqual(hashElement.label,hash)
+        let sameArtifact=app.buttons[artifactID];XCTAssertTrue(sameArtifact.waitForExistence(timeout:10));XCTAssertTrue(app.staticTexts["合成出门清单 · v1"].exists);sameArtifact.tap()
+        XCTAssertEqual(app.staticTexts["chat.artifact.reader.version"].label,"v1");XCTAssertEqual(readerHash(app).label,hash)
         XCTAssertTrue(app.staticTexts.matching(NSPredicate(format:"label CONTAINS %@","CATPAW_TASK_OK")).firstMatch.exists);attach(app,"natural-v14-cold-restore-same-task-artifact-v1-hash")
         let proof:[String:Any]=["api_version":14,"new_user_created":false,"natural_turn_send_actions":1,"task_goal_identifier":originalGoalID,"unique_binding_count":1,"task_state":"succeeded","artifact_identifier":artifactID,"artifact_version":1,"artifact_title":"合成出门清单","artifact_hash":hash,"marker":"CATPAW_TASK_OK","cold_restore_same_task_artifact_hash":true,"manual_tick":false,"unknown_replay":false,"token_exported":false]
         let evidence=XCTAttachment(data:try JSONSerialization.data(withJSONObject:proof,options:.sortedKeys),uniformTypeIdentifier:"public.json");evidence.name="natural-v14-task-artifact-proof";evidence.lifetime = .keepAlways;add(evidence)
@@ -180,15 +180,15 @@ final class ConversationFirstUITests: XCTestCase {
         XCTAssertEqual((projection["run"] as? [String:Any])?["state"] as? String,"succeeded")
         let scope = try XCTUnwrap(config["scope"] as? [String:String]), artifactID = try XCTUnwrap(after["artifact_id"] as? String)
         let wire = try await get("catpaw/v1/scopes/"+scope["scope_id"]!+"/artifacts/"+artifactID+"/versions/2"), record = try XCTUnwrap(wire["artifact"] as? [String:Any]), body = try XCTUnwrap(record["body"] as? String)
-        XCTAssertEqual(SHA256.hash(data:Data(body.utf8)).map{String(format:"%02x",$0)}.joined(),after["artifact_hash"] as? String)
-        let artifact = app.buttons.matching(NSPredicate(format:"label CONTAINS %@"," · v2")).firstMatch; XCTAssertTrue(artifact.waitForExistence(timeout:10)); artifact.tap(); attach(app,"r9-restart-v2-artifact-reader")
+        let hash=SHA256.hash(data:Data(body.utf8)).map{String(format:"%02x",$0)}.joined();XCTAssertEqual(hash,after["artifact_hash"] as? String)
+        let artifact = app.buttons["chat.artifact.open."+artifactID]; XCTAssertTrue(artifact.waitForExistence(timeout:10)); artifact.tap(); XCTAssertEqual(app.staticTexts["chat.artifact.reader.version"].label,"v2");XCTAssertEqual(readerHash(app).label,"SHA-256 "+hash);attach(app,"r9-restart-v2-artifact-reader")
         let attachment = XCTAttachment(data:try JSONSerialization.data(withJSONObject:["before":before,"after":after,"production_auth":false],options:.sortedKeys),uniformTypeIdentifier:"public.json"); attachment.name = "r9-original-recovery-before-after"; attachment.lifetime = .keepAlways; add(attachment)
         let stats = try await get("catpaw/testing/v1/fixture"); XCTAssertEqual(stats["provider_requests"] as? Int,3); XCTAssertEqual(stats["recovery_provider_requests"] as? Int,1)
     }
 
-    func testColdValidRestoreHidesDraftUntilValidation() { coldRestoreScenario("cold-valid", accepted:true) }
-    func testColdExpiredRestoreHidesDraftUntilRefreshAndValidation() { coldRestoreScenario("cold-expired", accepted:true) }
-    func testColdRevokedRestoreNeverExposesDraft() { coldRestoreScenario("cold-revoked", accepted:false) }
+    func testColdValidRestoreShowsOwnLocalDraftWithAdmissionClosedUntilValidation() { coldRestoreScenario("cold-valid", accepted:true) }
+    func testColdExpiredRestoreShowsOwnLocalDraftWithAdmissionClosedUntilValidation() { coldRestoreScenario("cold-expired", accepted:true) }
+    func testColdRevokedRestoreClosesOwnLocalDraftAfterValidationRejects() { coldRestoreScenario("cold-revoked", accepted:false) }
     private func coldRestoreScenario(_ scenario:String, accepted:Bool) {
         continueAfterFailure = false
         let app = XCUIApplication(), store = UUID().uuidString
@@ -200,22 +200,31 @@ final class ConversationFirstUITests: XCTestCase {
         let input = app.textViews["chat.input"]; XCTAssertTrue(input.waitForExistence(timeout:15)); input.tap(); input.typeText("Cold restore private synthetic draft")
         // Observe the actual persisted history projection before terminating;
         // a keyboard value alone can precede the existing 300ms draft save.
-        app.buttons["chat.history"].tap()
-        let saved = app.buttons.matching(NSPredicate(format:"label CONTAINS %@","Cold restore private synthetic draft")).firstMatch
-        XCTAssertTrue(saved.waitForExistence(timeout:10)); app.buttons["完成"].tap()
+        app.buttons["sidebar.open"].tap()
+        let saved = app.buttons.matching(NSPredicate(format:"identifier BEGINSWITH %@ AND label CONTAINS %@","sidebar.conversation.","Cold restore private synthetic draft")).firstMatch
+        XCTAssertTrue(saved.waitForExistence(timeout:10)); app.buttons["sidebar.close"].tap()
         app.terminate(); app.launchEnvironment["R7_AUTH_TEST_SCENARIO"] = scenario; app.launch()
-        XCTAssertTrue(app.staticTexts["auth.restoring"].waitForExistence(timeout:5))
-        XCTAssertFalse(input.exists); XCTAssertFalse(app.staticTexts["Cold restore private synthetic draft"].exists)
-        XCTAssertFalse(app.buttons["auth.signIn"].isEnabled); attach(app,"r8-"+scenario+"-pending-no-partition")
+        let state=app.otherElements["auth.fixture.sessionState"]
+        XCTAssertTrue(state.waitForExistence(timeout:5))
+        let pending=expectation(for:NSPredicate(format:"value == %@","restoring|closed|unvalidated|turns:0"),evaluatedWith:state)
+        wait(for:[pending],timeout:5)
+        XCTAssertTrue(input.exists);XCTAssertEqual(input.value as? String,"Cold restore private synthetic draft")
+        XCTAssertFalse(app.staticTexts["Account B private synthetic draft"].exists)
+        attach(app,"r8-"+scenario+"-own-local-draft-network-closed")
         if accepted {
-            XCTAssertTrue(input.waitForExistence(timeout:15))
+            let admitted=expectation(for:NSPredicate(format:"value == %@","authenticated|admitted|validated|turns:0"),evaluatedWith:state)
+            wait(for:[admitted],timeout:15)
+            XCTAssertTrue(input.exists)
             let loaded = expectation(for:NSPredicate(format:"value == %@","Cold restore private synthetic draft"),evaluatedWith:input)
             wait(for:[loaded],timeout:10)
-            XCTAssertFalse(app.staticTexts["auth.restoring"].exists); attach(app,"r8-"+scenario+"-validated-original-draft")
+            attach(app,"r8-"+scenario+"-validated-original-draft")
         } else {
-            let closed = expectation(for:NSPredicate(format:"exists == false"),evaluatedWith:app.staticTexts["auth.restoring"])
+            let closed = expectation(for:NSPredicate(format:"exists == false"),evaluatedWith:input)
             wait(for:[closed],timeout:15)
+            let rejected=expectation(for:NSPredicate(format:"value == %@","loginRequired|closed|unvalidated|turns:0"),evaluatedWith:state)
+            wait(for:[rejected],timeout:5)
             XCTAssertTrue(app.staticTexts["auth.error"].exists); XCTAssertFalse(input.exists)
+            XCTAssertTrue(app.buttons["auth.signIn"].exists)
             attach(app,"r8-cold-revoked-login-required")
         }
     }
@@ -280,8 +289,8 @@ final class ConversationFirstUITests: XCTestCase {
         let body = try XCTUnwrap(artifactRecord["body"] as? String), hash = SHA256.hash(data:Data(body.utf8)).map { String(format:"%02x",$0) }.joined()
         XCTAssertEqual(hash,after["artifact_hash"] as? String)
         let evidenceAttachment = XCTAttachment(data:try JSONSerialization.data(withJSONObject:["before":before,"after":after,"artifact_hash":artifactRecord["content_hash"]!,"production_auth":false],options:.sortedKeys),uniformTypeIdentifier:"public.json"); evidenceAttachment.name = "r7-v5-original-ids-artifact-hash"; evidenceAttachment.lifetime = .keepAlways; add(evidenceAttachment)
-        let artifact = app.buttons.matching(NSPredicate(format:"label CONTAINS %@"," · v1")).firstMatch
-        XCTAssertTrue(artifact.waitForExistence(timeout:10)); artifact.tap(); attach(app,"r7-v5-artifact-version-provenance")
+        let artifact = app.buttons["chat.artifact.open."+artifactID]
+        XCTAssertTrue(artifact.waitForExistence(timeout:10)); artifact.tap();XCTAssertEqual(app.staticTexts["chat.artifact.reader.version"].label,"v1");XCTAssertEqual(readerHash(app).label,"SHA-256 "+hash);attach(app,"r7-v5-artifact-version-provenance")
         let final = try await call("catpaw/testing/v1/fixture"), count = try XCTUnwrap(final["provider_requests"] as? Int)
         XCTAssertLessThanOrEqual(count,2); XCTAssertGreaterThanOrEqual(count,2)
     }
@@ -486,6 +495,16 @@ final class ConversationFirstUITests: XCTestCase {
         attach(app,"experience-overlong-restored")
     }
 
+    private func readerHash(_ app:XCUIApplication)->XCUIElement {
+        let hash=app.staticTexts["chat.artifact.reader.hash"]
+        let disclosure=app.descendants(matching:.any).matching(identifier:"chat.artifact.reader.history").firstMatch
+        for _ in 0..<20 {
+            if hash.exists {break}
+            if disclosure.exists && disclosure.isHittable {disclosure.tap();break}
+            app.scrollViews.firstMatch.swipeUp()
+        }
+        XCTAssertTrue(hash.waitForExistence(timeout:10),app.debugDescription);return hash
+    }
     private func attach(_ app: XCUIApplication, _ name: String) {
         let attachment = XCTAttachment(screenshot: app.screenshot()); attachment.name = name; attachment.lifetime = .keepAlways; add(attachment)
     }

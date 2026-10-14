@@ -1,0 +1,17 @@
+[
+  {
+    "run": "fixed-default-large",
+    "source_sha256": "3555513d3062f5979604580217d6f9345a9110a8d0d51fa5db68ffcf6afcd3db",
+    "text": "actual_system_category=UICTContentSizeCategoryL;input_point_size=17.0;QA_size_override=absent;fixture=explicit_offline;model_requests=0"
+  },
+  {
+    "run": "fixed-system-xxxl",
+    "source_sha256": "31d3cf5704861877d3d0f3de271aa09e7d90dc137ee61e5ae1c9ed98a790822f",
+    "text": "actual_system_category=UICTContentSizeCategoryXXXL;input_point_size=23.0;QA_size_override=absent;fixture=explicit_offline;model_requests=0"
+  },
+  {
+    "run": "fixed-system-ax5",
+    "source_sha256": "5e56567411d81a808b37f21cbcde24f09494bf6cd60063bec867e4fef75e4b32",
+    "text": "actual_system_category=UICTContentSizeCategoryAccessibilityXXXL;input_point_size=53.0;QA_size_override=absent;fixture=explicit_offline;model_requests=0"
+  }
+]

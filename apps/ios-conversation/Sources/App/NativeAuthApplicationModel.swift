@@ -26,7 +26,9 @@ public struct AuthenticatedNativeChatCredentials: NativeChatSessionCredentials {
     private var backend: NativeChatHTTPBackend?
     private var subscription: Task<Void, Never>?
     private var started = false
-    private var openingAccount = false
+    private var openingAccountEpoch: Int?
+    private var lifecycleEpoch=0
+    private var logoutInProgress=false
     var canSignIn: Bool { manager != nil && !actionBusy && state.phase != .signingIn && state.phase != .restoring }
     var canStartExperience: Bool { canSignIn && state.phase != .storageBlocked }
     init() {
@@ -86,8 +88,9 @@ public struct AuthenticatedNativeChatCredentials: NativeChatSessionCredentials {
         do {
             let repository=try Repository(persistence:SwiftDataPersistence(url:url))
             // The local receipt conveys local reading only; it never authorizes HTTP.
-            let backend=NativeChatHTTPBackend(configuration:try NativeChatConfiguration(origin:configuration.backendOrigin,localScope:partition.scope,serverScopeID:receipt.serverScopeID,publishableKey:configuration.publishableKey),credentials:AuthenticatedNativeChatCredentials(manager:manager!,partition:partition))
-            let preview=ConversationFirstModel(repository:repository,service:ConversationSessionService(repository:repository,backend:backend),scope:partition.scope,imageStore:try FileConversationImageByteStore(root:url.deletingLastPathComponent().appendingPathComponent("image-bytes")))
+            let backend=NativeChatHTTPBackend(configuration:try NativeChatConfiguration(origin:configuration.backendOrigin,localScope:partition.scope,serverScopeID:receipt.serverScopeID,publishableKey:configuration.publishableKey,expectedSubjectID:partition.subject),credentials:AuthenticatedNativeChatCredentials(manager:manager!,partition:partition))
+            let selected:any ConversationBackend=isFixture ? UnconfiguredConversationBackend() : backend
+            let preview=ConversationFirstModel(repository:repository,service:ConversationSessionService(repository:repository,backend:selected),scope:partition.scope,imageStore:try FileConversationImageByteStore(root:url.deletingLastPathComponent().appendingPathComponent("image-bytes")),taskPlanService:isFixture ? nil : ConversationTaskPlanService(repository:repository,scope:partition.scope,backend:backend),artifactEditService:isFixture ? nil : ConversationArtifactEditService(repository:repository,scope:partition.scope,backend:backend),taskActionService:isFixture ? nil : ConversationTaskActionService(repository:repository,scope:partition.scope,backend:backend),taskControlService:isFixture ? nil : ConversationTaskControlService(repository:repository,scope:partition.scope,backend:backend),subjectID:partition.subject)
             preview.setNetworkAdmissionAllowed(false);await preview.start();self.backend=backend;chat=preview;namespace=partition.namespace
         } catch { self.error=NativeAuthError.storage.localizedDescription }
     }
@@ -100,21 +103,22 @@ public struct AuthenticatedNativeChatCredentials: NativeChatSessionCredentials {
         do { try await manager.restore() } catch { self.error = (error as? NativeAuthError ?? .unavailable).localizedDescription }
     }
     private func receive(_ snapshot: NativeAuthSnapshot) async {
-        guard let manager, !Task.isCancelled else { return }
+        guard let manager, !Task.isCancelled,!logoutInProgress else { return }
+        let openingEpoch=lifecycleEpoch
         let current = await manager.snapshot()
-        guard !Task.isCancelled, current.generation == snapshot.generation,
+        guard !Task.isCancelled,!logoutInProgress,openingEpoch==lifecycleEpoch, current.generation == snapshot.generation,
               current.phase == snapshot.phase, current.user == snapshot.user else { return }
         state = snapshot
         if snapshot.phase == .restoring { chat?.setNetworkAdmissionAllowed(false);return }
         if [.authenticated,.refreshing].contains(snapshot.phase), let user = snapshot.user, let configuration {
             if snapshot.phase == .refreshing { if chat == nil { await detachChat() };return }
-            guard !openingAccount else { return };openingAccount = true;defer { openingAccount = false }
+            guard openingAccountEpoch != openingEpoch else { return };openingAccountEpoch=openingEpoch;defer {if openingAccountEpoch==openingEpoch {openingAccountEpoch=nil}}
             let serverScope: UUID
             do {
                 if isFixture,let fixed = configuration.serverScopeID { serverScope = fixed }
                 else { let token = try await manager.authorization(subject:user.id);serverScope = try await NativeAuthHTTPRemote(configuration:configuration).applicationScope(accessToken:String(token.dropFirst(7)),subject:user.id) }
-            } catch { await detachChat();self.error = (error as? NativeApplicationSessionError)?.localizedDescription ?? "工作区连接失败，请点‘开始体验’重试。";return }
-            let afterScope = await manager.snapshot();guard afterScope.generation == snapshot.generation,afterScope.phase == .authenticated,afterScope.user == user else { return }
+            } catch {guard !logoutInProgress,openingEpoch==lifecycleEpoch else {return};await detachChat();guard !logoutInProgress,openingEpoch==lifecycleEpoch else {return};self.error = (error as? NativeApplicationSessionError)?.localizedDescription ?? "工作区连接失败，请点‘开始体验’重试。";return }
+            let afterScope = await manager.snapshot();guard !logoutInProgress,openingEpoch==lifecycleEpoch,afterScope.generation == snapshot.generation,afterScope.phase == .authenticated,afterScope.user == user else { return }
             let partition = AuthenticatedLocalPartition(issuer:configuration.issuer,subject:user.id,serverScopeID:serverScope)
             if namespace == partition.namespace {
                 try? saveLocalReceipt(.init(issuer:configuration.issuer,subject:user.id,serverScopeID:serverScope))
@@ -125,7 +129,7 @@ public struct AuthenticatedNativeChatCredentials: NativeChatSessionCredentials {
             guard snapshot.phase == .authenticated else { await detachChat(); return }
             await detachChat()
             let admitted = await manager.snapshot()
-            guard !Task.isCancelled, admitted.generation == snapshot.generation,
+            guard !Task.isCancelled,!logoutInProgress,openingEpoch==lifecycleEpoch, admitted.generation == snapshot.generation,
                   admitted.phase == .authenticated, admitted.user == user else { return }
             do {
                 let directory = root.appendingPathComponent(partition.namespace,isDirectory:true)
@@ -133,10 +137,10 @@ public struct AuthenticatedNativeChatCredentials: NativeChatSessionCredentials {
                 var excluded = directory; var resource = URLResourceValues(); resource.isExcludedFromBackup = true; try excluded.setResourceValues(resource)
                 let repository = try Repository(persistence:SwiftDataPersistence(url:directory.appendingPathComponent("local.store")))
                 let region = (Bundle.main.object(forInfoDictionaryKey:"CatpawEdgeRegion") as? String).flatMap { $0.isEmpty ? nil : $0 }
-                let http = NativeChatHTTPBackend(configuration:try NativeChatConfiguration(origin:configuration.backendOrigin,localScope:partition.scope,serverScopeID:serverScope,publishableKey:configuration.publishableKey,edgeRegion:region),credentials:AuthenticatedNativeChatCredentials(manager:manager,partition:partition))
+                let http = NativeChatHTTPBackend(configuration:try NativeChatConfiguration(origin:configuration.backendOrigin,localScope:partition.scope,serverScopeID:serverScope,publishableKey:configuration.publishableKey,edgeRegion:region,expectedSubjectID:partition.subject),credentials:AuthenticatedNativeChatCredentials(manager:manager,partition:partition))
                 backend = http
                 let selected: any ConversationBackend = isFixture ? UnconfiguredConversationBackend() : http
-                chat = ConversationFirstModel(repository:repository,service:ConversationSessionService(repository:repository,backend:selected),scope:partition.scope,imageStore:try FileConversationImageByteStore(root:directory.appendingPathComponent("image-bytes")))
+                chat = ConversationFirstModel(repository:repository,service:ConversationSessionService(repository:repository,backend:selected),scope:partition.scope,imageStore:try FileConversationImageByteStore(root:directory.appendingPathComponent("image-bytes")),taskPlanService:isFixture ? nil : ConversationTaskPlanService(repository:repository,scope:partition.scope,backend:http),artifactEditService:isFixture ? nil : ConversationArtifactEditService(repository:repository,scope:partition.scope,backend:http),taskActionService:isFixture ? nil : ConversationTaskActionService(repository:repository,scope:partition.scope,backend:http),taskControlService:isFixture ? nil : ConversationTaskControlService(repository:repository,scope:partition.scope,backend:http),subjectID:partition.subject)
                 namespace = partition.namespace; error = nil
                 try saveLocalReceipt(.init(issuer:configuration.issuer,subject:user.id,serverScopeID:serverScope))
             } catch { self.error = "此账号的本地存储无法打开；原文件已保留。" }
@@ -149,14 +153,23 @@ public struct AuthenticatedNativeChatCredentials: NativeChatSessionCredentials {
         }
     }
     private func detachChat() async {
+        if !(await finishDetaching(takeChat())) {error="有修改草稿未能保存，请核对此前已保存的版本。"}
+    }
+    private func takeChat() -> (ConversationFirstModel?,NativeChatHTTPBackend?,String?) {
         let previous = chat; chat = nil
         let previousBackend = backend; backend = nil
         let previousNamespace = namespace; namespace = nil
-        await previous?.deactivate(); await previousBackend?.close()
-        if let previousNamespace {
+        previous?.setNetworkAdmissionAllowed(false)
+        return (previous,previousBackend,previousNamespace)
+    }
+    private func finishDetaching(_ detached:(ConversationFirstModel?,NativeChatHTTPBackend?,String?)) async -> Bool {
+        await detached.1?.close()
+        let saved=await detached.0?.deactivate() ?? true
+        if let previousNamespace=detached.2 {
             let caches = FileManager.default.urls(for:.cachesDirectory,in:.userDomainMask)[0].appendingPathComponent("CatpawM-r7",isDirectory:true).appendingPathComponent(previousNamespace,isDirectory:true)
             try? FileManager.default.removeItem(at:caches)
         }
+        return saved
     }
     func signUp(email: String,password: String) async {
         guard canSignIn,let manager else { return };actionBusy = true;error = nil;registrationNotice = nil;defer { actionBusy = false }
@@ -173,9 +186,15 @@ public struct AuthenticatedNativeChatCredentials: NativeChatSessionCredentials {
         do { try await manager.signIn(email:email,password:password) } catch { self.error = (error as? NativeAuthError ?? .unavailable).localizedDescription }
     }
     func signOut() async {
-        guard let manager, !actionBusy else { return }; actionBusy = true; defer { actionBusy = false }
-        await detachChat();try? FileManager.default.removeItem(at:receiptURL)
+        guard let manager, !actionBusy else { return };actionBusy=true;logoutInProgress=true;lifecycleEpoch += 1
+        defer {logoutInProgress=false;actionBusy=false}
+        let detached=takeChat()
+        // Close manager admission immediately; local draining must not postpone its barrier.
+        async let cleanup:Bool=finishDetaching(detached)
+        try? FileManager.default.removeItem(at:receiptURL)
         do { try await manager.signOut() } catch { self.error = NativeAuthError.storage.localizedDescription }
+        if !(await cleanup) {error="有修改草稿未能保存，请核对此前已保存的版本。"}
+        state=await manager.snapshot()
     }
     func cancelLogin() async { guard let manager else { return }; do { try await manager.cancelLogin() } catch { self.error = NativeAuthError.storage.localizedDescription } }
     func retryStorage() async { guard let manager else { return }; do { try await manager.retryPersistence() } catch { self.error = (error as? NativeAuthError ?? .storage).localizedDescription } }

@@ -1,0 +1,227 @@
+[
+  {
+    "path": "docs/acceptance/evidence/authority-recovery-20261014/control-paused.png",
+    "bytes": 293097,
+    "sha256": "7af21cc7205b6e6dfdb5bf59cd35a8413a29c6f36a29482e47301bd3442d2e60",
+    "dimensions": [
+      1206,
+      2622
+    ],
+    "test": "ConversationTaskControlUITests/testPauseCloseColdReopenAndResumeSameTaskPreservesDraftAndReceipts()",
+    "attachment_name": "Synthetic-native-task-control-paused-original-receipt_0_345C4A6C-A259-44F9-AB46-D38BE21C3C28.png",
+    "timestamp": 1791983611.966,
+    "actual_app_version": "0.3.0(22)",
+    "capture_label_versions": "legacy attachment names v19/v20/v21 are retained; actual bundle is 22",
+    "reality": "actual_simulator_offline_fixture",
+    "pixel_review": "Reviewed all pixels: explicit offline synthetic content and identifiers only; no private phone/user content.",
+    "metadata": [
+      {
+        "chunk": "eXIf",
+        "bytes": 122,
+        "sha256": "bbb6cf9c714327cee2af7e86321c59f76afe1a7552fa75de308d722e0cd53463"
+      },
+      {
+        "chunk": "iTXt",
+        "bytes": 675,
+        "sha256": "861617ee5fefbed9354987559086a994ffc207a0c9999d379568b0759fd79574"
+      }
+    ]
+  },
+  {
+    "path": "docs/acceptance/evidence/authority-recovery-20261014/control-original-get.png",
+    "bytes": 292503,
+    "sha256": "154a95dff02b8af9524df03af11db4ae69bd002567d24912bcc36449fce7504f",
+    "dimensions": [
+      1206,
+      2622
+    ],
+    "test": "ConversationTaskControlUITests/testLostControlReceiptColdRelaunchGetsOriginalAndNeverResends()",
+    "attachment_name": "Synthetic-native-task-control-cold-original-get-confirmed_0_29F22EF9-646D-4696-8B06-F38335342EEC.png",
+    "timestamp": 1791983478.024,
+    "actual_app_version": "0.3.0(22)",
+    "capture_label_versions": "legacy attachment names v19/v20/v21 are retained; actual bundle is 22",
+    "reality": "actual_simulator_offline_fixture",
+    "pixel_review": "Reviewed all pixels: explicit offline synthetic content and identifiers only; no private phone/user content.",
+    "metadata": [
+      {
+        "chunk": "eXIf",
+        "bytes": 122,
+        "sha256": "bbb6cf9c714327cee2af7e86321c59f76afe1a7552fa75de308d722e0cd53463"
+      },
+      {
+        "chunk": "iTXt",
+        "bytes": 675,
+        "sha256": "861617ee5fefbed9354987559086a994ffc207a0c9999d379568b0759fd79574"
+      }
+    ]
+  },
+  {
+    "path": "docs/acceptance/evidence/authority-recovery-20261014/control-maximum-cancelled.png",
+    "bytes": 373473,
+    "sha256": "a287aee65767621bc3ffd3727a26234d3a15f05ad0f1709200a024a521ea7858",
+    "dimensions": [
+      1206,
+      2622
+    ],
+    "test": "ConversationTaskControlUITests/testMaximumAccessibilityControlsRemainReachableAndRevokeIsSeparateFromPause()",
+    "attachment_name": "Synthetic-native-task-control-maximum-ax-original-card-confirmed-cancelled_0_EBC6296D-C0E1-44D0-A4B2-333EDE77D5D3.png",
+    "timestamp": 1791983518.589,
+    "actual_app_version": "0.3.0(22)",
+    "capture_label_versions": "legacy attachment names v19/v20/v21 are retained; actual bundle is 22",
+    "reality": "actual_simulator_offline_fixture",
+    "pixel_review": "Reviewed all pixels: explicit offline synthetic content and identifiers only; no private phone/user content.",
+    "metadata": [
+      {
+        "chunk": "eXIf",
+        "bytes": 122,
+        "sha256": "bbb6cf9c714327cee2af7e86321c59f76afe1a7552fa75de308d722e0cd53463"
+      },
+      {
+        "chunk": "iTXt",
+        "bytes": 675,
+        "sha256": "861617ee5fefbed9354987559086a994ffc207a0c9999d379568b0759fd79574"
+      }
+    ],
+    "visual_limitation": "Maximum Dynamic Type long title and status are crowded in a horizontal card header; adaptive stacked header remains open. This screenshot proves visible cancellation state, not global visual acceptance."
+  },
+  {
+    "path": "docs/acceptance/evidence/authority-recovery-20261014/control-maximum-unknown.png",
+    "bytes": 656506,
+    "sha256": "15f2a0dfe6c5efb483cfd8df0e3d1ddeaca0d8192d6eab3d7287013bedaf45af",
+    "dimensions": [
+      1206,
+      2622
+    ],
+    "test": "ConversationTaskControlUITests/testMaximumAccessibilityUnknownOriginalOperationsStayReadableAndPreventResume()",
+    "attachment_name": "Synthetic-native-task-control-maximum-ax-unknown-original-no-retry_0_EB9F9FDF-A108-4EB5-ADF5-CD0A4B900D16.png",
+    "timestamp": 1791983561.98,
+    "actual_app_version": "0.3.0(22)",
+    "capture_label_versions": "legacy attachment names v19/v20/v21 are retained; actual bundle is 22",
+    "reality": "actual_simulator_offline_fixture",
+    "pixel_review": "Reviewed all pixels: explicit offline synthetic content and identifiers only; no private phone/user content.",
+    "metadata": [
+      {
+        "chunk": "eXIf",
+        "bytes": 122,
+        "sha256": "bbb6cf9c714327cee2af7e86321c59f76afe1a7552fa75de308d722e0cd53463"
+      },
+      {
+        "chunk": "iTXt",
+        "bytes": 675,
+        "sha256": "861617ee5fefbed9354987559086a994ffc207a0c9999d379568b0759fd79574"
+      }
+    ]
+  },
+  {
+    "path": "docs/acceptance/evidence/authority-recovery-20261014/control-cold-resume.png",
+    "bytes": 294079,
+    "sha256": "342b18f398d860419c3f0d69acde42921b8e440bbabdd8d123be2c840707df0a",
+    "dimensions": [
+      1206,
+      2622
+    ],
+    "test": "ConversationTaskControlUITests/testPauseCloseColdReopenAndResumeSameTaskPreservesDraftAndReceipts()",
+    "attachment_name": "Synthetic-native-task-control-cold-resume-awaiting-original-worker_0_C49EDD9E-A212-40FD-9D6D-7DF28A8F4F48.png",
+    "timestamp": 1791983625.462,
+    "actual_app_version": "0.3.0(22)",
+    "capture_label_versions": "legacy attachment names v19/v20/v21 are retained; actual bundle is 22",
+    "reality": "actual_simulator_offline_fixture",
+    "pixel_review": "Reviewed all pixels: explicit offline synthetic content and identifiers only; no private phone/user content.",
+    "metadata": [
+      {
+        "chunk": "eXIf",
+        "bytes": 122,
+        "sha256": "bbb6cf9c714327cee2af7e86321c59f76afe1a7552fa75de308d722e0cd53463"
+      },
+      {
+        "chunk": "iTXt",
+        "bytes": 675,
+        "sha256": "861617ee5fefbed9354987559086a994ffc207a0c9999d379568b0759fd79574"
+      }
+    ]
+  },
+  {
+    "path": "docs/acceptance/evidence/authority-recovery-20261014/continuation-maximum-keyboard.png",
+    "bytes": 661331,
+    "sha256": "9e8d384c7bb21ce1bb9a649ae65bdfc2719e0115414fd4e8a09656570a4cc734",
+    "dimensions": [
+      1206,
+      2622
+    ],
+    "test": "ConversationArtifactContinuationUITests/testMaximumTextTargetInputAndExitRemainReachableAboveKeyboard()",
+    "attachment_name": "Simulator-synthetic-report-continuation-v21-p0-ui-large-artifact-edit-selected-local-raw_0_2A918BA2-6D6B-4754-93B1-4DFAE61B52BF.png",
+    "timestamp": 1791982624.976,
+    "actual_app_version": "0.3.0(22)",
+    "capture_label_versions": "legacy attachment names v19/v20/v21 are retained; actual bundle is 22",
+    "reality": "actual_simulator_offline_fixture",
+    "pixel_review": "Reviewed all pixels: explicit offline synthetic content and identifiers only; no private phone/user content.",
+    "metadata": [
+      {
+        "chunk": "eXIf",
+        "bytes": 122,
+        "sha256": "bbb6cf9c714327cee2af7e86321c59f76afe1a7552fa75de308d722e0cd53463"
+      },
+      {
+        "chunk": "iTXt",
+        "bytes": 675,
+        "sha256": "861617ee5fefbed9354987559086a994ffc207a0c9999d379568b0759fd79574"
+      }
+    ]
+  },
+  {
+    "path": "docs/acceptance/evidence/authority-recovery-20261014/manual-editor-maximum-keyboard.png",
+    "bytes": 489767,
+    "sha256": "7e9572a9a5d526e29c811e008b34ae33823ded3ad85b7ec4a11b0709d0f6780e",
+    "dimensions": [
+      1206,
+      2622
+    ],
+    "test": "ConversationArtifactEditUITests/testMaximumTextManualEditorKeyboardSaveCloseAndHistoryRemainReachable()",
+    "attachment_name": "Simulator-synthetic-AF-W31-REVIEW-20261014-04-v20-maximum-text-editor-keyboard-save-close-reachable_0_F68086AA-999C-47FD-85A2-56524F120B92.png",
+    "timestamp": 1791982829.514,
+    "actual_app_version": "0.3.0(22)",
+    "capture_label_versions": "legacy attachment names v19/v20/v21 are retained; actual bundle is 22",
+    "reality": "actual_simulator_offline_fixture",
+    "pixel_review": "Reviewed all pixels: explicit offline synthetic content and identifiers only; no private phone/user content.",
+    "metadata": [
+      {
+        "chunk": "eXIf",
+        "bytes": 122,
+        "sha256": "bbb6cf9c714327cee2af7e86321c59f76afe1a7552fa75de308d722e0cd53463"
+      },
+      {
+        "chunk": "iTXt",
+        "bytes": 675,
+        "sha256": "861617ee5fefbed9354987559086a994ffc207a0c9999d379568b0759fd79574"
+      }
+    ]
+  },
+  {
+    "path": "docs/acceptance/evidence/authority-recovery-20261014/source-reader-maximum.png",
+    "bytes": 576270,
+    "sha256": "dd3894c9e0088d612c29cc2139e72156018239618ad83f52ade168b8c375d6b6",
+    "dimensions": [
+      1206,
+      2622
+    ],
+    "test": "ConversationArtifactReaderUITests/testLargeTextReaderSourceNavigationAndHistoryKeepDraft()",
+    "attachment_name": "Synthetic-source-reader-v19-source-detail-single-sheet_0_5957F5AD-14EF-4459-A43A-8CD44DB4DAF1.png",
+    "timestamp": 1791983104.422,
+    "actual_app_version": "0.3.0(22)",
+    "capture_label_versions": "legacy attachment names v19/v20/v21 are retained; actual bundle is 22",
+    "reality": "actual_simulator_offline_fixture",
+    "pixel_review": "Reviewed all pixels: explicit offline synthetic content and identifiers only; no private phone/user content.",
+    "metadata": [
+      {
+        "chunk": "eXIf",
+        "bytes": 122,
+        "sha256": "bbb6cf9c714327cee2af7e86321c59f76afe1a7552fa75de308d722e0cd53463"
+      },
+      {
+        "chunk": "iTXt",
+        "bytes": 675,
+        "sha256": "861617ee5fefbed9354987559086a994ffc207a0c9999d379568b0759fd79574"
+      }
+    ]
+  }
+]

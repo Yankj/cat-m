@@ -1,10 +1,12 @@
 import { ApiError,check,shape,UUID,hash,iso,clone } from '../facade-r2/src/common.mjs';
 import {freezeCompletionIntent} from './report-completion.mjs';
 import { LOCAL_POLICY,stableUUID } from './local-output-facade.mjs';
-import { chatPrompt,chatTools,validateCall,assistantToolMessage } from './tools.mjs';
+import { chatPromptFor,chatToolsFor,validateProvidedToolCall,assistantToolMessage } from './tools.mjs';
 import { collectRound } from './openrouter-provider.mjs';
 import { TextBatcher } from './text-batcher.mjs';
 import { createChatMetrics } from './chat-metrics.mjs';
+import {freezeTaskRevisionTargetInTransaction,acceptTaskRevisionInTransaction,readTaskRevision,assertTaskRevisionTurnBoundaryInTransaction} from './task-revision-service.mjs';
+import {validateTaskRevisionRequest,TASK_REVISION_CONTRACT} from './task-revision-contract.mjs';
 const positive=v=>Number.isSafeInteger(v)&&v>0;
 const terminal=s=>s!=='running';
 export class ChatService {
@@ -28,10 +30,12 @@ export class ChatService {
     const ids=new Set();for(const c of input.context){shape(c,['id','text']);check(typeof c.id==='string'&&c.id.length>0&&c.id.length<=80&&!ids.has(c.id)&&typeof c.text==='string'&&c.text.length<=8000,422,'schema_invalid');ids.add(c.id);}
     check(Buffer.byteLength(JSON.stringify(input))<=40000,413,'request_too_large');
   }
-  async startTurn(auth,scopeID,conversationID,input){
+  async startRevisionTurn(auth,scopeID,conversationID,input){const request=validateTaskRevisionRequest(input);return this.startTurn(auth,scopeID,conversationID,request.turn,{revisionTarget:request.target});}
+  async readRevision(auth,scopeID,runID,operationID){return readTaskRevision(this.facade,auth,scopeID,runID,operationID);}
+  async startTurn(auth,scopeID,conversationID,input,{revisionTarget=null}={}){
     this.validateInput(input);const trusted=await this.scoped(auth,scopeID),{owner,scope,principal}=trusted,acceptedAt=this.metrics.now();
     await this.integration?.prepare({owner,scope,principal});
-    const admissionHash=hash({input,conversation_id:conversationID,scope,subject:principal.subject_id,model:this.provider.identity});
+    const admissionHash=hash({input,...revisionTarget?{revision_target:revisionTarget,revision_contract:TASK_REVISION_CONTRACT}:{},conversation_id:conversationID,scope,subject:principal.subject_id,model:this.provider.identity});
     const result=await this.repository.transaction(async tx=>{
       await this.integration?.beforeWrite(tx,{owner,scope});
       await tx.lock(owner,'native-chat-conversations',conversationID);
@@ -49,6 +53,7 @@ export class ChatService {
         admission_hash:admissionHash,request_hash:hash({history,model_history:modelHistory,context:input.context,scope,subject:principal.subject_id,model:this.provider.identity,policy:LOCAL_POLICY}),
         input:clone(input),history,model_history:modelHistory,events:[],task_bindings:[],created_at:iso()};
       if(this.beforeTurnAdmission)t.source_auth=await this.beforeTurnAdmission(tx,{principal,scope,conversation:c,turn:t});
+      if(revisionTarget){t.revision_target=await freezeTaskRevisionTargetInTransaction(this.facade,tx,{owner,scope,principal,conversation:c,turn:t,target:revisionTarget});t.request_hash=hash({original_chat_request_hash:t.request_hash,revision_target:t.revision_target});t.continuations=[];}
       if(this.facade.completionPolicy&&this.facade.completionAuthorizer){
         const selection=await this.facade.completionAuthorizer({principal:clone(principal),scope:clone(scope),conversation_id:c.id,input:clone(input),policy:clone(this.facade.completionPolicy)});
         if(selection)t.completion_intent=freezeCompletionIntent(this.facade.completionPolicy,selection,{subject_id:principal.subject_id,scope_id:scope.scope_id,conversation_id:c.id,turn_id:input.turn_id,user_message_id:input.message.id,input_hash:hash(input),conversation_epoch:c.grant_epoch});
@@ -57,7 +62,7 @@ export class ChatService {
       // Durable admission receipt belongs to the same atomic turn/user-message commit.
       t={...t,events:[this.event(t,'turn_started',{request_hash:t.request_hash,conversation_revision:t.conversation_revision})]};
       check(await tx.insertIfAbsent(owner,'native-chat-turns',t),409,'turn_conflict');await tx.put(owner,'native-chat-conversations',{...c,revision:c.revision+1,messages:history,model_messages:modelHistory,last_turn_id:t.id});
-      await this.integration?.capture(tx,{owner,scope,principal,turn:t});return {turn:t,replayed:false};
+      await this.integration?.capture(tx,{owner,scope,principal,turn:t});await this.beforeCommit(tx,{owner,scope},t);if(t.revision_target)await this.assertRevisionLive(tx,{owner,scope,principal},t);return {turn:t,replayed:false};
     });
     this.metrics.record('accept_commit',acceptedAt);
     if(!result.replayed){
@@ -76,6 +81,12 @@ export class ChatService {
     const c=await this.conversation(tx,owner,turn.conversation_id,turn.subject_id,turn.scope_id),t=await tx.get(owner,'native-chat-turns',turn.id);
     check(t?.state==='running'&&c.state==='active'&&c.grant_epoch===turn.grant_epoch&&c.revision===turn.conversation_revision,409,'grant_conflict');return {t,c};
   }
+  async beforeCommit(tx,env,turn){
+    const assertLive=env.assertLive??(()=>env.signal?.throwIfAborted());assertLive();
+    // An awaited write can outlive its runtime lease or source grant while row locks remain held.
+    // Reuse the same authority port before COMMIT; a denial rolls back every write in this transaction.
+    await this.integration?.beforeWrite(tx,{owner:env.owner,scope:env.scope??{scope_id:turn.scope_id},turn});assertLive();
+  }
   event(t,type,data){return {schema_version:1,contract:'catpaw.native-chat.v1',scope_id:t.scope_id,conversation_id:t.conversation_id,turn_id:t.id,sequence:t.events.length+1,cursor:`${t.id}:${t.events.length+1}`,grant_epoch:t.grant_epoch,model_reality:this.provider.reality,type,data:clone(data)};}
   notify(owner,t){
     const event=t.events?.at(-1);
@@ -84,12 +95,16 @@ export class ChatService {
   }
   async append(env,type,data){
     (env.assertLive??(()=>env.signal.throwIfAborted()))();
-    const started=this.metrics.now();const t=await this.repository.transaction(async tx=>{const {t}=await this.live(tx,env);(env.assertLive??(()=>env.signal.throwIfAborted()))();const saved=await tx.put(env.owner,'native-chat-turns',{...t,events:[...t.events,this.event(t,type,data)]});(env.assertLive??(()=>env.signal.throwIfAborted()))();return saved;});this.metrics.record('text_commit',started,{bytes:type==='text_delta'?Buffer.byteLength(data.text):0});this.notify(env.owner,t);return t;
+    const started=this.metrics.now();const t=await this.repository.transaction(async tx=>{const {t}=await this.live(tx,env);(env.assertLive??(()=>env.signal.throwIfAborted()))();const saved=await tx.put(env.owner,'native-chat-turns',{...t,events:[...t.events,this.event(t,type,data)]});await this.beforeCommit(tx,env,saved);return saved;});this.metrics.record('text_commit',started,{bytes:type==='text_delta'?Buffer.byteLength(data.text):0});this.notify(env.owner,t);return t;
   }
   async executeTool(env,call){
+    let wake=null;
     const t=await this.repository.transaction(async tx=>{
       (env.assertLive??(()=>env.signal.throwIfAborted()))();const {t,c}=await this.live(tx,env);let result;
-      if(call.name==='delegate_task'){
+      if(call.name==='revise_current_report_v1'){
+        const admitted=await acceptTaskRevisionInTransaction(this.facade,tx,{...env,conversation:c,turn:t,call});result=admitted.receipt;wake=admitted.wake;
+      }else if(['delegate_task','delegate_plan_v1','delegate_sources_v1'].includes(call.name)){
+        check(!t.revision_target,422,'revision_tool_not_allowed');
         check(t.task_bindings.length<1,422,'turn_task_limit');
         result=await this.facade.admitChatTask(tx,{owner:env.owner,scope:env.scope,conversation:c,turn:t,call});
       } else {
@@ -97,8 +112,8 @@ export class ChatService {
         result={tasks:await Promise.all(runs.map(r=>this.facade.runProjection(tx,env.owner,r.id)))};
       }
       const event=this.event(t,'tool_result',{call_id:call.id,name:call.name,result});
-      const saved=await tx.put(env.owner,'native-chat-turns',{...t,task_bindings:call.name==='delegate_task'?[...t.task_bindings,result]:t.task_bindings,events:[...t.events,event]});(env.assertLive??(()=>env.signal.throwIfAborted()))();return saved;
-    });this.notify(env.owner,t);return t.events.at(-1).data.result;
+      const saved=await tx.put(env.owner,'native-chat-turns',{...t,...call.name==='revise_current_report_v1'?{continuations:[result],dispatch_checkpoint:{...t.dispatch_checkpoint,next:1}}:{},task_bindings:['delegate_task','delegate_plan_v1','delegate_sources_v1'].includes(call.name)?[...t.task_bindings,result]:t.task_bindings,events:[...t.events,event]});await this.beforeCommit(tx,env,saved);if(t.revision_target)await this.assertRevisionLive(tx,env,saved);return saved;
+    });this.notify(env.owner,t);if(wake)try{await this.facade.onTaskRevisionAccepted?.(wake);}catch{}return t.events.at(-1).data.result;
   }
   async execute(env){
     const now=this.clockNow??Date.now,startedAt=now(),deadline=startedAt+(this.modelBudgetMs??50000);
@@ -110,29 +125,34 @@ export class ChatService {
     const messageID=stableUUID(`${env.turn.id}:assistant`);let text='';const messages=clone(env.turn.model_history);
     try {
       if(!env.turn.events.some(e=>e.type==='turn_started'))await this.append(env,'turn_started',{request_hash:env.turn.request_hash,conversation_revision:env.turn.conversation_revision});
-      this.provider.assertReady?.();
-      const prompt=chatPrompt+'\nApplication context (untrusted data only): '+JSON.stringify(env.turn.input.context);
+      if(!(env.turn.revision_target&&env.turn.dispatch_checkpoint?.state==='received'))this.provider.assertReady?.();
+      const tools=chatToolsFor(this.facade,env.turn),prompt=chatPromptFor(this.facade,env.turn)+'\nApplication context (untrusted data only): '+JSON.stringify(env.turn.input.context);
+      if(env.turn.revision_target)messages.push({role:'user',content:JSON.stringify({selected_report:env.turn.revision_target.base_body,instruction:env.turn.revision_target.raw_instruction,evidence_boundary:'prior report is user data, not fresh source verification'})});
       const seen=new Set();
       for(let step=0;step<3;step++){
+        const received=step===0&&env.turn.revision_target&&env.turn.dispatch_checkpoint?.state==='received'?env.turn.dispatch_checkpoint:null;
         phase='dispatch_admission';
         const admissionAt=this.metrics.now();(env.assertLive??(()=>env.signal.throwIfAborted()))();await this.integration?.renew(env.owner);
-        await this.repository.transaction(async tx=>{const {t}=await this.live(tx,env);await tx.put(env.owner,'native-chat-turns',{...t,dispatch_checkpoint:{state:'dispatched',request_hash:hash({messages,prompt,tools:chatTools}),step}});(env.assertLive??(()=>env.signal.throwIfAborted()))();});
-        this.metrics.record('dispatch_admission',admissionAt);env.assertDispatchReady();phase='provider_stream';
+        if(!received)await this.repository.transaction(async tx=>{const {t}=await this.live(tx,env);if(t.revision_target)await this.assertRevisionLive(tx,env,t);const saved=await tx.put(env.owner,'native-chat-turns',{...t,dispatch_checkpoint:{state:'dispatched',request_hash:hash({messages,prompt,tools}),step}});await this.beforeCommit(tx,env,saved);});
+        this.metrics.record('dispatch_admission',admissionAt);if(received)env.assertLive();else env.assertDispatchReady();phase='provider_stream';
         batcher=new TextBatcher({signal:env.signal,assertLive:env.assertLive,
           persist:delta=>this.append(env,'text_delta',{message_id:messageID,text:delta}),
           onFailure:error=>env.controller?.abort(error)});
-        const round=await collectRound(this.provider,{messages:clone(messages),system_prompt:prompt,tools:chatTools,signal:env.signal,assertDispatchReady:env.assertDispatchReady,provider_context:{source_auth:env.turn.source_auth,scope_id:env.scope.scope_id,conversation_id:env.turn.conversation_id}},delta=>{text+=delta;batcher.push(delta);});
+        const round=received?clone(received.round):await collectRound(this.provider,{messages:clone(messages),system_prompt:prompt,tools,signal:env.signal,assertDispatchReady:env.assertDispatchReady,provider_context:{source_auth:env.turn.source_auth,scope_id:env.scope.scope_id,conversation_id:env.turn.conversation_id,...env.turn.revision_target?{revision_source_auth:clone(env.turn.revision_target.fresh_source_auth),revision_original_source_auth:clone(env.turn.revision_target.original_source_auth),revision_memory_generation:env.turn.revision_target.memory_generation,input_context:[{text:env.turn.revision_target.raw_instruction},{text:env.turn.revision_target.base_body}]}:{}}},delta=>{text+=delta;batcher.push(delta);});
+        if(received)text=round.text;
         phase='text_flush';await batcher.finish();await batcher.stop();batcher=null;env.assertLive();
         phase='tool_or_completion';
-        for(const call of round.calls){validateCall(call,'chat');check(!seen.has(call.id),422,'duplicate_tool_call');seen.add(call.id);}
+        for(const call of round.calls){validateProvidedToolCall(call,'chat',tools);check(!seen.has(call.id),422,'duplicate_tool_call');seen.add(call.id);}
+        if(env.turn.revision_target){check(round.calls.length<=1,422,'revision_tool_limit');if(received)check(received.round_hash===hash(round),409,'revision_received_round_corrupt');else await this.repository.transaction(async tx=>{const {t}=await this.live(tx,env);await this.assertRevisionLive(tx,env,t);const saved=await tx.put(env.owner,'native-chat-turns',{...t,dispatch_checkpoint:{...t.dispatch_checkpoint,state:'received',round:clone(round),round_hash:hash(round),next:0}});await this.beforeCommit(tx,env,saved);await this.assertRevisionLive(tx,env,saved);});}
         // A complete valid provider terminal precedes every tool effect.
         if(!round.calls.length){await this.complete(env,messageID,text,[...messages,{role:'assistant',content:round.text}]);return;}
         messages.push(assistantToolMessage(round.text,round.calls));
+        if(received?.next===1){const result=env.turn.continuations?.[0];check(result,409,'revision_received_result_missing');messages.push({role:'tool',tool_call_id:round.calls[0].id,content:JSON.stringify(result)});await this.complete(env,messageID,text,messages);return;}
         for(const call of round.calls){
-          await this.append(env,'tool_call',{call_id:call.id,name:call.name,arguments:call.arguments});
+          if(!received||!env.turn.events.some(e=>e.type==='tool_call'&&e.data.call_id===call.id))await this.append(env,'tool_call',{call_id:call.id,name:call.name,arguments:call.arguments});
           const result=await this.executeTool(env,call);messages.push({role:'tool',tool_call_id:call.id,content:JSON.stringify(result)});
         }
-        if(this.finishOnDelegationReceipt&&round.calls.some(c=>c.name==='delegate_task')){await this.complete(env,messageID,text,messages);return;}
+        if(round.calls.some(c=>c.name==='revise_current_report_v1')||this.finishOnDelegationReceipt&&round.calls.some(c=>['delegate_task','delegate_plan_v1','delegate_sources_v1'].includes(c.name))){await this.complete(env,messageID,text,messages);return;}
       }
       throw new ApiError(503,'model_step_limit');
     } catch(error){
@@ -148,9 +168,12 @@ export class ChatService {
     const t=await this.repository.transaction(async tx=>{
       const {t,c}=await this.live(tx,env);env.assertLive?.();
       await tx.put(env.owner,'native-chat-conversations',{...c,messages:this.finishOnDelegationReceipt&&!text.trim()?c.messages:[...c.messages,{id:messageID,role:'assistant',content:text}],model_messages:modelMessages});
-      env.assertLive?.();const saved=await tx.put(env.owner,'native-chat-turns',{...t,state:'completed',events:[...t.events,this.event(t,'turn_completed',{message_id:messageID,final_text_hash:hash(text),task_bindings:t.task_bindings})],finished_at:iso()});
-      await this.integration?.capture(tx,{...env,turn:saved});(env.assertLive??(()=>env.signal.throwIfAborted()))();return saved;
+      env.assertLive?.();const saved=await tx.put(env.owner,'native-chat-turns',{...t,state:'completed',events:[...t.events,this.event(t,'turn_completed',{message_id:messageID,final_text_hash:hash(text),task_bindings:t.task_bindings,...t.continuations?{continuations:t.continuations}:{}})],finished_at:iso()});
+      await this.integration?.capture(tx,{...env,turn:saved});await this.beforeCommit(tx,env,saved);if(saved.revision_target)await this.assertRevisionLive(tx,env,saved);return saved;
     });this.metrics.record('terminal_commit',started);this.notify(env.owner,t);
+  }
+  async assertRevisionLive(tx,env,turn){
+    if(turn.revision_target)await assertTaskRevisionTurnBoundaryInTransaction(this.facade,tx,{...env,turn});
   }
   async fail(env,error){
     const t=await this.repository.transaction(async tx=>{
@@ -192,11 +215,11 @@ export class ChatService {
         const row=await tx.chatTurnTail(owner,tid,afterSequence),t=row?.data;
         check(t?.conversation_id===cid&&t.scope_id===scopeID&&row.subject_id===principal.subject_id,404,'not_found');
         check(afterSequence<=row.event_count,422,'invalid_cursor');check(c.state==='active'&&c.grant_epoch===t.grant_epoch,409,'grant_conflict');
-        return {...t,next_cursor:`${t.id}:${row.event_count}`};
+        const {revision_target,...projection}=t;return {...projection,...revision_target?{revision_target:clone(revision_target.target)}:{},next_cursor:`${t.id}:${row.event_count}`};
       }
       const t=await tx.get(owner,'native-chat-turns',tid);check(t?.conversation_id===cid&&t.scope_id===scopeID&&t.subject_id===principal.subject_id,404,'not_found');
       check(afterSequence<=t.events.length,422,'invalid_cursor');check(c.state==='active'&&c.grant_epoch===t.grant_epoch,409,'grant_conflict');
-      const {input,history,model_history,subject_id,source_auth,dispatch_checkpoint,...projection}=t;return {...projection,events:t.events.filter(e=>e.sequence>afterSequence),next_cursor:`${t.id}:${t.events.length}`};
+      const {input,history,model_history,subject_id,source_auth,dispatch_checkpoint,revision_target,...projection}=t;return {...projection,...revision_target?{revision_target:clone(revision_target.target)}:{},events:t.events.filter(e=>e.sequence>afterSequence),next_cursor:`${t.id}:${t.events.length}`};
     });}finally{this.metrics.record('observer_snapshot',started);}
   }
   async control(auth,scopeID,cid,input){
@@ -229,6 +252,17 @@ export class ChatService {
       const error={code:'server_interrupted',retryable:false,reconciliation_required:true};
       changed.push({owner,t:await tx.put(owner,'native-chat-turns',{...t,state:'outcome_unknown',error,finished_at:iso(),events:[...t.events,this.event(t,'turn_failed',error)]})});
     }return changed;});for(const {owner,t} of changed)this.notify(owner,t);
+  }
+  // Explicit trusted recovery of durable received output; observers/replays never call this.
+  async resumeReceivedRevision(auth,scopeID,cid,tid){
+    const trusted=await this.scoped(auth,scopeID);check(!this.active.has(`${trusted.owner}:${tid}`),409,'revision_received_recovery_unavailable');await this.integration?.prepare(trusted);
+    const turn=await this.repository.transaction(async tx=>{
+      await this.integration?.beforeWrite(tx,{...trusted});await tx.lock(trusted.owner,'native-chat-conversations',cid);const c=await this.conversation(tx,trusted.owner,cid,trusted.principal.subject_id,scopeID),t=await tx.get(trusted.owner,'native-chat-turns',tid);
+      check(t?.revision_target&&t.dispatch_checkpoint?.state==='received'&&['running','outcome_unknown'].includes(t.state)&&t.grant_epoch===c.grant_epoch&&t.conversation_revision===c.revision,409,'revision_received_recovery_unavailable');
+      check(t.source_auth.session_id===trusted.principal.session_id,403,'scope_forbidden');await this.assertRevisionLive(tx,{...trusted},t);
+      let next={...t,state:'running',error:null};if(this.integration)next=await this.integration.stampTurn(tx,trusted.owner,next);const saved=await tx.put(trusted.owner,'native-chat-turns',next);await this.beforeCommit(tx,trusted,saved);await this.assertRevisionLive(tx,trusted,saved);return saved;
+    });
+    const controller=new AbortController();await this.execute({auth,...trusted,turn,signal:controller.signal,controller});return this.readTurn(auth,scopeID,cid,tid);
   }
   async waitIdle(){await Promise.all([...this.active.values()].map(e=>e.promise));}
   async *observe(auth,scopeID,cid,tid,{signal,afterSequence=0,trusted=null}={}){
