@@ -4,6 +4,7 @@ import {taskControlRevision} from './task-control-contract.mjs';
 import {completionAuthorityValid,evaluateReport} from './report-completion.mjs';
 import {completionPlanCheck,effectiveTaskRequest} from './task-plan-service.mjs';
 import {validateFrozenSourceCatalog,sourceReadIdentity} from './public-source-contract.mjs';
+import {lockTaskWorkSourceInTransaction} from './task-work-grant-lifecycle.mjs';
 
 const iso=ms=>new Date(ms).toISOString();
 const same=(a,b)=>a!==undefined&&b!==undefined&&hash(a)===hash(b);
@@ -21,6 +22,7 @@ export class TaskWorkGrantService{
  async resolve(tx,identity,terms,live){
   live();await tx.withScope(identity.scope_id,async scoped=>{const row=await scoped.scope();live();check(same(row.identity,terms.scope),403,'work_grant_scope_conflict');});live();
   check(identity.owner===terms.scope.owner&&identity.subject_id===terms.subject_id&&identity.grant_id===terms.grant_id&&identity.scope_id===terms.scope.scope_id,403,'work_grant_scope_conflict');
+  await lockTaskWorkSourceInTransaction(tx,{scope_id:identity.scope_id,owner:identity.owner,source:terms.source_auth});live();
   await tx.lock(identity.owner,K.grants,identity.grant_id);live();
   const run=await tx.get(identity.owner,'catpaw-runs',terms.origin.run_id);live();const runBinding=validateWorkGrantRunBinding(terms,run);
   const op=await tx.get(identity.owner,'catpaw-operations',run.operation_id);live();check(op?.run_id===run.id&&op.request_hash===run.request_hash,409,'work_grant_run_binding_conflict');
@@ -52,7 +54,7 @@ export class TaskWorkGrantService{
     const fields={reservation_hash:row.reservation_hash,input:outcome,recorded_at:row.outcome.recorded_at,...input.kind==='due'?{acknowledgement:row.outcome.acknowledgement}:{transport_checkpoint:row.outcome.transport_checkpoint}};
     check(outcome.operation_id===row.id&&outcome.request_hash===input.request_hash&&outcome.outcome===row.state&&workGrantInstant(row.outcome.recorded_at)&&Date.parse(row.outcome.recorded_at)>=Date.parse(row.reserved_at)&&Date.parse(row.outcome.recorded_at)<Date.parse(input.deadline_at)&&row.outcome.checkpoint_hash===hash(fields),409,'work_grant_record_corrupt');
     if(input.kind==='due')await this.validateStoredAcknowledgement(tx,ctx,row,live);
-    else{const point=row.outcome.transport_checkpoint;check(point.kind===input.kind&&point.request_hash===input.request_hash&&/^[a-f0-9]{64}$/.test(point.checkpoint_hash)&&(row.state==='unknown'?point.payload_hash===null:/^[a-f0-9]{64}$/.test(point.payload_hash)&&outcome.receipt_reference.receipt_id===row.id&&(input.kind==='model'?outcome.receipt_reference.receipt_hash===point.checkpoint_hash:outcome.receipt_reference.receipt_hash===point.payload_hash)),409,'work_grant_record_corrupt');}
+    else{const point=row.outcome.transport_checkpoint;check((point.kind===input.kind||input.kind==='source'&&row.state==='received'&&point.kind==='source_failure')&&point.request_hash===input.request_hash&&/^[a-f0-9]{64}$/.test(point.checkpoint_hash)&&(row.state==='unknown'?point.payload_hash===null:/^[a-f0-9]{64}$/.test(point.payload_hash)&&outcome.receipt_reference.receipt_id===row.id&&(input.kind==='model'?outcome.receipt_reference.receipt_hash===point.checkpoint_hash:outcome.receipt_reference.receipt_hash===point.payload_hash)),409,'work_grant_record_corrupt');}
    }
    const key=input.kind+':'+input.operation_key;check(!keys.has(key),409,'work_grant_record_corrupt');keys.add(key);counts[input.kind]++;
    if(input.kind==='due')check(row.frozen.execution===null&&input.operation_id===ctx.run.operation_id&&input.request_hash===ctx.run.request_hash&&input.operation_key===hash({accepted_run:ctx.run.id}),409,'work_grant_record_corrupt');
@@ -161,11 +163,23 @@ export class TaskWorkGrantService{
   execution=this.executor(ctx,execution,live);check(same(execution,prior.frozen.execution),409,'work_grant_execution_conflict');await this.runningAttempt(tx,ctx,execution,live);const checkpoint=await this.transportEvidence(tx,ctx,prior,input,execution,live);
   return this.#recordTransportOutcomeInTransaction(tx,identity,input,{ctx,prior,execution,checkpoint,live});
  }
+ async sourceFailureEvidence(tx,ctx,prior,execution,live){
+  const read=await tx.get(ctx.owner,'catpaw-task-source-reads',prior.id);live();check(read?.state==='failed'&&read.request_hash===prior.frozen.input.request_hash&&read.dispatch_lease_id===execution.lease_id,409,'work_grant_transport_checkpoint_required');
+  check(typeof this.sourceService?.validateWorkGrantTransportFailureInTransaction==='function',503,'work_grant_source_failure_verifier_required');const receipt=await this.sourceService.validateWorkGrantTransportFailureInTransaction(tx,ctx.owner,ctx.run,ctx.task,{read_id:prior.id,request_hash:prior.frozen.input.request_hash,lease_id:execution.lease_id});live();check(receipt?.receipt_id===prior.id&&/^[a-f0-9]{64}$/.test(receipt.receipt_hash),409,'work_grant_transport_receipt_conflict');
+  return {input:{operation_id:prior.id,request_hash:prior.frozen.input.request_hash,outcome:'received',receipt_reference:receipt},checkpoint:{kind:'source_failure',request_hash:read.request_hash,checkpoint_hash:hash(read),payload_hash:receipt.receipt_hash}};
+ }
+ /** A received, known read failure consumes the original operation. Its typed
+  * failed fact is distinct from source bytes and can never continue a report. */
+ async settleSourceFailureInTransaction(tx,identity,operationID,{signal,execution,assertLive}={}){
+  identity=validateWorkGrantIdentity(identity);check(workGrantOperationID(operationID),422,'work_grant_schema_invalid');const live=this.permission(signal,assertLive),ctx=await this.current(tx,identity,live),prior=ctx.reservations.find(r=>r.id===operationID);check(prior?.frozen.input.kind==='source',409,'work_grant_original_operation_required');
+  if(prior.state!=='reserved'){check(prior.state==='received'&&prior.outcome.transport_checkpoint.kind==='source_failure',409,'work_grant_outcome_conflict');await this.authority(tx,{...ctx,reservation:prior},'recovery',live);return {created:false,reservation:clone(prior)};}
+  execution=this.executor(ctx,execution,live);check(same(execution,prior.frozen.execution),409,'work_grant_execution_conflict');await this.runningAttempt(tx,ctx,execution,live);const proof=await this.sourceFailureEvidence(tx,ctx,prior,execution,live);return this.#recordTransportOutcomeInTransaction(tx,identity,proof.input,{ctx,prior,execution,checkpoint:proof.checkpoint,live});
+ }
  async #recordTransportOutcomeInTransaction(tx,identity,input,{ctx,prior,execution,checkpoint,live}){
   await this.authority(tx,{...ctx,reservation:prior,outcome:input,execution},'settlement',live);await this.execution(tx,ctx,live);check(this.now()<Date.parse(prior.frozen.input.deadline_at),409,'work_grant_result_deadline');
   const recordedAt=iso(this.now()),fields={reservation_hash:prior.reservation_hash,input,recorded_at:recordedAt,transport_checkpoint:checkpoint},outcome={input,recorded_at:recordedAt,checkpoint_hash:hash(fields),transport_checkpoint:checkpoint},next={...prior,state:input.outcome,outcome};
   check(await tx.compareAndSwap(identity.owner,K.reservations,prior.id,{state:'reserved',reservation_hash:prior.reservation_hash},{state:input.outcome,outcome}),409,'work_grant_outcome_conflict');live();
-  const final=await this.current(tx,identity,live);await this.execution(tx,final,live);await this.authority(tx,{...final,reservation:next,outcome:input,execution},'settlement',live);this.executor(final,execution,live);await this.runningAttempt(tx,final,execution,live);check(same(checkpoint,await this.transportEvidence(tx,final,prior,input,execution,live)),409,'work_grant_transport_receipt_conflict');check(this.now()<Date.parse(prior.frozen.input.deadline_at),409,'work_grant_result_deadline');live();return {created:true,reservation:clone(next)};
+  const final=await this.current(tx,identity,live);await this.execution(tx,final,live);await this.authority(tx,{...final,reservation:next,outcome:input,execution},'settlement',live);this.executor(final,execution,live);await this.runningAttempt(tx,final,execution,live);const verified=checkpoint.kind==='source_failure'?(await this.sourceFailureEvidence(tx,final,prior,execution,live)).checkpoint:await this.transportEvidence(tx,final,prior,input,execution,live);check(same(checkpoint,verified),409,'work_grant_transport_receipt_conflict');check(this.now()<Date.parse(prior.frozen.input.deadline_at),409,'work_grant_result_deadline');live();return {created:true,reservation:clone(next)};
  }
  async attemptEvidence(tx,ctx,attemptID,live){
   const attempt=await tx.get(ctx.owner,'runs',attemptID);live();const link=await tx.get(ctx.owner,'catpaw-run-links',attemptID);live();
@@ -229,6 +243,7 @@ export class TaskWorkGrantService{
  }
  async receivedContinuationEvidence(tx,ctx,reservation,live){
   const input=reservation.frozen.input,point=reservation.outcome.transport_checkpoint;
+  check(point.kind!=='source_failure',409,'work_grant_received_checkpoint_required');
   if(input.kind==='model'){const round=ctx.task.state.local_model?.round;check(round?.state==='received'&&round.request_hash===input.request_hash&&typeof round.text==='string'&&Array.isArray(round.calls)&&Number.isSafeInteger(round.next)&&round.next>=0&&round.next<=round.calls.length&&Array.isArray(round.results)&&point.payload_hash===hash({request_hash:round.request_hash,text:round.text,calls:round.calls}),409,'work_grant_received_checkpoint_required');return;}
   check(typeof this.sourceService?.validateWorkGrantTransportReceiptInTransaction==='function',503,'work_grant_source_receipt_verifier_required');const verified=await this.sourceService.validateWorkGrantTransportReceiptInTransaction(tx,ctx.owner,ctx.run,ctx.task,{read_id:reservation.id,request_hash:input.request_hash,lease_id:reservation.frozen.execution.lease_id});live();check(same(verified,reservation.outcome.input.receipt_reference),409,'work_grant_received_checkpoint_required');
  }

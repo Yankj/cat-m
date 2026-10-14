@@ -22,6 +22,53 @@ public struct ConversationDeviceEffectReference: Sendable, Equatable {
     }
     public var effectID: String { get throws { try ConversationDeviceEffectsCodec.effectID(actionID: actionID) } }
 }
+
+// Application-service transport contracts. A preflight failure is the only proven not-sent outcome.
+public enum ConversationDeviceEffectDispatchFailure:Error,Sendable {case notSent}
+public enum ConversationDeviceEffectServiceError:Error,Sendable {case notConfigured,invalidJournal,busy,stale,unavailable,originalNotFound,journalFull}
+
+public struct ConversationDeviceEffectResultRequest:Codable,Sendable,Equatable {
+    public let operation_id:String
+    public let subeffect:ConversationDeviceSubeffectKind
+    public let expected_effect_revision:Int
+    public let binding_hash,lease_id,dispatch_operation_id:String
+    public let outcome:ConversationDeviceSubeffectState
+    public let receipt:ConversationDeviceEffectReceipt?
+    private enum CodingKeys:String,CodingKey {case operation_id,subeffect,expected_effect_revision,binding_hash,lease_id,dispatch_operation_id,outcome,receipt}
+    public init(operationID:UUID,subeffect:ConversationDeviceSubeffectKind,base:ConversationDeviceEffectRecord,outcome:ConversationDeviceSubeffectState,receipt:ConversationDeviceEffectReceipt?) throws {
+        guard let original=base.subeffects[subeffect].dispatch,[ConversationDeviceSubeffectState.dispatched,.unknown].contains(base.subeffects[subeffect].state),
+              [.succeeded,.unknown,.notExecuted].contains(outcome),(outcome == .unknown)==(receipt==nil),
+              receipt.map({$0.outcome==outcome && $0.effect_id==base.id && $0.subeffect_id==base.subeffects[subeffect].id && $0.dispatch_operation_id==original.operation_id && $0.binding_hash==base.binding_hash && $0.action_digest==base.frozen.action_digest && $0.device_id==base.frozen.target.device_id && $0.device_generation==base.frozen.device_generation}) ?? true else {throw ConversationDeviceEffectError.invalidResponse}
+        if let receipt {try ConversationDeviceEffectsCodec.validateObservation(receipt,base:base,kind:subeffect)}
+        operation_id=operationID.uuidString.lowercased();self.subeffect=subeffect;expected_effect_revision=base.revision
+        binding_hash=base.binding_hash;lease_id=base.frozen.lease_id;dispatch_operation_id=original.operation_id;self.outcome=outcome;self.receipt=receipt
+    }
+    public func encode(to encoder:Encoder) throws {var c=encoder.container(keyedBy:CodingKeys.self);try c.encode(operation_id,forKey:.operation_id);try c.encode(subeffect,forKey:.subeffect);try c.encode(expected_effect_revision,forKey:.expected_effect_revision);try c.encode(binding_hash,forKey:.binding_hash);try c.encode(lease_id,forKey:.lease_id);try c.encode(dispatch_operation_id,forKey:.dispatch_operation_id);try c.encode(outcome,forKey:.outcome);try c.encode(receipt,forKey:.receipt)}
+}
+public struct ConversationDeviceEffectStopRequest:Codable,Sendable,Equatable {
+    public let operation_id:String
+    public let expected_effect_revision:Int
+    public let binding_hash:String
+    public init(operationID:UUID,base:ConversationDeviceEffectRecord) throws {guard base.stop==nil,base.state != .succeeded else {throw ConversationDeviceEffectError.invalidResponse};operation_id=operationID.uuidString.lowercased();expected_effect_revision=base.revision;binding_hash=base.binding_hash}
+}
+public protocol ConversationDeviceEffectBackend:Sendable {
+    func deviceEffectAvailability(_ reference:ConversationDeviceEffectReference) async throws -> Bool
+    func readOriginalDeviceEffect(_ reference:ConversationDeviceEffectReference,action:ConversationApprovedDeviceAction) async throws -> ConversationDeviceEffectEnvelope
+    func admitDeviceEffect(_ reference:ConversationDeviceEffectReference,action:ConversationApprovedDeviceAction,request:ConversationDeviceEffectAdmissionRequest) async throws -> ConversationDeviceEffectEnvelope
+    func dispatchDeviceEffect(_ reference:ConversationDeviceEffectReference,action:ConversationApprovedDeviceAction,request:ConversationDeviceEffectDispatchRequest) async throws -> ConversationDeviceEffectEnvelope
+    func recordDeviceEffectResult(_ reference:ConversationDeviceEffectReference,action:ConversationApprovedDeviceAction,request:ConversationDeviceEffectResultRequest) async throws -> ConversationDeviceEffectEnvelope
+    func stopDeviceEffect(_ reference:ConversationDeviceEffectReference,action:ConversationApprovedDeviceAction,request:ConversationDeviceEffectStopRequest) async throws -> ConversationDeviceEffectEnvelope
+}
+public struct UnconfiguredConversationDeviceEffectBackend:ConversationDeviceEffectBackend {
+    public init(){}
+    public func deviceEffectAvailability(_ reference:ConversationDeviceEffectReference) async throws -> Bool {false}
+    public func readOriginalDeviceEffect(_ reference:ConversationDeviceEffectReference,action:ConversationApprovedDeviceAction) async throws -> ConversationDeviceEffectEnvelope {throw ConversationDeviceEffectServiceError.notConfigured}
+    public func admitDeviceEffect(_ reference:ConversationDeviceEffectReference,action:ConversationApprovedDeviceAction,request:ConversationDeviceEffectAdmissionRequest) async throws -> ConversationDeviceEffectEnvelope {throw ConversationDeviceEffectServiceError.notConfigured}
+    public func dispatchDeviceEffect(_ reference:ConversationDeviceEffectReference,action:ConversationApprovedDeviceAction,request:ConversationDeviceEffectDispatchRequest) async throws -> ConversationDeviceEffectEnvelope {throw ConversationDeviceEffectServiceError.notConfigured}
+    public func recordDeviceEffectResult(_ reference:ConversationDeviceEffectReference,action:ConversationApprovedDeviceAction,request:ConversationDeviceEffectResultRequest) async throws -> ConversationDeviceEffectEnvelope {throw ConversationDeviceEffectServiceError.notConfigured}
+    public func stopDeviceEffect(_ reference:ConversationDeviceEffectReference,action:ConversationApprovedDeviceAction,request:ConversationDeviceEffectStopRequest) async throws -> ConversationDeviceEffectEnvelope {throw ConversationDeviceEffectServiceError.notConfigured}
+}
+
 public struct ConversationDeviceEffectPolicyReference: Codable, Sendable, Equatable {
     public let contract: String
     public let version: Int
@@ -289,7 +336,7 @@ public enum ConversationDeviceEffectsCodec {
               f.action_id==reference.actionID,f.action_digest==reference.actionDigest,f.decision_operation_id==reference.decisionOperationID,
               f.scope_id==a.scope_id,f.subject_id==a.subject_id,f.conversation_id==a.conversation_id,f.turn_id==a.turn_id,f.run_id==a.run_id,
               f.task_id==a.task_id,f.run_request_hash==a.request_hash,f.delegation_id==a.delegation_id,f.delegation_revision==a.delegation_revision,f.grant_epoch==a.grant_epoch,
-              f.target==a.target,f.parameters==a.parameters,f.policy_reference==a.execution_policy,f.approval_expires_at==a.expires_at,
+              (try canonicalHash(f.target))==(try canonicalHash(a.target)),(try canonicalHash(f.parameters))==a.parameters_hash,f.policy_reference==a.execution_policy,f.approval_expires_at==a.expires_at,
               f.execution_revision>=0,f.device_generation>0,ConversationTaskActionValidation.uuid(f.admission_operation_id),ConversationTaskActionValidation.hash(f.admission_request_hash),
               f.lease_id==(try leaseID(effectID:r.id,operationID:f.admission_operation_id)),
               let admitted=date(f.admitted_at),let expiry=date(f.lease_expires_at),let approvalExpiry=date(f.approval_expires_at),
@@ -319,21 +366,8 @@ public enum ConversationDeviceEffectsCodec {
             }
             if let op=c.result_operation_id {guard ConversationTaskActionValidation.uuid(op) else {throw ConversationDeviceEffectError.invalidResponse};operations.append(op)}
             if let receipt=c.receipt {
-                guard let d=c.dispatch,c.result_operation_id != nil,[.succeeded,.notExecuted].contains(c.state),receipt.outcome==c.state,
-                      receipt.contract==effectContract,receipt.effect_id==r.id,receipt.subeffect_id==c.id,receipt.dispatch_operation_id==d.operation_id,
-                      receipt.action_digest==f.action_digest,receipt.binding_hash==r.binding_hash,receipt.device_id==f.target.device_id,receipt.device_generation==f.device_generation,
-                      let observed=date(receipt.observed_at),let dispatched=date(d.dispatched_at),observed>=dispatched,
-                      c.receipt_hash==(try canonicalHash(receipt)) else {throw ConversationDeviceEffectError.invalidResponse}
-                if receipt.outcome == .notExecuted {guard receipt.external_reference == .null else {throw ConversationDeviceEffectError.invalidResponse}}
-                else if kind == .calendar {
-                    guard let v=receipt.calendarReference,v.calendar_id==f.target.calendar_id,v.effect_marker=="catpawm://calendar-effect/"+c.id,
-                          [v.calendar_id,v.event_identifier,v.calendar_item_identifier,v.effect_marker].allSatisfy({validText($0,limit:512)}),
-                          v.external_identifier.map({$0.utf16.count<=512}) ?? true,ConversationTaskActionValidation.hash(v.content_hash) else {throw ConversationDeviceEffectError.invalidResponse}
-                } else {
-                    guard let v=receipt.notificationReference,let offset=f.parameters.reminder_offset_seconds,let start=date(f.parameters.start_at),v.request_identifier==c.id,
-                          ["pending","delivered"].contains(v.state),date(v.due_at)==start.addingTimeInterval(Double(offset)),
-                          v.schedule_hash==(try ConversationTaskActionJSON.object(["subeffect_id":.string(c.id),"due_at":.string(v.due_at),"parameters_hash":.string(a.parameters_hash),"channel":.string("catpaw_local_notification")]).digest()) else {throw ConversationDeviceEffectError.invalidResponse}
-                }
+                guard c.result_operation_id != nil,[.succeeded,.notExecuted].contains(c.state),receipt.outcome==c.state,c.receipt_hash==(try canonicalHash(receipt)) else {throw ConversationDeviceEffectError.invalidResponse}
+                try validateObservation(receipt,base:r,kind:kind)
             } else {guard ![.succeeded,.notExecuted].contains(c.state),c.receipt_hash==nil else {throw ConversationDeviceEffectError.invalidResponse}}
         }
         if r.subeffects.notification.dispatch != nil {guard r.subeffects.calendar.state == .succeeded,f.parameters.reminder_offset_seconds != nil else {throw ConversationDeviceEffectError.invalidResponse}}
@@ -353,6 +387,26 @@ public enum ConversationDeviceEffectsCodec {
         let expiredUnknown=states.contains(.dispatched) && !r.execution_current && r.stop==nil && r.state==(states.contains(.succeeded) ? .partialUnknown : .unknown)
         guard r.state==computed || expiredUnknown else {throw ConversationDeviceEffectError.invalidResponse}
         return r
+    }
+    /// Shared structural validation for an outgoing observation and the original server projection.
+    /// It validates immutable identity; the backend still needs a registered-device OS proof verifier.
+    static func validateObservation(_ receipt:ConversationDeviceEffectReceipt,base r:ConversationDeviceEffectRecord,kind:ConversationDeviceSubeffectKind) throws {
+        let c=r.subeffects[kind],f=r.frozen
+        guard let d=c.dispatch,[.succeeded,.notExecuted].contains(receipt.outcome),
+              receipt.contract==effectContract,receipt.effect_id==r.id,receipt.subeffect_id==c.id,receipt.dispatch_operation_id==d.operation_id,
+              receipt.action_digest==f.action_digest,receipt.binding_hash==r.binding_hash,receipt.device_id==f.target.device_id,receipt.device_generation==f.device_generation,
+              let observed=date(receipt.observed_at),let dispatched=date(d.dispatched_at),observed>=dispatched else {throw ConversationDeviceEffectError.invalidResponse}
+        _=try canonicalHash(receipt)
+        if receipt.outcome == .notExecuted {guard receipt.external_reference == .null else {throw ConversationDeviceEffectError.invalidResponse}}
+        else if kind == .calendar {
+            guard let v=receipt.calendarReference,try canonicalHash(v)==receipt.external_reference.digest(),v.calendar_id.utf16.elementsEqual(f.target.calendar_id.utf16),v.effect_marker=="catpawm://calendar-effect/"+c.id,
+                  [v.calendar_id,v.event_identifier,v.calendar_item_identifier,v.effect_marker].allSatisfy({validText($0,limit:512)}),
+                  v.external_identifier.map({$0.utf16.count<=512}) ?? true,ConversationTaskActionValidation.hash(v.content_hash) else {throw ConversationDeviceEffectError.invalidResponse}
+        } else {
+            guard let v=receipt.notificationReference,try canonicalHash(v)==receipt.external_reference.digest(),let offset=f.parameters.reminder_offset_seconds,let start=date(f.parameters.start_at),v.request_identifier==c.id,
+                  ["pending","delivered"].contains(v.state),date(v.due_at)==start.addingTimeInterval(Double(offset)),
+                  v.schedule_hash==(try ConversationTaskActionJSON.object(["subeffect_id":.string(c.id),"due_at":.string(v.due_at),"parameters_hash":.string(try canonicalHash(f.parameters)),"channel":.string("catpaw_local_notification")]).digest()) else {throw ConversationDeviceEffectError.invalidResponse}
+        }
     }
     private static func object(_ data:Data) throws -> [String:Any] {
         let raw=try ConversationStrictJSON.object(data,maxBytes:maximumBytes)

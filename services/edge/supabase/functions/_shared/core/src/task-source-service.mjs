@@ -3,10 +3,12 @@ import {check,shape,hash,clone,UUID} from '../facade-r2/src/common.mjs';
 import {samePlan} from './plan-contract.mjs';
 import {SOURCE_IDS,SOURCE_LIMITS,validateFrozenSourceCatalog,sourceReadIdentity,policyTargetForURL,canonicalPublicURL} from './public-source-contract.mjs';
 import {sourceBodyHash,extractPublicSourceText} from '../../public-web-reader.mjs';
+import {acceptedWorkExecution} from './accepted-work-execution.mjs';
 
 export const SOURCE_READS='catpaw-task-source-reads',SOURCE_RECEIPTS='catpaw-task-source-receipts';
 export async function hasUnresolvedSourceReads(tx,owner,runID){return (await tx.list(owner,SOURCE_READS)).some(r=>r.run_id===runID&&['dispatched','unknown'].includes(r.state));}
 const iso=clock=>new Date(clock()).toISOString();
+const knownFailures=new Set(['source_http_status','source_http_invalid','source_http_ambiguous','source_http_length_mismatch','source_http_protocol_not_supported','source_compression_not_supported','source_media_type_not_supported','source_transfer_encoding_not_supported','source_chunk_invalid','source_chunk_trailers_not_supported','source_body_limit','source_header_limit','source_utf8_invalid','source_text_invalid','source_text_limit','source_redirect_invalid','source_redirect_limit','source_redirect_loop','source_origin_not_allowed','source_pin_not_public','source_path_not_allowed','source_url_credential_not_allowed']);
 const publicSource=r=>({source_id:r.source_id,read_id:r.id,requested_url:r.requested_url,final_url:r.final_url,read_at:r.read_at,content_hash:r.content_hash,excerpt:r.excerpt});
 const resultFor=r=>({...publicSource(r),text:r.text,text_hash:r.text_hash,receipt_hash:r.receipt_hash,plan_reference:clone(r.plan_reference)});
 async function taskBinding(tx,owner,run,task){
@@ -41,7 +43,7 @@ export class TaskSourceService {
   return {...admitted,source,readID,requestHash};
  }
  async guardRead(owner,taskID,leaseID,sourceID,readID,{assertLive}){
-  return this.facade.repository.transaction(async tx=>{const context=this.context(await this.admitted(tx,owner,taskID,leaseID,assertLive),sourceID);check(context.readID===readID,409,'source_plan_binding_conflict');await tx.lock(owner,SOURCE_READS,readID);assertLive();const read=await tx.get(owner,SOURCE_READS,readID);check(read?.state==='dispatched'&&read.request_hash===context.requestHash&&read.dispatch_lease_id===leaseID,409,'source_read_conflict');assertLive();await this.admitted(tx,owner,taskID,leaseID,assertLive);assertLive();return context;});
+  return this.facade.repository.transaction(async tx=>{const context=this.context(await this.admitted(tx,owner,taskID,leaseID,assertLive),sourceID);check(context.readID===readID,409,'source_plan_binding_conflict');await tx.lock(owner,SOURCE_READS,readID);assertLive();const read=await tx.get(owner,SOURCE_READS,readID);check(read?.state==='dispatched'&&read.request_hash===context.requestHash&&read.dispatch_lease_id===leaseID,409,'source_read_conflict');const work=acceptedWorkExecution(this.facade.workGrantService,owner,context.run,{now:this.clock});if(work)await work.guardSource(tx,read,{assertLive});assertLive();await this.admitted(tx,owner,taskID,leaseID,assertLive);assertLive();return context;});
  }
  async readSource(owner,taskID,leaseID,sourceID,{assertLive,signal,commitCallback}={}){
   check(typeof assertLive==='function'&&signal&&typeof signal.addEventListener==='function',503,'source_step_permission_not_configured');
@@ -51,6 +53,7 @@ export class TaskSourceService {
    if(previous){check(previous.request_hash===context.requestHash,409,'source_read_conflict');return {context,state:previous.state};}
    this.reader.assertReady();check(this.reader.policyHash===context.catalog.policy_hash,409,'source_policy_changed');policyTargetForURL(this.reader.policy,context.source.requested_url);assertLive();
    const read={id:context.readID,run_id:context.run.id,task_id:taskID,conversation_id:context.run.frozen_request.conversation_id,source_id:sourceID,requested_url:context.source.requested_url,plan_reference:clone(context.planReference),policy_hash:context.catalog.policy_hash,request_hash:context.requestHash,state:'dispatched',dispatch_lease_id:leaseID,dispatched_at:iso(this.clock)};
+   const work=acceptedWorkExecution(this.facade.workGrantService,owner,context.run,{now:this.clock});if(work)await work.reserveSource(tx,read,{assertLive});
    check(await tx.insertIfAbsent(owner,SOURCE_READS,read),409,'source_read_conflict');assertLive();await this.admitted(tx,owner,taskID,leaseID,assertLive);assertLive();return {context,state:'new'};
   });
   const {context}=begun;
@@ -63,7 +66,7 @@ export class TaskSourceService {
    received=await this.reader.read(context.source.requested_url,{signal,assertLive,expectedPolicyHash:context.catalog.policy_hash,beforeSend:async()=>{await this.guardRead(owner,taskID,leaseID,sourceID,context.readID,{assertLive});assertLive();signal.throwIfAborted?.();}});assertLive();
   }catch(error){
    if(error?.status===422||error?.status===413||error?.status===403){
-    try{await this.facade.repository.transaction(async tx=>{const current=this.context(await this.admitted(tx,owner,taskID,leaseID,assertLive),sourceID);check(current.readID===context.readID,409,'source_plan_binding_conflict');await tx.lock(owner,SOURCE_READS,current.readID);const read=await tx.get(owner,SOURCE_READS,current.readID);check(read?.state==='dispatched'&&read.request_hash===current.requestHash,409,'source_read_conflict');await tx.put(owner,SOURCE_READS,{...read,state:'failed',error_code:error.code,failed_at:iso(this.clock)});assertLive();await this.admitted(tx,owner,taskID,leaseID,assertLive);assertLive();});return {state:'failed',read_id:context.readID,source_id:sourceID};}catch{/* denied/late failure metadata cannot override the original dispatch */}
+    try{await this.facade.repository.transaction(async tx=>{const current=this.context(await this.admitted(tx,owner,taskID,leaseID,assertLive),sourceID);check(current.readID===context.readID,409,'source_plan_binding_conflict');await tx.lock(owner,SOURCE_READS,current.readID);const read=await tx.get(owner,SOURCE_READS,current.readID);check(read?.state==='dispatched'&&read.request_hash===current.requestHash,409,'source_read_conflict');const failed={...read,state:'failed',error_code:error.code,error_status:error.status,failed_at:iso(this.clock)};await tx.put(owner,SOURCE_READS,failed);const work=acceptedWorkExecution(this.facade.workGrantService,owner,current.run,{now:this.clock});if(work)await work.failedSource(tx,failed,{assertLive});assertLive();await this.admitted(tx,owner,taskID,leaseID,assertLive);assertLive();});return {state:'failed',read_id:context.readID,source_id:sourceID};}catch{/* denied/late failure metadata cannot override the original dispatch */}
    }
    return {state:'unknown',read_id:context.readID,source_id:sourceID};
   }
@@ -82,6 +85,7 @@ export class TaskSourceService {
     const fields={id:readID,run_id:context.run.id,task_id:taskID,conversation_id:context.run.frozen_request.conversation_id,source_id:sourceID,requested_url:context.source.requested_url,canonical_url:received.canonical_url,final_url:received.final_url,redirect_chain:clone(received.redirect_chain),read_at:received.read_at,committed_at:iso(this.clock),content_hash:received.content_hash,text_hash:received.text_hash,text:received.text,excerpt:received.text.slice(0,SOURCE_LIMITS.excerpt),media_type:received.media_type,byte_count:received.byte_count,body_base64:Buffer.from(received.body_bytes).toString('base64'),policy_hash:context.catalog.policy_hash,request_hash:context.requestHash,plan_reference:clone(context.planReference),transport_reality:received.transport_reality};
     receipt=receiptValid({...fields,receipt_hash:hash(fields)},context);check(await tx.insertIfAbsent(owner,SOURCE_RECEIPTS,receipt),409,'source_receipt_conflict');assertLive();read={...read,state:'received',receipt_hash:receipt.receipt_hash,received_at:receipt.committed_at};await tx.put(owner,SOURCE_READS,read);assertLive();
    }
+   const work=acceptedWorkExecution(this.facade.workGrantService,owner,context.run,{now:this.clock});if(work)await work.receivedSource(tx,read,{assertLive});
    const toolResult=resultFor(receipt);if(commitCallback)await commitCallback(tx,{task:context.task,run:context.run,receipt:clone(receipt),toolResult:clone(toolResult)});assertLive();
    const fresh=await this.admitted(tx,owner,taskID,leaseID,assertLive);check(samePlan(fresh.planReference,context.planReference),409,'source_plan_binding_conflict');assertLive();
    return {state:'received',read_id:readID,source_id:sourceID,receipt:clone(receipt),toolResult,task:fresh.task};
@@ -92,6 +96,22 @@ export class TaskSourceService {
   const receipts=[];
   for(const source of catalog.sources){const context=this.context({run,task,catalog,planReference},source.source_id),read=await tx.get(owner,SOURCE_READS,context.readID);check(read?.state==='received'&&read.request_hash===context.requestHash,409,'required_source_receipt_missing');receipts.push(receiptValid(await tx.get(owner,SOURCE_RECEIPTS,context.readID),context));}
   return receipts;
+ }
+ /** An original received read may be verified before its catalog siblings.
+  * Execution/source permission is supplied by the caller's same transaction;
+  * this does not start a read, renew its lease or validate a whole report. */
+ async validateWorkGrantTransportReceiptInTransaction(tx,owner,run,task,input){
+  const {read,context}=await this.#workGrantRead(tx,owner,run,task,input,'received'),receipt=receiptValid(await tx.get(owner,SOURCE_RECEIPTS,input.read_id),context);check(read.receipt_hash===receipt.receipt_hash&&read.received_at===receipt.committed_at,409,'source_receipt_binding_conflict');
+  return {receipt_id:receipt.id,receipt_hash:receipt.receipt_hash};
+ }
+ async #workGrantRead(tx,owner,run,task,input,state){
+  shape(input,['read_id','request_hash','lease_id']);check(UUID.test(input.read_id)&&UUID.test(input.lease_id)&&/^[a-f0-9]{64}$/.test(input.request_hash),422,'source_transport_identity_invalid');
+  const catalog=validateFrozenSourceCatalog(run.frozen_request.public_sources),planReference=await taskBinding(tx,owner,run,task),read=await tx.get(owner,SOURCE_READS,input.read_id);check(read?.state===state&&read.dispatch_lease_id===input.lease_id&&read.request_hash===input.request_hash,409,'source_read_conflict');
+  const context=this.context({run,task,catalog,planReference},read.source_id);check(context.readID===input.read_id&&context.requestHash===input.request_hash&&read.run_id===run.id&&read.task_id===task.id&&read.conversation_id===run.frozen_request.conversation_id&&read.requested_url===context.source.requested_url&&samePlan(read.plan_reference,planReference)&&read.policy_hash===catalog.policy_hash,409,'source_receipt_binding_conflict');return {read,context};
+ }
+ async validateWorkGrantTransportFailureInTransaction(tx,owner,run,task,input){
+  const {read}=await this.#workGrantRead(tx,owner,run,task,input,'failed');check(knownFailures.has(read.error_code)&&[403,413,422].includes(read.error_status)&&typeof read.failed_at==='string'&&Number.isFinite(Date.parse(read.failed_at))&&new Date(read.failed_at).toISOString()===read.failed_at&&Date.parse(read.failed_at)>=Date.parse(read.dispatched_at),409,'source_failure_receipt_unverified');
+  return {receipt_id:read.id,receipt_hash:hash({contract:'catpaw.public-source-failure.v1',read_id:read.id,run_id:read.run_id,task_id:read.task_id,conversation_id:read.conversation_id,source_id:read.source_id,requested_url:read.requested_url,request_hash:read.request_hash,dispatch_lease_id:read.dispatch_lease_id,plan_reference:read.plan_reference,policy_hash:read.policy_hash,error_code:read.error_code,error_status:read.error_status,failed_at:read.failed_at})};
  }
  async publicCatalogInTransaction(tx,owner,run,task){return (await this.requiredReceipts(tx,owner,run,task)).map(publicSource);}
  async validateCitationsInTransaction(tx,owner,run,task,citations){

@@ -5,6 +5,7 @@ import {TASK_ACTION_KINDS} from './task-action-contract.mjs';
 import {TASK_ARTIFACT_KINDS} from './task-artifact-contract.mjs';
 import {TASK_REVISION_KINDS} from './task-revision-contract.mjs';
 import {TASK_CONTROL_OPERATIONS} from './task-control-contract.mjs';
+import {collectTaskWorkGrantPurgeRecordsInTransaction} from './task-work-grant-lifecycle.mjs';
 export const REQUIRED_PURGE_CAPABILITIES=Object.freeze(['physical_remove_owner_records_same_transaction','erase_foundation_immutable_body_same_transaction','write_primary_purge_tombstone','external_restore_deletion_manifest']);
 // A reviewable refs/hash-only plan. No execution/default privilege bypass and no deletion receipt is manufactured.
 export async function buildSourcePurgePlan({repository,facade,principal,scope_id,source_id}){
@@ -26,6 +27,8 @@ export async function buildSourcePurgePlan({repository,facade,principal,scope_id
   const projections=[];
   for(const kind of ['approvals','artifacts','bindings'])for(const row of await tx.list(kind))if(runIds.has(row.run_id))projections.push({kind,id:row.id,expected_record_hash:hash(row),requires_immutable_erasure:true});
   const blocked=[];if(runs.some(r=>r.frozen_request.policy!==LOCAL_POLICY))blocked.push('non_local_execution_policy');
+  const work=await collectTaskWorkGrantPurgeRecordsInTransaction(records,{owner,scope_id,subject_id:principal.subject_id,conversation_id:conversation.id,runs});
+  targets.push(...work.records);blocked.push(...work.blocked);
   const tasks=(await records.list(owner,'tasks')).filter(t=>taskIds.has(t.id));if(tasks.some(t=>['running','queued','scheduled','paused','waiting_input','waiting_approval'].includes(t.status)))blocked.push('revoke_and_fence_active_execution_before_purge');
   if(actions.some(a=>['executing','outcome_unknown'].includes(a.status)))blocked.push('reconcile_unknown_action_before_purge');
   const turns=(await records.list(owner,'native-chat-turns')).filter(t=>t.conversation_id===conversation.id);

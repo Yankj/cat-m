@@ -1245,6 +1245,34 @@
       "line": 1980,
       "sha256": "9fc74cd27abf382da55295c74877afc1affe53afc05879a3616a9576ebb8f804",
       "reason": "Reviewed fixed synthetic device UUID id(10) from the checked-in deny-net fixture generator; explicit TestRepository/OS port doubles, no real device identity or private phone input. Strict match applies only to this fixture byte hash and exact line."
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/source-erasure.mjs",
+      "category": "credential_prefix",
+      "line": 13,
+      "sha256": "b0d722bd4b1917823e7b86b87ab79e4d56956333de4aab70aed90d3f2280fdcf",
+      "reason": "Reviewed unchanged public storage kind names in the scoped erasure barrier; a record-kind substring resembles a credential prefix. No credential value. Exact current file hash and line only."
+    },
+    {
+      "path": "services/edge/test/task-public-sources.test.mjs",
+      "category": "credential_url",
+      "line": 43,
+      "sha256": "5cf1a3d606e994271167a233f9d93b244fbbdf52bd1b902490c1e7906f5bdd7a",
+      "reason": "Verified this line is byte-identical to the previously reviewed HEAD negative URL fixture: literal user:pass on a documentation/example host is rejected before network. No real credential or request."
+    },
+    {
+      "path": "services/edge/test/task-public-sources.test.mjs",
+      "category": "email_review",
+      "line": 43,
+      "sha256": "5cf1a3d606e994271167a233f9d93b244fbbdf52bd1b902490c1e7906f5bdd7a",
+      "reason": "Verified unchanged negative URL fixture literals are not email addresses or personal data; parser rejects them before network. Exact current file hash and line only."
+    },
+    {
+      "path": "services/edge/test/task-public-sources.test.mjs",
+      "category": "signed_url",
+      "line": 51,
+      "sha256": "5cf1a3d606e994271167a233f9d93b244fbbdf52bd1b902490c1e7906f5bdd7a",
+      "reason": "Verified byte-identical previously reviewed anonymous-reader negative fixture: literal access_token=fake and signed-key names are rejected before any connection; no real signed URL/token. Exact file hash and line only."
     }
   ]
 }

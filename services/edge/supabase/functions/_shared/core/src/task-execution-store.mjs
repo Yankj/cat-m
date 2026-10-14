@@ -17,6 +17,7 @@ export class TaskExecutionStore extends FencedWorkerStore {
   async admission(tx,owner,id,{leaseId=null}={}) {
     this.ownerAllowed(owner);
     const admitted=await this.facade.admittedTask(tx,owner,id);
+    check(admitted.run?.frozen_request?.work_grant_reference===undefined,409,'accepted_work_whole_executor_unsupported');
     await tx.lock(owner,'tasks',id);
     const task=await tx.get(owner,'tasks',id);
     check(hash(task?.state?.catpaw)===hash(admitted.task.state.catpaw),409,'operation_conflict');
