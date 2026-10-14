@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { ApiError,check,hash } from '../facade-r2/src/common.mjs';
+import { ApiError,check,hash,clone } from '../facade-r2/src/common.mjs';
 import { PostgresRepository } from '../integration/server-foundation/src/postgres-repository.mjs';
 import { Foundation } from '../integration/server-foundation/src/foundation.mjs';
 import { ChatRecoveryFence } from '../integration/server-foundation/src/chat-recovery.mjs';
@@ -57,7 +57,7 @@ export async function createFoundationChatRuntime({repository,authenticate,provi
       const input=Object.fromEntries(['conversation_id','turn_id','call_id','delegation_id','operation_id','run_id','task_id','request_hash','delegation_revision','grant_epoch'].map(k=>[k,b[k]]));
       bindings.push(await foundation.linkExecution(principal,scopeId,input));
     }
-    return {capture,bindings,projection_hash:hash(bindings),artifact_bridge:'explicit_uuid_projection_alias',task_snapshot_bridge:'persisted_owner_projection_revision'};
+    return {capture,bindings,projection_hash:hash(bindings),...turn.continuations?{continuations:clone(turn.continuations)}:{},artifact_bridge:'explicit_uuid_projection_alias',task_snapshot_bridge:'persisted_owner_projection_revision'};
   };
   runtime.deleteChatSource=async(auth,scopeId,sourceId)=>{
     const {owner,principal}=await runtime.facade.scoped(auth,scopeId);

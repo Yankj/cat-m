@@ -1,0 +1,510 @@
+{
+  "production_source_same": true,
+  "r4_input_delta_from_r3": [
+    "Tests/DeviceTrialNativeTests.swift only"
+  ],
+  "full_r3_status_retained": "FAIL 99/100; 20 UI PASS",
+  "final_unit_r4_status": "PASS 80/80; same production source, test synchronization strengthened",
+  "case_results": [
+    {
+      "test": "CatpawMTests.CatpawTextLayoutTests/testActualFooterBoundaryIsAppliedBeforeTextHeightBudget",
+      "result": "PASS",
+      "execution": "native-units-r4"
+    },
+    {
+      "test": "CatpawMTests.CatpawTextLayoutTests/testActualUIKitCaretAndExactRawSurviveKeyboardSizedViewportChanges",
+      "result": "PASS",
+      "execution": "native-units-r4"
+    },
+    {
+      "test": "CatpawMTests.CatpawTextLayoutTests/testComposerBudgetBoundsLongContextAndYieldsChromeBeforeAnEditableLine",
+      "result": "PASS",
+      "execution": "native-units-r4"
+    },
+    {
+      "test": "CatpawMTests.CatpawTextLayoutTests/testEverySwiftUITextCategoryMatchesUIKitWithoutImplicitRescaling",
+      "result": "PASS",
+      "execution": "native-units-r4"
+    },
+    {
+      "test": "CatpawMTests.CatpawTextLayoutTests/testFortyKBContinuousEditingKeepsCaretRawAndCompositionWithMeasuredLayoutCost",
+      "result": "PASS",
+      "execution": "native-units-r4"
+    },
+    {
+      "test": "CatpawMTests.CatpawTextLayoutTests/testLargeChineseAndEnglishLabelsLeaveAnEditableLineAcrossThreeWidths",
+      "result": "PASS",
+      "execution": "native-units-r4"
+    },
+    {
+      "test": "CatpawMTests.ConversationArtifactContinuationComposerTests/testActualMarkedTextCannotSwitchOrLeaveTargetAndNeverSendsAutomatically",
+      "result": "PASS",
+      "execution": "native-units-r4"
+    },
+    {
+      "test": "CatpawMTests.ConversationArtifactContinuationComposerTests/testColdComposerKeepsTwoModesExactRawAndIndependentOrdinaryDraft",
+      "result": "PASS",
+      "execution": "native-units-r4"
+    },
+    {
+      "test": "CatpawMTests.ConversationArtifactContinuationComposerTests/testFailedQueueCommitKeepsTargetRawAndNeverCreatesPartialFollowup",
+      "result": "PASS",
+      "execution": "native-units-r4"
+    },
+    {
+      "test": "CatpawMTests.ConversationArtifactContinuationComposerTests/testForeignSubjectAndClosedServiceCannotReadOrOverwriteSavedTarget",
+      "result": "PASS",
+      "execution": "native-units-r4"
+    },
+    {
+      "test": "CatpawMTests.ConversationArtifactContinuationProjectionTests/testCorrectedVersionRequiresExactControlledModelRelationAndCannotUseManualOrOldArtifact",
+      "result": "PASS",
+      "execution": "native-units-r4"
+    },
+    {
+      "test": "CatpawMTests.ConversationArtifactContinuationProjectionTests/testNodeCanonicalReceiptAndRawInstructionHashMatchSwiftWithoutRebindingOriginalTask",
+      "result": "PASS",
+      "execution": "native-units-r4"
+    },
+    {
+      "test": "CatpawMTests.ConversationArtifactContinuationProjectionTests/testReceiptRejectsDifferentRawTextAndReadOnlyIntent",
+      "result": "PASS",
+      "execution": "native-units-r4"
+    },
+    {
+      "test": "CatpawMTests.ConversationArtifactContinuationQueueTests/testLegacyAndTargetedFollowupColdQueuePreserveExactImmutableIntent",
+      "result": "PASS",
+      "execution": "native-units-r4"
+    },
+    {
+      "test": "CatpawMTests.ConversationArtifactEditTests/testAdmissionLogoutAndDeletedConversationFenceLateResponses",
+      "result": "PASS",
+      "execution": "native-units-r4"
+    },
+    {
+      "test": "CatpawMTests.ConversationArtifactEditTests/testAppliedRevisionPreservesExactSourceSnapshotAndOldBody",
+      "result": "PASS",
+      "execution": "native-units-r4"
+    },
+    {
+      "test": "CatpawMTests.ConversationArtifactEditTests/testCanonicalReceiptAndWireBoundsMatchServer",
+      "result": "PASS",
+      "execution": "native-units-r4"
+    },
+    {
+      "test": "CatpawMTests.ConversationArtifactEditTests/testCASConflictRequiresExplicitRebaseAndPreservesOtherSelectionDraft",
+      "result": "PASS",
+      "execution": "native-units-r4"
+    },
+    {
+      "test": "CatpawMTests.ConversationArtifactEditTests/testDraftAndOriginalBaseSurviveRestartWithoutChangingChatDraft",
+      "result": "PASS",
+      "execution": "native-units-r4"
+    },
+    {
+      "test": "CatpawMTests.ConversationArtifactEditTests/testDurableOriginalIntentPrecedesDispatchAndDiskFailurePreventsPost",
+      "result": "PASS",
+      "execution": "native-units-r4"
+    },
+    {
+      "test": "CatpawMTests.ConversationArtifactEditTests/testReceiptsRejectWrongSourceGrantBindingPlanHashAndBody",
+      "result": "PASS",
+      "execution": "native-units-r4"
+    },
+    {
+      "test": "CatpawMTests.ConversationArtifactEditTests/testRefreshAndSubmissionKeepTypingAndOversizeRawInput",
+      "result": "PASS",
+      "execution": "native-units-r4"
+    },
+    {
+      "test": "CatpawMTests.ConversationArtifactEditTests/testTwoServicesCannotDispatchTwoOriginalOperations",
+      "result": "PASS",
+      "execution": "native-units-r4"
+    },
+    {
+      "test": "CatpawMTests.ConversationArtifactEditTests/testUnknownColdRestartReadsOriginalOperationWithoutAnotherPost",
+      "result": "PASS",
+      "execution": "native-units-r4"
+    },
+    {
+      "test": "CatpawMTests.ConversationArtifactProjectionTests/testConfirmedCancellationSurvivesWithdrawnSourceLateHeadsAndColdReads",
+      "result": "PASS",
+      "execution": "native-units-r4"
+    },
+    {
+      "test": "CatpawMTests.ConversationArtifactProjectionTests/testConfirmedSourceInvalidationCannotBeUndoneByLateOrHigherHeads",
+      "result": "PASS",
+      "execution": "native-units-r4"
+    },
+    {
+      "test": "CatpawMTests.ConversationArtifactProjectionTests/testForeignScopeAndDeletedConversationCannotResurrect",
+      "result": "PASS",
+      "execution": "native-units-r4"
+    },
+    {
+      "test": "CatpawMTests.ConversationArtifactProjectionTests/testIdentityAndCorruptVersionCannotChangeJournal",
+      "result": "PASS",
+      "execution": "native-units-r4"
+    },
+    {
+      "test": "CatpawMTests.ConversationArtifactProjectionTests/testRevisionAndLateReadPreserveDraftAndHistory",
+      "result": "PASS",
+      "execution": "native-units-r4"
+    },
+    {
+      "test": "CatpawMTests.ConversationArtifactSourcesTests/testLegacyUnsupportedAndMalformedMetadataFallBack",
+      "result": "PASS",
+      "execution": "native-units-r4"
+    },
+    {
+      "test": "CatpawMTests.ConversationArtifactSourcesTests/testPublicHTTPSLinksUseLexicalAdmission",
+      "result": "PASS",
+      "execution": "native-units-r4"
+    },
+    {
+      "test": "CatpawMTests.ConversationArtifactSourcesTests/testReceiptMetadataAndLiteralReport",
+      "result": "PASS",
+      "execution": "native-units-r4"
+    },
+    {
+      "test": "CatpawMTests.ConversationArtifactSourcesTests/testSelectedVersionNeverFollowsLatest",
+      "result": "PASS",
+      "execution": "native-units-r4"
+    },
+    {
+      "test": "CatpawMTests.ConversationArtifactSourcesTests/testSourceIDsReceiptsTimesAndBoundsAreStrict",
+      "result": "PASS",
+      "execution": "native-units-r4"
+    },
+    {
+      "test": "CatpawMTests.ConversationStrictJSONTests/testBoundedObjectsEscapedKeysAndMalformedBytes",
+      "result": "PASS",
+      "execution": "native-units-r4"
+    },
+    {
+      "test": "CatpawMTests.ConversationTaskActionTests/testOfflineExactApprovalAndOriginalDecisionRecoveryMatrix",
+      "result": "PASS",
+      "execution": "native-units-r4"
+    },
+    {
+      "test": "CatpawMTests.ConversationTaskControlDeliveryTests/testBackgroundDefersOriginalDeliveryAndForegroundReadsWithoutAnotherControlPost",
+      "result": "PASS",
+      "execution": "native-units-r4"
+    },
+    {
+      "test": "CatpawMTests.ConversationTaskControlDeliveryTests/testBusyOrdinaryStreamKeepsResumeDeliveryUntilOriginalTaskCanBeRead",
+      "result": "PASS",
+      "execution": "native-units-r4"
+    },
+    {
+      "test": "CatpawMTests.ConversationTaskControlDeliveryTests/testColdHostSelectedOnBRestoresAppliedOriginalAReceiptFromScopedJournal",
+      "result": "PASS",
+      "execution": "native-units-r4"
+    },
+    {
+      "test": "CatpawMTests.ConversationTaskControlDeliveryTests/testLateReceiptAfterSelectingBReadsOriginalAAndPreservesBSelectionAndDraft",
+      "result": "PASS",
+      "execution": "native-units-r4"
+    },
+    {
+      "test": "CatpawMTests.ConversationTaskControlDeliveryTests/testLogoutFencesLateOriginalGetAndCannotReviveClosedHost",
+      "result": "PASS",
+      "execution": "native-units-r4"
+    },
+    {
+      "test": "CatpawMTests.ConversationTaskControlTests/testOriginalTaskControlAndPersistentRecoveryMatrix",
+      "result": "PASS",
+      "execution": "native-units-r4"
+    },
+    {
+      "test": "CatpawMTests.ConversationTaskPlanDraftDrainTests/testDiskFailureReportsFalseAndKeepsRaw",
+      "result": "PASS",
+      "execution": "native-units-r4"
+    },
+    {
+      "test": "CatpawMTests.ConversationTaskPlanDraftDrainTests/testHeldGETDoesNotBlockLocalDrain",
+      "result": "PASS",
+      "execution": "native-units-r4"
+    },
+    {
+      "test": "CatpawMTests.ConversationTaskPlanDraftDrainTests/testHeldPOSTDrainsRawAndKeepsOriginalIdentity",
+      "result": "PASS",
+      "execution": "native-units-r4"
+    },
+    {
+      "test": "CatpawMTests.ConversationTaskPlanDraftDrainTests/testLocalTicketIsScopeBoundAndOneShot",
+      "result": "PASS",
+      "execution": "native-units-r4"
+    },
+    {
+      "test": "CatpawMTests.ConversationTaskPlanDraftDrainTests/testQueuedEightImmediateLogoutColdExactRaw",
+      "result": "PASS",
+      "execution": "native-units-r4"
+    },
+    {
+      "test": "CatpawMTests.ConversationTaskPlanDraftDrainTests/testUnknownColdRecoveryOnlyReadsOriginalOperation",
+      "result": "PASS",
+      "execution": "native-units-r4"
+    },
+    {
+      "test": "CatpawMTests.ConversationTaskPlanDraftDrainTests/testValidPlanColdReopensAndSubmits",
+      "result": "PASS",
+      "execution": "native-units-r4"
+    },
+    {
+      "test": "CatpawMTests.ConversationTaskPlanTests/testAppliedAmendmentUsesSameRunAndClearsOnlySubmittedDraft",
+      "result": "PASS",
+      "execution": "native-units-r4"
+    },
+    {
+      "test": "CatpawMTests.ConversationTaskPlanTests/testAuthenticatedLocalPartitionKeepsServerBindingAcrossUnknownRestart",
+      "result": "PASS",
+      "execution": "native-units-r4"
+    },
+    {
+      "test": "CatpawMTests.ConversationTaskPlanTests/testCanonicalPlanHashMatchesECMAScriptFixturesAndStrictBounds",
+      "result": "PASS",
+      "execution": "native-units-r4"
+    },
+    {
+      "test": "CatpawMTests.ConversationTaskPlanTests/testCASConflictKeepsExactDraft",
+      "result": "PASS",
+      "execution": "native-units-r4"
+    },
+    {
+      "test": "CatpawMTests.ConversationTaskPlanTests/testChangedRevisionPreservesDraftUntilExplicitRebase",
+      "result": "PASS",
+      "execution": "native-units-r4"
+    },
+    {
+      "test": "CatpawMTests.ConversationTaskPlanTests/testClosedAdmissionAndForeignScopeCannotDispatchOrReadAnotherDraft",
+      "result": "PASS",
+      "execution": "native-units-r4"
+    },
+    {
+      "test": "CatpawMTests.ConversationTaskPlanTests/testLateReadAfterLogoutCannotPopulatePlanCache",
+      "result": "PASS",
+      "execution": "native-units-r4"
+    },
+    {
+      "test": "CatpawMTests.ConversationTaskPlanTests/testModificationDraftSurvivesCloseRestartAndNeverChangesChatDraft",
+      "result": "PASS",
+      "execution": "native-units-r4"
+    },
+    {
+      "test": "CatpawMTests.ConversationTaskPlanTests/testPendingAndUnknownReconcileOriginalOperationWithoutAnotherPost",
+      "result": "PASS",
+      "execution": "native-units-r4"
+    },
+    {
+      "test": "CatpawMTests.ConversationTaskPlanTests/testRefreshDoesNotOverwriteTypingWhileReadIsInFlight",
+      "result": "PASS",
+      "execution": "native-units-r4"
+    },
+    {
+      "test": "CatpawMTests.ConversationTaskPlanTests/testStepReceiptRequiresAppliedRevisionTypeHashAndValidUTCDate",
+      "result": "PASS",
+      "execution": "native-units-r4"
+    },
+    {
+      "test": "CatpawMTests.DeviceTrialNativeTests/testP0ExistingLocalConversationAppearsWhileAuthValidationIsHeld",
+      "result": "PASS",
+      "execution": "native-units-r4"
+    },
+    {
+      "test": "CatpawMTests.DeviceTrialNativeTests/testP0LocalReceiptCannotOpenAnotherSubjectOrAfterLogout",
+      "result": "PASS",
+      "execution": "native-units-r4"
+    },
+    {
+      "test": "CatpawMTests.NativeArtifactContinuationTransportTests/testClientSelectedSubjectCannotReplaceMissingTrustedCompositionSubject",
+      "result": "PASS",
+      "execution": "native-units-r4"
+    },
+    {
+      "test": "CatpawMTests.NativeArtifactContinuationTransportTests/testColdOriginalRevisionReadsMaintenanceResultAfterAnotherClientCompletesNextVersion",
+      "result": "PASS",
+      "execution": "native-units-r4"
+    },
+    {
+      "test": "CatpawMTests.NativeArtifactContinuationTransportTests/testColdUnknownUsesExactFreshTurnGETAndNeverPostsAgain",
+      "result": "PASS",
+      "execution": "native-units-r4"
+    },
+    {
+      "test": "CatpawMTests.NativeArtifactContinuationTransportTests/testOnlyVersionedJSONDenialProvesNonAdmissionAndTargetKeepsOriginalRawBytes",
+      "result": "PASS",
+      "execution": "native-units-r4"
+    },
+    {
+      "test": "CatpawMTests.NativeArtifactEditTransportTests/testCrossScopeMissingCredentialsAndInvalidInputFailBeforePost",
+      "result": "PASS",
+      "execution": "native-units-r4"
+    },
+    {
+      "test": "CatpawMTests.NativeArtifactEditTransportTests/testExactServerScopeVersionOperationAndRequestBytesUseActualAdapter",
+      "result": "PASS",
+      "execution": "native-units-r4"
+    },
+    {
+      "test": "CatpawMTests.NativeArtifactEditTransportTests/testKnownConflictIsDistinctFromAmbiguousHTTPAndLostResponse",
+      "result": "PASS",
+      "execution": "native-units-r4"
+    },
+    {
+      "test": "CatpawMTests.NativeArtifactEditTransportTests/testLegalLongBodyIsLosslessAndWireBudgetRemainsFinite",
+      "result": "PASS",
+      "execution": "native-units-r4"
+    },
+    {
+      "test": "CatpawMTests.NativeArtifactEditTransportTests/testMalformedSuccessHashVersionMimeAndOriginalReceiptCannotBeAccepted",
+      "result": "PASS",
+      "execution": "native-units-r4"
+    },
+    {
+      "test": "CatpawMTests.NativeAuthApplicationLifecycleTests/testLogoutClosesAuthorityBeforeLocalDrainAndLaterLoginStillOpens",
+      "result": "PASS",
+      "execution": "native-units-r4"
+    },
+    {
+      "test": "CatpawMTests.NativeAuthNativeTests/testNativeKeychainRoundTripAccessibilityAndExactDeletion",
+      "result": "PASS",
+      "execution": "native-units-r4"
+    },
+    {
+      "test": "CatpawMTests.NativeTaskActionTransportTests/testNativeActionTransportMatrix",
+      "result": "PASS",
+      "execution": "native-units-r4"
+    },
+    {
+      "test": "CatpawMTests.NativeTaskControlProjectionTests/testOriginalCancellationAndWithdrawnSourceRemainSeparateThroughActualHTTPAdapter",
+      "result": "PASS",
+      "execution": "native-units-r4"
+    },
+    {
+      "test": "CatpawMTests.NativeTaskControlTransportTests/testNativeTaskControlWireAndMaintainedColdFixtureMatrix",
+      "result": "PASS",
+      "execution": "native-units-r4"
+    },
+    {
+      "test": "CatpawMTests.NativeTaskPlanTransportTests/testCrossScopeIsRejectedBeforeAnyHTTP",
+      "result": "PASS",
+      "execution": "native-units-r4"
+    },
+    {
+      "test": "CatpawMTests.NativeTaskPlanTransportTests/testExplicitRejectionIsDistinctFromUnknownTransportAndMalformedSuccess",
+      "result": "PASS",
+      "execution": "native-units-r4"
+    },
+    {
+      "test": "CatpawMTests.NativeTaskPlanTransportTests/testPlanGETAndAmendmentUsePinnedObjectsAndOriginalOperation",
+      "result": "PASS",
+      "execution": "native-units-r4"
+    },
+    {
+      "test": "CatpawMTests.NativeTaskPlanTransportTests/testTwoLongPlanVersionsRemainReadableWithinFiniteWireLimit",
+      "result": "PASS",
+      "execution": "native-units-r4"
+    },
+    {
+      "test": "CatpawMUITests.ConversationArtifactContinuationUITests/testMaximumTextTargetInputAndExitRemainReachableAboveKeyboard",
+      "result": "PASS",
+      "execution": "native-integrated-r3"
+    },
+    {
+      "test": "CatpawMUITests.ConversationArtifactContinuationUITests/testSelectedVersionModesColdDraftsAndExitKeepOrdinaryInputWithoutSending",
+      "result": "PASS",
+      "execution": "native-integrated-r3"
+    },
+    {
+      "test": "CatpawMUITests.ConversationArtifactEditUITests/testMaximumTextManualEditorKeyboardSaveCloseAndHistoryRemainReachable",
+      "result": "PASS",
+      "execution": "native-integrated-r3"
+    },
+    {
+      "test": "CatpawMUITests.ConversationArtifactEditUITests/testRootManualRevisionDraftReopenAndExactVersionHistoryKeepChatDraft",
+      "result": "PASS",
+      "execution": "native-integrated-r3"
+    },
+    {
+      "test": "CatpawMUITests.ConversationArtifactEditUITests/testRootUnknownColdRestartOnlyReadsOriginalModificationAndKeepsVersions",
+      "result": "PASS",
+      "execution": "native-integrated-r3"
+    },
+    {
+      "test": "CatpawMUITests.ConversationArtifactReaderUITests/testLargeTextReaderSourceNavigationAndHistoryKeepDraft",
+      "result": "PASS",
+      "execution": "native-integrated-r3"
+    },
+    {
+      "test": "CatpawMUITests.ConversationArtifactReaderUITests/testRootReaderSourceSheetAndExactHistoryKeepDraft",
+      "result": "PASS",
+      "execution": "native-integrated-r3"
+    },
+    {
+      "test": "CatpawMUITests.ConversationFirstUITests/testAuthAccountSwitchAndRestartNeverExposeOtherDraft",
+      "result": "PASS",
+      "execution": "native-integrated-r3"
+    },
+    {
+      "test": "CatpawMUITests.ConversationFirstUITests/testColdRevokedRestoreClosesOwnLocalDraftAfterValidationRejects",
+      "result": "PASS",
+      "execution": "native-integrated-r3"
+    },
+    {
+      "test": "CatpawMUITests.ConversationFirstUITests/testColdValidRestoreShowsOwnLocalDraftWithAdmissionClosedUntilValidation",
+      "result": "PASS",
+      "execution": "native-integrated-r3"
+    },
+    {
+      "test": "CatpawMUITests.ConversationTaskActionUITests/testAccessibilityExactCalendarReviewRemainsReadableAndDenialHasNoEffect",
+      "result": "PASS",
+      "execution": "native-integrated-r3"
+    },
+    {
+      "test": "CatpawMUITests.ConversationTaskActionUITests/testCloseReopenExactReviewAndApproveOnlyWaitingDevice",
+      "result": "PASS",
+      "execution": "native-integrated-r3"
+    },
+    {
+      "test": "CatpawMUITests.ConversationTaskActionUITests/testUnavailableVerifierRetainsReadableReviewWithoutAvailableDecision",
+      "result": "PASS",
+      "execution": "native-integrated-r3"
+    },
+    {
+      "test": "CatpawMUITests.ConversationTaskActionUITests/testUnknownColdRelaunchReadsOriginalDecisionAndNeverPostsAgain",
+      "result": "PASS",
+      "execution": "native-integrated-r3"
+    },
+    {
+      "test": "CatpawMUITests.ConversationTaskControlUITests/testLostControlReceiptColdRelaunchGetsOriginalAndNeverResends",
+      "result": "PASS",
+      "execution": "native-integrated-r3"
+    },
+    {
+      "test": "CatpawMUITests.ConversationTaskControlUITests/testMaximumAccessibilityControlsRemainReachableAndRevokeIsSeparateFromPause",
+      "result": "PASS",
+      "execution": "native-integrated-r3"
+    },
+    {
+      "test": "CatpawMUITests.ConversationTaskControlUITests/testMaximumAccessibilityUnknownOriginalOperationsStayReadableAndPreventResume",
+      "result": "PASS",
+      "execution": "native-integrated-r3"
+    },
+    {
+      "test": "CatpawMUITests.ConversationTaskControlUITests/testPauseCloseColdReopenAndResumeSameTaskPreservesDraftAndReceipts",
+      "result": "PASS",
+      "execution": "native-integrated-r3"
+    },
+    {
+      "test": "CatpawMUITests.P0NativeExperienceUITests/testTaskPlanDraftSurvivesSheetCloseAndEditsOriginalTask",
+      "result": "PASS",
+      "execution": "native-integrated-r3"
+    },
+    {
+      "test": "CatpawMUITests.P0NativeExperienceUITests/testTaskPlanUnknownKeepsOriginalAmendmentAndBlocksResubmit",
+      "result": "PASS",
+      "execution": "native-integrated-r3"
+    }
+  ]
+}

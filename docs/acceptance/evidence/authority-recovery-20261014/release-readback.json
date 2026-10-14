@@ -1,0 +1,10 @@
+{
+  "version": "0.3.0",
+  "build": "22",
+  "bundle_id": "com.example.CatpawM.ConversationFirst.Auth",
+  "executable_sha256": "291ba92dcb4c5c7b99ec61816bb7333ed43354a5a17ca04301c6a01ab05a6db4",
+  "info_sha256": "e713e31e3114642eeeee636ae3552e0d3702c953b1dcc2a6bc07bf864988c1c5",
+  "reality": "unsigned_release_simulator_not_phone",
+  "input_manifest": "native-r3-inputs/manifest.json",
+  "later_source_delta": "test harness only; production source unchanged"
+}

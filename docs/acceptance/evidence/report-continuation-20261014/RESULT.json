@@ -1,0 +1,1575 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-14",
+  "candidate": "AF-W31-CONTINUE-20261014-05",
+  "base_commit": "d02f1e7a37de75ccaf1292440698e3781afc5abf",
+  "branch": "feat/s03-report-continuations",
+  "version": "0.3.0",
+  "build": "21",
+  "evidence_reality": "offline_maintenance_and_actual_simulator_only",
+  "goal_status_at_capture": "ACTIVE",
+  "product_acceptance_closed": false,
+  "changed_source_and_tests": [
+    {
+      "path": "apps/ios-conversation/CatpawM.xcodeproj/project.pbxproj",
+      "bytes": 51375,
+      "sha256": "20943a2f6a60f4c86539e9bf297cfd8200609af5e707e0f647b05dbce3b13cc8"
+    },
+    {
+      "path": "apps/ios-conversation/Resources/UIStrings.json",
+      "bytes": 124480,
+      "sha256": "f02651860479125a11ab58a0a680b15be49afbeea15daf5efe125c919459b5b6"
+    },
+    {
+      "path": "apps/ios-conversation/Scripts/test-conversation-portable.sh",
+      "bytes": 721,
+      "sha256": "af030914a7959e6f24792070a13a2a4342d2b20a61070fec52c147fa7c5307e5"
+    },
+    {
+      "path": "apps/ios-conversation/Scripts/test-conversation-queue.sh",
+      "bytes": 763,
+      "sha256": "0d58f6e1e2a7f20697ef49b4b1f367ff8d0303a96868f08fed2762eb3461c6bd"
+    },
+    {
+      "path": "apps/ios-conversation/Scripts/test-native-chat-wire.sh",
+      "bytes": 1196,
+      "sha256": "7162e01982d881f35f10c0720949fcece99ef1904ad408a3d0b33edb0a198a96"
+    },
+    {
+      "path": "apps/ios-conversation/Sources/App/ConversationFirstModel.swift",
+      "bytes": 47995,
+      "sha256": "e4c8cbe43024265c7f4a5df22bfb58e6e81bc80e11aeba22f7efcd34a5f797d4"
+    },
+    {
+      "path": "apps/ios-conversation/Sources/App/NativeAuthApplicationModel.swift",
+      "bytes": 20013,
+      "sha256": "1f176b269d49d2c0966d5d62efc4419a714721f953b43b0b1b4113e144996813"
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Domain/ConversationArtifactContinuation.swift",
+      "bytes": 6873,
+      "sha256": "3fb78b38861b45c6d15519d2b75b1d44a09f721a68936ce70bce97c8ce422fcf"
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Domain/ConversationFollowupQueue.swift",
+      "bytes": 1020,
+      "sha256": "401fe4124d5bdf6c5d7aeb0b8d8e897e2f067fd87b8918773a3cdd7703bf4949"
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Domain/ConversationSessionContracts.swift",
+      "bytes": 18783,
+      "sha256": "a9da203c24bee6cb87f5ff8db81863938d8ed09a8084003e1b7cff7383b3b1ad"
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Features/ConversationArtifactContinuationService.swift",
+      "bytes": 7718,
+      "sha256": "c8c79c4fbc490868252cf8f84c8922902a55f83ec1c96e46084347e5aecd3283"
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Features/ConversationArtifactReaderView.swift",
+      "bytes": 11707,
+      "sha256": "9da83c1c748aa4372a3cfd7ae3a9d0e15f66c8a1e98a6d8291320bc7095f2977"
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Features/ConversationFirstView.swift",
+      "bytes": 49380,
+      "sha256": "0d2f0d512bc49280006e4165cc327f334b7b61b8d8b1961e1469929a74073c68"
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Features/ConversationFollowupQueueService.swift",
+      "bytes": 8971,
+      "sha256": "f2252f13d8b83d362aeaf1351eeec8655f5754c0b1f34cf9adc24d7508288d7b"
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Features/ConversationSessionService.swift",
+      "bytes": 35559,
+      "sha256": "9ea1b10d886b6efd7531e369763fbe3507a7e267cbd37ae878e9337e193bfb1b"
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Features/NativeConversationComposer.swift",
+      "bytes": 8393,
+      "sha256": "5f7ea5a55760a2672983c595d469f7694d4753cd45ba0a3578f29007a28238de"
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Providers/NativeChatHTTPBackend.swift",
+      "bytes": 77671,
+      "sha256": "df47d0a10941c97846b3d1f37bb495f3a535f40bb99b45185aa321e5ec7bcdc0"
+    },
+    {
+      "path": "apps/ios-conversation/Tests/ConversationArtifactContinuationComposerTests.swift",
+      "bytes": 9972,
+      "sha256": "03bc01cefbd5433e37895b487512ef5300be0c05c5ede76574694cc6e5acf161"
+    },
+    {
+      "path": "apps/ios-conversation/Tests/ConversationArtifactContinuationProjectionTests.swift",
+      "bytes": 7973,
+      "sha256": "dcaf6795685fb048568a2bc8663a79209ee3d65524c2500420717129079f50df"
+    },
+    {
+      "path": "apps/ios-conversation/Tests/ConversationArtifactContinuationQueueTests.swift",
+      "bytes": 3923,
+      "sha256": "a64e7cd281d0bd904f711c8876a8c5b00cb932ff92811b9e9aba48d45f6ed3ef"
+    },
+    {
+      "path": "apps/ios-conversation/Tests/ConversationArtifactContinuationUITests.swift",
+      "bytes": 8671,
+      "sha256": "6126220be38d095281757bf42568b967eafbcb5aa8f2b7ba5776a6cbccd5119f"
+    },
+    {
+      "path": "apps/ios-conversation/Tests/Fixtures/report-continuation-cold.json",
+      "bytes": 45816,
+      "sha256": "e8b9cd811b28f4d2a941d62450ec39bd5e728fc8594650f757fed3a4a052eb7e"
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeArtifactContinuationTransportTests.swift",
+      "bytes": 13889,
+      "sha256": "9506e556d4ad758e59d886d5a58e5b1d04660fd956bd912ade51de413b65e583"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/api.mjs",
+      "bytes": 25068,
+      "sha256": "4b38febe3e998fa35dd67590f30923ae1d2b2f02590d7b69cde7aae50e67c7d3"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/chat-service.mjs",
+      "bytes": 30788,
+      "sha256": "9e8be3b5807dd3ca7beabd84abd1b4cb5bb60d1d64cf9c69954226f67d4afcaa"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/foundation-runtime.mjs",
+      "bytes": 6845,
+      "sha256": "6363bad07bd2da39c0ef5b13fdcc7448cdfc2e2139a1b2a57a4968242e70fb64"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/http.mjs",
+      "bytes": 6382,
+      "sha256": "4fad927a6e65725780f054c249397e99abf00fa9954cbad1e53e8b4857520d02"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/local-output-facade.mjs",
+      "bytes": 22465,
+      "sha256": "4508cd2bfe079a4fd80723014cfefe87c90da2438322babba91c988d4320d286"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/model-handler.mjs",
+      "bytes": 8554,
+      "sha256": "824dc77177283b0468b10ba3190570f262f0decbc8d154f0555c94c359703958"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/purge-plan.mjs",
+      "bytes": 5441,
+      "sha256": "b8ad665d9668645415dfb4661829472571f6df3195275e6188f8f7c7da83e649"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/runtime.mjs",
+      "bytes": 1838,
+      "sha256": "63a35e4eb80412ca7ea72298faee3726cb9239e8c730dabe70a9523b7bd9b637"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/single-step-handler.mjs",
+      "bytes": 6941,
+      "sha256": "586fe50321d44fa94fabff26a3144709d6fd2a19822e1c9cda270e136dbe0d6d"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/source-erasure.mjs",
+      "bytes": 3774,
+      "sha256": "62aca8833f02911425940ba591694c1fde281b7b6737a3dd03f08eac04685606"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/task-artifact-service.mjs",
+      "bytes": 20350,
+      "sha256": "0816a4a22cff50e3404745a850e82fcb01d5994b47b0449dd1f3db31416b01e4"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/task-plan-service.mjs",
+      "bytes": 17377,
+      "sha256": "57b9241e2ae0793a8279948de155ab82dcd0456d06e88c77f8a00699da057389"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/task-revision-contract.mjs",
+      "bytes": 2118,
+      "sha256": "95a6f245758de49536ccd8b136b30d9d1888b826c887c367c50a7dfeb7ce798a"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/task-revision-service.mjs",
+      "bytes": 22545,
+      "sha256": "3bbb3d65553d04f284b5da6c6b2210be9d39fdc29d68c90cb6fd97ad7db844ed"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/tools.mjs",
+      "bytes": 11557,
+      "sha256": "b7007216144aec50a38fdd85b518d7c205585cf2b4a32d5949fc132c6f9f08c1"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/worker-output-contract.mjs",
+      "bytes": 6243,
+      "sha256": "64f10b7a43e664f4736bac05b9ea2df62b7d2d7371c439ce89e09001ed75b297"
+    },
+    {
+      "path": "services/edge/test/task-revision-http.test.mjs",
+      "bytes": 21863,
+      "sha256": "b0e4650c9b5137d601d3bb2eb9faadd17e51c1ba39dead217f5bee9a43f3ea9f"
+    },
+    {
+      "path": "services/edge/test/task-revision.test.mjs",
+      "bytes": 21824,
+      "sha256": "cdee1bbe231a3c509655048289cfa4e51b946326339fb03824436aeab0567b86"
+    }
+  ],
+  "changed_source_manifest": {
+    "path": "build/report-continuation-20261014/changed-source-manifest.json",
+    "bytes": 8541,
+    "sha256": "82fe14e214d7965689085573efb154157ac001d729fdf33fc3b96d975520dbc2"
+  },
+  "native_test_inputs": [
+    {
+      "path": "apps/ios-conversation/CatpawM.xcodeproj/project.pbxproj",
+      "sha256": "20943a2f6a60f4c86539e9bf297cfd8200609af5e707e0f647b05dbce3b13cc8",
+      "bytes": 51375
+    },
+    {
+      "path": "apps/ios-conversation/CatpawM.xcodeproj/xcshareddata/xcschemes/CatpawM.xcscheme",
+      "sha256": "e1bce81fc5bac38f38736e445b0b2a0b6bafc5044b2a9fccc27874dbce476ef8",
+      "bytes": 2582
+    },
+    {
+      "path": "apps/ios-conversation/CatpawM.xcodeproj/xcshareddata/xcschemes/DeviceTrial.xcscheme",
+      "sha256": "6d2c897aa41a4659be5d321e48506add24554237432d9ac9b105481090d8aed9",
+      "bytes": 1826
+    },
+    {
+      "path": "apps/ios-conversation/Configuration/DeviceTrial.Info.plist",
+      "sha256": "5eb7dcc2cb5460345bdefe8bc0f83d4170f42cb38b5fc3c0b7363690cae16e6c",
+      "bytes": 2192
+    },
+    {
+      "path": "apps/ios-conversation/Configuration/DeviceTrial.xcconfig",
+      "sha256": "91c00e195ef3083ea190cb49acadf9cb4dcf63e5e5e668c5915c4c6c9dbd6f71",
+      "bytes": 397
+    },
+    {
+      "path": "apps/ios-conversation/Configuration/SimulatorAcceptance.entitlements",
+      "sha256": "39b47c252f6636c87ee06b18971b9e8ed995d00774e82be61ce6725b7ca8f195",
+      "bytes": 502
+    },
+    {
+      "path": "apps/ios-conversation/Configuration/SimulatorFixtureAcceptance.entitlements",
+      "sha256": "39b47c252f6636c87ee06b18971b9e8ed995d00774e82be61ce6725b7ca8f195",
+      "bytes": 502
+    },
+    {
+      "path": "apps/ios-conversation/Resources/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png",
+      "sha256": "28ec6f0ca43ab8cc521dbe284c8b9fae959217bce8b11374af93c68ec03bf2d0",
+      "bytes": 969255
+    },
+    {
+      "path": "apps/ios-conversation/Resources/Assets.xcassets/AppIcon.appiconset/Contents.json",
+      "sha256": "3c6addf3f20972a12a0c33e6f6fe9e0857a0bdb512dce5d59f4bd007b236c157",
+      "bytes": 208
+    },
+    {
+      "path": "apps/ios-conversation/Resources/Assets.xcassets/Contents.json",
+      "sha256": "f5fb0e1f3a8142892ed092efb5955c1c2cc537003a89ad7bbdb9dade7fe8985f",
+      "bytes": 60
+    },
+    {
+      "path": "apps/ios-conversation/Resources/Info.plist",
+      "sha256": "42985322ef09a574388eb2691b607910af9dc91e04dd0caa21da8825a7b55602",
+      "bytes": 1902
+    },
+    {
+      "path": "apps/ios-conversation/Resources/UIStringExemptions.json",
+      "sha256": "82dc16d010cb855ccc3a1275b238b29bfd1adf9a4740d7bc72677357d43fb828",
+      "bytes": 434
+    },
+    {
+      "path": "apps/ios-conversation/Resources/UIStrings.json",
+      "sha256": "f02651860479125a11ab58a0a680b15be49afbeea15daf5efe125c919459b5b6",
+      "bytes": 124480
+    },
+    {
+      "path": "apps/ios-conversation/Resources/en.lproj/AppShortcuts.strings",
+      "sha256": "995fc8b3f2281c6a63ead4f2d00501f74e8f56cac631abfe951786fcb308d2dc",
+      "bytes": 146
+    },
+    {
+      "path": "apps/ios-conversation/Resources/en.lproj/InfoPlist.strings",
+      "sha256": "2f7eecb634e6f587dd097cab13cb620c1801603a9b2f3c9016edf8c56afaabfa",
+      "bytes": 685
+    },
+    {
+      "path": "apps/ios-conversation/Resources/en.lproj/Localizable.strings",
+      "sha256": "6975c70322981552c25402b32b2d474772145288edd3b8e9941681ed0b24b30a",
+      "bytes": 287
+    },
+    {
+      "path": "apps/ios-conversation/Resources/zh-Hans.lproj/AppShortcuts.strings",
+      "sha256": "a5959114d06ee1d7d77a053a45b2ab6e15444b71732591533e2a0fdd0654b288",
+      "bytes": 142
+    },
+    {
+      "path": "apps/ios-conversation/Resources/zh-Hans.lproj/InfoPlist.strings",
+      "sha256": "bf88d33296841a2f1a659c66cde97f389ca9af0997408f9fbc3b677323cd18d6",
+      "bytes": 615
+    },
+    {
+      "path": "apps/ios-conversation/Resources/zh-Hans.lproj/Localizable.strings",
+      "sha256": "8780b9b4a81affcb9625008092b75dda7307b10e19d550a032485570e5bf17d1",
+      "bytes": 262
+    },
+    {
+      "path": "apps/ios-conversation/Sources/App/AppModel.swift",
+      "sha256": "f4f632756aefb5bd1b150562061b0ef316dd1afa928798cad69d14330e31ee44",
+      "bytes": 16030
+    },
+    {
+      "path": "apps/ios-conversation/Sources/App/CatpawApp.swift",
+      "sha256": "58933162024f397926040f1588c2c0865d48ff2e2da73dfaa7a5df74e90881f8",
+      "bytes": 11429
+    },
+    {
+      "path": "apps/ios-conversation/Sources/App/ConversationArtifactEditFixture.swift",
+      "sha256": "afefe58b196267e517db3d93a1a8e85f686f77fa302ce4c9569c440cd8ac5afa",
+      "bytes": 9248
+    },
+    {
+      "path": "apps/ios-conversation/Sources/App/ConversationFirstModel.swift",
+      "sha256": "e4c8cbe43024265c7f4a5df22bfb58e6e81bc80e11aeba22f7efcd34a5f797d4",
+      "bytes": 47995
+    },
+    {
+      "path": "apps/ios-conversation/Sources/App/ConversationTaskActionFixture.swift",
+      "sha256": "042bfd298668be52d3e43fdbc1be0639443048f7ae93ab6c45a4529b6371b7f6",
+      "bytes": 7912
+    },
+    {
+      "path": "apps/ios-conversation/Sources/App/ConversationTaskPlanFixture.swift",
+      "sha256": "c04373986802e2d8310fdb4341d85449cff02f6c0e42d698a064afc744f36ef0",
+      "bytes": 3761
+    },
+    {
+      "path": "apps/ios-conversation/Sources/App/ConversationUITestHarness.swift",
+      "sha256": "f2295baaf8001777791ab27afe9ae72461e4ccb5afa4b0fbef095e02ec1f8736",
+      "bytes": 1949
+    },
+    {
+      "path": "apps/ios-conversation/Sources/App/LocalConversationReceipt.swift",
+      "sha256": "9389441a9e57fd1ecd021ee4e04238948117d411ff009db434e4a600e5fc72f3",
+      "bytes": 566
+    },
+    {
+      "path": "apps/ios-conversation/Sources/App/NativeAuthApplicationModel.swift",
+      "sha256": "1f176b269d49d2c0966d5d62efc4419a714721f953b43b0b1b4113e144996813",
+      "bytes": 20013
+    },
+    {
+      "path": "apps/ios-conversation/Sources/App/NativeSyntheticApplicationModel.swift",
+      "sha256": "784509389f8221036ccc6ae1cd0068659bcc440a3cfbc4871c810d22e9f020fc",
+      "bytes": 8046
+    },
+    {
+      "path": "apps/ios-conversation/Sources/App/P0ExperienceFixture.swift",
+      "sha256": "8cfa09acda0efa0c193b3a668676e4c08a762e1d18ea960fa2368734e1468cfb",
+      "bytes": 14149
+    },
+    {
+      "path": "apps/ios-conversation/Sources/App/P0ExperienceProbe.swift",
+      "sha256": "41f163b87ec38c6e71ec7387b98a624b1bf2f7b4319be6587d4e57da5a8a15e4",
+      "bytes": 5812
+    },
+    {
+      "path": "apps/ios-conversation/Sources/App/P0PerformanceLog.swift",
+      "sha256": "d09f2a38e9a447e0ba96e04c53ca9f8f71c70f94fe1c1ab117c52e0bca570bdf",
+      "bytes": 2542
+    },
+    {
+      "path": "apps/ios-conversation/Sources/DesignSystem/Components.swift",
+      "sha256": "ea7a0fab3f5cde518265044a94d4542b95ccca1461dbb7df1f64a659ec749987",
+      "bytes": 8216
+    },
+    {
+      "path": "apps/ios-conversation/Sources/DesignSystem/DisplayNames.swift",
+      "sha256": "33d00a8eae8a36abd9791b097d19ea41e2808bd411922f08f7f6095441d30aa4",
+      "bytes": 2543
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Domain/AgentContracts.swift",
+      "sha256": "6a6da670c53bcf8b4bd45ce4cb9e408e99822d143352ab3711858ab27ca38e8b",
+      "bytes": 12176
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Domain/CSV.swift",
+      "sha256": "e381e990c5581aa157a7c6e7539f121a2d9235887dcd1f77a5bac80de37539e4",
+      "bytes": 1524
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Domain/ConversationArtifactContinuation.swift",
+      "sha256": "3fb78b38861b45c6d15519d2b75b1d44a09f721a68936ce70bce97c8ce422fcf",
+      "bytes": 6873
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Domain/ConversationArtifactEditing.swift",
+      "sha256": "30c3b971d35a116a5b7189d88924df99b3328f647031c024130770c48a2fa6f4",
+      "bytes": 23867
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Domain/ConversationArtifactSources.swift",
+      "sha256": "f14067d0908788c8dec324a4b3c0699e663b7b799ce354921290ce6f96fb0431",
+      "bytes": 9077
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Domain/ConversationFollowupQueue.swift",
+      "sha256": "401fe4124d5bdf6c5d7aeb0b8d8e897e2f067fd87b8918773a3cdd7703bf4949",
+      "bytes": 1020
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Domain/ConversationGenerativeUI.swift",
+      "sha256": "d0faa77c614ad9d32756e3fd7cd601382b79ca68530f65a92a1eed4e94c03666",
+      "bytes": 45376
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Domain/ConversationGenerativeUIState.swift",
+      "sha256": "7e05aab561c6946997e9d0b49ceff3463bbf508fcb3c7dc10c5406b9813716fb",
+      "bytes": 5459
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Domain/ConversationImageCapability.swift",
+      "sha256": "044f5f9fc5af79e458f8c25d20f615c596ddcfcb6ea9f0e217dba12b2e6ee49e",
+      "bytes": 7823
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Domain/ConversationSessionContracts.swift",
+      "sha256": "a9da203c24bee6cb87f5ff8db81863938d8ed09a8084003e1b7cff7383b3b1ad",
+      "bytes": 18783
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Domain/ConversationStrictJSON.swift",
+      "sha256": "f5c5c153714c3e51d2ca08e64136ed3740c8bff832ba82e0f21ce3d128bce5f8",
+      "bytes": 4754
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Domain/ConversationTaskActions.swift",
+      "sha256": "e072c1d623e83ce57d3ff414d72118301800c6b542cd993c093c72f7b81f6251",
+      "bytes": 24178
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Domain/ConversationTaskPlanContracts.swift",
+      "sha256": "98162c66eb6f54ada12ddb67a91a6480125f44eb64936c18930de55c11b3ad6a",
+      "bytes": 11454
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Domain/CoreContracts.swift",
+      "sha256": "bfd679a2ee94efb3f09b091c41a180dff8a4f826da7f8a43568eb46412721a37",
+      "bytes": 28013
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Domain/DeepLinks.swift",
+      "sha256": "d0392f05cbab1646f6a160866e6edf23847215873ed2a9a86a62b5971ee6433f",
+      "bytes": 1520
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Domain/LocalPolicies.swift",
+      "sha256": "e5c1a658d4a1144f1729c022871b5b914c2171747ae24cee34fcf4342a17e5d9",
+      "bytes": 6151
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Domain/NativeAuthContracts.swift",
+      "sha256": "308f8601909095f9729f84c634898057ba09f72d6fa2191a72bd507ad7aabc84",
+      "bytes": 8572
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Domain/OpenMuseTaskContracts.swift",
+      "sha256": "67a8c0d045049263fb95f03fed538791b8a363adf93659bdbd6da41a337ecfd0",
+      "bytes": 14865
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Domain/OperationReducer.swift",
+      "sha256": "ba312217abcea943880d918640733e9bf20483f4dcce24de270b7aec3968da40",
+      "bytes": 5534
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Domain/ReadoutPolicy.swift",
+      "sha256": "b1521bfe10e01847c81a95f99902f4676e6ecff7f889c6abdcc1faf8e0e277ee",
+      "bytes": 2906
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Domain/StoreTypes.swift",
+      "sha256": "5baaab077e09f2df57b876f1310c30b66c93435353bf1240146eae734ca58ddb",
+      "bytes": 7323
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Domain/VoiceGuard.swift",
+      "sha256": "29fde3436e19341da84ae10861e4eb267eb4fb75510537269e55f460e3efaaf2",
+      "bytes": 1775
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Domain/VoiceSession.swift",
+      "sha256": "97d1c46c3fa46d5e8a02e139027401e0d98cd67abf334c56aa01c6504d474d6c",
+      "bytes": 5992
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Features/AssistantService.swift",
+      "sha256": "56f95cbcedda66c1c6dd3fff03fcb97b9c331b9e09dda24b8b78f61f82323737",
+      "bytes": 14209
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Features/AssistantViews.swift",
+      "sha256": "62cfc6e8b8392d0d5d8ce06d5e0bb97bca103c57971ecc08122c544075adde86",
+      "bytes": 26877
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Features/ConversationAnswerView.swift",
+      "sha256": "f687d8caead31172505f2297e5425092d124192d763c6cc4d24e8a4addc40442",
+      "bytes": 1967
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Features/ConversationArtifactContinuationService.swift",
+      "sha256": "c8c79c4fbc490868252cf8f84c8922902a55f83ec1c96e46084347e5aecd3283",
+      "bytes": 7718
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Features/ConversationArtifactEditModel.swift",
+      "sha256": "3709f953e90f000c85a5e62c9c1811e54cd72408a4de9de34620c9156bca9728",
+      "bytes": 8908
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Features/ConversationArtifactEditService.swift",
+      "sha256": "9f01640f8c97379e86b3e9dd0571428519f5a5cfdc3e123d1d0c15169010a48a",
+      "bytes": 18282
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Features/ConversationArtifactEditView.swift",
+      "sha256": "3ab5524674e466005dff97d4a031f5581897808aba0b02e8494d62b5b9d700f7",
+      "bytes": 12779
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Features/ConversationArtifactReaderView.swift",
+      "sha256": "9da83c1c748aa4372a3cfd7ae3a9d0e15f66c8a1e98a6d8291320bc7095f2977",
+      "bytes": 11707
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Features/ConversationFirstView.swift",
+      "sha256": "0d2f0d512bc49280006e4165cc327f334b7b61b8d8b1961e1469929a74073c68",
+      "bytes": 49380
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Features/ConversationFollowupQueueService.swift",
+      "sha256": "f2252f13d8b83d362aeaf1351eeec8655f5754c0b1f34cf9adc24d7508288d7b",
+      "bytes": 8971
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Features/ConversationGenerativeUIStateService.swift",
+      "sha256": "ed500c4746e97e7a4b143d4e259540171b6ec3886fad652b94f583f2c5c89ca3",
+      "bytes": 7735
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Features/ConversationGenerativeUIView.swift",
+      "sha256": "0a22df03111b11e84cc95db8f46f94c95ba81fca67de4e4f7bfd7ca733abad06",
+      "bytes": 24000
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Features/ConversationGoalCard.swift",
+      "sha256": "6ae58da011035634d95baf921744938e43e7a087c2387e966fecd4786ea12bb1",
+      "bytes": 2719
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Features/ConversationLocalDraftDrains.swift",
+      "sha256": "fe5a226bf830996ec0f196996159f8d10dc12670ef293f0814cfdd79b4ca2d05",
+      "bytes": 1745
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Features/ConversationSessionService.swift",
+      "sha256": "9ea1b10d886b6efd7531e369763fbe3507a7e267cbd37ae878e9337e193bfb1b",
+      "bytes": 35559
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Features/ConversationTaskActionService.swift",
+      "sha256": "177188e831cdf3932d9a484360960ceddbae6a75fa29a295f3f589588325ecc5",
+      "bytes": 15434
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Features/ConversationTaskActionsView.swift",
+      "sha256": "874927040071ed021a7b9b3e668a9b02c2b524dadbacc9fede7539e152f00110",
+      "bytes": 15537
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Features/ConversationTaskPlanModel.swift",
+      "sha256": "110ec95c9799e769b61fbd5c11bdc7e9862c42ccc4d1ce06696c72ab47ab588c",
+      "bytes": 7460
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Features/ConversationTaskPlanService.swift",
+      "sha256": "c885a788745c98ac508b7eaa65229e2cfbd64219f9f0e3d47952a5f4d39671f0",
+      "bytes": 14739
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Features/ConversationTaskPlanView.swift",
+      "sha256": "6a360e64faab3d7f0c6e92507b8d6e130a0ee949974d10e1556fc09fefb93816",
+      "bytes": 8991
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Features/ConversationView.swift",
+      "sha256": "8d5c6ba97ba618d9579ec8b5117393001637daf9cd01c5089d2b6b59c9ba4dd4",
+      "bytes": 19718
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Features/DocumentView.swift",
+      "sha256": "bbea043ff9e4cd841658ae4a401df5aa4e728636ade4c6ec12068419415fb1a3",
+      "bytes": 17378
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Features/GatewayAssistantImporter.swift",
+      "sha256": "00b87825b27d324db3bb569bd5c489e1f710f6a282a7efdbe22bb82bca88989a",
+      "bytes": 12090
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Features/LibraryViews.swift",
+      "sha256": "e4a2bc471d6f6dad0516ebf4f0601d845566b116177cc918c69917eebec8d67e",
+      "bytes": 9902
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Features/LocalGatewayService.swift",
+      "sha256": "ecba41549f65926eab171ca290ac561e2199d8df186d5694fb763a316e5e2373",
+      "bytes": 2397
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Features/LocalGatewayViews.swift",
+      "sha256": "e9506b8d04267cdda0317ba3639ddaa9425dec7824dfd1daffca575896cc25be",
+      "bytes": 6334
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Features/NativeConversationComposer.swift",
+      "sha256": "5f7ea5a55760a2672983c595d469f7694d4753cd45ba0a3578f29007a28238de",
+      "bytes": 8393
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Features/NativeLoginView.swift",
+      "sha256": "cca7a9d2ecee551733f3be9ad0a60616e192453be914756cf7ade6e983ca9a49",
+      "bytes": 3847
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Features/NativeMediaPicker.swift",
+      "sha256": "721de0aa9f293696115c16f6fae5e7c38dd8ba822a3d0fdbbccd0335cf1c685c",
+      "bytes": 1162
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Features/OpenMuseDemoView.swift",
+      "sha256": "10b600c71cd2d8340d697f81b76cdf4faff0d2a056226635af5155af05b5afc4",
+      "bytes": 16981
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Features/OpenMuseTaskService.swift",
+      "sha256": "eb18b44905911d8c83dc2e0a2cc19b3809d66f2f0a6354fde7f2f0edb16d9834",
+      "bytes": 32355
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Features/ReadReceiptService.swift",
+      "sha256": "a504441e33cf9b54f0c87d2c1048ae21a991bcb960f0ccae305094be4a898765",
+      "bytes": 1697
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Features/RootView.swift",
+      "sha256": "af4605f0728f069604f18ce738ed4afe72ea55fc41d2a25da9360ee31857dcd9",
+      "bytes": 6482
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Features/SchedulesView.swift",
+      "sha256": "70190855f48923159e3118e86e0effa9d5b637da3220f478c7ced5d1cc630120",
+      "bytes": 8225
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Features/SettingsView.swift",
+      "sha256": "2ab4213f5f97988898a321db49da92c7ab687fbdd5d8f52e4ee8edf8630c272c",
+      "bytes": 9840
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Features/StreamingConversationText.swift",
+      "sha256": "ffd9f01de25f67551e6523971e503286ad9dc9bf10390ec0c9920c2e5cae2b8a",
+      "bytes": 4734
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Features/WorkspaceService.swift",
+      "sha256": "4d73ff106bc6897c65394cc50d347b01f7c54c446f9a0c99fe3ddf6f14af34d6",
+      "bytes": 18510
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Persistence/BlobStore.swift",
+      "sha256": "4892e267c6e6cda99110883ca7733c6beb06f85944bc68e6542ffc35c01b2ac2",
+      "bytes": 3736
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Persistence/Repository.swift",
+      "sha256": "48a59c259771bea5cdfb7a646f5d0b35f8d0773846f831e9ad317239f58ebf5f",
+      "bytes": 14044
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Persistence/SwiftDataPersistence.swift",
+      "sha256": "985a5036fc1910d7427a80724a7f94d72eaa2d1e7e24ee48ca33dec8054e7f26",
+      "bytes": 6453
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Providers/ChatRuntime.swift",
+      "sha256": "6c1bef9b857234807eadefecbaecf2dfc8a9b0ff61325f6a57d3023cf6a1ee88",
+      "bytes": 20520
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Providers/FixtureProvider.swift",
+      "sha256": "cde6bc09ea560c9a16cd8a7e70fe55209d8e826f451fc3d420b4ac43235bd39d",
+      "bytes": 4867
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Providers/GatewayAgentProvider.swift",
+      "sha256": "386d0f0b6f417ebec8819763b46dce4590fe30bbb4855ced68c6097be37e7211",
+      "bytes": 15054
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Providers/NativeAuthHTTPRemote.swift",
+      "sha256": "daf39c3587cdcc9b4a059fa62d2143fd34cb98364fcc3d3b3b680fbc45e5d00d",
+      "bytes": 11005
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Providers/NativeAuthSecureStorage.swift",
+      "sha256": "9dfd53da029e52ec5089e6031296a1d7fb503765be0d5a82cb885f205feca1a5",
+      "bytes": 3314
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Providers/NativeAuthSessionManager.swift",
+      "sha256": "11ee5cd63a34c9f81ddf80f719b58106790028f47aaf5575dec0be559008fae0",
+      "bytes": 16157
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Providers/NativeChatComposition.swift",
+      "sha256": "daa83f8f10e055c2b80f8f96f89493ab9d20cc672e190f49abda26684126205f",
+      "bytes": 1916
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Providers/NativeChatHTTPBackend.swift",
+      "sha256": "df47d0a10941c97846b3d1f37bb495f3a535f40bb99b45185aa321e5ec7bcdc0",
+      "bytes": 77671
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Providers/OpenMuseAgentProvider.swift",
+      "sha256": "37e5c0181a913b148e9d13b0646f77ff2c10a7226daa4a6cf80ba3bed8bcc4ba",
+      "bytes": 4598
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Providers/OpenMuseFacadeHTTPTransport.swift",
+      "sha256": "94bfe89101d08bec780c540c3c2473dd45fbf0cd986cd3750cde42c0bdd72fe5",
+      "bytes": 23961
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Providers/OpenMuseFixtureTransport.swift",
+      "sha256": "3d7a287d73cd45231b74c0256510b7a2179139c306dd83db4309475fa8da0fb4",
+      "bytes": 9318
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Providers/OpenMuseTaskTransport.swift",
+      "sha256": "695ff48690c36bb48e67d9836a138bcb6f9268a3c1a70b6d8104085e1afabf37",
+      "bytes": 2966
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Providers/SupabaseUserAccessSession.swift",
+      "sha256": "837b3d6caa0c8d6057e9ae3b4d53aaee1a87669d46b0d237d0583906758a1842",
+      "bytes": 1727
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Voice/NativeVoiceController.swift",
+      "sha256": "32fe1df433a6c7fd2aded14bbe4ec1f3d14c6bc5c879a93ddc7469f51c666653",
+      "bytes": 16835
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Voice/VoiceViews.swift",
+      "sha256": "f39842f2673603991c3ea4c8894a387464ba5e48647dc737b66ab313bdd3899d",
+      "bytes": 6607
+    },
+    {
+      "path": "apps/ios-conversation/Tests/AnonymousAuthRunner.swift",
+      "sha256": "6d8eb9c4d7354c1792266aa502df7a985296520464fd67431d31a0197c7d0a96",
+      "bytes": 199
+    },
+    {
+      "path": "apps/ios-conversation/Tests/AuthBoundaryRunner.swift",
+      "sha256": "d3ef4e1b264dd402e291efc38f43c160fab4a06a14b804ba344c5e32cb8e99c9",
+      "bytes": 6760
+    },
+    {
+      "path": "apps/ios-conversation/Tests/AuthSessionRunner.swift",
+      "sha256": "9ffcf0fc20e02110c22f37c86ad5ee9e4f6f244460340aa2209e0ddd95803928",
+      "bytes": 12332
+    },
+    {
+      "path": "apps/ios-conversation/Tests/AuthTestSupport.swift",
+      "sha256": "1d1b6295320014339846ec787dc415819c12ee5caba340e278f0f7f0f588b0be",
+      "bytes": 18835
+    },
+    {
+      "path": "apps/ios-conversation/Tests/ConversationArtifactContinuationComposerTests.swift",
+      "sha256": "03bc01cefbd5433e37895b487512ef5300be0c05c5ede76574694cc6e5acf161",
+      "bytes": 9972
+    },
+    {
+      "path": "apps/ios-conversation/Tests/ConversationArtifactContinuationProjectionTests.swift",
+      "sha256": "dcaf6795685fb048568a2bc8663a79209ee3d65524c2500420717129079f50df",
+      "bytes": 7973
+    },
+    {
+      "path": "apps/ios-conversation/Tests/ConversationArtifactContinuationQueueTests.swift",
+      "sha256": "a64e7cd281d0bd904f711c8876a8c5b00cb932ff92811b9e9aba48d45f6ed3ef",
+      "bytes": 3923
+    },
+    {
+      "path": "apps/ios-conversation/Tests/ConversationArtifactContinuationUITests.swift",
+      "sha256": "6126220be38d095281757bf42568b967eafbcb5aa8f2b7ba5776a6cbccd5119f",
+      "bytes": 8671
+    },
+    {
+      "path": "apps/ios-conversation/Tests/ConversationArtifactEditTests.swift",
+      "sha256": "8db214739786838ee98aac00561dbd0c736c1767c7b79e41e755c92ff0aa3482",
+      "bytes": 35484
+    },
+    {
+      "path": "apps/ios-conversation/Tests/ConversationArtifactEditUITests.swift",
+      "sha256": "25177aa16be77111293029f78250289987b8303fb202bad6deb00500104a0f58",
+      "bytes": 18421
+    },
+    {
+      "path": "apps/ios-conversation/Tests/ConversationArtifactProjectionTests.swift",
+      "sha256": "89dafa96507c665e95ffd4d71514d91bee5caaab82f7e3293ddcd59a3fe5b5be",
+      "bytes": 13194
+    },
+    {
+      "path": "apps/ios-conversation/Tests/ConversationArtifactReaderUITests.swift",
+      "sha256": "2d686995b62155f64220968c2d9ce31922a2d62cbf749e28327e7e75a00c1416",
+      "bytes": 9342
+    },
+    {
+      "path": "apps/ios-conversation/Tests/ConversationArtifactSourcesTests.swift",
+      "sha256": "6d4028c94cccd219e691e04ca3944f15eba12c97a50eea0e3e04de26861473c8",
+      "bytes": 11250
+    },
+    {
+      "path": "apps/ios-conversation/Tests/ConversationFirstNativeTests.swift",
+      "sha256": "4627d31b9f36f8872f7ff6ef43c18faededef953384925d8812bc491f2847969",
+      "bytes": 18999
+    },
+    {
+      "path": "apps/ios-conversation/Tests/ConversationFirstUITests.swift",
+      "sha256": "a498ce8e174367aa97628c2bf0b95cbd3f54c8bbf4d9a1c6b956869d92ac35e2",
+      "bytes": 45380
+    },
+    {
+      "path": "apps/ios-conversation/Tests/ConversationGenerativeUIStateTests.swift",
+      "sha256": "70b6a8f083e92438e4c2d4d33e7c68cc7573109147e1ab204d823644515602f8",
+      "bytes": 27454
+    },
+    {
+      "path": "apps/ios-conversation/Tests/ConversationGenerativeUITests.swift",
+      "sha256": "c283b3581dcad9a757d5613b9ee479b4694283a2d43ffe12b81201f6ea905ab7",
+      "bytes": 27675
+    },
+    {
+      "path": "apps/ios-conversation/Tests/ConversationQueueRunner.swift",
+      "sha256": "83fe1feb5b95e21603a26d313982363f6b33b6ce9827a330db4bd0efa3db6847",
+      "bytes": 10281
+    },
+    {
+      "path": "apps/ios-conversation/Tests/ConversationSessionRunner.swift",
+      "sha256": "986e9c12d6aee02616dc128309e9078eb51be4a3d3247076f3e0e0799596b61d",
+      "bytes": 26115
+    },
+    {
+      "path": "apps/ios-conversation/Tests/ConversationStrictJSONTests.swift",
+      "sha256": "dc945641c42ec30d009670dd3e2e9a2350b7414e732d85faff7438b51d74d423",
+      "bytes": 2035
+    },
+    {
+      "path": "apps/ios-conversation/Tests/ConversationTaskActionTests.swift",
+      "sha256": "8c82f2015430ddf12f61ddb5eeffa4ed9ef94487a58d693870cbb7cfdeddae1a",
+      "bytes": 29014
+    },
+    {
+      "path": "apps/ios-conversation/Tests/ConversationTaskActionUITests.swift",
+      "sha256": "96b4631b782f8faae74a9fc09dc61eaf59e85e6ad5aef8eaee75225d5176bfa7",
+      "bytes": 11417
+    },
+    {
+      "path": "apps/ios-conversation/Tests/ConversationTaskPlanTests.swift",
+      "sha256": "e1a596c0364198f8aaf04c2da5a92df072b10afeca969095e695f261f057580d",
+      "bytes": 38055
+    },
+    {
+      "path": "apps/ios-conversation/Tests/CoreLoopUITests.swift",
+      "sha256": "d42d65f5786634c433ce19a97cb05119d02360226e42ff118306b79ad26fc192",
+      "bytes": 9291
+    },
+    {
+      "path": "apps/ios-conversation/Tests/DeviceTrialEndpointRunner.swift",
+      "sha256": "8ed62849bf5a6c6cb882ecc48de60284640c8d849e15ddadce246a4b56e725f6",
+      "bytes": 2382
+    },
+    {
+      "path": "apps/ios-conversation/Tests/DeviceTrialNativeTests.swift",
+      "sha256": "c612e307fb7dcfbaf7eca2610929cf39bf48c43d6542f72e70dfb89003c31a94",
+      "bytes": 50909
+    },
+    {
+      "path": "apps/ios-conversation/Tests/DomainRunner.swift",
+      "sha256": "8fe5141b12a939e0363556c1919ca5ee52b2d7f18de8c4d211643042dc1cb9c7",
+      "bytes": 40333
+    },
+    {
+      "path": "apps/ios-conversation/Tests/Fixtures/OpenMuseSnapshot/artifact.json",
+      "sha256": "fee0f850fe75bed16a0975af6841622d513e07fb62e53027a7cbda3400178c4e",
+      "bytes": 743
+    },
+    {
+      "path": "apps/ios-conversation/Tests/Fixtures/OpenMuseSnapshot/capabilities.json",
+      "sha256": "8cf291aca25e1f9f2ecb00b66691fe5aeb47823715b871c0b8498ac781576f6a",
+      "bytes": 520
+    },
+    {
+      "path": "apps/ios-conversation/Tests/Fixtures/OpenMuseSnapshot/delegation.json",
+      "sha256": "88762fd3ac7918a1d2d207b98cdc3e733c795e5cfbcc3e9b5fe996589b3e121c",
+      "bytes": 645
+    },
+    {
+      "path": "apps/ios-conversation/Tests/Fixtures/OpenMuseSnapshot/operation.json",
+      "sha256": "0725fdba45f2f19ae6f81357255a043191c7d8d1ca570789fd6e668f8f0f867d",
+      "bytes": 1333
+    },
+    {
+      "path": "apps/ios-conversation/Tests/Fixtures/OpenMuseSnapshot/provenance.json",
+      "sha256": "3e86eb5a01118c4ce6abb57cdfc02ef889bb34a3c746397563e8f8cb63fe9523",
+      "bytes": 915
+    },
+    {
+      "path": "apps/ios-conversation/Tests/Fixtures/OpenMuseSnapshot/run.json",
+      "sha256": "0725fdba45f2f19ae6f81357255a043191c7d8d1ca570789fd6e668f8f0f867d",
+      "bytes": 1333
+    },
+    {
+      "path": "apps/ios-conversation/Tests/Fixtures/report-continuation-cold.json",
+      "sha256": "e8b9cd811b28f4d2a941d62450ec39bd5e728fc8594650f757fed3a4a052eb7e",
+      "bytes": 45816
+    },
+    {
+      "path": "apps/ios-conversation/Tests/GatewayRunner.swift",
+      "sha256": "63defc0d0b9b06f31ea114345e0afef3dc88edc64a4dedee3f34ec68283c142b",
+      "bytes": 12898
+    },
+    {
+      "path": "apps/ios-conversation/Tests/GatewaySafetyRegression.swift",
+      "sha256": "fe5d49197bf461acb6469cd590da659cbc1562d3dab506ed8f495a3c4b0dfaa5",
+      "bytes": 7762
+    },
+    {
+      "path": "apps/ios-conversation/Tests/ImageReadinessRunner.swift",
+      "sha256": "458130eeb774b8707e37e195ad7d28ea3035adbe352318f43ab48f58bf6bae80",
+      "bytes": 1991
+    },
+    {
+      "path": "apps/ios-conversation/Tests/LegacyR3Producer.swift",
+      "sha256": "863a246345fc84a13f615b3a726695f0a73d602bb89d3f74bbac76ca4b3180e9",
+      "bytes": 1134
+    },
+    {
+      "path": "apps/ios-conversation/Tests/MainLocaleRunner.swift",
+      "sha256": "60e55a4a2a07a6c1d34ad5686d30ed5cee0da5b901876a22a61121a0ffcc3857",
+      "bytes": 1509
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeArtifactContinuationTransportTests.swift",
+      "sha256": "9506e556d4ad758e59d886d5a58e5b1d04660fd956bd912ade51de413b65e583",
+      "bytes": 13889
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeArtifactEditTransportTests.swift",
+      "sha256": "35fb738e8f08841b07690f8096a13659ffc1051405155acbb970e8587002cc6a",
+      "bytes": 15514
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
+      "sha256": "a62258afa72548b75f9532616306fffd45c3a1d73d9bf69b4af7568a07abdee0",
+      "bytes": 9614
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeAuthNativeTests.swift",
+      "sha256": "4e3ddd5dea7c96cfe458419ccfadfea2cad2501652b12216f7639cf3fdc4b886",
+      "bytes": 8708
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeChatWireRunner.swift",
+      "sha256": "87c56ad28c9605d6139ae17e811ac6b883a7177096cb3678c6fdbd7782ab2f38",
+      "bytes": 21263
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeTaskActionTransportTests.swift",
+      "sha256": "245739940610051475fd69eca3cef909e94ba01edfa8fa2aa0ba545d4839e890",
+      "bytes": 15318
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeTaskPlanTransportTests.swift",
+      "sha256": "f1f248b079306574570ba52b1d4feec8790fe79dc3980eaf4b55021b25d7cdf9",
+      "bytes": 10172
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeTests.swift",
+      "sha256": "68efb5603b399d048490b5b8f9c85c16997c3ec9e339cac348f12638333f70c6",
+      "bytes": 27716
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeUITests.swift",
+      "sha256": "eb2f67b51adb1b21bf518494195ff410f002719a1806e786257559134efd9dc5",
+      "bytes": 41183
+    },
+    {
+      "path": "apps/ios-conversation/Tests/ObservationEpochRunner.swift",
+      "sha256": "191678437cb9ac8dfec1b58909666f81b86e994d06d2e5b9b92578e839c10131",
+      "bytes": 217
+    },
+    {
+      "path": "apps/ios-conversation/Tests/OpenMuseHTTPRunner.swift",
+      "sha256": "09ac4e71e3e0034c79c5f16ecfcbe78c5cd82d24a67880702712a9ac3b82107c",
+      "bytes": 7654
+    },
+    {
+      "path": "apps/ios-conversation/Tests/OpenMuseSnapshotRunner.swift",
+      "sha256": "4cd74a336fa61486c6b58eb32f273b307e655e7c1b9d49b7a5b31da3e4684454",
+      "bytes": 8655
+    },
+    {
+      "path": "apps/ios-conversation/Tests/OpenMuseTaskRunner.swift",
+      "sha256": "e51789dbbb1083cb1e8e0734d7f0f6ab23beda73c03d23b469034c40061cdb88",
+      "bytes": 24132
+    },
+    {
+      "path": "apps/ios-conversation/Tests/P0ConversationBehaviorTests.swift",
+      "sha256": "6e5870fd07b826d361157e02ca6fe1a99f9a2588dd1345c88b7d2f933de71cf3",
+      "bytes": 1005
+    },
+    {
+      "path": "apps/ios-conversation/Tests/P0ConversationScenarios.swift",
+      "sha256": "b9e2e6b5b6746cee74ae8da9df8258b13ad73076a7802dbb0844e2e6327d9914",
+      "bytes": 9581
+    },
+    {
+      "path": "apps/ios-conversation/Tests/P0ConversationUITests.swift",
+      "sha256": "128ab56fdd2cd2bc38004a49795962778dac7859d030a5b5386cc6523e5d1fd4",
+      "bytes": 6940
+    },
+    {
+      "path": "apps/ios-conversation/Tests/P0NativeExperienceUITests.swift",
+      "sha256": "c65c7f296ba6d9d4719df6aeed61527b6c992cc5305ce0db0b065c56795dc342",
+      "bytes": 33717
+    },
+    {
+      "path": "apps/ios-conversation/Tests/ProductRegression.swift",
+      "sha256": "ef5f94d3f48d2e9115ddcc6467d492522c885a9bd6517b47f8edcd7181a205b3",
+      "bytes": 39054
+    },
+    {
+      "path": "apps/ios-conversation/Tests/legacy-r3-snapshot.json",
+      "sha256": "9c832d8e0edd66d2b5545d413ad212652fe3e5678f8a79ab9b7c0e1dcf4f2c2a",
+      "bytes": 8099
+    },
+    {
+      "path": "packages/ios-image-composer/Package.swift",
+      "sha256": "bf3c21ae5aa87bf074088188fbf925c6bfcfb11f2f9e84749fd1d83c4633011d",
+      "bytes": 386
+    },
+    {
+      "path": "packages/ios-image-composer/Sources/CatpawImageComposer/ImageAttachment.swift",
+      "sha256": "d17110ac56fe86349101816413e33281dd9c062b20a968c23e6947472d819703",
+      "bytes": 4716
+    },
+    {
+      "path": "packages/ios-image-composer/Sources/CatpawImageComposer/ImageAttachmentDraft.swift",
+      "sha256": "766b3f6de2a4c6a6d4cb2b8102e99f863bd9ddda3833b357e848939ce37adc84",
+      "bytes": 4689
+    },
+    {
+      "path": "packages/ios-image-composer/Sources/CatpawImageComposer/ImageAttachmentPicker.swift",
+      "sha256": "737f229a4a723308e53993eca35c7b80540515b554f984d35eb2d80be14f29ac",
+      "bytes": 6315
+    },
+    {
+      "path": "packages/ios-image-composer/Sources/CatpawImageComposer/SystemImageAttachmentEncoder.swift",
+      "sha256": "95be1b799d66c6eb29bc8eb02a974e0ac2c710a23ea16515fad05f1717e0daf7",
+      "bytes": 10266
+    },
+    {
+      "path": "packages/ios-image-composer/Tests/CatpawImageComposerTests/DraftTests.swift",
+      "sha256": "060714d404c31268c0219b5b01072fa29ade35d1ca589caa5db8ea71b22a7ed2",
+      "bytes": 8026
+    },
+    {
+      "path": "packages/ios-image-composer/Tests/CatpawImageComposerTests/EncodingTests.swift",
+      "sha256": "603f7792110065969b6e3e9b3b1464ec2365ff63f98892dc15383505b4295694",
+      "bytes": 6126
+    },
+    {
+      "path": "packages/ios-image-composer/Tests/CatpawImageComposerTests/SyntheticImages.swift",
+      "sha256": "843ffd40c069d58cb9bfc8a0779b62f561f79ba20a5f6a6e27d29001cd0e302e",
+      "bytes": 2895
+    },
+    {
+      "path": "packages/ios-image-composer/Verification/CodecSmoke.swift",
+      "sha256": "e10447c8cde30c2ecb77d3bb6c293970f44a22ea31c22da73a5aff8963f6d962",
+      "bytes": 1757
+    },
+    {
+      "path": "packages/ios-navigation/Package.swift",
+      "sha256": "4ff2d872e8249c01f5c46deaa950948bc6a23719f8e22f010053062b547da3da",
+      "bytes": 386
+    },
+    {
+      "path": "packages/ios-navigation/Sources/CatpawNavigation/SidebarGestureBridge.swift",
+      "sha256": "7d6df9ca0f7522e537e253d6d6b251837937375b804f760576eff3ee9f4e14c2",
+      "bytes": 5215
+    },
+    {
+      "path": "packages/ios-navigation/Sources/CatpawNavigation/SidebarHost.swift",
+      "sha256": "46ff2ea47ebfb62d5917014b0787de07f8d060657426cb7cfaf5c2f7f428ee8f",
+      "bytes": 5292
+    },
+    {
+      "path": "packages/ios-navigation/Sources/CatpawNavigation/SidebarModel.swift",
+      "sha256": "c6f3983ea4e64a1946b6deea94726f298f7cf5aec4868160ecb752a6d9ee8b37",
+      "bytes": 4448
+    },
+    {
+      "path": "packages/ios-navigation/Sources/CatpawNavigation/SidebarPanel.swift",
+      "sha256": "2fb5eb714c8e013d658eeee4b8dfbea2957c84fe435b5abb9819e1eb1b8894f0",
+      "bytes": 6882
+    },
+    {
+      "path": "packages/ios-navigation/Sources/CatpawNavigation/SidebarTheme.swift",
+      "sha256": "92e7ee212478d85c30dca0916e508b5f25a035d408dcfdecd6d50629e1e0c86e",
+      "bytes": 3140
+    },
+    {
+      "path": "packages/ios-navigation/Tests/CatpawNavigationTests/SidebarTests.swift",
+      "sha256": "b0db40893c06b49c91e8473998f0442fbf02629ab1aae2b15a39d4588bbbdee1",
+      "bytes": 5997
+    },
+    {
+      "path": "packages/ios-navigation/Verification/PolicySmoke.swift",
+      "sha256": "f74edd5a15e6eba8bb40f107f3bd4f6ee2d5a510b968bc7c26481faf6604b207",
+      "bytes": 1420
+    }
+  ],
+  "native_input_manifest": {
+    "path": "build/report-continuation-20261014/native-integrated-inputs.json",
+    "bytes": 37257,
+    "sha256": "30e3893ebb72d936a88996d3a72700a6cb7044e87eff21cde271c82f55ee4abc"
+  },
+  "tests": [
+    {
+      "id": "backend-maintenance",
+      "status": "PASS",
+      "count": 206,
+      "evidence_reality": "offline_injected_store_provider_reader",
+      "path": "services/edge/build/report-continuation-20261014/backend-all-r3.log",
+      "bytes": 52749,
+      "sha256": "3ff96ed5924fb6912f6b12d8852a2a9b069f42b666c974b546b732ff1be8cd0e"
+    },
+    {
+      "id": "conversation-portable",
+      "status": "PASS",
+      "count": 37,
+      "evidence_reality": "offline_portable",
+      "path": "build/report-continuation-20261014/conversation-r2.log",
+      "bytes": 4792,
+      "sha256": "13fe7edc15b85b10c32c7e323a424f8241a4ce64adbf826e064b268a7f2dc6c7"
+    },
+    {
+      "id": "native-http-sse-wire",
+      "status": "PASS",
+      "count": 86,
+      "evidence_reality": "actual_loopback_urlsession_offline_server",
+      "path": "build/report-continuation-20261014/native-wire-r3.log",
+      "bytes": 8441,
+      "sha256": "29a194a289b9fad0ee13cdb2dda72d03876f311faebd1402d97fc0cbd6257531"
+    },
+    {
+      "id": "queue-portable",
+      "status": "PASS",
+      "count": 16,
+      "evidence_reality": "offline_portable",
+      "path": "build/report-continuation-20261014/queue-final.log",
+      "bytes": 1191,
+      "sha256": "8f1a7f59f4c5ca299b4a61e7ab91ad206ce90ac21f2d35d60557889b1cdde5fd"
+    },
+    {
+      "id": "native-integrated",
+      "status": "PASS",
+      "total": 81,
+      "unit_methods": 65,
+      "ui_methods": 16,
+      "failed": 0,
+      "skipped": 0,
+      "evidence_reality": "actual_host_xctest_with_explicit_offline_fixtures",
+      "log": {
+        "path": "build/report-continuation-20261014/native-integrated-r3.log",
+        "bytes": 582105,
+        "sha256": "6436d97470dc360e07323cfce07acee126e83306cc6f5793a67b8d48e0834597"
+      },
+      "summary": {
+        "path": "build/report-continuation-20261014/native-integrated-r3-summary.json",
+        "bytes": 1198,
+        "sha256": "026a5a0c9d1b7800cf289ea52bdbd70f849c565c6d90be50813088b600abc644"
+      },
+      "result_bundle_path": "build/report-continuation-20261014/native-integrated-r3.xcresult"
+    }
+  ],
+  "checks": [
+    {
+      "id": "layout",
+      "status": "PASS",
+      "path": "build/report-continuation-20261014/layout-final-r2.log",
+      "bytes": 172,
+      "sha256": "d225b3174702f41d455fc0cd22c09a32011f6b961c278f3e66b88fc9ba7ca372"
+    },
+    {
+      "id": "frozen",
+      "status": "PASS",
+      "path": "build/report-continuation-20261014/frozen-final-r2.log",
+      "bytes": 461,
+      "sha256": "1bb67173eb0b659474afd45ac05604e9fb8492515d9f2408006c25fb5bf3865d"
+    },
+    {
+      "id": "deployed",
+      "status": "PASS",
+      "path": "build/report-continuation-20261014/deployed-final-r2.log",
+      "bytes": 79,
+      "sha256": "a68c4a239c7a9d8a2e3f2ffab1f5ae00b63c319b9999a42db6c27873688ee228"
+    },
+    {
+      "id": "af-plan",
+      "status": "PASS",
+      "path": "build/report-continuation-20261014/af-plan-final-r2.log",
+      "bytes": 112,
+      "sha256": "71da24f70099c5cfb5c75ba771b66c4bf4a7191051c3bd879afd8ec58db3f748"
+    },
+    {
+      "id": "af-goals",
+      "status": "PASS",
+      "path": "build/report-continuation-20261014/af-goals-final-r2.log",
+      "bytes": 333,
+      "sha256": "4c76a439ba364da063251372496269a9ebb9639805854e66ad9566ae927fd1ea"
+    },
+    {
+      "id": "final-plan",
+      "status": "PASS",
+      "path": "build/report-continuation-20261014/final-plan-final-r2.log",
+      "bytes": 304,
+      "sha256": "7b72c9e606d7cd160ae8d115c2f06fd10a8e293c8de3a662a01a92467c51161c"
+    },
+    {
+      "id": "cgui-plan",
+      "status": "PASS",
+      "path": "build/report-continuation-20261014/cg-plan-final-r2.log",
+      "bytes": 339,
+      "sha256": "88b45ed6dfa074c65400b6b6790343bfb31e63c74b69ab7963d32c299ad64b9b"
+    },
+    {
+      "id": "project",
+      "status": "PASS",
+      "path": "build/report-continuation-20261014/project-final.log",
+      "bytes": 158,
+      "sha256": "b4c19b50a79ce9971559cc0076b7161839ae0d2c2748ead7a8cc61ecc0852f11"
+    },
+    {
+      "id": "localization",
+      "status": "PASS",
+      "path": "build/report-continuation-20261014/localization-r5.log",
+      "bytes": 559,
+      "sha256": "64273f00fbccacd2dc571f47e2a8810da85fba9e9a3c3caace5c5335da47112a"
+    },
+    {
+      "id": "sensitivity",
+      "status": "PASS",
+      "path": "build/report-continuation-20261014/sensitivity-final-r2.log",
+      "bytes": 150,
+      "sha256": "50ad25d0f33effc3c61761fc1a4b8446d03c98aed3885ebbd0354d27141a971c"
+    }
+  ],
+  "release": {
+    "version": "0.3.0",
+    "build": "21",
+    "bundle_id": "com.example.CatpawM.ConversationFirst.Auth",
+    "platform": "iphonesimulator",
+    "signing": "disabled",
+    "app_path": "build/report-continuation-20261014/ReleaseDerivedData/Build/Products/Release-iphonesimulator/CatpawM.app",
+    "manifest_sha256": "2f5ec79a538f98ff08d88c274dac1acc38e85cc2de1ff7b07c029952d8a906c4",
+    "file_manifest": {
+      "path": "build/report-continuation-20261014/release-build-final.json",
+      "bytes": 3494,
+      "sha256": "0be1634cecd041bb2e89cdcf2dd2597e8e484e1dea34c0d276e2f5cd6b641e93"
+    }
+  },
+  "release_log": {
+    "path": "build/report-continuation-20261014/release-r3.log",
+    "bytes": 75962,
+    "sha256": "514163bc42f9a776dca5216840c483393a645c36874ccab5b84de09725b1a171"
+  },
+  "screenshots": [
+    {
+      "path": "docs/acceptance/evidence/report-continuation-20261014/large-readonly-draft.png",
+      "bytes": 536443,
+      "sha256": "e7066d61425f4222ac94548cc643201bdce0d796c6d9f3e181ae829659fa4a05",
+      "source_xcresult": "build/report-continuation-20261014/native-integrated-r3.xcresult",
+      "source_attachment": "DE76AD89-3509-424E-B999-E5D6B7A97127.png",
+      "test_identifier": "ConversationArtifactContinuationUITests/testMaximumTextTargetInputAndExitRemainReachableAboveKeyboard()",
+      "captured_at_unix": 1791967260.934,
+      "version": "0.3.0(21)",
+      "reality": "actual_simulator_ui_with_injected_offline_fixture",
+      "metadata": [
+        {
+          "type": "eXIf",
+          "bytes": 122,
+          "sha256": "bbb6cf9c714327cee2af7e86321c59f76afe1a7552fa75de308d722e0cd53463"
+        },
+        {
+          "type": "iTXt",
+          "bytes": 675,
+          "sha256": "861617ee5fefbed9354987559086a994ffc207a0c9999d379568b0759fd79574"
+        }
+      ]
+    },
+    {
+      "path": "docs/acceptance/evidence/report-continuation-20261014/large-cold-target.png",
+      "bytes": 262801,
+      "sha256": "29d82fdb69a48782874a065c629adddf593c0ced2f17dd76f1dc18f19b8e8024",
+      "source_xcresult": "build/report-continuation-20261014/native-integrated-r3.xcresult",
+      "source_attachment": "1BB028E8-B94B-4141-9DDB-F3A2132DAF7F.png",
+      "test_identifier": "ConversationArtifactContinuationUITests/testMaximumTextTargetInputAndExitRemainReachableAboveKeyboard()",
+      "captured_at_unix": 1791967236.081,
+      "version": "0.3.0(21)",
+      "reality": "actual_simulator_ui_with_injected_offline_fixture",
+      "metadata": [
+        {
+          "type": "eXIf",
+          "bytes": 122,
+          "sha256": "bbb6cf9c714327cee2af7e86321c59f76afe1a7552fa75de308d722e0cd53463"
+        },
+        {
+          "type": "iTXt",
+          "bytes": 675,
+          "sha256": "861617ee5fefbed9354987559086a994ffc207a0c9999d379568b0759fd79574"
+        }
+      ]
+    },
+    {
+      "path": "docs/acceptance/evidence/report-continuation-20261014/large-selected-input.png",
+      "bytes": 725211,
+      "sha256": "7ad44e08be36ae5bf1ff04695b53e49401b79b1a6d11cf4d5bdfe326828dbc70",
+      "source_xcresult": "build/report-continuation-20261014/native-integrated-r3.xcresult",
+      "source_attachment": "6D5E7B8A-6FF8-4CC2-AD2C-0692355926FA.png",
+      "test_identifier": "ConversationArtifactContinuationUITests/testMaximumTextTargetInputAndExitRemainReachableAboveKeyboard()",
+      "captured_at_unix": 1791967197.904,
+      "version": "0.3.0(21)",
+      "reality": "actual_simulator_ui_with_injected_offline_fixture",
+      "metadata": [
+        {
+          "type": "eXIf",
+          "bytes": 122,
+          "sha256": "bbb6cf9c714327cee2af7e86321c59f76afe1a7552fa75de308d722e0cd53463"
+        },
+        {
+          "type": "iTXt",
+          "bytes": 675,
+          "sha256": "861617ee5fefbed9354987559086a994ffc207a0c9999d379568b0759fd79574"
+        }
+      ]
+    },
+    {
+      "path": "docs/acceptance/evidence/report-continuation-20261014/standard-readonly-draft.png",
+      "bytes": 272701,
+      "sha256": "782e31b3b3d401b0c4d99ba4d2980c8dca67ac2b180da65bb51d7a0c8055f113",
+      "source_xcresult": "build/report-continuation-20261014/native-integrated-r3.xcresult",
+      "source_attachment": "07D23C54-D09C-497E-BE0B-B4C271DBA1E9.png",
+      "test_identifier": "ConversationArtifactContinuationUITests/testSelectedVersionModesColdDraftsAndExitKeepOrdinaryInputWithoutSending()",
+      "captured_at_unix": 1791967317.96,
+      "version": "0.3.0(21)",
+      "reality": "actual_simulator_ui_with_injected_offline_fixture",
+      "metadata": [
+        {
+          "type": "eXIf",
+          "bytes": 122,
+          "sha256": "bbb6cf9c714327cee2af7e86321c59f76afe1a7552fa75de308d722e0cd53463"
+        },
+        {
+          "type": "iTXt",
+          "bytes": 675,
+          "sha256": "861617ee5fefbed9354987559086a994ffc207a0c9999d379568b0759fd79574"
+        }
+      ]
+    },
+    {
+      "path": "docs/acceptance/evidence/report-continuation-20261014/standard-cold-target.png",
+      "bytes": 251720,
+      "sha256": "86244dcd235443009f3aac83ad74a64efc09df3790e3194a5c06d7aa1f048518",
+      "source_xcresult": "build/report-continuation-20261014/native-integrated-r3.xcresult",
+      "source_attachment": "7B1D2B7C-013C-47A6-A468-E4349DB75950.png",
+      "test_identifier": "ConversationArtifactContinuationUITests/testSelectedVersionModesColdDraftsAndExitKeepOrdinaryInputWithoutSending()",
+      "captured_at_unix": 1791967310.097,
+      "version": "0.3.0(21)",
+      "reality": "actual_simulator_ui_with_injected_offline_fixture",
+      "metadata": [
+        {
+          "type": "eXIf",
+          "bytes": 122,
+          "sha256": "bbb6cf9c714327cee2af7e86321c59f76afe1a7552fa75de308d722e0cd53463"
+        },
+        {
+          "type": "iTXt",
+          "bytes": 675,
+          "sha256": "861617ee5fefbed9354987559086a994ffc207a0c9999d379568b0759fd79574"
+        }
+      ]
+    },
+    {
+      "path": "docs/acceptance/evidence/report-continuation-20261014/standard-selected-input.png",
+      "bytes": 351056,
+      "sha256": "b775428d20dc78855721a29458962dcbe680be40326b8adf2f33f0beaa3eef74",
+      "source_xcresult": "build/report-continuation-20261014/native-integrated-r3.xcresult",
+      "source_attachment": "48274D98-C492-49E0-A82D-535C5B411261.png",
+      "test_identifier": "ConversationArtifactContinuationUITests/testSelectedVersionModesColdDraftsAndExitKeepOrdinaryInputWithoutSending()",
+      "captured_at_unix": 1791967285.747,
+      "version": "0.3.0(21)",
+      "reality": "actual_simulator_ui_with_injected_offline_fixture",
+      "metadata": [
+        {
+          "type": "eXIf",
+          "bytes": 122,
+          "sha256": "bbb6cf9c714327cee2af7e86321c59f76afe1a7552fa75de308d722e0cd53463"
+        },
+        {
+          "type": "iTXt",
+          "bytes": 675,
+          "sha256": "861617ee5fefbed9354987559086a994ffc207a0c9999d379568b0759fd79574"
+        }
+      ]
+    }
+  ],
+  "geometry": [
+    {
+      "path": "build/report-continuation-20261014/integrated-r3-attachments/C11D0B6B-149F-47B7-9DB1-6A9ED7ACAA6B.txt",
+      "bytes": 209,
+      "sha256": "bd833a16601f3f0c895d5177a9c212ceecd709c79d9d402e834515e8d3fc88de"
+    },
+    {
+      "path": "build/report-continuation-20261014/integrated-r3-attachments/7151F3FC-7741-4D03-BD98-F003C20273BE.txt",
+      "bytes": 207,
+      "sha256": "f51d2a9f9eb8141a04f433a76a3f2e565440b056c5a1bc060b46a1342d8eefca"
+    }
+  ],
+  "cross_layer_fixture": {
+    "reality": "createCloudRuntime_and_two_same_task_worker_executions_with_injected_test_provider_and_store",
+    "public_json": {
+      "path": "apps/ios-conversation/Tests/Fixtures/report-continuation-cold.json",
+      "bytes": 45816,
+      "sha256": "e8b9cd811b28f4d2a941d62450ec39bd5e728fc8594650f757fed3a4a052eb7e"
+    },
+    "generator": {
+      "path": "services/edge/build/report-continuation-20261014/generate-native-cold-fixture.mjs",
+      "bytes": 11164,
+      "sha256": "0eb8212e08fe4408115c4a44ef9246dc1655e21243828c59c9bd1876c798d600"
+    },
+    "verified_by": "NativeArtifactContinuationTransportTests.testColdOriginalRevisionReadsMaintenanceResultAfterAnotherClientCompletesNextVersion",
+    "actions": "GET only; zero POST; current v3 and original operation v2 remain separate"
+  },
+  "failure_evidence": [
+    {
+      "status": "FAIL",
+      "reason": "1 of 10 methods failed because the test conversation omitted state/policy",
+      "path": "build/report-continuation-20261014/native-focused-r1.log",
+      "bytes": 144995,
+      "sha256": "ac45f702ac90073c6400f50c5b52eee477d7d0d402929be067413321f3e96b20"
+    },
+    {
+      "status": "COMPILE_FAIL",
+      "reason": "Test tried to reference a private error type",
+      "path": "build/report-continuation-20261014/native-focused-r2.log",
+      "bytes": 44970,
+      "sha256": "9fdd832e97844070ea506c535c59b31e2f613a4d4df182914566677d94ba975c"
+    },
+    {
+      "status": "CRASH_AND_TERMINATED",
+      "reason": "URLProtocol fixture force-unwrapped missing httpBody; final collection stalled and only the owned process was terminated",
+      "path": "build/report-continuation-20261014/native-focused-r3.log",
+      "bytes": 299248,
+      "sha256": "d49e9e4d1006411428876c085d40a9daa9fa436539aa994f5efda55eea31f3af"
+    },
+    {
+      "status": "FAIL",
+      "reason": "15 unit methods and standard UI passed; maximum-size fixture gesture failed",
+      "path": "build/report-continuation-20261014/native-focused-r4.log",
+      "bytes": 203918,
+      "sha256": "9f5c0649a3ace3070936aababb47cf6fd45c59569cd1c946212bacb6f15ab3b0"
+    },
+    {
+      "status": "PASS_WITH_VISUAL_RED",
+      "reason": "2 UI methods passed, screenshot review found selected version tail truncated",
+      "path": "build/report-continuation-20261014/native-focused-r5.log",
+      "bytes": 202146,
+      "sha256": "f975473580d4f8183cf1e6fc3d6fac6cbe1f0991c7e19fd4821a27c0854687c4"
+    },
+    {
+      "status": "INTERRUPTED",
+      "reason": "63 unit methods passed; stopped after visual review, no full pass",
+      "path": "build/report-continuation-20261014/native-integrated-final.log",
+      "bytes": 239935,
+      "sha256": "35306d7b9d1bf1845e907352614b49f054e1228b2534d75244c4736eeebe9aed"
+    },
+    {
+      "status": "INTERRUPTED",
+      "reason": "64 unit methods passed; stopped for the cross-client recovery refinement, no full pass",
+      "path": "build/report-continuation-20261014/native-integrated-r2.log",
+      "bytes": 357038,
+      "sha256": "370cd6ce6bf488c9f9a9f4a65a6101e8327c2c71339e3a71bc885867726f62cb"
+    }
+  ],
+  "next_checklist": {
+    "path": "build/report-continuation-20261014/next-acceptance-checklist.json",
+    "bytes": 1086,
+    "sha256": "d5a63a6b0ac8da8542998f5f7141f2eff58116916fd89986d4235b608339db77"
+  },
+  "route_hash_unchanged": true,
+  "external_operations": {
+    "production_auth": 0,
+    "production_model": 0,
+    "public_source_get": 0,
+    "real_sql": 0,
+    "phone_package": 0,
+    "phone_install": 0,
+    "deployment": 0,
+    "push_or_pr": 0,
+    "new_dependencies_or_credentials": 0,
+    "additional_compute_cost": 0,
+    "frozen_build16_text_checks": 0,
+    "mirror_state_read_only": 1
+  },
+  "limits": [
+    "AF-G5/FINAL-G1/G2/G3 and all real release gates remain unclosed",
+    "Fresh source revocation denies provider/publication, but task can remain scheduled; W33 clear blocked-state recovery remains",
+    "No live Supabase, model, source, SQL multi-instance, independent scheduler or EventKit effect validation",
+    "No phone UI, physical gesture/motion/accessibility/performance, seven-day use or named competitor pairing",
+    "Simulator fixture and signing harness do not extend frozen build16 phone authorization",
+    "Current mirror read-only state says iPhone in use and mirroring ended; no connection or App action performed",
+    "Report revision still restricted to original scoped source catalog, permissions, model route and local report effects"
+  ],
+  "review_findings_snapshot": {
+    "path": "scripts/reviewed-findings.json",
+    "bytes": 54676,
+    "sha256": "01f250a49255e635625388fb73db466f21ab4614957dc9d3032831fd21ab8abe"
+  },
+  "sensitivity_scope": {
+    "candidate_files": 998,
+    "candidate_bytes": 20867953,
+    "blocking_hits": [],
+    "manual_review_hits": [],
+    "raw_hit_count": 88
+  }
+}

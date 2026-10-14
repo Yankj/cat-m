@@ -11,7 +11,7 @@ export function attachFoundationProjections(runtime){
    await tx.lock(owner,'catpaw-delegations',run.delegation_id);
    const projection=await facade.runProjection(tx,owner,run.id),task=await tx.get(owner,'tasks',run.task_id);
    const authoritative={scope_id,task_id:run.task_id,status:projection.run.state,authorization_state:projection.run.authorization_state,grant_epoch:projection.run.grant_epoch,updated_at:task.updatedAt};
-   const digest=hash({authoritative,artifacts:projection.run.artifact_references,attempts:projection.run.attempts});
+   const digest=hash({authoritative,artifacts:projection.run.artifact_references,attempts:projection.run.attempts,...projection.plan?{plan:projection.plan}:{}});
    await tx.lock(owner,'catpaw-task-projection-versions',run.id);const prior=await tx.get(owner,'catpaw-task-projection-versions',run.id);
    const record=prior?.projection_hash===digest?prior:{id:run.id,scope_id,subject_id:principal.subject_id,projection_hash:digest,version:(prior?.version??0)+1,version_kind:'owner_projection_revision',updated_at:iso()};
    if(record!==prior)await tx.put(owner,'catpaw-task-projection-versions',record);

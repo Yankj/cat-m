@@ -14,6 +14,22 @@ import UIKit
     private var samples:[[String:Any]]=[]
     private var identity:[String:Any]=[:]
     private var readingPosition:[String:Any]=[:]
+    private var taskReviewStats:[String:Int]=[:]
+    private var inputTypography:[String:Any]=[:]
+    private var editorVisibility:[String:Any]=[:]
+    func recordEditorVisibility(identifier:String,caret:CGRect,visibleBounds:CGRect,selection:NSRange,fontLineHeight:CGFloat) {
+        guard enabled,!identifier.isEmpty,!caret.isNull,!visibleBounds.isNull else {return}
+        func rect(_ value:CGRect)->[Double] {[Double(value.minX),Double(value.minY),Double(value.width),Double(value.height)]}
+        let next:[String:Any]=["editor_field_identifier":identifier,"editor_caret_rect":rect(caret),"editor_visible_bounds":rect(visibleBounds),"editor_selection_utf16":[selection.location,selection.length],"editor_font_line_height":Double(fontLineHeight)]
+        guard !NSDictionary(dictionary:next).isEqual(to:editorVisibility) else {return}
+        editorVisibility=next;revision += 1
+    }
+    func recordInputTypography(pointSize:CGFloat,systemCategory:UIContentSizeCategory) {
+        guard enabled else {return}
+        guard inputTypography["input_font_point_size"] as? Double != Double(pointSize) || inputTypography["input_system_category"] as? String != systemCategory.rawValue else {return}
+        inputTypography=["input_font_point_size":Double(pointSize),"input_system_category":systemCategory.rawValue];revision += 1
+    }
+    func recordTaskReviewStats(_ values:[String:Int]) {taskReviewStats.merge(values){old,new in max(old,new)};revision += 1}
     private var exported=false
     private var callbackPoints:[[String:Any]]=[]
     private struct WeakWitness { weak var view:UIView? }
@@ -59,6 +75,9 @@ import UIKit
         defer {P0PerformanceLog.shared.record("probe_json_encode",start:start,end:ProcessInfo.processInfo.systemUptime,main:true)}
         var result=identity
         result.merge(readingPosition){_,new in new}
+        result.merge(taskReviewStats){_,new in new}
+        result.merge(inputTypography){_,new in new}
+        result.merge(editorVisibility){_,new in new}
         result["fixture_reality"]="injected_synthetic_offline";result["external_network_enabled"]=false
         result["measurement_kind"]="simulator_action_to_visible_geometry_at_display_link_callback"
         result["is_presented_frame_proof"]=false;result["frame_sample_kind"]="active_main_run_loop_display_link_callback_intervals"

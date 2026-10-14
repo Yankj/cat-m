@@ -68,6 +68,7 @@ public enum Payload: Codable, Sendable {
     case requestConfiguration(FrozenRequestConfiguration)
     case viewReceipt(ViewReceipt)
     case voiceEdit(VoiceEditReceipt)
+    case conversationUIState(CGUIStoredLocalState)
     public var kind: String {
         switch self {
         case .core(let p):
@@ -82,6 +83,7 @@ public enum Payload: Codable, Sendable {
         case .requestConfiguration: return "requestConfiguration"
         case .viewReceipt: return "viewReceipt"
         case .voiceEdit: return "voiceEdit"
+        case .conversationUIState: return "conversationUIState"
         }
     }
     public var parentID: UUID? {

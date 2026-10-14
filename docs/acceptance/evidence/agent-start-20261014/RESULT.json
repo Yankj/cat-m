@@ -1,0 +1,293 @@
+{
+  "schema_version": 1,
+  "recorded_at": "2026-10-14T00:44:18.471181+08:00",
+  "candidate_id": "AF-W11-CGUI-20261014-01",
+  "base_commit": "63447d1fb44b6b1c99fae20cb10c907e58d2a595",
+  "branch": "feat/conversation-genui",
+  "input_source_sha256": {
+    "apps/ios-conversation/CatpawM.xcodeproj/project.pbxproj": "e090bf1f834cc1e2f888fa9f28f5ba53a31a66e9a05ae3cb69d40a83624a0267",
+    "apps/ios-conversation/Resources/UIStrings.json": "d1f7a27856a3076350d451a8cf556283d457f9bd7d360a2b70a065382b3a6bd6",
+    "apps/ios-conversation/Scripts/test-generative-ui-portable.sh": "8f0c1bd2e3fe155a4a3997d9ac39d27063a3c6a2a62eaa03637b5d3f60d7e00b",
+    "apps/ios-conversation/Sources/App/CatpawApp.swift": "282e1afad67cf354df561d125765510076210af481e0a328089af86195cd86ae",
+    "apps/ios-conversation/Sources/App/P0ExperienceFixture.swift": "27e6d352fef942b62fd7ebc3ce910ffa9ad1420a4b2bce4514cf8dddf57d433b",
+    "apps/ios-conversation/Sources/Domain/ConversationGenerativeUI.swift": "d0faa77c614ad9d32756e3fd7cd601382b79ca68530f65a92a1eed4e94c03666",
+    "apps/ios-conversation/Sources/Features/ConversationAnswerView.swift": "f687d8caead31172505f2297e5425092d124192d763c6cc4d24e8a4addc40442",
+    "apps/ios-conversation/Sources/Features/ConversationFirstView.swift": "2845d3f26834c91d3c1c5e7c3f9898429dc4d02f9288814a5d513744e196e572",
+    "apps/ios-conversation/Sources/Features/ConversationGenerativeUIView.swift": "237f411419e2cb8b7008f65bbd873f87b2163b04583ce6dd0cb78d20a53efe6b",
+    "apps/ios-conversation/Sources/Features/ConversationSessionService.swift": "8d0c273fbf200133011282c57d031b58643b8b5ac01181ef0adbf06ee51c8504",
+    "apps/ios-conversation/Tests/ConversationGenerativeUITests.swift": "c283b3581dcad9a757d5613b9ee479b4694283a2d43ffe12b81201f6ea905ab7",
+    "apps/ios-conversation/Tests/ConversationSessionRunner.swift": "859850292729364e02709f90910bef1b1ea6bdc1e0a77da0f317658dd15ccecc",
+    "apps/ios-conversation/Tests/P0NativeExperienceUITests.swift": "adf37ed1f0a92a22a6057b42849bd13fa40ecf2e2f93a7d235c4b01f7686e39a",
+    "services/edge/supabase/functions/_shared/core/src/chat-service.mjs": "2b69f270f666f42e95124c0be6920491d16c7d9f8980432e9b2e3d03cc062a7f",
+    "services/edge/test/dialogue-p0.test.mjs": "db4efdad4354db040ceaf2370521da092fc5797a46ddc56a402f6f8b8c7e6cde"
+  },
+  "input_source_manifest_sha256": "10902595be883b7e399d2d8a1a0f6b4a7d565a6d26ab1727adbfe40efacc9da3",
+  "goal": "FINAL-G3 active; foundation contract AF-1-G3-UX1 retained",
+  "evidence_layer": "synthetic_native_and_offline_maintenance_source",
+  "checks": {
+    "conversation_persistence": {
+      "result": "PASS",
+      "cases": 21,
+      "path": "build/goal-start-20261014/conversation-final.log",
+      "sha256": "52b316a3781ab6674ad71b755647e53f2fa0ec808f9e4cc07b9f4f9fa1672699"
+    },
+    "followup_queue": {
+      "result": "PASS",
+      "cases": 16,
+      "path": "build/goal-start-20261014/queue-final.log",
+      "sha256": "8f1a7f59f4c5ca299b4a61e7ab91ad206ce90ac21f2d35d60557889b1cdde5fd"
+    },
+    "generative_core_portable": {
+      "result": "PASS",
+      "cases": 64,
+      "path": "apps/ios-conversation/.build/generative-ui-tests/results.log",
+      "sha256": "d15e3b60f4f57224bb16304896b1e8461c84c500c8384ebab027ad4def342753"
+    },
+    "backend_lease_regression": {
+      "result": "PASS",
+      "cases": 5,
+      "path": "services/edge/build/lease-fence-20261014/green.log",
+      "sha256": "d921681ce9b474e8d9cb9f2a9a7601f031ca168d0f3a4d18cd4db00e9dc401d0"
+    },
+    "backend_deno_offline": {
+      "result": "PASS",
+      "cases": 67,
+      "cache": "existing read-only public dependency cache; cached-only and deny-net",
+      "path": "services/edge/build/lease-fence-20261014/deno-regression.log",
+      "sha256": "1d648d9dff0ec791b18d7a75f01cf80fe5372265ed3d1c52bacaa21343c9e14d"
+    },
+    "native_xctest": {
+      "result": "Passed",
+      "tests": 6,
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0,
+      "core_matrix": "64 arithmetic/schema cases in ONE XCTest method; 8 scripted conversation behaviors in ONE XCTest method",
+      "ui_tests": 4,
+      "path": "build/goal-start-20261014/native-r4.log",
+      "sha256": "494c90401789dae104fef9feb6aea31c2af8dd19cee6cc82b622be55a3b41e01",
+      "result_summary": {
+        "path": "build/goal-start-20261014/native-r4-summary.json",
+        "sha256": "5bf18775410e584fc4e838e122579150f284a6c1ea86d1c7420b5357289fa699"
+      }
+    },
+    "release_simulator": {
+      "result": "PASS",
+      "configuration": "Release, no DEBUG; unsigned Simulator app; no production config copied",
+      "version": "0.3.0(17)",
+      "binary_sha256": "d715a731eb1fd9b825dde0b4c386d9aefc38b387fa51d99355edaa76e2ec268a",
+      "path": "build/goal-start-20261014/release-r4.log",
+      "sha256": "d06be9a048efcdbc9185b0ee531b788e6c02780dd58a2bbc3b00406fd8e9d175"
+    },
+    "non_debug_sdk": {
+      "result": "PASS",
+      "scope": "prior typecheck; final source subsequently linked in Release build",
+      "path": "build/goal-start-20261014/source-check-final.log",
+      "sha256": "6a7c332add4fe9b1bfe3261d5e70cb94b75e76af9dc94e16f9657b1ad6b24915"
+    },
+    "project_and_localization": {
+      "result": "PASS",
+      "app_sources": 69,
+      "bilingual_entries": 713,
+      "path": "build/goal-start-20261014/localization-final.log",
+      "sha256": "c3eaaa7cfb3cebee734889fd791f54e290de69a1089cb1b91a8b56f2f0b7e950"
+    },
+    "integrity_and_planning": {
+      "result": "PASS",
+      "path": "build/goal-start-20261014/integrity-final.log",
+      "sha256": "95f32673465cc5674bdb56770e26c513d0c962e75959c6da91151541301cd6c9"
+    },
+    "sensitivity": {
+      "result": "PASS",
+      "path": "build/goal-start-20261014/sensitivity-reviewed.log",
+      "sha256": "a6c8ff7822246371bd51284b57069b3113ffff6e8692313db4f36bf914c3fa69",
+      "png_review": "Two original XCTest PNGs reviewed byte-for-byte (generic Screenshot, orientation/dimensions/XMP only) and by pixels; exact path/category/hash exceptions; scan rules unchanged."
+    }
+  },
+  "native_probes": [
+    {
+      "test": "P0ConversationBehaviorTests/testP0ConversationBehaviorWithoutNetwork()",
+      "attachment_sha256": "7f277d492c9452d3a814a3b5ddb7b0babf96904a61ebd685e488d44d99c536df",
+      "fixture_reality": null,
+      "external_network_enabled": null,
+      "synthetic_reply_calls": null,
+      "synthetic_consent_calls": null,
+      "results": [
+        {
+          "case": "consent_preflight_requires_stable_visible_pending_state",
+          "layer": "portable actual Swift model/service + scripted backend; no iOS display evidence",
+          "status": "PASS"
+        },
+        {
+          "case": "stream_32_characters_exact_body_single_message_terminal_hash",
+          "layer": "portable actual Swift model/service + scripted backend; no iOS display evidence",
+          "status": "PASS"
+        },
+        {
+          "case": "stream_4096_characters_exact_body_single_message_terminal_hash",
+          "layer": "portable actual Swift model/service + scripted backend; no iOS display evidence",
+          "status": "PASS"
+        },
+        {
+          "case": "stream_16384_characters_exact_body_single_message_terminal_hash",
+          "layer": "portable actual Swift model/service + scripted backend; no iOS display evidence",
+          "status": "PASS"
+        },
+        {
+          "case": "detached_remote_progress_same_turn_resume_5s_scenario",
+          "layer": "portable actual Swift model/service + scripted backend; no iOS display evidence",
+          "status": "PASS"
+        },
+        {
+          "case": "detached_remote_progress_same_turn_resume_30s_scenario",
+          "layer": "portable actual Swift model/service + scripted backend; no iOS display evidence",
+          "status": "PASS"
+        },
+        {
+          "case": "unknown_or_completed_same_operation_never_replies_again",
+          "layer": "portable actual Swift model/service + scripted backend; no iOS display evidence",
+          "status": "PASS"
+        },
+        {
+          "case": "foreign_observation_rejected_without_text_mutation",
+          "layer": "portable actual Swift model/service + scripted backend; no iOS display evidence",
+          "status": "PASS"
+        }
+      ]
+    },
+    {
+      "test": "P0NativeExperienceUITests/testGenerativeDurationLocalEditSurvivesStreamingWithoutDispatch()",
+      "attachment_sha256": "753d0eb77d6b64289cd18b87c69550db30739e6a249988cb78e912d9b45de5f9",
+      "fixture_reality": "injected_synthetic_offline",
+      "external_network_enabled": false,
+      "synthetic_reply_calls": 1,
+      "synthetic_consent_calls": 0,
+      "results": null
+    },
+    {
+      "test": "P0NativeExperienceUITests/testGenerativeTableFiltersCompleteDatasetLocally()",
+      "attachment_sha256": "37e60f20b11a01da3bb5ee86f534bc60fa56a454b98112ccb52ec621859c6d56",
+      "fixture_reality": "injected_synthetic_offline",
+      "external_network_enabled": false,
+      "synthetic_reply_calls": 1,
+      "synthetic_consent_calls": 0,
+      "results": null
+    },
+    {
+      "test": "P0NativeExperienceUITests/testReadingAboveBottomSurvivesStreamAndJumpResumesFollowing()",
+      "attachment_sha256": "126f3155a50db76348071cc66954db62eab966fc28aab56f4536bc3d38143b7c",
+      "fixture_reality": "injected_synthetic_offline",
+      "external_network_enabled": false,
+      "synthetic_reply_calls": 1,
+      "synthetic_consent_calls": 0,
+      "results": null
+    },
+    {
+      "test": "P0NativeExperienceUITests/testReplyActionsQuotePreservesDraftWithoutDispatch()",
+      "attachment_sha256": "a79f0d05e59aa3adf2feba1481200bf19143f1aebedc4251df2fe4492d172a01",
+      "fixture_reality": "injected_synthetic_offline",
+      "external_network_enabled": false,
+      "synthetic_reply_calls": 1,
+      "synthetic_consent_calls": 0,
+      "results": null
+    }
+  ],
+  "screenshots": [
+    {
+      "file": "duration-local-native.png",
+      "sha256": "a775d6a715e522ef624db384ce1be43b9a0ed2fb9b9632385472ad05dd18415d",
+      "source": "XCTest app.screenshot attachment; final native-r4.xcresult",
+      "candidate": "AF-W11-CGUI-20261014-01",
+      "build": "Debug 0.3.0(9), synthetic offline fixture",
+      "device": "iPhone 17 iOS 27.0 Simulator",
+      "reality": "synthetic_native_simulator",
+      "private_user_content": false
+    },
+    {
+      "file": "table-filter-native.png",
+      "sha256": "6c79834d8418226e49ca0e1d08e5d7efd52f343293f6c2adf049635e6fcbe843",
+      "source": "XCTest app.screenshot attachment; final native-r4.xcresult",
+      "candidate": "AF-W11-CGUI-20261014-01",
+      "build": "Debug 0.3.0(9), synthetic offline fixture",
+      "device": "iPhone 17 iOS 27.0 Simulator",
+      "reality": "synthetic_native_simulator",
+      "private_user_content": false
+    }
+  ],
+  "iterations": [
+    {
+      "stage": "native initial",
+      "result": "2 of 5 tests failed",
+      "finding": "streaming tail hides earlier cards; parent accessibility identifier overrides child control identifiers",
+      "path": "build/goal-start-20261014/native-test.log",
+      "sha256": "e9cdf9127d1630a870d6f6ab876b35d6641bbed13df077655e885708b11562c4"
+    },
+    {
+      "stage": "native r2",
+      "result": "2 of 2 failed",
+      "finding": "confirmed child identifier override in native AX hierarchy",
+      "path": "build/goal-start-20261014/native-r2.log",
+      "sha256": "3b83b47ab69c76ba97161ca6a9ce2e5e605ed0dab08771e3c4c23ae0b6fec1d9"
+    },
+    {
+      "stage": "native r3",
+      "result": "duration passed; table failed",
+      "finding": "table focus tap under navigation bar; constrain test gesture to exposed reading viewport",
+      "path": "build/goal-start-20261014/native-r3.log",
+      "sha256": "68c3cfd28d2a27a506ea12f6a730a271a01ee298d5fc23bd73f569a9f44648ed"
+    },
+    {
+      "stage": "native pre-visual-review",
+      "result": "5 of 5 passed",
+      "finding": "screenshot review identified jump-to-latest covering local controls; moved to independent inset above composer",
+      "path": "build/goal-start-20261014/native-final.log",
+      "sha256": "9390688a419186573ec7bfcb13dc6f29cd5604e9049769ff84dc816af8e5d2b0"
+    },
+    {
+      "stage": "native final r4",
+      "result": "6 of 6 passed; reading anchor regression included"
+    }
+  ],
+  "deployment": {
+    "api_observed_snapshot_version": 19,
+    "tick_observed_snapshot_version": 7,
+    "current_remote_state": "not re-queried; immutable 2026-10-13 snapshots verified",
+    "shared_drift_preserved": 14,
+    "maintenance_fix_deployed": false,
+    "structured_presentation_producer": false
+  },
+  "model_route": {
+    "configuration_only": true,
+    "provider": "OpenRouter",
+    "model": "apodex/apodex-1.1-mini:free",
+    "only": "novita/bf16",
+    "fallback": false,
+    "switched": false,
+    "real_provider_verified": false
+  },
+  "activity_counts": {
+    "production_auth_requests": 0,
+    "real_model_calls": 0,
+    "production_sql_tests": 0,
+    "physical_device_installs": 0,
+    "deployments": 0,
+    "pushes": 0,
+    "paid_compute_provisioned": 0
+  },
+  "acceptance_closure": {
+    "AF-G5": "NOT_RUN",
+    "FINAL-G1": "NOT_RUN",
+    "FINAL-G2": "NOT_RUN",
+    "FINAL-G3": "NOT_RUN",
+    "CG-A01–10": "not closed by this synthetic slice"
+  },
+  "limitations": [
+    "present_cgui_v1 is a compiled receiver/offline fixture only; native HTTP adapter and backend producer unchanged.",
+    "CGUI local values use View state; cold-start restore and same-work explicit followup are not delivered.",
+    "Full table preview/sheet selection persistence, chart interaction matrix, maximum Dynamic Type, VoiceOver, gestures and physical performance remain unverified.",
+    "No real model, cloud continuation, SQL multi-instance, seven-day daily use, named competitor pairing, approval/calendar/scheduler completion evidence.",
+    "Release Simulator 17 is not a signed physical-device package; the approved installed iPhone build16 remains unchanged.",
+    "API19/tick7 drift is retained; the current maintenance source is not asserted equivalent to deployed snapshots."
+  ],
+  "next_slice": "W30a: versioned persisted plan, explicit CAS amendment to the same task, accepted/applied revision separation and safe-checkpoint application; W31/W32/CP-01 remain incomplete."
+}

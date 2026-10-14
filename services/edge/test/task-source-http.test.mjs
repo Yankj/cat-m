@@ -1,0 +1,72 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {randomUUID} from 'node:crypto';
+import {createCloudRuntime} from '../supabase/functions/_shared/api.mjs';
+import {readConfig,SECRET_NAMES,CONFIG_NAMES} from '../supabase/functions/_shared/config.mjs';
+import {membershipOwner} from '../supabase/functions/_shared/authority.mjs';
+import {consentId} from '../supabase/functions/_shared/consent.mjs';
+import {TestRepository} from '../supabase/functions/_shared/core/integration/server-foundation/src/test-repository.mjs';
+import {ApiError,check,hash} from '../supabase/functions/_shared/core/facade-r2/src/common.mjs';
+import {freezePublicSourceCatalog,sourcePolicyHash} from '../supabase/functions/_shared/core/src/public-source-contract.mjs';
+import {SOURCE_READS,SOURCE_RECEIPTS} from '../supabase/functions/_shared/core/src/task-source-service.mjs';
+import {sourceBodyHash,extractPublicSourceText} from '../supabase/functions/_shared/public-web-reader.mjs';
+
+globalThis.fetch=()=>{throw Error('task_source_http_external_network_forbidden');};
+const POLICY={schema_version:1,contract:'catpaw.public-web-policy.v1',origins:[{origin:'https://docs.example.org',connect_ipv4:'93.184.216.34',path_prefixes:['/docs/']}]},URL='https://docs.example.org/docs/one',TEXT='Offline fictional public source. This original exact sentence is retained as evidence.';
+const values={CATPAW_DATABASE_URL:'offline-unused',CATPAW_PRIVATE_MODEL_KEY:'offline-unused',CATPAW_TICK_HMAC_KEY:'offline-only-at-least-thirty-two-chars',CATPAW_MEMORY_GUARD_KEY:'offline-unused-guard'};
+const configuration=policy=>readConfig(name=>name==='CATPAW_PUBLIC_SOURCE_POLICY'?(policy===null?undefined:JSON.stringify(policy)):values[name]);
+function namedOfflineReader(policy=POLICY){return {policy,policyHash:sourcePolicyHash(policy),reality:'injected_offline_only',calls:0,assertReady(){},async read(url,{expectedPolicyHash,beforeSend,assertLive,signal}){assert.equal(expectedPolicyHash,this.policyHash);assertLive();signal.throwIfAborted();await beforeSend();this.calls++;const bytes=new TextEncoder().encode(TEXT);return {requested_url:url,canonical_url:url,final_url:url,redirect_chain:[url],read_at:'2026-10-14T00:00:00.000Z',content_hash:sourceBodyHash(bytes),text_hash:hash(TEXT),text:extractPublicSourceText(bytes,'text/plain'),body_bytes:bytes,byte_count:bytes.length,media_type:'text/plain',transport_reality:'injected_offline_only'};}};}
+async function fixture({policy=POLICY,reader=namedOfflineReader()}={}){
+ const config=configuration(policy),repository=new TestRepository(),scope={scope_id:randomUUID(),profile_id:randomUUID(),workspace_id:randomUUID(),local_output:true},principal={subject_id:randomUUID(),session_id:randomUUID(),issuer:'https://offline.example.invalid/auth/v1',issued_at:1,scopes:[scope],permissions:{local_output:true}},modelCalls=[];
+ const sourceChecker=async(tx,source,identity)=>{check(source.scope_id===identity.scope_id,409,'grant_conflict');const row=await tx.get(membershipOwner(source.issuer),'app-sessions',source.session_id);check(row?.subject_id===source.subject_id&&row.state==='active',409,'grant_conflict');};
+ const provider={identity:{provider:'offline-only',model:'synthetic-only',adapter_version:1},reality:'injected_offline_only',assertReady(){},async *stream(input){modelCalls.push(input);throw Error('Source GET must not invoke a model');}};
+ const runtime=await createCloudRuntime({repository,config,sourceChecker,provider,publicSourceReader:reader,authenticate:auth=>{check(auth==='Bearer named-offline-source',401,'session_required');return principal;},autoKick:false,diagnostic:()=>{}});await runtime.foundation.bootstrapScope(principal,scope.scope_id);
+ const owner=runtime.facade.owner(scope),runID=randomUUID(),taskID=hash(runID),cid=randomUUID(),tid=randomUUID(),delegation=randomUUID(),operation=randomUUID(),lease=randomUUID(),planReference={revision:1,plan_hash:hash('offline-source-plan')};
+ const frozen={scope,subject_id:principal.subject_id,conversation_id:cid,turn_id:tid,source_auth:{subject_id:principal.subject_id,scope_id:scope.scope_id,session_id:principal.session_id,issuer:principal.issuer,issued_at:1,consent_revision:1},memory_generation:1,policy:'conversation-local-output-v1',public_sources:freezePublicSourceCatalog({runID,selectedURLs:[URL],userTexts:[URL],policyHash:sourcePolicyHash(POLICY)})},requestHash=hash(frozen),tag={run_id:runID,delegation_id:delegation,operation_id:operation,request_hash:requestHash,grant_epoch:1,delegation_revision:1};
+ await repository.transaction(async tx=>{
+  await tx.put(membershipOwner(principal.issuer),'app-sessions',{id:principal.session_id,subject_id:principal.subject_id,state:'active'});
+  await tx.put(owner,'native-chat-conversations',{id:cid,subject_id:principal.subject_id,scope_id:scope.scope_id});
+  await tx.put(owner,'provider-consents',{id:consentId(principal.subject_id,cid),scope_id:scope.scope_id,subject_id:principal.subject_id,conversation_id:cid,revision:1,decision:'allow',route_hash:config.routeHash});
+  await tx.put(owner,'catpaw-delegations',{id:delegation,subject_id:principal.subject_id,conversation_id:cid,revision:1,grant_epoch:1,state:'active'});
+  await tx.put(owner,'catpaw-runs',{id:runID,...tag,task_id:taskID,frozen_request:frozen,artifact_references:[],approval_ids:[]});
+  await tx.put(owner,'tasks',{id:taskID,status:'running',leaseId:lease,leaseUntil:new Date(Date.now()+60000).toISOString(),state:{catpaw:tag,plan_binding:planReference},artifactIds:[]});
+  await tx.put(owner,'catpaw-task-plan-heads',{id:runID,run_id:runID,task_id:taskID,scope_id:scope.scope_id,subject_id:principal.subject_id,conversation_id:cid,accepted_revision:1,accepted_plan_hash:planReference.plan_hash,applied_revision:1,applied_plan_hash:planReference.plan_hash});
+  await tx.put(owner,'catpaw-task-plan-versions',{id:runID+':1',run_id:runID,revision:1,plan_hash:planReference.plan_hash,content:'offline-source-plan'});
+ });
+ const path='/catpaw/sources/v1/scopes/'+scope.scope_id+'/runs/'+runID+'/sources';
+ const req=(route=path,body,auth='Bearer named-offline-source')=>runtime.api(new Request('https://offline.example.invalid'+route,{method:body===undefined?'GET':'POST',headers:{Authorization:auth,'Content-Type':'application/json'},...body===undefined?{}:{body:JSON.stringify(body)}}));
+ return {repository,runtime,config,scope,principal,owner,runID,taskID,cid,lease,path,req,reader,modelCalls};
+}
+test('absent policy keeps the exact existing free route/hash and does not add required configuration',()=>{
+ const config=configuration(null);assert.equal(config.publicSourcePolicy,null);assert.equal(config.routeHash,'eef4100e83db1b2ab5ea9a7efd4818e97dcd90c819f056b54082fbdf5cd5e305');assert.equal(config.route.provider,'OpenRouter');assert.equal(config.route.model,'apodex/apodex-1.1-mini:free');assert.equal(config.route.free,true);assert.equal(config.route.routing_policy.allow_fallbacks,false);assert.ok(!SECRET_NAMES.includes('CATPAW_PUBLIC_SOURCE_POLICY'));assert.ok(!CONFIG_NAMES.includes('CATPAW_PUBLIC_SOURCE_POLICY'));
+ const enabled=configuration(POLICY);assert.notEqual(enabled.routeHash,config.routeHash);assert.deepEqual(enabled.route.routing_policy,config.route.routing_policy);assert.equal(enabled.route.model,config.route.model);assert.ok(enabled.route.data_fields.includes('user_provided_public_urls_and_received_source_text'));assert.ok(enabled.route.purposes.includes('user_url_sourced_report'));assert.deepEqual(enabled.publicSourcePolicy,POLICY);
+});
+test('policy configuration is strict bounded JSON, rejects ambiguous duplicates and unsafe origins',()=>{
+ for(const raw of ['{bad',' ','x'.repeat(16385),JSON.stringify({...POLICY,execute:true}),JSON.stringify({...POLICY,origins:[{...POLICY.origins[0],connect_ipv4:'127.0.0.1'}]}),'{"schema_version":1,"schema_version":1,"contract":"catpaw.public-web-policy.v1","origins":[]}',JSON.stringify(POLICY).replace('"origin":','"origin":"https://docs.example.org","origin":')])assert.throws(()=>readConfig(name=>name==='CATPAW_PUBLIC_SOURCE_POLICY'?raw:values[name]),ApiError);
+ const pretty=JSON.stringify(POLICY,null,2);assert.deepEqual(readConfig(name=>name==='CATPAW_PUBLIC_SOURCE_POLICY'?pretty:values[name]).publicSourcePolicy,POLICY);
+});
+test('public source readiness requires both reviewed policy and matching available reader, never claims live verification',async()=>{
+ for(const options of [{policy:null},{reader:{...namedOfflineReader(),policyHash:hash('different policy')}},{reader:{...namedOfflineReader(),assertReady(){throw new ApiError(503,'public_source_transport_not_supported');}}}]){
+  const f=await fixture(options),ready=await(await f.req('/readyz')).json();assert.equal(ready.chat_capabilities.public_sources.enabled,false);assert.equal(ready.chat_capabilities.public_sources.live_verification,'not_verified');assert.equal((await f.req()).status,503);assert.equal(f.modelCalls.length,0);
+ }
+ const f=await fixture(),ready=await(await f.req('/readyz')).json();assert.equal(ready.chat_capabilities.public_sources.enabled,true);assert.ok(ready.chat_capabilities.tools.includes('delegate_sources_v1'));assert.equal(ready.chat_capabilities.public_sources.transport_reality,'injected_offline_only');assert.equal(ready.chat_capabilities.public_sources.live_verification,'not_verified');assert.equal(ready.chat_capabilities.web_search,false);assert.equal(ready.chat_capabilities.task_actions.execution,false);
+ const platform=await fixture({reader:null}),platformReady=await(await platform.req('/readyz')).json(),available=typeof globalThis.Deno?.connect==='function'&&typeof globalThis.Deno?.startTls==='function';assert.equal(platformReady.chat_capabilities.public_sources.enabled,available);assert.equal(platformReady.chat_capabilities.public_sources.live_verification,'not_verified');assert.equal(platform.modelCalls.length,0);
+});
+test('source GET recovers original read states and exact receipt metadata without any HTTP write, reader or model invocation',async()=>{
+ const f=await fixture(),initial=await f.req();assert.equal(initial.status,200);assert.equal(initial.headers.get('cache-control'),'no-store');const pending=await initial.json();assert.equal(pending.contract,'catpaw.task-public-sources.v1');assert.equal(pending.reads[0].state,'not_started');assert.equal(f.reader.calls,0);
+ const received=await f.runtime.sourceService.readSource(f.owner,f.taskID,f.lease,'source-1',{signal:new AbortController().signal,assertLive(){}});assert.equal(received.state,'received');assert.equal(f.reader.calls,1);
+ const snapshot=f.repository.snapshot(),read=await(await f.req()).json();assert.equal(read.reads[0].state,'received');assert.equal(read.reads[0].source.content_hash,sourceBodyHash(new TextEncoder().encode(TEXT)));assert.equal(read.reads[0].source.requested_url,URL);assert.equal(read.reads[0].source.excerpt,TEXT);assert.equal(read.reads[0].source.read_at,'2026-10-14T00:00:00.000Z');assert.equal('body_base64' in read.reads[0].source,false);assert.deepEqual(f.repository.snapshot(),snapshot);
+ assert.deepEqual(await(await f.req()).json(),read);assert.equal(f.reader.calls,1);assert.equal(f.modelCalls.length,0);assert.equal((await f.req(f.path,{})).status,405);assert.equal((await f.req(f.path+'?refresh=true')).status,422);assert.equal((await f.req(f.path,undefined,'Bearer missing')).status,401);
+});
+test('source GET reports original dispatched state as unknown and cannot trigger a fresh read',async()=>{
+ const f=await fixture(),first=await(await f.req()).json(),id=first.reads[0].read_id;await f.repository.transaction(tx=>tx.put(f.owner,SOURCE_READS,{id,run_id:f.runID,task_id:f.taskID,state:'dispatched'}));const snapshot=f.repository.snapshot(),read=await(await f.req()).json();assert.equal(read.reads[0].state,'unknown');assert.deepEqual(f.repository.snapshot(),snapshot);assert.equal(f.reader.calls,0);assert.equal((await f.repository.transaction(tx=>tx.list(f.owner,SOURCE_RECEIPTS))).length,0);
+});
+test('source metadata requires current viewer scope/consent, including final read authority',async()=>{
+ const f=await fixture();assert.equal((await f.req(f.path.replace(f.scope.scope_id,randomUUID()))).status,403);assert.equal((await f.req(f.path.replace(f.runID,randomUUID()))).status,404);
+ await f.repository.transaction(async tx=>{const id=consentId(f.principal.subject_id,f.cid),row=await tx.get(f.owner,'provider-consents',id);await tx.put(f.owner,'provider-consents',{...row,decision:'deny'});});assert.equal((await f.req()).status,403);assert.equal(f.reader.calls,0);
+ const g=await fixture(),hook=g.runtime.facade.beforeSourceRead;let checks=0;g.runtime.facade.beforeSourceRead=async(tx,ctx)=>{if(++checks===2)throw new ApiError(403,'provider_consent_required');return hook(tx,ctx);};assert.equal((await g.req()).status,403);assert.equal(g.reader.calls,0);assert.equal(g.modelCalls.length,0);
+});
+test('configured model notice explicitly discloses URL body sharing on the same provider and requires its new route hash',async()=>{
+ const f=await fixture(),notice=await(await f.req('/catpaw/privacy/v1/model-route')).json();assert.match(notice.ui.body,/公开URL、读取的正文和来源记录/);assert.match(notice.ui.body,/同一现有模型/);assert.equal(notice.route.provider,'OpenRouter');assert.equal(notice.route_hash,f.config.routeHash);assert.ok(notice.route.data_fields.includes('user_provided_public_urls_and_received_source_text'));
+ const consentPath='/catpaw/privacy/v1/scopes/'+f.scope.scope_id+'/conversations/'+f.cid+'/model-consent';assert.equal((await f.req(consentPath,{decision:'allow',expected_revision:1,route_hash:configuration(null).routeHash})).status,422);assert.equal(f.reader.calls,0);assert.equal(f.modelCalls.length,0);
+});

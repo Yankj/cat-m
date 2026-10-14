@@ -1,18 +1,68 @@
 # Catpaw-m 重启 Goal 与交付计划
 
-更新：2026-10-13；唯一实时状态页。旧主计划完整保存在[2026-10-12快照](master-plan-2026-10-12.md)，旧失败与证据边界不改写。16:07交接事实与待提交文件见[handoff](../../handoff.md)和[快照](handoff-snapshot-2026-10-13.json)；快照不另维护实时进度。
+更新：2026-10-14；唯一实时状态页。旧主计划完整保存在[2026-10-12快照](master-plan-2026-10-12.md)，旧失败与证据边界不改写。16:07交接事实与待提交文件见[handoff](../../handoff.md)和[快照](handoff-snapshot-2026-10-13.json)；快照不另维护实时进度。
 
-**当前Goal（AF-1-G3-UX1）：交付可日常使用的Swift优先通用主动Agent iPhone App，体验对标Codex、能力对标Dot，并从唯一维护主仓持续同步GitHub。** 用户从自然对话交付目标，能够查看/修改计划、处理可找回审批、查收带来源版本的成果、管理记忆和持续跟进、从原生提醒回同事项；完整定义见[goal.md](../planning/AF-1/goal.md)。设计与功能同步推进，AF-GD为必需阶段；同版AF-A01–18、AF-U01–12及研究交付/变化跟进/本地日程三条CP路径全部通过才完成。2026-10-13 16:06运行Goal读回为`usageLimited`；产品尚未签收，本次交接没有改变Goal状态。云电脑用途为公开网页调研＋文件处理；现有Supabase先行、新增计算预算0，托管实施待确认。
+**当前长期Goal：FINAL-G3；控制器仍PAUSED，用户已授权自主续行，基础执行合同保持AF-1-G3-UX1。** 用户最新明确授权“解决完问题后可以自行启动、优化长期目标”，此前暂停意图被本次继续授权撤回。`get_goal`仍读回PAUSED；现有Goal工具没有resume接口，电脑控制对Codex本体返回安全禁控，已请求用户在同一Goal控件点一次继续。当前前台工作继续，不能把明确续行授权说成控制器已ACTIVE；不重复创建、替换或用其他定时任务绕过既有Goal。长期目标、零新增计算预算和全部验收门保留，只优化执行顺序、并行边界、证据和分版本交付。长期目标是可日常使用的Swift优先、iPhone体验优先通用主动Agent：自然对话交代目标，查看/修改计划，找回审批，离开后继续已受理工作，回来查收有来源版本、可修改成果，并管理记忆、持续跟进和本地日程。[基础定义](../planning/AF-1/goal.md)与[开发入口](../planning/AF-1/development-start-contract.md)／[长期prompt](../planning/AF-1/long-task-development-prompt.md)共同约束执行。
+
+2026-10-14本聊天先读回运行Goal为空，核对既有合同与交接后按用户本次明确指令建立一个FINAL-G3长期Goal；未重复创建或替换现存运行Goal。2026-10-13 16:06的`usageLimited`保留为交接日期事实，不作为当前运行状态。AF-G5须同候选18A/12U/3CP全部通过；FINAL-G1再含9FQ/10CG与七天真实日用；FINAL-G2依8BP原合同完成具名配对并证明限定优势，两者同候选成立才签收FINAL-G3。必需FAIL/NOT_RUN/BLOCKED或证据不足不能算完成。现有Supabase、模型路由、A1和用户数据沿用，新增计算预算0；云电脑仅公开网页调研＋文件处理提案，托管实施待资源/区域/供应商确认。
 
 需求：[AF-1 spec](../product/agent-foundation-spec.md)；验收：[AF-A01–18与AF-C01–03](../acceptance/agent-foundation-acceptance.md)；执行切片：[delivery-slices.json](delivery-slices.json)；云电脑提案：[Proposed](../architecture/cloud-computer-proposal.md)；接手：[handoff](../../handoff.md)。
 
-终版产品方向与验收已整合为[FINAL-1规格](../product/catpaw-final-product-spec.md)、[质量／具名优势验收](../acceptance/catpaw-final-product-acceptance.md)及[交互状态提案](../design/prototypes/catpaw-final/index.html)。当前运行AF-1-G3-UX1仍按原基础合同推进；终版Goal不是一次文档更新就切换或关闭的运行Goal。
+终版产品方向与验收已整合为[FINAL-1规格](../product/catpaw-final-product-spec.md)、[质量／具名优势验收](../acceptance/catpaw-final-product-acceptance.md)及[交互状态提案](../design/prototypes/catpaw-final/index.html)。本次运行Goal按用户明确指令追求FINAL-G3；AF-1-G3-UX1继续裁决基础交付，文档更新或合成片交付不关闭运行Goal。
 
 | 终版目标 | 当前证据与判定 |
 |---|---|
 | FINAL-G1 日常可信体验 | 合同已制定；原18A／12U／3CP＋9项FQ＋10项CG对话细分需同版真实证据与7天日用；NOT_RUN |
 | FINAL-G2 限定竞争优势 | 8BP固定具名版本、输入与配对规则；尚无竞品配对测量，NOT_RUN，不能称优于 |
 | FINAL-G3 终版产品签收 | 依赖G1/G2同候选；NOT_RUN，设计/静态检查不关闭产品目标 |
+
+## 当前执行片与下一步
+
+2026-10-14自主续行计划：build23源码`7ac5518`与日期读回`c24901d`已固定，后续不因未标字号的截图再零散改值。新问题先复现并检查共同角色/容器/状态触发，在稳定候选上一次运行适用回归，默认档先展示，压力档显式标注；构建、真实UI与性能测量由Root独占Simulator，避免源码边改边测和重编译干扰长文测量。本轮三路内部Agent已完成只读并行评审：原模型route/请求格式与错误映射、W50持久有限grant的admission/source/worker/settlement/purge接线、W60设备执行permit与原生应用服务/unknown恢复。输出留忽略build，Root统一选择最小可交付路径；不先把六个WIP整体接入或宣称已有能力。关键路径仍先解决现有真实会话W10–12再同版CP-01；模型外部条件不足时继续独立离线实现，W50/W60准备工作并行。阶段23用于明确离线原生交互点测；下一候选优先真实许可→原请求→流式终态→持久恢复，再按依赖交持续跟进/记忆/日程。新模型供应商、付费fallback、扩大真实调用、生产部署和新手机安装仍保持具体候选授权边界。
+
+23:37原模型只读核对：12项API19/tick7部署基线输入hash匹配，实际route仍是`apodex/apodex-1.1-mini:free`＋`novita/bf16`，配置中的其他常量不是实际所选模型。原请求已完成许可与受理，adapter把供应商HTTP404映射为`free_model_unavailable`；已经返回200的turn受理通过流终态记失败，不能误判为Supabase函数缺失或启动503。本轮现有项目管理接口读回API19/tick7均ACTIVE、部署包hash仍分别`3fee61c0…`／`8f767ae8…`，没有部署。23:37公开原model endpoint GET200、`endpoints=[]`，原响应SHA256=`13c38b2b6e9e31801c8de397e7d610abb9bf6cb8c615c75d3af249e06d754818`；只证明该时刻未带凭据的公开目录为空，原provider正文与账号级可用性仍不足，不声称永久停服。[OpenRouter原生路由文档](https://openrouter.ai/docs/guides/routing/provider-selection)说明完整供应商slug锁定具体variant、零价和隐私/参数过滤仍是各自独立约束，现无证据支持猜测别名或放宽过滤。本轮Supabase changelog与状态码只读核对、公开元数据均无Auth/推理/SQL操作，手机第二条仍未用；先保留原失败，准备具体可兼容route的证据和同版部署清单后才提出必要变更批准。
+
+本轮底层接线审查收口：六个WIP字节保留，未直接集成。W50先拆开“当前grant/来源校验”“新dispatch租约”“原attempt终态结算”，避免两种维护worker在写入终态并清lease后被通用execution门回滚；再拆网络收据≤30秒期限与已持久received结果的后续slice期限，后者取原grant/due与当前slice/lease共同上限，零新增dispatch、额度或续权。W60先保持旧v1只审阅，建立独立v2精确决定、可信设备目标/原OS回执来源、root与calendar/notification两child持久身份，再接typed原生端口；日历ID变动或0/多匹配及通知unknown只读核对，不补创建/重加提醒。上述是源码组合审查，8项W50/8组W60故障验证均NOT_RUN；原15/34孤立测试不等于接线PASS。Root读回W50三WIP＋16维护输入、W60三WIP在内33仓库输入＋4本机SDK header hash一致；布局、冻结、部署快照、AF/FINAL/CG规划、敏感和空白检查通过。本轮业务源码、测试运行、Simulator操作、Auth/模型/SQL、手机安装、部署/推送、新依赖/凭据/compute均0；模型公开目录和现有函数元数据只读核对不作真实产品验收。
+
+2026-10-14当前前台片已交付[build23原生阶段版](../acceptance/restart-typography-stage23-2026-10-14.md)：分支`feat/s05-bounded-work`，候选`AF-UX-TYPOGRAPHY-20261014-23-R2`、0.3.0(23)已安装/启动到已有iPhone17专用Simulator，读回23并恢复系统large，没有自动发文本。Device Hub打开命令成功，Mac锁屏仍挡窗口人工观察。Root负责宿主/包/证据，native_layout负责共享语义字号、完整header、实际UIKit内外视口与pending恢复，native_controls独立源审查/反例复核。98默认受检source的静态门已补Font别名/注入、DEBUG逻辑和旧页面.init负例；10具名旧presenter排除，SF/QA仅按精确表达式豁免。初始弱断言默认13/XXXL2/AX5五项虽PASS，截图发现默认输入遮挡，严格同原包RED复现19.33pt可见区FAIL，原包/日志/截图保留。修复后最终同包8单元＋9次UI共17次执行、14个不重复方法全PASS；真实系统large/XXXL/accessibility5无QA覆盖见证为17/23/53pt，当前光标和稳定编辑区129.67/172.67/121.67pt，三组稳定整组AX与UIKit观测、当前EDIT-END选区通过。非DEBUG SDK、99宿主成员/968双语、布局/冻结/规划/部署快照/敏感检查通过；234项native输入、完整26文件App（含Debug dylib/签名）指纹与六张未改截图固定。完整包指纹`d5b6781047ac71e4fc8d913ebc93e30b40c1fa482b541ea5253455d9ad57bd38`。本版先测原生输入、计划、成果改稿、审批/控制和试算的明确离线流程；计划/审批在前一文字revision通过，最终编辑恢复revision未重跑，不冒充总回归。真实Agent/来源/PG/独立调度/日程/完整VO动效/日用/竞品门均未关闭；六个后台WIP仍未集成。手机保持16，真实模型第一条FAIL、第二条未用；本轮Auth/模型请求、手机安装、配置复制、部署/推送和新增compute均0。下一版本先打通现有真实会话→CP-01同版验证，新手机安装/扩大真实测试仍按候选批准。
+
+2026-10-14暂停收口：在本地从已固定W33建立`feat/s05-bounded-work`后，`get_goal`返回PAUSED（系统updatedAt=1791984313）。停止后续接线、实现和验证；三个内部Agent均已完成，没有运行中的Simulator/后台测试。W33源码与日期证据提交`cb63a3a`及状态提交`004c8a5`保留。下一片仅六个未提交后台文件：有限work grant原语15/15、设备效果原语34/34离线专项由各Agent完成，仍未接API/实际authority/worker/purge/native，未经root独立集成评审，不能签收W50/W60或CP。原生语义角色/自适应header/静态门只完成核读方案，没有启动后续修改。原手机16第一条FAIL、第二条未用，未新增安装/部署/推送。暂停后仅记录准确状态，不重复创建/替换Goal，不自行恢复。
+
+2026-10-14固定[W33离线交付记录](../acceptance/restart-authority-recovery-2026-10-14.md)，候选`AF-W33-CONTROL-20261014-06`、0.3.0(22)，已按69条明确审阅路径本地提交为`cb63a3afda2abeedc603d5d1b77d95a977cc8dcd`；提交读回49项source/test/config hash及69路径对应。最终80单元r4＋20实际Simulator UI r3全PASS、100不重复方法；生产源码相同，r4唯一输入变更是旧队列测试加强原UUID/原文、producer持久队列/自然UI及fresh磁盘重开等待。r3整轮99/100 FAIL保留，没有改写。225维护后台/17控制专项、22恢复场景/8URLSession场景、图片包18项、非DEBUG SDK、99宿主成员/968双语与Release22通过；232原生/84维护输入、八张同生产源码合成截图与日志/包hash固定。旧caret/AX/异步等待失败与真正lease/dispatch RED均留证；不替代真实PG、模型、同版手机、VO/动效/日用或总验收。截图发现最大字号工作卡长标题/状态同排过窄，caption绕行及preview环境/extent重复提交仍待统一收敛；长文p95的隔离10.75/10.89ms与并行Release时519.69ms均保留，归因未证，物理性能NOT_RUN。
+
+暂停前过程记录（三路）：后台Agent实际新建W50有限work grant合同/服务/专项测试；设备Agent实际新建设备效果合同/服务/专项测试，旧review-only不能获得执行权；原生语义角色/自适应header/源码检查门准备齐备，22候选已固定，将接着实现。两组后台新文件属下一候选WIP，未接API/worker/purge/native或真实系统，不计W50/W60 PASS，也未纳入本次W33提交。手机保持16；第一条正常App请求在provider_stream失败，第二条未用，原route/API19/tick7和数据保留。当时未新增安装、部署、推送、依赖/凭据或计算支出；Goal当时ACTIVE，当前控制器状态见页首。
+
+2026-10-14 19:48当前W33离线候选尚未提交，Simulator版本为0.3.0(22)，手机仍为冻结0.3.0(16)。维护后台同Task控制、不可变原operation读取、两worker共用执行屏障与来源会话撤权已实现；暂停保留原许可，恢复核对原Task，撤权退休租约，已dispatch/unknown不得重新发送。225全后台离线、17控制专项、22原生恢复场景和8实际HTTP适配场景PASS。首轮整合原生92方法中4个控制UI均PASS，但实际UIKit caret单元方法产生15个断言失败，续聊UI两项与旧计划UI两项失败；此轮不计PASS。共享TextKit2布局/光标滚动、键盘viewport单次扣除和自适应输入详情正在修复；原日志与230项固定r1输入保留。真实PG竞争/重启、同候选部署与手机完整矩阵仍未验，W33不关闭。
+
+2026-10-14手机真实路径：经只读系统清单确认当前App为0.3.0(16)，用户明确允许恢复或创建一个匿名体验身份后，从“开始体验”进入对话；无法从UI判定身份是恢复还是新建。第一条原文“Reply only: received.”经正常App许可后已显示“已发送”，19:42观察终态“此轮回复未完成”与`free_model_unavailable`，未观察助手回复。此前自动审批因镜像无法定位手机内许可控件阻止点击，交由用户手动允许；本轮用户确认后只读观察原请求，没有重复发送。两条短文本额度已用1条，第二条未用。W10–12已有真实失败证据，不能继续写发送0次或模型NOT_RUN；现有provider adapter将上游404映射为该错误，实际原因继续只读核对。现有API19/tick7已再次连接器读回ACTIVE；不切provider、不启用付费回退。未退出、重置或删除手机数据，未安装22、部署或推送。
+
+19:50–52只读核对进一步定位：Supabase脱敏聚合日志显示API19本时间窗只有一次正常model-consent POST 200、一次turn POST 200；`accept_commit`、`dispatch_admission`、`provider_admission`均出现一次，`catpaw_chat_interrupted`一次，phase=`provider_stream`、code=`free_model_unavailable`，无first_delta记录。OpenRouter现有free model公开endpoint元数据GET 200，但`endpoints=[]`；这是未带凭据的元数据查询，不是额外模型推理，不消耗第二次手机额度。由日志与部署adapter映射推断失败在原路由上游404，与当前无公开可用endpoint一致；未取得原provider错误正文，不能证明永久停服或所有账号的可用性。不切换、不放宽零价/隐私/固定供应商限制；第二条暂不发送，继续独立离线工作。自然调用中发生的生产数据库操作不算PG竞争/重启验收。
+
+20:52本地整合更新：r2同源100方法为97 PASS/3 FAIL（78单元/19 UI通过，2个共享caret方法及1个最大字号原操作AX标识方法失败），不得记为整轮PASS。续聊、改稿、来源阅读、账号恢复、五项真实宿主控制回执投影和另外三项控制UI均通过；两种维护worker的225离线仍通过。共享修复已把TextKit字形布局缓存与UIKit视口/滚动尺寸提交分离，取消系统自动滚动动画与精确caret恢复的竞争，保留IME及用户拖动门；focused r5六项实际UIKit宿主方法全部PASS，包括40KB连续编辑的两个真实显示帧。原操作Disclosure的容器与每行AX身份分开，完整SHA和未确认状态仍须独立可读，专项待本机UI复验；当前232项源码快照冻结，下一轮同源100整合尚未完成。图片Draft包18项和原生22场景/8实际URLSession场景通过均属离线层，不替代真机验收。只读现有零价替代endpoint核对没有证明兼容当前隐私限制，仍保留原路由和第二次额度；W50并行只读设计先解决有限持久授权，未创建Cron或放宽session expiry。
+
+21:08最大字号原操作AX定向1/1已PASS；最终生产源码的Release Simulator 22、非DEBUG SDK、99宿主成员/968双语通过，当前整合r3 UI仍运行。r3单元出现一个旧账号本地入队检查FAIL：`!enqueueing`不能承诺并发repository订阅已完成页面队列投影；原日志不足以证明持久队列丢失。仅修改测试等待，保留原断言并增加原UUID/原文、producer的实际队列、自然UI投影和拒绝登录前后fresh SwiftData重开验证，不调用强制refresh；产品源码零变化，待80项同范围单元复验。232项r3/r4输入差异仅此测试文件，失败轮次完整保留。只读布局审查另记录现有部分caption绕过13pt policy、完整图片preview环境未验与extent亚像素舍入造成重复viewport commit；不宣称全App字体/弹层已根治。
+
+下一片合同核读已收齐：W50先新增持久有限work grant（明确原subject/scope/operation、工具与来源、route/consent、绝对期限和跨tick/due累计预算），新命令JWT exp继续严格验证；unknown消费额度但只读核对，最后合法调用的有界收尾不能仅因剩余调用数0被禁止。当前App logout事务可阻止后写，外部Auth撤销/删除的实时信号仍待接线，不能延长session expiry冒充离线授权。W60/W61先版本化设备执行合同，旧review-only批准不因安装新版而得到效果权；日历与本地通知固定子effectID和独立回执，冷unknown零重建，精确时区/DST/跨日、账号返回和系统权限另验。两路目前仅只读计划，不当代码或产品PASS；没有创建Cron或访问系统日历/通知。
+
+W00入口/版本/冻结来源/部署快照/授权核对已完成，保留API19/tick7日期快照的14项共享差异；没有把maintenance断言为已部署同版。W30a已在`feat/s03-plan-persistence`提交为`1c3bb15`，42个明确审阅路径与39项受测source hash对应，工作区提交后干净。来源片已在`feat/s03-sourced-results`提交为`483f7ad`，42个明确路径、38项source/test与日期证据一致，提交后工作区干净。改稿与审批恢复片在`feat/s03-result-amendments`提交为`d02f1e7`，54个明确路径与日期证据对应；选定报告自然语言跟进片已在`feat/s03-report-continuations`提交为`a444e4f`，51个明确审阅路径与日期证据对应；当前分支为`feat/s03-authority-recovery`，保留未提交W33工作。`feat/conversation-genui`、同期文档作者的R5与PR #8整合、旧checkout、legacy-local及冻结资产保留。本片没有推送或新PR。
+
+[2026-10-14首片](../acceptance/restart-agent-start-2026-10-14.md)：W11修复委派空正文续聊历史；后台补COMMIT前租约/授权检查。D20/D30同步交原生固定registry、表图/精确试算、复制分享引用保稿以及不覆盖输入的回到底部。21续聊/16队列/64算法schema/67后台离线与最终6原生测试通过；Release模拟器17构建成功。这是合成/离线维护源码候选，真实许可→原请求→现有模型→持久化→App恢复及CG真实路径仍NOT_RUN。
+
+[W30a与原生持久恢复片](../acceptance/restart-plan-recovery-2026-10-14.md)已固定离线候选：计划v1/同任务CAS v2、accepted/applied分离、安全checkpoint与实际步骤回执接入维护后台和原生sheet。新修改commit后复用原许可有界唤醒，waiting_input经实际维护API到同任务v2无需手动tick；GET/原operation重放/unknown不重发。原生关闭重开保留修改与聊天两份草稿，修复本地/服务端空间误比较及合法长计划响应拒绝；GenUI筛选/选择/无效原始输入冷启动恢复、完整表共享状态与精确负值提示已交付。87后台、25原生（18单元方法＋7实际UI）PASS，Release模拟器18可构建。范围仍是合成/离线维护候选，AF-A07/CP-01及所有真实产品门不关闭。
+
+[W31a/W32a来源与精确决定片](../acceptance/restart-sourced-results-2026-10-14.md)已固定同源码离线候选：给定公开URL→实际读取端口→原始dispatch/字节回执→可核对引用→同任务有来源成果；计划v2不能消费v1证据，unknown不重新读取，撤权/取消/截止回滚写入。新的精确动作合同接入维护API，approved保留事实而停在waiting_device，不假称系统效果。原生独立成果阅读、来源单sheet/详情、exact版本历史与返回保稿同步交付；修复合法NEL的SSE字节分帧与来源sheet辅助字号继承。156后台、6独立恢复审查、37续聊、74本机HTTP/SSE、15来源解析及最终7原生（5单元＋2UI）PASS；79宿主成员/777双语，Release模拟器0.3.0(19)成功。源码/日志/八张合成截图的hash见日期证据。实际Supabase TCP/TLS、模型/PG、终态成果改稿、原生可找回审批/执行、独立调度与全部产品门仍未完成。
+
+2026-10-14（Shanghai）重新选择iPhone镜像，本片再次只读观察仍明确显示Mac认证锁定页，需用户自行触控ID或输入Mac登录信息；未进入App、未操作认证、未发送请求。build16两次短文本额度仍未消耗，W10–12真实路径等待解锁。三路内部Agent已交W31a受控给定URL读取/来源回执、同成果版本/历史原生阅读和W32a精确动作合同；下一片优先补终态成果CAS改稿与原生可找回待决，再接W33；旧r2仅合成preview，不当作产品审批。W20/W40、设计线和GenUI producer/同工作跟进可按文件/依赖分工。真实模型/PG、同版手机包/部署、独立调度/日程、七天日用与竞品配对仍未完成；外部条件不足继续独立代码与离线验证。本片不扩展手机16授权，实际安装/部署/推送/付费资源均0。
+
+
+[改稿与审批恢复片](../acceptance/restart-artifact-decisions-2026-10-14.md)已固定同版离线候选 `AF-W31-REVIEW-20261014-04`：同成果三字段人工CAS改稿、不可变版本/原operation读取、原生可找回精确审批与同scope草稿排空已接入维护后台和实际宿主。184后台、37续聊、86本机HTTP/SSE、28审批便携/8适配器、10改稿/7计划草稿、4负向来源投影回归及最终67原生（53单元/14实际UI）PASS；严格JSON、90宿主成员/895双语及治理检查通过。Release模拟器0.3.0(20)成功，168项固定输入和九张同版合成截图hash见日期RESULT。保留61/64的无签名Keychain失败、实际-34018探针、视觉失败、中断与编译失败；现有Simulator模板的Xcode ad-hoc包通过真实Keychain与账号隔离，不是手机签名。最大字号末行/光标可见，unknown原修改/原决定只核对不重发；负向来源不可被晚到投影恢复，logout先关闭HTTP authority再排空草稿。人工改稿不调用模型或重读来源，新增论述待重新核对；approved仅waiting_device、无EventKit效果。持续磁盘失败后forced logout仍不能保证最后内存稿恢复。下一片优先补选定报告的自然语言修改：新turn/exact target/完整模型round/同task续接与CAS；静态9GAP及8条待运行设计不算功能PASS。W10–12真实路径、W33、GenUI producer、记忆、独立调度/日程、同版真机和全部release门仍未完成；本片安装/部署/推送/付费计算及build16短文本均0，Goal保持ACTIVE。
+
+
+[选定报告自然语言跟进片](../acceptance/restart-report-continuations-2026-10-14.md)已固定同源码离线候选 `AF-W31-CONTINUE-20261014-05`（`feat/s03-report-continuations`，0.3.0(21)）：新turn/exact target/完整原文与body/原许可和新会话权威，完整模型round受理后重开原Task；原frozen request、旧版本和旧回执保持。只读追问tools为空，GET/重放零kick；新计划compose/save/verify、每个发布版本和实际结算分开，普通计划修改不能替换进行中的冻结改稿。原生修改/追问/普通聊天三份原文、typed持久队列、组合输入、可信subject、严格回执与冷恢复已接入宿主。实际维护运行时的离线两次改稿JSON进入原生HTTP，当前v3下按原operation找回v2、同Task、全GET；Node与Swift原文字节hash差异已修正。206后台、37续聊/86本机wire/16队列与最终81原生（65单元/16实际UI，零失败/跳过）PASS；Release模拟器21、93宿主成员/910双语、187固定SDK输入/41改动输入和六张同版合成截图hash见日期RESULT。保留响应样例缺字段、私有类型编译失败、请求体stream夹具崩溃、手势定位失败、截图发现版本号挤掉后的修复与两次主动中断整合轮次；最大字号版本、末行、光标、44pt发送和退出入口可见。三个内部Agent因额度停止，主线接管并完成本片，不另创建聊天或替换Goal。新来源会话撤权已阻止dispatch/publication及旧完成复用，但pending Task可能仍scheduled，W33需清楚的恢复状态。治理/合同/敏感/空白PASS；API19/tick7快照、原route、A1与数据保持。16:54–55只读镜像显示iPhone使用中、镜像结束，需锁定iPhone以连接；未进入App/点击连接。早前Mac认证锁定仅保留为日期事实。本片生产Auth/模型/公开GET/SQL、手机包/安装/部署/推送/依赖凭据/计算支出与build16短文本均0，全部产品门与FINAL-G3继续未关闭；下一片W33及原生GenUI producer并行推进。
+
+2026-10-14暂停时的W33工作：typed同Task暂停/恢复/撤权及不可变原operation读取已在维护API形成未提交候选；离线用例已覆盖两种既有worker的同Task恢复。最新专项运行7/8通过，故障注入发现旧worker在模型入口拒绝后，错误收尾仍把持久paused覆盖为failed；日志保留在忽略目录`services/edge/build/authority-recovery-20261014/control-r3.log`。该失败未修复，未签收W33；原生控制入口、真实PG双执行者/重启与撤权验收仍未完成。系统Goal现为PAUSED，本次仅核对、记录进展和体验问题，不继续实现、安装或部署；早前段落的ACTIVE保持为对应日期事实。
+
+2026-10-14体验问题审查：近期最大字号返工涉及来源sheet字号传递、编辑区/键盘/固定操作区空间分配，以及长标题挤掉版本号。现有语义字体、44pt操作区和局部字体桥接已使用，但共享层没有覆盖这些布局约束；各页面的局部修复及单场景几何断言未形成同类页面统一回归。后续恢复开发时，优先沿现有DesignSystem收敛文字角色、弹层环境、版本标题、键盘下可编辑区域与决定区组件；默认/最大辅助字号、375/390/430pt、中英长文、键盘与浅深色按适用组件组织矩阵，检查实际末行/光标、版本、动作可达性并审阅截图。先迁移已有失败页面并复验，再用于新页面；这些是待执行纠正措施，不是已完成或真实产品PASS。
 
 ## 当前基线与证据
 
@@ -22,11 +72,12 @@
 | 代码迁移 | 已复制原生集成HEAD `582e4e4`、663个跟踪文件与12个未提交候选；候选hash逐项核对，旧源目录不修改；本地原始分支历史保留为legacy-local引用 |
 | 最终handoff | 已读旧主仓handoff；用户确认相关任务停止。原文保存在忽略的local-audit；12项WIP与编译阻塞均相符 |
 | 首个修复 | 新仓已复现并修复getter缺return；候选包含许可review与弹窗分离、稳定确认入口、队列折叠、持久回复证据；新增拒绝重开/旧revision回归，最终合成验证通过 |
-| 本地检查 | 冻结合同/上游/历史来源完整性PASS；便携对话7/7、队列9/9 PASS；最终39/39原生＋1/1实际弹窗UI PASS，DeviceTrial无签名产品配置build PASS；证据限合成/Simulator，物理手机与provider未验 |
+| 首个本地检查（日期证据） | 冻结合同/上游/历史来源完整性PASS；便携对话7/7、队列9/9 PASS；最终39/39原生＋1/1实际弹窗UI PASS，DeviceTrial无签名产品配置build PASS；证据限合成/Simulator，物理手机与provider未验；最新追加候选见下行 |
 | GitHub | 产品规划、源码调研、R1–R5设计与日期合成证据统一经[PR #8](https://github.com/Yankj/catpaw-m/pull/8)整合；实际合并提交以PR与main读回为准。main保持唯一主干；功能开发使用短分支，既有feat/conversation-genui及同期改动保留。默认main、合并后自动删head、本地hooks与PR核验沿用；当前私有仓库服务器保护不执行。legacy-local来源与旧工作树保留，详见[分支规范](../development/branch-management.md) |
-| 手机/API | 用户明确批准后，同bundle覆盖安装0.3.0(16)成功，系统读回16；未卸载/重置数据，原有内容待UI核对。镜像从连接失败进入Mac认证锁定页，待用户Touch ID解锁；截图已保存到本机忽略目录。Supabase APIv19/tick7无部署变化；实际50/43文件、14项共享差异已同步 |
-| 新候选包 | 0.3.0(16)，独立Git archive绑定原main `a905b47`；非DEBUG、严格签名、原证书/profile/entitlements及IPA逐字节PASS。已获安装及最多2次短文本原路由许可；尚未发送。见[包证据](../acceptance/restart-build16-2026-10-13.md)、[安装证据](../acceptance/restart-install16-2026-10-13.md)。PR #2阅读修复进入后续包 |
-| 真实链路 | 旧build15人工新会话同意后仍等待，未观察完整回复。许可→发送FAIL，模型UNVERIFIED；先复验现有路由 |
+| 手机/API | 手机仍为0.3.0(16)，用户已断开手机并授权使用已有Simulator；没有卸载/重置数据。第一条正常App许可请求已发送并失败，第二条保留。2026-10-14 23时管理接口重新读回API19/tick7 ACTIVE及原部署包hash；日期快照的50/43文件与14项共享差异仍须在下一部署候选对齐，本轮无部署。私人原图仍仅在忽略目录 |
+| 已获批手机包 | 0.3.0(16)，独立Git archive绑定原main `a905b47`；非DEBUG、严格签名、原证书/profile/entitlements及IPA逐字节PASS。既有许可最多2次原路由短文本，已用1次FAIL；新包不沿用旧安装批准。见[包证据](../acceptance/restart-build16-2026-10-13.md)、[安装证据](../acceptance/restart-install16-2026-10-13.md) |
+| 当前离线候选 | [AF-UX-TYPOGRAPHY-20261014-23-R2](../acceptance/restart-typography-stage23-2026-10-14.md)，源`7ac5518`、日期读回`c24901d`，0.3.0(23)在已有Simulator安装读回；最终同包17次执行/14不重复方法PASS，完整包与234原生输入hash固定。原生离线点测清单、源和包可用，未签名手机包/部署；旧17–22日期证据保留，23不替代真实Agent或总产品验收 |
+| 真实链路 | build16第一条正常许可后已受理，供应商阶段`free_model_unavailable`、无首段/助手回复，FAIL；1/2短文本已用。23:37原公开model目录GET200仍无endpoint；既有路由保留，不自动重发或切换 |
 
 旧仓不删除、用户数据不重置、签名凭据不发布。原始机器记录和大型旧性能采样保留本机/legacy历史，发布经扫描的spec、源码、合成摘要与原始trace hash。远端既有参数化签名模板与治理文档保留。
 
@@ -35,13 +86,13 @@
 | 切片 | 用户可见交付 | 依赖 | 门槛 / 当前 |
 |---|---|---|---|
 | S00 维护入口与同步 | 单一维护目录、GitHub源码、plan/spec/验收/handoff齐备 | 无 | PASS：PR #1/2源码tree与本地引用核对，部署来源和体验合同已同步；包/源码版本区分明确 |
-| S01 真对话与稳定许可 | 允许后能回答/追问/重开；许可可找回，队列轻量，状态诚实 | S00 | IN_PROGRESS：[队列sheet/暂停编辑/明确继续/unknown发送约束](../acceptance/restart-queue-ux-2026-10-13.md)已交付；追加[侧栏尺寸/搜索清空/按会话保留文字与图片草稿](../acceptance/restart-sidebar-drafts-2026-10-13.md)，最终43原生＋5实际UI、12侧栏包检查PASS。冻结build16已更新原手机，不含阅读、队列与本片；镜像待Touch ID解锁；真实模型0次，NOT_RUN |
+| S01 真对话与稳定许可 | 允许后能回答/追问/重开；许可可找回，队列轻量，状态诚实 | S00 | IN_PROGRESS：许可、队列、阅读、侧栏与草稿已有日期离线证据。冻结build16第一条正常许可后已发送，回复失败`free_model_unavailable`；第二条未用，现有路由只读核对中。手机不含后续候选；真实链路FAIL，尚未签收 |
 | S02 真图片与连续体验 | 合成图真实理解；长文/前后台可用 | S01 | AF-A06与A04/05；NOT_RUN，不自行放宽视觉路由 |
-| S03 执行审批成果 | 自然形成计划，可改/停/恢复；等待有入口；成果回对话/活动 | S01 | AF-A07–10；映射现有worker/store，先同task恢复试验。NOT_RUN |
+| S03 执行审批成果 | 自然形成计划，可改/停/恢复；等待有入口；成果回对话/活动 | S01 | IN_PROGRESS：W30a同任务计划/安全点/原operation/保稿与续跑已交；W31a来源回执/版本阅读、W31b人工CAS改稿、W32a精确合同/原生审批恢复离线已交。选定报告自然语言同Task修改/只读追问及原操作恢复离线已交；系统effect、真实来源/model/PG及W33仍待；AF-A07–10/CP-01真实NOT_RUN |
 | S04 记忆闭环 | 保存/来源/更正/删除，新会话生效 | S01 | AF-A11；接既有端口与真实PG，NOT_RUN |
 | S05 主动跟进 | 时间/公开变化触发；无变化静默，暂停与退避 | S03 | AF-A12/13；调度托管部署先确认，产品配置代码可先做。NOT_RUN |
 | S06 原生动作触达 | 本地日程确认写入，提醒返回同事项 | S03 | AF-A14/15；已知时间本地提醒先做，APNs独立接线。NOT_RUN |
-| S07 智能UI与整体签收 | 六类卡、侧栏/输入/阅读；三条组合路径 | S02,S03,S04,S05,S06 | AF-A01/16/17/18与全部必需项同版通过。NOT_RUN |
+| S07 智能UI与整体签收 | 六类卡、侧栏/输入/阅读；三条组合路径 | S02,S03,S04,S05,S06 | IN_PROGRESS：固定registry/精确试算/表图/消息动作、64核心、26状态边界与原生流中/冷启动/完整表共享状态PASS；仅显式offline fixture，HTTP producer与同工作跟进未完成。AF-A01/16/17/18、CG与全部必需项同版真实门NOT_RUN |
 | S08 云电脑扩展 | 无登录网页＋文件处理；进展、恢复、停止和成果 | S03＋方案确认 | AF-C01–03；方向已选、新增计算预算0；资源/区域/供应商待确认，NOT_RUN |
 
 S01通过后S02/S03/S04代码可在合同明确时独立推进；同一文件/设备由本任务统一整合。未经人类授权不向旧任务派发消息。失败定位输入→许可→POST→模型→事件→存储→UI具体段，不以组件完成代替用户路径。
@@ -63,9 +114,15 @@ S01通过后S02/S03/S04代码可在合同明确时独立推进；同一文件/�
 3. 验证范围因变更、失败或风险扩大，不为测试数重复跑。构建与真机性能分别记录。
 4. 原始本地历史不推远端；main经检查的差异/PR推进，不force、不拼接无共同祖先历史。连接器发布后读回commit/tree并对齐维护分支。
 5. 云电脑方案未确认不实施。用户已批准冻结build16更新原手机与最多2次正常App短文本原路由验收；后续新包/新增范围另行确认。继续与方案无关的开发。
-6. AF-A01–18全部必需项签收后Goal才complete；云电脑扩展按独立确认范围。缺证据不算通过。
+6. AF-G5须同候选18A/12U/3CP全部通过；FINAL-G1与FINAL-G2再按原合同同候选成立才关闭本运行FINAL-G3。云电脑扩展按独立确认范围；缺证据不算通过。
 
 ## 最近验证
+
+2026-10-14继续同一个ACTIVE FINAL-G3，由三个内部Agent分别实现/审查来源端口、原生成果与动作合同，主线整合真实维护API/两种worker并固定[W31a/W32a日期证据](../acceptance/restart-sourced-results-2026-10-14.md)。156全量后台离线、6单独恢复探索、37三工具续聊、74 localhost HTTP/SSE、15解析内层场景与最终7原生XCTest PASS；Release模拟器0.3.0(19)、79宿主成员/777双语及治理/敏感/空白PASS。保留续跑/最后await撤权负对照、NEL原字节RED→GREEN、UI离屏/固定浮层手势定位和截图发现来源辅助字号未继承后的修复。八张最终Simulator合成截图带版本/hash，不能签收真实设备门。默认route hash不变，API19/tick7不改；生产Auth/公开GET/模型/PG、手机安装/部署/推送/付费计算均0，build16两文本额度未耗；终态改稿、原生待决、系统effect、W33/W50/W60及全部release门继续未完成，Goal ACTIVE。
+
+2026-10-14沿同一个ACTIVE FINAL-G3由三个内部Agent分工持久计划、原生修改/恢复与GenUI本地状态，主线审查实际接线并固定[W30a日期证据](../acceptance/restart-plan-recovery-2026-10-14.md)。87后台离线、25最终原生XCTest（18单元方法/7实际UI）、21续聊/16队列/26状态边界、77宿主成员与751双语检查PASS；Release模拟器0.3.0(18)同production source可构建。新增原许可有界修改续跑、accepted/applied回执、原operation GET、两份草稿、合法长计划与SwiftData无效输入冷启动；修复本地/服务端空间混淆、计划卡遗漏/子标识、表格重复标识和精确负值舍入提示。失败与测试手势的键盘/inset定位保留；最终合成计划截图留忽略build且记录版本/hash。目录/冻结/MIT/受控patch/部署来源/规划/敏感与空白PASS。API19/tick7快照不改，真实Auth/模型/SQL/手机/部署/推送/付费计算0；AF-A07/CP-01、全部release门与运行Goal未关闭，继续真实路径和W31/W32。
+
+2026-10-14明确建立并启动FINAL-G3长期Goal，核对原基础合同后由三个内部Agent分工续聊恢复、后台权威写入和GenUI核心，主线整合原生交互并固定[首片证据](../acceptance/restart-agent-start-2026-10-14.md)。最终6/6原生回归包含实际流式期间本地输入/筛选、引用草稿和阅读锚点；初始失败、原生标识修复、导航可见区修正与截图发现按钮遮挡后迭代均保留。维护后台5项租约RED→GREEN、Deno 67/67、Swift 21/16、精确算法64/64通过；Release模拟器0.3.0(17)可构建，713双语条目、69宿主成员有效。两张最终合成模拟器截图带版本/hash，私人手机内容未导出。治理/规划/敏感与空白检查通过；真实模型/SQL/手机/部署/竞品与全部release签收门保持未验，Goal ACTIVE。
 
 2026-10-14按用户要求收齐最新内容并通过PR #8整合main。R5日期记录的47项输入／截图／保留R4来源hash逐项匹配；保留前次已发布的FINAL原型行尾空格修正，刷新当前Goal映射与精确误报复核，不改写日期证据。目录／冻结／部署来源、AF／Goal／FINAL／CG规划、敏感扫描与完整候选空白检查通过。候选不含同期GenUI业务开发改动；原生／真实模型／SQL／设备与产品签收状态不变。
 
@@ -112,3 +169,5 @@ S01通过后S02/S03/S04代码可在合同明确时独立推进；同一文件/�
 ## 仓库架构与开发规则（2026-10-13）
 
 已核对目录、主App依赖、GitHub分支/PR及旧工作树；目录角色、分层AGENTS、CLI hooks与分支规范已建立。8个远端/4个本地已整合分支已删除，tip/完整历史bundle/51项原WIP已备份；新增规范按独立文件清单经PR同步，不夹带其他作者正在写入的规划/设计。未改业务源码、模型、包、部署或运行Goal；产品验收保持原未验结论。维护入口为catpaw-api＋_shared，tick独立入口仅存在部署来源，后续源对齐仍待逐片验收。[完整审查](../architecture/repository-review-2026-10-13.md)、[分支规范](../development/branch-management.md)。
+
+2026-10-14用户明确继续并要求从底层共性解决问题。三个新内部Agent按不冲突文件边界执行：execution_fences统一维护worker租约/结算与unknown保护；native_layout收敛语义字号桥接、版本标题、真实编辑viewport/caret和Sheet环境；native_controls交同Task暂停/恢复/撤权的typed原生领域/持久日志/应用服务/页面。主线整合HTTP/账号生命周期/宿主、fresh source logout与删除屏障、证据及验证。旧Agent额度错误保持日期事实，不当当前三路状态。初步“暂停被failed覆盖”诊断已纠正：旧注入在同一事务内被整体回滚；跨独立事务pause/revoke/takeover的两worker用例已通过，另已独立复现live lease被接管、已dispatch后abort误排队的维护whole worker缺口。W33/共享布局仍是未提交实施中，不签收真实门；本轮无生产请求、安装或部署。
