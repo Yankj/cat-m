@@ -1,0 +1,175 @@
+{
+  "schema_version": 1,
+  "candidate": "AF-W50-W60-CONTRACTS-20261015-01",
+  "repository": "Yankj/catpaw-m",
+  "branch": "feat/s05-bounded-work",
+  "local_source_commit": "f86fff48691cc6762dfd13b6879b0148cda74c5b",
+  "local_full_tree": "435364ca59d39ff9ea375badf4f18951fa0b7365",
+  "remote_previous_head": "26157b839db1f6976113baa34e145365ddf89829",
+  "remote_source_commit": "7da7ad98c9303e101e33777d48e433de92239e20",
+  "remote_source_tree": "5d04d2d0e04f2a86341cbd89ec57f306831dab30",
+  "expected_tree_independently_matched": true,
+  "remote_head_readback_matched": true,
+  "remote_changed_paths_matched": true,
+  "publication_method": "Existing GitHub connector, expected parent lease, force=false; original local history retained.",
+  "published_entries": [
+    {
+      "path": "apps/ios-conversation/CatpawM.xcodeproj/project.pbxproj",
+      "mode": "100644",
+      "type": "blob",
+      "blob_sha": "d0b22faaa60f934900a5238da0abf32591ccfa55",
+      "sha256": "d4867d0833dc4f780428ae69114b53b5910ad3aa7dd077a3d38cf32b8b748883",
+      "bytes": 55749
+    },
+    {
+      "path": "apps/ios-conversation/Scripts/test-device-effect-contract-portable.sh",
+      "mode": "100755",
+      "type": "blob",
+      "blob_sha": "42cfaea70e73e811428ea94d2d9b11b84684d534",
+      "sha256": "bfdbe6cb3a07ceca66f27ed4dcc5e1e1a7e61535fb8f0f04caf5eefa01aba4a2",
+      "bytes": 580
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Domain/ConversationDeviceEffects.swift",
+      "mode": "100644",
+      "type": "blob",
+      "blob_sha": "3683e721c81d73727d9fb2c81d3362c3b043b45d",
+      "sha256": "226d8b08478f469d3b2ced929e911440454f5402d913e583b08d74e471e599a8",
+      "bytes": 38723
+    },
+    {
+      "path": "apps/ios-conversation/Tests/ConversationDeviceEffectContractTests.swift",
+      "mode": "100644",
+      "type": "blob",
+      "blob_sha": "334ebb5e40200d2d2d0db08cd6a6de70c2f91878",
+      "sha256": "aae2e89a5ca58cb0087ef87cabbff67f7c3024f4d03ab0eafae4607110db617a",
+      "bytes": 20028
+    },
+    {
+      "path": "apps/ios-conversation/Tests/Fixtures/device-effect-contract-v2.json",
+      "mode": "100644",
+      "type": "blob",
+      "blob_sha": "ee14fadc209a28fa04c2ed7306abbc370c6ac904",
+      "sha256": "9fc74cd27abf382da55295c74877afc1affe53afc05879a3616a9576ebb8f804",
+      "bytes": 99736
+    },
+    {
+      "path": "docs/acceptance/evidence/bounded-work-contracts-20261015/RESULT.json",
+      "mode": "100644",
+      "type": "blob",
+      "blob_sha": "aa9b5403894b654e34e196a7fc9902b7d9e31f16",
+      "sha256": "e1320ff300c2d53479d34ac6b1971c739a92f0e73114b3e2d0067a1b4f7092d1",
+      "bytes": 39237
+    },
+    {
+      "path": "docs/acceptance/restart-bounded-work-contracts-2026-10-15.md",
+      "mode": "100644",
+      "type": "blob",
+      "blob_sha": "e56d57c6ef9372ff35d1b2615c06d0032e725a42",
+      "sha256": "36a1cffac0bb85abd8730625f110e35d092766fa1941118a3a773e9bc0d8ffd7",
+      "bytes": 3615
+    },
+    {
+      "path": "docs/status/master-plan.md",
+      "mode": "100644",
+      "type": "blob",
+      "blob_sha": "89aa82a95c06455a56556bd568e1b37c407f1191",
+      "sha256": "8ab5130add9d3346f05effcd1c1e0bc0de404fc7d00f842ad1fea35182b0fca7",
+      "bytes": 59891
+    },
+    {
+      "path": "scripts/reviewed-findings.json",
+      "mode": "100644",
+      "type": "blob",
+      "blob_sha": "fa82cf02caebc1e7752a64301e6cd12109ef2daa",
+      "sha256": "910ee88c63e42622ab22cfe946ac73b6cddc8cf95c2d95ee826f1e8780c84e16",
+      "bytes": 82905
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/authority.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "blob_sha": "df9f684d8d95e66a9ba7276696562e241a2be8a4",
+      "sha256": "a80ccbb33c52eb4666b190e7a7841fda2360222e1067ba0970baedfe0dbbf1a1",
+      "bytes": 14298
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/device-effect-contract.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "blob_sha": "0baf88e94b18a9b59730b1923f6f8cdd5180e8c3",
+      "sha256": "3a2f49108789fbc91326f1111f2faafed09de3d286431fe75fe6870657bf8f5c",
+      "bytes": 9882
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/device-effect-service.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "blob_sha": "e3382dc69f39a37e43a14b9c06a6ebe2fcb2a4ab",
+      "sha256": "2cb283471760eab998387eeb50bbef033b57fe52ac94da16af84b592b28da32d",
+      "bytes": 29675
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/task-work-grant-contract.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "blob_sha": "3a4df30d0e896693db4e851be23206186c1cc82f",
+      "sha256": "bf3eb12c1b9275c3d21a0c2c37581338b8af2239b112cd453da5f7ca06fd66d0",
+      "bytes": 9499
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/task-work-grant-service.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "blob_sha": "fc56d42ed960c9d12cc6653eb5c53234fca24f47",
+      "sha256": "93947162755e61554271593b6bc24497e7f893658ac1885e037c468df92bdd7b",
+      "bytes": 42873
+    },
+    {
+      "path": "services/edge/test/accepted-work-source-authority.test.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "blob_sha": "c3baf358c08541bdad6a51144a8edc8b780b02dd",
+      "sha256": "22dd9f625ee75673539289c444c5a7f505451fe0eaed1698ef52629e50835ea6",
+      "bytes": 10212
+    },
+    {
+      "path": "services/edge/test/device-effect-contract-fixture.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "blob_sha": "1e4a1c7ddaa80d896d1fcb5ab7fe1d54ea6b992f",
+      "sha256": "dc77efabc4c94734225422e5589aaf5f14b1afd5e5c112ae0598199798340894",
+      "bytes": 13728
+    },
+    {
+      "path": "services/edge/test/device-effect.test.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "blob_sha": "c4e6500852ef8a61d8bba3b2e6a9c1df21e3757d",
+      "sha256": "cb00a365f8c47aa88294b3299ceabfcb3c875ee1d58276b5321268874924174b",
+      "bytes": 33712
+    },
+    {
+      "path": "services/edge/test/task-work-grant.test.mjs",
+      "mode": "100644",
+      "type": "blob",
+      "blob_sha": "78f1aea4f67b8a0958b127c59a255d7cfb101337",
+      "sha256": "4f57b10c38737fc91dac8ce6a04ed03c6014427c3ed6388627947d0b8ba81da9",
+      "bytes": 53108
+    }
+  ],
+  "media_uploaded": 0,
+  "previous_held_synthetic_png_count": 22,
+  "media_scope": "Previous held media identities remain in source-publication-20261014/RESULT.json; this delta contains only UTF-8 code/test/metadata.",
+  "validation": {
+    "backend_offline_passed": 303,
+    "native_portable_groups_passed": 8,
+    "native_sdk_typecheck": "PASS; no App link or install",
+    "product_release_gates_closed": []
+  },
+  "limits": [
+    "Local and connector commit SHAs differ because connector metadata differs; published tree matches independently computed allowed tree.",
+    "No main merge/PR/production deployment/phone installation/expanded model testing/provider change authorized by code synchronization.",
+    "Raw runtime logs and private captures remain ignored local data."
+  ]
+}
