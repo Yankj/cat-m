@@ -1,5 +1,5 @@
 {
-  "reviewed_utc_date": "2026-10-14",
+  "reviewed_utc_date": "2026-10-15",
   "policy": "An exception applies only to the exact path, category, line and file SHA256. Any byte change requires fresh review.",
   "findings": [
     {
@@ -1420,6 +1420,27 @@
       "line": 42,
       "sha256": "5f4b2436f42305718fd365936426d8be924dcd1bbbdbf54d5f7436505ac0a3fb",
       "reason": "Re-reviewed after the UI merge: unchanged DEBUG-only synthetic task-controls fixture basename triggers the sk- prefix pattern. No credential or user data is present; exact current whole-file hash and line only."
+    },
+    {
+      "path": "apps/ios-conversation/Sources/App/CatpawApp.swift",
+      "category": "credential_prefix",
+      "line": 40,
+      "sha256": "4906c98feab61aabbf5be4d52c123fb1d94b96ef085e5ef951e4f5cc96f6764f",
+      "reason": "Re-reviewed on integration v2 (737f3c2 + push-token wiring): unchanged DEBUG-only synthetic task-actions fixture basename; the task- substring matches the sk- credential pattern. Not a credential."
+    },
+    {
+      "path": "apps/ios-conversation/Sources/App/CatpawApp.swift",
+      "category": "credential_prefix",
+      "line": 42,
+      "sha256": "4906c98feab61aabbf5be4d52c123fb1d94b96ef085e5ef951e4f5cc96f6764f",
+      "reason": "Re-reviewed on integration v2 (737f3c2 + push-token wiring): unchanged DEBUG-only synthetic task-controls fixture basename; the task- substring matches the sk- credential pattern. Not a credential."
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/source-erasure.mjs",
+      "category": "credential_prefix",
+      "line": 15,
+      "sha256": "3e3dd57b0d875a76c7c7937190a53a97b2ea7200a49a47fe90dfa6e98fbc5f8e",
+      "reason": "Reviewed R0 v22 vision port: line holds public storage collection identifiers (revision artifact receipt kinds); the task- substring matches the sk- credential pattern. The vision change only clears vision_provider_receipt/image_attachments elsewhere. Not a credential."
     }
   ]
 }
