@@ -1,20 +1,14 @@
 import SwiftUI
 
-/// `GenerativeUIDecisionSubmitting` over 三角's service API (4454bee). The service resumes the SAME turn's SSE
-/// stream after the decision; the resulting `ui.*` / approval events reach the store through the turn event path.
-struct ConversationServiceUIDecisionSubmitter: GenerativeUIDecisionSubmitting {
-    let service: ConversationSessionService
-    let scope: DataScope
-
-    func submitUIDecision(conversationID: UUID, turnID: UUID, interruptID: String, decision: GenerativeUIDecision, argsHash: String, response: Data?, operationID: UUID) async throws {
-        try await service.submitUIDecision(scope: scope, conversationID: conversationID, turnID: turnID, interruptID: interruptID,
-                                           decision: decision, argsHash: argsHash, response: response, operationID: operationID)
-    }
-}
+/// 三角's scope-bound adapter (ConversationSessionService.swift, 9303a82) is the only decision submitter; it is installed
+/// by `NativeAuthApplicationModel.installUIDecisionSubmitter`. `GenerativeUIDecision` is a typealias of
+/// `ConversationUIDecision`, so the adapter's existing `submitUIDecision(...decision: ConversationUIDecision...)` already
+/// is the protocol requirement (the rawValue-mapping body from 三角's comment would redeclare the same method).
+extension ConversationUIDecisionSubmitter: GenerativeUIDecisionSubmitting {}
 
 /// Hook rendered once below the transcript (next to `ConversationApprovalHost`): feeds catpaw.ui.v1 events into
 /// `GenerativeBlockStore` from three idempotent sources (live turn events, the turn journal in `session`, and
-/// `pendingUIBlocks` on cold start) and renders this conversation's blocks.
+/// `pendingUIApprovals` on cold start) and renders this conversation's blocks.
 @MainActor struct ConversationGenerativeUIHost: View {
     @ObservedObject var model: ConversationFirstModel
     let session: ConversationSession
@@ -51,16 +45,17 @@ struct ConversationServiceUIDecisionSubmitter: GenerativeUIDecisionSubmitting {
     private var knownTurns: Set<UUID> = []
 
     func attach(model: ConversationFirstModel, store: GenerativeBlockStore, session: ConversationSession) {
-        store.submitter = ConversationServiceUIDecisionSubmitter(service: model.service, scope: model.scope)
+        // Blocks are stored per conversation (demo interrupt ids and block ids repeat across conversations).
         let conversation = session.conversationID
+        store.activate(conversationID: conversation)
         if conversationID != conversation { conversationID = conversation; lastTurnID = session.turns.last?.id }
         ingestJournal(store: store, session: session)
-        // Cold start: the waiting blocks of the turn that is still suspended (journal-backed in the service).
+        // Cold start: the waiting ui interrupts of the suspended turn (snapshot pending_approvals kind "ui", else journal).
         let service = model.service, scope = model.scope
         let turnID = session.turns.last(where: { $0.awaitingApproval })?.id
         Task { [weak store] in
-            guard let turnID, let events = try? await service.pendingUIBlocks(scope: scope, conversationID: conversation) else { return }
-            for event in events { store?.ingest(event, context: .init(conversationID: conversation, turnID: turnID)) }
+            guard let turnID, let approvals = try? await service.pendingUIApprovals(scope: scope, conversationID: conversation) else { return }
+            for approval in approvals { store?.restore(approval, context: .init(conversationID: conversation, turnID: turnID)) }
         }
         guard listener == nil else { return }
         listener = Task { [weak self, weak store] in
