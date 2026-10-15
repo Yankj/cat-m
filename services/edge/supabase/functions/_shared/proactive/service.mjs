@@ -59,8 +59,9 @@ export function createProactiveService({ store, verifyUser, schedulerSecret, mod
       try { results.push(await fire(c, at)); }
       catch (e) { log('fire_failed', c.task_id, e.stack ?? e.message); await store.finishOccurrence(c, { next_fire_at: null, fire_count: c.fire_count + 1, status: 'open' }).catch(() => {}); results.push({ task_id: c.task_id, error: 'fire_failed' }); }
     }
+    const resurfaced = store.resurfaceSnoozed ? await store.resurfaceSnoozed(new Date(at).toISOString()) : [];
     const push = await flushPush();
-    return { claimed: claimed.length, results, push };
+    return { claimed: claimed.length, results, resurfaced: resurfaced.length, push };
   }
   async function fire(c, at) {
     {
@@ -125,7 +126,7 @@ export function createProactiveService({ store, verifyUser, schedulerSecret, mod
     }
     if (path === '/tools' && m === 'GET') return json(200, { contract: TASK_TOOL_CONTRACT, tools: TASK_TOOLS });
     const uid = await user(req);
-    if (decision && (path.startsWith('/proactive/') || path.startsWith('/catpaw/proactive/v1/'))) { const r = await decision.route(uid, req, path, url, () => body(req)); if (r) return json(r[0], r[1]); }
+    if (decision && (path.startsWith('/proactive/') || path.startsWith('/catpaw/proactive/v1/'))) { const r = await decision.route(uid, req, path, url, () => body(req)); if (r) { const res = json(r[0], r[1]); for (const [k, v] of Object.entries(r[2] ?? {})) res.headers.set(k, v); return res; } }
     if (path === '/tasks' && m === 'GET') return json(200, { tasks: await store.listTasks(uid, { status: url.searchParams.get('status') ?? 'open', limit: Math.min(Number(url.searchParams.get('limit')) || 50, 200) }) });
     if (path === '/tasks' && m === 'POST') { const r = await createTask(uid, await body(req)); return json(r.created ? 201 : 200, r); }
     let mm = path.match(/^\/tasks\/([^/]+)$/);

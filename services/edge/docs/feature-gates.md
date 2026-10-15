@@ -17,6 +17,7 @@ Server env (Edge Function secrets of catpaw-api):
 |---|---|---|
 | `CATPAW_GENERATIVE_UI_ENABLED` | `true` · `allowlist` · unset/off | off |
 | `CATPAW_TASK_TOOLS_ENABLED` | `true` · `allowlist` · `off` | `true` (current behaviour) |
+| `CATPAW_PROACTIVE_SUGGESTIONS_SSE_ENABLED` | `true` · `allowlist` · unset/off (chat `proactive_suggestion` SSE; needs migrations `20261016030000`, `20261016040000`) | off |
 | `CATPAW_AGENT_MEMORY_ENABLED` | `true` · `allowlist` · unset/off (Wave 2 B1, needs migration `20261016090000`) | off |
 | `CATPAW_DEVICE_TOOLS_ENABLED` | `true` · `allowlist` · unset/off (Wave 2 B3, catpaw.device.v1; no migration) | off |
 | `CATPAW_FEATURE_ALLOWLIST_SUBJECTS` | comma-separated auth user UUIDs (demo/staging accounts) | empty |

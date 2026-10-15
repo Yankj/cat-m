@@ -1,6 +1,6 @@
 // In-memory store with the same semantics as pg-store (tests / local dev).
 export function createMemoryStore() {
-  const tasks = new Map(), occ = new Set(), events = [], tokens = []; let seq = 0; const sig = new Map(), weights = new Map(), feedback = new Map();
+  const tasks = new Map(), occ = new Set(), events = [], tokens = []; let seq = 0; const idem = new Map(), sig = new Map(), weights = new Map(), feedback = new Map();
   const id = () => crypto.randomUUID(), c = v => structuredClone(v);
   return {
     _dump: () => ({ tasks: [...tasks.values()], events, tokens }),
@@ -34,6 +34,23 @@ export function createMemoryStore() {
     async getFeedback(uid, eid) { return feedback.get(uid + '|' + eid) ?? null; },
     async insertFeedback(uid, eid, kind, at) { const k = uid + '|' + eid; if (feedback.has(k)) return false; feedback.set(k, { kind, created_at: at }); return true; },
     async updateEventPayload(uid, eid, payload) { const e = events.find(e => e.id === eid && e.user_id === uid); if (!e) return null; e.payload = c(payload); return c(e); },
+    async claimSuggestionsForChat(uid, { limit, at, conversationID, turnID }) {
+      const out = [];
+      for (const e of events) {
+        if (out.length >= limit) break;
+        const st = e.payload?.suggestion;
+        if (e.user_id !== uid || e.kind !== 'proactive_decision' || e.payload.decision === 'silent' || st?.status !== 'pending' || st.chat_delivered_at) continue;
+        st.chat_delivered_at = at; st.chat_turn_id = turnID; out.push(c(e));
+      }
+      return out;
+    },
+    async resurfaceSnoozed(nowIso) {
+      const out = [];
+      for (const e of events) { const st = e.payload?.suggestion; if (e.kind === 'proactive_decision' && st?.status === 'snoozed' && st.snooze_until && st.snooze_until <= nowIso) { st.status = 'pending'; st.resurfaced_at = nowIso; delete st.snooze_until; delete st.chat_delivered_at; if (['notify', 'interrupt'].includes(e.payload.decision)) { e.push_state = 'pending'; e.push_after = null; } out.push(e.id); } }
+      return out;
+    },
+    async idemGet(uid, key) { return idem.get(uid + '|' + key) ?? null; },
+    async idemPut(uid, key, rec) { const k = uid + '|' + key; if (idem.has(k)) return false; idem.set(k, c(rec)); return true; },
     async markRead(uid, eid, at) { const e = events.find(e => e.id === eid && e.user_id === uid); if (!e) return false; e.read_at ??= at; return true; },
     async pendingPushEvents(limit, nowIso) { return events.filter(e => e.push_state === 'pending' && (!e.push_after || !nowIso || e.push_after <= nowIso)).slice(0, limit).map(c); },
     async deferPush(eid, until) { const e = events.find(e => e.id === eid); e.push_after = until; },
