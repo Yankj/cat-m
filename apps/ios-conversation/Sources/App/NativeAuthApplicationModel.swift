@@ -309,6 +309,7 @@ public struct AuthenticatedNativeChatCredentials: NativeChatSessionCredentials {
         // Close manager admission immediately; local draining must not postpone its barrier.
         async let cleanup:Bool=finishDetaching(detached)
         try? FileManager.default.removeItem(at:receiptURL)
+        if let uid = state.user?.id { L2SecureStore.wipe(userID: uid) }
         do { try await manager.signOut() } catch { self.error = NativeAuthError.storage.localizedDescription }
         if !(await cleanup) {error="有修改草稿未能保存，请核对此前已保存的版本。"}
         state=await manager.snapshot()
