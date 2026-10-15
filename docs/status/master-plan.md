@@ -18,7 +18,7 @@
 
 ## 当前执行片与下一步
 
-交接main整合：真实远端基线515f98f与公开handoff aad003已准备无冲突普通merge；远端另有的四份架构/索引文档原字节保留，不引入旧本地历史或22张媒体，Goal保持PAUSED且不新增模型/Auth/部署。通过docs/handoff-main-20261015及PR整合，最终SHA以origin/main读回与本地main引用核对为准。Desktop与Projects为独立仓：用户主目录和Projects各自dirty/index/HEAD保持，不把main引用同步误称工作目录已更新。详见根handoff的main整合说明；r8仍not_sent，S06仍无源码。
+交接main整合：已在真实远端基线515f98f与公开handoff aad003上准备无冲突普通merge；四份main独有文档保持原字节，未引入旧本地历史或22张私有媒体。PR #19（https://github.com/Yankj/catpaw-m/pull/19）已创建，自动审批因缺少可信直接主干合并授权而拒绝merge，现待用户确认；远端main仍515f98f，本地main尚未同步。Desktop与Projects是独立dirty仓，各自HEAD/index/WIP保留，managed短分支为实际可审阅整合候选。Goal保持PAUSED，r8仍not_sent，S06无新源码；本次不新增模型/Auth/部署/安装。
 
 2026-10-15 用户明确选择R5（中性阅读面、蓝色动作与本人消息）。本片从共用层收敛语义色、SwiftUI/UIKit字体行距、中性侧栏、88%本人消息与稳定编辑器的紧凑/起草布局；R5 JSON防漂移检查已接源码门。build28的最大字号详情FAIL与共享DerivedData覆盖导致原包未独立保留均在日期证据保留。后续build29统一label的可见/点击/AX区域，并合入设置顶部关于与单一版本源；两条完整实际Simulator UI专项2/2 PASS（最大字号详情/改稿/退出/冷恢复，R5菜单导航/精确保稿/版本字段），不沿用28通过数冒充29回归。409输入与本地 `090c5431189d146e32a3c649f0b04dd7d2fdc279` 对应；源码12路径已推送读回 `51d3ca96c34a82a886b274d99373dd9f022ef5a5`，选择性tree `4ea4785a7323dff087c9c852934a774429452941`。33文件App独立保存，包SHA256 `eb9f94e2f281b70081db924d96f1addb2ea9e5624f18ba16f824dd312b1513be`。构建、非DEBUG SDK、1089双语、版本/治理检查通过；同一“Catpaw 最新体验”BE设备已安装启动0.3.0(29)，读回包字节匹配，原store/8772后端/有限会话保留，启动前后accepted/memory/provider计数不增。默认large浅深色原生截图仅本地，诊断覆盖层隐藏；不新增模拟器。当前仍为明确离线模拟模型体验，完整R4手势动效、全屏输入、严格可见键盘/三尺寸/VO/RM矩阵与真实Agent路径继续未验，AF/FINAL门不关闭；无新真实模型/Auth/部署/手机安装。下一步先按此固定候选收用户体验反馈并补对应共性缺口，生产模型受外部条件与既有授权限制时继续独立实现。
 
