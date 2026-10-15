@@ -4,6 +4,9 @@ import SwiftUI
 /// request and durable admission operation; this view never creates or retries it.
 @MainActor struct ConversationAcceptedWorkReviewView:View {
     let originalText:String
+    let revisionTargetTitle:String?
+    let lockedToolPolicy:ConversationAcceptedWorkToolPolicy?
+    let sourceLimitFloor:Int
     let capability:ConversationAcceptedWorkCapability
     @Binding var options:ConversationAcceptedWorkOptions
     let saving:Bool
@@ -14,7 +17,7 @@ import SwiftUI
     @Environment(\.timeZone) private var timeZone
     @State private var detailsExpanded=false
 
-    init(originalText:String,capability:ConversationAcceptedWorkCapability,options:Binding<ConversationAcceptedWorkOptions>,saving:Bool,error:String?,confirm:@escaping()->Void,close:@escaping()->Void){
+    init(originalText:String,capability:ConversationAcceptedWorkCapability,options:Binding<ConversationAcceptedWorkOptions>,saving:Bool,error:String?,confirm:@escaping()->Void,close:@escaping()->Void,revisionTargetTitle:String?=nil,lockedToolPolicy:ConversationAcceptedWorkToolPolicy?=nil,sourceLimitFloor:Int=0){self.revisionTargetTitle=revisionTargetTitle;self.lockedToolPolicy=lockedToolPolicy;self.sourceLimitFloor=sourceLimitFloor;
         self.originalText=originalText;self.capability=capability;_options=options
         self.saving=saving;self.error=error;self.confirm=confirm;self.close=close
     }
@@ -30,6 +33,7 @@ import SwiftUI
     private var validationMessage:String? {
         guard capability.available else {return ui("当前服务尚不支持有限工作受理，草稿会保留。")}
         if options.toolPolicy == .publicSources && !capability.publicSourcesAvailable {return ui("当前服务不支持读取公开链接，请改为仅整理已提供文字。")}
+        if let lockedToolPolicy,options.toolPolicy != lockedToolPolicy || options.sourceLimit<sourceLimitFloor {return ui("工作约定超出当前服务范围，请调整后确认。")}
         let remaining=options.notAfter.timeIntervalSinceNow
         if !remaining.isFinite || remaining<=0 {return ui("截止时间已过，请选择未来时间。")}
         if remaining>Double(capability.maxLifetimeSeconds) {return ui("截止时间须在未来 {0} 小时内。",arguments:[(Double(capability.maxLifetimeSeconds)/3600).formatted(.number.locale(locale))])}
@@ -43,6 +47,13 @@ import SwiftUI
                 ScrollView {
                     VStack(alignment:.leading,spacing:CatpawLayout.sectionGap) {
                         Text(ui("尚未发送；确认后才提交原请求。")).font(CatpawTypography.Role.secondary.font).foregroundStyle(CatpawColors.secondary).fixedSize(horizontal:false,vertical:true).accessibilityIdentifier("chat.acceptedWork.notSent")
+                        if let revisionTargetTitle {
+                            VStack(alignment:.leading,spacing:12) {
+                                SectionHeading(title:ui("本次修改的成果"))
+                                Text(verbatim:revisionTargetTitle).font(CatpawTypography.Role.body.font).fixedSize(horizontal:false,vertical:true).accessibilityIdentifier("chat.revisionWork.target")
+                                Text(ui("本次修改沿用原任务和所选版本，需要新的期限、预算与执行范围；不会沿用原工作的额度。")).font(CatpawTypography.Role.secondary.font).foregroundStyle(CatpawColors.secondary).fixedSize(horizontal:false,vertical:true).accessibilityIdentifier("chat.revisionWork.newAuthority")
+                            }
+                        }
                         VStack(alignment:.leading,spacing:12) {
                             SectionHeading(title:ui("原请求"))
                             Text(verbatim:originalText).font(CatpawTypography.Role.body.font).fixedSize(horizontal:false,vertical:true).textSelection(.enabled).accessibilityIdentifier("chat.acceptedWork.originalText")
@@ -67,7 +78,7 @@ import SwiftUI
                                 }
                                 if options.toolPolicy == .publicSources {
                                     numberChoice(title:ui("最多来源次数"),value:count(options.sourceLimit),identifier:"sourceLimit") {
-                                        Stepper(ui("最多来源次数"),value:$options.sourceLimit,in:0...max(0,capability.maxSource)).labelsHidden().touchTarget().accessibilityLabel(ui("最多来源次数")).accessibilityValue(count(options.sourceLimit)).accessibilityIdentifier("chat.acceptedWork.sourceLimit").disabled(saving)
+                                        Stepper(ui("最多来源次数"),value:$options.sourceLimit,in:min(sourceLimitFloor,max(0,capability.maxSource))...max(0,capability.maxSource)).labelsHidden().touchTarget().accessibilityLabel(ui("最多来源次数")).accessibilityValue(count(options.sourceLimit)).accessibilityIdentifier("chat.acceptedWork.sourceLimit").disabled(saving)
                                     }
                                 }
                                 Text(ui("执行预算是本次工作的累计上限，暂停与恢复不会延长期限或补回额度。")).font(CatpawTypography.Role.secondary.font).foregroundStyle(CatpawColors.secondary).fixedSize(horizontal:false,vertical:true)
@@ -99,8 +110,8 @@ import SwiftUI
     private var scopeSelection:some View {
         VStack(alignment:.leading,spacing:12) {
             SectionHeading(title:ui("执行范围"))
-            policyChoice(.localOutput,title:ui("仅整理已提供文字"),identifier:"localOutput")
-            if capability.publicSourcesAvailable {
+            if lockedToolPolicy==nil || lockedToolPolicy == .localOutput {policyChoice(.localOutput,title:ui("仅整理已提供文字"),identifier:"localOutput")}
+            if capability.publicSourcesAvailable && (lockedToolPolicy==nil || lockedToolPolicy == .publicSources) {
                 policyChoice(.publicSources,title:ui("读取我给的公开链接"),identifier:"publicSources")
             } else if options.toolPolicy == .publicSources {Text(verbatim:scopeTitle).font(CatpawTypography.Role.body.font).fixedSize(horizontal:false,vertical:true).accessibilityIdentifier("chat.acceptedWork.scope")}
             if options.toolPolicy == .publicSources {Text(ui("只读取原请求中明确提供的公开链接，不自主搜索。")).font(CatpawTypography.Role.secondary.font).foregroundStyle(CatpawColors.secondary).fixedSize(horizontal:false,vertical:true)}
@@ -109,7 +120,7 @@ import SwiftUI
     }
     private func policyChoice(_ policy:ConversationAcceptedWorkToolPolicy,title:String,identifier:String)->some View {
         Button {
-            guard !saving else {return}
+            guard !saving,lockedToolPolicy==nil || lockedToolPolicy==policy else {return}
             options.toolPolicy=policy
             if policy == .localOutput {options.sourceLimit=0}
         } label:{
