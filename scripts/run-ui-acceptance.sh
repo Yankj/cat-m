@@ -57,7 +57,7 @@ except Exception: pass
 rows=[]
 for t in manifest:
     tid=t.get("testIdentifier","?")
-    status=next((v for k,v in results.items() if k.endswith(tid.split("/")[-1].replace("()",""))) or k==tid),"?")
+    status=next((v for k,v in results.items() if k.endswith(tid.split("/")[-1].replace("()","")) or k==tid),"?")
     for a in sorted(t.get("attachments",[]),key=lambda a:a.get("suggestedHumanReadableName","")):
         rows.append((tid,status,a.get("suggestedHumanReadableName",""),a["exportedFileName"]))
 md=["# Catpaw UI acceptance report","",f"Result bundle: `{os.path.join(out,'Acceptance.xcresult')}`",""]

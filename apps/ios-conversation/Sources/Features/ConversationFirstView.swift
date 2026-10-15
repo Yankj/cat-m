@@ -146,11 +146,11 @@ import CatpawImageComposer
                                 renderedTimelineRow(row).padding(.top,renderedSpacing(row,previous:index>0 ? rows[index-1]:nil))
                                     .background(ConversationReadingAnchorMarker(id:row.id,context:readingAnchorContext,coordinator:readingAnchor).accessibilityHidden(true)).id(row.id)
                             }
-                            if let pending = session.turns.last, [.dispatched,.running].contains(pending.state), pending.assistantMessageID == nil,
+                            if let pending = session.turns.last, [.dispatched,.running].contains(pending.state), pending.assistantMessageID == nil, !composerChrome.stoppedOperations.contains(pending.id),
                                !session.messages.contains(where:{ $0.role == .assistant && !$0.complete }) {
                                 PendingThinkingRow(service:model.service,turn:pending).id("pending-\(pending.id)").padding(.top,12)
                             }
-                            if let latest = session.turns.last, latest.state == .completed {
+                            if let latest = session.turns.last, latest.state == .completed, !composerChrome.stoppedOperations.contains(latest.id) {
                                 Text(ui("回复完成")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary).accessibilityIdentifier("chat.reply.completed").padding(.top,8)
                             } else if let latest = session.turns.last, latest.state == .failed {
                                 Text(ui("此轮回复未完成")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.attention).accessibilityIdentifier("chat.reply.failed").padding(.top,8)
@@ -726,7 +726,7 @@ import CatpawImageComposer
     }
     private func usesPhasedAnswer(_ turn:ConversationTurnRecord,message:ConversationTranscriptMessage)->Bool {
         let live:[ConversationTurnRecord.State]=[.dispatched,.running,.unknown,.failed]
-        return live.contains(turn.state) && !message.complete
+        return composerChrome.stoppedOperations.contains(turn.id) || (live.contains(turn.state) && !message.complete)
     }
     private func quote(_ text:String) {
         // Preserve the active IME transaction. Quoting is an explicit draft edit.
