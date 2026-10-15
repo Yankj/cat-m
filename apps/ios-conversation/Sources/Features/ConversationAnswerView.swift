@@ -7,12 +7,15 @@ import UIKit
     let message: ConversationTranscriptMessage
     var canQuote = true
     let quote: (String) -> Void
+    /// Action row renders only under the last assistant reply (host decides); `actions` adds regenerate + ‹ n/m ›.
+    var showsActions = true
+    var actions: ReplyActionControl? = nil
     @Environment(\.locale) private var locale
     private func ui(_ key: String) -> String { AppLanguage(locale: locale).ui(key) }
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             StreamingConversationText(text: message.content, complete: message.complete)
-            if !message.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            if showsActions, !message.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 HStack(spacing: 14) {
                     Button { UIPasteboard.general.string = message.content } label: {
                         Image(systemName: "doc.on.doc").answerActionIcon()
@@ -28,7 +31,13 @@ import UIKit
                         .accessibilityHint(ui("保留现有草稿，不自动发送"))
                         .disabled(!canQuote)
                         .accessibilityIdentifier("chat.answer.quote." + message.id.uuidString)
+                    if let actions {
+                        Button(action: actions.onRegenerate) { Image(systemName: "arrow.clockwise").answerActionIcon() }
+                            .accessibilityLabel(ui("重新生成")).disabled(!actions.canRegenerate)
+                            .accessibilityIdentifier("chat.answer.regenerate." + message.id.uuidString)
+                    }
                     Spacer(minLength: 0)
+                    if let actions, actions.count > 1 { ReplyVariantPager(control: actions) }
                 }.foregroundStyle(CatpawColors.secondary).buttonStyle(CatpawPressButtonStyle())
             }
         }
