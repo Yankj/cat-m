@@ -136,6 +136,7 @@ import AppIntents
                 primaryView
                 #endif
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .overlay {
                 if launchMarkVisible {
                     LaunchMarkView(restoring: false) { launchMarkVisible = false }
