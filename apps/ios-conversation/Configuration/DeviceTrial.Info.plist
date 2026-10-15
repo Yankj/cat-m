@@ -21,15 +21,15 @@
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>CatpawBackendOrigin</key>
-	<string></string>
+	<string>$(CATPAW_BACKEND_ORIGIN)</string>
 	<key>CatpawDeviceTrialConfigurationVersion</key>
 	<integer>1</integer>
 	<key>CatpawServerScopeID</key>
-	<string></string>
+	<string>$(CATPAW_SERVER_SCOPE_ID)</string>
 	<key>CatpawSupabaseProjectURL</key>
-	<string></string>
+	<string>$(CATPAW_SUPABASE_PROJECT_URL)</string>
 	<key>CatpawSupabasePublishableKey</key>
-	<string></string>
+	<string>$(CATPAW_SUPABASE_PUBLISHABLE_KEY)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
