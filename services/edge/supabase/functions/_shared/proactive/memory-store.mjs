@@ -1,6 +1,6 @@
 // In-memory store with the same semantics as pg-store (tests / local dev).
 export function createMemoryStore() {
-  const tasks = new Map(), occ = new Set(), events = [], tokens = []; let seq = 0;
+  const tasks = new Map(), occ = new Set(), events = [], tokens = []; let seq = 0; const sig = new Map(), weights = new Map(), feedback = new Map();
   const id = () => crypto.randomUUID(), c = v => structuredClone(v);
   return {
     _dump: () => ({ tasks: [...tasks.values()], events, tokens }),
@@ -26,6 +26,14 @@ export function createMemoryStore() {
     async listEvents(uid, after, limit) { return events.filter(e => e.user_id === uid && (!after || e.created_at > after)).slice(-limit).map(c); },
     async getEvent(uid, eid) { const e = events.find(e => e.id === eid && e.user_id === uid); return e ? c(e) : null; },
     async recordPushAction(uid, eid, action, at) { const e = events.find(e => e.id === eid && e.user_id === uid); if (!e || e.action) return false; e.action = action; e.opened_at ??= at; e.read_at ??= at; return true; },
+    async seenSignalHashes(uid, hashes, sinceIso) { return hashes.filter(h => (sig.get(uid + '|' + h) ?? '') > sinceIso); },
+    async markSignalHashes(uid, hashes, atIso) { for (const h of hashes) sig.set(uid + '|' + h, atIso); },
+    async getTriggerWeights(uid) { return c(weights.get(uid) ?? {}); },
+    async setTriggerWeight(uid, t, w) { const m = weights.get(uid) ?? {}; m[t] = { ...w }; weights.set(uid, m); },
+    async countDecisionsSince(uid, sinceIso, levels) { return events.filter(e => e.user_id === uid && e.kind === 'proactive_decision' && levels.includes(e.payload?.decision) && e.created_at >= sinceIso).length; },
+    async getFeedback(uid, eid) { return feedback.get(uid + '|' + eid) ?? null; },
+    async insertFeedback(uid, eid, kind, at) { const k = uid + '|' + eid; if (feedback.has(k)) return false; feedback.set(k, { kind, created_at: at }); return true; },
+    async updateEventPayload(uid, eid, payload) { const e = events.find(e => e.id === eid && e.user_id === uid); if (!e) return null; e.payload = c(payload); return c(e); },
     async markRead(uid, eid, at) { const e = events.find(e => e.id === eid && e.user_id === uid); if (!e) return false; e.read_at ??= at; return true; },
     async pendingPushEvents(limit, nowIso) { return events.filter(e => e.push_state === 'pending' && (!e.push_after || !nowIso || e.push_after <= nowIso)).slice(0, limit).map(c); },
     async deferPush(eid, until) { const e = events.find(e => e.id === eid); e.push_after = until; },

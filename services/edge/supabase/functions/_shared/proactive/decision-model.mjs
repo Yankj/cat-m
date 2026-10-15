@@ -1,0 +1,33 @@
+// LLM adapter for proactive decisions. Reuses catpaw-api's route catalog + order (OpenRouter first, Agnes fallback);
+// keys come only from env via `get` and are held in this closure (never logged or returned).
+import { FREE_ROUTE_CATALOG, DEFAULT_CHAIN_ORDER } from '../core/src/free-route-chain.mjs';
+const SYSTEM = `你是 CatPaw 的主动式助理决策器，场景是会议与出行。根据 signals、context、memories 和 weights 判断是否该主动打扰用户。
+decision 取值：silent（不打扰）、card（应用内卡片）、notify（普通推送）、interrupt（紧急、打断式）。只有真的会造成损失（迟到、误机、冲突）才用 notify/interrupt。
+weights 是用户对该类提醒的历史反馈，weight<1 表示用户不喜欢，应更保守。
+只输出一个 JSON 对象，不要 markdown：{"decision":"...","title":"不超过 16 字的卡片标题","reason":"一句简体中文，说明为什么","confidence":0到1,"trigger":"主要信号类型","suggested_actions":["create_reminder"|"notify_attendees"|"snooze"|"dismiss"],"used_memory_ids":["用到的记忆 id"]}`;
+export function createDecisionModel({ get, fetchImpl = fetch, timeoutMs = 15000, log = () => {} }) {
+  const order = (get('CATPAW_MODEL_ROUTE_ORDER') || DEFAULT_CHAIN_ORDER.join(',')).split(',').map(s => s.trim()).filter(id => FREE_ROUTE_CATALOG[id]);
+  const routes = order.map(id => ({ ...FREE_ROUTE_CATALOG[id], model: get(`CATPAW_${id.toUpperCase()}_MODEL`) || FREE_ROUTE_CATALOG[id].model, key: get(FREE_ROUTE_CATALOG[id].secret) })).filter(r => r.key);
+  if (!routes.length) return null;
+  let last = null;
+  return {
+    routes: routes.map(r => r.id), lastRoute: () => last,
+    async decide(input) {
+      let err = null;
+      for (const r of routes) {
+        const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), timeoutMs);
+        try {
+          const body = { model: r.model, temperature: 0.2, max_tokens: 400, stream: false, messages: [{ role: 'system', content: SYSTEM }, { role: 'user', content: JSON.stringify(input) }] };
+          if (r.id === 'openrouter') { body.response_format = { type: 'json_object' }; body.provider = { max_price: { prompt: 0, completion: 0 } }; }
+          const res = await fetchImpl(r.endpoint, { method: 'POST', signal: ctl.signal, headers: { authorization: 'Bearer ' + r.key, 'content-type': 'application/json', 'x-title': 'catpaw-proactive' }, body: JSON.stringify(body) });
+          if (!res.ok) throw new Error(`${r.id}_http_${res.status}`);
+          const text = (await res.json())?.choices?.[0]?.message?.content ?? '';
+          const m = String(text).replace(/<think>[\s\S]*?<\/think>/g, '').match(/\{[\s\S]*\}/); if (!m) throw new Error(`${r.id}_no_json`);
+          last = r.id; return JSON.parse(m[0]);
+        } catch (e) { err = e; log('route_failed', r.id, String(e.message).slice(0, 80)); }
+        finally { clearTimeout(t); }
+      }
+      throw err ?? new Error('no_route');
+    },
+  };
+}
