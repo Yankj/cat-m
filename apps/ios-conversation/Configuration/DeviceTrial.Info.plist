@@ -53,5 +53,7 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>仅在你明确确认日程并允许访问后，创建并核对该日程，用于防止重复创建和找回执行结果。</string>
 </dict>
 </plist>
