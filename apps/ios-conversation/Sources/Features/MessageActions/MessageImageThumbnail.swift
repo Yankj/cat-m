@@ -18,7 +18,7 @@ import UIKit
             if let image {
                 thumb(image)
                     .messageLongPress(id: id + ".image", content: .image(image), alignment: .trailing, onReply: onReply) { thumb(image) }
-                    .onTapGesture { viewerOpen = true }
+                    .onTapGesture { var t = Transaction(); t.disablesAnimations = true; withTransaction(t) { viewerOpen = true } }
                     .accessibilityAddTraits(.isImage).accessibilityLabel(Text(AppLanguage(locale: locale).ui("附带图片")))
             } else if loaded {
                 Label(AppLanguage(locale: locale).ui("附带图片"), systemImage: "photo").font(CatpawTypography.Role.caption.font)
@@ -42,13 +42,16 @@ import UIKit
     }
 }
 
-/// Tap target for the full-screen viewer (PR "image viewer" replaces this with the zoomable viewer).
+/// Presents `ImageViewer` without the system slide (the viewer fades its own backdrop).
 struct MessageImageViewerHook: ViewModifier {
     let image: UIImage?
     @Binding var isPresented: Bool
     func body(content: Content) -> some View {
-        content.fullScreenCover(isPresented: $isPresented) {
-            if let image { Image(uiImage: image).resizable().scaledToFit().frame(maxWidth: .infinity, maxHeight: .infinity).background(CatpawColors.background).onTapGesture { isPresented = false } }
+        content.fullScreenCover(isPresented: Binding(get: { isPresented }, set: { v in var t = Transaction(); t.disablesAnimations = true; withTransaction(t) { isPresented = v } })) {
+            if let image {
+                ImageViewer(image: image) { var t = Transaction(); t.disablesAnimations = true; withTransaction(t) { isPresented = false } }
+                    .presentationBackground(.clear)
+            }
         }
     }
 }
