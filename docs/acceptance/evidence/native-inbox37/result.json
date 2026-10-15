@@ -1,0 +1,392 @@
+{
+  "candidate": "AF-S03-INBOX-20261015-37-R9",
+  "reality": "offline maintained API + actual native Simulator; injected Auth/model/repository, no real product acceptance",
+  "version": "0.3.0(37)",
+  "source": {
+    "local_commit": "95ac3fd20c44b83e274f2728feb66aee2802c56f",
+    "remote_parent": "bd0b8b6142f8926498a72056dd5ff81235cde3dc",
+    "expected_remote_tree": "a0810138b50679193bc7847f45703fa70c7af902",
+    "reviewed_paths": [
+      "apps/ios-conversation/CatpawM.xcodeproj/project.pbxproj",
+      "apps/ios-conversation/Configuration/Version.xcconfig",
+      "apps/ios-conversation/Resources/UIStrings.json",
+      "apps/ios-conversation/Sources/App/ConversationAcceptedWorkLoopbackFixture.swift",
+      "apps/ios-conversation/Sources/App/ConversationFirstModel.swift",
+      "apps/ios-conversation/Sources/App/NativeAuthApplicationModel.swift",
+      "apps/ios-conversation/Sources/Features/ConversationFirstView.swift",
+      "apps/ios-conversation/Sources/Features/ConversationSessionService.swift",
+      "apps/ios-conversation/Sources/Providers/NativeChatHTTPBackend.swift",
+      "apps/ios-conversation/Sources/Domain/ConversationInbox.swift",
+      "apps/ios-conversation/Sources/Features/ConversationInboxService.swift",
+      "apps/ios-conversation/Sources/Features/ConversationInboxView.swift",
+      "apps/ios-conversation/Tests/ConversationInboxApplicationTests.swift",
+      "apps/ios-conversation/Tests/ConversationInboxTests.swift",
+      "apps/ios-conversation/Tests/ConversationInboxUITests.swift",
+      "apps/ios-conversation/Tests/Fixtures/inbox-wire-v1.json",
+      "apps/ios-conversation/Tests/NativeInboxTransportTests.swift",
+      "services/edge/supabase/functions/_shared/api.mjs",
+      "services/edge/supabase/functions/_shared/core/src/inbox-service.mjs",
+      "services/edge/test/inbox-http.test.mjs"
+    ],
+    "frozen_input_blobs_verified": 429,
+    "remote_commit": "acb1edd568c28ac0cf1064d58b5d8485c390880c",
+    "remote_readback_paths": 20
+  },
+  "frozen_input_count": 429,
+  "source_snapshot_sha256": "2053d8d968dad89dac3aaa246552f3dc5d5d7c305bbd174062001e951c782bf2",
+  "package_sha256": "f346b1e31ddc2621b343ae3c1129568905415752f8968801377c5b4126766397",
+  "package_files": 32,
+  "package_manifest_sha256": "b756b2c1bdfc59e524da02143c196f69b4b9977a06ebf49ebb1bf1f8f8610733",
+  "tests": {
+    "native_unit_and_transport": 38,
+    "actual_native_ui": 3,
+    "distinct_native_methods": [
+      {
+        "method": "-[CatpawMTests.ConversationArtifactContinuationProjectionTests testCorrectedVersionRequiresExactControlledModelRelationAndCannotUseManualOrOldArtifact]",
+        "seconds": 0.013
+      },
+      {
+        "method": "-[CatpawMTests.ConversationArtifactContinuationProjectionTests testNodeCanonicalReceiptAndRawInstructionHashMatchSwiftWithoutRebindingOriginalTask]",
+        "seconds": 0.074
+      },
+      {
+        "method": "-[CatpawMTests.ConversationArtifactContinuationProjectionTests testReceiptRejectsDifferentRawTextAndReadOnlyIntent]",
+        "seconds": 0.002
+      },
+      {
+        "method": "-[CatpawMTests.ConversationArtifactProjectionTests testConfirmedCancellationSurvivesWithdrawnSourceLateHeadsAndColdReads]",
+        "seconds": 0.08
+      },
+      {
+        "method": "-[CatpawMTests.ConversationArtifactProjectionTests testConfirmedSourceInvalidationCannotBeUndoneByLateOrHigherHeads]",
+        "seconds": 0.038
+      },
+      {
+        "method": "-[CatpawMTests.ConversationArtifactProjectionTests testForeignScopeAndDeletedConversationCannotResurrect]",
+        "seconds": 0.021
+      },
+      {
+        "method": "-[CatpawMTests.ConversationArtifactProjectionTests testIdentityAndCorruptVersionCannotChangeJournal]",
+        "seconds": 0.028
+      },
+      {
+        "method": "-[CatpawMTests.ConversationArtifactProjectionTests testRevisionAndLateReadPreserveDraftAndHistory]",
+        "seconds": 0.037
+      },
+      {
+        "method": "-[CatpawMTests.ConversationInboxApplicationTests testComposingAndClosedAdmissionCannotSwitchOrWriteOriginal]",
+        "seconds": 0.082
+      },
+      {
+        "method": "-[CatpawMTests.ConversationInboxApplicationTests testEverySelectionReadGateCanCancelWithoutHalfSwitchingBPresentation]",
+        "seconds": 0.036
+      },
+      {
+        "method": "-[CatpawMTests.ConversationInboxApplicationTests testInspectionKeepsBAndExplicitReturnPreservesExactDraftThroughColdReopen]",
+        "seconds": 0.039
+      },
+      {
+        "method": "-[CatpawMTests.ConversationInboxApplicationTests testMissingOriginalJournalDoesNotCreateConversationOrDiscardB]",
+        "seconds": 0.02
+      },
+      {
+        "method": "-[CatpawMTests.ConversationInboxApplicationTests testNewConversationStillCreatesAndSelectsItsOwnQueueAfterAtomicSelectionChange]",
+        "seconds": 0.043
+      },
+      {
+        "method": "-[CatpawMTests.ConversationInboxTests testAccessDeniedClearsSnapshotRatherThanRestoringOldFacts]",
+        "seconds": 0.004
+      },
+      {
+        "method": "-[CatpawMTests.ConversationInboxTests testBindingURLAliasAndMalformedReferenceNeverDecode]",
+        "seconds": 0.006
+      },
+      {
+        "method": "-[CatpawMTests.ConversationInboxTests testCursorCycleAndFilteredEmptyPageDoNotInventCompletion]",
+        "seconds": 0.004
+      },
+      {
+        "method": "-[CatpawMTests.ConversationInboxTests testDeniedResolutionClearsSnapshot]",
+        "seconds": 0.006
+      },
+      {
+        "method": "-[CatpawMTests.ConversationInboxTests testDuplicatePageCannotAppendAndNetworkFailureIsOnlyStale]",
+        "seconds": 0.005
+      },
+      {
+        "method": "-[CatpawMTests.ConversationInboxTests testExactWireRoundTripKeepsNullCursorAndRunIdentity]",
+        "seconds": 0.002
+      },
+      {
+        "method": "-[CatpawMTests.ConversationInboxTests testInvalidationFencesLateResponseAndCannotReopen]",
+        "seconds": 0.001
+      },
+      {
+        "method": "-[CatpawMTests.ConversationInboxTests testInvalidDatesCountsAndDuplicateRunsAreRejected]",
+        "seconds": 0.005
+      },
+      {
+        "method": "-[CatpawMTests.ConversationInboxTests testLateOldRefreshCannotReplaceNewerSnapshot]",
+        "seconds": 0.002
+      },
+      {
+        "method": "-[CatpawMTests.ConversationInboxTests testLateResolutionCannotCrossAdmissionGeneration]",
+        "seconds": 0.006
+      },
+      {
+        "method": "-[CatpawMTests.ConversationInboxTests testReadOnlyRefreshPaginationAndResolutionUseSamePartition]",
+        "seconds": 0.004
+      },
+      {
+        "method": "-[CatpawMTests.ConversationInboxTests testResolutionKeepsNewHeadAndVerifiesExactOldVersionInHistory]",
+        "seconds": 0.002
+      },
+      {
+        "method": "-[CatpawMTests.ConversationInboxTests testResolutionRejectsWrongBindingAndConflictingArtifactBytes]",
+        "seconds": 0.002
+      },
+      {
+        "method": "-[CatpawMTests.ConversationInboxTests testStrictWireRejectsExtraEscapedDuplicateAndForeignIdentity]",
+        "seconds": 0.004
+      },
+      {
+        "method": "-[CatpawMTests.ConversationInboxTests testUnavailableAdmissionNeverCallsBackend]",
+        "seconds": 0.013
+      },
+      {
+        "method": "-[CatpawMTests.ConversationTaskControlDeliveryTests testBackgroundDefersOriginalDeliveryAndForegroundReadsWithoutAnotherControlPost]",
+        "seconds": 0.287
+      },
+      {
+        "method": "-[CatpawMTests.ConversationTaskControlDeliveryTests testBusyOrdinaryStreamKeepsResumeDeliveryUntilOriginalTaskCanBeRead]",
+        "seconds": 2.078
+      },
+      {
+        "method": "-[CatpawMTests.ConversationTaskControlDeliveryTests testColdHostSelectedOnBRestoresAppliedOriginalAReceiptFromScopedJournal]",
+        "seconds": 0.107
+      },
+      {
+        "method": "-[CatpawMTests.ConversationTaskControlDeliveryTests testLateReceiptAfterSelectingBReadsOriginalAAndPreservesBSelectionAndDraft]",
+        "seconds": 0.083
+      },
+      {
+        "method": "-[CatpawMTests.ConversationTaskControlDeliveryTests testLogoutFencesLateOriginalGetAndCannotReviveClosedHost]",
+        "seconds": 0.11
+      },
+      {
+        "method": "-[CatpawMTests.NativeInboxTransportTests testChangedArtifactBodyCannotBeDisplayedUnderOriginalHash]",
+        "seconds": 0.086
+      },
+      {
+        "method": "-[CatpawMTests.NativeInboxTransportTests testDeniedReadRemovesPreviouslyReceivedServiceSnapshot]",
+        "seconds": 0.005
+      },
+      {
+        "method": "-[CatpawMTests.NativeInboxTransportTests testMaintainedInboxRunAndArtifactBytesResolveThroughActualURLSessionWithOnlyGET]",
+        "seconds": 0.007
+      },
+      {
+        "method": "-[CatpawMTests.NativeInboxTransportTests testOtherSubjectAndScopeAreRejectedBeforeTransport]",
+        "seconds": 0.001
+      },
+      {
+        "method": "-[CatpawMTests.NativeTaskControlProjectionTests testOriginalCancellationAndWithdrawnSourceRemainSeparateThroughActualHTTPAdapter]",
+        "seconds": 0.012
+      },
+      {
+        "method": "-[CatpawMUITests.ConversationInboxUITests testBInspectsAExactResultAndColdRestoresDraftWithoutNewDispatch]",
+        "seconds": 52.112
+      },
+      {
+        "method": "-[CatpawMUITests.P0NativeExperienceUITests testSidebarSearchClearAndTwoUnsentDraftsRemainInTheirConversations]",
+        "seconds": 29.247
+      },
+      {
+        "method": "-[CatpawMUITests.ConversationInboxUITests testLargestSystemTextReadsServerResultWithoutLocalAAndExplainsReturnLimit]",
+        "seconds": 19.783
+      }
+    ],
+    "backend_new": 15,
+    "backend_read_regression": 16,
+    "default_ui_seconds": 81.359,
+    "maximum_ui_seconds": 19.783,
+    "maximum_category": "UICTContentSizeCategoryAccessibilityXXXL",
+    "qa_size_override": false
+  },
+  "logs": {
+    "sdk-r9.log": {
+      "sha256": "f95400873ca652564c8d1c82eea25fcb625da1719bf02fb665cddaa4bfc6a937"
+    },
+    "default-r9.log": {
+      "sha256": "7bc4f56e5a4798f96a28e6390fe8b73586e1aa2d07a9c9a1eb81bc232f02b0dd"
+    },
+    "maximum-r9.log": {
+      "sha256": "d41263a32d303195f5b1c2b76b78a0c6eabdc6fd323dcf28b1c74b2b29c682c4"
+    },
+    "governance-final/result.json": {
+      "sha256": "ada7286e2dcaa4a46d9ecf23312d290c300bb5f5803949050484a5ff8d0104ac"
+    },
+    "backend/final-r6.log": {
+      "sha256": "1102c7889b18c544a5f20c670bec990dd0475c8dd7303ea6365a8e8335d814b9"
+    },
+    "backend/read-regression-r1.log": {
+      "sha256": "ae698b1e742cafbec2911bfdab3938bf1d1730fa8960eb67a2c08f61d9d73726"
+    }
+  },
+  "screenshots": [
+    {
+      "path": "build/native-inbox-20261015/attachments-r9-default/778A0FCE-3642-46D2-8EB3-6DCB57B76080.png",
+      "name": "Synthetic-inbox37-B-draft-returned-after-A-management_0_04F59285-2E33-4F37-ACFD-341430E115F1.png",
+      "sha256": "3f44d012157e32c49a37b82a907af8a88f917e4ffebd855da7c3052c9c9ba1f2",
+      "origin": "actual native XCTest screenshot; explicitly synthetic runtime",
+      "root_visually_reviewed": true
+    },
+    {
+      "path": "build/native-inbox-20261015/attachments-r9-default/E84CFC58-6977-4960-A434-5832935980E4.png",
+      "name": "Synthetic-inbox37-B-reading-A-same-version-hash_0_06AADF77-2A94-4B06-972E-7D791E9914EC.png",
+      "sha256": "a85e245c8679b8b6afeeca367abd4991b50d1e840b6d23fb1e919aefeb2def25",
+      "origin": "actual native XCTest screenshot; explicitly synthetic runtime",
+      "root_visually_reviewed": true
+    },
+    {
+      "path": "build/native-inbox-20261015/attachments-r9-default/FB9EFD53-99DE-460F-86EB-0A2736516B39.png",
+      "name": "Synthetic-inbox37-original-A-exact-result_0_DA52BB95-9F38-4D48-B754-64255D2B4AD7.png",
+      "sha256": "5f62d4ac333f26f9a6505b16bc6f416d77f74f7012f19ace27141aaade39e90c",
+      "origin": "actual native XCTest screenshot; explicitly synthetic runtime",
+      "root_visually_reviewed": false
+    },
+    {
+      "path": "build/native-inbox-20261015/attachments-r9-default/7BE6D4B0-483E-403F-9AD6-E659F923C24F.png",
+      "name": "Native-sidebar-returned-to-second-exact-draft_0_F0AB50C6-506A-4DF4-A26E-5BA8EC444B8A.png",
+      "sha256": "f3bad4bee06489d8523845eedb1eb15a5ec1e0a150f11c8beb1d1f80459cf365",
+      "origin": "actual native XCTest screenshot; explicitly synthetic runtime",
+      "root_visually_reviewed": false
+    },
+    {
+      "path": "build/native-inbox-20261015/attachments-r9-default/3E54BB7B-7B69-4869-8507-58031BBF95CA.png",
+      "name": "Native-sidebar-two-scoped-unsent-drafts_0_A8186081-CA33-4FCE-B133-F212FB3F348F.png",
+      "sha256": "741cf1a96c3d7b8432b34af4c9ed4f0f8cb75e222fa47e4978640b04de1d878a",
+      "origin": "actual native XCTest screenshot; explicitly synthetic runtime",
+      "root_visually_reviewed": false
+    },
+    {
+      "path": "build/native-inbox-20261015/attachments-r9-maximum/58A3647C-A22C-41B3-9B99-2456A9F7F320.png",
+      "name": "Synthetic-inbox37-actual-maximum-missing-local-history-limit_0_144773FE-6C12-4014-9FB9-709ADAD9837A.png",
+      "sha256": "0acf42425d38e81c926c785ee46ebd6c67df5bf4a8fff3ba8e864bd24837e9df",
+      "origin": "actual native XCTest screenshot; explicitly synthetic runtime",
+      "root_visually_reviewed": true
+    },
+    {
+      "path": "build/native-inbox-20261015/attachments-r9-maximum/5558B1C1-6BEF-438C-9859-FCF1F2556F20.png",
+      "name": "Synthetic-inbox37-actual-maximum-result-fixed-return_0_77C8E69A-93AD-494D-80E5-7A850523C188.png",
+      "sha256": "1cd82ea67e5a953f323808d70b049616102937bc92ab95b217fe611c3454d7a7",
+      "origin": "actual native XCTest screenshot; explicitly synthetic runtime",
+      "root_visually_reviewed": true
+    },
+    {
+      "path": "build/native-inbox-20261015/attachments-r9-maximum/D484983F-0420-403B-910E-A207441ED283.png",
+      "name": "Synthetic-inbox37-actual-maximum-result-list_0_7C112472-8775-4673-8735-AC8806C171AA.png",
+      "sha256": "497dbe01d78669ae245ef4eec25f5e031e966a453beabce4a883ae7a8703061e",
+      "origin": "actual native XCTest screenshot; explicitly synthetic runtime",
+      "root_visually_reviewed": true
+    }
+  ],
+  "fixed_simulator": {
+    "name": "Catpaw 最新体验",
+    "previous_build": 36,
+    "updated_build": 37,
+    "installed_bytes_match": true,
+    "same_store": true,
+    "same_subject_scope_route": true,
+    "original_repository_identical_at_handoff": true,
+    "original_session_expiry_preserved": true,
+    "new_auth_model_sql_phone_deployment_calls": 0,
+    "launch_before": {
+      "requests": 94,
+      "accepted_posts": 0,
+      "dropped_responses": 0,
+      "memory_posts": 0,
+      "memory_original_gets": 0,
+      "provider_calls": 4,
+      "turns": 2
+    },
+    "launch_after": {
+      "requests": 95,
+      "accepted_posts": 0,
+      "dropped_responses": 0,
+      "memory_posts": 0,
+      "memory_original_gets": 0,
+      "provider_calls": 4,
+      "turns": 2
+    },
+    "launch_receipt_sha256": "ab4785eeb53629b5b92367dab45a378ee4044055fd30485d02117be050d0bb5f",
+    "handoff_receipt_sha256": "269f66992bfca8cebb6933a09f1cee2729843cd95bacf0a03208d5104df95be3"
+  },
+  "not_run": [
+    "real Auth/model/Postgres/phone/scheduler/CP-01 full acceptance",
+    "A work finishing while B or App is absent; independently scheduled trigger/due materialization",
+    "full remote A transcript hydration when local journal is missing",
+    "durable unread/outbox/notifications",
+    "actual UI sign-out and different-account sign-in for this inbox feature",
+    "dark, VoiceOver, Reduce Motion and all-size matrix",
+    "large production history indexed-query performance",
+    "AF-G5/FINAL-G1/FINAL-G2/FINAL-G3 closure"
+  ],
+  "failure_history": [
+    {
+      "stage": "backend RED and initial compatibility rounds",
+      "outcome": "FAIL before final15/15",
+      "reason": "Old composed route404 and ordinary historical run scope.owner compatibility failed initially; bounded string call_id and UTF8 title limits were then fixed. Original logs remain under services/edge/build/inbox-20261015."
+    },
+    {
+      "stage": "SDK-r1",
+      "outcome": "FAIL",
+      "reason": "new status-label helper returned unlocalized literal keys; fixed locale-bound lookups"
+    },
+    {
+      "stage": "Build-r1",
+      "outcome": "FAIL",
+      "reason": "new host test backend omitted required observe method; product unchanged for fix"
+    },
+    {
+      "stage": "Inbox37-unit-r2",
+      "outcome": "36 PASS / 1 FAIL",
+      "reason": "held-resolution precondition polled Task.yield and raced; changed test to a deterministic entered-read event"
+    },
+    {
+      "stage": "native focused-r3 and native-r4",
+      "outcome": "UI FAIL before new B",
+      "reason": "DEBUG metrics HUD covers upper-right new-conversation toolbar; corrected test to actual sidebar new route, host new-conversation unit passes"
+    },
+    {
+      "stage": "Build-r6",
+      "outcome": "FAIL",
+      "reason": "typed return failure refactor left old failed variable in cancel; corrected before r7"
+    },
+    {
+      "stage": "final-r7 UI",
+      "outcome": "FAIL at cold exact-id query",
+      "reason": "XCTest direct identifier lookup rejects more than128 characters; exact NSPredicate preserves the full id/version/hash"
+    },
+    {
+      "stage": "r7/r8 visual review",
+      "outcome": "contrast rejected",
+      "reason": "navigation prominent fill inherited body ink; final navigation uses existing action text/panel and press roles"
+    },
+    {
+      "stage": "maximum-r9 wrapper",
+      "outcome": "XCTest PASS; shell wrapper exit1",
+      "reason": "zsh readonly status variable after test; QA size restored separately and checked, no product/test rerun required"
+    },
+    {
+      "stage": "local backend handoff proof",
+      "outcome": "check interrupted; recovered",
+      "reason": "Initial handoff proof used a missing metadata key authority_window. The service preserved the original rows; config stayed36 and launcher reopened36. Resumed proof uses the actual synthetic_viewer_window and identical repository bytes before updating37."
+    }
+  ],
+  "curation": {
+    "origin_result_sha256": "7913f317a0101341fbc5dc867a856752451ebefff50e4552de88c503d3d71235",
+    "screenshots": "Hashes/provenance only. Raw synthetic/native and private user pixels remain ignored local evidence.",
+    "not_product_acceptance": true
+  }
+}
