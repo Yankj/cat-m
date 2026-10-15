@@ -1273,6 +1273,27 @@
       "line": 51,
       "sha256": "5cf1a3d606e994271167a233f9d93b244fbbdf52bd1b902490c1e7906f5bdd7a",
       "reason": "Verified byte-identical previously reviewed anonymous-reader negative fixture: literal access_token=fake and signed-key names are rejected before any connection; no real signed URL/token. Exact file hash and line only."
+    },
+    {
+      "path": "docs/planning/AF-1/goal-evidence-map.json",
+      "category": "credential_prefix",
+      "line": 120,
+      "sha256": "556ab0ef7ffe4ad876f63a96f438bdd8c6508e3781b16235a553a753618f8e06",
+      "reason": "Reviewed literal historical research filename: catdesk- suffix matches broad sk- credential pattern; no credential value or content is present."
+    },
+    {
+      "path": "docs/planning/AF-1/goal-evidence-map.json",
+      "category": "credential_prefix",
+      "line": 146,
+      "sha256": "556ab0ef7ffe4ad876f63a96f438bdd8c6508e3781b16235a553a753618f8e06",
+      "reason": "Reviewed literal historical research filename: catdesk- suffix matches broad sk- credential pattern; no credential value or content is present."
+    },
+    {
+      "path": "docs/planning/AF-1/goal-evidence-map.json",
+      "category": "credential_prefix",
+      "line": 174,
+      "sha256": "556ab0ef7ffe4ad876f63a96f438bdd8c6508e3781b16235a553a753618f8e06",
+      "reason": "Reviewed literal historical research filename: catdesk- suffix matches broad sk- credential pattern; no credential value or content is present."
     }
   ]
 }
