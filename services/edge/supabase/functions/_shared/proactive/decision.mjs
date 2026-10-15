@@ -162,7 +162,21 @@ export function createDecisionService({ store, model = null, memory = null, now 
     const ev = /^[0-9a-f-]{36}$/i.test(id) && await store.getEvent(uid, id); if (!ev || ev.kind !== 'proactive_decision') throw bad('suggestion_not_found', 404);
     ev.payload.suggestion ??= { status: 'pending', taken: [], history: [], ops: {} }; return ev;
   }
+  // S1: Idempotency-Key on POST decision routes. Same key + same request → stored response replayed (header
+  // Idempotent-Replayed: true); same key + different request → 422 idempotency_key_reused. Errors are not stored.
   async function route(uid, req, rawPath, url, readBody) {
+    const key = req.headers.get('idempotency-key');
+    if (req.method !== 'POST' || key === null) return routeInner(uid, req, rawPath, url, readBody);
+    if (!/^[\x21-\x7e]{8,200}$/.test(key)) throw bad('idempotency_key_invalid');
+    let parsed; const read = async () => (parsed ??= await readBody());
+    const reqHash = await signalHash({ type: 'idem', source: rawPath, data: await read() });
+    const prior = await store.idemGet(uid, key);
+    if (prior) { if (prior.route !== rawPath || prior.request_hash !== reqHash) throw bad('idempotency_key_reused'); return [prior.status, typeof prior.response === 'string' ? JSON.parse(prior.response) : prior.response, { 'idempotent-replayed': 'true' }]; }
+    const out = await routeInner(uid, req, rawPath, url, read);
+    if (out && out[0] < 300) await store.idemPut(uid, key, { route: rawPath, request_hash: reqHash, status: out[0], response: out[1] });
+    return out;
+  }
+  async function routeInner(uid, req, rawPath, url, readBody) {
     const path = rawPath.replace(/^\/catpaw\/proactive\/v1(?=\/)/, '/proactive');
     if (path === '/proactive/suggestions' && req.method === 'GET') { const st = url.searchParams.get('status'); const rows = (await store.listEvents(uid, null, Math.min(Number(url.searchParams.get('limit')) || 50, 200))).filter(e => e.kind === 'proactive_decision' && e.payload?.decision !== 'silent').reverse().map(toSuggestion); return [200, { suggestions: st ? rows.filter(r => r.status === st) : rows }]; }
     let sm = path.match(/^\/proactive\/suggestions\/([^/]+)\/(action|undo|feedback)$/);

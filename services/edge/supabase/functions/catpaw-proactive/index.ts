@@ -1,6 +1,9 @@
 import postgres from 'npm:postgres@3.4.7';
 import { createSupabaseTokenVerifier } from '../_shared/core/src/supabase-auth.mjs';
-import { readConfig } from '../_shared/config.mjs';
+import { readConfig, featureAllows } from '../_shared/config.mjs';
+import { createAgentMemoryService } from '../_shared/agent-memory/service.mjs';
+import { createPgAgentMemoryStore } from '../_shared/agent-memory/pg-store.mjs';
+import { createAgentMemoryRecall } from '../_shared/proactive/memory-recall.mjs';
 import { createProactiveService } from '../_shared/proactive/service.mjs';
 import { createPgStore } from '../_shared/proactive/pg-store.mjs';
 import { createReminderModel } from '../_shared/proactive/model.mjs';
@@ -17,8 +20,10 @@ const store = createPgStore(sql);
 const quietHours = parseQuietHours(env('CATPAW_PROACTIVE_QUIET_HOURS'));
 const dailyPushCap = Number(env('CATPAW_PROACTIVE_DAILY_PUSH_CAP') ?? 5) || 5;
 const log = (...a: unknown[]) => console.log('[catpaw-proactive]', ...a);
-// Memory: B1 recall is not merged/reachable here yet -> no memory port in production (see proactive-decision-contract.md).
-const decision = createDecisionService({ store, model: createDecisionModel({ get: env, log }), memory: null, log,
+// Memory: B1 catpaw.agent-memory.v1 (same gate CATPAW_AGENT_MEMORY_ENABLED + allowlist, same consent) via the adapter.
+const memoryGate = cfg.agentMemory ?? 'off';
+const memory = memoryGate === 'off' ? null : createAgentMemoryRecall(createAgentMemoryService({ store: createPgAgentMemoryStore(sql), allow: (uid: string) => featureAllows(memoryGate, cfg.featureAllowlist, uid) }));
+const decision = createDecisionService({ store, model: createDecisionModel({ get: env, log }), memory, log,
   config: { threshold: Number(env('CATPAW_PROACTIVE_CONFIDENCE_THRESHOLD') ?? 0.6), dedupeWindowSec: Number(env('CATPAW_PROACTIVE_DEDUPE_WINDOW_SEC') ?? 1800), quietHours, dailyCap: dailyPushCap } });
 const service = createProactiveService({
   store, decision,

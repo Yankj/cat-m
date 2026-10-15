@@ -13,3 +13,13 @@ export function createInMemoryRecall(seed = {}) {
     all: uid => items.get(uid) ?? [],
   };
 }
+
+/** Adapter over B1 catpaw.agent-memory.v1 (createAgentMemoryService). Honors the B1 gate and the user's consent:
+ * gate off / no consent / use_memory off → []. Preference memories from feedback are saved only when auto_save is on. */
+export function createAgentMemoryRecall(service) {
+  const active = async uid => { if (!service.allow(uid)) return null; const s = await service.settings(uid); return s.use_memory === true && !!s.consented_at ? s : null; };
+  return {
+    async recall(uid, query, k = 5) { if (!(await active(uid))) return []; return (await service.rank(uid, query, k)).map(r => ({ id: r.id, content: r.content, kind: r.kind })); },
+    async save(uid, content) { const s = await active(uid); if (!s?.auto_save) return null; const { row } = await service.save(uid, { kind: 'preference', content: content.slice(0, 280) }, { created_by: 'agent' }); return row.id; },
+  };
+}

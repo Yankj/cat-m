@@ -73,3 +73,15 @@ tick (00:10 Asia/Shanghai, pg_cron + pg_net, commented in the migration) compres
 `propose_memory_v1` + user confirmation, conflicts). Plan §1 describes a simpler content model, which is what this
 module implements, in its own schema. Two memory systems must not both be live for one user: before the gate goes to
 `true`, decide whether agent-memory replaces catpaw.memory.v1 or is folded into it (owner decision).
+
+## S2: memory chips (memory.used, memory.update, incremental sync)
+- **SSE `memory.used`** is sent after `memory_recalled` when a turn froze recalled memories (approval contract required): `{ids:[…], memories:[{id, kind, content}]}`. `memory_recalled {ids}` is unchanged.
+- **SSE `memory.update`** comes from memory tools, after `tool_result`:
+  - `{op:'saved'|'updated', ids, memories:[{id, kind, content}]}`
+  - `{op:'forgotten', ids, memories:[]}`
+  - `memory_saved` (with its undo token) is still sent before `memory.update` on save.
+- **`GET /catpaw/agent-memory/v1/memories?since=ISO`** returns `{contract, since, cursor, memories:[publicMemory], deleted:[{id, deleted_at}]}`.
+  - `memories` holds rows whose `updated_at` is after `since`.
+  - `deleted` comes from tombstones; memories that expired also count as deleted.
+  - Without `since`, it returns everything. Use the returned `cursor` as the next `since`.
+  - Requires migration `20261016100000_agent_memory_tombstones.sql`, which adds a delete trigger and the tombstones table.
