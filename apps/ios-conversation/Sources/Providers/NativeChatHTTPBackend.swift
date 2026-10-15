@@ -1362,3 +1362,168 @@ public actor ChatAttachmentUploader {
         return json
     }
 }
+
+#if DEBUG
+// MARK: - Demo / fixture backend (DEBUG only; see docs/demo-fixture-backend.md)
+/// Enable with launch argument `-CatpawDemoBackend` or `UserDefaults` key `CatpawDemoBackend` = true. Never compiled into Release.
+public enum CatpawDemoBackendSwitch {
+    public static let argument = "-CatpawDemoBackend"
+    public static let defaultsKey = "CatpawDemoBackend"
+    public static func isEnabled(arguments: [String] = ProcessInfo.processInfo.arguments, defaults: UserDefaults = .standard) -> Bool {
+        if arguments.contains(argument) { return true }
+        return defaults.bool(forKey: defaultsKey)
+    }
+    /// Returns the demo backend when enabled, else `fallback` unchanged.
+    public static func select(_ fallback: any ConversationBackend, arguments: [String] = ProcessInfo.processInfo.arguments, defaults: UserDefaults = .standard) -> any ConversationBackend {
+        isEnabled(arguments: arguments, defaults: defaults) ? CatpawDemoConversationBackend.shared : fallback
+    }
+}
+
+/// One catpaw.ui.v1 wire event (`ui.block`, `ui.block.update`, `ui.block.resolve`, `turn_suspended`, `turn_completed`).
+/// `json` is the event's `data` object exactly as the Edge server sends it (docs/fixtures/catpaw-ui-demo.jsonl).
+public struct CatpawDemoUIEvent: Sendable, Equatable {
+    public let sequence: Int
+    public let type: String
+    public let json: String
+}
+public enum CatpawDemoUIDecision: String, Sendable { case submit, dismiss, reportError = "report_error" }
+public enum CatpawDemoUIFailure: Error, Sendable, Equatable { case notFound, consumed, conflict, invalidResponse }
+
+/// Scripted catpaw.ui.v1 session mirroring the recorded server run:
+/// round 1 = card, list, progress (display) + choices (waits); round 2 = progress update + form, confirm, sheet (wait);
+/// after the last answer the turn completes. Decisions are idempotent per `operationID` (same body replays, other body = conflict).
+public actor CatpawDemoUIScript {
+    public static let interactive = ["demo-choices", "demo-form", "demo-confirm", "demo-sheet"]
+    private static let expiresAt = "2026-10-16T00:20:00.000Z"
+    private var sequence = 0
+    private var round = 0
+    private var resolved: [String: (operation: UUID, body: String, events: [CatpawDemoUIEvent])] = [:]
+    private var completed = false
+    public init() {}
+    private func next(_ type: String, _ json: String) -> CatpawDemoUIEvent { sequence += 1; return CatpawDemoUIEvent(sequence: sequence, type: type, json: json) }
+    private static func interrupt(_ id: String) -> String { "\"interruptId\":\"demo-interrupt-\(id)\",\"argsHash\":\"\(String(repeating: "0", count: 64))\",\"expiresAt\":\"\(expiresAt)\"" }
+    /// Round 1. Calling again returns nothing (the script runs once per instance).
+    public func start() -> [CatpawDemoUIEvent] {
+        guard round == 0 else { return [] }
+        round = 1
+        return [
+            next("ui.block", #"{"id":"demo-card","kind":"card","schemaVersion":1,"title":"今天","body":"**三件事**：写周报、买菜、跑步"}"#),
+            next("ui.block", #"{"id":"demo-list","kind":"list","schemaVersion":1,"title":"待办","items":[{"id":"a","label":"写周报"},{"id":"b","label":"买菜"},{"id":"c","label":"跑步"}]}"#),
+            next("ui.block", #"{"id":"demo-progress","kind":"progress","schemaVersion":1,"title":"整理今天","steps":[{"id":"read","label":"读取日程","state":"running"},{"id":"plan","label":"排优先级","state":"pending"}]}"#),
+            next("ui.block", #"{"id":"demo-choices","kind":"choices","schemaVersion":1,"title":"先做哪件？","selection":"single","allowOther":true,"items":[{"id":"a","label":"写周报"},{"id":"b","label":"买菜"}],"# + Self.interrupt("demo-choices") + "}"),
+            next("turn_suspended", "{\"interrupt_ids\":[\"demo-interrupt-demo-choices\"],\"expires_at\":\"\(Self.expiresAt)\"}"),
+        ]
+    }
+    private func round2() -> [CatpawDemoUIEvent] {
+        round = 2
+        return [
+            next("ui.block.update", #"{"id":"demo-progress","steps":[{"id":"read","label":"读取日程","state":"done"},{"id":"plan","label":"排优先级","state":"running"}]}"#),
+            next("ui.block", #"{"id":"demo-form","kind":"form","schemaVersion":1,"title":"跑步计划","fields":[{"id":"km","label":"公里","type":"number","required":true},{"id":"at","label":"时间","type":"time"}],"# + Self.interrupt("demo-form") + "}"),
+            next("ui.block", #"{"id":"demo-confirm","kind":"confirm","schemaVersion":1,"title":"创建提醒？","body":"18:30 提醒跑步","actions":[{"id":"approve","label":"创建"},{"id":"deny","label":"取消"}],"# + Self.interrupt("demo-confirm") + "}"),
+            next("ui.block", #"{"id":"demo-sheet","kind":"sheet","schemaVersion":1,"title":"弹窗","body":"这是一个原生弹窗（不是代码）","actions":[{"id":"ok","label":"好的"}],"# + Self.interrupt("demo-sheet") + "}"),
+            next("turn_suspended", "{\"interrupt_ids\":[\"demo-interrupt-demo-form\",\"demo-interrupt-demo-confirm\",\"demo-interrupt-demo-sheet\"],\"expires_at\":\"\(Self.expiresAt)\"}"),
+        ]
+    }
+    /// `POST …/interrupts/{interruptId}/decision` with `{operation_id, decision, args_hash, response?}`.
+    /// `responseJSON` is the `ui.response` (submit) or `ui.error` (report_error) object; nil for dismiss.
+    public func respond(blockID: String, decision: CatpawDemoUIDecision, responseJSON: String?, operationID: UUID) throws -> [CatpawDemoUIEvent] {
+        let open = round == 1 ? ["demo-choices"] : round == 2 ? ["demo-form", "demo-confirm", "demo-sheet"] : []
+        let body = decision.rawValue + "|" + (responseJSON ?? "")
+        if let prior = resolved[blockID] {
+            guard prior.operation == operationID else { throw CatpawDemoUIFailure.consumed }
+            guard prior.body == body else { throw CatpawDemoUIFailure.conflict }
+            return prior.events
+        }
+        guard open.contains(blockID) else { throw CatpawDemoUIFailure.notFound }
+        switch decision {
+        case .submit, .reportError:
+            guard let responseJSON, let data = responseJSON.data(using: .utf8),
+                  let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  object["blockId"] as? String == blockID,
+                  object["type"] as? String == (decision == .submit ? "ui.response" : "ui.error") else { throw CatpawDemoUIFailure.invalidResponse }
+            if blockID == "demo-confirm", decision == .submit { guard object["actionId"] is String else { throw CatpawDemoUIFailure.invalidResponse } }
+        case .dismiss:
+            guard responseJSON == nil else { throw CatpawDemoUIFailure.invalidResponse }
+        }
+        let status = decision == .submit ? "submitted" : decision == .dismiss ? "dismissed" : "error"
+        var events = [
+            next("approval_resolved", "{\"interrupt_id\":\"demo-interrupt-\(blockID)\",\"call_id\":\"call-\(blockID)\",\"kind\":\"ui\",\"decision\":\"\(status)\"}"),
+            next("ui.block.resolve", "{\"id\":\"\(blockID)\",\"status\":\"\(status)\"}"),
+        ]
+        resolved[blockID] = (operationID, body, [])
+        if open.allSatisfy({ resolved[$0] != nil }) {
+            if round == 1 { events += round2() }
+            else if !completed { completed = true; events.append(next("turn_completed", "{\"text\":\"都安排好了。\"}")) }
+        }
+        resolved[blockID] = (operationID, body, events)
+        return events
+    }
+}
+
+/// DEBUG demo `ConversationBackend`: every turn runs the approval + create_task script, then exposes the
+/// catpaw.ui.v1 script on `ui` (the domain stream has no ui.* payloads yet; the UI layer reads `ui` directly).
+/// - reply: turn_started → text_delta → tool_call(create_task) → approval_requested → turn_suspended
+/// - submitApproval(approve/approve_always/deny): approval_resolved → tool_result(create_task, ok|denied) → text_delta → turn_completed
+public actor CatpawDemoConversationBackend: ConversationBackend {
+    public static let shared = CatpawDemoConversationBackend()
+    public static let demoTaskCallID = "call-demo-create-task"
+    public let ui = CatpawDemoUIScript()
+    private struct Turn { var sequence: Int; var messageID: UUID; var text: String; var interruptID: String; var decided: (UUID, ConversationApprovalDecision)?; var resolvedEvents: [ConversationTurnEvent] }
+    private var turns: [UUID: Turn] = [:]
+    public init() {}
+    public func connection(scope: DataScope) async -> ConversationConnection {
+        ConversationConnection(state: .connected, provider: "Demo", detail: "演示后端（DEBUG）：审批、create_task 与 catpaw.ui.v1 全部块类型均为脚本回放。")
+    }
+    private func event(_ request: ConversationTurnRequest, _ payload: ConversationTurnEvent.Payload) -> ConversationTurnEvent {
+        var turn = turns[request.operationID]!
+        turn.sequence += 1; turns[request.operationID] = turn
+        return ConversationTurnEvent(operationID: request.operationID, epoch: 1, sequence: turn.sequence, payload: payload)
+    }
+    private static func stream(_ events: [ConversationTurnEvent]) -> AsyncThrowingStream<ConversationTurnEvent, Error> {
+        AsyncThrowingStream { continuation in for event in events { continuation.yield(event) }; continuation.finish() }
+    }
+    public func reply(_ request: ConversationTurnRequest) async throws -> AsyncThrowingStream<ConversationTurnEvent, Error> {
+        guard turns[request.operationID] == nil else { throw ConversationSessionError.unresolvedOperation }
+        let interruptID = UUID().uuidString.lowercased(), messageID = UUID()
+        turns[request.operationID] = Turn(sequence: 0, messageID: messageID, text: "好的，我先帮你建一个任务。", interruptID: interruptID, decided: nil, resolvedEvents: [])
+        let arguments = #"{"due":"2026-10-16","title":"跑步 5 公里"}"#
+        let expires = ISO8601DateFormatter().string(from: Date().addingTimeInterval(600))
+        let approval = ConversationApprovalRequest(interruptID: interruptID, callID: Self.demoTaskCallID, tool: "create_task", summary: "创建任务「跑步 5 公里」（2026-10-16）", arguments: arguments, argsHash: String(repeating: "a", count: 64), expiresAt: expires, risk: "local_write", rememberAllowed: true)
+        let hash = textHash(request.operationID.uuidString.lowercased())
+        var events: [ConversationTurnEvent] = []
+        events.append(event(request, .started(requestHash: hash, conversationRevision: 1, grantEpoch: 1)))
+        events.append(event(request, .textDelta(messageID: messageID, text: "好的，我先帮你建一个任务。")))
+        events.append(event(request, .toolStarted(callID: Self.demoTaskCallID, name: "create_task", arguments: arguments)))
+        events.append(event(request, .approvalRequested(approval)))
+        events.append(event(request, .suspended(interruptIDs: [interruptID], expiresAt: expires)))
+        return Self.stream(events)
+    }
+    public func submitApproval(_ request: ConversationTurnRequest, interruptID: String, decision: ConversationApprovalDecision, argsHash: String, operationID: UUID, afterSequence: Int) async throws -> AsyncThrowingStream<ConversationTurnEvent, Error> {
+        guard let turn = turns[request.operationID], turn.interruptID == interruptID else { throw ConversationApprovalFailure.notFound }
+        guard argsHash == String(repeating: "a", count: 64) else { throw ConversationApprovalFailure.stale }
+        if let decided = turn.decided {
+            // Idempotent replay of the same operation; anything else is consumed.
+            guard decided.0 == operationID, decided.1 == decision else { throw ConversationApprovalFailure.consumed }
+            return Self.stream(turn.resolvedEvents.filter { $0.sequence > afterSequence })
+        }
+        let approved = decision != .deny
+        let content = approved ? #"{"status":"ok","task":{"id":"demo-task","title":"跑步 5 公里","due":"2026-10-16"}}"# : #"{"status":"denied"}"#
+        let tail = approved ? "任务已创建。下面是 UI 演示块。" : "好的，没有创建任务。下面是 UI 演示块。"
+        var events: [ConversationTurnEvent] = []
+        events.append(event(request, .approvalResolved(interruptID: interruptID, callID: Self.demoTaskCallID, decision: approved ? "approved" : "denied", remember: decision == .approveAlways)))
+        events.append(event(request, .toolResult(ConversationToolResult(callID: Self.demoTaskCallID, name: "create_task", content: content).withStatus(approved ? "ok" : "denied"))))
+        let full = turn.text + tail
+        events.append(event(request, .textDelta(messageID: turn.messageID, text: tail)))
+        events.append(event(request, .completed(messageID: turn.messageID, finalTextHash: textHash(full))))
+        var saved = turns[request.operationID]!
+        saved.decided = (operationID, decision); saved.resolvedEvents = events; turns[request.operationID] = saved
+        return Self.stream(events)
+    }
+    public func observe(_ request: ConversationTurnRequest) async throws -> ConversationObservation { throw ConversationSessionError.unresolvedOperation }
+    public func cancelTurn(_ request: ConversationTurnRequest) async throws -> ConversationTurnCancelReceipt {
+        guard turns[request.operationID] != nil else { throw ConversationTurnCancelFailure.notFound }
+        turns[request.operationID] = nil
+        return ConversationTurnCancelReceipt(turnID: request.operationID, state: "failed", cancelled: true, alreadyTerminal: false)
+    }
+}
+#endif
