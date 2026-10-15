@@ -933,6 +933,7 @@ private struct ConversationPendingMessagesView:View {
                         Button(ui("暂停")){model.pauseFollowups()}.accessibilityIdentifier("chat.followup.pause").disabled(preparingEdit)
                     }
                 }
+                Button(ui("完成")){dismiss()}.accessibilityIdentifier("chat.followup.close")
             }.font(CatpawTypography.Role.caption.font).buttonStyle(.borderless).tint(CatpawColors.ink)
                 .padding(.horizontal,14).frame(minHeight:40)
             Divider()
