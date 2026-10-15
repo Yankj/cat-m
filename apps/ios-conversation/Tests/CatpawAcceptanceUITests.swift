@@ -26,7 +26,7 @@ final class CatpawAcceptanceUITests: XCTestCase {
     }
     private func send(_ app: XCUIApplication, _ text: String) {
         let field = input(app); XCTAssertTrue(field.waitForExistence(timeout: 20)); field.tap(); field.typeText(text)
-        let button = app.buttons["chat.send"]; XCTAssertTrue(waitFor(button, "enabled == true", timeout: 10)); button.tap()
+        let button = app.buttons["chat.send"]; XCTAssertTrue(waitFor(button, "enabled == true", timeout: 10)); shot(app, "02b-send-enabled-with-text"); button.tap()
     }
 
     // 1. Launch animation → first screen
@@ -75,6 +75,7 @@ final class CatpawAcceptanceUITests: XCTestCase {
         // Stop: the composer exposes a stop control (label 停止回答) only once cancellation is wired.
         let stop = app.buttons.matching(NSPredicate(format: "label == %@ OR identifier == %@", "停止回答", "chat.stop")).firstMatch
         if stop.waitForExistence(timeout: 2) {
+            shot(app, "05-stop-visible")
             stop.tap(); shot(app, "05-stopped")
             XCTAssertTrue(app.descendants(matching: .any)["chat.answer.interrupted"].firstMatch.waitForExistence(timeout: 10))
         } else {

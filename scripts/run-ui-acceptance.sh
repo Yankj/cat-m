@@ -3,29 +3,38 @@
 # exports every keepAlways screenshot from the .xcresult and writes an HTML + Markdown report.
 #   scripts/run-ui-acceptance.sh                     # offline fixture cases only
 #   CATPAW_ACCEPTANCE_LIVE=1 scripts/run-ui-acceptance.sh   # also real anonymous sign-in
-#   SIM_NAME="iPhone 17 Pro" OUT=build/ui-acceptance scripts/run-ui-acceptance.sh
+#   SIM_UDID=<udid> | SIM_NAME="iPhone 18 Pro" OUT=build/ui-acceptance scripts/run-ui-acceptance.sh
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 PROJECT="$ROOT/apps/ios-conversation/CatpawM.xcodeproj"
 SCHEME="${SCHEME:-CatpawM}"
-SIM_NAME="${SIM_NAME:-iPhone 17 Pro}"
+SIM_NAME="${SIM_NAME:-iPhone 18 Pro}"
 STAMP="$(date +%Y%m%d-%H%M%S)"
 OUT="${OUT:-$ROOT/build/ui-acceptance/$STAMP}"
 RESULT="$OUT/Acceptance.xcresult"
 mkdir -p "$OUT"
 
-DEST="${DESTINATION:-platform=iOS Simulator,name=$SIM_NAME}"
+# Default: explicit SIM_UDID, else the first booted iPhone simulator, else SIM_NAME.
+if [[ -z "${DESTINATION:-}" ]]; then
+  if [[ -z "${SIM_UDID:-}" ]]; then
+    SIM_UDID="$(xcrun simctl list devices booted -j | /usr/bin/python3 -c 'import json,sys; d=json.load(sys.stdin)["devices"]; print(next((x["udid"] for v in d.values() for x in v if x["name"].startswith("iPhone")),""))')"
+  fi
+  if [[ -n "$SIM_UDID" ]]; then DESTINATION="platform=iOS Simulator,id=$SIM_UDID"; else DESTINATION="platform=iOS Simulator,name=$SIM_NAME"; fi
+fi
+DEST="$DESTINATION"
 echo "▶ xcodebuild test → $DEST"
 set +e
-TEST_RUNNER_CATPAW_ACCEPTANCE_LIVE="${CATPAW_ACCEPTANCE_LIVE:-0}" \
-xcodebuild test \
-  -project "$PROJECT" -scheme "$SCHEME" -configuration Debug \
-  -destination "$DEST" \
-  -only-testing:CatpawMUITests/CatpawAcceptanceUITests \
-  -resultBundlePath "$RESULT" \
-  -derivedDataPath "$OUT/DerivedData" \
+STATUS_FILE="$OUT/.xcodebuild-status"
+# Exit status captured via file: works under bash and zsh (PIPESTATUS is lost after `|| true` / differs in zsh).
+{ TEST_RUNNER_CATPAW_ACCEPTANCE_LIVE="${CATPAW_ACCEPTANCE_LIVE:-0}" \
+  xcodebuild test \
+    -project "$PROJECT" -scheme "$SCHEME" -configuration Debug \
+    -destination "$DEST" \
+    -only-testing:CatpawMUITests/CatpawAcceptanceUITests \
+    -resultBundlePath "$RESULT" \
+    -derivedDataPath "$OUT/DerivedData"; echo $? > "$STATUS_FILE"; } \
   2>&1 | tee "$OUT/xcodebuild.log" | grep -E "Test Case|error:|\*\* TEST" || true
-STATUS=${PIPESTATUS[0]}
+STATUS="$(cat "$STATUS_FILE" 2>/dev/null || echo 1)"
 set -e
 [[ -d "$RESULT" ]] || { echo "✗ no result bundle (build failed?) — see $OUT/xcodebuild.log"; exit 1; }
 

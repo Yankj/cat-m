@@ -65,6 +65,24 @@ import UIKit
     }
 }
 
+/// Pre-token thinking row: shown while a turn is dispatched/running and no assistant message exists yet.
+/// Subscribes to turnEvents so reasoning_summary lands before the first text delta.
+@MainActor struct PendingThinkingRow: View {
+    let service: ConversationSessionService
+    let turn: ConversationTurnRecord
+    @StateObject private var projection: AnswerPhaseProjection
+    init(service: ConversationSessionService, turn: ConversationTurnRecord) {
+        self.service = service; self.turn = turn
+        _projection = StateObject(wrappedValue: AnswerPhaseProjection(service: service, operationID: turn.id))
+    }
+    var body: some View {
+        PhasedAnswerView(model: projection, canQuote: false)
+            .onAppear { if let s = turn.reasoningSummary { projection.thinkingSummary = s } }
+            .onChange(of: turn.reasoningSummary) { _, s in if let s { projection.thinkingSummary = s } }
+            .transition(.opacity.combined(with: .move(edge: .bottom)))
+    }
+}
+
 // MARK: A/B — thinking row ↔ "thought for Xs · N steps" chip
 
 @MainActor private struct ThinkingHeader<Model: AnswerPhaseProviding>: View {
