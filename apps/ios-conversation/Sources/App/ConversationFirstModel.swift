@@ -23,6 +23,7 @@ enum ConversationObserverLifecycle: String { case foregroundIdle, streaming, rec
     let taskPlanService:ConversationTaskPlanService
     let artifactEditService:ConversationArtifactEditService
     let taskControlService:ConversationTaskControlService
+    let inboxService:ConversationInboxService?
     let memoryService:ConversationMemoryService?
     let memoryConfigured:Bool
     let taskControlsConfigured:Bool
@@ -140,7 +141,7 @@ enum ConversationObserverLifecycle: String { case foregroundIdle, streaming, rec
     private var taskControlDeliveryTask:Task<Void,Never>?
     private var taskControlDeliveryToken:UUID?
     private var taskControlDeliveryGeneration=0
-    init(repository:Repository,service:ConversationSessionService,scope:DataScope = Profiles.user,imageStore:any ConversationImageByteStore = MemoryConversationImageByteStore(),taskPlanService:ConversationTaskPlanService?=nil,artifactEditService:ConversationArtifactEditService?=nil,taskActionService:ConversationTaskActionService?=nil,taskControlService:ConversationTaskControlService?=nil,memoryService:ConversationMemoryService?=nil,subjectID:UUID?=nil) {
+    init(repository:Repository,service:ConversationSessionService,scope:DataScope = Profiles.user,imageStore:any ConversationImageByteStore = MemoryConversationImageByteStore(),taskPlanService:ConversationTaskPlanService?=nil,artifactEditService:ConversationArtifactEditService?=nil,taskActionService:ConversationTaskActionService?=nil,taskControlService:ConversationTaskControlService?=nil,memoryService:ConversationMemoryService?=nil,inboxService:ConversationInboxService?=nil,subjectID:UUID?=nil) {
         self.repository=repository;self.service=service;self.scope=scope;self.imageStore=imageStore
         self.taskPlansConfigured=taskPlanService != nil
         self.taskPlanService=taskPlanService ?? ConversationTaskPlanService(repository:repository,scope:scope)
@@ -151,6 +152,7 @@ enum ConversationObserverLifecycle: String { case foregroundIdle, streaming, rec
         let validMemory=memoryService?.reference.scope==scope && memoryService?.reference.subjectID==subjectID && subjectID != nil
         self.memoryService=validMemory ? memoryService : nil
         self.memoryConfigured=validMemory
+        self.inboxService=inboxService?.reference.scope==scope && inboxService?.reference.subjectID==subjectID ? inboxService : nil
         self.trustedSubjectID=subjectID
         self.acceptedWorkDraftService=ConversationAcceptedWorkDraftService(repository:repository,scope:scope,subjectID:subjectID)
         self.artifactContinuationService=ConversationArtifactContinuationService(repository:repository,scope:scope,subjectID:subjectID)
@@ -484,21 +486,36 @@ enum ConversationObserverLifecycle: String { case foregroundIdle, streaming, rec
             }
         } catch { self.error=error.localizedDescription }
     }
-    func select(_ id:UUID) async throws {
+    func select(_ id:UUID,admission:(()->Bool)?=nil) async throws {
+        func ensureSelection() throws {try Task.checkCancellation();guard !isInputComposing,admission?() != false else {throw CancellationError()}}
+        try ensureSelection()
         guard !busy,!isInputComposing else { throw ConversationSessionError.busy }
         if conversationID == id { return }
-        await persistenceTask?.value
+        await persistenceTask?.value;try ensureSelection()
         guard !busy,!isInputComposing else { throw ConversationSessionError.busy }
         busy=true;defer { busy=false }
         if let prior=conversationID {try await generativeUIStateService.flush(conversationID:prior)}
-        acceptedWorkDraftTask?.cancel();await acceptedWorkDraftTask?.value
+        acceptedWorkDraftTask?.cancel();await acceptedWorkDraftTask?.value;try ensureSelection()
         if var review=acceptedWorkDraft {review.options=acceptedWorkOptions;try await acceptedWorkDraftService.save(review)}
         try await flushDraft();let saved=try await repository.record(id,scope:scope),selected=try await service.read(scope:scope,conversationID:id)
-        try await service.rememberSelection(scope:scope,conversationID:id)
+        try ensureSelection()
+        let targetWorkDraft=try await acceptedWorkDraftService.read(conversationID:id)
+        try ensureSelection()
+        let composer=try await artifactContinuationService.state(conversationID:id)
+        try ensureSelection()
+        let selectionReceipt=try await service.prepareNavigationSelection(scope:scope,conversationID:id)
+        do {try ensureSelection()} catch {
+            let original=error
+            do {try await service.rollbackNavigationSelection(scope:scope,receipt:selectionReceipt)}
+            catch {throw CatpawError.unavailable("原对话未切换，但本机恢复点未能还原。当前草稿仍保留。")}
+            throw original
+        }
+        // Commit all presentation state together after target reads and the last
+        // lifecycle gate. An interrupted read cannot leave B with A's queue/draft.
         permissionTask?.cancel();permissionID=nil;pendingModelConsent=nil;modelConsentReview=nil;checkingModelConsent=false;consentReady=false
         queue=ConversationFollowupQueueService(repository:repository,scope:scope,conversationID:id)
         acceptedWorkReviewTask?.cancel();acceptedWorkReviewTask=nil;acceptedWorkReviewToken=nil;acceptedWorkReviewPresented=false;acceptedWorkReviewSaving=false;acceptedWorkCapability = .init();revisionWorkReviewTarget=nil
-        acceptedWorkDraftTask?.cancel();acceptedWorkDraftTask=nil;acceptedWorkDraft=try await acceptedWorkDraftService.read(conversationID:id)
+        acceptedWorkDraftTask?.cancel();acceptedWorkDraftTask=nil;acceptedWorkDraft=targetWorkDraft
         if let value=acceptedWorkDraft {acceptedWorkOptions=value.options}
         cancelImageConsent();imageRecoveryTask?.cancel();imageRecoveryTask=nil;imageRecoveryToken=nil
         if let prior=conversationID {
@@ -508,12 +525,30 @@ enum ConversationObserverLifecycle: String { case foregroundIdle, streaming, rec
         }
         imageDraft=imageDrafts.removeValue(forKey:id) ?? ImageAttachmentDraft();subscribeToImageDraft()
         recoveredImageOperation=nil;imageCapability=ConversationImageCapability()
-        let composer=try await artifactContinuationService.state(conversationID:id)
         artifactContinuation=composer.activeDraft?.reference;continuationEditSequence=composer.activeDraft?.editSequence ?? 0;ordinaryContinuationImage=nil
         if let active=composer.activeDraft {ordinaryContinuationImage=imageDraft;imageDraft=ImageAttachmentDraft();subscribeToImageDraft();draft=active.raw}else{draft=saved.conversation?.draftText ?? ""}
         continuationDraftSaved=true
         conversationID=id;session=selected;outgoingMessages=[];tapTimes=[:];isInputComposing=false;error=nil;await refresh();if loaded && foreground && networkAdmissionAllowed {connectionTask?.cancel();connectionTask=Task{await refreshConnection()}}
         if loaded,let session {await restoreAppliedTaskControlDeliveries(session);drainTaskControlDeliveries()}
+    }
+    /// Explicit navigation from the scope inbox; inspection never calls this.
+    func returnToReceivedWork(_ item:ConversationInboxItem) async -> Bool {
+        guard let inboxService,loaded,foreground,networkAdmissionAllowed,!busy,!isInputComposing else {return false}
+        let generation=sceneGeneration,origin=conversationID
+        func current()->Bool {loaded && foreground && networkAdmissionAllowed && sceneGeneration==generation && conversationID==origin && !Task.isCancelled}
+        do {
+            let goal=try await inboxService.resolve(item:item)
+            guard current() else {return false}
+            let original=try await service.read(scope:scope,conversationID:item.binding.conversation_id)
+            guard current(),original.goals[item.binding.task_id]?.binding==item.binding else {throw ConversationInboxError.invalidResponse}
+            try await service.recordReceivedGoal(scope:scope,goal:goal)
+            guard current() else {return false}
+            try await select(item.binding.conversation_id,admission:current)
+            return loaded && foreground && networkAdmissionAllowed && sceneGeneration==generation && conversationID==item.binding.conversation_id
+        } catch CatpawError.missing {
+            if current(){error="原对话尚未保存在本机，可继续查阅这份成果。"}
+            return false
+        } catch {if current(){self.error=error.localizedDescription};return false}
     }
     func newConversation() { guard !isInputComposing else { return };Task { do { await persistenceTask?.value;try await flushDraft();let id=try await service.create(scope:scope);try await select(id) } catch { self.error=error.localizedDescription } } }
     func updateInputComposition(_ active:Bool) { guard active != isInputComposing else { return };isInputComposing=active }
@@ -680,6 +715,7 @@ enum ConversationObserverLifecycle: String { case foregroundIdle, streaming, rec
         await taskActionService.setAdmissionAllowed(!forceClosed && servicesAdmissionAllowed)
         await taskControlService.setAdmissionAllowed(!forceClosed && servicesAdmissionAllowed)
         await memoryService?.setAdmissionAllowed(!forceClosed && servicesAdmissionAllowed)
+        await inboxService?.setAdmissionAllowed(!forceClosed && servicesAdmissionAllowed)
     }
     func setNetworkAdmissionAllowed(_ allowed:Bool) {
         guard allowed != networkAdmissionAllowed else { return };networkAdmissionAllowed=allowed
@@ -803,6 +839,7 @@ enum ConversationObserverLifecycle: String { case foregroundIdle, streaming, rec
         let artifactDraftsSaved=await artifactEditService.invalidate()
         await taskActionService.invalidate();await taskControlService.invalidate();selectedTaskControl=nil
         await memoryService?.invalidate()
+        await inboxService?.invalidate()
         imageDraft.clear();for value in imageDrafts.values {value.clear()};imageDrafts.removeAll();imageCapability=ConversationImageCapability()
         await suspend();subscription?.cancel();subscription=nil;draftTask?.cancel();draftTask=nil
         let composerSaved:Bool
