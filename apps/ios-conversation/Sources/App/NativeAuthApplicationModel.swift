@@ -130,6 +130,7 @@ public struct AuthenticatedNativeChatCredentials: NativeChatSessionCredentials {
             Task { await CatpawPushTokenUploader.shared.setAuthorization { try await credentials.authorization(scope: partition.scope) } }
             let backend=NativeChatHTTPBackend(configuration:chatConfiguration,credentials:credentials)
             let memory=isFixture ? nil : try NativeMemoryComposition.service(repository:repository,configuration:chatConfiguration,credentials:credentials)
+            if !isFixture { MemoryLibraryHub.installAgentMemory(configuration:chatConfiguration,credentials:credentials) }
             var selected:any ConversationBackend=isFixture ? UnconfiguredConversationBackend() : backend
             #if DEBUG
             selected=CatpawDemoBackendSwitch.select(selected)
@@ -146,6 +147,9 @@ public struct AuthenticatedNativeChatCredentials: NativeChatSessionCredentials {
         uiDecisionSubmitter = submitter
         // #36 merge: add the GenerativeUIDecisionSubmitting conformance (see ConversationUIDecisionSubmitter) and uncomment:
         GenerativeBlockStore.shared.submitter = submitter
+        // catpaw.device.v1 (#49/#44): device results go back into the same suspended turn.
+        DeviceCallHub.submitter = ConversationDeviceResultSubmitter(service: service, scope: scope)
+        ConversationDeviceCall.clientEnabled = true
     }
     /// Starts the background warm-up (local preview, restore, anonymous experience identity).
     /// Safe to call from `.task`: the warm-up is an unstructured task, so the gate can await it.
@@ -237,6 +241,7 @@ public struct AuthenticatedNativeChatCredentials: NativeChatSessionCredentials {
                 Task { await CatpawPushTokenUploader.shared.setAuthorization { try await credentials.authorization(scope: partition.scope) } }
                 let http=NativeChatHTTPBackend(configuration:chatConfiguration,credentials:credentials)
                 let memory=isFixture ? nil : try NativeMemoryComposition.service(repository:repository,configuration:chatConfiguration,credentials:credentials)
+            if !isFixture { MemoryLibraryHub.installAgentMemory(configuration:chatConfiguration,credentials:credentials) }
                 backend = http
                 var selected: any ConversationBackend = isFixture ? UnconfiguredConversationBackend() : http
                 #if DEBUG
@@ -266,6 +271,7 @@ public struct AuthenticatedNativeChatCredentials: NativeChatSessionCredentials {
         let previous = chat; chat = nil
         uiDecisionSubmitter = nil
         GenerativeBlockStore.shared.submitter = nil
+        DeviceCallHub.submitter = nil
         GenerativeBlockStore.shared.activate(conversationID: nil)
         let previousBackend = backend; backend = nil
         let previousNamespace = namespace; namespace = nil

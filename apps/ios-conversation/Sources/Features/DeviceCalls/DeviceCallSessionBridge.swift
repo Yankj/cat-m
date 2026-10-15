@@ -8,11 +8,11 @@ import Foundation
 // Install at sign-in next to installUIDecisionSubmitter (三角 owns that file, one line):
 //     DeviceCallHub.submitter = ConversationDeviceResultSubmitter(service: service, scope: scope)
 // and set it to nil at sign-out.
-#if CATPAW_DEVICE_V1
+// CATPAW_DEVICE_V1: #49 merged, guard removed.
 /// #49 comment: the session service fills in operation_id, args_hash and the turn from `call_id`; we pass status + data only.
 /// `openURL` stays on the device (not encoded).
 extension ConversationDeviceResultSubmitter: DeviceResultSubmitting {
-    public func submit(_ result: DeviceCallResult) async throws {
+    func submit(_ result: DeviceCallResult) async throws {
         let data = try result.data.map { try JSONEncoder().encode($0) }
         try await submit(callID: result.call_id, status: result.status.rawValue, data: data)
     }
@@ -26,4 +26,3 @@ extension DeviceCall {
                   ttl_sec: call.ttlSec, interrupt_id: call.interruptID, args_hash: call.argsHash, expires_at: call.expiresAt)
     }
 }
-#endif
