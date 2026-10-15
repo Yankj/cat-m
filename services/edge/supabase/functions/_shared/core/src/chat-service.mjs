@@ -253,7 +253,7 @@ export class ChatService {
         if(!received&&!resumed&&await this.suspendForApproval(env,{step,messages:beforeRound,round,text,messageID,seen:[...seen].filter(id=>!round.calls.some(c=>c.id===id))}))return;
         for(const call of round.calls){
           if(!(received||resumed)||!env.turn.events.some(e=>e.type==='tool_call'&&e.data.call_id===call.id))await this.append(env,'tool_call',{call_id:call.id,name:call.name,arguments:call.arguments});
-          if(call.name===RENDER_UI&&!(env.turn.interrupts??[]).some(i=>i.call_id===call.id)){const block=blockOf(call.arguments),known=await this.knownUIBlock(env,block.id);await this.append(env,known?'ui.block.update':'ui.block',known?uiBlockUpdate(block):uiBlockEvent(block));}
+          if(call.name===RENDER_UI&&!(env.turn.interrupts??[]).some(i=>i.call_id===call.id)&&!(env.turn.ui_shown_calls??[]).includes(call.id)){const block=blockOf(call.arguments),known=await this.knownUIBlock(env,block.id);await this.append(env,known?'ui.block.update':'ui.block',known?uiBlockUpdate(block):uiBlockEvent(block));}
           const result=await this.executeTool(env,call);messages.push({role:'tool',tool_call_id:call.id,content:JSON.stringify(result)});
         }
         if(round.calls.some(c=>c.name==='propose_memory_v1')){
@@ -364,6 +364,8 @@ export class ChatService {
       check(t.approval_contract===APPROVAL_CONTRACT,409,'approval_not_negotiated');
       const now=this.now(),interrupts=gated.map(g=>interruptFor(t.id,g,now));let next=t;
       for(const call of ck.round.calls)if(!next.events.some(e=>e.type==='tool_call'&&e.data.call_id===call.id))next={...next,events:[...next.events,this.event(next,'tool_call',{call_id:call.id,name:call.name,arguments:call.arguments})]};
+      // Display-only render_ui calls of the suspended round are shown now, not after the user answers; the resumed loop skips them (ui_shown_calls).
+      const shown=[];for(const call of ck.round.calls)if(call.name===RENDER_UI&&!interrupts.some(i=>i.call_id===call.id)&&!(t.ui_shown_calls??[]).includes(call.id)){const block=blockOf(call.arguments),known=next.events.some(e=>e.type==='ui.block'&&e.data?.id===block.id);next={...next,events:[...next.events,this.event(next,known?'ui.block.update':'ui.block',known?uiBlockUpdate(block):uiBlockEvent(block))]};shown.push(block.id);next={...next,ui_shown_calls:[...(next.ui_shown_calls??[]),call.id]};}
       for(const it of interrupts){const call=ck.round.calls.find(c=>c.id===it.call_id);next={...next,events:[...next.events,it.kind==='ui'?this.event(next,'ui.block',uiBlockEvent(it.block,it)):this.event(next,'approval_requested',requestedEvent(it,call))]};}
       next={...next,state:'awaiting_approval',suspended_at:isoAt(now),interrupts:[...(t.interrupts??[]).filter(i=>!interrupts.some(n=>n.interrupt_id===i.interrupt_id)),...interrupts],
         approval_checkpoint:{state:'pending',step:ck.step,messages:clone(ck.messages),round:clone(ck.round),text:ck.text,message_id:ck.messageID,seen:clone(ck.seen)}};
@@ -418,7 +420,9 @@ export class ChatService {
       next={...next,events:[...next.events,this.event(next,'approval_resolved',resolvedEvent(resolved))]};
       if(ui)next={...next,events:[...next.events,this.event(next,'ui.block.resolve',uiBlockResolve(it.block.id,resolved.status))]};
       if(resolved.remember)await tx.put(owner,APPROVAL_PREFERENCES,{id:preferenceID(principal.subject_id,it.class),contract:APPROVAL_CONTRACT,subject_id:principal.subject_id,scope_id:scopeID,class:it.class,state:'always_allow',source_turn_id:tid,source_interrupt_id:iid,updated_at:isoAt(now)});
-      const resume=next.interrupts.every(i=>i.status!=='pending');if(resume){next=resumedTurn(next);if(this.integration)next=await this.integration.stampTurn(tx,owner,next);}
+      const resume=next.interrupts.every(i=>i.status!=='pending');if(resume)next=resumedTurn(next);
+      // A suspended turn has no live executor: a partial decision (other interrupts still pending) re-stamps it too, else beforeCommit fences it.
+      if(this.integration)next=await this.integration.stampTurn(tx,owner,next);
       const saved=await tx.put(owner,'native-chat-turns',next);await this.beforeCommit(tx,{owner,scope},saved);return {saved,it:resolved,resume};
     });
     if(!r.replayed)this.notify(owner,r.saved);if(r.resume)this.startResumed(auth,trusted,cid,r.saved);
