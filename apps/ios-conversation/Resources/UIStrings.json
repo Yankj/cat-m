@@ -4722,5 +4722,29 @@
   "，草稿，": {
     "en": ", draft, ",
     "zh-Hans": "，草稿，"
+  },
+  "正在思考…": {
+    "en": "Thinking…",
+    "zh-Hans": "正在思考…"
+  },
+  "正在调用工具：{0}": {
+    "en": "Using tool: {0}",
+    "zh-Hans": "正在调用工具：{0}"
+  },
+  "工具已返回：{0}": {
+    "en": "Tool returned: {0}",
+    "zh-Hans": "工具已返回：{0}"
+  },
+  "正在整理回答…": {
+    "en": "Writing the answer…",
+    "zh-Hans": "正在整理回答…"
+  },
+  "未完成，需核对": {
+    "en": "Not finished — please review",
+    "zh-Hans": "未完成，需核对"
+  },
+  "Catpaw 正在工作": {
+    "en": "Catpaw is working",
+    "zh-Hans": "Catpaw 正在工作"
   }
 }
