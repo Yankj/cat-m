@@ -256,7 +256,7 @@ struct CatpawSheetActions<Primary: View, Secondary: View>: View {
 struct CatpawSheetPrimaryButtonStyle: ButtonStyle {
     @Environment(\.isEnabled) private var isEnabled
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label.font(.system(size: 17, weight: .semibold))
+        configuration.label.font(.headline)
             .frame(maxWidth: .infinity, minHeight: 52)
             .foregroundStyle(isEnabled ? CatpawColors.onInk : CatpawColors.secondary)
             .background(isEnabled ? CatpawColors.ink : CatpawColors.input, in: Capsule())
@@ -267,7 +267,7 @@ struct CatpawSheetPrimaryButtonStyle: ButtonStyle {
 
 struct CatpawSheetSecondaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label.font(.system(size: 17, weight: .medium))
+        configuration.label.font(.body.weight(.medium))
             .foregroundStyle(CatpawColors.secondary)
             .frame(maxWidth: .infinity, minHeight: 44)
             .contentShape(Rectangle())
