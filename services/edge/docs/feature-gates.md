@@ -40,3 +40,6 @@ Worth it only for schema changes that must not touch production (e.g. the unappl
 3. Applying migrations `20261015120000`, `20261015120100`, `20261015150000` (A2 proactive store) to production —
    or creating a branch to apply them there first (branch has an hourly cost; confirm with `confirm_cost`).
 4. Flipping any gate from `allowlist` to `true`.
+
+## DB enrollment (catpaw.feature-enrollment.v1)
+Unset gates now mean `allowlist`, and a row in `feature_access.enrollments` counts as allowlist membership. See [feature-enrollment.md](feature-enrollment.md).
