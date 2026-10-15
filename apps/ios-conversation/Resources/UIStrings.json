@@ -5214,5 +5214,29 @@
   "，草稿，": {
     "en": ", draft, ",
     "zh-Hans": "，草稿，"
+  },
+  "收起侧栏": {
+    "en": "Collapse sidebar",
+    "zh-Hans": "收起侧栏"
+  },
+  "搜索": {
+    "en": "Search",
+    "zh-Hans": "搜索"
+  },
+  "昨天": {
+    "en": "Yesterday",
+    "zh-Hans": "昨天"
+  },
+  "本机用户": {
+    "en": "This device",
+    "zh-Hans": "本机用户"
+  },
+  "未登录": {
+    "en": "Not signed in",
+    "zh-Hans": "未登录"
+  },
+  "账户与设置": {
+    "en": "Account and settings",
+    "zh-Hans": "账户与设置"
   }
 }
