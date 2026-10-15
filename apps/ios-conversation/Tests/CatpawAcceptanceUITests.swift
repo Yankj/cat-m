@@ -168,4 +168,26 @@ final class CatpawAcceptanceUITests: XCTestCase {
         shot(app, done ? "real-05-done" : "real-05-not-done")
         XCTAssertTrue(done, "Real reply must complete")
     }
+
+    // 9. Composer dictation: mic → (system permission prompt | dictating stop control | friendly notice); voice → coming soon
+    func test09ComposerDictation() {
+        let app = fixtureApp("p0-ui-acceptance"); app.launch()
+        XCTAssertTrue(input(app).waitForExistence(timeout: 20))
+        let voice = app.buttons["chat.composer.voice"]; XCTAssertTrue(voice.waitForExistence(timeout: 10)); voice.tap()
+        XCTAssertTrue(app.descendants(matching: .any)["chat.composer.voice.comingSoon"].waitForExistence(timeout: 3), "Voice conversation must show a coming-soon toast")
+        shot(app, "09a-voice-coming-soon")
+        let mic = app.buttons["chat.composer.mic"]; XCTAssertTrue(mic.waitForExistence(timeout: 10)); mic.tap()
+        let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        let dictating = app.buttons["chat.composer.dictating"], notice = app.alerts.firstMatch
+        let deadline = Date().addingTimeInterval(15)
+        while Date() < deadline && !dictating.exists && !notice.exists {
+            let prompt = springboard.alerts.firstMatch
+            if prompt.exists { shot(app, "09b-permission-prompt"); prompt.buttons.element(boundBy: prompt.buttons.count - 1).tap() }
+            Thread.sleep(forTimeInterval: 0.5)
+        }
+        XCTAssertTrue(dictating.exists || notice.exists, "Mic must start dictation or explain why it cannot")
+        shot(app, dictating.exists ? "09c-dictating" : "09c-dictation-notice")
+        if dictating.exists { dictating.tap(); XCTAssertTrue(mic.waitForExistence(timeout: 10) || app.buttons["chat.send"].exists) }
+        else { notice.buttons.element(boundBy: notice.buttons.count - 1).tap() }
+    }
 }
