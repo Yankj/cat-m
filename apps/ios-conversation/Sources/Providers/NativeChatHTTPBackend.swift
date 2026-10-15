@@ -243,8 +243,18 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
         guard remoteIDs.count==remote.count else {throw fail("server ids invalid")}
         let local=Array(request.history.dropLast())
         let confirmed=local.filter{remoteIDs.contains($0.id)}
-        guard confirmed.count==remote.count else {throw fail("server has messages unknown locally")}
-        for (wire,message) in zip(remote,confirmed) where !same(wire,message) {throw fail("confirmed mismatch")}
+        let shared=remote.filter{wire in confirmed.contains{$0.id==UUID(uuidString:wire["id"] as? String ?? "")}}
+        for (wire,message) in zip(shared,confirmed) where !same(wire,message) {throw fail("confirmed mismatch")}
+        if shared.count<remote.count {
+            // Plain turns realign on the server: its messages are the authoritative history (e.g. an earlier
+            // outbox turn was admitted but its server ids were never written back). Only `history.last` is posted;
+            // server-side turn idempotency (turn_id == operationID) prevents a duplicate turn for this operation.
+            let unknown=remote.filter{wire in !shared.contains{($0["id"] as? String)==(wire["id"] as? String)}}
+            sendDiagnostic("catpaw.send history realigned op=\(request.operationID.uuidString.prefix(8)) server=\(remote.count) local=\(local.count) confirmed=\(shared.count) serverOnly=\(unknown.count)")
+            if let current=request.history.last,unknown.contains(where:{$0["role"] as? String=="user" && ($0["content"] as? String)==current.content}) {
+                sendDiagnostic("catpaw.send history realigned possible resend op=\(request.operationID.uuidString.prefix(8)) len=\(current.content.utf16.count)")
+            }
+        }
         return local.filter{!remoteIDs.contains($0.id)}.map(\.id)
     }
     private static func logHistoryConflict(site:String,reason:String,remote:[[String:Any]],request:ConversationTurnRequest,strict:Bool) {
