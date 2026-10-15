@@ -6,7 +6,13 @@ import WidgetKit
 /// `CatpawWidgets` (iOS 17+, NSSupportsLiveActivities = YES in the app Info.plist). Strings are literal Chinese/English via
 /// String(localized:) because the widget can't read the app's UIStrings.json without sharing the bundle.
 @main struct CatpawWidgetsBundle: WidgetBundle {
-    var body: some Widget { CatpawWorkLiveActivity() }
+    var body: some Widget {
+        CatpawWorkLiveActivity()
+        CatpawTodayTasksWidget()
+        CatpawQuickAskWidget()
+        CatpawCatStatusWidget()
+        CatpawLockScreenWidget()
+    }
 }
 
 struct CatpawWorkLiveActivity: Widget {
