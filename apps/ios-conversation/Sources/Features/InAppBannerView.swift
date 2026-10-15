@@ -57,7 +57,7 @@ struct CatpawInAppBanner: Identifiable, Equatable, Sendable {
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: banner.symbol)
-                .foregroundStyle(.white)
+                .foregroundStyle(CatpawColors.onInk)
                 .frame(width: 32, height: 32)
                 .background(CatpawBrand.paw, in: Circle())
                 .accessibilityHidden(true)
