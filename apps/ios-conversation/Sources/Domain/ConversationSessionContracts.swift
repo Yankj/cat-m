@@ -40,6 +40,13 @@ public struct ConversationTranscriptMessage: Codable, Sendable, Identifiable {
         self.image=image;self.id = id; self.role = role; self.content = content; self.toolCallID = toolCallID; self.toolName = toolName; self.complete = complete
     }
 }
+public struct ConversationRevisionWorkPolicy:Codable,Sendable,Equatable {
+    public let toolPolicy:ConversationAcceptedWorkToolPolicy,sourceCount:Int
+    private enum CodingKeys:String,CodingKey {case toolPolicy="tool_policy",sourceCount="source_count"}
+    public init(toolPolicy:ConversationAcceptedWorkToolPolicy,sourceCount:Int) {self.toolPolicy=toolPolicy;self.sourceCount=sourceCount}
+    public func validate() throws {guard (0...3).contains(sourceCount),(toolPolicy == .localOutput ? sourceCount==0:sourceCount>0) else {throw ConversationSessionError.invalidEvent}}
+    public func validate(options:ConversationAcceptedWorkOptions) throws {try validate();try options.validate();guard options.toolPolicy==toolPolicy,options.sourceLimit>=sourceCount else {throw ConversationAcceptedWorkError.invalidSelection}}
+}
 public struct ConversationGoalProjection: Codable, Sendable, Identifiable {
     public enum State: String, Codable, Sendable { case queued, working, waitingInput = "waiting_input", completed, failed, paused, cancelled, unknown }
     public let id: String
@@ -54,6 +61,8 @@ public struct ConversationGoalProjection: Codable, Sendable, Identifiable {
     /// A negative source observation fences this frozen binding; it never grants execution.
     public var sourceAuthorizationCurrent: Bool? = nil
     public var planReference: ConversationArtifactEditPlanReference? = nil
+    public var revisionRequiresNewWork:Bool? = nil
+    public var revisionWorkPolicy:ConversationRevisionWorkPolicy? = nil
     public init(id: String, revision: Int, title: String, state: State, summary: String, updatedAt: Date) { self.id = id; self.revision = revision; self.title = title; self.state = state; self.summary = summary; self.updatedAt = updatedAt }
 }
 public struct ConversationTaskBinding: Codable, Sendable, Equatable {
@@ -92,7 +101,8 @@ public struct ConversationToolResult: Codable, Sendable {
     public let committedGoals: [ConversationGoalProjection]
     public let continuationReceipt: ConversationTaskRevisionReceipt?
     public let memoryProposalReceipt:ConversationMemoryProposalReceipt?
-    public init(callID: String, name: String, content: String, committedGoals: [ConversationGoalProjection] = [], continuationReceipt: ConversationTaskRevisionReceipt? = nil,memoryProposalReceipt:ConversationMemoryProposalReceipt?=nil) { self.callID = callID; self.name = name; self.content = content; self.committedGoals = committedGoals; self.continuationReceipt=continuationReceipt;self.memoryProposalReceipt=memoryProposalReceipt }
+    public let revisionWorkReceipt:ConversationRevisionWorkReceipt?
+    public init(callID: String, name: String, content: String, committedGoals: [ConversationGoalProjection] = [], continuationReceipt: ConversationTaskRevisionReceipt? = nil,memoryProposalReceipt:ConversationMemoryProposalReceipt?=nil,revisionWorkReceipt:ConversationRevisionWorkReceipt?=nil) {self.revisionWorkReceipt=revisionWorkReceipt; self.callID = callID; self.name = name; self.content = content; self.committedGoals = committedGoals; self.continuationReceipt=continuationReceipt;self.memoryProposalReceipt=memoryProposalReceipt }
 }
 /// A fresh turn's immutable link to the original task. Acceptance is not task completion.
 public struct ConversationTaskRevisionReceipt:Codable,Sendable,Equatable {
@@ -165,12 +175,17 @@ public struct ConversationTurnRequest: Codable, Sendable {
     public let continuationOriginalBinding: ConversationTaskBinding?
     public let continuationSubjectID: UUID?
     public let acceptedWork:ConversationAcceptedWorkIntent?
+    public let revisionWork:ConversationRevisionWorkIntent?
     public private(set) var imageBytes:Data? = nil
-    private enum CodingKeys:String,CodingKey {case scope,conversationID,threadID,operationID,epoch,history,context,image,continuation,continuationOriginalBinding,continuationSubjectID,acceptedWork}
+    private enum CodingKeys:String,CodingKey {case scope,conversationID,threadID,operationID,epoch,history,context,image,continuation,continuationOriginalBinding,continuationSubjectID,acceptedWork,revisionWork}
     public func withImageBytes(_ bytes:Data?) -> Self {var value=self;value.imageBytes=bytes;return value}
-    public init(scope: DataScope, conversationID: UUID, threadID: String?, operationID: UUID, epoch: Int, history: [ConversationTranscriptMessage], context: [ConversationExplicitContext] = [],image:ConversationVisionReference?=nil,imageBytes:Data?=nil,continuation:ConversationArtifactContinuationIntent?=nil,continuationOriginalBinding:ConversationTaskBinding?=nil,continuationSubjectID:UUID?=nil,acceptedWork:ConversationAcceptedWorkIntent?=nil) { self.acceptedWork=acceptedWork;self.continuation=continuation;self.continuationOriginalBinding=continuationOriginalBinding;self.continuationSubjectID=continuationSubjectID;self.image=image;self.imageBytes=imageBytes;self.scope = scope; self.conversationID = conversationID; self.threadID = threadID; self.operationID = operationID; self.epoch = epoch; self.history = history; self.context = context }
+    public init(scope: DataScope, conversationID: UUID, threadID: String?, operationID: UUID, epoch: Int, history: [ConversationTranscriptMessage], context: [ConversationExplicitContext] = [],image:ConversationVisionReference?=nil,imageBytes:Data?=nil,continuation:ConversationArtifactContinuationIntent?=nil,continuationOriginalBinding:ConversationTaskBinding?=nil,continuationSubjectID:UUID?=nil,acceptedWork:ConversationAcceptedWorkIntent?=nil,revisionWork:ConversationRevisionWorkIntent?=nil) {self.revisionWork=revisionWork; self.acceptedWork=acceptedWork;self.continuation=continuation;self.continuationOriginalBinding=continuationOriginalBinding;self.continuationSubjectID=continuationSubjectID;self.image=image;self.imageBytes=imageBytes;self.scope = scope; self.conversationID = conversationID; self.threadID = threadID; self.operationID = operationID; self.epoch = epoch; self.history = history; self.context = context }
+    public func withRevisionWork(_ intent:ConversationRevisionWorkIntent) throws -> Self {
+        guard acceptedWork==nil,revisionWork==nil || revisionWork==intent else {throw ConversationAcceptedWorkError.invalidFrozenIntent};try intent.validate(request:self)
+        return .init(scope:scope,conversationID:conversationID,threadID:threadID,operationID:operationID,epoch:epoch,history:history,context:context,image:image,imageBytes:imageBytes,continuation:continuation,continuationOriginalBinding:continuationOriginalBinding,continuationSubjectID:continuationSubjectID,revisionWork:intent)
+    }
     public func withAcceptedWork(_ intent:ConversationAcceptedWorkIntent) throws -> Self {
-        guard acceptedWork==nil || acceptedWork==intent else {throw ConversationAcceptedWorkError.invalidFrozenIntent};try intent.validate(request:self)
+        guard revisionWork==nil,acceptedWork==nil || acceptedWork==intent else {throw ConversationAcceptedWorkError.invalidFrozenIntent};try intent.validate(request:self)
         return .init(scope:scope,conversationID:conversationID,threadID:threadID,operationID:operationID,epoch:epoch,history:history,context:context,image:image,imageBytes:imageBytes,continuation:continuation,continuationOriginalBinding:continuationOriginalBinding,continuationSubjectID:continuationSubjectID,acceptedWork:intent)
     }
 }
@@ -198,6 +213,7 @@ public struct ConversationTurnRecord: Codable, Sendable, Identifiable {
     public var serverConversationRevision: Int? = nil
     public var visionProviderReceipt:ConversationVisionProviderReceipt? = nil
     public var continuationReceipt:ConversationTaskRevisionReceipt? = nil
+    public var revisionWorkReceipt:ConversationRevisionWorkReceipt? = nil
 }
 public struct ConversationSession: Codable, Sendable {
     public let scope: DataScope
@@ -228,6 +244,8 @@ public struct ConversationModelConsent: Sendable, Identifiable {
     public let expectedRevision: Int
 }
 public protocol ConversationBackend: Sendable {
+    func revisionWorkCapability(scope:DataScope,conversationID:UUID) async throws -> ConversationAcceptedWorkCapability
+    func freezeRevisionWork(_ request:ConversationTurnRequest,selection:ConversationRevisionWorkSelection) async throws -> ConversationRevisionWorkIntent
     func acceptedWorkCapability(scope:DataScope,conversationID:UUID) async throws -> ConversationAcceptedWorkCapability
     func ensureConversationForExplicitSend(_ request:ConversationTurnRequest) async throws
     func freezeAcceptedWork(_ request:ConversationTurnRequest,selection:ConversationAcceptedWorkSelection) async throws -> ConversationAcceptedWorkIntent
@@ -254,6 +272,8 @@ public struct UnconfiguredConversationBackend: ConversationBackend {
 }
 
 public extension ConversationBackend {
+    func revisionWorkCapability(scope:DataScope,conversationID:UUID) async throws -> ConversationAcceptedWorkCapability {.init()}
+    func freezeRevisionWork(_ request:ConversationTurnRequest,selection:ConversationRevisionWorkSelection) async throws -> ConversationRevisionWorkIntent {throw ConversationAcceptedWorkError.unavailable}
     func acceptedWorkCapability(scope:DataScope,conversationID:UUID) async throws -> ConversationAcceptedWorkCapability {.init()}
     func ensureConversationForExplicitSend(_ request:ConversationTurnRequest) async throws {}
     func freezeAcceptedWork(_ request:ConversationTurnRequest,selection:ConversationAcceptedWorkSelection) async throws -> ConversationAcceptedWorkIntent {throw ConversationAcceptedWorkError.unavailable}

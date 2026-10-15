@@ -1,3 +1,4 @@
+import {TASK_REVISION_WORK_CONTRACT,TASK_REVISION_WORK_BYTES,parseTaskRevisionWorkJSON} from './task-revision-work-contract.mjs';
 import {MEMORY_PROPOSAL_CONTRACT} from './memory-extraction-service.mjs';
 import { ApiError,check,UUID } from '../facade-r2/src/common.mjs';
 import {TASK_REVISION_CONTRACT,TASK_REVISION_LIMITS} from './task-revision-contract.mjs';
@@ -8,6 +9,18 @@ export function createChatFetchHandler(runtime){
   return async request=>{
     try{
       const u=new URL(request.url),parts=u.pathname.split('/').filter(Boolean),auth=request.headers.get('authorization');
+      if(parts[0]==='catpaw'&&parts[1]==='revision-work'){
+        check(parts[2]==='v1'&&parts[3]==='scopes'&&UUID.test(parts[4]??'')&&!u.search,422,'revision_work_schema_invalid');
+        const scope=parts[4],reply=value=>Response.json({schema_version:1,contract:TASK_REVISION_WORK_CONTRACT,...value},{headers:{'Cache-Control':'no-store'}});
+        if(request.method==='GET'&&parts.length===9&&parts[5]==='runs'&&parts[7]==='operations'){return Response.json(await chat.readRevisionWork(auth,scope,parts[6],parts[8]),{headers:{'Cache-Control':'no-store'}});}
+        check(parts[5]==='conversations'&&UUID.test(parts[6]??'')&&parts[7]==='turns',404,'not_found');
+        if(request.method==='GET'&&parts.length===9){check(UUID.test(parts[8]),422,'revision_work_schema_invalid');return reply({turn:await chat.readTurn(auth,scope,parts[6],parts[8])});}
+        check(request.method==='POST'&&parts.length===8,404,'not_found');check(Number(request.headers.get('content-length')??0)<=TASK_REVISION_WORK_BYTES,413,'revision_work_request_too_large');
+        const input=parseTaskRevisionWorkJSON(await request.text()),started=await chat.startRevisionWorkTurn(auth,scope,parts[6],input);
+        if(started.replayed)return reply({turn:await chat.readTurn(auth,scope,parts[6],input.turn.turn_id,{trusted:started.trusted}),replayed:true});
+        runtime.onAccepted?.({owner:started.trusted.owner,principal:started.trusted.principal,turnId:input.turn.turn_id});
+        return streamTurn(request,auth,scope,parts[6],input.turn.turn_id,{trusted:started.trusted,initial:started.turn.events[0],afterSequence:1});
+      }
       if(parts[0]==='catpaw'&&parts[1]==='accepted-work'){
         check(parts[2]==='v1'&&parts[3]==='scopes'&&UUID.test(parts[4]??'')&&!u.search,422,'work_intent_schema_invalid');
         check(parts[5]==='conversations'&&UUID.test(parts[6]??'')&&parts[7]==='turns',404,'not_found');

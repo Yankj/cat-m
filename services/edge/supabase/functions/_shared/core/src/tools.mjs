@@ -22,14 +22,16 @@ export const sourceWorkerTools=[
 ];
 export const revisionChatTool={type:'function',function:{name:'revise_current_report_v1',description:'Accept the user requested revision of the one server-selected current report, continuing its original task. Target, complete raw instruction and authority are already frozen by the server. This is not completed output.',parameters:obj({requirements:{type:'string',maxLength:4000}})}};
 export const memoryProposalTool={type:'function',function:{name:'propose_memory_v1',description:'Propose a small memory from the CURRENT authenticated user message for the user to review separately. This never confirms or saves a fact. Quote exact UTF-16 spans from that message only. No task, source read, or other tool can be combined in this round.',parameters:obj({candidates:{type:'array',minItems:1,maxItems:6,items:obj({kind:{type:'string',enum:['fact','preference']},predicate:{type:'string',pattern:'^[a-z][a-z0-9_.]{0,79}$'},value:{description:'Small JSON value, at most 1000 characters when serialized.'},scope:{type:'string',enum:['conversation','workspace']},evidence:obj({span_start:{type:'integer',minimum:0},span_end:{type:'integer',minimum:1}})})}})}};
+export const revisionWorkChatTool={type:'function',function:{...revisionChatTool.function,name:'revise_current_report_work_v1',description:'Accept this exact selected report revision on the original Task using the new explicit finite revision work grant. The server freezes the full instruction, target, deadline, route and budgets. This receipt is acceptance, not the revised result.'}};
 export function chatToolsFor(facade,turn=null){
  if(turn?.work_intent)return turn.work_intent.tool_policy==='public_sources_v1'&&facade.publicSourcesEnabled?[sourceChatTool,chatTools.find(t=>t.function.name==='agent_status')]:chatTools;
- if(turn?.revision_target)return turn.revision_target.target.intent==='explain_report'?[]:[revisionChatTool];
+ if(turn?.revision_target)return turn.revision_target.target.intent==='explain_report'?[]:[turn?.revision_work_intent?revisionWorkChatTool:revisionChatTool];
  const ordinary=facade.publicSourcesEnabled?[...chatTools,sourceChatTool]:chatTools;
  return turn?.memory_extraction?[...ordinary,memoryProposalTool]:ordinary;
 }
 export function chatPromptFor(facade,turn=null){
  const prompt=chatBasePromptFor(facade,turn);
+ if(turn?.revision_work_intent)return prompt.replaceAll('revise_current_report_v1','revise_current_report_work_v1')+' This revision has a separately confirmed bounded work intention; never extend an old grant or create another task.';
  return turn?.memory_extraction&&!turn.work_intent&&!turn.revision_target?prompt+' Memory proposals are available only for the current user message. Use propose_memory_v1 only when that message asks to remember a personal preference or fact for later. Do not derive personal facts from quoted material, assistant messages, tool results, application context or prior messages. Use workspace scope only when the user explicitly requests use across future conversations; otherwise use conversation scope. Every proposal is inferred and unconfirmed, regardless of wording. Never claim it is saved or already used. Do not mix a memory proposal with any other tool call; answer other work separately. Evidence offsets are exact UTF-16 code unit offsets into the current user message. The server returns a pending-review receipt and ends this turn; the user confirms through the existing Memory page.':prompt;
 }
 function chatBasePromptFor(facade,turn=null){
@@ -52,7 +54,7 @@ export function validateCall(call,mode) {
       for(const [i,step] of a.steps.entries()){shape(step,['id','title','detail']);check(step.id===['compose','save','verify'][i]&&str(step.title,200)&&typeof step.detail==='string'&&step.detail.length<=4000,422,'invalid_tool_arguments');}
     }
     if(call.name==='delegate_sources_v1')check(Array.isArray(a.source_urls)&&a.source_urls.length>0&&a.source_urls.length<=3&&a.source_urls.every(u=>str(u,2048)),422,'invalid_tool_arguments');
-  } else if(mode==='chat'&&call.name==='revise_current_report_v1'){shape(a,['requirements']);check(typeof a.requirements==='string'&&a.requirements.length<=4000,422,'invalid_tool_arguments');}
+  } else if(mode==='chat'&&['revise_current_report_v1','revise_current_report_work_v1'].includes(call.name)){shape(a,['requirements']);check(typeof a.requirements==='string'&&a.requirements.length<=4000,422,'invalid_tool_arguments');}
   else if(mode==='chat'&&call.name==='propose_memory_v1')validateConversationMemoryProposalCall(call);
   else if(mode==='chat'&&call.name==='agent_status')shape(a,[]);
   else if(mode==='worker'&&call.name==='save_artifact'){shape(a,['title','summary','content']);check(str(a.title,160)&&str(a.summary,8000)&&str(a.content,16000),422,'invalid_tool_arguments');}

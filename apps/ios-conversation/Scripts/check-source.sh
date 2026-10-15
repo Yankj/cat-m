@@ -3,6 +3,9 @@
 set -eu
 cd "$(dirname "$0")/.."
 python3 ../../scripts/check-typography.py --self-test
+# Fail cheap resource/project errors before compiling the complete host.
+python3 Scripts/validate-project.py
+python3 Scripts/check-localization.py
 mkdir -p .build/module-cache
 sdk_path="$(xcrun --sdk iphonesimulator --show-sdk-path)"
 mkdir -p .build/check-modules
@@ -21,6 +24,3 @@ swiftc -swift-version 5 -typecheck -parse-as-library -module-name CatpawM \
 print 'PASS non-DEBUG iOS Simulator SDK typecheck; no link, XCTest or installation claim'
 swiftc -frontend -parse -target arm64-apple-ios17.0 $sources Tests/NativeTests.swift
 print 'PASS iOS source/test syntax parse'
-python3 Scripts/validate-project.py
-# Keep the actual product localization gate: do not mask imported untranslated UI.
-python3 Scripts/check-localization.py
