@@ -1751,6 +1751,10 @@
     "en": "Queued",
     "zh-Hans": "已排队"
   },
+  "已排队 · 回复结束后发送": {
+    "en": "Queued · sends after the reply finishes",
+    "zh-Hans": "已排队 · 回复结束后发送"
+  },
   "已排队 · 当前回复结束后发送": {
     "en": "Queued · sends after the current reply",
     "zh-Hans": "已排队 · 当前回复结束后发送"

@@ -39,11 +39,18 @@ import SwiftUI
         let needsAnswer = live.interruptId != nil && !store.isLocked(live.id)
         switch store.submissions[live.id] ?? .idle {
         case .submitting: ProgressView().frame(maxWidth: .infinity).accessibilityIdentifier("chat.block.submitting")
+        case .queued:
+            HStack(spacing: 8) {
+                Image(systemName: "clock").accessibilityHidden(true)
+                Text(ui("已排队 · 回复结束后发送")).fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 4)
+                Button(ui("取消")) { store.cancelQueued(live.id) }.touchTarget().accessibilityIdentifier("chat.block.queued.cancel")
+            }.font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary).accessibilityIdentifier("chat.block.queued")
         case .failed(let message):
             Text(ui(message)).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.attention).accessibilityIdentifier("chat.block.error")
         case .idle: EmptyView()
         }
-        if needsAnswer, store.submissions[live.id] != .submitting {
+        if needsAnswer, store.submissions[live.id] != .submitting, store.submissions[live.id] != .queued {
             Button(ui("跳过")) { store.dismiss(live.id) }.font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
                 .touchTarget().accessibilityIdentifier("chat.block.dismiss")
         }
@@ -86,7 +93,7 @@ import SwiftUI
     private var kind: GenerativeBlock.Kind {
         block.contentKind
     }
-    private var disabled: Bool { store.submissions[block.id] == .submitting || store.isLocked(block.id) }
+    private var disabled: Bool { store.submissions[block.id] == .submitting || store.submissions[block.id] == .queued || store.isLocked(block.id) }
     var body: some View {
         let respond: (GenerativeBlockResponse) -> Void = { store.respond($0); onDone() }
         Group { switch kind {
