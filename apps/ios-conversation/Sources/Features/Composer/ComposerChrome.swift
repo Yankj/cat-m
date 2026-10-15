@@ -234,7 +234,10 @@ struct ComposerGlass: ViewModifier {
     var isComposingMarkedText: Bool { model?.isInputComposing ?? false }
     var runState: ComposerRunState {
         let turns = model?.session?.turns ?? []
-        _ = turns; return activeOperations.isEmpty ? .idle : .responding
+        // A turn suspended for the user's decision (approval / catpaw.ui.v1) is "waiting for you", not responding:
+        // no stop button, send stays enabled.
+        let waiting = Set(turns.filter(\.awaitingApproval).map(\.id))
+        return activeOperations.subtracting(waiting).isEmpty ? .idle : .responding
     }
     var queuedDraftPreview: String? {
         guard runState == .responding else { return nil }
@@ -286,7 +289,7 @@ struct ComposerGlass: ViewModifier {
         case .started:
             guard !stoppedOperations.contains(event.operationID) else { return }
             activeOperations.insert(event.operationID)
-        case .completed, .failed:
+        case .completed, .failed, .suspended:
             activeOperations.remove(event.operationID)
         default:
             return

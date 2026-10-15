@@ -201,7 +201,7 @@ import CatpawImageComposer
                                 }.padding(.top,renderedSpacing(row,previous:index>0 ? rows[index-1]:nil))
                                     .background(ConversationReadingAnchorMarker(id:row.id,context:readingAnchorContext,coordinator:readingAnchor).accessibilityHidden(true)).id(row.id)
                             }
-                            if let pending = session.turns.last, [.dispatched,.running].contains(pending.state), pending.assistantMessageID == nil, !composerChrome.stoppedOperations.contains(pending.id),
+                            if let pending = session.turns.last, [.dispatched,.running].contains(pending.state), !pending.awaitingApproval, pending.assistantMessageID == nil, !composerChrome.stoppedOperations.contains(pending.id),
                                !session.messages.contains(where:{ $0.role == .assistant && !$0.complete }) {
                                 PendingThinkingRow(service:model.service,turn:pending).id("pending-\(pending.id)").padding(.top,12)
                             }
@@ -213,7 +213,7 @@ import CatpawImageComposer
                             } else if let latest = session.turns.last, latest.state == .failed {
                                 Text(ui("此轮回复未完成")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.attention).accessibilityIdentifier("chat.reply.failed").padding(.top,8)
                             }
-                            if let turn = session.unresolved, turn.state == .unknown || !model.sending {
+                            if let turn = session.unresolved, !turn.awaitingApproval, turn.state == .unknown || !model.sending {
                                 Label(turn.error ?? ui("原请求状态待确认"), systemImage: "arrow.clockwise").font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.attention).accessibilityIdentifier("chat.unresolved")
                                 Text(ui("发送结果尚未确认。先读取原请求，避免重复发送；草稿会保留。")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary).fixedSize(horizontal:false,vertical:true).accessibilityIdentifier("chat.recoveryHelp")
                                 Button(ui("读取原请求进展")) { model.readOriginal() }.touchTarget().buttonStyle(CatpawPressButtonStyle()).disabled(model.busy).accessibilityHint(ui("只查询原请求，不重新发送消息")).accessibilityIdentifier("chat.observe")

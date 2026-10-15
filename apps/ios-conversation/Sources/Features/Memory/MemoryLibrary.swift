@@ -35,7 +35,7 @@ enum MemoryGroup: String, CaseIterable, Sendable, Identifiable {
     }
 }
 
-struct MemoryItem: Identifiable, Sendable, Equatable {
+struct MemoryLibraryItem: Identifiable, Sendable, Equatable {
     let id: String
     var group: MemoryGroup
     var content: String
@@ -43,7 +43,7 @@ struct MemoryItem: Identifiable, Sendable, Equatable {
 }
 
 struct MemoryLibrarySnapshot: Sendable, Equatable {
-    var items: [MemoryItem]
+    var items: [MemoryLibraryItem]
     var useMemory: Bool
     /// nil = the backend cannot report or change it yet.
     var autoSave: Bool?
@@ -89,7 +89,7 @@ enum MemoryLibraryError: Error, Equatable, Sendable {
 @MainActor final class MemoryLibraryStub: MemoryLibraryBackend {
     var capabilities: MemoryLibraryCapabilities = .all
     private var snapshot: MemoryLibrarySnapshot
-    init(items: [MemoryItem] = MemoryLibraryStub.sample, useMemory: Bool = true, autoSave: Bool = true) {
+    init(items: [MemoryLibraryItem] = MemoryLibraryStub.sample, useMemory: Bool = true, autoSave: Bool = true) {
         snapshot = .init(items: items, useMemory: useMemory, autoSave: autoSave)
     }
     func load() async throws -> MemoryLibrarySnapshot { snapshot }
@@ -103,7 +103,7 @@ enum MemoryLibraryError: Error, Equatable, Sendable {
     func clearAll() async throws { snapshot.items = [] }
     func undoSave(memoryID: String, undoToken: String?) async throws { try await forget(ids: [memoryID]) }
 
-    static let sample: [MemoryItem] = [
+    static let sample: [MemoryLibraryItem] = [
         .init(id: "m1", group: .profile, content: "住在北京望京", updatedAt: .now),
         .init(id: "m2", group: .preference, content: "喜欢靠窗座位", updatedAt: .now),
         .init(id: "m3", group: .preference, content: "咖啡只喝燕麦拿铁", updatedAt: .now),
@@ -128,7 +128,7 @@ enum MemoryLibraryError: Error, Equatable, Sendable {
         guard let latest = state.latest else { throw MemoryLibraryError.unavailable }
         entries = Dictionary(latest.claims.map { ($0.id.uuidString.lowercased(), $0) }, uniquingKeysWith: { a, _ in a })
         let items = latest.claims.map { entry in
-            MemoryItem(id: entry.id.uuidString.lowercased(), group: MemoryGroup(kind: entry.kind), content: entry.displayValue,
+            MemoryLibraryItem(id: entry.id.uuidString.lowercased(), group: MemoryGroup(kind: entry.kind), content: entry.displayValue,
                        updatedAt: ConversationMemoryCodec.date(entry.recorded_at))
         }
         return .init(items: items, useMemory: latest.enabled, autoSave: nil)
