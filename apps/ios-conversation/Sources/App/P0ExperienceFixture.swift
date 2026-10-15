@@ -148,8 +148,11 @@ actor P0ExperienceBackend:ConversationBackend {
     /// XCUITest acceptance: visible thinking phase, reasoning summary, then a long slow body
     /// (≈12 s) so stop / scroll-to-latest can be exercised mid-stream. Offline, deterministic.
     private func produceAcceptance(_ r:ConversationTurnRequest,message:UUID) async {
-        try? await Task.sleep(nanoseconds:2_500_000_000)
-        emit(.reasoningSummary(messageID:message,text:"Synthetic acceptance thinking summary.",thinkingMs:2500),request:r)
+        // Thinking phase: summary lands first, body starts ~2.4 s later so the thinking row is visible and capturable.
+        try? await Task.sleep(nanoseconds:600_000_000)
+        emit(.reasoningSummary(messageID:message,text:"正在梳理问题，并规划回答结构…",thinkingMs:nil),request:r)
+        try? await Task.sleep(nanoseconds:2_400_000_000)
+        emit(.reasoningSummary(messageID:message,text:"正在梳理问题，并规划回答结构…",thinkingMs:3000),request:r)
         let body=(1...60).map {"Synthetic acceptance paragraph \($0). The stream keeps growing so the reader can scroll away and jump back.\n\n"}.joined()
         var remaining=body
         while !remaining.isEmpty {

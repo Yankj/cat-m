@@ -50,6 +50,9 @@ struct AnswerSource: Identifiable, Equatable, Sendable {
     @Published var sources: [AnswerSource] = []
     private var lastSequence = 0
     private var streamTask: Task<Void, Never>?
+    private var stopObserver: NSObjectProtocol?
+    private var stoppedLocally = false
+    static let stopNotification = Notification.Name("CatpawAnswerStoppedLocally")
     private var providerThinkingMs: Int?
     private var snapshotInitialized = false
     private let stepTitle: (String) -> String
@@ -69,6 +72,12 @@ struct AnswerSource: Identifiable, Equatable, Sendable {
     /// The persisted snapshot only restores display state when a row is recreated.
     func subscribe(to service: ConversationSessionService, operationID: UUID) {
         streamTask?.cancel()
+        if stopObserver == nil {
+            stopObserver = NotificationCenter.default.addObserver(forName: Self.stopNotification, object: nil, queue: .main) { [weak self] note in
+                guard (note.userInfo?["operationIDs"] as? Set<UUID>)?.contains(operationID) == true else { return }
+                MainActor.assumeIsolated { self?.markStopped() }
+            }
+        }
         streamTask = Task { [weak self] in
             let events = await service.turnEvents()
             for await event in events where event.operationID == operationID {
@@ -78,7 +87,16 @@ struct AnswerSource: Identifiable, Equatable, Sendable {
         }
     }
 
+    /// User tapped stop: local observation ends; server work is not cancelled (see stopObserving).
+    func markStopped() {
+        guard !stoppedLocally else { return }
+        stoppedLocally = true
+        streamTask?.cancel()
+        phase = .interrupted(reason: "已停止接收此轮回复", reconciliationRequired: false)
+    }
+
     func reconcile(message: ConversationTranscriptMessage, turn: ConversationTurnRecord) {
+        if stoppedLocally && turn.state != .completed { return }
         if !snapshotInitialized { text = message.content; snapshotInitialized = true }
         if let summary = turn.reasoningSummary { thinkingSummary = summary }
         applyThinkingDuration(turn.thinkingMs)
@@ -97,6 +115,7 @@ struct AnswerSource: Identifiable, Equatable, Sendable {
     }
 
     func apply(_ event: ConversationTurnEvent) {
+        if stoppedLocally { return }
         guard event.sequence > lastSequence else { return }
         lastSequence = event.sequence
         switch event.payload {
