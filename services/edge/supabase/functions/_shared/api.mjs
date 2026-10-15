@@ -1,3 +1,4 @@
+import {createRenderUITool,RENDER_UI} from './core/src/generative-ui.mjs';import {featureAllows} from './config.mjs';
 import {createTaskChatTools} from './proactive/chat-tools.mjs';import {createProactiveService} from './proactive/service.mjs';
 import {createFollowupTriggerHTTPHandler} from './core/src/followup-trigger-http.mjs';
 import {readInboxPage} from './core/src/inbox-service.mjs';
@@ -111,7 +112,13 @@ export async function createCloudRuntime({repository,authenticate,config,retain=
  // relaxation of fresh commands/viewers or an automatic grant for legacy runs.
  runtime.facade.acceptedWorkRouteHash=config.routeHash;
  // A2: catpaw.task-tools.v1 in-process (same deploy bundle). Absent store => no task tools are offered.
- if(proactiveStore)runtime.facade.gatedChatTools=createTaskChatTools({service:createProactiveService({store:proactiveStore,verifyUser:async()=>{throw new ApiError(401,'session_required');}})});
+ // Feature gates (docs/feature-gates.md): CATPAW_TASK_TOOLS_ENABLED (default on), CATPAW_GENERATIVE_UI_ENABLED (default off),
+ // 'allowlist' restricts either to CATPAW_FEATURE_ALLOWLIST_SUBJECTS (demo/staging users) on the same deploy.
+ {const registry=new Map(),gate=(g,turn)=>featureAllows(g,config.featureAllowlist,turn?.subject_id);
+  const taskGate=config.taskTools??'on',uiGate=config.generativeUI??'off';
+  if(proactiveStore&&taskGate!=='off')for(const [name,tool] of createTaskChatTools({service:createProactiveService({store:proactiveStore,verifyUser:async()=>{throw new ApiError(401,'session_required');}})}))registry.set(name,{...tool,offer:turn=>gate(taskGate,turn)});
+  if(uiGate!=='off')registry.set(RENDER_UI,createRenderUITool({allow:turn=>gate(uiGate,turn)}));
+  if(registry.size)runtime.facade.gatedChatTools=registry;}
  runtime.facade.acceptedWorkExecutionReady=ACCEPTED_WORK_EXECUTION_CAPABILITY.executor==='bounded_single_step_v1'&&ACCEPTED_WORK_EXECUTION_CAPABILITY.model===true&&ACCEPTED_WORK_EXECUTION_CAPABILITY.public_source===true&&ACCEPTED_WORK_EXECUTION_CAPABILITY.local_continuation===true&&ACCEPTED_WORK_EXECUTION_CAPABILITY.terminal_ack===true; // Maintained composition, not model/scheduler/device acceptance.
  runtime.facade.workGrantService=new TaskWorkGrantService({repository,authorize:async(tx,ctx)=>{
    const {terms,run,phase,principal}=ctx;
