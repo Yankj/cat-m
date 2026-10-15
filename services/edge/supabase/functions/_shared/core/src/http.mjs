@@ -7,6 +7,7 @@ import { createFetchHandler } from '../facade-r2/src/http.mjs';
 import {boundedJsonBody,VISION_LIMITS} from './vision-contract.mjs';
 import {APPROVAL_HEADER} from './approval.mjs';
 import {UI_HEADER} from './generative-ui.mjs';
+import {DEVICE_HEADER,DEVICE_RESULT_MAX_BYTES} from './device-call.mjs';
 export function createChatFetchHandler(runtime){
   const {chat,facade}=runtime,taskHandler=createFetchHandler(facade);
   return async request=>{
@@ -75,6 +76,12 @@ export function createChatFetchHandler(runtime){
         check(Number.isSafeInteger(afterSequence)&&afterSequence>=0&&afterSequence<=decided.turn.events.length,422,'invalid_cursor');
         return streamTurn(request,auth,scope,tail[1],tail[3],{trusted:decided.trusted,afterSequence});
       }
+      if(method==='POST'&&tail.length===5&&tail[0]==='conversations'&&tail[2]==='turns'&&tail[4]==='device-result'){
+        // catpaw.device.v1: the phone reports one device_call; streams the SAME turn from approval_resolved on.
+        const decided=await chat.submitDeviceResult(auth,scope,tail[1],tail[3],await boundedJsonBody(request,DEVICE_RESULT_MAX_BYTES));
+        if(decided.resumed)runtime.onAccepted?.({owner:decided.trusted.owner,principal:decided.trusted.principal,turnId:tail[3]});
+        return streamTurn(request,auth,scope,tail[1],tail[3],{trusted:decided.trusted,afterSequence:decided.afterSequence});
+      }
       if(method==='POST'&&tail.length===5&&tail[0]==='conversations'&&tail[2]==='turns'&&tail[4]==='retry-busy'){
         const restarted=await chat.restartRateLimited(auth,scope,tail[1],tail[3]);
         runtime.onAccepted?.({owner:restarted.trusted.owner,principal:restarted.trusted.principal,turnId:tail[3]});
@@ -92,9 +99,9 @@ export function createChatFetchHandler(runtime){
         const raw=await body();check(raw?.message?.attachment_ids===undefined||chat.attachments,503,'attachments_unavailable');
         const resolved=raw?.message?.attachment_ids===undefined?{input:raw,consume:async()=>{}}:await chat.attachments.resolveTurnInput(auth,scope,raw);
         if(resolved.replay)return json({turn:await chat.readTurn(auth,scope,tail[1],raw.turn_id),replayed:true});
-        const input=resolved.input,capability=request.headers.get('X-Catpaw-Memory-Proposal-Contract'),approvalContract=request.headers.get(APPROVAL_HEADER),timeZone=request.headers.get('X-Catpaw-Time-Zone'),uiContract=request.headers.get(UI_HEADER),memoryMode=request.headers.get('X-Catpaw-Memory-Mode');
+        const input=resolved.input,capability=request.headers.get('X-Catpaw-Memory-Proposal-Contract'),approvalContract=request.headers.get(APPROVAL_HEADER),timeZone=request.headers.get('X-Catpaw-Time-Zone'),uiContract=request.headers.get(UI_HEADER),memoryMode=request.headers.get('X-Catpaw-Memory-Mode'),deviceContract=request.headers.get(DEVICE_HEADER);
         check(capability===null||capability===MEMORY_PROPOSAL_CONTRACT,422,'memory_proposal_contract_invalid');
-        const started=await chat.startTurn(auth,scope,tail[1],input,{memoryProposalContract:capability,approvalContract,timeZone,uiContract,memoryMode});
+        const started=await chat.startTurn(auth,scope,tail[1],input,{memoryProposalContract:capability,approvalContract,timeZone,uiContract,memoryMode,deviceContract});
         if(!started.replayed)await resolved.consume();
         if(started.replayed)return json({turn:await chat.readTurn(auth,scope,tail[1],input.turn_id,{trusted:started.trusted}),replayed:true});
         runtime.onAccepted?.({owner:started.trusted.owner,principal:started.trusted.principal,turnId:input.turn_id});
