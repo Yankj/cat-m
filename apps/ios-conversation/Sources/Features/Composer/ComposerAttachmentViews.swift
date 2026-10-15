@@ -117,6 +117,7 @@ import UIKit
 @MainActor struct ComposerAddMenu: View {
     let remaining: Int
     let add: ([ComposerAttachment]) -> Void
+    var onDetails: (() -> Void)? = nil
     @State private var photoItems: [PhotosPickerItem] = []
     @State private var showPhotos = false
     @State private var showCamera = false
@@ -130,9 +131,13 @@ import UIKit
             if UIImagePickerController.isSourceTypeAvailable(.camera) {
                 Button { showCamera = true } label: { Label(ui("拍照"), systemImage: "camera") }
             }
-            Button { showFiles = true } label: { Label(ui("文件"), systemImage: "folder") }
+            Button { showFiles = true } label: { Label(ui("文件"), systemImage: "doc") }
+            if let onDetails {
+                Divider()
+                Button(action: onDetails) { Label(ui("输入详情"), systemImage: "text.alignleft") }.accessibilityIdentifier("chat.composer.details")
+            }
         } label: {
-            Image(systemName: "plus").font(.body.weight(.semibold)).foregroundStyle(CatpawColors.ink)
+            Image(systemName: "plus").font(.system(size: 20, weight: .medium)).foregroundStyle(CatpawColors.ink)
                 .frame(width: 36, height: 36).touchTarget()
         }
         .disabled(remaining <= 0)

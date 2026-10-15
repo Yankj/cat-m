@@ -73,11 +73,34 @@ import UIKit
     func sizeThatFits(_ proposal:ProposedViewSize,uiView:IncrementalConversationTextView,context:Context)->CGSize?{uiView.measured(proposal.width ?? 240)}
 }
 @MainActor struct StreamingConversationText:View {
+    /// Characters/second for the paced reveal given the current backlog.
+    static func revealRate(backlog:Int,complete:Bool)->Double {
+        let base=60.0
+        let adaptive=Double(backlog)*(complete ? 3.0:1.2)   // drain big backlogs in ~1 s (complete) / ~0.8 s
+        return min(1200,max(base,adaptive))
+    }
     let text:String
     let complete:Bool
     @State private var visible=""
     @State private var pending=""
     @State private var flush:Task<Void,Never>?
+    private func pace() async {
+        defer {flush=nil}
+        var last=ProcessInfo.processInfo.systemUptime, carry=0.0
+        while !Task.isCancelled {
+            let target=pending
+            guard target.hasPrefix(visible) else {visible=target;return}
+            let backlog=target.count-visible.count
+            if backlog<=0 {return}
+            try? await Task.sleep(nanoseconds:33_000_000)
+            let now=ProcessInfo.processInfo.systemUptime
+            carry+=StreamingConversationText.revealRate(backlog:backlog,complete:complete)*(now-last);last=now
+            let n=min(backlog,Int(carry))
+            guard n>0 else {continue}
+            carry-=Double(n)
+            visible=String(target.prefix(visible.count+n))
+        }
+    }
     var body:some View {
         IncrementalConversationText(text:visible).frame(maxWidth:.infinity,alignment:.leading)
             .accessibilityElement(children:.ignore).accessibilityLabel(visible)
@@ -86,10 +109,12 @@ import UIKit
             .onAppear {visible=text;pending=text}
             .onChange(of:text){_,value in
                 pending=value
-                if complete {flush?.cancel();flush=nil;visible=value}
-                else if flush == nil {flush=Task {try? await Task.sleep(nanoseconds:50_000_000);guard !Task.isCancelled else{return};visible=pending;flush=nil}}
+                // Paced reveal: even if the provider sends one huge text_delta, release it smoothly
+                // (~60 chars/s base, adaptive speed-up for big backlogs). Tail-only fade is applied per append.
+                if !value.hasPrefix(visible) || UIAccessibility.isReduceMotionEnabled {flush?.cancel();flush=nil;visible=value;return}
+                if flush == nil {flush=Task {await pace()}}
             }
-            .onChange(of:complete){_,finished in if finished {flush?.cancel();flush=nil;visible=text}}
+            .onChange(of:complete){_,finished in if finished,flush == nil,visible != text {flush=Task {await pace()}}}
             .onDisappear{flush?.cancel();flush=nil}
     }
 }

@@ -93,7 +93,9 @@ struct ComposerGlass: ViewModifier {
         }
     }
     private func fallback(_ content: Content, _ shape: RoundedRectangle) -> some View {
-        content.background(.regularMaterial, in: shape).overlay(shape.strokeBorder(CatpawColors.controlEdge.opacity(0.6)))
+        content.background(CatpawColors.composerPill, in: shape)
+            .overlay(shape.strokeBorder(CatpawColors.hairline, lineWidth: 0.5))
+            .shadow(color: .black.opacity(0.06), radius: 8, y: 4)
     }
 }
 
@@ -106,6 +108,9 @@ struct ComposerGlass: ViewModifier {
     var uploader: ComposerAttachmentUploading?
     var accessory: AnyView?
     var trailingAccessory: AnyView?
+    var metaText: String? = nil
+    var metaWarning = false
+    var onDetails: (() -> Void)? = nil
     var editor: Editor
     @State private var dropTargeted = false
     @State private var rejection: ComposerAttachmentRejection?
@@ -116,7 +121,11 @@ struct ComposerGlass: ViewModifier {
 
     init(model: Model, lineCount: Int, uploader: ComposerAttachmentUploading? = nil,
          accessory: AnyView? = nil, trailingAccessory: AnyView? = nil,
+         metaText: String? = nil, metaWarning: Bool = false, onDetails: (() -> Void)? = nil,
          @ViewBuilder editor: () -> Editor) {
+        self.metaText = metaText
+        self.metaWarning = metaWarning
+        self.onDetails = onDetails
         self.model = model
         self.lineCount = lineCount
         self.uploader = uploader
@@ -127,29 +136,34 @@ struct ComposerGlass: ViewModifier {
 
     var body: some View {
         VStack(spacing: 8) {
-            ComposerQueuedBanner(model: model)
             if let rejection { rejectionToast(rejection) }
-            VStack(alignment: .leading, spacing: 6) {
-                ComposerAttachmentStrip(attachments: $model.attachments, onRetry: retry, onRemove: remove)
-                if multiline {
-                    editor.frame(maxWidth: .infinity)
-                    HStack { addMenu; accessory; Spacer(); sendControl }
-                } else {
-                    HStack(alignment: .bottom, spacing: 4) { addMenu; accessory; editor.frame(maxWidth: .infinity); sendControl }
-                }
+            // r8 meta line: status lives above the pill, never inside it.
+            if let metaText {
+                Text(metaText).font(.system(size: 12)).foregroundStyle(metaWarning ? CatpawColors.attention : CatpawColors.tertiary)
+                    .frame(maxWidth: .infinity).accessibilityIdentifier("chat.composer.meta")
+                    .transition(.opacity.combined(with: .offset(y: 4)))
             }
-            .padding(.horizontal, 8).padding(.vertical, 4)
+            // r8: one pill. Attachment tray (inside) above the [+][text 1–6 lines][trailing] row.
+            VStack(alignment: .leading, spacing: 8) {
+                if !model.attachments.isEmpty {
+                    ComposerAttachmentStrip(attachments: $model.attachments, onRetry: retry, onRemove: remove)
+                        .transition(.opacity.combined(with: .move(edge: .bottom)))
+                }
+                HStack(alignment: .bottom, spacing: 2) { addMenu; editor.frame(maxWidth: .infinity); sendControl }
+            }
+            .padding(6)
             .modifier(ComposerGlass())
             .overlay(RoundedRectangle(cornerRadius: 26, style: .continuous).strokeBorder(CatpawColors.action, lineWidth: dropTargeted ? 2 : 0))
             .composerDropTarget(isTargeted: $dropTargeted, add: add)
         }
-        .padding(.horizontal, 12).padding(.bottom, 6)
-        .animation(CatpawMotion.resolved(CatpawMotion.sendMorph, reduceMotion), value: multiline)
-        .animation(CatpawMotion.resolved(CatpawMotion.statusCapsule, reduceMotion), value: model.queuedDraftPreview)
+        .padding(.horizontal, 12).padding(.bottom, 8)
+        .animation(CatpawMotion.resolved(CatpawMotion.composer, reduceMotion), value: multiline)
+        .animation(CatpawMotion.resolved(CatpawMotion.composer, reduceMotion), value: model.attachments.count)
+        .animation(.easeOut(duration: 0.2), value: metaText)
     }
 
     private var addMenu: some View {
-        ComposerAddMenu(remaining: ComposerAttachmentLimits.maxPerMessage - model.attachments.count, add: add)
+        ComposerAddMenu(remaining: ComposerAttachmentLimits.maxPerMessage - model.attachments.count, add: add, onDetails: onDetails)
     }
 
     @ViewBuilder private var sendControl: some View {
@@ -180,10 +194,10 @@ struct ComposerGlass: ViewModifier {
 }
 
 @MainActor enum ComposerMetrics {
-    /// Max visible editor height = 5 lines of the conversation font + editor insets (8+8). Beyond that the text scrolls.
+    /// Max visible editor height = 6 lines (r8) of the conversation font + editor insets (8+8). Beyond that the text scrolls.
     static func maxHeight(for dynamicType: DynamicTypeSize) -> CGFloat {
         let font = ConversationTypeScale.font(dynamicType)
-        return ceil(font.lineHeight * 5 + CatpawTypography.readingLineSpacing(for: font) * 4 + 16)
+        return ceil(font.lineHeight * 6 + CatpawTypography.readingLineSpacing(for: font) * 5 + 14)
     }
 }
 
@@ -299,41 +313,67 @@ private struct JumpGlass: ViewModifier {
 }
 
 
-/// Host composer primary control: send ↔ stop morph driven by turnEvents (adapter.runState), never model.busy.
-/// Enabled = paw-orange; disabled = tinted paw-orange (35%); stop = paw-orange square glyph.
-@MainActor struct ComposerPrimaryButton: View {
+/// r8 trailing controls (one view, four modes):
+/// empty → mic (dictation) + black waveform (voice) · content → paw-orange send · generating+empty → black stop · generating+draft → send with clock badge (queued).
+/// In-progress state comes from turnEvents (adapter.runState), never model.busy.
+@MainActor struct ComposerTrailingControls: View {
     let responding: Bool
     let draftEmpty: Bool
     let canSend: Bool
-    let queued: Bool
     let size: CGFloat
     let send: () -> Void
     let stop: () -> Void
-    @State private var tapCount = 0
+    var dictate: () -> Void = {}
+    var voice: () -> Void = {}
+    @State private var sendCount = 0
+    @State private var stopCount = 0
     @Environment(\.locale) private var locale
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private func ui(_ k: String) -> String { AppLanguage(locale: locale).ui(k) }
-    private var showsStop: Bool { responding && draftEmpty }
-    private var enabled: Bool { showsStop || canSend }
+    private enum Mode: Equatable { case voice, send, stop, queue }
+    private var mode: Mode {
+        if responding { return draftEmpty ? .stop : .queue }
+        return draftEmpty ? .voice : .send
+    }
     var body: some View {
-        Button { tapCount += 1; if showsStop { stop() } else { send() } } label: {
-            ZStack {
-                Circle().fill(enabled ? CatpawBrand.paw : CatpawBrand.paw.opacity(0.35))
-                Image(systemName: showsStop ? "stop.fill" : (queued ? "clock.badge.checkmark" : "arrow.up"))
-                    .font(CatpawTypography.Role.body.font.weight(.bold))
-                    .foregroundStyle(enabled ? CatpawColors.sendIcon : Color.white.opacity(0.9))
-                    .contentTransition(.symbolEffect(.replace))
-                    .scaleEffect(showsStop ? 0.82 : 1)
+        HStack(spacing: 2) {
+            switch mode {
+            case .voice:
+                Button(action: dictate) {
+                    Image(systemName: "mic").font(.system(size: 18, weight: .regular)).foregroundStyle(CatpawColors.ink)
+                        .frame(width: size, height: size).contentShape(Circle().inset(by: -4))
+                }.buttonStyle(CatpawPressButtonStyle()).accessibilityLabel(ui("听写")).accessibilityIdentifier("chat.composer.mic")
+                    .transition(.scale(scale: 0.6).combined(with: .opacity))
+                Button(action: voice) {
+                    Image(systemName: "waveform").font(.system(size: 16, weight: .semibold)).foregroundStyle(.white)
+                        .frame(width: size, height: size).background(CatpawColors.ink, in: Circle()).contentShape(Circle().inset(by: -4))
+                }.buttonStyle(CatpawPressButtonStyle()).accessibilityLabel(ui("语音对话")).accessibilityIdentifier("chat.composer.voice")
+                    .transition(.scale(scale: 0.6).combined(with: .opacity))
+            case .stop:
+                Button { stopCount += 1; stop() } label: {
+                    RoundedRectangle(cornerRadius: 3, style: .continuous).fill(.white).frame(width: 12, height: 12)
+                        .frame(width: size, height: size).background(CatpawColors.ink, in: Circle()).contentShape(Circle().inset(by: -4))
+                }.buttonStyle(CatpawPressButtonStyle()).accessibilityLabel(ui("停止回答")).accessibilityIdentifier("chat.stop")
+                    .transition(.scale(scale: 0.6).combined(with: .opacity))
+            case .send, .queue:
+                Button { sendCount += 1; send() } label: {
+                    ZStack(alignment: .topTrailing) {
+                        Image(systemName: "arrow.up").font(.system(size: 17, weight: .semibold)).foregroundStyle(.white)
+                            .frame(width: size, height: size)
+                            .background(canSend ? CatpawBrand.paw : CatpawBrand.paw.opacity(0.45), in: Circle())
+                        if mode == .queue {
+                            Image(systemName: "clock.fill").font(.system(size: 9, weight: .bold)).foregroundStyle(CatpawColors.ink)
+                                .padding(2).background(CatpawColors.background, in: Circle()).offset(x: 3, y: -3)
+                                .accessibilityIdentifier("chat.composer.queuedBadge")
+                        }
+                    }.contentShape(Circle().inset(by: -4))
+                }.buttonStyle(CatpawPressButtonStyle()).disabled(!canSend)
+                    .accessibilityLabel(mode == .queue ? ui("排队发送") : ui("发送")).accessibilityIdentifier("chat.send")
+                    .transition(.scale(scale: 0.6).combined(with: .opacity))
             }
-            .frame(width: size, height: size)
-            .rotationEffect(.degrees(showsStop && !reduceMotion ? 90 : 0))
         }
-        .buttonStyle(CatpawPressButtonStyle())
-        .disabled(!enabled)
-        .animation(CatpawMotion.resolved(CatpawMotion.sendMorph, reduceMotion), value: showsStop)
-        .animation(.easeOut(duration: 0.18), value: enabled)
-        .sensoryFeedback(.impact(weight: showsStop ? .medium : .light), trigger: tapCount)
-        .accessibilityLabel(showsStop ? ui("停止回答") : (queued ? ui("排队发送") : ui("发送")))
-        .accessibilityIdentifier(showsStop ? "chat.stop" : "chat.send")
+        .animation(CatpawMotion.resolved(CatpawMotion.morph, reduceMotion), value: mode)
+        .sensoryFeedback(.impact(weight: .light), trigger: sendCount)
+        .sensoryFeedback(.impact(weight: .medium), trigger: stopCount)
     }
 }
