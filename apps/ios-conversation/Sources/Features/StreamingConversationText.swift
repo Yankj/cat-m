@@ -27,7 +27,7 @@ import UIKit
         let changedFont=font?.isEqual(newFont) != true || textColor?.isEqual(color) != true
         if changedFont {font=newFont;textColor=color}
         guard value != applied || changedFont else {return}
-        let paragraph=NSMutableParagraphStyle();paragraph.lineSpacing=6
+        let paragraph=NSMutableParagraphStyle();paragraph.lineSpacing=CatpawTypography.readingLineSpacing(for:newFont)
         let attributes:[NSAttributedString.Key:Any]=[.font:newFont,.foregroundColor:color,.paragraphStyle:paragraph]
         let selection=selectedRange
         if !changedFont,value.hasPrefix(applied){textStorage.append(NSAttributedString(string:String(value.dropFirst(applied.count)),attributes:attributes))}

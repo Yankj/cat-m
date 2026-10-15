@@ -1378,6 +1378,20 @@
       "line": 30,
       "sha256": "ec395ce51d3c8d02087f06dc2c1396e4c6b560b63189a9e4f8209045e19ed4e8",
       "reason": "Reviewed unchanged synthetic three-segment test string for missing, expired and cleared session transport assertions. It is not a signed credential; new file bytes add only proposal wire scenarios."
+    },
+    {
+      "path": "docs/acceptance/evidence/native-r5-20261015/source-snapshot.json",
+      "category": "email_review",
+      "line": 2480,
+      "sha256": "519a0bfee3d7e3ae2330e59b7a25a9e92985c2ff76333947c544ec156c54d94f",
+      "reason": "Reviewed exact line: standard compiled App icon resource filename retained in the historical package manifest; not an email address or personal identifier."
+    },
+    {
+      "path": "docs/acceptance/evidence/native-r5-build29-20261015/source-snapshot.json",
+      "category": "email_review",
+      "line": 2490,
+      "sha256": "4fe640257cccda1da35eeab4e47e093e62f99cac9c8ffb1ac3f70abd56028a6f",
+      "reason": "Reviewed exact line: standard compiled App icon resource filename retained in the frozen package manifest; not an email address or personal identifier."
     }
   ]
 }
