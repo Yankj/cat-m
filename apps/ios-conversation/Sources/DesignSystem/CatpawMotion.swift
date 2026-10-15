@@ -26,6 +26,7 @@ enum CatpawBrand {
     static let clayBase = Color(UIColor(rgb: 0xF5843F))
     static let clayRim = Color(UIColor(rgb: 0xE0652A))
     static let clayShadow = Color(UIColor(rgb: 0x8A3A12))
+    static let clayHighlight = Color(UIColor(rgb: 0xFFFFFF))
 }
 
 /// The single Catpaw logo (r10, "soft clay" 3D style): every pad is its own ellipse with a radial clay gradient
@@ -166,7 +167,7 @@ struct CatpawPresence: View {
                 CatEar().fill(clay).frame(width: 7 * u, height: 7 * u)
                     .rotationEffect(.degrees(14 + earDrop), anchor: .bottom).offset(x: 6 * u, y: -7.6 * u)
                 Ellipse().fill(clay).frame(width: 21 * u, height: 18 * u).offset(y: 1.5 * u)
-                Ellipse().fill(Color.white.opacity(0.35)).frame(width: 5 * u, height: 3 * u).blur(radius: 0.8 * u).offset(x: -4.5 * u, y: -3.2 * u)
+                Ellipse().fill(CatpawBrand.clayHighlight.opacity(0.35)).frame(width: 5 * u, height: 3 * u).blur(radius: 0.8 * u).offset(x: -4.5 * u, y: -3.2 * u)
                 eyes(u).offset(y: (state == .streaming ? 3.4 : 2.2) * u)
             }
             .rotationEffect(.degrees(state == .thinking && tilt ? -9 : 0))

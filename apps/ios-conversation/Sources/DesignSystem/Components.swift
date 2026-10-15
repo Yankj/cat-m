@@ -24,7 +24,9 @@ enum CatpawColors {
     static let hairline = adaptiveAlpha(light: 0x1C1B1A, lightAlpha: 0.08, dark: 0xFFFFFF, darkAlpha: 0.10)
     static let destructive = adaptive(light: 0xD9402B, dark: 0xFF6B57)
     // r9: brand paw orange replaces the former blue action role.
-    static let action = adaptive(light: 0xF26B3A, dark: 0xFF8A5C)
+    static let action = adaptive(light: 0xEA5F2C, dark: 0xFF8A5C)   // fills/icons/non-text only (≥3:1)
+    /// Orange text where unavoidable (≥4.5:1 on white). Prefer ink for text.
+    static let actionText = adaptive(light: 0xC4511F, dark: 0xFF9E78)
     static let send = adaptive(light: 0x3567EE, dark: 0x3567EE)
     static let sendIcon = adaptive(light: 0xFFFFFF, dark: 0xFFFFFF)
     static let userMessageBackground = adaptive(light: 0xF2EFEB, dark: 0x262422)
