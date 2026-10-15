@@ -52,6 +52,8 @@ extension ConversationUIDecisionSubmitter: GenerativeUIDecisionSubmitting {}
         ingestJournal(store: store, session: session)
         // Cold start: the waiting ui interrupts of the suspended turn (snapshot pending_approvals kind "ui", else journal).
         let service = model.service, scope = model.scope
+        store.queueProbe = { conversationID, interruptID in await service.queuedUIDecisions(conversationID: conversationID).contains(interruptID.lowercased()) }
+        store.queueCanceller = { conversationID, interruptID in _ = await service.cancelQueuedUIDecision(conversationID: conversationID, interruptID: interruptID) }
         let turnID = session.turns.last(where: { $0.awaitingApproval })?.id
         Task { [weak store] in
             guard let turnID, let approvals = try? await service.pendingUIApprovals(scope: scope, conversationID: conversation) else { return }
@@ -62,14 +64,18 @@ extension ConversationUIDecisionSubmitter: GenerativeUIDecisionSubmitting {}
             let events = await service.turnEvents()
             for await event in events {
                 guard !Task.isCancelled else { return }
-                guard let self, let store, let conversation = self.conversationID, self.knownTurns.contains(event.operationID) else { continue }
+                guard let self, let store, let conversation = self.conversationID else { continue }
                 let ui: ConversationUIEvent
                 switch event.payload {
                 case .uiBlock(let e), .uiBlockUpdate(let e), .uiBlockResolve(let e): ui = e
                 default: continue
                 }
-                // `operationID` is the turn id on the turn event stream (same as ConversationApprovalController).
-                store.ingest(ui, context: .init(conversationID: conversation, turnID: event.operationID))
+                // a6f9c18: events carry conversationID / turnID (turnID == operationID). Events of a turn not seen yet
+                // are accepted when the conversation matches; older backends without the ids fall back to known turns.
+                let turn = event.turnID ?? event.operationID
+                if let owner = event.conversationID { guard owner == conversation else { continue } }
+                else { guard self.knownTurns.contains(turn) else { continue } }
+                store.ingest(ui, context: .init(conversationID: conversation, turnID: turn))
             }
         }
     }

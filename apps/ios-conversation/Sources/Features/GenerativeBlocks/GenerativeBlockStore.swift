@@ -6,7 +6,13 @@ import os
 /// server resolution (`ui.block.resolve`), the user's answer, and submission state. Persisted so cold start restores
 /// answered/expired cards. Interactive blocks answer through `GenerativeUIDecisionSubmitting` on the SAME turn.
 @MainActor final class GenerativeBlockStore: ObservableObject {
-    enum Submission: Equatable { case idle, submitting, failed(String) }
+    /// `.queued`: the service holds the decision until the running reply ends (FIFO, a6f9c18).
+    enum Submission: Equatable { case idle, submitting, queued, failed(String) }
+    /// Whether the service is holding this decision in its queue (installed by the chat host).
+    var queueProbe: (@MainActor (_ conversationID: UUID, _ interruptID: String) async -> Bool)?
+    /// Cancels a queued decision in the service (its submit task then throws CancellationError).
+    var queueCanceller: (@MainActor (_ conversationID: UUID, _ interruptID: String) async -> Void)?
+    private var tasks: [String: Task<Void, Never>] = [:]
     struct Context: Codable, Equatable { let conversationID: UUID; let turnID: UUID }
 
     static let shared = GenerativeBlockStore()
@@ -129,12 +135,22 @@ import os
     func reopen(_ id: String) { guard !isLocked(id), blocks[id]?.interruptId == nil else { return }; responses[id] = nil; save() }
 
     private func submit(_ id: String, decision: GenerativeUIDecision, response: Data?, local: GenerativeBlockResponse?) {
-        guard let block = blocks[id], let interrupt = block.interruptId, let hash = block.argsHash, !isLocked(id), submissions[id] != .submitting else { return }
+        guard let block = blocks[id], let interrupt = block.interruptId, let hash = block.argsHash, !isLocked(id), submissions[id] != .submitting, submissions[id] != .queued else { return }
         guard let submitter, let context = contexts[id] else { submissions[id] = .failed("暂时无法提交，请稍后重试。"); return }
         let operation = operationIDs[interrupt] ?? UUID(); operationIDs[interrupt] = operation; save()
         submissions[id] = .submitting
         let owner = conversationID
-        Task {
+        // Shortly after starting, ask whether the service queued it behind the running reply.
+        if let probe = queueProbe {
+            Task { [weak self] in
+                try? await Task.sleep(nanoseconds: 300_000_000)
+                guard let self, self.submissions[id] == .submitting, owner == self.conversationID else { return }
+                if await probe(context.conversationID, interrupt), self.submissions[id] == .submitting { self.submissions[id] = .queued }
+            }
+        }
+        tasks[id]?.cancel()
+        tasks[id] = Task {
+            defer { tasks[id] = nil }
             defer { if owner == conversationID { save() } }
             do {
                 try await submitter.submitUIDecision(conversationID: context.conversationID, turnID: context.turnID, interruptID: interrupt,
@@ -157,11 +173,22 @@ import os
                     submissions[id] = .failed(failure.friendlyMessage)
                 }
             } catch is CancellationError {
-                submissions[id] = nil
+                // Cancelled while queued (user tapped 取消 or the turn moved on): back to answerable, quietly.
+                if owner == conversationID { submissions[id] = nil }
             } catch {
-                // ConversationSessionError.busy (another stream is running) or transport: keep the operation id.
+                guard owner == conversationID else { return }
                 submissions[id] = .failed(ConversationApprovalFailure.transport.friendlyMessage)
             }
+        }
+    }
+
+    /// Withdraws a decision still waiting in the service queue.
+    func cancelQueued(_ id: String) {
+        guard submissions[id] == .queued, let interrupt = blocks[id]?.interruptId, let context = contexts[id] else { return }
+        let canceller = queueCanceller
+        Task { [weak self] in
+            await canceller?(context.conversationID, interrupt)
+            self?.tasks[id]?.cancel()
         }
     }
 
