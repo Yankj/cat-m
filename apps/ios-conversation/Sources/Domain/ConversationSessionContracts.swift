@@ -243,6 +243,8 @@ public struct ConversationTurnEvent: Sendable {
         case uiBlockUpdate(ConversationUIEvent)
         /// catpaw.ui.v1 `ui.block.resolve`: `status` is submitted, dismissed, error, expired or cancelled.
         case uiBlockResolve(ConversationUIEvent)
+        /// catpaw.device.v1 `device_call`: run a tool on this phone, then `submitDeviceResult` (the turn is suspended until then).
+        case deviceCall(ConversationDeviceCall)
     }
     public let operationID: UUID
     public let epoch: Int
@@ -290,7 +292,32 @@ public struct ConversationTurnRecord: Codable, Sendable, Identifiable {
     }
     /// Snapshot `pending_approvals` with kind "ui" (authoritative after observe / cold start).
     public var pendingUIApprovals:[ConversationUIApproval]? = nil
-    public var awaitingApproval:Bool { state == .running && (!(pendingApprovals ?? []).isEmpty || !pendingUIBlocks.isEmpty || !(pendingUIApprovals ?? []).isEmpty) }
+    /// catpaw.device.v1: `device_call`s of this turn still waiting for `POST …/device-result`.
+    public var pendingDeviceCalls:[ConversationDeviceCall]? = nil
+    public var awaitingApproval:Bool { state == .running && (!(pendingApprovals ?? []).isEmpty || !pendingUIBlocks.isEmpty || !(pendingUIApprovals ?? []).isEmpty || !(pendingDeviceCalls ?? []).isEmpty) }
+}
+/// catpaw.device.v1 `device_call` (services/edge/docs/device-call-contract.md). `args` is the raw JSON object.
+public struct ConversationDeviceCall: Codable, Sendable, Equatable, Identifiable {
+    public static let contract = "catpaw.device.v1"
+    public static let header = "X-Catpaw-Device-Contract"
+    /// The app turns this on once a device-call renderer and executor are installed (DeviceCallHub, #44); off = header not sent, server never offers device tools.
+    nonisolated(unsafe) public static var clientEnabled = false
+    public static let statuses: Set<String> = ["ok", "cancelled", "denied", "error"]
+    public let interruptID: String
+    public let callID: String
+    public let tool: String
+    public let args: Data
+    public let confirm: String
+    public let ttlSec: Int
+    public let argsHash: String
+    public let expiresAt: String
+    public var id: String { callID }
+    public init(interruptID: String, callID: String, tool: String, args: Data, confirm: String, ttlSec: Int, argsHash: String, expiresAt: String) { self.interruptID = interruptID; self.callID = callID; self.tool = tool; self.args = args; self.confirm = confirm; self.ttlSec = ttlSec; self.argsHash = argsHash; self.expiresAt = expiresAt }
+    /// The wire JSON in #44's `DeviceCall` shape (`call_id, tool, args, confirm, ttl_sec`) for `JSONDecoder().decode(DeviceCall.self, …)`.
+    public var wireJSON: Data {
+        let args = (try? JSONSerialization.jsonObject(with: self.args)) ?? [String: Any]()
+        return (try? JSONSerialization.data(withJSONObject: ["call_id": callID, "tool": tool, "args": args, "confirm": confirm, "ttl_sec": ttlSec], options: [.sortedKeys])) ?? Data()
+    }
 }
 /// catpaw.approval.v1 interrupt as shown to the user (services/edge/docs/approval-contract.md).
 public struct ConversationApprovalRequest: Codable, Sendable, Equatable, Identifiable {
@@ -503,6 +530,8 @@ public protocol ConversationBackend: Sendable {
     func submitApproval(_ request: ConversationTurnRequest, interruptID: String, decision: ConversationApprovalDecision, argsHash: String, operationID: UUID, afterSequence: Int) async throws -> AsyncThrowingStream<ConversationTurnEvent, Error>
     /// catpaw.ui.v1: same decision route as approval.v1 with `decision` submit/dismiss/report_error and the raw `response` object.
     func submitUIDecision(_ request: ConversationTurnRequest, interruptID: String, decision: ConversationUIDecision, argsHash: String, response: Data?, operationID: UUID, afterSequence: Int) async throws -> AsyncThrowingStream<ConversationTurnEvent, Error>
+    /// catpaw.device.v1: `POST …/turns/{t}/device-result` `{call_id, operation_id, args_hash, status, data?}`; streams the SAME turn like a decision.
+    func submitDeviceResult(_ request: ConversationTurnRequest, call: ConversationDeviceCall, status: String, data: Data?, operationID: UUID, afterSequence: Int) async throws -> AsyncThrowingStream<ConversationTurnEvent, Error>
 }
 /// `cancel{turn_id,state,cancelled,already_terminal}` from the Edge cancel route (services/edge/docs/turn-cancel-contract.md).
 public struct ConversationTurnCancelReceipt: Sendable, Equatable {
@@ -566,6 +595,7 @@ public extension ConversationBackend {
     func cancelTurn(_ request: ConversationTurnRequest) async throws -> ConversationTurnCancelReceipt { throw ConversationTurnCancelFailure.unsupported }
     func submitApproval(_ request: ConversationTurnRequest, interruptID: String, decision: ConversationApprovalDecision, argsHash: String, operationID: UUID, afterSequence: Int) async throws -> AsyncThrowingStream<ConversationTurnEvent, Error> { throw ConversationApprovalFailure.unsupported }
     func submitUIDecision(_ request: ConversationTurnRequest, interruptID: String, decision: ConversationUIDecision, argsHash: String, response: Data?, operationID: UUID, afterSequence: Int) async throws -> AsyncThrowingStream<ConversationTurnEvent, Error> { throw ConversationApprovalFailure.unsupported }
+    func submitDeviceResult(_ request: ConversationTurnRequest, call: ConversationDeviceCall, status: String, data: Data?, operationID: UUID, afterSequence: Int) async throws -> AsyncThrowingStream<ConversationTurnEvent, Error> { throw ConversationApprovalFailure.unsupported }
     func revisionWorkCapability(scope:DataScope,conversationID:UUID) async throws -> ConversationAcceptedWorkCapability {.init()}
     func freezeRevisionWork(_ request:ConversationTurnRequest,selection:ConversationRevisionWorkSelection) async throws -> ConversationRevisionWorkIntent {throw ConversationAcceptedWorkError.unavailable}
     func acceptedWorkCapability(scope:DataScope,conversationID:UUID) async throws -> ConversationAcceptedWorkCapability {.init()}

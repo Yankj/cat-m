@@ -15,6 +15,7 @@ import {ACCEPTED_WORK_INTENT_CONTRACT,validateAcceptedWorkRequest,freezeAccepted
 import {validateVisionTurn} from './vision-contract.mjs';
 import {UI_CONTRACT,RENDER_UI,UI_DECISIONS,validateResponse,validateUIError,uiResult,uiBlockEvent,uiBlockUpdate,uiBlockResolve,uiPrompt,blockOf} from './generative-ui.mjs';
 import {agentMemoryPrompt} from '../../agent-memory/chat-tools.mjs';
+import {DEVICE_CONTRACT,validateDeviceResult,deviceCallEvent,deviceResult} from './device-call.mjs';
 import {APPROVAL_CONTRACT,gatedCalls,interruptFor,requestedEvent,resolvedEvent,pendingApprovals,validateDecision,settleExpired,resumedTurn,deniedResult,APPROVAL_PREFERENCES,preferenceID,isoAt} from './approval.mjs';
 const positive=v=>Number.isSafeInteger(v)&&v>0;
 const terminal=s=>s!=='running';
@@ -63,10 +64,11 @@ export class ChatService {
   async startRevisionWorkTurn(auth,scopeID,conversationID,input){const request=validateTaskRevisionWorkRequest(input);check(this.facade.revisionWorkExecutionReady===true,503,'revision_work_execution_not_configured');return this.startTurn(auth,scopeID,conversationID,request.turn,{revisionTarget:request.target,revisionWork:request.work});}
   async readRevision(auth,scopeID,runID,operationID){return readTaskRevision(this.facade,auth,scopeID,runID,operationID);}
   async readRevisionWork(auth,scopeID,runID,operationID){return readTaskRevisionWork(this.facade,auth,scopeID,runID,operationID,readTaskRevision);}
-  async startTurn(auth,scopeID,conversationID,input,{revisionTarget=null,workIntent=null,revisionWork=null,memoryProposalContract=null,approvalContract=null,timeZone=null,uiContract=null,memoryMode=null}={}){
+  async startTurn(auth,scopeID,conversationID,input,{revisionTarget=null,workIntent=null,revisionWork=null,memoryProposalContract=null,approvalContract=null,timeZone=null,uiContract=null,memoryMode=null,deviceContract=null}={}){
     check(approvalContract===null||approvalContract===APPROVAL_CONTRACT,422,'approval_contract_invalid');
     check(uiContract===null||uiContract===UI_CONTRACT,422,'ui_contract_invalid');
     check(memoryMode===null||memoryMode==='ephemeral',422,'memory_mode_invalid');
+    check(deviceContract===null||deviceContract===DEVICE_CONTRACT,422,'device_contract_invalid');
     // catpaw.ui.v1 needs approval.v1 suspension; without it the header is ignored (no render_ui offered).
     if(!approvalContract)uiContract=null;
     check(memoryProposalContract===null||memoryProposalContract===MEMORY_PROPOSAL_CONTRACT,422,'memory_proposal_contract_invalid');
@@ -95,6 +97,7 @@ export class ChatService {
       if(memoryProposalContract)t.memory_proposal_contract=memoryProposalContract;
       if(approvalContract)t.approval_contract=approvalContract;
       if(uiContract)t.ui_contract=uiContract;
+      if(deviceContract&&approvalContract)t.device_contract=deviceContract;
       if(approvalContract)t.client_time_zone=validTimeZone(timeZone)?timeZone:null;
       if(this.beforeTurnAdmission)t.source_auth=await this.beforeTurnAdmission(tx,{principal,scope,conversation:c,turn:t});
       const memoryUsage=await this.integration?.memoryUsage?.(tx,{principal,scope,conversation:c,turn:t});
@@ -190,7 +193,8 @@ export class ChatService {
     const t=await this.repository.transaction(async tx=>{
       (env.assertLive??(()=>env.signal.throwIfAborted()))();const {t,c}=await this.live(tx,env);let result,continuationReceipt=null,status='ok',extraEvents=[];
       const interrupt=(t.interrupts??[]).find(i=>i.call_id===call.id),gated=this.facade.gatedChatTools instanceof Map?this.facade.gatedChatTools.get(call.name):null;
-      if(interrupt?.kind==='ui'){result=uiResult(interrupt);status=interrupt.status==='submitted'?'ok':'denied';}
+      if(interrupt?.kind==='device'){result=deviceResult(interrupt);status=interrupt.status==='reported'&&interrupt.response.status==='ok'?'ok':interrupt.status==='reported'&&interrupt.response.status==='error'?'error':'denied';}
+      else if(interrupt?.kind==='ui'){result=uiResult(interrupt);status=interrupt.status==='submitted'?'ok':'denied';}
       else if(call.name===RENDER_UI&&!interrupt){result=uiResult(null);}
       else if(interrupt&&interrupt.status!=='approved'){result=deniedResult(interrupt);status='denied';}
       else if(gated){
@@ -374,7 +378,7 @@ export class ChatService {
       for(const call of ck.round.calls)if(!next.events.some(e=>e.type==='tool_call'&&e.data.call_id===call.id))next={...next,events:[...next.events,this.event(next,'tool_call',{call_id:call.id,name:call.name,arguments:call.arguments})]};
       // Display-only render_ui calls of the suspended round are shown now, not after the user answers; the resumed loop skips them (ui_shown_calls).
       const shown=[];for(const call of ck.round.calls)if(call.name===RENDER_UI&&!interrupts.some(i=>i.call_id===call.id)&&!(t.ui_shown_calls??[]).includes(call.id)){const block=blockOf(call.arguments),known=next.events.some(e=>e.type==='ui.block'&&e.data?.id===block.id);next={...next,events:[...next.events,this.event(next,known?'ui.block.update':'ui.block',known?uiBlockUpdate(block):uiBlockEvent(block))]};shown.push(block.id);next={...next,ui_shown_calls:[...(next.ui_shown_calls??[]),call.id]};}
-      for(const it of interrupts){const call=ck.round.calls.find(c=>c.id===it.call_id);next={...next,events:[...next.events,it.kind==='ui'?this.event(next,'ui.block',uiBlockEvent(it.block,it)):this.event(next,'approval_requested',requestedEvent(it,call))]};}
+      for(const it of interrupts){const call=ck.round.calls.find(c=>c.id===it.call_id);next={...next,events:[...next.events,it.kind==='device'?this.event(next,'device_call',deviceCallEvent(it,clone(call.arguments))):it.kind==='ui'?this.event(next,'ui.block',uiBlockEvent(it.block,it)):this.event(next,'approval_requested',requestedEvent(it,call))]};}
       next={...next,state:'awaiting_approval',suspended_at:isoAt(now),interrupts:[...(t.interrupts??[]).filter(i=>!interrupts.some(n=>n.interrupt_id===i.interrupt_id)),...interrupts],
         approval_checkpoint:{state:'pending',step:ck.step,messages:clone(ck.messages),round:clone(ck.round),text:ck.text,message_id:ck.messageID,seen:clone(ck.seen)}};
       next={...next,events:[...next.events,this.event(next,'turn_suspended',{interrupt_ids:interrupts.map(i=>i.interrupt_id),expires_at:interrupts.map(i=>i.expires_at).sort()[0]})]};
@@ -399,6 +403,16 @@ export class ChatService {
     });
     if(!r)return false;this.notify(owner,r.saved);if(r.resume)this.startResumed(auth,trusted,cid,r.saved);return true;
   }
+  /** catpaw.device.v1: POST …/turns/{t}/device-result {call_id,operation_id,args_hash,status,data?}.
+   * Resolves the kind:'device' interrupt of call_id through decideInterrupt (same idempotency, args_hash, TTL, resume). */
+  async submitDeviceResult(auth,scopeID,cid,tid,raw){
+    const input=validateDeviceResult(raw);check(UUID.test(cid)&&UUID.test(tid),404,'not_found');
+    const trusted=await this.scoped(auth,scopeID);
+    const t=await this.repository.transaction(tx=>tx.get(trusted.owner,'native-chat-turns',tid));
+    check(t&&t.conversation_id===cid&&t.subject_id===trusted.principal.subject_id,404,'not_found');
+    const it=(t.interrupts??[]).find(i=>i.kind==='device'&&i.call_id===input.call_id);check(it,404,'device_call_not_found');
+    return this.decideInterrupt(auth,scopeID,cid,tid,it.interrupt_id,{operation_id:input.operation_id,decision:'device_result',args_hash:input.args_hash,response:{status:input.status,...input.data!==undefined&&input.data!==null?{data:input.data}:{}}});
+  }
   /** POST …/turns/{t}/interrupts/{i}/decision. Idempotent per operation_id; resumes the SAME turn in place
    * (sequence continues) once no approval is pending. Codes mirror actions/v1 decisions. */
   async decideInterrupt(auth,scopeID,cid,tid,iid,raw){
@@ -419,11 +433,11 @@ export class ChatService {
       check(it.status==='pending'&&next.state==='awaiting_approval',409,'approval_consumed');
       check(it.args_hash===input.args_hash,409,'approval_stale');
       check(c.state==='active'&&c.grant_epoch===t.grant_epoch&&c.revision===t.conversation_revision,409,'approval_grant_conflict');
-      const ui=it.kind==='ui';
-      check(ui?UI_DECISIONS.includes(input.decision):!UI_DECISIONS.includes(input.decision)&&!('response' in input),422,'approval_schema_invalid');
-      const response=ui&&input.decision==='submit'?validateResponse(it.block,input.response):ui&&input.decision==='report_error'?validateUIError(it.block,input.response):undefined;
+      const ui=it.kind==='ui',device=it.kind==='device';
+      check(device?input.decision==='device_result':input.decision!=='device_result'&&(ui?UI_DECISIONS.includes(input.decision):!UI_DECISIONS.includes(input.decision)&&!('response' in input)),422,'approval_schema_invalid');
+      const response=device?clone(input.response):ui&&input.decision==='submit'?validateResponse(it.block,input.response):ui&&input.decision==='report_error'?validateUIError(it.block,input.response):undefined;
       check(input.decision!=='approve_always'||it.remember_allowed,422,'approval_remember_not_allowed');
-      const now=this.now(),resolved={...it,...response!==undefined?{response}:{},status:ui?(input.decision==='submit'?'submitted':input.decision==='report_error'?'errored':'dismissed'):input.decision==='deny'?'denied':'approved',remember:input.decision==='approve_always',decided_at:isoAt(now),decision_operation_id:input.operation_id,decision_request_hash:requestHash,resolved_sequence:next.events.length+1};
+      const now=this.now(),resolved={...it,...response!==undefined?{response}:{},status:device?'reported':ui?(input.decision==='submit'?'submitted':input.decision==='report_error'?'errored':'dismissed'):input.decision==='deny'?'denied':'approved',remember:input.decision==='approve_always',decided_at:isoAt(now),decision_operation_id:input.operation_id,decision_request_hash:requestHash,resolved_sequence:next.events.length+1};
       next={...next,interrupts:next.interrupts.map(i=>i.interrupt_id===iid?resolved:i)};
       next={...next,events:[...next.events,this.event(next,'approval_resolved',resolvedEvent(resolved))]};
       if(ui)next={...next,events:[...next.events,this.event(next,'ui.block.resolve',uiBlockResolve(it.block.id,resolved.status))]};

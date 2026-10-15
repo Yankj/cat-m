@@ -372,11 +372,14 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
     static let approvalHeader = "X-Catpaw-Approval-Contract"
     static let timeZoneHeader = "X-Catpaw-Time-Zone"
     /// Tools that only exist on approval-negotiated plain turns (services/edge TOOL_APPROVAL).
-    static let approvalToolNames: Set<String> = ["render_ui", "list_tasks", "create_task", "update_task", "create_calendar_event", "update_calendar_event", "create_reminder", "update_reminder", "external_write"]
+    static let approvalToolNames: Set<String> = ["render_ui", "list_tasks", "create_task", "update_task", "create_calendar_event", "update_calendar_event", "create_reminder", "update_reminder", "external_write",
+        // catpaw.device.v1 (executed on this phone; services/edge/supabase/functions/_shared/core/src/device-call.mjs)
+        "calendar_list", "calendar_create", "reminder_create", "mail_compose", "sms_compose", "phone_call", "contacts_search", "maps_open", "shop_open", "alarm_set", "shortcut_run"]
     /// Snapshot `pending_approvals`: kind "ui" rows are catpaw.ui.v1 blocks, everything else a tool approval card.
     public static func splitPendingApprovals(_ rows: [[String: Any]]) throws -> (tools: [ConversationApprovalRequest], ui: [ConversationUIApproval]) {
         var tools: [ConversationApprovalRequest] = [], ui: [ConversationUIApproval] = []
         for row in rows {
+            if row["kind"] as? String == "device" { continue } // restored from the replayed `device_call` event, never an approval card
             if row["kind"] as? String == "ui" { ui.append(try ConversationUIApproval.decode(row)) } else { tools.append(try approval(row)) }
         }
         return (tools, ui)
@@ -405,14 +408,24 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
         }
         return try await decisionStream(request, interruptID: interruptID, afterSequence: afterSequence, body: body)
     }
-    private func decisionStream(_ request: ConversationTurnRequest, interruptID: String, afterSequence: Int, body decisionBody: [String: Any]) async throws -> AsyncThrowingStream<ConversationTurnEvent, Error> {
+    /// catpaw.device.v1 result. Idempotent on `operationID` (resend the SAME id after `.transport`); bound to the call's `args_hash`.
+    public func submitDeviceResult(_ request: ConversationTurnRequest, call: ConversationDeviceCall, status: String, data: Data?, operationID: UUID, afterSequence: Int) async throws -> AsyncThrowingStream<ConversationTurnEvent, Error> {
+        guard ConversationDeviceCall.statuses.contains(status) else { throw ConversationApprovalFailure.rejected(status: 422, code: "device_result_schema_invalid") }
+        var body: [String: Any] = ["call_id": call.callID, "operation_id": operationID.uuidString.lowercased(), "args_hash": call.argsHash, "status": status]
+        if let data {
+            guard data.count <= 32000, let object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else { throw ConversationApprovalFailure.rejected(status: 422, code: "device_result_schema_invalid") }
+            body["data"] = object
+        }
+        return try await decisionStream(request, interruptID: call.interruptID, afterSequence: afterSequence, body: body, deviceResult: true)
+    }
+    private func decisionStream(_ request: ConversationTurnRequest, interruptID: String, afterSequence: Int, body decisionBody: [String: Any], deviceResult: Bool = false) async throws -> AsyncThrowingStream<ConversationTurnEvent, Error> {
         guard Self.supportsResume(request), afterSequence >= 0, UUID(uuidString: interruptID) != nil else { throw ConversationApprovalFailure.unsupported }
         let auth: String
         do { auth = try await authorization(request.scope) } catch { throw ConversationApprovalFailure.rejected(status: 401, code: nil) }
         let grant: Int
         do { grant = try Self.positive(try await readConversation(request, auth: auth, mayCreate: false)["grant_epoch"]) }
         catch is URLError { throw ConversationApprovalFailure.transport }
-        let route = turnPath(request) + "/" + request.operationID.uuidString.lowercased() + "/interrupts/" + interruptID.lowercased() + "/decision?after_sequence=\(afterSequence)"
+        let route = turnPath(request) + "/" + request.operationID.uuidString.lowercased() + (deviceResult ? "/device-result" : "/interrupts/" + interruptID.lowercased() + "/decision") + "?after_sequence=\(afterSequence)"
         var post = try self.request(route, auth: auth)
         post.httpMethod = "POST"; post.timeoutInterval = ConversationReconnectPolicy.idleTimeout; post.setValue("text/event-stream, application/json", forHTTPHeaderField: "Accept"); post.setValue(TimeZone.current.identifier, forHTTPHeaderField: Self.timeZoneHeader)
         post.httpBody = try Self.jsonData(decisionBody)
@@ -570,7 +583,7 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
         var upload = try self.request(turnPath(request), auth: auth); upload.httpMethod = "POST"; upload.httpBody = encoded
         if request.image==nil,!request.hasUploadedAttachments,request.continuation==nil,request.acceptedWork==nil {upload.setValue(ConversationMemoryProposalReceipt.contractName,forHTTPHeaderField:"X-Catpaw-Memory-Proposal-Contract")}
         // catpaw.approval.v1 negotiation: only plain chat turns are offered approval-gated tools.
-        if Self.supportsResume(request),request.image==nil,!request.hasUploadedAttachments {upload.setValue(Self.approvalContract,forHTTPHeaderField:Self.approvalHeader);upload.setValue(ConversationUIEvent.contract,forHTTPHeaderField:ConversationUIEvent.header)}
+        if Self.supportsResume(request),request.image==nil,!request.hasUploadedAttachments {upload.setValue(Self.approvalContract,forHTTPHeaderField:Self.approvalHeader);upload.setValue(ConversationUIEvent.contract,forHTTPHeaderField:ConversationUIEvent.header);if ConversationDeviceCall.clientEnabled {upload.setValue(ConversationDeviceCall.contract,forHTTPHeaderField:ConversationDeviceCall.header)}}
         upload.setValue(TimeZone.current.identifier,forHTTPHeaderField:Self.timeZoneHeader) // task tools resolve local times
         try Task.checkCancellation()
         return (auth, grant, upload)
@@ -719,9 +732,16 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
             guard reality != "not_configured", Self.supportsResume(request), request.image==nil, !request.hasUploadedAttachments, let raw = type else { throw ConversationSessionError.invalidEvent }
             let ui = try ConversationUIEvent.decode(type: raw, sequence: sequence, payload: try Self.jsonData(data))
             payload = ui.type == .block ? .uiBlock(ui) : ui.type == .update ? .uiBlockUpdate(ui) : .uiBlockResolve(ui)
+        case "device_call":
+            guard reality != "not_configured", Self.supportsResume(request), request.image==nil, !request.hasUploadedAttachments,
+                  let id = data["interrupt_id"] as? String, UUID(uuidString: id) != nil, let call = data["call_id"] as? String, !call.isEmpty, call.count <= 160,
+                  let tool = data["tool"] as? String, Self.approvalToolNames.contains(tool), let args = data["args"] as? [String: Any],
+                  let confirm = data["confirm"] as? String, ["card","none"].contains(confirm), let ttl = data["ttl_sec"] as? Int, ttl > 0,
+                  let hash = data["args_hash"] as? String, hash.count == 64, let expires = data["expires_at"] as? String else { throw ConversationSessionError.invalidEvent }
+            payload = .deviceCall(ConversationDeviceCall(interruptID: id.lowercased(), callID: call, tool: tool, args: try Self.jsonData(args), confirm: confirm, ttlSec: ttl, argsHash: hash, expiresAt: expires))
         case "approval_resolved":
             guard let id = data["interrupt_id"] as? String, UUID(uuidString: id) != nil, let call = data["call_id"] as? String, !call.isEmpty,
-                  let decision = data["decision"] as? String, ["approved","denied","expired","cancelled"].contains(decision) || (data["kind"] as? String == "ui" && ["submitted","dismissed","error"].contains(decision)) else { throw ConversationSessionError.invalidEvent }
+                  let decision = data["decision"] as? String, ["approved","denied","expired","cancelled"].contains(decision) || (data["kind"] as? String == "ui" && ["submitted","dismissed","error"].contains(decision)) || (data["kind"] as? String == "device" && decision == "reported") else { throw ConversationSessionError.invalidEvent }
             payload = .approvalResolved(interruptID: id, callID: call, decision: decision, remember: Self.boolean(data["remember"]) ?? false)
         case "turn_completed":
             guard reality != "not_configured", let id = UUID(uuidString: data["message_id"] as? String ?? "") else { throw ConversationSessionError.invalidEvent }
