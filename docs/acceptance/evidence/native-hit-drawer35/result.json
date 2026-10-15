@@ -1,0 +1,352 @@
+{
+  "schema_version": 1,
+  "candidate": "AF-UX-HIT-DRAWER-20261015-35",
+  "version": "0.3.0(35)",
+  "date": "2026-10-15",
+  "reality": "actual_native_ui_with_explicit_local_synthetic_fixtures",
+  "evidence_state": "SCOPED_NATIVE_PASS_PRODUCT_GATES_OPEN",
+  "source": {
+    "local_commit": "c19d0268af6be0a3e3d8d86bbce9b36d417915b4",
+    "remote_commit": "6da724796a0b04663d22580d7cc0dcc4df31c69f",
+    "remote_tree": "105d604e190bfc51aebde8c37e5d7aa82106a32a",
+    "publication_status": "PASS_ROOT_SELECTIVE_5_PATH_READBACK",
+    "snapshot": "build/native-hit-drawer35-20261015/source-snapshot.json",
+    "snapshot_sha256": "4651a638c0513140a9efe0e621a31a721f581094b884e48c330a8d6df942259e",
+    "input_count": 416,
+    "baseline_local_commit": "2d88683d513e9a9b94dbcb967856d2be240a4c58",
+    "baseline_remote_commit": "b8344afc2ff8431282cacaf88b22a6e6f7b5f4c7",
+    "all_416_inputs_independently_match_local_commit": true,
+    "whole_local_remote_tree_identity_claimed": false
+  },
+  "package": {
+    "manifest": "build/native-hit-drawer35-20261015/package-files35.json",
+    "manifest_sha256": "346e1a1f54316a230acd95ca77ef33a210c2e2ea33e8854d93b4ff8c1630e32d",
+    "declared_file_count": 33,
+    "bundle_sha256": "874f80bf8c91250988707368f8bf3e468186b211fdca4374a746cf8a227db87a",
+    "frozen_app": "build/native-hit-drawer35-20261015/frozen-app/CatpawM.app",
+    "declared_files_independently_rehashed": "PASS",
+    "info_plist_version_readback": "0.3.0(35)"
+  },
+  "native": {
+    "distinct_methods": 21,
+    "unit_methods": 14,
+    "ui_methods": 7,
+    "failures": 0,
+    "runs": [
+      {
+        "name": "BodyPan35-r1",
+        "result": "PASS",
+        "unit_methods": 0,
+        "ui_methods": 1,
+        "seconds": 27.256,
+        "log": "build/native-hit-drawer35-20261015/body-pan-r1.log",
+        "log_sha256": "012c0c3218b7b9781492537afd922ef0457dc6fa3ce56b0080776ffd3cbbe895",
+        "xcresult": "build/native-hit-drawer35-20261015/BodyPan35-r1.xcresult"
+      },
+      {
+        "name": "Native35-r2",
+        "result": "PASS",
+        "unit_methods": 14,
+        "ui_methods": 6,
+        "unit_seconds": 7.547,
+        "ui_seconds": 168.527,
+        "log": "build/native-hit-drawer35-20261015/native-r2.log",
+        "log_sha256": "15465bec0c2abc57309241701bf5d4f83044f589977c6a063e469a0b2bc510b7",
+        "xcresult": "build/native-hit-drawer35-20261015/Native35-r2.xcresult"
+      }
+    ],
+    "methods": [
+      {
+        "method": "CatpawMUITests.ConversationDrawerRevealUITests testReadOnlyReplyPanRevealsForegroundStripAndClosesKeepingChineseDraft",
+        "result": "PASS",
+        "seconds": 27.256,
+        "log": "build/native-hit-drawer35-20261015/body-pan-r1.log"
+      },
+      {
+        "method": "CatpawMTests.ConversationTimelineProjectionTests testCallAndVerifiedResultReplaceInPlaceWithoutChangingOriginalMessages",
+        "result": "PASS",
+        "seconds": 0.007,
+        "log": "build/native-hit-drawer35-20261015/native-r2.log"
+      },
+      {
+        "method": "CatpawMTests.ConversationTimelineProjectionTests testCompletedCallWithoutResultCannotClaimSuccessfulRead",
+        "result": "PASS",
+        "seconds": 0.0,
+        "log": "build/native-hit-drawer35-20261015/native-r2.log"
+      },
+      {
+        "method": "CatpawMTests.ConversationTimelineProjectionTests testDedicatedToolRenderersReceiveExactOriginalResultIdentityAndPayload",
+        "result": "PASS",
+        "seconds": 0.001,
+        "log": "build/native-hit-drawer35-20261015/native-r2.log"
+      },
+      {
+        "method": "CatpawMTests.ConversationTimelineProjectionTests testDuplicateMessageUUIDsRemainVisibleWithUniqueRowIDs",
+        "result": "PASS",
+        "seconds": 0.001,
+        "log": "build/native-hit-drawer35-20261015/native-r2.log"
+      },
+      {
+        "method": "CatpawMTests.ConversationTimelineProjectionTests testFailureIsNeverCoveredByAResultAndUnknownRemainsVisible",
+        "result": "PASS",
+        "seconds": 0.001,
+        "log": "build/native-hit-drawer35-20261015/native-r2.log"
+      },
+      {
+        "method": "CatpawMTests.ConversationTimelineProjectionTests testIdenticalCallIDsInDifferentTurnsNeverCrossPair",
+        "result": "PASS",
+        "seconds": 0.001,
+        "log": "build/native-hit-drawer35-20261015/native-r2.log"
+      },
+      {
+        "method": "CatpawMTests.ConversationTimelineProjectionTests testInvalidOrphanAndAmbiguousRecordsFailVisibleWithoutGuessing",
+        "result": "PASS",
+        "seconds": 0.003,
+        "log": "build/native-hit-drawer35-20261015/native-r2.log"
+      },
+      {
+        "method": "CatpawMTests.ConversationTimelineProjectionTests testKnownToolResultAndOriginalArtifactEntrySurviveFailedOrUnknownProseStream",
+        "result": "PASS",
+        "seconds": 0.002,
+        "log": "build/native-hit-drawer35-20261015/native-r2.log"
+      },
+      {
+        "method": "CatpawMTests.ConversationTimelineProjectionTests testTerminalCompletedTurnWithoutToolResultRequiresReconciliationInsteadOfActivity",
+        "result": "PASS",
+        "seconds": 0.001,
+        "log": "build/native-hit-drawer35-20261015/native-r2.log"
+      },
+      {
+        "method": "CatpawMTests.ConversationTimelineProjectionTests testUserAndIncrementalAnswerKeepOriginalUUIDOrderAndTurn",
+        "result": "PASS",
+        "seconds": 0.0,
+        "log": "build/native-hit-drawer35-20261015/native-r2.log"
+      },
+      {
+        "method": "CatpawMTests.DeviceTrialNativeTests testChangedConsentRevisionCannotDispatch",
+        "result": "PASS",
+        "seconds": 0.151,
+        "log": "build/native-hit-drawer35-20261015/native-r2.log"
+      },
+      {
+        "method": "CatpawMTests.DeviceTrialNativeTests testColdQueuedPermissionIsPresentedWhileExplicitPauseSurvives",
+        "result": "PASS",
+        "seconds": 0.061,
+        "log": "build/native-hit-drawer35-20261015/native-r2.log"
+      },
+      {
+        "method": "CatpawMTests.DeviceTrialNativeTests testDeferredConsentCanBeReopenedAndDispatchesOriginalOnce",
+        "result": "PASS",
+        "seconds": 3.689,
+        "log": "build/native-hit-drawer35-20261015/native-r2.log"
+      },
+      {
+        "method": "CatpawMTests.DeviceTrialNativeTests testTextConsentSurvivesPresentationBindingClearAndRejectsDuplicate",
+        "result": "PASS",
+        "seconds": 3.63,
+        "log": "build/native-hit-drawer35-20261015/native-r2.log"
+      },
+      {
+        "method": "CatpawMUITests.ConversationConsentLongNoticeUITests testLongLoopbackConsentRejectReopenAllowPreservesOneOriginalRequest",
+        "result": "PASS",
+        "seconds": 27.871,
+        "log": "build/native-hit-drawer35-20261015/native-r2.log"
+      },
+      {
+        "method": "CatpawMUITests.ConversationDrawerRevealUITests testChineseEditorAndModalDetailsKeepHorizontalGestureOwnership",
+        "result": "PASS",
+        "seconds": 24.469,
+        "log": "build/native-hit-drawer35-20261015/native-r2.log"
+      },
+      {
+        "method": "CatpawMUITests.ConversationDrawerRevealUITests testReadOnlyLongPressOwnsSystemCopyMenuThenBodyPanResumesWithoutSending",
+        "result": "PASS",
+        "seconds": 28.638,
+        "log": "build/native-hit-drawer35-20261015/native-r2.log"
+      },
+      {
+        "method": "CatpawMUITests.P0NativeExperienceUITests testIntegratedSidebarRoutesSearchAndNativeBackPreserveSavedDraft",
+        "result": "PASS",
+        "seconds": 29.062,
+        "log": "build/native-hit-drawer35-20261015/native-r2.log"
+      },
+      {
+        "method": "CatpawMUITests.P0NativeExperienceUITests testReadingAboveBottomSurvivesStreamAndJumpResumesFollowing",
+        "result": "PASS",
+        "seconds": 28.457,
+        "log": "build/native-hit-drawer35-20261015/native-r2.log"
+      },
+      {
+        "method": "CatpawMUITests.P0NativeExperienceUITests testSidebarSearchClearAndTwoUnsentDraftsRemainInTheirConversations",
+        "result": "PASS",
+        "seconds": 30.03,
+        "log": "build/native-hit-drawer35-20261015/native-r2.log"
+      }
+    ],
+    "invocations_including_repeated_max_ax": 22
+  },
+  "max_system_accessibility": {
+    "name": "MaxAX35-r1",
+    "result": "PASS",
+    "method": "ConversationConsentLongNoticeUITests testLongLoopbackConsentRejectReopenAllowPreservesOneOriginalRequest",
+    "log": "build/native-hit-drawer35-20261015/max-ax-r1.log",
+    "log_sha256": "33373e7fa91170fd121557f79c7403f1d2cb29d59d1357e813aba489b1856e0e",
+    "xcresult": "build/native-hit-drawer35-20261015/MaxAX35-r1.xcresult",
+    "adds_distinct_method": false,
+    "seconds": 34.933,
+    "system_size_restored_to_large_by_coordinator": true,
+    "native_screenshot_visually_reviewed_by_coordinator": true,
+    "full_transcript_visual_acceptance": false
+  },
+  "navigation_package": {
+    "result": "PASS",
+    "methods": 25,
+    "failures": 0,
+    "platform": "arm64e-apple-macos14.0 package only",
+    "reviewed_input_count": 8,
+    "result_manifest": "packages/ios-navigation/.build/reveal-review/RESULT-final-common-modal-25-r7.json",
+    "result_manifest_sha256": "9809d313e6f3b00863172392700310ac0e1cf407c7a54924a70af19cefed958a",
+    "log_sha256": "68c9c7b69c6de32f87dc2ac3aad4fdc513b798e6bedf5b97eddee12379e47dde",
+    "native_voiceover_motion_acceptance": false
+  },
+  "checks": {
+    "sdk_log": "build/native-hit-drawer35-20261015/sdk.log",
+    "sdk_log_sha256": "170cae4bd7be69335d6a19bd605eb0e4e08653c5c06e472441352bbecf0b8add",
+    "build_log_sha256": "95b8b52a07130fa4c946168993aba3d5c46d02c44d4c3fb96228feb55d23151f",
+    "app_source_memberships": 116,
+    "bilingual_entries": 1091,
+    "design_mutations": 13,
+    "source_sensitivity": {
+      "candidate_files": 1176,
+      "blocking": 0,
+      "manual": 0,
+      "timing": "before_this_report"
+    },
+    "final_governance": {
+      "result": "PASS",
+      "coordinator_reported_check_groups": 7,
+      "logs": [
+        {
+          "path": "build/native-hit-drawer35-20261015/af-plan-final.log",
+          "sha256": "71da24f70099c5cfb5c75ba771b66c4bf4a7191051c3bd879afd8ec58db3f748",
+          "pass_line_present": true,
+          "failure_line_present": false
+        },
+        {
+          "path": "build/native-hit-drawer35-20261015/cgui-final.log",
+          "sha256": "0751a52050b8903f5812a6f0fc59db56a345f2b4dc1857e55e7d69c402873163",
+          "pass_line_present": true,
+          "failure_line_present": false
+        },
+        {
+          "path": "build/native-hit-drawer35-20261015/deployed-final.log",
+          "sha256": "a68c4a239c7a9d8a2e3f2ffab1f5ae00b63c319b9999a42db6c27873688ee228",
+          "pass_line_present": true,
+          "failure_line_present": false
+        },
+        {
+          "path": "build/native-hit-drawer35-20261015/final-plan-final.log",
+          "sha256": "7b72c9e606d7cd160ae8d115c2f06fd10a8e293c8de3a662a01a92467c51161c",
+          "pass_line_present": true,
+          "failure_line_present": false
+        },
+        {
+          "path": "build/native-hit-drawer35-20261015/goals-final.log",
+          "sha256": "5e514e06da7e3f3b8a689bfeeb73d37027323026d35b3d55b36e0160fc816e5d",
+          "pass_line_present": true,
+          "failure_line_present": false
+        },
+        {
+          "path": "build/native-hit-drawer35-20261015/layout-final.log",
+          "sha256": "d225b3174702f41d455fc0cd22c09a32011f6b961c278f3e66b88fc9ba7ca372",
+          "pass_line_present": true,
+          "failure_line_present": false
+        },
+        {
+          "path": "build/native-hit-drawer35-20261015/repository-final.log",
+          "sha256": "1bb67173eb0b659474afd45ac05604e9fb8492515d9f2408006c25fb5bf3865d",
+          "pass_line_present": true,
+          "failure_line_present": false
+        }
+      ],
+      "before_final_evidence_commit": true
+    }
+  },
+  "user_environment": {
+    "update35_status": "PASS_INSTALLED_BYTES_AND_VERSION_READBACK",
+    "last_confirmed_user_build": 35,
+    "previous_user_build": 29,
+    "launch_result_path": "primary-checkout/build/device-hub-latest/LAUNCH-RESULT.json",
+    "launch_result_sha256": "159d834cba2ea1124aac507431ce3b111e6e24376098a19113483cb4f860734b",
+    "launch_time_utc": "2026-10-15T06:40:30.745740+00:00",
+    "installed_bytes_match": true,
+    "bundle_sha256": "874f80bf8c91250988707368f8bf3e468186b211fdca4374a746cf8a227db87a",
+    "before": {
+      "requests": 77,
+      "accepted_posts": 0,
+      "dropped_responses": 0,
+      "memory_posts": 0,
+      "memory_original_gets": 0,
+      "provider_calls": 4,
+      "turns": 2
+    },
+    "after": {
+      "requests": 78,
+      "accepted_posts": 0,
+      "dropped_responses": 0,
+      "memory_posts": 0,
+      "memory_original_gets": 0,
+      "provider_calls": 4,
+      "turns": 2
+    },
+    "requests_delta": 1,
+    "accepted_posts_delta": 0,
+    "memory_posts_delta": 0,
+    "provider_calls_delta": 0,
+    "turns_delta": 0,
+    "preserve_existing_store_and_backend": true,
+    "backend_maintenance_candidate": 27,
+    "session_expiry_not_extended_coordinator_confirmed": true,
+    "raw_device_store_and_session_identifiers_included": false
+  },
+  "historical_boundaries": {
+    "original29_user_popup_symptom": "NOT_REPRODUCED",
+    "original29_cause": "NOT_ESTABLISHED",
+    "original29_r3_seconds": 24.295,
+    "builds31_32_33_strict_failure_preserved": true,
+    "build34_strict_fail_seconds": 19.395,
+    "build34_physical_diagnostic_pass_seconds": 21.783,
+    "build34_diagnostic_does_not_override_strict_failure": true,
+    "common_modal_fix_scope": "drawer_scrim_AX_boundary_only_not_original_popup_unique_cause"
+  },
+  "not_claimed": [
+    "full_native_matrix",
+    "VoiceOver",
+    "Reduce Motion",
+    "mid_settle_pixel_acceptance",
+    "real_Auth_model_production_SQL_or_deployment",
+    "phone_installation",
+    "AF-G5",
+    "FINAL-G1",
+    "FINAL-G2",
+    "FINAL-G3",
+    "seven_day_real_use",
+    "named_competitor_acceptance",
+    "full_transcript_visual_acceptance",
+    "card_growth_acceptance"
+  ],
+  "raw_media_or_full_app_inventory_published": false,
+  "coordinator_visual_observation": {
+    "result": "QUALITATIVE_OBSERVATION_ONLY",
+    "static_sidebar_behind_translated_full_width_conversation": true,
+    "observed": "actual native video, intermediate frames and final open state",
+    "provenance": "build/native-hit-drawer35-20261015/media-provenance.json",
+    "fps_or_mid_settle_takeover_acceptance": false,
+    "full_transcript_visual_acceptance": false,
+    "raw_media_published": false
+  },
+  "curation": {
+    "original_ignored_result_sha256": "9a85ebdf5cc14e1d22fc4dc083e28cb08ba70180e3500b51395e5fab525bf619",
+    "change": "Replace personal absolute launch-result path with checkout-relative reference; observed values unchanged."
+  }
+}
