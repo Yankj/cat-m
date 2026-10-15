@@ -1,0 +1,35 @@
+// In-memory store with the same semantics as pg-store (tests / local dev).
+export function createMemoryStore() {
+  const tasks = new Map(), occ = new Set(), events = [], tokens = []; let seq = 0;
+  const id = () => crypto.randomUUID(), c = v => structuredClone(v);
+  return {
+    _dump: () => ({ tasks: [...tasks.values()], events, tokens }),
+    async createTask(uid, t) {
+      for (const r of tasks.values()) if (r.user_id === uid && r.operation_id === t.operation_id) return { row: c(r), created: false };
+      const ts = new Date().toISOString();
+      const row = { id: id(), user_id: uid, notes: null, snooze_until: null, revision: 1, created_at: ts, updated_at: ts, ...t };
+      tasks.set(row.id, row); return { row: c(row), created: true };
+    },
+    async getTask(uid, tid) { const r = tasks.get(tid); return r && r.user_id === uid ? c(r) : null; },
+    async listTasks(uid, { status, limit }) { return [...tasks.values()].filter(r => r.user_id === uid && (status === 'all' || r.status === status)).sort((a, b) => (a.due_at ?? '9').localeCompare(b.due_at ?? '9')).slice(0, limit).map(c); },
+    async updateTask(uid, tid, f, rev) { const r = tasks.get(tid); if (!r || r.user_id !== uid || r.revision !== rev) return null; Object.assign(r, f, { revision: r.revision + 1, updated_at: new Date().toISOString() }); return c(r); },
+    async claimDue(nowIso, limit) {
+      const out = [];
+      for (const r of [...tasks.values()].filter(r => ['open', 'snoozed'].includes(r.status) && r.next_fire_at && r.next_fire_at <= nowIso).sort((a, b) => a.next_fire_at.localeCompare(b.next_fire_at)).slice(0, limit)) {
+        const k = r.id + '|' + r.next_fire_at; if (occ.has(k)) continue; occ.add(k);
+        out.push({ task_id: r.id, user_id: r.user_id, conversation_id: r.conversation_id, title: r.title, notes: r.notes, due_at: r.due_at, time_zone: r.time_zone, recurrence: r.recurrence, scheduled_at: r.next_fire_at, fire_count: r.fire_count });
+      }
+      return out;
+    },
+    async finishOccurrence(cl, f) { const r = tasks.get(cl.task_id); if (!r || r.next_fire_at !== cl.scheduled_at) return; Object.assign(r, f, { snooze_until: null, revision: r.revision + 1 }); if (f.next_fire_at && r.recurrence) r.due_at = f.next_fire_at === null ? r.due_at : r.due_at; },
+    async insertEvent(ev) { if (events.some(e => e.user_id === ev.user_id && e.dedupe_key === ev.dedupe_key)) return null; const row = { id: id(), push_state: 'pending', push_error: null, read_at: null, created_at: new Date(Date.now() + seq++).toISOString(), ...ev }; events.push(row); return c(row); },
+    async listEvents(uid, after, limit) { return events.filter(e => e.user_id === uid && (!after || e.created_at > after)).slice(-limit).map(c); },
+    async markRead(uid, eid, at) { const e = events.find(e => e.id === eid && e.user_id === uid); if (!e) return false; e.read_at ??= at; return true; },
+    async pendingPushEvents(limit) { return events.filter(e => e.push_state === 'pending').slice(0, limit).map(c); },
+    async setPush(eid, state, err) { const e = events.find(e => e.id === eid); e.push_state = state; e.push_error = err; },
+    async tokensFor(uid) { return tokens.filter(t => t.user_id === uid).map(c); },
+    async upsertToken(uid, t) { let r = tokens.find(x => x.user_id === uid && x.device_id === t.device_id && x.kind === t.kind && (x.activity_id ?? '') === (t.activity_id ?? '')); if (r) Object.assign(r, t, { enabled: true, last_error: null }); else { r = { id: id(), user_id: uid, enabled: true, last_error: null, ...t }; tokens.push(r); } return c(r); },
+    async deleteToken(uid, dev, kind) { let n = 0; for (let i = tokens.length - 1; i >= 0; i--) if (tokens[i].user_id === uid && tokens[i].device_id === dev && (!kind || tokens[i].kind === kind)) { tokens.splice(i, 1); n++; } return n; },
+    async disableToken(tid, reason) { const t = tokens.find(t => t.id === tid); if (t) { t.enabled = false; t.last_error = reason; } },
+  };
+}

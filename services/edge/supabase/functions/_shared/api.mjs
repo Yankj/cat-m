@@ -1,3 +1,4 @@
+import {createTaskChatTools} from './proactive/chat-tools.mjs';import {createProactiveService} from './proactive/service.mjs';
 import {createFollowupTriggerHTTPHandler} from './core/src/followup-trigger-http.mjs';
 import {readInboxPage} from './core/src/inbox-service.mjs';
 import {kickTurnTasks} from './worker-kick.mjs';
@@ -33,7 +34,7 @@ import {assertImageConsent,imageConsent} from './image-consent.mjs';
 import {LIVE_VISION_ROUTE,VISION_CONSENT_UI} from './core/src/live-vision-route.mjs';
 import {AttachmentService,createStorageAdapter,ATTACHMENT_CONTRACT,ATTACHMENT_LIMITS} from './attachments.mjs';
 const reply=(v,status=200)=>Response.json({schema_version:1,...v},{status,headers:{'Cache-Control':'no-store'}});
-export async function createCloudRuntime({repository,authenticate,config,retain=(_promise)=>{},sourceChecker=assertSourceAuthority,provider=null,imageProvider=null,attachmentStorage=null,verifyToken=null,autoKick=true,kickOptions={},diagnostic=entry=>console.info(JSON.stringify(entry)),taskActionTargetVerifier=null,publicSourceReader=null,acceptedSourceChecker=assertAcceptedWorkSourceAuthority,acceptedControlSourceChecker=assertAcceptedWorkControlSourceAuthority}){
+export async function createCloudRuntime({repository,authenticate,config,retain=(_promise)=>{},sourceChecker=assertSourceAuthority,provider=null,imageProvider=null,attachmentStorage=null,verifyToken=null,autoKick=true,kickOptions={},diagnostic=entry=>console.info(JSON.stringify(entry)),taskActionTargetVerifier=null,publicSourceReader=null,acceptedSourceChecker=assertAcceptedWorkSourceAuthority,acceptedControlSourceChecker=assertAcceptedWorkControlSourceAuthority,proactiveStore=null}){
  let beforeImageStream=async()=>{throw new ApiError(503,'vision_dispatch_not_configured');};
  const chatMetrics=createChatMetrics({sink:diagnostic});repository.metrics=chatMetrics;
  const beforeModel=async context=>{
@@ -109,6 +110,8 @@ export async function createCloudRuntime({repository,authenticate,config,retain=
  // A finite original work grant is an additional bounded authority, never a
  // relaxation of fresh commands/viewers or an automatic grant for legacy runs.
  runtime.facade.acceptedWorkRouteHash=config.routeHash;
+ // A2: catpaw.task-tools.v1 in-process (same deploy bundle). Absent store => no task tools are offered.
+ if(proactiveStore)runtime.facade.gatedChatTools=createTaskChatTools({service:createProactiveService({store:proactiveStore,verifyUser:async()=>{throw new ApiError(401,'session_required');}})});
  runtime.facade.acceptedWorkExecutionReady=ACCEPTED_WORK_EXECUTION_CAPABILITY.executor==='bounded_single_step_v1'&&ACCEPTED_WORK_EXECUTION_CAPABILITY.model===true&&ACCEPTED_WORK_EXECUTION_CAPABILITY.public_source===true&&ACCEPTED_WORK_EXECUTION_CAPABILITY.local_continuation===true&&ACCEPTED_WORK_EXECUTION_CAPABILITY.terminal_ack===true; // Maintained composition, not model/scheduler/device acceptance.
  runtime.facade.workGrantService=new TaskWorkGrantService({repository,authorize:async(tx,ctx)=>{
    const {terms,run,phase,principal}=ctx;
