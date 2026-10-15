@@ -1,0 +1,311 @@
+{
+  "schema": "catpaw.native-r5-delivery.v1",
+  "date": "2026-10-15",
+  "captured_at": "2026-10-15T05:13:44.335034+00:00",
+  "candidate": "AF-UX-R5-NATIVE-20261015-28",
+  "version": "0.3.0(28)",
+  "source_commit": "15c83cffff95112a2f8832887046dba2a6305b1c",
+  "source_tree": "e3d38732d70938c5f7d119523825c6d6661dbcec",
+  "product_build_source_commit": "dc1c4d8b3d8843641cc687a2c15746afcdc15c60",
+  "remote_source_commit": "aee9cde9300b4642e85ee33802667a986d355e30",
+  "remote_source_tree": "5ff5ed010471daef1422987ab4eace65723d80e9",
+  "source_inputs": 406,
+  "status": "PARTIAL_WITH_REQUIRED_NATIVE_UI_FAILURE",
+  "delivery": "Historical failed Debug Simulator candidate; reconstructable frozen source, no retained installable build28 App. Not complete R5/native/product acceptance.",
+  "source_snapshot": "source-snapshot.json",
+  "historical_package": {
+    "version": "0.3.0(28)",
+    "configuration": "Debug iOS Simulator, build-for-testing",
+    "sdk": "iphonesimulator27.1",
+    "bundle_sha256": "49b1b1fece94c6d8f41a2d282339caf902ed14524619986e7c1c6fc13cd03902",
+    "file_count": 32,
+    "manifest": "build/native-r5-20261015/package-files28-r4.json",
+    "manifest_sha256": "68194b981848217ef348ef3385741948f02116711e6eebe4460177ec8c38bba3",
+    "fingerprint_rule": "SHA256 of UTF-8 JSON file-entry array sorted by relative path; each entry has bytes,path,sha256; sorted object keys and no whitespace.",
+    "early_matching_observation": {
+      "date": "2026-10-15",
+      "exact_wall_clock_not_recorded": true,
+      "sequence": "During this evidence preparation, before the later build29 overwrite, all 32 retained App files matched the manifest and Info.plist reported 0.3.0(28). The later pre-write recheck failed on CatpawM.",
+      "all_32_files_matched_at_early_observation": true
+    },
+    "binary_currently_retained": false,
+    "availability": "Coordinator confirmed build29 incrementally overwrote the shared DerivedData product and no separate build28 App backup exists. Only the historical package manifest/hash, logs, screenshots and reconstructable source are retained. This is not a currently available installable build28 package."
+  },
+  "verification": {
+    "sdk_and_resources": {
+      "status": "PASS",
+      "log": "build/native-r5-20261015/sdk-r4.log",
+      "app_source_members": 114,
+      "bilingual_entries": 1086,
+      "boundary": "Non-DEBUG Simulator SDK typecheck, syntax, project/localization; final test-only files compiled by build28-tests-r5.log."
+    },
+    "native_semantic_design": {
+      "status": "PASS",
+      "log": "build/native-r5-20261015/design-r4.log",
+      "source_files": 116,
+      "mutation_cases": 13,
+      "boundary": "Static R5 role/usage, opaque source-color contrast and shared reading seams; not native pixel, material or layout acceptance."
+    },
+    "native_typography": {
+      "status": "PASS",
+      "log": "build/native-r5-20261015/typography-r4.log",
+      "active_default_files": 113,
+      "boundary": "Semantic font/bridge guard and negative tests; not complete Dynamic Type acceptance."
+    },
+    "simulator_build": {
+      "status": "PASS",
+      "log": "build/native-r5-20261015/build28-r4.log",
+      "final_test_build_log": "build/native-r5-20261015/build28-tests-r5.log",
+      "boundary": "Debug build-for-testing; not Release/DeviceTrial or phone signing. Historical binary later overwritten by build29."
+    },
+    "native_ui": {
+      "distinct_ui_methods_passed": 5,
+      "numerical_helper_methods_passed": 1,
+      "distinct_required_ui_methods_failed": 1,
+      "ui_passes": [
+        {
+          "suite": "P0NativeExperienceUITests",
+          "method": "testLargestDynamicTypeComposerAndStreamRemainAccessible",
+          "status": "PASS",
+          "log": "build/native-r5-20261015/ui28-r4.log",
+          "boundary": "Actual accessibility5 ordinary composer and complete synthetic stream; not the report-revision/details or visible-keyboard gate."
+        },
+        {
+          "suite": "P0NativeExperienceUITests",
+          "method": "testNativeMarkedTextPreventsSendAndCommandReturn",
+          "status": "PASS",
+          "log": "build/native-r5-20261015/ui28-r4.log",
+          "boundary": "Actual UITextInput marked-text injection blocks send/Command-Return; not manual Chinese keyboard acceptance."
+        },
+        {
+          "suite": "P0NativeExperienceUITests",
+          "method": "testReadingAboveBottomSurvivesStreamAndJumpResumesFollowing",
+          "status": "PASS",
+          "log": "build/native-r5-20261015/ui28-r4.log",
+          "boundary": "Native upward scroll retains reading position during an injected stream; explicit jump resumes following."
+        },
+        {
+          "suite": "P0NativeExperienceUITests",
+          "method": "testSidebarSearchClearAndTwoUnsentDraftsRemainInTheirConversations",
+          "status": "PASS",
+          "log": "build/native-r5-20261015/ui28-r4.log",
+          "boundary": "Actual sidebar search/clear preserves two independent unsent conversation drafts."
+        },
+        {
+          "suite": "P0NativeExperienceUITests",
+          "method": "testR5ComposerReflowsWithoutLosingDraftOrSending",
+          "status": "PASS",
+          "log": "build/native-r5-20261015/ui28-r5.log",
+          "boundary": "Empty disabled send, drafting-row geometry, more/settings/back and exact draft; no formal user message inserted."
+        }
+      ],
+      "numerical_helper": {
+        "suite": "ConversationArtifactContinuationUITests",
+        "method": "testTouchHeightComparisonIgnoresOnlyMachineRoundoff",
+        "status": "PASS",
+        "log": "build/native-r5-20261015/ui28-r5.log",
+        "boundary": "Only coordinate-magnitude × CGFloat.ulpOfOne × 8; accepts 43.99999999999994, rejects 43.9999 and 43. Not an interactive UI method."
+      },
+      "latest_run": {
+        "log": "build/native-r5-20261015/ui28-r5.log",
+        "tests": 3,
+        "passed": 2,
+        "failed": 1,
+        "status": "FAIL"
+      },
+      "combined_results_limit": "Four UI methods passed r4; one UI method and numerical helper passed r5. App bytes stayed fixed, only test mechanics changed. These are not one all-green final test suite."
+    },
+    "maximum_text_revision_details": {
+      "status": "FAIL",
+      "suite": "ConversationArtifactContinuationUITests",
+      "method": "testMaximumTextTargetInputAndExitRemainReachableAboveKeyboard",
+      "log": "build/native-r5-20261015/ui28-r5.log",
+      "source_line": 159,
+      "assertion": "details.exists && details.isHittable",
+      "message": "Overflowing context has an explicit, reachable details entry",
+      "keyboard_gate": "NOT_ACCEPTED",
+      "keyboard_observation": "Coordinator visual review: no soft keyboard visible in the failed maximum-text screenshot. Existing geometry attachment reports keyboard_top=891, greater than screen height 874; above-keyboard inequalities do not demonstrate a visible-keyboard path.",
+      "geometry_attachment": "build/native-r5-20261015/ui-r5-target/4F220C77-2D49-48BF-B6B9-5DD14DE77B51.txt",
+      "geometry_attachment_sha256": "b7fb5dd23c42c2153b5ccc9647e5a17cf5ca40e79608dfa6379ddb2cc68a5a81",
+      "failure_capture": "build/native-r5-20261015/ui-r5-target/8767E72F-B21F-4D2A-83D3-A71CC4EDB835.png",
+      "failure_capture_sha256": "8275d407f5beb57978b4cf67ffc4bc79ef9c6c9a972310b450536c7188192f64",
+      "capture_pixels": [
+        1206,
+        2622
+      ],
+      "capture_label_limit": "Unchanged test attachments still carry legacy v21 labels. Those names/payload labels do not identify the App package; build28 identity was observed from Info.plist and its 32-file manifest."
+    },
+    "governance_source_stage": {
+      "status": "PASS",
+      "logs": [
+        "build/native-r5-20261015/layout-final.log",
+        "build/native-r5-20261015/repository-final.log",
+        "build/native-r5-20261015/deployed-r3.log",
+        "build/native-r5-20261015/af-goals-r3.log",
+        "build/native-r5-20261015/af-plan-r3.log",
+        "build/native-r5-20261015/final-r3.log",
+        "build/native-r5-20261015/cgui-r3.log",
+        "build/native-r5-20261015/sensitivity-final-source.log"
+      ],
+      "sensitivity_candidate_files": 1156,
+      "blocking": 0,
+      "manual_review": 0,
+      "boundary": "Historical source-stage checks before these three dated evidence files and later build29 WIP; not a final scan of a later publication candidate."
+    }
+  },
+  "native_environment": {
+    "device": "existing independent iPhone 18 Pro QA Simulator",
+    "logical_viewport_points": [
+      402,
+      874
+    ],
+    "reality": "Actual SwiftUI/UIKit/XCTest with explicit DEBUG offline fixture and in-process synthetic backend.",
+    "real_model_requests": 0,
+    "production_auth_requests": 0,
+    "production_sql_requests": 0,
+    "backend_source_or_deployment_changes": false,
+    "phone_installation": false,
+    "existing_experience_environment": "Separate experience Simulator remains build27 per coordinator; this does not prove a phone has build28."
+  },
+  "local_screenshot_evidence": {
+    "provenance_path": "local-audit/screenshots/native-r5-20261015-build28/PROVENANCE.json",
+    "provenance_note": "Theme validity below includes the coordinator correction; a prior provenance file did not distinguish themeNotRendered.",
+    "files": [
+      {
+        "path": "local-audit/screenshots/native-r5-20261015-build28/dark.png",
+        "sha256": "f99379b7e9bb4b7a3c1c7ab004ff0c03689e0b4c17e00b5ff6fb6b5f73047292",
+        "captured_at": "2026-10-15T13:08:20.957508+08:00",
+        "claimed_theme_valid": false,
+        "theme_status": "themeNotRendered",
+        "observation": "Coordinator visually confirmed this image still rendered light after appearance toggle; it is NOT valid dark-mode evidence."
+      },
+      {
+        "path": "local-audit/screenshots/native-r5-20261015-build28/light-pending.png",
+        "sha256": "d4602c2db1ac1b0a96a858b670bde52761f26d485aac628e9344d133d95d4911",
+        "captured_at": "2026-10-15T13:08:01.845914+08:00",
+        "claimed_theme_valid": true,
+        "theme_status": "valid_light",
+        "observation": "Filename retained; actual image shows completed synthetic offline reply."
+      }
+    ],
+    "valid_light_captures": 1,
+    "valid_dark_captures": 0,
+    "boundary": "Local ignored captures only; no PNG/media included in the three text evidence files. R5 success screenshot is attached in xcresult log; existing r5 export manifest currently includes only the failed maximum-text method, not an exported success screenshot."
+  },
+  "retained_failures": [
+    {
+      "run": "r1",
+      "tests": 5,
+      "passed": 4,
+      "failed": 1,
+      "status": "FAIL",
+      "log": "build/native-r5-20261015/ui28-r1.log",
+      "observation": "Empty-composer assertion began with a saved synthetic draft. Test now explicitly clears it and keeps the original disabled-send assertion."
+    },
+    {
+      "run": "r2",
+      "tests": 5,
+      "passed": 4,
+      "failed": 1,
+      "status": "FAIL",
+      "log": "build/native-r5-20261015/ui28-r2.log",
+      "observation": "Tapping settings in the native menu did not reach connection.state."
+    },
+    {
+      "run": "r3",
+      "tests": 5,
+      "passed": 4,
+      "failed": 1,
+      "status": "FAIL",
+      "log": "build/native-r5-20261015/ui28-r3.log",
+      "observation": "Same settings-navigation failure reproduced. Product subsequently uses one anchored popover action row and navigates after dismissal."
+    },
+    {
+      "run": "r4",
+      "tests": 6,
+      "passed": 4,
+      "failed": 2,
+      "status": "FAIL",
+      "log": "build/native-r5-20261015/ui28-r4.log",
+      "observation": "Maximum-text path failed strict 43.99999999999994 >= 44. R5 path passed menu/settings/back/exact-draft assertions, then attachment reading failed because visual mode hides qa.p0Probe. Only machine-roundoff comparison and direct native screenshot attachment were adjusted."
+    },
+    {
+      "run": "r5",
+      "tests": 3,
+      "passed": 2,
+      "failed": 1,
+      "status": "FAIL",
+      "log": "build/native-r5-20261015/ui28-r5.log",
+      "observation": "R5 composer and numerical helper passed; maximum-text report modification still failed details exists/isHittable. Latest targeted run remains FAIL."
+    }
+  ],
+  "limitations": [
+    "Maximum accessibility text report-revision details remains an actual FAIL. The selected-report, visible-keyboard and complete R5/native experience gates are not passed.",
+    "Five distinct UI passes span r4/r5, plus one numerical helper; the latest targeted suite is 2/3 and failed. No all-green final native suite is claimed.",
+    "Only the light capture is valid; dark.png did not render the requested dark theme and provides no dark-mode visual acceptance.",
+    "Shared DerivedData overwrote the build28 App with build29; no standalone build28 binary backup is retained. Its original package manifest/hash are historical evidence, not a currently installable package.",
+    "No complete size/theme, full-screen editor, VoiceOver, Reduce Motion/Transparency/Increase Contrast or interrupted drawer-settling matrix; continuous presentation-position handoff remains unproven.",
+    "No real model/Auth/cloud/SQL/scheduler/calendar effect or phone execution. This slice makes no backend source or deployment change; synthetic replies cannot close W10–12 or CP-01.",
+    "AF-A01–18, AF-U01–12, CP-01–03, AF-G5 and FINAL-G1/G2/G3 are not accepted; seven-day real daily use and named competitor comparisons were not performed.",
+    "This is frozen build28 history. Current checkout and DerivedData may contain build29 work; only docs/status/master-plan.md carries live progress."
+  ],
+  "next_required_verification": "Fix the common maximum-text context/keyboard ownership path on a new candidate, preserve this failure, and rerun with visibly open soft keyboard. Keep exact draft, enabled/hittable, 44pt and no-send/original-request assertions. Retain the next App bundle independently before any incremental build.",
+  "evidence_logs": {
+    "build/native-r5-20261015/af-goals-r1.log": "5e514e06da7e3f3b8a689bfeeb73d37027323026d35b3d55b36e0160fc816e5d",
+    "build/native-r5-20261015/af-goals-r3.log": "5e514e06da7e3f3b8a689bfeeb73d37027323026d35b3d55b36e0160fc816e5d",
+    "build/native-r5-20261015/af-plan-r1.log": "71da24f70099c5cfb5c75ba771b66c4bf4a7191051c3bd879afd8ec58db3f748",
+    "build/native-r5-20261015/af-plan-r3.log": "71da24f70099c5cfb5c75ba771b66c4bf4a7191051c3bd879afd8ec58db3f748",
+    "build/native-r5-20261015/build28-r1.log": "197dfd5c2a3cd78308fd6268fbcbff2b41bdf84510247ffc0c7305a786405142",
+    "build/native-r5-20261015/build28-r3.log": "4da0a950ef48f617d1c4d36cdcc2471fb59a65d147c29f633b1a896958a9464d",
+    "build/native-r5-20261015/build28-r4.log": "9ac64bb43d55abe933107f81e2f58b4b64b0a7706d8c09f4b89dfba2be27f675",
+    "build/native-r5-20261015/build28-tests-r2.log": "e6b2c318faeb746f1b3b2f4579a3c020f140bedaaaca8b6260e0777dac72005d",
+    "build/native-r5-20261015/build28-tests-r5.log": "1bca2afe9bab9f0228ac4a89277a80fc0f769c66c4223e747bfad132d4bd7ce7",
+    "build/native-r5-20261015/cgui-r1.log": "0751a52050b8903f5812a6f0fc59db56a345f2b4dc1857e55e7d69c402873163",
+    "build/native-r5-20261015/cgui-r3.log": "0751a52050b8903f5812a6f0fc59db56a345f2b4dc1857e55e7d69c402873163",
+    "build/native-r5-20261015/commit-source-r1.log": "dcf3de291d5acd021387aaa9ece46c50465c8d30f7480722d51a3bcbf49f18bd",
+    "build/native-r5-20261015/commit-source-r3.log": "5bc4626aa4f021a7e16f81e6131ef2738edd25b5a292a8ca484973bb94b68528",
+    "build/native-r5-20261015/commit-source-r4.log": "f9de8038ef6a731b6d46fc4b92626dba2f31174a298d3fe405cb15e01d3cd1a0",
+    "build/native-r5-20261015/commit-test-evidence.log": "d25c1ade717fec9edc6915d987aaefea9c5ca27efc4c40c4141a3a5ccbd4884e",
+    "build/native-r5-20261015/commit-tests-r2.log": "0a3061301cbde3d9ab90adf9b3953be97108164cf6c71d38555afe703d322fd6",
+    "build/native-r5-20261015/deployed-r1.log": "a68c4a239c7a9d8a2e3f2ffab1f5ae00b63c319b9999a42db6c27873688ee228",
+    "build/native-r5-20261015/deployed-r3.log": "a68c4a239c7a9d8a2e3f2ffab1f5ae00b63c319b9999a42db6c27873688ee228",
+    "build/native-r5-20261015/design-r1.log": "d58de8e4378b0bebff43590811837d8377d6ca662729bae14b4798fc6c0a8097",
+    "build/native-r5-20261015/design-r2.log": "d58de8e4378b0bebff43590811837d8377d6ca662729bae14b4798fc6c0a8097",
+    "build/native-r5-20261015/design-r3.log": "d58de8e4378b0bebff43590811837d8377d6ca662729bae14b4798fc6c0a8097",
+    "build/native-r5-20261015/design-r4.log": "d58de8e4378b0bebff43590811837d8377d6ca662729bae14b4798fc6c0a8097",
+    "build/native-r5-20261015/final-r1.log": "7b72c9e606d7cd160ae8d115c2f06fd10a8e293c8de3a662a01a92467c51161c",
+    "build/native-r5-20261015/final-r3.log": "7b72c9e606d7cd160ae8d115c2f06fd10a8e293c8de3a662a01a92467c51161c",
+    "build/native-r5-20261015/layout-final.log": "d225b3174702f41d455fc0cd22c09a32011f6b961c278f3e66b88fc9ba7ca372",
+    "build/native-r5-20261015/layout-r1.log": "d225b3174702f41d455fc0cd22c09a32011f6b961c278f3e66b88fc9ba7ca372",
+    "build/native-r5-20261015/layout-r3.log": "d225b3174702f41d455fc0cd22c09a32011f6b961c278f3e66b88fc9ba7ca372",
+    "build/native-r5-20261015/repository-final.log": "1bb67173eb0b659474afd45ac05604e9fb8492515d9f2408006c25fb5bf3865d",
+    "build/native-r5-20261015/repository-r1.log": "1bb67173eb0b659474afd45ac05604e9fb8492515d9f2408006c25fb5bf3865d",
+    "build/native-r5-20261015/repository-r3.log": "1bb67173eb0b659474afd45ac05604e9fb8492515d9f2408006c25fb5bf3865d",
+    "build/native-r5-20261015/sdk-r1.log": "44f174855b11cdb9b8a123a02112727e70a20b6912dde015c92a3e9889a53920",
+    "build/native-r5-20261015/sdk-r3.log": "44f174855b11cdb9b8a123a02112727e70a20b6912dde015c92a3e9889a53920",
+    "build/native-r5-20261015/sdk-r4.log": "44f174855b11cdb9b8a123a02112727e70a20b6912dde015c92a3e9889a53920",
+    "build/native-r5-20261015/sensitivity-final-source.log": "7834a7e9b18769745025a89c188b8dc67aedea6d3f927dde3ea4ef7c152effb3",
+    "build/native-r5-20261015/sensitivity-r1.log": "c3d72bd06347976114ca1f1d37dfa7ed4bde04f96939595ee0181a25825aa48c",
+    "build/native-r5-20261015/sensitivity-r2.log": "7e255b8161745b5b577beadbe0cbf8b16616e43d4dd244a44c64fca8aed4259e",
+    "build/native-r5-20261015/sensitivity-r3.log": "0a072e6d633a83fce763a0d2aab009b04cabff6c1a51b1f944dbe99f68f9dc9a",
+    "build/native-r5-20261015/sensitivity-r4.log": "07b851513b7219c8b4e7366df028b5733d82d7427003ef07c2bc590e9e0c131a",
+    "build/native-r5-20261015/typography-r3.log": "d6eb29f6519e762faed11d365b5f081435b9e79bf6ecadb6a200b8b6a88cf606",
+    "build/native-r5-20261015/typography-r4.log": "d6eb29f6519e762faed11d365b5f081435b9e79bf6ecadb6a200b8b6a88cf606",
+    "build/native-r5-20261015/ui-r2-export.log": "1ce5ac0bb625e20bb1ff9029e8f8ff0dc9d64bf78f92710f3c4fbb66f21d22ce",
+    "build/native-r5-20261015/ui-r5-export.log": "fa18d691a897cccd0987b2e57635d2e662ddb88c00ed524bcddb3b75af6850f8",
+    "build/native-r5-20261015/ui28-r1.log": "0a88ce6d2f2919c040d917b39f93ba818d0c6db6c9f34ec73ff131655835f962",
+    "build/native-r5-20261015/ui28-r2.log": "f775ece06017001eddf3eacdb859d53266f48d46c064cc17a9bc7619cd98c8f3",
+    "build/native-r5-20261015/ui28-r3.log": "5bef6bce91527c684a5a8c87fc0bdc8b3d44086cb29c47b0f7d73f4c10b2363a",
+    "build/native-r5-20261015/ui28-r4.log": "60b4327b9dc005b9365279ad432dde218a5250431889de4db21f7167e096f69d",
+    "build/native-r5-20261015/ui28-r5.log": "9c482d49d52c5d649f448b20d9f9304ea05a7bf50b1d95d3c2909b0337a84999"
+  },
+  "local_artifact_hashes": {
+    "build/native-r5-20261015/publication-source.json": "c73a78bff31e75d5d53e29e6e318fc36f759c876f3533c26b8d7d33477d2acc0",
+    "build/native-r5-20261015/publication-tests.json": "f497da5075a7dd530c8eb1408ad4ca1f623dd60d8a0c8bd73320b6d79614bf66",
+    "build/native-r5-20261015/source-snapshot-r4.json": "acf9c63c32794c2574e51fbe353c73e90ea9ca1dc1fa40077bd7dafacf067aea",
+    "build/native-r5-20261015/package-files28-r4.json": "68194b981848217ef348ef3385741948f02116711e6eebe4460177ec8c38bba3",
+    "build/native-r5-20261015/ui-r5-target/manifest.json": "80d6e82b7d22fd9bcdb749c3864c49e9d9e951ee49d52004d93aa25361ab17c6"
+  },
+  "publication_boundary": "Remote selective-publication identity/readback was confirmed by the coordinating agent. This writer made no remote request. Local and remote complete trees are separate identities; no whole-tree equality is claimed.",
+  "source_snapshot_sha256": "519a0bfee3d7e3ae2330e59b7a25a9e92985c2ff76333947c544ec156c54d94f"
+}
