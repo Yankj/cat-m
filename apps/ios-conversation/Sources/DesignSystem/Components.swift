@@ -179,7 +179,7 @@ struct CatpawPressButtonStyle: ButtonStyle {
 
 extension View {
     func primaryAction() -> some View { self.buttonStyle(CatpawPrimaryButtonStyle()) }
-    func touchTarget() -> some View { self.frame(minWidth: 44, minHeight: 44).contentShape(Rectangle()) }
+    func touchTarget(minimum:CGFloat = 44) -> some View { self.frame(minWidth: max(44,minimum), minHeight: max(44,minimum)).contentShape(Rectangle()) }
     @ViewBuilder func compactNavigationTitle() -> some View {
         #if os(iOS)
         self.navigationBarTitleDisplayMode(.inline)

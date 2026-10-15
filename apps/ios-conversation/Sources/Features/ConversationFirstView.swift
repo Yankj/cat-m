@@ -297,11 +297,13 @@ import CatpawImageComposer
                 Button {
                     guard !model.isInputComposing else {return};composerContextPresented=true
                 } label:{
-                    if let target=model.artifactContinuation,!budget.showsTarget {
-                        Text("v\(target.artifactReference.version)").font(CatpawTypography.Role.caption.font).fixedSize().touchTarget()
-                            .accessibilityLabel(target.artifactTitle+" · v\(target.artifactReference.version)")
-                    } else {Image(systemName:model.artifactContinuation == nil ? "plus":"info.circle").font(CatpawTypography.Role.body.font).touchTarget()}
-                }.frame(minWidth:composerControlSize,minHeight:composerControlSize).buttonStyle(CatpawPressButtonStyle()).disabled(model.isInputComposing)
+                    Group {
+                        if let target=model.artifactContinuation,!budget.showsTarget {
+                            Text("v\(target.artifactReference.version)").font(CatpawTypography.Role.caption.font).fixedSize()
+                                .accessibilityLabel(target.artifactTitle+" · v\(target.artifactReference.version)")
+                        } else {Image(systemName:model.artifactContinuation == nil ? "plus":"info.circle").font(CatpawTypography.Role.body.font)}
+                    }.touchTarget(minimum:composerControlSize)
+                }.buttonStyle(CatpawPressButtonStyle()).disabled(model.isInputComposing)
                     .accessibilityLabel(model.artifactContinuation.flatMap{!budget.showsTarget ? ($0.mode == .reviseReport ? ui("修改这版") : ui("追问这版"))+" · "+$0.artifactTitle+" · v\($0.artifactReference.version) · "+ui("查看输入详情"):nil} ?? ui("查看输入详情")).accessibilityIdentifier("chat.input.context.open")
                     .accessibilityValue(model.artifactContinuationSendBlock.map{ui($0)} ?? model.error.map{ui($0)} ?? "")
                 Button(action:submitDraft) { Image(systemName:model.sending ? "clock.badge.checkmark" : "arrow.up").font(CatpawTypography.Role.body.font.weight(.semibold)).foregroundStyle(canSendDraft ? CatpawColors.sendIcon : CatpawColors.secondary).frame(width:composerControlSize,height:composerControlSize).background(canSendDraft ? CatpawColors.send : CatpawColors.input,in:Circle()) }
@@ -694,6 +696,12 @@ private struct ConversationPendingMessageEditor:View {
     }
     private var content:some View {
             Form {
+                Section(ui("关于")) {
+                    LabeledContent(ui("版本"), value:Bundle.main.object(forInfoDictionaryKey:"CFBundleShortVersionString") as? String ?? "—")
+                        .textSelection(.enabled).accessibilityIdentifier("settings.appVersion")
+                    LabeledContent(ui("构建号"), value:Bundle.main.object(forInfoDictionaryKey:"CFBundleVersion") as? String ?? "—")
+                        .textSelection(.enabled).accessibilityIdentifier("settings.appBuild")
+                }
                 Section(ui("模型连接")) {
                     LabeledContent(ui("状态")) { Text(stateName).foregroundStyle(CatpawColors.ink) }.accessibilityIdentifier("connection.state")
 
@@ -703,7 +711,7 @@ private struct ConversationPendingMessageEditor:View {
                     Button(ui("重新检查连接")) { Task { await model.refreshConnection() } }.accessibilityIdentifier("connection.refresh")
                 }
                 Section(ui("数据")) { Text(model.connection.state == .notConfigured ? ui("当前未连接云端；输入保存在此设备。") : ui("此设备保存对话副本；发送的消息会交给已连接的云端服务处理。")); Text(ui("离开 App 后不会发送排队中的消息。任务后台执行的状态需要重新读取确认。")).font(CatpawTypography.Role.caption.font) }
-                Section { DisclosureGroup(ui("诊断")) { LabeledContent(ui("服务"),value:model.connection.provider); Text(ui("版本 {0} ({1})", arguments:[String(describing: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—"),String(describing: Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "—")])); Text(model.connection.state.rawValue).font(CatpawTypography.Role.caption.font).textSelection(.enabled) } }
+                Section { DisclosureGroup(ui("诊断")) { LabeledContent(ui("服务"),value:model.connection.provider); Text(model.connection.state.rawValue).font(CatpawTypography.Role.caption.font).textSelection(.enabled) } }
                 if model.connection.state == .notConfigured { Text(ui("真实模型尚未配置；不会使用演示回复代替模型。")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary) }
             }.foregroundStyle(CatpawColors.ink).navigationTitle(ui("设置"))
     }

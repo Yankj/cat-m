@@ -535,6 +535,10 @@
     "en": "Public source read",
     "zh-Hans": "公开来源读取"
   },
+  "关于": {
+    "en": "About",
+    "zh-Hans": "关于"
+  },
   "关闭": {
     "en": "Close",
     "zh-Hans": "关闭"
@@ -2791,6 +2795,10 @@
     "en": "Source: explicit user memory instruction",
     "zh-Hans": "来源：用户明确记忆命令"
   },
+  "构建号": {
+    "en": "Build",
+    "zh-Hans": "构建号"
+  },
   "查看、编辑或暂停本机待发消息": {
     "en": "Review, edit or pause messages queued on this device",
     "zh-Hans": "查看、编辑或暂停本机待发消息"
@@ -3226,6 +3234,10 @@
   "点击即可开始。此设备会安全保存体验身份，回来时继续你的对话。": {
     "en": "Tap to get started. This device securely saves your experience account so you can return to your conversations.",
     "zh-Hans": "点击即可开始。此设备会安全保存体验身份，回来时继续你的对话。"
+  },
+  "版本": {
+    "en": "Version",
+    "zh-Hans": "版本"
   },
   "版本 v{0} · 附件：无 · 仅此一次": {
     "en": "Version v{0} · no attachment · one time only",
