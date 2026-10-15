@@ -285,6 +285,45 @@ final class CatpawAcceptanceUITests: XCTestCase {
         XCTAssertEqual(app.state, .runningForeground)
     }
 
+    /// Surface tour for shots/latest/w2: toolbar, composer, popover, live turn (cat head + Dynamic Island), action row,
+    /// long-press, drawer, proactive inbox, tasks, memory, settings (邀请码).
+    func test14Surfaces() throws {
+        guard ProcessInfo.processInfo.environment["CATPAW_SURFACE_TOUR"] == "1" else { throw XCTSkip("surface tour only") }
+        let app = XCUIApplication(bundleIdentifier: bundleID); forwardPublicConfig(app); app.launchArguments += ["-CatpawSkipOnboarding"]; app.launch()
+        func screen(_ name: String) { let a = XCTAttachment(screenshot: XCUIScreen.main.screenshot()); a.name = name; a.lifetime = .keepAlways; add(a) }
+        XCTAssertTrue(input(app).waitForExistence(timeout: 40)); Thread.sleep(forTimeInterval: 1.5)
+        if app.buttons["chat.new"].isEnabled { app.buttons["chat.new"].tap(); Thread.sleep(forTimeInterval: 1) }
+        shot(app, "w2-s01-home-circleicons")
+        let plus = app.buttons["chat.composer.add"]
+        if plus.exists { plus.tap(); Thread.sleep(forTimeInterval: 0.8); shot(app, "w2-s02-plus-popover"); plus.tap(); Thread.sleep(forTimeInterval: 0.5) }
+        let field = input(app); field.tap(); Thread.sleep(forTimeInterval: 0.8)
+        if !app.keyboards.firstMatch.exists { field.tap(); Thread.sleep(forTimeInterval: 0.8) }
+        field.typeText("用三段话介绍一下猫为什么喜欢纸箱，每段至少80字")
+        shot(app, "w2-s03-composer-typing")
+        let send = app.buttons["chat.send"].exists ? app.buttons["chat.send"] : app.buttons.matching(NSPredicate(format: "identifier CONTAINS 'send'")).firstMatch
+        send.tap()
+        let allow = app.buttons["允许此对话"]
+        if allow.waitForExistence(timeout: 4) { shot(app, "w2-s03b-model-consent"); allow.tap() }
+        Thread.sleep(forTimeInterval: 1.5); shot(app, "w2-s04-turn-1s5")
+        Thread.sleep(forTimeInterval: 4.5); shot(app, "w2-s05-turn-6s-cathead")
+        XCUIDevice.shared.press(.home); Thread.sleep(forTimeInterval: 1.5); screen("w2-s06-dynamic-island")
+        app.activate(); Thread.sleep(forTimeInterval: 25)
+        shot(app, "w2-s07-answer-actionrow")
+        let text = app.staticTexts.allElementsBoundByIndex.last(where: { $0.isHittable && $0.label.count > 30 })
+        if let text { text.press(forDuration: 0.8); Thread.sleep(forTimeInterval: 0.9); shot(app, "w2-s08-longpress"); app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.08)).tap(); Thread.sleep(forTimeInterval: 0.6) }
+        func drawer() { for _ in 0..<3 where !app.buttons["sidebar.open"].exists { if app.navigationBars.buttons.firstMatch.exists { app.navigationBars.buttons.firstMatch.tap() }; Thread.sleep(forTimeInterval: 0.8) }
+            if app.buttons["sidebar.open"].exists { app.buttons["sidebar.open"].tap(); Thread.sleep(forTimeInterval: 1) } }
+        drawer(); shot(app, "w2-s09-drawer")
+        if app.buttons["sidebar.proactive"].exists { app.buttons["sidebar.proactive"].tap(); Thread.sleep(forTimeInterval: 1.2); shot(app, "w2-s10-proactive-inbox")
+            for l in ["完成", "Done"] where app.buttons[l].exists { app.buttons[l].tap(); break }; Thread.sleep(forTimeInterval: 0.8) }
+        drawer(); if app.buttons["sidebar.tasks"].exists { app.buttons["sidebar.tasks"].tap(); Thread.sleep(forTimeInterval: 1.5); shot(app, "w2-s11-tasks"); app.navigationBars.buttons.firstMatch.tap(); Thread.sleep(forTimeInterval: 0.8) }
+        drawer(); if app.buttons["sidebar.memory"].exists && app.buttons["sidebar.memory"].isEnabled { app.buttons["sidebar.memory"].tap(); Thread.sleep(forTimeInterval: 1.5); shot(app, "w2-s12-memory"); app.navigationBars.buttons.firstMatch.tap(); Thread.sleep(forTimeInterval: 0.8) }
+        drawer(); if app.buttons["sidebar.settings"].exists { app.buttons["sidebar.settings"].tap() }; Thread.sleep(forTimeInterval: 1.5); shot(app, "w2-s13-settings")
+        for _ in 0..<4 where !app.buttons["settings.invite"].exists { app.swipeUp() }
+        if app.buttons["settings.invite"].exists { app.buttons["settings.invite"].tap(); Thread.sleep(forTimeInterval: 1); shot(app, "w2-s14-invite-sheet") }
+        XCTAssertEqual(app.state, .runningForeground)
+    }
+
     /// Proactive chain: simulated non-user signal → engine (filter/dedupe/evaluate) → card + notification → confirm → EKReminder; repeat → suppressed.
     private func openLink(_ s: String) {
         XCUIDevice.shared.system.open(URL(string: s)!)

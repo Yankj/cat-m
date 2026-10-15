@@ -69,7 +69,7 @@ import UIKit
 @MainActor private struct IncrementalConversationText:UIViewRepresentable {
     let text:String
     func makeUIView(context:Context)->IncrementalConversationTextView{IncrementalConversationTextView()}
-    func updateUIView(_ view:IncrementalConversationTextView,context:Context){view.apply(text,font:ConversationTypeScale.font(context.environment.dynamicTypeSize),color:UIColor(CatpawColors.ink))}
+    func updateUIView(_ view:IncrementalConversationTextView,context:Context){view.isSelectable=context.environment.catpawInlineSelection;view.apply(text,font:ConversationTypeScale.font(context.environment.dynamicTypeSize),color:UIColor(CatpawColors.ink))}
     func sizeThatFits(_ proposal:ProposedViewSize,uiView:IncrementalConversationTextView,context:Context)->CGSize?{uiView.measured(proposal.width ?? 240)}
 }
 @MainActor struct StreamingConversationText:View {

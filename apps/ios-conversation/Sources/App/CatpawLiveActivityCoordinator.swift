@@ -124,9 +124,14 @@ import ActivityKit
         guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
         let attributes = CatpawWorkAttributes(taskID: id.uuidString, conversationID: turn.conversationID, title: ui("Catpaw 正在工作"))
         do {
-            let activity = try Activity.request(attributes: attributes, content: ActivityContent(state: state(id, turn, turn.kind), staleDate: Date().addingTimeInterval(120)), pushType: .token)
-            turn.activity = activity; turns[id] = turn
-            observeToken(activity, turnID: id, conversationID: turn.conversationID)
+            let content = ActivityContent(state: state(id, turn, turn.kind), staleDate: Date().addingTimeInterval(120))
+            if let activity = try? Activity.request(attributes: attributes, content: content, pushType: .token) {
+                turn.activity = activity; turns[id] = turn
+                observeToken(activity, turnID: id, conversationID: turn.conversationID)
+            } else {
+                // No aps-environment (simulator / unsigned trial build): run a local-only activity driven by in-app updates.
+                turn.activity = try Activity.request(attributes: attributes, content: content, pushType: nil); turns[id] = turn
+            }
         } catch {
             // Disabled by the user / system budget: the in-app UI remains the source of truth.
         }
