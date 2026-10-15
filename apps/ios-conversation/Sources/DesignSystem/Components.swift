@@ -202,6 +202,11 @@ struct CatpawConfirmationCheckbox:View {
 
 extension View {
     func primaryAction() -> some View { self.buttonStyle(CatpawPrimaryButtonStyle()) }
+    /// r9 Grok-style answer actions: small thin line glyphs, compact but forgiving hit area.
+    func answerActionIcon() -> some View {
+        self.font(CatpawTypography.Role.secondary.font.weight(.light)).imageScale(.medium)
+            .frame(width: 22, height: 32).contentShape(Rectangle().inset(by: -7))
+    }
     func touchTarget(minimum:CGFloat = 44) -> some View { self.frame(minWidth: max(44,minimum), minHeight: max(44,minimum)).contentShape(Rectangle()) }
     @ViewBuilder func compactNavigationTitle() -> some View {
         #if os(iOS)
