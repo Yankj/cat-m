@@ -39,6 +39,33 @@ public actor ConversationSessionService {
         _ = try await read(scope:scope,conversationID:conversationID)
         try await repository.setPreference(scope:scope,key:Self.selectionKey,value:conversationID.uuidString)
     }
+    struct NavigationSelectionReceipt:Sendable {
+        let recordID:UUID,revision:Int,selectedID:UUID,previous:Preference?
+    }
+    /// Retains the exact local preference revision so a cancelled preparation can
+    /// restore its prior selection without overwriting any later writer.
+    func prepareNavigationSelection(scope:DataScope,conversationID:UUID) async throws -> NavigationSelectionReceipt {
+        let conversation=try await repository.record(conversationID,scope:scope)
+        guard conversation.conversation != nil else {throw CatpawError.missing}
+        _=try await read(scope:scope,conversationID:conversationID)
+        let id=stableID("preference-\(scope.workspaceID)-\(Self.selectionKey)")
+        let old:StoredRecord?
+        do {old=try await repository.record(id,scope:scope)}catch CatpawError.missing {old=nil}
+        let previous:Preference?
+        if let old {guard case .preference(let value)=old.payload,value.key==Self.selectionKey else {throw ConversationSessionError.invalidEvent};previous=value}else{previous=nil}
+        let payload=Payload.preference(.init(key:Self.selectionKey,value:conversationID.uuidString))
+        let mutation:Mutation=old.map{.update(id,$0.header.revision,payload)} ?? .create(id,payload)
+        try Task.checkCancellation()
+        try await repository.commit(scope:scope,mutations:[.requireRevision(conversation.id,conversation.header.revision),mutation])
+        return .init(recordID:id,revision:(old?.header.revision ?? 0)+1,selectedID:conversationID,previous:previous)
+    }
+    func rollbackNavigationSelection(scope:DataScope,receipt:NavigationSelectionReceipt) async throws {
+        let current=try await repository.record(receipt.recordID,scope:scope)
+        guard current.header.revision==receipt.revision,case .preference(let value)=current.payload,
+              value.key==Self.selectionKey,value.value==receipt.selectedID.uuidString else {return}
+        let mutation:Mutation=receipt.previous.map{.update(current.id,current.header.revision,.preference($0))} ?? .remove(current.id,current.header.revision)
+        try await repository.commit(scope:scope,mutations:[mutation])
+    }
     public func create(scope: DataScope, id: UUID = UUID()) async throws -> UUID {
         guard Profiles.inEnvironment(.local, profile: scope) == scope else { throw CatpawError.scopeMismatch }
         let snapshot = await repository.read(scope: scope)
@@ -52,6 +79,26 @@ public actor ConversationSessionService {
     }
     public func read(scope: DataScope, conversationID: UUID) async throws -> ConversationSession {
         try await readVersioned(scope: scope, conversationID: conversationID).0
+    }
+    /// Receives an authenticated read projection only for a task already bound in
+    /// this local conversation journal. It never invents a turn or grants work.
+    public func recordReceivedGoal(scope:DataScope,goal:ConversationGoalProjection) async throws {
+        guard let binding=goal.binding else {throw ConversationSessionError.invalidEvent}
+        var (saved,revision)=try await readVersioned(scope:scope,conversationID:binding.conversation_id)
+        guard saved.goals[goal.id]?.binding==binding else {throw ConversationSessionError.invalidEvent}
+        try Self.merge(goal,into:&saved)
+        if var current=saved.goals[goal.id],current.sourceAuthorizationCurrent != false {
+            for artifact in goal.artifactHistory {
+                guard artifact.version>0,textHash(artifact.body)==artifact.contentHash else {throw ConversationSessionError.invalidEvent}
+                if let old=(current.artifacts+current.artifactHistory).first(where:{$0.id==artifact.id && $0.version==artifact.version}) {
+                    guard old.contentHash==artifact.contentHash,old.body==artifact.body else {throw ConversationSessionError.invalidEvent}
+                } else {current.artifactHistory.append(artifact)}
+            }
+            saved.goals[goal.id]=current
+        }
+        let record=try await repository.record(binding.conversation_id,scope:scope)
+        try Task.checkCancellation()
+        try await save(saved,expectedRevision:revision,additional:[.requireRevision(record.id,record.header.revision)])
     }
     /// Records a verified artifact projection without changing task completion or sending a turn.
     public func recordArtifactRevision(scope:DataScope,binding:ConversationTaskBinding,artifact:ConversationArtifactProjection) async throws {

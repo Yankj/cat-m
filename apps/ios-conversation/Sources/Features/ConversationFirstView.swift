@@ -170,8 +170,12 @@ import CatpawImageComposer
             .navigationDestination(for:ConversationHostDestination.self){destination in
                 switch destination {
                 case .settings:settingsSheet
-                case .tasks:ConversationTaskList(model:model)
-                case .results:ConversationResultList(model:model)
+                case .tasks:
+                    if let service=model.inboxService {ConversationInboxView(service:service,mode:.tasks,admissionAllowed:{model.loaded && model.networkAdmissionAllowed && scene == .active},onReturn:{item in if await model.returnToReceivedWork(item){path=[];return .returned};return .unavailable(model.error.map{ui($0)} ?? ui("无法回到原对话。当前草稿仍保留，请重新读取后再试。"))})}
+                    else {ConversationTaskList(model:model)}
+                case .results:
+                    if let service=model.inboxService {ConversationInboxView(service:service,mode:.results,admissionAllowed:{model.loaded && model.networkAdmissionAllowed && scene == .active},onReturn:{item in if await model.returnToReceivedWork(item){path=[];return .returned};return .unavailable(model.error.map{ui($0)} ?? ui("无法回到原对话。当前草稿仍保留，请重新读取后再试。"))})}
+                    else {ConversationResultList(model:model)}
                 case .memory:
                     if let service=model.memoryService {
                         ConversationMemoryView(service:service,conversationID:model.conversationID,admissionAllowed:{model.loaded && model.networkAdmissionAllowed && scene == .active})
