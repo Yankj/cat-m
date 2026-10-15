@@ -264,6 +264,10 @@ public struct AuthenticatedNativeChatCredentials: NativeChatSessionCredentials {
     }
     private func takeChat() -> (ConversationFirstModel?,NativeChatHTTPBackend?,String?) {
         let previous = chat; chat = nil
+        uiDecisionSubmitter = nil
+        // #39 merge: uncomment (GenerativeBlockStore lives in #39).
+        // GenerativeBlockStore.shared.submitter = nil
+        // GenerativeBlockStore.shared.activate(conversationID: nil)
         let previousBackend = backend; backend = nil
         let previousNamespace = namespace; namespace = nil
         previous?.setNetworkAdmissionAllowed(false)
