@@ -141,6 +141,7 @@ struct ProactiveSignal: Equatable, Sendable {
                       .init(kind: "time", text: "现在 \(now.formatted(f))"), .init(kind: "rule", text: "signal_hash=\(hash)")],
             status: .pending, createdAt: now)
         pendingReminders[suggestion.id] = .init(title: signal.title, due: remindAt, start: signal.start, place: signal.place, operationID: "op-" + hash)
+        rememberServerID(local: suggestion.id)
         ProactiveSuggestionStore.shared.adopt(suggestion)
         lastSuggestionID = suggestion.id
         intervene(suggestion)
@@ -153,19 +154,42 @@ struct ProactiveSignal: Equatable, Sendable {
         if minutes < 3 { return .init(intervene: false, why: "too late to help (\(minutes) min)", via: "local") }
         return .init(intervene: true, why: "meeting in \(minutes) min, lead \(leadMinutes) min", via: "local rules")
     }
-    /// 三角's `/proactive/evaluate` (when deployed); any failure → nil → local rules.
-    private func evaluateRemote(_ s: ProactiveSignal, leadMinutes: Int) async -> Decision? {
+    /// 三角's `/catpaw/proactive/v1` base (edge fn catpaw-proactive); nil when not configured / signed out.
+    static func apiBase() -> URL? {
         let info = Bundle.main.infoDictionary
-        guard let raw = (info?["CatpawProactiveBaseURL"] as? String).flatMap({ $0.isEmpty ? nil : $0 }) ?? (info?["CatpawSupabaseProjectURL"] as? String).map({ $0 + "/functions/v1/catpaw-proactive" }),
-              let base = URL(string: raw), let bearer = try? await CatpawPushTokenUploader.shared.bearer() else { note("evaluate offline → local rules"); return nil }
-        var request = URLRequest(url: base.appendingPathComponent("proactive/evaluate"), timeoutInterval: 4)
+        guard let raw = (info?["CatpawProactiveBaseURL"] as? String).flatMap({ $0.isEmpty ? nil : $0 }) ?? (info?["CatpawSupabaseProjectURL"] as? String).flatMap({ $0.isEmpty ? nil : $0 + "/functions/v1/catpaw-proactive" }) else { return nil }
+        return URL(string: raw)?.appendingPathComponent("catpaw/proactive/v1")
+    }
+    static func post(_ path: String, _ body: [String: Any]) async -> [String: Any]? {
+        guard let base = apiBase(), let bearer = try? await CatpawPushTokenUploader.shared.bearer() else { return nil }
+        var request = URLRequest(url: base.appendingPathComponent(path), timeoutInterval: 6)
         request.httpMethod = "POST"; request.setValue(bearer, forHTTPHeaderField: "Authorization"); request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = try? JSONSerialization.data(withJSONObject: ["signal_hash": s.signalHash, "kind": "calendar_upcoming", "title": s.title,
-                                                                        "start": ISO8601DateFormatter().string(from: s.start), "lead_minutes": leadMinutes])
-        guard let (data, response) = try? await URLSession.shared.data(for: request), (response as? HTTPURLResponse)?.statusCode == 200,
-              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { note("evaluate server unavailable → local rules"); return nil }
-        let intervene = (json["intervene"] as? Bool) ?? ((json["decision"] as? String) != "silent")
-        return .init(intervene: intervene, why: (json["reason"] as? String) ?? "server decision", via: "server")
+        request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+        guard let (data, response) = try? await URLSession.shared.data(for: request), (response as? HTTPURLResponse)?.statusCode == 200 else { return nil }
+        return try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+    }
+    /// Server suggestion id per local suggestion, for action/undo/feedback write-back.
+    private(set) var serverIDs: [String: String] = [:]
+    private var lastRemote: [String: Any]?
+    /// `POST /catpaw/proactive/v1/evaluate`; nil (offline / not deployed) → local rules.
+    private func evaluateRemote(_ s: ProactiveSignal, leadMinutes: Int) async -> Decision? {
+        let minutes = Int(s.start.timeIntervalSince(.now) / 60)
+        let body: [String: Any] = ["signals": [["type": "meeting_upcoming", "source": s.source.rawValue, "dedupe_key": s.signalHash,
+                                                "data": ["title": s.title, "location": s.place, "minutes_until": minutes, "travel_minutes": 0]]],
+                                   "context": ["time_zone": TimeZone.current.identifier, "lead_minutes": leadMinutes]]
+        guard let json = await Self.post("evaluate", body) else { note("evaluate server unavailable → local rules"); lastRemote = nil; return nil }
+        lastRemote = json
+        let decision = (json["decision"] as? String) ?? "card"
+        return .init(intervene: decision != "silent", why: "\(decision) · \((json["reason"] as? String) ?? "") conf=\((json["confidence"] as? Double).map { String(format: "%.2f", $0) } ?? "-") source=\((json["source"] as? String) ?? "?")", via: "server")
+    }
+    func rememberServerID(local: String) {
+        if let sug = lastRemote?["suggestion"] as? [String: Any], let id = sug["id"] as? String { serverIDs[local] = id }
+        else if let id = lastRemote?["event_id"] as? String { serverIDs[local] = id }
+    }
+    func syncAction(_ action: String, local: String, operationID: String) {
+        guard let id = serverIDs[local] else { return }
+        Task { let r = await Self.post("suggestions/\(id)/\(action == "undo" ? "undo" : "action")", action == "undo" ? ["operation_id": operationID] : ["action": action, "operation_id": operationID])
+            note("server \(action) id=\(id) \(r == nil ? "failed (kept local)" : "recorded")") }
     }
 
     // MARK: Intervene: card + banner + actionable notification
@@ -346,6 +370,7 @@ struct ProactiveSignal: Equatable, Sendable {
         case .dismiss: s.status = .dismissed; s.taken = (s.taken ?? []) + [.init(action: action, at: .now)]
         case .notify_attendees: s.status = .done; s.taken = (s.taken ?? []) + [.init(action: action, at: .now)]
         }
+        ProactiveEngine.shared.syncAction(action.rawValue, local: id, operationID: "op-\(id)-\(action.rawValue)")
         mock.adopt(s); return s
     }
     func undo(_ id: String) async throws -> ProactiveSuggestion {
