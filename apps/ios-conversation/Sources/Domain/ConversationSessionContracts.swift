@@ -272,6 +272,8 @@ public protocol ConversationBackend: Sendable {
     func observe(_ request: ConversationTurnRequest) async throws -> ConversationObservation
     /// R7 §5.3 resume: GET the original turn's events after `afterSequence` (never re-POSTs).
     func resumeEvents(_ request: ConversationTurnRequest, afterSequence: Int) async throws -> AsyncThrowingStream<ConversationTurnEvent, Error>
+    /// R7 busy retry of the SAME turn (server restarts `failed{rate_limited}` with no output in place).
+    func retryBusyTurn(_ request: ConversationTurnRequest, afterSequence: Int) async throws -> AsyncThrowingStream<ConversationTurnEvent, Error>
 }
 /// Stream-health sink (ConnectionMonitor in the App target). Domain-only so portable builds stay Network-free.
 public protocol ConversationStreamResilience: Sendable {
@@ -298,6 +300,7 @@ public struct UnconfiguredConversationBackend: ConversationBackend {
 
 public extension ConversationBackend {
     func resumeEvents(_ request: ConversationTurnRequest, afterSequence: Int) async throws -> AsyncThrowingStream<ConversationTurnEvent, Error> { throw ConversationSessionError.unresolvedOperation }
+    func retryBusyTurn(_ request: ConversationTurnRequest, afterSequence: Int) async throws -> AsyncThrowingStream<ConversationTurnEvent, Error> { throw ConversationSessionError.unresolvedOperation }
     func revisionWorkCapability(scope:DataScope,conversationID:UUID) async throws -> ConversationAcceptedWorkCapability {.init()}
     func freezeRevisionWork(_ request:ConversationTurnRequest,selection:ConversationRevisionWorkSelection) async throws -> ConversationRevisionWorkIntent {throw ConversationAcceptedWorkError.unavailable}
     func acceptedWorkCapability(scope:DataScope,conversationID:UUID) async throws -> ConversationAcceptedWorkCapability {.init()}
