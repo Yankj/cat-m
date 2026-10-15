@@ -7,6 +7,7 @@ import Combine
 
     @ObservedObject var model: AppModel
     @Environment(\.scenePhase) private var phase
+    @State private var launchMarkVisible=LaunchMarkGate.shouldPlay(openedFromURLOrNotification:false)
     private let timer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
     var body: some View {
         NavigationStack(path: $model.path) {
@@ -25,10 +26,16 @@ import Combine
         .preferredColorScheme(model.preference("theme", fallback: "dark") == "system" ? nil : model.preference("theme", fallback: "dark") == "light" ? .light : .dark)
         .sheet(isPresented: $model.sidebar) { SidebarView(model: model).tint(CatpawColors.accent).presentationDetents([.large]).presentationDragIndicator(.visible) }
         .alert(ui("操作未完成"), isPresented: Binding(get: { model.error != nil }, set: { if !$0 { model.error = nil } })) { Button(ui("好")) { model.error = nil } } message: { Text(model.error ?? "") }
+        .overlay {
+            if launchMarkVisible {
+                LaunchMarkView(restoring:!model.loaded) {launchMarkVisible=false}
+                    .zIndex(100)
+            }
+        }
         .task { if !model.loaded { await model.start() }; await model.tick(resumed: true) }
         .onReceive(timer) { _ in if phase == .active { Task { await model.tick(resumed: false) } } }
         .onChange(of: model.path) { _, _ in model.saveNavigation() }
-        .onOpenURL { model.openDeepLink($0) }
+        .onOpenURL { launchMarkVisible=false;model.openDeepLink($0) }
         .onChange(of: phase) { _, value in Task { if value == .active { await model.tick(resumed: true) } else { await model.suspend() } } }
     }
     @ViewBuilder private func destination(_ route: AppRoute) -> some View {

@@ -8,6 +8,7 @@ import { chatPromptFor,chatToolsFor,validateProvidedToolCall,assistantToolMessag
 import { collectRound } from './openrouter-provider.mjs';
 import { TextBatcher } from './text-batcher.mjs';
 import { createChatMetrics } from './chat-metrics.mjs';
+import { assertBusyRestartable,restartedTurn } from './busy-restart.mjs';
 import {freezeTaskRevisionTargetInTransaction,acceptTaskRevisionInTransaction,readTaskRevision,assertTaskRevisionTurnBoundaryInTransaction} from './task-revision-service.mjs';
 import {validateTaskRevisionRequest,TASK_REVISION_CONTRACT} from './task-revision-contract.mjs';
 import {ACCEPTED_WORK_INTENT_CONTRACT,validateAcceptedWorkRequest,freezeAcceptedWorkIntent} from './accepted-work-intent-contract.mjs';
@@ -107,6 +108,27 @@ export class ChatService {
     }
     return {...result,trusted}; // Internal only; never serialized as HTTP data.
   }
+  /** R7 busy retry: restart the SAME turn in place when it failed with `rate_limited` before any
+   * model output. Identity, user message, admission and request hash are unchanged; new events
+   * continue the original sequence. Any output or any other failure keeps the original result. */
+  async restartRateLimited(auth,scopeID,conversationID,turnID){
+    const trusted=await this.scoped(auth,scopeID),{owner,scope,principal}=trusted;
+    await this.integration?.prepare({owner,scope,principal});
+    const turn=await this.repository.transaction(async tx=>{
+      await this.integration?.beforeWrite(tx,{owner,scope});
+      await tx.lock(owner,'native-chat-conversations',conversationID);
+      const c=await this.conversation(tx,owner,conversationID,principal.subject_id,scopeID),t=await tx.get(owner,'native-chat-turns',turnID);
+      assertBusyRestartable(t,c,principal);
+      let next=restartedTurn(t);
+      if(this.integration)next=await this.integration.stampTurn(tx,owner,next);
+      const saved=await tx.put(owner,'native-chat-turns',next);await this.beforeCommit(tx,{owner,scope},saved);return saved;
+    });
+    const controller=new AbortController(),key=`${owner}:${turnID}`;
+    const entry={controller,promise:null,subject_id:principal.subject_id,session_id:principal.session_id,conversation_id:conversationID};this.active.set(key,entry);
+    entry.promise=this.execute({auth,owner,scope,principal,turn,signal:controller.signal,controller}).finally(()=>this.active.delete(key));
+    entry.promise.catch(()=>{});
+    return {turn,trusted,afterSequence:turn.events.length};
+  }
   async live(tx,{owner,turn,scope}){
     await this.integration?.beforeWrite(tx,{owner,scope:scope??{scope_id:turn.scope_id},turn});
     await tx.lock(owner,'native-chat-conversations',turn.conversation_id);
@@ -173,7 +195,9 @@ export class ChatService {
         batcher=new TextBatcher({signal:env.signal,assertLive:env.assertLive,
           persist:delta=>this.append(env,'text_delta',{message_id:messageID,text:delta}),
           onFailure:error=>env.controller?.abort(error)});
-        const round=received?clone(received.round):await collectRound(this.provider,{messages:clone(messages),system_prompt:prompt,tools,signal:env.signal,assertDispatchReady:env.assertDispatchReady,provider_context:{source_auth:env.turn.source_auth,scope_id:env.scope.scope_id,conversation_id:env.turn.conversation_id,...env.turn.memory_usage?{memory_usage:clone(env.turn.memory_usage),memory_turn_id:env.turn.id}:{},...env.turn.revision_target?{revision_source_auth:clone(env.turn.revision_target.fresh_source_auth),revision_original_source_auth:clone(env.turn.revision_target.original_source_auth),revision_memory_generation:env.turn.revision_target.memory_generation,...env.turn.revision_work_intent?{revision_work_turn_id:env.turn.id}:{},input_context:[{text:env.turn.revision_target.raw_instruction},{text:env.turn.revision_target.base_body}]}:{}}},delta=>{text+=delta;batcher.push(delta);});
+        // R7 optional wire event: provider thought summary, emitted once before the first text_delta.
+        let summary='',summarySent=false;const thinkingStarted=this.metrics.now();
+        const round=received?clone(received.round):await collectRound(this.provider,{messages:clone(messages),system_prompt:prompt,tools,signal:env.signal,assertDispatchReady:env.assertDispatchReady,provider_context:{source_auth:env.turn.source_auth,scope_id:env.scope.scope_id,conversation_id:env.turn.conversation_id,...env.turn.memory_usage?{memory_usage:clone(env.turn.memory_usage),memory_turn_id:env.turn.id}:{},...env.turn.revision_target?{revision_source_auth:clone(env.turn.revision_target.fresh_source_auth),revision_original_source_auth:clone(env.turn.revision_target.original_source_auth),revision_memory_generation:env.turn.revision_target.memory_generation,...env.turn.revision_work_intent?{revision_work_turn_id:env.turn.id}:{},input_context:[{text:env.turn.revision_target.raw_instruction},{text:env.turn.revision_target.base_body}]}:{}},onThinking:delta=>{if(!summarySent&&summary.length<2000)summary+=delta;}},async delta=>{if(!summarySent){summarySent=true;if(summary.trim())await this.append(env,'reasoning_summary',{message_id:messageID,text:summary.trim().slice(0,2000),thinking_ms:Math.max(0,Math.round(this.metrics.now()-thinkingStarted))});}text+=delta;batcher.push(delta);});
         if(received)text=round.text;
         phase='text_flush';await batcher.finish();await batcher.stop();batcher=null;env.assertLive();
         phase='tool_or_completion';
@@ -230,6 +254,8 @@ export class ChatService {
       const cause=error instanceof ApiError&&error.reconciliation?error:denied??error;
       const code=cause instanceof ApiError?cause.code:'turn_interrupted',reconciliation=cause instanceof ApiError?cause.reconciliation:true;
       const data={code,retryable:false,reconciliation_required:!!reconciliation};
+      // R7 busy card: free-route rate limit carries an advisory retry delay (read-only countdown, never auto-resend).
+      if(code==='rate_limited'&&Number.isSafeInteger(cause?.retryAfterSeconds)&&cause.retryAfterSeconds>=0&&cause.retryAfterSeconds<=3600)data.retry_after_seconds=cause.retryAfterSeconds;
       // Use only the freshly locked row. Never flush buffered text/history/tools during cleanup.
       const saved=await tx.put(env.owner,'native-chat-turns',{...t,state:reconciliation?'outcome_unknown':'failed',error:data,finished_at:iso(),events:[...t.events,this.event(t,'turn_failed',data)]});
       // An awaited metadata write can cross lease expiry; reject the transaction before COMMIT.

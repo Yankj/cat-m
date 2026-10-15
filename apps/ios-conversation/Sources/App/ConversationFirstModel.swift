@@ -841,7 +841,11 @@ enum ConversationObserverLifecycle: String { case foregroundIdle, streaming, rec
                 if !self.busy,let session=self.session {
                     if self.drainTaskControlDeliveries() { }
                     else if session.unresolved != nil || session.goals.values.contains(where:{[.queued,.working,.waitingInput,.unknown].contains($0.state)}) { self.readOriginal() }
-                    else { await self.resumeBackgroundQueueIfSafe() }
+                    else {
+                        // R7: due busy auto-retry (once) and offline outbox drain, both service-owned.
+                        if let id=self.conversationID, self.networkAdmissionAllowed, await self.service.foregroundTick(scope:self.scope,conversationID:id) { await self.refresh() }
+                        await self.resumeBackgroundQueueIfSafe()
+                    }
                 }
                 do { try await Task.sleep(nanoseconds:2_000_000_000) } catch { return }
             }

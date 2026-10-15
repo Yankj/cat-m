@@ -60,6 +60,11 @@ export function createChatFetchHandler(runtime){
         await chat.readTurn(auth,scope,tail[1],tail[3],{afterSequence,trusted});
         return streamTurn(request,auth,scope,tail[1],tail[3],{afterSequence,trusted});
       }
+      if(method==='POST'&&tail.length===5&&tail[0]==='conversations'&&tail[2]==='turns'&&tail[4]==='retry-busy'){
+        const restarted=await chat.restartRateLimited(auth,scope,tail[1],tail[3]);
+        runtime.onAccepted?.({owner:restarted.trusted.owner,principal:restarted.trusted.principal,turnId:tail[3]});
+        return streamTurn(request,auth,scope,tail[1],tail[3],{trusted:restarted.trusted,afterSequence:restarted.afterSequence});
+      }
       if(method==='POST'&&tail.length===3&&tail[0]==='conversations'&&tail[2]==='control')return json({conversation:await chat.control(auth,scope,tail[1],await body())});
       if(method==='POST'&&tail.length===3&&tail[0]==='conversations'&&tail[2]==='turns'){
         const input=await body(),capability=request.headers.get('X-Catpaw-Memory-Proposal-Contract');
@@ -74,8 +79,12 @@ export function createChatFetchHandler(runtime){
         const stream=new ReadableStream({
           async start(controller){try{
             const enqueue=e=>{const started=chat.metrics.now(),bytes=new TextEncoder().encode(`data: ${JSON.stringify(e)}\n\n`);controller.enqueue(bytes);chat.metrics.record('sse_enqueue',started,{bytes:bytes.length});};
+            // R7 §5.3 heartbeat: comment frame every 10s; clients treat 15s of silence as a drop.
+            const keepalive=setInterval(()=>{try{if(!detach.signal.aborted)controller.enqueue(new TextEncoder().encode(': keepalive\n\n'));}catch{}},10000);detach.signal.addEventListener('abort',()=>clearInterval(keepalive),{once:true});
+            try{
             if(initial&&!detach.signal.aborted)enqueue(initial);
             for await(const e of chat.observe(auth,scope,cid,tid,{...options,signal:detach.signal})){if(detach.signal.aborted)break;enqueue(e);}if(!detach.signal.aborted)controller.close();
+            }finally{clearInterval(keepalive);}
           }catch{if(!detach.signal.aborted)controller.error(new Error('Observation interrupted; read original turn snapshot'));}},
           cancel(){detach.abort();} // never cancel a durable task or active model turn
         });

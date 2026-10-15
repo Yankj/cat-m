@@ -21,15 +21,15 @@
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>CatpawBackendOrigin</key>
-	<string></string>
+	<string>$(CATPAW_BACKEND_ORIGIN)</string>
 	<key>CatpawDeviceTrialConfigurationVersion</key>
 	<integer>1</integer>
 	<key>CatpawServerScopeID</key>
-	<string></string>
+	<string>$(CATPAW_SERVER_SCOPE_ID)</string>
 	<key>CatpawSupabaseProjectURL</key>
-	<string></string>
+	<string>$(CATPAW_SUPABASE_PROJECT_URL)</string>
 	<key>CatpawSupabasePublishableKey</key>
-	<string></string>
+	<string>$(CATPAW_SUPABASE_PUBLISHABLE_KEY)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
@@ -38,6 +38,8 @@
 	<string>仅在你主动开始说话时采集本句声音，用于设备支持的本地转写。原音不保存到长期记录。</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>仅在你主动选择相册图片时将该图片保存到当前本地项目；不会自动上传相册内容。</string>
+	<key>NSSupportsLiveActivities</key>
+	<true/>
 	<key>NSSpeechRecognitionUsageDescription</key>
 	<string>仅在你主动启用且设备支持本地识别时，将本句转成可编辑文字；不使用云端识别回退。</string>
 	<key>UIApplicationSceneManifest</key>

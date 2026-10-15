@@ -6,3 +6,11 @@ CODE_SIGN_IDENTITY[sdk=iphoneos*] = Apple Development
 INFOPLIST_FILE = Configuration/DeviceTrial.Info.plist
 SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEVICE_TRIAL
 SWIFT_OPTIMIZATION_LEVEL = -O
+
+// Public Supabase/Edge values for the real chain (no secrets). Defaults are empty = unconfigured.
+// Copy Local.xcconfig.example to Local.xcconfig (git-ignored) and fill it in.
+CATPAW_SUPABASE_PROJECT_URL =
+CATPAW_SUPABASE_PUBLISHABLE_KEY =
+CATPAW_BACKEND_ORIGIN =
+CATPAW_SERVER_SCOPE_ID =
+#include? "Local.xcconfig"

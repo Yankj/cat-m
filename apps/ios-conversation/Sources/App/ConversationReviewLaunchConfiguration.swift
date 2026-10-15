@@ -23,14 +23,17 @@ import CoreFoundation
         }
         guard environment["CATPAW_REVIEW_DISABLE"] != "1",validClock(now),
               let bytes=defaults.data(forKey:storageKey),let descriptor=descriptor(bytes,now:now) else {return environment}
+        // An expired QA loopback descriptor must not trap a normal launch on the
+        // "offline review expired" screen: drop it and start the real app path.
+        // (The QA store's files stay on disk; only the relaunch descriptor goes.)
+        if Double(descriptor.expiry)<=now.timeIntervalSince1970 {defaults.removeObject(forKey:storageKey);return environment}
         var restored=environment
         restored["CF_UI_TEST_SCENARIO"]="p0-ui-accepted-work"
         restored["CF_UI_TEST_STORE"]=descriptor.store
         restored["CATPAW_ACCEPTED_WORK_PORT"]=String(descriptor.port)
         restored["CATPAW_QA_VISUAL_REVIEW"]="1"
         restored["CATPAW_REVIEW_EXPIRES_AT"]=String(descriptor.expiry)
-        if Double(descriptor.expiry)<=now.timeIntervalSince1970 {restored["CATPAW_REVIEW_EXPIRED"]="1"}
-        else {restored.removeValue(forKey:"CATPAW_REVIEW_EXPIRED")}
+        restored.removeValue(forKey:"CATPAW_REVIEW_EXPIRED")
         return restored
         #else
         return environment
