@@ -141,12 +141,12 @@ final class P0NativeExperienceUITests:XCTestCase {
     }
     func testActualConsentAlertConfirmationDispatchesOriginalMessageOnce() {
         let app=launch("p0-ui-consent"),input=app.textViews["chat.input"]
-        clear(input);input.typeText("Synthetic explicit permission question");app.buttons["chat.send"].tap()
-        XCTAssertTrue(app.alerts.firstMatch.waitForExistence(timeout:5))
         XCTAssertEqual(probe(app)["synthetic_consent_calls"] as? Int,0)
         XCTAssertEqual(probe(app)["synthetic_reply_calls"] as? Int,0)
-        let allow=app.alerts.firstMatch.buttons.matching(NSPredicate(format:"label IN %@",["允许此对话","Allow this conversation"])).firstMatch
-        XCTAssertTrue(allow.exists);allow.tap()
+        clear(input);input.typeText("Synthetic explicit permission question");app.buttons["chat.send"].tap()
+        let allow=app.buttons["chat.modelConsent.allow"]
+        XCTAssertTrue(allow.waitForExistence(timeout:5),app.debugDescription)
+        XCTAssertTrue(allow.isEnabled && allow.isHittable);NativeUIGeometry.assertMinimumHeight(allow.frame);allow.tap()
         wait({self.probe(app)["synthetic_consent_calls"] as? Int == 1 && self.probe(app)["turn_state"] as? String == "running"},seconds:8)
         let reader=app.descendants(matching:.any)["chat.assistantMessage"].firstMatch
         XCTAssertTrue(reader.waitForExistence(timeout:2))
@@ -394,6 +394,11 @@ final class P0NativeExperienceUITests:XCTestCase {
         XCTAssertTrue(input.isHittable);XCTAssertTrue(app.buttons["chat.send"].exists);attach(app,name:"P0-Simulator-accessibility5-composer-stream")
     }
 
+    private func waitForClosedSidebarRoot(_ app:XCUIApplication) {
+        // Value restoration precedes the physical settling endpoint. Wait for
+        // actual gesture ownership, not an old input's cached AX value.
+        wait({!app.buttons["sidebar.close"].exists && !app.buttons["sidebar.scrim"].exists && app.buttons["sidebar.open"].exists && app.buttons["sidebar.open"].isEnabled && app.buttons["sidebar.open"].isHittable && app.textViews["chat.input"].isHittable},seconds:5)
+    }
     func testIntegratedSidebarRoutesSearchAndNativeBackPreserveSavedDraft(){
         let app=launch("p0-ui-lifecycle"),input=app.textViews["chat.input"]
         let original=input.value as? String
@@ -405,7 +410,7 @@ final class P0NativeExperienceUITests:XCTestCase {
         search.typeText(String(repeating:XCUIKeyboardKey.delete.rawValue,count:18));search.typeText("Saved local draft")
         let records=app.buttons.matching(NSPredicate(format:"identifier BEGINSWITH %@","sidebar.conversation."))
         XCTAssertEqual(records.count,1);records.firstMatch.tap()
-        XCTAssertEqual(input.value as? String,original)
+        XCTAssertEqual(input.value as? String,original);waitForClosedSidebarRoot(app)
         app.buttons["sidebar.open"].tap();app.buttons["sidebar.tasks"].tap()
         XCTAssertTrue(app.descendants(matching:.any)["navigation.tasks"].waitForExistence(timeout:3))
         XCTAssertFalse(app.buttons["sidebar.open"].exists)
@@ -427,7 +432,7 @@ final class P0NativeExperienceUITests:XCTestCase {
         let firstText="First unsent sidebar draft",secondText="Second independent sidebar draft"
         replaceAll(app,input,with:firstText)
         app.buttons["sidebar.open"].tap();app.buttons["sidebar.new"].tap()
-        wait({(input.value as? String) != firstText},seconds:5)
+        wait({(input.value as? String) != firstText},seconds:5);waitForClosedSidebarRoot(app)
         input.tap();input.typeText(secondText)
         app.buttons["sidebar.open"].tap()
         let firstRow=app.buttons.matching(NSPredicate(format:"identifier BEGINSWITH %@ AND label CONTAINS %@","sidebar.conversation.",firstText)).firstMatch
@@ -441,9 +446,9 @@ final class P0NativeExperienceUITests:XCTestCase {
         XCTAssertFalse(app.staticTexts["sidebar.empty"].exists);XCTAssertEqual(search.value as? String,search.placeholderValue)
         search.tap();search.typeText(firstText)
         XCTAssertEqual(app.buttons.matching(NSPredicate(format:"identifier BEGINSWITH %@","sidebar.conversation.")).count,1)
-        app.buttons[firstID].tap();XCTAssertEqual(input.value as? String,firstText)
+        app.buttons[firstID].tap();waitForClosedSidebarRoot(app);XCTAssertEqual(input.value as? String,firstText)
         app.buttons["sidebar.open"].tap();app.buttons["sidebar.search.clear"].tap();app.buttons[secondID].tap()
-        XCTAssertEqual(input.value as? String,secondText)
+        waitForClosedSidebarRoot(app);XCTAssertEqual(input.value as? String,secondText)
         XCTAssertEqual(probe(app)["synthetic_reply_calls"] as? Int,0)
         let restored=XCTAttachment(screenshot:app.screenshot());restored.name="Native-sidebar-returned-to-second-exact-draft";restored.lifetime = .keepAlways;add(restored)
         attach(app,name:"Native-sidebar-clear-search-scope-isolation-no-send")

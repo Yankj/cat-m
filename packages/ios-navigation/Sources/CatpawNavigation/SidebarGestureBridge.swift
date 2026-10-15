@@ -4,8 +4,9 @@ import UIKit
 
 /// A scoped recognizer, never a replacement for NavigationStack or a scroll delegate.
 struct SidebarGestureBridge: UIViewRepresentable {
-    var direction: SidebarDragDirection
     var enabled: Bool
+    var progress: CGFloat
+    var allowsContentPan: Bool
     var excludedAreas: [CGRect]
     var onBegan: () -> Void
     var onChanged: (CGFloat) -> Void
@@ -24,8 +25,8 @@ struct SidebarGestureBridge: UIViewRepresentable {
     }
     func updateUIView(_ view: AnchorView, context: Context) {
         context.coordinator.owner = self
-        // Keep an in-flight recognizer alive while SwiftUI updates the drawer.
-        context.coordinator.recognizer?.isEnabled = enabled || context.coordinator.tracking
+        // Root/scope/modal invalidation cancels the recognizer as well as motion.
+        context.coordinator.recognizer?.isEnabled = enabled
         context.coordinator.attach(view)
     }
     static func dismantleUIView(_ view: AnchorView, coordinator: Coordinator) {
@@ -43,6 +44,7 @@ struct SidebarGestureBridge: UIViewRepresentable {
         weak var target: UIView?
         var recognizer: UIPanGestureRecognizer?
         var tracking = false
+        weak var touchedTextView: UITextView?
         init(_ owner: SidebarGestureBridge) { self.owner = owner }
         func attach(_ view: AnchorView) {
             anchor = view
@@ -50,11 +52,7 @@ struct SidebarGestureBridge: UIViewRepresentable {
             detach()
             guard let parent = view.window else { return }
             target = parent
-            let pan: UIPanGestureRecognizer
-            if owner.direction == .opening {
-                let edge = UIScreenEdgePanGestureRecognizer(target: self, action: #selector(drag(_:)))
-                edge.edges = .left; pan = edge
-            } else { pan = UIPanGestureRecognizer(target: self, action: #selector(drag(_:))) }
+            let pan = UIPanGestureRecognizer(target: self, action: #selector(drag(_:)))
             pan.maximumNumberOfTouches = 1; pan.delegate = self
             pan.delaysTouchesBegan = false; pan.isEnabled = owner.enabled
             parent.addGestureRecognizer(pan); recognizer = pan
@@ -71,24 +69,55 @@ struct SidebarGestureBridge: UIViewRepresentable {
             if anchor.window?.rootViewController?.presentedViewController != nil { return false }
             let point = touch.location(in: anchor)
             guard anchor.bounds.contains(point), !owner.excludedAreas.contains(where: { $0.contains(point) }) else { return false }
+            touchedTextView = nil
             var node = touch.view
             while let view = node {
-                if view is UITextField || view is UITextView { return false }
+                if view is UITextField || view is UISlider || view is UISwitch { return false }
+                if let text = view as? UITextView {
+                    if textOwnsTouch(text) { return false }
+                    touchedTextView = text
+                }
                 if let scroll = view as? UIScrollView,
                    scroll.contentSize.width + scroll.adjustedContentInset.left + scroll.adjustedContentInset.right > scroll.bounds.width + 1 { return false }
                 node = view.superview
             }
-            return owner.direction == .closing || SidebarGesturePolicy.mayOpen(isAtRoot: true, isPresented: false,
-                startX: point.x, inHorizontalContent: false, inEditableControl: false)
+            return owner.progress > 0 || SidebarGesturePolicy.mayOpen(isAtRoot: true, isPresented: false,
+                startX: point.x, inHorizontalContent: false, inEditableControl: false, allowsContentPan: owner.allowsContentPan)
+        }
+        private func textOwnsTouch(_ text: UITextView) -> Bool {
+            SidebarGesturePolicy.textViewOwnsTouch(isEditable: text.isEditable, hasMarkedText: text.markedTextRange != nil,
+                selectionLength: text.selectedRange.length, selectionGestureActive: hasActiveSelectionGesture(text), isFirstResponder: text.isFirstResponder)
+        }
+        private func hasActiveSelectionGesture(_ view: UIView) -> Bool {
+            if (view.gestureRecognizers ?? []).contains(where: { $0 is UILongPressGestureRecognizer && ($0.state == .began || $0.state == .changed) }) { return true }
+            return view.subviews.contains(where: hasActiveSelectionGesture)
+        }
+        func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRequireFailureOf otherGestureRecognizer: UIGestureRecognizer) -> Bool {
+            guard gestureRecognizer === recognizer, let text = touchedTextView, text.isSelectable,
+                  otherGestureRecognizer is UILongPressGestureRecognizer, let view = otherGestureRecognizer.view else { return false }
+            // A short horizontal move fails the text long press by movement;
+            // a deliberate hold lets native selection win before root reveal.
+            return view === text || view.isDescendant(of: text)
+        }
+        func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldBeRequiredToFailBy otherGestureRecognizer: UIGestureRecognizer) -> Bool {
+            guard gestureRecognizer === recognizer, let scroll = otherGestureRecognizer.view as? UIScrollView,
+                  otherGestureRecognizer === scroll.panGestureRecognizer, scroll.isScrollEnabled else { return false }
+            // The root horizontal recognizer makes its axis decision first.
+            // Vertical reading proceeds as soon as our direction check fails;
+            // horizontal controls were excluded before either gesture begins.
+            return scroll.contentSize.width + scroll.adjustedContentInset.left + scroll.adjustedContentInset.right <= scroll.bounds.width + 1
         }
         func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
             guard owner.enabled, let pan = gestureRecognizer as? UIPanGestureRecognizer else { return false }
+            if let text = touchedTextView, textOwnsTouch(text) { return false }
             let velocity = pan.velocity(in: anchor)
-            return SidebarGesturePolicy.acceptsDirection(owner.direction, x: velocity.x, y: velocity.y)
+            return SidebarGesturePolicy.acceptsPan(progress: owner.progress, x: velocity.x, y: velocity.y)
         }
         @objc func drag(_ pan: UIPanGestureRecognizer) {
             switch pan.state {
-            case .began: tracking = true; owner.onBegan()
+            case .began:
+                tracking = true; owner.onBegan()
+                owner.onChanged(pan.translation(in: anchor).x)
             case .changed: owner.onChanged(pan.translation(in: anchor).x)
             case .ended, .cancelled, .failed:
                 guard tracking else { return }

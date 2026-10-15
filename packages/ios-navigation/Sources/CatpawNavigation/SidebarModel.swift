@@ -69,8 +69,24 @@ public enum SidebarGesturePolicy {
         max(0, min(320, available * 0.86, available - 44))
     }
     public static func mayOpen(isAtRoot: Bool, isPresented: Bool,
-                               startX: CGFloat, inHorizontalContent: Bool, inEditableControl: Bool) -> Bool {
-        isAtRoot && !isPresented && startX >= 0 && startX <= edgeWidth && !inHorizontalContent && !inEditableControl
+                               startX: CGFloat, inHorizontalContent: Bool, inEditableControl: Bool, allowsContentPan: Bool = false) -> Bool {
+        isAtRoot && !isPresented && startX >= 0 && (allowsContentPan || startX <= edgeWidth) && !inHorizontalContent && !inEditableControl
+    }
+    /// A TextKit display surface is not an editor. Active text selection still
+    /// owns its touch, including a long press that has not produced a range yet.
+    static func textViewOwnsTouch(isEditable: Bool, hasMarkedText: Bool, selectionLength: Int, selectionGestureActive: Bool, isFirstResponder: Bool = true) -> Bool {
+        // TextKit retains selectedRange after focus leaves. That historical range
+        // must not permanently convert a read-only display into a gesture owner.
+        isEditable || hasMarkedText || (isFirstResponder && selectionLength > 0) || selectionGestureActive
+    }
+    static func foregroundCornerRadius(progress: CGFloat) -> CGFloat {
+        progress.isFinite ? 24 * min(1, max(0, progress)) : 0
+    }
+    static func acceptsPan(progress: CGFloat, x: CGFloat, y: CGFloat) -> Bool {
+        guard x.isFinite, y.isFinite, progress.isFinite else { return false }
+        if progress <= 0 { return acceptsDirection(.opening, x: x, y: y) }
+        if progress >= 1 { return acceptsDirection(.closing, x: x, y: y) }
+        return abs(x) > abs(y) * 1.2
     }
     public static func acceptsDirection(_ direction: SidebarDragDirection, x: CGFloat, y: CGFloat) -> Bool {
         abs(x) > abs(y) * 1.2 && (direction == .opening ? x > 0 : x < 0)

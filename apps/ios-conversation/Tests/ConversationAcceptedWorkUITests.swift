@@ -48,8 +48,10 @@ final class ConversationAcceptedWorkUITests:XCTestCase {
     }
     private func confirm(_ app:XCUIApplication) {
         let confirm=app.buttons["chat.acceptedWork.confirm"];XCTAssertGreaterThanOrEqual(confirm.frame.height,44);XCTAssertTrue(confirm.isHittable);confirm.tap()
-        wait({app.alerts.firstMatch.exists || (self.probe(app)["accepted_work_decision_id"] as? String)?.isEmpty==false})
-        if app.alerts.firstMatch.exists {let allow=app.alerts.buttons["允许此对话"].exists ? app.alerts.buttons["允许此对话"]:app.alerts.buttons["Allow this conversation"];XCTAssertTrue(allow.exists,app.debugDescription);allow.tap()}
+        let nativeAllow=app.buttons["chat.modelConsent.allow"]
+        wait({nativeAllow.exists || app.alerts.firstMatch.exists || ["running","completed"].contains(self.probe(app)["turn_state"] as? String ?? "")})
+        if nativeAllow.exists {XCTAssertTrue(nativeAllow.isEnabled && nativeAllow.isHittable,app.debugDescription);nativeAllow.tap()}
+        else if app.alerts.firstMatch.exists {let allow=app.alerts.buttons["允许此对话"].exists ? app.alerts.buttons["允许此对话"]:app.alerts.buttons["Allow this conversation"];XCTAssertTrue(allow.exists,app.debugDescription);allow.tap()}
     }
     private func capture(_ app:XCUIApplication,_ label:String){let value=XCTAttachment(screenshot:app.screenshot());value.name="Synthetic-native-accepted-work-"+label;value.lifetime = .keepAlways;add(value)}
     func testReviewCloseColdReopenPreservesTermsThenRealHTTPPublishesOriginalReport() {
