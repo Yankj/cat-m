@@ -203,11 +203,17 @@ public struct ConversationTurnRequest: Codable, Sendable {
     public let acceptedWork:ConversationAcceptedWorkIntent?
     public let revisionWork:ConversationRevisionWorkIntent?
     public private(set) var imageBytes:Data? = nil
-    private enum CodingKeys:String,CodingKey {case scope,conversationID,threadID,operationID,epoch,history,context,image,continuation,continuationOriginalBinding,continuationSubjectID,acceptedWork,revisionWork}
+    /// catpaw.chat-attachments.v1: ready attachment ids sent as schema_version 2 `message.attachment_ids` (plain turns only).
+    /// Single use on the server: a resend of a FAILED turn needs a new upload under new ids (ChatAttachmentSendCoordinator).
+    public private(set) var attachmentIDs:[UUID]? = nil
+    private enum CodingKeys:String,CodingKey {case scope,conversationID,threadID,operationID,epoch,history,context,image,continuation,continuationOriginalBinding,continuationSubjectID,acceptedWork,revisionWork,attachmentIDs}
     public func withImageBytes(_ bytes:Data?) -> Self {var value=self;value.imageBytes=bytes;return value}
+    public func withAttachmentIDs(_ ids:[UUID]?) -> Self {var value=self;value.attachmentIDs=(ids?.isEmpty ?? true) ? nil : ids;return value}
+    public var hasUploadedAttachments:Bool {!(attachmentIDs ?? []).isEmpty}
     /// Re-anchors a plain (not work-frozen) unsent request on the current dispatchable history.
     public func withHistory(_ history:[ConversationTranscriptMessage]) -> Self {
-        .init(scope:scope,conversationID:conversationID,threadID:threadID,operationID:operationID,epoch:epoch,history:history,context:context,image:image,imageBytes:imageBytes,continuation:continuation,continuationOriginalBinding:continuationOriginalBinding,continuationSubjectID:continuationSubjectID)
+        let value=Self(scope:scope,conversationID:conversationID,threadID:threadID,operationID:operationID,epoch:epoch,history:history,context:context,image:image,imageBytes:imageBytes,continuation:continuation,continuationOriginalBinding:continuationOriginalBinding,continuationSubjectID:continuationSubjectID)
+        return value.withAttachmentIDs(attachmentIDs)
     }
     public init(scope: DataScope, conversationID: UUID, threadID: String?, operationID: UUID, epoch: Int, history: [ConversationTranscriptMessage], context: [ConversationExplicitContext] = [],image:ConversationVisionReference?=nil,imageBytes:Data?=nil,continuation:ConversationArtifactContinuationIntent?=nil,continuationOriginalBinding:ConversationTaskBinding?=nil,continuationSubjectID:UUID?=nil,acceptedWork:ConversationAcceptedWorkIntent?=nil,revisionWork:ConversationRevisionWorkIntent?=nil) {self.revisionWork=revisionWork; self.acceptedWork=acceptedWork;self.continuation=continuation;self.continuationOriginalBinding=continuationOriginalBinding;self.continuationSubjectID=continuationSubjectID;self.image=image;self.imageBytes=imageBytes;self.scope = scope; self.conversationID = conversationID; self.threadID = threadID; self.operationID = operationID; self.epoch = epoch; self.history = history; self.context = context }
     public func withRevisionWork(_ intent:ConversationRevisionWorkIntent) throws -> Self {

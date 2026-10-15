@@ -533,15 +533,21 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
             guard row.scope_id==configuration.serverScopeID,row.conversation_id==request.conversationID,row.decision=="allow",row.non_sensitive_confirmed,row.route_hash==image.routeHash,row.revision==image.consentRevision else {throw ConversationSessionError.notConfigured}
             body["schema_version"]=2;body["message"]=["id":message.id.uuidString.lowercased(),"text":message.content,"attachments":[try image.wire(imageBytes,messageID:message.id)]]
         } else {guard request.imageBytes==nil else {throw ConversationSessionError.invalidEvent}}
+        if let ids=request.attachmentIDs,!ids.isEmpty {
+            // catpaw.chat-attachments.v1 §4: uploaded ids instead of inline bytes; plain turns only, never mixed with `attachments`.
+            guard request.image==nil,request.imageBytes==nil,request.continuation==nil,request.acceptedWork==nil,request.revisionWork==nil,ids.count<=1,Set(ids).count==ids.count, // server VISION_LIMITS.max_count
+                  !message.content.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty else {throw ConversationSessionError.invalidEvent}
+            body["schema_version"]=2;body["message"]=ChatAttachmentUploader.turnMessage(id:message.id,text:message.content,ids:ids)
+        }
         let bytes=try Self.jsonData(body);guard bytes.count <= (request.image==nil ? 40000 : 7_100_000) else {throw CatpawError.invalid("本轮上下文超过后台请求上限。")}
 
         let encoded:Data
         if let target=request.continuation {guard request.image==nil,request.imageBytes==nil else {throw ConversationSessionError.invalidEvent};encoded=try Self.jsonData(["turn":body,"target":target.canonicalValue]);guard encoded.count<=48000 else {throw ConversationSessionError.invalidEvent}}
         else {encoded=bytes}
         var upload = try self.request(turnPath(request), auth: auth); upload.httpMethod = "POST"; upload.httpBody = encoded
-        if request.image==nil,request.continuation==nil,request.acceptedWork==nil {upload.setValue(ConversationMemoryProposalReceipt.contractName,forHTTPHeaderField:"X-Catpaw-Memory-Proposal-Contract")}
+        if request.image==nil,!request.hasUploadedAttachments,request.continuation==nil,request.acceptedWork==nil {upload.setValue(ConversationMemoryProposalReceipt.contractName,forHTTPHeaderField:"X-Catpaw-Memory-Proposal-Contract")}
         // catpaw.approval.v1 negotiation: only plain chat turns are offered approval-gated tools.
-        if Self.supportsResume(request),request.image==nil {upload.setValue(Self.approvalContract,forHTTPHeaderField:Self.approvalHeader)}
+        if Self.supportsResume(request),request.image==nil,!request.hasUploadedAttachments {upload.setValue(Self.approvalContract,forHTTPHeaderField:Self.approvalHeader)}
         upload.setValue(TimeZone.current.identifier,forHTTPHeaderField:Self.timeZoneHeader) // task tools resolve local times
         try Task.checkCancellation()
         return (auth, grant, upload)
@@ -617,7 +623,7 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
         case "turn_started":
             let receipts:[ConversationImageReceipt]?
             if let raw=data["attachment_receipts"] {receipts=try JSONDecoder().decode([ConversationImageReceipt].self,from:Self.jsonData(raw))} else {receipts=nil}
-            if let image=request.image {guard receipts==[image.receipt] else {throw ConversationSessionError.invalidEvent}} else {guard receipts==nil || receipts?.isEmpty==true else {throw ConversationSessionError.invalidEvent}}
+            if let image=request.image {guard receipts==[image.receipt] else {throw ConversationSessionError.invalidEvent}} else if let ids=request.attachmentIDs,!ids.isEmpty {guard let receipts,receipts.map(\.id)==ids else {throw ConversationSessionError.invalidEvent}} else {guard receipts==nil || receipts?.isEmpty==true else {throw ConversationSessionError.invalidEvent}}
             payload = .started(requestHash: try Self.sha(data["request_hash"]), conversationRevision: try Self.positive(data["conversation_revision"]), grantEpoch: grant,attachmentReceipts:receipts)
         case "text_delta":
             guard reality != "not_configured", let id = UUID(uuidString: data["message_id"] as? String ?? ""), let text = data["text"] as? String else { throw ConversationSessionError.invalidEvent }
@@ -627,12 +633,12 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
             let ms = (data["thinking_ms"] as? NSNumber).map { $0.intValue }
             payload = .reasoningSummary(messageID: id, text: text, thinkingMs: ms.flatMap { $0 >= 0 ? $0 : nil })
         case "tool_call":
-            guard request.image==nil else {throw ConversationSessionError.invalidEvent}
+            guard request.image==nil,!request.hasUploadedAttachments else {throw ConversationSessionError.invalidEvent}
             guard reality != "not_configured", let name = data["name"] as? String, ((["delegate_task", "delegate_plan_v1", "delegate_sources_v1", "agent_status", "propose_memory_v1"].contains(name) && request.continuation==nil) || (Self.approvalToolNames.contains(name) && Self.supportsResume(request)) || (name==(request.revisionWork==nil ? "revise_current_report_v1":ConversationRevisionWorkCodec.toolName) && request.continuation?.intent == .reviseReport)), let id = data["call_id"] as? String, !id.isEmpty else { throw ConversationSessionError.invalidEvent }
             if ["delegate_task", "delegate_plan_v1", "delegate_sources_v1"].contains(name), let args = data["arguments"] as? [String: Any], let title = args["title"] as? String, title.utf16.count <= 160 { toolTitles[request.operationID, default: [:]][id] = title }
             payload = .toolStarted(callID: id, name: name, arguments: String(decoding: try Self.jsonData(Self.object(data["arguments"])), as: UTF8.self))
         case "tool_result":
-            guard request.image==nil else {throw ConversationSessionError.invalidEvent}
+            guard request.image==nil,!request.hasUploadedAttachments else {throw ConversationSessionError.invalidEvent}
             guard reality != "not_configured", let name = data["name"] as? String, let call = data["call_id"] as? String, !call.isEmpty else { throw ConversationSessionError.invalidEvent }
             let result = try Self.object(data["result"]); var goals: [ConversationGoalProjection] = []
             var memoryProposal:ConversationMemoryProposalReceipt?
@@ -1310,7 +1316,10 @@ public actor ChatAttachmentUploader {
     }
     /// Turn message body for schema_version 2 with uploaded attachment ids.
     public static func turnMessage(id: UUID, text: String, attachments: [ChatAttachmentReceipt]) -> [String: Any] {
-        ["id": id.uuidString.lowercased(), "text": text, "attachment_ids": attachments.map { $0.id.uuidString.lowercased() }]
+        turnMessage(id: id, text: text, ids: attachments.map(\.id))
+    }
+    public static func turnMessage(id: UUID, text: String, ids: [UUID]) -> [String: Any] {
+        ["id": id.uuidString.lowercased(), "text": text, "attachment_ids": ids.map { $0.uuidString.lowercased() }]
     }
     private var base: String { "/catpaw/chat/v1/scopes/" + configuration.serverScopeID.uuidString.lowercased() + "/attachments" }
     private func attempt(_ bytes: Data, scope: DataScope, id: UUID, onState: @escaping @Sendable (ChatAttachmentUploadState) -> Void) async throws -> ChatAttachmentReceipt {
@@ -1527,3 +1536,53 @@ public actor CatpawDemoConversationBackend: ConversationBackend {
     }
 }
 #endif
+
+/// Keeps the composer's local image bytes for a turn until `turn_completed`, and re-uploads them under NEW
+/// attachment ids when that turn failed (the server consumed the old ids when it accepted the turn;
+/// catpaw.chat-attachments.v1 §4). Bytes never leave memory except through the uploader.
+public actor ChatAttachmentSendCoordinator {
+    public typealias Upload = @Sendable (_ bytes: Data, _ attachmentID: UUID) async throws -> ChatAttachmentReceipt
+    private let upload: Upload
+    private var kept: [UUID: [Data]] = [:]
+    private var receipts: [UUID: [ChatAttachmentReceipt]] = [:]
+    public init(upload: @escaping Upload) { self.upload = upload }
+    public init(uploader: ChatAttachmentUploader, scope: DataScope) {
+        self.init(upload: { bytes, id in try await uploader.upload(bytes, scope: scope, attachmentID: id) })
+    }
+    /// Uploads each image under a fresh id, keeps the bytes for `request.operationID`, and returns the request
+    /// carrying `attachmentIDs`. Calling again for the same operation reuses the ready ids (no second upload).
+    public func attach(_ images: [Data], to request: ConversationTurnRequest) async throws -> ConversationTurnRequest {
+        guard !images.isEmpty else { return request.withAttachmentIDs(nil) }
+        if let ready = receipts[request.operationID], kept[request.operationID] == images { return request.withAttachmentIDs(ready.map(\.id)) }
+        var uploaded: [ChatAttachmentReceipt] = []
+        for bytes in images {
+            let receipt = try await upload(bytes, UUID())
+            uploaded.append(receipt)
+        }
+        kept[request.operationID] = images; receipts[request.operationID] = uploaded
+        return request.withAttachmentIDs(uploaded.map(\.id))
+    }
+    /// The local copy for a turn (for the bubble preview and for a retry). nil once completed.
+    public func localImages(for operationID: UUID) -> [Data]? { kept[operationID] }
+    public func attachmentIDs(for operationID: UUID) -> [UUID]? { receipts[operationID]?.map(\.id) }
+    /// `turn_completed`: the server has used the image; drop the local bytes.
+    public func turnCompleted(_ operationID: UUID) { kept[operationID] = nil; receipts[operationID] = nil }
+    /// User discarded the draft/turn without retrying.
+    public func discard(_ operationID: UUID) { turnCompleted(operationID) }
+    /// The turn `failed` after the server accepted it: upload the kept bytes again under NEW ids for the retry
+    /// turn `retry` (a new operationID), and move the local copy to it. Throws if nothing was kept.
+    public func reattach(after failedOperationID: UUID, to retry: ConversationTurnRequest) async throws -> ConversationTurnRequest {
+        guard let images = kept[failedOperationID], !images.isEmpty else { throw ChatAttachmentUploadError.expired }
+        let old = Set(receipts[failedOperationID]?.map(\.id) ?? [])
+        var uploaded: [ChatAttachmentReceipt] = []
+        for bytes in images {
+            var id = UUID()
+            while old.contains(id) { id = UUID() }
+            let receipt = try await upload(bytes, id)
+            uploaded.append(receipt)
+        }
+        kept[failedOperationID] = nil; receipts[failedOperationID] = nil
+        kept[retry.operationID] = images; receipts[retry.operationID] = uploaded
+        return retry.withAttachmentIDs(uploaded.map(\.id))
+    }
+}
