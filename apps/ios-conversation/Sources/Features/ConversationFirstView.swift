@@ -283,7 +283,8 @@ import CatpawImageComposer
                     else {ConversationResultList(model:model)}
                 case .memory:
                     if let service=model.memoryService {
-                        ConversationMemoryView(service:service,conversationID:model.conversationID,admissionAllowed:{model.loaded && model.networkAdmissionAllowed && scene == .active})
+                        // wave2 V1: new memory page; the reviewed-command page stays reachable as its advanced section.
+                        MemoryLibraryView(backend:MemoryLibraryHub.backend ?? ConversationMemoryLibraryAdapter(service:service),advanced:AnyView(ConversationMemoryView(service:service,conversationID:model.conversationID,admissionAllowed:{model.loaded && model.networkAdmissionAllowed && scene == .active})))
                     }
                 case .task(let id):ConversationTaskDetail(model:model,id:id,openArtifact:{artifact in path.append(.artifact(id,ConversationArtifactIdentity(artifact)))})
                 case .artifact(let goal,let identity):ConversationArtifactDetail(model:model,goalID:goal,identity:identity,continueArtifact:{mode,selected in
