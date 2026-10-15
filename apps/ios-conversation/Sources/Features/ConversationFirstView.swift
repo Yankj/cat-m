@@ -815,15 +815,16 @@ import CatpawImageComposer
         if message.role == .user {
             VStack(alignment:.trailing,spacing:4) {
                 ConversationUserMessageLayout {
-                    Text(message.content).font(CatpawTypography.Role.body.font).textSelection(.enabled)
+                    Text(message.content).font(CatpawTypography.Role.body.font)   // selection moved to the long-press 选择 sheet
                         .foregroundStyle(CatpawColors.userMessageInk).padding(.horizontal,14).padding(.vertical,9)
                         .background(CatpawColors.userMessageBackground,in:RoundedRectangle(cornerRadius:20,style:.continuous))
+                        .messageLongPress(id:message.id.uuidString,content:.text(message.content),alignment:.trailing,onReply:quote){userBubblePreview(message)}   // long-press menu (MessageActions/)
                 }
                     .accessibilityIdentifier("chat.userMessage")
                     #if DEBUG
                     .background { if let id=operationID(message),probe.enabled { P0EchoWitness(operationID:id) } }
                     #endif
-                if message.image != nil {Label(ui("附带图片"),systemImage:"photo").font(CatpawTypography.Role.caption.font).accessibilityIdentifier("chat.message.image")}
+                if message.image != nil {MessageImageThumbnail(id:message.id.uuidString,load:{await loadMessageImage(turnID)},onReply:quote)}
                 if let id=operationID(message) {
                     if connectionMonitor.waitingForNetwork.contains(id) {
                         Text(ui("等待网络")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
@@ -880,7 +881,17 @@ import CatpawImageComposer
 
         } else {
             assistantMessage(message,turnID:turnID)
+                .messageLongPress(id:message.id.uuidString,content:.text(message.content),enabled:message.complete && !message.content.isEmpty,onReply:quote){ConversationAnswerView(message:message,canQuote:false,quote:{_ in})}
         }
+    }
+    // Long-press / image helpers (MessageActions/). Minimal: no change to row layout.
+    private func userBubblePreview(_ message:ConversationTranscriptMessage)->some View {
+        Text(message.content).font(CatpawTypography.Role.body.font).foregroundStyle(CatpawColors.userMessageInk).padding(.horizontal,14).padding(.vertical,9)
+            .background(CatpawColors.userMessageBackground,in:RoundedRectangle(cornerRadius:20,style:.continuous))
+    }
+    private func loadMessageImage(_ turnID:UUID?) async -> Data? {
+        guard let turnID,let session=model.session,let reference=session.turns.first(where:{$0.id==turnID})?.request.image else {return nil}
+        return try? await model.imageStore.read(reference:reference,conversationID:session.conversationID,operationID:turnID)
     }
     @ViewBuilder private func assistantMessage(_ message:ConversationTranscriptMessage,turnID:UUID?)->some View {
         if let turnID,let turn=model.session?.turns.first(where:{$0.id==turnID}),usesPhasedAnswer(turn,message:message) {
