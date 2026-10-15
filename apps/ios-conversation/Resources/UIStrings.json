@@ -387,6 +387,10 @@
     "en": "Edit",
     "zh-Hans": "修改"
   },
+  "修改回执待核对": {
+    "en": "Revision receipt needs verification",
+    "zh-Hans": "修改回执待核对"
+  },
   "修改基于版本": {
     "en": "Editing version",
     "zh-Hans": "修改基于版本"
@@ -438,6 +442,18 @@
   "修改记忆": {
     "en": "Edit memory",
     "zh-Hans": "修改记忆"
+  },
+  "修改请求失败 · ": {
+    "en": "Revision request failed · ",
+    "zh-Hans": "修改请求失败 · "
+  },
+  "修改请求已受理": {
+    "en": "Revision request accepted",
+    "zh-Hans": "修改请求已受理"
+  },
+  "修改这份成果需要新的工作约定，请先核对后确认。": {
+    "en": "Revising this report requires new work terms. Review and confirm them first.",
+    "zh-Hans": "修改这份成果需要新的工作约定，请先核对后确认。"
   },
   "修改这版": {
     "en": "Revise this version",
@@ -2683,6 +2699,14 @@
     "en": "Local private data available",
     "zh-Hans": "本机私有数据可用"
   },
+  "本次修改沿用原任务和所选版本，需要新的期限、预算与执行范围；不会沿用原工作的额度。": {
+    "en": "This revision keeps the original task and selected version. Review a new deadline, budget, and execution scope; the original work allowance is not reused.",
+    "zh-Hans": "本次修改沿用原任务和所选版本，需要新的期限、预算与执行范围；不会沿用原工作的额度。"
+  },
+  "本次修改的成果": {
+    "en": "Report selected for this revision",
+    "zh-Hans": "本次修改的成果"
+  },
   "本次原决定编号": {
     "en": "This original decision ID",
     "zh-Hans": "本次原决定编号"
@@ -2771,6 +2795,10 @@
     "en": "Review, edit or pause messages queued on this device",
     "zh-Hans": "查看、编辑或暂停本机待发消息"
   },
+  "查看修改进展": {
+    "en": "View revision progress",
+    "zh-Hans": "查看修改进展"
+  },
   "查看完整表": {
     "en": "View full table",
     "zh-Hans": "查看完整表"
@@ -2858,6 +2886,10 @@
   "核对并保存记忆": {
     "en": "Review and save memory",
     "zh-Hans": "核对并保存记忆"
+  },
+  "核对本次修改的工作约定": {
+    "en": "Review work terms for this revision",
+    "zh-Hans": "核对本次修改的工作约定"
   },
   "核验 {0} 次": {
     "en": "Verified {0} times",
@@ -2998,6 +3030,10 @@
   "正在本机保存": {
     "en": "Saving on this device",
     "zh-Hans": "正在本机保存"
+  },
+  "正在核对修改请求…": {
+    "en": "Checking the revision request…",
+    "zh-Hans": "正在核对修改请求…"
   },
   "正在检查本地连接": {
     "en": "Checking local connection",

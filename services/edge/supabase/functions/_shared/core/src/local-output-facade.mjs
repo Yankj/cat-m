@@ -1,3 +1,4 @@
+import {resolveExecutionGrantInTransaction} from './task-work-execution-selector.mjs';
 import {evaluateReport,completionAuthorityValid} from './report-completion.mjs';
 import { Facade } from '../facade-r2/src/facade.mjs';
 import { ApiError,check,hash,iso,clone,shape,immutableBody } from '../facade-r2/src/common.mjs';
@@ -17,7 +18,7 @@ export class LocalOutputFacade extends Facade {
   async readPlan(auth,scope,runID){return readTaskPlan(this,auth,scope,runID);}
   async readPlanAmendment(auth,scope,runID,operationID){return readTaskPlan(this,auth,scope,runID,operationID);}
   async amendPlan(auth,scope,runID,input){return amendTaskPlan(this,auth,scope,runID,input);}
-  async effectiveRequest(owner,taskID){return this.repository.transaction(async tx=>{const {task,run}=await this.admittedTask(tx,owner,taskID,{running:true}),frozen=await effectiveTaskRequest(tx,owner,run,task),revision=await taskRevisionContextInTransaction(this,tx,owner,run,task);return {...frozen,task_execution:workerExecutionContext(run,task),...revision?{task_revision_context:revision}:{}};});}
+  async effectiveRequest(owner,taskID){return this.repository.transaction(async tx=>{const {task,run}=await this.admittedTask(tx,owner,taskID,{running:true}),frozen=await effectiveTaskRequest(tx,owner,run,task),revision=await taskRevisionContextInTransaction(this,tx,owner,run,task);const execution=await resolveExecutionGrantInTransaction(tx,owner,run,task);let effective=frozen;if(execution?.revision_binding){const rt=execution.revision.turn,{memory_usage:oldMemoryUsage,...base}=frozen;effective={...base,context:clone(rt.input.context),source_auth:clone(execution.source_auth),work_grant_reference:clone(execution.reference),memory_generation:execution.terms.memory_generation,...rt.memory_usage?{memory_usage:clone(rt.memory_usage)}:{},turn_id:rt.id};}return {...effective,task_execution:workerExecutionContext(run,task),...revision?{task_revision_context:revision}:{}};});}
   async planCheckpointReady(owner,taskID,leaseID){return this.repository.transaction(async tx=>{const {task,run}=await this.admittedTask(tx,owner,taskID,{running:true});check(task.leaseId===leaseID,409,'lease_lost');return taskPlanCheckpointReady(tx,owner,run,task);});}
   async planExecutionDisposition(owner,taskID,leaseID){return this.repository.transaction(async tx=>{const {task,run}=await this.admittedTask(tx,owner,taskID,{running:true});check(task.leaseId===leaseID,409,'lease_lost');return taskPlanExecutionDisposition(tx,owner,run,task);});}
   async applyPlanCheckpoint(tx,owner,taskID,leaseID,{assertLive=()=>{}}={}){
@@ -90,15 +91,15 @@ export class LocalOutputFacade extends Facade {
   }
   async runProjection(tx,owner,id){
     let generationCurrent=true;
-    if(this.memoryGenerationEnabled){const run=await tx.get(owner,'catpaw-runs',id);check(run?.frozen_request?.scope,404,'not_found');await tx.withScope(run.frozen_request.scope.scope_id,async scoped=>{generationCurrent=(await scoped.scope()).generation===run.frozen_request.memory_generation;});}
+    if(this.memoryGenerationEnabled){const run=await tx.get(owner,'catpaw-runs',id);check(run?.frozen_request?.scope,404,'not_found');const task=await tx.get(owner,'tasks',run.task_id),execution=await resolveExecutionGrantInTransaction(tx,owner,run,task);await tx.withScope(run.frozen_request.scope.scope_id,async scoped=>{generationCurrent=(await scoped.scope()).generation===(execution?.terms.memory_generation??run.frozen_request.memory_generation);});}
     const projection=await super.runProjection(tx,owner,id);if(!generationCurrent)projection.run.authorization_state='superseded';
-    const run=await tx.get(owner,'catpaw-runs',id),task=await tx.get(owner,'tasks',run.task_id),plan=await planSnapshot(tx,owner,run,task);if(plan)projection.plan=plan;return projection;
+    const run=await tx.get(owner,'catpaw-runs',id),task=await tx.get(owner,'tasks',run.task_id),plan=await planSnapshot(tx,owner,run,task);if(plan)projection.plan=plan;const current=await resolveExecutionGrantInTransaction(tx,owner,run,task);if(current?.revision_binding){const grant=await tx.get(owner,current.kinds.grants,current.reference.grant_id);if(grant?.state!=='active')projection.run.authorization_state='superseded';}projection.run.revision_requires_new_work=Boolean(run.frozen_request.work_grant_reference);if(projection.run.revision_requires_new_work)projection.run.revision_work_policy={tool_policy:run.frozen_request.public_sources?'public_sources_v1':'local_output_v1',source_count:run.frozen_request.public_sources?.sources.length??0};return projection;
   }
   async admittedTask(tx,owner,id,options={}) {
     if(this.memoryGenerationEnabled){
       const task=await tx.get(owner,'tasks',id),run=task?.state?.catpaw?await tx.get(owner,'catpaw-runs',task.state.catpaw.run_id):null;
       check(run?.frozen_request?.scope,409,'unmanaged_task');
-      await tx.withScope(run.frozen_request.scope.scope_id,async scoped=>{const row=await scoped.scope();check(row.identity.owner===owner&&row.generation===run.frozen_request.memory_generation,409,'memory_generation_superseded');});
+      const execution=await resolveExecutionGrantInTransaction(tx,owner,run,task);await tx.withScope(run.frozen_request.scope.scope_id,async scoped=>{const row=await scoped.scope();check(row.identity.owner===owner&&row.generation===(execution?.terms.memory_generation??run.frozen_request.memory_generation),409,'memory_generation_superseded');});
     }
     return super.admittedTask(tx,owner,id,options);
   }

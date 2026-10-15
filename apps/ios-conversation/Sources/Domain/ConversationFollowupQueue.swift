@@ -7,7 +7,8 @@ public struct ConversationFollowup:Codable,Sendable,Identifiable,Equatable {
     public let image:ConversationVisionReference?
     public let continuation:ConversationArtifactContinuationIntent?
     public let acceptedWork:ConversationAcceptedWorkSelection?
-    public init(id:UUID=UUID(),text:String,image:ConversationVisionReference?=nil,continuation:ConversationArtifactContinuationIntent?=nil,acceptedWork:ConversationAcceptedWorkSelection?=nil) {self.id=id;self.text=text;self.image=image;self.continuation=continuation;self.acceptedWork=acceptedWork}
+    public let revisionWork:ConversationRevisionWorkSelection?
+    public init(id:UUID=UUID(),text:String,image:ConversationVisionReference?=nil,continuation:ConversationArtifactContinuationIntent?=nil,acceptedWork:ConversationAcceptedWorkSelection?=nil,revisionWork:ConversationRevisionWorkSelection?=nil) {self.revisionWork=revisionWork;self.id=id;self.text=text;self.image=image;self.continuation=continuation;self.acceptedWork=acceptedWork}
 }
 public enum FollowupPauseReason:String,Codable,Sendable {case user,background,preflight,recovery}
 public struct ConversationFollowupState:Codable,Sendable {
