@@ -186,6 +186,7 @@ export class ChatService {
     env.assertDispatchReady=()=>{env.assertLive();check(deadline-now()>=(this.providerTimeoutMs??20000)+(this.finalizationReserveMs??5000),503,'chat_dispatch_budget_exhausted',{reconciliation:true});};
     const deadlineTimer=setTimeout(()=>env.controller?.abort(deadlineError()),Math.max(0,deadline-now()));
     let batcher=null,phase='turn_start';
+    const stopCancelWatch=this.watchCancel(env);
     const visionUserIndex=env.turn.model_history.length-1;
     const messageID=stableUUID(`${env.turn.id}:assistant`);let text='';const messages=clone(env.turn.model_history);
     try {
@@ -238,7 +239,7 @@ export class ChatService {
       const safeCode=failure instanceof ApiError?failure.code:'turn_interrupted';
       console.info(JSON.stringify({event:'catpaw_chat_interrupted',phase,elapsed_ms:Math.max(0,now()-startedAt),code:safeCode,abort_kind:env.signal.reason instanceof ApiError?env.signal.reason.code:'other',sqlstate:/^[0-9A-Z]{5}$/.test(failure?.code??'')?failure.code:null}));
       try{await this.fail(env,failure);}catch(fenced){if(!this.integration||!['runtime_lease_lost','turn_runtime_fenced'].includes(fenced.code))throw fenced;}
-    }finally{clearTimeout(deadlineTimer);if(batcher)await batcher.stop();for(const attachment of env.visionAttachments??[])attachment.bytes.fill(0);env.visionAttachments=[];}
+    }finally{stopCancelWatch();clearTimeout(deadlineTimer);if(batcher)await batcher.stop();for(const attachment of env.visionAttachments??[])attachment.bytes.fill(0);env.visionAttachments=[];}
   }
   async complete(env,messageID,text,modelMessages){
     const started=this.metrics.now();
@@ -312,6 +313,39 @@ export class ChatService {
       check(afterSequence<=t.events.length,422,'invalid_cursor');check(c.state==='active'&&c.grant_epoch===t.grant_epoch,409,'grant_conflict');
       const {input,history,model_history,subject_id,source_auth,dispatch_checkpoint,revision_target,memory_extraction,memory_proposal_call,source_sensitivity,...projection}=t;return {...projection,...revision_target?{revision_target:clone(revision_target.target)}:{},events:t.events.filter(e=>e.sequence>afterSequence),next_cursor:`${t.id}:${t.events.length}`};
     });}finally{this.metrics.record('observer_snapshot',started);}
+  }
+  // User cancel of one running turn. The durable turn row is the cancel marker:
+  // it commits state 'failed' + turn_failed{code:'cancelled'} under the
+  // conversation lock, so any executor (this or another instance) is fenced at
+  // its next write and its cancel poll aborts the model stream. Already
+  // committed events (reasoning_summary/text_delta/tool_*) are kept as-is.
+  async cancel(auth,scopeID,cid,tid){
+    check(UUID.test(cid)&&UUID.test(tid),422,'schema_invalid');
+    const {owner,principal}=await this.scoped(auth,scopeID);
+    const result=await this.repository.transaction(async tx=>{
+      await this.integration?.lockScope?.(tx,scopeID);
+      await tx.lock(owner,'native-chat-conversations',cid);
+      await this.conversation(tx,owner,cid,principal.subject_id,scopeID);
+      const t=await tx.get(owner,'native-chat-turns',tid);
+      check(t&&t.conversation_id===cid&&t.scope_id===scopeID&&t.subject_id===principal.subject_id,404,'not_found');
+      if(terminal(t.state))return {turn:t,cancelled:t.error?.code==='cancelled',changed:false};
+      const committed=t.events.filter(e=>e.type==='text_delta').map(e=>e.data.text).join('');
+      const error={code:'cancelled',retryable:false,reconciliation_required:false,partial_text_hash:hash(committed),partial_text_length:committed.length};
+      const saved=await tx.put(owner,'native-chat-turns',{...t,state:'failed',error,cancel_requested_at:iso(),finished_at:iso(),events:[...t.events,this.event(t,'turn_failed',error)]});
+      return {turn:saved,cancelled:true,changed:true};
+    });
+    if(result.changed){this.active.get(`${owner}:${tid}`)?.controller.abort(new ApiError(409,'cancelled'));this.notify(owner,result.turn);}
+    return {turn_id:tid,state:result.turn.state,cancelled:result.cancelled,already_terminal:!result.changed};
+  }
+  // Cross-instance discovery: the executor polls its own turn row; any
+  // non-running state (cancel, revoke) aborts the in-flight model call.
+  watchCancel(env){
+    const ms=this.cancelPollMs??1500;let stopped=false,timer=null;
+    const tick=async()=>{if(stopped||env.signal.aborted)return;
+      try{const t=await this.repository.transaction(tx=>tx.get(env.owner,'native-chat-turns',env.turn.id));if(!stopped&&t&&terminal(t.state)){env.controller?.abort(new ApiError(409,t.error?.code==='cancelled'?'cancelled':'grant_conflict'));return;}}catch{/* transient read: poll again */}
+      if(!stopped)timer=setTimeout(tick,ms);};
+    timer=setTimeout(tick,ms);
+    return ()=>{stopped=true;clearTimeout(timer);};
   }
   async control(auth,scopeID,cid,input){
     shape(input,['action','expected_revision','expected_grant_epoch']);check(['pause','revoke'].includes(input.action)&&positive(input.expected_revision)&&positive(input.expected_grant_epoch),422,'schema_invalid');
