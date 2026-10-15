@@ -74,3 +74,12 @@ test('storage adapter: signed upload path, service auth header, bounded download
  await s.remove('u/a');assert.deepEqual(seen.map(x=>x.method),['POST','GET','GET','DELETE']);assert.ok(seen.every(x=>x.auth));
  assert.throws(()=>createStorageAdapter({url:'http://x',serviceKey:'k'}));
 });
+test('a late PUT on a still-valid signed URL after consumption is deleted again once the URLs expire',async()=>{
+ const {f,storage,chat}=await setup();let now=Date.now();f.runtime.chat.attachments.now=()=>now;const bytes=png(),id=randomUUID();
+ const create={attachment_id:id,mime_type:'image/png',size_bytes:bytes.length,sha256:sha(bytes)};
+ const c=await (await f.req(chat+'/attachments',create)).json();storage.put(c.upload.url,Buffer.from([1,2,3]));
+ assert.equal((await f.json(await f.req(chat+`/attachments/${id}/complete`,'{}'))).attachment.state,'rejected');
+ storage.put(c.upload.url,Buffer.from([4]));assert.equal(storage.objects.size,1,'late PUT recreated the object');
+ await f.req(chat+'/attachments',{...create,attachment_id:randomUUID()});assert.equal(storage.objects.has(`${f.principal.subject_id}/${id}`),true,'URL still valid: not yet');
+ now+=7201*1000;await f.req(chat+'/attachments',{...create,attachment_id:randomUUID()});assert.equal(storage.objects.has(`${f.principal.subject_id}/${id}`),false);
+});
