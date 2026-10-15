@@ -48,7 +48,11 @@ export class AttachmentService{
   async owned(tx,trusted,scopeID,id){const a=await tx.get(trusted.owner,KIND,id);check(a&&a.subject_id===trusted.principal.subject_id&&a.scope_id===scopeID,404,'attachment_not_found');return a;}
   async sweep(trusted){
     // Best-effort: expire this owner's stale uploads and delete their objects.
-    const now=this.now(),stale=(await this.repository.transaction(tx=>tx.list(trusted.owner,KIND))).filter(a=>a.subject_id===trusted.principal.subject_id&&['pending','ready'].includes(a.state)&&Date.parse(a.expires_at)<=now);
+    const now=this.now(),mine=(await this.repository.transaction(tx=>tx.list(trusted.owner,KIND))).filter(a=>a.subject_id===trusted.principal.subject_id);
+    // A signed upload URL stays valid for 2 h even after the object was deleted, so a late or
+    // repeated PUT can recreate it: delete again once every issued URL has expired.
+    for(const a of mine.filter(a=>['consumed','rejected','expired'].includes(a.state)&&!a.object_cleared&&Date.parse(a.upload_expires_at??a.created_at)<=now).slice(0,8)){try{await this.storage.remove(a.object_path);await this.repository.transaction(async tx=>{await tx.lock(trusted.owner,KIND,a.id);const cur=await tx.get(trusted.owner,KIND,a.id);if(cur&&!cur.object_cleared&&cur.state===a.state)await tx.put(trusted.owner,KIND,{...cur,object_cleared:true,updated_at:iso()});});}catch{}}
+    const stale=mine.filter(a=>['pending','ready'].includes(a.state)&&Date.parse(a.expires_at)<=now);
     for(const a of stale.slice(0,8)){try{await this.storage.remove(a.object_path);await this.repository.transaction(async tx=>{await tx.lock(trusted.owner,KIND,a.id);const cur=await tx.get(trusted.owner,KIND,a.id);if(cur&&['pending','ready'].includes(cur.state))await tx.put(trusted.owner,KIND,{...cur,state:'expired',updated_at:iso()});});}catch{}}
   }
   async create(auth,scopeID,input){
@@ -69,8 +73,9 @@ export class AttachmentService{
       await tx.put(owner,KIND,a);return a;
     });
     if(record.state!=='pending')return {attachment:this.public(record),upload:null};
-    const url=await this.storage.signUpload(record.object_path);
-    return {attachment:this.public(record),upload:{method:'PUT',url,headers:{'Content-Type':record.mime_type,'x-upsert':'false'},expires_at:new Date(this.now()+ATTACHMENT_LIMITS.upload_url_ttl_seconds*1000).toISOString()}};
+    const url=await this.storage.signUpload(record.object_path),uploadExpires=new Date(this.now()+ATTACHMENT_LIMITS.upload_url_ttl_seconds*1000).toISOString();
+    await this.repository.transaction(async tx=>{await tx.lock(owner,KIND,record.id);const cur=await tx.get(owner,KIND,record.id);if(cur)await tx.put(owner,KIND,{...cur,upload_expires_at:uploadExpires});});
+    return {attachment:this.public(record),upload:{method:'PUT',url,headers:{'Content-Type':record.mime_type,'x-upsert':'false'},expires_at:uploadExpires}};
   }
   async read(auth,scopeID,id){check(UUID.test(id),422,'attachment_id_invalid');const trusted=await this.chat.scoped(auth,scopeID);return {attachment:this.public(await this.repository.transaction(tx=>this.owned(tx,trusted,scopeID,id)))};}
   async complete(auth,scopeID,id){

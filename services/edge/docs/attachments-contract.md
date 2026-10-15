@@ -51,6 +51,8 @@ valid 2 h). Use a background `URLSession` upload task for progress. Never log th
 - When the turn is accepted the object is deleted and the attachment becomes `consumed`; image bytes are
   used for this turn only (no image history, no re-use). Resending the **same** `turn_id` returns the
   replay (`{turn, replayed:true}`), never a second model call.
+- If that turn then fails (e.g. upstream `rate_limited`), the image is already gone: to retry, upload it again
+  under a new `attachment_id` (keep the local copy until `turn_completed`).
 - Image turns run without tools; the SSE events are unchanged (see turn-cancel-contract.md for cancel).
 
 ## Legacy
@@ -63,4 +65,5 @@ accepted. `attachments` and `attachment_ids` are mutually exclusive.
 Private bucket `chat-attachments` (5 MiB, PNG/JPEG), path `{subject_id}/{attachment_id}`; a restrictive
 policy denies all anon/authenticated access, only catpaw-api (service role) reads/deletes. Attachment state
 is kept in the existing record store (kind `chat-attachments`); stale pending/ready uploads are expired and
-deleted lazily on the owner's next create.
+deleted lazily on the owner's next create. Because a signed URL stays valid for 2 h, a late PUT after
+consume/reject can recreate the object; the same sweep deletes it again once the URL has expired.
