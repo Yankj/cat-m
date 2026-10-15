@@ -1,47 +1,47 @@
 import SwiftUI
 import UIKit
 
-/// r11 "Paw frees your hands" launch (pure SwiftUI, ≤1.2s, always completes).
+/// r11b launch: one cute centred jelly paw, animated in place (≤1.0s, motion from frame 0, always completes).
 /// Frame 0 is pixel-identical to the static launch screen (Info.plist UILaunchScreen = `LaunchCanvas` colour +
-/// `LaunchPaw` image, screen-centred, native point size). `LaunchPaw` is rendered by design/brand/render_brand.py as
-/// `LaunchGlow` + `LaunchPawMark`, and this view draws exactly those two layers at the same size/position, so the
-/// hand-off from the system launch screen has no gap or flash.
-/// Timeline (s): 0–0.14 three task cards rise in · 0.16/0.33/0.50 paw taps card 1/2/3 (each pops into a check, light haptic)
-/// · 0.50–0.82 paw lifts back and relaxes with a little bounce · 0.70–0.92 cards fly into the "Catpaw" wordmark
-/// · 1.00–1.20 crossfade into the app. Reduce Motion: static mark, wordmark fades in, short crossfade.
+/// `LaunchPaw` image, screen-centred, native point size). `LaunchPaw` = `LaunchGlow` + `LaunchPawMark`, and
+/// `LaunchPawMark` is itself the composite of `LaunchPawPad` + `LaunchPawToe0…3` (design/brand/render_brand.py),
+/// so this view draws exactly the same pixels at the same place. The paw never leaves its position, so the system
+/// launch snapshot cross-fading out underneath never shows as a ghost.
+/// Timeline (s): 0–0.36 soft squash → stretch → settle bounce · 0.18–0.60 toes spread and curl in sequence (a tiny wave)
+/// · 0.28–0.68 highlight shimmer sweeps across the pads · 0.52–0.72 "Catpaw" wordmark fades up · 0.80–1.00 crossfade.
+/// Reduce Motion: static paw, wordmark fades in, short crossfade.
 @MainActor struct LaunchMarkView: View {
-    /// Kept for call-site compatibility; the animation no longer waits on restore (it always completes ≤1.2s).
+    /// Kept for call-site compatibility; the animation never waits on restore.
     var restoring: Bool = false
     var onFinished: () -> Void
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var clock = LaunchClock()
-    @State private var taps = 0
+    @State private var beat = 0
     @State private var finished = false
 
-    static let total: Double = 1.2
-    static let tapTimes: [Double] = [0.16, 0.33, 0.50]
-    static let cardX: [CGFloat] = [-78, 0, 78]
-    static let cardY: CGFloat = 158
-    static let wordY: CGFloat = 150
+    static let total: Double = 1.0
+    static let pawPoints: CGFloat = 160
+    static let wordY: CGFloat = 128
+    /// Toe centres in the paw's 24-unit grid (PawMark.pads indices 3…6).
+    static let toes: [(CGFloat, CGFloat)] = [(4.9, 9.7), (9.3, 5.3), (14.7, 5.3), (19.1, 9.7)]
 
     var body: some View {
         TimelineView(.animation(paused: finished)) { context in
-            // Startup can stall the main thread for a few hundred ms; the clock advances at most 1/30s per rendered
-            // frame so every beat (taps, checks, bounce, fly-in) is actually seen instead of being skipped.
+            // Startup can stall the main thread; the clock advances at most 1/30s per rendered frame so every beat is seen.
             let t = clock.advance(to: context.date)
             frame(LaunchFrame(t: t, reduceMotion: reduceMotion))
-                .onChange(of: clock.beat(reduceMotion: reduceMotion)) { _, beat in
-                    if beat > 0 && beat <= Self.tapTimes.count { taps = beat }
-                    if beat > Self.tapTimes.count { finish() }
+                .onChange(of: clock.beat(reduceMotion: reduceMotion)) { _, value in
+                    if value == 1 { beat += 1 }
+                    if value == 2 { finish() }
                 }
         }
         .ignoresSafeArea()
         .accessibilityHidden(true)
         .allowsHitTesting(false)
-        .sensoryFeedback(.impact(weight: .light, intensity: 0.55), trigger: taps)
+        .sensoryFeedback(.impact(weight: .light, intensity: 0.5), trigger: beat)
         .task {
             // Hard ceiling: even if frames never arrive, the overlay always goes away.
-            try? await Task.sleep(nanoseconds: 3_000_000_000)
+            try? await Task.sleep(nanoseconds: 2_500_000_000)
             finish()
         }
     }
@@ -56,164 +56,117 @@ import UIKit
         ZStack {
             Color("LaunchCanvas")
             Image("LaunchGlow")
-            ForEach(0..<3, id: \.self) { i in
-                LaunchTaskCard(checked: f.cardChecked[i], pop: f.cardPop[i])
-                    .scaleEffect(f.cardScale[i])
-                    .offset(x: f.cardOffset[i].width, y: f.cardOffset[i].height)
-                    .opacity(f.cardOpacity[i])
-            }
             Text(verbatim: "Catpaw")
                 .font(CatpawTypography.Role.appTitle.font.weight(.bold))
                 .fontDesign(.rounded)
                 .fixedSize()   // semantic role → follows Dynamic Type; short brand word never wraps
                 .kerning(0.4)
                 .foregroundStyle(LaunchPalette.wordInk)
-                .scaleEffect(f.wordScale)
-                .offset(y: Self.wordY)
+                .offset(y: Self.wordY + f.wordRise)
                 .opacity(f.wordOpacity)
-            Image("LaunchPawMark")
-                .scaleEffect(x: f.pawScale * f.pawSquashX, y: f.pawScale * f.pawSquashY, anchor: .bottom)
-                .offset(f.pawOffset)
+            paw(f)
+                .scaleEffect(x: f.squashX, y: f.squashY, anchor: UnitPoint(x: 0.5, y: 0.9))
+                .offset(y: f.lift)
         }
         .opacity(f.overlayOpacity)
     }
 
+    private func paw(_ f: LaunchFrame) -> some View {
+        ZStack {
+            Image("LaunchPawPad")
+            ForEach(0..<4, id: \.self) { i in
+                let (cx, cy) = Self.toes[i]
+                Image("LaunchPawToe\(i)")
+                    .scaleEffect(f.toeScale[i], anchor: UnitPoint(x: cx / 24, y: cy / 24))
+                    .offset(f.toeOffset[i])
+            }
+            // Gentle highlight shimmer, clipped to the paw's own pixels.
+            LinearGradient(colors: [.white.opacity(0), .white.opacity(0.55), .white.opacity(0)], startPoint: .leading, endPoint: .trailing)
+                .frame(width: 56, height: Self.pawPoints * 1.4)
+                .rotationEffect(.degrees(20))
+                .offset(x: f.shimmerX)
+                .opacity(f.shimmerOpacity)
+                .blendMode(.plusLighter)
+                .mask(Image("LaunchPawMark"))
+        }
+        .frame(width: Self.pawPoints, height: Self.pawPoints)
+    }
 }
 
 /// Frame-clamped animation clock (reference type so the TimelineView body can advance it without a state write).
 final class LaunchClock {
     private(set) var t: Double = 0
     private var last: Date?
-    private var first: Date?
-    /// iOS cross-fades the system launch snapshot out over ~0.2s after the first app frame; hold frame 0 (identical
-    /// pixels) for that long so the moving paw never ghosts over the fading static paw.
-    static let systemHandoff: Double = 0.2
     func advance(to date: Date) -> Double {
-        if first == nil { first = date }
-        if let last, date.timeIntervalSince(first!) >= Self.systemHandoff { t += min(max(0, date.timeIntervalSince(last)), 1.0 / 30) }
+        if let last { t += min(max(0, date.timeIntervalSince(last)), 1.0 / 30) }
         last = date
         return t
     }
-    /// 0 before the first tap, 1…3 after each tap, 4 once the whole timeline is done.
+    /// 0 → 1 at the squash (haptic) → 2 once the timeline is done.
     func beat(reduceMotion: Bool) -> Int {
-        if reduceMotion { return t >= LaunchFrame.reducedTotal ? 4 : 0 }
-        if t >= LaunchMarkView.total { return 4 }
-        return LaunchMarkView.tapTimes.filter { t >= $0 }.count
+        if reduceMotion { return t >= LaunchFrame.reducedTotal ? 2 : 0 }
+        if t >= LaunchMarkView.total { return 2 }
+        return t >= 0.08 ? 1 : 0
     }
 }
 
 enum LaunchPalette {
     static let wordInk = Color(UIColor(rgb: 0x3A1E0E))
-    static let cardLine = Color(UIColor(rgb: 0xE9C9B4))
-    static let check = Color(UIColor(rgb: 0xF5843F))
 }
 
-/// Pure function of time → every animated value (deterministic; trivially testable, no state machine to stall).
+/// Pure function of time → every animated value (deterministic, no state machine to stall).
 struct LaunchFrame {
     static let reducedTotal = 0.45
-    var cardOpacity = [Double](repeating: 0, count: 3)
-    var cardScale = [CGFloat](repeating: 1, count: 3)
-    var cardOffset = [CGSize](repeating: .zero, count: 3)
-    var cardChecked = [false, false, false]
-    var cardPop = [CGFloat](repeating: 0, count: 3)
-    var pawOffset = CGSize.zero
-    var pawScale: CGFloat = 1
-    var pawSquashX: CGFloat = 1
-    var pawSquashY: CGFloat = 1
+    var squashX: CGFloat = 1
+    var squashY: CGFloat = 1
+    var lift: CGFloat = 0
+    var toeScale = [CGFloat](repeating: 1, count: 4)
+    var toeOffset = [CGSize](repeating: .zero, count: 4)
+    var shimmerX: CGFloat = -120
+    var shimmerOpacity: Double = 0
     var wordOpacity: Double = 0
-    var wordScale: CGFloat = 1
+    var wordRise: CGFloat = 8
     var overlayOpacity: Double = 1
 
     static func ease(_ x: Double) -> Double { let c = min(1, max(0, x)); return c * c * (3 - 2 * c) }
     static func span(_ t: Double, _ a: Double, _ b: Double) -> Double { ease((t - a) / (b - a)) }
-    static func mix(_ a: CGFloat, _ b: CGFloat, _ k: Double) -> CGFloat { a + (b - a) * CGFloat(k) }
-    /// Damped "back" overshoot 0→1 used for the relax bounce and the check pop.
-    static func back(_ x: Double) -> Double {
-        let c = min(1, max(0, x)); let s = 2.2
-        return 1 + (s + 1) * pow(c - 1, 3) + s * pow(c - 1, 2)
-    }
+    static func clamp01(_ x: Double) -> Double { min(1, max(0, x)) }
 
     init(t: Double, reduceMotion: Bool) {
         if reduceMotion {
-            wordOpacity = Self.span(t, 0.0, 0.2)
+            wordOpacity = Self.span(t, 0.0, 0.2); wordRise = 0
             overlayOpacity = 1 - Self.span(t, 0.25, Self.reducedTotal)
             return
         }
-        let xs = LaunchMarkView.cardX, cy = LaunchMarkView.cardY, taps = LaunchMarkView.tapTimes
-        // Cards rise in
-        for i in 0..<3 {
-            let k = Self.span(t, 0.0 + Double(i) * 0.03, 0.12 + Double(i) * 0.03)
-            cardOpacity[i] = k
-            cardOffset[i] = CGSize(width: xs[i], height: cy + CGFloat((1 - k) * 14))
-            cardChecked[i] = t >= taps[i] + 0.02
-            cardPop[i] = CGFloat(t >= taps[i] ? Self.back((t - taps[i]) / 0.16) : 0)
-            cardScale[i] = t >= taps[i] && t < taps[i] + 0.06 ? 0.93 : 1
+        // Squash–stretch–settle: a damped spring on the vertical scale, volume roughly preserved.
+        if t < 0.36 {
+            let k = t / 0.36
+            let wave = sin(k * Double.pi * 2.5) * exp(-3.2 * k)        // + = squash, − = stretch
+            squashY = 1 - CGFloat(wave) * 0.10
+            squashX = 1 + CGFloat(wave) * 0.07
+            lift = CGFloat(max(0, -wave)) * -10
         }
-        // Paw path: centre → each card (small, tap) → back to centre with a relaxed bounce.
-        let tapScale: CGFloat = 0.5
-        let tapY = cy + 26 - 80 * tapScale   // paw bottom (anchor) rests on the card
-        func at(_ i: Int) -> CGSize { CGSize(width: xs[i], height: tapY) }
-        if t < taps[0] {
-            let k = Self.span(t, 0.04, taps[0])
-            pawOffset = CGSize(width: Self.mix(0, xs[0], k), height: Self.mix(0, tapY, k))
-            pawScale = Self.mix(1, tapScale, k)
-        } else if t < taps[2] {
-            let i = t < taps[1] ? 0 : 1
-            let k = Self.span(t, taps[i] + 0.05, taps[i + 1])
-            let hop = CGFloat(sin(Double.pi * k)) * -18
-            pawOffset = CGSize(width: Self.mix(xs[i], xs[i + 1], k), height: tapY + hop)
-            pawScale = tapScale
-        } else {
-            let k = Self.span(t, taps[2] + 0.05, 0.72)
-            let lift = CGFloat(sin(Double.pi * k)) * -30
-            pawOffset = CGSize(width: Self.mix(xs[2], 0, k), height: Self.mix(tapY, 0, k) + lift)
-            pawScale = Self.mix(tapScale, 1, Self.back(min(1, (t - taps[2] - 0.05) / 0.3)))
+        // Toes: spread outward + up, then curl in a little, staggered like a tiny wave (left → right).
+        for i in 0..<4 {
+            let start = 0.18 + Double(i) * 0.06
+            let k = Self.clamp01((t - start) / 0.24)
+            guard k > 0 && k < 1 else { continue }
+            let (cx, cy) = LaunchMarkView.toes[i]
+            let dx = (cx - 12) / 12, dy = (cy - 12) / 12                // outward direction from paw centre
+            let spread = sin(k * Double.pi) * (1 - k * 0.35)            // out then back
+            let curl = k > 0.55 ? sin((k - 0.55) / 0.45 * Double.pi) : 0 // small inward curl at the end
+            let u = LaunchMarkView.pawPoints / 24
+            toeOffset[i] = CGSize(width: dx * u * CGFloat(spread) * 1.1, height: (dy * u * 1.1 - 1.5 * u) * CGFloat(spread) + u * 0.6 * CGFloat(curl))
+            toeScale[i] = 1 + CGFloat(spread) * 0.10 - CGFloat(curl) * 0.06
         }
-        // Press squash at each tap, and a soft relax wobble when the paw settles.
-        for tap in taps where t >= tap - 0.01 && t < tap + 0.07 {
-            let k = sin(Double.pi * (t - tap + 0.01) / 0.08)
-            pawSquashX = 1 + CGFloat(k) * 0.08; pawSquashY = 1 - CGFloat(k) * 0.12
-        }
-        if t >= 0.72 && t < 0.9 {
-            let k = (t - 0.72) / 0.18
-            let w = sin(k * Double.pi * 2) * (1 - k)
-            pawSquashX = 1 + CGFloat(w) * 0.05; pawSquashY = 1 - CGFloat(w) * 0.05
-        }
-        // Cards fly into the wordmark.
-        for i in 0..<3 where t >= 0.70 {
-            let k = Self.span(t, 0.70 + Double(i) * 0.03, 0.88 + Double(i) * 0.03)
-            cardOffset[i] = CGSize(width: Self.mix(xs[i], 0, k), height: Self.mix(cy, LaunchMarkView.wordY, k) - CGFloat(sin(Double.pi * k)) * 20)
-            cardScale[i] = Self.mix(1, 0.2, k)
-            cardOpacity[i] = 1 - Self.span(t, 0.82 + Double(i) * 0.03, 0.92 + Double(i) * 0.03)
-        }
-        wordOpacity = Self.span(t, 0.80, 0.94)
-        wordScale = Self.mix(0.86, 1, Self.back((t - 0.80) / 0.2))
-        overlayOpacity = 1 - Self.span(t, 1.0, LaunchMarkView.total)
-    }
-}
-
-/// A tiny to-do card that pops into a check when the paw taps it. Text-free (lines only), so no orange text.
-private struct LaunchTaskCard: View {
-    var checked: Bool
-    var pop: CGFloat
-    var body: some View {
-        RoundedRectangle(cornerRadius: 12, style: .continuous)
-            .fill(Color.white.opacity(0.94))
-            .frame(width: 62, height: 44)
-            .shadow(color: Color(UIColor(rgb: 0x8A3A12)).opacity(0.18), radius: 6, y: 3)
-            .overlay {
-                ZStack {
-                    VStack(alignment: .leading, spacing: 5) {
-                        Capsule().fill(LaunchPalette.cardLine).frame(width: 34, height: 4)
-                        Capsule().fill(LaunchPalette.cardLine).frame(width: 22, height: 4)
-                    }
-                    .opacity(checked ? 0 : 1)
-                    Circle().fill(LaunchPalette.check).frame(width: 24, height: 24)
-                        .overlay { Image(systemName: "checkmark").font(CatpawTypography.Role.caption.font.weight(.heavy)).foregroundStyle(.white) }
-                        .scaleEffect(checked ? max(0.01, pop) : 0.01)
-                        .opacity(checked ? 1 : 0)
-                }
-            }
+        // Highlight shimmer sweep.
+        let s = Self.clamp01((t - 0.28) / 0.40)
+        shimmerX = -110 + 220 * CGFloat(Self.ease(s))
+        shimmerOpacity = s > 0 && s < 1 ? sin(s * Double.pi) : 0
+        // Wordmark, then crossfade into the app.
+        wordOpacity = Self.span(t, 0.52, 0.72)
+        wordRise = 8 * CGFloat(1 - Self.span(t, 0.52, 0.76))
+        overlayOpacity = 1 - Self.span(t, 0.80, LaunchMarkView.total)
     }
 }
 

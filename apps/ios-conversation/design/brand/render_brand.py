@@ -20,7 +20,7 @@ def radial(size,center,radius,stops):
 def radial_fast(size,center,radius,stops,ss=8):
     w,h=size; small=radial((max(1,w//ss),max(1,h//ss)),(center[0]/ss,center[1]/ss),radius/ss,stops)
     return small.resize(size,Image.BICUBIC)
-def paw(px,palette,shadow=True,spec=True):
+def paw(px,palette,shadow=True,spec=True,only=None):
     """Return RGBA image px*px with the paw in a 24-unit box."""
     S=4; W=px*S; u=W/24; img=Image.new('RGBA',(W,W),(0,0,0,0))
     if shadow:
@@ -29,6 +29,7 @@ def paw(px,palette,shadow=True,spec=True):
         img=Image.alpha_composite(img,sh.filter(ImageFilter.GaussianBlur(u*0.9)))
     hi,base,rim=palette
     for pi,(cx,cy,rx,ry) in enumerate(PADS):
+        if only is not None and pi not in only: continue
         box=(int((cx-rx)*u),int((cy-ry)*u),int((cx+rx)*u),int((cy+ry)*u)); bw,bh=box[2]-box[0],box[3]-box[1]
         # soft drop under each pad (jelly depth)
         dep=Image.new('RGBA',(W,W),(0,0,0,0)); ImageDraw.Draw(dep).ellipse([box[0],box[1]+u*0.35,box[2],box[3]+u*0.35],fill=rim[:3]+(110,))
@@ -62,9 +63,16 @@ def main(root):
         p=os.path.join(root,name+'.imageset')
     sets={'LaunchGlow':[],'LaunchPawMark':[],'LaunchPaw':[]}
     for s in (2,3):
-        g=glow(GLOW_PT,s); pm=paw(PAW_PT*s,CREAM)
+        g=glow(GLOW_PT,s)
+        # LaunchPawMark is literally the composite of the animated part layers, so frame 0 == static launch paw.
+        pm=paw(PAW_PT*s,CREAM,shadow=True,only=[0,1,2])
+        for t in range(4): pm.alpha_composite(paw(PAW_PT*s,CREAM,shadow=False,only=[3+t]))
         comb=g.copy(); o=(GLOW_PT*s-PAW_PT*s)//2; comb.alpha_composite(pm,(o,o))
         sets['LaunchGlow'].append((s,g)); sets['LaunchPawMark'].append((s,pm)); sets['LaunchPaw'].append((s,comb))
+    # r11b: per-part layers for the in-place jelly motion (same 160pt canvas, composite == LaunchPawMark)
+    parts={'LaunchPawPad':dict(shadow=True,only=[0,1,2])}
+    for t in range(4): parts[f'LaunchPawToe{t}']=dict(shadow=False,only=[3+t])
+    for name,kw in parts.items(): sets[name]=[(s,paw(PAW_PT*s,CREAM,**kw)) for s in (2,3)]
     for k,v in sets.items(): imageset(root,k,v)
     c=CANVAS
     json.dump({'colors':[{'color':{'color-space':'display-p3','components':{'alpha':'1.000','red':f'0x{c[0]:02X}','green':f'0x{c[1]:02X}','blue':f'0x{c[2]:02X}'}},'idiom':'universal'}],'info':{'author':'xcode','version':1}},open(os.path.join(root,'LaunchCanvas.colorset','Contents.json'),'w'),indent=1)
