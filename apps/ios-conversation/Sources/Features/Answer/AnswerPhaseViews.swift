@@ -301,7 +301,7 @@ private struct StreamCursor: View {
                 Button(ui("重试"), action: onRegenerate).font(CatpawTypography.Role.caption.font.weight(.semibold))
             }
         }
-        .foregroundStyle(CatpawColors.action)
+        .foregroundStyle(CatpawColors.ink)
         .accessibilityIdentifier("chat.answer.interrupted")
     }
 }

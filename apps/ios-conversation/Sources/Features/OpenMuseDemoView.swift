@@ -156,7 +156,7 @@ enum OpenMuseDemoMode: String, CaseIterable { case fixture, loopback }
                 identity("Server Task", s.serverTaskID ?? "—")
                 identity("Client request SHA-256", s.request.requestHash)
                 identity("Server request SHA-256", s.projection?.binding.serverRequestHash ?? "—")
-            }.font(.footnote).tint(CatpawColors.accent)
+            }.font(.footnote).tint(CatpawColors.ink)
             if let note = s.note { Text(note).font(.footnote).foregroundStyle(CatpawColors.secondary) }
             if s.admission == .notSent {
                 Button(ui("提交已保存请求")) { demo.perform { _ = try await $0.admit(operationID: op, scope: Profiles.demo) } }
@@ -219,7 +219,7 @@ enum OpenMuseDemoMode: String, CaseIterable { case fixture, loopback }
                 Button(ui("确认本机合成预览")) { demo.decide(frozen, decision: .approve) }.primaryAction().disabled(demo.busy).accessibilityIdentifier("openmuse.approve")
                 Button(ui("拒绝此审批"), role: .destructive) { demo.decide(frozen, decision: .deny) }.touchTarget().disabled(demo.busy)
             }.navigationTitle(ui("审批预览")).toolbar { Button(ui("关闭")) { demo.preview = nil } }
-        }.tint(CatpawColors.accent)
+        }.tint(CatpawColors.ink)
     }
     private func provenance(_ s: OpenMuseTaskSession) -> some View {
         NavigationStack {
@@ -241,7 +241,7 @@ enum OpenMuseDemoMode: String, CaseIterable { case fixture, loopback }
                     }
                 }
             }.navigationTitle(ui("成果与来源")).toolbar { Button(ui("关闭")) { demo.source = nil } }
-        }.tint(CatpawColors.accent)
+        }.tint(CatpawColors.ink)
     }
     private func identity(_ title: String, _ value: String) -> some View {
         VStack(alignment: .leading, spacing: 4) {
