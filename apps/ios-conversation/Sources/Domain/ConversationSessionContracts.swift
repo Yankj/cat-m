@@ -335,6 +335,9 @@ public struct ConversationModelConsent: Sendable, Identifiable {
     public let expectedRevision: Int
 }
 public protocol ConversationBackend: Sendable {
+    /// The server's authoritative chat transcript (user and assistant messages, server order), or nil when this
+    /// backend has no server transcript. Used by `ConversationSessionService.syncServerTranscript`.
+    func serverTranscript(scope: DataScope, conversationID: UUID) async throws -> [ConversationTranscriptMessage]?
     func revisionWorkCapability(scope:DataScope,conversationID:UUID) async throws -> ConversationAcceptedWorkCapability
     func freezeRevisionWork(_ request:ConversationTurnRequest,selection:ConversationRevisionWorkSelection) async throws -> ConversationRevisionWorkIntent
     func acceptedWorkCapability(scope:DataScope,conversationID:UUID) async throws -> ConversationAcceptedWorkCapability
@@ -420,6 +423,7 @@ public struct UnconfiguredConversationBackend: ConversationBackend {
 }
 
 public extension ConversationBackend {
+    func serverTranscript(scope: DataScope, conversationID: UUID) async throws -> [ConversationTranscriptMessage]? { nil }
     func resumeEvents(_ request: ConversationTurnRequest, afterSequence: Int) async throws -> AsyncThrowingStream<ConversationTurnEvent, Error> { throw ConversationSessionError.unresolvedOperation }
     func retryBusyTurn(_ request: ConversationTurnRequest, afterSequence: Int) async throws -> AsyncThrowingStream<ConversationTurnEvent, Error> { throw ConversationSessionError.unresolvedOperation }
     func cancelTurn(_ request: ConversationTurnRequest) async throws -> ConversationTurnCancelReceipt { throw ConversationTurnCancelFailure.unsupported }

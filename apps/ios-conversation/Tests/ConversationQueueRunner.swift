@@ -11,7 +11,10 @@ actor QueueSendLog {
 actor QueueHistoryBackend:ConversationBackend {
     var admitting=false
     var histories:[UUID:[UUID]]=[:]
+    var server:[ConversationTranscriptMessage]?=nil
     func allow(){admitting=true}
+    func setServer(_ value:[ConversationTranscriptMessage]?){server=value}
+    func serverTranscript(scope:DataScope,conversationID:UUID) async throws -> [ConversationTranscriptMessage]? {server}
     func history(_ id:UUID)->[UUID]?{histories[id]}
     func connection(scope:DataScope) async -> ConversationConnection {.init(state:.providerUnverified,provider:"Synthetic history",detail:"No external network")}
     func reply(_ r:ConversationTurnRequest) async throws -> AsyncThrowingStream<ConversationTurnEvent,Error> {
@@ -168,6 +171,30 @@ actor QueueEditBackend:ConversationBackend {
         let resentHistory=await hb.history(refused.id),laterHistory=await hb.history(later.id)
         try check(resentHistory?.last == firstUser && resentHistory?.count == 1,"resent held message carries only itself (server had nothing)")
         try check(laterHistory?.count == 3 && laterHistory?.first == firstUser && laterHistory?.last == laterUser,"later message history is exactly the admitted prefix plus itself")
+        // Server-only messages (old chat: b09acdc3 admitted by an outbox turn, never written back) merge into the
+        // local transcript idempotently, by server id, keeping local-only unsent messages and failure notices.
+        let t0=Date(timeIntervalSince1970:1_000)
+        let known=ConversationTranscriptMessage(role:.user,content:"早",createdAt:t0)
+        var notice=ConversationTranscriptMessage(role:.assistant,content:"消息尚未发送",createdAt:t0.addingTimeInterval(5));notice.failure="notSent"
+        let unsentLocal=ConversationTranscriptMessage(role:.user,content:"你是？",createdAt:t0.addingTimeInterval(6))
+        let serverOnlyUser=ConversationTranscriptMessage(role:.user,content:String(repeating:"x",count:128),createdAt:.distantPast)
+        let serverOnlyReply=ConversationTranscriptMessage(role:.assistant,content:"服务端回复",createdAt:.distantPast)
+        let serverList=[known,serverOnlyUser,serverOnlyReply]
+        let merged=ConversationSessionService.mergeServerTranscript(local:[known,notice,unsentLocal],server:serverList)
+        try check(merged.map(\.id)==[known.id,notice.id,unsentLocal.id,serverOnlyUser.id,serverOnlyReply.id],"server-only rows are added after the last known server row; local unsent and failure notices are kept")
+        try check(merged.filter{$0.id==notice.id}.first?.failure=="notSent","local failure notice keeps its metadata")
+        try check(merged[3].createdAt>=merged[2].createdAt && merged[4].createdAt>=merged[3].createdAt,"server-only rows get non-decreasing createdAt")
+        let again=ConversationSessionService.mergeServerTranscript(local:merged,server:serverList)
+        try check(again.map(\.id)==merged.map(\.id),"merge is idempotent (dedup by server id)")
+        let between=ConversationSessionService.mergeServerTranscript(local:[known,serverOnlyReply],server:[known,serverOnlyUser,serverOnlyReply])
+        try check(between.map(\.id)==[known.id,serverOnlyUser.id,serverOnlyReply.id],"a server-only row between two known rows is inserted in server order")
+        let sb=QueueHistoryBackend(),ss=ConversationSessionService(repository:repo,backend:sb),sc=try await ss.create(scope:Profiles.user)
+        await sb.setServer([serverOnlyUser,serverOnlyReply])
+        let synced=try await ss.syncServerTranscript(scope:Profiles.user,conversationID:sc)
+        let syncedSession=try await ss.read(scope:Profiles.user,conversationID:sc)
+        try check(synced && syncedSession.messages.map(\.id)==[serverOnlyUser.id,serverOnlyReply.id],"sync writes server-only messages into the local journal so the UI shows them")
+        let second=try await ss.syncServerTranscript(scope:Profiles.user,conversationID:sc)
+        try check(!second,"second sync is a no-op")
         print("EVIDENCE: migrated public queue behavior; transport actions in tests are explicit test closures")
     }
 }
