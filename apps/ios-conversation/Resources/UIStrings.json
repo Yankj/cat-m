@@ -1479,6 +1479,10 @@
     "en": "Fixed version v{0} · {1}",
     "zh-Hans": "固定版本 v{0} · {1}"
   },
+  "图片": {
+    "en": "Image",
+    "zh-Hans": "图片"
+  },
   "图片、本轮文字、最近文字会话及主动加入的文字上下文将发送给 OpenRouter 和 Google AI Studio，使用固定的免费 Gemma 4 31B 路线。请求禁止训练、限制费用为0并禁止回退；路线不可用时拒绝发送。Google 安全策略会为安全审查保留输入、上下文和输出55天，并可能人工审核；这不是零保留。服务器不保存图片字节历史，但保存文字回复和附件回执，直到你删除来源。请勿发送敏感、机密或含凭据的图片。撤销不能收回已发出的数据；断开流也不保证上游停止处理。": {
     "en": "The image, current message, recent conversation text and any text context you add will be sent to OpenRouter and Google AI Studio using the fixed free Gemma 4 31B route. Requests disallow training, cap cost at zero and prohibit fallback; unavailable routes refuse transmission. Google safety policies retain inputs, context and outputs for 55 days and may involve human review. This is not zero retention. The server does not store image-byte history, but keeps text replies and attachment receipts until you delete the source. Do not send sensitive, confidential or credential-containing images. Revocation cannot recall data already sent, and disconnecting the stream does not guarantee upstream processing stops.",
     "zh-Hans": "图片、本轮文字、最近文字会话及主动加入的文字上下文将发送给 OpenRouter 和 Google AI Studio，使用固定的免费 Gemma 4 31B 路线。请求禁止训练、限制费用为0并禁止回退；路线不可用时拒绝发送。Google 安全策略会为安全审查保留输入、上下文和输出55天，并可能人工审核；这不是零保留。服务器不保存图片字节历史，但保存文字回复和附件回执，直到你删除来源。请勿发送敏感、机密或含凭据的图片。撤销不能收回已发出的数据；断开流也不保证上游停止处理。"
