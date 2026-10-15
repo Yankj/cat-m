@@ -92,3 +92,8 @@ psql "$URL" -f test/fixtures/supabase-stub.sql -f supabase/migrations/2026101512
 CATPAW_PG_TEST_URL="$URL" deno test -A --config supabase/functions/deno.json test/proactive-tasks-pg.test.mjs
 ```
 Not yet verified: hosted deploy, pg_cron on hosted DB, live OpenRouter reminder call, real APNs delivery.
+
+## Interruption guard (B2, migration 20261016013000_proactive_push_throttle.sql)
+- Quiet hours (`CATPAW_PROACTIVE_QUIET_HOURS`, default `22-8`, `off` disables), evaluated in the event's task time zone (default Asia/Shanghai). Agent/proactive pushes inside the window get `push_after` = window end and are coalesced into one push ("小猫有 N 条消息") when released.
+- Daily cap (`CATPAW_PROACTIVE_DAILY_PUSH_CAP`, default 5) counts `push_state='sent'` since local midnight; over-cap events stay in the in-app feed with `push_error='daily_cap'`.
+- Exempt: `reminder_due` for user-created tasks (the user chose that time).
