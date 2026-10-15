@@ -83,6 +83,7 @@ test('S2 memory: memory.update events from tools, /memories?since= incremental w
   await svc.patchSettings(U, { consent: true, use_memory: true, auto_save: true });
   const saved = await svc.executeTool(U, 'memory_save', { kind: 'preference', content: '靠窗座位' });
   const up = saved.events.find(e => e.type === 'memory.update'); assert.equal(up.data.op, 'saved'); assert.equal(up.data.memories[0].content, '靠窗座位');
+  assert.equal(up.data.memories[0].source, 'agent'); assert.equal(up.data.memories[0].confidence, 1); assert.ok(up.data.memories[0].version);
   const id = saved.result.id;
   const call = async q => (await svc.handle(new Request('https://x/catpaw/agent-memory/v1/memories' + q, { headers: { authorization: 'Bearer u' } }))).json();
   const all = await call(''); assert.equal(all.memories.length, 1); assert.ok(all.cursor);
@@ -91,7 +92,10 @@ test('S2 memory: memory.update events from tools, /memories?since= incremental w
   await svc.save(U, { kind: 'fact', content: '住在静安' });
   const del = await svc.executeTool(U, 'memory_forget', { ids: [id] }); assert.equal(del.events[0].data.op, 'forgotten');
   const inc = await call('?since=' + encodeURIComponent(cursor));
-  assert.deepEqual(inc.memories.map(m => m.content), ['住在静安']); assert.deepEqual(inc.deleted.map(d => d.id), [id]);
+  assert.deepEqual(inc.memories.map(m => m.content), ['住在静安']);
+  assert.deepEqual([inc.memories[0].source, inc.memories[0].confidence, inc.memories[0].version], ['agent', 1, inc.memories[0].updated_at]);
+  await svc.save(U, { kind: 'fact', content: '手动添加' }, { created_by: 'user' }); await svc.save(U, { kind: 'journal', content: 'j' }, { created_by: 'journal' });
+  const src = Object.fromEntries((await call('')).memories.map(m => [m.content, m.source])); assert.equal(src['手动添加'], 'user'); assert.equal(src['j'], 'cloud'); assert.deepEqual(inc.deleted.map(d => d.id), [id]);
   const r = await svc.recallForTurn({ subjectID: U, query: '静安' }); assert.deepEqual(r.items.map(i => i.content), ['住在静安']);
 });
 
@@ -112,7 +116,7 @@ test('chat SSE: memory.used + proactive_suggestion events (gated) and Idempotenc
   const bad = await send('靠窗', { 'Idempotency-Key': randomUUID() }); assert.equal(bad.status, 422); assert.equal((await bad.json()).error.code, 'idempotency_key_mismatch');
   const tid = randomUUID(); const r = await send('出差靠窗', { 'Idempotency-Key': tid.toUpperCase() }, tid); assert.equal(r.status, 200);
   const events = await sse(r); await f.runtime.chat.waitIdle();
-  const used = events.find(e => e.type === 'memory.used'); assert.deepEqual(used.data.memories, [{ id: row.id, kind: 'preference', content: '出差坐靠窗' }]);
+  const used = events.find(e => e.type === 'memory.used'); assert.deepEqual(used.data.memories, [{ id: row.id, kind: 'preference', content: '出差坐靠窗', source: 'agent', confidence: 1, version: row.updated_at }]);
   const ps = events.find(e => e.type === 'proactive_suggestion'); assert.equal(ps.data.id, ev.event_id); assert.equal(ps.data.status, 'pending');
   const r2 = await send('再来'); const e2 = await sse(r2); await f.runtime.chat.waitIdle();
   assert.equal(e2.some(e => e.type === 'proactive_suggestion'), false, 'delivered once');

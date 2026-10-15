@@ -11,7 +11,10 @@ const shanghaiDay = ms => new Date(ms + 8 * 3600000).toISOString().slice(0, 10);
  * @param embed      optional async (text) => number[] ; absent → lexical recall (no external provider is called)
  * @param summarize  optional async (texts[]) => string for the journal ; absent → deterministic digest
  */
-const chip = r => ({ id: r.id, kind: r.kind, content: r.content });
+// Wire shape for memory chips (memory.used / memory.update / ?since=): derived from existing columns, no migration.
+export const memorySource = r => r.created_by === 'user' ? 'user' : r.created_by === 'agent' ? 'agent' : 'cloud';
+export const syncMemory = r => ({ source: memorySource(r), confidence: typeof r.confidence === 'number' ? r.confidence : 1, version: r.updated_at ?? null });
+const chip = r => ({ id: r.id, kind: r.kind, content: r.content, ...syncMemory(r) });
 const memUpdate = (op, rows) => ({ type: 'memory.update', data: { op, ids: rows.map(r => r.id), memories: rows.map(chip) } });
 export function createAgentMemoryService({ store, allow = () => false, verifyUser = null, schedulerSecret = null, embed = null, summarize = null, now = () => Date.now() }) {
   const iso = () => new Date(now()).toISOString();
@@ -112,7 +115,7 @@ export function createAgentMemoryService({ store, allow = () => false, verifyUse
       const since = u.searchParams.get('since'), sinceIso = since && Number.isFinite(Date.parse(since)) ? new Date(since).toISOString() : '1970-01-01T00:00:00.000Z';
       const cursor = iso(), at = now(), { rows, deleted } = await store.changedSince(uid, sinceIso);
       const expired = rows.filter(r => !live(r, at)).map(r => ({ id: r.id, deleted_at: r.expires_at }));
-      return json(200, { contract: AGENT_MEMORY_CONTRACT, since: since ? sinceIso : null, cursor, memories: rows.filter(r => live(r, at)).map(publicMemory), deleted: [...deleted, ...expired] });
+      return json(200, { contract: AGENT_MEMORY_CONTRACT, since: since ? sinceIso : null, cursor, memories: rows.filter(r => live(r, at)).map(r => ({ ...publicMemory(r), ...syncMemory(r) })), deleted: [...deleted, ...expired] });
     }
     if (p === '/memory/items' && m === 'GET') {
       const q = u.searchParams.get('q'), kind = u.searchParams.get('kind'), at = now();

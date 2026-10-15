@@ -75,13 +75,17 @@ module implements, in its own schema. Two memory systems must not both be live f
 `true`, decide whether agent-memory replaces catpaw.memory.v1 or is folded into it (owner decision).
 
 ## S2: memory chips (memory.used, memory.update, incremental sync)
-- **SSE `memory.used`** is sent after `memory_recalled` when a turn froze recalled memories (approval contract required): `{ids:[…], memories:[{id, kind, content}]}`. `memory_recalled {ids}` is unchanged.
+- **SSE `memory.used`** is sent after `memory_recalled` when a turn froze recalled memories (approval contract required): `{ids:[…], memories:[{id, kind, content, source, confidence, version}]}`. `memory_recalled {ids}` is unchanged.
 - **SSE `memory.update`** comes from memory tools, after `tool_result`:
-  - `{op:'saved'|'updated', ids, memories:[{id, kind, content}]}`
+  - `{op:'saved'|'updated', ids, memories:[{id, kind, content, source, confidence, version}]}`
   - `{op:'forgotten', ids, memories:[]}`
   - `memory_saved` (with its undo token) is still sent before `memory.update` on save.
-- **`GET /catpaw/agent-memory/v1/memories?since=ISO`** returns `{contract, since, cursor, memories:[publicMemory], deleted:[{id, deleted_at}]}`.
+- **`GET /catpaw/agent-memory/v1/memories?since=ISO`** returns `{contract, since, cursor, memories:[publicMemory + {source, confidence, version}], deleted:[{id, deleted_at}]}`.
   - `memories` holds rows whose `updated_at` is after `since`.
   - `deleted` comes from tombstones; memories that expired also count as deleted.
   - Without `since`, it returns everything. Use the returned `cursor` as the next `since`.
   - Requires migration `20261016100000_agent_memory_tombstones.sql`, which adds a delete trigger and the tombstones table.
+- **Memory sync fields** (derived from existing columns, no migration):
+  - `source`: `created_by='user'` gives `user`, `created_by='agent'` gives `agent`, anything else (journal, unknown) gives `cloud`.
+  - `confidence`: the row's `confidence` if it has one, otherwise `1`. There is currently no such column, so it is always `1`.
+  - `version`: the row's `updated_at` (ISO 8601).
