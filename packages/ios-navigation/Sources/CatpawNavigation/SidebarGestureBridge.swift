@@ -86,7 +86,7 @@ struct SidebarGestureBridge: UIViewRepresentable {
         }
         private func textOwnsTouch(_ text: UITextView) -> Bool {
             SidebarGesturePolicy.textViewOwnsTouch(isEditable: text.isEditable, hasMarkedText: text.markedTextRange != nil,
-                selectionLength: text.selectedRange.length, selectionGestureActive: hasActiveSelectionGesture(text))
+                selectionLength: text.selectedRange.length, selectionGestureActive: hasActiveSelectionGesture(text), isFirstResponder: text.isFirstResponder)
         }
         private func hasActiveSelectionGesture(_ view: UIView) -> Bool {
             if (view.gestureRecognizers ?? []).contains(where: { $0 is UILongPressGestureRecognizer && ($0.state == .began || $0.state == .changed) }) { return true }

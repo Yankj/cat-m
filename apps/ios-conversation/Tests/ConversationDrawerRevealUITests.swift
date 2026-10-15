@@ -108,15 +108,26 @@ final class ConversationDrawerRevealUITests:XCTestCase {
         XCTAssertTrue(until{copyMenuVisible()},"A real UIKit Copy menu must appear after long-pressing the read-only text. "+app.debugDescription)
         XCTAssertFalse(app.buttons["sidebar.close"].exists,"A text-selection long press must never become a drawer gesture")
         capture(app,"system-text-selection-copy-menu-no-drawer")
-        // Return focus to the existing draft to dismiss the system menu, without
-        // invoking any clipboard command or changing the selected reply text.
-        input.tap()
+        let leading=body.descendants(matching:.any).matching(identifier:"com.apple.text.grabber.leading")
+        let trailing=body.descendants(matching:.any).matching(identifier:"com.apple.text.grabber.trailing")
+        XCTAssertGreaterThan(leading.count,0,"Observe the actual leading selection handle before ending text selection")
+        XCTAssertGreaterThan(trailing.count,0,"Observe the actual trailing selection handle before ending text selection")
+        // Prove that editing focus transferred to the original draft by inserting
+        // and deleting a real character. Never mutate UIKit's selectedRange.
+        input.tap();input.typeText("x"+XCUIKeyboardKey.delete.rawValue)
+        XCTAssertEqual(input.value as? String,draft,"The focus proof restores the exact original draft")
         XCTAssertTrue(until{!copyMenuVisible()},"The actual system editing menu must close. "+app.debugDescription)
-        XCTAssertEqual(input.value as? String,draft)
-        // A normal tap in a different part of the reply ends the selection before
-        // beginning another reading gesture. No private selection hook is used.
-        body.coordinate(withNormalizedOffset:CGVector(dx:0.75,dy:0.5)).tap()
-        XCTAssertFalse(copyMenuVisible())
+        func noHittableBodySelectionHandles()->Bool {
+            let handles=leading.allElementsBoundByIndex+trailing.allElementsBoundByIndex
+            return handles.allSatisfy{!$0.isHittable}
+        }
+        XCTAssertTrue(until{noHittableBodySelectionHandles()},"The old reply must have no actionable selection handles before a reading pan. "+app.debugDescription)
+        for handle in leading.allElementsBoundByIndex+trailing.allElementsBoundByIndex {
+            XCTAssertFalse(handle.isHittable,"Check actual handle hit testing, not only menu/exists state")
+        }
+        let selectionEvidence=XCTAttachment(string:"focus_proof=typed_x_then_deleted;draft_exact=\((input.value as? String)==draft);leading_AX_count=\(leading.count);trailing_AX_count=\(trailing.count);remaining_handles_hittable=\(!noHittableBodySelectionHandles());copy_menu_visible=\(copyMenuVisible())\nlimit=AX absence does not prove an empty UIKit selectedRange; the following actual body pan must succeed")
+        selectionEvidence.name="Drawer-native-system-selection-focus-transfer";selectionEvidence.lifetime = .keepAlways;add(selectionEvidence)
+        // Do not tap the reply again: that can reactivate its previous selection.
         let current=body.frame.intersection(transcript.frame).intersection(app.frame)
         XCTAssertGreaterThan(current.width,100);XCTAssertGreaterThan(current.height,12)
         let start=CGPoint(x:current.minX+current.width*0.4,y:current.midY)
