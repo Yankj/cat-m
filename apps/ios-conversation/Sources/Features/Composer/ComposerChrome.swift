@@ -66,7 +66,7 @@ import Combine
                 Text(ui("回答完成后发送")).fontWeight(.medium)
                 Text(preview).lineLimit(1).foregroundStyle(CatpawColors.secondary)
                 Spacer(minLength: 4)
-                Button(ui("取消"), action: model.cancelQueued).fontWeight(.semibold).foregroundStyle(CatpawColors.action)
+                Button(ui("取消"), action: model.cancelQueued).fontWeight(.semibold).foregroundStyle(CatpawColors.ink)
             }
             .font(CatpawTypography.Role.caption.font)
             .padding(.horizontal, 12).frame(minHeight: 36)

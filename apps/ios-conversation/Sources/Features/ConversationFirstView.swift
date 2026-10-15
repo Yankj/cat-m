@@ -306,7 +306,7 @@ import CatpawImageComposer
         }
     }
     private var feedbackNavigation: some View {
-        chatNavigation.tint(CatpawColors.action).foregroundStyle(CatpawColors.ink)
+        chatNavigation.tint(CatpawColors.ink).foregroundStyle(CatpawColors.ink)
             .sensoryFeedback(.selection, trigger: sidebarPresented, condition: { _, opened in opened })
             .sensoryFeedback(.selection, trigger: settings, condition: { _, opened in opened })
             .sensoryFeedback(.impact(weight:.light), trigger:model.enqueueing, condition: { _, accepted in accepted })
