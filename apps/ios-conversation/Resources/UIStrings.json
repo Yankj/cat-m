@@ -5086,5 +5086,49 @@
   "，草稿，": {
     "en": ", draft, ",
     "zh-Hans": "，草稿，"
+  },
+  "填写": {
+    "en": "Fill in",
+    "zh-Hans": "填写"
+  },
+  "打开": {
+    "en": "Open",
+    "zh-Hans": "打开"
+  },
+  "正在准备卡片…": {
+    "en": "Preparing card…",
+    "zh-Hans": "正在准备卡片…"
+  },
+  "你选择了：{0}": {
+    "en": "You chose: {0}",
+    "zh-Hans": "你选择了：{0}"
+  },
+  "提交": {
+    "en": "Submit",
+    "zh-Hans": "提交"
+  },
+  "其他…": {
+    "en": "Other…",
+    "zh-Hans": "其他…"
+  },
+  "批准": {
+    "en": "Approve",
+    "zh-Hans": "批准"
+  },
+  "已批准 · {0}": {
+    "en": "Approved · {0}",
+    "zh-Hans": "已批准 · {0}"
+  },
+  "已拒绝 · {0}": {
+    "en": "Denied · {0}",
+    "zh-Hans": "已拒绝 · {0}"
+  },
+  "已提交": {
+    "en": "Submitted",
+    "zh-Hans": "已提交"
+  },
+  "请选择": {
+    "en": "Choose",
+    "zh-Hans": "请选择"
   }
 }
