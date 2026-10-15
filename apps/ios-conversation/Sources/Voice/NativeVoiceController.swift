@@ -26,6 +26,25 @@ import Speech
     func remove(_ observation: UUID) { for token in tokens.removeValue(forKey: observation) ?? [] { NotificationCenter.default.removeObserver(token) } }
 }
 
+/// Runs on the audio render thread: computes RMS of channel 0 and posts at most ~20 Hz to the main actor.
+private final class DictationLevelMeter: @unchecked Sendable {
+    private let deliver: @MainActor (Float) -> Void
+    private var lastPost: UInt64 = 0   // touched only from the single tap thread
+    init(deliver: @escaping @MainActor (Float) -> Void) { self.deliver = deliver }
+    func ingest(_ buffer: AVAudioPCMBuffer) {
+        let now = DispatchTime.now().uptimeNanoseconds
+        guard now &- lastPost >= 50_000_000, let channel = buffer.floatChannelData?[0], buffer.frameLength > 0 else { return }
+        lastPost = now
+        let n = Int(buffer.frameLength); var sum: Float = 0
+        for i in 0..<n { let v = channel[i]; sum += v * v }
+        let rms = (sum / Float(n)).squareRoot()
+        let db = 20 * log10(max(rms, 0.000_01))
+        let level = min(1, max(0, (db + 50) / 50))
+        let deliver = deliver
+        DispatchQueue.main.async { MainActor.assumeIsolated { deliver(level) } }
+    }
+}
+
 @MainActor final class NativeVoiceController: NSObject, ObservableObject, AVSpeechSynthesizerDelegate {
     static let shared = NativeVoiceController()
     @Published var language: AppLanguage = .chinese
@@ -167,6 +186,8 @@ import Speech
     enum DictationPhase: Equatable { case idle, starting, recording, finishing }
     enum DictationEnd: Equatable { case finished, cancelled, interrupted, denied, unsupported, failed(String), timedOut }
     @Published private(set) var dictationPhase: DictationPhase = .idle
+    /// Live input level 0…1 (RMS of the tap buffer → dBFS, −50…0 dB mapped linearly, lightly smoothed). 0 when idle.
+    @Published private(set) var audioLevel: Float = 0
     private var dictationEpoch = 0
     private var dictationTask: SFSpeechRecognitionTask?
     private var dictationRequest: SFSpeechAudioBufferRecognitionRequest?
@@ -218,7 +239,9 @@ import Speech
             let format = input.outputFormat(forBus: 0)   // read after activation so it matches the live hardware route
             guard format.sampleRate > 0, format.channelCount > 0 else { throw CatpawError.unavailable("麦克风音频格式不可用。") }
             input.removeTap(onBus: 0)
-            input.installTap(onBus: 0, bufferSize: 1024, format: format) { [weak req] buffer, _ in req?.append(buffer) }
+            // The tap only appends and measures; it never touches engine state, so the remove-before-install rule stands.
+            let meter = DictationLevelMeter { [weak self] level in self?.receiveLevel(level, epoch: epoch) }
+            input.installTap(onBus: 0, bufferSize: 1024, format: format) { [weak req] buffer, _ in req?.append(buffer); meter.ingest(buffer) }
             tapInstalled = true
             dictationTask = recognizer.recognitionTask(with: req) { [weak self] result, error in
                 let text = result?.bestTranscription.formattedString, final = result?.isFinal ?? false, failed = error != nil
@@ -279,7 +302,13 @@ import Speech
     }
     private func removeDictationObservers() { for o in dictationObservers { NotificationCenter.default.removeObserver(o) }; dictationObservers = [] }
 
+    private func receiveLevel(_ level: Float, epoch: Int) {
+        guard epoch == dictationEpoch, dictationPhase == .recording || dictationPhase == .starting else { return }
+        audioLevel = audioLevel * 0.4 + level * 0.6
+    }
+
     private func teardownDictationAudio(deactivate: Bool) {
+        audioLevel = 0
         dictationWatchdog?.cancel(); dictationWatchdog = nil
         removeDictationObservers()
         stopEngine()
@@ -328,6 +357,7 @@ import Speech
     enum DictationPhase: Equatable { case idle, starting, recording, finishing }
     enum DictationEnd: Equatable { case finished, cancelled, interrupted, denied, unsupported, failed(String), timedOut }
     @Published private(set) var dictationPhase: DictationPhase = .idle
+    @Published private(set) var audioLevel: Float = 0
     @discardableResult func startDictation(onText: @escaping @MainActor (String) -> Void, onEnd: @escaping @MainActor (DictationEnd) -> Void) -> Bool { onEnd(.unsupported); return true }
     func stopDictation() {}
     func cancelDictation(_ reason: DictationEnd = .cancelled) {}

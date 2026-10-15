@@ -267,6 +267,10 @@
     "en": "Choose one photo",
     "zh-Hans": "从相册选择一张图片"
   },
+  "代码": {
+    "en": "Code",
+    "zh-Hans": "代码"
+  },
   "代码审查": {
     "en": "Code review",
     "zh-Hans": "代码审查"
@@ -839,6 +843,14 @@
     "en": "Time per step (minutes)",
     "zh-Hans": "单步时长（分钟）"
   },
+  "卡片": {
+    "en": "Card",
+    "zh-Hans": "卡片"
+  },
+  "卡片加载中…": {
+    "en": "Loading card…",
+    "zh-Hans": "卡片加载中…"
+  },
   "卸载本地模拟记录": {
     "en": "Remove local simulation record",
     "zh-Hans": "卸载本地模拟记录"
@@ -1027,6 +1039,10 @@
     "en": "Cancel",
     "zh-Hans": "取消"
   },
+  "取消听写": {
+    "en": "Cancel dictation",
+    "zh-Hans": "取消听写"
+  },
   "取消模拟运行": {
     "en": "Cancel simulated run",
     "zh-Hans": "取消模拟运行"
@@ -1147,6 +1163,14 @@
     "en": "Follow-up messages paused",
     "zh-Hans": "后续消息已暂停"
   },
+  "向上滑动发送": {
+    "en": "Slide up to send",
+    "zh-Hans": "向上滑动发送"
+  },
+  "向左滑动取消": {
+    "en": "Slide left to cancel",
+    "zh-Hans": "向左滑动取消"
+  },
   "听写": {
     "en": "Dictate",
     "zh-Hans": "听写"
@@ -1263,6 +1287,14 @@
     "en": "Processing status needs checking",
     "zh-Hans": "处理进展待核对"
   },
+  "复制": {
+    "en": "Copy",
+    "zh-Hans": "复制"
+  },
+  "复制代码": {
+    "en": "Copy code",
+    "zh-Hans": "复制代码"
+  },
   "复制会话 ID": {
     "en": "Copy conversation ID",
     "zh-Hans": "复制会话 ID"
@@ -1314,6 +1346,10 @@
   "完成": {
     "en": "Done",
     "zh-Hans": "完成"
+  },
+  "完成听写": {
+    "en": "Finish dictation",
+    "zh-Hans": "完成听写"
   },
   "定时任务": {
     "en": "Scheduled tasks",
@@ -1438,6 +1474,10 @@
   "尚未检查本地连接": {
     "en": "Local connection not checked",
     "zh-Hans": "尚未检查本地连接"
+  },
+  "展开全部 ({0} 行)": {
+    "en": "Show all ({0} lines)",
+    "zh-Hans": "展开全部 ({0} 行)"
   },
   "工作失败": {
     "en": "Task failed",
@@ -1638,6 +1678,10 @@
   "已受理，待核验": {
     "en": "Accepted; verification pending",
     "zh-Hans": "已受理，待核验"
+  },
+  "已复制": {
+    "en": "Copied",
+    "zh-Hans": "已复制"
   },
   "已存在": {
     "en": "Already exists",
@@ -2454,6 +2498,10 @@
   "操作记录": {
     "en": "Action history",
     "zh-Hans": "操作记录"
+  },
+  "收起": {
+    "en": "Collapse",
+    "zh-Hans": "收起"
   },
   "改用文字": {
     "en": "Use text instead",
@@ -4707,6 +4755,10 @@
     "en": "Transcribing",
     "zh-Hans": "转写中"
   },
+  "轻点开始听写；按住说话，向上滑动发送，向左滑动取消": {
+    "en": "Tap to dictate; hold to talk, slide up to send, slide left to cancel",
+    "zh-Hans": "轻点开始听写；按住说话，向上滑动发送，向左滑动取消"
+  },
   "输入会保存在当前会话。选择专家与技能可记录工作配置。": {
     "en": "Input stays in this conversation. Expert and skill selections record work configuration.",
     "zh-Hans": "输入会保存在当前会话。选择专家与技能可记录工作配置。"
@@ -5086,37 +5138,5 @@
   "，草稿，": {
     "en": ", draft, ",
     "zh-Hans": "，草稿，"
-  },
-  "代码": {
-    "en": "Code",
-    "zh-Hans": "代码"
-  },
-  "复制": {
-    "en": "Copy",
-    "zh-Hans": "复制"
-  },
-  "已复制": {
-    "en": "Copied",
-    "zh-Hans": "已复制"
-  },
-  "复制代码": {
-    "en": "Copy code",
-    "zh-Hans": "复制代码"
-  },
-  "收起": {
-    "en": "Collapse",
-    "zh-Hans": "收起"
-  },
-  "展开全部 ({0} 行)": {
-    "en": "Show all ({0} lines)",
-    "zh-Hans": "展开全部 ({0} 行)"
-  },
-  "卡片": {
-    "en": "Card",
-    "zh-Hans": "卡片"
-  },
-  "卡片加载中…": {
-    "en": "Loading card…",
-    "zh-Hans": "卡片加载中…"
   }
 }
