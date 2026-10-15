@@ -167,7 +167,7 @@ final class CatpawAcceptanceUITests: XCTestCase {
             XCTAssertNotNil(row, "conversation \(title) visible in sidebar"); row?.tap(); Thread.sleep(forTimeInterval: 2); shot(app, "real-legacy-01-opened")
         }
         if ProcessInfo.processInfo.environment["CATPAW_REAL_NEW"] == "1" { app.buttons["chat.new"].tap(); Thread.sleep(forTimeInterval: 1.5); shot(app, "real-01b-new-chat") }
-        let field = input(app); field.tap(); field.typeText("用一句话介绍你自己")
+        let field = input(app); field.tap(); field.typeText(ProcessInfo.processInfo.environment["CATPAW_REAL_TEXT"] ?? "用一句话介绍你自己")
         app.buttons["chat.send"].tap()
         let review = app.buttons["chat.consent.review"]
         if review.waitForExistence(timeout: 8) { shot(app, "real-02a-consent-banner"); review.tap() }
