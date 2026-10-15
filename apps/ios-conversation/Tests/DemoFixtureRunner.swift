@@ -169,9 +169,9 @@ func waitFor(_ condition: () async throws -> Bool) async throws { for _ in 0..<3
         catch ConversationApprovalFailure.rejected(_, let code) { conflict = code ?? "" }
         check(conflict == "approval_operation_conflict", "a different answer for a queued interrupt is a conflict")
         _ = try await approving.value
-        let first = try await early.value, second = try await joined.value
+        let earlyOperation = try await early.value, joinedOperation = try await joined.value
         let sentChoices = await slow.uiDecisions.filter { $0 == choicesID }.count
-        check(first == qOperation && second == qOperation && sentChoices == 1, "queued answer is sent once after turn_suspended; identical duplicate joins it")
+        check(earlyOperation == qOperation && joinedOperation == qOperation && sentChoices == 1, "queued answer is sent once after turn_suspended; identical duplicate joins it")
 
         // Round 2 is streaming (paused before turn_suspended) right after choices: answer form/confirm/sheet in any order, cancel one.
         let qPending: [ConversationUIEvent] = try await queued.read(scope: Profiles.user, conversationID: qConversation).turns.last?.pendingUIBlocks ?? []
