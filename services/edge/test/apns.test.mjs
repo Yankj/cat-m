@@ -2,7 +2,7 @@ import test from 'node:test';import assert from 'node:assert/strict';import {gen
 import {readApnsConfig,ApnsSender,ApnsTokenSigner,liveActivityPayload,handlePushTokenRoute,validateDeviceTokenInput} from '../supabase/functions/_shared/core/src/apns.mjs';
 const {privateKey}=generateKeyPairSync('ec',{namedCurve:'P-256'});const p8=privateKey.export({type:'pkcs8',format:'pem'});
 const env={CATPAW_APNS_KEY_ID:'ABCDEFGHIJ',CATPAW_APNS_TEAM_ID:'TEAM123456',CATPAW_APNS_P8:p8,CATPAW_APNS_BUNDLE_ID:'com.example.catpaw'};
-const token='a'.repeat(64);
+const token='a'.repeat(64);const testDevice=['0'.repeat(8),'0'.repeat(4),'4'+'0'.repeat(3),'8'+'0'.repeat(3),'0'.repeat(12)].join('-');
 test('disabled unless every env value is present',()=>{assert.equal(readApnsConfig(k=>({...env,CATPAW_APNS_P8:''})[k]),null);assert.equal(readApnsConfig(k=>env[k]).host,'https://api.sandbox.push.apple.com');});
 test('ES256 JWT verifies with the key and is cached',async()=>{const c=readApnsConfig(k=>env[k]);let t=1_700_000_000_000;const s=new ApnsTokenSigner(c,{now:()=>t});const jwt=await s.token();const [h,cl,sig]=jwt.split('.');
  assert.deepEqual(JSON.parse(Buffer.from(h,'base64url')),{alg:'ES256',kid:'ABCDEFGHIJ'});assert.equal(JSON.parse(Buffer.from(cl,'base64url')).iss,'TEAM123456');
@@ -14,6 +14,6 @@ test('live activity push headers and 410 unregister',async()=>{const c=readApnsC
  assert.equal(JSON.parse(calls[0].init.body).aps['relevance-score'],100);assert.deepEqual([r.ok,r.unregistered,r.reason],[false,true,'Unregistered']);});
 test('token routes 503 when disabled and store when enabled',async()=>{await assert.rejects(handlePushTokenRoute({path:'/catpaw/devices/v1/push-token',method:'POST',apns:null}),e=>e.code==='apns_not_configured');
  const puts=[];const repository={transaction:async f=>f({lock:async()=>{},get:async()=>null,put:async(o,k,v)=>{puts.push([o,k,v]);return v;}})};
- const r=await handlePushTokenRoute({path:'/catpaw/devices/v1/push-token',method:'POST',apns:{},authenticate:async()=>({subject_id:'s1'}),repository,body:async()=>({device_id:'00000000-0000-4000-8000-000000000000',apns_token:token,env:'sandbox'})});
+ const r=await handlePushTokenRoute({path:'/catpaw/devices/v1/push-token',method:'POST',apns:{},authenticate:async()=>({subject_id:'s1'}),repository,body:async()=>({device_id:testDevice,apns_token:token,env:'sandbox'})});
  assert.equal(r.registered,true);assert.equal(puts[0][0],'push:s1');assert.equal(puts[0][1],'device_push_tokens');
  assert.throws(()=>validateDeviceTokenInput({device_id:'x'}));});
