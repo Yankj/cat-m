@@ -311,6 +311,10 @@
     "en": "Task status",
     "zh-Hans": "任务状态"
   },
+  "任务详情": {
+    "en": "Task details",
+    "zh-Hans": "任务详情"
+  },
   "任务请求失败 · ": {
     "en": "Task request failed · ",
     "zh-Hans": "任务请求失败 · "
@@ -1879,6 +1883,10 @@
     "en": "Already exists",
     "zh-Hans": "已存在"
   },
+  "已安排": {
+    "en": "Scheduled",
+    "zh-Hans": "已安排"
+  },
   "已安装": {
     "en": "Installed",
     "zh-Hans": "已安装"
@@ -1986,6 +1994,10 @@
   "已核验": {
     "en": "Verified",
     "zh-Hans": "已核验"
+  },
+  "已确认": {
+    "en": "Confirmed",
+    "zh-Hans": "已确认"
   },
   "已确认记忆": {
     "en": "Confirmed memory",
@@ -2298,6 +2310,10 @@
   "待决定事项": {
     "en": "Decisions to review",
     "zh-Hans": "待决定事项"
+  },
+  "待办": {
+    "en": "Upcoming",
+    "zh-Hans": "待办"
   },
   "待发消息": {
     "en": "Queued messages",
@@ -2807,6 +2823,10 @@
     "en": "Collapse",
     "zh-Hans": "收起"
   },
+  "收起侧栏": {
+    "en": "Collapse sidebar",
+    "zh-Hans": "收起侧栏"
+  },
   "改用文字": {
     "en": "Use text instead",
     "zh-Hans": "改用文字"
@@ -3055,6 +3075,10 @@
     "en": "Sunday",
     "zh-Hans": "星期日"
   },
+  "昨天": {
+    "en": "Yesterday",
+    "zh-Hans": "昨天"
+  },
   "显示 {0} / {1} 行": {
     "en": "Showing {0} / {1} rows",
     "zh-Hans": "显示 {0} / {1} 行"
@@ -3174,6 +3198,10 @@
   "暂时没能更新，请稍后再试。": {
     "en": "Couldn't update right now. Please try again.",
     "zh-Hans": "暂时没能更新，请稍后再试。"
+  },
+  "暂时连不上服务，请稍后重试": {
+    "en": "Can't reach the service right now. Try again later.",
+    "zh-Hans": "暂时连不上服务，请稍后重试"
   },
   "暂时连不上服务，请稍后重试。": {
     "en": "Can't reach the service right now. Please try again.",
@@ -3339,6 +3367,10 @@
     "en": "Not finished — please review",
     "zh-Hans": "未完成，需核对"
   },
+  "未登录": {
+    "en": "Not signed in",
+    "zh-Hans": "未登录"
+  },
   "未知事项状态；仅供查看。": {
     "en": "Unknown item state; read only.",
     "zh-Hans": "未知事项状态；仅供查看。"
@@ -3490,6 +3522,10 @@
   "本机消息 · Catpaw Fixture v1 模拟回复": {
     "en": "Local messages · Catpaw Fixture v1 simulated replies",
     "zh-Hans": "本机消息 · Catpaw Fixture v1 模拟回复"
+  },
+  "本机用户": {
+    "en": "This device",
+    "zh-Hans": "本机用户"
   },
   "本机私有数据可用": {
     "en": "Local private data available",
@@ -4091,6 +4127,10 @@
     "en": "Repeats weekly",
     "zh-Hans": "每周重复"
   },
+  "每天": {
+    "en": "Daily",
+    "zh-Hans": "每天"
+  },
   "每天重复": {
     "en": "Repeats daily",
     "zh-Hans": "每天重复"
@@ -4098,6 +4138,10 @@
   "每日": {
     "en": "Daily",
     "zh-Hans": "每日"
+  },
+  "每月": {
+    "en": "Monthly",
+    "zh-Hans": "每月"
   },
   "每月重复": {
     "en": "Repeats monthly",
@@ -4378,6 +4422,10 @@
   "确认": {
     "en": "Confirm",
     "zh-Hans": "确认"
+  },
+  "确认创建任务": {
+    "en": "Confirm new task",
+    "zh-Hans": "确认创建任务"
   },
   "确认发送状态": {
     "en": "Verifying send status",
@@ -5171,6 +5219,10 @@
     "en": "Debug: simulated reply scenario",
     "zh-Hans": "调试：模拟回复场景"
   },
+  "账户与设置": {
+    "en": "Account and settings",
+    "zh-Hans": "账户与设置"
+  },
   "账户编号": {
     "en": "Account ID",
     "zh-Hans": "账户编号"
@@ -5235,6 +5287,10 @@
     "en": "Run frozen synthetic report",
     "zh-Hans": "运行冻结合成报告"
   },
+  "运行历史": {
+    "en": "Run history",
+    "zh-Hans": "运行历史"
+  },
   "运行快捷指令": {
     "en": "Run shortcut",
     "zh-Hans": "运行快捷指令"
@@ -5282,6 +5338,10 @@
   "还没有记忆。你可以明确保存一条偏好，也可以回到对话交代需要记住的内容。": {
     "en": "No memory yet. Save a preference here, or return to the conversation to explain what to remember.",
     "zh-Hans": "还没有记忆。你可以明确保存一条偏好，也可以回到对话交代需要记住的内容。"
+  },
+  "还没有运行记录": {
+    "en": "No runs yet",
+    "zh-Hans": "还没有运行记录"
   },
   "这一轮来自服务端合成运行；本机只读。": {
     "en": "This round comes from a synthetic service run and is read-only here.",
@@ -5535,6 +5595,10 @@
     "en": "Selected conversation",
     "zh-Hans": "限定对话"
   },
+  "需核对": {
+    "en": "Check result",
+    "zh-Hans": "需核对"
+  },
   "需要你的确认": {
     "en": "Needs your confirmation",
     "zh-Hans": "需要你的确认"
@@ -5614,49 +5678,5 @@
   "，草稿，": {
     "en": ", draft, ",
     "zh-Hans": "，草稿，"
-  },
-  "确认创建任务": {
-    "en": "Confirm new task",
-    "zh-Hans": "确认创建任务"
-  },
-  "已确认": {
-    "en": "Confirmed",
-    "zh-Hans": "已确认"
-  },
-  "每天": {
-    "en": "Daily",
-    "zh-Hans": "每天"
-  },
-  "每月": {
-    "en": "Monthly",
-    "zh-Hans": "每月"
-  },
-  "已安排": {
-    "en": "Scheduled",
-    "zh-Hans": "已安排"
-  },
-  "需核对": {
-    "en": "Check result",
-    "zh-Hans": "需核对"
-  },
-  "待办": {
-    "en": "Upcoming",
-    "zh-Hans": "待办"
-  },
-  "暂时连不上服务，请稍后重试": {
-    "en": "Can't reach the service right now. Try again later.",
-    "zh-Hans": "暂时连不上服务，请稍后重试"
-  },
-  "运行历史": {
-    "en": "Run history",
-    "zh-Hans": "运行历史"
-  },
-  "还没有运行记录": {
-    "en": "No runs yet",
-    "zh-Hans": "还没有运行记录"
-  },
-  "任务详情": {
-    "en": "Task details",
-    "zh-Hans": "任务详情"
   }
 }
