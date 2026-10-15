@@ -1,7 +1,7 @@
 import Foundation
 
 public enum SidebarDestination: Equatable, Sendable {
-    case newConversation, conversation(UUID), tasks, results, memory, settings
+    case newConversation, conversation(UUID), tasks, results, memory, settings, proactive
 }
 
 /// Supply only the current account/scope's records. This package does not fetch or persist them.
@@ -22,6 +22,8 @@ public struct SidebarCapabilities: Equatable, Sendable {
     public var results: Bool
     public var memory: Bool
     public var settings: Bool
+    /// Proactive suggestion inbox (主动). Off by default so older hosts keep their drawer.
+    public var proactive: Bool = false
     public init(canCreateConversation: Bool = true, canSelectConversation: Bool = true,
                 tasks: Bool = false, results: Bool = false, memory: Bool = false, settings: Bool = true) {
         self.canCreateConversation = canCreateConversation; self.canSelectConversation = canSelectConversation
@@ -35,6 +37,7 @@ public struct SidebarCapabilities: Equatable, Sendable {
         case .results: results
         case .memory: memory
         case .settings: settings
+        case .proactive: proactive
         }
     }
 }

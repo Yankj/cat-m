@@ -16,7 +16,7 @@ import SwiftUI
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 8) {
-                Image(systemName: "sparkles").foregroundStyle(CatpawBrand.paw).accessibilityHidden(true)
+                CategoryPaw(category: s.actions?.contains(.create_reminder) == true ? .reminder : (s.signals?.first?.kind.contains("mail") == true ? .email : .calendar)).accessibilityHidden(true)
                 Text(ui("小猫主动提醒")).font(CatpawTypography.Role.caption.font.weight(.semibold)).foregroundStyle(CatpawColors.secondary)
                 Spacer(minLength: 0)
                 Button(ui("为什么找你")) { whyOpen = true }.font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
