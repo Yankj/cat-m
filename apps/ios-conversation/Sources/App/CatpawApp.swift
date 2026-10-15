@@ -174,7 +174,9 @@ import AppIntents
         }
         // Onboarding gate: the session may already be pre-warmed, but the intro stays until 开启.
         else if let model = auth.chat, !auth.needsOnboarding {
-            ConversationFirstView(model:model,accountLabel:auth.isFixture ? ui("合成登录测试 · 无真实 Auth/模型") : (auth.state.user?.isAnonymous == true ? ui("体验账号") : auth.state.user?.email),onSignOut:{ Task { await auth.signOut() } },isAnonymousAccount:auth.state.user?.isAnonymous == true)
+            ConversationFirstView(model:model,accountLabel:auth.isFixture ? ui("合成登录测试 · 无真实 Auth/模型") : (auth.state.user?.isAnonymous == true ? ui("体验账号") : auth.state.user?.email),onSignOut:{ Task { let l2User=auth.state.user?.id; await auth.signOut(); if let l2User { L2SecureStore.wipe(userID:l2User) } } },isAnonymousAccount:auth.state.user?.isAnonymous == true)
+                // L2 memory: per-user encrypted store follows the signed-in user (memory-layers.md).
+                .task(id:auth.state.user?.id) { L2SecureStore.activate(userID:auth.state.user?.id) }
                 #if DEBUG
                 .overlay(alignment:.topTrailing) {
                     if auth.isFixture {
