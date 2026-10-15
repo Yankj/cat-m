@@ -14,10 +14,13 @@ struct MemorySavedEvent: Codable, Sendable, Equatable {
 
 /// Where the chip finds the user's memory backend. Installed by `ConversationFirstModel` next to its memory service.
 @MainActor enum MemoryLibraryHub {
-    private(set) static var backend: (any MemoryLibraryBackend)?
-    static func install(_ service: ConversationMemoryService?) { backend = service.map { ConversationMemoryLibraryAdapter(service: $0) } }
-    static func install(backend value: (any MemoryLibraryBackend)?) { backend = value }
-    static func reset() { backend = nil; MemorySavedChipState.shared.reset() }
+    /// agent-memory.v1 (#41) when installed, else the claim-based adapter over ConversationMemoryService.
+    static var backend: (any MemoryLibraryBackend)? { preferred ?? legacy }
+    private static var preferred: (any MemoryLibraryBackend)?
+    private static var legacy: (any MemoryLibraryBackend)?
+    static func install(_ service: ConversationMemoryService?) { legacy = service.map { ConversationMemoryLibraryAdapter(service: $0) } }
+    static func install(backend value: (any MemoryLibraryBackend)?) { preferred = value }
+    static func reset() { preferred = nil; legacy = nil; MemorySavedChipState.shared.reset() }
 }
 
 /// Per memory id: undone / dismissed, so re-rendered transcripts keep the outcome.
