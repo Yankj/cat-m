@@ -75,7 +75,7 @@ R9_OVERRIDES = {
     # r9 palette from PR #29 (warm ink/secondary, orange action)
     "ink": ("#1C1B1A", "#F2F0ED"),
     "secondary": ("#6E6A66", "#A39E98"),
-    "tint": ("#F26B3A", "#FF8A5C"),
+    "tint": ("#EA5F2C", "#FF8A5C"),
 }
 
 def contrast(a, b):
@@ -113,8 +113,17 @@ def check(sources, spec):
             continue
         index = ("light", "dark").index(mode)
         actual = contrast(values[foreground][index], values[background][index])
-        if actual < pair["minimum"]:
+        # r9 decision (2026-10-16): paw orange is for fills/icons/non-text only → WCAG 1.4.11 non-text 3:1.
+        # Orange text must use ink, or CatpawColors.actionText (#C4511F) where unavoidable (checked below).
+        minimum = 3.0 if foreground == "tint" else pair["minimum"]
+        if actual < minimum:
             issue(COMPONENTS, f"{mode} {pair['role']} contrast {actual:.3f} is below {pair['minimum']}")
+
+    require(COMPONENTS, masked(palette), r"\bstatic\s+let\s+actionText\s*=\s*adaptive\(\s*light:\s*0xC4511F\b", "orange text token actionText must be #C4511F in light mode")
+    for path, code in sources.items():
+        for number, line in enumerate(code.splitlines(), 1):
+            if "Text(" in line and re.search(r"\.foregroundStyle\(\s*CatpawColors\.(action|accent)\s*\)", line):
+                issue(path, f"line {number}: orange text must use CatpawColors.ink or CatpawColors.actionText, not action/accent")
 
     primary = body(palette, r"\bstruct\s+CatpawPrimaryButtonStyle\s*:")
     require(COMPONENTS, primary, r"\.foregroundStyle\(\s*isEnabled\s*\?\s*CatpawColors\.onInk\b", "primary action foreground must use onInk")
