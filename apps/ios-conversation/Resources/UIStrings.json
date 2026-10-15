@@ -295,6 +295,10 @@
     "en": "Task name",
     "zh-Hans": "任务名称"
   },
+  "任务完成或需要你确认时及时告诉你。": {
+    "en": "To let you know when a task finishes or needs your OK.",
+    "zh-Hans": "任务完成或需要你确认时及时告诉你。"
+  },
   "任务已保存；进展来自原任务读取。": {
     "en": "The task is saved. Progress is read from the original task.",
     "zh-Hans": "任务已保存；进展来自原任务读取。"
@@ -358,6 +362,10 @@
   "你 · 本机保存": {
     "en": "You · saved locally",
     "zh-Hans": "你 · 本机保存"
+  },
+  "你之前没有允许。可以在系统设置里打开，回来后小猫会继续。": {
+    "en": "You didn't allow this before. Turn it on in Settings and Catpaw will pick up when you're back.",
+    "zh-Hans": "你之前没有允许。可以在系统设置里打开，回来后小猫会继续。"
   },
   "你可以随时调整目标、暂停或结束跟进。": {
     "en": "You can change the goal, pause, or stop at any time.",
@@ -570,6 +578,38 @@
   "允许发送这张图片到云端模型？": {
     "en": "Allow this image to be sent to a cloud model?",
     "zh-Hans": "允许发送这张图片到云端模型？"
+  },
+  "允许小猫使用你的位置": {
+    "en": "Let Catpaw use your location",
+    "zh-Hans": "允许小猫使用你的位置"
+  },
+  "允许小猫使用提醒事项": {
+    "en": "Let Catpaw use Reminders",
+    "zh-Hans": "允许小猫使用提醒事项"
+  },
+  "允许小猫使用日历": {
+    "en": "Let Catpaw use Calendar",
+    "zh-Hans": "允许小猫使用日历"
+  },
+  "允许小猫使用麦克风": {
+    "en": "Let Catpaw use the microphone",
+    "zh-Hans": "允许小猫使用麦克风"
+  },
+  "允许小猫查找联系人": {
+    "en": "Let Catpaw find contacts",
+    "zh-Hans": "允许小猫查找联系人"
+  },
+  "允许小猫给你发通知": {
+    "en": "Let Catpaw send you notifications",
+    "zh-Hans": "允许小猫给你发通知"
+  },
+  "允许小猫访问照片": {
+    "en": "Let Catpaw access Photos",
+    "zh-Hans": "允许小猫访问照片"
+  },
+  "允许小猫识别语音": {
+    "en": "Let Catpaw recognize speech",
+    "zh-Hans": "允许小猫识别语音"
   },
   "允许此会话图片传输": {
     "en": "Allow image processing for this conversation",
@@ -1323,6 +1363,10 @@
     "en": "Keeps working in the cloud",
     "zh-Hans": "在云端持续工作"
   },
+  "在本机把你的语音转成文字。": {
+    "en": "To turn your speech into text on this device.",
+    "zh-Hans": "在本机把你的语音转成文字。"
+  },
   "在线": {
     "en": "Online",
     "zh-Hans": "在线"
@@ -1698,6 +1742,10 @@
   "已允许": {
     "en": "Allowed",
     "zh-Hans": "已允许"
+  },
+  "已允许，可以继续了": {
+    "en": "Allowed. You're all set.",
+    "zh-Hans": "已允许，可以继续了"
   },
   "已允许：{0}": {
     "en": "Allowed: {0}",
@@ -2891,6 +2939,10 @@
     "en": "Routine progress stays in the app. Only results or important changes trigger a notice. Cross-task memory is off by default.",
     "zh-Hans": "普通进展留在 App 内。只在有成果或重要变化时提示。跨任务记忆默认关闭。"
   },
+  "暂不": {
+    "en": "Not now",
+    "zh-Hans": "暂不"
+  },
   "暂不允许": {
     "en": "Not now",
     "zh-Hans": "暂不允许"
@@ -3150,6 +3202,10 @@
   "未能读取所选图片。请重试或重新选择。": {
     "en": "Could not read the selected image. Retry or select it again.",
     "zh-Hans": "未能读取所选图片。请重试或重新选择。"
+  },
+  "未获授权": {
+    "en": "Not allowed",
+    "zh-Hans": "未获授权"
   },
   "未连接": {
     "en": "Not connected",
@@ -3899,6 +3955,10 @@
     "en": "No matching memories",
     "zh-Hans": "没有匹配的记忆"
   },
+  "没有完成，请稍后重试": {
+    "en": "Didn't finish. Try again later.",
+    "zh-Hans": "没有完成，请稍后重试"
+  },
   "没有工作记忆": {
     "en": "No work memory",
     "zh-Hans": "没有工作记忆"
@@ -4054,6 +4114,30 @@
   "用户明确要求 · revision {0}": {
     "en": "Explicit user requirement · revision {0}",
     "zh-Hans": "用户明确要求 · revision {0}"
+  },
+  "用来听你说话，转成文字。": {
+    "en": "To hear you and turn speech into text.",
+    "zh-Hans": "用来听你说话，转成文字。"
+  },
+  "用来找到你要联系的人。只在这次请求里用到，不会保存。": {
+    "en": "To find the person you want to reach. Used only for this request and never stored.",
+    "zh-Hans": "用来找到你要联系的人。只在这次请求里用到，不会保存。"
+  },
+  "用来把你确认的待办加进提醒事项。": {
+    "en": "To add to-dos you confirm to Reminders.",
+    "zh-Hans": "用来把你确认的待办加进提醒事项。"
+  },
+  "用来挑选你要发给小猫的照片。": {
+    "en": "To pick photos you want to send to Catpaw.",
+    "zh-Hans": "用来挑选你要发给小猫的照片。"
+  },
+  "用来查找你附近的地点。": {
+    "en": "To find places near you.",
+    "zh-Hans": "用来查找你附近的地点。"
+  },
+  "用来查看空闲时间、把你确认的日程加进日历。": {
+    "en": "To check when you're free and add events you confirm to your calendar.",
+    "zh-Hans": "用来查看空闲时间、把你确认的日程加进日历。"
   },
   "电脑": {
     "en": "Computer",
@@ -4262,6 +4346,10 @@
   "空闲": {
     "en": "Idle",
     "zh-Hans": "空闲"
+  },
+  "等待你回到 App 后继续": {
+    "en": "Continues when you're back in the app",
+    "zh-Hans": "等待你回到 App 后继续"
   },
   "等待你的决定；尚未执行。": {
     "en": "Awaiting your decision; execution has not occurred.",
@@ -5030,6 +5118,10 @@
   "这份成果的版本信息尚未核对，原输入会保留。": {
     "en": "This result version is not verified yet. Your input is kept.",
     "zh-Hans": "这份成果的版本信息尚未核对，原输入会保留。"
+  },
+  "这台设备暂不支持这项功能。": {
+    "en": "This device doesn't support this yet.",
+    "zh-Hans": "这台设备暂不支持这项功能。"
   },
   "这是你的人工修改，不会重新调用模型或读取来源。": {
     "en": "This is your manual edit. It does not call the model or read sources again.",

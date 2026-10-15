@@ -120,6 +120,7 @@ import AppIntents
     init() {
         GenerativeBlockAdapter.registerWithMarkdown()
         MemorySavedChipAdapter.register() // wave2 V1
+        DeviceStatusCardAdapter.register() // wave2 V3 receipt + permission cards
     }
     var body: some Scene {
         WindowGroup {
