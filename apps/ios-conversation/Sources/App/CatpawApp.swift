@@ -17,17 +17,22 @@ import AppIntents
     private(set) var loginSession: SupabaseUserAccessSession?
     init() {
         #if DEBUG
-        guard let test = ProcessInfo.processInfo.environment["CF_UI_TEST_STORE"], UUID(uuidString:test) != nil else { model = nil; error = nil; return }
+        guard let test = P0ExperienceFixture.launchEnvironment["CF_UI_TEST_STORE"], UUID(uuidString:test) != nil else { model = nil; error = nil; return }
         #else
         model = nil; error = nil; return
         #endif
         #if DEBUG
-        if let scenario=P0ExperienceFixture.scenario,let id=ProcessInfo.processInfo.environment["CF_UI_TEST_STORE"] {
+        if P0ExperienceFixture.launchEnvironment["CATPAW_REVIEW_EXPIRED"] == "1" { return }
+        if let scenario=P0ExperienceFixture.scenario,let id=P0ExperienceFixture.launchEnvironment["CF_UI_TEST_STORE"] {
             do {
                 let root=FileManager.default.urls(for:.applicationSupportDirectory,in:.userDomainMask)[0].appendingPathComponent("CatpawP0-qa-"+id)
                 let repository=try Repository(persistence:SwiftDataPersistence(url:root.appendingPathComponent("local.store")))
                 if scenario.hasPrefix("p0-ui-accepted-work") {
                     p0Model=try ConversationAcceptedWorkLoopbackFixture.make(repository:repository,root:root)
+                    return
+                }
+                if scenario == "p0-ui-consent-handoff" {
+                    p0Model=try ConversationConsentHandoffFixture.make(repository:repository,root:root)
                     return
                 }
                 let planBackend = ConversationTaskPlanFixtureBackend(mode:scenario == "p0-ui-plan-pending" ? .pending : (scenario == "p0-ui-plan-unknown" ? .unknown : .applied))
@@ -46,7 +51,7 @@ import AppIntents
         #endif
         var directory = "CatpawM-ConversationFirst-r7-legacy-test"
         #if DEBUG
-        if let test = ProcessInfo.processInfo.environment["CF_UI_TEST_STORE"], UUID(uuidString: test) != nil { directory += "-qa-" + test }
+        if let test = P0ExperienceFixture.launchEnvironment["CF_UI_TEST_STORE"], UUID(uuidString: test) != nil { directory += "-qa-" + test }
         #endif
         let root = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent(directory, isDirectory: true)
         do {
@@ -60,8 +65,8 @@ import AppIntents
             loginSession = composition.loginSession
             var backend: any ConversationBackend = composition.backend
             #if DEBUG
-            if let test = ProcessInfo.processInfo.environment["CF_UI_TEST_STORE"], UUID(uuidString: test) != nil,
-               ProcessInfo.processInfo.environment["CF_UI_TEST_SCENARIO"] == "active-followup" { backend = ConversationUITestHarness() }
+            if let test = P0ExperienceFixture.launchEnvironment["CF_UI_TEST_STORE"], UUID(uuidString: test) != nil,
+               P0ExperienceFixture.launchEnvironment["CF_UI_TEST_SCENARIO"] == "active-followup" { backend = ConversationUITestHarness() }
             #endif
             model = ConversationFirstModel(repository: repo, service: ConversationSessionService(repository: repo, backend: backend)); error = nil
         } catch { self.model = nil; self.error = error.localizedDescription }
@@ -71,7 +76,7 @@ import AppIntents
         guard let pending=p0Model,model == nil else { return }
         do {
             if P0ExperienceFixture.scenario?.hasPrefix("p0-ui-accepted-work")==true,
-               let testStore=ProcessInfo.processInfo.environment["CF_UI_TEST_STORE"],UUID(uuidString:testStore) != nil,
+               let testStore=P0ExperienceFixture.launchEnvironment["CF_UI_TEST_STORE"],UUID(uuidString:testStore) != nil,
                await pending.repository.read(scope:pending.scope).list("conversation",scope:pending.scope).isEmpty {
                 // A new synthetic client store owns a new conversation, not a
                 // fresh local journal falsely claiming an older server history.
@@ -81,7 +86,9 @@ import AppIntents
             if P0ExperienceFixture.scenario?.hasPrefix("p0-ui-accepted-work") != true,record.conversation?.draftText.isEmpty == true,try await pending.service.read(scope:pending.scope,conversationID:id).messages.isEmpty {
                 try await pending.service.saveDraft(scope:pending.scope,conversationID:id,text:"Saved local draft")
             }
-            await pending.start();model=pending
+            await pending.start()
+            if P0ExperienceFixture.scenario == "p0-ui-consent-handoff" {try await ConversationConsentHandoffFixture.prepare(model:pending)}
+            model=pending
             if P0ExperienceFixture.scenario == "p0-ui-large-autoplay" {
                 Task {
                     try? await Task.sleep(nanoseconds:1_000_000_000)
@@ -89,7 +96,7 @@ import AppIntents
                     P0PerformanceLog.shared.mark("synthetic_autoplay_action");pending.prepareSend()
                     try? await Task.sleep(nanoseconds:6_000_000_000)
                     P0ExperienceProbe.shared.exportMetrics()
-                    if let id=ProcessInfo.processInfo.environment["CF_UI_TEST_STORE"] {
+                    if let id=P0ExperienceFixture.launchEnvironment["CF_UI_TEST_STORE"] {
                         let url=FileManager.default.urls(for:.applicationSupportDirectory,in:.userDomainMask)[0].appendingPathComponent("P0-perf-"+id+".json")
                         try? Data(P0ExperienceProbe.shared.json.utf8).write(to:url,options:.atomic)
                     }
@@ -136,7 +143,15 @@ import AppIntents
             ConversationFirstView(model:model)
             #endif
         }
-        else if bootstrap.isP0Fixture { ProgressView("Offline fixture loading").accessibilityIdentifier("qa.p0Fixture.loading") }
+        else if bootstrap.isP0Fixture {
+            #if DEBUG
+            if P0ExperienceFixture.launchEnvironment["CATPAW_REVIEW_EXPIRED"] == "1" {
+                ContentUnavailableView { Label(ui("本次离线体验已到期"),systemImage:"clock") } description: {
+                    Text(ui("原对话与草稿仍保留。请准备下一次体验会话后继续。"))
+                }.accessibilityIdentifier("review.expired")
+            } else { ProgressView("Offline fixture loading").accessibilityIdentifier("qa.p0Fixture.loading") }
+            #endif
+        }
         else if let model = auth.chat {
             ConversationFirstView(model:model,accountLabel:auth.isFixture ? ui("合成登录测试 · 无真实 Auth/模型") : (auth.state.user?.isAnonymous == true ? ui("体验账号") : auth.state.user?.email),onSignOut:{ Task { await auth.signOut() } },isAnonymousAccount:auth.state.user?.isAnonymous == true)
                 #if DEBUG

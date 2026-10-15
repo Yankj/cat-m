@@ -95,7 +95,9 @@ for language in ['en','zh-Hans']:
  assert set(values)=={k for k in info if k.endswith('UsageDescription')}
  assert all(values.values())
  if language=='en':assert all(not HAN.search(v) for v in values.values())
-print('PASS L10 four unchanged permission keys have English and Chinese InfoPlist resources')
+trial_info=plistlib.loads((root/'Configuration/DeviceTrial.Info.plist').read_bytes())
+assert {k for k in trial_info if k.endswith('UsageDescription')}=={k for k in info if k.endswith('UsageDescription')}
+print('PASS L10 %d permission keys have English and Chinese resources in both App configurations' % len([k for k in info if k.endswith('UsageDescription')]))
 protected={
  'Sources/Features/LibraryViews.swift':['帮我整理这份文档的要点'],
  'Sources/Features/DocumentView.swift':['素材采集','重点筛选','感想共创','内容检查','成果审阅'],

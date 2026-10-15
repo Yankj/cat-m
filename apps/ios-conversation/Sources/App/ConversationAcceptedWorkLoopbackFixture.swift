@@ -5,7 +5,7 @@ import Foundation
 /// the loopback server's account, rows and provider are named synthetic inputs.
 @MainActor enum ConversationAcceptedWorkLoopbackFixture {
     static func make(repository:Repository,root:URL) throws -> ConversationFirstModel {
-        let raw=ProcessInfo.processInfo.environment["CATPAW_ACCEPTED_WORK_PORT"] ?? "8767"
+        let raw=P0ExperienceFixture.launchEnvironment["CATPAW_ACCEPTED_WORK_PORT"] ?? "8767"
         guard let port=Int(raw),(1024...65535).contains(port),
               P0ExperienceFixture.scenario?.hasPrefix("p0-ui-accepted-work")==true else {throw ConversationSessionError.notConfigured}
         let subject=UUID(uuidString:"51000000-0000-4000-8000-000000000004")!

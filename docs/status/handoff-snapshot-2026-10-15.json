@@ -1,0 +1,143 @@
+{
+  "schema_version": 1,
+  "captured_at": "2026-10-15T18:44:22+08:00",
+  "scope": "handoff_read_only_after_user_interruption",
+  "goal": {
+    "target": "FINAL-G3",
+    "status": "paused",
+    "observed_at": "2026-10-15T18:39:51+08:00",
+    "recreated": false,
+    "resumed": false,
+    "completed": false
+  },
+  "source": {
+    "primary_branch": "feat/s05-bounded-work",
+    "primary_head": "9a127247d52dab73f4830672100548d27866cc7e",
+    "primary_master_staged_blob_preserved": "487087317d1e1bc27c89cfc8a092116978fc46a3",
+    "managed_branch_at_handoff": "docs/handoff-20261015",
+    "managed_source_head_before_handoff": "8b560e619180e64dd0cd34f2a9f015a0c51224c2",
+    "remote_source_branch": "feat/s01-probe-next",
+    "remote_source_head": "5b8b8b634864e7f6af9c36dcb2ab395f8160bea7",
+    "remote_source_tree": "efaa93a44775fc5a2e6da41f7f222dd89c7b47fb",
+    "s06_branch": "feat/s06-device-actions",
+    "s06_new_files": []
+  },
+  "cloud": {
+    "api_version": 22,
+    "api_ezbr_sha256": "1c704703703691c120602c2a89e7a8439052c98d77fad6bc0254aaaf29274d6b",
+    "files": 55,
+    "all_candidate_sha256_matched": true,
+    "tick_version": 8,
+    "tick_unchanged": true,
+    "approved_archive_sha256": "f210841e8a92151ef210d1f47e5d309022a8e4a9c17fdd54fb6cf26e7ef7e3e4",
+    "rollback_archive_sha256": "eac493ce38634ef721c69be7cece91c6d0aa1b040f922a1a5247d14e4052c257",
+    "default_route_unchanged": true,
+    "earlier_automatic_rejection_resolved_by_direct_user_approval": true
+  },
+  "live_review": {
+    "review_id": "catpaw-gemma-private-review-20261015-v2",
+    "same_identity_refresh": {
+      "approved": 1,
+      "executed": 1,
+      "result": "same_identity_session_refreshed_once",
+      "new_identity": false,
+      "scope_changed": false,
+      "credentials_exposed_or_copied": false,
+      "another_refresh_authorized": false
+    },
+    "conversation": {
+      "attempted": true,
+      "known": true
+    },
+    "consent": {
+      "attempted": false,
+      "known": false
+    },
+    "turn": {
+      "attempted": false,
+      "state": "not_sent",
+      "model_calls": 0,
+      "approved_max_model_calls": 1,
+      "first_delta_seen": false
+    },
+    "get_count": 0,
+    "retry_or_new_id_permitted": false,
+    "during_handoff_new_auth_model_or_deploy_operations": 0
+  },
+  "app": {
+    "simulator_name": "Catpaw 最新体验",
+    "version": "0.3.0",
+    "build": 38,
+    "bundle": "com.example.CatpawM.ConversationFirst.Auth",
+    "read_from_installed_plist": true,
+    "package_fingerprint": "872197b49d39f94299b6f1b73d4e3e13bd05308e216bb306fcacb752f410f855",
+    "review_expiry_unix": 1792059759,
+    "review_expiry_not_extended": true,
+    "candidate39_built_not_installed": true,
+    "candidate39_fingerprint": "a0fe18f8590ef327ab56f2eb1aafc0f3c7938f6db2175638d16a96c3b6f088ed",
+    "phone_last_known_build": 16,
+    "phone_not_inspected_or_changed": true
+  },
+  "runtime": {
+    "xcodebuild_running": false,
+    "r8_operator_process_running": false,
+    "known_local_services_preserved": [
+      8772,
+      8773
+    ],
+    "other_processes_not_terminated": true,
+    "agents_stopped": 3
+  },
+  "verification": {
+    "backend_offline": 498,
+    "client_offline": 16,
+    "refresh_library_offline": 5,
+    "real_model_success": false,
+    "App_real_chain_passed": false,
+    "AF_FINAL_gates_closed": []
+  },
+  "backup": {
+    "path": "local-audit/handoff/2026-10-15T1843+0800",
+    "primary_candidate_files": 10,
+    "managed_candidate_files": 1,
+    "credentials_or_vault_backed_up": false
+  },
+  "artifacts": [
+    {
+      "path": "build/probe-next-20261015/deployment-readback.json",
+      "bytes": 215,
+      "sha256": "c0ba20d928fc47807ce1a05424130c395ed36a284d12a2f5470412fb67021bb3"
+    },
+    {
+      "path": "build/probe-next-20261015/same-identity-refresh-live.json",
+      "bytes": 157,
+      "sha256": "a599835692a5904aadfa67d09811f5c6d17d1730b65a5fbb05bfab28aa70d587"
+    },
+    {
+      "path": "build/probe-next-20261015/r8-prepare-conversation-live.json",
+      "bytes": 61,
+      "sha256": "ba9e854c796c6002413eb6504b321b4b5a0097a833b44313b39b20db9f651b6c"
+    },
+    {
+      "path": "services/edge/build/model-route-review-20261015/packages-r8/PACKAGE-MANIFEST.json",
+      "bytes": 8677,
+      "sha256": "cf3019a44fa1f80a11f9eaff2dd20d1e36b9ee0a497766b5a959d5d00c89ed35"
+    }
+  ],
+  "handoff_sha256": "ea332a193dab8148c3a38573bea1f4c03e291ef4f8ef9e8dec823b0cce635988",
+  "main_integration_preparation": {
+    "remote_main_base": "515f98f1b91a7485e246b4928e9065b60ef4e2c3",
+    "public_handoff_parent": "aad003aab0ad2d3be0fec1bb6be834d4fd670658",
+    "remote_other_changes_preserved": [
+      "README.md",
+      "docs/README.md",
+      "docs/development/branch-management.md",
+      "docs/architecture/repository-review-2026-10-15.md"
+    ],
+    "source_runtime_bytes_changed_by_integration": false,
+    "legacy_local_history_merged": false,
+    "private_media_uploaded": 0,
+    "projects_is_independent_dirty_repository": true,
+    "final_main_sha": "read_actual_main_ref_after_merge"
+  }
+}
