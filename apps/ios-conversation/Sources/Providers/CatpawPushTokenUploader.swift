@@ -1,23 +1,21 @@
 import Foundation
 
-/// One row of Supabase table `public.device_push_tokens` (schema assumption, see PR description):
-/// unique(token); RLS `user_id = auth.uid()`; upsert via PostgREST `on_conflict=token`.
-public struct CatpawPushTokenRecord: Codable, Sendable, Equatable {
-    public var user_id: UUID?
-    public var token: String
-    public var kind: String            // "live_activity" | "apns" (future: remote notifications / push-to-start)
-    public var platform: String
-    public var apns_environment: String // "sandbox" | "production"
+/// Body of `PUT /devices/tokens` on Edge function `catpaw-proactive` (docs/backend/proactive-tasks.md):
+/// `{device_id, kind, token, environment, bundle_id, activity_id?}`; server upserts into `proactive.device_push_tokens`.
+public struct CatpawDeviceTokenRegistration: Codable, Sendable, Equatable {
+    public enum Kind: String, Codable, Sendable { case apns, liveActivityUpdate = "live_activity_update", liveActivityStart = "live_activity_start" }
+    public var device_id: String
+    public var kind: Kind
+    public var token: String          // lowercase hex
+    public var environment: String    // "sandbox" (DEBUG) | "production"
     public var bundle_id: String
     public var activity_id: String?
-    public var task_id: String?
-    public var conversation_id: String?
-    public var active: Bool
-    public var updated_at: Date
 
-    public static func liveActivity(token: String, activityID: String, taskID: String, conversationID: String) -> Self {
-        .init(user_id: nil, token: token, kind: "live_activity", platform: "ios", apns_environment: apnsEnvironment, bundle_id: Bundle.main.bundleIdentifier ?? "",
-              activity_id: activityID, task_id: taskID, conversation_id: conversationID, active: true, updated_at: Date())
+    public init(kind: Kind, token: Data, activityID: String? = nil, deviceID: String = CatpawDeviceIdentity.deviceID, bundleID: String = Bundle.main.bundleIdentifier ?? "") {
+        self.init(kind: kind, hexToken: token.map { String(format: "%02x", $0) }.joined(), activityID: activityID, deviceID: deviceID, bundleID: bundleID)
+    }
+    public init(kind: Kind, hexToken: String, activityID: String? = nil, deviceID: String = CatpawDeviceIdentity.deviceID, bundleID: String = Bundle.main.bundleIdentifier ?? "") {
+        device_id = deviceID; self.kind = kind; token = hexToken.lowercased(); environment = Self.apnsEnvironment; bundle_id = bundleID; activity_id = activityID
     }
     public static var apnsEnvironment: String {
         #if DEBUG
@@ -26,79 +24,77 @@ public struct CatpawPushTokenRecord: Codable, Sendable, Equatable {
         return "production"
         #endif
     }
+    /// Pending-queue key: one APNs token per device, one update token per activity.
+    var queueKey: String { kind.rawValue + ":" + (activity_id ?? "") }
 }
 
-/// Queues push tokens and upserts them once an authorization provider is registered.
-/// Wiring (owner of NativeAuthApplicationModel): after building `AuthenticatedNativeChatCredentials` call
-/// `await CatpawPushTokenUploader.shared.setAuthorization(subjectID: user.id) { try await credentials.authorization(scope: partition.scope) }`
-/// and `clearAuthorization()` on sign-out. Until then tokens stay queued in memory (never written to disk).
+/// Stable per-install device id (not the advertising id, not identifierForVendor), stored in UserDefaults.
+public enum CatpawDeviceIdentity {
+    private static let key = "catpaw.push.deviceID"
+    public static var deviceID: String {
+        if let v = UserDefaults.standard.string(forKey: key), !v.isEmpty { return v }
+        let v = UUID().uuidString.lowercased(); UserDefaults.standard.set(v, forKey: key); return v
+    }
+}
+
+/// Queues device / Live Activity push tokens and sends them to `catpaw-proactive` once a bearer provider is set.
+/// Wiring (owner of NativeAuthApplicationModel), after `AuthenticatedNativeChatCredentials` is built:
+/// `await CatpawPushTokenUploader.shared.setAuthorization { try await credentials.authorization(scope: partition.scope) }`
+/// and `await CatpawPushTokenUploader.shared.clearAuthorization()` on sign-out. Tokens never touch disk.
 public actor CatpawPushTokenUploader {
     public static let shared = CatpawPushTokenUploader()
     public typealias Authorization = @Sendable () async throws -> String
 
     private var authorization: Authorization?
-    private var subjectID: UUID?
-    private var pending: [String: CatpawPushTokenRecord] = [:]
-    private var activityTokens: [String: String] = [:]
+    private var pending: [String: CatpawDeviceTokenRegistration] = [:]
+    private var lastSent: [String: CatpawDeviceTokenRegistration] = [:]
     private let session: URLSession
-    private let projectURL: URL?
-    private let publishableKey: String?
+    private let endpoint: URL?
 
+    /// `CatpawProactiveBaseURL` (Info.plist) overrides the default `<CatpawSupabaseProjectURL>/functions/v1/catpaw-proactive`.
     public init(session: URLSession = .shared, info: [String: Any]? = Bundle.main.infoDictionary) {
         self.session = session
-        let url = (info?["CatpawSupabaseProjectURL"] as? String).flatMap { $0.isEmpty ? nil : URL(string: $0) }
-        projectURL = url?.scheme == "https" ? url : nil
-        publishableKey = (info?["CatpawSupabasePublishableKey"] as? String).flatMap { $0.isEmpty ? nil : $0 }
+        func url(_ key: String) -> URL? { (info?[key] as? String).flatMap { $0.isEmpty ? nil : URL(string: $0) }.flatMap { $0.scheme == "https" ? $0 : nil } }
+        let base = url("CatpawProactiveBaseURL") ?? url("CatpawSupabaseProjectURL")?.appendingPathComponent("functions/v1/catpaw-proactive")
+        endpoint = base?.appendingPathComponent("devices/tokens")
     }
 
-    public func setAuthorization(subjectID: UUID, _ provider: @escaping Authorization) async {
-        if self.subjectID != subjectID { pending = pending.mapValues { var r = $0; r.user_id = nil; return r } }
-        self.subjectID = subjectID; authorization = provider
+    public func setAuthorization(_ provider: @escaping Authorization) async {
+        authorization = provider
+        for (k, v) in lastSent where pending[k] == nil { pending[k] = v }   // re-register under the (possibly new) account
         await flush()
     }
-    public func clearAuthorization() { authorization = nil; subjectID = nil }
+    public func clearAuthorization() { authorization = nil }
 
-    public func enqueue(_ record: CatpawPushTokenRecord) async {
-        pending[record.token] = record
-        if let id = record.activity_id { activityTokens[id] = record.token }
+    public func enqueue(_ registration: CatpawDeviceTokenRegistration) async {
+        guard lastSent[registration.queueKey] != registration || authorization == nil else { return }
+        pending[registration.queueKey] = registration
         await flush()
     }
-
-    /// Marks an ended activity's token inactive so the backend stops pushing to it.
-    public func retire(activityID: String) async {
-        guard let token = activityTokens.removeValue(forKey: activityID) else { return }
-        var record = pending[token] ?? CatpawPushTokenRecord.liveActivity(token: token, activityID: activityID, taskID: "", conversationID: "")
-        record.active = false; record.updated_at = Date(); pending[token] = record
-        await flush()
+    /// Drops a finished activity's token locally; the server disables it on APNs 410 / BadDeviceToken.
+    public func forgetActivity(_ activityID: String) {
+        let key = CatpawDeviceTokenRegistration.Kind.liveActivityUpdate.rawValue + ":" + activityID
+        pending.removeValue(forKey: key); lastSent.removeValue(forKey: key)
     }
-
     public var queuedCount: Int { pending.count }
 
     private func flush() async {
-        guard let authorization, let subjectID, let projectURL, let publishableKey, !pending.isEmpty else { return }
-        for (token, var record) in pending {
-            record.user_id = subjectID
+        guard let authorization, let endpoint, !pending.isEmpty else { return }
+        for (key, registration) in pending {
             do {
-                try await upsert(record, projectURL: projectURL, key: publishableKey, authorization: try await authorization())
-                if pending[token]?.updated_at == record.updated_at { pending.removeValue(forKey: token) }
-            } catch {
-                return // keep queued; retried on the next enqueue/setAuthorization
-            }
+                try await put(registration, to: endpoint, authorization: try await authorization())
+                if pending[key] == registration { pending.removeValue(forKey: key) }
+                lastSent[key] = registration
+            } catch { return } // stays queued; retried on next enqueue / setAuthorization
         }
     }
 
-    private func upsert(_ record: CatpawPushTokenRecord, projectURL: URL, key: String, authorization: String) async throws {
-        var components = URLComponents(url: projectURL.appendingPathComponent("rest/v1/device_push_tokens"), resolvingAgainstBaseURL: false)
-        components?.queryItems = [URLQueryItem(name: "on_conflict", value: "token")]
-        guard let url = components?.url else { throw URLError(.badURL) }
+    private func put(_ registration: CatpawDeviceTokenRegistration, to url: URL, authorization: String) async throws {
         var request = URLRequest(url: url, timeoutInterval: 15)
-        request.httpMethod = "POST"
-        request.setValue(key, forHTTPHeaderField: "apikey")
+        request.httpMethod = "PUT"
         request.setValue(authorization.hasPrefix("Bearer ") ? authorization : "Bearer " + authorization, forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("resolution=merge-duplicates,return=minimal", forHTTPHeaderField: "Prefer")
-        let encoder = JSONEncoder(); encoder.dateEncodingStrategy = .iso8601
-        request.httpBody = try encoder.encode(record)
+        request.httpBody = try JSONEncoder().encode(registration)
         let (_, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else { throw URLError(.badServerResponse) }
     }
