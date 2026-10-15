@@ -150,6 +150,8 @@ struct AnswerSource: Identifiable, Equatable, Sendable {
         case let .reasoningSummary(_, text, thinkingMs):
             thinkingSummary = text
             applyThinkingDuration(thinkingMs)
+        case .approvalRequested, .suspended, .approvalResolved:
+            break // catpaw.approval.v1: presentation is owned by the UI lane (A2).
         }
     }
 

@@ -102,8 +102,11 @@ public struct ConversationToolResult: Codable, Sendable {
     public let continuationReceipt: ConversationTaskRevisionReceipt?
     public let memoryProposalReceipt:ConversationMemoryProposalReceipt?
     public let revisionWorkReceipt:ConversationRevisionWorkReceipt?
+    /// catpaw.approval.v1 `tool_result.status`: "ok", "denied" (user denied / approval expired / cancelled; not executed) or "error". nil from older servers.
+    public var status:String? = nil
     public init(callID: String, name: String, content: String, committedGoals: [ConversationGoalProjection] = [], continuationReceipt: ConversationTaskRevisionReceipt? = nil,memoryProposalReceipt:ConversationMemoryProposalReceipt?=nil,revisionWorkReceipt:ConversationRevisionWorkReceipt?=nil) {self.revisionWorkReceipt=revisionWorkReceipt; self.callID = callID; self.name = name; self.content = content; self.committedGoals = committedGoals; self.continuationReceipt=continuationReceipt;self.memoryProposalReceipt=memoryProposalReceipt }
 }
+extension ConversationToolResult { public func withStatus(_ status:String?) -> Self { var copy=self; copy.status=status; return copy } }
 /// A fresh turn's immutable link to the original task. Acceptance is not task completion.
 public struct ConversationTaskRevisionReceipt:Codable,Sendable,Equatable {
     public let operation_id:String,operation_hash:String,scope_id:String,subject_id:String,conversation_id:String,turn_id:String,call_id:String,run_id:String,task_id:String
@@ -195,6 +198,12 @@ public struct ConversationTurnEvent: Sendable {
         case toolResult(ConversationToolResult), completed(messageID: UUID, finalTextHash: String,visionReceipt:ConversationVisionProviderReceipt?=nil), failed(message: String, reconciliationRequired: Bool)
         /// R7 optional wire event `reasoning_summary`: provider thought summary, before first text_delta.
         case reasoningSummary(messageID: UUID, text: String, thinkingMs: Int?)
+        /// catpaw.approval.v1 `approval_requested`: a tool call waits for the user's decision (follows its `toolStarted`).
+        case approvalRequested(ConversationApprovalRequest)
+        /// catpaw.approval.v1 `turn_suspended`: the turn waits for decisions. NOT terminal; the stream ends here.
+        case suspended(interruptIDs: [String], expiresAt: String)
+        /// catpaw.approval.v1 `approval_resolved`: decision is "approved", "denied", "expired" or "cancelled".
+        case approvalResolved(interruptID: String, callID: String, decision: String, remember: Bool)
     }
     public let operationID: UUID
     public let epoch: Int
@@ -223,6 +232,48 @@ public struct ConversationTurnRecord: Codable, Sendable, Identifiable {
     public var thinkingMs:Int? = nil
     /// Set when the turn failed with `rate_limited`; drives ConnectionMonitor.busy.
     public var retryAfterSeconds:Int? = nil
+    /// catpaw.approval.v1: interrupts still waiting for a decision (state stays `.running`, the server turn is `awaiting_approval`).
+    public var pendingApprovals:[ConversationApprovalRequest]? = nil
+    public var awaitingApproval:Bool { state == .running && !(pendingApprovals ?? []).isEmpty }
+}
+/// catpaw.approval.v1 interrupt as shown to the user (services/edge/docs/approval-contract.md).
+public struct ConversationApprovalRequest: Codable, Sendable, Equatable, Identifiable {
+    public var id: String { interruptID }
+    public let interruptID: String
+    public let callID: String
+    public let tool: String
+    /// Server-made one-line argument summary (≤ 240 chars); safe to show.
+    public let summary: String
+    /// Canonical JSON of the call arguments (sorted keys), for an optional detail view.
+    public let arguments: String
+    /// Must be echoed in the decision; a mismatch is `approval_stale`.
+    public let argsHash: String
+    /// ISO-8601 UTC; after it the server resolves the interrupt as `expired` (denied to the model).
+    public let expiresAt: String
+    /// "local_write", "device_write" or "external_write".
+    public let risk: String
+    /// True only for first-use classes (create_task/update_task): `.approveAlways` is allowed.
+    public let rememberAllowed: Bool
+    public init(interruptID: String, callID: String, tool: String, summary: String, arguments: String, argsHash: String, expiresAt: String, risk: String, rememberAllowed: Bool) { self.interruptID = interruptID; self.callID = callID; self.tool = tool; self.summary = summary; self.arguments = arguments; self.argsHash = argsHash; self.expiresAt = expiresAt; self.risk = risk; self.rememberAllowed = rememberAllowed }
+}
+public enum ConversationApprovalDecision: String, Codable, Sendable { case approve, deny, approveAlways = "approve_always" }
+public enum ConversationApprovalFailure: Error, Sendable, Equatable {
+    /// Network error / 5xx before a response: resend with the SAME decision operationID (idempotent).
+    case transport
+    /// 409 approval_expired: 10 minutes passed; the call was denied to the model and the turn resumed.
+    case expired
+    /// 409 approval_consumed: already decided (or turn no longer awaiting).
+    case consumed
+    /// 409 approval_stale: args_hash differs from the pending call.
+    case stale
+    /// 404: unknown turn or interrupt.
+    case notFound
+    /// Other refusal (approval_operation_conflict, approval_grant_conflict, 422 …).
+    case rejected(status: Int, code: String?)
+    /// Backend without the approval contract.
+    case unsupported
+    /// No pending interrupt with that id in the local journal.
+    case noPendingApproval
 }
 public struct ConversationSession: Codable, Sendable {
     public let scope: DataScope
@@ -241,7 +292,11 @@ public struct ConversationObservation: Sendable {
     public let requestHash: String?
     public let grantEpoch: Int?
     public let goals: [ConversationGoalProjection]
-    public init(request: ConversationTurnRequest, events: [ConversationTurnEvent], requestHash: String? = nil, grantEpoch: Int? = nil, goals: [ConversationGoalProjection] = []) { self.request = request; self.events = events; self.requestHash = requestHash; self.grantEpoch = grantEpoch; self.goals = goals }
+    /// Snapshot `pending_approvals` (cold-start restore). Empty when none or not provided.
+    public var pendingApprovals: [ConversationApprovalRequest] = []
+    /// Snapshot `state` (e.g. "awaiting_approval"); nil when not provided.
+    public var serverState: String? = nil
+    public init(request: ConversationTurnRequest, events: [ConversationTurnEvent], requestHash: String? = nil, grantEpoch: Int? = nil, goals: [ConversationGoalProjection] = [], pendingApprovals: [ConversationApprovalRequest] = [], serverState: String? = nil) { self.request = request; self.events = events; self.requestHash = requestHash; self.grantEpoch = grantEpoch; self.goals = goals; self.pendingApprovals = pendingApprovals; self.serverState = serverState }
 }
 /// Client projection seam, not a new Agent engine. A verified server adapter supplies the wire.
 public struct ConversationModelConsent: Sendable, Identifiable {
@@ -277,6 +332,10 @@ public protocol ConversationBackend: Sendable {
     /// R2 stop: `POST …/turns/{id}/cancel` with body `{}`. Idempotent; safe to resend after a network error.
     /// Throws `ConversationTurnCancelFailure` for transport, 404 and other refusals.
     func cancelTurn(_ request: ConversationTurnRequest) async throws -> ConversationTurnCancelReceipt
+    /// catpaw.approval.v1: `POST …/turns/{t}/interrupts/{i}/decision?after_sequence=N` with
+    /// `{operation_id, decision, args_hash}`; on success streams the SAME turn's events after N (SSE).
+    /// Throws `ConversationApprovalFailure` for refusals.
+    func submitApproval(_ request: ConversationTurnRequest, interruptID: String, decision: ConversationApprovalDecision, argsHash: String, operationID: UUID, afterSequence: Int) async throws -> AsyncThrowingStream<ConversationTurnEvent, Error>
 }
 /// `cancel{turn_id,state,cancelled,already_terminal}` from the Edge cancel route (services/edge/docs/turn-cancel-contract.md).
 public struct ConversationTurnCancelReceipt: Sendable, Equatable {
@@ -337,6 +396,7 @@ public extension ConversationBackend {
     func resumeEvents(_ request: ConversationTurnRequest, afterSequence: Int) async throws -> AsyncThrowingStream<ConversationTurnEvent, Error> { throw ConversationSessionError.unresolvedOperation }
     func retryBusyTurn(_ request: ConversationTurnRequest, afterSequence: Int) async throws -> AsyncThrowingStream<ConversationTurnEvent, Error> { throw ConversationSessionError.unresolvedOperation }
     func cancelTurn(_ request: ConversationTurnRequest) async throws -> ConversationTurnCancelReceipt { throw ConversationTurnCancelFailure.unsupported }
+    func submitApproval(_ request: ConversationTurnRequest, interruptID: String, decision: ConversationApprovalDecision, argsHash: String, operationID: UUID, afterSequence: Int) async throws -> AsyncThrowingStream<ConversationTurnEvent, Error> { throw ConversationApprovalFailure.unsupported }
     func revisionWorkCapability(scope:DataScope,conversationID:UUID) async throws -> ConversationAcceptedWorkCapability {.init()}
     func freezeRevisionWork(_ request:ConversationTurnRequest,selection:ConversationRevisionWorkSelection) async throws -> ConversationRevisionWorkIntent {throw ConversationAcceptedWorkError.unavailable}
     func acceptedWorkCapability(scope:DataScope,conversationID:UUID) async throws -> ConversationAcceptedWorkCapability {.init()}
