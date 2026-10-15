@@ -287,19 +287,31 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
     /// R7 §5.3: reattach to the original turn with `GET …/turns/{id}/events?after_sequence=N`.
     /// Idle timeout is 15 s; the Edge sends `: keepalive` every 10 s.
     public func resumeEvents(_ request: ConversationTurnRequest, afterSequence: Int) async throws -> AsyncThrowingStream<ConversationTurnEvent, Error> {
+        try await originalTurnStream(request, afterSequence: afterSequence, busyRestart: false)
+    }
+    /// R7 busy retry: `POST …/turns/{id}/retry-busy` restarts the SAME turn (same operationID and user
+    /// message) when the Edge recorded `failed{rate_limited}` before any output; events continue the sequence.
+    public func retryBusyTurn(_ request: ConversationTurnRequest, afterSequence: Int) async throws -> AsyncThrowingStream<ConversationTurnEvent, Error> {
+        try await originalTurnStream(request, afterSequence: afterSequence, busyRestart: true)
+    }
+    private func originalTurnStream(_ request: ConversationTurnRequest, afterSequence: Int, busyRestart: Bool) async throws -> AsyncThrowingStream<ConversationTurnEvent, Error> {
         guard Self.supportsResume(request), afterSequence >= 0 else { throw ConversationSessionError.unresolvedOperation }
         let auth = try await authorization(request.scope)
         let grant: Int
         do { grant = try Self.positive(try await readConversation(request, auth: auth, mayCreate: false)["grant_epoch"]) }
         catch let network as URLError { throw ConversationStreamInterrupted(reason: Self.friendlyTransportMessage(network)) }
-        var get = try self.request(turnPath(request) + "/" + request.operationID.uuidString.lowercased() + "/events?after_sequence=\(afterSequence)", auth: auth)
-        get.httpMethod = "GET"; get.timeoutInterval = ConversationReconnectPolicy.idleTimeout; get.setValue("text/event-stream", forHTTPHeaderField: "Accept")
+        let original = turnPath(request) + "/" + request.operationID.uuidString.lowercased()
+        var get = try self.request(busyRestart ? original + "/retry-busy" : original + "/events?after_sequence=\(afterSequence)", auth: auth)
+        get.httpMethod = busyRestart ? "POST" : "GET"; get.timeoutInterval = ConversationReconnectPolicy.idleTimeout; get.setValue("text/event-stream", forHTTPHeaderField: "Accept")
         return AsyncThrowingStream { continuation in
             let task = Task {
                 do {
                     let (bytes, response) = try await self.session.bytes(for: get)
                     guard let http = response as? HTTPURLResponse, http.statusCode == 200, http.mimeType == "text/event-stream" else {
-                        if (response as? HTTPURLResponse)?.statusCode == 401 { await self.credentials.rejected(scope: request.scope) }
+                        let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+                        if status == 401 { await self.credentials.rejected(scope: request.scope) }
+                        // A definite refusal (409/429) means the original failed turn was not restarted.
+                        if busyRestart, [404, 409, 429].contains(status) { throw CatpawError.unavailable("这条消息暂时无法重试。") }
                         throw ConversationStreamInterrupted(reason: "暂时无法读取原回复。")
                     }
                     var line = Data(), afterCR = false

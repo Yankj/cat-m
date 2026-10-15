@@ -60,6 +60,11 @@ export function createChatFetchHandler(runtime){
         await chat.readTurn(auth,scope,tail[1],tail[3],{afterSequence,trusted});
         return streamTurn(request,auth,scope,tail[1],tail[3],{afterSequence,trusted});
       }
+      if(method==='POST'&&tail.length===5&&tail[0]==='conversations'&&tail[2]==='turns'&&tail[4]==='retry-busy'){
+        const restarted=await chat.restartRateLimited(auth,scope,tail[1],tail[3]);
+        runtime.onAccepted?.({owner:restarted.trusted.owner,principal:restarted.trusted.principal,turnId:tail[3]});
+        return streamTurn(request,auth,scope,tail[1],tail[3],{trusted:restarted.trusted,afterSequence:restarted.afterSequence});
+      }
       if(method==='POST'&&tail.length===3&&tail[0]==='conversations'&&tail[2]==='control')return json({conversation:await chat.control(auth,scope,tail[1],await body())});
       if(method==='POST'&&tail.length===3&&tail[0]==='conversations'&&tail[2]==='turns'){
         const input=await body(),capability=request.headers.get('X-Catpaw-Memory-Proposal-Contract');

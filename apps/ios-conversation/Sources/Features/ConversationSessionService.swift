@@ -13,6 +13,7 @@ public actor ConversationSessionService {
     private struct BusyRetry: Sendable { var due: Date; var operationID: UUID; var autoRetried: Bool }
     private var busyRetry: [UUID: BusyRetry] = [:]
     private var autoRetryTurns: Set<UUID> = []
+    private var turnObservers: [UUID: AsyncStream<ConversationTurnEvent>.Continuation] = [:]
     private let resilience: (any ConversationStreamResilience)?
     private let reconnectPolicy: ConversationReconnectPolicy
     public func imageCapabilities(scope:DataScope,conversationID:UUID) async throws -> ConversationImageCapability { try await backend.imageCapabilities(scope:scope,conversationID:conversationID) }
@@ -212,43 +213,7 @@ public actor ConversationSessionService {
         try await save(session, expectedRevision: journalRevision, fence: request, observationToken: observationToken, additional: [.update(cr.id, cr.header.revision, .core(.conversation(conversation)))])
         do {
             if offline { throw ConversationDispatchFailure.notSent(reason: Self.waitingForNetwork) }
-            var stream = try await backend.reply(request)
-            var attempt = 0
-            // R7 §5.3: a transport drop after POST is resumed by GET-after-lastSequence with backoff;
-            // events at or below lastSequence are ignored by apply(), so text is only appended.
-            resumeLoop: while true {
-                do {
-                    for try await event in stream {
-                        try Task.checkCancellation()
-                        guard active[conversationID] == observationToken else { throw CancellationError() }
-                        try await apply(event, request: request, observationToken: observationToken)
-                        if attempt > 0 { attempt = 0; await resilience?.resumed() }
-                        let saved = try await read(scope: scope, conversationID: conversationID)
-                        if let turn = saved.turns.last, [.completed, .failed, .unknown].contains(turn.state) { break resumeLoop }
-                    }
-                    break resumeLoop
-                } catch let interrupted as ConversationStreamInterrupted {
-                    await resilience?.waitForPath() // offline does not count an attempt
-                    guard let delay = reconnectPolicy.delay(forAttempt: attempt) else { await resilience?.unreachable(); throw CatpawError.unavailable(interrupted.reason + "已显示的部分都保留了；继续获取会从断点接上，不会重新发送你的消息。") }
-                    attempt += 1; await resilience?.reconnecting(attempt: attempt, retryIn: delay)
-                    try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
-                    guard active[conversationID] == observationToken else { throw CancellationError() }
-                    let last = try await read(scope: scope, conversationID: conversationID).turns.first(where: { $0.id == operationID })?.lastSequence ?? 0
-                    do { stream = try await backend.resumeEvents(request, afterSequence: last) }
-                    catch let again as ConversationStreamInterrupted { stream = AsyncThrowingStream<ConversationTurnEvent, Error> { $0.finish(throwing: again) } }
-                }
-            }
-            await resilience?.settled()
-            let saved = try await read(scope: scope, conversationID: conversationID)
-            if let last = saved.turns.last, last.id == operationID, last.state == .failed, last.error == Self.rateLimitedCode {
-                // R7 busy: countdown, then one automatic retry (see foregroundTick); never for an auto-retried turn.
-                let wait = max(1, last.retryAfterSeconds ?? 20)
-                busyRetry[conversationID] = BusyRetry(due: Date().addingTimeInterval(TimeInterval(wait)), operationID: operationID, autoRetried: autoRetryTurns.contains(operationID))
-                await resilience?.busy(retryIn: wait)
-            }
-            if saved.turns.last?.state == .completed { try? await outbox?.remove(operationID); await backend.recordCommittedReply(request);return operationID }
-            if saved.turns.last?.state == .failed { throw CatpawError.unavailable(saved.turns.last?.error ?? "服务请求失败。") }
-            throw ConversationSessionError.unresolvedOperation
+            return try await pump(try await backend.reply(request), request: request, observationToken: observationToken)
         } catch {
             if active[conversationID] == observationToken {
                 if error is ConversationDispatchFailure {
@@ -263,6 +228,47 @@ public actor ConversationSessionService {
             }
             throw error
         }
+    }
+    /// Single turn event pump for send, busy retry and outbox drain (same apply → journal → turnEvents path).
+    private func pump(_ first: AsyncThrowingStream<ConversationTurnEvent, Error>, request: ConversationTurnRequest, observationToken: UUID) async throws -> UUID {
+        var stream = first
+        let scope = request.scope, conversationID = request.conversationID, operationID = request.operationID
+        var attempt = 0
+        // R7 §5.3: a transport drop after POST is resumed by GET-after-lastSequence with backoff;
+        // events at or below lastSequence are ignored by apply(), so text is only appended.
+        resumeLoop: while true {
+            do {
+                for try await event in stream {
+                    try Task.checkCancellation()
+                    guard active[conversationID] == observationToken else { throw CancellationError() }
+                    try await apply(event, request: request, observationToken: observationToken)
+                    if attempt > 0 { attempt = 0; await resilience?.resumed() }
+                    let saved = try await read(scope: scope, conversationID: conversationID)
+                    if let turn = saved.turns.last, [.completed, .failed, .unknown].contains(turn.state) { break resumeLoop }
+                }
+                break resumeLoop
+            } catch let interrupted as ConversationStreamInterrupted {
+                await resilience?.waitForPath() // offline does not count an attempt
+                guard let delay = reconnectPolicy.delay(forAttempt: attempt) else { await resilience?.unreachable(); throw CatpawError.unavailable(interrupted.reason + "已显示的部分都保留了；继续获取会从断点接上，不会重新发送你的消息。") }
+                attempt += 1; await resilience?.reconnecting(attempt: attempt, retryIn: delay)
+                try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+                guard active[conversationID] == observationToken else { throw CancellationError() }
+                let last = try await read(scope: scope, conversationID: conversationID).turns.first(where: { $0.id == operationID })?.lastSequence ?? 0
+                do { stream = try await backend.resumeEvents(request, afterSequence: last) }
+                catch let again as ConversationStreamInterrupted { stream = AsyncThrowingStream<ConversationTurnEvent, Error> { $0.finish(throwing: again) } }
+            }
+        }
+        await resilience?.settled()
+        let saved = try await read(scope: scope, conversationID: conversationID)
+        if let last = saved.turns.last, last.id == operationID, last.state == .failed, last.error == Self.rateLimitedCode {
+            // R7 busy: countdown, then one automatic retry (see foregroundTick); never for an auto-retried turn.
+            let wait = max(1, last.retryAfterSeconds ?? 20)
+            busyRetry[conversationID] = BusyRetry(due: Date().addingTimeInterval(TimeInterval(wait)), operationID: operationID, autoRetried: autoRetryTurns.contains(operationID))
+            await resilience?.busy(retryIn: wait)
+        }
+        if saved.turns.last?.state == .completed { try? await outbox?.remove(operationID); await backend.recordCommittedReply(request);return operationID }
+        if saved.turns.last?.state == .failed { throw CatpawError.unavailable(saved.turns.last?.error ?? "服务请求失败。") }
+        throw ConversationSessionError.unresolvedOperation
     }
     private func save(_ value: ConversationSession, expectedRevision: Int, fence: ConversationTurnRequest? = nil, observationToken: UUID? = nil, additional: [Mutation] = []) async throws {
         let r = try await repository.record(Self.journalID(value.conversationID), scope: value.scope)
@@ -289,7 +295,11 @@ public actor ConversationSessionService {
             }
             return
         }
-        guard event.sequence == turn.lastSequence + 1, ![.completed, .failed].contains(turn.state), observing || turn.state != .unknown else { throw ConversationSessionError.invalidEvent }
+        // R7 busy retry: the server may restart the SAME turn after failed{rate_limited} with no output;
+        // its events continue after lastSequence, so the failed state is reopened only in that case.
+        let busyRestart = turn.state == .failed && turn.error == Self.rateLimitedCode && turn.assistantMessageID == nil && Self.isPlain(request)
+        guard event.sequence == turn.lastSequence + 1, busyRestart || ![.completed, .failed].contains(turn.state), observing || turn.state != .unknown else { throw ConversationSessionError.invalidEvent }
+        if busyRestart { turn.error = nil; turn.retryAfterSeconds = nil }
         turn.state = .running; turn.lastSequence = event.sequence
         switch event.payload {
         case .thread(let id):
@@ -373,6 +383,7 @@ public actor ConversationSessionService {
             }
         }
         session.turns[index] = turn; try await save(session, expectedRevision: journalRevision, fence: request, observationToken: observationToken)
+        for observer in turnObservers.values { observer.yield(event) }
     }
     private static func isToolAttempt(_ message: ConversationTranscriptMessage, for request: ConversationTurnRequest) -> Bool {
         guard message.role == .assistant, message.toolName != nil, let call = message.toolCallID else { return false }
@@ -474,16 +485,38 @@ public actor ConversationSessionService {
     @discardableResult
     public func retryBusy(scope: DataScope, conversationID: UUID, route: ConversationModelRoute? = nil, automatic: Bool = false) async throws -> UUID? {
         guard let entry = busyRetry[conversationID] else { return nil }
+        guard active[conversationID] == nil else { throw ConversationSessionError.busy }
         busyRetry[conversationID] = nil
         let saved = try await read(scope: scope, conversationID: conversationID)
-        guard let original = saved.turns.first(where: { $0.id == entry.operationID }), original.state == .failed, original.error == Self.rateLimitedCode,
-              original.assistantMessageID == nil, Self.isPlain(original.request), original.request.context.isEmpty,
-              let text = original.request.history.last(where: { $0.role == .user })?.content else { return nil }
+        // Same operationID, same user message: no new transcript row; the server restarts the failed turn.
+        guard let original = saved.turns.first(where: { $0.id == entry.operationID }), saved.turns.last?.id == original.id,
+              original.state == .failed, original.error == Self.rateLimitedCode,
+              original.assistantMessageID == nil, Self.isPlain(original.request) else { return nil }
         if let route { route.select() }
-        let next = UUID(); if automatic { autoRetryTurns.insert(next) }
+        if automatic { autoRetryTurns.insert(original.id) }
         await resilience?.clearBusy()
-        return try await send(scope: scope, conversationID: conversationID, text: text, operationID: next, preserveDraft: true)
+        let observationToken = UUID(); active[conversationID] = observationToken
+        defer { if active[conversationID] == observationToken { active.removeValue(forKey: conversationID) } }
+        do {
+            let stream = try await backend.retryBusyTurn(original.request, afterSequence: original.lastSequence)
+            return try await pump(stream, request: original.request, observationToken: observationToken)
+        } catch {
+            // markUnknown leaves a still-failed (never restarted) turn untouched.
+            if active[conversationID] == observationToken, !(error is CancellationError) {
+                try? await markUnknown(original.request, reason: "连接中断，可以继续获取原回复。", observationToken: observationToken)
+            }
+            throw error
+        }
     }
+    /// Live turn events (after they are journaled) for AnswerPhaseProjection; covers send, busy retry and outbox drain.
+    public func turnEvents() -> AsyncStream<ConversationTurnEvent> {
+        let id = UUID()
+        let (stream, continuation) = AsyncStream.makeStream(of: ConversationTurnEvent.self, bufferingPolicy: .bufferingNewest(256))
+        turnObservers[id] = continuation
+        continuation.onTermination = { [weak self] _ in Task { await self?.removeTurnObserver(id) } }
+        return stream
+    }
+    private func removeTurnObserver(_ id: UUID) { turnObservers.removeValue(forKey: id) }
     /// Re-sends parked offline turns with their original operationID once the path is usable.
     /// Returns the number of entries resolved (sent or no longer sendable).
     @discardableResult

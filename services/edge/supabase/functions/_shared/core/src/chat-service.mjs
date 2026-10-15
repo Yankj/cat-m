@@ -8,6 +8,7 @@ import { chatPromptFor,chatToolsFor,validateProvidedToolCall,assistantToolMessag
 import { collectRound } from './openrouter-provider.mjs';
 import { TextBatcher } from './text-batcher.mjs';
 import { createChatMetrics } from './chat-metrics.mjs';
+import { assertBusyRestartable,restartedTurn } from './busy-restart.mjs';
 import {freezeTaskRevisionTargetInTransaction,acceptTaskRevisionInTransaction,readTaskRevision,assertTaskRevisionTurnBoundaryInTransaction} from './task-revision-service.mjs';
 import {validateTaskRevisionRequest,TASK_REVISION_CONTRACT} from './task-revision-contract.mjs';
 import {ACCEPTED_WORK_INTENT_CONTRACT,validateAcceptedWorkRequest,freezeAcceptedWorkIntent} from './accepted-work-intent-contract.mjs';
@@ -106,6 +107,27 @@ export class ChatService {
       entry.promise.catch(()=>{});
     }
     return {...result,trusted}; // Internal only; never serialized as HTTP data.
+  }
+  /** R7 busy retry: restart the SAME turn in place when it failed with `rate_limited` before any
+   * model output. Identity, user message, admission and request hash are unchanged; new events
+   * continue the original sequence. Any output or any other failure keeps the original result. */
+  async restartRateLimited(auth,scopeID,conversationID,turnID){
+    const trusted=await this.scoped(auth,scopeID),{owner,scope,principal}=trusted;
+    await this.integration?.prepare({owner,scope,principal});
+    const turn=await this.repository.transaction(async tx=>{
+      await this.integration?.beforeWrite(tx,{owner,scope});
+      await tx.lock(owner,'native-chat-conversations',conversationID);
+      const c=await this.conversation(tx,owner,conversationID,principal.subject_id,scopeID),t=await tx.get(owner,'native-chat-turns',turnID);
+      assertBusyRestartable(t,c,principal);
+      let next=restartedTurn(t);
+      if(this.integration)next=await this.integration.stampTurn(tx,owner,next);
+      const saved=await tx.put(owner,'native-chat-turns',next);await this.beforeCommit(tx,{owner,scope},saved);return saved;
+    });
+    const controller=new AbortController(),key=`${owner}:${turnID}`;
+    const entry={controller,promise:null,subject_id:principal.subject_id,session_id:principal.session_id,conversation_id:conversationID};this.active.set(key,entry);
+    entry.promise=this.execute({auth,owner,scope,principal,turn,signal:controller.signal,controller}).finally(()=>this.active.delete(key));
+    entry.promise.catch(()=>{});
+    return {turn,trusted,afterSequence:turn.events.length};
   }
   async live(tx,{owner,turn,scope}){
     await this.integration?.beforeWrite(tx,{owner,scope:scope??{scope_id:turn.scope_id},turn});
