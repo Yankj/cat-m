@@ -65,7 +65,7 @@ import SwiftUI
     }
     private var footer:some View {
         CatpawBottomActionArea {
-                    Button {Task{await model.submit(admissionAllowed:admissionAllowed())}} label:{HStack{if model.submitting {ProgressView().tint(CatpawColors.onInk)};Text(model.submitting ? ui("正在提交") : dynamicTypeSize.isAccessibilitySize ? ui("保存新版本") : ui("保存为成果新版本")).fontWeight(.semibold)}.frame(maxWidth:.infinity,minHeight:44)}.buttonStyle(CatpawPrimaryButtonStyle()).disabled(!model.canSubmit || !admissionAllowed()).accessibilityLabel(model.submitting ? ui("正在提交原修改，请勿重复发送。") : ui("保存为成果新版本")).accessibilityIdentifier("chat.artifact.edit.save")
+                    Button {Task{await model.submit(admissionAllowed:admissionAllowed())}} label:{HStack{if model.submitting {ProgressView().tint(CatpawColors.onInk)};CatpawAdaptiveActionTitle(fullTitle:model.submitting ? ui("正在提交") : ui("保存为成果新版本"),compactTitle:model.submitting ? ui("正在提交") : ui("保存新版本")).fontWeight(.semibold)}.frame(maxWidth:.infinity,minHeight:44)}.buttonStyle(CatpawPrimaryButtonStyle()).disabled(!model.canSubmit || !admissionAllowed()).accessibilityLabel(model.submitting ? ui("正在提交原修改，请勿重复发送。") : ui("保存为成果新版本")).accessibilityIdentifier("chat.artifact.edit.save")
                     if model.hasLocalIntentForDisplay || model.submitting || model.state.hasUnresolvedSubmission {
                         let state=draftStatus
                         Text(dynamicTypeSize.isAccessibilitySize ? state.compact : state.full).font(CatpawTypography.Role.caption.font).foregroundStyle(state.attention ? CatpawColors.attention : CatpawColors.secondary).accessibilityLabel(state.full).accessibilityIdentifier("chat.artifact.edit.draftStatus")

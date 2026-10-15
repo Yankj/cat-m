@@ -26,6 +26,10 @@ import AppIntents
             do {
                 let root=FileManager.default.urls(for:.applicationSupportDirectory,in:.userDomainMask)[0].appendingPathComponent("CatpawP0-qa-"+id)
                 let repository=try Repository(persistence:SwiftDataPersistence(url:root.appendingPathComponent("local.store")))
+                if scenario.hasPrefix("p0-ui-accepted-work") {
+                    p0Model=try ConversationAcceptedWorkLoopbackFixture.make(repository:repository,root:root)
+                    return
+                }
                 let planBackend = ConversationTaskPlanFixtureBackend(mode:scenario == "p0-ui-plan-pending" ? .pending : (scenario == "p0-ui-plan-unknown" ? .unknown : .applied))
                 let reviewSubject=stableID("P0-task-review-subject")
                 let actionBackend:ConversationTaskActionFixtureBackend?=scenario.contains("task-action") ? try ConversationTaskActionFixtureBackend(url:root.appendingPathComponent("task-actions-synthetic-server.json"),mode:scenario.contains("unavailable") ? .unavailable : (scenario.contains("unknown") ? .unknown : .normal),statsUpdated:{stats in Task{@MainActor in P0ExperienceProbe.shared.recordTaskReviewStats(stats)}}) : nil
@@ -66,8 +70,15 @@ import AppIntents
         #if DEBUG
         guard let pending=p0Model,model == nil else { return }
         do {
+            if P0ExperienceFixture.scenario?.hasPrefix("p0-ui-accepted-work")==true,
+               let testStore=ProcessInfo.processInfo.environment["CF_UI_TEST_STORE"],UUID(uuidString:testStore) != nil,
+               await pending.repository.read(scope:pending.scope).list("conversation",scope:pending.scope).isEmpty {
+                // A new synthetic client store owns a new conversation, not a
+                // fresh local journal falsely claiming an older server history.
+                _=try await pending.service.create(scope:pending.scope,id:stableID("accepted-work-test-conversation:"+testStore))
+            }
             let id=try await pending.service.openLatest(scope:pending.scope),record=try await pending.repository.record(id,scope:pending.scope)
-            if record.conversation?.draftText.isEmpty == true,try await pending.service.read(scope:pending.scope,conversationID:id).messages.isEmpty {
+            if P0ExperienceFixture.scenario?.hasPrefix("p0-ui-accepted-work") != true,record.conversation?.draftText.isEmpty == true,try await pending.service.read(scope:pending.scope,conversationID:id).messages.isEmpty {
                 try await pending.service.saveDraft(scope:pending.scope,conversationID:id,text:"Saved local draft")
             }
             await pending.start();model=pending
