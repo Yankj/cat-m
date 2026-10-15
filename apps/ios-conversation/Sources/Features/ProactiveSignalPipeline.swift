@@ -43,7 +43,7 @@ struct ProactiveStageResult: Identifiable, Equatable, Sendable {
 }
 
 /// Output contract for the sibling `proactive_suggestion` card.
-struct ProactiveSuggestion: Identifiable, Equatable, Sendable, Codable {
+struct ProactivePipelineSuggestion: Identifiable, Equatable, Sendable, Codable {
     enum Channel: String, Sendable, Codable { case inAppCard = "in_app_card", banner, push, liveActivity = "live_activity", silent }
     let id: String
     var kind: String            // meeting_departure | meeting_prep | travel
@@ -58,17 +58,17 @@ struct ProactiveSuggestion: Identifiable, Equatable, Sendable, Codable {
 
 protocol ProactiveSignalEngine: Sendable {
     /// Streams stage updates; the final value carries the suggestion (nil if nothing to do).
-    func run(_ input: ProactiveSignalInput, update: @escaping @Sendable (ProactiveStageResult) async -> Void) async -> ProactiveSuggestion?
+    func run(_ input: ProactiveSignalInput, update: @escaping @Sendable (ProactiveStageResult) async -> Void) async -> ProactivePipelineSuggestion?
 }
 
-/// Integration hooks: the card PR observes `ProactiveSignalHub.suggestionNotification` (object = ProactiveSuggestion)
+/// Integration hooks: the card PR observes `ProactiveSignalHub.suggestionNotification` (object = ProactivePipelineSuggestion)
 /// or sets `ProactiveSignalHub.onSuggestion`. The degrade card posts `manualMeetingNotification` (object = ProactiveSimulatedMeeting).
 @MainActor enum ProactiveSignalHub {
     static let suggestionNotification = Notification.Name("catpaw.proactive.suggestion")
     static let manualMeetingNotification = Notification.Name("catpaw.proactive.manualMeeting")
     static var engine: any ProactiveSignalEngine = MockProactiveSignalEngine()
-    static var onSuggestion: ((ProactiveSuggestion) -> Void)?
-    static func emit(_ suggestion: ProactiveSuggestion) {
+    static var onSuggestion: ((ProactivePipelineSuggestion) -> Void)?
+    static func emit(_ suggestion: ProactivePipelineSuggestion) {
         onSuggestion?(suggestion)
         NotificationCenter.default.post(name: suggestionNotification, object: suggestion)
     }
@@ -83,7 +83,7 @@ struct MockProactiveSignalEngine: ProactiveSignalEngine {
         return max(10, Int((dLat * dLat + dLon * dLon).squareRoot() * 3))
     }
 
-    func run(_ input: ProactiveSignalInput, update: @escaping @Sendable (ProactiveStageResult) async -> Void) async -> ProactiveSuggestion? {
+    func run(_ input: ProactiveSignalInput, update: @escaping @Sendable (ProactiveStageResult) async -> Void) async -> ProactivePipelineSuggestion? {
         func step(_ s: ProactivePipelineStage, _ status: ProactiveStageStatus, _ details: [String]) async {
             await update(.init(stage: s, status: .running, details: []))
             try? await Task.sleep(for: stepDelay)
@@ -113,9 +113,9 @@ struct MockProactiveSignalEngine: ProactiveSignalEngine {
         let kind = input.location == nil ? "meeting_prep" : "meeting_departure"
         await step(.decide, .passed, ["kind=\(kind)", "minutesToLeave=\(minutesToLeave)", urgent ? "score=0.9 urgent" : "score=0.6"])
         // 介入方式
-        let channel: ProactiveSuggestion.Channel = minutesToLeave < 0 ? .push : (urgent ? .banner : .inAppCard)
+        let channel: ProactivePipelineSuggestion.Channel = minutesToLeave < 0 ? .push : (urgent ? .banner : .inAppCard)
         await step(.intervene, .passed, ["channel=\(channel.rawValue)", "quietHours=off", "cap=ok"])
-        return ProactiveSuggestion(id: UUID().uuidString, kind: kind, title: next.title,
+        return ProactivePipelineSuggestion(id: UUID().uuidString, kind: kind, title: next.title,
                                    body: "", channel: channel, meetingTitle: next.title, meetingStart: next.start, place: next.place, leaveAt: leaveAt)
     }
 }
@@ -131,7 +131,7 @@ struct MockProactiveSignalEngine: ProactiveSignalEngine {
     var location: ProactiveSimulatedLocation? = presets[0]
     var calendarAuthorized = true
     var stages: [ProactiveStageResult] = ProactivePipelineStage.allCases.map { .init(stage: $0, status: .idle, details: []) }
-    var suggestion: ProactiveSuggestion?
+    var suggestion: ProactivePipelineSuggestion?
     var running = false
     private var manualObserver: NSObjectProtocol?
 
