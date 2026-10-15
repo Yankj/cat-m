@@ -69,9 +69,9 @@ public enum ConversationAttachmentLimits {
 }
 
 /// Developer-only free model route override (free-model review §13.3). Sent as `X-Catpaw-Route`;
-/// the Edge accepts only its allow-list and only among consented free routes. Never a paid route.
+/// the Edge accepts only its allow-list and only routes whose key is explicitly deployed (Agnes Flash is promo-free).
 public enum ConversationModelRoute: String, CaseIterable, Identifiable, Sendable {
-    case automatic, gemini, groq, openrouter
+    case automatic, gemini, groq, openrouter, agnes
     public var id: String { rawValue }
     public var title: String {
         switch self {
@@ -79,6 +79,7 @@ public enum ConversationModelRoute: String, CaseIterable, Identifiable, Sendable
         case .gemini: return "Gemini 免费层"
         case .groq: return "Groq 免费"
         case .openrouter: return "OpenRouter 免费"
+        case .agnes: return "Agnes Flash（备选）"
         }
     }
     public static let defaultsKey = "catpaw.developer.modelRoute"

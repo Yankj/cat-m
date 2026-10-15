@@ -16,3 +16,33 @@ test('developer preference reorders',async()=>{const calls=[];const p=new FreeRo
 test('thinking summary hidden unless enabled',async()=>{const p=new FreeRouteChainProvider({...routes,fetchImpl:async()=>sse([JSON.stringify({choices:[{index:0,delta:{content:'plan',extra_content:{google:{thought:true}}}}]}),JSON.stringify({choices:[{index:0,delta:{content:'ans'},finish_reason:'stop'}]}),'[DONE]'])});const out=await collect(p);assert.deepEqual(out.map(e=>e.type),['text_delta','done']);assert.equal(out[0].text,'ans');});
 test('thinking summary forwarded to capable clients',async()=>{const p=new FreeRouteChainProvider({...routes,fetchImpl:async()=>sse([JSON.stringify({choices:[{index:0,delta:{content:'plan',extra_content:{google:{thought:true}}}}]}),JSON.stringify({choices:[{index:0,delta:{content:'ans'},finish_reason:'stop'}]}),'[DONE]'])});const out=await withRoutePreference(null,()=>collect(p),{reasoningSummary:true});assert.deepEqual(out.map(e=>e.type),['thinking_delta','text_delta','done']);});
 test('busy: one in-place retry when retry-after fits budget, no resend after output',async()=>{let n=0;const p=new FreeRouteChainProvider({...routes,autoFailover:false,fetchImpl:async()=>{n++;return n===1?new Response('{}',{status:429,headers:{'retry-after':'0'}}):ok('later');}});const out=await collect(p);assert.equal(n,2);assert.equal(out[0].text,'later');});
+const agnesOnly=readFreeRouteChain(env({CATPAW_PRIVATE_MODEL_KEY:'o',CATPAW_AGNES_API_KEY:'a'}));
+test('agnes: enabled only with explicit key, after openrouter by default, model override + billing note',()=>{
+  assert.equal(readFreeRouteChain(env({CATPAW_PRIVATE_MODEL_KEY:'o',CATPAW_AGNES_MODEL:'agnes-2.5-pro'})),null);
+  assert.deepEqual(agnesOnly.routes.map(r=>r.id),['openrouter','agnes']);
+  const a=agnesOnly.routes[1];assert.equal(a.model,'agnes-3.0-flash');assert.equal(a.endpoint,'https://apihub.agnes-ai.com/v1/chat/completions');assert.equal(a.billing,'promo_free_flash_paid_pro');
+  assert.equal(readFreeRouteChain(env({CATPAW_AGNES_API_KEY:'a',CATPAW_AGNES_MODEL:'agnes-2.5-flash'})).routes[0].model,'agnes-2.5-flash');
+  assert.throws(()=>readFreeRouteChain(env({CATPAW_AGNES_API_KEY:'a',CATPAW_AGNES_MODEL:'gpt-4o'})));
+  assert.deepEqual(readFreeRouteChain(env({CATPAW_PRIVATE_MODEL_KEY:'o',CATPAW_AGNES_API_KEY:'a',CATPAW_MODEL_ROUTE_ORDER:'agnes,openrouter'})).routes.map(r=>r.id),['agnes','openrouter']);
+  assert.equal(readConfig(env({CATPAW_AGNES_API_KEY:'a'})).route.id,'catpaw-free-chain-v1');
+});
+test('agnes: openrouter busy (429) fails over to agnes before output; bearer auth; thinking off by default',async()=>{
+  const calls=[];const p=new FreeRouteChainProvider({...agnesOnly,fetchImpl:async(url,init)=>{calls.push({url,init});return calls.length===1?busy():ok('agnes says hi');}});
+  const out=await collect(p);
+  assert.match(calls[0].url,/openrouter/);assert.equal(calls[1].url,'https://apihub.agnes-ai.com/v1/chat/completions');
+  assert.equal(calls[1].init.headers.Authorization,'Bearer a');
+  const body=JSON.parse(calls[1].init.body);assert.equal(body.model,'agnes-3.0-flash');assert.equal(body.stream,true);assert.deepEqual(body.chat_template_kwargs,{enable_thinking:false});assert.equal(body.provider,undefined);
+  assert.deepEqual(out.map(e=>e.type),['text_delta','done']);assert.equal(out[0].text,'agnes says hi');
+});
+test('agnes: reasoning_content maps to reasoning_summary (thinking_delta) for capable clients',async()=>{
+  let body;const p=new FreeRouteChainProvider({...agnesOnly,fetchImpl:async(url,init)=>{if(/openrouter/.test(url))return busy();body=JSON.parse(init.body);return sse([JSON.stringify({choices:[{index:0,delta:{reasoning_content:'step 1'}}]}),JSON.stringify({choices:[{index:0,delta:{content:'ans'},finish_reason:'stop'}]}),'[DONE]']);}});
+  const out=await withRoutePreference(null,()=>collect(p),{reasoningSummary:true});
+  assert.deepEqual(body.chat_template_kwargs,{enable_thinking:true});
+  assert.deepEqual(out.map(e=>e.type),['thinking_delta','text_delta','done']);assert.equal(out[0].text,'step 1');
+});
+test('agnes: 402 quota maps to quota_exhausted and fails over; developer preference puts agnes first',async()=>{
+  const calls=[];const p=new FreeRouteChainProvider({...agnesOnly,fetchImpl:async url=>{calls.push(url);return /agnes/.test(url)?new Response('{"error":{"message":"balance"}}',{status:402}):ok('or');}});
+  const out=await withRoutePreference('agnes',()=>collect(p));
+  assert.match(calls[0],/agnes/);assert.match(calls[1],/openrouter/);assert.equal(out[0].text,'or');
+  assert.equal(p.observations[0].error,'quota_exhausted');
+});
