@@ -4,6 +4,37 @@ import Foundation
 // 2) the DEBUG demo backend drives ConversationSessionService through approval + every ui kind with submitUIDecision,
 //    journaled by sequence and restored from disk; idempotency and friendly errors.
 func check(_ condition: Bool, _ message: String) { if !condition { print("FAIL", message); exit(1) }; print("PASS", message) }
+/// Demo backend whose streams pause before `turn_suspended` / `turn_completed`, so decisions arrive mid-stream.
+actor SlowDemoBackend: ConversationBackend {
+    let inner = CatpawDemoConversationBackend()
+    private(set) var uiDecisions: [String] = []
+    func connection(scope: DataScope) async -> ConversationConnection { await inner.connection(scope: scope) }
+    private static func slow(_ source: AsyncThrowingStream<ConversationTurnEvent, Error>) -> AsyncThrowingStream<ConversationTurnEvent, Error> {
+        AsyncThrowingStream { continuation in
+            Task {
+                do {
+                    for try await event in source {
+                        switch event.payload { case .suspended, .completed, .uiBlockResolve: try await Task.sleep(nanoseconds: 300_000_000); default: break }
+                        continuation.yield(event)
+                    }
+                    continuation.finish()
+                } catch { continuation.finish(throwing: error) }
+            }
+        }
+    }
+    func reply(_ request: ConversationTurnRequest) async throws -> AsyncThrowingStream<ConversationTurnEvent, Error> { Self.slow(try await inner.reply(request)) }
+    func observe(_ request: ConversationTurnRequest) async throws -> ConversationObservation { try await inner.observe(request) }
+    func submitApproval(_ request: ConversationTurnRequest, interruptID: String, decision: ConversationApprovalDecision, argsHash: String, operationID: UUID, afterSequence: Int) async throws -> AsyncThrowingStream<ConversationTurnEvent, Error> {
+        Self.slow(try await inner.submitApproval(request, interruptID: interruptID, decision: decision, argsHash: argsHash, operationID: operationID, afterSequence: afterSequence))
+    }
+    func submitUIDecision(_ request: ConversationTurnRequest, interruptID: String, decision: ConversationUIDecision, argsHash: String, response: Data?, operationID: UUID, afterSequence: Int) async throws -> AsyncThrowingStream<ConversationTurnEvent, Error> {
+        uiDecisions.append(interruptID)
+        return Self.slow(try await inner.submitUIDecision(request, interruptID: interruptID, decision: decision, argsHash: argsHash, response: response, operationID: operationID, afterSequence: afterSequence))
+    }
+}
+actor EventLog { var items: [ConversationTurnEvent] = []; func add(_ e: ConversationTurnEvent) { items.append(e) }; func all() -> [ConversationTurnEvent] { items } }
+func waitFor(_ condition: () async throws -> Bool) async throws { for _ in 0..<300 { if try await condition() { return }; try await Task.sleep(nanoseconds: 10_000_000) } }
+
 @main struct DemoFixtureRunner {
     static func main() async throws {
         let defaults = UserDefaults(suiteName: "catpaw-demo-fixture-test")!
@@ -113,6 +144,64 @@ func check(_ condition: Bool, _ message: String) { if !condition { print("FAIL",
         let finalJournal = done.uiEvents ?? []
         check(done.state == .completed && done.pendingUIBlocks.isEmpty, "partial answers in any order; last one completes the turn")
         check(Set(finalJournal.filter { $0.type == .block }.compactMap(\.kind)) == ConversationUIEvent.kinds && finalJournal.filter { $0.type == .resolve }.count == 4 && finalJournal.contains { $0.type == .update }, "journal holds every kind, the update and 4 resolves")
+
+        // 3) Queued decisions while a stream is running.
+        let slow = SlowDemoBackend()
+        let queued = ConversationSessionService(repository: try Repository(persistence: FilePersistence(url: directory.appendingPathComponent("queue.json"))), backend: slow)
+        let qConversation = try await queued.create(scope: Profiles.user), qOperation = UUID()
+        let log = EventLog(), stream = await queued.turnEvents()
+        let collector = Task { for await event in stream { await log.add(event) } }
+        _ = try await queued.send(scope: Profiles.user, conversationID: qConversation, text: "排队测试", operationID: qOperation)
+        let qApproval = try await queued.pendingApprovals(scope: Profiles.user, conversationID: qConversation)[0]
+        let approving = Task { try await queued.submitApproval(scope: Profiles.user, conversationID: qConversation, interruptID: qApproval.interruptID, decision: .approve) }
+        let choicesID = CatpawDemoUIScript.interruptID("demo-choices"), zero = String(repeating: "0", count: 64)
+        try await waitFor { try await queued.read(scope: Profiles.user, conversationID: qConversation).turns.last?.uiEvents?.contains { $0.interruptID == choicesID } == true }
+        // Stream is still running (paused before turn_suspended): the answer queues instead of throwing busy.
+        let early = Task { try await queued.submitUIDecision(scope: Profiles.user, conversationID: qConversation, turnID: qOperation, interruptID: choicesID, decision: .submit, argsHash: zero, response: choices, operationID: choicesOperation) }
+        let joined = Task { try await queued.submitUIDecision(scope: Profiles.user, conversationID: qConversation, turnID: qOperation, interruptID: choicesID, decision: .submit, argsHash: zero, response: choices, operationID: choicesOperation) }
+        try await waitFor { await queued.queuedUIDecisions(conversationID: qConversation) == [choicesID] }
+        var conflict = ""
+        do { try await queued.submitUIDecision(scope: Profiles.user, conversationID: qConversation, turnID: qOperation, interruptID: choicesID, decision: .dismiss, argsHash: zero, response: nil) }
+        catch ConversationApprovalFailure.rejected(_, let code) { conflict = code ?? "" }
+        check(conflict == "approval_operation_conflict", "a different answer for a queued interrupt is a conflict")
+        _ = try await approving.value
+        let first = try await early.value, second = try await joined.value
+        let sentChoices = await slow.uiDecisions.filter { $0 == choicesID }.count
+        check(first == qOperation && second == qOperation && sentChoices == 1, "queued answer is sent once after turn_suspended; identical duplicate joins it")
+
+        // Round 2 is streaming (paused before turn_suspended) right after choices: answer form/confirm/sheet in any order, cancel one.
+        let qPending: [ConversationUIEvent] = try await queued.read(scope: Profiles.user, conversationID: qConversation).turns.last?.pendingUIBlocks ?? []
+        check(Set(qPending.map(\.id)) == ["demo-form", "demo-confirm", "demo-sheet"], "round 2 pending after queued choices")
+        let sheetID = CatpawDemoUIScript.interruptID("demo-sheet"), confirmID = CatpawDemoUIScript.interruptID("demo-confirm"), formID = CatpawDemoUIScript.interruptID("demo-form")
+        let blocker = Task { try await queued.submitUIDecision(scope: Profiles.user, conversationID: qConversation, turnID: qOperation, interruptID: sheetID, decision: .dismiss, argsHash: zero, response: nil) }
+        try await waitFor { await slow.uiDecisions.contains(sheetID) }
+        let cancelled = Task { try await queued.submitUIDecision(scope: Profiles.user, conversationID: qConversation, turnID: qOperation, interruptID: formID, decision: .submit, argsHash: zero, response: Data(#"{"type":"ui.response","blockId":"demo-form","values":{"km":3},"respondedAt":"2026-10-16T00:10:00Z"}"#.utf8)) }
+        let confirmTask = Task { try await queued.submitUIDecision(scope: Profiles.user, conversationID: qConversation, turnID: qOperation, interruptID: confirmID, decision: .submit, argsHash: zero, response: Data(#"{"type":"ui.response","blockId":"demo-confirm","actionId":"deny","respondedAt":"2026-10-16T00:10:00Z"}"#.utf8)) }
+        try await waitFor { await queued.queuedUIDecisions(conversationID: qConversation).count == 2 }
+        cancelled.cancel()
+        var cancelError = false
+        do { _ = try await cancelled.value } catch is CancellationError { cancelError = true }
+        _ = try await blocker.value; _ = try await confirmTask.value
+        let sentForm = await slow.uiDecisions.contains(formID)
+        check(cancelError && !sentForm, "a queued decision can be cancelled before it is sent")
+        let stillPending = try await queued.read(scope: Profiles.user, conversationID: qConversation).turns.last?.pendingUIBlocks.map(\.id) ?? []
+        check(stillPending == ["demo-form"], "sheet then confirm answered out of order; form still waiting")
+
+        // Past expiresAt (the queue checks at send time).
+        await queued.setUIClock { Date(timeIntervalSince1970: 4_000_000_000) }
+        var expiredLate = false
+        do { try await queued.submitUIDecision(scope: Profiles.user, conversationID: qConversation, turnID: qOperation, interruptID: formID, decision: .dismiss, argsHash: zero, response: nil) }
+        catch ConversationApprovalFailure.expired { expiredLate = true }
+        let formSent = await slow.uiDecisions.contains(formID), formUnsent = !formSent
+        check(expiredLate && formUnsent, "a decision past its block's expiresAt fails with .expired and is not sent")
+        await queued.setUIClock { Date() }
+
+        let events = await log.all()
+        collector.cancel()
+        check(!events.isEmpty && events.allSatisfy { $0.conversationID == qConversation && $0.turnID == qOperation }, "every emitted event carries conversationID and turnID")
+        let legacy = ConversationTurnEvent(operationID: UUID(), epoch: 1, sequence: 1, payload: .thread("t"))
+        check(legacy.conversationID == nil && legacy.turnID == nil && legacy.stamped(conversationID: qConversation, turnID: qOperation).turnID == qOperation, "old initializer still compiles; stamped fills ids")
+
         try? FileManager.default.removeItem(at: directory)
         print("PASS catpaw.ui.v1 network layer: recorded SSE decode + demo backend service path")
     }

@@ -27,6 +27,21 @@ public actor ConversationSessionService {
     private var turnObservers: [UUID: AsyncStream<ConversationTurnEvent>.Continuation] = [:]
     private var emittedCancellations: Set<UUID> = []
     private var cancelling: Set<UUID> = []
+    /// catpaw.ui.v1 decisions waiting for the current stream to end (FIFO per conversation).
+    private final class QueuedUIDecision: @unchecked Sendable {
+        let id = UUID(); let scope: DataScope; let conversationID: UUID; let turnID: UUID; let interruptID: String
+        let decision: ConversationUIDecision; let argsHash: String; let response: Data?; let operationID: UUID
+        var waiters: [CheckedContinuation<UUID, Error>] = []
+        init(scope: DataScope, conversationID: UUID, turnID: UUID, interruptID: String, decision: ConversationUIDecision, argsHash: String, response: Data?, operationID: UUID) {
+            self.scope = scope; self.conversationID = conversationID; self.turnID = turnID; self.interruptID = interruptID; self.decision = decision; self.argsHash = argsHash; self.response = response; self.operationID = operationID
+        }
+        func finish(_ result: Result<UUID, Error>) { let all = waiters; waiters = []; for w in all { w.resume(with: result) } }
+    }
+    private var uiQueue: [UUID: [QueuedUIDecision]] = [:]
+    private var uiDraining: Set<UUID> = []
+    private var uiClock: @Sendable () -> Date = { Date() }
+    /// Test seam for queued-decision expiry.
+    public func setUIClock(_ clock: @escaping @Sendable () -> Date) { uiClock = clock }
     private let resilience: (any ConversationStreamResilience)?
     private let reconnectPolicy: ConversationReconnectPolicy
     public func imageCapabilities(scope:DataScope,conversationID:UUID) async throws -> ConversationImageCapability { try await backend.imageCapabilities(scope:scope,conversationID:conversationID) }
@@ -275,7 +290,7 @@ public actor ConversationSessionService {
         }
         guard active[conversationID] == nil else { throw ConversationSessionError.busy }
         let observationToken = UUID(); active[conversationID] = observationToken
-        defer { if active[conversationID] == observationToken { active.removeValue(forKey: conversationID) } }
+        defer { if active[conversationID] == observationToken { releaseActive(conversationID) } }
         let cr = try await repository.record(conversationID, scope: scope)
         guard var conversation = cr.conversation else { throw CatpawError.missing }
         if !preserveDraft && request.continuation == nil { conversation.draftText = "" }; if conversation.title == "新对话" { conversation.title = String(text.prefix(40)) }
@@ -487,7 +502,7 @@ public actor ConversationSessionService {
             }
         }
         session.turns[index] = turn; try await save(session, expectedRevision: journalRevision, fence: request, observationToken: observationToken)
-        emit(event)
+        emit(event.stamped(conversationID: request.conversationID, turnID: request.operationID))
     }
     /// The SSE `turn_failed{cancelled}` and the cancel response are equivalent; turnEvents() sees one stop per turn.
     private func emit(_ event: ConversationTurnEvent) {
@@ -553,7 +568,7 @@ public actor ConversationSessionService {
         guard let turn = saved.unresolved ?? saved.turns.last(where: { ![.notSent, .cancelledBeforeSend].contains($0.state) }) else { return }
         guard active[conversationID] == nil else { throw ConversationSessionError.busy }
         let observationToken = UUID(); active[conversationID] = observationToken
-        defer { if active[conversationID] == observationToken { active.removeValue(forKey: conversationID) } }
+        defer { if active[conversationID] == observationToken { releaseActive(conversationID) } }
         // R7 §5.3 rebuild: a still-running plain turn first reattaches by GET-after-lastSequence
         // (append only); the authoritative snapshot below then reconciles goals and terminal state.
         if Self.isPlain(turn.request), [.dispatched, .running, .unknown].contains(turn.state) {
@@ -623,7 +638,7 @@ public actor ConversationSessionService {
         if automatic { autoRetryCounts[original.id, default: 0] += 1 } else { busyRetryCancelled.remove(original.id) }
         await resilience?.clearBusy()
         let observationToken = UUID(); active[conversationID] = observationToken
-        defer { if active[conversationID] == observationToken { active.removeValue(forKey: conversationID) } }
+        defer { if active[conversationID] == observationToken { releaseActive(conversationID) } }
         do {
             let stream = try await backend.retryBusyTurn(original.request, afterSequence: original.lastSequence)
             return try await pump(stream, request: original.request, observationToken: observationToken)
@@ -726,7 +741,7 @@ public actor ConversationSessionService {
     }
     public func stopObserving(scope: DataScope, conversationID: UUID) async throws {
         let stopToken = UUID();active[conversationID] = stopToken
-        defer { if active[conversationID] == stopToken { active.removeValue(forKey:conversationID) } }
+        defer { if active[conversationID] == stopToken { releaseActive(conversationID) } }
         if let turn = try await read(scope: scope, conversationID: conversationID).unresolved { try await markUnknown(turn.request, reason: "已停止本机观察，未取消后台任务。读取原请求后继续。", observationToken:stopToken) }
     }
     /// R2 stop of the current server turn: `POST …/turns/{id}/cancel` (`{}`, idempotent).
@@ -745,8 +760,8 @@ public actor ConversationSessionService {
         cancelling.insert(conversationID)
         let token = UUID(); active[conversationID] = token
         defer {
-            cancelling.remove(conversationID)
-            if active[conversationID] == token { active.removeValue(forKey: conversationID) }
+            cancelling.remove(conversationID); scheduleUIDrain(conversationID)
+            if active[conversationID] == token { releaseActive(conversationID) }
         }
         let operationID = target.id
         // A user stop is never resent automatically.
@@ -784,7 +799,7 @@ public actor ConversationSessionService {
         // (sequence unchanged) so observe/continueFetching later appends the server's events.
         try await markUnknown(target.request, reason: "已请求停止，结果待核对；读取原请求后继续。", observationToken: token)
         if let receipt, receipt.cancelled, receipt.state == "failed" {
-            emit(ConversationTurnEvent(operationID: operationID, epoch: target.request.epoch, sequence: current?.lastSequence ?? target.lastSequence, payload: .failed(message: Self.cancelledCode, reconciliationRequired: false)))
+            emit(ConversationTurnEvent(operationID: operationID, epoch: target.request.epoch, sequence: current?.lastSequence ?? target.lastSequence, payload: .failed(message: Self.cancelledCode, reconciliationRequired: false), conversationID: target.request.conversationID, turnID: operationID))
         }
         return .reconciling(operationID: operationID)
     }
@@ -849,7 +864,7 @@ public actor ConversationSessionService {
         guard let turn = saved.turns.last(where: { $0.awaitingApproval }), let approval = turn.pendingApprovals?.first(where: { $0.interruptID == interruptID }) else { throw ConversationApprovalFailure.noPendingApproval }
         guard decision != .approveAlways || approval.rememberAllowed else { throw ConversationApprovalFailure.rejected(status: 422, code: "approval_remember_not_allowed") }
         let token = UUID(); active[conversationID] = token
-        defer { if active[conversationID] == token { active.removeValue(forKey: conversationID) } }
+        defer { if active[conversationID] == token { releaseActive(conversationID) } }
         let stream: AsyncThrowingStream<ConversationTurnEvent, Error>
         do { stream = try await backend.submitApproval(turn.request, interruptID: interruptID, decision: decision, argsHash: approval.argsHash, operationID: operationID, afterSequence: turn.lastSequence) }
         catch let failure as ConversationApprovalFailure {
@@ -871,6 +886,45 @@ public actor ConversationSessionService {
     public func pendingUIBlocks(scope: DataScope, conversationID: UUID) async throws -> [ConversationUIEvent] {
         try await read(scope: scope, conversationID: conversationID).turns.last(where: { $0.awaitingApproval })?.pendingUIBlocks ?? []
     }
+    private func releaseActive(_ conversationID: UUID) { active.removeValue(forKey: conversationID); scheduleUIDrain(conversationID) }
+    private func scheduleUIDrain(_ conversationID: UUID) {
+        guard !(uiQueue[conversationID] ?? []).isEmpty else { return }
+        Task { await self.drainUIQueue(conversationID) }
+    }
+    /// Queued decisions currently waiting (interrupt ids, in submission order).
+    public func queuedUIDecisions(conversationID: UUID) -> [String] { (uiQueue[conversationID] ?? []).map(\.interruptID) }
+    /// Cancels a queued (not yet sent) decision; its callers get `CancellationError`. Returns false when nothing was queued.
+    @discardableResult
+    public func cancelQueuedUIDecision(conversationID: UUID, interruptID: String) -> Bool {
+        guard let index = uiQueue[conversationID]?.firstIndex(where: { $0.interruptID == interruptID.lowercased() }) else { return false }
+        let entry = uiQueue[conversationID]!.remove(at: index)
+        entry.finish(.failure(CancellationError()))
+        return true
+    }
+    private func cancelWaiter(_ entryID: UUID, conversationID: UUID) {
+        guard let index = uiQueue[conversationID]?.firstIndex(where: { $0.id == entryID }) else { return }
+        let entry = uiQueue[conversationID]!.remove(at: index)
+        entry.finish(.failure(CancellationError()))
+    }
+    private static func uiDate(_ text: String) -> Date? {
+        let fractional = ISO8601DateFormatter(); fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = fractional.date(from: text) { return date }
+        return ISO8601DateFormatter().date(from: text)
+    }
+    private func drainUIQueue(_ conversationID: UUID) async {
+        guard uiDraining.insert(conversationID).inserted else { return }
+        defer { uiDraining.remove(conversationID) }
+        while active[conversationID] == nil, !cancelling.contains(conversationID), let entry = uiQueue[conversationID]?.first {
+            uiQueue[conversationID]?.removeFirst()
+            if uiQueue[conversationID]?.isEmpty == true { uiQueue[conversationID] = nil }
+            var result: Result<UUID, Error>
+            do {
+                let id = try await performUIDecision(scope: entry.scope, conversationID: conversationID, turnID: entry.turnID, interruptID: entry.interruptID, decision: entry.decision, argsHash: entry.argsHash, response: entry.response, operationID: entry.operationID)
+                result = .success(id)
+            } catch { result = .failure(error) }
+            entry.finish(result)
+        }
+    }
     /// Waiting ui blocks for cold-start restore: the snapshot's `pending_approvals` kind "ui" when known (observe),
     /// else the journal's unresolved `ui.block`s; de-duplicated by interrupt id. Empty when the turn is not waiting.
     public func pendingUIApprovals(scope: DataScope, conversationID: UUID) async throws -> [ConversationUIApproval] {
@@ -887,17 +941,49 @@ public actor ConversationSessionService {
     /// `response` is the raw `ui.response` (submit) / `ui.error` (report_error) JSON; nil for dismiss.
     /// Idempotent on `operationID`: after `.transport`, resend with the SAME id. Errors are `ConversationApprovalFailure`
     /// (see `friendlyMessage`); `.expired`/`.consumed`/`.stale`/`.notFound` refresh the journal before rethrowing.
+    /// While a stream is running (send, approval or another decision) the decision is QUEUED, not refused: it is sent
+    /// in submission order once the stream ends (a turn_suspended ends it). Queued decisions can be cancelled
+    /// (`cancelQueuedUIDecision` or cancelling the calling Task → `CancellationError`); one past its block's `expiresAt`
+    /// fails with `.expired`; a second submit for an interrupt already queued joins it when identical
+    /// (same decision, argsHash, response) and is `.rejected(409, "approval_operation_conflict")` otherwise.
+    /// Blocks may be answered in any order.
     @discardableResult
     public func submitUIDecision(scope: DataScope, conversationID: UUID, turnID: UUID, interruptID: String, decision: ConversationUIDecision, argsHash: String, response: Data?, operationID: UUID = UUID()) async throws -> UUID {
+        let key = interruptID.lowercased()
+        let idle = active[conversationID] == nil && !cancelling.contains(conversationID) && (uiQueue[conversationID] ?? []).isEmpty
+        if idle { return try await performUIDecision(scope: scope, conversationID: conversationID, turnID: turnID, interruptID: key, decision: decision, argsHash: argsHash, response: response, operationID: operationID) }
+        let entry: QueuedUIDecision
+        if let queued = uiQueue[conversationID]?.first(where: { $0.interruptID == key }) {
+            guard queued.turnID == turnID, queued.decision == decision, queued.argsHash == argsHash, queued.response == response else { throw ConversationApprovalFailure.rejected(status: 409, code: "approval_operation_conflict") }
+            entry = queued
+        } else {
+            entry = QueuedUIDecision(scope: scope, conversationID: conversationID, turnID: turnID, interruptID: key, decision: decision, argsHash: argsHash, response: response, operationID: operationID)
+            uiQueue[conversationID, default: []].append(entry)
+        }
+        let entryID = entry.id
+        let result = try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<UUID, Error>) in
+                if Task.isCancelled { continuation.resume(throwing: CancellationError()); return }
+                entry.waiters.append(continuation)
+                scheduleUIDrain(conversationID)
+            }
+        } onCancel: {
+            Task { await self.cancelWaiter(entryID, conversationID: conversationID) }
+        }
+        return result
+    }
+    private func performUIDecision(scope: DataScope, conversationID: UUID, turnID: UUID, interruptID: String, decision: ConversationUIDecision, argsHash: String, response: Data?, operationID: UUID) async throws -> UUID {
         guard active[conversationID] == nil, !cancelling.contains(conversationID) else { throw ConversationSessionError.busy }
         let saved = try await read(scope: scope, conversationID: conversationID)
         guard let turn = saved.turns.first(where: { $0.id == turnID }), turn.awaitingApproval,
               let block = Self.uiApprovals(turn).first(where: { $0.interruptID == interruptID.lowercased() }) else { throw ConversationApprovalFailure.noPendingApproval }
         guard block.argsHash == argsHash else { throw ConversationApprovalFailure.stale }
+        // Past the block's deadline (e.g. it waited in the queue): the server would answer approval_expired.
+        if let deadline = Self.uiDate(block.expiresAt), deadline <= uiClock() { throw ConversationApprovalFailure.expired }
         if decision == .dismiss { guard response == nil else { throw ConversationApprovalFailure.rejected(status: 422, code: "ui_response_invalid") } }
         else { guard response != nil else { throw ConversationApprovalFailure.rejected(status: 422, code: "ui_response_invalid") } }
         let token = UUID(); active[conversationID] = token
-        defer { if active[conversationID] == token { active.removeValue(forKey: conversationID) } }
+        defer { if active[conversationID] == token { releaseActive(conversationID) } }
         let stream: AsyncThrowingStream<ConversationTurnEvent, Error>
         do { stream = try await backend.submitUIDecision(turn.request, interruptID: interruptID.lowercased(), decision: decision, argsHash: argsHash, response: response, operationID: operationID, afterSequence: turn.lastSequence) }
         catch let failure as ConversationApprovalFailure {

@@ -742,7 +742,7 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
             if code == "rate_limited", let raw = data["retry_after_seconds"] as? NSNumber, CFGetTypeID(raw) != CFBooleanGetTypeID(), (0...3600).contains(raw.intValue) { retryAfter = raw.intValue }
         default: throw ConversationSessionError.invalidEvent
         }
-        return ConversationTurnEvent(operationID: request.operationID, epoch: request.epoch, sequence: sequence, payload: payload, retryAfterSeconds: retryAfter)
+        return ConversationTurnEvent(operationID: request.operationID, epoch: request.epoch, sequence: sequence, payload: payload, retryAfterSeconds: retryAfter, conversationID: request.conversationID, turnID: request.operationID)
     }
     private func binding(_ raw: Any, request: ConversationTurnRequest, currentTurn: Bool) throws -> ConversationTaskBinding {
         let b = try JSONDecoder().decode(ConversationTaskBinding.self, from: Self.jsonData(raw))
@@ -1520,7 +1520,7 @@ public actor CatpawDemoConversationBackend: ConversationBackend {
     private func event(_ request: ConversationTurnRequest, _ payload: ConversationTurnEvent.Payload) -> ConversationTurnEvent {
         var turn = turns[request.operationID]!
         turn.sequence += 1; turns[request.operationID] = turn
-        return ConversationTurnEvent(operationID: request.operationID, epoch: 1, sequence: turn.sequence, payload: payload)
+        return ConversationTurnEvent(operationID: request.operationID, epoch: 1, sequence: turn.sequence, payload: payload, conversationID: request.conversationID, turnID: request.operationID)
     }
     private func nextSequence(_ request: ConversationTurnRequest) -> Int { turns[request.operationID]!.sequence + 1 }
     private static func stream(_ events: [ConversationTurnEvent]) -> AsyncThrowingStream<ConversationTurnEvent, Error> {
