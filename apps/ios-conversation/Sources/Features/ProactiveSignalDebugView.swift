@@ -12,6 +12,13 @@ import SwiftUI
 
     var body: some View {
         Form {
+            Section(ui("引擎")) {
+                Button(ui("扫描真实日历")) { Task { await ProactiveEngine.shared.scanCalendar() } }.accessibilityIdentifier("proactive.engine.scan")
+                Button(ui("清空去重账本")) { ProactiveEngine.shared.resetLedger() }.accessibilityIdentifier("proactive.engine.resetLedger")
+                ForEach(ProactiveEngine.shared.log.prefix(12)) { e in
+                    Text(e.at.formatted(date: .omitted, time: .standard) + "  " + e.text).font(.caption.monospaced()).foregroundStyle(e.text.contains("SUPPRESSED") ? CatpawColors.attention : CatpawColors.ink)
+                }
+            }
             Section(ui("模拟时间")) {
                 LabeledContent(ui("当前模拟时间"), value: model.now.formatted(date: .omitted, time: .shortened))
                 Stepper(ui("时间偏移 {0} 分钟", [String(Int(model.clockOffsetMinutes))]), value: $model.clockOffsetMinutes, in: -240...720, step: 15)

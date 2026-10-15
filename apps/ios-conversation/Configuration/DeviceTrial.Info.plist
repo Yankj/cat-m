@@ -2,6 +2,10 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>com.yankj.catpawm.proactive.refresh</string>
+	</array>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>zh-Hans</string>
 	<key>CFBundleDisplayName</key>
@@ -36,10 +40,14 @@
 	<string>仅在你明确确认日程并允许访问后，创建并核对该日程，用于防止重复创建和找回执行结果。</string>
 	<key>NSCameraUsageDescription</key>
 	<string>仅在你主动选择拍照时打开相机，把确认的图片保存到当前本地项目；不会自动上传。</string>
+	<key>NSContactsUsageDescription</key>
+	<string>用来找到你要联系的人，只在这次请求里使用。</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>仅在你主动开始说话时采集本句声音，用于设备支持的本地转写。原音不保存到长期记录。</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>仅在你主动选择相册图片时将该图片保存到当前本地项目；不会自动上传相册内容。</string>
+	<key>NSRemindersFullAccessUsageDescription</key>
+	<string>Catpaw 在你确认后把提醒写入“提醒事项”，不会自动修改。</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
 	<string>仅在你主动启用且设备支持本地识别时，将本句转成可编辑文字；不使用云端识别回退。</string>
 	<key>NSSupportsLiveActivities</key>
@@ -49,6 +57,10 @@
 		<key>UIApplicationSupportsMultipleScenes</key>
 		<false/>
 	</dict>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+	</array>
 	<key>UILaunchScreen</key>
 	<dict>
 		<key>UIColorName</key>
