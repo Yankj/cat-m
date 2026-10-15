@@ -31,7 +31,7 @@ struct CatpawNotificationPayload: Equatable, Sendable {
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         let center = UNUserNotificationCenter.current()
         center.delegate = self
-        center.setNotificationCategories([UNNotificationCategory(identifier: CatpawNotificationPayload.reminderCategory, actions: [], intentIdentifiers: [], options: [])])
+        center.setNotificationCategories(CatpawPushAction.categories)
         application.registerForRemoteNotifications()
         return true
     }
@@ -45,16 +45,48 @@ struct CatpawNotificationPayload: Equatable, Sendable {
         // No aps-environment entitlement / Simulator without push: in-app feed still works.
     }
 
+    /// Foreground: show Catpaw's own floating capsule instead of the system banner (V4 / #47).
     nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification) async -> UNNotificationPresentationOptions {
-        [.banner, .list, .sound]
+        let content = notification.request.content
+        let link = CatpawNotificationPayload(userInfo: content.userInfo)?.conversationURL
+        let title = content.title, body = content.body
+        await MainActor.run { CatpawInAppBannerCenter.shared.show(CatpawInAppBanner(title: title, body: body, deepLink: link)) }
+        return [.list, .sound]
     }
 
     nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) async {
         guard let payload = CatpawNotificationPayload(userInfo: response.notification.request.content.userInfo) else { return }
+        // Category buttons write back through /push/action; a plain tap counts as `open`.
+        let action = CatpawPushAction.serverAction(for: response.actionIdentifier)
+        if let action { await CatpawPushTokenUploader.shared.sendPushAction(eventID: payload.eventID, action: action) }
+        guard action == "open" else { await MainActor.run { CatpawProactiveFeed.shared.refreshSoon() }; return }
         await MainActor.run {
             CatpawAppDelegate.lastOpened = payload
             CatpawProactiveFeed.shared.refreshSoon()
             if let url = payload.conversationURL { UIApplication.shared.open(url) }
+        }
+    }
+}
+
+/// M2 notification categories → `POST /push/action`.
+enum CatpawPushAction {
+    static let done = "CATPAW_DONE", snooze10 = "CATPAW_SNOOZE_10M", snooze60 = "CATPAW_SNOOZE_1H"
+    static let taskCategory = "CATPAW_TASK"
+    static var categories: Set<UNNotificationCategory> {
+        let doneA = UNNotificationAction(identifier: done, title: AppLanguage(locale: .current).ui("完成"), options: [], icon: UNNotificationActionIcon(systemImageName: "checkmark.circle"))
+        let s10 = UNNotificationAction(identifier: snooze10, title: AppLanguage(locale: .current).ui("10 分钟后提醒"), options: [], icon: UNNotificationActionIcon(systemImageName: "clock"))
+        let s60 = UNNotificationAction(identifier: snooze60, title: AppLanguage(locale: .current).ui("1 小时后提醒"), options: [], icon: UNNotificationActionIcon(systemImageName: "clock.arrow.circlepath"))
+        return [UNNotificationCategory(identifier: CatpawNotificationPayload.reminderCategory, actions: [doneA, s10, s60], intentIdentifiers: [], options: [.customDismissAction]),
+                UNNotificationCategory(identifier: taskCategory, actions: [doneA, s10], intentIdentifiers: [], options: [.customDismissAction])]
+    }
+    static func serverAction(for identifier: String) -> String? {
+        switch identifier {
+        case UNNotificationDefaultActionIdentifier: return "open"
+        case UNNotificationDismissActionIdentifier: return "dismiss"
+        case done: return "done"
+        case snooze10: return "snooze_10m"
+        case snooze60: return "snooze_1h"
+        default: return nil
         }
     }
 }
