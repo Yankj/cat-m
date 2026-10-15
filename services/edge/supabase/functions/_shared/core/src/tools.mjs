@@ -36,6 +36,7 @@ export const TOOL_APPROVAL=Object.freeze({
  revise_current_report_v1:{approval:'never',risk:'local_reversible'},
  revise_current_report_work_v1:{approval:'never',risk:'local_reversible'},
  propose_memory_v1:{approval:'never',risk:'local_reversible'},
+ render_ui:{approval:'never',risk:'none'}, // catpaw.ui.v1: response-requiring blocks suspend as kind:'ui' interrupts
  create_task:{approval:'first_use',risk:'local_write',class:'proactive_task_write'},
  update_task:{approval:'first_use',risk:'local_write',class:'proactive_task_write'},
  create_calendar_event:{approval:'always',risk:'device_write',class:'calendar_write'},
@@ -52,7 +53,7 @@ export function toolApprovalPolicy(name){
  * A turn without the negotiated approval contract never receives a tool whose declaration needs approval. */
 function gatedToolsFor(facade,turn){
  const registry=facade.gatedChatTools;if(!(registry instanceof Map)||!registry.size)return [];
- return [...registry.entries()].filter(([name,tool])=>turn?.approval_contract||(!tool.contractOnly&&toolApprovalPolicy(name).approval==='never')).map(([,tool])=>tool.definition);
+ return [...registry.entries()].filter(([name,tool])=>(!tool.offer||tool.offer(turn))&&(turn?.approval_contract||(!tool.contractOnly&&toolApprovalPolicy(name).approval==='never'))).map(([,tool])=>tool.definition);
 }
 export function chatToolsFor(facade,turn=null){
  const base=chatToolsForBase(facade,turn);
