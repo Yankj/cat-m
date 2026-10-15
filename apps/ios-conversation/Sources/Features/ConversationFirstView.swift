@@ -392,6 +392,7 @@ import CatpawImageComposer
                                onAdd: { items in ComposerAttachPopoverState.shared.add(items); ComposerAttachPopoverState.shared.isPresented = false })
         .sheet(isPresented: $proactiveDebugPresented) { NavigationStack { ProactiveSignalDebugView() } }
         .onChange(of: model.loaded) { _, _ in consumeAppRoute() }
+        .task { try? await Task.sleep(nanoseconds: 600_000_000); consumeAppRoute() }
         .modifier(ConversationConsentPresenter(model:model))
         .catpawSheet(isPresented:Binding(get:{model.acceptedWorkReviewPresented},set:{if !$0 {model.closeAcceptedWorkReview()}})) {
             ConversationAcceptedWorkReviewView(originalText:model.acceptedWorkReviewOriginalText,capability:model.acceptedWorkCapability,options:$model.acceptedWorkOptions,saving:model.acceptedWorkReviewSaving,error:model.acceptedWorkReviewError,confirm:model.confirmAcceptedWorkReview,close:model.closeAcceptedWorkReview,revisionTargetTitle:model.revisionWorkReviewTarget.map{$0.artifactTitle+" · v\($0.artifactReference.version)"},lockedToolPolicy:model.revisionWorkReviewPolicy?.toolPolicy,sourceLimitFloor:model.revisionWorkReviewPolicy?.sourceCount ?? 0)
