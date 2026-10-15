@@ -152,6 +152,7 @@ struct ComposerGlass: ViewModifier {
                 HStack(alignment: .bottom, spacing: 2) { addMenu; editor.frame(maxWidth: .infinity); sendControl }
             }
             .padding(6)
+            .overlay { ComposerDictationBarHost() }
             .modifier(ComposerGlass())
             .overlay(RoundedRectangle(cornerRadius: 26, style: .continuous).strokeBorder(CatpawColors.action, lineWidth: dropTargeted ? 2 : 0))
             .composerDropTarget(isTargeted: $dropTargeted, add: add)
@@ -347,6 +348,9 @@ private struct JumpGlass: ViewModifier {
     var voice: () -> Void = {}
     /// Live dictation: the mic becomes a pulsing paw-orange waveform stop control; send stays available.
     var dictating = false
+    /// Replaces the built-in mic/dictating button with one stable view across idle ↔ dictating, so a press-and-hold
+    /// gesture that starts on the mic survives the mode change (hold-to-talk).
+    var micOverride: AnyView? = nil
     @State private var sendCount = 0
     @State private var stopCount = 0
     @Environment(\.locale) private var locale
@@ -360,25 +364,26 @@ private struct JumpGlass: ViewModifier {
     }
     var body: some View {
         HStack(spacing: 2) {
+            if let micOverride, mode == .voice || mode == .dictating { micOverride }
             switch mode {
             case .voice:
-                Button(action: dictate) {
+                if micOverride == nil { Button(action: dictate) {
                     Image(systemName: "mic").font(CatpawTypography.Role.body.font).foregroundStyle(CatpawColors.ink)
                         .frame(width: size, height: size).contentShape(Circle().inset(by: -4))
                 }.buttonStyle(CatpawPressButtonStyle()).accessibilityLabel(ui("听写")).accessibilityIdentifier("chat.composer.mic")
-                    .transition(.scale(scale: 0.6).combined(with: .opacity))
+                    .transition(.scale(scale: 0.6).combined(with: .opacity)) }
                 Button(action: voice) {
                     Image(systemName: "waveform").font(CatpawTypography.Role.body.font.weight(.semibold)).foregroundStyle(CatpawColors.sendIcon)
                         .frame(width: size, height: size).background(CatpawColors.ink, in: Circle()).contentShape(Circle().inset(by: -4))
                 }.buttonStyle(CatpawPressButtonStyle()).accessibilityLabel(ui("语音对话")).accessibilityIdentifier("chat.composer.voice")
                     .transition(.scale(scale: 0.6).combined(with: .opacity))
             case .dictating:
-                Button(action: dictate) {
+                if micOverride == nil { Button(action: dictate) {
                     Image(systemName: "waveform").font(CatpawTypography.Role.body.font.weight(.semibold)).foregroundStyle(CatpawColors.sendIcon)
                         .symbolEffect(.variableColor.iterative, isActive: !reduceMotion)
                         .frame(width: size, height: size).background(CatpawBrand.paw, in: Circle()).contentShape(Circle().inset(by: -4))
                 }.buttonStyle(CatpawPressButtonStyle()).accessibilityLabel(ui("停止听写")).accessibilityIdentifier("chat.composer.dictating")
-                    .transition(.scale(scale: 0.6).combined(with: .opacity))
+                    .transition(.scale(scale: 0.6).combined(with: .opacity)) }
                 if !draftEmpty {
                     Button { sendCount += 1; send() } label: {
                         Image(systemName: "arrow.up").font(CatpawTypography.Role.body.font.weight(.semibold)).foregroundStyle(CatpawColors.sendIcon)

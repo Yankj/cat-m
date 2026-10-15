@@ -5086,5 +5086,25 @@
   "，草稿，": {
     "en": ", draft, ",
     "zh-Hans": "，草稿，"
+  },
+  "向左滑动取消": {
+    "en": "Slide left to cancel",
+    "zh-Hans": "向左滑动取消"
+  },
+  "向上滑动发送": {
+    "en": "Slide up to send",
+    "zh-Hans": "向上滑动发送"
+  },
+  "取消听写": {
+    "en": "Cancel dictation",
+    "zh-Hans": "取消听写"
+  },
+  "完成听写": {
+    "en": "Finish dictation",
+    "zh-Hans": "完成听写"
+  },
+  "轻点开始听写；按住说话，向上滑动发送，向左滑动取消": {
+    "en": "Tap to dictate; hold to talk, slide up to send, slide left to cancel",
+    "zh-Hans": "轻点开始听写；按住说话，向上滑动发送，向左滑动取消"
   }
 }
