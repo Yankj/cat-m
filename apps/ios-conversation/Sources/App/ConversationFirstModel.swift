@@ -647,7 +647,15 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
                 // briefly closed during auth refresh) is transient. Nothing else resumes it, so a fresh send
                 // or consent check must, otherwise every later message queues silently behind it.
                 if try await queue?.resumePreflightHold() == true { sendLog.info("catpaw.send resumed preflight hold");state=try await queue?.state() }
-                guard !Task.isCancelled,permissionID == token,foreground,conversationID == id,let state,!state.pending.isEmpty,!state.paused else { sendLog.info("catpaw.send authorize skipped paused=\(state?.paused ?? false, privacy: .public)");return }
+                if let s0=state,s0.paused || s0.pending.isEmpty, !Task.isCancelled,permissionID == token,conversationID == id {
+                    // Gap 2: an old conversation whose consent is already granted must not show the
+                    // consent re-ask banner just because its queue is paused/empty; mark ready silently.
+                    if let granted=try? await { () async throws -> Bool in try await service.modelConsent(scope:scope,conversationID:id) == nil }(), granted {
+                        consentReady=true
+                        if s0.paused,s0.pauseReason == .background || s0.pauseReason == .preflight { try? await queue?.resume();state=try await queue?.state() }
+                    }
+                }
+                guard !Task.isCancelled,permissionID == token,foreground,conversationID == id,let state,!state.pending.isEmpty,!state.paused else { if consentReady { drainQueue() };sendLog.info("catpaw.send authorize skipped paused=\(state?.paused ?? false, privacy: .public)");return }
                 let consent=try await service.modelConsent(scope:scope,conversationID:id)
                 guard !Task.isCancelled,permissionID == token,foreground,conversationID == id else { return }
                 if let consent { presentModelConsent(consent);for i in outgoingMessages.indices where outgoingMessages[i].state == .queued { outgoingMessages[i].state = .awaitingPermission } }
