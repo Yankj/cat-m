@@ -225,8 +225,10 @@ extension View {
     func primaryAction() -> some View { self.buttonStyle(CatpawPrimaryButtonStyle()) }
     /// r9 Grok-style answer actions: small thin line glyphs, compact but forgiving hit area.
     func answerActionIcon() -> some View {
-        self.font(CatpawTypography.Role.secondary.font.weight(.light)).imageScale(.medium)
-            .frame(width: 22, height: 32).contentShape(Rectangle().inset(by: -7))
+        // CircleIcon idle pair: light circle + ink glyph (monochrome; brand orange is reserved for the paw).
+        self.font(CatpawTypography.Role.caption.font.weight(.medium)).imageScale(.medium).foregroundStyle(CatpawColors.ink)
+            .frame(width: 30, height: 30).background(CatpawColors.card, in: Circle())
+            .overlay(Circle().strokeBorder(CatpawColors.hairline, lineWidth: 0.5)).contentShape(Circle().inset(by: -6))
     }
     func touchTarget(minimum:CGFloat = 44) -> some View { self.frame(minWidth: max(44,minimum), minHeight: max(44,minimum)).contentShape(Rectangle()) }
     @ViewBuilder func compactNavigationTitle() -> some View {

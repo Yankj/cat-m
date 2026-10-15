@@ -581,6 +581,7 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
         if let target=request.continuation {guard request.image==nil,request.imageBytes==nil else {throw ConversationSessionError.invalidEvent};encoded=try Self.jsonData(["turn":body,"target":target.canonicalValue]);guard encoded.count<=48000 else {throw ConversationSessionError.invalidEvent}}
         else {encoded=bytes}
         var upload = try self.request(turnPath(request), auth: auth); upload.httpMethod = "POST"; upload.httpBody = encoded
+        upload.setValue(request.operationID.uuidString.lowercased(),forHTTPHeaderField:"Idempotency-Key") // #63: alias of turn_id (must match)
         if request.image==nil,!request.hasUploadedAttachments,request.continuation==nil,request.acceptedWork==nil {upload.setValue(ConversationMemoryProposalReceipt.contractName,forHTTPHeaderField:"X-Catpaw-Memory-Proposal-Contract")}
         // catpaw.approval.v1 negotiation: only plain chat turns are offered approval-gated tools.
         if Self.supportsResume(request),request.image==nil,!request.hasUploadedAttachments {upload.setValue(Self.approvalContract,forHTTPHeaderField:Self.approvalHeader);upload.setValue(ConversationUIEvent.contract,forHTTPHeaderField:ConversationUIEvent.header);if ConversationDeviceCall.clientEnabled {upload.setValue(ConversationDeviceCall.contract,forHTTPHeaderField:ConversationDeviceCall.header)}}
