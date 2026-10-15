@@ -94,7 +94,7 @@ import Speech
                     if let failure { self.message = failure; self.finishRecognition() }
                 }
             }
-            input.installTap(onBus: 0, bufferSize: 1024, format: format) { buffer, _ in req.append(buffer) }; tapInstalled = true
+            input.removeTap(onBus: 0); input.installTap(onBus: 0, bufferSize: 1024, format: format) { buffer, _ in req.append(buffer) }; tapInstalled = true
             engine.prepare(); try engine.start(); state = "recording"
             captureLimit = Task { try? await Task.sleep(nanoseconds: 45_000_000_000); if !Task.isCancelled, guardState.captureEpoch == epoch { finishInput() } }
         } catch { message = error.localizedDescription; abortCapture() }
@@ -111,7 +111,9 @@ import Speech
         audioNotifications.end(); capturing = false; guardState.finish(); state = "preview"
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     }
-    private func stopEngine() { engine.stop(); if tapInstalled { engine.inputNode.removeTap(onBus: 0); tapInstalled = false } }
+    /// Stop first, then remove the bus-0 tap unconditionally: removeTap is a no-op without a tap, and a tap left
+    /// behind by any path (config change, early throw) would make the next installTap assert `nullptr == Tap()`.
+    private func stopEngine() { if engine.isRunning { engine.stop() }; engine.inputNode.removeTap(onBus: 0); tapInstalled = false }
     func editTranscript(_ text: String) { guardState.edit(text); transcript = text }
     func useSample() { abortCapture(); _ = guardState.startCapture(); _ = guardState.receive("本周持续跟进 AI 助理的工作机制，先整理一份私有短稿。", epoch: guardState.captureEpoch, revision: 1); guardState.finish(); transcript = guardState.text; state = "sample" }
     func freezeSubmission() throws -> FrozenTranscriptSubmission { guardState.edit(transcript); return try guardState.freeze() }
@@ -153,11 +155,149 @@ import Speech
         guardState.stopPlayback(); playbackTimeout?.cancel(); playbackTimeout = nil; tokens.removeAll(); synthesizer.stopSpeaking(at: .immediate)
         if wasPlayback { audioNotifications.end(); state = "stopped"; if !guardState.capturing { try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation) } }
     }
-    func interrupt() { audioNotifications.end(); consentEpoch += 1; abortCapture(); stopPlayback() }
+    func interrupt() { cancelDictation(.interrupted); audioNotifications.end(); consentEpoch += 1; abortCapture(); stopPlayback() }
     func endForegroundSession() { interrupt(); guardState.endSession() }
     nonisolated func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didStart utterance: AVSpeechUtterance) { let token = ObjectIdentifier(utterance); Task { @MainActor [weak self] in guard let self, let item = self.tokens[token], item.epoch == self.guardState.playbackEpoch else { return }; self.paragraphIndex = item.paragraph; self.playbackTimeout?.cancel(); self.state = "playing" } }
     nonisolated func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) { let token = ObjectIdentifier(utterance); Task { @MainActor [weak self] in guard let self, self.tokens[token]?.epoch == self.guardState.playbackEpoch else { return }; self.tokens.removeValue(forKey: token); if self.tokens.isEmpty { self.audioNotifications.end(); self.state = "finished"; try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation) } } }
     nonisolated func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didCancel utterance: AVSpeechUtterance) { let token = ObjectIdentifier(utterance); Task { @MainActor [weak self] in guard let self, self.tokens[token]?.epoch == self.guardState.playbackEpoch else { return }; self.tokens.removeValue(forKey: token); if self.tokens.isEmpty { self.audioNotifications.end() }; self.state = "stopped" } }
+
+    // MARK: Composer dictation — explicit state machine (idle → starting → recording → finishing → idle).
+    // Every exit funnels through endDictation(), which is idempotent and always tears audio down.
+    // One owner at a time; a second start while not idle is rejected (.busy).
+    enum DictationPhase: Equatable { case idle, starting, recording, finishing }
+    enum DictationEnd: Equatable { case finished, cancelled, interrupted, denied, unsupported, failed(String), timedOut }
+    @Published private(set) var dictationPhase: DictationPhase = .idle
+    private var dictationEpoch = 0
+    private var dictationTask: SFSpeechRecognitionTask?
+    private var dictationRequest: SFSpeechAudioBufferRecognitionRequest?
+    private var dictationWatchdog: Task<Void, Never>?
+    private var dictationText = ""
+    private var dictationOnText: (@MainActor (String) -> Void)?
+    private var dictationOnEnd: (@MainActor (DictationEnd) -> Void)?
+    private var dictationObservers: [NSObjectProtocol] = []
+    /// Hard caps so no failure can leave the mic stuck: start (after permissions), capture length, final-result wait.
+    static let dictationStartTimeout: UInt64 = 6_000_000_000, dictationMaxCapture: UInt64 = 60_000_000_000, dictationFinishTimeout: UInt64 = 2_500_000_000
+
+    /// Returns immediately; results arrive through the callbacks on the main actor. `onEnd` fires exactly once per accepted start.
+    @discardableResult
+    func startDictation(onText: @escaping @MainActor (String) -> Void, onEnd: @escaping @MainActor (DictationEnd) -> Void) -> Bool {
+        guard dictationPhase == .idle else { return false }
+        dictationEpoch += 1; let epoch = dictationEpoch
+        dictationPhase = .starting; dictationText = ""; dictationOnText = onText; dictationOnEnd = onEnd
+        Task { @MainActor [weak self] in await self?.runDictationStart(epoch) }
+        return true
+    }
+
+    private func runDictationStart(_ epoch: Int) async {
+        guard SFSpeechRecognizer(locale: Locale(identifier: "zh-CN"))?.supportsOnDeviceRecognition == true else { return endDictation(epoch, .unsupported) }
+        // Permission callbacks arrive on arbitrary queues; the continuation hops back to this actor.
+        let mic: Bool
+        switch AVAudioSession.sharedInstance().recordPermission {
+        case .granted: mic = true
+        case .denied: mic = false
+        default: mic = await withCheckedContinuation { c in AVAudioSession.sharedInstance().requestRecordPermission { c.resume(returning: $0) } }
+        }
+        guard epoch == dictationEpoch, dictationPhase == .starting else { return }
+        guard mic else { return endDictation(epoch, .denied) }
+        let auth: SFSpeechRecognizerAuthorizationStatus = SFSpeechRecognizer.authorizationStatus() == .notDetermined
+            ? await withCheckedContinuation { c in SFSpeechRecognizer.requestAuthorization { c.resume(returning: $0) } } : SFSpeechRecognizer.authorizationStatus()
+        guard epoch == dictationEpoch, dictationPhase == .starting else { return }
+        guard auth == .authorized else { return endDictation(epoch, .denied) }
+        guard let recognizer = SFSpeechRecognizer(locale: Locale(identifier: "zh-CN")), recognizer.supportsOnDeviceRecognition, recognizer.isAvailable else { return endDictation(epoch, .unsupported) }
+        armWatchdog(epoch, after: Self.dictationStartTimeout, phase: .starting)
+        // Never share the engine with the sheet capture or playback.
+        stopPlayback(); abortCapture(); teardownDictationAudio(deactivate: false)
+        do {
+            audioNotifications.begin()
+            let audio = AVAudioSession.sharedInstance()
+            try audio.setCategory(.record, mode: .measurement, options: [.duckOthers])
+            try audio.setActive(true, options: .notifyOthersOnDeactivation)
+            let req = SFSpeechAudioBufferRecognitionRequest(); req.requiresOnDeviceRecognition = true; req.shouldReportPartialResults = true
+            dictationRequest = req
+            let input = engine.inputNode
+            let format = input.outputFormat(forBus: 0)   // read after activation so it matches the live hardware route
+            guard format.sampleRate > 0, format.channelCount > 0 else { throw CatpawError.unavailable("麦克风音频格式不可用。") }
+            input.removeTap(onBus: 0)
+            input.installTap(onBus: 0, bufferSize: 1024, format: format) { [weak req] buffer, _ in req?.append(buffer) }
+            tapInstalled = true
+            dictationTask = recognizer.recognitionTask(with: req) { [weak self] result, error in
+                let text = result?.bestTranscription.formattedString, final = result?.isFinal ?? false, failed = error != nil
+                Task { @MainActor [weak self] in self?.dictationResult(epoch, text: text, final: final, failed: failed) }
+            }
+            observeEngineChanges(epoch)
+            engine.prepare(); try engine.start()
+            guard epoch == dictationEpoch else { return }
+            dictationPhase = .recording
+            armWatchdog(epoch, after: Self.dictationMaxCapture, phase: .recording)
+        } catch {
+            endDictation(epoch, .failed(error.localizedDescription))
+        }
+    }
+
+    /// One tap stops. While starting it cancels; while recording it ends audio and waits briefly for the final result.
+    func stopDictation() {
+        let epoch = dictationEpoch
+        switch dictationPhase {
+        case .idle: return
+        case .starting: endDictation(epoch, .cancelled)
+        case .recording:
+            dictationPhase = .finishing
+            stopEngine(); dictationRequest?.endAudio()
+            armWatchdog(epoch, after: Self.dictationFinishTimeout, phase: .finishing)
+        case .finishing: endDictation(epoch, .finished)   // second tap: don't wait
+        }
+    }
+    /// Immediate stop (send / background / owner gone): keeps text already delivered.
+    func cancelDictation(_ reason: DictationEnd = .cancelled) { if dictationPhase != .idle { endDictation(dictationEpoch, reason) } }
+
+    private func dictationResult(_ epoch: Int, text: String?, final: Bool, failed: Bool) {
+        guard epoch == dictationEpoch, dictationPhase == .recording || dictationPhase == .finishing else { return }
+        if let text, !text.isEmpty, text != dictationText { dictationText = text; dictationOnText?(text) }
+        if final { endDictation(epoch, .finished) }
+        else if failed { endDictation(epoch, dictationText.isEmpty ? .failed("") : .finished) }
+    }
+
+    private func armWatchdog(_ epoch: Int, after nanoseconds: UInt64, phase: DictationPhase) {
+        dictationWatchdog?.cancel()
+        dictationWatchdog = Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: nanoseconds)
+            guard !Task.isCancelled, let self, epoch == self.dictationEpoch, self.dictationPhase == phase else { return }
+            if phase == .recording { self.stopDictation() } else { self.endDictation(epoch, phase == .finishing ? .finished : .timedOut) }
+        }
+    }
+
+    private func observeEngineChanges(_ epoch: Int) {
+        removeDictationObservers()
+        let center = NotificationCenter.default
+        // Route/format change stops the engine behind our back; a later installTap on the stale node would crash.
+        dictationObservers.append(center.addObserver(forName: .AVAudioEngineConfigurationChange, object: engine, queue: .main) { [weak self] _ in
+            Task { @MainActor [weak self] in guard let self, epoch == self.dictationEpoch else { return }; self.endDictation(epoch, .interrupted) }
+        })
+        dictationObservers.append(center.addObserver(forName: UIApplication.willResignActiveNotification, object: nil, queue: .main) { [weak self] _ in
+            Task { @MainActor [weak self] in guard let self, epoch == self.dictationEpoch else { return }; self.endDictation(epoch, .interrupted) }
+        })
+    }
+    private func removeDictationObservers() { for o in dictationObservers { NotificationCenter.default.removeObserver(o) }; dictationObservers = [] }
+
+    private func teardownDictationAudio(deactivate: Bool) {
+        dictationWatchdog?.cancel(); dictationWatchdog = nil
+        removeDictationObservers()
+        stopEngine()
+        dictationRequest?.endAudio(); dictationRequest = nil
+        dictationTask?.cancel(); dictationTask = nil
+        if deactivate { audioNotifications.end(); try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation) }
+    }
+
+    /// Single exit. Idempotent per epoch; always returns the controller to `.idle` and frees the mic.
+    private func endDictation(_ epoch: Int, _ reason: DictationEnd) {
+        guard epoch == dictationEpoch, dictationPhase != .idle else { return }
+        dictationEpoch += 1   // late callbacks from this session are ignored from here on
+        teardownDictationAudio(deactivate: true)
+        dictationPhase = .idle
+        let onEnd = dictationOnEnd; dictationOnText = nil; dictationOnEnd = nil
+        onEnd?(reason)
+    }
+
 }
 #else
 @MainActor final class NativeVoiceController: ObservableObject {
@@ -185,5 +325,11 @@ import Speech
     func abortCapture() { guardState.abort(); transcript = "" }
     func interrupt() { abortCapture(); stopPlayback() }
     func endForegroundSession() { interrupt(); guardState.endSession() }
+    enum DictationPhase: Equatable { case idle, starting, recording, finishing }
+    enum DictationEnd: Equatable { case finished, cancelled, interrupted, denied, unsupported, failed(String), timedOut }
+    @Published private(set) var dictationPhase: DictationPhase = .idle
+    @discardableResult func startDictation(onText: @escaping @MainActor (String) -> Void, onEnd: @escaping @MainActor (DictationEnd) -> Void) -> Bool { onEnd(.unsupported); return true }
+    func stopDictation() {}
+    func cancelDictation(_ reason: DictationEnd = .cancelled) {}
 }
 #endif

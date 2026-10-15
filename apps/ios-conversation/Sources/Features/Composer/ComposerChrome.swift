@@ -354,7 +354,7 @@ private struct JumpGlass: ViewModifier {
     private func ui(_ k: String) -> String { AppLanguage(locale: locale).ui(k) }
     private enum Mode: Equatable { case voice, send, stop, queue, dictating }
     private var mode: Mode {
-        if dictating && !responding { return .dictating }
+        if dictating { return .dictating }   // the stop-dictation control must stay reachable
         if responding { return draftEmpty ? .stop : .queue }
         return draftEmpty ? .voice : .send
     }
