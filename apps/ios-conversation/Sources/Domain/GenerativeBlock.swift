@@ -107,11 +107,12 @@ public struct GenerativeBlockResolution: Codable, Sendable, Equatable {
     public let status: String
 }
 
-/// Decision on a ui interrupt (approval.v1 decision endpoint, contract §4).
-public enum GenerativeUIDecision: String, Codable, Sendable { case submit, dismiss, reportError = "report_error" }
+/// Decision on a ui interrupt (approval.v1 decision endpoint, contract §4). Same type as the network layer's
+/// `ConversationUIDecision` (4454bee), kept as an alias so block code reads naturally.
+public typealias GenerativeUIDecision = ConversationUIDecision
 
-/// Implemented by the network layer (三角: `NativeChatHTTPBackend` → `POST …/turns/{t}/interrupts/{i}/decision?after_sequence=N`
-/// with `{operation_id, decision, args_hash, response?}`) and by the DEBUG demo adapter. `response` is the encoded
+/// Implemented by `ConversationServiceUIDecisionSubmitter` over `ConversationSessionService.submitUIDecision`
+/// (approval.v1 decision route; the DEBUG demo backend serves the same path). `response` is the encoded
 /// `ui.response` (submit) or `ui.error` (report_error) JSON, nil for dismiss. Resend with the SAME `operationID` after
 /// `.transport`. Throws `ConversationApprovalFailure` (`.expired`, `.consumed`, `.stale`, `.notFound`, `.rejected`, …).
 /// The continuation events (approval_resolved, ui.block.resolve, …) flow through the normal turn event path.
