@@ -97,6 +97,8 @@ export function createChatFetchHandler(runtime){
       }
       if(method==='POST'&&tail.length===3&&tail[0]==='conversations'&&tail[2]==='turns'){
         const raw=await body();check(raw?.message?.attachment_ids===undefined||chat.attachments,503,'attachments_unavailable');
+        // S1: Idempotency-Key is accepted as an alias of the turn's own idempotency id (turn_id); a different value is rejected.
+        {const idem=request.headers.get('Idempotency-Key');check(idem===null||(typeof raw?.turn_id==='string'&&idem.trim().toLowerCase()===raw.turn_id.toLowerCase()),422,'idempotency_key_mismatch');}
         const resolved=raw?.message?.attachment_ids===undefined?{input:raw,consume:async()=>{}}:await chat.attachments.resolveTurnInput(auth,scope,raw);
         if(resolved.replay)return json({turn:await chat.readTurn(auth,scope,tail[1],raw.turn_id),replayed:true});
         const input=resolved.input,capability=request.headers.get('X-Catpaw-Memory-Proposal-Contract'),approvalContract=request.headers.get(APPROVAL_HEADER),timeZone=request.headers.get('X-Catpaw-Time-Zone'),uiContract=request.headers.get(UI_HEADER),memoryMode=request.headers.get('X-Catpaw-Memory-Mode'),deviceContract=request.headers.get(DEVICE_HEADER);

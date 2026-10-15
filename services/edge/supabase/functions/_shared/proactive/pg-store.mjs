@@ -39,6 +39,15 @@ export function createPgStore(sql) {
     async getFeedback(uid, eid) { const r = await sql.unsafe('select kind, created_at from proactive.feedback where user_id=$1 and event_id=$2', [uid, eid]); return iso(r[0]) ?? null; },
     async insertFeedback(uid, eid, kind, at) { const r = await sql.unsafe('insert into proactive.feedback(user_id,event_id,kind,created_at) values($1,$2,$3,$4) on conflict(event_id) do nothing returning event_id', [uid, eid, kind, at]); return r.length > 0; },
     async updateEventPayload(uid, id, payload) { const r = await sql.unsafe('update proactive.events set payload=$3::text::jsonb where user_id=$1 and id=$2 returning *', [uid, id, JSON.stringify(payload)]); return iso(r[0]) ?? null; },
+    async claimSuggestionsForChat(uid, { limit, at, turnID }) {
+      const r = await sql.unsafe(`update proactive.events e set payload = jsonb_set(jsonb_set(e.payload, '{suggestion,chat_delivered_at}', to_jsonb($3::text)), '{suggestion,chat_turn_id}', to_jsonb($4::text))
+        where e.id in (select id from proactive.events where user_id=$1 and kind='proactive_decision' and payload->>'decision' <> 'silent'
+          and payload->'suggestion'->>'status' = 'pending' and payload->'suggestion'->>'chat_delivered_at' is null order by created_at limit $2 for update skip locked) returning e.*`, [uid, limit, at, turnID ?? '']);
+      return r.map(iso);
+    },
+    async resurfaceSnoozed(nowIso) { const r = await sql.unsafe('select proactive.resurface_snoozed_suggestions($1::timestamptz) as id', [nowIso]); return r.map(x => x.id).filter(Boolean); },
+    async idemGet(uid, key) { const r = await sql.unsafe('select route, request_hash, status, response from proactive.idempotency_keys where user_id=$1 and key=$2', [uid, key]); return r[0] ?? null; },
+    async idemPut(uid, key, rec) { const r = await sql.unsafe('insert into proactive.idempotency_keys(user_id,key,route,request_hash,status,response) values($1,$2,$3,$4,$5,$6::text::jsonb) on conflict do nothing returning key', [uid, key, rec.route, rec.request_hash, rec.status, JSON.stringify(rec.response)]); return r.length > 0; },
     async markRead(uid, id, at) { const r = await sql.unsafe(`update proactive.events set read_at=coalesce(read_at,$3) where user_id=$1 and id=$2 returning id`, [uid, id, at]); return r.length > 0; },
     async pendingPushEvents(limit, nowIso = null) { const r = await sql.unsafe(`update proactive.events set push_attempts=push_attempts+1 where id in (select id from proactive.events where push_state='pending' and push_attempts<5 and (push_after is null or push_after <= coalesce($2::timestamptz, now())) order by created_at limit $1 for update skip locked) returning *`, [limit, nowIso]); return r.map(iso); },
     async deferPush(id, until) { await sql.unsafe('update proactive.events set push_after=$2, push_attempts=greatest(push_attempts-1,0) where id=$1', [id, until]); },

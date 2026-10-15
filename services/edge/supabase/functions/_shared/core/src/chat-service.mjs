@@ -115,11 +115,14 @@ export class ChatService {
       }
       // catpaw.agent-memory.v1: recall snapshot frozen at admission (edits/deletes apply from the next turn on); ephemeral turns read and write nothing.
       const agentMemory=!revisionTarget&&!workIntent&&this.facade.agentMemory?await this.facade.agentMemory.recallForTurn({subjectID:principal.subject_id,query:input.message.text.slice(0,500),mode:memoryMode,conversationID:c.id,turnID:t.id}):null;
+      let claimedSuggestions=[];
       if(agentMemory){t.agent_memory=agentMemory;t.request_hash=hash({original_chat_request_hash:t.request_hash,agent_memory:agentMemory});}
       if(this.integration)t=await this.integration.stampTurn(tx,owner,t);
       // Durable admission receipt belongs to the same atomic turn/user-message commit.
       t={...t,events:[this.event(t,'turn_started',{request_hash:t.request_hash,conversation_revision:t.conversation_revision,...vision.receipts.length?{attachment_receipts:vision.receipts}:{}})]};
       if(agentMemory?.ids.length&&t.approval_contract)t={...t,events:[...t.events,this.event(t,'memory_recalled',{ids:agentMemory.ids})]};
+      if(agentMemory?.ids.length&&t.approval_contract&&agentMemory.items)t={...t,events:[...t.events,this.event(t,'memory.used',{ids:agentMemory.ids,memories:agentMemory.items})]};
+      if(this.facade.proactiveSuggestions&&t.approval_contract){claimedSuggestions=await this.facade.proactiveSuggestions.claimForTurn({subjectID:principal.subject_id,conversationID:c.id,turnID:t.id}).catch(()=>[]);for(const s of claimedSuggestions)t={...t,events:[...t.events,this.event(t,'proactive_suggestion',s)]};}
       check(await tx.insertIfAbsent(owner,'native-chat-turns',t),409,'turn_conflict');await tx.put(owner,'native-chat-conversations',{...c,revision:c.revision+1,messages:history,model_messages:modelHistory,last_turn_id:t.id});
       await this.integration?.capture(tx,{owner,scope,principal,turn:t});
       const extraction=await this.integration?.stageMemoryExtraction?.(tx,{principal,scope,conversation:c,turn:t});
@@ -127,6 +130,8 @@ export class ChatService {
         t={...t,memory_extraction:extraction,request_hash:hash({original_chat_request_hash:t.request_hash,memory_extraction:extraction})};
         t.events=[this.event({...t,events:[]},'turn_started',{request_hash:t.request_hash,conversation_revision:t.conversation_revision})]
         if(t.agent_memory?.ids.length&&t.approval_contract)t.events=[...t.events,this.event(t,'memory_recalled',{ids:t.agent_memory.ids})];
+        if(t.agent_memory?.ids.length&&t.approval_contract&&t.agent_memory.items)t.events=[...t.events,this.event(t,'memory.used',{ids:t.agent_memory.ids,memories:t.agent_memory.items})];
+        for(const s of claimedSuggestions)t.events=[...t.events,this.event(t,'proactive_suggestion',s)];
         await tx.put(owner,'native-chat-turns',t);
       }
       await this.beforeCommit(tx,{owner,scope},t);if(t.revision_target)await this.assertRevisionLive(tx,{owner,scope,principal},t);return {turn:t,replayed:false};

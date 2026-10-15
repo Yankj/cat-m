@@ -83,16 +83,43 @@ Weights are clamped to [0.3, 1.5] and threshold_bump to [−0.1, 0.3]. When a me
 ## Memory
 The port is `{recall(uid, query, k) → [{id, content, kind}], save?(uid, content) → id}`.
 
-B1 (`catpaw.agent-memory.v1`, PR #41) is not on this base branch, and its recall runs inside catpaw-api's process against its own store. So production `catpaw-proactive` currently runs with **no memory port** (`memory: null`, so `used_memories=[]`). Tests and the demo use `memory-recall.mjs`, an in-memory lexical stand-in. Once #41 merges, an adapter that calls its `rank()` (or a pg read of its table) plugs into the same port.
+In production this is `createAgentMemoryRecall(createAgentMemoryService({store: pg}))`, which reads B1 `catpaw.agent-memory.v1` (already merged).
+- It uses the same gate as B1: `CATPAW_AGENT_MEMORY_ENABLED` plus the allowlist.
+- It respects the same consent: no consent, or `use_memory` off, returns `[]`.
+- A preference memory from feedback is written only when `auto_save` is on.
+
+The demo uses the in-memory lexical stand-in.
 
 ## Storage
 The migration file is `supabase/migrations/20261016030000_proactive_decisions.sql`. It is **not applied**. It adds:
 - `proactive_decision` to the events kind check
 - the `signal_seen`, `trigger_weights` and `feedback` tables, with RLS (owner read; writes only by the service)
 
+## Snooze re-surface
+Migration `20261016040000` adds the function `proactive.resurface_snoozed_suggestions(now)` and the pg_cron job `catpaw-proactive-resurface`, which runs every minute. `/scheduler/tick` also calls the function and reports the count as `resurfaced`.
+
+Once `snooze_until` has passed:
+- `status` goes back to `pending` and `resurfaced_at` is recorded.
+- `taken` is kept.
+- notify and interrupt suggestions get `push_state='pending'` again.
+- Chat delivery is cleared, so the next turn can show the suggestion again.
+
+## Chat SSE: `proactive_suggestion`
+The gate is `CATPAW_PROACTIVE_SUGGESTIONS_SSE_ENABLED`: `true`, `allowlist` (uses `CATPAW_FEATURE_ALLOWLIST_SUBJECTS`), or unset for off. It is **off by default**. The client must have sent `X-Catpaw-Approval-Contract`.
+
+At turn admission, catpaw-api claims up to 3 pending, non-silent suggestions for the user and adds one `proactive_suggestion` event per suggestion (data = Suggestion) after `turn_started` and `memory_recalled`/`memory.used`. Each suggestion is delivered to chat at most once (`suggestion.chat_delivered_at`).
+
+## Idempotency-Key (S1)
+- **POST decision routes** (`/evaluate`, `/suggestions/{id}/action|undo|feedback`, `/feedback`) take the header `Idempotency-Key`: 8–200 printable ASCII characters.
+  - Same key with the same route and body: the stored response is returned with the header `Idempotent-Replayed: true`. Nothing is re-run, so dedupe and weights are unaffected.
+  - Same key with a different body or route: `422 idempotency_key_reused`.
+  - Error responses are not stored.
+  - Keys are scoped per user and stored in `proactive.idempotency_keys`.
+  - Two identical requests in flight at the same moment can both run. That is acceptable for the demo; a stricter version would reserve the key before running.
+- **Chat send** (`POST …/conversations/{c}/turns`): `Idempotency-Key` is an alias for the turn's existing idempotency id. It must equal `turn_id`, case-insensitively, or the request gets `422 idempotency_key_mismatch`. Replays keep the existing turn_id semantics (`replayed: true`).
+
 ## Not done
-- catpaw-api does not yet emit the `proactive_suggestion` SSE event into chat. Use `toSuggestion(event)` from `decision.mjs` to build its payload.
-- Snoozed suggestions do not yet re-surface automatically.
+- Two identical Idempotency-Key requests in flight at the same moment can both run (see above).
 
 ## Demo
 `deno run -A services/edge/scripts/demo-proactive.mjs`. Signals come from `test/fixtures/proactive/meeting-travel-signals.json`. With a model key in env the real LLM decides; without one the rules decide. Contract tests: `deno test -A services/edge/test/proactive-decision.test.mjs`.
