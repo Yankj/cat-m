@@ -30,7 +30,7 @@ test('contract: tool schemas, argument validation, approval policy (forget alway
 });
 
 test('gate: default off, allowlist, and off means nothing is read or written',async()=>{
- assert.equal(readConfig(()=>undefined).agentMemory,'off');assert.equal(readFeatureGate('allowlist'),'allowlist');
+ assert.equal(readConfig(()=>undefined).agentMemory,'allowlist');assert.equal(readConfig(n=>n==='CATPAW_AGENT_MEMORY_ENABLED'?'false':undefined).agentMemory,'off');assert.equal(readFeatureGate('allowlist'),'allowlist');
  const s=svc({allow:uid=>uid===U1});
  assert.equal((await s.call('GET','/settings',undefined,'Bearer u2')).status,404);
  assert.equal(await s.service.recallForTurn({subjectID:U2,query:'hi',turnID:randomUUID()}),null);
