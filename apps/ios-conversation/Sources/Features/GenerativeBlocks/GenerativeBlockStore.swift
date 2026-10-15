@@ -26,11 +26,26 @@ import os
     /// "turnID#sequence" of wire events already applied (not persisted: replays re-apply idempotently).
     private var applied: Set<String> = []
     private let defaults: UserDefaults?
-    private let key = "catpaw.generativeBlocks.v2"
+    private let baseKey = "catpaw.generativeBlocks.v3"
+    /// Conversation whose blocks are loaded; blocks / responses / resolution are stored per conversation + block id.
+    private(set) var conversationID: UUID?
+    private var key: String { baseKey + "." + (conversationID?.uuidString.lowercased() ?? "local") }
     private let log = Logger(subsystem: "catpaw", category: "generative-ui")
 
     init(defaults: UserDefaults? = .standard) {
         self.defaults = defaults
+        load()
+    }
+
+    /// Switches the store to one conversation's blocks (saved under their own key). Idempotent.
+    func activate(conversationID id: UUID?) {
+        guard id != conversationID else { return }
+        save()
+        conversationID = id
+        blocks = [:]; order = []; responses = [:]; resolved = [:]; submissions = [:]; contexts = [:]; operationIDs = [:]; reported = []; applied = []
+        load()
+    }
+    private func load() {
         if let data = defaults?.data(forKey: key), let saved = try? GenerativeBlockCodec.decoder.decode(Snapshot.self, from: data) {
             blocks = saved.blocks; order = saved.order; responses = saved.responses; resolved = saved.resolved; contexts = saved.contexts; operationIDs = saved.operationIDs
         }
@@ -66,11 +81,12 @@ import os
     func resolve(_ resolution: GenerativeBlockResolution) { resolved[resolution.id] = resolution.status; submissions[resolution.id] = nil; save() }
     func resolve(_ data: Data) { if let r = try? GenerativeBlockCodec.decoder.decode(GenerativeBlockResolution.self, from: data) { resolve(r) } }
 
-    // MARK: catpaw.ui.v1 wire events (ConversationTurnEvent .uiBlock / .uiBlockUpdate / .uiBlockResolve, journal, pendingUIBlocks)
+    // MARK: catpaw.ui.v1 wire events (ConversationTurnEvent .uiBlock / .uiBlockUpdate / .uiBlockResolve, journal, pendingUIApprovals)
 
     /// Applies one wire event once (de-duplicated by turn + sequence, so the live stream, the turn journal and
-    /// `pendingUIBlocks` can all feed the store safely).
+    /// `pendingUIApprovals` can all feed the store safely).
     func ingest(_ event: ConversationUIEvent, context: Context) {
+        guard conversationID == nil || conversationID == context.conversationID else { return }   // replayed from the journal on activate
         let key = context.turnID.uuidString + "#" + String(event.sequence)
         guard applied.insert(key).inserted else { return }
         switch event.type {
@@ -79,6 +95,12 @@ import os
         case .resolve:
             if let status = event.status { resolve(GenerativeBlockResolution(id: event.id, status: status)) } else { resolve(event.payload) }
         }
+    }
+    /// Cold start: a waiting ui interrupt from `pendingUIApprovals` (`block` is the full `ui.block` data). A block already
+    /// present from the journal is not added twice (`adopt` keys by block id).
+    func restore(_ approval: ConversationUIApproval, context: Context) {
+        guard conversationID == nil || conversationID == context.conversationID, resolved[approval.blockID] == nil else { return }
+        receive(approval.block, context: context)
     }
     /// Blocks received for one conversation, in arrival order.
     func blockIDs(conversationID: UUID) -> [String] { order.filter { contexts[$0]?.conversationID == conversationID } }
@@ -111,14 +133,18 @@ import os
         guard let submitter, let context = contexts[id] else { submissions[id] = .failed("暂时无法提交，请稍后重试。"); return }
         let operation = operationIDs[interrupt] ?? UUID(); operationIDs[interrupt] = operation; save()
         submissions[id] = .submitting
+        let owner = conversationID
         Task {
+            defer { if owner == conversationID { save() } }
             do {
                 try await submitter.submitUIDecision(conversationID: context.conversationID, turnID: context.turnID, interruptID: interrupt,
                                                      decision: decision, argsHash: hash, response: response, operationID: operation)
+                guard owner == conversationID else { return }   // user switched conversation meanwhile
                 if let local { responses[id] = local }
                 resolved[id] = resolved[id] ?? (decision == .submit ? "submitted" : decision == .dismiss ? "dismissed" : "errored")
                 submissions[id] = nil
             } catch let failure as ConversationApprovalFailure {
+                guard owner == conversationID else { return }
                 switch failure {
                 case .transport: submissions[id] = .failed(failure.friendlyMessage)   // same operationID on retry
                 case .expired: resolved[id] = "expired"; submissions[id] = nil
@@ -136,7 +162,6 @@ import os
                 // ConversationSessionError.busy (another stream is running) or transport: keep the operation id.
                 submissions[id] = .failed(ConversationApprovalFailure.transport.friendlyMessage)
             }
-            save()
         }
     }
 
