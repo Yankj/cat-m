@@ -13,14 +13,22 @@ enum CatpawColors {
     static let panel = adaptive(light: 0xF7F7F7, dark: 0x181818)
     static let input = adaptive(light: 0xF7F7F7, dark: 0x141414)
     static let drawer = adaptive(light: 0xF5F5F5, dark: 0x141414)
-    static let ink = adaptive(light: 0x202020, dark: 0xF2F2F2)
+    static let ink = adaptive(light: 0x1C1B1A, dark: 0xF2F0ED)
     static let onInk = adaptive(light: 0xFFFFFF, dark: 0x151515)
-    static let secondary = adaptive(light: 0x626262, dark: 0xA3A3A3)
-    static let action = adaptive(light: 0x315BCA, dark: 0x7E9CFF)
+    static let secondary = adaptive(light: 0x6E6A66, dark: 0xA39E98)
+    static let tertiary = adaptive(light: 0xA8A39E, dark: 0x6B6662)
+    // r9: settings / drawer grouped surfaces.
+    static let groupedBackground = adaptive(light: 0xF7F5F2, dark: 0x121110)
+    static let card = adaptive(light: 0xFFFFFF, dark: 0x1C1B19)
+    static let fillSelected = adaptive(light: 0xEAE6E1, dark: 0x2E2B28)
+    static let hairline = adaptiveAlpha(light: 0x1C1B1A, lightAlpha: 0.08, dark: 0xFFFFFF, darkAlpha: 0.10)
+    static let destructive = adaptive(light: 0xD9402B, dark: 0xFF6B57)
+    // r9: brand paw orange replaces the former blue action role.
+    static let action = adaptive(light: 0xF26B3A, dark: 0xFF8A5C)
     static let send = adaptive(light: 0x3567EE, dark: 0x3567EE)
     static let sendIcon = adaptive(light: 0xFFFFFF, dark: 0xFFFFFF)
-    static let userMessageBackground = adaptive(light: 0xE8EFFC, dark: 0x102052)
-    static let userMessageInk = adaptive(light: 0x244987, dark: 0xF2F2F2)
+    static let userMessageBackground = adaptive(light: 0xF2EFEB, dark: 0x262422)
+    static let userMessageInk = adaptive(light: 0x1C1B1A, dark: 0xF2F0ED)
     static let controlEdge = adaptive(light: 0x858585, dark: 0x777777)
     // Decorative separators do not carry a control's affordance or state.
     static let separator = adaptive(light: 0xDEDEDE, dark: 0x383838)
@@ -30,6 +38,17 @@ enum CatpawColors {
     // Compatibility names inherit the shared semantic role, never a second palette.
     static let accent = action
     static let green = success
+
+    private static func adaptiveAlpha(light: UInt32, lightAlpha: CGFloat, dark: UInt32, darkAlpha: CGFloat) -> Color {
+        #if os(iOS)
+        func value(_ hex: UInt32, _ a: CGFloat) -> UIColor {
+            UIColor(red: CGFloat((hex >> 16) & 255) / 255, green: CGFloat((hex >> 8) & 255) / 255, blue: CGFloat(hex & 255) / 255, alpha: a)
+        }
+        return Color(UIColor { $0.userInterfaceStyle == .dark ? value(dark, darkAlpha) : value(light, lightAlpha) })
+        #else
+        return Color(NSColor(srgbRed: CGFloat((light >> 16) & 255) / 255, green: CGFloat((light >> 8) & 255) / 255, blue: CGFloat(light & 255) / 255, alpha: lightAlpha))
+        #endif
+    }
 
     private static func adaptive(light: UInt32, dark: UInt32) -> Color {
         #if os(iOS)
@@ -190,7 +209,7 @@ struct CatpawConfirmationCheckbox:View {
             HStack(alignment:.firstTextBaseline,spacing:12) {
                 Image(systemName:isOn ? "checkmark.square.fill":"square")
                     .font(CatpawTypography.Role.body.font).symbolRenderingMode(.monochrome)
-                    .foregroundStyle(CatpawColors.action).accessibilityHidden(true)
+                    .foregroundStyle(CatpawColors.ink).accessibilityHidden(true)
                 Text(verbatim:title).font(CatpawTypography.Role.body.font).fixedSize(horizontal:false,vertical:true)
                     .frame(maxWidth:.infinity,alignment:.leading)
             }.frame(maxWidth:.infinity,minHeight:44,alignment:.leading).contentShape(Rectangle())
@@ -214,5 +233,44 @@ extension View {
         #else
         self
         #endif
+    }
+}
+
+
+/// r9 §1 sheet footer: stacked full-width ink capsule (52pt) over a quiet text action (44pt).
+struct CatpawSheetActions<Primary: View, Secondary: View>: View {
+    @ViewBuilder var primary: () -> Primary
+    @ViewBuilder var secondary: () -> Secondary
+    var body: some View {
+        VStack(spacing: 4) {
+            primary()
+            secondary()
+        }
+        .padding(.horizontal, 20).padding(.top, 12).padding(.bottom, 8)
+        .frame(maxWidth: CatpawLayout.readableWidth).frame(maxWidth: .infinity)
+        .background(CatpawColors.background)
+        .overlay(alignment: .top) { CatpawColors.hairline.frame(height: 0.5) }
+    }
+}
+
+struct CatpawSheetPrimaryButtonStyle: ButtonStyle {
+    @Environment(\.isEnabled) private var isEnabled
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label.font(.system(size: 17, weight: .semibold))
+            .frame(maxWidth: .infinity, minHeight: 52)
+            .foregroundStyle(isEnabled ? CatpawColors.onInk : CatpawColors.secondary)
+            .background(isEnabled ? CatpawColors.ink : CatpawColors.input, in: Capsule())
+            .contentShape(Capsule())
+            .opacity(configuration.isPressed ? 0.78 : 1)
+    }
+}
+
+struct CatpawSheetSecondaryButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label.font(.system(size: 17, weight: .medium))
+            .foregroundStyle(CatpawColors.secondary)
+            .frame(maxWidth: .infinity, minHeight: 44)
+            .contentShape(Rectangle())
+            .opacity(configuration.isPressed ? 0.6 : 1)
     }
 }

@@ -728,8 +728,8 @@ import CatpawImageComposer
             VStack(alignment:.trailing,spacing:4) {
                 ConversationUserMessageLayout {
                     Text(message.content).font(CatpawTypography.Role.body.font).textSelection(.enabled)
-                        .foregroundStyle(CatpawColors.userMessageInk).padding(.horizontal,16).padding(.vertical,12)
-                        .background(CatpawColors.userMessageBackground,in:RoundedRectangle(cornerRadius:24))
+                        .foregroundStyle(CatpawColors.userMessageInk).padding(.horizontal,14).padding(.vertical,9)
+                        .background(CatpawColors.userMessageBackground,in:RoundedRectangle(cornerRadius:20,style:.continuous))
                 }
                     .accessibilityIdentifier("chat.userMessage")
                     #if DEBUG
@@ -1163,11 +1163,11 @@ private struct ConversationUserMessageLayout:Layout {
         guard let text=subviews.first else {return .zero}
         let proposedWidth=proposal.width ?? CatpawLayout.readableWidth
         let width=proposedWidth.isFinite ? max(0,proposedWidth):CatpawLayout.readableWidth
-        return .init(width:width,height:text.sizeThatFits(.init(width:width*0.88,height:nil)).height)
+        return .init(width:width,height:text.sizeThatFits(.init(width:width*0.75,height:nil)).height)
     }
     func placeSubviews(in bounds:CGRect,proposal:ProposedViewSize,subviews:Subviews,cache:inout ()) {
         guard let text=subviews.first else {return}
-        let size=text.sizeThatFits(.init(width:bounds.width*0.88,height:nil))
+        let size=text.sizeThatFits(.init(width:bounds.width*0.75,height:nil))
         text.place(at:.init(x:bounds.maxX,y:bounds.minY),anchor:.topTrailing,proposal:.init(size))
     }
 }

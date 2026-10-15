@@ -127,19 +127,20 @@ import UIKit
 
     var body: some View {
         Menu {
-            Button { showPhotos = true } label: { Label(ui("照片"), systemImage: "photo.on.rectangle") }
             if UIImagePickerController.isSourceTypeAvailable(.camera) {
-                Button { showCamera = true } label: { Label(ui("拍照"), systemImage: "camera") }
+                Button { showCamera = true } label: { Label(ui("拍照"), systemImage: "camera").menuInkIcon() }
             }
-            Button { showFiles = true } label: { Label(ui("文件"), systemImage: "doc") }
+            Button { showPhotos = true } label: { Label(ui("照片"), systemImage: "photo.on.rectangle").menuInkIcon() }
+            Button { showFiles = true } label: { Label(ui("文件"), systemImage: "doc").menuInkIcon() }
             if let onDetails {
                 Divider()
-                Button(action: onDetails) { Label(ui("输入详情"), systemImage: "text.alignleft") }.accessibilityIdentifier("chat.composer.details")
+                Button(action: onDetails) { Label(ui("输入详情"), systemImage: "text.alignleft").menuInkIcon() }.accessibilityIdentifier("chat.composer.details")
             }
         } label: {
             Image(systemName: "plus").font(CatpawTypography.Role.heading.font.weight(.medium)).foregroundStyle(CatpawColors.ink)
                 .frame(width: 36, height: 36).touchTarget()
         }
+        .tint(CatpawColors.ink)
         .disabled(remaining <= 0)
         .accessibilityLabel(ui("添加附件"))
         .accessibilityIdentifier("chat.composer.add")
@@ -237,5 +238,12 @@ enum ComposerPasteHandling {
             add([staged]); return true
         }
         return false
+    }
+}
+
+private extension Label where Title == Text, Icon == Image {
+    /// r9 §3: menu glyphs are ink, regular weight — never the accent tint.
+    func menuInkIcon() -> some View {
+        self.symbolRenderingMode(.monochrome).fontWeight(.regular).foregroundStyle(CatpawColors.ink)
     }
 }
