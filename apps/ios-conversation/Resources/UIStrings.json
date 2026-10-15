@@ -4922,5 +4922,9 @@
   "去设置": {
     "en": "Open Settings",
     "zh-Hans": "去设置"
+  },
+  "继续发送": {
+    "en": "Resume",
+    "zh-Hans": "继续发送"
   }
 }
