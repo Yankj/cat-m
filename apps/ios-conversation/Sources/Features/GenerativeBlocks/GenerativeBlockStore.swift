@@ -23,6 +23,8 @@ import os
     /// One decision operation id per interrupt, reused on retry (idempotent per contract §5).
     private var operationIDs: [String: UUID] = [:]
     private var reported: Set<String> = []
+    /// "turnID#sequence" of wire events already applied (not persisted: replays re-apply idempotently).
+    private var applied: Set<String> = []
     private let defaults: UserDefaults?
     private let key = "catpaw.generativeBlocks.v2"
     private let log = Logger(subsystem: "catpaw", category: "generative-ui")
@@ -64,6 +66,24 @@ import os
     func resolve(_ resolution: GenerativeBlockResolution) { resolved[resolution.id] = resolution.status; submissions[resolution.id] = nil; save() }
     func resolve(_ data: Data) { if let r = try? GenerativeBlockCodec.decoder.decode(GenerativeBlockResolution.self, from: data) { resolve(r) } }
 
+    // MARK: catpaw.ui.v1 wire events (ConversationTurnEvent .uiBlock / .uiBlockUpdate / .uiBlockResolve, journal, pendingUIBlocks)
+
+    /// Applies one wire event once (de-duplicated by turn + sequence, so the live stream, the turn journal and
+    /// `pendingUIBlocks` can all feed the store safely).
+    func ingest(_ event: ConversationUIEvent, context: Context) {
+        let key = context.turnID.uuidString + "#" + String(event.sequence)
+        guard applied.insert(key).inserted else { return }
+        switch event.type {
+        case .block: receive(event.payload, context: context)
+        case .update: update(event.payload)
+        case .resolve:
+            if let status = event.status { resolve(GenerativeBlockResolution(id: event.id, status: status)) } else { resolve(event.payload) }
+        }
+    }
+    /// Blocks received for one conversation, in arrival order.
+    func blockIDs(conversationID: UUID) -> [String] { order.filter { contexts[$0]?.conversationID == conversationID } }
+    func turnID(of id: String) -> UUID? { contexts[id]?.turnID }
+
     // MARK: User actions
 
     func current(_ block: GenerativeBlock) -> GenerativeBlock { blocks[block.id] ?? block }
@@ -100,18 +120,21 @@ import os
                 submissions[id] = nil
             } catch let failure as ConversationApprovalFailure {
                 switch failure {
-                case .transport: submissions[id] = .failed("网络中断，回答未送达。请重试。")   // same operationID on retry
+                case .transport: submissions[id] = .failed(failure.friendlyMessage)   // same operationID on retry
                 case .expired: resolved[id] = "expired"; submissions[id] = nil
                 case .consumed, .noPendingApproval: resolved[id] = resolved[id] ?? "submitted"; submissions[id] = nil
                 case .notFound: resolved[id] = "cancelled"; submissions[id] = nil
-                case .stale: resolved[id] = "errored"; submissions[id] = nil
-                case .unsupported: submissions[id] = .failed("当前服务暂不支持卡片回答。")
+                case .stale: resolved[id] = "errored"; submissions[id] = .failed(failure.friendlyMessage)
+                case .unsupported: submissions[id] = .failed(failure.friendlyMessage)
                 case .rejected(_, let code):
                     if code == "approval_operation_conflict" { operationIDs[interrupt] = nil }
-                    submissions[id] = .failed("回答未被接受，请检查后重试。")
+                    submissions[id] = .failed(failure.friendlyMessage)
                 }
+            } catch is CancellationError {
+                submissions[id] = nil
             } catch {
-                submissions[id] = .failed("网络中断，回答未送达。请重试。")
+                // ConversationSessionError.busy (another stream is running) or transport: keep the operation id.
+                submissions[id] = .failed(ConversationApprovalFailure.transport.friendlyMessage)
             }
             save()
         }

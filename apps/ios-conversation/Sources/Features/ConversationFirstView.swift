@@ -201,6 +201,7 @@ import CatpawImageComposer
                                 PendingThinkingRow(service:model.service,turn:pending).id("pending-\(pending.id)").padding(.top,12)
                             }
                             ConversationApprovalHost(model:model,session:session)   // catpaw.approval.v1 cards (A2)
+                            ConversationGenerativeUIHost(model:model,session:session)   // catpaw.ui.v1 blocks (r10 §4)
                             if let latest = session.turns.last, latest.state == .completed, !composerChrome.stoppedOperations.contains(latest.id) {
                                 Color.clear.frame(width:1,height:1).accessibilityElement().accessibilityLabel(ui("回复完成")).accessibilityIdentifier("chat.reply.completed")
                             } else if let latest = session.turns.last, latest.state == .failed {
