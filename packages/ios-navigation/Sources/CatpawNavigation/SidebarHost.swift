@@ -37,6 +37,8 @@ import SwiftUI
             let width = SidebarGesturePolicy.drawerWidth(available: geometry.size.width)
             let active = isAtRoot && motion.isVisible
             let progress = isAtRoot ? motion.position : 0
+            let translation = width * progress
+            let visibleForegroundWidth = SidebarForegroundLayout.visibleWidth(viewportWidth: geometry.size.width, translation: translation)
             let radius = SidebarGesturePolicy.foregroundCornerRadius(progress: progress)
             let foregroundShape = UnevenRoundedRectangle(topLeadingRadius: radius, bottomLeadingRadius: radius,
                                                          bottomTrailingRadius: 0, topTrailingRadius: 0, style: .continuous)
@@ -50,18 +52,26 @@ import SwiftUI
                     .frame(width: width, height: geometry.size.height)
                     .allowsHitTesting(active && !motion.isDragging).disabled(!active || motion.isDragging)
                     .accessibilityHidden(!isAtRoot || !motion.isFullyOpen)
-                ZStack {
+                ZStack(alignment: .leading) {
                     // The blocked conversation and its dismiss action are siblings.
                     // An overlay on disabled/AX-hidden content inherits that state
                     // and would also hide or disable the only visible scrim.
                     content
                         .frame(width: geometry.size.width, height: geometry.size.height)
                         .allowsHitTesting(!active).accessibilityHidden(active)
-                    Button(action: close) {
-                        Color.black.opacity(0.22 * Double(progress)).contentShape(Rectangle())
-                    }.buttonStyle(.plain).accessibilityLabel(localize("关闭侧栏"))
-                        .accessibilityIdentifier("sidebar.scrim")
-                        .allowsHitTesting(active).accessibilityHidden(!active)
+                    if active {
+                        // AX and hit testing use the visible strip, not the
+                        // full-width translated conversation behind it. Keep
+                        // its leading edge local to the translated foreground.
+                        Button(action: close) {
+                            Color.black.opacity(0.22 * Double(progress))
+                                .frame(width: visibleForegroundWidth, height: geometry.size.height)
+                                .contentShape(Rectangle())
+                        }.buttonStyle(.plain)
+                            .frame(width: visibleForegroundWidth, height: geometry.size.height)
+                            .accessibilityLabel(localize("关闭侧栏"))
+                            .accessibilityIdentifier("sidebar.scrim")
+                    }
                 }.frame(width: geometry.size.width, height: geometry.size.height)
                     // Zero radius is the ordinary full-width host. Only the
                     // exposed leading edge rounds; the system keyboard is in
@@ -71,7 +81,7 @@ import SwiftUI
                         foregroundShape.strokeBorder(theme.separator.opacity(Double(progress)), lineWidth: 1 / max(1, displayScale))
                             .allowsHitTesting(false).accessibilityHidden(true)
                     }
-                    .modifier(SidebarForegroundTranslation(x: width * progress))
+                    .modifier(SidebarForegroundTranslation(x: translation))
             }.frame(width: geometry.size.width, height: geometry.size.height, alignment: .leading)
                 .background(theme.panel).clipped()
                 #if os(iOS)
@@ -121,5 +131,14 @@ private struct SidebarForegroundTranslation: GeometryEffect {
     }
     func effectValue(size: CGSize) -> ProjectionTransform {
         ProjectionTransform(CGAffineTransform(translationX: x, y: 0))
+    }
+}
+
+/// The dismiss button has its own on-screen geometry. Clipping a wider Button
+/// does not change its accessibility frame or its computed activation point.
+struct SidebarForegroundLayout {
+    static func visibleWidth(viewportWidth: CGFloat, translation: CGFloat) -> CGFloat {
+        guard viewportWidth.isFinite, translation.isFinite else { return 0 }
+        return max(0, viewportWidth - max(0, translation))
     }
 }
