@@ -4810,5 +4810,53 @@
   "，草稿，": {
     "en": ", draft, ",
     "zh-Hans": "，草稿，"
+  },
+  "你的主动式助理": {
+    "en": "Your proactive assistant",
+    "zh-Hans": "你的主动式助理"
+  },
+  "说一句想做的事，Catpaw 就开始帮你拆解、执行。": {
+    "en": "Say what you want done — Catpaw breaks it down and gets to work.",
+    "zh-Hans": "说一句想做的事，Catpaw 就开始帮你拆解、执行。"
+  },
+  "在云端持续工作": {
+    "en": "Keeps working in the cloud",
+    "zh-Hans": "在云端持续工作"
+  },
+  "关掉 App 也没关系，任务会在云端继续进行。": {
+    "en": "Close the app anytime; your tasks keep running in the cloud.",
+    "zh-Hans": "关掉 App 也没关系，任务会在云端继续进行。"
+  },
+  "到点提醒你": {
+    "en": "Reminds you on time",
+    "zh-Hans": "到点提醒你"
+  },
+  "有进展、需要你确认或该行动时，会及时提醒你。": {
+    "en": "You'll hear back when there's progress, a decision for you, or it's time to act.",
+    "zh-Hans": "有进展、需要你确认或该行动时，会及时提醒你。"
+  },
+  "跳过": {
+    "en": "Skip",
+    "zh-Hans": "跳过"
+  },
+  "正在开启…": {
+    "en": "Starting…",
+    "zh-Hans": "正在开启…"
+  },
+  "再试一次": {
+    "en": "Try again",
+    "zh-Hans": "再试一次"
+  },
+  "开启": {
+    "en": "Start",
+    "zh-Hans": "开启"
+  },
+  "无需注册。此设备会安全保存你的体验身份。": {
+    "en": "No sign-up needed. This device securely keeps your guest identity.",
+    "zh-Hans": "无需注册。此设备会安全保存你的体验身份。"
+  },
+  "暂时连不上服务，请稍后重试。": {
+    "en": "Can't reach the service right now. Please try again.",
+    "zh-Hans": "暂时连不上服务，请稍后重试。"
   }
 }
