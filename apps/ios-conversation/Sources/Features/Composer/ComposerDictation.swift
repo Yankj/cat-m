@@ -1,5 +1,4 @@
 import SwiftUI
-import Combine
 #if os(iOS)
 import AVFoundation
 import Speech
@@ -8,9 +7,11 @@ import UIKit
 
 /// Composer dictation on top of `NativeVoiceController` (on-device `SFSpeechRecognizer`, zh-CN).
 /// Partial results stream live into the draft after whatever was already typed; the final text stays editable.
-/// Permissions are requested only from the explicit mic tap (inside `startFromUserAction`).
+/// Permissions are requested only from the explicit mic tap (inside `NativeVoiceController.startDictation`).
 @MainActor final class ComposerDictation: ObservableObject {
     enum Notice: Equatable { case permissionDenied, unsupported, failed }
+    /// True from the tap until the controller reports the end — including starting/finishing — so the
+    /// stop control is always visible and one tap always acts (cancel while starting, stop while recording).
     @Published private(set) var dictating = false
     @Published var notice: Notice?
 
@@ -18,70 +19,55 @@ import UIKit
     private weak var model: ConversationFirstModel?
     private var prefix = ""
     private var lastWritten: String?
-    private var applying = false
-    private var observers: Set<AnyCancellable> = []
 
     init(voice: NativeVoiceController = .shared) { self.voice = voice }
 
-    func attach(_ model: ConversationFirstModel) {
-        self.model = model
-        guard observers.isEmpty else { return }
-        voice.$transcript.sink { [weak self] text in Task { @MainActor in self?.apply(text) } }.store(in: &observers)
-        voice.$state.sink { [weak self] state in Task { @MainActor in self?.stateChanged(state) } }.store(in: &observers)
-    }
+    func attach(_ model: ConversationFirstModel) { self.model = model }
 
-    /// Mic button: start, or stop (keeps text; the controller delivers the final result within ~5 s).
-    func toggle() {
-        if dictating { stop() } else { Task { await start() } }
-    }
+    func toggle() { dictating ? stop() : start() }
 
-    private func start() async {
+    private func start() {
         guard let model, !dictating else { return }
-        voice.language = .chinese; voice.message = nil
+        // A stale session (e.g. another screen's capture) must never block the mic: clear it first.
+        if voice.dictationPhase != .idle { voice.cancelDictation() }
         prefix = model.draft; lastWritten = model.draft
-        applying = true; dictating = true
-        await voice.startFromUserAction()
-        guard voice.capturing else {
-            applying = false; dictating = false; lastWritten = nil
-            notice = classifyFailure()
-            ConversationTextView.focusComposer()
-            return
+        dictating = true
+        let accepted = voice.startDictation(onText: { [weak self] text in self?.apply(text) },
+                                            onEnd: { [weak self] reason in self?.ended(reason) })
+        if !accepted { dictating = false; lastWritten = nil }
+    }
+
+    /// Mic/stop tap: one tap stops (the controller caps the final-result wait).
+    func stop() {
+        guard dictating else { return }
+        if voice.dictationPhase == .idle { ended(.cancelled) } else { voice.stopDictation() }
+    }
+
+    /// Send / background / disappear: stop now and keep exactly what is in the draft.
+    func stopNow() {
+        guard dictating else { return }
+        voice.cancelDictation()
+        if dictating { ended(.cancelled) }   // controller was already idle
+    }
+
+    private func ended(_ reason: NativeVoiceController.DictationEnd) {
+        let hadText = lastWritten != nil && lastWritten != prefix
+        dictating = false; lastWritten = nil
+        switch reason {
+        case .denied: notice = .permissionDenied; ConversationTextView.focusComposer()
+        case .unsupported: notice = .unsupported; ConversationTextView.focusComposer()
+        case .failed, .timedOut: if !hadText { notice = .failed; ConversationTextView.focusComposer() }
+        case .finished, .cancelled, .interrupted: break
         }
     }
 
-    func stop() {
-        guard dictating else { return }
-        if voice.capturing { voice.finishInput() } else { stopNow() }
-    }
-
-    /// Send / background: stop immediately and keep exactly what is already in the draft.
-    func stopNow() {
-        guard dictating else { return }
-        applying = false; dictating = false; lastWritten = nil
-        voice.abortCapture()   // releases the audio session; the transcript reset is ignored (applying = false)
-    }
-
-    private func stateChanged(_ state: String) {
-        guard dictating, !voice.capturing, ["preview", "idle"].contains(state) else { return }
-        if let message = voice.message, !message.isEmpty, model?.draft == prefix { notice = .failed }
-        stopNow()
-    }
-
     private func apply(_ text: String) {
-        guard applying, dictating, let model else { return }
+        guard dictating, let model else { return }
         // The user typed during dictation: hand the composer back to them.
-        if let lastWritten, model.draft != lastWritten { stop(); return }
-        guard !text.isEmpty else { return }
+        if let lastWritten, model.draft != lastWritten { stopNow(); return }
         let joined = prefix.isEmpty ? text : ((prefix.hasSuffix("\n") || prefix.hasSuffix(" ")) ? prefix + text : prefix + " " + text)
-        lastWritten = joined
         model.editDraft(joined)
-    }
-
-    private func classifyFailure() -> Notice {
-        #if os(iOS)
-        if AVAudioSession.sharedInstance().recordPermission == .denied || [.denied, .restricted].contains(SFSpeechRecognizer.authorizationStatus()) { return .permissionDenied }
-        #endif
-        return voice.onDeviceSupported ? .failed : .unsupported
+        lastWritten = model.draft   // whatever the model actually stored (it may refuse/normalize)
     }
 
     static func openSettings() {
