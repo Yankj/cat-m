@@ -1,0 +1,700 @@
+{
+  "synthetic_only": true,
+  "scope_id": "a5de4cc5-452f-48d0-b9e0-c6a42023ca04",
+  "subject_id": "95dbd2b0-da92-4205-8445-a78d338378f4",
+  "conversation_a": "81af0c72-bc33-44fa-b672-8418182f56bf",
+  "conversation_b": "28d69319-ddfe-419c-bdc3-ccc17c12900d",
+  "page": {
+    "schema_version": 1,
+    "contract": "catpaw.inbox.v1",
+    "scope_id": "a5de4cc5-452f-48d0-b9e0-c6a42023ca04",
+    "subject_id": "95dbd2b0-da92-4205-8445-a78d338378f4",
+    "items": [
+      {
+        "binding": {
+          "scope_id": "a5de4cc5-452f-48d0-b9e0-c6a42023ca04",
+          "conversation_id": "81af0c72-bc33-44fa-b672-8418182f56bf",
+          "turn_id": "a02539f8-59ca-4cb9-9538-07f92465604a",
+          "call_id": "378885a8-a81a-49c5-bf3a-a4fdb5fc7945",
+          "delegation_id": "a3e3f174-c952-4a69-8e5f-70e645d9edb7",
+          "operation_id": "90f1b8be-0c35-403d-8e18-16021a0fd44d",
+          "run_id": "16aeffda-866b-4e1a-81d5-641ef7ac1858",
+          "task_id": "76a0bb95e7640ad13ac06ea8af7bc3850d0179b298f510da3ecdca75cb2fae07",
+          "request_hash": "687e54d2e296e1548d5dd9b64ff31a0a2900cc8e54ab32d08bcf60663d0e3603",
+          "delegation_revision": 1,
+          "grant_epoch": 1,
+          "projection_url": "/catpaw/v1/scopes/a5de4cc5-452f-48d0-b9e0-c6a42023ca04/runs/16aeffda-866b-4e1a-81d5-641ef7ac1858"
+        },
+        "title": "Offline report",
+        "created_at": "2026-10-15T07:42:10.950Z",
+        "updated_at": "2026-10-15T07:42:31.272Z",
+        "task_status": "succeeded",
+        "authorization_state": "current",
+        "artifacts": [
+          {
+            "artifact_id": "b99703eaf9254020ebcb1847e83391c1e3a7a957d8ec71aa3fd03f751c52ac49",
+            "version": 1,
+            "content_hash": "2da9fc6177372288b34905bbfd76ccc37ef7b1be99205a0beff0c886cfc96032"
+          }
+        ],
+        "plan_reference": {
+          "revision": 1,
+          "plan_hash": "dafab7f68f0a7ef1750af9f09759c9e46c64674b33b163d292b961106a18f3c4"
+        },
+        "pending_action_count": 0
+      }
+    ],
+    "next_cursor": null
+  },
+  "responses": {
+    "/catpaw/inbox/v1/scopes/a5de4cc5-452f-48d0-b9e0-c6a42023ca04/items": {
+      "schema_version": 1,
+      "contract": "catpaw.inbox.v1",
+      "scope_id": "a5de4cc5-452f-48d0-b9e0-c6a42023ca04",
+      "subject_id": "95dbd2b0-da92-4205-8445-a78d338378f4",
+      "items": [
+        {
+          "binding": {
+            "scope_id": "a5de4cc5-452f-48d0-b9e0-c6a42023ca04",
+            "conversation_id": "81af0c72-bc33-44fa-b672-8418182f56bf",
+            "turn_id": "a02539f8-59ca-4cb9-9538-07f92465604a",
+            "call_id": "378885a8-a81a-49c5-bf3a-a4fdb5fc7945",
+            "delegation_id": "a3e3f174-c952-4a69-8e5f-70e645d9edb7",
+            "operation_id": "90f1b8be-0c35-403d-8e18-16021a0fd44d",
+            "run_id": "16aeffda-866b-4e1a-81d5-641ef7ac1858",
+            "task_id": "76a0bb95e7640ad13ac06ea8af7bc3850d0179b298f510da3ecdca75cb2fae07",
+            "request_hash": "687e54d2e296e1548d5dd9b64ff31a0a2900cc8e54ab32d08bcf60663d0e3603",
+            "delegation_revision": 1,
+            "grant_epoch": 1,
+            "projection_url": "/catpaw/v1/scopes/a5de4cc5-452f-48d0-b9e0-c6a42023ca04/runs/16aeffda-866b-4e1a-81d5-641ef7ac1858"
+          },
+          "title": "Offline report",
+          "created_at": "2026-10-15T07:42:10.950Z",
+          "updated_at": "2026-10-15T07:42:31.272Z",
+          "task_status": "succeeded",
+          "authorization_state": "current",
+          "artifacts": [
+            {
+              "artifact_id": "b99703eaf9254020ebcb1847e83391c1e3a7a957d8ec71aa3fd03f751c52ac49",
+              "version": 1,
+              "content_hash": "2da9fc6177372288b34905bbfd76ccc37ef7b1be99205a0beff0c886cfc96032"
+            }
+          ],
+          "plan_reference": {
+            "revision": 1,
+            "plan_hash": "dafab7f68f0a7ef1750af9f09759c9e46c64674b33b163d292b961106a18f3c4"
+          },
+          "pending_action_count": 0
+        }
+      ],
+      "next_cursor": null
+    },
+    "/catpaw/v1/scopes/a5de4cc5-452f-48d0-b9e0-c6a42023ca04/runs/16aeffda-866b-4e1a-81d5-641ef7ac1858": {
+      "schema_version": 1,
+      "run": {
+        "id": "16aeffda-866b-4e1a-81d5-641ef7ac1858",
+        "delegation_id": "a3e3f174-c952-4a69-8e5f-70e645d9edb7",
+        "operation_id": "90f1b8be-0c35-403d-8e18-16021a0fd44d",
+        "run_id": "16aeffda-866b-4e1a-81d5-641ef7ac1858",
+        "delegation_revision": 1,
+        "grant_epoch": 1,
+        "request_hash": "687e54d2e296e1548d5dd9b64ff31a0a2900cc8e54ab32d08bcf60663d0e3603",
+        "task_id": "76a0bb95e7640ad13ac06ea8af7bc3850d0179b298f510da3ecdca75cb2fae07",
+        "artifact_references": [
+          {
+            "artifact_id": "b99703eaf9254020ebcb1847e83391c1e3a7a957d8ec71aa3fd03f751c52ac49",
+            "version": 1,
+            "content_hash": "2da9fc6177372288b34905bbfd76ccc37ef7b1be99205a0beff0c886cfc96032"
+          }
+        ],
+        "approval_ids": [],
+        "created_at": "2026-10-15T07:42:10.950Z",
+        "state": "succeeded",
+        "authorization_state": "current",
+        "attempts": [
+          {
+            "upstream_run_id": "e1493298-df51-4c53-847f-b9a94f6e069c",
+            "started_at": "2026-10-15T07:42:11.072Z",
+            "finished_at": "2026-10-15T07:42:11.072Z",
+            "status": "scheduled"
+          },
+          {
+            "upstream_run_id": "ea492abd-b03b-4765-b0e8-201a841885e3",
+            "started_at": "2026-10-15T07:42:21.172Z",
+            "finished_at": "2026-10-15T07:42:21.172Z",
+            "status": "scheduled"
+          },
+          {
+            "upstream_run_id": "32ebc75e-cb42-4dcc-a4f0-47e2f6729972",
+            "started_at": "2026-10-15T07:42:31.272Z",
+            "finished_at": "2026-10-15T07:42:31.272Z",
+            "status": "succeeded"
+          }
+        ],
+        "revision_requires_new_work": true,
+        "revision_work_policy": {
+          "tool_policy": "local_output_v1",
+          "source_count": 0
+        }
+      },
+      "task": {
+        "id": "76a0bb95e7640ad13ac06ea8af7bc3850d0179b298f510da3ecdca75cb2fae07",
+        "status": "succeeded",
+        "attempts": 3
+      },
+      "execution_layer": "native_chat_provider_ready_unverified",
+      "plan": {
+        "run_id": "16aeffda-866b-4e1a-81d5-641ef7ac1858",
+        "task_id": "76a0bb95e7640ad13ac06ea8af7bc3850d0179b298f510da3ecdca75cb2fae07",
+        "conversation_id": "81af0c72-bc33-44fa-b672-8418182f56bf",
+        "accepted_revision": 1,
+        "accepted_plan_hash": "dafab7f68f0a7ef1750af9f09759c9e46c64674b33b163d292b961106a18f3c4",
+        "applied_revision": 1,
+        "applied_plan_hash": "dafab7f68f0a7ef1750af9f09759c9e46c64674b33b163d292b961106a18f3c4",
+        "application_state": "applied",
+        "task_status": "succeeded",
+        "content": {
+          "title": "Offline report",
+          "goal": "Compare supplied fictional findings",
+          "requirements": "Save and verify a useful report",
+          "stop_conditions": [
+            "Saved and verified"
+          ],
+          "steps": [
+            {
+              "id": "compose",
+              "title": "compose",
+              "detail": ""
+            },
+            {
+              "id": "save",
+              "title": "save",
+              "detail": ""
+            },
+            {
+              "id": "verify",
+              "title": "verify",
+              "detail": ""
+            }
+          ]
+        },
+        "applied_content": {
+          "title": "Offline report",
+          "goal": "Compare supplied fictional findings",
+          "requirements": "Save and verify a useful report",
+          "stop_conditions": [
+            "Saved and verified"
+          ],
+          "steps": [
+            {
+              "id": "compose",
+              "title": "compose",
+              "detail": ""
+            },
+            {
+              "id": "save",
+              "title": "save",
+              "detail": ""
+            },
+            {
+              "id": "verify",
+              "title": "verify",
+              "detail": ""
+            }
+          ]
+        },
+        "step_receipts": [
+          {
+            "step_id": "compose",
+            "plan_revision": 1,
+            "plan_hash": "dafab7f68f0a7ef1750af9f09759c9e46c64674b33b163d292b961106a18f3c4",
+            "status": "succeeded",
+            "receipt_kind": "model_response",
+            "receipt_hash": "5cf7d065231251aeaea749c96838614d17e3398ca29fb68202e1480e97123a34",
+            "created_at": "2026-10-15T07:42:11.047Z"
+          },
+          {
+            "step_id": "save",
+            "plan_revision": 1,
+            "plan_hash": "dafab7f68f0a7ef1750af9f09759c9e46c64674b33b163d292b961106a18f3c4",
+            "status": "succeeded",
+            "receipt_kind": "artifact_saved",
+            "receipt_hash": "844260a2c052ce2e32e79b8bcdd55840a5e9d29e75f873603784d81185f09b30",
+            "created_at": "2026-10-15T07:42:11.099Z"
+          },
+          {
+            "step_id": "verify",
+            "plan_revision": 1,
+            "plan_hash": "dafab7f68f0a7ef1750af9f09759c9e46c64674b33b163d292b961106a18f3c4",
+            "status": "succeeded",
+            "receipt_kind": "completion_validated",
+            "receipt_hash": "86a718f1e9c7e9ebd021fafa06cec90081e17e692a49ac01758ae8bb8d078273",
+            "created_at": "2026-10-15T07:42:11.147Z"
+          }
+        ]
+      }
+    },
+    "/catpaw/chat/v1/scopes/a5de4cc5-452f-48d0-b9e0-c6a42023ca04/conversations/81af0c72-bc33-44fa-b672-8418182f56bf": {
+      "schema_version": 1,
+      "contract": "catpaw.native-chat.v1",
+      "conversation": {
+        "id": "81af0c72-bc33-44fa-b672-8418182f56bf",
+        "subject_id": "95dbd2b0-da92-4205-8445-a78d338378f4",
+        "scope_id": "a5de4cc5-452f-48d0-b9e0-c6a42023ca04",
+        "revision": 2,
+        "grant_epoch": 1,
+        "state": "active",
+        "policy": "conversation-local-output-v1",
+        "messages": [
+          {
+            "id": "b010181c-4317-4a1c-93fb-dff4c46c4d76",
+            "role": "user",
+            "content": "Save a report from supplied fictional information https://docs.example.org/docs/one"
+          }
+        ],
+        "last_turn_id": "a02539f8-59ca-4cb9-9538-07f92465604a",
+        "created_at": "2026-10-15T07:42:10.955Z",
+        "model_messages": [
+          {
+            "role": "user",
+            "content": "Save a report from supplied fictional information https://docs.example.org/docs/one"
+          },
+          {
+            "role": "assistant",
+            "content": null,
+            "tool_calls": [
+              {
+                "id": "378885a8-a81a-49c5-bf3a-a4fdb5fc7945",
+                "type": "function",
+                "function": {
+                  "name": "delegate_plan_v1",
+                  "arguments": "{\"title\":\"Offline report\",\"goal\":\"Compare supplied fictional findings\",\"requirements\":\"Save and verify a useful report\",\"stop_conditions\":[\"Saved and verified\"],\"steps\":[{\"id\":\"compose\",\"title\":\"compose\",\"detail\":\"\"},{\"id\":\"save\",\"title\":\"save\",\"detail\":\"\"},{\"id\":\"verify\",\"title\":\"verify\",\"detail\":\"\"}]}"
+                }
+              }
+            ]
+          },
+          {
+            "role": "tool",
+            "tool_call_id": "378885a8-a81a-49c5-bf3a-a4fdb5fc7945",
+            "content": "{\"scope_id\":\"a5de4cc5-452f-48d0-b9e0-c6a42023ca04\",\"conversation_id\":\"81af0c72-bc33-44fa-b672-8418182f56bf\",\"turn_id\":\"a02539f8-59ca-4cb9-9538-07f92465604a\",\"call_id\":\"378885a8-a81a-49c5-bf3a-a4fdb5fc7945\",\"delegation_id\":\"a3e3f174-c952-4a69-8e5f-70e645d9edb7\",\"operation_id\":\"90f1b8be-0c35-403d-8e18-16021a0fd44d\",\"run_id\":\"16aeffda-866b-4e1a-81d5-641ef7ac1858\",\"task_id\":\"76a0bb95e7640ad13ac06ea8af7bc3850d0179b298f510da3ecdca75cb2fae07\",\"request_hash\":\"687e54d2e296e1548d5dd9b64ff31a0a2900cc8e54ab32d08bcf60663d0e3603\",\"delegation_revision\":1,\"grant_epoch\":1,\"projection_url\":\"/catpaw/v1/scopes/a5de4cc5-452f-48d0-b9e0-c6a42023ca04/runs/16aeffda-866b-4e1a-81d5-641ef7ac1858\"}"
+          }
+        ]
+      }
+    },
+    "/catpaw/chat/v1/scopes/a5de4cc5-452f-48d0-b9e0-c6a42023ca04/conversations/28d69319-ddfe-419c-bdc3-ccc17c12900d": {
+      "schema_version": 1,
+      "contract": "catpaw.native-chat.v1",
+      "conversation": {
+        "id": "28d69319-ddfe-419c-bdc3-ccc17c12900d",
+        "subject_id": "95dbd2b0-da92-4205-8445-a78d338378f4",
+        "scope_id": "a5de4cc5-452f-48d0-b9e0-c6a42023ca04",
+        "revision": 1,
+        "grant_epoch": 1,
+        "state": "active",
+        "policy": "conversation-local-output-v1",
+        "messages": [],
+        "last_turn_id": null,
+        "created_at": "2026-10-15T07:42:11.164Z"
+      }
+    },
+    "/catpaw/chat/v1/scopes/a5de4cc5-452f-48d0-b9e0-c6a42023ca04/conversations/81af0c72-bc33-44fa-b672-8418182f56bf/turns/a02539f8-59ca-4cb9-9538-07f92465604a": {
+      "schema_version": 1,
+      "contract": "catpaw.native-chat.v1",
+      "turn": {
+        "id": "a02539f8-59ca-4cb9-9538-07f92465604a",
+        "conversation_id": "81af0c72-bc33-44fa-b672-8418182f56bf",
+        "scope_id": "a5de4cc5-452f-48d0-b9e0-c6a42023ca04",
+        "grant_epoch": 1,
+        "conversation_revision": 2,
+        "state": "completed",
+        "admission_hash": "02097c0fadb958c842e4d4ab4b6563c1d7a37784eee15cb3888d8b757f2e3d76",
+        "request_hash": "af989fa64290e784ce8e61870645e198e6d4d210036b659e91bbe2b7149b508c",
+        "events": [
+          {
+            "schema_version": 1,
+            "contract": "catpaw.native-chat.v1",
+            "scope_id": "a5de4cc5-452f-48d0-b9e0-c6a42023ca04",
+            "conversation_id": "81af0c72-bc33-44fa-b672-8418182f56bf",
+            "turn_id": "a02539f8-59ca-4cb9-9538-07f92465604a",
+            "sequence": 1,
+            "cursor": "a02539f8-59ca-4cb9-9538-07f92465604a:1",
+            "grant_epoch": 1,
+            "model_reality": "injected_offline_only",
+            "type": "turn_started",
+            "data": {
+              "request_hash": "af989fa64290e784ce8e61870645e198e6d4d210036b659e91bbe2b7149b508c",
+              "conversation_revision": 2
+            }
+          },
+          {
+            "schema_version": 1,
+            "contract": "catpaw.native-chat.v1",
+            "scope_id": "a5de4cc5-452f-48d0-b9e0-c6a42023ca04",
+            "conversation_id": "81af0c72-bc33-44fa-b672-8418182f56bf",
+            "turn_id": "a02539f8-59ca-4cb9-9538-07f92465604a",
+            "sequence": 2,
+            "cursor": "a02539f8-59ca-4cb9-9538-07f92465604a:2",
+            "grant_epoch": 1,
+            "model_reality": "injected_offline_only",
+            "type": "tool_call",
+            "data": {
+              "call_id": "378885a8-a81a-49c5-bf3a-a4fdb5fc7945",
+              "name": "delegate_plan_v1",
+              "arguments": {
+                "title": "Offline report",
+                "goal": "Compare supplied fictional findings",
+                "requirements": "Save and verify a useful report",
+                "stop_conditions": [
+                  "Saved and verified"
+                ],
+                "steps": [
+                  {
+                    "id": "compose",
+                    "title": "compose",
+                    "detail": ""
+                  },
+                  {
+                    "id": "save",
+                    "title": "save",
+                    "detail": ""
+                  },
+                  {
+                    "id": "verify",
+                    "title": "verify",
+                    "detail": ""
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "schema_version": 1,
+            "contract": "catpaw.native-chat.v1",
+            "scope_id": "a5de4cc5-452f-48d0-b9e0-c6a42023ca04",
+            "conversation_id": "81af0c72-bc33-44fa-b672-8418182f56bf",
+            "turn_id": "a02539f8-59ca-4cb9-9538-07f92465604a",
+            "sequence": 3,
+            "cursor": "a02539f8-59ca-4cb9-9538-07f92465604a:3",
+            "grant_epoch": 1,
+            "model_reality": "injected_offline_only",
+            "type": "tool_result",
+            "data": {
+              "call_id": "378885a8-a81a-49c5-bf3a-a4fdb5fc7945",
+              "name": "delegate_plan_v1",
+              "result": {
+                "scope_id": "a5de4cc5-452f-48d0-b9e0-c6a42023ca04",
+                "conversation_id": "81af0c72-bc33-44fa-b672-8418182f56bf",
+                "turn_id": "a02539f8-59ca-4cb9-9538-07f92465604a",
+                "call_id": "378885a8-a81a-49c5-bf3a-a4fdb5fc7945",
+                "delegation_id": "a3e3f174-c952-4a69-8e5f-70e645d9edb7",
+                "operation_id": "90f1b8be-0c35-403d-8e18-16021a0fd44d",
+                "run_id": "16aeffda-866b-4e1a-81d5-641ef7ac1858",
+                "task_id": "76a0bb95e7640ad13ac06ea8af7bc3850d0179b298f510da3ecdca75cb2fae07",
+                "request_hash": "687e54d2e296e1548d5dd9b64ff31a0a2900cc8e54ab32d08bcf60663d0e3603",
+                "delegation_revision": 1,
+                "grant_epoch": 1,
+                "projection_url": "/catpaw/v1/scopes/a5de4cc5-452f-48d0-b9e0-c6a42023ca04/runs/16aeffda-866b-4e1a-81d5-641ef7ac1858"
+              }
+            }
+          },
+          {
+            "schema_version": 1,
+            "contract": "catpaw.native-chat.v1",
+            "scope_id": "a5de4cc5-452f-48d0-b9e0-c6a42023ca04",
+            "conversation_id": "81af0c72-bc33-44fa-b672-8418182f56bf",
+            "turn_id": "a02539f8-59ca-4cb9-9538-07f92465604a",
+            "sequence": 4,
+            "cursor": "a02539f8-59ca-4cb9-9538-07f92465604a:4",
+            "grant_epoch": 1,
+            "model_reality": "injected_offline_only",
+            "type": "turn_completed",
+            "data": {
+              "message_id": "3cf0f5bb-62d8-4032-8167-48c3b0b14399",
+              "final_text_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "task_bindings": [
+                {
+                  "scope_id": "a5de4cc5-452f-48d0-b9e0-c6a42023ca04",
+                  "conversation_id": "81af0c72-bc33-44fa-b672-8418182f56bf",
+                  "turn_id": "a02539f8-59ca-4cb9-9538-07f92465604a",
+                  "call_id": "378885a8-a81a-49c5-bf3a-a4fdb5fc7945",
+                  "delegation_id": "a3e3f174-c952-4a69-8e5f-70e645d9edb7",
+                  "operation_id": "90f1b8be-0c35-403d-8e18-16021a0fd44d",
+                  "run_id": "16aeffda-866b-4e1a-81d5-641ef7ac1858",
+                  "task_id": "76a0bb95e7640ad13ac06ea8af7bc3850d0179b298f510da3ecdca75cb2fae07",
+                  "request_hash": "687e54d2e296e1548d5dd9b64ff31a0a2900cc8e54ab32d08bcf60663d0e3603",
+                  "delegation_revision": 1,
+                  "grant_epoch": 1,
+                  "projection_url": "/catpaw/v1/scopes/a5de4cc5-452f-48d0-b9e0-c6a42023ca04/runs/16aeffda-866b-4e1a-81d5-641ef7ac1858"
+                }
+              ]
+            }
+          }
+        ],
+        "task_bindings": [
+          {
+            "scope_id": "a5de4cc5-452f-48d0-b9e0-c6a42023ca04",
+            "conversation_id": "81af0c72-bc33-44fa-b672-8418182f56bf",
+            "turn_id": "a02539f8-59ca-4cb9-9538-07f92465604a",
+            "call_id": "378885a8-a81a-49c5-bf3a-a4fdb5fc7945",
+            "delegation_id": "a3e3f174-c952-4a69-8e5f-70e645d9edb7",
+            "operation_id": "90f1b8be-0c35-403d-8e18-16021a0fd44d",
+            "run_id": "16aeffda-866b-4e1a-81d5-641ef7ac1858",
+            "task_id": "76a0bb95e7640ad13ac06ea8af7bc3850d0179b298f510da3ecdca75cb2fae07",
+            "request_hash": "687e54d2e296e1548d5dd9b64ff31a0a2900cc8e54ab32d08bcf60663d0e3603",
+            "delegation_revision": 1,
+            "grant_epoch": 1,
+            "projection_url": "/catpaw/v1/scopes/a5de4cc5-452f-48d0-b9e0-c6a42023ca04/runs/16aeffda-866b-4e1a-81d5-641ef7ac1858"
+          }
+        ],
+        "created_at": "2026-10-15T07:42:10.957Z",
+        "work_intent": {
+          "schema_version": 1,
+          "contract": "catpaw.accepted-work-intent.v1",
+          "decision_id": "3317258e-6a15-4c6f-a233-3f1e8367fae8",
+          "input_hash": "7d80737d420f810fd1bbb7015e8e1af28c0ae9a938c4b316382f3c8d974f99f0",
+          "route_hash": "ff91db5a87dd3885936c92fe8ef7b917d4e643fe0198e3a7509405d7e389629f",
+          "tool_policy": "local_output_v1",
+          "not_after": "2026-10-15T07:52:10.950Z",
+          "execution_budget_ms": 300000,
+          "limits": {
+            "due": 1,
+            "model": 4,
+            "source": 0
+          },
+          "subject_id": "95dbd2b0-da92-4205-8445-a78d338378f4",
+          "scope_id": "a5de4cc5-452f-48d0-b9e0-c6a42023ca04",
+          "conversation_id": "81af0c72-bc33-44fa-b672-8418182f56bf",
+          "conversation_epoch": 1,
+          "turn_id": "a02539f8-59ca-4cb9-9538-07f92465604a",
+          "message_id": "b010181c-4317-4a1c-93fb-dff4c46c4d76",
+          "admitted_at": "2026-10-15T07:42:10.950Z"
+        },
+        "runtime_holder_id": "1a4a88c1-9703-4080-ad5a-4150405f2ec3",
+        "runtime_generation": 1,
+        "finished_at": "2026-10-15T07:42:10.971Z",
+        "next_cursor": "a02539f8-59ca-4cb9-9538-07f92465604a:4"
+      }
+    },
+    "/catpaw/artifacts/v1/scopes/a5de4cc5-452f-48d0-b9e0-c6a42023ca04/runs/16aeffda-866b-4e1a-81d5-641ef7ac1858/artifacts/b99703eaf9254020ebcb1847e83391c1e3a7a957d8ec71aa3fd03f751c52ac49/versions/1": {
+      "schema_version": 1,
+      "contract": "catpaw.task-artifact.v1",
+      "artifact": {
+        "artifact_id": "b99703eaf9254020ebcb1847e83391c1e3a7a957d8ec71aa3fd03f751c52ac49",
+        "scope_id": "a5de4cc5-452f-48d0-b9e0-c6a42023ca04",
+        "subject_id": "95dbd2b0-da92-4205-8445-a78d338378f4",
+        "run_id": "16aeffda-866b-4e1a-81d5-641ef7ac1858",
+        "task_id": "76a0bb95e7640ad13ac06ea8af7bc3850d0179b298f510da3ecdca75cb2fae07",
+        "conversation_id": "81af0c72-bc33-44fa-b672-8418182f56bf",
+        "run_request_hash": "687e54d2e296e1548d5dd9b64ff31a0a2900cc8e54ab32d08bcf60663d0e3603",
+        "source_auth_hash": "3934c79c6d304e51bb0d8f846a677622458547911146bd8c413b5519d2ce50b1",
+        "delegation_id": "a3e3f174-c952-4a69-8e5f-70e645d9edb7",
+        "delegation_revision": 1,
+        "grant_epoch": 1,
+        "version": 1,
+        "content_hash": "2da9fc6177372288b34905bbfd76ccc37ef7b1be99205a0beff0c886cfc96032",
+        "mime_type": "application/json",
+        "body": "{\"data\":{\"content\":\"Original conclusion two. The fictional public document contains reviewed findings and current risk evidence.\",\"conversation_id\":\"81af0c72-bc33-44fa-b672-8418182f56bf\",\"source\":\"model_local_output\"},\"kind\":\"report\",\"summary\":\"Original report\",\"title\":\"Offline report\"}",
+        "created_at": "2026-10-15T07:42:11.099Z",
+        "plan_reference": {
+          "revision": 1,
+          "plan_hash": "dafab7f68f0a7ef1750af9f09759c9e46c64674b33b163d292b961106a18f3c4"
+        },
+        "origin": "agent",
+        "is_current": true,
+        "current_reference": {
+          "artifact_id": "b99703eaf9254020ebcb1847e83391c1e3a7a957d8ec71aa3fd03f751c52ac49",
+          "version": 1,
+          "content_hash": "2da9fc6177372288b34905bbfd76ccc37ef7b1be99205a0beff0c886cfc96032"
+        },
+        "source_evidence_boundary": "supplied_context_only",
+        "editable": true,
+        "edit_blocked_reason": null
+      }
+    },
+    "/catpaw/v1/scopes/a5de4cc5-452f-48d0-b9e0-c6a42023ca04/artifacts/b99703eaf9254020ebcb1847e83391c1e3a7a957d8ec71aa3fd03f751c52ac49/versions/1": {
+      "schema_version": 1,
+      "artifact": {
+        "id": "b99703eaf9254020ebcb1847e83391c1e3a7a957d8ec71aa3fd03f751c52ac49:1",
+        "artifact_id": "b99703eaf9254020ebcb1847e83391c1e3a7a957d8ec71aa3fd03f751c52ac49",
+        "version": 1,
+        "content_hash": "2da9fc6177372288b34905bbfd76ccc37ef7b1be99205a0beff0c886cfc96032",
+        "plan_reference": {
+          "revision": 1,
+          "plan_hash": "dafab7f68f0a7ef1750af9f09759c9e46c64674b33b163d292b961106a18f3c4"
+        },
+        "mime_type": "application/json",
+        "body": "{\"data\":{\"content\":\"Original conclusion two. The fictional public document contains reviewed findings and current risk evidence.\",\"conversation_id\":\"81af0c72-bc33-44fa-b672-8418182f56bf\",\"source\":\"model_local_output\"},\"kind\":\"report\",\"summary\":\"Original report\",\"title\":\"Offline report\"}",
+        "run_id": "16aeffda-866b-4e1a-81d5-641ef7ac1858",
+        "task_id": "76a0bb95e7640ad13ac06ea8af7bc3850d0179b298f510da3ecdca75cb2fae07",
+        "created_at": "2026-10-15T07:42:11.099Z"
+      },
+      "execution_layer": "native_chat_provider_ready_unverified"
+    },
+    "/readyz": {
+      "schema_version": 1,
+      "ready": true,
+      "model_route": "catpaw-free-consented-v1",
+      "authentication": "supabase_signed_jwt_and_fresh_session",
+      "execution": "bounded-chat-and-original-task-worker",
+      "chat_capabilities": {
+        "schema_version": 1,
+        "memory": {
+          "contract": "catpaw.memory.v1",
+          "read": true,
+          "commands": true,
+          "context": true,
+          "conversation_proposals": {
+            "contract": "catpaw.memory-proposal.v1",
+            "enabled": true,
+            "confirmation_required": true,
+            "current_user_source_only": true,
+            "live_verification": "not_verified"
+          },
+          "default_enabled": false,
+          "explicit_enable": true,
+          "unknown_resend": false,
+          "original_operation_read": true,
+          "live_verification": "not_verified"
+        },
+        "text_input": true,
+        "image_input": false,
+        "live_weather": false,
+        "web_search": false,
+        "tools": [
+          "delegate_task",
+          "delegate_plan_v1",
+          "agent_status"
+        ],
+        "task_plan": {
+          "contract": "catpaw.task-plan.v1",
+          "read": true,
+          "amend": true,
+          "local_report_only": true
+        },
+        "task_artifacts": {
+          "contract": "catpaw.task-artifact.v1",
+          "read": true,
+          "amend": true,
+          "manual_revision": true,
+          "model_revision": false
+        },
+        "task_revisions": {
+          "contract": "catpaw.task-revision.v1",
+          "revise": true,
+          "explain": true,
+          "same_task": true,
+          "immutable_target": true,
+          "bounded_work": {
+            "contract": "catpaw.task-revision-work.v1",
+            "grant_contract": "catpaw.task-work-grant.v2",
+            "enabled": true,
+            "same_task": true,
+            "required_for_accepted_work": true,
+            "unknown_resend": false,
+            "live_verification": "not_verified"
+          }
+        },
+        "task_controls": {
+          "contract": "catpaw.task-control.v1",
+          "read": true,
+          "pause": true,
+          "resume": true,
+          "revoke": true,
+          "same_task": true,
+          "pause_preserves_grant": true,
+          "unknown_resend": false,
+          "live_verification": "not_verified"
+        },
+        "accepted_work": {
+          "contract": "catpaw.accepted-work-intent.v1",
+          "grant_contract": "catpaw.task-work-grant.v1",
+          "enabled": true,
+          "execution": "bounded_single_step_v1",
+          "single_run": true,
+          "independent_scheduler": false,
+          "native_producer": false,
+          "live_verification": "not_verified",
+          "limits_explicit": true,
+          "unknown_resend": false
+        },
+        "task_actions": {
+          "contract": "catpaw.task-action.v1",
+          "review": true,
+          "decision": false,
+          "execution": false,
+          "device_calendar_write": false,
+          "unavailable_reason": "action_target_verifier_not_configured"
+        },
+        "public_sources": {
+          "enabled": false,
+          "limited_to_user_urls": true,
+          "max_sources": 3,
+          "policy_hash": null,
+          "unavailable_reason": "public_source_policy_not_configured",
+          "transport_reality": null,
+          "live_verification": "not_verified"
+        },
+        "durable_acceptance": "turn_started",
+        "cursor_events": true
+      }
+    },
+    "/catpaw/privacy/v1/model-route": {
+      "schema_version": 1,
+      "route": {
+        "id": "catpaw-free-consented-v1",
+        "free": true,
+        "provider": "OpenRouter",
+        "downstream_provider": "Novita",
+        "model": "apodex/apodex-1.1-mini:free",
+        "endpoint": "https://openrouter.ai/api/v1/chat/completions",
+        "routing_policy": {
+          "only": [
+            "novita/bf16"
+          ],
+          "allow_fallbacks": false,
+          "require_parameters": true,
+          "data_collection": "deny",
+          "max_price": {
+            "prompt": 0,
+            "completion": 0,
+            "request": 0,
+            "image": 0
+          }
+        },
+        "data_fields": [
+          "current_message_text",
+          "conversation_text_history_max_40_messages_80kB",
+          "explicit_context_text",
+          "local_report_task_instructions_and_feedback",
+          "user_confirmed_memory_with_source_references"
+        ],
+        "purposes": [
+          "chat_reply",
+          "local_report",
+          "user_enabled_memory_personalization"
+        ],
+        "excluded_fields": [
+          "automatic_email_access",
+          "calendar",
+          "photos",
+          "contacts",
+          "other_apps",
+          "auth_tokens"
+        ],
+        "policy_url": "https://openrouter.ai/privacy",
+        "history_limit": 40,
+        "sensitive_requires_separate_confirmation": true
+      },
+      "route_hash": "ff91db5a87dd3885936c92fe8ef7b917d4e643fe0198e3a7509405d7e389629f",
+      "consent_default": "deny",
+      "sensitive_confirmation_default": false,
+      "ui": {
+        "title": "允许云端模型处理此对话？",
+        "body": "本条消息、本对话最近最多40条文本（80kB）以及你主动加入的文字上下文，将发送给OpenRouter及固定服务商Novita，用于回复和本地报告。你另行开启的已确认记忆（内容、适用范围、版本和来源引用）也会发送给同一固定模型；候选记忆和原始来源全文不会作为记忆上下文发送。更正或删除影响后续调用，不能收回已发送数据。不会读取邮件、日历、照片、通讯录或其他App数据。云端保存对话、任务与成果，离开App不会撤销已受理任务，回来可查收状态与成果；普通发送受原会话许可期限约束；另行明确受理的有限工作，遵守原先确认的期限和调用次数。撤销可停止后续调用，但不能收回已发送数据。",
+        "allow": "允许此对话",
+        "deny": "暂不允许",
+        "sensitive_confirmation": "本会话含敏感信息，另外确认发送给这两个固定服务商"
+      }
+    }
+  }
+}
