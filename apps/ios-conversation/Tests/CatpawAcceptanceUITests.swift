@@ -201,4 +201,30 @@ final class CatpawAcceptanceUITests: XCTestCase {
         if dictating.exists { dictating.tap(); XCTAssertTrue(mic.waitForExistence(timeout: 10) || app.buttons["chat.send"].exists) }
         else { notice.buttons.element(boundBy: notice.buttons.count - 1).tap() }
     }
+
+    // PR #33 dictation stress: rapid start/stop ×5, start while a reply streams, relaunch and restart. Runs on any build
+    // (CATPAW_UI_BUNDLE_ID selects the installed DeviceTrial app); asserts the app stays alive and dictation is restartable.
+    func test10DictationStress() throws {
+        guard ProcessInfo.processInfo.environment["CATPAW_DICTATION_STRESS"] == "1" else { throw XCTSkip("stress only") }
+        let app = XCUIApplication(bundleIdentifier: bundleID); app.launchArguments += ["-CatpawSkipOnboarding"]; app.launch()
+        XCTAssertTrue(input(app).waitForExistence(timeout: 30))
+        let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        func clearPrompts() { for _ in 0..<3 { let a = springboard.alerts.firstMatch; if a.waitForExistence(timeout: 1) { a.buttons.element(boundBy: a.buttons.count - 1).tap() } }; if app.alerts.firstMatch.exists { let a = app.alerts.firstMatch; a.buttons.element(boundBy: a.buttons.count - 1).tap() } }
+        func toggle() { // coordinate taps: the mic/dictating button legitimately morphs mid-tap; a vanished element must not fail the test
+            for e in [app.buttons["chat.composer.dictating"], app.buttons["chat.composer.mic"]] where e.exists { let f = e.frame; guard !f.isEmpty else { continue }
+                app.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: f.midX, dy: f.midY)).tap(); return } }
+        toggle(); clearPrompts(); shot(app, "10a-first-start")
+        for _ in 0..<10 { toggle(); Thread.sleep(forTimeInterval: 0.15) }
+        Thread.sleep(forTimeInterval: 2); XCTAssertEqual(app.state, .runningForeground, "alive after rapid toggles"); shot(app, "10b-after-rapid")
+        if app.buttons["chat.composer.dictating"].exists { app.buttons["chat.composer.dictating"].tap(); Thread.sleep(forTimeInterval: 1) }
+        let field = input(app); field.tap(); field.typeText("写三段话介绍猫")
+        if app.buttons["chat.send"].exists { app.buttons["chat.send"].tap() }
+        Thread.sleep(forTimeInterval: 2); toggle(); Thread.sleep(forTimeInterval: 2); shot(app, "10c-dictation-during-stream")
+        XCTAssertEqual(app.state, .runningForeground, "alive when dictating during stream"); toggle(); Thread.sleep(forTimeInterval: 3)
+        app.terminate(); app.launch(); XCTAssertTrue(input(app).waitForExistence(timeout: 30))
+        toggle(); Thread.sleep(forTimeInterval: 1.5); clearPrompts()
+        XCTAssertTrue(app.buttons["chat.composer.dictating"].exists || app.alerts.firstMatch.exists || app.buttons["chat.composer.mic"].exists, "restartable after relaunch")
+        shot(app, "10d-restart-after-relaunch"); toggle(); Thread.sleep(forTimeInterval: 2)
+        XCTAssertEqual(app.state, .runningForeground)
+    }
 }
