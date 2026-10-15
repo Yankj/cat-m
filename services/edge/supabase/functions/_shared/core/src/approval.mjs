@@ -5,6 +5,7 @@ import { check,shape,UUID,hash,clone } from '../facade-r2/src/common.mjs';
 export const isoAt=ms=>new Date(ms).toISOString();
 import { toolApprovalPolicy } from './tools.mjs';
 import { stableUUID } from './local-output-facade.mjs';
+import { DEVICE_TTL_SEC,deviceCallEvent } from './device-call.mjs';
 import { RENDER_UI,requiresResponse,UI_DECISIONS,uiBlockEvent,uiBlockResolve,blockOf } from './generative-ui.mjs';
 export const APPROVAL_CONTRACT='catpaw.approval.v1';
 export const APPROVAL_HEADER='X-Catpaw-Approval-Contract';
@@ -22,6 +23,8 @@ export function summarizeArguments(args){
 export async function gatedCalls(tx,{owner,subjectID,calls,registry}){
   const out=[];
   for(const call of calls){
+    const reg=registry instanceof Map?registry.get(call.name):null;
+    if(reg?.device){let summary;try{summary=String(reg.summarize?reg.summarize(clone(call.arguments)):call.name).slice(0,240);}catch{summary=call.name;}out.push({call,policy:{approval:'device',risk:reg.confirm==='none'?'read_only':'device_write'},summary,device:true,confirm:reg.confirm});continue;}
     if(call.name===RENDER_UI){const block=blockOf(call.arguments);if(requiresResponse(block))out.push({call,policy:{approval:'ui',risk:'none'},summary:String(block.title??block.kind).slice(0,240),ui:true,block});continue;}
     const policy=toolApprovalPolicy(call.name);if(policy.approval==='never')continue;
     if(policy.approval==='first_use'&&policy.class){const pref=await tx.get(owner,APPROVAL_PREFERENCES,preferenceID(subjectID,policy.class));if(pref?.state==='always_allow')continue;}
@@ -31,23 +34,24 @@ export async function gatedCalls(tx,{owner,subjectID,calls,registry}){
   }
   return out;
 }
-export function interruptFor(turnID,{call,policy,summary,ui,block},now){
+export function interruptFor(turnID,{call,policy,summary,ui,block,device,confirm},now){
+  if(device)return {interrupt_id:stableUUID(`${turnID}:${call.id}:device`),kind:'device',call_id:call.id,tool:call.name,summary,args_hash:argsHash(call),risk:policy.risk,approval:'device',class:null,remember_allowed:false,confirm,ttl_sec:DEVICE_TTL_SEC,expires_at:isoAt(now+DEVICE_TTL_SEC*1000),status:'pending'};
   if(ui)return {interrupt_id:stableUUID(`${turnID}:${call.id}:ui`),kind:'ui',call_id:call.id,tool:call.name,summary,args_hash:argsHash(call),risk:'none',approval:'ui',class:null,remember_allowed:false,block:clone(block),expires_at:isoAt(Math.min(now+APPROVAL_TTL_MS,Math.max(now+30*1000,Date.parse(block.expiresAt??'')||Infinity))),status:'pending'};
   return {interrupt_id:stableInterruptID(turnID,call.id),call_id:call.id,tool:call.name,summary,args_hash:argsHash(call),risk:policy.risk,approval:policy.approval,class:policy.class??null,
     remember_allowed:policy.approval==='first_use'&&!!policy.class,expires_at:isoAt(now+APPROVAL_TTL_MS),status:'pending'};
 }
 const stableInterruptID=(turnID,callID)=>stableUUID(`${turnID}:${callID}:approval`);
 export const requestedEvent=(it,call)=>({interrupt_id:it.interrupt_id,call_id:it.call_id,tool:it.tool,summary:it.summary,arguments:clone(call.arguments),args_hash:it.args_hash,expires_at:it.expires_at,risk:it.risk,remember_allowed:it.remember_allowed});
-export const resolvedEvent=it=>({interrupt_id:it.interrupt_id,call_id:it.call_id,decision:it.status,...it.kind==='ui'?{kind:'ui'}:{},remember:it.remember===true,decided_at:it.decided_at,...it.decision_operation_id?{decision_operation_id:it.decision_operation_id}:{}});
+export const resolvedEvent=it=>({interrupt_id:it.interrupt_id,call_id:it.call_id,decision:it.status,...it.kind==='ui'||it.kind==='device'?{kind:it.kind}:{},...it.kind==='device'&&it.response?{device_status:it.response.status}:{},remember:it.remember===true,decided_at:it.decided_at,...it.decision_operation_id?{decision_operation_id:it.decision_operation_id}:{}});
 /** Public projection of pending interrupts for GET …/turns/{t}. */
-export const pendingApprovals=t=>(t.interrupts??[]).filter(i=>i.status==='pending').map(({interrupt_id,call_id,tool,summary,args_hash,expires_at,risk,remember_allowed,kind,block})=>({interrupt_id,call_id,tool,summary,args_hash,expires_at,risk,remember_allowed,...kind==='ui'?{kind,block:uiBlockEvent(block,{interrupt_id,args_hash,expires_at})}:{},arguments:clone(t.approval_checkpoint?.round?.calls?.find(c=>c.id===call_id)?.arguments??null)}));
+export const pendingApprovals=t=>(t.interrupts??[]).filter(i=>i.status==='pending').map(({interrupt_id,call_id,tool,summary,args_hash,expires_at,risk,remember_allowed,kind,block})=>({interrupt_id,call_id,tool,summary,args_hash,expires_at,risk,remember_allowed,...kind==='ui'?{kind,block:uiBlockEvent(block,{interrupt_id,args_hash,expires_at})}:{},...kind==='device'?{kind,device_call:deviceCallEvent(t.interrupts.find(i=>i.interrupt_id===interrupt_id),clone(t.approval_checkpoint?.round?.calls?.find(c=>c.id===call_id)?.arguments??null))}:{},arguments:clone(t.approval_checkpoint?.round?.calls?.find(c=>c.id===call_id)?.arguments??null)}));
 export function validateDecision(input){
   check(input&&typeof input==='object'&&!Array.isArray(input),422,'approval_schema_invalid');
   // catpaw.ui.v1 adds decision submit|dismiss and an optional `response` (validated against the block later).
   const fields='response' in input?['operation_id','decision','args_hash','response']:['operation_id','decision','args_hash'];
   try{shape(input,fields);}catch{check(false,422,'approval_schema_invalid');}
-  check(UUID.test(input.operation_id)&&(DECISIONS.includes(input.decision)||UI_DECISIONS.includes(input.decision))&&typeof input.args_hash==='string'&&SHA.test(input.args_hash),422,'approval_schema_invalid');
-  check(!('response' in input)||['submit','report_error'].includes(input.decision),422,'approval_schema_invalid');
+  check(UUID.test(input.operation_id)&&(DECISIONS.includes(input.decision)||UI_DECISIONS.includes(input.decision)||input.decision==='device_result')&&typeof input.args_hash==='string'&&SHA.test(input.args_hash),422,'approval_schema_invalid');
+  check((input.decision==='device_result')===('response' in input&&input.decision==='device_result')&&(!('response' in input)||['submit','report_error','device_result'].includes(input.decision)),422,'approval_schema_invalid');
   return clone(input);
 }
 /** Lazy expiry: every pending interrupt past expires_at becomes `expired` (denied to the model).
