@@ -1,5 +1,6 @@
 // !$*UTF8*$!
 { archiveVersion = 1; classes = {}; objectVersion = 56; objects = {
+04E019C88EE145C0B4945641 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/Features/GenerativeBlocks/ConversationGenerativeUIHost.swift"; sourceTree = "<group>"; };
 5F25668ABC3B24229370D644 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/DesignSystem/CatpawMotion.swift"; sourceTree = "<group>"; };
 B62B4DF910D001F4F38B181B = { isa = PBXBuildFile; fileRef = 5F25668ABC3B24229370D644; };
 0D0B7B41FF18055F469CD0F8 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/Features/Answer/AnswerPhaseModel.swift"; sourceTree = "<group>"; };
