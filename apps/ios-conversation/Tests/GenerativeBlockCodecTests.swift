@@ -80,4 +80,26 @@ final class GenerativeBlockCodecTests: XCTestCase {
             XCTAssertEqual(store.blocks["p"]?.title, "new"); XCTAssertEqual(store.blocks["c"]?.title, "t")
         }
     }
+    func testResponseOmitsOptionalKeysAndDecodesMinimalBody() throws {
+        let minimal = try GenerativeBlockCodec.decoder.decode(GenerativeBlockResponse.self, from: Data(#"{"type":"ui.response","blockId":"demo-sheet","actionId":null}"#.utf8))
+        XCTAssertNil(minimal.actionId); XCTAssertEqual(minimal.values, [:]); XCTAssertEqual(minimal.selected, [])
+        let wire = try XCTUnwrap(JSONSerialization.jsonObject(with: GenerativeBlockCodec.encoder.encode(GenerativeBlockResponse(blockId: "b", actionId: nil))) as? [String: Any])
+        XCTAssertNil(wire["actionId"]); XCTAssertNil(wire["values"]); XCTAssertNil(wire["selected"]); XCTAssertEqual(wire["blockId"] as? String, "b")
+    }
+    func testBlocksAreStoredPerConversation() async throws {
+        await MainActor.run {
+            let suite = "catpaw.tests.\(UUID().uuidString)"
+            let defaults = UserDefaults(suiteName: suite)!
+            defer { defaults.removePersistentDomain(forName: suite) }
+            let store = GenerativeBlockStore(defaults: defaults)
+            let a = UUID(), b = UUID()
+            store.activate(conversationID: a)
+            store.receive(Data(#"{"id":"demo-card","kind":"card","title":"A"}"#.utf8), context: .init(conversationID: a, turnID: UUID()))
+            store.activate(conversationID: b)
+            XCTAssertNil(store.blocks["demo-card"])
+            store.receive(Data(#"{"id":"demo-card","kind":"card","title":"B"}"#.utf8), context: .init(conversationID: b, turnID: UUID()))
+            store.activate(conversationID: a)
+            XCTAssertEqual(store.blocks["demo-card"]?.title, "A")
+        }
+    }
 }
