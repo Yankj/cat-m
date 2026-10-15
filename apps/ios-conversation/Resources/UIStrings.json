@@ -1699,6 +1699,10 @@
     "en": "Catpaw will forget everything it remembered. This can't be undone.",
     "zh-Hans": "小猫会忘掉所有记住的内容，此操作无法撤销。"
   },
+  "小猫注意到": {
+    "en": "What Catpaw noticed",
+    "zh-Hans": "小猫注意到"
+  },
   "小猫看不到你的会议，所以没法提前提醒出发。可以手动告诉小猫下一场会议，或去设置里打开日历权限。": {
     "en": "Catpaw can't see your meetings, so it can't remind you when to leave. Tell Catpaw about your next meeting, or turn on calendar access in Settings.",
     "zh-Hans": "小猫看不到你的会议，所以没法提前提醒出发。可以手动告诉小猫下一场会议，或去设置里打开日历权限。"
@@ -2102,6 +2106,10 @@
   "已确认记忆": {
     "en": "Confirmed memory",
     "zh-Hans": "已确认记忆"
+  },
+  "已经做了什么": {
+    "en": "What was done",
+    "zh-Hans": "已经做了什么"
   },
   "已结束": {
     "en": "Ended",
@@ -2702,6 +2710,10 @@
   "打开记忆页": {
     "en": "Opens Memory",
     "zh-Hans": "打开记忆页"
+  },
+  "打扰到我": {
+    "en": "Bothered me",
+    "zh-Hans": "打扰到我"
   },
   "打断本轮": {
     "en": "Interrupt this turn",
@@ -3414,6 +3426,10 @@
   "有修改草稿未能保存，请核对此前已保存的版本。": {
     "en": "Some editing drafts could not be saved. Check the previously saved version.",
     "zh-Hans": "有修改草稿未能保存，请核对此前已保存的版本。"
+  },
+  "有帮助": {
+    "en": "Helpful",
+    "zh-Hans": "有帮助"
   },
   "有进展、需要你确认或该行动时，会及时提醒你。": {
     "en": "You'll hear back when there's progress, a decision for you, or it's time to act.",
@@ -4299,6 +4315,10 @@
     "en": "Up to {0} attachments per message",
     "zh-Hans": "每条消息最多 {0} 个附件"
   },
+  "没帮上": {
+    "en": "Not helpful",
+    "zh-Hans": "没帮上"
+  },
   "没有匹配的记忆": {
     "en": "No matching memories",
     "zh-Hans": "没有匹配的记忆"
@@ -4330,6 +4350,10 @@
   "没有日历权限": {
     "en": "No calendar access",
     "zh-Hans": "没有日历权限"
+  },
+  "没有更多信号": {
+    "en": "No other signals",
+    "zh-Hans": "没有更多信号"
   },
   "没有权限，未执行": {
     "en": "Not allowed, so nothing ran.",
@@ -4470,6 +4494,10 @@
   "生成周报": {
     "en": "Create weekly report",
     "zh-Hans": "生成周报"
+  },
+  "用到的记忆": {
+    "en": "Memories used",
+    "zh-Hans": "用到的记忆"
   },
   "用户已确认": {
     "en": "Confirmed by you",
@@ -5399,6 +5427,10 @@
     "en": "Debug: simulated reply scenario",
     "zh-Hans": "调试：模拟回复场景"
   },
+  "谢谢，小猫记下了": {
+    "en": "Thanks, Catpaw noted it",
+    "zh-Hans": "谢谢，小猫记下了"
+  },
   "账户与设置": {
     "en": "Account and settings",
     "zh-Hans": "账户与设置"
@@ -5519,6 +5551,10 @@
     "en": "No conversations yet",
     "zh-Hans": "还没有对话"
   },
+  "还没有执行任何操作": {
+    "en": "Nothing done yet",
+    "zh-Hans": "还没有执行任何操作"
+  },
   "还没有本地文件。可从会话加号导入。": {
     "en": "No local files yet. Import one from the conversation's plus menu.",
     "zh-Hans": "还没有本地文件。可从会话加号导入。"
@@ -5582,6 +5618,14 @@
   "这条回复暂时没接上": {
     "en": "This reply couldn't reconnect yet",
     "zh-Hans": "这条回复暂时没接上"
+  },
+  "这次提醒怎么样？": {
+    "en": "Was this helpful?",
+    "zh-Hans": "这次提醒怎么样？"
+  },
+  "这次没有用到记忆": {
+    "en": "No memories used this time",
+    "zh-Hans": "这次没有用到记忆"
   },
   "这里只显示当前环境的本地删除项。": {
     "en": "Only locally deleted items from this environment appear here.",

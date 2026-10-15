@@ -137,15 +137,6 @@ struct ProactiveStatusRow: View {
     }
 }
 
-/// PR B replaces this with the full 为什么找你 sheet.
-@MainActor struct ProactiveWhyHost: View {
-    let suggestion: ProactiveSuggestion
-    @Environment(\.locale) private var locale
-    var body: some View {
-        Text(suggestion.reason).font(CatpawTypography.Role.body.font).foregroundStyle(CatpawColors.ink).padding(20).presentationDetents([.medium])
-    }
-}
-
 @MainActor enum ProactiveSuggestionAdapter {
     private static var registered = false
     static func register() {
