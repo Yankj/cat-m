@@ -26,6 +26,7 @@ extension ConversationUIDecisionSubmitter: GenerativeUIDecisionSubmitting {}
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             if isLatest { ConversationApprovalHost(model: model, session: session) }
+            MemoryUsedChips(turnID: turnID) // M6: 本次用到的记忆 (memory.used)
             ForEach(ids, id: \.self) { id in
                 if let block = store.blocks[id] {
                     GenerativeBlockView(block: block, store: store).transition(.opacity.combined(with: .offset(y: 8)))
