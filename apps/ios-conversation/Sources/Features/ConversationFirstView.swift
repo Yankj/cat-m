@@ -25,6 +25,7 @@ import CatpawImageComposer
     @State private var path:[ConversationHostDestination]=[]
     @AccessibilityFocusState private var menuFocused:Bool
     @State private var history = false
+    @State private var replyVariants = ReplyVariantStore()
     @State private var settings = false
     @State private var conversationMenuPresented=false
     @State private var pendingConversationSettings=false
@@ -139,6 +140,31 @@ import CatpawImageComposer
         var id:UUID {switch self {case .message(let row):return row.id;case .activity(let activity):return stableID("conversation-activity-\(activity.id)");case .proactive(let entry):return entry.rowID}}
         var turnID:UUID? {switch self {case .message(let row):return row.turnID;case .activity(let activity):return activity.id;case .proactive:return nil}}
     }
+    /// Regenerate pager: hide re-sent prompts and non-selected variants (ReplyVariantStore).
+    private var visibleTimelineRows:[RenderedTimelineRow] {
+        renderedTimelineRows.filter { row in
+            if case .message(let m)=row {return replyVariants.isVisible(turnID:m.turnID,isUserPrompt:m.message.role == .user)}
+            return replyVariants.isVisible(turnID:row.turnID,isUserPrompt:false)
+        }
+    }
+    private var lastAssistantMessageID:UUID? {
+        for row in visibleTimelineRows.reversed() { if case .message(let m)=row,m.presentation == .message,m.message.role == .assistant {return m.message.id} }
+        return nil
+    }
+    private func replyActions(_ message:ConversationTranscriptMessage,turnID:UUID?)->ReplyActionControl? {
+        guard let turnID else {return nil}
+        let group=replyVariants.group(for:turnID),root=replyVariants.original(of:turnID)
+        return ReplyActionControl(index:group?.selected ?? 0,count:group?.turns.count ?? 1,
+                                  canRegenerate:message.complete && !model.busy && model.draft.isEmpty && model.canAcceptDraft,
+                                  onRegenerate:{regenerate(root)},onStep:{replyVariants.step(turnID,by:$0)})
+    }
+    /// Client-side regenerate: re-send the original prompt as a new turn and record it as a variant.
+    private func regenerate(_ root:UUID) {
+        guard model.draft.isEmpty,let prompt=timelineRows.first(where:{$0.turnID==root && $0.message.role == .user})?.message.content,!prompt.isEmpty else {return}
+        let old=Set(model.outgoingMessages.map(\.id))
+        model.editDraft(prompt);model.prepareSend()
+        if let admitted=model.outgoingMessages.last(where:{!old.contains($0.id)}) {followingLatest=true;replyVariants.addVariant(original:root,newTurn:admitted.id)}
+    }
     private var renderedTimelineRows:[RenderedTimelineRow] {
         let rows=timelineRows
         guard let session=model.session else {return rows.map{.message($0)}}
@@ -204,7 +230,7 @@ import CatpawImageComposer
                                     Text(ui("问一个问题，或说一件想做的事。")).foregroundStyle(CatpawColors.secondary)
                                 }.padding(.top, textSize.isAccessibilitySize ? 24 : 64).padding(.bottom, 32).accessibilityIdentifier("chat.empty")
                             }
-                            let rows=renderedTimelineRows
+                            let rows=visibleTimelineRows
                             let turnTails=ConversationTurnUIRow.tails(rows.compactMap{row->(UUID,UUID?)? in if case .message(let m)=row {return (m.id,m.turnID)};return nil})
                             ForEach(Array(rows.enumerated()),id:\.element.id) { index,row in
                                 VStack(alignment:.leading,spacing:0) {
@@ -368,6 +394,7 @@ import CatpawImageComposer
         .onReceive(NotificationCenter.default.publisher(for:UIApplication.willEnterForegroundNotification)) { _ in proactiveFeed.refreshSoon() }
         #if canImport(ActivityKit) && os(iOS)
         .task { await CatpawLiveActivityCoordinator.shared.observe(model.service) { [model] in model.conversationID } }
+        .onChange(of:model.conversationID,initial:true) { _,id in replyVariants.activate(id) }   // regenerate pager variants
         #endif
         .onDisappear {scrollTask?.cancel();scrollTask=nil}
         .onChange(of:model.outgoingMessages) { _,intents in
@@ -836,7 +863,8 @@ import CatpawImageComposer
             LivePhasedAnswerView(service:model.service,message:message,turn:turn,canQuote:!model.isInputComposing,
                                  onQuote:quote,onVerify:turn.state == .unknown ? {model.readOriginal()}:nil)
         } else {
-            ConversationAnswerView(message:message,canQuote:!model.isInputComposing,quote:quote)
+            let isLast=message.id==lastAssistantMessageID
+            ConversationAnswerView(message:message,canQuote:!model.isInputComposing,quote:quote,showsActions:isLast,actions:isLast ? replyActions(message,turnID:turnID):nil)
         }
     }
     private func usesPhasedAnswer(_ turn:ConversationTurnRecord,message:ConversationTranscriptMessage)->Bool {
