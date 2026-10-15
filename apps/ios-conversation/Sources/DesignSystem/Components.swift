@@ -156,6 +156,7 @@ struct CatpawPrimaryButtonStyle: ButtonStyle {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     func makeBody(configuration: Configuration) -> some View {
         configuration.label.font(CatpawTypography.Role.body.font.weight(.semibold))
+            .fixedSize(horizontal:false,vertical:true)
             .frame(minHeight: 24).padding(.horizontal, 20).padding(.vertical, 14)
             .foregroundStyle(isEnabled ? CatpawColors.onInk : CatpawColors.secondary)
             .background(isEnabled ? CatpawColors.ink : CatpawColors.input,

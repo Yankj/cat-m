@@ -1396,15 +1396,15 @@
     {
       "path": "apps/ios-conversation/Sources/App/CatpawApp.swift",
       "category": "credential_prefix",
-      "line": 39,
-      "sha256": "660b19fd96e46d5bb088adcdd8ab3308835d8ab30bedbb531162081389006ecd",
+      "line": 40,
+      "sha256": "60b0728a84fb420de87538f9c6a2c9d1c198b30d7294d50e7b4a57da48e13361",
       "reason": "Independently verified byte-identical existing DEBUG-only synthetic fixture basename; its task- substring matches sk- credential detection. No credential or user data. Exact current whole-file hash and line only."
     },
     {
       "path": "apps/ios-conversation/Sources/App/CatpawApp.swift",
       "category": "credential_prefix",
-      "line": 41,
-      "sha256": "660b19fd96e46d5bb088adcdd8ab3308835d8ab30bedbb531162081389006ecd",
+      "line": 42,
+      "sha256": "60b0728a84fb420de87538f9c6a2c9d1c198b30d7294d50e7b4a57da48e13361",
       "reason": "Independently verified byte-identical existing DEBUG-only synthetic fixture basename; its task- substring matches sk- credential detection. No credential or user data. Exact current whole-file hash and line only."
     }
   ]
