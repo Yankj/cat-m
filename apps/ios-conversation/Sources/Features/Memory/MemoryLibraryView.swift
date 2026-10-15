@@ -11,7 +11,7 @@ import SwiftUI
     init(backend: any MemoryLibraryBackend) { self.backend = backend }
     var can: MemoryLibraryCapabilities { backend.capabilities }
 
-    func grouped() -> [(MemoryGroup, [MemoryItem])] {
+    func grouped() -> [(MemoryGroup, [MemoryLibraryItem])] {
         let q = query.trimmingCharacters(in: .whitespacesAndNewlines)
         let items = (snapshot?.items ?? []).filter { q.isEmpty || $0.content.localizedCaseInsensitiveContains(q) }
         return MemoryGroup.allCases.compactMap { g in
@@ -20,12 +20,12 @@ import SwiftUI
         }
     }
     func load() async { await run { self.snapshot = try await self.backend.load() } }
-    func forget(_ item: MemoryItem) async {
+    func forget(_ item: MemoryLibraryItem) async {
         let prior = snapshot
         snapshot?.items.removeAll { $0.id == item.id }   // optimistic, restored on failure
         await run(restore: prior) { try await self.backend.forget(ids: [item.id]) }
     }
-    func update(_ item: MemoryItem, content: String) async {
+    func update(_ item: MemoryLibraryItem, content: String) async {
         await run { try await self.backend.update(id: item.id, content: content); self.snapshot = try await self.backend.load() }
     }
     func setUse(_ on: Bool) async {
@@ -53,7 +53,7 @@ import SwiftUI
 
 @MainActor struct MemoryLibraryView: View {
     @StateObject private var model: MemoryLibraryModel
-    @State private var editing: MemoryItem?
+    @State private var editing: MemoryLibraryItem?
     @State private var confirmClear = false
     @Environment(\.locale) private var locale
     private func ui(_ k: String, _ a: [String] = []) -> String { AppLanguage(locale: locale).ui(k, arguments: a) }
@@ -148,7 +148,7 @@ import SwiftUI
         .frame(maxWidth: .infinity).padding(.vertical, 16).accessibilityElement(children: .combine).accessibilityIdentifier("memory.library.empty")
     }
 
-    private func row(_ item: MemoryItem) -> some View {
+    private func row(_ item: MemoryLibraryItem) -> some View {
         Button { if model.can.contains(.edit) { editing = item } } label: {
             Text(item.content).font(CatpawTypography.Role.body.font).foregroundStyle(CatpawColors.ink)
                 .frame(maxWidth: .infinity, alignment: .leading).fixedSize(horizontal: false, vertical: true)
@@ -169,13 +169,13 @@ import SwiftUI
 }
 
 @MainActor struct MemoryEditSheet: View {
-    let item: MemoryItem
+    let item: MemoryLibraryItem
     let save: (String) -> Void
     @State private var text: String
     @Environment(\.dismiss) private var dismiss
     @Environment(\.locale) private var locale
     private func ui(_ k: String) -> String { AppLanguage(locale: locale).ui(k) }
-    init(item: MemoryItem, save: @escaping (String) -> Void) { self.item = item; self.save = save; _text = State(initialValue: item.content) }
+    init(item: MemoryLibraryItem, save: @escaping (String) -> Void) { self.item = item; self.save = save; _text = State(initialValue: item.content) }
     var body: some View {
         NavigationStack {
             Form { TextField(ui("记忆内容"), text: $text, axis: .vertical).font(CatpawTypography.Role.body.font).lineLimit(3...8).accessibilityIdentifier("memory.edit.text") }
