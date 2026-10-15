@@ -147,12 +147,12 @@ import UIKit
         }
         .fileImporter(isPresented: $showFiles, allowedContentTypes: ComposerAttachmentLimits.importTypes, allowsMultipleSelection: true) { result in
             guard case let .success(urls) = result else { return }
-            add(urls.compactMap { try? ComposerAttachmentStager.stage(fileURL: $0) })
+            Task { add(await ComposerAttachmentStager.stageOffMain(fileURLs: urls)) }
         }
         .fullScreenCover(isPresented: $showCamera) {
             CameraCapture { data in
                 showCamera = false
-                if let data, let item = try? ComposerAttachmentStager.stage(data: data, filename: "Photo.jpg", type: .jpeg) { add([item]) }
+                if let data { Task { if let item = await ComposerAttachmentStager.stageOffMain(data: data, filename: "Photo.jpg", type: .jpeg) { add([item]) } } }
             }.ignoresSafeArea()
         }
     }
@@ -163,7 +163,7 @@ import UIKit
             guard let data = try? await item.loadTransferable(type: Data.self) else { continue }
             let type = item.supportedContentTypes.first ?? .jpeg
             let name = "Image \(i + 1)." + (type.preferredFilenameExtension ?? "jpg")
-            if let staged = try? ComposerAttachmentStager.stage(data: data, filename: name, type: type) { out.append(staged) }
+            if let staged = await ComposerAttachmentStager.stageOffMain(data: data, filename: name, type: type) { out.append(staged) }
         }
         return out
     }
@@ -206,11 +206,11 @@ enum ComposerItemProviderLoader {
             if provider.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier),
                let url = await withCheckedContinuation({ (c: CheckedContinuation<URL?, Never>) in
                    _ = provider.loadObject(ofClass: URL.self) { url, _ in c.resume(returning: url) } }),
-               let staged = try? ComposerAttachmentStager.stage(fileURL: url) { out.append(staged); continue }
+               let staged = await ComposerAttachmentStager.stageOffMain(fileURLs: [url]).first { out.append(staged); continue }
             if provider.hasItemConformingToTypeIdentifier(UTType.image.identifier),
                let data = await withCheckedContinuation({ (c: CheckedContinuation<Data?, Never>) in
                    _ = provider.loadDataRepresentation(forTypeIdentifier: UTType.image.identifier) { d, _ in c.resume(returning: d) } }),
-               let staged = try? ComposerAttachmentStager.stage(data: data, filename: provider.suggestedName.map { $0 + ".png" } ?? "Pasted.png", type: .png) {
+               let staged = await ComposerAttachmentStager.stageOffMain(data: data, filename: provider.suggestedName.map { $0 + ".png" } ?? "Pasted.png", type: .png) {
                 out.append(staged)
             }
         }

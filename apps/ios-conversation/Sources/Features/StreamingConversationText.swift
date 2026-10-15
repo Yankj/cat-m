@@ -30,10 +30,29 @@ import UIKit
         let paragraph=NSMutableParagraphStyle();paragraph.lineSpacing=CatpawTypography.readingLineSpacing(for:newFont)
         let attributes:[NSAttributedString.Key:Any]=[.font:newFont,.foregroundColor:color,.paragraphStyle:paragraph]
         let selection=selectedRange
-        if !changedFont,value.hasPrefix(applied){textStorage.append(NSAttributedString(string:String(value.dropFirst(applied.count)),attributes:attributes))}
+        if !changedFont,value.hasPrefix(applied){
+            let tail=String(value.dropFirst(applied.count))
+            let start=textStorage.length
+            if UIAccessibility.isReduceMotionEnabled || tail.isEmpty {textStorage.append(NSAttributedString(string:tail,attributes:attributes))}
+            else {
+                // Fade only the newly appended batch (R7: per-batch tail fade, never re-fade the whole answer).
+                var faded=attributes;faded[.foregroundColor]=color.withAlphaComponent(0.2)
+                textStorage.append(NSAttributedString(string:tail,attributes:faded))
+                fadeTail(NSRange(location:start,length:(tail as NSString).length),color:color)
+            }
+        }
         else {textStorage.setAttributedString(NSAttributedString(string:value,attributes:attributes))}
         applied=value;revision += 1;invalidateIntrinsicContentSize()
         selectedRange=NSRange(location:min(selection.location,textStorage.length),length:min(selection.length,max(0,textStorage.length-selection.location)))
+    }
+    private func fadeTail(_ range:NSRange,color:UIColor){
+        let steps:[CGFloat]=[0.45,0.7,0.88,1]
+        for (i,alpha) in steps.enumerated(){
+            DispatchQueue.main.asyncAfter(deadline:.now()+Double(i+1)*0.05){[weak self] in
+                guard let self,NSMaxRange(range)<=self.textStorage.length else {return}
+                self.textStorage.addAttribute(.foregroundColor,value:color.withAlphaComponent(alpha),range:range)
+            }
+        }
     }
     func measured(_ width:CGFloat)->CGSize {
         if measuredRevision == revision,measuredWidth == width {return measuredSize}
