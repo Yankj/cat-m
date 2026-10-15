@@ -1,0 +1,25 @@
+// Route table of the live catpaw-api v22 bundle (Supabase version 22/25), taken
+// from its api.mjs, core/src/http.mjs and core/facade-r2/src/http.mjs and core/src/foundation-http.mjs.
+export const V22_ROUTES=[
+ {method:'GET',path:'/healthz'},{method:'GET',path:'/readyz'},
+ {method:'GET',path:'/catpaw/account/v1/session'},
+ {method:'GET',path:'/catpaw/privacy/v1/model-route'},{method:'GET',path:'/catpaw/privacy/v1/image-model-route'},
+ {method:'GET',path:'/catpaw/privacy/v1/scopes/{scope}/conversations/{cid}/model-consent'},
+ {method:'GET',path:'/catpaw/privacy/v1/scopes/{scope}/conversations/{cid}/image-model-consent'},
+ {method:'POST',path:'/catpaw/chat/v1/scopes/{scope}/conversations',body:{conversation_id:'{any}'}},
+ {method:'GET',path:'/catpaw/chat/v1/scopes/{scope}/conversations/{cid}'},
+ {method:'GET',path:'/catpaw/chat/v1/scopes/{scope}/conversations/{cid}/turns/{turn}'},
+ {method:'GET',path:'/catpaw/chat/v1/scopes/{scope}/conversations/{cid}/turns/{turn}/events'},
+ {method:'POST',path:'/catpaw/chat/v1/scopes/{scope}/conversations/{cid}/control',body:{}},
+ {method:'POST',path:'/catpaw/chat/v1/scopes/{scope}/conversations/{cid}/turns',body:{}},
+ {method:'GET',path:'/catpaw/v1/capabilities'},
+ {method:'GET',path:'/catpaw/v1/scopes/{scope}/delegations/{any}'},
+ {method:'GET',path:'/catpaw/v1/scopes/{scope}/runs/{run}'},
+ {method:'GET',path:'/catpaw/v1/scopes/{scope}/operations/{any}'},
+ {method:'GET',path:'/catpaw/v1/scopes/{scope}/artifacts/{any}/versions/1'},
+ {method:'GET',path:'/catpaw/v1/scopes/{scope}/approvals/{any}'},
+ {method:'POST',path:'/catpaw/v1/scopes/{scope}/delegations/{any}/control',body:{}},
+ {method:'GET',path:'/catpaw/memory/v1/scopes/{scope}/sources/{any}/purge-plan'},
+ {method:'POST',path:'/catpaw/memory/v1/scopes/{scope}/sources/{any}/delete',body:{}},
+ {method:'POST',path:'/catpaw/account/v1/logout',body:{}},
+];

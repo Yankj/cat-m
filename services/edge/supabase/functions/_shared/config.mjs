@@ -5,7 +5,9 @@ import {readFreeRouteChain} from './core/src/free-route-chain.mjs';
 import {readApnsConfig,APNS_ENV_NAMES} from './core/src/apns.mjs';
 export const SECRET_NAMES=['CATPAW_DATABASE_URL','CATPAW_PRIVATE_MODEL_KEY','CATPAW_TICK_HMAC_KEY','CATPAW_MEMORY_GUARD_KEY'];
 export const CONFIG_NAMES=['SUPABASE_URL','CATPAW_PUBLISHABLE_KEY'];
-export const OPTIONAL_CONFIG_NAMES=['CATPAW_PUBLIC_SOURCE_POLICY','CATPAW_GEMINI_API_KEY','CATPAW_GROQ_API_KEY','CATPAW_AGNES_API_KEY','CATPAW_AGNES_MODEL','CATPAW_MODEL_ROUTE_ORDER','CATPAW_THINKING_SUMMARY','CATPAW_MODEL_AUTO_FAILOVER',...APNS_ENV_NAMES,'CATPAW_APNS_ENV'];
+export const OPTIONAL_CONFIG_NAMES=['CATPAW_PUBLIC_SOURCE_POLICY','CATPAW_GEMINI_API_KEY','CATPAW_GROQ_API_KEY','CATPAW_AGNES_API_KEY','CATPAW_AGNES_MODEL','CATPAW_MODEL_ROUTE_ORDER','CATPAW_THINKING_SUMMARY','CATPAW_MODEL_AUTO_FAILOVER','CATPAW_VISION_LIVE_ENABLED','CATPAW_VISION_CONTRACT_ENABLED',...APNS_ENV_NAMES,'CATPAW_APNS_ENV'];
+// Version-controlled release capability (from live v22); never overrides an explicit nonempty disable/invalid setting.
+export const RELEASE_VISION_LIVE_DEFAULT=true;
 const PROJECT_URL='';
 const PROJECT_PUBLISHABLE_KEY='';
 // Supabase-hosted functions inject SUPABASE_PUBLISHABLE_KEYS ({"default":...}) / legacy SUPABASE_ANON_KEY;
@@ -36,7 +38,23 @@ function publicSourcePolicyJSON(raw){
 }
 export function readConfig(get){
  const projectUrl=get('SUPABASE_URL')||PROJECT_URL;
- const publishableKey=get('CATPAW_PUBLISHABLE_KEY')||platformPublishableKey(get)||(projectUrl===PROJECT_URL?PROJECT_PUBLISHABLE_KEY:undefined);
+ const configurationIssues=[];
+ const publicKey=()=>{
+  const explicit=get('CATPAW_PUBLISHABLE_KEY');
+  if(explicit){if(validPublicKey(explicit))return explicit;configurationIssues.push('custom_public_key_invalid');return undefined;}
+  const encoded=get('SUPABASE_PUBLISHABLE_KEYS');
+  if(encoded!==undefined&&encoded!==null){
+   let keys;try{keys=JSON.parse(encoded);}catch{configurationIssues.push('platform_public_key_map_invalid_json');return undefined;}
+   if(!keys||typeof keys!=='object'||Array.isArray(keys)||!Object.hasOwn(keys,'default')){configurationIssues.push('platform_public_key_default_missing');return undefined;}
+   if(!validPublicKey(keys.default)){configurationIssues.push('platform_public_key_default_invalid');return undefined;}
+   return keys.default;
+  }
+  const legacy=get('SUPABASE_ANON_KEY');
+  if(legacy){if(validPublicKey(legacy))return legacy;configurationIssues.push('legacy_public_key_invalid');}
+  return undefined;
+ };
+ const publishableKey=publicKey()||(projectUrl===PROJECT_URL?PROJECT_PUBLISHABLE_KEY:undefined);
+ const visionLiveSetting=get('CATPAW_VISION_LIVE_ENABLED');
  const resolved=name=>name==='SUPABASE_URL'?projectUrl:name==='CATPAW_PUBLISHABLE_KEY'?publishableKey:get(name);
  const missing=[...SECRET_NAMES,...CONFIG_NAMES].filter(name=>!resolved(name));
  const base={projectUrl,publishableKey,databaseUrl:get('CATPAW_DATABASE_URL')};
@@ -49,5 +67,5 @@ export function readConfig(get){
  if(chain){freeChain=chain;activeRoute={...route,id:'catpaw-free-chain-v1',provider:chain.routes.map(r=>r.provider).join(' → '),downstream_provider:chain.routes.map(r=>r.provider).join('、'),model:chain.routes[0].model,endpoint:chain.routes[0].endpoint,routing_policy:{chain:chain.routes.map(r=>({id:r.id,model:r.model,endpoint:r.endpoint})),failover:chain.autoFailover?'before_first_output_only':'disabled',max_price:{prompt:0,completion:0,request:0,image:0},billing:chain.routes.map(r=>({id:r.id,billing:r.billing}))},policy_url:chain.routes[0].policy_url,policy_urls:chain.routes.map(r=>r.policy_url),thinking_summary:chain.routes.some(r=>r.thinking_summary)};}
  const finalRoute=activeRoute;
  if(publicSourcePolicy){finalRoute.data_fields=[...finalRoute.data_fields,'user_provided_public_urls_and_received_source_text'];finalRoute.purposes=[...finalRoute.purposes,'user_url_sourced_report'];}
- return {...base,publicSourcePolicy,ready:missing.length===0,missing,authReady:!!base.projectUrl&&!!base.publishableKey&&!!base.databaseUrl,modelKey:get('CATPAW_PRIVATE_MODEL_KEY'),tickKey:get('CATPAW_TICK_HMAC_KEY'),guardKey:get('CATPAW_MEMORY_GUARD_KEY'),route:finalRoute,routeHash:hash(finalRoute),freeChain,apns:readApnsConfig(get),chatBudgetMs:50000,chatFinalizationReserveMs:5000,tickBudgetMs:30000,modelTimeoutMs:20000,dailyCallLimit:20};
+ return {...base,publicSourcePolicy,visionContractEnabled:get('CATPAW_VISION_CONTRACT_ENABLED')==='true',visionLiveEnabled:visionLiveSetting===undefined||visionLiveSetting===null||visionLiveSetting===''?RELEASE_VISION_LIVE_DEFAULT:visionLiveSetting==='true',ready:missing.length===0&&configurationIssues.length===0,missing,configurationIssues,authReady:!!base.projectUrl&&!!base.publishableKey&&!!base.databaseUrl,modelKey:get('CATPAW_PRIVATE_MODEL_KEY'),tickKey:get('CATPAW_TICK_HMAC_KEY'),guardKey:get('CATPAW_MEMORY_GUARD_KEY'),route:finalRoute,routeHash:hash(finalRoute),freeChain,apns:readApnsConfig(get),chatBudgetMs:50000,chatFinalizationReserveMs:5000,tickBudgetMs:30000,modelTimeoutMs:20000,dailyCallLimit:20};
 }

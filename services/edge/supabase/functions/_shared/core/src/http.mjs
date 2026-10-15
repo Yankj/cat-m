@@ -4,6 +4,7 @@ import { ApiError,check,UUID } from '../facade-r2/src/common.mjs';
 import {TASK_REVISION_CONTRACT,TASK_REVISION_LIMITS} from './task-revision-contract.mjs';
 import {ACCEPTED_WORK_INTENT_CONTRACT,ACCEPTED_WORK_INTENT_BYTES,parseAcceptedWorkJSON} from './accepted-work-intent-contract.mjs';
 import { createFetchHandler } from '../facade-r2/src/http.mjs';
+import {boundedJsonBody,VISION_LIMITS} from './vision-contract.mjs';
 export function createChatFetchHandler(runtime){
   const {chat,facade}=runtime,taskHandler=createFetchHandler(facade);
   return async request=>{
@@ -48,7 +49,7 @@ export function createChatFetchHandler(runtime){
       }
       check(parts[0]==='catpaw'&&parts[1]==='chat'&&parts[2]==='v1'&&parts[3]==='scopes'&&parts[4],404,'not_found');
       const scope=parts[4],tail=parts.slice(5),method=request.method;
-      const body=async()=>{check(Number(request.headers.get('content-length')??0)<=42000,413,'request_too_large');const text=await request.text();check(Buffer.byteLength(text)<=42000,413,'request_too_large');try{return JSON.parse(text);}catch{throw new ApiError(422,'schema_invalid');}};
+      const body=()=>boundedJsonBody(request,chat.vision?.enabled&&method==='POST'&&tail.length===3&&tail[2]==='turns'?VISION_LIMITS.max_request_bytes:42000);
       const json=(v,status=200)=>Response.json({schema_version:1,contract:'catpaw.native-chat.v1',...v},{status,headers:{'Cache-Control':'no-store'}});
       if(method==='POST'&&tail.length===1&&tail[0]==='conversations')return json({conversation:await chat.createConversation(auth,scope,await body())},201);
       if(method==='GET'&&tail.length===2&&tail[0]==='conversations')return json({conversation:await chat.readConversation(auth,scope,tail[1])});
