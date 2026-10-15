@@ -85,7 +85,6 @@ import SwiftUI
     @ObservedObject var voice: NativeVoiceController
     @State private var levels: [Float] = Array(repeating: 0, count: 48)
     @Environment(\.locale) private var locale
-    @Environment(\.colorScheme) private var scheme
     private func ui(_ k: String) -> String { AppLanguage(locale: locale).ui(k) }
     private var hold: Bool { dictation.mode == .hold }
 
@@ -93,9 +92,9 @@ import SwiftUI
         HStack(spacing: 10) {
             Button { dictation.cancel() } label: {
                 Image(systemName: "xmark").font(CatpawTypography.Role.body.font.weight(.semibold))
-                    .foregroundStyle(dictation.zone == .cancel ? Color.white : CatpawColors.ink)
+                    .foregroundStyle(dictation.zone == .cancel ? CatpawColors.sendIcon : CatpawColors.ink)
                     .frame(width: 40, height: 40)
-                    .background(dictation.zone == .cancel ? Color.red : CatpawColors.ink.opacity(0.10), in: Circle())
+                    .background(dictation.zone == .cancel ? CatpawColors.ink : CatpawColors.ink.opacity(0.10), in: Circle())
             }
             .buttonStyle(CatpawPressButtonStyle()).touchTarget()
             .accessibilityLabel(ui("取消听写")).accessibilityIdentifier("chat.composer.dictation.cancel")
@@ -110,9 +109,9 @@ import SwiftUI
 
             Button { dictation.stop() } label: {
                 Image(systemName: "checkmark").font(CatpawTypography.Role.body.font.weight(.semibold))
-                    .foregroundStyle(dictation.zone == .send ? Color.white : CatpawColors.ink)
+                    .foregroundStyle(dictation.zone == .send ? CatpawColors.sendIcon : CatpawColors.ink)
                     .frame(width: 40, height: 40)
-                    .background(dictation.zone == .send ? CatpawBrand.paw : (scheme == .dark ? Color.white : CatpawColors.panel), in: Circle())
+                    .background(dictation.zone == .send ? CatpawBrand.paw : CatpawColors.panel, in: Circle())
                     .overlay(Circle().strokeBorder(CatpawColors.ink.opacity(0.08), lineWidth: 0.5))
             }
             .buttonStyle(CatpawPressButtonStyle()).touchTarget()
