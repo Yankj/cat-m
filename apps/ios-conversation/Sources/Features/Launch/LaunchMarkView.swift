@@ -63,7 +63,9 @@ import UIKit
                     .opacity(f.cardOpacity[i])
             }
             Text(verbatim: "Catpaw")
-                .font(.system(size: 34, weight: .bold, design: .rounded))
+                .font(CatpawTypography.Role.appTitle.font.weight(.bold))
+                .fontDesign(.rounded)
+                .fixedSize()   // semantic role → follows Dynamic Type; short brand word never wraps
                 .kerning(0.4)
                 .foregroundStyle(LaunchPalette.wordInk)
                 .scaleEffect(f.wordScale)
@@ -207,7 +209,7 @@ private struct LaunchTaskCard: View {
                     }
                     .opacity(checked ? 0 : 1)
                     Circle().fill(LaunchPalette.check).frame(width: 24, height: 24)
-                        .overlay { Image(systemName: "checkmark").font(.system(size: 12, weight: .heavy)).foregroundStyle(.white) }
+                        .overlay { Image(systemName: "checkmark").font(CatpawTypography.Role.caption.font.weight(.heavy)).foregroundStyle(.white) }
                         .scaleEffect(checked ? max(0.01, pop) : 0.01)
                         .opacity(checked ? 1 : 0)
                 }
