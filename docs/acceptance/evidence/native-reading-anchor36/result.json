@@ -1,0 +1,458 @@
+{
+  "schema_version": 1,
+  "candidate": "AF-UX-READING-20261015-36-R7",
+  "version": "0.3.0(36)",
+  "date": "2026-10-15",
+  "evidence_state": "SCOPED_NATIVE_PASS_PRODUCT_GATES_OPEN",
+  "reality": "actual_native_SwiftUI_UIKit_XCTest_with_controlled_offline_fixture_events",
+  "source": {
+    "local_commit": "dff947889ffdad7d57024b3173097859f46650da",
+    "remote_commit": "03471262092a659781429edf06fb1ff317ead44e",
+    "remote_tree": "8f4740698ace7492c400d6216e9d323a6ca15cdc",
+    "publication_status": "PASS_ROOT_SELECTIVE_7_PATH_READBACK",
+    "snapshot": "build/native-reading-anchor-20261015/r7/source-snapshot.json",
+    "snapshot_sha256": "64bc47fb03db60c08fbfc93fb0b2414ad0115a1b9591955c4dcc686f67f8a17d",
+    "input_count": 419,
+    "baseline_local_commit": "98d4ac3d00f099873bbfe6ee36e3f1a0eed7fef1",
+    "baseline_remote_commit": "c21327531924bf2907ce41ab45acceedede5bc4f",
+    "r6_to_r7_changed_paths": [
+      "apps/ios-conversation/Tests/ConversationReadingAnchorUITests.swift"
+    ],
+    "r6_to_r7_product_source_changed": false,
+    "r7_test_change": "move deliberately near the lower pending card before lower-growth assertions; retain above-growth and below-growth pixel tolerance",
+    "branch": "fix/reading-anchor",
+    "all_419_inputs_match_local_commit_coordinator_verified": true,
+    "whole_local_remote_tree_identity_claimed": false,
+    "independent_public_index_matches_frozen_inputs": 419
+  },
+  "package": {
+    "manifest": "build/native-reading-anchor-20261015/r6/package.json",
+    "manifest_sha256": "8eaea6d34e7215e75d622b3dff6d6a60bde8d32844535822a6baa9ec0f61e5d3",
+    "declared_file_count": 32,
+    "bundle_sha256": "ca1ff05be0af4c1d7a9144dcd0f3b568fde3e5088767521c13718dc47095a147",
+    "frozen_app": "build/native-reading-anchor-20261015/r6/CatpawM.app",
+    "declared_files_independently_rehashed": "PASS",
+    "r7_uses_same_frozen_r6_product": true,
+    "info_plist_version_readback": "0.3.0(36)"
+  },
+  "history": [
+    {
+      "stage": "initial_red_r1_to_r3",
+      "classification": "TEST_PRECONDITION_FAILURES_NOT_PRODUCT_PROOF",
+      "details": [
+        "keyboard-hidden viewport",
+        "upper lazy row not materialized",
+        "reading depth precondition not met"
+      ],
+      "original_attempt_history": {
+        "path": "build/native-reading-anchor-20261015/attempt-history.json",
+        "sha256": "66c94956778ff1d7388a777525f0a9c8938f5ac65c543310998dd978d2bc9345"
+      }
+    },
+    {
+      "stage": "red_r4",
+      "classification": "PRODUCT_GEOMETRY_FAIL",
+      "result": "FAIL",
+      "seconds": 28.359,
+      "unchanged_body_before_y": 54.0,
+      "unchanged_body_after_y": 653.0,
+      "drift_points": 599.0,
+      "allowed_error_points": 3,
+      "package_bundle_sha256": "1e9f61ba1a1fc2b398f6ae8301bc838b2e383e1f432b738030258850e263a104",
+      "not_delivered_build35_binary": true,
+      "log": {
+        "path": "build/native-reading-anchor-20261015/reading-red-r4.log",
+        "sha256": "255ea212ab907baed3f407ced333130ebeb877cfeeae60015b9a55c8ed635c72"
+      }
+    },
+    {
+      "stage": "first_implementation_r2_product_focus_r4",
+      "result": "FAIL",
+      "unit_passed": 8,
+      "ui_failed": 1,
+      "ui_seconds": 27.177,
+      "drift_points": 599.0,
+      "package_bundle_sha256": "f76596de060c35074d6e58120a6931703a95e6467ebb3aae1168520606542a46",
+      "log": {
+        "path": "build/native-reading-anchor-20261015/reading36-focus-r4.log",
+        "sha256": "1e25b79f558b3ca071c509458fa1f0775e200a986f763bcfe9b87f97766a4049"
+      }
+    },
+    {
+      "stage": "diagnostic_r5",
+      "result": "FAIL",
+      "ui_seconds": 27.03,
+      "events_retained": 100,
+      "equal_old_new_offset_callbacks": 32,
+      "equal_callbacks_followed_by_cleared_saved_anchor": 32,
+      "raw_diagnostic_sha256": "e50faf05a144519af8f065c5e5b7d4a475c3d5a64bd7a74e3ef241ad42fe25fc",
+      "diagnostic_source_snapshot": "build/native-reading-anchor-20261015/r5/source-inputs.json",
+      "diagnostic_source_snapshot_sha256": "d42e870420996b21154afdf38ba68374ef2da8a8c09c9d66bfe8a2a4935feab7",
+      "retained_source_copies": 419,
+      "all_retained_source_bytes_independently_rehashed": "PASS",
+      "raw_identifiers_not_copied": true,
+      "log": {
+        "path": "build/native-reading-anchor-20261015/reading36-diagnostic-r5.log",
+        "sha256": "531baccec93f30f4d0fa5653a97e5446bd906e46aebb1bb4281ede7d4a4d44b7"
+      }
+    },
+    {
+      "stage": "final_product_focus_r6",
+      "unit_passed": 8,
+      "ui_result": "FAIL",
+      "ui_seconds": 33.261,
+      "above_growth_pixel_assertion": "PASS",
+      "whole_method_result": "FAIL",
+      "stop_reason": "lower result lazy row was not materialized; lower-growth assertion not reached",
+      "log": {
+        "path": "build/native-reading-anchor-20261015/reading36-focus-r6.log",
+        "sha256": "17fb3daf248723678d33fdc5718972156d0b92594061e39173d5d70f592b5ed4"
+      }
+    },
+    {
+      "stage": "same_product_native_r7",
+      "result": "PASS",
+      "ui_seconds": 31.059,
+      "above_and_below_growth_assertion_tolerance_points": 3,
+      "original_text_unchanged": true,
+      "single_synthetic_reply": true,
+      "jump_to_latest_verified": true,
+      "test_only_change": true,
+      "log": {
+        "path": "build/native-reading-anchor-20261015/reading36-native-r7.log",
+        "sha256": "4c64885d7b684b8addbf7b239c8036a8dbd032460470ebbbac186fa66c3a67ff"
+      }
+    }
+  ],
+  "final_native": {
+    "new_unit_methods": [
+      {
+        "method": "CatpawMTests.ConversationReadingAnchorTests testDeletedAndRecycledRowsUseMeasuredNeighbourWithoutTotalSizeGuessing",
+        "result": "PASS",
+        "seconds": 0.002
+      },
+      {
+        "method": "CatpawMTests.ConversationReadingAnchorTests testDuplicateOrNonfiniteGeometryCannotBecomeAnAnchor",
+        "result": "PASS",
+        "seconds": 0.0
+      },
+      {
+        "method": "CatpawMTests.ConversationReadingAnchorTests testFollowLatestAndUserMotionTakePriorityOverCompensation",
+        "result": "PASS",
+        "seconds": 0.0
+      },
+      {
+        "method": "CatpawMTests.ConversationReadingAnchorTests testLowerGrowthAndSameBlockTailGrowthDoNotMoveReadingPoint",
+        "result": "PASS",
+        "seconds": 0.0
+      },
+      {
+        "method": "CatpawMTests.ConversationReadingAnchorTests testNativeOffsetChangeBecomesNewAnchorInsteadOfBeingPulledBack",
+        "result": "PASS",
+        "seconds": 0.227
+      },
+      {
+        "method": "CatpawMTests.ConversationReadingAnchorTests testNoCommonMeasuredRowCannotInventCorrection",
+        "result": "PASS",
+        "seconds": 0.001
+      },
+      {
+        "method": "CatpawMTests.ConversationReadingAnchorTests testUpperGrowthPreservesPointInsideStableBlock",
+        "result": "PASS",
+        "seconds": 0.0
+      },
+      {
+        "method": "CatpawMTests.ConversationReadingAnchorTests testUpperShrinkCompensatesInOppositeDirection",
+        "result": "PASS",
+        "seconds": 0.001
+      }
+    ],
+    "new_unit_passed": 8,
+    "new_unit_failures": 0,
+    "new_unit_seconds": 0.232,
+    "new_complete_ui_methods": [
+      {
+        "method": "CatpawMUITests.ConversationReadingAnchorUITests testResultAboveReadingPositionCompensatesAndBelowResultDoesNotMoveIt",
+        "result": "PASS",
+        "seconds": 31.059
+      }
+    ],
+    "new_complete_ui_passed": 1,
+    "new_complete_ui_failures": 0,
+    "distinct_new_methods": 9,
+    "old_regression": {
+      "result": "PASS",
+      "expected_unit_methods": 14,
+      "expected_ui_methods": 8,
+      "terminal_result": "TEST_EXECUTE_SUCCEEDED",
+      "log": "build/native-reading-anchor-20261015/reading36-regression-r7.log",
+      "log_sha256": "8c983f8c7cac8e5e543ec1d3c66b3d9c21e94be386b48875722ca52f27dad8bf",
+      "xcresult": "build/native-reading-anchor-20261015/Reading36-regression-r7.xcresult",
+      "unit_methods": 14,
+      "ui_methods": 8,
+      "unit_seconds": 7.472,
+      "ui_seconds": 228.948,
+      "failures": 0,
+      "methods": [
+        {
+          "method": "CatpawMTests.ConversationTimelineProjectionTests testCallAndVerifiedResultReplaceInPlaceWithoutChangingOriginalMessages",
+          "result": "PASS",
+          "seconds": 0.008
+        },
+        {
+          "method": "CatpawMTests.ConversationTimelineProjectionTests testCompletedCallWithoutResultCannotClaimSuccessfulRead",
+          "result": "PASS",
+          "seconds": 0.0
+        },
+        {
+          "method": "CatpawMTests.ConversationTimelineProjectionTests testDedicatedToolRenderersReceiveExactOriginalResultIdentityAndPayload",
+          "result": "PASS",
+          "seconds": 0.001
+        },
+        {
+          "method": "CatpawMTests.ConversationTimelineProjectionTests testDuplicateMessageUUIDsRemainVisibleWithUniqueRowIDs",
+          "result": "PASS",
+          "seconds": 0.0
+        },
+        {
+          "method": "CatpawMTests.ConversationTimelineProjectionTests testFailureIsNeverCoveredByAResultAndUnknownRemainsVisible",
+          "result": "PASS",
+          "seconds": 0.001
+        },
+        {
+          "method": "CatpawMTests.ConversationTimelineProjectionTests testIdenticalCallIDsInDifferentTurnsNeverCrossPair",
+          "result": "PASS",
+          "seconds": 0.001
+        },
+        {
+          "method": "CatpawMTests.ConversationTimelineProjectionTests testInvalidOrphanAndAmbiguousRecordsFailVisibleWithoutGuessing",
+          "result": "PASS",
+          "seconds": 0.001
+        },
+        {
+          "method": "CatpawMTests.ConversationTimelineProjectionTests testKnownToolResultAndOriginalArtifactEntrySurviveFailedOrUnknownProseStream",
+          "result": "PASS",
+          "seconds": 0.002
+        },
+        {
+          "method": "CatpawMTests.ConversationTimelineProjectionTests testTerminalCompletedTurnWithoutToolResultRequiresReconciliationInsteadOfActivity",
+          "result": "PASS",
+          "seconds": 0.0
+        },
+        {
+          "method": "CatpawMTests.ConversationTimelineProjectionTests testUserAndIncrementalAnswerKeepOriginalUUIDOrderAndTurn",
+          "result": "PASS",
+          "seconds": 0.0
+        },
+        {
+          "method": "CatpawMTests.DeviceTrialNativeTests testChangedConsentRevisionCannotDispatch",
+          "result": "PASS",
+          "seconds": 0.141
+        },
+        {
+          "method": "CatpawMTests.DeviceTrialNativeTests testColdQueuedPermissionIsPresentedWhileExplicitPauseSurvives",
+          "result": "PASS",
+          "seconds": 0.032
+        },
+        {
+          "method": "CatpawMTests.DeviceTrialNativeTests testDeferredConsentCanBeReopenedAndDispatchesOriginalOnce",
+          "result": "PASS",
+          "seconds": 3.66
+        },
+        {
+          "method": "CatpawMTests.DeviceTrialNativeTests testTextConsentSurvivesPresentationBindingClearAndRejectsDuplicate",
+          "result": "PASS",
+          "seconds": 3.624
+        },
+        {
+          "method": "CatpawMUITests.ConversationConsentLongNoticeUITests testLongLoopbackConsentRejectReopenAllowPreservesOneOriginalRequest",
+          "result": "PASS",
+          "seconds": 27.246
+        },
+        {
+          "method": "CatpawMUITests.ConversationDrawerRevealUITests testChineseEditorAndModalDetailsKeepHorizontalGestureOwnership",
+          "result": "PASS",
+          "seconds": 24.668
+        },
+        {
+          "method": "CatpawMUITests.ConversationDrawerRevealUITests testReadOnlyLongPressOwnsSystemCopyMenuThenBodyPanResumesWithoutSending",
+          "result": "PASS",
+          "seconds": 29.688
+        },
+        {
+          "method": "CatpawMUITests.ConversationDrawerRevealUITests testReadOnlyReplyPanRevealsForegroundStripAndClosesKeepingChineseDraft",
+          "result": "PASS",
+          "seconds": 27.194
+        },
+        {
+          "method": "CatpawMUITests.P0NativeExperienceUITests testGenerativeDurationLocalEditSurvivesStreamingWithoutDispatch",
+          "result": "PASS",
+          "seconds": 33.672
+        },
+        {
+          "method": "CatpawMUITests.P0NativeExperienceUITests testIntegratedSidebarRoutesSearchAndNativeBackPreserveSavedDraft",
+          "result": "PASS",
+          "seconds": 29.293
+        },
+        {
+          "method": "CatpawMUITests.P0NativeExperienceUITests testReadingAboveBottomSurvivesStreamAndJumpResumesFollowing",
+          "result": "PASS",
+          "seconds": 28.294
+        },
+        {
+          "method": "CatpawMUITests.P0NativeExperienceUITests testSidebarSearchClearAndTwoUnsentDraftsRemainInTheirConversations",
+          "result": "PASS",
+          "seconds": 28.893
+        }
+      ]
+    },
+    "total_distinct_final_methods": 31,
+    "total_final_unit_methods": 22,
+    "total_final_ui_methods": 9,
+    "failed_earlier_whole_method_kept_in_history": true,
+    "separate_runs_and_revisions_explicit": true
+  },
+  "diagnostic_cleanup": {
+    "runtime_diagnostic_removed": true,
+    "probe_bytes_equal_previous_build35_source": true,
+    "probe_sha256": "8dd1c7de269ccb8d4f63c58fd6dc2ad0bad41879a4348f5205d0892acb75dedb"
+  },
+  "checks": {
+    "sdk_result": "PASS_R6_PRODUCT_SOURCE",
+    "sdk_log": {
+      "path": "build/native-reading-anchor-20261015/sdk-r6.log",
+      "sha256": "668050c46be167a33b88348250d3d95b8b0a47d856938e1c6ea47ab2350f8a8d"
+    },
+    "source_memberships": 117,
+    "bilingual_entries": 1091,
+    "design_mutations": 13,
+    "r7_runner_build": {
+      "path": "build/native-reading-anchor-20261015/build-test-r7.log",
+      "sha256": "33000a56d4be36f6d36dbb5d09548d97f1f9dd4b5faf1e41edf14316e5db0bd3"
+    },
+    "governance_final_result": "PASS_R7_SOURCE_BEFORE_NEW_REPORT",
+    "governance_logs": [
+      {
+        "path": "build/native-reading-anchor-20261015/check-agent-foundation-goals-r7.log",
+        "sha256": "5e514e06da7e3f3b8a689bfeeb73d37027323026d35b3d55b36e0160fc816e5d",
+        "result": "PASS"
+      },
+      {
+        "path": "build/native-reading-anchor-20261015/check-agent-foundation-plan-r7.log",
+        "sha256": "71da24f70099c5cfb5c75ba771b66c4bf4a7191051c3bd879afd8ec58db3f748",
+        "result": "PASS"
+      },
+      {
+        "path": "build/native-reading-anchor-20261015/check-conversation-ui-plan-r7.log",
+        "sha256": "0751a52050b8903f5812a6f0fc59db56a345f2b4dc1857e55e7d69c402873163",
+        "result": "PASS"
+      },
+      {
+        "path": "build/native-reading-anchor-20261015/check-deployed-source-r7.log",
+        "sha256": "a68c4a239c7a9d8a2e3f2ffab1f5ae00b63c319b9999a42db6c27873688ee228",
+        "result": "PASS"
+      },
+      {
+        "path": "build/native-reading-anchor-20261015/check-final-product-plan-r7.log",
+        "sha256": "7b72c9e606d7cd160ae8d115c2f06fd10a8e293c8de3a662a01a92467c51161c",
+        "result": "PASS"
+      },
+      {
+        "path": "build/native-reading-anchor-20261015/check-repository-layout-r7.log",
+        "sha256": "d225b3174702f41d455fc0cd22c09a32011f6b961c278f3e66b88fc9ba7ca372",
+        "result": "PASS"
+      },
+      {
+        "path": "build/native-reading-anchor-20261015/check-repository-r7.log",
+        "sha256": "1bb67173eb0b659474afd45ac05604e9fb8492515d9f2408006c25fb5bf3865d",
+        "result": "PASS"
+      },
+      {
+        "path": "build/native-reading-anchor-20261015/scan-repository-r7.log",
+        "sha256": "4b0a7318e5a6cb0a69b8c2e50369064019e6e64e6ebf5098e9a7804d2ecbb257",
+        "result": "PASS"
+      }
+    ],
+    "sensitivity": {
+      "candidate_files": 1182,
+      "blocking_hits": 0,
+      "manual_review_hits": 0,
+      "reviewed_false_positives": 145,
+      "new_report_not_yet_in_this_scan": true
+    },
+    "final_delivery": {
+      "layout_frozen_deployed_AFgoals_AFplan_FINAL_CGUI": "PASS",
+      "source_sensitivity_candidate_files": 1185,
+      "source_sensitivity_blocking": 0,
+      "source_sensitivity_manual": 0,
+      "existing_reviewed_false_positives": 145
+    }
+  },
+  "user_environment": {
+    "update36_status": "PASS_VERSION_AND_INSTALLED_BYTES_READBACK",
+    "last_confirmed_user_build": 36,
+    "previous_user_build": 35,
+    "launch_result_workspace": "primary",
+    "launch_result_path": "build/device-hub-latest/LAUNCH-RESULT.json",
+    "launch_result_sha256": "92acb17d8f2ca9c0704e4dd846c415faef8d069e49fdaddeb89b5c6bd5484222",
+    "launch_time_utc": "2026-10-15T07:18:12.671344+00:00",
+    "installed_bytes_match": true,
+    "bundle_sha256": "ca1ff05be0af4c1d7a9144dcd0f3b568fde3e5088767521c13718dc47095a147",
+    "before": {
+      "requests": 81,
+      "accepted_posts": 0,
+      "dropped_responses": 0,
+      "memory_posts": 0,
+      "memory_original_gets": 0,
+      "provider_calls": 4,
+      "turns": 2
+    },
+    "after": {
+      "requests": 82,
+      "accepted_posts": 0,
+      "dropped_responses": 0,
+      "memory_posts": 0,
+      "memory_original_gets": 0,
+      "provider_calls": 4,
+      "turns": 2
+    },
+    "requests_delta": 1,
+    "accepted_posts_delta": 0,
+    "memory_posts_delta": 0,
+    "provider_calls_delta": 0,
+    "turns_delta": 0,
+    "preserve_existing_store_backend_and_session": true,
+    "backend_maintenance_candidate": 27,
+    "session_expiry_not_extended_coordinator_confirmed": true,
+    "raw_identifiers_or_personal_absolute_paths_included": false
+  },
+  "coordinator_visual_observation": {
+    "r6_before_after_paragraphs_2_and_3_same_position": true,
+    "full_visual_matrix_pass": false,
+    "r7_before_after_paragraphs_16_and_17_same_position": true,
+    "qualitative_only": true,
+    "claimed_zero_pixel_drift": false,
+    "claimed_fps_acceptance": false
+  },
+  "not_claimed": [
+    "max_accessibility_size_build36",
+    "VoiceOver",
+    "Reduce_Motion_full_matrix",
+    "cold_start_persistent_reading_anchor",
+    "all_card_types_and_growth_patterns",
+    "AF-U04_full_matrix",
+    "real_Auth_model_production_SQL_or_deployment",
+    "phone_installation",
+    "AF-G5",
+    "FINAL-G1",
+    "FINAL-G2",
+    "FINAL-G3",
+    "seven_day_real_use",
+    "named_competitor_acceptance"
+  ],
+  "raw_ids_personal_absolute_paths_media_or_full_app_inventory_published": false,
+  "curation": {
+    "ignored_original_result_sha256": "a14c0e1b4bddd07435e1b448426bd11b45646becc3f459874b3fcedd402ac792",
+    "additions": "Final delivery governance scan and public source-index correspondence. Original observations unchanged."
+  }
+}
