@@ -1169,6 +1169,7 @@ private struct ConversationPendingMessageEditor:View {
                     if let at=model.connection.verifiedReplyAt {LabeledContent(ui("最近确认回复"),value:at.formatted(date:.omitted,time:.shortened))}
                     Button(ui("重新检查连接")) { Task { await model.refreshConnection() } }.accessibilityIdentifier("connection.refresh")
                 }
+                FeatureEnrollmentSection()
                 #if DEBUG || DEVICE_TRIAL
                 DeveloperModelRouteSection()
                 Section(ui("调试")) { NavigationLink(ui("主动信号模拟")) { ProactiveSignalDebugView() }.accessibilityIdentifier("settings.debug.proactiveSignals") }
