@@ -280,7 +280,9 @@ public struct ConversationTurnRecord: Codable, Sendable, Identifiable {
         let events = uiEvents ?? [], resolved = Set(events.filter { $0.type == .resolve }.map(\.id))
         return events.filter { $0.waitsForDecision && !resolved.contains($0.id) }
     }
-    public var awaitingApproval:Bool { state == .running && (!(pendingApprovals ?? []).isEmpty || !pendingUIBlocks.isEmpty) }
+    /// Snapshot `pending_approvals` with kind "ui" (authoritative after observe / cold start).
+    public var pendingUIApprovals:[ConversationUIApproval]? = nil
+    public var awaitingApproval:Bool { state == .running && (!(pendingApprovals ?? []).isEmpty || !pendingUIBlocks.isEmpty || !(pendingUIApprovals ?? []).isEmpty) }
 }
 /// catpaw.approval.v1 interrupt as shown to the user (services/edge/docs/approval-contract.md).
 public struct ConversationApprovalRequest: Codable, Sendable, Equatable, Identifiable {
@@ -346,6 +348,38 @@ public struct ConversationUIEvent: Codable, Sendable, Equatable {
         self.type = type; self.sequence = sequence; self.payload = payload; self.id = id; self.kind = kind; self.interruptID = interruptID; self.argsHash = argsHash; self.expiresAt = expiresAt; self.status = status
     }
 }
+/// A pending `kind:"ui"` entry of the turn snapshot's `pending_approvals` (cold-start restore of waiting ui blocks).
+/// Server fields: interrupt_id, call_id, tool ("render_ui"), summary, args_hash, expires_at, risk ("none"),
+/// remember_allowed (false), kind ("ui"), block (the `ui.block` data incl. interruptId/argsHash/expiresAt), arguments.
+public struct ConversationUIApproval: Codable, Sendable, Equatable, Identifiable {
+    public var id: String { interruptID }
+    public let interruptID: String
+    public let callID: String
+    public let argsHash: String
+    public let expiresAt: String
+    public let blockID: String
+    public let kind: String
+    /// The block exactly as `ui.block` data (re-serialised with sorted keys); feed it to the renderer.
+    public let block: Data
+    public init(interruptID: String, callID: String, argsHash: String, expiresAt: String, blockID: String, kind: String, block: Data) {
+        self.interruptID = interruptID; self.callID = callID; self.argsHash = argsHash; self.expiresAt = expiresAt; self.blockID = blockID; self.kind = kind; self.block = block
+    }
+    /// Validates one snapshot entry with `kind == "ui"`; the block must agree with the interrupt.
+    public static func decode(_ raw: [String: Any]) throws -> ConversationUIApproval {
+        guard raw["kind"] as? String == "ui", let id = raw["interrupt_id"] as? String, UUID(uuidString: id) != nil,
+              let call = raw["call_id"] as? String, !call.isEmpty, let hash = raw["args_hash"] as? String, hash.count == 64,
+              let expires = raw["expires_at"] as? String, let block = raw["block"] as? [String: Any],
+              let data = try? JSONSerialization.data(withJSONObject: block, options: [.sortedKeys]) else { throw ConversationSessionError.invalidEvent }
+        let event = try ConversationUIEvent.decode(type: ConversationUIEvent.EventType.block.rawValue, sequence: 1, payload: data)
+        guard event.interruptID == id.lowercased(), event.argsHash == hash, let kind = event.kind else { throw ConversationSessionError.invalidEvent }
+        return ConversationUIApproval(interruptID: id.lowercased(), callID: call, argsHash: hash, expiresAt: expires, blockID: event.id, kind: kind, block: data)
+    }
+    /// From a journaled waiting `ui.block`.
+    public init?(_ event: ConversationUIEvent) {
+        guard event.waitsForDecision, let interrupt = event.interruptID, let hash = event.argsHash, let kind = event.kind else { return nil }
+        self.init(interruptID: interrupt, callID: "", argsHash: hash, expiresAt: event.expiresAt ?? "", blockID: event.id, kind: kind, block: event.payload)
+    }
+}
 extension ConversationApprovalFailure {
     /// User-facing text for approval and catpaw.ui.v1 decisions.
     public var friendlyMessage: String {
@@ -406,7 +440,9 @@ public struct ConversationObservation: Sendable {
     public var pendingApprovals: [ConversationApprovalRequest] = []
     /// Snapshot `state` (e.g. "awaiting_approval"); nil when not provided.
     public var serverState: String? = nil
-    public init(request: ConversationTurnRequest, events: [ConversationTurnEvent], requestHash: String? = nil, grantEpoch: Int? = nil, goals: [ConversationGoalProjection] = [], pendingApprovals: [ConversationApprovalRequest] = [], serverState: String? = nil) { self.request = request; self.events = events; self.requestHash = requestHash; self.grantEpoch = grantEpoch; self.goals = goals; self.pendingApprovals = pendingApprovals; self.serverState = serverState }
+    /// Snapshot `pending_approvals` with kind "ui" (kept out of `pendingApprovals`, which stays tool approvals only).
+    public var pendingUIApprovals: [ConversationUIApproval] = []
+    public init(request: ConversationTurnRequest, events: [ConversationTurnEvent], requestHash: String? = nil, grantEpoch: Int? = nil, goals: [ConversationGoalProjection] = [], pendingApprovals: [ConversationApprovalRequest] = [], serverState: String? = nil, pendingUIApprovals: [ConversationUIApproval] = []) { self.pendingUIApprovals = pendingUIApprovals; self.request = request; self.events = events; self.requestHash = requestHash; self.grantEpoch = grantEpoch; self.goals = goals; self.pendingApprovals = pendingApprovals; self.serverState = serverState }
 }
 /// Client projection seam, not a new Agent engine. A verified server adapter supplies the wire.
 public struct ConversationModelConsent: Sendable, Identifiable {

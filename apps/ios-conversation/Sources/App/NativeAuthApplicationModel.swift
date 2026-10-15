@@ -136,7 +136,16 @@ public struct AuthenticatedNativeChatCredentials: NativeChatSessionCredentials {
             #endif
             let preview=ConversationFirstModel(repository:repository,service:ConversationSessionService(repository:repository,backend:selected,resilience:ConnectionMonitorResilience(),outbox:ConversationOutbox(fileURL:url.deletingLastPathComponent().appendingPathComponent("conversation-outbox.json"))),scope:partition.scope,imageStore:imageStore,taskPlanService:isFixture ? nil : ConversationTaskPlanService(repository:repository,scope:partition.scope,backend:backend),artifactEditService:isFixture ? nil : ConversationArtifactEditService(repository:repository,scope:partition.scope,backend:backend),taskActionService:isFixture ? nil : ConversationTaskActionService(repository:repository,scope:partition.scope,backend:backend),taskControlService:isFixture ? nil : ConversationTaskControlService(repository:repository,scope:partition.scope,backend:backend),memoryService:memory,inboxService:isFixture ? nil : ConversationInboxService(reference:.init(scope:partition.scope,serverScopeID:chatConfiguration.serverScopeID,subjectID:partition.subject),backend:backend),subjectID:partition.subject)
             preview.setNetworkAdmissionAllowed(false);await preview.start();self.backend=backend;chat=preview;namespace=partition.namespace
+            installUIDecisionSubmitter(preview.service,scope:partition.scope)
         } catch { self.error=NativeAuthError.storage.localizedDescription }
+    }
+    /// catpaw.ui.v1 decisions for the chat just built (scope-bound; #36's protocol has no scope).
+    private(set) var uiDecisionSubmitter: ConversationUIDecisionSubmitter?
+    private func installUIDecisionSubmitter(_ service: ConversationSessionService, scope: DataScope) {
+        let submitter = ConversationUIDecisionSubmitter(service: service, scope: scope)
+        uiDecisionSubmitter = submitter
+        // #36 merge: add the GenerativeUIDecisionSubmitting conformance (see ConversationUIDecisionSubmitter) and uncomment:
+        // GenerativeBlockStore.shared.submitter = submitter
     }
     /// Starts the background warm-up (local preview, restore, anonymous experience identity).
     /// Safe to call from `.task`: the warm-up is an unstructured task, so the gate can await it.
@@ -234,6 +243,7 @@ public struct AuthenticatedNativeChatCredentials: NativeChatSessionCredentials {
                 selected = CatpawDemoBackendSwitch.select(selected)
                 #endif
                 chat = ConversationFirstModel(repository:repository,service:ConversationSessionService(repository:repository,backend:selected,resilience:ConnectionMonitorResilience(),outbox:ConversationOutbox(fileURL:directory.appendingPathComponent("conversation-outbox.json"))),scope:partition.scope,imageStore:imageStore,taskPlanService:isFixture ? nil : ConversationTaskPlanService(repository:repository,scope:partition.scope,backend:http),artifactEditService:isFixture ? nil : ConversationArtifactEditService(repository:repository,scope:partition.scope,backend:http),taskActionService:isFixture ? nil : ConversationTaskActionService(repository:repository,scope:partition.scope,backend:http),taskControlService:isFixture ? nil : ConversationTaskControlService(repository:repository,scope:partition.scope,backend:http),memoryService:memory,inboxService:isFixture ? nil : ConversationInboxService(reference:.init(scope:partition.scope,serverScopeID:chatConfiguration.serverScopeID,subjectID:partition.subject),backend:http),subjectID:partition.subject)
+                if let chat { installUIDecisionSubmitter(chat.service, scope: partition.scope) }
                 namespace = partition.namespace; error = nil
                 try await saveLocalReceipt(.init(issuer:configuration.issuer,subject:user.id,serverScopeID:serverScope))
             } catch { self.error = "此账号的本地存储无法打开；原文件已保留。" }

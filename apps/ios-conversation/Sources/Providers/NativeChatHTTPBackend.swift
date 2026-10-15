@@ -373,6 +373,14 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
     static let timeZoneHeader = "X-Catpaw-Time-Zone"
     /// Tools that only exist on approval-negotiated plain turns (services/edge TOOL_APPROVAL).
     static let approvalToolNames: Set<String> = ["render_ui", "list_tasks", "create_task", "update_task", "create_calendar_event", "update_calendar_event", "create_reminder", "update_reminder", "external_write"]
+    /// Snapshot `pending_approvals`: kind "ui" rows are catpaw.ui.v1 blocks, everything else a tool approval card.
+    public static func splitPendingApprovals(_ rows: [[String: Any]]) throws -> (tools: [ConversationApprovalRequest], ui: [ConversationUIApproval]) {
+        var tools: [ConversationApprovalRequest] = [], ui: [ConversationUIApproval] = []
+        for row in rows {
+            if row["kind"] as? String == "ui" { ui.append(try ConversationUIApproval.decode(row)) } else { tools.append(try approval(row)) }
+        }
+        return (tools, ui)
+    }
     static func approval(_ raw: [String: Any]) throws -> ConversationApprovalRequest {
         guard let id = raw["interrupt_id"] as? String, UUID(uuidString: id) != nil, let call = raw["call_id"] as? String, !call.isEmpty, call.utf8.count <= 256,
               let tool = raw["tool"] as? String, opaque(tool), let summary = raw["summary"] as? String, summary.count <= 240,
@@ -604,8 +612,9 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
         var seen: Set<String> = []
         for b in bindings where seen.insert(b.task_id).inserted { goals.append(try await projection(b, title: title(b.call_id, turnID: b.turn_id, history: request.history), auth: auth)) }
         if request.continuation != nil {try validateContinuationList(turn["continuations"],request:request,terminal:turn["state"] as? String=="completed");try validateRevisionWorkList(turn["revision_work_receipts"],request:request)}
-        let pending = try (turn["pending_approvals"] as? [Any] ?? []).map { try Self.approval(Self.object($0)) }
-        return ConversationObservation(request: request, events: events, requestHash: try Self.sha(turn["request_hash"]), grantEpoch: currentGrant, goals: goals, pendingApprovals: pending, serverState: turn["state"] as? String)
+        let rows = try (turn["pending_approvals"] as? [Any] ?? []).map { try Self.object($0) }
+        let pending = try Self.splitPendingApprovals(rows)
+        return ConversationObservation(request: request, events: events, requestHash: try Self.sha(turn["request_hash"]), grantEpoch: currentGrant, goals: goals, pendingApprovals: pending.tools, serverState: turn["state"] as? String, pendingUIApprovals: pending.ui)
     }
     private func readConversation(_ value: ConversationTurnRequest, auth: String, mayCreate: Bool,strict:Bool=false) async throws -> [String: Any] {
         var wrapper: [String: Any]
