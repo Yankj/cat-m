@@ -11,6 +11,18 @@ public enum ConversationConnectionState: Equatable, Sendable {
     case busy(retryIn: Int)
     case syncing
 
+    /// Catalog key + arguments for `ui(_:arguments:)` (UIStrings.json uses {0} placeholders).
+    public var labelKey: (key: String, arguments: [String])? {
+        switch self {
+        case .online: return nil
+        case .offline: return ("离线 · 草稿和待发消息都会保留", [])
+        case .reconnecting(let attempt, let retryIn): return ("正在重新连接 · 第 {0} 次 · {1} 秒后", [String(attempt), String(retryIn)])
+        case .resumed: return ("已接上 · 从断点继续", [])
+        case .unreachable: return ("这条回复暂时没接上", [])
+        case .busy(let retryIn): return ("免费模型正忙 · {0} 秒后自动重试", [String(retryIn)])
+        case .syncing: return ("正在同步工作状态…", [])
+        }
+    }
     /// Copy from docs/design/conversation-states-r7.json `connectionStates`.
     public var label: String? {
         switch self {
@@ -75,6 +87,12 @@ public enum ConversationModelRoute: String, CaseIterable, Identifiable, Sendable
         return ConversationModelRoute(rawValue: UserDefaults.standard.string(forKey: defaultsKey) ?? "") ?? .automatic
         #else
         return .automatic
+        #endif
+    }
+    /// Persist the developer choice (DEBUG builds only; Release always uses automatic).
+    public func select() {
+        #if DEBUG
+        UserDefaults.standard.set(rawValue, forKey: Self.defaultsKey)
         #endif
     }
     /// Header value, nil for automatic.
