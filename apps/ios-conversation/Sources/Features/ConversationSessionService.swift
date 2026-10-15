@@ -383,7 +383,7 @@ public actor ConversationSessionService {
         case .thread(let id):
             guard !id.isEmpty, session.threadID == nil || session.threadID == id else { throw ConversationSessionError.invalidEvent }; session.threadID = id
         case .started(let hash, let revision, let grant,let receipts):
-            if let image=request.image {guard receipts == [image.receipt] else {throw ConversationSessionError.invalidEvent}} else {guard receipts == nil || receipts?.isEmpty == true else {throw ConversationSessionError.invalidEvent}}
+            if let image=request.image {guard receipts == [image.receipt] else {throw ConversationSessionError.invalidEvent}} else if let ids=request.attachmentIDs,!ids.isEmpty {guard let receipts,receipts.map(\.id)==ids else {throw ConversationSessionError.invalidEvent}} else {guard receipts == nil || receipts?.isEmpty == true else {throw ConversationSessionError.invalidEvent}}
             guard hash.count == 64, revision > 0, grant > 0, turn.serverRequestHash == nil || turn.serverRequestHash == hash, turn.serverGrantEpoch == nil || turn.serverGrantEpoch == grant else { throw ConversationSessionError.invalidEvent }
             turn.serverRequestHash = hash; turn.serverConversationRevision = revision; turn.serverGrantEpoch = grant; session.threadID = request.conversationID.uuidString
         case .textDelta(let id, let text):
