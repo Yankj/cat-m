@@ -15,7 +15,7 @@ struct DeviceCallSpec: Sendable {
         switch tool {
         case "calendar_create": .init(symbol: "calendar.badge.plus", titleKey: "加入日历", confirmKey: "加入", fields: [
             .init(key: "title", labelKey: "标题"), .init(key: "start", labelKey: "开始", kind: .date), .init(key: "end", labelKey: "结束", kind: .date),
-            .init(key: "location", labelKey: "地点"), .init(key: "notes", labelKey: "备注", kind: .multiline)])
+            .init(key: "location", labelKey: "地点"), .init(key: "notes", labelKey: "备注", kind: .multiline), .init(key: "alarms", labelKey: "提前提醒（分钟）", editable: false)])
         case "reminder_create": .init(symbol: "checklist", titleKey: "新建提醒", confirmKey: "创建", fields: [
             .init(key: "title", labelKey: "内容"), .init(key: "due", labelKey: "时间", kind: .date), .init(key: "list", labelKey: "列表")])
         case "sms_compose": .init(symbol: "message", titleKey: "发短信", confirmKey: "去发送", fields: [
@@ -89,8 +89,8 @@ struct DeviceCallSpec: Sendable {
     }
 
     private func expired(at date: Date) -> Bool {
-        guard let ttl = call.ttl_sec, ttl > 0 else { return false }
-        return date.timeIntervalSince(store.firstSeen(call.id)) > TimeInterval(ttl)
+        guard let deadline = call.deadline(firstSeen: store.firstSeen(call.id)) else { return false }
+        return date > deadline
     }
 
     private var header: some View {

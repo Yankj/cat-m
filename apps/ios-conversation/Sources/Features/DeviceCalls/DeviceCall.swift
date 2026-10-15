@@ -12,12 +12,24 @@ struct DeviceCall: Codable, Sendable, Equatable, Identifiable {
     var args: [String: DeviceCallValue]
     var confirm: Confirm?
     var ttl_sec: Int?
+    /// catpaw.device.v1 (#49 / services/edge/docs/device-call-contract.md).
+    var interrupt_id: String?
+    var args_hash: String?
+    /// ISO 8601; wins over `ttl_sec` when present.
+    var expires_at: String?
     var id: String { call_id }
+    /// Absolute deadline: `expires_at`, else `ttl_sec` counted from when the card was first seen.
+    func deadline(firstSeen: Date) -> Date? {
+        if let raw = expires_at, let date = DeviceCallDates.parse(raw) { return date }
+        if let ttl = ttl_sec, ttl > 0 { return firstSeen.addingTimeInterval(TimeInterval(ttl)) }
+        return nil
+    }
 }
 
 /// JSON scalar subset the card can show and edit; arrays are shown joined (to[] for mail / sms).
-enum DeviceCallValue: Codable, Sendable, Equatable {
-    case string(String), number(Double), bool(Bool), list([String]), null
+indirect enum DeviceCallValue: Codable, Sendable, Equatable {
+    /// `list` = all-string arrays (editable, e.g. to[]); `array` = any other array (e.g. calendar_create.alarms [-15, -60]).
+    case string(String), number(Double), bool(Bool), list([String]), array([DeviceCallValue]), object([String: DeviceCallValue]), null
     init(from decoder: Decoder) throws {
         let c = try decoder.singleValueContainer()
         if c.decodeNil() { self = .null }
@@ -25,6 +37,8 @@ enum DeviceCallValue: Codable, Sendable, Equatable {
         else if let n = try? c.decode(Double.self) { self = .number(n) }
         else if let s = try? c.decode(String.self) { self = .string(s) }
         else if let a = try? c.decode([String].self) { self = .list(a) }
+        else if let a = try? c.decode([DeviceCallValue].self) { self = .array(a) }
+        else if let o = try? c.decode([String: DeviceCallValue].self) { self = .object(o) }
         else { self = .null }
     }
     func encode(to encoder: Encoder) throws {
@@ -34,6 +48,8 @@ enum DeviceCallValue: Codable, Sendable, Equatable {
         case .number(let n): try c.encode(n)
         case .bool(let b): try c.encode(b)
         case .list(let a): try c.encode(a)
+        case .array(let a): try c.encode(a)
+        case .object(let o): try c.encode(o)
         case .null: try c.encodeNil()
         }
     }
@@ -43,6 +59,8 @@ enum DeviceCallValue: Codable, Sendable, Equatable {
         case .number(let n): n.rounded() == n ? String(Int(n)) : String(n)
         case .bool(let b): b ? "✓" : "—"
         case .list(let a): a.joined(separator: "、")
+        case .array(let a): a.map(\.text).joined(separator: "、")
+        case .object(let o): o.keys.sorted().map { "\($0): \(o[$0]!.text)" }.joined(separator: "，")
         case .null: ""
         }
     }
@@ -55,8 +73,10 @@ struct DeviceCallResult: Codable, Sendable, Equatable {
     let call_id: String
     let status: DeviceCallStatus
     var data: [String: DeviceCallValue]?
-    /// Optional deep link for the receipt row's 打开 (e.g. `calshow:`), filled in by the executor.
-    var openURL: String?
+    /// Optional deep link for the receipt row's 打开 (e.g. `calshow:`), filled in by the executor. Local only: opened on the
+    /// device, never sent to the server (excluded from `CodingKeys`).
+    var openURL: String? = nil
+    private enum CodingKeys: String, CodingKey { case call_id, status, data }
 }
 
 /// M1 (Mac worker): runs the tool with EventKit / MFMessage / MFMail / tel / MapKit / URL schemes, including the
