@@ -90,7 +90,7 @@ final class CatpawAcceptanceUITests: XCTestCase {
             shot(app, "05-stop-visible")
             stop.tap(); shot(app, "05-stopped")
             // Server cancel: partial + interrupted footer, or the full answer if the cancel raced completion.
-            let interrupted = app.descendants(matching: .any)["chat.answer.interrupted"].firstMatch, done = app.staticTexts["chat.reply.completed"]
+            let interrupted = app.descendants(matching: .any)["chat.answer.interrupted"].firstMatch, done = app.descendants(matching: .any)["chat.reply.completed"].firstMatch
             let deadline = Date().addingTimeInterval(20)
             while !(interrupted.exists || done.exists) && Date() < deadline { Thread.sleep(forTimeInterval: 0.5) }
             shot(app, "05-after-cancel")
@@ -102,7 +102,7 @@ final class CatpawAcceptanceUITests: XCTestCase {
                 XCTFail("Stop control not present while streaming")
             }
         }
-        XCTAssertTrue(app.staticTexts["chat.reply.completed"].waitForExistence(timeout: 30) || app.descendants(matching: .any)["chat.answer.interrupted"].firstMatch.exists)
+        XCTAssertTrue(app.descendants(matching: .any)["chat.reply.completed"].firstMatch.waitForExistence(timeout: 30) || app.descendants(matching: .any)["chat.answer.interrupted"].firstMatch.exists)
         shot(app, "04-final-settled")
     }
 
@@ -154,7 +154,15 @@ final class CatpawAcceptanceUITests: XCTestCase {
         let app = XCUIApplication(bundleIdentifier: bundleID); app.launchArguments += ["-CatpawSkipOnboarding"]; app.launch()
         let start = app.buttons["auth.startExperience"]
         if start.waitForExistence(timeout: 8) { XCTAssertTrue(waitFor(start, "enabled == true", timeout: 20), "开始体验 must be enabled (config present)"); start.tap() }
-        XCTAssertTrue(input(app).waitForExistence(timeout: 45)); shot(app, "real-01-chat")
+        XCTAssertTrue(input(app).waitForExistence(timeout: 45))
+        let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        for label in ["允许", "Allow"] { let b = springboard.buttons[label]; if b.waitForExistence(timeout: 3) { b.tap(); break } }
+        shot(app, "real-01-chat")
+        if let title = ProcessInfo.processInfo.environment["CATPAW_REAL_OPEN"], !title.isEmpty {
+            app.buttons["sidebar.open"].tap(); Thread.sleep(forTimeInterval: 1)
+            let row = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", title)).firstMatch
+            XCTAssertTrue(row.waitForExistence(timeout: 5), "conversation \(title) in sidebar"); row.tap(); Thread.sleep(forTimeInterval: 2); shot(app, "real-legacy-00-opened")
+        }
         if ProcessInfo.processInfo.environment["CATPAW_REAL_NEW"] == "1" { app.buttons["chat.new"].tap(); Thread.sleep(forTimeInterval: 1.5); shot(app, "real-01b-new-chat") }
         let field = input(app); field.tap(); field.typeText("用一句话介绍你自己")
         app.buttons["chat.send"].tap()
@@ -164,7 +172,7 @@ final class CatpawAcceptanceUITests: XCTestCase {
         if allow.waitForExistence(timeout: 8) { shot(app, "real-02-consent"); allow.tap() }
         if app.descendants(matching: .any)["chat.answer.thinking"].firstMatch.waitForExistence(timeout: 15) { shot(app, "real-03-thinking") }
         if app.descendants(matching: .any)["chat.assistantMessage"].firstMatch.waitForExistence(timeout: 60) { Thread.sleep(forTimeInterval: 0.8); shot(app, "real-04-streaming") }
-        let done = app.staticTexts["chat.reply.completed"].waitForExistence(timeout: 120)
+        let done = app.descendants(matching: .any)["chat.reply.completed"].firstMatch.waitForExistence(timeout: 120)
         shot(app, done ? "real-05-done" : "real-05-not-done")
         XCTAssertTrue(done, "Real reply must complete")
     }

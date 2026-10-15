@@ -201,7 +201,7 @@ import CatpawImageComposer
                                 PendingThinkingRow(service:model.service,turn:pending).id("pending-\(pending.id)").padding(.top,12)
                             }
                             if let latest = session.turns.last, latest.state == .completed, !composerChrome.stoppedOperations.contains(latest.id) {
-                                Text(ui("回复完成")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary).accessibilityIdentifier("chat.reply.completed").padding(.top,8)
+                                Color.clear.frame(width:1,height:1).accessibilityElement().accessibilityLabel(ui("回复完成")).accessibilityIdentifier("chat.reply.completed")
                             } else if let latest = session.turns.last, latest.state == .failed {
                                 Text(ui("此轮回复未完成")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.attention).accessibilityIdentifier("chat.reply.failed").padding(.top,8)
                             }
@@ -225,6 +225,7 @@ import CatpawImageComposer
                             #endif
                         }.frame(width:0,height:0).accessibilityHidden(true))
                 }.scrollDismissesKeyboard(.interactively)
+                    .r9TopAlignedTranscript()
                     .accessibilityIdentifier("chat.transcript")
                     .onChange(of: model.session?.messages.last?.content) { _, _ in scheduleScroll(proxy) }
                     .onChange(of: displayMessages.count) { _, _ in scheduleScroll(proxy) }
@@ -693,6 +694,18 @@ import CatpawImageComposer
     private func operationID(_ message:ConversationTranscriptMessage) -> UUID? {
         model.outgoingMessages.first(where:{stableID("conversation-user-\($0.id)") == message.id})?.id ?? model.session?.turns.first(where:{stableID("conversation-user-\($0.id)") == message.id})?.id
     }
+    /// r9 bubble status: sent → nothing; queued/offline → nothing (pending strip owns it);
+    /// sending → tiny spinner only after ~2 s without turn start; failed → red ! + "未发送·点按重试".
+    enum BubbleStatus { case none, sending, failed }
+    private func bubbleStatus(_ id:UUID) -> BubbleStatus {
+        if let intent=model.outgoingMessages.first(where:{$0.id == id}) {
+            switch intent.state { case .sending: return .sending; case .failed, .unknown: return .failed; default: return .none }
+        }
+        guard let turn = model.session?.turns.first(where:{$0.id == id}) else { return .none }
+        if turn.state == .failed && turn.error != "cancelled" && turn.assistantMessageID == nil { return .failed }
+        if turn.state == .dispatched && turn.lastSequence == 0 { return .sending }
+        return .none
+    }
     private func delivery(_ id:UUID) -> String {
         if let intent=model.outgoingMessages.first(where:{$0.id == id}) {
             switch intent.state {
@@ -730,7 +743,17 @@ import CatpawImageComposer
                         Text(ui("等待网络")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
                             .accessibilityIdentifier("chat.waitingForNetwork")
                     }
-                    Text(delivery(id)).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary).accessibilityIdentifier("chat.pendingAdmission")
+                    switch bubbleStatus(id) {
+                    case .none: EmptyView()
+                    case .sending: DelayedSendingSpinner().accessibilityIdentifier("chat.bubble.sending")
+                    case .failed:
+                        Button { model.resumeFollowups() } label: {
+                            HStack(spacing: 4) {
+                                Image(systemName: "exclamationmark.circle.fill").foregroundStyle(CatpawColors.attention).imageScale(.small)
+                                Text(ui("未发送·点按重试")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.attention)
+                            }
+                        }.buttonStyle(CatpawPressButtonStyle()).accessibilityIdentifier("chat.bubble.retry")
+                    }
                 }
             }
         } else if message.role == .tool || message.toolName != nil {
@@ -1165,5 +1188,21 @@ private extension ToolbarContent {
         #else
         self
         #endif
+    }
+}
+
+private extension View {
+    /// Short transcripts start right under the nav bar; long/streaming ones still follow the bottom via scrollTo.
+    @ViewBuilder func r9TopAlignedTranscript() -> some View {
+        if #available(iOS 18.0, *) { self.defaultScrollAnchor(.top, for: .alignment) } else { self }
+    }
+}
+
+/// Shows a tiny spinner only if sending lasts longer than ~2 s.
+private struct DelayedSendingSpinner: View {
+    @State private var visible = false
+    var body: some View {
+        ProgressView().controlSize(.mini).opacity(visible ? 1 : 0)
+            .task { try? await Task.sleep(nanoseconds: 2_000_000_000); withAnimation(.easeOut(duration: 0.2)) { visible = true } }
     }
 }
