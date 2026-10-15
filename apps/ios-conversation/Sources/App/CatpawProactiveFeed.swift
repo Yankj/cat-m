@@ -5,8 +5,8 @@ import UserNotifications
 #endif
 
 /// In-app proactive feed: polls `GET /events` (open / foreground / notification tap), keeps events per conversation,
-/// and anchors each event after the timeline row that was last when it first arrived. Transcript messages carry no
-/// timestamps, so this is "time order as observed on this device"; events sharing an anchor sort by `created_at`.
+/// The timeline orders events by `created_at` against message `createdAt` (ConversationFirstView.interleave).
+/// `anchorRowID` is kept as diagnostic metadata only.
 @MainActor final class CatpawProactiveFeed: ObservableObject {
     static let shared = CatpawProactiveFeed()
 
