@@ -1,153 +1,100 @@
 # Catpaw-m 接手交接
 
-交接快照：2026-10-13 16:07（Asia/Shanghai）。本次整理文档、备份和核验，不继续开发、安装、模型调用或部署。后续进度只维护 [master-plan](docs/status/master-plan.md)；本文件和 [机器快照](docs/status/handoff-snapshot-2026-10-13.json)保留交接时事实。
+交接快照：2026-10-15 18:44（Asia/Shanghai）。用户中断开发后要求整理交接；本次只核对、保存文档和同步代码，不继续模型检查、部署、安装或系统动作。实时进度唯一维护在 [master-plan](docs/status/master-plan.md)；本文与[机器快照](docs/status/handoff-snapshot-2026-10-15.json)是日期快照。
 
-## 先看结论
+## 接手先看
 
-- 唯一维护目录是用户指定的 `Desktop/ai-work/catpaw-m`。本地 `main` 和 `origin/main` 均为 `42a4504`，应用源码与已合入 GitHub 的 PR #6 对应；本次没有重新联网 fetch。
-- 手机已安装 **0.3.0 build 16**，冻结源码为 `a905b47`，不含后续阅读、队列、侧栏与草稿修复。源码、手机包、线上服务尚未收齐成同一发布候选。
-- **真实模型验收发送次数为 0**。旧 build 15“同意后仍等待”不能证明模型不可用；需定位许可→发送→模型→事件→存储→展示的具体失败段。
-- 接手前有 **19 个跟踪文件修改、13 个未跟踪文件，共 32 个文件待提交**，集中在规划、调研、设计、验收与脚本。整理期间另观察到对话 UI 草案和开发提示词；均单独备份，不能用 GitHub main 代替本地材料。同期仍有文档写入，文件总数以机器快照截止时间和现场 `git status` 为准。
-- 运行 Goal 经 `get_goal` 读回为 **`usageLimited`**，产品未签收。本次没有把 Goal 改成暂停、阻塞或完成。
-- 16:06 只读检查未发现 `xcodebuild` 进程或 8843 端口监听。没有停止任务或进程；浏览器残留的提案地址不代表服务仍在运行。
+- **FINAL-G3 Goal 已读回 PAUSED。** 不重建、不替换、不自动恢复；用户恢复原 Goal 后再开发。AF-G5、FINAL-G1/G2/G3 均未完成。
+- **线上为 catpaw-api 22 / tick 8。** r8 精确55文件包已获用户直接批准、部署并逐文件SHA256读回一致；默认模型/图片与tick保持原字节。不是39维护后台整包上线。
+- **r8模型发送次数为0。** 已正常刷新同一匿名身份一次，并创建固定空检查会话；许可未提交、turn未发送。中断前的prepare进程已返回成功，禁止再创建会话或身份。
+- **体验设备仍是同一台“Catpaw 最新体验”，0.3.0(38)。** 39已构建冻结但未安装。38是明确离线体验；原6小时审查期限已到，不自动续期。手机最后已知仍16，本次未连接或安装。
+- **S06设备日程新接线只完成方案，零文件落盘。** 三位Agent已停止，无遗留测试/实现进程。不要把拟定的registry、v2 producer或同步OS gate算成已有功能。
+- 主目录与managed源码还未整合为同一发布候选；用户看到的Simulator、GitHub短分支、云端函数和手机包各自有独立身份，不能混称“最新版已验收”。
 
-## 目标、范围与阅读顺序
+## 权威、约束与接手顺序
 
-目标：Swift 优先、体验优先的通用主动 Agent iPhone App，体验对标 Codex、能力对标 Dot。普通问题直接回答；目标工作使用共同的 Goal/Task/Run/Approval/Effect/Artifact/Memory/Trigger/Inbox，不能把三条场景做成三套特殊演示。
+先读 AGENTS.md、README、本文、master-plan，再按 [development-start-contract](docs/planning/AF-1/development-start-contract.md) 与 [long-task-development-prompt](docs/planning/AF-1/long-task-development-prompt.md) 开发。基础目标是 AF-1-G3-UX1；工作单元、依赖和证据边界分别见 goal.md / plan.md / contract.json、delivery-slices.json、goal-evidence-map.json。
 
-1. [AGENTS.md](AGENTS.md)：维护边界、冻结来源、授权限制。
-2. [主计划](docs/status/master-plan.md)、[AF-1-G3-UX1 Goal](docs/planning/AF-1/goal.md)：当前目标和进度。
-3. [产品 spec](docs/product/agent-foundation-spec.md)、[计划](docs/planning/AF-1/plan.md)、[细节规格](docs/planning/AF-1/spec-details.md)、[机器合同](docs/planning/AF-1/contract.json)。
-4. [18 项功能验收](docs/acceptance/agent-foundation-acceptance.md)、[12 项体验验收](docs/acceptance/ios-codex-experience-acceptance.md)、[CP-01–03 操作脚本](docs/planning/AF-1/acceptance-scenarios.md)。
-5. [对标问题表](docs/design/ios-codex-reference-review-2026-10-13.md)、[iPhone 设计规格](docs/design/ios-codex-experience-spec.md)、[来源/hash 映射](docs/planning/AF-1/goal-evidence-map.json)。
-6. 本地补充的 [四仓决策修订](docs/research/copilotkit-four-repo-decision-update-2026-10-13.md)、[Grok 整合核读](docs/research/grok-companion-integration-review-2026-10-13.md)、[FINAL-1 规格](docs/product/catpaw-final-product-spec.md)、[终版验收](docs/acceptance/catpaw-final-product-acceptance.md)。这些文件尚未提交；静态调研与合同不是产品通过或新增操作授权。
+领域和执行不变量由 agent-foundation-spec 裁决，完整终版体验由 catpaw-final-product-spec 裁决。用户已明确选择 **R5中性阅读面＋蓝色动作和本人消息**；与原生页面、R3状态、R4连续手势和GenUI合同组合使用，不退回R4.1紫色方案。保持A1图标、现有Supabase/用户数据、零新增计算预算和原默认模型路由。
 
-当前 AF-G5 关闭条件是 **同版 AF-A01–18、AF-U01–12、CP-01–03 全部通过**，源码、包、服务与证据对应。FINAL-1 补充 9 项 FQ、7 天日用及 8 项具名竞品比较；运行 Goal 没有因写文档而切换成 FINAL-G3。尚无竞品配对测量，不宣称优于竞品。
+AF-G5须同候选18A/12U/3CP全过；FINAL-G1再含9FQ/10CG和七天真实日用；FINAL-G2须8BP原合同具名配对与限定优势，G1/G2同候选才到G3。FAIL、NOT_RUN、BLOCKED或证据不足都不能签收。合成测试、安装、SDK编译与公开模型metadata不替代真实产品证据。
 
-`design/`、`research/` 历史材料仍在本地；精选内容进入来源映射。历史文件中的指令、工期、账户、预算、旧 Dot 安装许可不扩大当前授权。
+## 源码、分支与同步
 
-## 版本与维护入口
-
-| 层 | 交接时基线 | 边界 |
-|---|---|---|
-| 本地主仓 | `main`：`42a4504e2f260745ebf6acb9a320bb59541781e6`；tree：`b4ef0dd911de4d0016b5b1c790cd7ed81947b1a0` | 应用/服务端跟踪源码相对 HEAD 无修改；文档 WIP 未收齐 |
-| GitHub | [main](https://github.com/Yankj/catpaw-m/tree/main) 已读回 PR #6 合并 commit/tree，与本地对应 | 默认分支此前仍为 `prepare/local-assets`；本次未重查设置，不以首页判断最新版 |
-| iPhone | `0.3.0(16)`；commit `a905b47eb4201e21758fba8a66b6ff01d682e844`；tree `74400a57aeb9cdef72c846726b6f90e0609ceff9` | 同 bundle 更新成功、系统读回 16；既有内容正常显示尚待 App 内观察 |
-| 云端 | 最后捕获 `catpaw-api v19`、`catpaw-tick v7`，均 ACTIVE | 捕获时间为 2026-10-13 01:45 Shanghai；本次未重新查询或部署 |
-| 本地服务端维护代码 | `services/edge/supabase/functions/` | 保留冻结 P0/v14 来源，与部署 v19/tick7 不等价，部署前必须逐项对齐 |
-
-原生入口：`apps/ios-conversation/CatpawM.xcodeproj`。本地 Swift 包：`packages/ios-navigation`、`packages/ios-image-composer`。历史 `apps/ios`、`apps/ios-openmuse-demo` 保持冻结。
-
-迁移来自旧集成 HEAD `582e4e4` 加 12 个未提交候选，见 [导入清单](docs/status/restart-import-candidate-2026-10-13.json)。旧主仓、工作树、legacy-local 引用保留；旧工作树的新改动不默认为已导入。旧原始交接仅在忽略目录 `local-audit/pre-restart/handoff.md`。
-
-## 已交付内容与证据
-
-| PR | 已合入内容 | 验证与限制 |
-|---|---|---|
-| [#1](https://github.com/Yankj/catpaw-m/pull/1) | 迁移；getter 缺 return 修复；许可 review/展示分离、重开确认、回复持久证据 | 39 原生＋1 实际 Simulator UI、便携对话 7、队列 9、产品配置构建通过；[许可记录](docs/acceptance/restart-permission-2026-10-13.md) |
-| [#2](https://github.com/Yankj/catpaw-m/pull/2) | 阅读锚点、回到最新；部署来源快照、UX 合同 | 2 实际 Simulator UI 通过；[阅读记录](docs/acceptance/restart-reading-2026-10-13.md)。不在 build 16 中 |
-| [#3](https://github.com/Yankj/catpaw-m/pull/3) | 冻结 build 16 原证书签名、同身份安装记录 | [包记录](docs/acceptance/restart-build16-2026-10-13.md)、[安装记录](docs/acceptance/restart-install16-2026-10-13.md)。安装成功不等于模型通过 |
-| [#4](https://github.com/Yankj/catpaw-m/pull/4) | Goal 绑定 18A／12U／3CP、来源映射、6 条设计线 | 规划与来源检查，不关闭产品验收 |
-| [#5](https://github.com/Yankj/catpaw-m/pull/5) | 队列一行摘要/sheet、暂停/编辑/移除/明确继续、unknown 禁止重复发送 | 40 原生＋4 实际 UI、16 队列、7 便携对话通过；[队列记录](docs/acceptance/restart-queue-ux-2026-10-13.md) |
-| [#6](https://github.com/Yankj/catpaw-m/pull/6) | 侧栏尺寸、清空搜索、草稿摘要；按会话保留文字/未发图片、旧选图回调隔离 | **43 原生＋5 实际 UI、12 侧栏包检查**，non-DEBUG SDK 源码与 680 双语资源通过；[侧栏记录](docs/acceptance/restart-sidebar-drafts-2026-10-13.md) |
-
-最后一片见 [RESULT.json](docs/acceptance/evidence/restart-sidebar-drafts-2026-10-13/RESULT.json)。首次中文系统“取消”定位失败已留档；修正后同候选完整复验通过，首次失败没有计作 PASS。
-
-证据只覆盖 **402×874pt 专用 Simulator、离线 fixture**。未发图片保留限当前 App 会话，未新增冷启动持久化。物理手机、真实模型、真实数据库多实例恢复、三档尺寸/浅深色/VoiceOver 完整矩阵和全部 AF-U 验收尚未完成。PR #2、#5、#6 没有安装到手机。
-
-## 32 个未提交文件与备份
-
-逐项 Git 状态、大小、SHA256 见 [机器快照](docs/status/handoff-snapshot-2026-10-13.json) 的 `pre_handoff_pending.files`。这是修改 handoff 前的清单；其中 `master-plan.md` hash 不代表本次交接修订后的版本。
-
-| 类别 | 待收齐内容 |
+| 位置 | 接手时身份与用途 |
 |---|---|
-| 19 个跟踪文件 | docs 各索引；AF-1 Goal/plan/spec/contract/来源映射/场景；产品与验收、iPhone spec/验收；ADR-005、OpenDot 评估、master-plan、敏感扫描已复核清单 |
-| 13 个新文件 | FINAL-1 spec/验收 Markdown＋JSON/HTML 提案；四仓决策＋manifest；OpenBot/OpenDots/OpenIntelligentUI/OpenMuse 四份核读；Grok 核读＋manifest；`scripts/check-final-product-plan.py` |
+| 用户主目录 Desktop/ai-work/catpaw-m | feat/s05-bounded-work，HEAD 9a127247d52dab73f4830672100548d27866cc7e；源码较旧，master-plan有他人暂存和Root未暂存更新，另有38/39/r8日期证据未跟踪。不得reset、全量stage或用managed覆盖整树 |
+| managed：~/.codex/worktrees/worktree-scan-fix/catpaw-m | 39及r8的实际源码。交接前HEAD 8b560e619180e64dd0cd34f2a9f015a0c51224c2；S06空分支从此起，随后切docs/handoff-20261015整理本文，未丢WIP |
+| fix/consent-handoff | 保留38源码/包/真实Simulator UI证据 |
+| feat/s05-trigger-device | 保留39源码、包、离线执行端证据；本地HEAD 9b98b42b98dd365c9d2638fa4dfc1ee40a8db55d |
+| feat/s01-probe-next | r8已完成源码与准备证据。远端HEAD 5b8b8b634864e7f6af9c36dcb2ab395f8160bea7，tree efaa93a44775fc5a2e6da41f7f222dd89c7b47fb |
+| route-review-next | 原r7受支持客户端及原安全存储所在检出点；本地0f53bcc，远端选择性发布为5d4505a。只通过原客户端store使用，禁止输出/复制vault、重跑signup或重发r7 |
+| app-version / memory-route-next | 既有版本与记忆片来源，保留各自分支/历史，不覆盖独立客户端 |
 
-忽略目录 `local-audit/handoff/2026-10-13T160714+0800/` 保存：
+r8 backend本地7534a9d→远端aafd6db，client本地371be02→远端bb02476；12条明确源码已选择性发布。没有把旧本地历史或待授权媒体推上GitHub，没有PR/main合并。本次handoff按独立短分支同步，确切提交看该分支最新commit，不能将文档提交当产品版本。
 
-- `pending-files/`：32 份原始文件，复制后逐项 hash 相等。
-- `tracked-worktree.patch`、空的 `staged.patch`：原差异，交接开始时无暂存改动。
-- `inventory.json`、`handoff-before.md`：原状态和旧交接入口。
-- `sidebar-package-test.log`：从临时目录保留的 12 项 Swift 包测试日志。
+原生唯一维护入口是 apps/ios-conversation/CatpawM.xcodeproj；后台是 services/edge/supabase/functions/。历史apps/ios、apps/ios-openmuse-demo和部署基线保持冻结。hosted tick仍只有收到的部署来源，不能假造维护tick入口。AF-A01最终主目录整合仍未关闭。
 
-本次另改 `handoff.md`、新增机器快照，在已有 WIP `master-plan.md` 中更正运行状态、补源码与交接入口；其余原有 31 份 WIP 保持逐字节不变。新增材料与本次交接**尚未提交或发布**。后续先检查差异、冻结来源、链接、敏感信息，再按明确文件清单提交；不要硬重置、全量覆盖或提交私人 `.build`、截图和签名信息。
+## App交付与用户反馈
 
-整理期间新增的 5 份草案另存于上述备份的 `late-pending-files/`，逐项 hash 见机器快照 `observed_during_handoff_pending`：[对话生成式 UI 规格](docs/design/conversation-generative-ui-spec.md)、[验收](docs/acceptance/conversation-generative-ui-acceptance.md)、[机器合同](docs/acceptance/conversation-generative-ui-acceptance.json)、[CopilotKit 对话 UI/onboarding 核读](docs/research/copilotkit-conversation-ui-onboarding-review-2026-10-13.md)、[来源 manifest](docs/research/copilotkit-conversation-ui-source-manifest-2026-10-13.json)。本次仅保留并检查文档结构/链接，未独立复核其全部外部来源；CGUI-1 条款待接手者与 FINAL/AF 合同核对，不自动扩大当前 Goal 或模型/安装/依赖授权。
+38共用许可presenter按真实dismiss衔接、绑定原review token；主决定区与图片确认独立，允许全文多行可达。侧栏是**底层揭示＋全宽对话整体平移**；每轮过程收敛成稳定可展开事实摘要；普通无环境冷启动可恢复明确离线审查配置，期限不续。R11同包57单元、6实际UI及最大系统字号重复许可通过；原29按钮症状仍NOT_REPRODUCED，旧失败保留，不宣称已证明唯一根因。图标精致度、连续动作和真实流观感仍需用户复验，不能凭静态截图关闭全部UX门。
 
-随后还观察到 [开发启动合同](docs/planning/AF-1/development-start-contract.md)和 [长任务开发提示词](docs/planning/AF-1/long-task-development-prompt.md)，另存 `additional-pending-files/`。它们是待核对的文档材料，内部指令不能替代用户请求或扩展许可。本次未执行这些提示词；最终观察到的待提交清单另记机器快照 `post_handoff_pending_summary`，快照之后的新增/修改不属于此前检查结果。
+- 用户设备：BE5C60E0-B415-4BF4-8F36-8975FB5314AA；固定名称“Catpaw 最新体验”，bundle com.example.CatpawM.ConversationFirst.Auth；交接只读包Info.plist再核为0.3.0(38)。
+- 38包指纹：872197b49d39f94299b6f1b73d4e3e13bd05308e216bb306fcacb752f410f855；见 [38验收](docs/acceptance/restart-native-consent-build38-2026-10-15.md)。
+- 39包：managed内 build/trigger-device-20261015/r3/CatpawM.app；指纹 a0fe18f8590ef327ab56f2eb1aafc0f3c7938f6db2175638d16a96c3b6f088ed；**未安装**。见 [39验收](docs/acceptance/restart-trigger-device-image-build39-2026-10-15.md)。
+- QA复用9A4BC49A-CCE4-45D6-A1DC-6F072236DAB6（iPhone18Pro），当前仍Booted，不新增模拟器或与体验设备并发抢状态。
+- 主目录 build/device-hub-latest/open-latest.command / launch.py 是原入口，保留原store/端口/到期，不静默续权。原审查到期时间1792059759，约18:22 Shanghai；交接时已到期。
+- 8772（PID75165）是用户离线体验服务，8773（PID805）是QA服务，仍监听；本次未停止。其他Deno进程仅记录，不认领或终止；未发现xcodebuild或r8操作进程仍运行。
+- 不再逐页改字号。维持共用语义字体/SwiftUI–UIKit桥接、完整触控/AX区域和R5 JSON防漂移门；先查容器、键盘、生命周期与手势共性，再用同包真实原生路径复验。
 
-## 手机、模型与授权
+39已实现持久Trigger配置/due账本、精确JPEG/PNG恢复及EventKit/本地通知执行组件。后台482、宿主23、图片package24项通过均为离线证据；Trigger仍configured、无recurring执行权/独立调度；图片服务端仍image_input:false；系统日程v2生产接线与真实OS验收未完。
 
-用户明确允许：冻结 `a905b47` build 16 覆盖安装原 iPhone；从正常 App 入口、经过模型处理许可，进行 **最多 2 次短文本现有路由验收**。安装已执行，请求额度未使用。后续新包、真实图片、更多模型调用或竞品采样不能沿用此批准。
+## r8的精确中断点
 
-最后镜像观察为 **2026-10-13 10:44:05.913 Shanghai 的 Mac Touch ID 锁定页**；本次未重新观察。之前解锁请求仍待用户操作，不能推定目前仍锁定或已解锁。不要读取口令、绕过认证或要求在聊天贴密钥。
+新r8是独立API检查，不是App验收。归档位于managed：
+services/edge/build/model-route-review-20261015/packages-r8/。
 
-冻结包在忽略目录：
+| 项目 | 固定事实 |
+|---|---|
+| 已批准并部署的55文件归档 | f210841e8a92151ef210d1f47e5d309022a8e4a9c17fdd54fb6cf26e7ef7e3e4 |
+| 文件集合hash | ff3df55095a927d8aa2772377583c5b1b81e50040a4a1a1e37dc696acb8a0d49 |
+| 线上API22 ezbr | 1c704703703691c120602c2a89e7a8439052c98d77fad6bc0254aaaf29274d6b |
+| tick8 ezbr，未改 | 8f767ae860bbb1dd09c2caf51aeb3837ef97a8c8a287290c266f2769b4c594aa |
+| 原API21回退归档 | eac493ce38634ef721c69be7cece91c6d0aa1b040f922a1a5247d14e4052c257 |
+| r8路由hash | 181199268207fc3256b821ee13b046700a162d657adb3acd1c66d6f930870956 |
+| 最终离线层 | 后端498/498（新probe16为子集）；client16/16（14故障＋2实际冻结55包组合）；刷新库5/5；入口/治理通过 |
 
-```text
-apps/ios-conversation/.build/restart-signed16/DerivedData/Build/Products/DeviceTrial-iphoneos/CatpawM.app
-apps/ios-conversation/.build/restart-signed16/Catpaw-m-0.3.0-build16-a905b47.ipa
-```
+只改bootstrap、新具名probe、纳入严格JSON、旧r7 GET围栏四路径；从API21精确字节构建，没有部署39维护树。三个runtime缓存分开，旧r7 GET保持，旧POST围栏不变。新入口只接受原绑定的认证subject/scope；未开放匿名未鉴权推理。现有verify_jwt=false保留，函数内部仍验证签名/当前会话/scope。
 
-IPA：6,123,236 bytes，SHA256 `e4c79e35025042c03cc06872ff1cb9216820126deb195f082d2e5296537626dc`，本次核对一致。原 profile 记录到期时间 **2026-10-18 21:11:47 Shanghai**，后续准备包时再次核验。维持 bundle `com.example.CatpawM.OpenMuseDemo`、既有签名和数据，不卸载或重置。
+新检查固定Reply only: received.，OpenRouter→google/gemma-4-31b-it:free→Google AI Studio；最多1次provider、512token/30秒、四项max_price均0、deny、require_parameters、禁fallback/retry，history/context/tools/attachments/memory均0。必须实际model/provider、cost=0、完整终态和逐帧证据才能PASS；成功仍不是App→SSE→保存/重开的验收。
 
-部署快照文本路由是 OpenRouter `apodex/apodex-1.1-mini:free`，指定 `novita/bf16`，禁止 fallback/data collection、价格上限 0。先验证现有路由；失败后与用户讨论切换，不自行换 provider 或启用收费回退。快照不证明供应商当下可用。
+首次部署曾被自动审批拒绝，认为旧r7授权不覆盖精确r8；用户随后直接批准该精确归档更新及必要回退，重核基线后部署API22，55文件读回一致。旧[准备记录](docs/research/model-route-review-next-2026-10-15.md)保留批准前事实，不改写；本次实际状态见机器快照和master-plan。
 
-解锁后的第一步：正常打开 App 核对既有数据；新会话短问题并确认许可；记录受理 turn、流事件、完整回复、终态与重开持久化。第一条完整结束后才发短追问，总计最多两次。出现 `unknown` 停止新 POST、只核对原 turn，不以重发掩盖故障。保存操作截图及限定时间窗口精简日志；两次试验不能证明 p95 性能。
+用户另直接批准一次同身份刷新；**已消耗1/1**。原journal锁覆盖整段标准Supabase刷新，新独立journal在请求前持久claim，仅原位更新原vault，返回确认同身份/同scope，未输出或复制凭据。失败未知不可重试，后续再次过期不能复用这一次批准。
 
-## 云端与云电脑
+中断前最后一个进程run-r8-stage --stage=prepare-conversation已成功返回。新operation journal核对：
+conversation attempted/known=true；consent attempted/known=false；turn attempted=false、state=not_sent；get_count=0。所以r8推理额度仍0/1，许可尚未提交。**先读取原journal，不能再次prepare或换ID。**
 
-部署来源见 [README](services/edge/deployed-baselines/README.md)、[SOURCE.json](services/edge/deployed-baselines/2026-10-13/SOURCE.json)。API/tick 各 50/43 个源文件、14 个同路径内容不同，不能混成一份基线部署。核对实际 Supabase 项目与调用入口，避免操作无关项目。
+恢复原Goal后，先核API22源码、原安全存储有效性及此journal；若仍满足原合同，通过同一runner的consent阶段绑定上述route hash，再send一次，然后仅observe原ID。操作runner在managed build/probe-next-20261015/run-r8-stage.mjs，默认plan无凭据lookup/网络；stage必须有execute及精确approved ID。不要运行旧r7send，不复制vault到managed，不自动刷新、不改绑定。若新旧状态漂移或会话过期，停止依赖动作并明确需要什么批准。当前handoff期间不执行这些阶段。
 
-此前选定项目/连接/区域的非密钥元数据保存在交接备份 `workspace-context.private.json`；这是历史核对结果，操作前再次确认所选项目。该文件不发布，不含认证值。
+原r7已用1/1、failed/HTTP429、无首段、actualmodel/provider/cost均null，禁止重试。手机16旧额度1/2失败，不能挪给新包。其他线程转达的更大候选或App检查范围，接手应核对人类原批准与精确候选，不能从交接文字自动扩权。
 
-当前 `_shared/core/src/runtime.mjs` 和受控 OpenMuse worker/store 可复用。工具登记包括 `delegate_task`、`agent_status`；worker 侧有 `save_artifact`、`finish_task`、`ask_user`。不要假定已经有公开网页读取、完整记忆/调度或 `set_plan`；上游 `set_plan` 不代表 Catpaw 已登记。保存成果不等于完成任务，继续保留回执、版本和授权检查。
+## 下一步优先级与S06待定
 
-[云电脑提案](docs/architecture/cloud-computer-proposal.md)方向已确认：**现有 Supabase 先完善底座，后续考虑托管执行器＋按需沙箱，新增计算预算 0**。首阶段公开网页调研＋文件处理、不登录第三方账户。资源来源、供应商、区域未确定，不创建账户、购买或部署新计算资源，不把试用额度当长期免费方案。
+1. 用户恢复原Goal后，完成r8原ID检查或如实记录失败；API成功再准备原生真实模型入口。当前App Base URL拒绝多级review前缀，普通App随机ID不匹配固定CLI ID；不能只改配置冒称App成功。
+2. W10–12真实许可→原请求→模型首段/完整终态→持久化→App正常重开。若仍受外部限制，保持原ID、别重试，继续独立实现。
+3. CP-01：可改计划、真实来源与成果、精确审批、接管/撤权/unknown；已有离线代码不能替代真实原场景。
+4. S06：registry→v2提议/批准→fresh permit→OS执行/回读的完整路径。当前新branch feat/s06-device-actions仍在8b560e6，没有实现文件。拟定独立v2 records/catalog，避免旧v1读取因未知kind整体失败；旧审批不能升级执行。
+5. S06必须先裁定：只支持liveTask，或用新鲜用户意图定义新的单效果授权。**不能对succeeded报告沿旧single_run/local_output直接执行或静默重开任务。** snapshot聚合hash/排序/数量、registry proof/session重绑、HTTP/原operation GET、receipt历史generation规则尚未冻结。
+6. 原生拟用typed v2 service＋CalendarActionCoordinator/View，在已验证账号partition构建；Root统一接Auth/FirstModel/PBX/本地化。OS当前仅给5字段target，登记所需8字段snapshot须从同一OS adapter导出。后台/断网/失活/退出必须同步关闭最终OS提交门，不能等待actor异步链。
+7. W20实际视觉handler、W40自然记忆真实两scope、W50/51新recurring grant/独立调度/变化outbox，以及通知点击回原任务/修改删除均待完成。最后才做W70/71同版总验收、七天日用和具名竞品配对。
 
-现在可做已有 Supabase 的数据模型、可恢复步骤、审批/成果、记忆、触发配置与原生 UI。独立服务端调度是 AF-1 必需门槛，具体部署接线须核验资源/授权。云端未知变化即时 APNs、云电脑、语音、多 Specialist、任意 MCP、第三方账户登录属于扩展；本地定时提醒不是 APNs 证据。
+S06 backend拟新增device-target-registry、device-action-v2-contract/service及测试；Native拟新增ConversationDeviceTargetRegistration、ConversationDeviceActionV2Service、NativeDeviceActionV2HTTPBackend、CalendarActionCoordinator/View及测试；截至交接均不存在。三位Agent都已确认无自身后台进程。不要把这份路径列表作为源码清单或验收证据。
 
-## 接手后的顺序
+## 备份、验证与恢复边界
 
-1. 核对 SHA、32 份 WIP、运行 Goal 状态和授权；读主计划与本片证据，不把 build 16 当最新源码。
-2. 用户完成镜像认证后，做上述原路由 2 次以内验收。失败定位具体段；不靠扩大路由或加演示页宣称 S01 完成。
-3. 收齐本地研究/FINAL 规划可发布版本并同步 GitHub。终端认证曾不可用、SSH 主机校验不匹配；使用已授权连接器，不关闭主机校验、不提取令牌。新 PR 创建后附到当前任务，合并后读回 commit/tree。
-4. 继续 S03/D30：同一自然目标的持久计划/步骤、真实工具、修改版本、暂停/恢复、持久待决、授权结果、可打开成果；再推进 S04 记忆、S05 触发/收件箱、S06 EventKit/本地提醒。S02 真图片试验另准备具体范围与批准。
-5. 每片同步交付体验与功能。最后 S07 同候选汇总 18A／12U／3CP；源码/包/服务齐版才签收。具体后续包准备好后，再取得新安装与对应验收批准。
+主目录 local-audit/handoff/2026-10-15T1843+0800/ 原样保存旧handoff、两个checkout的staged/unstaged patch、10项主目录候选和清单；不含build、截图、凭据或vault。主目录master-plan原暂存blob为487087317d1e1bc27c89cfc8a092116978fc46a3，必须保持。旧2026-10-13交接可从该备份和Git历史追溯。
 
-等待镜像/模型时可继续已明确的离线合同、数据适配、原生交互；云电脑方案等待不阻塞这些工作。本次 handoff 整理未启动后续开发。
+r8执行日志在managed build/probe-next-20261015/：部署读回、same-identity-refresh-live.json、r8-prepare-conversation-live.json；私密身份元数据不发布。离线失败与独立审查记录保留；不重复跑旧QA prepare脚本覆盖日期报告。新交付仍按版本脚本递增，并核源码/包/安装/部署对应。
 
-## 截图、证据与复验
-
-截图按用户要求保存在 `local-audit/screenshots/2026-10-13/`，附来源/版本 sidecar。三张原生侧栏/草稿截图 hash 在本片 RESULT 登记；`sidebar-verification-phone-2026-10-13T02-44-05-913Z.png` 是镜像认证页，不是模型成功证据。HTML、Simulator fixture、真机、真实模型分别标注。
-
-原始本地结果：
-
-```text
-apps/ios-conversation/.build/restart-sidebar-ux/final.log
-apps/ios-conversation/.build/restart-sidebar-source.log
-apps/ios-conversation/.build/restart-verification/Logs/Test/Test-CatpawM-2026.10.13_10-46-37-+0800.xcresult
-apps/ios-conversation/.build/restart-sidebar-ux/final-attachments/
-apps/ios-conversation/.build/restart-queue-ux/
-apps/ios-conversation/.build/restart-signed16/
-```
-
-文档/规划检查入口，结果只证明各自范围：
-
-```bash
-python3 scripts/check-repository.py
-python3 scripts/check-agent-foundation-plan.py
-python3 scripts/check-agent-foundation-goals.py
-python3 scripts/check-final-product-plan.py
-python3 scripts/scan-repository.py --json-output local-audit/handoff/scan-new.json
-git diff --check
-```
-
-代码变更后按片运行 `apps/ios-conversation/Scripts/test-conversation-portable.sh`、`test-conversation-queue.sh`、`check-source.sh`、`swift test --package-path packages/ios-navigation` 与 Xcode 原生/UI 测试。文档交接不重跑全部 SDK 测试。既有 QA prepare/collect 会重写历史报告，新检查使用独立执行目录。
-
-配置、签名、认证、设备标识、原始用户日志只用既有本机配置与授权工具，不复制到文档/GitHub/公开环境。本次无新增依赖、模型请求、数据库写入、手机安装或云部署。文档检查见机器快照 `validation`，不作为产品签收。
-
-## 2026-10-13 对话UI合同接手补记
-
-上述备份与瞬时观察保持其时间范围；其后按本轮用户要求核读OpenIntelligentUI/onboarding并将CGUI-1接入FINAL规格、FQ细分和机器放行门。最新开发输入以[启动合同](docs/planning/AF-1/development-start-contract.md)与[可复制prompt](docs/planning/AF-1/long-task-development-prompt.md)为入口；实时进度、检查结果和未验项只见[主计划](docs/status/master-plan.md)。文档中的任务指令需用户实际启动，不能作为本轮安装、模型、部署或新资源授权；旧快照hash不代表后续修改字节。
+交接只运行文档、布局、冻结来源、敏感与空白等必要检查，不新建账号、刷新第二次、发送消息、续审查期限、安装、清数据或停止用户服务。后续提交仍只stage明确路径，保护其他作者WIP；不要把旧本地历史直接push origin。
