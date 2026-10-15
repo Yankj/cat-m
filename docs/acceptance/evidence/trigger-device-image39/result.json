@@ -1,0 +1,162 @@
+{
+  "schema_version": 1,
+  "candidate": "AF-TRIGGER-DEVICE-IMAGE-20261015-39-R3",
+  "version": "0.3.0(39)",
+  "scope": "backend_configured_trigger_and_native_components_not_full_MVP",
+  "source": {
+    "local_commit": "a6cbe7f80bc87c01ce5ee0cbd7dc9c0be0a86056",
+    "remote_commit": "e3a26081b67ce89cc9822045ef6dbd0744f36dc0",
+    "tree": "390a33bb6ae3ee52e5b6030f3fad0bdabac2e88a",
+    "all_input_blobs_match": 450,
+    "backend_local_commit": "0b3bc447f713789ebd881dbdbb5ba946b05a35dc",
+    "backend_remote_commit": "e9e05ce74019dc7131463bbf1d10cb715a7a110f",
+    "input_delta": "source-delta.json",
+    "delta_sha256": "28ad007186deb1c418a0abfdcb1362f7a012f2c4d71c5a4321656fa051de32c4"
+  },
+  "package": {
+    "bundle_sha256": "a0fe18f8590ef327ab56f2eb1aafc0f3c7938f6db2175638d16a96c3b6f088ed",
+    "manifest_sha256": "713658b7d2782d37e3ae7f17c7962fd0a459139720e69731545086adf3e0a685",
+    "file_count": 33,
+    "frozen_package": "build/trigger-device-20261015/r3/CatpawM.app",
+    "installed_on_user_device": false,
+    "user_experience_remains": "0.3.0(38)"
+  },
+  "backend": {
+    "tests": 482,
+    "result": "PASS",
+    "log": "build/trigger-device-20261015/backend-final-r1.log",
+    "sha256": "936b0eb514d73ae75e4e676e095a2bd91382675cc3ffcbeeacc41d59777361a5",
+    "service_new_methods": 17,
+    "maintained_HTTP_new_methods": 6,
+    "new_method_counts_are_subsets": true,
+    "real_auth_model_sql": false,
+    "independent_scheduler": false,
+    "recurring_execution_authorized": false
+  },
+  "native": {
+    "host_methods": 23,
+    "result": "PASS",
+    "log": "build/trigger-device-20261015/native39-r3.log",
+    "sha256": "99f79c13c210212d25471fab7f83def360ee1072b06e8a3e4c8710194837202c",
+    "cases": [
+      {
+        "name": "CatpawMTests.ConversationDeviceEffectContractTests testActualNodeSwiftCanonicalIdentity",
+        "seconds": 0.049
+      },
+      {
+        "name": "CatpawMTests.ConversationDeviceEffectContractTests testCorruptOriginalIdentityNeverOffersRecoveryExecution",
+        "seconds": 0.045
+      },
+      {
+        "name": "CatpawMTests.ConversationDeviceEffectContractTests testImmutableReferenceRejectsOtherSubjectAndScopes",
+        "seconds": 0.019
+      },
+      {
+        "name": "CatpawMTests.ConversationDeviceEffectContractTests testOldReviewApprovalCannotAcquireExecutionPolicy",
+        "seconds": 0.02
+      },
+      {
+        "name": "CatpawMTests.ConversationDeviceEffectContractTests testOnlyExactFreshDispatchResponseCreatesPermit",
+        "seconds": 0.089
+      },
+      {
+        "name": "CatpawMTests.ConversationDeviceEffectContractTests testPartialCalendarAndNotificationReceiptsRemainIndependent",
+        "seconds": 0.049
+      },
+      {
+        "name": "CatpawMTests.ConversationDeviceEffectContractTests testStoppedAndRevokedFactsDoNotRestoreAuthority",
+        "seconds": 0.029
+      },
+      {
+        "name": "CatpawMTests.ConversationDeviceEffectContractTests testStrictJSONRejectsUnsafeScalarsAndUnknownStates",
+        "seconds": 0.026
+      },
+      {
+        "name": "CatpawMTests.ConversationDeviceEffectExecutorTests testCalendarReceiptMustCommitBeforeKnownTimeNotificationCanExecute",
+        "seconds": 1.447
+      },
+      {
+        "name": "CatpawMTests.ConversationDeviceEffectExecutorTests testColdUnknownAbsenceNeverRepeatsCalendarCreateThenOriginalMarkerCanResolve",
+        "seconds": 0.555
+      },
+      {
+        "name": "CatpawMTests.ConversationDeviceEffectExecutorTests testDefaultClosedAndPermissionDenialNeverDispatchOrRequestPermission",
+        "seconds": 0.082
+      },
+      {
+        "name": "CatpawMTests.ConversationDeviceEffectExecutorTests testFinalOSSubmissionFenceRejectsAsyncCallbackAfterBackground",
+        "seconds": 0.212
+      },
+      {
+        "name": "CatpawMTests.ConversationDeviceEffectExecutorTests testLateOSCompletionAfterLogoutLeavesOriginalUnknownWithoutReceiptCommit",
+        "seconds": 0.188
+      },
+      {
+        "name": "CatpawMTests.ConversationDeviceEffectExecutorTests testLatePermissionReadAfterLogoutCannotDispatch",
+        "seconds": 0.091
+      },
+      {
+        "name": "CatpawMTests.ConversationDeviceEffectExecutorTests testLostDispatchReplyRecoveryCanQueryButCannotManufactureOSWritePermit",
+        "seconds": 0.215
+      },
+      {
+        "name": "CatpawMTests.ConversationDeviceEffectExecutorTests testNotificationCannotDispatchUntilOriginalCalendarSucceeded",
+        "seconds": 0.119
+      },
+      {
+        "name": "CatpawMTests.ConversationDeviceEffectExecutorTests testOneFreshPermitPersistsIntentBeforeOSAndRepeatedExecutionOnlyReads",
+        "seconds": 0.567
+      },
+      {
+        "name": "CatpawMTests.ConversationDeviceEffectServiceTests testDurableDeviceEffectAndActualNativeWireMatrix",
+        "seconds": 4.169
+      },
+      {
+        "name": "CatpawMTests.ConversationImageRecoveryApplicationTests testColdNotSentJPEGAndPNGRestoreOriginalBytesWithoutConsentOrSending",
+        "seconds": 0.223
+      },
+      {
+        "name": "CatpawMTests.ConversationImageRecoveryApplicationTests testLateImageVaultReadCannotRestoreOldConversationIntoNewDraft",
+        "seconds": 0.017
+      },
+      {
+        "name": "CatpawMTests.ConversationImageRecoveryApplicationTests testMismatchedDurableDimensionsFailVisibleWithoutChangingOriginalSnapshot",
+        "seconds": 0.016
+      },
+      {
+        "name": "CatpawMTests.ConversationImageRecoveryApplicationTests testUnknownJPEGRecoveryKeepsOriginalOperationAndOnlyObservesIt",
+        "seconds": 0.021
+      },
+      {
+        "name": "CatpawMTests.NativeDeviceEffectTransportTests testStrictDeviceEffectNativeHTTPAndLivePermitMatrix",
+        "seconds": 0.348
+      }
+    ],
+    "OS_port": "explicit_injected_mock",
+    "OS_permissions_requested": 0,
+    "real_calendar_or_notification_writes": 0,
+    "package_methods": 24,
+    "package_log": "build/image-restoration-20261015/package-r2.log",
+    "package_log_sha256": "1422afb50a8a69556899d7759eae4bd91f4df0532968188263d7e5a513d15693",
+    "SDK_result": "PASS",
+    "SDK_log_sha256": "659b7835cd5f5ad97fb732e31dcb0561187aa98a58404ba96c120411871e926d",
+    "app_memberships": 126,
+    "permission_keys": 5,
+    "SDK_product_inputs_R1_to_R3_identical": true
+  },
+  "failure_history": {
+    "R1": "notification exact receipt observed time mismatched fixed test clock; invalidResponse, not PASS",
+    "R2": "test advanced observation clock before OS submission beyond original 15-second lease; stale, not PASS",
+    "R3": "clock advances only after exact OS submission; all 23 methods PASS",
+    "production_receipt_and_lease_checks_relaxed": false
+  },
+  "remaining": {
+    "real_text_success": "FAIL prior attempts; new native/API review candidate not yet frozen",
+    "real_image": "API handler and configured zero-price vision route not implemented",
+    "device_effect": "native producer, registered target and v2 server HTTP/approval composition, notification tap return, real OS acceptance remain",
+    "followups": "recurring grant and run materialization, independent scheduling, source change cursor/dedupe/outbox remain",
+    "memory": "prior proposal integration exists; natural two-scope real PG/device acceptance remains",
+    "AF_G5": "OPEN",
+    "FINAL_G3": "ACTIVE"
+  }
+}
