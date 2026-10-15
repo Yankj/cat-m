@@ -265,4 +265,23 @@ final class CatpawAcceptanceUITests: XCTestCase {
             if let value = ProcessInfo.processInfo.environment[name], !value.isEmpty { app.launchEnvironment[name] = value }
         }
     }
+
+    // UX audit tour (CATPAW_UX_TOUR=1, installed DeviceTrial app via CATPAW_UI_BUNDLE_ID): screenshots of every surface + common gestures.
+    func test12UXTour() throws {
+        guard ProcessInfo.processInfo.environment["CATPAW_UX_TOUR"] == "1" else { throw XCTSkip("tour only") }
+        let app = XCUIApplication(bundleIdentifier: bundleID); app.launchArguments += ["-CatpawSkipOnboarding"]; app.launch()
+        XCTAssertTrue(input(app).waitForExistence(timeout: 30)); Thread.sleep(forTimeInterval: 1.5)
+        shot(app, "ux-01-conversation")
+        let msgs = app.scrollViews["chat.transcript"]
+        if msgs.exists { msgs.swipeDown(); Thread.sleep(forTimeInterval: 0.6); shot(app, "ux-02-scrolled-up") }
+        let text = app.staticTexts.allElementsBoundByIndex.last(where: { $0.isHittable && $0.label.count > 12 })
+        if let text { text.press(forDuration: 0.8); Thread.sleep(forTimeInterval: 0.8); shot(app, "ux-03-longpress-message"); app.tap(); Thread.sleep(forTimeInterval: 0.5) }
+        if app.buttons["chat.new"].exists { app.buttons["chat.new"].tap(); Thread.sleep(forTimeInterval: 1); shot(app, "ux-04-new-chat-empty") }
+        let field = input(app); field.tap(); Thread.sleep(forTimeInterval: 0.6); shot(app, "ux-05-composer-focused")
+        field.typeText("第一行\n第二行\n第三行"); Thread.sleep(forTimeInterval: 0.4); shot(app, "ux-06-composer-multiline")
+        for id in ["chat.composer.add", "chat.add", "composer.add"] where app.buttons[id].exists { app.buttons[id].tap(); Thread.sleep(forTimeInterval: 0.8); shot(app, "ux-07-plus-menu"); app.tap(); break }
+        if app.buttons["chat.title.menu"].exists || app.buttons["chat.title"].exists { (app.buttons["chat.title.menu"].exists ? app.buttons["chat.title.menu"] : app.buttons["chat.title"]).tap(); Thread.sleep(forTimeInterval: 0.8); shot(app, "ux-08-title-menu"); app.tap() }
+        if app.buttons["sidebar.open"].exists { app.buttons["sidebar.open"].tap(); Thread.sleep(forTimeInterval: 1); shot(app, "ux-09-drawer") }
+        XCTAssertEqual(app.state, .runningForeground)
+    }
 }
