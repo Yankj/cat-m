@@ -5,20 +5,30 @@ import UIKit
 import AppKit
 #endif
 
-/// Semantic palette. Accent denotes an action; signal colors only denote state.
+/// R5 semantic roles, mapped from mobile-conversation-reference-r5.json.
+/// Reading, temporary surfaces, sending and exact approval are independent roles:
+/// changing an action tint cannot recolor a message or grant an approval emphasis.
 enum CatpawColors {
-    static let background = adaptive(light: 0xF7F8FA, dark: 0x111214)
-    static let panel = adaptive(light: 0xFFFFFF, dark: 0x1B1D21)
-    static let input = adaptive(light: 0xECEEF2, dark: 0x24272D)
-    static let ink = adaptive(light: 0x202329, dark: 0xF1F2F4)
-    static let onInk = adaptive(light: 0xFFFFFF, dark: 0x15171A)
-    static let secondary = adaptive(light: 0x606570, dark: 0xA7ADB8)
-    static let accent = adaptive(light: 0x2855B6, dark: 0xADC5FF)
-    static let separator = adaptive(light: 0xDADDE3, dark: 0x393E48)
+    static let background = adaptive(light: 0xFFFFFF, dark: 0x050505)
+    static let panel = adaptive(light: 0xF7F7F7, dark: 0x181818)
+    static let input = adaptive(light: 0xF7F7F7, dark: 0x141414)
+    static let drawer = adaptive(light: 0xF5F5F5, dark: 0x141414)
+    static let ink = adaptive(light: 0x202020, dark: 0xF2F2F2)
+    static let onInk = adaptive(light: 0xFFFFFF, dark: 0x151515)
+    static let secondary = adaptive(light: 0x626262, dark: 0xA3A3A3)
+    static let action = adaptive(light: 0x315BCA, dark: 0x7E9CFF)
+    static let send = adaptive(light: 0x3567EE, dark: 0x3567EE)
+    static let sendIcon = adaptive(light: 0xFFFFFF, dark: 0xFFFFFF)
+    static let userMessageBackground = adaptive(light: 0xE8EFFC, dark: 0x102052)
+    static let userMessageInk = adaptive(light: 0x244987, dark: 0xF2F2F2)
+    static let controlEdge = adaptive(light: 0x858585, dark: 0x777777)
+    // Decorative separators do not carry a control's affordance or state.
+    static let separator = adaptive(light: 0xDEDEDE, dark: 0x383838)
     static let success = adaptive(light: 0x267146, dark: 0x9BD4AF)
     static let attention = adaptive(light: 0x895700, dark: 0xE9BC69)
-    static let failure = adaptive(light: 0xB23840, dark: 0xF6A4A7)
-    // Kept as a compatibility alias for existing non-core views.
+    static let failure = adaptive(light: 0xB3261E, dark: 0xFFB4AB)
+    // Compatibility names inherit the shared semantic role, never a second palette.
+    static let accent = action
     static let green = success
 
     private static func adaptive(light: UInt32, dark: UInt32) -> Color {
@@ -169,7 +179,7 @@ struct CatpawPressButtonStyle: ButtonStyle {
 
 extension View {
     func primaryAction() -> some View { self.buttonStyle(CatpawPrimaryButtonStyle()) }
-    func touchTarget() -> some View { self.frame(minWidth: 44, minHeight: 44).contentShape(Rectangle()) }
+    func touchTarget(minimum:CGFloat = 44) -> some View { self.frame(minWidth: max(44,minimum), minHeight: max(44,minimum)).contentShape(Rectangle()) }
     @ViewBuilder func compactNavigationTitle() -> some View {
         #if os(iOS)
         self.navigationBarTitleDisplayMode(.inline)

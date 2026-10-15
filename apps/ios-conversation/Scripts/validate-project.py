@@ -28,5 +28,6 @@ assert sorted(app_sources) == expected, 'App source membership differs from Sour
 for path in sorted((project / 'xcshareddata/xcschemes').glob('*.xcscheme')):
     for reference in ET.parse(path).findall('.//BuildableReference'):
         assert reference.attrib['BlueprintIdentifier'] in targets, path.name
+subprocess.run(['python3', str(root / 'Scripts/app-version.py'), 'check'], check=True)
 print(f'PASS {len(app_sources)} App source memberships; {len(targets)} targets; all shared scheme target references')
 print('LIMIT static project validation only; no SDK, XCTest, UI or installation claim')

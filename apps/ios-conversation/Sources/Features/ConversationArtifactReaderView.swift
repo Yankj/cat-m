@@ -10,6 +10,7 @@ import SwiftUI
     private let failure:String?
     @State private var sourcesPresented=false
     @Environment(\.locale) private var locale
+    @Environment(\.dynamicTypeSize) private var textSize
     private enum SourceEntry:Hashable {case footer,toolbar}
     @State private var sourceEntry:SourceEntry = .footer
     @AccessibilityFocusState private var sourceFocused:SourceEntry?
@@ -28,7 +29,7 @@ import SwiftUI
                         if !reading.summary.isEmpty {Text(verbatim:reading.summary).font(.subheadline).foregroundStyle(CatpawColors.secondary).textSelection(.enabled)}
                     }
                     // Receipt links are separate controls. Report text never executes Markdown resources.
-                    Text(verbatim:reading.content).font(.body).lineSpacing(6).frame(maxWidth:.infinity,alignment:.leading).textSelection(.enabled).accessibilityIdentifier("chat.artifact.reader.content")
+                    Text(verbatim:reading.content).font(CatpawTypography.Role.body.font).lineSpacing(CatpawTypography.readingLineSpacing(for:CatpawTypography.font(.body,size:textSize))).frame(maxWidth:.infinity,alignment:.leading).textSelection(.enabled).accessibilityIdentifier("chat.artifact.reader.content")
                     if isUserRevision {Text(ui("你编辑的版本；来源保留原资料快照，新增内容尚未重新核验。")).font(.footnote).foregroundStyle(CatpawColors.attention).accessibilityIdentifier("chat.artifact.reader.userRevision")}
                     if let openEdit {Button(ui("编辑成果")){openEdit(reading.identity)}.touchTarget().accessibilityIdentifier("chat.artifact.reader.edit")}
                     if let continueArtifact {
@@ -85,6 +86,7 @@ import SwiftUI
 @MainActor private struct ConversationArtifactSourceSheet:View {
     let reading:ConversationArtifactReading
     @Environment(\.locale) private var locale
+    @Environment(\.dynamicTypeSize) private var textSize
     @Environment(\.dismiss) private var dismiss
     @Environment(\.dynamicTypeSize) private var typeSize
     private func ui(_ key:String)->String {AppLanguage(locale:locale).ui(key)}
@@ -107,6 +109,7 @@ import SwiftUI
     let source:ConversationArtifactSource
     let identity:ConversationArtifactIdentity
     @Environment(\.locale) private var locale
+    @Environment(\.dynamicTypeSize) private var textSize
     private func ui(_ key:String)->String {AppLanguage(locale:locale).ui(key)}
     var body:some View {
         ScrollView {VStack(alignment:.leading,spacing:20) {
