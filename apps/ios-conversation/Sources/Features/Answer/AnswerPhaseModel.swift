@@ -96,7 +96,7 @@ struct AnswerSource: Identifiable, Equatable, Sendable {
     }
 
     func reconcile(message: ConversationTranscriptMessage, turn: ConversationTurnRecord) {
-        if stoppedLocally && turn.state != .completed { return }
+        if stoppedLocally { return }
         if !snapshotInitialized { text = message.content; snapshotInitialized = true }
         if let summary = turn.reasoningSummary { thinkingSummary = summary }
         applyThinkingDuration(turn.thinkingMs)

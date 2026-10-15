@@ -228,17 +228,18 @@ struct ComposerGlass: ViewModifier {
 
     func setSendAction(_ action: @escaping () -> Void) { sendAction=action }
     func send() { guard sendsEnabled else {return};sendAction?() ?? model?.send() }
+    /// Operations the user stopped locally. Rows for these keep the partial answer + interrupted footer.
+    @Published private(set) var stoppedOperations: Set<UUID> = []
+    /// Stop = stop receiving on this device. We deliberately do NOT call service.stopObserving here:
+    /// it re-marks the turn `unknown` and re-reads the session, which blanked the transcript mid-scroll.
+    /// Server-side cancellation is 三角's (no cancel API yet); the turn may still finish on the server.
     func stop() {
-        guard let model, let conversationID = model.conversationID else { return }
         let operationIDs = activeOperations
-        NotificationCenter.default.post(name: AnswerPhaseProjection.stopNotification, object: nil, userInfo: ["operationIDs": activeOperations])
-        Task {
-            do {
-                try await model.service.stopObserving(scope: model.scope, conversationID: conversationID)
-                activeOperations.subtract(operationIDs)
-                objectWillChange.send()
-            } catch { model.error = error.localizedDescription }
-        }
+        guard !operationIDs.isEmpty else { return }
+        NotificationCenter.default.post(name: AnswerPhaseProjection.stopNotification, object: nil, userInfo: ["operationIDs": operationIDs])
+        stoppedOperations.formUnion(operationIDs)
+        activeOperations.subtract(operationIDs)
+        objectWillChange.send()
     }
     func cancelQueued() {
         guard let pending = model?.followups.pending.last else { return }
@@ -248,6 +249,7 @@ struct ComposerGlass: ViewModifier {
     private func apply(_ event: ConversationTurnEvent) {
         switch event.payload {
         case .started:
+            guard !stoppedOperations.contains(event.operationID) else { return }
             activeOperations.insert(event.operationID)
         case .completed, .failed:
             activeOperations.remove(event.operationID)
