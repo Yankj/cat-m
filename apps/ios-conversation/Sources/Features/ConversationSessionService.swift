@@ -167,15 +167,15 @@ public actor ConversationSessionService {
         let epoch: Int
         if let index = session.turns.firstIndex(where: { $0.id == operationID }) {
             let prior = session.turns[index]
-            guard prior.request.image == image?.reference,prior.request.continuation==continuation,prior.request.acceptedWork?.selection==acceptedWork,prior.request.revisionWork?.selection==revisionWork else {throw CatpawError.conflict}
-            guard prior.request.history.last?.content == text, try Self.encode(prior.request.context) == Self.encode(context) else { throw CatpawError.conflict }
-            guard prior.state != .cancelledBeforeSend else { throw CatpawError.conflict }
+            guard prior.request.image == image?.reference,prior.request.continuation==continuation,prior.request.acceptedWork?.selection==acceptedWork,prior.request.revisionWork?.selection==revisionWork else {sendDiagnostic("catpaw.send conflict site=resend.payload op=\(operationID.uuidString.prefix(8))");throw CatpawError.conflict}
+            guard prior.request.history.last?.content == text, try Self.encode(prior.request.context) == Self.encode(context) else { sendDiagnostic("catpaw.send conflict site=resend.text op=\(operationID.uuidString.prefix(8)) priorLen=\(prior.request.history.last?.content.utf16.count ?? -1) len=\(text.utf16.count)");throw CatpawError.conflict }
+            guard prior.state != .cancelledBeforeSend else { sendDiagnostic("catpaw.send conflict site=resend.cancelled op=\(operationID.uuidString.prefix(8))");throw CatpawError.conflict }
             guard prior.state == .notSent else { return operationID }
             guard session.unresolved == nil else { throw ConversationSessionError.unresolvedOperation }
             if prior.request.acceptedWork == nil, prior.request.revisionWork == nil {
                 // Resend of a held message: rebuild history from what the server can have seen, with this
                 // message last. Other unsent messages never enter the wire history.
-                guard let own = prior.request.history.last, own.role == .user else { throw CatpawError.conflict }
+                guard let own = prior.request.history.last, own.role == .user else { sendDiagnostic("catpaw.send conflict site=resend.own op=\(operationID.uuidString.prefix(8))");throw CatpawError.conflict }
                 let history = Self.dispatchHistory(session, current: operationID).filter { $0.id != own.id } + [own]
                 request = prior.request.withHistory(history).withImageBytes(image?.bytes); epoch = request.epoch
                 session.turns[index] = ConversationTurnRecord(id: operationID, request: request.withImageBytes(nil), state: .dispatched, lastSequence: 0, error: nil)
@@ -296,7 +296,7 @@ public actor ConversationSessionService {
     }
     private func save(_ value: ConversationSession, expectedRevision: Int, fence: ConversationTurnRequest? = nil, observationToken: UUID? = nil, additional: [Mutation] = []) async throws {
         let r = try await repository.record(Self.journalID(value.conversationID), scope: value.scope)
-        guard r.header.revision == expectedRevision else { throw CatpawError.conflict }
+        guard r.header.revision == expectedRevision else { sendDiagnostic("catpaw.send conflict site=journal.revision expected=\(expectedRevision) actual=\(r.header.revision)");throw CatpawError.conflict }
         if fence != nil { guard let observationToken,active[value.conversationID] == observationToken else { throw CancellationError() } }
         try await repository.commit(scope: value.scope, mutations: [.update(r.id, r.header.revision, .preference(Preference(key: "conversation_session:\(value.conversationID)", value: try Self.encode(value))))] + additional)
     }

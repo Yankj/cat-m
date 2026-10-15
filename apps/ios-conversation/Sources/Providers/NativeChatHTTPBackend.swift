@@ -218,27 +218,44 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
         try intent.validate(request:request)
     }
     private func validateHistory(_ conversation:[String:Any],request:ConversationTurnRequest) throws {
-        try Self.checkServerHistory(try Self.array(conversation["messages"]),request:request,strict:true)
+        try Self.checkServerHistory(try Self.array(conversation["messages"]),request:request,strict:true,site:"validateHistory")
     }
-    /// Server history must equal the local wire history. For plain turns only, a server history that is a strict
-    /// prefix of ours is accepted when every extra local message is a user message: those were never admitted
-    /// (old clients left unsent messages in the transcript without a notSent turn record). Only the current
-    /// message (`history.last`) is posted, so the extras are simply not sent. Frozen-history requests stay strict.
-    /// Returns the local message ids treated as unsent.
-    @discardableResult static func checkServerHistory(_ remote:[[String:Any]],request:ConversationTurnRequest,strict:Bool) throws -> [UUID] {
+    /// History check before admission. Strict (acceptedWork / revisionWork / continuation, validateHistory):
+    /// the local wire history must equal the server's exactly. Plain turns: only locally held messages the server
+    /// has confirmed (same id) take part. Every other local message, whatever its role (an unsent user message
+    /// from an old client, a locally generated failed assistant notice), is local-only: it is never compared and
+    /// never posted (only `history.last` is posted). The confirmed subsequence must equal the server list in
+    /// order, role and content; the server holding a message we do not is still a conflict.
+    /// Returns the local message ids treated as local-only.
+    @discardableResult static func checkServerHistory(_ remote:[[String:Any]],request:ConversationTurnRequest,strict:Bool,site:String="prepare") throws -> [UUID] {
         let previous=Array(request.history.dropLast().filter{$0.role == .user || ($0.role == .assistant && $0.toolName==nil && $0.complete)})
-        guard remote.count<=previous.count else {throw CatpawError.conflict}
-        for (wire,local) in zip(remote,previous) {
-            guard UUID(uuidString:wire["id"] as? String ?? "")==local.id,wire["role"] as? String==local.role.rawValue,let content=wire["content"] as? String,strict ? content.utf16.elementsEqual(local.content.utf16) : content == local.content else {throw CatpawError.conflict}
+        func fail(_ reason:String) -> CatpawError { logHistoryConflict(site:site,reason:reason,remote:remote,request:request,strict:strict);return CatpawError.conflict }
+        func same(_ wire:[String:Any],_ local:ConversationTranscriptMessage) -> Bool {
+            guard UUID(uuidString:wire["id"] as? String ?? "")==local.id,wire["role"] as? String==local.role.rawValue,let content=wire["content"] as? String else {return false}
+            return strict ? content.utf16.elementsEqual(local.content.utf16) : content == local.content
         }
-        let extras=previous[remote.count...]
-        guard extras.isEmpty || (!strict && extras.allSatisfy{$0.role == .user}) else {throw CatpawError.conflict}
-        return extras.map(\.id)
+        if strict {
+            guard remote.count==previous.count else {throw fail("strict count")}
+            for (wire,local) in zip(remote,previous) where !same(wire,local) {throw fail("strict mismatch")}
+            return []
+        }
+        let remoteIDs=Set(remote.compactMap{UUID(uuidString:$0["id"] as? String ?? "")})
+        guard remoteIDs.count==remote.count else {throw fail("server ids invalid")}
+        let local=Array(request.history.dropLast())
+        let confirmed=local.filter{remoteIDs.contains($0.id)}
+        guard confirmed.count==remote.count else {throw fail("server has messages unknown locally")}
+        for (wire,message) in zip(remote,confirmed) where !same(wire,message) {throw fail("confirmed mismatch")}
+        return local.filter{!remoteIDs.contains($0.id)}.map(\.id)
+    }
+    private static func logHistoryConflict(site:String,reason:String,remote:[[String:Any]],request:ConversationTurnRequest,strict:Bool) {
+        let localLine=request.history.map{"\($0.role.rawValue):\($0.id.uuidString.prefix(8)):\($0.complete ? "complete" : "partial")\($0.failure == nil ? "" : "+failure")\($0.toolName == nil ? "" : "+tool"):\($0.content.utf16.count)"}.joined(separator:",")
+        let remoteLine=remote.map{"\($0["role"] as? String ?? "?"):\(($0["id"] as? String ?? "?").prefix(8)):\($0["status"] as? String ?? "-"):\(($0["content"] as? String)?.utf16.count ?? -1)"}.joined(separator:",")
+        sendDiagnostic("catpaw.send history conflict site=\(site) reason=\(reason) strict=\(strict) op=\(request.operationID.uuidString.prefix(8)) local=[\(localLine)] server=[\(remoteLine)]")
     }
     public func reply(_ request: ConversationTurnRequest) async throws -> AsyncThrowingStream<ConversationTurnEvent, Error> {
         let auth: String, grant: Int, upload: URLRequest
         do { (auth, grant, upload) = try await prepare(request) }
-        catch { throw ConversationDispatchFailure.notSent(reason: Self.friendlyTransportMessage(error)) }
+        catch { sendDiagnostic("catpaw.send prepare refused op=\(request.operationID.uuidString.prefix(8)) error=\(String(describing:error))");throw ConversationDispatchFailure.notSent(reason: Self.friendlyTransportMessage(error)) }
         return AsyncThrowingStream { continuation in
             let task = Task {
                 var postInitiated = false
@@ -959,7 +976,7 @@ extension NativeChatHTTPBackend: ConversationTaskPlanBackend {
         if http.statusCode == 401 { await credentials.rejected(scope: reference.scope) }
         guard (200..<300).contains(http.statusCode) else {
             if body != nil, let error = try? JSONDecoder().decode(NativeTaskPlanErrorEnvelope.self, from: bytes), error.schemaVersion == 1, !error.error.reconciliationRequired {
-                if http.statusCode == 409 { throw CatpawError.conflict }
+                if http.statusCode == 409 { sendDiagnostic("catpaw.send conflict site=plan409 path=\(wire.url?.path ?? "?")");throw CatpawError.conflict }
                 if [400,401,403,404,405,413,422,429].contains(http.statusCode) {
                     throw ConversationDispatchFailure.notSent(reason: "计划修改未被受理（HTTP \(http.statusCode)）。草稿已保留。")
                 }
