@@ -5,6 +5,7 @@ import { createProactiveService } from '../_shared/proactive/service.mjs';
 import { createPgStore } from '../_shared/proactive/pg-store.mjs';
 import { createReminderModel } from '../_shared/proactive/model.mjs';
 import { createApnsSender } from '../_shared/proactive/apns.mjs';
+import { parseQuietHours } from '../_shared/proactive/throttle.mjs';
 
 const env = (n: string) => Deno.env.get(n) ?? undefined;
 const cfg: any = readConfig(env);
@@ -16,6 +17,8 @@ const service = createProactiveService({
   schedulerSecret: env('CATPAW_SCHEDULER_SECRET'),
   model: createReminderModel({ apiKey: cfg.modelKey ?? env('OPENROUTER_API_KEY'), route: cfg.route }),
   apns: createApnsSender({ keyId: env('APNS_KEY_ID'), teamId: env('APNS_TEAM_ID'), privateKeyPem: env('APNS_PRIVATE_KEY'), topic: env('APNS_BUNDLE_ID') }),
+  quietHours: parseQuietHours(env('CATPAW_PROACTIVE_QUIET_HOURS')),
+  dailyPushCap: Number(env('CATPAW_PROACTIVE_DAILY_PUSH_CAP') ?? 5) || 5,
   log: (...a: unknown[]) => console.log('[catpaw-proactive]', ...a),
 });
 Deno.serve(req => service.handle(req));

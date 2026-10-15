@@ -1,10 +1,11 @@
 import { validateTaskCreate, validateTaskPatch, computeNextFire, isUUID, TASK_TOOLS, TASK_TOOL_CONTRACT } from './contract.mjs';
 import { nextOccurrence, bad } from './recurrence.mjs';
+import { isQuiet, quietEndsAt, localDayStart, isExempt } from './throttle.mjs';
 
 const json = (status, body) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' } });
 const TOKEN_KINDS = ['apns', 'live_activity_update', 'live_activity_start'];
 
-export function createProactiveService({ store, verifyUser, schedulerSecret, model = null, apns = null, now = () => Date.now(), log = () => {} }) {
+export function createProactiveService({ store, verifyUser, schedulerSecret, model = null, apns = null, quietHours = { start: 22, end: 8 }, dailyPushCap = 5, defaultTimeZone = 'Asia/Shanghai', now = () => Date.now(), log = () => {} }) {
   async function user(req) {
     const p = await verifyUser(req.headers.get('authorization')).catch(e => { throw bad(e.code === 'auth_key_service_unavailable' ? e.code : 'session_required', e.status === 503 ? 503 : 401); });
     if (!isUUID(p?.sub)) throw bad('session_required', 401);
@@ -66,26 +67,51 @@ export function createProactiveService({ store, verifyUser, schedulerSecret, mod
       let text = null, source = 'template';
       if (model) { try { text = await model.reminder(c, at); if (text) source = 'model'; } catch (e) { log('model_failed', e.message); } }
       text ||= fallbackText(c);
-      const ev = await store.insertEvent({ user_id: c.user_id, task_id: c.task_id, conversation_id: c.conversation_id, kind: 'reminder_due', title: c.title, body: text, payload: { scheduled_at: c.scheduled_at, due_at: c.due_at, occurrence: fired, source, actions: ['done', 'snooze_10m', 'snooze_1h', 'open_conversation'] }, dedupe_key: `due:${c.task_id}:${c.scheduled_at}` });
+      const owner = await store.getTask(c.user_id, c.task_id).catch(() => null);
+      const ev = await store.insertEvent({ user_id: c.user_id, task_id: c.task_id, conversation_id: c.conversation_id, kind: 'reminder_due', title: c.title, body: text, payload: { scheduled_at: c.scheduled_at, due_at: c.due_at, occurrence: fired, source, created_by: owner?.created_by ?? 'user', time_zone: c.time_zone, actions: ['done', 'snooze_10m', 'snooze_1h', 'open_conversation'] }, dedupe_key: `due:${c.task_id}:${c.scheduled_at}` });
       const next = nextOccurrence(c.due_at ?? c.scheduled_at, c.recurrence, c.time_zone, Math.max(at, Date.parse(c.scheduled_at)), fired);
       await store.finishOccurrence(c, { next_fire_at: next, fire_count: fired, status: next ? 'open' : (c.recurrence ? 'done' : 'open') });
       return { task_id: c.task_id, event_id: ev?.id ?? null, next_fire_at: next, source };
     }
   }
   async function flushPush(limit = 100) {
-    const pending = await store.pendingPushEvents(limit); const out = { sent: 0, skipped: 0, failed: 0, no_device: 0 };
-    for (const ev of pending) {
-      const tokens = (await store.tokensFor(ev.user_id)).filter(t => t.enabled);
-      if (!tokens.length) { await store.setPush(ev.id, 'no_device', null); out.no_device++; continue; }
-      if (!apns?.configured) { await store.setPush(ev.id, 'skipped', 'apns_not_configured'); out.skipped++; continue; }
-      let ok = false, err = null;
-      for (const t of tokens) {
-        const r = await apns.send(t, ev).catch(e => ({ ok: false, reason: e.message }));
-        if (r.ok) ok = true; else { err = r.reason; if (r.unregistered) await store.disableToken(t.id, r.reason); }
+    const at = now(), pending = await store.pendingPushEvents(limit, new Date(at).toISOString());
+    const out = { sent: 0, skipped: 0, failed: 0, no_device: 0, deferred: 0, coalesced: 0, capped: 0 };
+    const byUser = new Map();
+    for (const ev of pending) (byUser.get(ev.user_id) ?? byUser.set(ev.user_id, []).get(ev.user_id)).push(ev);
+    for (const [uid, evs] of byUser) {
+      const tz = evs.find(e => e.payload?.time_zone)?.payload.time_zone ?? defaultTimeZone;
+      const exempt = evs.filter(isExempt), rest = evs.filter(e => !isExempt(e));
+      const deliver = [...exempt];
+      if (rest.length) {
+        if (isQuiet(at, tz, quietHours)) {
+          const until = new Date(quietEndsAt(at, tz, quietHours)).toISOString();
+          for (const ev of rest) { await store.deferPush(ev.id, until); out.deferred++; }
+        } else {
+          const used = await store.countPushedSince(uid, new Date(localDayStart(at, tz)).toISOString());
+          if (dailyPushCap != null && used >= dailyPushCap) { for (const ev of rest) { await store.setPush(ev.id, 'skipped', 'daily_cap'); out.capped++; } }
+          else if (rest.length === 1) deliver.push(rest[0]);
+          else { // coalesce (e.g. backlog released at quiet-hours end) into one push about the newest event
+            const head = rest[rest.length - 1];
+            for (const ev of rest.slice(0, -1)) { await store.setPush(ev.id, 'skipped', 'coalesced'); out.coalesced++; }
+            deliver.push({ ...head, title: `小猫有 ${rest.length} 条消息`, body: head.body, payload: { ...head.payload, coalesced: rest.length } });
+          }
+        }
       }
-      await store.setPush(ev.id, ok ? 'sent' : 'failed', ok ? null : err); ok ? out.sent++ : out.failed++;
+      for (const ev of deliver) await sendOne(ev, out);
     }
     return out;
+  }
+  async function sendOne(ev, out) {
+    const tokens = (await store.tokensFor(ev.user_id)).filter(t => t.enabled);
+    if (!tokens.length) { await store.setPush(ev.id, 'no_device', null); out.no_device++; return; }
+    if (!apns?.configured) { await store.setPush(ev.id, 'skipped', 'apns_not_configured'); out.skipped++; return; }
+    let ok = false, err = null;
+    for (const t of tokens) {
+      const r = await apns.send(t, ev).catch(e => ({ ok: false, reason: e.message }));
+      if (r.ok) ok = true; else { err = r.reason; if (r.unregistered) await store.disableToken(t.id, r.reason); }
+    }
+    await store.setPush(ev.id, ok ? 'sent' : 'failed', ok ? null : err); ok ? out.sent++ : out.failed++;
   }
 
   async function route(req) {
