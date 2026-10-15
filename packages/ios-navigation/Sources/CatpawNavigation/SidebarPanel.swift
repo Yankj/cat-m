@@ -7,15 +7,16 @@ public struct SidebarPanel: View {
     private var theme: SidebarTheme
     private let localize:(String)->String
     private var isActive: Bool
+    private var isModal: Bool
     private var onSelect: (SidebarDestination) -> Void
     private var onClose: () -> Void
     @AccessibilityFocusState private var headingFocused: Bool
     @FocusState private var searchFocused: Bool
 
     public init(snapshot: SidebarSnapshot, query: Binding<String>, theme: SidebarTheme = .catpaw,localize:@escaping (String)->String = {$0},
-                isActive: Bool = true, onSelect: @escaping (SidebarDestination) -> Void, onClose: @escaping () -> Void) {
+                isActive: Bool = true, isModal: Bool = true, onSelect: @escaping (SidebarDestination) -> Void, onClose: @escaping () -> Void) {
         self.snapshot = snapshot; _query = query; self.theme = theme;self.localize=localize
-        self.isActive = isActive; self.onSelect = onSelect; self.onClose = onClose
+        self.isActive = isActive; self.isModal = isModal; self.onSelect = onSelect; self.onClose = onClose
     }
 
     public var body: some View {
@@ -84,7 +85,7 @@ public struct SidebarPanel: View {
             }
         }.background(theme.panel).foregroundStyle(theme.ink)
             .buttonStyle(SidebarPressStyle())
-            .accessibilityAddTraits(.isModal)
+            .accessibilityAddTraits(isModal ? .isModal : [])
             .accessibilityAction(.escape, onClose)
             .onChange(of: isActive, initial: true) { _, active in
                 if !active { searchFocused = false }
