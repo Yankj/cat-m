@@ -14,7 +14,7 @@ Swift优先的通用主动Agent应用：自然对话、可恢复任务、审批�
 | 服务端 | [services/edge](services/edge/README.md)，supabase/functions/ 下 catpaw-api＋_shared；独立tick入口见部署来源快照 |
 | 云电脑讨论 | [Proposed方案](docs/architecture/cloud-computer-proposal.md)，确认前不实施 |
 | 接手 / 来源 | [handoff](handoff.md) / [候选hash](docs/status/restart-import-candidate-2026-10-13.json) |
-| 架构与目录职责 | [本轮审查](docs/architecture/repository-review-2026-10-13.md) / [布局表](docs/development/repository-layout.json) |
+| 架构与目录职责 | [最新代码与分支复核](docs/architecture/repository-review-2026-10-15.md) / [布局表](docs/development/repository-layout.json) / [2026-10-13基础审查](docs/architecture/repository-review-2026-10-13.md) |
 | Git治理 / 文档 | [branch-management](docs/development/branch-management.md) / [docs](docs/README.md) |
 | 历史过程资料 | [归档索引](docs/archive/README.md)，旧规格与阶段报告保留追溯，不作为当前开工入口 |
 
