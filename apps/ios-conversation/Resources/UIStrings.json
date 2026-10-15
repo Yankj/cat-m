@@ -767,6 +767,10 @@
     "en": "Create task",
     "zh-Hans": "创建任务"
   },
+  "创建失败": {
+    "en": "Couldn't create",
+    "zh-Hans": "创建失败"
+  },
   "创建定时任务": {
     "en": "Create scheduled task",
     "zh-Hans": "创建定时任务"
@@ -1315,6 +1319,10 @@
     "en": "Scheduled tasks",
     "zh-Hans": "定时任务"
   },
+  "定期重复": {
+    "en": "Repeats",
+    "zh-Hans": "定期重复"
+  },
   "实际读取网址": {
     "en": "Read URL",
     "zh-Hans": "实际读取网址"
@@ -1595,6 +1603,10 @@
     "en": "Allowed: {0}",
     "zh-Hans": "已允许：{0}"
   },
+  "已创建": {
+    "en": "Created",
+    "zh-Hans": "已创建"
+  },
   "已到期": {
     "en": "Expired",
     "zh-Hans": "已到期"
@@ -1626,6 +1638,10 @@
   "已受理，待核验": {
     "en": "Accepted; verification pending",
     "zh-Hans": "已受理，待核验"
+  },
+  "已存在": {
+    "en": "Already exists",
+    "zh-Hans": "已存在"
   },
   "已安装": {
     "en": "Installed",
@@ -1666,6 +1682,10 @@
   "已接上 · 从断点继续": {
     "en": "Reconnected · continuing where it left off",
     "zh-Hans": "已接上 · 从断点继续"
+  },
+  "已推迟": {
+    "en": "Snoozed",
+    "zh-Hans": "已推迟"
   },
   "已撤权 · 保留原记录": {
     "en": "Revoked · original record preserved",
@@ -2427,6 +2447,10 @@
     "en": "Action incomplete",
     "zh-Hans": "操作未完成"
   },
+  "操作未完成，请稍后重试": {
+    "en": "That didn't go through. Try again later.",
+    "zh-Hans": "操作未完成，请稍后重试"
+  },
   "操作记录": {
     "en": "Action history",
     "zh-Hans": "操作记录"
@@ -2775,6 +2799,10 @@
     "en": "Dictation unavailable",
     "zh-Hans": "暂时无法听写"
   },
+  "暂时无法读取最新状态": {
+    "en": "Couldn't load the latest status",
+    "zh-Hans": "暂时无法读取最新状态"
+  },
   "暂时没能更新，请稍后再试。": {
     "en": "Couldn't update right now. Please try again.",
     "zh-Hans": "暂时没能更新，请稍后再试。"
@@ -2922,6 +2950,10 @@
   "未决定": {
     "en": "Not determined",
     "zh-Hans": "未决定"
+  },
+  "未创建": {
+    "en": "Not created",
+    "zh-Hans": "未创建"
   },
   "未发送·点按重试": {
     "en": "Not sent · tap to retry",
@@ -3211,6 +3243,10 @@
     "en": "Review, edit or pause messages queued on this device",
     "zh-Hans": "查看、编辑或暂停本机待发消息"
   },
+  "查看任务": {
+    "en": "View task",
+    "zh-Hans": "查看任务"
+  },
   "查看修改进展": {
     "en": "View revision progress",
     "zh-Hans": "查看修改进展"
@@ -3238,6 +3274,10 @@
   "查看成果": {
     "en": "View result",
     "zh-Hans": "查看成果"
+  },
+  "查看提醒": {
+    "en": "View reminder",
+    "zh-Hans": "查看提醒"
   },
   "查看数据表": {
     "en": "View data table",
@@ -3434,6 +3474,10 @@
   "正在准备发送…": {
     "en": "Preparing to send…",
     "zh-Hans": "正在准备发送…"
+  },
+  "正在创建…": {
+    "en": "Creating…",
+    "zh-Hans": "正在创建…"
   },
   "正在发送…": {
     "en": "Sending…",
@@ -3655,9 +3699,21 @@
     "en": "Weekly",
     "zh-Hans": "每周"
   },
+  "每周重复": {
+    "en": "Repeats weekly",
+    "zh-Hans": "每周重复"
+  },
+  "每天重复": {
+    "en": "Repeats daily",
+    "zh-Hans": "每天重复"
+  },
   "每日": {
     "en": "Daily",
     "zh-Hans": "每日"
+  },
+  "每月重复": {
+    "en": "Repeats monthly",
+    "zh-Hans": "每月重复"
   },
   "每条消息最多 {0} 个附件": {
     "en": "Up to {0} attachments per message",
@@ -3954,6 +4010,10 @@
   "确认记忆变更": {
     "en": "Review memory change",
     "zh-Hans": "确认记忆变更"
+  },
+  "确认超时，未创建": {
+    "en": "Confirmation timed out; not created",
+    "zh-Hans": "确认超时，未创建"
   },
   "确认这一次模拟操作": {
     "en": "Confirm this one simulated action",
