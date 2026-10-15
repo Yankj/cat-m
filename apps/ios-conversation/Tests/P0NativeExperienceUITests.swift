@@ -2,6 +2,30 @@ import XCTest
 import UIKit
 
 final class P0NativeExperienceUITests:XCTestCase {
+    func testR5ComposerReflowsWithoutLosingDraftOrSending() {
+        let app=launch("p0-ui-lifecycle",visualReview:true),input=app.textViews["chat.input"]
+        clear(input)
+        let send=app.buttons["chat.send"]
+        XCTAssertFalse(send.isEnabled,"An empty composer keeps a disabled send action")
+        XCTAssertGreaterThanOrEqual(send.frame.height,44)
+        XCTAssertLessThanOrEqual(abs(send.frame.midY-input.frame.midY),12,"Empty input is one compact row")
+        let draft="R5 local draft\nSecond line keeps the original editor"
+        input.typeText(draft)
+        XCTAssertEqual(input.value as? String,draft)
+        XCTAssertTrue(send.isEnabled && send.isHittable)
+        XCTAssertGreaterThanOrEqual(send.frame.minY,input.frame.maxY-1,"Draft controls occupy their own row")
+        XCTAssertTrue(input.isHittable)
+        let more=app.buttons["chat.more"]
+        XCTAssertTrue(more.isHittable);more.tap()
+        let settings=app.buttons["chat.settings"]
+        XCTAssertTrue(settings.waitForExistence(timeout:4));settings.tap()
+        XCTAssertTrue(app.descendants(matching:.any)["connection.state"].waitForExistence(timeout:4))
+        app.navigationBars.buttons.element(boundBy:0).tap()
+        XCTAssertEqual(input.value as? String,draft,"Opening conversation controls never submits or replaces the draft")
+        XCTAssertFalse(app.staticTexts["chat.userMessage"].exists,"Menu navigation does not send the draft")
+        attach(app,name:"R5-native-drafting-controls-and-preserved-local-draft")
+    }
+
     func testNormalReviewLaunchHasNoFixtureOrCloudAdmission() {
         let app=XCUIApplication(bundleIdentifier:"com.example.CatpawM.ConversationFirst.Auth")
         app.launchEnvironment=[:];app.launch()
@@ -39,14 +63,17 @@ final class P0NativeExperienceUITests:XCTestCase {
         let evidence=XCTAttachment(string:"actual_system_category="+rawCategory+";input_point_size="+String(actual)+";QA_size_override=absent;fixture=explicit_offline;model_requests=0");evidence.name="Actual-UIKit-system-category-witness";evidence.lifetime = .keepAlways;add(evidence)
     }
     override func setUp(){continueAfterFailure=false}
-    private func launch(_ scenario:String)->XCUIApplication {
+    private func launch(_ scenario:String,visualReview:Bool=false)->XCUIApplication {
         let app=XCUIApplication(bundleIdentifier:"com.example.CatpawM.ConversationFirst.Auth")
         app.launchEnvironment=["CF_UI_TEST_STORE":UUID().uuidString,"CF_UI_TEST_SCENARIO":scenario,"P0_PERF_RECORDING":"1"]
         if scenario.hasPrefix("p0-ui-large") || scenario=="p0-ui-genui-large" {app.launchEnvironment["CATPAW_UI_TEST_TEXT_SIZE"]="accessibility5"}
-        app.launch();XCTAssertTrue(app.staticTexts["qa.p0Fixture"].waitForExistence(timeout:12))
+        if visualReview {app.launchEnvironment["CATPAW_QA_VISUAL_REVIEW"]="1"}
+        app.launch();if !visualReview {XCTAssertTrue(app.staticTexts["qa.p0Fixture"].waitForExistence(timeout:12))}
         XCTAssertTrue(app.textViews["chat.input"].waitForExistence(timeout:5))
-        XCTAssertEqual(probe(app)["fixture_reality"] as? String,"injected_synthetic_offline")
-        XCTAssertEqual(probe(app)["external_network_enabled"] as? Bool,false)
+        if !visualReview {
+            XCTAssertEqual(probe(app)["fixture_reality"] as? String,"injected_synthetic_offline")
+            XCTAssertEqual(probe(app)["external_network_enabled"] as? Bool,false)
+        }
         return app
     }
     private func probe(_ app:XCUIApplication)->[String:Any] {
@@ -58,15 +85,22 @@ final class P0NativeExperienceUITests:XCTestCase {
         while Date()<deadline { if predicate(){return};RunLoop.current.run(until:Date().addingTimeInterval(0.05)) }
         XCTFail("P0 explicit offline fixture condition timed out")
     }
-    private func clear(_ input:XCUIElement){input.tap();let value=input.value as? String ?? "";if !value.isEmpty { input.typeText(String(repeating:XCUIKeyboardKey.delete.rawValue,count:value.utf16.count)) }}
+    private func clear(_ input:XCUIElement){
+        let app=XCUIApplication(bundleIdentifier:"com.example.CatpawM.ConversationFirst.Auth")
+        replaceAll(app,input,with:"")
+    }
     private func revealEarlier(_ app:XCUIApplication,_ element:XCUIElement) {
         NativeUIScrollReveal.reveal(app,element)
     }
     private func replaceAll(_ app:XCUIApplication,_ input:XCUIElement,with text:String) {
-        input.tap();input.press(forDuration:1.1)
-        let selectAll=app.menuItems.matching(NSPredicate(format:"label IN %@",["全选","Select All"])).firstMatch
-        XCTAssertTrue(selectAll.waitForExistence(timeout:3),app.debugDescription)
-        selectAll.tap();input.typeText(text)
+        input.tap()
+        if !(input.value as? String ?? "").isEmpty {
+            input.press(forDuration:1.1)
+            let selectAll=app.menuItems.matching(NSPredicate(format:"label IN %@",["全选","Select All"])).firstMatch
+            XCTAssertTrue(selectAll.waitForExistence(timeout:3),app.debugDescription)
+            selectAll.tap()
+            input.typeText(text.isEmpty ? XCUIKeyboardKey.delete.rawValue:text)
+        } else if !text.isEmpty {input.typeText(text)}
         XCTAssertEqual(input.value as? String,text,"Replace the selected text, regardless of the prior caret position")
     }
     private func verifyPickerEntry(_ app:XCUIApplication) {

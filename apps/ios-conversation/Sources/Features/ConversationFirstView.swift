@@ -21,6 +21,9 @@ import CatpawImageComposer
     @AccessibilityFocusState private var menuFocused:Bool
     @State private var history = false
     @State private var settings = false
+    @State private var conversationMenuPresented=false
+    @State private var pendingConversationSettings=false
+    @AccessibilityFocusState private var moreFocused:Bool
     @State private var confirmSignOut = false
     @State private var pendingMessagesPresented=false
     @State private var composerMeasurements:[String:CGFloat]=[:]
@@ -30,7 +33,6 @@ import CatpawImageComposer
     @State private var pendingContextAction:(action:ComposerContextAction,conversation:UUID?,scope:UUID,modelIdentity:ObjectIdentifier)?
     @State private var contextJumpRequested=false
     @ScaledMetric(relativeTo: .footnote) private var followupRowHeight = 64.0
-    @ScaledMetric(relativeTo: .body) private var sendSymbolSize = 19.0
     @FocusState private var focused: Bool
     #if DEBUG
     @ObservedObject private var probe=P0ExperienceProbe.shared
@@ -50,11 +52,19 @@ import CatpawImageComposer
         case .memory:if model.loaded && model.memoryConfigured {path.append(.memory)}
         }
     }
+    private var conversationTitle:String {
+        let title=model.history.first(where:{$0.id==model.conversationID})?.title.trimmingCharacters(in:.whitespacesAndNewlines) ?? ""
+        return title.isEmpty ? ui("新对话") : title
+    }
+    private var shortConversationTitle:String {
+        let line=String(conversationTitle.split(separator:"\n",maxSplits:1).first ?? Substring(conversationTitle))
+        return line.count>18 ? String(line.prefix(18))+"…" : line
+    }
     private var sidebarTheme:SidebarTheme {
         SidebarTheme.catpaw.typography(title:CatpawTypography.Role.title.font,heading:CatpawTypography.Role.heading.font,body:CatpawTypography.Role.body.font,secondary:CatpawTypography.Role.secondary.font,caption:CatpawTypography.Role.caption.font)
     }
     private var chatNavigation: some View {
-        SidebarHost(isPresented:$sidebarPresented,isAtRoot:path.isEmpty && !settings && !history && !pendingMessagesPresented && !composerContextPresented && !model.acceptedWorkReviewPresented && model.selectedTaskPlan == nil && model.selectedTaskActions == nil && model.selectedTaskControl == nil && model.pendingModelConsent == nil && model.pendingImageConsent == nil,
+        SidebarHost(isPresented:$sidebarPresented,isAtRoot:path.isEmpty && !conversationMenuPresented && !settings && !history && !pendingMessagesPresented && !composerContextPresented && !model.acceptedWorkReviewPresented && model.selectedTaskPlan == nil && model.selectedTaskActions == nil && model.selectedTaskControl == nil && model.pendingModelConsent == nil && model.pendingImageConsent == nil,
                     snapshot:sidebarSnapshot,theme:sidebarTheme,localize:{ui($0)},onWillOpen:{UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder),to:nil,from:nil,for:nil)},
                     onDismissed:{menuFocused=true},onSelect:route) {
         NavigationStack(path:$path) {
@@ -111,12 +121,37 @@ import CatpawImageComposer
             }
             }.background(CatpawViewportObserver{visibleViewport=$0}.accessibilityHidden(true))
                 .onPreferenceChange(ConversationComposerMeasurements.self){composerMeasurements=$0}
-            .background(CatpawColors.background).navigationTitle("Catpaw").navigationBarTitleDisplayMode(.inline)
+            .background(CatpawColors.background).navigationTitle(shortConversationTitle).navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement:.topBarLeading) { if path.isEmpty {SidebarMenuButton(localize:{ui($0)}) {sidebarPresented=true}.accessibilityFocused($menuFocused)} }
-                ToolbarItemGroup(placement: .topBarTrailing) {
-                    Button { model.newConversation() } label: { Image(systemName: "square.and.pencil").touchTarget() }.disabled(model.busy).accessibilityLabel(ui("新对话")).accessibilityIdentifier("chat.new").buttonStyle(CatpawPressButtonStyle())
-                    Button { path.append(.settings) } label: { Image(systemName: "slider.horizontal.3").touchTarget() }.accessibilityLabel(ui("设置")).accessibilityIdentifier("chat.settings").buttonStyle(CatpawPressButtonStyle())
+                ToolbarItem(placement:.principal) {
+                    Text(shortConversationTitle).font(CatpawTypography.Role.body.font.weight(.semibold)).lineLimit(1)
+                        .accessibilityLabel(conversationTitle).accessibilityAddTraits(.isHeader).accessibilityIdentifier("chat.title")
+                }
+                // The system groups navigation controls; the anchored popover owns
+                // one complete action row with matching visual and hit bounds.
+                ToolbarItemGroup(placement:.topBarTrailing) {
+                    Button { model.newConversation() } label: { Image(systemName:"square.and.pencil").touchTarget() }
+                        .disabled(!model.loaded || model.busy || model.isInputComposing).foregroundStyle(CatpawColors.ink)
+                        .accessibilityLabel(ui("新对话")).accessibilityIdentifier("chat.new").buttonStyle(CatpawPressButtonStyle())
+                    Button {conversationMenuPresented=true} label: {Image(systemName:"ellipsis").foregroundStyle(CatpawColors.ink).touchTarget()}
+                        .accessibilityLabel(ui("更多操作")).accessibilityIdentifier("chat.more").accessibilityFocused($moreFocused)
+                        .popover(isPresented:$conversationMenuPresented,attachmentAnchor:.point(.bottomTrailing),arrowEdge:.top) {
+                            Button {
+                                pendingConversationSettings=true;conversationMenuPresented=false
+                            } label: {
+                                Label(ui("设置"),systemImage:"slider.horizontal.3").font(CatpawTypography.Role.body.font)
+                                    .frame(maxWidth:.infinity,minHeight:44,alignment:.leading).padding(.horizontal,12).contentShape(Rectangle())
+                            }.buttonStyle(CatpawPressButtonStyle()).foregroundStyle(CatpawColors.ink)
+                                .accessibilityIdentifier("chat.settings").padding(8).frame(minWidth:200)
+                                .presentationCompactAdaptation(.popover).presentationBackground(CatpawColors.panel)
+                                .onDisappear {
+                                    // Navigation starts only after the foreground
+                                    // popover releases ownership; consume once.
+                                    if pendingConversationSettings {pendingConversationSettings=false;path.append(.settings)}
+                                    else {moreFocused=true}
+                                }
+                        }
                 }
             }
             .navigationDestination(for:ConversationHostDestination.self){destination in
@@ -142,7 +177,7 @@ import CatpawImageComposer
         scrollTask=Task {try? await Task.sleep(nanoseconds:100_000_000);guard !Task.isCancelled,followingLatest else{return};P0ScrollTiming.scroll {proxy.scrollTo("latest",anchor:.bottom)};scrollTask=nil}
     }
     private var feedbackNavigation: some View {
-        chatNavigation.tint(CatpawColors.ink).foregroundStyle(CatpawColors.ink)
+        chatNavigation.tint(CatpawColors.action).foregroundStyle(CatpawColors.ink)
             .sensoryFeedback(.selection, trigger: sidebarPresented, condition: { _, opened in opened })
             .sensoryFeedback(.selection, trigger: settings, condition: { _, opened in opened })
             .sensoryFeedback(.impact(weight:.light), trigger:model.enqueueing, condition: { _, accepted in accepted })
@@ -191,7 +226,7 @@ import CatpawImageComposer
         .onChange(of:model.outgoingMessages) { _, _ in probe.update(model) }
         .onChange(of:model.draft) { _, _ in probe.update(model) }
         .onChange(of:model.session?.turns.last?.lastSequence) { _, _ in probe.update(model) }
-        .overlay(alignment:.topTrailing) { if probe.enabled { VStack {
+        .overlay(alignment:.topTrailing) { if probe.enabled && ProcessInfo.processInfo.environment["CATPAW_QA_VISUAL_REVIEW"] != "1" { VStack {
             Text("Synthetic offline fixture").font(.caption2).accessibilityIdentifier("qa.p0Fixture")
             Text("P0 probe").font(.caption2).accessibilityIdentifier("qa.p0Probe").accessibilityValue(probe.json)
             if P0PerformanceLog.shared.enabled {Button("Export metrics"){probe.exportMetrics()}.font(.caption2).accessibilityIdentifier("qa.p0Export")}
@@ -223,13 +258,19 @@ import CatpawImageComposer
     }
     private var draftTooLong: Bool { model.draft.utf16.count > 8000 }
     private var canSendDraft: Bool { !restrictToFrozenFixture && model.canAcceptDraft && !draftTooLong }
+    private var composerIsDrafting:Bool { !model.draft.isEmpty || model.isInputComposing }
+    private var composerControlSize:CGFloat { max(44,CatpawTypography.font(.body,size:textSize).lineHeight) }
     private func composerBudget(_ viewport:GeometryProxy)->CatpawTextViewport.ComposerBudget {
         let available=visibleViewport?.visibleBounds.height ?? viewport.size.height
+        let lineHeight=CatpawTypography.font(.body,size:textSize).lineHeight
         let targetHeight=model.artifactContinuation == nil ? 0:max(52,composerMeasurements["targetAnchor"] ?? 52)
-        return CatpawTextViewport.composerBudget(available:available,lineHeight:CatpawTypography.font(.body,size:textSize).lineHeight,textInsets:16,targetHeight:targetHeight,desiredContextHeight:composerMeasurements["context"] ?? 92)
+        // The shared allocator already reserves a 44pt single-row control. Drafting
+        // adds a separate tool row, so reserve only that row's additional height.
+        let toolHeight=composerControlSize
+        let extraToolRow=composerIsDrafting ? toolHeight+8-max(0,44-lineHeight-16):0
+        return CatpawTextViewport.composerBudget(available:max(0,available-extraToolRow),lineHeight:lineHeight,textInsets:16,targetHeight:targetHeight,desiredContextHeight:composerMeasurements["context"] ?? 0)
     }
     private func composer(budget:CatpawTextViewport.ComposerBudget,jumpToLatest:@escaping()->Void)->some View {
-        let contextNeedsDetails=budget.contextHeight<(composerMeasurements["context"] ?? 92)-0.5
         return VStack(alignment:.leading,spacing:0) {
             // The picker remains mounted here while this viewport changes height.
             // A details picker shares the scoped draft and owns only its read ticket.
@@ -247,28 +288,37 @@ import CatpawImageComposer
                 .padding(.bottom,budget.contextHeight>0 ? 8:0).accessibilityIdentifier("chat.input.context.viewport")
             if let target=model.artifactContinuation,budget.showsTarget {
                 artifactContinuationChip(target).padding(.bottom,8)
-                    .background{GeometryReader{geometry in Color.clear.preference(key:ConversationComposerMeasurements.self,value:["targetAnchor":geometry.size.height-8])}}
             }
-            HStack(alignment:.bottom,spacing:8) {
-                if contextNeedsDetails || model.canReviewAcceptedWork || (model.artifactContinuation != nil && !budget.showsTarget) {
-                    Button {
-                        guard !model.isInputComposing else {return};composerContextPresented=true
-                    } label:{
-                        if let target=model.artifactContinuation,!budget.showsTarget {
-                            Text("v\(target.artifactReference.version)").font(CatpawTypography.Role.caption.font).fixedSize().touchTarget()
-                                .accessibilityLabel(target.artifactTitle+" · v\(target.artifactReference.version)")
-                        } else {Image(systemName:"info.circle").font(.system(size:22)).touchTarget()}
-                    }.buttonStyle(CatpawPressButtonStyle()).disabled(model.isInputComposing)
-                        .accessibilityLabel(model.artifactContinuation.flatMap{!budget.showsTarget ? ($0.mode == .reviseReport ? ui("修改这版") : ui("追问这版"))+" · "+$0.artifactTitle+" · v\($0.artifactReference.version) · "+ui("查看输入详情"):nil} ?? ui("查看输入详情")).accessibilityIdentifier("chat.input.context.open")
-                        .accessibilityValue(model.artifactContinuationSendBlock.map{ui($0)} ?? model.error.map{ui($0)} ?? "")
-                }
+            // One Layout keeps the exact same UIKit editor and control identities
+            // while changing compact/drafting geometry, including marked text.
+            ConversationComposerLayout(drafting:composerIsDrafting) {
                 NativeConversationComposer(model:model,enabled:!restrictToFrozenFixture && !model.switchingArtifactContinuation,maximumVisibleHeight:budget.maximumTextHeight,submit:submitDraft)
                     .background{GeometryReader{geometry in Color.clear.preference(key:ConversationComposerMeasurements.self,value:["text":geometry.size.height])}}
-                Button(action:submitDraft) { Image(systemName:model.sending ? "clock.badge.checkmark" : "arrow.up").font(.system(size:min(sendSymbolSize,24),weight:.semibold)).foregroundStyle(canSendDraft ? CatpawColors.onInk : CatpawColors.secondary).frame(width:44,height:44).background(canSendDraft ? CatpawColors.ink : CatpawColors.input,in:Circle()) }
+                Button {
+                    guard !model.isInputComposing else {return};composerContextPresented=true
+                } label:{
+                    if let target=model.artifactContinuation,!budget.showsTarget {
+                        Text("v\(target.artifactReference.version)").font(CatpawTypography.Role.caption.font).fixedSize().touchTarget()
+                            .accessibilityLabel(target.artifactTitle+" · v\(target.artifactReference.version)")
+                    } else {Image(systemName:model.artifactContinuation == nil ? "plus":"info.circle").font(CatpawTypography.Role.body.font).touchTarget()}
+                }.frame(minWidth:composerControlSize,minHeight:composerControlSize).buttonStyle(CatpawPressButtonStyle()).disabled(model.isInputComposing)
+                    .accessibilityLabel(model.artifactContinuation.flatMap{!budget.showsTarget ? ($0.mode == .reviseReport ? ui("修改这版") : ui("追问这版"))+" · "+$0.artifactTitle+" · v\($0.artifactReference.version) · "+ui("查看输入详情"):nil} ?? ui("查看输入详情")).accessibilityIdentifier("chat.input.context.open")
+                    .accessibilityValue(model.artifactContinuationSendBlock.map{ui($0)} ?? model.error.map{ui($0)} ?? "")
+                Button(action:submitDraft) { Image(systemName:model.sending ? "clock.badge.checkmark" : "arrow.up").font(CatpawTypography.Role.body.font.weight(.semibold)).foregroundStyle(canSendDraft ? CatpawColors.sendIcon : CatpawColors.secondary).frame(width:composerControlSize,height:composerControlSize).background(canSendDraft ? CatpawColors.send : CatpawColors.input,in:Circle()) }
                     .buttonStyle(CatpawPressButtonStyle()).disabled(!canSendDraft)
                     .accessibilityLabel(model.sending ? ui("排队发送") : ui("发送")).accessibilityHint(model.session?.unresolved?.state == .unknown ? ui("先读取原请求进展，当前草稿不会重发") : (model.sending ? ui("保存在后续消息队列，仅在前台发送") : ui("发送当前消息"))).accessibilityIdentifier("chat.send")
-            }.padding(.horizontal,16).padding(.vertical,budget.compactPadding ? 0:8)
-                .background(CatpawColors.panel,in:RoundedRectangle(cornerRadius:24)).overlay{RoundedRectangle(cornerRadius:24).strokeBorder(CatpawColors.separator)}
+            }.padding(.horizontal,12).padding(.vertical,budget.compactPadding ? 0:8)
+                .background(CatpawColors.input,in:RoundedRectangle(cornerRadius:24)).overlay{RoundedRectangle(cornerRadius:24).strokeBorder(CatpawColors.controlEdge)}
+                .accessibilityElement(children:.contain).accessibilityIdentifier("chat.input.container")
+        }.background(alignment:.topLeading) {
+            if let target=model.artifactContinuation {
+                // Measure in the same content-column width as the visible chip,
+                // before outer padding. Keep this intrinsic measurement mounted
+                // when the budget hides the chip, so visibility cannot reset it.
+                artifactContinuationChip(target).frame(maxWidth:.infinity).fixedSize(horizontal:false,vertical:true)
+                    .background{GeometryReader{geometry in Color.clear.preference(key:ConversationComposerMeasurements.self,value:["targetAnchor":geometry.size.height])}}
+                    .hidden().accessibilityHidden(true).allowsHitTesting(false)
+            }
         }.padding(.horizontal,16).padding(.vertical,budget.compactPadding ? 0:8).background(CatpawColors.background)
             .accessibilityElement(children:.contain).accessibilityIdentifier("chat.composer")
     }
@@ -317,6 +367,11 @@ import CatpawImageComposer
                 if !model.continuationDraftSaved {Text(ui("正在保存本地输入…")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)}
             } else {
                 ImageAttachmentPicker(draft:model.imageDraft,gate:model.imageGate,localize:{ui($0)}).id(model.scope.workspaceID.uuidString+(model.conversationID?.uuidString ?? ""))
+                    // Keep its import ticket and selected-item state mounted. The
+                    // compact + opens this same scoped draft in input details.
+                    .frame(height:!inDetails && model.imageDraft.phase == .empty ? 0:nil).clipped()
+                    .allowsHitTesting(inDetails || model.imageDraft.phase != .empty)
+                    .accessibilityHidden(!inDetails && model.imageDraft.phase == .empty)
             }
             if [.offline,.notConfigured].contains(model.connectionLifecycle) { Button {contextAction(.settings,inDetails:inDetails)} label: {
                 HStack(spacing: 8) {
@@ -446,7 +501,11 @@ import CatpawImageComposer
     @ViewBuilder private func messageView(_ message: ConversationTranscriptMessage) -> some View {
         if message.role == .user {
             VStack(alignment:.trailing,spacing:4) {
-                HStack { Spacer(minLength:40);Text(message.content).textSelection(.enabled).padding(14).background(CatpawColors.input,in:RoundedRectangle(cornerRadius:20)) }
+                ConversationUserMessageLayout {
+                    Text(message.content).font(CatpawTypography.Role.body.font).textSelection(.enabled)
+                        .foregroundStyle(CatpawColors.userMessageInk).padding(.horizontal,16).padding(.vertical,12)
+                        .background(CatpawColors.userMessageBackground,in:RoundedRectangle(cornerRadius:24))
+                }
                     .accessibilityIdentifier("chat.userMessage")
                     #if DEBUG
                     .background { if let id=operationID(message),probe.enabled { P0EchoWitness(operationID:id) } }
@@ -747,6 +806,53 @@ private enum ConversationHostDestination:Hashable {case settings,tasks,results,m
                 if saving {ProgressView().accessibilityLabel(ui("正在保存确认…"))}
             }.padding().frame(maxWidth:.infinity).background(CatpawColors.background)}
         }.tint(CatpawColors.ink).foregroundStyle(CatpawColors.ink)
+    }
+}
+
+/// Only presentation geometry changes; editor, picker draft and send semantics
+/// retain their identity as the first character or an IME composition arrives.
+private struct ConversationComposerLayout:Layout {
+    let drafting:Bool
+    private let gap:CGFloat=8
+    private func sizes(_ proposal:ProposedViewSize,_ subviews:Subviews)->(width:CGFloat,text:CGSize,leading:CGSize,send:CGSize) {
+        let proposedWidth=proposal.width ?? CatpawLayout.readableWidth
+        let width=proposedWidth.isFinite ? max(0,proposedWidth):CatpawLayout.readableWidth
+        let leading=subviews[1].sizeThatFits(.unspecified),send=subviews[2].sizeThatFits(.unspecified)
+        let textWidth=drafting ? width:max(0,width-leading.width-send.width-gap*2)
+        let text=subviews[0].sizeThatFits(.init(width:textWidth,height:nil))
+        return (width,text,leading,send)
+    }
+    func sizeThatFits(proposal:ProposedViewSize,subviews:Subviews,cache:inout ())->CGSize {
+        guard subviews.count==3 else {return .zero}
+        let s=sizes(proposal,subviews)
+        return .init(width:s.width,height:drafting ? s.text.height+gap+max(s.leading.height,s.send.height):max(s.text.height,max(s.leading.height,s.send.height)))
+    }
+    func placeSubviews(in bounds:CGRect,proposal:ProposedViewSize,subviews:Subviews,cache:inout ()) {
+        guard subviews.count==3 else {return}
+        let s=sizes(.init(width:bounds.width,height:bounds.height),subviews)
+        if drafting {
+            subviews[0].place(at:.init(x:bounds.minX,y:bounds.minY),proposal:.init(width:bounds.width,height:s.text.height))
+            subviews[1].place(at:.init(x:bounds.minX,y:bounds.maxY),anchor:.bottomLeading,proposal:.init(s.leading))
+        } else {
+            subviews[1].place(at:.init(x:bounds.minX,y:bounds.maxY),anchor:.bottomLeading,proposal:.init(s.leading))
+            subviews[0].place(at:.init(x:bounds.minX+s.leading.width+gap,y:bounds.maxY),anchor:.bottomLeading,proposal:.init(width:s.text.width,height:s.text.height))
+        }
+        subviews[2].place(at:.init(x:bounds.maxX,y:bounds.maxY),anchor:.bottomTrailing,proposal:.init(s.send))
+    }
+}
+
+/// The cap is relative to the padded readable column, including on wide devices.
+private struct ConversationUserMessageLayout:Layout {
+    func sizeThatFits(proposal:ProposedViewSize,subviews:Subviews,cache:inout ())->CGSize {
+        guard let text=subviews.first else {return .zero}
+        let proposedWidth=proposal.width ?? CatpawLayout.readableWidth
+        let width=proposedWidth.isFinite ? max(0,proposedWidth):CatpawLayout.readableWidth
+        return .init(width:width,height:text.sizeThatFits(.init(width:width*0.88,height:nil)).height)
+    }
+    func placeSubviews(in bounds:CGRect,proposal:ProposedViewSize,subviews:Subviews,cache:inout ()) {
+        guard let text=subviews.first else {return}
+        let size=text.sizeThatFits(.init(width:bounds.width*0.88,height:nil))
+        text.place(at:.init(x:bounds.maxX,y:bounds.minY),anchor:.topTrailing,proposal:.init(size))
     }
 }
 

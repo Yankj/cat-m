@@ -25,7 +25,6 @@ ICONS = {
     'status-symbol': (HOST+'Sources/DesignSystem/Components.swift', 'Image(systemName: symbol).font(symbol == "circle.fill" ? .system(size: dotSize, weight: .semibold) : .caption.weight(.semibold))'),
     'action-chevron': (HOST+'Sources/DesignSystem/Components.swift', 'Image(systemName: "chevron.right").font(.caption.weight(.semibold))'),
     'input-details-symbol': (HOST+'Sources/Features/ConversationFirstView.swift', 'Image(systemName:"info.circle").font(.system(size:22))'),
-    'send-symbol': (HOST+'Sources/Features/ConversationFirstView.swift', 'Image(systemName:model.sending ? "clock.badge.checkmark" : "arrow.up").font(.system(size:min(sendSymbolSize,24),weight:.semibold))'),
     'connection-chevron': (HOST+'Sources/Features/ConversationFirstView.swift', 'Image(systemName: "chevron.right").font(.caption2)'),
     'sidebar-menu-symbol': ('packages/ios-navigation/Sources/CatpawNavigation/SidebarTheme.swift', 'Image(systemName: "line.3.horizontal").font(.system(size:20))'),
     'sidebar-close-symbol': ('packages/ios-navigation/Sources/CatpawNavigation/SidebarPanel.swift', 'Image(systemName: "xmark").font(.system(size:20))'),

@@ -3,6 +3,7 @@
 set -eu
 cd "$(dirname "$0")/.."
 python3 ../../scripts/check-typography.py --self-test
+python3 ../../scripts/check-native-design.py --self-test
 # Fail cheap resource/project errors before compiling the complete host.
 python3 Scripts/validate-project.py
 python3 Scripts/check-localization.py
