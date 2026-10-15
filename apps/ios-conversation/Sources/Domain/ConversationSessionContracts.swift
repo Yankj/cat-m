@@ -1,4 +1,14 @@
 import Foundation
+#if canImport(os)
+import os
+private let sendDiagnosticLog=Logger(subsystem:"catpaw",category:"send")
+#endif
+/// Metadata-only send diagnostics (roles, short ids, statuses, lengths; never message text).
+public func sendDiagnostic(_ line:String) {
+    #if canImport(os)
+    sendDiagnosticLog.error("\(line, privacy: .public)")
+    #endif
+}
 
 public enum ConversationSessionError: Error, LocalizedError, Sendable {
     case notConfigured, unresolvedOperation, invalidEvent, busy, pendingUnsent

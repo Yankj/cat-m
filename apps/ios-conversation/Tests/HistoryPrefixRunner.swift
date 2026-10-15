@@ -24,7 +24,19 @@ import Foundation
         try check(try NativeChatHTTPBackend.checkServerHistory([wire(admittedUser), wire(admittedReply), wire(orphanA)], request: mixed, strict: true).isEmpty, "exact match still passes strictly")
         var edited = wire(admittedReply); edited["content"] = "改过的回复"
         try check(conflict { try NativeChatHTTPBackend.checkServerHistory([wire(admittedUser), edited], request: mixed, strict: false) }, "prefix with different content is still a conflict")
-        try check(conflict { try NativeChatHTTPBackend.checkServerHistory([wire(admittedUser)], request: mixed, strict: false) }, "an extra local assistant message (not a pure unsent user tail) is still a conflict")
+        var failedNotice = ConversationTranscriptMessage(role: .assistant, content: "消息尚未发送，输入已保留。内容已更新", complete: true)
+        failedNotice.failure = "notSent"
+        let stuck = request([orphanA, failedNotice, orphanB, current])
+        let stuckEmpty = try NativeChatHTTPBackend.checkServerHistory([], request: stuck, strict: false)
+        try check(stuckEmpty == [orphanA.id, failedNotice.id, orphanB.id], "old stuck chat: unsent user + local failed assistant notice without server ids are local-only when the server is empty")
+        let stuckPartial = request([admittedUser, admittedReply, orphanA, failedNotice, orphanB, current])
+        let partialUnsent = try NativeChatHTTPBackend.checkServerHistory([wire(admittedUser), wire(admittedReply)], request: stuckPartial, strict: false)
+        try check(partialUnsent == [orphanA.id, failedNotice.id, orphanB.id], "old stuck chat: server holds the earlier part; only confirmed messages are compared")
+        let interleaved = request([admittedUser, failedNotice, admittedReply, current])
+        let interleavedUnsent = try NativeChatHTTPBackend.checkServerHistory([wire(admittedUser), wire(admittedReply)], request: interleaved, strict: false)
+        try check(interleavedUnsent == [failedNotice.id], "a local-only failure notice between confirmed messages is skipped, not compared")
+        try check(conflict { try NativeChatHTTPBackend.checkServerHistory([], request: stuck, strict: true) }, "frozen-history requests stay strict with local-only notices")
+        try check(conflict { try NativeChatHTTPBackend.checkServerHistory([wire(admittedReply), wire(admittedUser)], request: mixed, strict: false) }, "confirmed messages in a different order are a conflict")
         try check(conflict { try NativeChatHTTPBackend.checkServerHistory([wire(admittedUser), wire(admittedReply), wire(orphanB)], request: request([admittedUser, admittedReply, current]), strict: false) }, "server longer than local is still a conflict")
     }
 }
