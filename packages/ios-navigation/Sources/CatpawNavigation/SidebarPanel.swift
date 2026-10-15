@@ -68,7 +68,7 @@ public struct SidebarPanel: View {
                                 }.frame(maxWidth: .infinity, alignment: .leading)
                                 if selected { Image(systemName: "checkmark").font(theme.bodyFont).accessibilityHidden(true) }
                             }.padding(12).frame(minHeight: 44)
-                                .background(selected ? theme.input : Color.clear, in: RoundedRectangle(cornerRadius: 14))
+                                .background(selected ? theme.selection : Color.clear, in: RoundedRectangle(cornerRadius: 14))
                                 .contentShape(Rectangle())
                         }.disabled(!snapshot.permits(.conversation(record.id)))
                             .accessibilityValue(selected ? localize("当前对话") : "")
