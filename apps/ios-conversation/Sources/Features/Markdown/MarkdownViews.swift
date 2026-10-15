@@ -134,7 +134,7 @@ struct MarkdownBlockView: View, Equatable {
         switch block.kind {
         case let .heading(level, text):
             Text(MarkdownInlineRenderer.render(text, streaming: streaming))
-                .font(.system(size: level == 1 ? h1 : level == 2 ? h2 : h3, weight: .semibold))
+                .font((level == 1 ? Font.title2 : level == 2 ? Font.title3 : Font.headline).weight(.semibold))
                 .foregroundStyle(MarkdownTheme.ink.opacity(inkOpacity))
                 .padding(.top, level == 1 ? 8 : level == 2 ? 4 : 0)
                 .fixedSize(horizontal: false, vertical: true)
@@ -197,7 +197,7 @@ struct MarkdownBlockView: View, Equatable {
             Text(verbatim: "\(item.number).").font(.body).monospacedDigit()
                 .foregroundStyle(MarkdownTheme.ink.opacity(0.55))
         } else {
-            Image(systemName: "circle.fill").font(.system(size: 6))
+            Image(systemName: "circle.fill").font(.body).scaleEffect(0.35)
                 .foregroundStyle(MarkdownTheme.ink.opacity(0.55)).accessibilityHidden(true)
         }
     }
@@ -270,7 +270,7 @@ struct MarkdownBlockView: View, Equatable {
             .padding(.horizontal, 12).frame(height: 32)
             ScrollView(.horizontal, showsIndicators: false) {
                 Text(MarkdownCodeHighlighter.attributed(shown, language: language))
-                    .font(.system(size: codeSize, design: .monospaced))
+                    .font(.system(.callout, design: .monospaced))
                     .lineSpacing(codeSize * 0.4)
                     .foregroundStyle(MarkdownTheme.ink)
                     .fixedSize(horizontal: true, vertical: true)
