@@ -287,11 +287,111 @@ func cancelSessionChecks(directory: URL) async throws {
         try require(resolved.turns.last?.state == .failed && resolved.turns.last?.error == "cancelled" && items.filter { $0 == "failed:cancelled" }.count == 1, "later reconciliation applies the server stop without a second cancelled event")
     }
 }
+
+// catpaw.approval.v1: suspend → submitApproval resumes the SAME turn; cold start restores pending approvals.
+actor ApprovalScenarioBackend: ConversationBackend {
+    let message = UUID()
+    let interrupt = UUID().uuidString.lowercased()
+    let hash = String(repeating: "a", count: 64)
+    private(set) var replies = 0, decisions = 0, observes = 0
+    private(set) var lastDecision: (String, String, Int)? = nil
+    var approvedOnServer = false
+    var expireOnServer = false
+    func connection(scope: DataScope) async -> ConversationConnection { ConversationConnection(state: .connected, provider: "Explicit test backend", detail: "Test only") }
+    private func e(_ r: ConversationTurnRequest, _ n: Int, _ p: ConversationTurnEvent.Payload) -> ConversationTurnEvent { ConversationTurnEvent(operationID: r.operationID, epoch: r.epoch, sequence: n, payload: p) }
+    var approval: ConversationApprovalRequest { .init(interruptID: interrupt, callID: "call-1", tool: "create_task", summary: "title: 喝水", arguments: "{\"title\":\"喝水\"}", argsHash: hash, expiresAt: "2026-10-15T00:10:00.000Z", risk: "local_write", rememberAllowed: true) }
+    private func head(_ r: ConversationTurnRequest) -> [ConversationTurnEvent] {
+        [e(r, 1, .toolStarted(callID: "call-1", name: "create_task", arguments: "{\"title\":\"喝水\"}")), e(r, 2, .approvalRequested(approval)), e(r, 3, .suspended(interruptIDs: [interrupt], expiresAt: approval.expiresAt))]
+    }
+    private func tail(_ r: ConversationTurnRequest, decision: String, status: String) -> [ConversationTurnEvent] {
+        [e(r, 4, .approvalResolved(interruptID: interrupt, callID: "call-1", decision: decision, remember: false)),
+         e(r, 5, .toolResult(ConversationToolResult(callID: "call-1", name: "create_task", content: "{}").withStatus(status))),
+         e(r, 6, .textDelta(messageID: message, text: "好的")), e(r, 7, .completed(messageID: message, finalTextHash: textHash("好的")))]
+    }
+    func reply(_ r: ConversationTurnRequest) async throws -> AsyncThrowingStream<ConversationTurnEvent, Error> {
+        replies += 1; let events = head(r)
+        return AsyncThrowingStream { c in for x in events { c.yield(x) }; c.finish() } // the server ends the stream at turn_suspended
+    }
+    func submitApproval(_ r: ConversationTurnRequest, interruptID: String, decision: ConversationApprovalDecision, argsHash: String, operationID: UUID, afterSequence: Int) async throws -> AsyncThrowingStream<ConversationTurnEvent, Error> {
+        decisions += 1; lastDecision = (interruptID, argsHash, afterSequence)
+        if expireOnServer { throw ConversationApprovalFailure.expired }
+        approvedOnServer = true
+        let events = tail(r, decision: decision == .deny ? "denied" : "approved", status: decision == .deny ? "denied" : "ok").filter { $0.sequence > afterSequence }
+        return AsyncThrowingStream { c in for x in events { c.yield(x) }; c.finish() }
+    }
+    func observe(_ r: ConversationTurnRequest) async throws -> ConversationObservation {
+        observes += 1
+        if expireOnServer { return ConversationObservation(request: r, events: head(r) + tail(r, decision: "expired", status: "denied"), serverState: "completed") }
+        return ConversationObservation(request: r, events: head(r), pendingApprovals: [approval], serverState: "awaiting_approval")
+    }
+    func counts() -> [Int] { [replies, decisions, observes] }
+    func setExpire() { expireOnServer = true }
+}
+actor ApprovalEventLog {
+    private(set) var items: [String] = []
+    func add(_ e: ConversationTurnEvent) {
+        switch e.payload {
+        case .approvalRequested(let a): items.append("requested:" + a.tool)
+        case .suspended: items.append("suspended")
+        case .approvalResolved(_, _, let d, _): items.append("resolved:" + d)
+        case .toolResult(let r): items.append("result:" + (r.status ?? "nil"))
+        case .completed: items.append("completed")
+        default: items.append("other")
+        }
+    }
+}
+func approvalSessionChecks(directory: URL) async throws {
+    do {
+        let url = directory.appendingPathComponent("approval-approve.json")
+        let backend = ApprovalScenarioBackend()
+        let service = ConversationSessionService(repository: try Repository(persistence: FilePersistence(url: url)), backend: backend)
+        let conversation = try await service.create(scope: Profiles.user)
+        let log = ApprovalEventLog(), events = await service.turnEvents()
+        let collector = Task { for await e in events { await log.add(e) } }
+        let operation = UUID()
+        let returned = try await service.send(scope: Profiles.user, conversationID: conversation, text: "提醒我喝水", operationID: operation)
+        let suspended = try await service.read(scope: Profiles.user, conversationID: conversation)
+        let pending = try await service.pendingApprovals(scope: Profiles.user, conversationID: conversation)
+        try require(returned == operation && suspended.turns.last?.state == .running && suspended.turns.last?.awaitingApproval == true && suspended.turns.last?.lastSequence == 3 && pending.map(\.interruptID) == [backend.interrupt], "a suspended turn returns from send() as admitted and journals its pending approval")
+        try require(suspended.unresolved != nil, "a suspended turn keeps the conversation busy (server answers conversation_busy)")
+        // Cold start: openLatest marks the turn unknown; observe restores pending approvals from the snapshot.
+        let cold = ConversationSessionService(repository: try Repository(persistence: FilePersistence(url: url)), backend: backend)
+        _ = try await cold.openLatest(scope: Profiles.user)
+        try await cold.observe(scope: Profiles.user, conversationID: conversation)
+        let restored = try await cold.pendingApprovals(scope: Profiles.user, conversationID: conversation)
+        try require(restored.first?.argsHash == backend.hash && restored.first?.rememberAllowed == true, "cold start restores pending approvals from the turn snapshot")
+        do { _ = try await cold.submitApproval(scope: Profiles.user, conversationID: conversation, interruptID: backend.interrupt, decision: .approveAlways, operationID: UUID()) }
+        let done = try await cold.read(scope: Profiles.user, conversationID: conversation)
+        let decided = await backend.lastDecision, counts = await backend.counts()
+        try require(decided?.0 == backend.interrupt && decided?.1 == backend.hash && decided?.2 == 3, "submitApproval echoes interrupt id and args_hash and resumes after the journal's lastSequence")
+        try require(done.turns.last?.id == operation && done.turns.last?.state == .completed && done.turns.last?.lastSequence == 7 && done.turns.last?.pendingApprovals == nil && done.messages.contains(where: { $0.role == .tool && $0.toolName == "create_task" }), "the SAME turn continues to completion with a continuous sequence")
+        try require(counts[0] == 1 && counts[1] == 1, "the user message is never re-POSTed")
+        collector.cancel()
+        let items = await log.items
+        try require(items.starts(with: ["other", "requested:create_task", "suspended"]), "turnEvents delivers approvalRequested and suspended")
+        try require(try await cold.pendingApprovals(scope: Profiles.user, conversationID: conversation).isEmpty, "no pending approval remains after resolution")
+    }
+    do {
+        let backend = ApprovalScenarioBackend()
+        let service = ConversationSessionService(repository: try Repository(persistence: FilePersistence(url: directory.appendingPathComponent("approval-expired.json"))), backend: backend)
+        let conversation = try await service.create(scope: Profiles.user)
+        _ = try await service.send(scope: Profiles.user, conversationID: conversation, text: "提醒我喝水", operationID: UUID())
+        await backend.setExpire()
+        var failure: ConversationApprovalFailure?
+        do { _ = try await service.submitApproval(scope: Profiles.user, conversationID: conversation, interruptID: backend.interrupt, decision: .approve) } catch let f as ConversationApprovalFailure { failure = f }
+        let saved = try await service.read(scope: Profiles.user, conversationID: conversation)
+        try require(failure == .expired && saved.turns.last?.state == .completed && saved.turns.last?.pendingApprovals == nil, "an expired approval reports .expired and the journal reconciles to the server outcome")
+        var missing: ConversationApprovalFailure?
+        do { _ = try await service.submitApproval(scope: Profiles.user, conversationID: conversation, interruptID: backend.interrupt, decision: .approve) } catch let f as ConversationApprovalFailure { missing = f }
+        try require(missing == .noPendingApproval, "deciding an already-resolved approval is refused locally")
+    }
+}
 @main struct ConversationSessionRunner {
     static func main() async throws {
         let directory = URL(fileURLWithPath: CommandLine.arguments[1])
         try await memoryProposalSessionChecks(directory:directory)
         try await cancelSessionChecks(directory:directory)
+        try await approvalSessionChecks(directory:directory)
         let repository = try Repository(persistence: FilePersistence(url: directory.appendingPathComponent("chat.json")))
         let service = ConversationSessionService(repository: repository)
         let first = try await service.openLatest(scope: Profiles.user)
