@@ -25,15 +25,14 @@ struct CatpawWorkLiveActivity: Widget {
                     LAStatusText(state: ctx.state).font(.caption.weight(.semibold)).padding(.trailing, 4)
                 }
                 DynamicIslandExpandedRegion(.center) {
-                    Text(ctx.attributes.title).font(.subheadline.weight(.semibold)).lineLimit(1)
+                    Text(ctx.state.title.isEmpty ? ctx.attributes.title : ctx.state.title).font(.subheadline.weight(.semibold)).lineLimit(1)
                 }
                 DynamicIslandExpandedRegion(.bottom) {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text(ctx.state.stepTitle).font(.caption).foregroundStyle(.secondary).lineLimit(1)
-                        LAStepDots(state: ctx.state)
-                        if ctx.state.needsUser {
+                        Text(ctx.state.body).font(.caption).foregroundStyle(.secondary).lineLimit(2)
+                        if ctx.state.status == .needsUser || ctx.state.status == .reminder {
                             Link(destination: LA.url(ctx.attributes, ctx.state)) {
-                                Text(LA.s("查看并确认", "Review & confirm")).font(.caption.weight(.semibold))
+                                Text(LA.s("查看", "Open")).font(.caption.weight(.semibold))
                                     .frame(maxWidth: .infinity, minHeight: 34).background(LA.attention.opacity(0.22), in: Capsule())
                             }
                         }
@@ -60,25 +59,23 @@ enum LA {
     static let ink = Color.primary
     static func s(_ zh: String, _ en: String) -> String { Locale.current.language.languageCode?.identifier == "zh" ? zh : en }
     /// Matches DeepLinkResolver today: `catpawm://conversation/<uuid>`, no query items (the resolver rejects any
-    /// query other than `version`). Focusing `needsUserCardID` needs a resolver change — see README.
+    /// query other than `version`).
     static func url(_ a: CatpawWorkAttributes, _ st: CatpawWorkAttributes.ContentState) -> URL {
         URL(string: "catpawm://conversation/" + a.conversationID) ?? URL(string: "catpawm://")!
     }
     static func color(_ s: CatpawWorkAttributes.ContentState.Status) -> Color {
         switch s {
-        case .needsUser, .reconnecting: attention
+        case .needsUser, .reminder: attention
         case .done: success
         case .failed: failure
-        default: paw
+        case .working: paw
         }
     }
     static func label(_ s: CatpawWorkAttributes.ContentState.Status) -> String {
         switch s {
-        case .queued: s_("排队中", "Queued")
-        case .running: s_("进行中", "Working")
+        case .working: s_("进行中", "Working")
         case .needsUser: s_("需要你", "Needs you")
-        case .waiting: s_("等待中", "Waiting")
-        case .reconnecting: s_("重连中", "Reconnecting")
+        case .reminder: s_("提醒", "Reminder")
         case .done: s_("已完成", "Done")
         case .failed: s_("需核对", "Check result")
         }
@@ -87,11 +84,10 @@ enum LA {
     static func badge(_ s: CatpawWorkAttributes.ContentState.Status) -> String? {
         switch s {
         case .needsUser: "hand.raised.fill"
+        case .reminder: "bell.fill"
         case .done: "checkmark"
         case .failed: "exclamationmark"
-        case .reconnecting: "arrow.triangle.2.circlepath"
-        case .waiting, .queued: "clock"
-        case .running: nil
+        case .working: nil
         }
     }
 }
@@ -113,41 +109,19 @@ struct LAPaw: View {
 
 struct LAStatusText: View {
     let state: CatpawWorkAttributes.ContentState
-    var body: some View {
-        if state.status == .running, state.stepCount > 0 {
-            Text("\(state.stepIndex)/\(state.stepCount)").monospacedDigit().foregroundStyle(LA.paw)
-        } else {
-            Text(LA.label(state.status)).foregroundStyle(LA.color(state.status))
-        }
-    }
+    var body: some View { Text(LA.label(state.status)).foregroundStyle(LA.color(state.status)) }
 }
 
 struct LACompactTrailing: View {
     let state: CatpawWorkAttributes.ContentState
     var body: some View {
         switch state.status {
-        case .running where state.stepCount > 0:
-            ProgressView(value: Double(state.stepIndex), total: Double(state.stepCount))
-                .progressViewStyle(.circular).tint(LA.paw).frame(width: 18, height: 18)
+        case .working: ProgressView().progressViewStyle(.circular).tint(LA.paw).frame(width: 18, height: 18)
         case .needsUser: Image(systemName: "hand.raised.fill").foregroundStyle(LA.attention)
+        case .reminder: Image(systemName: "bell.fill").foregroundStyle(LA.attention)
         case .done: Image(systemName: "checkmark").foregroundStyle(LA.success)
         case .failed: Image(systemName: "exclamationmark.circle").foregroundStyle(LA.failure)
-        case .reconnecting: Image(systemName: "arrow.triangle.2.circlepath").foregroundStyle(LA.attention)
-        default: Image(systemName: "clock").foregroundStyle(.secondary)
         }
-    }
-}
-
-struct LAStepDots: View {
-    let state: CatpawWorkAttributes.ContentState
-    var body: some View {
-        let n = max(1, min(state.stepCount, 8))
-        HStack(spacing: 4) {
-            ForEach(0..<n, id: \.self) { i in
-                Capsule().fill(i < state.stepIndex ? LA.color(state.status) : Color.secondary.opacity(0.3)).frame(height: 4)
-            }
-        }
-        .accessibilityLabel("\(state.stepIndex)/\(state.stepCount)")
     }
 }
 
@@ -159,22 +133,17 @@ struct LockScreenWorkView: View {
             HStack(spacing: 10) {
                 LAPaw(status: state.status).frame(width: 26, height: 26)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(attributes.title).font(.subheadline.weight(.semibold)).lineLimit(1)
-                    Text(state.stepTitle).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                    Text(state.title.isEmpty ? attributes.title : state.title).font(.subheadline.weight(.semibold)).lineLimit(1)
+                    Text(state.body).font(.caption).foregroundStyle(.secondary).lineLimit(2)
                 }
                 Spacer(minLength: 6)
                 LAStatusText(state: state).font(.caption.weight(.semibold))
             }
-            if state.stepCount > 0 && state.status != .done { LAStepDots(state: state) }
-            if state.needsUser {
+            if state.status == .needsUser || state.status == .reminder {
                 Link(destination: LA.url(attributes, state)) {
-                    Text(LA.s("查看并确认", "Review & confirm")).font(.footnote.weight(.semibold))
+                    Text(LA.s("查看", "Open")).font(.footnote.weight(.semibold))
                         .frame(maxWidth: .infinity, minHeight: 36).background(LA.attention.opacity(0.22), in: Capsule())
                 }
-            }
-            HStack {
-                Spacer()
-                Text(state.updatedAt, style: .relative).font(.caption2).foregroundStyle(.secondary)
             }
         }
         .padding(16)
@@ -182,11 +151,11 @@ struct LockScreenWorkView: View {
 }
 
 #if DEBUG
-#Preview("Lock — needs user", as: .content, using: CatpawWorkAttributes(taskID: "t1", conversationID: "c1", title: "一页带来源的报告")) {
+#Preview("Lock", as: .content, using: CatpawWorkAttributes(taskID: "t1", conversationID: "c1", title: "一页带来源的报告")) {
     CatpawWorkLiveActivity()
 } contentStates: {
-    CatpawWorkAttributes.ContentState(status: .running, stepTitle: "读取第 2 份资料", stepIndex: 2, stepCount: 5, needsUserCardID: nil, updatedAt: .now)
-    CatpawWorkAttributes.ContentState(status: .needsUser, stepTitle: "确认引用来源", stepIndex: 3, stepCount: 5, needsUserCardID: "card-1", updatedAt: .now)
-    CatpawWorkAttributes.ContentState(status: .done, stepTitle: "报告已生成", stepIndex: 5, stepCount: 5, needsUserCardID: nil, updatedAt: .now)
+    CatpawWorkAttributes.ContentState(title: "一页带来源的报告", body: "读取第 2 份资料", kind: "working", taskID: "t1")
+    CatpawWorkAttributes.ContentState(title: "喝水提醒", body: "该起来喝杯水了", kind: "reminder_due", taskID: "t2")
+    CatpawWorkAttributes.ContentState(title: "一页带来源的报告", body: "报告已生成", kind: "done", taskID: "t1")
 }
 #endif
