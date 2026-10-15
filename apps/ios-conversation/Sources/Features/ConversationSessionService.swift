@@ -468,12 +468,14 @@ public actor ConversationSessionService {
                 journal.append(ui); journal.sort { $0.sequence < $1.sequence }; turn.uiEvents = journal
             }
         case .suspended(let ids, _):
-            let pending = Set((turn.pendingApprovals ?? []).map(\.interruptID)).union(turn.pendingUIBlocks.compactMap(\.interruptID))
+            let pending = Set((turn.pendingApprovals ?? []).map(\.interruptID)).union(turn.pendingUIBlocks.compactMap(\.interruptID)).union((turn.pendingUIApprovals ?? []).map(\.interruptID))
             guard !ids.isEmpty, Set(ids).isSubset(of: pending) else { throw ConversationSessionError.invalidEvent }
         case .approvalResolved(let id, let call, _, _):
             // A replay/observe may resolve an interrupt this journal never saw pending (e.g. expired while offline).
             if let i = turn.pendingApprovals?.firstIndex(where: { $0.interruptID == id }) { guard turn.pendingApprovals?[i].callID == call else { throw ConversationSessionError.invalidEvent }; turn.pendingApprovals?.remove(at: i) }
             if turn.pendingApprovals?.isEmpty == true { turn.pendingApprovals = nil }
+            turn.pendingUIApprovals?.removeAll { $0.interruptID == id.lowercased() }
+            if turn.pendingUIApprovals?.isEmpty == true { turn.pendingUIApprovals = nil }
         case .failed(let reason, let reconciliation):
             turn.state = reconciliation ? .unknown : .failed; turn.error = reason
             if !reconciliation { turn.pendingApprovals = nil }
@@ -810,6 +812,14 @@ public actor ConversationSessionService {
         var (session, revision) = try await readVersioned(scope: request.scope, conversationID: request.conversationID)
         guard let i = session.turns.firstIndex(where: { $0.id == turnID }) else { return }
         var turn = session.turns[i]
+        let uiChanged: Bool
+        if observation.serverState == "awaiting_approval", !observation.pendingUIApprovals.isEmpty, [.running, .unknown, .dispatched].contains(turn.state) {
+            uiChanged = turn.pendingUIApprovals != observation.pendingUIApprovals
+            if [.unknown, .dispatched].contains(turn.state) { turn.state = .running; turn.error = nil }
+            turn.pendingUIApprovals = observation.pendingUIApprovals
+        } else if turn.pendingUIApprovals != nil, observation.serverState != nil {
+            uiChanged = true; turn.pendingUIApprovals = nil
+        } else { uiChanged = false }
         if observation.serverState == "awaiting_approval", !observation.pendingApprovals.isEmpty {
             guard [.running, .unknown, .dispatched].contains(turn.state) else { return }
             for approval in observation.pendingApprovals {
@@ -819,7 +829,7 @@ public actor ConversationSessionService {
             turn.state = .running; turn.error = nil; turn.pendingApprovals = observation.pendingApprovals
         } else if turn.pendingApprovals != nil, observation.serverState != nil, observation.serverState != "awaiting_approval" {
             turn.pendingApprovals = nil
-        } else { return }
+        } else if !uiChanged { return }
         session.turns[i] = turn
         try await save(session, expectedRevision: revision, fence: request, observationToken: observationToken)
     }
@@ -861,6 +871,18 @@ public actor ConversationSessionService {
     public func pendingUIBlocks(scope: DataScope, conversationID: UUID) async throws -> [ConversationUIEvent] {
         try await read(scope: scope, conversationID: conversationID).turns.last(where: { $0.awaitingApproval })?.pendingUIBlocks ?? []
     }
+    /// Waiting ui blocks for cold-start restore: the snapshot's `pending_approvals` kind "ui" when known (observe),
+    /// else the journal's unresolved `ui.block`s; de-duplicated by interrupt id. Empty when the turn is not waiting.
+    public func pendingUIApprovals(scope: DataScope, conversationID: UUID) async throws -> [ConversationUIApproval] {
+        guard let turn = try await read(scope: scope, conversationID: conversationID).turns.last(where: { $0.awaitingApproval }) else { return [] }
+        return Self.uiApprovals(turn)
+    }
+    static func uiApprovals(_ turn: ConversationTurnRecord) -> [ConversationUIApproval] {
+        let resolved = Set((turn.uiEvents ?? []).filter { $0.type == .resolve }.map(\.id))
+        var out = (turn.pendingUIApprovals ?? []).filter { !resolved.contains($0.blockID) }
+        for block in turn.pendingUIBlocks { if let value = ConversationUIApproval(block), !out.contains(where: { $0.interruptID == value.interruptID }) { out.append(value) } }
+        return out
+    }
     /// catpaw.ui.v1 answer for a waiting block; reuses the approval.v1 decision route and the after_sequence SSE resume.
     /// `response` is the raw `ui.response` (submit) / `ui.error` (report_error) JSON; nil for dismiss.
     /// Idempotent on `operationID`: after `.transport`, resend with the SAME id. Errors are `ConversationApprovalFailure`
@@ -870,7 +892,7 @@ public actor ConversationSessionService {
         guard active[conversationID] == nil, !cancelling.contains(conversationID) else { throw ConversationSessionError.busy }
         let saved = try await read(scope: scope, conversationID: conversationID)
         guard let turn = saved.turns.first(where: { $0.id == turnID }), turn.awaitingApproval,
-              let block = turn.pendingUIBlocks.first(where: { $0.interruptID == interruptID.lowercased() }) else { throw ConversationApprovalFailure.noPendingApproval }
+              let block = Self.uiApprovals(turn).first(where: { $0.interruptID == interruptID.lowercased() }) else { throw ConversationApprovalFailure.noPendingApproval }
         guard block.argsHash == argsHash else { throw ConversationApprovalFailure.stale }
         if decision == .dismiss { guard response == nil else { throw ConversationApprovalFailure.rejected(status: 422, code: "ui_response_invalid") } }
         else { guard response != nil else { throw ConversationApprovalFailure.rejected(status: 422, code: "ui_response_invalid") } }
@@ -894,4 +916,35 @@ public actor ConversationSessionService {
     }
     private static func journalID(_ id: UUID) -> UUID { stableID("conversation-first-journal-\(id)") }
     private static func encode<T: Encodable>(_ value: T) throws -> String { let encoder = JSONEncoder(); encoder.outputFormatting = [.sortedKeys]; return String(decoding: try encoder.encode(value), as: UTF8.self) }
+}
+
+/// Scope-bound adapter for #36's `GenerativeUIDecisionSubmitting` (its signature has no scope).
+/// Same method signature as the protocol, with our `ConversationUIDecision` (raw values submit / dismiss / report_error,
+/// identical to #36's `GenerativeUIDecision`). Failures are `ConversationApprovalFailure` (show `friendlyMessage`).
+/// After #36 lands, conform with (see GenerativeBlock.swift there):
+///     extension ConversationUIDecisionSubmitter: GenerativeUIDecisionSubmitting {
+///         public func submitUIDecision(conversationID: UUID, turnID: UUID, interruptID: String, decision: GenerativeUIDecision, argsHash: String, response: Data?, operationID: UUID) async throws {
+///             guard let mapped = ConversationUIDecision(rawValue: decision.rawValue) else { throw ConversationApprovalFailure.unsupported }
+///             try await submitUIDecision(conversationID: conversationID, turnID: turnID, interruptID: interruptID, decision: mapped, argsHash: argsHash, response: response, operationID: operationID)
+///         }
+///     }
+public struct ConversationUIDecisionSubmitter: Sendable {
+    public let scope: DataScope
+    public let service: ConversationSessionService
+    public init(service: ConversationSessionService, scope: DataScope) { self.service = service; self.scope = scope }
+    public func submitUIDecision(conversationID: UUID, turnID: UUID, interruptID: String, decision: ConversationUIDecision, argsHash: String, response: Data?, operationID: UUID) async throws {
+        try await service.submitUIDecision(scope: scope, conversationID: conversationID, turnID: turnID, interruptID: interruptID, decision: decision, argsHash: argsHash, response: response, operationID: operationID)
+    }
+    /// The same entry as a closure taking the raw decision string (for code that cannot name either enum).
+    public var closure: @Sendable (_ conversationID: UUID, _ turnID: UUID, _ interruptID: String, _ decision: String, _ argsHash: String, _ response: Data?, _ operationID: UUID) async throws -> Void {
+        let bound = self
+        return { conversationID, turnID, interruptID, decision, argsHash, response, operationID in
+            guard let mapped = ConversationUIDecision(rawValue: decision) else { throw ConversationApprovalFailure.rejected(status: 422, code: "approval_schema_invalid") }
+            try await bound.submitUIDecision(conversationID: conversationID, turnID: turnID, interruptID: interruptID, decision: mapped, argsHash: argsHash, response: response, operationID: operationID)
+        }
+    }
+    /// Cold start: waiting ui blocks to put back into the store.
+    public func pendingUIApprovals(conversationID: UUID) async throws -> [ConversationUIApproval] {
+        try await service.pendingUIApprovals(scope: scope, conversationID: conversationID)
+    }
 }
