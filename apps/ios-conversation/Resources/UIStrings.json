@@ -367,6 +367,10 @@
     "en": "Your edited version. Sources retain the original snapshots; new content has not been verified again.",
     "zh-Hans": "你编辑的版本；来源保留原资料快照，新增内容尚未重新核验。"
   },
+  "你选择了：{0}": {
+    "en": "You chose: {0}",
+    "zh-Hans": "你选择了：{0}"
+  },
   "使用专家": {
     "en": "Use expert",
     "zh-Hans": "使用专家"
@@ -642,6 +646,10 @@
   "关闭记忆利用": {
     "en": "Turn off memory use",
     "zh-Hans": "关闭记忆利用"
+  },
+  "其他…": {
+    "en": "Other…",
+    "zh-Hans": "其他…"
   },
   "具体要求": {
     "en": "Requirements",
@@ -1283,6 +1291,10 @@
     "en": "Enable the demo partition in Settings and select On Device.",
     "zh-Hans": "在设置开启演示数据分区，并切换到本机。"
   },
+  "填写": {
+    "en": "Fill in",
+    "zh-Hans": "填写"
+  },
   "处理进展待核对": {
     "en": "Processing status needs checking",
     "zh-Hans": "处理进展待核对"
@@ -1699,6 +1711,10 @@
     "en": "Expanded",
     "zh-Hans": "已展开"
   },
+  "已批准 · {0}": {
+    "en": "Approved · {0}",
+    "zh-Hans": "已批准 · {0}"
+  },
   "已批准；当前授权已失效，尚未执行。": {
     "en": "Approved; current authority is no longer valid. Execution has not occurred.",
     "zh-Hans": "已批准；当前授权已失效，尚未执行。"
@@ -1706,6 +1722,10 @@
   "已批准；等待设备，尚未执行。": {
     "en": "Approved; waiting for the device. Execution has not occurred.",
     "zh-Hans": "已批准；等待设备，尚未执行。"
+  },
+  "已拒绝 · {0}": {
+    "en": "Denied · {0}",
+    "zh-Hans": "已拒绝 · {0}"
   },
   "已拒绝：{0}": {
     "en": "Denied: {0}",
@@ -1730,6 +1750,10 @@
   "已推迟": {
     "en": "Snoozed",
     "zh-Hans": "已推迟"
+  },
+  "已提交": {
+    "en": "Submitted",
+    "zh-Hans": "已提交"
   },
   "已撤权 · 保留原记录": {
     "en": "Revoked · original record preserved",
@@ -2283,6 +2307,10 @@
     "en": "Full preview of the selected image",
     "zh-Hans": "所选图片完整预览"
   },
+  "打开": {
+    "en": "Open",
+    "zh-Hans": "打开"
+  },
   "打开侧栏": {
     "en": "Open sidebar",
     "zh-Hans": "打开侧栏"
@@ -2326,6 +2354,10 @@
   "执行频率": {
     "en": "Frequency",
     "zh-Hans": "执行频率"
+  },
+  "批准": {
+    "en": "Approve",
+    "zh-Hans": "批准"
   },
   "批准仅记录这份精确事项的决定；设备执行结果会另行核对。": {
     "en": "Approval records a decision for this exact item. Device execution is checked separately.",
@@ -2406,6 +2438,10 @@
   "控制结果尚未确认；只核对原控制，请勿重复提交。": {
     "en": "The control outcome is unconfirmed. Check only the original control; do not submit it again.",
     "zh-Hans": "控制结果尚未确认；只核对原控制，请勿重复提交。"
+  },
+  "提交": {
+    "en": "Submit",
+    "zh-Hans": "提交"
   },
   "提交中，先核验": {
     "en": "Submitting; verify first",
@@ -3518,6 +3554,10 @@
   "正在准备交互内容…": {
     "en": "Preparing interactive content…",
     "zh-Hans": "正在准备交互内容…"
+  },
+  "正在准备卡片…": {
+    "en": "Preparing card…",
+    "zh-Hans": "正在准备卡片…"
   },
   "正在准备发送…": {
     "en": "Preparing to send…",
@@ -4650,6 +4690,10 @@
   "请返回当前环境目录。": {
     "en": "Return to this environment's catalog.",
     "zh-Hans": "请返回当前环境目录。"
+  },
+  "请选择": {
+    "en": "Choose",
+    "zh-Hans": "请选择"
   },
   "请选择工作区": {
     "en": "Select a workspace",
