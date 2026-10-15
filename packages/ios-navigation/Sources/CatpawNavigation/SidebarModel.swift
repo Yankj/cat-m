@@ -9,8 +9,10 @@ public struct SidebarConversation: Identifiable, Equatable, Sendable {
     public let id: UUID
     public var title: String
     public var preview: String?
-    public init(id: UUID, title: String, preview: String? = nil) {
-        self.id = id; self.title = title; self.preview = preview
+    /// Last activity, shown as a small relative time. Optional so older hosts keep compiling.
+    public var updatedAt: Date?
+    public init(id: UUID, title: String, preview: String? = nil, updatedAt: Date? = nil) {
+        self.id = id; self.title = title; self.preview = preview; self.updatedAt = updatedAt
     }
 }
 public struct SidebarCapabilities: Equatable, Sendable {
@@ -36,16 +38,23 @@ public struct SidebarCapabilities: Equatable, Sendable {
         }
     }
 }
+/// Account header shown at the top of the drawer. Tapping it routes to settings.
+public struct SidebarAccount: Equatable, Sendable {
+    public var name: String
+    public var detail: String?
+    public init(name: String, detail: String? = nil) { self.name = name; self.detail = detail }
+}
 public struct SidebarSnapshot: Equatable, Sendable {
     /// A noncredential namespace used to reset transient search across account changes.
     public var contextID: String
     public var selectedConversationID: UUID?
     public var conversations: [SidebarConversation]
     public var capabilities: SidebarCapabilities
+    public var account: SidebarAccount?
     public init(contextID: String, selectedConversationID: UUID? = nil,
-                conversations: [SidebarConversation], capabilities: SidebarCapabilities = .init()) {
+                conversations: [SidebarConversation], capabilities: SidebarCapabilities = .init(), account: SidebarAccount? = nil) {
         self.contextID = contextID; self.selectedConversationID = selectedConversationID
-        self.conversations = conversations; self.capabilities = capabilities
+        self.conversations = conversations; self.capabilities = capabilities; self.account = account
     }
     public func matching(_ query: String) -> [SidebarConversation] {
         let needle = query.trimmingCharacters(in: .whitespacesAndNewlines)
