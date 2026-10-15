@@ -10,6 +10,7 @@ public actor ConversationSessionService {
     public nonisolated var artifactContinuationSubjectID:UUID? {backend.artifactContinuationSubjectID}
     public init(repository: Repository, backend: any ConversationBackend = UnconfiguredConversationBackend()) { self.repository = repository; self.backend = backend }
     public func imageCapabilities(scope:DataScope,conversationID:UUID) async throws -> ConversationImageCapability { try await backend.imageCapabilities(scope:scope,conversationID:conversationID) }
+    public func acceptedWorkCapability(scope:DataScope,conversationID:UUID) async throws -> ConversationAcceptedWorkCapability {try await backend.acceptedWorkCapability(scope:scope,conversationID:conversationID)}
     public func imageConsent(scope:DataScope,conversationID:UUID,previewID:UUID,previewHash:String) async throws -> ConversationImageConsent {try await backend.imageConsent(scope:scope,conversationID:conversationID,previewID:previewID,previewHash:previewHash)}
     public func allowImageConsent(scope:DataScope,consent:ConversationImageConsent,nonSensitiveConfirmed:Bool) async throws -> Int {try await backend.allowImageConsent(scope:scope,consent:consent,nonSensitiveConfirmed:nonSensitiveConfirmed)}
     public func modelConsent(scope: DataScope, conversationID: UUID) async throws -> ConversationModelConsent? { try await backend.modelConsent(scope:scope,conversationID:conversationID) }
@@ -85,7 +86,7 @@ public actor ConversationSessionService {
         value.draftText = text
         try await repository.commit(scope: scope, mutations: [.update(record.id, record.header.revision, .core(.conversation(value)))])
     }
-    public func send(scope: DataScope, conversationID: UUID, text: String, operationID: UUID, context: [ConversationExplicitContext] = [], preserveDraft:Bool = false,image:ConversationVisionPayload?=nil,continuation:ConversationArtifactContinuationIntent?=nil) async throws -> UUID {
+    public func send(scope: DataScope, conversationID: UUID, text: String, operationID: UUID, context: [ConversationExplicitContext] = [], preserveDraft:Bool = false,image:ConversationVisionPayload?=nil,continuation:ConversationArtifactContinuationIntent?=nil,acceptedWork:ConversationAcceptedWorkSelection?=nil) async throws -> UUID {
         guard active[conversationID] == nil else { throw ConversationSessionError.busy }
         let connection = await backend.connection(scope: scope)
         guard [.connected, .providerUnverified].contains(connection.state) else {
@@ -99,7 +100,7 @@ public actor ConversationSessionService {
         let epoch: Int
         if let index = session.turns.firstIndex(where: { $0.id == operationID }) {
             let prior = session.turns[index]
-            guard prior.request.image == image?.reference,prior.request.continuation==continuation else {throw CatpawError.conflict}
+            guard prior.request.image == image?.reference,prior.request.continuation==continuation,prior.request.acceptedWork?.selection==acceptedWork else {throw CatpawError.conflict}
             guard prior.request.history.last?.content == text, try Self.encode(prior.request.context) == Self.encode(context) else { throw CatpawError.conflict }
             guard prior.state != .cancelledBeforeSend else { throw CatpawError.conflict }
             guard prior.state == .notSent else { return operationID }
@@ -121,7 +122,19 @@ public actor ConversationSessionService {
                 originalBinding=binding;continuationSubject=subject
             }
             session.messages.append(ConversationTranscriptMessage(id: stableID("conversation-user-\(operationID)"), role: .user, content: text,image:image?.reference.receipt))
-            request = ConversationTurnRequest(scope: scope, conversationID: conversationID, threadID: session.threadID, operationID: operationID, epoch: epoch, history: session.messages, context: context,image:image?.reference,imageBytes:image?.bytes,continuation:continuation,continuationOriginalBinding:originalBinding,continuationSubjectID:continuationSubject)
+            var provisional = ConversationTurnRequest(scope: scope, conversationID: conversationID, threadID: session.threadID, operationID: operationID, epoch: epoch, history: session.messages, context: context,image:image?.reference,imageBytes:image?.bytes,continuation:continuation,continuationOriginalBinding:originalBinding,continuationSubjectID:continuationSubject)
+            if let selection=acceptedWork {
+                guard image==nil,continuation==nil else {throw ConversationDispatchFailure.notSent(reason:"工作约定不能与图片或成果修改混用。")}
+                let capability=try await backend.acceptedWorkCapability(scope:scope,conversationID:conversationID)
+                try Task.checkCancellation();try selection.validate(capability:capability,now:Date())
+                // The explicit confirmed queue entry precedes this optional empty-conversation creation.
+                // No turn/model/grant can be sent until the exact wire is frozen and journaled below.
+                try await backend.ensureConversationForExplicitSend(provisional);try Task.checkCancellation()
+                let intent=try await backend.freezeAcceptedWork(provisional,selection:selection);try Task.checkCancellation()
+                guard intent.selection==selection else {throw ConversationAcceptedWorkError.invalidFrozenIntent}
+                provisional=try provisional.withAcceptedWork(intent)
+            }
+            request=provisional
             if let image,let message=request.history.last {try image.reference.validate(image.bytes,messageID:message.id)}
             session.turns.append(ConversationTurnRecord(id: operationID, request: request, state: .dispatched, lastSequence: 0, error: nil))
         }

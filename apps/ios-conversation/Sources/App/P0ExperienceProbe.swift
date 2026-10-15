@@ -42,6 +42,13 @@ import UIKit
         guard enabled else { return }
         P0PerformanceLog.shared.mark("model_update",count:model.session?.messages.last?.content.count ?? 0)
         identity=["conversation_id":model.conversationID?.uuidString ?? "","turn_id":model.session?.turns.last?.id.uuidString ?? "","turn_state":model.session?.turns.last?.state.rawValue ?? "","outgoing_count":model.outgoingMessages.count,"draft_hash":textHash(model.draft),"composition_active":model.isInputComposing,"network_admission":model.networkAdmissionAllowed]
+        if let work=model.session?.turns.last?.request.acceptedWork {
+            identity["accepted_work_decision_id"]=work.selection.decisionID.uuidString.lowercased()
+            identity["accepted_work_input_hash"]=work.inputHash
+            identity["accepted_work_deadline"]=ConversationAcceptedWorkCodec.utc(work.selection.options.notAfter)
+            identity["accepted_work_model_limit"]=work.selection.options.modelLimit
+        }
+        identity["accepted_work_review_saved"]=model.acceptedWorkDraft != nil
         revision += 1
     }
     @objc private func tick() {
