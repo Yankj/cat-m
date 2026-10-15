@@ -143,6 +143,41 @@ public actor ConversationSessionService {
         value.draftText = text
         try await repository.commit(scope: scope, mutations: [.update(record.id, record.header.revision, .core(.conversation(value)))])
     }
+    /// Idempotent merge of the server transcript into the local one. Known ids keep the local row (createdAt,
+    /// failure, tool metadata) in local order; server-only rows are inserted where the server places them,
+    /// i.e. before the next locally known server row. Local-only rows (unsent messages, failure notices, tool rows)
+    /// keep their position. A server-only row gets the createdAt of the row before it (keeps createdAt sorting stable).
+    static func mergeServerTranscript(local: [ConversationTranscriptMessage], server: [ConversationTranscriptMessage]) -> [ConversationTranscriptMessage] {
+        let localIDs = Set(local.map(\.id))
+        var seen = Set<UUID>(), result: [ConversationTranscriptMessage] = [], next = 0
+        func place(_ message: ConversationTranscriptMessage) {
+            guard seen.insert(message.id).inserted else { return }
+            let anchor = result.last?.createdAt ?? .distantPast
+            result.append(ConversationTranscriptMessage(id: message.id, role: message.role, content: message.content, complete: true, createdAt: max(anchor, message.createdAt)))
+        }
+        for message in local {
+            if let at = server.firstIndex(where: { $0.id == message.id }), at >= next {
+                for pending in server[next..<at] where !localIDs.contains(pending.id) { place(pending) }
+                next = at + 1
+            }
+            if seen.insert(message.id).inserted { result.append(message) }
+        }
+        for pending in server[min(next, server.count)...] where !localIDs.contains(pending.id) { place(pending) }
+        return result
+    }
+    /// Pull the server transcript and merge it (open conversation / before send). Returns true when rows were added.
+    /// Skipped while a turn is in flight or unresolved so streaming rows are never reordered.
+    @discardableResult public func syncServerTranscript(scope: DataScope, conversationID: UUID) async throws -> Bool {
+        guard active[conversationID] == nil, let server = try await backend.serverTranscript(scope: scope, conversationID: conversationID), !server.isEmpty else { return false }
+        var (session, revision) = try await readVersioned(scope: scope, conversationID: conversationID)
+        guard session.unresolved == nil, active[conversationID] == nil else { return false }
+        let merged = Self.mergeServerTranscript(local: session.messages, server: server)
+        guard merged.count != session.messages.count else { return false }
+        sendDiagnostic("catpaw.send transcript synced server=\(server.count) local=\(session.messages.count) merged=\(merged.count)")
+        session.messages = merged
+        try await save(session, expectedRevision: revision)
+        return true
+    }
     /// Wire history for a turn: the local transcript minus user messages of other turns that never reached the
     /// server (notSent / cancelledBeforeSend). Those stay visible locally but would make the server history a
     /// strict prefix of ours, which prepare() correctly rejects as a conflict and which used to deadlock the queue.
@@ -162,6 +197,10 @@ public actor ConversationSessionService {
         }
         try Task.checkCancellation()
         guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, text.utf16.count <= 8000 else { throw CatpawError.invalid("请输入不超过 8000 字符的内容。") }
+        if plainSend, !offline {
+            do { try await syncServerTranscript(scope: scope, conversationID: conversationID) }
+            catch { sendDiagnostic("catpaw.send transcript sync skipped: \(String(describing: error))") }
+        }
         var (session, journalRevision) = try await readVersioned(scope: scope, conversationID: conversationID)
         let request: ConversationTurnRequest
         let epoch: Int
