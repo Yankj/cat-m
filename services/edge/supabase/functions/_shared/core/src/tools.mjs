@@ -37,6 +37,11 @@ export const TOOL_APPROVAL=Object.freeze({
  revise_current_report_work_v1:{approval:'never',risk:'local_reversible'},
  propose_memory_v1:{approval:'never',risk:'local_reversible'},
  render_ui:{approval:'never',risk:'none'}, // catpaw.ui.v1: response-requiring blocks suspend as kind:'ui' interrupts
+ // catpaw.agent-memory.v1: reads/saves/edits are reversible (undo, Settings › 记忆); forgetting always asks.
+ memory_search:{approval:'never',risk:'read_only'},
+ memory_save:{approval:'never',risk:'local_reversible'},
+ memory_update:{approval:'never',risk:'local_reversible'},
+ memory_forget:{approval:'always',risk:'local_write',class:'memory_forget'},
  create_task:{approval:'first_use',risk:'local_write',class:'proactive_task_write'},
  update_task:{approval:'first_use',risk:'local_write',class:'proactive_task_write'},
  create_calendar_event:{approval:'always',risk:'device_write',class:'calendar_write'},
