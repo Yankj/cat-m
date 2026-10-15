@@ -130,7 +130,7 @@ public struct AuthenticatedNativeChatCredentials: NativeChatSessionCredentials {
             Task { await CatpawPushTokenUploader.shared.setAuthorization { try await credentials.authorization(scope: partition.scope) } }
             let backend=NativeChatHTTPBackend(configuration:chatConfiguration,credentials:credentials)
             let memory=isFixture ? nil : try NativeMemoryComposition.service(repository:repository,configuration:chatConfiguration,credentials:credentials)
-            if !isFixture { MemoryLibraryHub.installAgentMemory(configuration:chatConfiguration,credentials:credentials) }
+            if !isFixture { MemoryLibraryHub.installAgentMemory(configuration:chatConfiguration,credentials:credentials); MemoryEventSink.installSideChannel() }
             var selected:any ConversationBackend=isFixture ? UnconfiguredConversationBackend() : backend
             #if DEBUG
             selected=CatpawDemoBackendSwitch.select(selected)
@@ -241,7 +241,7 @@ public struct AuthenticatedNativeChatCredentials: NativeChatSessionCredentials {
                 Task { await CatpawPushTokenUploader.shared.setAuthorization { try await credentials.authorization(scope: partition.scope) } }
                 let http=NativeChatHTTPBackend(configuration:chatConfiguration,credentials:credentials)
                 let memory=isFixture ? nil : try NativeMemoryComposition.service(repository:repository,configuration:chatConfiguration,credentials:credentials)
-            if !isFixture { MemoryLibraryHub.installAgentMemory(configuration:chatConfiguration,credentials:credentials) }
+            if !isFixture { MemoryLibraryHub.installAgentMemory(configuration:chatConfiguration,credentials:credentials); MemoryEventSink.installSideChannel() }
                 backend = http
                 var selected: any ConversationBackend = isFixture ? UnconfiguredConversationBackend() : http
                 #if DEBUG

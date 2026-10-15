@@ -245,6 +245,10 @@ public struct ConversationTurnEvent: Sendable {
         case uiBlockResolve(ConversationUIEvent)
         /// catpaw.device.v1 `device_call`: run a tool on this phone, then `submitDeviceResult` (the turn is suspended until then).
         case deviceCall(ConversationDeviceCall)
+        /// Side-channel wire events with no transcript effect (`memory.used`, `memory.update`, `memory_recalled`,
+        /// `proactive_suggestion`). They still occupy a sequence number, so they must be decoded, not dropped.
+        /// The raw `data` object is forwarded to `ConversationSideChannelEvents.handler` by the backend.
+        case sideChannel(type: String, data: Data)
     }
     public let operationID: UUID
     public let epoch: Int
@@ -607,4 +611,21 @@ public extension ConversationBackend {
     func recordedReplyEvidence(scope:DataScope) async -> ConversationConnection? {nil}
     func modelConsent(scope: DataScope, conversationID: UUID) async throws -> ConversationModelConsent? { nil }
     func allowModelConsent(scope: DataScope, consent: ConversationModelConsent) async throws { throw ConversationSessionError.notConfigured }
+}
+
+/// Sink for side-channel turn events. The network layer calls `dispatch`; the app installs the handler at composition
+/// time (`MemoryEventSink.installSideChannel()`), so wire code and portable test scripts do not depend on feature files.
+public enum ConversationSideChannelEvents {
+    public typealias Handler = @Sendable (_ type: String, _ turnID: UUID, _ data: Data) -> Void
+    public static let types: Set<String> = ["memory.used", "memory.update", "memory_recalled", "proactive_suggestion"]
+    private static let lock = NSLock()
+    nonisolated(unsafe) private static var installed: Handler?
+    public static var handler: Handler? {
+        get { lock.lock(); defer { lock.unlock() }; return installed }
+        set { lock.lock(); installed = newValue; lock.unlock() }
+    }
+    public static func dispatch(type: String, turnID: UUID, data: Data) {
+        guard let handler else { return }
+        handler(type, turnID, data)
+    }
 }
