@@ -29,6 +29,7 @@ import ActivityKit
 
     /// Runs until the calling task is cancelled (attach with SwiftUI `.task`).
     func observe(_ service: ConversationSessionService, conversationID: @escaping @MainActor () -> UUID?) async {
+        observePushToStartTokens()
         let stream = await service.turnEvents()
         for await event in stream {
             if Task.isCancelled { break }
@@ -95,6 +96,19 @@ import ActivityKit
             observeToken(activity, turnID: id, conversationID: turn.conversationID)
         } catch {
             // Disabled by the user / system budget: the in-app UI remains the source of truth.
+        }
+    }
+
+    private var pushToStartObserver: Task<Void, Never>?
+    /// Push-to-start (iOS 17.2+): lets the server start a Live Activity, e.g. for `reminder_due`.
+    private func observePushToStartTokens() {
+        guard pushToStartObserver == nil else { return }
+        if #available(iOS 17.2, *) {
+            pushToStartObserver = Task {
+                for await data in Activity<CatpawWorkAttributes>.pushToStartTokenUpdates {
+                    await CatpawPushTokenUploader.shared.enqueue(.init(kind: .liveActivityStart, token: data))
+                }
+            }
         }
     }
 
