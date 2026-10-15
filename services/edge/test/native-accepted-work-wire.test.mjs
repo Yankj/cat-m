@@ -99,3 +99,15 @@ test('synthetic viewer lifetime is bounded and changes only new rows; restore pr
   const original=await restored.repository.transaction(tx=>tx.get(membershipOwner(f.actor.issuer),'app-sessions',f.actor.session_id));assert.equal(original.expires_at,0);const denied=await restored.req(restored.workPath+'/'+f.turn.turn_id);assert.equal(denied.status,409);assert.equal((await denied.json()).error.code,'grant_conflict');assert.equal(restored.calls.length,0);
  }finally{await restored?.stop();await long.stop();await f.stop();}
 });
+
+
+test('native loopback keeps scoped memory and record transactions on the actual maintained API',async()=>{
+ const f=await createNativeAcceptedWorkWireFixture();try{
+  const path='/catpaw/memory/v1/scopes/'+f.scope.scope_id,state=await f.json(path+'/state');
+  assert.equal(state.contract,'catpaw.memory.v1');assert.equal(state.enabled,false);assert.equal(f.calls.length,0);
+  const input={schema_version:1,contract:'catpaw.memory.v1',operation_id:'51000000-0000-4000-8000-000000000021',expected_memory_generation:state.memory_generation,command:{type:'set_enabled',enabled:true}};
+  const receipt=await f.json(path+'/commands',input);assert.equal(receipt.operation.request_hash,hash(input));
+  assert.equal((await f.json(path+'/state')).enabled,true);assert.deepEqual(await f.json(path+'/commands/'+input.operation_id),receipt);
+  await f.restart();assert.deepEqual(await f.json(path+'/commands/'+input.operation_id),receipt);assert.equal(f.calls.length,0);
+ }finally{await f.stop();}
+});

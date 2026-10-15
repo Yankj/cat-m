@@ -7,6 +7,8 @@ export async function eraseChatSource({records,principal,scope_id,source}){
   await records.lock(owner,'native-chat-conversations',source.conversation_id);
   const c=await records.get(owner,'native-chat-conversations',source.conversation_id);
   check(c?.subject_id===principal.subject_id&&c.scope_id===scope_id,404,'not_found');
+  // An explicit memory command is its own authenticated source, never a chat message copy.
+  if(source.type==='user_memory_command'){check(source.authenticated_actor_id===principal.subject_id&&source.command_id,403,'scope_forbidden');return;}
   const runs=(await records.list(owner,'catpaw-runs')).filter(r=>r.frozen_request?.conversation_id===c.id);
   const plans=(await records.list(owner,'catpaw-task-plan-heads')).filter(r=>r.conversation_id===c.id);
   let retainedExecution=false;

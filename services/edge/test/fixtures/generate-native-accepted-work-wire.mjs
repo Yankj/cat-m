@@ -27,13 +27,18 @@ export async function createNativeAcceptedWorkWireFixture({holdChat=false,modelO
  let principal=actor,clock=Date.now(),runtime;const calls=[],retained=[];
  let releaseChat;const chatGate=holdChat?new Promise(resolve=>{releaseChat=resolve;}):Promise.resolve();
  const transaction=repository.transaction.bind(repository);
- repository.transaction=fn=>transaction(tx=>{
-  tx.connection={query:async(sql,params)=>{
-   if(sql.startsWith('SELECT pg_advisory_xact_lock'))return {rows:[]};
-   const kind=/kind='([^']+)'/.exec(sql)?.[1];assert.ok(['app-sessions','scope-memberships'].includes(kind));
-   const row=await tx.get(params[0],kind,params[1]);return {rows:row?[{data:row}]:[]};
-  }};return fn(tx);
- });
+ repository.transaction=(scopeOrCallback,scopedCallback)=>{
+  const recordsOnly=typeof scopeOrCallback==='function',callback=recordsOnly?scopeOrCallback:scopedCallback;
+  const wrapped=tx=>{
+   const records=recordsOnly?tx:tx.records;
+   records.connection={query:async(sql,params)=>{
+    if(sql.startsWith('SELECT pg_advisory_xact_lock'))return {rows:[]};
+    const kind=/kind='([^']+)'/.exec(sql)?.[1];assert.ok(['app-sessions','scope-memberships'].includes(kind));
+    const row=await records.get(params[0],kind,params[1]);return {rows:row?[{data:row}]:[]};
+   }};return callback(tx);
+  };
+  return recordsOnly?transaction(wrapped):transaction(scopeOrCallback,wrapped);
+ };
  const provider={identity:{provider:'injected-offline-only',model:'native-wire-synthetic-only',adapter_version:1},reality:providerReality,assertReady(){},async *stream(input){
   calls.push(clone({tools:input.tools,provider_context:input.provider_context}));
   if(input.tools.some(t=>t.function.name==='delegate_plan_v1')){await chatGate;yield {type:'tool_call',id:'native-wire-original-plan',name:'delegate_plan_v1',arguments:PLAN};yield {type:'done',finish_reason:'tool_calls'};return;}

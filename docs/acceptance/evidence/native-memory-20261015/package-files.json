@@ -1,0 +1,156 @@
+{
+  "captured_at": "2026-10-15T02:06:38.059892+00:00",
+  "bundle_sha256": "7bbf2741c12ddf7753f665d210513c3efd009af75bb6b6ba1422b4300a92138b",
+  "files": [
+    {
+      "path": "AppIcon60x60@2x.png",
+      "bytes": 17938,
+      "sha256": "2972060d13cf370b585ff992e15ad841cf259b9d5e41db5279b87ba37ebc6092"
+    },
+    {
+      "path": "AppIcon76x76@2x~ipad.png",
+      "bytes": 27810,
+      "sha256": "40cf23c5eaf1c5d87ea50f8fc3a1ee627bca60e5655b8ade5f6c13e49efcf576"
+    },
+    {
+      "path": "Assets.car",
+      "bytes": 1465464,
+      "sha256": "4a0b0622403d514242295b9bff8c5b330c2f73de49cb6e69cadca44ea4900e1b"
+    },
+    {
+      "path": "CatpawM",
+      "bytes": 40216,
+      "sha256": "7beda466a5748a4adc9f431f2db03e786523d9ac0be6206625983d7e30b9a16c"
+    },
+    {
+      "path": "CatpawM.debug.dylib",
+      "bytes": 37570944,
+      "sha256": "09bebfc05ef61f007e0c28f0f4750d6dbe704b140c5d83619aa2d92c9836fa04"
+    },
+    {
+      "path": "Info.plist",
+      "bytes": 1749,
+      "sha256": "5ba52c8901a66f5399ded394ec92c190309540ee898889213d42e723e7db7766"
+    },
+    {
+      "path": "Metadata.appintents/extract.actionsdata",
+      "bytes": 1822,
+      "sha256": "c732883d97729810a319560cf7a70221cf5730e4399e4cb24206566355d72d9d"
+    },
+    {
+      "path": "Metadata.appintents/version.json",
+      "bytes": 53,
+      "sha256": "3940f1530d00561b32387dbc299f7dab36b517962e6e0d3887791d16e1c6a916"
+    },
+    {
+      "path": "PkgInfo",
+      "bytes": 8,
+      "sha256": "82502191c9484b04d685374f9879a0066069c49b8acae7a04b01d38d07e8eca0"
+    },
+    {
+      "path": "PlugIns/CatpawMTests.xctest/CatpawMTests",
+      "bytes": 9522672,
+      "sha256": "369d1ec42f0d67491824a25d4b4831c14adecd73ea01d606205dd8bd63ad1307"
+    },
+    {
+      "path": "PlugIns/CatpawMTests.xctest/Info.plist",
+      "bytes": 707,
+      "sha256": "a61cf5315940f987d504310791ba75468645b827010308172506a667bdc804b0"
+    },
+    {
+      "path": "PlugIns/CatpawMTests.xctest/accepted-work-wire-v1.json",
+      "bytes": 97270,
+      "sha256": "e0d52699e6f577487e661ea560c90e52db004f168c0eee36a99607cac86a993a"
+    },
+    {
+      "path": "PlugIns/CatpawMTests.xctest/accepted-work-wire-v2.json",
+      "bytes": 102052,
+      "sha256": "f3ad8f5c5be5c2efb2669aedb88bb4a7daa778373473270bc2a95fd88ab759f8"
+    },
+    {
+      "path": "PlugIns/CatpawMTests.xctest/accepted-work-wire-v3.json",
+      "bytes": 102082,
+      "sha256": "25d4a55756889ff392c7b4cdc5d4141bbaf9d8a72252692a9dcc6d9d5a6313f2"
+    },
+    {
+      "path": "PlugIns/CatpawMTests.xctest/legacy-r3-snapshot.json",
+      "bytes": 8099,
+      "sha256": "9c832d8e0edd66d2b5545d413ad212652fe3e5678f8a79ab9b7c0e1dcf4f2c2a"
+    },
+    {
+      "path": "PlugIns/CatpawMTests.xctest/memory-canonical-v1.json",
+      "bytes": 4695,
+      "sha256": "843a8beae86903e4491faa098eb82e40e179272c0e1fece3c13549e26dd79032"
+    },
+    {
+      "path": "PlugIns/CatpawMTests.xctest/memory-wire-v1.json",
+      "bytes": 4286,
+      "sha256": "6f96f6ef32b2d5da28d60d0ee729e1c57a67eabf6b25dce2b953bda20fdb96ca"
+    },
+    {
+      "path": "PlugIns/CatpawMTests.xctest/memory-wire-v2.json",
+      "bytes": 4286,
+      "sha256": "caf4a28f7a1672f2b51267e857fc78c137426cacd387df96eaff9ca67c652da0"
+    },
+    {
+      "path": "UIStrings.json",
+      "bytes": 152453,
+      "sha256": "3146f0e879662607fc7014f1c87d4967062538c9c34c62732006bdea31cee8a0"
+    },
+    {
+      "path": "__preview.dylib",
+      "bytes": 16752,
+      "sha256": "da6ea37abafb4d5792770c62d134de22ab5a1f346fbca4e3ff8b12291f97ea11"
+    },
+    {
+      "path": "en.lproj/AppShortcuts.strings",
+      "bytes": 118,
+      "sha256": "104567d61b07467426b1dc3ef66f64890b2f969dbcad1265fb8fd342eb39968a"
+    },
+    {
+      "path": "en.lproj/InfoPlist.strings",
+      "bytes": 740,
+      "sha256": "75f5f1c340deebeb13b7b480788c30499e3c9aafba809c150782ab7a2a2d04b1"
+    },
+    {
+      "path": "en.lproj/Localizable.strings",
+      "bytes": 190,
+      "sha256": "dffc32bacad87aec83537938b84ba94182e2ad05e318f2045d0badb779befc3a"
+    },
+    {
+      "path": "en.lproj/nlu.appintents/1e383a20006b9b96e704f4686f92f66a.version",
+      "bytes": 1,
+      "sha256": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d"
+    },
+    {
+      "path": "en.lproj/nlu.appintents/nlu.lzfse",
+      "bytes": 2176,
+      "sha256": "e96ed6ac882534454ab08edfb45197d88377372af2571c16f3f268c8c0b50786"
+    },
+    {
+      "path": "zh-Hans.lproj/AppShortcuts.strings",
+      "bytes": 218,
+      "sha256": "4c51465d8657add632e20ae4964853cc203398dc41ad81c3f9b49d429003debf"
+    },
+    {
+      "path": "zh-Hans.lproj/InfoPlist.strings",
+      "bytes": 516,
+      "sha256": "a870751c9bdcc51f75ecef67f4bf680fbf4f9ca965a3e028afbb6ac000d2c8bc"
+    },
+    {
+      "path": "zh-Hans.lproj/Localizable.strings",
+      "bytes": 288,
+      "sha256": "a314fac425da7ccd2e26429ce38e02b2717d354bbe14d77ffd4c61d4210f11e9"
+    },
+    {
+      "path": "zh-Hans.lproj/nlu.appintents/49d35eb9c1a0eb6d2b5b0b1159d36ae9.version",
+      "bytes": 1,
+      "sha256": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d"
+    },
+    {
+      "path": "zh-Hans.lproj/nlu.appintents/nlu.lzfse",
+      "bytes": 332,
+      "sha256": "e5bfb3da11eb37ef4748f9d79ab2df8709582ce97b6327f29a6b7875941d3140"
+    }
+  ]
+}

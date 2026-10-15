@@ -22,6 +22,8 @@ enum ConversationObserverLifecycle: String { case foregroundIdle, streaming, rec
     let taskPlanService:ConversationTaskPlanService
     let artifactEditService:ConversationArtifactEditService
     let taskControlService:ConversationTaskControlService
+    let memoryService:ConversationMemoryService?
+    let memoryConfigured:Bool
     let taskControlsConfigured:Bool
     @Published var selectedTaskControl:ConversationTaskControlReference?
     let taskActionService:ConversationTaskActionService
@@ -135,7 +137,7 @@ enum ConversationObserverLifecycle: String { case foregroundIdle, streaming, rec
     private var taskControlDeliveryTask:Task<Void,Never>?
     private var taskControlDeliveryToken:UUID?
     private var taskControlDeliveryGeneration=0
-    init(repository:Repository,service:ConversationSessionService,scope:DataScope = Profiles.user,imageStore:any ConversationImageByteStore = MemoryConversationImageByteStore(),taskPlanService:ConversationTaskPlanService?=nil,artifactEditService:ConversationArtifactEditService?=nil,taskActionService:ConversationTaskActionService?=nil,taskControlService:ConversationTaskControlService?=nil,subjectID:UUID?=nil) {
+    init(repository:Repository,service:ConversationSessionService,scope:DataScope = Profiles.user,imageStore:any ConversationImageByteStore = MemoryConversationImageByteStore(),taskPlanService:ConversationTaskPlanService?=nil,artifactEditService:ConversationArtifactEditService?=nil,taskActionService:ConversationTaskActionService?=nil,taskControlService:ConversationTaskControlService?=nil,memoryService:ConversationMemoryService?=nil,subjectID:UUID?=nil) {
         self.repository=repository;self.service=service;self.scope=scope;self.imageStore=imageStore
         self.taskPlansConfigured=taskPlanService != nil
         self.taskPlanService=taskPlanService ?? ConversationTaskPlanService(repository:repository,scope:scope)
@@ -143,6 +145,9 @@ enum ConversationObserverLifecycle: String { case foregroundIdle, streaming, rec
         self.taskActionService=taskActionService ?? ConversationTaskActionService(repository:repository,scope:scope)
         self.taskControlService=taskControlService ?? ConversationTaskControlService(repository:repository,scope:scope)
         self.taskControlsConfigured=taskControlService != nil && subjectID != nil
+        let validMemory=memoryService?.reference.scope==scope && memoryService?.reference.subjectID==subjectID && subjectID != nil
+        self.memoryService=validMemory ? memoryService : nil
+        self.memoryConfigured=validMemory
         self.trustedSubjectID=subjectID
         self.acceptedWorkDraftService=ConversationAcceptedWorkDraftService(repository:repository,scope:scope,subjectID:subjectID)
         self.artifactContinuationService=ConversationArtifactContinuationService(repository:repository,scope:scope,subjectID:subjectID)
@@ -640,9 +645,19 @@ enum ConversationObserverLifecycle: String { case foregroundIdle, streaming, rec
             try await queue.resume();await refresh();authorizePending()
         } catch { self.error=error.localizedDescription } }
     }
+    private var servicesAdmissionAllowed:Bool {loaded && networkAdmissionAllowed && foreground}
+    private func synchronizeServiceAdmission(forceClosed:Bool=false) async {
+        // Re-evaluate after every actor hop. A suspended foreground update cannot
+        // reopen another service using a Boolean captured before logout/background.
+        await taskPlanService.setAdmissionAllowed(!forceClosed && servicesAdmissionAllowed)
+        await artifactEditService.setAdmissionAllowed(!forceClosed && servicesAdmissionAllowed)
+        await taskActionService.setAdmissionAllowed(!forceClosed && servicesAdmissionAllowed)
+        await taskControlService.setAdmissionAllowed(!forceClosed && servicesAdmissionAllowed)
+        await memoryService?.setAdmissionAllowed(!forceClosed && servicesAdmissionAllowed)
+    }
     func setNetworkAdmissionAllowed(_ allowed:Bool) {
         guard allowed != networkAdmissionAllowed else { return };networkAdmissionAllowed=allowed
-        Task {await taskPlanService.setAdmissionAllowed(networkAdmissionAllowed && loaded && foreground);await artifactEditService.setAdmissionAllowed(networkAdmissionAllowed && loaded && foreground);await taskActionService.setAdmissionAllowed(networkAdmissionAllowed && loaded && foreground);await taskControlService.setAdmissionAllowed(networkAdmissionAllowed && loaded && foreground)}
+        Task {await synchronizeServiceAdmission()}
         if allowed { Task { await resumeForeground();authorizePending() } }
         else { stopTaskControlDelivery();permissionTask?.cancel();permissionTask=nil;permissionID=nil;checkingModelConsent=false;pendingModelConsent=nil;modelConsentReview=nil;connectionProbeID=UUID();connectionTask?.cancel();connectionLifecycle = .checking }
     }
@@ -708,10 +723,7 @@ enum ConversationObserverLifecycle: String { case foregroundIdle, streaming, rec
     private func enterForeground(generation:Int) async {
         guard loaded,generation == sceneGeneration,foreground else { return }
         await haltTask?.value;guard generation == sceneGeneration,foreground else { return }
-        await taskPlanService.setAdmissionAllowed(networkAdmissionAllowed)
-        await artifactEditService.setAdmissionAllowed(networkAdmissionAllowed)
-        await taskActionService.setAdmissionAllowed(networkAdmissionAllowed)
-        await taskControlService.setAdmissionAllowed(networkAdmissionAllowed)
+        await synchronizeServiceAdmission()
         foregroundTask?.cancel();connectionTask?.cancel()
         // Reachability is informative; it must not block GET of the exact unresolved turn.
         connectionTask=Task { await refreshConnection() }
@@ -746,10 +758,7 @@ enum ConversationObserverLifecycle: String { case foregroundIdle, streaming, rec
         let generation=sceneGeneration
         let task=Task {
             await previous?.value
-            await taskPlanService.setAdmissionAllowed(false)
-            await artifactEditService.setAdmissionAllowed(false)
-            await taskActionService.setAdmissionAllowed(false)
-            await taskControlService.setAdmissionAllowed(false)
+            await synchronizeServiceAdmission(forceClosed:true)
             try? await generativeUIStateService.flush(conversationID:id)
             do { if let id { try await service.stopObserving(scope:scope,conversationID:id) };old?.cancel();try await queue?.pause(reason:.background) }
             catch { old?.cancel() }
@@ -767,6 +776,7 @@ enum ConversationObserverLifecycle: String { case foregroundIdle, streaming, rec
         let planDraftsSaved=await taskPlanService.invalidate()
         let artifactDraftsSaved=await artifactEditService.invalidate()
         await taskActionService.invalidate();await taskControlService.invalidate();selectedTaskControl=nil
+        await memoryService?.invalidate()
         imageDraft.clear();for value in imageDrafts.values {value.clear()};imageDrafts.removeAll();imageCapability=ConversationImageCapability()
         await suspend();subscription?.cancel();subscription=nil;draftTask?.cancel();draftTask=nil
         let composerSaved:Bool

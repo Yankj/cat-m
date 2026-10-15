@@ -115,6 +115,10 @@
     "en": "Chinese",
     "zh-Hans": "中文"
   },
+  "主记忆及派生索引已清除；备份清除尚未核验。原对话历史不会在此删除。": {
+    "en": "Primary memory and its derived index were cleared. Backup removal is unverified. Conversation history is kept.",
+    "zh-Hans": "主记忆及派生索引已清除；备份清除尚未核验。原对话历史不会在此删除。"
+  },
   "主题": {
     "en": "Theme",
     "zh-Hans": "主题"
@@ -178,6 +182,10 @@
   "仅在你主动操作或应用活跃时模拟准备；云端持续执行尚未接入": {
     "en": "Synthetic preparation runs only on your action or while the app is active. Continuous cloud execution is not connected.",
     "zh-Hans": "仅在你主动操作或应用活跃时模拟准备；云端持续执行尚未接入"
+  },
+  "仅当前对话": {
+    "en": "This conversation only",
+    "zh-Hans": "仅当前对话"
   },
   "仅整理已提供文字": {
     "en": "Organize the text I provided",
@@ -311,6 +319,10 @@
     "en": "Use example transcript · simulated",
     "zh-Hans": "使用示例转写 · 模拟"
   },
+  "使用范围": {
+    "en": "Use in",
+    "zh-Hans": "使用范围"
+  },
   "保存": {
     "en": "Save",
     "zh-Hans": "保存"
@@ -431,6 +443,10 @@
     "en": "Revise this version",
     "zh-Hans": "修改这版"
   },
+  "候选内容尚未作为已确认事实使用": {
+    "en": "This candidate is not used as a confirmed fact.",
+    "zh-Hans": "候选内容尚未作为已确认事实使用"
+  },
   "做总结": {
     "en": "Summarize",
     "zh-Hans": "做总结"
@@ -458,6 +474,10 @@
   "允许用于后续模拟准备": {
     "en": "Allow use in later simulated preparation",
     "zh-Hans": "允许用于后续模拟准备"
+  },
+  "允许重新学习曾明确忘记的主题": {
+    "en": "Allow learning a previously forgotten topic again",
+    "zh-Hans": "允许重新学习曾明确忘记的主题"
   },
   "先保存独立身份与冻结请求，再主动提交。": {
     "en": "Save separate identities and the frozen request before submitting.",
@@ -507,9 +527,17 @@
     "en": "Close sidebar",
     "zh-Hans": "关闭侧栏"
   },
+  "关闭后暂停记忆利用，已有记录仍可查看和忘记。": {
+    "en": "Turning this off pauses memory use. You can still view and forget saved entries.",
+    "zh-Hans": "关闭后暂停记忆利用，已有记录仍可查看和忘记。"
+  },
   "关闭并保留草稿": {
     "en": "Close and keep draft",
     "zh-Hans": "关闭并保留草稿"
+  },
+  "关闭记忆利用": {
+    "en": "Turn off memory use",
+    "zh-Hans": "关闭记忆利用"
   },
   "具体要求": {
     "en": "Requirements",
@@ -774,6 +802,14 @@
   "原消息编号": {
     "en": "Original turn ID",
     "zh-Hans": "原消息编号"
+  },
+  "原记忆操作尚待核对，请勿重复提交。": {
+    "en": "The original memory change needs checking. Do not submit it again.",
+    "zh-Hans": "原记忆操作尚待核对，请勿重复提交。"
+  },
+  "原记忆操作结果尚未确认。只读取原操作，不重复发送。": {
+    "en": "The result is unknown. Check the original memory change without sending it again.",
+    "zh-Hans": "原记忆操作结果尚未确认。只读取原操作，不重复发送。"
   },
   "原许可已变化，这份事项不能批准。": {
     "en": "The original grant has changed. This item cannot be approved.",
@@ -1067,6 +1103,10 @@
     "en": "Delegation ID",
     "zh-Hans": "委派编号"
   },
+  "存在冲突，不能当作确定事实": {
+    "en": "Conflicting entries cannot be treated as a confirmed fact.",
+    "zh-Hans": "存在冲突，不能当作确定事实"
+  },
   "安全屋 · 仅新对话配置": {
     "en": "Safety · new conversations only",
     "zh-Hans": "安全屋 · 仅新对话配置"
@@ -1135,6 +1175,10 @@
     "en": "Export this workspace's local data",
     "zh-Hans": "导出当前 workspace 本地数据"
   },
+  "将原候选确认为记忆，来源与使用条件保持原记录。": {
+    "en": "Confirm this candidate as memory, keeping its original source and conditions.",
+    "zh-Hans": "将原候选确认为记忆，来源与使用条件保持原记录。"
+  },
   "将检查后的文字放入输入": {
     "en": "Use reviewed text in input",
     "zh-Hans": "将检查后的文字放入输入"
@@ -1158,6 +1202,10 @@
   "尚未找到原控制记录；结果仍未知，请继续核对。": {
     "en": "The original control record has not been found. Its outcome remains unknown; keep checking.",
     "zh-Hans": "尚未找到原控制记录；结果仍未知，请继续核对。"
+  },
+  "尚未找到原记忆操作，结果仍未知；不会重复发送。": {
+    "en": "The original memory change was not found. Its result remains unknown; it will not be sent again.",
+    "zh-Hans": "尚未找到原记忆操作，结果仍未知；不会重复发送。"
   },
   "尚未接执行沙箱或协作 worker。本地偏好不授予 OS 或服务权限。": {
     "en": "Execution sandbox and collaboration workers are disconnected. Local preferences grant no OS or service permissions.",
@@ -1391,6 +1439,10 @@
     "en": "Verified",
     "zh-Hans": "已核验"
   },
+  "已确认记忆": {
+    "en": "Confirmed memory",
+    "zh-Hans": "已确认记忆"
+  },
   "已结束": {
     "en": "Ended",
     "zh-Hans": "已结束"
@@ -1406,6 +1458,10 @@
   "已超出总时长，请调整参数。": {
     "en": "The budget is exceeded. Adjust the inputs.",
     "zh-Hans": "已超出总时长，请调整参数。"
+  },
+  "已超出有效时间": {
+    "en": "No longer within its valid dates",
+    "zh-Hans": "已超出有效时间"
   },
   "已过期；尚未决定或执行。": {
     "en": "Expired; no decision or execution.",
@@ -1450,6 +1506,14 @@
   "开发联调": {
     "en": "Development testing",
     "zh-Hans": "开发联调"
+  },
+  "开启后，后续对话可使用已确认且范围匹配的记忆。": {
+    "en": "Future conversations can use confirmed memory that matches its selected scope.",
+    "zh-Hans": "开启后，后续对话可使用已确认且范围匹配的记忆。"
+  },
+  "开启记忆利用": {
+    "en": "Turn on memory use",
+    "zh-Hans": "开启记忆利用"
   },
   "开始体验": {
     "en": "Get started",
@@ -1510,6 +1574,10 @@
   "当前对话还没有成果": {
     "en": "This conversation has no results yet",
     "zh-Hans": "当前对话还没有成果"
+  },
+  "当前工作区的对话": {
+    "en": "Conversations in this workspace",
+    "zh-Hans": "当前工作区的对话"
   },
   "当前性无法确认，这份事项不能批准。": {
     "en": "Current validity is unconfirmed. This item cannot be approved.",
@@ -1623,6 +1691,10 @@
     "en": "Pending",
     "zh-Hans": "待核对"
   },
+  "待确认候选": {
+    "en": "Candidates to confirm",
+    "zh-Hans": "待确认候选"
+  },
   "待确认的图片预览": {
     "en": "Image preview for confirmation",
     "zh-Hans": "待确认的图片预览"
@@ -1634,6 +1706,10 @@
   "忘记": {
     "en": "Forget",
     "zh-Hans": "忘记"
+  },
+  "忘记这条记忆并阻止旧来源再次学回；不会删除原对话。": {
+    "en": "Forget this entry and prevent learning it again from the old source. The original conversation is kept.",
+    "zh-Hans": "忘记这条记忆并阻止旧来源再次学回；不会删除原对话。"
   },
   "总时长（分钟）": {
     "en": "Total time (minutes)",
@@ -1670,6 +1746,10 @@
   "想一起完成什么？": {
     "en": "What would you like to do together?",
     "zh-Hans": "想一起完成什么？"
+  },
+  "想记住的内容": {
+    "en": "What to remember",
+    "zh-Hans": "想记住的内容"
   },
   "想问什么？": {
     "en": "What would you like to ask?",
@@ -1774,6 +1854,10 @@
   "我确认所发图片不包含敏感、机密或凭据信息": {
     "en": "I confirm this image contains no sensitive, confidential or credential information",
     "zh-Hans": "我确认所发图片不包含敏感、机密或凭据信息"
+  },
+  "我确认此内容可作为敏感记忆保存": {
+    "en": "I confirm this sensitive content may be saved as memory",
+    "zh-Hans": "我确认此内容可作为敏感记忆保存"
   },
   "截止时间已过，请选择未来时间。": {
     "en": "The deadline has passed. Choose a future time.",
@@ -2007,6 +2091,10 @@
     "en": "Zoom in",
     "zh-Hans": "放大"
   },
+  "放弃此草稿并新建": {
+    "en": "Discard this draft and start a new entry",
+    "zh-Hans": "放弃此草稿并新建"
+  },
   "放弃草稿": {
     "en": "Discard draft",
     "zh-Hans": "放弃草稿"
@@ -2167,6 +2255,10 @@
     "en": "Time zone",
     "zh-Hans": "时区"
   },
+  "明确保存一条记忆": {
+    "en": "Save a memory",
+    "zh-Hans": "明确保存一条记忆"
+  },
   "明确合成测试": {
     "en": "Explicit synthetic fixture",
     "zh-Hans": "明确合成测试"
@@ -2222,6 +2314,10 @@
   "显示已保存计划；尚未完成当前读取。": {
     "en": "Showing the saved plan; the current read has not completed.",
     "zh-Hans": "显示已保存计划；尚未完成当前读取。"
+  },
+  "显示本机保存状态；读取最新状态后才能修改。": {
+    "en": "Showing saved local information. Read the latest state before making changes.",
+    "zh-Hans": "显示本机保存状态；读取最新状态后才能修改。"
   },
   "显示本机保存的成果信息，尚未完成当前读取。": {
     "en": "Showing locally saved artifact information. The current read has not completed.",
@@ -2307,6 +2403,18 @@
     "en": "Replace image",
     "zh-Hans": "更换图片"
   },
+  "更正": {
+    "en": "Correct",
+    "zh-Hans": "更正"
+  },
+  "更正保留原范围与来源引用，使用本次输入作为新的更正来源。": {
+    "en": "A correction keeps the original scope and source reference, and uses this input as its new source.",
+    "zh-Hans": "更正保留原范围与来源引用，使用本次输入作为新的更正来源。"
+  },
+  "更正这条记忆": {
+    "en": "Correct this memory",
+    "zh-Hans": "更正这条记忆"
+  },
   "替换来源": {
     "en": "Replace source",
     "zh-Hans": "替换来源"
@@ -2358,6 +2466,10 @@
   "服务可达": {
     "en": "Service reachable",
     "zh-Hans": "服务可达"
+  },
+  "服务未接受本次记忆操作，请读取最新状态后重新核对。": {
+    "en": "The service did not accept this memory change. Read the latest state and review it again.",
+    "zh-Hans": "服务未接受本次记忆操作，请读取最新状态后重新核对。"
   },
   "服务未连接 · 状态未核验": {
     "en": "Service disconnected · status unverified",
@@ -2643,6 +2755,14 @@
     "en": "Source details",
     "zh-Hans": "来源详情"
   },
+  "来源：用户原对话消息": {
+    "en": "Source: original user message",
+    "zh-Hans": "来源：用户原对话消息"
+  },
+  "来源：用户明确记忆命令": {
+    "en": "Source: explicit user memory instruction",
+    "zh-Hans": "来源：用户明确记忆命令"
+  },
   "查看、编辑或暂停本机待发消息": {
     "en": "Review, edit or pause messages queued on this device",
     "zh-Hans": "查看、编辑或暂停本机待发消息"
@@ -2675,6 +2795,10 @@
     "en": "View data table",
     "zh-Hans": "查看数据表"
   },
+  "查看更正前来源": {
+    "en": "View the source before correction",
+    "zh-Hans": "查看更正前来源"
+  },
   "查看本地联调状态": {
     "en": "View local test status",
     "zh-Hans": "查看本地联调状态"
@@ -2682,6 +2806,10 @@
   "查看计划": {
     "en": "View plan",
     "zh-Hans": "查看计划"
+  },
+  "查看记忆来源": {
+    "en": "View memory source",
+    "zh-Hans": "查看记忆来源"
   },
   "查看输入详情": {
     "en": "View input details",
@@ -2714,6 +2842,14 @@
   "核对原控制": {
     "en": "Check original control",
     "zh-Hans": "核对原控制"
+  },
+  "核对原记忆操作": {
+    "en": "Check original memory change",
+    "zh-Hans": "核对原记忆操作"
+  },
+  "核对并保存记忆": {
+    "en": "Review and save memory",
+    "zh-Hans": "核对并保存记忆"
   },
   "核验 {0} 次": {
     "en": "Verified {0} times",
@@ -2927,6 +3063,10 @@
     "en": "This result version is not stored locally. Return to the original task to read it.",
     "zh-Hans": "此成果版本尚未保存在本机。请返回原工作读取。"
   },
+  "此来源已停用于记忆提取，保留原文供核对。": {
+    "en": "This source is no longer used to extract memory. Its original text is kept for review.",
+    "zh-Hans": "此来源已停用于记忆提取，保留原文供核对。"
+  },
   "此次修改尚未保存，原输入仍保留。请先读取当前成果。": {
     "en": "This edit has not been saved. Your input is retained. Read the current artifact first.",
     "zh-Hans": "此次修改尚未保存，原输入仍保留。请先读取当前成果。"
@@ -3087,6 +3227,10 @@
     "en": "Create weekly report",
     "zh-Hans": "生成周报"
   },
+  "用户已确认": {
+    "en": "Confirmed by you",
+    "zh-Hans": "用户已确认"
+  },
   "用户明确要求 · revision {0}": {
     "en": "Explicit user requirement · revision {0}",
     "zh-Hans": "用户明确要求 · revision {0}"
@@ -3179,6 +3323,10 @@
     "en": "Review send permission",
     "zh-Hans": "确认发送许可"
   },
+  "确认后才提交这一次变更；关闭会保留草稿。": {
+    "en": "Confirm to submit this change. Closing keeps the draft.",
+    "zh-Hans": "确认后才提交这一次变更；关闭会保留草稿。"
+  },
   "确认后返回输入区，点击发送才会传输图片。": {
     "en": "Confirmation returns you to the composer. The image is transmitted only when you tap Send.",
     "zh-Hans": "确认后返回输入区，点击发送才会传输图片。"
@@ -3199,6 +3347,10 @@
     "en": "Confirm and submit original request",
     "zh-Hans": "确认并提交原请求"
   },
+  "确认提交这次记忆变更": {
+    "en": "Confirm this memory change",
+    "zh-Hans": "确认提交这次记忆变更"
+  },
   "确认本机合成预览": {
     "en": "Confirm local synthetic preview",
     "zh-Hans": "确认本机合成预览"
@@ -3211,9 +3363,17 @@
     "en": "Confirmation status: {0}",
     "zh-Hans": "确认状态：{0}"
   },
+  "确认记忆变更": {
+    "en": "Review memory change",
+    "zh-Hans": "确认记忆变更"
+  },
   "确认这一次模拟操作": {
     "en": "Confirm this one simulated action",
     "zh-Hans": "确认这一次模拟操作"
+  },
+  "确认这条候选": {
+    "en": "Confirm this candidate",
+    "zh-Hans": "确认这条候选"
   },
   "确认退出": {
     "en": "Confirm sign-out",
@@ -3459,6 +3619,18 @@
     "en": "Custom commands",
     "zh-Hans": "自定义命令"
   },
+  "范围：仅当前对话或原记录条件": {
+    "en": "Scope: this conversation or the original entry conditions",
+    "zh-Hans": "范围：仅当前对话或原记录条件"
+  },
+  "范围：当前工作区的对话": {
+    "en": "Scope: conversations in this workspace",
+    "zh-Hans": "范围：当前工作区的对话"
+  },
+  "范围：按原记录条件使用": {
+    "en": "Scope: the original entry conditions",
+    "zh-Hans": "范围：按原记录条件使用"
+  },
   "草稿": {
     "en": "Draft",
     "zh-Hans": "草稿"
@@ -3503,13 +3675,61 @@
     "en": "Memory",
     "zh-Hans": "记忆"
   },
+  "记忆主题": {
+    "en": "Memory topic",
+    "zh-Hans": "记忆主题"
+  },
+  "记忆内容过长或格式不符，请精简后重新确认。": {
+    "en": "This memory is too long or has an invalid format. Shorten it and review again.",
+    "zh-Hans": "记忆内容过长或格式不符，请精简后重新确认。"
+  },
+  "记忆利用已关闭": {
+    "en": "Memory use is off",
+    "zh-Hans": "记忆利用已关闭"
+  },
+  "记忆利用已开启": {
+    "en": "Memory use is on",
+    "zh-Hans": "记忆利用已开启"
+  },
+  "记忆变更已获服务回执。": {
+    "en": "The service confirmed this memory change.",
+    "zh-Hans": "记忆变更已获服务回执。"
+  },
   "记忆只来自你明确保存的要求，作用于对应委托。": {
     "en": "Memory comes only from requirements you explicitly save, and applies to its delegation.",
     "zh-Hans": "记忆只来自你明确保存的要求，作用于对应委托。"
   },
+  "记忆已变化，请读取最新版本后重新核对。": {
+    "en": "Memory has changed. Read the latest version and review again.",
+    "zh-Hans": "记忆已变化，请读取最新版本后重新核对。"
+  },
+  "记忆操作尚未发送，草稿会保留。": {
+    "en": "The memory change was not sent. The draft is kept.",
+    "zh-Hans": "记忆操作尚未发送，草稿会保留。"
+  },
+  "记忆服务尚未连接，草稿会保留。": {
+    "en": "The memory service is unavailable. The draft is kept.",
+    "zh-Hans": "记忆服务尚未连接，草稿会保留。"
+  },
+  "记忆来源": {
+    "en": "Memory source",
+    "zh-Hans": "记忆来源"
+  },
+  "记忆用于已选择范围的后续对话。候选须确认；关闭利用不会删除原记录。": {
+    "en": "Memory is used in future conversations within its selected scope. Candidates need confirmation. Turning memory off keeps saved entries.",
+    "zh-Hans": "记忆用于已选择范围的后续对话。候选须确认；关闭利用不会删除原记录。"
+  },
   "记忆范围已变化，不能恢复这份工作。": {
     "en": "The memory scope has changed. This task cannot resume.",
     "zh-Hans": "记忆范围已变化，不能恢复这份工作。"
+  },
+  "记忆草稿尚未保存，请重新核对。": {
+    "en": "The memory draft has not been saved. Please review it.",
+    "zh-Hans": "记忆草稿尚未保存，请重新核对。"
+  },
+  "记忆身份或回执不匹配，尚未确认结果。": {
+    "en": "The memory identity or receipt does not match. The result is unconfirmed.",
+    "zh-Hans": "记忆身份或回执不匹配，尚未确认结果。"
   },
   "许可版本": {
     "en": "Grant epoch",
@@ -3595,6 +3815,10 @@
     "en": "Finish image processing, or remove the image to send text.",
     "zh-Hans": "请先完成图片处理，或移除图片后发送文字。"
   },
+  "请先开启记忆并读取最新状态，再确认保存。": {
+    "en": "Turn on memory use and read the latest state before saving.",
+    "zh-Hans": "请先开启记忆并读取最新状态，再确认保存。"
+  },
   "请先确认此对话的文字处理方式。": {
     "en": "Confirm text processing for this conversation first.",
     "zh-Hans": "请先确认此对话的文字处理方式。"
@@ -3606,6 +3830,10 @@
   "请在 iOS 设备上验证本地识别与权限。": {
     "en": "Verify on-device recognition and permissions on an iOS device.",
     "zh-Hans": "请在 iOS 设备上验证本地识别与权限。"
+  },
+  "请填写记忆主题与内容。": {
+    "en": "Enter a memory topic and content.",
+    "zh-Hans": "请填写记忆主题与内容。"
   },
   "请求已保存 · 尚未提交": {
     "en": "Request saved · not submitted",
@@ -3682,6 +3910,10 @@
   "读取最新计划": {
     "en": "Read latest plan",
     "zh-Hans": "读取最新计划"
+  },
+  "读取最新记忆": {
+    "en": "Read latest memory",
+    "zh-Hans": "读取最新记忆"
   },
   "读取最新进展": {
     "en": "Read latest progress",
@@ -3770,6 +4002,14 @@
   "还没有本地文件。可从会话加号导入。": {
     "en": "No local files yet. Import one from the conversation's plus menu.",
     "zh-Hans": "还没有本地文件。可从会话加号导入。"
+  },
+  "还没有记忆。你可以在这里明确保存一条偏好。": {
+    "en": "No memory yet. Save a preference here.",
+    "zh-Hans": "还没有记忆。你可以在这里明确保存一条偏好。"
+  },
+  "还没有记忆。你可以明确保存一条偏好，也可以回到对话交代需要记住的内容。": {
+    "en": "No memory yet. Save a preference here, or return to the conversation to explain what to remember.",
+    "zh-Hans": "还没有记忆。你可以明确保存一条偏好，也可以回到对话交代需要记住的内容。"
   },
   "这一轮来自服务端合成运行；本机只读。": {
     "en": "This round comes from a synthetic service run and is read-only here.",
@@ -3895,6 +4135,10 @@
     "en": "Process image again",
     "zh-Hans": "重新处理图片"
   },
+  "重新核对未受理内容": {
+    "en": "Review the unaccepted change again",
+    "zh-Hans": "重新核对未受理内容"
+  },
   "重新检查连接": {
     "en": "Check connection again",
     "zh-Hans": "重新检查连接"
@@ -3970,6 +4214,10 @@
   "附带图片": {
     "en": "Image attached",
     "zh-Hans": "附带图片"
+  },
+  "限定对话": {
+    "en": "Selected conversation",
+    "zh-Hans": "限定对话"
   },
   "需要你确认": {
     "en": "Needs your approval",

@@ -9,7 +9,7 @@ import {createNativeAcceptedWorkWireFixture} from './generate-native-accepted-wo
 
 const repoRoot=fileURLToPath(new URL('../../../../',import.meta.url));
 const evidenceRoot=resolve(repoRoot,'services/edge/build/native-accepted-work-20261015');
-const modes=new Set(['normal','lose-first-accepted-response']);
+const modes=new Set(['normal','lose-first-accepted-response','lose-first-memory-response']);
 export function nativeLoopbackRouteNotice(actual){
  const notice=structuredClone(actual);notice.ui={...notice.ui,title:'允许合成离线测试处理此对话？',body:'这是本机 loopback 合成测试。消息和选中的文字上下文仅进入维护 API、序列化测试仓库与注入脚本模型；不会发送给 OpenRouter、Google 或真实 Supabase Auth/数据库。新的对话仍须明确许可；有限工作仍遵守原先确认的期限、次数与撤权约束。'};return notice;
 }
@@ -28,7 +28,7 @@ export async function createNativeAcceptedWorkLoopbackServer(options){
  const f=await createNativeAcceptedWorkWireFixture({autoKick:true,snapshot:stored?.repository??null,providerReality:'injected_test_provider',sessionLifetimeSeconds:21600}),priorProviderCalls=stored?.counters?.provider_calls??0;
  const counters={requests:stored?.counters?.requests??0,accepted_posts:stored?.counters?.accepted_posts??0,dropped_responses:stored?.counters?.dropped_responses??0};
  const requests=stored?.requests??[];let persistQueue=Promise.resolve();
- const stats=()=>({...counters,provider_calls:priorProviderCalls+f.calls.length,turns:[...f.repository.records].filter(([key])=>JSON.parse(key)[1]==='native-chat-turns').length});
+ const stats=()=>({...counters,memory_posts:requests.filter(r=>r.method==='POST'&&/\/memory\/v1\/scopes\/[a-f0-9-]+\/commands$/.test(r.path)).length,memory_original_gets:requests.filter(r=>r.method==='GET'&&/\/memory\/v1\/scopes\/[a-f0-9-]+\/commands\/[a-f0-9-]+$/.test(r.path)).length,provider_calls:priorProviderCalls+f.calls.length,turns:[...f.repository.records].filter(([key])=>JSON.parse(key)[1]==='native-chat-turns').length});
  const persist=()=>{
   persistQueue=persistQueue.then(async()=>{const state={fixture_kind:'actual_cloud_native_loopback_v1',version:1,mode:options.mode,origin:`http://127.0.0.1:${options.port}`,updated_at:new Date().toISOString(),scope:f.scope,subject_id:f.subject_id,repository:f.repository.snapshot(),counters:stats(),requests};await mkdir(dirname(options.state),{recursive:true});const temp=options.state+'.writing';await writeFile(temp,JSON.stringify(state,null,2)+'\n');await rename(temp,options.state);});return persistQueue;
  };
@@ -46,6 +46,7 @@ export async function createNativeAcceptedWorkLoopbackServer(options){
    const headers=new Headers();for(const [key,value] of Object.entries(incoming.headers))if(value!==undefined)headers.set(key,Array.isArray(value)?value.join(','):value);
    const request=new Request(url,{method,headers,...method==='GET'||method==='HEAD'?{}:{body:Buffer.concat(chunks)}});
    const acceptedPost=method==='POST'&&/^\/catpaw\/accepted-work\/v1\/scopes\/[a-f0-9-]+\/conversations\/[a-f0-9-]+\/turns$/.test(url.pathname);
+   const memoryPost=method==='POST'&&/^\/catpaw\/memory\/v1\/scopes\/[a-f0-9-]+\/commands$/.test(url.pathname);
    if(acceptedPost)counters.accepted_posts++;
    let response=await f.runtime().api(request);entry.status=response.status;
    if(method==='GET'&&url.pathname==='/catpaw/privacy/v1/model-route'&&response.status===200){
@@ -54,7 +55,7 @@ export async function createNativeAcceptedWorkLoopbackServer(options){
     const notice=nativeLoopbackRouteNotice(await response.json());
     response=Response.json(notice,{status:response.status,headers:response.headers});
    }
-   if(acceptedPost&&response.status===200&&options.mode==='lose-first-accepted-response'&&counters.dropped_responses===0){
+   if(response.status===200&&counters.dropped_responses===0&&((acceptedPost&&options.mode==='lose-first-accepted-response')||(memoryPost&&options.mode==='lose-first-memory-response'))){
     // API has already committed the original turn. Cancelling its observer only
     // detaches this HTTP response, then the actual retained work may continue.
     await response.body?.cancel();await f.drain();counters.dropped_responses++;entry.transport='dropped_after_durable_acceptance';await persist();outgoing.destroy();return;

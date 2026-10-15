@@ -199,7 +199,7 @@ export class LocalOutputFacade extends Facade {
       for(const source of publicSources.sources)policyTargetForURL(reader.policy,source.requested_url);
       delete args.source_urls;
     }
-    let frozen={...turn.source_auth?{source_auth:clone(turn.source_auth)}:{},completion_contract:completionContract,run_binding:runBinding,current_input_hash:hash(turn.input),...authority?{completion_authority:authority}:{},...memoryGeneration?{memory_generation:memoryGeneration}:{},...publicSources?{public_sources:publicSources}:{},scope:acceptedScope,subject_id:conversation.subject_id,conversation_id:conversation.id,conversation_epoch:conversation.grant_epoch,
+    let frozen={...turn.source_auth?{source_auth:clone(turn.source_auth)}:{},...turn.memory_usage?{memory_usage:clone(turn.memory_usage)}:{},completion_contract:completionContract,run_binding:runBinding,current_input_hash:hash(turn.input),...authority?{completion_authority:authority}:{},...memoryGeneration?{memory_generation:memoryGeneration}:{},...publicSources?{public_sources:publicSources}:{},scope:acceptedScope,subject_id:conversation.subject_id,conversation_id:conversation.id,conversation_epoch:conversation.grant_epoch,
       turn_id:turn.id,user_message_id:turn.input.message.id,call_id:call.id,args,messages:clone(turn.history),context:clone(turn.input.context),
       model_configuration:this.modelConfiguration,policy:LOCAL_POLICY,...this.completionPolicy?{completion_policy:clone(this.completionPolicy)}:{}};
     const prior=await tx.get(owner,'catpaw-operations',ids.operation_id),original=prior?await tx.get(owner,'catpaw-runs',prior.run_id):null;
