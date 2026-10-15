@@ -1,5 +1,7 @@
 # 开发分支与整合规范
 
+本文件的操作规则持续有效；下文“本轮结果”和“远端保留”是 **2026-10-13 日期快照**。2026-10-15 的分支整合与当前保留边界见[新架构复核](../architecture/repository-review-2026-10-15.md)，实时交付状态仍只在[主计划](../status/master-plan.md)。
+
 2026-10-13按本地Git、旧工作树、GitHub分支/PR和管理页重新核对。当前唯一主干是 `main`；GitHub默认分支已设为main，合并后自动删除head分支已启用。[本轮审查](../architecture/repository-review-2026-10-13.md)与[分支快照](../status/branch-inventory-2026-10-13.json)记录实际操作。
 
 ## 分支与工作树
@@ -42,7 +44,7 @@ git diff --check
 
 本轮已清理6个合入PR #1–6的远端短分支，加上已被main包含的prepare/local-assets与integration/local-fixed-directory，共8个；4个对应本地短分支及旧origin缓存已移除。全部tip在main历史中，完整本地历史bundle与原WIP已在local-audit备份，旧主仓/6个旧工作树与legacy-local引用未动。
 
-远端保留：
+2026-10-13 当日远端保留：
 
 - `main`：当前源码基线。
 - `feat/grok-cat-companion`：3个独有提交、落后main4个；产品/视觉参考，另一套内存App不合入宿主，保留固定来源。
