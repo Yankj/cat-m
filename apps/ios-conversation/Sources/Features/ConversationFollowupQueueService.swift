@@ -75,6 +75,9 @@ public actor ConversationFollowupQueueService {
     public func pause(reason:FollowupPauseReason = .user) async throws { await lockState();defer { unlockState() }; var (s,r) = try await load();if reason == .background,s.paused,s.pauseReason == .user || s.pauseReason == nil { return };s.paused = true;s.pauseReason=reason;try await save(s,r) }
     public func resume(backgroundOnly:Bool = false) async throws { await lockState();defer { unlockState() }; var (s,r) = try await load();if backgroundOnly,s.pauseReason != .background { return };guard s.inflight == nil else { throw ConversationSessionError.unresolvedOperation };s.paused = false;s.pauseReason=nil;try await save(s,r) }
     /// Called only after checking the durable conversation's exact original operation ID.
+    /// Clears only a `.preflight` hold (a send that threw before its turn was journaled). User, background
+    /// and recovery pauses are untouched. Returns true when the queue was resumed.
+    @discardableResult public func resumePreflightHold() async throws -> Bool { await lockState();defer { unlockState() }; var (s,r) = try await load();guard s.paused,s.pauseReason == .preflight,s.inflight == nil,!s.pending.isEmpty else { return false };s.paused = false;s.pauseReason = nil;try await save(s,r);return true }
     public func reconcileInflight(admitted: Bool) async throws {
         guard !draining else { throw ConversationSessionError.busy }
         await lockState();defer { unlockState() }

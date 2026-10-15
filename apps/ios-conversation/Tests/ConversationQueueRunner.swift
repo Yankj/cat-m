@@ -8,6 +8,25 @@ actor QueueSendLog {
     func release() { continuation?.resume(); continuation = nil }
     func captured() -> [UUID] { ids }
 }
+actor QueueHistoryBackend:ConversationBackend {
+    var admitting=false
+    var histories:[UUID:[UUID]]=[:]
+    func allow(){admitting=true}
+    func history(_ id:UUID)->[UUID]?{histories[id]}
+    func connection(scope:DataScope) async -> ConversationConnection {.init(state:.providerUnverified,provider:"Synthetic history",detail:"No external network")}
+    func reply(_ r:ConversationTurnRequest) async throws -> AsyncThrowingStream<ConversationTurnEvent,Error> {
+        guard admitting else {throw ConversationDispatchFailure.notSent(reason:"Synthetic consent not yet granted")}
+        histories[r.operationID]=r.history.map(\.id)
+        let message=stableID("queue-history-reply-\(r.operationID)"),body="Synthetic reply"
+        return AsyncThrowingStream {c in
+            c.yield(.init(operationID:r.operationID,epoch:r.epoch,sequence:1,payload:.started(requestHash:textHash(r.operationID.uuidString),conversationRevision:1,grantEpoch:1)))
+            c.yield(.init(operationID:r.operationID,epoch:r.epoch,sequence:2,payload:.textDelta(messageID:message,text:body)))
+            c.yield(.init(operationID:r.operationID,epoch:r.epoch,sequence:3,payload:.completed(messageID:message,finalTextHash:textHash(body))))
+            c.finish()
+        }
+    }
+    func observe(_ r:ConversationTurnRequest) async throws -> ConversationObservation {throw CatpawError.missing}
+}
 actor QueueEditBackend:ConversationBackend {
     var admitting=false
     var finishes=true
@@ -72,6 +91,18 @@ actor QueueEditBackend:ConversationBackend {
         try await queue.enqueue(d); try await queue.flush { _ in .heldBeforeAdmission }
         state = try await queue.state()
         try check(state.paused && state.pending.map(\.id) == [d.id], "known pre-admission refusal restores same message to queue front on hold")
+        try check(state.pauseReason == .preflight, "pre-admission hold is recorded as a preflight pause")
+        let behind = ConversationFollowup(text: "typed while held")
+        try await queue.enqueue(behind); try await queue.flush { message in await log.send(message); return .sent }
+        state = try await queue.state()
+        try check(state.paused && state.pending.map(\.id) == [d.id,behind.id] && !(await log.captured()).contains(d.id), "regression: a new message queues silently behind a preflight hold (simulator '待发送·2 条')")
+        let resumed = try await queue.resumePreflightHold()
+        state = try await queue.state()
+        try check(resumed && !state.paused && state.pauseReason == nil && state.pending.map(\.id) == [d.id,behind.id], "a fresh send clears a preflight hold without reordering")
+        try await queue.flush { _ in .heldBeforeAdmission }
+        try await queue.pause()
+        try check(!(try await queue.resumePreflightHold()) && (try await queue.state()).paused, "a user pause is never cleared by the preflight resume")
+        try await queue.remove(behind.id)
         try await queue.resume()
         do { try await queue.flush { message in await log.send(message); throw CatpawError.unavailable("explicit test failure after transcript admission") } } catch { }
         try await queue.resume(); try await queue.flush { message in await log.send(message); return .sent }
@@ -114,6 +145,27 @@ actor QueueEditBackend:ConversationBackend {
         do {_=try await editingQueue.edit(unknown,text:"must never replace unknown",session:editingService)} catch ConversationSessionError.unresolvedOperation {unknownRejected=true}
         let unchanged=try await editingQueue.state(),unknownSession=try await editingService.read(scope:Profiles.user,conversationID:editingConversation)
         try check(unknownRejected && unchanged.pending.first?.id == unknown.id && unknownSession.unresolved?.id == unknown.id,"unknown request remains immutable even if a stale pending queue entry exists")
+        // Regression (simulator stuck at "已保存在本机 · 待发送"): a message refused before POST stays in the local
+        // transcript as notSent. It must not enter later turns' wire history, or the server (0 messages) never
+        // matches and every following send is refused as a conflict, pausing the queue forever.
+        let hb=QueueHistoryBackend(),hs=ConversationSessionService(repository:repo,backend:hb)
+        let hc=try await hs.create(scope:Profiles.user),hq=ConversationFollowupQueueService(repository:repo,scope:Profiles.user,conversationID:hc)
+        let refused=ConversationFollowup(text:"你是？")
+        try await hq.enqueue(refused)
+        try await hq.flush {m in do {_=try await hs.send(scope:Profiles.user,conversationID:hc,text:m.text,operationID:m.id,preserveDraft:true);return .sent} catch is ConversationDispatchFailure {return .heldBeforeAdmission}}
+        var hstate=try await hq.state(),hsaved=try await hs.read(scope:Profiles.user,conversationID:hc)
+        try check(hstate.paused && hstate.pauseReason == .preflight && hsaved.turns.first?.state == .notSent && hsaved.messages.count == 1,"refusal before consent journals notSent and holds the queue (preflight)")
+        await hb.allow()
+        let later=ConversationFollowup(text:"第二条")
+        try await hq.enqueue(later)
+        try check(try await hq.resumePreflightHold(),"consent/new send clears the preflight hold")
+        try await hq.flush {m in do {_=try await hs.send(scope:Profiles.user,conversationID:hc,text:m.text,operationID:m.id,preserveDraft:true);return .sent} catch is ConversationDispatchFailure {return .heldBeforeAdmission}}
+        hstate=try await hq.state();hsaved=try await hs.read(scope:Profiles.user,conversationID:hc)
+        let firstUser=stableID("conversation-user-\(refused.id)"),laterUser=stableID("conversation-user-\(later.id)")
+        try check(hstate.pending.isEmpty && !hstate.paused && hsaved.turns.allSatisfy{$0.state == .completed},"held message and the one behind it are both sent after consent")
+        let resentHistory=await hb.history(refused.id),laterHistory=await hb.history(later.id)
+        try check(resentHistory?.last == firstUser && resentHistory?.count == 1,"resent held message carries only itself (server had nothing)")
+        try check(laterHistory?.count == 3 && laterHistory?.first == firstUser && laterHistory?.last == laterUser,"later message history is exactly the admitted prefix plus itself")
         print("EVIDENCE: migrated public queue behavior; transport actions in tests are explicit test closures")
     }
 }
