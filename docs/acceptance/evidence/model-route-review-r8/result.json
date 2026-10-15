@@ -1,0 +1,226 @@
+{
+  "schema": "catpaw.route-review-preparation-evidence.v2",
+  "candidate": "AF-W10-ROUTE-PROBE-20261015-R8",
+  "layer": "offline_exact_API21_package_composition_not_App_acceptance",
+  "source": {
+    "local_backend_commit": "7534a9d9e7249be93d264420aa29aaa55883ad06",
+    "published_backend_commit": "aafd6db13ab0a19561b1fd96d1816eefe0771be8",
+    "local_client_commit": "371be02e8ccab78bf4914474edd7103e006c4b68",
+    "published_client_commit": "bb02476d824679b10e3dc6e51444e2cc7b3451ee",
+    "published_tree": "7e5a3976f89418c964a95669e7d5c5b69e9a756b",
+    "files": [
+      {
+        "path": "scripts/model-review-session-refresh.mjs",
+        "bytes": 4996,
+        "sha256": "e751c5f2b4305c9ce615afec72e680a7df16f5c741645072a3bade722f6da075"
+      },
+      {
+        "path": "scripts/model-route-review-next-client.mjs",
+        "bytes": 23001,
+        "sha256": "ee075bf36e97cfeda4c9b78a5ef1b46e341b15a3ad0ac66a3d872287073137c0"
+      },
+      {
+        "path": "scripts/prepare-model-route-review-next.py",
+        "bytes": 6980,
+        "sha256": "83c5c1d9641e3560d18f6665eb13b10699f7cee6bc493bdafda89a9ccc8f95d5"
+      },
+      {
+        "path": "scripts/test-model-review-session-refresh.mjs",
+        "bytes": 3948,
+        "sha256": "6b6de50d26075220025d1181139a3206f998d62db868062d28b746be5849c1de"
+      },
+      {
+        "path": "scripts/test-model-route-review-next-client.mjs",
+        "bytes": 17640,
+        "sha256": "1d37e62a449336e6d62359bf29e1b54c8330366b8fffd7e686377c01e940eb2b"
+      },
+      {
+        "path": "scripts/test-model-route-review-next-integration.mjs",
+        "bytes": 8838,
+        "sha256": "43ebf90566c800e1cd46f82c4359b945e71a56545effd785da590fa5cc5bc133"
+      },
+      {
+        "path": "services/edge/supabase/functions/_shared/core/src/openrouter-provider.mjs",
+        "bytes": 12843,
+        "sha256": "1560911637eb7ae13e2679eccc198f9b42755c70446c3c23da338fa6cf6f0be5"
+      },
+      {
+        "path": "services/edge/supabase/functions/_shared/core/src/private-route-review.mjs",
+        "bytes": 2186,
+        "sha256": "a1509afdd2cb797ea0b0f87338de54c194f4bb9810684906880cae00dd3ddb47"
+      },
+      {
+        "path": "services/edge/supabase/functions/_shared/model-route-review-probe-next.mjs",
+        "bytes": 9930,
+        "sha256": "a7270c8867674762b975349d1d7c3e10ef8ae00595eb645672ee53582dbd5cc1"
+      },
+      {
+        "path": "services/edge/supabase/functions/_shared/model-route-review-probe.mjs",
+        "bytes": 8077,
+        "sha256": "1694c91a0675aee590dc161a21e9a6c57b92de22306a0f6b2166ef7befc60a0c"
+      },
+      {
+        "path": "services/edge/supabase/functions/_shared/model-route-review.mjs",
+        "bytes": 2826,
+        "sha256": "13878346dc92937806f397bc96ce1a5ba1b2239685bf0b9c7a6df9b21c272b17"
+      },
+      {
+        "path": "services/edge/test/model-route-review-probe-next.test.mjs",
+        "bytes": 20659,
+        "sha256": "dc2ad7d9fdac58713d0853115ef0d91b808f6b88ae3f49b58a36364dc5713c55"
+      }
+    ]
+  },
+  "base": {
+    "api_version": 21,
+    "api_files": 53,
+    "all_files_live_readback_matched_original_archive": true,
+    "api_ezbr_sha256": "eafb3d119783fba86bf97e6523992df70619ccdf49196a2a37661e60ffda1886",
+    "tick_version": 8,
+    "tick_not_modified": true
+  },
+  "package": {
+    "candidate_file_count": 55,
+    "archive_sha256": "f210841e8a92151ef210d1f47e5d309022a8e4a9c17fdd54fb6cf26e7ef7e3e4",
+    "package_tree_sha256": "ff3df55095a927d8aa2772377583c5b1b81e50040a4a1a1e37dc696acb8a0d49",
+    "rollback_archive_sha256": "eac493ce38634ef721c69be7cece91c6d0aa1b040f922a1a5247d14e4052c257",
+    "changed": [
+      {
+        "path": "_shared/bootstrap.ts",
+        "status": "modified",
+        "before_sha256": "d08a31795f66b3afa151b6374dbe1f6264569a7bfd1dc011197a7aa2528c9279",
+        "after_sha256": "1c0711fe97ec20b6d637e56a8f16628df15ead758b617b353b1524e47f44dda3"
+      },
+      {
+        "path": "_shared/core/src/strict-json.mjs",
+        "status": "added",
+        "before_sha256": null,
+        "after_sha256": "73204250fcd1975ebe45cebe30bdfc466aac33fa962aa892435d041f936661fc"
+      },
+      {
+        "path": "_shared/model-route-review-probe-next.mjs",
+        "status": "added",
+        "before_sha256": null,
+        "after_sha256": "a7270c8867674762b975349d1d7c3e10ef8ae00595eb645672ee53582dbd5cc1"
+      },
+      {
+        "path": "_shared/model-route-review-probe.mjs",
+        "status": "modified",
+        "before_sha256": "23a5550df2663bf422d5ff99b0b19b3965466d28d7a30128ebeae5c6cc458b22",
+        "after_sha256": "1694c91a0675aee590dc161a21e9a6c57b92de22306a0f6b2166ef7befc60a0c"
+      }
+    ],
+    "limits": {
+      "provider_attempts": 1,
+      "max_tokens": 512,
+      "provider_timeout_ms": 30000,
+      "max_price": {
+        "prompt": 0,
+        "completion": 0,
+        "request": 0,
+        "image": 0
+      },
+      "fallback": false,
+      "context": 0,
+      "tools": 0,
+      "attachments": 0
+    },
+    "existing_subject_scope_only": true,
+    "new_identity": false,
+    "new_secrets": [],
+    "auth_refresh": false
+  },
+  "tests": {
+    "backend_full": {
+      "passed": 498,
+      "failed": 0,
+      "new_probe_subset": 16
+    },
+    "client": {
+      "passed": 16,
+      "failed": 0,
+      "mock_subset": 14,
+      "actual_55_file_composition_subset": 2
+    },
+    "same_identity_refresh_library": {
+      "passed": 5,
+      "failed": 0,
+      "real_auth": false
+    },
+    "cached_entry_check": "PASS",
+    "independent_bootstrap_and_archive_review": "PASS"
+  },
+  "logs": [
+    {
+      "path": "build/probe-next-20261015/backend-full-r2.log",
+      "bytes": 105533,
+      "sha256": "c9be16f77f543f3b550f5e57b812a525445d52072c308b1b1783301c8c9e60b3"
+    },
+    {
+      "path": "build/probe-next-20261015/entry-check-r2.log",
+      "bytes": 101,
+      "sha256": "8486dffc7b4330fd6b10d051558eb01b3984e0278a25a8dbef8d10cd6ece9fdd"
+    },
+    {
+      "path": "services/edge/build/model-route-review-20261015/probe-next-target-r3.log",
+      "bytes": 15613,
+      "sha256": "2d3b3f0e255e807468c3edc31af4e539bf22bc9e1bfadceb63a20269c57fe4d6"
+    },
+    {
+      "path": "build/model-route-review-next-client-20261015/final-r5.log",
+      "bytes": 7027,
+      "sha256": "df726ea499875ed878ac3709d4ff7b10440236984f2d56765c340c061cf946f9"
+    },
+    {
+      "path": "build/probe-next-20261015/session-refresh-offline-r1.log",
+      "bytes": 478,
+      "sha256": "1789ddc97396fe3e878cb90978b9da3b25c16c20f82f1e7d362cb48f968844cb"
+    },
+    {
+      "path": "build/probe-next-20261015/review/RESULT.json",
+      "bytes": 1283,
+      "sha256": "e83408b31b68161a54ea411822f29d94474b5f58557346fbc096717bfd6c731b"
+    },
+    {
+      "path": "build/probe-next-20261015/existing-session-preflight-r2.json",
+      "bytes": 167,
+      "sha256": "eb60936532698312b9aa7590c753fd773ee1fb1e3aea2237f3828505731a9f72"
+    },
+    {
+      "path": "build/probe-next-20261015/operator-plan.json",
+      "bytes": 1290,
+      "sha256": "18911c222d0c746157af46c092eea0be1f3363889bf886220304795c6b8adbdd"
+    }
+  ],
+  "prior_failures": [
+    {
+      "layer": "r8-r1",
+      "reason": "next selector blocked old review prefix",
+      "retained": "build/probe-next-20261015/review/r1-selector-red.json"
+    },
+    {
+      "layer": "client first rounds",
+      "reason": "existing Node18 test flag and journal update visibility harness errors",
+      "retained": "build/model-route-review-next-client-20261015/RESULT-a.json"
+    }
+  ],
+  "execution_boundary": {
+    "new_model_requests": 0,
+    "new_auth_requests": 0,
+    "deployments": 0,
+    "credentials_exposed": false,
+    "credentials_copied": false,
+    "existing_supported_store_read_for_local_validity_check": true,
+    "existing_session_status": "probe_new_session_unavailable_no_auto_refresh",
+    "same_identity_refresh_requires_separate_approval": true,
+    "App_build_changed": false,
+    "user_simulator_unchanged": true,
+    "AF_FINAL_gates_closed": [],
+    "deployment_attempt": {
+      "result": "automatic_approval_rejected_before_execution",
+      "reason": "trusted authorization covered earlier r7, not this exact r8 production update",
+      "new_production_version_created": false,
+      "direct_approval_requested": true
+    }
+  }
+}
