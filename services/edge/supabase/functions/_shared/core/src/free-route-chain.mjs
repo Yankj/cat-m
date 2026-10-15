@@ -48,7 +48,9 @@ export function readFreeRouteChain(get) {
     check(/^[A-Za-z0-9._:/-]{1,120}$/.test(model), 422, 'model_route_model_invalid');
     if (id === 'openrouter') check(model.endsWith(':free'), 422, 'paid_or_router_model_denied');
     if (id === 'agnes') check(/^agnes-[0-9a-z.-]+$/.test(model), 422, 'model_route_model_invalid');
-    return { id, provider: r.provider, endpoint: r.endpoint, model, policy_url: r.policy_url, billing: r.billing ?? 'free_tier', thinking_summary: r.thinking_summary && get('CATPAW_THINKING_SUMMARY') !== '0' };
+    const ms = name => { const v = get(`CATPAW_${id.toUpperCase()}_${name}_TIMEOUT_MS`); if (v === undefined || v === null || v === '') return undefined; check(/^[0-9]{4,6}$/.test(v), 422, 'model_route_timeout_invalid'); return Number(v); };
+    const timeouts = Object.fromEntries([['firstEventMs', ms('FIRST_EVENT')], ['idleMs', ms('IDLE')], ['totalMs', ms('TOTAL')]].filter(([, v]) => v !== undefined));
+    return { id, provider: r.provider, endpoint: r.endpoint, model, policy_url: r.policy_url, billing: r.billing ?? 'free_tier', thinking_summary: r.thinking_summary && get('CATPAW_THINKING_SUMMARY') !== '0', ...Object.keys(timeouts).length ? { timeouts } : {} };
   });
   // Chain only exists when an extra free route key is deployed; otherwise the frozen single route stays.
   if (!routes.length || !routes.some(r => r.id !== 'openrouter')) return null;
@@ -56,10 +58,21 @@ export function readFreeRouteChain(get) {
   return { routes, secrets, autoFailover: get('CATPAW_MODEL_AUTO_FAILOVER') !== '0' };
 }
 
+// Reasoning routes (Agnes) may think for a long time before the first event; others keep the
+// historical single budget for every stage. Values are bounded to the Edge wall clock.
+export const REASONING_ROUTE_TIMEOUTS = Object.freeze({ firstEventMs: 75000, idleMs: 20000, totalMs: 100000 });
+export function routeTimeouts(route, timeoutMs) {
+  const base = route.id === 'agnes' ? REASONING_ROUTE_TIMEOUTS : { firstEventMs: timeoutMs, idleMs: timeoutMs, totalMs: timeoutMs };
+  const t = { ...base, ...route.timeouts };
+  check(['firstEventMs', 'idleMs', 'totalMs'].every(k => Number.isInteger(t[k]) && t[k] >= 1000 && t[k] <= 110000) && t.firstEventMs <= t.totalMs && t.idleMs <= t.totalMs, 422, 'model_route_timeout_invalid');
+  return t;
+}
+
 class OpenAICompatibleRoute {
   #secret;
   constructor(route, secret, { fetchImpl = globalThis.fetch, maxTokens = 2048, timeoutMs = 20000 } = {}) {
     this.route = route; this.#secret = secret; this.fetchImpl = fetchImpl; this.maxTokens = maxTokens; this.timeoutMs = timeoutMs;
+    this.timeouts = routeTimeouts(route, timeoutMs);
   }
   payload({ messages, system_prompt, tools }) {
     const body = { model: this.route.model, messages: [{ role: 'system', content: system_prompt }, ...clone(messages)], stream: true, max_tokens: this.maxTokens };
@@ -76,7 +89,13 @@ class OpenAICompatibleRoute {
     check(typeof this.#secret === 'string' && this.#secret.trim() && !/[\r\n]/.test(this.#secret), 503, 'not_configured');
     const controller = new AbortController(), cancel = () => controller.abort();
     signal?.addEventListener('abort', cancel, { once: true }); if (signal?.aborted) cancel();
-    let timedOut = false, emitted = false; const timer = setTimeout(() => { timedOut = true; cancel(); }, this.timeoutMs);
+    // Staged timeouts: a generous wait for the first upstream event (reasoning models think before
+    // their first token), then an idle timeout reset by every event, reasoning included; a total cap.
+    let timedOut = false, emitted = false, timer = null;
+    const expire = phase => () => { timedOut = phase; cancel(); };
+    const arm = ms => { clearTimeout(timer); timer = setTimeout(expire(emittedOrActive ? 'idle' : 'first_event'), ms); };
+    let emittedOrActive = false; arm(this.timeouts.firstEventMs);
+    const totalTimer = setTimeout(expire('total'), this.timeouts.totalMs);
     let response;
     try {
       response = await this.fetchImpl(this.route.endpoint, { method: 'POST', redirect: 'error', signal: controller.signal, headers: { Authorization: `Bearer ${this.#secret}`, 'Content-Type': 'application/json', Accept: 'text/event-stream' }, body: JSON.stringify(this.payload(input)) });
@@ -87,6 +106,7 @@ class OpenAICompatibleRoute {
       check(response.headers.get('content-type')?.startsWith('text/event-stream') && response.body, 503, 'invalid_provider_stream');
       let finish = null, done = false, textBytes = 0, thoughtBytes = 0; const calls = new Map();
       for await (const data of sseData(response.body)) {
+        emittedOrActive = true; arm(this.timeouts.idleMs);
         if (data === '[DONE]') { done = true; break; }
         let chunk; try { chunk = JSON.parse(data); } catch { throw new ApiError(503, 'malformed_provider_json'); }
         if (chunk.error) throw new ApiError(emitted ? 503 : 429, Number(chunk.error?.code) === 429 || chunk.error?.status === 'RESOURCE_EXHAUSTED' ? 'rate_limited' : 'provider_stream_error', emitted ? { reconciliation: true } : undefined);
@@ -121,11 +141,11 @@ class OpenAICompatibleRoute {
       evidence.terminal_validated = true;
       yield { type: 'done', finish_reason: finish, response_id: null };
     } catch (e) {
-      if (timedOut) throw new ApiError(503, emitted ? 'provider_timeout' : 'provider_timeout_before_output', emitted ? { reconciliation: true } : undefined);
+      if (timedOut) { evidence.timeout_phase = timedOut; throw new ApiError(503, emitted ? 'provider_timeout' : 'provider_timeout_before_output', emitted ? { reconciliation: true } : undefined); }
       if (e instanceof ApiError) throw e;
       throw new ApiError(503, emitted ? 'provider_interrupted' : 'provider_transport_failed', { reconciliation: true });
     } finally {
-      clearTimeout(timer); signal?.removeEventListener('abort', cancel); controller.abort();
+      clearTimeout(timer); clearTimeout(totalTimer); signal?.removeEventListener('abort', cancel); controller.abort();
       try { await response?.body?.cancel(); } catch {}
     }
   }
