@@ -1,5 +1,11 @@
 #if DEBUG
 import Foundation
+
+enum CatpawDebugPresentation {
+    static func showFixtureBadge(arguments:[String]=ProcessInfo.processInfo.arguments,environment:[String:String]=ProcessInfo.processInfo.environment)->Bool {
+        arguments.contains("-CatpawShowFixtureBadge") || ["1","true","yes"].contains(environment["CatpawShowFixtureBadge"]?.lowercased() ?? "")
+    }
+}
 import SwiftUI
 
 @MainActor enum P0ExperienceFixture {

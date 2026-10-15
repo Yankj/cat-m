@@ -28,6 +28,8 @@
 	<string>仅在你主动开始说话时采集本句声音，用于设备支持的本地转写。原音不保存到长期记录。</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>仅在你主动选择相册图片时将该图片保存到当前本地项目；不会自动上传相册内容。</string>
+	<key>NSSupportsLiveActivities</key>
+	<true/>
 	<key>NSSpeechRecognitionUsageDescription</key>
 	<string>仅在你主动启用且设备支持本地识别时，将本句转成可编辑文字；不使用云端识别回退。</string>
 	<key>UIApplicationSceneManifest</key>

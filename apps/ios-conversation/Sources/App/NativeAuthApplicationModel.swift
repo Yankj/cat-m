@@ -45,6 +45,13 @@ public struct AuthenticatedNativeChatCredentials: NativeChatSessionCredentials {
             let keys = ["CatpawSupabaseProjectURL","CatpawSupabasePublishableKey","CatpawBackendOrigin","CatpawServerScopeID"]
             var values = Dictionary(uniqueKeysWithValues: keys.compactMap { k in (Bundle.main.object(forInfoDictionaryKey:k) as? String).map { (k,$0) } })
             #if DEBUG
+            // Debug (simulator) builds keep an unconfigured Info.plist for the review scripts; a developer
+            // may supply the PUBLIC Supabase/Edge values via the Xcode scheme environment instead.
+            if values.values.allSatisfy(\.isEmpty), !fixture {
+                let env = ProcessInfo.processInfo.environment
+                let fromEnv = ["CatpawSupabaseProjectURL":"CATPAW_SUPABASE_PROJECT_URL","CatpawSupabasePublishableKey":"CATPAW_SUPABASE_PUBLISHABLE_KEY","CatpawBackendOrigin":"CATPAW_BACKEND_ORIGIN","CatpawServerScopeID":"CATPAW_SERVER_SCOPE_ID"]
+                for (key,name) in fromEnv { if let value = env[name], !value.isEmpty { values[key] = value } }
+            }
             if fixture { values = [keys[0]:"https://abcdefghijklmnopqrst.supabase.co",keys[1]:"sb_publishable_test_public_value",keys[2]:"https://backend.example.invalid",keys[3]:"11111111-2222-4333-8444-555555555555"] }
             #endif
             configuration = try NativeAuthConfiguration.read(values)
@@ -93,7 +100,7 @@ public struct AuthenticatedNativeChatCredentials: NativeChatSessionCredentials {
             let backend=NativeChatHTTPBackend(configuration:chatConfiguration,credentials:credentials)
             let memory=isFixture ? nil : try NativeMemoryComposition.service(repository:repository,configuration:chatConfiguration,credentials:credentials)
             let selected:any ConversationBackend=isFixture ? UnconfiguredConversationBackend() : backend
-            let preview=ConversationFirstModel(repository:repository,service:ConversationSessionService(repository:repository,backend:selected),scope:partition.scope,imageStore:try FileConversationImageByteStore(root:url.deletingLastPathComponent().appendingPathComponent("image-bytes")),taskPlanService:isFixture ? nil : ConversationTaskPlanService(repository:repository,scope:partition.scope,backend:backend),artifactEditService:isFixture ? nil : ConversationArtifactEditService(repository:repository,scope:partition.scope,backend:backend),taskActionService:isFixture ? nil : ConversationTaskActionService(repository:repository,scope:partition.scope,backend:backend),taskControlService:isFixture ? nil : ConversationTaskControlService(repository:repository,scope:partition.scope,backend:backend),memoryService:memory,inboxService:isFixture ? nil : ConversationInboxService(reference:.init(scope:partition.scope,serverScopeID:chatConfiguration.serverScopeID,subjectID:partition.subject),backend:backend),subjectID:partition.subject)
+            let preview=ConversationFirstModel(repository:repository,service:ConversationSessionService(repository:repository,backend:selected,resilience:ConnectionMonitorResilience(),outbox:ConversationOutbox(fileURL:url.deletingLastPathComponent().appendingPathComponent("conversation-outbox.json"))),scope:partition.scope,imageStore:try FileConversationImageByteStore(root:url.deletingLastPathComponent().appendingPathComponent("image-bytes")),taskPlanService:isFixture ? nil : ConversationTaskPlanService(repository:repository,scope:partition.scope,backend:backend),artifactEditService:isFixture ? nil : ConversationArtifactEditService(repository:repository,scope:partition.scope,backend:backend),taskActionService:isFixture ? nil : ConversationTaskActionService(repository:repository,scope:partition.scope,backend:backend),taskControlService:isFixture ? nil : ConversationTaskControlService(repository:repository,scope:partition.scope,backend:backend),memoryService:memory,inboxService:isFixture ? nil : ConversationInboxService(reference:.init(scope:partition.scope,serverScopeID:chatConfiguration.serverScopeID,subjectID:partition.subject),backend:backend),subjectID:partition.subject)
             preview.setNetworkAdmissionAllowed(false);await preview.start();self.backend=backend;chat=preview;namespace=partition.namespace
         } catch { self.error=NativeAuthError.storage.localizedDescription }
     }
@@ -104,7 +111,13 @@ public struct AuthenticatedNativeChatCredentials: NativeChatSessionCredentials {
             for await snapshot in await manager.changes() { guard let self, !Task.isCancelled else { return }; await self.receive(snapshot) }
         }
         do { try await manager.restore() } catch { self.error = (error as? NativeAuthError ?? .unavailable).localizedDescription }
+        // Normal launch goes straight into the conversation: with no saved session, open the
+        // existing anonymous experience identity (Supabase signInAnonymously) instead of a login wall.
+        let restored = await manager.snapshot()
+        if !isFixture, restored.phase == .signedOut, restored.user == nil, restored.message == nil, autoAnonymousSession { await startExperience() }
     }
+    /// Info.plist `CatpawAutoAnonymousSession` = NO disables the automatic experience identity.
+    private var autoAnonymousSession: Bool { (Bundle.main.object(forInfoDictionaryKey:"CatpawAutoAnonymousSession") as? Bool) ?? true }
     private func receive(_ snapshot: NativeAuthSnapshot) async {
         guard let manager, !Task.isCancelled,!logoutInProgress else { return }
         let openingEpoch=lifecycleEpoch
@@ -146,7 +159,7 @@ public struct AuthenticatedNativeChatCredentials: NativeChatSessionCredentials {
                 let memory=isFixture ? nil : try NativeMemoryComposition.service(repository:repository,configuration:chatConfiguration,credentials:credentials)
                 backend = http
                 let selected: any ConversationBackend = isFixture ? UnconfiguredConversationBackend() : http
-                chat = ConversationFirstModel(repository:repository,service:ConversationSessionService(repository:repository,backend:selected),scope:partition.scope,imageStore:try FileConversationImageByteStore(root:directory.appendingPathComponent("image-bytes")),taskPlanService:isFixture ? nil : ConversationTaskPlanService(repository:repository,scope:partition.scope,backend:http),artifactEditService:isFixture ? nil : ConversationArtifactEditService(repository:repository,scope:partition.scope,backend:http),taskActionService:isFixture ? nil : ConversationTaskActionService(repository:repository,scope:partition.scope,backend:http),taskControlService:isFixture ? nil : ConversationTaskControlService(repository:repository,scope:partition.scope,backend:http),memoryService:memory,inboxService:isFixture ? nil : ConversationInboxService(reference:.init(scope:partition.scope,serverScopeID:chatConfiguration.serverScopeID,subjectID:partition.subject),backend:http),subjectID:partition.subject)
+                chat = ConversationFirstModel(repository:repository,service:ConversationSessionService(repository:repository,backend:selected,resilience:ConnectionMonitorResilience(),outbox:ConversationOutbox(fileURL:directory.appendingPathComponent("conversation-outbox.json"))),scope:partition.scope,imageStore:try FileConversationImageByteStore(root:directory.appendingPathComponent("image-bytes")),taskPlanService:isFixture ? nil : ConversationTaskPlanService(repository:repository,scope:partition.scope,backend:http),artifactEditService:isFixture ? nil : ConversationArtifactEditService(repository:repository,scope:partition.scope,backend:http),taskActionService:isFixture ? nil : ConversationTaskActionService(repository:repository,scope:partition.scope,backend:http),taskControlService:isFixture ? nil : ConversationTaskControlService(repository:repository,scope:partition.scope,backend:http),memoryService:memory,inboxService:isFixture ? nil : ConversationInboxService(reference:.init(scope:partition.scope,serverScopeID:chatConfiguration.serverScopeID,subjectID:partition.subject),backend:http),subjectID:partition.subject)
                 namespace = partition.namespace; error = nil
                 try saveLocalReceipt(.init(issuer:configuration.issuer,subject:user.id,serverScopeID:serverScope))
             } catch { self.error = "此账号的本地存储无法打开；原文件已保留。" }

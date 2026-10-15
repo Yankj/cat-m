@@ -3,6 +3,10 @@
     "en": "\nThe original file is preserved. Storage was not reset. Investigate migration or recovery with full Xcode.",
     "zh-Hans": "\n原文件已保留，未重置存储。请在完整 Xcode 下排查迁移或恢复。"
   },
+  "Agnes Flash（备选）": {
+    "en": "Agnes Flash (fallback)",
+    "zh-Hans": "Agnes Flash（备选）"
+  },
   "App 不启动常驻服务；没有真实账号、模型密钥、云执行或系统推送。": {
     "en": "The app does not start a persistent service. Real accounts, model keys, cloud execution, and system push are not connected.",
     "zh-Hans": "App 不启动常驻服务；没有真实账号、模型密钥、云执行或系统推送。"
@@ -31,9 +35,21 @@
     "en": "Gateway synthetic delegation · read-only mirror",
     "zh-Hans": "Gateway 合成委托 · 只读回流"
   },
+  "Gemini 免费层": {
+    "en": "Gemini free tier",
+    "zh-Hans": "Gemini 免费层"
+  },
+  "Groq 免费": {
+    "en": "Groq free",
+    "zh-Hans": "Groq 免费"
+  },
   "OpenMuse · 合成 Demo": {
     "en": "OpenMuse · synthetic demo",
     "zh-Hans": "OpenMuse · 合成 Demo"
+  },
+  "OpenRouter 免费": {
+    "en": "OpenRouter free",
+    "zh-Hans": "OpenRouter 免费"
   },
   "Subagents · 仅新对话配置": {
     "en": "Subagents · new conversations only",
@@ -67,6 +83,10 @@
     "en": "{0} seconds",
     "zh-Hans": "{0} 秒"
   },
+  "{0} 超过 20 MB": {
+    "en": "{0} is over 20 MB",
+    "zh-Hans": "{0} 超过 20 MB"
+  },
   "{0} 项": {
     "en": "{0} items",
     "zh-Hans": "{0} 项"
@@ -74,6 +94,14 @@
   "{0}视图 · 服务未连接": {
     "en": "{0} view · service disconnected",
     "zh-Hans": "{0}视图 · 服务未连接"
+  },
+  "上传中": {
+    "en": "Uploading",
+    "zh-Hans": "上传中"
+  },
+  "上传失败": {
+    "en": "Upload failed",
+    "zh-Hans": "上传失败"
   },
   "上次处理完成的图片仍保留，当前附件不可发送。": {
     "en": "The previous processed image is retained. The current attachment cannot be sent.",
@@ -467,6 +495,10 @@
     "en": "Summarize",
     "zh-Hans": "做总结"
   },
+  "停止回答": {
+    "en": "Stop answer",
+    "zh-Hans": "停止回答"
+  },
   "停止条件": {
     "en": "Stop conditions",
     "zh-Hans": "停止条件"
@@ -522,6 +554,10 @@
   "先读取当前成果，再保存修改。草稿会保留。": {
     "en": "Read the current artifact before saving edits. Your draft is retained.",
     "zh-Hans": "先读取当前成果，再保存修改。草稿会保留。"
+  },
+  "免费模型正忙 · {0} 秒后自动重试": {
+    "en": "Free model is busy · retrying in {0}s",
+    "zh-Hans": "免费模型正忙 · {0} 秒后自动重试"
   },
   "全文": {
     "en": "Full text",
@@ -959,6 +995,10 @@
     "en": "Reads a fixed version only when you tap Play. Stopping audio does not cancel text tasks.",
     "zh-Hans": "只在你主动播放时朗读固定版本。停止声音不会取消文字任务。"
   },
+  "只在服务端已同意的免费路由间选择；繁忙时是否切换由服务端配置决定。永不使用付费路由。": {
+    "en": "Chooses only among free routes the server has consented; busy failover is a server setting. Paid routes are never used.",
+    "zh-Hans": "只在服务端已同意的免费路由间选择；繁忙时是否切换由服务端配置决定。永不使用付费路由。"
+  },
   "只查询原请求，不重新发送消息": {
     "en": "Read the original request without sending another message",
     "zh-Hans": "只查询原请求，不重新发送消息"
@@ -1095,6 +1135,10 @@
     "en": "Trash is empty",
     "zh-Hans": "回收站为空"
   },
+  "回答完成后发送": {
+    "en": "Send after this answer",
+    "zh-Hans": "回答完成后发送"
+  },
   "固定合成资料，主动提交；真实云端与模型尚未接入。": {
     "en": "Submit built-in synthetic records explicitly. Real cloud and model access is not configured.",
     "zh-Hans": "固定合成资料，主动提交；真实云端与模型尚未接入。"
@@ -1130,6 +1174,10 @@
   "图表；原值见下方数据选择": {
     "en": "Chart; original values are available in the data selectors below",
     "zh-Hans": "图表；原值见下方数据选择"
+  },
+  "在线": {
+    "en": "Online",
+    "zh-Hans": "在线"
   },
   "在设置开启演示数据分区，并切换到本机。": {
     "en": "Enable the demo partition in Settings and select On Device.",
@@ -1415,6 +1463,10 @@
     "en": "Tool processing",
     "zh-Hans": "工具处理"
   },
+  "已上传": {
+    "en": "Uploaded",
+    "zh-Hans": "已上传"
+  },
   "已保存到本机": {
     "en": "Saved on this device",
     "zh-Hans": "已保存到本机"
@@ -1494,6 +1546,10 @@
   "已排队": {
     "en": "Queued",
     "zh-Hans": "已排队"
+  },
+  "已接上 · 从断点继续": {
+    "en": "Reconnected · continuing where it left off",
+    "zh-Hans": "已接上 · 从断点继续"
   },
   "已撤权 · 保留原记录": {
     "en": "Revoked · original record preserved",
@@ -1602,6 +1658,10 @@
   "建立持续委托": {
     "en": "Create ongoing delegation",
     "zh-Hans": "建立持续委托"
+  },
+  "开发者与高级": {
+    "en": "Developer & Advanced",
+    "zh-Hans": "开发者与高级"
   },
   "开发联调": {
     "en": "Development testing",
@@ -1787,6 +1847,10 @@
     "en": "Recording",
     "zh-Hans": "录音中"
   },
+  "待上传": {
+    "en": "Waiting to upload",
+    "zh-Hans": "待上传"
+  },
   "待决定事项": {
     "en": "Decisions to review",
     "zh-Hans": "待决定事项"
@@ -1838,6 +1902,18 @@
   "忘记这条记忆并阻止旧来源再次学回；不会删除原对话。": {
     "en": "Forget this entry and prevent learning it again from the old source. The original conversation is kept.",
     "zh-Hans": "忘记这条记忆并阻止旧来源再次学回；不会删除原对话。"
+  },
+  "思考中": {
+    "en": "Thinking",
+    "zh-Hans": "思考中"
+  },
+  "思考了 {0} 秒": {
+    "en": "Thought for {0}s",
+    "zh-Hans": "思考了 {0} 秒"
+  },
+  "思考了 {0} 秒 · {1} 个步骤": {
+    "en": "Thought for {0}s · {1} steps",
+    "zh-Hans": "思考了 {0} 秒 · {1} 个步骤"
   },
   "总时长（分钟）": {
     "en": "Total time (minutes)",
@@ -2071,6 +2147,10 @@
     "en": "Give your personal assistant\nsomething to keep working on.",
     "zh-Hans": "把想继续做的事，\n交给个人助理。"
   },
+  "拍照": {
+    "en": "Take Photo",
+    "zh-Hans": "拍照"
+  },
   "拍照 · 主动开启系统相机": {
     "en": "Take photo · open system camera",
     "zh-Hans": "拍照 · 主动开启系统相机"
@@ -2279,6 +2359,10 @@
     "en": "Summarize email",
     "zh-Hans": "整理邮件摘要"
   },
+  "文件": {
+    "en": "Files",
+    "zh-Hans": "文件"
+  },
   "文件不可用": {
     "en": "File unavailable",
     "zh-Hans": "文件不可用"
@@ -2318,6 +2402,10 @@
   "新任务": {
     "en": "New task",
     "zh-Hans": "新任务"
+  },
+  "新内容": {
+    "en": "New",
+    "zh-Hans": "新内容"
   },
   "新对话": {
     "en": "New conversation",
@@ -2486,6 +2574,10 @@
   "暂不可用": {
     "en": "Unavailable",
     "zh-Hans": "暂不可用"
+  },
+  "暂不支持 {0}": {
+    "en": "{0} isn't supported yet",
+    "zh-Hans": "暂不支持 {0}"
   },
   "暂不支持动画或多帧图片。请选择静态图片。": {
     "en": "Animated and multiframe images are not supported. Choose a still image.",
@@ -3051,6 +3143,10 @@
     "en": "Review and save memory",
     "zh-Hans": "核对并保存记忆"
   },
+  "核对执行结果": {
+    "en": "Check result",
+    "zh-Hans": "核对执行结果"
+  },
   "核对本次修改的工作约定": {
     "en": "Review work terms for this revision",
     "zh-Hans": "核对本次修改的工作约定"
@@ -3090,6 +3186,10 @@
   "模型请求": {
     "en": "Model request",
     "zh-Hans": "模型请求"
+  },
+  "模型路由（仅免费）": {
+    "en": "Model route (free only)",
+    "zh-Hans": "模型路由（仅免费）"
   },
   "模型连接": {
     "en": "Model connection",
@@ -3171,6 +3271,10 @@
     "en": "Cancelling",
     "zh-Hans": "正在取消"
   },
+  "正在同步工作状态…": {
+    "en": "Syncing work status…",
+    "zh-Hans": "正在同步工作状态…"
+  },
   "正在回复…": {
     "en": "Replying…",
     "zh-Hans": "正在回复…"
@@ -3186,6 +3290,10 @@
   "正在复核登录…": {
     "en": "Checking your session…",
     "zh-Hans": "正在复核登录…"
+  },
+  "正在恢复你的工作…": {
+    "en": "Restoring your work…",
+    "zh-Hans": "正在恢复你的工作…"
   },
   "正在恢复本地选择…": {
     "en": "Restoring local choices…",
@@ -3287,6 +3395,10 @@
     "en": "Reconnecting",
     "zh-Hans": "正在重新连接"
   },
+  "正在重新连接 · 第 {0} 次 · {1} 秒后": {
+    "en": "Reconnecting · attempt {0} · in {1}s",
+    "zh-Hans": "正在重新连接 · 第 {0} 次 · {1} 秒后"
+  },
   "正文": {
     "en": "Content",
     "zh-Hans": "正文"
@@ -3347,6 +3459,10 @@
     "en": "Daily",
     "zh-Hans": "每日"
   },
+  "每条消息最多 {0} 个附件": {
+    "en": "Up to {0} attachments per message",
+    "zh-Hans": "每条消息最多 {0} 个附件"
+  },
   "没有工作记忆": {
     "en": "No work memory",
     "zh-Hans": "没有工作记忆"
@@ -3383,6 +3499,10 @@
     "en": "Message",
     "zh-Hans": "消息"
   },
+  "给 Catpaw 发消息": {
+    "en": "Message Catpaw",
+    "zh-Hans": "给 Catpaw 发消息"
+  },
   "消息尚未发送，需要确认处理方式。": {
     "en": "This message has not been sent. Review how it will be processed.",
     "zh-Hans": "消息尚未发送，需要确认处理方式。"
@@ -3403,6 +3523,10 @@
     "en": "Add source configuration",
     "zh-Hans": "添加来源配置"
   },
+  "添加附件": {
+    "en": "Add attachment",
+    "zh-Hans": "添加附件"
+  },
   "清理文档": {
     "en": "Clean up documents",
     "zh-Hans": "清理文档"
@@ -3418,6 +3542,10 @@
   "点击即可开始。此设备会安全保存体验身份，回来时继续你的对话。": {
     "en": "Tap to get started. This device securely saves your experience account so you can return to your conversations.",
     "zh-Hans": "点击即可开始。此设备会安全保存体验身份，回来时继续你的对话。"
+  },
+  "照片": {
+    "en": "Photos",
+    "zh-Hans": "照片"
   },
   "版本": {
     "en": "Version",
@@ -3635,6 +3763,10 @@
     "en": "Queued messages are not sent after you leave the app. Read task status again to confirm background progress.",
     "zh-Hans": "离开 App 后不会发送排队中的消息。任务后台执行的状态需要重新读取确认。"
   },
+  "离线 · 草稿和待发消息都会保留": {
+    "en": "Offline · drafts and pending messages are kept",
+    "zh-Hans": "离线 · 草稿和待发消息都会保留"
+  },
   "移到本地回收站？消息和 ID 可恢复。": {
     "en": "Move to local trash? Messages and IDs can be restored.",
     "zh-Hans": "移到本地回收站？消息和 ID 可恢复。"
@@ -3646,6 +3778,10 @@
   "移除图片": {
     "en": "Remove image",
     "zh-Hans": "移除图片"
+  },
+  "移除附件": {
+    "en": "Remove attachment",
+    "zh-Hans": "移除附件"
   },
   "稿件已变化，请重新预览": {
     "en": "Draft changed; preview again",
@@ -3690,6 +3826,14 @@
   "等待模拟回复": {
     "en": "Waiting for simulated reply",
     "zh-Hans": "等待模拟回复"
+  },
+  "等待网络 · 联网后自动发送": {
+    "en": "Waiting for network · sends automatically when online",
+    "zh-Hans": "等待网络 · 联网后自动发送"
+  },
+  "等待网络": {
+    "en": "Waiting for network",
+    "zh-Hans": "等待网络"
   },
   "等待许可": {
     "en": "Awaiting permission",
@@ -3795,6 +3939,10 @@
     "en": "Continue",
     "zh-Hans": "继续"
   },
+  "继续获取": {
+    "en": "Continue fetching",
+    "zh-Hans": "继续获取"
+  },
   "继续发送后续消息": {
     "en": "Resume follow-up messages",
     "zh-Hans": "继续发送后续消息"
@@ -3866,6 +4014,10 @@
   "联调未完成，原记录保留": {
     "en": "Testing did not complete. Original records are preserved.",
     "zh-Hans": "联调未完成，原记录保留"
+  },
+  "自动（Gemini 免费层优先）": {
+    "en": "Automatic (server default)",
+    "zh-Hans": "自动（Gemini 免费层优先）"
   },
   "自定义命令": {
     "en": "Custom commands",
@@ -4315,6 +4467,10 @@
     "en": "This is a read-only service result. Edits and controls are saved by the service.",
     "zh-Hans": "这是服务成果的只读回流；修改与控制由服务端保存。"
   },
+  "这条回复暂时没接上": {
+    "en": "This reply couldn't reconnect yet",
+    "zh-Hans": "这条回复暂时没接上"
+  },
   "这里只显示当前环境的本地删除项。": {
     "en": "Only locally deleted items from this environment appear here.",
     "zh-Hans": "这里只显示当前环境的本地删除项。"
@@ -4346,6 +4502,10 @@
   "连接暂不可用": {
     "en": "Connection unavailable",
     "zh-Hans": "连接暂不可用"
+  },
+  "连接状态": {
+    "en": "Connection",
+    "zh-Hans": "连接状态"
   },
   "追问这版": {
     "en": "Ask about this version",
@@ -4411,6 +4571,10 @@
     "en": "Check connection again",
     "zh-Hans": "重新检查连接"
   },
+  "重新生成": {
+    "en": "Regenerate",
+    "zh-Hans": "重新生成"
+  },
   "重新读取": {
     "en": "Read again",
     "zh-Hans": "重新读取"
@@ -4434,6 +4598,18 @@
   "重置演示分区": {
     "en": "Reset demo partition",
     "zh-Hans": "重置演示分区"
+  },
+  "重试": {
+    "en": "Retry",
+    "zh-Hans": "重试"
+  },
+  "现在重试": {
+    "en": "Retry now",
+    "zh-Hans": "现在重试"
+  },
+  "重试上传": {
+    "en": "Retry upload",
+    "zh-Hans": "重试上传"
   },
   "重试安全保存": {
     "en": "Retry secure save",
@@ -4514,6 +4690,10 @@
   "项目文件": {
     "en": "Project files",
     "zh-Hans": "项目文件"
+  },
+  "预览": {
+    "en": "Preview",
+    "zh-Hans": "预览"
   },
   "预览单次模拟外发": {
     "en": "Preview one simulated send",

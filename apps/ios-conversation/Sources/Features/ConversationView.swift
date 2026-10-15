@@ -104,7 +104,7 @@ import UniformTypeIdentifiers
                     model.perform {
                         guard let url = try result.get().first else { return }; let access = url.startAccessingSecurityScopedResource(); defer { if access { url.stopAccessingSecurityScopedResource() } }
                         let size = try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
-                        guard size <= 20 * 1024 * 1024 else { throw CatpawError.invalid(ui("文件超过本地导入上限 20 MB。")) }
+                        guard size <= ConversationAttachmentLimits.maxBytesPerFile else { throw CatpawError.invalid(ui("文件超过本地导入上限 20 MB。")) }
                         let mime = mimeForExtension(url.pathExtension)
                         let reference = try await model.service.createDocument(scope: model.scope, title: url.lastPathComponent, mime: mime, data: Data(contentsOf: url), owners: [id] + [c.projectID].compactMap { $0 }, source: "user_import")
                         model.path.append(.document(reference.documentID, reference.version))
