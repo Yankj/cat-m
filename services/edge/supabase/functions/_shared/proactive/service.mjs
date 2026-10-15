@@ -3,6 +3,7 @@ import { nextOccurrence, bad } from './recurrence.mjs';
 import { isQuiet, quietEndsAt, localDayStart, isExempt } from './throttle.mjs';
 
 const json = (status, body) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' } });
+const PUSH_ACTIONS = ['open', 'done', 'snooze_10m', 'snooze_1h', 'dismiss'];
 const TOKEN_KINDS = ['apns', 'live_activity_update', 'live_activity_start'];
 
 export function createProactiveService({ store, verifyUser, schedulerSecret, model = null, apns = null, quietHours = { start: 22, end: 8 }, dailyPushCap = 5, defaultTimeZone = 'Asia/Shanghai', now = () => Date.now(), log = () => {} }) {
@@ -134,6 +135,25 @@ export function createProactiveService({ store, verifyUser, schedulerSecret, mod
     if (path === '/events' && m === 'GET') { const after = url.searchParams.get('after'); return json(200, { events: await store.listEvents(uid, after && Number.isFinite(Date.parse(after)) ? new Date(after).toISOString() : null, Math.min(Number(url.searchParams.get('limit')) || 50, 200)) }); }
     mm = path.match(/^\/events\/([^/]+)\/read$/);
     if (mm && m === 'POST') { if (!isUUID(mm[1])) throw bad('event_not_found', 404); return json(200, { ok: await store.markRead(uid, mm[1], new Date(now()).toISOString()) }); }
+    if (path === '/push/test' && m === 'POST') { // demo: queue a test push to the caller's devices and flush now
+      const at = now(), ev = await store.insertEvent({ user_id: uid, task_id: null, conversation_id: null, kind: 'agent_message', title: '小猫测试推送', body: '推送通道正常 🐾', payload: { test: true, created_by: 'user' }, dedupe_key: 'push-test:' + crypto.randomUUID() });
+      const tokens = (await store.tokensFor(uid)).filter(t => t.enabled);
+      const out = { sent: 0, skipped: 0, failed: 0, no_device: 0 }; if (ev) await sendOne(ev, out);
+      const state = out.sent ? 'sent' : out.no_device ? 'no_device' : out.skipped ? 'apns_not_configured' : 'failed';
+      return json(200, { event_id: ev?.id ?? null, state, devices: tokens.length, apns_configured: !!apns?.configured });
+    }
+    if (path === '/push/action' && m === 'POST') {
+      const b = await body(req);
+      if (!isUUID(b.event_id)) throw bad('event_not_found', 404);
+      if (!PUSH_ACTIONS.includes(b.action)) throw bad('action_invalid');
+      const ev = await store.getEvent(uid, b.event_id); if (!ev) throw bad('event_not_found', 404);
+      if (ev.action) return json(200, { event_id: ev.id, action: ev.action, applied: false, task: null });
+      const at = now(); let task = null;
+      if (ev.task_id && b.action === 'done') task = await patchTask(uid, ev.task_id, { status: 'done' }).catch(() => null);
+      if (ev.task_id && b.action.startsWith('snooze_')) task = await patchTask(uid, ev.task_id, { status: 'snoozed', snooze_until: new Date(at + (b.action === 'snooze_10m' ? 600 : 3600) * 1000).toISOString() }).catch(() => null);
+      const won = await store.recordPushAction(uid, ev.id, b.action, new Date(at).toISOString());
+      return json(200, { event_id: ev.id, action: b.action, applied: won, task: task && summary(task) });
+    }
     if (path === '/devices/tokens' && m === 'PUT') {
       const b = await body(req);
       if (typeof b.device_id !== 'string' || !b.device_id || b.device_id.length > 200 || !TOKEN_KINDS.includes(b.kind) || typeof b.token !== 'string' || !/^[0-9a-fA-F]{32,400}$/.test(b.token) || !['sandbox', 'production'].includes(b.environment ?? 'sandbox') || typeof b.bundle_id !== 'string' || !b.bundle_id) throw bad('token_invalid');
