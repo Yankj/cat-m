@@ -14,6 +14,7 @@ import CatpawImageComposer
     @Environment(\.locale) private var uiLocale
     private func ui(_ key:String,arguments:[String]=[])->String {AppLanguage(locale:uiLocale).ui(key,arguments:arguments)}
     @State private var scrollTask:Task<Void,Never>?
+    @StateObject private var readingAnchor=ConversationReadingAnchorCoordinator()
     @State private var followingLatest=true
     @State private var latestVisible=true
     @State private var sidebarPresented=false
@@ -63,6 +64,13 @@ import CatpawImageComposer
     private var sidebarTheme:SidebarTheme {
         SidebarTheme.catpaw.typography(title:CatpawTypography.Role.title.font,heading:CatpawTypography.Role.heading.font,body:CatpawTypography.Role.body.font,secondary:CatpawTypography.Role.secondary.font,caption:CatpawTypography.Role.caption.font)
     }
+    private var readingAnchorContext:ConversationReadingAnchorContext? {
+        model.conversationID.map {ConversationReadingAnchorContext(profileID:model.scope.profileID,scopeID:model.scope.workspaceID,conversationID:$0)}
+    }
+    private var timelineRows:[ConversationTimelineProjection.Row] {
+        guard let session=model.session else {return []}
+        return ConversationTimelineProjection.rows(messages:displayMessages,turns:session.turns)
+    }
     private var chatNavigation: some View {
         SidebarHost(isPresented:$sidebarPresented,isAtRoot:path.isEmpty && !conversationMenuPresented && !settings && !history && !pendingMessagesPresented && !composerContextPresented && !model.acceptedWorkReviewPresented && model.selectedTaskPlan == nil && model.selectedTaskActions == nil && model.selectedTaskControl == nil && model.pendingModelConsent == nil && model.pendingImageConsent == nil,
                     snapshot:sidebarSnapshot,theme:sidebarTheme,localize:{ui($0)},allowsContentPan:true,onWillOpen:{UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder),to:nil,from:nil,for:nil)},
@@ -79,9 +87,10 @@ import CatpawImageComposer
                                     Text(ui("问一个问题，或说一件想做的事。")).foregroundStyle(CatpawColors.secondary)
                                 }.padding(.top, textSize.isAccessibilitySize ? 24 : 64).padding(.bottom, 32).accessibilityIdentifier("chat.empty")
                             }
-                            let rows=ConversationTimelineProjection.rows(messages:displayMessages,turns:session.turns)
+                            let rows=timelineRows
                             ForEach(Array(rows.enumerated()),id:\.element.id) { index,row in
-                                timelineRow(row).padding(.top,timelineSpacing(row,previous:index>0 ? rows[index-1]:nil)).id(row.id)
+                                timelineRow(row).padding(.top,timelineSpacing(row,previous:index>0 ? rows[index-1]:nil))
+                                    .background(ConversationReadingAnchorMarker(id:row.id,context:readingAnchorContext,coordinator:readingAnchor).accessibilityHidden(true)).id(row.id)
                             }
                             if let latest = session.turns.last, latest.state == .completed {
                                 Text(ui("回复完成")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary).accessibilityIdentifier("chat.reply.completed").padding(.top,8)
@@ -96,6 +105,7 @@ import CatpawImageComposer
                         } else { ProgressView(ui("打开对话")) }
                         Color.clear.frame(height: 1).id("latest")
                     }.padding(20).frame(maxWidth: 680).frame(maxWidth: .infinity)
+                        .background(ConversationReadingAnchorTracker(context:readingAnchorContext,followingLatest:followingLatest,orderedIDs:timelineRows.map(\.id),coordinator:readingAnchor,onContentSizeChange:{[following = $followingLatest, pending = $scrollTask] in Self.scheduleScroll(proxy,following:following,pending:pending)}).accessibilityHidden(true))
                         .background(ConversationScrollObserver { distance,userScrolled in
                             latestVisible=distance <= 48
                             if userScrolled {
@@ -176,8 +186,16 @@ import CatpawImageComposer
         }
     }
     private func scheduleScroll(_ proxy:ScrollViewProxy) {
-        guard followingLatest,scrollTask == nil else {return}
-        scrollTask=Task {try? await Task.sleep(nanoseconds:100_000_000);guard !Task.isCancelled,followingLatest else{return};P0ScrollTiming.scroll {proxy.scrollTo("latest",anchor:.bottom)};scrollTask=nil}
+        Self.scheduleScroll(proxy,following:$followingLatest,pending:$scrollTask)
+    }
+    private static func scheduleScroll(_ proxy:ScrollViewProxy,following:Binding<Bool>,pending:Binding<Task<Void,Never>?>) {
+        guard following.wrappedValue,pending.wrappedValue == nil else {return}
+        pending.wrappedValue=Task {
+            try? await Task.sleep(nanoseconds:100_000_000)
+            guard !Task.isCancelled,following.wrappedValue else {return}
+            P0ScrollTiming.scroll {proxy.scrollTo("latest",anchor:.bottom)}
+            pending.wrappedValue=nil
+        }
     }
     private var feedbackNavigation: some View {
         chatNavigation.tint(CatpawColors.action).foregroundStyle(CatpawColors.ink)
@@ -238,6 +256,10 @@ import CatpawImageComposer
             Text("Synthetic offline fixture").font(.caption2).accessibilityIdentifier("qa.p0Fixture")
             Text("P0 probe").font(.caption2).accessibilityIdentifier("qa.p0Probe").accessibilityValue(probe.json)
             if P0PerformanceLog.shared.enabled {Button("Export metrics"){probe.exportMetrics()}.font(.caption2).accessibilityIdentifier("qa.p0Export")}
+            if P0ExperienceFixture.scenario == "p0-ui-reading-growth" {
+                Button {P0ExperienceFixture.readingGrowthStage += 1} label: {Text(verbatim:"Deliver next layout fixture result").font(CatpawTypography.Role.caption.font)}
+                    .accessibilityIdentifier("qa.reading.grow")
+            }
             if P0ExperienceFixture.scenario == "p0-ui-ime" { HStack {
                 Button("Marked") { ConversationTextView.fixtureEditor?.becomeFirstResponder();ConversationTextView.fixtureEditor?.setMarkedText("nihao",selectedRange:NSRange(location:5,length:0));probe.update(model) }.accessibilityIdentifier("qa.p0IME.mark")
                 Button("CmdReturn") { ConversationTextView.fixtureEditor?.commandSubmit();probe.update(model) }.accessibilityIdentifier("qa.p0IME.command")
