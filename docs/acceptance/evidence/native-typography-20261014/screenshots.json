@@ -1,0 +1,110 @@
+[
+  {
+    "path": "default-editor-keyboard.png",
+    "sha256": "ef1f818a93122bacd6c17c0c7e8640f9370acb5bb53865671c97b3c5f2dc46b8",
+    "bytes": 422296,
+    "axis": "large",
+    "build": "0.3.0(23)",
+    "revision": "final_R2",
+    "source_xcresult": "fixed-default-large",
+    "exported_file": "8EC4AA3A-F773-448E-9810-52211A9A2644.png",
+    "original_attachment_name": "Build23-stable-active-editor-keyboard_0_6B960B48-E2EB-4EF6-9B56-CA127E48B93F.png",
+    "timestamp_unix": 1791989498.643,
+    "pixels": [
+      1206,
+      2622
+    ],
+    "reality": "actual_native_simulator_UI_with_explicit_offline_fixture_or_unconfigured_normal_entry",
+    "image_edited": false
+  },
+  {
+    "path": "default-input.png",
+    "sha256": "6ec9878603cd315ca18cf810a4af6f13a4367abbd24d1913d2024ea0c3e074b9",
+    "bytes": 142081,
+    "axis": "large",
+    "build": "0.3.0(23)",
+    "revision": "final_R2",
+    "source_xcresult": "fixed-default-large",
+    "exported_file": "3BD9DAAF-9DCF-4200-9F6B-D0F36D6669D4.png",
+    "original_attachment_name": "Simulator-system-text-category-UICTContentSizeCategoryL-no-scenario-clamp_0_94A34748-F60B-4672-B0B7-323AC05DC585.png",
+    "timestamp_unix": 1791989554.572,
+    "pixels": [
+      1206,
+      2622
+    ],
+    "reality": "actual_native_simulator_UI_with_explicit_offline_fixture_or_unconfigured_normal_entry",
+    "image_edited": false
+  },
+  {
+    "path": "normal-no-fixture.png",
+    "sha256": "0457e03b18116dc0576ea464fee242bcce020065b11f821eda074eea9656940f",
+    "bytes": 157900,
+    "axis": "large",
+    "build": "0.3.0(23)",
+    "revision": "final_R2",
+    "source_xcresult": "fixed-default-large",
+    "exported_file": "AFC8FD0A-4C54-4E43-B3DD-8051EA91D7F8.png",
+    "original_attachment_name": "Build23-normal-launch-no-fixture-no-cloud-config_0_4CA87983-98FB-4A64-8166-4FD65A0A361E.png",
+    "timestamp_unix": 1791989541.793,
+    "pixels": [
+      1206,
+      2622
+    ],
+    "reality": "actual_native_simulator_UI_with_explicit_offline_fixture_or_unconfigured_normal_entry",
+    "image_edited": false
+  },
+  {
+    "path": "maximum-editor-keyboard.png",
+    "sha256": "f74d45ddebfbfb1e80e827c29b9231fc6277641d66b5e1e00e984d035ea8690c",
+    "bytes": 489385,
+    "axis": "accessibility5",
+    "build": "0.3.0(23)",
+    "revision": "final_R2",
+    "source_xcresult": "fixed-system-ax5",
+    "exported_file": "57E4971A-02F0-4008-8A72-F5D0BAAEE751.png",
+    "original_attachment_name": "Build23-stable-active-editor-keyboard_0_ACCDF1E5-035A-4474-A021-0E14F3CE904F.png",
+    "timestamp_unix": 1791989870.025,
+    "pixels": [
+      1206,
+      2622
+    ],
+    "reality": "actual_native_simulator_UI_with_explicit_offline_fixture_or_unconfigured_normal_entry",
+    "image_edited": false
+  },
+  {
+    "path": "maximum-title-cancelled.png",
+    "sha256": "02e86d2419fad1a207e7c1330c0d11809ea9c9419656dea632ad9253224714a9",
+    "bytes": 453499,
+    "axis": "accessibility5",
+    "build": "0.3.0(23)",
+    "revision": "final_R2",
+    "source_xcresult": "fixed-system-ax5",
+    "exported_file": "9BE62D0C-49F2-4E13-9C06-A1B80435DFB2.png",
+    "original_attachment_name": "Synthetic-native-task-control-maximum-ax-original-card-confirmed-cancelled_0_3034AB17-C207-437A-AF25-5E02F0767BD8.png",
+    "timestamp_unix": 1791989972.825,
+    "pixels": [
+      1206,
+      2622
+    ],
+    "reality": "actual_native_simulator_UI_with_explicit_offline_fixture_or_unconfigured_normal_entry",
+    "image_edited": false
+  },
+  {
+    "path": "prior-default-editor-visual-fail.png",
+    "sha256": "ca3e4bf6111f00ff3fc4d221ba870d0cc2a91a26bbf7eb80a6e5d592bf3914cc",
+    "bytes": 449616,
+    "axis": "large",
+    "build": "0.3.0(23)",
+    "revision": "prior_visual_fail",
+    "source_xcresult": "stable-viewport-red",
+    "exported_file": "5EC085CA-6351-436D-A286-D01CF3691C3D.png",
+    "original_attachment_name": "Build23-stable-active-editor-keyboard_0_EFF8EDB2-AE91-49AD-9F44-CDF2D49B0A40.png",
+    "timestamp_unix": 1791988694.16,
+    "pixels": [
+      1206,
+      2622
+    ],
+    "reality": "actual_native_simulator_UI_with_explicit_offline_fixture_or_unconfigured_normal_entry",
+    "image_edited": false
+  }
+]

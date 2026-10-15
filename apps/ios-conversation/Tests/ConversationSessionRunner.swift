@@ -67,6 +67,73 @@ actor ConcurrentAdmissionBackend: ConversationBackend {
     func observe(_ r: ConversationTurnRequest) async throws -> ConversationObservation { throw ConversationSessionError.invalidEvent }
     func count() -> Int { replies }
 }
+/// Mirrors the confirmed server receipt shape, with explicit expected transcript bytes.
+/// No model, HTTP, or task execution is performed by this test backend.
+actor DelegationReceiptConversationBackend: ConversationBackend {
+    private let text: String
+    private let toolName: String
+    private let serverPersistsAssistant: Bool
+    private let terminalHash: String?
+    private var requests: [ConversationTurnRequest] = []
+    private var remote: [ConversationTranscriptMessage] = []
+    private var observations: [UUID: ConversationObservation] = [:]
+    init(text: String, serverPersistsAssistant: Bool, terminalHash: String? = nil, toolName: String = "delegate_task") { self.text = text; self.toolName = toolName; self.serverPersistsAssistant = serverPersistsAssistant; self.terminalHash = terminalHash }
+    func connection(scope: DataScope) async -> ConversationConnection { .init(state: .connected, provider: "Explicit delegation receipt fixture", detail: "No network/model") }
+    func reply(_ request: ConversationTurnRequest) async throws -> AsyncThrowingStream<ConversationTurnEvent, Error> {
+        let previous = request.history.dropLast().filter { $0.role == .user || ($0.role == .assistant && $0.toolName == nil && $0.complete) }
+        guard previous.count == remote.count, zip(previous, remote).allSatisfy({ $0.id == $1.id && $0.role == $1.role && $0.content == $1.content }), let user = request.history.last else {
+            throw ConversationDispatchFailure.notSent(reason: "Synthetic server transcript disagrees with follow-up history")
+        }
+        requests.append(request); remote.append(user)
+        let message = UUID()
+        var events: [ConversationTurnEvent] = []
+        func emit(_ payload: ConversationTurnEvent.Payload) { events.append(.init(operationID: request.operationID, epoch: request.epoch, sequence: events.count + 1, payload: payload)) }
+        if requests.count == 1 {
+            emit(.toolStarted(callID: "delegation-receipt", name: toolName, arguments: "{}"))
+            let goal = ConversationGoalProjection(id: "synthetic-delegation", revision: 1, title: "Synthetic durable projection", state: .working, summary: "Not a real task", updatedAt: Date(timeIntervalSince1970: 0))
+            emit(.toolResult(.init(callID: "delegation-receipt", name: toolName, content: "{}", committedGoals: [goal])))
+            if !text.isEmpty { emit(.textDelta(messageID: message, text: text)) }
+            emit(.completed(messageID: message, finalTextHash: terminalHash ?? textHash(text)))
+            if serverPersistsAssistant { remote.append(.init(id: message, role: .assistant, content: text)) }
+        } else {
+            let answer = "Synthetic follow-up received"
+            emit(.textDelta(messageID: message, text: answer)); emit(.completed(messageID: message, finalTextHash: textHash(answer)))
+            remote.append(.init(id: message, role: .assistant, content: answer))
+        }
+        observations[request.operationID] = .init(request: request, events: events)
+        return AsyncThrowingStream { c in for event in events { c.yield(event) }; c.finish() }
+    }
+    func observe(_ request: ConversationTurnRequest) async throws -> ConversationObservation {
+        guard let observation = observations[request.operationID] else { throw ConversationSessionError.invalidEvent }; return observation
+    }
+    func captured() -> [ConversationTurnRequest] { requests }
+    func prependHistoricalReply(_ message: ConversationTranscriptMessage) { remote.insert(message, at: 0) }
+    func replaceObservedTerminalHash(operationID: UUID, hash: String) {
+        guard let old = observations[operationID] else { return }
+        let events = old.events.map { event -> ConversationTurnEvent in
+            guard case .completed(let id, _, let receipt) = event.payload else { return event }
+            return .init(operationID: event.operationID, epoch: event.epoch, sequence: event.sequence, payload: .completed(messageID: id, finalTextHash: hash, visionReceipt: receipt))
+        }
+        observations[operationID] = .init(request: old.request, events: events)
+    }
+}
+actor PresentationConversationBackend: ConversationBackend {
+    private let forgedGoal: Bool
+    init(forgedGoal: Bool) { self.forgedGoal = forgedGoal }
+    func connection(scope: DataScope) async -> ConversationConnection { .init(state: .connected, provider: "Explicit compiled presentation fixture", detail: "No network/model") }
+    func reply(_ request: ConversationTurnRequest) async throws -> AsyncThrowingStream<ConversationTurnEvent, Error> {
+        let id = UUID(), text = "Synthetic prose remains readable"
+        let goals = forgedGoal ? [ConversationGoalProjection(id: "forged-presentation-goal", revision: 1, title: "Must not acquire authority", state: .completed, summary: "Fixture only", updatedAt: Date(timeIntervalSince1970: 0))] : []
+        return AsyncThrowingStream { c in
+            c.yield(.init(operationID: request.operationID, epoch: request.epoch, sequence: 1, payload: .toolStarted(callID: "presentation", name: "present_cgui_v1", arguments: "{}")))
+            c.yield(.init(operationID: request.operationID, epoch: request.epoch, sequence: 2, payload: .toolResult(.init(callID: "presentation", name: "present_cgui_v1", content: "{}", committedGoals: goals))))
+            c.yield(.init(operationID: request.operationID, epoch: request.epoch, sequence: 3, payload: .textDelta(messageID: id, text: text)))
+            c.yield(.init(operationID: request.operationID, epoch: request.epoch, sequence: 4, payload: .completed(messageID: id, finalTextHash: textHash(text))))
+            c.finish()
+        }
+    }
+    func observe(_ request: ConversationTurnRequest) async throws -> ConversationObservation { throw ConversationSessionError.invalidEvent }
+}
 @main struct ConversationSessionRunner {
     static func main() async throws {
         let directory = URL(fileURLWithPath: CommandLine.arguments[1])
@@ -127,5 +194,65 @@ actor ConcurrentAdmissionBackend: ConversationBackend {
         _ = await (one.value,two.value)
         let single = try await serialized.read(scope: Profiles.user, conversationID: shared), sends = await simultaneous.count()
         try require(sends == 1 && single.turns.count == 1 && single.turns.first?.state == .completed, "simultaneous admission keeps one active identity and cannot erase another turn or cancel its completion")
+        // The existing deployed server omits blank prose when completing a delegation receipt.
+        // ECMAScript trim includes BOM; NEL remains actual text and must be preserved.
+        for toolName in ["delegate_task", "delegate_plan_v1", "delegate_sources_v1"] {
+          for (label, text, persisted) in [("empty", "", false), ("server whitespace", " \t\n\u{00A0}\u{FEFF}", false), ("NEL", "\u{0085}", true), ("actual prose", " 已受理 ", true)] {
+            let path = directory.appendingPathComponent("delegation-\(toolName)-\(label).json")
+            let receiptBackend = DelegationReceiptConversationBackend(text: text, serverPersistsAssistant: persisted, toolName: toolName)
+            let receiptService = ConversationSessionService(repository: try Repository(persistence: FilePersistence(url: path)), backend: receiptBackend)
+            let cid = try await receiptService.create(scope: Profiles.user), original = UUID()
+            _ = try await receiptService.send(scope: Profiles.user, conversationID: cid, text: "Synthetic research goal", operationID: original)
+            let reopened = ConversationSessionService(repository: try Repository(persistence: FilePersistence(url: path)), backend: receiptBackend)
+            try await reopened.observe(scope: Profiles.user, conversationID: cid)
+            let beforeFollowup = try await reopened.read(scope: Profiles.user, conversationID: cid)
+            let prose = beforeFollowup.messages.filter { $0.role == .assistant && $0.toolName == nil }
+            try require(beforeFollowup.turns.last?.id == original && beforeFollowup.turns.last?.state == .completed && beforeFollowup.goals["synthetic-delegation"]?.state == .working && prose.map(\.content) == (persisted ? [text] : []), "\(toolName) \(label) delegation preserves committed turn and task projection while matching the server transcript after read-only restart")
+            _ = try await reopened.send(scope: Profiles.user, conversationID: cid, text: "Synthetic modification of the same work", operationID: UUID())
+            let captured = await receiptBackend.captured(), final = try await reopened.read(scope: Profiles.user, conversationID: cid)
+            try require(captured.count == 2 && final.turns.count == 2 && final.turns.allSatisfy({ $0.state == .completed }) && captured[1].history.contains(where: { $0.toolName == toolName && $0.role == .tool }), "\(toolName) \(label) delegation accepts follow-up using the original tool receipt without transcript conflict or another delegation")
+          }
+        }
+        // Preserve the former client journal representation and verify repair only on an
+        // authoritative read of its original completion, without submitting that turn again.
+        let legacyPath = directory.appendingPathComponent("legacy-blank-delegation.json")
+        let legacyRepo = try Repository(persistence: FilePersistence(url: legacyPath)), legacyBackend = DelegationReceiptConversationBackend(text: "", serverPersistsAssistant: false)
+        let legacyService = ConversationSessionService(repository: legacyRepo, backend: legacyBackend), legacyID = try await legacyService.create(scope: Profiles.user), legacyOperation = UUID()
+        _ = try await legacyService.send(scope: Profiles.user, conversationID: legacyID, text: "Synthetic former-client delegation", operationID: legacyOperation)
+        var legacy = try await legacyService.read(scope: Profiles.user, conversationID: legacyID)
+        guard let legacyMessage = legacy.turns.last?.assistantMessageID else { throw CatpawError.missing }
+        let otherReply = ConversationTranscriptMessage(role: .assistant, content: "")
+        legacy.messages.insert(otherReply, at: 0); await legacyBackend.prependHistoricalReply(otherReply)
+        legacy.messages.append(.init(id: legacyMessage, role: .assistant, content: ""))
+        let journal = try await legacyRepo.record(stableID("conversation-first-journal-\(legacyID)"), scope: Profiles.user)
+        let encoder = JSONEncoder(); encoder.outputFormatting = [.sortedKeys]
+        try await legacyRepo.commit(scope: Profiles.user, mutations: [.update(journal.id, journal.header.revision, .preference(.init(key: "conversation_session:\(legacyID)", value: String(decoding: try encoder.encode(legacy), as: UTF8.self))))])
+        let repaired = ConversationSessionService(repository: try Repository(persistence: FilePersistence(url: legacyPath)), backend: legacyBackend)
+        await legacyBackend.replaceObservedTerminalHash(operationID: legacyOperation, hash: textHash("different completion"))
+        var legacyHashRejected = false
+        do { try await repaired.observe(scope: Profiles.user, conversationID: legacyID) } catch ConversationSessionError.invalidEvent { legacyHashRejected = true }
+        let unchangedLegacy = try await repaired.read(scope: Profiles.user, conversationID: legacyID)
+        try require(legacyHashRejected && unchangedLegacy.messages.contains(where: { $0.id == legacyMessage }) && unchangedLegacy.messages.contains(where: { $0.id == otherReply.id }), "same-ID completion with a mismatched hash cannot rewrite former-client or unrelated blank history")
+        await legacyBackend.replaceObservedTerminalHash(operationID: legacyOperation, hash: textHash(""))
+        try await repaired.observe(scope: Profiles.user, conversationID: legacyID)
+        let legacyRead = try await repaired.read(scope: Profiles.user, conversationID: legacyID)
+        try require(legacyRead.turns.last?.id == legacyOperation && legacyRead.turns.last?.state == .completed && legacyRead.messages.allSatisfy({ $0.id != legacyMessage }) && legacyRead.messages.contains(where: { $0.id == otherReply.id && $0.content.isEmpty }) && legacyRead.goals["synthetic-delegation"]?.state == .working, "original completion read repairs only its former-client blank row while preserving unrelated history and committed identities")
+        _ = try await repaired.send(scope: Profiles.user, conversationID: legacyID, text: "Synthetic same-work follow-up after repair", operationID: UUID())
+        try require(await legacyBackend.captured().count == 2, "former-client delegation repair is read-only and admits only the new follow-up")
+        let invalidBackend = DelegationReceiptConversationBackend(text: "", serverPersistsAssistant: false, terminalHash: textHash("mismatched terminal"))
+        let invalidService = ConversationSessionService(repository: repository, backend: invalidBackend), invalidID = try await invalidService.create(scope: Profiles.user)
+        var invalidTerminalRejected = false
+        do { _ = try await invalidService.send(scope: Profiles.user, conversationID: invalidID, text: "Synthetic invalid terminal", operationID: UUID()) } catch ConversationSessionError.invalidEvent { invalidTerminalRejected = true }
+        let invalidSaved = try await invalidService.read(scope: Profiles.user, conversationID: invalidID)
+        try require(invalidTerminalRejected && invalidSaved.turns.last?.state == .unknown && invalidSaved.goals["synthetic-delegation"]?.state == .working, "blank delegation still requires the exact terminal text hash and cannot declare task completion")
+        let presentation = ConversationSessionService(repository: repository, backend: PresentationConversationBackend(forgedGoal: false)), presentationID = try await presentation.create(scope: Profiles.user)
+        _ = try await presentation.send(scope: Profiles.user, conversationID: presentationID, text: "Synthetic compiled presentation", operationID: UUID())
+        let presented = try await presentation.read(scope: Profiles.user, conversationID: presentationID)
+        try require(presented.turns.last?.state == .completed && presented.goals.isEmpty && presented.messages.contains(where: { $0.role == .assistant && $0.toolName == nil && $0.content == "Synthetic prose remains readable" }), "explicit offline presentation receipt preserves ordinary prose without acquiring task authority")
+        let forged = ConversationSessionService(repository: repository, backend: PresentationConversationBackend(forgedGoal: true)), forgedID = try await forged.create(scope: Profiles.user)
+        var forgeryRejected = false
+        do { _ = try await forged.send(scope: Profiles.user, conversationID: forgedID, text: "Synthetic forged presentation authority", operationID: UUID()) } catch ConversationSessionError.invalidEvent { forgeryRejected = true }
+        let forgery = try await forged.read(scope: Profiles.user, conversationID: forgedID)
+        try require(forgeryRejected && forgery.turns.last?.state == .unknown && forgery.goals.isEmpty && forgery.messages.filter({ $0.role == .tool }).isEmpty, "presentation tool cannot smuggle committed goals or a completion receipt into domain state")
     }
 }

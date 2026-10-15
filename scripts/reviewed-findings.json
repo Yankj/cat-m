@@ -1,5 +1,5 @@
 {
-  "reviewed_utc_date": "2026-10-13",
+  "reviewed_utc_date": "2026-10-14",
   "policy": "An exception applies only to the exact path, category, line and file SHA256. Any byte change requires fresh review.",
   "findings": [
     {
@@ -201,13 +201,6 @@
     {
       "path": "apps/ios-conversation/Tests/NativeChatWireRunner.swift",
       "category": "secret_assignment_review",
-      "line": 20,
-      "sha256": "c56bbda43313116110b690182705139c965982d2ba9fabd1a8601a9e3a3ec65f",
-      "reason": "Explicit mock-only test token/password literal; test storage/transport has no real credential."
-    },
-    {
-      "path": "apps/ios-conversation/Tests/NativeChatWireRunner.swift",
-      "category": "secret_assignment_review",
       "line": 24,
       "sha256": "c56bbda43313116110b690182705139c965982d2ba9fabd1a8601a9e3a3ec65f",
       "reason": "Explicit mock-only test token/password literal; test storage/transport has no real credential."
@@ -215,15 +208,15 @@
     {
       "path": "apps/ios-conversation/Tests/DeviceTrialNativeTests.swift",
       "category": "deployment_public_key",
-      "line": 282,
-      "sha256": "c612e307fb7dcfbaf7eca2610929cf39bf48c43d6542f72e70dfb89003c31a94",
+      "line": 296,
+      "sha256": "75ca6fe8c6ef4776f2f87247f508e0dfd53a21488687ae82d643316080690e5f",
       "reason": "Explicit synthetic fixture public key in mock-only native test; no real deployment key."
     },
     {
       "path": "apps/ios-conversation/Tests/DeviceTrialNativeTests.swift",
       "category": "deployment_public_key",
-      "line": 323,
-      "sha256": "c612e307fb7dcfbaf7eca2610929cf39bf48c43d6542f72e70dfb89003c31a94",
+      "line": 337,
+      "sha256": "75ca6fe8c6ef4776f2f87247f508e0dfd53a21488687ae82d643316080690e5f",
       "reason": "Explicit synthetic fixture public key in mock-only native test; no real deployment key."
     },
     {
@@ -658,6 +651,712 @@
       "line": 174,
       "sha256": "d8a93d219890416c09de1b04887441eb57f9fd53184a2e87aec4418490afbe2d",
       "reason": "R5 main integration: re-reviewed unchanged historical catdesk source filename; not a credential. Exact path/line/hash after preserving the already-published FINAL whitespace fix. Scanner rules unchanged."
+    },
+    {
+      "path": "docs/acceptance/evidence/agent-start-20261014/duration-local-native.png",
+      "category": "png_metadata_requires_review",
+      "sha256": "a775d6a715e522ef624db384ce1be43b9a0ed2fb9b9632385472ad05dd18415d",
+      "reason": "Reviewed all 122 eXIf and 675 iTXt bytes: generic Screenshot description/comment, orientation 1, dimensions 1206x2622 and XMP namespaces only; no user/device identity or location. Pixels inspected: isolated XCTest synthetic fixture only. Original bytes retained with candidate/version provenance."
+    },
+    {
+      "path": "docs/acceptance/evidence/agent-start-20261014/table-filter-native.png",
+      "category": "png_metadata_requires_review",
+      "sha256": "6c79834d8418226e49ca0e1d08e5d7efd52f343293f6c2adf049635e6fcbe843",
+      "reason": "Reviewed all 122 eXIf and 675 iTXt bytes: generic Screenshot description/comment, orientation 1, dimensions 1206x2622 and XMP namespaces only; no user/device identity or location. Pixels inspected: isolated XCTest synthetic fixture only. Original bytes retained with candidate/version provenance."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/ConversationArtifactSourcesTests.swift",
+      "category": "credential_url",
+      "line": 77,
+      "sha256": "bcf6bb02b77764211ef94797038cdb58db4a3404e0f4fd2219fd8dbc9074ba2d",
+      "reason": "Negative URL-validation fixture uses literal user:pass on a public documentation/reserved example host; these are synthetic strings rejected by the parser, never credentials or an emitted request."
+    },
+    {
+      "path": "services/edge/test/task-public-sources.test.mjs",
+      "category": "credential_url",
+      "line": 43,
+      "sha256": "54b7be223c9c6a1931bd2d544c781e4ad80634e07c4e5ff6cdd646787b3511a2",
+      "reason": "Negative URL-validation fixture uses literal user:pass on a public documentation/reserved example host; these are synthetic strings rejected by the parser, never credentials or an emitted request."
+    },
+    {
+      "path": "services/edge/test/task-public-sources.test.mjs",
+      "category": "signed_url",
+      "line": 51,
+      "sha256": "54b7be223c9c6a1931bd2d544c781e4ad80634e07c4e5ff6cdd646787b3511a2",
+      "reason": "Negative anonymous-reader fixture rejects literal access_token=fake before any connection; no actual token, signed URL, or credential is present."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/ConversationArtifactSourcesTests.swift",
+      "category": "email_review",
+      "line": 77,
+      "sha256": "bcf6bb02b77764211ef94797038cdb58db4a3404e0f4fd2219fd8dbc9074ba2d",
+      "reason": "Negative URL-validation fixture uses literal user:pass on a public documentation/reserved example host; these are synthetic strings rejected by the parser, never credentials or an emitted request."
+    },
+    {
+      "path": "services/edge/test/task-public-sources.test.mjs",
+      "category": "email_review",
+      "line": 43,
+      "sha256": "54b7be223c9c6a1931bd2d544c781e4ad80634e07c4e5ff6cdd646787b3511a2",
+      "reason": "Negative URL-validation fixture uses literal user:pass on a public documentation/reserved example host; these are synthetic strings rejected by the parser, never credentials or an emitted request."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/ConversationArtifactSourcesTests.swift",
+      "category": "credential_url",
+      "line": 77,
+      "sha256": "6d4028c94cccd219e691e04ca3944f15eba12c97a50eea0e3e04de26861473c8",
+      "reason": "Re-reviewed after query-gate negative cases: literal user:pass documentation URL is a rejected synthetic fixture, never an emitted request or actual credential."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/ConversationArtifactSourcesTests.swift",
+      "category": "email_review",
+      "line": 77,
+      "sha256": "6d4028c94cccd219e691e04ca3944f15eba12c97a50eea0e3e04de26861473c8",
+      "reason": "Re-reviewed after query-gate negative cases: literal user:pass documentation URL is a rejected synthetic fixture, never an emitted request or actual credential."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeChatWireRunner.swift",
+      "category": "secret_assignment_review",
+      "line": 14,
+      "sha256": "4244b49f577d9d4e95c4b2d6ec559e385659f3fed37a593c8214d67f189a7214",
+      "reason": "Re-reviewed modified loopback runner: testheader.testpayload.testsignature is the explicit non-JWT synthetic session literal used for transport/expiry/logout negatives; no real access token or external Auth request."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeChatWireRunner.swift",
+      "category": "secret_assignment_review",
+      "line": 24,
+      "sha256": "4244b49f577d9d4e95c4b2d6ec559e385659f3fed37a593c8214d67f189a7214",
+      "reason": "Re-reviewed modified loopback runner: testheader.testpayload.testsignature is the explicit non-JWT synthetic session literal used for transport/expiry/logout negatives; no real access token or external Auth request."
+    },
+    {
+      "path": "apps/ios-conversation/Sources/App/CatpawApp.swift",
+      "category": "credential_prefix",
+      "line": 31,
+      "sha256": "58933162024f397926040f1588c2c0865d48ff2e2da73dfaa7a5df74e90881f8",
+      "reason": "Reviewed DEBUG-only filename literal for the synthetic task-action fixture server; substring resembles a credential prefix but is a local JSON fixture name, with no credential value."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/ConversationTaskActionTests.swift",
+      "category": "device_identity",
+      "line": 69,
+      "sha256": "8c82f2015430ddf12f61ddb5eeffa4ed9ef94487a58d693870cbb7cfdeddae1a",
+      "reason": "Reviewed fixed repeated-digit UUIDs in the offline synthetic calendar target; no physical device, account or environment identifiers are read."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeTaskActionTransportTests.swift",
+      "category": "device_identity",
+      "line": 39,
+      "sha256": "245739940610051475fd69eca3cef909e94ba01edfa8fa2aa0ba545d4839e890",
+      "reason": "Reviewed fixed repeated-digit UUIDs in the intercepted URLProtocol fixture target; test contains no physical device, account or environment identifiers."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/ConversationTaskPlanTests.swift",
+      "category": "credential_prefix",
+      "line": 325,
+      "sha256": "e1a596c0364198f8aaf04c2da5a92df072b10afeca969095e695f261f057580d",
+      "reason": "Reviewed a named disk-failure regression label; its substring resembles a key prefix. It names an offline failure case and is not a credential."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
+      "category": "deployment_public_key",
+      "line": 13,
+      "sha256": "a62258afa72548b75f9532616306fffd45c3a1d73d9bf69b4af7568a07abdee0",
+      "reason": "Reviewed explicit synthetic publishable-key fixture with an example project and injected named remote. No deployment credential or real Auth request is read or made."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
+      "category": "secret_assignment_review",
+      "line": 157,
+      "sha256": "a62258afa72548b75f9532616306fffd45c3a1d73d9bf69b4af7568a07abdee0",
+      "reason": "Reviewed fixed synthetic lifecycle access-token marker, consumed only by the named injected test remote and local manager. It contains no real credential."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeChatWireRunner.swift",
+      "category": "secret_assignment_review",
+      "line": 20,
+      "sha256": "87c56ad28c9605d6139ae17e811ac6b883a7177096cb3678c6fdbd7782ab2f38",
+      "reason": "Re-reviewed the unchanged explicit testheader/testpayload/testsignature marker after bounded-header regression insertion shifted source lines. Only the loopback wire fixture consumes it; no real JWT or Auth request is present."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeChatWireRunner.swift",
+      "category": "secret_assignment_review",
+      "line": 26,
+      "sha256": "87c56ad28c9605d6139ae17e811ac6b883a7177096cb3678c6fdbd7782ab2f38",
+      "reason": "Re-reviewed the unchanged explicit testheader/testpayload/testsignature marker after bounded-header regression insertion shifted source lines. Only the loopback wire fixture consumes it; no real JWT or Auth request is present."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeChatWireRunner.swift",
+      "category": "secret_assignment_review",
+      "line": 30,
+      "sha256": "87c56ad28c9605d6139ae17e811ac6b883a7177096cb3678c6fdbd7782ab2f38",
+      "reason": "Re-reviewed the unchanged explicit testheader/testpayload/testsignature marker after bounded-header regression insertion shifted source lines. Only the loopback wire fixture consumes it; no real JWT or Auth request is present."
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/source-erasure.mjs",
+      "category": "credential_prefix",
+      "line": 12,
+      "sha256": "62aca8833f02911425940ba591694c1fde281b7b6737a3dd03f08eac04685606",
+      "reason": "Reviewed the revision publication storage collection identifier. Its substring matches a credential-prefix pattern, but it is a public schema name without any credential value; tests use injected offline ports. Exact path, line and file hash only; scanner unchanged."
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/task-revision-contract.mjs",
+      "category": "credential_prefix",
+      "line": 3,
+      "sha256": "95a6f245758de49536ccd8b136b30d9d1888b826c887c367c50a7dfeb7ce798a",
+      "reason": "Reviewed the revision publication storage collection identifier. Its substring matches a credential-prefix pattern, but it is a public schema name without any credential value; tests use injected offline ports. Exact path, line and file hash only; scanner unchanged."
+    },
+    {
+      "path": "services/edge/test/task-revision-http.test.mjs",
+      "category": "credential_prefix",
+      "line": 88,
+      "sha256": "41f8ed7b2903feba077c14a51b663add8247849e0b24833660a79229700dc69a",
+      "reason": "Reviewed the revision publication storage collection identifier. Its substring matches a credential-prefix pattern, but it is a public schema name without any credential value; tests use injected offline ports. Exact path, line and file hash only; scanner unchanged."
+    },
+    {
+      "path": "services/edge/test/task-revision-http.test.mjs",
+      "category": "credential_prefix",
+      "line": 88,
+      "sha256": "b0e4650c9b5137d601d3bb2eb9faadd17e51c1ba39dead217f5bee9a43f3ea9f",
+      "reason": "Re-reviewed unchanged revision publication collection identifier after adding the competing-plan negative regression. This is an offline schema name with no credential value; exact path, line and file hash only. Scanner unchanged."
+    },
+    {
+      "path": "docs/acceptance/evidence/report-continuation-20261014/large-readonly-draft.png",
+      "category": "png_metadata_requires_review",
+      "sha256": "e7066d61425f4222ac94548cc643201bdce0d796c6d9f3e181ae829659fa4a05",
+      "reason": "Reviewed unaltered offline Simulator pixels and all 122 eXIf/675 iTXt bytes: generic Screenshot description/comment, orientation 1, dimensions and XMP namespaces only. No user, physical device or location identity. Source is the pinned build21 host test, not phone acceptance."
+    },
+    {
+      "path": "docs/acceptance/evidence/report-continuation-20261014/large-cold-target.png",
+      "category": "png_metadata_requires_review",
+      "sha256": "29d82fdb69a48782874a065c629adddf593c0ced2f17dd76f1dc18f19b8e8024",
+      "reason": "Reviewed unaltered offline Simulator pixels and all 122 eXIf/675 iTXt bytes: generic Screenshot description/comment, orientation 1, dimensions and XMP namespaces only. No user, physical device or location identity. Source is the pinned build21 host test, not phone acceptance."
+    },
+    {
+      "path": "docs/acceptance/evidence/report-continuation-20261014/large-selected-input.png",
+      "category": "png_metadata_requires_review",
+      "sha256": "7ad44e08be36ae5bf1ff04695b53e49401b79b1a6d11cf4d5bdfe326828dbc70",
+      "reason": "Reviewed unaltered offline Simulator pixels and all 122 eXIf/675 iTXt bytes: generic Screenshot description/comment, orientation 1, dimensions and XMP namespaces only. No user, physical device or location identity. Source is the pinned build21 host test, not phone acceptance."
+    },
+    {
+      "path": "docs/acceptance/evidence/report-continuation-20261014/standard-readonly-draft.png",
+      "category": "png_metadata_requires_review",
+      "sha256": "782e31b3b3d401b0c4d99ba4d2980c8dca67ac2b180da65bb51d7a0c8055f113",
+      "reason": "Reviewed unaltered offline Simulator pixels and all 122 eXIf/675 iTXt bytes: generic Screenshot description/comment, orientation 1, dimensions and XMP namespaces only. No user, physical device or location identity. Source is the pinned build21 host test, not phone acceptance."
+    },
+    {
+      "path": "docs/acceptance/evidence/report-continuation-20261014/standard-cold-target.png",
+      "category": "png_metadata_requires_review",
+      "sha256": "86244dcd235443009f3aac83ad74a64efc09df3790e3194a5c06d7aa1f048518",
+      "reason": "Reviewed unaltered offline Simulator pixels and all 122 eXIf/675 iTXt bytes: generic Screenshot description/comment, orientation 1, dimensions and XMP namespaces only. No user, physical device or location identity. Source is the pinned build21 host test, not phone acceptance."
+    },
+    {
+      "path": "docs/acceptance/evidence/report-continuation-20261014/standard-selected-input.png",
+      "category": "png_metadata_requires_review",
+      "sha256": "b775428d20dc78855721a29458962dcbe680be40326b8adf2f33f0beaa3eef74",
+      "reason": "Reviewed unaltered offline Simulator pixels and all 122 eXIf/675 iTXt bytes: generic Screenshot description/comment, orientation 1, dimensions and XMP namespaces only. No user, physical device or location identity. Source is the pinned build21 host test, not phone acceptance."
+    },
+    {
+      "path": "apps/ios-conversation/Sources/App/CatpawApp.swift",
+      "category": "credential_prefix",
+      "line": 31,
+      "sha256": "515830bdec3a77729ebfa2b8d7616d4ca3428c847b607559484869efae81e2ad",
+      "reason": "Reviewed DEBUG-only local JSON filenames for explicitly synthetic native task review/control servers; their substrings resemble a credential prefix. No credential value, external session or model key is present. Exact path, line and file hash only; scanner unchanged."
+    },
+    {
+      "path": "apps/ios-conversation/Sources/App/CatpawApp.swift",
+      "category": "credential_prefix",
+      "line": 33,
+      "sha256": "515830bdec3a77729ebfa2b8d7616d4ca3428c847b607559484869efae81e2ad",
+      "reason": "Reviewed DEBUG-only local JSON filenames for explicitly synthetic native task review/control servers; their substrings resemble a credential prefix. No credential value, external session or model key is present. Exact path, line and file hash only; scanner unchanged."
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/source-erasure.mjs",
+      "category": "credential_prefix",
+      "line": 12,
+      "sha256": "e343207ac354a8a5b3517cbeb892c3247cba8721144fdde33266a71c6d1fdb51",
+      "reason": "Reviewed public revision publication/control ledger collection identifiers in the source erasure barrier or offline regression. The substring resembles a credential prefix; no credential value is present. Exact path, line and file hash only; scanner unchanged."
+    },
+    {
+      "path": "services/edge/test/task-revision-http.test.mjs",
+      "category": "credential_prefix",
+      "line": 88,
+      "sha256": "9b513e7a7119ab7014511fdef66ee18f781631aa877ac41944239490d1210709",
+      "reason": "Reviewed public revision publication/control ledger collection identifiers in the source erasure barrier or offline regression. The substring resembles a credential prefix; no credential value is present. Exact path, line and file hash only; scanner unchanged."
+    },
+    {
+      "path": "services/edge/test/task-revision-http.test.mjs",
+      "category": "credential_prefix",
+      "line": 160,
+      "sha256": "9b513e7a7119ab7014511fdef66ee18f781631aa877ac41944239490d1210709",
+      "reason": "Reviewed public revision publication/control ledger collection identifiers in the source erasure barrier or offline regression. The substring resembles a credential prefix; no credential value is present. Exact path, line and file hash only; scanner unchanged."
+    },
+    {
+      "path": "docs/acceptance/evidence/authority-recovery-20261014/control-paused.png",
+      "category": "png_metadata_requires_review",
+      "sha256": "7af21cc7205b6e6dfdb5bf59cd35a8413a29c6f36a29482e47301bd3442d2e60",
+      "reason": "Reviewed pixels and every eXIf/iTXt byte: explicit offline Simulator fixture only, Screenshot label/orientation/XMP namespaces; no private phone capture or user/device identity. Original bytes preserved."
+    },
+    {
+      "path": "docs/acceptance/evidence/authority-recovery-20261014/control-original-get.png",
+      "category": "png_metadata_requires_review",
+      "sha256": "154a95dff02b8af9524df03af11db4ae69bd002567d24912bcc36449fce7504f",
+      "reason": "Reviewed pixels and every eXIf/iTXt byte: explicit offline Simulator fixture only, Screenshot label/orientation/XMP namespaces; no private phone capture or user/device identity. Original bytes preserved."
+    },
+    {
+      "path": "docs/acceptance/evidence/authority-recovery-20261014/control-maximum-cancelled.png",
+      "category": "png_metadata_requires_review",
+      "sha256": "a287aee65767621bc3ffd3727a26234d3a15f05ad0f1709200a024a521ea7858",
+      "reason": "Reviewed pixels and every eXIf/iTXt byte: explicit offline Simulator fixture only, Screenshot label/orientation/XMP namespaces; no private phone capture or user/device identity. Original bytes preserved."
+    },
+    {
+      "path": "docs/acceptance/evidence/authority-recovery-20261014/control-maximum-unknown.png",
+      "category": "png_metadata_requires_review",
+      "sha256": "15f2a0dfe6c5efb483cfd8df0e3d1ddeaca0d8192d6eab3d7287013bedaf45af",
+      "reason": "Reviewed pixels and every eXIf/iTXt byte: explicit offline Simulator fixture only, Screenshot label/orientation/XMP namespaces; no private phone capture or user/device identity. Original bytes preserved."
+    },
+    {
+      "path": "docs/acceptance/evidence/authority-recovery-20261014/control-cold-resume.png",
+      "category": "png_metadata_requires_review",
+      "sha256": "342b18f398d860419c3f0d69acde42921b8e440bbabdd8d123be2c840707df0a",
+      "reason": "Reviewed pixels and every eXIf/iTXt byte: explicit offline Simulator fixture only, Screenshot label/orientation/XMP namespaces; no private phone capture or user/device identity. Original bytes preserved."
+    },
+    {
+      "path": "docs/acceptance/evidence/authority-recovery-20261014/continuation-maximum-keyboard.png",
+      "category": "png_metadata_requires_review",
+      "sha256": "9e8d384c7bb21ce1bb9a649ae65bdfc2719e0115414fd4e8a09656570a4cc734",
+      "reason": "Reviewed pixels and every eXIf/iTXt byte: explicit offline Simulator fixture only, Screenshot label/orientation/XMP namespaces; no private phone capture or user/device identity. Original bytes preserved."
+    },
+    {
+      "path": "docs/acceptance/evidence/authority-recovery-20261014/manual-editor-maximum-keyboard.png",
+      "category": "png_metadata_requires_review",
+      "sha256": "7e9572a9a5d526e29c811e008b34ae33823ded3ad85b7ec4a11b0709d0f6780e",
+      "reason": "Reviewed pixels and every eXIf/iTXt byte: explicit offline Simulator fixture only, Screenshot label/orientation/XMP namespaces; no private phone capture or user/device identity. Original bytes preserved."
+    },
+    {
+      "path": "docs/acceptance/evidence/authority-recovery-20261014/source-reader-maximum.png",
+      "category": "png_metadata_requires_review",
+      "sha256": "dd3894c9e0088d612c29cc2139e72156018239618ad83f52ade168b8c375d6b6",
+      "reason": "Reviewed pixels and every eXIf/iTXt byte: explicit offline Simulator fixture only, Screenshot label/orientation/XMP namespaces; no private phone capture or user/device identity. Original bytes preserved."
+    },
+    {
+      "path": "docs/acceptance/evidence/authority-recovery-20261014/screenshots.json",
+      "category": "credential_prefix",
+      "line": 11,
+      "sha256": "37b2d2426ed92726c754c669c75580fcb579d19a9cef8eb24abb6f9a9cd7da77",
+      "reason": "Exact original synthetic XCTest task-control attachment filename contains the substring sk-control-; not a credential. Complete filename and offline provenance reviewed; scanner unchanged."
+    },
+    {
+      "path": "docs/acceptance/evidence/authority-recovery-20261014/screenshots.json",
+      "category": "credential_prefix",
+      "line": 39,
+      "sha256": "37b2d2426ed92726c754c669c75580fcb579d19a9cef8eb24abb6f9a9cd7da77",
+      "reason": "Exact original synthetic XCTest task-control attachment filename contains the substring sk-control-; not a credential. Complete filename and offline provenance reviewed; scanner unchanged."
+    },
+    {
+      "path": "docs/acceptance/evidence/authority-recovery-20261014/screenshots.json",
+      "category": "credential_prefix",
+      "line": 67,
+      "sha256": "37b2d2426ed92726c754c669c75580fcb579d19a9cef8eb24abb6f9a9cd7da77",
+      "reason": "Exact original synthetic XCTest task-control attachment filename contains the substring sk-control-; not a credential. Complete filename and offline provenance reviewed; scanner unchanged."
+    },
+    {
+      "path": "docs/acceptance/evidence/authority-recovery-20261014/screenshots.json",
+      "category": "credential_prefix",
+      "line": 96,
+      "sha256": "37b2d2426ed92726c754c669c75580fcb579d19a9cef8eb24abb6f9a9cd7da77",
+      "reason": "Exact original synthetic XCTest task-control attachment filename contains the substring sk-control-; not a credential. Complete filename and offline provenance reviewed; scanner unchanged."
+    },
+    {
+      "path": "docs/acceptance/evidence/authority-recovery-20261014/screenshots.json",
+      "category": "credential_prefix",
+      "line": 124,
+      "sha256": "37b2d2426ed92726c754c669c75580fcb579d19a9cef8eb24abb6f9a9cd7da77",
+      "reason": "Exact original synthetic XCTest task-control attachment filename contains the substring sk-control-; not a credential. Complete filename and offline provenance reviewed; scanner unchanged."
+    },
+    {
+      "path": "apps/ios-conversation/Sources/App/CatpawApp.swift",
+      "category": "credential_prefix",
+      "line": 31,
+      "sha256": "58ffa234a3610c6cab6e775414e97e744927f4da36a08091ffc60099df861f0b",
+      "reason": "Fresh build23 review: unchanged DEBUG local synthetic JSON filenames task-actions/task-controls resemble a credential prefix. No credential value is present; exact path/line/hash only. Source change is optional QA text-size isolation, scanner unchanged."
+    },
+    {
+      "path": "apps/ios-conversation/Sources/App/CatpawApp.swift",
+      "category": "credential_prefix",
+      "line": 33,
+      "sha256": "58ffa234a3610c6cab6e775414e97e744927f4da36a08091ffc60099df861f0b",
+      "reason": "Fresh build23 review: unchanged DEBUG local synthetic JSON filenames task-actions/task-controls resemble a credential prefix. No credential value is present; exact path/line/hash only. Source change is optional QA text-size isolation, scanner unchanged."
+    },
+    {
+      "path": "docs/acceptance/evidence/native-typography-20261014/default-editor-keyboard.png",
+      "category": "png_metadata_requires_review",
+      "sha256": "ef1f818a93122bacd6c17c0c7e8640f9370acb5bb53865671c97b3c5f2dc46b8",
+      "reason": "Reviewed complete eXIf/iTXt bytes and native synthetic pixels: generic Screenshot label, orientation, image dimensions and XMP namespaces only; no private phone/account identity. Screenshot bytes unchanged."
+    },
+    {
+      "path": "docs/acceptance/evidence/native-typography-20261014/default-input.png",
+      "category": "png_metadata_requires_review",
+      "sha256": "6ec9878603cd315ca18cf810a4af6f13a4367abbd24d1913d2024ea0c3e074b9",
+      "reason": "Reviewed complete eXIf/iTXt bytes and native synthetic pixels: generic Screenshot label, orientation, image dimensions and XMP namespaces only; no private phone/account identity. Screenshot bytes unchanged."
+    },
+    {
+      "path": "docs/acceptance/evidence/native-typography-20261014/maximum-editor-keyboard.png",
+      "category": "png_metadata_requires_review",
+      "sha256": "f74d45ddebfbfb1e80e827c29b9231fc6277641d66b5e1e00e984d035ea8690c",
+      "reason": "Reviewed complete eXIf/iTXt bytes and native synthetic pixels: generic Screenshot label, orientation, image dimensions and XMP namespaces only; no private phone/account identity. Screenshot bytes unchanged."
+    },
+    {
+      "path": "docs/acceptance/evidence/native-typography-20261014/maximum-title-cancelled.png",
+      "category": "png_metadata_requires_review",
+      "sha256": "02e86d2419fad1a207e7c1330c0d11809ea9c9419656dea632ad9253224714a9",
+      "reason": "Reviewed complete eXIf/iTXt bytes and native synthetic pixels: generic Screenshot label, orientation, image dimensions and XMP namespaces only; no private phone/account identity. Screenshot bytes unchanged."
+    },
+    {
+      "path": "docs/acceptance/evidence/native-typography-20261014/normal-no-fixture.png",
+      "category": "png_metadata_requires_review",
+      "sha256": "0457e03b18116dc0576ea464fee242bcce020065b11f821eda074eea9656940f",
+      "reason": "Reviewed complete eXIf/iTXt bytes and native synthetic pixels: generic Screenshot label, orientation, image dimensions and XMP namespaces only; no private phone/account identity. Screenshot bytes unchanged."
+    },
+    {
+      "path": "docs/acceptance/evidence/native-typography-20261014/prior-default-editor-visual-fail.png",
+      "category": "png_metadata_requires_review",
+      "sha256": "ca3e4bf6111f00ff3fc4d221ba870d0cc2a91a26bbf7eb80a6e5d592bf3914cc",
+      "reason": "Reviewed complete eXIf/iTXt bytes and native synthetic pixels: generic Screenshot label, orientation, image dimensions and XMP namespaces only; no private phone/account identity. Screenshot bytes unchanged."
+    },
+    {
+      "path": "docs/acceptance/evidence/native-typography-20261014/screenshots.json",
+      "category": "credential_prefix",
+      "sha256": "f64f060b297193966080c384792c7682e59eab7d6d3a1cce007f2e0553131b01",
+      "reason": "Exact original XCTest attachment name for a synthetic native task-control scene; task-control contains a credential-like substring but is not a credential.",
+      "line": 83
+    },
+    {
+      "path": "docs/acceptance/evidence/native-typography-20261014/final-package-files.json",
+      "category": "email_review",
+      "sha256": "2158958d9a67df433cc06e4e0139879a95b6fefdcc4206039b852baf4ed97108",
+      "reason": "Reviewed generated Xcode icon raster filename: the at-sign denotes image scale, not an email address. Exact hash manifest stores no App bytes or credential values.",
+      "line": 6
+    },
+    {
+      "path": "docs/acceptance/evidence/native-typography-20261014/prior-visual-fail-package-files.json",
+      "category": "email_review",
+      "sha256": "260334ef85ff0246019728bb021217b62dfa024ea4de01a8c9ad056807ffae40",
+      "reason": "Reviewed generated Xcode icon raster filename: the at-sign denotes image scale, not an email address. Exact hash manifest stores no App bytes or credential values.",
+      "line": 6
+    },
+    {
+      "path": "apps/ios-conversation/Tests/Fixtures/device-effect-contract-v2.json",
+      "category": "device_identity",
+      "line": 65,
+      "sha256": "9fc74cd27abf382da55295c74877afc1affe53afc05879a3616a9576ebb8f804",
+      "reason": "Reviewed fixed synthetic device UUID id(10) from the checked-in deny-net fixture generator; explicit TestRepository/OS port doubles, no real device identity or private phone input. Strict match applies only to this fixture byte hash and exact line."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/Fixtures/device-effect-contract-v2.json",
+      "category": "device_identity",
+      "line": 115,
+      "sha256": "9fc74cd27abf382da55295c74877afc1affe53afc05879a3616a9576ebb8f804",
+      "reason": "Reviewed fixed synthetic device UUID id(10) from the checked-in deny-net fixture generator; explicit TestRepository/OS port doubles, no real device identity or private phone input. Strict match applies only to this fixture byte hash and exact line."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/Fixtures/device-effect-contract-v2.json",
+      "category": "device_identity",
+      "line": 176,
+      "sha256": "9fc74cd27abf382da55295c74877afc1affe53afc05879a3616a9576ebb8f804",
+      "reason": "Reviewed fixed synthetic device UUID id(10) from the checked-in deny-net fixture generator; explicit TestRepository/OS port doubles, no real device identity or private phone input. Strict match applies only to this fixture byte hash and exact line."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/Fixtures/device-effect-contract-v2.json",
+      "category": "device_identity",
+      "line": 258,
+      "sha256": "9fc74cd27abf382da55295c74877afc1affe53afc05879a3616a9576ebb8f804",
+      "reason": "Reviewed fixed synthetic device UUID id(10) from the checked-in deny-net fixture generator; explicit TestRepository/OS port doubles, no real device identity or private phone input. Strict match applies only to this fixture byte hash and exact line."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/Fixtures/device-effect-contract-v2.json",
+      "category": "device_identity",
+      "line": 371,
+      "sha256": "9fc74cd27abf382da55295c74877afc1affe53afc05879a3616a9576ebb8f804",
+      "reason": "Reviewed fixed synthetic device UUID id(10) from the checked-in deny-net fixture generator; explicit TestRepository/OS port doubles, no real device identity or private phone input. Strict match applies only to this fixture byte hash and exact line."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/Fixtures/device-effect-contract-v2.json",
+      "category": "device_identity",
+      "line": 472,
+      "sha256": "9fc74cd27abf382da55295c74877afc1affe53afc05879a3616a9576ebb8f804",
+      "reason": "Reviewed fixed synthetic device UUID id(10) from the checked-in deny-net fixture generator; explicit TestRepository/OS port doubles, no real device identity or private phone input. Strict match applies only to this fixture byte hash and exact line."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/Fixtures/device-effect-contract-v2.json",
+      "category": "device_identity",
+      "line": 573,
+      "sha256": "9fc74cd27abf382da55295c74877afc1affe53afc05879a3616a9576ebb8f804",
+      "reason": "Reviewed fixed synthetic device UUID id(10) from the checked-in deny-net fixture generator; explicit TestRepository/OS port doubles, no real device identity or private phone input. Strict match applies only to this fixture byte hash and exact line."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/Fixtures/device-effect-contract-v2.json",
+      "category": "device_identity",
+      "line": 626,
+      "sha256": "9fc74cd27abf382da55295c74877afc1affe53afc05879a3616a9576ebb8f804",
+      "reason": "Reviewed fixed synthetic device UUID id(10) from the checked-in deny-net fixture generator; explicit TestRepository/OS port doubles, no real device identity or private phone input. Strict match applies only to this fixture byte hash and exact line."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/Fixtures/device-effect-contract-v2.json",
+      "category": "device_identity",
+      "line": 685,
+      "sha256": "9fc74cd27abf382da55295c74877afc1affe53afc05879a3616a9576ebb8f804",
+      "reason": "Reviewed fixed synthetic device UUID id(10) from the checked-in deny-net fixture generator; explicit TestRepository/OS port doubles, no real device identity or private phone input. Strict match applies only to this fixture byte hash and exact line."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/Fixtures/device-effect-contract-v2.json",
+      "category": "device_identity",
+      "line": 738,
+      "sha256": "9fc74cd27abf382da55295c74877afc1affe53afc05879a3616a9576ebb8f804",
+      "reason": "Reviewed fixed synthetic device UUID id(10) from the checked-in deny-net fixture generator; explicit TestRepository/OS port doubles, no real device identity or private phone input. Strict match applies only to this fixture byte hash and exact line."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/Fixtures/device-effect-contract-v2.json",
+      "category": "device_identity",
+      "line": 828,
+      "sha256": "9fc74cd27abf382da55295c74877afc1affe53afc05879a3616a9576ebb8f804",
+      "reason": "Reviewed fixed synthetic device UUID id(10) from the checked-in deny-net fixture generator; explicit TestRepository/OS port doubles, no real device identity or private phone input. Strict match applies only to this fixture byte hash and exact line."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/Fixtures/device-effect-contract-v2.json",
+      "category": "device_identity",
+      "line": 881,
+      "sha256": "9fc74cd27abf382da55295c74877afc1affe53afc05879a3616a9576ebb8f804",
+      "reason": "Reviewed fixed synthetic device UUID id(10) from the checked-in deny-net fixture generator; explicit TestRepository/OS port doubles, no real device identity or private phone input. Strict match applies only to this fixture byte hash and exact line."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/Fixtures/device-effect-contract-v2.json",
+      "category": "device_identity",
+      "line": 959,
+      "sha256": "9fc74cd27abf382da55295c74877afc1affe53afc05879a3616a9576ebb8f804",
+      "reason": "Reviewed fixed synthetic device UUID id(10) from the checked-in deny-net fixture generator; explicit TestRepository/OS port doubles, no real device identity or private phone input. Strict match applies only to this fixture byte hash and exact line."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/Fixtures/device-effect-contract-v2.json",
+      "category": "device_identity",
+      "line": 1012,
+      "sha256": "9fc74cd27abf382da55295c74877afc1affe53afc05879a3616a9576ebb8f804",
+      "reason": "Reviewed fixed synthetic device UUID id(10) from the checked-in deny-net fixture generator; explicit TestRepository/OS port doubles, no real device identity or private phone input. Strict match applies only to this fixture byte hash and exact line."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/Fixtures/device-effect-contract-v2.json",
+      "category": "device_identity",
+      "line": 1090,
+      "sha256": "9fc74cd27abf382da55295c74877afc1affe53afc05879a3616a9576ebb8f804",
+      "reason": "Reviewed fixed synthetic device UUID id(10) from the checked-in deny-net fixture generator; explicit TestRepository/OS port doubles, no real device identity or private phone input. Strict match applies only to this fixture byte hash and exact line."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/Fixtures/device-effect-contract-v2.json",
+      "category": "device_identity",
+      "line": 1143,
+      "sha256": "9fc74cd27abf382da55295c74877afc1affe53afc05879a3616a9576ebb8f804",
+      "reason": "Reviewed fixed synthetic device UUID id(10) from the checked-in deny-net fixture generator; explicit TestRepository/OS port doubles, no real device identity or private phone input. Strict match applies only to this fixture byte hash and exact line."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/Fixtures/device-effect-contract-v2.json",
+      "category": "device_identity",
+      "line": 1182,
+      "sha256": "9fc74cd27abf382da55295c74877afc1affe53afc05879a3616a9576ebb8f804",
+      "reason": "Reviewed fixed synthetic device UUID id(10) from the checked-in deny-net fixture generator; explicit TestRepository/OS port doubles, no real device identity or private phone input. Strict match applies only to this fixture byte hash and exact line."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/Fixtures/device-effect-contract-v2.json",
+      "category": "device_identity",
+      "line": 1230,
+      "sha256": "9fc74cd27abf382da55295c74877afc1affe53afc05879a3616a9576ebb8f804",
+      "reason": "Reviewed fixed synthetic device UUID id(10) from the checked-in deny-net fixture generator; explicit TestRepository/OS port doubles, no real device identity or private phone input. Strict match applies only to this fixture byte hash and exact line."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/Fixtures/device-effect-contract-v2.json",
+      "category": "device_identity",
+      "line": 1287,
+      "sha256": "9fc74cd27abf382da55295c74877afc1affe53afc05879a3616a9576ebb8f804",
+      "reason": "Reviewed fixed synthetic device UUID id(10) from the checked-in deny-net fixture generator; explicit TestRepository/OS port doubles, no real device identity or private phone input. Strict match applies only to this fixture byte hash and exact line."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/Fixtures/device-effect-contract-v2.json",
+      "category": "device_identity",
+      "line": 1365,
+      "sha256": "9fc74cd27abf382da55295c74877afc1affe53afc05879a3616a9576ebb8f804",
+      "reason": "Reviewed fixed synthetic device UUID id(10) from the checked-in deny-net fixture generator; explicit TestRepository/OS port doubles, no real device identity or private phone input. Strict match applies only to this fixture byte hash and exact line."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/Fixtures/device-effect-contract-v2.json",
+      "category": "device_identity",
+      "line": 1422,
+      "sha256": "9fc74cd27abf382da55295c74877afc1affe53afc05879a3616a9576ebb8f804",
+      "reason": "Reviewed fixed synthetic device UUID id(10) from the checked-in deny-net fixture generator; explicit TestRepository/OS port doubles, no real device identity or private phone input. Strict match applies only to this fixture byte hash and exact line."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/Fixtures/device-effect-contract-v2.json",
+      "category": "device_identity",
+      "line": 1461,
+      "sha256": "9fc74cd27abf382da55295c74877afc1affe53afc05879a3616a9576ebb8f804",
+      "reason": "Reviewed fixed synthetic device UUID id(10) from the checked-in deny-net fixture generator; explicit TestRepository/OS port doubles, no real device identity or private phone input. Strict match applies only to this fixture byte hash and exact line."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/Fixtures/device-effect-contract-v2.json",
+      "category": "device_identity",
+      "line": 1533,
+      "sha256": "9fc74cd27abf382da55295c74877afc1affe53afc05879a3616a9576ebb8f804",
+      "reason": "Reviewed fixed synthetic device UUID id(10) from the checked-in deny-net fixture generator; explicit TestRepository/OS port doubles, no real device identity or private phone input. Strict match applies only to this fixture byte hash and exact line."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/Fixtures/device-effect-contract-v2.json",
+      "category": "device_identity",
+      "line": 1583,
+      "sha256": "9fc74cd27abf382da55295c74877afc1affe53afc05879a3616a9576ebb8f804",
+      "reason": "Reviewed fixed synthetic device UUID id(10) from the checked-in deny-net fixture generator; explicit TestRepository/OS port doubles, no real device identity or private phone input. Strict match applies only to this fixture byte hash and exact line."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/Fixtures/device-effect-contract-v2.json",
+      "category": "device_identity",
+      "line": 1631,
+      "sha256": "9fc74cd27abf382da55295c74877afc1affe53afc05879a3616a9576ebb8f804",
+      "reason": "Reviewed fixed synthetic device UUID id(10) from the checked-in deny-net fixture generator; explicit TestRepository/OS port doubles, no real device identity or private phone input. Strict match applies only to this fixture byte hash and exact line."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/Fixtures/device-effect-contract-v2.json",
+      "category": "device_identity",
+      "line": 1713,
+      "sha256": "9fc74cd27abf382da55295c74877afc1affe53afc05879a3616a9576ebb8f804",
+      "reason": "Reviewed fixed synthetic device UUID id(10) from the checked-in deny-net fixture generator; explicit TestRepository/OS port doubles, no real device identity or private phone input. Strict match applies only to this fixture byte hash and exact line."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/Fixtures/device-effect-contract-v2.json",
+      "category": "device_identity",
+      "line": 1826,
+      "sha256": "9fc74cd27abf382da55295c74877afc1affe53afc05879a3616a9576ebb8f804",
+      "reason": "Reviewed fixed synthetic device UUID id(10) from the checked-in deny-net fixture generator; explicit TestRepository/OS port doubles, no real device identity or private phone input. Strict match applies only to this fixture byte hash and exact line."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/Fixtures/device-effect-contract-v2.json",
+      "category": "device_identity",
+      "line": 1927,
+      "sha256": "9fc74cd27abf382da55295c74877afc1affe53afc05879a3616a9576ebb8f804",
+      "reason": "Reviewed fixed synthetic device UUID id(10) from the checked-in deny-net fixture generator; explicit TestRepository/OS port doubles, no real device identity or private phone input. Strict match applies only to this fixture byte hash and exact line."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/Fixtures/device-effect-contract-v2.json",
+      "category": "device_identity",
+      "line": 1980,
+      "sha256": "9fc74cd27abf382da55295c74877afc1affe53afc05879a3616a9576ebb8f804",
+      "reason": "Reviewed fixed synthetic device UUID id(10) from the checked-in deny-net fixture generator; explicit TestRepository/OS port doubles, no real device identity or private phone input. Strict match applies only to this fixture byte hash and exact line."
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/source-erasure.mjs",
+      "category": "credential_prefix",
+      "line": 13,
+      "sha256": "b0d722bd4b1917823e7b86b87ab79e4d56956333de4aab70aed90d3f2280fdcf",
+      "reason": "Reviewed unchanged public storage kind names in the scoped erasure barrier; a record-kind substring resembles a credential prefix. No credential value. Exact current file hash and line only."
+    },
+    {
+      "path": "services/edge/test/task-public-sources.test.mjs",
+      "category": "credential_url",
+      "line": 43,
+      "sha256": "5cf1a3d606e994271167a233f9d93b244fbbdf52bd1b902490c1e7906f5bdd7a",
+      "reason": "Verified this line is byte-identical to the previously reviewed HEAD negative URL fixture: literal user:pass on a documentation/example host is rejected before network. No real credential or request."
+    },
+    {
+      "path": "services/edge/test/task-public-sources.test.mjs",
+      "category": "email_review",
+      "line": 43,
+      "sha256": "5cf1a3d606e994271167a233f9d93b244fbbdf52bd1b902490c1e7906f5bdd7a",
+      "reason": "Verified unchanged negative URL fixture literals are not email addresses or personal data; parser rejects them before network. Exact current file hash and line only."
+    },
+    {
+      "path": "services/edge/test/task-public-sources.test.mjs",
+      "category": "signed_url",
+      "line": 51,
+      "sha256": "5cf1a3d606e994271167a233f9d93b244fbbdf52bd1b902490c1e7906f5bdd7a",
+      "reason": "Verified byte-identical previously reviewed anonymous-reader negative fixture: literal access_token=fake and signed-key names are rejected before any connection; no real signed URL/token. Exact file hash and line only."
+    },
+    {
+      "path": "apps/ios-conversation/Sources/App/CatpawApp.swift",
+      "category": "credential_prefix",
+      "line": 35,
+      "sha256": "7062535085ed88e7545955c1470fb0c605d47372c79713afb362a8ba49af3d86",
+      "reason": "Byte-identical already reviewed names of explicitly synthetic local fixture storage files; a filename substring resembles a key prefix. No credential value. Exact current file hash and line only."
+    },
+    {
+      "path": "apps/ios-conversation/Sources/App/CatpawApp.swift",
+      "category": "credential_prefix",
+      "line": 37,
+      "sha256": "7062535085ed88e7545955c1470fb0c605d47372c79713afb362a8ba49af3d86",
+      "reason": "Byte-identical already reviewed names of explicitly synthetic local fixture storage files; a filename substring resembles a key prefix. No credential value. Exact current file hash and line only."
+    },
+    {
+      "path": "apps/ios-conversation/Sources/App/CatpawApp.swift",
+      "category": "credential_prefix",
+      "line": 35,
+      "sha256": "8d9098129e0154bf63b7fead5820d523a4b25c9833115fefbfe0755550686a62",
+      "reason": "Byte-identical already reviewed names of explicitly synthetic local fixture storage files; a filename substring resembles a key prefix. No credential value. Exact current file hash and line only."
+    },
+    {
+      "path": "apps/ios-conversation/Sources/App/CatpawApp.swift",
+      "category": "credential_prefix",
+      "line": 37,
+      "sha256": "8d9098129e0154bf63b7fead5820d523a4b25c9833115fefbfe0755550686a62",
+      "reason": "Byte-identical already reviewed names of explicitly synthetic local fixture storage files; a filename substring resembles a key prefix. No credential value. Exact current file hash and line only."
+    },
+    {
+      "path": "apps/ios-conversation/Sources/App/CatpawApp.swift",
+      "category": "credential_prefix",
+      "line": 35,
+      "sha256": "417d46381f544949f14bc77568917849732e6b9af24dc9936e96528110f64d2c",
+      "reason": "Byte-identical already reviewed names of explicitly synthetic local fixture storage files; a filename substring resembles a key prefix. No credential value. Exact current file hash and line only."
+    },
+    {
+      "path": "apps/ios-conversation/Sources/App/CatpawApp.swift",
+      "category": "credential_prefix",
+      "line": 37,
+      "sha256": "417d46381f544949f14bc77568917849732e6b9af24dc9936e96528110f64d2c",
+      "reason": "Byte-identical already reviewed names of explicitly synthetic local fixture storage files; a filename substring resembles a key prefix. No credential value. Exact current file hash and line only."
+    },
+    {
+      "path": "docs/planning/AF-1/goal-evidence-map.json",
+      "category": "credential_prefix",
+      "line": 120,
+      "sha256": "556ab0ef7ffe4ad876f63a96f438bdd8c6508e3781b16235a553a753618f8e06",
+      "reason": "Reviewed literal historical research filename: catdesk- suffix matches broad sk- credential pattern; no credential value or content is present."
+    },
+    {
+      "path": "docs/planning/AF-1/goal-evidence-map.json",
+      "category": "credential_prefix",
+      "line": 146,
+      "sha256": "556ab0ef7ffe4ad876f63a96f438bdd8c6508e3781b16235a553a753618f8e06",
+      "reason": "Reviewed literal historical research filename: catdesk- suffix matches broad sk- credential pattern; no credential value or content is present."
+    },
+    {
+      "path": "docs/planning/AF-1/goal-evidence-map.json",
+      "category": "credential_prefix",
+      "line": 174,
+      "sha256": "556ab0ef7ffe4ad876f63a96f438bdd8c6508e3781b16235a553a753618f8e06",
+      "reason": "Reviewed literal historical research filename: catdesk- suffix matches broad sk- credential pattern; no credential value or content is present."
+    },
+    {
+      "path": "docs/acceptance/evidence/native-accepted-work-20261015/RESULT.json",
+      "category": "email_review",
+      "line": 21,
+      "sha256": "c717b2531ad0bd26b0573ef848b7aff4797fc645524bd40450d58d71745bd46d",
+      "reason": "Standard Apple icon asset filename containing a scale suffix; not an email address or personal identifier. Exact line and file hash reviewed."
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/source-erasure.mjs",
+      "category": "credential_prefix",
+      "line": 15,
+      "sha256": "5886c76520b1913f5d720a5f6f51ed9cef91a43cbd9576a2c6f54b1612b3afe5",
+      "reason": "Reviewed the unchanged public storage collection identifiers against the previously reviewed source. The distinct user memory source erasure branch changes only this file hash and line. No credential value is present. Exact current path, category, line and file hash only; all scanner patterns remain unchanged."
+    },
+    {
+      "path": "docs/acceptance/evidence/native-memory-20261015/package-files.json",
+      "category": "email_review",
+      "line": 6,
+      "sha256": "c94e383627d9a2a3fd91f19f91e69f7b4cddf7b256b4d32bfb21b8cd2fb362b3",
+      "reason": "Reviewed the generated scale-2 AppIcon asset filename on this package line, not an email address. All 30 package filenames/hashes contain no user/session contents; pixel bytes remain local."
     }
   ]
 }

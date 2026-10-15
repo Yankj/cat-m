@@ -1,0 +1,204 @@
+{
+  "candidate": "AF-UX-TYPOGRAPHY-20261014-23-R2",
+  "date": "2026-10-14",
+  "base_commit": "004c8a511daa8c2d35d0a2b7b7f93d87472853ff",
+  "result": "PASS_BOUNDED_OFFLINE_NATIVE_STAGE",
+  "product_acceptance": "NOT_CLOSED",
+  "package": {
+    "version": "0.3.0",
+    "build": "23",
+    "bundle_id": "com.example.CatpawM.ConversationFirst.Auth",
+    "configuration": "Debug_simulator_offline_review",
+    "cloud_config_present": false,
+    "bundle_sha256": "d5b6781047ac71e4fc8d913ebc93e30b40c1fa482b541ea5253455d9ad57bd38",
+    "file_manifest": "final-package-files.json",
+    "file_count": 26,
+    "archive_local_path": "build/typography-trial-20261014/CatpawM-0.3.0-build23-simulator.zip",
+    "archive_sha256": "65f3aaf5f8c4be1c903f32a3e95b40e27c6aeaf1b5060f47926c699a1c85b427",
+    "archive_bytes": 11548956
+  },
+  "inputs": {
+    "manifest": "inputs.json",
+    "sha256": "5b797da90fb79d29a7cebe9a37daadf0f8f8a23b216df28f84f2ef2b1ecd5d52",
+    "count": 234
+  },
+  "final_tests": [
+    {
+      "run": "fixed-default-large",
+      "passed": 12,
+      "failed": 0,
+      "skipped": 0,
+      "methods": [
+        {
+          "name": "CatpawMTests.CatpawTextLayoutTests testActualFooterBoundaryIsAppliedBeforeTextHeightBudget",
+          "result": "passed"
+        },
+        {
+          "name": "CatpawMTests.CatpawTextLayoutTests testActualUIKitCaretAndExactRawSurviveKeyboardSizedViewportChanges",
+          "result": "passed"
+        },
+        {
+          "name": "CatpawMTests.CatpawTextLayoutTests testCaretCommitExtentUsesPhysicalPixelsAndExcludesDecorativePadding",
+          "result": "passed"
+        },
+        {
+          "name": "CatpawMTests.CatpawTextLayoutTests testComposerBudgetBoundsLongContextAndYieldsChromeBeforeAnEditableLine",
+          "result": "passed"
+        },
+        {
+          "name": "CatpawMTests.CatpawTextLayoutTests testEverySwiftUITextCategoryMatchesUIKitWithoutImplicitRescaling",
+          "result": "passed"
+        },
+        {
+          "name": "CatpawMTests.CatpawTextLayoutTests testFortyKBContinuousEditingKeepsCaretRawAndCompositionWithMeasuredLayoutCost",
+          "result": "passed"
+        },
+        {
+          "name": "CatpawMTests.CatpawTextLayoutTests testLargeChineseAndEnglishLabelsLeaveAnEditableLineAcrossThreeWidths",
+          "result": "passed"
+        },
+        {
+          "name": "CatpawMTests.CatpawTextLayoutTests testNestedUIKitEditorRecoversAfterCommittedOuterViewportAndMarkedComposition",
+          "result": "passed"
+        },
+        {
+          "name": "CatpawMUITests.ConversationArtifactContinuationUITests testSelectedVersionModesColdDraftsAndExitKeepOrdinaryInputWithoutSending",
+          "result": "passed"
+        },
+        {
+          "name": "CatpawMUITests.ConversationArtifactEditUITests testRootManualRevisionDraftReopenAndExactVersionHistoryKeepChatDraft",
+          "result": "passed"
+        },
+        {
+          "name": "CatpawMUITests.P0NativeExperienceUITests testNormalReviewLaunchHasNoFixtureOrCloudAdmission",
+          "result": "passed"
+        },
+        {
+          "name": "CatpawMUITests.P0NativeExperienceUITests testSystemTextCategoryIsRespectedWithoutScenarioSizeOverride",
+          "result": "passed"
+        }
+      ],
+      "log_sha256": "d5426d3632dd5c73ab761ada242c808656d94d495f6d7c93d8576f0fc87a7a5a",
+      "summary_sha256": "760c78c49aa82d6865b4d20d46826fb55bb62208eaa4650abbda3fe0169dbe9a"
+    },
+    {
+      "run": "fixed-system-xxxl",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0,
+      "methods": [
+        {
+          "name": "CatpawMUITests.ConversationArtifactEditUITests testRootManualRevisionDraftReopenAndExactVersionHistoryKeepChatDraft",
+          "result": "passed"
+        },
+        {
+          "name": "CatpawMUITests.P0NativeExperienceUITests testSystemTextCategoryIsRespectedWithoutScenarioSizeOverride",
+          "result": "passed"
+        }
+      ],
+      "log_sha256": "f18c10ae3f32fd6f76afe3ed56a67f887dfd5b1c52424db49d4c285572931309",
+      "summary_sha256": "883b3e7bf8d63edda986cde41d1c5bb7f07ec5bf86e0d5699b010d0b76d8671f"
+    },
+    {
+      "run": "fixed-system-ax5",
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0,
+      "methods": [
+        {
+          "name": "CatpawMUITests.ConversationArtifactEditUITests testMaximumTextManualEditorKeyboardSaveCloseAndHistoryRemainReachable",
+          "result": "passed"
+        },
+        {
+          "name": "CatpawMUITests.ConversationTaskControlUITests testMaximumAccessibilityControlsRemainReachableAndRevokeIsSeparateFromPause",
+          "result": "passed"
+        },
+        {
+          "name": "CatpawMUITests.P0NativeExperienceUITests testSystemTextCategoryIsRespectedWithoutScenarioSizeOverride",
+          "result": "passed"
+        }
+      ],
+      "log_sha256": "6a549fd063d67a4f0f029ae0c9de8d4f3492276dbe864c10848c043a3cc4fcc4",
+      "summary_sha256": "5386e0bdb148a2356401bba57dc87c4614e7c35b3bb076b3d4b8257dc3b394ce"
+    }
+  ],
+  "final_method_executions": 17,
+  "final_unique_methods": 14,
+  "prior_red": {
+    "run": "stable-viewport-red",
+    "passed": 0,
+    "failed": 1,
+    "skipped": 0,
+    "methods": [
+      {
+        "name": "CatpawMUITests.ConversationArtifactEditUITests testRootManualRevisionDraftReopenAndExactVersionHistoryKeepChatDraft",
+        "result": "failed"
+      }
+    ],
+    "log_sha256": "135208b792dcc48394666549bc521d089b8d5dcf9c31a6f7dcc030a995d5be02",
+    "summary_sha256": "6789af3abab5d3e1135d8c4a7215d283df46a3b77c902ac933ee9218232f26c5"
+  },
+  "prior_weak_assertion_runs": {
+    "default_large": [
+      13,
+      0
+    ],
+    "system_xxxl": [
+      2,
+      0
+    ],
+    "system_ax5": [
+      5,
+      0
+    ],
+    "acceptance_result": "VISUAL_FAIL_default_body_clipped_despite_weak_assertion_PASS",
+    "retained_ignored_logs_and_xcresults": true,
+    "package_manifest": "prior-visual-fail-package-files.json"
+  },
+  "evidence": {
+    "screenshots": "screenshots.json",
+    "typography": "system-text-witness.json",
+    "editor_geometry": "editor-geometry.json"
+  },
+  "checks": {
+    "semantic_gate_source_count": 98,
+    "named_nonproduction_legacy_exclusions": 10,
+    "negative_guard_cases": "PASS",
+    "nonDEBUG_SDK_and_99_host_members_968_bilingual": "PASS",
+    "source_sdk_log_sha256": "6de5de991ce08cebbb25d365243ef7bf727169bb234d83662e14caf05195c143"
+  },
+  "external_actions": {
+    "model_requests": 0,
+    "Auth_requests": 0,
+    "phone_installs": 0,
+    "dependency_installs": 0,
+    "deployments": 0,
+    "pushes": 0,
+    "new_compute_budget": 0
+  },
+  "limits": [
+    "Explicit synthetic data/services; no real Agent, source reading, worker takeover or calendar effects.",
+    "Complete VoiceOver, motion, actual IME interaction, in-gesture caret/rendered-frame proof and physical iPhone remain NOT_RUN.",
+    "Preview environment forwarding is SDK/static checked; specific preview sheet runtime is NOT_RUN.",
+    "Plan and exact-approval UI passed prior typography revision; they are not rerun on final editor recovery revision.",
+    "Only the existing 402x874pt simulator is used; no full multi-device quality closure."
+  ],
+  "simulator_install_readback": {
+    "version": "0.3.0",
+    "build": "23",
+    "bundle_id": "com.example.CatpawM.ConversationFirst.Auth",
+    "info_sha256": "51c49f8d8a8bdb4291cdaf2407f77e55beea3585b8060985b7799bc52a934009",
+    "default_system_size_restored": "large",
+    "review_launch_mode": "report",
+    "auto_sent_text": false,
+    "existing_device_only": true,
+    "device_hub_open_command_exit": 0,
+    "Mac_window_observation": "blocked_by_locked_Mac_no_retry_without_unlock_ack",
+    "launch_log_sha256": "236dd9ba1e2752d35b14d6172b8934a3d405dfb5904be0fc07c648171a58f5f6"
+  },
+  "source_commit": "7ac5518aa8d64d58707f9a093c2fd24ac48fee98",
+  "source_commit_readback": {
+    "matching_input_hashes": 234,
+    "reviewed_committed_paths": 41
+  }
+}

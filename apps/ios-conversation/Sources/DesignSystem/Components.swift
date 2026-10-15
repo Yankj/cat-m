@@ -77,7 +77,7 @@ struct CatpawSymbol: View {
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 7) {
             Image(systemName: symbol).font(symbol == "circle.fill" ? .system(size: dotSize, weight: .semibold) : .caption.weight(.semibold)).accessibilityHidden(true)
-            Text(text).font(.caption.weight(.medium)).fixedSize(horizontal: false, vertical: true)
+            Text(text).font(CatpawTypography.Role.caption.font.weight(.medium)).fixedSize(horizontal: false, vertical: true)
         }.foregroundStyle(tone.color).accessibilityElement(children: .combine)
     }
 }
@@ -100,8 +100,8 @@ struct CatpawSymbol: View {
         VStack(spacing: 12) {
             Image(systemName: symbol).font(.system(.title, design: .default).weight(.regular))
                 .symbolRenderingMode(.monochrome).foregroundStyle(CatpawColors.secondary).accessibilityHidden(true)
-            Text(title).font(.headline).foregroundStyle(CatpawColors.ink)
-            Text(detail).font(.subheadline).foregroundStyle(CatpawColors.secondary)
+            Text(title).font(CatpawTypography.Role.heading.font).foregroundStyle(CatpawColors.ink)
+            Text(detail).font(CatpawTypography.Role.secondary.font).foregroundStyle(CatpawColors.secondary)
                 .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
         }.padding(.vertical, 28).padding(.horizontal, 20).frame(maxWidth: .infinity)
     }
@@ -122,11 +122,7 @@ struct SectionHeading: View {
     var title: String
     var detail: String? = nil
     var body: some View {
-        HStack(alignment: .firstTextBaseline) {
-            Text(title).font(.headline).foregroundStyle(CatpawColors.ink)
-            Spacer(minLength: 8)
-            if let detail { Text(detail).font(.subheadline).foregroundStyle(CatpawColors.secondary) }
-        }.accessibilityAddTraits(.isHeader)
+        CatpawAdaptiveHeader(title:title,detail:detail,detailRole:.secondary).foregroundStyle(CatpawColors.ink).accessibilityAddTraits(.isHeader)
     }
 }
 
@@ -136,11 +132,8 @@ struct ActionRow: View {
     var symbol: String
     var body: some View {
         HStack(alignment: .center, spacing: 12) {
-            CatpawSymbol(name: symbol).foregroundStyle(CatpawColors.secondary)
-            VStack(alignment: .leading, spacing: 5) {
-                Text(title).font(.body.weight(.medium)).foregroundStyle(CatpawColors.ink)
-                if let detail { Text(detail).font(.caption).foregroundStyle(CatpawColors.secondary) }
-            }.fixedSize(horizontal: false, vertical: true).frame(maxWidth: .infinity, alignment: .leading)
+            CatpawSymbol(name:symbol).foregroundStyle(CatpawColors.secondary)
+            CatpawAdaptiveHeader(title:title,detail:detail,titleRole:.body,weight:.medium).foregroundStyle(CatpawColors.ink)
             Image(systemName: "chevron.right").font(.caption.weight(.semibold))
                 .foregroundStyle(CatpawColors.secondary).accessibilityHidden(true)
         }.padding(.vertical, 10).frame(minHeight: 52).contentShape(Rectangle())
@@ -152,7 +145,7 @@ struct CatpawPrimaryButtonStyle: ButtonStyle {
     @Environment(\.isEnabled) private var isEnabled
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label.font(.body.weight(.semibold))
+        configuration.label.font(CatpawTypography.Role.body.font.weight(.semibold))
             .frame(minHeight: 24).padding(.horizontal, 20).padding(.vertical, 14)
             .foregroundStyle(isEnabled ? CatpawColors.onInk : CatpawColors.secondary)
             .background(isEnabled ? CatpawColors.ink : CatpawColors.input,

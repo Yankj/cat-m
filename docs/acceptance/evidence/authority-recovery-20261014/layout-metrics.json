@@ -1,0 +1,63 @@
+{
+  "runs": {
+    "native-focused-r5": {
+      "median_ms": 4.102916660485789,
+      "p95_ms": 10.889625002164394,
+      "settled_median_ms": 33.3331250003539,
+      "settled_p95_ms": 33.59033333254047,
+      "document_layout_requests": 32.0,
+      "viewport_commits": 139.0,
+      "utf8_bytes": 44960,
+      "continuous_edits": 30,
+      "display_frame_observations": 60,
+      "type": "accessibility5",
+      "viewport_points": [
+        350,
+        136
+      ],
+      "raw_attachment_sha256": "8cdf0b40080e97e4868a40c6eaa73ecfd45304c5c782bf1dcebee6732210f75c",
+      "performance_gate": "NOT_RUN on physical device; measured timings are diagnostics, not a performance PASS"
+    },
+    "native-integrated-r3": {
+      "median_ms": 7.528999994974583,
+      "p95_ms": 519.6893333340995,
+      "settled_median_ms": 33.404875022824854,
+      "settled_p95_ms": 566.6095000051428,
+      "document_layout_requests": 32.0,
+      "viewport_commits": 139.0,
+      "utf8_bytes": 44960,
+      "continuous_edits": 30,
+      "display_frame_observations": 60,
+      "type": "accessibility5",
+      "viewport_points": [
+        350,
+        136
+      ],
+      "raw_attachment_sha256": "e9241a13e9efd298536ccca72cea872a3546645c9f2ea5117bd86eac7b7ac628",
+      "performance_gate": "NOT_RUN on physical device; measured timings are diagnostics, not a performance PASS"
+    },
+    "native-units-r4": {
+      "median_ms": 4.929583345074207,
+      "p95_ms": 10.750250017736107,
+      "settled_median_ms": 33.339916641125455,
+      "settled_p95_ms": 37.87250001914799,
+      "document_layout_requests": 32.0,
+      "viewport_commits": 139.0,
+      "utf8_bytes": 44960,
+      "continuous_edits": 30,
+      "display_frame_observations": 60,
+      "type": "accessibility5",
+      "viewport_points": [
+        350,
+        136
+      ],
+      "raw_attachment_sha256": "dea66f22123d2954b2718edcfc9a906b87ef5db4e98ffdc47c95bea60afab5cb",
+      "performance_gate": "NOT_RUN on physical device; measured timings are diagnostics, not a performance PASS"
+    }
+  },
+  "limits": [
+    "Concurrent Release build during r3; attribution is unproven.",
+    "Different p95 values retained; no cherry-picked physical performance claim.",
+    "Extra viewport commits from subpixel extent comparison remain open."
+  ]
+}

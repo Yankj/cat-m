@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { ApiError,check,hash } from '../facade-r2/src/common.mjs';
+import { ApiError,check,hash,clone } from '../facade-r2/src/common.mjs';
 import { PostgresRepository } from '../integration/server-foundation/src/postgres-repository.mjs';
 import { Foundation } from '../integration/server-foundation/src/foundation.mjs';
 import { ChatRecoveryFence } from '../integration/server-foundation/src/chat-recovery.mjs';
@@ -10,6 +10,7 @@ import { eraseChatSource } from './source-erasure.mjs';
 import { buildSourcePurgePlan } from './purge-plan.mjs';
 import { attachFoundationProjections } from './projection-adapter.mjs';
 import { createFoundationFetchHandler } from './foundation-http.mjs';
+import {freezeMemoryUsage,resolveMemoryProviderInput} from './memory-service.mjs';
 import { createSupabaseSessionVerifier } from './supabase-auth.mjs';
 import { SupabasePgScopeAuthority } from './supabase-scope-authority.mjs';
 
@@ -23,6 +24,7 @@ export async function createFoundationChatRuntime({repository,authenticate,provi
   const policy=new ProviderGateway({routes:{[routeId]:route},complete:async()=>true});
   const guardedProvider={identity:{...provider.identity,data_class:dataClass,route_policy:routeId},get reality(){return provider.reality;},assertReady:()=>provider.assertReady?.(),async *stream(input){
     // Classification is a server composition constant; no HTTP/model field can downgrade private data.
+    input=await resolveMemoryProviderInput(runtime,input);
     if(beforeProviderRequest)await beforeProviderRequest(input);
     await normalized(()=>policy.complete({consent_verified:!!beforeProviderRequest,purpose:'chat',allowed_route_policy_id:routeId,data_class:dataClass,sensitivity:'low'}));
     yield*provider.stream(input);
@@ -31,6 +33,7 @@ export async function createFoundationChatRuntime({repository,authenticate,provi
   const lockScope=async(tx,scopeId,owner)=>normalized(()=>tx.withScope(scopeId,async scoped=>{const row=await scoped.scope();if(owner)check(row.identity.owner===owner,403,'scope_forbidden');}));
   const integration={
     lockScope,
+    async memoryUsage(tx,args){return normalized(()=>freezeMemoryUsage(runtime,tx,args));},
     async prepare({owner}){
       const token=await normalized(()=>fence.acquire(owner,holderId));check(token,503,'chat_runtime_busy');tokens.set(owner,token);
       recoveryReports.push(await normalized(()=>fence.recoverExpiredOwner(owner,token)));
@@ -57,7 +60,7 @@ export async function createFoundationChatRuntime({repository,authenticate,provi
       const input=Object.fromEntries(['conversation_id','turn_id','call_id','delegation_id','operation_id','run_id','task_id','request_hash','delegation_revision','grant_epoch'].map(k=>[k,b[k]]));
       bindings.push(await foundation.linkExecution(principal,scopeId,input));
     }
-    return {capture,bindings,projection_hash:hash(bindings),artifact_bridge:'explicit_uuid_projection_alias',task_snapshot_bridge:'persisted_owner_projection_revision'};
+    return {capture,bindings,projection_hash:hash(bindings),...turn.continuations?{continuations:clone(turn.continuations)}:{},artifact_bridge:'explicit_uuid_projection_alias',task_snapshot_bridge:'persisted_owner_projection_revision'};
   };
   runtime.deleteChatSource=async(auth,scopeId,sourceId)=>{
     const {owner,principal}=await runtime.facade.scoped(auth,scopeId);

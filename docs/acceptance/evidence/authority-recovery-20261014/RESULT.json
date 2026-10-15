@@ -1,0 +1,396 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-14",
+  "candidate": "AF-W33-CONTROL-20261014-06",
+  "base_commit": "a444e4ff5af7da81132f1fe647d6379319913c7f",
+  "branch": "feat/s03-authority-recovery",
+  "version": "0.3.0",
+  "build": "22",
+  "evidence_reality": "offline_maintenance_and_actual_simulator",
+  "goal_status_at_capture": "ACTIVE",
+  "product_acceptance_closed": false,
+  "changed_source_and_tests": [
+    {
+      "path": "apps/ios-conversation/CatpawM.xcodeproj/project.pbxproj",
+      "bytes": 55120,
+      "sha256": "83bd5c0f429a716a0e5702c0157b4ffa1cb73888adffba0c752b6c49738ec6fc"
+    },
+    {
+      "path": "apps/ios-conversation/Resources/UIStrings.json",
+      "bytes": 134438,
+      "sha256": "1bf8a629ba2acb8c1485f18b4008a86973124f78ab00dd7126f6932f9d6eb986"
+    },
+    {
+      "path": "apps/ios-conversation/Sources/App/CatpawApp.swift",
+      "bytes": 12307,
+      "sha256": "515830bdec3a77729ebfa2b8d7616d4ca3428c847b607559484869efae81e2ad"
+    },
+    {
+      "path": "apps/ios-conversation/Sources/App/ConversationFirstModel.swift",
+      "bytes": 57115,
+      "sha256": "2f458c6efe53adb1a35fac8fdcf99942b3365145470724eac14bc361c873987e"
+    },
+    {
+      "path": "apps/ios-conversation/Sources/App/ConversationTaskControlFixture.swift",
+      "bytes": 11527,
+      "sha256": "2efdc87ef5e8e8fe3e9940cf65977edde0679232376059dfc450e5f81d9c9da9"
+    },
+    {
+      "path": "apps/ios-conversation/Sources/App/NativeAuthApplicationModel.swift",
+      "bytes": 20268,
+      "sha256": "b9f8ac4a46a593bc8f2520d7e32cf52e17c2f21dd68c9988243b452f6651c8fa"
+    },
+    {
+      "path": "apps/ios-conversation/Sources/App/P0ExperienceFixture.swift",
+      "bytes": 14264,
+      "sha256": "b8b070f609ccbfb95cc47fb69295dcc33334ee74a8dc98913ecd4af09a126798"
+    },
+    {
+      "path": "apps/ios-conversation/Sources/DesignSystem/AdaptiveTextLayout.swift",
+      "bytes": 24424,
+      "sha256": "5d0fa5e5deb96bdc4c76c6708b828e1c54b38b3061418201d3c9acac9153a665"
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Domain/ConversationTaskControl.swift",
+      "bytes": 18961,
+      "sha256": "e03f56b29e88293de54ab3445ef25aa9739d610275ba6c6e39f56980cc28adb8"
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Features/ConversationArtifactEditView.swift",
+      "bytes": 13919,
+      "sha256": "21d913b5757b01a92b096174c4673743cb7f7072f7c91fbe9781c92a508389d9"
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Features/ConversationArtifactReaderView.swift",
+      "bytes": 11489,
+      "sha256": "f67252ae1f9e30580c7890b6e6a3eb1f9d47aa01152a74b60e37bd0cd2cff99f"
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Features/ConversationFirstView.swift",
+      "bytes": 58065,
+      "sha256": "d64b021892375c7b2596000e9a7f21b1721a37a4bc37efc20e669d94e64658a8"
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Features/ConversationGoalCard.swift",
+      "bytes": 2928,
+      "sha256": "314e0e3cd20f8fc947b31e25954626f25eccc16ffa585f2610a199cdee7c89fb"
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Features/ConversationSessionService.swift",
+      "bytes": 35839,
+      "sha256": "855f9bb90bc8e051d4c9298cac1374e2183108954c5105d1767f89177ba651a9"
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Features/ConversationTaskControlModel.swift",
+      "bytes": 3280,
+      "sha256": "77ac0c7df56806f9b838ae702b1656fdb6bbdab414706b19634813daa4d9954a"
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Features/ConversationTaskControlService.swift",
+      "bytes": 15520,
+      "sha256": "4706c1d1bd5fcc8b538ea54a40ff9470a6fbcfd35d6ce59c5cf0c8f288ee2a4f"
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Features/ConversationTaskControlView.swift",
+      "bytes": 11545,
+      "sha256": "ca300abdfc23216bed5d5ea6a4bb8ea09675521a0d3233079ac618c734fc1241"
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Features/NativeConversationComposer.swift",
+      "bytes": 8168,
+      "sha256": "cb22fa6feb40d054733d3b02f30e8f84c57b04d099137e6a94fb5f390a7e5edc"
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Providers/NativeChatHTTPBackend.swift",
+      "bytes": 82652,
+      "sha256": "50bf2af42e4a25f0cba42755e04667f6dad867493db5e160268b5fe16a1ac6ca"
+    },
+    {
+      "path": "apps/ios-conversation/Tests/CatpawTextLayoutTests.swift",
+      "bytes": 16247,
+      "sha256": "6cdb8e370d52a0f50a76808096037508b646d43d64dc6e70e6ecac8ee8b78cd0"
+    },
+    {
+      "path": "apps/ios-conversation/Tests/ConversationArtifactContinuationUITests.swift",
+      "bytes": 13929,
+      "sha256": "4dd36483f3942216fb0c0cb0ac0e3d722d9df0a8cbb8661b7b778e9c3baacfff"
+    },
+    {
+      "path": "apps/ios-conversation/Tests/ConversationArtifactProjectionTests.swift",
+      "bytes": 15517,
+      "sha256": "9ae83d3c173fd0cde748775bf1504f0fe5c54ffe2ed850edf4bfd9e86cc670b4"
+    },
+    {
+      "path": "apps/ios-conversation/Tests/ConversationTaskControlDeliveryTests.swift",
+      "bytes": 15320,
+      "sha256": "ea65273d0d4cf52cef4a546a7a9558fcdddccf6f75548b700b24ed46759692a1"
+    },
+    {
+      "path": "apps/ios-conversation/Tests/ConversationTaskControlTests.swift",
+      "bytes": 30662,
+      "sha256": "4041e8bc137028d3cfb9f1670d950f921a12192f99029ba6f21d5bc4d8f27328"
+    },
+    {
+      "path": "apps/ios-conversation/Tests/ConversationTaskControlUITests.swift",
+      "bytes": 11768,
+      "sha256": "184607c87b018131b4ba3ff757201038794257e9ed7d893e9226c2989147bab4"
+    },
+    {
+      "path": "apps/ios-conversation/Tests/DeviceTrialNativeTests.swift",
+      "bytes": 52702,
+      "sha256": "75ca6fe8c6ef4776f2f87247f508e0dfd53a21488687ae82d643316080690e5f"
+    },
+    {
+      "path": "apps/ios-conversation/Tests/Fixtures/task-control-cold.json",
+      "bytes": 27111,
+      "sha256": "bc573a66445ccc230cd8b278c10e408dd00b728d2ca6f65b98b4f88f454fc99b"
+    },
+    {
+      "path": "apps/ios-conversation/Tests/Fixtures/task-control-report-reopen.json",
+      "bytes": 13366,
+      "sha256": "7bccce0eeb8254f3414b7e6debbd473b20a71a7fb79fff258e3f836bf1c14e30"
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeTaskControlProjectionTests.swift",
+      "bytes": 9110,
+      "sha256": "ca02b8a36650fa17e9cf4a060559e162654c612c5a5d5bd3424352f38760caad"
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeTaskControlTransportTests.swift",
+      "bytes": 12458,
+      "sha256": "9862c2d4e4688eb4a2814e7d126936948896f4a3b6a17210c479ecbec25fcd3a"
+    },
+    {
+      "path": "apps/ios-conversation/Tests/P0NativeExperienceUITests.swift",
+      "bytes": 34744,
+      "sha256": "ff681317df52f5fdfb002aacfa5c92a3c85ac147a1ddb2da1f66595bc81fc9af"
+    },
+    {
+      "path": "packages/ios-image-composer/Sources/CatpawImageComposer/ImageAttachmentDraft.swift",
+      "bytes": 4996,
+      "sha256": "7531b12b9abcd25d1bf9ce9c31124992211cf305622951ae3534b97650149263"
+    },
+    {
+      "path": "packages/ios-image-composer/Sources/CatpawImageComposer/ImageAttachmentPicker.swift",
+      "bytes": 6513,
+      "sha256": "6e1979921afd0ba9c3caf0e8af2706b154671a848106491320dbd22e2e42bc54"
+    },
+    {
+      "path": "packages/ios-image-composer/Tests/CatpawImageComposerTests/DraftTests.swift",
+      "bytes": 9740,
+      "sha256": "283f621d64e4c136f2a2f12d4c22ec385c7553327f6e05719a1b182c84abbd61"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/api.mjs",
+      "bytes": 28433,
+      "sha256": "6b92e0f31e931aecad700094c4303b3a15264bf22d4b6bb090d0708ad7e7dea5"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/authority.mjs",
+      "bytes": 9385,
+      "sha256": "4108c59a8a0f1b7e134025c549d40a1e70379561206cfc4c846428b8c07189d0"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/integration/edge-adapter/src/bounded-store.mjs",
+      "bytes": 14893,
+      "sha256": "25dfc3317b4f56e3ddc371641299552066fe3dae3abcbf0f1b6f39902e22ffd6"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/local-output-facade.mjs",
+      "bytes": 22826,
+      "sha256": "c9d9c07df4fe6f23dd075f298298e9a105f554b903b48799c7df6a568048fc41"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/model-handler.mjs",
+      "bytes": 8592,
+      "sha256": "bec13d71ea0a4c243e08e9644252689226208e7159462f702982ae5f8d77b22d"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/purge-plan.mjs",
+      "bytes": 5577,
+      "sha256": "134ef79c249374709fa274dfa2884fcd11bc1ca9f54908bd0dcfc31d8500bf16"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/runtime.mjs",
+      "bytes": 1870,
+      "sha256": "d46cfbc97e2c55974d1ff72eca7d1d63c90b1e60c13c4fb2abc8d661ae3b1f94"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/source-erasure.mjs",
+      "bytes": 3807,
+      "sha256": "e343207ac354a8a5b3517cbeb892c3247cba8721144fdde33266a71c6d1fdb51"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/task-control-contract.mjs",
+      "bytes": 3332,
+      "sha256": "a2e3fbca9bfaca8261b2bc08b056b20bcb480f87d597715d3620d20fd49f6521"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/task-control-service.mjs",
+      "bytes": 13165,
+      "sha256": "9cee737cf0bdb18299573c98a5ef116195b29e9cdb12347d7d1c5cefc39ed043"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/task-execution-fence.mjs",
+      "bytes": 849,
+      "sha256": "1ecceaf4bbd048d649da668fe7fb548b291f2a8be8874661de52c17da727514d"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/task-execution-store.mjs",
+      "bytes": 9353,
+      "sha256": "8e4bd5c05d8277ee2caa1138de136eefa5bc8156bd2d0076aba1f6774e291cc3"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/worker-output-contract.mjs",
+      "bytes": 6317,
+      "sha256": "ebd49073f856f8e9486fbb7202ee466e4f503ab63003a293264c6d3dca2ecacc"
+    },
+    {
+      "path": "services/edge/test/task-control.test.mjs",
+      "bytes": 34614,
+      "sha256": "fa613757d1c5ddc90d2a3fb4fd791fb1e314c974ed0362560446ceea7fd9dbad"
+    },
+    {
+      "path": "services/edge/test/task-revision-http.test.mjs",
+      "bytes": 27879,
+      "sha256": "9b513e7a7119ab7014511fdef66ee18f781631aa877ac41944239490d1210709"
+    }
+  ],
+  "final_verification": {
+    "native_unit_methods": {
+      "execution": "native-units-r4",
+      "passed": 80,
+      "failed": 0,
+      "skipped": 0
+    },
+    "native_ui_methods": {
+      "execution": "native-integrated-r3",
+      "passed": 20,
+      "failed": 0,
+      "skipped": 0
+    },
+    "same_production_source": true,
+    "test_only_delta": [
+      "apps/ios-conversation/Tests/DeviceTrialNativeTests.swift"
+    ],
+    "final_distinct_native_cases": 100,
+    "whole_r3_result_retained": "FAIL: 99 passed, 1 failed; not rewritten as PASS",
+    "backend_offline": {
+      "passed": 225,
+      "failed": 0,
+      "control_subset": 17
+    },
+    "native_control_scenes": 22,
+    "urlsession_control_scenes": 8,
+    "image_package_tests": 18,
+    "release_simulator_build": "PASS",
+    "non_debug_sdk": "PASS",
+    "host_memberships": 99,
+    "bilingual_entries": 968
+  },
+  "logs": [
+    {
+      "path": "build/authority-recovery-20261014/native-integrated-r1.log",
+      "sha256": "51622c0c598be1cce9f25276645da2a067693dc8b1ccc7917e02752f3068d413"
+    },
+    {
+      "path": "build/authority-recovery-20261014/native-integrated-r2.log",
+      "sha256": "c41379b06d723cd10e95341705642d2e171515c05915ad9e1f1b29a1745c9ef2"
+    },
+    {
+      "path": "build/authority-recovery-20261014/native-integrated-r3.log",
+      "sha256": "6985d1ae6d63157c57e661c712bc922fca611dc52853477c4737d0417464ea9f"
+    },
+    {
+      "path": "build/authority-recovery-20261014/native-units-r4.log",
+      "sha256": "27612c7682d6d92f6639742e973b590f6c085bcd41e0d7aaca34c6b1f6f596e6"
+    },
+    {
+      "path": "build/authority-recovery-20261014/native-focused-r3.log",
+      "sha256": "a0b9d9fbd0e78b66c61ba0e45b5d27364f3685687f5d789a39caac09a7eeffc9"
+    },
+    {
+      "path": "build/authority-recovery-20261014/native-focused-r4.log",
+      "sha256": "b2189079c159035ebf517510f8c6ad7146bc2100f90531eb4570431cb3c80fe9"
+    },
+    {
+      "path": "build/authority-recovery-20261014/native-focused-r5.log",
+      "sha256": "6a580650927347a515ed7073c2e2c049add0ea94849886b4885525703b3747de"
+    },
+    {
+      "path": "build/authority-recovery-20261014/native-focused-r6-ax.log",
+      "sha256": "50495764b7e088ce0c0c31603bc25d679d90a998d3dc94184615ad4727f0803d"
+    },
+    {
+      "path": "build/authority-recovery-20261014/native-sdk-r6.log",
+      "sha256": "b3393258c8e06b49f9520c4ffc56d211f27aac0fafe4c9d5b57716480df0ce4e"
+    },
+    {
+      "path": "build/authority-recovery-20261014/release-simulator22-r3.log",
+      "sha256": "4ed6e954b6bc1dcedf9d4c85d502d2f61b8af7eb204ad8741b1990fa7c5f24b0"
+    },
+    {
+      "path": "build/authority-recovery-20261014/layout-image-package-tests-r2.log",
+      "sha256": "d553119289e830e5da5f66da1bceb1115098842affa3b808dfc33e95c877845b"
+    },
+    {
+      "path": "build/authority-recovery-20261014/controls-portable-final-r2.log",
+      "sha256": "6da71a674861dc6f9f39f4c41fd0f415e9a0d1555aa20c81448490f41ea79603"
+    },
+    {
+      "path": "build/authority-recovery-20261014/controls-transport-final.log",
+      "sha256": "933eb47cced80c36878cfdf1e8352f9669c52bdce3792dd0c124d675999c9fc7"
+    },
+    {
+      "path": "build/authority-recovery-20261014/controls-cancel-projection.log",
+      "sha256": "bfd5458bdacb414f81947d6a94eb9daf85240af040ca63576ce18e7c3e8abf93"
+    },
+    {
+      "path": "build/authority-recovery-20261014/controls-artifact-cancel.log",
+      "sha256": "081ad3154b9e317f3443228f1aaafdad2adc66bb1395e7983756d3ad5dfb028f"
+    },
+    {
+      "path": "services/edge/build/authority-recovery-20261014/execution-review-all-final.log",
+      "sha256": "98929b11a0a02956fb6e38aedbb506e0a22dffbdc88f6be9d9a330f60b1d787d"
+    }
+  ],
+  "known_gaps": [
+    "Real model and W10-12: frozen phone16 first request failed free_model_unavailable; second approved check unused.",
+    "Real PG dual-process/restart and deployed same-candidate W33 not run.",
+    "Maximum type long title/status card header is crowded; adaptive stacked header remains open.",
+    "Owned caption semantic-policy bypasses, image-preview environment, subpixel repeated viewport commits remain open.",
+    "Native full long-text editor, physical IME/VO/motion/performance, full device matrix not verified.",
+    "Memory, independent recurring scheduler, calendar/reminder effects, GenUI producer, daily use and named comparisons incomplete."
+  ],
+  "external_activity": {
+    "phone_build": "16",
+    "approved_text_checks_limit": 2,
+    "used_text_checks": 1,
+    "unused_text_checks": 1,
+    "first_text_result": "FAIL free_model_unavailable; no assistant reply observed",
+    "auth_enter_actions": 1,
+    "auth_identity_restored_or_created": "UI cannot distinguish",
+    "normal_model_consent_posts_observed": 1,
+    "normal_turn_posts_observed": 1,
+    "new_installations": 0,
+    "deployments": 0,
+    "pushes_or_prs": 0,
+    "new_dependencies_or_credentials": 0,
+    "additional_compute_cost": 0,
+    "route_changed": false
+  },
+  "governance": {
+    "repository_layout": "PASS",
+    "frozen_sources_MIT_exact_patch": "PASS",
+    "deployed_snapshots_14_differences": "PASS",
+    "AF_plan_goal_72_inputs": "PASS",
+    "FINAL_and_CGUI_contracts": "PASS",
+    "dated_evidence_links": "PASS",
+    "source_hash_correspondence": "PASS 232 native / 84 maintenance backend",
+    "screenshots": "PASS 8 exact original hashes/dimensions; visual limitations retained",
+    "sensitivity": "PASS 1041 inspected files / 103 exact reviewed false positives / 0 blocking or manual hits / 28 PNGs",
+    "diff_whitespace": "PASS",
+    "scope": "Repository/contract/source/sensitivity verification only; does not close product gates. Unintegrated followup WIP is not committed with W33."
+  },
+  "excluded_followup_work": "New unintegrated W50 work-grant/device-effect WIP is excluded from this candidate and commit."
+}

@@ -11,8 +11,11 @@ public struct ImageAttachmentPicker: View {
     @State private var selectedItem: PhotosPickerItem?
     @State private var pendingItem: PhotosPickerItem?
     @State private var load: Task<Void, Never>?
+    @State private var pendingTicket:UUID?
     @State private var previewPresented=false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var textSize
+    @Environment(\.locale) private var locale
     public init(draft: ImageAttachmentDraft, gate: ImageSendGate = .unavailable,localize:@escaping (String)->String = {$0}) {
         self.draft = draft; self.gate = gate;self.localize=localize
     }
@@ -67,6 +70,7 @@ public struct ImageAttachmentPicker: View {
                 NavigationStack {
                     if let data=draft.attachment?.encodedData,let image=UIImage(data:data) {Image(uiImage:image).resizable().scaledToFit().padding().accessibilityLabel(localize("所选图片完整预览"))}
                 }.toolbar {ToolbarItem(placement:.confirmationAction){Button(localize("完成")){previewPresented=false}}}
+                    .environment(\.dynamicTypeSize,textSize).environment(\.locale,locale)
             }
             .onChange(of: selectedItem) { _, item in
                 if let item { beginImport(item) }
@@ -74,11 +78,16 @@ public struct ImageAttachmentPicker: View {
             .onChange(of: draft.phase) { _, phase in
                 if phase == .empty { load?.cancel(); pendingItem = nil; selectedItem = nil }
             }
-            .onDisappear { load?.cancel(); draft.cancelProcessing() }
+            .onDisappear {
+                load?.cancel()
+                if let pendingTicket {draft.cancelPendingSelection(ticket:pendingTicket)}
+                pendingTicket=nil
+            }
     }
     private func beginImport(_ item: PhotosPickerItem) {
         load?.cancel(); pendingItem = item
         let ticket = draft.beginSelection()
+        pendingTicket=ticket
         load = Task {
             do {
                 let data = try await item.loadTransferable(type: Data.self)
