@@ -1,7 +1,7 @@
 import SwiftUI
 import UIKit
 
-@MainActor final class ConversationTextView: UITextView {
+@MainActor final class ConversationTextView: CatpawEditingTextView {
     var submit: (() -> Void)?
     var compositionChanged: ((Bool) -> Void)?
     override var keyCommands: [UIKeyCommand]? { [UIKeyCommand(input:"\r",modifierFlags:.command,action:#selector(commandSubmit))] }
@@ -20,12 +20,15 @@ import UIKit
 @MainActor struct NativeConversationComposer: UIViewRepresentable {
     @ObservedObject var model:ConversationFirstModel
     var enabled=true
+    /// The host may supply the remaining viewport after association/status chrome.
+    /// A finite SwiftUI proposal is also respected; the text itself then scrolls.
+    var maximumVisibleHeight:CGFloat? = nil
     let submit:() -> Void
     func makeCoordinator() -> Coordinator { Coordinator(self) }
     func makeUIView(context:Context) -> ConversationTextView {
         let view=ConversationTextView();view.delegate=context.coordinator
         view.backgroundColor = .clear;view.textColor=UIColor(CatpawColors.ink)
-        view.font=ConversationTypeScale.font(context.environment.dynamicTypeSize);view.adjustsFontForContentSizeCategory=true
+        view.font=ConversationTypeScale.font(context.environment.dynamicTypeSize);view.adjustsFontForContentSizeCategory=false
         view.textContainerInset=UIEdgeInsets(top:8,left:0,bottom:8,right:0)
         view.textContainer.lineFragmentPadding=0;view.returnKeyType = .default
         view.accessibilityLabel=AppLanguage(locale:context.environment.locale).ui("消息");view.accessibilityIdentifier="chat.input"
@@ -44,11 +47,17 @@ import UIKit
         context.coordinator.parent=self;view.submit=submit;view.isEditable=enabled
         view.accessibilityLabel=AppLanguage(locale:context.environment.locale).ui("消息")
         let font=ConversationTypeScale.font(context.environment.dynamicTypeSize)
-        if view.font?.isEqual(font) != true {view.font=font}
-        guard view.markedTextRange == nil,view.text != model.draft else { return }
+        let fontChanged=view.font?.isEqual(font) != true
+        if fontChanged {view.font=font}
+        #if DEBUG
+        let renderedPointSize=font.pointSize,systemCategory=view.traitCollection.preferredContentSizeCategory
+        DispatchQueue.main.async {P0ExperienceProbe.shared.recordInputTypography(pointSize:renderedPointSize,systemCategory:systemCategory)}
+        #endif
+        guard view.markedTextRange == nil,view.text != model.draft else {if fontChanged {view.keepSelectionVisible()};return}
         let old=view.selectedRange;context.coordinator.replacing=true;view.text=model.draft
         view.selectedRange=NSRange(location:min(old.location,view.text.utf16.count),length:0)
         context.coordinator.replacing=false
+        view.keepSelectionVisible()
     }
     func sizeThatFits(_ proposal:ProposedViewSize,uiView:ConversationTextView,context:Context) -> CGSize? {
         #if DEBUG
@@ -57,7 +66,8 @@ import UIKit
         #endif
         let width=proposal.width ?? 240,line=uiView.font?.lineHeight ?? 22
         let desired=uiView.sizeThatFits(CGSize(width:width,height:.greatestFiniteMagnitude))
-        return CGSize(width:width,height:min(max(line+16,desired.height),line*(context.environment.dynamicTypeSize.isAccessibilitySize ? 3 : 5)+16))
+        let available=[maximumVisibleHeight,proposal.height].compactMap{$0}.filter{$0.isFinite}.map{max(0,$0)}.min()
+        return CGSize(width:width,height:CatpawTextViewport.composerHeight(desired:desired.height,lineHeight:line,textInsets:16,maximumLines:5,availableHeight:available))
     }
     @MainActor final class Coordinator:NSObject,UITextViewDelegate {
         var parent:NativeConversationComposer
@@ -71,29 +81,18 @@ import UIKit
             guard !replacing else { return }
             parent.model.updateInputComposition(textView.markedTextRange != nil)
             parent.model.editDraft(textView.text);textView.invalidateIntrinsicContentSize()
+            (textView as? CatpawEditingTextView)?.noteTextChanged()
         }
-        func textViewDidChangeSelection(_ textView:UITextView) { parent.model.updateInputComposition(textView.markedTextRange != nil) }
+        func textViewDidChangeSelection(_ textView:UITextView) {
+            parent.model.updateInputComposition(textView.markedTextRange != nil)
+            (textView as? CatpawEditingTextView)?.keepSelectionVisible()
+        }
     }
 }
 
 @MainActor enum ConversationTypeScale {
     static func font(_ size:DynamicTypeSize) -> UIFont {
-        let category:UIContentSizeCategory
-        switch size {
-        case .xSmall:category = .extraSmall
-        case .small:category = .small
-        case .medium:category = .medium
-        case .large:category = .large
-        case .xLarge:category = .extraLarge
-        case .xxLarge:category = .extraExtraLarge
-        case .xxxLarge:category = .extraExtraExtraLarge
-        case .accessibility1:category = .accessibilityMedium
-        case .accessibility2:category = .accessibilityLarge
-        case .accessibility3:category = .accessibilityExtraLarge
-        case .accessibility4:category = .accessibilityExtraExtraLarge
-        default:category = .accessibilityExtraExtraExtraLarge
-        }
-        return UIFont.preferredFont(forTextStyle:.body,compatibleWith:UITraitCollection(preferredContentSizeCategory:category))
+        CatpawTypography.font(size:size)
     }
 }
 

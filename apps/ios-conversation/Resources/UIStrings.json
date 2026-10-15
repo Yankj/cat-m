@@ -59,6 +59,14 @@
     "en": "{0} · simulated run",
     "zh-Hans": "{0} · 模拟运行"
   },
+  "{0} 次": {
+    "en": "{0} calls",
+    "zh-Hans": "{0} 次"
+  },
+  "{0} 秒": {
+    "en": "{0} seconds",
+    "zh-Hans": "{0} 秒"
+  },
   "{0} 项": {
     "en": "{0} items",
     "zh-Hans": "{0} 项"
@@ -66,6 +74,14 @@
   "{0}视图 · 服务未连接": {
     "en": "{0} view · service disconnected",
     "zh-Hans": "{0}视图 · 服务未连接"
+  },
+  "上次处理完成的图片仍保留，当前附件不可发送。": {
+    "en": "The previous processed image is retained. The current attachment cannot be sent.",
+    "zh-Hans": "上次处理完成的图片仍保留，当前附件不可发送。"
+  },
+  "上次处理完成的图片，尚未替换": {
+    "en": "Previously processed image; not replaced yet",
+    "zh-Hans": "上次处理完成的图片，尚未替换"
   },
   "下次机会：{0}": {
     "en": "Next opportunity: {0}",
@@ -99,6 +115,10 @@
     "en": "Chinese",
     "zh-Hans": "中文"
   },
+  "主记忆及派生索引已清除；备份清除尚未核验。原对话历史不会在此删除。": {
+    "en": "Primary memory and its derived index were cleared. Backup removal is unverified. Conversation history is kept.",
+    "zh-Hans": "主记忆及派生索引已清除；备份清除尚未核验。原对话历史不会在此删除。"
+  },
   "主题": {
     "en": "Theme",
     "zh-Hans": "主题"
@@ -107,6 +127,22 @@
     "en": "Theme, language and other preferences are shared across this profile's environments. Conversation configuration stays frozen at creation.",
     "zh-Hans": "主题与语言等偏好在同一用户的云端、电脑、本机视图共享；会话配置保持创建时快照。"
   },
+  "事项已失效；尚未执行。": {
+    "en": "Item invalidated; execution has not occurred.",
+    "zh-Hans": "事项已失效；尚未执行。"
+  },
+  "事项已过期或当前性不足；尚未执行。": {
+    "en": "Item expired or not verified as current; execution has not occurred.",
+    "zh-Hans": "事项已过期或当前性不足；尚未执行。"
+  },
+  "事项版本": {
+    "en": "Item revision",
+    "zh-Hans": "事项版本"
+  },
+  "事项编号": {
+    "en": "Item ID",
+    "zh-Hans": "事项编号"
+  },
   "云同步显式关闭": {
     "en": "Cloud sync is explicitly off",
     "zh-Hans": "云同步显式关闭"
@@ -114,6 +150,26 @@
   "云端": {
     "en": "Cloud",
     "zh-Hans": "云端"
+  },
+  "交互内容与当前对话不匹配，未启用操作。": {
+    "en": "This content does not match the current conversation; controls are unavailable.",
+    "zh-Hans": "交互内容与当前对话不匹配，未启用操作。"
+  },
+  "交互内容暂不可用": {
+    "en": "Interactive content is unavailable",
+    "zh-Hans": "交互内容暂不可用"
+  },
+  "交给 Agent 完成": {
+    "en": "Let Agent complete this",
+    "zh-Hans": "交给 Agent 完成"
+  },
+  "人工修改已保存": {
+    "en": "Your manual edit is saved",
+    "zh-Hans": "人工修改已保存"
+  },
+  "人工假设": {
+    "en": "Synthetic assumption",
+    "zh-Hans": "人工假设"
   },
   "仅 App 活跃时模拟检查；关闭期间跳过，不补造历史。": {
     "en": "Simulation checks only while the app is active. Closed periods are skipped without fabricated history.",
@@ -126,6 +182,18 @@
   "仅在你主动操作或应用活跃时模拟准备；云端持续执行尚未接入": {
     "en": "Synthetic preparation runs only on your action or while the app is active. Continuous cloud execution is not connected.",
     "zh-Hans": "仅在你主动操作或应用活跃时模拟准备；云端持续执行尚未接入"
+  },
+  "仅当前对话": {
+    "en": "This conversation only",
+    "zh-Hans": "仅当前对话"
+  },
+  "仅整理已提供文字": {
+    "en": "Organize the text I provided",
+    "zh-Hans": "仅整理已提供文字"
+  },
+  "仅本地试算，不创建日程或发送请求。": {
+    "en": "Local calculation only; no calendar event or request is created.",
+    "zh-Hans": "仅本地试算，不创建日程或发送请求。"
   },
   "仅本机合成预览。确认绑定当前正文、版本、hash 与目的地。": {
     "en": "Local synthetic preview only. Confirmation binds this body, version, hash, and destination.",
@@ -171,9 +239,29 @@
     "en": "Task name",
     "zh-Hans": "任务名称"
   },
+  "任务已保存；进展来自原任务读取。": {
+    "en": "The task is saved. Progress is read from the original task.",
+    "zh-Hans": "任务已保存；进展来自原任务读取。"
+  },
   "任务状态": {
     "en": "Task status",
     "zh-Hans": "任务状态"
+  },
+  "任务请求失败 · ": {
+    "en": "Task request failed · ",
+    "zh-Hans": "任务请求失败 · "
+  },
+  "任务请求已记录": {
+    "en": "Task request recorded",
+    "zh-Hans": "任务请求已记录"
+  },
+  "任务进展": {
+    "en": "Task progress",
+    "zh-Hans": "任务进展"
+  },
+  "任务进展已读取": {
+    "en": "Task progress read",
+    "zh-Hans": "任务进展已读取"
   },
   "任务进度": {
     "en": "Task progress",
@@ -195,6 +283,14 @@
     "en": "Conversation configuration",
     "zh-Hans": "会话配置"
   },
+  "体验账号": {
+    "en": "Experience account",
+    "zh-Hans": "体验账号"
+  },
+  "体验身份暂时无法找回。退出后，你将无法继续访问这些对话。": {
+    "en": "This experience account currently cannot be recovered. After signing out, you will lose access to these conversations.",
+    "zh-Hans": "体验身份暂时无法找回。退出后，你将无法继续访问这些对话。"
+  },
   "你": {
     "en": "You",
     "zh-Hans": "你"
@@ -207,6 +303,14 @@
     "en": "You can change the goal, pause, or stop at any time.",
     "zh-Hans": "你可以随时调整目标、暂停或结束跟进。"
   },
+  "你的个人助理": {
+    "en": "Your personal assistant",
+    "zh-Hans": "你的个人助理"
+  },
+  "你编辑的版本；来源保留原资料快照，新增内容尚未重新核验。": {
+    "en": "Your edited version. Sources retain the original snapshots; new content has not been verified again.",
+    "zh-Hans": "你编辑的版本；来源保留原资料快照，新增内容尚未重新核验。"
+  },
   "使用专家": {
     "en": "Use expert",
     "zh-Hans": "使用专家"
@@ -215,9 +319,29 @@
     "en": "Use example transcript · simulated",
     "zh-Hans": "使用示例转写 · 模拟"
   },
+  "使用范围": {
+    "en": "Use in",
+    "zh-Hans": "使用范围"
+  },
   "保存": {
     "en": "Save",
     "zh-Hans": "保存"
+  },
+  "保存为成果新版本": {
+    "en": "Save a new artifact version",
+    "zh-Hans": "保存为成果新版本"
+  },
+  "保存修改": {
+    "en": "Save amendment",
+    "zh-Hans": "保存修改"
+  },
+  "保存到队列": {
+    "en": "Save to queue",
+    "zh-Hans": "保存到队列"
+  },
+  "保存在后续消息队列，仅在前台发送": {
+    "en": "Save to the follow-up queue and send only in the foreground",
+    "zh-Hans": "保存在后续消息队列，仅在前台发送"
   },
   "保存常用提示词，再带入会话编辑。": {
     "en": "Save a common prompt, then bring it into a conversation for editing.",
@@ -231,17 +355,97 @@
     "en": "Save agreement",
     "zh-Hans": "保存约定"
   },
+  "保存结果尚未确认。只核对原修改，不重复提交。": {
+    "en": "The save outcome is unconfirmed. Check the original edit without submitting again.",
+    "zh-Hans": "保存结果尚未确认。只核对原修改，不重复提交。"
+  },
+  "保留时长（分钟）": {
+    "en": "Reserved time (minutes)",
+    "zh-Hans": "保留时长（分钟）"
+  },
+  "保留现有草稿，不自动发送": {
+    "en": "Keep the current draft without sending",
+    "zh-Hans": "保留现有草稿，不自动发送"
+  },
+  "保留草稿并以新版继续": {
+    "en": "Keep draft and continue with the new version",
+    "zh-Hans": "保留草稿并以新版继续"
+  },
+  "保留输入并明确换用新版": {
+    "en": "Keep edits and adopt the newer version",
+    "zh-Hans": "保留输入并明确换用新版"
+  },
+  "保留这份输入并恢复普通聊天草稿，不取消已提交的修改。": {
+    "en": "Keep this input and restore your ordinary chat draft. Submitted work continues.",
+    "zh-Hans": "保留这份输入并恢复普通聊天草稿，不取消已提交的修改。"
+  },
+  "保稿中": {
+    "en": "Saving draft",
+    "zh-Hans": "保稿中"
+  },
   "修改": {
     "en": "Edit",
     "zh-Hans": "修改"
+  },
+  "修改基于版本": {
+    "en": "Editing version",
+    "zh-Hans": "修改基于版本"
+  },
+  "修改尚未提交；草稿已保留。": {
+    "en": "The amendment has not been submitted; your draft is kept.",
+    "zh-Hans": "修改尚未提交；草稿已保留。"
+  },
+  "修改已受理，等待在安全点生效。": {
+    "en": "The amendment was accepted and will apply at a safe checkpoint.",
+    "zh-Hans": "修改已受理，等待在安全点生效。"
+  },
+  "修改已在安全点生效。": {
+    "en": "The amendment applied at a safe checkpoint.",
+    "zh-Hans": "修改已在安全点生效。"
+  },
+  "修改成果": {
+    "en": "Edit artifact",
+    "zh-Hans": "修改成果"
+  },
+  "修改此工作，聊天草稿会保留。": {
+    "en": "Edit this task. Your chat draft will be kept.",
+    "zh-Hans": "修改此工作，聊天草稿会保留。"
+  },
+  "修改结果尚未确认。只核对原修改，请勿重复提交。": {
+    "en": "The amendment result is unknown. Check the original amendment before submitting again.",
+    "zh-Hans": "修改结果尚未确认。只核对原修改，请勿重复提交。"
   },
   "修改草稿": {
     "en": "Edit draft",
     "zh-Hans": "修改草稿"
   },
+  "修改草稿尚未保存，请重试或明确放弃。": {
+    "en": "Your amendment draft has not been saved. Retry or explicitly discard it.",
+    "zh-Hans": "修改草稿尚未保存，请重试或明确放弃。"
+  },
+  "修改草稿已保存在本机，尚未提交。": {
+    "en": "Your edit draft is saved locally and has not been submitted.",
+    "zh-Hans": "修改草稿已保存在本机，尚未提交。"
+  },
+  "修改草稿已保留；尚未提交。": {
+    "en": "Amendment draft saved; not submitted yet.",
+    "zh-Hans": "修改草稿已保留；尚未提交。"
+  },
+  "修改要求": {
+    "en": "Edit requirements",
+    "zh-Hans": "修改要求"
+  },
   "修改记忆": {
     "en": "Edit memory",
     "zh-Hans": "修改记忆"
+  },
+  "修改这版": {
+    "en": "Revise this version",
+    "zh-Hans": "修改这版"
+  },
+  "候选内容尚未作为已确认事实使用": {
+    "en": "This candidate is not used as a confirmed fact.",
+    "zh-Hans": "候选内容尚未作为已确认事实使用"
   },
   "做总结": {
     "en": "Summarize",
@@ -255,9 +459,25 @@
     "en": "Stop readout",
     "zh-Hans": "停读"
   },
+  "允许发送这张图片到云端模型？": {
+    "en": "Allow this image to be sent to a cloud model?",
+    "zh-Hans": "允许发送这张图片到云端模型？"
+  },
+  "允许此会话图片传输": {
+    "en": "Allow image processing for this conversation",
+    "zh-Hans": "允许此会话图片传输"
+  },
+  "允许此对话": {
+    "en": "Allow this conversation",
+    "zh-Hans": "允许此对话"
+  },
   "允许用于后续模拟准备": {
     "en": "Allow use in later simulated preparation",
     "zh-Hans": "允许用于后续模拟准备"
+  },
+  "允许重新学习曾明确忘记的主题": {
+    "en": "Allow learning a previously forgotten topic again",
+    "zh-Hans": "允许重新学习曾明确忘记的主题"
   },
   "先保存独立身份与冻结请求，再主动提交。": {
     "en": "Save separate identities and the frozen request before submitting.",
@@ -267,9 +487,21 @@
     "en": "Start with a work agreement. Artifacts, runs and delegations have separate records.",
     "zh-Hans": "先建立工作约定。成果、运行与委托分别记录。"
   },
+  "先核对原请求、期限和调用次数，确认后才提交。": {
+    "en": "Review the original request, deadline and call limit before submitting.",
+    "zh-Hans": "先核对原请求、期限和调用次数，确认后才提交。"
+  },
   "先聊一件事": {
     "en": "Talk about one thing",
     "zh-Hans": "先聊一件事"
+  },
+  "先读取原请求进展，当前草稿不会重发": {
+    "en": "Read the original request first. The current draft will not be sent again.",
+    "zh-Hans": "先读取原请求进展，当前草稿不会重发"
+  },
+  "先读取当前成果，再保存修改。草稿会保留。": {
+    "en": "Read the current artifact before saving edits. Your draft is retained.",
+    "zh-Hans": "先读取当前成果，再保存修改。草稿会保留。"
   },
   "全文": {
     "en": "Full text",
@@ -283,9 +515,37 @@
     "en": "All tasks",
     "zh-Hans": "全部任务"
   },
+  "公开来源读取": {
+    "en": "Public source read",
+    "zh-Hans": "公开来源读取"
+  },
   "关闭": {
     "en": "Close",
     "zh-Hans": "关闭"
+  },
+  "关闭侧栏": {
+    "en": "Close sidebar",
+    "zh-Hans": "关闭侧栏"
+  },
+  "关闭后暂停记忆利用，已有记录仍可查看和忘记。": {
+    "en": "Turning this off pauses memory use. You can still view and forget saved entries.",
+    "zh-Hans": "关闭后暂停记忆利用，已有记录仍可查看和忘记。"
+  },
+  "关闭并保留草稿": {
+    "en": "Close and keep draft",
+    "zh-Hans": "关闭并保留草稿"
+  },
+  "关闭记忆利用": {
+    "en": "Turn off memory use",
+    "zh-Hans": "关闭记忆利用"
+  },
+  "具体要求": {
+    "en": "Requirements",
+    "zh-Hans": "具体要求"
+  },
+  "具体要求最多 4000 字，修改草稿已保留。请缩短后保存修改。": {
+    "en": "Requirements are limited to 4000 characters. Your amendment draft is kept; shorten them to submit.",
+    "zh-Hans": "具体要求最多 4000 字，修改草稿已保留。请缩短后保存修改。"
   },
   "具名 Fixture": {
     "en": "Named fixture",
@@ -306,6 +566,26 @@
   "写文章": {
     "en": "Write an article",
     "zh-Hans": "写文章"
+  },
+  "决定尚未发送；这份事项仍保留。": {
+    "en": "The decision was not sent. This item is retained.",
+    "zh-Hans": "决定尚未发送；这份事项仍保留。"
+  },
+  "决定期限": {
+    "en": "Decision deadline",
+    "zh-Hans": "决定期限"
+  },
+  "决定期限已过，请读取最新事项。": {
+    "en": "The deadline has passed. Read the latest item.",
+    "zh-Hans": "决定期限已过，请读取最新事项。"
+  },
+  "决定未获受理；请读取最新事项后核对。": {
+    "en": "The decision was not accepted. Read the latest item before reviewing it.",
+    "zh-Hans": "决定未获受理；请读取最新事项后核对。"
+  },
+  "决定结果尚未确认；只核对原决定，请勿重复提交。": {
+    "en": "The decision outcome is unconfirmed. Check the original decision and do not submit it again.",
+    "zh-Hans": "决定结果尚未确认；只核对原决定，请勿重复提交。"
   },
   "准备中": {
     "en": "Preparing",
@@ -331,13 +611,29 @@
     "en": "Share",
     "zh-Hans": "分享"
   },
+  "分享回复": {
+    "en": "Share reply",
+    "zh-Hans": "分享回复"
+  },
+  "分享当前成果": {
+    "en": "Share this result",
+    "zh-Hans": "分享当前成果"
+  },
   "分享本地文本": {
     "en": "Share local text",
     "zh-Hans": "分享本地文本"
   },
+  "分区编号": {
+    "en": "Scope ID",
+    "zh-Hans": "分区编号"
+  },
   "分类": {
     "en": "Category",
     "zh-Hans": "分类"
+  },
+  "分钟": {
+    "en": "minutes",
+    "zh-Hans": "分钟"
   },
   "分钟 {0}": {
     "en": "Minute {0}",
@@ -346,6 +642,10 @@
   "切换到{0}本地视图": {
     "en": "Switch to the local {0} view",
     "zh-Hans": "切换到{0}本地视图"
+  },
+  "切换对话、任务和成果": {
+    "en": "Switch conversations, tasks and results",
+    "zh-Hans": "切换对话、任务和成果"
   },
   "切换项目会打开该项目的独立会话，原会话的历史与草稿保留。": {
     "en": "Switching projects opens a separate conversation. The original history and draft remain saved.",
@@ -375,6 +675,18 @@
     "en": "Delete conversation",
     "zh-Hans": "删除会话"
   },
+  "剩余 = 总时长 − 保留 − 步骤数 × 单步时长": {
+    "en": "Remaining = total − reserved − steps × time per step",
+    "zh-Hans": "剩余 = 总时长 − 保留 − 步骤数 × 单步时长"
+  },
+  "剩余时间": {
+    "en": "Remaining time",
+    "zh-Hans": "剩余时间"
+  },
+  "加权结果 = 得分 × 权重之和 / 总权重": {
+    "en": "Weighted score = sum of score × weight / total weight",
+    "zh-Hans": "加权结果 = 得分 × 权重之和 / 总权重"
+  },
   "助理 · 模拟回复": {
     "en": "Assistant · simulated reply",
     "zh-Hans": "助理 · 模拟回复"
@@ -386,6 +698,10 @@
   "单次模拟操作 · v{0}": {
     "en": "One simulated action · v{0}",
     "zh-Hans": "单次模拟操作 · v{0}"
+  },
+  "单步时长（分钟）": {
+    "en": "Time per step (minutes)",
+    "zh-Hans": "单步时长（分钟）"
   },
   "卸载本地模拟记录": {
     "en": "Remove local simulation record",
@@ -403,17 +719,149 @@
     "en": "History: {0}",
     "zh-Hans": "历史：{0}"
   },
+  "压缩后仍超过图片上限。请选择其他图片。": {
+    "en": "The compressed image still exceeds the limit. Choose another image.",
+    "zh-Hans": "压缩后仍超过图片上限。请选择其他图片。"
+  },
+  "原修改待核对，草稿已保存在本机。": {
+    "en": "The original revision awaits verification. Your draft is saved on this device.",
+    "zh-Hans": "原修改待核对，草稿已保存在本机。"
+  },
+  "原决定尚在核对，请勿重复提交。": {
+    "en": "The original decision is being checked. Do not submit it again.",
+    "zh-Hans": "原决定尚在核对，请勿重复提交。"
+  },
+  "原决定编号": {
+    "en": "Original decision ID",
+    "zh-Hans": "原决定编号"
+  },
+  "原图像素过大。请选择尺寸较小的图片。": {
+    "en": "The source image has too many pixels. Choose a smaller image.",
+    "zh-Hans": "原图像素过大。请选择尺寸较小的图片。"
+  },
+  "原图过大。请选择小于 50 MiB 的图片。": {
+    "en": "The source image is too large. Choose an image smaller than 50 MiB.",
+    "zh-Hans": "原图过大。请选择小于 50 MiB 的图片。"
+  },
+  "原始事项内容": {
+    "en": "Original item content",
+    "zh-Hans": "原始事项内容"
+  },
+  "原始网址": {
+    "en": "Requested URL",
+    "zh-Hans": "原始网址"
+  },
+  "原对话版本或授权已变化，未修改原有限请求。": {
+    "en": "The original conversation version or authorization has changed. The original bounded request was not altered.",
+    "zh-Hans": "原对话版本或授权已变化，未修改原有限请求。"
+  },
+  "原工作授权已变化，不能恢复这份工作。": {
+    "en": "The original task authorization has changed. This task cannot resume.",
+    "zh-Hans": "原工作授权已变化，不能恢复这份工作。"
+  },
+  "原工作期限已到或不足以覆盖执行预算，未扩大期限。": {
+    "en": "The original deadline has expired or cannot cover the execution budget. It was not extended.",
+    "zh-Hans": "原工作期限已到或不足以覆盖执行预算，未扩大期限。"
+  },
+  "原工作编号": {
+    "en": "Original run ID",
+    "zh-Hans": "原工作编号"
+  },
+  "原成果修改尚待核对，请勿重复提交。": {
+    "en": "The original artifact edit is awaiting reconciliation. Do not submit it again.",
+    "zh-Hans": "原成果修改尚待核对，请勿重复提交。"
+  },
+  "原控制尚在核对，请勿重复提交。": {
+    "en": "The original control is being checked. Do not submit it again.",
+    "zh-Hans": "原控制尚在核对，请勿重复提交。"
+  },
+  "原操作结果尚未确认，请先核对原结果。": {
+    "en": "The original operation outcome is unconfirmed. Check that original outcome first.",
+    "zh-Hans": "原操作结果尚未确认，请先核对原结果。"
+  },
+  "原操作编号": {
+    "en": "Original operation ID",
+    "zh-Hans": "原操作编号"
+  },
+  "原操作身份记录不足，无法确认结果；不能恢复或重复执行。": {
+    "en": "The original operation identity is incomplete. Its outcome cannot be confirmed; this task cannot resume or repeat the operation.",
+    "zh-Hans": "原操作身份记录不足，无法确认结果；不能恢复或重复执行。"
+  },
+  "原有限工作期限已结束，需要重新明确受理。": {
+    "en": "The original work deadline has ended. A new explicit acceptance is required.",
+    "zh-Hans": "原有限工作期限已结束，需要重新明确受理。"
+  },
+  "原有限请求与保存的范围不匹配，未重新发送。": {
+    "en": "The original bounded request does not match the saved scope. It has not been resent.",
+    "zh-Hans": "原有限请求与保存的范围不匹配，未重新发送。"
+  },
+  "原来源许可已变化，不能恢复这份工作。": {
+    "en": "The original source authorization has changed. This task cannot resume.",
+    "zh-Hans": "原来源许可已变化，不能恢复这份工作。"
+  },
+  "原消息编号": {
+    "en": "Original turn ID",
+    "zh-Hans": "原消息编号"
+  },
+  "原记忆操作尚待核对，请勿重复提交。": {
+    "en": "The original memory change needs checking. Do not submit it again.",
+    "zh-Hans": "原记忆操作尚待核对，请勿重复提交。"
+  },
+  "原记忆操作结果尚未确认。只读取原操作，不重复发送。": {
+    "en": "The result is unknown. Check the original memory change without sending it again.",
+    "zh-Hans": "原记忆操作结果尚未确认。只读取原操作，不重复发送。"
+  },
+  "原许可已变化，这份事项不能批准。": {
+    "en": "The original grant has changed. This item cannot be approved.",
+    "zh-Hans": "原许可已变化，这份事项不能批准。"
+  },
+  "原请求": {
+    "en": "Original request",
+    "zh-Hans": "原请求"
+  },
+  "原请求哈希": {
+    "en": "Original request hash",
+    "zh-Hans": "原请求哈希"
+  },
+  "原请求状态待确认": {
+    "en": "Original request status needs verification",
+    "zh-Hans": "原请求状态待确认"
+  },
   "原音只在内存处理，最长 45 秒。仅创建 requiresOnDeviceRecognition 请求；不可用时回文字，不转云端识别。": {
     "en": "Audio is processed in memory for up to 45 seconds. Only requiresOnDeviceRecognition requests are created. If unavailable, use text; no cloud fallback.",
     "zh-Hans": "原音只在内存处理，最长 45 秒。仅创建 requiresOnDeviceRecognition 请求；不可用时回文字，不转云端识别。"
+  },
+  "参数哈希": {
+    "en": "Parameters hash",
+    "zh-Hans": "参数哈希"
+  },
+  "发送": {
+    "en": "Send",
+    "zh-Hans": "发送"
   },
   "发送一条消息会建立可追踪的模拟运行。": {
     "en": "Sending a message creates a traceable simulated run.",
     "zh-Hans": "发送一条消息会建立可追踪的模拟运行。"
   },
+  "发送中": {
+    "en": "Sending",
+    "zh-Hans": "发送中"
+  },
+  "发送图片前需要确认本次图片处理方式。": {
+    "en": "Confirm how this image will be processed before sending it.",
+    "zh-Hans": "发送图片前需要确认本次图片处理方式。"
+  },
   "发送并运行模拟回复": {
     "en": "Send and run simulated reply",
     "zh-Hans": "发送并运行模拟回复"
+  },
+  "发送当前消息": {
+    "en": "Send current message",
+    "zh-Hans": "发送当前消息"
+  },
+  "发送结果尚未确认。先读取原请求，避免重复发送；草稿会保留。": {
+    "en": "The send outcome is unconfirmed. Read the original request to avoid sending it again. Your draft is retained.",
+    "zh-Hans": "发送结果尚未确认。先读取原请求，避免重复发送；草稿会保留。"
   },
   "取消": {
     "en": "Cancel",
@@ -423,9 +871,17 @@
     "en": "Cancel simulated run",
     "zh-Hans": "取消模拟运行"
   },
+  "取消登录": {
+    "en": "Cancel sign-in",
+    "zh-Hans": "取消登录"
+  },
   "取消置顶": {
     "en": "Unpin",
     "zh-Hans": "取消置顶"
+  },
+  "受理前完整核对": {
+    "en": "Review all terms before admission",
+    "zh-Hans": "受理前完整核对"
   },
   "受限": {
     "en": "Restricted",
@@ -442,6 +898,22 @@
   "只在你主动播放时朗读固定版本。停止声音不会取消文字任务。": {
     "en": "Reads a fixed version only when you tap Play. Stopping audio does not cancel text tasks.",
     "zh-Hans": "只在你主动播放时朗读固定版本。停止声音不会取消文字任务。"
+  },
+  "只查询原请求，不重新发送消息": {
+    "en": "Read the original request without sending another message",
+    "zh-Hans": "只查询原请求，不重新发送消息"
+  },
+  "只生成本地文本成果，不执行外部写入。": {
+    "en": "Produce local text results. No external writes.",
+    "zh-Hans": "只生成本地文本成果，不执行外部写入。"
+  },
+  "只读取你选择的一张图片，选择后不会发送": {
+    "en": "Only the image you select is read. Selecting it does not send it.",
+    "zh-Hans": "只读取你选择的一张图片，选择后不会发送"
+  },
+  "只读取原请求中明确提供的公开链接，不自主搜索。": {
+    "en": "Read only public links explicitly provided in the original request. No autonomous search.",
+    "zh-Hans": "只读取原请求中明确提供的公开链接，不自主搜索。"
   },
   "只重置全部演示环境；用户分区保留。": {
     "en": "Reset all demo environments only. Keep user data.",
@@ -475,6 +947,18 @@
     "en": "Synthetic model configuration",
     "zh-Hans": "合成模型配置"
   },
+  "合成测试协议证据": {
+    "en": "Synthetic contract evidence",
+    "zh-Hans": "合成测试协议证据"
+  },
+  "合成登录测试 · 无真实 Auth 或模型调用": {
+    "en": "Synthetic sign-in test · No real Auth or model calls",
+    "zh-Hans": "合成登录测试 · 无真实 Auth 或模型调用"
+  },
+  "合成登录测试 · 无真实 Auth/模型": {
+    "en": "Synthetic sign-in test · No real Auth/model",
+    "zh-Hans": "合成登录测试 · 无真实 Auth/模型"
+  },
   "同步本地成果": {
     "en": "Sync local results",
     "zh-Hans": "同步本地成果"
@@ -486,6 +970,18 @@
   "名称与提示词必填。": {
     "en": "Name and prompt are required.",
     "zh-Hans": "名称与提示词必填。"
+  },
+  "后台尚不支持明确受理有限工作，原文已保留。": {
+    "en": "The backend does not support explicit bounded work admission yet. The original text is preserved.",
+    "zh-Hans": "后台尚不支持明确受理有限工作，原文已保留。"
+  },
+  "后续消息 · 仅在前台发送": {
+    "en": "Follow-up messages · Sent only in the foreground",
+    "zh-Hans": "后续消息 · 仅在前台发送"
+  },
+  "后续消息已暂停": {
+    "en": "Follow-up messages paused",
+    "zh-Hans": "后续消息已暂停"
   },
   "启用中": {
     "en": "Enabled",
@@ -507,13 +1003,29 @@
     "en": "Back to conversation",
     "zh-Hans": "回到会话"
   },
+  "回到最新": {
+    "en": "Jump to latest",
+    "zh-Hans": "回到最新"
+  },
+  "回复完成": {
+    "en": "Reply complete",
+    "zh-Hans": "回复完成"
+  },
   "回复已完成": {
     "en": "Reply completed",
     "zh-Hans": "回复已完成"
   },
+  "回复已确认": {
+    "en": "Reply confirmed",
+    "zh-Hans": "回复已确认"
+  },
   "回复未完成": {
     "en": "Reply incomplete",
     "zh-Hans": "回复未完成"
+  },
+  "回执核对时间": {
+    "en": "Receipt verification time",
+    "zh-Hans": "回执核对时间"
   },
   "回收站为空": {
     "en": "Trash is empty",
@@ -531,6 +1043,30 @@
     "en": "Fixed version v{0} · {1}",
     "zh-Hans": "固定版本 v{0} · {1}"
   },
+  "图片、本轮文字、最近文字会话及主动加入的文字上下文将发送给 OpenRouter 和 Google AI Studio，使用固定的免费 Gemma 4 31B 路线。请求禁止训练、限制费用为0并禁止回退；路线不可用时拒绝发送。Google 安全策略会为安全审查保留输入、上下文和输出55天，并可能人工审核；这不是零保留。服务器不保存图片字节历史，但保存文字回复和附件回执，直到你删除来源。请勿发送敏感、机密或含凭据的图片。撤销不能收回已发出的数据；断开流也不保证上游停止处理。": {
+    "en": "The image, current message, recent conversation text and any text context you add will be sent to OpenRouter and Google AI Studio using the fixed free Gemma 4 31B route. Requests disallow training, cap cost at zero and prohibit fallback; unavailable routes refuse transmission. Google safety policies retain inputs, context and outputs for 55 days and may involve human review. This is not zero retention. The server does not store image-byte history, but keeps text replies and attachment receipts until you delete the source. Do not send sensitive, confidential or credential-containing images. Revocation cannot recall data already sent, and disconnecting the stream does not guarantee upstream processing stops.",
+    "zh-Hans": "图片、本轮文字、最近文字会话及主动加入的文字上下文将发送给 OpenRouter 和 Google AI Studio，使用固定的免费 Gemma 4 31B 路线。请求禁止训练、限制费用为0并禁止回退；路线不可用时拒绝发送。Google 安全策略会为安全审查保留输入、上下文和输出55天，并可能人工审核；这不是零保留。服务器不保存图片字节历史，但保存文字回复和附件回执，直到你删除来源。请勿发送敏感、机密或含凭据的图片。撤销不能收回已发出的数据；断开流也不保证上游停止处理。"
+  },
+  "图片发送暂不可用。所选图片仅保留在本机。": {
+    "en": "Image sending is currently unavailable. The selected image stays on this device.",
+    "zh-Hans": "图片发送暂不可用。所选图片仅保留在本机。"
+  },
+  "图片处理失败。请重试或重新选择。": {
+    "en": "Image processing failed. Retry or select it again.",
+    "zh-Hans": "图片处理失败。请重试或重新选择。"
+  },
+  "图片处理许可绑定当前文字。请移除后在输入器重新编辑。": {
+    "en": "Image permission is tied to this caption. Remove this message and edit it in the composer.",
+    "zh-Hans": "图片处理许可绑定当前文字。请移除后在输入器重新编辑。"
+  },
+  "图片尚未准备好，请重新选择。": {
+    "en": "The image is not ready. Select it again.",
+    "zh-Hans": "图片尚未准备好，请重新选择。"
+  },
+  "图表；原值见下方数据选择": {
+    "en": "Chart; original values are available in the data selectors below",
+    "zh-Hans": "图表；原值见下方数据选择"
+  },
   "在设置开启演示数据分区，并切换到本机。": {
     "en": "Enable the demo partition in Settings and select On Device.",
     "zh-Hans": "在设置开启演示数据分区，并切换到本机。"
@@ -539,9 +1075,17 @@
     "en": "Copy conversation ID",
     "zh-Hans": "复制会话 ID"
   },
+  "复制回复": {
+    "en": "Copy reply",
+    "zh-Hans": "复制回复"
+  },
   "外观": {
     "en": "Appearance",
     "zh-Hans": "外观"
+  },
+  "外部操作": {
+    "en": "External operation",
+    "zh-Hans": "外部操作"
   },
   "好": {
     "en": "OK",
@@ -550,6 +1094,18 @@
   "委托不可用": {
     "en": "Delegation unavailable",
     "zh-Hans": "委托不可用"
+  },
+  "委派版本": {
+    "en": "Delegation revision",
+    "zh-Hans": "委派版本"
+  },
+  "委派编号": {
+    "en": "Delegation ID",
+    "zh-Hans": "委派编号"
+  },
+  "存在冲突，不能当作确定事实": {
+    "en": "Conflicting entries cannot be treated as a confirmed fact.",
+    "zh-Hans": "存在冲突，不能当作确定事实"
   },
   "安全屋 · 仅新对话配置": {
     "en": "Safety · new conversations only",
@@ -567,13 +1123,49 @@
     "en": "Scheduled tasks",
     "zh-Hans": "定时任务"
   },
+  "实际读取网址": {
+    "en": "Read URL",
+    "zh-Hans": "实际读取网址"
+  },
+  "审批对象或校验信息不匹配，未记录决定。": {
+    "en": "The item or verification data does not match. No decision has been recorded.",
+    "zh-Hans": "审批对象或校验信息不匹配，未记录决定。"
+  },
   "审批已消费；不会提供重新发送。": {
     "en": "Approval consumed. Resending is unavailable.",
     "zh-Hans": "审批已消费；不会提供重新发送。"
   },
+  "审批已过期或内容已更新，请读取最新事项。": {
+    "en": "The review has expired or changed. Read the latest item.",
+    "zh-Hans": "审批已过期或内容已更新，请读取最新事项。"
+  },
+  "审批服务尚未连接，已保存事项仍可查看。": {
+    "en": "The decision service is not connected. Saved items remain readable.",
+    "zh-Hans": "审批服务尚未连接，已保存事项仍可查看。"
+  },
   "审批预览": {
     "en": "Approval preview",
     "zh-Hans": "审批预览"
+  },
+  "密码": {
+    "en": "Password",
+    "zh-Hans": "密码"
+  },
+  "对应成果版本": {
+    "en": "Result version",
+    "zh-Hans": "对应成果版本"
+  },
+  "对话": {
+    "en": "Conversations",
+    "zh-Hans": "对话"
+  },
+  "对话历史": {
+    "en": "Conversation history",
+    "zh-Hans": "对话历史"
+  },
+  "对话编号": {
+    "en": "Conversation ID",
+    "zh-Hans": "对话编号"
   },
   "导入文件": {
     "en": "Import file",
@@ -582,6 +1174,10 @@
   "导出当前 workspace 本地数据": {
     "en": "Export this workspace's local data",
     "zh-Hans": "导出当前 workspace 本地数据"
+  },
+  "将原候选确认为记忆，来源与使用条件保持原记录。": {
+    "en": "Confirm this candidate as memory, keeping its original source and conditions.",
+    "zh-Hans": "将原候选确认为记忆，来源与使用条件保持原记录。"
   },
   "将检查后的文字放入输入": {
     "en": "Use reviewed text in input",
@@ -595,6 +1191,22 @@
     "en": "No tasks yet",
     "zh-Hans": "尚无任务"
   },
+  "尚未发送；确认后才提交原请求。": {
+    "en": "Not sent yet. The original request is submitted only after confirmation.",
+    "zh-Hans": "尚未发送；确认后才提交原请求。"
+  },
+  "尚未找到原决定记录；结果仍未知，请继续核对或寻求帮助。": {
+    "en": "The original decision record has not been found. The outcome remains unknown; check again or seek help.",
+    "zh-Hans": "尚未找到原决定记录；结果仍未知，请继续核对或寻求帮助。"
+  },
+  "尚未找到原控制记录；结果仍未知，请继续核对。": {
+    "en": "The original control record has not been found. Its outcome remains unknown; keep checking.",
+    "zh-Hans": "尚未找到原控制记录；结果仍未知，请继续核对。"
+  },
+  "尚未找到原记忆操作，结果仍未知；不会重复发送。": {
+    "en": "The original memory change was not found. Its result remains unknown; it will not be sent again.",
+    "zh-Hans": "尚未找到原记忆操作，结果仍未知；不会重复发送。"
+  },
   "尚未接执行沙箱或协作 worker。本地偏好不授予 OS 或服务权限。": {
     "en": "Execution sandbox and collaboration workers are disconnected. Local preferences grant no OS or service permissions.",
     "zh-Hans": "尚未接执行沙箱或协作 worker。本地偏好不授予 OS 或服务权限。"
@@ -607,6 +1219,58 @@
     "en": "Local connection not checked",
     "zh-Hans": "尚未检查本地连接"
   },
+  "工作失败": {
+    "en": "Task failed",
+    "zh-Hans": "工作失败"
+  },
+  "工作已取消": {
+    "en": "Task cancelled",
+    "zh-Hans": "工作已取消"
+  },
+  "工作已取消；已发出的操作仍需核对。": {
+    "en": "Work is cancelled. Operations already dispatched still need reconciliation.",
+    "zh-Hans": "工作已取消；已发出的操作仍需核对。"
+  },
+  "工作已完成": {
+    "en": "Task completed",
+    "zh-Hans": "工作已完成"
+  },
+  "工作已按申请暂停；恢复仍受原许可和当前计划约束。": {
+    "en": "The task is paused as requested. Resuming remains subject to the original authorization and current plan.",
+    "zh-Hans": "工作已按申请暂停；恢复仍受原许可和当前计划约束。"
+  },
+  "工作已排队": {
+    "en": "Task queued",
+    "zh-Hans": "工作已排队"
+  },
+  "工作已暂停": {
+    "en": "Task paused",
+    "zh-Hans": "工作已暂停"
+  },
+  "工作当前不允许恢复，请读取最新状态。": {
+    "en": "The task cannot resume right now. Read the latest status.",
+    "zh-Hans": "工作当前不允许恢复，请读取最新状态。"
+  },
+  "工作当前不可执行，这份事项不能批准。": {
+    "en": "The task is currently not executable. This item cannot be approved.",
+    "zh-Hans": "工作当前不可执行，这份事项不能批准。"
+  },
+  "工作控制": {
+    "en": "Task controls",
+    "zh-Hans": "工作控制"
+  },
+  "工作控制服务尚未连接，已保存状态仍可查看。": {
+    "en": "Task controls are not connected. Saved status remains available.",
+    "zh-Hans": "工作控制服务尚未连接，已保存状态仍可查看。"
+  },
+  "工作状态尚未确认": {
+    "en": "Task status is unconfirmed",
+    "zh-Hans": "工作状态尚未确认"
+  },
+  "工作状态或计划已变化，请读取最新状态。": {
+    "en": "The task status or plan has changed. Read the latest status.",
+    "zh-Hans": "工作状态或计划已变化，请读取最新状态。"
+  },
   "工作目标": {
     "en": "Work goal",
     "zh-Hans": "工作目标"
@@ -614,6 +1278,10 @@
   "工作空间": {
     "en": "Workspace",
     "zh-Hans": "工作空间"
+  },
+  "工作等待输入": {
+    "en": "Task awaiting input",
+    "zh-Hans": "工作等待输入"
   },
   "工作约定": {
     "en": "Work agreement",
@@ -623,13 +1291,65 @@
     "en": "Work agreement · r{0}",
     "zh-Hans": "工作约定 · r{0}"
   },
+  "工作约定不能与图片或成果修改混用。": {
+    "en": "Work terms cannot be combined with images or artifact revisions.",
+    "zh-Hans": "工作约定不能与图片或成果修改混用。"
+  },
+  "工作约定尚未保存，请重新核对。": {
+    "en": "The work agreement has not been saved. Review it again.",
+    "zh-Hans": "工作约定尚未保存，请重新核对。"
+  },
+  "工作约定绑定原请求。请移除后重新确认，不能沿用旧期限和预算。": {
+    "en": "Work terms are bound to the original request. Remove it and confirm again; the old deadline and budget cannot be reused.",
+    "zh-Hans": "工作约定绑定原请求。请移除后重新确认，不能沿用旧期限和预算。"
+  },
+  "工作约定读取未完成，原文和草稿会保留。": {
+    "en": "The work agreement could not be read. The original text and draft are preserved.",
+    "zh-Hans": "工作约定读取未完成，原文和草稿会保留。"
+  },
+  "工作约定超出当前服务范围，请调整后确认。": {
+    "en": "The agreement exceeds the service limits. Adjust it before confirming.",
+    "zh-Hans": "工作约定超出当前服务范围，请调整后确认。"
+  },
+  "工作结果未知，先核对原工作。": {
+    "en": "The task result is unknown. Check the original task first.",
+    "zh-Hans": "工作结果未知，先核对原工作。"
+  },
+  "工作编号": {
+    "en": "Task ID",
+    "zh-Hans": "工作编号"
+  },
+  "工作计划": {
+    "en": "Task plan",
+    "zh-Hans": "工作计划"
+  },
   "工作记忆": {
     "en": "Work memory",
     "zh-Hans": "工作记忆"
   },
+  "工作身份或控制回执不匹配，未确认控制结果。": {
+    "en": "The task identity or control receipt does not match. The outcome has not been confirmed.",
+    "zh-Hans": "工作身份或控制回执不匹配，未确认控制结果。"
+  },
+  "工作进行中": {
+    "en": "Task in progress",
+    "zh-Hans": "工作进行中"
+  },
   "已保存到本机": {
     "en": "Saved on this device",
     "zh-Hans": "已保存到本机"
+  },
+  "已保存在本机 · 待发送": {
+    "en": "Saved on this device · Awaiting send",
+    "zh-Hans": "已保存在本机 · 待发送"
+  },
+  "已保存的控制记录达到本机上限，请先保留并核对原记录。": {
+    "en": "Saved control records have reached the local limit. Preserve and check the original records first.",
+    "zh-Hans": "已保存的控制记录达到本机上限，请先保留并核对原记录。"
+  },
+  "已保稿": {
+    "en": "Draft saved",
+    "zh-Hans": "已保稿"
   },
   "已停止": {
     "en": "Stopped",
@@ -643,9 +1363,21 @@
     "en": "Expired",
     "zh-Hans": "已到期"
   },
+  "已发出，结果尚未确认": {
+    "en": "Dispatched; outcome unconfirmed",
+    "zh-Hans": "已发出，结果尚未确认"
+  },
+  "已发送": {
+    "en": "Sent",
+    "zh-Hans": "已发送"
+  },
   "已取消": {
     "en": "Cancelled",
     "zh-Hans": "已取消"
+  },
+  "已取消处理，原有附件保留。": {
+    "en": "Processing canceled. The existing attachment is retained.",
+    "zh-Hans": "已取消处理，原有附件保留。"
   },
   "已受理，待核验": {
     "en": "Accepted; verification pending",
@@ -659,6 +1391,22 @@
     "en": "Finished",
     "zh-Hans": "已完成"
   },
+  "已批准；当前授权已失效，尚未执行。": {
+    "en": "Approved; current authority is no longer valid. Execution has not occurred.",
+    "zh-Hans": "已批准；当前授权已失效，尚未执行。"
+  },
+  "已批准；等待设备，尚未执行。": {
+    "en": "Approved; waiting for the device. Execution has not occurred.",
+    "zh-Hans": "已批准；等待设备，尚未执行。"
+  },
+  "已拒绝；尚未执行。": {
+    "en": "Denied; execution has not occurred.",
+    "zh-Hans": "已拒绝；尚未执行。"
+  },
+  "已排队": {
+    "en": "Queued",
+    "zh-Hans": "已排队"
+  },
   "已撤权 · 保留原记录": {
     "en": "Revoked · original record preserved",
     "zh-Hans": "已撤权 · 保留原记录"
@@ -666,6 +1414,10 @@
   "已撤销": {
     "en": "Revoked",
     "zh-Hans": "已撤销"
+  },
+  "已收到并保存完整回复。": {
+    "en": "A complete reply has been received and saved.",
+    "zh-Hans": "已收到并保存完整回复。"
   },
   "已暂停": {
     "en": "Paused",
@@ -679,9 +1431,17 @@
     "en": "Version v{0} is available. This reader still shows the fixed older version.",
     "zh-Hans": "已有 v{0}，当前继续显示固定旧版。"
   },
+  "已有发出但未确认的操作；恢复前必须核对原结果，不重复执行。": {
+    "en": "Dispatched operations remain unconfirmed. Check their original outcomes before resuming; do not execute them again.",
+    "zh-Hans": "已有发出但未确认的操作；恢复前必须核对原结果，不重复执行。"
+  },
   "已核验": {
     "en": "Verified",
     "zh-Hans": "已核验"
+  },
+  "已确认记忆": {
+    "en": "Confirmed memory",
+    "zh-Hans": "已确认记忆"
   },
   "已结束": {
     "en": "Ended",
@@ -691,9 +1451,37 @@
     "en": "Read receipt was not saved: {0}",
     "zh-Hans": "已读回执未保存：{0}"
   },
+  "已读来源": {
+    "en": "Read sources",
+    "zh-Hans": "已读来源"
+  },
+  "已超出总时长，请调整参数。": {
+    "en": "The budget is exceeded. Adjust the inputs.",
+    "zh-Hans": "已超出总时长，请调整参数。"
+  },
+  "已超出有效时间": {
+    "en": "No longer within its valid dates",
+    "zh-Hans": "已超出有效时间"
+  },
+  "已过期；尚未决定或执行。": {
+    "en": "Expired; no decision or execution.",
+    "zh-Hans": "已过期；尚未决定或执行。"
+  },
+  "已连接": {
+    "en": "Connected",
+    "zh-Hans": "已连接"
+  },
+  "已选图片预览，尚未发送": {
+    "en": "Selected image preview; not sent",
+    "zh-Hans": "已选图片预览，尚未发送"
+  },
   "已预约": {
     "en": "Reserved",
     "zh-Hans": "已预约"
+  },
+  "已验证模型": {
+    "en": "Verified model",
+    "zh-Hans": "已验证模型"
   },
   "市场": {
     "en": "Market",
@@ -719,6 +1507,46 @@
     "en": "Development testing",
     "zh-Hans": "开发联调"
   },
+  "开启后，后续对话可使用已确认且范围匹配的记忆。": {
+    "en": "Future conversations can use confirmed memory that matches its selected scope.",
+    "zh-Hans": "开启后，后续对话可使用已确认且范围匹配的记忆。"
+  },
+  "开启记忆利用": {
+    "en": "Turn on memory use",
+    "zh-Hans": "开启记忆利用"
+  },
+  "开始体验": {
+    "en": "Get started",
+    "zh-Hans": "开始体验"
+  },
+  "开始前 {0} 分钟": {
+    "en": "{0} minutes before start",
+    "zh-Hans": "开始前 {0} 分钟"
+  },
+  "开始前 {0} 天": {
+    "en": "{0} days before start",
+    "zh-Hans": "开始前 {0} 天"
+  },
+  "开始前 {0} 小时": {
+    "en": "{0} hours before start",
+    "zh-Hans": "开始前 {0} 小时"
+  },
+  "开始前 {0} 秒": {
+    "en": "{0} seconds before start",
+    "zh-Hans": "开始前 {0} 秒"
+  },
+  "开始时提醒": {
+    "en": "At start",
+    "zh-Hans": "开始时提醒"
+  },
+  "开始时间": {
+    "en": "Starts",
+    "zh-Hans": "开始时间"
+  },
+  "引用到草稿": {
+    "en": "Quote in draft",
+    "zh-Hans": "引用到草稿"
+  },
   "当前 macOS 类型检查环境不提供 iOS 权限结果": {
     "en": "The macOS type-check environment does not provide iOS permission results",
     "zh-Hans": "当前 macOS 类型检查环境不提供 iOS 权限结果"
@@ -731,13 +1559,73 @@
     "en": "Current conversation context",
     "zh-Hans": "当前会话上下文"
   },
+  "当前会话已关闭，原输入会保留。": {
+    "en": "This conversation is closed. Your input is kept.",
+    "zh-Hans": "当前会话已关闭，原输入会保留。"
+  },
+  "当前对话": {
+    "en": "Current conversation",
+    "zh-Hans": "当前对话"
+  },
+  "当前对话还没有任务": {
+    "en": "This conversation has no tasks yet",
+    "zh-Hans": "当前对话还没有任务"
+  },
+  "当前对话还没有成果": {
+    "en": "This conversation has no results yet",
+    "zh-Hans": "当前对话还没有成果"
+  },
+  "当前工作区的对话": {
+    "en": "Conversations in this workspace",
+    "zh-Hans": "当前工作区的对话"
+  },
+  "当前性无法确认，这份事项不能批准。": {
+    "en": "Current validity is unconfirmed. This item cannot be approved.",
+    "zh-Hans": "当前性无法确认，这份事项不能批准。"
+  },
+  "当前成果版本": {
+    "en": "Current artifact version",
+    "zh-Hans": "当前成果版本"
+  },
+  "当前执行版本": {
+    "en": "Current execution version",
+    "zh-Hans": "当前执行版本"
+  },
   "当前持续执行来自本地模拟，App 关闭期间不会运行。": {
     "en": "Ongoing execution is simulated locally. It does not run while the app is closed.",
     "zh-Hans": "当前持续执行来自本地模拟，App 关闭期间不会运行。"
   },
+  "当前服务不支持读取公开链接，请改为仅整理已提供文字。": {
+    "en": "Public link reading is unavailable. Select text-only work.",
+    "zh-Hans": "当前服务不支持读取公开链接，请改为仅整理已提供文字。"
+  },
+  "当前服务尚不支持控制工作，可继续查看状态。": {
+    "en": "The current service does not support task controls. You can still view the status.",
+    "zh-Hans": "当前服务尚不支持控制工作，可继续查看状态。"
+  },
+  "当前服务尚不支持提交决定，可继续查看事项。": {
+    "en": "This service cannot accept decisions yet. Saved items remain readable.",
+    "zh-Hans": "当前服务尚不支持提交决定，可继续查看事项。"
+  },
+  "当前服务尚不支持有限工作受理，草稿会保留。": {
+    "en": "This service does not support bounded work admission yet. Your draft is preserved.",
+    "zh-Hans": "当前服务尚不支持有限工作受理，草稿会保留。"
+  },
+  "当前未连接云端；输入保存在此设备。": {
+    "en": "Cloud is not connected. Input is saved on this device.",
+    "zh-Hans": "当前未连接云端；输入保存在此设备。"
+  },
   "当前段落 {0}": {
     "en": "Current paragraph {0}",
     "zh-Hans": "当前段落 {0}"
+  },
+  "当前没有可查看的审批事项。": {
+    "en": "There are no decisions to review.",
+    "zh-Hans": "当前没有可查看的审批事项。"
+  },
+  "当前没有已核对的工作状态。": {
+    "en": "No verified task status is available.",
+    "zh-Hans": "当前没有已核对的工作状态。"
   },
   "当前环境没有该委托。": {
     "en": "This environment has no such delegation.",
@@ -751,25 +1639,81 @@
     "en": "Local projects in this environment",
     "zh-Hans": "当前环境的本地项目"
   },
+  "当前许可版本": {
+    "en": "Current authorization version",
+    "zh-Hans": "当前许可版本"
+  },
   "当前设备没有可用相机。可从文件导入图片。": {
     "en": "No camera is available on this device. Import an image from files instead.",
     "zh-Hans": "当前设备没有可用相机。可从文件导入图片。"
+  },
+  "当前连接暂不支持针对成果继续，草稿已保留。": {
+    "en": "This connection does not support continuing from a result yet. Your draft is kept.",
+    "zh-Hans": "当前连接暂不支持针对成果继续，草稿已保留。"
   },
   "当前选择来自系统可用声音列表，不申请 Personal Voice，不下载音色。音频输出与离线表现需真机验证。": {
     "en": "Voices come from the available system list. No Personal Voice permission or voice downloads. Audio output and offline behavior need device testing.",
     "zh-Hans": "当前选择来自系统可用声音列表，不申请 Personal Voice，不下载音色。音频输出与离线表现需真机验证。"
   },
+  "当前阅读版本": {
+    "en": "Currently reading",
+    "zh-Hans": "当前阅读版本"
+  },
   "录音中": {
     "en": "Recording",
     "zh-Hans": "录音中"
+  },
+  "待决定事项": {
+    "en": "Decisions to review",
+    "zh-Hans": "待决定事项"
+  },
+  "待发消息": {
+    "en": "Queued messages",
+    "zh-Hans": "待发消息"
+  },
+  "待发消息保存在本机，仅在 App 前台发送。编辑会暂停队列，保存或关闭不会继续发送。": {
+    "en": "Queued messages are saved on this device and sent only while the app is in the foreground. Editing pauses the queue; saving or closing does not resume sending.",
+    "zh-Hans": "待发消息保存在本机，仅在 App 前台发送。编辑会暂停队列，保存或关闭不会继续发送。"
+  },
+  "待发消息内容": {
+    "en": "Queued message content",
+    "zh-Hans": "待发消息内容"
+  },
+  "待发送 · {0} 条": {
+    "en": "Awaiting send · {0}",
+    "zh-Hans": "待发送 · {0} 条"
   },
   "待审批 · 查看冻结预览": {
     "en": "Approval pending · view frozen preview",
     "zh-Hans": "待审批 · 查看冻结预览"
   },
+  "待核对": {
+    "en": "Pending",
+    "zh-Hans": "待核对"
+  },
+  "待确认候选": {
+    "en": "Candidates to confirm",
+    "zh-Hans": "待确认候选"
+  },
+  "待确认的图片预览": {
+    "en": "Image preview for confirmation",
+    "zh-Hans": "待确认的图片预览"
+  },
+  "待验证": {
+    "en": "Unverified",
+    "zh-Hans": "待验证"
+  },
   "忘记": {
     "en": "Forget",
     "zh-Hans": "忘记"
+  },
+  "忘记这条记忆并阻止旧来源再次学回；不会删除原对话。": {
+    "en": "Forget this entry and prevent learning it again from the old source. The original conversation is kept.",
+    "zh-Hans": "忘记这条记忆并阻止旧来源再次学回；不会删除原对话。"
+  },
+  "总时长（分钟）": {
+    "en": "Total time (minutes)",
+    "zh-Hans": "总时长（分钟）"
   },
   "恢复": {
     "en": "Resume",
@@ -783,9 +1727,17 @@
     "en": "Restore original ID",
     "zh-Hans": "恢复原 ID"
   },
+  "恢复回执已保存；不代表成果已完成。": {
+    "en": "The resume receipt is saved. This does not mean the result is complete.",
+    "zh-Hans": "恢复回执已保存；不代表成果已完成。"
+  },
   "恢复委托 · 准备新 Run": {
     "en": "Resume delegation · prepare new Run",
     "zh-Hans": "恢复委托 · 准备新 Run"
+  },
+  "恢复已暂停工作": {
+    "en": "Resume paused task",
+    "zh-Hans": "恢复已暂停工作"
   },
   "恢复已确认 · 旧 Run 保持暂停": {
     "en": "Resume confirmed · old Run remains paused",
@@ -794,6 +1746,10 @@
   "想一起完成什么？": {
     "en": "What would you like to do together?",
     "zh-Hans": "想一起完成什么？"
+  },
+  "想记住的内容": {
+    "en": "What to remember",
+    "zh-Hans": "想记住的内容"
   },
   "想问什么？": {
     "en": "What would you like to ask?",
@@ -815,25 +1771,77 @@
     "en": "Artifact and provenance",
     "zh-Hans": "成果与来源"
   },
+  "成果修改尚未发送，草稿已保留。": {
+    "en": "The artifact edit was not sent. Your draft is retained.",
+    "zh-Hans": "成果修改尚未发送，草稿已保留。"
+  },
+  "成果修改服务尚未连接，修改草稿会保留。": {
+    "en": "The artifact edit service is not connected. Your draft is retained.",
+    "zh-Hans": "成果修改服务尚未连接，修改草稿会保留。"
+  },
+  "成果内容": {
+    "en": "Result content",
+    "zh-Hans": "成果内容"
+  },
   "成果审阅": {
     "en": "Review artifact",
     "zh-Hans": "成果审阅"
+  },
+  "成果已保存，但工作展示尚未更新。请核对原修改。": {
+    "en": "The artifact is saved, but the task display has not updated. Check the original edit.",
+    "zh-Hans": "成果已保存，但工作展示尚未更新。请核对原修改。"
   },
   "成果已准备好": {
     "en": "Ready to review",
     "zh-Hans": "成果已准备好"
   },
+  "成果已有新版，原修改草稿仍保留。请核对后明确换用新版。": {
+    "en": "A newer artifact exists. Your original draft is retained. Review it before explicitly adopting the newer version.",
+    "zh-Hans": "成果已有新版，原修改草稿仍保留。请核对后明确换用新版。"
+  },
+  "成果已有新版，原稿和输入仍保留。核对后才能换用新版继续。": {
+    "en": "A newer version exists. Your original and edits are retained. Review it before continuing from the newer version.",
+    "zh-Hans": "成果已有新版，原稿和输入仍保留。核对后才能换用新版继续。"
+  },
   "成果提醒 · App 内偏好": {
     "en": "Result notices · in-app preference",
     "zh-Hans": "成果提醒 · App 内偏好"
+  },
+  "成果暂不可读": {
+    "en": "This result is unavailable.",
+    "zh-Hans": "成果暂不可读"
+  },
+  "成果更新时间": {
+    "en": "Result updated",
+    "zh-Hans": "成果更新时间"
+  },
+  "成果更新时间未提供": {
+    "en": "Result update time not provided",
+    "zh-Hans": "成果更新时间未提供"
   },
   "成果版本": {
     "en": "Artifact version",
     "zh-Hans": "成果版本"
   },
+  "成果版本、来源或修改回执不匹配，尚未记录保存成功。": {
+    "en": "The artifact version, sources, or edit receipt do not match. A successful save has not been recorded.",
+    "zh-Hans": "成果版本、来源或修改回执不匹配，尚未记录保存成功。"
+  },
+  "成果版本已变化，这份事项不能批准。": {
+    "en": "The artifact has changed. This item cannot be approved.",
+    "zh-Hans": "成果版本已变化，这份事项不能批准。"
+  },
+  "成果版本或内容核对失败，未切换到其他版本。": {
+    "en": "The result version or content could not be verified. No other version was opened.",
+    "zh-Hans": "成果版本或内容核对失败，未切换到其他版本。"
+  },
   "成果版本未变化": {
     "en": "Result versions are unchanged",
     "zh-Hans": "成果版本未变化"
+  },
+  "成果编号": {
+    "en": "Result ID",
+    "zh-Hans": "成果编号"
   },
   "我的": {
     "en": "Mine",
@@ -843,9 +1851,53 @@
     "en": "My devices",
     "zh-Hans": "我的设备"
   },
+  "我确认所发图片不包含敏感、机密或凭据信息": {
+    "en": "I confirm this image contains no sensitive, confidential or credential information",
+    "zh-Hans": "我确认所发图片不包含敏感、机密或凭据信息"
+  },
+  "我确认此内容可作为敏感记忆保存": {
+    "en": "I confirm this sensitive content may be saved as memory",
+    "zh-Hans": "我确认此内容可作为敏感记忆保存"
+  },
+  "截止时间已过，请选择未来时间。": {
+    "en": "The deadline has passed. Choose a future time.",
+    "zh-Hans": "截止时间已过，请选择未来时间。"
+  },
+  "截止时间须在未来 {0} 小时内。": {
+    "en": "The deadline must be within the next {0} hours.",
+    "zh-Hans": "截止时间须在未来 {0} 小时内。"
+  },
+  "截至日期": {
+    "en": "Deadline date",
+    "zh-Hans": "截至日期"
+  },
+  "截至时刻": {
+    "en": "Deadline time",
+    "zh-Hans": "截至时刻"
+  },
+  "截至时间": {
+    "en": "Deadline",
+    "zh-Hans": "截至时间"
+  },
+  "所选图片仅在你发送并确认处理方式后外发。": {
+    "en": "The selected image leaves this device only after you confirm processing and tap Send.",
+    "zh-Hans": "所选图片仅在你发送并确认处理方式后外发。"
+  },
+  "所选图片完整预览": {
+    "en": "Full preview of the selected image",
+    "zh-Hans": "所选图片完整预览"
+  },
   "打开侧栏": {
     "en": "Open sidebar",
     "zh-Hans": "打开侧栏"
+  },
+  "打开实际读取网页": {
+    "en": "Open the read webpage",
+    "zh-Hans": "打开实际读取网页"
+  },
+  "打开对话": {
+    "en": "Open conversation",
+    "zh-Hans": "打开对话"
   },
   "打开成果 v{0}": {
     "en": "Open artifact v{0}",
@@ -855,13 +1907,33 @@
     "en": "Interrupt this turn",
     "zh-Hans": "打断本轮"
   },
+  "执行中，结果尚未确认": {
+    "en": "Executing; outcome unconfirmed",
+    "zh-Hans": "执行中，结果尚未确认"
+  },
   "执行来源": {
     "en": "Execution source",
     "zh-Hans": "执行来源"
   },
+  "执行范围": {
+    "en": "Scope of work",
+    "zh-Hans": "执行范围"
+  },
+  "执行预算是本次工作的累计上限，暂停与恢复不会延长期限或补回额度。": {
+    "en": "The execution budget is a total limit for this work. Pausing and resuming do not extend the deadline or restore the budget.",
+    "zh-Hans": "执行预算是本次工作的累计上限，暂停与恢复不会延长期限或补回额度。"
+  },
   "执行频率": {
     "en": "Frequency",
     "zh-Hans": "执行频率"
+  },
+  "批准仅记录这份精确事项的决定；设备执行结果会另行核对。": {
+    "en": "Approval records a decision for this exact item. Device execution is checked separately.",
+    "zh-Hans": "批准仅记录这份精确事项的决定；设备执行结果会另行核对。"
+  },
+  "批准这份事项": {
+    "en": "Approve this item",
+    "zh-Hans": "批准这份事项"
   },
   "技能": {
     "en": "Skills",
@@ -874,6 +1946,10 @@
   "拍照 · 主动开启系统相机": {
     "en": "Take photo · open system camera",
     "zh-Hans": "拍照 · 主动开启系统相机"
+  },
+  "拒绝": {
+    "en": "Deny",
+    "zh-Hans": "拒绝"
   },
   "拒绝此审批": {
     "en": "Deny this approval",
@@ -891,9 +1967,41 @@
     "en": "Retry simulation with the original request snapshot",
     "zh-Hans": "按原请求快照重试模拟运行"
   },
+  "按此列排序": {
+    "en": "Sort by this column",
+    "zh-Hans": "按此列排序"
+  },
+  "授权已变更；当前状态待核验。": {
+    "en": "Authorization has changed. The current state needs verification.",
+    "zh-Hans": "授权已变更；当前状态待核验。"
+  },
+  "排队发送": {
+    "en": "Queue message",
+    "zh-Hans": "排队发送"
+  },
   "接纳结果未知 · 仅读回原任务": {
     "en": "Admission unknown · read original task only",
     "zh-Hans": "接纳结果未知 · 仅读回原任务"
+  },
+  "控制回执已保存，工作展示尚未更新。请读取最新工作。": {
+    "en": "The control receipt is saved, but the task display has not updated. Read the latest task.",
+    "zh-Hans": "控制回执已保存，工作展示尚未更新。请读取最新工作。"
+  },
+  "控制尚未发送，工作状态未获确认。": {
+    "en": "The control has not been sent. The task status has not been confirmed.",
+    "zh-Hans": "控制尚未发送，工作状态未获确认。"
+  },
+  "控制未获受理；请读取最新状态后核对。": {
+    "en": "The control was not accepted. Read the latest status to check.",
+    "zh-Hans": "控制未获受理；请读取最新状态后核对。"
+  },
+  "控制版本": {
+    "en": "Control version",
+    "zh-Hans": "控制版本"
+  },
+  "控制结果尚未确认；只核对原控制，请勿重复提交。": {
+    "en": "The control outcome is unconfirmed. Check only the original control; do not submit it again.",
+    "zh-Hans": "控制结果尚未确认；只核对原控制，请勿重复提交。"
   },
   "提交中，先核验": {
     "en": "Submitting; verify first",
@@ -915,13 +2023,41 @@
     "en": "Prompt",
     "zh-Hans": "提示词"
   },
+  "提醒": {
+    "en": "Reminder",
+    "zh-Hans": "提醒"
+  },
+  "提醒偏移（秒）": {
+    "en": "Reminder offset (seconds)",
+    "zh-Hans": "提醒偏移（秒）"
+  },
   "搜索专家": {
     "en": "Search experts",
     "zh-Hans": "搜索专家"
   },
+  "搜索对话": {
+    "en": "Search conversations",
+    "zh-Hans": "搜索对话"
+  },
   "搜索技能": {
     "en": "Search skills",
     "zh-Hans": "搜索技能"
+  },
+  "摘要": {
+    "en": "Summary",
+    "zh-Hans": "摘要"
+  },
+  "摘要最多 8000 字，修改草稿会保留。": {
+    "en": "The summary allows up to 8,000 characters. Your edit draft is retained.",
+    "zh-Hans": "摘要最多 8000 字，修改草稿会保留。"
+  },
+  "撤回授权回执已保存；已发出的操作仍须核对。": {
+    "en": "The authorization withdrawal receipt is saved. Dispatched operations still need verification.",
+    "zh-Hans": "撤回授权回执已保存；已发出的操作仍须核对。"
+  },
+  "撤回这份工作授权": {
+    "en": "Withdraw authorization for this task",
+    "zh-Hans": "撤回这份工作授权"
   },
   "撤销授权": {
     "en": "Revoke authorization",
@@ -955,13 +2091,41 @@
     "en": "Zoom in",
     "zh-Hans": "放大"
   },
+  "放弃此草稿并新建": {
+    "en": "Discard this draft and start a new entry",
+    "zh-Hans": "放弃此草稿并新建"
+  },
+  "放弃草稿": {
+    "en": "Discard draft",
+    "zh-Hans": "放弃草稿"
+  },
+  "放弃这份修改草稿？": {
+    "en": "Discard this amendment draft?",
+    "zh-Hans": "放弃这份修改草稿？"
+  },
   "效果未知 · 核验优先": {
     "en": "Effect unknown · check evidence first",
     "zh-Hans": "效果未知 · 核验优先"
   },
+  "数据": {
+    "en": "Data",
+    "zh-Hans": "数据"
+  },
   "数据分析": {
     "en": "Data analysis",
     "zh-Hans": "数据分析"
+  },
+  "数据序列": {
+    "en": "Series",
+    "zh-Hans": "数据序列"
+  },
+  "数据点": {
+    "en": "Data point",
+    "zh-Hans": "数据点"
+  },
+  "数据版本已更新；旧版本输入仍保留，当前使用新数据。": {
+    "en": "The data version changed. Old inputs are kept; this view uses the new data.",
+    "zh-Hans": "数据版本已更新；旧版本输入仍保留，当前使用新数据。"
   },
   "整理会议要点": {
     "en": "Organize meeting notes",
@@ -1003,6 +2167,10 @@
     "en": "File exceeds the 20 MB local import limit.",
     "zh-Hans": "文件超过本地导入上限 20 MB。"
   },
+  "文字过长，请缩短后再发送。": {
+    "en": "Text is too long. Shorten it before sending.",
+    "zh-Hans": "文字过长，请缩短后再发送。"
+  },
   "文档处理 · Office 文档 · PDF 处理": {
     "en": "Document processing · Office documents · PDF processing",
     "zh-Hans": "文档处理 · Office 文档 · PDF 处理"
@@ -1019,6 +2187,10 @@
     "en": "New task",
     "zh-Hans": "新任务"
   },
+  "新对话": {
+    "en": "New conversation",
+    "zh-Hans": "新对话"
+  },
   "新对话模型配置": {
     "en": "Model for new conversations",
     "zh-Hans": "新对话模型配置"
@@ -1027,21 +2199,53 @@
     "en": "New Gateway demo conversation",
     "zh-Hans": "新建 Gateway 演示会话"
   },
+  "新建日历事件": {
+    "en": "Create a calendar event",
+    "zh-Hans": "新建日历事件"
+  },
   "新建本地项目": {
     "en": "New local project",
     "zh-Hans": "新建本地项目"
+  },
+  "新稿尚未提交；原修改待核对，草稿已保存在本机。": {
+    "en": "The new draft has not been submitted. The original revision awaits verification; your draft is saved on this device.",
+    "zh-Hans": "新稿尚未提交；原修改待核对，草稿已保存在本机。"
+  },
+  "新稿未提交": {
+    "en": "New draft unsent",
+    "zh-Hans": "新稿未提交"
+  },
+  "新计划已受理，当前仍执行上一版本。": {
+    "en": "The new plan was accepted; execution still uses the previous version.",
+    "zh-Hans": "新计划已受理，当前仍执行上一版本。"
   },
   "无专家": {
     "en": "No expert",
     "zh-Hans": "无专家"
   },
+  "无提醒": {
+    "en": "No reminder",
+    "zh-Hans": "无提醒"
+  },
   "无法读取文件": {
     "en": "Unable to read file",
     "zh-Hans": "无法读取文件"
   },
+  "无法读取这张图片。请选择其他静态图片。": {
+    "en": "Cannot read this image. Choose another still image.",
+    "zh-Hans": "无法读取这张图片。请选择其他静态图片。"
+  },
   "无项目": {
     "en": "No project",
     "zh-Hans": "无项目"
+  },
+  "日历": {
+    "en": "Calendar",
+    "zh-Hans": "日历"
+  },
+  "日历编号": {
+    "en": "Calendar ID",
+    "zh-Hans": "日历编号"
   },
   "日常办公": {
     "en": "Office",
@@ -1050,6 +2254,14 @@
   "时区": {
     "en": "Time zone",
     "zh-Hans": "时区"
+  },
+  "明确保存一条记忆": {
+    "en": "Save a memory",
+    "zh-Hans": "明确保存一条记忆"
+  },
+  "明确合成测试": {
+    "en": "Explicit synthetic fixture",
+    "zh-Hans": "明确合成测试"
   },
   "明确失败": {
     "en": "Explicit failure",
@@ -1087,21 +2299,81 @@
     "en": "Sunday",
     "zh-Hans": "星期日"
   },
+  "显示 {0} / {1} 行": {
+    "en": "Showing {0} / {1} rows",
+    "zh-Hans": "显示 {0} / {1} 行"
+  },
+  "显示已保存事项；当前性尚未核对。": {
+    "en": "Showing saved items. Their current validity has not been checked.",
+    "zh-Hans": "显示已保存事项；当前性尚未核对。"
+  },
+  "显示已保存状态；当前性尚未核对。": {
+    "en": "Showing saved status; its current state has not been checked.",
+    "zh-Hans": "显示已保存状态；当前性尚未核对。"
+  },
+  "显示已保存计划；尚未完成当前读取。": {
+    "en": "Showing the saved plan; the current read has not completed.",
+    "zh-Hans": "显示已保存计划；尚未完成当前读取。"
+  },
+  "显示本机保存状态；读取最新状态后才能修改。": {
+    "en": "Showing saved local information. Read the latest state before making changes.",
+    "zh-Hans": "显示本机保存状态；读取最新状态后才能修改。"
+  },
+  "显示本机保存的成果信息，尚未完成当前读取。": {
+    "en": "Showing locally saved artifact information. The current read has not completed.",
+    "zh-Hans": "显示本机保存的成果信息，尚未完成当前读取。"
+  },
   "普通进展留在 App 内。只在有成果或重要变化时提示。跨任务记忆默认关闭。": {
     "en": "Routine progress stays in the app. Only results or important changes trigger a notice. Cross-task memory is off by default.",
     "zh-Hans": "普通进展留在 App 内。只在有成果或重要变化时提示。跨任务记忆默认关闭。"
+  },
+  "暂不允许": {
+    "en": "Not now",
+    "zh-Hans": "暂不允许"
+  },
+  "暂不可发送": {
+    "en": "Cannot send yet",
+    "zh-Hans": "暂不可发送"
+  },
+  "暂不可用": {
+    "en": "Unavailable",
+    "zh-Hans": "暂不可用"
+  },
+  "暂不支持动画或多帧图片。请选择静态图片。": {
+    "en": "Animated and multiframe images are not supported. Choose a still image.",
+    "zh-Hans": "暂不支持动画或多帧图片。请选择静态图片。"
   },
   "暂停": {
     "en": "Pause",
     "zh-Hans": "暂停"
   },
+  "暂停、恢复或撤回授权": {
+    "en": "Pause, resume, or revoke permission",
+    "zh-Hans": "暂停、恢复或撤回授权"
+  },
   "暂停、撤权、修改和新运行由服务端保存，本机镜像不授予执行权限。": {
     "en": "Pause, revocation, edits, and new runs are saved by the service. The native mirror grants no execution permission.",
     "zh-Hans": "暂停、撤权、修改和新运行由服务端保存，本机镜像不授予执行权限。"
   },
+  "暂停保留原许可；撤回授权会停止后续步骤。已发出的操作仍须核对，不能借此回滚。": {
+    "en": "Pausing preserves the original authorization. Withdrawing it stops future steps. Dispatched operations still need verification and cannot be rolled back this way.",
+    "zh-Hans": "暂停保留原许可；撤回授权会停止后续步骤。已发出的操作仍须核对，不能借此回滚。"
+  },
+  "暂停后续消息": {
+    "en": "Pause follow-up messages",
+    "zh-Hans": "暂停后续消息"
+  },
+  "暂停回执已保存；以最新工作状态为准。": {
+    "en": "The pause receipt is saved. Refer to the latest task status.",
+    "zh-Hans": "暂停回执已保存；以最新工作状态为准。"
+  },
   "暂停委托": {
     "en": "Pause delegation",
     "zh-Hans": "暂停委托"
+  },
+  "暂停工作": {
+    "en": "Pause task",
+    "zh-Hans": "暂停工作"
   },
   "暂无{0}任务": {
     "en": "No {0} tasks",
@@ -1119,9 +2391,29 @@
     "en": "No custom commands",
     "zh-Hans": "暂无自定义命令"
   },
+  "更多工作约定": {
+    "en": "More work terms",
+    "zh-Hans": "更多工作约定"
+  },
   "更多操作": {
     "en": "More actions",
     "zh-Hans": "更多操作"
+  },
+  "更换图片": {
+    "en": "Replace image",
+    "zh-Hans": "更换图片"
+  },
+  "更正": {
+    "en": "Correct",
+    "zh-Hans": "更正"
+  },
+  "更正保留原范围与来源引用，使用本次输入作为新的更正来源。": {
+    "en": "A correction keeps the original scope and source reference, and uses this input as its new source.",
+    "zh-Hans": "更正保留原范围与来源引用，使用本次输入作为新的更正来源。"
+  },
+  "更正这条记忆": {
+    "en": "Correct this memory",
+    "zh-Hans": "更正这条记忆"
   },
   "替换来源": {
     "en": "Replace source",
@@ -1131,13 +2423,53 @@
     "en": "Replace source · keep current permissions",
     "zh-Hans": "替换来源 · 保留现有权限"
   },
+  "最多来源次数": {
+    "en": "Maximum source reads",
+    "zh-Hans": "最多来源次数"
+  },
+  "最多模型次数": {
+    "en": "Maximum model calls",
+    "zh-Hans": "最多模型次数"
+  },
   "最新成果": {
     "en": "Latest result",
     "zh-Hans": "最新成果"
   },
+  "最近确认回复": {
+    "en": "Last confirmed reply",
+    "zh-Hans": "最近确认回复"
+  },
+  "最近读取": {
+    "en": "Last read",
+    "zh-Hans": "最近读取"
+  },
+  "最近读取 · ": {
+    "en": "Last read · ",
+    "zh-Hans": "最近读取 · "
+  },
   "最近进展": {
     "en": "Recent activity",
     "zh-Hans": "最近进展"
+  },
+  "有修改草稿未能保存，请核对此前已保存的版本。": {
+    "en": "Some editing drafts could not be saved. Check the previously saved version.",
+    "zh-Hans": "有修改草稿未能保存，请核对此前已保存的版本。"
+  },
+  "服务": {
+    "en": "Service",
+    "zh-Hans": "服务"
+  },
+  "服务与登录状态可用；确认处理方式后即可发送消息。": {
+    "en": "The service and your session are available. Review processing permissions to send.",
+    "zh-Hans": "服务与登录状态可用；确认处理方式后即可发送消息。"
+  },
+  "服务可达": {
+    "en": "Service reachable",
+    "zh-Hans": "服务可达"
+  },
+  "服务未接受本次记忆操作，请读取最新状态后重新核对。": {
+    "en": "The service did not accept this memory change. Read the latest state and review it again.",
+    "zh-Hans": "服务未接受本次记忆操作，请读取最新状态后重新核对。"
   },
   "服务未连接 · 状态未核验": {
     "en": "Service disconnected · status unverified",
@@ -1175,6 +2507,10 @@
     "en": "Readout scope",
     "zh-Hans": "朗读范围"
   },
+  "未保存": {
+    "en": "Unsaved",
+    "zh-Hans": "未保存"
+  },
   "未保存约定": {
     "en": "Agreement not saved",
     "zh-Hans": "未保存约定"
@@ -1187,13 +2523,29 @@
     "en": "Not determined",
     "zh-Hans": "未决定"
   },
+  "未命名对话": {
+    "en": "Untitled conversation",
+    "zh-Hans": "未命名对话"
+  },
   "未完成": {
     "en": "Incomplete",
     "zh-Hans": "未完成"
   },
+  "未知事项状态；仅供查看。": {
+    "en": "Unknown item state; read only.",
+    "zh-Hans": "未知事项状态；仅供查看。"
+  },
   "未知错误": {
     "en": "Unknown error",
     "zh-Hans": "未知错误"
+  },
+  "未能读取所选图片。请重试或重新选择。": {
+    "en": "Could not read the selected image. Retry or select it again.",
+    "zh-Hans": "未能读取所选图片。请重试或重新选择。"
+  },
+  "未连接": {
+    "en": "Not connected",
+    "zh-Hans": "未连接"
   },
   "未验证 iOS 音频": {
     "en": "iOS audio unverified",
@@ -1214,6 +2566,14 @@
   "本地中文识别能力：{0}": {
     "en": "On-device Chinese recognition: {0}",
     "zh-Hans": "本地中文识别能力：{0}"
+  },
+  "本地修改草稿每项最多 8000 字。请缩短或明确放弃，尚未关闭编辑。": {
+    "en": "Each local draft field is limited to 8000 characters. Shorten it or explicitly discard it; editing remains open.",
+    "zh-Hans": "本地修改草稿每项最多 8000 字。请缩短或明确放弃，尚未关闭编辑。"
+  },
+  "本地修改草稿过长。请缩短或明确放弃，尚未关闭编辑。": {
+    "en": "The local edit draft is too long. Shorten it or explicitly discard it before closing.",
+    "zh-Hans": "本地修改草稿过长。请缩短或明确放弃，尚未关闭编辑。"
   },
   "本地创建委托与修改草稿可用；真实研究和持续云执行未连接。": {
     "en": "Local agreements and draft edits are available. Real research and ongoing cloud execution are disconnected.",
@@ -1251,6 +2611,18 @@
     "en": "Local recognition is unavailable. No network recognition request was created.",
     "zh-Hans": "本地识别不可用，未创建网络识别请求。"
   },
+  "本地选择尚未保存，输入仍保留。": {
+    "en": "Local choices have not been saved; the inputs are kept.",
+    "zh-Hans": "本地选择尚未保存，输入仍保留。"
+  },
+  "本地选择暂时无法恢复，原记录已保留；点重置后可重新保存。": {
+    "en": "Local choices could not be restored. The original record is kept; reset to save again.",
+    "zh-Hans": "本地选择暂时无法恢复，原记录已保留；点重置后可重新保存。"
+  },
+  "本地选择读取失败，原记录已保留。": {
+    "en": "Local choices could not be read. The original record is kept.",
+    "zh-Hans": "本地选择读取失败，原记录已保留。"
+  },
   "本地配置 · 执行未接真实服务": {
     "en": "Local configuration · real execution disconnected",
     "zh-Hans": "本地配置 · 执行未接真实服务"
@@ -1274,6 +2646,10 @@
   "本机保存 · 尚未同步": {
     "en": "Saved locally · not synced",
     "zh-Hans": "本机保存 · 尚未同步"
+  },
+  "本机保存未完成": {
+    "en": "Local save did not complete",
+    "zh-Hans": "本机保存未完成"
   },
   "本机合成 Facade · 真实云模型未验证": {
     "en": "Local synthetic facade · real cloud model unverified",
@@ -1303,6 +2679,18 @@
     "en": "Local private data available",
     "zh-Hans": "本机私有数据可用"
   },
+  "本次原决定编号": {
+    "en": "This original decision ID",
+    "zh-Hans": "本次原决定编号"
+  },
+  "本次原控制编号": {
+    "en": "Original ID for this control",
+    "zh-Hans": "本次原控制编号"
+  },
+  "本次工作范围或账号已变化，请重新核对后确认。": {
+    "en": "The work scope or account has changed. Review it before confirming.",
+    "zh-Hans": "本次工作范围或账号已变化，请重新核对后确认。"
+  },
   "本次已允许": {
     "en": "Allowed this time",
     "zh-Hans": "本次已允许"
@@ -1327,6 +2715,14 @@
     "en": "This run completed",
     "zh-Hans": "本轮已完成"
   },
+  "权重": {
+    "en": "Weight",
+    "zh-Hans": "权重"
+  },
+  "权重须为 0–100，且总权重不能为零。": {
+    "en": "Weights must be 0–100 and their total must be greater than zero.",
+    "zh-Hans": "权重须为 0–100，且总权重不能为零。"
+  },
   "权限": {
     "en": "Permissions",
     "zh-Hans": "权限"
@@ -1335,9 +2731,49 @@
     "en": "Sources and individual permissions",
     "zh-Hans": "来源与分项权限"
   },
+  "来源与说明": {
+    "en": "Sources and notes",
+    "zh-Hans": "来源与说明"
+  },
+  "来源信息尚未验证，原正文仍可阅读。": {
+    "en": "Source information could not be verified. The original report is still readable.",
+    "zh-Hans": "来源信息尚未验证，原正文仍可阅读。"
+  },
+  "来源沿用原版本快照，不为改后正文重新担保。": {
+    "en": "Sources retain the original version snapshots. They do not newly verify the edited text.",
+    "zh-Hans": "来源沿用原版本快照，不为改后正文重新担保。"
+  },
   "来源版本 {0} · URL 尚未实际读取": {
     "en": "Source revision {0} · URL has not been fetched",
     "zh-Hans": "来源版本 {0} · URL 尚未实际读取"
+  },
+  "来源编号": {
+    "en": "Source ID",
+    "zh-Hans": "来源编号"
+  },
+  "来源详情": {
+    "en": "Source details",
+    "zh-Hans": "来源详情"
+  },
+  "来源：用户原对话消息": {
+    "en": "Source: original user message",
+    "zh-Hans": "来源：用户原对话消息"
+  },
+  "来源：用户明确记忆命令": {
+    "en": "Source: explicit user memory instruction",
+    "zh-Hans": "来源：用户明确记忆命令"
+  },
+  "查看、编辑或暂停本机待发消息": {
+    "en": "Review, edit or pause messages queued on this device",
+    "zh-Hans": "查看、编辑或暂停本机待发消息"
+  },
+  "查看完整表": {
+    "en": "View full table",
+    "zh-Hans": "查看完整表"
+  },
+  "查看审批事项": {
+    "en": "Review decisions",
+    "zh-Hans": "查看审批事项"
   },
   "查看审批预览": {
     "en": "View approval preview",
@@ -1347,13 +2783,73 @@
     "en": "View work memory",
     "zh-Hans": "查看工作记忆"
   },
+  "查看已读来源": {
+    "en": "View read sources",
+    "zh-Hans": "查看已读来源"
+  },
+  "查看成果": {
+    "en": "View result",
+    "zh-Hans": "查看成果"
+  },
+  "查看数据表": {
+    "en": "View data table",
+    "zh-Hans": "查看数据表"
+  },
+  "查看更正前来源": {
+    "en": "View the source before correction",
+    "zh-Hans": "查看更正前来源"
+  },
   "查看本地联调状态": {
     "en": "View local test status",
     "zh-Hans": "查看本地联调状态"
   },
+  "查看计划": {
+    "en": "View plan",
+    "zh-Hans": "查看计划"
+  },
+  "查看记忆来源": {
+    "en": "View memory source",
+    "zh-Hans": "查看记忆来源"
+  },
+  "查看输入详情": {
+    "en": "View input details",
+    "zh-Hans": "查看输入详情"
+  },
   "查看进度与恢复操作": {
     "en": "View progress and recovery options",
     "zh-Hans": "查看进度与恢复操作"
+  },
+  "标题": {
+    "en": "Title",
+    "zh-Hans": "标题"
+  },
+  "标题、摘要和正文不能为空，也不能含不支持的控制字符。": {
+    "en": "Title, summary, and content must be nonempty and contain no unsupported control characters.",
+    "zh-Hans": "标题、摘要和正文不能为空，也不能含不支持的控制字符。"
+  },
+  "标题最多 160 字，修改草稿会保留。": {
+    "en": "The title allows up to 160 characters. Your edit draft is retained.",
+    "zh-Hans": "标题最多 160 字，修改草稿会保留。"
+  },
+  "核对原修改": {
+    "en": "Check original amendment",
+    "zh-Hans": "核对原修改"
+  },
+  "核对原决定": {
+    "en": "Check original decision",
+    "zh-Hans": "核对原决定"
+  },
+  "核对原控制": {
+    "en": "Check original control",
+    "zh-Hans": "核对原控制"
+  },
+  "核对原记忆操作": {
+    "en": "Check original memory change",
+    "zh-Hans": "核对原记忆操作"
+  },
+  "核对并保存记忆": {
+    "en": "Review and save memory",
+    "zh-Hans": "核对并保存记忆"
   },
   "核验 {0} 次": {
     "en": "Verified {0} times",
@@ -1378,6 +2874,26 @@
   "检查转写": {
     "en": "Review transcript",
     "zh-Hans": "检查转写"
+  },
+  "模型未连接": {
+    "en": "Model not connected",
+    "zh-Hans": "模型未连接"
+  },
+  "模型次数只约束已受理的这份工作；理解原请求的本次对话调用另受现有许可约束。": {
+    "en": "The model limit applies to the accepted work. The conversation call that interprets the original request uses the existing consent.",
+    "zh-Hans": "模型次数只约束已受理的这份工作；理解原请求的本次对话调用另受现有许可约束。"
+  },
+  "模型请求": {
+    "en": "Model request",
+    "zh-Hans": "模型请求"
+  },
+  "模型连接": {
+    "en": "Model connection",
+    "zh-Hans": "模型连接"
+  },
+  "模型连接设置": {
+    "en": "Model connection settings",
+    "zh-Hans": "模型连接设置"
   },
   "模型选择 · 配置": {
     "en": "Model selection · configuration",
@@ -1419,21 +2935,81 @@
     "en": "Templates",
     "zh-Hans": "模板"
   },
+  "正在保存…": {
+    "en": "Saving…",
+    "zh-Hans": "正在保存…"
+  },
+  "正在保存本地修改草稿…": {
+    "en": "Saving your edit draft locally…",
+    "zh-Hans": "正在保存本地修改草稿…"
+  },
+  "正在保存本地输入…": {
+    "en": "Saving input locally…",
+    "zh-Hans": "正在保存本地输入…"
+  },
+  "正在保存确认…": {
+    "en": "Saving confirmation…",
+    "zh-Hans": "正在保存确认…"
+  },
+  "正在准备交互内容…": {
+    "en": "Preparing interactive content…",
+    "zh-Hans": "正在准备交互内容…"
+  },
+  "正在准备发送…": {
+    "en": "Preparing to send…",
+    "zh-Hans": "正在准备发送…"
+  },
   "正在取消": {
     "en": "Cancelling",
     "zh-Hans": "正在取消"
+  },
+  "正在处理图片…": {
+    "en": "Processing the image…",
+    "zh-Hans": "正在处理图片…"
+  },
+  "正在复核登录…": {
+    "en": "Checking your session…",
+    "zh-Hans": "正在复核登录…"
+  },
+  "正在恢复本地选择…": {
+    "en": "Restoring local choices…",
+    "zh-Hans": "正在恢复本地选择…"
+  },
+  "正在提交": {
+    "en": "Submitting",
+    "zh-Hans": "正在提交"
+  },
+  "正在提交原修改，请勿重复发送。": {
+    "en": "Submitting the original revision. Do not send it again.",
+    "zh-Hans": "正在提交原修改，请勿重复发送。"
   },
   "正在播放": {
     "en": "Playing",
     "zh-Hans": "正在播放"
   },
+  "正在本机保存": {
+    "en": "Saving on this device",
+    "zh-Hans": "正在本机保存"
+  },
   "正在检查本地连接": {
     "en": "Checking local connection",
     "zh-Hans": "正在检查本地连接"
   },
+  "正在检查连接": {
+    "en": "Checking connection",
+    "zh-Hans": "正在检查连接"
+  },
   "正在模拟回复": {
     "en": "Simulated reply streaming",
     "zh-Hans": "正在模拟回复"
+  },
+  "正在申请控制，尚未确认结果": {
+    "en": "Requesting control; outcome not yet confirmed",
+    "zh-Hans": "正在申请控制，尚未确认结果"
+  },
+  "正在确认工作约定": {
+    "en": "Confirming work agreement",
+    "zh-Hans": "正在确认工作约定"
   },
   "正在等待模拟回复…": {
     "en": "Waiting for simulated reply…",
@@ -1443,6 +3019,58 @@
     "en": "Reading synthetic results",
     "zh-Hans": "正在读取合成成果"
   },
+  "正在读取图片处理方式…": {
+    "en": "Reading image processing details…",
+    "zh-Hans": "正在读取图片处理方式…"
+  },
+  "正在读取审批事项": {
+    "en": "Reading decisions",
+    "zh-Hans": "正在读取审批事项"
+  },
+  "正在读取工作状态": {
+    "en": "Reading task status",
+    "zh-Hans": "正在读取工作状态"
+  },
+  "正在读取成果": {
+    "en": "Reading artifact",
+    "zh-Hans": "正在读取成果"
+  },
+  "正在读取所选图片…": {
+    "en": "Reading the selected image…",
+    "zh-Hans": "正在读取所选图片…"
+  },
+  "正在读取计划": {
+    "en": "Reading plan",
+    "zh-Hans": "正在读取计划"
+  },
+  "正在进行": {
+    "en": "In progress",
+    "zh-Hans": "正在进行"
+  },
+  "正在重新连接": {
+    "en": "Reconnecting",
+    "zh-Hans": "正在重新连接"
+  },
+  "正文": {
+    "en": "Content",
+    "zh-Hans": "正文"
+  },
+  "正文最多 16000 字，修改草稿会保留。": {
+    "en": "The content allows up to 16,000 characters. Your edit draft is retained.",
+    "zh-Hans": "正文最多 16000 字，修改草稿会保留。"
+  },
+  "此成果版本尚未保存在本机。请返回原工作读取。": {
+    "en": "This result version is not stored locally. Return to the original task to read it.",
+    "zh-Hans": "此成果版本尚未保存在本机。请返回原工作读取。"
+  },
+  "此来源已停用于记忆提取，保留原文供核对。": {
+    "en": "This source is no longer used to extract memory. Its original text is kept for review.",
+    "zh-Hans": "此来源已停用于记忆提取，保留原文供核对。"
+  },
+  "此次修改尚未保存，原输入仍保留。请先读取当前成果。": {
+    "en": "This edit has not been saved. Your input is retained. Read the current artifact first.",
+    "zh-Hans": "此次修改尚未保存，原输入仍保留。请先读取当前成果。"
+  },
   "此版本尚未记录已读": {
     "en": "This version has no saved read receipt",
     "zh-Hans": "此版本尚未记录已读"
@@ -1451,9 +3079,25 @@
     "en": "This version has been read",
     "zh-Hans": "此版本已读"
   },
+  "此版本无法决定这类事项，保留原始内容供查看。": {
+    "en": "This version cannot decide this item type. Its original content remains readable.",
+    "zh-Hans": "此版本无法决定这类事项，保留原始内容供查看。"
+  },
   "此版本未读": {
     "en": "This version is unread",
     "zh-Hans": "此版本未读"
+  },
+  "此设备保存对话副本；发送的消息会交给已连接的云端服务处理。": {
+    "en": "This device stores a conversation copy. Sent messages are processed by the connected cloud service.",
+    "zh-Hans": "此设备保存对话副本；发送的消息会交给已连接的云端服务处理。"
+  },
+  "此轮回复未完成": {
+    "en": "This reply did not complete",
+    "zh-Hans": "此轮回复未完成"
+  },
+  "步骤数量": {
+    "en": "Step count",
+    "zh-Hans": "步骤数量"
   },
   "段落": {
     "en": "Paragraph",
@@ -1471,6 +3115,14 @@
     "en": "No work memory",
     "zh-Hans": "没有工作记忆"
   },
+  "没有待发消息": {
+    "en": "No queued messages",
+    "zh-Hans": "没有待发消息"
+  },
+  "没有找到对话": {
+    "en": "No conversations found",
+    "zh-Hans": "没有找到对话"
+  },
   "没有模拟在线设备。电脑配对、云账号和心跳接口尚未接入。": {
     "en": "No devices are shown as falsely online. Computer pairing, cloud accounts and heartbeat APIs are disconnected.",
     "zh-Hans": "没有模拟在线设备。电脑配对、云账号和心跳接口尚未接入。"
@@ -1479,9 +3131,25 @@
     "en": "The original operation ID and input configuration are reused. The previous failed attempt is kept separately.",
     "zh-Hans": "沿用原操作 ID 与输入配置，旧失败记录单独保留。"
   },
+  "沿用给定材料，改后正文未经重新核对。": {
+    "en": "Uses the supplied material. The edited text has not been verified again.",
+    "zh-Hans": "沿用给定材料，改后正文未经重新核对。"
+  },
   "浅色 · 本地补充": {
     "en": "Light · local addition",
     "zh-Hans": "浅色 · 本地补充"
+  },
+  "消息": {
+    "en": "Message",
+    "zh-Hans": "消息"
+  },
+  "消息尚未发送，需要确认处理方式。": {
+    "en": "This message has not been sent. Review how it will be processed.",
+    "zh-Hans": "消息尚未发送，需要确认处理方式。"
+  },
+  "消息过长。请缩短后再发送（长度上限 8000）。": {
+    "en": "Message too long. Shorten it before sending (limit: 8000).",
+    "zh-Hans": "消息过长。请缩短后再发送（长度上限 8000）。"
   },
   "深色": {
     "en": "Dark",
@@ -1499,9 +3167,17 @@
     "en": "Clean up documents",
     "zh-Hans": "清理文档"
   },
+  "清除搜索": {
+    "en": "Clear search",
+    "zh-Hans": "清除搜索"
+  },
   "演示数据分区": {
     "en": "Demo data partition",
     "zh-Hans": "演示数据分区"
+  },
+  "点击即可开始。此设备会安全保存体验身份，回来时继续你的对话。": {
+    "en": "Tap to get started. This device securely saves your experience account so you can return to your conversations.",
+    "zh-Hans": "点击即可开始。此设备会安全保存体验身份，回来时继续你的对话。"
   },
   "版本 v{0} · 附件：无 · 仅此一次": {
     "en": "Version v{0} · no attachment · one time only",
@@ -1511,9 +3187,25 @@
     "en": "Version {0}",
     "zh-Hans": "版本 {0}"
   },
+  "版本 {0} ({1})": {
+    "en": "Version {0} ({1})",
+    "zh-Hans": "版本 {0} ({1})"
+  },
   "版本与数据": {
     "en": "Version and data",
     "zh-Hans": "版本与数据"
+  },
+  "版本与核对信息": {
+    "en": "Version and verification",
+    "zh-Hans": "版本与核对信息"
+  },
+  "状态": {
+    "en": "Status",
+    "zh-Hans": "状态"
+  },
+  "状态待确认": {
+    "en": "Status unconfirmed",
+    "zh-Hans": "状态待确认"
   },
   "独立身份与冻结请求": {
     "en": "Separate identities and frozen request",
@@ -1527,9 +3219,17 @@
     "en": "The environment is fixed. Switching the sidebar later does not move this task.",
     "zh-Hans": "环境已固定，后续切换侧栏不会改变这件任务。"
   },
+  "环境编号": {
+    "en": "Environment ID",
+    "zh-Hans": "环境编号"
+  },
   "生成周报": {
     "en": "Create weekly report",
     "zh-Hans": "生成周报"
+  },
+  "用户已确认": {
+    "en": "Confirmed by you",
+    "zh-Hans": "用户已确认"
   },
   "用户明确要求 · revision {0}": {
     "en": "Explicit user requirement · revision {0}",
@@ -1547,6 +3247,10 @@
     "en": "Interface language",
     "zh-Hans": "界面语言"
   },
+  "登录": {
+    "en": "Sign in",
+    "zh-Hans": "登录"
+  },
   "目录": {
     "en": "Catalog",
     "zh-Hans": "目录"
@@ -1563,6 +3267,18 @@
     "en": "Catalog reference version v2.0.3",
     "zh-Hans": "目录参考版本 v2.0.3"
   },
+  "目标": {
+    "en": "Goal",
+    "zh-Hans": "目标"
+  },
+  "目标或参数已有新版，这份事项不能批准。": {
+    "en": "The target or parameters have changed. This item cannot be approved.",
+    "zh-Hans": "目标或参数已有新版，这份事项不能批准。"
+  },
+  "目标最多 4000 字，修改草稿已保留。请缩短后保存修改。": {
+    "en": "The goal is limited to 4000 characters. Your amendment draft is kept; shorten it to submit.",
+    "zh-Hans": "目标最多 4000 字，修改草稿已保留。请缩短后保存修改。"
+  },
   "目的地": {
     "en": "Destination",
     "zh-Hans": "目的地"
@@ -1570,6 +3286,10 @@
   "目的地：{0}": {
     "en": "Destination: {0}",
     "zh-Hans": "目的地：{0}"
+  },
+  "相对开始时间（秒）": {
+    "en": "Offset from start (seconds)",
+    "zh-Hans": "相对开始时间（秒）"
   },
   "相机和相册仅在你主动选择对应入口时使用系统选择器；不会在启动时申请权限。图片只保存在当前本地项目，设备采集路径尚需真机验收。": {
     "en": "Camera and photos use the system picker only when you choose them. No permissions are requested at launch. Images stay in this local project; device capture still needs testing.",
@@ -1583,13 +3303,53 @@
     "en": "No real provider is configured. Remote execution is marked as simulated.",
     "zh-Hans": "真实 Provider 未配置，远端执行均标明模拟。"
   },
+  "真实模型尚未配置；不会使用演示回复代替模型。": {
+    "en": "A real model is not configured. Demo replies will not replace it.",
+    "zh-Hans": "真实模型尚未配置；不会使用演示回复代替模型。"
+  },
   "短稿准备好了，\n随时可以继续改。": {
     "en": "Your draft is ready.\nYou can keep revising it.",
     "zh-Hans": "短稿准备好了，\n随时可以继续改。"
   },
+  "确认": {
+    "en": "Confirm",
+    "zh-Hans": "确认"
+  },
+  "确认发送状态": {
+    "en": "Verifying send status",
+    "zh-Hans": "确认发送状态"
+  },
+  "确认发送许可": {
+    "en": "Review send permission",
+    "zh-Hans": "确认发送许可"
+  },
+  "确认后才提交这一次变更；关闭会保留草稿。": {
+    "en": "Confirm to submit this change. Closing keeps the draft.",
+    "zh-Hans": "确认后才提交这一次变更；关闭会保留草稿。"
+  },
+  "确认后返回输入区，点击发送才会传输图片。": {
+    "en": "Confirmation returns you to the composer. The image is transmitted only when you tap Send.",
+    "zh-Hans": "确认后返回输入区，点击发送才会传输图片。"
+  },
+  "确认图片处理方式": {
+    "en": "Review image processing",
+    "zh-Hans": "确认图片处理方式"
+  },
+  "确认工作约定": {
+    "en": "Confirm work agreement",
+    "zh-Hans": "确认工作约定"
+  },
   "确认已到期": {
     "en": "Confirmation expired",
     "zh-Hans": "确认已到期"
+  },
+  "确认并提交原请求": {
+    "en": "Confirm and submit original request",
+    "zh-Hans": "确认并提交原请求"
+  },
+  "确认提交这次记忆变更": {
+    "en": "Confirm this memory change",
+    "zh-Hans": "确认提交这次记忆变更"
   },
   "确认本机合成预览": {
     "en": "Confirm local synthetic preview",
@@ -1603,9 +3363,21 @@
     "en": "Confirmation status: {0}",
     "zh-Hans": "确认状态：{0}"
   },
+  "确认记忆变更": {
+    "en": "Review memory change",
+    "zh-Hans": "确认记忆变更"
+  },
   "确认这一次模拟操作": {
     "en": "Confirm this one simulated action",
     "zh-Hans": "确认这一次模拟操作"
+  },
+  "确认这条候选": {
+    "en": "Confirm this candidate",
+    "zh-Hans": "确认这条候选"
+  },
+  "确认退出": {
+    "en": "Confirm sign-out",
+    "zh-Hans": "确认退出"
   },
   "示例转写 · 模拟": {
     "en": "Example transcript · simulated",
@@ -1615,9 +3387,21 @@
     "en": "Example request",
     "zh-Hans": "示例问法"
   },
+  "离开 App 后不会发送排队中的消息。任务后台执行的状态需要重新读取确认。": {
+    "en": "Queued messages are not sent after you leave the app. Read task status again to confirm background progress.",
+    "zh-Hans": "离开 App 后不会发送排队中的消息。任务后台执行的状态需要重新读取确认。"
+  },
   "移到本地回收站？消息和 ID 可恢复。": {
     "en": "Move to local trash? Messages and IDs can be restored.",
     "zh-Hans": "移到本地回收站？消息和 ID 可恢复。"
+  },
+  "移除后续消息": {
+    "en": "Remove follow-up message",
+    "zh-Hans": "移除后续消息"
+  },
+  "移除图片": {
+    "en": "Remove image",
+    "zh-Hans": "移除图片"
   },
   "稿件已变化，请重新预览": {
     "en": "Draft changed; preview again",
@@ -1627,9 +3411,25 @@
     "en": "Idle",
     "zh-Hans": "空闲"
   },
+  "等待你的决定；尚未执行。": {
+    "en": "Awaiting your decision; execution has not occurred.",
+    "zh-Hans": "等待你的决定；尚未执行。"
+  },
+  "等待反馈": {
+    "en": "Awaiting feedback",
+    "zh-Hans": "等待反馈"
+  },
+  "等待后台保存任务…": {
+    "en": "Waiting for the server to save the task…",
+    "zh-Hans": "等待后台保存任务…"
+  },
   "等待开始": {
     "en": "Waiting to start",
     "zh-Hans": "等待开始"
+  },
+  "等待当前回复": {
+    "en": "Waiting for the current reply",
+    "zh-Hans": "等待当前回复"
   },
   "等待本次确认": {
     "en": "Waiting for this confirmation",
@@ -1638,6 +3438,10 @@
   "等待模拟回复": {
     "en": "Waiting for simulated reply",
     "zh-Hans": "等待模拟回复"
+  },
+  "等待许可": {
+    "en": "Awaiting permission",
+    "zh-Hans": "等待许可"
   },
   "等待读回原任务": {
     "en": "Waiting to read original task",
@@ -1651,9 +3455,25 @@
     "en": "Waiting to retry",
     "zh-Hans": "等待重试"
   },
+  "筛选表格": {
+    "en": "Filter table",
+    "zh-Hans": "筛选表格"
+  },
   "类型不匹配。": {
     "en": "Content type does not match.",
     "zh-Hans": "类型不匹配。"
+  },
+  "精确开始时间": {
+    "en": "Exact start time",
+    "zh-Hans": "精确开始时间"
+  },
+  "精确绑定与核对信息": {
+    "en": "Exact item and verification",
+    "zh-Hans": "精确绑定与核对信息"
+  },
+  "精确结束时间": {
+    "en": "Exact end time",
+    "zh-Hans": "精确结束时间"
   },
   "系统中文音色": {
     "en": "System Chinese voice",
@@ -1675,6 +3495,14 @@
     "en": "Collect material",
     "zh-Hans": "素材采集"
   },
+  "累计执行预算": {
+    "en": "Total execution time limit",
+    "zh-Hans": "累计执行预算"
+  },
+  "累计执行预算超过截止前的剩余时间，请调整约定。": {
+    "en": "The execution limit exceeds the remaining time. Adjust the agreement.",
+    "zh-Hans": "累计执行预算超过截止前的剩余时间，请调整约定。"
+  },
   "纯 Fixture · 无网络与真实模型": {
     "en": "Pure fixture · no network or real model",
     "zh-Hans": "纯 Fixture · 无网络与真实模型"
@@ -1687,9 +3515,21 @@
     "en": "End delegation",
     "zh-Hans": "结束委托"
   },
+  "结束时间": {
+    "en": "Ends",
+    "zh-Hans": "结束时间"
+  },
   "结束本句": {
     "en": "Finish this utterance",
     "zh-Hans": "结束本句"
+  },
+  "结束条件": {
+    "en": "Stop conditions",
+    "zh-Hans": "结束条件"
+  },
+  "结果尚未确认": {
+    "en": "Outcome unconfirmed",
+    "zh-Hans": "结果尚未确认"
   },
   "结果未知": {
     "en": "Outcome unknown",
@@ -1702,6 +3542,10 @@
   "继续": {
     "en": "Continue",
     "zh-Hans": "继续"
+  },
+  "继续发送后续消息": {
+    "en": "Resume follow-up messages",
+    "zh-Hans": "继续发送后续消息"
   },
   "继续在跟进": {
     "en": "Still following up",
@@ -1726,6 +3570,18 @@
   "编辑工作约定": {
     "en": "Edit work agreement",
     "zh-Hans": "编辑工作约定"
+  },
+  "编辑并暂停队列": {
+    "en": "Edit and pause queue",
+    "zh-Hans": "编辑并暂停队列"
+  },
+  "编辑待发消息": {
+    "en": "Edit queued message",
+    "zh-Hans": "编辑待发消息"
+  },
+  "编辑成果": {
+    "en": "Edit artifact",
+    "zh-Hans": "编辑成果"
   },
   "编辑目标、要求与停止条件": {
     "en": "Edit goal, requirements and stop conditions",
@@ -1763,25 +3619,133 @@
     "en": "Custom commands",
     "zh-Hans": "自定义命令"
   },
+  "范围：仅当前对话或原记录条件": {
+    "en": "Scope: this conversation or the original entry conditions",
+    "zh-Hans": "范围：仅当前对话或原记录条件"
+  },
+  "范围：当前工作区的对话": {
+    "en": "Scope: conversations in this workspace",
+    "zh-Hans": "范围：当前工作区的对话"
+  },
+  "范围：按原记录条件使用": {
+    "en": "Scope: the original entry conditions",
+    "zh-Hans": "范围：按原记录条件使用"
+  },
   "草稿": {
     "en": "Draft",
     "zh-Hans": "草稿"
+  },
+  "草稿 · ": {
+    "en": "Draft · ",
+    "zh-Hans": "草稿 · "
   },
   "表格，可左右滚动查看所有列": {
     "en": "Table; scroll horizontally to see all columns",
     "zh-Hans": "表格，可左右滚动查看所有列"
   },
+  "解锁后查看对话": {
+    "en": "Unlock to view conversations",
+    "zh-Hans": "解锁后查看对话"
+  },
+  "计划哈希": {
+    "en": "Plan hash",
+    "zh-Hans": "计划哈希"
+  },
+  "计划尚未读取。": {
+    "en": "The plan has not been read yet.",
+    "zh-Hans": "计划尚未读取。"
+  },
+  "计划已变化，这份事项不能批准。": {
+    "en": "The plan has changed. This item cannot be approved.",
+    "zh-Hans": "计划已变化，这份事项不能批准。"
+  },
+  "计划已更新；草稿仍保留，请核对版本。": {
+    "en": "The plan changed. Your draft is kept; check the version.",
+    "zh-Hans": "计划已更新；草稿仍保留，请核对版本。"
+  },
+  "计划版本": {
+    "en": "Plan version",
+    "zh-Hans": "计划版本"
+  },
   "让重要的事，继续向前。": {
     "en": "Keep important work moving.",
     "zh-Hans": "让重要的事，继续向前。"
+  },
+  "记忆": {
+    "en": "Memory",
+    "zh-Hans": "记忆"
+  },
+  "记忆主题": {
+    "en": "Memory topic",
+    "zh-Hans": "记忆主题"
+  },
+  "记忆内容过长或格式不符，请精简后重新确认。": {
+    "en": "This memory is too long or has an invalid format. Shorten it and review again.",
+    "zh-Hans": "记忆内容过长或格式不符，请精简后重新确认。"
+  },
+  "记忆利用已关闭": {
+    "en": "Memory use is off",
+    "zh-Hans": "记忆利用已关闭"
+  },
+  "记忆利用已开启": {
+    "en": "Memory use is on",
+    "zh-Hans": "记忆利用已开启"
+  },
+  "记忆变更已获服务回执。": {
+    "en": "The service confirmed this memory change.",
+    "zh-Hans": "记忆变更已获服务回执。"
   },
   "记忆只来自你明确保存的要求，作用于对应委托。": {
     "en": "Memory comes only from requirements you explicitly save, and applies to its delegation.",
     "zh-Hans": "记忆只来自你明确保存的要求，作用于对应委托。"
   },
+  "记忆已变化，请读取最新版本后重新核对。": {
+    "en": "Memory has changed. Read the latest version and review again.",
+    "zh-Hans": "记忆已变化，请读取最新版本后重新核对。"
+  },
+  "记忆操作尚未发送，草稿会保留。": {
+    "en": "The memory change was not sent. The draft is kept.",
+    "zh-Hans": "记忆操作尚未发送，草稿会保留。"
+  },
+  "记忆服务尚未连接，草稿会保留。": {
+    "en": "The memory service is unavailable. The draft is kept.",
+    "zh-Hans": "记忆服务尚未连接，草稿会保留。"
+  },
+  "记忆来源": {
+    "en": "Memory source",
+    "zh-Hans": "记忆来源"
+  },
+  "记忆用于已选择范围的后续对话。候选须确认；关闭利用不会删除原记录。": {
+    "en": "Memory is used in future conversations within its selected scope. Candidates need confirmation. Turning memory off keeps saved entries.",
+    "zh-Hans": "记忆用于已选择范围的后续对话。候选须确认；关闭利用不会删除原记录。"
+  },
+  "记忆范围已变化，不能恢复这份工作。": {
+    "en": "The memory scope has changed. This task cannot resume.",
+    "zh-Hans": "记忆范围已变化，不能恢复这份工作。"
+  },
+  "记忆草稿尚未保存，请重新核对。": {
+    "en": "The memory draft has not been saved. Please review it.",
+    "zh-Hans": "记忆草稿尚未保存，请重新核对。"
+  },
+  "记忆身份或回执不匹配，尚未确认结果。": {
+    "en": "The memory identity or receipt does not match. The result is unconfirmed.",
+    "zh-Hans": "记忆身份或回执不匹配，尚未确认结果。"
+  },
+  "许可版本": {
+    "en": "Grant epoch",
+    "zh-Hans": "许可版本"
+  },
+  "设备与日历身份": {
+    "en": "Device and calendar",
+    "zh-Hans": "设备与日历身份"
+  },
   "设备报告支持，尚需实际验收": {
     "en": "Device reports support; device testing is still required",
     "zh-Hans": "设备报告支持，尚需实际验收"
+  },
+  "设备编号": {
+    "en": "Device ID",
+    "zh-Hans": "设备编号"
   },
   "设备音频路径与离线表现尚未验收。当前仅允许内置公开示例；导入文件、会话和私有成果的朗读暂不可用。": {
     "en": "Device audio and offline behavior have not been accepted. Only the built-in public sample can play. Imported files, conversations and private artifacts cannot be read aloud yet.",
@@ -1799,6 +3763,14 @@
     "en": "Recognition timed out. The transcript is kept for review.",
     "zh-Hans": "识别超时，保留已转写文字供检查。"
   },
+  "诊断": {
+    "en": "Diagnostics",
+    "zh-Hans": "诊断"
+  },
+  "该内容暂时无法展示。原回答仍可阅读，请从原工作查看完整成果。": {
+    "en": "This content is unavailable. The original answer remains readable; open the original work for the complete result.",
+    "zh-Hans": "该内容暂时无法展示。原回答仍可阅读，请从原工作查看完整成果。"
+  },
   "该格式暂不支持预览": {
     "en": "Preview is unavailable for this format",
     "zh-Hans": "该格式暂不支持预览"
@@ -1815,6 +3787,10 @@
     "en": "Speak to your assistant",
     "zh-Hans": "说给助理听"
   },
+  "请 Agent 修改这版": {
+    "en": "Ask Agent to revise this version",
+    "zh-Hans": "请 Agent 修改这版"
+  },
   "请主动选择": {
     "en": "Choose a voice",
     "zh-Hans": "请主动选择"
@@ -1827,17 +3803,57 @@
     "en": "Reopen it from a conversation in this environment.",
     "zh-Hans": "请从当前环境的会话重新打开。"
   },
+  "请保留此设备的登录状态。退出或更换设备后，暂时无法找回体验身份。": {
+    "en": "Keep this device signed in. Signing out or changing devices currently prevents recovery of this experience account.",
+    "zh-Hans": "请保留此设备的登录状态。退出或更换设备后，暂时无法找回体验身份。"
+  },
   "请先在设置中开启演示数据分区，并选择本机环境。用户分区不会发送给联调服务。": {
     "en": "Enable the demo workspace in Settings and select the local environment first. The user workspace is never sent to this test service.",
     "zh-Hans": "请先在设置中开启演示数据分区，并选择本机环境。用户分区不会发送给联调服务。"
+  },
+  "请先完成图片处理，或移除图片后发送文字。": {
+    "en": "Finish image processing, or remove the image to send text.",
+    "zh-Hans": "请先完成图片处理，或移除图片后发送文字。"
+  },
+  "请先开启记忆并读取最新状态，再确认保存。": {
+    "en": "Turn on memory use and read the latest state before saving.",
+    "zh-Hans": "请先开启记忆并读取最新状态，再确认保存。"
+  },
+  "请先确认此对话的文字处理方式。": {
+    "en": "Confirm text processing for this conversation first.",
+    "zh-Hans": "请先确认此对话的文字处理方式。"
+  },
+  "请先读取这项工作的最新计划，再选择要继续的成果版本。": {
+    "en": "Read the current plan, then choose the result version to continue.",
+    "zh-Hans": "请先读取这项工作的最新计划，再选择要继续的成果版本。"
   },
   "请在 iOS 设备上验证本地识别与权限。": {
     "en": "Verify on-device recognition and permissions on an iOS device.",
     "zh-Hans": "请在 iOS 设备上验证本地识别与权限。"
   },
+  "请填写记忆主题与内容。": {
+    "en": "Enter a memory topic and content.",
+    "zh-Hans": "请填写记忆主题与内容。"
+  },
   "请求已保存 · 尚未提交": {
     "en": "Request saved · not submitted",
     "zh-Hans": "请求已保存 · 尚未提交"
+  },
+  "请添加你想问的问题。": {
+    "en": "Add the question you want to ask.",
+    "zh-Hans": "请添加你想问的问题。"
+  },
+  "请等待图片处理完成。": {
+    "en": "Wait for image processing to finish.",
+    "zh-Hans": "请等待图片处理完成。"
+  },
+  "请输入不超过 8000 字符的内容。": {
+    "en": "Enter up to 8,000 characters.",
+    "zh-Hans": "请输入不超过 8000 字符的内容。"
+  },
+  "请输入范围内的数值；步骤数量须为整数。": {
+    "en": "Enter numbers within the allowed range; the step count must be an integer.",
+    "zh-Hans": "请输入范围内的数值；步骤数量须为整数。"
   },
   "请返回当前环境目录。": {
     "en": "Return to this environment's catalog.",
@@ -1851,13 +3867,65 @@
     "en": "Select a workspace.",
     "zh-Hans": "请选择工作空间。"
   },
+  "读取任务进展…": {
+    "en": "Reading task progress…",
+    "zh-Hans": "读取任务进展…"
+  },
   "读取原任务": {
     "en": "Read original task",
     "zh-Hans": "读取原任务"
   },
+  "读取原请求进展": {
+    "en": "Read original request",
+    "zh-Hans": "读取原请求进展"
+  },
+  "读取回执信息": {
+    "en": "Read receipt information",
+    "zh-Hans": "读取回执信息"
+  },
+  "读取当前成果": {
+    "en": "Read current artifact",
+    "zh-Hans": "读取当前成果"
+  },
+  "读取我给的公开链接": {
+    "en": "Read the public links I provided",
+    "zh-Hans": "读取我给的公开链接"
+  },
+  "读取摘录": {
+    "en": "Read excerpt",
+    "zh-Hans": "读取摘录"
+  },
+  "读取时间": {
+    "en": "Read time",
+    "zh-Hans": "读取时间"
+  },
+  "读取最新事项": {
+    "en": "Read latest items",
+    "zh-Hans": "读取最新事项"
+  },
+  "读取最新状态": {
+    "en": "Read latest status",
+    "zh-Hans": "读取最新状态"
+  },
+  "读取最新计划": {
+    "en": "Read latest plan",
+    "zh-Hans": "读取最新计划"
+  },
+  "读取最新记忆": {
+    "en": "Read latest memory",
+    "zh-Hans": "读取最新记忆"
+  },
+  "读取最新进展": {
+    "en": "Read latest progress",
+    "zh-Hans": "读取最新进展"
+  },
   "读取本机文件": {
     "en": "Reading local file",
     "zh-Hans": "读取本机文件"
+  },
+  "读取编号": {
+    "en": "Read ID",
+    "zh-Hans": "读取编号"
   },
   "读回原审批回执": {
     "en": "Read original approval receipt",
@@ -1870,6 +3938,10 @@
   "调试：模拟回复场景": {
     "en": "Debug: simulated reply scenario",
     "zh-Hans": "调试：模拟回复场景"
+  },
+  "账户编号": {
+    "en": "Account ID",
+    "zh-Hans": "账户编号"
   },
   "跟随系统": {
     "en": "Follow system",
@@ -1887,9 +3959,29 @@
     "en": "Input stays in this conversation. Expert and skill selections record work configuration.",
     "zh-Hans": "输入会保存在当前会话。选择专家与技能可记录工作配置。"
   },
+  "输入已更新，请保留当前内容后重试。": {
+    "en": "Your input changed. Keep it before trying again.",
+    "zh-Hans": "输入已更新，请保留当前内容后重试。"
+  },
+  "输入详情": {
+    "en": "Input details",
+    "zh-Hans": "输入详情"
+  },
   "过程与进度来自当前任务记录；没有远程工具执行。": {
     "en": "Progress comes from this task record. No remote tools are running.",
     "zh-Hans": "过程与进度来自当前任务记录；没有远程工具执行。"
+  },
+  "运行冻结合成报告": {
+    "en": "Run frozen synthetic report",
+    "zh-Hans": "运行冻结合成报告"
+  },
+  "返回对话底部，继续跟随新回复": {
+    "en": "Return to the bottom and follow new replies",
+    "zh-Hans": "返回对话底部，继续跟随新回复"
+  },
+  "返回计划，保留草稿": {
+    "en": "Return to plan and keep draft",
+    "zh-Hans": "返回计划，保留草稿"
   },
   "还原": {
     "en": "Reset zoom",
@@ -1903,13 +3995,29 @@
     "en": "No ready artifacts yet",
     "zh-Hans": "还没有准备好的成果"
   },
+  "还没有对话": {
+    "en": "No conversations yet",
+    "zh-Hans": "还没有对话"
+  },
   "还没有本地文件。可从会话加号导入。": {
     "en": "No local files yet. Import one from the conversation's plus menu.",
     "zh-Hans": "还没有本地文件。可从会话加号导入。"
   },
+  "还没有记忆。你可以在这里明确保存一条偏好。": {
+    "en": "No memory yet. Save a preference here.",
+    "zh-Hans": "还没有记忆。你可以在这里明确保存一条偏好。"
+  },
+  "还没有记忆。你可以明确保存一条偏好，也可以回到对话交代需要记住的内容。": {
+    "en": "No memory yet. Save a preference here, or return to the conversation to explain what to remember.",
+    "zh-Hans": "还没有记忆。你可以明确保存一条偏好，也可以回到对话交代需要记住的内容。"
+  },
   "这一轮来自服务端合成运行；本机只读。": {
     "en": "This round comes from a synthetic service run and is read-only here.",
     "zh-Hans": "这一轮来自服务端合成运行；本机只读。"
+  },
+  "这些数值无法准确绘图，请查看原始数据表。": {
+    "en": "These values cannot be plotted accurately. View the original data table.",
+    "zh-Hans": "这些数值无法准确绘图，请查看原始数据表。"
   },
   "这件事的记忆": {
     "en": "Memory for this task",
@@ -1919,6 +4027,22 @@
     "en": "This content comes from a named local fixture. No real research has run.",
     "zh-Hans": "这份内容来自具名本地模拟，尚未进行真实研究。"
   },
+  "这份成果当前不能修改，草稿会保留。": {
+    "en": "This artifact cannot currently be edited. Your draft is retained.",
+    "zh-Hans": "这份成果当前不能修改，草稿会保留。"
+  },
+  "这份成果暂无可展示的网页读取来源。": {
+    "en": "This result has no webpage read sources to display.",
+    "zh-Hans": "这份成果暂无可展示的网页读取来源。"
+  },
+  "这份成果的版本信息尚未核对，原输入会保留。": {
+    "en": "This result version is not verified yet. Your input is kept.",
+    "zh-Hans": "这份成果的版本信息尚未核对，原输入会保留。"
+  },
+  "这是你的人工修改，不会重新调用模型或读取来源。": {
+    "en": "This is your manual edit. It does not call the model or read sources again.",
+    "zh-Hans": "这是你的人工修改，不会重新调用模型或读取来源。"
+  },
   "这是服务成果的只读回流；修改与控制由服务端保存。": {
     "en": "This is a read-only service result. Edits and controls are saved by the service.",
     "zh-Hans": "这是服务成果的只读回流；修改与控制由服务端保存。"
@@ -1926,6 +4050,10 @@
   "这里只显示当前环境的本地删除项。": {
     "en": "Only locally deleted items from this environment appear here.",
     "zh-Hans": "这里只显示当前环境的本地删除项。"
+  },
+  "这项工作当前不能继续，原版本和输入会保留。": {
+    "en": "This work cannot continue yet. The original version and your input are kept.",
+    "zh-Hans": "这项工作当前不能继续，原版本和输入会保留。"
   },
   "进度 {0}/{1}": {
     "en": "Progress {0}/{1}",
@@ -1943,6 +4071,38 @@
     "en": "In progress · task read is authoritative",
     "zh-Hans": "进行中 · 以任务读回为准"
   },
+  "连接待验证": {
+    "en": "Connection unverified",
+    "zh-Hans": "连接待验证"
+  },
+  "连接暂不可用": {
+    "en": "Connection unavailable",
+    "zh-Hans": "连接暂不可用"
+  },
+  "追问这版": {
+    "en": "Ask about this version",
+    "zh-Hans": "追问这版"
+  },
+  "退出后需重新登录才能继续访问此账号的对话。": {
+    "en": "Sign in again after signing out to access this account’s conversations.",
+    "zh-Hans": "退出后需重新登录才能继续访问此账号的对话。"
+  },
+  "退出未恢复的会话": {
+    "en": "Sign out of the unrecovered session",
+    "zh-Hans": "退出未恢复的会话"
+  },
+  "退出此账号": {
+    "en": "Sign out",
+    "zh-Hans": "退出此账号"
+  },
+  "退出此账号？": {
+    "en": "Sign out of this account?",
+    "zh-Hans": "退出此账号？"
+  },
+  "退出针对成果的输入": {
+    "en": "Return to ordinary chat",
+    "zh-Hans": "退出针对成果的输入"
+  },
   "选中段落": {
     "en": "Selected paragraph",
     "zh-Hans": "选中段落"
@@ -1951,9 +4111,17 @@
     "en": "Selected-image-{0}.jpg",
     "zh-Hans": "选定图片-{0}.jpg"
   },
+  "选择图片": {
+    "en": "Choose image",
+    "zh-Hans": "选择图片"
+  },
   "选择是本地配置；不会授予工具权限或下载技能。": {
     "en": "Selections are local configuration. They grant no tool permissions and download no skills.",
     "zh-Hans": "选择是本地配置；不会授予工具权限或下载技能。"
+  },
+  "邮箱": {
+    "en": "Email",
+    "zh-Hans": "邮箱"
   },
   "配置": {
     "en": "Configuration",
@@ -1963,9 +4131,29 @@
     "en": "Rename",
     "zh-Hans": "重命名"
   },
+  "重新处理图片": {
+    "en": "Process image again",
+    "zh-Hans": "重新处理图片"
+  },
+  "重新核对未受理内容": {
+    "en": "Review the unaccepted change again",
+    "zh-Hans": "重新核对未受理内容"
+  },
+  "重新检查连接": {
+    "en": "Check connection again",
+    "zh-Hans": "重新检查连接"
+  },
+  "重新读取所选图片": {
+    "en": "Read selected image again",
+    "zh-Hans": "重新读取所选图片"
+  },
   "重点筛选": {
     "en": "Select key points",
     "zh-Hans": "重点筛选"
+  },
+  "重置": {
+    "en": "Reset",
+    "zh-Hans": "重置"
   },
   "重置演示": {
     "en": "Reset demo",
@@ -1974,6 +4162,22 @@
   "重置演示分区": {
     "en": "Reset demo partition",
     "zh-Hans": "重置演示分区"
+  },
+  "重试安全保存": {
+    "en": "Retry secure save",
+    "zh-Hans": "重试安全保存"
+  },
+  "针对当前版本继续": {
+    "en": "Continue from this version",
+    "zh-Hans": "针对当前版本继续"
+  },
+  "针对这版追问": {
+    "en": "Ask about this version",
+    "zh-Hans": "针对这版追问"
+  },
+  "问一个问题，或说一件想做的事。": {
+    "en": "Ask a question or tell me what you want to do.",
+    "zh-Hans": "问一个问题，或说一件想做的事。"
   },
   "间隔": {
     "en": "Interval",
@@ -1995,9 +4199,33 @@
     "en": "Reader",
     "zh-Hans": "阅读器"
   },
+  "阅读版本": {
+    "en": "Read version",
+    "zh-Hans": "阅读版本"
+  },
+  "队列已暂停。保存后仍需明确继续发送。": {
+    "en": "The queue is paused. Resume sending explicitly after saving.",
+    "zh-Hans": "队列已暂停。保存后仍需明确继续发送。"
+  },
+  "附件状态已变化，请重新准备发送。": {
+    "en": "Attachment state changed. Prepare it again before sending.",
+    "zh-Hans": "附件状态已变化，请重新准备发送。"
+  },
+  "附带图片": {
+    "en": "Image attached",
+    "zh-Hans": "附带图片"
+  },
+  "限定对话": {
+    "en": "Selected conversation",
+    "zh-Hans": "限定对话"
+  },
   "需要你确认": {
     "en": "Needs your approval",
     "zh-Hans": "需要你确认"
+  },
+  "需要处理": {
+    "en": "Needs attention",
+    "zh-Hans": "需要处理"
   },
   "项目": {
     "en": "Projects",
@@ -2051,672 +4279,8 @@
     "en": "Default project · saved locally",
     "zh-Hans": "默认项目 · 本机保存"
   },
-  "附带图片": {
-    "zh-Hans": "附带图片",
-    "en": "Image attached"
-  },
-  "确认图片处理方式": {
-    "zh-Hans": "确认图片处理方式",
-    "en": "Review image processing"
-  },
-  "正在读取图片处理方式…": {
-    "zh-Hans": "正在读取图片处理方式…",
-    "en": "Reading image processing details…"
-  },
-  "待确认的图片预览": {
-    "zh-Hans": "待确认的图片预览",
-    "en": "Image preview for confirmation"
-  },
-  "确认后返回输入区，点击发送才会传输图片。": {
-    "zh-Hans": "确认后返回输入区，点击发送才会传输图片。",
-    "en": "Confirmation returns you to the composer. The image is transmitted only when you tap Send."
-  },
-  "正在保存确认…": {
-    "zh-Hans": "正在保存确认…",
-    "en": "Saving confirmation…"
-  },
-  "选择图片": {
-    "zh-Hans": "选择图片",
-    "en": "Choose image"
-  },
-  "更换图片": {
-    "zh-Hans": "更换图片",
-    "en": "Replace image"
-  },
-  "移除图片": {
-    "zh-Hans": "移除图片",
-    "en": "Remove image"
-  },
-  "只读取你选择的一张图片，选择后不会发送": {
-    "zh-Hans": "只读取你选择的一张图片，选择后不会发送",
-    "en": "Only the image you select is read. Selecting it does not send it."
-  },
-  "上次处理完成的图片，尚未替换": {
-    "zh-Hans": "上次处理完成的图片，尚未替换",
-    "en": "Previously processed image; not replaced yet"
-  },
-  "已选图片预览，尚未发送": {
-    "zh-Hans": "已选图片预览，尚未发送",
-    "en": "Selected image preview; not sent"
-  },
-  "正在读取所选图片…": {
-    "zh-Hans": "正在读取所选图片…",
-    "en": "Reading the selected image…"
-  },
-  "正在处理图片…": {
-    "zh-Hans": "正在处理图片…",
-    "en": "Processing the image…"
-  },
-  "上次处理完成的图片仍保留，当前附件不可发送。": {
-    "zh-Hans": "上次处理完成的图片仍保留，当前附件不可发送。",
-    "en": "The previous processed image is retained. The current attachment cannot be sent."
-  },
-  "重新处理图片": {
-    "zh-Hans": "重新处理图片",
-    "en": "Process image again"
-  },
-  "重新读取所选图片": {
-    "zh-Hans": "重新读取所选图片",
-    "en": "Read selected image again"
-  },
-  "所选图片仅在你发送并确认处理方式后外发。": {
-    "zh-Hans": "所选图片仅在你发送并确认处理方式后外发。",
-    "en": "The selected image leaves this device only after you confirm processing and tap Send."
-  },
-  "图片发送暂不可用。所选图片仅保留在本机。": {
-    "zh-Hans": "图片发送暂不可用。所选图片仅保留在本机。",
-    "en": "Image sending is currently unavailable. The selected image stays on this device."
-  },
-  "你的个人助理": {
-    "zh-Hans": "你的个人助理",
-    "en": "Your personal assistant"
-  },
-  "点击即可开始。此设备会安全保存体验身份，回来时继续你的对话。": {
-    "zh-Hans": "点击即可开始。此设备会安全保存体验身份，回来时继续你的对话。",
-    "en": "Tap to get started. This device securely saves your experience account so you can return to your conversations."
-  },
-  "合成登录测试 · 无真实 Auth 或模型调用": {
-    "zh-Hans": "合成登录测试 · 无真实 Auth 或模型调用",
-    "en": "Synthetic sign-in test · No real Auth or model calls"
-  },
-  "邮箱": {
-    "zh-Hans": "邮箱",
-    "en": "Email"
-  },
-  "密码": {
-    "zh-Hans": "密码",
-    "en": "Password"
-  },
-  "登录": {
-    "zh-Hans": "登录",
-    "en": "Sign in"
-  },
-  "正在复核登录…": {
-    "zh-Hans": "正在复核登录…",
-    "en": "Checking your session…"
-  },
-  "开始体验": {
-    "zh-Hans": "开始体验",
-    "en": "Get started"
-  },
-  "请保留此设备的登录状态。退出或更换设备后，暂时无法找回体验身份。": {
-    "zh-Hans": "请保留此设备的登录状态。退出或更换设备后，暂时无法找回体验身份。",
-    "en": "Keep this device signed in. Signing out or changing devices currently prevents recovery of this experience account."
-  },
-  "退出未恢复的会话": {
-    "zh-Hans": "退出未恢复的会话",
-    "en": "Sign out of the unrecovered session"
-  },
-  "取消登录": {
-    "zh-Hans": "取消登录",
-    "en": "Cancel sign-in"
-  },
-  "重试安全保存": {
-    "zh-Hans": "重试安全保存",
-    "en": "Retry secure save"
-  },
-  "问一个问题，或说一件想做的事。": {
-    "zh-Hans": "问一个问题，或说一件想做的事。",
-    "en": "Ask a question or tell me what you want to do."
-  },
-  "回复完成": {
-    "zh-Hans": "回复完成",
-    "en": "Reply complete"
-  },
-  "此轮回复未完成": {
-    "zh-Hans": "此轮回复未完成",
-    "en": "This reply did not complete"
-  },
-  "原请求状态待确认": {
-    "zh-Hans": "原请求状态待确认",
-    "en": "Original request status needs verification"
-  },
-  "发送结果尚未确认。先读取原请求，避免重复发送；草稿会保留。": {
-    "zh-Hans": "发送结果尚未确认。先读取原请求，避免重复发送；草稿会保留。",
-    "en": "The send outcome is unconfirmed. Read the original request to avoid sending it again. Your draft is retained."
-  },
-  "读取原请求进展": {
-    "zh-Hans": "读取原请求进展",
-    "en": "Read original request"
-  },
-  "只查询原请求，不重新发送消息": {
-    "zh-Hans": "只查询原请求，不重新发送消息",
-    "en": "Read the original request without sending another message"
-  },
-  "打开对话": {
-    "zh-Hans": "打开对话",
-    "en": "Open conversation"
-  },
-  "新对话": {
-    "zh-Hans": "新对话",
-    "en": "New conversation"
-  },
-  "允许此对话": {
-    "zh-Hans": "允许此对话",
-    "en": "Allow this conversation"
-  },
-  "暂不允许": {
-    "zh-Hans": "暂不允许",
-    "en": "Not now"
-  },
-  "解锁后查看对话": {
-    "zh-Hans": "解锁后查看对话",
-    "en": "Unlock to view conversations"
-  },
-  "退出此账号": {
-    "zh-Hans": "退出此账号",
-    "en": "Sign out"
-  },
-  "退出此账号？": {
-    "zh-Hans": "退出此账号？",
-    "en": "Sign out of this account?"
-  },
-  "确认退出": {
-    "zh-Hans": "确认退出",
-    "en": "Confirm sign-out"
-  },
-  "体验身份暂时无法找回。退出后，你将无法继续访问这些对话。": {
-    "zh-Hans": "体验身份暂时无法找回。退出后，你将无法继续访问这些对话。",
-    "en": "This experience account currently cannot be recovered. After signing out, you will lose access to these conversations."
-  },
-  "退出后需重新登录才能继续访问此账号的对话。": {
-    "zh-Hans": "退出后需重新登录才能继续访问此账号的对话。",
-    "en": "Sign in again after signing out to access this account’s conversations."
-  },
-  "已连接": {
-    "zh-Hans": "已连接",
-    "en": "Connected"
-  },
-  "连接待验证": {
-    "zh-Hans": "连接待验证",
-    "en": "Connection unverified"
-  },
-  "连接暂不可用": {
-    "zh-Hans": "连接暂不可用",
-    "en": "Connection unavailable"
-  },
-  "模型未连接": {
-    "zh-Hans": "模型未连接",
-    "en": "Model not connected"
-  },
-  "合成测试协议证据": {
-    "zh-Hans": "合成测试协议证据",
-    "en": "Synthetic contract evidence"
-  },
-  "后续消息已暂停": {
-    "zh-Hans": "后续消息已暂停",
-    "en": "Follow-up messages paused"
-  },
-  "后续消息 · 仅在前台发送": {
-    "zh-Hans": "后续消息 · 仅在前台发送",
-    "en": "Follow-up messages · Sent only in the foreground"
-  },
-  "移除后续消息": {
-    "zh-Hans": "移除后续消息",
-    "en": "Remove follow-up message"
-  },
-  "继续发送后续消息": {
-    "zh-Hans": "继续发送后续消息",
-    "en": "Resume follow-up messages"
-  },
-  "暂停后续消息": {
-    "zh-Hans": "暂停后续消息",
-    "en": "Pause follow-up messages"
-  },
-  "正在准备发送…": {
-    "zh-Hans": "正在准备发送…",
-    "en": "Preparing to send…"
-  },
-  "消息过长。请缩短后再发送（长度上限 8000）。": {
-    "zh-Hans": "消息过长。请缩短后再发送（长度上限 8000）。",
-    "en": "Message too long. Shorten it before sending (limit: 8000)."
-  },
-  "排队发送": {
-    "zh-Hans": "排队发送",
-    "en": "Queue message"
-  },
-  "发送": {
-    "zh-Hans": "发送",
-    "en": "Send"
-  },
-  "先读取原请求进展，当前草稿不会重发": {
-    "zh-Hans": "先读取原请求进展，当前草稿不会重发",
-    "en": "Read the original request first. The current draft will not be sent again."
-  },
-  "保存在后续消息队列，仅在前台发送": {
-    "zh-Hans": "保存在后续消息队列，仅在前台发送",
-    "en": "Save to the follow-up queue and send only in the foreground"
-  },
-  "发送当前消息": {
-    "zh-Hans": "发送当前消息",
-    "en": "Send current message"
-  },
-  "模型连接设置": {
-    "zh-Hans": "模型连接设置",
-    "en": "Model connection settings"
-  },
-  "正在本机保存": {
-    "zh-Hans": "正在本机保存",
-    "en": "Saving on this device"
-  },
-  "已保存在本机 · 待发送": {
-    "zh-Hans": "已保存在本机 · 待发送",
-    "en": "Saved on this device · Awaiting send"
-  },
-  "等待许可": {
-    "zh-Hans": "等待许可",
-    "en": "Awaiting permission"
-  },
-  "发送中": {
-    "zh-Hans": "发送中",
-    "en": "Sending"
-  },
-  "确认发送状态": {
-    "zh-Hans": "确认发送状态",
-    "en": "Verifying send status"
-  },
-  "本机保存未完成": {
-    "zh-Hans": "本机保存未完成",
-    "en": "Local save did not complete"
-  },
-  "已发送": {
-    "zh-Hans": "已发送",
-    "en": "Sent"
-  },
-  "任务请求失败 · ": {
-    "zh-Hans": "任务请求失败 · ",
-    "en": "Task request failed · "
-  },
-  "任务进展已读取": {
-    "zh-Hans": "任务进展已读取",
-    "en": "Task progress read"
-  },
-  "读取任务进展…": {
-    "zh-Hans": "读取任务进展…",
-    "en": "Reading task progress…"
-  },
-  "任务请求已记录": {
-    "zh-Hans": "任务请求已记录",
-    "en": "Task request recorded"
-  },
-  "等待后台保存任务…": {
-    "zh-Hans": "等待后台保存任务…",
-    "en": "Waiting for the server to save the task…"
-  },
-  "已排队": {
-    "zh-Hans": "已排队",
-    "en": "Queued"
-  },
-  "正在进行": {
-    "zh-Hans": "正在进行",
-    "en": "In progress"
-  },
-  "等待反馈": {
-    "zh-Hans": "等待反馈",
-    "en": "Awaiting feedback"
-  },
-  "需要处理": {
-    "zh-Hans": "需要处理",
-    "en": "Needs attention"
-  },
-  "状态待确认": {
-    "zh-Hans": "状态待确认",
-    "en": "Status unconfirmed"
-  },
-  "读取最新进展": {
-    "zh-Hans": "读取最新进展",
-    "en": "Read latest progress"
-  },
-  "最近读取 · ": {
-    "zh-Hans": "最近读取 · ",
-    "en": "Last read · "
-  },
-  "对话历史": {
-    "zh-Hans": "对话历史",
-    "en": "Conversation history"
-  },
   "，草稿，": {
-    "zh-Hans": "，草稿，",
-    "en": ", draft, "
-  },
-  "草稿 · ": {
-    "zh-Hans": "草稿 · ",
-    "en": "Draft · "
-  },
-  "未连接": {
-    "zh-Hans": "未连接",
-    "en": "Not connected"
-  },
-  "待验证": {
-    "zh-Hans": "待验证",
-    "en": "Unverified"
-  },
-  "暂不可用": {
-    "zh-Hans": "暂不可用",
-    "en": "Unavailable"
-  },
-  "模型连接": {
-    "zh-Hans": "模型连接",
-    "en": "Model connection"
-  },
-  "状态": {
-    "zh-Hans": "状态",
-    "en": "Status"
-  },
-  "已验证模型": {
-    "zh-Hans": "已验证模型",
-    "en": "Verified model"
-  },
-  "重新检查连接": {
-    "zh-Hans": "重新检查连接",
-    "en": "Check connection again"
-  },
-  "数据": {
-    "zh-Hans": "数据",
-    "en": "Data"
-  },
-  "当前未连接云端；输入保存在此设备。": {
-    "zh-Hans": "当前未连接云端；输入保存在此设备。",
-    "en": "Cloud is not connected. Input is saved on this device."
-  },
-  "此设备保存对话副本；发送的消息会交给已连接的云端服务处理。": {
-    "zh-Hans": "此设备保存对话副本；发送的消息会交给已连接的云端服务处理。",
-    "en": "This device stores a conversation copy. Sent messages are processed by the connected cloud service."
-  },
-  "离开 App 后不会发送排队中的消息。任务后台执行的状态需要重新读取确认。": {
-    "zh-Hans": "离开 App 后不会发送排队中的消息。任务后台执行的状态需要重新读取确认。",
-    "en": "Queued messages are not sent after you leave the app. Read task status again to confirm background progress."
-  },
-  "诊断": {
-    "zh-Hans": "诊断",
-    "en": "Diagnostics"
-  },
-  "服务": {
-    "zh-Hans": "服务",
-    "en": "Service"
-  },
-  "版本 {0} ({1})": {
-    "zh-Hans": "版本 {0} ({1})",
-    "en": "Version {0} ({1})"
-  },
-  "真实模型尚未配置；不会使用演示回复代替模型。": {
-    "zh-Hans": "真实模型尚未配置；不会使用演示回复代替模型。",
-    "en": "A real model is not configured. Demo replies will not replace it."
-  },
-  "当前对话还没有任务": {
-    "zh-Hans": "当前对话还没有任务",
-    "en": "This conversation has no tasks yet"
-  },
-  "任务进展": {
-    "zh-Hans": "任务进展",
-    "en": "Task progress"
-  },
-  "当前对话还没有成果": {
-    "zh-Hans": "当前对话还没有成果",
-    "en": "This conversation has no results yet"
-  },
-  "明确合成测试": {
-    "zh-Hans": "明确合成测试",
-    "en": "Explicit synthetic fixture"
-  },
-  "运行冻结合成报告": {
-    "zh-Hans": "运行冻结合成报告",
-    "en": "Run frozen synthetic report"
-  },
-  "合成登录测试 · 无真实 Auth/模型": {
-    "zh-Hans": "合成登录测试 · 无真实 Auth/模型",
-    "en": "Synthetic sign-in test · No real Auth/model"
-  },
-  "体验账号": {
-    "zh-Hans": "体验账号",
-    "en": "Experience account"
-  },
-  "消息": {
-    "zh-Hans": "消息",
-    "en": "Message"
-  },
-  "关闭侧栏": {
-    "zh-Hans": "关闭侧栏",
-    "en": "Close sidebar"
-  },
-  "搜索对话": {
-    "zh-Hans": "搜索对话",
-    "en": "Search conversations"
-  },
-  "清除搜索": {
-    "zh-Hans": "清除搜索",
-    "en": "Clear search"
-  },
-  "对话": {
-    "zh-Hans": "对话",
-    "en": "Conversations"
-  },
-  "还没有对话": {
-    "zh-Hans": "还没有对话",
-    "en": "No conversations yet"
-  },
-  "没有找到对话": {
-    "zh-Hans": "没有找到对话",
-    "en": "No conversations found"
-  },
-  "未命名对话": {
-    "zh-Hans": "未命名对话",
-    "en": "Untitled conversation"
-  },
-  "当前对话": {
-    "zh-Hans": "当前对话",
-    "en": "Current conversation"
-  },
-  "记忆": {
-    "zh-Hans": "记忆",
-    "en": "Memory"
-  },
-  "切换对话、任务和成果": {
-    "zh-Hans": "切换对话、任务和成果",
-    "en": "Switch conversations, tasks and results"
-  },
-  "未能读取所选图片。请重试或重新选择。": {
-    "zh-Hans": "未能读取所选图片。请重试或重新选择。",
-    "en": "Could not read the selected image. Retry or select it again."
-  },
-  "原图过大。请选择小于 50 MiB 的图片。": {
-    "zh-Hans": "原图过大。请选择小于 50 MiB 的图片。",
-    "en": "The source image is too large. Choose an image smaller than 50 MiB."
-  },
-  "原图像素过大。请选择尺寸较小的图片。": {
-    "zh-Hans": "原图像素过大。请选择尺寸较小的图片。",
-    "en": "The source image has too many pixels. Choose a smaller image."
-  },
-  "无法读取这张图片。请选择其他静态图片。": {
-    "zh-Hans": "无法读取这张图片。请选择其他静态图片。",
-    "en": "Cannot read this image. Choose another still image."
-  },
-  "暂不支持动画或多帧图片。请选择静态图片。": {
-    "zh-Hans": "暂不支持动画或多帧图片。请选择静态图片。",
-    "en": "Animated and multiframe images are not supported. Choose a still image."
-  },
-  "图片处理失败。请重试或重新选择。": {
-    "zh-Hans": "图片处理失败。请重试或重新选择。",
-    "en": "Image processing failed. Retry or select it again."
-  },
-  "压缩后仍超过图片上限。请选择其他图片。": {
-    "zh-Hans": "压缩后仍超过图片上限。请选择其他图片。",
-    "en": "The compressed image still exceeds the limit. Choose another image."
-  },
-  "已取消处理，原有附件保留。": {
-    "zh-Hans": "已取消处理，原有附件保留。",
-    "en": "Processing canceled. The existing attachment is retained."
-  },
-  "图片尚未准备好，请重新选择。": {
-    "zh-Hans": "图片尚未准备好，请重新选择。",
-    "en": "The image is not ready. Select it again."
-  },
-  "请等待图片处理完成。": {
-    "zh-Hans": "请等待图片处理完成。",
-    "en": "Wait for image processing to finish."
-  },
-  "请先完成图片处理，或移除图片后发送文字。": {
-    "zh-Hans": "请先完成图片处理，或移除图片后发送文字。",
-    "en": "Finish image processing, or remove the image to send text."
-  },
-  "发送图片前需要确认本次图片处理方式。": {
-    "zh-Hans": "发送图片前需要确认本次图片处理方式。",
-    "en": "Confirm how this image will be processed before sending it."
-  },
-  "请先确认此对话的文字处理方式。": {
-    "zh-Hans": "请先确认此对话的文字处理方式。",
-    "en": "Confirm text processing for this conversation first."
-  },
-  "请添加你想问的问题。": {
-    "zh-Hans": "请添加你想问的问题。",
-    "en": "Add the question you want to ask."
-  },
-  "文字过长，请缩短后再发送。": {
-    "zh-Hans": "文字过长，请缩短后再发送。",
-    "en": "Text is too long. Shorten it before sending."
-  },
-  "附件状态已变化，请重新准备发送。": {
-    "zh-Hans": "附件状态已变化，请重新准备发送。",
-    "en": "Attachment state changed. Prepare it again before sending."
-  },
-  "允许发送这张图片到云端模型？": {
-    "zh-Hans": "允许发送这张图片到云端模型？",
-    "en": "Allow this image to be sent to a cloud model?"
-  },
-  "图片、本轮文字、最近文字会话及主动加入的文字上下文将发送给 OpenRouter 和 Google AI Studio，使用固定的免费 Gemma 4 31B 路线。请求禁止训练、限制费用为0并禁止回退；路线不可用时拒绝发送。Google 安全策略会为安全审查保留输入、上下文和输出55天，并可能人工审核；这不是零保留。服务器不保存图片字节历史，但保存文字回复和附件回执，直到你删除来源。请勿发送敏感、机密或含凭据的图片。撤销不能收回已发出的数据；断开流也不保证上游停止处理。": {
-    "zh-Hans": "图片、本轮文字、最近文字会话及主动加入的文字上下文将发送给 OpenRouter 和 Google AI Studio，使用固定的免费 Gemma 4 31B 路线。请求禁止训练、限制费用为0并禁止回退；路线不可用时拒绝发送。Google 安全策略会为安全审查保留输入、上下文和输出55天，并可能人工审核；这不是零保留。服务器不保存图片字节历史，但保存文字回复和附件回执，直到你删除来源。请勿发送敏感、机密或含凭据的图片。撤销不能收回已发出的数据；断开流也不保证上游停止处理。",
-    "en": "The image, current message, recent conversation text and any text context you add will be sent to OpenRouter and Google AI Studio using the fixed free Gemma 4 31B route. Requests disallow training, cap cost at zero and prohibit fallback; unavailable routes refuse transmission. Google safety policies retain inputs, context and outputs for 55 days and may involve human review. This is not zero retention. The server does not store image-byte history, but keeps text replies and attachment receipts until you delete the source. Do not send sensitive, confidential or credential-containing images. Revocation cannot recall data already sent, and disconnecting the stream does not guarantee upstream processing stops."
-  },
-  "允许此会话图片传输": {
-    "zh-Hans": "允许此会话图片传输",
-    "en": "Allow image processing for this conversation"
-  },
-  "我确认所发图片不包含敏感、机密或凭据信息": {
-    "zh-Hans": "我确认所发图片不包含敏感、机密或凭据信息",
-    "en": "I confirm this image contains no sensitive, confidential or credential information"
-  },
-  "消息尚未发送，需要确认处理方式。": {
-    "zh-Hans": "消息尚未发送，需要确认处理方式。",
-    "en": "This message has not been sent. Review how it will be processed."
-  },
-  "确认发送许可": {
-    "zh-Hans": "确认发送许可",
-    "en": "Review send permission"
-  },
-  "待发送 · {0} 条": {
-    "zh-Hans": "待发送 · {0} 条",
-    "en": "Awaiting send · {0}"
-  },
-  "服务可达": {
-    "zh-Hans": "服务可达",
-    "en": "Service reachable"
-  },
-  "回复已确认": {
-    "zh-Hans": "回复已确认",
-    "en": "Reply confirmed"
-  },
-  "最近确认回复": {
-    "zh-Hans": "最近确认回复",
-    "en": "Last confirmed reply"
-  },
-  "服务与登录状态可用；确认处理方式后即可发送消息。": {
-    "zh-Hans": "服务与登录状态可用；确认处理方式后即可发送消息。",
-    "en": "The service and your session are available. Review processing permissions to send."
-  },
-  "已收到并保存完整回复。": {
-    "zh-Hans": "已收到并保存完整回复。",
-    "en": "A complete reply has been received and saved."
-  },
-  "所选图片完整预览": {
-    "zh-Hans": "所选图片完整预览",
-    "en": "Full preview of the selected image"
-  },
-  "正在检查连接": {
-    "zh-Hans": "正在检查连接",
-    "en": "Checking connection"
-  },
-  "正在重新连接": {
-    "zh-Hans": "正在重新连接",
-    "en": "Reconnecting"
-  },
-  "回到最新": {
-    "en": "Jump to latest",
-    "zh-Hans": "回到最新"
-  },
-  "返回对话底部，继续跟随新回复": {
-    "en": "Return to the bottom and follow new replies",
-    "zh-Hans": "返回对话底部，继续跟随新回复"
-  },
-  "待发消息保存在本机，仅在 App 前台发送。编辑会暂停队列，保存或关闭不会继续发送。": {
-    "zh-Hans": "待发消息保存在本机，仅在 App 前台发送。编辑会暂停队列，保存或关闭不会继续发送。",
-    "en": "Queued messages are saved on this device and sent only while the app is in the foreground. Editing pauses the queue; saving or closing does not resume sending."
-  },
-  "没有待发消息": {
-    "zh-Hans": "没有待发消息",
-    "en": "No queued messages"
-  },
-  "图片处理许可绑定当前文字。请移除后在输入器重新编辑。": {
-    "zh-Hans": "图片处理许可绑定当前文字。请移除后在输入器重新编辑。",
-    "en": "Image permission is tied to this caption. Remove this message and edit it in the composer."
-  },
-  "编辑并暂停队列": {
-    "zh-Hans": "编辑并暂停队列",
-    "en": "Edit and pause queue"
-  },
-  "待发消息": {
-    "zh-Hans": "待发消息",
-    "en": "Queued messages"
-  },
-  "等待当前回复": {
-    "zh-Hans": "等待当前回复",
-    "en": "Waiting for the current reply"
-  },
-  "查看、编辑或暂停本机待发消息": {
-    "zh-Hans": "查看、编辑或暂停本机待发消息",
-    "en": "Review, edit or pause messages queued on this device"
-  },
-  "队列已暂停。保存后仍需明确继续发送。": {
-    "zh-Hans": "队列已暂停。保存后仍需明确继续发送。",
-    "en": "The queue is paused. Resume sending explicitly after saving."
-  },
-  "待发消息内容": {
-    "zh-Hans": "待发消息内容",
-    "en": "Queued message content"
-  },
-  "编辑待发消息": {
-    "zh-Hans": "编辑待发消息",
-    "en": "Edit queued message"
-  },
-  "保存到队列": {
-    "zh-Hans": "保存到队列",
-    "en": "Save to queue"
-  },
-  "请输入不超过 8000 字符的内容。": {
-    "zh-Hans": "请输入不超过 8000 字符的内容。",
-    "en": "Enter up to 8,000 characters."
-  },
-  "正在保存…": {
-    "zh-Hans": "正在保存…",
-    "en": "Saving…"
+    "en": ", draft, ",
+    "zh-Hans": "，草稿，"
   }
 }

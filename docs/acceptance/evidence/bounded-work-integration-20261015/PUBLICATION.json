@@ -1,0 +1,216 @@
+{
+  "schema_version": 1,
+  "candidate": "AF-W50-W60-INTEGRATION-20261015-02",
+  "recorded_date": "2026-10-15",
+  "repository": "Yankj/catpaw-m",
+  "branch": "feat/s05-bounded-work",
+  "publication_method": "existing GitHub connector; reviewed UTF-8 delta on existing remote lineage",
+  "local_source": {
+    "commit": "82c549443b4e43fce8ffc3bfd300c87c69465e87",
+    "tree": "d19b20ba947b36858e2cbf34afea90f6c7754018",
+    "base": "bfaea758502c27e1e0948d260cc3c088f2a70aaf"
+  },
+  "remote_source": {
+    "commit": "1735d6ed1e82213ca604fc37c37da39dc41872d7",
+    "tree": "05bebb3d3b7e91e7a088ee0de76b1c2df87b9e33",
+    "base": "a7ad5d78a9557e66904c72555a824f00d7e904cb",
+    "url": "https://github.com/Yankj/catpaw-m/commit/1735d6ed1e82213ca604fc37c37da39dc41872d7"
+  },
+  "verification": {
+    "expected_tree_independently_computed": true,
+    "created_tree_matches_expected": true,
+    "branch_head_readback_matches": true,
+    "compare_status": "ahead",
+    "ahead_by": 1,
+    "behind_by": 0,
+    "reviewed_paths": 44,
+    "exact_path_set_readback_matches": true,
+    "source_snapshots_at": "RESULT.json",
+    "code_and_date_evidence_only": true,
+    "media_delta_uploaded": 0
+  },
+  "readback_paths": [
+    {
+      "path": "apps/ios-conversation/CatpawM.xcodeproj/project.pbxproj",
+      "status": "modified"
+    },
+    {
+      "path": "apps/ios-conversation/Resources/UIStrings.json",
+      "status": "modified"
+    },
+    {
+      "path": "apps/ios-conversation/Scripts/test-device-effect-service-portable.sh",
+      "status": "added"
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Domain/ConversationDeviceEffects.swift",
+      "status": "modified"
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Features/ConversationDeviceEffectService.swift",
+      "status": "added"
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Features/ConversationTaskControlView.swift",
+      "status": "modified"
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Providers/NativeChatHTTPBackend.swift",
+      "status": "modified"
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Providers/NativeDeviceEffectHTTPBackend.swift",
+      "status": "added"
+    },
+    {
+      "path": "apps/ios-conversation/Tests/ConversationDeviceEffectServiceTests.swift",
+      "status": "added"
+    },
+    {
+      "path": "apps/ios-conversation/Tests/DeviceEffectApplicationFixture.swift",
+      "status": "added"
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeDeviceEffectTransportTests.swift",
+      "status": "added"
+    },
+    {
+      "path": "docs/acceptance/evidence/bounded-work-integration-20261015/RESULT.json",
+      "status": "added"
+    },
+    {
+      "path": "docs/acceptance/restart-bounded-work-integration-2026-10-15.md",
+      "status": "added"
+    },
+    {
+      "path": "docs/status/master-plan.md",
+      "status": "modified"
+    },
+    {
+      "path": "scripts/reviewed-findings.json",
+      "status": "modified"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/api.mjs",
+      "status": "modified"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/authority.mjs",
+      "status": "modified"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/consent.mjs",
+      "status": "modified"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/integration/edge-adapter/src/bounded-store.mjs",
+      "status": "modified"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/integration/edge-adapter/src/bounded-tick.mjs",
+      "status": "modified"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/accepted-work-execution.mjs",
+      "status": "added"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/accepted-work-intent-contract.mjs",
+      "status": "added"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/chat-service.mjs",
+      "status": "modified"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/http.mjs",
+      "status": "modified"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/local-output-facade.mjs",
+      "status": "modified"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/model-handler.mjs",
+      "status": "modified"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/purge-plan.mjs",
+      "status": "modified"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/single-step-handler.mjs",
+      "status": "modified"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/source-erasure.mjs",
+      "status": "modified"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/strict-json.mjs",
+      "status": "added"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/task-control-contract.mjs",
+      "status": "modified"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/task-control-service.mjs",
+      "status": "modified"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/task-execution-store.mjs",
+      "status": "modified"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/task-source-service.mjs",
+      "status": "modified"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/task-work-grant-lifecycle.mjs",
+      "status": "added"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/task-work-grant-service.mjs",
+      "status": "modified"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/tools.mjs",
+      "status": "modified"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/worker-output-contract.mjs",
+      "status": "modified"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/worker-kick.mjs",
+      "status": "modified"
+    },
+    {
+      "path": "services/edge/test/accepted-work-admission.test.mjs",
+      "status": "added"
+    },
+    {
+      "path": "services/edge/test/accepted-work-execution.test.mjs",
+      "status": "added"
+    },
+    {
+      "path": "services/edge/test/task-public-sources.test.mjs",
+      "status": "modified"
+    },
+    {
+      "path": "services/edge/test/task-work-grant-lifecycle.test.mjs",
+      "status": "added"
+    },
+    {
+      "path": "services/edge/test/task-work-grant.test.mjs",
+      "status": "modified"
+    }
+  ],
+  "limitations": [
+    "Local and connector commits have different metadata and SHAs; original local history retained.",
+    "Previously held 22 synthetic PNGs remain local pending separate disclosure authorization; this push does not add media.",
+    "No main merge, release publication, production deployment, Auth/model/real PG/OS validation or new App installation.",
+    "Metadata commit containing this record follows this source commit; record does not require its own recursive identity."
+  ]
+}

@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "fixture_kind": "maintained_service_ecmascript_canonical_goldens",
+  "service_encoder": "services/edge/supabase/functions/_shared/core/facade-r2/src/common.mjs",
+  "original_numeric_request_hash": "451911ca338073323b0fb9916db08eafab56c0a628bbb7a4167b35b1f0c4d78d",
+  "cases": [
+    {
+      "name": "recorded_memory_numeric_request",
+      "raw": "{\"schema_version\":1,\"contract\":\"catpaw.memory.v1\",\"operation_id\":\"43FB9BF2-3583-49A8-AED0-6BCE8093669C\",\"expected_memory_generation\":2,\"command\":{\"type\":\"remember\",\"conversation_id\":\"7E59F3CF-5A80-4FAF-9A98-07D4A818B11E\",\"source_text\":\"Fictional preference: I prefer tea\",\"claim\":{\"kind\":\"preference\",\"predicate\":\"drink.preference\",\"value\":[1e-7,0.000001,100000000000000000000,1e+21,0,3.14159],\"conditions\":{},\"assertion\":\"explicit\",\"evidence\":{\"span_start\":0,\"span_end\":34}},\"allow_relearn\":false,\"sensitive_consent\":false}}",
+      "canonical": "{\"command\":{\"allow_relearn\":false,\"claim\":{\"assertion\":\"explicit\",\"conditions\":{},\"evidence\":{\"span_end\":34,\"span_start\":0},\"kind\":\"preference\",\"predicate\":\"drink.preference\",\"value\":[1e-7,0.000001,100000000000000000000,1e+21,0,3.14159]},\"conversation_id\":\"7E59F3CF-5A80-4FAF-9A98-07D4A818B11E\",\"sensitive_consent\":false,\"source_text\":\"Fictional preference: I prefer tea\",\"type\":\"remember\"},\"contract\":\"catpaw.memory.v1\",\"expected_memory_generation\":2,\"operation_id\":\"43FB9BF2-3583-49A8-AED0-6BCE8093669C\",\"schema_version\":1}",
+      "sha256": "451911ca338073323b0fb9916db08eafab56c0a628bbb7a4167b35b1f0c4d78d"
+    },
+    {
+      "name": "ecmascript_number_boundaries",
+      "raw": "{\"numbers\":[1e-7,1e-6,1e20,1e21,-0,5e-324,1.7976931348623157e+308,-5e-324,-1.7976931348623157e+308,3.14159],\"negative_zero\":-0}",
+      "canonical": "{\"negative_zero\":0,\"numbers\":[1e-7,0.000001,100000000000000000000,1e+21,0,5e-324,1.7976931348623157e+308,-5e-324,-1.7976931348623157e+308,3.14159]}",
+      "sha256": "e1300bfcc62a80e96ca42b19428e016f1768da08d1c440dad966e92c80663d20"
+    },
+    {
+      "name": "utf16_key_order_and_distinct_combining_keys",
+      "raw": "{\"\\uE000\":\"private-use\",\"😀\":\"emoji\",\"é\":\"composed\",\"e\\u0301\":\"combining\",\"\\uD800\\uDC00\":\"non-BMP\",\"A\":\"ASCII\"}",
+      "canonical": "{\"A\":\"ASCII\",\"é\":\"combining\",\"é\":\"composed\",\"𐀀\":\"non-BMP\",\"😀\":\"emoji\",\"\":\"private-use\"}",
+      "sha256": "60629e3ca2a570894aba44cec6165934ebf58cbb2ae00ce2601da1c8d3fc3f00"
+    },
+    {
+      "name": "escaping_and_data_never_code",
+      "raw": "{\"slash\":\"/a/b\",\"quote\":\"\\\"\",\"backslash\":\"\\\\\",\"controls\":\"\\b\\f\\n\\r\\t\\u0000\",\"separators\":\"  \",\"text\":\"\\\"); globalThis.CATPAW_CANONICAL_SENTINEL = true; (\\\"\",\"nonBMP\":\"𝄞😀é\"}",
+      "canonical": "{\"backslash\":\"\\\\\",\"controls\":\"\\b\\f\\n\\r\\t\\u0000\",\"nonBMP\":\"𝄞😀é\",\"quote\":\"\\\"\",\"separators\":\"  \",\"slash\":\"/a/b\",\"text\":\"\\\"); globalThis.CATPAW_CANONICAL_SENTINEL = true; (\\\"\"}",
+      "sha256": "bc2276e4ab1f7fef14dfaa960168e35d3f7942fbb4c69bb8c8041da5aa932ded"
+    },
+    {
+      "name": "nested_types_and_prototype_named_keys",
+      "raw": "{\"z\":[true,false,null,{\"b\":2,\"a\":1}],\"a\":{\"__proto__\":\"plain data\",\"constructor\":\"plain data\",\"1\":1,\"01\":2}}",
+      "canonical": "{\"a\":{\"01\":2,\"1\":1,\"__proto__\":\"plain data\",\"constructor\":\"plain data\"},\"z\":[true,false,null,{\"a\":1,\"b\":2}]}",
+      "sha256": "4e739f73996442c907ea9b0b54f01037605bf23eb2efc621c3e301f60089c2b9"
+    }
+  ],
+  "invalid": [
+    {
+      "name": "escaped_duplicate_key",
+      "raw": "{\"x\":1,\"\\u0078\":2}"
+    },
+    {
+      "name": "nonfinite_number",
+      "raw": "{\"x\":1e400}"
+    },
+    {
+      "name": "excessive_depth",
+      "raw": "{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":{\"x\":0}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}"
+    },
+    {
+      "name": "root_must_be_object",
+      "raw": "[]"
+    },
+    {
+      "name": "trailing_value",
+      "raw": "{} false"
+    },
+    {
+      "name": "payload_byte_limit",
+      "raw": "{}",
+      "max_bytes": 1
+    }
+  ]
+}

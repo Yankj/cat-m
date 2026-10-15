@@ -1,0 +1,42 @@
+[
+  {
+    "run": "fixed-default-large",
+    "source_sha256": "92bb5631540200ddc4c51b0e17d34d79cd4d20e0f8c26525c02a0632298058b3",
+    "visible_field_height": 129.66666666666663,
+    "stable_valid_after_initial": 2,
+    "measurement_kind": "stable_XCTest_AX_samples_plus_actual_UIKit_caret_window_geometry",
+    "is_presented_frame_proof": false
+  },
+  {
+    "run": "fixed-system-xxxl",
+    "source_sha256": "98eace09043facdadec17fd8f43f736ba88b35c3ba2360571c3571beb4c1feb1",
+    "visible_field_height": 172.6666666666667,
+    "stable_valid_after_initial": 2,
+    "measurement_kind": "stable_XCTest_AX_samples_plus_actual_UIKit_caret_window_geometry",
+    "is_presented_frame_proof": false
+  },
+  {
+    "run": "fixed-system-ax5",
+    "source_sha256": "eed25261702b1d15e0b6594946a13896b614fd55b1f2f5522694f7e7b1574811",
+    "visible_field_height": 121.66666666666663,
+    "stable_valid_after_initial": 2,
+    "measurement_kind": "stable_XCTest_AX_samples_plus_actual_UIKit_caret_window_geometry",
+    "is_presented_frame_proof": false
+  },
+  {
+    "run": "fixed-system-ax5",
+    "source_sha256": "007fb643a453ef8cc0c3000bf5f203b5be809382a5eb117a2768f5791480f87d",
+    "visible_field_height": 121.66666666666663,
+    "stable_valid_after_initial": 2,
+    "measurement_kind": "stable_XCTest_AX_samples_plus_actual_UIKit_caret_window_geometry",
+    "is_presented_frame_proof": false
+  },
+  {
+    "run": "stable-viewport-red",
+    "source_sha256": "3dc39ea5395f8e5ae4e121c985ba07a4e065dd3f34cda9f0e5688b068128343c",
+    "visible_field_height": 19.33333333333337,
+    "stable_valid_after_initial": 0,
+    "measurement_kind": "stable_XCTest_AX_samples_plus_actual_UIKit_caret_window_geometry",
+    "is_presented_frame_proof": false
+  }
+]

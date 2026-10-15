@@ -1,0 +1,375 @@
+{
+  "schema_version": 1,
+  "recorded_at": "2026-10-14T08:54:58.841666+08:00",
+  "candidate_id": "AF-W31-ACTION-20261014-03",
+  "base_commit": "1c3bb15392f2d893db5ae2be0288822af796878c",
+  "branch": "feat/s03-sourced-results",
+  "goal": "FINAL-G3 ACTIVE; AF-1-G3-UX1 retained",
+  "evidence_layer": "offline_maintenance_ports_and_native_simulator_synthetic",
+  "input_source_sha256": {
+    "apps/ios-conversation/CatpawM.xcodeproj/project.pbxproj": "56db7c60f7f48587628d104c4751540a90a20d61c41044c2de43a340879e3f9b",
+    "apps/ios-conversation/Resources/UIStrings.json": "65fcf11648e68010f8959a5897011ae10a3752271667834b76be5b3c43994234",
+    "apps/ios-conversation/Scripts/test-artifact-sources-portable.sh": "16fb1589c9a8f4e3b56b578144a47d36bfc9fb63d386c73cb08e23f587456aac",
+    "apps/ios-conversation/Sources/App/P0ExperienceFixture.swift": "f70036ef46393cbeeedba4ff948f47993b21cc70fc772e47ff0b1c2b9d062085",
+    "apps/ios-conversation/Sources/Domain/ConversationArtifactSources.swift": "f14067d0908788c8dec324a4b3c0699e663b7b799ce354921290ce6f96fb0431",
+    "apps/ios-conversation/Sources/Features/ConversationArtifactReaderView.swift": "ab6c48963470efdbdb0ada1fcce7f774084c915dd2c791caf143672b25b6fd14",
+    "apps/ios-conversation/Sources/Features/ConversationFirstView.swift": "126e5bdcd117aca317e9008f2c8afd60ff8a2e720c95ff014fc7ca6b7059e9b3",
+    "apps/ios-conversation/Sources/Features/ConversationGoalCard.swift": "1988b89064a111f8e3f7f91f320a611de5e35d33528c1c4f5a7c3b6538968bf8",
+    "apps/ios-conversation/Sources/Features/ConversationSessionService.swift": "e009c1ae5796f0e3c354fddff9ee3a08a47e8facd6fba63bf1fab7876140b238",
+    "apps/ios-conversation/Sources/Providers/NativeChatHTTPBackend.swift": "4ef682d82782b0e3d7dce67c30716c5be5e8740d314792d1b0dceaccf9be07ca",
+    "apps/ios-conversation/Tests/ConversationArtifactReaderUITests.swift": "2d686995b62155f64220968c2d9ce31922a2d62cbf749e28327e7e75a00c1416",
+    "apps/ios-conversation/Tests/ConversationArtifactSourcesTests.swift": "6d4028c94cccd219e691e04ca3944f15eba12c97a50eea0e3e04de26861473c8",
+    "apps/ios-conversation/Tests/ConversationFirstUITests.swift": "6c8727fe31a75edbc005abd07753d0874374f872e65b4396a61935acc03305aa",
+    "apps/ios-conversation/Tests/ConversationSessionRunner.swift": "986e9c12d6aee02616dc128309e9078eb51be4a3d3247076f3e0e0799596b61d",
+    "apps/ios-conversation/Tests/NativeChatWireRunner.swift": "4244b49f577d9d4e95c4b2d6ec559e385659f3fed37a593c8214d67f189a7214",
+    "apps/ios-conversation/Tests/native-chat-wire-server.mjs": "0c849326d31f303752ed3602ce7b51124eb7fc8424bca4f73e6707b0a757c137",
+    "services/edge/supabase/functions/_shared/api.mjs": "fe52d2141b5e6e6a4f539e1e781765c3edaa5fedd6469cc44f1737aac5bc85ba",
+    "services/edge/supabase/functions/_shared/config.mjs": "468eaab57ba393fb350aa63023238e26d436ffb7ab411232e1ac0e9c322f7ff0",
+    "services/edge/supabase/functions/_shared/core/src/chat-service.mjs": "336c6a9f1aba962d5904f58f76578d525508a87556e492e6f197dde74eab1331",
+    "services/edge/supabase/functions/_shared/core/src/local-output-facade.mjs": "f2379ad3344dbfc5e6e8123cf5caa4203077e17c0997170793e74f5971185ed1",
+    "services/edge/supabase/functions/_shared/core/src/model-handler.mjs": "7a1955aecca049138dbd42a026e2bdb925a5f1db92b0d2c685c433337e071897",
+    "services/edge/supabase/functions/_shared/core/src/public-source-contract.mjs": "e04ea3847d1b622cdd069a47b152e854e838947795b946eedd4ab3ad618fab41",
+    "services/edge/supabase/functions/_shared/core/src/purge-plan.mjs": "d867da8b74de74b6c6b3a15ef268bf7fe23dd97f9f263983fc6876d143c277ab",
+    "services/edge/supabase/functions/_shared/core/src/single-step-handler.mjs": "d565dc12c50d3b67d7e0fc549045dead4d273a3aa540258af67e693432433c86",
+    "services/edge/supabase/functions/_shared/core/src/source-erasure.mjs": "42c01ef6561706f4fdd1a07f95fbf47dd9f1d04ca51284753d4689a6beb59479",
+    "services/edge/supabase/functions/_shared/core/src/sourced-worker-tools.mjs": "ebfa84e84a44ba0d2dea2b64a7534ae283578f7668511dedfbbffc8c2cb8201e",
+    "services/edge/supabase/functions/_shared/core/src/task-action-contract.mjs": "cac7f24dfface85b550f28cd9311e4df73e4938d5fd5a28a6c4433b452024502",
+    "services/edge/supabase/functions/_shared/core/src/task-action-service.mjs": "0794def66e129ce29774dc30f900983ebb5caa6019c741bbfb14afab330658a9",
+    "services/edge/supabase/functions/_shared/core/src/task-plan-service.mjs": "b333a8ee260860f712106fa07b3c791c51e93de40f635ad8b4ab2e342e4f0870",
+    "services/edge/supabase/functions/_shared/core/src/task-source-service.mjs": "00c23e84a133a256d6f8331af67a0be82f64b0693fb033cd16e76ffe5c525e92",
+    "services/edge/supabase/functions/_shared/core/src/tools.mjs": "4aa87acbb7a4b7a6c5e7e99e2ffbfca4e35c1ca6f4abbe87e00110832fd85c44",
+    "services/edge/supabase/functions/_shared/core/src/worker-output-contract.mjs": "2a75eb394dffbd897c27975028c07d6a76baa7bf54c61ad4877601ec653f2fc3",
+    "services/edge/supabase/functions/_shared/public-web-reader.mjs": "6e75fa1cc8ae41dc7b90ab8c6fd328bda2d5ce04dbd177244c5ad79c7c418ac5",
+    "services/edge/test/task-action-http.test.mjs": "49b6b24bb6d829372f71f1c4fbb180f5ba5566cf3c4b4c3d29cd9cceaeb78a76",
+    "services/edge/test/task-action.test.mjs": "ad9d3b0e3965fa4636dd36e98e570a99c16d5536507296c2e47e7e5501e7b10e",
+    "services/edge/test/task-public-sources.test.mjs": "54b7be223c9c6a1931bd2d544c781e4ad80634e07c4e5ff6cdd646787b3511a2",
+    "services/edge/test/task-source-http.test.mjs": "de1439868f331b5cca231d5b6f37d63efb95f4824e748b73cef41a266032d5c7",
+    "services/edge/test/task-sourced-report.test.mjs": "3fef61fca3a3ba9235bb2916ec708b9d6223fb8e2462e375bd3db5f0d071bc76"
+  },
+  "input_source_manifest_sha256": "8f3a75e5dfdd6e7e071dd669c9c0c689195961042425f4ba9f4ff1da52a962ec",
+  "manifest_digest_format": "UTF-8 JSON sorted keys, compact separators, no final newline",
+  "checks": {
+    "backend_deno_offline": {
+      "result": "PASS",
+      "cases": 156,
+      "scope": "actual maintenance API/two worker paths; injected TLS bytes, TestRepository/provider; existing public cache, cached-only deny-net; no production SQL/model/public GET",
+      "cases_new": {
+        "source_contract_reader_service": 15,
+        "sourced_worker_report": 12,
+        "action_kernel": 27,
+        "action_http": 8,
+        "source_http": 7
+      },
+      "path": "services/edge/build/sourced-integrated-final.log",
+      "sha256": "b2880c720c97dfc080d526724218bda86fdc21dab992aa22e032e76b6258ffca"
+    },
+    "source_boundaries_independent": {
+      "result": "PASS",
+      "cases": 6,
+      "scope": "separate ignored exploration, not counted in 156: partial/repeated read, original unknown, cancel/revoke/deadline receipt-cursor rollback",
+      "test_source": {
+        "path": "services/edge/build/source-boundaries-review.test.mjs",
+        "sha256": "4b7b01d7c5f8a811ec22458e6c474fd198f3548513915f2ecb8cb2c8fd8c23f7"
+      },
+      "path": "services/edge/build/source-boundaries-review.log",
+      "sha256": "8a62f6bdd151ac976fb05667951b1659467afd5bc06bff2876f5876cd9617e47"
+    },
+    "conversation_persistence": {
+      "result": "PASS",
+      "cases": 37,
+      "scope": "three delegation names, empty/BOM/NEL/prose restart/follow-up and retained negatives; FilePersistence, explicit fixture",
+      "path": "build/goal-sourced-20261014/conversation-genui-matrix.log",
+      "sha256": "13fe7edc15b85b10c32c7e323a424f8241a4ce64adbf826e064b268a7f2dc6c7"
+    },
+    "native_http_sse_loopback": {
+      "result": "PASS",
+      "assertions": 74,
+      "turn_posts": 34,
+      "live_model_calls": 0,
+      "scope": "actual Swift HTTP/SSE over localhost: raw Unicode, ASCII CR/LF, EOF/GET and binding negatives; no external Auth/model",
+      "runner": {
+        "path": "apps/ios-conversation/.build/native-chat-wire/runner",
+        "sha256": "fd75e7fe48e6b686e04f4d4aa4f6692158f843460608f7bb7db23efa4f3f5073"
+      },
+      "path": "build/goal-sourced-20261014/native-chat-wire-genui-final.log",
+      "sha256": "b60f46632fcfbc17a25e0e649add8d1b691835cca10b74769cfa1b19d5a8f26f"
+    },
+    "artifact_parser_portable": {
+      "result": "PASS",
+      "inner_scenario_groups": 15,
+      "scope": "same parser matrix is represented by five Unit methods, not extra XCTest count",
+      "path": "build/goal-sourced-20261014/artifact-sources-portable-final.log",
+      "sha256": "cca092d3092dfeb47c35e96804d4444712270934091aa0b73f48dbba6b3943de"
+    },
+    "native_xctest": {
+      "result": "PASS",
+      "tests": 7,
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0,
+      "unit_methods": 5,
+      "ui_tests": 2,
+      "device": "iPhone 17 / iOS 27.0 Simulator",
+      "reality": "injected_synthetic_offline_v19",
+      "scope": "ordinary/accessibility5 result, one source sheet, detail Link reachable but never clicked, exact history/hash/back/draft; no VoiceOver or full device gate",
+      "source_manifest": {
+        "inputs": 107,
+        "all_current_hashes_match": true,
+        "path": "build/goal-sourced-20261014/native-r6-source.json",
+        "sha256": "d614d934d86e41caaa1cf47bf33f5e200152d5f87f3cb88238151358432cfcb8"
+      },
+      "bundle": "build/goal-sourced-20261014/native-r6.xcresult",
+      "agent_evidence": {
+        "path": "build/goal-sourced-20261014/native-r6-evidence.json",
+        "sha256": "7009d2e2ba650baff821c22a607b6749cc2c992d93547b78c416cdc88cdefdab"
+      },
+      "path": "build/goal-sourced-20261014/native-r6.log",
+      "sha256": "609e3d70ac33736ecbfddb4dd0a7f0070aec592f7a80bf33b6ab2745adff6208"
+    },
+    "release_simulator": {
+      "result": "PASS",
+      "version": "0.3.0",
+      "build": "19",
+      "configuration": "Release, unsigned iOS Simulator",
+      "binary_sha256": "1bbcebaa5629b21d7bd09f2151be953b5c16ca83ce2f2f27629e42096c78b4f2",
+      "scope": "final production source incl raw SSE and source-sheet font fix; existing local packages, no physical signature/config copy/install",
+      "path": "build/goal-sourced-20261014/release-reader-final.log",
+      "sha256": "efc01ac81b6be7d82378638bff31bf15e4ce352f7df7ca45626172774a7d1ef1"
+    },
+    "project": {
+      "result": "PASS",
+      "app_sources": 79,
+      "targets": 3,
+      "path": "build/goal-sourced-20261014/project-final.log",
+      "sha256": "69b0e569900bf67cf5a911ecec2985d7f4f110a0cc1a01dffabbd5d63243adf5"
+    },
+    "localization": {
+      "result": "PASS",
+      "bilingual_entries": 777,
+      "locale_bound_lookups": 754,
+      "path": "build/goal-sourced-20261014/localization-final.log",
+      "sha256": "a01e23dbf5dfa9f06bd44f03516ad9f30f13283001eb536eb53bbcc7a2e73c57"
+    },
+    "layout": {
+      "result": "PASS",
+      "path": "build/goal-sourced-20261014/layout-final.log",
+      "sha256": "d225b3174702f41d455fc0cd22c09a32011f6b961c278f3e66b88fc9ba7ca372"
+    },
+    "frozen_sources": {
+      "result": "PASS",
+      "path": "build/goal-sourced-20261014/frozen-final.log",
+      "sha256": "1bb67173eb0b659474afd45ac05604e9fb8492515d9f2408006c25fb5bf3865d"
+    },
+    "deployed_snapshots": {
+      "result": "PASS",
+      "counts": [
+        50,
+        43
+      ],
+      "shared_differences": 14,
+      "remote_rechecked": false,
+      "path": "build/goal-sourced-20261014/deployed-final.log",
+      "sha256": "a68c4a239c7a9d8a2e3f2ffab1f5ae00b63c319b9999a42db6c27873688ee228"
+    },
+    "af_plan": {
+      "result": "PASS",
+      "path": "build/goal-sourced-20261014/af-plan-final.log",
+      "sha256": "71da24f70099c5cfb5c75ba771b66c4bf4a7191051c3bd879afd8ec58db3f748"
+    },
+    "af_goals": {
+      "result": "PASS",
+      "path": "build/goal-sourced-20261014/af-goals-final.log",
+      "sha256": "4c76a439ba364da063251372496269a9ebb9639805854e66ad9566ae927fd1ea"
+    },
+    "final_plan": {
+      "result": "PASS",
+      "path": "build/goal-sourced-20261014/final-plan-final.log",
+      "sha256": "7b72c9e606d7cd160ae8d115c2f06fd10a8e293c8de3a662a01a92467c51161c"
+    },
+    "cgui_plan": {
+      "result": "PASS",
+      "path": "build/goal-sourced-20261014/cgui-plan-final.log",
+      "sha256": "88b45ed6dfa074c65400b6b6790343bfb31e63c74b69ab7963d32c299ad64b9b"
+    },
+    "sensitivity": {
+      "result": "PASS",
+      "json_report": {
+        "path": "build/goal-sourced-20261014/sensitivity-final.json",
+        "sha256": "c4b5a1afbe2a442a276790bd47cb3fae1c5b85b52f5c22fa74029d112d3d47c2"
+      },
+      "scope": "candidate known-pattern scan, exact synthetic fixture reviews, rules unchanged, ignored runtime/private contents excluded",
+      "path": "build/goal-sourced-20261014/sensitivity-final.log",
+      "sha256": "2d24d86f849a86e0fef0c906f01fbd1b9adc5a4f5ad90ba6fe2c2d3d7f5bfe76"
+    }
+  },
+  "iterations": [
+    {
+      "expectation": "Expected FAIL in isolated pre-repair copy: no nextRunAt means full worker cannot continue",
+      "path": "build/goal-sourced-20261014/pre-repair-continuation-regression.log",
+      "sha256": "3381b15402174ccabdef790ee8f3f8647ffd86c3e66f1c4947c5d879ab178255"
+    },
+    {
+      "expectation": "Expected two FAILs in isolated copy without final post-await guard: artifacts survive cancel/revoke",
+      "path": "build/goal-sourced-20261014/pre-repair-write-regression.log",
+      "sha256": "a7f5246fe6022e2713664cb6c82e3b86a874c30c0be6c3af65d074dd95ead9fc"
+    },
+    {
+      "expectation": "Stale test cache assertion: failed/not_configured turn, zero assistant/goals, fresh readyz provider_unverified; production connection unchanged",
+      "path": "build/goal-sourced-20261014/native-chat-wire-genui-red.log",
+      "sha256": "265d28814508314c52aeab16ac15f91cb64490562b8ba3322b5051d2ccf0bb28"
+    },
+    {
+      "expectation": "Actual raw NEL JSON split by AsyncBytes.lines, fixed original byte framing",
+      "path": "build/goal-sourced-20261014/native-chat-wire-unicode-red.log",
+      "sha256": "1e620256b0a81ca35eda185239093af77376254bc3b67c601309df59c96848ac"
+    },
+    {
+      "expectation": "Initial five Unit PASS/two UI FAIL: AX nesting and offscreen large card",
+      "path": "build/goal-sourced-20261014/native-r1.log",
+      "sha256": "17fd8c82556ea1b41f82ab88622df11ed85f5ac169ae13913f3123265e66a28a"
+    },
+    {
+      "expectation": "Large gesture incorrectly hit fixed composer/jumpToLatest area",
+      "path": "build/goal-sourced-20261014/native-r4.log",
+      "sha256": "32f77c104dae5f64fd5c809e1af63f6b3b726d153f676a2a6592140b3369e9ab"
+    },
+    {
+      "expectation": "Seven tests PASS but screenshot showed source sheet did not inherit accessibility font",
+      "path": "build/goal-sourced-20261014/native-r5.log",
+      "sha256": "bb9703e92e6416af49ed6e51b69b579a6c4b785adf6dc6dd1c6d691e36370149"
+    },
+    {
+      "expectation": "Unclosed-script extraction now single pass; local adversarial timing only",
+      "path": "services/edge/build/public-reader-perf-green.log",
+      "sha256": "1899342db29749feb794da63a6343deb3b37d2ee5cb4475621b09a42ef823956"
+    }
+  ],
+  "screenshots": [
+    {
+      "test": "ConversationArtifactReaderUITests/testLargeTextReaderSourceNavigationAndHistoryKeepDraft()",
+      "attachment_name": "Synthetic-source-reader-v19-return-preserves-draft-no-external-link_0_465AF41D-3233-44CF-8F16-4F3F030AC217.png",
+      "path": "build/goal-sourced-20261014/native-r6-screenshots/65403CDE-20E4-4CDB-AF42-D8DAB96C421D.png",
+      "sha256": "c91d95bb06941413165f6151935e193d52bc2340a59a505de8538cefdf6577a5",
+      "captured_unix_seconds": 1791939018.504,
+      "version": "0.3.0(19)",
+      "origin": "native-r6 XCTest attachment",
+      "reality": "Simulator synthetic fixture, no Auth/model/web fetch",
+      "physical_device_acceptance": false
+    },
+    {
+      "test": "ConversationArtifactReaderUITests/testLargeTextReaderSourceNavigationAndHistoryKeepDraft()",
+      "attachment_name": "Synthetic-source-reader-v19-immutable-history-v1_0_AC65C48C-84CF-415A-87B3-D1AC3296F949.png",
+      "path": "build/goal-sourced-20261014/native-r6-screenshots/A6E0ED87-270A-4BBD-A37B-C05F7E316A72.png",
+      "sha256": "2fca2223190b780fa1b598ec6e3bacd563e143c44dfa1a5da975add2ae892289",
+      "captured_unix_seconds": 1791939015.661,
+      "version": "0.3.0(19)",
+      "origin": "native-r6 XCTest attachment",
+      "reality": "Simulator synthetic fixture, no Auth/model/web fetch",
+      "physical_device_acceptance": false
+    },
+    {
+      "test": "ConversationArtifactReaderUITests/testLargeTextReaderSourceNavigationAndHistoryKeepDraft()",
+      "attachment_name": "Synthetic-source-reader-v19-source-detail-single-sheet_0_E99FA23C-DBAE-418B-B08F-3925283DBDFD.png",
+      "path": "build/goal-sourced-20261014/native-r6-screenshots/864F97BF-38EA-41A8-8DD5-0D5761A99396.png",
+      "sha256": "1dc54b4804ee8f58ddf18ae982eedf30e8f865b0ce29198219db668d0602c208",
+      "captured_unix_seconds": 1791938988.512,
+      "version": "0.3.0(19)",
+      "origin": "native-r6 XCTest attachment",
+      "reality": "Simulator synthetic fixture, no Auth/model/web fetch",
+      "physical_device_acceptance": false
+    },
+    {
+      "test": "ConversationArtifactReaderUITests/testLargeTextReaderSourceNavigationAndHistoryKeepDraft()",
+      "attachment_name": "Synthetic-source-reader-v19-current-v2_0_5CC88416-87BA-4945-B7B0-327C46D2A63D.png",
+      "path": "build/goal-sourced-20261014/native-r6-screenshots/32398578-2AF0-471D-9F1B-1E624D8169B8.png",
+      "sha256": "f52edb944cfac743c0769a37b74b9766644ef3a15c6073fbd50edb40eb484898",
+      "captured_unix_seconds": 1791938973.731,
+      "version": "0.3.0(19)",
+      "origin": "native-r6 XCTest attachment",
+      "reality": "Simulator synthetic fixture, no Auth/model/web fetch",
+      "physical_device_acceptance": false
+    },
+    {
+      "test": "ConversationArtifactReaderUITests/testRootReaderSourceSheetAndExactHistoryKeepDraft()",
+      "attachment_name": "Synthetic-source-reader-v19-return-preserves-draft-no-external-link_0_ABF62144-42B3-415C-8441-C75E720330AE.png",
+      "path": "build/goal-sourced-20261014/native-r6-screenshots/92EDD050-B612-423A-A566-A53F67F0E2F7.png",
+      "sha256": "19bbc203164912b865919d93788f23cf1e027cf6c5217e492df8aaffdc43264d",
+      "captured_unix_seconds": 1791939062.869,
+      "version": "0.3.0(19)",
+      "origin": "native-r6 XCTest attachment",
+      "reality": "Simulator synthetic fixture, no Auth/model/web fetch",
+      "physical_device_acceptance": false
+    },
+    {
+      "test": "ConversationArtifactReaderUITests/testRootReaderSourceSheetAndExactHistoryKeepDraft()",
+      "attachment_name": "Synthetic-source-reader-v19-immutable-history-v1_0_3EFA8ED2-8493-45C1-9092-ED011EAA7D3C.png",
+      "path": "build/goal-sourced-20261014/native-r6-screenshots/D7CAADFA-C878-4199-9BB2-50E8E4F8CF5A.png",
+      "sha256": "4fac33008bac1623c2975995090b955317d29a852f2a3d39769803639888e5c3",
+      "captured_unix_seconds": 1791939059.747,
+      "version": "0.3.0(19)",
+      "origin": "native-r6 XCTest attachment",
+      "reality": "Simulator synthetic fixture, no Auth/model/web fetch",
+      "physical_device_acceptance": false
+    },
+    {
+      "test": "ConversationArtifactReaderUITests/testRootReaderSourceSheetAndExactHistoryKeepDraft()",
+      "attachment_name": "Synthetic-source-reader-v19-source-detail-single-sheet_0_BFE95A25-2CD7-4511-9FD0-313589EFF692.png",
+      "path": "build/goal-sourced-20261014/native-r6-screenshots/732AF9C3-E729-4058-93AC-1B4BADCA239F.png",
+      "sha256": "2b80a38fd4ced4abe0f907bbaef653d81305a6b009c520142aba548d9582cb60",
+      "captured_unix_seconds": 1791939045.616,
+      "version": "0.3.0(19)",
+      "origin": "native-r6 XCTest attachment",
+      "reality": "Simulator synthetic fixture, no Auth/model/web fetch",
+      "physical_device_acceptance": false
+    },
+    {
+      "test": "ConversationArtifactReaderUITests/testRootReaderSourceSheetAndExactHistoryKeepDraft()",
+      "attachment_name": "Synthetic-source-reader-v19-current-v2_0_4BD9D36B-F454-47EE-A99E-605A41B9CDCB.png",
+      "path": "build/goal-sourced-20261014/native-r6-screenshots/36F0B01D-1567-43B7-A499-D539F47D68EC.png",
+      "sha256": "ada1b49546012473bb30a037ffe0d3f76bc114efd3aafa398c1c624e33ee9dec",
+      "captured_unix_seconds": 1791939040.727,
+      "version": "0.3.0(19)",
+      "origin": "native-r6 XCTest attachment",
+      "reality": "Simulator synthetic fixture, no Auth/model/web fetch",
+      "physical_device_acceptance": false
+    }
+  ],
+  "integration_findings_resolved": [
+    "legacy full worker nextRunAt continuation",
+    "post-final-await source-save authority/lease rollback",
+    "signed and credential URL query rejection",
+    "linear malformed HTML extraction",
+    "raw Unicode SSE byte framing",
+    "immutable version/hash and source navigation",
+    "explicit inherited accessibility font in source sheet"
+  ],
+  "current_default_model_route_hash": "eef4100e83db1b2ab5ea9a7efd4818e97dcd90c819f056b54082fbdf5cd5e305",
+  "authorization_consumed": {
+    "production_auth_requests": 0,
+    "public_source_get_requests": 0,
+    "real_model_requests": 0,
+    "production_sql_requests": 0,
+    "physical_installs": 0,
+    "deployments": 0,
+    "pushes_prs_publications": 0,
+    "new_credentials_dependencies": 0,
+    "additional_compute_cost": 0,
+    "frozen_build16_short_text_checks_consumed": 0
+  },
+  "limits": [
+    "Existing Supabase pinned TCP/TLS runtime remains unverified; public policy default absent, source tool unavailable until explicitly configured",
+    "SourceStatus.verified validates metadata structurally, not a client fetch proof",
+    "Action approval remains waiting_device, execution_authorized=false/executable=false; trusted verifier absent by default, no EventKit executor or native recoverable approval UI",
+    "Terminal artifact CAS edit and W33 real SQL multi-instance/authority takeover/original unknown reconciliation remain unfinished",
+    "Bounded original-turn kick is best effort; W50 independent scheduling absent",
+    "Memory/real image/condition follow-up/local reminders/real GenUI producer and same-work follow-up incomplete",
+    "Plain text reports; no arbitrary Markdown execution and no native production comparison-table proof",
+    "Physical iPhone/system font/VoiceOver/full gesture-motion, real model/cloud/SQL and release acceptance unverified",
+    "AF-G5 18A/12U/3CP, FINAL-G1 FQ/CG/7-day use and FINAL-G2 BP comparison not closed"
+  ],
+  "next": [
+    "normal approved build16 original-model short path after human unlock; never new unknown send",
+    "W31 terminal artifact CAS edit and W32 native recoverable exact decisions through typed application services",
+    "W33 actual scoped Store authority/lease/unknown verification before schedule/effect rollout"
+  ]
+}

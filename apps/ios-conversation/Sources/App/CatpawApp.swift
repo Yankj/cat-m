@@ -26,7 +26,20 @@ import AppIntents
             do {
                 let root=FileManager.default.urls(for:.applicationSupportDirectory,in:.userDomainMask)[0].appendingPathComponent("CatpawP0-qa-"+id)
                 let repository=try Repository(persistence:SwiftDataPersistence(url:root.appendingPathComponent("local.store")))
-                p0Model=ConversationFirstModel(repository:repository,service:ConversationSessionService(repository:repository,backend:P0ExperienceBackend(scenario:scenario)),imageStore:try FileConversationImageByteStore(root:root.appendingPathComponent("image-bytes")))
+                if scenario.hasPrefix("p0-ui-accepted-work") {
+                    p0Model=try ConversationAcceptedWorkLoopbackFixture.make(repository:repository,root:root)
+                    return
+                }
+                let planBackend = ConversationTaskPlanFixtureBackend(mode:scenario == "p0-ui-plan-pending" ? .pending : (scenario == "p0-ui-plan-unknown" ? .unknown : .applied))
+                let reviewSubject=stableID("P0-task-review-subject")
+                let actionBackend:ConversationTaskActionFixtureBackend?=scenario.contains("task-action") ? try ConversationTaskActionFixtureBackend(url:root.appendingPathComponent("task-actions-synthetic-server.json"),mode:scenario.contains("unavailable") ? .unavailable : (scenario.contains("unknown") ? .unknown : .normal),statsUpdated:{stats in Task{@MainActor in P0ExperienceProbe.shared.recordTaskReviewStats(stats)}}) : nil
+                let artifactBackend:ConversationArtifactEditFixtureBackend?=scenario.contains("artifact-edit") ? try ConversationArtifactEditFixtureBackend(url:root.appendingPathComponent("artifact-edits-synthetic-server.json"),mode:scenario.contains("unknown") ? .unknown : .applied,statsUpdated:{stats in await MainActor.run{P0ExperienceProbe.shared.recordTaskReviewStats(stats)}}) : nil
+                let controlBackend:ConversationTaskControlFixtureBackend?=scenario.contains("task-control") ? try ConversationTaskControlFixtureBackend(url:root.appendingPathComponent("task-controls-synthetic-server.json"),mode:scenario.contains("unresolved") ? .unresolved : (scenario.contains("unknown") ? .unknown : .normal),statsUpdated:{stats in Task{@MainActor in P0ExperienceProbe.shared.recordTaskReviewStats(stats)}}) : nil
+                let conversationBackend:any ConversationBackend
+                if let controlBackend {conversationBackend=ConversationTaskControlConversationFixture(controls:controlBackend,subjectID:reviewSubject);Task{await controlBackend.publishStats()}}
+                else {conversationBackend=P0ExperienceBackend(scenario:scenario)}
+                if let artifactBackend {Task{await artifactBackend.publishStats()}}
+                p0Model=ConversationFirstModel(repository:repository,service:ConversationSessionService(repository:repository,backend:conversationBackend),imageStore:try FileConversationImageByteStore(root:root.appendingPathComponent("image-bytes")),taskPlanService:scenario.hasPrefix("p0-ui-plan") ? ConversationTaskPlanService(repository:repository,scope:Profiles.user,backend:planBackend) : nil,artifactEditService:artifactBackend.map{ConversationArtifactEditService(repository:repository,scope:Profiles.user,backend:$0)},taskActionService:actionBackend.map{ConversationTaskActionService(repository:repository,scope:Profiles.user,backend:$0)},taskControlService:controlBackend.map{ConversationTaskControlService(repository:repository,scope:Profiles.user,backend:$0)},subjectID:reviewSubject)
             } catch { self.error=error.localizedDescription }
             return
         }
@@ -57,8 +70,15 @@ import AppIntents
         #if DEBUG
         guard let pending=p0Model,model == nil else { return }
         do {
+            if P0ExperienceFixture.scenario?.hasPrefix("p0-ui-accepted-work")==true,
+               let testStore=ProcessInfo.processInfo.environment["CF_UI_TEST_STORE"],UUID(uuidString:testStore) != nil,
+               await pending.repository.read(scope:pending.scope).list("conversation",scope:pending.scope).isEmpty {
+                // A new synthetic client store owns a new conversation, not a
+                // fresh local journal falsely claiming an older server history.
+                _=try await pending.service.create(scope:pending.scope,id:stableID("accepted-work-test-conversation:"+testStore))
+            }
             let id=try await pending.service.openLatest(scope:pending.scope),record=try await pending.repository.record(id,scope:pending.scope)
-            if record.conversation?.draftText.isEmpty == true,try await pending.service.read(scope:pending.scope,conversationID:id).messages.isEmpty {
+            if P0ExperienceFixture.scenario?.hasPrefix("p0-ui-accepted-work") != true,record.conversation?.draftText.isEmpty == true,try await pending.service.read(scope:pending.scope,conversationID:id).messages.isEmpty {
                 try await pending.service.saveDraft(scope:pending.scope,conversationID:id,text:"Saved local draft")
             }
             await pending.start();model=pending
@@ -107,16 +127,60 @@ import AppIntents
     @ViewBuilder private var primaryView: some View {
         if let model = bootstrap.model {
             #if DEBUG
-            ConversationFirstView(model:model).environment(\.dynamicTypeSize,P0ExperienceFixture.scenario?.hasPrefix("p0-ui-large") == true ? .accessibility5 : .large)
+            if let size=P0ExperienceFixture.textSizeOverride {
+                ConversationFirstView(model:model).environment(\.dynamicTypeSize,size)
+            } else {
+                ConversationFirstView(model:model)
+            }
             #else
             ConversationFirstView(model:model)
             #endif
         }
         else if bootstrap.isP0Fixture { ProgressView("Offline fixture loading").accessibilityIdentifier("qa.p0Fixture.loading") }
-        else if let model = auth.chat { ConversationFirstView(model:model,accountLabel:auth.isFixture ? ui("合成登录测试 · 无真实 Auth/模型") : (auth.state.user?.isAnonymous == true ? ui("体验账号") : auth.state.user?.email),onSignOut:{ Task { await auth.signOut() } },isAnonymousAccount:auth.state.user?.isAnonymous == true) }
-        else { NativeLoginView(auth:auth) }
+        else if let model = auth.chat {
+            ConversationFirstView(model:model,accountLabel:auth.isFixture ? ui("合成登录测试 · 无真实 Auth/模型") : (auth.state.user?.isAnonymous == true ? ui("体验账号") : auth.state.user?.email),onSignOut:{ Task { await auth.signOut() } },isAnonymousAccount:auth.state.user?.isAnonymous == true)
+                #if DEBUG
+                .overlay(alignment:.topTrailing) {
+                    if auth.isFixture {
+                        NativeAuthFixtureChatProbe(auth:auth,model:model)
+                    }
+                }
+                #endif
+        }
+        else {
+            NativeLoginView(auth:auth)
+                #if DEBUG
+                .overlay(alignment:.topTrailing) { if auth.isFixture { NativeAuthFixtureLoggedOutProbe(auth:auth) } }
+                #endif
+        }
     }
 }
+
+#if DEBUG
+private struct NativeAuthFixtureChatProbe:View {
+    @ObservedObject var auth:NativeAuthApplicationModel
+    @ObservedObject var model:ConversationFirstModel
+    var body:some View {
+        NativeAuthFixtureProbeContent(value:"\(auth.state.phase)|\(model.networkAdmissionAllowed ? "admitted" : "closed")|\(auth.state.user == nil ? "unvalidated" : "validated")|turns:\(model.session?.turns.count ?? 0)")
+    }
+}
+private struct NativeAuthFixtureLoggedOutProbe:View {
+    @ObservedObject var auth:NativeAuthApplicationModel
+    var body:some View { NativeAuthFixtureProbeContent(value:"\(auth.state.phase)|closed|\(auth.state.user == nil ? "unvalidated" : "validated")|turns:0") }
+}
+private struct NativeAuthFixtureProbeContent:View {
+    let value:String
+    @Environment(\.locale) private var locale
+    private func ui(_ key:String)->String { AppLanguage(locale:locale).ui(key) }
+    var body:some View {
+        Color.clear.frame(width:1,height:1)
+            .accessibilityElement(children:.ignore)
+            .accessibilityLabel(Text(ui("合成登录测试 · 无真实 Auth/模型")))
+            .accessibilityValue(Text(verbatim:value))
+            .accessibilityIdentifier("auth.fixture.sessionState")
+    }
+}
+#endif
 
 /// A foreground-only entry point. Opening never creates an identity or sends a message.
 struct OpenCatpawConversationIntent: AppIntent {

@@ -5,6 +5,12 @@ struct WireTestSession: NativeChatSessionCredentials { func authorization(scope:
         let origin = URL(string: CommandLine.arguments[1])!, root = URL(fileURLWithPath: CommandLine.arguments[2])
         func backend(_ allow: Bool = true) throws -> NativeChatHTTPBackend { NativeChatHTTPBackend(configuration: try NativeChatConfiguration(origin: origin, localScope: Profiles.user, serverScopeID: Profiles.user.workspaceID, allowInjectedTestProvider: allow), credentials: WireTestSession()) }
         func check(_ condition: Bool, _ text: String) throws { guard condition else { throw CatpawError.invalid(text) }; print("PASS: " + text) }
+        let headerConfiguration=try NativeChatConfiguration(origin:origin,localScope:Profiles.user,serverScopeID:Profiles.user.workspaceID)
+        for (label,value) in [("CR","Bearer synthetic\rinjected"),("LF","Bearer synthetic\ninjected"),("CRLF","Bearer synthetic\r\ninjected"),("byte budget","Bearer "+String(repeating:"a",count:8185))] {
+            var rejected=false
+            do {_=try headerConfiguration.makeRequest(route:"/readyz",authorization:value)}catch ConversationSessionError.notConfigured {rejected=true}
+            try check(rejected,"public request constructor rejects authorization "+label+" before creating a request")
+        }
         let repo = try Repository(persistence: FilePersistence(url: root.appendingPathComponent("wire-chat.json")))
         let userSession = try SupabaseUserAccessSession(projectURL: URL(string: "https://abcdefghijklmnopqrst.supabase.co")!, localScope: Profiles.user)
         let expired = Date(timeIntervalSince1970: 1)
@@ -52,6 +58,32 @@ struct WireTestSession: NativeChatSessionCredentials { func authorization(scope:
         try await recovered.observe(scope: Profiles.user, conversationID: taskConvo)
         state = try await recovered.read(scope: Profiles.user, conversationID: taskConvo)
         try check(state.goals.values.first?.artifactHistory.count == 1, "restart reads same task/turn/artifact and retains immutable artifact history")
+        for toolName in ["delegate_plan_v1", "delegate_sources_v1"] {
+            for (label, text, persisted) in [("empty", "", false), ("bom", " \t\n\u{00A0}\u{FEFF}", false), ("nel", "\u{0085}", true), ("prose", " 已受理 ", true)] {
+                FileHandle.standardError.write(Data("WIRE CASE explicit loopback only: \(toolName) / \(label)\n".utf8))
+                let matrixStore = root.appendingPathComponent("wire-\(toolName)-\(label).json")
+                let matrix = ConversationSessionService(repository: try Repository(persistence: FilePersistence(url: matrixStore)), backend: try backend())
+                let conversation = try await matrix.create(scope: Profiles.user), operation = UUID()
+                let prompt = "wire-delegation-\(toolName)-\(label)" + (toolName == "delegate_sources_v1" ? " https://docs.example.org/docs/one" : "")
+                _ = try await matrix.send(scope: Profiles.user, conversationID: conversation, text: prompt, operationID: operation)
+                let received = try await matrix.read(scope: Profiles.user, conversationID: conversation)
+                guard let goal = received.goals.values.first, let binding = goal.binding else { throw CatpawError.invalid("Expected original \(toolName) binding") }
+                let prose = received.messages.filter { $0.role == .assistant && $0.toolName == nil }.map(\.content)
+                try check(received.turns.count == 1 && received.turns.last?.state == .completed && received.turns.last?.id == operation && goal.state == .queued && goal.title == "Wire-only \(toolName) \(label)" && prose == (persisted ? [text] : []), "\(toolName) \(label) HTTP/SSE preserves exact transcript and separates completed chat from queued task")
+                let restarted = ConversationSessionService(repository: try Repository(persistence: FilePersistence(url: matrixStore)), backend: try backend())
+                try await restarted.observe(scope: Profiles.user, conversationID: conversation)
+                let original = try await restarted.read(scope: Profiles.user, conversationID: conversation)
+                try check(original.turns.last?.id == operation && original.goals[goal.id]?.binding == binding && original.messages.filter { $0.role == .assistant && $0.toolName == nil }.map(\.content) == prose, "\(toolName) \(label) restart GET validates the original task/turn/run and terminal hash")
+                let followup = UUID()
+                _ = try await restarted.send(scope: Profiles.user, conversationID: conversation, text: "wire-followup-\(toolName)-\(label)", operationID: followup)
+                let continued = try await restarted.read(scope: Profiles.user, conversationID: conversation)
+                try check(continued.turns.count == 2 && continued.turns.allSatisfy { $0.state == .completed } && continued.goals.count == 1 && continued.goals[goal.id]?.binding == binding, "\(toolName) \(label) new follow-up matches server history without another delegation")
+                let historical = ConversationSessionService(repository: try Repository(persistence: FilePersistence(url: matrixStore)), backend: try backend())
+                try await historical.observe(scope: Profiles.user, conversationID: conversation)
+                let readback = try await historical.read(scope: Profiles.user, conversationID: conversation)
+                try check(readback.turns.last?.id == followup && readback.goals.count == 1 && readback.goals[goal.id]?.binding == binding && readback.goals[goal.id]?.title == goal.title && readback.goals[goal.id]?.state == .queued, "\(toolName) \(label) cold latest-turn recovery rechecks historical binding and restores its title")
+            }
+        }
         let pendingID = try await service.create(scope: Profiles.user), original = UUID()
         do { _ = try await service.send(scope: Profiles.user, conversationID: pendingID, text: "wire-interrupt", operationID: original) } catch { }
         state = try await service.read(scope: Profiles.user, conversationID: pendingID)
@@ -73,7 +105,9 @@ struct WireTestSession: NativeChatSessionCredentials { func authorization(scope:
         do { _ = try await unconfigured.send(scope: Profiles.user, conversationID: c, text: "wire-unconfigured", operationID: UUID()) } catch { }
         state = try await unconfigured.read(scope: Profiles.user, conversationID: c)
         let status = await unconfigured.connection(scope: Profiles.user)
-        try check(status.state == .notConfigured && state.turns.last?.state == .failed && state.messages.filter { $0.role == .assistant }.isEmpty && state.goals.isEmpty, "server not_configured remains explicit and emits no fake assistant/goal")
+        let diagnostic = "DIAGNOSTIC explicit loopback only: connection=\(status.state.rawValue), turn=\(state.turns.last?.state.rawValue ?? "none"), error=\(state.turns.last?.error ?? "none"), assistant_count=\(state.messages.filter { $0.role == .assistant }.count), goal_count=\(state.goals.count)\n"
+        FileHandle.standardError.write(Data(diagnostic.utf8))
+        try check(status.state != .connected && state.turns.last?.state == .failed && state.turns.last?.error == "not_configured" && state.messages.filter { $0.role == .assistant }.isEmpty && state.goals.isEmpty, "original not_configured failure is preserved with no fake assistant/goal or verified connection")
         let strict = ConversationSessionService(repository: repo, backend: try backend(false)), strictID = try await strict.create(scope: Profiles.user)
         do { _ = try await strict.send(scope: Profiles.user, conversationID: strictID, text: "wire-only question", operationID: UUID()) } catch { }
         state = try await strict.read(scope: Profiles.user, conversationID: strictID)
@@ -85,11 +119,29 @@ struct WireTestSession: NativeChatSessionCredentials { func authorization(scope:
             guard let goal = saved.goals.values.first, let binding = goal.binding else { throw CatpawError.invalid("Expected verified task binding") }
             try check(goal.state == expected && saved.turns.last?.state == .completed && goal.id == binding.task_id && binding.turn_id == tid, "\(mode) preserves separate completed chat and authoritative task status")
             try check(mode == "wire-revoked-scheduled" ? goal.artifacts.isEmpty : goal.artifacts.first.map { textHash($0.body) == $0.contentHash } == true, "\(mode) exposes hash-verified artifact only under current authority")
+            try check(goal.sourceAuthorizationCurrent == (mode != "wire-revoked-scheduled"),"\(mode) records source authority separately from unknown task outcome")
             let restarted = ConversationSessionService(repository: try Repository(persistence: FilePersistence(url: root.appendingPathComponent("wire-chat.json"))), backend: try backend())
             try await restarted.observe(scope: Profiles.user, conversationID: cid)
             let readback = try await restarted.read(scope: Profiles.user, conversationID: cid)
             try check(readback.turns.last?.id == tid && readback.goals[goal.id]?.binding == binding && readback.goals[goal.id]?.state == expected, "\(mode) restart reads original task/turn/run without redispatch")
+            try check(readback.goals[goal.id]?.sourceAuthorizationCurrent == goal.sourceAuthorizationCurrent,"\(mode) cold journal retains the source authority observation")
         }
+        for ending in ["lf", "crlf", "cr"] {
+            let cid = try await service.create(scope: Profiles.user), operation = UUID()
+            _ = try await service.send(scope: Profiles.user, conversationID: cid, text: "wire-sse-\(ending)-unicode", operationID: operation)
+            let saved = try await service.read(scope: Profiles.user, conversationID: cid)
+            try check(saved.turns.last?.state == .completed && saved.messages.last?.content == "Wire Unicode \u{0085} \u{2028} \u{2029} 😺." && saved.goals.isEmpty, "ASCII \(ending) SSE framing preserves raw NEL/line separators/emoji JSON bytes and ignores comments")
+            try await service.observe(scope: Profiles.user, conversationID: cid)
+            let observed = try await service.read(scope: Profiles.user, conversationID: cid)
+            try check(observed.turns.count == 1 && observed.turns.last?.id == operation && observed.messages.last?.content == saved.messages.last?.content, "ASCII \(ending) exact Unicode terminal hash replays by original GET without a new turn")
+        }
+        let truncatedID = try await service.create(scope: Profiles.user), truncatedOperation = UUID()
+        do { _ = try await service.send(scope: Profiles.user, conversationID: truncatedID, text: "wire-sse-unterminated", operationID: truncatedOperation) } catch { }
+        let truncated = try await service.read(scope: Profiles.user, conversationID: truncatedID)
+        try check(truncated.turns.last?.state == .unknown && truncated.messages.last?.complete == false, "unterminated terminal SSE line at EOF cannot declare completion")
+        try await service.observe(scope: Profiles.user, conversationID: truncatedID)
+        let resumed = try await service.read(scope: Profiles.user, conversationID: truncatedID)
+        try check(resumed.turns.count == 1 && resumed.turns.last?.id == truncatedOperation && resumed.turns.last?.state == .completed, "unterminated EOF recovers the original committed terminal by GET without duplicate POST")
         let failedHTTP = try await service.create(scope:Profiles.user), failedOperation = UUID()
         do { _ = try await service.send(scope:Profiles.user,conversationID:failedHTTP,text:"wire-http-500",operationID:failedOperation) } catch { }
         let uncertain = try await service.read(scope:Profiles.user,conversationID:failedHTTP)
@@ -100,7 +152,7 @@ struct WireTestSession: NativeChatSessionCredentials { func authorization(scope:
         try check(confirmed.turns.count == 1 && confirmed.turns.last?.id == failedOperation && confirmed.turns.last?.state == .completed, "HTTP 500 recovers the committed original through GET only")
         var stats = URLRequest(url: origin.appendingPathComponent("wire-test-stats")); stats.setValue("Bearer explicit-wire-test-only", forHTTPHeaderField: "Authorization")
         let (data, _) = try await URLSession.shared.data(for: stats), counts = try JSONSerialization.jsonObject(with: data) as! [String: Any]
-        try check(counts["turnPosts"] as? Int == 14 && (counts["turnReads"] as? Int ?? 0) >= 6, "reconciliation uses reads; fourteen explicit fixture requests caused exactly fourteen turn POSTs")
+        try check(counts["turnPosts"] as? Int == 34 && (counts["turnReads"] as? Int ?? 0) >= 34, "reconciliation uses reads; thirty-four explicit fixture requests caused exactly thirty-four turn POSTs")
         var stop = URLRequest(url:origin.appendingPathComponent("wire-test-offline")); stop.setValue("Bearer explicit-wire-test-only",forHTTPHeaderField:"Authorization")
         _ = try await URLSession.shared.data(for:stop)
         let disconnected = ConversationSessionService(repository:repo,backend:try backend()), offlineID = try await disconnected.create(scope:Profiles.user)
