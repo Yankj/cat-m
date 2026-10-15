@@ -207,7 +207,7 @@ public actor ConversationSessionService {
             session.messages[message].content += text
         case .toolStarted(let call, let name, let arguments):
             guard request.image==nil else {throw ConversationSessionError.invalidEvent}
-            guard (["delegate_task", "delegate_plan_v1", "delegate_sources_v1", "agent_status", "present_cgui_v1"].contains(name) && request.continuation == nil) || (name == "revise_current_report_v1" && request.continuation?.intent == .reviseReport), !call.isEmpty else { throw ConversationSessionError.invalidEvent }
+            guard (["delegate_task", "delegate_plan_v1", "delegate_sources_v1", "agent_status", "present_cgui_v1", "propose_memory_v1"].contains(name) && request.continuation == nil) || (name == "revise_current_report_v1" && request.continuation?.intent == .reviseReport), !call.isEmpty else { throw ConversationSessionError.invalidEvent }
             let id = stableID("conversation-call-\(request.operationID)-\(call)")
             guard !session.messages.contains(where: { $0.id == id }) else { throw ConversationSessionError.invalidEvent }
             session.messages.append(ConversationTranscriptMessage(id: id, role: .assistant, content: arguments, toolCallID: call, toolName: name, complete: false))
@@ -217,6 +217,10 @@ public actor ConversationSessionService {
             guard let call = session.messages.firstIndex(where: { $0.id == callID }), session.messages[call].toolName == result.name, !session.messages[call].complete else { throw ConversationSessionError.invalidEvent }
             // A compiled presentation tool can carry data, never committed domain authority.
             guard result.name != "present_cgui_v1" || result.committedGoals.isEmpty else { throw ConversationSessionError.invalidEvent }
+            if result.name=="propose_memory_v1" {
+                guard result.committedGoals.isEmpty,result.continuationReceipt==nil,let receipt=result.memoryProposalReceipt,
+                      try ConversationMemoryProposalReceipt.decode(Data(result.content.utf8),request:request)==receipt else {throw ConversationSessionError.invalidEvent}
+            } else {guard result.memoryProposalReceipt==nil else {throw ConversationSessionError.invalidEvent}}
             if result.name == "revise_current_report_v1" {
                 guard let receipt=result.continuationReceipt,receipt.state=="accepted",let target=request.continuation,let original=request.continuationOriginalBinding,
                       session.goals[target.taskID]?.binding==original,session.goals[target.taskID]?.sourceAuthorizationCurrent != false,

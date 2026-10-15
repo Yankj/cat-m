@@ -111,6 +111,33 @@ export class Foundation {
       await tx.put('jobs', claimed); return { job: claimed, source };
     });
   }
+  async stageExtractionInTransaction(tx, principal, scopeId, { source_id, extractor_version = 'extract-v1' }) {
+    uuid(source_id); text(extractor_version, 100);
+    const scope = await tx.scope();
+    ensure(tx.scopeId === scopeId && equal(scope.identity, this.identity(principal, scopeId)), 'scope_forbidden', 403);
+    const source = await this.required(tx, 'sources', source_id);
+    ensure(source.scope_id === scopeId && source.authenticated_actor_id === principal.subject_id, 'untrusted_source', 409);
+    // Freeze only this source's existing job. A normal answer holds no lease.
+    const job = await this.enqueue(tx, source, extractor_version);
+    return { job, source };
+  }
+  async claimExtractionJobInTransaction(tx, principal, scopeId, reference, { lease_ms = 60000 } = {}) {
+    const { job_id, source_id, source_hash, memory_generation, extractor_version, lease_id } = reference;
+    uuid(job_id); uuid(source_id); uuid(lease_id); integer(memory_generation, 1); integer(lease_ms, 1000, 300000); text(extractor_version, 100);
+    const scope = await tx.scope();
+    ensure(tx.scopeId === scopeId && equal(scope.identity, this.identity(principal, scopeId)), 'scope_forbidden', 403);
+    ensure(scope.enabled && scope.generation === memory_generation, 'memory_fenced', 409);
+    const job = await this.required(tx, 'jobs', job_id), source = await this.required(tx, 'sources', source_id);
+    ensure(source.type === 'user_message' && source.trust === 'user_direct' && source.scope_id === scopeId && source.authenticated_actor_id === principal.subject_id, 'untrusted_source', 409);
+    ensure(!source.deleted_at && !source.suppressed_for_memory && source.memory_generation === memory_generation && source.content_hash === source_hash, 'source_fenced', 409);
+    ensure(job.scope_id === scopeId && job.source_id === source_id && job.source_hash === source_hash && job.memory_generation === memory_generation && job.extractor_version === extractor_version, 'source_fenced', 409);
+    const now = Date.parse(this.now());
+    if (job.status === 'leased' && job.lease_id === lease_id && Date.parse(job.lease_until) > now) return { job, source };
+    // Another consumer's lease, including an expired one, is never stolen here.
+    ensure(job.status === 'ready' && Date.parse(job.next_attempt_at) <= now, 'lease_lost', 409);
+    const claimed = { ...job, status: 'leased', attempts: job.attempts + 1, lease_id, lease_until: new Date(now + lease_ms).toISOString() };
+    await tx.put('jobs', claimed); return { job: claimed, source };
+  }
   validateClaim(input) {
     exact(input, ['kind', 'predicate', 'value', 'conditions', 'assertion', 'evidence'], ['valid_from', 'valid_until', 'expires_at']);
     ensure(['fact', 'preference'].includes(input.kind)); ensure(/^[a-z][a-z0-9_.]{0,79}$/.test(input.predicate));
@@ -120,35 +147,38 @@ export class Foundation {
     ensure(!input.valid_from || !input.valid_until || Date.parse(input.valid_from) < Date.parse(input.valid_until));
     return clone(input);
   }
-  async submitCandidates(principal, scopeId, { job_id, lease_id, memory_generation, candidates }) {
+  async submitCandidates(principal, scopeId, input) {
+    return this.scoped(principal, scopeId, tx => this.submitCandidatesInTransaction(tx, principal, scopeId, input));
+  }
+  async submitCandidatesInTransaction(tx, principal, scopeId, { job_id, lease_id, memory_generation, candidates }) {
     uuid(job_id); uuid(lease_id); integer(memory_generation, 1); ensure(Array.isArray(candidates) && candidates.length <= 12);
     const inputs = candidates.map(c => this.validateClaim(c));
-    return this.scoped(principal, scopeId, async tx => {
-      const scope = await tx.scope(); const job = await this.required(tx, 'jobs', job_id);
-      ensure(scope.enabled && scope.generation === memory_generation && job.memory_generation === memory_generation, 'memory_fenced', 409);
-      ensure(job.status === 'leased' && job.lease_id === lease_id && Date.parse(job.lease_until) > Date.parse(this.now()), 'lease_lost', 409);
-      const source = await this.required(tx, 'sources', job.source_id);
-      ensure(source.type === 'user_message' && source.trust === 'user_direct', 'untrusted_source', 409);
-      ensure(!source.deleted_at && !source.suppressed_for_memory && source.content_hash === job.source_hash && source.memory_generation === scope.generation, 'source_fenced', 409);
-      const accepted = [];
-      for (const c of inputs) {
-        ensure(c.evidence.span_end <= source.text.length, 'evidence_invalid', 422);
-        const claimKey = this.claimKey(c);
-        const guard = (await tx.list('guards')).filter(g => g.subject_key_hmac === claimKey).sort((a, b) => b.generation - a.generation)[0];
-        if (guard?.no_relearn) continue;
-        const duplicate = (await tx.list('candidates')).find(v => v.source_id === source.id && v.extractor_version === job.extractor_version && v.claim_hash === hash(c));
-        if (duplicate) { accepted.push(duplicate); continue; }
-        const row = { ...c, id: id(), scope_id: scopeId, source_id: source.id, source_hash: source.content_hash, conversation_id: source.conversation_id,
-          subject: 'self', subject_key_hmac: claimKey, claim_hash: hash(c), extractor_version: job.extractor_version, memory_generation,
-          status: 'proposed', version: 1, confidence: c.assertion === 'explicit' ? 0.8 : 0.4,
-          data_class: source.data_class, sensitivity: source.sensitivity, observed_at: source.occurred_at, recorded_at: this.now(),
-          candidate_expires_at: new Date(Date.parse(this.now()) + 30 * DAY).toISOString() };
-        await tx.put('candidates', row, { insert: true }); accepted.push(row);
-      }
-      await tx.put('jobs', { ...job, status: 'done', lease_id: null, lease_until: null });
-      await this.emit(tx, 'memory_candidates_ready', { job_id, candidate_ids: accepted.map(v => v.id) });
-      return { memory_generation, candidates: accepted };
-    });
+    const scope = await tx.scope();
+    ensure(tx.scopeId === scopeId && equal(scope.identity, this.identity(principal, scopeId)), 'scope_forbidden', 403);
+    const job = await this.required(tx, 'jobs', job_id);
+    ensure(scope.enabled && scope.generation === memory_generation && job.memory_generation === memory_generation, 'memory_fenced', 409);
+    ensure(job.status === 'leased' && job.lease_id === lease_id && Date.parse(job.lease_until) > Date.parse(this.now()), 'lease_lost', 409);
+    const source = await this.required(tx, 'sources', job.source_id);
+    ensure(source.type === 'user_message' && source.trust === 'user_direct' && source.scope_id === scopeId && source.authenticated_actor_id === principal.subject_id, 'untrusted_source', 409);
+    ensure(!source.deleted_at && !source.suppressed_for_memory && source.content_hash === job.source_hash && source.memory_generation === scope.generation, 'source_fenced', 409);
+    const accepted = [];
+    for (const c of inputs) {
+      ensure(c.evidence.span_end <= source.text.length, 'evidence_invalid', 422);
+      const claimKey = this.claimKey(c);
+      const guard = (await tx.list('guards')).filter(g => g.subject_key_hmac === claimKey).sort((a, b) => b.generation - a.generation)[0];
+      if (guard?.no_relearn) continue;
+      const duplicate = (await tx.list('candidates')).find(v => v.source_id === source.id && v.extractor_version === job.extractor_version && v.claim_hash === hash(c));
+      if (duplicate) { if (!accepted.some(row => row.id === duplicate.id)) accepted.push(duplicate); continue; }
+      const row = { ...c, id: id(), scope_id: scopeId, source_id: source.id, source_hash: source.content_hash, conversation_id: source.conversation_id,
+        subject: 'self', subject_key_hmac: claimKey, claim_hash: hash(c), extractor_version: job.extractor_version, memory_generation,
+        status: 'proposed', version: 1, confidence: c.assertion === 'explicit' ? 0.8 : 0.4,
+        data_class: source.data_class, sensitivity: source.sensitivity, observed_at: source.occurred_at, recorded_at: this.now(),
+        candidate_expires_at: new Date(Date.parse(this.now()) + 30 * DAY).toISOString() };
+      await tx.put('candidates', row, { insert: true }); accepted.push(row);
+    }
+    await tx.put('jobs', { ...job, status: 'done', lease_id: null, lease_until: null });
+    await this.emit(tx, 'memory_candidates_ready', { job_id, candidate_ids: accepted.map(v => v.id) });
+    return { memory_generation, candidates: accepted };
   }
   async listMemory(principal, scopeId) {
     return this.scoped(principal, scopeId, async tx => ({ memory_generation: (await tx.scope()).generation, enabled: (await tx.scope()).enabled,
