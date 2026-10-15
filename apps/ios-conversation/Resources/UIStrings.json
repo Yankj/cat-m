@@ -87,6 +87,10 @@
     "en": "{0} · simulated run",
     "zh-Hans": "{0} · 模拟运行"
   },
+  "{0} 后过期": {
+    "en": "Expires {0}",
+    "zh-Hans": "{0} 后过期"
+  },
   "{0} 次": {
     "en": "{0} calls",
     "zh-Hans": "{0} 次"
@@ -459,6 +463,10 @@
     "en": "Edit artifact",
     "zh-Hans": "修改成果"
   },
+  "修改日历": {
+    "en": "Change calendar",
+    "zh-Hans": "修改日历"
+  },
   "修改此工作，聊天草稿会保留。": {
     "en": "Edit this task. Your chat draft will be kept.",
     "zh-Hans": "修改此工作，聊天草稿会保留。"
@@ -515,6 +523,10 @@
     "en": "Summarize",
     "zh-Hans": "做总结"
   },
+  "停止听写": {
+    "en": "Stop dictation",
+    "zh-Hans": "停止听写"
+  },
   "停止回答": {
     "en": "Stop answer",
     "zh-Hans": "停止回答"
@@ -526,6 +538,10 @@
   "停读": {
     "en": "Stop readout",
     "zh-Hans": "停读"
+  },
+  "允许": {
+    "en": "Allow",
+    "zh-Hans": "允许"
   },
   "允许发送这张图片到云端模型？": {
     "en": "Allow this image to be sent to a cloud model?",
@@ -747,6 +763,10 @@
     "en": "Create",
     "zh-Hans": "创建"
   },
+  "创建任务": {
+    "en": "Create task",
+    "zh-Hans": "创建任务"
+  },
   "创建定时任务": {
     "en": "Create scheduled task",
     "zh-Hans": "创建定时任务"
@@ -963,6 +983,10 @@
     "en": "Audio is processed in memory for up to 45 seconds. Only requiresOnDeviceRecognition requests are created. If unavailable, use text; no cloud fallback.",
     "zh-Hans": "原音只在内存处理，最长 45 秒。仅创建 requiresOnDeviceRecognition 请求；不可用时回文字，不转云端识别。"
   },
+  "去设置": {
+    "en": "Open Settings",
+    "zh-Hans": "去设置"
+  },
   "参数哈希": {
     "en": "Parameters hash",
     "zh-Hans": "参数哈希"
@@ -1123,6 +1147,10 @@
     "en": "Dictate",
     "zh-Hans": "听写"
   },
+  "听写没有成功，可以直接输入文字。": {
+    "en": "Dictation didn't work. You can type instead.",
+    "zh-Hans": "听写没有成功，可以直接输入文字。"
+  },
   "启用中": {
     "en": "Enabled",
     "zh-Hans": "启用中"
@@ -1251,6 +1279,10 @@
     "en": "OK",
     "zh-Hans": "好"
   },
+  "始终允许此类操作": {
+    "en": "Always allow this kind of action",
+    "zh-Hans": "始终允许此类操作"
+  },
   "委托不可用": {
     "en": "Delegation unavailable",
     "zh-Hans": "委托不可用"
@@ -1338,6 +1370,18 @@
   "导出当前 workspace 本地数据": {
     "en": "Export this workspace's local data",
     "zh-Hans": "导出当前 workspace 本地数据"
+  },
+  "将修改你的 Catpaw 数据": {
+    "en": "Will change your Catpaw data",
+    "zh-Hans": "将修改你的 Catpaw 数据"
+  },
+  "将修改外部服务中的数据": {
+    "en": "Will change data in an external service",
+    "zh-Hans": "将修改外部服务中的数据"
+  },
+  "将修改此设备上的数据": {
+    "en": "Will change data on this device",
+    "zh-Hans": "将修改此设备上的数据"
   },
   "将原候选确认为记忆，来源与使用条件保持原记录。": {
     "en": "Confirm this candidate as memory, keeping its original source and conditions.",
@@ -1547,6 +1591,10 @@
     "en": "Allowed",
     "zh-Hans": "已允许"
   },
+  "已允许：{0}": {
+    "en": "Allowed: {0}",
+    "zh-Hans": "已允许：{0}"
+  },
   "已到期": {
     "en": "Expired",
     "zh-Hans": "已到期"
@@ -1566,6 +1614,10 @@
   "已取消处理，原有附件保留。": {
     "en": "Processing canceled. The existing attachment is retained.",
     "zh-Hans": "已取消处理，原有附件保留。"
+  },
+  "已取消，未执行：{0}": {
+    "en": "Cancelled, not run: {0}",
+    "zh-Hans": "已取消，未执行：{0}"
   },
   "已受理的工作会出现在这里。": {
     "en": "Accepted work will appear here.",
@@ -1594,6 +1646,10 @@
   "已批准；等待设备，尚未执行。": {
     "en": "Approved; waiting for the device. Execution has not occurred.",
     "zh-Hans": "已批准；等待设备，尚未执行。"
+  },
+  "已拒绝：{0}": {
+    "en": "Denied: {0}",
+    "zh-Hans": "已拒绝：{0}"
   },
   "已拒绝；尚未执行。": {
     "en": "Denied; execution has not occurred.",
@@ -1674,6 +1730,10 @@
   "已超出有效时间": {
     "en": "No longer within its valid dates",
     "zh-Hans": "已超出有效时间"
+  },
+  "已过期": {
+    "en": "Expired",
+    "zh-Hans": "已过期"
   },
   "已过期；尚未决定或执行。": {
     "en": "Expired; no decision or execution.",
@@ -1846,6 +1906,10 @@
   "当前服务尚不支持有限工作受理，草稿会保留。": {
     "en": "This service does not support bounded work admission yet. Your draft is preserved.",
     "zh-Hans": "当前服务尚不支持有限工作受理，草稿会保留。"
+  },
+  "当前服务暂不支持确认操作。": {
+    "en": "This service doesn't support confirmations yet.",
+    "zh-Hans": "当前服务暂不支持确认操作。"
   },
   "当前未连接云端；输入保存在此设备。": {
     "en": "Cloud is not connected. Input is saved on this device.",
@@ -2179,6 +2243,10 @@
     "en": "Executing; outcome unconfirmed",
     "zh-Hans": "执行中，结果尚未确认"
   },
+  "执行操作": {
+    "en": "Run action",
+    "zh-Hans": "执行操作"
+  },
   "执行来源": {
     "en": "Execution source",
     "zh-Hans": "执行来源"
@@ -2350,6 +2418,10 @@
   "操作与确认": {
     "en": "Actions and approvals",
     "zh-Hans": "操作与确认"
+  },
+  "操作内容已变化，请重新确认。": {
+    "en": "The action changed. Please confirm again.",
+    "zh-Hans": "操作内容已变化，请重新确认。"
   },
   "操作未完成": {
     "en": "Action incomplete",
@@ -2699,6 +2771,10 @@
     "en": "No custom commands",
     "zh-Hans": "暂无自定义命令"
   },
+  "暂时无法听写": {
+    "en": "Dictation unavailable",
+    "zh-Hans": "暂时无法听写"
+  },
   "暂时没能更新，请稍后再试。": {
     "en": "Couldn't update right now. Please try again.",
     "zh-Hans": "暂时没能更新，请稍后再试。"
@@ -2718,6 +2794,10 @@
   "更换图片": {
     "en": "Replace image",
     "zh-Hans": "更换图片"
+  },
+  "更新任务": {
+    "en": "Update task",
+    "zh-Hans": "更新任务"
   },
   "更正": {
     "en": "Correct",
@@ -3371,6 +3451,10 @@
     "en": "Replying…",
     "zh-Hans": "正在回复…"
   },
+  "正在处理上一项操作，请稍候再试。": {
+    "en": "Still handling the previous action. Try again shortly.",
+    "zh-Hans": "正在处理上一项操作，请稍候再试。"
+  },
   "正在处理图片…": {
     "en": "Processing the image…",
     "zh-Hans": "正在处理图片…"
@@ -3550,6 +3634,10 @@
   "此设备保存对话副本；发送的消息会交给已连接的云端服务处理。": {
     "en": "This device stores a conversation copy. Sent messages are processed by the connected cloud service.",
     "zh-Hans": "此设备保存对话副本；发送的消息会交给已连接的云端服务处理。"
+  },
+  "此设备暂不支持本地听写，可以直接输入文字。": {
+    "en": "On-device dictation isn't supported on this device. You can type instead.",
+    "zh-Hans": "此设备暂不支持本地听写，可以直接输入文字。"
   },
   "此轮回复未完成": {
     "en": "This reply did not complete",
@@ -3831,6 +3919,10 @@
     "en": "Confirmation expired",
     "zh-Hans": "确认已到期"
   },
+  "确认已超时，未执行：{0}": {
+    "en": "Confirmation timed out, not run: {0}",
+    "zh-Hans": "确认已超时，未执行：{0}"
+  },
   "确认并提交原请求": {
     "en": "Confirm and submit original request",
     "zh-Hans": "确认并提交原请求"
@@ -3838,6 +3930,10 @@
   "确认提交这次记忆变更": {
     "en": "Confirm this memory change",
     "zh-Hans": "确认提交这次记忆变更"
+  },
+  "确认未被接受，请稍后重试。": {
+    "en": "The confirmation wasn't accepted. Try again later.",
+    "zh-Hans": "确认未被接受，请稍后重试。"
   },
   "确认本机合成预览": {
     "en": "Confirm local synthetic preview",
@@ -3850,6 +3946,10 @@
   "确认状态：{0}": {
     "en": "Confirmation status: {0}",
     "zh-Hans": "确认状态：{0}"
+  },
+  "确认结果待核对，请读取原请求进展。": {
+    "en": "Result not yet confirmed. Check the original request's progress.",
+    "zh-Hans": "确认结果待核对，请读取原请求进展。"
   },
   "确认记忆变更": {
     "en": "Review memory change",
@@ -4071,6 +4171,10 @@
     "en": "Continue",
     "zh-Hans": "继续"
   },
+  "继续发送": {
+    "en": "Resume",
+    "zh-Hans": "继续发送"
+  },
   "继续发送后续消息": {
     "en": "Resume follow-up messages",
     "zh-Hans": "继续发送后续消息"
@@ -4134,6 +4238,10 @@
   "缺少完成事件": {
     "en": "Missing completion event",
     "zh-Hans": "缺少完成事件"
+  },
+  "网络中断，确认未送达。请重试。": {
+    "en": "Connection lost; your decision wasn't delivered. Try again.",
+    "zh-Hans": "网络中断，确认未送达。请重试。"
   },
   "置顶": {
     "en": "Pin",
@@ -4307,6 +4415,10 @@
     "en": "Settings",
     "zh-Hans": "设置"
   },
+  "设置提醒": {
+    "en": "Set reminder",
+    "zh-Hans": "设置提醒"
+  },
   "设计创作": {
     "en": "Design",
     "zh-Hans": "设计创作"
@@ -4338,6 +4450,10 @@
   "语音对话": {
     "en": "Voice mode",
     "zh-Hans": "语音对话"
+  },
+  "语音对话即将支持": {
+    "en": "Voice conversation is coming soon",
+    "zh-Hans": "语音对话即将支持"
   },
   "说一句想做的事，Catpaw 就开始帮你拆解、执行。": {
     "en": "Say what you want done — Catpaw breaks it down and gets to work.",
@@ -4390,6 +4506,10 @@
   "请在 iOS 设备上验证本地识别与权限。": {
     "en": "Verify on-device recognition and permissions on an iOS device.",
     "zh-Hans": "请在 iOS 设备上验证本地识别与权限。"
+  },
+  "请在“设置”中允许 Catpaw 使用麦克风和语音识别，或直接输入文字。": {
+    "en": "Allow Catpaw to use the microphone and speech recognition in Settings, or just type.",
+    "zh-Hans": "请在“设置”中允许 Catpaw 使用麦克风和语音识别，或直接输入文字。"
   },
   "请填写记忆主题与内容。": {
     "en": "Enter a memory topic and content.",
@@ -4631,6 +4751,14 @@
     "en": "This work cannot continue yet. The original version and your input are kept.",
     "zh-Hans": "这项工作当前不能继续，原版本和输入会保留。"
   },
+  "这项确认已不存在": {
+    "en": "This confirmation no longer exists",
+    "zh-Hans": "这项确认已不存在"
+  },
+  "这项确认已处理": {
+    "en": "This confirmation was already handled",
+    "zh-Hans": "这项确认已处理"
+  },
   "进度 {0}/{1}": {
     "en": "Progress {0}/{1}",
     "zh-Hans": "进度 {0}/{1}"
@@ -4823,6 +4951,10 @@
     "en": "Selected conversation",
     "zh-Hans": "限定对话"
   },
+  "需要你的确认": {
+    "en": "Needs your confirmation",
+    "zh-Hans": "需要你的确认"
+  },
   "需要你确认": {
     "en": "Needs your approval",
     "zh-Hans": "需要你确认"
@@ -4830,6 +4962,10 @@
   "需要处理": {
     "en": "Needs attention",
     "zh-Hans": "需要处理"
+  },
+  "需要麦克风和语音识别权限": {
+    "en": "Microphone and speech recognition access needed",
+    "zh-Hans": "需要麦克风和语音识别权限"
   },
   "项目": {
     "en": "Projects",
@@ -4890,41 +5026,5 @@
   "，草稿，": {
     "en": ", draft, ",
     "zh-Hans": "，草稿，"
-  },
-  "停止听写": {
-    "en": "Stop dictation",
-    "zh-Hans": "停止听写"
-  },
-  "语音对话即将支持": {
-    "en": "Voice conversation is coming soon",
-    "zh-Hans": "语音对话即将支持"
-  },
-  "需要麦克风和语音识别权限": {
-    "en": "Microphone and speech recognition access needed",
-    "zh-Hans": "需要麦克风和语音识别权限"
-  },
-  "暂时无法听写": {
-    "en": "Dictation unavailable",
-    "zh-Hans": "暂时无法听写"
-  },
-  "请在“设置”中允许 Catpaw 使用麦克风和语音识别，或直接输入文字。": {
-    "en": "Allow Catpaw to use the microphone and speech recognition in Settings, or just type.",
-    "zh-Hans": "请在“设置”中允许 Catpaw 使用麦克风和语音识别，或直接输入文字。"
-  },
-  "听写没有成功，可以直接输入文字。": {
-    "en": "Dictation didn't work. You can type instead.",
-    "zh-Hans": "听写没有成功，可以直接输入文字。"
-  },
-  "此设备暂不支持本地听写，可以直接输入文字。": {
-    "en": "On-device dictation isn't supported on this device. You can type instead.",
-    "zh-Hans": "此设备暂不支持本地听写，可以直接输入文字。"
-  },
-  "去设置": {
-    "en": "Open Settings",
-    "zh-Hans": "去设置"
-  },
-  "继续发送": {
-    "en": "Resume",
-    "zh-Hans": "继续发送"
   }
 }
