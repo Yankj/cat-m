@@ -440,10 +440,8 @@ import CatpawImageComposer
             }
             FloatingComposer(model:composerChrome,lineCount:composerLineCount,uploader:attachmentUploader,
                              trailingAccessory:AnyView(
-                                ComposerTrailingControls(responding:composerChrome.runState == .responding,
-                                                         draftEmpty:model.draft.isEmpty,canSend:canSendDraft,
-                                                         size:composerControlSize,send:submitDraft,stop:{composerChrome.stop()},
-                                                         dictate:{ConversationTextView.focusComposer()},voice:{ConversationTextView.focusComposer()})
+                                ComposerDictationControls(model:model,responding:composerChrome.runState == .responding,canSend:canSendDraft,
+                                                          size:composerControlSize,send:submitDraft,stop:{composerChrome.stop()})
                              ),
                              metaText:composerMetaText,metaWarning:draftTooLong,
                              onDetails:{ guard !model.isInputComposing else {return}; composerContextPresented=true }) {
