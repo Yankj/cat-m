@@ -6,7 +6,12 @@ import os
 /// - Live: `memory.update {op, ids, memories}` and `memory.used {ids, memories}` arrive via `MemoryEventSink`.
 /// - Stored sealed in `L2SecureStore` (per user); wiped with it at sign-out.
 struct CachedMemory: Codable, Sendable, Equatable, Identifiable {
-    enum Source: String, Codable, Sendable { case userStated, inferred, deviceSignal, task, cloud }
+    enum Source: String, Codable, Sendable { case userStated, inferred, deviceSignal, task, cloud
+        /// #63 wire values: user → userStated, agent → inferred, cloud/unknown → cloud.
+        init(wire: String?) {
+            switch wire { case "user": self = .userStated; case "agent": self = .inferred; default: self = .cloud }
+        }
+    }
     let id: String
     var kind: String
     var content: String
@@ -79,7 +84,8 @@ struct CachedMemory: Codable, Sendable, Equatable, Identifiable {
         else {
             // Live events carry no server version: update content in place, keep the version so the next sync decides.
             for m in memories {
-                if var value = items[m.id] { if !value.deleted { value.content = m.content; value.kind = m.kind ?? value.kind; items[m.id] = value } }
+                if m.version != nil { merge(m.cached(version: "")) }
+                else if var value = items[m.id] { if !value.deleted { value.content = m.content; value.kind = m.kind ?? value.kind; items[m.id] = value } }
                 else { items[m.id] = m.cached(version: "") }
             }
         }
@@ -93,7 +99,8 @@ struct CachedMemory: Codable, Sendable, Equatable, Identifiable {
 
     // MARK: Incremental sync
     private struct Wire: Decodable {
-        struct Item: Decodable { let id: String; let kind: String; let content: String; let expires_at: String?; let updated_at: String? }
+        struct Item: Decodable { let id: String; let kind: String; let content: String; let expires_at: String?; let updated_at: String?
+            let source: String?; let confidence: Double?; let version: String? }
         struct Gone: Decodable { let id: String }
         let cursor: String?; let memories: [Item]; let deleted: [Gone]?
     }
@@ -106,8 +113,8 @@ struct CachedMemory: Codable, Sendable, Equatable, Identifiable {
         do {
             let wire = try JSONDecoder().decode(Wire.self, from: try await backend.call("GET", route))
             for m in wire.memories {
-                merge(.init(id: m.id, kind: m.kind, content: m.content, source: .cloud, confidence: 1,
-                            expiresAt: m.expires_at.flatMap(ConversationMemoryCodec.date), version: m.updated_at ?? ""))
+                merge(.init(id: m.id, kind: m.kind, content: m.content, source: .init(wire: m.source), confidence: m.confidence ?? 1,
+                            expiresAt: m.expires_at.flatMap(ConversationMemoryCodec.date), version: m.version ?? m.updated_at ?? ""))
             }
             (wire.deleted ?? []).forEach { tombstone($0.id) }
             if let next = wire.cursor { cursor = next }
@@ -124,7 +131,10 @@ struct CachedMemory: Codable, Sendable, Equatable, Identifiable {
 ///     case "memory.update": MemoryEventSink.update(data: data)
 enum MemoryEventSink {
     struct Memory: Decodable, Sendable { let id: String; let kind: String?; let content: String
-        func cached(version: String) -> CachedMemory { .init(id: id, kind: kind ?? "fact", content: content, source: .cloud, confidence: 1, version: version) }
+        let source: String?; let confidence: Double?; let version: String?
+        func cached(version fallback: String) -> CachedMemory {
+            .init(id: id, kind: kind ?? "fact", content: content, source: .init(wire: source), confidence: confidence ?? 1, version: version ?? fallback)
+        }
     }
     private struct Used: Decodable { let ids: [String]; let memories: [Memory]? }
     private struct Update: Decodable { let op: String; let ids: [String]; let memories: [Memory]? }
