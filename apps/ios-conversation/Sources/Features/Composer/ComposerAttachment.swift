@@ -42,6 +42,58 @@ enum ComposerAttachmentRejection: Equatable {
     func cancel(_ id: UUID)
 }
 
+/// UI-only upload simulator. It never opens a network connection or creates a
+/// durable receipt; it only drives composer chrome through its upload states.
+@MainActor final class LocalMockComposerAttachmentUploader: ObservableObject, ComposerAttachmentUploading {
+    typealias Update = (_ id: UUID, _ status: ComposerAttachment.Status) -> Bool
+
+    private let update: Update
+    private var tasks: [UUID: Task<Void, Never>] = [:]
+    private var tokens: [UUID: UUID] = [:]
+
+    init(update: @escaping Update) {
+        self.update = update
+    }
+
+    func upload(_ attachment: ComposerAttachment) {
+        cancel(attachment.id)
+        #if !DEBUG
+        // The simulated success path is intentionally unavailable in production builds.
+        _ = update(attachment.id, .failed(message: ""))
+        return
+        #else
+        let token = UUID()
+        tokens[attachment.id] = token
+        guard update(attachment.id, .uploading(fraction: 0)) else {
+            tokens.removeValue(forKey: attachment.id)
+            return
+        }
+
+        let id = attachment.id
+        tasks[id] = Task { @MainActor [weak self] in
+            let steps = [0.12, 0.34, 0.62, 0.86, 1.0]
+            for fraction in steps {
+                try? await Task.sleep(nanoseconds: 120_000_000)
+                guard !Task.isCancelled,
+                      let self,
+                      self.tokens[id] == token,
+                      self.update(id, .uploading(fraction: fraction)) else { return }
+            }
+            guard let self,
+                  self.tokens[id] == token,
+                  self.update(id, .uploaded(receiptID: "local-mock-\(id.uuidString.lowercased())")) else { return }
+            self.tokens.removeValue(forKey: id)
+            self.tasks.removeValue(forKey: id)
+        }
+        #endif
+    }
+
+    func cancel(_ id: UUID) {
+        tasks.removeValue(forKey: id)?.cancel()
+        tokens.removeValue(forKey: id)
+    }
+}
+
 /// Composer run state for the send/stop morph. Mirrors what `ConversationFirstModel` already knows.
 enum ComposerRunState: Equatable { case idle, responding, offlineQueued }
 
@@ -56,6 +108,37 @@ enum ComposerRunState: Equatable { case idle, responding, offlineQueued }
     func send()
     func stop()
     func cancelQueued()
+}
+
+@MainActor extension ComposerChromeModel {
+    var attachmentsAreReady: Bool { attachments.allSatisfy(\.isSendable) }
+
+    @discardableResult
+    func addAttachments(_ items: [ComposerAttachment], using uploader: ComposerAttachmentUploading?) -> ComposerAttachmentRejection? {
+        let (accepted, rejection) = ComposerAttachmentStager.admit(items, existing: attachments.count)
+        attachments.append(contentsOf: accepted)
+        accepted.forEach { uploader?.upload($0) }
+        return rejection
+    }
+
+    func retryAttachment(_ item: ComposerAttachment, using uploader: ComposerAttachmentUploading?) {
+        guard let index = attachments.firstIndex(where: { $0.id == item.id }) else { return }
+        attachments[index].status = .staged
+        uploader?.upload(attachments[index])
+    }
+
+    func removeAttachment(_ item: ComposerAttachment, using uploader: ComposerAttachmentUploading?) {
+        uploader?.cancel(item.id)
+        attachments.removeAll { $0.id == item.id }
+        ComposerAttachmentStager.discard(item)
+    }
+
+    func discardAttachments(using uploader: ComposerAttachmentUploading?) {
+        let discarded = attachments
+        discarded.forEach { uploader?.cancel($0.id) }
+        attachments.removeAll()
+        discarded.forEach(ComposerAttachmentStager.discard)
+    }
 }
 
 extension ComposerAttachment.Kind {

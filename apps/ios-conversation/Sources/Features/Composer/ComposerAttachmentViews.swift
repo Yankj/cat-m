@@ -21,7 +21,10 @@ import UIKit
                         ComposerAttachmentChip(item: item,
                                                open: { previewURL = item.localURL },
                                                retry: { onRetry(item) },
-                                               remove: { onRemove(item) })
+                                               remove: {
+                                                   if previewURL == item.localURL { previewURL = nil }
+                                                   onRemove(item)
+                                               })
                             .transition(.scale(scale: 0.8).combined(with: .opacity))
                     }
                 }
@@ -148,6 +151,7 @@ import UIKit
         }
         .fullScreenCover(isPresented: $showCamera) {
             CameraCapture { data in
+                showCamera = false
                 if let data, let item = try? ComposerAttachmentStager.stage(data: data, filename: "Photo.jpg", type: .jpeg) { add([item]) }
             }.ignoresSafeArea()
         }
@@ -176,9 +180,9 @@ private struct CameraCapture: UIViewControllerRepresentable {
         let done: (Data?) -> Void
         init(done: @escaping (Data?) -> Void) { self.done = done }
         func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
-            done((info[.originalImage] as? UIImage)?.jpegData(compressionQuality: 0.85)); picker.dismiss(animated: true)
+            done((info[.originalImage] as? UIImage)?.jpegData(compressionQuality: 0.85))
         }
-        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) { done(nil); picker.dismiss(animated: true) }
+        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) { done(nil) }
     }
 }
 
