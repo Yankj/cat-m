@@ -1,0 +1,106 @@
+import SwiftUI
+
+/// Hook rendered once below the transcript: approval cards for the turn awaiting approval, plus receipts.
+@MainActor struct ConversationApprovalHost: View {
+    @ObservedObject var model: ConversationFirstModel
+    let session: ConversationSession
+    @StateObject private var controller = ConversationApprovalController()
+    @Environment(\.locale) private var locale
+    private func ui(_ k: String, _ a: [String] = []) -> String { AppLanguage(locale: locale).ui(k, arguments: a) }
+    private var turn: ConversationTurnRecord? { session.turns.last }
+    private var pending: [ConversationApprovalRequest] { turn?.awaitingApproval == true ? (turn?.pendingApprovals ?? []) : [] }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            ForEach(pending) { approval in
+                ConversationApprovalCardView(approval: approval, working: controller.working.contains(approval.interruptID),
+                                             error: controller.errors[approval.interruptID].map { ui($0) },
+                                             decide: { controller.decide(approval, $0, model: model) })
+            }
+            ForEach(controller.outcomes.keys.sorted().filter { id in !pending.contains { $0.interruptID == id } }, id: \.self) { id in
+                if let item = controller.outcomes[id] { receipt(item.tool, item.outcome).accessibilityIdentifier("chat.approval.resolved." + id) }
+            }
+        }
+        .padding(.top, pending.isEmpty && controller.outcomes.isEmpty ? 0 : 12)
+        .onAppear { controller.observe(model, turn: turn) }
+        .onChange(of: turn?.id) { _, _ in controller.observe(model, turn: turn) }
+        .onChange(of: turn?.pendingApprovals) { _, _ in controller.observe(model, turn: turn) }
+    }
+
+    private func receipt(_ tool: String, _ outcome: ConversationApprovalController.Outcome) -> some View {
+        let name = ConversationApprovalCardView.toolTitle(tool, ui)
+        let (text, icon): (String, String) = switch outcome {
+        case .approved: (ui("已允许：{0}", [name]), "checkmark.circle.fill")
+        case .denied: (ui("已拒绝：{0}", [name]), "xmark.circle")
+        case .expired: (ui("确认已超时，未执行：{0}", [name]), "clock.badge.exclamationmark")
+        case .cancelled: (ui("已取消，未执行：{0}", [name]), "xmark.circle")
+        case .failed(let message): (ui(message), "info.circle")
+        }
+        return Label(text, systemImage: icon).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
+    }
+}
+
+@MainActor struct ConversationApprovalCardView: View {
+    let approval: ConversationApprovalRequest
+    let working: Bool
+    let error: String?
+    let decide: (ConversationApprovalDecision) -> Void
+    @Environment(\.locale) private var locale
+    private func ui(_ k: String, _ a: [String] = []) -> String { AppLanguage(locale: locale).ui(k, arguments: a) }
+
+    static func toolTitle(_ tool: String, _ ui: (String, [String]) -> String) -> String {
+        switch tool {
+        case "create_task": ui("创建任务", [])
+        case "update_task": ui("更新任务", [])
+        case "create_reminder", "update_reminder": ui("设置提醒", [])
+        case "create_calendar_event", "update_calendar_event": ui("修改日历", [])
+        default: ui("执行操作", [])
+        }
+    }
+    private var expires: Date? {
+        let f = ISO8601DateFormatter(); f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return f.date(from: approval.expiresAt) ?? ISO8601DateFormatter().date(from: approval.expiresAt)
+    }
+    private var riskText: String {
+        switch approval.risk { case "device_write": ui("将修改此设备上的数据"); case "external_write": ui("将修改外部服务中的数据"); default: ui("将修改你的 Catpaw 数据") }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                Image(systemName: "hand.raised.fill").foregroundStyle(CatpawBrand.paw).accessibilityHidden(true)
+                Text(ui("需要你的确认")).font(CatpawTypography.Role.caption.font.weight(.semibold)).foregroundStyle(CatpawColors.secondary)
+                Spacer()
+                if let expires {
+                    TimelineView(.periodic(from: .now, by: 30)) { context in
+                        Text(expires > context.date ? ui("{0} 后过期", [expires.formatted(.relative(presentation: .numeric))]) : ui("已过期"))
+                            .font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
+                    }.accessibilityIdentifier("chat.approval.expiry")
+                }
+            }
+            Text(Self.toolTitle(approval.tool, ui)).font(CatpawTypography.Role.body.font.weight(.semibold)).foregroundStyle(CatpawColors.ink)
+            if !approval.summary.isEmpty {
+                Text(approval.summary).font(CatpawTypography.Role.body.font).foregroundStyle(CatpawColors.ink).fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("chat.approval.summary")
+            }
+            Text(riskText).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
+            HStack(spacing: 10) {
+                Button { decide(.approve) } label: { Text(ui("允许")).frame(maxWidth: .infinity) }
+                    .primaryAction().accessibilityIdentifier("chat.approval.approve")
+                Button { decide(.deny) } label: { Text(ui("拒绝")).frame(maxWidth: .infinity, minHeight: 44) }
+                    .accessibilityIdentifier("chat.approval.deny")
+            }
+            .disabled(working)
+            if approval.rememberAllowed {
+                Button { decide(.approveAlways) } label: { Text(ui("始终允许此类操作")).frame(maxWidth: .infinity, minHeight: 44) }
+                    .disabled(working).accessibilityIdentifier("chat.approval.approveAlways")
+            }
+            if working { ProgressView().frame(maxWidth: .infinity).accessibilityIdentifier("chat.approval.working") }
+            if let error { Text(error).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.attention).accessibilityIdentifier("chat.approval.error") }
+        }
+        .padding(14)
+        .background(CatpawColors.panel, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("chat.approval." + approval.interruptID)
+    }
+}
