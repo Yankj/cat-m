@@ -177,6 +177,28 @@ struct CatpawPressButtonStyle: ButtonStyle {
     }
 }
 
+/// Consent checkboxes expose the entire readable row as one 44pt action.
+/// The check mark is visual; the label and selection are one accessibility item.
+struct CatpawConfirmationCheckbox:View {
+    let title:String
+    @Binding var isOn:Bool
+    @Environment(\.locale) private var locale
+    private func ui(_ key:String)->String {AppLanguage(locale:locale).ui(key)}
+    var body:some View {
+        Button {isOn.toggle()} label:{
+            HStack(alignment:.firstTextBaseline,spacing:12) {
+                Image(systemName:isOn ? "checkmark.square.fill":"square")
+                    .font(CatpawTypography.Role.body.font).symbolRenderingMode(.monochrome)
+                    .foregroundStyle(CatpawColors.action).accessibilityHidden(true)
+                Text(verbatim:title).font(CatpawTypography.Role.body.font).fixedSize(horizontal:false,vertical:true)
+                    .frame(maxWidth:.infinity,alignment:.leading)
+            }.frame(maxWidth:.infinity,minHeight:44,alignment:.leading).contentShape(Rectangle())
+        }.buttonStyle(CatpawPressButtonStyle()).accessibilityLabel(title)
+            .accessibilityValue(isOn ? ui("已选中"):ui("未选中"))
+            .accessibilityAddTraits(isOn ? [.isSelected]:[])
+    }
+}
+
 extension View {
     func primaryAction() -> some View { self.buttonStyle(CatpawPrimaryButtonStyle()) }
     func touchTarget(minimum:CGFloat = 44) -> some View { self.frame(minWidth: max(44,minimum), minHeight: max(44,minimum)).contentShape(Rectangle()) }
