@@ -5678,5 +5678,29 @@
   "，草稿，": {
     "en": ", draft, ",
     "zh-Hans": "，草稿，"
+  },
+  "没有日历权限": {
+    "en": "No calendar access",
+    "zh-Hans": "没有日历权限"
+  },
+  "小猫看不到你的会议，所以没法提前提醒出发。可以手动告诉小猫下一场会议，或去设置里打开日历权限。": {
+    "en": "Catpaw can't see your meetings, so it can't remind you when to leave. Tell Catpaw about your next meeting, or turn on calendar access in Settings.",
+    "zh-Hans": "小猫看不到你的会议，所以没法提前提醒出发。可以手动告诉小猫下一场会议，或去设置里打开日历权限。"
+  },
+  "已记下，小猫会按时提醒你": {
+    "en": "Got it. Catpaw will remind you in time.",
+    "zh-Hans": "已记下，小猫会按时提醒你"
+  },
+  "会议名称": {
+    "en": "Meeting name",
+    "zh-Hans": "会议名称"
+  },
+  "让小猫帮我盯着": {
+    "en": "Let Catpaw keep watch",
+    "zh-Hans": "让小猫帮我盯着"
+  },
+  "手动输入": {
+    "en": "Enter manually",
+    "zh-Hans": "手动输入"
   }
 }
