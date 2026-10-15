@@ -7,7 +7,7 @@ final class P0NativeExperienceUITests:XCTestCase {
         clear(input)
         let send=app.buttons["chat.send"]
         XCTAssertFalse(send.isEnabled,"An empty composer keeps a disabled send action")
-        XCTAssertGreaterThanOrEqual(send.frame.height,44)
+        NativeUIGeometry.assertMinimumHeight(send.frame)
         XCTAssertLessThanOrEqual(abs(send.frame.midY-input.frame.midY),12,"Empty input is one compact row")
         let draft="R5 local draft\nSecond line keeps the original editor"
         input.typeText(draft)
@@ -23,7 +23,7 @@ final class P0NativeExperienceUITests:XCTestCase {
         app.navigationBars.buttons.element(boundBy:0).tap()
         XCTAssertEqual(input.value as? String,draft,"Opening conversation controls never submits or replaces the draft")
         XCTAssertFalse(app.staticTexts["chat.userMessage"].exists,"Menu navigation does not send the draft")
-        attach(app,name:"R5-native-drafting-controls-and-preserved-local-draft")
+        let shot=XCTAttachment(screenshot:app.screenshot());shot.name="R5-native-drafting-controls-and-preserved-local-draft";shot.lifetime = .keepAlways;add(shot)
     }
 
     func testNormalReviewLaunchHasNoFixtureOrCloudAdmission() {
@@ -58,7 +58,7 @@ final class P0NativeExperienceUITests:XCTestCase {
         XCTAssertGreaterThanOrEqual(input.frame.height,expected.lineHeight+16-1)
         let raw="中文草稿 English remains local";replaceAll(app,input,with:raw)
         XCTAssertEqual(input.value as? String,raw)
-        XCTAssertGreaterThanOrEqual(app.buttons["chat.send"].frame.height,44)
+        NativeUIGeometry.assertMinimumHeight(app.buttons["chat.send"].frame)
         let screenshot=XCTAttachment(screenshot:app.screenshot());screenshot.name="Simulator-system-text-category-"+rawCategory+"-no-scenario-clamp";screenshot.lifetime = .keepAlways;add(screenshot)
         let evidence=XCTAttachment(string:"actual_system_category="+rawCategory+";input_point_size="+String(actual)+";QA_size_override=absent;fixture=explicit_offline;model_requests=0");evidence.name="Actual-UIKit-system-category-witness";evidence.lifetime = .keepAlways;add(evidence)
     }
@@ -111,13 +111,13 @@ final class P0NativeExperienceUITests:XCTestCase {
         if usesDetails {
             let details=app.buttons["chat.input.context.open"]
             XCTAssertTrue(details.exists && details.isHittable,"Adaptive context must keep a real image-picker route")
-            XCTAssertGreaterThanOrEqual(details.frame.height,44);details.tap()
+            NativeUIGeometry.assertMinimumHeight(details.frame);details.tap()
             XCTAssertTrue(app.buttons["chat.input.context.close"].waitForExistence(timeout:5))
         }
         let picker=usesDetails ? app.scrollViews["chat.input.context.scroll"].buttons["attachment.pick"]:inline
         XCTAssertTrue(picker.waitForExistence(timeout:5),app.debugDescription)
         if usesDetails {NativeUIScrollReveal.reveal(app,picker)}
-        XCTAssertTrue(picker.isHittable);XCTAssertGreaterThanOrEqual(picker.frame.height,44)
+        XCTAssertTrue(picker.isHittable);NativeUIGeometry.assertMinimumHeight(picker.frame)
         picker.tap()
         let cancel=app.buttons["Cancel"]
         XCTAssertTrue(cancel.waitForExistence(timeout:5),"The details action opens the actual system PhotosPicker")
