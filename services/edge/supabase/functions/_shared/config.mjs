@@ -8,6 +8,14 @@ export const CONFIG_NAMES=['SUPABASE_URL','CATPAW_PUBLISHABLE_KEY'];
 export const OPTIONAL_CONFIG_NAMES=['CATPAW_PUBLIC_SOURCE_POLICY','CATPAW_GEMINI_API_KEY','CATPAW_GROQ_API_KEY','CATPAW_AGNES_API_KEY','CATPAW_AGNES_MODEL','CATPAW_MODEL_ROUTE_ORDER','CATPAW_THINKING_SUMMARY','CATPAW_MODEL_AUTO_FAILOVER',...APNS_ENV_NAMES,'CATPAW_APNS_ENV'];
 const PROJECT_URL='';
 const PROJECT_PUBLISHABLE_KEY='';
+// Supabase-hosted functions inject SUPABASE_PUBLISHABLE_KEYS ({"default":...}) / legacy SUPABASE_ANON_KEY;
+// live v22 fell back to them when CATPAW_PUBLISHABLE_KEY is unset. Never accept a secret key.
+const validPublicKey=v=>typeof v==='string'&&v.length>0&&v===v.trim()&&!/[\r\n]/.test(v)&&!v.startsWith('sb_secret_');
+export function platformPublishableKey(get){
+ const encoded=get('SUPABASE_PUBLISHABLE_KEYS');
+ if(encoded){try{const keys=JSON.parse(encoded);if(keys&&typeof keys==='object'&&!Array.isArray(keys)&&validPublicKey(keys.default))return keys.default;}catch{}return undefined;}
+ const legacy=get('SUPABASE_ANON_KEY');return validPublicKey(legacy)?legacy:undefined;
+}
 // JSON.parse alone silently accepts duplicate object keys. Reviewed network policy must have one meaning.
 function publicSourcePolicyJSON(raw){
  check(typeof raw==='string'&&Buffer.byteLength(raw)<=16384,422,'source_policy_invalid');let parsed;
@@ -28,7 +36,7 @@ function publicSourcePolicyJSON(raw){
 }
 export function readConfig(get){
  const projectUrl=get('SUPABASE_URL')||PROJECT_URL;
- const publishableKey=get('CATPAW_PUBLISHABLE_KEY')||(projectUrl===PROJECT_URL?PROJECT_PUBLISHABLE_KEY:undefined);
+ const publishableKey=get('CATPAW_PUBLISHABLE_KEY')||platformPublishableKey(get)||(projectUrl===PROJECT_URL?PROJECT_PUBLISHABLE_KEY:undefined);
  const resolved=name=>name==='SUPABASE_URL'?projectUrl:name==='CATPAW_PUBLISHABLE_KEY'?publishableKey:get(name);
  const missing=[...SECRET_NAMES,...CONFIG_NAMES].filter(name=>!resolved(name));
  const base={projectUrl,publishableKey,databaseUrl:get('CATPAW_DATABASE_URL')};
