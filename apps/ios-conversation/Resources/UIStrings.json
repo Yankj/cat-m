@@ -4922,5 +4922,105 @@
   "去设置": {
     "en": "Open Settings",
     "zh-Hans": "去设置"
+  },
+  "需要你的确认": {
+    "en": "Needs your confirmation",
+    "zh-Hans": "需要你的确认"
+  },
+  "{0} 后过期": {
+    "en": "Expires {0}",
+    "zh-Hans": "{0} 后过期"
+  },
+  "已过期": {
+    "en": "Expired",
+    "zh-Hans": "已过期"
+  },
+  "创建任务": {
+    "en": "Create task",
+    "zh-Hans": "创建任务"
+  },
+  "更新任务": {
+    "en": "Update task",
+    "zh-Hans": "更新任务"
+  },
+  "设置提醒": {
+    "en": "Set reminder",
+    "zh-Hans": "设置提醒"
+  },
+  "修改日历": {
+    "en": "Change calendar",
+    "zh-Hans": "修改日历"
+  },
+  "执行操作": {
+    "en": "Run action",
+    "zh-Hans": "执行操作"
+  },
+  "将修改此设备上的数据": {
+    "en": "Will change data on this device",
+    "zh-Hans": "将修改此设备上的数据"
+  },
+  "将修改外部服务中的数据": {
+    "en": "Will change data in an external service",
+    "zh-Hans": "将修改外部服务中的数据"
+  },
+  "将修改你的 Catpaw 数据": {
+    "en": "Will change your Catpaw data",
+    "zh-Hans": "将修改你的 Catpaw 数据"
+  },
+  "允许": {
+    "en": "Allow",
+    "zh-Hans": "允许"
+  },
+  "始终允许此类操作": {
+    "en": "Always allow this kind of action",
+    "zh-Hans": "始终允许此类操作"
+  },
+  "已允许：{0}": {
+    "en": "Allowed: {0}",
+    "zh-Hans": "已允许：{0}"
+  },
+  "已拒绝：{0}": {
+    "en": "Denied: {0}",
+    "zh-Hans": "已拒绝：{0}"
+  },
+  "确认已超时，未执行：{0}": {
+    "en": "Confirmation timed out, not run: {0}",
+    "zh-Hans": "确认已超时，未执行：{0}"
+  },
+  "已取消，未执行：{0}": {
+    "en": "Cancelled, not run: {0}",
+    "zh-Hans": "已取消，未执行：{0}"
+  },
+  "这项确认已处理": {
+    "en": "This confirmation was already handled",
+    "zh-Hans": "这项确认已处理"
+  },
+  "这项确认已不存在": {
+    "en": "This confirmation no longer exists",
+    "zh-Hans": "这项确认已不存在"
+  },
+  "网络中断，确认未送达。请重试。": {
+    "en": "Connection lost; your decision wasn't delivered. Try again.",
+    "zh-Hans": "网络中断，确认未送达。请重试。"
+  },
+  "操作内容已变化，请重新确认。": {
+    "en": "The action changed. Please confirm again.",
+    "zh-Hans": "操作内容已变化，请重新确认。"
+  },
+  "当前服务暂不支持确认操作。": {
+    "en": "This service doesn't support confirmations yet.",
+    "zh-Hans": "当前服务暂不支持确认操作。"
+  },
+  "确认未被接受，请稍后重试。": {
+    "en": "The confirmation wasn't accepted. Try again later.",
+    "zh-Hans": "确认未被接受，请稍后重试。"
+  },
+  "正在处理上一项操作，请稍候再试。": {
+    "en": "Still handling the previous action. Try again shortly.",
+    "zh-Hans": "正在处理上一项操作，请稍候再试。"
+  },
+  "确认结果待核对，请读取原请求进展。": {
+    "en": "Result not yet confirmed. Check the original request's progress.",
+    "zh-Hans": "确认结果待核对，请读取原请求进展。"
   }
 }
