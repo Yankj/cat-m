@@ -97,6 +97,7 @@ public struct AuthenticatedNativeChatCredentials: NativeChatSessionCredentials {
             // The local receipt conveys local reading only; it never authorizes HTTP.
             let chatConfiguration=try NativeChatConfiguration(origin:configuration.backendOrigin,localScope:partition.scope,serverScopeID:receipt.serverScopeID,publishableKey:configuration.publishableKey,expectedSubjectID:partition.subject)
             let credentials=AuthenticatedNativeChatCredentials(manager:manager!,partition:partition)
+            Task { await CatpawPushTokenUploader.shared.setAuthorization { try await credentials.authorization(scope: partition.scope) } }
             let backend=NativeChatHTTPBackend(configuration:chatConfiguration,credentials:credentials)
             let memory=isFixture ? nil : try NativeMemoryComposition.service(repository:repository,configuration:chatConfiguration,credentials:credentials)
             let selected:any ConversationBackend=isFixture ? UnconfiguredConversationBackend() : backend
@@ -155,6 +156,7 @@ public struct AuthenticatedNativeChatCredentials: NativeChatSessionCredentials {
                 let region = (Bundle.main.object(forInfoDictionaryKey:"CatpawEdgeRegion") as? String).flatMap { $0.isEmpty ? nil : $0 }
                 let chatConfiguration=try NativeChatConfiguration(origin:configuration.backendOrigin,localScope:partition.scope,serverScopeID:serverScope,publishableKey:configuration.publishableKey,edgeRegion:region,expectedSubjectID:partition.subject)
                 let credentials=AuthenticatedNativeChatCredentials(manager:manager,partition:partition)
+                Task { await CatpawPushTokenUploader.shared.setAuthorization { try await credentials.authorization(scope: partition.scope) } }
                 let http=NativeChatHTTPBackend(configuration:chatConfiguration,credentials:credentials)
                 let memory=isFixture ? nil : try NativeMemoryComposition.service(repository:repository,configuration:chatConfiguration,credentials:credentials)
                 backend = http
@@ -207,6 +209,7 @@ public struct AuthenticatedNativeChatCredentials: NativeChatSessionCredentials {
     func signOut() async {
         guard let manager, !actionBusy else { return };actionBusy=true;logoutInProgress=true;lifecycleEpoch += 1
         defer {logoutInProgress=false;actionBusy=false}
+        await CatpawPushTokenUploader.shared.clearAuthorization()
         let detached=takeChat()
         // Close manager admission immediately; local draining must not postpone its barrier.
         async let cleanup:Bool=finishDetaching(detached)
