@@ -5,6 +5,7 @@ import { check,shape,UUID,hash,clone } from '../facade-r2/src/common.mjs';
 export const isoAt=ms=>new Date(ms).toISOString();
 import { toolApprovalPolicy } from './tools.mjs';
 import { stableUUID } from './local-output-facade.mjs';
+import { RENDER_UI,requiresResponse,UI_DECISIONS,uiBlockEvent,uiBlockResolve,blockOf } from './generative-ui.mjs';
 export const APPROVAL_CONTRACT='catpaw.approval.v1';
 export const APPROVAL_HEADER='X-Catpaw-Approval-Contract';
 export const APPROVAL_TTL_MS=10*60*1000;
@@ -21,6 +22,7 @@ export function summarizeArguments(args){
 export async function gatedCalls(tx,{owner,subjectID,calls,registry}){
   const out=[];
   for(const call of calls){
+    if(call.name===RENDER_UI){const block=blockOf(call.arguments);if(requiresResponse(block))out.push({call,policy:{approval:'ui',risk:'none'},summary:String(block.title??block.kind).slice(0,240),ui:true,block});continue;}
     const policy=toolApprovalPolicy(call.name);if(policy.approval==='never')continue;
     if(policy.approval==='first_use'&&policy.class){const pref=await tx.get(owner,APPROVAL_PREFERENCES,preferenceID(subjectID,policy.class));if(pref?.state==='always_allow')continue;}
     const tool=registry instanceof Map?registry.get(call.name):null;
@@ -29,19 +31,23 @@ export async function gatedCalls(tx,{owner,subjectID,calls,registry}){
   }
   return out;
 }
-export function interruptFor(turnID,{call,policy,summary},now){
+export function interruptFor(turnID,{call,policy,summary,ui,block},now){
+  if(ui)return {interrupt_id:stableUUID(`${turnID}:${call.id}:ui`),kind:'ui',call_id:call.id,tool:call.name,summary,args_hash:argsHash(call),risk:'none',approval:'ui',class:null,remember_allowed:false,block:clone(block),expires_at:isoAt(Math.min(now+APPROVAL_TTL_MS,Math.max(now+30*1000,Date.parse(block.expiresAt??'')||Infinity))),status:'pending'};
   return {interrupt_id:stableInterruptID(turnID,call.id),call_id:call.id,tool:call.name,summary,args_hash:argsHash(call),risk:policy.risk,approval:policy.approval,class:policy.class??null,
     remember_allowed:policy.approval==='first_use'&&!!policy.class,expires_at:isoAt(now+APPROVAL_TTL_MS),status:'pending'};
 }
 const stableInterruptID=(turnID,callID)=>stableUUID(`${turnID}:${callID}:approval`);
 export const requestedEvent=(it,call)=>({interrupt_id:it.interrupt_id,call_id:it.call_id,tool:it.tool,summary:it.summary,arguments:clone(call.arguments),args_hash:it.args_hash,expires_at:it.expires_at,risk:it.risk,remember_allowed:it.remember_allowed});
-export const resolvedEvent=it=>({interrupt_id:it.interrupt_id,call_id:it.call_id,decision:it.status,remember:it.remember===true,decided_at:it.decided_at,...it.decision_operation_id?{decision_operation_id:it.decision_operation_id}:{}});
+export const resolvedEvent=it=>({interrupt_id:it.interrupt_id,call_id:it.call_id,decision:it.status,...it.kind==='ui'?{kind:'ui'}:{},remember:it.remember===true,decided_at:it.decided_at,...it.decision_operation_id?{decision_operation_id:it.decision_operation_id}:{}});
 /** Public projection of pending interrupts for GET …/turns/{t}. */
-export const pendingApprovals=t=>(t.interrupts??[]).filter(i=>i.status==='pending').map(({interrupt_id,call_id,tool,summary,args_hash,expires_at,risk,remember_allowed})=>({interrupt_id,call_id,tool,summary,args_hash,expires_at,risk,remember_allowed,arguments:clone(t.approval_checkpoint?.round?.calls?.find(c=>c.id===call_id)?.arguments??null)}));
+export const pendingApprovals=t=>(t.interrupts??[]).filter(i=>i.status==='pending').map(({interrupt_id,call_id,tool,summary,args_hash,expires_at,risk,remember_allowed,kind,block})=>({interrupt_id,call_id,tool,summary,args_hash,expires_at,risk,remember_allowed,...kind==='ui'?{kind,block:uiBlockEvent(block,{interrupt_id,args_hash,expires_at})}:{},arguments:clone(t.approval_checkpoint?.round?.calls?.find(c=>c.id===call_id)?.arguments??null)}));
 export function validateDecision(input){
   check(input&&typeof input==='object'&&!Array.isArray(input),422,'approval_schema_invalid');
-  try{shape(input,['operation_id','decision','args_hash']);}catch{check(false,422,'approval_schema_invalid');}
-  check(UUID.test(input.operation_id)&&DECISIONS.includes(input.decision)&&typeof input.args_hash==='string'&&SHA.test(input.args_hash),422,'approval_schema_invalid');
+  // catpaw.ui.v1 adds decision submit|dismiss and an optional `response` (validated against the block later).
+  const fields='response' in input?['operation_id','decision','args_hash','response']:['operation_id','decision','args_hash'];
+  try{shape(input,fields);}catch{check(false,422,'approval_schema_invalid');}
+  check(UUID.test(input.operation_id)&&(DECISIONS.includes(input.decision)||UI_DECISIONS.includes(input.decision))&&typeof input.args_hash==='string'&&SHA.test(input.args_hash),422,'approval_schema_invalid');
+  check(!('response' in input)||['submit','report_error'].includes(input.decision),422,'approval_schema_invalid');
   return clone(input);
 }
 /** Lazy expiry: every pending interrupt past expires_at becomes `expired` (denied to the model).
@@ -53,6 +59,7 @@ export function settleExpired(t,now,event){
     const resolved={...it,status:'expired',decided_at:isoAt(now)};
     next={...next,interrupts:next.interrupts.map(i=>i.interrupt_id===it.interrupt_id?resolved:i)};
     next={...next,events:[...next.events,event(next,'approval_resolved',resolvedEvent(resolved))]};changed=true;
+    if(it.kind==='ui')next={...next,events:[...next.events,event(next,'ui.block.resolve',uiBlockResolve(it.block.id,'expired'))]};
   }
   if(!changed)return {turn:t,changed:false,resume:false};
   const resume=next.interrupts.every(i=>i.status!=='pending');
