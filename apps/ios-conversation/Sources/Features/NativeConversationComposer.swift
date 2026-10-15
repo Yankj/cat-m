@@ -3,11 +3,16 @@ import UIKit
 
 @MainActor final class ConversationTextView: CatpawEditingTextView {
     var submit: (() -> Void)?
+    var addAttachments: (([ComposerAttachment]) -> Void)?
     var compositionChanged: ((Bool) -> Void)?
     var lineCountChanged: ((Int) -> Void)?
     private var reportedLineCount = 0
     override var keyCommands: [UIKeyCommand]? { [UIKeyCommand(input:"\r",modifierFlags:.command,action:#selector(commandSubmit))] }
     @objc func commandSubmit() { guard markedTextRange == nil else { return };submit?() }
+    override func paste(_ sender: Any?) {
+        if let addAttachments, ComposerPasteHandling.intercept(add: addAttachments) { return }
+        super.paste(sender)
+    }
     override func setMarkedText(_ markedText:String?,selectedRange:NSRange) {
         super.setMarkedText(markedText,selectedRange:selectedRange)
         compositionChanged?(markedTextRange != nil);delegate?.textViewDidChange?(self)
@@ -38,6 +43,7 @@ import UIKit
     /// A finite SwiftUI proposal is also respected; the text itself then scrolls.
     var maximumVisibleHeight:CGFloat? = nil
     var lineCountChanged:((Int)->Void)? = nil
+    var addAttachments:(([ComposerAttachment])->Void)? = nil
     let submit:() -> Void
     func makeCoordinator() -> Coordinator { Coordinator(self) }
     func makeUIView(context:Context) -> ConversationTextView {
@@ -48,7 +54,7 @@ import UIKit
         view.textContainer.lineFragmentPadding=0;view.returnKeyType = .default
         view.accessibilityLabel=AppLanguage(locale:context.environment.locale).ui("消息");view.accessibilityIdentifier="chat.input"
         view.setContentCompressionResistancePriority(.defaultLow,for:.horizontal)
-        view.submit=submit;view.lineCountChanged=lineCountChanged;view.compositionChanged={ [weak model] in model?.updateInputComposition($0) }
+        view.submit=submit;view.addAttachments=addAttachments;view.lineCountChanged=lineCountChanged;view.compositionChanged={ [weak model] in model?.updateInputComposition($0) }
         #if DEBUG
         ConversationTextView.fixtureEditor=view
         #endif
@@ -59,7 +65,7 @@ import UIKit
         let updateStart=ProcessInfo.processInfo.systemUptime
         defer {P0PerformanceLog.shared.record("composer_update",start:updateStart,end:ProcessInfo.processInfo.systemUptime,main:true)}
         #endif
-        context.coordinator.parent=self;view.submit=submit;view.lineCountChanged=lineCountChanged;view.isEditable=enabled
+        context.coordinator.parent=self;view.submit=submit;view.addAttachments=addAttachments;view.lineCountChanged=lineCountChanged;view.isEditable=enabled
         view.accessibilityLabel=AppLanguage(locale:context.environment.locale).ui("消息")
         let font=ConversationTypeScale.font(context.environment.dynamicTypeSize)
         let fontChanged=view.font?.isEqual(font) != true

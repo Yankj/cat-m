@@ -6,6 +6,7 @@ import CatpawImageComposer
 @MainActor struct ConversationFirstView: View {
     @ObservedObject var model: ConversationFirstModel
     @StateObject private var composerChrome:ConversationComposerChromeAdapter
+    @StateObject private var attachmentUploader:LocalMockComposerAttachmentUploader
     var accountLabel: String? = nil
     var onSignOut: (() -> Void)? = nil
     var isAnonymousAccount = false
@@ -30,6 +31,7 @@ import CatpawImageComposer
     @State private var pendingMessagesPresented=false
     @State private var composerMeasurements:[String:CGFloat]=[:]
     @State private var composerLineCount=1
+    @State private var pendingAttachmentIntentID:UUID?
     @State private var visibleViewport:CatpawVisibleViewport?
     @State private var composerContextPresented=false
     private enum ComposerContextAction {case modelConsent,imageConsent,acceptedWork,pendingMessages,settings,latest}
@@ -41,7 +43,13 @@ import CatpawImageComposer
     init(model:ConversationFirstModel,accountLabel:String?=nil,onSignOut:(()->Void)?=nil,
          isAnonymousAccount:Bool=false,restrictToFrozenFixture:Bool=false) {
         self.model=model
-        _composerChrome=StateObject(wrappedValue:ConversationComposerChromeAdapter(model:model,sendsEnabled:!restrictToFrozenFixture))
+        let chrome=ConversationComposerChromeAdapter(model:model,sendsEnabled:!restrictToFrozenFixture)
+        _composerChrome=StateObject(wrappedValue:chrome)
+        _attachmentUploader=StateObject(wrappedValue:LocalMockComposerAttachmentUploader { [weak chrome] id,status in
+            guard let chrome,let index=chrome.attachments.firstIndex(where:{$0.id==id}) else {return false}
+            chrome.attachments[index].status=status
+            return true
+        })
         self.accountLabel=accountLabel
         self.onSignOut=onSignOut
         self.isAnonymousAccount=isAnonymousAccount
@@ -167,6 +175,8 @@ import CatpawImageComposer
                     .onChange(of: displayMessages.count) { _, _ in scheduleScroll(proxy) }
                     .onChange(of:model.conversationID) { _,_ in
                         scrollTask?.cancel();scrollTask=nil;followingLatest=true;latestVisible=true
+                        pendingAttachmentIntentID=nil
+                        composerChrome.discardAttachments(using:attachmentUploader)
                         scheduleScroll(proxy)
                     }
                     .onChange(of:contextJumpRequested){_,_ in proxy.scrollTo("latest",anchor:.bottom)}
@@ -280,6 +290,12 @@ import CatpawImageComposer
         .catpawSheet(isPresented:$composerContextPresented,onDismiss:completeContextAction) {composerContextSheet}
         .task { await model.start() }
         .onDisappear {scrollTask?.cancel();scrollTask=nil}
+        .onChange(of:model.outgoingMessages) { _,intents in
+            updateAttachmentAdmission(intents)
+            #if DEBUG
+            probe.update(model)
+            #endif
+        }
          .onChange(of: scene) { _, value in model.sceneChanged(value)
             #if DEBUG
             probe.scene(value)
@@ -287,7 +303,6 @@ import CatpawImageComposer
         }
         #if DEBUG
         .onAppear { probe.start();probe.update(model) }
-        .onChange(of:model.outgoingMessages) { _, _ in probe.update(model) }
         .onChange(of:model.draft) { _, _ in probe.update(model) }
         .onChange(of:model.session?.turns.last?.lastSequence) { _, _ in probe.update(model) }
         .overlay(alignment:.topTrailing) { if probe.enabled && P0ExperienceFixture.launchEnvironment["CATPAW_QA_VISUAL_REVIEW"] != "1" { VStack {
@@ -325,7 +340,7 @@ import CatpawImageComposer
         }
     }
     private var draftTooLong: Bool { model.draft.utf16.count > 8000 }
-    private var canSendDraft: Bool { !restrictToFrozenFixture && model.canAcceptDraft && !draftTooLong && composerChrome.attachments.isEmpty }
+    private var canSendDraft: Bool { !restrictToFrozenFixture && model.canAcceptDraft && !draftTooLong && composerChrome.attachmentsAreReady }
     private var composerIsDrafting:Bool { !model.draft.isEmpty || model.isInputComposing }
     private var composerControlSize:CGFloat { max(44,CatpawTypography.font(.body,size:textSize).lineHeight) }
     private func composerBudget(_ viewport:GeometryProxy)->CatpawTextViewport.ComposerBudget {
@@ -357,7 +372,7 @@ import CatpawImageComposer
             if let target=model.artifactContinuation,budget.showsTarget {
                 artifactContinuationChip(target).padding(.bottom,8)
             }
-            FloatingComposer(model:composerChrome,lineCount:composerLineCount,uploader:nil,
+            FloatingComposer(model:composerChrome,lineCount:composerLineCount,uploader:attachmentUploader,
                              accessory:AnyView(composerContextButton(budget:budget)),
                              trailingAccessory:AnyView(
                                 Button(action:submitDraft) {
@@ -376,7 +391,9 @@ import CatpawImageComposer
                 NativeConversationComposer(model:model,
                     enabled:!restrictToFrozenFixture && !model.switchingArtifactContinuation,
                     maximumVisibleHeight:min(budget.maximumTextHeight,ComposerMetrics.maxHeight(for:textSize)),
-                    lineCountChanged:{composerLineCount=$0},submit:{if composerChrome.attachments.isEmpty {submitDraft()}})
+                    lineCountChanged:{composerLineCount=$0},
+                    addAttachments:{_ = composerChrome.addAttachments($0,using:attachmentUploader)},
+                    submit:{if canSendDraft {submitDraft()}})
                     .background{GeometryReader{geometry in Color.clear.preference(key:ConversationComposerMeasurements.self,value:["text":geometry.size.height])}}
             }
                 .onAppear{composerChrome.setSendAction(submitDraft)}
@@ -588,10 +605,24 @@ import CatpawImageComposer
     private func submitDraft() {
         if canSendDraft {followingLatest=true}
         let time=ProcessInfo.processInfo.systemUptime,old=Set(model.outgoingMessages.map(\.id))
+        let hadAttachments = !composerChrome.attachments.isEmpty
         model.prepareSend()
+        let admitted=model.outgoingMessages.last(where:{!old.contains($0.id)})
+        if hadAttachments {pendingAttachmentIntentID=admitted?.id}
         #if DEBUG
-        if let intent=model.outgoingMessages.last,!old.contains(intent.id) { probe.pressed(intent.id,at:time);probe.update(model) }
+        if let intent=admitted { probe.pressed(intent.id,at:time);probe.update(model) }
         #endif
+    }
+    private func updateAttachmentAdmission(_ intents:[OutgoingMessageIntent]) {
+        guard let id=pendingAttachmentIntentID,
+              let intent=intents.first(where:{$0.id==id}) else {return}
+        switch intent.state {
+        case .savingLocal:return
+        case .failed:pendingAttachmentIntentID=nil
+        case .queued,.awaitingPermission,.sending,.unknown:
+            pendingAttachmentIntentID=nil
+            composerChrome.discardAttachments(using:attachmentUploader)
+        }
     }
     private func operationID(_ message:ConversationTranscriptMessage) -> UUID? {
         model.outgoingMessages.first(where:{stableID("conversation-user-\($0.id)") == message.id})?.id ?? model.session?.turns.first(where:{stableID("conversation-user-\($0.id)") == message.id})?.id

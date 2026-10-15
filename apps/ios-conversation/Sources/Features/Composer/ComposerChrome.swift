@@ -13,7 +13,7 @@ import Combine
 
     private enum Mode: Equatable { case send, stop, queue, disabled }
     private var hasContent: Bool { !model.draftIsEmpty || model.attachments.contains(where: \.isSendable) }
-    private var uploadsPending: Bool { model.attachments.contains { if case .uploading = $0.status { return true }; if case .staged = $0.status { return true }; return false } }
+    private var uploadsPending: Bool { !model.attachmentsAreReady }
     private var mode: Mode {
         if model.runState == .responding { return hasContent ? .queue : .stop }
         if model.runState == .offlineQueued { return hasContent ? .queue : .disabled }
@@ -158,17 +158,14 @@ struct ComposerGlass: ViewModifier {
     }
 
     func add(_ items: [ComposerAttachment]) {
-        let (accepted, rej) = ComposerAttachmentStager.admit(items, existing: model.attachments.count)
-        model.attachments.append(contentsOf: accepted)
-        accepted.forEach { uploader?.upload($0) }
+        let rej = model.addAttachments(items, using: uploader)
         if let rej { withAnimation { rejection = rej }; Task { try? await Task.sleep(nanoseconds: 2_500_000_000); withAnimation { rejection = nil } } }
     }
     private func retry(_ item: ComposerAttachment) {
-        guard let i = model.attachments.firstIndex(where: { $0.id == item.id }) else { return }
-        model.attachments[i].status = .staged; uploader?.upload(model.attachments[i])
+        model.retryAttachment(item, using: uploader)
     }
     private func remove(_ item: ComposerAttachment) {
-        uploader?.cancel(item.id); model.attachments.removeAll { $0.id == item.id }; ComposerAttachmentStager.discard(item)
+        model.removeAttachment(item, using: uploader)
     }
     private func rejectionToast(_ r: ComposerAttachmentRejection) -> some View {
         let text: String = switch r {
