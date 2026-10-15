@@ -1,9 +1,10 @@
 import Foundation
 
 /// catpaw.ui.v1 — native generative-UI block (r10 spec §4, `render_ui` tool → SSE `ui.block`).
-/// PROPOSAL: the backend contract is not defined yet (三角's existing `present_cgui_v1` covers
-/// table/chart/calculator only). Field names follow the r10 `render_ui` JSON schema verbatim (camelCase).
-/// Unknown keys are ignored; unknown `kind` or over-limit content degrades to a `card` (never raw JSON).
+/// Contract: services/edge/docs/generative-ui-contract.md (三角, 64fc410/1e8e529). Interactive blocks are approval.v1
+/// interrupts (`kind:'ui'`): `ui.block` carries `interruptId`/`argsHash`/`expiresAt`, the turn suspends, and the answer is
+/// a decision (`submit`/`dismiss`/`report_error`) on the SAME turn. Unknown keys are ignored; unknown `kind` or
+/// over-limit content degrades to a `card` (never raw JSON). Markdown and all block text are untrusted.
 public enum GenerativeBlockLimits {
     public static let schemaVersion = 1
     public static let payloadBytes = 32_768
@@ -57,17 +58,38 @@ public struct GenerativeBlock: Codable, Sendable, Equatable, Identifiable {
     public var actions: [Action]?
     public var steps: [Step]?
     public var expiresAt: Date?
-    /// For `sheet`: the kind rendered inside the sheet (PROPOSAL; defaults to `card`, or `form` when fields exist).
+    /// For `sheet`: the kind rendered inside the sheet (default form if fields, choices if items, else card).
     public var content: Kind?
+    /// Server linkage, present only on blocks that wait for an answer (contract §0.2).
+    public var interruptId: String?
+    public var argsHash: String?
 
     public init(id: String, kind: Kind, title: String? = nil, body: String? = nil, presentation: Presentation? = nil, image: URL? = nil, items: [Item]? = nil, selection: Selection? = nil,
                 allowOther: Bool? = nil, fields: [Field]? = nil, actions: [Action]? = nil, steps: [Step]? = nil, expiresAt: Date? = nil, content: Kind? = nil) {
         self.schemaVersion = GenerativeBlockLimits.schemaVersion; self.id = id; self.kind = kind; self.title = title; self.body = body; self.presentation = presentation; self.image = image
         self.items = items; self.selection = selection; self.allowOther = allowOther; self.fields = fields; self.actions = actions; self.steps = steps; self.expiresAt = expiresAt; self.content = content
     }
+    public init(id: String, kind: Kind, title: String?, body: String?, interruptId: String?, argsHash: String?, expiresAt: Date?) {
+        self.init(id: id, kind: kind, title: title, body: body, expiresAt: expiresAt); self.interruptId = interruptId; self.argsHash = argsHash
+    }
 
     public func isExpired(at now: Date = .now) -> Bool { expiresAt.map { $0 <= now } ?? false }
     public var effectiveSelection: Selection { selection ?? (kind == .choices ? .single : .none) }
+    /// Kind actually rendered (resolves `sheet.content`).
+    public var contentKind: Kind {
+        guard kind == .sheet else { return kind }
+        return content ?? ((fields ?? []).isEmpty ? ((items ?? []).isEmpty ? .card : .choices) : .form)
+    }
+    /// Contract §0.4: which blocks wait for an answer. The server's `interruptId` is authoritative when present.
+    public var needsAnswer: Bool {
+        if interruptId != nil { return true }
+        switch contentKind {
+        case .choices: return !(effectiveSelection == .none && (actions ?? []).isEmpty)
+        case .confirm, .form: return true
+        case .card, .list: return !(actions ?? []).isEmpty
+        case .progress, .sheet: return false
+        }
+    }
     public var opensAsSheet: Bool { kind == .sheet || presentation == .sheet || (kind == .form && (fields?.count ?? 0) > 4) }
 
     /// Shallow patch for `ui.block.update` (same id): non-nil fields replace.
@@ -77,6 +99,24 @@ public struct GenerativeBlock: Codable, Sendable, Equatable, Identifiable {
         if let v = patch.actions { copy.actions = v }; if let v = patch.steps { copy.steps = v }; if let v = patch.expiresAt { copy.expiresAt = v }
         return copy
     }
+}
+
+/// `ui.block.resolve` data. status: submitted | dismissed | errored | expired | cancelled.
+public struct GenerativeBlockResolution: Codable, Sendable, Equatable {
+    public let id: String
+    public let status: String
+}
+
+/// Decision on a ui interrupt (approval.v1 decision endpoint, contract §4).
+public enum GenerativeUIDecision: String, Codable, Sendable { case submit, dismiss, reportError = "report_error" }
+
+/// Implemented by the network layer (三角: `NativeChatHTTPBackend` → `POST …/turns/{t}/interrupts/{i}/decision?after_sequence=N`
+/// with `{operation_id, decision, args_hash, response?}`) and by the DEBUG demo adapter. `response` is the encoded
+/// `ui.response` (submit) or `ui.error` (report_error) JSON, nil for dismiss. Resend with the SAME `operationID` after
+/// `.transport`. Throws `ConversationApprovalFailure` (`.expired`, `.consumed`, `.stale`, `.notFound`, `.rejected`, …).
+/// The continuation events (approval_resolved, ui.block.resolve, …) flow through the normal turn event path.
+public protocol GenerativeUIDecisionSubmitting: Sendable {
+    func submitUIDecision(conversationID: UUID, turnID: UUID, interruptID: String, decision: GenerativeUIDecision, argsHash: String, response: Data?, operationID: UUID) async throws
 }
 
 public struct GenerativeBlockPatch: Codable, Sendable, Equatable {
@@ -124,6 +164,13 @@ public struct GenerativeBlockError: Codable, Sendable, Equatable {
     public let blockId: String?
     public let code: String
     public let path: String?
+    /// Linkage salvaged from an invalid interactive block, so the error can be reported as `decision:"report_error"`.
+    public var interruptId: String?
+    public var argsHash: String?
+    private enum CodingKeys: String, CodingKey { case type, blockId, code, path }
+    public init(blockId: String?, code: String, path: String?, interruptId: String? = nil, argsHash: String? = nil) {
+        self.blockId = blockId; self.code = code; self.path = path; self.interruptId = interruptId; self.argsHash = argsHash
+    }
 }
 
 public enum GenerativeBlockDecodeResult: Sendable, Equatable {
@@ -153,7 +200,7 @@ public enum GenerativeBlockCodec {
         if let wrapped = try? decoder.decode(Wrapper.self, from: data) { block = wrapped.block }
         else if let bare = try? decoder.decode(GenerativeBlock.self, from: data) { block = bare }
         else { return fallback(from: data, code: "schema_invalid", path: nil) }
-        if let error = validate(block) { return .fallback(degrade(block), error) }
+        if var error = validate(block) { error.interruptId = block.interruptId; error.argsHash = block.argsHash; return .fallback(degrade(block), error) }
         return .ready(block)
     }
 
@@ -161,6 +208,7 @@ public enum GenerativeBlockCodec {
         func err(_ code: String, _ path: String) -> GenerativeBlockError { .init(blockId: b.id, code: code, path: path) }
         if let v = b.schemaVersion, v > GenerativeBlockLimits.schemaVersion { return err("schema_version_unsupported", "schemaVersion") }
         if b.id.isEmpty { return err("id_missing", "id") }
+        if (b.interruptId == nil) != (b.argsHash == nil) { return err("schema_invalid", "interruptId") }
         if (b.title?.count ?? 0) > GenerativeBlockLimits.titleCharacters { return err("too_long", "title") }
         if (b.body?.count ?? 0) > GenerativeBlockLimits.bodyCharacters { return err("too_long", "body") }
         if (b.items?.count ?? 0) > GenerativeBlockLimits.items { return err("too_many", "items") }
@@ -185,15 +233,16 @@ public enum GenerativeBlockCodec {
 
     static func degrade(_ b: GenerativeBlock) -> GenerativeBlock {
         GenerativeBlock(id: b.id, kind: .card, title: b.title.map { String($0.prefix(GenerativeBlockLimits.titleCharacters)) },
-                        body: b.body.map { String($0.prefix(GenerativeBlockLimits.bodyCharacters)) })
+                        body: b.body.map { String($0.prefix(GenerativeBlockLimits.bodyCharacters)) }, interruptId: b.interruptId, argsHash: b.argsHash, expiresAt: b.expiresAt)
     }
     private static func fallback(from data: Data, code: String, path: String?) -> GenerativeBlockDecodeResult {
         // Salvage id/title/body without trusting the rest; never surface raw JSON.
         let object = (try? JSONSerialization.jsonObject(with: data.prefix(GenerativeBlockLimits.payloadBytes))) as? [String: Any]
         let raw = (object?["block"] as? [String: Any]) ?? object ?? [:]
         let id = (raw["id"] as? String) ?? "invalid-\(data.count)"
+        let interrupt = raw["interruptId"] as? String, hash = raw["argsHash"] as? String
         let card = GenerativeBlock(id: id, kind: .card, title: (raw["title"] as? String).map { String($0.prefix(GenerativeBlockLimits.titleCharacters)) },
-                                   body: (raw["body"] as? String).map { String($0.prefix(GenerativeBlockLimits.bodyCharacters)) })
-        return .fallback(card, .init(blockId: raw["id"] as? String, code: code, path: path))
+                                   body: (raw["body"] as? String).map { String($0.prefix(GenerativeBlockLimits.bodyCharacters)) }, interruptId: interrupt, argsHash: hash, expiresAt: nil)
+        return .fallback(card, .init(blockId: raw["id"] as? String, code: code, path: path, interruptId: interrupt, argsHash: hash))
     }
 }

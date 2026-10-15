@@ -5162,5 +5162,33 @@
   "请选择": {
     "en": "Choose",
     "zh-Hans": "请选择"
+  },
+  "已回答": {
+    "en": "Answered",
+    "zh-Hans": "已回答"
+  },
+  "已跳过": {
+    "en": "Skipped",
+    "zh-Hans": "已跳过"
+  },
+  "卡片无法显示，已告知助手": {
+    "en": "Couldn't show this card; the assistant was told",
+    "zh-Hans": "卡片无法显示，已告知助手"
+  },
+  "暂时无法提交，请稍后重试。": {
+    "en": "Can't submit right now. Try again later.",
+    "zh-Hans": "暂时无法提交，请稍后重试。"
+  },
+  "网络中断，回答未送达。请重试。": {
+    "en": "Connection lost; your answer wasn't delivered. Try again.",
+    "zh-Hans": "网络中断，回答未送达。请重试。"
+  },
+  "当前服务暂不支持卡片回答。": {
+    "en": "This service doesn't support card answers yet.",
+    "zh-Hans": "当前服务暂不支持卡片回答。"
+  },
+  "回答未被接受，请检查后重试。": {
+    "en": "Your answer wasn't accepted. Check it and try again.",
+    "zh-Hans": "回答未被接受，请检查后重试。"
   }
 }
