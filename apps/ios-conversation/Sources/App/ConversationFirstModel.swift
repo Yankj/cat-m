@@ -158,6 +158,7 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
         let validMemory=memoryService?.reference.scope==scope && memoryService?.reference.subjectID==subjectID && subjectID != nil
         self.memoryService=validMemory ? memoryService : nil
         self.memoryConfigured=validMemory
+        MemoryLibraryHub.install(validMemory ? memoryService : nil) // wave2 V1: backend for the inline 已记住 chip
         self.inboxService=inboxService?.reference.scope==scope && inboxService?.reference.subjectID==subjectID ? inboxService : nil
         self.trustedSubjectID=subjectID
         self.acceptedWorkDraftService=ConversationAcceptedWorkDraftService(repository:repository,scope:scope,subjectID:subjectID)
@@ -899,6 +900,7 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
         let artifactDraftsSaved=await artifactEditService.invalidate()
         await taskActionService.invalidate();await taskControlService.invalidate();selectedTaskControl=nil
         await memoryService?.invalidate()
+        MemoryLibraryHub.reset() // wave2 V1
         await inboxService?.invalidate()
         imageDraft.clear();for value in imageDrafts.values {value.clear()};imageDrafts.removeAll();imageCapability=ConversationImageCapability()
         await suspend();subscription?.cancel();subscription=nil;draftTask?.cancel();draftTask=nil
