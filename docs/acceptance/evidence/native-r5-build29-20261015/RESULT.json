@@ -1,0 +1,248 @@
+{
+  "schema": "catpaw.native-r5-build29-delivery.v1",
+  "date": "2026-10-15",
+  "captured_at": "2026-10-15T05:17:55.774242+00:00",
+  "candidate": "AF-UX-R5-NATIVE-20261015-29",
+  "version": "0.3.0(29)",
+  "source_commit": "090c5431189d146e32a3c649f0b04dd7d2fdc279",
+  "source_tree": "a75048c3f0a3f38746c1cdd22e6fbf01eff26e08",
+  "remote_source_commit": "51d3ca96c34a82a886b274d99373dd9f022ef5a5",
+  "remote_source_tree": "4ea4785a7323dff087c9c852934a774429452941",
+  "source_inputs": 409,
+  "source_snapshot": "source-snapshot.json",
+  "status": "FOCUSED_NATIVE_PASS_PRODUCT_ACCEPTANCE_OPEN",
+  "delivery": "Retained Debug Simulator candidate installed into the existing local synthetic experience. Two newly executed native UI methods passed; complete keyboard, R5 and product gates remain open.",
+  "package": {
+    "version": "0.3.0(29)",
+    "configuration": "Debug iOS Simulator build-for-testing",
+    "sdk": "iphonesimulator27.1",
+    "file_count": 33,
+    "bundle_sha256": "eb9f94e2f281b70081db924d96f1addb2ea9e5624f18ba16f824dd312b1513be",
+    "manifest": "build/native-r5-build29-20261015/package-files29.json",
+    "manifest_sha256": "bf2f7e3153ef71e81920bc275346b4928706212290e680c2e40c876aaa913a7e",
+    "fingerprint_rule": "SHA256 of path-sorted file-entry array, each {bytes,path,sha256}, UTF-8 JSON with sorted object keys and no whitespace.",
+    "independent_app_copy": "build/native-r5-build29-20261015/frozen-app/CatpawM.app",
+    "all_33_frozen_files_rechecked": true,
+    "primary_ignored_copy": "build/device-hub-latest/packages29/CatpawM.app",
+    "all_33_primary_copy_files_rechecked": true,
+    "binary_currently_retained": true
+  },
+  "changes": [
+    "Place scaled hit target and contentShape on the button label through shared touchTarget(minimum:), preserving minimum44 and existing semantic typography; avoid an outer frame whose size differs from the actually hittable label.",
+    "Show Bundle marketing version and build number in a visible About section. Configuration/Version.xcconfig is the single source across configurations; version checker and build phase reject inconsistent overrides."
+  ],
+  "verification": {
+    "native_ui": {
+      "status": "PASS",
+      "log": "build/native-r5-build29-20261015/ui-r1.log",
+      "result_bundle": "build/native-r5-build29-20261015/UI29-r1.xcresult",
+      "new_methods_executed": 2,
+      "passed": 2,
+      "failed": 0,
+      "total_seconds": 179.896,
+      "methods": [
+        {
+          "suite": "ConversationArtifactContinuationUITests",
+          "method": "testMaximumTextTargetInputAndExitRemainReachableAboveKeyboard",
+          "seconds": 160.87,
+          "status": "PASS",
+          "boundary": "Maximum accessibility5 selected v2 report: details restriction readable, close retains exact modification text, exit restores ordinary draft, question draft independent, cold host restores same selected version and raw text; no new artifact POST on cold recovery."
+        },
+        {
+          "suite": "P0NativeExperienceUITests",
+          "method": "testR5ComposerReflowsWithoutLosingDraftOrSending",
+          "seconds": 19.027,
+          "status": "PASS",
+          "boundary": "Compact empty send disabled; drafting row and hit targets; more/settings/back preserves exact draft and adds no formal user message; About version/build fields exist."
+        }
+      ],
+      "counts_boundary": "Only these two build29 methods are counted. The four other build28 UI passes and build28 numerical helper were not rerun here and are not counted as build29 verification."
+    },
+    "sdk_resources_design": {
+      "status": "PASS",
+      "log": "build/native-r5-build29-20261015/sdk.log",
+      "app_source_members": 114,
+      "bilingual_entries": 1089,
+      "locale_bound_lookups": 1092,
+      "design_mutations": 13,
+      "semantic_design_sources": 116,
+      "semantic_typography_active_default_sources": 113,
+      "boundary": "Non-DEBUG Simulator SDK typecheck, syntax/project/localization/version and static semantic guards. No real model or full visual/accessibility acceptance."
+    },
+    "debug_build": {
+      "status": "PASS",
+      "log": "build/native-r5-build29-20261015/build.log",
+      "boundary": "Debug build-for-testing and final test runner, not Release/DeviceTrial or phone packaging."
+    },
+    "keyboard_gate": {
+      "status": "NOT_ACCEPTED",
+      "geometry_attachment": "build/native-r5-build29-20261015/ui-attachments/742388AA-B0AB-49C4-A8AB-2D2317ED7FA6.txt",
+      "sha256": "bd4a2950fa0f1437fd11baf3b7f8f5f7b5824fb1f7054b13376d69892cfcce89",
+      "reported_keyboard_top": 545.0,
+      "boundary": "This geometry is local supporting observation. The test does not require an explicit, strictly visible on-screen soft-keyboard precondition for every relevant transition. Passing a method named AboveKeyboard is not complete keyboard acceptance.",
+      "legacy_attachment_label": "v21 remains in existing attachment names/payload; actual version is 29 from the rehashed App Info.plist and install receipt.",
+      "manual_local_observation": {
+        "status": "PASS",
+        "capture": "build/native-r5-build29-20261015/ui-attachments/803A8BF3-A918-4D31-9F93-DAE61F68E218.png",
+        "sha256": "659e906d2b4ffb24dbb5e4968c021d83845ecfe62732665a1860e5c733add39f",
+        "source": "Coordinating agent actually viewed this native screenshot.",
+        "observation": "Visible system Chinese soft keyboard; details icon and input remain above it, consistent with keyboard_top=545.",
+        "boundary": "One specific manual observation only; no full size/transition matrix and no retroactive strict automated keyboard-visibility precondition."
+      }
+    },
+    "about_ui": {
+      "status": "FIELD_EXISTENCE_PASS",
+      "boundary": "UI29 asserts settings.appVersion/settings.appBuild exist; it does not assert their exact rendered string values. Actual 0.3.0(29) is independently read from both retained App copies and the install receipt; manual on-screen About value evidence is not included in this snapshot."
+    },
+    "planning_and_sensitivity_source_stage": {
+      "status": "PASS",
+      "logs": [
+        "build/native-r5-build29-20261015/af-goals.log",
+        "build/native-r5-build29-20261015/af-plan.log",
+        "build/native-r5-build29-20261015/final.log",
+        "build/native-r5-build29-20261015/cgui.log",
+        "build/native-r5-build29-20261015/sensitivity.log"
+      ],
+      "sensitivity_candidate_files": 1159,
+      "blocking": 0,
+      "manual_review": 0,
+      "boundary": "Source-stage logs precede new dated evidence files; a later publication candidate needs its own final scan."
+    }
+  },
+  "existing_experience_install": {
+    "status": "PASS",
+    "readback_time": "2026-10-15T05:14:14.794643+00:00",
+    "version": "0.3.0(29)",
+    "source_commit": "090c5431189d146e32a3c649f0b04dd7d2fdc279",
+    "bundle_sha256": "eb9f94e2f281b70081db924d96f1addb2ea9e5624f18ba16f824dd312b1513be",
+    "installed_bytes_match": true,
+    "device_name": "Catpaw 最新体验",
+    "preserved_existing_store": true,
+    "existing_loopback_port": 8772,
+    "receipt_location": "primary checkout, ignored build/device-hub-latest/LAUNCH-RESULT.json",
+    "receipt_sha256": "e094df29df5201cc58ac94659bb2c7af82565cb9e7b659a098c2524e712e83ef",
+    "before": {
+      "requests": 38,
+      "accepted_posts": 0,
+      "dropped_responses": 0,
+      "memory_posts": 0,
+      "memory_original_gets": 0,
+      "provider_calls": 2,
+      "turns": 1
+    },
+    "after": {
+      "requests": 39,
+      "accepted_posts": 0,
+      "dropped_responses": 0,
+      "memory_posts": 0,
+      "memory_original_gets": 0,
+      "provider_calls": 2,
+      "turns": 1
+    },
+    "deltas": {
+      "requests": 1,
+      "accepted_posts": 0,
+      "dropped_responses": 0,
+      "memory_posts": 0,
+      "memory_original_gets": 0,
+      "provider_calls": 0,
+      "turns": 0
+    },
+    "boundary": "Coordinator launch/readback of existing local synthetic experience. One additional read probe; accepted_posts, memory_posts and provider_calls each increased by zero. Existing provider_calls=2 is retained, not misreported as zero total. No real Auth/model/cloud/SQL request."
+  },
+  "local_runtime_artifacts": [
+    {
+      "test": "ConversationArtifactContinuationUITests/testMaximumTextTargetInputAndExitRemainReachableAboveKeyboard()",
+      "path": "build/native-r5-build29-20261015/ui-attachments/12C7B8F0-FC0B-46B1-8493-E804B7DE504D.png",
+      "name": "Simulator-synthetic-report-continuation-v21-p0-ui-large-artifact-edit-independent-question-draft_0_BD1E36C7-EB02-4782-BF29-65CE95C7BC7A.png",
+      "sha256": "cd8dca80a7f6abfaaf9b4b49eb104d5f3f50b946ed3a2d766b9f4ba0a9e5a4da",
+      "local_only": true
+    },
+    {
+      "test": "ConversationArtifactContinuationUITests/testMaximumTextTargetInputAndExitRemainReachableAboveKeyboard()",
+      "path": "build/native-r5-build29-20261015/ui-attachments/ACBC34AD-C682-4B0D-8337-85F41370DC2B.png",
+      "name": "Simulator-synthetic-report-continuation-v21-p0-ui-large-artifact-edit-cold-selected-version_0_AA70E274-BA97-4447-963C-F6F91B3483E3.png",
+      "sha256": "d1d5570706adbf73d77307eac2eb7d7948ff311dd70e61df12ae37149463458f",
+      "local_only": true
+    },
+    {
+      "test": "ConversationArtifactContinuationUITests/testMaximumTextTargetInputAndExitRemainReachableAboveKeyboard()",
+      "path": "build/native-r5-build29-20261015/ui-attachments/803A8BF3-A918-4D31-9F93-DAE61F68E218.png",
+      "name": "Simulator-synthetic-report-continuation-v21-p0-ui-large-artifact-edit-selected-local-raw_0_A0D30A51-E3AF-4286-8175-2301D839BA94.png",
+      "sha256": "659e906d2b4ffb24dbb5e4968c021d83845ecfe62732665a1860e5c733add39f",
+      "local_only": true
+    },
+    {
+      "test": "ConversationArtifactContinuationUITests/testMaximumTextTargetInputAndExitRemainReachableAboveKeyboard()",
+      "path": "build/native-r5-build29-20261015/ui-attachments/742388AA-B0AB-49C4-A8AB-2D2317ED7FA6.txt",
+      "name": "Simulator-synthetic-v21-selected-input-geometry_0_CB45D8FE-F7C5-407A-AA2A-3F1834BAC1FF.txt",
+      "sha256": "bd4a2950fa0f1437fd11baf3b7f8f5f7b5824fb1f7054b13376d69892cfcce89",
+      "local_only": true
+    },
+    {
+      "test": "P0NativeExperienceUITests/testR5ComposerReflowsWithoutLosingDraftOrSending()",
+      "path": "build/native-r5-build29-20261015/ui-attachments/656D39F6-EBCF-4013-A7CA-AD45C9F2762E.png",
+      "name": "R5-native-drafting-controls-and-preserved-local-draft_0_17A9D7B9-5D0A-4B3F-A054-E7F2BE38D3E7.png",
+      "sha256": "95f161c152428916d6b87d07b3f58613a86557d8aa45100d92f9a402dd10642f",
+      "local_only": true
+    }
+  ],
+  "manual_visual_evidence": {
+    "status": "PARTIAL_NATIVE_LIGHT_DARK_EVIDENCE",
+    "provenance": "local-audit/screenshots/native-r5-build29-20261015/PROVENANCE.json",
+    "provenance_sha256": "d15aff2e9a7a3db56520177d01cbca30a43840e745e2416a4d30a90c2214c545",
+    "text_category": "large",
+    "files": [
+      {
+        "path": "local-audit/screenshots/native-r5-build29-20261015/dark-qa.png",
+        "sha256": "13eee9c726e3565c3bd85535c1b2ceb5e6b8bf886e61be90f9fb2ab2ab74abec",
+        "captured_at": "2026-10-15T05:15:48.714939+00:00",
+        "theme": "dark rendered and visually reviewed"
+      },
+      {
+        "path": "local-audit/screenshots/native-r5-build29-20261015/light-latest.png",
+        "sha256": "d3576c5603a9ffead42f8bca1a17c42afce3c7083bd723a38ba8dd3ced06e431",
+        "captured_at": "2026-10-15T05:15:49.325126+00:00",
+        "theme": "light rendered"
+      }
+    ],
+    "boundary": "Coordinator actually viewed dark-qa.png and confirmed rendered near-black reading and dark-blue user bubble. Light capture is the existing fixed experience; dark capture is the independent QA offline fixture. No new turn/model call from captures. Local-only evidence, not a full theme/contrast/accessibility matrix.",
+    "about_exact_values": "NOT_VISUALLY_VERIFIED; UI automation only asserted fields exist. Manual About readback did not complete, so only App Info.plist and matching installed fingerprint establish exact version29."
+  },
+  "prior_failure_preservation": {
+    "build28_record": "../restart-native-r5-2026-10-15.md",
+    "boundary": "Build28 r1–r5 failures and overwritten-package history remain unchanged. Build29 newly passes the complete selected-report details/cold-draft path, without retroactively changing build28 FAIL."
+  },
+  "limitations": [
+    "Only two focused native methods were rerun; no complete native regression suite is claimed.",
+    "One manual native screenshot confirms a visible Chinese soft keyboard with the input/details above it. Strict automated keyboard-visibility preconditions and the full size/theme/IME/keyboard matrix remain open.",
+    "About UI fields were tested for existence; exact manually rendered values remain unverified. Light/dark local captures are partial visual evidence, not a full matrix or native contrast measurement.",
+    "VoiceOver, Reduce Motion/Transparency/Increase Contrast and interrupted drawer-settling matrix are not closed.",
+    "Explicit DEBUG offline/in-process synthetic UI and existing loopback experience only; no real model/Auth/SQL/deployment/phone or system-calendar effects. Backend maintenance is unchanged by this slice.",
+    "No AF-A01–18/AF-U01–12/CP-01–03, AF-G5 or FINAL-G1/G2/G3 closure; no seven-day real daily use or named competitor comparison."
+  ],
+  "evidence_logs": {
+    "build/native-r5-build29-20261015/af-goals.log": "5e514e06da7e3f3b8a689bfeeb73d37027323026d35b3d55b36e0160fc816e5d",
+    "build/native-r5-build29-20261015/af-plan.log": "71da24f70099c5cfb5c75ba771b66c4bf4a7191051c3bd879afd8ec58db3f748",
+    "build/native-r5-build29-20261015/build.log": "6662b77e74f3163f5b1161f58f455c2f0564983f52203be15f86f90c6045bc1e",
+    "build/native-r5-build29-20261015/cgui.log": "0751a52050b8903f5812a6f0fc59db56a345f2b4dc1857e55e7d69c402873163",
+    "build/native-r5-build29-20261015/final.log": "7b72c9e606d7cd160ae8d115c2f06fd10a8e293c8de3a662a01a92467c51161c",
+    "build/native-r5-build29-20261015/layout-final.log": "d225b3174702f41d455fc0cd22c09a32011f6b961c278f3e66b88fc9ba7ca372",
+    "build/native-r5-build29-20261015/repository-final.log": "1bb67173eb0b659474afd45ac05604e9fb8492515d9f2408006c25fb5bf3865d",
+    "build/native-r5-build29-20261015/sdk.log": "225df313b0535521ae0b8f86eb46bee47a75e76bc08143714b5948bd3341c54c",
+    "build/native-r5-build29-20261015/sensitivity-after28.log": "029e04db7d14d36500cc1061caa806351e3bea7b319776b06cfdb6cb01eb79c8",
+    "build/native-r5-build29-20261015/sensitivity-evidence-final.log": "2750809bc22b0d7dd531b8d6229118aeb0bdf2f04f5700053f2725714efbfb19",
+    "build/native-r5-build29-20261015/sensitivity.log": "a90cb6c38e4e2353c39c441423c310d5a47cb3e555ae78890620bd859d03d499",
+    "build/native-r5-build29-20261015/ui-export.log": "45df4c6103ec477377139584f8e9e91c9551b8f6ed888f136c0e6c996ed7bace",
+    "build/native-r5-build29-20261015/ui-r1.log": "7f28b36d0a2262c0a2020b9e586b119ac093f3d636f28ac0a51767ac1d3d9aa1"
+  },
+  "local_artifact_hashes": {
+    "build/native-r5-build29-20261015/source-snapshot.json": "c21277bdb46f06206d5cdaf008941bc1cc0c7868e7008c9802b53fa43d39b0ae",
+    "build/native-r5-build29-20261015/package-files29.json": "bf2f7e3153ef71e81920bc275346b4928706212290e680c2e40c876aaa913a7e",
+    "build/native-r5-build29-20261015/package-files29-records.json": "ba9867942299f974ccc44ec15e14c1549d57d4ffc0a3f67895e094d1437248af",
+    "build/native-r5-build29-20261015/publication-source.json": "f2f25f458b2a9b7f7f10d0591bf754ab031cffa2247466da902fe1c171b3dc23",
+    "build/native-r5-build29-20261015/ui-attachments/manifest.json": "f6338d6f074c0b603e3320904a7322920ec029623dbd176e116fb1a0f157a2b4"
+  },
+  "publication_boundary": "Source was selectively published as the supplied remote commit/tree, distinct from local history. This writer made no remote request, build, install or source change; only the three dated text files were added.",
+  "source_snapshot_sha256": "4fe640257cccda1da35eeab4e47e093e62f99cac9c8ffb1ac3f70abd56028a6f"
+}

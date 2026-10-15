@@ -28,6 +28,11 @@ import UIKit
             }
         }
     }
+    /// R5 reading rhythm uses the rendered semantic font, including accessibility
+    /// categories. Plain text keeps its original newlines and paragraph breaks.
+    static func readingLineSpacing(for font:UIFont)->CGFloat {
+        max(0,font.pointSize * 1.6 - font.lineHeight)
+    }
     static func category(_ size:DynamicTypeSize)->UIContentSizeCategory {
         switch size {
         case .xSmall: .extraSmall
