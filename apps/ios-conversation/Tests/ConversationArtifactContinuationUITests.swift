@@ -1,6 +1,19 @@
 import XCTest
 import CryptoKit
 
+/// Compare native geometry at floating-point precision, never with a point-sized
+/// allowance. CGRect origin/extent arithmetic can return 43.99999999999994 for 44.
+enum NativeUIGeometry {
+    static func heightMeetsMinimum(_ frame:CGRect,minimum:CGFloat=44)->Bool {
+        guard frame.minY.isFinite,frame.maxY.isFinite,frame.height.isFinite else {return false}
+        let magnitude=max(1,abs(frame.minY),abs(frame.maxY),abs(minimum))
+        return frame.height>=minimum || minimum-frame.height<=magnitude*CGFloat.ulpOfOne*8
+    }
+    static func assertMinimumHeight(_ frame:CGRect,file:StaticString=#filePath,line:UInt=#line) {
+        XCTAssertTrue(heightMeetsMinimum(frame),"Minimum touch height is 44pt; actual \(frame.height)pt",file:file,line:line)
+    }
+}
+
 /// Scroll the currently owned viewport, never a picker/context behind a sheet.
 /// Hold at the drag endpoint to stop inertia; short corrections derive from the
 /// observed target distance rather than repeatedly jumping a whole screen.
@@ -84,7 +97,7 @@ final class ConversationArtifactContinuationUITests:XCTestCase {
         if inline.exists && inline.isHittable {XCTAssertFalse(inline.label.isEmpty);return}
         let open=app.buttons["chat.input.context.open"]
         XCTAssertTrue(open.exists && open.isHittable,"A clipped restriction must have a reachable full-details entry")
-        XCTAssertGreaterThanOrEqual(open.frame.height,44);open.tap()
+        NativeUIGeometry.assertMinimumHeight(open.frame);open.tap()
         XCTAssertTrue(app.staticTexts["chat.input.context.version"].waitForExistence(timeout:5),app.debugDescription)
         XCTAssertEqual(app.staticTexts["chat.input.context.version"].label,"v2")
         let blocked=app.staticTexts["chat.input.context.blocked"]
@@ -96,16 +109,16 @@ final class ConversationArtifactContinuationUITests:XCTestCase {
     private func leaveTarget(_ app:XCUIApplication) {
         let inline=app.buttons["chat.artifact.continuation.leave"]
         if inline.exists && inline.isHittable {
-            XCTAssertGreaterThanOrEqual(inline.frame.height,44)
+            NativeUIGeometry.assertMinimumHeight(inline.frame)
             if app.keyboards.firstMatch.exists {XCTAssertLessThanOrEqual(inline.frame.maxY,app.keyboards.firstMatch.frame.minY)}
             inline.tap()
         } else {
             let open=app.buttons["chat.input.context.open"]
             XCTAssertTrue(open.exists && open.isHittable,"Compact target keeps an explicit version/details route")
-            XCTAssertTrue(open.label.contains("v2"));XCTAssertGreaterThanOrEqual(open.frame.height,44);open.tap()
+            XCTAssertTrue(open.label.contains("v2"));NativeUIGeometry.assertMinimumHeight(open.frame);open.tap()
             XCTAssertTrue(app.staticTexts["chat.input.context.version"].waitForExistence(timeout:5));XCTAssertEqual(app.staticTexts["chat.input.context.version"].label,"v2")
             let leave=app.buttons["chat.input.context.leave"];reveal(app,leave)
-            XCTAssertTrue(leave.isHittable && leave.isEnabled);XCTAssertGreaterThanOrEqual(leave.frame.height,44);leave.tap()
+            XCTAssertTrue(leave.isHittable && leave.isEnabled);NativeUIGeometry.assertMinimumHeight(leave.frame);leave.tap()
             wait({!app.staticTexts["chat.input.context.version"].exists})
         }
         wait({!app.staticTexts["chat.artifact.continuation.target"].exists})
@@ -126,16 +139,16 @@ final class ConversationArtifactContinuationUITests:XCTestCase {
         let raw=input.value as? String ?? "";XCTAssertTrue(raw.contains("DRAFT-END"));XCTAssertFalse(app.buttons["chat.send"].isEnabled)
         let leave=app.buttons["chat.artifact.continuation.leave"]
         if leave.exists && leave.isHittable {
-            XCTAssertTrue(leave.isEnabled);XCTAssertGreaterThanOrEqual(leave.frame.height,44)
+            XCTAssertTrue(leave.isEnabled);NativeUIGeometry.assertMinimumHeight(leave.frame)
             XCTAssertLessThanOrEqual(leave.frame.maxY,app.keyboards.firstMatch.frame.minY)
         } else {
             let details=app.buttons["chat.input.context.open"]
             XCTAssertTrue(details.exists && details.isHittable && details.isEnabled);XCTAssertTrue(details.label.contains("v2"))
-            XCTAssertGreaterThanOrEqual(details.frame.height,44);XCTAssertLessThanOrEqual(details.frame.maxY,app.keyboards.firstMatch.frame.minY)
+            NativeUIGeometry.assertMinimumHeight(details.frame);XCTAssertLessThanOrEqual(details.frame.maxY,app.keyboards.firstMatch.frame.minY)
         }
         let assistant=app.descendants(matching:.any).matching(identifier:"SystemInputAssistantView").firstMatch
         let keyboardTop=assistant.exists ? min(assistant.frame.minY,app.keyboards.firstMatch.frame.minY) : app.keyboards.firstMatch.frame.minY
-        XCTAssertGreaterThanOrEqual(app.buttons["chat.send"].frame.height,44)
+        NativeUIGeometry.assertMinimumHeight(app.buttons["chat.send"].frame)
         XCTAssertLessThanOrEqual(app.buttons["chat.send"].frame.maxY,keyboardTop,"The send control remains fully above the predictive-input bar")
         XCTAssertLessThanOrEqual(input.frame.maxY,keyboardTop,"The actual editor remains above all keyboard input views")
         let geometry=XCTAttachment(string:"version=0.3.0(21);reality=offline_synthetic_simulator\ninput=\(input.frame)\nsend=\(app.buttons["chat.send"].frame)\nleave=\(leave.frame)\nkeyboard_top=\(keyboardTop)")
@@ -144,7 +157,7 @@ final class ConversationArtifactContinuationUITests:XCTestCase {
         if scenario=="p0-ui-large-artifact-edit" {
             let details=app.buttons["chat.input.context.open"]
             XCTAssertTrue(details.exists && details.isHittable,"Overflowing context has an explicit, reachable details entry")
-            XCTAssertGreaterThanOrEqual(details.frame.height,44)
+            NativeUIGeometry.assertMinimumHeight(details.frame)
             details.tap()
             let version=app.staticTexts["chat.input.context.version"]
             XCTAssertTrue(version.waitForExistence(timeout:5),app.debugDescription);XCTAssertEqual(version.label,"v2")
@@ -177,6 +190,12 @@ final class ConversationArtifactContinuationUITests:XCTestCase {
         openArtifact(app);select(app,"explain");XCTAssertEqual(app.textViews["chat.input"].value as? String,question)
         XCTAssertEqual(probe(app)["synthetic_reply_calls"] as? Int,0);XCTAssertEqual(probe(app)["external_network_enabled"] as? Bool,false)
         capture(app,scenario+"-independent-question-draft")
+    }
+    func testTouchHeightComparisonIgnoresOnlyMachineRoundoff() {
+        XCTAssertTrue(NativeUIGeometry.heightMeetsMinimum(CGRect(x:0,y:400,width:44,height:44)))
+        XCTAssertTrue(NativeUIGeometry.heightMeetsMinimum(CGRect(x:0,y:400,width:44,height:43.99999999999994)))
+        XCTAssertFalse(NativeUIGeometry.heightMeetsMinimum(CGRect(x:0,y:400,width:44,height:43.9999)))
+        XCTAssertFalse(NativeUIGeometry.heightMeetsMinimum(CGRect(x:0,y:400,width:44,height:43)))
     }
     func testSelectedVersionModesColdDraftsAndExitKeepOrdinaryInputWithoutSending() {runDraftPath("p0-ui-artifact-edit")}
     func testMaximumTextTargetInputAndExitRemainReachableAboveKeyboard() {runDraftPath("p0-ui-large-artifact-edit")}
