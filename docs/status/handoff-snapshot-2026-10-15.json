@@ -124,7 +124,7 @@
       "sha256": "cf3019a44fa1f80a11f9eaff2dd20d1e36b9ee0a497766b5a959d5d00c89ed35"
     }
   ],
-  "handoff_sha256": "ea332a193dab8148c3a38573bea1f4c03e291ef4f8ef9e8dec823b0cce635988",
+  "handoff_sha256": "3351b7f833c6907b03670b37310daa7c97ae5e9ff5c141e3477baab14423b9c5",
   "main_integration_preparation": {
     "remote_main_base": "515f98f1b91a7485e246b4928e9065b60ef4e2c3",
     "public_handoff_parent": "aad003aab0ad2d3be0fec1bb6be834d4fd670658",
@@ -138,6 +138,17 @@
     "legacy_local_history_merged": false,
     "private_media_uploaded": 0,
     "projects_is_independent_dirty_repository": true,
-    "final_main_sha": "read_actual_main_ref_after_merge"
+    "final_main_sha": "read_actual_main_ref_after_merge",
+    "publication": {
+      "pull_request": 19,
+      "url": "https://github.com/Yankj/catpaw-m/pull/19",
+      "candidate_before_status_note": "6aef9fe85823a9674b7af16ee501e0a319863cc7",
+      "candidate_tree_before_status_note": "12a64186300e79751de642d6069129f1714aea49",
+      "merge_attempt_rejected_by_automatic_review": true,
+      "direct_user_confirmation_requested": true,
+      "merged": false,
+      "remote_main_observed": "515f98f1b91a7485e246b4928e9065b60ef4e2c3",
+      "local_main_updated": false
+    }
   }
 }
