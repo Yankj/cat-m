@@ -36,6 +36,30 @@ actor ScriptedAttachmentTransport: ChatAttachmentTransport {
         return (404, Data())
     }
 }
+final class TurnCaptureProtocol: URLProtocol, @unchecked Sendable {
+    nonisolated(unsafe) static var bodies: [Data] = []
+    nonisolated(unsafe) static var headers: [[String: String]] = []
+    static func reset() { bodies = []; headers = [] }
+    override class func canInit(with request: URLRequest) -> Bool { request.url?.host == "api.invalid" }
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+    private func reply(_ status: Int, _ object: Any) {
+        let data = (try? JSONSerialization.data(withJSONObject: object)) ?? Data()
+        client?.urlProtocol(self, didReceive: HTTPURLResponse(url: request.url!, statusCode: status, httpVersion: nil, headerFields: ["Content-Type": "application/json"])!, cacheStoragePolicy: .notAllowed)
+        client?.urlProtocol(self, didLoad: data); client?.urlProtocolDidFinishLoading(self)
+    }
+    override func startLoading() {
+        let path = request.url?.path ?? ""
+        if request.httpMethod == "POST", path.hasSuffix("/turns") {
+            var body = request.httpBody ?? Data()
+            if body.isEmpty, let stream = request.httpBodyStream { stream.open(); var buffer = [UInt8](repeating: 0, count: 65536); while stream.hasBytesAvailable { let n = stream.read(&buffer, maxLength: buffer.count); if n <= 0 { break }; body.append(buffer, count: n) }; stream.close() }
+            Self.bodies.append(body); Self.headers.append(request.allHTTPHeaderFields ?? [:])
+            reply(409, ["schema_version": 1, "contract": "catpaw.native-chat.v1", "error": ["code": "attachment_consumed", "retryable": false, "reconciliation_required": false]]); return
+        }
+        let parts = path.split(separator: "/"), cid = parts.last.map(String.init) ?? "", scope = parts.count > 2 ? String(parts[parts.count - 3]) : ""
+        reply(200, ["schema_version": 1, "contract": "catpaw.native-chat.v1", "conversation": ["id": cid, "scope_id": scope, "state": "active", "policy": "conversation-local-output-v1", "revision": 3, "grant_epoch": 1, "messages": []]])
+    }
+    override func stopLoading() {}
+}
 actor StateLog { var states: [ChatAttachmentUploadState] = []; func add(_ s: ChatAttachmentUploadState) { states.append(s) }; func all() -> [ChatAttachmentUploadState] { states } }
 @main struct AttachmentUploadRunner {
     static func main() async throws {
@@ -73,5 +97,48 @@ actor StateLog { var states: [ChatAttachmentUploadState] = []; func add(_ s: Cha
         var tooLarge = false
         do { _ = try await uploader.upload(png + Data(count: ChatAttachmentUploader.maxBytes), scope: Profiles.user) } catch ChatAttachmentUploadError.tooLarge { tooLarge = true }
         try check(unsupported && tooLarge, "client rejects non PNG/JPEG and > 5 MiB before any request")
+
+        // ConversationTurnRequest.attachmentIDs: Codable, survives withHistory, empty → nil.
+        let cid = UUID(), userMessage = ConversationTranscriptMessage(id: UUID(), role: .user, content: "看看这张图")
+        let plain = ConversationTurnRequest(scope: Profiles.user, conversationID: cid, threadID: nil, operationID: UUID(), epoch: 1, history: [userMessage])
+        let withIDs = plain.withAttachmentIDs([receipt.id])
+        let decoded = try JSONDecoder().decode(ConversationTurnRequest.self, from: JSONEncoder().encode(withIDs))
+        try check(decoded.attachmentIDs == [receipt.id] && withIDs.withHistory([userMessage]).attachmentIDs == [receipt.id] && plain.withAttachmentIDs([]).attachmentIDs == nil, "request carries attachment_ids through Codable and withHistory")
+        let legacy = try JSONDecoder().decode(ConversationTurnRequest.self, from: JSONEncoder().encode(plain))
+        try check(legacy.attachmentIDs == nil && !legacy.hasUploadedAttachments, "old journals without attachmentIDs still decode")
+
+        // prepare(): schema_version 2 message.attachment_ids, no inline bytes, no tool contracts.
+        let policy = URLSessionConfiguration.ephemeral; policy.protocolClasses = [TurnCaptureProtocol.self]
+        let backend = NativeChatHTTPBackend(configuration: configuration, credentials: UploadTestSession(), sessionConfiguration: policy)
+        TurnCaptureProtocol.reset()
+        do { for try await _ in try await backend.reply(withIDs) {} } catch {}
+        let sent = try JSONSerialization.jsonObject(with: TurnCaptureProtocol.bodies.first ?? Data("{}".utf8)) as? [String: Any] ?? [:]
+        let sentMessage = sent["message"] as? [String: Any] ?? [:]
+        try check(sent["schema_version"] as? Int == 2 && (sentMessage["attachment_ids"] as? [String]) == [receipt.id.uuidString.lowercased()] && sentMessage["attachments"] == nil && sentMessage["text"] as? String == "看看这张图", "prepare() posts schema_version 2 message.attachment_ids")
+        let sentHeaders = TurnCaptureProtocol.headers.first ?? [:]
+        try check(sentHeaders["X-Catpaw-Approval-Contract"] == nil && sentHeaders["X-Catpaw-Memory-Proposal-Contract"] == nil, "attachment turns are not offered tool contracts (server runs image turns without tools)")
+        TurnCaptureProtocol.reset()
+        do { for try await _ in try await backend.reply(plain) {} } catch {}
+        let plainSent = try JSONSerialization.jsonObject(with: TurnCaptureProtocol.bodies.first ?? Data("{}".utf8)) as? [String: Any] ?? [:]
+        try check(plainSent["schema_version"] == nil && ((plainSent["message"] as? [String: Any])?["attachment_ids"]) == nil, "plain turns are unchanged")
+
+        // ChatAttachmentSendCoordinator: keep bytes until turn_completed; failed turn → re-upload under NEW ids.
+        let coordinator = ChatAttachmentSendCoordinator(uploader: uploader, scope: Profiles.user)
+        let creates = await transport.createdIDs.count
+        let attached = try await coordinator.attach([png], to: plain)
+        let again = try await coordinator.attach([png], to: plain)
+        let afterAttach = await transport.createdIDs.count
+        try check(attached.attachmentIDs?.count == 1 && again.attachmentIDs == attached.attachmentIDs && afterAttach == creates + 1, "attach uploads once per operation and reuses ready ids")
+        let keptBytes = await coordinator.localImages(for: plain.operationID)
+        try check(keptBytes == [png], "local bytes kept while the turn runs")
+        let retry = ConversationTurnRequest(scope: Profiles.user, conversationID: cid, threadID: nil, operationID: UUID(), epoch: 2, history: [userMessage])
+        let reattached = try await coordinator.reattach(after: plain.operationID, to: retry)
+        let movedOld = await coordinator.localImages(for: plain.operationID), movedNew = await coordinator.localImages(for: retry.operationID)
+        try check(reattached.attachmentIDs?.count == 1 && reattached.attachmentIDs != attached.attachmentIDs && movedOld == nil && movedNew == [png], "failed turn re-uploads the kept bytes under a new id for the retry turn")
+        await coordinator.turnCompleted(retry.operationID)
+        let dropped = await coordinator.localImages(for: retry.operationID)
+        var nothing = false
+        do { _ = try await coordinator.reattach(after: retry.operationID, to: plain) } catch ChatAttachmentUploadError.expired { nothing = true }
+        try check(dropped == nil && nothing, "turn_completed drops the local bytes; nothing left to re-upload")
     }
 }
