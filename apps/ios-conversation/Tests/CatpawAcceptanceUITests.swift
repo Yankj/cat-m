@@ -227,4 +227,35 @@ final class CatpawAcceptanceUITests: XCTestCase {
         shot(app, "10d-restart-after-relaunch"); toggle(); Thread.sleep(forTimeInterval: 2)
         XCTAssertEqual(app.state, .runningForeground)
     }
+
+    // 11. catpaw.ui.v1 through the DEBUG demo backend (docs/demo-fixture-backend.md): approval → round 1
+    //     (card, list, progress, choices) → choose → round 2 (progress update, form, confirm, sheet).
+    //     Needs real anonymous sign-in, so it runs only with CATPAW_ACCEPTANCE_DEMO=1.
+    func test11GenerativeUIDemoRounds() throws {
+        guard ProcessInfo.processInfo.environment["CATPAW_ACCEPTANCE_DEMO"] == "1" else { throw XCTSkip("Set CATPAW_ACCEPTANCE_DEMO=1 (needs sign-in; chat is scripted by -CatpawDemoBackend)") }
+        let app = XCUIApplication(bundleIdentifier: bundleID)
+        app.launchArguments += ["-CatpawDemoBackend", "-CatpawSkipOnboarding"]; app.launch()
+        let start = app.buttons["auth.startExperience"]
+        if start.waitForExistence(timeout: 8) { XCTAssertTrue(waitFor(start, "enabled == true", timeout: 20)); start.tap() }
+        XCTAssertTrue(input(app).waitForExistence(timeout: 45))
+        func element(_ id: String) -> XCUIElement { app.descendants(matching: .any)[id].firstMatch }
+        func block(_ id: String) -> XCUIElement { element("chat.block." + id) }
+        send(app, "帮我安排今天")
+        let approve = app.buttons["chat.approval.approve"]
+        XCTAssertTrue(approve.waitForExistence(timeout: 20), "create_task approval card"); shot(app, "11a-approval"); approve.tap()
+        for id in ["demo-card", "demo-list", "demo-progress", "demo-choices"] {
+            XCTAssertTrue(block(id).waitForExistence(timeout: 20), "round 1: \(id)")
+        }
+        shot(app, "11b-round1-card-list-progress-choices")
+        let choice = block("demo-choices").descendants(matching: .any)["chat.block.item.a"].firstMatch
+        XCTAssertTrue(choice.waitForExistence(timeout: 5)); choice.tap()
+        for id in ["demo-form", "demo-confirm", "demo-sheet"] {
+            XCTAssertTrue(block(id).waitForExistence(timeout: 20), "round 2: \(id)")
+        }
+        XCTAssertTrue(element("chat.block.step.plan").exists || element("chat.block.step.read").exists, "progress update visible")
+        shot(app, "11c-round2-progress-form-confirm-sheet")
+        let confirm = block("demo-confirm").descendants(matching: .any)["chat.block.confirm.approve"].firstMatch
+        if confirm.waitForExistence(timeout: 5) { confirm.tap(); Thread.sleep(forTimeInterval: 1); shot(app, "11d-confirm-answered") }
+        XCTAssertFalse(element("chat.block.error").exists, "no decision error")
+    }
 }
