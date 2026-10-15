@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "candidate": "AF-W50-NATIVE-20261015-24-R8",
+  "recorded_date": "2026-10-15",
+  "repository": "Yankj/catpaw-m",
+  "branch": "feat/s05-bounded-work",
+  "publication_method": "Existing GitHub connector; reviewed UTF-8 delta on existing remote lineage",
+  "local_source": {
+    "commit": "1d39aa83b31866a681b02e3370cd0343b2c914f2",
+    "tree": "d31aa4a58c0f58b39b811b083867b81ac9c6f5e1"
+  },
+  "remote_source": {
+    "commit": "3c1984ea810d91d18c361686e06e94459054fb25",
+    "tree": "63bc3d754dfb7e63924b550e4f5cbdd005835634",
+    "base": "bedfc8a4c2d69b04f1d543564a03b84e7e95e890",
+    "url": "https://github.com/Yankj/catpaw-m/commit/3c1984ea810d91d18c361686e06e94459054fb25"
+  },
+  "verification": {
+    "independently_computed_tree_matches": true,
+    "feature_head_readback_matches": true,
+    "exact_path_set_matches": true,
+    "reviewed_paths": 36,
+    "ahead_by": 1,
+    "behind_by": 0,
+    "local_remote_tree_difference": "22 previously held PNGs only",
+    "media_uploaded": 0,
+    "main_merged": false
+  },
+  "readback_paths": [
+    "apps/ios-conversation/CatpawM.xcodeproj/project.pbxproj",
+    "apps/ios-conversation/Resources/UIStrings.json",
+    "apps/ios-conversation/Scripts/run-simulator-review24.sh",
+    "apps/ios-conversation/Scripts/test-accepted-work-application-portable.sh",
+    "apps/ios-conversation/Scripts/test-accepted-work-portable.sh",
+    "apps/ios-conversation/Sources/App/CatpawApp.swift",
+    "apps/ios-conversation/Sources/App/ConversationAcceptedWorkLoopbackFixture.swift",
+    "apps/ios-conversation/Sources/App/ConversationFirstModel.swift",
+    "apps/ios-conversation/Sources/App/P0ExperienceFixture.swift",
+    "apps/ios-conversation/Sources/App/P0ExperienceProbe.swift",
+    "apps/ios-conversation/Sources/DesignSystem/AdaptiveTextLayout.swift",
+    "apps/ios-conversation/Sources/Domain/ConversationAcceptedWork.swift",
+    "apps/ios-conversation/Sources/Domain/ConversationFollowupQueue.swift",
+    "apps/ios-conversation/Sources/Domain/ConversationSessionContracts.swift",
+    "apps/ios-conversation/Sources/Features/ConversationAcceptedWorkDraftService.swift",
+    "apps/ios-conversation/Sources/Features/ConversationAcceptedWorkReviewView.swift",
+    "apps/ios-conversation/Sources/Features/ConversationArtifactEditView.swift",
+    "apps/ios-conversation/Sources/Features/ConversationFirstView.swift",
+    "apps/ios-conversation/Sources/Features/ConversationFollowupQueueService.swift",
+    "apps/ios-conversation/Sources/Features/ConversationSessionService.swift",
+    "apps/ios-conversation/Sources/Providers/NativeChatHTTPBackend.swift",
+    "apps/ios-conversation/Tests/ConversationAcceptedWorkApplicationTests.swift",
+    "apps/ios-conversation/Tests/ConversationAcceptedWorkTests.swift",
+    "apps/ios-conversation/Tests/ConversationAcceptedWorkUITests.swift",
+    "apps/ios-conversation/Tests/DeviceEffectApplicationFixture.swift",
+    "apps/ios-conversation/Tests/Fixtures/accepted-work-wire-v1.json",
+    "apps/ios-conversation/Tests/Fixtures/accepted-work-wire-v2.json",
+    "apps/ios-conversation/Tests/Fixtures/accepted-work-wire-v3.json",
+    "docs/acceptance/evidence/native-accepted-work-20261015/RESULT.json",
+    "docs/acceptance/evidence/native-accepted-work-20261015/source-snapshot.json",
+    "docs/acceptance/restart-native-accepted-work-2026-10-15.md",
+    "docs/status/master-plan.md",
+    "scripts/reviewed-findings.json",
+    "services/edge/test/fixtures/generate-native-accepted-work-wire.mjs",
+    "services/edge/test/fixtures/native-accepted-work-server.mjs",
+    "services/edge/test/native-accepted-work-wire.test.mjs"
+  ],
+  "limitations": [
+    "Limited explicit synthetic Simulator stage; FINAL-G3 remains active.",
+    "No production Auth/model/PG/OS acceptance, deployment, new phone install or user data reset.",
+    "Original local history retained; connector commit metadata differs.",
+    "Metadata recording this source publication follows in a separate two-path commit."
+  ]
+}
