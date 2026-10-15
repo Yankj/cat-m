@@ -1,11 +1,15 @@
 {
-  "消息尚未发送，已保留在本机；再次发送或确认许可后会自动重试。": {
-    "en": "Not sent yet; kept on this device. It retries automatically after you send again or confirm consent.",
-    "zh-Hans": "消息尚未发送，已保留在本机；再次发送或确认许可后会自动重试。"
-  },
   "\n原文件已保留，未重置存储。请在完整 Xcode 下排查迁移或恢复。": {
     "en": "\nThe original file is preserved. Storage was not reset. Investigate migration or recovery with full Xcode.",
     "zh-Hans": "\n原文件已保留，未重置存储。请在完整 Xcode 下排查迁移或恢复。"
+  },
+  "1 小时后": {
+    "en": "In 1 hour",
+    "zh-Hans": "1 小时后"
+  },
+  "10 分钟后": {
+    "en": "In 10 minutes",
+    "zh-Hans": "10 分钟后"
   },
   "Agnes Flash（备选）": {
     "en": "Agnes Flash (fallback)",
@@ -279,6 +283,10 @@
     "en": "The task is saved. Progress is read from the original task.",
     "zh-Hans": "任务已保存；进展来自原任务读取。"
   },
+  "任务已在别处更新，已刷新。": {
+    "en": "This task changed elsewhere; refreshed.",
+    "zh-Hans": "任务已在别处更新，已刷新。"
+  },
   "任务状态": {
     "en": "Task status",
     "zh-Hans": "任务状态"
@@ -342,6 +350,10 @@
   "你的个人助理": {
     "en": "Your personal assistant",
     "zh-Hans": "你的个人助理"
+  },
+  "你的主动式助理": {
+    "en": "Your proactive assistant",
+    "zh-Hans": "你的主动式助理"
   },
   "你编辑的版本；来源保留原资料快照，新增内容尚未重新核验。": {
     "en": "Your edited version. Sources retain the original snapshots; new content has not been verified again.",
@@ -587,6 +599,10 @@
     "en": "About",
     "zh-Hans": "关于"
   },
+  "关掉 App 也没关系，任务会在云端继续进行。": {
+    "en": "Close the app anytime; your tasks keep running in the cloud.",
+    "zh-Hans": "关掉 App 也没关系，任务会在云端继续进行。"
+  },
   "关闭": {
     "en": "Close",
     "zh-Hans": "关闭"
@@ -630,6 +646,10 @@
   "内容检查": {
     "en": "Review content",
     "zh-Hans": "内容检查"
+  },
+  "再试一次": {
+    "en": "Try again",
+    "zh-Hans": "再试一次"
   },
   "写文章": {
     "en": "Write an article",
@@ -758,6 +778,10 @@
   "删除会话": {
     "en": "Delete conversation",
     "zh-Hans": "删除会话"
+  },
+  "到点提醒你": {
+    "en": "Reminds you on time",
+    "zh-Hans": "到点提醒你"
   },
   "剩余 = 总时长 − 保留 − 步骤数 × 单步时长": {
     "en": "Remaining = total − reserved − steps × time per step",
@@ -1191,6 +1215,10 @@
     "en": "Chart; original values are available in the data selectors below",
     "zh-Hans": "图表；原值见下方数据选择"
   },
+  "在云端持续工作": {
+    "en": "Keeps working in the cloud",
+    "zh-Hans": "在云端持续工作"
+  },
   "在线": {
     "en": "Online",
     "zh-Hans": "在线"
@@ -1314,6 +1342,10 @@
   "将原候选确认为记忆，来源与使用条件保持原记录。": {
     "en": "Confirm this candidate as memory, keeping its original source and conditions.",
     "zh-Hans": "将原候选确认为记忆，来源与使用条件保持原记录。"
+  },
+  "将在 {0} 再提醒你": {
+    "en": "I'll remind you again at {0}",
+    "zh-Hans": "将在 {0} 再提醒你"
   },
   "将检查后的文字放入输入": {
     "en": "Use reviewed text in input",
@@ -1694,6 +1726,10 @@
   "开发联调": {
     "en": "Development testing",
     "zh-Hans": "开发联调"
+  },
+  "开启": {
+    "en": "Start",
+    "zh-Hans": "开启"
   },
   "开启后，后续对话可使用已确认且范围匹配的记忆。": {
     "en": "Future conversations can use confirmed memory that matches its selected scope.",
@@ -2495,6 +2531,10 @@
     "en": "Unable to read this work",
     "zh-Hans": "无法读取这项工作"
   },
+  "无需注册。此设备会安全保存你的体验身份。": {
+    "en": "No sign-up needed. This device securely keeps your guest identity.",
+    "zh-Hans": "无需注册。此设备会安全保存你的体验身份。"
+  },
   "无项目": {
     "en": "No project",
     "zh-Hans": "无项目"
@@ -2659,6 +2699,14 @@
     "en": "No custom commands",
     "zh-Hans": "暂无自定义命令"
   },
+  "暂时没能更新，请稍后再试。": {
+    "en": "Couldn't update right now. Please try again.",
+    "zh-Hans": "暂时没能更新，请稍后再试。"
+  },
+  "暂时连不上服务，请稍后重试。": {
+    "en": "Can't reach the service right now. Please try again.",
+    "zh-Hans": "暂时连不上服务，请稍后重试。"
+  },
   "更多工作约定": {
     "en": "More work terms",
     "zh-Hans": "更多工作约定"
@@ -2722,6 +2770,10 @@
   "有修改草稿未能保存，请核对此前已保存的版本。": {
     "en": "Some editing drafts could not be saved. Check the previously saved version.",
     "zh-Hans": "有修改草稿未能保存，请核对此前已保存的版本。"
+  },
+  "有进展、需要你确认或该行动时，会及时提醒你。": {
+    "en": "You'll hear back when there's progress, a decision for you, or it's time to act.",
+    "zh-Hans": "有进展、需要你确认或该行动时，会及时提醒你。"
   },
   "服务": {
     "en": "Service",
@@ -3327,6 +3379,10 @@
     "en": "Checking your session…",
     "zh-Hans": "正在复核登录…"
   },
+  "正在开启…": {
+    "en": "Starting…",
+    "zh-Hans": "正在开启…"
+  },
   "正在思考…": {
     "en": "Thinking…",
     "zh-Hans": "正在思考…"
@@ -3550,6 +3606,10 @@
   "消息": {
     "en": "Message",
     "zh-Hans": "消息"
+  },
+  "消息尚未发送，已保留在本机；再次发送或确认许可后会自动重试。": {
+    "en": "Not sent yet; kept on this device. It retries automatically after you send again or confirm consent.",
+    "zh-Hans": "消息尚未发送，已保留在本机；再次发送或确认许可后会自动重试。"
   },
   "消息尚未发送，需要确认处理方式。": {
     "en": "This message has not been sent. Review how it will be processed.",
@@ -3838,6 +3898,10 @@
   "移除附件": {
     "en": "Remove attachment",
     "zh-Hans": "移除附件"
+  },
+  "稍后提醒": {
+    "en": "Remind me later",
+    "zh-Hans": "稍后提醒"
   },
   "稿件已变化，请重新预览": {
     "en": "Draft changed; preview again",
@@ -4271,6 +4335,10 @@
     "en": "Voice mode",
     "zh-Hans": "语音对话"
   },
+  "说一句想做的事，Catpaw 就开始帮你拆解、执行。": {
+    "en": "Say what you want done — Catpaw breaks it down and gets to work.",
+    "zh-Hans": "说一句想做的事，Catpaw 就开始帮你拆解、执行。"
+  },
   "说给助理听": {
     "en": "Speak to your assistant",
     "zh-Hans": "说给助理听"
@@ -4446,6 +4514,10 @@
   "跨任务记忆默认关闭。": {
     "en": "Cross-task memory is off by default.",
     "zh-Hans": "跨任务记忆默认关闭。"
+  },
+  "跳过": {
+    "en": "Skip",
+    "zh-Hans": "跳过"
   },
   "转写中": {
     "en": "Transcribing",
@@ -4814,53 +4886,5 @@
   "，草稿，": {
     "en": ", draft, ",
     "zh-Hans": "，草稿，"
-  },
-  "你的主动式助理": {
-    "en": "Your proactive assistant",
-    "zh-Hans": "你的主动式助理"
-  },
-  "说一句想做的事，Catpaw 就开始帮你拆解、执行。": {
-    "en": "Say what you want done — Catpaw breaks it down and gets to work.",
-    "zh-Hans": "说一句想做的事，Catpaw 就开始帮你拆解、执行。"
-  },
-  "在云端持续工作": {
-    "en": "Keeps working in the cloud",
-    "zh-Hans": "在云端持续工作"
-  },
-  "关掉 App 也没关系，任务会在云端继续进行。": {
-    "en": "Close the app anytime; your tasks keep running in the cloud.",
-    "zh-Hans": "关掉 App 也没关系，任务会在云端继续进行。"
-  },
-  "到点提醒你": {
-    "en": "Reminds you on time",
-    "zh-Hans": "到点提醒你"
-  },
-  "有进展、需要你确认或该行动时，会及时提醒你。": {
-    "en": "You'll hear back when there's progress, a decision for you, or it's time to act.",
-    "zh-Hans": "有进展、需要你确认或该行动时，会及时提醒你。"
-  },
-  "跳过": {
-    "en": "Skip",
-    "zh-Hans": "跳过"
-  },
-  "正在开启…": {
-    "en": "Starting…",
-    "zh-Hans": "正在开启…"
-  },
-  "再试一次": {
-    "en": "Try again",
-    "zh-Hans": "再试一次"
-  },
-  "开启": {
-    "en": "Start",
-    "zh-Hans": "开启"
-  },
-  "无需注册。此设备会安全保存你的体验身份。": {
-    "en": "No sign-up needed. This device securely keeps your guest identity.",
-    "zh-Hans": "无需注册。此设备会安全保存你的体验身份。"
-  },
-  "暂时连不上服务，请稍后重试。": {
-    "en": "Can't reach the service right now. Please try again.",
-    "zh-Hans": "暂时连不上服务，请稍后重试。"
   }
 }

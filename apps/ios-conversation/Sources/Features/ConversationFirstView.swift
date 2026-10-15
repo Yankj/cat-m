@@ -7,6 +7,7 @@ import CatpawImageComposer
     @ObservedObject var model: ConversationFirstModel
     @ObservedObject private var connectionMonitor = ConnectionMonitor.shared
     @StateObject private var composerChrome:ConversationComposerChromeAdapter
+    @ObservedObject private var proactiveFeed = CatpawProactiveFeed.shared
     @StateObject private var attachmentUploader:LocalMockComposerAttachmentUploader
     var accountLabel: String? = nil
     var onSignOut: (() -> Void)? = nil
@@ -121,9 +122,9 @@ import CatpawImageComposer
         return ConversationTimelineProjection.rows(messages:displayMessages,turns:session.turns)
     }
     private enum RenderedTimelineRow:Identifiable {
-        case message(ConversationTimelineProjection.Row),activity(ConversationTurnActivitySnapshot)
-        var id:UUID {switch self {case .message(let row):return row.id;case .activity(let activity):return stableID("conversation-activity-\(activity.id)")}}
-        var turnID:UUID? {switch self {case .message(let row):return row.turnID;case .activity(let activity):return activity.id}}
+        case message(ConversationTimelineProjection.Row),activity(ConversationTurnActivitySnapshot),proactive(CatpawProactiveFeed.Entry)
+        var id:UUID {switch self {case .message(let row):return row.id;case .activity(let activity):return stableID("conversation-activity-\(activity.id)");case .proactive(let entry):return entry.rowID}}
+        var turnID:UUID? {switch self {case .message(let row):return row.turnID;case .activity(let activity):return activity.id;case .proactive:return nil}}
     }
     private var renderedTimelineRows:[RenderedTimelineRow] {
         let rows=timelineRows
@@ -143,7 +144,17 @@ import CatpawImageComposer
             if row.message.role == .user,let activity,emitted.insert(activity.id).inserted {result.append(.activity(activity))}
         }
         for activity in activities where emitted.insert(activity.id).inserted {result.append(.activity(activity))}
-        return result
+        return Self.interleave(proactiveFeed.entries(for:model.conversationID),into:result)
+    }
+    /// Proactive events go right after the row they were anchored to (see CatpawProactiveFeed); unknown anchors go last.
+    private static func interleave(_ entries:[CatpawProactiveFeed.Entry],into rows:[RenderedTimelineRow])->[RenderedTimelineRow] {
+        guard !entries.isEmpty else {return rows}
+        let ids=Set(rows.map(\.id))
+        let byAnchor=Dictionary(grouping:entries.filter{$0.anchorRowID.map(ids.contains) ?? false},by:{$0.anchorRowID!})
+        var out:[RenderedTimelineRow]=[]
+        for row in rows {out.append(row);out.append(contentsOf:(byAnchor[row.id] ?? []).map{.proactive($0)})}
+        out.append(contentsOf:entries.filter{!($0.anchorRowID.map(ids.contains) ?? false)}.map{.proactive($0)})
+        return out
     }
     private func renderedSpacing(_ row:RenderedTimelineRow,previous:RenderedTimelineRow?)->CGFloat {
         guard let previous else {return 0}
@@ -151,7 +162,7 @@ import CatpawImageComposer
         return row.turnID != nil && row.turnID==previous.turnID ? 8:24
     }
     @ViewBuilder private func renderedTimelineRow(_ row:RenderedTimelineRow)->some View {
-        switch row {case .message(let message):timelineRow(message);case .activity(let activity):ConversationTurnActivity(activity:activity)}
+        switch row {case .message(let message):timelineRow(message);case .activity(let activity):ConversationTurnActivity(activity:activity);case .proactive(let entry):ProactiveReminderCardView(entry:entry,feed:proactiveFeed)}
     }
     private var chatNavigation: some View {
         SidebarHost(isPresented:$sidebarPresented,isAtRoot:path.isEmpty && !conversationMenuPresented && !settings && !history && !pendingMessagesPresented && !composerContextPresented && !model.acceptedWorkReviewPresented && model.selectedTaskPlan == nil && model.selectedTaskActions == nil && model.selectedTaskControl == nil && model.pendingModelConsent == nil && model.pendingImageConsent == nil,
@@ -314,6 +325,14 @@ import CatpawImageComposer
         }
         .catpawSheet(isPresented:$composerContextPresented,onDismiss:completeContextAction) {composerContextSheet}
         .task { await model.start() }
+        .task(id:model.conversationID) {
+            proactiveFeed.currentAnchor={ [model] in
+                guard let session=model.session else {return nil}
+                return ConversationTimelineProjection.rows(messages:session.messages,turns:session.turns).last?.id
+            }
+            await proactiveFeed.refresh()
+        }
+        .onReceive(NotificationCenter.default.publisher(for:UIApplication.willEnterForegroundNotification)) { _ in proactiveFeed.refreshSoon() }
         #if canImport(ActivityKit) && os(iOS)
         .task { await CatpawLiveActivityCoordinator.shared.observe(model.service) { [model] in model.conversationID } }
         #endif
