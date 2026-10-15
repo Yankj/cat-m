@@ -2,6 +2,16 @@ import XCTest
 @testable import CatpawM
 
 final class ConversationFirstNativeTests: XCTestCase {
+    #if DEBUG
+    func testFixtureBadgeRequiresExplicitDebugLaunchOptIn() {
+        XCTAssertFalse(CatpawDebugPresentation.showFixtureBadge(arguments: [], environment: [:]))
+        XCTAssertFalse(CatpawDebugPresentation.showFixtureBadge(arguments: ["-Unrelated"], environment: ["CF_UI_TEST_SCENARIO":"p0-ui-echo"]))
+        XCTAssertTrue(CatpawDebugPresentation.showFixtureBadge(arguments: ["-CatpawShowFixtureBadge"], environment: [:]))
+        XCTAssertTrue(CatpawDebugPresentation.showFixtureBadge(arguments: [], environment: ["CatpawShowFixtureBadge":"1"]))
+        XCTAssertFalse(CatpawDebugPresentation.showFixtureBadge(arguments: [], environment: ["CatpawShowFixtureBadge":"0"]))
+    }
+    #endif
+
     func testScheduledProjectionStateAndSameIDReadbackInsideSimulator() async throws {
         guard let text = R9WireFixtureConfiguration.origin, let origin = URL(string:text), origin.scheme == "http", origin.host == "127.0.0.1" else { throw XCTSkip("Requires the explicit zero-model r9 loopback wire runner") }
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString); defer { try? FileManager.default.removeItem(at:dir) }
