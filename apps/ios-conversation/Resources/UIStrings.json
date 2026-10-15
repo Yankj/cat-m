@@ -859,6 +859,10 @@
     "en": "Loading card…",
     "zh-Hans": "卡片加载中…"
   },
+  "卡片无法显示，已告知助手": {
+    "en": "Couldn't show this card; the assistant was told",
+    "zh-Hans": "卡片无法显示，已告知助手"
+  },
   "卸载本地模拟记录": {
     "en": "Remove local simulation record",
     "zh-Hans": "卸载本地模拟记录"
@@ -1242,6 +1246,10 @@
   "回答完成后发送": {
     "en": "Send after this answer",
     "zh-Hans": "回答完成后发送"
+  },
+  "回答未被接受，请检查后重试。": {
+    "en": "Your answer wasn't accepted. Check it and try again.",
+    "zh-Hans": "回答未被接受，请检查后重试。"
   },
   "固定合成资料，主动提交；真实云端与模型尚未接入。": {
     "en": "Submit built-in synthetic records explicitly. Real cloud and model access is not configured.",
@@ -1691,6 +1699,10 @@
     "en": "Accepted; verification pending",
     "zh-Hans": "已受理，待核验"
   },
+  "已回答": {
+    "en": "Answered",
+    "zh-Hans": "已回答"
+  },
   "已复制": {
     "en": "Copied",
     "zh-Hans": "已复制"
@@ -1818,6 +1830,10 @@
   "已超出有效时间": {
     "en": "No longer within its valid dates",
     "zh-Hans": "已超出有效时间"
+  },
+  "已跳过": {
+    "en": "Skipped",
+    "zh-Hans": "已跳过"
   },
   "已过期": {
     "en": "Expired",
@@ -1994,6 +2010,10 @@
   "当前服务尚不支持有限工作受理，草稿会保留。": {
     "en": "This service does not support bounded work admission yet. Your draft is preserved.",
     "zh-Hans": "当前服务尚不支持有限工作受理，草稿会保留。"
+  },
+  "当前服务暂不支持卡片回答。": {
+    "en": "This service doesn't support card answers yet.",
+    "zh-Hans": "当前服务暂不支持卡片回答。"
   },
   "当前服务暂不支持确认操作。": {
     "en": "This service doesn't support confirmations yet.",
@@ -2882,6 +2902,10 @@
   "暂时无法听写": {
     "en": "Dictation unavailable",
     "zh-Hans": "暂时无法听写"
+  },
+  "暂时无法提交，请稍后重试。": {
+    "en": "Can't submit right now. Try again later.",
+    "zh-Hans": "暂时无法提交，请稍后重试。"
   },
   "暂时无法读取最新状态": {
     "en": "Couldn't load the latest status",
@@ -4386,6 +4410,10 @@
   "缺少完成事件": {
     "en": "Missing completion event",
     "zh-Hans": "缺少完成事件"
+  },
+  "网络中断，回答未送达。请重试。": {
+    "en": "Connection lost; your answer wasn't delivered. Try again.",
+    "zh-Hans": "网络中断，回答未送达。请重试。"
   },
   "网络中断，确认未送达。请重试。": {
     "en": "Connection lost; your decision wasn't delivered. Try again.",
