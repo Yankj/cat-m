@@ -8,7 +8,9 @@ public actor ConversationSessionService {
     private static let selectionKey = "conversation_first_selected"
     public nonisolated var supportsArtifactContinuations:Bool {backend.supportsArtifactContinuations}
     public nonisolated var artifactContinuationSubjectID:UUID? {backend.artifactContinuationSubjectID}
-    public init(repository: Repository, backend: any ConversationBackend = UnconfiguredConversationBackend()) { self.repository = repository; self.backend = backend }
+    public init(repository: Repository, backend: any ConversationBackend = UnconfiguredConversationBackend(), resilience: (any ConversationStreamResilience)? = nil, reconnectPolicy: ConversationReconnectPolicy = .init()) { self.repository = repository; self.backend = backend; self.resilience = resilience; self.reconnectPolicy = reconnectPolicy }
+    private let resilience: (any ConversationStreamResilience)?
+    private let reconnectPolicy: ConversationReconnectPolicy
     public func imageCapabilities(scope:DataScope,conversationID:UUID) async throws -> ConversationImageCapability { try await backend.imageCapabilities(scope:scope,conversationID:conversationID) }
     public func revisionWorkCapability(scope:DataScope,conversationID:UUID) async throws -> ConversationAcceptedWorkCapability {try await backend.revisionWorkCapability(scope:scope,conversationID:conversationID)}
     public func acceptedWorkCapability(scope:DataScope,conversationID:UUID) async throws -> ConversationAcceptedWorkCapability {try await backend.acceptedWorkCapability(scope:scope,conversationID:conversationID)}
@@ -202,14 +204,33 @@ public actor ConversationSessionService {
         if !preserveDraft && request.continuation == nil { conversation.draftText = "" }; if conversation.title == "新对话" { conversation.title = String(text.prefix(40)) }
         try await save(session, expectedRevision: journalRevision, fence: request, observationToken: observationToken, additional: [.update(cr.id, cr.header.revision, .core(.conversation(conversation)))])
         do {
-            let stream = try await backend.reply(request)
-            for try await event in stream {
-                try Task.checkCancellation()
-                guard active[conversationID] == observationToken else { throw CancellationError() }
-                try await apply(event, request: request, observationToken: observationToken)
-                let saved = try await read(scope: scope, conversationID: conversationID)
-                if let turn = saved.turns.last, [.completed, .failed, .unknown].contains(turn.state) { break }
+            var stream = try await backend.reply(request)
+            var attempt = 0
+            // R7 §5.3: a transport drop after POST is resumed by GET-after-lastSequence with backoff;
+            // events at or below lastSequence are ignored by apply(), so text is only appended.
+            resumeLoop: while true {
+                do {
+                    for try await event in stream {
+                        try Task.checkCancellation()
+                        guard active[conversationID] == observationToken else { throw CancellationError() }
+                        try await apply(event, request: request, observationToken: observationToken)
+                        if attempt > 0 { attempt = 0; await resilience?.resumed() }
+                        let saved = try await read(scope: scope, conversationID: conversationID)
+                        if let turn = saved.turns.last, [.completed, .failed, .unknown].contains(turn.state) { break resumeLoop }
+                    }
+                    break resumeLoop
+                } catch let interrupted as ConversationStreamInterrupted {
+                    await resilience?.waitForPath() // offline does not count an attempt
+                    guard let delay = reconnectPolicy.delay(forAttempt: attempt) else { await resilience?.unreachable(); throw CatpawError.unavailable(interrupted.reason + "已显示的部分都保留了；继续获取会从断点接上，不会重新发送你的消息。") }
+                    attempt += 1; await resilience?.reconnecting(attempt: attempt, retryIn: delay)
+                    try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+                    guard active[conversationID] == observationToken else { throw CancellationError() }
+                    let last = try await read(scope: scope, conversationID: conversationID).turns.first(where: { $0.id == operationID })?.lastSequence ?? 0
+                    do { stream = try await backend.resumeEvents(request, afterSequence: last) }
+                    catch let again as ConversationStreamInterrupted { stream = AsyncThrowingStream { $0.finish(throwing: again) } }
+                }
             }
+            await resilience?.settled()
             let saved = try await read(scope: scope, conversationID: conversationID)
             if saved.turns.last?.state == .completed { await backend.recordCommittedReply(request);return operationID }
             if saved.turns.last?.state == .failed { throw CatpawError.unavailable(saved.turns.last?.error ?? "服务请求失败。") }
@@ -318,6 +339,9 @@ public actor ConversationSessionService {
                 session.messages.remove(at: message)
             }
             turn.state = .completed; turn.error = nil
+        case .reasoningSummary(_, let text, let ms):
+            guard turn.assistantMessageID == nil else { throw ConversationSessionError.invalidEvent }
+            turn.reasoningSummary = text; turn.thinkingMs = ms
         case .failed(let reason, let reconciliation):
             turn.state = reconciliation ? .unknown : .failed; turn.error = reason
             if !reconciliation {

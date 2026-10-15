@@ -173,7 +173,9 @@ export class ChatService {
         batcher=new TextBatcher({signal:env.signal,assertLive:env.assertLive,
           persist:delta=>this.append(env,'text_delta',{message_id:messageID,text:delta}),
           onFailure:error=>env.controller?.abort(error)});
-        const round=received?clone(received.round):await collectRound(this.provider,{messages:clone(messages),system_prompt:prompt,tools,signal:env.signal,assertDispatchReady:env.assertDispatchReady,provider_context:{source_auth:env.turn.source_auth,scope_id:env.scope.scope_id,conversation_id:env.turn.conversation_id,...env.turn.memory_usage?{memory_usage:clone(env.turn.memory_usage),memory_turn_id:env.turn.id}:{},...env.turn.revision_target?{revision_source_auth:clone(env.turn.revision_target.fresh_source_auth),revision_original_source_auth:clone(env.turn.revision_target.original_source_auth),revision_memory_generation:env.turn.revision_target.memory_generation,...env.turn.revision_work_intent?{revision_work_turn_id:env.turn.id}:{},input_context:[{text:env.turn.revision_target.raw_instruction},{text:env.turn.revision_target.base_body}]}:{}}},delta=>{text+=delta;batcher.push(delta);});
+        // R7 optional wire event: provider thought summary, emitted once before the first text_delta.
+        let summary='',summarySent=false;const thinkingStarted=this.metrics.now();
+        const round=received?clone(received.round):await collectRound(this.provider,{messages:clone(messages),system_prompt:prompt,tools,signal:env.signal,assertDispatchReady:env.assertDispatchReady,provider_context:{source_auth:env.turn.source_auth,scope_id:env.scope.scope_id,conversation_id:env.turn.conversation_id,...env.turn.memory_usage?{memory_usage:clone(env.turn.memory_usage),memory_turn_id:env.turn.id}:{},...env.turn.revision_target?{revision_source_auth:clone(env.turn.revision_target.fresh_source_auth),revision_original_source_auth:clone(env.turn.revision_target.original_source_auth),revision_memory_generation:env.turn.revision_target.memory_generation,...env.turn.revision_work_intent?{revision_work_turn_id:env.turn.id}:{},input_context:[{text:env.turn.revision_target.raw_instruction},{text:env.turn.revision_target.base_body}]}:{}},onThinking:delta=>{if(!summarySent&&summary.length<2000)summary+=delta;}},async delta=>{if(!summarySent){summarySent=true;if(summary.trim())await this.append(env,'reasoning_summary',{message_id:messageID,text:summary.trim().slice(0,2000),thinking_ms:Math.max(0,Math.round(this.metrics.now()-thinkingStarted))});}text+=delta;batcher.push(delta);});
         if(received)text=round.text;
         phase='text_flush';await batcher.finish();await batcher.stop();batcher=null;env.assertLive();
         phase='tool_or_completion';
@@ -230,6 +232,8 @@ export class ChatService {
       const cause=error instanceof ApiError&&error.reconciliation?error:denied??error;
       const code=cause instanceof ApiError?cause.code:'turn_interrupted',reconciliation=cause instanceof ApiError?cause.reconciliation:true;
       const data={code,retryable:false,reconciliation_required:!!reconciliation};
+      // R7 busy card: free-route rate limit carries an advisory retry delay (read-only countdown, never auto-resend).
+      if(code==='rate_limited'&&Number.isSafeInteger(cause?.retryAfterSeconds)&&cause.retryAfterSeconds>=0&&cause.retryAfterSeconds<=3600)data.retry_after_seconds=cause.retryAfterSeconds;
       // Use only the freshly locked row. Never flush buffered text/history/tools during cleanup.
       const saved=await tx.put(env.owner,'native-chat-turns',{...t,state:reconciliation?'outcome_unknown':'failed',error:data,finished_at:iso(),events:[...t.events,this.event(t,'turn_failed',data)]});
       // An awaited metadata write can cross lease expiry; reject the transaction before COMMIT.
