@@ -102,8 +102,13 @@ import SwiftUI
     private func ui(_ k: String, _ a: [String] = []) -> String { AppLanguage(locale: locale).ui(k, arguments: a) }
     private var destructive: Bool { block.actions?.contains { $0.style == .destructive } == true }
     /// Model-supplied labels when given; otherwise 拒绝 / 批准. Action ids "approve"/"deny" by default.
-    private var approve: GenerativeBlock.Action { block.actions?.first { $0.style == .primary || $0.style == .destructive } ?? .init(id: "approve", label: ui("批准"), style: .primary) }
-    private var deny: GenerativeBlock.Action { block.actions?.first { ($0.style ?? .secondary) == .secondary } ?? .init(id: "deny", label: ui("拒绝"), style: .secondary) }
+    /// Contract: confirm answers always carry `actionId` ("approve"/"deny" or one of `actions[].id`).
+    private var approve: GenerativeBlock.Action {
+        block.actions?.first { $0.id == "approve" } ?? block.actions?.first { $0.style == .primary || $0.style == .destructive } ?? .init(id: "approve", label: ui("批准"), style: .primary)
+    }
+    private var deny: GenerativeBlock.Action {
+        block.actions?.first { $0.id == "deny" } ?? block.actions?.first { $0.id != approve.id && ($0.style ?? .secondary) == .secondary } ?? .init(id: "deny", label: ui("拒绝"), style: .secondary)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -189,14 +194,31 @@ import SwiftUI
             switch (f.type, d) {
             case (.toggle, .bool(let b)): flags[f.id] = b
             case (.stepper, .number(let n)): numbers[f.id] = n
-            case (.date, .string(let s)), (.time, .string(let s)), (.datetime, .string(let s)): if let date = ISO8601DateFormatter().date(from: s) { dates[f.id] = date }
+            case (.date, .string(let s)), (.time, .string(let s)), (.datetime, .string(let s)): if let date = Self.parse(s, f.type) { dates[f.id] = date }
             default: text[f.id] = d.text
             }
         }
     }
+    private static func format(_ date: Date, _ pattern: String) -> String {
+        let f = DateFormatter(); f.locale = Locale(identifier: "en_US_POSIX"); f.dateFormat = pattern; return f.string(from: date)
+    }
+    private static func parse(_ text: String, _ type: GenerativeBlock.Field.FieldType) -> Date? {
+        let f = DateFormatter(); f.locale = Locale(identifier: "en_US_POSIX")
+        switch type {
+        case .date: f.dateFormat = "yyyy-MM-dd"; return f.date(from: text)
+        case .time:
+            f.dateFormat = "HH:mm"; guard let t = f.date(from: text) else { return nil }
+            let c = Calendar.current.dateComponents([.hour, .minute], from: t); return Calendar.current.date(bySettingHour: c.hour ?? 0, minute: c.minute ?? 0, second: 0, of: .now)
+        default: return ISO8601DateFormatter().date(from: text)
+        }
+    }
     private var requiredFilled: Bool {
         fields.filter { $0.required == true }.allSatisfy { f in
-            switch f.type { case .toggle, .stepper, .date, .time, .datetime: true; default: !(text[f.id] ?? "").trimmingCharacters(in: .whitespaces).isEmpty }
+            switch f.type {
+            case .toggle, .stepper, .date, .time, .datetime: true
+            case .number: Double((text[f.id] ?? "").replacingOccurrences(of: ",", with: ".")) != nil
+            default: !(text[f.id] ?? "").trimmingCharacters(in: .whitespaces).isEmpty
+            }
         }
     }
     private var values: [String: GenerativeValue] {
@@ -204,9 +226,11 @@ import SwiftUI
         for f in fields {
             switch f.type {
             case .toggle: out[f.id] = .bool(flags[f.id] ?? false)
-            case .stepper: out[f.id] = .number(numbers[f.id] ?? 0)
-            case .number: if let v = Double(text[f.id] ?? "") { out[f.id] = .number(v) }
-            case .date, .time, .datetime: out[f.id] = .string(ISO8601DateFormatter().string(from: dates[f.id] ?? .now))
+            case .stepper: out[f.id] = .number((numbers[f.id] ?? 0).rounded())
+            case .number: if let v = Double((text[f.id] ?? "").replacingOccurrences(of: ",", with: ".")) { out[f.id] = .number(v) }
+            case .date: out[f.id] = .string(Self.format(dates[f.id] ?? .now, "yyyy-MM-dd"))
+            case .time: out[f.id] = .string(Self.format(dates[f.id] ?? .now, "HH:mm"))
+            case .datetime: out[f.id] = .string(ISO8601DateFormatter().string(from: dates[f.id] ?? .now))
             default: if let v = text[f.id], !v.isEmpty { out[f.id] = .string(v) }
             }
         }
@@ -224,7 +248,7 @@ import SwiftUI
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             if let url = block.image {
-                AsyncImage(url: url) { $0.resizable().scaledToFill() } placeholder: { CatpawColors.ink.opacity(0.05) }
+                GenerativeRemoteImage(url: url)
                     .aspectRatio(16 / 9, contentMode: .fit).clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous)).accessibilityHidden(true)
             }
             GenerativeBlockHeader(block: block)
