@@ -81,10 +81,10 @@ struct BreathingPaw: View {
 // MARK: r8 tokens (composer + top bar)
 extension CatpawColors {
     /// Composer pill fill (#F2F2F4 / #1C1C1E) and its 0.5pt hairline.
-    static let composerPill = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(red: 0x1C/255, green: 0x1C/255, blue: 0x1E/255, alpha: 1) : UIColor(red: 0xF2/255, green: 0xF2/255, blue: 0xF4/255, alpha: 1) })
-    static let hairline = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(white: 1, alpha: 0.10) : UIColor(white: 0, alpha: 0.08) })
+    static let composerPill = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(rgb: 0x1C1C1E) : UIColor(rgb: 0xF2F2F4) })
+    static let hairline = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(rgb: 0x2A2A2C) : UIColor(rgb: 0xE4E4E6) })
     /// ink3 (#A3A7AE): meta line, model label, chevron, offline dot.
-    static let tertiary = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(red: 0x6B/255, green: 0x6F/255, blue: 0x76/255, alpha: 1) : UIColor(red: 0xA3/255, green: 0xA7/255, blue: 0xAE/255, alpha: 1) })
+    static let tertiary = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(rgb: 0x6B6F76) : UIColor(rgb: 0xA3A7AE) })
 }
 extension CatpawMotion {
     static let composer = Animation.spring(response: 0.32, dampingFraction: 0.86)

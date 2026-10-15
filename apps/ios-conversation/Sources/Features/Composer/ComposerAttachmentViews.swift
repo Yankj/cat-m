@@ -137,7 +137,7 @@ import UIKit
                 Button(action: onDetails) { Label(ui("输入详情"), systemImage: "text.alignleft") }.accessibilityIdentifier("chat.composer.details")
             }
         } label: {
-            Image(systemName: "plus").font(.system(size: 20, weight: .medium)).foregroundStyle(CatpawColors.ink)
+            Image(systemName: "plus").font(CatpawTypography.Role.heading.font.weight(.medium)).foregroundStyle(CatpawColors.ink)
                 .frame(width: 36, height: 36).touchTarget()
         }
         .disabled(remaining <= 0)

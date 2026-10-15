@@ -96,12 +96,12 @@ import CatpawImageComposer
         } label: {
             HStack(spacing:5) {
                 if connectionMonitor.state != .online {
-                    Circle().fill(connectionMonitor.state == .offline ? CatpawColors.tertiary : Color.orange).frame(width:6,height:6)
+                    Circle().fill(connectionMonitor.state == .offline ? CatpawColors.tertiary : CatpawBrand.paw).frame(width:6,height:6)
                         .accessibilityIdentifier("chat.title.statusDot")
                 }
-                Text(r8Title).font(.system(size:17,weight:.semibold)).foregroundStyle(CatpawColors.ink).lineLimit(1).truncationMode(.tail)
-                Text(r8ModelLabel).font(.system(size:15,weight:.medium)).foregroundStyle(CatpawColors.tertiary).lineLimit(1)
-                Image(systemName:"chevron.down").font(.system(size:11,weight:.semibold)).foregroundStyle(CatpawColors.tertiary)
+                Text(r8Title).font(CatpawTypography.Role.body.font.weight(.semibold)).foregroundStyle(CatpawColors.ink).lineLimit(1).truncationMode(.tail)
+                Text(r8ModelLabel).font(CatpawTypography.Role.secondary.font.weight(.medium)).foregroundStyle(CatpawColors.tertiary).lineLimit(1)
+                Image(systemName:"chevron.down").font(CatpawTypography.Role.caption.font.weight(.semibold)).imageScale(.small).foregroundStyle(CatpawColors.tertiary)
             }.frame(maxWidth:220).contentShape(Rectangle())
         }
         .accessibilityLabel(conversationTitle).accessibilityAddTraits(.isHeader).accessibilityIdentifier("chat.title")
@@ -240,7 +240,7 @@ import CatpawImageComposer
                 ToolbarItem(placement:.principal) { conversationTitleMenu }
                 ToolbarItem(placement:.topBarTrailing) {
                     Button { model.newConversation() } label: {
-                        Image(systemName:"square.and.pencil").font(.system(size:19,weight:.regular)).foregroundStyle(CatpawColors.ink).frame(width:44,height:44).contentShape(Rectangle())
+                        Image(systemName:"square.and.pencil").font(CatpawTypography.Role.heading.font).foregroundStyle(CatpawColors.ink).frame(width:44,height:44).contentShape(Rectangle())
                     }
                     .disabled(!model.loaded || model.busy || model.isInputComposing)
                     .accessibilityLabel(ui("新对话")).accessibilityIdentifier("chat.new").buttonStyle(CatpawPressButtonStyle())
@@ -371,7 +371,7 @@ import CatpawImageComposer
     /// r8 meta line above the pill: only when there is a status.
     private var composerMetaText: String? {
         if draftTooLong { return ui("超出 8000 字") }
-        if model.connectionLifecycle == .offline || connectionMonitor.state == .offline || !connectionMonitor.waitingForNetwork.isEmpty { return ui("等待网络 · 恢复后自动发送") }
+        if model.connectionLifecycle == .offline || model.connection.state == .unavailable || connectionMonitor.state == .offline || !connectionMonitor.waitingForNetwork.isEmpty { return ui("等待网络 · 恢复后自动发送") }
         if composerChrome.queuedDraftPreview != nil { return ui("已排队 · 当前回复结束后发送") }
         return nil
     }
@@ -419,7 +419,7 @@ import CatpawImageComposer
                 NativeConversationComposer(model:model,
                     enabled:!restrictToFrozenFixture && !model.switchingArtifactContinuation,
                     maximumVisibleHeight:min(budget.maximumTextHeight,ComposerMetrics.maxHeight(for:textSize)),
-                    placeholder:composerChrome.runState == .responding ? "继续追问…" : "问问 Catpaw",
+                    placeholder:composerChrome.runState == .responding ? ui("继续追问…") : ui("问问 Catpaw"),
                     lineCountChanged:{composerLineCount=$0},
                     addAttachments:{_ = composerChrome.addAttachments($0,using:attachmentUploader)},
                     submit:{if canSendDraft {submitDraft()}})
