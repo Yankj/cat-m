@@ -139,7 +139,7 @@ public struct AuthenticatedNativeChatCredentials: NativeChatSessionCredentials {
     /// Safe to call from `.task`: the warm-up is an unstructured task, so the gate can await it.
     func start() async {
         guard !started, let manager else { return }; started = true
-        let task = Task { [weak self] in await self?.warmUp(manager) }
+        let task = Task { [weak self] in guard let self else { return }; await self.warmUp(manager) }
         warmup = task; await task.value
     }
     private func warmUp(_ manager: NativeAuthSessionManager) async {

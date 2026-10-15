@@ -151,10 +151,11 @@ final class CatpawAcceptanceUITests: XCTestCase {
     // Real backend: anonymous user + cloud consent + real message (CATPAW_ACCEPTANCE_REAL=1, DeviceTrial build).
     func test07RealChatEndToEnd() throws {
         guard ProcessInfo.processInfo.environment["CATPAW_ACCEPTANCE_REAL"] == "1" else { throw XCTSkip("real backend only") }
-        let app = XCUIApplication(bundleIdentifier: bundleID); app.launch()
+        let app = XCUIApplication(bundleIdentifier: bundleID); app.launchArguments += ["-CatpawSkipOnboarding"]; app.launch()
         let start = app.buttons["auth.startExperience"]
         if start.waitForExistence(timeout: 8) { XCTAssertTrue(waitFor(start, "enabled == true", timeout: 20), "开始体验 must be enabled (config present)"); start.tap() }
         XCTAssertTrue(input(app).waitForExistence(timeout: 45)); shot(app, "real-01-chat")
+        if ProcessInfo.processInfo.environment["CATPAW_REAL_NEW"] == "1" { app.buttons["chat.new"].tap(); Thread.sleep(forTimeInterval: 1.5); shot(app, "real-01b-new-chat") }
         let field = input(app); field.tap(); field.typeText("用一句话介绍你自己")
         app.buttons["chat.send"].tap()
         let review = app.buttons["chat.consent.review"]
