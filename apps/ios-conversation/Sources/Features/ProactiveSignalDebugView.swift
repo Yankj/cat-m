@@ -13,10 +13,10 @@ import SwiftUI
     var body: some View {
         Form {
             Section(ui("引擎")) {
-                Button(ui("扫描真实日历")) { Task { await ProactiveEngine.shared.scanCalendar() } }.accessibilityIdentifier("proactive.engine.scan")
+                Button(ui("扫描真实日历")) { Task { await ProactiveEngine.shared.scanCalendar(ask: true) } }.accessibilityIdentifier("proactive.engine.scan")
                 Button(ui("清空去重账本")) { ProactiveEngine.shared.resetLedger() }.accessibilityIdentifier("proactive.engine.resetLedger")
                 ForEach(ProactiveEngine.shared.log.prefix(12)) { e in
-                    Text(e.at.formatted(date: .omitted, time: .standard) + "  " + e.text).font(.caption.monospaced()).foregroundStyle(e.text.contains("SUPPRESSED") ? CatpawColors.attention : CatpawColors.ink)
+                    Text(e.at.formatted(date: .omitted, time: .standard) + "  " + e.text).font(.footnote.monospaced()).foregroundStyle(e.text.contains("SUPPRESSED") ? CatpawColors.attention : CatpawColors.ink)
                 }
             }
             Section(ui("模拟时间")) {

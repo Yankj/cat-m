@@ -22,6 +22,19 @@
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
 	<string>$(MARKETING_VERSION)</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>catpawm</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>catpawm</string>
+			</array>
+		</dict>
+	</array>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>LSRequiresIPhoneOS</key>
@@ -34,6 +47,8 @@
 	<string>用来找到你要联系的人，只在这次请求里使用。</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>仅在你主动开始说话时采集本句声音，用于设备支持的本地转写。原音不保存到长期记录。</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>把你选择的图片保存到“照片”。</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>仅在你主动选择相册图片时将该图片保存到当前本地项目；不会自动上传相册内容。</string>
 	<key>NSRemindersFullAccessUsageDescription</key>
@@ -55,10 +70,6 @@
 	<dict>
 		<key>UIColorName</key>
 		<string>LaunchCanvas</string>
-		<key>UIImageName</key>
-		<string>LaunchPaw</string>
-		<key>UIImageRespectsSafeAreaInsets</key>
-		<false/>
 	</dict>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>

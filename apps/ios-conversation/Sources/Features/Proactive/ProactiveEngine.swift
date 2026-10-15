@@ -84,9 +84,12 @@ struct ProactiveSignal: Equatable, Sendable {
     // MARK: Signals
 
     /// Real non-user signal: the next calendar event in the coming 3 hours.
-    func scanCalendar(source: ProactiveSignal.Source = .eventKit) async {
+    /// `ask`: only explicit user actions (debug panel, permission card) may show the system prompt; background /
+    /// foreground scans stay silent while the status is undetermined.
+    func scanCalendar(source: ProactiveSignal.Source = .eventKit, ask: Bool = false) async {
         #if canImport(EventKit)
         let status = EKEventStore.authorizationStatus(for: .event)
+        if status == .notDetermined && !ask { return }
         if status == .notDetermined {
             let granted = (try? await store.requestFullAccessToEvents()) ?? false
             if !granted { return calendarUnavailable() }
@@ -142,6 +145,7 @@ struct ProactiveSignal: Equatable, Sendable {
             status: .pending, createdAt: now)
         pendingReminders[suggestion.id] = .init(title: signal.title, due: remindAt, start: signal.start, place: signal.place, operationID: "op-" + hash)
         rememberServerID(local: suggestion.id)
+        ProactiveLocalBackend.save(suggestion)
         ProactiveSuggestionStore.shared.adopt(suggestion)
         lastSuggestionID = suggestion.id
         intervene(suggestion)
@@ -354,7 +358,17 @@ struct ProactiveSignal: Equatable, Sendable {
 
 /// Real backend for the suggestion card/inbox: confirm writes the EKReminder.
 @MainActor final class ProactiveLocalBackend: ProactiveSuggestionBackend {
+    private static let key = "catpaw.proactive.inbox.v1"
+    /// Persisted inbox so cards survive relaunch / notification cold start.
+    static func save(_ s: ProactiveSuggestion) {
+        var all = load(); all[s.id] = s
+        UserDefaults.standard.set(try? JSONEncoder().encode(all), forKey: key)
+    }
+    static func load() -> [String: ProactiveSuggestion] {
+        UserDefaults.standard.data(forKey: key).flatMap { try? JSONDecoder().decode([String: ProactiveSuggestion].self, from: $0) } ?? [:]
+    }
     private let mock = ProactiveSuggestionMock([])
+    init() { for s in Self.load().values { mock.adopt(s); ProactiveSuggestionStore.shared.adopt(s) } }
     func list() async throws -> [ProactiveSuggestion] { try await mock.list() }
     func perform(_ action: ProactiveSuggestion.Action, on id: String) async throws -> ProactiveSuggestion {
         var s = ProactiveSuggestionStore.shared.items[id] ?? ProactiveSuggestion(id: id, title: "", reason: "")
@@ -371,7 +385,7 @@ struct ProactiveSignal: Equatable, Sendable {
         case .notify_attendees: s.status = .done; s.taken = (s.taken ?? []) + [.init(action: action, at: .now)]
         }
         ProactiveEngine.shared.syncAction(action.rawValue, local: id, operationID: "op-\(id)-\(action.rawValue)")
-        mock.adopt(s); return s
+        mock.adopt(s); Self.save(s); return s
     }
     func undo(_ id: String) async throws -> ProactiveSuggestion {
         #if canImport(EventKit)
