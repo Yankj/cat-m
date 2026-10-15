@@ -50,16 +50,19 @@ import SwiftUI
                     .frame(width: width, height: geometry.size.height)
                     .allowsHitTesting(active && !motion.isDragging).disabled(!active || motion.isDragging)
                     .accessibilityHidden(!isAtRoot || !motion.isFullyOpen)
-                content
-                    .frame(width: geometry.size.width, height: geometry.size.height)
-                    .allowsHitTesting(!active).accessibilityHidden(active)
-                    .overlay {
-                        Button(action: close) {
-                            Color.black.opacity(0.22 * Double(progress)).contentShape(Rectangle())
-                        }.buttonStyle(.plain).accessibilityLabel(localize("关闭侧栏"))
-                            .accessibilityIdentifier("sidebar.scrim")
-                            .allowsHitTesting(active).accessibilityHidden(!active)
-                    }
+                ZStack {
+                    // The blocked conversation and its dismiss action are siblings.
+                    // An overlay on disabled/AX-hidden content inherits that state
+                    // and would also hide or disable the only visible scrim.
+                    content
+                        .frame(width: geometry.size.width, height: geometry.size.height)
+                        .allowsHitTesting(!active).accessibilityHidden(active)
+                    Button(action: close) {
+                        Color.black.opacity(0.22 * Double(progress)).contentShape(Rectangle())
+                    }.buttonStyle(.plain).accessibilityLabel(localize("关闭侧栏"))
+                        .accessibilityIdentifier("sidebar.scrim")
+                        .allowsHitTesting(active).accessibilityHidden(!active)
+                }.frame(width: geometry.size.width, height: geometry.size.height)
                     // Zero radius is the ordinary full-width host. Only the
                     // exposed leading edge rounds; the system keyboard is in
                     // its own window and navigation keeps the same proposal.
