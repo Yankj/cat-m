@@ -15,6 +15,10 @@
     "en": "Invalid CSV format; unable to parse safely.",
     "zh-Hans": "CSV 格式错误，无法安全解析。"
   },
+  "Catpaw 正在工作": {
+    "en": "Catpaw is working",
+    "zh-Hans": "Catpaw 正在工作"
+  },
   "Catpaw-m 原生本地版 0.1.0": {
     "en": "Catpaw-m native local edition 0.1.0",
     "zh-Hans": "Catpaw-m 原生本地版 0.1.0"
@@ -727,6 +731,10 @@
     "en": "Create a work plan",
     "zh-Hans": "创建工作计划"
   },
+  "创建提醒": {
+    "en": "Create reminder",
+    "zh-Hans": "创建提醒"
+  },
   "创建有来源工作": {
     "en": "Create source-backed work",
     "zh-Hans": "创建有来源工作"
@@ -1083,6 +1091,10 @@
     "en": "Follow-up messages paused",
     "zh-Hans": "后续消息已暂停"
   },
+  "听写": {
+    "en": "Dictate",
+    "zh-Hans": "听写"
+  },
   "启用中": {
     "en": "Enabled",
     "zh-Hans": "启用中"
@@ -1283,6 +1295,10 @@
     "en": "Conversation ID",
     "zh-Hans": "对话编号"
   },
+  "对话菜单": {
+    "en": "Conversation menu",
+    "zh-Hans": "对话菜单"
+  },
   "导入文件": {
     "en": "Import file",
     "zh-Hans": "导入文件"
@@ -1463,6 +1479,10 @@
     "en": "Tool processing",
     "zh-Hans": "工具处理"
   },
+  "工具已返回：{0}": {
+    "en": "Tool returned: {0}",
+    "zh-Hans": "工具已返回：{0}"
+  },
   "已上传": {
     "en": "Uploaded",
     "zh-Hans": "已上传"
@@ -1546,6 +1566,10 @@
   "已排队": {
     "en": "Queued",
     "zh-Hans": "已排队"
+  },
+  "已排队 · 当前回复结束后发送": {
+    "en": "Queued · sends after the current reply",
+    "zh-Hans": "已排队 · 当前回复结束后发送"
   },
   "已接上 · 从断点继续": {
     "en": "Reconnected · continuing where it left off",
@@ -2771,6 +2795,10 @@
     "en": "Incomplete",
     "zh-Hans": "未完成"
   },
+  "未完成，需核对": {
+    "en": "Not finished — please review",
+    "zh-Hans": "未完成，需核对"
+  },
   "未知事项状态；仅供查看。": {
     "en": "Unknown item state; read only.",
     "zh-Hans": "未知事项状态；仅供查看。"
@@ -3175,6 +3203,10 @@
     "en": "Review transcript",
     "zh-Hans": "检查转写"
   },
+  "模型": {
+    "en": "Model",
+    "zh-Hans": "模型"
+  },
   "模型未连接": {
     "en": "Model not connected",
     "zh-Hans": "模型未连接"
@@ -3291,6 +3323,10 @@
     "en": "Checking your session…",
     "zh-Hans": "正在复核登录…"
   },
+  "正在思考…": {
+    "en": "Thinking…",
+    "zh-Hans": "正在思考…"
+  },
   "正在恢复你的工作…": {
     "en": "Restoring your work…",
     "zh-Hans": "正在恢复你的工作…"
@@ -3310,6 +3346,10 @@
   "正在播放": {
     "en": "Playing",
     "zh-Hans": "正在播放"
+  },
+  "正在整理回答…": {
+    "en": "Writing the answer…",
+    "zh-Hans": "正在整理回答…"
   },
   "正在本机保存": {
     "en": "Saving on this device",
@@ -3383,6 +3423,10 @@
     "en": "Reading plan",
     "zh-Hans": "正在读取计划"
   },
+  "正在调用工具：{0}": {
+    "en": "Using tool: {0}",
+    "zh-Hans": "正在调用工具：{0}"
+  },
   "正在返回原对话…": {
     "en": "Returning to the original conversation…",
     "zh-Hans": "正在返回原对话…"
@@ -3398,6 +3442,10 @@
   "正在重新连接 · 第 {0} 次 · {1} 秒后": {
     "en": "Reconnecting · attempt {0} · in {1}s",
     "zh-Hans": "正在重新连接 · 第 {0} 次 · {1} 秒后"
+  },
+  "正在重连": {
+    "en": "Reconnecting",
+    "zh-Hans": "正在重连"
   },
   "正文": {
     "en": "Content",
@@ -3499,10 +3547,6 @@
     "en": "Message",
     "zh-Hans": "消息"
   },
-  "给 Catpaw 发消息": {
-    "en": "Message Catpaw",
-    "zh-Hans": "给 Catpaw 发消息"
-  },
   "消息尚未发送，需要确认处理方式。": {
     "en": "This message has not been sent. Review how it will be processed.",
     "zh-Hans": "消息尚未发送，需要确认处理方式。"
@@ -3594,6 +3638,10 @@
   "环境编号": {
     "en": "Environment ID",
     "zh-Hans": "环境编号"
+  },
+  "现在重试": {
+    "en": "Retry now",
+    "zh-Hans": "现在重试"
   },
   "生成周报": {
     "en": "Create weekly report",
@@ -3763,6 +3811,10 @@
     "en": "Queued messages are not sent after you leave the app. Read task status again to confirm background progress.",
     "zh-Hans": "离开 App 后不会发送排队中的消息。任务后台执行的状态需要重新读取确认。"
   },
+  "离线": {
+    "en": "Offline",
+    "zh-Hans": "离线"
+  },
   "离线 · 草稿和待发消息都会保留": {
     "en": "Offline · drafts and pending messages are kept",
     "zh-Hans": "离线 · 草稿和待发消息都会保留"
@@ -3827,13 +3879,17 @@
     "en": "Waiting for simulated reply",
     "zh-Hans": "等待模拟回复"
   },
-  "等待网络 · 联网后自动发送": {
-    "en": "Waiting for network · sends automatically when online",
-    "zh-Hans": "等待网络 · 联网后自动发送"
-  },
   "等待网络": {
     "en": "Waiting for network",
     "zh-Hans": "等待网络"
+  },
+  "等待网络 · 恢复后自动发送": {
+    "en": "Waiting for network · sends when back online",
+    "zh-Hans": "等待网络 · 恢复后自动发送"
+  },
+  "等待网络 · 联网后自动发送": {
+    "en": "Waiting for network · sends automatically when online",
+    "zh-Hans": "等待网络 · 联网后自动发送"
   },
   "等待许可": {
     "en": "Awaiting permission",
@@ -3935,13 +3991,13 @@
     "en": "Outcome unknown; verify first",
     "zh-Hans": "结果未知，先核验"
   },
+  "给 Catpaw 发消息": {
+    "en": "Message Catpaw",
+    "zh-Hans": "给 Catpaw 发消息"
+  },
   "继续": {
     "en": "Continue",
     "zh-Hans": "继续"
-  },
-  "继续获取": {
-    "en": "Continue fetching",
-    "zh-Hans": "继续获取"
   },
   "继续发送后续消息": {
     "en": "Resume follow-up messages",
@@ -3951,6 +4007,10 @@
     "en": "Still following up",
     "zh-Hans": "继续在跟进"
   },
+  "继续获取": {
+    "en": "Continue fetching",
+    "zh-Hans": "继续获取"
+  },
   "继续跟进": {
     "en": "Following up",
     "zh-Hans": "继续跟进"
@@ -3958,6 +4018,10 @@
   "继续这件事的对话": {
     "en": "Continue this conversation",
     "zh-Hans": "继续这件事的对话"
+  },
+  "继续追问…": {
+    "en": "Ask a follow-up…",
+    "zh-Hans": "继续追问…"
   },
   "编辑": {
     "en": "Edit",
@@ -4199,6 +4263,10 @@
     "en": "Speed · requires device calibration",
     "zh-Hans": "语速 · 待设备校准"
   },
+  "语音对话": {
+    "en": "Voice mode",
+    "zh-Hans": "语音对话"
+  },
   "说给助理听": {
     "en": "Speak to your assistant",
     "zh-Hans": "说给助理听"
@@ -4363,6 +4431,10 @@
     "en": "Account ID",
     "zh-Hans": "账户编号"
   },
+  "超出 8000 字": {
+    "en": "Over 8,000 characters",
+    "zh-Hans": "超出 8000 字"
+  },
   "跟随系统": {
     "en": "Follow system",
     "zh-Hans": "跟随系统"
@@ -4503,6 +4575,10 @@
     "en": "Connection unavailable",
     "zh-Hans": "连接暂不可用"
   },
+  "连接正常": {
+    "en": "Connected",
+    "zh-Hans": "连接正常"
+  },
   "连接状态": {
     "en": "Connection",
     "zh-Hans": "连接状态"
@@ -4603,10 +4679,6 @@
     "en": "Retry",
     "zh-Hans": "重试"
   },
-  "现在重试": {
-    "en": "Retry now",
-    "zh-Hans": "现在重试"
-  },
   "重试上传": {
     "en": "Retry upload",
     "zh-Hans": "重试上传"
@@ -4626,6 +4698,10 @@
   "问一个问题，或说一件想做的事。": {
     "en": "Ask a question or tell me what you want to do.",
     "zh-Hans": "问一个问题，或说一件想做的事。"
+  },
+  "问问 Catpaw": {
+    "en": "Ask Catpaw",
+    "zh-Hans": "问问 Catpaw"
   },
   "间隔": {
     "en": "Interval",
@@ -4734,29 +4810,5 @@
   "，草稿，": {
     "en": ", draft, ",
     "zh-Hans": "，草稿，"
-  },
-  "正在思考…": {
-    "en": "Thinking…",
-    "zh-Hans": "正在思考…"
-  },
-  "正在调用工具：{0}": {
-    "en": "Using tool: {0}",
-    "zh-Hans": "正在调用工具：{0}"
-  },
-  "工具已返回：{0}": {
-    "en": "Tool returned: {0}",
-    "zh-Hans": "工具已返回：{0}"
-  },
-  "正在整理回答…": {
-    "en": "Writing the answer…",
-    "zh-Hans": "正在整理回答…"
-  },
-  "未完成，需核对": {
-    "en": "Not finished — please review",
-    "zh-Hans": "未完成，需核对"
-  },
-  "Catpaw 正在工作": {
-    "en": "Catpaw is working",
-    "zh-Hans": "Catpaw 正在工作"
   }
 }

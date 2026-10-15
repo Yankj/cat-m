@@ -116,17 +116,31 @@ final class CatpawAcceptanceUITests: XCTestCase {
     func test05OfflineCapsuleAndRetry() {
         let app = fixtureApp("p0-ui-acceptance-offline", extra: ["CATPAW_ACCEPTANCE_OFFLINE_SECONDS": "6"]); app.launch()
         XCTAssertTrue(input(app).waitForExistence(timeout: 20))
-        let capsule = app.buttons["chat.connection"]
-        XCTAssertTrue(capsule.waitForExistence(timeout: 10), "Offline status capsule must show"); shot(app, "08-offline-capsule")
-        Thread.sleep(forTimeInterval: 6.5)
-        capsule.tap()
-        let refresh = app.buttons["connection.refresh"]; XCTAssertTrue(refresh.waitForExistence(timeout: 5)); shot(app, "08-connection-sheet-offline")
-        refresh.tap()
-        let state = app.descendants(matching: .any)["connection.state"].firstMatch
-        _ = state.waitForExistence(timeout: 5); Thread.sleep(forTimeInterval: 1); shot(app, "08-after-retry")
-        // Dismiss the sheet; the capsule disappears once reachable.
-        app.swipeDown(velocity: .fast)
-        XCTAssertTrue(waitFor(app.buttons["chat.connection"], "exists == false", timeout: 10), "Capsule must clear after successful retry")
+        // r8: offline is a faint meta line above the pill + status dot in the title (no capsule)
+        let field = input(app); field.tap(); field.typeText("离线草稿")
+        let meta = app.descendants(matching: .any)["chat.composer.meta"].firstMatch
+        XCTAssertTrue(meta.waitForExistence(timeout: 10), "Offline meta line must show"); shot(app, "r8-06-offline-draft")
+        XCTAssertTrue(app.descendants(matching: .any)["chat.title.statusDot"].firstMatch.exists)
+        XCTAssertTrue(waitFor(meta, "exists == false", timeout: 15), "Meta line must clear once reachable")
         shot(app, "08-online-recovered")
+    }
+
+    // r8. Top bar = two-line sidebar glyph + title menu + new chat; composer pill, no info / ellipsis
+    func test06R8Chrome() {
+        let app = fixtureApp("p0-ui-acceptance"); app.launch()
+        XCTAssertTrue(input(app).waitForExistence(timeout: 20))
+        XCTAssertTrue(app.buttons["sidebar.open"].exists)
+        XCTAssertTrue(app.descendants(matching: .any)["chat.title"].firstMatch.exists)
+        XCTAssertTrue(app.buttons["chat.new"].exists)
+        XCTAssertFalse(app.buttons["chat.more"].exists)
+        XCTAssertFalse(app.buttons["chat.composer.context"].exists)
+        XCTAssertTrue(app.buttons["chat.composer.voice"].exists, "Empty draft shows voice")
+        shot(app, "r8-01-empty")
+        let field = input(app); field.tap(); field.typeText("第一行\n第二行\n第三行\n第四行\n第五行\n第六行\n第七行\n第八行")
+        XCTAssertTrue(app.buttons["chat.send"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["chat.composer.voice"].exists)
+        XCTAssertLessThan(field.frame.height, 200, "Composer caps at ~6 lines")
+        shot(app, "r8-02-typing-multiline")
+        app.descendants(matching: .any)["chat.title"].firstMatch.tap(); shot(app, "r8-03-title-menu")
     }
 }

@@ -292,7 +292,7 @@ private struct StreamCursor: View {
     private func ui(_ k: String) -> String { AppLanguage(locale: locale).ui(k) }
     var body: some View {
         HStack(spacing: 10) {
-            StatusLabel(text: reason, symbol: "exclamationmark.circle", tone: .attention)
+            StatusLabel(text: AnswerFailureCopy.friendly(reason), symbol: "exclamationmark.circle", tone: .attention)
             Spacer(minLength: 4)
             // Uncertain outcome → only "verify", never resend (R5 rule).
             if reconciliationRequired, let onVerify {
@@ -303,5 +303,18 @@ private struct StreamCursor: View {
         }
         .foregroundStyle(CatpawColors.action)
         .accessibilityIdentifier("chat.answer.interrupted")
+    }
+}
+
+/// Maps raw provider/back-end failure codes to calm, user-facing copy (never show raw codes).
+enum AnswerFailureCopy {
+    static func friendly(_ raw: String) -> String {
+        let r = raw.lowercased()
+        if r.contains("provider_timeout") || r.contains("free_model_unavailable") || r.contains("timed out") || r.contains("timeout") {
+            return "模型暂时繁忙，请稍后重试"
+        }
+        if r.contains("rate_limit") || r.contains("429") { return "请求有点多，稍等片刻再试" }
+        if r.contains("_") && !r.contains(" ") && raw.unicodeScalars.allSatisfy({ $0.isASCII }) { return "此轮回复未完成，可以重试" }
+        return raw
     }
 }
