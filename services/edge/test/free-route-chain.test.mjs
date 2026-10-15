@@ -46,3 +46,11 @@ test('agnes: 402 quota maps to quota_exhausted and fails over; developer prefere
   assert.match(calls[0],/agnes/);assert.match(calls[1],/openrouter/);assert.equal(out[0].text,'or');
   assert.equal(p.observations[0].error,'quota_exhausted');
 });
+test('agnes: live-captured SSE shape (role chunk, reasoning_content, \\n\\n, usage chunk, [DONE])',async()=>{
+  const ch=d=>JSON.stringify({id:'x',object:'chat.completion.chunk',model:'agnes-3.0-flash',choices:[{index:0,delta:d}]});
+  const p=new FreeRouteChainProvider({...agnesOnly,fetchImpl:async url=>/openrouter/.test(url)?busy():sse([ch({role:'assistant',content:''}),ch({reasoning_content:'用户问'}),ch({reasoning_content:'1+1'}),ch({content:'\n\n'}),ch({content:'2'}),ch({content:'。'}),JSON.stringify({id:'x',model:'agnes-3.0-flash',choices:[{index:0,delta:{},finish_reason:'stop'}]}),JSON.stringify({id:'x',choices:[{index:0,delta:{}}],usage:{completion_tokens:27,completion_tokens_details:{reasoning_tokens:19}}}),'[DONE]'])});
+  const out=await withRoutePreference(null,()=>collect(p),{reasoningSummary:true});
+  assert.equal(out.filter(e=>e.type==='thinking_delta').map(e=>e.text).join(''),'用户问1+1');
+  assert.equal(out.filter(e=>e.type==='text_delta').map(e=>e.text).join(''),'2。');
+  assert.equal(out.at(-1).type,'done');assert.equal(p.observations.at(-1).actual_model,'agnes-3.0-flash');
+});

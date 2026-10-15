@@ -45,6 +45,13 @@ public struct AuthenticatedNativeChatCredentials: NativeChatSessionCredentials {
             let keys = ["CatpawSupabaseProjectURL","CatpawSupabasePublishableKey","CatpawBackendOrigin","CatpawServerScopeID"]
             var values = Dictionary(uniqueKeysWithValues: keys.compactMap { k in (Bundle.main.object(forInfoDictionaryKey:k) as? String).map { (k,$0) } })
             #if DEBUG
+            // Debug (simulator) builds keep an unconfigured Info.plist for the review scripts; a developer
+            // may supply the PUBLIC Supabase/Edge values via the Xcode scheme environment instead.
+            if values.values.allSatisfy(\.isEmpty), !fixture {
+                let env = ProcessInfo.processInfo.environment
+                let fromEnv = ["CatpawSupabaseProjectURL":"CATPAW_SUPABASE_PROJECT_URL","CatpawSupabasePublishableKey":"CATPAW_SUPABASE_PUBLISHABLE_KEY","CatpawBackendOrigin":"CATPAW_BACKEND_ORIGIN","CatpawServerScopeID":"CATPAW_SERVER_SCOPE_ID"]
+                for (key,name) in fromEnv { if let value = env[name], !value.isEmpty { values[key] = value } }
+            }
             if fixture { values = [keys[0]:"https://abcdefghijklmnopqrst.supabase.co",keys[1]:"sb_publishable_test_public_value",keys[2]:"https://backend.example.invalid",keys[3]:"11111111-2222-4333-8444-555555555555"] }
             #endif
             configuration = try NativeAuthConfiguration.read(values)
@@ -104,7 +111,13 @@ public struct AuthenticatedNativeChatCredentials: NativeChatSessionCredentials {
             for await snapshot in await manager.changes() { guard let self, !Task.isCancelled else { return }; await self.receive(snapshot) }
         }
         do { try await manager.restore() } catch { self.error = (error as? NativeAuthError ?? .unavailable).localizedDescription }
+        // Normal launch goes straight into the conversation: with no saved session, open the
+        // existing anonymous experience identity (Supabase signInAnonymously) instead of a login wall.
+        let restored = await manager.snapshot()
+        if !isFixture, restored.phase == .signedOut, restored.user == nil, restored.message == nil, autoAnonymousSession { await startExperience() }
     }
+    /// Info.plist `CatpawAutoAnonymousSession` = NO disables the automatic experience identity.
+    private var autoAnonymousSession: Bool { (Bundle.main.object(forInfoDictionaryKey:"CatpawAutoAnonymousSession") as? Bool) ?? true }
     private func receive(_ snapshot: NativeAuthSnapshot) async {
         guard let manager, !Task.isCancelled,!logoutInProgress else { return }
         let openingEpoch=lifecycleEpoch
