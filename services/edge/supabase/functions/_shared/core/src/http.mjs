@@ -74,8 +74,12 @@ export function createChatFetchHandler(runtime){
         const stream=new ReadableStream({
           async start(controller){try{
             const enqueue=e=>{const started=chat.metrics.now(),bytes=new TextEncoder().encode(`data: ${JSON.stringify(e)}\n\n`);controller.enqueue(bytes);chat.metrics.record('sse_enqueue',started,{bytes:bytes.length});};
+            // R7 §5.3 heartbeat: comment frame every 10s; clients treat 15s of silence as a drop.
+            const keepalive=setInterval(()=>{try{if(!detach.signal.aborted)controller.enqueue(new TextEncoder().encode(': keepalive\n\n'));}catch{}},10000);detach.signal.addEventListener('abort',()=>clearInterval(keepalive),{once:true});
+            try{
             if(initial&&!detach.signal.aborted)enqueue(initial);
             for await(const e of chat.observe(auth,scope,cid,tid,{...options,signal:detach.signal})){if(detach.signal.aborted)break;enqueue(e);}if(!detach.signal.aborted)controller.close();
+            }finally{clearInterval(keepalive);}
           }catch{if(!detach.signal.aborted)controller.error(new Error('Observation interrupted; read original turn snapshot'));}},
           cancel(){detach.abort();} // never cancel a durable task or active model turn
         });

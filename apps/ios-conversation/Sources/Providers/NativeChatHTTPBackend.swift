@@ -29,7 +29,10 @@ public struct NativeChatConfiguration: Sendable {
         var request = URLRequest(url:try NativeAPIBase.endpoint(base:origin,route:route));request.timeoutInterval = 60
         request.setValue(authorization,forHTTPHeaderField:"Authorization");request.setValue("application/json",forHTTPHeaderField:"Content-Type");request.setValue("text/event-stream, application/json",forHTTPHeaderField:"Accept")
         if let publishableKey { request.setValue(publishableKey,forHTTPHeaderField:"apikey") }
-        if let edgeRegion { request.setValue(edgeRegion,forHTTPHeaderField:"x-region") };return request
+        if let edgeRegion { request.setValue(edgeRegion,forHTTPHeaderField:"x-region") }
+        if let route = ConversationModelRoute.current.headerValue { request.setValue(route,forHTTPHeaderField:"X-Catpaw-Route") } // DEBUG-only developer override
+        request.setValue("1",forHTTPHeaderField:"X-Catpaw-Reasoning-Summary") // decodes optional reasoning_summary
+        return request
     }
 }
 /// An authenticated application session, never an OpenRouter key or client-chosen identity.
@@ -268,10 +271,49 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
                     }
                     continuation.finish() // EOF is never synthesized into completion.
                 } catch {
-                    let failure: Error = error is URLError
+                    // A broken plain-chat stream after POST is resumable by GET-after-sequence (R7 §5.3).
+                    let resumable = postInitiated && error is URLError && Self.supportsResume(request)
+                    let failure: Error = resumable ? ConversationStreamInterrupted(reason: Self.friendlyTransportMessage(error))
+                        : error is URLError
                         ? CatpawError.unavailable(Self.friendlyTransportMessage(error) + (postInitiated ? "本轮发送结果尚未确认；请读取原请求状态，不要重新发送。" : ""))
                         : error
                     continuation.finish(throwing: postInitiated ? failure : ConversationDispatchFailure.notSent(reason: failure.localizedDescription))
+                }
+            }
+            continuation.onTermination = { _ in task.cancel() } // detaches observation only
+        }
+    }
+    static func supportsResume(_ r: ConversationTurnRequest) -> Bool { r.continuation == nil && r.acceptedWork == nil && r.revisionWork == nil }
+    /// R7 §5.3: reattach to the original turn with `GET …/turns/{id}/events?after_sequence=N`.
+    /// Idle timeout is 15 s; the Edge sends `: keepalive` every 10 s.
+    public func resumeEvents(_ request: ConversationTurnRequest, afterSequence: Int) async throws -> AsyncThrowingStream<ConversationTurnEvent, Error> {
+        guard Self.supportsResume(request), afterSequence >= 0 else { throw ConversationSessionError.unresolvedOperation }
+        let auth = try await authorization(request.scope)
+        let grant: Int
+        do { grant = try Self.positive(try await readConversation(request, auth: auth, mayCreate: false)["grant_epoch"]) }
+        catch let network as URLError { throw ConversationStreamInterrupted(reason: Self.friendlyTransportMessage(network)) }
+        var get = try self.request(turnPath(request) + "/" + request.operationID.uuidString.lowercased() + "/events?after_sequence=\(afterSequence)", auth: auth)
+        get.httpMethod = "GET"; get.timeoutInterval = ConversationReconnectPolicy.idleTimeout; get.setValue("text/event-stream", forHTTPHeaderField: "Accept")
+        return AsyncThrowingStream { continuation in
+            let task = Task {
+                do {
+                    let (bytes, response) = try await self.session.bytes(for: get)
+                    guard let http = response as? HTTPURLResponse, http.statusCode == 200, http.mimeType == "text/event-stream" else {
+                        if (response as? HTTPURLResponse)?.statusCode == 401 { await self.credentials.rejected(scope: request.scope) }
+                        throw ConversationStreamInterrupted(reason: "暂时无法读取原回复。")
+                    }
+                    var line = Data(), afterCR = false
+                    for try await byte in bytes {
+                        try Task.checkCancellation()
+                        if afterCR { afterCR = false; if byte == 0x0a { continue } }
+                        if byte == 0x0a || byte == 0x0d {
+                            if let wire = try Self.sseEventLine(line) { continuation.yield(try await self.decode(wire, request: request, grant: grant, auth: auth)) }
+                            line.removeAll(keepingCapacity: true); afterCR = byte == 0x0d
+                        } else { guard line.count < 262144 else { throw ConversationSessionError.invalidEvent }; line.append(byte) }
+                    }
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: error is URLError ? ConversationStreamInterrupted(reason: Self.friendlyTransportMessage(error)) : error)
                 }
             }
             continuation.onTermination = { _ in task.cancel() } // detaches observation only
@@ -431,6 +473,10 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
         case "text_delta":
             guard reality != "not_configured", let id = UUID(uuidString: data["message_id"] as? String ?? ""), let text = data["text"] as? String else { throw ConversationSessionError.invalidEvent }
             payload = .textDelta(messageID: id, text: text)
+        case "reasoning_summary":
+            guard let id = UUID(uuidString: data["message_id"] as? String ?? ""), let text = data["text"] as? String, text.utf8.count <= 8000 else { throw ConversationSessionError.invalidEvent }
+            let ms = (data["thinking_ms"] as? NSNumber).map { $0.intValue }
+            payload = .reasoningSummary(messageID: id, text: text, thinkingMs: ms.flatMap { $0 >= 0 ? $0 : nil })
         case "tool_call":
             guard request.image==nil else {throw ConversationSessionError.invalidEvent}
             guard reality != "not_configured", let name = data["name"] as? String, ((["delegate_task", "delegate_plan_v1", "delegate_sources_v1", "agent_status", "propose_memory_v1"].contains(name) && request.continuation==nil) || (name==(request.revisionWork==nil ? "revise_current_report_v1":ConversationRevisionWorkCodec.toolName) && request.continuation?.intent == .reviseReport)), let id = data["call_id"] as? String, !id.isEmpty else { throw ConversationSessionError.invalidEvent }

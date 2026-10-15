@@ -193,6 +193,8 @@ public struct ConversationTurnEvent: Sendable {
     public enum Payload: Sendable {
         case thread(String), started(requestHash: String, conversationRevision: Int, grantEpoch: Int,attachmentReceipts:[ConversationImageReceipt]?=nil), textDelta(messageID: UUID, text: String), toolStarted(callID: String, name: String, arguments: String)
         case toolResult(ConversationToolResult), completed(messageID: UUID, finalTextHash: String,visionReceipt:ConversationVisionProviderReceipt?=nil), failed(message: String, reconciliationRequired: Bool)
+        /// R7 optional wire event `reasoning_summary`: provider thought summary, before first text_delta.
+        case reasoningSummary(messageID: UUID, text: String, thinkingMs: Int?)
     }
     public let operationID: UUID
     public let epoch: Int
@@ -214,6 +216,9 @@ public struct ConversationTurnRecord: Codable, Sendable, Identifiable {
     public var visionProviderReceipt:ConversationVisionProviderReceipt? = nil
     public var continuationReceipt:ConversationTaskRevisionReceipt? = nil
     public var revisionWorkReceipt:ConversationRevisionWorkReceipt? = nil
+    /// R7 thinking row source (presentation lane renders it).
+    public var reasoningSummary:String? = nil
+    public var thinkingMs:Int? = nil
 }
 public struct ConversationSession: Codable, Sendable {
     public let scope: DataScope
@@ -261,6 +266,16 @@ public protocol ConversationBackend: Sendable {
     func recordedReplyEvidence(scope:DataScope) async -> ConversationConnection?
     func reply(_ request: ConversationTurnRequest) async throws -> AsyncThrowingStream<ConversationTurnEvent, Error>
     func observe(_ request: ConversationTurnRequest) async throws -> ConversationObservation
+    /// R7 §5.3 resume: GET the original turn's events after `afterSequence` (never re-POSTs).
+    func resumeEvents(_ request: ConversationTurnRequest, afterSequence: Int) async throws -> AsyncThrowingStream<ConversationTurnEvent, Error>
+}
+/// Stream-health sink (ConnectionMonitor in the App target). Domain-only so portable builds stay Network-free.
+public protocol ConversationStreamResilience: Sendable {
+    func waitForPath() async
+    func reconnecting(attempt: Int, retryIn: Double) async
+    func resumed() async
+    func unreachable() async
+    func settled() async
 }
 public struct UnconfiguredConversationBackend: ConversationBackend {
     public init() {}
@@ -272,6 +287,7 @@ public struct UnconfiguredConversationBackend: ConversationBackend {
 }
 
 public extension ConversationBackend {
+    func resumeEvents(_ request: ConversationTurnRequest, afterSequence: Int) async throws -> AsyncThrowingStream<ConversationTurnEvent, Error> { throw ConversationSessionError.unresolvedOperation }
     func revisionWorkCapability(scope:DataScope,conversationID:UUID) async throws -> ConversationAcceptedWorkCapability {.init()}
     func freezeRevisionWork(_ request:ConversationTurnRequest,selection:ConversationRevisionWorkSelection) async throws -> ConversationRevisionWorkIntent {throw ConversationAcceptedWorkError.unavailable}
     func acceptedWorkCapability(scope:DataScope,conversationID:UUID) async throws -> ConversationAcceptedWorkCapability {.init()}

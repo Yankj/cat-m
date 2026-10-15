@@ -127,6 +127,7 @@ export async function collectRound(provider,input,onText=async()=>{}){
     check(!terminal,503,'event_after_terminal');
     if(e.type==='text_delta'){check(typeof e.text==='string'&&Buffer.byteLength(text+e.text)<=64000,503,'invalid_provider_text');text+=e.text;await onText(e.text);}
     else if(e.type==='tool_call'){check(calls.length<4&&!calls.some(c=>c.id===e.id),503,'duplicate_tool_call');calls.push({id:e.id,name:e.name,arguments:clone(e.arguments)});}
+    else if(e.type==='thinking_delta'){check(typeof e.text==='string',503,'invalid_provider_text');await input.onThinking?.(e.text);}
     else if(e.type==='done'){terminal=true;finish=e.finish_reason;}
     else check(false,503,'unsupported_provider_event');
   }
