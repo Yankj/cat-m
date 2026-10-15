@@ -42,7 +42,7 @@ import Foundation
 
     private static func path(_ id: String) -> String { id.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed.subtracting(CharacterSet(charactersIn: "/"))) ?? id }
 
-    private func call(_ method: String, _ route: String, _ body: [String: Any]? = nil) async throws -> Data {
+    func call(_ method: String, _ route: String, _ body: [String: Any]? = nil) async throws -> Data {
         let authorization: String
         do { authorization = try await credentials.authorization(scope: configuration.localScope) } catch { throw MemoryLibraryError.unavailable }
         var request = try configuration.makeRequest(route: Self.base + route, authorization: authorization)
