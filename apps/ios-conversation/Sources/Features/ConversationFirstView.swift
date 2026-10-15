@@ -65,13 +65,13 @@ import CatpawImageComposer
     }
     private var chatNavigation: some View {
         SidebarHost(isPresented:$sidebarPresented,isAtRoot:path.isEmpty && !conversationMenuPresented && !settings && !history && !pendingMessagesPresented && !composerContextPresented && !model.acceptedWorkReviewPresented && model.selectedTaskPlan == nil && model.selectedTaskActions == nil && model.selectedTaskControl == nil && model.pendingModelConsent == nil && model.pendingImageConsent == nil,
-                    snapshot:sidebarSnapshot,theme:sidebarTheme,localize:{ui($0)},onWillOpen:{UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder),to:nil,from:nil,for:nil)},
+                    snapshot:sidebarSnapshot,theme:sidebarTheme,localize:{ui($0)},allowsContentPan:true,onWillOpen:{UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder),to:nil,from:nil,for:nil)},
                     onDismissed:{menuFocused=true},onSelect:route) {
         NavigationStack(path:$path) {
             GeometryReader { viewport in
             ScrollViewReader { proxy in
                 ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 24) {
+                    LazyVStack(alignment: .leading, spacing: 0) {
                         if let session = model.session {
                             if displayMessages.isEmpty {
                                 VStack(alignment: .leading, spacing: 16) {
@@ -79,11 +79,14 @@ import CatpawImageComposer
                                     Text(ui("问一个问题，或说一件想做的事。")).foregroundStyle(CatpawColors.secondary)
                                 }.padding(.top, textSize.isAccessibilitySize ? 24 : 64).padding(.bottom, 32).accessibilityIdentifier("chat.empty")
                             }
-                            ForEach(displayMessages) { message in messageView(message).id(message.id) }
+                            let rows=ConversationTimelineProjection.rows(messages:displayMessages,turns:session.turns)
+                            ForEach(Array(rows.enumerated()),id:\.element.id) { index,row in
+                                timelineRow(row).padding(.top,timelineSpacing(row,previous:index>0 ? rows[index-1]:nil)).id(row.id)
+                            }
                             if let latest = session.turns.last, latest.state == .completed {
-                                Text(ui("回复完成")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary).accessibilityIdentifier("chat.reply.completed")
+                                Text(ui("回复完成")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary).accessibilityIdentifier("chat.reply.completed").padding(.top,8)
                             } else if let latest = session.turns.last, latest.state == .failed {
-                                Text(ui("此轮回复未完成")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.attention).accessibilityIdentifier("chat.reply.failed")
+                                Text(ui("此轮回复未完成")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.attention).accessibilityIdentifier("chat.reply.failed").padding(.top,8)
                             }
                             if let turn = session.unresolved, turn.state == .unknown || !model.sending {
                                 Label(turn.error ?? ui("原请求状态待确认"), systemImage: "arrow.clockwise").font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.attention).accessibilityIdentifier("chat.unresolved")
@@ -186,8 +189,13 @@ import CatpawImageComposer
     }
     var body: some View {
         feedbackNavigation
-        .alert(item:$model.pendingModelConsent) { consent in
-            Alert(title:Text(ui(consent.title)),message:Text(ui(consent.body)),primaryButton:.default(Text(ui("允许此对话"))) { model.allowPendingModelConsent(consent) },secondaryButton:.cancel(Text(ui("暂不允许"))) { model.deferModelConsent(consent) })
+        .catpawSheet(item:Binding(get:{model.pendingModelConsent},set:{value in
+            if value==nil,let current=model.pendingModelConsent {model.deferModelConsent(current)}
+            else {model.pendingModelConsent=value}
+        })) { consent in
+            ConversationModelConsentView(consent:consent,canAllow:model.canReviewModelConsent,
+                allow:{model.allowPendingModelConsent(consent)},deferConsent:{model.deferModelConsent(consent)})
+                .id(consent.routeHash+"-"+String(consent.expectedRevision))
         }
         .catpawSheet(item:Binding(get:{model.pendingImageConsent},set:{value in if value==nil,model.pendingImageConsent != nil {model.cancelImageConsent()}})) {consent in
             ConversationImageConsentView(consent:consent,preview:model.imageDraft.attachment?.thumbnailData,caption:model.draft,saving:model.checkingImageConsent,allow:{confirmed in model.allowPendingImageConsent(consent,confirmed:confirmed)},cancel:model.cancelImageConsent)
@@ -469,6 +477,38 @@ import CatpawImageComposer
             if !messages.contains(where:{$0.id == id}) { messages.append(.init(id:id,role:.user,content:intent.text,image:intent.image)) }
         }
         return messages
+    }
+    private func timelineSpacing(_ row:ConversationTimelineProjection.Row,previous:ConversationTimelineProjection.Row?)->CGFloat {
+        guard let previous else {return 0}
+        guard let turn=row.turnID,turn==previous.turnID else {return 24}
+        let process=row.message.role == .tool || row.message.toolName != nil || previous.message.role == .tool || previous.message.toolName != nil
+        return process ? 8:12
+    }
+    @ViewBuilder private func timelineRow(_ row:ConversationTimelineProjection.Row)->some View {
+        switch row.presentation {
+        case .message:messageView(row.message)
+        case .processPending:
+            Label(row.message.toolName == "agent_status" ? ui("读取任务进展…"):ui("正在处理请求…"),systemImage:"circle.dotted")
+                .font(CatpawTypography.Role.caption.font).symbolRenderingMode(.monochrome)
+                .foregroundStyle(CatpawColors.secondary).accessibilityIdentifier("chat.process.\(row.id)")
+        case .fallback:
+            VStack(alignment:.leading,spacing:4) {
+                Label(ui("处理进展待核对"),systemImage:"exclamationmark.circle").font(CatpawTypography.Role.caption.font)
+                    .symbolRenderingMode(.monochrome).foregroundStyle(CatpawColors.attention)
+                if let failure=row.message.failure,!failure.isEmpty {
+                    Text(verbatim:failure).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
+                }
+                // observe() owns only unresolved-or-latest. Never bind a historical
+                // process row to a different operation's read action.
+                if let turnID=row.turnID,let current=model.session?.unresolved ?? model.session?.turns.last,
+                   current.id==turnID,current.state != .notSent,current.state != .cancelledBeforeSend {
+                    Button(ui("读取原请求进展")) {model.readOriginal()}
+                        .touchTarget().buttonStyle(CatpawPressButtonStyle()).disabled(model.busy)
+                        .accessibilityHint(ui("只查询原请求，不重新发送消息"))
+                        .accessibilityIdentifier("chat.process.observe.\(row.id)")
+                }
+            }.accessibilityIdentifier("chat.process.\(row.id)")
+        }
     }
     private func submitDraft() {
         if canSendDraft {followingLatest=true}

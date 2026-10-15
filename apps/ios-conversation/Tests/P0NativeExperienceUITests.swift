@@ -141,12 +141,12 @@ final class P0NativeExperienceUITests:XCTestCase {
     }
     func testActualConsentAlertConfirmationDispatchesOriginalMessageOnce() {
         let app=launch("p0-ui-consent"),input=app.textViews["chat.input"]
-        clear(input);input.typeText("Synthetic explicit permission question");app.buttons["chat.send"].tap()
-        XCTAssertTrue(app.alerts.firstMatch.waitForExistence(timeout:5))
         XCTAssertEqual(probe(app)["synthetic_consent_calls"] as? Int,0)
         XCTAssertEqual(probe(app)["synthetic_reply_calls"] as? Int,0)
-        let allow=app.alerts.firstMatch.buttons.matching(NSPredicate(format:"label IN %@",["允许此对话","Allow this conversation"])).firstMatch
-        XCTAssertTrue(allow.exists);allow.tap()
+        clear(input);input.typeText("Synthetic explicit permission question");app.buttons["chat.send"].tap()
+        let allow=app.buttons["chat.modelConsent.allow"]
+        XCTAssertTrue(allow.waitForExistence(timeout:5),app.debugDescription)
+        XCTAssertTrue(allow.isEnabled && allow.isHittable);NativeUIGeometry.assertMinimumHeight(allow.frame);allow.tap()
         wait({self.probe(app)["synthetic_consent_calls"] as? Int == 1 && self.probe(app)["turn_state"] as? String == "running"},seconds:8)
         let reader=app.descendants(matching:.any)["chat.assistantMessage"].firstMatch
         XCTAssertTrue(reader.waitForExistence(timeout:2))

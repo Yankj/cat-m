@@ -1,86 +1,122 @@
 import SwiftUI
 
-/// Wrap the host's NavigationStack. The host remains the navigation/state owner.
-public struct SidebarHost<Content: View>: View {
+/// Keep the host NavigationStack mounted at its original width. The sidebar is
+/// a fixed underlay; only this complete foreground moves during a reveal.
+@MainActor public struct SidebarHost<Content: View>: View {
     @Binding private var isPresented: Bool
     private let isAtRoot: Bool
     private let snapshot: SidebarSnapshot
     private let theme: SidebarTheme
-    private let localize:(String)->String
+    private let localize: (String) -> String
     private let excludedGestureAreas: [CGRect]
+    private let allowsContentPan: Bool
     private let onSelect: (SidebarDestination) -> Void
     private let onWillOpen: () -> Void
     private let onDismissed: () -> Void
     private let content: Content
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.displayScale) private var displayScale
     @State private var query = ""
-    @State private var dragProgress: CGFloat = 0
-    @State private var isDragging = false
+    @StateObject private var motion = SidebarMotionDriver()
 
-    /// isAtRoot must also be false while another modal owns interaction. Exclusion areas
-    /// use host-local coordinates for custom code/content views that cannot be detected as UIScrollView.
+    /// isAtRoot must be false while any modal owns interaction. Generic clients
+    /// retain edge-only opening unless they explicitly opt into content panning.
     public init(isPresented: Binding<Bool>, isAtRoot: Bool, snapshot: SidebarSnapshot,
-                theme: SidebarTheme = .catpaw,localize:@escaping (String)->String = {$0}, excludedGestureAreas: [CGRect] = [],
+                theme: SidebarTheme = .catpaw, localize: @escaping (String) -> String = {$0}, excludedGestureAreas: [CGRect] = [],
+                allowsContentPan: Bool = false,
                 onWillOpen: @escaping () -> Void = {}, onDismissed: @escaping () -> Void = {},
                 onSelect: @escaping (SidebarDestination) -> Void, @ViewBuilder content: () -> Content) {
         _isPresented = isPresented; self.isAtRoot = isAtRoot; self.snapshot = snapshot
-        self.theme = theme;self.localize=localize; self.excludedGestureAreas = excludedGestureAreas
+        self.theme = theme; self.localize = localize; self.excludedGestureAreas = excludedGestureAreas
+        self.allowsContentPan = allowsContentPan
         self.onWillOpen = onWillOpen; self.onDismissed = onDismissed
         self.onSelect = onSelect; self.content = content()
     }
-
     public var body: some View {
         GeometryReader { geometry in
             let width = SidebarGesturePolicy.drawerWidth(available: geometry.size.width)
-            let active = isAtRoot && (isPresented || isDragging)
-            let progress = isDragging && !reduceMotion ? dragProgress : (isPresented ? CGFloat(1) : 0)
+            let active = isAtRoot && motion.isVisible
+            let progress = isAtRoot ? motion.position : 0
+            let radius = SidebarGesturePolicy.foregroundCornerRadius(progress: progress)
+            let foregroundShape = UnevenRoundedRectangle(topLeadingRadius: radius, bottomLeadingRadius: radius,
+                                                         bottomTrailingRadius: 0, topTrailingRadius: 0, style: .continuous)
             ZStack(alignment: .leading) {
-                content.allowsHitTesting(!active).accessibilityHidden(active)
-                if active {
-                    Button { close() } label: {
-                        Color.black.opacity(0.22 * Double(progress)).contentShape(Rectangle())
-                    }.buttonStyle(.plain).accessibilityLabel(localize("关闭侧栏"))
-                        .accessibilityIdentifier("sidebar.scrim")
-                    SidebarPanel(snapshot: snapshot, query: $query, theme: theme,localize:localize,
-                                 onSelect: { destination in
-                                     guard snapshot.permits(destination) else { return }
-                                     close(); onSelect(destination)
-                                 }, onClose: close)
-                        .frame(width: width).offset(x: -width * (1 - progress))
-                        .accessibilityHidden(progress == 0)
-                        #if os(iOS)
-                        .background(SidebarGestureBridge(direction: .closing, enabled: isPresented,
-                                                         excludedAreas: [], onBegan: { isDragging = true; dragProgress = 1 },
-                                                         onChanged: { dragProgress = SidebarGesturePolicy.progress(direction: .closing, translationX: $0, width: width) },
-                                                         onEnded: { velocity, cancelled in settle(.closing, velocity: velocity, cancelled: cancelled) }))
-                        #endif
-                }
-            }.animation(reduceMotion || isDragging ? nil : .easeOut(duration: 0.22), value: progress)
+                SidebarPanel(snapshot: snapshot, query: $query, theme: theme, localize: localize,
+                             isActive: isAtRoot && motion.isFullyOpen,
+                             onSelect: { destination in
+                                 guard snapshot.permits(destination) else { return }
+                                 close(); onSelect(destination)
+                             }, onClose: close)
+                    .frame(width: width, height: geometry.size.height)
+                    .allowsHitTesting(active && !motion.isDragging).disabled(!active || motion.isDragging)
+                    .accessibilityHidden(!isAtRoot || !motion.isFullyOpen)
+                content
+                    .frame(width: geometry.size.width, height: geometry.size.height)
+                    .allowsHitTesting(!active).accessibilityHidden(active)
+                    .overlay {
+                        Button(action: close) {
+                            Color.black.opacity(0.22 * Double(progress)).contentShape(Rectangle())
+                        }.buttonStyle(.plain).accessibilityLabel(localize("关闭侧栏"))
+                            .accessibilityIdentifier("sidebar.scrim")
+                            .allowsHitTesting(active).accessibilityHidden(!active)
+                    }
+                    // Zero radius is the ordinary full-width host. Only the
+                    // exposed leading edge rounds; the system keyboard is in
+                    // its own window and navigation keeps the same proposal.
+                    .clipShape(foregroundShape)
+                    .overlay {
+                        foregroundShape.strokeBorder(theme.separator.opacity(Double(progress)), lineWidth: 1 / max(1, displayScale))
+                            .allowsHitTesting(false).accessibilityHidden(true)
+                    }
+                    .modifier(SidebarForegroundTranslation(x: width * progress))
+            }.frame(width: geometry.size.width, height: geometry.size.height, alignment: .leading)
+                .background(theme.panel).clipped()
                 #if os(iOS)
-                .background(SidebarGestureBridge(direction: .opening, enabled: isAtRoot && !active,
-                                                 excludedAreas: excludedGestureAreas, onBegan: {
-                                                     isDragging = true; dragProgress = 0
-                                                 }, onChanged: {
-                                                     dragProgress = SidebarGesturePolicy.progress(direction: .opening, translationX: $0, width: width)
-                                                 }, onEnded: { velocity, cancelled in settle(.opening, velocity: velocity, cancelled: cancelled) }))
+                .background(SidebarGestureBridge(enabled: isAtRoot, progress: progress,
+                                                 allowsContentPan: allowsContentPan, excludedAreas: excludedGestureAreas,
+                                                 onBegan: {
+                                                     guard isAtRoot else { return }
+                                                     if !motion.isVisible { onWillOpen() }
+                                                     motion.beginDrag()
+                                                 }, onChanged: { translation in
+                                                     guard isAtRoot else { return }
+                                                     motion.drag(translationX: translation, width: width)
+                                                 }, onEnded: { velocity, cancelled in
+                                                     guard isAtRoot, motion.isDragging else { return }
+                                                     isPresented = motion.endDrag(velocityX: velocity, width: width, cancelled: cancelled, reduceMotion: reduceMotion)
+                                                 }))
                 #endif
         }.onAppear {
-            if !isAtRoot { close() }
+            if isAtRoot {
+                if isPresented { onWillOpen(); motion.move(to: true, reduceMotion: reduceMotion) }
+            } else { reset() }
         }.onChange(of: isPresented) { _, shown in
-            if shown {
-                if isAtRoot { onWillOpen() } else { close() }
-            } else { onDismissed() }
+            guard isAtRoot else { reset(); return }
+            if shown && !motion.isVisible { onWillOpen() }
+            motion.move(to: shown, reduceMotion: reduceMotion)
+        }.onChange(of: motion.isVisible) { _, visible in
+            if !visible { onDismissed() }
         }.onChange(of: isAtRoot) { _, atRoot in
-            if !atRoot { close() }
+            if !atRoot { reset() }
         }.onChange(of: snapshot.contextID) { _, _ in
-            query = ""; close()
-        }
+            query = ""; reset()
+        }.onChange(of: reduceMotion) { _, reduced in
+            if reduced { motion.removeInertia() }
+        }.onDisappear { motion.reset() }
     }
+    private func close() { isPresented = false; motion.move(to: false, reduceMotion: reduceMotion) }
+    private func reset() { isPresented = false; motion.reset() }
+}
 
-    private func close() { isDragging = false; isPresented = false; dragProgress = 0 }
-    private func settle(_ direction: SidebarDragDirection, velocity: CGFloat, cancelled: Bool) {
-        let open = SidebarGesturePolicy.settlesOpen(direction: direction, progress: dragProgress,
-                                                    velocityX: velocity, cancelled: cancelled) && isAtRoot
-        isDragging = false; isPresented = open; dragProgress = open ? 1 : 0
+/// This transform has no independently animated value. Descendant navigation and
+/// controls retain their own transactions; only the driver advances this offset.
+private struct SidebarForegroundTranslation: GeometryEffect {
+    let x: CGFloat
+    var animatableData: EmptyAnimatableData {
+        get { EmptyAnimatableData() }
+        set {}
+    }
+    func effectValue(size: CGSize) -> ProjectionTransform {
+        ProjectionTransform(CGAffineTransform(translationX: x, y: 0))
     }
 }
