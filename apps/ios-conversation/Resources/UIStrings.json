@@ -331,6 +331,14 @@
     "en": "Task progress",
     "zh-Hans": "任务进度"
   },
+  "会打开系统短信页，由你点发送。": {
+    "en": "Opens Messages; you tap Send.",
+    "zh-Hans": "会打开系统短信页，由你点发送。"
+  },
+  "会打开系统邮件页，由你点发送。": {
+    "en": "Opens Mail; you tap Send.",
+    "zh-Hans": "会打开系统邮件页，由你点发送。"
+  },
   "会话": {
     "en": "Conversations",
     "zh-Hans": "会话"
@@ -731,6 +739,10 @@
     "en": "Named fixture",
     "zh-Hans": "具名 Fixture"
   },
+  "内容": {
+    "en": "Content",
+    "zh-Hans": "内容"
+  },
   "内容不可用": {
     "en": "Content unavailable",
     "zh-Hans": "内容不可用"
@@ -750,6 +762,10 @@
   "写文章": {
     "en": "Write an article",
     "zh-Hans": "写文章"
+  },
+  "写邮件": {
+    "en": "Write email",
+    "zh-Hans": "写邮件"
   },
   "决定尚未发送；这份事项仍保留。": {
     "en": "The decision was not sent. This item is retained.",
@@ -795,6 +811,10 @@
     "en": "Prepare new Run",
     "zh-Hans": "准备新 Run"
   },
+  "出行方式": {
+    "en": "Travel mode",
+    "zh-Hans": "出行方式"
+  },
   "分享": {
     "en": "Share",
     "zh-Hans": "分享"
@@ -838,6 +858,10 @@
   "切换项目会打开该项目的独立会话，原会话的历史与草稿保留。": {
     "en": "Switching projects opens a separate conversation. The original history and draft remain saved.",
     "zh-Hans": "切换项目会打开该项目的独立会话，原会话的历史与草稿保留。"
+  },
+  "列表": {
+    "en": "List",
+    "zh-Hans": "列表"
   },
   "创建": {
     "en": "Create",
@@ -894,6 +918,14 @@
   "剩余时间": {
     "en": "Remaining time",
     "zh-Hans": "剩余时间"
+  },
+  "加入": {
+    "en": "Add",
+    "zh-Hans": "加入"
+  },
+  "加入日历": {
+    "en": "Add to Calendar",
+    "zh-Hans": "加入日历"
   },
   "加权结果 = 得分 × 权重之和 / 总权重": {
     "en": "Weighted score = sum of score × weight / total weight",
@@ -1079,13 +1111,25 @@
     "en": "Audio is processed in memory for up to 45 seconds. Only requiresOnDeviceRecognition requests are created. If unavailable, use text; no cloud fallback.",
     "zh-Hans": "原音只在内存处理，最长 45 秒。仅创建 requiresOnDeviceRecognition 请求；不可用时回文字，不转云端识别。"
   },
+  "去发送": {
+    "en": "Go to send",
+    "zh-Hans": "去发送"
+  },
   "去设置": {
     "en": "Open Settings",
     "zh-Hans": "去设置"
   },
+  "去购物 App": {
+    "en": "Open shopping app",
+    "zh-Hans": "去购物 App"
+  },
   "参数哈希": {
     "en": "Parameters hash",
     "zh-Hans": "参数哈希"
+  },
+  "发短信": {
+    "en": "Send text",
+    "zh-Hans": "发短信"
   },
   "发送": {
     "en": "Send",
@@ -1159,6 +1203,10 @@
     "en": "Chooses only among free routes the server has consented; busy failover is a server setting. Paid routes are never used.",
     "zh-Hans": "只在服务端已同意的免费路由间选择；繁忙时是否切换由服务端配置决定。永不使用付费路由。"
   },
+  "只帮你打开，不会代下单。": {
+    "en": "Only opens the app; never orders for you.",
+    "zh-Hans": "只帮你打开，不会代下单。"
+  },
   "只查询原请求，不重新发送消息": {
     "en": "Read the original request without sending another message",
     "zh-Hans": "只查询原请求，不重新发送消息"
@@ -1186,6 +1234,10 @@
   "可编辑转写": {
     "en": "Editable transcript",
     "zh-Hans": "可编辑转写"
+  },
+  "号码": {
+    "en": "Number",
+    "zh-Hans": "号码"
   },
   "合同能力已读回 · 本机合成服务": {
     "en": "Contract capabilities read · local synthetic service",
@@ -1266,6 +1318,10 @@
   "启用本地识别并开始说话": {
     "en": "Enable local recognition and start speaking",
     "zh-Hans": "启用本地识别并开始说话"
+  },
+  "呼叫": {
+    "en": "Call",
+    "zh-Hans": "呼叫"
   },
   "命令为本地提示词模板；创建表单是补充流程，不执行 shell。": {
     "en": "Commands are local prompt templates. The creation form is an added flow and does not run shell commands.",
@@ -1375,6 +1431,14 @@
     "en": "Enable the demo partition in Settings and select On Device.",
     "zh-Hans": "在设置开启演示数据分区，并切换到本机。"
   },
+  "在这台 iPhone 上执行": {
+    "en": "Run on this iPhone",
+    "zh-Hans": "在这台 iPhone 上执行"
+  },
+  "地点": {
+    "en": "Place",
+    "zh-Hans": "地点"
+  },
   "填写": {
     "en": "Fill in",
     "zh-Hans": "填写"
@@ -1382,6 +1446,10 @@
   "处理进展待核对": {
     "en": "Processing status needs checking",
     "zh-Hans": "处理进展待核对"
+  },
+  "备注": {
+    "en": "Notes",
+    "zh-Hans": "备注"
   },
   "复制": {
     "en": "Copy",
@@ -1755,13 +1823,25 @@
     "en": "Created",
     "zh-Hans": "已创建"
   },
+  "已创建提醒": {
+    "en": "Reminder created",
+    "zh-Hans": "已创建提醒"
+  },
   "已到期": {
     "en": "Expired",
     "zh-Hans": "已到期"
   },
+  "已加入日历": {
+    "en": "Added to Calendar",
+    "zh-Hans": "已加入日历"
+  },
   "已发出，结果尚未确认": {
     "en": "Dispatched; outcome unconfirmed",
     "zh-Hans": "已发出，结果尚未确认"
+  },
+  "已发起呼叫": {
+    "en": "Call started",
+    "zh-Hans": "已发起呼叫"
   },
   "已发送": {
     "en": "Sent",
@@ -1810,6 +1890,10 @@
   "已展开": {
     "en": "Expanded",
     "zh-Hans": "已展开"
+  },
+  "已打开发送页": {
+    "en": "Compose sheet opened",
+    "zh-Hans": "已打开发送页"
   },
   "已批准 · {0}": {
     "en": "Approved · {0}",
@@ -1915,6 +1999,10 @@
     "en": "Remembered: {0}",
     "zh-Hans": "已记住：{0}"
   },
+  "已设置": {
+    "en": "Set",
+    "zh-Hans": "已设置"
+  },
   "已读回执未保存：{0}": {
     "en": "Read receipt was not saved: {0}",
     "zh-Hans": "已读回执未保存：{0}"
@@ -1939,9 +2027,17 @@
     "en": "Expired",
     "zh-Hans": "已过期"
   },
+  "已过期，需要的话再跟小猫说一次": {
+    "en": "Expired. Ask Catpaw again if you still need it.",
+    "zh-Hans": "已过期，需要的话再跟小猫说一次"
+  },
   "已过期；尚未决定或执行。": {
     "en": "Expired; no decision or execution.",
     "zh-Hans": "已过期；尚未决定或执行。"
+  },
+  "已运行": {
+    "en": "Ran",
+    "zh-Hans": "已运行"
   },
   "已连接": {
     "en": "Connected",
@@ -1975,6 +2071,10 @@
     "en": "Help me summarize the key points of this document",
     "zh-Hans": "帮我整理这份文档的要点"
   },
+  "平台": {
+    "en": "Platform",
+    "zh-Hans": "平台"
+  },
   "应用": {
     "en": "App",
     "zh-Hans": "应用"
@@ -2002,6 +2102,10 @@
   "开启记忆利用": {
     "en": "Turn on memory use",
     "zh-Hans": "开启记忆利用"
+  },
+  "开始": {
+    "en": "Start",
+    "zh-Hans": "开始"
   },
   "开始体验": {
     "en": "Get started",
@@ -2239,6 +2343,10 @@
     "en": "Forget this entry and prevent learning it again from the old source. The original conversation is kept.",
     "zh-Hans": "忘记这条记忆并阻止旧来源再次学回；不会删除原对话。"
   },
+  "快捷指令": {
+    "en": "Shortcut",
+    "zh-Hans": "快捷指令"
+  },
   "思考中": {
     "en": "Thinking",
     "zh-Hans": "思考中"
@@ -2435,6 +2543,10 @@
     "en": "Open sidebar",
     "zh-Hans": "打开侧栏"
   },
+  "打开地图": {
+    "en": "Open Maps",
+    "zh-Hans": "打开地图"
+  },
   "打开实际读取网页": {
     "en": "Open the read webpage",
     "zh-Hans": "打开实际读取网页"
@@ -2450,6 +2562,14 @@
   "打断本轮": {
     "en": "Interrupt this turn",
     "zh-Hans": "打断本轮"
+  },
+  "打电话": {
+    "en": "Call",
+    "zh-Hans": "打电话"
+  },
+  "执行": {
+    "en": "Run",
+    "zh-Hans": "执行"
   },
   "执行中，结果尚未确认": {
     "en": "Executing; outcome unconfirmed",
@@ -2490,6 +2610,10 @@
   "技能": {
     "en": "Skills",
     "zh-Hans": "技能"
+  },
+  "抄送": {
+    "en": "Cc",
+    "zh-Hans": "抄送"
   },
   "把想继续做的事，\n交给个人助理。": {
     "en": "Give your personal assistant\nsomething to keep working on.",
@@ -2595,6 +2719,10 @@
     "en": "Reminder offset (seconds)",
     "zh-Hans": "提醒偏移（秒）"
   },
+  "搜索": {
+    "en": "Search",
+    "zh-Hans": "搜索"
+  },
   "搜索专家": {
     "en": "Search experts",
     "zh-Hans": "搜索专家"
@@ -2662,6 +2790,10 @@
   "操作记录": {
     "en": "Action history",
     "zh-Hans": "操作记录"
+  },
+  "收件人": {
+    "en": "To",
+    "zh-Hans": "收件人"
   },
   "收起": {
     "en": "Collapse",
@@ -2791,6 +2923,10 @@
     "en": "New Gateway demo conversation",
     "zh-Hans": "新建 Gateway 演示会话"
   },
+  "新建提醒": {
+    "en": "New reminder",
+    "zh-Hans": "新建提醒"
+  },
   "新建日历事件": {
     "en": "Create a calendar event",
     "zh-Hans": "新建日历事件"
@@ -2862,6 +2998,10 @@
   "时区": {
     "en": "Time zone",
     "zh-Hans": "时区"
+  },
+  "时间": {
+    "en": "Time",
+    "zh-Hans": "时间"
   },
   "明确保存一条记忆": {
     "en": "Save a memory",
@@ -3539,6 +3679,10 @@
     "en": "View progress and recovery options",
     "zh-Hans": "查看进度与恢复操作"
   },
+  "标签": {
+    "en": "Label",
+    "zh-Hans": "标签"
+  },
   "标题": {
     "en": "Title",
     "zh-Hans": "标题"
@@ -3754,6 +3898,10 @@
   "正在恢复本地选择…": {
     "en": "Restoring local choices…",
     "zh-Hans": "正在恢复本地选择…"
+  },
+  "正在执行…": {
+    "en": "Running…",
+    "zh-Hans": "正在执行…"
   },
   "正在提交": {
     "en": "Submitting",
@@ -3978,6 +4126,10 @@
   "没有新增记忆候选": {
     "en": "No new memory candidates",
     "zh-Hans": "没有新增记忆候选"
+  },
+  "没有权限，未执行": {
+    "en": "Not allowed, so nothing ran.",
+    "zh-Hans": "没有权限，未执行"
   },
   "没有模拟在线设备。电脑配对、云账号和心跳接口尚未接入。": {
     "en": "No devices are shown as falsely online. Computer pairing, cloud accounts and heartbeat APIs are disconnected.",
@@ -4451,6 +4603,10 @@
     "en": "System settings · local preferences",
     "zh-Hans": "系统设置 · 本地偏好"
   },
+  "系统还会再确认一次。": {
+    "en": "iOS will ask once more.",
+    "zh-Hans": "系统还会再确认一次。"
+  },
   "素材采集": {
     "en": "Collect material",
     "zh-Hans": "素材采集"
@@ -4466,6 +4622,10 @@
   "纯 Fixture · 无网络与真实模型": {
     "en": "Pure fixture · no network or real model",
     "zh-Hans": "纯 Fixture · 无网络与真实模型"
+  },
+  "结束": {
+    "en": "End",
+    "zh-Hans": "结束"
   },
   "结束后先检查转写，再放入当前会话输入。你仍需主动点击发送。": {
     "en": "Review the transcript before putting it into this conversation. You still need to tap Send.",
@@ -4498,6 +4658,10 @@
   "结果未知，先核验": {
     "en": "Outcome unknown; verify first",
     "zh-Hans": "结果未知，先核验"
+  },
+  "结果还没告诉小猫": {
+    "en": "Catpaw hasn't received the result yet",
+    "zh-Hans": "结果还没告诉小猫"
   },
   "给 Catpaw 发消息": {
     "en": "Message Catpaw",
@@ -4602,6 +4766,10 @@
   "聊天时说“记住……”，小猫就会把它放在这里。": {
     "en": "Say “remember…” in a chat and it shows up here.",
     "zh-Hans": "聊天时说“记住……”，小猫就会把它放在这里。"
+  },
+  "联系人": {
+    "en": "Contact",
+    "zh-Hans": "联系人"
   },
   "联调未完成，原记录保留": {
     "en": "Testing did not complete. Original records are preserved.",
@@ -4786,6 +4954,10 @@
   "设计创作": {
     "en": "Design",
     "zh-Hans": "设计创作"
+  },
+  "设闹钟": {
+    "en": "Set alarm",
+    "zh-Hans": "设闹钟"
   },
   "识别超时，保留已转写文字供检查。": {
     "en": "Recognition timed out. The transcript is kept for review.",
@@ -5027,6 +5199,10 @@
     "en": "Tap to edit, swipe left to forget",
     "zh-Hans": "轻点编辑，左滑忘记"
   },
+  "输入": {
+    "en": "Input",
+    "zh-Hans": "输入"
+  },
   "输入会保存在当前会话。选择专家与技能可记录工作配置。": {
     "en": "Input stays in this conversation. Expert and skill selections record work configuration.",
     "zh-Hans": "输入会保存在当前会话。选择专家与技能可记录工作配置。"
@@ -5043,9 +5219,17 @@
     "en": "Progress comes from this task record. No remote tools are running.",
     "zh-Hans": "过程与进度来自当前任务记录；没有远程工具执行。"
   },
+  "运行": {
+    "en": "Run",
+    "zh-Hans": "运行"
+  },
   "运行冻结合成报告": {
     "en": "Run frozen synthetic report",
     "zh-Hans": "运行冻结合成报告"
+  },
+  "运行快捷指令": {
+    "en": "Run shortcut",
+    "zh-Hans": "运行快捷指令"
   },
   "近期日志": {
     "en": "Recent journal",
