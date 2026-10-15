@@ -1357,6 +1357,27 @@
       "line": 6,
       "sha256": "c94e383627d9a2a3fd91f19f91e69f7b4cddf7b256b4d32bfb21b8cd2fb362b3",
       "reason": "Reviewed the generated scale-2 AppIcon asset filename on this package line, not an email address. All 30 package filenames/hashes contain no user/session contents; pixel bytes remain local."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeChatWireRunner.swift",
+      "category": "secret_assignment_review",
+      "line": 20,
+      "sha256": "ec395ce51d3c8d02087f06dc2c1396e4c6b560b63189a9e4f8209045e19ed4e8",
+      "reason": "Reviewed unchanged synthetic three-segment test string for missing, expired and cleared session transport assertions. It is not a signed credential; new file bytes add only proposal wire scenarios."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeChatWireRunner.swift",
+      "category": "secret_assignment_review",
+      "line": 26,
+      "sha256": "ec395ce51d3c8d02087f06dc2c1396e4c6b560b63189a9e4f8209045e19ed4e8",
+      "reason": "Reviewed unchanged synthetic three-segment test string for missing, expired and cleared session transport assertions. It is not a signed credential; new file bytes add only proposal wire scenarios."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeChatWireRunner.swift",
+      "category": "secret_assignment_review",
+      "line": 30,
+      "sha256": "ec395ce51d3c8d02087f06dc2c1396e4c6b560b63189a9e4f8209045e19ed4e8",
+      "reason": "Reviewed unchanged synthetic three-segment test string for missing, expired and cleared session transport assertions. It is not a signed credential; new file bytes add only proposal wire scenarios."
     }
   ]
 }

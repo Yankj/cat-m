@@ -1,3 +1,4 @@
+import {MEMORY_PROPOSAL_CONTRACT} from './memory-extraction-service.mjs';
 import { ApiError,check,UUID } from '../facade-r2/src/common.mjs';
 import {TASK_REVISION_CONTRACT,TASK_REVISION_LIMITS} from './task-revision-contract.mjs';
 import {ACCEPTED_WORK_INTENT_CONTRACT,ACCEPTED_WORK_INTENT_BYTES,parseAcceptedWorkJSON} from './accepted-work-intent-contract.mjs';
@@ -48,7 +49,9 @@ export function createChatFetchHandler(runtime){
       }
       if(method==='POST'&&tail.length===3&&tail[0]==='conversations'&&tail[2]==='control')return json({conversation:await chat.control(auth,scope,tail[1],await body())});
       if(method==='POST'&&tail.length===3&&tail[0]==='conversations'&&tail[2]==='turns'){
-        const input=await body(),started=await chat.startTurn(auth,scope,tail[1],input);
+        const input=await body(),capability=request.headers.get('X-Catpaw-Memory-Proposal-Contract');
+        check(capability===null||capability===MEMORY_PROPOSAL_CONTRACT,422,'memory_proposal_contract_invalid');
+        const started=await chat.startTurn(auth,scope,tail[1],input,{memoryProposalContract:capability});
         if(started.replayed)return json({turn:await chat.readTurn(auth,scope,tail[1],input.turn_id,{trusted:started.trusted}),replayed:true});
         runtime.onAccepted?.({owner:started.trusted.owner,principal:started.trusted.principal,turnId:input.turn_id});
         return streamTurn(request,auth,scope,tail[1],input.turn_id,{trusted:started.trusted,initial:started.turn.events[0],afterSequence:1});

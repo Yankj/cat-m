@@ -24,16 +24,23 @@ const server=http.createServer(async(req,res)=>{
   if(req.method==='GET'&&parts.length===9){turnReads++;return emit({turn:turns.get(tid)});}
   if(req.method==='POST'&&parts.length===8&&parts[7]==='turns'){
    turnPosts++;
+   if(req.headers['x-catpaw-memory-proposal-contract']!=='catpaw.memory-proposal.v1')throw Error('new native text client did not opt into the exact memory proposal contract');
    if(Object.keys(body).sort().join()!=='context,expected_grant_epoch,expected_revision,message,turn_id'||Object.keys(body.message).sort().join()!=='id,text')throw Error('body must not replace history/owner/model/key/permission');
    const c=conversations.get(cid);if(body.expected_revision!==c.revision||body.expected_grant_epoch!==c.grant_epoch)throw Error('frozen revision');
    c.messages.push({id:body.message.id,role:'user',content:body.message.text});c.revision++;
    const mode=body.message.text,mid=randomUUID(),delegation=/^wire-delegation-(delegate_plan_v1|delegate_sources_v1)-(empty|bom|nel|prose)(?: https:\/\/docs\.example\.org\/docs\/one)?$/.exec(mode),unicodeLine=/^wire-sse-(lf|crlf|cr)-unicode$/.exec(mode);
-   const text=delegation?{empty:'',bom:' \t\n\u00a0\ufeff',nel:'\u0085',prose:' 已受理 '}[delegation[2]]:unicodeLine?'Wire Unicode \u0085 \u2028 \u2029 😺.':'wire-test answer';let sequence=0;
+   const memoryProposal=['wire-memory-proposal','wire-memory-proposal-bad-source'].includes(mode);
+   const text=memoryProposal?'Memory candidates need your confirmation.':delegation?{empty:'',bom:' \t\n\u00a0\ufeff',nel:'\u0085',prose:' 已受理 '}[delegation[2]]:unicodeLine?'Wire Unicode \u0085 \u2028 \u2029 😺.':'wire-test answer';let sequence=0;
    const reality=mode==='wire-unconfigured'?'not_configured':'injected_test_provider';
    const event=(type,data)=>({schema_version:1,contract:'catpaw.native-chat.v1',scope_id:scope,conversation_id:cid,turn_id:body.turn_id,sequence:++sequence,cursor:`${body.turn_id}:${sequence}`,grant_epoch:1,model_reality:reality,type,data});
    const requestHash=hash(raw),events=[event('turn_started',{request_hash:requestHash,conversation_revision:c.revision})],bindings=[];
    if(mode==='wire-unconfigured')events.push(event('turn_failed',{code:'not_configured',retryable:false,reconciliation_required:false}));
    else{
+    if(memoryProposal){
+     const receipt={schema_version:1,contract:'catpaw.memory-proposal.v1',scope_id:scope,conversation_id:cid,turn_id:body.turn_id,source_id:body.message.id,source_hash:hash(mode==='wire-memory-proposal-bad-source'?'tampered original source':body.message.text),memory_generation:1,job_id:randomUUID(),candidates:[{id:randomUUID(),version:1}],status:'proposed',confirmed:false};
+     events.push(event('tool_call',{call_id:'memory-one',name:'propose_memory_v1',arguments:{}}));
+     events.push(event('tool_result',{call_id:'memory-one',name:'propose_memory_v1',result:receipt}));
+    }
     if(delegation||['wire-task','wire-bad-artifact','wire-bad-terminal','wire-scheduled','wire-outcome-unknown','wire-future-state','wire-revoked-scheduled'].includes(mode)){
      const b={scope_id:scope,conversation_id:cid,turn_id:body.turn_id,call_id:'call-one',delegation_id:randomUUID(),operation_id:randomUUID(),run_id:randomUUID(),task_id:hash(body.turn_id),request_hash:hash('task:'+body.turn_id),delegation_revision:1,grant_epoch:1};b.projection_url=`/catpaw/v1/scopes/${scope}/runs/${b.run_id}`;bindings.push(b);
      const toolName=delegation?.[1]??'delegate_task',argumentsValue=delegation?{title:`Wire-only ${toolName} ${delegation[2]}`,goal:'Offline protocol-only delegation',requirements:'No model or real source requests',stop_conditions:['Only named loopback fixture'],steps:['compose','save','verify'].map(id=>({id,title:id,detail:''})),...toolName==='delegate_sources_v1'?{source_urls:['https://docs.example.org/docs/one']}:{} }:{title:'Wire-only committed report',description:'Test only local artifact'};

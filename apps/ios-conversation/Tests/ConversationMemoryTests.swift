@@ -39,9 +39,25 @@ private actor MemoryFixtureBackend:ConversationMemoryBackend {
     func releaseRead(){readGate?.resume();readGate=nil;holdRead=false}
     func counts()->(Int,Int,Int){(posts,reads,originals)}
 }
+
+private func memoryProposalContractChecks() throws {
+    let user=ConversationTranscriptMessage(role:.user,content:"Fictional preference; ask me to confirm."),scope=UUID(),conversation=UUID(),turn=UUID()
+    let request=ConversationTurnRequest(scope:Profiles.user,conversationID:conversation,threadID:nil,operationID:turn,epoch:1,history:[user])
+    let candidate:[String:Any]=["id":UUID().uuidString,"version":1]
+    let base:[String:Any]=["schema_version":1,"contract":"catpaw.memory-proposal.v1","scope_id":scope.uuidString,"conversation_id":conversation.uuidString,"turn_id":turn.uuidString,"source_id":user.id.uuidString,"source_hash":textHash(user.content),"memory_generation":1,"job_id":UUID().uuidString,"candidates":[candidate],"status":"proposed","confirmed":false]
+    func decode(_ value:[String:Any]) throws -> ConversationMemoryProposalReceipt {try .decode(JSONSerialization.data(withJSONObject:value,options:.sortedKeys),request:request,serverScopeID:scope)}
+    for count in [0,1,6] {var value=base;value["candidates"]=(0..<count).map{_ in ["id":UUID().uuidString,"version":1]};let receipt=try decode(value);try memoryCheck(receipt.candidates.count==count && !receipt.confirmed,"Proposal invented confirmed authority or rejected an empty guarded result")}
+    let changes:[(String,Any)]=[("schema_version",true),("schema_version",2),("contract","catpaw.memory.v1"),("scope_id",UUID().uuidString),("conversation_id",UUID().uuidString),("turn_id",UUID().uuidString),("source_id",UUID().uuidString),("source_hash",textHash("another input")),("source_hash",String(repeating:"x",count:64)),("memory_generation",0),("memory_generation",true),("memory_generation",9_007_199_254_740_992),("status","active"),("confirmed",true),("confirmed",0),("job_id","not-a-uuid"),("value","must never enter a refs-only receipt"),("lease_id",UUID().uuidString),("candidates",[candidate,candidate]),("candidates",[["id":UUID().uuidString,"version":0]]),("candidates",[["id":UUID().uuidString,"version":true]]),("candidates",[["id":UUID().uuidString,"version":1,"value":"invented"]])]
+    for (key,replacement) in changes {var invalid=base;invalid[key]=replacement;var rejected=false;do{_=try decode(invalid)}catch{rejected=true};try memoryCheck(rejected,"Proposal accepted invalid field or binding: "+key)}
+    let bytes=try JSONSerialization.data(withJSONObject:base,options:.sortedKeys),raw=String(decoding:bytes,as:UTF8.self)
+    var duplicateRejected=false;do{_=try ConversationMemoryProposalReceipt.decode(Data(raw.replacingOccurrences(of:"\"schema_version\":1",with:"\"schema_version\":1,\"schema_version\":1").utf8),request:request,serverScopeID:scope)}catch{duplicateRejected=true}
+    try memoryCheck(duplicateRejected,"Proposal accepted duplicate JSON authority fields")
+    print("PASS memory proposal contract: refs-only/exact source and turn, zero/six candidates, 22 authority/type/binding negatives and duplicate key")
+}
 private enum MemoryChecks {
     static func repository(_ directory:URL) throws -> Repository {try Repository(persistence:FilePersistence(url:directory.appendingPathComponent("memory-synthetic.json")))}
     static func run() async throws {
+        try memoryProposalContractChecks()
         #if MEMORY_PORTABLE
         let wireURLs=CommandLine.arguments.dropFirst().prefix(2).map{URL(fileURLWithPath:$0)}
         let canonicalURL=URL(fileURLWithPath:CommandLine.arguments[3])
