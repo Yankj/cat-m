@@ -246,7 +246,10 @@ public actor ConversationSessionService {
                     try await apply(event, request: request, observationToken: observationToken)
                     if attempt > 0 { attempt = 0; await resilience?.resumed() }
                     let saved = try await read(scope: scope, conversationID: conversationID)
-                    if let turn = saved.turns.last, [.completed, .failed, .unknown].contains(turn.state) || turn.awaitingApproval { break resumeLoop }
+                    if let turn = saved.turns.last, [.completed, .failed, .unknown].contains(turn.state) { break resumeLoop }
+                    // Stop only at turn_suspended: approval_requested alone already sets pendingApprovals,
+                    // and breaking there would drop the suspension event (and any further interrupts of the round).
+                    if case .suspended = event.payload, saved.turns.last?.awaitingApproval == true { break resumeLoop }
                 }
                 break resumeLoop
             } catch let interrupted as ConversationStreamInterrupted {
