@@ -121,3 +121,13 @@ test('feature gate parsing: on / allowlist / off',()=>{
  assert.equal(readFeatureGate('true'),'on');assert.equal(readFeatureGate('allowlist'),'allowlist');assert.equal(readFeatureGate(undefined),'off');
  assert.ok(featureAllows('allowlist',list,id));assert.ok(!featureAllows('allowlist',list,randomUUID()));assert.ok(featureAllows('on',list,null));assert.ok(!featureAllows('off',list,id));
 });
+test('ui.response actionId: omitted and null are both accepted without actions; confirm still requires one',()=>{
+ const choices=validateBlock(BLOCKS.choices),form=validateBlock(BLOCKS.form),confirm=validateBlock(BLOCKS.confirm),sheet=validateBlock({block:{id:'s2',kind:'sheet',title:'登记',fields:[{id:'name',label:'名字',type:'text',required:true}]}});
+ const {actionId:_c,...noAction}=RESP.choices,{actionId:_f,...formNoAction}=RESP.form;
+ assert.ok(validateResponse(choices,noAction));assert.ok(validateResponse(choices,{...noAction,actionId:null}));
+ assert.ok(validateResponse(form,formNoAction));assert.ok(validateResponse(form,{...formNoAction,actionId:null}));
+ assert.ok(validateResponse(sheet,{type:'ui.response',blockId:'s2',values:{name:'x'},respondedAt:RA}),'values only; actionId and selected omitted');
+ const {actionId:_k,...confirmNoAction}=RESP.confirm;
+ assert.throws(()=>validateResponse(confirm,confirmNoAction),/ui_response_invalid/);assert.throws(()=>validateResponse(confirm,{...confirmNoAction,actionId:null}),/ui_response_invalid/);
+ assert.throws(()=>validateResponse(choices,{...noAction,actionId:'nope'}),/ui_response_invalid/,'an actionId must name a real action');
+});
