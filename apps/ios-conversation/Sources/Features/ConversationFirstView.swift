@@ -331,10 +331,6 @@ import CatpawImageComposer
         .catpawSheet(item:$model.selectedTaskControl,onDismiss:{Task{await model.refresh()}}) {reference in
             ConversationTaskControlView(service:model.taskControlService,reference:reference,admissionAllowed:{model.loaded && model.networkAdmissionAllowed && scene == .active},onApplied:{envelope in try await model.recordAppliedTaskControl(envelope,reference:reference)}).environment(\.dynamicTypeSize,textSize)
         }
-        .catpawSheet(isPresented:$pendingMessagesPresented) {
-            ConversationPendingMessagesView(model:model)
-                .presentationDetents(textSize.isAccessibilitySize ? [.large] : [.medium,.large]).presentationDragIndicator(.visible)
-        }
         .catpawSheet(isPresented:$composerContextPresented,onDismiss:completeContextAction) {composerContextSheet}
         .task { await model.start() }
         .task(id:model.conversationID) {
@@ -505,15 +501,7 @@ import CatpawImageComposer
                 }.padding(10).background(CatpawColors.input,in:RoundedRectangle(cornerRadius:12))
             }
             if !model.followups.pending.isEmpty {
-                Button {contextAction(.pendingMessages,inDetails:inDetails)} label: {
-                    HStack(spacing:8) {
-                        Text(ui("待发送 · {0} 条",arguments:[String(model.followups.pending.count)]))
-                        Text(model.followups.paused ? ui("已暂停") : ui("等待当前回复"))
-                        Spacer(minLength:4)
-                        Image(systemName:"chevron.right").accessibilityHidden(true)
-                    }.font(CatpawTypography.Role.caption.font).frame(minHeight:44).contentShape(Rectangle())
-                }.foregroundStyle(CatpawColors.secondary).buttonStyle(CatpawPressButtonStyle())
-                    .accessibilityHint(ui("查看、编辑或暂停本机待发消息")).accessibilityIdentifier(inDetails ? "chat.input.context.pending" : "chat.pendingSummary")
+                pendingStatusBar(inDetails:inDetails)
             }
             if model.checkingModelConsent { Text(ui("正在准备发送…")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary).accessibilityIdentifier("chat.preparing") }
             if let error = model.error { Text(ui(error)).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.attention).fixedSize(horizontal:false,vertical:true).accessibilityIdentifier("chat.error") }
@@ -542,6 +530,30 @@ import CatpawImageComposer
                 }.frame(minHeight:44).contentShape(Rectangle())
             }.buttonStyle(CatpawPressButtonStyle()).foregroundStyle(CatpawColors.secondary).accessibilityLabel(ui("模型连接设置")).accessibilityValue(connectionSummary).accessibilityIdentifier("chat.connection") }
         }.frame(maxWidth:.infinity,alignment:.leading)
+    }
+    /// Compact pending-send strip above the composer: one 32pt line, hairline outline, no grey slab.
+    /// The inline copy anchors the queue popover; the details copy routes through contextAction.
+    @ViewBuilder private func pendingStatusBar(inDetails:Bool)->some View {
+        let bar=Button {contextAction(.pendingMessages,inDetails:inDetails)} label: {
+            HStack(spacing:6) {
+                Image(systemName:model.followups.paused ? "pause.circle" : "clock").imageScale(.small).accessibilityHidden(true)
+                Text(ui("待发送 · {0} 条",arguments:[String(model.followups.pending.count)])).fontWeight(.medium).foregroundStyle(CatpawColors.ink)
+                Text(verbatim:"·").accessibilityHidden(true)
+                Text(model.followups.paused ? ui("已暂停") : ui("等待当前回复")).lineLimit(1)
+                Spacer(minLength:4)
+                Image(systemName:"chevron.up").imageScale(.small).accessibilityHidden(true)
+            }.font(CatpawTypography.Role.caption.font).padding(.horizontal,12).frame(minHeight:32)
+                .overlay(Capsule().strokeBorder(CatpawColors.separator,lineWidth:0.5))
+                .frame(minHeight:44).contentShape(Rectangle())
+        }.foregroundStyle(CatpawColors.secondary).buttonStyle(CatpawPressButtonStyle())
+            .accessibilityHint(ui("查看、编辑或暂停本机待发消息")).accessibilityIdentifier(inDetails ? "chat.input.context.pending" : "chat.pendingSummary")
+        if inDetails {bar} else {
+            bar.popover(isPresented:$pendingMessagesPresented,arrowEdge:.bottom) {
+                ConversationPendingMessagesView(model:model)
+                    .frame(minWidth:300,idealWidth:340,maxWidth:380)
+                    .presentationCompactAdaptation(.popover)
+            }
+        }
     }
     private func artifactContinuationChip(_ target:ConversationArtifactContinuationReference)->some View {
         VStack(alignment:.leading,spacing:4) {
@@ -903,46 +915,66 @@ private struct ConversationPendingMessagesView:View {
     @State private var preparingEdit=false
     @State private var error:String?
     private func ui(_ key:String)->String {AppLanguage(locale:locale).ui(key)}
+    /// Rows are a single line; the list scrolls once it exceeds this cap.
+    private static let rowHeight:CGFloat=44
+    private static let maxListHeight:CGFloat=264
+    private var listHeight:CGFloat {min(Self.maxListHeight,CGFloat(max(1,model.followups.pending.count))*Self.rowHeight)}
     var body:some View {
-        NavigationStack {
-            List {
-                Section {
-                    Text(ui("待发消息保存在本机，仅在 App 前台发送。编辑会暂停队列，保存或关闭不会继续发送。"))
-                        .font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
-                    if let error {Text(ui(error)).foregroundStyle(CatpawColors.attention).accessibilityIdentifier("chat.followup.error")}
-                    if model.followups.pending.isEmpty {Text(ui("没有待发消息")).accessibilityIdentifier("chat.followup.empty")}
-                    ForEach(model.followups.pending) {message in
-                        VStack(alignment:.leading,spacing:8) {
-                            Text(message.text).textSelection(.enabled).fixedSize(horizontal:false,vertical:true)
-                            if message.image != nil {Text(ui("图片处理许可绑定当前文字。请移除后在输入器重新编辑。")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)}
-                            HStack {
-                                Button {
-                                    preparingEdit=true;error=nil
-                                    Task {do {try await model.pauseQueueForEditing(message);editing=message} catch {self.error=error.localizedDescription};preparingEdit=false}
-                                } label: {Label(ui("编辑并暂停队列"),systemImage:"pencil").frame(minHeight:44)}
-                                    .disabled(preparingEdit || model.editingFollowup || message.image != nil)
-                                    .accessibilityIdentifier("chat.followup.edit."+message.id.uuidString)
-                                Spacer(minLength:8)
-                                Button {model.removeFollowup(message.id)} label: {Image(systemName:"xmark").frame(width:44,height:44)}
-                                    .disabled(preparingEdit || model.editingFollowup)
-                                    .accessibilityLabel(ui("移除后续消息")).accessibilityIdentifier("chat.followup.remove."+message.id.uuidString)
-                            }.buttonStyle(.borderless)
-                        }
+        VStack(alignment:.leading,spacing:0) {
+            HStack(spacing:8) {
+                Text(ui("待发送 · {0} 条").replacingOccurrences(of:"{0}",with:String(model.followups.pending.count)))
+                    .font(CatpawTypography.Role.caption.font.weight(.semibold)).foregroundStyle(CatpawColors.ink)
+                Spacer(minLength:8)
+                if !model.followups.pending.isEmpty {
+                    if model.followups.paused {
+                        Button(ui("继续发送")){model.resumeFollowups()}.accessibilityIdentifier("chat.followup.resume")
+                            .disabled(model.busy || model.editingFollowup || preparingEdit || model.session?.unresolved != nil || ![.connected,.providerUnverified].contains(model.connection.state))
+                    } else {
+                        Button(ui("暂停")){model.pauseFollowups()}.accessibilityIdentifier("chat.followup.pause").disabled(preparingEdit)
                     }
                 }
-            }.navigationTitle(ui("待发消息")).navigationBarTitleDisplayMode(.inline)
-                .toolbar {ToolbarItem(placement:.confirmationAction){Button(ui("完成")){dismiss()}.accessibilityIdentifier("chat.followup.close")}}
-                .safeAreaInset(edge:.bottom) {
-                    if !model.followups.pending.isEmpty {
-                        Group {
-                            if model.followups.paused {
-                                Button(ui("继续发送后续消息")){model.resumeFollowups()}.accessibilityIdentifier("chat.followup.resume")
-                                    .disabled(model.busy || model.editingFollowup || preparingEdit || model.session?.unresolved != nil || ![.connected,.providerUnverified].contains(model.connection.state))
-                            } else {Button(ui("暂停后续消息")){model.pauseFollowups()}.accessibilityIdentifier("chat.followup.pause").disabled(preparingEdit)}
-                        }.touchTarget().buttonStyle(CatpawPressButtonStyle()).padding().frame(maxWidth:.infinity).background(CatpawColors.background)
+            }.font(CatpawTypography.Role.caption.font).buttonStyle(.borderless).tint(CatpawColors.ink)
+                .padding(.horizontal,14).frame(minHeight:40)
+            Divider()
+            ScrollView {
+                LazyVStack(spacing:0) {
+                    if model.followups.pending.isEmpty {
+                        Text(ui("没有待发消息")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
+                            .frame(maxWidth:.infinity,minHeight:Self.rowHeight).accessibilityIdentifier("chat.followup.empty")
                     }
+                    ForEach(model.followups.pending) {message in row(message)}
                 }
-        }.catpawSheet(item:$editing) {message in ConversationPendingMessageEditor(model:model,message:message)}
+            }.frame(height:listHeight).scrollBounceBehavior(.basedOnSize)
+            if let error {
+                Text(ui(error)).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.attention)
+                    .padding(.horizontal,14).padding(.vertical,6).accessibilityIdentifier("chat.followup.error")
+            }
+        }
+        .background(CatpawColors.background)
+        .accessibilityElement(children:.contain)
+        .accessibilityHint(ui("待发消息保存在本机，仅在 App 前台发送。编辑会暂停队列，保存或关闭不会继续发送。"))
+        .catpawSheet(item:$editing) {message in ConversationPendingMessageEditor(model:model,message:message)}
+    }
+    private func row(_ message:ConversationFollowup)->some View {
+        HStack(spacing:4) {
+            if message.image != nil {
+                Image(systemName:"photo").imageScale(.small).foregroundStyle(CatpawColors.secondary).accessibilityLabel(ui("附带图片"))
+            }
+            Text(verbatim:message.text.replacingOccurrences(of:"\n",with:" ")).font(CatpawTypography.Role.body.font)
+                .foregroundStyle(CatpawColors.ink).lineLimit(1).truncationMode(.tail)
+                .frame(maxWidth:.infinity,alignment:.leading)
+            Button {
+                preparingEdit=true;error=nil
+                Task {do {try await model.pauseQueueForEditing(message);editing=message} catch {self.error=error.localizedDescription};preparingEdit=false}
+            } label: {Image(systemName:"pencil").imageScale(.small).frame(width:32,height:Self.rowHeight).contentShape(Rectangle())}
+                .disabled(preparingEdit || model.editingFollowup || message.image != nil)
+                .accessibilityLabel(ui("编辑待发消息")).accessibilityIdentifier("chat.followup.edit."+message.id.uuidString)
+            Button {model.removeFollowup(message.id)} label: {Image(systemName:"trash").imageScale(.small).frame(width:32,height:Self.rowHeight).contentShape(Rectangle())}
+                .disabled(preparingEdit || model.editingFollowup)
+                .accessibilityLabel(ui("移除后续消息")).accessibilityIdentifier("chat.followup.remove."+message.id.uuidString)
+        }.buttonStyle(.borderless).foregroundStyle(CatpawColors.secondary)
+            .padding(.leading,14).padding(.trailing,6).frame(height:Self.rowHeight)
+            .overlay(alignment:.bottom){Divider().padding(.leading,14)}
     }
 }
 private struct ConversationPendingMessageEditor:View {
