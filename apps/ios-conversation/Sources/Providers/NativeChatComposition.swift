@@ -15,7 +15,16 @@ public struct NativeChatComposition {
     }
     public static func make(bundle: Bundle = .main, localScope: DataScope) throws -> NativeChatComposition {
         let keys = ["CatpawBackendOrigin", "CatpawSupabaseProjectURL", "CatpawServerScopeID"]
-        let values = Dictionary(uniqueKeysWithValues: keys.compactMap { key in (bundle.object(forInfoDictionaryKey: key) as? String).map { (key, $0) } })
+        var values = Dictionary(uniqueKeysWithValues: keys.compactMap { key in (bundle.object(forInfoDictionaryKey: key) as? String).map { (key, $0) } })
+        #if DEBUG
+        // Same Debug-only PUBLIC env fallback as NativeAuthApplicationModel (scheme env / UI-test launchEnvironment).
+        if values.values.allSatisfy(\.isEmpty) {
+            let env = ProcessInfo.processInfo.environment
+            for (key, name) in ["CatpawBackendOrigin": "CATPAW_BACKEND_ORIGIN", "CatpawSupabaseProjectURL": "CATPAW_SUPABASE_PROJECT_URL", "CatpawServerScopeID": "CATPAW_SERVER_SCOPE_ID"] {
+                if let value = env[name], !value.isEmpty { values[key] = value }
+            }
+        }
+        #endif
         return try make(publicConfiguration: values, localScope: localScope)
     }
 }
