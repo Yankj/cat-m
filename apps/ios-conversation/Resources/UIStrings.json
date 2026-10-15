@@ -1,4 +1,8 @@
 {
+  "消息尚未发送，已保留在本机；再次发送或确认许可后会自动重试。": {
+    "en": "Not sent yet; kept on this device. It retries automatically after you send again or confirm consent.",
+    "zh-Hans": "消息尚未发送，已保留在本机；再次发送或确认许可后会自动重试。"
+  },
   "\n原文件已保留，未重置存储。请在完整 Xcode 下排查迁移或恢复。": {
     "en": "\nThe original file is preserved. Storage was not reset. Investigate migration or recovery with full Xcode.",
     "zh-Hans": "\n原文件已保留，未重置存储。请在完整 Xcode 下排查迁移或恢复。"
@@ -4079,9 +4083,9 @@
     "en": "Testing did not complete. Original records are preserved.",
     "zh-Hans": "联调未完成，原记录保留"
   },
-  "自动（Gemini 免费层优先）": {
-    "en": "Automatic (server default)",
-    "zh-Hans": "自动（Gemini 免费层优先）"
+  "自动（OpenRouter 优先）": {
+    "en": "Automatic (OpenRouter first)",
+    "zh-Hans": "自动（OpenRouter 优先）"
   },
   "自定义命令": {
     "en": "Custom commands",

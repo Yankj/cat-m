@@ -143,6 +143,13 @@ public actor ConversationSessionService {
         value.draftText = text
         try await repository.commit(scope: scope, mutations: [.update(record.id, record.header.revision, .core(.conversation(value)))])
     }
+    /// Wire history for a turn: the local transcript minus user messages of other turns that never reached the
+    /// server (notSent / cancelledBeforeSend). Those stay visible locally but would make the server history a
+    /// strict prefix of ours, which prepare() correctly rejects as a conflict and which used to deadlock the queue.
+    static func dispatchHistory(_ session: ConversationSession, current: UUID) -> [ConversationTranscriptMessage] {
+        let unsent = Set(session.turns.filter { $0.id != current && [.notSent, .cancelledBeforeSend].contains($0.state) }.map { stableID("conversation-user-\($0.id)") })
+        return session.messages.filter { !unsent.contains($0.id) }
+    }
     public func send(scope: DataScope, conversationID: UUID, text: String, operationID: UUID, context: [ConversationExplicitContext] = [], preserveDraft:Bool = false,image:ConversationVisionPayload?=nil,continuation:ConversationArtifactContinuationIntent?=nil,acceptedWork:ConversationAcceptedWorkSelection?=nil,revisionWork:ConversationRevisionWorkSelection?=nil) async throws -> UUID {
         guard active[conversationID] == nil else { throw ConversationSessionError.busy }
         // R7 offline send: a plain text turn is journaled and parked in the outbox without any POST.
@@ -164,9 +171,19 @@ public actor ConversationSessionService {
             guard prior.request.history.last?.content == text, try Self.encode(prior.request.context) == Self.encode(context) else { throw CatpawError.conflict }
             guard prior.state != .cancelledBeforeSend else { throw CatpawError.conflict }
             guard prior.state == .notSent else { return operationID }
-            guard session.unresolved == nil, try Self.encode(prior.request.history) == Self.encode(session.messages) else { throw ConversationSessionError.unresolvedOperation }
-            request = prior.request.withImageBytes(image?.bytes); epoch = request.epoch
-            session.turns[index].state = .dispatched; session.turns[index].error = nil
+            guard session.unresolved == nil else { throw ConversationSessionError.unresolvedOperation }
+            if prior.request.acceptedWork == nil, prior.request.revisionWork == nil {
+                // Resend of a held message: rebuild history from what the server can have seen, with this
+                // message last. Other unsent messages never enter the wire history.
+                guard let own = prior.request.history.last, own.role == .user else { throw CatpawError.conflict }
+                let history = Self.dispatchHistory(session, current: operationID).filter { $0.id != own.id } + [own]
+                request = prior.request.withHistory(history).withImageBytes(image?.bytes); epoch = request.epoch
+                session.turns[index] = ConversationTurnRecord(id: operationID, request: request.withImageBytes(nil), state: .dispatched, lastSequence: 0, error: nil)
+            } else {
+                guard try Self.encode(prior.request.history) == Self.encode(Self.dispatchHistory(session, current: operationID)) else { throw ConversationSessionError.unresolvedOperation }
+                request = prior.request.withImageBytes(image?.bytes); epoch = request.epoch
+                session.turns[index].state = .dispatched; session.turns[index].error = nil
+            }
         } else {
             guard session.unresolved == nil else { throw ConversationSessionError.unresolvedOperation }
             guard session.pendingUnsent == nil else { throw ConversationSessionError.pendingUnsent }
@@ -183,7 +200,7 @@ public actor ConversationSessionService {
                 originalBinding=binding;continuationSubject=subject
             }
             session.messages.append(ConversationTranscriptMessage(id: stableID("conversation-user-\(operationID)"), role: .user, content: text,image:image?.reference.receipt))
-            var provisional = ConversationTurnRequest(scope: scope, conversationID: conversationID, threadID: session.threadID, operationID: operationID, epoch: epoch, history: session.messages, context: context,image:image?.reference,imageBytes:image?.bytes,continuation:continuation,continuationOriginalBinding:originalBinding,continuationSubjectID:continuationSubject)
+            var provisional = ConversationTurnRequest(scope: scope, conversationID: conversationID, threadID: session.threadID, operationID: operationID, epoch: epoch, history: Self.dispatchHistory(session, current: operationID), context: context,image:image?.reference,imageBytes:image?.bytes,continuation:continuation,continuationOriginalBinding:originalBinding,continuationSubjectID:continuationSubject)
             if let selection=acceptedWork {
                 guard image==nil,continuation==nil else {throw ConversationDispatchFailure.notSent(reason:"工作约定不能与图片或成果修改混用。")}
                 let capability=try await backend.acceptedWorkCapability(scope:scope,conversationID:conversationID)
