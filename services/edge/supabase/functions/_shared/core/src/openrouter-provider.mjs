@@ -125,10 +125,10 @@ export class OpenRouterProvider {
     }
   }
 }
-export async function* sseData(body){
+export async function* sseData(body,{maxBytes=256000}={}){
   const decoder=new TextDecoder('utf-8',{fatal:true});let buffer='',lines=[],bytes=0;
   for await(const chunk of body){
-    const text=typeof chunk==='string'?chunk:decoder.decode(chunk,{stream:true});bytes+=Buffer.byteLength(text);check(bytes<=256000,503,'stream_too_large');buffer+=text;
+    const text=typeof chunk==='string'?chunk:decoder.decode(chunk,{stream:true});bytes+=Buffer.byteLength(text);check(bytes<=maxBytes,503,'stream_too_large');buffer+=text;
     let m;
     while((m=/\r\n|\n|\r(?!$)/.exec(buffer))){
       const line=buffer.slice(0,m.index);buffer=buffer.slice(m.index+m[0].length);

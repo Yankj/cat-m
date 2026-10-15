@@ -36,3 +36,10 @@ test('no event before the first-event timeout fails over to the next chain route
  const out=await run(p);assert.equal(urls.length,2);assert.match(urls[0],/agnes/);assert.equal(out.find(e=>e.type==='text_delta').text,'fallback');
  assert.equal(p.observations[0].error,'provider_timeout_before_output');assert.equal(p.observations[0].timeout_phase,'first_event');
 });
+test('long reasoning streams: >256kB of chunk framing and >16kB of reasoning do not fail the answer',async()=>{
+ const plan=[...Array.from({length:1500},(_,i)=>[0,chunk({reasoning_content:'思考'.repeat(10)+i})]),...Array.from({length:800},()=>[0,chunk({content:'字'})]),...done];
+ const p=new FreeRouteChainProvider({...chain({firstEventMs:5000,idleMs:5000,totalMs:20000}),fetchImpl:async(u,i)=>timed(plan,i.signal)});
+ const out=await run(p);const thought=out.filter(e=>e.type==='thinking_delta').map(e=>e.text).join('');
+ assert.equal(out.at(-1).type,'done');assert.equal(out.filter(e=>e.type==='text_delta').map(e=>e.text).join(''),'字'.repeat(800));
+ assert.ok(Buffer.byteLength(thought)<=16000+200&&thought.length>0);
+});
