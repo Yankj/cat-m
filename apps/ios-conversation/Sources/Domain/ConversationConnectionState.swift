@@ -109,7 +109,8 @@ public enum CatpawOnboarding {
     public static func isCompleted(_ defaults: UserDefaults = .standard) -> Bool { defaults.bool(forKey: completedKey) }
     public static func markCompleted(_ defaults: UserDefaults = .standard) { defaults.set(true, forKey: completedKey) }
     public static func initialState(defaults: UserDefaults = .standard, arguments: [String] = ProcessInfo.processInfo.arguments, fixture: Bool = false) -> OnboardingGateState {
-        (fixture || arguments.contains(skipArgument) || isCompleted(defaults)) ? .completed : .needsOnboarding
+        if arguments.contains(skipArgument) { markCompleted(defaults) } // later relaunches (prewarm, activate) keep it
+        return (fixture || arguments.contains(skipArgument) || isCompleted(defaults)) ? .completed : .needsOnboarding
     }
 }
 /// UI contract: show the intro while `needsOnboarding`; `.entering` = "开启" tapped, waiting for the
@@ -118,3 +119,19 @@ public enum OnboardingGateState: Equatable, Sendable {
     case needsOnboarding, entering, failed(String), completed
     public var needsOnboarding: Bool { self != .completed }
 }
+
+
+#if DEBUG
+/// Debug-only: PUBLIC Supabase/Edge values supplied via scheme / UI-test launch environment are remembered, so a
+/// launch without that environment (system prewarm, BG refresh, relaunch after `activate()`) is still configured.
+/// Only public values (project URL, publishable key, edge origin, scope id) ever pass through here.
+public enum CatpawDebugPublicConfig {
+    static let key = "catpaw.debug.publicConfig.v1"
+    public static func remember(_ values: [String: String], defaults: UserDefaults = .standard) -> [String: String] {
+        let present = values.filter { !$0.value.isEmpty }
+        if !present.isEmpty { var stored = defaults.dictionary(forKey: key) as? [String: String] ?? [:]; stored.merge(present) { $1 }; defaults.set(stored, forKey: key); return values }
+        guard let stored = defaults.dictionary(forKey: key) as? [String: String] else { return values }
+        return values.merging(stored) { old, new in old.isEmpty ? new : old }
+    }
+}
+#endif

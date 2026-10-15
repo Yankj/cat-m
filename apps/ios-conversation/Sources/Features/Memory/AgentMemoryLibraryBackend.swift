@@ -53,8 +53,10 @@ import Foundation
         guard let http = response as? HTTPURLResponse else { throw MemoryLibraryError.unavailable }
         switch http.statusCode {
         case 200..<300: return data
-        case 401, 403: await credentials.rejected(scope: configuration.localScope); throw MemoryLibraryError.unavailable
-        case 404: throw route.hasPrefix("/items/") ? MemoryLibraryError.notFound : MemoryLibraryError.unavailable
+        case 401: await credentials.rejected(scope: configuration.localScope); throw MemoryLibraryError.unavailable
+        // Feature gate off (not granted / not enrolled): not an auth failure, so never drop the session.
+        case 403: throw MemoryLibraryError.notEnabled
+        case 404: throw route.hasPrefix("/items/") ? MemoryLibraryError.notFound : MemoryLibraryError.notEnabled
         case 409: throw MemoryLibraryError.failed("需要先同意使用记忆。")
         case 410: throw MemoryLibraryError.failed("已超过可撤销时间。")
         default: throw MemoryLibraryError.unavailable

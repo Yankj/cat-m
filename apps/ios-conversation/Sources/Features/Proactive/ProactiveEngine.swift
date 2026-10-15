@@ -8,6 +8,7 @@ import EventKit
 import UIKit
 import UserNotifications
 import BackgroundTasks
+import WidgetKit
 #endif
 
 // On-device ProactiveEngine (interview demo core).
@@ -371,6 +372,7 @@ struct ProactiveSignal: Equatable, Sendable {
     static func save(_ s: ProactiveSuggestion) {
         var all = load(); all[s.id] = s
         UserDefaults.standard.set(try? JSONEncoder().encode(all), forKey: key)
+        CatpawWidgetSnapshotWriter.write(all.values.sorted { $0.id < $1.id })
     }
     static func load() -> [String: ProactiveSuggestion] {
         UserDefaults.standard.data(forKey: key).flatMap { try? JSONDecoder().decode([String: ProactiveSuggestion].self, from: $0) } ?? [:]
@@ -421,5 +423,27 @@ struct ProactiveEngineSignalAdapter: ProactiveSignalEngine {
         await update(.init(stage: .decide, status: result == nil ? .skipped : .passed, details: result.map { [$0.reason] } ?? ["suppressed / silent"]))
         await update(.init(stage: .intervene, status: result == nil ? .skipped : .passed, details: result == nil ? [] : ["card + banner + notification"]))
         return result.map { ProactivePipelineSuggestion(id: $0.id, kind: "meeting_prep", title: $0.title, body: $0.reason, channel: .push, meetingTitle: m.title, meetingStart: m.start, place: m.place, leaveAt: nil) }
+    }
+}
+
+
+/// #48: App Group snapshot for the Home/Lock widgets. The widget reads the same JSON (`catpaw.widget.snapshot.v1.json`);
+/// without the App Group entitlement (`group.com.yankj.catpawm`, needs portal registration) the container is nil,
+/// nothing is written and the widget keeps its built-in sample.
+enum CatpawWidgetSnapshotWriter {
+    static let group = "group.com.yankj.catpawm"
+    static let file = "catpaw.widget.snapshot.v1.json"
+    static func write(_ suggestions: [ProactiveSuggestion]) {
+        guard let dir = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: group) else { return }
+        let tasks: [[String: Any]] = suggestions.filter { $0.status == .pending || $0.status == .done }.prefix(6).map {
+            ["id": $0.id, "title": $0.title, "done": $0.status == .done]
+        }
+        let pending = suggestions.filter { $0.status == .pending }.count
+        let body: [String: Any] = ["updated_at": Date().timeIntervalSince1970, "tasks": tasks,
+                                   "mood": pending > 0 ? "needsUser" : "idle",
+                                   "status": pending > 0 ? "有 \(pending) 条提醒等你确认" : "小猫在待命"]
+        guard let data = try? JSONSerialization.data(withJSONObject: body) else { return }
+        try? data.write(to: dir.appendingPathComponent(file), options: .atomic)
+        WidgetCenter.shared.reloadAllTimelines()
     }
 }
