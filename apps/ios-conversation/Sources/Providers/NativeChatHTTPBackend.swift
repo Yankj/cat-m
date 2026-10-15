@@ -1508,6 +1508,9 @@ public actor CatpawDemoUIScript {
 public actor CatpawDemoConversationBackend: ConversationBackend {
     public static let shared = CatpawDemoConversationBackend()
     public static let demoTaskCallID = "call-demo-create-task"
+    /// Compatibility for PR #36's `GenerativeUIDemoSubmitter` (reads `CatpawDemoConversationBackend.shared.ui`): a standalone
+    /// script outside any turn. New code should use the turn path (`submitUIDecision` via ConversationSessionService).
+    public let ui = CatpawDemoUIScript()
     private struct Turn { var sequence: Int; var messageID: UUID; var text: String; var interruptID: String; var decided: (UUID, ConversationApprovalDecision)?; var resolvedEvents: [ConversationTurnEvent]; var ui: CatpawDemoUIScript; var uiReplies: [String: (UUID, [ConversationTurnEvent])] }
     private var turns: [UUID: Turn] = [:]
     public init() {}
