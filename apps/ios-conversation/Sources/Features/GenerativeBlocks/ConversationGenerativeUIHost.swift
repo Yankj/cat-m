@@ -6,16 +6,53 @@ import SwiftUI
 /// is the protocol requirement (the rawValue-mapping body from 三角's comment would redeclare the same method).
 extension ConversationUIDecisionSubmitter: GenerativeUIDecisionSubmitting {}
 
-/// Hook rendered once below the transcript (next to `ConversationApprovalHost`): feeds catpaw.ui.v1 events into
+/// Per-turn hook in the transcript: after the turn's last message row (assistant reply + its action row; r10 §4.2
+/// "与正文间距 12"), the turn's approval card (latest turn only, as before) and then its catpaw.ui.v1 blocks.
+@MainActor struct ConversationTurnUIRow: View {
+    @ObservedObject var model: ConversationFirstModel
+    let session: ConversationSession
+    let turnID: UUID
+    @ObservedObject private var store = GenerativeBlockStore.shared
+
+    /// turnID → id of that turn's last message row.
+    static func tails(_ rows: [(UUID, UUID?)]) -> [UUID: UUID] {
+        var out: [UUID: UUID] = [:]
+        for (id, turnID) in rows { if let turn = turnID { out[turn] = id } }
+        return out
+    }
+    private var ids: [String] { store.blockIDs(conversationID: session.conversationID).filter { store.turnID(of: $0) == turnID } }
+    private var isLatest: Bool { session.turns.last?.id == turnID }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            if isLatest { ConversationApprovalHost(model: model, session: session) }
+            ForEach(ids, id: \.self) { id in
+                if let block = store.blocks[id] {
+                    GenerativeBlockView(block: block, store: store).transition(.opacity.combined(with: .offset(y: 8)))
+                }
+            }
+        }
+        .padding(.top, ids.isEmpty && !isLatest ? 0 : 12)
+        .animation(.smooth(duration: 0.35), value: ids)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("chat.turn.ui." + turnID.uuidString)
+    }
+}
+
+/// Feed + fallback hook rendered once below the transcript (next to `ConversationApprovalHost`): feeds catpaw.ui.v1 events into
 /// `GenerativeBlockStore` from three idempotent sources (live turn events, the turn journal in `session`, and
 /// `pendingUIApprovals` on cold start) and renders this conversation's blocks.
 @MainActor struct ConversationGenerativeUIHost: View {
     @ObservedObject var model: ConversationFirstModel
     let session: ConversationSession
+    /// Turns that render their own blocks inline (`ConversationTurnUIRow`); only the rest render here.
+    var inlineTurns: Set<UUID> = []
     @ObservedObject private var store = GenerativeBlockStore.shared
     @StateObject private var feed = ConversationGenerativeUIFeed()
 
-    private var ids: [String] { store.blockIDs(conversationID: session.conversationID) }
+    private var ids: [String] {
+        store.blockIDs(conversationID: session.conversationID).filter { id in store.turnID(of: id).map { !inlineTurns.contains($0) } ?? true }
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {

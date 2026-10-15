@@ -192,16 +192,22 @@ import CatpawImageComposer
                                 }.padding(.top, textSize.isAccessibilitySize ? 24 : 64).padding(.bottom, 32).accessibilityIdentifier("chat.empty")
                             }
                             let rows=renderedTimelineRows
+                            let turnTails=ConversationTurnUIRow.tails(rows.compactMap{row->(UUID,UUID?)? in if case .message(let m)=row {return (m.id,m.turnID)};return nil})
                             ForEach(Array(rows.enumerated()),id:\.element.id) { index,row in
-                                renderedTimelineRow(row).padding(.top,renderedSpacing(row,previous:index>0 ? rows[index-1]:nil))
+                                VStack(alignment:.leading,spacing:0) {
+                                    renderedTimelineRow(row)
+                                    // Per-turn hook: approval card + catpaw.ui.v1 blocks after the turn's last message row.
+                                    if let turn=row.turnID,turnTails[turn]==row.id {ConversationTurnUIRow(model:model,session:session,turnID:turn)}
+                                }.padding(.top,renderedSpacing(row,previous:index>0 ? rows[index-1]:nil))
                                     .background(ConversationReadingAnchorMarker(id:row.id,context:readingAnchorContext,coordinator:readingAnchor).accessibilityHidden(true)).id(row.id)
                             }
                             if let pending = session.turns.last, [.dispatched,.running].contains(pending.state), pending.assistantMessageID == nil, !composerChrome.stoppedOperations.contains(pending.id),
                                !session.messages.contains(where:{ $0.role == .assistant && !$0.complete }) {
                                 PendingThinkingRow(service:model.service,turn:pending).id("pending-\(pending.id)").padding(.top,12)
                             }
-                            ConversationApprovalHost(model:model,session:session)   // catpaw.approval.v1 cards (A2)
-                            ConversationGenerativeUIHost(model:model,session:session)   // catpaw.ui.v1 blocks (r10 §4)
+                            // Fallbacks for a turn with no message row yet; the feed lives in the generative host.
+                            if !turnTails.keys.contains(session.turns.last?.id ?? UUID()) {ConversationApprovalHost(model:model,session:session)}   // catpaw.approval.v1 cards (A2)
+                            ConversationGenerativeUIHost(model:model,session:session,inlineTurns:Set(turnTails.keys))   // catpaw.ui.v1 feed + orphan blocks
                             if let latest = session.turns.last, latest.state == .completed, !composerChrome.stoppedOperations.contains(latest.id) {
                                 Color.clear.frame(width:1,height:1).accessibilityElement().accessibilityLabel(ui("回复完成")).accessibilityIdentifier("chat.reply.completed")
                             } else if let latest = session.turns.last, latest.state == .failed {
