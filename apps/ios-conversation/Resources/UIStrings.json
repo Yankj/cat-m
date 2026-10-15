@@ -5938,5 +5938,37 @@
   "，草稿，": {
     "en": ", draft, ",
     "zh-Hans": "，草稿，"
+  },
+  "相机": {
+    "en": "Camera",
+    "zh-Hans": "相机"
+  },
+  "正在添加…": {
+    "en": "Adding…",
+    "zh-Hans": "正在添加…"
+  },
+  "已选择 {0} · 添加": {
+    "en": "{0} selected · Add",
+    "zh-Hans": "已选择 {0} · 添加"
+  },
+  "允许访问照片后，这里会显示最近的照片。": {
+    "en": "Allow photo access to see your recent photos here.",
+    "zh-Hans": "允许访问照片后，这里会显示最近的照片。"
+  },
+  "已选择": {
+    "en": "Selected",
+    "zh-Hans": "已选择"
+  },
+  "引擎": {
+    "en": "Engine",
+    "zh-Hans": "引擎"
+  },
+  "扫描真实日历": {
+    "en": "Scan real calendar",
+    "zh-Hans": "扫描真实日历"
+  },
+  "清空去重账本": {
+    "en": "Clear dedupe ledger",
+    "zh-Hans": "清空去重账本"
   }
 }
