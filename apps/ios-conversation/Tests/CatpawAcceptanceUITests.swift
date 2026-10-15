@@ -234,7 +234,7 @@ final class CatpawAcceptanceUITests: XCTestCase {
     func test11GenerativeUIDemoRounds() throws {
         guard ProcessInfo.processInfo.environment["CATPAW_ACCEPTANCE_DEMO"] == "1" else { throw XCTSkip("Set CATPAW_ACCEPTANCE_DEMO=1 (needs sign-in; chat is scripted by -CatpawDemoBackend)") }
         let app = XCUIApplication(bundleIdentifier: bundleID)
-        app.launchArguments += ["-CatpawDemoBackend", "-CatpawSkipOnboarding"]; app.launch()
+        app.launchArguments += ["-CatpawDemoBackend", "-CatpawSkipOnboarding"]; forwardPublicConfig(app); app.launch()
         let start = app.buttons["auth.startExperience"]
         if start.waitForExistence(timeout: 8) { XCTAssertTrue(waitFor(start, "enabled == true", timeout: 20)); start.tap() }
         XCTAssertTrue(input(app).waitForExistence(timeout: 45))
@@ -257,5 +257,12 @@ final class CatpawAcceptanceUITests: XCTestCase {
         let confirm = block("demo-confirm").descendants(matching: .any)["chat.block.confirm.approve"].firstMatch
         if confirm.waitForExistence(timeout: 5) { confirm.tap(); Thread.sleep(forTimeInterval: 1); shot(app, "11d-confirm-answered") }
         XCTAssertFalse(element("chat.block.error").exists, "no decision error")
+    }
+
+    /// Debug builds have no CATPAW_* in Info.plist; forward the PUBLIC values from the runner env (TEST_RUNNER_CATPAW_*).
+    private func forwardPublicConfig(_ app: XCUIApplication) {
+        for name in ["CATPAW_SUPABASE_PROJECT_URL", "CATPAW_SUPABASE_PUBLISHABLE_KEY", "CATPAW_BACKEND_ORIGIN", "CATPAW_SERVER_SCOPE_ID"] {
+            if let value = ProcessInfo.processInfo.environment[name], !value.isEmpty { app.launchEnvironment[name] = value }
+        }
     }
 }
