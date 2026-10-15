@@ -117,7 +117,10 @@ import AppIntents
     @StateObject private var synthetic = NativeSyntheticApplicationModel()
     #endif
     /// catpaw.ui.v1 blocks render natively inside ```catpaw-card fences (r10 §4).
-    init() { GenerativeBlockAdapter.registerWithMarkdown() }
+    init() {
+        GenerativeBlockAdapter.registerWithMarkdown()
+        DeviceCallCardAdapter.register() // wave2 V3 device_call confirm card
+    }
     var body: some Scene {
         WindowGroup {
             Group {
