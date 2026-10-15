@@ -66,6 +66,16 @@ import CatpawImageComposer
               capabilities:.init(canCreateConversation:model.loaded && !model.busy && !model.isInputComposing,canSelectConversation:!model.busy && !model.isInputComposing,tasks:true,results:true,memory:model.loaded && model.memoryConfigured,settings:true),
               account:.init(name:accountLabel ?? ui("本机用户"),detail:isAnonymousAccount ? ui("未登录") : nil))
     }
+    private func consumeAppRoute() {
+        guard model.loaded, let route = CatpawRouteCenter.shared.pending else { return }
+        CatpawRouteCenter.shared.pending = nil
+        switch route {
+        case .conversation(let id): self.route(.conversation(id))
+        case .newConversation: self.route(.newConversation)
+        case .tasks, .proactive: path = []; self.route(.tasks)
+        case .memory: path = []; self.route(.memory)
+        }
+    }
     private func route(_ destination:SidebarDestination) {
         switch destination {
         case .newConversation:path=[];model.newConversation()
@@ -324,6 +334,8 @@ import CatpawImageComposer
     }
     var body: some View {
         feedbackNavigation
+        .onChange(of: CatpawRouteCenter.shared.pending) { _, _ in consumeAppRoute() }
+        .onChange(of: model.loaded) { _, _ in consumeAppRoute() }
         .modifier(ConversationConsentPresenter(model:model))
         .catpawSheet(isPresented:Binding(get:{model.acceptedWorkReviewPresented},set:{if !$0 {model.closeAcceptedWorkReview()}})) {
             ConversationAcceptedWorkReviewView(originalText:model.acceptedWorkReviewOriginalText,capability:model.acceptedWorkCapability,options:$model.acceptedWorkOptions,saving:model.acceptedWorkReviewSaving,error:model.acceptedWorkReviewError,confirm:model.confirmAcceptedWorkReview,close:model.closeAcceptedWorkReview,revisionTargetTitle:model.revisionWorkReviewTarget.map{$0.artifactTitle+" · v\($0.artifactReference.version)"},lockedToolPolicy:model.revisionWorkReviewPolicy?.toolPolicy,sourceLimitFloor:model.revisionWorkReviewPolicy?.sourceCount ?? 0)
