@@ -160,8 +160,11 @@ final class CatpawAcceptanceUITests: XCTestCase {
         shot(app, "real-01-chat")
         if let title = ProcessInfo.processInfo.environment["CATPAW_REAL_OPEN"], !title.isEmpty {
             app.buttons["sidebar.open"].tap(); Thread.sleep(forTimeInterval: 1)
-            let row = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", title)).firstMatch
-            XCTAssertTrue(row.waitForExistence(timeout: 5), "conversation \(title) in sidebar"); row.tap(); Thread.sleep(forTimeInterval: 2); shot(app, "real-legacy-00-opened")
+            shot(app, "real-legacy-00-sidebar")
+            let rows = app.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH %@", title))
+            _ = rows.firstMatch.waitForExistence(timeout: 5)
+            let row = rows.allElementsBoundByIndex.first(where: { $0.isHittable })
+            XCTAssertNotNil(row, "conversation \(title) visible in sidebar"); row?.tap(); Thread.sleep(forTimeInterval: 2); shot(app, "real-legacy-01-opened")
         }
         if ProcessInfo.processInfo.environment["CATPAW_REAL_NEW"] == "1" { app.buttons["chat.new"].tap(); Thread.sleep(forTimeInterval: 1.5); shot(app, "real-01b-new-chat") }
         let field = input(app); field.tap(); field.typeText("用一句话介绍你自己")
