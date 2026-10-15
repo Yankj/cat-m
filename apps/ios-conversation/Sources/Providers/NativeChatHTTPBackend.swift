@@ -294,6 +294,27 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
     public func retryBusyTurn(_ request: ConversationTurnRequest, afterSequence: Int) async throws -> AsyncThrowingStream<ConversationTurnEvent, Error> {
         try await originalTurnStream(request, afterSequence: afterSequence, busyRestart: true)
     }
+    /// R2 stop: `POST …/chat/v1/…/turns/{id}/cancel` with `{}`; the caller may resend on `.transport`.
+    public func cancelTurn(_ request: ConversationTurnRequest) async throws -> ConversationTurnCancelReceipt {
+        let auth: String
+        do { auth = try await authorization(request.scope) } catch { throw ConversationTurnCancelFailure.rejected(status: 401) }
+        let route = path(request) + "/turns/" + request.operationID.uuidString.lowercased() + "/cancel"
+        let reply: [String: Any]
+        do { reply = try await json(route, auth: auth, body: [:], timeout: 15) }
+        catch NativeChatHTTPFailure.status(let status) {
+            if status == 404 { throw ConversationTurnCancelFailure.notFound }
+            if status == 0 || status == 408 || status == 429 || status >= 500 { throw ConversationTurnCancelFailure.transport }
+            throw ConversationTurnCancelFailure.rejected(status: status)
+        }
+        catch is URLError { throw ConversationTurnCancelFailure.transport }
+        catch is CancellationError { throw CancellationError() }
+        catch { throw ConversationTurnCancelFailure.rejected(status: 200) }
+        guard (try? Self.chatEnvelope(reply)) != nil, let cancel = reply["cancel"] as? [String: Any],
+              UUID(uuidString: cancel["turn_id"] as? String ?? "") == request.operationID,
+              let state = cancel["state"] as? String, ["failed", "completed", "outcome_unknown", "running"].contains(state),
+              let cancelled = Self.boolean(cancel["cancelled"]), let terminal = Self.boolean(cancel["already_terminal"]) else { throw ConversationTurnCancelFailure.rejected(status: 200) }
+        return ConversationTurnCancelReceipt(turnID: request.operationID, state: state, cancelled: cancelled, alreadyTerminal: terminal)
+    }
     private func originalTurnStream(_ request: ConversationTurnRequest, afterSequence: Int, busyRestart: Bool) async throws -> AsyncThrowingStream<ConversationTurnEvent, Error> {
         guard Self.supportsResume(request), afterSequence >= 0 else { throw ConversationSessionError.unresolvedOperation }
         let auth = try await authorization(request.scope)
