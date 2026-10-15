@@ -274,6 +274,41 @@ public protocol ConversationBackend: Sendable {
     func resumeEvents(_ request: ConversationTurnRequest, afterSequence: Int) async throws -> AsyncThrowingStream<ConversationTurnEvent, Error>
     /// R7 busy retry of the SAME turn (server restarts `failed{rate_limited}` with no output in place).
     func retryBusyTurn(_ request: ConversationTurnRequest, afterSequence: Int) async throws -> AsyncThrowingStream<ConversationTurnEvent, Error>
+    /// R2 stop: `POST …/turns/{id}/cancel` with body `{}`. Idempotent; safe to resend after a network error.
+    /// Throws `ConversationTurnCancelFailure` for transport, 404 and other refusals.
+    func cancelTurn(_ request: ConversationTurnRequest) async throws -> ConversationTurnCancelReceipt
+}
+/// `cancel{turn_id,state,cancelled,already_terminal}` from the Edge cancel route (services/edge/docs/turn-cancel-contract.md).
+public struct ConversationTurnCancelReceipt: Sendable, Equatable {
+    public let turnID: UUID
+    /// Server turn state after the call: `failed`, `completed` or `outcome_unknown`.
+    public let state: String
+    public let cancelled: Bool
+    public let alreadyTerminal: Bool
+    public init(turnID: UUID, state: String, cancelled: Bool, alreadyTerminal: Bool) { self.turnID = turnID; self.state = state; self.cancelled = cancelled; self.alreadyTerminal = alreadyTerminal }
+}
+public enum ConversationTurnCancelFailure: Error, Sendable, Equatable {
+    /// Network error, timeout or 5xx: the cancel may or may not have landed; resending is safe.
+    case transport
+    /// 404: unknown turn (e.g. the POST was not admitted yet).
+    case notFound
+    /// 401/403/422 or a malformed response: resending will not help.
+    case rejected(status: Int)
+    /// This backend has no cancel route.
+    case unsupported
+}
+/// Result of `ConversationSessionService.cancelCurrentTurn`.
+public enum ConversationTurnCancelOutcome: Sendable, Equatable {
+    /// No dispatched/running/unknown turn in this conversation; nothing was sent.
+    case noActiveTurn
+    /// The turn ended as `failed{cancelled}`; partial text stays in the journal.
+    case cancelled(operationID: UUID)
+    /// The turn had already completed (cancel raced completion); the full answer was read back.
+    case completed(operationID: UUID)
+    /// The turn had already failed for another reason (server `state`).
+    case alreadyTerminal(operationID: UUID, state: String)
+    /// The outcome could not be read back; the turn is left `unknown` for observe/continueFetching.
+    case reconciling(operationID: UUID)
 }
 /// Stream-health sink (ConnectionMonitor in the App target). Domain-only so portable builds stay Network-free.
 public protocol ConversationStreamResilience: Sendable {
@@ -301,6 +336,7 @@ public struct UnconfiguredConversationBackend: ConversationBackend {
 public extension ConversationBackend {
     func resumeEvents(_ request: ConversationTurnRequest, afterSequence: Int) async throws -> AsyncThrowingStream<ConversationTurnEvent, Error> { throw ConversationSessionError.unresolvedOperation }
     func retryBusyTurn(_ request: ConversationTurnRequest, afterSequence: Int) async throws -> AsyncThrowingStream<ConversationTurnEvent, Error> { throw ConversationSessionError.unresolvedOperation }
+    func cancelTurn(_ request: ConversationTurnRequest) async throws -> ConversationTurnCancelReceipt { throw ConversationTurnCancelFailure.unsupported }
     func revisionWorkCapability(scope:DataScope,conversationID:UUID) async throws -> ConversationAcceptedWorkCapability {.init()}
     func freezeRevisionWork(_ request:ConversationTurnRequest,selection:ConversationRevisionWorkSelection) async throws -> ConversationRevisionWorkIntent {throw ConversationAcceptedWorkError.unavailable}
     func acceptedWorkCapability(scope:DataScope,conversationID:UUID) async throws -> ConversationAcceptedWorkCapability {.init()}

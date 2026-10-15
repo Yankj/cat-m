@@ -14,6 +14,8 @@ public actor ConversationSessionService {
     private var busyRetry: [UUID: BusyRetry] = [:]
     private var autoRetryTurns: Set<UUID> = []
     private var turnObservers: [UUID: AsyncStream<ConversationTurnEvent>.Continuation] = [:]
+    private var emittedCancellations: Set<UUID> = []
+    private var cancelling: Set<UUID> = []
     private let resilience: (any ConversationStreamResilience)?
     private let reconnectPolicy: ConversationReconnectPolicy
     public func imageCapabilities(scope:DataScope,conversationID:UUID) async throws -> ConversationImageCapability { try await backend.imageCapabilities(scope:scope,conversationID:conversationID) }
@@ -383,6 +385,13 @@ public actor ConversationSessionService {
             }
         }
         session.turns[index] = turn; try await save(session, expectedRevision: journalRevision, fence: request, observationToken: observationToken)
+        emit(event)
+    }
+    /// The SSE `turn_failed{cancelled}` and the cancel response are equivalent; turnEvents() sees one stop per turn.
+    private func emit(_ event: ConversationTurnEvent) {
+        if case .failed(let code, _) = event.payload, code == Self.cancelledCode {
+            guard emittedCancellations.insert(event.operationID).inserted else { return }
+        }
         for observer in turnObservers.values { observer.yield(event) }
     }
     private static func isToolAttempt(_ message: ConversationTranscriptMessage, for request: ConversationTurnRequest) -> Bool {
@@ -468,6 +477,7 @@ public actor ConversationSessionService {
         if !observation.goals.isEmpty { var (current, revision) = try await readVersioned(scope: scope, conversationID: conversationID); for goal in observation.goals { try Self.merge(goal, into: &current) }; try await save(current, expectedRevision: revision, fence: turn.request, observationToken: observationToken) }
     }
     static let rateLimitedCode = "rate_limited"
+    static let cancelledCode = "cancelled"
     static let waitingForNetwork = "等待网络 · 联网后自动发送"
     private static func isPlain(_ r: ConversationTurnRequest) -> Bool { r.continuation == nil && r.acceptedWork == nil && r.revisionWork == nil && r.image == nil }
 
@@ -601,6 +611,79 @@ public actor ConversationSessionService {
         let stopToken = UUID();active[conversationID] = stopToken
         defer { if active[conversationID] == stopToken { active.removeValue(forKey:conversationID) } }
         if let turn = try await read(scope: scope, conversationID: conversationID).unresolved { try await markUnknown(turn.request, reason: "已停止本机观察，未取消后台任务。读取原请求后继续。", observationToken:stopToken) }
+    }
+    /// R2 stop of the current server turn: `POST …/turns/{id}/cancel` (`{}`, idempotent).
+    /// Takes over the conversation's observation fence first, so the live pump stops (no SSE reconnect,
+    /// no busy auto-retry, no outbox resend). Then reads the authoritative turn back and applies the
+    /// remaining events through the normal journal path. turnEvents() receives the stop as ONE
+    /// `.failed(message: "cancelled", reconciliationRequired: false)`, whichever of stream/response wins;
+    /// a cancel that raced completion yields `.completed` instead. Already-shown text is kept.
+    /// The next send is an ordinary new turn; the backend re-reads the conversation's revision and
+    /// grant_epoch (GET …/conversations/{c}) before every POST.
+    @discardableResult
+    public func cancelCurrentTurn(scope: DataScope, conversationID: UUID) async throws -> ConversationTurnCancelOutcome {
+        guard !cancelling.contains(conversationID) else { throw ConversationSessionError.busy }
+        guard let target = try await read(scope: scope, conversationID: conversationID).unresolved else { return .noActiveTurn }
+        cancelling.insert(conversationID)
+        let token = UUID(); active[conversationID] = token
+        defer {
+            cancelling.remove(conversationID)
+            if active[conversationID] == token { active.removeValue(forKey: conversationID) }
+        }
+        let operationID = target.id
+        // A user stop is never resent automatically.
+        if busyRetry[conversationID]?.operationID == operationID { busyRetry[conversationID] = nil; await resilience?.clearBusy() }
+        autoRetryTurns.remove(operationID)
+        if let outbox { try? await outbox.remove(operationID); await resilience?.outboxChanged(pending: await outbox.entries().map(\.id)) }
+        await resilience?.settled()
+
+        var receipt: ConversationTurnCancelReceipt?
+        var attempt = 0
+        while receipt == nil {
+            try Task.checkCancellation()
+            do { receipt = try await backend.cancelTurn(target.request) }
+            catch let failure as ConversationTurnCancelFailure {
+                // 404 can mean the POST is still in flight; transport errors leave the cancel unknown. Both may resend.
+                let retryable = failure == .transport || (failure == .notFound && target.lastSequence == 0)
+                guard retryable, attempt < Self.cancelRetryDelays.count else { break }
+                try await Task.sleep(nanoseconds: UInt64(Self.cancelRetryDelays[attempt] * 1_000_000_000)); attempt += 1
+                guard active[conversationID] == token else { throw CancellationError() }
+            }
+        }
+        guard active[conversationID] == token else { throw CancellationError() }
+        // Authoritative read-back (GET …/turns/{id}) also completes a turn that won the race.
+        let reconciled = (try? await reconcileAfterCancel(target, token: token)) ?? false
+        let current = try await read(scope: scope, conversationID: conversationID).turns.first(where: { $0.id == operationID })
+        if reconciled, let current {
+            switch current.state {
+            case .completed: return .completed(operationID: operationID)
+            case .failed where current.error == Self.cancelledCode: return .cancelled(operationID: operationID)
+            case .failed: return .alreadyTerminal(operationID: operationID, state: receipt?.state ?? "failed")
+            default: break
+            }
+        }
+        // Read-back failed. A confirmed cancel is still reported once, but the journal stays `unknown`
+        // (sequence unchanged) so observe/continueFetching later appends the server's events.
+        try await markUnknown(target.request, reason: "已请求停止，结果待核对；读取原请求后继续。", observationToken: token)
+        if let receipt, receipt.cancelled, receipt.state == "failed" {
+            emit(ConversationTurnEvent(operationID: operationID, epoch: target.request.epoch, sequence: current?.lastSequence ?? target.lastSequence, payload: .failed(message: Self.cancelledCode, reconciliationRequired: false)))
+        }
+        return .reconciling(operationID: operationID)
+    }
+    static let cancelRetryDelays: [Double] = [0.5, 1, 2]
+    /// Same read-back as `observe`, under the cancel fence. Returns true once the turn is terminal.
+    private func reconcileAfterCancel(_ target: ConversationTurnRecord, token: UUID) async throws -> Bool {
+        let scope = target.request.scope, conversationID = target.request.conversationID
+        let observation = try await backend.observe(target.request)
+        guard active[conversationID] == token else { throw CancellationError() }
+        guard try Self.encode(observation.request) == Self.encode(target.request) else { throw ConversationSessionError.invalidEvent }
+        guard let turn = try await read(scope: scope, conversationID: conversationID).turns.first(where: { $0.id == target.id }) else { throw CatpawError.missing }
+        guard turn.serverRequestHash == nil || observation.requestHash == turn.serverRequestHash, turn.serverGrantEpoch == nil || observation.grantEpoch == turn.serverGrantEpoch else { throw ConversationSessionError.invalidEvent }
+        for event in observation.events { try await apply(event, request: target.request, observing: true, observationToken: token) }
+        if !observation.goals.isEmpty { var (current, revision) = try await readVersioned(scope: scope, conversationID: conversationID); for goal in observation.goals { try Self.merge(goal, into: &current) }; try await save(current, expectedRevision: revision, fence: target.request, observationToken: token) }
+        let state = try await read(scope: scope, conversationID: conversationID).turns.first(where: { $0.id == target.id })?.state
+        if state == .completed { await backend.recordCommittedReply(target.request) }
+        return state == .completed || state == .failed
     }
     private static func journalID(_ id: UUID) -> UUID { stableID("conversation-first-journal-\(id)") }
     private static func encode<T: Encodable>(_ value: T) throws -> String { let encoder = JSONEncoder(); encoder.outputFormatting = [.sortedKeys]; return String(decoding: try encoder.encode(value), as: UTF8.self) }
