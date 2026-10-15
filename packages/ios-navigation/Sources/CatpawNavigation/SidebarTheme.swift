@@ -19,6 +19,9 @@ public struct SidebarTheme {
     public var bodyFont:Font = .body
     public var secondaryFont:Font = .subheadline
     public var captionFont:Font = .footnote
+    /// Optional host-supplied brand mark drawn before the "Catpaw" heading (keeps the package free of App types).
+    public var brandMark:AnyView? = nil
+    public func brand<V:View>(_ mark:V)->SidebarTheme { var result=self; result.brandMark=AnyView(mark); return result }
     /// Host-supplied semantic styles keep this package independent of App types.
     public func typography(title:Font,heading:Font,body:Font,secondary:Font,caption:Font)->SidebarTheme {
         var result=self

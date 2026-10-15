@@ -21,6 +21,37 @@ enum CatpawMotion {
 /// and the composer send/stop/queue control; generic actions, links and statuses stay semantic.
 enum CatpawBrand {
     static let paw = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(rgb: 0xF2A985) : UIColor(rgb: 0xE8946A) })
+    /// r10 logo gradient (top → bottom); matches Resources/Assets.xcassets/LaunchPaw.svg exactly.
+    static let pawTop = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(rgb: 0xFFA27A) : UIColor(rgb: 0xFF8F62) })
+    static let pawBottom = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(rgb: 0xF5774A) : UIColor(rgb: 0xF2643A) })
+}
+
+/// The single Catpaw logo (r10): five separate vector pads so toes can press in sequence, soft top→bottom gradient,
+/// soft drop shadow. Used by the launch screen animation, onboarding page 1 and the drawer header.
+/// `pressed[i]` (0–3 toes, 4 pad) sinks a pad by ~3% of the size and scales it to 0.9.
+struct PawMark: View {
+    var size: CGFloat
+    var pressed: [Bool] = [false, false, false, false, false]
+    var shadow: Bool = true
+    var body: some View {
+        let fill = LinearGradient(colors: [CatpawBrand.pawTop, CatpawBrand.pawBottom], startPoint: .top, endPoint: .bottom)
+        ZStack {
+            ForEach(Array(PawShape.Part.allCases.enumerated()), id: \.offset) { i, part in
+                let down = i < pressed.count && pressed[i]
+                PawShape(part: part).fill(fill)
+                    .scaleEffect(down ? 0.9 : 1, anchor: anchor(part))
+                    .offset(y: down ? size * 0.03 : 0)
+            }
+        }
+        .frame(width: size, height: size)
+        .compositingGroup()
+        .shadow(color: CatpawBrand.pawBottom.opacity(shadow ? 0.22 : 0), radius: size * 0.12, y: size * 0.06)
+        .accessibilityHidden(true)
+    }
+    private func anchor(_ part: PawShape.Part) -> UnitPoint {
+        switch part { case .toe0: UnitPoint(x: 0.23, y: 0.42); case .toe1: UnitPoint(x: 0.40, y: 0.23)
+        case .toe2: UnitPoint(x: 0.60, y: 0.23); case .toe3: UnitPoint(x: 0.77, y: 0.42); case .pad: UnitPoint(x: 0.5, y: 0.66) }
+    }
 }
 
 extension UIColor {

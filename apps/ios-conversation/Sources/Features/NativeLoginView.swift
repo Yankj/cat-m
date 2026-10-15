@@ -74,7 +74,7 @@ import UIKit
             Spacer(minLength: 12)
             ZStack {
                 Circle().fill(CatpawBrand.paw.opacity(0.16)).frame(width: 132, height: 132)
-                if p.id == 0 { PawShape().fill(CatpawBrand.paw).frame(width: 64, height: 64) }
+                if p.id == 0 { PawMark(size: 64) }
                 else { Image(systemName: p.symbol).resizable().scaledToFit().frame(width: 56, height: 56).foregroundStyle(CatpawBrand.paw).symbolEffect(.pulse, isActive: !reduceMotion && page == p.id) }
             }.accessibilityHidden(true)
             if p.id == 0 { Text(verbatim: "Catpaw").font(.largeTitle.weight(.bold)) }
