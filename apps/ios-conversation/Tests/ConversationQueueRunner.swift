@@ -95,13 +95,15 @@ actor QueueEditBackend:ConversationBackend {
         let behind = ConversationFollowup(text: "typed while held")
         try await queue.enqueue(behind); try await queue.flush { message in await log.send(message); return .sent }
         state = try await queue.state()
-        try check(state.paused && state.pending.map(\.id) == [d.id,behind.id] && !(await log.captured()).contains(d.id), "regression: a new message queues silently behind a preflight hold (simulator '待发送·2 条')")
+        let capturedIDs = await log.captured()
+        try check(state.paused && state.pending.map(\.id) == [d.id,behind.id] && !capturedIDs.contains(d.id), "regression: a new message queues silently behind a preflight hold (simulator '待发送·2 条')")
         let resumed = try await queue.resumePreflightHold()
         state = try await queue.state()
         try check(resumed && !state.paused && state.pauseReason == nil && state.pending.map(\.id) == [d.id,behind.id], "a fresh send clears a preflight hold without reordering")
         try await queue.flush { _ in .heldBeforeAdmission }
         try await queue.pause()
-        try check(!(try await queue.resumePreflightHold()) && (try await queue.state()).paused, "a user pause is never cleared by the preflight resume")
+        let userResumed = try await queue.resumePreflightHold(); let userPaused = try await queue.state().paused
+        try check(!userResumed && userPaused, "a user pause is never cleared by the preflight resume")
         try await queue.remove(behind.id)
         try await queue.resume()
         do { try await queue.flush { message in await log.send(message); throw CatpawError.unavailable("explicit test failure after transcript admission") } } catch { }
