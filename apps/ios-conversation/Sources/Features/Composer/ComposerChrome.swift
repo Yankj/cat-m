@@ -303,15 +303,15 @@ struct ComposerGlass: ViewModifier {
     @Environment(\.locale) private var locale
     private func ui(_ k: String) -> String { AppLanguage(locale: locale).ui(k) }
     var body: some View {
-        Button { action(); taps += 1 } label: {
-            HStack(spacing: 6) {
-                Image(systemName: "arrow.down").font(.footnote.weight(.bold))
-                if hasNewContent { Text(ui("新内容")).font(CatpawTypography.Role.caption.font.weight(.semibold)) }
-            }
-            .foregroundStyle(CatpawColors.ink)
-            .padding(.horizontal, hasNewContent ? 14 : 0)
-            .frame(minWidth: 40, minHeight: 40)
-            .modifier(JumpGlass())
+        // r10 §2.5: 36pt circle on material above the composer; pawOrange 2pt ring while a reply is streaming.
+        Button { withAnimation(.smooth(duration: 0.35)) { action() }; taps += 1 } label: {
+            Image(systemName: "arrow.down").font(.footnote.weight(.bold))
+                .foregroundStyle(CatpawColors.ink)
+                .frame(width: 36, height: 36)
+                .background(.ultraThinMaterial, in: Circle())
+                .overlay(Circle().strokeBorder(CatpawBrand.paw, lineWidth: hasNewContent ? 2 : 0))
+                .shadow(color: .black.opacity(0.08), radius: 4, y: 2)
+                .frame(minWidth: 44, minHeight: 44)
         }
         .buttonStyle(CatpawPressButtonStyle())
         .sensoryFeedback(.selection, trigger: taps)
@@ -354,7 +354,7 @@ private struct JumpGlass: ViewModifier {
     private func ui(_ k: String) -> String { AppLanguage(locale: locale).ui(k) }
     private enum Mode: Equatable { case voice, send, stop, queue, dictating }
     private var mode: Mode {
-        if dictating && !responding { return .dictating }
+        if dictating { return .dictating }   // the stop-dictation control must stay reachable
         if responding { return draftEmpty ? .stop : .queue }
         return draftEmpty ? .voice : .send
     }
