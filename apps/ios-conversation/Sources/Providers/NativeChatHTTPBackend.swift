@@ -218,11 +218,22 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
         try intent.validate(request:request)
     }
     private func validateHistory(_ conversation:[String:Any],request:ConversationTurnRequest) throws {
-        let remote=try Self.array(conversation["messages"]),previous=request.history.dropLast().filter{$0.role == .user || ($0.role == .assistant && $0.toolName==nil && $0.complete)}
-        guard remote.count==previous.count else {throw CatpawError.conflict}
+        try Self.checkServerHistory(try Self.array(conversation["messages"]),request:request,strict:true)
+    }
+    /// Server history must equal the local wire history. For plain turns only, a server history that is a strict
+    /// prefix of ours is accepted when every extra local message is a user message: those were never admitted
+    /// (old clients left unsent messages in the transcript without a notSent turn record). Only the current
+    /// message (`history.last`) is posted, so the extras are simply not sent. Frozen-history requests stay strict.
+    /// Returns the local message ids treated as unsent.
+    @discardableResult static func checkServerHistory(_ remote:[[String:Any]],request:ConversationTurnRequest,strict:Bool) throws -> [UUID] {
+        let previous=Array(request.history.dropLast().filter{$0.role == .user || ($0.role == .assistant && $0.toolName==nil && $0.complete)})
+        guard remote.count<=previous.count else {throw CatpawError.conflict}
         for (wire,local) in zip(remote,previous) {
-            guard UUID(uuidString:wire["id"] as? String ?? "")==local.id,wire["role"] as? String==local.role.rawValue,let content=wire["content"] as? String,content.utf16.elementsEqual(local.content.utf16) else {throw CatpawError.conflict}
+            guard UUID(uuidString:wire["id"] as? String ?? "")==local.id,wire["role"] as? String==local.role.rawValue,let content=wire["content"] as? String,strict ? content.utf16.elementsEqual(local.content.utf16) : content == local.content else {throw CatpawError.conflict}
         }
+        let extras=previous[remote.count...]
+        guard extras.isEmpty || (!strict && extras.allSatisfy{$0.role == .user}) else {throw CatpawError.conflict}
+        return extras.map(\.id)
     }
     public func reply(_ request: ConversationTurnRequest) async throws -> AsyncThrowingStream<ConversationTurnEvent, Error> {
         let auth: String, grant: Int, upload: URLRequest
@@ -457,12 +468,7 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
         let revision = try Self.positive(conversation["revision"]), grant = try Self.positive(conversation["grant_epoch"])
         if let intent=request.acceptedWork {guard revision==intent.expectedRevision,grant==intent.expectedGrantEpoch else {throw ConversationAcceptedWorkError.changedSnapshot};try validateHistory(conversation,request:request)}
         if let intent=request.revisionWork {guard revision==intent.expectedRevision,grant==intent.expectedGrantEpoch else {throw ConversationAcceptedWorkError.changedSnapshot};try validateHistory(conversation,request:request)}
-        let remote = try Self.array(conversation["messages"])
-        let previous = request.history.dropLast().filter { $0.role == .user || ($0.role == .assistant && $0.toolName == nil && $0.complete) }
-        guard remote.count == previous.count else { throw CatpawError.conflict }
-        for (wire, local) in zip(remote, previous) {
-            guard UUID(uuidString: wire["id"] as? String ?? "") == local.id, wire["role"] as? String == local.role.rawValue, wire["content"] as? String == local.content else { throw CatpawError.conflict }
-        }
+        try Self.checkServerHistory(try Self.array(conversation["messages"]),request:request,strict:request.acceptedWork != nil || request.revisionWork != nil || request.continuation != nil)
         if let intent=request.acceptedWork {
             try intent.selection.options.validate(now:acceptedWorkClock())
             var upload=try self.request(turnPath(request),auth:auth);upload.httpMethod="POST";upload.httpBody=try intent.wrapper()
