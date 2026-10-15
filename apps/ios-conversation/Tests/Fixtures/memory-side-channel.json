@@ -1,0 +1,6 @@
+[
+  {"type":"memory.used","data":{"ids":["3b1f0c9e-0000-4000-8000-000000000001"],"memories":[{"id":"3b1f0c9e-0000-4000-8000-000000000001","kind":"preference","content":"出差坐靠窗","source":"agent","confidence":1,"version":"2026-10-16T01:00:00.000Z"}]}},
+  {"type":"memory.update","data":{"op":"saved","ids":["3b1f0c9e-0000-4000-8000-000000000002"],"memories":[{"id":"3b1f0c9e-0000-4000-8000-000000000002","kind":"fact","content":"住在静安","source":"agent","confidence":1,"version":"2026-10-16T01:05:00.000Z"}]}},
+  {"type":"memory.update","data":{"op":"forgotten","ids":["3b1f0c9e-0000-4000-8000-000000000001"],"memories":[]}},
+  {"type":"proactive_suggestion","data":{"id":"5d2a7c1e-0000-4000-8000-000000000009","title":"该出发了","reason":"会议 35 分钟后开始","memories":[],"actions":["create_reminder","notify_attendees","snooze","dismiss"],"signals":[{"kind":"calendar","text":"客户方案评审 · 35 分钟后"}],"status":"pending","createdAt":"2026-10-16T01:00:00.000Z","taken":[]}}
+]

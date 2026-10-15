@@ -732,6 +732,12 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
             guard reality != "not_configured", Self.supportsResume(request), request.image==nil, !request.hasUploadedAttachments, let raw = type else { throw ConversationSessionError.invalidEvent }
             let ui = try ConversationUIEvent.decode(type: raw, sequence: sequence, payload: try Self.jsonData(data))
             payload = ui.type == .block ? .uiBlock(ui) : ui.type == .update ? .uiBlockUpdate(ui) : .uiBlockResolve(ui)
+        case "memory.used", "memory.update", "memory_recalled", "proactive_suggestion":
+            // Side channel (#63): no transcript effect; raw data goes to MemoryEventSink / proactive store via the installed handler.
+            guard let raw = type else { throw ConversationSessionError.invalidEvent }
+            let body = try Self.jsonData(data)
+            ConversationSideChannelEvents.dispatch(type: raw, turnID: request.operationID, data: body)
+            payload = .sideChannel(type: raw, data: body)
         case "device_call":
             guard reality != "not_configured", Self.supportsResume(request), request.image==nil, !request.hasUploadedAttachments,
                   let id = data["interrupt_id"] as? String, UUID(uuidString: id) != nil, let call = data["call_id"] as? String, !call.isEmpty, call.count <= 160,
