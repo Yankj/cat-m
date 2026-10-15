@@ -4354,5 +4354,13 @@
   "，草稿，": {
     "en": ", draft, ",
     "zh-Hans": "，草稿，"
+  },
+  "正在处理请求…": {
+    "en": "Processing the request…",
+    "zh-Hans": "正在处理请求…"
+  },
+  "处理进展待核对": {
+    "en": "Processing status needs checking",
+    "zh-Hans": "处理进展待核对"
   }
 }

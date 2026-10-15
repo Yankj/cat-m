@@ -92,6 +92,88 @@ final class SidebarTests: XCTestCase {
         XCTAssertTrue(SidebarGesturePolicy.settlesOpen(direction: .opening, progress: 0.1, velocityX: 401, cancelled: false))
         XCTAssertFalse(SidebarGesturePolicy.settlesOpen(direction: .closing, progress: 0.9, velocityX: -401, cancelled: false))
     }
+    func testContentOpeningIsExplicitAndPreservesAllExclusions() {
+        XCTAssertFalse(SidebarGesturePolicy.mayOpen(isAtRoot: true, isPresented: false, startX: 180, inHorizontalContent: false, inEditableControl: false))
+        XCTAssertTrue(SidebarGesturePolicy.mayOpen(isAtRoot: true, isPresented: false, startX: 180, inHorizontalContent: false, inEditableControl: false, allowsContentPan: true))
+        for (root, shown, horizontal, editing, x) in [(false, false, false, false, CGFloat(180)), (true, true, false, false, 180), (true, false, true, false, 180), (true, false, false, true, 180), (true, false, false, false, -1)] {
+            XCTAssertFalse(SidebarGesturePolicy.mayOpen(isAtRoot: root, isPresented: shown, startX: x, inHorizontalContent: horizontal, inEditableControl: editing, allowsContentPan: true))
+        }
+    }
+    func testMidSettlePanCanAcquireEitherDirectionButNotVerticalReading() {
+        XCTAssertTrue(SidebarGesturePolicy.acceptsPan(progress: 0.4, x: 100, y: 10))
+        XCTAssertTrue(SidebarGesturePolicy.acceptsPan(progress: 0.4, x: -100, y: 10))
+        XCTAssertFalse(SidebarGesturePolicy.acceptsPan(progress: 0.4, x: 10, y: 100))
+        XCTAssertFalse(SidebarGesturePolicy.acceptsPan(progress: 0, x: -100, y: 0))
+        XCTAssertFalse(SidebarGesturePolicy.acceptsPan(progress: 1, x: 100, y: 0))
+    }
+    func testRegrabUsesVisiblePositionRatherThanOpenTarget() {
+        var state = SidebarMotionState()
+        state.move(to: true, reduceMotion: false); state.advance(seconds: 0.05)
+        let visible = state.position
+        XCTAssertGreaterThan(visible, 0); XCTAssertLessThan(visible, 1)
+        state.beginDrag(); state.drag(translationX: 0, width: 320)
+        XCTAssertEqual(state.position, visible, accuracy: 0.000001)
+        state.drag(translationX: -32, width: 320)
+        XCTAssertEqual(state.position, max(0, visible - 0.1), accuracy: 0.000001)
+        XCTAssertTrue(state.isDragging); XCTAssertFalse(state.isSettling)
+    }
+    func testDragCancellationRestoresEndpointSelectedBeforeGrab() {
+        var state = SidebarMotionState()
+        state.move(to: true, reduceMotion: false); state.advance(seconds: 0.05)
+        state.beginDrag(); state.drag(translationX: -300, width: 320)
+        XCTAssertTrue(state.endDrag(velocityX: -2_000, width: 320, cancelled: true, reduceMotion: false))
+        state.advance(seconds: 2)
+        XCTAssertEqual(state.position, 1); XCTAssertTrue(state.isFullyOpen)
+        state.move(to: false, reduceMotion: false); state.advance(seconds: 0.05)
+        state.beginDrag(); state.drag(translationX: 300, width: 320)
+        XCTAssertFalse(state.endDrag(velocityX: 2_000, width: 320, cancelled: true, reduceMotion: false))
+        state.advance(seconds: 2)
+        XCTAssertEqual(state.position, 0); XCTAssertFalse(state.isVisible)
+    }
+    func testReducedMotionStillTracksFingerAndOnlyRemovesSettleInertia() {
+        var state = SidebarMotionState()
+        state.beginDrag(); state.drag(translationX: 96, width: 320)
+        state.removeInertia()
+        XCTAssertEqual(state.position, 0.3, accuracy: 0.000001)
+        XCTAssertTrue(state.isDragging)
+        XCTAssertTrue(state.endDrag(velocityX: 600, width: 320, cancelled: false, reduceMotion: true))
+        XCTAssertEqual(state.position, 1); XCTAssertTrue(state.isFullyOpen); XCTAssertFalse(state.isSettling)
+    }
+    func testSpringPartitionAndRapidRetargetPreserveContinuousPosition() {
+        var whole = SidebarMotionState(), split = SidebarMotionState()
+        whole.move(to: true, reduceMotion: false); split.move(to: true, reduceMotion: false)
+        whole.advance(seconds: 0.1); split.advance(seconds: 0.04); split.advance(seconds: 0.06)
+        XCTAssertEqual(whole.position, split.position, accuracy: 0.000001)
+        XCTAssertEqual(whole.velocity, split.velocity, accuracy: 0.000001)
+        let position = split.position, velocity = split.velocity
+        split.move(to: false, reduceMotion: false)
+        XCTAssertEqual(split.position, position); XCTAssertEqual(split.velocity, velocity)
+        split.advance(seconds: 2)
+        XCTAssertEqual(split.position, 0); XCTAssertFalse(split.isVisible)
+    }
+    func testResetRejectsLateTickAndLateDragEnd() {
+        var state = SidebarMotionState()
+        state.move(to: true, reduceMotion: false); state.advance(seconds: 0.1)
+        state.beginDrag(); state.reset()
+        state.drag(translationX: 300, width: 320); state.advance(seconds: 2)
+        XCTAssertFalse(state.endDrag(velocityX: 1_000, width: 320, cancelled: true, reduceMotion: false))
+        XCTAssertEqual(state.position, 0); XCTAssertFalse(state.isVisible)
+    }
+    func testReadonlyTextCanRevealWhileEditingMarkedAndSelectionRetainTouch() {
+        XCTAssertFalse(SidebarGesturePolicy.textViewOwnsTouch(isEditable: false, hasMarkedText: false, selectionLength: 0, selectionGestureActive: false))
+        XCTAssertTrue(SidebarGesturePolicy.textViewOwnsTouch(isEditable: true, hasMarkedText: false, selectionLength: 0, selectionGestureActive: false))
+        XCTAssertTrue(SidebarGesturePolicy.textViewOwnsTouch(isEditable: false, hasMarkedText: true, selectionLength: 0, selectionGestureActive: false))
+        XCTAssertTrue(SidebarGesturePolicy.textViewOwnsTouch(isEditable: false, hasMarkedText: false, selectionLength: 2, selectionGestureActive: false))
+        XCTAssertTrue(SidebarGesturePolicy.textViewOwnsTouch(isEditable: false, hasMarkedText: false, selectionLength: 0, selectionGestureActive: true))
+    }
+    func testForegroundRoundingOnlyGrowsWithVisibleRevealAndClamps() {
+        XCTAssertEqual(SidebarGesturePolicy.foregroundCornerRadius(progress: 0), 0)
+        XCTAssertEqual(SidebarGesturePolicy.foregroundCornerRadius(progress: 0.5), 12)
+        XCTAssertEqual(SidebarGesturePolicy.foregroundCornerRadius(progress: 1), 24)
+        XCTAssertEqual(SidebarGesturePolicy.foregroundCornerRadius(progress: -1), 0)
+        XCTAssertEqual(SidebarGesturePolicy.foregroundCornerRadius(progress: 2), 24)
+        XCTAssertEqual(SidebarGesturePolicy.foregroundCornerRadius(progress: .nan), 0)
+    }
     func testCancellationRestoresPriorPresentation() {
         XCTAssertFalse(SidebarGesturePolicy.settlesOpen(direction: .opening, progress: 0.9, velocityX: 1000, cancelled: true))
         XCTAssertTrue(SidebarGesturePolicy.settlesOpen(direction: .closing, progress: 0.1, velocityX: -1000, cancelled: true))
