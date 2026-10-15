@@ -71,10 +71,21 @@ export function createChatFetchHandler(runtime){
         return streamTurn(request,auth,scope,tail[1],tail[3],{trusted:restarted.trusted,afterSequence:restarted.afterSequence});
       }
       if(method==='POST'&&tail.length===3&&tail[0]==='conversations'&&tail[2]==='control')return json({conversation:await chat.control(auth,scope,tail[1],await body())});
+      if(tail[0]==='attachments'){
+        check(chat.attachments,503,'attachments_unavailable');
+        if(method==='POST'&&tail.length===1)return json({contract:'catpaw.chat-attachments.v1',...await chat.attachments.create(auth,scope,await boundedJsonBody(request,2048))},201);
+        if(method==='GET'&&tail.length===2)return json({contract:'catpaw.chat-attachments.v1',...await chat.attachments.read(auth,scope,tail[1])});
+        if(method==='POST'&&tail.length===3&&tail[2]==='complete'){const raw=await request.text();check(raw.length<=64&&['','{}'].includes(raw.trim()),422,'schema_invalid');return json({contract:'catpaw.chat-attachments.v1',...await chat.attachments.complete(auth,scope,tail[1])});}
+        throw new ApiError(404,'not_found');
+      }
       if(method==='POST'&&tail.length===3&&tail[0]==='conversations'&&tail[2]==='turns'){
-        const input=await body(),capability=request.headers.get('X-Catpaw-Memory-Proposal-Contract');
+        const raw=await body();check(raw?.message?.attachment_ids===undefined||chat.attachments,503,'attachments_unavailable');
+        const resolved=raw?.message?.attachment_ids===undefined?{input:raw,consume:async()=>{}}:await chat.attachments.resolveTurnInput(auth,scope,raw);
+        if(resolved.replay)return json({turn:await chat.readTurn(auth,scope,tail[1],raw.turn_id),replayed:true});
+        const input=resolved.input,capability=request.headers.get('X-Catpaw-Memory-Proposal-Contract');
         check(capability===null||capability===MEMORY_PROPOSAL_CONTRACT,422,'memory_proposal_contract_invalid');
         const started=await chat.startTurn(auth,scope,tail[1],input,{memoryProposalContract:capability});
+        if(!started.replayed)await resolved.consume();
         if(started.replayed)return json({turn:await chat.readTurn(auth,scope,tail[1],input.turn_id,{trusted:started.trusted}),replayed:true});
         runtime.onAccepted?.({owner:started.trusted.owner,principal:started.trusted.principal,turnId:input.turn_id});
         return streamTurn(request,auth,scope,tail[1],input.turn_id,{trusted:started.trusted,initial:started.turn.events[0],afterSequence:1});

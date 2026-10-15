@@ -49,6 +49,8 @@ function jpegSize(bytes){
   }
   throw new ApiError(422,'image_malformed');
 }
+// Structural PNG/JPEG validation shared by uploaded attachments (same rules as inline base64).
+export function validateImageBytes(bytes,mime){check(VISION_LIMITS.mime_types.includes(mime),422,'image_mime_unsupported');check(bytes.length>0&&bytes.length<=VISION_LIMITS.max_image_bytes,413,'image_too_large');return mime==='image/png'?pngSize(bytes):jpegSize(bytes);}
 export function validateVisionTurn(input,{enabled=false}={}){
   check(enabled===true,503,'image_input_unavailable');shape(input,['schema_version','turn_id','expected_revision','expected_grant_epoch','message','context']);check(input.schema_version===2,422,'schema_invalid');shape(input.message,['id','text','attachments']);
   check(Array.isArray(input.message.attachments)&&input.message.attachments.length>0&&input.message.attachments.length<=VISION_LIMITS.max_count,422,'image_count_exceeded');
