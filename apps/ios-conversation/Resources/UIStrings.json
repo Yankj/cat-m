@@ -2019,6 +2019,10 @@
     "en": "No longer within its valid dates",
     "zh-Hans": "已超出有效时间"
   },
+  "已超过可撤销时间。": {
+    "en": "It's too late to undo.",
+    "zh-Hans": "已超过可撤销时间。"
+  },
   "已跳过": {
     "en": "Skipped",
     "zh-Hans": "已跳过"
@@ -5534,6 +5538,10 @@
   "需要你确认": {
     "en": "Needs your approval",
     "zh-Hans": "需要你确认"
+  },
+  "需要先同意使用记忆。": {
+    "en": "You need to agree to memory first.",
+    "zh-Hans": "需要先同意使用记忆。"
   },
   "需要处理": {
     "en": "Needs attention",
