@@ -6,10 +6,12 @@ const json = (status, body) => new Response(JSON.stringify(body), { status, head
 const PUSH_ACTIONS = ['open', 'done', 'snooze_10m', 'snooze_1h', 'dismiss'];
 const TOKEN_KINDS = ['apns', 'live_activity_update', 'live_activity_start'];
 
-export function createProactiveService({ store, verifyUser, schedulerSecret, model = null, apns = null, decision = null, quietHours = { start: 22, end: 8 }, dailyPushCap = 5, defaultTimeZone = 'Asia/Shanghai', now = () => Date.now(), log = () => {} }) {
+export function createProactiveService({ store, verifyUser, schedulerSecret, model = null, apns = null, decision = null, quietHours = { start: 22, end: 8 }, dailyPushCap = 5, defaultTimeZone = 'Asia/Shanghai', now = () => Date.now(), log = () => {}, allow = null }) {
   async function user(req) {
     const p = await verifyUser(req.headers.get('authorization')).catch(e => { throw bad(e.code === 'auth_key_service_unavailable' ? e.code : 'session_required', e.status === 503 ? 503 : 401); });
     if (!isUUID(p?.sub)) throw bad('session_required', 401);
+    // Feature gate (catpaw.feature-enrollment.v1): env allowlist or DB enrollment for 'proactive'; null = no gate (tests/legacy).
+    if (allow && !(await allow(p.sub))) throw bad('feature_disabled', 403);
     return p.sub;
   }
   async function body(req) { const t = await req.text(); if (t.length > 32000) throw bad('request_too_large', 413); try { return t ? JSON.parse(t) : {}; } catch { throw bad('json_invalid', 400); } }
