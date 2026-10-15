@@ -68,14 +68,28 @@ public struct SidebarPressStyle: ButtonStyle {
             .animation(reduceMotion || configuration.isPressed ? nil : .easeOut(duration: 0.12), value: configuration.isPressed)
     }
 }
+/// One SF family, semantic size, weight and optical column for navigation icons.
+/// Hit areas belong to the enclosing button and remain at least 44pt.
+struct SidebarSymbol: View {
+    let name: String
+    var font: Font = .body
+    @ScaledMetric(relativeTo: .body) private var opticalWidth = 24.0
+    var body: some View {
+        Image(systemName: name).font(font.weight(.regular))
+            .symbolRenderingMode(.monochrome).frame(width: opticalWidth)
+            .accessibilityHidden(true)
+    }
+}
+
 public struct SidebarMenuButton: View {
     let action: () -> Void
     let localize:(String)->String
     var enabled: Bool
-    public init(enabled: Bool = true,localize:@escaping (String)->String = {$0}, action: @escaping () -> Void) { self.enabled = enabled; self.action = action;self.localize=localize }
+    private let font: Font
+    public init(enabled: Bool = true,localize:@escaping (String)->String = {$0}, font: Font = .body, action: @escaping () -> Void) { self.enabled = enabled; self.action = action;self.localize=localize;self.font=font }
     public var body: some View {
         Button(action: action) {
-            Image(systemName: "line.3.horizontal").font(.system(size:20)).frame(minWidth: 44, minHeight: 44).contentShape(Rectangle())
+            SidebarSymbol(name: "line.3.horizontal", font: font).frame(minWidth: 44, minHeight: 44).contentShape(Rectangle())
         }.buttonStyle(SidebarPressStyle()).disabled(!enabled)
             .accessibilityLabel(localize("打开侧栏")).accessibilityHint(localize("切换对话、任务和成果"))
             .accessibilityIdentifier("sidebar.open")

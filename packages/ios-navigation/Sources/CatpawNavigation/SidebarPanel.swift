@@ -6,15 +6,17 @@ public struct SidebarPanel: View {
     @Binding private var query: String
     private var theme: SidebarTheme
     private let localize:(String)->String
+    private var isActive: Bool
+    private var isModal: Bool
     private var onSelect: (SidebarDestination) -> Void
     private var onClose: () -> Void
     @AccessibilityFocusState private var headingFocused: Bool
-    @ScaledMetric(relativeTo: .body) private var iconWidth = 24.0
+    @FocusState private var searchFocused: Bool
 
     public init(snapshot: SidebarSnapshot, query: Binding<String>, theme: SidebarTheme = .catpaw,localize:@escaping (String)->String = {$0},
-                onSelect: @escaping (SidebarDestination) -> Void, onClose: @escaping () -> Void) {
+                isActive: Bool = true, isModal: Bool = true, onSelect: @escaping (SidebarDestination) -> Void, onClose: @escaping () -> Void) {
         self.snapshot = snapshot; _query = query; self.theme = theme;self.localize=localize
-        self.onSelect = onSelect; self.onClose = onClose
+        self.isActive = isActive; self.isModal = isModal; self.onSelect = onSelect; self.onClose = onClose
     }
 
     public var body: some View {
@@ -27,18 +29,19 @@ public struct SidebarPanel: View {
                             .padding(.vertical, 8).accessibilityAddTraits(.isHeader)
                             .accessibilityFocused($headingFocused)
                         Button(action: onClose) {
-                            Image(systemName: "xmark").font(.system(size:20))
+                            SidebarSymbol(name: "xmark", font: theme.bodyFont)
                                 .frame(minWidth: 44, minHeight: 44).contentShape(Rectangle())
                         }.accessibilityLabel(localize("关闭侧栏")).accessibilityIdentifier("sidebar.close")
                     }
                     HStack(spacing: 4) {
                         TextField(localize("搜索对话"), text: $query)
+                            .focused($searchFocused)
                             .font(theme.bodyFont).padding(.leading,12).frame(minHeight: 44)
                             .accessibilityLabel(localize("搜索对话")).accessibilityIdentifier("sidebar.search")
                         if !query.isEmpty {
                             Button { query = "" } label: {
-                                Image(systemName:"xmark.circle.fill").foregroundStyle(theme.secondary)
-                                    .frame(width:44,height:44).contentShape(Rectangle())
+                                SidebarSymbol(name: "xmark.circle.fill", font: theme.bodyFont).foregroundStyle(theme.secondary)
+                                    .frame(minWidth:44,minHeight:44).contentShape(Rectangle())
                             }.accessibilityLabel(localize("清除搜索")).accessibilityIdentifier("sidebar.search.clear")
                         }
                     }
@@ -66,7 +69,7 @@ public struct SidebarPanel: View {
                                             .foregroundStyle(theme.secondary)
                                     }
                                 }.frame(maxWidth: .infinity, alignment: .leading)
-                                if selected { Image(systemName: "checkmark").font(theme.bodyFont).accessibilityHidden(true) }
+                                if selected { SidebarSymbol(name: "checkmark", font: theme.bodyFont) }
                             }.padding(12).frame(minHeight: 44)
                                 .background(selected ? theme.selection : Color.clear, in: RoundedRectangle(cornerRadius: 14))
                                 .contentShape(Rectangle())
@@ -82,16 +85,19 @@ public struct SidebarPanel: View {
             }
         }.background(theme.panel).foregroundStyle(theme.ink)
             .buttonStyle(SidebarPressStyle())
-            .accessibilityAddTraits(.isModal)
+            .accessibilityAddTraits(isModal ? .isModal : [])
             .accessibilityAction(.escape, onClose)
-            .onAppear { headingFocused = true }
+            .onChange(of: isActive, initial: true) { _, active in
+                if !active { searchFocused = false }
+                headingFocused = active
+            }
     }
 
     private func route(_ title: String, icon: String, destination: SidebarDestination, identifier: String) -> some View {
         let available = snapshot.permits(destination)
         return Button { select(destination) } label: {
             HStack(alignment: .firstTextBaseline, spacing: 12) {
-                Image(systemName: icon).font(theme.bodyFont).frame(width: iconWidth).accessibilityHidden(true)
+                SidebarSymbol(name: icon, font: theme.bodyFont)
                 VStack(alignment: .leading, spacing: 4) {
                     Text(title).font(theme.bodyFont)
                     if !available { Text(localize("暂不可用")).font(theme.secondaryFont).foregroundStyle(theme.secondary) }
