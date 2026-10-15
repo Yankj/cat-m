@@ -53,6 +53,9 @@ struct AnswerSource: Identifiable, Equatable, Sendable {
     private var stopObserver: NSObjectProtocol?
     private var stoppedLocally = false
     static let stopNotification = Notification.Name("CatpawAnswerStoppedLocally")
+    static let resumeNotification = Notification.Name("CatpawAnswerStopRaced")
+    private var resumeObserver: NSObjectProtocol?
+    private var needsResync = false
     private var providerThinkingMs: Int?
     private var snapshotInitialized = false
     private let stepTitle: (String) -> String
@@ -77,6 +80,10 @@ struct AnswerSource: Identifiable, Equatable, Sendable {
                 guard (note.userInfo?["operationIDs"] as? Set<UUID>)?.contains(operationID) == true else { return }
                 MainActor.assumeIsolated { self?.markStopped() }
             }
+            resumeObserver = NotificationCenter.default.addObserver(forName: Self.resumeNotification, object: nil, queue: .main) { [weak self] note in
+                guard (note.userInfo?["operationID"] as? UUID) == operationID else { return }
+                MainActor.assumeIsolated { self?.stoppedLocally = false; self?.snapshotInitialized = false; self?.needsResync = true }
+            }
         }
         streamTask = Task { [weak self] in
             let events = await service.turnEvents()
@@ -91,12 +98,14 @@ struct AnswerSource: Identifiable, Equatable, Sendable {
     func markStopped() {
         guard !stoppedLocally else { return }
         stoppedLocally = true
-        streamTask?.cancel()
+        // Keep the stream: the server cancel arrives as failed(cancelled) or, if it raced, completed.
         phase = .interrupted(reason: "已停止接收此轮回复", reconciliationRequired: false)
     }
 
     func reconcile(message: ConversationTranscriptMessage, turn: ConversationTurnRecord) {
         if stoppedLocally { return }
+        if needsResync { needsResync = false; text = message.content; snapshotInitialized = true }
+        if turn.state == .failed, turn.error == "cancelled" { phase = .interrupted(reason: "已停止", reconciliationRequired: false); return }
         if !snapshotInitialized { text = message.content; snapshotInitialized = true }
         if let summary = turn.reasoningSummary { thinkingSummary = summary }
         applyThinkingDuration(turn.thinkingMs)
@@ -116,6 +125,9 @@ struct AnswerSource: Identifiable, Equatable, Sendable {
 
     func apply(_ event: ConversationTurnEvent) {
         if stoppedLocally { return }
+        if case let .failed(message, _) = event.payload, message == "cancelled" {
+            phase = .interrupted(reason: "已停止", reconciliationRequired: false); return
+        }
         guard event.sequence > lastSequence else { return }
         lastSequence = event.sequence
         switch event.payload {

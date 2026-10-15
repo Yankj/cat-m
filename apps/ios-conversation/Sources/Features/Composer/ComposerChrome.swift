@@ -33,7 +33,7 @@ import Combine
                 Image(systemName: mode == .stop ? "stop.fill" : "arrow.up")
                     .font(CatpawTypography.Role.body.font.weight(.bold))
                     .contentTransition(.symbolEffect(.replace))
-                    .foregroundStyle(mode == .disabled ? Color.white.opacity(0.9) : CatpawColors.sendIcon)
+                    .foregroundStyle(mode == .disabled ? CatpawColors.sendIcon.opacity(0.9) : CatpawColors.sendIcon)
                     .frame(width: 36, height: 36)
                     .background(mode == .disabled ? CatpawBrand.paw.opacity(0.35) : CatpawBrand.paw, in: Circle())
                 if mode == .queue {
@@ -95,7 +95,7 @@ struct ComposerGlass: ViewModifier {
     private func fallback(_ content: Content, _ shape: RoundedRectangle) -> some View {
         content.background(CatpawColors.composerPill, in: shape)
             .overlay(shape.strokeBorder(CatpawColors.hairline, lineWidth: 0.5))
-            .shadow(color: .black.opacity(0.06), radius: 8, y: 4)
+            .shadow(color: CatpawColors.ink.opacity(0.06), radius: 8, y: 4)
     }
 }
 
@@ -139,7 +139,7 @@ struct ComposerGlass: ViewModifier {
             if let rejection { rejectionToast(rejection) }
             // r8 meta line: status lives above the pill, never inside it.
             if let metaText {
-                Text(metaText).font(.system(size: 12)).foregroundStyle(metaWarning ? CatpawColors.attention : CatpawColors.tertiary)
+                Text(metaText).font(CatpawTypography.Role.caption.font).foregroundStyle(metaWarning ? CatpawColors.attention : CatpawColors.tertiary)
                     .frame(maxWidth: .infinity).accessibilityIdentifier("chat.composer.meta")
                     .transition(.opacity.combined(with: .offset(y: 4)))
             }
@@ -244,15 +244,35 @@ struct ComposerGlass: ViewModifier {
     func send() { guard sendsEnabled else {return};sendAction?() ?? model?.send() }
     /// Operations the user stopped locally. Rows for these keep the partial answer + interrupted footer.
     @Published private(set) var stoppedOperations: Set<UUID> = []
-    /// Stop = stop receiving on this device. We deliberately do NOT call service.stopObserving here:
-    /// it re-marks the turn `unknown` and re-reads the session, which blanked the transcript mid-scroll.
-    /// Server-side cancellation is 三角's (no cancel API yet); the turn may still finish on the server.
+    /// Stop = server cancel (R2): `cancelCurrentTurn` ends the turn as failed{cancelled}; the partial
+    /// text stays with the interrupted footer. UI flips immediately; a cancel that raced completion
+    /// (`.completed`) un-stops the row so the full answer shows. Double taps (`.busy`) are ignored.
+    private var cancelInFlight = false
     func stop() {
         let operationIDs = activeOperations
-        guard !operationIDs.isEmpty else { return }
+        guard !operationIDs.isEmpty, !cancelInFlight else { return }
         NotificationCenter.default.post(name: AnswerPhaseProjection.stopNotification, object: nil, userInfo: ["operationIDs": operationIDs])
         stoppedOperations.formUnion(operationIDs)
         activeOperations.subtract(operationIDs)
+        objectWillChange.send()
+        guard let model, let conversationID = model.conversationID else { return }
+        cancelInFlight = true
+        let service = model.service, scope = model.scope
+        Task { [weak self] in
+            defer { self?.cancelInFlight = false }
+            do {
+                let outcome = try await service.cancelCurrentTurn(scope: scope, conversationID: conversationID)
+                if case let .completed(operationID) = outcome { self?.unstop(operationID) }
+            } catch is CancellationError {
+            } catch ConversationSessionError.busy {
+            } catch {
+                // Cancel route failed: the local stop stays (partial text + interrupted footer, no error).
+            }
+        }
+    }
+    private func unstop(_ operationID: UUID) {
+        stoppedOperations.remove(operationID)
+        NotificationCenter.default.post(name: AnswerPhaseProjection.resumeNotification, object: nil, userInfo: ["operationID": operationID])
         objectWillChange.send()
     }
     func cancelQueued() {
@@ -340,29 +360,29 @@ private struct JumpGlass: ViewModifier {
             switch mode {
             case .voice:
                 Button(action: dictate) {
-                    Image(systemName: "mic").font(.system(size: 18, weight: .regular)).foregroundStyle(CatpawColors.ink)
+                    Image(systemName: "mic").font(CatpawTypography.Role.body.font).foregroundStyle(CatpawColors.ink)
                         .frame(width: size, height: size).contentShape(Circle().inset(by: -4))
                 }.buttonStyle(CatpawPressButtonStyle()).accessibilityLabel(ui("听写")).accessibilityIdentifier("chat.composer.mic")
                     .transition(.scale(scale: 0.6).combined(with: .opacity))
                 Button(action: voice) {
-                    Image(systemName: "waveform").font(.system(size: 16, weight: .semibold)).foregroundStyle(.white)
+                    Image(systemName: "waveform").font(CatpawTypography.Role.body.font.weight(.semibold)).foregroundStyle(CatpawColors.sendIcon)
                         .frame(width: size, height: size).background(CatpawColors.ink, in: Circle()).contentShape(Circle().inset(by: -4))
                 }.buttonStyle(CatpawPressButtonStyle()).accessibilityLabel(ui("语音对话")).accessibilityIdentifier("chat.composer.voice")
                     .transition(.scale(scale: 0.6).combined(with: .opacity))
             case .stop:
                 Button { stopCount += 1; stop() } label: {
-                    RoundedRectangle(cornerRadius: 3, style: .continuous).fill(.white).frame(width: 12, height: 12)
+                    RoundedRectangle(cornerRadius: 3, style: .continuous).fill(CatpawColors.sendIcon).frame(width: 12, height: 12)
                         .frame(width: size, height: size).background(CatpawColors.ink, in: Circle()).contentShape(Circle().inset(by: -4))
                 }.buttonStyle(CatpawPressButtonStyle()).accessibilityLabel(ui("停止回答")).accessibilityIdentifier("chat.stop")
                     .transition(.scale(scale: 0.6).combined(with: .opacity))
             case .send, .queue:
                 Button { sendCount += 1; send() } label: {
                     ZStack(alignment: .topTrailing) {
-                        Image(systemName: "arrow.up").font(.system(size: 17, weight: .semibold)).foregroundStyle(.white)
+                        Image(systemName: "arrow.up").font(CatpawTypography.Role.body.font.weight(.semibold)).foregroundStyle(CatpawColors.sendIcon)
                             .frame(width: size, height: size)
                             .background(canSend ? CatpawBrand.paw : CatpawBrand.paw.opacity(0.45), in: Circle())
                         if mode == .queue {
-                            Image(systemName: "clock.fill").font(.system(size: 9, weight: .bold)).foregroundStyle(CatpawColors.ink)
+                            Image(systemName: "clock.fill").font(CatpawTypography.Role.caption.font.weight(.bold)).imageScale(.small).foregroundStyle(CatpawColors.ink)
                                 .padding(2).background(CatpawColors.background, in: Circle()).offset(x: 3, y: -3)
                                 .accessibilityIdentifier("chat.composer.queuedBadge")
                         }
