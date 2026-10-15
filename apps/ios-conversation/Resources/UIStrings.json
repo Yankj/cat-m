@@ -159,6 +159,10 @@
     "en": "Chinese",
     "zh-Hans": "中文"
   },
+  "临时对话不会读取或写入记忆。": {
+    "en": "Temporary chats never read or write memory.",
+    "zh-Hans": "临时对话不会读取或写入记忆。"
+  },
   "主记忆及派生索引已清除；备份清除尚未核验。原对话历史不会在此删除。": {
     "en": "Primary memory and its derived index were cleared. Backup removal is unverified. Conversation history is kept.",
     "zh-Hans": "主记忆及派生索引已清除；备份清除尚未核验。原对话历史不会在此删除。"
@@ -214,6 +218,10 @@
   "人工假设": {
     "en": "Synthetic assumption",
     "zh-Hans": "人工假设"
+  },
+  "人物与关系": {
+    "en": "People",
+    "zh-Hans": "人物与关系"
   },
   "仅 App 活跃时模拟检查；关闭期间跳过，不补造历史。": {
     "en": "Simulation checks only while the app is active. Closed periods are skipped without fabricated history.",
@@ -383,6 +391,10 @@
     "en": "Use in",
     "zh-Hans": "使用范围"
   },
+  "使用记忆": {
+    "en": "Use memory",
+    "zh-Hans": "使用记忆"
+  },
   "保存": {
     "en": "Save",
     "zh-Hans": "保存"
@@ -527,6 +539,10 @@
     "en": "This candidate is not used as a confirmed fact.",
     "zh-Hans": "候选内容尚未作为已确认事实使用"
   },
+  "偏好": {
+    "en": "Preferences",
+    "zh-Hans": "偏好"
+  },
   "做总结": {
     "en": "Summarize",
     "zh-Hans": "做总结"
@@ -615,6 +631,10 @@
     "en": "All tasks",
     "zh-Hans": "全部任务"
   },
+  "全部清除": {
+    "en": "Clear all",
+    "zh-Hans": "全部清除"
+  },
   "公开来源读取": {
     "en": "Public source read",
     "zh-Hans": "公开来源读取"
@@ -622,6 +642,10 @@
   "关于": {
     "en": "About",
     "zh-Hans": "关于"
+  },
+  "关于我": {
+    "en": "About me",
+    "zh-Hans": "关于我"
   },
   "关掉 App 也没关系，任务会在云端继续进行。": {
     "en": "Close the app anytime; your tasks keep running in the cloud.",
@@ -634,6 +658,10 @@
   "关闭侧栏": {
     "en": "Close sidebar",
     "zh-Hans": "关闭侧栏"
+  },
+  "关闭后只在你明确要求时记住": {
+    "en": "When off, Catpaw only remembers when you ask",
+    "zh-Hans": "关闭后只在你明确要求时记住"
   },
   "关闭后暂停记忆利用，已有记录仍可查看和忘记。": {
     "en": "Turning this off pauses memory use. You can still view and forget saved entries.",
@@ -1231,6 +1259,10 @@
     "en": "Reply confirmed",
     "zh-Hans": "回复已确认"
   },
+  "回复时参考已记住的内容": {
+    "en": "Refer to saved memories when replying",
+    "zh-Hans": "回复时参考已记住的内容"
+  },
   "回复未完成": {
     "en": "Reply incomplete",
     "zh-Hans": "回复未完成"
@@ -1462,6 +1494,14 @@
   "小时 {0}": {
     "en": "Hour {0}",
     "zh-Hans": "小时 {0}"
+  },
+  "小猫会忘掉所有记住的内容，此操作无法撤销。": {
+    "en": "Catpaw will forget everything it remembered. This can't be undone.",
+    "zh-Hans": "小猫会忘掉所有记住的内容，此操作无法撤销。"
+  },
+  "小猫记住了": {
+    "en": "Catpaw remembered",
+    "zh-Hans": "小猫记住了"
   },
   "尚无任务": {
     "en": "No tasks yet",
@@ -1779,6 +1819,10 @@
     "en": "Revoked",
     "zh-Hans": "已撤销"
   },
+  "已撤销记住：{0}": {
+    "en": "Undid remembering: {0}",
+    "zh-Hans": "已撤销记住：{0}"
+  },
   "已收到工具回执": {
     "en": "Tool receipt received",
     "zh-Hans": "已收到工具回执"
@@ -1818,6 +1862,10 @@
   "已结束": {
     "en": "Ended",
     "zh-Hans": "已结束"
+  },
+  "已记住：{0}": {
+    "en": "Remembered: {0}",
+    "zh-Hans": "已记住：{0}"
   },
   "已读回执未保存：{0}": {
     "en": "Read receipt was not saved: {0}",
@@ -2511,6 +2559,10 @@
     "en": "Search skills",
     "zh-Hans": "搜索技能"
   },
+  "搜索记忆": {
+    "en": "Search memories",
+    "zh-Hans": "搜索记忆"
+  },
   "摘要": {
     "en": "Summary",
     "zh-Hans": "摘要"
@@ -2526,6 +2578,10 @@
   "撤回这份工作授权": {
     "en": "Withdraw authorization for this task",
     "zh-Hans": "撤回这份工作授权"
+  },
+  "撤销": {
+    "en": "Undo",
+    "zh-Hans": "撤销"
   },
   "撤销授权": {
     "en": "Revoke authorization",
@@ -3767,6 +3823,10 @@
     "en": "This result version is not stored locally. Return to the original task to read it.",
     "zh-Hans": "此成果版本尚未保存在本机。请返回原工作读取。"
   },
+  "此操作暂未开放。": {
+    "en": "This action isn't available yet.",
+    "zh-Hans": "此操作暂未开放。"
+  },
   "此来源已停用于记忆提取，保留原文供核对。": {
     "en": "This source is no longer used to extract memory. Its original text is kept for review.",
     "zh-Hans": "此来源已停用于记忆提取，保留原文供核对。"
@@ -3835,6 +3895,10 @@
     "en": "Up to {0} attachments per message",
     "zh-Hans": "每条消息最多 {0} 个附件"
   },
+  "没有匹配的记忆": {
+    "en": "No matching memories",
+    "zh-Hans": "没有匹配的记忆"
+  },
   "没有工作记忆": {
     "en": "No work memory",
     "zh-Hans": "没有工作记忆"
@@ -3846,6 +3910,10 @@
   "没有找到对话": {
     "en": "No conversations found",
     "zh-Hans": "没有找到对话"
+  },
+  "没有找到这条记忆，可能已被删除。": {
+    "en": "This memory wasn't found. It may have been deleted.",
+    "zh-Hans": "没有找到这条记忆，可能已被删除。"
   },
   "没有新增记忆候选": {
     "en": "No new memory candidates",
@@ -3902,6 +3970,10 @@
   "清理文档": {
     "en": "Clean up documents",
     "zh-Hans": "清理文档"
+  },
+  "清除全部记忆？": {
+    "en": "Clear all memories?",
+    "zh-Hans": "清除全部记忆？"
   },
   "清除搜索": {
     "en": "Clear search",
@@ -4403,6 +4475,10 @@
     "en": "Edit goal, requirements and stop conditions",
     "zh-Hans": "编辑目标、要求与停止条件"
   },
+  "编辑记忆": {
+    "en": "Edit memory",
+    "zh-Hans": "编辑记忆"
+  },
   "缩小": {
     "en": "Zoom out",
     "zh-Hans": "缩小"
@@ -4435,9 +4511,17 @@
     "en": "Start a conversation or set up ongoing work.",
     "zh-Hans": "聊一件事，或建立持续跟进的工作约定。"
   },
+  "聊天时说“记住……”，小猫就会把它放在这里。": {
+    "en": "Say “remember…” in a chat and it shows up here.",
+    "zh-Hans": "聊天时说“记住……”，小猫就会把它放在这里。"
+  },
   "联调未完成，原记录保留": {
     "en": "Testing did not complete. Original records are preserved.",
     "zh-Hans": "联调未完成，原记录保留"
+  },
+  "自动记住新内容": {
+    "en": "Remember new things automatically",
+    "zh-Hans": "自动记住新内容"
   },
   "自动（OpenRouter 优先）": {
     "en": "Automatic (OpenRouter first)",
@@ -4519,6 +4603,10 @@
     "en": "Memory candidate preparation failed · ",
     "zh-Hans": "记忆候选提取失败 · "
   },
+  "记忆内容": {
+    "en": "Memory",
+    "zh-Hans": "记忆内容"
+  },
   "记忆内容过长或格式不符，请精简后重新确认。": {
     "en": "This memory is too long or has an invalid format. Shorten it and review again.",
     "zh-Hans": "记忆内容过长或格式不符，请精简后重新确认。"
@@ -4551,9 +4639,17 @@
     "en": "The memory service is unavailable. The draft is kept.",
     "zh-Hans": "记忆服务尚未连接，草稿会保留。"
   },
+  "记忆服务暂时连不上，请稍后重试。": {
+    "en": "Can't reach memory right now. Try again later.",
+    "zh-Hans": "记忆服务暂时连不上，请稍后重试。"
+  },
   "记忆来源": {
     "en": "Memory source",
     "zh-Hans": "记忆来源"
+  },
+  "记忆核对与来源": {
+    "en": "Review and sources",
+    "zh-Hans": "记忆核对与来源"
   },
   "记忆用于已选择范围的后续对话。候选须确认；关闭利用不会删除原记录。": {
     "en": "Memory is used in future conversations within its selected scope. Candidates need confirmation. Turning memory off keeps saved entries.",
@@ -4831,9 +4927,17 @@
     "en": "Transcribing",
     "zh-Hans": "转写中"
   },
+  "轻点可撤销或编辑": {
+    "en": "Tap to undo or edit",
+    "zh-Hans": "轻点可撤销或编辑"
+  },
   "轻点开始听写；按住说话，向上滑动发送，向左滑动取消": {
     "en": "Tap to dictate; hold to talk, slide up to send, slide left to cancel",
     "zh-Hans": "轻点开始听写；按住说话，向上滑动发送，向左滑动取消"
+  },
+  "轻点编辑，左滑忘记": {
+    "en": "Tap to edit, swipe left to forget",
+    "zh-Hans": "轻点编辑，左滑忘记"
   },
   "输入会保存在当前会话。选择专家与技能可记录工作配置。": {
     "en": "Input stays in this conversation. Expert and skill selections record work configuration.",
@@ -4854,6 +4958,10 @@
   "运行冻结合成报告": {
     "en": "Run frozen synthetic report",
     "zh-Hans": "运行冻结合成报告"
+  },
+  "近期日志": {
+    "en": "Recent journal",
+    "zh-Hans": "近期日志"
   },
   "返回对话底部，继续跟随新回复": {
     "en": "Return to the bottom and follow new replies",
@@ -4882,6 +4990,10 @@
   "还没有本地文件。可从会话加号导入。": {
     "en": "No local files yet. Import one from the conversation's plus menu.",
     "zh-Hans": "还没有本地文件。可从会话加号导入。"
+  },
+  "还没有记住任何内容": {
+    "en": "Nothing remembered yet",
+    "zh-Hans": "还没有记住任何内容"
   },
   "还没有记忆。你可以在这里明确保存一条偏好。": {
     "en": "No memory yet. Save a preference here.",
