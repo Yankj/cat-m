@@ -23,7 +23,7 @@ import SwiftUI
     static var scenario:String? {
         let env=launchEnvironment
         guard let id=env["CF_UI_TEST_STORE"],UUID(uuidString:id) != nil,
-              let s=env["CF_UI_TEST_SCENARIO"],["p0-ui-accepted-work","p0-ui-accepted-work-unknown","p0-ui-echo","p0-ui-consent","p0-ui-consent-handoff","p0-ui-ime","p0-ui-lifecycle","p0-ui-large","p0-ui-large-autoplay","p0-ui-reading","p0-ui-reading-growth","p0-ui-queue","p0-ui-genui","p0-ui-genui-large","p0-ui-genui-table","p0-ui-genui-chart","p0-ui-genui-weighted","p0-ui-plan","p0-ui-plan-pending","p0-ui-plan-unknown","p0-ui-sourced-artifact","p0-ui-large-sourced-artifact","p0-ui-task-action","p0-ui-task-action-unknown","p0-ui-task-action-unavailable","p0-ui-large-task-action","p0-ui-artifact-edit","p0-ui-artifact-edit-unknown","p0-ui-large-artifact-edit","p0-ui-task-control","p0-ui-task-control-unknown","p0-ui-large-task-control","p0-ui-large-task-control-unresolved"].contains(s) else { return nil };return s
+              let s=env["CF_UI_TEST_SCENARIO"],["p0-ui-accepted-work","p0-ui-accepted-work-unknown","p0-ui-echo","p0-ui-consent","p0-ui-consent-handoff","p0-ui-ime","p0-ui-lifecycle","p0-ui-large","p0-ui-large-autoplay","p0-ui-reading","p0-ui-reading-growth","p0-ui-queue","p0-ui-genui","p0-ui-genui-large","p0-ui-genui-table","p0-ui-genui-chart","p0-ui-genui-weighted","p0-ui-plan","p0-ui-plan-pending","p0-ui-plan-unknown","p0-ui-sourced-artifact","p0-ui-large-sourced-artifact","p0-ui-task-action","p0-ui-task-action-unknown","p0-ui-task-action-unavailable","p0-ui-large-task-action","p0-ui-artifact-edit","p0-ui-artifact-edit-unknown","p0-ui-large-artifact-edit","p0-ui-task-control","p0-ui-task-control-unknown","p0-ui-large-task-control","p0-ui-large-task-control-unresolved","p0-ui-acceptance","p0-ui-acceptance-offline"].contains(s) else { return nil };return s
     }
     static var replyCalls=0,observeCalls=0,consentCalls=0
     static var readingGrowthStage=0
@@ -36,8 +36,16 @@ actor P0ExperienceBackend:ConversationBackend {
     private var grantInvocations=0,replyInvocations=0
     private var requests:[UUID:ConversationTurnRequest]=[:],events:[UUID:[ConversationTurnEvent]]=[:]
     private var streams:[UUID:AsyncThrowingStream<ConversationTurnEvent,Error>.Continuation]=[:]
+    private let createdAt=Date()
     init(scenario:String){self.scenario=scenario}
-    func connection(scope:DataScope) async -> ConversationConnection { .init(state:.providerUnverified,provider:"P0 synthetic offline",detail:"No HTTP/Auth/model") }
+    func connection(scope:DataScope) async -> ConversationConnection {
+        // Acceptance offline axis: unavailable for the first N seconds (default 6), then reachable so "retry" recovers.
+        if scenario == "p0-ui-acceptance-offline" {
+            let window=Double(ProcessInfo.processInfo.environment["CATPAW_ACCEPTANCE_OFFLINE_SECONDS"] ?? "") ?? 6
+            if Date().timeIntervalSince(createdAt) < window { return .init(state:.unavailable,provider:"P0 synthetic offline",detail:"Simulated offline window; no HTTP/Auth/model") }
+        }
+        return .init(state:.providerUnverified,provider:"P0 synthetic offline",detail:"No HTTP/Auth/model")
+    }
     func modelConsent(scope:DataScope,conversationID:UUID) async throws -> ConversationModelConsent? {
         if scenario == "p0-ui-echo" { try await Task.sleep(nanoseconds:2_000_000_000) }
         if scenario == "p0-ui-consent",!consentGranted {return .init(conversationID:conversationID,title:"Synthetic consent",body:"Explicit offline UI fixture. No HTTP, Auth or model. Confirmation is required before the synthetic reply.",routeHash:textHash("P0 consent route"),expectedRevision:0)}
@@ -78,6 +86,7 @@ actor P0ExperienceBackend:ConversationBackend {
         emit(.started(requestHash:textHash("P0-UI:"+r.operationID.uuidString),conversationRevision:1,grantEpoch:1),request:r)
         let message=stableID("P0-UI-assistant-"+r.operationID.uuidString)
         if scenario == "p0-ui-reading-growth" {await produceReadingGrowth(r,message:message);return}
+        if scenario.hasPrefix("p0-ui-acceptance") {await produceAcceptance(r,message:message);return}
         if scenario.hasSuffix("sourced-artifact") || scenario.contains("artifact-edit") || scenario.contains("task-action") {
             do {
                 let call="synthetic-sourced-"+r.operationID.uuidString,run=stableID(call+"-run"),artifactID=textHash(call+"-artifact")
@@ -133,6 +142,20 @@ actor P0ExperienceBackend:ConversationBackend {
         while !remaining.isEmpty {
             let chunk=String(remaining.prefix(128));remaining=String(remaining.dropFirst(chunk.count))
             emit(.textDelta(messageID:message,text:chunk),request:r);try? await Task.sleep(nanoseconds:scenario.hasPrefix("p0-ui-genui") ? 600_000_000 : (scenario == "p0-ui-consent" ? 250_000_000 : (scenario == "p0-ui-reading" ? 100_000_000 : 20_000_000)))
+        }
+        emit(.completed(messageID:message,finalTextHash:textHash(body)),request:r);streams[r.operationID]?.finish()
+    }
+    /// XCUITest acceptance: visible thinking phase, reasoning summary, then a long slow body
+    /// (≈12 s) so stop / scroll-to-latest can be exercised mid-stream. Offline, deterministic.
+    private func produceAcceptance(_ r:ConversationTurnRequest,message:UUID) async {
+        try? await Task.sleep(nanoseconds:2_500_000_000)
+        emit(.reasoningSummary(messageID:message,text:"Synthetic acceptance thinking summary.",thinkingMs:2500),request:r)
+        let body=(1...60).map {"Synthetic acceptance paragraph \($0). The stream keeps growing so the reader can scroll away and jump back.\n\n"}.joined()
+        var remaining=body
+        while !remaining.isEmpty {
+            if streams[r.operationID] == nil {return}
+            let chunk=String(remaining.prefix(48));remaining=String(remaining.dropFirst(chunk.count))
+            emit(.textDelta(messageID:message,text:chunk),request:r);try? await Task.sleep(nanoseconds:80_000_000)
         }
         emit(.completed(messageID:message,finalTextHash:textHash(body)),request:r);streams[r.operationID]?.finish()
     }

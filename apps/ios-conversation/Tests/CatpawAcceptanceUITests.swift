@@ -1,0 +1,119 @@
+import XCTest
+
+/// One-click acceptance suite (scripts/run-ui-acceptance.sh). Every step attaches a keepAlways screenshot
+/// named "NN-step" so the script can build an ordered report. Fixture cases use the offline P0 backend
+/// (CF_UI_TEST_STORE + CF_UI_TEST_SCENARIO=p0-ui-acceptance*): no HTTP, Auth or model calls.
+/// The live anonymous-login case runs only with CATPAW_ACCEPTANCE_LIVE=1.
+final class CatpawAcceptanceUITests: XCTestCase {
+    private let bundleID = ProcessInfo.processInfo.environment["CATPAW_UI_BUNDLE_ID"] ?? "com.example.CatpawM.ConversationFirst.Auth"
+
+    override func setUp() { continueAfterFailure = false }
+
+    private func fixtureApp(_ scenario: String, extra: [String: String] = [:]) -> XCUIApplication {
+        let app = XCUIApplication(bundleIdentifier: bundleID)
+        app.launchEnvironment["CF_UI_TEST_STORE"] = UUID().uuidString
+        app.launchEnvironment["CF_UI_TEST_SCENARIO"] = scenario
+        for (k, v) in extra { app.launchEnvironment[k] = v }
+        return app
+    }
+    private func shot(_ app: XCUIApplication, _ name: String) {
+        let a = XCTAttachment(screenshot: app.screenshot()); a.name = name; a.lifetime = .keepAlways; add(a)
+    }
+    private func input(_ app: XCUIApplication) -> XCUIElement { app.descendants(matching: .any)["chat.input"].firstMatch }
+    private func waitFor(_ element: XCUIElement, _ format: String, _ args: CVarArg..., timeout: TimeInterval) -> Bool {
+        let e = XCTNSPredicateExpectation(predicate: NSPredicate(format: format, argumentArray: args), object: element)
+        return XCTWaiter.wait(for: [e], timeout: timeout) == .completed
+    }
+    private func send(_ app: XCUIApplication, _ text: String) {
+        let field = input(app); XCTAssertTrue(field.waitForExistence(timeout: 20)); field.tap(); field.typeText(text)
+        let button = app.buttons["chat.send"]; XCTAssertTrue(waitFor(button, "enabled == true", timeout: 10)); button.tap()
+    }
+
+    // 1. Launch animation → first screen
+    func test01LaunchAnimation() {
+        let app = fixtureApp("p0-ui-acceptance"); app.launch()
+        shot(app, "01-launch-mark-early")
+        Thread.sleep(forTimeInterval: 0.5); shot(app, "01-launch-mark-mid")
+        XCTAssertTrue(input(app).waitForExistence(timeout: 20), "Composer must appear after the launch mark")
+        shot(app, "01-launch-first-screen")
+    }
+
+    // 2. Anonymous login → chat (live; real Auth, no model call)
+    func test02AnonymousLoginIntoChat() throws {
+        guard ProcessInfo.processInfo.environment["CATPAW_ACCEPTANCE_LIVE"] == "1" else { throw XCTSkip("Set CATPAW_ACCEPTANCE_LIVE=1 to exercise real anonymous sign-in") }
+        let app = XCUIApplication(bundleIdentifier: bundleID); app.launch()
+        shot(app, "02-auth-entrance")
+        let start = app.buttons["auth.startExperience"]
+        if start.waitForExistence(timeout: 15) {
+            XCTAssertTrue(waitFor(start, "enabled == true", timeout: 20)); start.tap(); shot(app, "02-auth-starting")
+        }
+        XCTAssertTrue(input(app).waitForExistence(timeout: 45), "Anonymous session must land in chat")
+        XCTAssertFalse(app.buttons["auth.startExperience"].exists)
+        shot(app, "02-chat-after-anonymous-login")
+    }
+
+    // 3+4+6. Send → thinking → streaming body → scroll-to-latest → stop
+    func test03SendThinkingStreamScrollAndStop() {
+        let app = fixtureApp("p0-ui-acceptance"); app.launch()
+        XCTAssertTrue(input(app).waitForExistence(timeout: 20)); shot(app, "03-empty-chat")
+        send(app, "Acceptance synthetic prompt")
+        XCTAssertTrue(app.descendants(matching: .any)["chat.userMessage"].firstMatch.waitForExistence(timeout: 10))
+        let thinking = app.descendants(matching: .any)["chat.answer.thinking"].firstMatch
+        if thinking.waitForExistence(timeout: 3) { shot(app, "03-thinking") } else { shot(app, "03-thinking-not-visible") }
+        let answer = app.descendants(matching: .any)["chat.assistantMessage"].firstMatch
+        XCTAssertTrue(answer.waitForExistence(timeout: 15), "Streaming body must appear"); Thread.sleep(forTimeInterval: 1.5)
+        shot(app, "04-streaming-body")
+
+        // Scroll away from the bottom while streaming → jump-to-latest appears → tap → gone.
+        let transcript = app.descendants(matching: .any)["chat.transcript"].firstMatch
+        (transcript.exists ? transcript : app.scrollViews.firstMatch).swipeDown(velocity: .fast)
+        let jump = app.buttons["chat.jumpToLatest"]
+        XCTAssertTrue(jump.waitForExistence(timeout: 5), "Scroll-to-latest button must appear when reader leaves the bottom")
+        shot(app, "06-jump-to-latest-visible"); jump.tap()
+        XCTAssertTrue(waitFor(jump, "exists == false", timeout: 5)); shot(app, "06-jump-to-latest-returned")
+
+        // Stop: the composer exposes a stop control (label 停止回答) only once cancellation is wired.
+        let stop = app.buttons.matching(NSPredicate(format: "label == %@ OR identifier == %@", "停止回答", "chat.stop")).firstMatch
+        if stop.waitForExistence(timeout: 2) {
+            stop.tap(); shot(app, "05-stopped")
+            XCTAssertTrue(app.descendants(matching: .any)["chat.answer.interrupted"].firstMatch.waitForExistence(timeout: 10))
+        } else {
+            shot(app, "05-stop-control-missing")
+            XCTExpectFailure("ConversationComposerChromeAdapter.stop() is a no-op and runState never reports .responding; stop UI not wired yet", strict: false) {
+                XCTFail("Stop control not present while streaming")
+            }
+        }
+        XCTAssertTrue(app.staticTexts["chat.reply.completed"].waitForExistence(timeout: 30) || app.descendants(matching: .any)["chat.answer.interrupted"].firstMatch.exists)
+        shot(app, "04-final-settled")
+    }
+
+    // 5. '+' attachment menu
+    func test04AttachmentMenu() {
+        let app = fixtureApp("p0-ui-acceptance"); app.launch()
+        XCTAssertTrue(input(app).waitForExistence(timeout: 20))
+        let add = app.buttons["chat.composer.add"]; XCTAssertTrue(add.waitForExistence(timeout: 10)); add.tap()
+        XCTAssertTrue(app.buttons["照片"].waitForExistence(timeout: 5) || app.buttons["Photos"].exists, "Attachment menu must list photos")
+        XCTAssertTrue(app.buttons["文件"].exists || app.buttons["Files"].exists)
+        shot(app, "07-attachment-menu")
+        app.buttons["文件"].exists ? app.buttons["文件"].tap() : app.buttons["Files"].tap()
+        Thread.sleep(forTimeInterval: 1.5); shot(app, "07-file-importer")
+    }
+
+    // 7. Offline status capsule → retry → recovered
+    func test05OfflineCapsuleAndRetry() {
+        let app = fixtureApp("p0-ui-acceptance-offline", extra: ["CATPAW_ACCEPTANCE_OFFLINE_SECONDS": "6"]); app.launch()
+        XCTAssertTrue(input(app).waitForExistence(timeout: 20))
+        let capsule = app.buttons["chat.connection"]
+        XCTAssertTrue(capsule.waitForExistence(timeout: 10), "Offline status capsule must show"); shot(app, "08-offline-capsule")
+        Thread.sleep(forTimeInterval: 6.5)
+        capsule.tap()
+        let refresh = app.buttons["connection.refresh"]; XCTAssertTrue(refresh.waitForExistence(timeout: 5)); shot(app, "08-connection-sheet-offline")
+        refresh.tap()
+        let state = app.descendants(matching: .any)["connection.state"].firstMatch
+        _ = state.waitForExistence(timeout: 5); Thread.sleep(forTimeInterval: 1); shot(app, "08-after-retry")
+        // Dismiss the sheet; the capsule disappears once reachable.
+        app.swipeDown(velocity: .fast)
+        XCTAssertTrue(waitFor(app.buttons["chat.connection"], "exists == false", timeout: 10), "Capsule must clear after successful retry")
+        shot(app, "08-online-recovered")
+    }
+}

@@ -106,6 +106,9 @@ import AppIntents
 @MainActor @main struct CatpawMApp: App {
     @Environment(\.locale) private var uiLocale
     private func ui(_ key: String, arguments: [String] = []) -> String { AppLanguage(locale: uiLocale).ui(key, arguments: arguments) }
+    #if os(iOS)
+    @UIApplicationDelegateAdaptor(CatpawAppDelegate.self) private var appDelegate
+    #endif
     @StateObject private var bootstrap = Bootstrap()
     @StateObject private var auth = NativeAuthApplicationModel()
     @Environment(\.scenePhase) private var scene

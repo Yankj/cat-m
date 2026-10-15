@@ -295,6 +295,9 @@ import CatpawImageComposer
         }
         .catpawSheet(isPresented:$composerContextPresented,onDismiss:completeContextAction) {composerContextSheet}
         .task { await model.start() }
+        #if canImport(ActivityKit) && os(iOS)
+        .task { await CatpawLiveActivityCoordinator.shared.observe(model.service) { [model] in model.conversationID } }
+        #endif
         .onDisappear {scrollTask?.cancel();scrollTask=nil}
         .onChange(of:model.outgoingMessages) { _,intents in
             updateAttachmentAdmission(intents)
