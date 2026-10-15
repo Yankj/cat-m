@@ -122,6 +122,7 @@ import AppIntents
         MemorySavedChipAdapter.register() // wave2 V1
         DeviceStatusCardAdapter.register() // wave2 V3 receipt + permission cards
         DeviceCallCardAdapter.register() // wave2 V3 device_call confirm card
+        ProactiveSuggestionAdapter.register() // wave2 demo proactive_suggestion
     }
     var body: some Scene {
         WindowGroup {
