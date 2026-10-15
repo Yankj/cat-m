@@ -5086,5 +5086,37 @@
   "，草稿，": {
     "en": ", draft, ",
     "zh-Hans": "，草稿，"
+  },
+  "代码": {
+    "en": "Code",
+    "zh-Hans": "代码"
+  },
+  "复制": {
+    "en": "Copy",
+    "zh-Hans": "复制"
+  },
+  "已复制": {
+    "en": "Copied",
+    "zh-Hans": "已复制"
+  },
+  "复制代码": {
+    "en": "Copy code",
+    "zh-Hans": "复制代码"
+  },
+  "收起": {
+    "en": "Collapse",
+    "zh-Hans": "收起"
+  },
+  "展开全部 ({0} 行)": {
+    "en": "Show all ({0} lines)",
+    "zh-Hans": "展开全部 ({0} 行)"
+  },
+  "卡片": {
+    "en": "Card",
+    "zh-Hans": "卡片"
+  },
+  "卡片加载中…": {
+    "en": "Loading card…",
+    "zh-Hans": "卡片加载中…"
   }
 }
