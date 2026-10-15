@@ -30,7 +30,7 @@ public struct NativeChatConfiguration: Sendable {
         request.setValue(authorization,forHTTPHeaderField:"Authorization");request.setValue("application/json",forHTTPHeaderField:"Content-Type");request.setValue("text/event-stream, application/json",forHTTPHeaderField:"Accept")
         if let publishableKey { request.setValue(publishableKey,forHTTPHeaderField:"apikey") }
         if let edgeRegion { request.setValue(edgeRegion,forHTTPHeaderField:"x-region") }
-        if let route = ConversationModelRoute.current.headerValue { request.setValue(route,forHTTPHeaderField:"X-Catpaw-Route") } // DEBUG-only developer override
+        if let route = ConversationModelRoute.current.headerValue { request.setValue(route,forHTTPHeaderField:"X-Catpaw-Route") } // DEBUG/DeviceTrial developer override (e.g. agnes)
         request.setValue("1",forHTTPHeaderField:"X-Catpaw-Reasoning-Summary") // decodes optional reasoning_summary
         return request
     }

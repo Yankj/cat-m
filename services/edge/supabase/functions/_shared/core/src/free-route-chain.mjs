@@ -96,7 +96,12 @@ class OpenAICompatibleRoute {
         // Thought summary: Gemini marks thought parts; OpenRouter/Groq may use `reasoning`.
         const thought = delta.extra_content?.google?.thought === true ? delta.content : (typeof delta.reasoning === 'string' ? delta.reasoning : typeof delta.reasoning_content === 'string' ? delta.reasoning_content : null);
         if (thought) { thoughtBytes += Buffer.byteLength(thought); check(thoughtBytes <= 16000, 503, 'thought_too_large'); emitted = true; yield { type: 'thinking_delta', text: thought }; }
-        else if (delta.content) { check(typeof delta.content === 'string', 503, 'invalid_provider_chunk'); textBytes += Buffer.byteLength(delta.content); check(textBytes <= 64000, 503, 'output_too_large'); emitted = true; yield { type: 'text_delta', text: delta.content }; }
+        else if (delta.content) {
+          check(typeof delta.content === 'string', 503, 'invalid_provider_chunk');
+          // Agnes (verified live 2026-10-15) streams `reasoning_content` then `\n\n` before the answer; drop leading blank text.
+          const text = textBytes === 0 && thoughtBytes > 0 ? delta.content.replace(/^\s+/, '') : delta.content;
+          if (text) { textBytes += Buffer.byteLength(text); check(textBytes <= 64000, 503, 'output_too_large'); emitted = true; yield { type: 'text_delta', text }; }
+        }
         for (const part of delta.tool_calls ?? []) {
           const i = Number.isInteger(part.index) ? part.index : 0; check(i >= 0 && i < 4, 503, 'invalid_tool_index');
           const t = calls.get(i) ?? { id: '', name: '', raw: '' };

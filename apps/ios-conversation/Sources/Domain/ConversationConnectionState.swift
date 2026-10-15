@@ -84,15 +84,15 @@ public enum ConversationModelRoute: String, CaseIterable, Identifiable, Sendable
     }
     public static let defaultsKey = "catpaw.developer.modelRoute"
     public static var current: ConversationModelRoute {
-        #if DEBUG
+        #if DEBUG || DEVICE_TRIAL
         return ConversationModelRoute(rawValue: UserDefaults.standard.string(forKey: defaultsKey) ?? "") ?? .automatic
         #else
         return .automatic
         #endif
     }
-    /// Persist the developer choice (DEBUG builds only; Release always uses automatic).
+    /// Persist the developer choice (DEBUG and DeviceTrial builds; Release always uses automatic).
     public func select() {
-        #if DEBUG
+        #if DEBUG || DEVICE_TRIAL
         UserDefaults.standard.set(rawValue, forKey: Self.defaultsKey)
         #endif
     }
