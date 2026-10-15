@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import os
 import Combine
 import CatpawImageComposer
 
@@ -17,6 +18,7 @@ struct OutgoingMessageIntent: Identifiable, Equatable {
 enum ConversationConnectionLifecycle: String { case checking, available, reconnecting, offline, notConfigured }
 enum ConversationObserverLifecycle: String { case foregroundIdle, streaming, reconnecting, background, unknown }
 
+private let sendLog=Logger(subsystem:"catpaw",category:"send")
 @MainActor final class ConversationFirstModel: ObservableObject {
     let repository: Repository
     let service: ConversationSessionService
@@ -639,8 +641,12 @@ enum ConversationObserverLifecycle: String { case foregroundIdle, streaming, rec
         permissionTask=Task {
             defer { if permissionID == token { permissionTask=nil;checkingModelConsent=false } }
             do {
-                let state=try await queue?.state()
-                guard !Task.isCancelled,permissionID == token,foreground,conversationID == id,let state,!state.pending.isEmpty,!state.paused else { return }
+                var state=try await queue?.state()
+                // A preflight hold (send threw before the turn was journaled: readiness timeout, admission
+                // briefly closed during auth refresh) is transient. Nothing else resumes it, so a fresh send
+                // or consent check must, otherwise every later message queues silently behind it.
+                if try await queue?.resumePreflightHold() == true { sendLog.info("catpaw.send resumed preflight hold");state=try await queue?.state() }
+                guard !Task.isCancelled,permissionID == token,foreground,conversationID == id,let state,!state.pending.isEmpty,!state.paused else { sendLog.info("catpaw.send authorize skipped paused=\(state?.paused ?? false, privacy: .public)");return }
                 let consent=try await service.modelConsent(scope:scope,conversationID:id)
                 guard !Task.isCancelled,permissionID == token,foreground,conversationID == id else { return }
                 if let consent { presentModelConsent(consent);for i in outgoingMessages.indices where outgoingMessages[i].state == .queued { outgoingMessages[i].state = .awaitingPermission } }
@@ -702,6 +708,7 @@ enum ConversationObserverLifecycle: String { case foregroundIdle, streaming, rec
         turnTask=Task {
             defer { if flightID == token { flightID=nil;busy=false;sending=false;observerLifecycle=session?.unresolved == nil ? .foregroundIdle : .unknown } }
             do {
+                if try await queue.resumePreflightHold() { sendLog.info("catpaw.send resumed preflight hold before drain") }
                 try await queue.flush { [service,scope,imageStore,weak self] message in
                     guard !Task.isCancelled,await self?.canDispatchFollowup == true else { return .heldBeforeAdmission }
                     await self?.setIntent(message.id,.sending)
@@ -713,12 +720,12 @@ enum ConversationObserverLifecycle: String { case foregroundIdle, streaming, rec
                     }
                     catch {
                         let saved=try await service.read(scope:scope,conversationID:id)
-                        if !saved.turns.contains(where:{$0.id == message.id}) || saved.turns.first(where:{$0.id == message.id})?.state == .notSent { return .heldBeforeAdmission }
+                        if !saved.turns.contains(where:{$0.id == message.id}) || saved.turns.first(where:{$0.id == message.id})?.state == .notSent { sendLog.error("catpaw.send held before admission: \(String(describing:error), privacy: .public)");return .heldBeforeAdmission }
                         throw error
                     }
                 }
                 guard flightID == token else { return };let state=try await queue.state()
-                if state.paused && !state.pending.isEmpty { error="尚未发送的消息已保留，恢复连接后继续。";if draft.isEmpty,artifactContinuation==nil,state.pending.first?.continuation==nil { draft=state.pending.first?.text ?? "" } }
+                if state.paused && !state.pending.isEmpty { error=state.pauseReason == .preflight ? "消息尚未发送，已保留在本机；再次发送或确认许可后会自动重试。" : "尚未发送的消息已保留，恢复连接后继续。";if draft.isEmpty,artifactContinuation==nil,state.pending.first?.continuation==nil { draft=state.pending.first?.text ?? "" } }
             } catch { if flightID == token { self.error=error.localizedDescription } }
             guard flightID == token else { return };await refresh()
         }
