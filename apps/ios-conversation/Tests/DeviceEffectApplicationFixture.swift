@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(CatpawM)
+@testable import CatpawM
+#endif
 
 struct DeviceEffectApplicationFixture {
     let raw:[String:Any]

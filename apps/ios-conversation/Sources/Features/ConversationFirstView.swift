@@ -26,7 +26,7 @@ import CatpawImageComposer
     @State private var composerMeasurements:[String:CGFloat]=[:]
     @State private var visibleViewport:CatpawVisibleViewport?
     @State private var composerContextPresented=false
-    private enum ComposerContextAction {case modelConsent,imageConsent,pendingMessages,settings,latest}
+    private enum ComposerContextAction {case modelConsent,imageConsent,acceptedWork,pendingMessages,settings,latest}
     @State private var pendingContextAction:(action:ComposerContextAction,conversation:UUID?,scope:UUID,modelIdentity:ObjectIdentifier)?
     @State private var contextJumpRequested=false
     @ScaledMetric(relativeTo: .footnote) private var followupRowHeight = 64.0
@@ -54,7 +54,7 @@ import CatpawImageComposer
         SidebarTheme.catpaw.typography(title:CatpawTypography.Role.title.font,heading:CatpawTypography.Role.heading.font,body:CatpawTypography.Role.body.font,secondary:CatpawTypography.Role.secondary.font,caption:CatpawTypography.Role.caption.font)
     }
     private var chatNavigation: some View {
-        SidebarHost(isPresented:$sidebarPresented,isAtRoot:path.isEmpty && !settings && !history && !pendingMessagesPresented && !composerContextPresented && model.selectedTaskPlan == nil && model.selectedTaskActions == nil && model.selectedTaskControl == nil && model.pendingModelConsent == nil && model.pendingImageConsent == nil,
+        SidebarHost(isPresented:$sidebarPresented,isAtRoot:path.isEmpty && !settings && !history && !pendingMessagesPresented && !composerContextPresented && !model.acceptedWorkReviewPresented && model.selectedTaskPlan == nil && model.selectedTaskActions == nil && model.selectedTaskControl == nil && model.pendingModelConsent == nil && model.pendingImageConsent == nil,
                     snapshot:sidebarSnapshot,theme:sidebarTheme,localize:{ui($0)},onWillOpen:{UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder),to:nil,from:nil,for:nil)},
                     onDismissed:{menuFocused=true},onSelect:route) {
         NavigationStack(path:$path) {
@@ -154,6 +154,11 @@ import CatpawImageComposer
             ConversationImageConsentView(consent:consent,preview:model.imageDraft.attachment?.thumbnailData,caption:model.draft,saving:model.checkingImageConsent,allow:{confirmed in model.allowPendingImageConsent(consent,confirmed:confirmed)},cancel:model.cancelImageConsent)
                 .presentationDetents([.large]).interactiveDismissDisabled(model.checkingImageConsent)
         }
+        .catpawSheet(isPresented:Binding(get:{model.acceptedWorkReviewPresented},set:{if !$0 {model.closeAcceptedWorkReview()}})) {
+            ConversationAcceptedWorkReviewView(originalText:model.acceptedWorkReviewOriginalText,capability:model.acceptedWorkCapability,options:$model.acceptedWorkOptions,saving:model.acceptedWorkReviewSaving,error:model.acceptedWorkReviewError,confirm:model.confirmAcceptedWorkReview,close:model.closeAcceptedWorkReview)
+                .interactiveDismissDisabled(model.acceptedWorkReviewSaving)
+                .onChange(of:model.acceptedWorkOptions){_,_ in model.saveAcceptedWorkReviewOptions()}
+        }
         .catpawSheet(isPresented: $history) { ConversationHistoryView(model: model).presentationDetents(textSize.isAccessibilitySize ? [.large] : [.medium, .large]).presentationDragIndicator(.visible) }
         .catpawSheet(isPresented: $settings) { settingsSheet }
         .catpawSheet(item:$model.selectedTaskPlan) { reference in
@@ -241,7 +246,7 @@ import CatpawImageComposer
                     .background{GeometryReader{geometry in Color.clear.preference(key:ConversationComposerMeasurements.self,value:["targetAnchor":geometry.size.height-8])}}
             }
             HStack(alignment:.bottom,spacing:8) {
-                if contextNeedsDetails || (model.artifactContinuation != nil && !budget.showsTarget) {
+                if contextNeedsDetails || model.canReviewAcceptedWork || (model.artifactContinuation != nil && !budget.showsTarget) {
                     Button {
                         guard !model.isInputComposing else {return};composerContextPresented=true
                     } label:{
@@ -344,6 +349,9 @@ import CatpawImageComposer
                         Button(ui("退出针对成果的输入")){Task{if await model.leaveArtifactContinuation(){composerContextPresented=false}}}
                             .touchTarget().disabled(model.isInputComposing || model.switchingArtifactContinuation || model.enqueueing).accessibilityIdentifier("chat.input.context.leave")
                     }
+                    if model.artifactContinuation==nil && model.imageDraft.phase == .empty {
+                        Button(ui("交给 Agent 完成")){contextAction(.acceptedWork,inDetails:true)}.touchTarget().disabled(!model.canReviewAcceptedWork).accessibilityHint(ui("先核对原请求、期限和调用次数，确认后才提交。")).accessibilityIdentifier("chat.input.context.acceptedWork")
+                    }
                     composerContext(inDetails:true)
                 }.padding(20).frame(maxWidth:.infinity,alignment:.leading)
             }.background(CatpawColors.background).accessibilityIdentifier("chat.input.context.scroll").navigationTitle(ui("输入详情")).navigationBarTitleDisplayMode(.inline)
@@ -365,6 +373,7 @@ import CatpawImageComposer
         switch action {
         case .modelConsent:model.requestModelConsentReview()
         case .imageConsent:model.requestImageConsent()
+        case .acceptedWork:model.requestAcceptedWorkReview()
         case .pendingMessages:pendingMessagesPresented=true
         case .settings:path.append(.settings)
         case .latest:followingLatest=true;scrollTask?.cancel();scrollTask=nil;contextJumpRequested.toggle()

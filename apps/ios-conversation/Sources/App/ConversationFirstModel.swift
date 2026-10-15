@@ -9,6 +9,7 @@ struct OutgoingMessageIntent: Identifiable, Equatable {
     let text: String
     var image:ConversationImageReceipt? = nil
     var continuation:ConversationArtifactContinuationIntent? = nil
+    var acceptedWork:ConversationAcceptedWorkSelection? = nil
     var state: State
     var error: String?
 }
@@ -28,6 +29,18 @@ enum ConversationObserverLifecycle: String { case foregroundIdle, streaming, rec
     let artifactEditsConfigured:Bool
     let trustedSubjectID:UUID?
     let artifactContinuationService:ConversationArtifactContinuationService
+    let acceptedWorkDraftService:ConversationAcceptedWorkDraftService
+    @Published private(set) var acceptedWorkReviewOriginalText=""
+    @Published var acceptedWorkReviewPresented=false
+    @Published private(set) var acceptedWorkDraft:ConversationAcceptedWorkDraft?
+    @Published var acceptedWorkOptions=ConversationAcceptedWorkOptions(notAfter:Date().addingTimeInterval(3600),executionBudgetMilliseconds:60_000,modelLimit:3,sourceLimit:0,toolPolicy:.localOutput)
+    @Published private(set) var acceptedWorkCapability=ConversationAcceptedWorkCapability()
+    @Published private(set) var acceptedWorkReviewSaving=false
+    @Published private(set) var acceptedWorkReviewError:String?
+    private var acceptedWorkReviewTask:Task<Void,Never>?
+    private var acceptedWorkReviewToken:UUID?
+    private var acceptedWorkConfirming=false
+    private var acceptedWorkDraftTask:Task<Void,Never>?
     @Published private(set) var artifactContinuation:ConversationArtifactContinuationReference?
     @Published private(set) var switchingArtifactContinuation=false
     @Published private(set) var continuationDraftSaved=true
@@ -131,11 +144,60 @@ enum ConversationObserverLifecycle: String { case foregroundIdle, streaming, rec
         self.taskControlService=taskControlService ?? ConversationTaskControlService(repository:repository,scope:scope)
         self.taskControlsConfigured=taskControlService != nil && subjectID != nil
         self.trustedSubjectID=subjectID
+        self.acceptedWorkDraftService=ConversationAcceptedWorkDraftService(repository:repository,scope:scope,subjectID:subjectID)
         self.artifactContinuationService=ConversationArtifactContinuationService(repository:repository,scope:scope,subjectID:subjectID)
         self.taskReviewsConfigured=taskActionService != nil && subjectID != nil
         self.artifactEditsConfigured=artifactEditService != nil && subjectID != nil
         self.generativeUIStateService=ConversationGenerativeUIStateService(repository:repository,scope:scope)
         subscribeToImageDraft()
+    }
+    var canReviewAcceptedWork:Bool {
+        loaded && foreground && networkAdmissionAllowed && !busy && !enqueueing && !isInputComposing && artifactContinuation==nil && imageDraft.phase == .empty && session?.unresolved==nil && session?.pendingUnsent==nil && followups.pending.isEmpty && !draft.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty && draft.utf16.count<=8000 && !acceptedWorkReviewSaving
+    }
+    func requestAcceptedWorkReview() {
+        guard canReviewAcceptedWork,let id=conversationID else {return}
+        acceptedWorkReviewTask?.cancel();let token=UUID(),raw=draft
+        acceptedWorkReviewToken=token;acceptedWorkReviewOriginalText=raw;acceptedWorkCapability = .init();acceptedWorkReviewError=nil;acceptedWorkReviewPresented=true;acceptedWorkReviewSaving=true
+        acceptedWorkReviewTask=Task {
+            defer {if acceptedWorkReviewToken==token {acceptedWorkReviewSaving=false;acceptedWorkReviewTask=nil}}
+            do {
+                let saved=try await acceptedWorkDraftService.read(conversationID:id)
+                guard !Task.isCancelled,acceptedWorkReviewToken==token,conversationID==id,loaded else {return}
+                let value=saved?.raw==raw ? saved! : ConversationAcceptedWorkDraft(conversationID:id,raw:raw,options:.init(notAfter:Date().addingTimeInterval(3600),executionBudgetMilliseconds:60_000,modelLimit:3,sourceLimit:0,toolPolicy:.localOutput))
+                try await acceptedWorkDraftService.save(value,replaceUnconfirmed:saved?.raw != raw);try Task.checkCancellation()
+                guard acceptedWorkReviewToken==token,conversationID==id,loaded else {return}
+                acceptedWorkDraft=value;acceptedWorkOptions=value.options
+                let capability=try await service.acceptedWorkCapability(scope:scope,conversationID:id)
+                guard !Task.isCancelled,acceptedWorkReviewToken==token,conversationID==id,loaded,foreground,networkAdmissionAllowed else {return}
+                acceptedWorkCapability=capability
+            } catch is CancellationError {} catch {if acceptedWorkReviewToken==token {acceptedWorkReviewError="工作约定读取未完成，原文和草稿会保留。"}}
+        }
+    }
+    func saveAcceptedWorkReviewOptions() {
+        guard acceptedWorkReviewPresented,!acceptedWorkReviewSaving,var value=acceptedWorkDraft else {return}
+        value.options=acceptedWorkOptions;acceptedWorkDraft=value;acceptedWorkDraftTask?.cancel()
+        acceptedWorkDraftTask=Task {do {try await Task.sleep(nanoseconds:200_000_000);try Task.checkCancellation();try await acceptedWorkDraftService.save(value)}catch is CancellationError {}catch{acceptedWorkReviewError="工作约定尚未保存，请重新核对。"}}
+    }
+    func closeAcceptedWorkReview() {
+        guard !acceptedWorkConfirming else {return}
+        acceptedWorkReviewSaving=false;acceptedWorkReviewPresented=false;acceptedWorkReviewToken=nil;acceptedWorkReviewTask?.cancel();acceptedWorkReviewTask=nil;acceptedWorkDraftTask?.cancel()
+        if var value=acceptedWorkDraft {value.options=acceptedWorkOptions;acceptedWorkDraft=value;acceptedWorkDraftTask=Task{do{try await acceptedWorkDraftService.save(value)}catch{self.error="工作约定尚未保存，请重新核对。"}}}
+    }
+    func confirmAcceptedWorkReview() {
+        guard canReviewAcceptedWork,acceptedWorkReviewPresented,let id=conversationID,var value=acceptedWorkDraft,value.conversationID==id,value.raw==draft,acceptedWorkCapability.subjectID==trustedSubjectID else {return}
+        value.options=acceptedWorkOptions
+        let selection:ConversationAcceptedWorkSelection
+        do {selection=try .init(decisionID:value.id,options:value.options,capability:acceptedWorkCapability);try selection.validate(capability:acceptedWorkCapability,now:Date())}catch{acceptedWorkReviewError="工作约定超出当前服务范围，请调整后确认。";return}
+        acceptedWorkDraftTask?.cancel();acceptedWorkReviewSaving=true;acceptedWorkConfirming=true;let token=acceptedWorkReviewToken
+        acceptedWorkReviewTask=Task {
+            defer {acceptedWorkConfirming=false;if acceptedWorkReviewToken==token {acceptedWorkReviewSaving=false;acceptedWorkReviewTask=nil}}
+            do {
+                try await acceptedWorkDraftService.save(value);try Task.checkCancellation()
+                guard acceptedWorkReviewToken==token,conversationID==id,draft==value.raw,loaded,foreground,networkAdmissionAllowed else {return}
+                acceptedWorkDraft=value;prepareSend(acceptedWork:selection,reviewDraft:value)
+                acceptedWorkReviewPresented=false
+            }catch is CancellationError {}catch{acceptedWorkReviewError="工作约定尚未保存，请重新核对。"}
+        }
     }
     func openTaskPlan(_ goal:ConversationGoalProjection) {
         guard taskPlansConfigured,loaded,let binding=goal.binding,session?.conversationID==binding.conversation_id else {return}
@@ -378,7 +440,7 @@ enum ConversationObserverLifecycle: String { case foregroundIdle, streaming, rec
             outgoingMessages=outgoingMessages.filter { value in
                 value.state == .savingLocal || value.state == .failed || durable.contains(where:{$0.id == value.id}) || unresolvedIDs.contains(value.id)
             }
-            for value in durable where !outgoingMessages.contains(where:{$0.id == value.id}) { outgoingMessages.append(.init(id:value.id,text:value.text,image:value.image?.receipt,continuation:value.continuation,state:.queued,error:nil)) }
+            for value in durable where !outgoingMessages.contains(where:{$0.id == value.id}) { outgoingMessages.append(.init(id:value.id,text:value.text,image:value.image?.receipt,continuation:value.continuation,acceptedWork:value.acceptedWork,state:.queued,error:nil)) }
             for i in outgoingMessages.indices {
                 let value=outgoingMessages[i]
                 if let turn=current.turns.first(where:{$0.id == value.id}) {
@@ -400,10 +462,15 @@ enum ConversationObserverLifecycle: String { case foregroundIdle, streaming, rec
         guard !busy,!isInputComposing else { throw ConversationSessionError.busy }
         busy=true;defer { busy=false }
         if let prior=conversationID {try await generativeUIStateService.flush(conversationID:prior)}
+        acceptedWorkDraftTask?.cancel();await acceptedWorkDraftTask?.value
+        if var review=acceptedWorkDraft {review.options=acceptedWorkOptions;try await acceptedWorkDraftService.save(review)}
         try await flushDraft();let saved=try await repository.record(id,scope:scope),selected=try await service.read(scope:scope,conversationID:id)
         try await service.rememberSelection(scope:scope,conversationID:id)
         permissionTask?.cancel();permissionID=nil;pendingModelConsent=nil;modelConsentReview=nil;checkingModelConsent=false;consentReady=false
         queue=ConversationFollowupQueueService(repository:repository,scope:scope,conversationID:id)
+        acceptedWorkReviewTask?.cancel();acceptedWorkReviewTask=nil;acceptedWorkReviewToken=nil;acceptedWorkReviewPresented=false;acceptedWorkReviewSaving=false;acceptedWorkCapability = .init()
+        acceptedWorkDraftTask?.cancel();acceptedWorkDraftTask=nil;acceptedWorkDraft=try await acceptedWorkDraftService.read(conversationID:id)
+        if let value=acceptedWorkDraft {acceptedWorkOptions=value.options}
         cancelImageConsent();imageRecoveryTask?.cancel();imageRecoveryTask=nil;imageRecoveryToken=nil
         if let prior=conversationID {
             let ordinary=ordinaryContinuationImage ?? imageDraft
@@ -430,9 +497,9 @@ enum ConversationObserverLifecycle: String { case foregroundIdle, streaming, rec
             draftTask=Task {do {try await Task.sleep(nanoseconds:300_000_000);try Task.checkCancellation();await previous?.value;try Task.checkCancellation();try await artifactContinuationService.saveDraft(value);if artifactContinuation==reference,draft==text,continuationEditSequence==value.editSequence {continuationDraftSaved=true}}catch is CancellationError{}catch{self.error=error.localizedDescription}}
         } else {draftTask=Task { do { try await Task.sleep(nanoseconds:300_000_000);try Task.checkCancellation();try await service.saveDraft(scope:scope,conversationID:id,text:text) } catch is CancellationError { } catch { self.error=error.localizedDescription } }}
     }
-    func flushDraft() async throws { draftTask?.cancel();draftTask=nil;if let reference=artifactContinuation {try await artifactContinuationService.saveDraft(.init(reference:reference,raw:draft,editSequence:continuationEditSequence));continuationDraftSaved=true}else if let id=conversationID { try await service.saveDraft(scope:scope,conversationID:id,text:draft) } }
+    func flushDraft() async throws { acceptedWorkDraftTask?.cancel();await acceptedWorkDraftTask?.value;if var review=acceptedWorkDraft {review.options=acceptedWorkOptions;try await acceptedWorkDraftService.save(review)};draftTask?.cancel();draftTask=nil;if let reference=artifactContinuation {try await artifactContinuationService.saveDraft(.init(reference:reference,raw:draft,editSequence:continuationEditSequence));continuationDraftSaved=true}else if let id=conversationID { try await service.saveDraft(scope:scope,conversationID:id,text:draft) } }
     // This synchronous capture is local intent, never a server admission or successful send.
-    func prepareSend() {
+    func prepareSend(acceptedWork:ConversationAcceptedWorkSelection?=nil,reviewDraft:ConversationAcceptedWorkDraft?=nil) {
         if let block=artifactContinuationSendBlock {error=block;return}
         if let block=imageSendBlock { error=block.message;return }
         guard canAcceptDraft,let id=conversationID,let queue else { return }
@@ -447,9 +514,10 @@ enum ConversationObserverLifecycle: String { case foregroundIdle, streaming, rec
         let target=artifactContinuation
         let continuation:ConversationArtifactContinuationIntent?
         do {continuation=try target?.sendIntent()}catch{self.error=error.localizedDescription;return}
-        let message=ConversationFollowup(text:draft,image:payload?.reference,continuation:continuation)
+        guard acceptedWork==nil || (payload==nil && target==nil && reviewDraft?.raw==draft) else {return}
+        let message=ConversationFollowup(text:draft,image:payload?.reference,continuation:continuation,acceptedWork:acceptedWork)
         draftTask?.cancel();draftTask=nil
-        tapTimes[message.id]=tap;outgoingMessages.append(.init(id:message.id,text:message.text,image:payload?.reference.receipt,continuation:continuation,state:.savingLocal,error:nil));draft="";if target != nil {continuationEditSequence += 1;continuationDraftSaved=false}
+        tapTimes[message.id]=tap;outgoingMessages.append(.init(id:message.id,text:message.text,image:payload?.reference.receipt,continuation:continuation,acceptedWork:acceptedWork,state:.savingLocal,error:nil));draft="";if target != nil {continuationEditSequence += 1;continuationDraftSaved=false}
         savingCount += 1;enqueueing=true;tapToLocalPublishMs=(ProcessInfo.processInfo.systemUptime-tap)*1000
         let previous=persistenceTask
         persistenceTask=Task {
@@ -461,9 +529,10 @@ enum ConversationObserverLifecycle: String { case foregroundIdle, streaming, rec
                     let remaining=ConversationArtifactContinuationDraft(reference:target,raw:draft,editSequence:continuationEditSequence)
                     try await queue.enqueue(message,remainingContinuationDraft:remaining,continuationService:artifactContinuationService)
                     if artifactContinuation==target,draft==remaining.raw,continuationEditSequence==remaining.editSequence {continuationDraftSaved=true}
-                } else {try await queue.enqueue(message,remainingDraft:draft)}
+                } else {try await queue.enqueue(message,remainingDraft:draft,acceptedWorkDraft:reviewDraft,acceptedWorkDraftService:reviewDraft==nil ? nil : acceptedWorkDraftService)}
                 if let prepared,imageDraft.attachment?.id==prepared.id,imageDraft.attachment?.sha256==prepared.sha256 {imageDraft.clear();approvedImage=nil}
                 guard conversationID == id else { return }
+                if acceptedWork != nil {acceptedWorkDraft=nil}
                 setIntent(message.id,.queued);await refresh()
                 if foreground { authorizePending() }
             } catch {
@@ -535,7 +604,7 @@ enum ConversationObserverLifecycle: String { case foregroundIdle, streaming, rec
                         let image:ConversationVisionPayload?
                         if let reference=message.image {let bytes=try await imageStore.read(reference:reference,conversationID:id,operationID:message.id);image = .init(reference:reference,bytes:bytes)} else {image=nil}
                         guard !Task.isCancelled,await self?.canDispatchFollowup == true else {return .heldBeforeAdmission}
-                        _=try await service.send(scope:scope,conversationID:id,text:message.text,operationID:message.id,preserveDraft:true,image:image,continuation:message.continuation);return .sent
+                        _=try await service.send(scope:scope,conversationID:id,text:message.text,operationID:message.id,preserveDraft:true,image:image,continuation:message.continuation,acceptedWork:message.acceptedWork);return .sent
                     }
                     catch {
                         let saved=try await service.read(scope:scope,conversationID:id)
@@ -692,6 +761,7 @@ enum ConversationObserverLifecycle: String { case foregroundIdle, streaming, rec
     }
     @discardableResult func deactivate() async -> Bool {
         // Close admission before any await; a queued foreground Task cannot revive logout.
+        acceptedWorkReviewTask?.cancel();acceptedWorkReviewTask=nil;acceptedWorkReviewToken=nil;acceptedWorkDraftTask?.cancel();acceptedWorkDraftTask=nil;acceptedWorkReviewPresented=false;acceptedWorkReviewSaving=false
         continuationClosing=true;loaded=false;networkAdmissionAllowed=false;stopTaskControlDelivery();pendingTaskControlDeliveries.removeAll();deliveredTaskControlReceipts.removeAll();cancelImageConsent();imageRecoveryTask?.cancel();imageRecoveryTask=nil;imageRecoveryToken=nil
         selectedTaskPlan=nil;selectedTaskActions=nil
         let planDraftsSaved=await taskPlanService.invalidate()
@@ -701,6 +771,7 @@ enum ConversationObserverLifecycle: String { case foregroundIdle, streaming, rec
         await suspend();subscription?.cancel();subscription=nil;draftTask?.cancel();draftTask=nil
         let composerSaved:Bool
         do {try await flushDraft();composerSaved=true}catch{composerSaved=false}
+        await acceptedWorkDraftService.invalidate();acceptedWorkDraft=nil;acceptedWorkCapability = .init()
         await artifactContinuationService.invalidate();artifactContinuation=nil;ordinaryContinuationImage?.clear();ordinaryContinuationImage=nil
         await generativeUIStateService.invalidate()
         draft="";history=[];session=nil;conversationID=nil;followups=ConversationFollowupState();queue=nil;outgoingMessages=[];tapTimes=[:];isInputComposing=false;error=nil;loaded=false

@@ -43,6 +43,7 @@ public actor NativeChatHTTPBackend: ConversationBackend {
     private let configuration: NativeChatConfiguration
     private let credentials: any NativeChatSessionCredentials
     private let session: URLSession
+    private let acceptedWorkClock:@Sendable()->Date
     private var bindingCache: [UUID: [String: ConversationTaskBinding]] = [:]
     private var toolTitles: [UUID: [String: String]] = [:]
     private var continuationReceipts:[UUID:[String:ConversationTaskRevisionReceipt]]=[:]
@@ -54,8 +55,9 @@ public actor NativeChatHTTPBackend: ConversationBackend {
     private var verifiedModel:String?
     private struct ReplyCandidate {let model:String?}
     private var replyCandidates:[UUID:ReplyCandidate]=[:]
-    public init(configuration: NativeChatConfiguration, credentials: any NativeChatSessionCredentials = MissingNativeChatSession(),sessionConfiguration:URLSessionConfiguration?=nil) {
+    public init(configuration: NativeChatConfiguration, credentials: any NativeChatSessionCredentials = MissingNativeChatSession(),sessionConfiguration:URLSessionConfiguration?=nil,acceptedWorkClock:@escaping @Sendable()->Date={Date()}) {
         self.configuration = configuration; self.credentials = credentials
+        self.acceptedWorkClock=acceptedWorkClock
         let policy = (sessionConfiguration?.copy() as? URLSessionConfiguration) ?? URLSessionConfiguration.ephemeral; policy.urlCache = nil; policy.requestCachePolicy = .reloadIgnoringLocalCacheData
         session = URLSession(configuration: policy, delegate: NativeChatNoRedirect(), delegateQueue: nil)
     }
@@ -149,6 +151,45 @@ public actor NativeChatHTTPBackend: ConversationBackend {
         let reply = try await json(path,auth:auth,body:["decision":"allow","expected_revision":consent.expectedRevision,"route_hash":consent.routeHash]),row = try Self.object(reply["consent"])
         guard row["decision"] as? String == "allow",row["route_hash"] as? String == consent.routeHash,row["revision"] as? Int == consent.expectedRevision+1 else { throw ConversationSessionError.invalidEvent }
     }
+    public func acceptedWorkCapability(scope:DataScope,conversationID:UUID) async throws -> ConversationAcceptedWorkCapability {
+        guard scope==configuration.localScope else {throw CatpawError.scopeMismatch}
+        guard let subject=configuration.expectedSubjectID else {return .init()}
+        try Task.checkCancellation();let auth=try await authorization(scope);try Task.checkCancellation()
+        let ready=try await json("/readyz",auth:auth,strict:true);try Task.checkCancellation()
+        guard Self.boolean(ready["ready"])==true,let caps=ready["chat_capabilities"] as? [String:Any],let work=caps["accepted_work"] as? [String:Any],Self.boolean(work["enabled"])==true else {return .init()}
+        let route=try await json("/catpaw/privacy/v1/model-route",auth:auth,strict:true);try Task.checkCancellation()
+        return try ConversationAcceptedWorkCodec.capability(readiness:Self.jsonData(ready),modelRoute:Self.jsonData(route),subjectID:subject,serverScopeID:configuration.serverScopeID)
+    }
+    public func ensureConversationForExplicitSend(_ request:ConversationTurnRequest) async throws {
+        guard request.acceptedWork==nil,configuration.expectedSubjectID != nil else {throw ConversationAcceptedWorkError.invalidFrozenIntent}
+        _=try ConversationAcceptedWorkCodec.turn(request,revision:1,grant:1)
+        try Task.checkCancellation();let auth=try await authorization(request.scope);try Task.checkCancellation()
+        _=try await readConversation(request,auth:auth,mayCreate:true,strict:true);try Task.checkCancellation()
+    }
+    public func freezeAcceptedWork(_ request:ConversationTurnRequest,selection:ConversationAcceptedWorkSelection) async throws -> ConversationAcceptedWorkIntent {
+        do {
+            guard request.acceptedWork==nil,request.scope==configuration.localScope,selection.serverScopeID==configuration.serverScopeID,selection.subjectID==configuration.expectedSubjectID else {throw ConversationAcceptedWorkError.invalidSelection}
+            _=try ConversationAcceptedWorkCodec.turn(request,revision:1,grant:1)
+            let capability=try await acceptedWorkCapability(scope:request.scope,conversationID:request.conversationID);try Task.checkCancellation()
+            try selection.validate(capability:capability,now:acceptedWorkClock())
+            let auth=try await authorization(request.scope);try Task.checkCancellation()
+            let conversation=try await readConversation(request,auth:auth,mayCreate:false,strict:true);try Task.checkCancellation()
+            try validateHistory(conversation,request:request)
+            let result=try ConversationAcceptedWorkIntent(request:request,selection:selection,expectedRevision:Self.positive(conversation["revision"]),expectedGrantEpoch:Self.positive(conversation["grant_epoch"]))
+            try result.validate(request:request);try selection.options.validate(now:acceptedWorkClock());return result
+        } catch {throw ConversationDispatchFailure.notSent(reason:Self.friendlyTransportMessage(error))}
+    }
+    private func acceptedWorkContext(_ request:ConversationTurnRequest) throws {
+        guard let intent=request.acceptedWork,request.scope==configuration.localScope,intent.selection.serverScopeID==configuration.serverScopeID,intent.selection.subjectID==configuration.expectedSubjectID else {throw ConversationAcceptedWorkError.invalidFrozenIntent}
+        try intent.validate(request:request)
+    }
+    private func validateHistory(_ conversation:[String:Any],request:ConversationTurnRequest) throws {
+        let remote=try Self.array(conversation["messages"]),previous=request.history.dropLast().filter{$0.role == .user || ($0.role == .assistant && $0.toolName==nil && $0.complete)}
+        guard remote.count==previous.count else {throw CatpawError.conflict}
+        for (wire,local) in zip(remote,previous) {
+            guard UUID(uuidString:wire["id"] as? String ?? "")==local.id,wire["role"] as? String==local.role.rawValue,let content=wire["content"] as? String,content.utf16.elementsEqual(local.content.utf16) else {throw CatpawError.conflict}
+        }
+    }
     public func reply(_ request: ConversationTurnRequest) async throws -> AsyncThrowingStream<ConversationTurnEvent, Error> {
         let auth: String, grant: Int, upload: URLRequest
         do { (auth, grant, upload) = try await prepare(request) }
@@ -173,8 +214,9 @@ public actor NativeChatHTTPBackend: ConversationBackend {
                     }
                     if http.mimeType == "application/json" {
                         var data = Data(); for try await b in bytes { guard data.count < 2_000_000 else { throw ConversationSessionError.invalidEvent }; data.append(b) }
-                        let snapshot = request.continuation == nil ? try Self.object(JSONSerialization.jsonObject(with: data)) : try ConversationStrictJSON.object(data,maxBytes:2_000_000); try Self.turnEnvelope(snapshot,request:request)
+                        let snapshot = request.continuation == nil && request.acceptedWork==nil ? try Self.object(JSONSerialization.jsonObject(with: data)) : try ConversationStrictJSON.object(data,maxBytes:2_000_000); try Self.turnEnvelope(snapshot,request:request)
                         let turn = try Self.object(snapshot["turn"]);try Self.validateImageSnapshot(turn,request:request);try Self.validateContinuationSnapshot(turn,request:request,scope:self.configuration.serverScopeID,grant:grant)
+                        try ConversationAcceptedWorkCodec.validateOriginal(turn,request:request)
                         for event in try Self.array(turn["events"]) { continuation.yield(try await self.decode(event, request: request, grant: grant, auth: auth)) }
                     } else {
                         guard http.mimeType == "text/event-stream" else { throw ConversationSessionError.invalidEvent }
@@ -185,7 +227,7 @@ public actor NativeChatHTTPBackend: ConversationBackend {
                             try Task.checkCancellation()
                             if afterCR {afterCR=false;if byte==0x0a {continue}}
                             if byte==0x0a || byte==0x0d {
-                                if let wire=try Self.sseEventLine(line,strict:request.continuation != nil) {continuation.yield(try await self.decode(wire, request:request, grant:grant, auth:auth))}
+                                if let wire=try Self.sseEventLine(line,strict:request.continuation != nil || request.acceptedWork != nil) {continuation.yield(try await self.decode(wire, request:request, grant:grant, auth:auth))}
                                 line.removeAll(keepingCapacity:true);afterCR=byte==0x0d
                             } else {
                                 guard line.count<262144 else {throw ConversationSessionError.invalidEvent};line.append(byte)
@@ -224,19 +266,32 @@ public actor NativeChatHTTPBackend: ConversationBackend {
     private func prepare(_ request: ConversationTurnRequest) async throws -> (String, Int, URLRequest) {
         try Task.checkCancellation()
         let auth = try await authorization(request.scope)
+        try Task.checkCancellation()
+        if let intent=request.acceptedWork {
+            try acceptedWorkContext(request)
+            let capability=try await acceptedWorkCapability(scope:request.scope,conversationID:request.conversationID);try Task.checkCancellation()
+            try intent.selection.validate(capability:capability,now:acceptedWorkClock())
+        }
         if request.continuation != nil {
             try continuationContext(request)
             guard try await continuationAvailability(request,auth:auth) else {throw ConversationArtifactContinuationError.unsupported}
             _=try await confirmedContinuationBinding(request,auth:auth)
             continuationSourceHashes[request.operationID]=try await continuationBase(request,inspectCurrent:true)
         }
-        let conversation = try await readConversation(request, auth: auth, mayCreate: request.continuation == nil)
+        let conversation = try await readConversation(request, auth: auth, mayCreate: request.continuation == nil && request.acceptedWork==nil,strict:request.acceptedWork != nil)
+        try Task.checkCancellation()
         let revision = try Self.positive(conversation["revision"]), grant = try Self.positive(conversation["grant_epoch"])
+        if let intent=request.acceptedWork {guard revision==intent.expectedRevision,grant==intent.expectedGrantEpoch else {throw ConversationAcceptedWorkError.changedSnapshot};try validateHistory(conversation,request:request)}
         let remote = try Self.array(conversation["messages"])
         let previous = request.history.dropLast().filter { $0.role == .user || ($0.role == .assistant && $0.toolName == nil && $0.complete) }
         guard remote.count == previous.count else { throw CatpawError.conflict }
         for (wire, local) in zip(remote, previous) {
             guard UUID(uuidString: wire["id"] as? String ?? "") == local.id, wire["role"] as? String == local.role.rawValue, wire["content"] as? String == local.content else { throw CatpawError.conflict }
+        }
+        if let intent=request.acceptedWork {
+            try intent.selection.options.validate(now:acceptedWorkClock())
+            var upload=try self.request(turnPath(request),auth:auth);upload.httpMethod="POST";upload.httpBody=try intent.wrapper()
+            try Task.checkCancellation();return (auth,grant,upload)
         }
         guard let message = request.history.last, message.role == .user else { throw ConversationSessionError.invalidEvent }
         var body: [String: Any] = ["turn_id": request.operationID.uuidString.lowercased(), "expected_revision": revision, "expected_grant_epoch": grant,
@@ -261,13 +316,17 @@ public actor NativeChatHTTPBackend: ConversationBackend {
         return (auth, grant, upload)
     }
     public func observe(_ request: ConversationTurnRequest) async throws -> ConversationObservation {
+        if request.acceptedWork != nil {try acceptedWorkContext(request)}
         let auth = try await authorization(request.scope)
-        let conversation = try await readConversation(request, auth: auth, mayCreate: false)
+        try Task.checkCancellation()
+        let conversation = try await readConversation(request, auth: auth, mayCreate: false,strict:request.acceptedWork != nil)
+        try Task.checkCancellation()
         let currentGrant = try Self.positive(conversation["grant_epoch"])
         if request.continuation != nil {try continuationContext(request);_=try await confirmedContinuationBinding(request,auth:auth);continuationSourceHashes[request.operationID]=try await continuationBase(request,inspectCurrent:false)}
         let wrapper = try await json(turnPath(request) + "/" + request.operationID.uuidString.lowercased(), auth: auth)
         try Self.turnEnvelope(wrapper,request:request)
         let turn = try Self.object(wrapper["turn"]);try Self.validateImageSnapshot(turn,request:request);try Self.validateContinuationSnapshot(turn,request:request,scope:configuration.serverScopeID,grant:currentGrant)
+        try ConversationAcceptedWorkCodec.validateOriginal(turn,request:request)
         guard UUID(uuidString: turn["id"] as? String ?? "") == request.operationID,
               UUID(uuidString: turn["conversation_id"] as? String ?? "") == request.conversationID,
               UUID(uuidString: turn["scope_id"] as? String ?? "") == configuration.serverScopeID,
@@ -294,13 +353,15 @@ public actor NativeChatHTTPBackend: ConversationBackend {
         if request.continuation != nil {try validateContinuationList(turn["continuations"],request:request,terminal:turn["state"] as? String=="completed")}
         return ConversationObservation(request: request, events: events, requestHash: try Self.sha(turn["request_hash"]), grantEpoch: currentGrant, goals: goals)
     }
-    private func readConversation(_ value: ConversationTurnRequest, auth: String, mayCreate: Bool) async throws -> [String: Any] {
+    private func readConversation(_ value: ConversationTurnRequest, auth: String, mayCreate: Bool,strict:Bool=false) async throws -> [String: Any] {
         var wrapper: [String: Any]
-        do { wrapper = try await json(path(value), auth: auth) }
+        do { wrapper = try await json(path(value), auth: auth,strict:strict) }
         catch NativeChatHTTPFailure.status(404) where mayCreate {
-            wrapper = try await json(scopePath + "/conversations", auth: auth, body: ["conversation_id": value.conversationID.uuidString.lowercased()])
+            if strict {try Task.checkCancellation()}
+            wrapper = try await json(scopePath + "/conversations", auth: auth, body: ["conversation_id": value.conversationID.uuidString.lowercased()],strict:strict)
         }
         try Self.chatEnvelope(wrapper); let c = try Self.object(wrapper["conversation"])
+        if strict {guard c["subject_id"] as? String==configuration.expectedSubjectID?.uuidString.lowercased() else {throw ConversationSessionError.invalidEvent}}
         guard UUID(uuidString: c["id"] as? String ?? "") == value.conversationID, UUID(uuidString: c["scope_id"] as? String ?? "") == configuration.serverScopeID,
               c["state"] as? String == "active", c["policy"] as? String == "conversation-local-output-v1" else { throw ConversationSessionError.invalidEvent }
         return c
@@ -523,7 +584,8 @@ public actor NativeChatHTTPBackend: ConversationBackend {
         } else {guard values.isEmpty,known.isEmpty else {throw ConversationSessionError.invalidEvent}}
     }
     private func turnPath(_ request:ConversationTurnRequest) -> String {
-        request.continuation == nil ? path(request)+"/turns" : "/catpaw/revisions/v1/scopes/"+configuration.serverScopeID.uuidString.lowercased()+"/conversations/"+request.conversationID.uuidString.lowercased()+"/turns"
+        if request.acceptedWork != nil {return "/catpaw/accepted-work/v1/scopes/"+configuration.serverScopeID.uuidString.lowercased()+"/conversations/"+request.conversationID.uuidString.lowercased()+"/turns"}
+        return request.continuation == nil ? path(request)+"/turns" : "/catpaw/revisions/v1/scopes/"+configuration.serverScopeID.uuidString.lowercased()+"/conversations/"+request.conversationID.uuidString.lowercased()+"/turns"
     }
     private var scopePath: String { "/catpaw/chat/v1/scopes/" + configuration.serverScopeID.uuidString.lowercased() }
     private func path(_ r: ConversationTurnRequest) -> String { scopePath + "/conversations/" + r.conversationID.uuidString.lowercased() }
@@ -536,15 +598,18 @@ public actor NativeChatHTTPBackend: ConversationBackend {
     private func request(_ path: String, auth: String) throws -> URLRequest {
         try configuration.makeRequest(route:path,authorization:auth)
     }
-    private func json(_ path: String, auth: String, body: [String: Any]? = nil,timeout:TimeInterval=60) async throws -> [String: Any] {
+    private func json(_ path: String, auth: String, body: [String: Any]? = nil,timeout:TimeInterval=60,strict:Bool=false) async throws -> [String: Any] {
+        if strict {try Task.checkCancellation()}
         var request = try request(path, auth: auth)
         request.timeoutInterval=timeout
         if let body { request.httpMethod = "POST"; request.httpBody = try Self.jsonData(body) }
         let (data, response) = try await session.data(for: request)
+        if strict {try Task.checkCancellation()}
         if (response as? HTTPURLResponse)?.statusCode == 401 { await credentials.rejected(scope: configuration.localScope) }
         guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else { throw NativeChatHTTPFailure.status((response as? HTTPURLResponse)?.statusCode ?? 0) }
         guard data.count <= 2_000_000 else { throw ConversationSessionError.invalidEvent }
-        return path.hasPrefix("/catpaw/revisions/v1/") ? try ConversationStrictJSON.object(data,maxBytes:2_000_000) : try Self.object(JSONSerialization.jsonObject(with: data))
+        if strict || path.hasPrefix("/catpaw/accepted-work/v1/") {guard (response as? HTTPURLResponse)?.mimeType=="application/json" else {throw ConversationSessionError.invalidEvent}}
+        return strict || path.hasPrefix("/catpaw/revisions/v1/") || path.hasPrefix("/catpaw/accepted-work/v1/") ? try ConversationStrictJSON.object(data,maxBytes:2_000_000) : try Self.object(JSONSerialization.jsonObject(with: data))
     }
     private static func object(_ raw: Any?) throws -> [String: Any] { guard let x = raw as? [String: Any] else { throw ConversationSessionError.invalidEvent }; return x }
     private static func array(_ raw: Any?) throws -> [[String: Any]] { guard let x = raw as? [[String: Any]] else { throw ConversationSessionError.invalidEvent }; return x }
@@ -562,7 +627,7 @@ public actor NativeChatHTTPBackend: ConversationBackend {
               try ConversationArtifactEditCodec.canonicalString(raw)==ConversationArtifactEditCodec.canonicalString(target.canonicalValue) else {throw ConversationSessionError.invalidEvent}
     }
     private static func turnEnvelope(_ x:[String:Any],request:ConversationTurnRequest) throws {
-        guard try positive(x["schema_version"])==1,x["contract"] as? String==(request.continuation == nil ? "catpaw.native-chat.v1" : "catpaw.task-revision.v1") else {throw ConversationSessionError.invalidEvent}
+        guard try positive(x["schema_version"])==1,x["contract"] as? String==(request.acceptedWork != nil ? ConversationAcceptedWorkCodec.contract : request.continuation == nil ? "catpaw.native-chat.v1" : "catpaw.task-revision.v1") else {throw ConversationSessionError.invalidEvent}
     }
     private static func chatEnvelope(_ x: [String: Any]) throws { guard try positive(x["schema_version"]) == 1, x["contract"] as? String == "catpaw.native-chat.v1" else { throw ConversationSessionError.invalidEvent } }
 }

@@ -142,6 +142,20 @@ struct CatpawBottomActionArea<Content:View>:View {
     }
 }
 
+/// Prefer the complete action title when its intrinsic width fits. Compact
+/// wording may wrap, while the button retains its complete accessibility label.
+/// Both variants inherit the same semantic font from the button style.
+struct CatpawAdaptiveActionTitle:View {
+    let fullTitle:String
+    let compactTitle:String
+    var body:some View {
+        ViewThatFits(in:.horizontal) {
+            Text(verbatim:fullTitle).fixedSize()
+            Text(verbatim:compactTitle).fixedSize(horizontal:false,vertical:true)
+        }
+    }
+}
+
 struct CatpawAdaptiveActions<Content:View>:View {
     @Environment(\.dynamicTypeSize) private var size
     @ViewBuilder var content:Content

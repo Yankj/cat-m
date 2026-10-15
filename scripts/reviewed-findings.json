@@ -1275,6 +1275,48 @@
       "reason": "Verified byte-identical previously reviewed anonymous-reader negative fixture: literal access_token=fake and signed-key names are rejected before any connection; no real signed URL/token. Exact file hash and line only."
     },
     {
+      "path": "apps/ios-conversation/Sources/App/CatpawApp.swift",
+      "category": "credential_prefix",
+      "line": 35,
+      "sha256": "7062535085ed88e7545955c1470fb0c605d47372c79713afb362a8ba49af3d86",
+      "reason": "Byte-identical already reviewed names of explicitly synthetic local fixture storage files; a filename substring resembles a key prefix. No credential value. Exact current file hash and line only."
+    },
+    {
+      "path": "apps/ios-conversation/Sources/App/CatpawApp.swift",
+      "category": "credential_prefix",
+      "line": 37,
+      "sha256": "7062535085ed88e7545955c1470fb0c605d47372c79713afb362a8ba49af3d86",
+      "reason": "Byte-identical already reviewed names of explicitly synthetic local fixture storage files; a filename substring resembles a key prefix. No credential value. Exact current file hash and line only."
+    },
+    {
+      "path": "apps/ios-conversation/Sources/App/CatpawApp.swift",
+      "category": "credential_prefix",
+      "line": 35,
+      "sha256": "8d9098129e0154bf63b7fead5820d523a4b25c9833115fefbfe0755550686a62",
+      "reason": "Byte-identical already reviewed names of explicitly synthetic local fixture storage files; a filename substring resembles a key prefix. No credential value. Exact current file hash and line only."
+    },
+    {
+      "path": "apps/ios-conversation/Sources/App/CatpawApp.swift",
+      "category": "credential_prefix",
+      "line": 37,
+      "sha256": "8d9098129e0154bf63b7fead5820d523a4b25c9833115fefbfe0755550686a62",
+      "reason": "Byte-identical already reviewed names of explicitly synthetic local fixture storage files; a filename substring resembles a key prefix. No credential value. Exact current file hash and line only."
+    },
+    {
+      "path": "apps/ios-conversation/Sources/App/CatpawApp.swift",
+      "category": "credential_prefix",
+      "line": 35,
+      "sha256": "417d46381f544949f14bc77568917849732e6b9af24dc9936e96528110f64d2c",
+      "reason": "Byte-identical already reviewed names of explicitly synthetic local fixture storage files; a filename substring resembles a key prefix. No credential value. Exact current file hash and line only."
+    },
+    {
+      "path": "apps/ios-conversation/Sources/App/CatpawApp.swift",
+      "category": "credential_prefix",
+      "line": 37,
+      "sha256": "417d46381f544949f14bc77568917849732e6b9af24dc9936e96528110f64d2c",
+      "reason": "Byte-identical already reviewed names of explicitly synthetic local fixture storage files; a filename substring resembles a key prefix. No credential value. Exact current file hash and line only."
+    },
+    {
       "path": "docs/planning/AF-1/goal-evidence-map.json",
       "category": "credential_prefix",
       "line": 120,
@@ -1294,6 +1336,13 @@
       "line": 174,
       "sha256": "556ab0ef7ffe4ad876f63a96f438bdd8c6508e3781b16235a553a753618f8e06",
       "reason": "Reviewed literal historical research filename: catdesk- suffix matches broad sk- credential pattern; no credential value or content is present."
+    },
+    {
+      "path": "docs/acceptance/evidence/native-accepted-work-20261015/RESULT.json",
+      "category": "email_review",
+      "line": 21,
+      "sha256": "c717b2531ad0bd26b0573ef848b7aff4797fc645524bd40450d58d71745bd46d",
+      "reason": "Standard Apple icon asset filename containing a scale suffix; not an email address or personal identifier. Exact line and file hash reviewed."
     }
   ]
 }
