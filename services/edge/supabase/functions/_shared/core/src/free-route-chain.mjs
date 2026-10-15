@@ -60,6 +60,9 @@ export function readFreeRouteChain(get) {
 
 // Reasoning routes (Agnes) may think for a long time before the first event; others keep the
 // historical single budget for every stage. Values are bounded to the Edge wall clock.
+// One answer is ≤2048 tokens (≤64kB text) plus reasoning; OpenAI-style chunks carry ~200-300 bytes of
+// JSON framing per token, so the wire cap must be far above the text cap.
+export const STREAM_MAX_BYTES = 4_000_000, THOUGHT_MAX_BYTES = 16000;
 export const REASONING_ROUTE_TIMEOUTS = Object.freeze({ firstEventMs: 75000, idleMs: 20000, totalMs: 100000 });
 export function routeTimeouts(route, timeoutMs) {
   const base = route.id === 'agnes' ? REASONING_ROUTE_TIMEOUTS : { firstEventMs: timeoutMs, idleMs: timeoutMs, totalMs: timeoutMs };
@@ -105,7 +108,7 @@ class OpenAICompatibleRoute {
       check(response.status === 200, response.status === 429 ? 429 : 503, codes[response.status] ?? 'provider_failed');
       check(response.headers.get('content-type')?.startsWith('text/event-stream') && response.body, 503, 'invalid_provider_stream');
       let finish = null, done = false, textBytes = 0, thoughtBytes = 0; const calls = new Map();
-      for await (const data of sseData(response.body)) {
+      for await (const data of sseData(response.body, { maxBytes: STREAM_MAX_BYTES })) {
         emittedOrActive = true; arm(this.timeouts.idleMs);
         if (data === '[DONE]') { done = true; break; }
         let chunk; try { chunk = JSON.parse(data); } catch { throw new ApiError(503, 'malformed_provider_json'); }
@@ -115,7 +118,7 @@ class OpenAICompatibleRoute {
         const delta = c.delta ?? {};
         // Thought summary: Gemini marks thought parts; OpenRouter/Groq may use `reasoning`.
         const thought = delta.extra_content?.google?.thought === true ? delta.content : (typeof delta.reasoning === 'string' ? delta.reasoning : typeof delta.reasoning_content === 'string' ? delta.reasoning_content : null);
-        if (thought) { thoughtBytes += Buffer.byteLength(thought); check(thoughtBytes <= 16000, 503, 'thought_too_large'); emitted = true; yield { type: 'thinking_delta', text: thought }; }
+        if (thought) { thoughtBytes += Buffer.byteLength(thought); emitted = true; if (thoughtBytes <= THOUGHT_MAX_BYTES) yield { type: 'thinking_delta', text: thought }; /* longer thinking still counts as activity; only the summary is capped */ }
         else if (delta.content) {
           check(typeof delta.content === 'string', 503, 'invalid_provider_chunk');
           // Agnes (verified live 2026-10-15) streams `reasoning_content` then `\n\n` before the answer; drop leading blank text.
