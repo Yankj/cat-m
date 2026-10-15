@@ -102,7 +102,9 @@ import UIKit
         }
     }
     var body:some View {
-        IncrementalConversationText(text:visible).frame(maxWidth:.infinity,alignment:.leading)
+        // r10 §3: rich Markdown body. Completed blocks are cached and never re-laid out; the paced
+        // reveal still feeds `visible`, which the incremental parser consumes as an append-only stream.
+        MarkdownMessageView(text:visible,complete:complete && visible == text).frame(maxWidth:.infinity,alignment:.leading)
             .accessibilityElement(children:.ignore).accessibilityLabel(visible)
             .accessibilityIdentifier("chat.assistantMessage").accessibilityAddTraits(.isStaticText)
             .accessibilityAction(named:Text("\u{590D}\u{5236}\u{56DE}\u{590D}")){UIPasteboard.general.string=visible}
