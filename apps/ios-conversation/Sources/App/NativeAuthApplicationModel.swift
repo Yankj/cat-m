@@ -16,6 +16,11 @@ public struct AuthenticatedNativeChatCredentials: NativeChatSessionCredentials {
     @Published private(set) var error: String?
     @Published private(set) var registrationNotice: String?
     @Published private(set) var actionBusy = false
+    /// Intro gate. Anonymous warm-up runs in the background regardless; the UI stays on the intro
+    /// until `completeOnboarding()` succeeds. Key: `CatpawOnboarding.completedKey`.
+    @Published private(set) var onboarding: OnboardingGateState = .needsOnboarding { didSet { needsOnboarding = onboarding.needsOnboarding } }
+    @Published private(set) var needsOnboarding = true
+    private var warmup: Task<Void, Never>?
     let isFixture: Bool
     private let configuration: NativeAuthConfiguration?
     private let manager: NativeAuthSessionManager?
@@ -73,27 +78,52 @@ public struct AuthenticatedNativeChatCredentials: NativeChatSessionCredentials {
                 manager = NativeAuthSessionManager(configuration:configuration,remote:remote,vault:vault,barrier:barrier)
             } else { manager = nil; error = "登录连接尚未配置。" }
         } catch { configuration = nil; manager = nil; self.error = "登录公开配置未通过校验。" }
+        let gate = CatpawOnboarding.initialState(fixture: fixture); onboarding = gate; needsOnboarding = gate.needsOnboarding
     }
     // Test initializer is mock-only; production continues using the configured Keychain.
     init(configuration:NativeAuthConfiguration,manager:NativeAuthSessionManager,vault:any NativeAuthVault,barrier:any NativeAuthLogoutBarrier,root:URL) {
         self.configuration=configuration;self.manager=manager;self.localVault=vault;self.localBarrier=barrier;self.root=root;self.isFixture=true
+        onboarding = .completed; needsOnboarding = false
     }
     private var receiptURL:URL { root.appendingPathComponent("last-local-workspace.json") }
-    private func saveLocalReceipt(_ receipt:LocalConversationReceipt) throws {
-        try FileManager.default.createDirectory(at:root,withIntermediateDirectories:true)
-        try JSONEncoder().encode(receipt).write(to:receiptURL,options:.atomic)
-        try FileManager.default.setAttributes([.protectionKey:FileProtectionType.complete],ofItemAtPath:receiptURL.path)
-        var url=receiptURL;var values=URLResourceValues();values.isExcludedFromBackup=true;try url.setResourceValues(values)
+    /// File/Keychain/SwiftData work never runs on the main actor (launch white-screen fix):
+    /// SwiftDataPersistence blocks its caller on a semaphore, Keychain and protected-file reads can stall.
+    private func saveLocalReceipt(_ receipt:LocalConversationReceipt) async throws {
+        let root=root,receiptURL=receiptURL
+        try await Task.detached(priority:.utility) {
+            try FileManager.default.createDirectory(at:root,withIntermediateDirectories:true)
+            try JSONEncoder().encode(receipt).write(to:receiptURL,options:.atomic)
+            try FileManager.default.setAttributes([.protectionKey:FileProtectionType.complete],ofItemAtPath:receiptURL.path)
+            var url=receiptURL;var values=URLResourceValues();values.isExcludedFromBackup=true;try url.setResourceValues(values)
+        }.value
+    }
+    /// Opens the account partition stores off the main actor. `prepare` creates the protected, backup-excluded directory.
+    nonisolated private static func openStores(directory:URL,prepare:Bool) async throws -> (Repository,FileConversationImageByteStore) {
+        try await Task.detached(priority:.userInitiated) {
+            if prepare {
+                try FileManager.default.createDirectory(at:directory,withIntermediateDirectories:true,attributes:[.protectionKey:FileProtectionType.complete])
+                var excluded = directory; var resource = URLResourceValues(); resource.isExcludedFromBackup = true; try excluded.setResourceValues(resource)
+            }
+            let repository=try Repository(persistence:SwiftDataPersistence(url:directory.appendingPathComponent("local.store")))
+            return (repository,try FileConversationImageByteStore(root:directory.appendingPathComponent("image-bytes")))
+        }.value
     }
     private func openLocalConversation() async {
-        guard let configuration,let localVault,let localBarrier,
-              let bytes=try? Data(contentsOf:receiptURL),let receipt=try? JSONDecoder().decode(LocalConversationReceipt.self,from:bytes),
-              let candidate=try? localVault.load(),let signedOut=try? localBarrier.isSignedOut(),
-              let partition=receipt.partition(candidate:candidate,signedOut:signedOut,expectedIssuer:configuration.issuer) else { return }
+        guard let configuration,let localVault,let localBarrier else { return }
+        let receiptURL=receiptURL,root=root,issuer=configuration.issuer
+        let found:(LocalConversationReceipt,AuthenticatedLocalPartition)? = await Task.detached(priority:.userInitiated) {
+            guard let bytes=try? Data(contentsOf:receiptURL),let receipt=try? JSONDecoder().decode(LocalConversationReceipt.self,from:bytes),
+                  let candidate=try? localVault.load(),let signedOut=try? localBarrier.isSignedOut(),
+                  let partition=receipt.partition(candidate:candidate,signedOut:signedOut,expectedIssuer:issuer),
+                  FileManager.default.fileExists(atPath:root.appendingPathComponent(partition.namespace).appendingPathComponent("local.store").path) else { return nil }
+            return (receipt,partition)
+        }.value
+        guard let found=found,chat == nil else { return }
+        let (receipt,partition)=found
         let url=root.appendingPathComponent(partition.namespace).appendingPathComponent("local.store")
-        guard FileManager.default.fileExists(atPath:url.path) else { return }
         do {
-            let repository=try Repository(persistence:SwiftDataPersistence(url:url))
+            let (repository,imageStore)=try await Self.openStores(directory:url.deletingLastPathComponent(),prepare:false)
+            guard chat == nil,!logoutInProgress else { return }
             // The local receipt conveys local reading only; it never authorizes HTTP.
             let chatConfiguration=try NativeChatConfiguration(origin:configuration.backendOrigin,localScope:partition.scope,serverScopeID:receipt.serverScopeID,publishableKey:configuration.publishableKey,expectedSubjectID:partition.subject)
             let credentials=AuthenticatedNativeChatCredentials(manager:manager!,partition:partition)
@@ -101,12 +131,18 @@ public struct AuthenticatedNativeChatCredentials: NativeChatSessionCredentials {
             let backend=NativeChatHTTPBackend(configuration:chatConfiguration,credentials:credentials)
             let memory=isFixture ? nil : try NativeMemoryComposition.service(repository:repository,configuration:chatConfiguration,credentials:credentials)
             let selected:any ConversationBackend=isFixture ? UnconfiguredConversationBackend() : backend
-            let preview=ConversationFirstModel(repository:repository,service:ConversationSessionService(repository:repository,backend:selected,resilience:ConnectionMonitorResilience(),outbox:ConversationOutbox(fileURL:url.deletingLastPathComponent().appendingPathComponent("conversation-outbox.json"))),scope:partition.scope,imageStore:try FileConversationImageByteStore(root:url.deletingLastPathComponent().appendingPathComponent("image-bytes")),taskPlanService:isFixture ? nil : ConversationTaskPlanService(repository:repository,scope:partition.scope,backend:backend),artifactEditService:isFixture ? nil : ConversationArtifactEditService(repository:repository,scope:partition.scope,backend:backend),taskActionService:isFixture ? nil : ConversationTaskActionService(repository:repository,scope:partition.scope,backend:backend),taskControlService:isFixture ? nil : ConversationTaskControlService(repository:repository,scope:partition.scope,backend:backend),memoryService:memory,inboxService:isFixture ? nil : ConversationInboxService(reference:.init(scope:partition.scope,serverScopeID:chatConfiguration.serverScopeID,subjectID:partition.subject),backend:backend),subjectID:partition.subject)
+            let preview=ConversationFirstModel(repository:repository,service:ConversationSessionService(repository:repository,backend:selected,resilience:ConnectionMonitorResilience(),outbox:ConversationOutbox(fileURL:url.deletingLastPathComponent().appendingPathComponent("conversation-outbox.json"))),scope:partition.scope,imageStore:imageStore,taskPlanService:isFixture ? nil : ConversationTaskPlanService(repository:repository,scope:partition.scope,backend:backend),artifactEditService:isFixture ? nil : ConversationArtifactEditService(repository:repository,scope:partition.scope,backend:backend),taskActionService:isFixture ? nil : ConversationTaskActionService(repository:repository,scope:partition.scope,backend:backend),taskControlService:isFixture ? nil : ConversationTaskControlService(repository:repository,scope:partition.scope,backend:backend),memoryService:memory,inboxService:isFixture ? nil : ConversationInboxService(reference:.init(scope:partition.scope,serverScopeID:chatConfiguration.serverScopeID,subjectID:partition.subject),backend:backend),subjectID:partition.subject)
             preview.setNetworkAdmissionAllowed(false);await preview.start();self.backend=backend;chat=preview;namespace=partition.namespace
         } catch { self.error=NativeAuthError.storage.localizedDescription }
     }
+    /// Starts the background warm-up (local preview, restore, anonymous experience identity).
+    /// Safe to call from `.task`: the warm-up is an unstructured task, so the gate can await it.
     func start() async {
         guard !started, let manager else { return }; started = true
+        let task = Task { [weak self] in await self?.warmUp(manager) }
+        warmup = task; await task.value
+    }
+    private func warmUp(_ manager: NativeAuthSessionManager) async {
         await openLocalConversation()
         subscription = Task { [weak self] in
             for await snapshot in await manager.changes() { guard let self, !Task.isCancelled else { return }; await self.receive(snapshot) }
@@ -118,6 +154,35 @@ public struct AuthenticatedNativeChatCredentials: NativeChatSessionCredentials {
         if !isFixture, restored.phase == .signedOut, restored.user == nil, restored.message == nil, autoAnonymousSession { await startExperience() }
     }
     /// Info.plist `CatpawAutoAnonymousSession` = NO disables the automatic experience identity.
+    /// "开启" button. Persists the intro flag, waits for the background warm-up, retries once, then
+    /// either enters the conversation (`.completed`) or exposes `.failed(message)`; calling again retries.
+    func completeOnboarding() async {
+        guard onboarding != .entering, onboarding != .completed else { return }
+        CatpawOnboarding.markCompleted(); onboarding = .entering
+        if warmup == nil { await start() } else { await warmup?.value }
+        if await waitForChat() { onboarding = .completed; return }
+        await retryWarmup()
+        if await waitForChat() { onboarding = .completed; return }
+        onboarding = .failed(error ?? (manager == nil ? "登录连接尚未配置。" : "暂时连不上服务，请稍后重试。"))
+    }
+    private func retryWarmup() async {
+        guard let manager else { return }
+        let current = await manager.snapshot()
+        if current.phase == .signedOut, current.user == nil { error = nil; await startExperience() }
+        else if current.phase == .authenticated, chat == nil { error = nil; await receive(current) }
+        else { await foreground() }
+    }
+    /// Waits while auth/workspace opening is in flight; gives up ~1s after it goes idle without a chat.
+    private func waitForChat() async -> Bool {
+        let deadline = Date().addingTimeInterval(30); var idleTicks = 0
+        while chat == nil, Date() < deadline, !Task.isCancelled {
+            let inFlight = actionBusy || openingAccountEpoch != nil || [.restoring,.signingIn,.refreshing].contains(state.phase)
+            idleTicks = inFlight ? 0 : idleTicks + 1
+            if idleTicks > 10 { break }
+            try? await Task.sleep(nanoseconds: 100_000_000)
+        }
+        return chat != nil
+    }
     private var autoAnonymousSession: Bool { (Bundle.main.object(forInfoDictionaryKey:"CatpawAutoAnonymousSession") as? Bool) ?? true }
     private func receive(_ snapshot: NativeAuthSnapshot) async {
         guard let manager, !Task.isCancelled,!logoutInProgress else { return }
@@ -138,7 +203,7 @@ public struct AuthenticatedNativeChatCredentials: NativeChatSessionCredentials {
             let afterScope = await manager.snapshot();guard !logoutInProgress,openingEpoch==lifecycleEpoch,afterScope.generation == snapshot.generation,afterScope.phase == .authenticated,afterScope.user == user else { return }
             let partition = AuthenticatedLocalPartition(issuer:configuration.issuer,subject:user.id,serverScopeID:serverScope)
             if namespace == partition.namespace {
-                try? saveLocalReceipt(.init(issuer:configuration.issuer,subject:user.id,serverScopeID:serverScope))
+                try? await saveLocalReceipt(.init(issuer:configuration.issuer,subject:user.id,serverScopeID:serverScope))
                 chat?.setNetworkAdmissionAllowed(true);error=nil;return
             }
             // Refresh may retain an already opened, validated account; only a
@@ -150,9 +215,10 @@ public struct AuthenticatedNativeChatCredentials: NativeChatSessionCredentials {
                   admitted.phase == .authenticated, admitted.user == user else { return }
             do {
                 let directory = root.appendingPathComponent(partition.namespace,isDirectory:true)
-                try FileManager.default.createDirectory(at:directory,withIntermediateDirectories:true,attributes:[.protectionKey:FileProtectionType.complete])
-                var excluded = directory; var resource = URLResourceValues(); resource.isExcludedFromBackup = true; try excluded.setResourceValues(resource)
-                let repository = try Repository(persistence:SwiftDataPersistence(url:directory.appendingPathComponent("local.store")))
+                let (repository,imageStore) = try await Self.openStores(directory:directory,prepare:true)
+                let reopened = await manager.snapshot()
+                guard !Task.isCancelled,!logoutInProgress,openingEpoch==lifecycleEpoch,chat == nil,reopened.generation == snapshot.generation,
+                      reopened.phase == .authenticated,reopened.user == user else { return }
                 let region = (Bundle.main.object(forInfoDictionaryKey:"CatpawEdgeRegion") as? String).flatMap { $0.isEmpty ? nil : $0 }
                 let chatConfiguration=try NativeChatConfiguration(origin:configuration.backendOrigin,localScope:partition.scope,serverScopeID:serverScope,publishableKey:configuration.publishableKey,edgeRegion:region,expectedSubjectID:partition.subject)
                 let credentials=AuthenticatedNativeChatCredentials(manager:manager,partition:partition)
@@ -161,13 +227,17 @@ public struct AuthenticatedNativeChatCredentials: NativeChatSessionCredentials {
                 let memory=isFixture ? nil : try NativeMemoryComposition.service(repository:repository,configuration:chatConfiguration,credentials:credentials)
                 backend = http
                 let selected: any ConversationBackend = isFixture ? UnconfiguredConversationBackend() : http
-                chat = ConversationFirstModel(repository:repository,service:ConversationSessionService(repository:repository,backend:selected,resilience:ConnectionMonitorResilience(),outbox:ConversationOutbox(fileURL:directory.appendingPathComponent("conversation-outbox.json"))),scope:partition.scope,imageStore:try FileConversationImageByteStore(root:directory.appendingPathComponent("image-bytes")),taskPlanService:isFixture ? nil : ConversationTaskPlanService(repository:repository,scope:partition.scope,backend:http),artifactEditService:isFixture ? nil : ConversationArtifactEditService(repository:repository,scope:partition.scope,backend:http),taskActionService:isFixture ? nil : ConversationTaskActionService(repository:repository,scope:partition.scope,backend:http),taskControlService:isFixture ? nil : ConversationTaskControlService(repository:repository,scope:partition.scope,backend:http),memoryService:memory,inboxService:isFixture ? nil : ConversationInboxService(reference:.init(scope:partition.scope,serverScopeID:chatConfiguration.serverScopeID,subjectID:partition.subject),backend:http),subjectID:partition.subject)
+                chat = ConversationFirstModel(repository:repository,service:ConversationSessionService(repository:repository,backend:selected,resilience:ConnectionMonitorResilience(),outbox:ConversationOutbox(fileURL:directory.appendingPathComponent("conversation-outbox.json"))),scope:partition.scope,imageStore:imageStore,taskPlanService:isFixture ? nil : ConversationTaskPlanService(repository:repository,scope:partition.scope,backend:http),artifactEditService:isFixture ? nil : ConversationArtifactEditService(repository:repository,scope:partition.scope,backend:http),taskActionService:isFixture ? nil : ConversationTaskActionService(repository:repository,scope:partition.scope,backend:http),taskControlService:isFixture ? nil : ConversationTaskControlService(repository:repository,scope:partition.scope,backend:http),memoryService:memory,inboxService:isFixture ? nil : ConversationInboxService(reference:.init(scope:partition.scope,serverScopeID:chatConfiguration.serverScopeID,subjectID:partition.subject),backend:http),subjectID:partition.subject)
                 namespace = partition.namespace; error = nil
-                try saveLocalReceipt(.init(issuer:configuration.issuer,subject:user.id,serverScopeID:serverScope))
+                try await saveLocalReceipt(.init(issuer:configuration.issuer,subject:user.id,serverScopeID:serverScope))
             } catch { self.error = "此账号的本地存储无法打开；原文件已保留。" }
         } else {
             // Transient restore failure retains an already admitted local receipt only.
-            let mayReadLocally = snapshot.phase == .signedOut && snapshot.message != nil && (try? localBarrier?.isSignedOut()) == false
+            let barrier = localBarrier
+            var mayReadLocally = false
+            if snapshot.phase == .signedOut && snapshot.message != nil {
+                mayReadLocally = await Task.detached(priority:.userInitiated) { (try? barrier?.isSignedOut()) == false }.value
+            }
             if mayReadLocally { chat?.setNetworkAdmissionAllowed(false) }
             else { await detachChat() }
             if let message = snapshot.message { error = message }

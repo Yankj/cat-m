@@ -99,3 +99,22 @@ public enum ConversationModelRoute: String, CaseIterable, Identifiable, Sendable
     /// Header value, nil for automatic.
     public var headerValue: String? { self == .automatic ? nil : rawValue }
 }
+
+/// First-launch intro gate (PR #24 OnboardingView). PR #24 defines no persisted flag, so this is
+/// the single shared key; UI and app model must both use `CatpawOnboarding.completedKey`.
+public enum CatpawOnboarding {
+    public static let completedKey = "catpaw.onboarding.completed.v1"
+    /// Launch argument used by UI tests/screenshots to start past the intro.
+    public static let skipArgument = "-CatpawSkipOnboarding"
+    public static func isCompleted(_ defaults: UserDefaults = .standard) -> Bool { defaults.bool(forKey: completedKey) }
+    public static func markCompleted(_ defaults: UserDefaults = .standard) { defaults.set(true, forKey: completedKey) }
+    public static func initialState(defaults: UserDefaults = .standard, arguments: [String] = ProcessInfo.processInfo.arguments, fixture: Bool = false) -> OnboardingGateState {
+        (fixture || arguments.contains(skipArgument) || isCompleted(defaults)) ? .completed : .needsOnboarding
+    }
+}
+/// UI contract: show the intro while `needsOnboarding`; `.entering` = "开启" tapped, waiting for the
+/// background warm-up; `.failed` = warm-up failed twice (message is user-facing, tap "开启" again to retry).
+public enum OnboardingGateState: Equatable, Sendable {
+    case needsOnboarding, entering, failed(String), completed
+    public var needsOnboarding: Bool { self != .completed }
+}
