@@ -150,6 +150,21 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
         let revision = prior?["revision"] as? Int ?? 0;guard revision >= 0 else { throw ConversationSessionError.invalidEvent }
         return .init(conversationID:conversationID,title:title,body:body,routeHash:routeHash,expectedRevision:revision)
     }
+    public func serverTranscript(scope: DataScope, conversationID: UUID) async throws -> [ConversationTranscriptMessage]? {
+        guard scope == configuration.localScope, !configuration.useFrozenFixtureMetadata else { return nil }
+        let auth = try await authorization(scope)
+        let wrapper: [String: Any]
+        do { wrapper = try await json(scopePath + "/conversations/" + conversationID.uuidString.lowercased(), auth: auth) }
+        catch NativeChatHTTPFailure.status(404) { return [] }
+        try Self.chatEnvelope(wrapper); let c = try Self.object(wrapper["conversation"])
+        guard UUID(uuidString: c["id"] as? String ?? "") == conversationID, UUID(uuidString: c["scope_id"] as? String ?? "") == configuration.serverScopeID else { throw ConversationSessionError.invalidEvent }
+        return try Self.array(c["messages"]).map { wire in
+            guard let id = UUID(uuidString: wire["id"] as? String ?? ""), let role = wire["role"] as? String, role == "user" || role == "assistant",
+                  let content = wire["content"] as? String, content.utf16.count <= 200_000 else { throw ConversationSessionError.invalidEvent }
+            // No server timestamp: the merge orders server-only rows by server order (createdAt .distantPast is replaced there).
+            return ConversationTranscriptMessage(id: id, role: role == "user" ? .user : .assistant, content: content, complete: true, createdAt: .distantPast)
+        }
+    }
     public func allowModelConsent(scope: DataScope, consent: ConversationModelConsent) async throws {
         let auth = try await authorization(scope),path = "/catpaw/privacy/v1/scopes/"+configuration.serverScopeID.uuidString.lowercased()+"/conversations/"+consent.conversationID.uuidString.lowercased()+"/model-consent"
         let reply = try await json(path,auth:auth,body:["decision":"allow","expected_revision":consent.expectedRevision,"route_hash":consent.routeHash]),row = try Self.object(reply["consent"])

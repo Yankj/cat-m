@@ -551,7 +551,7 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
         artifactContinuation=composer.activeDraft?.reference;continuationEditSequence=composer.activeDraft?.editSequence ?? 0;ordinaryContinuationImage=nil
         if let active=composer.activeDraft {ordinaryContinuationImage=imageDraft;imageDraft=ImageAttachmentDraft();subscribeToImageDraft();draft=active.raw}else{draft=saved.conversation?.draftText ?? ""}
         continuationDraftSaved=true
-        conversationID=id;session=selected;outgoingMessages=[];tapTimes=[:];isInputComposing=false;error=nil;await refresh();if loaded && foreground && networkAdmissionAllowed {connectionTask?.cancel();connectionTask=Task{await refreshConnection()}}
+        conversationID=id;session=selected;outgoingMessages=[];tapTimes=[:];isInputComposing=false;error=nil;await refresh();if loaded && foreground && networkAdmissionAllowed {connectionTask?.cancel();connectionTask=Task{await refreshConnection()};syncServerTranscript(id)}
         if loaded,let session {await restoreAppliedTaskControlDeliveries(session);drainTaskControlDeliveries()}
     }
     /// Explicit navigation from the scope inbox; inspection never calls this.
@@ -824,6 +824,15 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
         @unknown default:break
         }
     }
+    /// Pull-merge server-only messages (e.g. an outbox turn admitted without write-back) so they show in the UI.
+    private func syncServerTranscript(_ id:UUID) {
+        Task { [service,scope,weak self] in
+            do { let added=try await service.syncServerTranscript(scope:scope,conversationID:id)
+                let current=await self?.conversationID
+                if added, current == id { await self?.refresh() } }
+            catch { sendLog.info("catpaw.send transcript sync on open skipped: \(String(describing:error), privacy: .public)") }
+        }
+    }
     func resumeForeground() async {
         guard loaded else { return };sceneGeneration += 1;let generation=sceneGeneration;foreground=true
         await enterForeground(generation:generation)
@@ -832,6 +841,7 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
         guard loaded,generation == sceneGeneration,foreground else { return }
         await haltTask?.value;guard generation == sceneGeneration,foreground else { return }
         await synchronizeServiceAdmission()
+        if networkAdmissionAllowed,let id=conversationID { syncServerTranscript(id) }
         foregroundTask?.cancel();connectionTask?.cancel()
         // Reachability is informative; it must not block GET of the exact unresolved turn.
         connectionTask=Task { await refreshConnection() }
