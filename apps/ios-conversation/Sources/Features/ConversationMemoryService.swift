@@ -1,0 +1,111 @@
+import Foundation
+
+public struct ConversationMemoryDraft:Codable,Sendable,Equatable {
+    public var targetID:UUID?,base:ConversationMemoryEntry?,topic:String="",text:String="",workspaceWide=false
+    public init(){}
+}
+public struct ConversationMemoryPending:Codable,Sendable,Equatable {
+    public let request:ConversationMemoryRequest
+    public var notSent=false
+}
+public struct ConversationMemoryLocalState:Codable,Sendable,Equatable {
+    public var schemaVersion=1
+    public let subjectID:UUID,serverScopeID:UUID
+    public var draftEpoch:UUID
+    public var latest:ConversationMemorySnapshot?,draft=ConversationMemoryDraft(),pending:ConversationMemoryPending?,lastReceipt:ConversationMemoryReceipt?
+    private enum CodingKeys:String,CodingKey {case schemaVersion,subjectID,serverScopeID,draftEpoch,latest,draft,pending,lastReceipt}
+    private static func initialEpoch(subject:UUID,scope:UUID)->UUID {stableID("memory-draft-initial:\(subject):\(scope)")}
+    public init(reference:ConversationMemoryReference){subjectID=reference.subjectID;serverScopeID=reference.serverScopeID;draftEpoch=Self.initialEpoch(subject:reference.subjectID,scope:reference.serverScopeID)}
+    public init(from decoder:Decoder) throws {
+        let c=try decoder.container(keyedBy:CodingKeys.self)
+        schemaVersion=try c.decode(Int.self,forKey:.schemaVersion);subjectID=try c.decode(UUID.self,forKey:.subjectID);serverScopeID=try c.decode(UUID.self,forKey:.serverScopeID)
+        draftEpoch=try c.decodeIfPresent(UUID.self,forKey:.draftEpoch) ?? Self.initialEpoch(subject:subjectID,scope:serverScopeID)
+        latest=try c.decodeIfPresent(ConversationMemorySnapshot.self,forKey:.latest);draft=try c.decode(ConversationMemoryDraft.self,forKey:.draft);pending=try c.decodeIfPresent(ConversationMemoryPending.self,forKey:.pending);lastReceipt=try c.decodeIfPresent(ConversationMemoryReceipt.self,forKey:.lastReceipt)
+    }
+}
+/// Durable delivery journal and local draft only. Claims, source trust, enabled
+/// state and generation are always server facts, never inferred by presentation.
+public actor ConversationMemoryService {
+    public nonisolated let reference:ConversationMemoryReference
+    private let repository:Repository,backend:any ConversationMemoryBackend
+    private var generation=0,admitted=false,closed=false,fresh=false,locked=false
+    private var waiters:[CheckedContinuation<Void,Never>]=[]
+    public init(repository:Repository,reference:ConversationMemoryReference,backend:any ConversationMemoryBackend){self.repository=repository;self.reference=reference;self.backend=backend}
+    public func setAdmissionAllowed(_ allowed:Bool) async {if !allowed {generation+=1;fresh=false};admitted=allowed && !closed}
+    public func invalidate() async {generation+=1;admitted=false;closed=true;fresh=false;await backend.close()}
+    public func close() async {await invalidate()}
+    public func localState() async throws -> ConversationMemoryLocalState {await lock();defer{unlock()};guard !closed else {throw CancellationError()};return try await load().0}
+    public func saveDraft(_ draft:ConversationMemoryDraft,expectedDraftEpoch:UUID) async throws {
+        try Task.checkCancellation()
+        guard draft.text.utf16.count<=8000,draft.topic.utf16.count<=200 else {throw ConversationMemoryError.invalidResponse}
+        await lock();defer{unlock()};try Task.checkCancellation();guard !closed else {throw CancellationError()};var (state,record)=try await load();try Task.checkCancellation()
+        guard state.draftEpoch==expectedDraftEpoch else {throw ConversationMemoryError.stale}
+        state.draft=draft;try await save(state,record:record);try Task.checkCancellation()
+    }
+    public func refresh() async throws -> ConversationMemoryLocalState {
+        let epoch=generation;try ensure(epoch);fresh=false;let value=try await backend.readMemory(reference);try ensure(epoch);try value.validate(reference)
+        await lock();defer{unlock()};try ensure(epoch);var (state,record)=try await load();try ensure(epoch)
+        if let old=state.latest {guard value.memory_generation>=old.memory_generation else {throw ConversationMemoryError.stale}}
+        if let receipt=state.lastReceipt {guard value.memory_generation>=receipt.operation.result.memory_generation else {throw ConversationMemoryError.stale}}
+        state.latest=value;try await save(state,record:record);try ensure(epoch);fresh=true;return state
+    }
+    public func submit(_ command:ConversationMemoryCommand) async throws -> ConversationMemoryLocalState {
+        let epoch=generation;try ensure(epoch);try command.validate()
+        await lock();var request:ConversationMemoryRequest
+        do {
+            try ensure(epoch);var (state,record)=try await load();try ensure(epoch)
+            guard fresh,state.pending==nil,let snapshot=state.latest else {throw ConversationMemoryError.busy}
+            if [.remember,.correct,.confirm].contains(command.type) {guard snapshot.enabled else {throw ConversationMemoryError.unavailable}}
+            request=try .init(generation:snapshot.memory_generation,command:command);state.pending = .init(request:request)
+            try await save(state,record:record);try ensure(epoch);fresh=false;unlock()
+        }catch{unlock();throw error}
+        do {let receipt=try await backend.submitMemory(reference,request:request);try ensure(epoch);return try await apply(receipt,request:request,epoch:epoch)}
+        catch {
+            if (error as? ConversationMemoryError == .notSent || error as? ConversationMemoryError == .rejected),epoch==generation,!closed {
+                await lock();defer{unlock()};var (state,record)=try await load();if state.pending?.request==request {state.pending?.notSent=true;try await save(state,record:record)}
+            }
+            throw error
+        }
+    }
+    public func readOriginal() async throws -> ConversationMemoryLocalState {
+        let epoch=generation;try ensure(epoch);let state=try await localState();try ensure(epoch)
+        guard let pending=state.pending else {return state}
+        let receipt=try await backend.readMemoryOperation(reference,request:pending.request);try ensure(epoch)
+        return try await apply(receipt,request:pending.request,epoch:epoch)
+    }
+    public func reopenNotSent() async throws -> ConversationMemoryLocalState {
+        await lock();defer{unlock()};guard !closed else {throw CancellationError()};var (state,record)=try await load()
+        guard state.pending?.notSent==true else {throw ConversationMemoryError.busy};state.pending=nil;fresh=false;try await save(state,record:record);return state
+    }
+    public func source(_ id:UUID) async throws -> ConversationMemorySource {
+        let epoch=generation;try ensure(epoch);let value=try await backend.readMemorySource(reference,id:id);try ensure(epoch);return value
+    }
+    private func apply(_ receipt:ConversationMemoryReceipt,request:ConversationMemoryRequest,epoch:Int) async throws -> ConversationMemoryLocalState {
+        try receipt.validate(reference,request:request);await lock();defer{unlock()};try ensure(epoch);var (state,record)=try await load();try ensure(epoch)
+        guard state.pending?.request==request else {throw ConversationMemoryError.invalidResponse}
+        // Drop stale facts and command text before any follow-up GET. A forgotten
+        // value cannot survive in this service's completed operation journal.
+        state.latest=nil;state.draft = .init();state.draftEpoch=UUID();state.pending=nil;state.lastReceipt=receipt
+        try await save(state,record:record);try ensure(epoch);return state
+    }
+    private var key:String {"conversation_memory_v1:"+reference.subjectID.uuidString.lowercased()+":"+reference.serverScopeID.uuidString.lowercased()}
+    private func load() async throws -> (ConversationMemoryLocalState,StoredRecord?) {
+        let record:StoredRecord
+        do {record=try await repository.record(stableID(key),scope:reference.scope)}catch CatpawError.missing {return (.init(reference:reference),nil)}
+        guard case .preference(let p)=record.payload,p.key==key,p.value.utf8.count<=2_000_000 else {throw ConversationMemoryError.invalidResponse}
+        let state=try JSONDecoder().decode(ConversationMemoryLocalState.self,from:Data(p.value.utf8))
+        guard state.schemaVersion==1,state.subjectID==reference.subjectID,state.serverScopeID==reference.serverScopeID else {throw ConversationMemoryError.invalidResponse}
+        if let value=state.latest {try value.validate(reference)}
+        if let pending=state.pending {try pending.request.command.validate()}
+        return (state,record)
+    }
+    private func save(_ state:ConversationMemoryLocalState,record:StoredRecord?) async throws {
+        guard !closed else {throw CancellationError()};let data=try ConversationMemoryCodec.encoded(state);guard data.count<=2_000_000 else {throw ConversationMemoryError.invalidResponse}
+        let payload=Payload.preference(.init(key:key,value:String(decoding:data,as:UTF8.self)))
+        try await repository.commit(scope:reference.scope,mutations:[record.map{.update($0.id,$0.header.revision,payload)} ?? .create(stableID(key),payload)])
+    }
+    private func ensure(_ epoch:Int) throws {guard !closed,admitted,generation==epoch,!Task.isCancelled else {throw CancellationError()}}
+    private func lock() async {if !locked {locked=true;return};await withCheckedContinuation{waiters.append($0)}}
+    private func unlock(){if waiters.isEmpty{locked=false}else{waiters.removeFirst().resume()}}
+}
+public extension ConversationMemoryBackend {func close() async {}}
