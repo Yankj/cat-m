@@ -795,6 +795,10 @@
     "en": "Original conversation",
     "zh-Hans": "原对话"
   },
+  "原对话与草稿仍保留。请准备下一次体验会话后继续。": {
+    "en": "Your conversations and drafts are preserved. Prepare the next review session to continue.",
+    "zh-Hans": "原对话与草稿仍保留。请准备下一次体验会话后继续。"
+  },
   "原对话尚未保存在本机，可继续查阅这份成果。": {
     "en": "The original conversation is not saved on this device. You can still read this result.",
     "zh-Hans": "原对话尚未保存在本机，可继续查阅这份成果。"
@@ -2866,6 +2870,10 @@
   "本次确认已使用": {
     "en": "Confirmation used",
     "zh-Hans": "本次确认已使用"
+  },
+  "本次离线体验已到期": {
+    "en": "This offline review has expired",
+    "zh-Hans": "本次离线体验已到期"
   },
   "本次要求": {
     "en": "Requirements for this run",
