@@ -10,7 +10,7 @@ args=parser.parse_args()
 result=subprocess.check_output(['git','ls-files','--cached','--others','--exclude-standard','-z'],cwd=root)
 paths=sorted(set(x.decode() for x in result.split(b'\0') if x))
 patterns={
-    'credential_prefix':r'gh[pousr]_[A-Za-z0-9_]{20,}|github_pat_[A-Za-z0-9_]{20,}|sk-(?:proj-)?[A-Za-z0-9_-]{24,}|sb_secret_[A-Za-z0-9_-]{20,}|AKIA[0-9A-Z]{16}|ASIA[0-9A-Z]{16}',
+    'credential_prefix':r'gh[pousr]_[A-Za-z0-9_]{20,}|github_pat_[A-Za-z0-9_]{20,}|(?<![A-Za-z0-9])sk-(?:proj-)?[A-Za-z0-9_-]{24,}|sb_secret_[A-Za-z0-9_-]{20,}|AKIA[0-9A-Z]{16}|ASIA[0-9A-Z]{16}',
     'deployment_public_key':r'sb_publishable_[A-Za-z0-9_-]{20,}',
     'private_key':r'-----BEGIN (?:RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----',
     'credential_url':r'https?://[^\s/@:]+:[^\s/@]+@',
