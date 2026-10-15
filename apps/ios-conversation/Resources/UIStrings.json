@@ -2599,6 +2599,10 @@
     "en": "Submit saved request",
     "zh-Hans": "提交已保存请求"
   },
+  "提前提醒（分钟）": {
+    "en": "Alert before (minutes)",
+    "zh-Hans": "提前提醒（分钟）"
+  },
   "提取摘要 · 首个非空段落": {
     "en": "Extracted summary · first non-empty paragraph",
     "zh-Hans": "提取摘要 · 首个非空段落"
