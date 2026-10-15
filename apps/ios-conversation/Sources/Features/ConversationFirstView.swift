@@ -869,6 +869,9 @@ private struct ConversationPendingMessageEditor:View {
                     if let at=model.connection.verifiedReplyAt {LabeledContent(ui("最近确认回复"),value:at.formatted(date:.omitted,time:.shortened))}
                     Button(ui("重新检查连接")) { Task { await model.refreshConnection() } }.accessibilityIdentifier("connection.refresh")
                 }
+                #if DEBUG || DEVICE_TRIAL
+                DeveloperModelRouteSection()
+                #endif
                 Section(ui("数据")) { Text(model.connection.state == .notConfigured ? ui("当前未连接云端；输入保存在此设备。") : ui("此设备保存对话副本；发送的消息会交给已连接的云端服务处理。")); Text(ui("离开 App 后不会发送排队中的消息。任务后台执行的状态需要重新读取确认。")).font(CatpawTypography.Role.caption.font) }
                 Section { DisclosureGroup(ui("诊断")) { LabeledContent(ui("服务"),value:model.connection.provider); Text(model.connection.state.rawValue).font(CatpawTypography.Role.caption.font).textSelection(.enabled) } }
                 if model.connection.state == .notConfigured { Text(ui("真实模型尚未配置；不会使用演示回复代替模型。")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary) }

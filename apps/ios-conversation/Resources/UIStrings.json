@@ -3,6 +3,10 @@
     "en": "\nThe original file is preserved. Storage was not reset. Investigate migration or recovery with full Xcode.",
     "zh-Hans": "\n原文件已保留，未重置存储。请在完整 Xcode 下排查迁移或恢复。"
   },
+  "Agnes Flash（备选）": {
+    "en": "Agnes Flash (fallback)",
+    "zh-Hans": "Agnes Flash（备选）"
+  },
   "App 不启动常驻服务；没有真实账号、模型密钥、云执行或系统推送。": {
     "en": "The app does not start a persistent service. Real accounts, model keys, cloud execution, and system push are not connected.",
     "zh-Hans": "App 不启动常驻服务；没有真实账号、模型密钥、云执行或系统推送。"
@@ -31,9 +35,21 @@
     "en": "Gateway synthetic delegation · read-only mirror",
     "zh-Hans": "Gateway 合成委托 · 只读回流"
   },
+  "Gemini 免费层": {
+    "en": "Gemini free tier",
+    "zh-Hans": "Gemini 免费层"
+  },
+  "Groq 免费": {
+    "en": "Groq free",
+    "zh-Hans": "Groq 免费"
+  },
   "OpenMuse · 合成 Demo": {
     "en": "OpenMuse · synthetic demo",
     "zh-Hans": "OpenMuse · 合成 Demo"
+  },
+  "OpenRouter 免费": {
+    "en": "OpenRouter free",
+    "zh-Hans": "OpenRouter 免费"
   },
   "Subagents · 仅新对话配置": {
     "en": "Subagents · new conversations only",
@@ -539,6 +555,10 @@
     "en": "Read the current artifact before saving edits. Your draft is retained.",
     "zh-Hans": "先读取当前成果，再保存修改。草稿会保留。"
   },
+  "免费模型正忙 · {0} 秒后自动重试": {
+    "en": "Free model is busy · retrying in {0}s",
+    "zh-Hans": "免费模型正忙 · {0} 秒后自动重试"
+  },
   "全文": {
     "en": "Full text",
     "zh-Hans": "全文"
@@ -975,6 +995,10 @@
     "en": "Reads a fixed version only when you tap Play. Stopping audio does not cancel text tasks.",
     "zh-Hans": "只在你主动播放时朗读固定版本。停止声音不会取消文字任务。"
   },
+  "只在服务端已同意的免费路由间选择；繁忙时是否切换由服务端配置决定。永不使用付费路由。": {
+    "en": "Chooses only among free routes the server has consented; busy failover is a server setting. Paid routes are never used.",
+    "zh-Hans": "只在服务端已同意的免费路由间选择；繁忙时是否切换由服务端配置决定。永不使用付费路由。"
+  },
   "只查询原请求，不重新发送消息": {
     "en": "Read the original request without sending another message",
     "zh-Hans": "只查询原请求，不重新发送消息"
@@ -1150,6 +1174,10 @@
   "图表；原值见下方数据选择": {
     "en": "Chart; original values are available in the data selectors below",
     "zh-Hans": "图表；原值见下方数据选择"
+  },
+  "在线": {
+    "en": "Online",
+    "zh-Hans": "在线"
   },
   "在设置开启演示数据分区，并切换到本机。": {
     "en": "Enable the demo partition in Settings and select On Device.",
@@ -1519,6 +1547,10 @@
     "en": "Queued",
     "zh-Hans": "已排队"
   },
+  "已接上 · 从断点继续": {
+    "en": "Reconnected · continuing where it left off",
+    "zh-Hans": "已接上 · 从断点继续"
+  },
   "已撤权 · 保留原记录": {
     "en": "Revoked · original record preserved",
     "zh-Hans": "已撤权 · 保留原记录"
@@ -1626,6 +1658,10 @@
   "建立持续委托": {
     "en": "Create ongoing delegation",
     "zh-Hans": "建立持续委托"
+  },
+  "开发者与高级": {
+    "en": "Developer & Advanced",
+    "zh-Hans": "开发者与高级"
   },
   "开发联调": {
     "en": "Development testing",
@@ -3151,6 +3187,10 @@
     "en": "Model request",
     "zh-Hans": "模型请求"
   },
+  "模型路由（仅免费）": {
+    "en": "Model route (free only)",
+    "zh-Hans": "模型路由（仅免费）"
+  },
   "模型连接": {
     "en": "Model connection",
     "zh-Hans": "模型连接"
@@ -3230,6 +3270,10 @@
   "正在取消": {
     "en": "Cancelling",
     "zh-Hans": "正在取消"
+  },
+  "正在同步工作状态…": {
+    "en": "Syncing work status…",
+    "zh-Hans": "正在同步工作状态…"
   },
   "正在回复…": {
     "en": "Replying…",
@@ -3350,6 +3394,10 @@
   "正在重新连接": {
     "en": "Reconnecting",
     "zh-Hans": "正在重新连接"
+  },
+  "正在重新连接 · 第 {0} 次 · {1} 秒后": {
+    "en": "Reconnecting · attempt {0} · in {1}s",
+    "zh-Hans": "正在重新连接 · 第 {0} 次 · {1} 秒后"
   },
   "正文": {
     "en": "Content",
@@ -3715,6 +3763,10 @@
     "en": "Queued messages are not sent after you leave the app. Read task status again to confirm background progress.",
     "zh-Hans": "离开 App 后不会发送排队中的消息。任务后台执行的状态需要重新读取确认。"
   },
+  "离线 · 草稿和待发消息都会保留": {
+    "en": "Offline · drafts and pending messages are kept",
+    "zh-Hans": "离线 · 草稿和待发消息都会保留"
+  },
   "移到本地回收站？消息和 ID 可恢复。": {
     "en": "Move to local trash? Messages and IDs can be restored.",
     "zh-Hans": "移到本地回收站？消息和 ID 可恢复。"
@@ -3774,6 +3826,10 @@
   "等待模拟回复": {
     "en": "Waiting for simulated reply",
     "zh-Hans": "等待模拟回复"
+  },
+  "等待网络 · 联网后自动发送": {
+    "en": "Waiting for network · sends automatically when online",
+    "zh-Hans": "等待网络 · 联网后自动发送"
   },
   "等待许可": {
     "en": "Awaiting permission",
@@ -3950,6 +4006,10 @@
   "联调未完成，原记录保留": {
     "en": "Testing did not complete. Original records are preserved.",
     "zh-Hans": "联调未完成，原记录保留"
+  },
+  "自动（Gemini 免费层优先）": {
+    "en": "Automatic (server default)",
+    "zh-Hans": "自动（Gemini 免费层优先）"
   },
   "自定义命令": {
     "en": "Custom commands",
@@ -4399,6 +4459,10 @@
     "en": "This is a read-only service result. Edits and controls are saved by the service.",
     "zh-Hans": "这是服务成果的只读回流；修改与控制由服务端保存。"
   },
+  "这条回复暂时没接上": {
+    "en": "This reply couldn't reconnect yet",
+    "zh-Hans": "这条回复暂时没接上"
+  },
   "这里只显示当前环境的本地删除项。": {
     "en": "Only locally deleted items from this environment appear here.",
     "zh-Hans": "这里只显示当前环境的本地删除项。"
@@ -4430,6 +4494,10 @@
   "连接暂不可用": {
     "en": "Connection unavailable",
     "zh-Hans": "连接暂不可用"
+  },
+  "连接状态": {
+    "en": "Connection",
+    "zh-Hans": "连接状态"
   },
   "追问这版": {
     "en": "Ask about this version",

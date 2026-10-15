@@ -1,9 +1,11 @@
 import {ApiError,check,hash} from './core/facade-r2/src/common.mjs';
 import {Buffer} from 'node:buffer';
 import {validatePublicSourcePolicy} from './core/src/public-source-contract.mjs';
+import {readFreeRouteChain} from './core/src/free-route-chain.mjs';
+import {readApnsConfig,APNS_ENV_NAMES} from './core/src/apns.mjs';
 export const SECRET_NAMES=['CATPAW_DATABASE_URL','CATPAW_PRIVATE_MODEL_KEY','CATPAW_TICK_HMAC_KEY','CATPAW_MEMORY_GUARD_KEY'];
 export const CONFIG_NAMES=['SUPABASE_URL','CATPAW_PUBLISHABLE_KEY'];
-export const OPTIONAL_CONFIG_NAMES=['CATPAW_PUBLIC_SOURCE_POLICY'];
+export const OPTIONAL_CONFIG_NAMES=['CATPAW_PUBLIC_SOURCE_POLICY','CATPAW_GEMINI_API_KEY','CATPAW_GROQ_API_KEY','CATPAW_AGNES_API_KEY','CATPAW_AGNES_MODEL','CATPAW_MODEL_ROUTE_ORDER','CATPAW_THINKING_SUMMARY','CATPAW_MODEL_AUTO_FAILOVER',...APNS_ENV_NAMES,'CATPAW_APNS_ENV'];
 const PROJECT_URL='';
 const PROJECT_PUBLISHABLE_KEY='';
 // JSON.parse alone silently accepts duplicate object keys. Reviewed network policy must have one meaning.
@@ -33,6 +35,11 @@ export function readConfig(get){
  const sourcePolicyText=get('CATPAW_PUBLIC_SOURCE_POLICY');
  const publicSourcePolicy=sourcePolicyText===undefined||sourcePolicyText===null||sourcePolicyText===''?null:publicSourcePolicyJSON(sourcePolicyText);
  const route={id:'catpaw-free-consented-v1',free:true,provider:'OpenRouter',downstream_provider:'Novita',model:'apodex/apodex-1.1-mini:free',endpoint:'https://openrouter.ai/api/v1/chat/completions',routing_policy:{only:['novita/bf16'],allow_fallbacks:false,require_parameters:true,data_collection:'deny',max_price:{prompt:0,completion:0,request:0,image:0}},data_fields:['current_message_text','conversation_text_history_max_40_messages_80kB','explicit_context_text','local_report_task_instructions_and_feedback','user_confirmed_memory_with_source_references'],purposes:['chat_reply','local_report','user_enabled_memory_personalization'],excluded_fields:['automatic_email_access','calendar','photos','contacts','other_apps','auth_tokens'],policy_url:'https://openrouter.ai/privacy',history_limit:40,sensitive_requires_separate_confirmation:true};
- if(publicSourcePolicy){route.data_fields.push('user_provided_public_urls_and_received_source_text');route.purposes.push('user_url_sourced_report');}
- return {...base,publicSourcePolicy,ready:missing.length===0,missing,authReady:!!base.projectUrl&&!!base.publishableKey&&!!base.databaseUrl,modelKey:get('CATPAW_PRIVATE_MODEL_KEY'),tickKey:get('CATPAW_TICK_HMAC_KEY'),guardKey:get('CATPAW_MEMORY_GUARD_KEY'),route,routeHash:hash(route),chatBudgetMs:50000,chatFinalizationReserveMs:5000,tickBudgetMs:30000,modelTimeoutMs:20000,dailyCallLimit:20};
+ // R7 MVP: when a Gemini/Groq free-tier key is deployed, the consented route becomes the ordered free chain.
+ // Without it the frozen single route above stays unchanged (switching is an explicit deploy act).
+ const chain=readFreeRouteChain(get);let freeChain=null,activeRoute=route;
+ if(chain){freeChain=chain;activeRoute={...route,id:'catpaw-free-chain-v1',provider:chain.routes.map(r=>r.provider).join(' → '),downstream_provider:chain.routes.map(r=>r.provider).join('、'),model:chain.routes[0].model,endpoint:chain.routes[0].endpoint,routing_policy:{chain:chain.routes.map(r=>({id:r.id,model:r.model,endpoint:r.endpoint})),failover:chain.autoFailover?'before_first_output_only':'disabled',max_price:{prompt:0,completion:0,request:0,image:0},billing:chain.routes.map(r=>({id:r.id,billing:r.billing}))},policy_url:chain.routes[0].policy_url,policy_urls:chain.routes.map(r=>r.policy_url),thinking_summary:chain.routes.some(r=>r.thinking_summary)};}
+ const finalRoute=activeRoute;
+ if(publicSourcePolicy){finalRoute.data_fields=[...finalRoute.data_fields,'user_provided_public_urls_and_received_source_text'];finalRoute.purposes=[...finalRoute.purposes,'user_url_sourced_report'];}
+ return {...base,publicSourcePolicy,ready:missing.length===0,missing,authReady:!!base.projectUrl&&!!base.publishableKey&&!!base.databaseUrl,modelKey:get('CATPAW_PRIVATE_MODEL_KEY'),tickKey:get('CATPAW_TICK_HMAC_KEY'),guardKey:get('CATPAW_MEMORY_GUARD_KEY'),route:finalRoute,routeHash:hash(finalRoute),freeChain,apns:readApnsConfig(get),chatBudgetMs:50000,chatFinalizationReserveMs:5000,tickBudgetMs:30000,modelTimeoutMs:20000,dailyCallLimit:20};
 }
