@@ -4,6 +4,8 @@ import UIKit
 @MainActor final class ConversationTextView: CatpawEditingTextView {
     var submit: (() -> Void)?
     var compositionChanged: ((Bool) -> Void)?
+    var lineCountChanged: ((Int) -> Void)?
+    private var reportedLineCount = 0
     override var keyCommands: [UIKeyCommand]? { [UIKeyCommand(input:"\r",modifierFlags:.command,action:#selector(commandSubmit))] }
     @objc func commandSubmit() { guard markedTextRange == nil else { return };submit?() }
     override func setMarkedText(_ markedText:String?,selectedRange:NSRange) {
@@ -11,6 +13,18 @@ import UIKit
         compositionChanged?(markedTextRange != nil);delegate?.textViewDidChange?(self)
     }
     override func unmarkText() { super.unmarkText();compositionChanged?(false);delegate?.textViewDidChange?(self) }
+    override func layoutSubviews() { super.layoutSubviews();reportLineCount() }
+    func reportLineCount() {
+        layoutManager.ensureLayout(for:textContainer)
+        let range=layoutManager.glyphRange(for:textContainer)
+        var count=0
+        layoutManager.enumerateLineFragments(forGlyphRange:range) { _,_,_,_,_ in count += 1 }
+        count=max(1,count)
+        guard count != reportedLineCount else {return}
+        reportedLineCount=count
+        let changed=lineCountChanged
+        DispatchQueue.main.async {changed?(count)}
+    }
     #if DEBUG
     static weak var fixtureEditor:ConversationTextView?
     #endif
@@ -23,6 +37,7 @@ import UIKit
     /// The host may supply the remaining viewport after association/status chrome.
     /// A finite SwiftUI proposal is also respected; the text itself then scrolls.
     var maximumVisibleHeight:CGFloat? = nil
+    var lineCountChanged:((Int)->Void)? = nil
     let submit:() -> Void
     func makeCoordinator() -> Coordinator { Coordinator(self) }
     func makeUIView(context:Context) -> ConversationTextView {
@@ -33,7 +48,7 @@ import UIKit
         view.textContainer.lineFragmentPadding=0;view.returnKeyType = .default
         view.accessibilityLabel=AppLanguage(locale:context.environment.locale).ui("消息");view.accessibilityIdentifier="chat.input"
         view.setContentCompressionResistancePriority(.defaultLow,for:.horizontal)
-        view.submit=submit;view.compositionChanged={ [weak model] in model?.updateInputComposition($0) }
+        view.submit=submit;view.lineCountChanged=lineCountChanged;view.compositionChanged={ [weak model] in model?.updateInputComposition($0) }
         #if DEBUG
         ConversationTextView.fixtureEditor=view
         #endif
@@ -44,7 +59,7 @@ import UIKit
         let updateStart=ProcessInfo.processInfo.systemUptime
         defer {P0PerformanceLog.shared.record("composer_update",start:updateStart,end:ProcessInfo.processInfo.systemUptime,main:true)}
         #endif
-        context.coordinator.parent=self;view.submit=submit;view.isEditable=enabled
+        context.coordinator.parent=self;view.submit=submit;view.lineCountChanged=lineCountChanged;view.isEditable=enabled
         view.accessibilityLabel=AppLanguage(locale:context.environment.locale).ui("消息")
         let font=ConversationTypeScale.font(context.environment.dynamicTypeSize)
         let fontChanged=view.font?.isEqual(font) != true
@@ -53,11 +68,11 @@ import UIKit
         let renderedPointSize=font.pointSize,systemCategory=view.traitCollection.preferredContentSizeCategory
         DispatchQueue.main.async {P0ExperienceProbe.shared.recordInputTypography(pointSize:renderedPointSize,systemCategory:systemCategory)}
         #endif
-        guard view.markedTextRange == nil,view.text != model.draft else {if fontChanged {view.keepSelectionVisible()};return}
+        guard view.markedTextRange == nil,view.text != model.draft else {if fontChanged {view.keepSelectionVisible()};view.reportLineCount();return}
         let old=view.selectedRange;context.coordinator.replacing=true;view.text=model.draft
         view.selectedRange=NSRange(location:min(old.location,view.text.utf16.count),length:0)
         context.coordinator.replacing=false
-        view.keepSelectionVisible()
+        view.keepSelectionVisible();view.reportLineCount()
     }
     func sizeThatFits(_ proposal:ProposedViewSize,uiView:ConversationTextView,context:Context) -> CGSize? {
         #if DEBUG
@@ -80,7 +95,7 @@ import UIKit
             #endif
             guard !replacing else { return }
             parent.model.updateInputComposition(textView.markedTextRange != nil)
-            parent.model.editDraft(textView.text);textView.invalidateIntrinsicContentSize()
+            parent.model.editDraft(textView.text);textView.invalidateIntrinsicContentSize();(textView as? ConversationTextView)?.reportLineCount()
             (textView as? CatpawEditingTextView)?.noteTextChanged()
         }
         func textViewDidChangeSelection(_ textView:UITextView) {

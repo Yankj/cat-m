@@ -5,6 +5,7 @@ import CatpawImageComposer
 
 @MainActor struct ConversationFirstView: View {
     @ObservedObject var model: ConversationFirstModel
+    @StateObject private var composerChrome:ConversationComposerChromeAdapter
     var accountLabel: String? = nil
     var onSignOut: (() -> Void)? = nil
     var isAnonymousAccount = false
@@ -28,6 +29,7 @@ import CatpawImageComposer
     @State private var confirmSignOut = false
     @State private var pendingMessagesPresented=false
     @State private var composerMeasurements:[String:CGFloat]=[:]
+    @State private var composerLineCount=1
     @State private var visibleViewport:CatpawVisibleViewport?
     @State private var composerContextPresented=false
     private enum ComposerContextAction {case modelConsent,imageConsent,acceptedWork,pendingMessages,settings,latest}
@@ -35,6 +37,16 @@ import CatpawImageComposer
     @State private var contextJumpRequested=false
     @ScaledMetric(relativeTo: .footnote) private var followupRowHeight = 64.0
     @FocusState private var focused: Bool
+
+    init(model:ConversationFirstModel,accountLabel:String?=nil,onSignOut:(()->Void)?=nil,
+         isAnonymousAccount:Bool=false,restrictToFrozenFixture:Bool=false) {
+        self.model=model
+        _composerChrome=StateObject(wrappedValue:ConversationComposerChromeAdapter(model:model,sendsEnabled:!restrictToFrozenFixture))
+        self.accountLabel=accountLabel
+        self.onSignOut=onSignOut
+        self.isAnonymousAccount=isAnonymousAccount
+        self.restrictToFrozenFixture=restrictToFrozenFixture
+    }
     #if DEBUG
     @ObservedObject private var probe=P0ExperienceProbe.shared
     #endif
@@ -313,7 +325,7 @@ import CatpawImageComposer
         }
     }
     private var draftTooLong: Bool { model.draft.utf16.count > 8000 }
-    private var canSendDraft: Bool { !restrictToFrozenFixture && model.canAcceptDraft && !draftTooLong }
+    private var canSendDraft: Bool { !restrictToFrozenFixture && model.canAcceptDraft && !draftTooLong && composerChrome.attachments.isEmpty }
     private var composerIsDrafting:Bool { !model.draft.isEmpty || model.isInputComposing }
     private var composerControlSize:CGFloat { max(44,CatpawTypography.font(.body,size:textSize).lineHeight) }
     private func composerBudget(_ viewport:GeometryProxy)->CatpawTextViewport.ComposerBudget {
@@ -333,8 +345,8 @@ import CatpawImageComposer
             ScrollView {
                 VStack(alignment:.leading,spacing:8) {
                     if !followingLatest && !latestVisible {
-                        Button(action:jumpToLatest){Label(ui("回到最新"),systemImage:"arrow.down").font(CatpawTypography.Role.caption.font).frame(minHeight:44)}
-                            .buttonStyle(CatpawPressButtonStyle()).accessibilityHint(ui("返回对话底部，继续跟随新回复")).accessibilityIdentifier("chat.jumpToLatest")
+                        JumpToLatestButton(hasNewContent:model.sending,action:jumpToLatest)
+                            .accessibilityHint(ui("返回对话底部，继续跟随新回复"))
                     }
                     composerContext(inDetails:false)
                 }.frame(maxWidth:.infinity,alignment:.leading)
@@ -345,28 +357,29 @@ import CatpawImageComposer
             if let target=model.artifactContinuation,budget.showsTarget {
                 artifactContinuationChip(target).padding(.bottom,8)
             }
-            // One Layout keeps the exact same UIKit editor and control identities
-            // while changing compact/drafting geometry, including marked text.
-            ConversationComposerLayout(drafting:composerIsDrafting) {
-                NativeConversationComposer(model:model,enabled:!restrictToFrozenFixture && !model.switchingArtifactContinuation,maximumVisibleHeight:budget.maximumTextHeight,submit:submitDraft)
+            FloatingComposer(model:composerChrome,lineCount:composerLineCount,uploader:nil,
+                             accessory:AnyView(composerContextButton(budget:budget)),
+                             trailingAccessory:AnyView(
+                                Button(action:submitDraft) {
+                                    Image(systemName:model.sending ? "clock.badge.checkmark":"arrow.up")
+                                        .font(CatpawTypography.Role.body.font.weight(.semibold))
+                                        .foregroundStyle(canSendDraft ? CatpawColors.sendIcon : CatpawColors.secondary)
+                                        .frame(width:composerControlSize,height:composerControlSize)
+                                        .background(canSendDraft ? CatpawColors.send : CatpawColors.input,in:Circle())
+                                        .overlay{Circle().strokeBorder(CatpawColors.controlEdge)}
+                                }
+                                .buttonStyle(CatpawPressButtonStyle()).disabled(!canSendDraft)
+                                .accessibilityLabel(model.sending ? ui("排队发送") : ui("发送"))
+                                .accessibilityHint(model.session?.unresolved?.state == .unknown ? ui("先读取原请求进展，当前草稿不会重发") : (model.sending ? ui("保存在后续消息队列，仅在前台发送") : ui("发送当前消息")))
+                                .accessibilityIdentifier("chat.send")
+                             )) {
+                NativeConversationComposer(model:model,
+                    enabled:!restrictToFrozenFixture && !model.switchingArtifactContinuation,
+                    maximumVisibleHeight:min(budget.maximumTextHeight,ComposerMetrics.maxHeight(for:textSize)),
+                    lineCountChanged:{composerLineCount=$0},submit:{if composerChrome.attachments.isEmpty {submitDraft()}})
                     .background{GeometryReader{geometry in Color.clear.preference(key:ConversationComposerMeasurements.self,value:["text":geometry.size.height])}}
-                Button {
-                    guard !model.isInputComposing else {return};composerContextPresented=true
-                } label:{
-                    Group {
-                        if let target=model.artifactContinuation,!budget.showsTarget {
-                            Text("v\(target.artifactReference.version)").font(CatpawTypography.Role.caption.font).fixedSize()
-                                .accessibilityLabel(target.artifactTitle+" · v\(target.artifactReference.version)")
-                        } else {Image(systemName:model.artifactContinuation == nil ? "plus":"info.circle").font(CatpawTypography.Role.body.font)}
-                    }.touchTarget(minimum:composerControlSize)
-                }.buttonStyle(CatpawPressButtonStyle()).disabled(model.isInputComposing)
-                    .accessibilityLabel(model.artifactContinuation.flatMap{!budget.showsTarget ? ($0.mode == .reviseReport ? ui("修改这版") : ui("追问这版"))+" · "+$0.artifactTitle+" · v\($0.artifactReference.version) · "+ui("查看输入详情"):nil} ?? ui("查看输入详情")).accessibilityIdentifier("chat.input.context.open")
-                    .accessibilityValue(model.artifactContinuationSendBlock.map{ui($0)} ?? model.error.map{ui($0)} ?? "")
-                Button(action:submitDraft) { Image(systemName:model.sending ? "clock.badge.checkmark" : "arrow.up").font(CatpawTypography.Role.body.font.weight(.semibold)).foregroundStyle(canSendDraft ? CatpawColors.sendIcon : CatpawColors.secondary).frame(width:composerControlSize,height:composerControlSize).background(canSendDraft ? CatpawColors.send : CatpawColors.input,in:Circle()) }
-                    .buttonStyle(CatpawPressButtonStyle()).disabled(!canSendDraft)
-                    .accessibilityLabel(model.sending ? ui("排队发送") : ui("发送")).accessibilityHint(model.session?.unresolved?.state == .unknown ? ui("先读取原请求进展，当前草稿不会重发") : (model.sending ? ui("保存在后续消息队列，仅在前台发送") : ui("发送当前消息"))).accessibilityIdentifier("chat.send")
-            }.padding(.horizontal,12).padding(.vertical,budget.compactPadding ? 0:8)
-                .background(CatpawColors.input,in:RoundedRectangle(cornerRadius:24)).overlay{RoundedRectangle(cornerRadius:24).strokeBorder(CatpawColors.controlEdge)}
+            }
+                .onAppear{composerChrome.setSendAction(submitDraft)}
                 .accessibilityElement(children:.contain).accessibilityIdentifier("chat.input.container")
         }.background(alignment:.topLeading) {
             if let target=model.artifactContinuation {
@@ -379,6 +392,20 @@ import CatpawImageComposer
             }
         }.padding(.horizontal,16).padding(.vertical,budget.compactPadding ? 0:8).background(CatpawColors.background)
             .accessibilityElement(children:.contain).accessibilityIdentifier("chat.composer")
+    }
+    private func composerContextButton(budget:CatpawTextViewport.ComposerBudget)->some View {
+        Button {
+            guard !model.isInputComposing else {return};composerContextPresented=true
+        } label:{
+            Group {
+                if let target=model.artifactContinuation,!budget.showsTarget {
+                    Text("v\(target.artifactReference.version)").font(CatpawTypography.Role.caption.font).fixedSize()
+                        .accessibilityLabel(target.artifactTitle+" · v\(target.artifactReference.version)")
+                } else {Image(systemName:model.artifactContinuation == nil ? "info.circle":"info.circle.fill").font(CatpawTypography.Role.body.font)}
+            }.touchTarget(minimum:composerControlSize)
+        }.buttonStyle(CatpawPressButtonStyle()).disabled(model.isInputComposing)
+            .accessibilityLabel(model.artifactContinuation.flatMap{!budget.showsTarget ? ($0.mode == .reviseReport ? ui("修改这版") : ui("追问这版"))+" · "+$0.artifactTitle+" · v\($0.artifactReference.version) · "+ui("查看输入详情"):nil} ?? ui("查看输入详情")).accessibilityIdentifier("chat.input.context.open")
+            .accessibilityValue(model.artifactContinuationSendBlock.map{ui($0)} ?? model.error.map{ui($0)} ?? "")
     }
     private func composerContext(inDetails:Bool)->some View {
         VStack(alignment:.leading,spacing:8) {
@@ -534,7 +561,7 @@ import CatpawImageComposer
     }
     @ViewBuilder private func timelineRow(_ row:ConversationTimelineProjection.Row)->some View {
         switch row.presentation {
-        case .message:messageView(row.message)
+        case .message:messageView(row.message,turnID:row.turnID)
         case .processPending:
             Label(row.message.toolName == "agent_status" ? ui("读取任务进展…"):ui("正在处理请求…"),systemImage:"circle.dotted")
                 .font(CatpawTypography.Role.caption.font).symbolRenderingMode(.monochrome)
@@ -588,7 +615,7 @@ import CatpawImageComposer
               binding.conversation_id == session.conversationID, let goal = session.goals[binding.task_id], goal.binding?.run_id == binding.run_id else { return nil }
         return goal
     }
-    @ViewBuilder private func messageView(_ message: ConversationTranscriptMessage) -> some View {
+    @ViewBuilder private func messageView(_ message: ConversationTranscriptMessage,turnID:UUID?) -> some View {
         if message.role == .user {
             VStack(alignment:.trailing,spacing:4) {
                 ConversationUserMessageLayout {
@@ -639,14 +666,27 @@ import CatpawImageComposer
             else { Label(message.toolName == "agent_status" ? (message.complete ? ui("任务进展已读取") : ui("读取任务进展…")) : (message.complete ? ui("任务请求已记录") : ui("等待后台保存任务…")), systemImage: message.complete ? "checkmark.circle" : "circle.dotted").font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary) }
 
         } else {
-            ConversationAnswerView(message:message,canQuote:!model.isInputComposing) { text in
-                // Preserve the active IME transaction. Quoting is an explicit draft edit.
-                guard !model.isInputComposing else {return}
-                let excerpt=String(text.prefix(2000))
-                let quotation=excerpt.split(separator:"\n",omittingEmptySubsequences:false).map {"> " + $0}.joined(separator:"\n")
-                model.editDraft(model.draft.isEmpty ? quotation + "\n\n" : model.draft + "\n\n" + quotation + "\n\n")
-            }
+            assistantMessage(message,turnID:turnID)
         }
+    }
+    @ViewBuilder private func assistantMessage(_ message:ConversationTranscriptMessage,turnID:UUID?)->some View {
+        if let turnID,let turn=model.session?.turns.first(where:{$0.id==turnID}),usesPhasedAnswer(turn,message:message) {
+            LivePhasedAnswerView(message:message,turn:turn,canQuote:!model.isInputComposing,
+                                 onQuote:quote,onVerify:turn.state == .unknown ? {model.readOriginal()}:nil)
+        } else {
+            ConversationAnswerView(message:message,canQuote:!model.isInputComposing,quote:quote)
+        }
+    }
+    private func usesPhasedAnswer(_ turn:ConversationTurnRecord,message:ConversationTranscriptMessage)->Bool {
+        let live:[ConversationTurnRecord.State]=[.dispatched,.running,.unknown,.failed]
+        return live.contains(turn.state) && !message.complete
+    }
+    private func quote(_ text:String) {
+        // Preserve the active IME transaction. Quoting is an explicit draft edit.
+        guard !model.isInputComposing else {return}
+        let excerpt=String(text.prefix(2000))
+        let quotation=excerpt.split(separator:"\n",omittingEmptySubsequences:false).map {"> " + $0}.joined(separator:"\n")
+        model.editDraft(model.draft.isEmpty ? quotation + "\n\n" : model.draft + "\n\n" + quotation + "\n\n")
     }
 }
 private struct ConversationPendingMessagesView:View {

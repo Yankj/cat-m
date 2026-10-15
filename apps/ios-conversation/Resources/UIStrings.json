@@ -67,6 +67,10 @@
     "en": "{0} seconds",
     "zh-Hans": "{0} 秒"
   },
+  "{0} 超过 20 MB": {
+    "en": "{0} is over 20 MB",
+    "zh-Hans": "{0} 超过 20 MB"
+  },
   "{0} 项": {
     "en": "{0} items",
     "zh-Hans": "{0} 项"
@@ -74,6 +78,14 @@
   "{0}视图 · 服务未连接": {
     "en": "{0} view · service disconnected",
     "zh-Hans": "{0}视图 · 服务未连接"
+  },
+  "上传中": {
+    "en": "Uploading",
+    "zh-Hans": "上传中"
+  },
+  "上传失败": {
+    "en": "Upload failed",
+    "zh-Hans": "上传失败"
   },
   "上次处理完成的图片仍保留，当前附件不可发送。": {
     "en": "The previous processed image is retained. The current attachment cannot be sent.",
@@ -466,6 +478,10 @@
   "做总结": {
     "en": "Summarize",
     "zh-Hans": "做总结"
+  },
+  "停止回答": {
+    "en": "Stop answer",
+    "zh-Hans": "停止回答"
   },
   "停止条件": {
     "en": "Stop conditions",
@@ -1095,6 +1111,10 @@
     "en": "Trash is empty",
     "zh-Hans": "回收站为空"
   },
+  "回答完成后发送": {
+    "en": "Send after this answer",
+    "zh-Hans": "回答完成后发送"
+  },
   "固定合成资料，主动提交；真实云端与模型尚未接入。": {
     "en": "Submit built-in synthetic records explicitly. Real cloud and model access is not configured.",
     "zh-Hans": "固定合成资料，主动提交；真实云端与模型尚未接入。"
@@ -1414,6 +1434,10 @@
   "工具处理": {
     "en": "Tool processing",
     "zh-Hans": "工具处理"
+  },
+  "已上传": {
+    "en": "Uploaded",
+    "zh-Hans": "已上传"
   },
   "已保存到本机": {
     "en": "Saved on this device",
@@ -1787,6 +1811,10 @@
     "en": "Recording",
     "zh-Hans": "录音中"
   },
+  "待上传": {
+    "en": "Waiting to upload",
+    "zh-Hans": "待上传"
+  },
   "待决定事项": {
     "en": "Decisions to review",
     "zh-Hans": "待决定事项"
@@ -1838,6 +1866,18 @@
   "忘记这条记忆并阻止旧来源再次学回；不会删除原对话。": {
     "en": "Forget this entry and prevent learning it again from the old source. The original conversation is kept.",
     "zh-Hans": "忘记这条记忆并阻止旧来源再次学回；不会删除原对话。"
+  },
+  "思考中": {
+    "en": "Thinking",
+    "zh-Hans": "思考中"
+  },
+  "思考了 {0} 秒": {
+    "en": "Thought for {0}s",
+    "zh-Hans": "思考了 {0} 秒"
+  },
+  "思考了 {0} 秒 · {1} 个步骤": {
+    "en": "Thought for {0}s · {1} steps",
+    "zh-Hans": "思考了 {0} 秒 · {1} 个步骤"
   },
   "总时长（分钟）": {
     "en": "Total time (minutes)",
@@ -2071,6 +2111,10 @@
     "en": "Give your personal assistant\nsomething to keep working on.",
     "zh-Hans": "把想继续做的事，\n交给个人助理。"
   },
+  "拍照": {
+    "en": "Take Photo",
+    "zh-Hans": "拍照"
+  },
   "拍照 · 主动开启系统相机": {
     "en": "Take photo · open system camera",
     "zh-Hans": "拍照 · 主动开启系统相机"
@@ -2279,6 +2323,10 @@
     "en": "Summarize email",
     "zh-Hans": "整理邮件摘要"
   },
+  "文件": {
+    "en": "Files",
+    "zh-Hans": "文件"
+  },
   "文件不可用": {
     "en": "File unavailable",
     "zh-Hans": "文件不可用"
@@ -2318,6 +2366,10 @@
   "新任务": {
     "en": "New task",
     "zh-Hans": "新任务"
+  },
+  "新内容": {
+    "en": "New",
+    "zh-Hans": "新内容"
   },
   "新对话": {
     "en": "New conversation",
@@ -2486,6 +2538,10 @@
   "暂不可用": {
     "en": "Unavailable",
     "zh-Hans": "暂不可用"
+  },
+  "暂不支持 {0}": {
+    "en": "{0} isn't supported yet",
+    "zh-Hans": "暂不支持 {0}"
   },
   "暂不支持动画或多帧图片。请选择静态图片。": {
     "en": "Animated and multiframe images are not supported. Choose a still image.",
@@ -3051,6 +3107,10 @@
     "en": "Review and save memory",
     "zh-Hans": "核对并保存记忆"
   },
+  "核对执行结果": {
+    "en": "Check result",
+    "zh-Hans": "核对执行结果"
+  },
   "核对本次修改的工作约定": {
     "en": "Review work terms for this revision",
     "zh-Hans": "核对本次修改的工作约定"
@@ -3186,6 +3246,10 @@
   "正在复核登录…": {
     "en": "Checking your session…",
     "zh-Hans": "正在复核登录…"
+  },
+  "正在恢复你的工作…": {
+    "en": "Restoring your work…",
+    "zh-Hans": "正在恢复你的工作…"
   },
   "正在恢复本地选择…": {
     "en": "Restoring local choices…",
@@ -3347,6 +3411,10 @@
     "en": "Daily",
     "zh-Hans": "每日"
   },
+  "每条消息最多 {0} 个附件": {
+    "en": "Up to {0} attachments per message",
+    "zh-Hans": "每条消息最多 {0} 个附件"
+  },
   "没有工作记忆": {
     "en": "No work memory",
     "zh-Hans": "没有工作记忆"
@@ -3403,6 +3471,10 @@
     "en": "Add source configuration",
     "zh-Hans": "添加来源配置"
   },
+  "添加附件": {
+    "en": "Add attachment",
+    "zh-Hans": "添加附件"
+  },
   "清理文档": {
     "en": "Clean up documents",
     "zh-Hans": "清理文档"
@@ -3418,6 +3490,10 @@
   "点击即可开始。此设备会安全保存体验身份，回来时继续你的对话。": {
     "en": "Tap to get started. This device securely saves your experience account so you can return to your conversations.",
     "zh-Hans": "点击即可开始。此设备会安全保存体验身份，回来时继续你的对话。"
+  },
+  "照片": {
+    "en": "Photos",
+    "zh-Hans": "照片"
   },
   "版本": {
     "en": "Version",
@@ -3646,6 +3722,10 @@
   "移除图片": {
     "en": "Remove image",
     "zh-Hans": "移除图片"
+  },
+  "移除附件": {
+    "en": "Remove attachment",
+    "zh-Hans": "移除附件"
   },
   "稿件已变化，请重新预览": {
     "en": "Draft changed; preview again",
@@ -4411,6 +4491,10 @@
     "en": "Check connection again",
     "zh-Hans": "重新检查连接"
   },
+  "重新生成": {
+    "en": "Regenerate",
+    "zh-Hans": "重新生成"
+  },
   "重新读取": {
     "en": "Read again",
     "zh-Hans": "重新读取"
@@ -4434,6 +4518,14 @@
   "重置演示分区": {
     "en": "Reset demo partition",
     "zh-Hans": "重置演示分区"
+  },
+  "重试": {
+    "en": "Retry",
+    "zh-Hans": "重试"
+  },
+  "重试上传": {
+    "en": "Retry upload",
+    "zh-Hans": "重试上传"
   },
   "重试安全保存": {
     "en": "Retry secure save",
@@ -4514,6 +4606,10 @@
   "项目文件": {
     "en": "Project files",
     "zh-Hans": "项目文件"
+  },
+  "预览": {
+    "en": "Preview",
+    "zh-Hans": "预览"
   },
   "预览单次模拟外发": {
     "en": "Preview one simulated send",
