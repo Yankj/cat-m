@@ -1,0 +1,1377 @@
+{
+  "schema": "catpaw.model-route-review-preparation.v1",
+  "prepared_at_utc": "2026-10-15T01:57:59.177226+00:00",
+  "base_commit": "73f9cb6",
+  "branch": "fix/model-route-review",
+  "status": "exact_offline_candidate_and_probe_client_prepared_only_execution_not_authorized",
+  "candidate": {
+    "schema_version": 1,
+    "review_id": "catpaw-gemma-private-review-20261015-v1",
+    "activation": "inactive_explicit_injection_only",
+    "route": {
+      "id": "catpaw-gemma-private-review-20261015-v1",
+      "free": true,
+      "provider": "OpenRouter",
+      "downstream_provider": "Google AI Studio",
+      "model": "google/gemma-4-31b-it:free",
+      "endpoint": "https://openrouter.ai/api/v1/chat/completions",
+      "routing_policy": {
+        "only": [
+          "google-ai-studio"
+        ],
+        "allow_fallbacks": false,
+        "require_parameters": true,
+        "data_collection": "deny",
+        "max_price": {
+          "prompt": 0,
+          "completion": 0,
+          "request": 0,
+          "image": 0
+        }
+      },
+      "data_fields": [
+        "current_message_text",
+        "conversation_text_history_max_40_messages_80kB",
+        "explicit_context_text",
+        "local_report_task_instructions_and_feedback"
+      ],
+      "purposes": [
+        "chat_reply",
+        "local_report"
+      ],
+      "excluded_fields": [
+        "automatic_email_access",
+        "calendar",
+        "photos",
+        "contacts",
+        "other_apps",
+        "auth_tokens"
+      ],
+      "policy_url": "https://openrouter.ai/privacy",
+      "history_limit": 40,
+      "sensitive_requires_separate_confirmation": true
+    },
+    "route_hash": "181199268207fc3256b821ee13b046700a162d657adb3acd1c66d6f930870956",
+    "supersedes_route_hash": "eef4100e83db1b2ab5ea9a7efd4818e97dcd90c819f056b54082fbdf5cd5e305",
+    "requires_new_conversation_consent": true,
+    "live_verified": false,
+    "unknowns": [
+      "data_collection_deny_endpoint_eligibility",
+      "account_endpoint_eligibility",
+      "request_and_image_price_fields",
+      "actual_stream_model_provider_cost_receipt"
+    ],
+    "native_json_schema_enforcement": false,
+    "local_strict_tool_validation": true,
+    "baseline_route_hash_pinned_in_code": "eef4100e83db1b2ab5ea9a7efd4818e97dcd90c819f056b54082fbdf5cd5e305"
+  },
+  "owned_inputs": {
+    "services/edge/supabase/functions/_shared/core/src/openrouter-provider.mjs": "1560911637eb7ae13e2679eccc198f9b42755c70446c3c23da338fa6cf6f0be5",
+    "services/edge/supabase/functions/_shared/core/src/private-route-review.mjs": "a1509afdd2cb797ea0b0f87338de54c194f4bb9810684906880cae00dd3ddb47",
+    "services/edge/supabase/functions/_shared/model-route-review.mjs": "13878346dc92937806f397bc96ce1a5ba1b2239685bf0b9c7a6df9b21c272b17",
+    "services/edge/supabase/functions/_shared/model-route-review-probe.mjs": "23a5550df2663bf422d5ff99b0b19b3965466d28d7a30128ebeae5c6cc458b22",
+    "services/edge/test/model-route-review.test.mjs": "0d6b04ba2e54d50a41f18a5b753ea3717b73839e20224cf20d96520943cd837c",
+    "services/edge/test/fixtures/generate-model-route-review.mjs": "d7e61d46b002c37aab9516f912833222ab1a806989e55c6a10841f00ed2813a2",
+    "scripts/prepare-model-route-review.py": "c913fcee39af27e45ff58336d4680a7cbd96a37070a4c6db78d19229d71668bc",
+    "scripts/test-model-route-review-packages.mjs": "8a5d39fbc180ed744bc497abd0afc05d90ff26bab079a826cb20c356a3fb13c4",
+    "scripts/model-route-review-client.mjs": "b148a546aac1941c7d453c422e4c95300a2ce6269d511a87e50d23661d350e80",
+    "scripts/test-model-route-review-client.mjs": "cf9e5dfb0c5271fca98844cd519ef0b8207b4a7001fd6b5f0dd7fe5adcc94543"
+  },
+  "packages": {
+    "schema": "catpaw.model-route-review-package.v1",
+    "review_id": "catpaw-gemma-private-review-20261015-v1",
+    "activation": "prepared_only_not_deployed",
+    "review_path_prefix": "/route-review/catpaw-gemma-private-review-20261015-v1",
+    "review_scope": "new_explicit_synthetic_subject_and_empty_scope_only",
+    "probe": "one fixed original short-text operation, no context/attachments/tasks/revisions/tools; GET only after durable original exists",
+    "required_nonsecret_server_fields": [
+      "CATPAW_REVIEW_PROBE_ID",
+      "CATPAW_REVIEW_PROBE_SUBJECT_ID",
+      "CATPAW_REVIEW_PROBE_SCOPE_ID"
+    ],
+    "default_original_handler_preserved": true,
+    "review_auto_kick": false,
+    "review_tick_enabled": false,
+    "production_requests": 0,
+    "packages": [
+      {
+        "rollback_archive_file": "catpaw-api-v19.rollback.tar",
+        "rollback_archive_sha256": "570fdeb72cd9ca18c4ddd2c63e6404b7018dbdf3c53bc98845c6dc3c3ea2e96c",
+        "function": "catpaw-api",
+        "base_version": 19,
+        "base_bundle_ezbr_sha256": "3fee61c0eb3ef4ad8e777108713551f793a43a9dc2a60dddc886123d03ed1d26",
+        "base_file_count": 50,
+        "candidate_file_count": 53,
+        "package_tree_sha256": "2f8a28de674a97fa2ee2fec67373cbfc08937407106321a7d67151721d5f8ef2",
+        "archive_file": "catpaw-api-v19.tar",
+        "archive_sha256": "eac493ce38634ef721c69be7cece91c6d0aa1b040f922a1a5247d14e4052c257",
+        "diff_file": "catpaw-api-v19.diff",
+        "diff_sha256": "e7dcfee1ebc3e2940a7d6ab03f5548758940e95af121a2e45474d1f0717e8cd6",
+        "changed": [
+          {
+            "path": "_shared/bootstrap.ts",
+            "status": "modified",
+            "base_sha256": "62905f225ce4f0190b0b043a7530899326389a1d537bdfb4e2eaaafa4c5b41b6",
+            "candidate_sha256": "d08a31795f66b3afa151b6374dbe1f6264569a7bfd1dc011197a7aa2528c9279"
+          },
+          {
+            "path": "_shared/core/src/openrouter-provider.mjs",
+            "status": "modified",
+            "base_sha256": "555b5f1b36225ca007eaf0f45a76cfe39334f423776552b1be6ec211fcbc9338",
+            "candidate_sha256": "06fbb67b22fb261025258163a4f509792048146dd2d87e001f774632efb4f860"
+          },
+          {
+            "path": "_shared/core/src/private-route-review.mjs",
+            "status": "added",
+            "base_sha256": null,
+            "candidate_sha256": "a1509afdd2cb797ea0b0f87338de54c194f4bb9810684906880cae00dd3ddb47"
+          },
+          {
+            "path": "_shared/model-route-review-probe.mjs",
+            "status": "added",
+            "base_sha256": null,
+            "candidate_sha256": "23a5550df2663bf422d5ff99b0b19b3965466d28d7a30128ebeae5c6cc458b22"
+          },
+          {
+            "path": "_shared/model-route-review.mjs",
+            "status": "added",
+            "base_sha256": null,
+            "candidate_sha256": "13878346dc92937806f397bc96ce1a5ba1b2239685bf0b9c7a6df9b21c272b17"
+          }
+        ],
+        "files": {
+          "_shared/api.mjs": "b3e39a21e0fb40fbd3e5a0da75d0bdbdb79a001ade7bdd6ca85cc70b9999d654",
+          "_shared/authority.mjs": "272eddb7dc8996a00aadf8faecec1c5c8b948bdd099ed7adcdb722ac95347985",
+          "_shared/bootstrap.ts": "d08a31795f66b3afa151b6374dbe1f6264569a7bfd1dc011197a7aa2528c9279",
+          "_shared/config.mjs": "5fb727da0959f6aace21f1dddb2f947d667f77a10a9d09f846e528a79f022a2b",
+          "_shared/consent.mjs": "af0210248796da63c810a50a9bc4336b4ddf0497624f00f8e85fd07489f5aaab",
+          "_shared/core/facade-r2/patched-openmuse/apps/server/src/errors.ts": "1b9236cd303b2958dd30e5f9ec376847be30b37826f621ab02404f6e3104bc31",
+          "_shared/core/facade-r2/src/common.mjs": "57482b53644a3e4c0e2e274b49e28b1c57d7570001896b6db756a9958665e9ab",
+          "_shared/core/facade-r2/src/facade.mjs": "d66b2b996b8546251b5462d659bdcca1d9d35ef04704fd147f64579979079919",
+          "_shared/core/facade-r2/src/fenced-worker-store.mjs": "4a4161baf12e7afd89c72111ecb831e26e560b727067d0ab719db3e09a7d837c",
+          "_shared/core/facade-r2/src/http.mjs": "b00cfc48b829de79ca09c06d063c8c17592e9d46893306283079b01a4bf7d528",
+          "_shared/core/integration/edge-adapter/src/bounded-store.mjs": "6184cde0200095509d0614176006901a846bc67824c08e960bc9e77b1ebdcd8f",
+          "_shared/core/integration/edge-adapter/src/bounded-tick.mjs": "999aca145346926c21e5b2403fb20254637744d388a65df27e2b4c4dd7bb0be8",
+          "_shared/core/integration/edge-adapter/src/common.mjs": "6033928ef8e2166494d84df32893d2e5eaf2acbef609c69104ffc366fcd8ed49",
+          "_shared/core/integration/edge-adapter/vendor/openmuse/runtime/engine/worker.mjs": "51973696df9b39cdda99366b31f663b86771ab4a44cce5dc2b02e12aa35a13ef",
+          "_shared/core/integration/edge-adapter/vendor/openmuse/runtime/log.mjs": "63e9674fae8ab5f090253f9018c4bbec162b79d14eb3ab33fc05dc8358e4abcc",
+          "_shared/core/integration/server-foundation/src/chat-recovery.mjs": "5e02edeeb821703401da7aff329ee2305556a9a09a113453eda8fea08ce00f6c",
+          "_shared/core/integration/server-foundation/src/common.mjs": "ae6b670c4635c7aa28745f1989be8a2884d884144d0fdb515a390cfe69fa33c4",
+          "_shared/core/integration/server-foundation/src/foundation.mjs": "165afb9dea4cf7e046aba9c30dc4bdea527501d1e8b45ec62b7179ec5d74cda9",
+          "_shared/core/integration/server-foundation/src/postgres-repository.mjs": "2b9b38becaa7743598bc0a0a304278c4ad19c1610ebb864631183265392f4d46",
+          "_shared/core/integration/server-foundation/src/provider-policy.mjs": "8a7ab3f6f0d0054f951905b3b08ec511df4feaa994b52e9ce6fa653263d0506f",
+          "_shared/core/src/chat-metrics.mjs": "f4c2c94bded2042dda8cc44466f1f41129910d2df766af27746b73e48adcb711",
+          "_shared/core/src/chat-service.mjs": "8b21291bac60e2d2739ee58dd3687e5e039b43a605387255f18458b6158acdad",
+          "_shared/core/src/foundation-http.mjs": "37c4f4c82eb60f91bee3d4d7973f0931ae50e3cb70a4d204de401f36d87d1923",
+          "_shared/core/src/foundation-runtime.mjs": "498aee744f76d9a5ef69b0863de60bb096e311520798a390c5f1bfd3c17c9ccb",
+          "_shared/core/src/http.mjs": "ffacacdde37410805befadd4cb9966987bc106c0e69a62a96d980d1aadd9b306",
+          "_shared/core/src/live-vision-route.mjs": "f26756862bd6384fd92e2c6e52af0612959eda4740d2f45cc6d60b40d565dddc",
+          "_shared/core/src/local-output-facade.mjs": "388c00a3355d6d5299b116c6e691371c3a25c6ba7f2241d356f6413f429161d3",
+          "_shared/core/src/model-handler.mjs": "dca097d26929bac8c84d5d67e3e4b3cdccfe8ba2d5d854be114cde0b62c0f19a",
+          "_shared/core/src/openrouter-provider.mjs": "06fbb67b22fb261025258163a4f509792048146dd2d87e001f774632efb4f860",
+          "_shared/core/src/private-route-review.mjs": "a1509afdd2cb797ea0b0f87338de54c194f4bb9810684906880cae00dd3ddb47",
+          "_shared/core/src/projection-adapter.mjs": "16a6bd6b1b31fcc6c3b40e721db67c1ed61db74972b976828cd2ecd7474f3656",
+          "_shared/core/src/provider-errors.mjs": "4e7ece3c47e031104a05a3134695a9f0fb0d777017c8e535cfe54b2973a87e14",
+          "_shared/core/src/purge-plan.mjs": "2874e3c60ddf6c53f496a722399acccd5f23df2c0699753954a684631f86a8b6",
+          "_shared/core/src/report-completion.mjs": "964ce92ec3aeb954a7ac9d1e20deb8e6bb3b7d39a46498f097c80cc4624583a6",
+          "_shared/core/src/runtime.mjs": "5cbb6396cc47ef3735ecacc3ced7b493077ca561909e2bb0d41f08eb9ea52391",
+          "_shared/core/src/single-step-handler.mjs": "3c95f9361cc949514d246de34dcdd81f943bb8da08026635f7ac72dc64b24dbd",
+          "_shared/core/src/source-erasure.mjs": "9d638200c8d42a36865a1332395b36d134bee15355d8064c99dd4ecc4ea17fa0",
+          "_shared/core/src/supabase-auth.mjs": "d08a8440df3a692058da398aba1e8d3f754bdc7c402b74ba1617d0ba8febc986",
+          "_shared/core/src/supabase-scope-authority.mjs": "2993c68e34e0f58e6f4b42295a72b94b965f31216c04500f6b133800c13a9340",
+          "_shared/core/src/text-batcher.mjs": "1a28b45cd0693d47c28d7f7f55a39a49c6d84fd13f908e3a81d90b51459fd0f0",
+          "_shared/core/src/tools.mjs": "9a4f2a7d9bfad47d85e18741b6f42a1e3bcf66daf07f8c4d53a7165793274aee",
+          "_shared/core/src/vision-contract.mjs": "603b6990056e25bc43a0226264f4a7e1bb7e7b3abebcfcef7058a07abb760295",
+          "_shared/core/src/worker-output-contract.mjs": "9ae4d267e309f222fa750de4efc18738cde03e6af78cf2af37922366e4f48996",
+          "_shared/image-consent.mjs": "391f49513cdf462e9dd1ce71787171a6ae20524057a07040e56779f9ba71bf34",
+          "_shared/model-route-review-probe.mjs": "23a5550df2663bf422d5ff99b0b19b3965466d28d7a30128ebeae5c6cc458b22",
+          "_shared/model-route-review.mjs": "13878346dc92937806f397bc96ce1a5ba1b2239685bf0b9c7a6df9b21c272b17",
+          "_shared/node-buffer-runtime.mjs": "fbf85689e215214d3b87b438eb1bdd659c92b75cf52edd97847cf3040d727b00",
+          "_shared/postgres-pool.mjs": "5151efd5cb92adb146f0a6092aa2ef4881c94dbe6745d8721506dc4a65d2cf29",
+          "_shared/sensitivity.mjs": "4002ea6e28a38b24f9482266d22bc5b275710f2d5cbe35280efe65ef4dc95376",
+          "_shared/tick-auth.mjs": "541e9d88070d68510a617810b749591629cbaf5c1fe82438bc0caf5b7f268999",
+          "_shared/worker-kick.mjs": "02e85731e8395f87b6ed49e3e6562a6aae4a4da2134ef947db9628e446e881a5",
+          "catpaw-api/index.ts": "d2138d5833a07ecbd022508c5ff8ee4061c538e1fe8ef7bc4109ce82078af32b",
+          "deno.json": "bca245843dc12d05fa9887b23d13e6a86231ff59e6419f2c032e76087fababbe"
+        },
+        "default_config_api_and_entry_bytes_preserved": true,
+        "review_tick_enabled": false
+      },
+      {
+        "rollback_archive_file": "catpaw-tick-v7.rollback.tar",
+        "rollback_archive_sha256": "cca076c04d21ca65a60530e7d547293f38d5df8144efd38649e6b2b1620e0d41",
+        "function": "catpaw-tick",
+        "base_version": 7,
+        "base_bundle_ezbr_sha256": "8f767ae860bbb1dd09c2caf51aeb3837ef97a8c8a287290c266f2769b4c594aa",
+        "base_file_count": 43,
+        "candidate_file_count": 46,
+        "package_tree_sha256": "3cf06e4e570e48cbb69dfdcebeca0604177f4262b21da84627f4fce5699f2cc6",
+        "archive_file": "catpaw-tick-v7.tar",
+        "archive_sha256": "903148b2586188a8500153b579e89a2fc78c22706f5512a49d5bde62d7848037",
+        "diff_file": "catpaw-tick-v7.diff",
+        "diff_sha256": "23676b8d53e5a1a666661d60bc6107805c80b7212408105847a72c833cec90e2",
+        "changed": [
+          {
+            "path": "_shared/bootstrap.ts",
+            "status": "modified",
+            "base_sha256": "da0c920f3face5196a2a4440b7bb5f2dd0b326aa3bc6a704f7f1b7cb4766893b",
+            "candidate_sha256": "23f5439ff211639e7e73a2d7a197ef14e427c6c35a46dfcd3dad944a92b3fa8d"
+          },
+          {
+            "path": "_shared/core/src/openrouter-provider.mjs",
+            "status": "modified",
+            "base_sha256": "48d9660a4170cb9391f7b7744b33e9dea0d178aa62e27809da9f86dfcfb07653",
+            "candidate_sha256": "f66128ca72dab724d0dc7f3134852e6ff078ae8440f1fd70208cfcc72a7a5e37"
+          },
+          {
+            "path": "_shared/core/src/private-route-review.mjs",
+            "status": "added",
+            "base_sha256": null,
+            "candidate_sha256": "a1509afdd2cb797ea0b0f87338de54c194f4bb9810684906880cae00dd3ddb47"
+          },
+          {
+            "path": "_shared/model-route-review-probe.mjs",
+            "status": "added",
+            "base_sha256": null,
+            "candidate_sha256": "23a5550df2663bf422d5ff99b0b19b3965466d28d7a30128ebeae5c6cc458b22"
+          },
+          {
+            "path": "_shared/model-route-review.mjs",
+            "status": "added",
+            "base_sha256": null,
+            "candidate_sha256": "13878346dc92937806f397bc96ce1a5ba1b2239685bf0b9c7a6df9b21c272b17"
+          }
+        ],
+        "files": {
+          "_shared/api.mjs": "140698a737433be29a50fd33aa6f22d052d942f9a15a5763ea06cbc38a3676f8",
+          "_shared/authority.mjs": "4a4eb40bd0598eb8633c9190e1e37d55fff56ddd94ce937b10986bc96985dcdb",
+          "_shared/bootstrap.ts": "23f5439ff211639e7e73a2d7a197ef14e427c6c35a46dfcd3dad944a92b3fa8d",
+          "_shared/config.mjs": "ea27f7573cda09ae7a8502d9448f74be2ad876c2843365ae27ca76dff070e0d1",
+          "_shared/consent.mjs": "af0210248796da63c810a50a9bc4336b4ddf0497624f00f8e85fd07489f5aaab",
+          "_shared/core/facade-r2/patched-openmuse/apps/server/src/errors.ts": "1b9236cd303b2958dd30e5f9ec376847be30b37826f621ab02404f6e3104bc31",
+          "_shared/core/facade-r2/src/common.mjs": "57482b53644a3e4c0e2e274b49e28b1c57d7570001896b6db756a9958665e9ab",
+          "_shared/core/facade-r2/src/facade.mjs": "d66b2b996b8546251b5462d659bdcca1d9d35ef04704fd147f64579979079919",
+          "_shared/core/facade-r2/src/fenced-worker-store.mjs": "4a4161baf12e7afd89c72111ecb831e26e560b727067d0ab719db3e09a7d837c",
+          "_shared/core/facade-r2/src/http.mjs": "b00cfc48b829de79ca09c06d063c8c17592e9d46893306283079b01a4bf7d528",
+          "_shared/core/integration/edge-adapter/src/bounded-store.mjs": "6184cde0200095509d0614176006901a846bc67824c08e960bc9e77b1ebdcd8f",
+          "_shared/core/integration/edge-adapter/src/bounded-tick.mjs": "999aca145346926c21e5b2403fb20254637744d388a65df27e2b4c4dd7bb0be8",
+          "_shared/core/integration/edge-adapter/src/common.mjs": "6033928ef8e2166494d84df32893d2e5eaf2acbef609c69104ffc366fcd8ed49",
+          "_shared/core/integration/edge-adapter/vendor/openmuse/runtime/engine/worker.mjs": "51973696df9b39cdda99366b31f663b86771ab4a44cce5dc2b02e12aa35a13ef",
+          "_shared/core/integration/edge-adapter/vendor/openmuse/runtime/log.mjs": "63e9674fae8ab5f090253f9018c4bbec162b79d14eb3ab33fc05dc8358e4abcc",
+          "_shared/core/integration/server-foundation/src/chat-recovery.mjs": "5e02edeeb821703401da7aff329ee2305556a9a09a113453eda8fea08ce00f6c",
+          "_shared/core/integration/server-foundation/src/common.mjs": "ae6b670c4635c7aa28745f1989be8a2884d884144d0fdb515a390cfe69fa33c4",
+          "_shared/core/integration/server-foundation/src/foundation.mjs": "165afb9dea4cf7e046aba9c30dc4bdea527501d1e8b45ec62b7179ec5d74cda9",
+          "_shared/core/integration/server-foundation/src/postgres-repository.mjs": "0aca3522143efedb0f05d460ef1fc2af811373696cb9a1f90723dae2a4abc651",
+          "_shared/core/integration/server-foundation/src/provider-policy.mjs": "8a7ab3f6f0d0054f951905b3b08ec511df4feaa994b52e9ce6fa653263d0506f",
+          "_shared/core/src/chat-service.mjs": "a48b0b2ff0e6ac9669517d2380260a5afc263e97a1b8b71315cf2af09093d498",
+          "_shared/core/src/foundation-http.mjs": "37c4f4c82eb60f91bee3d4d7973f0931ae50e3cb70a4d204de401f36d87d1923",
+          "_shared/core/src/foundation-runtime.mjs": "bc996acc6a97ccc185abffcd1de4ee58658ebe4c5df5fbf7b41356ccbb524368",
+          "_shared/core/src/http.mjs": "e231b89904c5996a3349899b8811b906beac85b72f7ace70e7632f5dd45fa64a",
+          "_shared/core/src/local-output-facade.mjs": "388c00a3355d6d5299b116c6e691371c3a25c6ba7f2241d356f6413f429161d3",
+          "_shared/core/src/model-handler.mjs": "dca097d26929bac8c84d5d67e3e4b3cdccfe8ba2d5d854be114cde0b62c0f19a",
+          "_shared/core/src/openrouter-provider.mjs": "f66128ca72dab724d0dc7f3134852e6ff078ae8440f1fd70208cfcc72a7a5e37",
+          "_shared/core/src/private-route-review.mjs": "a1509afdd2cb797ea0b0f87338de54c194f4bb9810684906880cae00dd3ddb47",
+          "_shared/core/src/projection-adapter.mjs": "16a6bd6b1b31fcc6c3b40e721db67c1ed61db74972b976828cd2ecd7474f3656",
+          "_shared/core/src/provider-errors.mjs": "4e7ece3c47e031104a05a3134695a9f0fb0d777017c8e535cfe54b2973a87e14",
+          "_shared/core/src/purge-plan.mjs": "2874e3c60ddf6c53f496a722399acccd5f23df2c0699753954a684631f86a8b6",
+          "_shared/core/src/report-completion.mjs": "964ce92ec3aeb954a7ac9d1e20deb8e6bb3b7d39a46498f097c80cc4624583a6",
+          "_shared/core/src/runtime.mjs": "5cbb6396cc47ef3735ecacc3ced7b493077ca561909e2bb0d41f08eb9ea52391",
+          "_shared/core/src/single-step-handler.mjs": "89b9fdb2ffd73fc0ab4ce5255039b569d607cdb2ca0e2c5e0e830f70805b3b81",
+          "_shared/core/src/source-erasure.mjs": "2ca91f89400b5a6c889d0422352600978838fd0e6af5cc01fb10ae309a7cd872",
+          "_shared/core/src/supabase-auth.mjs": "db93a1125276798823e9899e60d4350b2c83aea296cb107aea765ff332f826eb",
+          "_shared/core/src/supabase-scope-authority.mjs": "2993c68e34e0f58e6f4b42295a72b94b965f31216c04500f6b133800c13a9340",
+          "_shared/core/src/tools.mjs": "76429c815100d61601538e5a7656ca7fca059ee8be5e81764553ee1b6ec934f9",
+          "_shared/core/src/worker-output-contract.mjs": "9ae4d267e309f222fa750de4efc18738cde03e6af78cf2af37922366e4f48996",
+          "_shared/model-route-review-probe.mjs": "23a5550df2663bf422d5ff99b0b19b3965466d28d7a30128ebeae5c6cc458b22",
+          "_shared/model-route-review.mjs": "13878346dc92937806f397bc96ce1a5ba1b2239685bf0b9c7a6df9b21c272b17",
+          "_shared/postgres-pool.mjs": "846dfe0d5417af35c2501e83e728f74c95788c82ae870ff0f0be02c882df614b",
+          "_shared/sensitivity.mjs": "4002ea6e28a38b24f9482266d22bc5b275710f2d5cbe35280efe65ef4dc95376",
+          "_shared/tick-auth.mjs": "541e9d88070d68510a617810b749591629cbaf5c1fe82438bc0caf5b7f268999",
+          "catpaw-tick/index.ts": "24113809e62b374193cfd43ae4acd03edc4bff06798016cf7106c9fc96fd9ac4",
+          "deno.json": "bca245843dc12d05fa9887b23d13e6a86231ff59e6419f2c032e76087fababbe"
+        },
+        "default_config_api_and_entry_bytes_preserved": true,
+        "review_tick_enabled": false
+      }
+    ]
+  },
+  "package_manifest_sha256": "e5ef6ff96b41977328612bd5b19d5c267c51037a1f3f6a8b6410319553d4aa9d",
+  "baseline_comparison": [
+    {
+      "function": "catpaw-api",
+      "version": 19,
+      "baseline_verified": 50,
+      "same": 24,
+      "changed": 22,
+      "absent_in_maintenance": 4,
+      "files": [
+        {
+          "path": "_shared/api.mjs",
+          "baseline_sha256": "b3e39a21e0fb40fbd3e5a0da75d0bdbdb79a001ade7bdd6ca85cc70b9999d654",
+          "maintenance_sha256": "6c20d3466cb9b866a8ed22633fa85a627e60dcace56042ed9d2046e06ee5b4ba",
+          "status": "changed"
+        },
+        {
+          "path": "_shared/authority.mjs",
+          "baseline_sha256": "272eddb7dc8996a00aadf8faecec1c5c8b948bdd099ed7adcdb722ac95347985",
+          "maintenance_sha256": "b6215e2a2e4e06ea596d2b153a75d87666dd7f507bff4fe8336b622c8d9ee496",
+          "status": "changed"
+        },
+        {
+          "path": "_shared/bootstrap.ts",
+          "baseline_sha256": "62905f225ce4f0190b0b043a7530899326389a1d537bdfb4e2eaaafa4c5b41b6",
+          "maintenance_sha256": "da0c920f3face5196a2a4440b7bb5f2dd0b326aa3bc6a704f7f1b7cb4766893b",
+          "status": "changed"
+        },
+        {
+          "path": "_shared/config.mjs",
+          "baseline_sha256": "5fb727da0959f6aace21f1dddb2f947d667f77a10a9d09f846e528a79f022a2b",
+          "maintenance_sha256": "468eaab57ba393fb350aa63023238e26d436ffb7ab411232e1ac0e9c322f7ff0",
+          "status": "changed"
+        },
+        {
+          "path": "_shared/consent.mjs",
+          "baseline_sha256": "af0210248796da63c810a50a9bc4336b4ddf0497624f00f8e85fd07489f5aaab",
+          "maintenance_sha256": "c54e68fc0767833475a39b038d975746fe2c720a32d8f1342e4e3908f0b6d217",
+          "status": "changed"
+        },
+        {
+          "path": "_shared/core/facade-r2/patched-openmuse/apps/server/src/errors.ts",
+          "baseline_sha256": "1b9236cd303b2958dd30e5f9ec376847be30b37826f621ab02404f6e3104bc31",
+          "maintenance_sha256": "1b9236cd303b2958dd30e5f9ec376847be30b37826f621ab02404f6e3104bc31",
+          "status": "same"
+        },
+        {
+          "path": "_shared/core/facade-r2/src/common.mjs",
+          "baseline_sha256": "57482b53644a3e4c0e2e274b49e28b1c57d7570001896b6db756a9958665e9ab",
+          "maintenance_sha256": "57482b53644a3e4c0e2e274b49e28b1c57d7570001896b6db756a9958665e9ab",
+          "status": "same"
+        },
+        {
+          "path": "_shared/core/facade-r2/src/facade.mjs",
+          "baseline_sha256": "d66b2b996b8546251b5462d659bdcca1d9d35ef04704fd147f64579979079919",
+          "maintenance_sha256": "d66b2b996b8546251b5462d659bdcca1d9d35ef04704fd147f64579979079919",
+          "status": "same"
+        },
+        {
+          "path": "_shared/core/facade-r2/src/fenced-worker-store.mjs",
+          "baseline_sha256": "4a4161baf12e7afd89c72111ecb831e26e560b727067d0ab719db3e09a7d837c",
+          "maintenance_sha256": "4a4161baf12e7afd89c72111ecb831e26e560b727067d0ab719db3e09a7d837c",
+          "status": "same"
+        },
+        {
+          "path": "_shared/core/facade-r2/src/http.mjs",
+          "baseline_sha256": "b00cfc48b829de79ca09c06d063c8c17592e9d46893306283079b01a4bf7d528",
+          "maintenance_sha256": "b00cfc48b829de79ca09c06d063c8c17592e9d46893306283079b01a4bf7d528",
+          "status": "same"
+        },
+        {
+          "path": "_shared/core/integration/edge-adapter/src/bounded-store.mjs",
+          "baseline_sha256": "6184cde0200095509d0614176006901a846bc67824c08e960bc9e77b1ebdcd8f",
+          "maintenance_sha256": "45f969e8b2f864adaf541975cfa5ef7f76f4dcb4226de904f85172ce9267667c",
+          "status": "changed"
+        },
+        {
+          "path": "_shared/core/integration/edge-adapter/src/bounded-tick.mjs",
+          "baseline_sha256": "999aca145346926c21e5b2403fb20254637744d388a65df27e2b4c4dd7bb0be8",
+          "maintenance_sha256": "669f5114c1d6204d1a7f94d633ead95ec16e188e7484b029918afdc7e80ce22c",
+          "status": "changed"
+        },
+        {
+          "path": "_shared/core/integration/edge-adapter/src/common.mjs",
+          "baseline_sha256": "6033928ef8e2166494d84df32893d2e5eaf2acbef609c69104ffc366fcd8ed49",
+          "maintenance_sha256": "6033928ef8e2166494d84df32893d2e5eaf2acbef609c69104ffc366fcd8ed49",
+          "status": "same"
+        },
+        {
+          "path": "_shared/core/integration/edge-adapter/vendor/openmuse/runtime/engine/worker.mjs",
+          "baseline_sha256": "51973696df9b39cdda99366b31f663b86771ab4a44cce5dc2b02e12aa35a13ef",
+          "maintenance_sha256": "51973696df9b39cdda99366b31f663b86771ab4a44cce5dc2b02e12aa35a13ef",
+          "status": "same"
+        },
+        {
+          "path": "_shared/core/integration/edge-adapter/vendor/openmuse/runtime/log.mjs",
+          "baseline_sha256": "63e9674fae8ab5f090253f9018c4bbec162b79d14eb3ab33fc05dc8358e4abcc",
+          "maintenance_sha256": "63e9674fae8ab5f090253f9018c4bbec162b79d14eb3ab33fc05dc8358e4abcc",
+          "status": "same"
+        },
+        {
+          "path": "_shared/core/integration/server-foundation/src/chat-recovery.mjs",
+          "baseline_sha256": "5e02edeeb821703401da7aff329ee2305556a9a09a113453eda8fea08ce00f6c",
+          "maintenance_sha256": "5e02edeeb821703401da7aff329ee2305556a9a09a113453eda8fea08ce00f6c",
+          "status": "same"
+        },
+        {
+          "path": "_shared/core/integration/server-foundation/src/common.mjs",
+          "baseline_sha256": "ae6b670c4635c7aa28745f1989be8a2884d884144d0fdb515a390cfe69fa33c4",
+          "maintenance_sha256": "ae6b670c4635c7aa28745f1989be8a2884d884144d0fdb515a390cfe69fa33c4",
+          "status": "same"
+        },
+        {
+          "path": "_shared/core/integration/server-foundation/src/foundation.mjs",
+          "baseline_sha256": "165afb9dea4cf7e046aba9c30dc4bdea527501d1e8b45ec62b7179ec5d74cda9",
+          "maintenance_sha256": "165afb9dea4cf7e046aba9c30dc4bdea527501d1e8b45ec62b7179ec5d74cda9",
+          "status": "same"
+        },
+        {
+          "path": "_shared/core/integration/server-foundation/src/postgres-repository.mjs",
+          "baseline_sha256": "2b9b38becaa7743598bc0a0a304278c4ad19c1610ebb864631183265392f4d46",
+          "maintenance_sha256": "2b9b38becaa7743598bc0a0a304278c4ad19c1610ebb864631183265392f4d46",
+          "status": "same"
+        },
+        {
+          "path": "_shared/core/integration/server-foundation/src/provider-policy.mjs",
+          "baseline_sha256": "8a7ab3f6f0d0054f951905b3b08ec511df4feaa994b52e9ce6fa653263d0506f",
+          "maintenance_sha256": "8a7ab3f6f0d0054f951905b3b08ec511df4feaa994b52e9ce6fa653263d0506f",
+          "status": "same"
+        },
+        {
+          "path": "_shared/core/src/chat-metrics.mjs",
+          "baseline_sha256": "f4c2c94bded2042dda8cc44466f1f41129910d2df766af27746b73e48adcb711",
+          "maintenance_sha256": "f4c2c94bded2042dda8cc44466f1f41129910d2df766af27746b73e48adcb711",
+          "status": "same"
+        },
+        {
+          "path": "_shared/core/src/chat-service.mjs",
+          "baseline_sha256": "8b21291bac60e2d2739ee58dd3687e5e039b43a605387255f18458b6158acdad",
+          "maintenance_sha256": "ee4528a3bc53505f92fba2d9c02fa1cd13503a55a8a977214446ecadf31753b8",
+          "status": "changed"
+        },
+        {
+          "path": "_shared/core/src/foundation-http.mjs",
+          "baseline_sha256": "37c4f4c82eb60f91bee3d4d7973f0931ae50e3cb70a4d204de401f36d87d1923",
+          "maintenance_sha256": "e020d7166ad568d87ee59bc9f08b5ad4c5d413252a531961f4aaf4ea4df4b138",
+          "status": "changed"
+        },
+        {
+          "path": "_shared/core/src/foundation-runtime.mjs",
+          "baseline_sha256": "498aee744f76d9a5ef69b0863de60bb096e311520798a390c5f1bfd3c17c9ccb",
+          "maintenance_sha256": "6363bad07bd2da39c0ef5b13fdcc7448cdfc2e2139a1b2a57a4968242e70fb64",
+          "status": "changed"
+        },
+        {
+          "path": "_shared/core/src/http.mjs",
+          "baseline_sha256": "ffacacdde37410805befadd4cb9966987bc106c0e69a62a96d980d1aadd9b306",
+          "maintenance_sha256": "72e305de2003d2cda1051cbad9fde2cf71b15654391d08bacf5de8aa12c1fbcd",
+          "status": "changed"
+        },
+        {
+          "path": "_shared/core/src/live-vision-route.mjs",
+          "baseline_sha256": "f26756862bd6384fd92e2c6e52af0612959eda4740d2f45cc6d60b40d565dddc",
+          "maintenance_sha256": null,
+          "status": "absent_in_maintenance"
+        },
+        {
+          "path": "_shared/core/src/local-output-facade.mjs",
+          "baseline_sha256": "388c00a3355d6d5299b116c6e691371c3a25c6ba7f2241d356f6413f429161d3",
+          "maintenance_sha256": "efb1a7c985ae75bddf3d4b3d63b4c998df7dd940f21c120d706a9520b41a61b4",
+          "status": "changed"
+        },
+        {
+          "path": "_shared/core/src/model-handler.mjs",
+          "baseline_sha256": "dca097d26929bac8c84d5d67e3e4b3cdccfe8ba2d5d854be114cde0b62c0f19a",
+          "maintenance_sha256": "a5be29c29945d8ea010044079880508d68397b5c7c45afdd23869386ea2524c5",
+          "status": "changed"
+        },
+        {
+          "path": "_shared/core/src/openrouter-provider.mjs",
+          "baseline_sha256": "555b5f1b36225ca007eaf0f45a76cfe39334f423776552b1be6ec211fcbc9338",
+          "maintenance_sha256": "1560911637eb7ae13e2679eccc198f9b42755c70446c3c23da338fa6cf6f0be5",
+          "status": "changed"
+        },
+        {
+          "path": "_shared/core/src/projection-adapter.mjs",
+          "baseline_sha256": "16a6bd6b1b31fcc6c3b40e721db67c1ed61db74972b976828cd2ecd7474f3656",
+          "maintenance_sha256": "86b1006b7fb39d5678e404bbf1c53c24d58e0b602b4ee21c0b847d6de8992eb8",
+          "status": "changed"
+        },
+        {
+          "path": "_shared/core/src/provider-errors.mjs",
+          "baseline_sha256": "4e7ece3c47e031104a05a3134695a9f0fb0d777017c8e535cfe54b2973a87e14",
+          "maintenance_sha256": "4e7ece3c47e031104a05a3134695a9f0fb0d777017c8e535cfe54b2973a87e14",
+          "status": "same"
+        },
+        {
+          "path": "_shared/core/src/purge-plan.mjs",
+          "baseline_sha256": "2874e3c60ddf6c53f496a722399acccd5f23df2c0699753954a684631f86a8b6",
+          "maintenance_sha256": "f77586e0edd2bb8ba51c740d8b5d820501000454c7556e35697bbd1674ab81ea",
+          "status": "changed"
+        },
+        {
+          "path": "_shared/core/src/report-completion.mjs",
+          "baseline_sha256": "964ce92ec3aeb954a7ac9d1e20deb8e6bb3b7d39a46498f097c80cc4624583a6",
+          "maintenance_sha256": "964ce92ec3aeb954a7ac9d1e20deb8e6bb3b7d39a46498f097c80cc4624583a6",
+          "status": "same"
+        },
+        {
+          "path": "_shared/core/src/runtime.mjs",
+          "baseline_sha256": "5cbb6396cc47ef3735ecacc3ced7b493077ca561909e2bb0d41f08eb9ea52391",
+          "maintenance_sha256": "d46cfbc97e2c55974d1ff72eca7d1d63c90b1e60c13c4fb2abc8d661ae3b1f94",
+          "status": "changed"
+        },
+        {
+          "path": "_shared/core/src/single-step-handler.mjs",
+          "baseline_sha256": "3c95f9361cc949514d246de34dcdd81f943bb8da08026635f7ac72dc64b24dbd",
+          "maintenance_sha256": "0115a3fd4e48c9f8729cebb24770faef135c12b97c2f627d040716d7948d8aaf",
+          "status": "changed"
+        },
+        {
+          "path": "_shared/core/src/source-erasure.mjs",
+          "baseline_sha256": "9d638200c8d42a36865a1332395b36d134bee15355d8064c99dd4ecc4ea17fa0",
+          "maintenance_sha256": "b0d722bd4b1917823e7b86b87ab79e4d56956333de4aab70aed90d3f2280fdcf",
+          "status": "changed"
+        },
+        {
+          "path": "_shared/core/src/supabase-auth.mjs",
+          "baseline_sha256": "d08a8440df3a692058da398aba1e8d3f754bdc7c402b74ba1617d0ba8febc986",
+          "maintenance_sha256": "d08a8440df3a692058da398aba1e8d3f754bdc7c402b74ba1617d0ba8febc986",
+          "status": "same"
+        },
+        {
+          "path": "_shared/core/src/supabase-scope-authority.mjs",
+          "baseline_sha256": "2993c68e34e0f58e6f4b42295a72b94b965f31216c04500f6b133800c13a9340",
+          "maintenance_sha256": "2993c68e34e0f58e6f4b42295a72b94b965f31216c04500f6b133800c13a9340",
+          "status": "same"
+        },
+        {
+          "path": "_shared/core/src/text-batcher.mjs",
+          "baseline_sha256": "1a28b45cd0693d47c28d7f7f55a39a49c6d84fd13f908e3a81d90b51459fd0f0",
+          "maintenance_sha256": "1a28b45cd0693d47c28d7f7f55a39a49c6d84fd13f908e3a81d90b51459fd0f0",
+          "status": "same"
+        },
+        {
+          "path": "_shared/core/src/tools.mjs",
+          "baseline_sha256": "9a4f2a7d9bfad47d85e18741b6f42a1e3bcf66daf07f8c4d53a7165793274aee",
+          "maintenance_sha256": "96c297af34e0258dc47ee67ed574dce40dc40bd29bcbd48b79a3c2c448ddb141",
+          "status": "changed"
+        },
+        {
+          "path": "_shared/core/src/vision-contract.mjs",
+          "baseline_sha256": "603b6990056e25bc43a0226264f4a7e1bb7e7b3abebcfcef7058a07abb760295",
+          "maintenance_sha256": null,
+          "status": "absent_in_maintenance"
+        },
+        {
+          "path": "_shared/core/src/worker-output-contract.mjs",
+          "baseline_sha256": "9ae4d267e309f222fa750de4efc18738cde03e6af78cf2af37922366e4f48996",
+          "maintenance_sha256": "e211170cd797de9e49c29f521aa8763a54adc8097f269105352c7a8452469fab",
+          "status": "changed"
+        },
+        {
+          "path": "_shared/image-consent.mjs",
+          "baseline_sha256": "391f49513cdf462e9dd1ce71787171a6ae20524057a07040e56779f9ba71bf34",
+          "maintenance_sha256": null,
+          "status": "absent_in_maintenance"
+        },
+        {
+          "path": "_shared/node-buffer-runtime.mjs",
+          "baseline_sha256": "fbf85689e215214d3b87b438eb1bdd659c92b75cf52edd97847cf3040d727b00",
+          "maintenance_sha256": null,
+          "status": "absent_in_maintenance"
+        },
+        {
+          "path": "_shared/postgres-pool.mjs",
+          "baseline_sha256": "5151efd5cb92adb146f0a6092aa2ef4881c94dbe6745d8721506dc4a65d2cf29",
+          "maintenance_sha256": "5151efd5cb92adb146f0a6092aa2ef4881c94dbe6745d8721506dc4a65d2cf29",
+          "status": "same"
+        },
+        {
+          "path": "_shared/sensitivity.mjs",
+          "baseline_sha256": "4002ea6e28a38b24f9482266d22bc5b275710f2d5cbe35280efe65ef4dc95376",
+          "maintenance_sha256": "4002ea6e28a38b24f9482266d22bc5b275710f2d5cbe35280efe65ef4dc95376",
+          "status": "same"
+        },
+        {
+          "path": "_shared/tick-auth.mjs",
+          "baseline_sha256": "541e9d88070d68510a617810b749591629cbaf5c1fe82438bc0caf5b7f268999",
+          "maintenance_sha256": "541e9d88070d68510a617810b749591629cbaf5c1fe82438bc0caf5b7f268999",
+          "status": "same"
+        },
+        {
+          "path": "_shared/worker-kick.mjs",
+          "baseline_sha256": "02e85731e8395f87b6ed49e3e6562a6aae4a4da2134ef947db9628e446e881a5",
+          "maintenance_sha256": "dbeed7b5af92eeff5ad31bd3e75855fab6aede50a83897288546a8df68b52f7e",
+          "status": "changed"
+        },
+        {
+          "path": "catpaw-api/index.ts",
+          "baseline_sha256": "d2138d5833a07ecbd022508c5ff8ee4061c538e1fe8ef7bc4109ce82078af32b",
+          "maintenance_sha256": "d2138d5833a07ecbd022508c5ff8ee4061c538e1fe8ef7bc4109ce82078af32b",
+          "status": "same"
+        },
+        {
+          "path": "deno.json",
+          "baseline_sha256": "bca245843dc12d05fa9887b23d13e6a86231ff59e6419f2c032e76087fababbe",
+          "maintenance_sha256": "bca245843dc12d05fa9887b23d13e6a86231ff59e6419f2c032e76087fababbe",
+          "status": "same"
+        }
+      ]
+    },
+    {
+      "function": "catpaw-tick",
+      "version": 7,
+      "baseline_verified": 43,
+      "same": 19,
+      "changed": 23,
+      "absent_in_maintenance": 1,
+      "files": [
+        {
+          "path": "_shared/api.mjs",
+          "baseline_sha256": "140698a737433be29a50fd33aa6f22d052d942f9a15a5763ea06cbc38a3676f8",
+          "maintenance_sha256": "6c20d3466cb9b866a8ed22633fa85a627e60dcace56042ed9d2046e06ee5b4ba",
+          "status": "changed"
+        },
+        {
+          "path": "_shared/authority.mjs",
+          "baseline_sha256": "4a4eb40bd0598eb8633c9190e1e37d55fff56ddd94ce937b10986bc96985dcdb",
+          "maintenance_sha256": "b6215e2a2e4e06ea596d2b153a75d87666dd7f507bff4fe8336b622c8d9ee496",
+          "status": "changed"
+        },
+        {
+          "path": "_shared/bootstrap.ts",
+          "baseline_sha256": "da0c920f3face5196a2a4440b7bb5f2dd0b326aa3bc6a704f7f1b7cb4766893b",
+          "maintenance_sha256": "da0c920f3face5196a2a4440b7bb5f2dd0b326aa3bc6a704f7f1b7cb4766893b",
+          "status": "same"
+        },
+        {
+          "path": "_shared/config.mjs",
+          "baseline_sha256": "ea27f7573cda09ae7a8502d9448f74be2ad876c2843365ae27ca76dff070e0d1",
+          "maintenance_sha256": "468eaab57ba393fb350aa63023238e26d436ffb7ab411232e1ac0e9c322f7ff0",
+          "status": "changed"
+        },
+        {
+          "path": "_shared/consent.mjs",
+          "baseline_sha256": "af0210248796da63c810a50a9bc4336b4ddf0497624f00f8e85fd07489f5aaab",
+          "maintenance_sha256": "c54e68fc0767833475a39b038d975746fe2c720a32d8f1342e4e3908f0b6d217",
+          "status": "changed"
+        },
+        {
+          "path": "_shared/core/facade-r2/patched-openmuse/apps/server/src/errors.ts",
+          "baseline_sha256": "1b9236cd303b2958dd30e5f9ec376847be30b37826f621ab02404f6e3104bc31",
+          "maintenance_sha256": "1b9236cd303b2958dd30e5f9ec376847be30b37826f621ab02404f6e3104bc31",
+          "status": "same"
+        },
+        {
+          "path": "_shared/core/facade-r2/src/common.mjs",
+          "baseline_sha256": "57482b53644a3e4c0e2e274b49e28b1c57d7570001896b6db756a9958665e9ab",
+          "maintenance_sha256": "57482b53644a3e4c0e2e274b49e28b1c57d7570001896b6db756a9958665e9ab",
+          "status": "same"
+        },
+        {
+          "path": "_shared/core/facade-r2/src/facade.mjs",
+          "baseline_sha256": "d66b2b996b8546251b5462d659bdcca1d9d35ef04704fd147f64579979079919",
+          "maintenance_sha256": "d66b2b996b8546251b5462d659bdcca1d9d35ef04704fd147f64579979079919",
+          "status": "same"
+        },
+        {
+          "path": "_shared/core/facade-r2/src/fenced-worker-store.mjs",
+          "baseline_sha256": "4a4161baf12e7afd89c72111ecb831e26e560b727067d0ab719db3e09a7d837c",
+          "maintenance_sha256": "4a4161baf12e7afd89c72111ecb831e26e560b727067d0ab719db3e09a7d837c",
+          "status": "same"
+        },
+        {
+          "path": "_shared/core/facade-r2/src/http.mjs",
+          "baseline_sha256": "b00cfc48b829de79ca09c06d063c8c17592e9d46893306283079b01a4bf7d528",
+          "maintenance_sha256": "b00cfc48b829de79ca09c06d063c8c17592e9d46893306283079b01a4bf7d528",
+          "status": "same"
+        },
+        {
+          "path": "_shared/core/integration/edge-adapter/src/bounded-store.mjs",
+          "baseline_sha256": "6184cde0200095509d0614176006901a846bc67824c08e960bc9e77b1ebdcd8f",
+          "maintenance_sha256": "45f969e8b2f864adaf541975cfa5ef7f76f4dcb4226de904f85172ce9267667c",
+          "status": "changed"
+        },
+        {
+          "path": "_shared/core/integration/edge-adapter/src/bounded-tick.mjs",
+          "baseline_sha256": "999aca145346926c21e5b2403fb20254637744d388a65df27e2b4c4dd7bb0be8",
+          "maintenance_sha256": "669f5114c1d6204d1a7f94d633ead95ec16e188e7484b029918afdc7e80ce22c",
+          "status": "changed"
+        },
+        {
+          "path": "_shared/core/integration/edge-adapter/src/common.mjs",
+          "baseline_sha256": "6033928ef8e2166494d84df32893d2e5eaf2acbef609c69104ffc366fcd8ed49",
+          "maintenance_sha256": "6033928ef8e2166494d84df32893d2e5eaf2acbef609c69104ffc366fcd8ed49",
+          "status": "same"
+        },
+        {
+          "path": "_shared/core/integration/edge-adapter/vendor/openmuse/runtime/engine/worker.mjs",
+          "baseline_sha256": "51973696df9b39cdda99366b31f663b86771ab4a44cce5dc2b02e12aa35a13ef",
+          "maintenance_sha256": "51973696df9b39cdda99366b31f663b86771ab4a44cce5dc2b02e12aa35a13ef",
+          "status": "same"
+        },
+        {
+          "path": "_shared/core/integration/edge-adapter/vendor/openmuse/runtime/log.mjs",
+          "baseline_sha256": "63e9674fae8ab5f090253f9018c4bbec162b79d14eb3ab33fc05dc8358e4abcc",
+          "maintenance_sha256": "63e9674fae8ab5f090253f9018c4bbec162b79d14eb3ab33fc05dc8358e4abcc",
+          "status": "same"
+        },
+        {
+          "path": "_shared/core/integration/server-foundation/src/chat-recovery.mjs",
+          "baseline_sha256": "5e02edeeb821703401da7aff329ee2305556a9a09a113453eda8fea08ce00f6c",
+          "maintenance_sha256": "5e02edeeb821703401da7aff329ee2305556a9a09a113453eda8fea08ce00f6c",
+          "status": "same"
+        },
+        {
+          "path": "_shared/core/integration/server-foundation/src/common.mjs",
+          "baseline_sha256": "ae6b670c4635c7aa28745f1989be8a2884d884144d0fdb515a390cfe69fa33c4",
+          "maintenance_sha256": "ae6b670c4635c7aa28745f1989be8a2884d884144d0fdb515a390cfe69fa33c4",
+          "status": "same"
+        },
+        {
+          "path": "_shared/core/integration/server-foundation/src/foundation.mjs",
+          "baseline_sha256": "165afb9dea4cf7e046aba9c30dc4bdea527501d1e8b45ec62b7179ec5d74cda9",
+          "maintenance_sha256": "165afb9dea4cf7e046aba9c30dc4bdea527501d1e8b45ec62b7179ec5d74cda9",
+          "status": "same"
+        },
+        {
+          "path": "_shared/core/integration/server-foundation/src/postgres-repository.mjs",
+          "baseline_sha256": "0aca3522143efedb0f05d460ef1fc2af811373696cb9a1f90723dae2a4abc651",
+          "maintenance_sha256": "2b9b38becaa7743598bc0a0a304278c4ad19c1610ebb864631183265392f4d46",
+          "status": "changed"
+        },
+        {
+          "path": "_shared/core/integration/server-foundation/src/provider-policy.mjs",
+          "baseline_sha256": "8a7ab3f6f0d0054f951905b3b08ec511df4feaa994b52e9ce6fa653263d0506f",
+          "maintenance_sha256": "8a7ab3f6f0d0054f951905b3b08ec511df4feaa994b52e9ce6fa653263d0506f",
+          "status": "same"
+        },
+        {
+          "path": "_shared/core/src/chat-service.mjs",
+          "baseline_sha256": "a48b0b2ff0e6ac9669517d2380260a5afc263e97a1b8b71315cf2af09093d498",
+          "maintenance_sha256": "ee4528a3bc53505f92fba2d9c02fa1cd13503a55a8a977214446ecadf31753b8",
+          "status": "changed"
+        },
+        {
+          "path": "_shared/core/src/foundation-http.mjs",
+          "baseline_sha256": "37c4f4c82eb60f91bee3d4d7973f0931ae50e3cb70a4d204de401f36d87d1923",
+          "maintenance_sha256": "e020d7166ad568d87ee59bc9f08b5ad4c5d413252a531961f4aaf4ea4df4b138",
+          "status": "changed"
+        },
+        {
+          "path": "_shared/core/src/foundation-runtime.mjs",
+          "baseline_sha256": "bc996acc6a97ccc185abffcd1de4ee58658ebe4c5df5fbf7b41356ccbb524368",
+          "maintenance_sha256": "6363bad07bd2da39c0ef5b13fdcc7448cdfc2e2139a1b2a57a4968242e70fb64",
+          "status": "changed"
+        },
+        {
+          "path": "_shared/core/src/http.mjs",
+          "baseline_sha256": "e231b89904c5996a3349899b8811b906beac85b72f7ace70e7632f5dd45fa64a",
+          "maintenance_sha256": "72e305de2003d2cda1051cbad9fde2cf71b15654391d08bacf5de8aa12c1fbcd",
+          "status": "changed"
+        },
+        {
+          "path": "_shared/core/src/local-output-facade.mjs",
+          "baseline_sha256": "388c00a3355d6d5299b116c6e691371c3a25c6ba7f2241d356f6413f429161d3",
+          "maintenance_sha256": "efb1a7c985ae75bddf3d4b3d63b4c998df7dd940f21c120d706a9520b41a61b4",
+          "status": "changed"
+        },
+        {
+          "path": "_shared/core/src/model-handler.mjs",
+          "baseline_sha256": "dca097d26929bac8c84d5d67e3e4b3cdccfe8ba2d5d854be114cde0b62c0f19a",
+          "maintenance_sha256": "a5be29c29945d8ea010044079880508d68397b5c7c45afdd23869386ea2524c5",
+          "status": "changed"
+        },
+        {
+          "path": "_shared/core/src/openrouter-provider.mjs",
+          "baseline_sha256": "48d9660a4170cb9391f7b7744b33e9dea0d178aa62e27809da9f86dfcfb07653",
+          "maintenance_sha256": "1560911637eb7ae13e2679eccc198f9b42755c70446c3c23da338fa6cf6f0be5",
+          "status": "changed"
+        },
+        {
+          "path": "_shared/core/src/projection-adapter.mjs",
+          "baseline_sha256": "16a6bd6b1b31fcc6c3b40e721db67c1ed61db74972b976828cd2ecd7474f3656",
+          "maintenance_sha256": "86b1006b7fb39d5678e404bbf1c53c24d58e0b602b4ee21c0b847d6de8992eb8",
+          "status": "changed"
+        },
+        {
+          "path": "_shared/core/src/provider-errors.mjs",
+          "baseline_sha256": "4e7ece3c47e031104a05a3134695a9f0fb0d777017c8e535cfe54b2973a87e14",
+          "maintenance_sha256": "4e7ece3c47e031104a05a3134695a9f0fb0d777017c8e535cfe54b2973a87e14",
+          "status": "same"
+        },
+        {
+          "path": "_shared/core/src/purge-plan.mjs",
+          "baseline_sha256": "2874e3c60ddf6c53f496a722399acccd5f23df2c0699753954a684631f86a8b6",
+          "maintenance_sha256": "f77586e0edd2bb8ba51c740d8b5d820501000454c7556e35697bbd1674ab81ea",
+          "status": "changed"
+        },
+        {
+          "path": "_shared/core/src/report-completion.mjs",
+          "baseline_sha256": "964ce92ec3aeb954a7ac9d1e20deb8e6bb3b7d39a46498f097c80cc4624583a6",
+          "maintenance_sha256": "964ce92ec3aeb954a7ac9d1e20deb8e6bb3b7d39a46498f097c80cc4624583a6",
+          "status": "same"
+        },
+        {
+          "path": "_shared/core/src/runtime.mjs",
+          "baseline_sha256": "5cbb6396cc47ef3735ecacc3ced7b493077ca561909e2bb0d41f08eb9ea52391",
+          "maintenance_sha256": "d46cfbc97e2c55974d1ff72eca7d1d63c90b1e60c13c4fb2abc8d661ae3b1f94",
+          "status": "changed"
+        },
+        {
+          "path": "_shared/core/src/single-step-handler.mjs",
+          "baseline_sha256": "89b9fdb2ffd73fc0ab4ce5255039b569d607cdb2ca0e2c5e0e830f70805b3b81",
+          "maintenance_sha256": "0115a3fd4e48c9f8729cebb24770faef135c12b97c2f627d040716d7948d8aaf",
+          "status": "changed"
+        },
+        {
+          "path": "_shared/core/src/source-erasure.mjs",
+          "baseline_sha256": "2ca91f89400b5a6c889d0422352600978838fd0e6af5cc01fb10ae309a7cd872",
+          "maintenance_sha256": "b0d722bd4b1917823e7b86b87ab79e4d56956333de4aab70aed90d3f2280fdcf",
+          "status": "changed"
+        },
+        {
+          "path": "_shared/core/src/supabase-auth.mjs",
+          "baseline_sha256": "db93a1125276798823e9899e60d4350b2c83aea296cb107aea765ff332f826eb",
+          "maintenance_sha256": "d08a8440df3a692058da398aba1e8d3f754bdc7c402b74ba1617d0ba8febc986",
+          "status": "changed"
+        },
+        {
+          "path": "_shared/core/src/supabase-scope-authority.mjs",
+          "baseline_sha256": "2993c68e34e0f58e6f4b42295a72b94b965f31216c04500f6b133800c13a9340",
+          "maintenance_sha256": "2993c68e34e0f58e6f4b42295a72b94b965f31216c04500f6b133800c13a9340",
+          "status": "same"
+        },
+        {
+          "path": "_shared/core/src/tools.mjs",
+          "baseline_sha256": "76429c815100d61601538e5a7656ca7fca059ee8be5e81764553ee1b6ec934f9",
+          "maintenance_sha256": "96c297af34e0258dc47ee67ed574dce40dc40bd29bcbd48b79a3c2c448ddb141",
+          "status": "changed"
+        },
+        {
+          "path": "_shared/core/src/worker-output-contract.mjs",
+          "baseline_sha256": "9ae4d267e309f222fa750de4efc18738cde03e6af78cf2af37922366e4f48996",
+          "maintenance_sha256": "e211170cd797de9e49c29f521aa8763a54adc8097f269105352c7a8452469fab",
+          "status": "changed"
+        },
+        {
+          "path": "_shared/postgres-pool.mjs",
+          "baseline_sha256": "846dfe0d5417af35c2501e83e728f74c95788c82ae870ff0f0be02c882df614b",
+          "maintenance_sha256": "5151efd5cb92adb146f0a6092aa2ef4881c94dbe6745d8721506dc4a65d2cf29",
+          "status": "changed"
+        },
+        {
+          "path": "_shared/sensitivity.mjs",
+          "baseline_sha256": "4002ea6e28a38b24f9482266d22bc5b275710f2d5cbe35280efe65ef4dc95376",
+          "maintenance_sha256": "4002ea6e28a38b24f9482266d22bc5b275710f2d5cbe35280efe65ef4dc95376",
+          "status": "same"
+        },
+        {
+          "path": "_shared/tick-auth.mjs",
+          "baseline_sha256": "541e9d88070d68510a617810b749591629cbaf5c1fe82438bc0caf5b7f268999",
+          "maintenance_sha256": "541e9d88070d68510a617810b749591629cbaf5c1fe82438bc0caf5b7f268999",
+          "status": "same"
+        },
+        {
+          "path": "catpaw-tick/index.ts",
+          "baseline_sha256": "24113809e62b374193cfd43ae4acd03edc4bff06798016cf7106c9fc96fd9ac4",
+          "maintenance_sha256": null,
+          "status": "absent_in_maintenance"
+        },
+        {
+          "path": "deno.json",
+          "baseline_sha256": "bca245843dc12d05fa9887b23d13e6a86231ff59e6419f2c032e76087fababbe",
+          "maintenance_sha256": "bca245843dc12d05fa9887b23d13e6a86231ff59e6419f2c032e76087fababbe",
+          "status": "same"
+        }
+      ]
+    }
+  ],
+  "validation": {
+    "maintenance_tests": {
+      "passed": 363,
+      "failed": 0,
+      "log": "full-final-r7.log",
+      "scope": "349 existing plus14 candidate tests; includes fixed baseline, early-frame provider/model/id laundering, metadata consistency and unchanged legacy default branch; injected SSE/Auth/TestRepository, deny-net/ignore-env"
+    },
+    "dual_package_tests": {
+      "passed": 18,
+      "failed": 0,
+      "log": "packages-final-r7.log",
+      "scope": "Each exact original API19/tick7 package plus review guard: consent, durable JSON/receipt/cold GET, early provider/model/id laundering rejected, no resend; serialized synthetic SQL port only"
+    },
+    "entry_static_checks": {
+      "passed": 2,
+      "log": "package-entry-final-r7.log",
+      "scope": "cached-only/no-remote/no-npm; explicit local Node builtin aliases for existing postgres cache; no entry execution or listener"
+    },
+    "frozen_source_check": "PASS check-repository.py",
+    "whitespace_check": "PASS git diff --check",
+    "retained_failures": [
+      "full-first.log: private row was compared with public DTO; corrected to actual cold runtime GET",
+      "packages-first.log: test expected tools:[] although API19 omits empty tools; corrected observation",
+      "package-entry-check.log: local bare Node imports plus new Promise return union; corrected without deployed source mutation",
+      "Root review: dynamic future baseline could enlarge data contract; now manifest asserts fixed base hash, and freshly rehashed memory expansion is rejected."
+    ],
+    "sensitivity_check": {
+      "status": "PASS",
+      "candidate_files": 1115,
+      "blocking_hits": 0,
+      "manual_review_hits": 0,
+      "fix_commit": "9b1eaf4",
+      "log": "sensitivity-final-r7.log",
+      "report": "sensitivity-final-r7.json",
+      "scope": "Final repository-relative candidate scan; old absolute-path false positive retained. No per-file exceptions or weakened patterns added by this task."
+    },
+    "layout_check": "PASS check-repository-layout.py",
+    "deployed_source_check": "PASS check-deployed-source.py",
+    "probe_client_tests": {
+      "passed": 13,
+      "failed": 0,
+      "log": "client-final-r7.log",
+      "scope": "Actual maintained API with injected fake Auth/session/SSE; deny-net/ignore-env; only ignored synthetic private-probe fixture file writes. Default disabled, signup one-shot, Auth attempt binding/recovery, durable-before-POST, exact original JSON+SSE+provider receipt, cold GET, tool/terminal failures, mode0600 vault and journal separation. Also rejects completed legacy final-only receipt without all-frame v1 marker and early wrong provider despite correct final metadata."
+    },
+    "client_plan": {
+      "execution": "plan only; deny-net/ignore-env, no execute flag, no credential access",
+      "path": "services/edge/build/model-route-review-20261015/CLIENT-PLAN.json",
+      "sha256": "66d4b1b607c24bf526f7892bcab07c570fd8ceaa3e526a53c6d90d3809edd5c2"
+    },
+    "frame_guard_review": {
+      "red": {
+        "log": "frame-guard-RED.log",
+        "passed": 9,
+        "failed": 3,
+        "failures": "Early wrong provider, stripped model alias and conflicting response id were laundered by correct final chunk."
+      },
+      "intermediate": "frame-guard-GREEN.log:13pass/1fail because reconciliation metadata missing; retained",
+      "green": {
+        "log": "frame-guard-GREEN-r7.log",
+        "passed": 14,
+        "failed": 0
+      },
+      "scope": "Exact named review only. Every explicit model/provider must match; explicit cost stays0; repeated nonempty id/object/created/system_fingerprint remains stable; final validated marker required. Default and original API19 image behavior unchanged."
+    }
+  },
+  "logs": {
+    "full-first.log": {
+      "path": "services/edge/build/model-route-review-20261015/full-first.log",
+      "sha256": "b2211d508d42f2a02ae14544480995751a3de2c4d013ae20a4b42a0a2b2db033"
+    },
+    "candidate-final.log": {
+      "path": "services/edge/build/model-route-review-20261015/candidate-final.log",
+      "sha256": "092f5dc2d01de3d4620e09ee8037ad13ede0482bea934ce94dda2101a033f7d4"
+    },
+    "full-final-r2.log": {
+      "path": "services/edge/build/model-route-review-20261015/full-final-r2.log",
+      "sha256": "1c65ffb9370a84dcd4d11b8a69f03df93f1c6c23f1e778aa72945269bbb19e40"
+    },
+    "packages-first.log": {
+      "path": "services/edge/build/model-route-review-20261015/packages-first.log",
+      "sha256": "1d95432dde4ab6d5da7209ea289c7972d533d873d50fcc84d6fd560f8cda00aa"
+    },
+    "packages-r2-final.log": {
+      "path": "services/edge/build/model-route-review-20261015/packages-r2-final.log",
+      "sha256": "0c5db218077be15d9a6d653761a240fde4de108046f950cfd6e11b26f23d3386"
+    },
+    "packages-final-r3.log": {
+      "path": "services/edge/build/model-route-review-20261015/packages-final-r3.log",
+      "sha256": "1a53d6b95a8b5dc161bcfe5561293e2d4bfab99370808fd97b1c676d2c4b78c6"
+    },
+    "package-entry-check.log": {
+      "path": "services/edge/build/model-route-review-20261015/package-entry-check.log",
+      "sha256": "e31989d4e862d0b507c314b038902372d95e77c72d63c235d7c7efd575025b1d"
+    },
+    "package-entry-check-r2.log": {
+      "path": "services/edge/build/model-route-review-20261015/package-entry-check-r2.log",
+      "sha256": "8fe6555d9f0378a9c716b2399db37ee0b06fbf6ac36f0a41d80ccd0dc80ee3d2"
+    },
+    "package-entry-final.log": {
+      "path": "services/edge/build/model-route-review-20261015/package-entry-final.log",
+      "sha256": "8d6026b53a8541eb7b90d9ddaf794e0ce375cb12a9972eef7c47843bb644eabd"
+    },
+    "repository-check.log": {
+      "path": "services/edge/build/model-route-review-20261015/repository-check.log",
+      "sha256": "1bb67173eb0b659474afd45ac05604e9fb8492515d9f2408006c25fb5bf3865d"
+    },
+    "whitespace-check.log": {
+      "path": "services/edge/build/model-route-review-20261015/whitespace-check.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "full-final-r3.log": {
+      "path": "services/edge/build/model-route-review-20261015/full-final-r3.log",
+      "sha256": "ed26f17cbd12cb4c9993aa0b53ec8dfbd17294f95d8251a2e59fae1b02a439af"
+    },
+    "packages-final-r4.log": {
+      "path": "services/edge/build/model-route-review-20261015/packages-final-r4.log",
+      "sha256": "697e585a70c0cbf261e740a7a07acf6053fbb55c2e49bbe722ae3c4e048c9626"
+    },
+    "package-entry-final-r4.log": {
+      "path": "services/edge/build/model-route-review-20261015/package-entry-final-r4.log",
+      "sha256": "9c2af6a6e63bed90019f7fcfd9a71fdc1ed2c6306bed4be5bbc2a6a602afb521"
+    },
+    "sensitivity-final.log": {
+      "path": "services/edge/build/model-route-review-20261015/sensitivity-final.log",
+      "sha256": "c3f67f97514ec85305534cf0d965b59ec18dbebf6cea3df0a599b9e709b8ed87"
+    },
+    "sensitivity-final.json": {
+      "path": "services/edge/build/model-route-review-20261015/sensitivity-final.json",
+      "sha256": "549e700fb00972ddecad019ccbd5970a87d64ae32d06bb856dcde797ae13db5b"
+    },
+    "repository-final.log": {
+      "path": "services/edge/build/model-route-review-20261015/repository-final.log",
+      "sha256": "1bb67173eb0b659474afd45ac05604e9fb8492515d9f2408006c25fb5bf3865d"
+    },
+    "whitespace-final.log": {
+      "path": "services/edge/build/model-route-review-20261015/whitespace-final.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "layout-final.log": {
+      "path": "services/edge/build/model-route-review-20261015/layout-final.log",
+      "sha256": "d225b3174702f41d455fc0cd22c09a32011f6b961c278f3e66b88fc9ba7ca372"
+    },
+    "deployed-source-final.log": {
+      "path": "services/edge/build/model-route-review-20261015/deployed-source-final.log",
+      "sha256": "a68c4a239c7a9d8a2e3f2ffab1f5ae00b63c319b9999a42db6c27873688ee228"
+    },
+    "full-final-r6.log": {
+      "path": "services/edge/build/model-route-review-20261015/full-final-r6.log",
+      "sha256": "eecf47f8a6728196092f87510c9e9118e04fa924b427ba30d6a53c335a8adc0b"
+    },
+    "client-first.log": {
+      "path": "services/edge/build/model-route-review-20261015/client-first.log",
+      "sha256": "519606e7ee42b3521ee252430866f042fcebc03234db388b8b542982cae4ae23"
+    },
+    "client-final-r6.log": {
+      "path": "services/edge/build/model-route-review-20261015/client-final-r6.log",
+      "sha256": "8eb283e8629c3adb0f34518cb75517c2a645bec96dffc46fbe1e979b7dcdba03"
+    },
+    "packages-final-r6.log": {
+      "path": "services/edge/build/model-route-review-20261015/packages-final-r6.log",
+      "sha256": "3f7d8bee34aa771e7e6f8f52b5f0de0c003d2de70414d65dfc09cb0eab16db7c"
+    },
+    "package-entry-final-r6.log": {
+      "path": "services/edge/build/model-route-review-20261015/package-entry-final-r6.log",
+      "sha256": "7ac5a4c4a11c05d7b5d30f7030f34115c0ec322369596611d2aee9dc211425f4"
+    },
+    "repository-r6.log": {
+      "path": "services/edge/build/model-route-review-20261015/repository-r6.log",
+      "sha256": "1bb67173eb0b659474afd45ac05604e9fb8492515d9f2408006c25fb5bf3865d"
+    },
+    "layout-r6.log": {
+      "path": "services/edge/build/model-route-review-20261015/layout-r6.log",
+      "sha256": "d225b3174702f41d455fc0cd22c09a32011f6b961c278f3e66b88fc9ba7ca372"
+    },
+    "deployed-source-r6.log": {
+      "path": "services/edge/build/model-route-review-20261015/deployed-source-r6.log",
+      "sha256": "a68c4a239c7a9d8a2e3f2ffab1f5ae00b63c319b9999a42db6c27873688ee228"
+    },
+    "whitespace-r6.log": {
+      "path": "services/edge/build/model-route-review-20261015/whitespace-r6.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "HOSTED-HEAD.json": {
+      "path": "services/edge/build/model-route-review-20261015/HOSTED-HEAD.json",
+      "sha256": "14fa1f478dcf0e59e5342c81de03a503786496edd179a99169c0861119104567"
+    },
+    "frame-guard-RED.log": {
+      "path": "services/edge/build/model-route-review-20261015/frame-guard-RED.log",
+      "sha256": "e18383942f0b4ae9410a30f6036007e939f3eea989525bb03be7daf5a50ae8c6"
+    },
+    "frame-guard-GREEN.log": {
+      "path": "services/edge/build/model-route-review-20261015/frame-guard-GREEN.log",
+      "sha256": "a7aa625145f7bb3a148ca236f13f752472f8ef8e22dcaad9a82f9e9f1c0f3074"
+    },
+    "frame-guard-GREEN-r7.log": {
+      "path": "services/edge/build/model-route-review-20261015/frame-guard-GREEN-r7.log",
+      "sha256": "0e9f991c2957c771f3d884a98fd19e4b8631f3ad6d4f7e36830827d1c0279a69"
+    },
+    "full-final-r7.log": {
+      "path": "services/edge/build/model-route-review-20261015/full-final-r7.log",
+      "sha256": "765bfc509bdb00d9fbef48b70f8c910768329afe37089a1e50e9c595c0721bd9"
+    },
+    "client-final-r7.log": {
+      "path": "services/edge/build/model-route-review-20261015/client-final-r7.log",
+      "sha256": "290ac3c60fe6d9cc47bc5e2a28b3584d674cd643465e751226c19b4da1659277"
+    },
+    "packages-final-r7.log": {
+      "path": "services/edge/build/model-route-review-20261015/packages-final-r7.log",
+      "sha256": "a8f0096be0de47fb5004968b22f543a8eeb3b10371cca616bd81ed2e4e89216c"
+    },
+    "package-entry-final-r7.log": {
+      "path": "services/edge/build/model-route-review-20261015/package-entry-final-r7.log",
+      "sha256": "85fe4dd0fd4a2a4b816d6e4583bd5e8c3887f9e8da02decfa08a3a4b6ef4a868"
+    }
+  },
+  "probe_constraints": {
+    "scope": "New explicitly approved synthetic subject and separate empty scope; exact IDs via 3 nonsecret server fields",
+    "text": "Reply only: received.",
+    "conversation_id": "71000000-0000-4000-8000-000000000001",
+    "turn_id": "71000000-0000-4000-8000-000000000002",
+    "message_id": "71000000-0000-4000-8000-000000000003",
+    "attempts": 1,
+    "max_completion_tokens": 32,
+    "provider_timeout_ms": 20000,
+    "no_context_or_attachments": true,
+    "tools_empty_and_unexpected_tool_response_rejected": true,
+    "auto_kick": false,
+    "review_tick": false,
+    "post_after_original_exists": "409 review_probe_original_GET_only",
+    "unknown_recovery": "Only GET the same original review path and ID; no resend/new UUID/refund/route change",
+    "client_timeout_ms": 25000,
+    "auth_post_attempts": 1,
+    "conversation_post_attempts": 1,
+    "consent_post_attempts": 1,
+    "network_transport": "HTTPS port443 only; no local listener",
+    "original_recovery_reads": [
+      "original turn JSON",
+      "original turn SSE events",
+      "original technical provider receipt"
+    ],
+    "max_explicit_observation_stages": 12,
+    "automatic_refresh_or_retry": false,
+    "durable_receipt_kind": "model-route-review-provider-receipts in existing scoped Repository; real PG not tested",
+    "all_frame_identity_validation": {
+      "schema_version": 1,
+      "required_passed": true,
+      "scope": "Exact named review; explicit model/provider/cost; stable repeated id/object/created/system_fingerprint; receipt without marker cannot pass client"
+    }
+  },
+  "approval_readiness": {
+    "source_packages_prepared": true,
+    "probe_client_prepared_and_offline_verified": true,
+    "production_activation_authorized": false,
+    "exact_nonsecret_subject_scope_fields_known": false,
+    "identity_ids_allocated_by_authorized_bootstrap_stage_not_precondition_for_preparation": true,
+    "existing_deployment_head_freshly_revalidated": true,
+    "native_client_supports_review_prefix": false,
+    "reason": "Exact CLI solves bounded prefix probe execution; frozen build24 remains unchanged and this is not native App/model acceptance. User approval must identify exact API r7 archive plus client bytes and one synthetic new-identity probe.",
+    "production_deployment_ready": false,
+    "pending": "Root review and exact user authorization; immediately before approved mutation revalidate hosted head, stop if changed."
+  },
+  "external_effects": {
+    "credential_read": 0,
+    "auth": 0,
+    "sql": 0,
+    "inference": 0,
+    "deployment": 0,
+    "installation": 0,
+    "compute_provisioned": 0,
+    "supabase_management_metadata_read": 1
+  },
+  "root_workspace_default_stage24_memory_edits": false,
+  "product_gates_closed": [],
+  "public_evidence_inputs": {
+    "manifest_sha256": "2d31fba6f921f29bb69ee4bda2d5170eb034ecfc37a0abf290ae5a1a53417d85",
+    "source_capture_window_utc": "2026-10-15T00:45:24Z through 2026-10-15T00:46:17Z",
+    "sources": [
+      {
+        "file": "original-endpoints.json",
+        "url": "https://openrouter.ai/api/v1/models/apodex/apodex-1.1-mini:free/endpoints",
+        "method": "GET",
+        "authorization_header": false,
+        "status": 200,
+        "http_date": "Thu, 15 Oct 2026 00:45:24 GMT",
+        "captured_complete_utc": "2026-10-15T00:45:24.614630+00:00",
+        "content_type": "application/json",
+        "bytes": 475,
+        "sha256": "13c38b2b6e9e31801c8de397e7d610abb9bf6cb8c615c75d3af249e06d754818",
+        "headers_file": "original-endpoints.headers",
+        "headers_sha256": "f3d7609885005f42b2c6bc16f18e481b41360f29721977f77ac1493112baa77a"
+      },
+      {
+        "file": "candidate-gemma-endpoints.json",
+        "url": "https://openrouter.ai/api/v1/models/google/gemma-4-31b-it:free/endpoints",
+        "method": "GET",
+        "authorization_header": false,
+        "status": 200,
+        "http_date": "Thu, 15 Oct 2026 00:45:37 GMT",
+        "captured_complete_utc": "2026-10-15T00:45:37.703877+00:00",
+        "content_type": "application/json",
+        "bytes": 1410,
+        "sha256": "9513101f2c68d9b820ef816bd36626ac08f9bbe3bf041d0591e5a1703c81d36f",
+        "headers_file": "candidate-gemma-endpoints.headers",
+        "headers_sha256": "5eae7242a449ef4c5238b9396986cdfa290bd22df8899eaac2215cc14eaeec01"
+      },
+      {
+        "file": "candidate-gemma-page.html",
+        "url": "https://openrouter.ai/google/gemma-4-31b-it:free",
+        "method": "GET",
+        "authorization_header": false,
+        "status": 200,
+        "http_date": "Thu, 15 Oct 2026 00:46:17 GMT",
+        "captured_complete_utc": "2026-10-15T00:46:21.950350+00:00",
+        "content_type": "text/html; charset=utf-8",
+        "bytes": 1058926,
+        "sha256": "0374c42d35432b3c9cffeb6baa6ee36edacd6d0367c6604a6b4634b5b03d8793",
+        "headers_file": "candidate-gemma-page.headers",
+        "headers_sha256": "8839bc8be43c23eab3c1fc5313bc33850f3276cc3ada972621869fe39c9ba0eb"
+      },
+      {
+        "file": "provider-routing.html",
+        "url": "https://openrouter.ai/docs/guides/routing/provider-selection",
+        "method": "GET",
+        "authorization_header": false,
+        "status": 200,
+        "http_date": "Thu, 15 Oct 2026 00:45:41 GMT",
+        "captured_complete_utc": "2026-10-15T00:45:44.073254+00:00",
+        "content_type": "text/html; charset=utf-8",
+        "bytes": 2245046,
+        "sha256": "67e3e36774dbf7de1aa3b355c7a963580fd4cb4a52ae1099befaae6f07f95305",
+        "headers_file": "provider-routing.headers",
+        "headers_sha256": "5bd24507c288ccc7bbe530fbb157732ebce94cda4323696e7fba5f18fb4db407"
+      },
+      {
+        "file": "provider-logging.html",
+        "url": "https://openrouter.ai/docs/guides/privacy/provider-logging",
+        "method": "GET",
+        "authorization_header": false,
+        "status": 200,
+        "http_date": "Thu, 15 Oct 2026 00:45:39 GMT",
+        "captured_complete_utc": "2026-10-15T00:45:40.172251+00:00",
+        "content_type": "text/html; charset=utf-8",
+        "bytes": 540885,
+        "sha256": "fd79a081b40450bf1c5d4ca27ff75aeacb3e249ab5e04234a9d649a1dc969b71",
+        "headers_file": "provider-logging.headers",
+        "headers_sha256": "efe04ff233d6e23595196802f12626759e97bc086c2b41232309d886e7f080d6"
+      },
+      {
+        "file": "data-collection.html",
+        "url": "https://openrouter.ai/docs/guides/privacy/data-collection",
+        "method": "GET",
+        "authorization_header": false,
+        "status": 200,
+        "http_date": "Thu, 15 Oct 2026 00:45:40 GMT",
+        "captured_complete_utc": "2026-10-15T00:45:42.504278+00:00",
+        "content_type": "text/html; charset=utf-8",
+        "bytes": 520943,
+        "sha256": "67f8fe21ee2f6c18586f8160fc6822f116798d60eb23c8177dab416c83740278",
+        "headers_file": "data-collection.headers",
+        "headers_sha256": "2c9d01799154eb2e9376d048281b0d128c9b171ca5ee4b654506348a6a3628e0"
+      },
+      {
+        "file": "structured-outputs.html",
+        "url": "https://openrouter.ai/docs/guides/features/structured-outputs",
+        "method": "GET",
+        "authorization_header": false,
+        "status": 200,
+        "http_date": "Thu, 15 Oct 2026 00:46:14 GMT",
+        "captured_complete_utc": "2026-10-15T00:46:16.356756+00:00",
+        "content_type": "text/html; charset=utf-8",
+        "bytes": 704077,
+        "sha256": "7371cb4d4b91233a45eb6683b220c8b404313be0fe378cf6b84fa4549b328d13",
+        "headers_file": "structured-outputs.headers",
+        "headers_sha256": "529d1d5ab1cd1852c986f30a46b4c152901ec05a7d410e821efd38cfe0ae9b95"
+      }
+    ],
+    "inference": 0,
+    "new_public_GETs_in_this_preparation": 0
+  },
+  "governance_commit": "9b1eaf4",
+  "package_directory": "services/edge/build/model-route-review-20261015/packages-r7",
+  "hosted_head_readback": {
+    "metadata": {
+      "schema": "catpaw.route-review-hosted-head-readback.v1",
+      "observed_at_utc": "2026-10-15 01:36:48 UTC",
+      "project_id": "dbyklgxdvjbutxzsjeth",
+      "access": "Supabase list_edge_functions management metadata only",
+      "no_secret_auth_sql_or_inference": true,
+      "functions": [
+        {
+          "slug": "catpaw-api",
+          "status": "ACTIVE",
+          "version": 19,
+          "ezbr_sha256": "3fee61c0eb3ef4ad8e777108713551f793a43a9dc2a60dddc886123d03ed1d26"
+        },
+        {
+          "slug": "catpaw-tick",
+          "status": "ACTIVE",
+          "version": 7,
+          "ezbr_sha256": "8f767ae860bbb1dd09c2caf51aeb3837ef97a8c8a287290c266f2769b4c594aa"
+        }
+      ]
+    },
+    "path": "services/edge/build/model-route-review-20261015/HOSTED-HEAD.json",
+    "sha256": "14fa1f478dcf0e59e5342c81de03a503786496edd179a99169c0861119104567",
+    "matches_local_immutable_received_source": true,
+    "not_permission_for_mutation": true
+  },
+  "probe_client": {
+    "path": "scripts/model-route-review-client.mjs",
+    "sha256": "b148a546aac1941c7d453c422e4c95300a2ce6269d511a87e50d23661d350e80",
+    "plan": {
+      "review_id": "catpaw-gemma-private-review-20261015-v1",
+      "execution": "disabled_until_explicit_stage_execute_approval",
+      "project": "dbyklgxdvjbutxzsjeth",
+      "api": "https://dbyklgxdvjbutxzsjeth.supabase.co/functions/v1/catpaw-api",
+      "prefix": "/route-review/catpaw-gemma-private-review-20261015-v1",
+      "route_hash": "181199268207fc3256b821ee13b046700a162d657adb3acd1c66d6f930870956",
+      "stages": [
+        "bootstrap-identity",
+        "recover-identity",
+        "bootstrap-scope",
+        "binding",
+        "prepare-conversation",
+        "consent",
+        "send",
+        "observe"
+      ],
+      "text": "Reply only: received.",
+      "conversation_id": "71000000-0000-4000-8000-000000000001",
+      "turn_id": "71000000-0000-4000-8000-000000000002",
+      "message_id": "71000000-0000-4000-8000-000000000003",
+      "max_model_attempts": 1,
+      "max_completion_tokens": 32,
+      "provider_timeout_ms": 20000,
+      "client_timeout_ms": 25000,
+      "max_observation_stages": 12,
+      "recovery_reads_per_stage": [
+        "original JSON",
+        "original SSE events",
+        "original provider receipt"
+      ],
+      "no_tools_context_attachments_memory": true,
+      "unknown": "GET the same prefix and original ID only; no Auth refresh, POST retry, route switch, new UUID or deployment"
+    },
+    "default_enabled": false,
+    "requires_each_stage": [
+      "--execute",
+      "--approved=catpaw-gemma-private-review-20261015-v1",
+      "--stage=<specific-stage>"
+    ],
+    "public_config_input": "bootstrap-identity only: --public-config-stdin JSON with only publishableKey; no automatic credential/config lookup",
+    "private_files": {
+      "directory": "services/edge/build/model-route-review-20261015/private-probe/",
+      "journal": "journal.json (mode0600, no token)",
+      "session": "session-private.json (mode0600, only newly allocated probe session)",
+      "lock": "journal.lock (exclusive, no automatic stale deletion)"
+    },
+    "send_sequence": "Durably freeze original path/input hash/attempted flag before the only turn POST. On response loss, timeout, crash or storage unknown, never repeat Auth or POST; explicit observe reads same original IDs only. Client requires the new all-frame-validation v1 passed marker; old r6 final-only receipts cannot pass.",
+    "identity_allocation": "After specific authorization, existing Supabase allocates a fresh anonymous subject and app session endpoint returns a separate scope. Persist/read back actual IDs, then bind the three nonsecret fields. IDs are not required to exist before preparation."
+  },
+  "execution_approval_checklist": [
+    {
+      "step": 1,
+      "action": "Review exact source/client/r7 hashes and UTF-8 diff; verify current API19/tick7 versions+ezbr.",
+      "stop": "Any head/input byte change invalidates this candidate."
+    },
+    {
+      "step": 2,
+      "action": "Approve exactly one new isolated anonymous test subject in existing project and one application-scope bootstrap, via staged client; public configuration is supplied explicitly; persist private session and nonsecret subject/scope journal.",
+      "stop": "Unknown signup cannot be repeated; existing or nonanonymous account rejected, no Auth refresh/logout/data reset."
+    },
+    {
+      "step": 3,
+      "action": "Approve deployment of only catpaw-api r7 candidate onto existing catpaw-api resource and the three nonsecret binding fields for those newly allocated IDs. Preserve default route/config/pubkey/vision.",
+      "stop": "No tick deployment or review tick, new resource, migration, dependency or paid compute authorized. Revalidate exact head first."
+    },
+    {
+      "step": 4,
+      "action": "Explicit prepare-conversation, then normal new-route consent with exact route hash; no implicit consent.",
+      "stop": "Route/hash or empty-scope mismatch, HTTP rejection or unknown -> no repeated POST."
+    },
+    {
+      "step": 5,
+      "action": "Send exactly Reply only: received. once, fixed IDs, no history/context/attachment/memory/tools; 32 output tokens,20s provider/25s client,zero four prices,deny,single supplier,no fallback.",
+      "stop": "404/429/privacy denial/timeout/wrong or missing actual provider/model/cost/full terminal -> stop, do not weaken policy or resend. Any conflicting early frame or missing all-frame-validation marker stops."
+    },
+    {
+      "step": 6,
+      "action": "Read same original prefix JSON/SSE/provider receipt; maximum12 explicit observe stages, no inference retry. Sanitize artifact evidence.",
+      "stop": "Missing/unknown evidence stays FAIL/unknown. No new identity/ID/route and no product acceptance claim."
+    },
+    {
+      "step": 7,
+      "action": "If rollback is needed: stop POST, collect original operation/technical receipt; restore exact original API rollback tar and remove only three added review binding fields, preserve data. Tick untouched unless separately approved.",
+      "stop": "Rollback does not refund or undo unknown provider processing; original same-ID recovery may require approved review source before rollback."
+    }
+  ]
+}
