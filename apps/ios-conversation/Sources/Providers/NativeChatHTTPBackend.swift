@@ -372,7 +372,7 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
     static let approvalHeader = "X-Catpaw-Approval-Contract"
     static let timeZoneHeader = "X-Catpaw-Time-Zone"
     /// Tools that only exist on approval-negotiated plain turns (services/edge TOOL_APPROVAL).
-    static let approvalToolNames: Set<String> = ["list_tasks", "create_task", "update_task", "create_calendar_event", "update_calendar_event", "create_reminder", "update_reminder", "external_write"]
+    static let approvalToolNames: Set<String> = ["render_ui", "list_tasks", "create_task", "update_task", "create_calendar_event", "update_calendar_event", "create_reminder", "update_reminder", "external_write"]
     static func approval(_ raw: [String: Any]) throws -> ConversationApprovalRequest {
         guard let id = raw["interrupt_id"] as? String, UUID(uuidString: id) != nil, let call = raw["call_id"] as? String, !call.isEmpty, call.utf8.count <= 256,
               let tool = raw["tool"] as? String, opaque(tool), let summary = raw["summary"] as? String, summary.count <= 240,
@@ -383,6 +383,21 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
     }
     /// catpaw.approval.v1 decision. Idempotent on `operationID`: resend the SAME id after `.transport`.
     public func submitApproval(_ request: ConversationTurnRequest, interruptID: String, decision: ConversationApprovalDecision, argsHash: String, operationID: UUID, afterSequence: Int) async throws -> AsyncThrowingStream<ConversationTurnEvent, Error> {
+        try await decisionStream(request, interruptID: interruptID, afterSequence: afterSequence, body: ["operation_id": operationID.uuidString.lowercased(), "decision": decision.rawValue, "args_hash": argsHash])
+    }
+    /// catpaw.ui.v1 answer: the SAME approval.v1 decision route; `response` is the raw `ui.response` (submit) or `ui.error` (report_error) JSON object.
+    public func submitUIDecision(_ request: ConversationTurnRequest, interruptID: String, decision: ConversationUIDecision, argsHash: String, response: Data?, operationID: UUID, afterSequence: Int) async throws -> AsyncThrowingStream<ConversationTurnEvent, Error> {
+        var body: [String: Any] = ["operation_id": operationID.uuidString.lowercased(), "decision": decision.rawValue, "args_hash": argsHash]
+        switch decision {
+        case .dismiss: guard response == nil else { throw ConversationApprovalFailure.rejected(status: 422, code: "ui_response_invalid") }
+        case .submit, .reportError:
+            guard let response, response.count <= 32768, let object = (try? JSONSerialization.jsonObject(with: response)) as? [String: Any],
+                  object["type"] as? String == (decision == .submit ? "ui.response" : "ui.error") else { throw ConversationApprovalFailure.rejected(status: 422, code: "ui_response_invalid") }
+            body["response"] = object
+        }
+        return try await decisionStream(request, interruptID: interruptID, afterSequence: afterSequence, body: body)
+    }
+    private func decisionStream(_ request: ConversationTurnRequest, interruptID: String, afterSequence: Int, body decisionBody: [String: Any]) async throws -> AsyncThrowingStream<ConversationTurnEvent, Error> {
         guard Self.supportsResume(request), afterSequence >= 0, UUID(uuidString: interruptID) != nil else { throw ConversationApprovalFailure.unsupported }
         let auth: String
         do { auth = try await authorization(request.scope) } catch { throw ConversationApprovalFailure.rejected(status: 401, code: nil) }
@@ -392,7 +407,7 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
         let route = turnPath(request) + "/" + request.operationID.uuidString.lowercased() + "/interrupts/" + interruptID.lowercased() + "/decision?after_sequence=\(afterSequence)"
         var post = try self.request(route, auth: auth)
         post.httpMethod = "POST"; post.timeoutInterval = ConversationReconnectPolicy.idleTimeout; post.setValue("text/event-stream, application/json", forHTTPHeaderField: "Accept"); post.setValue(TimeZone.current.identifier, forHTTPHeaderField: Self.timeZoneHeader)
-        post.httpBody = try Self.jsonData(["operation_id": operationID.uuidString.lowercased(), "decision": decision.rawValue, "args_hash": argsHash])
+        post.httpBody = try Self.jsonData(decisionBody)
         let opened: (URLSession.AsyncBytes, URLResponse)
         do { opened = try await session.bytes(for: post) } catch is URLError { throw ConversationApprovalFailure.transport }
         let bytes = opened.0, response = opened.1
@@ -547,7 +562,7 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
         var upload = try self.request(turnPath(request), auth: auth); upload.httpMethod = "POST"; upload.httpBody = encoded
         if request.image==nil,!request.hasUploadedAttachments,request.continuation==nil,request.acceptedWork==nil {upload.setValue(ConversationMemoryProposalReceipt.contractName,forHTTPHeaderField:"X-Catpaw-Memory-Proposal-Contract")}
         // catpaw.approval.v1 negotiation: only plain chat turns are offered approval-gated tools.
-        if Self.supportsResume(request),request.image==nil,!request.hasUploadedAttachments {upload.setValue(Self.approvalContract,forHTTPHeaderField:Self.approvalHeader)}
+        if Self.supportsResume(request),request.image==nil,!request.hasUploadedAttachments {upload.setValue(Self.approvalContract,forHTTPHeaderField:Self.approvalHeader);upload.setValue(ConversationUIEvent.contract,forHTTPHeaderField:ConversationUIEvent.header)}
         upload.setValue(TimeZone.current.identifier,forHTTPHeaderField:Self.timeZoneHeader) // task tools resolve local times
         try Task.checkCancellation()
         return (auth, grant, upload)
@@ -690,9 +705,14 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
         case "turn_suspended":
             guard let ids = data["interrupt_ids"] as? [String], !ids.isEmpty, ids.allSatisfy({ UUID(uuidString: $0) != nil }), let expires = data["expires_at"] as? String else { throw ConversationSessionError.invalidEvent }
             payload = .suspended(interruptIDs: ids, expiresAt: expires)
+        case "ui.block", "ui.block.update", "ui.block.resolve":
+            // catpaw.ui.v1: plain approval-negotiated turns only; the data object is passed through for the renderer.
+            guard reality != "not_configured", Self.supportsResume(request), request.image==nil, !request.hasUploadedAttachments, let raw = type else { throw ConversationSessionError.invalidEvent }
+            let ui = try ConversationUIEvent.decode(type: raw, sequence: sequence, payload: try Self.jsonData(data))
+            payload = ui.type == .block ? .uiBlock(ui) : ui.type == .update ? .uiBlockUpdate(ui) : .uiBlockResolve(ui)
         case "approval_resolved":
             guard let id = data["interrupt_id"] as? String, UUID(uuidString: id) != nil, let call = data["call_id"] as? String, !call.isEmpty,
-                  let decision = data["decision"] as? String, ["approved","denied","expired","cancelled"].contains(decision) else { throw ConversationSessionError.invalidEvent }
+                  let decision = data["decision"] as? String, ["approved","denied","expired","cancelled"].contains(decision) || (data["kind"] as? String == "ui" && ["submitted","dismissed","error"].contains(decision)) else { throw ConversationSessionError.invalidEvent }
             payload = .approvalResolved(interruptID: id, callID: call, decision: decision, remember: Self.boolean(data["remember"]) ?? false)
         case "turn_completed":
             guard reality != "not_configured", let id = UUID(uuidString: data["message_id"] as? String ?? "") else { throw ConversationSessionError.invalidEvent }
@@ -1410,7 +1430,8 @@ public actor CatpawDemoUIScript {
     private var completed = false
     public init() {}
     private func next(_ type: String, _ json: String) -> CatpawDemoUIEvent { sequence += 1; return CatpawDemoUIEvent(sequence: sequence, type: type, json: json) }
-    private static func interrupt(_ id: String) -> String { "\"interruptId\":\"demo-interrupt-\(id)\",\"argsHash\":\"\(String(repeating: "0", count: 64))\",\"expiresAt\":\"\(expiresAt)\"" }
+    public static func interruptID(_ blockID: String) -> String { stableID("catpaw-demo-interrupt-\(blockID)").uuidString.lowercased() }
+    private static func interrupt(_ id: String) -> String { "\"interruptId\":\"\(interruptID(id))\",\"argsHash\":\"\(String(repeating: "0", count: 64))\",\"expiresAt\":\"\(expiresAt)\"" }
     /// Round 1. Calling again returns nothing (the script runs once per instance).
     public func start() -> [CatpawDemoUIEvent] {
         guard round == 0 else { return [] }
@@ -1420,7 +1441,7 @@ public actor CatpawDemoUIScript {
             next("ui.block", #"{"id":"demo-list","kind":"list","schemaVersion":1,"title":"待办","items":[{"id":"a","label":"写周报"},{"id":"b","label":"买菜"},{"id":"c","label":"跑步"}]}"#),
             next("ui.block", #"{"id":"demo-progress","kind":"progress","schemaVersion":1,"title":"整理今天","steps":[{"id":"read","label":"读取日程","state":"running"},{"id":"plan","label":"排优先级","state":"pending"}]}"#),
             next("ui.block", #"{"id":"demo-choices","kind":"choices","schemaVersion":1,"title":"先做哪件？","selection":"single","allowOther":true,"items":[{"id":"a","label":"写周报"},{"id":"b","label":"买菜"}],"# + Self.interrupt("demo-choices") + "}"),
-            next("turn_suspended", "{\"interrupt_ids\":[\"demo-interrupt-demo-choices\"],\"expires_at\":\"\(Self.expiresAt)\"}"),
+            next("turn_suspended", "{\"interrupt_ids\":[\"\(Self.interruptID("demo-choices"))\"],\"expires_at\":\"\(Self.expiresAt)\"}"),
         ]
     }
     private func round2() -> [CatpawDemoUIEvent] {
@@ -1430,7 +1451,7 @@ public actor CatpawDemoUIScript {
             next("ui.block", #"{"id":"demo-form","kind":"form","schemaVersion":1,"title":"跑步计划","fields":[{"id":"km","label":"公里","type":"number","required":true},{"id":"at","label":"时间","type":"time"}],"# + Self.interrupt("demo-form") + "}"),
             next("ui.block", #"{"id":"demo-confirm","kind":"confirm","schemaVersion":1,"title":"创建提醒？","body":"18:30 提醒跑步","actions":[{"id":"approve","label":"创建"},{"id":"deny","label":"取消"}],"# + Self.interrupt("demo-confirm") + "}"),
             next("ui.block", #"{"id":"demo-sheet","kind":"sheet","schemaVersion":1,"title":"弹窗","body":"这是一个原生弹窗（不是代码）","actions":[{"id":"ok","label":"好的"}],"# + Self.interrupt("demo-sheet") + "}"),
-            next("turn_suspended", "{\"interrupt_ids\":[\"demo-interrupt-demo-form\",\"demo-interrupt-demo-confirm\",\"demo-interrupt-demo-sheet\"],\"expires_at\":\"\(Self.expiresAt)\"}"),
+            next("turn_suspended", "{\"interrupt_ids\":[\"\(Self.interruptID("demo-form"))\",\"\(Self.interruptID("demo-confirm"))\",\"\(Self.interruptID("demo-sheet"))\"],\"expires_at\":\"\(Self.expiresAt)\"}"),
         ]
     }
     /// `POST …/interrupts/{interruptId}/decision` with `{operation_id, decision, args_hash, response?}`.
@@ -1456,7 +1477,7 @@ public actor CatpawDemoUIScript {
         }
         let status = decision == .submit ? "submitted" : decision == .dismiss ? "dismissed" : "error"
         var events = [
-            next("approval_resolved", "{\"interrupt_id\":\"demo-interrupt-\(blockID)\",\"call_id\":\"call-\(blockID)\",\"kind\":\"ui\",\"decision\":\"\(status)\"}"),
+            next("approval_resolved", "{\"interrupt_id\":\"\(Self.interruptID(blockID))\",\"call_id\":\"call-\(blockID)\",\"kind\":\"ui\",\"decision\":\"\(status)\"}"),
             next("ui.block.resolve", "{\"id\":\"\(blockID)\",\"status\":\"\(status)\"}"),
         ]
         resolved[blockID] = (operationID, body, [])
@@ -1469,15 +1490,16 @@ public actor CatpawDemoUIScript {
     }
 }
 
-/// DEBUG demo `ConversationBackend`: every turn runs the approval + create_task script, then exposes the
-/// catpaw.ui.v1 script on `ui` (the domain stream has no ui.* payloads yet; the UI layer reads `ui` directly).
+/// DEBUG demo `ConversationBackend`, on the same domain path as the HTTP backend:
 /// - reply: turn_started → text_delta → tool_call(create_task) → approval_requested → turn_suspended
-/// - submitApproval(approve/approve_always/deny): approval_resolved → tool_result(create_task, ok|denied) → text_delta → turn_completed
+/// - submitApproval: approval_resolved → tool_result(create_task, ok|denied) → catpaw.ui.v1 round 1
+///   (ui.block card/list/progress/choices) → turn_suspended
+/// - submitUIDecision (choices): approval_resolved(kind ui) → ui.block.resolve → round 2 (ui.block.update progress,
+///   ui.block form/confirm/sheet) → turn_suspended; after the last of form/confirm/sheet: text_delta → turn_completed.
 public actor CatpawDemoConversationBackend: ConversationBackend {
     public static let shared = CatpawDemoConversationBackend()
     public static let demoTaskCallID = "call-demo-create-task"
-    public let ui = CatpawDemoUIScript()
-    private struct Turn { var sequence: Int; var messageID: UUID; var text: String; var interruptID: String; var decided: (UUID, ConversationApprovalDecision)?; var resolvedEvents: [ConversationTurnEvent] }
+    private struct Turn { var sequence: Int; var messageID: UUID; var text: String; var interruptID: String; var decided: (UUID, ConversationApprovalDecision)?; var resolvedEvents: [ConversationTurnEvent]; var ui: CatpawDemoUIScript; var uiReplies: [String: (UUID, [ConversationTurnEvent])] }
     private var turns: [UUID: Turn] = [:]
     public init() {}
     public func connection(scope: DataScope) async -> ConversationConnection {
@@ -1488,20 +1510,45 @@ public actor CatpawDemoConversationBackend: ConversationBackend {
         turn.sequence += 1; turns[request.operationID] = turn
         return ConversationTurnEvent(operationID: request.operationID, epoch: 1, sequence: turn.sequence, payload: payload)
     }
+    private func nextSequence(_ request: ConversationTurnRequest) -> Int { turns[request.operationID]!.sequence + 1 }
     private static func stream(_ events: [ConversationTurnEvent]) -> AsyncThrowingStream<ConversationTurnEvent, Error> {
         AsyncThrowingStream { continuation in for event in events { continuation.yield(event) }; continuation.finish() }
     }
+    /// Script wire events → domain events with this turn's continuous sequence (same `ConversationUIEvent.decode` as HTTP).
+    private func domain(_ request: ConversationTurnRequest, _ script: [CatpawDemoUIEvent]) throws -> [ConversationTurnEvent] {
+        var out: [ConversationTurnEvent] = []
+        for wire in script {
+            let data = Data(wire.json.utf8)
+            let object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] ?? [:]
+            switch wire.type {
+            case "ui.block", "ui.block.update", "ui.block.resolve":
+                let sequence = nextSequence(request)
+                let ui = try ConversationUIEvent.decode(type: wire.type, sequence: sequence, payload: data)
+                out.append(event(request, ui.type == .block ? .uiBlock(ui) : ui.type == .update ? .uiBlockUpdate(ui) : .uiBlockResolve(ui)))
+            case "turn_suspended":
+                out.append(event(request, .suspended(interruptIDs: object["interrupt_ids"] as? [String] ?? [], expiresAt: object["expires_at"] as? String ?? "")))
+            case "approval_resolved":
+                out.append(event(request, .approvalResolved(interruptID: object["interrupt_id"] as? String ?? "", callID: object["call_id"] as? String ?? "", decision: object["decision"] as? String ?? "", remember: false)))
+            case "turn_completed":
+                let turn = turns[request.operationID]!, tail = "都安排好了。"
+                out.append(event(request, .textDelta(messageID: turn.messageID, text: tail)))
+                out.append(event(request, .completed(messageID: turn.messageID, finalTextHash: textHash(turn.text + tail))))
+            default: throw ConversationSessionError.invalidEvent
+            }
+        }
+        return out
+    }
     public func reply(_ request: ConversationTurnRequest) async throws -> AsyncThrowingStream<ConversationTurnEvent, Error> {
         guard turns[request.operationID] == nil else { throw ConversationSessionError.unresolvedOperation }
-        let interruptID = UUID().uuidString.lowercased(), messageID = UUID()
-        turns[request.operationID] = Turn(sequence: 0, messageID: messageID, text: "好的，我先帮你建一个任务。", interruptID: interruptID, decided: nil, resolvedEvents: [])
+        let interruptID = UUID().uuidString.lowercased(), messageID = UUID(), opening = "好的，我先帮你建一个任务。"
+        turns[request.operationID] = Turn(sequence: 0, messageID: messageID, text: opening, interruptID: interruptID, decided: nil, resolvedEvents: [], ui: CatpawDemoUIScript(), uiReplies: [:])
         let arguments = #"{"due":"2026-10-16","title":"跑步 5 公里"}"#
         let expires = ISO8601DateFormatter().string(from: Date().addingTimeInterval(600))
         let approval = ConversationApprovalRequest(interruptID: interruptID, callID: Self.demoTaskCallID, tool: "create_task", summary: "创建任务「跑步 5 公里」（2026-10-16）", arguments: arguments, argsHash: String(repeating: "a", count: 64), expiresAt: expires, risk: "local_write", rememberAllowed: true)
         let hash = textHash(request.operationID.uuidString.lowercased())
         var events: [ConversationTurnEvent] = []
         events.append(event(request, .started(requestHash: hash, conversationRevision: 1, grantEpoch: 1)))
-        events.append(event(request, .textDelta(messageID: messageID, text: "好的，我先帮你建一个任务。")))
+        events.append(event(request, .textDelta(messageID: messageID, text: opening)))
         events.append(event(request, .toolStarted(callID: Self.demoTaskCallID, name: "create_task", arguments: arguments)))
         events.append(event(request, .approvalRequested(approval)))
         events.append(event(request, .suspended(interruptIDs: [interruptID], expiresAt: expires)))
@@ -1517,15 +1564,31 @@ public actor CatpawDemoConversationBackend: ConversationBackend {
         }
         let approved = decision != .deny
         let content = approved ? #"{"status":"ok","task":{"id":"demo-task","title":"跑步 5 公里","due":"2026-10-16"}}"# : #"{"status":"denied"}"#
-        let tail = approved ? "任务已创建。下面是 UI 演示块。" : "好的，没有创建任务。下面是 UI 演示块。"
         var events: [ConversationTurnEvent] = []
         events.append(event(request, .approvalResolved(interruptID: interruptID, callID: Self.demoTaskCallID, decision: approved ? "approved" : "denied", remember: decision == .approveAlways)))
         events.append(event(request, .toolResult(ConversationToolResult(callID: Self.demoTaskCallID, name: "create_task", content: content).withStatus(approved ? "ok" : "denied"))))
-        let full = turn.text + tail
-        events.append(event(request, .textDelta(messageID: turn.messageID, text: tail)))
-        events.append(event(request, .completed(messageID: turn.messageID, finalTextHash: textHash(full))))
+        let round1 = await turn.ui.start()
+        events += try domain(request, round1)
         var saved = turns[request.operationID]!
         saved.decided = (operationID, decision); saved.resolvedEvents = events; turns[request.operationID] = saved
+        return Self.stream(events)
+    }
+    public func submitUIDecision(_ request: ConversationTurnRequest, interruptID: String, decision: ConversationUIDecision, argsHash: String, response: Data?, operationID: UUID, afterSequence: Int) async throws -> AsyncThrowingStream<ConversationTurnEvent, Error> {
+        let key = interruptID.lowercased()
+        guard let turn = turns[request.operationID], let blockID = CatpawDemoUIScript.interactive.first(where: { CatpawDemoUIScript.interruptID($0) == key }) else { throw ConversationApprovalFailure.notFound }
+        guard argsHash == String(repeating: "0", count: 64) else { throw ConversationApprovalFailure.stale }
+        let script: [CatpawDemoUIEvent]
+        let responseText = response.map { String(decoding: $0, as: UTF8.self) }
+        do { script = try await turn.ui.respond(blockID: blockID, decision: CatpawDemoUIDecision(rawValue: decision.rawValue) ?? .dismiss, responseJSON: responseText, operationID: operationID) }
+        catch CatpawDemoUIFailure.notFound { throw ConversationApprovalFailure.notFound }
+        catch CatpawDemoUIFailure.consumed { throw ConversationApprovalFailure.consumed }
+        catch CatpawDemoUIFailure.conflict { throw ConversationApprovalFailure.rejected(status: 409, code: "approval_operation_conflict") }
+        catch CatpawDemoUIFailure.invalidResponse { throw ConversationApprovalFailure.rejected(status: 422, code: "ui_response_invalid") }
+        // Same operation and body: replay what was already streamed after `afterSequence`.
+        if let prior = turns[request.operationID]!.uiReplies[key] { return Self.stream(prior.1.filter { $0.sequence > afterSequence }) }
+        let events = try domain(request, script)
+        var saved = turns[request.operationID]!
+        saved.uiReplies[key] = (operationID, events); turns[request.operationID] = saved
         return Self.stream(events)
     }
     public func observe(_ request: ConversationTurnRequest) async throws -> ConversationObservation { throw ConversationSessionError.unresolvedOperation }

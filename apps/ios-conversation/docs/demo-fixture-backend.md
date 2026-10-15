@@ -14,49 +14,28 @@ Pick one:
 When it is on, `NativeAuthApplicationModel` hands `CatpawDemoConversationBackend.shared` to `ConversationSessionService` in place of the HTTP backend.
 Sign-in and local storage still work as usual. Only chat turns are scripted.
 
-## Domain script (`CatpawDemoConversationBackend`)
+## Script (same domain path as the HTTP backend)
 
-Every message you send runs the same script:
+Every message runs:
 
 | step | events |
 |---|---|
-| send | `turn_started` → `text_delta` → `tool_call create_task` → `approval_requested` (risk `local_write`, `rememberAllowed` true) → `turn_suspended` |
-| approve / approve_always | `approval_resolved approved` → `tool_result create_task {status:"ok", task}` → `text_delta` → `turn_completed` |
-| deny | `approval_resolved denied` → `tool_result {status:"denied"}` → `text_delta` → `turn_completed` |
+| send | `turn_started` → `text_delta` → `tool_call create_task` → `approval_requested` → `turn_suspended` |
+| `submitApproval` approve / deny | `approval_resolved` → `tool_result create_task {ok｜denied}` → `.uiBlock` card, list, progress, choices (waits) → `turn_suspended` |
+| `submitUIDecision` choices | `approval_resolved(kind ui)` → `.uiBlockResolve` → `.uiBlockUpdate` progress → `.uiBlock` form, confirm, sheet → `turn_suspended` |
+| `submitUIDecision` form / confirm / sheet (any order) | resolve each; after the last: `text_delta` → `turn_completed` |
 
-The decision goes through `submitApproval`, so the approval card exercises the real flow:
-
-- `args_hash` must match; otherwise the call fails with `.stale`.
-- Repeating the same `operationID` and decision replays the result.
-- Any other decision fails with `.consumed`.
-- Stop/cancel works.
-
-## catpaw.ui.v1 script (`CatpawDemoConversationBackend.shared.ui`)
-
-The domain event enum has no `ui.*` cases yet.
-Until the UI layer adds them, it reads the script directly:
+The app answers through the real service API:
 
 ```swift
-let ui = CatpawDemoConversationBackend.shared.ui
-var events = await ui.start()        // round 1: ui.block card, list, progress, choices (+interruptId/argsHash/expiresAt) → turn_suspended
-events += try await ui.respond(blockID: "demo-choices", decision: .submit,
-    responseJSON: #"{"type":"ui.response","blockId":"demo-choices","actionId":null,"values":{},"selected":["a"],"respondedAt":"2026-10-16T00:10:00Z"}"#,
-    operationID: UUID())             // approval_resolved + ui.block.resolve, then round 2: ui.block.update(progress), form, confirm, sheet → turn_suspended
-// answer demo-form / demo-confirm / demo-sheet in any order (partial answers are accepted). After the last one: turn_completed
+let blocks = try await service.pendingUIBlocks(scope: scope, conversationID: cid)   // [ConversationUIEvent]
+try await service.submitUIDecision(scope: scope, conversationID: cid, turnID: turnID,
+    interruptID: blocks[0].interruptID!, decision: .submit, argsHash: blocks[0].argsHash!,
+    response: Data(#"{"type":"ui.response","blockId":"demo-choices","actionId":null,"values":{},"selected":["a"],"respondedAt":"2026-10-16T00:10:00Z"}"#.utf8))
 ```
 
-Each `CatpawDemoUIEvent` has `type`, `sequence` and `json`.
-`json` is the event's `data` object, byte-for-byte in the server's shape.
-
-- **Decisions:**
-  - `.submit` takes a `ui.response`.
-  - `.reportError` takes a `ui.error`.
-  - `.dismiss` takes nil.
-- **Errors:**
-  - Same `operationID` and body: replays the result.
-  - Same `operationID`, different body: `.conflict`.
-  - Another `operationID` for a block already answered: `.consumed`.
-  - Malformed body, or a `confirm` without `actionId`: `.invalidResponse`.
+Errors are `ConversationApprovalFailure`; show `friendlyMessage`.
+Same `operationID` replays; another operation on an answered block is `.consumed`; bad body is `.rejected(422, "ui_response_invalid")`; wrong `argsHash` is `.stale`.
 
 ## Recorded SSE (wire level)
 
@@ -75,8 +54,10 @@ CATPAW_RECORD_UI_DEMO=1 deno test --no-check --allow-read --allow-write=docs/fix
 
 ## Tests
 
-`Scripts/test-demo-fixture.sh` (macOS, swiftc with `-D DEBUG`) checks:
+`Scripts/test-demo-fixture.sh` (macOS, swiftc with `-D DEBUG`; run from anywhere) decodes the recorded jsonl with `ConversationUIEvent.decode` and drives `ConversationSessionService` with the demo backend. It checks:
 
 - the switch;
-- approval/create_task resume and idempotency;
-- every ui kind, the update, the four resolves and decision replay.
+- every recorded ui kind, update and resolve decodes; malformed events are rejected;
+- approval → ui round 1 → choices → round 2 → partial answers in any order → completed;
+- stale / invalid / consumed errors and their friendly messages;
+- the journal (`ConversationTurnRecord.uiEvents`) survives reopening from disk, ordered and unique by sequence.

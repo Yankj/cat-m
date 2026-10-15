@@ -237,6 +237,12 @@ public struct ConversationTurnEvent: Sendable {
         case suspended(interruptIDs: [String], expiresAt: String)
         /// catpaw.approval.v1 `approval_resolved`: decision is "approved", "denied", "expired" or "cancelled".
         case approvalResolved(interruptID: String, callID: String, decision: String, remember: Bool)
+        /// catpaw.ui.v1 `ui.block` (new block; `interruptID` set when it waits for `submitUIDecision`).
+        case uiBlock(ConversationUIEvent)
+        /// catpaw.ui.v1 `ui.block.update`: shallow merge into the block with the same id.
+        case uiBlockUpdate(ConversationUIEvent)
+        /// catpaw.ui.v1 `ui.block.resolve`: `status` is submitted, dismissed, error, expired or cancelled.
+        case uiBlockResolve(ConversationUIEvent)
     }
     public let operationID: UUID
     public let epoch: Int
@@ -267,7 +273,14 @@ public struct ConversationTurnRecord: Codable, Sendable, Identifiable {
     public var retryAfterSeconds:Int? = nil
     /// catpaw.approval.v1: interrupts still waiting for a decision (state stays `.running`, the server turn is `awaiting_approval`).
     public var pendingApprovals:[ConversationApprovalRequest]? = nil
-    public var awaitingApproval:Bool { state == .running && !(pendingApprovals ?? []).isEmpty }
+    /// catpaw.ui.v1 events of this turn, ordered by sequence (journal; replays and resumes are de-duplicated by sequence).
+    public var uiEvents:[ConversationUIEvent]? = nil
+    /// Waiting ui blocks: `ui.block` with an interrupt and no `ui.block.resolve` yet.
+    public var pendingUIBlocks:[ConversationUIEvent] {
+        let events = uiEvents ?? [], resolved = Set(events.filter { $0.type == .resolve }.map(\.id))
+        return events.filter { $0.waitsForDecision && !resolved.contains($0.id) }
+    }
+    public var awaitingApproval:Bool { state == .running && (!(pendingApprovals ?? []).isEmpty || !pendingUIBlocks.isEmpty) }
 }
 /// catpaw.approval.v1 interrupt as shown to the user (services/edge/docs/approval-contract.md).
 public struct ConversationApprovalRequest: Codable, Sendable, Equatable, Identifiable {
@@ -290,6 +303,70 @@ public struct ConversationApprovalRequest: Codable, Sendable, Equatable, Identif
     public init(interruptID: String, callID: String, tool: String, summary: String, arguments: String, argsHash: String, expiresAt: String, risk: String, rememberAllowed: Bool) { self.interruptID = interruptID; self.callID = callID; self.tool = tool; self.summary = summary; self.arguments = arguments; self.argsHash = argsHash; self.expiresAt = expiresAt; self.risk = risk; self.rememberAllowed = rememberAllowed }
 }
 public enum ConversationApprovalDecision: String, Codable, Sendable { case approve, deny, approveAlways = "approve_always" }
+/// catpaw.ui.v1 answer to a waiting block (services/edge/docs/generative-ui-contract.md).
+public enum ConversationUIDecision: String, Codable, Sendable { case submit, dismiss, reportError = "report_error" }
+/// One catpaw.ui.v1 wire event. `payload` is the server's `data` object byte-for-byte (the renderer decodes it);
+/// the key fields are decoded for routing, journal and decisions. Journaled on the turn record by `sequence`.
+public struct ConversationUIEvent: Codable, Sendable, Equatable {
+    public enum EventType: String, Codable, Sendable { case block = "ui.block", update = "ui.block.update", resolve = "ui.block.resolve" }
+    public static let contract = "catpaw.ui.v1"
+    public static let header = "X-Catpaw-UI-Contract"
+    public static let resolveStatuses: Set<String> = ["submitted", "dismissed", "error", "expired", "cancelled"]
+    public static let kinds: Set<String> = ["card", "choices", "confirm", "form", "sheet", "list", "progress"]
+    public let type: EventType
+    public let sequence: Int
+    public let payload: Data
+    public let id: String
+    public let kind: String?
+    public let interruptID: String?
+    public let argsHash: String?
+    public let expiresAt: String?
+    public let status: String?
+    public var waitsForDecision: Bool { type == .block && interruptID != nil }
+    /// Validates the key fields of one `ui.*` event's `data`; throws `invalidEvent` on anything malformed.
+    public static func decode(type raw: String, sequence: Int, payload: Data) throws -> ConversationUIEvent {
+        guard let type = EventType(rawValue: raw), sequence > 0, payload.count <= 65536,
+              let object = (try? JSONSerialization.jsonObject(with: payload)) as? [String: Any],
+              let id = object["id"] as? String, !id.isEmpty, id.utf8.count <= 64 else { throw ConversationSessionError.invalidEvent }
+        let kind = object["kind"] as? String, interrupt = object["interruptId"] as? String, hash = object["argsHash"] as? String
+        let expires = object["expiresAt"] as? String, status = object["status"] as? String
+        switch type {
+        case .block:
+            guard let kind, kinds.contains(kind), status == nil else { throw ConversationSessionError.invalidEvent }
+            if let interrupt { guard UUID(uuidString: interrupt) != nil, let hash, hash.count == 64, expires != nil else { throw ConversationSessionError.invalidEvent } }
+            else { guard hash == nil else { throw ConversationSessionError.invalidEvent } }
+        case .update:
+            guard kind == nil, interrupt == nil, status == nil else { throw ConversationSessionError.invalidEvent }
+        case .resolve:
+            guard let status, resolveStatuses.contains(status) else { throw ConversationSessionError.invalidEvent }
+        }
+        return ConversationUIEvent(type: type, sequence: sequence, payload: payload, id: id, kind: kind, interruptID: interrupt?.lowercased(), argsHash: hash, expiresAt: expires, status: status)
+    }
+    public init(type: EventType, sequence: Int, payload: Data, id: String, kind: String?, interruptID: String?, argsHash: String?, expiresAt: String?, status: String?) {
+        self.type = type; self.sequence = sequence; self.payload = payload; self.id = id; self.kind = kind; self.interruptID = interruptID; self.argsHash = argsHash; self.expiresAt = expiresAt; self.status = status
+    }
+}
+extension ConversationApprovalFailure {
+    /// User-facing text for approval and catpaw.ui.v1 decisions.
+    public var friendlyMessage: String {
+        switch self {
+        case .transport: return "网络中断，确认可能未送达；会用同一个请求自动重试。"
+        case .expired: return "已超过 10 分钟，这个确认已过期，助手会按未确认继续。"
+        case .consumed: return "这个确认已经处理过了。"
+        case .stale: return "内容已变化，请查看最新内容后再确认。"
+        case .notFound: return "找不到这个确认，可能已被取消。"
+        case .noPendingApproval: return "当前没有等待确认的内容。"
+        case .unsupported: return "当前连接不支持在这里确认。"
+        case .rejected(_, let code):
+            switch code ?? "" {
+            case "approval_operation_conflict": return "这个确认已用另一个答案提交过。"
+            case "ui_response_invalid", "approval_schema_invalid": return "填写的内容不符合要求，请检查后再提交。"
+            case "approval_grant_conflict": return "对话已变化，请刷新后再试。"
+            default: return "确认未被接受，请稍后再试。"
+            }
+        }
+    }
+}
 public enum ConversationApprovalFailure: Error, Sendable, Equatable {
     /// Network error / 5xx before a response: resend with the SAME decision operationID (idempotent).
     case transport
@@ -380,6 +457,8 @@ public protocol ConversationBackend: Sendable {
     /// `{operation_id, decision, args_hash}`; on success streams the SAME turn's events after N (SSE).
     /// Throws `ConversationApprovalFailure` for refusals.
     func submitApproval(_ request: ConversationTurnRequest, interruptID: String, decision: ConversationApprovalDecision, argsHash: String, operationID: UUID, afterSequence: Int) async throws -> AsyncThrowingStream<ConversationTurnEvent, Error>
+    /// catpaw.ui.v1: same decision route as approval.v1 with `decision` submit/dismiss/report_error and the raw `response` object.
+    func submitUIDecision(_ request: ConversationTurnRequest, interruptID: String, decision: ConversationUIDecision, argsHash: String, response: Data?, operationID: UUID, afterSequence: Int) async throws -> AsyncThrowingStream<ConversationTurnEvent, Error>
 }
 /// `cancel{turn_id,state,cancelled,already_terminal}` from the Edge cancel route (services/edge/docs/turn-cancel-contract.md).
 public struct ConversationTurnCancelReceipt: Sendable, Equatable {
@@ -442,6 +521,7 @@ public extension ConversationBackend {
     func retryBusyTurn(_ request: ConversationTurnRequest, afterSequence: Int) async throws -> AsyncThrowingStream<ConversationTurnEvent, Error> { throw ConversationSessionError.unresolvedOperation }
     func cancelTurn(_ request: ConversationTurnRequest) async throws -> ConversationTurnCancelReceipt { throw ConversationTurnCancelFailure.unsupported }
     func submitApproval(_ request: ConversationTurnRequest, interruptID: String, decision: ConversationApprovalDecision, argsHash: String, operationID: UUID, afterSequence: Int) async throws -> AsyncThrowingStream<ConversationTurnEvent, Error> { throw ConversationApprovalFailure.unsupported }
+    func submitUIDecision(_ request: ConversationTurnRequest, interruptID: String, decision: ConversationUIDecision, argsHash: String, response: Data?, operationID: UUID, afterSequence: Int) async throws -> AsyncThrowingStream<ConversationTurnEvent, Error> { throw ConversationApprovalFailure.unsupported }
     func revisionWorkCapability(scope:DataScope,conversationID:UUID) async throws -> ConversationAcceptedWorkCapability {.init()}
     func freezeRevisionWork(_ request:ConversationTurnRequest,selection:ConversationRevisionWorkSelection) async throws -> ConversationRevisionWorkIntent {throw ConversationAcceptedWorkError.unavailable}
     func acceptedWorkCapability(scope:DataScope,conversationID:UUID) async throws -> ConversationAcceptedWorkCapability {.init()}

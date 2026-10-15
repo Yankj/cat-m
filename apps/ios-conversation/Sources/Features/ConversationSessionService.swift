@@ -456,8 +456,19 @@ public actor ConversationSessionService {
             guard Self.isPlain(request), session.messages.contains(where: { $0.id == callRow && $0.toolName == approval.tool && !$0.complete }),
                   !(turn.pendingApprovals ?? []).contains(where: { $0.interruptID == approval.interruptID || $0.callID == approval.callID }) else { throw ConversationSessionError.invalidEvent }
             turn.pendingApprovals = (turn.pendingApprovals ?? []) + [approval]
+        case .uiBlock(let ui), .uiBlockUpdate(let ui), .uiBlockResolve(let ui):
+            guard Self.isPlain(request), ui.sequence == event.sequence else { throw ConversationSessionError.invalidEvent }
+            var journal = turn.uiEvents ?? []
+            if !journal.contains(where: { $0.sequence == ui.sequence }) {
+                switch ui.type {
+                case .block: guard !journal.contains(where: { $0.type == .block && $0.id == ui.id }) else { throw ConversationSessionError.invalidEvent }
+                case .update: guard journal.contains(where: { $0.type == .block && $0.id == ui.id && !$0.waitsForDecision }) else { throw ConversationSessionError.invalidEvent }
+                case .resolve: guard journal.contains(where: { $0.type == .block && $0.id == ui.id }) else { throw ConversationSessionError.invalidEvent }
+                }
+                journal.append(ui); journal.sort { $0.sequence < $1.sequence }; turn.uiEvents = journal
+            }
         case .suspended(let ids, _):
-            let pending = Set((turn.pendingApprovals ?? []).map(\.interruptID))
+            let pending = Set((turn.pendingApprovals ?? []).map(\.interruptID)).union(turn.pendingUIBlocks.compactMap(\.interruptID))
             guard !ids.isEmpty, Set(ids).isSubset(of: pending) else { throw ConversationSessionError.invalidEvent }
         case .approvalResolved(let id, let call, _, _):
             // A replay/observe may resolve an interrupt this journal never saw pending (e.g. expired while offline).
@@ -792,7 +803,7 @@ public actor ConversationSessionService {
         return state == .completed || state == .failed
     }
     // MARK: catpaw.approval.v1 (services/edge/docs/approval-contract.md)
-    static let approvalToolNames: Set<String> = ["list_tasks", "create_task", "update_task", "create_calendar_event", "update_calendar_event", "create_reminder", "update_reminder", "external_write"]
+    static let approvalToolNames: Set<String> = ["render_ui", "list_tasks", "create_task", "update_task", "create_calendar_event", "update_calendar_event", "create_reminder", "update_reminder", "external_write"]
     /// Cold start / observe: the snapshot's `pending_approvals` is authoritative for a turn the server reports `awaiting_approval`.
     private func restoreApprovals(_ observation: ConversationObservation, turnID: UUID, observationToken: UUID) async throws {
         let request = observation.request
@@ -843,6 +854,41 @@ public actor ConversationSessionService {
         do { return try await pump(stream, request: turn.request, observationToken: token) }
         catch {
             if active[conversationID] == token, !(error is CancellationError) { try? await markUnknown(turn.request, reason: "确认已提交，结果待核对；读取原请求后继续。", observationToken: token) }
+            throw error
+        }
+    }
+    /// Waiting catpaw.ui.v1 blocks of this conversation's current turn (journal).
+    public func pendingUIBlocks(scope: DataScope, conversationID: UUID) async throws -> [ConversationUIEvent] {
+        try await read(scope: scope, conversationID: conversationID).turns.last(where: { $0.awaitingApproval })?.pendingUIBlocks ?? []
+    }
+    /// catpaw.ui.v1 answer for a waiting block; reuses the approval.v1 decision route and the after_sequence SSE resume.
+    /// `response` is the raw `ui.response` (submit) / `ui.error` (report_error) JSON; nil for dismiss.
+    /// Idempotent on `operationID`: after `.transport`, resend with the SAME id. Errors are `ConversationApprovalFailure`
+    /// (see `friendlyMessage`); `.expired`/`.consumed`/`.stale`/`.notFound` refresh the journal before rethrowing.
+    @discardableResult
+    public func submitUIDecision(scope: DataScope, conversationID: UUID, turnID: UUID, interruptID: String, decision: ConversationUIDecision, argsHash: String, response: Data?, operationID: UUID = UUID()) async throws -> UUID {
+        guard active[conversationID] == nil, !cancelling.contains(conversationID) else { throw ConversationSessionError.busy }
+        let saved = try await read(scope: scope, conversationID: conversationID)
+        guard let turn = saved.turns.first(where: { $0.id == turnID }), turn.awaitingApproval,
+              let block = turn.pendingUIBlocks.first(where: { $0.interruptID == interruptID.lowercased() }) else { throw ConversationApprovalFailure.noPendingApproval }
+        guard block.argsHash == argsHash else { throw ConversationApprovalFailure.stale }
+        if decision == .dismiss { guard response == nil else { throw ConversationApprovalFailure.rejected(status: 422, code: "ui_response_invalid") } }
+        else { guard response != nil else { throw ConversationApprovalFailure.rejected(status: 422, code: "ui_response_invalid") } }
+        let token = UUID(); active[conversationID] = token
+        defer { if active[conversationID] == token { active.removeValue(forKey: conversationID) } }
+        let stream: AsyncThrowingStream<ConversationTurnEvent, Error>
+        do { stream = try await backend.submitUIDecision(turn.request, interruptID: interruptID.lowercased(), decision: decision, argsHash: argsHash, response: response, operationID: operationID, afterSequence: turn.lastSequence) }
+        catch let failure as ConversationApprovalFailure {
+            if [.expired, .consumed, .stale, .notFound].contains(failure), active[conversationID] == token {
+                if let observation = try? await backend.observe(turn.request), active[conversationID] == token, (try? Self.encode(observation.request)) == (try? Self.encode(turn.request)) {
+                    for event in observation.events { try? await apply(event, request: turn.request, observing: true, observationToken: token) }
+                }
+            }
+            throw failure
+        }
+        do { return try await pump(stream, request: turn.request, observationToken: token) }
+        catch {
+            if active[conversationID] == token, !(error is CancellationError) { try? await markUnknown(turn.request, reason: "回答已提交，结果待核对；读取原请求后继续。", observationToken: token) }
             throw error
         }
     }
