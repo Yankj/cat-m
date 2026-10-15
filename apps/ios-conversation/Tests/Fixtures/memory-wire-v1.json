@@ -1,0 +1,129 @@
+{
+  "schema_version": 1,
+  "fixture_kind": "actual_maintenance_memory_http_v1",
+  "reality": {
+    "auth": "synthetic",
+    "model": "injected_not_invoked",
+    "repository": "serialized_TestRepository",
+    "real_auth": false,
+    "real_model": false,
+    "real_sql": false
+  },
+  "request": {
+    "schema_version": 1,
+    "contract": "catpaw.memory.v1",
+    "operation_id": "074643CE-F124-48DB-A323-CBDDDF23366F",
+    "expected_memory_generation": 2,
+    "command": {
+      "type": "remember",
+      "conversation_id": "248DBCE4-99E8-405D-B5ED-A53B44E52712",
+      "source_text": "Fictional preference: I prefer tea",
+      "claim": {
+        "kind": "preference",
+        "predicate": "drink.preference",
+        "value": "tea",
+        "conditions": {},
+        "assertion": "explicit",
+        "evidence": {
+          "span_start": 0,
+          "span_end": 34
+        }
+      },
+      "allow_relearn": false,
+      "sensitive_consent": false
+    }
+  },
+  "request_hash": "010d9fa29db160a35601a58d8e950aa8098c1b66dde80d090a2c454a526c8621",
+  "receipt": {
+    "schema_version": 1,
+    "contract": "catpaw.memory.v1",
+    "scope_id": "630054e6-5115-4fe1-95cb-9fe3ae82165c",
+    "subject_id": "96e52497-0207-4f27-9d51-8b77cd0172be",
+    "operation": {
+      "operation_id": "074643ce-f124-48db-a323-cbdddf23366f",
+      "request_hash": "010d9fa29db160a35601a58d8e950aa8098c1b66dde80d090a2c454a526c8621",
+      "expected_memory_generation": 2,
+      "command_type": "remember",
+      "accepted_at": "2026-10-15T01:23:51.660Z",
+      "result": {
+        "memory_generation": 3,
+        "enabled": true,
+        "status": "active",
+        "claim_id": "0efb514a-37c7-4f0d-8aef-e85cf44662d9",
+        "version": 1,
+        "deletion_id": null,
+        "purge_scope": null,
+        "backups": null,
+        "source_id": "7b49b746-9415-4527-a97a-f1e84e55855b"
+      }
+    }
+  },
+  "state": {
+    "schema_version": 1,
+    "contract": "catpaw.memory.v1",
+    "scope_id": "630054e6-5115-4fe1-95cb-9fe3ae82165c",
+    "subject_id": "96e52497-0207-4f27-9d51-8b77cd0172be",
+    "memory_generation": 3,
+    "enabled": true,
+    "claims": [
+      {
+        "id": "0efb514a-37c7-4f0d-8aef-e85cf44662d9",
+        "kind": "preference",
+        "predicate": "drink.preference",
+        "value": "tea",
+        "conditions": {},
+        "assertion": "explicit",
+        "evidence": {
+          "span_start": 0,
+          "span_end": 34
+        },
+        "status": "active",
+        "version": 1,
+        "source_id": "7b49b746-9415-4527-a97a-f1e84e55855b",
+        "source_hash": "f38a0ff56c53f71cd7d6b170c2fa68d86e781ff4ead61d45135739f717be3b2e",
+        "conversation_id": "248dbce4-99e8-405d-b5ed-a53b44e52712",
+        "observed_at": "2026-10-15T01:23:51.659Z",
+        "recorded_at": "2026-10-15T01:23:51.660Z",
+        "memory_generation": 2,
+        "temporal_state": "active",
+        "valid_from": null,
+        "valid_until": null,
+        "expires_at": null,
+        "candidate_expires_at": null,
+        "previous_source_ref": null
+      }
+    ],
+    "candidates": [],
+    "sources": [
+      {
+        "id": "7b49b746-9415-4527-a97a-f1e84e55855b",
+        "conversation_id": "248dbce4-99e8-405d-b5ed-a53b44e52712",
+        "content_hash": "f38a0ff56c53f71cd7d6b170c2fa68d86e781ff4ead61d45135739f717be3b2e",
+        "type": "user_memory_command",
+        "trust": "user_direct",
+        "occurred_at": "2026-10-15T01:23:51.659Z",
+        "suppressed_for_memory": false,
+        "deleted_at": null,
+        "command_id": "074643ce-f124-48db-a323-cbdddf23366f"
+      }
+    ]
+  },
+  "source": {
+    "schema_version": 1,
+    "contract": "catpaw.memory.v1",
+    "scope_id": "630054e6-5115-4fe1-95cb-9fe3ae82165c",
+    "subject_id": "96e52497-0207-4f27-9d51-8b77cd0172be",
+    "source": {
+      "id": "7b49b746-9415-4527-a97a-f1e84e55855b",
+      "conversation_id": "248dbce4-99e8-405d-b5ed-a53b44e52712",
+      "content_hash": "f38a0ff56c53f71cd7d6b170c2fa68d86e781ff4ead61d45135739f717be3b2e",
+      "type": "user_memory_command",
+      "trust": "user_direct",
+      "occurred_at": "2026-10-15T01:23:51.659Z",
+      "suppressed_for_memory": false,
+      "deleted_at": null,
+      "command_id": "074643ce-f124-48db-a323-cbdddf23366f",
+      "text": "Fictional preference: I prefer tea"
+    }
+  }
+}

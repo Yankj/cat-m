@@ -61,6 +61,8 @@ export class ChatService {
         admission_hash:admissionHash,request_hash:hash({history,model_history:modelHistory,context:input.context,scope,subject:principal.subject_id,model:this.provider.identity,policy:LOCAL_POLICY}),
         input:clone(input),history,model_history:modelHistory,events:[],task_bindings:[],created_at:iso()};
       if(this.beforeTurnAdmission)t.source_auth=await this.beforeTurnAdmission(tx,{principal,scope,conversation:c,turn:t});
+      const memoryUsage=await this.integration?.memoryUsage?.(tx,{principal,scope,conversation:c,turn:t});
+      if(memoryUsage){t.memory_usage=memoryUsage;t.request_hash=hash({original_chat_request_hash:t.request_hash,memory_usage:memoryUsage});}
       if(workIntent){
         check(this.facade.workGrantService&&this.facade.acceptedWorkExecutionReady===true&&t.source_auth,503,'accepted_work_execution_not_configured');
         t.work_intent=freezeAcceptedWorkIntent(workIntent,{turn:t,scope,principal,conversation:c,routeHash:this.facade.acceptedWorkRouteHash,now:this.facade.workGrantService.now()});
@@ -151,7 +153,7 @@ export class ChatService {
         batcher=new TextBatcher({signal:env.signal,assertLive:env.assertLive,
           persist:delta=>this.append(env,'text_delta',{message_id:messageID,text:delta}),
           onFailure:error=>env.controller?.abort(error)});
-        const round=received?clone(received.round):await collectRound(this.provider,{messages:clone(messages),system_prompt:prompt,tools,signal:env.signal,assertDispatchReady:env.assertDispatchReady,provider_context:{source_auth:env.turn.source_auth,scope_id:env.scope.scope_id,conversation_id:env.turn.conversation_id,...env.turn.revision_target?{revision_source_auth:clone(env.turn.revision_target.fresh_source_auth),revision_original_source_auth:clone(env.turn.revision_target.original_source_auth),revision_memory_generation:env.turn.revision_target.memory_generation,input_context:[{text:env.turn.revision_target.raw_instruction},{text:env.turn.revision_target.base_body}]}:{}}},delta=>{text+=delta;batcher.push(delta);});
+        const round=received?clone(received.round):await collectRound(this.provider,{messages:clone(messages),system_prompt:prompt,tools,signal:env.signal,assertDispatchReady:env.assertDispatchReady,provider_context:{source_auth:env.turn.source_auth,scope_id:env.scope.scope_id,conversation_id:env.turn.conversation_id,...env.turn.memory_usage?{memory_usage:clone(env.turn.memory_usage),memory_turn_id:env.turn.id}:{},...env.turn.revision_target?{revision_source_auth:clone(env.turn.revision_target.fresh_source_auth),revision_original_source_auth:clone(env.turn.revision_target.original_source_auth),revision_memory_generation:env.turn.revision_target.memory_generation,input_context:[{text:env.turn.revision_target.raw_instruction},{text:env.turn.revision_target.base_body}]}:{}}},delta=>{text+=delta;batcher.push(delta);});
         if(received)text=round.text;
         phase='text_flush';await batcher.finish();await batcher.stop();batcher=null;env.assertLive();
         phase='tool_or_completion';

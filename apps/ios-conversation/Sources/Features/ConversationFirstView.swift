@@ -38,7 +38,7 @@ import CatpawImageComposer
     private var sidebarSnapshot:SidebarSnapshot {
         .init(contextID:model.scope.workspaceID.uuidString,selectedConversationID:model.conversationID,
               conversations:model.history.map{.init(id:$0.id,title:$0.title,preview:$0.conversation?.draftText)},
-              capabilities:.init(canCreateConversation:model.loaded && !model.busy && !model.isInputComposing,canSelectConversation:!model.busy && !model.isInputComposing,tasks:true,results:true,memory:false,settings:true))
+              capabilities:.init(canCreateConversation:model.loaded && !model.busy && !model.isInputComposing,canSelectConversation:!model.busy && !model.isInputComposing,tasks:true,results:true,memory:model.loaded && model.memoryConfigured,settings:true))
     }
     private func route(_ destination:SidebarDestination) {
         switch destination {
@@ -47,7 +47,7 @@ import CatpawImageComposer
         case .tasks:path.append(.tasks)
         case .results:path.append(.results)
         case .settings:path.append(.settings)
-        case .memory:break
+        case .memory:if model.loaded && model.memoryConfigured {path.append(.memory)}
         }
     }
     private var sidebarTheme:SidebarTheme {
@@ -124,6 +124,10 @@ import CatpawImageComposer
                 case .settings:settingsSheet
                 case .tasks:ConversationTaskList(model:model)
                 case .results:ConversationResultList(model:model)
+                case .memory:
+                    if let service=model.memoryService {
+                        ConversationMemoryView(service:service,conversationID:model.conversationID,admissionAllowed:{model.loaded && model.networkAdmissionAllowed && scene == .active})
+                    }
                 case .task(let id):ConversationTaskDetail(model:model,id:id,openArtifact:{artifact in path.append(.artifact(id,ConversationArtifactIdentity(artifact)))})
                 case .artifact(let goal,let identity):ConversationArtifactDetail(model:model,goalID:goal,identity:identity,continueArtifact:{mode,selected in
                     Task{if await model.stageArtifactContinuation(goalID:goal,selection:selected,mode:mode){path=[]}}
@@ -630,7 +634,7 @@ private struct ConversationPendingMessageEditor:View {
  }
 }
 
-private enum ConversationHostDestination:Hashable {case settings,tasks,results,task(String),artifact(String,ConversationArtifactIdentity)}
+private enum ConversationHostDestination:Hashable {case settings,tasks,results,memory,task(String),artifact(String,ConversationArtifactIdentity)}
 @MainActor private struct ConversationTaskList:View {
     @Environment(\.locale) private var uiLocale
     private func ui(_ key:String,arguments:[String]=[])->String {AppLanguage(locale:uiLocale).ui(key,arguments:arguments)}

@@ -1343,6 +1343,20 @@
       "line": 21,
       "sha256": "c717b2531ad0bd26b0573ef848b7aff4797fc645524bd40450d58d71745bd46d",
       "reason": "Standard Apple icon asset filename containing a scale suffix; not an email address or personal identifier. Exact line and file hash reviewed."
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/source-erasure.mjs",
+      "category": "credential_prefix",
+      "line": 15,
+      "sha256": "5886c76520b1913f5d720a5f6f51ed9cef91a43cbd9576a2c6f54b1612b3afe5",
+      "reason": "Reviewed the unchanged public storage collection identifiers against the previously reviewed source. The distinct user memory source erasure branch changes only this file hash and line. No credential value is present. Exact current path, category, line and file hash only; all scanner patterns remain unchanged."
+    },
+    {
+      "path": "docs/acceptance/evidence/native-memory-20261015/package-files.json",
+      "category": "email_review",
+      "line": 6,
+      "sha256": "c94e383627d9a2a3fd91f19f91e69f7b4cddf7b256b4d32bfb21b8cd2fb362b3",
+      "reason": "Reviewed the generated scale-2 AppIcon asset filename on this package line, not an email address. All 30 package filenames/hashes contain no user/session contents; pixel bytes remain local."
     }
   ]
 }
