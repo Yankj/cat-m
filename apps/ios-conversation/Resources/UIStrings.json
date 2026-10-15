@@ -4810,5 +4810,29 @@
   "，草稿，": {
     "en": ", draft, ",
     "zh-Hans": "，草稿，"
+  },
+  "稍后提醒": {
+    "en": "Remind me later",
+    "zh-Hans": "稍后提醒"
+  },
+  "10 分钟后": {
+    "en": "In 10 minutes",
+    "zh-Hans": "10 分钟后"
+  },
+  "1 小时后": {
+    "en": "In 1 hour",
+    "zh-Hans": "1 小时后"
+  },
+  "将在 {0} 再提醒你": {
+    "en": "I'll remind you again at {0}",
+    "zh-Hans": "将在 {0} 再提醒你"
+  },
+  "任务已在别处更新，已刷新。": {
+    "en": "This task changed elsewhere; refreshed.",
+    "zh-Hans": "任务已在别处更新，已刷新。"
+  },
+  "暂时没能更新，请稍后再试。": {
+    "en": "Couldn't update right now. Please try again.",
+    "zh-Hans": "暂时没能更新，请稍后再试。"
   }
 }
