@@ -26,7 +26,7 @@ export async function gatedCalls(tx,{owner,subjectID,calls,registry}){
     const policy=toolApprovalPolicy(call.name);if(policy.approval==='never')continue;
     if(policy.approval==='first_use'&&policy.class){const pref=await tx.get(owner,APPROVAL_PREFERENCES,preferenceID(subjectID,policy.class));if(pref?.state==='always_allow')continue;}
     const tool=registry instanceof Map?registry.get(call.name):null;
-    let summary;try{summary=tool?.summarize?String(tool.summarize(clone(call.arguments))).slice(0,240):summarizeArguments(call.arguments);}catch{summary=summarizeArguments(call.arguments);}
+    let summary;try{summary=tool?.summarize?String(await tool.summarize(clone(call.arguments),{subjectID})).slice(0,240):summarizeArguments(call.arguments);}catch{summary=summarizeArguments(call.arguments);}
     out.push({call,policy,summary});
   }
   return out;
