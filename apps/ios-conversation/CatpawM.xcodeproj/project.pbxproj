@@ -14,7 +14,6 @@ A5301FE77BA806908BFD6E63 = { isa = PBXBuildFile; fileRef = 3DBC7BAE6675F9D46DFCA
 1333BDAA3C4ABEF58908972D = { isa = PBXBuildFile; fileRef = 4A35E3522BF67990F15CDD6A; };
 1BDE5F91304B4140B6C36341 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/Features/Composer/ComposerHoldToTalk.swift"; sourceTree = "<group>"; };
 2BA1AF1846B04977BF69E501 = { isa = PBXBuildFile; fileRef = 1BDE5F91304B4140B6C36341; };
-04E019C88EE145C0B4945641 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/Features/GenerativeBlocks/GenerativeUIDemoAdapter.swift"; sourceTree = "<group>"; };
 40856B1AFD4D4DCD9665FE17 = { isa = PBXBuildFile; fileRef = 04E019C88EE145C0B4945641; };
 761109C6AB4342379BA53AD5 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Tests/GenerativeBlockCodecTests.swift"; sourceTree = "<group>"; };
 B84034FF0D954C4CBE6B428B = { isa = PBXBuildFile; fileRef = 761109C6AB4342379BA53AD5; };
