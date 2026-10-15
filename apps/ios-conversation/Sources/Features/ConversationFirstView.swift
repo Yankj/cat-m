@@ -63,6 +63,9 @@ import CatpawImageComposer
     @ObservedObject private var probe=P0ExperienceProbe.shared
     #endif
     private var sidebarSnapshot:SidebarSnapshot {
+        var snapshot = baseSidebarSnapshot; snapshot.capabilities.proactive = true; return snapshot
+    }
+    private var baseSidebarSnapshot:SidebarSnapshot {
         .init(contextID:model.scope.workspaceID.uuidString,selectedConversationID:model.conversationID,
               conversations:model.history.map{.init(id:$0.id,title:$0.title,preview:$0.conversation?.draftText,updatedAt:$0.header.updatedAt)},
               capabilities:.init(canCreateConversation:model.loaded && !model.busy && !model.isInputComposing,canSelectConversation:!model.busy && !model.isInputComposing,tasks:true,results:true,memory:model.loaded && model.memoryConfigured,settings:true),
@@ -81,6 +84,7 @@ import CatpawImageComposer
         case .proactiveDebug: proactiveDebugPresented = true
         case .memory: path = []; self.route(.memory)
         }
+
     }
     private func route(_ destination:SidebarDestination) {
         switch destination {
@@ -90,6 +94,7 @@ import CatpawImageComposer
         case .results:path.append(.results)
         case .settings:path.append(.settings)
         case .memory:if model.loaded && model.memoryConfigured {path.append(.memory)}
+        case .proactive:proactiveInboxPresented=true
         }
     }
     private var conversationTitle:String {
@@ -326,14 +331,14 @@ import CatpawImageComposer
                 ToolbarItem(placement:.topBarLeading) {
                     if path.isEmpty {
                         Button {sidebarPresented=true} label: {
-                            TwoLineMenuGlyph().foregroundStyle(CatpawColors.ink).frame(width:44,height:44).contentShape(Rectangle())
+                            TwoLineMenuGlyph().foregroundStyle(CatpawColors.ink).frame(width:36,height:36).background(CatpawColors.card,in:Circle()).overlay(Circle().strokeBorder(CatpawColors.hairline,lineWidth:0.5)).frame(width:44,height:44).contentShape(Rectangle())
                         }.buttonStyle(CatpawPressButtonStyle()).accessibilityLabel(ui("打开侧栏")).accessibilityIdentifier("sidebar.open").accessibilityFocused($menuFocused)
                     }
                 }.r8HiddenSharedBackground()
                 ToolbarItem(placement:.principal) { conversationTitleMenu }.r8HiddenSharedBackground()
                 ToolbarItem(placement:.topBarTrailing) {
                     Button { model.newConversation() } label: {
-                        Image(systemName:"square.and.pencil").font(CatpawTypography.Role.heading.font).foregroundStyle(CatpawColors.ink).frame(width:44,height:44).contentShape(Rectangle())
+                        CircleIcon(systemName:"square.and.pencil").frame(width:44,height:44).contentShape(Rectangle())
                     }
                     .disabled(!model.loaded || model.busy || model.isInputComposing)
                     .accessibilityLabel(ui("新对话")).accessibilityIdentifier("chat.new").buttonStyle(CatpawPressButtonStyle())
@@ -345,7 +350,7 @@ import CatpawImageComposer
                 case .settings:settingsSheet
                 case .tasks:
                     if let service=model.inboxService {ConversationInboxView(service:service,mode:.tasks,admissionAllowed:{model.loaded && model.networkAdmissionAllowed && scene == .active},onReturn:{item in if await model.returnToReceivedWork(item){path=[];return .returned};return .unavailable(model.error.map{ui($0)} ?? ui("无法回到原对话。当前草稿仍保留，请重新读取后再试。"))})}
-                    else {ConversationTaskList(model:model)}
+                    else {CatpawTaskListView(source:ReminderTaskListSource())}
                 case .results:
                     if let service=model.inboxService {ConversationInboxView(service:service,mode:.results,admissionAllowed:{model.loaded && model.networkAdmissionAllowed && scene == .active},onReturn:{item in if await model.returnToReceivedWork(item){path=[];return .returned};return .unavailable(model.error.map{ui($0)} ?? ui("无法回到原对话。当前草稿仍保留，请重新读取后再试。"))})}
                     else {ConversationResultList(model:model)}
@@ -400,7 +405,7 @@ import CatpawImageComposer
                 .onChange(of:model.acceptedWorkOptions){_,_ in model.saveAcceptedWorkReviewOptions()}
         }
         .catpawSheet(isPresented: $history) { ConversationHistoryView(model: model).presentationDetents(textSize.isAccessibilitySize ? [.large] : [.medium, .large]).presentationDragIndicator(.visible) }
-        .catpawSheet(isPresented: $settings) { settingsSheet }
+        .catpawSheet(isPresented: $settings) { NavigationStack { settingsSheet } }
         .catpawSheet(item:$model.selectedTaskPlan) { reference in
             ConversationTaskPlanView(service:model.taskPlanService,reference:reference,admissionAllowed:{model.loaded && model.networkAdmissionAllowed && scene == .active})
         }

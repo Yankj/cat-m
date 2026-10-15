@@ -371,8 +371,7 @@ private struct JumpGlass: ViewModifier {
             switch mode {
             case .voice:
                 if micOverride == nil { Button(action: dictate) {
-                    Image(systemName: "mic").font(CatpawTypography.Role.body.font).foregroundStyle(CatpawColors.ink)
-                        .frame(width: size, height: size).contentShape(Circle().inset(by: -4))
+                    CircleIcon(systemName: "mic", diameter: size).contentShape(Circle().inset(by: -4))
                 }.buttonStyle(CatpawPressButtonStyle()).accessibilityLabel(ui("听写")).accessibilityIdentifier("chat.composer.mic")
                     .transition(.scale(scale: 0.6).combined(with: .opacity)) }
                 Button(action: voice) {

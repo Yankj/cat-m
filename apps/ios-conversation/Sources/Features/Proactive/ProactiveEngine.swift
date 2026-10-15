@@ -168,7 +168,12 @@ struct ProactiveSignal: Equatable, Sendable {
         guard let base = apiBase(), let bearer = try? await CatpawPushTokenUploader.shared.bearer() else { return nil }
         var request = URLRequest(url: base.appendingPathComponent(path), timeoutInterval: 6)
         request.httpMethod = "POST"; request.setValue(bearer, forHTTPHeaderField: "Authorization"); request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+        let payload = try? JSONSerialization.data(withJSONObject: body, options: [.sortedKeys])
+        request.httpBody = payload
+        // #63 S1: stable per (route, body) so a retry after a dropped response replays instead of re-running.
+        let key = (body["operation_id"] as? String).map { "op-\($0)-\(path.split(separator: "/").last ?? "")" }
+            ?? "pr-" + SHA256.hash(data: Data(path.utf8) + (payload ?? Data())).prefix(16).map { String(format: "%02x", $0) }.joined()
+        request.setValue(String(key.prefix(200)), forHTTPHeaderField: "Idempotency-Key")
         guard let (data, response) = try? await URLSession.shared.data(for: request) else { return nil }
         let status = (response as? HTTPURLResponse)?.statusCode ?? 0
         if status == 403 { FeatureEnrollment.shared.proactiveDisabled = true; shared.note("server proactive feature_disabled → local rules; enroll prompt shown in Settings") }

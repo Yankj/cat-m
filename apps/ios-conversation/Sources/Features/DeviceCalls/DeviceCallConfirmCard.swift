@@ -95,8 +95,8 @@ struct DeviceCallSpec: Sendable {
 
     private var header: some View {
         HStack(spacing: 10) {
-            Image(systemName: spec.symbol).font(.body.weight(.semibold)).foregroundStyle(CatpawBrand.paw)
-                .frame(width: 32, height: 32).background(CatpawBrand.paw.opacity(0.14), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+            CircleIcon(systemName: spec.symbol, diameter: 34)
+                .overlay(alignment: .bottomTrailing) { CategoryPaw(category: .forTool(call.tool)).offset(x: 4, y: 3) }
                 .accessibilityHidden(true)
             Text(ui(spec.titleKey)).font(CatpawTypography.Role.heading.font).foregroundStyle(CatpawColors.ink)
             Spacer(minLength: 0)

@@ -30,6 +30,7 @@ public struct SidebarPanel: View {
             LazyVStack(alignment: .leading, spacing: 0) {
                 header.padding(.bottom, 12)
                 entry(localize("任务"), icon: "checklist", destination: .tasks, identifier: "sidebar.tasks")
+                if snapshot.capabilities.proactive { entry(localize("主动"), icon: "sparkles", destination: .proactive, identifier: "sidebar.proactive") }
                 entry(localize("成果"), icon: "tray", destination: .results, identifier: "sidebar.results")
                 entry(localize("记忆"), icon: "brain", destination: .memory, identifier: "sidebar.memory")
                 Text(localize("对话")).font(theme.secondaryFont).foregroundStyle(theme.secondary)
@@ -154,7 +155,7 @@ public struct SidebarPanel: View {
             .padding(.horizontal, 14).frame(minHeight: 48).sidebarGlass(Capsule(), fallback: theme.input)
             .contentShape(Capsule()).onTapGesture { searchFocused = true }
             Button { select(.newConversation) } label: {
-                SidebarSymbol(name: "square.and.pencil", font: theme.bodyFont).frame(width: 48, height: 48).sidebarGlass(Circle(), fallback: theme.input)
+                SidebarSymbol(name: "square.and.pencil", font: theme.bodyFont).foregroundStyle(theme.panel).frame(width: 48, height: 48).background(theme.ink, in: Circle())
             }.disabled(!snapshot.permits(.newConversation)).accessibilityLabel(localize("新对话")).accessibilityIdentifier("sidebar.new")
         }
         .padding(.horizontal, 12).padding(.top, 20).padding(.bottom, 8)
