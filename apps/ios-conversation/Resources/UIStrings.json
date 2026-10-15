@@ -87,6 +87,10 @@
     "en": "{0} · simulated run",
     "zh-Hans": "{0} · 模拟运行"
   },
+  "{0} 分钟后开始": {
+    "en": "Starts in {0} min",
+    "zh-Hans": "{0} 分钟后开始"
+  },
   "{0} 后过期": {
     "en": "Expires {0}",
     "zh-Hans": "{0} 后过期"
@@ -163,6 +167,14 @@
     "en": "Temporary chats never read or write memory.",
     "zh-Hans": "临时对话不会读取或写入记忆。"
   },
+  "主动信号模拟": {
+    "en": "Proactive signal simulator",
+    "zh-Hans": "主动信号模拟"
+  },
+  "主动建议": {
+    "en": "Proactive suggestion",
+    "zh-Hans": "主动建议"
+  },
   "主记忆及派生索引已清除；备份清除尚未核验。原对话历史不会在此删除。": {
     "en": "Primary memory and its derived index were cleared. Backup removal is unverified. Conversation history is kept.",
     "zh-Hans": "主记忆及派生索引已清除；备份清除尚未核验。原对话历史不会在此删除。"
@@ -210,6 +222,10 @@
   "交给 Agent 完成": {
     "en": "Let Agent complete this",
     "zh-Hans": "交给 Agent 完成"
+  },
+  "产品评审会": {
+    "en": "Product review",
+    "zh-Hans": "产品评审会"
   },
   "人工修改已保存": {
     "en": "Your manual edit is saved",
@@ -262,6 +278,10 @@
   "仅连接 127.0.0.1:8796。合成身份不是账号授权。": {
     "en": "Connects only to 127.0.0.1:8796. The synthetic identity is not account authorization.",
     "zh-Hans": "仅连接 127.0.0.1:8796。合成身份不是账号授权。"
+  },
+  "介入方式": {
+    "en": "Delivery",
+    "zh-Hans": "介入方式"
   },
   "从一个问题、一份资料，或一个想法开始。": {
     "en": "Start with a question, a document, or an idea.",
@@ -343,6 +363,14 @@
     "en": "Opens Mail; you tap Send.",
     "zh-Hans": "会打开系统邮件页，由你点发送。"
   },
+  "会议名称": {
+    "en": "Meeting name",
+    "zh-Hans": "会议名称"
+  },
+  "会议标题": {
+    "en": "Meeting title",
+    "zh-Hans": "会议标题"
+  },
   "会话": {
     "en": "Conversations",
     "zh-Hans": "会话"
@@ -358,6 +386,10 @@
   "会话配置": {
     "en": "Conversation configuration",
     "zh-Hans": "会话配置"
+  },
+  "位置": {
+    "en": "Location",
+    "zh-Hans": "位置"
   },
   "体验账号": {
     "en": "Experience account",
@@ -687,6 +719,14 @@
     "en": "Clear all",
     "zh-Hans": "全部清除"
   },
+  "公司": {
+    "en": "Office",
+    "zh-Hans": "公司"
+  },
+  "公司 3 楼会议室": {
+    "en": "Office, 3F meeting room",
+    "zh-Hans": "公司 3 楼会议室"
+  },
   "公开来源读取": {
     "en": "Public source read",
     "zh-Hans": "公开来源读取"
@@ -790,6 +830,14 @@
   "决定结果尚未确认；只核对原决定，请勿重复提交。": {
     "en": "The decision outcome is unconfirmed. Check the original decision and do not submit it again.",
     "zh-Hans": "决定结果尚未确认；只核对原决定，请勿重复提交。"
+  },
+  "决策": {
+    "en": "Decide",
+    "zh-Hans": "决策"
+  },
+  "决策流水线": {
+    "en": "Decision pipeline",
+    "zh-Hans": "决策流水线"
   },
   "准备中": {
     "en": "Preparing",
@@ -1131,6 +1179,10 @@
     "en": "Parameters hash",
     "zh-Hans": "参数哈希"
   },
+  "发出主动建议": {
+    "en": "Emit suggestion",
+    "zh-Hans": "发出主动建议"
+  },
   "发短信": {
     "en": "Send text",
     "zh-Hans": "发短信"
@@ -1246,6 +1298,10 @@
   "合同能力已读回 · 本机合成服务": {
     "en": "Contract capabilities read · local synthetic service",
     "zh-Hans": "合同能力已读回 · 本机合成服务"
+  },
+  "合并": {
+    "en": "Merge",
+    "zh-Hans": "合并"
   },
   "合成 Gateway 已连接 · 真实调用关闭": {
     "en": "Synthetic Gateway connected · real calls disabled",
@@ -1479,6 +1535,10 @@
     "en": "External operation",
     "zh-Hans": "外部操作"
   },
+  "失败": {
+    "en": "Failed",
+    "zh-Hans": "失败"
+  },
   "好": {
     "en": "OK",
     "zh-Hans": "好"
@@ -1551,6 +1611,10 @@
     "en": "Approval preview",
     "zh-Hans": "审批预览"
   },
+  "家": {
+    "en": "Home",
+    "zh-Hans": "家"
+  },
   "密码": {
     "en": "Password",
     "zh-Hans": "密码"
@@ -1614,6 +1678,10 @@
   "小猫会忘掉所有记住的内容，此操作无法撤销。": {
     "en": "Catpaw will forget everything it remembered. This can't be undone.",
     "zh-Hans": "小猫会忘掉所有记住的内容，此操作无法撤销。"
+  },
+  "小猫看不到你的会议，所以没法提前提醒出发。可以手动告诉小猫下一场会议，或去设置里打开日历权限。": {
+    "en": "Catpaw can't see your meetings, so it can't remind you when to leave. Tell Catpaw about your next meeting, or turn on calendar access in Settings.",
+    "zh-Hans": "小猫看不到你的会议，所以没法提前提醒出发。可以手动告诉小猫下一场会议，或去设置里打开日历权限。"
   },
   "小猫记住了": {
     "en": "Catpaw remembered",
@@ -1839,6 +1907,10 @@
     "en": "Added to Calendar",
     "zh-Hans": "已加入日历"
   },
+  "已发出": {
+    "en": "Sent",
+    "zh-Hans": "已发出"
+  },
   "已发出，结果尚未确认": {
     "en": "Dispatched; outcome unconfirmed",
     "zh-Hans": "已发出，结果尚未确认"
@@ -2007,6 +2079,10 @@
     "en": "Ended",
     "zh-Hans": "已结束"
   },
+  "已记下，小猫会按时提醒你": {
+    "en": "Got it. Catpaw will remind you in time.",
+    "zh-Hans": "已记下，小猫会按时提醒你"
+  },
   "已记住：{0}": {
     "en": "Remembered: {0}",
     "zh-Hans": "已记住：{0}"
@@ -2098,6 +2174,10 @@
   "建立持续委托": {
     "en": "Create ongoing delegation",
     "zh-Hans": "建立持续委托"
+  },
+  "建议 {0} 出发": {
+    "en": "Leave at {0}",
+    "zh-Hans": "建议 {0} 出发"
   },
   "开发者与高级": {
     "en": "Developer & Advanced",
@@ -2242,6 +2322,10 @@
   "当前未连接云端；输入保存在此设备。": {
     "en": "Cloud is not connected. Input is saved on this device.",
     "zh-Hans": "当前未连接云端；输入保存在此设备。"
+  },
+  "当前模拟时间": {
+    "en": "Simulated now",
+    "zh-Hans": "当前模拟时间"
   },
   "当前段落 {0}": {
     "en": "Current paragraph {0}",
@@ -2554,6 +2638,10 @@
   "所选图片完整预览": {
     "en": "Full preview of the selected image",
     "zh-Hans": "所选图片完整预览"
+  },
+  "手动输入": {
+    "en": "Enter manually",
+    "zh-Hans": "手动输入"
   },
   "打开": {
     "en": "Open",
@@ -2979,6 +3067,10 @@
     "en": "No expert",
     "zh-Hans": "无专家"
   },
+  "无位置": {
+    "en": "No location",
+    "zh-Hans": "无位置"
+  },
   "无提醒": {
     "en": "No reminder",
     "zh-Hans": "无提醒"
@@ -3015,6 +3107,14 @@
     "en": "Calendar",
     "zh-Hans": "日历"
   },
+  "日历事件": {
+    "en": "Calendar events",
+    "zh-Hans": "日历事件"
+  },
+  "日历权限已允许": {
+    "en": "Calendar access granted",
+    "zh-Hans": "日历权限已允许"
+  },
   "日历编号": {
     "en": "Calendar ID",
     "zh-Hans": "日历编号"
@@ -3030,6 +3130,10 @@
   "时间": {
     "en": "Time",
     "zh-Hans": "时间"
+  },
+  "时间偏移 {0} 分钟": {
+    "en": "Clock offset {0} min",
+    "zh-Hans": "时间偏移 {0} 分钟"
   },
   "明确保存一条记忆": {
     "en": "Save a memory",
@@ -3847,6 +3951,10 @@
     "en": "Simulated artifact",
     "zh-Hans": "模拟成果"
   },
+  "模拟时间": {
+    "en": "Simulated time",
+    "zh-Hans": "模拟时间"
+  },
   "模拟核验原记录": {
     "en": "Simulate checking the original record",
     "zh-Hans": "模拟核验原记录"
@@ -4179,6 +4287,10 @@
     "en": "No new memory candidates",
     "zh-Hans": "没有新增记忆候选"
   },
+  "没有日历权限": {
+    "en": "No calendar access",
+    "zh-Hans": "没有日历权限"
+  },
   "没有权限，未执行": {
     "en": "Not allowed, so nothing ran.",
     "zh-Hans": "没有权限，未执行"
@@ -4198,6 +4310,10 @@
   "浅色 · 本地补充": {
     "en": "Light · local addition",
     "zh-Hans": "浅色 · 本地补充"
+  },
+  "浦东机场": {
+    "en": "Pudong Airport",
+    "zh-Hans": "浦东机场"
   },
   "消息": {
     "en": "Message",
@@ -4226,6 +4342,10 @@
   "添加来源配置": {
     "en": "Add source configuration",
     "zh-Hans": "添加来源配置"
+  },
+  "添加模拟会议": {
+    "en": "Add fake meeting",
+    "zh-Hans": "添加模拟会议"
   },
   "添加附件": {
     "en": "Add attachment",
@@ -4554,6 +4674,10 @@
   "空闲": {
     "en": "Idle",
     "zh-Hans": "空闲"
+  },
+  "等待": {
+    "en": "Waiting",
+    "zh-Hans": "等待"
   },
   "等待你回到 App 后继续": {
     "en": "Continues when you're back in the app",
@@ -4891,6 +5015,10 @@
     "en": "Plan version",
     "zh-Hans": "计划版本"
   },
+  "让小猫帮我盯着": {
+    "en": "Let Catpaw keep watch",
+    "zh-Hans": "让小猫帮我盯着"
+  },
   "让重要的事，继续向前。": {
     "en": "Keep important work moving.",
     "zh-Hans": "让重要的事，继续向前。"
@@ -5215,6 +5343,10 @@
     "en": "Read research draft",
     "zh-Hans": "读研究短稿"
   },
+  "调试": {
+    "en": "Debug",
+    "zh-Hans": "调试"
+  },
   "调试：模拟回复场景": {
     "en": "Debug: simulated reply scenario",
     "zh-Hans": "调试：模拟回复场景"
@@ -5275,6 +5407,10 @@
     "en": "Input details",
     "zh-Hans": "输入详情"
   },
+  "过滤": {
+    "en": "Filter",
+    "zh-Hans": "过滤"
+  },
   "过程与进度来自当前任务记录；没有远程工具执行。": {
     "en": "Progress comes from this task record. No remote tools are running.",
     "zh-Hans": "过程与进度来自当前任务记录；没有远程工具执行。"
@@ -5282,6 +5418,10 @@
   "运行": {
     "en": "Run",
     "zh-Hans": "运行"
+  },
+  "运行中…": {
+    "en": "Running…",
+    "zh-Hans": "运行中…"
   },
   "运行冻结合成报告": {
     "en": "Run frozen synthetic report",
@@ -5294,6 +5434,14 @@
   "运行快捷指令": {
     "en": "Run shortcut",
     "zh-Hans": "运行快捷指令"
+  },
+  "运行流水线": {
+    "en": "Run pipeline",
+    "zh-Hans": "运行流水线"
+  },
+  "运行流水线后生成建议": {
+    "en": "Run the pipeline to generate a suggestion",
+    "zh-Hans": "运行流水线后生成建议"
   },
   "近期日志": {
     "en": "Recent journal",
@@ -5475,6 +5623,10 @@
     "en": "Selections are local configuration. They grant no tool permissions and download no skills.",
     "zh-Hans": "选择是本地配置；不会授予工具权限或下载技能。"
   },
+  "通过": {
+    "en": "Passed",
+    "zh-Hans": "通过"
+  },
   "邮箱": {
     "en": "Email",
     "zh-Hans": "邮箱"
@@ -5482,6 +5634,10 @@
   "配置": {
     "en": "Configuration",
     "zh-Hans": "配置"
+  },
+  "采集": {
+    "en": "Collect",
+    "zh-Hans": "采集"
   },
   "重命名": {
     "en": "Rename",
@@ -5647,6 +5803,10 @@
     "en": "Review and approve this action",
     "zh-Hans": "预览并确认这一次操作"
   },
+  "预设位置": {
+    "en": "Preset location",
+    "zh-Hans": "预设位置"
+  },
   "频率": {
     "en": "Frequency",
     "zh-Hans": "频率"
@@ -5678,141 +5838,5 @@
   "，草稿，": {
     "en": ", draft, ",
     "zh-Hans": "，草稿，"
-  },
-  "调试": {
-    "en": "Debug",
-    "zh-Hans": "调试"
-  },
-  "主动信号模拟": {
-    "en": "Proactive signal simulator",
-    "zh-Hans": "主动信号模拟"
-  },
-  "模拟时间": {
-    "en": "Simulated time",
-    "zh-Hans": "模拟时间"
-  },
-  "当前模拟时间": {
-    "en": "Simulated now",
-    "zh-Hans": "当前模拟时间"
-  },
-  "时间偏移 {0} 分钟": {
-    "en": "Clock offset {0} min",
-    "zh-Hans": "时间偏移 {0} 分钟"
-  },
-  "日历事件": {
-    "en": "Calendar events",
-    "zh-Hans": "日历事件"
-  },
-  "会议标题": {
-    "en": "Meeting title",
-    "zh-Hans": "会议标题"
-  },
-  "{0} 分钟后开始": {
-    "en": "Starts in {0} min",
-    "zh-Hans": "{0} 分钟后开始"
-  },
-  "添加模拟会议": {
-    "en": "Add fake meeting",
-    "zh-Hans": "添加模拟会议"
-  },
-  "产品评审会": {
-    "en": "Product review",
-    "zh-Hans": "产品评审会"
-  },
-  "公司 3 楼会议室": {
-    "en": "Office, 3F meeting room",
-    "zh-Hans": "公司 3 楼会议室"
-  },
-  "日历权限已允许": {
-    "en": "Calendar access granted",
-    "zh-Hans": "日历权限已允许"
-  },
-  "位置": {
-    "en": "Location",
-    "zh-Hans": "位置"
-  },
-  "预设位置": {
-    "en": "Preset location",
-    "zh-Hans": "预设位置"
-  },
-  "无位置": {
-    "en": "No location",
-    "zh-Hans": "无位置"
-  },
-  "家": {
-    "en": "Home",
-    "zh-Hans": "家"
-  },
-  "公司": {
-    "en": "Office",
-    "zh-Hans": "公司"
-  },
-  "浦东机场": {
-    "en": "Pudong Airport",
-    "zh-Hans": "浦东机场"
-  },
-  "决策流水线": {
-    "en": "Decision pipeline",
-    "zh-Hans": "决策流水线"
-  },
-  "运行中…": {
-    "en": "Running…",
-    "zh-Hans": "运行中…"
-  },
-  "运行流水线": {
-    "en": "Run pipeline",
-    "zh-Hans": "运行流水线"
-  },
-  "主动建议": {
-    "en": "Proactive suggestion",
-    "zh-Hans": "主动建议"
-  },
-  "建议 {0} 出发": {
-    "en": "Leave at {0}",
-    "zh-Hans": "建议 {0} 出发"
-  },
-  "已发出": {
-    "en": "Sent",
-    "zh-Hans": "已发出"
-  },
-  "发出主动建议": {
-    "en": "Emit suggestion",
-    "zh-Hans": "发出主动建议"
-  },
-  "运行流水线后生成建议": {
-    "en": "Run the pipeline to generate a suggestion",
-    "zh-Hans": "运行流水线后生成建议"
-  },
-  "采集": {
-    "en": "Collect",
-    "zh-Hans": "采集"
-  },
-  "过滤": {
-    "en": "Filter",
-    "zh-Hans": "过滤"
-  },
-  "合并": {
-    "en": "Merge",
-    "zh-Hans": "合并"
-  },
-  "决策": {
-    "en": "Decide",
-    "zh-Hans": "决策"
-  },
-  "介入方式": {
-    "en": "Delivery",
-    "zh-Hans": "介入方式"
-  },
-  "等待": {
-    "en": "Waiting",
-    "zh-Hans": "等待"
-  },
-  "通过": {
-    "en": "Passed",
-    "zh-Hans": "通过"
-  },
-  "失败": {
-    "en": "Failed",
-    "zh-Hans": "失败"
   }
 }

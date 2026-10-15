@@ -121,6 +121,7 @@ import AppIntents
         GenerativeBlockAdapter.registerWithMarkdown()
         MemorySavedChipAdapter.register() // wave2 V1
         DeviceStatusCardAdapter.register() // wave2 V3 receipt + permission cards
+        PermissionDegradeCardAdapter.register() // proactive demo: permission-denied degrade card
         DeviceCallCardAdapter.register() // wave2 V3 device_call confirm card
     }
     var body: some Scene {
