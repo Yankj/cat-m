@@ -87,7 +87,7 @@ struct DeviceCallResult: Codable, Sendable, Equatable {
 }
 
 /// 三角 (B6 DeviceResultClient): delivers the result to the cloud agent for the same turn.
-@MainActor protocol DeviceResultSubmitting: AnyObject {
+@MainActor protocol DeviceResultSubmitting {   // not class-bound: 三角's ConversationDeviceResultSubmitter is a struct
     func submit(_ result: DeviceCallResult) async throws
 }
 
