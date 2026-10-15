@@ -139,7 +139,10 @@ struct MockProactiveSignalEngine: ProactiveSignalEngine {
 
     init() {
         manualObserver = NotificationCenter.default.addObserver(forName: ProactiveSignalHub.manualMeetingNotification, object: nil, queue: .main) { [weak self] note in
-            guard let m = note.object as? ProactiveSimulatedMeeting else { return }
+            // object = ProactiveSimulatedMeeting, or userInfo {title: String, start: Date, place: String} from PermissionDegradeCard.
+            let info = note.userInfo
+            guard let m = (note.object as? ProactiveSimulatedMeeting) ?? (info?["start"] as? Date).map({
+                ProactiveSimulatedMeeting(title: info?["title"] as? String ?? "", start: $0, place: info?["place"] as? String ?? "") }) else { return }
             MainActor.assumeIsolated { self?.meetings.append(m); self?.calendarAuthorized = false; self?.run() }
         }
     }
