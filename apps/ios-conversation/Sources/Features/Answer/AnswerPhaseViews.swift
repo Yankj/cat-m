@@ -199,11 +199,6 @@ private struct ShimmerText: View {
         .overlay(alignment: .bottomTrailing) {
             if !complete { StreamCursor().offset(x: 0, y: -4) }
         }
-        .onChange(of: text) { _, _ in
-            guard !complete, !reduceMotion else { return }
-            pulse = 0.85
-            withAnimation(CatpawMotion.batchFade) { pulse = 1 }
-        }
     }
 }
 
