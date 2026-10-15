@@ -6,7 +6,7 @@ const json = (status, body) => new Response(JSON.stringify(body), { status, head
 const PUSH_ACTIONS = ['open', 'done', 'snooze_10m', 'snooze_1h', 'dismiss'];
 const TOKEN_KINDS = ['apns', 'live_activity_update', 'live_activity_start'];
 
-export function createProactiveService({ store, verifyUser, schedulerSecret, model = null, apns = null, quietHours = { start: 22, end: 8 }, dailyPushCap = 5, defaultTimeZone = 'Asia/Shanghai', now = () => Date.now(), log = () => {} }) {
+export function createProactiveService({ store, verifyUser, schedulerSecret, model = null, apns = null, decision = null, quietHours = { start: 22, end: 8 }, dailyPushCap = 5, defaultTimeZone = 'Asia/Shanghai', now = () => Date.now(), log = () => {} }) {
   async function user(req) {
     const p = await verifyUser(req.headers.get('authorization')).catch(e => { throw bad(e.code === 'auth_key_service_unavailable' ? e.code : 'session_required', e.status === 503 ? 503 : 401); });
     if (!isUUID(p?.sub)) throw bad('session_required', 401);
@@ -125,6 +125,7 @@ export function createProactiveService({ store, verifyUser, schedulerSecret, mod
     }
     if (path === '/tools' && m === 'GET') return json(200, { contract: TASK_TOOL_CONTRACT, tools: TASK_TOOLS });
     const uid = await user(req);
+    if (decision && (path.startsWith('/proactive/') || path.startsWith('/catpaw/proactive/v1/'))) { const r = await decision.route(uid, req, path, url, () => body(req)); if (r) return json(r[0], r[1]); }
     if (path === '/tasks' && m === 'GET') return json(200, { tasks: await store.listTasks(uid, { status: url.searchParams.get('status') ?? 'open', limit: Math.min(Number(url.searchParams.get('limit')) || 50, 200) }) });
     if (path === '/tasks' && m === 'POST') { const r = await createTask(uid, await body(req)); return json(r.created ? 201 : 200, r); }
     let mm = path.match(/^\/tasks\/([^/]+)$/);
