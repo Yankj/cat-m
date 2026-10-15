@@ -19,6 +19,7 @@ FIRST = HOST + "Features/ConversationFirstView.swift"
 STREAM = HOST + "Features/StreamingConversationText.swift"
 READER = HOST + "Features/ConversationArtifactReaderView.swift"
 COMPOSER = HOST + "Features/NativeConversationComposer.swift"
+CHROME = HOST + "Features/Composer/ComposerChrome.swift"
 SIDEBAR = "packages/ios-navigation/Sources/CatpawNavigation/SidebarTheme.swift"
 PANEL = "packages/ios-navigation/Sources/CatpawNavigation/SidebarPanel.swift"
 POLICY = importlib.util.spec_from_file_location("catpaw_typography_policy", ROOT / "scripts/check-typography.py")
@@ -111,8 +112,11 @@ def check(sources, spec):
 
     composer = body(sources[FIRST], r"\bfunc\s+composer\s*\(")
     require(FIRST, composer, r"\.foregroundStyle\(\s*canSendDraft\s*\?\s*CatpawColors\.sendIcon\b", "enabled send glyph must use sendIcon independently of primary actions")
-    require(FIRST, composer, r"\.background\(\s*canSendDraft\s*\?\s*CatpawColors\.send\b", "enabled send background must use send, not ink/action/accent")
+    require(FIRST, composer, r"\.background\(\s*canSendDraft\s*\?\s*CatpawBrand\.paw\b", "enabled send background must use the paw brand token")
     require(FIRST, composer, r"\.strokeBorder\(\s*CatpawColors\.controlEdge\b", "composer control boundary must use controlEdge, not a decorative separator")
+    send_button = body(sources[CHROME], r"\bstruct\s+ComposerSendButton\b")
+    require(CHROME, send_button, r"\.background\(\s*mode\s*==\s*\.disabled\s*\?\s*CatpawColors\.separator\s*:\s*CatpawBrand\.paw\b", "composer send, stop and queue backgrounds must use the paw brand token")
+    require(CHROME, send_button, r"\.foregroundStyle\(\s*CatpawBrand\.paw\s*\)\.background\(\s*CatpawColors\.background", "composer queue badge must use the paw brand token")
     message = body(sources[FIRST], r"\bfunc\s+messageView\s*\(")
     user = body(message, r"\bif\s+message\.role\s*==\s*\.user\b")
     require(FIRST, user, r"\.foregroundStyle\(\s*CatpawColors\.userMessageInk\s*\)", "user text must use its paired userMessageInk")
@@ -153,12 +157,14 @@ def check(sources, spec):
 def self_test(sources, spec):
     # Mutate the actual source seams: changing a single unrelated color role must fail.
     # These are guard regressions, not product/visual tests.
-    sources = {path: sources[path] for path in (COMPONENTS, TYPE, FIRST, STREAM, READER, COMPOSER, SIDEBAR, PANEL)}
+    sources = {path: sources[path] for path in (COMPONENTS, TYPE, FIRST, STREAM, READER, COMPOSER, CHROME, SIDEBAR, PANEL)}
     tests = [
         (COMPONENTS, "light: 0xFFFFFF, dark: 0x050505", "light: 0xF7F8FA, dark: 0x111214", "R5 role background"),
         (COMPONENTS, "static let accent = action", "static let accent = ink", "compatibility alias"),
         (FIRST, "CatpawColors.sendIcon", "CatpawColors.onInk", "enabled send glyph"),
-        (FIRST, "CatpawColors.send", "CatpawColors.action", "enabled send background"),
+        (FIRST, "CatpawBrand.paw", "CatpawColors.action", "enabled send background"),
+        (CHROME, ": CatpawBrand.paw, in: Circle())", ": CatpawColors.send, in: Circle())", "send, stop and queue backgrounds"),
+        (CHROME, ".foregroundStyle(CatpawBrand.paw).background(CatpawColors.background", ".foregroundStyle(CatpawColors.ink).background(CatpawColors.background", "queue badge"),
         (FIRST, "CatpawColors.userMessageInk", "CatpawColors.ink", "user text"),
         (FIRST, "CatpawColors.userMessageBackground", "CatpawColors.input", "user bubble"),
         (FIRST, "strokeBorder(CatpawColors.controlEdge", "strokeBorder(CatpawColors.separator", "control boundary"),

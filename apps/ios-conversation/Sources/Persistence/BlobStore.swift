@@ -4,7 +4,7 @@ public struct BlobStore: Sendable {
     public let root: URL
     public init(root: URL) throws { self.root = root; try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true) }
     public func stage(_ data: Data) throws -> String {
-        guard data.count <= 20 * 1024 * 1024 else { throw CatpawError.invalid("文件超过本地导入上限 20 MB。") }
+        guard data.count <= ConversationAttachmentLimits.maxBytesPerFile else { throw CatpawError.invalid("文件超过本地导入上限 20 MB。") }
         let hash = bytesHash(data)
         let url = root.appendingPathComponent(hash)
         if !FileManager.default.fileExists(atPath: url.path) { try data.write(to: url, options: .atomic) }
