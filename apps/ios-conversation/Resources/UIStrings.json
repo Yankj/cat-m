@@ -2019,6 +2019,10 @@
     "en": "Extracted summary · first non-empty paragraph",
     "zh-Hans": "提取摘要 · 首个非空段落"
   },
+  "提取记忆候选…": {
+    "en": "Preparing memory candidates…",
+    "zh-Hans": "提取记忆候选…"
+  },
   "提示词": {
     "en": "Prompt",
     "zh-Hans": "提示词"
@@ -2807,6 +2811,10 @@
     "en": "View plan",
     "zh-Hans": "查看计划"
   },
+  "查看记忆候选": {
+    "en": "Review memory candidates",
+    "zh-Hans": "查看记忆候选"
+  },
   "查看记忆来源": {
     "en": "View memory source",
     "zh-Hans": "查看记忆来源"
@@ -3122,6 +3130,10 @@
   "没有找到对话": {
     "en": "No conversations found",
     "zh-Hans": "没有找到对话"
+  },
+  "没有新增记忆候选": {
+    "en": "No new memory candidates",
+    "zh-Hans": "没有新增记忆候选"
   },
   "没有模拟在线设备。电脑配对、云账号和心跳接口尚未接入。": {
     "en": "No devices are shown as falsely online. Computer pairing, cloud accounts and heartbeat APIs are disconnected.",
@@ -3678,6 +3690,18 @@
   "记忆主题": {
     "en": "Memory topic",
     "zh-Hans": "记忆主题"
+  },
+  "记忆候选回执待核对": {
+    "en": "Memory candidate receipt needs review",
+    "zh-Hans": "记忆候选回执待核对"
+  },
+  "记忆候选待确认": {
+    "en": "Memory candidates await confirmation",
+    "zh-Hans": "记忆候选待确认"
+  },
+  "记忆候选提取失败 · ": {
+    "en": "Memory candidate preparation failed · ",
+    "zh-Hans": "记忆候选提取失败 · "
   },
   "记忆内容过长或格式不符，请精简后重新确认。": {
     "en": "This memory is too long or has an invalid format. Shorten it and review again.",

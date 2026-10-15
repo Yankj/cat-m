@@ -130,3 +130,37 @@ public enum ConversationMemoryCodec {
     public static func isHash(_ value:String)->Bool {value.range(of:"^[0-9a-f]{64}$",options:.regularExpression) != nil}
     public static func validateSource(_ source:ConversationMemorySource) throws {guard isHash(source.content_hash),date(source.occurred_at) != nil,["user_message","user_memory_command"].contains(source.type),source.trust=="user_direct",source.text.map({$0.utf16.count<=8000}) ?? true else {throw ConversationMemoryError.invalidResponse};if let text=source.text,source.deleted_at==nil {guard textHash(text)==source.content_hash else {throw ConversationMemoryError.invalidResponse}}}
 }
+
+
+/// A proposal receipt contains immutable references only. It never confirms a
+/// memory, creates a task, or carries model-supplied memory values into the UI.
+public struct ConversationMemoryProposalReceipt:Codable,Sendable,Equatable {
+    public struct Candidate:Codable,Sendable,Equatable,Identifiable {public let id:UUID,version:Int}
+    public let schema_version:Int,contract:String,scope_id:UUID,conversation_id:UUID,turn_id:UUID,source_id:UUID,source_hash:String,memory_generation:Int,job_id:UUID,candidates:[Candidate],status:String,confirmed:Bool
+    public static let contractName="catpaw.memory-proposal.v1"
+    private static let keys:Set<String>=["schema_version","contract","scope_id","conversation_id","turn_id","source_id","source_hash","memory_generation","job_id","candidates","status","confirmed"]
+    public static func decode(_ data:Data,request:ConversationTurnRequest?=nil,serverScopeID:UUID?=nil) throws -> Self {
+        let object=try ConversationStrictJSON.object(data,maxBytes:16000)
+        guard Set(object.keys)==keys,let rows=object["candidates"] as? [[String:Any]],rows.allSatisfy({Set($0.keys)==["id","version"]}) else {throw ConversationSessionError.invalidEvent}
+        let value=try JSONDecoder().decode(Self.self,from:data)
+        try value.validate(request:request,serverScopeID:serverScopeID);return value
+    }
+    public func validate(request:ConversationTurnRequest?=nil,serverScopeID:UUID?=nil) throws {
+        guard schema_version==1,contract==Self.contractName,status=="proposed",confirmed==false,
+              (1...9_007_199_254_740_991).contains(memory_generation),ConversationMemoryCodec.isHash(source_hash),
+              candidates.count<=6,Set(candidates.map(\.id)).count==candidates.count,candidates.allSatisfy({(1...9_007_199_254_740_991).contains($0.version)}),
+              serverScopeID==nil || scope_id==serverScopeID else {throw ConversationSessionError.invalidEvent}
+        if let request {
+            guard request.continuation==nil,request.image==nil,request.acceptedWork==nil,
+                  conversation_id==request.conversationID,turn_id==request.operationID,
+                  let user=request.history.last,user.role == .user,user.id==source_id,textHash(user.content)==source_hash else {throw ConversationSessionError.invalidEvent}
+        }
+    }
+    public static func transcript(_ message:ConversationTranscriptMessage,session:ConversationSession,serverScopeID:UUID?=nil) throws -> Self {
+        guard message.role == .tool,message.toolName=="propose_memory_v1",message.complete,message.failure==nil,let call=message.toolCallID else {throw ConversationSessionError.invalidEvent}
+        let value=try decode(Data(message.content.utf8),serverScopeID:serverScopeID)
+        guard value.conversation_id==session.conversationID,let turn=session.turns.first(where:{$0.id==value.turn_id}),
+              turn.request.scope==session.scope,message.id==stableID("conversation-tool-result-\(value.turn_id)-\(call)") else {throw ConversationSessionError.invalidEvent}
+        try value.validate(request:turn.request,serverScopeID:serverScopeID);return value
+    }
+}

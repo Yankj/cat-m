@@ -10,6 +10,7 @@ import { eraseChatSource } from './source-erasure.mjs';
 import { buildSourcePurgePlan } from './purge-plan.mjs';
 import { attachFoundationProjections } from './projection-adapter.mjs';
 import { createFoundationFetchHandler } from './foundation-http.mjs';
+import {stageConversationMemoryExtraction,commitConversationMemoryCandidates} from './memory-extraction-service.mjs';
 import {freezeMemoryUsage,resolveMemoryProviderInput} from './memory-service.mjs';
 import { createSupabaseSessionVerifier } from './supabase-auth.mjs';
 import { SupabasePgScopeAuthority } from './supabase-scope-authority.mjs';
@@ -33,6 +34,8 @@ export async function createFoundationChatRuntime({repository,authenticate,provi
   const lockScope=async(tx,scopeId,owner)=>normalized(()=>tx.withScope(scopeId,async scoped=>{const row=await scoped.scope();if(owner)check(row.identity.owner===owner,403,'scope_forbidden');}));
   const integration={
     lockScope,
+    async stageMemoryExtraction(tx,args){return normalized(()=>stageConversationMemoryExtraction(runtime,tx,args));},
+    async proposeMemory(tx,args){return normalized(()=>commitConversationMemoryCandidates(runtime,tx,args));},
     async memoryUsage(tx,args){return normalized(()=>freezeMemoryUsage(runtime,tx,args));},
     async prepare({owner}){
       const token=await normalized(()=>fence.acquire(owner,holderId));check(token,503,'chat_runtime_busy');tokens.set(owner,token);
@@ -46,7 +49,7 @@ export async function createFoundationChatRuntime({repository,authenticate,provi
     },
     async stampTurn(tx,owner,turn){return normalized(()=>fence.stampTurn(tx,owner,tokens.get(owner),turn));},
     async renew(owner){await normalized(()=>fence.renew(owner,tokens.get(owner)));},
-    async capture(tx,{principal,scope,turn}){return normalized(()=>foundation.captureInTransaction(tx,principal,scope.scope_id,{conversation_id:turn.conversation_id,turn_id:turn.id,data_class:dataClass}));}
+    async capture(tx,{principal,scope,turn}){return normalized(()=>foundation.captureInTransaction(tx,principal,scope.scope_id,{conversation_id:turn.conversation_id,turn_id:turn.id,data_class:dataClass,sensitivity:turn.source_sensitivity??'low'}));}
   };
   const runtime=await createChatRuntime({repository,authenticate,provider:guardedProvider,integration,workerOptions,chatOptions,handlerOptions,completionPolicy,completionAuthorizer});
   runtime.facade.memoryGenerationEnabled=true;

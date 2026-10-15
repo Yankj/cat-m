@@ -1,4 +1,5 @@
 import { ApiError,check,shape,UUID,hash,iso,clone } from '../facade-r2/src/common.mjs';
+import {MEMORY_PROPOSAL_CONTRACT} from './memory-extraction-service.mjs';
 import {freezeCompletionIntent} from './report-completion.mjs';
 import { LOCAL_POLICY,stableUUID } from './local-output-facade.mjs';
 import { chatPromptFor,chatToolsFor,validateProvidedToolCall,assistantToolMessage } from './tools.mjs';
@@ -39,11 +40,13 @@ export class ChatService {
   }
   async startRevisionTurn(auth,scopeID,conversationID,input){const request=validateTaskRevisionRequest(input);return this.startTurn(auth,scopeID,conversationID,request.turn,{revisionTarget:request.target});}
   async readRevision(auth,scopeID,runID,operationID){return readTaskRevision(this.facade,auth,scopeID,runID,operationID);}
-  async startTurn(auth,scopeID,conversationID,input,{revisionTarget=null,workIntent=null}={}){
+  async startTurn(auth,scopeID,conversationID,input,{revisionTarget=null,workIntent=null,memoryProposalContract=null}={}){
+    check(memoryProposalContract===null||memoryProposalContract===MEMORY_PROPOSAL_CONTRACT,422,'memory_proposal_contract_invalid');
+    check(!memoryProposalContract||(!revisionTarget&&!workIntent),422,'memory_proposal_turn_not_allowed');
     check(!(revisionTarget&&workIntent),422,'work_intent_revision_not_supported');
     this.validateInput(input);const trusted=await this.scoped(auth,scopeID),{owner,scope,principal}=trusted,acceptedAt=this.metrics.now();
     await this.integration?.prepare({owner,scope,principal});
-    const admissionHash=hash({input,...workIntent?{work_intent:workIntent,work_intent_contract:ACCEPTED_WORK_INTENT_CONTRACT}:{},...revisionTarget?{revision_target:revisionTarget,revision_contract:TASK_REVISION_CONTRACT}:{},conversation_id:conversationID,scope,subject:principal.subject_id,model:this.provider.identity});
+    const admissionHash=hash({input,...memoryProposalContract?{memory_proposal_contract:memoryProposalContract}:{},...workIntent?{work_intent:workIntent,work_intent_contract:ACCEPTED_WORK_INTENT_CONTRACT}:{},...revisionTarget?{revision_target:revisionTarget,revision_contract:TASK_REVISION_CONTRACT}:{},conversation_id:conversationID,scope,subject:principal.subject_id,model:this.provider.identity});
     const result=await this.repository.transaction(async tx=>{
       await this.integration?.beforeWrite(tx,{owner,scope});
       await tx.lock(owner,'native-chat-conversations',conversationID);
@@ -60,6 +63,7 @@ export class ChatService {
       let t={id:input.turn_id,conversation_id:c.id,scope_id:scope.scope_id,subject_id:principal.subject_id,grant_epoch:c.grant_epoch,conversation_revision:c.revision+1,state:'running',
         admission_hash:admissionHash,request_hash:hash({history,model_history:modelHistory,context:input.context,scope,subject:principal.subject_id,model:this.provider.identity,policy:LOCAL_POLICY}),
         input:clone(input),history,model_history:modelHistory,events:[],task_bindings:[],created_at:iso()};
+      if(memoryProposalContract)t.memory_proposal_contract=memoryProposalContract;
       if(this.beforeTurnAdmission)t.source_auth=await this.beforeTurnAdmission(tx,{principal,scope,conversation:c,turn:t});
       const memoryUsage=await this.integration?.memoryUsage?.(tx,{principal,scope,conversation:c,turn:t});
       if(memoryUsage){t.memory_usage=memoryUsage;t.request_hash=hash({original_chat_request_hash:t.request_hash,memory_usage:memoryUsage});}
@@ -77,7 +81,14 @@ export class ChatService {
       // Durable admission receipt belongs to the same atomic turn/user-message commit.
       t={...t,events:[this.event(t,'turn_started',{request_hash:t.request_hash,conversation_revision:t.conversation_revision})]};
       check(await tx.insertIfAbsent(owner,'native-chat-turns',t),409,'turn_conflict');await tx.put(owner,'native-chat-conversations',{...c,revision:c.revision+1,messages:history,model_messages:modelHistory,last_turn_id:t.id});
-      await this.integration?.capture(tx,{owner,scope,principal,turn:t});await this.beforeCommit(tx,{owner,scope},t);if(t.revision_target)await this.assertRevisionLive(tx,{owner,scope,principal},t);return {turn:t,replayed:false};
+      await this.integration?.capture(tx,{owner,scope,principal,turn:t});
+      const extraction=await this.integration?.stageMemoryExtraction?.(tx,{principal,scope,conversation:c,turn:t});
+      if(extraction){
+        t={...t,memory_extraction:extraction,request_hash:hash({original_chat_request_hash:t.request_hash,memory_extraction:extraction})};
+        t.events=[this.event({...t,events:[]},'turn_started',{request_hash:t.request_hash,conversation_revision:t.conversation_revision})];
+        await tx.put(owner,'native-chat-turns',t);
+      }
+      await this.beforeCommit(tx,{owner,scope},t);if(t.revision_target)await this.assertRevisionLive(tx,{owner,scope,principal},t);return {turn:t,replayed:false};
     });
     this.metrics.record('accept_commit',acceptedAt);
     if(!result.replayed){
@@ -116,7 +127,10 @@ export class ChatService {
     let wake=null;
     const t=await this.repository.transaction(async tx=>{
       (env.assertLive??(()=>env.signal.throwIfAborted()))();const {t,c}=await this.live(tx,env);let result;
-      if(call.name==='revise_current_report_v1'){
+      if(call.name==='propose_memory_v1'){
+        check(typeof this.integration?.proposeMemory==='function',503,'memory_proposal_not_configured');
+        result=await this.integration.proposeMemory(tx,{principal:env.principal,scope:env.scope,conversation:c,turn:t,call});
+      }else if(call.name==='revise_current_report_v1'){
         const admitted=await acceptTaskRevisionInTransaction(this.facade,tx,{...env,conversation:c,turn:t,call});result=admitted.receipt;wake=admitted.wake;
       }else if(['delegate_task','delegate_plan_v1','delegate_sources_v1'].includes(call.name)){
         check(!t.revision_target,422,'revision_tool_not_allowed');
@@ -127,7 +141,7 @@ export class ChatService {
         result={tasks:await Promise.all(runs.map(r=>this.facade.runProjection(tx,env.owner,r.id)))};
       }
       const event=this.event(t,'tool_result',{call_id:call.id,name:call.name,result});
-      const saved=await tx.put(env.owner,'native-chat-turns',{...t,...call.name==='revise_current_report_v1'?{continuations:[result],dispatch_checkpoint:{...t.dispatch_checkpoint,next:1}}:{},task_bindings:['delegate_task','delegate_plan_v1','delegate_sources_v1'].includes(call.name)?[...t.task_bindings,result]:t.task_bindings,events:[...t.events,event]});await this.beforeCommit(tx,env,saved);if(t.revision_target)await this.assertRevisionLive(tx,env,saved);return saved;
+      const saved=await tx.put(env.owner,'native-chat-turns',{...t,...call.name==='propose_memory_v1'?{memory_proposal_receipt:result,memory_proposal_call:{id:call.id,hash:hash({id:call.id,name:call.name,arguments:call.arguments})}}:{},...call.name==='revise_current_report_v1'?{continuations:[result],dispatch_checkpoint:{...t.dispatch_checkpoint,next:1}}:{},task_bindings:['delegate_task','delegate_plan_v1','delegate_sources_v1'].includes(call.name)?[...t.task_bindings,result]:t.task_bindings,events:[...t.events,event]});await this.beforeCommit(tx,env,saved);if(t.revision_target)await this.assertRevisionLive(tx,env,saved);return saved;
     });this.notify(env.owner,t);if(wake)try{await this.facade.onTaskRevisionAccepted?.(wake);}catch{}return t.events.at(-1).data.result;
   }
   async execute(env){
@@ -158,6 +172,7 @@ export class ChatService {
         phase='text_flush';await batcher.finish();await batcher.stop();batcher=null;env.assertLive();
         phase='tool_or_completion';
         for(const call of round.calls){validateProvidedToolCall(call,'chat',tools);check(!seen.has(call.id),422,'duplicate_tool_call');seen.add(call.id);}
+        if(round.calls.some(call=>call.name==='propose_memory_v1'))check(round.calls.length===1,422,'memory_proposal_tool_limit');
         if(env.turn.revision_target){check(round.calls.length<=1,422,'revision_tool_limit');if(received)check(received.round_hash===hash(round),409,'revision_received_round_corrupt');else await this.repository.transaction(async tx=>{const {t}=await this.live(tx,env);await this.assertRevisionLive(tx,env,t);const saved=await tx.put(env.owner,'native-chat-turns',{...t,dispatch_checkpoint:{...t.dispatch_checkpoint,state:'received',round:clone(round),round_hash:hash(round),next:0}});await this.beforeCommit(tx,env,saved);await this.assertRevisionLive(tx,env,saved);});}
         // A complete valid provider terminal precedes every tool effect.
         if(!round.calls.length){await this.complete(env,messageID,text,[...messages,{role:'assistant',content:round.text}]);return;}
@@ -166,6 +181,14 @@ export class ChatService {
         for(const call of round.calls){
           if(!received||!env.turn.events.some(e=>e.type==='tool_call'&&e.data.call_id===call.id))await this.append(env,'tool_call',{call_id:call.id,name:call.name,arguments:call.arguments});
           const result=await this.executeTool(env,call);messages.push({role:'tool',tool_call_id:call.id,content:JSON.stringify(result)});
+        }
+        if(round.calls.some(c=>c.name==='propose_memory_v1')){
+          const receipt=messages.at(-1),pending=JSON.parse(receipt.content).candidates.length>0;
+          const acknowledgement=pending?'记忆候选待确认。请打开菜单中的“记忆”，查看原文来源和使用范围，再决定是否确认。':'没有新增记忆候选。已有的忘记设置仍然生效。';
+          // Deterministic receipt wording is not another model answer or confirmation.
+          const suffix=(text.trim()?'\n\n':'')+acknowledgement;
+          await this.append(env,'text_delta',{message_id:messageID,text:suffix});text+=suffix;
+          messages.push({role:'assistant',content:acknowledgement});await this.complete(env,messageID,text,messages);return;
         }
         if(round.calls.some(c=>c.name==='revise_current_report_v1')||this.finishOnDelegationReceipt&&round.calls.some(c=>['delegate_task','delegate_plan_v1','delegate_sources_v1'].includes(c.name))){await this.complete(env,messageID,text,messages);return;}
       }
@@ -230,11 +253,11 @@ export class ChatService {
         const row=await tx.chatTurnTail(owner,tid,afterSequence),t=row?.data;
         check(t?.conversation_id===cid&&t.scope_id===scopeID&&row.subject_id===principal.subject_id,404,'not_found');
         check(afterSequence<=row.event_count,422,'invalid_cursor');check(c.state==='active'&&c.grant_epoch===t.grant_epoch,409,'grant_conflict');
-        const {revision_target,...projection}=t;return {...projection,...revision_target?{revision_target:clone(revision_target.target)}:{},next_cursor:`${t.id}:${row.event_count}`};
+        const {revision_target,memory_extraction,memory_proposal_call,source_sensitivity,...projection}=t;return {...projection,...revision_target?{revision_target:clone(revision_target.target)}:{},next_cursor:`${t.id}:${row.event_count}`};
       }
       const t=await tx.get(owner,'native-chat-turns',tid);check(t?.conversation_id===cid&&t.scope_id===scopeID&&t.subject_id===principal.subject_id,404,'not_found');
       check(afterSequence<=t.events.length,422,'invalid_cursor');check(c.state==='active'&&c.grant_epoch===t.grant_epoch,409,'grant_conflict');
-      const {input,history,model_history,subject_id,source_auth,dispatch_checkpoint,revision_target,...projection}=t;return {...projection,...revision_target?{revision_target:clone(revision_target.target)}:{},events:t.events.filter(e=>e.sequence>afterSequence),next_cursor:`${t.id}:${t.events.length}`};
+      const {input,history,model_history,subject_id,source_auth,dispatch_checkpoint,revision_target,memory_extraction,memory_proposal_call,source_sensitivity,...projection}=t;return {...projection,...revision_target?{revision_target:clone(revision_target.target)}:{},events:t.events.filter(e=>e.sequence>afterSequence),next_cursor:`${t.id}:${t.events.length}`};
     });}finally{this.metrics.record('observer_snapshot',started);}
   }
   async control(auth,scopeID,cid,input){

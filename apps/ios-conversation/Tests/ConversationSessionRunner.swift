@@ -134,9 +134,63 @@ actor PresentationConversationBackend: ConversationBackend {
     }
     func observe(_ request: ConversationTurnRequest) async throws -> ConversationObservation { throw ConversationSessionError.invalidEvent }
 }
+
+/// Proposals are confirmations-to-do, never domain memory or delegated work.
+actor MemoryProposalConversationBackend:ConversationBackend {
+    enum Mode {case proposed,empty,forgedGoal,missingTyped,changedContent,failed,lostResponse}
+    let mode:Mode
+    private var posts=0,reads=0
+    private var originals:[UUID:ConversationObservation]=[:]
+    init(_ mode:Mode){self.mode=mode}
+    func connection(scope:DataScope) async -> ConversationConnection {.init(state:.connected,provider:"Synthetic memory proposal",detail:"No HTTP/model")}
+    func reply(_ request:ConversationTurnRequest) async throws -> AsyncThrowingStream<ConversationTurnEvent,Error> {
+        posts+=1
+        let user=request.history.last!,message=UUID(),call="memory-proposal",reply="Review the memory candidates before confirming."
+        let raw:[String:Any]=["schema_version":1,"contract":"catpaw.memory-proposal.v1","scope_id":UUID().uuidString,"conversation_id":request.conversationID.uuidString,"turn_id":request.operationID.uuidString,"source_id":user.id.uuidString,"source_hash":textHash(user.content),"memory_generation":1,"job_id":UUID().uuidString,"candidates":mode == .empty ? []:[["id":UUID().uuidString,"version":1]],"status":"proposed","confirmed":false]
+        let data=try JSONSerialization.data(withJSONObject:raw,options:.sortedKeys),receipt=try ConversationMemoryProposalReceipt.decode(data,request:request)
+        var content=raw;if mode == .changedContent {content["confirmed"]=true}
+        let goals:[ConversationGoalProjection]=mode == .forgedGoal ? [.init(id:"must-not-exist",revision:1,title:"Forged memory task",state:.completed,summary:"",updatedAt:Date())]:[]
+        var events:[ConversationTurnEvent]=[]
+        func emit(_ payload:ConversationTurnEvent.Payload){events.append(.init(operationID:request.operationID,epoch:request.epoch,sequence:events.count+1,payload:payload))}
+        emit(.toolStarted(callID:call,name:"propose_memory_v1",arguments:"{}"))
+        if mode == .failed {emit(.failed(message:"Synthetic proposal extraction failure",reconciliationRequired:false))}
+        else {
+            emit(.toolResult(.init(callID:call,name:"propose_memory_v1",content:String(decoding:try JSONSerialization.data(withJSONObject:content,options:.sortedKeys),as:UTF8.self),committedGoals:goals,memoryProposalReceipt:mode == .missingTyped ? nil:receipt)))
+            emit(.textDelta(messageID:message,text:reply));emit(.completed(messageID:message,finalTextHash:textHash(reply)))
+        }
+        originals[request.operationID] = .init(request:request,events:events)
+        let delivered=mode == .lostResponse ? Array(events.prefix(1)):events
+        return AsyncThrowingStream{stream in for event in delivered{stream.yield(event)};stream.finish()}
+    }
+    func observe(_ request:ConversationTurnRequest) async throws -> ConversationObservation {reads+=1;guard let original=originals[request.operationID] else{throw ConversationSessionError.invalidEvent};return original}
+    func counts()->[Int] {[posts,reads]}
+}
+private func memoryProposalSessionChecks(directory:URL) async throws {
+    for mode in [MemoryProposalConversationBackend.Mode.proposed,.empty,.forgedGoal,.missingTyped,.changedContent,.failed,.lostResponse] {
+        let url=directory.appendingPathComponent("proposal-"+String(describing:mode)+".json"),backend=MemoryProposalConversationBackend(mode)
+        let service=ConversationSessionService(repository:try Repository(persistence:FilePersistence(url:url)),backend:backend),conversation=try await service.create(scope:Profiles.user),operation=UUID()
+        do{_=try await service.send(scope:Profiles.user,conversationID:conversation,text:"Remember a fictional preference, after confirmation.",operationID:operation)}catch{}
+        let saved=try await service.read(scope:Profiles.user,conversationID:conversation)
+        try require(saved.goals.isEmpty,"Memory proposal \(mode) cannot become a task Goal")
+        if mode == .proposed || mode == .empty {
+            guard let message=saved.messages.first(where:{$0.role == .tool && $0.toolName=="propose_memory_v1"}) else{throw ConversationSessionError.invalidEvent}
+            let receipt=try ConversationMemoryProposalReceipt.transcript(message,session:saved)
+            try require(saved.turns.last?.state == .completed && !receipt.confirmed && receipt.candidates.isEmpty==(mode == .empty),"Memory proposal \(mode) retains validated pending references and readable prose")
+        }else if mode == .failed {
+            try require(saved.turns.last?.state == .failed && saved.messages.contains(where:{$0.toolName=="propose_memory_v1" && $0.failure != nil}),"Started then failed memory extraction keeps its own failure state")
+        }else if mode == .lostResponse {
+            try require(saved.turns.last?.state == .unknown,"Lost proposal response remains unknown before original GET")
+            let cold=ConversationSessionService(repository:try Repository(persistence:FilePersistence(url:url)),backend:backend)
+            try await cold.observe(scope:Profiles.user,conversationID:conversation)
+            let recovered=try await cold.read(scope:Profiles.user,conversationID:conversation),counts=await backend.counts()
+            try require(recovered.turns.last?.id==operation && recovered.turns.last?.state == .completed && recovered.goals.isEmpty && counts==[1,1],"Cold memory proposal recovery reads the original operation without another submission")
+        }else{try require(saved.turns.last?.state == .unknown && saved.messages.allSatisfy({$0.role != .tool}),"Forged/missing typed/changed memory receipt \(mode) cannot persist a proposal result")}
+    }
+}
 @main struct ConversationSessionRunner {
     static func main() async throws {
         let directory = URL(fileURLWithPath: CommandLine.arguments[1])
+        try await memoryProposalSessionChecks(directory:directory)
         let repository = try Repository(persistence: FilePersistence(url: directory.appendingPathComponent("chat.json")))
         let service = ConversationSessionService(repository: repository)
         let first = try await service.openLatest(scope: Profiles.user)

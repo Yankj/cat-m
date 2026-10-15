@@ -312,6 +312,7 @@ public actor NativeChatHTTPBackend: ConversationBackend {
         if let target=request.continuation {guard request.image==nil,request.imageBytes==nil else {throw ConversationSessionError.invalidEvent};encoded=try Self.jsonData(["turn":body,"target":target.canonicalValue]);guard encoded.count<=48000 else {throw ConversationSessionError.invalidEvent}}
         else {encoded=bytes}
         var upload = try self.request(turnPath(request), auth: auth); upload.httpMethod = "POST"; upload.httpBody = encoded
+        if request.image==nil,request.continuation==nil,request.acceptedWork==nil {upload.setValue(ConversationMemoryProposalReceipt.contractName,forHTTPHeaderField:"X-Catpaw-Memory-Proposal-Contract")}
         try Task.checkCancellation()
         return (auth, grant, upload)
     }
@@ -390,13 +391,14 @@ public actor NativeChatHTTPBackend: ConversationBackend {
             payload = .textDelta(messageID: id, text: text)
         case "tool_call":
             guard request.image==nil else {throw ConversationSessionError.invalidEvent}
-            guard reality != "not_configured", let name = data["name"] as? String, ((["delegate_task", "delegate_plan_v1", "delegate_sources_v1", "agent_status"].contains(name) && request.continuation==nil) || (name=="revise_current_report_v1" && request.continuation?.intent == .reviseReport)), let id = data["call_id"] as? String, !id.isEmpty else { throw ConversationSessionError.invalidEvent }
+            guard reality != "not_configured", let name = data["name"] as? String, ((["delegate_task", "delegate_plan_v1", "delegate_sources_v1", "agent_status", "propose_memory_v1"].contains(name) && request.continuation==nil) || (name=="revise_current_report_v1" && request.continuation?.intent == .reviseReport)), let id = data["call_id"] as? String, !id.isEmpty else { throw ConversationSessionError.invalidEvent }
             if ["delegate_task", "delegate_plan_v1", "delegate_sources_v1"].contains(name), let args = data["arguments"] as? [String: Any], let title = args["title"] as? String, title.utf16.count <= 160 { toolTitles[request.operationID, default: [:]][id] = title }
             payload = .toolStarted(callID: id, name: name, arguments: String(decoding: try Self.jsonData(Self.object(data["arguments"])), as: UTF8.self))
         case "tool_result":
             guard request.image==nil else {throw ConversationSessionError.invalidEvent}
             guard reality != "not_configured", let name = data["name"] as? String, let call = data["call_id"] as? String, !call.isEmpty else { throw ConversationSessionError.invalidEvent }
             let result = try Self.object(data["result"]); var goals: [ConversationGoalProjection] = []
+            var memoryProposal:ConversationMemoryProposalReceipt?
             if ["delegate_task", "delegate_plan_v1", "delegate_sources_v1"].contains(name) {
                 let b = try binding(result, request: request, currentTurn: true); guard b.call_id == call, b.grant_epoch == grant else { throw ConversationSessionError.invalidEvent }
                 if let known = bindingCache[request.operationID]?[call] { guard known == b else { throw ConversationSessionError.invalidEvent } }
@@ -404,6 +406,8 @@ public actor NativeChatHTTPBackend: ConversationBackend {
                 // Commit only verified projections; replay the same binding without duplication.
                 bindingCache[request.operationID, default: [:]][call] = b
                 goals.append(goal)
+            } else if name == "propose_memory_v1" {
+                memoryProposal=try ConversationMemoryProposalReceipt.decode(Self.jsonData(result),request:request,serverScopeID:configuration.serverScopeID)
             } else if name == "agent_status" {
                 var known = Array(bindingCache[request.operationID, default: [:]].values)
                 for message in request.history where message.role == .tool && ["delegate_task", "delegate_plan_v1", "delegate_sources_v1"].contains(message.toolName ?? "") {
@@ -425,7 +429,7 @@ public actor NativeChatHTTPBackend: ConversationBackend {
                 }
                 continuationReceipts[request.operationID,default:[:]][call]=receipt;goals.append(projected)
             } else { throw ConversationSessionError.invalidEvent }
-            payload = .toolResult(ConversationToolResult(callID: call, name: name, content: String(decoding: try Self.jsonData(result), as: UTF8.self), committedGoals: goals,continuationReceipt:continuationReceipts[request.operationID]?[call]))
+            payload = .toolResult(ConversationToolResult(callID: call, name: name, content: String(decoding: try Self.jsonData(result), as: UTF8.self), committedGoals: goals,continuationReceipt:continuationReceipts[request.operationID]?[call],memoryProposalReceipt:memoryProposal))
         case "turn_completed":
             guard reality != "not_configured", let id = UUID(uuidString: data["message_id"] as? String ?? "") else { throw ConversationSessionError.invalidEvent }
             let bindings = try Self.array(data["task_bindings"]); guard bindings.count <= 1 else { throw ConversationSessionError.invalidEvent }

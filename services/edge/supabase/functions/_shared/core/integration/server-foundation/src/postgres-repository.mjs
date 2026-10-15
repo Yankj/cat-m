@@ -83,7 +83,7 @@ export class RecordTransaction {
     return r.rows[0]?.data??null;
   }
   async chatTurnTail(owner,id,afterSequence){
-    const r=await this.connection.query(`SELECT (data-ARRAY['input','history','model_history','subject_id','source_auth','dispatch_checkpoint','events']) || jsonb_build_object('events',COALESCE((SELECT jsonb_agg(e ORDER BY (e->>'sequence')::integer) FROM jsonb_array_elements(data->'events') e WHERE (e->>'sequence')::integer>$3),'[]'::jsonb)) AS data, jsonb_array_length(data->'events') AS event_count, data->>'subject_id' AS subject_id FROM public.records WHERE owner=$1 AND kind='native-chat-turns' AND id=$2`,[owner,id,afterSequence]);
+    const r=await this.connection.query(`SELECT (data-ARRAY['input','history','model_history','subject_id','source_auth','dispatch_checkpoint','memory_extraction','memory_proposal_call','source_sensitivity','events']) || jsonb_build_object('events',COALESCE((SELECT jsonb_agg(e ORDER BY (e->>'sequence')::integer) FROM jsonb_array_elements(data->'events') e WHERE (e->>'sequence')::integer>$3),'[]'::jsonb)) AS data, jsonb_array_length(data->'events') AS event_count, data->>'subject_id' AS subject_id FROM public.records WHERE owner=$1 AND kind='native-chat-turns' AND id=$2`,[owner,id,afterSequence]);
     return r.rows[0]??null;
   }
   async lock(owner, kind, id) {

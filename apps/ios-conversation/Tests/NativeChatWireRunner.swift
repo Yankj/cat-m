@@ -50,6 +50,35 @@ struct WireTestSession: NativeChatSessionCredentials { func authorization(scope:
         _ = try await service.send(scope: Profiles.user, conversationID: id, text: "wire-question-2", operationID: UUID())
         var state = try await service.read(scope: Profiles.user, conversationID: id)
         try check(state.turns.count == 2 && state.turns.allSatisfy { $0.state == .completed } && state.messages.count == 4 && state.goals.isEmpty, "HTTP/SSE second turn checks authoritative scoped history; ordinary Q&A creates no goals")
+
+        func proposalWireCounts() async throws -> [String:Any] {
+            var request=URLRequest(url:origin.appendingPathComponent("wire-test-stats"));request.setValue("Bearer explicit-wire-test-only",forHTTPHeaderField:"Authorization")
+            let (data,_)=try await URLSession.shared.data(for:request);return try JSONSerialization.jsonObject(with:data) as! [String:Any]
+        }
+        for mode in ["wire-memory-proposal","wire-memory-proposal-bad-source"] {
+            let storage=root.appendingPathComponent(mode+".json"),proposal=ConversationSessionService(repository:try Repository(persistence:FilePersistence(url:storage)),backend:try backend())
+            let conversation=try await proposal.create(scope:Profiles.user),operation=UUID(),before=try await proposalWireCounts()
+            var rejected=false;do{_=try await proposal.send(scope:Profiles.user,conversationID:conversation,text:mode,operationID:operation)}catch{rejected=true}
+            let saved=try await proposal.read(scope:Profiles.user,conversationID:conversation)
+            try check(saved.goals.isEmpty && saved.turns.count==1 && saved.turns.last?.id==operation,"\(mode) actual SSE never creates task Goal authority")
+            let cold=ConversationSessionService(repository:try Repository(persistence:FilePersistence(url:storage)),backend:try backend())
+            if mode=="wire-memory-proposal" {
+                guard let message=saved.messages.first(where:{$0.role == .tool && $0.toolName=="propose_memory_v1"}) else{throw CatpawError.invalid("Actual HTTP proposal result was not persisted")}
+                let receipt=try ConversationMemoryProposalReceipt.transcript(message,session:saved,serverScopeID:Profiles.user.workspaceID)
+                try check(!rejected && saved.turns.last?.state == .completed && receipt.candidates.count==1 && !receipt.confirmed && receipt.source_id==saved.turns.last?.request.history.last?.id && receipt.source_hash==textHash(mode) && saved.messages.contains(where:{$0.role == .assistant && $0.toolName==nil && $0.complete && $0.content=="Memory candidates need your confirmation."}),"valid propose_memory_v1 crosses actual HTTP/SSE typed decode, exact original source, pending receipt and nonempty terminal text")
+                try await cold.observe(scope:Profiles.user,conversationID:conversation)
+                let readback=try await cold.read(scope:Profiles.user,conversationID:conversation)
+                try check(readback.turns.last?.id==operation && readback.turns.last?.state == .completed && readback.messages.count==saved.messages.count && readback.goals.isEmpty,"valid proposal cold GET preserves the original pending receipt without another turn")
+            }else{
+                try check(rejected && saved.turns.last?.state == .unknown && saved.messages.contains(where:{$0.role == .assistant && $0.toolName=="propose_memory_v1"}) && !saved.messages.contains(where:{$0.role == .tool}),"tampered proposal source hash rejects actual SSE result after started and preserves unknown without saved candidates")
+                var originalRejected=false;do{try await cold.observe(scope:Profiles.user,conversationID:conversation)}catch{originalRejected=true}
+                do{_=try await cold.send(scope:Profiles.user,conversationID:conversation,text:"must not retry proposal",operationID:UUID());throw CatpawError.invalid("Unknown proposal permitted a second POST")}catch ConversationSessionError.unresolvedOperation{}
+                let stillUnknown=try await cold.read(scope:Profiles.user,conversationID:conversation)
+                try check(originalRejected && stillUnknown.turns.count==1 && stillUnknown.turns.last?.id==operation && stillUnknown.turns.last?.state == .unknown && stillUnknown.goals.isEmpty,"tampered proposal cold GET fails closed on the same ID and cannot silently resend")
+            }
+            let after=try await proposalWireCounts()
+            try check((after["turnPosts"] as? Int)==(before["turnPosts"] as! Int)+1 && (after["turnReads"] as? Int)==(before["turnReads"] as! Int)+1,"\(mode) one explicit POST and exactly one original GET across the cold client")
+        }
         let taskConvo = try await service.create(scope: Profiles.user)
         _ = try await service.send(scope: Profiles.user, conversationID: taskConvo, text: "wire-task", operationID: UUID())
         state = try await service.read(scope: Profiles.user, conversationID: taskConvo)
@@ -152,7 +181,7 @@ struct WireTestSession: NativeChatSessionCredentials { func authorization(scope:
         try check(confirmed.turns.count == 1 && confirmed.turns.last?.id == failedOperation && confirmed.turns.last?.state == .completed, "HTTP 500 recovers the committed original through GET only")
         var stats = URLRequest(url: origin.appendingPathComponent("wire-test-stats")); stats.setValue("Bearer explicit-wire-test-only", forHTTPHeaderField: "Authorization")
         let (data, _) = try await URLSession.shared.data(for: stats), counts = try JSONSerialization.jsonObject(with: data) as! [String: Any]
-        try check(counts["turnPosts"] as? Int == 34 && (counts["turnReads"] as? Int ?? 0) >= 34, "reconciliation uses reads; thirty-four explicit fixture requests caused exactly thirty-four turn POSTs")
+        try check(counts["turnPosts"] as? Int == 36 && (counts["turnReads"] as? Int ?? 0) >= 36, "reconciliation uses reads; thirty-six explicit fixture requests caused exactly thirty-six turn POSTs")
         var stop = URLRequest(url:origin.appendingPathComponent("wire-test-offline")); stop.setValue("Bearer explicit-wire-test-only",forHTTPHeaderField:"Authorization")
         _ = try await URLSession.shared.data(for:stop)
         let disconnected = ConversationSessionService(repository:repo,backend:try backend()), offlineID = try await disconnected.create(scope:Profiles.user)
