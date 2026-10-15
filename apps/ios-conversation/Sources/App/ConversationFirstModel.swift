@@ -443,7 +443,7 @@ enum ConversationObserverLifecycle: String { case foregroundIdle, streaming, rec
             if recoveredImageOperation==turn.id {if draft==turn.request.history.last?.content {editDraft("")};recoveredImageOperation=nil}
             Task {try? await imageStore.remove(conversationID:current.conversationID,operationID:turn.id)}
         }
-        guard imageRecoveryTask==nil,imageDraft.phase == .empty else {return}
+        guard loaded,imageRecoveryTask==nil,imageDraft.phase == .empty else {return}
         let candidate=(followups.paused ? followups.pending.first(where:{$0.image != nil}) : nil).map{($0.id,$0.image!,$0.text)} ?? current.turns.last(where:{[.unknown,.failed,.notSent].contains($0.state) && $0.request.image != nil}).map{($0.id,$0.request.image!,$0.request.history.last?.content ?? "")}
         guard let (operation,reference,text)=candidate else {return}
         let id=current.conversationID,generation=sceneGeneration,token=UUID();imageRecoveryToken=token
@@ -451,10 +451,11 @@ enum ConversationObserverLifecycle: String { case foregroundIdle, streaming, rec
             defer {if imageRecoveryToken==token {imageRecoveryTask=nil;imageRecoveryToken=nil}}
             do {
                 let bytes=try await imageStore.read(reference:reference,conversationID:id,operationID:operation)
-                let packet=try await SystemImageAttachmentEncoder().encode(bytes,id:reference.receipt.id,format:.png,limits:.init())
+                let receipt=reference.receipt
+                let packet=try await SystemImageAttachmentEncoder().restoreEncoded(bytes,id:receipt.id,mimeType:receipt.mime_type,sha256:receipt.sha256,sizeBytes:receipt.size_bytes,width:receipt.width,height:receipt.height)
                 guard !Task.isCancelled,conversationID==id,sceneGeneration==generation,loaded,imageDraft.phase == .empty,packet.sha256==reference.receipt.sha256 else {return}
                 let unresolved=(followups.paused && followups.pending.contains(where:{$0.id==operation})) || session?.turns.contains(where:{$0.id==operation && [.unknown,.failed,.notSent].contains($0.state)})==true
-                guard unresolved else {return};imageDraft.restorePrepared(packet);recoveredImageOperation=operation;if draft.isEmpty {draft=text}
+                guard unresolved else {return};approvedImage=nil;imageDraft.restorePrepared(packet);recoveredImageOperation=operation;if draft.isEmpty {draft=text}
             } catch {if conversationID==id,loaded,!Task.isCancelled {self.error="本机图片读取未完成，原请求已保留。"}}
         }
     }

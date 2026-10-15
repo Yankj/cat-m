@@ -17,6 +17,63 @@ public struct SystemImageAttachmentEncoder: ImageAttachmentEncoding {
         }
         return try await withTaskCancellationHandler(operation: { try await worker.value }, onCancel: { worker.cancel() })
     }
+    /// Restore a previously prepared transport snapshot without re-encoding its bytes.
+    /// The caller supplies the durable receipt; this does not restore send consent.
+    public func restoreEncoded(_ data: Data, id: UUID, mimeType: String, sha256: String,
+                               sizeBytes: Int, width: Int, height: Int,
+                               limits: ImageEncodingLimits = .init()) async throws -> PreparedImageAttachment {
+        try Task.checkCancellation()
+        let worker = Task.detached(priority: .userInitiated) {
+            try autoreleasepool {
+                try Self.restore(data, id: id, mimeType: mimeType, sha256: sha256,
+                                 sizeBytes: sizeBytes, width: width, height: height, limits: limits)
+            }
+        }
+        return try await withTaskCancellationHandler(operation: {
+            let value = try await worker.value
+            try Task.checkCancellation()
+            return value
+        }, onCancel: { worker.cancel() })
+    }
+    private static func restore(_ data: Data, id: UUID, mimeType: String, sha256: String,
+                                sizeBytes: Int, width: Int, height: Int,
+                                limits: ImageEncodingLimits) throws -> PreparedImageAttachment {
+        try Task.checkCancellation()
+        let format: ImageAttachmentFormat
+        switch mimeType {
+        case "image/png": format = .png
+        case "image/jpeg": format = .jpeg
+        default: throw ImageAttachmentError.unsupportedSource
+        }
+        guard sizeBytes > 0, sizeBytes <= limits.maxEncodedBytes,
+              data.count == sizeBytes, width > 0, height > 0,
+              width <= limits.maxSide, height <= limits.maxSide,
+              sha256.utf8.count == 64,
+              sha256.utf8.allSatisfy({ (48...57).contains($0) || (97...102).contains($0) }),
+              SHA256.hash(data: data).map({ String(format: "%02x", $0) }).joined() == sha256 else {
+            throw ImageAttachmentError.encodingFailed
+        }
+        // This factory accepts the encoder's metadata-free container, not a new raw import.
+        // Comparing rather than replacing the stripped value preserves the exact snapshot.
+        guard try ImageContainerSanitizer.strip(data, format: format) == data,
+              let source = CGImageSourceCreateWithData(data as CFData,
+                  [kCGImageSourceShouldCache: false] as CFDictionary),
+              CGImageSourceGetCount(source) == 1,
+              CGImageSourceGetType(source) as String? == (format == .png ? UTType.png.identifier : UTType.jpeg.identifier),
+              CGImageSourceGetStatus(source) == .statusComplete,
+              CGImageSourceGetStatusAtIndex(source, 0) == .statusComplete,
+              let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
+              (properties[kCGImagePropertyPixelWidth] as? NSNumber)?.intValue == width,
+              (properties[kCGImagePropertyPixelHeight] as? NSNumber)?.intValue == height,
+              let image = CGImageSourceCreateImageAtIndex(source, 0,
+                  [kCGImageSourceShouldCache: false] as CFDictionary),
+              image.width == width, image.height == height else { throw ImageAttachmentError.encodingFailed }
+        try Task.checkCancellation()
+        let thumbnail = try preview(image)
+        try Task.checkCancellation()
+        return .init(id: id, mimeType: mimeType, sha256: sha256, encodedData: data,
+                     thumbnailData: thumbnail, width: width, height: height)
+    }
     private static func prepare(_ data: Data, id: UUID, format: ImageAttachmentFormat,
                                 limits: ImageEncodingLimits) throws -> PreparedImageAttachment {
         try Task.checkCancellation()
