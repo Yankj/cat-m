@@ -146,14 +146,25 @@ import CatpawImageComposer
         for activity in activities where emitted.insert(activity.id).inserted {result.append(.activity(activity))}
         return Self.interleave(proactiveFeed.entries(for:model.conversationID),into:result)
     }
-    /// Proactive events go right after the row they were anchored to (see CatpawProactiveFeed); unknown anchors go last.
+    /// True time order: an event goes after the last row whose time ≤ the event's `created_at`.
+    /// Row time = message `createdAt` (local journal time); activity rows inherit the previous row's time.
+    /// Legacy messages decode `.distantPast`, so they count as older than every event and cards never
+    /// move above old history. Events at the same position keep `created_at` order.
     private static func interleave(_ entries:[CatpawProactiveFeed.Entry],into rows:[RenderedTimelineRow])->[RenderedTimelineRow] {
         guard !entries.isEmpty else {return rows}
-        let ids=Set(rows.map(\.id))
-        let byAnchor=Dictionary(grouping:entries.filter{$0.anchorRowID.map(ids.contains) ?? false},by:{$0.anchorRowID!})
-        var out:[RenderedTimelineRow]=[]
-        for row in rows {out.append(row);out.append(contentsOf:(byAnchor[row.id] ?? []).map{.proactive($0)})}
-        out.append(contentsOf:entries.filter{!($0.anchorRowID.map(ids.contains) ?? false)}.map{.proactive($0)})
+        var times:[Date]=[],last=Date.distantPast
+        for row in rows {
+            if case .message(let message)=row {last=message.message.createdAt}
+            times.append(last)
+        }
+        var after:[Int:[CatpawProactiveFeed.Entry]]=[:]   // -1 = before the first row
+        for entry in entries.sorted(by:{$0.event.createdAt<$1.event.createdAt}) {
+            let time=entry.event.createdAt
+            let index=times.lastIndex(where:{$0<=time}) ?? -1
+            after[index,default:[]].append(entry)
+        }
+        var out:[RenderedTimelineRow]=(after[-1] ?? []).map{.proactive($0)}
+        for (index,row) in rows.enumerated() {out.append(row);out.append(contentsOf:(after[index] ?? []).map{.proactive($0)})}
         return out
     }
     private func renderedSpacing(_ row:RenderedTimelineRow,previous:RenderedTimelineRow?)->CGFloat {
