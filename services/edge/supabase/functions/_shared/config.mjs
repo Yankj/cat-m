@@ -2,9 +2,10 @@ import {ApiError,check,hash} from './core/facade-r2/src/common.mjs';
 import {Buffer} from 'node:buffer';
 import {validatePublicSourcePolicy} from './core/src/public-source-contract.mjs';
 import {readFreeRouteChain} from './core/src/free-route-chain.mjs';
+import {readApnsConfig,APNS_ENV_NAMES} from './core/src/apns.mjs';
 export const SECRET_NAMES=['CATPAW_DATABASE_URL','CATPAW_PRIVATE_MODEL_KEY','CATPAW_TICK_HMAC_KEY','CATPAW_MEMORY_GUARD_KEY'];
 export const CONFIG_NAMES=['SUPABASE_URL','CATPAW_PUBLISHABLE_KEY'];
-export const OPTIONAL_CONFIG_NAMES=['CATPAW_PUBLIC_SOURCE_POLICY','CATPAW_GEMINI_API_KEY','CATPAW_GROQ_API_KEY','CATPAW_MODEL_ROUTE_ORDER','CATPAW_THINKING_SUMMARY','CATPAW_MODEL_AUTO_FAILOVER'];
+export const OPTIONAL_CONFIG_NAMES=['CATPAW_PUBLIC_SOURCE_POLICY','CATPAW_GEMINI_API_KEY','CATPAW_GROQ_API_KEY','CATPAW_MODEL_ROUTE_ORDER','CATPAW_THINKING_SUMMARY','CATPAW_MODEL_AUTO_FAILOVER',...APNS_ENV_NAMES,'CATPAW_APNS_ENV'];
 const PROJECT_URL='';
 const PROJECT_PUBLISHABLE_KEY='';
 // JSON.parse alone silently accepts duplicate object keys. Reviewed network policy must have one meaning.
@@ -40,5 +41,5 @@ export function readConfig(get){
  if(chain){freeChain=chain;activeRoute={...route,id:'catpaw-free-chain-v1',provider:chain.routes.map(r=>r.provider).join(' → '),downstream_provider:chain.routes.map(r=>r.provider).join('、'),model:chain.routes[0].model,endpoint:chain.routes[0].endpoint,routing_policy:{chain:chain.routes.map(r=>({id:r.id,model:r.model,endpoint:r.endpoint})),failover:chain.autoFailover?'before_first_output_only':'disabled',max_price:{prompt:0,completion:0,request:0,image:0}},policy_url:chain.routes[0].policy_url,policy_urls:chain.routes.map(r=>r.policy_url),thinking_summary:chain.routes.some(r=>r.thinking_summary)};}
  const finalRoute=activeRoute;
  if(publicSourcePolicy){finalRoute.data_fields=[...finalRoute.data_fields,'user_provided_public_urls_and_received_source_text'];finalRoute.purposes=[...finalRoute.purposes,'user_url_sourced_report'];}
- return {...base,publicSourcePolicy,ready:missing.length===0,missing,authReady:!!base.projectUrl&&!!base.publishableKey&&!!base.databaseUrl,modelKey:get('CATPAW_PRIVATE_MODEL_KEY'),tickKey:get('CATPAW_TICK_HMAC_KEY'),guardKey:get('CATPAW_MEMORY_GUARD_KEY'),route:finalRoute,routeHash:hash(finalRoute),freeChain,chatBudgetMs:50000,chatFinalizationReserveMs:5000,tickBudgetMs:30000,modelTimeoutMs:20000,dailyCallLimit:20};
+ return {...base,publicSourcePolicy,ready:missing.length===0,missing,authReady:!!base.projectUrl&&!!base.publishableKey&&!!base.databaseUrl,modelKey:get('CATPAW_PRIVATE_MODEL_KEY'),tickKey:get('CATPAW_TICK_HMAC_KEY'),guardKey:get('CATPAW_MEMORY_GUARD_KEY'),route:finalRoute,routeHash:hash(finalRoute),freeChain,apns:readApnsConfig(get),chatBudgetMs:50000,chatFinalizationReserveMs:5000,tickBudgetMs:30000,modelTimeoutMs:20000,dailyCallLimit:20};
 }

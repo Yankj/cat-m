@@ -8,7 +8,11 @@ public actor ConversationSessionService {
     private static let selectionKey = "conversation_first_selected"
     public nonisolated var supportsArtifactContinuations:Bool {backend.supportsArtifactContinuations}
     public nonisolated var artifactContinuationSubjectID:UUID? {backend.artifactContinuationSubjectID}
-    public init(repository: Repository, backend: any ConversationBackend = UnconfiguredConversationBackend(), resilience: (any ConversationStreamResilience)? = nil, reconnectPolicy: ConversationReconnectPolicy = .init()) { self.repository = repository; self.backend = backend; self.resilience = resilience; self.reconnectPolicy = reconnectPolicy }
+    public init(repository: Repository, backend: any ConversationBackend = UnconfiguredConversationBackend(), resilience: (any ConversationStreamResilience)? = nil, reconnectPolicy: ConversationReconnectPolicy = .init(), outbox: ConversationOutbox? = nil) { self.repository = repository; self.backend = backend; self.resilience = resilience; self.reconnectPolicy = reconnectPolicy; self.outbox = outbox }
+    private let outbox: ConversationOutbox?
+    private struct BusyRetry: Sendable { var due: Date; var operationID: UUID; var autoRetried: Bool }
+    private var busyRetry: [UUID: BusyRetry] = [:]
+    private var autoRetryTurns: Set<UUID> = []
     private let resilience: (any ConversationStreamResilience)?
     private let reconnectPolicy: ConversationReconnectPolicy
     public func imageCapabilities(scope:DataScope,conversationID:UUID) async throws -> ConversationImageCapability { try await backend.imageCapabilities(scope:scope,conversationID:conversationID) }
@@ -138,7 +142,10 @@ public actor ConversationSessionService {
     }
     public func send(scope: DataScope, conversationID: UUID, text: String, operationID: UUID, context: [ConversationExplicitContext] = [], preserveDraft:Bool = false,image:ConversationVisionPayload?=nil,continuation:ConversationArtifactContinuationIntent?=nil,acceptedWork:ConversationAcceptedWorkSelection?=nil,revisionWork:ConversationRevisionWorkSelection?=nil) async throws -> UUID {
         guard active[conversationID] == nil else { throw ConversationSessionError.busy }
-        let connection = await backend.connection(scope: scope)
+        // R7 offline send: a plain text turn is journaled and parked in the outbox without any POST.
+        let plainSend = context.isEmpty && image == nil && continuation == nil && acceptedWork == nil && revisionWork == nil && outbox != nil
+        let offline = plainSend ? !(await resilience?.isPathSatisfied() ?? true) : false
+        let connection = offline ? ConversationConnection(state: .providerUnverified, provider: "", detail: "") : await backend.connection(scope: scope)
         guard [.connected, .providerUnverified].contains(connection.state) else {
             if connection.state == .unavailable { throw CatpawError.unavailable(connection.detail) }
             throw ConversationSessionError.notConfigured
@@ -204,6 +211,7 @@ public actor ConversationSessionService {
         if !preserveDraft && request.continuation == nil { conversation.draftText = "" }; if conversation.title == "新对话" { conversation.title = String(text.prefix(40)) }
         try await save(session, expectedRevision: journalRevision, fence: request, observationToken: observationToken, additional: [.update(cr.id, cr.header.revision, .core(.conversation(conversation)))])
         do {
+            if offline { throw ConversationDispatchFailure.notSent(reason: Self.waitingForNetwork) }
             var stream = try await backend.reply(request)
             var attempt = 0
             // R7 §5.3: a transport drop after POST is resumed by GET-after-lastSequence with backoff;
@@ -227,17 +235,30 @@ public actor ConversationSessionService {
                     guard active[conversationID] == observationToken else { throw CancellationError() }
                     let last = try await read(scope: scope, conversationID: conversationID).turns.first(where: { $0.id == operationID })?.lastSequence ?? 0
                     do { stream = try await backend.resumeEvents(request, afterSequence: last) }
-                    catch let again as ConversationStreamInterrupted { stream = AsyncThrowingStream { $0.finish(throwing: again) } }
+                    catch let again as ConversationStreamInterrupted { stream = AsyncThrowingStream<ConversationTurnEvent, Error> { $0.finish(throwing: again) } }
                 }
             }
             await resilience?.settled()
             let saved = try await read(scope: scope, conversationID: conversationID)
-            if saved.turns.last?.state == .completed { await backend.recordCommittedReply(request);return operationID }
+            if let last = saved.turns.last, last.id == operationID, last.state == .failed, last.error == Self.rateLimitedCode {
+                // R7 busy: countdown, then one automatic retry (see foregroundTick); never for an auto-retried turn.
+                let wait = max(1, last.retryAfterSeconds ?? 20)
+                busyRetry[conversationID] = BusyRetry(due: Date().addingTimeInterval(TimeInterval(wait)), operationID: operationID, autoRetried: autoRetryTurns.contains(operationID))
+                await resilience?.busy(retryIn: wait)
+            }
+            if saved.turns.last?.state == .completed { try? await outbox?.remove(operationID); await backend.recordCommittedReply(request);return operationID }
             if saved.turns.last?.state == .failed { throw CatpawError.unavailable(saved.turns.last?.error ?? "服务请求失败。") }
             throw ConversationSessionError.unresolvedOperation
         } catch {
             if active[conversationID] == observationToken {
-                if error is ConversationDispatchFailure { try await markNotSent(request, reason: error.localizedDescription, observationToken: observationToken) }
+                if error is ConversationDispatchFailure {
+                    try await markNotSent(request, reason: error.localizedDescription, observationToken: observationToken)
+                    let pathOK = await resilience?.isPathSatisfied() ?? true
+                    if plainSend, let outbox, offline || !pathOK {
+                        try? await outbox.enqueue(ConversationOutboxEntry(id: operationID, scope: scope, conversationID: conversationID, text: text))
+                        await resilience?.outboxChanged(pending: await outbox.entries().map(\.id))
+                    }
+                }
                 else { try await markUnknown(request, reason: error.localizedDescription, observationToken: observationToken) }
             }
             throw error
@@ -344,6 +365,7 @@ public actor ConversationSessionService {
             turn.reasoningSummary = text; turn.thinkingMs = ms
         case .failed(let reason, let reconciliation):
             turn.state = reconciliation ? .unknown : .failed; turn.error = reason
+            if reason == Self.rateLimitedCode { turn.retryAfterSeconds = event.retryAfterSeconds }
             if !reconciliation {
                 for i in session.messages.indices where Self.isToolAttempt(session.messages[i], for: request) && !session.messages[i].complete {
                     session.messages[i].complete = true; session.messages[i].failure = reason
@@ -410,6 +432,21 @@ public actor ConversationSessionService {
         guard active[conversationID] == nil else { throw ConversationSessionError.busy }
         let observationToken = UUID(); active[conversationID] = observationToken
         defer { if active[conversationID] == observationToken { active.removeValue(forKey: conversationID) } }
+        // R7 §5.3 rebuild: a still-running plain turn first reattaches by GET-after-lastSequence
+        // (append only); the authoritative snapshot below then reconciles goals and terminal state.
+        if Self.isPlain(turn.request), [.dispatched, .running, .unknown].contains(turn.state) {
+            await resilience?.syncing()
+            do {
+                let stream = try await backend.resumeEvents(turn.request, afterSequence: turn.lastSequence)
+                for try await event in stream {
+                    guard active[conversationID] == observationToken else { throw CancellationError() }
+                    try await apply(event, request: turn.request, observing: true, observationToken: observationToken)
+                    if let current = try await read(scope: scope, conversationID: conversationID).turns.first(where: { $0.id == turn.id }), [.completed, .failed].contains(current.state) { break }
+                }
+            } catch is CancellationError { await resilience?.settled(); throw CancellationError() }
+            catch { /* fall back to the snapshot read below */ }
+            await resilience?.settled()
+        }
         let observation = try await backend.observe(turn.request)
         try Task.checkCancellation()
         guard active[conversationID] == observationToken else { throw CancellationError() }
@@ -418,6 +455,77 @@ public actor ConversationSessionService {
         for event in observation.events { guard active[conversationID] == observationToken else { throw CancellationError() }; try await apply(event, request: turn.request, observing: true, observationToken: observationToken) }
         if try await read(scope:scope,conversationID:conversationID).turns.first(where:{$0.id==turn.id})?.state == .completed {await backend.recordCommittedReply(turn.request)}
         if !observation.goals.isEmpty { var (current, revision) = try await readVersioned(scope: scope, conversationID: conversationID); for goal in observation.goals { try Self.merge(goal, into: &current) }; try await save(current, expectedRevision: revision, fence: turn.request, observationToken: observationToken) }
+    }
+    static let rateLimitedCode = "rate_limited"
+    static let waitingForNetwork = "等待网络 · 联网后自动发送"
+    private static func isPlain(_ r: ConversationTurnRequest) -> Bool { r.continuation == nil && r.acceptedWork == nil && r.revisionWork == nil && r.image == nil }
+
+    /// "继续获取": read-only reattach to the original turn (never a resend). Same as observe.
+    public func continueFetching(scope: DataScope, conversationID: UUID) async throws { try await observe(scope: scope, conversationID: conversationID) }
+
+    /// Seconds until the automatic busy retry, nil when no busy turn is pending.
+    public func busyRetryIn(conversationID: UUID) -> Int? {
+        guard let entry = busyRetry[conversationID], !entry.autoRetried else { return nil }
+        return max(0, Int(entry.due.timeIntervalSinceNow.rounded(.up)))
+    }
+    /// "现在重试" / "换一个免费模型": only for a turn the server reported as `failed{rate_limited}`
+    /// before any assistant output. That original turn is terminal, so this is a new turn with the
+    /// same text, never a resend of an accepted POST. `route` sets the DEBUG developer route first.
+    @discardableResult
+    public func retryBusy(scope: DataScope, conversationID: UUID, route: ConversationModelRoute? = nil, automatic: Bool = false) async throws -> UUID? {
+        guard let entry = busyRetry[conversationID] else { return nil }
+        busyRetry[conversationID] = nil
+        let saved = try await read(scope: scope, conversationID: conversationID)
+        guard let original = saved.turns.first(where: { $0.id == entry.operationID }), original.state == .failed, original.error == Self.rateLimitedCode,
+              original.assistantMessageID == nil, Self.isPlain(original.request), original.request.context.isEmpty,
+              let text = original.request.history.last(where: { $0.role == .user })?.content else { return nil }
+        if let route { route.select() }
+        let next = UUID(); if automatic { autoRetryTurns.insert(next) }
+        await resilience?.clearBusy()
+        return try await send(scope: scope, conversationID: conversationID, text: text, operationID: next, preserveDraft: true)
+    }
+    /// Re-sends parked offline turns with their original operationID once the path is usable.
+    /// Returns the number of entries resolved (sent or no longer sendable).
+    @discardableResult
+    public func drainOutbox(conversationID: UUID? = nil) async -> Int {
+        guard let outbox, await resilience?.isPathSatisfied() ?? true else { return 0 }
+        var resolved = 0
+        let pending: [ConversationOutboxEntry]
+        if let conversationID { pending = await outbox.entries(conversationID: conversationID) } else { pending = await outbox.entries() }
+        for entry in pending {
+            guard active[entry.conversationID] == nil else { continue }
+            try? await outbox.recordAttempt(entry.id)
+            do {
+                _ = try await send(scope: entry.scope, conversationID: entry.conversationID, text: entry.text, operationID: entry.id, preserveDraft: true)
+                try? await clearDraft(scope: entry.scope, conversationID: entry.conversationID, ifEqual: entry.text)
+                try? await outbox.remove(entry.id); resolved += 1
+            } catch is ConversationDispatchFailure {
+                // still not sent (e.g. offline again): keep the entry
+            } catch ConversationSessionError.busy {
+                continue
+            } catch {
+                // Admitted-but-failed, conflict or discarded: the outbox no longer owns this message.
+                let state = (try? await read(scope: entry.scope, conversationID: entry.conversationID))?.turns.first(where: { $0.id == entry.id })?.state
+                if state != .notSent { try? await outbox.remove(entry.id); resolved += 1 }
+            }
+        }
+        await resilience?.outboxChanged(pending: await outbox.entries().map(\.id))
+        return resolved
+    }
+    /// Called by the foreground loop: due busy auto-retry (once) and outbox drain. Returns true when state changed.
+    public func foregroundTick(scope: DataScope, conversationID: UUID) async -> Bool {
+        var changed = false
+        if let entry = busyRetry[conversationID], !entry.autoRetried, Date() >= entry.due, active[conversationID] == nil, await resilience?.isPathSatisfied() ?? true {
+            _ = try? await retryBusy(scope: scope, conversationID: conversationID, automatic: true); changed = true
+        }
+        if await drainOutbox(conversationID: conversationID) > 0 { changed = true }
+        return changed
+    }
+    private func clearDraft(scope: DataScope, conversationID: UUID, ifEqual text: String) async throws {
+        let record = try await repository.record(conversationID, scope: scope)
+        guard var core = record.conversation, core.draftText == text else { return }
+        core.draftText = ""
+        try await repository.commit(scope: scope, mutations: [.update(record.id, record.header.revision, .core(.conversation(core)))])
     }
     private static func merge(_ goal: ConversationGoalProjection, into session: inout ConversationSession,revisionWorkReceipt:ConversationRevisionWorkReceipt?=nil) throws {
         guard !goal.id.isEmpty, goal.revision > 0, goal.revision >= (session.goals[goal.id]?.revision ?? 0) else { throw ConversationSessionError.invalidEvent }

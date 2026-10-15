@@ -464,6 +464,7 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
         observedModelState = reality == "not_configured" ? .notConfigured : .providerUnverified
         let data = try Self.object(wire["data"]), type = wire["type"] as? String
         let payload: ConversationTurnEvent.Payload
+        var retryAfter: Int? = nil
         switch type {
         case "turn_started":
             let receipts:[ConversationImageReceipt]?
@@ -541,9 +542,10 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
         case "turn_failed":
             guard let code = data["code"] as? String, let reconciliation = data["reconciliation_required"] as? Bool else { throw ConversationSessionError.invalidEvent }
             payload = .failed(message: code, reconciliationRequired: reconciliation)
+            if code == "rate_limited", let raw = data["retry_after_seconds"] as? NSNumber, CFGetTypeID(raw) != CFBooleanGetTypeID(), (0...3600).contains(raw.intValue) { retryAfter = raw.intValue }
         default: throw ConversationSessionError.invalidEvent
         }
-        return ConversationTurnEvent(operationID: request.operationID, epoch: request.epoch, sequence: sequence, payload: payload)
+        return ConversationTurnEvent(operationID: request.operationID, epoch: request.epoch, sequence: sequence, payload: payload, retryAfterSeconds: retryAfter)
     }
     private func binding(_ raw: Any, request: ConversationTurnRequest, currentTurn: Bool) throws -> ConversationTaskBinding {
         let b = try JSONDecoder().decode(ConversationTaskBinding.self, from: Self.jsonData(raw))

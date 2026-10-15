@@ -118,10 +118,10 @@ class OpenAICompatibleRoute {
 /** Provider port compatible with OpenRouterProvider (identity/reality/assertReady/stream). */
 export class FreeRouteChainProvider {
   #routes; #observations = [];
-  constructor({ routes, secrets, fetchImpl, timeoutMs = 20000, beforeStream = null, emitThinking = true, autoFailover = true }) {
+  constructor({ routes, secrets, fetchImpl, timeoutMs = 20000, beforeStream = null, emitThinking = true, autoFailover = true, maxInPlaceRetrySeconds = 12 }) {
     check(Array.isArray(routes) && routes.length > 0, 503, 'not_configured');
     this.#routes = routes.map(r => new OpenAICompatibleRoute(r, secrets[r.id], { fetchImpl, timeoutMs }));
-    this.beforeStream = beforeStream; this.emitThinking = emitThinking; this.autoFailover = autoFailover;
+    this.beforeStream = beforeStream; this.emitThinking = emitThinking; this.autoFailover = autoFailover; this.maxInPlaceRetrySeconds = maxInPlaceRetrySeconds;
     this.identity = { provider: 'free-route-chain', routes: routes.map(r => ({ id: r.id, model: r.model, endpoint: r.endpoint })), free_only: true, max_tokens: 2048, adapter_version: 1 };
   }
   get observations() { return clone(this.#observations); }
@@ -135,6 +135,17 @@ export class FreeRouteChainProvider {
   }
   async *stream(input) {
     this.assertReady(); input.signal?.throwIfAborted(); await this.beforeStream?.(input.provider_context); input.signal?.throwIfAborted(); input.assertDispatchReady?.();
+    try { yield* this.#pass(input); }
+    catch (e) {
+      // R7 busy: one automatic in-place retry, only when nothing was emitted (same accepted turn, no resend)
+      // and the provider's retry-after fits the Edge budget.
+      const wait = e?.retryAfterSeconds;
+      if (!(e instanceof ApiError) || e.code !== 'rate_limited' || e.emitted || !Number.isFinite(wait) || wait > this.maxInPlaceRetrySeconds) throw e;
+      await new Promise((resolve, reject) => { const t = setTimeout(resolve, wait * 1000); input.signal?.addEventListener('abort', () => { clearTimeout(t); reject(input.signal.reason ?? new ApiError(503, 'provider_interrupted')); }, { once: true }); });
+      yield* this.#pass(input);
+    }
+  }
+  async *#pass(input) {
     let last = null;
     for (const route of this.order()) {
       const evidence = { attempt: this.#observations.length + 1, route: route.route.id, requested_model: route.route.model, http_status: null, actual_model: null, terminal_validated: false };
@@ -149,6 +160,7 @@ export class FreeRouteChainProvider {
       } catch (e) {
         evidence.error = e?.code ?? 'provider_failed';
         input.signal?.throwIfAborted();
+        if (emitted && e && typeof e === 'object') e.emitted = true;
         if (emitted || !(e instanceof ApiError) || !FAILOVER_CODES.has(e.code)) throw e;
         const ra = evidence.failure?.headers?.retry_after_seconds; if (Number.isFinite(ra)) e.retryAfterSeconds = Math.min(3600, Math.ceil(ra));
         if (!this.autoFailover) throw e;

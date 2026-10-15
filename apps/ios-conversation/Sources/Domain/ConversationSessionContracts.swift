@@ -200,7 +200,9 @@ public struct ConversationTurnEvent: Sendable {
     public let epoch: Int
     public let sequence: Int
     public let payload: Payload
-    public init(operationID: UUID, epoch: Int, sequence: Int, payload: Payload) { self.operationID = operationID; self.epoch = epoch; self.sequence = sequence; self.payload = payload }
+    /// Advisory busy delay from `turn_failed{code:rate_limited, retry_after_seconds}` (R7 busy card).
+    public let retryAfterSeconds: Int?
+    public init(operationID: UUID, epoch: Int, sequence: Int, payload: Payload, retryAfterSeconds: Int? = nil) { self.operationID = operationID; self.epoch = epoch; self.sequence = sequence; self.payload = payload; self.retryAfterSeconds = retryAfterSeconds }
 }
 public struct ConversationTurnRecord: Codable, Sendable, Identifiable {
     public enum State: String, Codable, Sendable { case dispatched, running, completed, failed, unknown, notSent, cancelledBeforeSend }
@@ -219,6 +221,8 @@ public struct ConversationTurnRecord: Codable, Sendable, Identifiable {
     /// R7 thinking row source (presentation lane renders it).
     public var reasoningSummary:String? = nil
     public var thinkingMs:Int? = nil
+    /// Set when the turn failed with `rate_limited`; drives ConnectionMonitor.busy.
+    public var retryAfterSeconds:Int? = nil
 }
 public struct ConversationSession: Codable, Sendable {
     public let scope: DataScope
@@ -276,6 +280,12 @@ public protocol ConversationStreamResilience: Sendable {
     func resumed() async
     func unreachable() async
     func settled() async
+    func syncing() async
+    func busy(retryIn: Int) async
+    func isPathSatisfied() async -> Bool
+    /// Operation IDs waiting in the offline outbox ("等待网络 · 联网后自动发送").
+    func outboxChanged(pending: [UUID]) async
+    func clearBusy() async
 }
 public struct UnconfiguredConversationBackend: ConversationBackend {
     public init() {}
