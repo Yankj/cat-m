@@ -123,6 +123,7 @@ import AppIntents
         DeviceStatusCardAdapter.register() // wave2 V3 receipt + permission cards
         PermissionDegradeCardAdapter.register() // proactive demo: permission-denied degrade card
         DeviceCallCardAdapter.register() // wave2 V3 device_call confirm card
+        ProactiveSuggestionAdapter.register() // wave2 demo proactive_suggestion
     }
     var body: some Scene {
         WindowGroup {
