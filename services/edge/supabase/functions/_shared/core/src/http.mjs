@@ -61,6 +61,10 @@ export function createChatFetchHandler(runtime){
         await chat.readTurn(auth,scope,tail[1],tail[3],{afterSequence,trusted});
         return streamTurn(request,auth,scope,tail[1],tail[3],{afterSequence,trusted});
       }
+      if(method==='POST'&&tail.length===5&&tail[0]==='conversations'&&tail[2]==='turns'&&tail[4]==='cancel'){
+        const raw=await request.text();check(raw.length<=64&&['','{}'].includes(raw.trim()),422,'schema_invalid');
+        return json({cancel:await chat.cancel(auth,scope,tail[1],tail[3])});
+      }
       if(method==='POST'&&tail.length===5&&tail[0]==='conversations'&&tail[2]==='turns'&&tail[4]==='retry-busy'){
         const restarted=await chat.restartRateLimited(auth,scope,tail[1],tail[3]);
         runtime.onAccepted?.({owner:restarted.trusted.owner,principal:restarted.trusted.principal,turnId:tail[3]});
