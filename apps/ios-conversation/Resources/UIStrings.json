@@ -143,6 +143,10 @@
     "en": "Unavailable",
     "zh-Hans": "不可用"
   },
+  "不用了": {
+    "en": "No thanks",
+    "zh-Hans": "不用了"
+  },
   "专家": {
     "en": "Experts",
     "zh-Hans": "专家"
@@ -162,6 +166,14 @@
   "临时对话不会读取或写入记忆。": {
     "en": "Temporary chats never read or write memory.",
     "zh-Hans": "临时对话不会读取或写入记忆。"
+  },
+  "为什么找你": {
+    "en": "Why this?",
+    "zh-Hans": "为什么找你"
+  },
+  "主动": {
+    "en": "Proactive",
+    "zh-Hans": "主动"
   },
   "主记忆及派生索引已清除；备份清除尚未核验。原对话历史不会在此删除。": {
     "en": "Primary memory and its derived index were cleared. Backup removal is unverified. Conversation history is kept.",
@@ -1131,6 +1143,10 @@
     "en": "Parameters hash",
     "zh-Hans": "参数哈希"
   },
+  "参考了 {0} 条记忆": {
+    "en": "Used {0} memories",
+    "zh-Hans": "参考了 {0} 条记忆"
+  },
   "发短信": {
     "en": "Send text",
     "zh-Hans": "发短信"
@@ -1611,6 +1627,10 @@
     "en": "Hour {0}",
     "zh-Hans": "小时 {0}"
   },
+  "小猫主动提醒": {
+    "en": "Catpaw heads-up",
+    "zh-Hans": "小猫主动提醒"
+  },
   "小猫会忘掉所有记住的内容，此操作无法撤销。": {
     "en": "Catpaw will forget everything it remembered. This can't be undone.",
     "zh-Hans": "小猫会忘掉所有记住的内容，此操作无法撤销。"
@@ -1875,6 +1895,10 @@
     "en": "Answered",
     "zh-Hans": "已回答"
   },
+  "已处理": {
+    "en": "Handled",
+    "zh-Hans": "已处理"
+  },
   "已复制": {
     "en": "Copied",
     "zh-Hans": "已复制"
@@ -1898,6 +1922,10 @@
   "已展开": {
     "en": "Expanded",
     "zh-Hans": "已展开"
+  },
+  "已忽略": {
+    "en": "Dismissed",
+    "zh-Hans": "已忽略"
   },
   "已打开发送页": {
     "en": "Compose sheet opened",
@@ -2331,6 +2359,10 @@
     "en": "Awaiting send · {0}",
     "zh-Hans": "待发送 · {0} 条"
   },
+  "待处理": {
+    "en": "Pending",
+    "zh-Hans": "待处理"
+  },
   "待处理 {0} 项": {
     "en": "{0} items need attention",
     "zh-Hans": "待处理 {0} 项"
@@ -2578,6 +2610,10 @@
   "打开成果 v{0}": {
     "en": "Open artifact v{0}",
     "zh-Hans": "打开成果 v{0}"
+  },
+  "打开记忆页": {
+    "en": "Opens Memory",
+    "zh-Hans": "打开记忆页"
   },
   "打断本轮": {
     "en": "Interrupt this turn",
@@ -3659,6 +3695,10 @@
     "en": "View revision progress",
     "zh-Hans": "查看修改进展"
   },
+  "查看全部主动提醒": {
+    "en": "See all heads-ups",
+    "zh-Hans": "查看全部主动提醒"
+  },
   "查看完整表": {
     "en": "View full table",
     "zh-Hans": "查看完整表"
@@ -4543,6 +4583,14 @@
     "en": "Remove attachment",
     "zh-Hans": "移除附件"
   },
+  "稍后": {
+    "en": "Later",
+    "zh-Hans": "稍后"
+  },
+  "稍后再提醒你": {
+    "en": "Will remind you later",
+    "zh-Hans": "稍后再提醒你"
+  },
   "稍后提醒": {
     "en": "Remind me later",
     "zh-Hans": "稍后提醒"
@@ -5391,6 +5439,10 @@
     "en": "Only locally deleted items from this environment appear here.",
     "zh-Hans": "这里只显示当前环境的本地删除项。"
   },
+  "这里还没有内容": {
+    "en": "Nothing here yet",
+    "zh-Hans": "这里还没有内容"
+  },
   "这项工作当前不能继续，原版本和输入会保留。": {
     "en": "This work cannot continue yet. The original version and your input are kept.",
     "zh-Hans": "这项工作当前不能继续，原版本和输入会保留。"
@@ -5474,6 +5526,10 @@
   "选择是本地配置；不会授予工具权限或下载技能。": {
     "en": "Selections are local configuration. They grant no tool permissions and download no skills.",
     "zh-Hans": "选择是本地配置；不会授予工具权限或下载技能。"
+  },
+  "通知参会人": {
+    "en": "Notify attendees",
+    "zh-Hans": "通知参会人"
   },
   "邮箱": {
     "en": "Email",
