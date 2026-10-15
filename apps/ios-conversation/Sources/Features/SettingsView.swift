@@ -17,42 +17,63 @@ struct ProfileExport: FileDocument {
     @State private var exporting = false
     @State private var reset = false
     var body: some View {
-        Form {
-            Section(ui("应用")) {
+        List {
+            Section {
                 NavigationLink(ui("我的设备"), value: AppRoute.environments)
                 NavigationLink(ui("自定义命令"), value: AppRoute.commands)
                 NavigationLink(ui("本地回收站"), value: AppRoute.trash)
                 Toggle(ui("演示数据分区"), isOn: Binding(get: { model.scope.profileID == Profiles.demo.profileID }, set: { model.switchProfile($0) })).disabled(model.switchingContext)
                 Button(ui("导出当前 workspace 本地数据")) { model.perform { exportDocument = ProfileExport(data: try await model.repository.exportProfile(scope: model.scope)); exporting = true } }
                 if model.scope.profileID == Profiles.demo.profileID { Button(ui("重置演示分区"), role: .destructive) { reset = true } }
-            }
-            Section(ui("系统设置 · 本地偏好")) {
+            } header: { sectionHeader(ui("应用")) }
+            Section {
                 Toggle(ui("文件删除确认"), isOn: booleanPreference("delete_confirmation", fallback: "true"))
                 Toggle(ui("Subagents · 仅新对话配置"), isOn: booleanPreference("subagents", fallback: "false"))
                 Toggle(ui("安全屋 · 仅新对话配置"), isOn: booleanPreference("safety", fallback: "true"))
-                Text(ui("尚未接执行沙箱或协作 worker。本地偏好不授予 OS 或服务权限。")).font(.footnote)
+                Text(ui("尚未接执行沙箱或协作 worker。本地偏好不授予 OS 或服务权限。")).font(.system(size: 12)).foregroundStyle(CatpawColors.tertiary)
                 Picker(ui("新对话模型配置"), selection: Binding(get: { model.preference("model", fallback: "Auto") }, set: { model.setPreference("model", $0) })) { ForEach(["Auto", "Lite", "Pro", "Max", "LongCat-2.0", "deepseek-v4-flash"], id: \.self) { Text($0).tag($0) } }
-            }
-            Section(ui("权限")) {
+            } header: { sectionHeader(ui("系统设置 · 本地偏好")) }
+            Section {
                 Text(ui("麦克风/识别：{0}", arguments: [String(describing: (NativeVoiceController.shared.permissionDescription(language: model.language)))]))
                 Text(ui("相机和相册仅在你主动选择对应入口时使用系统选择器；不会在启动时申请权限。图片只保存在当前本地项目，设备采集路径尚需真机验收。")).font(.footnote)
                 Toggle(ui("成果提醒 · App 内偏好"), isOn: booleanPreference("result_notifications", fallback: "false"))
                 Text(ui("系统推送与持久云调度尚未连接，不会自动申请通知权限。")).font(.footnote)
-            }
-            Section(ui("外观")) {
+            } header: { sectionHeader(ui("权限")) }
+            Section {
                 Picker(ui("主题"), selection: Binding(get: { model.preference("theme", fallback: "dark") }, set: { model.setPreference("theme", $0) })) { Text(ui("深色")).tag("dark"); Text(ui("浅色 · 本地补充")).tag("light"); Text(ui("跟随系统")).tag("system") }.accessibilityIdentifier("settings.theme")
                 Picker(ui("界面语言"), selection: Binding(get: { model.preference("language", fallback: "zh-Hans") }, set: { model.setPreference("language", $0) })) { Text(ui("中文")).tag("zh-Hans"); Text("English").tag("en") }
                 Text(ui("主题与语言等偏好在同一用户的云端、电脑、本机视图共享；会话配置保持创建时快照。")).font(.footnote)
-            }
-            Text(ui("界面控件提供中英文；文档、用户内容、示例正文及系统或服务错误保留原文。英文布局与原生音频仍需设备验收。")).font(.footnote).foregroundStyle(.secondary)
-            Section(ui("版本与数据")) { Text(ui("Catpaw-m 原生本地版 0.1.0")); StatusLabel(text: ui("云同步显式关闭")); Text(ui("真实 Provider 未配置，远端执行均标明模拟。")).font(.footnote) }
-            Section(ui("开发联调")) {
+            } header: { sectionHeader(ui("外观")) }
+            Section {
+                StatusLabel(text: ui("云同步显式关闭"))
+                Text(ui("真实 Provider 未配置，远端执行均标明模拟。")).font(.system(size: 12)).foregroundStyle(CatpawColors.tertiary)
+            } header: { sectionHeader(ui("版本与数据")) }
+            Section {
                 NavigationLink(ui("本地 Gateway · 合成数据"), value: AppRoute.localGateway).accessibilityIdentifier("settings.localGateway")
                 NavigationLink(ui("OpenMuse · 合成 Demo"), value: AppRoute.openMuseDemo).accessibilityIdentifier("settings.openMuseDemo")
+            } header: { sectionHeader(ui("开发联调")) }
+            Section {
+                EmptyView()
+            } footer: {
+                VStack(spacing: 4) {
+                    Text(ui("Catpaw-m 原生本地版 0.1.0"))
+                    Text(ui("界面控件提供中英文；文档、用户内容、示例正文及系统或服务错误保留原文。英文布局与原生音频仍需设备验收。"))
+                }.font(.system(size: 12)).foregroundStyle(CatpawColors.tertiary).multilineTextAlignment(.center).frame(maxWidth: .infinity)
             }
-        }.navigationTitle(ui("设置"))
+        }
+        .listStyle(.insetGrouped)
+        .scrollContentBackground(.hidden)
+        .background(CatpawColors.groupedBackground)
+        .environment(\.defaultMinListRowHeight, 48)
+        .tint(CatpawColors.ink)
+        .navigationTitle(ui("设置"))
+        .navigationBarTitleDisplayMode(.large)
         .fileExporter(isPresented: $exporting, document: exportDocument, contentType: .json, defaultFilename: "Catpaw-workspace-export") { result in if case .failure(let error) = result { model.error = error.localizedDescription } }
         .confirmationDialog(ui("只重置全部演示环境；用户分区保留。"), isPresented: $reset) { Button(ui("重置演示"), role: .destructive) { model.perform { await model.suspendRuntimes(); NativeVoiceController.shared.interrupt(); try await model.repository.resetDemo(); model.path = []; model.drafts = [:]; model.loaded = false; await model.start() } } }
+    }
+    /// r9 §5: section headers are 13pt tertiary, not uppercased.
+    private func sectionHeader(_ title: String) -> some View {
+        Text(title).font(.system(size: 13)).foregroundStyle(CatpawColors.tertiary).textCase(nil)
     }
     private func booleanPreference(_ key: String, fallback: String) -> Binding<Bool> { Binding(get: { model.preference(key, fallback: fallback) == "true" }, set: { model.setPreference(key, $0 ? "true" : "false") }) }
 }

@@ -26,16 +26,13 @@ import UIKit
                     .frame(maxWidth:.infinity,alignment:.center)
             }.accessibilityIdentifier("chat.modelConsent.viewport")
                 .safeAreaInset(edge:.bottom,spacing:0) {
-                    CatpawAdaptiveActions {
-                        Button(action:deferConsent) {
-                            Text(ui("暂不允许")).font(CatpawTypography.Role.body.font)
-                                .frame(maxWidth:.infinity,minHeight:44).padding(.horizontal,12).contentShape(Rectangle())
-                        }.buttonStyle(CatpawPressButtonStyle()).accessibilityIdentifier("chat.modelConsent.defer")
-                        Button(action:allow) {
-                            Text(ui("允许此对话")).frame(maxWidth:.infinity,minHeight:44).contentShape(Rectangle())
-                        }.primaryAction().disabled(!canAllow).accessibilityIdentifier("chat.modelConsent.allow")
-                    }.padding(16).frame(maxWidth:CatpawLayout.readableWidth)
-                        .frame(maxWidth:.infinity).background(CatpawColors.panel)
+                    CatpawSheetActions {
+                        Button(action:allow) {Text(ui("允许此对话"))}
+                            .buttonStyle(CatpawSheetPrimaryButtonStyle()).disabled(!canAllow).accessibilityIdentifier("chat.modelConsent.allow")
+                    } secondary: {
+                        Button(action:deferConsent) {Text(ui("暂不允许"))}
+                            .buttonStyle(CatpawSheetSecondaryButtonStyle()).accessibilityIdentifier("chat.modelConsent.defer")
+                    }
                 }
                 .background(CatpawColors.background)
                 .navigationTitle(ui("确认发送许可")).navigationBarTitleDisplayMode(.inline)
@@ -46,7 +43,7 @@ import UIKit
                             .accessibilityIdentifier("chat.modelConsent.close")
                     }
                 }
-        }.tint(CatpawColors.action).foregroundStyle(CatpawColors.ink)
+        }.tint(CatpawColors.ink).foregroundStyle(CatpawColors.ink)
             .presentationDetents([.large]).presentationDragIndicator(.visible)
             .onAppear {UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder),to:nil,from:nil,for:nil)}
     }
