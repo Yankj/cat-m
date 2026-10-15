@@ -123,6 +123,10 @@
     "en": "{0} view · service disconnected",
     "zh-Hans": "{0}视图 · 服务未连接"
   },
+  "上一个回答": {
+    "en": "Previous answer",
+    "zh-Hans": "上一个回答"
+  },
   "上传中": {
     "en": "Uploading",
     "zh-Hans": "上传中"
@@ -138,6 +142,10 @@
   "上次处理完成的图片，尚未替换": {
     "en": "Previously processed image; not replaced yet",
     "zh-Hans": "上次处理完成的图片，尚未替换"
+  },
+  "下一个回答": {
+    "en": "Next answer",
+    "zh-Hans": "下一个回答"
   },
   "下次机会：{0}": {
     "en": "Next opportunity: {0}",
@@ -690,6 +698,10 @@
   "允许网络后可读取当前工作区的任务与成果。": {
     "en": "Allow network access to read tasks and results in this workspace.",
     "zh-Hans": "允许网络后可读取当前工作区的任务与成果。"
+  },
+  "允许访问照片后，这里会显示最近的照片。": {
+    "en": "Allow photo access to see your recent photos here.",
+    "zh-Hans": "允许访问照片后，这里会显示最近的照片。"
   },
   "允许重新学习曾明确忘记的主题": {
     "en": "Allow learning a previously forgotten topic again",
@@ -2186,6 +2198,14 @@
   "已选图片预览，尚未发送": {
     "en": "Selected image preview; not sent",
     "zh-Hans": "已选图片预览，尚未发送"
+  },
+  "已选择": {
+    "en": "Selected",
+    "zh-Hans": "已选择"
+  },
+  "已选择 {0} · 添加": {
+    "en": "{0} selected · Add",
+    "zh-Hans": "已选择 {0} · 添加"
   },
   "已预约": {
     "en": "Reserved",
@@ -4163,6 +4183,10 @@
     "en": "Simulated reply streaming",
     "zh-Hans": "正在模拟回复"
   },
+  "正在添加…": {
+    "en": "Adding…",
+    "zh-Hans": "正在添加…"
+  },
   "正在申请控制，尚未确认结果": {
     "en": "Requesting control; outcome not yet confirmed",
     "zh-Hans": "正在申请控制，尚未确认结果"
@@ -4607,6 +4631,10 @@
     "en": "Offset from start (seconds)",
     "zh-Hans": "相对开始时间（秒）"
   },
+  "相机": {
+    "en": "Camera",
+    "zh-Hans": "相机"
+  },
   "相机和相册仅在你主动选择对应入口时使用系统选择器；不会在启动时申请权限。图片只保存在当前本地项目，设备采集路径尚需真机验收。": {
     "en": "Camera and photos use the system picker only when you choose them. No permissions are requested at launch. Images stay in this local project; device capture still needs testing.",
     "zh-Hans": "相机和相册仅在你主动选择对应入口时使用系统选择器；不会在启动时申请权限。图片只保存在当前本地项目，设备采集路径尚需真机验收。"
@@ -4770,6 +4798,10 @@
   "空闲": {
     "en": "Idle",
     "zh-Hans": "空闲"
+  },
+  "第 {0} 个回答，共 {1} 个": {
+    "en": "Answer {0} of {1}",
+    "zh-Hans": "第 {0} 个回答，共 {1} 个"
   },
   "等待": {
     "en": "Waiting",
@@ -5958,29 +5990,5 @@
   "，草稿，": {
     "en": ", draft, ",
     "zh-Hans": "，草稿，"
-  },
-  "上一个回答": {
-    "en": "Previous answer",
-    "zh-Hans": "上一个回答"
-  },
-  "下一个回答": {
-    "en": "Next answer",
-    "zh-Hans": "下一个回答"
-  },
-  "第 {0} 个回答，共 {1} 个": {
-    "en": "Answer {0} of {1}",
-    "zh-Hans": "第 {0} 个回答，共 {1} 个"
-  },
-  "引擎": {
-    "en": "Engine",
-    "zh-Hans": "引擎"
-  },
-  "扫描真实日历": {
-    "en": "Scan real calendar",
-    "zh-Hans": "扫描真实日历"
-  },
-  "清空去重账本": {
-    "en": "Clear dedupe ledger",
-    "zh-Hans": "清空去重账本"
   }
 }
