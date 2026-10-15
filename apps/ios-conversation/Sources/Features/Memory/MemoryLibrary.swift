@@ -61,11 +61,12 @@ struct MemoryLibraryCapabilities: OptionSet, Sendable {
 }
 
 enum MemoryLibraryError: Error, Equatable, Sendable {
-    case unsupported, unavailable, notFound, failed(String)
+    case unsupported, unavailable, notEnabled, notFound, failed(String)
     var messageKey: String {
         switch self {
         case .unsupported: "此操作暂未开放。"
         case .unavailable: "记忆服务暂时连不上，请稍后重试。"
+        case .notEnabled: "记忆功能还没为你开通。开通后，小猫记住的事会出现在这里。"
         case .notFound: "没有找到这条记忆，可能已被删除。"
         case .failed(let message): message
         }

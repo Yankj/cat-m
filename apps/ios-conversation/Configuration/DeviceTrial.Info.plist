@@ -47,6 +47,14 @@
 	<string>$(CATPAW_SUPABASE_PROJECT_URL)</string>
 	<key>CatpawSupabasePublishableKey</key>
 	<string>$(CATPAW_SUPABASE_PUBLISHABLE_KEY)</string>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>taobao</string>
+		<string>openapp.jdmobile</string>
+		<string>pinduoduo</string>
+		<string>shortcuts</string>
+		<string>mailto</string>
+	</array>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSCalendarsFullAccessUsageDescription</key>

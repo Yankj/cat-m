@@ -56,6 +56,7 @@ public struct AuthenticatedNativeChatCredentials: NativeChatSessionCredentials {
                 let env = ProcessInfo.processInfo.environment
                 let fromEnv = ["CatpawSupabaseProjectURL":"CATPAW_SUPABASE_PROJECT_URL","CatpawSupabasePublishableKey":"CATPAW_SUPABASE_PUBLISHABLE_KEY","CatpawBackendOrigin":"CATPAW_BACKEND_ORIGIN","CatpawServerScopeID":"CATPAW_SERVER_SCOPE_ID"]
                 for (key,name) in fromEnv { if let value = env[name], !value.isEmpty { values[key] = value } }
+                values = CatpawDebugPublicConfig.remember(values)
             }
             if fixture { values = [keys[0]:"https://abcdefghijklmnopqrst.supabase.co",keys[1]:"sb_publishable_test_public_value",keys[2]:"https://backend.example.invalid",keys[3]:"11111111-2222-4333-8444-555555555555"] }
             #endif

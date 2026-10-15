@@ -27,8 +27,22 @@ struct MockCatpawWidgetDataSource: CatpawWidgetDataSource {
     }
 }
 
+/// #48: reads the app's App Group snapshot; falls back to the sample when there is none (no entitlement yet / first run).
+struct AppGroupCatpawWidgetDataSource: CatpawWidgetDataSource {
+    func snapshot(now: Date) -> CatpawWidgetEntry {
+        guard let dir = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.com.yankj.catpawm"),
+              let data = try? Data(contentsOf: dir.appendingPathComponent("catpaw.widget.snapshot.v1.json")),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return MockCatpawWidgetDataSource().snapshot(now: now) }
+        let tasks = (json["tasks"] as? [[String: Any]] ?? []).compactMap { t -> CatpawWidgetTask? in
+            guard let id = t["id"] as? String, let title = t["title"] as? String else { return nil }
+            return .init(id: id, title: title, dueAt: nil, done: t["done"] as? Bool ?? false)
+        }
+        return CatpawWidgetEntry(date: now, tasks: tasks, mood: CatpawCatMood(rawValue: json["mood"] as? String ?? "") ?? .idle, statusLine: json["status"] as? String ?? "")
+    }
+}
+
 struct CatpawWidgetProvider: TimelineProvider {
-    var source: any CatpawWidgetDataSource = MockCatpawWidgetDataSource()
+    var source: any CatpawWidgetDataSource = AppGroupCatpawWidgetDataSource()
     func placeholder(in context: Context) -> CatpawWidgetEntry { source.snapshot(now: .now) }
     func getSnapshot(in context: Context, completion: @escaping (CatpawWidgetEntry) -> Void) { completion(source.snapshot(now: .now)) }
     func getTimeline(in context: Context, completion: @escaping (Timeline<CatpawWidgetEntry>) -> Void) {
