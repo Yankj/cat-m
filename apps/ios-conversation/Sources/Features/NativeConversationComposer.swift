@@ -8,6 +8,9 @@ import UIKit
     var compositionChanged: ((Bool) -> Void)?
     var lineCountChanged: ((Int) -> Void)?
     private var reportedLineCount = 0
+    static weak var current:ConversationTextView?
+    /// Mic/voice MVP: focus the editor so the keyboard dictation key is one tap away.
+    static func focusComposer(){ current?.becomeFirstResponder() }
     func setPlaceholder(_ value:String,font:UIFont) {
         if placeholderLabel.superview == nil {
             placeholderLabel.isUserInteractionEnabled=false;placeholderLabel.isAccessibilityElement=false
@@ -57,6 +60,7 @@ import UIKit
     /// The host may supply the remaining viewport after association/status chrome.
     /// A finite SwiftUI proposal is also respected; the text itself then scrolls.
     var maximumVisibleHeight:CGFloat? = nil
+    var placeholder:String = "问问 Catpaw"
     var lineCountChanged:((Int)->Void)? = nil
     var addAttachments:(([ComposerAttachment])->Void)? = nil
     let submit:() -> Void
@@ -65,15 +69,16 @@ import UIKit
         let view=ConversationTextView();view.delegate=context.coordinator
         view.backgroundColor = .clear;view.textColor=UIColor(CatpawColors.ink)
         view.font=ConversationTypeScale.font(context.environment.dynamicTypeSize);view.adjustsFontForContentSizeCategory=false
-        view.textContainerInset=UIEdgeInsets(top:8,left:0,bottom:8,right:0)
+        view.textContainerInset=UIEdgeInsets(top:7,left:6,bottom:7,right:6)
         view.textContainer.lineFragmentPadding=0;view.returnKeyType = .default
         view.accessibilityLabel=AppLanguage(locale:context.environment.locale).ui("消息");view.accessibilityIdentifier="chat.input"
-        view.setPlaceholder(AppLanguage(locale:context.environment.locale).ui("给 Catpaw 发消息"),font:ConversationTypeScale.font(context.environment.dynamicTypeSize))
+        view.setPlaceholder(AppLanguage(locale:context.environment.locale).ui(placeholder),font:ConversationTypeScale.font(context.environment.dynamicTypeSize))
         view.setContentCompressionResistancePriority(.defaultLow,for:.horizontal)
         view.submit=submit;view.addAttachments=addAttachments;view.lineCountChanged=lineCountChanged;view.compositionChanged={ [weak model] in model?.updateInputComposition($0) }
         #if DEBUG
         ConversationTextView.fixtureEditor=view
         #endif
+        ConversationTextView.current=view
         return view
     }
     func updateUIView(_ view:ConversationTextView,context:Context) {
@@ -86,7 +91,7 @@ import UIKit
         let font=ConversationTypeScale.font(context.environment.dynamicTypeSize)
         let fontChanged=view.font?.isEqual(font) != true
         if fontChanged {view.font=font}
-        view.setPlaceholder(AppLanguage(locale:context.environment.locale).ui("给 Catpaw 发消息"),font:font)
+        view.setPlaceholder(AppLanguage(locale:context.environment.locale).ui(placeholder),font:font)
         #if DEBUG
         let renderedPointSize=font.pointSize,systemCategory=view.traitCollection.preferredContentSizeCategory
         DispatchQueue.main.async {P0ExperienceProbe.shared.recordInputTypography(pointSize:renderedPointSize,systemCategory:systemCategory)}

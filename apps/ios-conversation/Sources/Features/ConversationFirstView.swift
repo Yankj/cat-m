@@ -78,6 +78,34 @@ import CatpawImageComposer
         let title=model.history.first(where:{$0.id==model.conversationID})?.title.trimmingCharacters(in:.whitespacesAndNewlines) ?? ""
         return title.isEmpty ? ui("新对话") : title
     }
+    private var r8Title:String { model.history.first(where:{$0.id==model.conversationID}) == nil ? "Catpaw" : shortConversationTitle }
+    private var r8ModelLabel:String {
+        switch ConversationModelRoute.current { case .automatic: return "Auto"; case .gemini: return "Gemini"; case .groq: return "Groq"; case .openrouter: return "OpenRouter"; case .agnes: return "Flash" }
+    }
+    private var conversationTitleMenu: some View {
+        Menu {
+            Section(ui("模型")) {
+                ForEach(ConversationModelRoute.allCases) { route in
+                    Button { route.select() } label: { if route == .current { Label(route.title, systemImage:"checkmark") } else { Text(route.title) } }
+                }
+            }
+            Section {
+                Label(connectionMonitor.state.labelKey.map{ui($0.key,arguments:$0.arguments)} ?? ui("连接正常"), systemImage: connectionMonitor.state == .online ? "wifi" : "wifi.slash")
+                Button { path.append(.settings) } label: { Label(ui("设置"), systemImage:"slider.horizontal.3") }.accessibilityIdentifier("chat.settings")
+            }
+        } label: {
+            HStack(spacing:5) {
+                if connectionMonitor.state != .online {
+                    Circle().fill(connectionMonitor.state == .offline ? CatpawColors.tertiary : Color.orange).frame(width:6,height:6)
+                        .accessibilityIdentifier("chat.title.statusDot")
+                }
+                Text(r8Title).font(.system(size:17,weight:.semibold)).foregroundStyle(CatpawColors.ink).lineLimit(1).truncationMode(.tail)
+                Text(r8ModelLabel).font(.system(size:15,weight:.medium)).foregroundStyle(CatpawColors.tertiary).lineLimit(1)
+                Image(systemName:"chevron.down").font(.system(size:11,weight:.semibold)).foregroundStyle(CatpawColors.tertiary)
+            }.frame(maxWidth:220).contentShape(Rectangle())
+        }
+        .accessibilityLabel(conversationTitle).accessibilityAddTraits(.isHeader).accessibilityIdentifier("chat.title")
+    }
     private var shortConversationTitle:String {
         let line=String(conversationTitle.split(separator:"\n",maxSplits:1).first ?? Substring(conversationTitle))
         return line.count>18 ? String(line.prefix(18))+"…" : line
@@ -201,37 +229,24 @@ import CatpawImageComposer
                 .onPreferenceChange(ConversationComposerMeasurements.self){composerMeasurements=$0}
             .background(CatpawColors.background).navigationTitle(shortConversationTitle).navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement:.topBarLeading) { if path.isEmpty {SidebarMenuButton(localize:{ui($0)}) {sidebarPresented=true}.accessibilityFocused($menuFocused)} }
-                ToolbarItem(placement:.principal) {
-                    Text(shortConversationTitle).font(CatpawTypography.Role.body.font.weight(.semibold)).lineLimit(1)
-                        .accessibilityLabel(conversationTitle).accessibilityAddTraits(.isHeader).accessibilityIdentifier("chat.title")
-                }
-                // The system groups navigation controls; the anchored popover owns
-                // one complete action row with matching visual and hit bounds.
-                ToolbarItemGroup(placement:.topBarTrailing) {
-                    Button { model.newConversation() } label: { Image(systemName:"square.and.pencil").touchTarget() }
-                        .disabled(!model.loaded || model.busy || model.isInputComposing).foregroundStyle(CatpawColors.ink)
-                        .accessibilityLabel(ui("新对话")).accessibilityIdentifier("chat.new").buttonStyle(CatpawPressButtonStyle())
-                    Button {conversationMenuPresented=true} label: {Image(systemName:"ellipsis").foregroundStyle(CatpawColors.ink).touchTarget()}
-                        .accessibilityLabel(ui("更多操作")).accessibilityIdentifier("chat.more").accessibilityFocused($moreFocused)
-                        .popover(isPresented:$conversationMenuPresented,attachmentAnchor:.point(.bottomTrailing),arrowEdge:.top) {
-                            Button {
-                                pendingConversationSettings=true;conversationMenuPresented=false
-                            } label: {
-                                Label(ui("设置"),systemImage:"slider.horizontal.3").font(CatpawTypography.Role.body.font)
-                                    .frame(maxWidth:.infinity,minHeight:44,alignment:.leading).padding(.horizontal,12).contentShape(Rectangle())
-                            }.buttonStyle(CatpawPressButtonStyle()).foregroundStyle(CatpawColors.ink)
-                                .accessibilityIdentifier("chat.settings").padding(8).frame(minWidth:200)
-                                .presentationCompactAdaptation(.popover).presentationBackground(CatpawColors.panel)
-                                .onDisappear {
-                                    // Navigation starts only after the foreground
-                                    // popover releases ownership; consume once.
-                                    if pendingConversationSettings {pendingConversationSettings=false;path.append(.settings)}
-                                    else {moreFocused=true}
-                                }
-                        }
-                }
+                // r8 top bar: three bare glyph elements, no per-button glass; whole bar turns glass only after scroll.
+                ToolbarItem(placement:.topBarLeading) {
+                    if path.isEmpty {
+                        Button {sidebarPresented=true} label: {
+                            TwoLineMenuGlyph().foregroundStyle(CatpawColors.ink).frame(width:44,height:44).contentShape(Rectangle())
+                        }.buttonStyle(CatpawPressButtonStyle()).accessibilityLabel(ui("打开侧栏")).accessibilityIdentifier("sidebar.open").accessibilityFocused($menuFocused)
+                    }
+                }.r8HiddenSharedBackground()
+                ToolbarItem(placement:.principal) { conversationTitleMenu }
+                ToolbarItem(placement:.topBarTrailing) {
+                    Button { model.newConversation() } label: {
+                        Image(systemName:"square.and.pencil").font(.system(size:19,weight:.regular)).foregroundStyle(CatpawColors.ink).frame(width:44,height:44).contentShape(Rectangle())
+                    }
+                    .disabled(!model.loaded || model.busy || model.isInputComposing)
+                    .accessibilityLabel(ui("新对话")).accessibilityIdentifier("chat.new").buttonStyle(CatpawPressButtonStyle())
+                }.r8HiddenSharedBackground()
             }
+            .toolbarBackground(.automatic, for:.navigationBar)
             .navigationDestination(for:ConversationHostDestination.self){destination in
                 switch destination {
                 case .settings:settingsSheet
@@ -353,6 +368,13 @@ import CatpawImageComposer
         }
     }
     private var draftTooLong: Bool { model.draft.utf16.count > 8000 }
+    /// r8 meta line above the pill: only when there is a status.
+    private var composerMetaText: String? {
+        if draftTooLong { return ui("超出 8000 字") }
+        if model.connectionLifecycle == .offline || connectionMonitor.state == .offline || !connectionMonitor.waitingForNetwork.isEmpty { return ui("等待网络 · 恢复后自动发送") }
+        if composerChrome.queuedDraftPreview != nil { return ui("已排队 · 当前回复结束后发送") }
+        return nil
+    }
     private var canSendDraft: Bool { !restrictToFrozenFixture && model.canAcceptDraft && !draftTooLong && composerChrome.attachmentsAreReady }
     private var composerIsDrafting:Bool { !model.draft.isEmpty || model.isInputComposing }
     private var composerControlSize:CGFloat { max(44,CatpawTypography.font(.body,size:textSize).lineHeight) }
@@ -386,15 +408,18 @@ import CatpawImageComposer
                 artifactContinuationChip(target).padding(.bottom,8)
             }
             FloatingComposer(model:composerChrome,lineCount:composerLineCount,uploader:attachmentUploader,
-                             accessory:AnyView(composerContextButton(budget:budget)),
                              trailingAccessory:AnyView(
-                                ComposerPrimaryButton(responding:composerChrome.runState == .responding,
-                                                      draftEmpty:model.draft.isEmpty,canSend:canSendDraft,queued:model.sending,
-                                                      size:composerControlSize,send:submitDraft,stop:{composerChrome.stop()})
-                             )) {
+                                ComposerTrailingControls(responding:composerChrome.runState == .responding,
+                                                         draftEmpty:model.draft.isEmpty,canSend:canSendDraft,
+                                                         size:composerControlSize,send:submitDraft,stop:{composerChrome.stop()},
+                                                         dictate:{ConversationTextView.focusComposer()},voice:{ConversationTextView.focusComposer()})
+                             ),
+                             metaText:composerMetaText,metaWarning:draftTooLong,
+                             onDetails:{ guard !model.isInputComposing else {return}; composerContextPresented=true }) {
                 NativeConversationComposer(model:model,
                     enabled:!restrictToFrozenFixture && !model.switchingArtifactContinuation,
                     maximumVisibleHeight:min(budget.maximumTextHeight,ComposerMetrics.maxHeight(for:textSize)),
+                    placeholder:composerChrome.runState == .responding ? "继续追问…" : "问问 Catpaw",
                     lineCountChanged:{composerLineCount=$0},
                     addAttachments:{_ = composerChrome.addAttachments($0,using:attachmentUploader)},
                     submit:{if canSendDraft {submitDraft()}})
@@ -411,7 +436,8 @@ import CatpawImageComposer
                     .background{GeometryReader{geometry in Color.clear.preference(key:ConversationComposerMeasurements.self,value:["targetAnchor":geometry.size.height])}}
                     .hidden().accessibilityHidden(true).allowsHitTesting(false)
             }
-        }.padding(.horizontal,16).padding(.vertical,budget.compactPadding ? 0:8).background(CatpawColors.background)
+        }.padding(.horizontal,4).padding(.top,budget.compactPadding ? 0:4)
+            .background(LinearGradient(colors:[CatpawColors.background.opacity(0),CatpawColors.background],startPoint:.top,endPoint:UnitPoint(x:0.5,y:0.28)))
             .accessibilityElement(children:.contain).accessibilityIdentifier("chat.composer")
     }
     private func composerContextButton(budget:CatpawTextViewport.ComposerBudget)->some View {
@@ -479,7 +505,7 @@ import CatpawImageComposer
                     .allowsHitTesting(inDetails || model.imageDraft.phase != .empty)
                     .accessibilityHidden(!inDetails && model.imageDraft.phase == .empty)
             }
-            if [.offline,.notConfigured].contains(model.connectionLifecycle) { Button {contextAction(.settings,inDetails:inDetails)} label: {
+            if inDetails, [.offline,.notConfigured].contains(model.connectionLifecycle) { Button {contextAction(.settings,inDetails:inDetails)} label: {
                 HStack(spacing: 8) {
                     Circle().fill(model.connection.state == .connected ? CatpawColors.success : CatpawColors.secondary).frame(width: 5, height: 5).accessibilityHidden(true)
                     Text(connectionSummary).font(CatpawTypography.Role.caption.font)
@@ -1098,4 +1124,16 @@ private struct ConversationUserMessageLayout:Layout {
 private struct ConversationComposerMeasurements:PreferenceKey {
     static var defaultValue:[String:CGFloat]=[:]
     static func reduce(value:inout [String:CGFloat],nextValue:()->[String:CGFloat]) {value.merge(nextValue(),uniquingKeysWith:{_,next in next})}
+}
+
+
+private extension ToolbarContent {
+    /// iOS 26: stop the system from wrapping bar buttons in a shared glass capsule (r8).
+    @ToolbarContentBuilder func r8HiddenSharedBackground() -> some ToolbarContent {
+        #if compiler(>=6.2)
+        if #available(iOS 26.0, *) { self.sharedBackgroundVisibility(.hidden) } else { self }
+        #else
+        self
+        #endif
+    }
 }

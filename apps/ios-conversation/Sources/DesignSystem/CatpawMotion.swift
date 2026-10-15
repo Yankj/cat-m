@@ -77,3 +77,31 @@ struct BreathingPaw: View {
             .accessibilityHidden(true)
     }
 }
+
+// MARK: r8 tokens (composer + top bar)
+extension CatpawColors {
+    /// Composer pill fill (#F2F2F4 / #1C1C1E) and its 0.5pt hairline.
+    static let composerPill = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(red: 0x1C/255, green: 0x1C/255, blue: 0x1E/255, alpha: 1) : UIColor(red: 0xF2/255, green: 0xF2/255, blue: 0xF4/255, alpha: 1) })
+    static let hairline = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(white: 1, alpha: 0.10) : UIColor(white: 0, alpha: 0.08) })
+    /// ink3 (#A3A7AE): meta line, model label, chevron, offline dot.
+    static let tertiary = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(red: 0x6B/255, green: 0x6F/255, blue: 0x76/255, alpha: 1) : UIColor(red: 0xA3/255, green: 0xA7/255, blue: 0xAE/255, alpha: 1) })
+}
+extension CatpawMotion {
+    static let composer = Animation.spring(response: 0.32, dampingFraction: 0.86)
+    static let morph = Animation.spring(response: 0.28, dampingFraction: 0.8)
+}
+
+/// Two-line sidebar glyph (r8, user-approved): long line over short line, 1.5pt round-cap stroke,
+/// sized to sit with 19pt regular SF Symbols (≈18×12pt).
+struct TwoLineMenuGlyph: View {
+    var body: some View {
+        Canvas { ctx, size in
+            var p = Path()
+            p.move(to: CGPoint(x: 0.75, y: 3)); p.addLine(to: CGPoint(x: size.width - 0.75, y: 3))
+            p.move(to: CGPoint(x: 0.75, y: size.height - 3)); p.addLine(to: CGPoint(x: size.width * 0.58, y: size.height - 3))
+            ctx.stroke(p, with: .foreground, style: StrokeStyle(lineWidth: 1.5, lineCap: .round))
+        }
+        .frame(width: 18, height: 13)
+        .accessibilityHidden(true)
+    }
+}
