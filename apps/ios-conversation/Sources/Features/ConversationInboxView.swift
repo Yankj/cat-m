@@ -232,10 +232,10 @@ enum ConversationInboxReturnResult {case returned,unavailable(String)}
                     switch completed {case .returned:failure=nil;case .unavailable(let message):failure=message}
                 }
             } label: {
-                HStack { if returning { ProgressView().tint(CatpawColors.action) }; Text(returning ? ui("正在返回原对话…") : ui("回到原对话")) }
+                HStack { if returning { ProgressView().tint(CatpawColors.ink) }; Text(returning ? ui("正在返回原对话…") : ui("回到原对话")) }
                     .font(CatpawTypography.Role.body.font.weight(.semibold)).frame(maxWidth: .infinity, minHeight: 44)
             }.buttonStyle(CatpawPressButtonStyle())
-                .foregroundStyle(!allowed || returning ? CatpawColors.secondary : CatpawColors.action)
+                .foregroundStyle(!allowed || returning ? CatpawColors.secondary : CatpawColors.ink)
                 .background(CatpawColors.panel,in:RoundedRectangle(cornerRadius:CatpawLayout.controlRadius,style:.continuous))
                 .disabled(!allowed || returning).accessibilityIdentifier("inbox.return")
         }.padding(.horizontal, 20).padding(.vertical, 10).background(.regularMaterial)

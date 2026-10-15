@@ -107,7 +107,7 @@ import PDFKit
         Label(title, systemImage: symbol).font(.body.weight(.medium))
             .fixedSize(horizontal: false, vertical: true)
             .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading).padding(12)
-            .foregroundStyle(CatpawColors.accent)
+            .foregroundStyle(CatpawColors.ink)
             .background(CatpawColors.input, in: RoundedRectangle(cornerRadius: CatpawLayout.controlRadius, style: .continuous))
             .contentShape(Rectangle())
     }
