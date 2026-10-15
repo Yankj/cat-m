@@ -83,8 +83,30 @@ func check(_ condition: Bool, _ message: String) { if !condition { print("FAIL",
         let journal = restored.uiEvents ?? []
         check(journal.map(\.sequence) == journal.map(\.sequence).sorted() && Set(journal.map(\.sequence)).count == journal.count && restored.awaitingApproval && Set(restored.pendingUIBlocks.map(\.id)) == ["demo-form", "demo-confirm", "demo-sheet"], "journal survives reopen, ordered and unique by sequence")
 
+        // pending_approvals snapshot: kind "ui" rows split out (server shape from approval.mjs pendingApprovals).
+        let uiInterrupt = UUID().uuidString.lowercased(), hash = String(repeating: "b", count: 64)
+        let snapshot: [[String: Any]] = [
+            ["interrupt_id": UUID().uuidString.lowercased(), "call_id": "call-task", "tool": "create_task", "summary": "创建任务", "args_hash": String(repeating: "c", count: 64), "expires_at": "2026-10-16T00:20:00.000Z", "risk": "local_write", "remember_allowed": true, "arguments": ["title": "x"]],
+            ["interrupt_id": uiInterrupt, "call_id": "call-ui", "tool": "render_ui", "summary": "表单", "args_hash": hash, "expires_at": "2026-10-16T00:20:00.000Z", "risk": "none", "remember_allowed": false, "kind": "ui",
+             "block": ["schemaVersion": 1, "id": "f1", "kind": "form", "title": "登记", "fields": [["id": "name", "label": "名字", "type": "text"]], "interruptId": uiInterrupt, "argsHash": hash, "expiresAt": "2026-10-16T00:20:00.000Z"],
+             "arguments": ["block": ["id": "f1"]]],
+        ]
+        let split = try NativeChatHTTPBackend.splitPendingApprovals(snapshot)
+        check(split.tools.map(\.tool) == ["create_task"] && split.ui.map(\.blockID) == ["f1"] && split.ui[0].kind == "form" && split.ui[0].argsHash == hash, "snapshot: kind ui rows become ConversationUIApproval, tool rows stay approval cards")
+        var mismatch = false
+        var bad = snapshot[1]; bad["args_hash"] = String(repeating: "d", count: 64)
+        do { _ = try ConversationUIApproval.decode(bad) } catch { mismatch = true }
+        check(mismatch, "snapshot ui row whose block disagrees with the interrupt is rejected")
+        let restoredUI = try await cold.pendingUIApprovals(scope: Profiles.user, conversationID: conversation)
+        check(Set(restoredUI.map(\.blockID)) == ["demo-form", "demo-confirm", "demo-sheet"] && restoredUI.allSatisfy { $0.argsHash.count == 64 && !$0.block.isEmpty }, "pendingUIApprovals(scope:conversationID:) restores waiting blocks after reopen")
+        let adapter = ConversationUIDecisionSubmitter(service: cold, scope: Profiles.user)
+        var adapterError = ""
+        do { try await adapter.closure(conversation, operation, restoredUI[0].interruptID, "approve", restoredUI[0].argsHash, nil, UUID()) }
+        catch let failure as ConversationApprovalFailure { adapterError = failure.friendlyMessage }
+        check(!adapterError.isEmpty, "adapter closure rejects an unknown decision string with a friendly error")
+
         let byID = Dictionary(uniqueKeysWithValues: pending.map { ($0.id, $0) })
-        try await cold.submitUIDecision(scope: Profiles.user, conversationID: conversation, turnID: operation, interruptID: byID["demo-confirm"]!.interruptID!, decision: .submit, argsHash: byID["demo-confirm"]!.argsHash!, response: Data(#"{"type":"ui.response","blockId":"demo-confirm","actionId":"approve","values":{},"selected":[],"respondedAt":"2026-10-16T00:10:00Z"}"#.utf8))
+        try await adapter.submitUIDecision(conversationID: conversation, turnID: operation, interruptID: byID["demo-confirm"]!.interruptID!, decision: .submit, argsHash: byID["demo-confirm"]!.argsHash!, response: Data(#"{"type":"ui.response","blockId":"demo-confirm","actionId":"approve","values":{},"selected":[],"respondedAt":"2026-10-16T00:10:00Z"}"#.utf8), operationID: UUID())
         try await cold.submitUIDecision(scope: Profiles.user, conversationID: conversation, turnID: operation, interruptID: byID["demo-form"]!.interruptID!, decision: .submit, argsHash: byID["demo-form"]!.argsHash!, response: Data(#"{"type":"ui.response","blockId":"demo-form","actionId":null,"values":{"km":5,"at":"18:30"},"selected":[],"respondedAt":"2026-10-16T00:10:00Z"}"#.utf8))
         try await cold.submitUIDecision(scope: Profiles.user, conversationID: conversation, turnID: operation, interruptID: byID["demo-sheet"]!.interruptID!, decision: .dismiss, argsHash: byID["demo-sheet"]!.argsHash!, response: nil)
         let done = try await cold.read(scope: Profiles.user, conversationID: conversation).turns.last!
