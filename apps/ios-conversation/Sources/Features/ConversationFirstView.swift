@@ -62,8 +62,9 @@ import CatpawImageComposer
     #endif
     private var sidebarSnapshot:SidebarSnapshot {
         .init(contextID:model.scope.workspaceID.uuidString,selectedConversationID:model.conversationID,
-              conversations:model.history.map{.init(id:$0.id,title:$0.title,preview:$0.conversation?.draftText)},
-              capabilities:.init(canCreateConversation:model.loaded && !model.busy && !model.isInputComposing,canSelectConversation:!model.busy && !model.isInputComposing,tasks:true,results:true,memory:model.loaded && model.memoryConfigured,settings:true))
+              conversations:model.history.map{.init(id:$0.id,title:$0.title,preview:$0.conversation?.draftText,updatedAt:$0.header.updatedAt)},
+              capabilities:.init(canCreateConversation:model.loaded && !model.busy && !model.isInputComposing,canSelectConversation:!model.busy && !model.isInputComposing,tasks:true,results:true,memory:model.loaded && model.memoryConfigured,settings:true),
+              account:.init(name:accountLabel ?? ui("本机用户"),detail:isAnonymousAccount ? ui("未登录") : nil))
     }
     private func route(_ destination:SidebarDestination) {
         switch destination {
