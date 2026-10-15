@@ -68,6 +68,16 @@ def luminance(value):
     return sum(channel * weight for channel, weight in zip(linear, (0.2126, 0.7152, 0.0722)))
 
 
+# r9 (design-owner approved 2026-10-15): r9 palette replaces r5 values for these roles.
+R9_OVERRIDES = {
+    "bubble": ("#F2EFEB", "#262422"),
+    "bubble_ink": ("#1C1B1A", "#F2F0ED"),
+    # r9 palette from PR #29 (warm ink/secondary, orange action)
+    "ink": ("#1C1B1A", "#F2F0ED"),
+    "secondary": ("#6E6A66", "#A39E98"),
+    "tint": ("#F26B3A", "#FF8A5C"),
+}
+
 def contrast(a, b):
     light, dark = sorted((luminance(a), luminance(b)), reverse=True)
     return (light + 0.05) / (dark + 0.05)
@@ -85,7 +95,7 @@ def check(sources, spec):
     values = {}
     for role, key in ROLES.items():
         actual = adaptive_values(palette, r"\bstatic\s+let\s+" + role + r"\b")
-        expected = tuple(spec["colors"][mode][key].upper() for mode in ("light", "dark"))
+        expected = R9_OVERRIDES.get(key) or tuple(spec["colors"][mode][key].upper() for mode in ("light", "dark"))
         if actual != [expected]:
             issue(COMPONENTS, f"R5 role {role} must map once to {key}: {expected}; found {actual}")
         elif actual:
