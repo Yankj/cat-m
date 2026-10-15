@@ -143,7 +143,8 @@ import AppIntents
                         .zIndex(100)
                 }
             }
-            .onOpenURL { _ in launchMarkVisible = false }
+            .onOpenURL { url in launchMarkVisible = false; CatpawRouteCenter.shared.pending = CatpawAppRoute(url: url) }
+            .catpawInAppBanner()
             .task { if bootstrap.isP0Fixture { await bootstrap.startFixture() } else if bootstrap.model == nil { await auth.start() } }
                 .onChange(of:scene) { _, phase in if phase == .active,bootstrap.model == nil,!bootstrap.isP0Fixture { Task { await auth.foreground() } } }
         }
@@ -229,4 +230,10 @@ struct CatpawAppShortcuts: AppShortcutsProvider {
                     phrases: ["Open a conversation in \(.applicationName)", "Open \(.applicationName)"],
                     shortTitle: "Open conversation", systemImageName: "bubble.left.and.bubble.right")
     }
+}
+
+/// Pending out-of-app route, consumed by ConversationFirstView once the chat is ready.
+@MainActor @Observable final class CatpawRouteCenter {
+    static let shared = CatpawRouteCenter()
+    var pending: CatpawAppRoute?
 }

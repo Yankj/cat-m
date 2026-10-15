@@ -41,6 +41,8 @@ enum CatpawWidgetLinks {
     // DeepLinkResolver currently only accepts conversation/<uuid>; `catpawm://` opens the app root.
     // Needed routes (M4): catpawm://tasks, catpawm://new?focus=composer.
     static let root = URL(string: "catpawm://")!
+    static let tasks = URL(string: "catpawm://tasks")!
+    static let new = URL(string: "catpawm://new")!
 }
 
 // MARK: - Today's tasks (small / medium)
@@ -70,7 +72,7 @@ struct CatpawTodayTasksView: View {
             }
             Spacer(minLength: 0)
         }
-        .widgetURL(CatpawWidgetLinks.root)
+        .widgetURL(CatpawWidgetLinks.tasks)
         .containerBackground(for: .widget) { Color(.systemBackground) }
     }
 }

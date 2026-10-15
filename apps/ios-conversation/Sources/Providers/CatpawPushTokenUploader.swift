@@ -95,6 +95,17 @@ public actor CatpawPushTokenUploader {
         pending.removeValue(forKey: key); lastSent.removeValue(forKey: key)
     }
     public var queuedCount: Int { pending.count }
+    /// `POST /push/action {event_id, action}` (open/done/snooze_10m/snooze_1h/dismiss). Idempotent server-side.
+    @discardableResult public func sendPushAction(eventID: String, action: String) async -> Bool {
+        guard let base = endpoint?.deletingLastPathComponent().deletingLastPathComponent(), let bearer = try? await bearer() else { return false }
+        var request = URLRequest(url: base.appendingPathComponent("push/action"), timeoutInterval: 10)
+        request.httpMethod = "POST"
+        request.setValue(bearer, forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try? JSONSerialization.data(withJSONObject: ["event_id": eventID, "action": action])
+        guard let (_, response) = try? await session.data(for: request) else { return false }
+        return (response as? HTTPURLResponse).map { (200..<300).contains($0.statusCode) } ?? false
+    }
 
     private func flush() async {
         guard let authorization, let endpoint, !pending.isEmpty else { return }
