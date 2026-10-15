@@ -54,6 +54,18 @@ final class ConversationDrawerRevealUITests:XCTestCase {
         origin.withOffset(CGVector(dx:start.x-app.frame.minX,dy:start.y-app.frame.minY))
             .press(forDuration:0.05,thenDragTo:origin.withOffset(CGVector(dx:end.x-app.frame.minX,dy:end.y-app.frame.minY)),withVelocity:.slow,thenHoldForDuration:0.2)
     }
+    private func assertScrimFrameIsFullyVisible(_ app:XCUIApplication,_ scrim:XCUIElement) {
+        XCTAssertTrue(scrim.exists && scrim.isHittable,app.debugDescription)
+        let frame=scrim.frame,visible=frame.intersection(app.frame)
+        XCTAssertFalse(frame.isNull || frame.isInfinite || visible.isNull || visible.isInfinite)
+        XCTAssertGreaterThanOrEqual(frame.width,44,"The actual AX control must retain a tappable foreground strip")
+        // The AX target itself must describe the visible strip, rather than a
+        // full-width translated control whose center lies outside the screen.
+        XCTAssertEqual(frame.minX,visible.minX,accuracy:0.5)
+        XCTAssertEqual(frame.minY,visible.minY,accuracy:0.5)
+        XCTAssertEqual(frame.maxX,visible.maxX,accuracy:0.5)
+        XCTAssertEqual(frame.maxY,visible.maxY,accuracy:0.5)
+    }
     private func assertNoAdditionalReply(_ app:XCUIApplication,draft:String,echoes:Int) {
         XCTAssertEqual(app.textViews["chat.input"].value as? String,draft,"Presentation gestures preserve the exact local draft")
         XCTAssertEqual(userEchoCount(app),echoes,"No extra user turn appears without a Send press")
@@ -76,6 +88,7 @@ final class ConversationDrawerRevealUITests:XCTestCase {
         let close=app.buttons["sidebar.close"],scrim=app.buttons["sidebar.scrim"]
         XCTAssertTrue(until{close.exists && close.isHittable},app.debugDescription)
         XCTAssertTrue(scrim.exists && scrim.isHittable,app.debugDescription)
+        assertScrimFrameIsFullyVisible(app,scrim)
         let retained=scrim.frame.intersection(app.frame)
         XCTAssertGreaterThanOrEqual(retained.width,44,"The translated original foreground remains visible at the right")
         XCTAssertGreaterThan(retained.minX,app.frame.midX)
@@ -84,9 +97,24 @@ final class ConversationDrawerRevealUITests:XCTestCase {
         // Close from the retained foreground itself, not by tapping the close icon.
         let y=app.frame.minY+app.frame.height*0.5
         drag(app,from:CGPoint(x:app.frame.maxX-10,y:y),to:CGPoint(x:app.frame.minX+32,y:y))
-        XCTAssertTrue(until{!close.exists && input.exists && input.isHittable},app.debugDescription)
+        XCTAssertTrue(until{!close.exists && !app.buttons["sidebar.scrim"].exists && input.exists && input.isHittable},app.debugDescription)
         assertNoAdditionalReply(app,draft:draft,echoes:echoes)
         capture(app,"closed-same-local-draft")
+        // Reopen through the actual toolbar control, then exercise the scrim's
+        // own visible center. The close icon must not stand in for this action.
+        let menu=app.buttons["sidebar.open"]
+        XCTAssertTrue(menu.waitForExistence(timeout:5));XCTAssertTrue(menu.isEnabled && menu.isHittable);menu.tap()
+        XCTAssertTrue(until{close.exists && close.isHittable && scrim.exists && scrim.isHittable},app.debugDescription)
+        assertScrimFrameIsFullyVisible(app,scrim)
+        let reopened=scrim.frame.intersection(app.frame)
+        XCTAssertGreaterThanOrEqual(reopened.width,44)
+        XCTAssertGreaterThan(reopened.minX,app.frame.midX)
+        XCTAssertLessThanOrEqual(abs(reopened.maxX-app.frame.maxX),1)
+        capture(app,"menu-reopened-visible-scrim")
+        scrim.coordinate(withNormalizedOffset:CGVector(dx:0.5,dy:0.5)).tap()
+        XCTAssertTrue(until{!close.exists && !app.buttons["sidebar.scrim"].exists && input.exists && input.isHittable},app.debugDescription)
+        assertNoAdditionalReply(app,draft:draft,echoes:echoes)
+        capture(app,"scrim-center-tap-closed-same-local-draft")
     }
     func testReadOnlyLongPressOwnsSystemCopyMenuThenBodyPanResumesWithoutSending() {
         let app=launchAndReply(),input=app.textViews["chat.input"],draft="系统文字菜单关闭后保留中文草稿"
@@ -138,7 +166,7 @@ final class ConversationDrawerRevealUITests:XCTestCase {
         capture(app,"after-system-menu-body-pan-open")
         let y=app.frame.minY+app.frame.height*0.5
         drag(app,from:CGPoint(x:app.frame.maxX-10,y:y),to:CGPoint(x:app.frame.minX+32,y:y))
-        XCTAssertTrue(until{!close.exists && input.exists && input.isHittable},app.debugDescription)
+        XCTAssertTrue(until{!close.exists && !app.buttons["sidebar.scrim"].exists && input.exists && input.isHittable},app.debugDescription)
         assertNoAdditionalReply(app,draft:draft,echoes:echoes)
         capture(app,"system-menu-closed-reading-pan-restored-same-draft")
     }
@@ -159,7 +187,7 @@ final class ConversationDrawerRevealUITests:XCTestCase {
         XCTAssertTrue(modalClose.exists && modalClose.isHittable)
         XCTAssertFalse(app.buttons["sidebar.close"].exists,"The foreground details sheet owns interaction; the root drawer cannot open behind it")
         capture(app,"modal-owns-horizontal-gesture")
-        modalClose.tap();XCTAssertTrue(until{!modalClose.exists && input.exists && input.isHittable},app.debugDescription)
+        modalClose.tap();XCTAssertTrue(until{!modalClose.exists && !app.buttons["sidebar.scrim"].exists && input.exists && input.isHittable},app.debugDescription)
         assertNoAdditionalReply(app,draft:draft,echoes:echoes)
         capture(app,"editor-and-modal-preserve-draft")
     }

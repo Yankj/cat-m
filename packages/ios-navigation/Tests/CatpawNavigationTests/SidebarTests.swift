@@ -195,6 +195,29 @@ final class SidebarTests: XCTestCase {
         state.move(to: false, reduceMotion: false); state.advance(seconds: 2)
         XCTAssertEqual(state.position, 0); XCTAssertFalse(state.isVisible, "Only the physical closed endpoint returns foreground interaction")
     }
+    func testVisibleScrimBoundsEndAtScreenEdgeForEveryRevealFraction() {
+        for viewport: CGFloat in [320, 375, 402, 430, 1024] {
+            let drawer = SidebarGesturePolicy.drawerWidth(available: viewport)
+            for progress: CGFloat in [0, 0.1, 0.5, 1] {
+                let translation = drawer * progress
+                let width = SidebarForegroundLayout.visibleWidth(viewportWidth: viewport, translation: translation)
+                let frame = CGRect(x: translation, y: 62, width: width, height: 778)
+                XCTAssertEqual(frame.maxX, viewport, accuracy: 0.000001)
+                XCTAssertGreaterThanOrEqual(width, 44)
+                XCTAssertLessThan(frame.midX, viewport, "The computed activation point must remain on-screen")
+            }
+        }
+    }
+    func testMeasuredBuild32ScrimCounterexampleHasOnscreenReplacement() {
+        let failed = CGRect(x: 320, y: 62, width: 402, height: 778)
+        XCTAssertGreaterThan(failed.midX, 402, "Recorded native AX frame activated beyond the screen")
+        let replacement = CGRect(x: 320, y: 62, width: SidebarForegroundLayout.visibleWidth(viewportWidth: 402, translation: 320), height: 778)
+        XCTAssertEqual(replacement.width, 82)
+        XCTAssertEqual(replacement.maxX, 402)
+        XCTAssertEqual(replacement.midX, 361)
+        XCTAssertEqual(SidebarForegroundLayout.visibleWidth(viewportWidth: 0, translation: 0), 0)
+        XCTAssertEqual(SidebarForegroundLayout.visibleWidth(viewportWidth: 402, translation: 500), 0)
+    }
     func testCancellationRestoresPriorPresentation() {
         XCTAssertFalse(SidebarGesturePolicy.settlesOpen(direction: .opening, progress: 0.9, velocityX: 1000, cancelled: true))
         XCTAssertTrue(SidebarGesturePolicy.settlesOpen(direction: .closing, progress: 0.1, velocityX: -1000, cancelled: true))
