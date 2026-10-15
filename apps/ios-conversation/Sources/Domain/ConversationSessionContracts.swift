@@ -250,7 +250,15 @@ public struct ConversationTurnEvent: Sendable {
     public let payload: Payload
     /// Advisory busy delay from `turn_failed{code:rate_limited, retry_after_seconds}` (R7 busy card).
     public let retryAfterSeconds: Int?
-    public init(operationID: UUID, epoch: Int, sequence: Int, payload: Payload, retryAfterSeconds: Int? = nil) { self.operationID = operationID; self.epoch = epoch; self.sequence = sequence; self.payload = payload; self.retryAfterSeconds = retryAfterSeconds }
+    /// Conversation of this event; nil only from backends/tests that predate the field. The session service always fills it.
+    public let conversationID: UUID?
+    /// Server turn id (`turn_id` on the wire; equals `operationID` for native-chat turns). Nil only from older producers.
+    public let turnID: UUID?
+    public init(operationID: UUID, epoch: Int, sequence: Int, payload: Payload, retryAfterSeconds: Int? = nil, conversationID: UUID? = nil, turnID: UUID? = nil) { self.operationID = operationID; self.epoch = epoch; self.sequence = sequence; self.payload = payload; self.retryAfterSeconds = retryAfterSeconds; self.conversationID = conversationID; self.turnID = turnID }
+    /// Same event with routing ids filled (keeps ids already set).
+    public func stamped(conversationID: UUID, turnID: UUID) -> ConversationTurnEvent {
+        ConversationTurnEvent(operationID: operationID, epoch: epoch, sequence: sequence, payload: payload, retryAfterSeconds: retryAfterSeconds, conversationID: self.conversationID ?? conversationID, turnID: self.turnID ?? turnID)
+    }
 }
 public struct ConversationTurnRecord: Codable, Sendable, Identifiable {
     public enum State: String, Codable, Sendable { case dispatched, running, completed, failed, unknown, notSent, cancelledBeforeSend }
