@@ -156,7 +156,7 @@ final class ConversationArtifactContinuationUITests:XCTestCase {
         capture(app,scenario+"-selected-local-raw")
         if scenario=="p0-ui-large-artifact-edit" {
             let details=app.buttons["chat.input.context.open"]
-            XCTAssertTrue(details.exists && details.isHittable,"Overflowing context has an explicit, reachable details entry")
+            XCTAssertTrue(details.exists && details.isHittable,"Overflowing context has an explicit, reachable details entry. exists=\(details.exists), hittable=\(details.isHittable), enabled=\(details.isEnabled), frame=\(details.frame). \(app.debugDescription)")
             NativeUIGeometry.assertMinimumHeight(details.frame)
             details.tap()
             let version=app.staticTexts["chat.input.context.version"]
