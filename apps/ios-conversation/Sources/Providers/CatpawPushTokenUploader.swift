@@ -64,7 +64,25 @@ public actor CatpawPushTokenUploader {
         for (k, v) in lastSent where pending[k] == nil { pending[k] = v }   // re-register under the (possibly new) account
         await flush()
     }
-    public func clearAuthorization() { authorization = nil }
+    /// Sign-out: `DELETE /devices/tokens {device_id}` (all kinds) with the still-valid session, then forget auth.
+    /// Already called first thing in `NativeAuthApplicationModel.signOut()`, so no extra hook is needed.
+    public func clearAuthorization() async {
+        if let authorization, let endpoint, let bearer = try? await authorization() {
+            var request = URLRequest(url: endpoint, timeoutInterval: 10)
+            request.httpMethod = "DELETE"
+            request.setValue(bearer.hasPrefix("Bearer ") ? bearer : "Bearer " + bearer, forHTTPHeaderField: "Authorization")
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.httpBody = try? JSONSerialization.data(withJSONObject: ["device_id": CatpawDeviceIdentity.deviceID])
+            _ = try? await session.data(for: request)
+        }
+        authorization = nil; pending.removeAll(); lastSent.removeAll()
+    }
+    /// Current bearer for other `catpaw-proactive` calls (shares the registered auth provider).
+    public func bearer() async throws -> String {
+        guard let authorization else { throw URLError(.userAuthenticationRequired) }
+        let value = try await authorization()
+        return value.hasPrefix("Bearer ") ? value : "Bearer " + value
+    }
 
     public func enqueue(_ registration: CatpawDeviceTokenRegistration) async {
         guard lastSent[registration.queueKey] != registration || authorization == nil else { return }

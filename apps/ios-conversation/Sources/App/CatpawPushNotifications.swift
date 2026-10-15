@@ -53,6 +53,7 @@ struct CatpawNotificationPayload: Equatable, Sendable {
         guard let payload = CatpawNotificationPayload(userInfo: response.notification.request.content.userInfo) else { return }
         await MainActor.run {
             CatpawAppDelegate.lastOpened = payload
+            CatpawProactiveFeed.shared.refreshSoon()
             if let url = payload.conversationURL { UIApplication.shared.open(url) }
         }
     }
