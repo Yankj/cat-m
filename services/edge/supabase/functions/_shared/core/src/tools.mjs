@@ -52,7 +52,7 @@ export function toolApprovalPolicy(name){
  * A turn without the negotiated approval contract never receives a tool whose declaration needs approval. */
 function gatedToolsFor(facade,turn){
  const registry=facade.gatedChatTools;if(!(registry instanceof Map)||!registry.size)return [];
- return [...registry.entries()].filter(([name])=>toolApprovalPolicy(name).approval==='never'||turn?.approval_contract).map(([,tool])=>tool.definition);
+ return [...registry.entries()].filter(([name,tool])=>turn?.approval_contract||(!tool.contractOnly&&toolApprovalPolicy(name).approval==='never')).map(([,tool])=>tool.definition);
 }
 export function chatToolsFor(facade,turn=null){
  const base=chatToolsForBase(facade,turn);

@@ -96,3 +96,16 @@ Everything lives on the existing `native-chat-turns` record: `interrupts[]`, `ap
   - **Cold start:** `openLatest` marks the turn `unknown`, and `observe` then restores `pendingApprovals` from the snapshot.
   - `cancelCurrentTurn` also cancels a suspended turn.
 - **`ConversationBackend.submitApproval(...)`** has a default that throws `ConversationApprovalFailure.unsupported`.
+
+## 9. A2 — proactive task tools (catpaw.task-tools.v1)
+
+- **Registration:** `_shared/proactive/chat-tools.mjs` registers `create_task`, `update_task` and `list_tasks` in `facade.gatedChatTools`. It is enabled in catpaw-api by `CATPAW_PROACTIVE_TOOLS_ENABLED=true`, through `createPgStore(sql)` on the API's dedicated pool.
+- **Contract-only:** the entries are `contractOnly`, so they are offered only to turns that negotiated `catpaw.approval.v1`. Older iOS builds reject unknown tool names.
+- **Policy:**
+  - `list_tasks` is `never` and runs directly.
+  - `create_task` and `update_task` are `first_use`, class `proactive_task_write`, and allow `approve_always`.
+- **Execution:** tools run in-process with `createProactiveService({store}).executeTool(subject_id, call, {conversation_id, turn_id, operation_id})`.
+  - `operation_id = stableUUID(turn_id:call_id:operation)`, so retry-busy, approval resume and recovery replay the same task (`created:false`).
+  - If the service returns `{ok:false,error}`, the result is `tool_result{status:'error', result:{status:'error', code}}`.
+- **Time zone:** clients send `X-Catpaw-Time-Zone: <IANA>`, which is stored as `turn.client_time_zone`. On negotiated turns the prompt includes the user's time zone and current local time with its offset. If the zone is missing or invalid, it uses `UTC`, labelled as a fallback. There is no server-side user setting for time zone yet.
+- **Atomicity:** proactive writes go through the `postgres` client, not the records transaction. Idempotency comes from `(user_id, operation_id)`, not from a shared transaction.
