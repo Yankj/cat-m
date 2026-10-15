@@ -53,3 +53,4 @@ services/offline/evidence/*
 /docs/acceptance/evidence/ios-p0-performance/final-large-type.json
 /docs/acceptance/evidence/ios-p0-performance/no-xctest-after.json
 /docs/acceptance/evidence/ios-p0-performance/no-xctest-baseline.json
+__pycache__/
