@@ -162,7 +162,7 @@ struct AnswerSource: Identifiable, Equatable, Sendable {
         case let .reasoningSummary(_, text, thinkingMs):
             thinkingSummary = text
             applyThinkingDuration(thinkingMs)
-        case .approvalRequested, .suspended, .approvalResolved, .uiBlock, .uiBlockUpdate, .uiBlockResolve:
+        case .approvalRequested, .suspended, .approvalResolved, .uiBlock, .uiBlockUpdate, .uiBlockResolve, .deviceCall:
             break // catpaw.approval.v1 / catpaw.ui.v1: presentation is owned by the UI lane (A2, generative UI renderer).
         }
     }

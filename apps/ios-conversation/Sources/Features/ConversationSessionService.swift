@@ -38,6 +38,8 @@ public actor ConversationSessionService {
         func finish(_ result: Result<UUID, Error>) { let all = waiters; waiters = []; for w in all { w.resume(with: result) } }
     }
     private var uiQueue: [UUID: [QueuedUIDecision]] = [:]
+    /// catpaw.device.v1: call_id → (conversation, turn) of `device_call`s applied in this process.
+    private var deviceCallIndex: [String: (UUID, UUID)] = [:]
     private var uiDraining: Set<UUID> = []
     private var uiClock: @Sendable () -> Date = { Date() }
     /// Test seam for queued-decision expiry.
@@ -462,7 +464,7 @@ public actor ConversationSessionService {
             if Self.isBlankDelegationReply(session, message: message, request: request) {
                 session.messages.remove(at: message)
             }
-            turn.state = .completed; turn.error = nil; turn.pendingApprovals = nil
+            turn.state = .completed; turn.error = nil; turn.pendingApprovals = nil; turn.pendingDeviceCalls = nil
         case .reasoningSummary(_, let text, let ms):
             guard turn.assistantMessageID == nil else { throw ConversationSessionError.invalidEvent }
             turn.reasoningSummary = text; turn.thinkingMs = ms
@@ -482,8 +484,12 @@ public actor ConversationSessionService {
                 }
                 journal.append(ui); journal.sort { $0.sequence < $1.sequence }; turn.uiEvents = journal
             }
+        case .deviceCall(let call):
+            guard Self.isPlain(request) else { throw ConversationSessionError.invalidEvent }
+            if !(turn.pendingDeviceCalls ?? []).contains(where: { $0.callID == call.callID }) { turn.pendingDeviceCalls = (turn.pendingDeviceCalls ?? []) + [call] }
+            deviceCallIndex[call.callID] = (request.conversationID, request.operationID)
         case .suspended(let ids, _):
-            let pending = Set((turn.pendingApprovals ?? []).map(\.interruptID)).union(turn.pendingUIBlocks.compactMap(\.interruptID)).union((turn.pendingUIApprovals ?? []).map(\.interruptID))
+            let pending = Set((turn.pendingApprovals ?? []).map(\.interruptID)).union((turn.pendingDeviceCalls ?? []).map(\.interruptID)).union(turn.pendingUIBlocks.compactMap(\.interruptID)).union((turn.pendingUIApprovals ?? []).map(\.interruptID))
             guard !ids.isEmpty, Set(ids).isSubset(of: pending) else { throw ConversationSessionError.invalidEvent }
         case .approvalResolved(let id, let call, _, _):
             // A replay/observe may resolve an interrupt this journal never saw pending (e.g. expired while offline).
@@ -491,9 +497,11 @@ public actor ConversationSessionService {
             if turn.pendingApprovals?.isEmpty == true { turn.pendingApprovals = nil }
             turn.pendingUIApprovals?.removeAll { $0.interruptID == id.lowercased() }
             if turn.pendingUIApprovals?.isEmpty == true { turn.pendingUIApprovals = nil }
+            turn.pendingDeviceCalls?.removeAll { $0.interruptID == id.lowercased() }
+            if turn.pendingDeviceCalls?.isEmpty == true { turn.pendingDeviceCalls = nil }
         case .failed(let reason, let reconciliation):
             turn.state = reconciliation ? .unknown : .failed; turn.error = reason
-            if !reconciliation { turn.pendingApprovals = nil }
+            if !reconciliation { turn.pendingApprovals = nil; turn.pendingDeviceCalls = nil }
             if reason == Self.rateLimitedCode { turn.retryAfterSeconds = event.retryAfterSeconds }
             if !reconciliation {
                 for i in session.messages.indices where Self.isToolAttempt(session.messages[i], for: request) && !session.messages[i].complete {
@@ -1000,6 +1008,42 @@ public actor ConversationSessionService {
             throw error
         }
     }
+    /// catpaw.device.v1: report the phone's result for a `device_call`. Looks the call up by `callID` (#44 `DeviceCallResult` has only
+    /// call_id/status/data); idempotent: the operation id is derived from the call id, so a retry after `.transport` replays.
+    /// Errors are `ConversationApprovalFailure` (`.expired` past `ttl_sec`, `.stale`, `.consumed`, `.notFound`) or `.busy` while a stream runs.
+    @discardableResult
+    public func submitDeviceResult(scope: DataScope, callID: String, status: String, data: Data?) async throws -> UUID {
+        guard let entry = deviceCallIndex[callID] else { throw ConversationApprovalFailure.noPendingApproval }
+        let (conversationID, turnID) = entry
+        guard active[conversationID] == nil, !cancelling.contains(conversationID) else { throw ConversationSessionError.busy }
+        let saved = try await read(scope: scope, conversationID: conversationID)
+        guard let turn = saved.turns.first(where: { $0.id == turnID }), let call = turn.pendingDeviceCalls?.first(where: { $0.callID == callID }) else { throw ConversationApprovalFailure.noPendingApproval }
+        let operationID = stableID("device-result-\(turnID)-\(callID)")
+        let token = UUID(); active[conversationID] = token
+        defer { if active[conversationID] == token { releaseActive(conversationID) } }
+        let stream: AsyncThrowingStream<ConversationTurnEvent, Error>
+        do { stream = try await backend.submitDeviceResult(turn.request, call: call, status: status, data: data, operationID: operationID, afterSequence: turn.lastSequence) }
+        catch let failure as ConversationApprovalFailure {
+            if [.expired, .consumed, .stale, .notFound].contains(failure), active[conversationID] == token {
+                if let observation = try? await backend.observe(turn.request), active[conversationID] == token, (try? Self.encode(observation.request)) == (try? Self.encode(turn.request)) {
+                    for event in observation.events { try? await apply(event, request: turn.request, observing: true, observationToken: token) }
+                }
+            }
+            throw failure
+        }
+        do { return try await pump(stream, request: turn.request, observationToken: token) }
+        catch {
+            if active[conversationID] == token, !(error is CancellationError) { try? await markUnknown(turn.request, reason: "结果已回传，状态待核对；读取原请求后继续。", observationToken: token) }
+            throw error
+        }
+    }
+    /// Pending device calls of a conversation (cold start: show their cards again).
+    public func pendingDeviceCalls(scope: DataScope, conversationID: UUID) async throws -> [ConversationDeviceCall] {
+        let saved = try await read(scope: scope, conversationID: conversationID)
+        var out: [ConversationDeviceCall] = []
+        for turn in saved.turns { for call in turn.pendingDeviceCalls ?? [] { deviceCallIndex[call.callID] = (conversationID, turn.id); out.append(call) } }
+        return out
+    }
     private static func journalID(_ id: UUID) -> UUID { stableID("conversation-first-journal-\(id)") }
     private static func encode<T: Encodable>(_ value: T) throws -> String { let encoder = JSONEncoder(); encoder.outputFormatting = [.sortedKeys]; return String(decoding: try encoder.encode(value), as: UTF8.self) }
 }
@@ -1032,5 +1076,27 @@ public struct ConversationUIDecisionSubmitter: Sendable {
     /// Cold start: waiting ui blocks to put back into the store.
     public func pendingUIApprovals(conversationID: UUID) async throws -> [ConversationUIApproval] {
         try await service.pendingUIApprovals(scope: scope, conversationID: conversationID)
+    }
+}
+
+/// Scope-bound adapter for #44's `DeviceResultSubmitting` (`submit(_ result: DeviceCallResult)`; that type has no scope / turn).
+/// After #44 lands, conform with:
+///     extension ConversationDeviceResultSubmitter: DeviceResultSubmitting {
+///         public func submit(_ result: DeviceCallResult) async throws {
+///             let data = try result.data.map { try JSONEncoder().encode($0) }
+///             try await submit(callID: result.call_id, status: result.status.rawValue, data: data)
+///         }
+///     }
+/// and install it with `DeviceCallHub.submitter = ConversationDeviceResultSubmitter(service: service, scope: scope)` (clear at sign-out).
+public struct ConversationDeviceResultSubmitter: Sendable {
+    public let scope: DataScope
+    public let service: ConversationSessionService
+    public init(service: ConversationSessionService, scope: DataScope) { self.service = service; self.scope = scope }
+    /// `data` is a JSON object (or nil). Failures are `ConversationApprovalFailure` / `ConversationSessionError.busy` (retry later).
+    public func submit(callID: String, status: String, data: Data?) async throws {
+        try await service.submitDeviceResult(scope: scope, callID: callID, status: status, data: data)
+    }
+    public func pendingDeviceCalls(conversationID: UUID) async throws -> [ConversationDeviceCall] {
+        try await service.pendingDeviceCalls(scope: scope, conversationID: conversationID)
     }
 }
