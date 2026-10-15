@@ -36,7 +36,7 @@ for name in paths:
             key,separator,value=line.partition('=')
             if not separator or (value.strip() and not (key=='SUPABASE_URL' and value=='http://127.0.0.1:54321')):
                 finding(name,'nonempty_configuration_template')
-    if any(x in ['DerivedData','node_modules','xcuserdata','.runtime','.aws','.codex'] or x.startswith('.build') for x in p.parts):
+    if any(x in ['DerivedData','node_modules','xcuserdata','.runtime','.aws','.codex'] or x.startswith('.build') for x in Path(name).parts):
         finding(name,'excluded_directory_kind')
     if p.suffix.lower()=='.png':
         assert data[:8]==b'\x89PNG\r\n\x1a\n',name
