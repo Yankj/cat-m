@@ -1,4 +1,25 @@
 import Foundation
+import Combine
+
+/// r11: single source of truth for the header cat head + Live Activity step text, fed by turn events.
+@MainActor final class CatpawPresenceHub: ObservableObject {
+    static let shared = CatpawPresenceHub()
+    /// nil = idle (header shows a calm cat head that blinks occasionally).
+    @Published private(set) var state: CatpawPresenceState?
+    @Published private(set) var step: String = ""
+    private var settle: Task<Void, Never>?
+    func set(_ state: CatpawPresenceState?, step: String) {
+        settle?.cancel()
+        self.state = state; self.step = step
+        if state == .done || state == .error {
+            settle = Task { [weak self] in
+                try? await Task.sleep(nanoseconds: (state == .done ? 2_200 : 4_000) * 1_000_000)
+                guard !Task.isCancelled else { return }
+                self?.state = nil; self?.step = ""
+            }
+        }
+    }
+}
 #if canImport(ActivityKit) && os(iOS)
 import ActivityKit
 
@@ -10,7 +31,7 @@ import ActivityKit
 /// Requested with `pushType: .token`; each token → `PUT /devices/tokens {kind: live_activity_update, activity_id}`.
 @MainActor final class CatpawLiveActivityCoordinator {
     static let shared = CatpawLiveActivityCoordinator()
-    static let longTurnThreshold: TimeInterval = 8
+    static let longTurnThreshold: TimeInterval = 5
     private static let longTaskTools: Set<String> = ["delegate_task", "delegate_plan_v1"]
 
     private struct Turn {
@@ -21,6 +42,7 @@ import ActivityKit
         var activity: Activity<CatpawWorkAttributes>?
         var timer: Task<Void, Never>?
         var answering = false
+        var kind = CatpawWorkAttributes.ContentState.Kind.thinking
     }
     private var turns: [UUID: Turn] = [:]
     private var tokenObservers: [String: Task<Void, Never>] = [:]
@@ -39,6 +61,17 @@ import ActivityKit
 
     func handle(_ event: ConversationTurnEvent, conversationID: UUID?) {
         let id = event.operationID
+        let hub = CatpawPresenceHub.shared
+        switch event.payload {
+        case .started: hub.set(.waiting, step: ui("正在思考…"))
+        case .reasoningSummary: hub.set(.thinking, step: ui("正在思考…"))
+        case .toolStarted(_, let name, _): hub.set(.working, step: ui("正在调用工具：{0}", [name]))
+        case .toolResult: hub.set(.thinking, step: ui("正在思考…"))
+        case .textDelta: if hub.state != .streaming { hub.set(.streaming, step: ui("正在整理回答…")) }
+        case .completed: hub.set(.done, step: ui("已完成"))
+        case .failed: hub.set(.error, step: ui("未完成，需核对"))
+        default: break
+        }
         switch event.payload {
         case .started:
             guard turns[id] == nil else { return }
@@ -50,16 +83,16 @@ import ActivityKit
             }
             turns[id] = turn
         case .reasoningSummary:
-            mutate(id) { $0.body = self.ui("正在思考…") }
+            mutate(id) { $0.kind = CatpawWorkAttributes.ContentState.Kind.thinking; $0.body = self.ui("正在思考…") }
         case .toolStarted(_, let name, _):
             ensureTracked(id, conversationID: conversationID)
-            mutate(id) { $0.step += 1; $0.body = self.ui("正在调用工具：{0}", [name]) }
+            mutate(id) { $0.step += 1; $0.kind = CatpawWorkAttributes.ContentState.Kind.tool; $0.body = self.ui("正在调用工具：{0}", [name]) }
             if Self.longTaskTools.contains(name) { startIfNeeded(id) }
         case .toolResult(let result):
-            mutate(id) { $0.body = self.ui("工具已返回：{0}", [result.name]) }
+            mutate(id) { $0.kind = CatpawWorkAttributes.ContentState.Kind.thinking; $0.body = self.ui("工具已返回：{0}", [result.name]) }
         case .textDelta:
             guard turns[id]?.answering == false else { return }
-            mutate(id) { $0.answering = true; $0.body = self.ui("正在整理回答…") }
+            mutate(id) { $0.answering = true; $0.kind = CatpawWorkAttributes.ContentState.Kind.writing; $0.body = self.ui("正在整理回答…") }
         case .completed:
             finish(id, kind: CatpawWorkAttributes.ContentState.Kind.done, title: ui("已完成"))
         case .failed:
@@ -82,7 +115,7 @@ import ActivityKit
         guard var turn = turns[id] else { return }
         change(&turn); turns[id] = turn
         guard let activity = turn.activity else { return }
-        let content = ActivityContent(state: state(id, turn, CatpawWorkAttributes.ContentState.Kind.working), staleDate: Date().addingTimeInterval(120))
+        let content = ActivityContent(state: state(id, turn, turn.kind), staleDate: Date().addingTimeInterval(120))
         Task { await activity.update(content) }
     }
 
@@ -91,7 +124,7 @@ import ActivityKit
         guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
         let attributes = CatpawWorkAttributes(taskID: id.uuidString, conversationID: turn.conversationID, title: ui("Catpaw 正在工作"))
         do {
-            let activity = try Activity.request(attributes: attributes, content: ActivityContent(state: state(id, turn, CatpawWorkAttributes.ContentState.Kind.working), staleDate: Date().addingTimeInterval(120)), pushType: .token)
+            let activity = try Activity.request(attributes: attributes, content: ActivityContent(state: state(id, turn, turn.kind), staleDate: Date().addingTimeInterval(120)), pushType: .token)
             turn.activity = activity; turns[id] = turn
             observeToken(activity, turnID: id, conversationID: turn.conversationID)
         } catch {
