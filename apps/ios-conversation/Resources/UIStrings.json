@@ -471,6 +471,10 @@
     "en": "Save amendment",
     "zh-Hans": "保存修改"
   },
+  "保存到照片": {
+    "en": "Save to Photos",
+    "zh-Hans": "保存到照片"
+  },
   "保存到队列": {
     "en": "Save to queue",
     "zh-Hans": "保存到队列"
@@ -618,6 +622,10 @@
   "停止回答": {
     "en": "Stop answer",
     "zh-Hans": "停止回答"
+  },
+  "停止朗读": {
+    "en": "Stop reading",
+    "zh-Hans": "停止朗读"
   },
   "停止条件": {
     "en": "Stop conditions",
@@ -1419,6 +1427,10 @@
     "en": "Jump to latest",
     "zh-Hans": "回到最新"
   },
+  "回复": {
+    "en": "Reply",
+    "zh-Hans": "回复"
+  },
   "回复完成": {
     "en": "Reply complete",
     "zh-Hans": "回复完成"
@@ -1542,6 +1554,10 @@
   "复制回复": {
     "en": "Copy reply",
     "zh-Hans": "复制回复"
+  },
+  "复制图像": {
+    "en": "Copy image",
+    "zh-Hans": "复制图像"
   },
   "外观": {
     "en": "Appearance",
@@ -1886,6 +1902,10 @@
   "已保存到本机": {
     "en": "Saved on this device",
     "zh-Hans": "已保存到本机"
+  },
+  "已保存到照片": {
+    "en": "Saved to Photos",
+    "zh-Hans": "已保存到照片"
   },
   "已保存在本机 · 待发送": {
     "en": "Saved on this device · Awaiting send",
@@ -4363,6 +4383,10 @@
     "en": "No devices are shown as falsely online. Computer pairing, cloud accounts and heartbeat APIs are disconnected.",
     "zh-Hans": "没有模拟在线设备。电脑配对、云账号和心跳接口尚未接入。"
   },
+  "没有照片权限，请在设置中允许": {
+    "en": "No Photos access. Allow it in Settings.",
+    "zh-Hans": "没有照片权限，请在设置中允许"
+  },
   "沿用原操作 ID 与输入配置，旧失败记录单独保留。": {
     "en": "The original operation ID and input configuration are reused. The previous failed attempt is kept separately.",
     "zh-Hans": "沿用原操作 ID 与输入配置，旧失败记录单独保留。"
@@ -5711,9 +5735,17 @@
     "en": "Selected-image-{0}.jpg",
     "zh-Hans": "选定图片-{0}.jpg"
   },
+  "选择": {
+    "en": "Select",
+    "zh-Hans": "选择"
+  },
   "选择图片": {
     "en": "Choose image",
     "zh-Hans": "选择图片"
+  },
+  "选择文本": {
+    "en": "Select text",
+    "zh-Hans": "选择文本"
   },
   "选择是本地配置；不会授予工具权限或下载技能。": {
     "en": "Selections are local configuration. They grant no tool permissions and download no skills.",
