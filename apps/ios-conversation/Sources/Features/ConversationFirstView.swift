@@ -8,6 +8,7 @@ import CatpawImageComposer
     @ObservedObject private var connectionMonitor = ConnectionMonitor.shared
     @StateObject private var composerChrome:ConversationComposerChromeAdapter
     @ObservedObject private var proactiveFeed = CatpawProactiveFeed.shared
+    @ObservedObject private var presenceHub = CatpawPresenceHub.shared
     @StateObject private var attachmentUploader:LocalMockComposerAttachmentUploader
     var accountLabel: String? = nil
     var onSignOut: (() -> Void)? = nil
@@ -108,15 +109,35 @@ import CatpawImageComposer
                 Button { path.append(.settings) } label: { Label(ui("设置"), systemImage:"slider.horizontal.3") }.accessibilityIdentifier("chat.settings")
             }
         } label: {
-            HStack(spacing:5) {
-                if connectionMonitor.state != .online {
-                    Circle().fill(connectionMonitor.state == .offline ? CatpawColors.tertiary : CatpawBrand.paw).frame(width:6,height:6)
-                        .accessibilityIdentifier("chat.title.statusDot")
+            // r11 header capsule (Grok Bot style): animated cat head avatar + title, live step text while a turn runs.
+            HStack(spacing:8) {
+                CatpawPresence(state: presenceHub.state ?? .waiting, size: 24)
+                    .frame(width:30,height:30)
+                    .background(Circle().fill(CatpawBrand.paw.opacity(presenceHub.state == nil ? 0.10 : 0.20)))
+                    .scaleEffect(presenceHub.state == nil ? 1 : 1.06)
+                    .animation(CatpawMotion.statusCapsule, value: presenceHub.state)
+                    .overlay(alignment:.bottomTrailing) {
+                        if connectionMonitor.state != .online {
+                            Circle().fill(connectionMonitor.state == .offline ? CatpawColors.tertiary : CatpawBrand.paw).frame(width:7,height:7)
+                                .overlay(Circle().stroke(CatpawColors.background,lineWidth:1.5))
+                                .accessibilityIdentifier("chat.title.statusDot")
+                        }
+                    }
+                    .accessibilityIdentifier("chat.title.presence")
+                VStack(alignment:.leading,spacing:0) {
+                    HStack(spacing:4) {
+                        Text(r8Title).font(CatpawTypography.Role.body.font.weight(.semibold)).foregroundStyle(CatpawColors.ink).lineLimit(1).truncationMode(.tail)
+                        Image(systemName:"chevron.down").font(CatpawTypography.Role.caption.font.weight(.semibold)).imageScale(.small).foregroundStyle(CatpawColors.tertiary)
+                    }
+                    Text(presenceHub.state == nil || presenceHub.step.isEmpty ? r8ModelLabel : presenceHub.step)
+                        .font(CatpawTypography.Role.caption.font.weight(.medium)).foregroundStyle(CatpawColors.tertiary).lineLimit(1)
+                        .contentTransition(.opacity).animation(CatpawMotion.statusCapsule, value: presenceHub.step)
+                        .accessibilityIdentifier("chat.title.step")
                 }
-                Text(r8Title).font(CatpawTypography.Role.body.font.weight(.semibold)).foregroundStyle(CatpawColors.ink).lineLimit(1).truncationMode(.tail)
-                Text(r8ModelLabel).font(CatpawTypography.Role.secondary.font.weight(.medium)).foregroundStyle(CatpawColors.tertiary).lineLimit(1)
-                Image(systemName:"chevron.down").font(CatpawTypography.Role.caption.font.weight(.semibold)).imageScale(.small).foregroundStyle(CatpawColors.tertiary)
-            }.frame(maxWidth:220).contentShape(Rectangle())
+            }
+            .padding(.leading,4).padding(.trailing,12).padding(.vertical,3)
+            .r11HeaderGlass()
+            .frame(maxWidth:240).contentShape(Capsule())
         }
         .accessibilityLabel(conversationTitle).accessibilityAddTraits(.isHeader).accessibilityIdentifier("chat.title")
     }
@@ -281,7 +302,7 @@ import CatpawImageComposer
                         }.buttonStyle(CatpawPressButtonStyle()).accessibilityLabel(ui("打开侧栏")).accessibilityIdentifier("sidebar.open").accessibilityFocused($menuFocused)
                     }
                 }.r8HiddenSharedBackground()
-                ToolbarItem(placement:.principal) { conversationTitleMenu }
+                ToolbarItem(placement:.principal) { conversationTitleMenu }.r8HiddenSharedBackground()
                 ToolbarItem(placement:.topBarTrailing) {
                     Button { model.newConversation() } label: {
                         Image(systemName:"square.and.pencil").font(CatpawTypography.Role.heading.font).foregroundStyle(CatpawColors.ink).frame(width:44,height:44).contentShape(Rectangle())
@@ -1262,5 +1283,16 @@ private struct DelayedSendingSpinner: View {
     var body: some View {
         ProgressView().controlSize(.mini).opacity(visible ? 1 : 0)
             .task { try? await Task.sleep(nanoseconds: 2_000_000_000); withAnimation(.easeOut(duration: 0.2)) { visible = true } }
+    }
+}
+
+extension View {
+    /// r11: translucent capsule behind the header avatar + title (Liquid Glass on iOS 26, material fallback).
+    @ViewBuilder func r11HeaderGlass() -> some View {
+        #if compiler(>=6.2)
+        if #available(iOS 26.0, *) { self.glassEffect(.regular, in: Capsule()) } else { self.background(.ultraThinMaterial, in: Capsule()) }
+        #else
+        self.background(.ultraThinMaterial, in: Capsule())
+        #endif
     }
 }

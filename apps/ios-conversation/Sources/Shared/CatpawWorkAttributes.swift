@@ -27,6 +27,20 @@ struct CatpawWorkAttributes: ActivityAttributes {
         }
         enum Kind {
             static let working = "working", done = "done", failed = "failed", needsUser = "needs_user"
+            /// r11 client turn phases (status stays `.working`; they only change the cat head pose).
+            static let thinking = "thinking", tool = "tool", writing = "writing"
+        }
+        /// Cat head pose for the Live Activity / Dynamic Island.
+        enum Pose: Hashable { case thinking, tool, writing, waiting, done, failed }
+        var pose: Pose {
+            switch kind {
+            case Kind.thinking, Kind.working: return .thinking
+            case Kind.tool: return .tool
+            case Kind.writing: return .writing
+            case Kind.done: return .done
+            case Kind.failed: return .failed
+            default: return .waiting
+            }
         }
     }
     var taskID: String

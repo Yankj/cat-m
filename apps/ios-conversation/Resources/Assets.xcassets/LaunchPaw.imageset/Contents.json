@@ -1,1 +1,22 @@
-{"images":[{"filename":"LaunchPaw.svg","idiom":"universal"}],"info":{"author":"xcode","version":1},"properties":{"preserves-vector-representation":true,"template-rendering-intent":"original"}}
+{
+ "images": [
+  {
+   "idiom": "universal",
+   "scale": "1x"
+  },
+  {
+   "filename": "LaunchPaw@2x.png",
+   "idiom": "universal",
+   "scale": "2x"
+  },
+  {
+   "filename": "LaunchPaw@3x.png",
+   "idiom": "universal",
+   "scale": "3x"
+  }
+ ],
+ "info": {
+  "author": "xcode",
+  "version": 1
+ }
+}

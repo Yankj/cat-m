@@ -201,7 +201,7 @@ struct CatpawPresence: View {
     }
 
     private func start() {
-        blink = false; tilt = false; twitch = false; orbit = false; bounce = false
+        blink = false; tilt = false; twitch = false; orbit = false; bounce = false; nod = false
         guard !reduceMotion else { return }
         switch state {
         case .waiting:
@@ -209,7 +209,9 @@ struct CatpawPresence: View {
         case .thinking:
             withAnimation(.smooth(duration: 1.4).repeatForever(autoreverses: true)) { tilt = true }
             withAnimation(.bouncy(duration: 0.3).delay(0.9).repeatForever(autoreverses: true)) { twitch = true }
-        case .streaming: break
+        case .streaming:
+            // r11 writing: steady "typing" nod (revealTick nods still layer on top).
+            withAnimation(.easeInOut(duration: 0.42).repeatForever(autoreverses: true)) { nod = true }
         case .working:
             withAnimation(.linear(duration: 1.6).repeatForever(autoreverses: false)) { orbit = true }
         case .done:
