@@ -5239,6 +5239,10 @@
     "en": "Memory use is on",
     "zh-Hans": "记忆利用已开启"
   },
+  "记忆功能还没为你开通。开通后，小猫记住的事会出现在这里。": {
+    "en": "Memory isn’t turned on for you yet. Once it is, the things Catpaw remembers will show up here.",
+    "zh-Hans": "记忆功能还没为你开通。开通后，小猫记住的事会出现在这里。"
+  },
   "记忆变更已获服务回执。": {
     "en": "The service confirmed this memory change.",
     "zh-Hans": "记忆变更已获服务回执。"

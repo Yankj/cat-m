@@ -300,13 +300,16 @@ final class CatpawAcceptanceUITests: XCTestCase {
         if !app.keyboards.firstMatch.exists { field.tap(); Thread.sleep(forTimeInterval: 0.8) }
         field.typeText("用三段话介绍一下猫为什么喜欢纸箱，每段至少80字")
         shot(app, "w2-s03-composer-typing")
-        let send = app.buttons["chat.send"].exists ? app.buttons["chat.send"] : app.buttons.matching(NSPredicate(format: "identifier CONTAINS 'send'")).firstMatch
-        send.tap()
+        Thread.sleep(forTimeInterval: 0.6)
+        let sends = app.buttons.matching(NSPredicate(format: "identifier == 'chat.send' OR identifier == 'chat.composer.send'")).allElementsBoundByIndex
+        if let send = sends.first(where: { $0.isHittable && $0.isEnabled }) { send.tap() } else { field.typeText("\n") }
+        Thread.sleep(forTimeInterval: 0.5)
+        if (field.value as? String)?.contains("纸箱") == true, let send = sends.first(where: { $0.isHittable }) { send.tap() }
         let allow = app.buttons["允许此对话"]
         if allow.waitForExistence(timeout: 4) { shot(app, "w2-s03b-model-consent"); allow.tap() }
         Thread.sleep(forTimeInterval: 1.5); shot(app, "w2-s04-turn-1s5")
         Thread.sleep(forTimeInterval: 4.5); shot(app, "w2-s05-turn-6s-cathead")
-        XCUIDevice.shared.press(.home); Thread.sleep(forTimeInterval: 1.5); screen("w2-s06-dynamic-island")
+        Thread.sleep(forTimeInterval: 3); XCUIDevice.shared.press(.home); Thread.sleep(forTimeInterval: 2); screen("w2-s06-dynamic-island")
         app.activate(); Thread.sleep(forTimeInterval: 25)
         shot(app, "w2-s07-answer-actionrow")
         let text = app.staticTexts.allElementsBoundByIndex.last(where: { $0.isHittable && $0.label.count > 30 })
@@ -321,6 +324,36 @@ final class CatpawAcceptanceUITests: XCTestCase {
         drawer(); if app.buttons["sidebar.settings"].exists { app.buttons["sidebar.settings"].tap() }; Thread.sleep(forTimeInterval: 1.5); shot(app, "w2-s13-settings")
         for _ in 0..<4 where !app.buttons["settings.invite"].exists { app.swipeUp() }
         if app.buttons["settings.invite"].exists { app.buttons["settings.invite"].tap(); Thread.sleep(forTimeInterval: 1); shot(app, "w2-s14-invite-sheet") }
+        // Dictation: first tap starts, second tap stops + commits (no alert).
+        app.terminate(); app.launch(); XCTAssertTrue(input(app).waitForExistence(timeout: 30)); Thread.sleep(forTimeInterval: 1)
+        addUIInterruptionMonitor(withDescription: "perm") { alert in for l in ["允许", "好", "Allow", "OK"] where alert.buttons[l].exists { alert.buttons[l].tap(); return true }; return false }
+        let mic = app.buttons["chat.composer.mic"]
+        if mic.exists { mic.tap(); Thread.sleep(forTimeInterval: 1.5); app.tap(); Thread.sleep(forTimeInterval: 1); screen("w2-s15-dictation-first-tap")
+            if app.buttons["chat.composer.dictation.confirm"].exists { app.buttons["chat.composer.dictation.confirm"].tap() } else if mic.exists { mic.tap() }
+            Thread.sleep(forTimeInterval: 1.5); screen("w2-s16-dictation-second-tap") }
+        XCTAssertEqual(app.state, .runningForeground)
+    }
+
+    /// #64: recent-photo strip → image message → full-screen viewer → 保存到照片.
+    func test15ImageViewer() throws {
+        guard ProcessInfo.processInfo.environment["CATPAW_SURFACE_TOUR"] == "1" else { throw XCTSkip("surface tour only") }
+        let app = XCUIApplication(bundleIdentifier: bundleID); forwardPublicConfig(app); app.launchArguments += ["-CatpawSkipOnboarding"]; app.launch()
+        addUIInterruptionMonitor(withDescription: "perm") { alert in for l in ["允许完全访问", "允许", "好", "Allow Full Access", "Allow", "OK"] where alert.buttons[l].exists { alert.buttons[l].tap(); return true }; return false }
+        XCTAssertTrue(input(app).waitForExistence(timeout: 40)); Thread.sleep(forTimeInterval: 1)
+        if app.buttons["chat.new"].isEnabled { app.buttons["chat.new"].tap(); Thread.sleep(forTimeInterval: 1) }
+        app.buttons["chat.composer.add"].tap(); Thread.sleep(forTimeInterval: 1.2); app.swipeUp(velocity: .slow); Thread.sleep(forTimeInterval: 0.5)
+        let thumb = app.descendants(matching: .any).matching(identifier: "chat.attach.thumb").firstMatch
+        guard thumb.waitForExistence(timeout: 5) else { shot(app, "w2-v00-no-recent-photos"); return }
+        thumb.tap(); Thread.sleep(forTimeInterval: 1); shot(app, "w2-v01-image-attached")
+        let field = input(app); field.tap(); field.typeText("这是什么？")
+        let sends = app.buttons.matching(NSPredicate(format: "identifier == 'chat.send'")).allElementsBoundByIndex
+        sends.first(where: { $0.isHittable })?.tap()
+        for l in ["允许此对话", "允许发送图片", "允许"] where app.buttons[l].waitForExistence(timeout: 3) { shot(app, "w2-v02-image-consent"); app.buttons[l].tap(); break }
+        let image = app.descendants(matching: .any).matching(identifier: "chat.message.image").firstMatch
+        guard image.waitForExistence(timeout: 15) else { shot(app, "w2-v02b-no-image-message"); return }
+        image.tap(); Thread.sleep(forTimeInterval: 1); shot(app, "w2-v03-viewer")
+        let save = app.buttons["chat.imageViewer.save"]
+        if save.exists { save.tap(); Thread.sleep(forTimeInterval: 1.5); app.tap(); Thread.sleep(forTimeInterval: 1); shot(app, "w2-v04-viewer-saved") }
         XCTAssertEqual(app.state, .runningForeground)
     }
 

@@ -87,9 +87,12 @@ import SwiftUI
             }
             if let errorKey = model.errorKey {
                 Section {
-                    Text(ui(errorKey)).font(CatpawTypography.Role.secondary.font).foregroundStyle(CatpawColors.attention).fixedSize(horizontal: false, vertical: true)
-                        .accessibilityIdentifier("memory.library.error")
-                    Button(ui("重试")) { Task { await model.load() } }.touchTarget()
+                    let calm = errorKey == MemoryLibraryError.notEnabled.messageKey
+                    HStack(alignment: .top, spacing: 10) {
+                        if calm { CategoryPaw(category: .memory) }
+                        Text(ui(errorKey)).font(CatpawTypography.Role.secondary.font).foregroundStyle(calm ? CatpawColors.secondary : CatpawColors.attention).fixedSize(horizontal: false, vertical: true)
+                    }.accessibilityIdentifier("memory.library.error")
+                    if !calm { Button(ui("重试")) { Task { await model.load() } }.touchTarget() }
                 }
             }
             if let advanced {

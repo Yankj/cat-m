@@ -23,6 +23,7 @@ public struct NativeChatComposition {
             for (key, name) in ["CatpawBackendOrigin": "CATPAW_BACKEND_ORIGIN", "CatpawSupabaseProjectURL": "CATPAW_SUPABASE_PROJECT_URL", "CatpawServerScopeID": "CATPAW_SERVER_SCOPE_ID"] {
                 if let value = env[name], !value.isEmpty { values[key] = value }
             }
+            values = CatpawDebugPublicConfig.remember(values)
         }
         #endif
         return try make(publicConfiguration: values, localScope: localScope)
