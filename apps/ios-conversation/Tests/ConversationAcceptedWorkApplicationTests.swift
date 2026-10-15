@@ -10,6 +10,10 @@ private actor AcceptedWorkJournalBackend:ConversationBackend {
     var ensureCalls=0,freezeCalls=0,replyCalls=0,readCalls=0
     init(repository:Repository,capability:ConversationAcceptedWorkCapability){self.repository=repository;self.capability=capability}
     func connection(scope:DataScope) async -> ConversationConnection {.init(state:.providerUnverified,provider:"named synthetic journal checkpoint",detail:"No HTTP, Auth or model")}
+    nonisolated var supportsArtifactContinuations:Bool {true}
+    nonisolated var artifactContinuationSubjectID:UUID? {capability.subjectID}
+    func revisionWorkCapability(scope:DataScope,conversationID:UUID) async throws -> ConversationAcceptedWorkCapability {capability}
+    func freezeRevisionWork(_ request:ConversationTurnRequest,selection:ConversationRevisionWorkSelection) async throws -> ConversationRevisionWorkIntent {freezeCalls += 1;return try .init(request:request,selection:selection,expectedRevision:2,expectedGrantEpoch:1)}
     func acceptedWorkCapability(scope:DataScope,conversationID:UUID) async throws -> ConversationAcceptedWorkCapability {capability}
     func ensureConversationForExplicitSend(_ request:ConversationTurnRequest) async throws {ensureCalls += 1}
     func freezeAcceptedWork(_ request:ConversationTurnRequest,selection:ConversationAcceptedWorkSelection) async throws -> ConversationAcceptedWorkIntent {freezeCalls += 1;return try .init(request:request,selection:selection,expectedRevision:1,expectedGrantEpoch:1)}
@@ -17,10 +21,11 @@ private actor AcceptedWorkJournalBackend:ConversationBackend {
         let record=try await repository.record(stableID("conversation-first-journal-\(request.conversationID)"),scope:request.scope)
         guard case .preference(let value)=record.payload else {throw ConversationSessionError.invalidEvent}
         let saved=try JSONDecoder().decode(ConversationSession.self,from:Data(value.value.utf8))
-        try deviceCheck(saved.turns.last?.request.acceptedWork==request.acceptedWork && request.acceptedWork != nil,"Exact finite wire must already be durable before a dispatch callback")
+        if let revision=request.revisionWork {try deviceCheck(saved.turns.last?.request.revisionWork==revision,"Exact new revision wrapper must already be durable before dispatch")}
+        else {try deviceCheck(saved.turns.last?.request.acceptedWork==request.acceptedWork && request.acceptedWork != nil,"Exact finite wire must already be durable before a dispatch callback")}
         replyCalls += 1;throw DeviceEffectTestFailure("Named response loss after dispatch checkpoint")
     }
-    func observe(_ request:ConversationTurnRequest) async throws -> ConversationObservation {readCalls += 1;try request.acceptedWork?.validate(request:request);return .init(request:request,events:[])}
+    func observe(_ request:ConversationTurnRequest) async throws -> ConversationObservation {readCalls += 1;try request.acceptedWork?.validate(request:request);try request.revisionWork?.validate(request:request);return .init(request:request,events:[])}
     func counters()->[Int] {[ensureCalls,freezeCalls,replyCalls,readCalls]}
 }
 
@@ -29,7 +34,58 @@ private enum AcceptedWorkApplicationMatrix {
     static func capability(available:Bool=true)->ConversationAcceptedWorkCapability {.init(available:available,routeHash:textHash("named synthetic accepted work route"),subjectID:stableID("named synthetic accepted work subject"),serverScopeID:stableID("named synthetic accepted work server scope"))}
     static func options()->ConversationAcceptedWorkOptions {.init(notAfter:Date().addingTimeInterval(3600),executionBudgetMilliseconds:60000,modelLimit:3,sourceLimit:0,toolPolicy:.localOutput)}
     static func directory()->URL {FileManager.default.temporaryDirectory.appendingPathComponent("accepted-work-application-"+UUID().uuidString)}
+    static func revisionReference(conversation:UUID,capability:ConversationAcceptedWorkCapability)->ConversationArtifactContinuationReference {
+        let run=UUID(),binding=ConversationTaskBinding(scope_id:capability.serverScopeID!,conversation_id:conversation,turn_id:UUID(),call_id:"synthetic-original-call",delegation_id:UUID(),operation_id:UUID(),run_id:run,task_id:textHash("synthetic-task"),request_hash:textHash("synthetic-original-request"),delegation_revision:1,grant_epoch:1,projection_url:"/catpaw/v1/scopes/"+capability.serverScopeID!.uuidString.lowercased()+"/runs/"+run.uuidString.lowercased())
+        return .init(scope:Profiles.user,subjectID:capability.subjectID!,goalID:binding.task_id,binding:binding,artifactReference:.init(artifactID:textHash("synthetic-report"),version:1,contentHash:textHash("synthetic-report-body")),planReference:.init(revision:1,planHash:textHash("synthetic-plan")),mode:.reviseReport,taskTitle:"Synthetic original task",artifactTitle:"Synthetic original report")
+    }
     static var cases:[Case] {[
+        .init(name:"server source policy is exact and cannot downgrade to local or under-budget the catalog") {
+            let policy=ConversationRevisionWorkPolicy(toolPolicy:.publicSources,sourceCount:3)
+            var selected=options();_=try await deviceReject{try policy.validate(options:selected)}
+            selected.toolPolicy = .publicSources;selected.sourceLimit=2;_=try await deviceReject{try policy.validate(options:selected)}
+            selected.sourceLimit=3;try policy.validate(options:selected)
+            _=try await deviceReject{try ConversationRevisionWorkPolicy(toolPolicy:.publicSources,sourceCount:4).validate()}
+            _=try await deviceReject{try ConversationRevisionWorkPolicy(toolPolicy:.localOutput,sourceCount:1).validate()}
+            try deviceCheck(selected.toolPolicy == .publicSources && selected.sourceLimit==3,"New source work keeps the exact server policy with explicit sufficient source budget")
+        },
+        .init(name:"revision target review queue commits atomically and cold keeps exact new decision") {
+            let root=directory();defer{try? FileManager.default.removeItem(at:root)}
+            let file=FilePersistence(url:root.appendingPathComponent("local.json")),disk=DeviceEffectFailingPersistence(url:file.url),repo=try Repository(persistence:disk),service=ConversationSessionService(repository:repo),cid=try await service.create(scope:Profiles.user),cap=capability()
+            let ref=revisionReference(conversation:cid,capability:cap),target=try ref.sendIntent(),composer=ConversationArtifactContinuationService(repository:repo,scope:Profiles.user,subjectID:cap.subjectID),drafts=ConversationAcceptedWorkDraftService(repository:repo,scope:Profiles.user,subjectID:cap.subjectID),queue=ConversationFollowupQueueService(repository:repo,scope:Profiles.user,conversationID:cid)
+            _=try await composer.activate(ref,ordinaryDraft:"Independent ordinary draft")
+            let draft=ConversationAcceptedWorkDraft(conversationID:cid,raw:"Exact revision original 🐾\nsecond line",options:options(),revisionTarget:target);try await drafts.save(draft)
+            let coldDraft=try await ConversationAcceptedWorkDraftService(repository:repo,scope:Profiles.user,subjectID:cap.subjectID).read(conversationID:cid)
+            try deviceCheck(coldDraft==draft,"Closing/reopening preserves target plus new terms")
+            let authorization=try ConversationAcceptedWorkSelection(decisionID:draft.id,options:draft.options,capability:cap),selected=try ConversationRevisionWorkSelection(authorization:authorization,target:target,originalText:draft.raw),message=ConversationFollowup(text:draft.raw,continuation:target,revisionWork:selected),remaining=ConversationArtifactContinuationDraft(reference:ref,raw:"",editSequence:1)
+            disk.setFailure(true);_=try await deviceReject{try await queue.enqueue(message,remainingContinuationDraft:remaining,continuationService:composer,acceptedWorkDraft:draft,acceptedWorkDraftService:drafts)};disk.setFailure(false)
+            let failed=try await queue.state(),retained=try await drafts.read(conversationID:cid);try deviceCheck(failed.pending.isEmpty && retained==draft,"Failed revision queue cannot clear review or add work")
+            try await queue.enqueue(message,remainingContinuationDraft:remaining,continuationService:composer,acceptedWorkDraft:draft,acceptedWorkDraftService:drafts)
+            let reopened=try Repository(persistence:file),cold=ConversationFollowupQueueService(repository:reopened,scope:Profiles.user,conversationID:cid),cleared=try await drafts.read(conversationID:cid),composerState=try await composer.state(conversationID:cid)
+            try deviceCheck(try await cold.state().pending==[message],"Cold queue retains sameTask/CAS/raw/new-decision and all explicit limits")
+            try deviceCheck(cleared==nil && composerState.activeDraft?.raw=="","Review clear and continuation draft clear share one commit")
+            try await cold.pause();_=try await deviceReject{_=try await cold.edit(message,text:"Changed revision",session:service)}
+            try deviceCheck(try await cold.state().pending==[message],"Changed text cannot inherit new revision decision")
+            try deviceCheck(try await reopened.record(cid,scope:Profiles.user).conversation?.draftText=="Independent ordinary draft","Confirmation keeps ordinary draft")
+        },
+        .init(name:"fresh revision may review an old false authority but ordinary route stays blocked; unknown never reposts") {
+            let root=directory();defer{try? FileManager.default.removeItem(at:root)}
+            let file=FilePersistence(url:root.appendingPathComponent("local.json")),repo=try Repository(persistence:file),cap=capability(),backend=AcceptedWorkJournalBackend(repository:repo,capability:cap),service=ConversationSessionService(repository:repo,backend:backend),cid=try await service.create(scope:Profiles.user),ref=revisionReference(conversation:cid,capability:cap),target=try ref.sendIntent()
+            var saved=try await service.read(scope:Profiles.user,conversationID:cid),goal=ConversationGoalProjection(id:ref.goalID,revision:1,title:"Synthetic task",state:.unknown,summary:"Old grant expired or generation superseded",updatedAt:Date())
+            goal.binding=ref.binding;goal.sourceAuthorizationCurrent=false;goal.revisionRequiresNewWork=true;goal.revisionWorkPolicy = .init(toolPolicy:.localOutput,sourceCount:0);goal.planReference=ref.planReference
+            goal.artifactHistory=[.init(id:ref.artifactReference.artifactID,version:ref.artifactReference.version,contentHash:ref.artifactReference.contentHash,body:"synthetic-report-body",title:"Synthetic",summary:"Prior",content:"Prior")];saved.goals[goal.id]=goal
+            let journal=try await repo.record(stableID("conversation-first-journal-\(cid)"),scope:Profiles.user),encoded=try JSONEncoder().encode(saved)
+            try await repo.commit(scope:Profiles.user,mutations:[.update(journal.id,journal.header.revision,.preference(.init(key:"conversation_session:\(cid)",value:String(decoding:encoded,as:UTF8.self))))])
+            _=try await deviceReject{_=try await service.send(scope:Profiles.user,conversationID:cid,text:"Unconfirmed change",operationID:UUID(),continuation:target)}
+            try deviceCheck(await backend.counters()==[0,0,0,0],"False old authority cannot use ordinary revision route")
+            let auth=try ConversationAcceptedWorkSelection(decisionID:UUID(),options:options(),capability:cap),raw="Confirmed exact revision 🐾",selection=try ConversationRevisionWorkSelection(authorization:auth,target:target,originalText:raw),operation=UUID()
+            _=try await deviceReject{_=try await service.send(scope:Profiles.user,conversationID:cid,text:raw,operationID:operation,continuation:target,revisionWork:selection)}
+            let unknown=try await service.read(scope:Profiles.user,conversationID:cid)
+            try deviceCheck(unknown.unresolved?.id==operation && unknown.unresolved?.request.revisionWork?.selection==selection,"Fresh explicitly reviewed revision reaches journal without reusing old authority")
+            let cold=ConversationSessionService(repository:try Repository(persistence:file),backend:backend);try await cold.observe(scope:Profiles.user,conversationID:cid)
+            _=try await cold.send(scope:Profiles.user,conversationID:cid,text:raw,operationID:operation,continuation:target,revisionWork:selection)
+            try deviceCheck(await backend.counters()==[0,1,1,1],"Cold unknown GET and same operation replay never freeze or POST again")
+            try deviceCheck(try await cold.read(scope:Profiles.user,conversationID:cid).goals.count==1,"Revision preserves original Task without second Goal")
+        },
         .init(name:"cold unconfirmed review preserves original UUID text and expired deadline without authority") {
             let root=directory();defer{try? FileManager.default.removeItem(at:root)}
             let file=FilePersistence(url:root.appendingPathComponent("local.json")),repo=try Repository(persistence:file),service=ConversationSessionService(repository:repo),cid=try await service.create(scope:Profiles.user)

@@ -159,7 +159,7 @@ import CatpawImageComposer
                 .presentationDetents([.large]).interactiveDismissDisabled(model.checkingImageConsent)
         }
         .catpawSheet(isPresented:Binding(get:{model.acceptedWorkReviewPresented},set:{if !$0 {model.closeAcceptedWorkReview()}})) {
-            ConversationAcceptedWorkReviewView(originalText:model.acceptedWorkReviewOriginalText,capability:model.acceptedWorkCapability,options:$model.acceptedWorkOptions,saving:model.acceptedWorkReviewSaving,error:model.acceptedWorkReviewError,confirm:model.confirmAcceptedWorkReview,close:model.closeAcceptedWorkReview)
+            ConversationAcceptedWorkReviewView(originalText:model.acceptedWorkReviewOriginalText,capability:model.acceptedWorkCapability,options:$model.acceptedWorkOptions,saving:model.acceptedWorkReviewSaving,error:model.acceptedWorkReviewError,confirm:model.confirmAcceptedWorkReview,close:model.closeAcceptedWorkReview,revisionTargetTitle:model.revisionWorkReviewTarget.map{$0.artifactTitle+" · v\($0.artifactReference.version)"},lockedToolPolicy:model.revisionWorkReviewPolicy?.toolPolicy,sourceLimitFloor:model.revisionWorkReviewPolicy?.sourceCount ?? 0)
                 .interactiveDismissDisabled(model.acceptedWorkReviewSaving)
                 .onChange(of:model.acceptedWorkOptions){_,_ in model.saveAcceptedWorkReviewOptions()}
         }
@@ -353,6 +353,9 @@ import CatpawImageComposer
                         Button(ui("退出针对成果的输入")){Task{if await model.leaveArtifactContinuation(){composerContextPresented=false}}}
                             .touchTarget().disabled(model.isInputComposing || model.switchingArtifactContinuation || model.enqueueing).accessibilityIdentifier("chat.input.context.leave")
                     }
+                    if model.revisionRequiresWorkReview {
+                        Button(ui("核对本次修改的工作约定")){contextAction(.acceptedWork,inDetails:true)}.touchTarget().disabled(!model.canReviewRevisionWork).accessibilityHint(ui("先核对原请求、期限和调用次数，确认后才提交。")).accessibilityIdentifier("chat.input.context.revisionWork")
+                    }
                     if model.artifactContinuation==nil && model.imageDraft.phase == .empty {
                         Button(ui("交给 Agent 完成")){contextAction(.acceptedWork,inDetails:true)}.touchTarget().disabled(!model.canReviewAcceptedWork).accessibilityHint(ui("先核对原请求、期限和调用次数，确认后才提交。")).accessibilityIdentifier("chat.input.context.acceptedWork")
                     }
@@ -469,6 +472,18 @@ import CatpawImageComposer
                         }
                     }else{Label(message.role == .tool ? ui("记忆候选回执待核对"):ui("提取记忆候选…"),systemImage:"circle.dotted").font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)}
                 }
+            }
+            else if ["revise_current_report_v1",ConversationRevisionWorkCodec.toolName].contains(message.toolName ?? "") {
+                if let failure=message.failure {Label(ui("修改请求失败 · ")+failure,systemImage:"exclamationmark.circle").font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.attention)}
+                else if message.role == .tool,let turn=model.session?.turns.first(where:{turn in
+                    guard let receipt=turn.continuationReceipt else {return false}
+                    return receipt.call_id==message.toolCallID && message.id==stableID("conversation-tool-result-\(turn.id)-\(receipt.call_id)") && (try? receipt.validate(request:turn.request,callID:receipt.call_id)) != nil
+                }),let receipt=turn.continuationReceipt {
+                    VStack(alignment:.leading,spacing:8) {
+                        Label(ui("修改请求已受理"),systemImage:"checkmark.circle").font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary).accessibilityIdentifier("chat.revisionWork.accepted")
+                        if model.session?.goals[receipt.task_id] != nil {Button(ui("查看修改进展")){path.append(.task(receipt.task_id))}.touchTarget().accessibilityIdentifier("chat.revisionWork.openTask")}
+                    }
+                } else if message.role == .tool || !message.complete {Label(message.role == .tool ? ui("修改回执待核对"):ui("正在核对修改请求…"),systemImage:"circle.dotted").font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)}
             }
             else if let goal = linkedGoal(message) { ConversationGoalCard(goal: goal, busy: model.busy, refresh: model.readOriginal, openPlan: model.taskPlansConfigured && goal.binding != nil ? { model.openTaskPlan(goal) } : nil,openActions:model.taskReviewsConfigured && goal.binding != nil ? {model.openTaskActions(goal)} : nil,openControl:model.taskControlsConfigured && goal.binding != nil ? {model.openTaskControl(goal)} : nil,openArtifact:{artifact in path.append(.artifact(goal.id,ConversationArtifactIdentity(artifact)))}) }
             else if message.failure != nil { Label(ui("任务请求失败 · ") + (message.failure ?? ""), systemImage: "exclamationmark.circle").font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.attention) }

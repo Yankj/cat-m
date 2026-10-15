@@ -1,15 +1,16 @@
 import {check} from './core/facade-r2/src/common.mjs';
+import {resolveExecutionGrantInTransaction} from './core/src/task-work-execution-selector.mjs';
 import {boundedTick} from './core/integration/edge-adapter/src/bounded-tick.mjs';
 import {singleStepHandler} from './core/src/single-step-handler.mjs';
 // One accepted turn's existing tasks only. Bounded best-effort work, not a durable scheduler.
-export async function kickTurnTasks(runtime,{owner,principal,turnId},{maxSlices=6,maxWallMs=60000,now=Date.now,sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms))}={}){
+export async function kickTurnTasks(runtime,{owner,principal,turnId,revisionWorkOperationId=null},{maxSlices=6,maxWallMs=60000,now=Date.now,sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms))}={}){
  const deadline=now()+maxWallMs;let slices=0;const outcomes=[];
  const limited=()=>({slices,reason:'bounded_kick_limit',outcomes});
  const turn=await runtime.repository.transaction(tx=>tx.get(owner,'native-chat-turns',turnId));
  if(now()+800>=deadline)return limited();
- if(!turn||turn.subject_id!==principal.subject_id||turn.source_auth?.session_id!==principal.session_id||turn.state!=='completed')return {slices:0,reason:'turn_not_eligible'};
- const ids=new Set(turn.task_bindings.map(b=>b.task_id));if(!ids.size)return {slices:0,reason:'no_tasks'};
- const admit=async(tx,actor,id,options)=>{check(now()<deadline,503,'invocation_closed');check(actor===owner&&ids.has(id),403,'scope_forbidden');const a=await runtime.facade.admittedTask(tx,actor,id,options);check(now()<deadline,503,'invocation_closed');check(a.run.frozen_request.subject_id===principal.subject_id&&a.run.frozen_request.source_auth?.session_id===principal.session_id,403,'scope_forbidden');return a;};
+ if(!turn||turn.subject_id!==principal.subject_id||(!revisionWorkOperationId&&turn.source_auth?.session_id!==principal.session_id)||turn.state!=='completed')return {slices:0,reason:'turn_not_eligible'};
+ let ids=new Set(turn.task_bindings.map(b=>b.task_id));if(revisionWorkOperationId){ids=await runtime.repository.transaction(async tx=>{const selectedIDs=[];for(const id of ids){const task=await tx.get(owner,'tasks',id),run=task?.state?.catpaw?await tx.get(owner,'catpaw-runs',task.state.catpaw.run_id):null;if(!run)continue;const selected=await resolveExecutionGrantInTransaction(tx,owner,run,task);if(selected?.revision_binding?.operation_id===revisionWorkOperationId&&selected.source_auth.subject_id===principal.subject_id&&selected.source_auth.session_id===principal.session_id)selectedIDs.push(id);}return new Set(selectedIDs);});}if(!ids.size)return {slices:0,reason:'no_tasks'};
+ const admit=async(tx,actor,id,options)=>{check(now()<deadline,503,'invocation_closed');check(actor===owner&&ids.has(id),403,'scope_forbidden');const a=await runtime.facade.admittedTask(tx,actor,id,options);check(now()<deadline,503,'invocation_closed');if(revisionWorkOperationId){const selected=await resolveExecutionGrantInTransaction(tx,owner,a.run,a.task);check(selected?.revision_binding?.operation_id===revisionWorkOperationId&&selected.source_auth.subject_id===principal.subject_id&&selected.source_auth.session_id===principal.session_id,403,'scope_forbidden');}else check(a.run.frozen_request.subject_id===principal.subject_id&&a.run.frozen_request.source_auth?.session_id===principal.session_id,403,'scope_forbidden');return a;};
  const handler=singleStepHandler(runtime.facade,runtime.provider);
  const runStep=(actor,task,ctx)=>{
   // The handler checks assertLive after awaits and immediately before model transport.

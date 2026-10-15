@@ -47,6 +47,7 @@ public actor NativeChatHTTPBackend: ConversationBackend {
     private var bindingCache: [UUID: [String: ConversationTaskBinding]] = [:]
     private var toolTitles: [UUID: [String: String]] = [:]
     private var continuationReceipts:[UUID:[String:ConversationTaskRevisionReceipt]]=[:]
+    private var revisionWorkReceipts:[UUID:[String:ConversationRevisionWorkReceipt]]=[:]
     private var continuationSourceHashes:[UUID:String]=[:]
     public nonisolated var supportsArtifactContinuations:Bool {configuration.expectedSubjectID != nil}
     public nonisolated var artifactContinuationSubjectID:UUID? {configuration.expectedSubjectID}
@@ -61,7 +62,7 @@ public actor NativeChatHTTPBackend: ConversationBackend {
         let policy = (sessionConfiguration?.copy() as? URLSessionConfiguration) ?? URLSessionConfiguration.ephemeral; policy.urlCache = nil; policy.requestCachePolicy = .reloadIgnoringLocalCacheData
         session = URLSession(configuration: policy, delegate: NativeChatNoRedirect(), delegateQueue: nil)
     }
-    public func close() { session.invalidateAndCancel(); bindingCache.removeAll(); toolTitles.removeAll(); continuationReceipts.removeAll();continuationSourceHashes.removeAll(); observedModelState = nil;verifiedReplyAt=nil;verifiedModel=nil;replyCandidates.removeAll() }
+    public func close() { session.invalidateAndCancel(); bindingCache.removeAll(); toolTitles.removeAll(); continuationReceipts.removeAll();revisionWorkReceipts.removeAll();continuationSourceHashes.removeAll(); observedModelState = nil;verifiedReplyAt=nil;verifiedModel=nil;replyCandidates.removeAll() }
     public func connection(scope: DataScope) async -> ConversationConnection {
         let auth: String
         do { auth = try await authorization(scope) }
@@ -160,8 +161,38 @@ public actor NativeChatHTTPBackend: ConversationBackend {
         let route=try await json("/catpaw/privacy/v1/model-route",auth:auth,strict:true);try Task.checkCancellation()
         return try ConversationAcceptedWorkCodec.capability(readiness:Self.jsonData(ready),modelRoute:Self.jsonData(route),subjectID:subject,serverScopeID:configuration.serverScopeID)
     }
+    public func revisionWorkCapability(scope:DataScope,conversationID:UUID) async throws -> ConversationAcceptedWorkCapability {
+        guard scope==configuration.localScope else {throw CatpawError.scopeMismatch}
+        guard let subject=configuration.expectedSubjectID else {return .init()}
+        let auth=try await authorization(scope);try Task.checkCancellation()
+        let ready=try await json("/readyz",auth:auth,strict:true)
+        guard Self.boolean(ready["ready"])==true,let caps=ready["chat_capabilities"] as? [String:Any],let revisions=caps["task_revisions"] as? [String:Any],let bounded=revisions["bounded_work"] as? [String:Any],bounded["contract"] as? String==ConversationRevisionWorkCodec.contract,bounded["grant_contract"] as? String==ConversationRevisionWorkCodec.grantContract,Self.boolean(bounded["enabled"])==true,Self.boolean(bounded["required_for_accepted_work"])==true else {return .init()}
+        let route=try await json("/catpaw/privacy/v1/model-route",auth:auth,strict:true);try Task.checkCancellation()
+        return try ConversationAcceptedWorkCodec.capability(readiness:Self.jsonData(ready),modelRoute:Self.jsonData(route),subjectID:subject,serverScopeID:configuration.serverScopeID)
+    }
+    public func freezeRevisionWork(_ request:ConversationTurnRequest,selection:ConversationRevisionWorkSelection) async throws -> ConversationRevisionWorkIntent {
+        do {
+            try continuationContext(request)
+            guard request.revisionWork==nil,request.acceptedWork==nil,selection.target==request.continuation,selection.authorization.serverScopeID==configuration.serverScopeID,selection.authorization.subjectID==configuration.expectedSubjectID else {throw ConversationAcceptedWorkError.invalidSelection}
+            let capability=try await revisionWorkCapability(scope:request.scope,conversationID:request.conversationID);try Task.checkCancellation();try selection.validate(capability:capability,now:acceptedWorkClock())
+            let auth=try await authorization(request.scope);try Task.checkCancellation()
+            try await validateRevisionWorkPolicy(request,selection:selection,auth:auth);try Task.checkCancellation()
+            let conversation=try await readConversation(request,auth:auth,mayCreate:false,strict:true);try Task.checkCancellation();try validateHistory(conversation,request:request)
+            let intent=try ConversationRevisionWorkIntent(request:request,selection:selection,expectedRevision:Self.positive(conversation["revision"]),expectedGrantEpoch:Self.positive(conversation["grant_epoch"]))
+            try intent.validateForFirstPost(request:request,capability:capability,now:acceptedWorkClock());return intent
+        } catch {throw ConversationDispatchFailure.notSent(reason:Self.friendlyTransportMessage(error))}
+    }
+    private func validateRevisionWorkPolicy(_ request:ConversationTurnRequest,selection:ConversationRevisionWorkSelection,auth:String) async throws {
+        guard let binding=request.continuationOriginalBinding else {throw ConversationSessionError.invalidEvent}
+        let goal=try await projection(binding,title:"",request:request,auth:auth);try Task.checkCancellation()
+        guard goal.revisionRequiresNewWork==true,let policy=goal.revisionWorkPolicy else {throw ConversationAcceptedWorkError.invalidSelection};try policy.validate(options:selection.options)
+    }
+    private func revisionWorkContext(_ request:ConversationTurnRequest) throws {
+        guard let intent=request.revisionWork,intent.selection.authorization.serverScopeID==configuration.serverScopeID,intent.selection.authorization.subjectID==configuration.expectedSubjectID else {throw ConversationAcceptedWorkError.invalidFrozenIntent}
+        try intent.validate(request:request);try continuationContext(request)
+    }
     public func ensureConversationForExplicitSend(_ request:ConversationTurnRequest) async throws {
-        guard request.acceptedWork==nil,configuration.expectedSubjectID != nil else {throw ConversationAcceptedWorkError.invalidFrozenIntent}
+        guard request.acceptedWork==nil,request.revisionWork==nil,configuration.expectedSubjectID != nil else {throw ConversationAcceptedWorkError.invalidFrozenIntent}
         _=try ConversationAcceptedWorkCodec.turn(request,revision:1,grant:1)
         try Task.checkCancellation();let auth=try await authorization(request.scope);try Task.checkCancellation()
         _=try await readConversation(request,auth:auth,mayCreate:true,strict:true);try Task.checkCancellation()
@@ -216,7 +247,7 @@ public actor NativeChatHTTPBackend: ConversationBackend {
                         var data = Data(); for try await b in bytes { guard data.count < 2_000_000 else { throw ConversationSessionError.invalidEvent }; data.append(b) }
                         let snapshot = request.continuation == nil && request.acceptedWork==nil ? try Self.object(JSONSerialization.jsonObject(with: data)) : try ConversationStrictJSON.object(data,maxBytes:2_000_000); try Self.turnEnvelope(snapshot,request:request)
                         let turn = try Self.object(snapshot["turn"]);try Self.validateImageSnapshot(turn,request:request);try Self.validateContinuationSnapshot(turn,request:request,scope:self.configuration.serverScopeID,grant:grant)
-                        try ConversationAcceptedWorkCodec.validateOriginal(turn,request:request)
+                        try ConversationAcceptedWorkCodec.validateOriginal(turn,request:request);try validateRevisionWorkOriginal(turn,request:request)
                         for event in try Self.array(turn["events"]) { continuation.yield(try await self.decode(event, request: request, grant: grant, auth: auth)) }
                     } else {
                         guard http.mimeType == "text/event-stream" else { throw ConversationSessionError.invalidEvent }
@@ -272,16 +303,22 @@ public actor NativeChatHTTPBackend: ConversationBackend {
             let capability=try await acceptedWorkCapability(scope:request.scope,conversationID:request.conversationID);try Task.checkCancellation()
             try intent.selection.validate(capability:capability,now:acceptedWorkClock())
         }
+        if let intent=request.revisionWork {
+            try revisionWorkContext(request)
+            let capability=try await revisionWorkCapability(scope:request.scope,conversationID:request.conversationID);try Task.checkCancellation();try intent.validateForFirstPost(request:request,capability:capability,now:acceptedWorkClock())
+            try await validateRevisionWorkPolicy(request,selection:intent.selection,auth:auth);try Task.checkCancellation()
+        }
         if request.continuation != nil {
             try continuationContext(request)
-            guard try await continuationAvailability(request,auth:auth) else {throw ConversationArtifactContinuationError.unsupported}
+            if request.revisionWork==nil {guard try await continuationAvailability(request,auth:auth) else {throw ConversationArtifactContinuationError.unsupported}}
             _=try await confirmedContinuationBinding(request,auth:auth)
             continuationSourceHashes[request.operationID]=try await continuationBase(request,inspectCurrent:true)
         }
-        let conversation = try await readConversation(request, auth: auth, mayCreate: request.continuation == nil && request.acceptedWork==nil,strict:request.acceptedWork != nil)
+        let conversation = try await readConversation(request, auth: auth, mayCreate: request.continuation == nil && request.acceptedWork==nil,strict:request.acceptedWork != nil || request.revisionWork != nil)
         try Task.checkCancellation()
         let revision = try Self.positive(conversation["revision"]), grant = try Self.positive(conversation["grant_epoch"])
         if let intent=request.acceptedWork {guard revision==intent.expectedRevision,grant==intent.expectedGrantEpoch else {throw ConversationAcceptedWorkError.changedSnapshot};try validateHistory(conversation,request:request)}
+        if let intent=request.revisionWork {guard revision==intent.expectedRevision,grant==intent.expectedGrantEpoch else {throw ConversationAcceptedWorkError.changedSnapshot};try validateHistory(conversation,request:request)}
         let remote = try Self.array(conversation["messages"])
         let previous = request.history.dropLast().filter { $0.role == .user || ($0.role == .assistant && $0.toolName == nil && $0.complete) }
         guard remote.count == previous.count else { throw CatpawError.conflict }
@@ -292,6 +329,10 @@ public actor NativeChatHTTPBackend: ConversationBackend {
             try intent.selection.options.validate(now:acceptedWorkClock())
             var upload=try self.request(turnPath(request),auth:auth);upload.httpMethod="POST";upload.httpBody=try intent.wrapper()
             try Task.checkCancellation();return (auth,grant,upload)
+        }
+        if let intent=request.revisionWork {
+            try intent.selection.options.validate(now:acceptedWorkClock())
+            var upload=try self.request(turnPath(request),auth:auth);upload.httpMethod="POST";upload.httpBody=try intent.wrapper();try Task.checkCancellation();return (auth,grant,upload)
         }
         guard let message = request.history.last, message.role == .user else { throw ConversationSessionError.invalidEvent }
         var body: [String: Any] = ["turn_id": request.operationID.uuidString.lowercased(), "expected_revision": revision, "expected_grant_epoch": grant,
@@ -318,16 +359,17 @@ public actor NativeChatHTTPBackend: ConversationBackend {
     }
     public func observe(_ request: ConversationTurnRequest) async throws -> ConversationObservation {
         if request.acceptedWork != nil {try acceptedWorkContext(request)}
+        if request.revisionWork != nil {try revisionWorkContext(request)}
         let auth = try await authorization(request.scope)
         try Task.checkCancellation()
-        let conversation = try await readConversation(request, auth: auth, mayCreate: false,strict:request.acceptedWork != nil)
+        let conversation = try await readConversation(request, auth: auth, mayCreate: false,strict:request.acceptedWork != nil || request.revisionWork != nil)
         try Task.checkCancellation()
         let currentGrant = try Self.positive(conversation["grant_epoch"])
         if request.continuation != nil {try continuationContext(request);_=try await confirmedContinuationBinding(request,auth:auth);continuationSourceHashes[request.operationID]=try await continuationBase(request,inspectCurrent:false)}
         let wrapper = try await json(turnPath(request) + "/" + request.operationID.uuidString.lowercased(), auth: auth)
         try Self.turnEnvelope(wrapper,request:request)
         let turn = try Self.object(wrapper["turn"]);try Self.validateImageSnapshot(turn,request:request);try Self.validateContinuationSnapshot(turn,request:request,scope:configuration.serverScopeID,grant:currentGrant)
-        try ConversationAcceptedWorkCodec.validateOriginal(turn,request:request)
+        try ConversationAcceptedWorkCodec.validateOriginal(turn,request:request);try validateRevisionWorkOriginal(turn,request:request)
         guard UUID(uuidString: turn["id"] as? String ?? "") == request.operationID,
               UUID(uuidString: turn["conversation_id"] as? String ?? "") == request.conversationID,
               UUID(uuidString: turn["scope_id"] as? String ?? "") == configuration.serverScopeID,
@@ -351,7 +393,7 @@ public actor NativeChatHTTPBackend: ConversationBackend {
         if let original=request.continuationOriginalBinding,request.continuation != nil {bindings.append(original)}
         var seen: Set<String> = []
         for b in bindings where seen.insert(b.task_id).inserted { goals.append(try await projection(b, title: title(b.call_id, turnID: b.turn_id, history: request.history), request: request, auth: auth)) }
-        if request.continuation != nil {try validateContinuationList(turn["continuations"],request:request,terminal:turn["state"] as? String=="completed")}
+        if request.continuation != nil {try validateContinuationList(turn["continuations"],request:request,terminal:turn["state"] as? String=="completed");try validateRevisionWorkList(turn["revision_work_receipts"],request:request)}
         return ConversationObservation(request: request, events: events, requestHash: try Self.sha(turn["request_hash"]), grantEpoch: currentGrant, goals: goals)
     }
     private func readConversation(_ value: ConversationTurnRequest, auth: String, mayCreate: Bool,strict:Bool=false) async throws -> [String: Any] {
@@ -376,7 +418,7 @@ public actor NativeChatHTTPBackend: ConversationBackend {
               try Self.positive(wire["grant_epoch"]) == grant,
               wire["cursor"] as? String == request.operationID.uuidString.lowercased() + ":\(sequence)" else { throw ConversationSessionError.invalidEvent }
         let reality = wire["model_reality"] as? String
-        guard reality == "provider_unverified" || reality == "not_configured" || (configuration.allowInjectedTestProvider && reality == "injected_test_provider") || (configuration.useFrozenFixtureMetadata && reality == "injected_synthetic_fixture") else { throw ConversationSessionError.invalidEvent }
+        guard reality == "provider_unverified" || reality == "not_configured" || (configuration.allowInjectedTestProvider && (reality == "injected_test_provider" || (reality == "injected_offline_only" && configuration.origin.scheme=="http" && configuration.origin.host=="127.0.0.1"))) || (configuration.useFrozenFixtureMetadata && reality == "injected_synthetic_fixture") else { throw ConversationSessionError.invalidEvent }
         observedModelState = reality == "not_configured" ? .notConfigured : .providerUnverified
         let data = try Self.object(wire["data"]), type = wire["type"] as? String
         let payload: ConversationTurnEvent.Payload
@@ -391,7 +433,7 @@ public actor NativeChatHTTPBackend: ConversationBackend {
             payload = .textDelta(messageID: id, text: text)
         case "tool_call":
             guard request.image==nil else {throw ConversationSessionError.invalidEvent}
-            guard reality != "not_configured", let name = data["name"] as? String, ((["delegate_task", "delegate_plan_v1", "delegate_sources_v1", "agent_status", "propose_memory_v1"].contains(name) && request.continuation==nil) || (name=="revise_current_report_v1" && request.continuation?.intent == .reviseReport)), let id = data["call_id"] as? String, !id.isEmpty else { throw ConversationSessionError.invalidEvent }
+            guard reality != "not_configured", let name = data["name"] as? String, ((["delegate_task", "delegate_plan_v1", "delegate_sources_v1", "agent_status", "propose_memory_v1"].contains(name) && request.continuation==nil) || (name==(request.revisionWork==nil ? "revise_current_report_v1":ConversationRevisionWorkCodec.toolName) && request.continuation?.intent == .reviseReport)), let id = data["call_id"] as? String, !id.isEmpty else { throw ConversationSessionError.invalidEvent }
             if ["delegate_task", "delegate_plan_v1", "delegate_sources_v1"].contains(name), let args = data["arguments"] as? [String: Any], let title = args["title"] as? String, title.utf16.count <= 160 { toolTitles[request.operationID, default: [:]][id] = title }
             payload = .toolStarted(callID: id, name: name, arguments: String(decoding: try Self.jsonData(Self.object(data["arguments"])), as: UTF8.self))
         case "tool_result":
@@ -417,8 +459,15 @@ public actor NativeChatHTTPBackend: ConversationBackend {
                     let run = try Self.object(row["run"])
                     if let b = known.first(where: { UUID(uuidString: run["id"] as? String ?? "") == $0.run_id && run["request_hash"] as? String == $0.request_hash }) { goals.append(try await projection(b, title: title(b.call_id, turnID: b.turn_id, history: request.history), request: request, auth: auth, supplied: row)) }
                 }
-            } else if name=="revise_current_report_v1" {
-                let receipt=try revisionReceipt(result,request:request,callID:call)
+            } else if name=="revise_current_report_v1" || name==ConversationRevisionWorkCodec.toolName {
+                let receipt:ConversationTaskRevisionReceipt
+                if let intent=request.revisionWork {
+                    guard name==ConversationRevisionWorkCodec.toolName else {throw ConversationSessionError.invalidEvent}
+                    let outer=try ConversationRevisionWorkReceipt.decode(Self.jsonData(result));try outer.validate(request:request,intent:intent,callID:call,sourceAuthHash:continuationSourceHashes[request.operationID])
+                    _=try await confirmedRevisionWorkEnvelope(outer,request:request,auth:auth)
+                    if let prior=revisionWorkReceipts[request.operationID]?[call] {guard prior==outer else {throw ConversationSessionError.invalidEvent}}
+                    revisionWorkReceipts[request.operationID,default:[:]][call]=outer;receipt=outer.revision
+                } else {guard name=="revise_current_report_v1" else {throw ConversationSessionError.invalidEvent};receipt=try revisionReceipt(result,request:request,callID:call)}
                 guard receipt.state=="accepted",let original=request.continuationOriginalBinding else {throw ConversationSessionError.invalidEvent}
                 if let prior=continuationReceipts[request.operationID]?[call] {guard prior==receipt else {throw ConversationSessionError.invalidEvent}}
                 var projected=try await projection(original,title:title(original.call_id,turnID:original.turn_id,history:request.history),request:request,auth:auth)
@@ -429,11 +478,11 @@ public actor NativeChatHTTPBackend: ConversationBackend {
                 }
                 continuationReceipts[request.operationID,default:[:]][call]=receipt;goals.append(projected)
             } else { throw ConversationSessionError.invalidEvent }
-            payload = .toolResult(ConversationToolResult(callID: call, name: name, content: String(decoding: try Self.jsonData(result), as: UTF8.self), committedGoals: goals,continuationReceipt:continuationReceipts[request.operationID]?[call],memoryProposalReceipt:memoryProposal))
+            payload = .toolResult(ConversationToolResult(callID: call, name: name, content: String(decoding: try Self.jsonData(result), as: UTF8.self), committedGoals: goals,continuationReceipt:continuationReceipts[request.operationID]?[call],memoryProposalReceipt:memoryProposal,revisionWorkReceipt:revisionWorkReceipts[request.operationID]?[call]))
         case "turn_completed":
             guard reality != "not_configured", let id = UUID(uuidString: data["message_id"] as? String ?? "") else { throw ConversationSessionError.invalidEvent }
             let bindings = try Self.array(data["task_bindings"]); guard bindings.count <= 1 else { throw ConversationSessionError.invalidEvent }
-            if request.continuation != nil {guard bindings.isEmpty else {throw ConversationSessionError.invalidEvent};try validateContinuationList(data["continuations"],request:request)}
+            if request.continuation != nil {guard bindings.isEmpty else {throw ConversationSessionError.invalidEvent};try validateContinuationList(data["continuations"],request:request);try validateRevisionWorkList(data["revision_work_receipts"],request:request)}
             let confirmed = try bindings.map { try binding($0, request: request, currentTurn: true) }
             let known = bindingCache[request.operationID, default: [:]]
             guard confirmed.count == known.count, Set(confirmed.map(\.call_id)).count == confirmed.count,
@@ -503,6 +552,11 @@ public actor NativeChatHTTPBackend: ConversationBackend {
             guard accepted>=applied else {throw ConversationSessionError.invalidEvent}
             goal.planReference = .init(revision:applied,planHash:try Self.sha(plan["applied_plan_hash"]))
         }
+        if let value=run["revision_requires_new_work"] {guard let required=Self.boolean(value) else {throw ConversationSessionError.invalidEvent};goal.revisionRequiresNewWork=required}
+        if goal.revisionRequiresNewWork==true {
+            let raw=try Self.object(run["revision_work_policy"]);guard Set(raw.keys)==["tool_policy","source_count"] else {throw ConversationSessionError.invalidEvent}
+            let policy=try JSONDecoder().decode(ConversationRevisionWorkPolicy.self,from:Self.jsonData(raw));try policy.validate();goal.revisionWorkPolicy=policy
+        }
         goal.binding = binding; goal.artifacts = artifacts; goal.sourceAuthorizationCurrent=authority; return goal
     }
     private func title(_ call: String, turnID: UUID, history: [ConversationTranscriptMessage]) -> String {
@@ -551,7 +605,7 @@ public actor NativeChatHTTPBackend: ConversationBackend {
               try Self.positive(a["version"])==target.artifactReference.version,a["content_hash"] as? String==target.artifactReference.contentHash,
               let body=a["body"] as? String,body.utf8.count<=512000,textHash(body)==target.artifactReference.contentHash else {throw ConversationSessionError.invalidEvent}
         let plan=try Self.object(a["plan_reference"]);guard try Self.positive(plan["revision"])==target.expectedPlanRevision,try Self.sha(plan["plan_hash"])==target.expectedPlanHash else {throw ConversationSessionError.invalidEvent}
-        if inspectCurrent {guard Self.boolean(a["editable"])==true,Self.boolean(a["is_current"])==true else {throw ConversationSessionError.invalidEvent}}
+        if inspectCurrent {guard (request.revisionWork != nil || Self.boolean(a["editable"])==true),Self.boolean(a["is_current"])==true else {throw ConversationSessionError.invalidEvent}}
         return try Self.sha(a["source_auth_hash"])
     }
     private func revisionReceipt(_ raw:[String:Any],request:ConversationTurnRequest,callID:String) throws -> ConversationTaskRevisionReceipt {
@@ -560,7 +614,13 @@ public actor NativeChatHTTPBackend: ConversationBackend {
     }
     private func confirmedContinuationResult(_ accepted:ConversationTaskRevisionReceipt,projected:ConversationGoalProjection,request:ConversationTurnRequest,auth:String) async throws -> ConversationArtifactProjection {
         let route="/catpaw/revisions/v1/scopes/"+configuration.serverScopeID.uuidString.lowercased()+"/runs/"+accepted.run_id+"/operations/"+accepted.operation_id
-        let wrapper=try await json(route,auth:auth),raw=try Self.object(wrapper["revision"])
+        let wrapper:[String:Any],raw:[String:Any]
+        if request.revisionWork != nil {
+            guard let outer=revisionWorkReceipts[request.operationID]?[accepted.call_id] else {throw ConversationSessionError.invalidEvent}
+            let complete=try await confirmedRevisionWorkEnvelope(outer,request:request,auth:auth)
+            raw=try Self.object(JSONSerialization.jsonObject(with:ConversationTaskActionJSON.encoded(complete.revision)))
+            wrapper=["schema_version":1,"contract":"catpaw.task-revision.v1"]
+        } else {wrapper=try await json(route,auth:auth);raw=try Self.object(wrapper["revision"])}
         guard try Self.positive(wrapper["schema_version"])==1,wrapper["contract"] as? String=="catpaw.task-revision.v1",
               Set(raw.keys)==ConversationTaskRevisionReceipt.immutableKeys.union(["receipt_hash","state","result_reference","result_receipt_hash"]) else {throw ConversationSessionError.invalidEvent}
         let completed=try JSONDecoder().decode(ConversationTaskRevisionReceipt.self,from:Self.jsonData(raw))
@@ -578,6 +638,28 @@ public actor NativeChatHTTPBackend: ConversationBackend {
         let artifact=ConversationArtifactProjection(id:result.artifactID,version:result.version,contentHash:result.contentHash,body:body,title:title,summary:summary,content:content)
         guard completed.matchesModelArtifact(artifact) else {throw ConversationSessionError.invalidEvent};return artifact
     }
+    private func confirmedRevisionWorkEnvelope(_ accepted:ConversationRevisionWorkReceipt,request:ConversationTurnRequest,auth:String) async throws -> ConversationRevisionWorkReceipt {
+        guard let intent=request.revisionWork else {throw ConversationSessionError.invalidEvent}
+        let r=accepted.revision,path="/catpaw/revision-work/v1/scopes/"+configuration.serverScopeID.uuidString.lowercased()+"/runs/"+r.run_id+"/operations/"+r.operation_id
+        let raw=try await json(path,auth:auth,strict:true);try Task.checkCancellation()
+        let original=try ConversationRevisionWorkReceipt.decode(Self.jsonData(raw));try original.validate(request:request,intent:intent,callID:r.call_id,sourceAuthHash:continuationSourceHashes[request.operationID])
+        guard original.receipt_hash==accepted.receipt_hash,original.revision.receipt_hash==r.receipt_hash,original.grant_reference==accepted.grant_reference,original.grant_receipt_hash==accepted.grant_receipt_hash else {throw ConversationSessionError.invalidEvent};return original
+    }
+    private func validateRevisionWorkList(_ raw:Any?,request:ConversationTurnRequest) throws {
+        guard let intent=request.revisionWork else {return}
+        let known=revisionWorkReceipts[request.operationID] ?? [:]
+        if raw==nil,known.isEmpty {return}
+        let values=try Self.array(raw);guard values.count==known.count,values.count<=1 else {throw ConversationSessionError.invalidEvent}
+        for row in values {let receipt=try ConversationRevisionWorkReceipt.decode(Self.jsonData(row));try receipt.validate(request:request,intent:intent,callID:receipt.revision.call_id,sourceAuthHash:continuationSourceHashes[request.operationID]);guard known[receipt.revision.call_id]==receipt else {throw ConversationSessionError.invalidEvent}}
+    }
+    private func validateRevisionWorkOriginal(_ turn:[String:Any],request:ConversationTurnRequest) throws {
+        guard let intent=request.revisionWork else {return};try revisionWorkContext(request)
+        guard let frozen=turn["revision_work_intent"] as? [String:Any],let admitted=frozen["admitted_at"] as? String,let messageID=request.history.last?.id else {throw ConversationSessionError.invalidEvent}
+        let at=try ConversationAcceptedWorkCodec.instant(admitted);try intent.selection.options.validate(now:at)
+        guard case .object(var expected)=try intent.work else {throw ConversationSessionError.invalidEvent}
+        expected["schema_version"] = .integer(1);expected["contract"] = .string(ConversationRevisionWorkCodec.contract);expected["subject_id"] = .string(intent.selection.authorization.subjectID.uuidString.lowercased());expected["scope_id"] = .string(configuration.serverScopeID.uuidString.lowercased());expected["conversation_id"] = .string(request.conversationID.uuidString.lowercased());expected["conversation_epoch"] = .integer(intent.expectedGrantEpoch);expected["turn_id"] = .string(request.operationID.uuidString.lowercased());expected["message_id"] = .string(messageID.uuidString.lowercased());expected["target_hash"] = .string(intent.targetHash);expected["admitted_at"] = .string(admitted)
+        guard try ConversationCanonicalJSON.data(Self.jsonData(frozen),maxBytes:16000)==ConversationRevisionWorkCodec.data(.object(expected)) else {throw ConversationSessionError.invalidEvent}
+    }
     private func validateContinuationList(_ raw:Any?,request:ConversationTurnRequest,terminal:Bool=true) throws {
         let values=try Self.array(raw),known=continuationReceipts[request.operationID] ?? [:]
         if request.continuation?.intent == .reviseReport {
@@ -588,6 +670,7 @@ public actor NativeChatHTTPBackend: ConversationBackend {
         } else {guard values.isEmpty,known.isEmpty else {throw ConversationSessionError.invalidEvent}}
     }
     private func turnPath(_ request:ConversationTurnRequest) -> String {
+        if request.revisionWork != nil {return "/catpaw/revision-work/v1/scopes/"+configuration.serverScopeID.uuidString.lowercased()+"/conversations/"+request.conversationID.uuidString.lowercased()+"/turns"}
         if request.acceptedWork != nil {return "/catpaw/accepted-work/v1/scopes/"+configuration.serverScopeID.uuidString.lowercased()+"/conversations/"+request.conversationID.uuidString.lowercased()+"/turns"}
         return request.continuation == nil ? path(request)+"/turns" : "/catpaw/revisions/v1/scopes/"+configuration.serverScopeID.uuidString.lowercased()+"/conversations/"+request.conversationID.uuidString.lowercased()+"/turns"
     }
@@ -612,8 +695,8 @@ public actor NativeChatHTTPBackend: ConversationBackend {
         if (response as? HTTPURLResponse)?.statusCode == 401 { await credentials.rejected(scope: configuration.localScope) }
         guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else { throw NativeChatHTTPFailure.status((response as? HTTPURLResponse)?.statusCode ?? 0) }
         guard data.count <= 2_000_000 else { throw ConversationSessionError.invalidEvent }
-        if strict || path.hasPrefix("/catpaw/accepted-work/v1/") {guard (response as? HTTPURLResponse)?.mimeType=="application/json" else {throw ConversationSessionError.invalidEvent}}
-        return strict || path.hasPrefix("/catpaw/revisions/v1/") || path.hasPrefix("/catpaw/accepted-work/v1/") ? try ConversationStrictJSON.object(data,maxBytes:2_000_000) : try Self.object(JSONSerialization.jsonObject(with: data))
+        if strict || (path.hasPrefix("/catpaw/accepted-work/v1/") || path.hasPrefix("/catpaw/revision-work/v1/")) {guard (response as? HTTPURLResponse)?.mimeType=="application/json" else {throw ConversationSessionError.invalidEvent}}
+        return strict || path.hasPrefix("/catpaw/revisions/v1/") || (path.hasPrefix("/catpaw/accepted-work/v1/") || path.hasPrefix("/catpaw/revision-work/v1/")) ? try ConversationStrictJSON.object(data,maxBytes:2_000_000) : try Self.object(JSONSerialization.jsonObject(with: data))
     }
     private static func object(_ raw: Any?) throws -> [String: Any] { guard let x = raw as? [String: Any] else { throw ConversationSessionError.invalidEvent }; return x }
     private static func array(_ raw: Any?) throws -> [[String: Any]] { guard let x = raw as? [[String: Any]] else { throw ConversationSessionError.invalidEvent }; return x }
@@ -631,7 +714,7 @@ public actor NativeChatHTTPBackend: ConversationBackend {
               try ConversationArtifactEditCodec.canonicalString(raw)==ConversationArtifactEditCodec.canonicalString(target.canonicalValue) else {throw ConversationSessionError.invalidEvent}
     }
     private static func turnEnvelope(_ x:[String:Any],request:ConversationTurnRequest) throws {
-        guard try positive(x["schema_version"])==1,x["contract"] as? String==(request.acceptedWork != nil ? ConversationAcceptedWorkCodec.contract : request.continuation == nil ? "catpaw.native-chat.v1" : "catpaw.task-revision.v1") else {throw ConversationSessionError.invalidEvent}
+        guard try positive(x["schema_version"])==1,x["contract"] as? String==(request.revisionWork != nil ? ConversationRevisionWorkCodec.contract : request.acceptedWork != nil ? ConversationAcceptedWorkCodec.contract : request.continuation == nil ? "catpaw.native-chat.v1" : "catpaw.task-revision.v1") else {throw ConversationSessionError.invalidEvent}
     }
     private static func chatEnvelope(_ x: [String: Any]) throws { guard try positive(x["schema_version"]) == 1, x["contract"] as? String == "catpaw.native-chat.v1" else { throw ConversationSessionError.invalidEvent } }
 }
