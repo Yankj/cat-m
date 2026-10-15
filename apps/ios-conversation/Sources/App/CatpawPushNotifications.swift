@@ -31,7 +31,11 @@ struct CatpawNotificationPayload: Equatable, Sendable {
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         let center = UNUserNotificationCenter.current()
         center.delegate = self
-        center.setNotificationCategories(CatpawPushAction.categories)
+        center.setNotificationCategories(CatpawPushAction.categories.union(ProactiveEngine.categories))
+        ProactiveSuggestionHub.backend = ProactiveLocalBackend()
+        ProactiveSignalHub.engine = ProactiveEngineSignalAdapter()
+        ProactiveEngine.registerBackgroundRefresh()
+        ProactiveEngine.scheduleBackgroundRefresh()
         application.registerForRemoteNotifications()
         return true
     }
@@ -55,6 +59,9 @@ struct CatpawNotificationPayload: Equatable, Sendable {
     }
 
     nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) async {
+        let info = response.notification.request.content.userInfo, actionID = response.actionIdentifier
+        nonisolated(unsafe) let sendableInfo = info
+        if await ProactiveEngine.shared.handleNotification(actionIdentifier: actionID, userInfo: sendableInfo) { return }
         guard let payload = CatpawNotificationPayload(userInfo: response.notification.request.content.userInfo) else { return }
         // Category buttons write back through /push/action; a plain tap counts as `open`.
         let action = CatpawPushAction.serverAction(for: response.actionIdentifier)

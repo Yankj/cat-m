@@ -148,7 +148,7 @@ import AppIntents
             .onOpenURL { url in launchMarkVisible = false; CatpawRouteCenter.shared.pending = CatpawAppRoute(url: url) }
             .catpawInAppBanner()
             .task { if bootstrap.isP0Fixture { await bootstrap.startFixture() } else if bootstrap.model == nil { await auth.start() } }
-                .onChange(of:scene) { _, phase in if phase == .active,bootstrap.model == nil,!bootstrap.isP0Fixture { Task { await auth.foreground() } } }
+                .onChange(of:scene) { _, phase in if phase == .active { Task { await ProactiveEngine.shared.scanCalendar(); await ProactiveEngine.shared.prescheduleNextEvent() } }; if phase == .active,bootstrap.model == nil,!bootstrap.isP0Fixture { Task { await auth.foreground() } } }
         }
     }
     @ViewBuilder private var primaryView: some View {

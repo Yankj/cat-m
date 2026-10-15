@@ -66,13 +66,15 @@ import CatpawImageComposer
               capabilities:.init(canCreateConversation:model.loaded && !model.busy && !model.isInputComposing,canSelectConversation:!model.busy && !model.isInputComposing,tasks:true,results:true,memory:model.loaded && model.memoryConfigured,settings:true),
               account:.init(name:accountLabel ?? ui("本机用户"),detail:isAnonymousAccount ? ui("未登录") : nil))
     }
+    @State private var proactiveInboxPresented = false
     private func consumeAppRoute() {
         guard model.loaded, let route = CatpawRouteCenter.shared.pending else { return }
         CatpawRouteCenter.shared.pending = nil
         switch route {
         case .conversation(let id): self.route(.conversation(id))
         case .newConversation: self.route(.newConversation)
-        case .tasks, .proactive: path = []; self.route(.tasks)
+        case .tasks: path = []; self.route(.tasks)
+        case .proactive: proactiveInboxPresented = true
         case .memory: path = []; self.route(.memory)
         }
     }
@@ -335,6 +337,7 @@ import CatpawImageComposer
     var body: some View {
         feedbackNavigation
         .onChange(of: CatpawRouteCenter.shared.pending) { _, _ in consumeAppRoute() }
+        .sheet(isPresented: $proactiveInboxPresented) { NavigationStack { ProactiveInboxView() } }
         .onChange(of: model.loaded) { _, _ in consumeAppRoute() }
         .modifier(ConversationConsentPresenter(model:model))
         .catpawSheet(isPresented:Binding(get:{model.acceptedWorkReviewPresented},set:{if !$0 {model.closeAcceptedWorkReview()}})) {
