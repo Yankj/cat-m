@@ -54,3 +54,11 @@ test('agnes: live-captured SSE shape (role chunk, reasoning_content, \\n\\n, usa
   assert.equal(out.filter(e=>e.type==='text_delta').map(e=>e.text).join(''),'2。');
   assert.equal(out.at(-1).type,'done');assert.equal(p.observations.at(-1).actual_model,'agnes-3.0-flash');
 });
+test('publishable key falls back to Supabase-injected platform keys (never sb_secret_)',async()=>{
+  const {platformPublishableKey}=await import('../supabase/functions/_shared/config.mjs');
+  assert.equal(platformPublishableKey(env({SUPABASE_PUBLISHABLE_KEYS:JSON.stringify({default:'sb_publishable_x'})})),'sb_publishable_x');
+  assert.equal(platformPublishableKey(env({SUPABASE_ANON_KEY:'legacy'})),'legacy');
+  assert.equal(platformPublishableKey(env({SUPABASE_ANON_KEY:'sb_secret_x'})),undefined);
+  assert.equal(platformPublishableKey(env({SUPABASE_PUBLISHABLE_KEYS:'{bad'})),undefined);
+  const c=readConfig(env({SUPABASE_URL:'https://p.supabase.co',SUPABASE_PUBLISHABLE_KEYS:JSON.stringify({default:'sb_publishable_x'})}));assert.ok(!c.missing.includes('CATPAW_PUBLISHABLE_KEY'));
+});
