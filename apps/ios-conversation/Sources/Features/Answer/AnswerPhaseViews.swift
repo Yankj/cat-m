@@ -279,6 +279,7 @@ private struct StreamCursor: View {
                 Spacer(minLength: 0)
             }
             .foregroundStyle(CatpawColors.secondary).buttonStyle(CatpawPressButtonStyle())
+            .modifier(ActionRowEntrance())
         }
     }
 }
@@ -316,5 +317,16 @@ enum AnswerFailureCopy {
         if r.contains("rate_limit") || r.contains("429") { return "请求有点多，稍等片刻再试" }
         if r.contains("_") && !r.contains(" ") && raw.unicodeScalars.allSatisfy({ $0.isASCII }) { return "此轮回复未完成，可以重试" }
         return raw
+    }
+}
+
+
+/// r10 §2.6: the action row arrives 120ms after the reply completes, opacity 0→1 and y −4→0 (.easeOut 0.2).
+private struct ActionRowEntrance: ViewModifier {
+    @State private var shown = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    func body(content: Content) -> some View {
+        content.opacity(shown ? 1 : 0).offset(y: shown || reduceMotion ? 0 : -4)
+            .onAppear { withAnimation(.easeOut(duration: 0.2).delay(0.12)) { shown = true } }
     }
 }

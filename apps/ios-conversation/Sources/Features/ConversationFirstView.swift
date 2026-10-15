@@ -424,7 +424,7 @@ import CatpawImageComposer
                 VStack(alignment:.leading,spacing:8) {
                     if !followingLatest && !latestVisible {
                         JumpToLatestButton(hasNewContent:model.sending,action:jumpToLatest)
-                            .accessibilityHint(ui("返回对话底部，继续跟随新回复"))
+                            .accessibilityHint(ui("返回对话底部，继续跟随新回复")).frame(maxWidth:.infinity)
                     }
                     composerContext(inDetails:false)
                 }.frame(maxWidth:.infinity,alignment:.leading)

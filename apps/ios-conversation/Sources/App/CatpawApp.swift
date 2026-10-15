@@ -131,7 +131,7 @@ import AppIntents
             }
             .overlay {
                 if launchMarkVisible {
-                    LaunchMarkView(restoring: false) { withAnimation(.easeOut(duration: 0.25)) { launchMarkVisible = false } }
+                    LaunchMarkView(restoring: false) { launchMarkVisible = false }
                         .transition(.opacity)
                         .zIndex(100)
                 }
