@@ -317,6 +317,7 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
     }
     static let approvalContract = "catpaw.approval.v1"
     static let approvalHeader = "X-Catpaw-Approval-Contract"
+    static let timeZoneHeader = "X-Catpaw-Time-Zone"
     /// Tools that only exist on approval-negotiated plain turns (services/edge TOOL_APPROVAL).
     static let approvalToolNames: Set<String> = ["list_tasks", "create_task", "update_task", "create_calendar_event", "update_calendar_event", "create_reminder", "update_reminder", "external_write"]
     static func approval(_ raw: [String: Any]) throws -> ConversationApprovalRequest {
@@ -337,7 +338,7 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
         catch is URLError { throw ConversationApprovalFailure.transport }
         let route = turnPath(request) + "/" + request.operationID.uuidString.lowercased() + "/interrupts/" + interruptID.lowercased() + "/decision?after_sequence=\(afterSequence)"
         var post = try self.request(route, auth: auth)
-        post.httpMethod = "POST"; post.timeoutInterval = ConversationReconnectPolicy.idleTimeout; post.setValue("text/event-stream, application/json", forHTTPHeaderField: "Accept")
+        post.httpMethod = "POST"; post.timeoutInterval = ConversationReconnectPolicy.idleTimeout; post.setValue("text/event-stream, application/json", forHTTPHeaderField: "Accept"); post.setValue(TimeZone.current.identifier, forHTTPHeaderField: Self.timeZoneHeader)
         post.httpBody = try Self.jsonData(["operation_id": operationID.uuidString.lowercased(), "decision": decision.rawValue, "args_hash": argsHash])
         let opened: (URLSession.AsyncBytes, URLResponse)
         do { opened = try await session.bytes(for: post) } catch is URLError { throw ConversationApprovalFailure.transport }
@@ -493,6 +494,7 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
         if request.image==nil,request.continuation==nil,request.acceptedWork==nil {upload.setValue(ConversationMemoryProposalReceipt.contractName,forHTTPHeaderField:"X-Catpaw-Memory-Proposal-Contract")}
         // catpaw.approval.v1 negotiation: only plain chat turns are offered approval-gated tools.
         if Self.supportsResume(request),request.image==nil {upload.setValue(Self.approvalContract,forHTTPHeaderField:Self.approvalHeader)}
+        upload.setValue(TimeZone.current.identifier,forHTTPHeaderField:Self.timeZoneHeader) // task tools resolve local times
         try Task.checkCancellation()
         return (auth, grant, upload)
     }
