@@ -44,7 +44,7 @@ import SwiftUI
                                                          bottomTrailingRadius: 0, topTrailingRadius: 0, style: .continuous)
             ZStack(alignment: .leading) {
                 SidebarPanel(snapshot: snapshot, query: $query, theme: theme, localize: localize,
-                             isActive: isAtRoot && motion.isFullyOpen,
+                             isActive: isAtRoot && motion.isFullyOpen, isModal: false,
                              onSelect: { destination in
                                  guard snapshot.permits(destination) else { return }
                                  close(); onSelect(destination)
@@ -81,9 +81,14 @@ import SwiftUI
                         foregroundShape.strokeBorder(theme.separator.opacity(Double(progress)), lineWidth: 1 / max(1, displayScale))
                             .allowsHitTesting(false).accessibilityHidden(true)
                     }
-                    .modifier(SidebarForegroundTranslation(x: translation))
+                    .offset(x: translation)
+                    .animation(nil, value: progress)
             }.frame(width: geometry.size.width, height: geometry.size.height, alignment: .leading)
                 .background(theme.panel).clipped()
+                // The modal AX scope includes both navigation and its sibling
+                // dismiss strip; neither is excluded by a nested modal panel.
+                .accessibilityElement(children: .contain)
+                .accessibilityAddTraits(active ? .isModal : [])
                 #if os(iOS)
                 .background(SidebarGestureBridge(enabled: isAtRoot, progress: progress,
                                                  allowsContentPan: allowsContentPan, excludedAreas: excludedGestureAreas,
@@ -119,19 +124,6 @@ import SwiftUI
     }
     private func close() { isPresented = false; motion.move(to: false, reduceMotion: reduceMotion) }
     private func reset() { isPresented = false; motion.reset() }
-}
-
-/// This transform has no independently animated value. Descendant navigation and
-/// controls retain their own transactions; only the driver advances this offset.
-private struct SidebarForegroundTranslation: GeometryEffect {
-    let x: CGFloat
-    var animatableData: EmptyAnimatableData {
-        get { EmptyAnimatableData() }
-        set {}
-    }
-    func effectValue(size: CGSize) -> ProjectionTransform {
-        ProjectionTransform(CGAffineTransform(translationX: x, y: 0))
-    }
 }
 
 /// The dismiss button has its own on-screen geometry. Clipping a wider Button
