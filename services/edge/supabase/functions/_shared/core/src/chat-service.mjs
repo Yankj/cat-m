@@ -17,6 +17,8 @@ const positive=v=>Number.isSafeInteger(v)&&v>0;
 const terminal=s=>s!=='running';
 // Non-enumerable so provider inputs stay structured-cloneable and hash-stable.
 const withThinking=(input,onThinking)=>Object.defineProperty(input,'onThinking',{value:onThinking,enumerable:false});
+// Postgres lock_not_available, serialization_failure, deadlock_detected, query_canceled (statement_timeout).
+export const transientObserverError=error=>error?.name==='PostgresError'&&['55P03','40001','40P01','57014'].includes(error?.code);
 export class ChatService {
   constructor({facade,provider,integration=null,finishOnDelegationReceipt=false,metrics=createChatMetrics()}){this.facade=facade;this.repository=facade.repository;this.provider=provider;this.active=new Map();this.listeners=new Map();this.integration=integration;this.finishOnDelegationReceipt=finishOnDelegationReceipt;this.metrics=metrics;}
   async scoped(auth,scope){const started=this.metrics.now();try{return await this.facade.scoped(auth,scope);}finally{this.metrics.record('request_auth',started);}}
@@ -277,6 +279,18 @@ export class ChatService {
     check(c&&c.subject_id===principal.subject_id&&c.scope_id===scopeID,404,'not_found');
     return c;
   }
+  // Read-only observer transactions contend with the live turn's scope-locked
+  // writes (lock_timeout 1500ms). A lock/serialization/timeout failure is a
+  // transient read miss, never an observation end: back off and read again.
+  async observeRetry(read,signal,{attempts=this.observeRetryAttempts??12,baseMs=this.observeRetryBaseMs??200}={}){
+    for(let attempt=1;;attempt++){
+      try{return await read();}catch(error){
+        if(!transientObserverError(error)||attempt>=attempts||signal?.aborted)throw error;
+        console.info(JSON.stringify({event:'catpaw_observer_retry',code:error.code,attempt}));
+        await new Promise(resolve=>{const timer=setTimeout(resolve,Math.min(1500,baseMs*attempt));signal?.addEventListener('abort',()=>{clearTimeout(timer);resolve();},{once:true});});
+      }
+    }
+  }
   async observationGate(trusted,scopeID,cid,t){
     const started=this.metrics.now();try{return await this.repository.transaction(async tx=>{
       const c=await this.observationHead(tx,trusted,scopeID,cid);
@@ -350,16 +364,16 @@ export class ChatService {
     try{while(!signal?.aborted){
       for(const n of pending.keys())if(n<=sequence)pending.delete(n);
       if(resync||pending.size&&!pending.has(sequence+1)){
-        resync=false;const t=await this.readTurn(auth,scopeID,cid,tid,{trusted,afterSequence:sequence});
+        resync=false;const t=await this.observeRetry(()=>this.readTurn(auth,scopeID,cid,tid,{trusted,afterSequence:sequence}),signal);
         for(const e of t.events){
           if(signal?.aborted)return;
           // A consumer may pause between events while logout/revoke commits.
-          await this.observationGate(trusted,scopeID,cid,{...t,subject_id:trusted.principal.subject_id});
+          await this.observeRetry(()=>this.observationGate(trusted,scopeID,cid,{...t,subject_id:trusted.principal.subject_id}),signal);
           if(signal?.aborted)return;check(e.sequence===sequence+1,503,'event_gap');sequence=e.sequence;yield e;
         }
         if(terminal(t.state))return;
       }else if(pending.has(sequence+1)){
-        const packet=pending.get(sequence+1);await this.observationGate(trusted,scopeID,cid,packet);
+        const packet=pending.get(sequence+1);await this.observeRetry(()=>this.observationGate(trusted,scopeID,cid,packet),signal);
         if(signal?.aborted)return;pending.delete(sequence+1);sequence=packet.event.sequence;yield packet.event;
         if(terminal(packet.state))return;continue;
       }
