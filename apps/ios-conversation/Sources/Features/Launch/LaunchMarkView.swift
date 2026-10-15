@@ -10,6 +10,7 @@ import UIKit
     var restoring: Bool
     var onFinished: () -> Void
     @State private var pressed = false
+    @State private var pads = [false, false, false, false, false]
     @State private var ripple = false
     @State private var breathing = false
     @State private var exiting = false
@@ -23,8 +24,8 @@ import UIKit
             Circle().fill(CatpawBrand.paw.opacity(0.15))
                 .frame(width: ripple ? 280 : 72, height: ripple ? 280 : 72)
                 .opacity(ripple ? 0 : 0.35)
-            Image("LaunchPaw").resizable().frame(width: 72, height: 72)
-                .scaleEffect(exiting ? 0.4 : (pressed ? 0.94 : (breathing ? 1.04 : 1)))
+            PawMark(size: 72, pressed: pads, shadow: pressed || ripple)
+                .scaleEffect(exiting ? 0.4 : (pressed ? 0.96 : (breathing ? 1.04 : 1)))
                 .opacity(exiting ? 0 : 1)
         }
         .ignoresSafeArea()
@@ -39,10 +40,15 @@ import UIKit
 
     private func run() async {
         if reduceMotion { await sleep(100); await exit(); return }
-        withAnimation(.easeOut(duration: 0.11)) { pressed = true }
-        await sleep(120); haptic.toggle()
-        withAnimation(.bouncy(duration: 0.32, extraBounce: 0.15)) { pressed = false }
-        await sleep(60)
+        // toes press in sequence (stagger 40ms), then the main pad: the "press"
+        for i in 0..<4 {
+            withAnimation(.easeOut(duration: 0.08)) { pads[i] = true }
+            Task { await sleep(90); withAnimation(.bouncy(duration: 0.32, extraBounce: 0.15)) { pads[i] = false } }
+            await sleep(40)
+        }
+        withAnimation(.easeOut(duration: 0.1)) { pads[4] = true; pressed = true }
+        haptic.toggle(); await sleep(100)
+        withAnimation(.bouncy(duration: 0.32, extraBounce: 0.15)) { pads[4] = false; pressed = false }
         withAnimation(.easeOut(duration: 0.24)) { ripple = true }
         await sleep(240)                                                // ≈420ms
         if restoring {

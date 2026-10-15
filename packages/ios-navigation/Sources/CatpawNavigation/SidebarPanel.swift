@@ -23,7 +23,8 @@ public struct SidebarPanel: View {
         GeometryReader { geometry in
             ScrollView {
                 VStack(alignment: .leading, spacing: 8) {
-                    HStack(alignment: .top, spacing: 8) {
+                    HStack(alignment: .center, spacing: 8) {
+                        if let mark = theme.brandMark { mark.frame(width: 26, height: 26).accessibilityHidden(true) }
                         Text("Catpaw").font(theme.titleFont.weight(.semibold))
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(.vertical, 8).accessibilityAddTraits(.isHeader)
