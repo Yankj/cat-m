@@ -174,6 +174,27 @@ final class SidebarTests: XCTestCase {
         XCTAssertEqual(SidebarGesturePolicy.foregroundCornerRadius(progress: 2), 24)
         XCTAssertEqual(SidebarGesturePolicy.foregroundCornerRadius(progress: .nan), 0)
     }
+    func testHistoricalReadonlySelectionDoesNotPermanentlyOwnTouch() {
+        XCTAssertFalse(SidebarGesturePolicy.textViewOwnsTouch(isEditable: false, hasMarkedText: false, selectionLength: 8, selectionGestureActive: false, isFirstResponder: false), "An unfocused TextKit display may retain a historical selectedRange")
+        XCTAssertTrue(SidebarGesturePolicy.textViewOwnsTouch(isEditable: false, hasMarkedText: false, selectionLength: 8, selectionGestureActive: false, isFirstResponder: true), "The same range with actual selection ownership still takes priority")
+        XCTAssertTrue(SidebarGesturePolicy.textViewOwnsTouch(isEditable: false, hasMarkedText: false, selectionLength: 0, selectionGestureActive: true, isFirstResponder: false), "Native long-press selection wins even before first responder is acquired")
+        XCTAssertTrue(SidebarGesturePolicy.textViewOwnsTouch(isEditable: true, hasMarkedText: false, selectionLength: 0, selectionGestureActive: false, isFirstResponder: false))
+        XCTAssertTrue(SidebarGesturePolicy.textViewOwnsTouch(isEditable: false, hasMarkedText: true, selectionLength: 0, selectionGestureActive: false, isFirstResponder: false))
+    }
+    func testClosingRetainsModalOwnershipUntilPhysicalEndpointAndCanBeReopened() {
+        var state = SidebarMotionState()
+        state.move(to: true, reduceMotion: true)
+        state.move(to: false, reduceMotion: false)
+        XCTAssertFalse(state.targetOpen); XCTAssertTrue(state.isVisible)
+        state.advance(seconds: 0.1)
+        XCTAssertGreaterThan(state.position, 0); XCTAssertTrue(state.isVisible, "A close intent is not permission to interact with the moving conversation")
+        let visible = state.position
+        state.move(to: true, reduceMotion: false)
+        XCTAssertEqual(state.position, visible, "A new open intent reverses from the physical position")
+        state.advance(seconds: 2); XCTAssertTrue(state.isFullyOpen)
+        state.move(to: false, reduceMotion: false); state.advance(seconds: 2)
+        XCTAssertEqual(state.position, 0); XCTAssertFalse(state.isVisible, "Only the physical closed endpoint returns foreground interaction")
+    }
     func testCancellationRestoresPriorPresentation() {
         XCTAssertFalse(SidebarGesturePolicy.settlesOpen(direction: .opening, progress: 0.9, velocityX: 1000, cancelled: true))
         XCTAssertTrue(SidebarGesturePolicy.settlesOpen(direction: .closing, progress: 0.1, velocityX: -1000, cancelled: true))

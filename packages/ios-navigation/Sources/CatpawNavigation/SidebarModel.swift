@@ -74,8 +74,10 @@ public enum SidebarGesturePolicy {
     }
     /// A TextKit display surface is not an editor. Active text selection still
     /// owns its touch, including a long press that has not produced a range yet.
-    static func textViewOwnsTouch(isEditable: Bool, hasMarkedText: Bool, selectionLength: Int, selectionGestureActive: Bool) -> Bool {
-        isEditable || hasMarkedText || selectionLength > 0 || selectionGestureActive
+    static func textViewOwnsTouch(isEditable: Bool, hasMarkedText: Bool, selectionLength: Int, selectionGestureActive: Bool, isFirstResponder: Bool = true) -> Bool {
+        // TextKit retains selectedRange after focus leaves. That historical range
+        // must not permanently convert a read-only display into a gesture owner.
+        isEditable || hasMarkedText || (isFirstResponder && selectionLength > 0) || selectionGestureActive
     }
     static func foregroundCornerRadius(progress: CGFloat) -> CGFloat {
         progress.isFinite ? 24 * min(1, max(0, progress)) : 0
