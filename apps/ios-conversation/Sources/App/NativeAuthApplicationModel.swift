@@ -130,7 +130,10 @@ public struct AuthenticatedNativeChatCredentials: NativeChatSessionCredentials {
             Task { await CatpawPushTokenUploader.shared.setAuthorization { try await credentials.authorization(scope: partition.scope) } }
             let backend=NativeChatHTTPBackend(configuration:chatConfiguration,credentials:credentials)
             let memory=isFixture ? nil : try NativeMemoryComposition.service(repository:repository,configuration:chatConfiguration,credentials:credentials)
-            let selected:any ConversationBackend=isFixture ? UnconfiguredConversationBackend() : backend
+            var selected:any ConversationBackend=isFixture ? UnconfiguredConversationBackend() : backend
+            #if DEBUG
+            selected=CatpawDemoBackendSwitch.select(selected)
+            #endif
             let preview=ConversationFirstModel(repository:repository,service:ConversationSessionService(repository:repository,backend:selected,resilience:ConnectionMonitorResilience(),outbox:ConversationOutbox(fileURL:url.deletingLastPathComponent().appendingPathComponent("conversation-outbox.json"))),scope:partition.scope,imageStore:imageStore,taskPlanService:isFixture ? nil : ConversationTaskPlanService(repository:repository,scope:partition.scope,backend:backend),artifactEditService:isFixture ? nil : ConversationArtifactEditService(repository:repository,scope:partition.scope,backend:backend),taskActionService:isFixture ? nil : ConversationTaskActionService(repository:repository,scope:partition.scope,backend:backend),taskControlService:isFixture ? nil : ConversationTaskControlService(repository:repository,scope:partition.scope,backend:backend),memoryService:memory,inboxService:isFixture ? nil : ConversationInboxService(reference:.init(scope:partition.scope,serverScopeID:chatConfiguration.serverScopeID,subjectID:partition.subject),backend:backend),subjectID:partition.subject)
             preview.setNetworkAdmissionAllowed(false);await preview.start();self.backend=backend;chat=preview;namespace=partition.namespace
         } catch { self.error=NativeAuthError.storage.localizedDescription }
@@ -226,7 +229,10 @@ public struct AuthenticatedNativeChatCredentials: NativeChatSessionCredentials {
                 let http=NativeChatHTTPBackend(configuration:chatConfiguration,credentials:credentials)
                 let memory=isFixture ? nil : try NativeMemoryComposition.service(repository:repository,configuration:chatConfiguration,credentials:credentials)
                 backend = http
-                let selected: any ConversationBackend = isFixture ? UnconfiguredConversationBackend() : http
+                var selected: any ConversationBackend = isFixture ? UnconfiguredConversationBackend() : http
+                #if DEBUG
+                selected = CatpawDemoBackendSwitch.select(selected)
+                #endif
                 chat = ConversationFirstModel(repository:repository,service:ConversationSessionService(repository:repository,backend:selected,resilience:ConnectionMonitorResilience(),outbox:ConversationOutbox(fileURL:directory.appendingPathComponent("conversation-outbox.json"))),scope:partition.scope,imageStore:imageStore,taskPlanService:isFixture ? nil : ConversationTaskPlanService(repository:repository,scope:partition.scope,backend:http),artifactEditService:isFixture ? nil : ConversationArtifactEditService(repository:repository,scope:partition.scope,backend:http),taskActionService:isFixture ? nil : ConversationTaskActionService(repository:repository,scope:partition.scope,backend:http),taskControlService:isFixture ? nil : ConversationTaskControlService(repository:repository,scope:partition.scope,backend:http),memoryService:memory,inboxService:isFixture ? nil : ConversationInboxService(reference:.init(scope:partition.scope,serverScopeID:chatConfiguration.serverScopeID,subjectID:partition.subject),backend:http),subjectID:partition.subject)
                 namespace = partition.namespace; error = nil
                 try await saveLocalReceipt(.init(issuer:configuration.issuer,subject:user.id,serverScopeID:serverScope))
