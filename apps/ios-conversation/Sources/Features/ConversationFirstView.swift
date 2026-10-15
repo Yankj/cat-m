@@ -138,7 +138,7 @@ import CatpawImageComposer
             // Pending and plain tool receipts live in the single turn summary.
             // Actual task, result and interactive cards keep their original rows.
             let plainReceipt=row.presentation == .message && row.message.role == .tool &&
-                !["present_cgui_v1","propose_memory_v1","revise_current_report_v1",ConversationRevisionWorkCodec.toolName].contains(row.message.toolName ?? "") && linkedGoal(row.message)==nil && row.message.failure==nil
+                !["present_cgui_v1","propose_memory_v1","create_task","revise_current_report_v1",ConversationRevisionWorkCodec.toolName].contains(row.message.toolName ?? "") && linkedGoal(row.message)==nil && row.message.failure==nil
             let emptyTerminal=row.presentation == .message && row.message.role == .assistant && row.message.toolName==nil && row.message.toolCallID==nil && row.message.complete && row.message.failure==nil && row.message.content.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty
             if !emptyTerminal && (activity==nil || (row.presentation != .processPending && !plainReceipt)) {result.append(.message(row))}
             if row.message.role == .user,let activity,emitted.insert(activity.id).inserted {result.append(.activity(activity))}
@@ -785,6 +785,7 @@ import CatpawImageComposer
                     }
                 } else if message.role == .tool || !message.complete {Label(message.role == .tool ? ui("修改回执待核对"):ui("正在核对修改请求…"),systemImage:"circle.dotted").font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)}
             }
+            else if message.toolName=="create_task" { if message.role == .tool || !message.complete { CreateTaskCardView(message:message) } }   // A2 task card
             else if let goal = linkedGoal(message) { ConversationGoalCard(goal: goal, busy: model.busy, refresh: model.readOriginal, openPlan: model.taskPlansConfigured && goal.binding != nil ? { model.openTaskPlan(goal) } : nil,openActions:model.taskReviewsConfigured && goal.binding != nil ? {model.openTaskActions(goal)} : nil,openControl:model.taskControlsConfigured && goal.binding != nil ? {model.openTaskControl(goal)} : nil,openArtifact:{artifact in path.append(.artifact(goal.id,ConversationArtifactIdentity(artifact)))}) }
             else if message.failure != nil { Label(ui("任务请求失败 · ") + (message.failure ?? ""), systemImage: "exclamationmark.circle").font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.attention) }
             else { Label(message.toolName == "agent_status" ? (message.complete ? ui("任务进展已读取") : ui("读取任务进展…")) : (message.complete ? ui("任务请求已记录") : ui("等待后台保存任务…")), systemImage: message.complete ? "checkmark.circle" : "circle.dotted").font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary) }
