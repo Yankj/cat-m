@@ -15,18 +15,47 @@ import SwiftUI
         TimelineView(.periodic(from: .now, by: 30)) { context in
             let expired = live.isExpired(at: context.date)
             GenerativeBlockShell(block: live) {
-                if live.opensAsSheet && store.responses[live.id] == nil {
+                if let status = store.resolved[live.id], store.responses[live.id] == nil {
+                    // Closed without a stored answer (dismissed / expired / cancelled / errored, or answered elsewhere).
+                    GenerativeBlockHeader(block: live)
+                    GenerativeResolvedRow(text: resolutionText(status), icon: status == "submitted" ? "checkmark.circle.fill" : "minus.circle")
+                } else if live.opensAsSheet && store.responses[live.id] == nil {
                     GenerativeSheetSummary(block: live, expired: expired) { sheet = true }
                 } else {
                     GenerativeBlockContent(block: live, store: store, expired: expired, onDone: { sheet = false })
                 }
+                submissionFooter
             }
+            .onChange(of: expired, initial: true) { _, value in if value { store.markExpired(live.id) } }
             .sheet(isPresented: $sheet) {
                 ScrollView { GenerativeBlockContent(block: live, store: store, expired: expired, onDone: { sheet = false }).padding(20) }
                     .presentationDetents([.medium, .large]).accessibilityIdentifier("chat.block.sheet")
             }
         }
         .onAppear { store.adopt(block, error: validationError) }
+    }
+
+    @ViewBuilder private var submissionFooter: some View {
+        let needsAnswer = live.interruptId != nil && !store.isLocked(live.id)
+        switch store.submissions[live.id] ?? .idle {
+        case .submitting: ProgressView().frame(maxWidth: .infinity).accessibilityIdentifier("chat.block.submitting")
+        case .failed(let message):
+            Text(ui(message)).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.attention).accessibilityIdentifier("chat.block.error")
+        case .idle: EmptyView()
+        }
+        if needsAnswer, store.submissions[live.id] != .submitting {
+            Button(ui("跳过")) { store.dismiss(live.id) }.font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
+                .touchTarget().accessibilityIdentifier("chat.block.dismiss")
+        }
+    }
+    private func resolutionText(_ status: String) -> String {
+        switch status {
+        case "submitted", "answered": ui("已回答")
+        case "dismissed": ui("已跳过")
+        case "expired": ui("已过期")
+        case "cancelled": ui("已取消")
+        default: ui("卡片无法显示，已告知助手")
+        }
     }
 }
 
@@ -37,7 +66,7 @@ import SwiftUI
     @State private var appeared = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var body: some View {
-        content
+        VStack(alignment: .leading, spacing: 10) { content }
             .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(CatpawColors.panel, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
@@ -55,19 +84,20 @@ import SwiftUI
     let expired: Bool
     var onDone: () -> Void = {}
     private var kind: GenerativeBlock.Kind {
-        guard block.kind == .sheet else { return block.kind }
-        return block.content ?? ((block.fields ?? []).isEmpty ? ((block.items ?? []).isEmpty ? .card : .choices) : .form)
+        block.contentKind
     }
+    private var disabled: Bool { store.submissions[block.id] == .submitting || store.isLocked(block.id) }
     var body: some View {
         let respond: (GenerativeBlockResponse) -> Void = { store.respond($0); onDone() }
-        switch kind {
-        case .choices: GenerativeChoicesView(block: block, response: store.responses[block.id], locked: store.resolved.contains(block.id), expired: expired, respond: respond, reopen: { store.reopen(block.id) })
+        Group { switch kind {
+        case .choices: GenerativeChoicesView(block: block, response: store.responses[block.id], locked: store.isLocked(block.id) || block.interruptId != nil, expired: expired, respond: respond, reopen: { store.reopen(block.id) })
         case .confirm: GenerativeConfirmView(block: block, response: store.responses[block.id], expired: expired, respond: respond)
         case .form: GenerativeFormView(block: block, response: store.responses[block.id], expired: expired, respond: respond)
         case .list: GenerativeListView(block: block, expired: expired, respond: respond)
         case .progress: GenerativeProgressView(block: block)
         case .card, .sheet: GenerativeCardView(block: block, response: store.responses[block.id], expired: expired, respond: respond)
-        }
+        } }
+        .disabled(disabled && store.responses[block.id] == nil)
     }
 }
 
@@ -84,7 +114,7 @@ import SwiftUI
             }
         }
         if let text = block.body, !text.isEmpty {
-            Text(LocalizedStringKey(text)).font(CatpawTypography.Role.body.font).foregroundStyle(CatpawColors.ink).fixedSize(horizontal: false, vertical: true)
+            Text(GenerativeSafeMarkdown.render(text)).font(CatpawTypography.Role.body.font).foregroundStyle(CatpawColors.ink).fixedSize(horizontal: false, vertical: true)
                 .accessibilityIdentifier("chat.block.body")
         }
     }
@@ -161,3 +191,40 @@ import SwiftUI
 }
 
 func generativeTime(_ date: Date) -> String { date.formatted(date: .omitted, time: .shortened) }
+
+/// Block text is untrusted (contract §0.7): inline markdown only, no HTML, links are not tappable and show their host.
+enum GenerativeSafeMarkdown {
+    static func render(_ text: String) -> AttributedString {
+        let options = AttributedString.MarkdownParsingOptions(allowsExtendedAttributes: false, interpretedSyntax: .inlineOnlyPreservingWhitespace, failurePolicy: .returnPartiallyParsedIfPossible)
+        guard let parsed = try? AttributedString(markdown: text, options: options) else { return AttributedString(text) }
+        var out = AttributedString()
+        for run in parsed.runs {
+            var piece = AttributedString(parsed[run.range])
+            guard let url = run.link else { out += piece; continue }
+            piece.link = nil; piece.underlineStyle = .single; out += piece
+            if let host = url.host, !host.isEmpty { out += AttributedString(" (" + host + ")") }
+        }
+        return out
+    }
+}
+
+/// https-only image without cookies or credentials (ephemeral session), contract §0.7.
+@MainActor struct GenerativeRemoteImage: View {
+    let url: URL
+    @State private var image: UIImage?
+    private static let session: URLSession = {
+        let c = URLSessionConfiguration.ephemeral
+        c.httpShouldSetCookies = false; c.httpCookieAcceptPolicy = .never; c.urlCredentialStorage = nil; c.timeoutIntervalForRequest = 15
+        return URLSession(configuration: c)
+    }()
+    var body: some View {
+        Group {
+            if let image { Image(uiImage: image).resizable().scaledToFill() } else { CatpawColors.ink.opacity(0.05) }
+        }
+        .task(id: url) {
+            guard url.scheme == "https", let (data, response) = try? await Self.session.data(from: url),
+                  (response as? HTTPURLResponse)?.statusCode == 200, data.count <= 5_000_000 else { return }
+            image = UIImage(data: data)
+        }
+    }
+}
