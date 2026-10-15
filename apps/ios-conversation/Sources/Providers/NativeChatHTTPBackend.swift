@@ -39,7 +39,7 @@ public struct MissingNativeChatSession: NativeChatSessionCredentials {
     public init() {}
     public func authorization(scope: DataScope) async throws -> String { throw ConversationSessionError.notConfigured }
 }
-public actor NativeChatHTTPBackend: ConversationBackend {
+public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBackend {
     private let configuration: NativeChatConfiguration
     private let credentials: any NativeChatSessionCredentials
     private let session: URLSession
@@ -184,7 +184,7 @@ public actor NativeChatHTTPBackend: ConversationBackend {
     }
     private func validateRevisionWorkPolicy(_ request:ConversationTurnRequest,selection:ConversationRevisionWorkSelection,auth:String) async throws {
         guard let binding=request.continuationOriginalBinding else {throw ConversationSessionError.invalidEvent}
-        let goal=try await projection(binding,title:"",request:request,auth:auth);try Task.checkCancellation()
+        let goal=try await projection(binding,title:"",auth:auth);try Task.checkCancellation()
         guard goal.revisionRequiresNewWork==true,let policy=goal.revisionWorkPolicy else {throw ConversationAcceptedWorkError.invalidSelection};try policy.validate(options:selection.options)
     }
     private func revisionWorkContext(_ request:ConversationTurnRequest) throws {
@@ -392,7 +392,7 @@ public actor NativeChatHTTPBackend: ConversationBackend {
         }
         if let original=request.continuationOriginalBinding,request.continuation != nil {bindings.append(original)}
         var seen: Set<String> = []
-        for b in bindings where seen.insert(b.task_id).inserted { goals.append(try await projection(b, title: title(b.call_id, turnID: b.turn_id, history: request.history), request: request, auth: auth)) }
+        for b in bindings where seen.insert(b.task_id).inserted { goals.append(try await projection(b, title: title(b.call_id, turnID: b.turn_id, history: request.history), auth: auth)) }
         if request.continuation != nil {try validateContinuationList(turn["continuations"],request:request,terminal:turn["state"] as? String=="completed");try validateRevisionWorkList(turn["revision_work_receipts"],request:request)}
         return ConversationObservation(request: request, events: events, requestHash: try Self.sha(turn["request_hash"]), grantEpoch: currentGrant, goals: goals)
     }
@@ -444,7 +444,7 @@ public actor NativeChatHTTPBackend: ConversationBackend {
             if ["delegate_task", "delegate_plan_v1", "delegate_sources_v1"].contains(name) {
                 let b = try binding(result, request: request, currentTurn: true); guard b.call_id == call, b.grant_epoch == grant else { throw ConversationSessionError.invalidEvent }
                 if let known = bindingCache[request.operationID]?[call] { guard known == b else { throw ConversationSessionError.invalidEvent } }
-                let goal = try await projection(b, title: title(call, turnID: b.turn_id, history: request.history), request: request, auth: auth)
+                let goal = try await projection(b, title: title(call, turnID: b.turn_id, history: request.history), auth: auth)
                 // Commit only verified projections; replay the same binding without duplication.
                 bindingCache[request.operationID, default: [:]][call] = b
                 goals.append(goal)
@@ -457,7 +457,7 @@ public actor NativeChatHTTPBackend: ConversationBackend {
                 }
                 for row in try Self.array(result["tasks"]) {
                     let run = try Self.object(row["run"])
-                    if let b = known.first(where: { UUID(uuidString: run["id"] as? String ?? "") == $0.run_id && run["request_hash"] as? String == $0.request_hash }) { goals.append(try await projection(b, title: title(b.call_id, turnID: b.turn_id, history: request.history), request: request, auth: auth, supplied: row)) }
+                    if let b = known.first(where: { UUID(uuidString: run["id"] as? String ?? "") == $0.run_id && run["request_hash"] as? String == $0.request_hash }) { goals.append(try await projection(b, title: title(b.call_id, turnID: b.turn_id, history: request.history), auth: auth, supplied: row)) }
                 }
             } else if name=="revise_current_report_v1" || name==ConversationRevisionWorkCodec.toolName {
                 let receipt:ConversationTaskRevisionReceipt
@@ -470,7 +470,7 @@ public actor NativeChatHTTPBackend: ConversationBackend {
                 } else {guard name=="revise_current_report_v1" else {throw ConversationSessionError.invalidEvent};receipt=try revisionReceipt(result,request:request,callID:call)}
                 guard receipt.state=="accepted",let original=request.continuationOriginalBinding else {throw ConversationSessionError.invalidEvent}
                 if let prior=continuationReceipts[request.operationID]?[call] {guard prior==receipt else {throw ConversationSessionError.invalidEvent}}
-                var projected=try await projection(original,title:title(original.call_id,turnID:original.turn_id,history:request.history),request:request,auth:auth)
+                var projected=try await projection(original,title:title(original.call_id,turnID:original.turn_id,history:request.history),auth:auth)
                 guard receipt.permitsCurrentPlan(projected.planReference) else {throw ConversationSessionError.invalidEvent}
                 if projected.state == .completed || projected.planReference != receipt.accepted_plan_reference {
                     let result=try await confirmedContinuationResult(receipt,projected:projected,request:request,auth:auth)
@@ -508,7 +508,7 @@ public actor NativeChatHTTPBackend: ConversationBackend {
               b.projection_url == "/catpaw/v1/scopes/\(configuration.serverScopeID.uuidString.lowercased())/runs/\(b.run_id.uuidString.lowercased())" else { throw ConversationSessionError.invalidEvent }
         return b
     }
-    private func projection(_ binding: ConversationTaskBinding, title: String, request: ConversationTurnRequest, auth: String, supplied: [String: Any]? = nil) async throws -> ConversationGoalProjection {
+    private func projection(_ binding: ConversationTaskBinding, title: String, auth: String, supplied: [String: Any]? = nil) async throws -> ConversationGoalProjection {
         let wrapper: [String: Any]
         if let supplied { wrapper = supplied } else { wrapper = try await json(binding.projection_url, auth: auth) }
         guard try Self.positive(wrapper["schema_version"]) == 1 else { throw ConversationSessionError.invalidEvent }
@@ -533,15 +533,7 @@ public actor NativeChatHTTPBackend: ConversationBackend {
             for ref in try Self.array(run["artifact_references"]) {
                 guard let id = ref["artifact_id"] as? String, Self.opaque(id) else { throw ConversationSessionError.invalidEvent }
                 let version = try Self.positive(ref["version"]), hash = try Self.sha(ref["content_hash"])
-                let a = try await json("/catpaw/v1/scopes/\(configuration.serverScopeID.uuidString.lowercased())/artifacts/\(id)/versions/\(version)", auth: auth)
-                guard try Self.positive(a["schema_version"]) == 1 else { throw ConversationSessionError.invalidEvent }
-                let record = try Self.object(a["artifact"])
-                guard record["artifact_id"] as? String == id, try Self.positive(record["version"]) == version, record["content_hash"] as? String == hash,
-                      UUID(uuidString: record["run_id"] as? String ?? "") == binding.run_id, record["task_id"] as? String == binding.task_id,
-                      let body = record["body"] as? String, body.utf8.count <= 1_000_000, textHash(body) == hash else { throw ConversationSessionError.invalidEvent }
-                let parsed = try Self.object(JSONSerialization.jsonObject(with: Data(body.utf8))), data = try Self.object(parsed["data"])
-                guard let title = parsed["title"] as? String, let summary = parsed["summary"] as? String, let content = data["content"] as? String else { throw ConversationSessionError.invalidEvent }
-                artifacts.append(ConversationArtifactProjection(id: id, version: version, contentHash: hash, body: body, title: title, summary: summary, content: content))
+                artifacts.append(try await readCanonicalArtifact(binding, id:id, version:version, hash:hash, auth:auth))
             }
         }
         guard state != .completed || !artifacts.isEmpty else { throw ConversationSessionError.invalidEvent }
@@ -558,6 +550,47 @@ public actor NativeChatHTTPBackend: ConversationBackend {
             let policy=try JSONDecoder().decode(ConversationRevisionWorkPolicy.self,from:Self.jsonData(raw));try policy.validate();goal.revisionWorkPolicy=policy
         }
         goal.binding = binding; goal.artifacts = artifacts; goal.sourceAuthorizationCurrent=authority; return goal
+    }
+    /// One canonical artifact decoder for conversation observations and scope-wide receipts.
+    private func readCanonicalArtifact(_ binding:ConversationTaskBinding,id:String,version:Int,hash:String,auth:String) async throws -> ConversationArtifactProjection {
+        let a=try await json("/catpaw/v1/scopes/\(configuration.serverScopeID.uuidString.lowercased())/artifacts/\(id)/versions/\(version)",auth:auth,strict:true)
+        guard try Self.positive(a["schema_version"])==1 else {throw ConversationSessionError.invalidEvent}
+        let record=try Self.object(a["artifact"])
+        guard record["artifact_id"] as? String==id,try Self.positive(record["version"])==version,record["content_hash"] as? String==hash,
+              UUID(uuidString:record["run_id"] as? String ?? "")==binding.run_id,record["task_id"] as? String==binding.task_id,
+              let body=record["body"] as? String,body.utf8.count<=1_000_000,textHash(body)==hash else {throw ConversationSessionError.invalidEvent}
+        let parsed=try ConversationStrictJSON.object(Data(body.utf8),maxBytes:1_000_000),data=try Self.object(parsed["data"])
+        guard let title=parsed["title"] as? String,let summary=parsed["summary"] as? String,let content=data["content"] as? String else {throw ConversationSessionError.invalidEvent}
+        return .init(id:id,version:version,contentHash:hash,body:body,title:title,summary:summary,content:content)
+    }
+    private func validateInboxPartition(_ reference:ConversationInboxReference) throws {
+        guard reference.scope==configuration.localScope,reference.serverScopeID==configuration.serverScopeID,reference.subjectID==configuration.expectedSubjectID else {throw CatpawError.scopeMismatch}
+    }
+    public func readInbox(reference:ConversationInboxReference,cursor:String?,limit:Int) async throws -> ConversationInboxPage {
+        try validateInboxPartition(reference)
+        guard (1...50).contains(limit),cursor.map({!$0.isEmpty && $0.utf8.count<=4096}) ?? true else {throw ConversationInboxError.invalidResponse}
+        var components=URLComponents();components.queryItems=[URLQueryItem(name:"limit",value:String(limit))]
+        if let cursor {components.queryItems?.append(URLQueryItem(name:"cursor",value:cursor))}
+        let auth=try await authorization(reference.scope)
+        do {
+            let value=try await json("/catpaw/inbox/v1/scopes/"+reference.serverScopeID.uuidString.lowercased()+"/items?"+(components.percentEncodedQuery ?? ""),auth:auth,strict:true)
+            return try ConversationInboxPage.decode(Self.jsonData(value),reference:reference,limit:limit)
+        } catch NativeChatHTTPFailure.status(let status) where status==401 || status==403 {throw ConversationInboxError.accessDenied}
+    }
+    public func readReceivedTask(reference:ConversationInboxReference,item:ConversationInboxItem) async throws -> ConversationGoalProjection {
+        try validateInboxPartition(reference);try item.validate(reference)
+        let auth=try await authorization(reference.scope)
+        do {
+            var goal=try await projection(item.binding,title:item.title,auth:auth)
+            // A list can contain v1 while the head has advanced to v2. Read the exact
+            // selected bytes as history; never replace the current head with that v1.
+            if goal.sourceAuthorizationCurrent==true {
+                for ref in item.artifacts where !(goal.artifacts+goal.artifactHistory).contains(where:{$0.id==ref.artifactID && $0.version==ref.version && $0.contentHash==ref.contentHash}) {
+                    goal.artifactHistory.append(try await readCanonicalArtifact(item.binding,id:ref.artifactID,version:ref.version,hash:ref.contentHash,auth:auth))
+                }
+            }
+            try Task.checkCancellation();return goal
+        } catch NativeChatHTTPFailure.status(let status) where status==401 || status==403 {throw ConversationInboxError.accessDenied}
     }
     private func title(_ call: String, turnID: UUID, history: [ConversationTranscriptMessage]) -> String {
         if let current = toolTitles[turnID]?[call] { return current }
