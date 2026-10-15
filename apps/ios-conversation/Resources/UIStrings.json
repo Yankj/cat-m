@@ -5214,5 +5214,49 @@
   "，草稿，": {
     "en": ", draft, ",
     "zh-Hans": "，草稿，"
+  },
+  "确认创建任务": {
+    "en": "Confirm new task",
+    "zh-Hans": "确认创建任务"
+  },
+  "已确认": {
+    "en": "Confirmed",
+    "zh-Hans": "已确认"
+  },
+  "每天": {
+    "en": "Daily",
+    "zh-Hans": "每天"
+  },
+  "每月": {
+    "en": "Monthly",
+    "zh-Hans": "每月"
+  },
+  "已安排": {
+    "en": "Scheduled",
+    "zh-Hans": "已安排"
+  },
+  "需核对": {
+    "en": "Check result",
+    "zh-Hans": "需核对"
+  },
+  "待办": {
+    "en": "Upcoming",
+    "zh-Hans": "待办"
+  },
+  "暂时连不上服务，请稍后重试": {
+    "en": "Can't reach the service right now. Try again later.",
+    "zh-Hans": "暂时连不上服务，请稍后重试"
+  },
+  "运行历史": {
+    "en": "Run history",
+    "zh-Hans": "运行历史"
+  },
+  "还没有运行记录": {
+    "en": "No runs yet",
+    "zh-Hans": "还没有运行记录"
+  },
+  "任务详情": {
+    "en": "Task details",
+    "zh-Hans": "任务详情"
   }
 }
