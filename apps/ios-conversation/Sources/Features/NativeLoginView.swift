@@ -3,6 +3,7 @@ import UIKit
 
 /// First-run flow: launch mark → animated background → 3 auto-advancing intro pages → one "开启" button
 /// that runs anonymous sign-in. Developer configuration problems are never shown to end users (DEBUG banner only).
+/// Shown while `auth.needsOnboarding` (gate owned by NativeAuthApplicationModel / `CatpawOnboarding`).
 /// Accessibility identifiers `auth.*` are kept for existing UI tests.
 @MainActor struct NativeLoginView: View {
     @ObservedObject var auth: NativeAuthApplicationModel
@@ -24,14 +25,16 @@ import UIKit
         .init(id: 2, symbol: "bell.badge", title: ui("到点提醒你"), body: ui("有进展、需要你确认或该行动时，会及时提醒你。")),
     ]}
     private var lastPage: Int { pages.count - 1 }
-    private var busy: Bool { auth.actionBusy || auth.state.phase == .restoring || auth.state.phase == .signingIn }
+    private var busy: Bool { auth.onboarding == .entering || auth.actionBusy || auth.state.phase == .restoring || auth.state.phase == .signingIn }
+    private var gateFailure: String? { if case .failed(let message) = auth.onboarding { return message }; return nil }
+    private static let configurationMessages: Set<String> = [NativeAuthError.notConfigured.localizedDescription, NativeAuthError.invalidConfiguration.localizedDescription, "登录连接尚未配置。", "登录公开配置未通过校验。"]
     /// Configuration errors are a build problem, never the user's.
     private var isConfigurationError: Bool {
-        guard let e = auth.error else { return false }
-        return e == NativeAuthError.notConfigured.localizedDescription || e == NativeAuthError.invalidConfiguration.localizedDescription
+        guard let e = gateFailure ?? auth.error else { return false }
+        return Self.configurationMessages.contains(e)
     }
     private var friendlyError: String? {
-        if let e = auth.error ?? auth.state.message, !isConfigurationError { return ui(e) }
+        if let e = gateFailure ?? auth.error ?? auth.state.message, !isConfigurationError { return ui(e) }
         if startTapped, !busy, isConfigurationError || !auth.canStartExperience { return ui("暂时连不上服务，请稍后重试。") }
         return nil
     }
@@ -102,7 +105,9 @@ import UIKit
             }
             Button {
                 startTapped = true
-                Task { await auth.startExperience() }
+                // Gate open (fresh install): persist the flag + enter via the pre-warmed session.
+                // Gate already completed (returning user signed out, or -CatpawSkipOnboarding): plain anonymous start.
+                Task { if auth.needsOnboarding { await auth.completeOnboarding() } else { await auth.startExperience() } }
             } label: {
                 HStack(spacing: 8) {
                     Spacer()
@@ -131,7 +136,7 @@ import UIKit
     #if DEBUG
     /// Developer-only: real cause of a disabled sign-in (e.g. Local.xcconfig missing). Never in Release.
     @ViewBuilder private var debugBanner: some View {
-        if isConfigurationError, let e = auth.error {
+        if isConfigurationError, let e = gateFailure ?? auth.error {
             Text(verbatim: "DEBUG · \(e) Configuration/Local.xcconfig → CATPAW_SUPABASE_* / CATPAW_BACKEND_ORIGIN")
                 .font(.footnote).foregroundStyle(CatpawColors.secondary).padding(8)
                 .background(CatpawColors.panel.opacity(0.8), in: RoundedRectangle(cornerRadius: 10)).padding(.horizontal, 16)
@@ -151,8 +156,9 @@ import UIKit
     /// Auto-advance every 3.2 s until the user swipes or reaches the last page. Fixtures/UI tests jump to the end.
     private func autoAdvance() async {
         #if DEBUG
-        if auth.isFixture || ProcessInfo.processInfo.arguments.contains("-CatpawSkipOnboarding") { page = lastPage; return }
+        if auth.isFixture { page = lastPage; return }
         #endif
+        if !auth.needsOnboarding || ProcessInfo.processInfo.arguments.contains(CatpawOnboarding.skipArgument) { page = lastPage; return }
         while page < lastPage && !userPaged {
             try? await Task.sleep(nanoseconds: 3_200_000_000)
             if Task.isCancelled || userPaged { return }

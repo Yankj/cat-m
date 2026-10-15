@@ -162,7 +162,8 @@ import AppIntents
             } else { ProgressView("Offline fixture loading").accessibilityIdentifier("qa.p0Fixture.loading") }
             #endif
         }
-        else if let model = auth.chat {
+        // Onboarding gate: the session may already be pre-warmed, but the intro stays until 开启.
+        else if let model = auth.chat, !auth.needsOnboarding {
             ConversationFirstView(model:model,accountLabel:auth.isFixture ? ui("合成登录测试 · 无真实 Auth/模型") : (auth.state.user?.isAnonymous == true ? ui("体验账号") : auth.state.user?.email),onSignOut:{ Task { await auth.signOut() } },isAnonymousAccount:auth.state.user?.isAnonymous == true)
                 #if DEBUG
                 .overlay(alignment:.topTrailing) {
