@@ -110,7 +110,7 @@ import UIKit
 
     private var liveRow: some View {
         HStack(spacing: 8) {
-            BreathingPaw(active: true)
+            CatpawPresence(state: model.thinkingSummary != nil ? .thinking : .waiting)
             ShimmerText(text: ui("思考中"), active: !reduceMotion)
                 .font(CatpawTypography.Role.secondary.font.weight(.semibold))
             Text(model.thinkingSummary ?? model.steps.last?.title ?? "")

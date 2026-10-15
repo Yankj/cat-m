@@ -104,20 +104,10 @@ struct PawShape: Shape {
 }
 
 /// Small breathing paw used by the thinking row. Reduce Motion → static.
-struct BreathingPaw: View {
+struct BreathingPaw: View {   // r10: the thinking indicator is now CatpawPresence (slow blink while waiting)
     var active: Bool
-    @ScaledMetric(relativeTo: .body) private var size = 16.0
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var phase = false
-    var body: some View {
-        PawShape().fill(CatpawBrand.paw).frame(width: size, height: size)
-            .scaleEffect(active && !reduceMotion && phase ? 1.0 : 0.86)
-            .opacity(active && !reduceMotion && phase ? 1 : 0.72)
-            .animation(active && !reduceMotion ? .easeInOut(duration: CatpawMotion.pawBreathe / 2).repeatForever(autoreverses: true) : .default, value: phase)
-            .onAppear { phase = active }
-            .onChange(of: active) { _, value in phase = value }
-            .accessibilityHidden(true)
-    }
+    @ScaledMetric(relativeTo: .body) private var size = 22.0
+    var body: some View { CatpawPresence(state: .waiting, size: size).opacity(active ? 1 : 0.72) }
 }
 
 // MARK: r8 tokens (composer + top bar)
@@ -143,5 +133,105 @@ struct TwoLineMenuGlyph: View {
         }
         .frame(width: 18, height: 13)
         .accessibilityHidden(true)
+    }
+}
+
+/// r10 streaming presence: an ultra-abstract soft-clay cat head (~22pt) that replaces the thinking/streaming dots.
+/// Each state maps to turn events; all motion uses springs and collapses to static poses under Reduce Motion.
+enum CatpawPresenceState: Equatable { case waiting, thinking, streaming, working, done, error }
+
+struct CatpawPresence: View {
+    var state: CatpawPresenceState
+    var size: CGFloat = 22
+    /// Bumped by the host on each revealed chunk while streaming → subtle nod in rhythm with the reveal.
+    var revealTick: Int = 0
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var blink = false
+    @State private var tilt = false
+    @State private var twitch = false
+    @State private var orbit = false
+    @State private var bounce = false
+    @State private var nod = false
+
+    var body: some View {
+        let u = size / 24
+        let clay = RadialGradient(stops: [.init(color: CatpawBrand.clayLight, location: 0), .init(color: CatpawBrand.clayBase, location: 0.55),
+                                          .init(color: CatpawBrand.clayRim, location: 1)], center: UnitPoint(x: 0.36, y: 0.28), startRadius: 0, endRadius: 15 * u)
+        let earDrop: Double = state == .error ? 38 : (state == .working ? -8 : 0)
+        ZStack {
+            Ellipse().fill(CatpawBrand.clayShadow.opacity(0.18)).frame(width: 16 * u, height: 2.4 * u).blur(radius: 1.2 * u).offset(y: 11.4 * u)
+            ZStack {
+                CatEar().fill(clay).frame(width: 7 * u, height: 7 * u)
+                    .rotationEffect(.degrees(-14 - earDrop - (twitch ? 10 : 0)), anchor: .bottom).offset(x: -6 * u, y: -7.6 * u)
+                CatEar().fill(clay).frame(width: 7 * u, height: 7 * u)
+                    .rotationEffect(.degrees(14 + earDrop), anchor: .bottom).offset(x: 6 * u, y: -7.6 * u)
+                Ellipse().fill(clay).frame(width: 21 * u, height: 18 * u).offset(y: 1.5 * u)
+                Ellipse().fill(Color.white.opacity(0.35)).frame(width: 5 * u, height: 3 * u).blur(radius: 0.8 * u).offset(x: -4.5 * u, y: -3.2 * u)
+                eyes(u).offset(y: (state == .streaming ? 3.4 : 2.2) * u)
+            }
+            .rotationEffect(.degrees(state == .thinking && tilt ? -9 : 0))
+            .offset(y: (bounce ? -3 * u : 0) + (nod ? 0.8 * u : 0))
+            if state == .working {
+                Circle().fill(CatpawBrand.clayRim).frame(width: 3 * u, height: 3 * u)
+                    .offset(x: 11 * u).rotationEffect(.degrees(orbit ? 360 : 0)).offset(y: -12 * u).scaleEffect(x: 1, y: 0.35)
+            }
+        }
+        .frame(width: size, height: size)
+        .accessibilityHidden(true)
+        .onAppear { start() }
+        .onChange(of: state) { _, _ in start() }
+        .onChange(of: revealTick) { _, _ in
+            guard state == .streaming, !reduceMotion else { return }
+            withAnimation(.snappy(duration: 0.14)) { nod = true }
+            withAnimation(.snappy(duration: 0.22).delay(0.14)) { nod = false }
+        }
+    }
+
+    @ViewBuilder private func eyes(_ u: CGFloat) -> some View {
+        HStack(spacing: 6 * u) {
+            ForEach(0..<2, id: \.self) { _ in
+                switch state {
+                case .done: HappyEye().stroke(CatpawColors.ink, style: StrokeStyle(lineWidth: 1.3 * u, lineCap: .round)).frame(width: 3.4 * u, height: 2 * u)
+                case .error: Capsule().fill(CatpawColors.ink).frame(width: 3.4 * u, height: 1.2 * u)
+                default: Capsule().fill(CatpawColors.ink).frame(width: 2.3 * u, height: (blink ? 0.4 : 2.6) * u)
+                }
+            }
+        }
+    }
+
+    private func start() {
+        blink = false; tilt = false; twitch = false; orbit = false; bounce = false
+        guard !reduceMotion else { return }
+        switch state {
+        case .waiting:
+            withAnimation(.easeInOut(duration: 0.18).delay(1.6).repeatForever(autoreverses: true)) { blink = true }
+        case .thinking:
+            withAnimation(.smooth(duration: 1.4).repeatForever(autoreverses: true)) { tilt = true }
+            withAnimation(.bouncy(duration: 0.3).delay(0.9).repeatForever(autoreverses: true)) { twitch = true }
+        case .streaming: break
+        case .working:
+            withAnimation(.linear(duration: 1.6).repeatForever(autoreverses: false)) { orbit = true }
+        case .done:
+            withAnimation(.bouncy(duration: 0.4, extraBounce: 0.2)) { bounce = true }
+            withAnimation(.smooth(duration: 0.3).delay(0.32)) { bounce = false }
+        case .error: break
+        }
+    }
+}
+
+private struct CatEar: Shape {   // rounded triangle
+    func path(in r: CGRect) -> Path {
+        var p = Path()
+        p.move(to: CGPoint(x: r.minX, y: r.maxY))
+        p.addQuadCurve(to: CGPoint(x: r.midX - r.width * 0.08, y: r.minY + r.height * 0.1), control: CGPoint(x: r.minX + r.width * 0.15, y: r.minY + r.height * 0.35))
+        p.addQuadCurve(to: CGPoint(x: r.midX + r.width * 0.08, y: r.minY + r.height * 0.1), control: CGPoint(x: r.midX, y: r.minY - r.height * 0.05))
+        p.addQuadCurve(to: CGPoint(x: r.maxX, y: r.maxY), control: CGPoint(x: r.maxX - r.width * 0.15, y: r.minY + r.height * 0.35))
+        p.closeSubpath(); return p
+    }
+}
+
+private struct HappyEye: Shape {   // ^
+    func path(in r: CGRect) -> Path {
+        var p = Path(); p.move(to: CGPoint(x: r.minX, y: r.maxY)); p.addLine(to: CGPoint(x: r.midX, y: r.minY)); p.addLine(to: CGPoint(x: r.maxX, y: r.maxY)); return p
     }
 }
