@@ -82,15 +82,19 @@ import UIKit
         if voice.dictationPhase != .idle { voice.cancelDictation() }
         prefix = model.draft; lastWritten = model.draft; sendWhenDone = false
         self.mode = mode
-        dictating = true
+        dictating = true; userStopped = false; notice = nil
         let accepted = voice.startDictation(onText: { [weak self] text in self?.apply(text) },
                                             onEnd: { [weak self] reason in self?.ended(reason) })
         if !accepted { dictating = false; lastWritten = nil }
     }
 
     /// ✓ / waveform tap / hold release: finish into the draft (the controller caps the final-result wait).
+    /// Set when the user ends the session (2nd tap / ✓ / release / ✕). Errors the recognizer reports
+    /// after a user stop ("no speech", end-of-audio timeout) are not failures and must never alert.
+    private var userStopped = false
     func stop() {
         guard dictating else { return }
+        userStopped = true
         if voice.dictationPhase == .idle { ended(.cancelled) } else { voice.stopDictation() }
     }
     /// Slide up / VoiceOver 发送: finish, then send once the final text has landed.
@@ -111,7 +115,7 @@ import UIKit
     /// Send / background / disappear: stop now and keep exactly what is in the draft.
     func stopNow() {
         guard dictating else { return }
-        sendWhenDone = false
+        sendWhenDone = false; userStopped = true
         voice.cancelDictation()
         if dictating { ended(.cancelled) }   // controller was already idle
     }
@@ -119,11 +123,11 @@ import UIKit
     private func ended(_ reason: NativeVoiceController.DictationEnd) {
         let hadText = lastWritten != nil && lastWritten != prefix
         let send = sendWhenDone && hadText
-        dictating = false; lastWritten = nil; sendWhenDone = false; zone = .none
+        dictating = false; lastWritten = nil; sendWhenDone = false; zone = .none; defer { userStopped = false }
         switch reason {
         case .denied: notice = .permissionDenied; ConversationTextView.focusComposer()
         case .unsupported: notice = .unsupported; ConversationTextView.focusComposer()
-        case .failed, .timedOut: if !hadText { notice = .failed; ConversationTextView.focusComposer() }
+        case .failed, .timedOut: if !hadText && !userStopped { notice = .failed; ConversationTextView.focusComposer() }
         case .finished, .cancelled, .interrupted: break
         }
         if send, reason != .interrupted { onSend?() }
@@ -177,10 +181,22 @@ import UIKit
                         .fixedSize().offset(y: -44).transition(.opacity).accessibilityIdentifier("chat.composer.voice.comingSoon")
                 }
             }
-            .alert(noticeTitle, isPresented: Binding(get: { dictation.notice != nil }, set: { if !$0 { dictation.notice = nil } })) {
-                if dictation.notice == .permissionDenied { Button(ui("去设置")) { ComposerDictation.openSettings() } }
-                Button(ui("好"), role: .cancel) {}
-            } message: { Text(noticeMessage) }
+            .overlay(alignment: .topTrailing) {
+                // Real failures only: a small inline hint above the composer, never a modal alert.
+                if dictation.notice != nil {
+                    HStack(spacing: 8) {
+                        Text(noticeMessage).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.ink).lineLimit(2)
+                        if dictation.notice == .permissionDenied { Button(ui("去设置")) { ComposerDictation.openSettings() }.font(CatpawTypography.Role.caption.font.weight(.semibold)) }
+                    }
+                    .padding(.horizontal, 12).padding(.vertical, 8).background(.regularMaterial, in: Capsule())
+                    .frame(maxWidth: 300).fixedSize(horizontal: false, vertical: true).offset(y: -48)
+                    .transition(.opacity.combined(with: .move(edge: .bottom)))
+                    .onTapGesture { dictation.notice = nil }
+                    .task(id: dictation.notice) { try? await Task.sleep(nanoseconds: 4_000_000_000); withAnimation { dictation.notice = nil } }
+                    .accessibilityIdentifier("chat.composer.dictation.hint")
+                }
+            }
+            .animation(.snappy, value: dictation.notice)
     }
 
     private func showComingSoon() {
