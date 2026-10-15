@@ -1,0 +1,29 @@
+{
+  "contract": "catpaw.proactive.decision.v1",
+  "scenarios": [
+    { "name": "meeting_soon_far", "expect_rules": "interrupt",
+      "request": { "context": { "time_zone": "Asia/Shanghai", "location": "浦东张江" },
+        "signals": [{ "type": "meeting_upcoming", "source": "calendar", "dedupe_key": "evt-standup-1016",
+          "data": { "title": "客户方案评审", "location": "静安嘉里中心", "minutes_until": 35, "travel_minutes": 50 } }] } },
+    { "name": "flight_delayed_affects_meeting", "expect_rules": "interrupt",
+      "request": { "context": { "time_zone": "Asia/Shanghai" },
+        "signals": [{ "type": "flight_status", "source": "flight", "dedupe_key": "MU5101-2026-10-16",
+          "data": { "flight": "MU5101", "status": "delayed", "delay_minutes": 90, "affects_meeting": "北京站 15:00 投资人会议" } }] } },
+    { "name": "meeting_conflict", "expect_rules": "card",
+      "request": { "context": { "time_zone": "Asia/Shanghai" },
+        "signals": [{ "type": "meeting_conflict", "source": "calendar", "dedupe_key": "conflict-1016-1400",
+          "data": { "a": "产品周会", "b": "面试：后端候选人", "minutes_until": 180 } }] } },
+    { "name": "gate_change", "expect_rules": "card",
+      "request": { "context": { "time_zone": "Asia/Shanghai" },
+        "signals": [{ "type": "flight_status", "source": "flight", "dedupe_key": "MU5101-gate",
+          "data": { "flight": "MU5101", "status": "on_time", "delay_minutes": 0, "gate_changed": true, "gate": "C32" } }] } },
+    { "name": "nothing_to_do", "expect_rules": "silent",
+      "request": { "context": { "time_zone": "Asia/Shanghai" },
+        "signals": [{ "type": "meeting_upcoming", "source": "calendar", "dedupe_key": "evt-tomorrow",
+          "data": { "title": "明天的 1:1", "minutes_until": 1300, "travel_minutes": 0 } }] } }
+  ],
+  "memories": [
+    { "id": "mem-taxi", "content": "用户去静安一般打车，不坐地铁", "pinned": false },
+    { "id": "mem-flight", "content": "MU5101 是用户常坐的上海到北京航班，延误时希望直接帮忙改约会议" }
+  ]
+}
