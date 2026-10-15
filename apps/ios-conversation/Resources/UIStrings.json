@@ -5938,5 +5938,29 @@
   "，草稿，": {
     "en": ", draft, ",
     "zh-Hans": "，草稿，"
+  },
+  "上一个回答": {
+    "en": "Previous answer",
+    "zh-Hans": "上一个回答"
+  },
+  "下一个回答": {
+    "en": "Next answer",
+    "zh-Hans": "下一个回答"
+  },
+  "第 {0} 个回答，共 {1} 个": {
+    "en": "Answer {0} of {1}",
+    "zh-Hans": "第 {0} 个回答，共 {1} 个"
+  },
+  "引擎": {
+    "en": "Engine",
+    "zh-Hans": "引擎"
+  },
+  "扫描真实日历": {
+    "en": "Scan real calendar",
+    "zh-Hans": "扫描真实日历"
+  },
+  "清空去重账本": {
+    "en": "Clear dedupe ledger",
+    "zh-Hans": "清空去重账本"
   }
 }
