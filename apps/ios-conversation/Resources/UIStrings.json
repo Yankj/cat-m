@@ -3,6 +3,10 @@
     "en": "\nThe original file is preserved. Storage was not reset. Investigate migration or recovery with full Xcode.",
     "zh-Hans": "\n原文件已保留，未重置存储。请在完整 Xcode 下排查迁移或恢复。"
   },
+  "Agnes Flash（备选）": {
+    "en": "Agnes Flash (fallback)",
+    "zh-Hans": "Agnes Flash（备选）"
+  },
   "App 不启动常驻服务；没有真实账号、模型密钥、云执行或系统推送。": {
     "en": "The app does not start a persistent service. Real accounts, model keys, cloud execution, and system push are not connected.",
     "zh-Hans": "App 不启动常驻服务；没有真实账号、模型密钥、云执行或系统推送。"
