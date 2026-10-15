@@ -36,8 +36,21 @@ public struct ConversationTranscriptMessage: Codable, Sendable, Identifiable {
     public var complete: Bool
     public var failure: String? = nil
     public var image:ConversationImageReceipt? = nil
-    public init(id: UUID = UUID(), role: Role, content: String, toolCallID: String? = nil, toolName: String? = nil, complete: Bool = true,image:ConversationImageReceipt?=nil) {
-        self.image=image;self.id = id; self.role = role; self.content = content; self.toolCallID = toolCallID; self.toolName = toolName; self.complete = complete
+    /// When this message entered the transcript. Turn events carry no server timestamp today, so this is
+    /// the local journal append time (first append; streaming deltas keep it). A future server-sent time
+    /// should be passed explicitly. Journals written before this field decode as `.distantPast` (sorts first).
+    public let createdAt: Date
+    public init(id: UUID = UUID(), role: Role, content: String, toolCallID: String? = nil, toolName: String? = nil, complete: Bool = true,image:ConversationImageReceipt?=nil,createdAt:Date=Date()) {
+        self.image=image;self.id = id; self.role = role; self.content = content; self.toolCallID = toolCallID; self.toolName = toolName; self.complete = complete;self.createdAt=createdAt
+    }
+    private enum CodingKeys: String, CodingKey { case id, role, content, toolCallID, toolName, complete, failure, image, createdAt }
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id); role = try c.decode(Role.self, forKey: .role); content = try c.decode(String.self, forKey: .content)
+        toolCallID = try c.decodeIfPresent(String.self, forKey: .toolCallID); toolName = try c.decodeIfPresent(String.self, forKey: .toolName)
+        complete = try c.decode(Bool.self, forKey: .complete)
+        failure = try c.decodeIfPresent(String.self, forKey: .failure); image = try c.decodeIfPresent(ConversationImageReceipt.self, forKey: .image)
+        createdAt = try c.decodeIfPresent(Date.self, forKey: .createdAt) ?? .distantPast
     }
 }
 public struct ConversationRevisionWorkPolicy:Codable,Sendable,Equatable {
