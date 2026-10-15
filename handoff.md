@@ -108,3 +108,7 @@ r8执行日志在managed build/probe-next-20261015/：部署读回、same-identi
 Projects/catpaw-m经只读核对是独立旧仓（integration/local-fixed-directory，86ea2091），不是Desktop目录别名；有7项WIP且原无main。Desktop才是本任务common仓，主目录继续保留原feature HEAD、index和WIP。若另向Projects建立最终公开main引用，仅允许本地仓间普通fetch到新引用，绝不把其legacy历史推入origin、切换脏工作区、reset或覆盖文件。此类引用同步不代表两个工作目录都已切到最新版；最终收口须分别报告。
 
 没有证据支持完整MVP剩余工时承诺。已有可控交付是已冻结源码、阶段App和有界检查入口；真实模型/完整原生路径、设备新授权、独立调度、七天日用和具名竞品仍未完。恢复与后续安装/验证仍按上文原合同，不能为main同步发新POST。
+
+## 交接发布读回（19:03补充）
+
+[PR #19](https://github.com/Yankj/catpaw-m/pull/19)已创建并附到当前任务；公开候选6aef9fe85823a9674b7af16ee501e0a319863cc7，tree 12a64186300e79751de642d6069129f1714aea49。远端main仍515f98f1b91a7485e246b4928e9065b60ef4e2c3；尚未合并，本地main也未同步。自动审批拒绝立即合并，理由是当前可信用户指令仅明确整理handoff，未明确覆盖63文件主干更新；已向用户请求直接确认，不通过其他工具或线程绕过。后续仅在确认后合并并核对完整SHA；当前候选与主干不可混称。此补充仅更新交接事实，不改变冻结产品源码、包或授权。
