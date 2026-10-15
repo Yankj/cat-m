@@ -345,13 +345,16 @@ private struct JumpGlass: ViewModifier {
     let stop: () -> Void
     var dictate: () -> Void = {}
     var voice: () -> Void = {}
+    /// Live dictation: the mic becomes a pulsing paw-orange waveform stop control; send stays available.
+    var dictating = false
     @State private var sendCount = 0
     @State private var stopCount = 0
     @Environment(\.locale) private var locale
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private func ui(_ k: String) -> String { AppLanguage(locale: locale).ui(k) }
-    private enum Mode: Equatable { case voice, send, stop, queue }
+    private enum Mode: Equatable { case voice, send, stop, queue, dictating }
     private var mode: Mode {
+        if dictating && !responding { return .dictating }
         if responding { return draftEmpty ? .stop : .queue }
         return draftEmpty ? .voice : .send
     }
@@ -369,6 +372,20 @@ private struct JumpGlass: ViewModifier {
                         .frame(width: size, height: size).background(CatpawColors.ink, in: Circle()).contentShape(Circle().inset(by: -4))
                 }.buttonStyle(CatpawPressButtonStyle()).accessibilityLabel(ui("语音对话")).accessibilityIdentifier("chat.composer.voice")
                     .transition(.scale(scale: 0.6).combined(with: .opacity))
+            case .dictating:
+                Button(action: dictate) {
+                    Image(systemName: "waveform").font(CatpawTypography.Role.body.font.weight(.semibold)).foregroundStyle(CatpawColors.sendIcon)
+                        .symbolEffect(.variableColor.iterative, isActive: !reduceMotion)
+                        .frame(width: size, height: size).background(CatpawBrand.paw, in: Circle()).contentShape(Circle().inset(by: -4))
+                }.buttonStyle(CatpawPressButtonStyle()).accessibilityLabel(ui("停止听写")).accessibilityIdentifier("chat.composer.dictating")
+                    .transition(.scale(scale: 0.6).combined(with: .opacity))
+                if !draftEmpty {
+                    Button { sendCount += 1; send() } label: {
+                        Image(systemName: "arrow.up").font(CatpawTypography.Role.body.font.weight(.semibold)).foregroundStyle(CatpawColors.sendIcon)
+                            .frame(width: size, height: size)
+                            .background(canSend ? CatpawBrand.paw : CatpawBrand.paw.opacity(0.45), in: Circle()).contentShape(Circle().inset(by: -4))
+                    }.buttonStyle(CatpawPressButtonStyle()).disabled(!canSend).accessibilityLabel(ui("发送")).accessibilityIdentifier("chat.send")
+                }
             case .stop:
                 Button { stopCount += 1; stop() } label: {
                     RoundedRectangle(cornerRadius: 3, style: .continuous).fill(CatpawColors.sendIcon).frame(width: 12, height: 12)
