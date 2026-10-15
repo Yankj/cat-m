@@ -387,6 +387,9 @@ import CatpawImageComposer
         feedbackNavigation
         .onChange(of: CatpawRouteCenter.shared.pending) { _, _ in consumeAppRoute() }
         .sheet(isPresented: $proactiveInboxPresented) { NavigationStack { ProactiveInboxView() } }
+        .composerAttachPopover(isPresented: Binding(get: { ComposerAttachPopoverState.shared.isPresented }, set: { ComposerAttachPopoverState.shared.isPresented = $0 }),
+                               remaining: ComposerAttachPopoverState.shared.remaining,
+                               onAdd: { items in ComposerAttachPopoverState.shared.add(items); ComposerAttachPopoverState.shared.isPresented = false })
         .sheet(isPresented: $proactiveDebugPresented) { NavigationStack { ProactiveSignalDebugView() } }
         .onChange(of: model.loaded) { _, _ in consumeAppRoute() }
         .modifier(ConversationConsentPresenter(model:model))
