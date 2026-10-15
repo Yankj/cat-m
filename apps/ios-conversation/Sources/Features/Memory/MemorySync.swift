@@ -148,3 +148,16 @@ enum MemoryEventSink {
         Task { @MainActor in MemoryCache.shared.applyUpdate(op: v.op, ids: v.ids, memories: v.memories ?? []) }
     }
 }
+
+extension MemoryEventSink {
+    /// Routes the network layer's side-channel events here. Call once where the memory service is created.
+    static func installSideChannel() {
+        ConversationSideChannelEvents.handler = { type, turnID, data in
+            switch type {
+            case "memory.used": MemoryEventSink.used(turnID: turnID, data: data)
+            case "memory.update": MemoryEventSink.update(data: data)
+            default: break
+            }
+        }
+    }
+}
