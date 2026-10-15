@@ -51,8 +51,25 @@ import os
         blocks = [:]; order = []; responses = [:]; resolved = [:]; submissions = [:]; contexts = [:]; operationIDs = [:]; reported = []; applied = []
         load()
     }
+    /// L2 (encrypted, per user) is the store of record for the shared instance; tests that inject their own
+    /// UserDefaults keep using it. Without a signed-in L2 store, blocks stay in memory only.
+    private var usesL2: Bool { defaults === UserDefaults.standard }
+    /// Re-reads the active conversation after the L2 store changes user (called from CatpawApp).
+    func reloadFromL2() {
+        blocks = [:]; order = []; responses = [:]; resolved = [:]; contexts = [:]; operationIDs = [:]
+        load()
+    }
+    private func readSnapshotData() -> Data? {
+        guard usesL2 else { return defaults?.data(forKey: key) }
+        guard let l2 = L2SecureStore.current else { return nil }
+        if let data = l2.data(forKey: key) { return data }
+        // One-time migration of the plaintext v3 key into L2, then the legacy copy is removed.
+        guard let legacy = defaults?.data(forKey: key) else { return nil }
+        l2.set(legacy, forKey: key); defaults?.removeObject(forKey: key)
+        return legacy
+    }
     private func load() {
-        if let data = defaults?.data(forKey: key), let saved = try? GenerativeBlockCodec.decoder.decode(Snapshot.self, from: data) {
+        if let data = readSnapshotData(), let saved = try? GenerativeBlockCodec.decoder.decode(Snapshot.self, from: data) {
             blocks = saved.blocks; order = saved.order; responses = saved.responses; resolved = saved.resolved; contexts = saved.contexts; operationIDs = saved.operationIDs
         }
     }
@@ -197,8 +214,8 @@ import os
         var resolved: [String: String]; var contexts: [String: Context]; var operationIDs: [String: UUID]
     }
     private func save() {
-        guard let defaults, let data = try? GenerativeBlockCodec.encoder.encode(Snapshot(blocks: blocks, order: order, responses: responses, resolved: resolved, contexts: contexts, operationIDs: operationIDs)) else { return }
-        defaults.set(data, forKey: key)
+        guard let data = try? GenerativeBlockCodec.encoder.encode(Snapshot(blocks: blocks, order: order, responses: responses, resolved: resolved, contexts: contexts, operationIDs: operationIDs)) else { return }
+        if usesL2 { L2SecureStore.current?.set(data, forKey: key) } else { defaults?.set(data, forKey: key) }
     }
 }
 
