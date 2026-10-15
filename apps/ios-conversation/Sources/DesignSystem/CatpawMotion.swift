@@ -21,36 +21,47 @@ enum CatpawMotion {
 /// and the composer send/stop/queue control; generic actions, links and statuses stay semantic.
 enum CatpawBrand {
     static let paw = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(rgb: 0xF2A985) : UIColor(rgb: 0xE8946A) })
-    /// r10 logo gradient (top → bottom); matches Resources/Assets.xcassets/LaunchPaw.svg exactly.
-    static let pawTop = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(rgb: 0xFFA27A) : UIColor(rgb: 0xFF8F62) })
-    static let pawBottom = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(rgb: 0xF5774A) : UIColor(rgb: 0xF2643A) })
+    /// r10 soft-clay logo palette; mirrored in Resources/Assets.xcassets/LaunchPaw.svg.
+    static let clayLight = Color(UIColor(rgb: 0xFFB48A))
+    static let clayBase = Color(UIColor(rgb: 0xF5843F))
+    static let clayRim = Color(UIColor(rgb: 0xE0652A))
+    static let clayShadow = Color(UIColor(rgb: 0x8A3A12))
 }
 
-/// The single Catpaw logo (r10): five separate vector pads so toes can press in sequence, soft top→bottom gradient,
-/// soft drop shadow. Used by the launch screen animation, onboarding page 1 and the drawer header.
-/// `pressed[i]` (0–3 toes, 4 pad) sinks a pad by ~3% of the size and scales it to 0.9.
+/// The single Catpaw logo (r10, "soft clay" 3D style): every pad is its own ellipse with a radial clay gradient
+/// (highlight → base → shaded rim) plus a soft contact shadow, so toes can press in sequence.
+/// Geometry is in a 24-unit box and mirrors Resources/Assets.xcassets/LaunchPaw.svg exactly (frame-0 identity).
+/// `pressed[i]` (0–3 toes, 4 main pad) sinks that pad ~3% and squashes it to 0.9.
 struct PawMark: View {
     var size: CGFloat
     var pressed: [Bool] = [false, false, false, false, false]
     var shadow: Bool = true
+    /// (cx, cy, rx, ry, padIndex). Main pad = a tall centre lobe over two side lobes, as in the reference sheet.
+    static let pads: [(CGFloat, CGFloat, CGFloat, CGFloat, Int)] = [
+        (8.3, 16.9, 3.3, 3.9, 4), (15.7, 16.9, 3.3, 3.9, 4), (12, 15.9, 4.7, 5.3, 4),
+        (4.9, 9.7, 2.5, 2.7, 0), (9.3, 5.3, 2.6, 2.9, 1), (14.7, 5.3, 2.6, 2.9, 2), (19.1, 9.7, 2.5, 2.7, 3)]
     var body: some View {
-        let fill = LinearGradient(colors: [CatpawBrand.pawTop, CatpawBrand.pawBottom], startPoint: .top, endPoint: .bottom)
+        let u = size / 24
         ZStack {
-            ForEach(Array(PawShape.Part.allCases.enumerated()), id: \.offset) { i, part in
-                let down = i < pressed.count && pressed[i]
-                PawShape(part: part).fill(fill)
-                    .scaleEffect(down ? 0.9 : 1, anchor: anchor(part))
-                    .offset(y: down ? size * 0.03 : 0)
+            // contact shadow
+            Ellipse().fill(RadialGradient(colors: [CatpawBrand.clayShadow.opacity(shadow ? 0.28 : 0), CatpawBrand.clayShadow.opacity(0)],
+                                          center: .center, startRadius: 0, endRadius: 8 * u))
+                .frame(width: 16 * u, height: 3.2 * u).position(x: 12 * u, y: 22.2 * u)
+            ForEach(Array(Self.pads.enumerated()), id: \.offset) { _, pad in
+                let (cx, cy, rx, ry, index) = pad
+                let down = index < pressed.count && pressed[index]
+                Ellipse()
+                    .fill(RadialGradient(stops: [.init(color: CatpawBrand.clayLight, location: 0),
+                                                 .init(color: CatpawBrand.clayBase, location: 0.55),
+                                                 .init(color: CatpawBrand.clayRim, location: 1)],
+                                         center: UnitPoint(x: 0.36, y: 0.3), startRadius: 0, endRadius: max(rx, ry) * 2.1 * u))
+                    .frame(width: 2 * rx * u, height: 2 * ry * u)
+                    .scaleEffect(x: down ? 1.04 : 1, y: down ? 0.9 : 1, anchor: .bottom)
+                    .position(x: cx * u, y: cy * u + (down ? size * 0.03 : 0))
             }
         }
         .frame(width: size, height: size)
-        .compositingGroup()
-        .shadow(color: CatpawBrand.pawBottom.opacity(shadow ? 0.22 : 0), radius: size * 0.12, y: size * 0.06)
         .accessibilityHidden(true)
-    }
-    private func anchor(_ part: PawShape.Part) -> UnitPoint {
-        switch part { case .toe0: UnitPoint(x: 0.23, y: 0.42); case .toe1: UnitPoint(x: 0.40, y: 0.23)
-        case .toe2: UnitPoint(x: 0.60, y: 0.23); case .toe3: UnitPoint(x: 0.77, y: 0.42); case .pad: UnitPoint(x: 0.5, y: 0.66) }
     }
 }
 
