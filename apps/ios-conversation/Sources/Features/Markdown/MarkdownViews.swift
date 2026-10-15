@@ -137,7 +137,7 @@ struct MarkdownBlockView: View, Equatable {
                 .foregroundStyle(MarkdownTheme.ink.opacity(inkOpacity))
                 .padding(.top, level == 1 ? 8 : level == 2 ? 4 : 0)
                 .fixedSize(horizontal: false, vertical: true)
-                .textSelection(.enabled)
+                .catpawTextSelection()
                 .accessibilityAddTraits(.isHeader)
         case let .paragraph(text):
             paragraph(text)
@@ -154,7 +154,7 @@ struct MarkdownBlockView: View, Equatable {
                     }
                     .padding(.leading, CGFloat(item.depth) * listIndent)
                 }
-            }.textSelection(.enabled)
+            }.catpawTextSelection()
         case let .quote(children):
             HStack(alignment: .top, spacing: 12) {
                 RoundedRectangle(cornerRadius: 1.5).fill(MarkdownTheme.ink.opacity(0.15)).frame(width: 3)
@@ -185,7 +185,7 @@ struct MarkdownBlockView: View, Equatable {
             .foregroundStyle(MarkdownTheme.ink.opacity(inkOpacity))
             .fixedSize(horizontal: false, vertical: true)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .textSelection(.enabled)
+            .catpawTextSelection()
     }
 
     @ViewBuilder private func marker(_ item: MarkdownListItem) -> some View {
@@ -273,7 +273,7 @@ struct MarkdownBlockView: View, Equatable {
                     .lineSpacing(codeSize * 0.4)
                     .foregroundStyle(MarkdownTheme.ink)
                     .fixedSize(horizontal: true, vertical: true)
-                    .textSelection(.enabled)
+                    .catpawTextSelection()
                     .padding(.horizontal, 12).padding(.bottom, 12)
             }
             if lines.count > MarkdownTheme.codeCollapseLines {
@@ -364,7 +364,7 @@ struct MarkdownBlockView: View, Equatable {
             .frame(minWidth: 44, maxWidth: 280, alignment: alignment)
             .padding(.vertical, 8).padding(.horizontal, 12)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: alignment)
-            .textSelection(.enabled)
+            .catpawTextSelection()
     }
 }
 

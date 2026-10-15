@@ -51,9 +51,24 @@ extension View {
     func messageLongPress<Preview: View>(id: String, content: MessageLongPressContent, alignment: HorizontalAlignment = .leading,
                                         enabled: Bool = true, onReply: ((String) -> Void)? = nil,
                                         @ViewBuilder preview: @escaping () -> Preview) -> some View {
+        // #62: the long-press overlay owns the gesture (it has 选择文本), so inline system selection is off inside the row.
         modifier(MessageLongPressModifier(id: id, content: content, alignment: alignment, enabled: enabled, onReply: onReply, preview: preview))
+            .environment(\.catpawInlineSelection, !enabled)
     }
 }
+
+private struct CatpawInlineSelectionKey: EnvironmentKey { static let defaultValue = true }
+extension EnvironmentValues {
+    /// False inside rows that attach `.messageLongPress`; documents and readers keep system text selection.
+    var catpawInlineSelection: Bool { get { self[CatpawInlineSelectionKey.self] } set { self[CatpawInlineSelectionKey.self] = newValue } }
+}
+private struct CatpawTextSelectionModifier: ViewModifier {
+    @Environment(\.catpawInlineSelection) private var selectable
+    func body(content: Content) -> some View {
+        if selectable { content.textSelection(.enabled) } else { content.textSelection(.disabled) }
+    }
+}
+extension View { func catpawTextSelection() -> some View { modifier(CatpawTextSelectionModifier()) } }
 
 @MainActor struct MessageLongPressModifier<Preview: View>: ViewModifier {
     let id: String
@@ -121,6 +136,9 @@ extension View {
                     preview()
                         .allowsHitTesting(false)
                         .frame(maxWidth: .infinity, alignment: frameAlignment)
+                        // Long answers: show the head only (Grok-style), so the menu stays on screen without scrolling.
+                        .frame(maxHeight: UIScreen.main.bounds.height * 0.42, alignment: .top).clipped()
+                        .mask(LinearGradient(stops: [.init(color: .black, location: 0.82), .init(color: .black.opacity(0.15), location: 1)], startPoint: .top, endPoint: .bottom))
                         .scaleEffect(shown ? 1.03 : 1, anchor: alignment == .trailing ? .trailing : .leading)
                         .shadow(color: .black.opacity(shown ? 0.28 : 0), radius: 18, y: 8)
                     menu
@@ -128,6 +146,8 @@ extension View {
                 }
                 .padding(.horizontal, 16).padding(.vertical, 48)
                 .frame(maxWidth: .infinity, alignment: frameAlignment)
+                .frame(minHeight: UIScreen.main.bounds.height - 120)
+                .contentShape(Rectangle()).onTapGesture { dismiss() }
             }
             .scrollBounceBehavior(.basedOnSize)
         }
