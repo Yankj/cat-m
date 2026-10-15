@@ -11,6 +11,8 @@ import { createApnsSender } from '../_shared/proactive/apns.mjs';
 import { createDecisionService } from '../_shared/proactive/decision.mjs';
 import { createDecisionModel } from '../_shared/proactive/decision-model.mjs';
 import { parseQuietHours } from '../_shared/proactive/throttle.mjs';
+import { createEnrollmentRegistry } from '../_shared/enrollment/registry.mjs';
+import { createPgEnrollmentStore } from '../_shared/enrollment/pg-store.mjs';
 
 const env = (n: string) => Deno.env.get(n) ?? undefined;
 const cfg: any = readConfig(env);
@@ -20,9 +22,12 @@ const store = createPgStore(sql);
 const quietHours = parseQuietHours(env('CATPAW_PROACTIVE_QUIET_HOURS'));
 const dailyPushCap = Number(env('CATPAW_PROACTIVE_DAILY_PUSH_CAP') ?? 5) || 5;
 const log = (...a: unknown[]) => console.log('[catpaw-proactive]', ...a);
-// Memory: B1 catpaw.agent-memory.v1 (same gate CATPAW_AGENT_MEMORY_ENABLED + allowlist, same consent) via the adapter.
+// Same gate as catpaw-api: env allowlist OR feature_access.enrollments (unset env gate = 'allowlist'; 'true' = everyone).
+const enrolled = createEnrollmentRegistry({ store: createPgEnrollmentStore(sql), log });
+const allows = (gate: string, uid: string, feature: string) => featureAllows(gate, cfg.featureAllowlist, uid, enrolled, feature);
+// Memory: B1 catpaw.agent-memory.v1 (same gate CATPAW_AGENT_MEMORY_ENABLED + allowlist/enrollment, same consent) via the adapter.
 const memoryGate = cfg.agentMemory ?? 'off';
-const memory = memoryGate === 'off' ? null : createAgentMemoryRecall(createAgentMemoryService({ store: createPgAgentMemoryStore(sql), allow: (uid: string) => featureAllows(memoryGate, cfg.featureAllowlist, uid) }));
+const memory = memoryGate === 'off' ? null : createAgentMemoryRecall(createAgentMemoryService({ store: createPgAgentMemoryStore(sql), allow: (uid: string) => allows(memoryGate, uid, 'agent_memory') }));
 const decision = createDecisionService({ store, model: createDecisionModel({ get: env, log }), memory, log,
   config: { threshold: Number(env('CATPAW_PROACTIVE_CONFIDENCE_THRESHOLD') ?? 0.6), dedupeWindowSec: Number(env('CATPAW_PROACTIVE_DEDUPE_WINDOW_SEC') ?? 1800), quietHours, dailyCap: dailyPushCap } });
 const service = createProactiveService({
@@ -32,6 +37,7 @@ const service = createProactiveService({
   model: createReminderModel({ apiKey: cfg.modelKey ?? env('OPENROUTER_API_KEY'), route: cfg.route }),
   apns: createApnsSender({ keyId: env('APNS_KEY_ID'), teamId: env('APNS_TEAM_ID'), privateKeyPem: env('APNS_PRIVATE_KEY'), topic: env('APNS_BUNDLE_ID') }),
   quietHours, dailyPushCap,
+  allow: async (uid: string) => { await enrolled.fresh(); return allows(cfg.proactive ?? 'off', uid, 'proactive'); },
   log: (...a: unknown[]) => console.log('[catpaw-proactive]', ...a),
 });
 Deno.serve(req => service.handle(req));

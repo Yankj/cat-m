@@ -29,7 +29,7 @@ const turn=async(s,tid)=>(await s.f.json(await s.f.req(s.path+'/turns/'+tid))).t
 const CREATE={name:'calendar_create',arguments:{title:'牙医',start:'2026-10-20T09:00:00+08:00',end:'2026-10-20T10:00:00+08:00'}};
 
 test('gate default off; tool list follows plan §3.2; read-only tools need no card; result schema',()=>{
- assert.equal(readConfig(()=>undefined).deviceTools,'off');
+ assert.equal(readConfig(()=>undefined).deviceTools,'allowlist');
  assert.deepEqual(DEVICE_TOOL_NAMES,['calendar_list','calendar_create','reminder_create','mail_compose','sms_compose','phone_call','contacts_search','maps_open','shop_open','alarm_set','shortcut_run']);
  const tools=createDeviceTools();assert.equal(tools.get('calendar_list').confirm,'none');assert.equal(tools.get('contacts_search').confirm,'none');assert.equal(tools.get('calendar_create').confirm,'card');
  assert.throws(()=>tools.get('calendar_create').validate({title:'x'}));assert.throws(()=>tools.get('maps_open').validate({}));
