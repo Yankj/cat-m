@@ -334,6 +334,14 @@ public struct ConversationModelConsent: Sendable, Identifiable {
     public let routeHash: String
     public let expectedRevision: Int
 }
+public struct ConversationBusyRetryStatus: Sendable, Equatable {
+    public let attempt: Int
+    public let maxAttempts: Int
+    public let secondsRemaining: Int
+    /// true while an automatic retry is scheduled; false once retries are exhausted or cancelled (show manual retry).
+    public let automatic: Bool
+    public var message: String { automatic ? "模型繁忙，正在重试（\(attempt)/\(maxAttempts)）" : "模型繁忙，暂时没有回复。可以稍后点按重试。" }
+}
 public protocol ConversationBackend: Sendable {
     /// The server's authoritative chat transcript (user and assistant messages, server order), or nil when this
     /// backend has no server transcript. Used by `ConversationSessionService.syncServerTranscript`.

@@ -30,6 +30,33 @@ actor QueueHistoryBackend:ConversationBackend {
     }
     func observe(_ r:ConversationTurnRequest) async throws -> ConversationObservation {throw CatpawError.missing}
 }
+actor QueueBusyBackend:ConversationBackend {
+    var restarts=0
+    var succeedOnRestart=Int.max
+    func setSucceedOnRestart(_ n:Int){succeedOnRestart=n}
+    func connection(scope:DataScope) async -> ConversationConnection {.init(state:.providerUnverified,provider:"Synthetic busy",detail:"No external network")}
+    func reply(_ r:ConversationTurnRequest) async throws -> AsyncThrowingStream<ConversationTurnEvent,Error> {
+        AsyncThrowingStream {c in
+            c.yield(.init(operationID:r.operationID,epoch:r.epoch,sequence:1,payload:.started(requestHash:textHash(r.operationID.uuidString),conversationRevision:1,grantEpoch:1)))
+            c.yield(.init(operationID:r.operationID,epoch:r.epoch,sequence:2,payload:.failed(message:"rate_limited",reconciliationRequired:false),retryAfterSeconds:7))
+            c.finish()
+        }
+    }
+    func retryBusyTurn(_ r:ConversationTurnRequest,afterSequence:Int) async throws -> AsyncThrowingStream<ConversationTurnEvent,Error> {
+        restarts+=1
+        let ok=restarts>=succeedOnRestart,message=stableID("queue-busy-reply-\(r.operationID)"),body="Synthetic after busy"
+        return AsyncThrowingStream {c in
+            if ok {
+                c.yield(.init(operationID:r.operationID,epoch:r.epoch,sequence:afterSequence+1,payload:.textDelta(messageID:message,text:body)))
+                c.yield(.init(operationID:r.operationID,epoch:r.epoch,sequence:afterSequence+2,payload:.completed(messageID:message,finalTextHash:textHash(body))))
+            } else {
+                c.yield(.init(operationID:r.operationID,epoch:r.epoch,sequence:afterSequence+1,payload:.failed(message:"rate_limited",reconciliationRequired:false)))
+            }
+            c.finish()
+        }
+    }
+    func observe(_ r:ConversationTurnRequest) async throws -> ConversationObservation {throw CatpawError.missing}
+}
 actor QueueEditBackend:ConversationBackend {
     var admitting=false
     var finishes=true
@@ -195,6 +222,40 @@ actor QueueEditBackend:ConversationBackend {
         try check(synced && syncedSession.messages.map(\.id)==[serverOnlyUser.id,serverOnlyReply.id],"sync writes server-only messages into the local journal so the UI shows them")
         let second=try await ss.syncServerTranscript(scope:Profiles.user,conversationID:sc)
         try check(!second,"second sync is a no-op")
+        // Busy (turn_failed rate_limited): automatic retries restart the SAME turn (server busy-restart, limit 3),
+        // exponential backoff with jitter unless the server sent retry_after; status for "模型繁忙，正在重试（n/3）".
+        try check(ConversationSessionService.busyRetryDelay(attempt:1,retryAfterSeconds:nil,jitter:0)==2 && ConversationSessionService.busyRetryDelay(attempt:2,retryAfterSeconds:nil,jitter:0)==4 && ConversationSessionService.busyRetryDelay(attempt:3,retryAfterSeconds:nil,jitter:0)==8,"backoff doubles per attempt")
+        let jittered=ConversationSessionService.busyRetryDelay(attempt:2,retryAfterSeconds:nil,jitter:0.9)
+        try check(jittered>4 && jittered<6,"jitter stretches the delay by at most 50%")
+        try check(ConversationSessionService.busyRetryDelay(attempt:3,retryAfterSeconds:7,jitter:0)==7,"server retry_after wins over backoff")
+        try check(ConversationSessionService.busyRetryDelay(attempt:9,retryAfterSeconds:nil,jitter:0)==30,"backoff is capped")
+        let bb=QueueBusyBackend(),bs=ConversationSessionService(repository:repo,backend:bb),bc=try await bs.create(scope:Profiles.user)
+        let busyOp=UUID()
+        _=try? await bs.send(scope:Profiles.user,conversationID:bc,text:"忙吗",operationID:busyOp)
+        var busyStatus=await bs.busyRetryStatus(conversationID:bc)
+        try check(busyStatus?.automatic==true && busyStatus?.attempt==1 && busyStatus?.message=="模型繁忙，正在重试（1/3）" && (busyStatus?.secondsRemaining ?? 0)>=7,"rate_limited schedules automatic retry 1/3 honoring retry_after")
+        _=try? await bs.retryBusy(scope:Profiles.user,conversationID:bc,automatic:true)
+        busyStatus=await bs.busyRetryStatus(conversationID:bc)
+        try check(busyStatus?.automatic==true && busyStatus?.attempt==2,"second automatic retry is scheduled after a failed restart")
+        _=try? await bs.retryBusy(scope:Profiles.user,conversationID:bc,automatic:true)
+        _=try? await bs.retryBusy(scope:Profiles.user,conversationID:bc,automatic:true)
+        busyStatus=await bs.busyRetryStatus(conversationID:bc)
+        let restarts=await bb.restarts
+        let busySession=try await bs.read(scope:Profiles.user,conversationID:bc)
+        try check(restarts==3 && busyStatus?.automatic==false && busyStatus?.message.contains("点按重试")==true,"after 3 automatic retries the card switches to the manual retry entry")
+        try check(busySession.turns.count==1 && busySession.turns[0].id==busyOp && busySession.messages.filter{$0.role == .user}.count==1,"retries restart the same turn: one operationID, one user message")
+        await bb.setSucceedOnRestart(4)
+        _=try await bs.retryBusy(scope:Profiles.user,conversationID:bc,automatic:false)
+        let doneSession=try await bs.read(scope:Profiles.user,conversationID:bc)
+        let cleared=await bs.busyRetryStatus(conversationID:bc)
+        try check(doneSession.turns.first?.state == .completed && cleared==nil,"manual retry after exhaustion completes the same turn")
+        let cb=QueueBusyBackend(),cs=ConversationSessionService(repository:repo,backend:cb),cc=try await cs.create(scope:Profiles.user)
+        _=try? await cs.send(scope:Profiles.user,conversationID:cc,text:"取消我",operationID:UUID())
+        await cs.cancelBusyRetry(conversationID:cc)
+        let cancelled=await cs.busyRetryStatus(conversationID:cc)
+        let ticked=await cs.foregroundTick(scope:Profiles.user,conversationID:cc)
+        let cancelRestarts=await cb.restarts
+        try check(cancelled?.automatic==false && cancelRestarts==0 && !ticked,"user cancel stops automatic retries")
         print("EVIDENCE: migrated public queue behavior; transport actions in tests are explicit test closures")
     }
 }

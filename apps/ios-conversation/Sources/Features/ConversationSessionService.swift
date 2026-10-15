@@ -12,7 +12,18 @@ public actor ConversationSessionService {
     private let outbox: ConversationOutbox?
     private struct BusyRetry: Sendable { var due: Date; var operationID: UUID; var autoRetried: Bool }
     private var busyRetry: [UUID: BusyRetry] = [:]
-    private var autoRetryTurns: Set<UUID> = []
+    /// Automatic busy retries already spent per turn (server restarts the SAME turn in place, limit 3).
+    private var autoRetryCounts: [UUID: Int] = [:]
+    private var busyRetryCancelled: Set<UUID> = []
+    public static let maxAutomaticBusyRetries = 3
+    /// Exponential backoff with jitter for automatic busy retries; a server `retry_after_seconds` wins.
+    /// attempt is 1-based; jitter in 0..<1 (injected for tests).
+    public static func busyRetryDelay(attempt: Int, retryAfterSeconds: Int?, jitter: Double) -> TimeInterval {
+        let j = min(max(jitter, 0), 0.999)
+        if let retryAfterSeconds { return TimeInterval(max(1, min(retryAfterSeconds, 3600))) + j }
+        let base = min(30.0, 2.0 * pow(2.0, Double(max(1, attempt) - 1)))
+        return base * (1 + 0.5 * j)
+    }
     private var turnObservers: [UUID: AsyncStream<ConversationTurnEvent>.Continuation] = [:]
     private var emittedCancellations: Set<UUID> = []
     private var cancelling: Set<UUID> = []
@@ -324,7 +335,11 @@ public actor ConversationSessionService {
         if let last = saved.turns.last, last.id == operationID, last.state == .failed, last.error == Self.rateLimitedCode {
             // R7 busy: countdown, then one automatic retry (see foregroundTick); never for an auto-retried turn.
             let wait = max(1, last.retryAfterSeconds ?? 20)
-            busyRetry[conversationID] = BusyRetry(due: Date().addingTimeInterval(TimeInterval(wait)), operationID: operationID, autoRetried: autoRetryTurns.contains(operationID))
+            let spent = autoRetryCounts[operationID] ?? 0
+            let exhausted = spent >= Self.maxAutomaticBusyRetries || busyRetryCancelled.contains(operationID)
+            let busyDelay = exhausted ? TimeInterval(wait) : Self.busyRetryDelay(attempt: spent + 1, retryAfterSeconds: last.retryAfterSeconds, jitter: Double.random(in: 0..<1))
+            sendDiagnostic("catpaw.send busy retry scheduled op=\(operationID.uuidString.prefix(8)) attempt=\(spent + 1)/\(Self.maxAutomaticBusyRetries) exhausted=\(exhausted) delay=\(Int(busyDelay.rounded(.up)))")
+            busyRetry[conversationID] = BusyRetry(due: Date().addingTimeInterval(busyDelay), operationID: operationID, autoRetried: exhausted)
             await resilience?.busy(retryIn: wait)
         }
         if saved.turns.last?.state == .completed { try? await outbox?.remove(operationID); await backend.recordCommittedReply(request);return operationID }
@@ -564,6 +579,20 @@ public actor ConversationSessionService {
         guard let entry = busyRetry[conversationID], !entry.autoRetried else { return nil }
         return max(0, Int(entry.due.timeIntervalSinceNow.rounded(.up)))
     }
+    /// UI state for the busy card: "模型繁忙，正在重试（n/3）" while automatic retries remain, then a friendly
+    /// error with the manual "现在重试" entry (retryBusy automatic:false).
+    public func busyRetryStatus(conversationID: UUID) -> ConversationBusyRetryStatus? {
+        guard let entry = busyRetry[conversationID] else { return nil }
+        let spent = autoRetryCounts[entry.operationID] ?? 0
+        return ConversationBusyRetryStatus(attempt: min(spent + 1, Self.maxAutomaticBusyRetries), maxAttempts: Self.maxAutomaticBusyRetries,
+                                           secondsRemaining: max(0, Int(entry.due.timeIntervalSinceNow.rounded(.up))), automatic: !entry.autoRetried)
+    }
+    /// User cancel: stop automatic retries for the pending busy turn (manual retry stays available).
+    public func cancelBusyRetry(conversationID: UUID) {
+        guard var entry = busyRetry[conversationID] else { return }
+        busyRetryCancelled.insert(entry.operationID); entry.autoRetried = true; busyRetry[conversationID] = entry
+        sendDiagnostic("catpaw.send busy retry cancelled op=\(entry.operationID.uuidString.prefix(8))")
+    }
     /// "现在重试" / "换一个免费模型": only for a turn the server reported as `failed{rate_limited}`
     /// before any assistant output. That original turn is terminal, so this is a new turn with the
     /// same text, never a resend of an accepted POST. `route` sets the DEBUG developer route first.
@@ -578,7 +607,7 @@ public actor ConversationSessionService {
               original.state == .failed, original.error == Self.rateLimitedCode,
               original.assistantMessageID == nil, Self.isPlain(original.request) else { return nil }
         if let route { route.select() }
-        if automatic { autoRetryTurns.insert(original.id) }
+        if automatic { autoRetryCounts[original.id, default: 0] += 1 } else { busyRetryCancelled.remove(original.id) }
         await resilience?.clearBusy()
         let observationToken = UUID(); active[conversationID] = observationToken
         defer { if active[conversationID] == observationToken { active.removeValue(forKey: conversationID) } }
@@ -697,6 +726,7 @@ public actor ConversationSessionService {
     /// grant_epoch (GET …/conversations/{c}) before every POST.
     @discardableResult
     public func cancelCurrentTurn(scope: DataScope, conversationID: UUID) async throws -> ConversationTurnCancelOutcome {
+        cancelBusyRetry(conversationID: conversationID)
         guard !cancelling.contains(conversationID) else { throw ConversationSessionError.busy }
         guard let target = try await read(scope: scope, conversationID: conversationID).unresolved else { return .noActiveTurn }
         cancelling.insert(conversationID)
@@ -708,7 +738,7 @@ public actor ConversationSessionService {
         let operationID = target.id
         // A user stop is never resent automatically.
         if busyRetry[conversationID]?.operationID == operationID { busyRetry[conversationID] = nil; await resilience?.clearBusy() }
-        autoRetryTurns.remove(operationID)
+        autoRetryCounts.removeValue(forKey: operationID); busyRetryCancelled.remove(operationID)
         if let outbox { try? await outbox.remove(operationID); await resilience?.outboxChanged(pending: await outbox.entries().map(\.id)) }
         await resilience?.settled()
 
