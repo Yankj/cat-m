@@ -265,15 +265,15 @@ private struct StreamCursor: View {
                 }
                 .accessibilityIdentifier("chat.answer.sources")
             }
-            HStack(spacing: 4) {
-                Button { UIPasteboard.general.string = text; copied += 1 } label: { Image(systemName: "doc.on.doc").touchTarget() }
+            HStack(spacing: 14) {
+                Button { UIPasteboard.general.string = text; copied += 1 } label: { Image(systemName: "doc.on.doc").answerActionIcon() }
                     .accessibilityLabel(ui("复制回复")).sensoryFeedback(.success, trigger: copied)
-                ShareLink(item: text) { Image(systemName: "square.and.arrow.up").touchTarget() }
+                ShareLink(item: text) { Image(systemName: "square.and.arrow.up").answerActionIcon() }
                     .accessibilityLabel(ui("分享回复"))
-                Button { onQuote(text) } label: { Image(systemName: "quote.bubble").touchTarget() }
+                Button { onQuote(text) } label: { Image(systemName: "quote.bubble").answerActionIcon() }
                     .accessibilityLabel(ui("引用到草稿")).disabled(!canQuote)
                 if let onRegenerate {
-                    Button(action: onRegenerate) { Image(systemName: "arrow.clockwise").touchTarget() }
+                    Button(action: onRegenerate) { Image(systemName: "arrow.clockwise").answerActionIcon() }
                         .accessibilityLabel(ui("重新生成"))
                 }
                 Spacer(minLength: 0)

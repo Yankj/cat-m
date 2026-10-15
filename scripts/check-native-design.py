@@ -110,13 +110,14 @@ def check(sources, spec):
     require(COMPONENTS, primary, r"\.foregroundStyle\(\s*isEnabled\s*\?\s*CatpawColors\.onInk\b", "primary action foreground must use onInk")
     require(COMPONENTS, primary, r"\.background\(\s*isEnabled\s*\?\s*CatpawColors\.ink\b", "primary approval/action background must use ink")
 
-    composer = body(sources[FIRST], r"\bfunc\s+composer\s*\(")
-    require(FIRST, composer, r"\.foregroundStyle\(\s*canSendDraft\s*\?\s*CatpawColors\.sendIcon\b", "enabled send glyph must use sendIcon independently of primary actions")
-    require(FIRST, composer, r"\.background\(\s*canSendDraft\s*\?\s*CatpawBrand\.paw\b", "enabled send background must use the paw brand token")
-    require(FIRST, composer, r"\.strokeBorder\(\s*CatpawColors\.controlEdge\b", "composer control boundary must use controlEdge, not a decorative separator")
-    send_button = body(sources[CHROME], r"\bstruct\s+ComposerSendButton\b")
-    require(CHROME, send_button, r"\.background\(\s*mode\s*==\s*\.disabled\s*\?\s*CatpawColors\.separator\s*:\s*CatpawBrand\.paw\b", "composer send, stop and queue backgrounds must use the paw brand token")
-    require(CHROME, send_button, r"\.foregroundStyle\(\s*CatpawBrand\.paw\s*\)\.background\(\s*CatpawColors\.background", "composer queue badge must use the paw brand token")
+    # r8 composer (design-owner approved): one ComposerTrailingControls view owns send/stop/voice.
+    # Send = paw brand token + sendIcon glyph; stop and voice = ink circle; queue badge ink on background.
+    # No controlEdge separator requirement (single pill with hairline).
+    trailing = body(sources[CHROME], r"\bstruct\s+ComposerTrailingControls\b")
+    require(CHROME, trailing, r"\.foregroundStyle\(\s*CatpawColors\.sendIcon\s*\)\s*\n\s*\.frame\(width:\s*size,\s*height:\s*size\)\s*\n?\s*\.background\(\s*canSend", "enabled send glyph must use sendIcon")
+    require(CHROME, trailing, r"\.background\(\s*canSend\s*\?\s*CatpawBrand\.paw\b", "enabled send background must use the paw brand token")
+    require(CHROME, trailing, r"RoundedRectangle\([^\n]*\n[^\n]*\.background\(\s*CatpawColors\.ink\s*,\s*in:\s*Circle\(\)\)", "stop background must be ink")
+    require(CHROME, trailing, r"\.foregroundStyle\(\s*CatpawColors\.ink\s*\)\s*\n\s*\.padding\(2\)\.background\(\s*CatpawColors\.background", "composer queue badge must be ink on background")
     message = body(sources[FIRST], r"\bfunc\s+messageView\s*\(")
     user = body(message, r"\bif\s+message\.role\s*==\s*\.user\b")
     require(FIRST, user, r"\.foregroundStyle\(\s*CatpawColors\.userMessageInk\s*\)", "user text must use its paired userMessageInk")
@@ -161,13 +162,12 @@ def self_test(sources, spec):
     tests = [
         (COMPONENTS, "light: 0xFFFFFF, dark: 0x050505", "light: 0xF7F8FA, dark: 0x111214", "R5 role background"),
         (COMPONENTS, "static let accent = action", "static let accent = ink", "compatibility alias"),
-        (FIRST, "CatpawColors.sendIcon", "CatpawColors.onInk", "enabled send glyph"),
-        (FIRST, "CatpawBrand.paw", "CatpawColors.action", "enabled send background"),
-        (CHROME, ": CatpawBrand.paw, in: Circle())", ": CatpawColors.send, in: Circle())", "send, stop and queue backgrounds"),
-        (CHROME, ".foregroundStyle(CatpawBrand.paw).background(CatpawColors.background", ".foregroundStyle(CatpawColors.ink).background(CatpawColors.background", "queue badge"),
+        (CHROME, ".foregroundStyle(CatpawColors.sendIcon)\n                            .frame", ".foregroundStyle(CatpawColors.onInk)\n                            .frame", "enabled send glyph"),
+        (CHROME, "canSend ? CatpawBrand.paw", "canSend ? CatpawColors.action", "enabled send background"),
+        (CHROME, "frame(width: 12, height: 12)\n                        .frame(width: size, height: size).background(CatpawColors.ink", "frame(width: 12, height: 12)\n                        .frame(width: size, height: size).background(CatpawBrand.paw", "stop background"),
+        (CHROME, ".foregroundStyle(CatpawColors.ink)\n                                .padding(2)", ".foregroundStyle(CatpawBrand.paw)\n                                .padding(2)", "queue badge"),
         (FIRST, "CatpawColors.userMessageInk", "CatpawColors.ink", "user text"),
         (FIRST, "CatpawColors.userMessageBackground", "CatpawColors.input", "user bubble"),
-        (FIRST, "strokeBorder(CatpawColors.controlEdge", "strokeBorder(CatpawColors.separator", "control boundary"),
         (STREAM, "CatpawTypography.readingLineSpacing(for:newFont)", "6", "streaming TextKit"),
         (SIDEBAR, "light: 0xF5F5F5, dark: 0x141414", "light: 0xFFFFFF, dark: 0x1B1D21", "SidebarTheme.panel"),
         (PANEL, "selected ? theme.selection", "selected ? theme.input", "sidebar selection"),
@@ -179,8 +179,8 @@ def self_test(sources, spec):
         assert any(expected in message for _, message in check(changed, spec)), (path, expected)
     # A comment/string mentioning the right role cannot satisfy a missing binding.
     changed = dict(sources)
-    changed[FIRST] = sources[FIRST].replace("CatpawColors.sendIcon", "CatpawColors.onInk") + '\n// .foregroundStyle(canSendDraft ? CatpawColors.sendIcon : CatpawColors.secondary)\nlet decoy = ".foregroundStyle(canSendDraft ? CatpawColors.sendIcon : CatpawColors.secondary)"\n'
-    assert any("enabled send glyph" in message for _, message in check(changed, spec))
+    changed[CHROME] = sources[CHROME].replace("canSend ? CatpawBrand.paw", "canSend ? CatpawColors.action") + '\n// .background(canSend ? CatpawBrand.paw\nlet decoy = ".background(canSend ? CatpawBrand.paw"\n'
+    assert any("enabled send background" in message for _, message in check(changed, spec))
     changed = dict(sources)
     changed[STREAM] += "\nlet rogue = Color(red: 0.1, green: 0.2, blue: 0.3)\n"
     assert any("host palette literals" in message for _, message in check(changed, spec))
