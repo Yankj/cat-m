@@ -491,6 +491,10 @@
     "en": "Allow use in later simulated preparation",
     "zh-Hans": "允许用于后续模拟准备"
   },
+  "允许网络后可读取当前工作区的任务与成果。": {
+    "en": "Allow network access to read tasks and results in this workspace.",
+    "zh-Hans": "允许网络后可读取当前工作区的任务与成果。"
+  },
   "允许重新学习曾明确忘记的主题": {
     "en": "Allow learning a previously forgotten topic again",
     "zh-Hans": "允许重新学习曾明确忘记的主题"
@@ -707,6 +711,10 @@
     "en": "Weighted score = sum of score × weight / total weight",
     "zh-Hans": "加权结果 = 得分 × 权重之和 / 总权重"
   },
+  "加载更多": {
+    "en": "Load more",
+    "zh-Hans": "加载更多"
+  },
   "助理 · 模拟回复": {
     "en": "Assistant · simulated reply",
     "zh-Hans": "助理 · 模拟回复"
@@ -771,6 +779,18 @@
     "en": "Requested URL",
     "zh-Hans": "原始网址"
   },
+  "原对话": {
+    "en": "Original conversation",
+    "zh-Hans": "原对话"
+  },
+  "原对话尚未保存在本机，可继续查阅这份成果。": {
+    "en": "The original conversation is not saved on this device. You can still read this result.",
+    "zh-Hans": "原对话尚未保存在本机，可继续查阅这份成果。"
+  },
+  "原对话未切换，但本机恢复点未能还原。当前草稿仍保留。": {
+    "en": "The conversation was not switched, but its local restore point could not be restored. Your draft is preserved.",
+    "zh-Hans": "原对话未切换，但本机恢复点未能还原。当前草稿仍保留。"
+  },
   "原对话版本或授权已变化，未修改原有限请求。": {
     "en": "The original conversation version or authorization has changed. The original bounded request was not altered.",
     "zh-Hans": "原对话版本或授权已变化，未修改原有限请求。"
@@ -778,6 +798,10 @@
   "原工作授权已变化，不能恢复这份工作。": {
     "en": "The original task authorization has changed. This task cannot resume.",
     "zh-Hans": "原工作授权已变化，不能恢复这份工作。"
+  },
+  "原工作授权已失效，查阅不代表可以继续执行。": {
+    "en": "The original work authorization has expired. Reading it does not permit continued execution.",
+    "zh-Hans": "原工作授权已失效，查阅不代表可以继续执行。"
   },
   "原工作期限已到或不足以覆盖执行预算，未扩大期限。": {
     "en": "The original deadline has expired or cannot cover the execution budget. It was not extended.",
@@ -1023,6 +1047,10 @@
     "en": "Back to conversation",
     "zh-Hans": "回到会话"
   },
+  "回到原对话": {
+    "en": "Return to original conversation",
+    "zh-Hans": "回到原对话"
+  },
   "回到最新": {
     "en": "Jump to latest",
     "zh-Hans": "回到最新"
@@ -1090,6 +1118,10 @@
   "在设置开启演示数据分区，并切换到本机。": {
     "en": "Enable the demo partition in Settings and select On Device.",
     "zh-Hans": "在设置开启演示数据分区，并切换到本机。"
+  },
+  "处理进展待核对": {
+    "en": "Processing status needs checking",
+    "zh-Hans": "处理进展待核对"
   },
   "复制会话 ID": {
     "en": "Copy conversation ID",
@@ -1242,6 +1274,10 @@
   "工作失败": {
     "en": "Task failed",
     "zh-Hans": "工作失败"
+  },
+  "工作已中断": {
+    "en": "Work interrupted",
+    "zh-Hans": "工作已中断"
   },
   "工作已取消": {
     "en": "Task cancelled",
@@ -1398,6 +1434,10 @@
   "已取消处理，原有附件保留。": {
     "en": "Processing canceled. The existing attachment is retained.",
     "zh-Hans": "已取消处理，原有附件保留。"
+  },
+  "已受理的工作会出现在这里。": {
+    "en": "Accepted work will appear here.",
+    "zh-Hans": "已受理的工作会出现在这里。"
   },
   "已受理，待核验": {
     "en": "Accepted; verification pending",
@@ -1595,9 +1635,21 @@
     "en": "This conversation has no results yet",
     "zh-Hans": "当前对话还没有成果"
   },
+  "当前工作区的任务": {
+    "en": "Tasks in this workspace",
+    "zh-Hans": "当前工作区的任务"
+  },
   "当前工作区的对话": {
     "en": "Conversations in this workspace",
     "zh-Hans": "当前工作区的对话"
+  },
+  "当前工作区的成果": {
+    "en": "Results in this workspace",
+    "zh-Hans": "当前工作区的成果"
+  },
+  "当前已读取的工作还没有成果，可以加载更多。": {
+    "en": "The work read so far has no results. You can load more.",
+    "zh-Hans": "当前已读取的工作还没有成果，可以加载更多。"
   },
   "当前性无法确认，这份事项不能批准。": {
     "en": "Current validity is unconfirmed. This item cannot be approved.",
@@ -1667,6 +1719,18 @@
     "en": "No camera is available on this device. Import an image from files instead.",
     "zh-Hans": "当前设备没有可用相机。可从文件导入图片。"
   },
+  "当前账号不能读取这份工作，旧的查收快照已移除。": {
+    "en": "This account cannot read this work. The previous inbox snapshot was removed.",
+    "zh-Hans": "当前账号不能读取这份工作，旧的查收快照已移除。"
+  },
+  "当前账号无权访问这些工作。": {
+    "en": "This account cannot access this work.",
+    "zh-Hans": "当前账号无权访问这些工作。"
+  },
+  "当前连接暂不支持跨对话查收。": {
+    "en": "This connection does not support reading work across conversations yet.",
+    "zh-Hans": "当前连接暂不支持跨对话查收。"
+  },
   "当前连接暂不支持针对成果继续，草稿已保留。": {
     "en": "This connection does not support continuing from a result yet. Your draft is kept.",
     "zh-Hans": "当前连接暂不支持针对成果继续，草稿已保留。"
@@ -1702,6 +1766,10 @@
   "待发送 · {0} 条": {
     "en": "Awaiting send · {0}",
     "zh-Hans": "待发送 · {0} 条"
+  },
+  "待处理 {0} 项": {
+    "en": "{0} items need attention",
+    "zh-Hans": "待处理 {0} 项"
   },
   "待审批 · 查看冻结预览": {
     "en": "Approval pending · view frozen preview",
@@ -2251,6 +2319,14 @@
     "en": "No reminder",
     "zh-Hans": "无提醒"
   },
+  "无法回到原对话。当前草稿仍保留，请重新读取后再试。": {
+    "en": "Unable to return to the original conversation. Your draft is preserved. Read again and retry.",
+    "zh-Hans": "无法回到原对话。当前草稿仍保留，请重新读取后再试。"
+  },
+  "无法读取工作列表": {
+    "en": "Unable to read the work list",
+    "zh-Hans": "无法读取工作列表"
+  },
   "无法读取文件": {
     "en": "Unable to read file",
     "zh-Hans": "无法读取文件"
@@ -2258,6 +2334,10 @@
   "无法读取这张图片。请选择其他静态图片。": {
     "en": "Cannot read this image. Choose another still image.",
     "zh-Hans": "无法读取这张图片。请选择其他静态图片。"
+  },
+  "无法读取这项工作": {
+    "en": "Unable to read this work",
+    "zh-Hans": "无法读取这项工作"
   },
   "无项目": {
     "en": "No project",
@@ -2326,6 +2406,10 @@
   "显示 {0} / {1} 行": {
     "en": "Showing {0} / {1} rows",
     "zh-Hans": "显示 {0} / {1} 行"
+  },
+  "显示上次读取的内容；本次尚未完成更新。": {
+    "en": "Showing the last read. This update has not completed.",
+    "zh-Hans": "显示上次读取的内容；本次尚未完成更新。"
   },
   "显示已保存事项；当前性尚未核对。": {
     "en": "Showing saved items. Their current validity has not been checked.",
@@ -2799,6 +2883,18 @@
     "en": "Build",
     "zh-Hans": "构建号"
   },
+  "查收列表已变化，请重新读取后打开。": {
+    "en": "The work list has changed. Read again before opening.",
+    "zh-Hans": "查收列表已变化，请重新读取后打开。"
+  },
+  "查收已停止，请在当前账号恢复连接后读取。": {
+    "en": "Work retrieval has stopped. Reconnect this account to read again.",
+    "zh-Hans": "查收已停止，请在当前账号恢复连接后读取。"
+  },
+  "查收记录或成果身份核对失败，请重新读取。": {
+    "en": "The work or result identity could not be verified. Read again.",
+    "zh-Hans": "查收记录或成果身份核对失败，请重新读取。"
+  },
   "查看、编辑或暂停本机待发消息": {
     "en": "Review, edit or pause messages queued on this device",
     "zh-Hans": "查看、编辑或暂停本机待发消息"
@@ -3015,6 +3111,10 @@
     "en": "Processing the image…",
     "zh-Hans": "正在处理图片…"
   },
+  "正在处理请求…": {
+    "en": "Processing the request…",
+    "zh-Hans": "正在处理请求…"
+  },
   "正在复核登录…": {
     "en": "Checking your session…",
     "zh-Hans": "正在复核登录…"
@@ -3067,6 +3167,14 @@
     "en": "Waiting for simulated reply…",
     "zh-Hans": "正在等待模拟回复…"
   },
+  "正在读取下一页，请稍候。": {
+    "en": "Reading the next page. Please wait.",
+    "zh-Hans": "正在读取下一页，请稍候。"
+  },
+  "正在读取任务": {
+    "en": "Reading tasks",
+    "zh-Hans": "正在读取任务"
+  },
   "正在读取合成成果": {
     "en": "Reading synthetic results",
     "zh-Hans": "正在读取合成成果"
@@ -3094,6 +3202,10 @@
   "正在读取计划": {
     "en": "Reading plan",
     "zh-Hans": "正在读取计划"
+  },
+  "正在返回原对话…": {
+    "en": "Returning to the original conversation…",
+    "zh-Hans": "正在返回原对话…"
   },
   "正在进行": {
     "en": "In progress",
@@ -3482,6 +3594,10 @@
   "等待后台保存任务…": {
     "en": "Waiting for the server to save the task…",
     "zh-Hans": "等待后台保存任务…"
+  },
+  "等待审批": {
+    "en": "Awaiting approval",
+    "zh-Hans": "等待审批"
   },
   "等待开始": {
     "en": "Waiting to start",
@@ -3927,6 +4043,10 @@
     "en": "Enter numbers within the allowed range; the step count must be an integer.",
     "zh-Hans": "请输入范围内的数值；步骤数量须为整数。"
   },
+  "请返回原对话继续修改或管理这项工作。": {
+    "en": "Return to the original conversation to edit or manage this work.",
+    "zh-Hans": "请返回原对话继续修改或管理这项工作。"
+  },
   "请返回当前环境目录。": {
     "en": "Return to this environment's catalog.",
     "zh-Hans": "请返回当前环境目录。"
@@ -4215,6 +4335,10 @@
     "en": "Check connection again",
     "zh-Hans": "重新检查连接"
   },
+  "重新读取": {
+    "en": "Read again",
+    "zh-Hans": "重新读取"
+  },
   "重新读取所选图片": {
     "en": "Read selected image again",
     "zh-Hans": "重新读取所选图片"
@@ -4354,13 +4478,5 @@
   "，草稿，": {
     "en": ", draft, ",
     "zh-Hans": "，草稿，"
-  },
-  "正在处理请求…": {
-    "en": "Processing the request…",
-    "zh-Hans": "正在处理请求…"
-  },
-  "处理进展待核对": {
-    "en": "Processing status needs checking",
-    "zh-Hans": "处理进展待核对"
   }
 }
