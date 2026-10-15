@@ -1219,3 +1219,146 @@ private struct NativeFixedVisionRoute:Decodable {
  let provider:String;let downstream_provider:String;let model:String;let free:Bool;let zero_retention_claim:Bool;let privacy_notice_version:Int;let retention:Retention;let routing_policy:Policy
  var matchesSupportedNotice:Bool {provider=="OpenRouter" && downstream_provider=="Google AI Studio" && model=="google/gemma-4-31b-it:free" && free && !zero_retention_claim && privacy_notice_version==1 && retention.days==55 && retention.human_review_possible && routing_policy.only==["google-ai-studio"] && !routing_policy.allow_fallbacks && routing_policy.require_parameters && routing_policy.data_collection=="deny" && routing_policy.max_price==["prompt":0,"completion":0,"request":0,"image":0]}
 }
+
+// MARK: - catpaw.chat-attachments.v1 client (services/edge/docs/attachments-contract.md)
+
+/// Upload progress / state for the composer chip.
+public enum ChatAttachmentUploadState: Sendable, Equatable {
+    case creating
+    case uploading(fraction: Double)
+    case completing
+    case ready(attachmentID: UUID)
+    case failed(message: String)
+}
+public enum ChatAttachmentUploadError: Error, Sendable, Equatable, LocalizedError {
+    case unsupportedType, tooLarge, rejected(String), expired, notConfigured, server(Int, String)
+    public var errorDescription: String? {
+        switch self {
+        case .unsupportedType: return "只支持 PNG 或 JPEG 图片。"
+        case .tooLarge: return "图片超过 5 MB，请换一张或裁小后再试。"
+        case .rejected: return "图片未通过校验，请重新选择。"
+        case .expired: return "上传已过期，请重新添加图片。"
+        case .notConfigured: return "图片上传尚未配置。"
+        case .server: return "图片上传未完成，请稍后重试。"
+        }
+    }
+}
+/// A ready attachment: put `id` into the turn's `message.attachment_ids` (schema_version 2). Single use:
+/// once a turn is accepted it is consumed; if that turn fails, upload the same local bytes again under a new id.
+public struct ChatAttachmentReceipt: Sendable, Equatable {
+    public let id: UUID
+    public let mimeType: String
+    public let sizeBytes: Int
+    public let sha256: String
+    public let width: Int?
+    public let height: Int?
+}
+/// Minimal HTTP seam so the flow is testable without network. `progress` reports upload fractions (PUT only).
+public protocol ChatAttachmentTransport: Sendable {
+    func send(_ request: URLRequest, body: Data?, progress: (@Sendable (Double) -> Void)?) async throws -> (status: Int, body: Data)
+}
+public final class URLSessionChatAttachmentTransport: NSObject, ChatAttachmentTransport, @unchecked Sendable {
+    private let session: URLSession
+    public init(configuration: URLSessionConfiguration = .ephemeral) { session = URLSession(configuration: configuration) }
+    private final class Progress: NSObject, URLSessionTaskDelegate, @unchecked Sendable {
+        let report: @Sendable (Double) -> Void
+        init(_ report: @escaping @Sendable (Double) -> Void) { self.report = report }
+        func urlSession(_ session: URLSession, task: URLSessionTask, didSendBodyData bytesSent: Int64, totalBytesSent: Int64, totalBytesExpectedToSend: Int64) {
+            guard totalBytesExpectedToSend > 0 else { return }
+            report(min(1, Double(totalBytesSent) / Double(totalBytesExpectedToSend)))
+        }
+        // Signed URLs are credentials: never follow redirects.
+        func urlSession(_ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse, newRequest request: URLRequest) async -> URLRequest? { nil }
+    }
+    public func send(_ request: URLRequest, body: Data?, progress: (@Sendable (Double) -> Void)?) async throws -> (status: Int, body: Data) {
+        let delegate = progress.map { Progress($0) }
+        let (data, response): (Data, URLResponse)
+        if let body { (data, response) = try await session.upload(for: request, from: body, delegate: delegate) }
+        else { (data, response) = try await session.data(for: request, delegate: delegate) }
+        guard let http = response as? HTTPURLResponse else { throw ChatAttachmentUploadError.server(0, "no_http_response") }
+        return (http.statusCode, data)
+    }
+}
+/// create → PUT signed URL → complete. Bytes must already be prepared by the composer encoder
+/// (`SystemImageAttachmentEncoder`: transcode to PNG/JPEG, strip metadata, ≤2048 px); this layer re-checks
+/// type and the 5 MiB limit and never logs the signed URL.
+public actor ChatAttachmentUploader {
+    public static let maxBytes = 5 * 1024 * 1024
+    private let configuration: NativeChatConfiguration
+    private let credentials: any NativeChatSessionCredentials
+    private let transport: any ChatAttachmentTransport
+    private let pause: @Sendable (Double) async -> Void
+    public init(configuration: NativeChatConfiguration, credentials: any NativeChatSessionCredentials, transport: any ChatAttachmentTransport = URLSessionChatAttachmentTransport(),
+                pause: @escaping @Sendable (Double) async -> Void = { try? await Task.sleep(nanoseconds: UInt64($0 * 1_000_000_000)) }) {
+        self.configuration = configuration; self.credentials = credentials; self.transport = transport; self.pause = pause
+    }
+    public static func mimeType(of bytes: Data) -> String? {
+        let head = Array(bytes.prefix(8))
+        if head == [137, 80, 78, 71, 13, 10, 26, 10] { return "image/png" }
+        if head.starts(with: [255, 216, 255]) { return "image/jpeg" }
+        return nil
+    }
+    /// Uploads `bytes` and returns a ready receipt. `attachmentID` defaults to a fresh id; pass a new id (the
+    /// default) when retrying after a failed turn. One automatic restart under a new id on `410 attachment_expired`.
+    public func upload(_ bytes: Data, scope: DataScope, attachmentID: UUID = UUID(), onState: @escaping @Sendable (ChatAttachmentUploadState) -> Void = { _ in }) async throws -> ChatAttachmentReceipt {
+        do { return try await attempt(bytes, scope: scope, id: attachmentID, onState: onState) }
+        catch ChatAttachmentUploadError.expired {
+            do { return try await attempt(bytes, scope: scope, id: UUID(), onState: onState) }
+            catch { onState(.failed(message: error.localizedDescription)); throw error }
+        }
+        catch { onState(.failed(message: error.localizedDescription)); throw error }
+    }
+    /// Turn message body for schema_version 2 with uploaded attachment ids.
+    public static func turnMessage(id: UUID, text: String, attachments: [ChatAttachmentReceipt]) -> [String: Any] {
+        ["id": id.uuidString.lowercased(), "text": text, "attachment_ids": attachments.map { $0.id.uuidString.lowercased() }]
+    }
+    private var base: String { "/catpaw/chat/v1/scopes/" + configuration.serverScopeID.uuidString.lowercased() + "/attachments" }
+    private func attempt(_ bytes: Data, scope: DataScope, id: UUID, onState: @escaping @Sendable (ChatAttachmentUploadState) -> Void) async throws -> ChatAttachmentReceipt {
+        guard let mime = Self.mimeType(of: bytes) else { throw ChatAttachmentUploadError.unsupportedType }
+        guard bytes.count <= Self.maxBytes else { throw ChatAttachmentUploadError.tooLarge }
+        guard configuration.publishableKey != nil, scope == configuration.localScope else { throw ChatAttachmentUploadError.notConfigured }
+        let sha = bytesHash(bytes), idText = id.uuidString.lowercased()
+        let auth = try await credentials.authorization(scope: scope)
+        onState(.creating)
+        var create = try configuration.makeRequest(route: base, authorization: auth); create.httpMethod = "POST"
+        let createBody = try JSONSerialization.data(withJSONObject: ["attachment_id": idText, "mime_type": mime, "size_bytes": bytes.count, "sha256": sha], options: [.sortedKeys])
+        let created = try await transport.send(create, body: createBody, progress: nil)
+        let createdJSON = try Self.check(created, expect: [200, 201])
+        guard let attachment = createdJSON["attachment"] as? [String: Any], attachment["id"] as? String == idText,
+              attachment["sha256"] as? String == sha, attachment["size_bytes"] as? Int == bytes.count else { throw ChatAttachmentUploadError.server(created.status, "attachment_mismatch") }
+        if attachment["state"] as? String == "pending" {
+            guard let upload = createdJSON["upload"] as? [String: Any], upload["method"] as? String == "PUT", let urlText = upload["url"] as? String,
+                  let url = URL(string: urlText), url.scheme == "https", let headers = upload["headers"] as? [String: String] else { throw ChatAttachmentUploadError.server(created.status, "upload_missing") }
+            var put = URLRequest(url: url); put.httpMethod = "PUT"; put.timeoutInterval = 120
+            for (key, value) in headers { put.setValue(value, forHTTPHeaderField: key) }
+            onState(.uploading(fraction: 0))
+            let uploaded = try await transport.send(put, body: bytes, progress: { onState(.uploading(fraction: $0)) })
+            guard (200..<300).contains(uploaded.status) else { throw ChatAttachmentUploadError.server(uploaded.status, "upload_failed") }
+            onState(.uploading(fraction: 1))
+        }
+        onState(.completing)
+        var tries = 0
+        while true {
+            var complete = try configuration.makeRequest(route: base + "/" + idText + "/complete", authorization: auth); complete.httpMethod = "POST"
+            let done = try await transport.send(complete, body: Data("{}".utf8), progress: nil)
+            if done.status == 409, Self.code(done.body) == "attachment_upload_missing", tries < 3 { tries += 1; await pause(Double(tries)); continue }
+            let json = try Self.check(done, expect: [200])
+            guard let ready = json["attachment"] as? [String: Any], ready["id"] as? String == idText else { throw ChatAttachmentUploadError.server(done.status, "attachment_mismatch") }
+            switch ready["state"] as? String {
+            case "ready":
+                onState(.ready(attachmentID: id))
+                return ChatAttachmentReceipt(id: id, mimeType: mime, sizeBytes: bytes.count, sha256: sha, width: ready["width"] as? Int, height: ready["height"] as? Int)
+            case "rejected": throw ChatAttachmentUploadError.rejected(ready["reason"] as? String ?? "rejected")
+            default: throw ChatAttachmentUploadError.server(done.status, "attachment_not_ready")
+            }
+        }
+    }
+    private static func code(_ body: Data) -> String? { ((try? JSONSerialization.jsonObject(with: body)) as? [String: Any]).flatMap { ($0["error"] as? [String: Any])?["code"] as? String } }
+    private static func check(_ reply: (status: Int, body: Data), expect: Set<Int>) throws -> [String: Any] {
+        if reply.status == 410 { throw ChatAttachmentUploadError.expired }
+        if reply.status == 413 { throw ChatAttachmentUploadError.tooLarge }
+        if reply.status == 422, code(reply.body) == "image_mime_unsupported" { throw ChatAttachmentUploadError.unsupportedType }
+        guard expect.contains(reply.status), let json = (try? JSONSerialization.jsonObject(with: reply.body)) as? [String: Any] else { throw ChatAttachmentUploadError.server(reply.status, code(reply.body) ?? "unexpected") }
+        return json
+    }
+}
