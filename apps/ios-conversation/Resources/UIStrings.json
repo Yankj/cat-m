@@ -4922,5 +4922,65 @@
   "去设置": {
     "en": "Open Settings",
     "zh-Hans": "去设置"
+  },
+  "查看任务": {
+    "en": "View task",
+    "zh-Hans": "查看任务"
+  },
+  "查看提醒": {
+    "en": "View reminder",
+    "zh-Hans": "查看提醒"
+  },
+  "正在创建…": {
+    "en": "Creating…",
+    "zh-Hans": "正在创建…"
+  },
+  "已存在": {
+    "en": "Already exists",
+    "zh-Hans": "已存在"
+  },
+  "已推迟": {
+    "en": "Snoozed",
+    "zh-Hans": "已推迟"
+  },
+  "已创建": {
+    "en": "Created",
+    "zh-Hans": "已创建"
+  },
+  "确认超时，未创建": {
+    "en": "Confirmation timed out; not created",
+    "zh-Hans": "确认超时，未创建"
+  },
+  "未创建": {
+    "en": "Not created",
+    "zh-Hans": "未创建"
+  },
+  "创建失败": {
+    "en": "Couldn't create",
+    "zh-Hans": "创建失败"
+  },
+  "每天重复": {
+    "en": "Repeats daily",
+    "zh-Hans": "每天重复"
+  },
+  "每周重复": {
+    "en": "Repeats weekly",
+    "zh-Hans": "每周重复"
+  },
+  "每月重复": {
+    "en": "Repeats monthly",
+    "zh-Hans": "每月重复"
+  },
+  "定期重复": {
+    "en": "Repeats",
+    "zh-Hans": "定期重复"
+  },
+  "暂时无法读取最新状态": {
+    "en": "Couldn't load the latest status",
+    "zh-Hans": "暂时无法读取最新状态"
+  },
+  "操作未完成，请稍后重试": {
+    "en": "That didn't go through. Try again later.",
+    "zh-Hans": "操作未完成，请稍后重试"
   }
 }
