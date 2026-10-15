@@ -97,3 +97,10 @@ Not yet verified: hosted deploy, pg_cron on hosted DB, live OpenRouter reminder 
 - Quiet hours (`CATPAW_PROACTIVE_QUIET_HOURS`, default `22-8`, `off` disables), evaluated in the event's task time zone (default Asia/Shanghai). Agent/proactive pushes inside the window get `push_after` = window end and are coalesced into one push ("小猫有 N 条消息") when released.
 - Daily cap (`CATPAW_PROACTIVE_DAILY_PUSH_CAP`, default 5) counts `push_state='sent'` since local midnight; over-cap events stay in the in-app feed with `push_error='daily_cap'`.
 - Exempt: `reminder_due` for user-created tasks (the user chose that time).
+
+## Push (B4, stub until APNs key arrives; migration 20261016020000_proactive_push_actions.sql)
+- Sender activates only when `APNS_KEY_ID`, `APNS_TEAM_ID`, `APNS_PRIVATE_KEY` (.p8 PEM), `APNS_BUNDLE_ID` are all set (env/Supabase secrets; never logged). Otherwise events get `push_state='skipped'`, `push_error='apns_not_configured'` and stay in the in-app feed; `/health` reports `apns:false`.
+- Token env chooses sandbox/production host; 410 / BadDeviceToken / Unregistered disables the token.
+- `POST /push/test` (auth): queue + send a test push to the caller; returns `state` = sent | no_device | apns_not_configured | failed.
+- `POST /push/action` (auth) `{event_id, action: open|done|snooze_10m|snooze_1h|dismiss}`: records the tap once (`action`, `opened_at`), `done` closes the task, `snooze_*` reschedules it. Approval write-back from notification buttons is not wired yet (approvals live in catpaw-api).
+- Token registration stays `PUT/DELETE /devices/tokens` only.

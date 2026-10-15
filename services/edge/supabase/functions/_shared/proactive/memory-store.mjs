@@ -24,6 +24,8 @@ export function createMemoryStore() {
     async finishOccurrence(cl, f) { const r = tasks.get(cl.task_id); if (!r || r.next_fire_at !== cl.scheduled_at) return; Object.assign(r, f, { snooze_until: null, revision: r.revision + 1 }); if (f.next_fire_at && r.recurrence) r.due_at = f.next_fire_at === null ? r.due_at : r.due_at; },
     async insertEvent(ev) { if (events.some(e => e.user_id === ev.user_id && e.dedupe_key === ev.dedupe_key)) return null; const row = { id: id(), push_state: 'pending', push_error: null, read_at: null, created_at: new Date(Date.now() + seq++).toISOString(), ...ev }; events.push(row); return c(row); },
     async listEvents(uid, after, limit) { return events.filter(e => e.user_id === uid && (!after || e.created_at > after)).slice(-limit).map(c); },
+    async getEvent(uid, eid) { const e = events.find(e => e.id === eid && e.user_id === uid); return e ? c(e) : null; },
+    async recordPushAction(uid, eid, action, at) { const e = events.find(e => e.id === eid && e.user_id === uid); if (!e || e.action) return false; e.action = action; e.opened_at ??= at; e.read_at ??= at; return true; },
     async markRead(uid, eid, at) { const e = events.find(e => e.id === eid && e.user_id === uid); if (!e) return false; e.read_at ??= at; return true; },
     async pendingPushEvents(limit, nowIso) { return events.filter(e => e.push_state === 'pending' && (!e.push_after || !nowIso || e.push_after <= nowIso)).slice(0, limit).map(c); },
     async deferPush(eid, until) { const e = events.find(e => e.id === eid); e.push_after = until; },
