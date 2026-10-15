@@ -187,10 +187,111 @@ private func memoryProposalSessionChecks(directory:URL) async throws {
         }else{try require(saved.turns.last?.state == .unknown && saved.messages.allSatisfy({$0.role != .tool}),"Forged/missing typed/changed memory receipt \(mode) cannot persist a proposal result")}
     }
 }
+
+// R2 stop: cancelCurrentTurn → POST cancel, one `.failed(cancelled)` on turnEvents, no resend.
+actor CancelScenarioBackend: ConversationBackend {
+    enum Mode: Sendable { case cancelled, raced, readBackFails }
+    let mode: Mode
+    let message = UUID()
+    private var transportFailures: Int
+    private var live: AsyncThrowingStream<ConversationTurnEvent, Error>.Continuation?
+    private(set) var replies = 0, cancels = 0, observes = 0
+    init(mode: Mode, transportFailures: Int = 0) { self.mode = mode; self.transportFailures = transportFailures }
+    func connection(scope: DataScope) async -> ConversationConnection { ConversationConnection(state: .connected, provider: "Explicit test backend", detail: "Test only") }
+    func reply(_ r: ConversationTurnRequest) async throws -> AsyncThrowingStream<ConversationTurnEvent, Error> {
+        replies += 1
+        let (stream, c) = AsyncThrowingStream.makeStream(of: ConversationTurnEvent.self)
+        c.yield(ConversationTurnEvent(operationID: r.operationID, epoch: r.epoch, sequence: 1, payload: .textDelta(messageID: message, text: "部分回答")))
+        live = c // stays open like a running SSE turn
+        return stream
+    }
+    private func terminal(_ r: ConversationTurnRequest) -> ConversationTurnEvent {
+        ConversationTurnEvent(operationID: r.operationID, epoch: r.epoch, sequence: 2, payload: mode == .raced ? .completed(messageID: message, finalTextHash: textHash("部分回答")) : .failed(message: "cancelled", reconciliationRequired: false))
+    }
+    func cancelTurn(_ r: ConversationTurnRequest) async throws -> ConversationTurnCancelReceipt {
+        cancels += 1
+        if transportFailures > 0 { transportFailures -= 1; throw ConversationTurnCancelFailure.transport }
+        live?.yield(terminal(r)); live?.finish(); live = nil // the stream's own terminal event races the response
+        return mode == .raced ? .init(turnID: r.operationID, state: "completed", cancelled: false, alreadyTerminal: true)
+                              : .init(turnID: r.operationID, state: "failed", cancelled: true, alreadyTerminal: false)
+    }
+    func observe(_ r: ConversationTurnRequest) async throws -> ConversationObservation {
+        observes += 1
+        if mode == .readBackFails && observes == 1 { throw CatpawError.unavailable("offline read-back") }
+        return ConversationObservation(request: r, events: [ConversationTurnEvent(operationID: r.operationID, epoch: r.epoch, sequence: 1, payload: .textDelta(messageID: message, text: "部分回答")), terminal(r)])
+    }
+    func counts() -> [Int] { [replies, cancels, observes] }
+}
+actor CancelEventLog {
+    private(set) var items: [String] = []
+    func add(_ e: ConversationTurnEvent) {
+        switch e.payload {
+        case .failed(let code, _): items.append("failed:" + code)
+        case .completed: items.append("completed")
+        case .textDelta: items.append("delta")
+        default: items.append("other")
+        }
+    }
+}
+func cancelSessionChecks(directory: URL) async throws {
+    func scenario(_ name: String, _ backend: CancelScenarioBackend) async throws -> (ConversationSessionService, UUID, UUID, CancelEventLog, Task<Void, Never>) {
+        let repository = try Repository(persistence: FilePersistence(url: directory.appendingPathComponent("cancel-\(name).json")))
+        let service = ConversationSessionService(repository: repository, backend: backend)
+        let conversation = try await service.create(scope: Profiles.user)
+        let log = CancelEventLog(), events = await service.turnEvents()
+        let collector = Task { for await e in events { await log.add(e) } }
+        let operation = UUID()
+        let sending = Task { _ = try? await service.send(scope: Profiles.user, conversationID: conversation, text: "写一段长回答", operationID: operation) }
+        for _ in 0..<200 {
+            if try await service.read(scope: Profiles.user, conversationID: conversation).turns.last?.lastSequence == 1 { break }
+            try await Task.sleep(nanoseconds: 10_000_000)
+        }
+        _ = sending
+        return (service, conversation, operation, log, collector)
+    }
+    func settle() async throws { try await Task.sleep(nanoseconds: 150_000_000) }
+
+    do {
+        let backend = CancelScenarioBackend(mode: .cancelled, transportFailures: 1)
+        let (service, conversation, operation, log, collector) = try await scenario("cancelled", backend)
+        let outcome = try await service.cancelCurrentTurn(scope: Profiles.user, conversationID: conversation)
+        let again = try await service.cancelCurrentTurn(scope: Profiles.user, conversationID: conversation)
+        try await settle(); collector.cancel()
+        let saved = try await service.read(scope: Profiles.user, conversationID: conversation)
+        let items = await log.items, counts = await backend.counts()
+        try require(outcome == .cancelled(operationID: operation) && again == .noActiveTurn, "cancelCurrentTurn ends the running turn as cancelled; a second stop finds no active turn")
+        try require(items.filter { $0 == "failed:cancelled" }.count == 1 && items.first == "delta", "turnEvents receives exactly one failed(cancelled) although stream and response both report it")
+        try require(saved.turns.last?.state == .failed && saved.turns.last?.error == "cancelled" && saved.turns.last?.lastSequence == 2 && saved.messages.contains(where: { $0.role == .assistant && $0.content == "部分回答" }), "the stopped turn keeps the partial answer and the server sequence")
+        try require(counts == [1, 2, 1], "a transport error resends the idempotent cancel; the turn is never re-POSTed")
+        try require(saved.unresolved == nil, "the next message is an ordinary new turn")
+    }
+    do {
+        let backend = CancelScenarioBackend(mode: .raced)
+        let (service, conversation, operation, log, collector) = try await scenario("raced", backend)
+        let outcome = try await service.cancelCurrentTurn(scope: Profiles.user, conversationID: conversation)
+        try await settle(); collector.cancel()
+        let saved = try await service.read(scope: Profiles.user, conversationID: conversation)
+        let items = await log.items
+        try require(outcome == .completed(operationID: operation) && saved.turns.last?.state == .completed && items.last == "completed" && !items.contains(where: { $0.hasPrefix("failed") }), "cancelled=false/state=completed reads the turn back and emits completed")
+    }
+    do {
+        let backend = CancelScenarioBackend(mode: .readBackFails)
+        let (service, conversation, operation, log, collector) = try await scenario("readback", backend)
+        let outcome = try await service.cancelCurrentTurn(scope: Profiles.user, conversationID: conversation)
+        let pending = try await service.read(scope: Profiles.user, conversationID: conversation)
+        try await service.observe(scope: Profiles.user, conversationID: conversation)
+        try await settle(); collector.cancel()
+        let resolved = try await service.read(scope: Profiles.user, conversationID: conversation)
+        let items = await log.items
+        try require(outcome == .reconciling(operationID: operation) && pending.turns.last?.state == .unknown, "a failed read-back leaves the turn unknown for reconciliation")
+        try require(resolved.turns.last?.state == .failed && resolved.turns.last?.error == "cancelled" && items.filter { $0 == "failed:cancelled" }.count == 1, "later reconciliation applies the server stop without a second cancelled event")
+    }
+}
 @main struct ConversationSessionRunner {
     static func main() async throws {
         let directory = URL(fileURLWithPath: CommandLine.arguments[1])
         try await memoryProposalSessionChecks(directory:directory)
+        try await cancelSessionChecks(directory:directory)
         let repository = try Repository(persistence: FilePersistence(url: directory.appendingPathComponent("chat.json")))
         let service = ConversationSessionService(repository: repository)
         let first = try await service.openLatest(scope: Profiles.user)
