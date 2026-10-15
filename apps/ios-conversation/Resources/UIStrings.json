@@ -5190,5 +5190,9 @@
   "回答未被接受，请检查后重试。": {
     "en": "Your answer wasn't accepted. Check it and try again.",
     "zh-Hans": "回答未被接受，请检查后重试。"
+  },
+  "已排队 · 回复结束后发送": {
+    "en": "Queued · sends after the reply finishes",
+    "zh-Hans": "已排队 · 回复结束后发送"
   }
 }
