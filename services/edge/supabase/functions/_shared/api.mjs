@@ -19,9 +19,11 @@ import {TASK_CONTROL_CONTRACT,TASK_CONTROL_LIMITS,taskControlRevision,parseTaskC
 import {readTaskControl,controlTask} from './core/src/task-control-service.mjs';
 import {ACCEPTED_WORK_EXECUTION_CAPABILITY,acceptedWorkClaimEligibleInTransaction} from './core/src/accepted-work-execution.mjs';
 import {TaskWorkGrantService} from './core/src/task-work-grant-service.mjs';
-import {TASK_WORK_GRANT_CONTRACT} from './core/src/task-work-grant-contract.mjs';
+import {TASK_WORK_GRANT_CONTRACT,TASK_REVISION_WORK_GRANT_CONTRACT,workGrantReference} from './core/src/task-work-grant-contract.mjs';
 import {ACCEPTED_WORK_INTENT_CONTRACT} from './core/src/accepted-work-intent-contract.mjs';
 import {lockTaskWorkSourceInTransaction,readTaskWorkGrantLifecycleInTransaction} from './core/src/task-work-grant-lifecycle.mjs';
+import {resolveExecutionGrantInTransaction} from './core/src/task-work-execution-selector.mjs';
+import {TASK_REVISION_WORK_CONTRACT,validateFrozenRevisionWorkIntent} from './core/src/task-revision-work-contract.mjs';
 import {MEMORY_CONTRACT} from './core/src/memory-contract.mjs';
 import {resolveMemoryUsageInTransaction} from './core/src/memory-service.mjs';
 const reply=(v,status=200)=>Response.json({schema_version:1,...v},{status,headers:{'Cache-Control':'no-store'}});
@@ -32,23 +34,37 @@ export async function createCloudRuntime({repository,authenticate,config,retain=
    await repository.transaction(async tx=>tx.withScope(context.scope_id,async scoped=>{
      const scopeRow=await scoped.scope(),scope=scopeRow.identity;
      const verify=async()=>{
-       let originalRun=null;
+       const currentGeneration=(await scoped.scope()).generation;let originalRun=null,executionGrant=null;
        if(context.task_execution){
          const execution=context.task_execution;
          const {task,run}=await runtime.facade.admittedTask(tx,scope.owner,execution.task_id,{running:true});
          check(run.id===execution.run_id&&run.request_hash===execution.run_request_hash&&run.frozen_request.conversation_id===context.conversation_id&&run.frozen_request.scope.scope_id===context.scope_id&&task.leaseId===execution.lease_id&&Date.parse(task.leaseUntil)>Date.now()&&taskControlRevision(task)===execution.execution_revision,409,'execution_permission_changed');
-         check(hash(context.source_auth)===hash(run.frozen_request.source_auth),409,'execution_source_binding_conflict');
-         if(run.frozen_request.work_grant_reference)check(hash(context.work_grant_reference)===hash(run.frozen_request.work_grant_reference),409,'work_grant_provider_context_conflict');
+         executionGrant=await resolveExecutionGrantInTransaction(tx,scope.owner,run,task);
+         check(hash(context.source_auth)===hash(executionGrant?.source_auth??run.frozen_request.source_auth),409,'execution_source_binding_conflict');
+         if(executionGrant)check(hash(context.work_grant_reference)===hash(executionGrant.reference),409,'work_grant_provider_context_conflict');
          originalRun=run;
        }
        if(originalRun)await assertRunSource(tx,originalRun);else await sourceChecker(tx,context.source_auth,scope);
        const consent=await assertConsent(tx,scope.owner,context.source_auth,context.conversation_id,config.routeHash);
        if(context.revision_source_auth){
          const fresh=context.revision_source_auth,original=context.revision_original_source_auth;
-         check(original&&fresh.subject_id===context.source_auth.subject_id&&fresh.scope_id===scope.scope_id&&fresh.consent_revision===original.consent_revision,403,'revision_consent_conflict');
-         check(context.revision_memory_generation===scopeRow.generation,409,'memory_generation_superseded');
-         await sourceChecker(tx,original,scope);await assertConsent(tx,scope.owner,original,context.conversation_id,config.routeHash);
-         await sourceChecker(tx,fresh,scope);await assertConsent(tx,scope.owner,fresh,context.conversation_id,config.routeHash);
+         check(original&&fresh.subject_id===context.source_auth.subject_id&&fresh.scope_id===scope.scope_id,403,'revision_consent_conflict');
+         check(context.revision_memory_generation===currentGeneration,409,'memory_generation_superseded');
+         if(executionGrant?.terms.schema_version===2){
+           check(hash(fresh)===hash(executionGrant.source_auth)&&hash(original)===hash(originalRun.frozen_request.source_auth)&&hash(context.source_auth)===hash(fresh),409,'revision_execution_source_conflict');
+           await acceptedSourceChecker(tx,fresh,scope,executionGrant.reference);
+         }else if(context.revision_work_turn_id){
+           const turn=await tx.get(scope.owner,'native-chat-turns',context.revision_work_turn_id),f=turn?.revision_target,c=await tx.get(scope.owner,'native-chat-conversations',context.conversation_id);
+           check(turn?.id===context.revision_work_turn_id&&turn.scope_id===scope.scope_id&&turn.conversation_id===context.conversation_id&&!turn.content_redacted&&f&&hash(turn.source_auth)===hash(fresh)&&hash(context.source_auth)===hash(fresh)&&hash(f.fresh_source_auth)===hash(fresh)&&hash(f.original_source_auth)===hash(original)&&f.memory_generation===currentGeneration&&hash(context.input_context)===hash([{text:f.raw_instruction},{text:f.base_body}]),409,'revision_frozen_conflict');
+           validateFrozenRevisionWorkIntent(turn.revision_work_intent,{turn,target:f.target,scope,conversation:c,routeHash:config.routeHash,callName:'revise_current_report_work_v1'});
+           check(f.input_hash===hash(turn.input)&&f.instruction_hash===hash(f.raw_instruction)&&f.base_body_hash===hash(f.base_body)&&f.raw_instruction===turn.input.message.text,409,'revision_frozen_conflict');
+           await sourceChecker(tx,fresh,scope);
+         }else{
+           check(fresh.consent_revision===original.consent_revision,403,'revision_consent_conflict');
+           await sourceChecker(tx,original,scope);await assertConsent(tx,scope.owner,original,context.conversation_id,config.routeHash);
+           await sourceChecker(tx,fresh,scope);
+         }
+         await assertConsent(tx,scope.owner,fresh,context.conversation_id,config.routeHash);
        }
        return consent;
      };
@@ -82,7 +98,8 @@ export async function createCloudRuntime({repository,authenticate,config,retain=
      await sourceChecker(tx,viewer,terms.scope);
      if(phase==='admission'){await sourceChecker(tx,terms.source_auth,terms.scope);await assertConsent(tx,terms.scope.owner,terms.source_auth,terms.conversation_id,config.routeHash);}
    }else{
-     await acceptedSourceChecker(tx,terms.source_auth,terms.scope,run.frozen_request.work_grant_reference);
+     const task=await tx.get(terms.scope.owner,'tasks',run.task_id),selected=await resolveExecutionGrantInTransaction(tx,terms.scope.owner,run,task);check(selected&&hash(selected.reference)===hash(workGrantReference(terms))&&hash(selected.source_auth)===hash(terms.source_auth),409,'work_grant_revision_superseded');
+     await acceptedSourceChecker(tx,terms.source_auth,terms.scope,selected.reference);
      await assertConsent(tx,terms.scope.owner,terms.source_auth,terms.conversation_id,config.routeHash);
    }
    return {authorized:true};
@@ -97,15 +114,16 @@ export async function createCloudRuntime({repository,authenticate,config,retain=
    await lockTaskWorkSourceInTransaction(tx,{scope_id:scope.scope_id,owner:scope.owner,source:terms.source_auth});
    await sourceChecker(tx,terms.source_auth,scope);await assertConsent(tx,scope.owner,terms.source_auth,terms.conversation_id,config.routeHash);
  };
- const workIdentity=run=>({owner:run.frozen_request.scope.owner,scope_id:run.frozen_request.scope.scope_id,subject_id:run.frozen_request.subject_id,grant_id:run.frozen_request.work_grant_reference.grant_id});
- const assertRunSource=async(tx,run)=>{
-   const f=run.frozen_request;
-   if(f.work_grant_reference){
-     await lockTaskWorkSourceInTransaction(tx,{scope_id:f.scope.scope_id,owner:f.scope.owner,source:f.source_auth});
-     const facts=await runtime.facade.workGrantService.assertAcceptedGrantCurrentInTransaction(tx,workIdentity(run));
-     check(hash(facts.reference)===hash(f.work_grant_reference),409,'work_grant_run_binding_conflict');
-   }else await sourceChecker(tx,f.source_auth,f.scope);
-   await assertConsent(tx,f.scope.owner??runtime.facade.owner(f.scope),f.source_auth,f.conversation_id,config.routeHash);
+ const originalWorkIdentity=run=>({owner:run.frozen_request.scope.owner,scope_id:run.frozen_request.scope.scope_id,subject_id:run.frozen_request.subject_id,grant_id:run.frozen_request.work_grant_reference.grant_id});
+ const workIdentity=async(tx,run,task)=>{const selected=await resolveExecutionGrantInTransaction(tx,run.frozen_request.scope.owner,run,task??await tx.get(run.frozen_request.scope.owner,'tasks',run.task_id));return selected?.identity??null;};
+ const assertRunSource=async(tx,run,task)=>{
+   const f=run.frozen_request,owner=f.scope.owner??runtime.facade.owner(f.scope),selected=await resolveExecutionGrantInTransaction(tx,owner,run,task??await tx.get(owner,'tasks',run.task_id)),source=selected?.source_auth??f.source_auth;
+   if(selected){
+     await lockTaskWorkSourceInTransaction(tx,{scope_id:f.scope.scope_id,owner,source});
+     const facts=await runtime.facade.workGrantService.assertAcceptedGrantCurrentInTransaction(tx,await workIdentity(tx,run,task));
+     check(hash(facts.reference)===hash(selected.reference),409,'work_grant_run_binding_conflict');
+   }else await sourceChecker(tx,source,f.scope);
+   await assertConsent(tx,owner,source,f.conversation_id,config.routeHash);return selected;
  };
  runtime.chat.modelBudgetMs=config.chatBudgetMs;runtime.chat.providerTimeoutMs=config.modelTimeoutMs;runtime.chat.finalizationReserveMs=config.chatFinalizationReserveMs;runtime.chat.pollMs=250;
  runtime.chat.beforeTurnAdmission=async(tx,{principal,scope,conversation,turn})=>{const source={subject_id:principal.subject_id,scope_id:scope.scope_id,issuer:principal.issuer,session_id:principal.session_id,issued_at:principal.issued_at};await sourceChecker(tx,source,scope);const row=await tx.get(runtime.facade.owner(scope),'provider-consents',consentId(principal.subject_id,conversation.id));check(row?.decision==='allow'&&row.route_hash===config.routeHash,403,'provider_consent_required');checkTextConsent(JSON.stringify(conversation.messages)+JSON.stringify(turn.input),row);turn.source_sensitivity=row.sensitive_confirmed===true?'sensitive':'low';return {...source,consent_revision:row.revision};};
@@ -118,19 +136,19 @@ export async function createCloudRuntime({repository,authenticate,config,retain=
    const work=Promise.resolve().then(()=>kickTurnTasks(runtime,context,kickOptions)).catch(()=>{/* durable task remains authoritative */});
    turnKicks.set(key,work);try{await work;}finally{if(turnKicks.get(key)===work)turnKicks.delete(key);}
  };
- runtime.facade.onPlanAmendmentAccepted=({owner,turn_id,source_auth})=>{
+ runtime.facade.onPlanAmendmentAccepted=({owner,turn_id,source_auth,revision_work_operation_id})=>{
    if(!autoKick||!source_auth)return;
    // No viewer/presentation authority: use exactly the original admitted source.
-   retain(kickAcceptedTurn({owner,turnId:turn_id,principal:{subject_id:source_auth.subject_id,session_id:source_auth.session_id}}));
+   retain(kickAcceptedTurn({owner,turnId:turn_id,principal:{subject_id:source_auth.subject_id,session_id:source_auth.session_id},...revision_work_operation_id?{revisionWorkOperationId:revision_work_operation_id}:{}}));
  };
  runtime.facade.onTaskRevisionAccepted=runtime.facade.onPlanAmendmentAccepted;
  runtime.facade.onTaskControlAccepted=runtime.facade.onPlanAmendmentAccepted;
  const originalAdmission=runtime.facade.admittedTask.bind(runtime.facade);
  runtime.facade.admittedTask=async(tx,owner,id,options={})=>{
    const initial=await tx.get(owner,'tasks',id),hint=initial?.state?.catpaw?await tx.get(owner,'catpaw-runs',initial.state.catpaw.run_id):null;
-   if(hint?.frozen_request?.work_grant_reference){check(hint.frozen_request.scope.owner===owner,403,'scope_forbidden');await assertRunSource(tx,hint);}
+   if(hint?.frozen_request?.work_grant_reference){check(hint.frozen_request.scope.owner===owner,403,'scope_forbidden');await assertRunSource(tx,hint,initial);}
    const admitted=await originalAdmission(tx,owner,id,options),f=admitted.run.frozen_request;
-   check(hash(f)===admitted.run.request_hash,409,'run_request_binding_conflict');await assertRunSource(tx,admitted.run);
+   check(hash(f)===admitted.run.request_hash,409,'run_request_binding_conflict');await assertRunSource(tx,admitted.run,admitted.task);
    await assertTaskRevisionAuthorityInTransaction(runtime.facade,tx,owner,admitted.run,admitted.task);return admitted;
  };
  runtime.facade.beforePlanRead=async(tx,{owner,scope,principal,run})=>{
@@ -141,8 +159,8 @@ export async function createCloudRuntime({repository,authenticate,config,retain=
  };
  runtime.facade.beforePlanWrite=async(tx,ctx)=>{
    await runtime.facade.beforePlanRead(tx,ctx);
-   const frozen=ctx.run.frozen_request;await assertRunSource(tx,ctx.run);
-   const consent=await assertConsent(tx,ctx.owner,frozen.source_auth,frozen.conversation_id,config.routeHash);
+   const frozen=ctx.run.frozen_request,selected=await assertRunSource(tx,ctx.run,ctx.task);
+   const consent=await assertConsent(tx,ctx.owner,selected?.source_auth??frozen.source_auth,frozen.conversation_id,config.routeHash);
    checkTextConsent(JSON.stringify(ctx.content??{}),consent);
  };
  runtime.facade.beforeActionRead=async(tx,ctx)=>{
@@ -169,6 +187,20 @@ export async function createCloudRuntime({repository,authenticate,config,retain=
  };
  runtime.facade.beforeTaskRevisionRead=async(tx,ctx)=>runtime.facade.beforeActionRead(tx,ctx);
  runtime.facade.beforeTaskRevisionWrite=async(tx,ctx)=>{
+   const intent=ctx.turn?.revision_work_intent;
+   if(intent){
+     const f=ctx.run.frozen_request,fresh=ctx.fresh_source_auth??ctx.turn.source_auth,target=ctx.target??ctx.turn.revision_target?.target,c=ctx.conversation??await tx.get(ctx.owner,'native-chat-conversations',f.conversation_id);
+     check(f.work_grant_reference&&fresh?.subject_id===f.subject_id&&fresh.scope_id===f.scope.scope_id&&hash(fresh)===hash(ctx.turn.source_auth),403,'revision_consent_conflict');
+     validateFrozenRevisionWorkIntent(intent,{turn:ctx.turn,target,scope:f.scope,conversation:c,routeHash:config.routeHash,callName:'revise_current_report_work_v1'});
+     const task=await tx.get(ctx.owner,'tasks',ctx.run.task_id),ref=task?.state?.task_revision?.work_grant_reference;
+     if(ref?.grant_id===intent.decision_id){const selected=await resolveExecutionGrantInTransaction(tx,ctx.owner,ctx.run,task);check(selected?.terms.schema_version===2&&hash(selected.source_auth)===hash(fresh),409,'revision_execution_source_conflict');await acceptedSourceChecker(tx,fresh,f.scope,selected.reference);}
+     else{const viewer={subject_id:ctx.principal.subject_id,session_id:ctx.principal.session_id,issuer:ctx.principal.issuer,issued_at:ctx.principal.issued_at,scope_id:f.scope.scope_id};await sourceChecker(tx,viewer,f.scope);await sourceChecker(tx,fresh,f.scope);}
+     const row=await tx.withScope(f.scope.scope_id,async scoped=>scoped.scope());check(row.enabled&&(!ctx.turn.revision_target||row.generation===ctx.turn.revision_target.memory_generation),409,'memory_generation_superseded');
+     const consent=await assertConsent(tx,ctx.owner,fresh,f.conversation_id,config.routeHash);check(typeof ctx.raw_instruction==='string'&&typeof ctx.base_body==='string',409,'revision_input_context_required');checkTextConsent(ctx.raw_instruction+'\n'+ctx.base_body,consent);
+     if(ref?.grant_id===intent.decision_id){const selected=await resolveExecutionGrantInTransaction(tx,ctx.owner,ctx.run,await tx.get(ctx.owner,'tasks',ctx.run.task_id));await acceptedSourceChecker(tx,fresh,f.scope,selected.reference);}else await sourceChecker(tx,fresh,f.scope);
+     await assertConsent(tx,ctx.owner,fresh,f.conversation_id,config.routeHash);const finalScope=await tx.withScope(f.scope.scope_id,async scoped=>scoped.scope());check(finalScope.enabled&&finalScope.generation===row.generation,409,'memory_generation_superseded');
+     return {source_current:true};
+   }
    const current=await runtime.facade.beforeTaskRevisionRead(tx,ctx);
    check(current.source_current,403,'revision_source_not_current');
    check(!ctx.run.frozen_request.work_grant_reference,409,'revision_new_work_intent_required');
@@ -185,21 +217,17 @@ export async function createCloudRuntime({repository,authenticate,config,retain=
    return {source_current:true};
  };
  runtime.facade.beforeTaskControlRead=async(tx,ctx)=>{
-   let original;
-   if(ctx.run.frozen_request.work_grant_reference){
-     const f=ctx.run.frozen_request,viewer={subject_id:ctx.principal.subject_id,session_id:ctx.principal.session_id,issuer:ctx.principal.issuer,issued_at:ctx.principal.issued_at,scope_id:ctx.scope.scope_id};
-     await sourceChecker(tx,viewer,ctx.scope);
-     try{
-       await lockTaskWorkSourceInTransaction(tx,{scope_id:f.scope.scope_id,owner:ctx.owner,source:f.source_auth});
-       await acceptedControlSourceChecker(tx,f.source_auth,f.scope,f.work_grant_reference);
-       await assertConsent(tx,ctx.owner,f.source_auth,f.conversation_id,config.routeHash);original={source_current:true};
-     }catch(error){if(error instanceof ApiError&&[403,409].includes(error.status)&&['accepted_work_grant_conflict','work_grant_expired','work_grant_not_active','grant_conflict','provider_consent_required','session_revoked'].includes(error.code))original={source_current:false};else throw error;}
+   let original;const f=ctx.run.frozen_request,task=ctx.task??await tx.get(ctx.owner,'tasks',ctx.run.task_id),selected=await resolveExecutionGrantInTransaction(tx,ctx.owner,ctx.run,task),source=selected?.source_auth??f.source_auth;
+   if(selected){
+     const viewer={subject_id:ctx.principal.subject_id,session_id:ctx.principal.session_id,issuer:ctx.principal.issuer,issued_at:ctx.principal.issued_at,scope_id:ctx.scope.scope_id};await sourceChecker(tx,viewer,ctx.scope);
+     try{await lockTaskWorkSourceInTransaction(tx,{scope_id:f.scope.scope_id,owner:ctx.owner,source});await acceptedControlSourceChecker(tx,source,f.scope,selected.reference);await assertConsent(tx,ctx.owner,source,f.conversation_id,config.routeHash);original={source_current:true};}
+     catch(error){if(error instanceof ApiError&&[403,409].includes(error.status)&&['accepted_work_grant_conflict','work_grant_expired','work_grant_not_active','grant_conflict','provider_consent_required','session_revoked'].includes(error.code))original={source_current:false};else throw error;}
    }else original=await runtime.facade.beforeActionRead(tx,ctx);
    if(!original.source_current)return {source_current:false,reason:'original_source_not_current'};
-   const f=ctx.run.frozen_request;
-   const row=await tx.withScope(f.scope.scope_id,async scoped=>scoped.scope());
-   if(row.generation!==f.memory_generation)return {source_current:false,reason:'memory_generation_superseded'};
-   try{await assertTaskRevisionAuthorityInTransaction(runtime.facade,tx,ctx.owner,ctx.run,ctx.task);}
+   const row=await tx.withScope(f.scope.scope_id,async scoped=>scoped.scope());if(row.generation!==(selected?.terms.memory_generation??f.memory_generation))return {source_current:false,reason:'memory_generation_superseded'};
+   // The v2 control proof validates its frozen operation/turn and permits paused
+   // state; calling the execution-only revision hook here would deny resume.
+   if(selected?.terms.schema_version!==2)try{await assertTaskRevisionAuthorityInTransaction(runtime.facade,tx,ctx.owner,ctx.run,ctx.task);}
    catch(error){if(error instanceof ApiError&&[403,409].includes(error.status)&&['grant_conflict','provider_consent_required','revision_source_not_current','revision_consent_conflict','memory_generation_superseded'].includes(error.code))return {source_current:false,reason:'revision_source_not_current'};throw error;}
    return {source_current:true,reason:null};
  };
@@ -222,6 +250,7 @@ export async function createCloudRuntime({repository,authenticate,config,retain=
      }catch(error){publicSourceUnavailable=error instanceof ApiError?error.code:'public_source_reader_unavailable';}
    }
  }
+ runtime.facade.revisionWorkExecutionReady=runtime.facade.acceptedWorkExecutionReady&&typeof runtime.facade.workGrantService.admitRevisionInTransaction==='function'&&typeof runtime.facade.beforeTaskRevisionWrite==='function'&&typeof runtime.facade.beforeTaskControlRead==='function';
  const originalBefore=runtime.chat.integration.beforeWrite;
  const checkTurnSource=async(tx,ctx)=>{if(ctx.turn?.source_auth){await sourceChecker(tx,ctx.turn.source_auth,{...(await tx.withScope(ctx.turn.scope_id,async scoped=>(await scoped.scope()).identity,{reuseLockedScope:true}))});await assertConsent(tx,ctx.owner,ctx.turn.source_auth,ctx.turn.conversation_id,config.routeHash);}};
  const checkTurnMemory=async(tx,ctx)=>{if(ctx.turn?.memory_usage||ctx.turn?.memory_extraction)await tx.withScope(ctx.turn.scope_id,async scoped=>{const row=await scoped.scope();check(row.enabled&&row.memory_user_enabled===true&&row.generation===(ctx.turn.memory_usage??ctx.turn.memory_extraction).memory_generation,409,'memory_generation_superseded');},{reuseLockedScope:true});};
@@ -257,7 +286,7 @@ export async function createCloudRuntime({repository,authenticate,config,retain=
  };
  runtime.api=async request=>{try{const url=new URL(request.url),path=url.pathname.replace(/^\/(?:functions\/v1\/)?catpaw-api(?=\/|$)/,'')||'/';
   if(path==='/healthz')return reply({status:'alive'});
-  if(path==='/readyz'){await repository.transaction(async()=>{});return reply({ready:true,model_route:config.route.id,authentication:'supabase_signed_jwt_and_fresh_session',execution:'bounded-chat-and-original-task-worker',chat_capabilities:{schema_version:1,memory:{contract:MEMORY_CONTRACT,read:true,commands:true,context:runtime.memoryContextEnabled,conversation_proposals:{contract:'catpaw.memory-proposal.v1',enabled:runtime.memoryContextEnabled,confirmation_required:true,current_user_source_only:true,live_verification:'not_verified'},default_enabled:false,explicit_enable:true,unknown_resend:false,original_operation_read:true,live_verification:'not_verified'},text_input:true,image_input:false,live_weather:false,web_search:false,tools:['delegate_task','delegate_plan_v1','agent_status',...runtime.facade.publicSourcesEnabled?['delegate_sources_v1']:[]],task_plan:{contract:'catpaw.task-plan.v1',read:true,amend:true,local_report_only:true},task_artifacts:{contract:TASK_ARTIFACT_CONTRACT,read:true,amend:true,manual_revision:true,model_revision:false},task_revisions:{contract:TASK_REVISION_CONTRACT,revise:true,explain:true,same_task:true,immutable_target:true},task_controls:{contract:TASK_CONTROL_CONTRACT,read:true,pause:true,resume:true,revoke:true,same_task:true,pause_preserves_grant:true,unknown_resend:false,live_verification:"not_verified"},accepted_work:{contract:ACCEPTED_WORK_INTENT_CONTRACT,grant_contract:TASK_WORK_GRANT_CONTRACT,enabled:runtime.facade.acceptedWorkExecutionReady,execution:'bounded_single_step_v1',single_run:true,independent_scheduler:false,native_producer:false,live_verification:'not_verified',limits_explicit:true,unknown_resend:false},task_actions:{contract:TASK_ACTION_CONTRACT,review:true,decision:typeof taskActionTargetVerifier==='function',execution:false,device_calendar_write:false,unavailable_reason:typeof taskActionTargetVerifier==='function'?'device_executor_not_configured':'action_target_verifier_not_configured'},public_sources:{enabled:runtime.facade.publicSourcesEnabled,limited_to_user_urls:true,max_sources:3,policy_hash:runtime.facade.publicSourcePolicyHash,unavailable_reason:publicSourceUnavailable,transport_reality:runtime.facade.publicSourcesEnabled?selectedSourceReader.reality??'capability_unverified':null,live_verification:'not_verified'},durable_acceptance:'turn_started',cursor_events:true}});}
+  if(path==='/readyz'){await repository.transaction(async()=>{});return reply({ready:true,model_route:config.route.id,authentication:'supabase_signed_jwt_and_fresh_session',execution:'bounded-chat-and-original-task-worker',chat_capabilities:{schema_version:1,memory:{contract:MEMORY_CONTRACT,read:true,commands:true,context:runtime.memoryContextEnabled,conversation_proposals:{contract:'catpaw.memory-proposal.v1',enabled:runtime.memoryContextEnabled,confirmation_required:true,current_user_source_only:true,live_verification:'not_verified'},default_enabled:false,explicit_enable:true,unknown_resend:false,original_operation_read:true,live_verification:'not_verified'},text_input:true,image_input:false,live_weather:false,web_search:false,tools:['delegate_task','delegate_plan_v1','agent_status',...runtime.facade.publicSourcesEnabled?['delegate_sources_v1']:[]],task_plan:{contract:'catpaw.task-plan.v1',read:true,amend:true,local_report_only:true},task_artifacts:{contract:TASK_ARTIFACT_CONTRACT,read:true,amend:true,manual_revision:true,model_revision:false},task_revisions:{contract:TASK_REVISION_CONTRACT,revise:true,explain:true,same_task:true,immutable_target:true,bounded_work:{contract:TASK_REVISION_WORK_CONTRACT,grant_contract:TASK_REVISION_WORK_GRANT_CONTRACT,enabled:runtime.facade.revisionWorkExecutionReady,same_task:true,required_for_accepted_work:true,unknown_resend:false,live_verification:'not_verified'}},task_controls:{contract:TASK_CONTROL_CONTRACT,read:true,pause:true,resume:true,revoke:true,same_task:true,pause_preserves_grant:true,unknown_resend:false,live_verification:"not_verified"},accepted_work:{contract:ACCEPTED_WORK_INTENT_CONTRACT,grant_contract:TASK_WORK_GRANT_CONTRACT,enabled:runtime.facade.acceptedWorkExecutionReady,execution:'bounded_single_step_v1',single_run:true,independent_scheduler:false,native_producer:false,live_verification:'not_verified',limits_explicit:true,unknown_resend:false},task_actions:{contract:TASK_ACTION_CONTRACT,review:true,decision:typeof taskActionTargetVerifier==='function',execution:false,device_calendar_write:false,unavailable_reason:typeof taskActionTargetVerifier==='function'?'device_executor_not_configured':'action_target_verifier_not_configured'},public_sources:{enabled:runtime.facade.publicSourcesEnabled,limited_to_user_urls:true,max_sources:3,policy_hash:runtime.facade.publicSourcePolicyHash,unavailable_reason:publicSourceUnavailable,transport_reality:runtime.facade.publicSourcesEnabled?selectedSourceReader.reality??'capability_unverified':null,live_verification:'not_verified'},durable_acceptance:'turn_started',cursor_events:true}});}
   const auth=request.headers.get('authorization');
   if(path.startsWith('/catpaw/work-grants/v1/')){
     check(!url.search,422,'work_intent_schema_invalid');const parts=path.split('/').filter(Boolean);
@@ -266,7 +295,7 @@ export async function createCloudRuntime({repository,authenticate,config,retain=
     const scoped=await runtime.facade.scoped(auth,parts[4]);
     const run=await repository.transaction(tx=>runtime.facade.ownedRun(tx,scoped.owner,parts[6],scoped.principal,parts[4]));
     check(run.frozen_request.work_grant_reference,404,'work_grant_not_found');
-    return reply({contract:TASK_WORK_GRANT_CONTRACT,...await runtime.facade.workGrantService.read(workIdentity(run),{principal:scoped.principal,signal:request.signal})});
+    return reply({contract:TASK_WORK_GRANT_CONTRACT,...await runtime.facade.workGrantService.read(originalWorkIdentity(run),{principal:scoped.principal,signal:request.signal})});
   }
   if(path.startsWith('/catpaw/controls/v1/')){
     check(!url.search,422,'control_schema_invalid');const parts=path.split('/').filter(Boolean);

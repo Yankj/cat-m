@@ -1,5 +1,6 @@
+import {resolveExecutionGrantInTransaction} from './task-work-execution-selector.mjs';
 import {check,hash,clone} from '../facade-r2/src/common.mjs';
-import {TASK_WORK_GRANT_CONTRACT,TASK_WORK_GRANT_LIMITS as LIMITS,validateWorkGrantIdentity} from './task-work-grant-contract.mjs';
+import {TASK_WORK_GRANT_LIMITS as LIMITS,validateWorkGrantIdentity,validateWorkGrantReference,workGrantDueIdentity} from './task-work-grant-contract.mjs';
 import {workerExecutionContext} from './task-control-contract.mjs';
 
 export const ACCEPTED_WORK_EXECUTION_CAPABILITY=Object.freeze({schema_version:1,executor:'bounded_single_step_v1',whole:false,model:true,public_source:true,local_continuation:true,terminal_ack:true});
@@ -7,23 +8,24 @@ const iso=ms=>new Date(ms).toISOString();
 
 /** Same scoped transaction, same maintained TaskWorker. These ports never
  * renew an HTTP token, manufacture source permission or send a request. */
-export function acceptedWorkExecution(service,owner,run,{now=Date.now}={}){
- const reference=run?.frozen_request?.work_grant_reference;if(reference===undefined)return null;
- check(reference?.schema_version===1&&reference.contract===TASK_WORK_GRANT_CONTRACT&&service?.repository&&typeof service.assertNewDispatchInTransaction==='function',503,'accepted_work_executor_not_configured');
+export function acceptedWorkExecution(service,owner,run,{now=Date.now,task=null}={}){
+ const reference=task?.state?.task_revision?.work_grant_reference??run?.frozen_request?.work_grant_reference;if(reference===undefined)return null;
+ validateWorkGrantReference(reference);
+ check(service?.repository&&typeof service.assertNewDispatchInTransaction==='function',503,'accepted_work_executor_not_configured');
  const identity=validateWorkGrantIdentity({owner,scope_id:run.frozen_request.scope.scope_id,subject_id:run.frozen_request.subject_id,grant_id:reference.grant_id});
- return new AcceptedWorkExecution({service,identity,now});
+ return new AcceptedWorkExecution({service,identity,reference,owner,runID:run.id,now});
 }
 export async function acceptedWorkClaimEligibleInTransaction(tx,service,owner,run,{now=Date.now,assertLive=()=>{}}={}){
- const work=acceptedWorkExecution(service,owner,run,{now});return work?work.eligibleForClaim(tx,{assertLive}):true;
+ const task=await tx.get(owner,'tasks',run.task_id);assertLive();const work=acceptedWorkExecution(service,owner,run,{now,task});return work?work.eligibleForClaim(tx,{assertLive}):true;
 }
 class AcceptedWorkExecution{
  constructor(input){Object.assign(this,input);}
- async current(tx,{assertLive=()=>{}}={}){await this.service.assertAcceptedGrantCurrentInTransaction(tx,this.identity,{assertLive});return this.service.current(tx,this.identity,this.service.permission(undefined,assertLive));}
+ async current(tx,{assertLive=()=>{}}={}){const run=await tx.get(this.owner,'catpaw-runs',this.runID),task=await tx.get(this.owner,'tasks',run?.task_id);assertLive();const selected=await resolveExecutionGrantInTransaction(tx,this.owner,run,task,{assertLive});check(selected&&hash(selected.identity)===hash(this.identity)&&hash(selected.reference)===hash(this.reference),409,'work_grant_revision_superseded');await this.service.assertAcceptedGrantCurrentInTransaction(tx,this.identity,{assertLive});return this.service.current(tx,this.identity,this.service.permission(undefined,assertLive));}
  due(ctx){const due=ctx.reservations.find(r=>r.frozen.input.kind==='due');check(due?.state==='reserved'&&this.now()<Date.parse(due.frozen.input.deadline_at)&&!ctx.reservations.some(r=>r.state==='unknown'),409,'accepted_work_due_not_open');return due;}
  async eligibleForClaim(tx,options={}){const ctx=await this.current(tx,options),due=ctx.reservations.find(r=>r.frozen.input.kind==='due');return !ctx.reservations.some(r=>r.state==='unknown')&&(!due||due.state==='reserved'&&this.now()<Date.parse(due.frozen.input.deadline_at));}
  async claim(tx,options={}){
   let ctx=await this.current(tx,options),due=ctx.reservations.find(r=>r.frozen.input.kind==='due');
-  if(!due){await this.service.reserveInTransaction(tx,this.identity,{operation_id:ctx.run.operation_id,operation_key:hash({accepted_run:ctx.run.id}),kind:'due',request_hash:ctx.run.request_hash,deadline_at:iso(Math.min(Date.parse(ctx.terms.not_after),this.now()+ctx.terms.execution_budget_ms))});ctx=await this.current(tx,options);}
+  if(!due){await this.service.reserveInTransaction(tx,this.identity,{...workGrantDueIdentity(ctx.terms,ctx.run),kind:'due',deadline_at:iso(Math.min(Date.parse(ctx.terms.not_after),this.now()+ctx.terms.execution_budget_ms))});ctx=await this.current(tx,options);}
   this.due(ctx);
  }
  async running(tx,options={}){const ctx=await this.current(tx,options);this.due(ctx);return ctx;}

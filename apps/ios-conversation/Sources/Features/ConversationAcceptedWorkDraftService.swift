@@ -6,7 +6,8 @@ public struct ConversationAcceptedWorkDraft:Codable,Sendable,Equatable,Identifia
     public let conversationID:UUID
     public let raw:String
     public var options:ConversationAcceptedWorkOptions
-    public init(id:UUID=UUID(),conversationID:UUID,raw:String,options:ConversationAcceptedWorkOptions) {
+    public let revisionTarget:ConversationArtifactContinuationIntent?
+    public init(id:UUID=UUID(),conversationID:UUID,raw:String,options:ConversationAcceptedWorkOptions,revisionTarget:ConversationArtifactContinuationIntent?=nil) {self.revisionTarget=revisionTarget;
         self.id=id;self.conversationID=conversationID;self.raw=raw;self.options=options
     }
 }
@@ -32,10 +33,14 @@ public actor ConversationAcceptedWorkDraftService {
         await lock();defer{unlock()}
         guard !draft.raw.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty,draft.raw.utf16.count<=8000 else {throw ConversationSessionError.invalidEvent}
         var loaded=try await load(draft.conversationID)
-        if let prior=loaded.state.draft,!replaceUnconfirmed {guard prior.id==draft.id,prior.raw==draft.raw else {throw CatpawError.conflict}}
+        if let prior=loaded.state.draft,!replaceUnconfirmed {guard prior.id==draft.id,prior.raw.utf8.elementsEqual(draft.raw.utf8),prior.revisionTarget==draft.revisionTarget else {throw CatpawError.conflict}}
         loaded.state.draft=draft
         try Task.checkCancellation()
         try await repository.commit(scope:scope,mutations:[.requireRevision(loaded.conversation.id,loaded.conversation.header.revision),try mutation(loaded)])
+    }
+    func revisionQueueMutation(draft:ConversationAcceptedWorkDraft,selection:ConversationRevisionWorkSelection) async throws -> Mutation {
+        guard draft.revisionTarget==selection.target,draft.raw.utf8.elementsEqual(selection.originalText.utf8) else {throw CatpawError.conflict}
+        return try await queueMutation(draft:draft,selection:selection.authorization)
     }
     /// Clearing the review commits only with the queue's exact confirmed selection and original text.
     func queueMutation(draft:ConversationAcceptedWorkDraft,selection:ConversationAcceptedWorkSelection) async throws -> Mutation {

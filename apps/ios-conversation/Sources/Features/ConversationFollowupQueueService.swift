@@ -29,8 +29,9 @@ public actor ConversationFollowupQueueService {
         guard !message.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, message.text.utf16.count <= 8000 else { throw CatpawError.invalid("后续消息超过范围。") }
         if let intent=message.continuation {try intent.validate();guard message.image==nil,remainingDraft==nil else {throw ConversationArtifactContinuationError.invalidReference}}
         else {guard remainingContinuationDraft==nil else {throw ConversationArtifactContinuationError.invalidReference}}
+        if let revision=message.revisionWork {try revision.validate();guard message.image==nil,message.acceptedWork==nil,message.continuation==revision.target,message.text.utf8.elementsEqual(revision.originalText.utf8),acceptedWorkDraft != nil else {throw ConversationSessionError.invalidEvent}}
         if message.acceptedWork != nil {guard message.image==nil,message.continuation==nil,acceptedWorkDraft != nil else {throw ConversationSessionError.invalidEvent}}
-        else {guard acceptedWorkDraft==nil else {throw ConversationSessionError.invalidEvent}}
+        else if message.revisionWork==nil {guard acceptedWorkDraft==nil else {throw ConversationSessionError.invalidEvent}}
         var (state, record) = try await load()
         if let same = (state.pending + [state.inflight].compactMap { $0 }).first(where: { $0.id == message.id }) { guard same==message else { throw CatpawError.conflict }; return }
         state.pending.append(message)
@@ -46,8 +47,11 @@ public actor ConversationFollowupQueueService {
             additional = [.update(conversation.id,conversation.header.revision,.core(.conversation(value)))]
         }
         if let draft=acceptedWorkDraft,let selection=message.acceptedWork,let draftService=acceptedWorkDraftService {
-            guard draft.conversationID==conversationID,draft.raw==message.text,draftService.scope==scope else {throw CatpawError.conflict}
+            guard draft.conversationID==conversationID,draft.raw==message.text,draft.revisionTarget==nil,draftService.scope==scope else {throw CatpawError.conflict}
             additional.append(try await draftService.queueMutation(draft:draft,selection:selection))
+        } else if let draft=acceptedWorkDraft,let selection=message.revisionWork,let draftService=acceptedWorkDraftService {
+            guard draft.conversationID==conversationID,draft.raw.utf8.elementsEqual(message.text.utf8),draftService.scope==scope else {throw CatpawError.conflict}
+            additional.append(try await draftService.revisionQueueMutation(draft:draft,selection:selection))
         } else if acceptedWorkDraft != nil {throw ConversationSessionError.invalidEvent}
         try Task.checkCancellation()
         try await save(state, record, additional:additional)
@@ -61,7 +65,7 @@ public actor ConversationFollowupQueueService {
         guard s.paused,let i=s.pending.firstIndex(where:{$0.id == expected.id}),s.pending[i]==expected else {throw CatpawError.conflict}
         // Image authorization is bound to its caption and must be reviewed in the composer.
         guard expected.image == nil else {throw CatpawError.invalid("图片处理许可绑定当前文字。请移除后在输入器重新编辑。")}
-        guard expected.acceptedWork == nil else {throw CatpawError.invalid("工作约定绑定原请求。请移除后重新确认，不能沿用旧期限和预算。")}
+        guard expected.acceptedWork == nil,expected.revisionWork == nil else {throw CatpawError.invalid("工作约定绑定原请求。请移除后重新确认，不能沿用旧期限和预算。")}
         let cancellation=try await session.cancellationForQueueEdit(scope:scope,conversationID:conversationID,operationID:expected.id)
         let replacement=ConversationFollowup(text:text,continuation:expected.continuation)
         s.pending[i]=replacement
