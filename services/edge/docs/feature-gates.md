@@ -17,6 +17,7 @@ Server env (Edge Function secrets of catpaw-api):
 |---|---|---|
 | `CATPAW_GENERATIVE_UI_ENABLED` | `true` · `allowlist` · unset/off | off |
 | `CATPAW_TASK_TOOLS_ENABLED` | `true` · `allowlist` · `off` | `true` (current behaviour) |
+| `CATPAW_DEVICE_TOOLS_ENABLED` | `true` · `allowlist` · unset/off (Wave 2 B3, catpaw.device.v1; no migration) | off |
 | `CATPAW_FEATURE_ALLOWLIST_SUBJECTS` | comma-separated auth user UUIDs (demo/staging accounts) | empty |
 
 - `allowlist` offers the tool only when `turn.subject_id` is in the list. Everyone else gets today's behaviour.
