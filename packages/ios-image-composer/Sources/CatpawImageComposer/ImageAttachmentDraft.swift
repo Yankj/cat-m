@@ -49,6 +49,12 @@ public enum ImageAttachmentPhase: Equatable, Sendable {
         guard isProcessing else { return }
         work?.cancel(); epoch = UUID(); phase = .failed(.cancelled)
     }
+    /// A picker owns only its pending library read. Once bytes are accepted,
+    /// encoding belongs to this draft and its scope, not to a presentation view.
+    public func cancelPendingSelection(ticket:UUID) {
+        guard ticket==epoch,phase == .loading else {return}
+        cancelProcessing()
+    }
     /// Call on remove, scope/account/conversation change or after the host freezes its own send snapshot.
     public func clear() {
         work?.cancel(); work = nil; epoch = UUID(); selectionID = nil

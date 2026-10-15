@@ -1,0 +1,226 @@
+{
+  "schema": "catpaw.native-memory-delivery.v1",
+  "date": "2026-10-15",
+  "candidate": "AF-W40-NATIVE-20261015-25-R6",
+  "source_commit": "0fc8c6958c4ffba6f88ca31d0cd565a9f439f59b",
+  "version": "0.3.0(25)",
+  "delivery": "native_simulator_offline_slice_pass_not_product_acceptance",
+  "bundle_sha256": "7bbf2741c12ddf7753f665d210513c3efd009af75bb6b6ba1422b4300a92138b",
+  "bundle_files": 30,
+  "source_inputs": 384,
+  "app_source_memberships": 113,
+  "bilingual_entries": 1071,
+  "device": {
+    "id": "BE5C60E0-B415-4BF4-8F36-8975FB5314AA",
+    "name": "Catpaw-r5-conversation-qa",
+    "existing": true,
+    "real_system_size_restored": "large",
+    "user_review_reserved": true
+  },
+  "checks": {
+    "backend-maintenance": {
+      "path": "build/native-memory-20261015/backend-final-r3.log",
+      "sha256": "9815085d60171082daa7dd14b09d9b277961540f772b076d9b23f8b4e0830154",
+      "result": "PASS",
+      "count": 361
+    },
+    "non-debug-sdk": {
+      "path": "build/native-memory-20261015/host-sdk-r4.log",
+      "sha256": "2b73c7e59d1d46f728da69882f2c0b29ccb0e52731db8780c6e20a486982cfb2",
+      "result": "PASS",
+      "count": null
+    },
+    "product-and-host-build": {
+      "path": "build/native-memory-20261015/xcode-build25-r2.log",
+      "sha256": "ac49f0cedffcfb39f10a21f7937011068a04bbc8efe5cd5302a7472c1811784b",
+      "result": "PASS",
+      "count": null
+    },
+    "host-new-memory": {
+      "path": "build/native-memory-20261015/xcode-default-unknown25-r2.log",
+      "sha256": "5f6ffeb267ddfaa6fa18211d126113357fc77ca354d312875c866377edd8fc01",
+      "result": "PASS",
+      "count": 7,
+      "scope": "Seven host methods passed within a later-interrupted mixed run; two UI methods failed and the whole run is NOT PASS."
+    },
+    "host-affected-services": {
+      "path": "build/native-memory-20261015/xcode-affected25-r5.log",
+      "sha256": "a827462b86a0eef4dd8936d85f4b44f9379772a5d8fc72c094041a2ab958f5ee",
+      "result": "PASS",
+      "count": 35
+    },
+    "ui-default": {
+      "path": "build/native-memory-20261015/xcode-default25-r6.log",
+      "sha256": "ccdd9f9c5e1eaf952aaf09fa46101d3b5a0e114e2b43a39b89615dde5425cb54",
+      "result": "PASS",
+      "count": 1
+    },
+    "ui-system-maximum-and-visible-keyboard": {
+      "path": "build/native-memory-20261015/xcode-maximum25-r6.log",
+      "sha256": "2178533e51801e28c2fdbbd891abbf83548fbf820edd35a42a589e663783848d",
+      "result": "PASS",
+      "count": 1
+    },
+    "ui-lost-reply-original-get": {
+      "path": "build/native-memory-20261015/xcode-default-unknown25-r3.log",
+      "sha256": "5048cad289613c52a35c932f2e17a4120d26745c7a8298cb69173e3215c92f1c",
+      "result": "PASS",
+      "count": 1,
+      "scope": "Only unknown method passed in r3; default method failed. Same fixed product bundle."
+    },
+    "launcher-initial": {
+      "path": "build/native-memory-20261015/launcher-work-r1.log",
+      "sha256": "33c19c391633271563ff0a39b0cb158dd8cd2ebb7c8757bda451cfa5d8f4d698",
+      "result": "PASS",
+      "count": null
+    },
+    "launcher-reuse-default-resume": {
+      "path": "build/native-memory-20261015/launcher-resume-r2.log",
+      "sha256": "098e055e7b2bee9348aa7c772b18e32ea41a1f1fd0baaba354ea567e8dc79d5b",
+      "result": "PASS",
+      "count": null
+    },
+    "sensitivity": {
+      "path": "build/native-memory-20261015/sensitivity-delivery-r6-final.json",
+      "sha256": "afc645ad734fda2a95e5d414bfb18cdd87a0c041695afbb898bbd9245b345fec",
+      "result": "PASS"
+    }
+  },
+  "same_product_bundle_targeted_methods": {
+    "host": 42,
+    "ui": 3,
+    "one_invocation": false
+  },
+  "sensitivity": {
+    "candidate_files": 1131,
+    "blocking": 0,
+    "manual": 0,
+    "exact_false_positive_review": "generated scale-2 AppIcon asset filename at package-files.json:6"
+  },
+  "source_snapshot_sha256": "a605b5a89305490447423f978058ac4b882f0d4fec66c783dc5341d51944adc6",
+  "package_files_sha256": "c94e383627d9a2a3fd91f19f91e69f7b4cddf7b256b4d32bfb21b8cd2fb362b3",
+  "screenshots_and_geometry_local_only": [
+    {
+      "path": "build/native-memory-20261015/attachments-default-r6/43B9F6C4-9790-42A3-A263-F419A6D2157F.png",
+      "sha256": "737c57ce4c861f5869523e3f2146c591088e2d63eabee6cc8139c32fbfc28ef5",
+      "name": "Synthetic-native-memory-default-forgotten-with-receipt_0_052A9BB8-B0D9-42D5-A3A6-88EFFEEF3734.png",
+      "test": "ConversationMemoryUITests/test01NewConversationSavesColdDraftThenSourceCorrectionAndForget()",
+      "synthetic": true,
+      "uploaded": false
+    },
+    {
+      "path": "build/native-memory-20261015/attachments-default-r6/B3AC7DC3-5380-4779-B1C6-2D351354CC4D.png",
+      "sha256": "e1e66da5b365c0dde69b92ca6daa66f13253af2103b2cecae0753ab23ef2fce9",
+      "name": "Synthetic-native-memory-default-corrected-memory_0_F1C9A732-C7D3-47A2-9144-A2B36710EF1B.png",
+      "test": "ConversationMemoryUITests/test01NewConversationSavesColdDraftThenSourceCorrectionAndForget()",
+      "synthetic": true,
+      "uploaded": false
+    },
+    {
+      "path": "build/native-memory-20261015/attachments-default-r6/FD61185E-B0EB-4617-9576-A4547572121D.png",
+      "sha256": "067ecc6e84e77bc68f6308ac92db214e38b4888f2077379bb7d01eed7d63294c",
+      "name": "Synthetic-native-memory-default-real-source_0_88B06FA2-CF7A-4180-BF5D-6F7738BC780A.png",
+      "test": "ConversationMemoryUITests/test01NewConversationSavesColdDraftThenSourceCorrectionAndForget()",
+      "synthetic": true,
+      "uploaded": false
+    },
+    {
+      "path": "build/native-memory-20261015/attachments-default-r6/76551AA5-F047-42EB-A6A1-810C4D6043D2.png",
+      "sha256": "963a4213d33698658fd4f22512201939f56ad92b2bb6470a63527d3f1e7da9f2",
+      "name": "Synthetic-native-memory-default-unsubmitted-review_0_88289901-F3BC-4C6C-972A-6163B2863C0A.png",
+      "test": "ConversationMemoryUITests/test01NewConversationSavesColdDraftThenSourceCorrectionAndForget()",
+      "synthetic": true,
+      "uploaded": false
+    },
+    {
+      "path": "build/native-memory-20261015/attachments-maximum-r6/FD1E707C-0D5F-47CC-8A2C-E950557EA306.png",
+      "sha256": "781f938716f9a3c871a7ff036d2a67ca687a44684c98af60c1a6e560039dfe51",
+      "name": "Synthetic-native-memory-maximum-full-review-fixed-confirmation_0_D9AB5408-CE9D-40C5-997C-01FA57880D34.png",
+      "test": "ConversationMemoryUITests/test02LargestSystemTextKeyboardAndFixedReviewRemainReachable()",
+      "synthetic": true,
+      "uploaded": false
+    },
+    {
+      "path": "build/native-memory-20261015/attachments-maximum-r6/BC14D79B-E4D7-4973-BBAA-C314A10EBC7D.png",
+      "sha256": "8359c5115338ed778aece9ae1b76395cc78118a4d000f7f3498d575483609ec5",
+      "name": "Synthetic-native-memory-maximum-editor-with-actual-visible-system-keyboard_0_284C8ADF-A8A0-4C8D-966A-63B57C109D82.png",
+      "test": "ConversationMemoryUITests/test02LargestSystemTextKeyboardAndFixedReviewRemainReachable()",
+      "synthetic": true,
+      "uploaded": false
+    },
+    {
+      "path": "build/native-memory-20261015/attachments-maximum-r6/F7D90BF4-45A8-4751-BF81-DEF87A57F64F.txt",
+      "sha256": "a2935e4990e1fee07d979394e40c66d8afb61491edf44d67e0c2e63978baf435",
+      "name": "Memory-maximum-actual-keyboard-geometry_0_C46066E2-4B55-4B9A-A327-CE3C41BF034B.txt",
+      "test": "ConversationMemoryUITests/test02LargestSystemTextKeyboardAndFixedReviewRemainReachable()",
+      "synthetic": true,
+      "uploaded": false
+    },
+    {
+      "path": "build/native-memory-20261015/attachments-unknown-r3/20A1999B-814C-4A80-8DF9-92799CFFA4EA.png",
+      "sha256": "616ad747a22b28a88cac95e269499cb1cce75495747cdf14638b58f13c6ddcea",
+      "name": "Synthetic-native-memory-cold-original-get-no-resend_0_871FD841-127C-4072-9357-B4C611A1F521.png",
+      "test": "ConversationMemoryUITests/test03LostReplyColdClientReadsOriginalWithoutSecondPOST()",
+      "synthetic": true,
+      "uploaded": false
+    },
+    {
+      "path": "build/native-memory-20261015/attachments-unknown-r3/1A018077-8915-4B41-BA81-5B181AA33B60.png",
+      "sha256": "63d75ced372edfed6bf9690983e33147b72b703df66aabe610f867e3c2f2dad5",
+      "name": "Synthetic-native-memory-unknown-accepted-original_0_9DCB32AF-E326-441F-849F-55282D96D0B4.png",
+      "test": "ConversationMemoryUITests/test03LostReplyColdClientReadsOriginalWithoutSecondPOST()",
+      "synthetic": true,
+      "uploaded": false
+    }
+  ],
+  "launcher": {
+    "path": "apps/ios-conversation/Scripts/run-simulator-review25.sh",
+    "sha256": "cdb7f8281aac368895c7499c8727795dd93fc55668a12eacd52ca9f1a660b279",
+    "default": "resume",
+    "installed_equal_bytes_skips_install": true,
+    "preserves_local_client": true,
+    "work_creates_local_client_only": true,
+    "before_memory_posts": 7,
+    "after_memory_posts": 7,
+    "provider_calls_before_after": [
+      0,
+      0
+    ],
+    "does_not_create_or_renew_service_authority": true
+  },
+  "preserved_failures": [
+    "SDK r1 @Published declaration compile failure",
+    "SDK r3 adapter modified during build; invalidated, not passed",
+    "Mixed r2: 7 host PASS; two UI FAIL from fixture scoped-transaction overload; diagnostic collection terminated143; no final readable xcresult",
+    "Default r3/r4 helper selected keyboard prediction ScrollView, not named app viewport; product fonts unchanged",
+    "r5 maximum XCTest PASS did not prove visible keyboard; original screenshot lacked keyboard; r6 requires actual visible stable keyboard and measured editor intersection",
+    "Early default screenshot captured sheet transition; r6 waits fixed confirmation geometry before capture",
+    "Swift numeric canonical hash mismatch RED72e505 versus JS451911; system fixed JavaScriptCore canonical codec GREEN",
+    "Same-scope foreign actor could forget/disable owner memory RED; immutable subject/source checks GREEN",
+    "Uncertain malformed4xx incorrectly considered not sent RED; strict definite-rejection envelope plus original GET GREEN"
+  ],
+  "boundaries": {
+    "authentication": "synthetic loopback fixture",
+    "database": "serialized TestRepository; no actual PG concurrency",
+    "provider": "injected synthetic; zero real model calls for this W40 slice",
+    "natural_language_extraction": "not wired; explicit native commands and lexical retrieval only",
+    "mid_call_pure_time_expiry": "temporal validity checked before provider; commit fences generation/source/consent, not every temporal ref again",
+    "real_auth_sql_model_phone": false,
+    "production_memory_deployed": false,
+    "af_a11_closed": false,
+    "af_g5_closed": false,
+    "final_g3_closed": false,
+    "media_uploaded": 0
+  },
+  "next": [
+    "Collect user feedback on fixed build25",
+    "Finish separately authorized r7 route probe; cannot combine its frozen base route with expanded W40 data scope",
+    "Implement/verify natural conversational memory extraction and actual cross-conversation PG behavior",
+    "Continue W10–12/CP-01, independent scheduler/CP-02, OS effects/CP-03 and final same-candidate gates"
+  ],
+  "governance_metadata_after_source_commit": {
+    "path": "scripts/reviewed-findings.json",
+    "sha256": "cc57efbe58c2a1058d2d9bcbdfe51c4db7b989e94367e860b30150b899d3b287",
+    "reason": "One exact package-filename false positive; frozen 384 input hashes remain bound to source commit0fc8c69, not rewritten."
+  }
+}

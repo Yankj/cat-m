@@ -1170,10 +1170,10 @@
     {
       "id": "E34",
       "file": "docs/planning/AF-1/development-start-contract.md",
-      "sha256": "c7c52d2cf87beb5623e03fb5e7d7b6b698a066185343eece3160e53d5086d494",
+      "sha256": "0e42f65a56497d4e0cc55fd6cd8e10543a7df1a425556d4ff753d3a58e882341",
       "publication_scope": "versioned",
       "evidence_kind": "development_entry_contract",
-      "adopted": "统一spec/验收/执行单元、开工入口、外部资源门和证据责任；R1明确规格分工、CP01先贯通与既有Goal/资源边界；R2视觉层级/有限运动/可访问性与原12U接线；R3开合/过程/稳定卡/表图/HIL场景映射原验收",
+      "adopted": "统一spec/验收/执行单元、开工入口、外部资源门和证据责任；R1明确规格分工、CP01先贯通与既有Goal/资源边界；R2视觉层级/有限运动/可访问性与原12U接线；R3开合/过程/稳定卡/表图/HIL场景映射原验收；2026-10-15保留FINAL-G3原门槛，新增中午前版本交付、当天反馈修订、Root加三Agent文件边界及共性根因处理",
       "limits_or_deferred": "开发合同ready与运行/发布可用分开；实际状态只在主计划",
       "goal_ids": [
         "AF-G1",
@@ -1227,10 +1227,10 @@
     {
       "id": "E35",
       "file": "docs/planning/AF-1/long-task-development-prompt.md",
-      "sha256": "528a19c418bb88d6b4dc5967a00a06bcec82ee132b93db95cb71c84e9b7b860a",
+      "sha256": "5cc7393d3727ac18600c41b244d5a309968542453bf2c6df6e03d0a1775583e9",
       "publication_scope": "versioned",
       "evidence_kind": "user_copyable_development_prompt",
-      "adopted": "长任务执行与持续交付输入、完整放行门、统一主仓；R1持续开发prompt含产品取舍，不在本轮执行；R2视觉层级/有限运动/可访问性与原12U接线；R3开合/过程/稳定卡/表图/HIL场景映射原验收",
+      "adopted": "长任务执行与持续交付输入、完整放行门、统一主仓；R1持续开发prompt含产品取舍，不在本轮执行；R2视觉层级/有限运动/可访问性与原12U接线；R3开合/过程/稳定卡/表图/HIL场景映射原验收；2026-10-15保留FINAL-G3原门槛，新增中午前版本交付、当天反馈修订、Root加三Agent文件边界及共性根因处理",
       "limits_or_deferred": "供用户复制；本次编写不启动Goal/子任务/调度或扩大授权",
       "goal_ids": [
         "AF-G1",

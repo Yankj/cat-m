@@ -1,0 +1,2016 @@
+{
+  "schema_version": 1,
+  "reality": "synthetic_offline_maintained_primitive_no_OS_or_HTTP",
+  "provenance": {
+    "generator": "services/edge/test/device-effect-contract-fixture.mjs",
+    "contract_source": "services/edge/supabase/functions/_shared/core/src/device-effect-contract.mjs",
+    "service_source": "services/edge/supabase/functions/_shared/core/src/device-effect-service.mjs",
+    "repository": "SERIALIZED TestRepository",
+    "target_observation": "explicit synthetic registered device",
+    "receipt_observation": "pre-recorded synthetic provider observations; not real EventKit/UN",
+    "external_calls": 0,
+    "source_hashes": {
+      "services/edge/test/device-effect-contract-fixture.mjs": "dc77efabc4c94734225422e5589aaf5f14b1afd5e5c112ae0598199798340894",
+      "services/edge/supabase/functions/_shared/core/src/device-effect-contract.mjs": "3a2f49108789fbc91326f1111f2faafed09de3d286431fe75fe6870657bf8f5c",
+      "services/edge/supabase/functions/_shared/core/src/device-effect-service.mjs": "2cb283471760eab998387eeb50bbef033b57fe52ac94da16af84b592b28da32d"
+    }
+  },
+  "identity": {
+    "scope": {
+      "scope_id": "00000001-aaaa-4aaa-8aaa-000000000001",
+      "profile_id": "00000002-aaaa-4aaa-8aaa-000000000002",
+      "workspace_id": "00000003-aaaa-4aaa-8aaa-000000000003"
+    },
+    "subject": "00000004-aaaa-4aaa-8aaa-000000000004",
+    "binding": {
+      "scope_id": "00000001-aaaa-4aaa-8aaa-000000000001",
+      "conversation_id": "00000008-aaaa-4aaa-8aaa-000000000008",
+      "turn_id": "00000009-aaaa-4aaa-8aaa-000000000009",
+      "call_id": "synthetic-calendar-call",
+      "delegation_id": "00000007-aaaa-4aaa-8aaa-000000000007",
+      "operation_id": "00000023-aaaa-4aaa-8aaa-000000000023",
+      "run_id": "00000006-aaaa-4aaa-8aaa-000000000006",
+      "task_id": "4791607f09bca718374744782053f1e56dad7ea3c8415486197125dee77c94ef",
+      "request_hash": "a17158364b1a27ba8c2885840fa0835aa2384c8b074b6ced2cc2abdd3e581158",
+      "delegation_revision": 1,
+      "grant_epoch": 1,
+      "projection_url": "/catpaw/v1/scopes/00000001-aaaa-4aaa-8aaa-000000000001/runs/00000006-aaaa-4aaa-8aaa-000000000006"
+    },
+    "action_id": "00000012-aaaa-4aaa-8aaa-000000000012",
+    "action_digest": "98f7502844054c67dd953916acc72ed534781bef264fbdc610913fb163c4357a",
+    "decision_operation_id": "00000014-aaaa-4aaa-8aaa-000000000014",
+    "action_revision": 2
+  },
+  "frozen": {
+    "contract": "catpaw.task-action.v2",
+    "id": "00000012-aaaa-4aaa-8aaa-000000000012",
+    "proposal_operation_id": "00000013-aaaa-4aaa-8aaa-000000000013",
+    "scope_id": "00000001-aaaa-4aaa-8aaa-000000000001",
+    "subject_id": "00000004-aaaa-4aaa-8aaa-000000000004",
+    "conversation_id": "00000008-aaaa-4aaa-8aaa-000000000008",
+    "turn_id": "00000009-aaaa-4aaa-8aaa-000000000009",
+    "run_id": "00000006-aaaa-4aaa-8aaa-000000000006",
+    "task_id": "4791607f09bca718374744782053f1e56dad7ea3c8415486197125dee77c94ef",
+    "request_hash": "a17158364b1a27ba8c2885840fa0835aa2384c8b074b6ced2cc2abdd3e581158",
+    "delegation_id": "00000007-aaaa-4aaa-8aaa-000000000007",
+    "delegation_revision": 1,
+    "grant_epoch": 1,
+    "plan_reference": {
+      "revision": 1,
+      "plan_hash": "ac9473ef55345fa2e9999d2d98eabe51d48d6e1b7b7ddcbdfd07c4ed1cbfde47"
+    },
+    "kind": "calendar.create.v2",
+    "tool_version": 2,
+    "target": {
+      "device_id": "00000010-aaaa-4aaa-8aaa-000000000010",
+      "environment_id": "00000011-aaaa-4aaa-8aaa-000000000011",
+      "calendar_id": "synthetic/calendar/1",
+      "calendar_display_name": "合成 / Calendar é 🐾",
+      "calendar_snapshot_hash": "9c9cd3e9f7c8754fba7a3d4bfb2f123ae88ae3456c1bb2db8f81da6ca40a63ad"
+    },
+    "parameters": {
+      "title": "合成 / Exact é 🐾",
+      "start_at": "2026-10-16T01:00:00.000Z",
+      "end_at": "2026-10-16T01:20:00.000Z",
+      "time_zone": "Asia/Shanghai",
+      "reminder_offset_seconds": -300
+    },
+    "parameters_hash": "7922894393d92c4fb156d54596704e5a7710cfd9caf3d94ec1eff990ea1c639c",
+    "artifact_reference": null,
+    "execution_policy": {
+      "contract": "catpaw.device-effect.v1",
+      "version": 1,
+      "policy_hash": "3a5f7c7304d0413e1ba5fcfbe5a31d7755a4435e1e877b532cdf9f81e119bc4b"
+    },
+    "created_at": "2026-10-15T00:00:00.000Z",
+    "expires_at": "2026-10-15T00:30:00.000Z"
+  },
+  "decision": {
+    "id": "00000014-aaaa-4aaa-8aaa-000000000014",
+    "contract": "catpaw.task-action.v2",
+    "action_id": "00000012-aaaa-4aaa-8aaa-000000000012",
+    "run_id": "00000006-aaaa-4aaa-8aaa-000000000006",
+    "task_id": "4791607f09bca718374744782053f1e56dad7ea3c8415486197125dee77c94ef",
+    "scope_id": "00000001-aaaa-4aaa-8aaa-000000000001",
+    "subject_id": "00000004-aaaa-4aaa-8aaa-000000000004",
+    "action_digest": "98f7502844054c67dd953916acc72ed534781bef264fbdc610913fb163c4357a",
+    "decision": "approve",
+    "execution_policy": {
+      "contract": "catpaw.device-effect.v1",
+      "version": 1,
+      "policy_hash": "3a5f7c7304d0413e1ba5fcfbe5a31d7755a4435e1e877b532cdf9f81e119bc4b"
+    },
+    "committed_at": "2026-10-15T00:00:00.000Z"
+  },
+  "admission": {
+    "operation_id": "00000015-aaaa-4aaa-8aaa-000000000015",
+    "action_id": "00000012-aaaa-4aaa-8aaa-000000000012",
+    "decision_operation_id": "00000014-aaaa-4aaa-8aaa-000000000014",
+    "expected_action_revision": 2,
+    "action_digest": "98f7502844054c67dd953916acc72ed534781bef264fbdc610913fb163c4357a",
+    "expected_grant_epoch": 1,
+    "expected_plan_revision": 1,
+    "expected_plan_hash": "ac9473ef55345fa2e9999d2d98eabe51d48d6e1b7b7ddcbdfd07c4ed1cbfde47",
+    "expected_execution_revision": 0,
+    "device_id": "00000010-aaaa-4aaa-8aaa-000000000010",
+    "calendar_snapshot_hash": "9c9cd3e9f7c8754fba7a3d4bfb2f123ae88ae3456c1bb2db8f81da6ca40a63ad",
+    "policy_reference": {
+      "contract": "catpaw.device-effect.v1",
+      "version": 1,
+      "policy_hash": "3a5f7c7304d0413e1ba5fcfbe5a31d7755a4435e1e877b532cdf9f81e119bc4b"
+    }
+  },
+  "dispatch_requests": {
+    "calendar": {
+      "operation_id": "00000016-aaaa-4aaa-8aaa-000000000016",
+      "subeffect": "calendar",
+      "expected_effect_revision": 1,
+      "binding_hash": "2e9f97ff3da4a68a6a07b2a8cd10ec28089b419c35492ed4ca13caac5b8c8437",
+      "lease_id": "25452bc9-c091-45ba-8244-0dde388fa7a7"
+    },
+    "notification": {
+      "operation_id": "00000018-aaaa-4aaa-8aaa-000000000018",
+      "subeffect": "notification",
+      "expected_effect_revision": 3,
+      "binding_hash": "2e9f97ff3da4a68a6a07b2a8cd10ec28089b419c35492ed4ca13caac5b8c8437",
+      "lease_id": "25452bc9-c091-45ba-8244-0dde388fa7a7"
+    }
+  },
+  "hashes": {
+    "frozen": "98f7502844054c67dd953916acc72ed534781bef264fbdc610913fb163c4357a",
+    "parameters": "7922894393d92c4fb156d54596704e5a7710cfd9caf3d94ec1eff990ea1c639c",
+    "policy": "3a5f7c7304d0413e1ba5fcfbe5a31d7755a4435e1e877b532cdf9f81e119bc4b",
+    "admission": "577d576fbaaa75d0ffde3f8b0eb0e6f804f63b094324b9014ad434f632788c1c",
+    "calendar_dispatch": "8dcf9a23151e1f6f1bb052e538d6185dde0a861007eb0aa045d8bfe7bc5a757c",
+    "notification_dispatch": "7e91ddecb86eaf21c38cf6ca3ac910249e4ed43c745f7f545a27b667e2251a75",
+    "effect_id": "319d14e4-8eb6-4843-8941-e5b6dbc7b736",
+    "calendar_child_id": "a343e3ef-50e2-426b-8d1e-9e2899358af1",
+    "notification_child_id": "64398bce-44ca-4e69-81f6-342178549661"
+  },
+  "responses": {
+    "admitted": {
+      "schema_version": 1,
+      "contract": "catpaw.device-effect.v1",
+      "effect": {
+        "id": "319d14e4-8eb6-4843-8941-e5b6dbc7b736",
+        "contract": "catpaw.device-effect.v1",
+        "frozen": {
+          "id": "319d14e4-8eb6-4843-8941-e5b6dbc7b736",
+          "action_id": "00000012-aaaa-4aaa-8aaa-000000000012",
+          "action_digest": "98f7502844054c67dd953916acc72ed534781bef264fbdc610913fb163c4357a",
+          "decision_operation_id": "00000014-aaaa-4aaa-8aaa-000000000014",
+          "scope_id": "00000001-aaaa-4aaa-8aaa-000000000001",
+          "subject_id": "00000004-aaaa-4aaa-8aaa-000000000004",
+          "conversation_id": "00000008-aaaa-4aaa-8aaa-000000000008",
+          "turn_id": "00000009-aaaa-4aaa-8aaa-000000000009",
+          "run_id": "00000006-aaaa-4aaa-8aaa-000000000006",
+          "task_id": "4791607f09bca718374744782053f1e56dad7ea3c8415486197125dee77c94ef",
+          "run_request_hash": "a17158364b1a27ba8c2885840fa0835aa2384c8b074b6ced2cc2abdd3e581158",
+          "delegation_id": "00000007-aaaa-4aaa-8aaa-000000000007",
+          "delegation_revision": 1,
+          "grant_epoch": 1,
+          "execution_revision": 0,
+          "task_lease_id": null,
+          "task_lease_until": null,
+          "target": {
+            "device_id": "00000010-aaaa-4aaa-8aaa-000000000010",
+            "environment_id": "00000011-aaaa-4aaa-8aaa-000000000011",
+            "calendar_id": "synthetic/calendar/1",
+            "calendar_display_name": "合成 / Calendar é 🐾",
+            "calendar_snapshot_hash": "9c9cd3e9f7c8754fba7a3d4bfb2f123ae88ae3456c1bb2db8f81da6ca40a63ad"
+          },
+          "parameters": {
+            "title": "合成 / Exact é 🐾",
+            "start_at": "2026-10-16T01:00:00.000Z",
+            "end_at": "2026-10-16T01:20:00.000Z",
+            "time_zone": "Asia/Shanghai",
+            "reminder_offset_seconds": -300
+          },
+          "device_generation": 1,
+          "policy_reference": {
+            "contract": "catpaw.device-effect.v1",
+            "version": 1,
+            "policy_hash": "3a5f7c7304d0413e1ba5fcfbe5a31d7755a4435e1e877b532cdf9f81e119bc4b"
+          },
+          "admission_operation_id": "00000015-aaaa-4aaa-8aaa-000000000015",
+          "admission_request_hash": "577d576fbaaa75d0ffde3f8b0eb0e6f804f63b094324b9014ad434f632788c1c",
+          "admitted_at": "2026-10-15T00:00:00.000Z",
+          "approval_expires_at": "2026-10-15T00:30:00.000Z",
+          "lease_id": "25452bc9-c091-45ba-8244-0dde388fa7a7",
+          "lease_expires_at": "2026-10-15T00:00:15.000Z"
+        },
+        "binding_hash": "2e9f97ff3da4a68a6a07b2a8cd10ec28089b419c35492ed4ca13caac5b8c8437",
+        "revision": 1,
+        "stop": null,
+        "subeffects": {
+          "calendar": {
+            "id": "a343e3ef-50e2-426b-8d1e-9e2899358af1",
+            "kind": "calendar",
+            "state": "not_dispatched",
+            "dispatch": null,
+            "receipt": null,
+            "receipt_hash": null,
+            "result_operation_id": null
+          },
+          "notification": {
+            "id": "64398bce-44ca-4e69-81f6-342178549661",
+            "kind": "notification",
+            "state": "not_dispatched",
+            "dispatch": null,
+            "receipt": null,
+            "receipt_hash": null,
+            "result_operation_id": null
+          }
+        },
+        "record_hash": "0ca888530742d1293d64779d6d2a28ddced565516f7595cf53730ce165afba04",
+        "state": "admitted",
+        "execution_current": true,
+        "unresolved_subeffects": [],
+        "can_redispatch": false
+      },
+      "dispatch_permit": null
+    },
+    "calendar_permit": {
+      "schema_version": 1,
+      "contract": "catpaw.device-effect.v1",
+      "effect": {
+        "id": "319d14e4-8eb6-4843-8941-e5b6dbc7b736",
+        "contract": "catpaw.device-effect.v1",
+        "frozen": {
+          "id": "319d14e4-8eb6-4843-8941-e5b6dbc7b736",
+          "action_id": "00000012-aaaa-4aaa-8aaa-000000000012",
+          "action_digest": "98f7502844054c67dd953916acc72ed534781bef264fbdc610913fb163c4357a",
+          "decision_operation_id": "00000014-aaaa-4aaa-8aaa-000000000014",
+          "scope_id": "00000001-aaaa-4aaa-8aaa-000000000001",
+          "subject_id": "00000004-aaaa-4aaa-8aaa-000000000004",
+          "conversation_id": "00000008-aaaa-4aaa-8aaa-000000000008",
+          "turn_id": "00000009-aaaa-4aaa-8aaa-000000000009",
+          "run_id": "00000006-aaaa-4aaa-8aaa-000000000006",
+          "task_id": "4791607f09bca718374744782053f1e56dad7ea3c8415486197125dee77c94ef",
+          "run_request_hash": "a17158364b1a27ba8c2885840fa0835aa2384c8b074b6ced2cc2abdd3e581158",
+          "delegation_id": "00000007-aaaa-4aaa-8aaa-000000000007",
+          "delegation_revision": 1,
+          "grant_epoch": 1,
+          "execution_revision": 0,
+          "task_lease_id": null,
+          "task_lease_until": null,
+          "target": {
+            "device_id": "00000010-aaaa-4aaa-8aaa-000000000010",
+            "environment_id": "00000011-aaaa-4aaa-8aaa-000000000011",
+            "calendar_id": "synthetic/calendar/1",
+            "calendar_display_name": "合成 / Calendar é 🐾",
+            "calendar_snapshot_hash": "9c9cd3e9f7c8754fba7a3d4bfb2f123ae88ae3456c1bb2db8f81da6ca40a63ad"
+          },
+          "parameters": {
+            "title": "合成 / Exact é 🐾",
+            "start_at": "2026-10-16T01:00:00.000Z",
+            "end_at": "2026-10-16T01:20:00.000Z",
+            "time_zone": "Asia/Shanghai",
+            "reminder_offset_seconds": -300
+          },
+          "device_generation": 1,
+          "policy_reference": {
+            "contract": "catpaw.device-effect.v1",
+            "version": 1,
+            "policy_hash": "3a5f7c7304d0413e1ba5fcfbe5a31d7755a4435e1e877b532cdf9f81e119bc4b"
+          },
+          "admission_operation_id": "00000015-aaaa-4aaa-8aaa-000000000015",
+          "admission_request_hash": "577d576fbaaa75d0ffde3f8b0eb0e6f804f63b094324b9014ad434f632788c1c",
+          "admitted_at": "2026-10-15T00:00:00.000Z",
+          "approval_expires_at": "2026-10-15T00:30:00.000Z",
+          "lease_id": "25452bc9-c091-45ba-8244-0dde388fa7a7",
+          "lease_expires_at": "2026-10-15T00:00:15.000Z"
+        },
+        "binding_hash": "2e9f97ff3da4a68a6a07b2a8cd10ec28089b419c35492ed4ca13caac5b8c8437",
+        "revision": 2,
+        "stop": null,
+        "subeffects": {
+          "calendar": {
+            "id": "a343e3ef-50e2-426b-8d1e-9e2899358af1",
+            "kind": "calendar",
+            "state": "dispatched",
+            "dispatch": {
+              "contract": "catpaw.device-effect.v1",
+              "effect_id": "319d14e4-8eb6-4843-8941-e5b6dbc7b736",
+              "subeffect_id": "a343e3ef-50e2-426b-8d1e-9e2899358af1",
+              "kind": "calendar",
+              "operation_id": "00000016-aaaa-4aaa-8aaa-000000000016",
+              "request_hash": "8dcf9a23151e1f6f1bb052e538d6185dde0a861007eb0aa045d8bfe7bc5a757c",
+              "binding_hash": "2e9f97ff3da4a68a6a07b2a8cd10ec28089b419c35492ed4ca13caac5b8c8437",
+              "lease_id": "25452bc9-c091-45ba-8244-0dde388fa7a7",
+              "dispatched_at": "2026-10-15T00:00:00.000Z",
+              "dispatch_hash": "0fd8ed8e48cb6281a66d099d95d4f2e4744f78335d7fcdfbb23e7db8c31ff25b"
+            },
+            "receipt": null,
+            "receipt_hash": null,
+            "result_operation_id": null
+          },
+          "notification": {
+            "id": "64398bce-44ca-4e69-81f6-342178549661",
+            "kind": "notification",
+            "state": "not_dispatched",
+            "dispatch": null,
+            "receipt": null,
+            "receipt_hash": null,
+            "result_operation_id": null
+          }
+        },
+        "record_hash": "d5793d27e28158e2b02046d4ed9d5b491cc66f387d545f8973d8a3e737e3bf6d",
+        "state": "dispatching",
+        "execution_current": true,
+        "unresolved_subeffects": [
+          {
+            "kind": "calendar",
+            "subeffect_id": "a343e3ef-50e2-426b-8d1e-9e2899358af1",
+            "dispatch_operation_id": "00000016-aaaa-4aaa-8aaa-000000000016",
+            "state": "dispatched",
+            "can_retry": false
+          }
+        ],
+        "can_redispatch": false
+      },
+      "dispatch_permit": {
+        "contract": "catpaw.device-effect.v1",
+        "effect_id": "319d14e4-8eb6-4843-8941-e5b6dbc7b736",
+        "subeffect_id": "a343e3ef-50e2-426b-8d1e-9e2899358af1",
+        "kind": "calendar",
+        "operation_id": "00000016-aaaa-4aaa-8aaa-000000000016",
+        "request_hash": "8dcf9a23151e1f6f1bb052e538d6185dde0a861007eb0aa045d8bfe7bc5a757c",
+        "binding_hash": "2e9f97ff3da4a68a6a07b2a8cd10ec28089b419c35492ed4ca13caac5b8c8437",
+        "lease_id": "25452bc9-c091-45ba-8244-0dde388fa7a7",
+        "dispatched_at": "2026-10-15T00:00:00.000Z",
+        "dispatch_hash": "0fd8ed8e48cb6281a66d099d95d4f2e4744f78335d7fcdfbb23e7db8c31ff25b",
+        "lease_expires_at": "2026-10-15T00:00:15.000Z"
+      }
+    },
+    "calendar_replay": {
+      "schema_version": 1,
+      "contract": "catpaw.device-effect.v1",
+      "effect": {
+        "id": "319d14e4-8eb6-4843-8941-e5b6dbc7b736",
+        "contract": "catpaw.device-effect.v1",
+        "frozen": {
+          "id": "319d14e4-8eb6-4843-8941-e5b6dbc7b736",
+          "action_id": "00000012-aaaa-4aaa-8aaa-000000000012",
+          "action_digest": "98f7502844054c67dd953916acc72ed534781bef264fbdc610913fb163c4357a",
+          "decision_operation_id": "00000014-aaaa-4aaa-8aaa-000000000014",
+          "scope_id": "00000001-aaaa-4aaa-8aaa-000000000001",
+          "subject_id": "00000004-aaaa-4aaa-8aaa-000000000004",
+          "conversation_id": "00000008-aaaa-4aaa-8aaa-000000000008",
+          "turn_id": "00000009-aaaa-4aaa-8aaa-000000000009",
+          "run_id": "00000006-aaaa-4aaa-8aaa-000000000006",
+          "task_id": "4791607f09bca718374744782053f1e56dad7ea3c8415486197125dee77c94ef",
+          "run_request_hash": "a17158364b1a27ba8c2885840fa0835aa2384c8b074b6ced2cc2abdd3e581158",
+          "delegation_id": "00000007-aaaa-4aaa-8aaa-000000000007",
+          "delegation_revision": 1,
+          "grant_epoch": 1,
+          "execution_revision": 0,
+          "task_lease_id": null,
+          "task_lease_until": null,
+          "target": {
+            "device_id": "00000010-aaaa-4aaa-8aaa-000000000010",
+            "environment_id": "00000011-aaaa-4aaa-8aaa-000000000011",
+            "calendar_id": "synthetic/calendar/1",
+            "calendar_display_name": "合成 / Calendar é 🐾",
+            "calendar_snapshot_hash": "9c9cd3e9f7c8754fba7a3d4bfb2f123ae88ae3456c1bb2db8f81da6ca40a63ad"
+          },
+          "parameters": {
+            "title": "合成 / Exact é 🐾",
+            "start_at": "2026-10-16T01:00:00.000Z",
+            "end_at": "2026-10-16T01:20:00.000Z",
+            "time_zone": "Asia/Shanghai",
+            "reminder_offset_seconds": -300
+          },
+          "device_generation": 1,
+          "policy_reference": {
+            "contract": "catpaw.device-effect.v1",
+            "version": 1,
+            "policy_hash": "3a5f7c7304d0413e1ba5fcfbe5a31d7755a4435e1e877b532cdf9f81e119bc4b"
+          },
+          "admission_operation_id": "00000015-aaaa-4aaa-8aaa-000000000015",
+          "admission_request_hash": "577d576fbaaa75d0ffde3f8b0eb0e6f804f63b094324b9014ad434f632788c1c",
+          "admitted_at": "2026-10-15T00:00:00.000Z",
+          "approval_expires_at": "2026-10-15T00:30:00.000Z",
+          "lease_id": "25452bc9-c091-45ba-8244-0dde388fa7a7",
+          "lease_expires_at": "2026-10-15T00:00:15.000Z"
+        },
+        "binding_hash": "2e9f97ff3da4a68a6a07b2a8cd10ec28089b419c35492ed4ca13caac5b8c8437",
+        "revision": 2,
+        "stop": null,
+        "subeffects": {
+          "calendar": {
+            "id": "a343e3ef-50e2-426b-8d1e-9e2899358af1",
+            "kind": "calendar",
+            "state": "dispatched",
+            "dispatch": {
+              "contract": "catpaw.device-effect.v1",
+              "effect_id": "319d14e4-8eb6-4843-8941-e5b6dbc7b736",
+              "subeffect_id": "a343e3ef-50e2-426b-8d1e-9e2899358af1",
+              "kind": "calendar",
+              "operation_id": "00000016-aaaa-4aaa-8aaa-000000000016",
+              "request_hash": "8dcf9a23151e1f6f1bb052e538d6185dde0a861007eb0aa045d8bfe7bc5a757c",
+              "binding_hash": "2e9f97ff3da4a68a6a07b2a8cd10ec28089b419c35492ed4ca13caac5b8c8437",
+              "lease_id": "25452bc9-c091-45ba-8244-0dde388fa7a7",
+              "dispatched_at": "2026-10-15T00:00:00.000Z",
+              "dispatch_hash": "0fd8ed8e48cb6281a66d099d95d4f2e4744f78335d7fcdfbb23e7db8c31ff25b"
+            },
+            "receipt": null,
+            "receipt_hash": null,
+            "result_operation_id": null
+          },
+          "notification": {
+            "id": "64398bce-44ca-4e69-81f6-342178549661",
+            "kind": "notification",
+            "state": "not_dispatched",
+            "dispatch": null,
+            "receipt": null,
+            "receipt_hash": null,
+            "result_operation_id": null
+          }
+        },
+        "record_hash": "d5793d27e28158e2b02046d4ed9d5b491cc66f387d545f8973d8a3e737e3bf6d",
+        "state": "dispatching",
+        "execution_current": true,
+        "unresolved_subeffects": [
+          {
+            "kind": "calendar",
+            "subeffect_id": "a343e3ef-50e2-426b-8d1e-9e2899358af1",
+            "dispatch_operation_id": "00000016-aaaa-4aaa-8aaa-000000000016",
+            "state": "dispatched",
+            "can_retry": false
+          }
+        ],
+        "can_redispatch": false
+      },
+      "dispatch_permit": null
+    },
+    "calendar_expired_original": {
+      "schema_version": 1,
+      "contract": "catpaw.device-effect.v1",
+      "effect": {
+        "id": "319d14e4-8eb6-4843-8941-e5b6dbc7b736",
+        "contract": "catpaw.device-effect.v1",
+        "frozen": {
+          "id": "319d14e4-8eb6-4843-8941-e5b6dbc7b736",
+          "action_id": "00000012-aaaa-4aaa-8aaa-000000000012",
+          "action_digest": "98f7502844054c67dd953916acc72ed534781bef264fbdc610913fb163c4357a",
+          "decision_operation_id": "00000014-aaaa-4aaa-8aaa-000000000014",
+          "scope_id": "00000001-aaaa-4aaa-8aaa-000000000001",
+          "subject_id": "00000004-aaaa-4aaa-8aaa-000000000004",
+          "conversation_id": "00000008-aaaa-4aaa-8aaa-000000000008",
+          "turn_id": "00000009-aaaa-4aaa-8aaa-000000000009",
+          "run_id": "00000006-aaaa-4aaa-8aaa-000000000006",
+          "task_id": "4791607f09bca718374744782053f1e56dad7ea3c8415486197125dee77c94ef",
+          "run_request_hash": "a17158364b1a27ba8c2885840fa0835aa2384c8b074b6ced2cc2abdd3e581158",
+          "delegation_id": "00000007-aaaa-4aaa-8aaa-000000000007",
+          "delegation_revision": 1,
+          "grant_epoch": 1,
+          "execution_revision": 0,
+          "task_lease_id": null,
+          "task_lease_until": null,
+          "target": {
+            "device_id": "00000010-aaaa-4aaa-8aaa-000000000010",
+            "environment_id": "00000011-aaaa-4aaa-8aaa-000000000011",
+            "calendar_id": "synthetic/calendar/1",
+            "calendar_display_name": "合成 / Calendar é 🐾",
+            "calendar_snapshot_hash": "9c9cd3e9f7c8754fba7a3d4bfb2f123ae88ae3456c1bb2db8f81da6ca40a63ad"
+          },
+          "parameters": {
+            "title": "合成 / Exact é 🐾",
+            "start_at": "2026-10-16T01:00:00.000Z",
+            "end_at": "2026-10-16T01:20:00.000Z",
+            "time_zone": "Asia/Shanghai",
+            "reminder_offset_seconds": -300
+          },
+          "device_generation": 1,
+          "policy_reference": {
+            "contract": "catpaw.device-effect.v1",
+            "version": 1,
+            "policy_hash": "3a5f7c7304d0413e1ba5fcfbe5a31d7755a4435e1e877b532cdf9f81e119bc4b"
+          },
+          "admission_operation_id": "00000015-aaaa-4aaa-8aaa-000000000015",
+          "admission_request_hash": "577d576fbaaa75d0ffde3f8b0eb0e6f804f63b094324b9014ad434f632788c1c",
+          "admitted_at": "2026-10-15T00:00:00.000Z",
+          "approval_expires_at": "2026-10-15T00:30:00.000Z",
+          "lease_id": "25452bc9-c091-45ba-8244-0dde388fa7a7",
+          "lease_expires_at": "2026-10-15T00:00:15.000Z"
+        },
+        "binding_hash": "2e9f97ff3da4a68a6a07b2a8cd10ec28089b419c35492ed4ca13caac5b8c8437",
+        "revision": 2,
+        "stop": null,
+        "subeffects": {
+          "calendar": {
+            "id": "a343e3ef-50e2-426b-8d1e-9e2899358af1",
+            "kind": "calendar",
+            "state": "dispatched",
+            "dispatch": {
+              "contract": "catpaw.device-effect.v1",
+              "effect_id": "319d14e4-8eb6-4843-8941-e5b6dbc7b736",
+              "subeffect_id": "a343e3ef-50e2-426b-8d1e-9e2899358af1",
+              "kind": "calendar",
+              "operation_id": "00000016-aaaa-4aaa-8aaa-000000000016",
+              "request_hash": "8dcf9a23151e1f6f1bb052e538d6185dde0a861007eb0aa045d8bfe7bc5a757c",
+              "binding_hash": "2e9f97ff3da4a68a6a07b2a8cd10ec28089b419c35492ed4ca13caac5b8c8437",
+              "lease_id": "25452bc9-c091-45ba-8244-0dde388fa7a7",
+              "dispatched_at": "2026-10-15T00:00:00.000Z",
+              "dispatch_hash": "0fd8ed8e48cb6281a66d099d95d4f2e4744f78335d7fcdfbb23e7db8c31ff25b"
+            },
+            "receipt": null,
+            "receipt_hash": null,
+            "result_operation_id": null
+          },
+          "notification": {
+            "id": "64398bce-44ca-4e69-81f6-342178549661",
+            "kind": "notification",
+            "state": "not_dispatched",
+            "dispatch": null,
+            "receipt": null,
+            "receipt_hash": null,
+            "result_operation_id": null
+          }
+        },
+        "record_hash": "d5793d27e28158e2b02046d4ed9d5b491cc66f387d545f8973d8a3e737e3bf6d",
+        "state": "unknown",
+        "execution_current": false,
+        "unresolved_subeffects": [
+          {
+            "kind": "calendar",
+            "subeffect_id": "a343e3ef-50e2-426b-8d1e-9e2899358af1",
+            "dispatch_operation_id": "00000016-aaaa-4aaa-8aaa-000000000016",
+            "state": "dispatched",
+            "can_retry": false
+          }
+        ],
+        "can_redispatch": false
+      },
+      "dispatch_permit": null
+    },
+    "calendar_succeeded": {
+      "schema_version": 1,
+      "contract": "catpaw.device-effect.v1",
+      "effect": {
+        "id": "319d14e4-8eb6-4843-8941-e5b6dbc7b736",
+        "contract": "catpaw.device-effect.v1",
+        "frozen": {
+          "id": "319d14e4-8eb6-4843-8941-e5b6dbc7b736",
+          "action_id": "00000012-aaaa-4aaa-8aaa-000000000012",
+          "action_digest": "98f7502844054c67dd953916acc72ed534781bef264fbdc610913fb163c4357a",
+          "decision_operation_id": "00000014-aaaa-4aaa-8aaa-000000000014",
+          "scope_id": "00000001-aaaa-4aaa-8aaa-000000000001",
+          "subject_id": "00000004-aaaa-4aaa-8aaa-000000000004",
+          "conversation_id": "00000008-aaaa-4aaa-8aaa-000000000008",
+          "turn_id": "00000009-aaaa-4aaa-8aaa-000000000009",
+          "run_id": "00000006-aaaa-4aaa-8aaa-000000000006",
+          "task_id": "4791607f09bca718374744782053f1e56dad7ea3c8415486197125dee77c94ef",
+          "run_request_hash": "a17158364b1a27ba8c2885840fa0835aa2384c8b074b6ced2cc2abdd3e581158",
+          "delegation_id": "00000007-aaaa-4aaa-8aaa-000000000007",
+          "delegation_revision": 1,
+          "grant_epoch": 1,
+          "execution_revision": 0,
+          "task_lease_id": null,
+          "task_lease_until": null,
+          "target": {
+            "device_id": "00000010-aaaa-4aaa-8aaa-000000000010",
+            "environment_id": "00000011-aaaa-4aaa-8aaa-000000000011",
+            "calendar_id": "synthetic/calendar/1",
+            "calendar_display_name": "合成 / Calendar é 🐾",
+            "calendar_snapshot_hash": "9c9cd3e9f7c8754fba7a3d4bfb2f123ae88ae3456c1bb2db8f81da6ca40a63ad"
+          },
+          "parameters": {
+            "title": "合成 / Exact é 🐾",
+            "start_at": "2026-10-16T01:00:00.000Z",
+            "end_at": "2026-10-16T01:20:00.000Z",
+            "time_zone": "Asia/Shanghai",
+            "reminder_offset_seconds": -300
+          },
+          "device_generation": 1,
+          "policy_reference": {
+            "contract": "catpaw.device-effect.v1",
+            "version": 1,
+            "policy_hash": "3a5f7c7304d0413e1ba5fcfbe5a31d7755a4435e1e877b532cdf9f81e119bc4b"
+          },
+          "admission_operation_id": "00000015-aaaa-4aaa-8aaa-000000000015",
+          "admission_request_hash": "577d576fbaaa75d0ffde3f8b0eb0e6f804f63b094324b9014ad434f632788c1c",
+          "admitted_at": "2026-10-15T00:00:00.000Z",
+          "approval_expires_at": "2026-10-15T00:30:00.000Z",
+          "lease_id": "25452bc9-c091-45ba-8244-0dde388fa7a7",
+          "lease_expires_at": "2026-10-15T00:00:15.000Z"
+        },
+        "binding_hash": "2e9f97ff3da4a68a6a07b2a8cd10ec28089b419c35492ed4ca13caac5b8c8437",
+        "revision": 3,
+        "stop": null,
+        "subeffects": {
+          "calendar": {
+            "id": "a343e3ef-50e2-426b-8d1e-9e2899358af1",
+            "kind": "calendar",
+            "state": "succeeded",
+            "dispatch": {
+              "contract": "catpaw.device-effect.v1",
+              "effect_id": "319d14e4-8eb6-4843-8941-e5b6dbc7b736",
+              "subeffect_id": "a343e3ef-50e2-426b-8d1e-9e2899358af1",
+              "kind": "calendar",
+              "operation_id": "00000016-aaaa-4aaa-8aaa-000000000016",
+              "request_hash": "8dcf9a23151e1f6f1bb052e538d6185dde0a861007eb0aa045d8bfe7bc5a757c",
+              "binding_hash": "2e9f97ff3da4a68a6a07b2a8cd10ec28089b419c35492ed4ca13caac5b8c8437",
+              "lease_id": "25452bc9-c091-45ba-8244-0dde388fa7a7",
+              "dispatched_at": "2026-10-15T00:00:00.000Z",
+              "dispatch_hash": "0fd8ed8e48cb6281a66d099d95d4f2e4744f78335d7fcdfbb23e7db8c31ff25b"
+            },
+            "receipt": {
+              "contract": "catpaw.device-effect.v1",
+              "effect_id": "319d14e4-8eb6-4843-8941-e5b6dbc7b736",
+              "subeffect_id": "a343e3ef-50e2-426b-8d1e-9e2899358af1",
+              "dispatch_operation_id": "00000016-aaaa-4aaa-8aaa-000000000016",
+              "action_digest": "98f7502844054c67dd953916acc72ed534781bef264fbdc610913fb163c4357a",
+              "binding_hash": "2e9f97ff3da4a68a6a07b2a8cd10ec28089b419c35492ed4ca13caac5b8c8437",
+              "device_id": "00000010-aaaa-4aaa-8aaa-000000000010",
+              "device_generation": 1,
+              "outcome": "succeeded",
+              "external_reference": {
+                "calendar_id": "synthetic/calendar/1",
+                "event_identifier": "synthetic/EventKit-event",
+                "calendar_item_identifier": "synthetic/EventKit-item",
+                "external_identifier": null,
+                "effect_marker": "catpawm://calendar-effect/a343e3ef-50e2-426b-8d1e-9e2899358af1",
+                "content_hash": "6b5f640ad89696550308205090f7236ad57c306225a17597d563aa1dcc0dc804"
+              },
+              "observed_at": "2026-10-15T00:00:00.000Z"
+            },
+            "receipt_hash": "0274b401227765bebaabc7ec207a9e3de0c4c8dc972df327189426eac2532f28",
+            "result_operation_id": "00000017-aaaa-4aaa-8aaa-000000000017"
+          },
+          "notification": {
+            "id": "64398bce-44ca-4e69-81f6-342178549661",
+            "kind": "notification",
+            "state": "not_dispatched",
+            "dispatch": null,
+            "receipt": null,
+            "receipt_hash": null,
+            "result_operation_id": null
+          }
+        },
+        "record_hash": "f5fc530d27a81ba3be304904e8ff85b1e2ec6729fbac87ed9d718f1b89875695",
+        "state": "partial",
+        "execution_current": true,
+        "unresolved_subeffects": [],
+        "can_redispatch": false
+      },
+      "dispatch_permit": null
+    },
+    "notification_permit": {
+      "schema_version": 1,
+      "contract": "catpaw.device-effect.v1",
+      "effect": {
+        "id": "319d14e4-8eb6-4843-8941-e5b6dbc7b736",
+        "contract": "catpaw.device-effect.v1",
+        "frozen": {
+          "id": "319d14e4-8eb6-4843-8941-e5b6dbc7b736",
+          "action_id": "00000012-aaaa-4aaa-8aaa-000000000012",
+          "action_digest": "98f7502844054c67dd953916acc72ed534781bef264fbdc610913fb163c4357a",
+          "decision_operation_id": "00000014-aaaa-4aaa-8aaa-000000000014",
+          "scope_id": "00000001-aaaa-4aaa-8aaa-000000000001",
+          "subject_id": "00000004-aaaa-4aaa-8aaa-000000000004",
+          "conversation_id": "00000008-aaaa-4aaa-8aaa-000000000008",
+          "turn_id": "00000009-aaaa-4aaa-8aaa-000000000009",
+          "run_id": "00000006-aaaa-4aaa-8aaa-000000000006",
+          "task_id": "4791607f09bca718374744782053f1e56dad7ea3c8415486197125dee77c94ef",
+          "run_request_hash": "a17158364b1a27ba8c2885840fa0835aa2384c8b074b6ced2cc2abdd3e581158",
+          "delegation_id": "00000007-aaaa-4aaa-8aaa-000000000007",
+          "delegation_revision": 1,
+          "grant_epoch": 1,
+          "execution_revision": 0,
+          "task_lease_id": null,
+          "task_lease_until": null,
+          "target": {
+            "device_id": "00000010-aaaa-4aaa-8aaa-000000000010",
+            "environment_id": "00000011-aaaa-4aaa-8aaa-000000000011",
+            "calendar_id": "synthetic/calendar/1",
+            "calendar_display_name": "合成 / Calendar é 🐾",
+            "calendar_snapshot_hash": "9c9cd3e9f7c8754fba7a3d4bfb2f123ae88ae3456c1bb2db8f81da6ca40a63ad"
+          },
+          "parameters": {
+            "title": "合成 / Exact é 🐾",
+            "start_at": "2026-10-16T01:00:00.000Z",
+            "end_at": "2026-10-16T01:20:00.000Z",
+            "time_zone": "Asia/Shanghai",
+            "reminder_offset_seconds": -300
+          },
+          "device_generation": 1,
+          "policy_reference": {
+            "contract": "catpaw.device-effect.v1",
+            "version": 1,
+            "policy_hash": "3a5f7c7304d0413e1ba5fcfbe5a31d7755a4435e1e877b532cdf9f81e119bc4b"
+          },
+          "admission_operation_id": "00000015-aaaa-4aaa-8aaa-000000000015",
+          "admission_request_hash": "577d576fbaaa75d0ffde3f8b0eb0e6f804f63b094324b9014ad434f632788c1c",
+          "admitted_at": "2026-10-15T00:00:00.000Z",
+          "approval_expires_at": "2026-10-15T00:30:00.000Z",
+          "lease_id": "25452bc9-c091-45ba-8244-0dde388fa7a7",
+          "lease_expires_at": "2026-10-15T00:00:15.000Z"
+        },
+        "binding_hash": "2e9f97ff3da4a68a6a07b2a8cd10ec28089b419c35492ed4ca13caac5b8c8437",
+        "revision": 4,
+        "stop": null,
+        "subeffects": {
+          "calendar": {
+            "id": "a343e3ef-50e2-426b-8d1e-9e2899358af1",
+            "kind": "calendar",
+            "state": "succeeded",
+            "dispatch": {
+              "contract": "catpaw.device-effect.v1",
+              "effect_id": "319d14e4-8eb6-4843-8941-e5b6dbc7b736",
+              "subeffect_id": "a343e3ef-50e2-426b-8d1e-9e2899358af1",
+              "kind": "calendar",
+              "operation_id": "00000016-aaaa-4aaa-8aaa-000000000016",
+              "request_hash": "8dcf9a23151e1f6f1bb052e538d6185dde0a861007eb0aa045d8bfe7bc5a757c",
+              "binding_hash": "2e9f97ff3da4a68a6a07b2a8cd10ec28089b419c35492ed4ca13caac5b8c8437",
+              "lease_id": "25452bc9-c091-45ba-8244-0dde388fa7a7",
+              "dispatched_at": "2026-10-15T00:00:00.000Z",
+              "dispatch_hash": "0fd8ed8e48cb6281a66d099d95d4f2e4744f78335d7fcdfbb23e7db8c31ff25b"
+            },
+            "receipt": {
+              "contract": "catpaw.device-effect.v1",
+              "effect_id": "319d14e4-8eb6-4843-8941-e5b6dbc7b736",
+              "subeffect_id": "a343e3ef-50e2-426b-8d1e-9e2899358af1",
+              "dispatch_operation_id": "00000016-aaaa-4aaa-8aaa-000000000016",
+              "action_digest": "98f7502844054c67dd953916acc72ed534781bef264fbdc610913fb163c4357a",
+              "binding_hash": "2e9f97ff3da4a68a6a07b2a8cd10ec28089b419c35492ed4ca13caac5b8c8437",
+              "device_id": "00000010-aaaa-4aaa-8aaa-000000000010",
+              "device_generation": 1,
+              "outcome": "succeeded",
+              "external_reference": {
+                "calendar_id": "synthetic/calendar/1",
+                "event_identifier": "synthetic/EventKit-event",
+                "calendar_item_identifier": "synthetic/EventKit-item",
+                "external_identifier": null,
+                "effect_marker": "catpawm://calendar-effect/a343e3ef-50e2-426b-8d1e-9e2899358af1",
+                "content_hash": "6b5f640ad89696550308205090f7236ad57c306225a17597d563aa1dcc0dc804"
+              },
+              "observed_at": "2026-10-15T00:00:00.000Z"
+            },
+            "receipt_hash": "0274b401227765bebaabc7ec207a9e3de0c4c8dc972df327189426eac2532f28",
+            "result_operation_id": "00000017-aaaa-4aaa-8aaa-000000000017"
+          },
+          "notification": {
+            "id": "64398bce-44ca-4e69-81f6-342178549661",
+            "kind": "notification",
+            "state": "dispatched",
+            "dispatch": {
+              "contract": "catpaw.device-effect.v1",
+              "effect_id": "319d14e4-8eb6-4843-8941-e5b6dbc7b736",
+              "subeffect_id": "64398bce-44ca-4e69-81f6-342178549661",
+              "kind": "notification",
+              "operation_id": "00000018-aaaa-4aaa-8aaa-000000000018",
+              "request_hash": "7e91ddecb86eaf21c38cf6ca3ac910249e4ed43c745f7f545a27b667e2251a75",
+              "binding_hash": "2e9f97ff3da4a68a6a07b2a8cd10ec28089b419c35492ed4ca13caac5b8c8437",
+              "lease_id": "25452bc9-c091-45ba-8244-0dde388fa7a7",
+              "dispatched_at": "2026-10-15T00:00:00.000Z",
+              "dispatch_hash": "93f04f62a242cd45441185b3e1e94128f2471107ec037dc20cd3f13558c5e736"
+            },
+            "receipt": null,
+            "receipt_hash": null,
+            "result_operation_id": null
+          }
+        },
+        "record_hash": "e1833af8ea651792223127493f17ace3601c508e518ccc192b0951ea39f35086",
+        "state": "dispatching",
+        "execution_current": true,
+        "unresolved_subeffects": [
+          {
+            "kind": "notification",
+            "subeffect_id": "64398bce-44ca-4e69-81f6-342178549661",
+            "dispatch_operation_id": "00000018-aaaa-4aaa-8aaa-000000000018",
+            "state": "dispatched",
+            "can_retry": false
+          }
+        ],
+        "can_redispatch": false
+      },
+      "dispatch_permit": {
+        "contract": "catpaw.device-effect.v1",
+        "effect_id": "319d14e4-8eb6-4843-8941-e5b6dbc7b736",
+        "subeffect_id": "64398bce-44ca-4e69-81f6-342178549661",
+        "kind": "notification",
+        "operation_id": "00000018-aaaa-4aaa-8aaa-000000000018",
+        "request_hash": "7e91ddecb86eaf21c38cf6ca3ac910249e4ed43c745f7f545a27b667e2251a75",
+        "binding_hash": "2e9f97ff3da4a68a6a07b2a8cd10ec28089b419c35492ed4ca13caac5b8c8437",
+        "lease_id": "25452bc9-c091-45ba-8244-0dde388fa7a7",
+        "dispatched_at": "2026-10-15T00:00:00.000Z",
+        "dispatch_hash": "93f04f62a242cd45441185b3e1e94128f2471107ec037dc20cd3f13558c5e736",
+        "lease_expires_at": "2026-10-15T00:00:15.000Z"
+      }
+    },
+    "partial_unknown": {
+      "schema_version": 1,
+      "contract": "catpaw.device-effect.v1",
+      "effect": {
+        "id": "319d14e4-8eb6-4843-8941-e5b6dbc7b736",
+        "contract": "catpaw.device-effect.v1",
+        "frozen": {
+          "id": "319d14e4-8eb6-4843-8941-e5b6dbc7b736",
+          "action_id": "00000012-aaaa-4aaa-8aaa-000000000012",
+          "action_digest": "98f7502844054c67dd953916acc72ed534781bef264fbdc610913fb163c4357a",
+          "decision_operation_id": "00000014-aaaa-4aaa-8aaa-000000000014",
+          "scope_id": "00000001-aaaa-4aaa-8aaa-000000000001",
+          "subject_id": "00000004-aaaa-4aaa-8aaa-000000000004",
+          "conversation_id": "00000008-aaaa-4aaa-8aaa-000000000008",
+          "turn_id": "00000009-aaaa-4aaa-8aaa-000000000009",
+          "run_id": "00000006-aaaa-4aaa-8aaa-000000000006",
+          "task_id": "4791607f09bca718374744782053f1e56dad7ea3c8415486197125dee77c94ef",
+          "run_request_hash": "a17158364b1a27ba8c2885840fa0835aa2384c8b074b6ced2cc2abdd3e581158",
+          "delegation_id": "00000007-aaaa-4aaa-8aaa-000000000007",
+          "delegation_revision": 1,
+          "grant_epoch": 1,
+          "execution_revision": 0,
+          "task_lease_id": null,
+          "task_lease_until": null,
+          "target": {
+            "device_id": "00000010-aaaa-4aaa-8aaa-000000000010",
+            "environment_id": "00000011-aaaa-4aaa-8aaa-000000000011",
+            "calendar_id": "synthetic/calendar/1",
+            "calendar_display_name": "合成 / Calendar é 🐾",
+            "calendar_snapshot_hash": "9c9cd3e9f7c8754fba7a3d4bfb2f123ae88ae3456c1bb2db8f81da6ca40a63ad"
+          },
+          "parameters": {
+            "title": "合成 / Exact é 🐾",
+            "start_at": "2026-10-16T01:00:00.000Z",
+            "end_at": "2026-10-16T01:20:00.000Z",
+            "time_zone": "Asia/Shanghai",
+            "reminder_offset_seconds": -300
+          },
+          "device_generation": 1,
+          "policy_reference": {
+            "contract": "catpaw.device-effect.v1",
+            "version": 1,
+            "policy_hash": "3a5f7c7304d0413e1ba5fcfbe5a31d7755a4435e1e877b532cdf9f81e119bc4b"
+          },
+          "admission_operation_id": "00000015-aaaa-4aaa-8aaa-000000000015",
+          "admission_request_hash": "577d576fbaaa75d0ffde3f8b0eb0e6f804f63b094324b9014ad434f632788c1c",
+          "admitted_at": "2026-10-15T00:00:00.000Z",
+          "approval_expires_at": "2026-10-15T00:30:00.000Z",
+          "lease_id": "25452bc9-c091-45ba-8244-0dde388fa7a7",
+          "lease_expires_at": "2026-10-15T00:00:15.000Z"
+        },
+        "binding_hash": "2e9f97ff3da4a68a6a07b2a8cd10ec28089b419c35492ed4ca13caac5b8c8437",
+        "revision": 5,
+        "stop": null,
+        "subeffects": {
+          "calendar": {
+            "id": "a343e3ef-50e2-426b-8d1e-9e2899358af1",
+            "kind": "calendar",
+            "state": "succeeded",
+            "dispatch": {
+              "contract": "catpaw.device-effect.v1",
+              "effect_id": "319d14e4-8eb6-4843-8941-e5b6dbc7b736",
+              "subeffect_id": "a343e3ef-50e2-426b-8d1e-9e2899358af1",
+              "kind": "calendar",
+              "operation_id": "00000016-aaaa-4aaa-8aaa-000000000016",
+              "request_hash": "8dcf9a23151e1f6f1bb052e538d6185dde0a861007eb0aa045d8bfe7bc5a757c",
+              "binding_hash": "2e9f97ff3da4a68a6a07b2a8cd10ec28089b419c35492ed4ca13caac5b8c8437",
+              "lease_id": "25452bc9-c091-45ba-8244-0dde388fa7a7",
+              "dispatched_at": "2026-10-15T00:00:00.000Z",
+              "dispatch_hash": "0fd8ed8e48cb6281a66d099d95d4f2e4744f78335d7fcdfbb23e7db8c31ff25b"
+            },
+            "receipt": {
+              "contract": "catpaw.device-effect.v1",
+              "effect_id": "319d14e4-8eb6-4843-8941-e5b6dbc7b736",
+              "subeffect_id": "a343e3ef-50e2-426b-8d1e-9e2899358af1",
+              "dispatch_operation_id": "00000016-aaaa-4aaa-8aaa-000000000016",
+              "action_digest": "98f7502844054c67dd953916acc72ed534781bef264fbdc610913fb163c4357a",
+              "binding_hash": "2e9f97ff3da4a68a6a07b2a8cd10ec28089b419c35492ed4ca13caac5b8c8437",
+              "device_id": "00000010-aaaa-4aaa-8aaa-000000000010",
+              "device_generation": 1,
+              "outcome": "succeeded",
+              "external_reference": {
+                "calendar_id": "synthetic/calendar/1",
+                "event_identifier": "synthetic/EventKit-event",
+                "calendar_item_identifier": "synthetic/EventKit-item",
+                "external_identifier": null,
+                "effect_marker": "catpawm://calendar-effect/a343e3ef-50e2-426b-8d1e-9e2899358af1",
+                "content_hash": "6b5f640ad89696550308205090f7236ad57c306225a17597d563aa1dcc0dc804"
+              },
+              "observed_at": "2026-10-15T00:00:00.000Z"
+            },
+            "receipt_hash": "0274b401227765bebaabc7ec207a9e3de0c4c8dc972df327189426eac2532f28",
+            "result_operation_id": "00000017-aaaa-4aaa-8aaa-000000000017"
+          },
+          "notification": {
+            "id": "64398bce-44ca-4e69-81f6-342178549661",
+            "kind": "notification",
+            "state": "unknown",
+            "dispatch": {
+              "contract": "catpaw.device-effect.v1",
+              "effect_id": "319d14e4-8eb6-4843-8941-e5b6dbc7b736",
+              "subeffect_id": "64398bce-44ca-4e69-81f6-342178549661",
+              "kind": "notification",
+              "operation_id": "00000018-aaaa-4aaa-8aaa-000000000018",
+              "request_hash": "7e91ddecb86eaf21c38cf6ca3ac910249e4ed43c745f7f545a27b667e2251a75",
+              "binding_hash": "2e9f97ff3da4a68a6a07b2a8cd10ec28089b419c35492ed4ca13caac5b8c8437",
+              "lease_id": "25452bc9-c091-45ba-8244-0dde388fa7a7",
+              "dispatched_at": "2026-10-15T00:00:00.000Z",
+              "dispatch_hash": "93f04f62a242cd45441185b3e1e94128f2471107ec037dc20cd3f13558c5e736"
+            },
+            "receipt": null,
+            "receipt_hash": null,
+            "result_operation_id": "00000019-aaaa-4aaa-8aaa-000000000019"
+          }
+        },
+        "record_hash": "e1709cf3e510a804c5408a5e1b42c58c8ce0a2134e9d94e296530a102b5d3433",
+        "state": "partial_unknown",
+        "execution_current": true,
+        "unresolved_subeffects": [
+          {
+            "kind": "notification",
+            "subeffect_id": "64398bce-44ca-4e69-81f6-342178549661",
+            "dispatch_operation_id": "00000018-aaaa-4aaa-8aaa-000000000018",
+            "state": "unknown",
+            "can_retry": false
+          }
+        ],
+        "can_redispatch": false
+      },
+      "dispatch_permit": null
+    },
+    "revoked_original": {
+      "schema_version": 1,
+      "contract": "catpaw.device-effect.v1",
+      "effect": {
+        "id": "319d14e4-8eb6-4843-8941-e5b6dbc7b736",
+        "contract": "catpaw.device-effect.v1",
+        "frozen": {
+          "id": "319d14e4-8eb6-4843-8941-e5b6dbc7b736",
+          "action_id": "00000012-aaaa-4aaa-8aaa-000000000012",
+          "action_digest": "98f7502844054c67dd953916acc72ed534781bef264fbdc610913fb163c4357a",
+          "decision_operation_id": "00000014-aaaa-4aaa-8aaa-000000000014",
+          "scope_id": "00000001-aaaa-4aaa-8aaa-000000000001",
+          "subject_id": "00000004-aaaa-4aaa-8aaa-000000000004",
+          "conversation_id": "00000008-aaaa-4aaa-8aaa-000000000008",
+          "turn_id": "00000009-aaaa-4aaa-8aaa-000000000009",
+          "run_id": "00000006-aaaa-4aaa-8aaa-000000000006",
+          "task_id": "4791607f09bca718374744782053f1e56dad7ea3c8415486197125dee77c94ef",
+          "run_request_hash": "a17158364b1a27ba8c2885840fa0835aa2384c8b074b6ced2cc2abdd3e581158",
+          "delegation_id": "00000007-aaaa-4aaa-8aaa-000000000007",
+          "delegation_revision": 1,
+          "grant_epoch": 1,
+          "execution_revision": 0,
+          "task_lease_id": null,
+          "task_lease_until": null,
+          "target": {
+            "device_id": "00000010-aaaa-4aaa-8aaa-000000000010",
+            "environment_id": "00000011-aaaa-4aaa-8aaa-000000000011",
+            "calendar_id": "synthetic/calendar/1",
+            "calendar_display_name": "合成 / Calendar é 🐾",
+            "calendar_snapshot_hash": "9c9cd3e9f7c8754fba7a3d4bfb2f123ae88ae3456c1bb2db8f81da6ca40a63ad"
+          },
+          "parameters": {
+            "title": "合成 / Exact é 🐾",
+            "start_at": "2026-10-16T01:00:00.000Z",
+            "end_at": "2026-10-16T01:20:00.000Z",
+            "time_zone": "Asia/Shanghai",
+            "reminder_offset_seconds": -300
+          },
+          "device_generation": 1,
+          "policy_reference": {
+            "contract": "catpaw.device-effect.v1",
+            "version": 1,
+            "policy_hash": "3a5f7c7304d0413e1ba5fcfbe5a31d7755a4435e1e877b532cdf9f81e119bc4b"
+          },
+          "admission_operation_id": "00000015-aaaa-4aaa-8aaa-000000000015",
+          "admission_request_hash": "577d576fbaaa75d0ffde3f8b0eb0e6f804f63b094324b9014ad434f632788c1c",
+          "admitted_at": "2026-10-15T00:00:00.000Z",
+          "approval_expires_at": "2026-10-15T00:30:00.000Z",
+          "lease_id": "25452bc9-c091-45ba-8244-0dde388fa7a7",
+          "lease_expires_at": "2026-10-15T00:00:15.000Z"
+        },
+        "binding_hash": "2e9f97ff3da4a68a6a07b2a8cd10ec28089b419c35492ed4ca13caac5b8c8437",
+        "revision": 5,
+        "stop": null,
+        "subeffects": {
+          "calendar": {
+            "id": "a343e3ef-50e2-426b-8d1e-9e2899358af1",
+            "kind": "calendar",
+            "state": "succeeded",
+            "dispatch": {
+              "contract": "catpaw.device-effect.v1",
+              "effect_id": "319d14e4-8eb6-4843-8941-e5b6dbc7b736",
+              "subeffect_id": "a343e3ef-50e2-426b-8d1e-9e2899358af1",
+              "kind": "calendar",
+              "operation_id": "00000016-aaaa-4aaa-8aaa-000000000016",
+              "request_hash": "8dcf9a23151e1f6f1bb052e538d6185dde0a861007eb0aa045d8bfe7bc5a757c",
+              "binding_hash": "2e9f97ff3da4a68a6a07b2a8cd10ec28089b419c35492ed4ca13caac5b8c8437",
+              "lease_id": "25452bc9-c091-45ba-8244-0dde388fa7a7",
+              "dispatched_at": "2026-10-15T00:00:00.000Z",
+              "dispatch_hash": "0fd8ed8e48cb6281a66d099d95d4f2e4744f78335d7fcdfbb23e7db8c31ff25b"
+            },
+            "receipt": {
+              "contract": "catpaw.device-effect.v1",
+              "effect_id": "319d14e4-8eb6-4843-8941-e5b6dbc7b736",
+              "subeffect_id": "a343e3ef-50e2-426b-8d1e-9e2899358af1",
+              "dispatch_operation_id": "00000016-aaaa-4aaa-8aaa-000000000016",
+              "action_digest": "98f7502844054c67dd953916acc72ed534781bef264fbdc610913fb163c4357a",
+              "binding_hash": "2e9f97ff3da4a68a6a07b2a8cd10ec28089b419c35492ed4ca13caac5b8c8437",
+              "device_id": "00000010-aaaa-4aaa-8aaa-000000000010",
+              "device_generation": 1,
+              "outcome": "succeeded",
+              "external_reference": {
+                "calendar_id": "synthetic/calendar/1",
+                "event_identifier": "synthetic/EventKit-event",
+                "calendar_item_identifier": "synthetic/EventKit-item",
+                "external_identifier": null,
+                "effect_marker": "catpawm://calendar-effect/a343e3ef-50e2-426b-8d1e-9e2899358af1",
+                "content_hash": "6b5f640ad89696550308205090f7236ad57c306225a17597d563aa1dcc0dc804"
+              },
+              "observed_at": "2026-10-15T00:00:00.000Z"
+            },
+            "receipt_hash": "0274b401227765bebaabc7ec207a9e3de0c4c8dc972df327189426eac2532f28",
+            "result_operation_id": "00000017-aaaa-4aaa-8aaa-000000000017"
+          },
+          "notification": {
+            "id": "64398bce-44ca-4e69-81f6-342178549661",
+            "kind": "notification",
+            "state": "unknown",
+            "dispatch": {
+              "contract": "catpaw.device-effect.v1",
+              "effect_id": "319d14e4-8eb6-4843-8941-e5b6dbc7b736",
+              "subeffect_id": "64398bce-44ca-4e69-81f6-342178549661",
+              "kind": "notification",
+              "operation_id": "00000018-aaaa-4aaa-8aaa-000000000018",
+              "request_hash": "7e91ddecb86eaf21c38cf6ca3ac910249e4ed43c745f7f545a27b667e2251a75",
+              "binding_hash": "2e9f97ff3da4a68a6a07b2a8cd10ec28089b419c35492ed4ca13caac5b8c8437",
+              "lease_id": "25452bc9-c091-45ba-8244-0dde388fa7a7",
+              "dispatched_at": "2026-10-15T00:00:00.000Z",
+              "dispatch_hash": "93f04f62a242cd45441185b3e1e94128f2471107ec037dc20cd3f13558c5e736"
+            },
+            "receipt": null,
+            "receipt_hash": null,
+            "result_operation_id": "00000019-aaaa-4aaa-8aaa-000000000019"
+          }
+        },
+        "record_hash": "e1709cf3e510a804c5408a5e1b42c58c8ce0a2134e9d94e296530a102b5d3433",
+        "state": "partial_unknown",
+        "execution_current": false,
+        "unresolved_subeffects": [
+          {
+            "kind": "notification",
+            "subeffect_id": "64398bce-44ca-4e69-81f6-342178549661",
+            "dispatch_operation_id": "00000018-aaaa-4aaa-8aaa-000000000018",
+            "state": "unknown",
+            "can_retry": false
+          }
+        ],
+        "can_redispatch": false
+      },
+      "dispatch_permit": null
+    },
+    "succeeded": {
+      "schema_version": 1,
+      "contract": "catpaw.device-effect.v1",
+      "effect": {
+        "id": "319d14e4-8eb6-4843-8941-e5b6dbc7b736",
+        "contract": "catpaw.device-effect.v1",
+        "frozen": {
+          "id": "319d14e4-8eb6-4843-8941-e5b6dbc7b736",
+          "action_id": "00000012-aaaa-4aaa-8aaa-000000000012",
+          "action_digest": "98f7502844054c67dd953916acc72ed534781bef264fbdc610913fb163c4357a",
+          "decision_operation_id": "00000014-aaaa-4aaa-8aaa-000000000014",
+          "scope_id": "00000001-aaaa-4aaa-8aaa-000000000001",
+          "subject_id": "00000004-aaaa-4aaa-8aaa-000000000004",
+          "conversation_id": "00000008-aaaa-4aaa-8aaa-000000000008",
+          "turn_id": "00000009-aaaa-4aaa-8aaa-000000000009",
+          "run_id": "00000006-aaaa-4aaa-8aaa-000000000006",
+          "task_id": "4791607f09bca718374744782053f1e56dad7ea3c8415486197125dee77c94ef",
+          "run_request_hash": "a17158364b1a27ba8c2885840fa0835aa2384c8b074b6ced2cc2abdd3e581158",
+          "delegation_id": "00000007-aaaa-4aaa-8aaa-000000000007",
+          "delegation_revision": 1,
+          "grant_epoch": 1,
+          "execution_revision": 0,
+          "task_lease_id": null,
+          "task_lease_until": null,
+          "target": {
+            "device_id": "00000010-aaaa-4aaa-8aaa-000000000010",
+            "environment_id": "00000011-aaaa-4aaa-8aaa-000000000011",
+            "calendar_id": "synthetic/calendar/1",
+            "calendar_display_name": "合成 / Calendar é 🐾",
+            "calendar_snapshot_hash": "9c9cd3e9f7c8754fba7a3d4bfb2f123ae88ae3456c1bb2db8f81da6ca40a63ad"
+          },
+          "parameters": {
+            "title": "合成 / Exact é 🐾",
+            "start_at": "2026-10-16T01:00:00.000Z",
+            "end_at": "2026-10-16T01:20:00.000Z",
+            "time_zone": "Asia/Shanghai",
+            "reminder_offset_seconds": -300
+          },
+          "device_generation": 1,
+          "policy_reference": {
+            "contract": "catpaw.device-effect.v1",
+            "version": 1,
+            "policy_hash": "3a5f7c7304d0413e1ba5fcfbe5a31d7755a4435e1e877b532cdf9f81e119bc4b"
+          },
+          "admission_operation_id": "00000015-aaaa-4aaa-8aaa-000000000015",
+          "admission_request_hash": "577d576fbaaa75d0ffde3f8b0eb0e6f804f63b094324b9014ad434f632788c1c",
+          "admitted_at": "2026-10-15T00:00:00.000Z",
+          "approval_expires_at": "2026-10-15T00:30:00.000Z",
+          "lease_id": "25452bc9-c091-45ba-8244-0dde388fa7a7",
+          "lease_expires_at": "2026-10-15T00:00:15.000Z"
+        },
+        "binding_hash": "2e9f97ff3da4a68a6a07b2a8cd10ec28089b419c35492ed4ca13caac5b8c8437",
+        "revision": 6,
+        "stop": null,
+        "subeffects": {
+          "calendar": {
+            "id": "a343e3ef-50e2-426b-8d1e-9e2899358af1",
+            "kind": "calendar",
+            "state": "succeeded",
+            "dispatch": {
+              "contract": "catpaw.device-effect.v1",
+              "effect_id": "319d14e4-8eb6-4843-8941-e5b6dbc7b736",
+              "subeffect_id": "a343e3ef-50e2-426b-8d1e-9e2899358af1",
+              "kind": "calendar",
+              "operation_id": "00000016-aaaa-4aaa-8aaa-000000000016",
+              "request_hash": "8dcf9a23151e1f6f1bb052e538d6185dde0a861007eb0aa045d8bfe7bc5a757c",
+              "binding_hash": "2e9f97ff3da4a68a6a07b2a8cd10ec28089b419c35492ed4ca13caac5b8c8437",
+              "lease_id": "25452bc9-c091-45ba-8244-0dde388fa7a7",
+              "dispatched_at": "2026-10-15T00:00:00.000Z",
+              "dispatch_hash": "0fd8ed8e48cb6281a66d099d95d4f2e4744f78335d7fcdfbb23e7db8c31ff25b"
+            },
+            "receipt": {
+              "contract": "catpaw.device-effect.v1",
+              "effect_id": "319d14e4-8eb6-4843-8941-e5b6dbc7b736",
+              "subeffect_id": "a343e3ef-50e2-426b-8d1e-9e2899358af1",
+              "dispatch_operation_id": "00000016-aaaa-4aaa-8aaa-000000000016",
+              "action_digest": "98f7502844054c67dd953916acc72ed534781bef264fbdc610913fb163c4357a",
+              "binding_hash": "2e9f97ff3da4a68a6a07b2a8cd10ec28089b419c35492ed4ca13caac5b8c8437",
+              "device_id": "00000010-aaaa-4aaa-8aaa-000000000010",
+              "device_generation": 1,
+              "outcome": "succeeded",
+              "external_reference": {
+                "calendar_id": "synthetic/calendar/1",
+                "event_identifier": "synthetic/EventKit-event",
+                "calendar_item_identifier": "synthetic/EventKit-item",
+                "external_identifier": null,
+                "effect_marker": "catpawm://calendar-effect/a343e3ef-50e2-426b-8d1e-9e2899358af1",
+                "content_hash": "6b5f640ad89696550308205090f7236ad57c306225a17597d563aa1dcc0dc804"
+              },
+              "observed_at": "2026-10-15T00:00:00.000Z"
+            },
+            "receipt_hash": "0274b401227765bebaabc7ec207a9e3de0c4c8dc972df327189426eac2532f28",
+            "result_operation_id": "00000017-aaaa-4aaa-8aaa-000000000017"
+          },
+          "notification": {
+            "id": "64398bce-44ca-4e69-81f6-342178549661",
+            "kind": "notification",
+            "state": "succeeded",
+            "dispatch": {
+              "contract": "catpaw.device-effect.v1",
+              "effect_id": "319d14e4-8eb6-4843-8941-e5b6dbc7b736",
+              "subeffect_id": "64398bce-44ca-4e69-81f6-342178549661",
+              "kind": "notification",
+              "operation_id": "00000018-aaaa-4aaa-8aaa-000000000018",
+              "request_hash": "7e91ddecb86eaf21c38cf6ca3ac910249e4ed43c745f7f545a27b667e2251a75",
+              "binding_hash": "2e9f97ff3da4a68a6a07b2a8cd10ec28089b419c35492ed4ca13caac5b8c8437",
+              "lease_id": "25452bc9-c091-45ba-8244-0dde388fa7a7",
+              "dispatched_at": "2026-10-15T00:00:00.000Z",
+              "dispatch_hash": "93f04f62a242cd45441185b3e1e94128f2471107ec037dc20cd3f13558c5e736"
+            },
+            "receipt": {
+              "contract": "catpaw.device-effect.v1",
+              "effect_id": "319d14e4-8eb6-4843-8941-e5b6dbc7b736",
+              "subeffect_id": "64398bce-44ca-4e69-81f6-342178549661",
+              "dispatch_operation_id": "00000018-aaaa-4aaa-8aaa-000000000018",
+              "action_digest": "98f7502844054c67dd953916acc72ed534781bef264fbdc610913fb163c4357a",
+              "binding_hash": "2e9f97ff3da4a68a6a07b2a8cd10ec28089b419c35492ed4ca13caac5b8c8437",
+              "device_id": "00000010-aaaa-4aaa-8aaa-000000000010",
+              "device_generation": 1,
+              "outcome": "succeeded",
+              "external_reference": {
+                "request_identifier": "64398bce-44ca-4e69-81f6-342178549661",
+                "schedule_hash": "c4b09a8168d5d58fd3b811056275eb922c45b7bb219837043d005679d907f7fa",
+                "due_at": "2026-10-16T00:55:00.000Z",
+                "state": "pending"
+              },
+              "observed_at": "2026-10-15T00:00:20.000Z"
+            },
+            "receipt_hash": "e2dcea43736c9bb23179c2e1b48da4796c690a518de9222b9852bf3a5e730af8",
+            "result_operation_id": "00000020-aaaa-4aaa-8aaa-000000000020"
+          }
+        },
+        "record_hash": "1086b7017dfef0c55d86b21c33b05a3c358703454df62518b60d2de25febee7b",
+        "state": "succeeded",
+        "execution_current": false,
+        "unresolved_subeffects": [],
+        "can_redispatch": false
+      },
+      "dispatch_permit": null
+    },
+    "stopped": {
+      "schema_version": 1,
+      "contract": "catpaw.device-effect.v1",
+      "effect": {
+        "id": "319d14e4-8eb6-4843-8941-e5b6dbc7b736",
+        "contract": "catpaw.device-effect.v1",
+        "frozen": {
+          "id": "319d14e4-8eb6-4843-8941-e5b6dbc7b736",
+          "action_id": "00000012-aaaa-4aaa-8aaa-000000000012",
+          "action_digest": "98f7502844054c67dd953916acc72ed534781bef264fbdc610913fb163c4357a",
+          "decision_operation_id": "00000014-aaaa-4aaa-8aaa-000000000014",
+          "scope_id": "00000001-aaaa-4aaa-8aaa-000000000001",
+          "subject_id": "00000004-aaaa-4aaa-8aaa-000000000004",
+          "conversation_id": "00000008-aaaa-4aaa-8aaa-000000000008",
+          "turn_id": "00000009-aaaa-4aaa-8aaa-000000000009",
+          "run_id": "00000006-aaaa-4aaa-8aaa-000000000006",
+          "task_id": "4791607f09bca718374744782053f1e56dad7ea3c8415486197125dee77c94ef",
+          "run_request_hash": "a17158364b1a27ba8c2885840fa0835aa2384c8b074b6ced2cc2abdd3e581158",
+          "delegation_id": "00000007-aaaa-4aaa-8aaa-000000000007",
+          "delegation_revision": 1,
+          "grant_epoch": 1,
+          "execution_revision": 0,
+          "task_lease_id": null,
+          "task_lease_until": null,
+          "target": {
+            "device_id": "00000010-aaaa-4aaa-8aaa-000000000010",
+            "environment_id": "00000011-aaaa-4aaa-8aaa-000000000011",
+            "calendar_id": "synthetic/calendar/1",
+            "calendar_display_name": "合成 / Calendar é 🐾",
+            "calendar_snapshot_hash": "9c9cd3e9f7c8754fba7a3d4bfb2f123ae88ae3456c1bb2db8f81da6ca40a63ad"
+          },
+          "parameters": {
+            "title": "合成 / Exact é 🐾",
+            "start_at": "2026-10-16T01:00:00.000Z",
+            "end_at": "2026-10-16T01:20:00.000Z",
+            "time_zone": "Asia/Shanghai",
+            "reminder_offset_seconds": -300
+          },
+          "device_generation": 1,
+          "policy_reference": {
+            "contract": "catpaw.device-effect.v1",
+            "version": 1,
+            "policy_hash": "3a5f7c7304d0413e1ba5fcfbe5a31d7755a4435e1e877b532cdf9f81e119bc4b"
+          },
+          "admission_operation_id": "00000015-aaaa-4aaa-8aaa-000000000015",
+          "admission_request_hash": "577d576fbaaa75d0ffde3f8b0eb0e6f804f63b094324b9014ad434f632788c1c",
+          "admitted_at": "2026-10-15T00:00:00.000Z",
+          "approval_expires_at": "2026-10-15T00:30:00.000Z",
+          "lease_id": "25452bc9-c091-45ba-8244-0dde388fa7a7",
+          "lease_expires_at": "2026-10-15T00:00:15.000Z"
+        },
+        "binding_hash": "2e9f97ff3da4a68a6a07b2a8cd10ec28089b419c35492ed4ca13caac5b8c8437",
+        "revision": 6,
+        "stop": {
+          "operation_id": "00000021-aaaa-4aaa-8aaa-000000000021",
+          "reason": "user_stopped",
+          "stopped_at": "2026-10-15T00:00:20.000Z"
+        },
+        "subeffects": {
+          "calendar": {
+            "id": "a343e3ef-50e2-426b-8d1e-9e2899358af1",
+            "kind": "calendar",
+            "state": "succeeded",
+            "dispatch": {
+              "contract": "catpaw.device-effect.v1",
+              "effect_id": "319d14e4-8eb6-4843-8941-e5b6dbc7b736",
+              "subeffect_id": "a343e3ef-50e2-426b-8d1e-9e2899358af1",
+              "kind": "calendar",
+              "operation_id": "00000016-aaaa-4aaa-8aaa-000000000016",
+              "request_hash": "8dcf9a23151e1f6f1bb052e538d6185dde0a861007eb0aa045d8bfe7bc5a757c",
+              "binding_hash": "2e9f97ff3da4a68a6a07b2a8cd10ec28089b419c35492ed4ca13caac5b8c8437",
+              "lease_id": "25452bc9-c091-45ba-8244-0dde388fa7a7",
+              "dispatched_at": "2026-10-15T00:00:00.000Z",
+              "dispatch_hash": "0fd8ed8e48cb6281a66d099d95d4f2e4744f78335d7fcdfbb23e7db8c31ff25b"
+            },
+            "receipt": {
+              "contract": "catpaw.device-effect.v1",
+              "effect_id": "319d14e4-8eb6-4843-8941-e5b6dbc7b736",
+              "subeffect_id": "a343e3ef-50e2-426b-8d1e-9e2899358af1",
+              "dispatch_operation_id": "00000016-aaaa-4aaa-8aaa-000000000016",
+              "action_digest": "98f7502844054c67dd953916acc72ed534781bef264fbdc610913fb163c4357a",
+              "binding_hash": "2e9f97ff3da4a68a6a07b2a8cd10ec28089b419c35492ed4ca13caac5b8c8437",
+              "device_id": "00000010-aaaa-4aaa-8aaa-000000000010",
+              "device_generation": 1,
+              "outcome": "succeeded",
+              "external_reference": {
+                "calendar_id": "synthetic/calendar/1",
+                "event_identifier": "synthetic/EventKit-event",
+                "calendar_item_identifier": "synthetic/EventKit-item",
+                "external_identifier": null,
+                "effect_marker": "catpawm://calendar-effect/a343e3ef-50e2-426b-8d1e-9e2899358af1",
+                "content_hash": "6b5f640ad89696550308205090f7236ad57c306225a17597d563aa1dcc0dc804"
+              },
+              "observed_at": "2026-10-15T00:00:00.000Z"
+            },
+            "receipt_hash": "0274b401227765bebaabc7ec207a9e3de0c4c8dc972df327189426eac2532f28",
+            "result_operation_id": "00000017-aaaa-4aaa-8aaa-000000000017"
+          },
+          "notification": {
+            "id": "64398bce-44ca-4e69-81f6-342178549661",
+            "kind": "notification",
+            "state": "unknown",
+            "dispatch": {
+              "contract": "catpaw.device-effect.v1",
+              "effect_id": "319d14e4-8eb6-4843-8941-e5b6dbc7b736",
+              "subeffect_id": "64398bce-44ca-4e69-81f6-342178549661",
+              "kind": "notification",
+              "operation_id": "00000018-aaaa-4aaa-8aaa-000000000018",
+              "request_hash": "7e91ddecb86eaf21c38cf6ca3ac910249e4ed43c745f7f545a27b667e2251a75",
+              "binding_hash": "2e9f97ff3da4a68a6a07b2a8cd10ec28089b419c35492ed4ca13caac5b8c8437",
+              "lease_id": "25452bc9-c091-45ba-8244-0dde388fa7a7",
+              "dispatched_at": "2026-10-15T00:00:00.000Z",
+              "dispatch_hash": "93f04f62a242cd45441185b3e1e94128f2471107ec037dc20cd3f13558c5e736"
+            },
+            "receipt": null,
+            "receipt_hash": null,
+            "result_operation_id": "00000019-aaaa-4aaa-8aaa-000000000019"
+          }
+        },
+        "record_hash": "914474d82bf0820230cb36f83bbc514e9f11044f6b527beb97e244ed47c6331c",
+        "state": "stopped",
+        "execution_current": false,
+        "unresolved_subeffects": [
+          {
+            "kind": "notification",
+            "subeffect_id": "64398bce-44ca-4e69-81f6-342178549661",
+            "dispatch_operation_id": "00000018-aaaa-4aaa-8aaa-000000000018",
+            "state": "unknown",
+            "can_retry": false
+          }
+        ],
+        "can_redispatch": false
+      },
+      "dispatch_permit": null
+    },
+    "stopped_late_fact": {
+      "schema_version": 1,
+      "contract": "catpaw.device-effect.v1",
+      "effect": {
+        "id": "319d14e4-8eb6-4843-8941-e5b6dbc7b736",
+        "contract": "catpaw.device-effect.v1",
+        "frozen": {
+          "id": "319d14e4-8eb6-4843-8941-e5b6dbc7b736",
+          "action_id": "00000012-aaaa-4aaa-8aaa-000000000012",
+          "action_digest": "98f7502844054c67dd953916acc72ed534781bef264fbdc610913fb163c4357a",
+          "decision_operation_id": "00000014-aaaa-4aaa-8aaa-000000000014",
+          "scope_id": "00000001-aaaa-4aaa-8aaa-000000000001",
+          "subject_id": "00000004-aaaa-4aaa-8aaa-000000000004",
+          "conversation_id": "00000008-aaaa-4aaa-8aaa-000000000008",
+          "turn_id": "00000009-aaaa-4aaa-8aaa-000000000009",
+          "run_id": "00000006-aaaa-4aaa-8aaa-000000000006",
+          "task_id": "4791607f09bca718374744782053f1e56dad7ea3c8415486197125dee77c94ef",
+          "run_request_hash": "a17158364b1a27ba8c2885840fa0835aa2384c8b074b6ced2cc2abdd3e581158",
+          "delegation_id": "00000007-aaaa-4aaa-8aaa-000000000007",
+          "delegation_revision": 1,
+          "grant_epoch": 1,
+          "execution_revision": 0,
+          "task_lease_id": null,
+          "task_lease_until": null,
+          "target": {
+            "device_id": "00000010-aaaa-4aaa-8aaa-000000000010",
+            "environment_id": "00000011-aaaa-4aaa-8aaa-000000000011",
+            "calendar_id": "synthetic/calendar/1",
+            "calendar_display_name": "合成 / Calendar é 🐾",
+            "calendar_snapshot_hash": "9c9cd3e9f7c8754fba7a3d4bfb2f123ae88ae3456c1bb2db8f81da6ca40a63ad"
+          },
+          "parameters": {
+            "title": "合成 / Exact é 🐾",
+            "start_at": "2026-10-16T01:00:00.000Z",
+            "end_at": "2026-10-16T01:20:00.000Z",
+            "time_zone": "Asia/Shanghai",
+            "reminder_offset_seconds": -300
+          },
+          "device_generation": 1,
+          "policy_reference": {
+            "contract": "catpaw.device-effect.v1",
+            "version": 1,
+            "policy_hash": "3a5f7c7304d0413e1ba5fcfbe5a31d7755a4435e1e877b532cdf9f81e119bc4b"
+          },
+          "admission_operation_id": "00000015-aaaa-4aaa-8aaa-000000000015",
+          "admission_request_hash": "577d576fbaaa75d0ffde3f8b0eb0e6f804f63b094324b9014ad434f632788c1c",
+          "admitted_at": "2026-10-15T00:00:00.000Z",
+          "approval_expires_at": "2026-10-15T00:30:00.000Z",
+          "lease_id": "25452bc9-c091-45ba-8244-0dde388fa7a7",
+          "lease_expires_at": "2026-10-15T00:00:15.000Z"
+        },
+        "binding_hash": "2e9f97ff3da4a68a6a07b2a8cd10ec28089b419c35492ed4ca13caac5b8c8437",
+        "revision": 7,
+        "stop": {
+          "operation_id": "00000021-aaaa-4aaa-8aaa-000000000021",
+          "reason": "user_stopped",
+          "stopped_at": "2026-10-15T00:00:20.000Z"
+        },
+        "subeffects": {
+          "calendar": {
+            "id": "a343e3ef-50e2-426b-8d1e-9e2899358af1",
+            "kind": "calendar",
+            "state": "succeeded",
+            "dispatch": {
+              "contract": "catpaw.device-effect.v1",
+              "effect_id": "319d14e4-8eb6-4843-8941-e5b6dbc7b736",
+              "subeffect_id": "a343e3ef-50e2-426b-8d1e-9e2899358af1",
+              "kind": "calendar",
+              "operation_id": "00000016-aaaa-4aaa-8aaa-000000000016",
+              "request_hash": "8dcf9a23151e1f6f1bb052e538d6185dde0a861007eb0aa045d8bfe7bc5a757c",
+              "binding_hash": "2e9f97ff3da4a68a6a07b2a8cd10ec28089b419c35492ed4ca13caac5b8c8437",
+              "lease_id": "25452bc9-c091-45ba-8244-0dde388fa7a7",
+              "dispatched_at": "2026-10-15T00:00:00.000Z",
+              "dispatch_hash": "0fd8ed8e48cb6281a66d099d95d4f2e4744f78335d7fcdfbb23e7db8c31ff25b"
+            },
+            "receipt": {
+              "contract": "catpaw.device-effect.v1",
+              "effect_id": "319d14e4-8eb6-4843-8941-e5b6dbc7b736",
+              "subeffect_id": "a343e3ef-50e2-426b-8d1e-9e2899358af1",
+              "dispatch_operation_id": "00000016-aaaa-4aaa-8aaa-000000000016",
+              "action_digest": "98f7502844054c67dd953916acc72ed534781bef264fbdc610913fb163c4357a",
+              "binding_hash": "2e9f97ff3da4a68a6a07b2a8cd10ec28089b419c35492ed4ca13caac5b8c8437",
+              "device_id": "00000010-aaaa-4aaa-8aaa-000000000010",
+              "device_generation": 1,
+              "outcome": "succeeded",
+              "external_reference": {
+                "calendar_id": "synthetic/calendar/1",
+                "event_identifier": "synthetic/EventKit-event",
+                "calendar_item_identifier": "synthetic/EventKit-item",
+                "external_identifier": null,
+                "effect_marker": "catpawm://calendar-effect/a343e3ef-50e2-426b-8d1e-9e2899358af1",
+                "content_hash": "6b5f640ad89696550308205090f7236ad57c306225a17597d563aa1dcc0dc804"
+              },
+              "observed_at": "2026-10-15T00:00:00.000Z"
+            },
+            "receipt_hash": "0274b401227765bebaabc7ec207a9e3de0c4c8dc972df327189426eac2532f28",
+            "result_operation_id": "00000017-aaaa-4aaa-8aaa-000000000017"
+          },
+          "notification": {
+            "id": "64398bce-44ca-4e69-81f6-342178549661",
+            "kind": "notification",
+            "state": "succeeded",
+            "dispatch": {
+              "contract": "catpaw.device-effect.v1",
+              "effect_id": "319d14e4-8eb6-4843-8941-e5b6dbc7b736",
+              "subeffect_id": "64398bce-44ca-4e69-81f6-342178549661",
+              "kind": "notification",
+              "operation_id": "00000018-aaaa-4aaa-8aaa-000000000018",
+              "request_hash": "7e91ddecb86eaf21c38cf6ca3ac910249e4ed43c745f7f545a27b667e2251a75",
+              "binding_hash": "2e9f97ff3da4a68a6a07b2a8cd10ec28089b419c35492ed4ca13caac5b8c8437",
+              "lease_id": "25452bc9-c091-45ba-8244-0dde388fa7a7",
+              "dispatched_at": "2026-10-15T00:00:00.000Z",
+              "dispatch_hash": "93f04f62a242cd45441185b3e1e94128f2471107ec037dc20cd3f13558c5e736"
+            },
+            "receipt": {
+              "contract": "catpaw.device-effect.v1",
+              "effect_id": "319d14e4-8eb6-4843-8941-e5b6dbc7b736",
+              "subeffect_id": "64398bce-44ca-4e69-81f6-342178549661",
+              "dispatch_operation_id": "00000018-aaaa-4aaa-8aaa-000000000018",
+              "action_digest": "98f7502844054c67dd953916acc72ed534781bef264fbdc610913fb163c4357a",
+              "binding_hash": "2e9f97ff3da4a68a6a07b2a8cd10ec28089b419c35492ed4ca13caac5b8c8437",
+              "device_id": "00000010-aaaa-4aaa-8aaa-000000000010",
+              "device_generation": 1,
+              "outcome": "succeeded",
+              "external_reference": {
+                "request_identifier": "64398bce-44ca-4e69-81f6-342178549661",
+                "schedule_hash": "c4b09a8168d5d58fd3b811056275eb922c45b7bb219837043d005679d907f7fa",
+                "due_at": "2026-10-16T00:55:00.000Z",
+                "state": "pending"
+              },
+              "observed_at": "2026-10-15T00:00:20.000Z"
+            },
+            "receipt_hash": "e2dcea43736c9bb23179c2e1b48da4796c690a518de9222b9852bf3a5e730af8",
+            "result_operation_id": "00000020-aaaa-4aaa-8aaa-000000000020"
+          }
+        },
+        "record_hash": "81e5a2db8ebc920742d904986c1fa77e598ef65a5e2949f60f1662c9161671d7",
+        "state": "stopped",
+        "execution_current": false,
+        "unresolved_subeffects": [],
+        "can_redispatch": false
+      },
+      "dispatch_permit": null
+    }
+  },
+  "without_reminder": {
+    "identity": {
+      "scope": {
+        "scope_id": "00000001-aaaa-4aaa-8aaa-000000000001",
+        "profile_id": "00000002-aaaa-4aaa-8aaa-000000000002",
+        "workspace_id": "00000003-aaaa-4aaa-8aaa-000000000003"
+      },
+      "subject": "00000004-aaaa-4aaa-8aaa-000000000004",
+      "binding": {
+        "scope_id": "00000001-aaaa-4aaa-8aaa-000000000001",
+        "conversation_id": "00000008-aaaa-4aaa-8aaa-000000000008",
+        "turn_id": "00000009-aaaa-4aaa-8aaa-000000000009",
+        "call_id": "synthetic-calendar-call",
+        "delegation_id": "00000007-aaaa-4aaa-8aaa-000000000007",
+        "operation_id": "00000023-aaaa-4aaa-8aaa-000000000023",
+        "run_id": "00000006-aaaa-4aaa-8aaa-000000000006",
+        "task_id": "4791607f09bca718374744782053f1e56dad7ea3c8415486197125dee77c94ef",
+        "request_hash": "a17158364b1a27ba8c2885840fa0835aa2384c8b074b6ced2cc2abdd3e581158",
+        "delegation_revision": 1,
+        "grant_epoch": 1,
+        "projection_url": "/catpaw/v1/scopes/00000001-aaaa-4aaa-8aaa-000000000001/runs/00000006-aaaa-4aaa-8aaa-000000000006"
+      },
+      "action_id": "00000012-aaaa-4aaa-8aaa-000000000012",
+      "action_digest": "b912853ae7d425a992b14efa1d35a8f8b2d77edcb0e90a8f6ae0594f021d0411",
+      "decision_operation_id": "00000014-aaaa-4aaa-8aaa-000000000014",
+      "action_revision": 2
+    },
+    "frozen": {
+      "contract": "catpaw.task-action.v2",
+      "id": "00000012-aaaa-4aaa-8aaa-000000000012",
+      "proposal_operation_id": "00000013-aaaa-4aaa-8aaa-000000000013",
+      "scope_id": "00000001-aaaa-4aaa-8aaa-000000000001",
+      "subject_id": "00000004-aaaa-4aaa-8aaa-000000000004",
+      "conversation_id": "00000008-aaaa-4aaa-8aaa-000000000008",
+      "turn_id": "00000009-aaaa-4aaa-8aaa-000000000009",
+      "run_id": "00000006-aaaa-4aaa-8aaa-000000000006",
+      "task_id": "4791607f09bca718374744782053f1e56dad7ea3c8415486197125dee77c94ef",
+      "request_hash": "a17158364b1a27ba8c2885840fa0835aa2384c8b074b6ced2cc2abdd3e581158",
+      "delegation_id": "00000007-aaaa-4aaa-8aaa-000000000007",
+      "delegation_revision": 1,
+      "grant_epoch": 1,
+      "plan_reference": {
+        "revision": 1,
+        "plan_hash": "ac9473ef55345fa2e9999d2d98eabe51d48d6e1b7b7ddcbdfd07c4ed1cbfde47"
+      },
+      "kind": "calendar.create.v2",
+      "tool_version": 2,
+      "target": {
+        "device_id": "00000010-aaaa-4aaa-8aaa-000000000010",
+        "environment_id": "00000011-aaaa-4aaa-8aaa-000000000011",
+        "calendar_id": "synthetic/calendar/1",
+        "calendar_display_name": "合成 / Calendar é 🐾",
+        "calendar_snapshot_hash": "9c9cd3e9f7c8754fba7a3d4bfb2f123ae88ae3456c1bb2db8f81da6ca40a63ad"
+      },
+      "parameters": {
+        "title": "合成 / Exact é 🐾",
+        "start_at": "2026-10-16T01:00:00.000Z",
+        "end_at": "2026-10-16T01:20:00.000Z",
+        "time_zone": "Asia/Shanghai",
+        "reminder_offset_seconds": null
+      },
+      "parameters_hash": "2b3451e74802d069e995e31fdb25265a2f15fe6cc675d04ff343458e69d5eab7",
+      "artifact_reference": null,
+      "execution_policy": {
+        "contract": "catpaw.device-effect.v1",
+        "version": 1,
+        "policy_hash": "3a5f7c7304d0413e1ba5fcfbe5a31d7755a4435e1e877b532cdf9f81e119bc4b"
+      },
+      "created_at": "2026-10-15T00:00:00.000Z",
+      "expires_at": "2026-10-15T00:30:00.000Z"
+    },
+    "decision": {
+      "id": "00000014-aaaa-4aaa-8aaa-000000000014",
+      "contract": "catpaw.task-action.v2",
+      "action_id": "00000012-aaaa-4aaa-8aaa-000000000012",
+      "run_id": "00000006-aaaa-4aaa-8aaa-000000000006",
+      "task_id": "4791607f09bca718374744782053f1e56dad7ea3c8415486197125dee77c94ef",
+      "scope_id": "00000001-aaaa-4aaa-8aaa-000000000001",
+      "subject_id": "00000004-aaaa-4aaa-8aaa-000000000004",
+      "action_digest": "b912853ae7d425a992b14efa1d35a8f8b2d77edcb0e90a8f6ae0594f021d0411",
+      "decision": "approve",
+      "execution_policy": {
+        "contract": "catpaw.device-effect.v1",
+        "version": 1,
+        "policy_hash": "3a5f7c7304d0413e1ba5fcfbe5a31d7755a4435e1e877b532cdf9f81e119bc4b"
+      },
+      "committed_at": "2026-10-15T00:00:00.000Z"
+    },
+    "admission": {
+      "operation_id": "00000015-aaaa-4aaa-8aaa-000000000015",
+      "action_id": "00000012-aaaa-4aaa-8aaa-000000000012",
+      "decision_operation_id": "00000014-aaaa-4aaa-8aaa-000000000014",
+      "expected_action_revision": 2,
+      "action_digest": "b912853ae7d425a992b14efa1d35a8f8b2d77edcb0e90a8f6ae0594f021d0411",
+      "expected_grant_epoch": 1,
+      "expected_plan_revision": 1,
+      "expected_plan_hash": "ac9473ef55345fa2e9999d2d98eabe51d48d6e1b7b7ddcbdfd07c4ed1cbfde47",
+      "expected_execution_revision": 0,
+      "device_id": "00000010-aaaa-4aaa-8aaa-000000000010",
+      "calendar_snapshot_hash": "9c9cd3e9f7c8754fba7a3d4bfb2f123ae88ae3456c1bb2db8f81da6ca40a63ad",
+      "policy_reference": {
+        "contract": "catpaw.device-effect.v1",
+        "version": 1,
+        "policy_hash": "3a5f7c7304d0413e1ba5fcfbe5a31d7755a4435e1e877b532cdf9f81e119bc4b"
+      }
+    },
+    "dispatch_requests": {
+      "calendar": {
+        "operation_id": "00000016-aaaa-4aaa-8aaa-000000000016",
+        "subeffect": "calendar",
+        "expected_effect_revision": 1,
+        "binding_hash": "2bf3df46f26aa5a439e626047c4459f99dd1d912f65f509f7899c89de97c2d57",
+        "lease_id": "25452bc9-c091-45ba-8244-0dde388fa7a7"
+      }
+    },
+    "hashes": {
+      "frozen": "b912853ae7d425a992b14efa1d35a8f8b2d77edcb0e90a8f6ae0594f021d0411",
+      "parameters": "2b3451e74802d069e995e31fdb25265a2f15fe6cc675d04ff343458e69d5eab7",
+      "admission": "228d3cafdfa368887157c809e082681fa181fc8b09de5e415527e76ff1a30e31"
+    },
+    "responses": {
+      "admitted": {
+        "schema_version": 1,
+        "contract": "catpaw.device-effect.v1",
+        "effect": {
+          "id": "319d14e4-8eb6-4843-8941-e5b6dbc7b736",
+          "contract": "catpaw.device-effect.v1",
+          "frozen": {
+            "id": "319d14e4-8eb6-4843-8941-e5b6dbc7b736",
+            "action_id": "00000012-aaaa-4aaa-8aaa-000000000012",
+            "action_digest": "b912853ae7d425a992b14efa1d35a8f8b2d77edcb0e90a8f6ae0594f021d0411",
+            "decision_operation_id": "00000014-aaaa-4aaa-8aaa-000000000014",
+            "scope_id": "00000001-aaaa-4aaa-8aaa-000000000001",
+            "subject_id": "00000004-aaaa-4aaa-8aaa-000000000004",
+            "conversation_id": "00000008-aaaa-4aaa-8aaa-000000000008",
+            "turn_id": "00000009-aaaa-4aaa-8aaa-000000000009",
+            "run_id": "00000006-aaaa-4aaa-8aaa-000000000006",
+            "task_id": "4791607f09bca718374744782053f1e56dad7ea3c8415486197125dee77c94ef",
+            "run_request_hash": "a17158364b1a27ba8c2885840fa0835aa2384c8b074b6ced2cc2abdd3e581158",
+            "delegation_id": "00000007-aaaa-4aaa-8aaa-000000000007",
+            "delegation_revision": 1,
+            "grant_epoch": 1,
+            "execution_revision": 0,
+            "task_lease_id": null,
+            "task_lease_until": null,
+            "target": {
+              "device_id": "00000010-aaaa-4aaa-8aaa-000000000010",
+              "environment_id": "00000011-aaaa-4aaa-8aaa-000000000011",
+              "calendar_id": "synthetic/calendar/1",
+              "calendar_display_name": "合成 / Calendar é 🐾",
+              "calendar_snapshot_hash": "9c9cd3e9f7c8754fba7a3d4bfb2f123ae88ae3456c1bb2db8f81da6ca40a63ad"
+            },
+            "parameters": {
+              "title": "合成 / Exact é 🐾",
+              "start_at": "2026-10-16T01:00:00.000Z",
+              "end_at": "2026-10-16T01:20:00.000Z",
+              "time_zone": "Asia/Shanghai",
+              "reminder_offset_seconds": null
+            },
+            "device_generation": 1,
+            "policy_reference": {
+              "contract": "catpaw.device-effect.v1",
+              "version": 1,
+              "policy_hash": "3a5f7c7304d0413e1ba5fcfbe5a31d7755a4435e1e877b532cdf9f81e119bc4b"
+            },
+            "admission_operation_id": "00000015-aaaa-4aaa-8aaa-000000000015",
+            "admission_request_hash": "228d3cafdfa368887157c809e082681fa181fc8b09de5e415527e76ff1a30e31",
+            "admitted_at": "2026-10-15T00:00:00.000Z",
+            "approval_expires_at": "2026-10-15T00:30:00.000Z",
+            "lease_id": "25452bc9-c091-45ba-8244-0dde388fa7a7",
+            "lease_expires_at": "2026-10-15T00:00:15.000Z"
+          },
+          "binding_hash": "2bf3df46f26aa5a439e626047c4459f99dd1d912f65f509f7899c89de97c2d57",
+          "revision": 1,
+          "stop": null,
+          "subeffects": {
+            "calendar": {
+              "id": "a343e3ef-50e2-426b-8d1e-9e2899358af1",
+              "kind": "calendar",
+              "state": "not_dispatched",
+              "dispatch": null,
+              "receipt": null,
+              "receipt_hash": null,
+              "result_operation_id": null
+            },
+            "notification": {
+              "id": "64398bce-44ca-4e69-81f6-342178549661",
+              "kind": "notification",
+              "state": "not_required",
+              "dispatch": null,
+              "receipt": null,
+              "receipt_hash": null,
+              "result_operation_id": null
+            }
+          },
+          "record_hash": "f38ae698af3c3438499209d75d2ab4c80f3e38b54ad71f846cde7e521d83d634",
+          "state": "admitted",
+          "execution_current": true,
+          "unresolved_subeffects": [],
+          "can_redispatch": false
+        },
+        "dispatch_permit": null
+      },
+      "calendar_permit": {
+        "schema_version": 1,
+        "contract": "catpaw.device-effect.v1",
+        "effect": {
+          "id": "319d14e4-8eb6-4843-8941-e5b6dbc7b736",
+          "contract": "catpaw.device-effect.v1",
+          "frozen": {
+            "id": "319d14e4-8eb6-4843-8941-e5b6dbc7b736",
+            "action_id": "00000012-aaaa-4aaa-8aaa-000000000012",
+            "action_digest": "b912853ae7d425a992b14efa1d35a8f8b2d77edcb0e90a8f6ae0594f021d0411",
+            "decision_operation_id": "00000014-aaaa-4aaa-8aaa-000000000014",
+            "scope_id": "00000001-aaaa-4aaa-8aaa-000000000001",
+            "subject_id": "00000004-aaaa-4aaa-8aaa-000000000004",
+            "conversation_id": "00000008-aaaa-4aaa-8aaa-000000000008",
+            "turn_id": "00000009-aaaa-4aaa-8aaa-000000000009",
+            "run_id": "00000006-aaaa-4aaa-8aaa-000000000006",
+            "task_id": "4791607f09bca718374744782053f1e56dad7ea3c8415486197125dee77c94ef",
+            "run_request_hash": "a17158364b1a27ba8c2885840fa0835aa2384c8b074b6ced2cc2abdd3e581158",
+            "delegation_id": "00000007-aaaa-4aaa-8aaa-000000000007",
+            "delegation_revision": 1,
+            "grant_epoch": 1,
+            "execution_revision": 0,
+            "task_lease_id": null,
+            "task_lease_until": null,
+            "target": {
+              "device_id": "00000010-aaaa-4aaa-8aaa-000000000010",
+              "environment_id": "00000011-aaaa-4aaa-8aaa-000000000011",
+              "calendar_id": "synthetic/calendar/1",
+              "calendar_display_name": "合成 / Calendar é 🐾",
+              "calendar_snapshot_hash": "9c9cd3e9f7c8754fba7a3d4bfb2f123ae88ae3456c1bb2db8f81da6ca40a63ad"
+            },
+            "parameters": {
+              "title": "合成 / Exact é 🐾",
+              "start_at": "2026-10-16T01:00:00.000Z",
+              "end_at": "2026-10-16T01:20:00.000Z",
+              "time_zone": "Asia/Shanghai",
+              "reminder_offset_seconds": null
+            },
+            "device_generation": 1,
+            "policy_reference": {
+              "contract": "catpaw.device-effect.v1",
+              "version": 1,
+              "policy_hash": "3a5f7c7304d0413e1ba5fcfbe5a31d7755a4435e1e877b532cdf9f81e119bc4b"
+            },
+            "admission_operation_id": "00000015-aaaa-4aaa-8aaa-000000000015",
+            "admission_request_hash": "228d3cafdfa368887157c809e082681fa181fc8b09de5e415527e76ff1a30e31",
+            "admitted_at": "2026-10-15T00:00:00.000Z",
+            "approval_expires_at": "2026-10-15T00:30:00.000Z",
+            "lease_id": "25452bc9-c091-45ba-8244-0dde388fa7a7",
+            "lease_expires_at": "2026-10-15T00:00:15.000Z"
+          },
+          "binding_hash": "2bf3df46f26aa5a439e626047c4459f99dd1d912f65f509f7899c89de97c2d57",
+          "revision": 2,
+          "stop": null,
+          "subeffects": {
+            "calendar": {
+              "id": "a343e3ef-50e2-426b-8d1e-9e2899358af1",
+              "kind": "calendar",
+              "state": "dispatched",
+              "dispatch": {
+                "contract": "catpaw.device-effect.v1",
+                "effect_id": "319d14e4-8eb6-4843-8941-e5b6dbc7b736",
+                "subeffect_id": "a343e3ef-50e2-426b-8d1e-9e2899358af1",
+                "kind": "calendar",
+                "operation_id": "00000016-aaaa-4aaa-8aaa-000000000016",
+                "request_hash": "1a1885924442c9643ed1c48d958d1607eb8b140584c608abc985571cb20b659e",
+                "binding_hash": "2bf3df46f26aa5a439e626047c4459f99dd1d912f65f509f7899c89de97c2d57",
+                "lease_id": "25452bc9-c091-45ba-8244-0dde388fa7a7",
+                "dispatched_at": "2026-10-15T00:00:00.000Z",
+                "dispatch_hash": "0830a88f8908b725a5352ea7c4f5d9be33341b50d7d809b7140d585a452bd570"
+              },
+              "receipt": null,
+              "receipt_hash": null,
+              "result_operation_id": null
+            },
+            "notification": {
+              "id": "64398bce-44ca-4e69-81f6-342178549661",
+              "kind": "notification",
+              "state": "not_required",
+              "dispatch": null,
+              "receipt": null,
+              "receipt_hash": null,
+              "result_operation_id": null
+            }
+          },
+          "record_hash": "8bdeca6db803ea04f27bf81ecd3d19faade6cb9021e339527b9810dc64e91c1f",
+          "state": "dispatching",
+          "execution_current": true,
+          "unresolved_subeffects": [
+            {
+              "kind": "calendar",
+              "subeffect_id": "a343e3ef-50e2-426b-8d1e-9e2899358af1",
+              "dispatch_operation_id": "00000016-aaaa-4aaa-8aaa-000000000016",
+              "state": "dispatched",
+              "can_retry": false
+            }
+          ],
+          "can_redispatch": false
+        },
+        "dispatch_permit": {
+          "contract": "catpaw.device-effect.v1",
+          "effect_id": "319d14e4-8eb6-4843-8941-e5b6dbc7b736",
+          "subeffect_id": "a343e3ef-50e2-426b-8d1e-9e2899358af1",
+          "kind": "calendar",
+          "operation_id": "00000016-aaaa-4aaa-8aaa-000000000016",
+          "request_hash": "1a1885924442c9643ed1c48d958d1607eb8b140584c608abc985571cb20b659e",
+          "binding_hash": "2bf3df46f26aa5a439e626047c4459f99dd1d912f65f509f7899c89de97c2d57",
+          "lease_id": "25452bc9-c091-45ba-8244-0dde388fa7a7",
+          "dispatched_at": "2026-10-15T00:00:00.000Z",
+          "dispatch_hash": "0830a88f8908b725a5352ea7c4f5d9be33341b50d7d809b7140d585a452bd570",
+          "lease_expires_at": "2026-10-15T00:00:15.000Z"
+        }
+      },
+      "calendar_replay": {
+        "schema_version": 1,
+        "contract": "catpaw.device-effect.v1",
+        "effect": {
+          "id": "319d14e4-8eb6-4843-8941-e5b6dbc7b736",
+          "contract": "catpaw.device-effect.v1",
+          "frozen": {
+            "id": "319d14e4-8eb6-4843-8941-e5b6dbc7b736",
+            "action_id": "00000012-aaaa-4aaa-8aaa-000000000012",
+            "action_digest": "b912853ae7d425a992b14efa1d35a8f8b2d77edcb0e90a8f6ae0594f021d0411",
+            "decision_operation_id": "00000014-aaaa-4aaa-8aaa-000000000014",
+            "scope_id": "00000001-aaaa-4aaa-8aaa-000000000001",
+            "subject_id": "00000004-aaaa-4aaa-8aaa-000000000004",
+            "conversation_id": "00000008-aaaa-4aaa-8aaa-000000000008",
+            "turn_id": "00000009-aaaa-4aaa-8aaa-000000000009",
+            "run_id": "00000006-aaaa-4aaa-8aaa-000000000006",
+            "task_id": "4791607f09bca718374744782053f1e56dad7ea3c8415486197125dee77c94ef",
+            "run_request_hash": "a17158364b1a27ba8c2885840fa0835aa2384c8b074b6ced2cc2abdd3e581158",
+            "delegation_id": "00000007-aaaa-4aaa-8aaa-000000000007",
+            "delegation_revision": 1,
+            "grant_epoch": 1,
+            "execution_revision": 0,
+            "task_lease_id": null,
+            "task_lease_until": null,
+            "target": {
+              "device_id": "00000010-aaaa-4aaa-8aaa-000000000010",
+              "environment_id": "00000011-aaaa-4aaa-8aaa-000000000011",
+              "calendar_id": "synthetic/calendar/1",
+              "calendar_display_name": "合成 / Calendar é 🐾",
+              "calendar_snapshot_hash": "9c9cd3e9f7c8754fba7a3d4bfb2f123ae88ae3456c1bb2db8f81da6ca40a63ad"
+            },
+            "parameters": {
+              "title": "合成 / Exact é 🐾",
+              "start_at": "2026-10-16T01:00:00.000Z",
+              "end_at": "2026-10-16T01:20:00.000Z",
+              "time_zone": "Asia/Shanghai",
+              "reminder_offset_seconds": null
+            },
+            "device_generation": 1,
+            "policy_reference": {
+              "contract": "catpaw.device-effect.v1",
+              "version": 1,
+              "policy_hash": "3a5f7c7304d0413e1ba5fcfbe5a31d7755a4435e1e877b532cdf9f81e119bc4b"
+            },
+            "admission_operation_id": "00000015-aaaa-4aaa-8aaa-000000000015",
+            "admission_request_hash": "228d3cafdfa368887157c809e082681fa181fc8b09de5e415527e76ff1a30e31",
+            "admitted_at": "2026-10-15T00:00:00.000Z",
+            "approval_expires_at": "2026-10-15T00:30:00.000Z",
+            "lease_id": "25452bc9-c091-45ba-8244-0dde388fa7a7",
+            "lease_expires_at": "2026-10-15T00:00:15.000Z"
+          },
+          "binding_hash": "2bf3df46f26aa5a439e626047c4459f99dd1d912f65f509f7899c89de97c2d57",
+          "revision": 2,
+          "stop": null,
+          "subeffects": {
+            "calendar": {
+              "id": "a343e3ef-50e2-426b-8d1e-9e2899358af1",
+              "kind": "calendar",
+              "state": "dispatched",
+              "dispatch": {
+                "contract": "catpaw.device-effect.v1",
+                "effect_id": "319d14e4-8eb6-4843-8941-e5b6dbc7b736",
+                "subeffect_id": "a343e3ef-50e2-426b-8d1e-9e2899358af1",
+                "kind": "calendar",
+                "operation_id": "00000016-aaaa-4aaa-8aaa-000000000016",
+                "request_hash": "1a1885924442c9643ed1c48d958d1607eb8b140584c608abc985571cb20b659e",
+                "binding_hash": "2bf3df46f26aa5a439e626047c4459f99dd1d912f65f509f7899c89de97c2d57",
+                "lease_id": "25452bc9-c091-45ba-8244-0dde388fa7a7",
+                "dispatched_at": "2026-10-15T00:00:00.000Z",
+                "dispatch_hash": "0830a88f8908b725a5352ea7c4f5d9be33341b50d7d809b7140d585a452bd570"
+              },
+              "receipt": null,
+              "receipt_hash": null,
+              "result_operation_id": null
+            },
+            "notification": {
+              "id": "64398bce-44ca-4e69-81f6-342178549661",
+              "kind": "notification",
+              "state": "not_required",
+              "dispatch": null,
+              "receipt": null,
+              "receipt_hash": null,
+              "result_operation_id": null
+            }
+          },
+          "record_hash": "8bdeca6db803ea04f27bf81ecd3d19faade6cb9021e339527b9810dc64e91c1f",
+          "state": "dispatching",
+          "execution_current": true,
+          "unresolved_subeffects": [
+            {
+              "kind": "calendar",
+              "subeffect_id": "a343e3ef-50e2-426b-8d1e-9e2899358af1",
+              "dispatch_operation_id": "00000016-aaaa-4aaa-8aaa-000000000016",
+              "state": "dispatched",
+              "can_retry": false
+            }
+          ],
+          "can_redispatch": false
+        },
+        "dispatch_permit": null
+      },
+      "succeeded": {
+        "schema_version": 1,
+        "contract": "catpaw.device-effect.v1",
+        "effect": {
+          "id": "319d14e4-8eb6-4843-8941-e5b6dbc7b736",
+          "contract": "catpaw.device-effect.v1",
+          "frozen": {
+            "id": "319d14e4-8eb6-4843-8941-e5b6dbc7b736",
+            "action_id": "00000012-aaaa-4aaa-8aaa-000000000012",
+            "action_digest": "b912853ae7d425a992b14efa1d35a8f8b2d77edcb0e90a8f6ae0594f021d0411",
+            "decision_operation_id": "00000014-aaaa-4aaa-8aaa-000000000014",
+            "scope_id": "00000001-aaaa-4aaa-8aaa-000000000001",
+            "subject_id": "00000004-aaaa-4aaa-8aaa-000000000004",
+            "conversation_id": "00000008-aaaa-4aaa-8aaa-000000000008",
+            "turn_id": "00000009-aaaa-4aaa-8aaa-000000000009",
+            "run_id": "00000006-aaaa-4aaa-8aaa-000000000006",
+            "task_id": "4791607f09bca718374744782053f1e56dad7ea3c8415486197125dee77c94ef",
+            "run_request_hash": "a17158364b1a27ba8c2885840fa0835aa2384c8b074b6ced2cc2abdd3e581158",
+            "delegation_id": "00000007-aaaa-4aaa-8aaa-000000000007",
+            "delegation_revision": 1,
+            "grant_epoch": 1,
+            "execution_revision": 0,
+            "task_lease_id": null,
+            "task_lease_until": null,
+            "target": {
+              "device_id": "00000010-aaaa-4aaa-8aaa-000000000010",
+              "environment_id": "00000011-aaaa-4aaa-8aaa-000000000011",
+              "calendar_id": "synthetic/calendar/1",
+              "calendar_display_name": "合成 / Calendar é 🐾",
+              "calendar_snapshot_hash": "9c9cd3e9f7c8754fba7a3d4bfb2f123ae88ae3456c1bb2db8f81da6ca40a63ad"
+            },
+            "parameters": {
+              "title": "合成 / Exact é 🐾",
+              "start_at": "2026-10-16T01:00:00.000Z",
+              "end_at": "2026-10-16T01:20:00.000Z",
+              "time_zone": "Asia/Shanghai",
+              "reminder_offset_seconds": null
+            },
+            "device_generation": 1,
+            "policy_reference": {
+              "contract": "catpaw.device-effect.v1",
+              "version": 1,
+              "policy_hash": "3a5f7c7304d0413e1ba5fcfbe5a31d7755a4435e1e877b532cdf9f81e119bc4b"
+            },
+            "admission_operation_id": "00000015-aaaa-4aaa-8aaa-000000000015",
+            "admission_request_hash": "228d3cafdfa368887157c809e082681fa181fc8b09de5e415527e76ff1a30e31",
+            "admitted_at": "2026-10-15T00:00:00.000Z",
+            "approval_expires_at": "2026-10-15T00:30:00.000Z",
+            "lease_id": "25452bc9-c091-45ba-8244-0dde388fa7a7",
+            "lease_expires_at": "2026-10-15T00:00:15.000Z"
+          },
+          "binding_hash": "2bf3df46f26aa5a439e626047c4459f99dd1d912f65f509f7899c89de97c2d57",
+          "revision": 3,
+          "stop": null,
+          "subeffects": {
+            "calendar": {
+              "id": "a343e3ef-50e2-426b-8d1e-9e2899358af1",
+              "kind": "calendar",
+              "state": "succeeded",
+              "dispatch": {
+                "contract": "catpaw.device-effect.v1",
+                "effect_id": "319d14e4-8eb6-4843-8941-e5b6dbc7b736",
+                "subeffect_id": "a343e3ef-50e2-426b-8d1e-9e2899358af1",
+                "kind": "calendar",
+                "operation_id": "00000016-aaaa-4aaa-8aaa-000000000016",
+                "request_hash": "1a1885924442c9643ed1c48d958d1607eb8b140584c608abc985571cb20b659e",
+                "binding_hash": "2bf3df46f26aa5a439e626047c4459f99dd1d912f65f509f7899c89de97c2d57",
+                "lease_id": "25452bc9-c091-45ba-8244-0dde388fa7a7",
+                "dispatched_at": "2026-10-15T00:00:00.000Z",
+                "dispatch_hash": "0830a88f8908b725a5352ea7c4f5d9be33341b50d7d809b7140d585a452bd570"
+              },
+              "receipt": {
+                "contract": "catpaw.device-effect.v1",
+                "effect_id": "319d14e4-8eb6-4843-8941-e5b6dbc7b736",
+                "subeffect_id": "a343e3ef-50e2-426b-8d1e-9e2899358af1",
+                "dispatch_operation_id": "00000016-aaaa-4aaa-8aaa-000000000016",
+                "action_digest": "b912853ae7d425a992b14efa1d35a8f8b2d77edcb0e90a8f6ae0594f021d0411",
+                "binding_hash": "2bf3df46f26aa5a439e626047c4459f99dd1d912f65f509f7899c89de97c2d57",
+                "device_id": "00000010-aaaa-4aaa-8aaa-000000000010",
+                "device_generation": 1,
+                "outcome": "succeeded",
+                "external_reference": {
+                  "calendar_id": "synthetic/calendar/1",
+                  "event_identifier": "synthetic/EventKit-event",
+                  "calendar_item_identifier": "synthetic/EventKit-item",
+                  "external_identifier": null,
+                  "effect_marker": "catpawm://calendar-effect/a343e3ef-50e2-426b-8d1e-9e2899358af1",
+                  "content_hash": "6b5f640ad89696550308205090f7236ad57c306225a17597d563aa1dcc0dc804"
+                },
+                "observed_at": "2026-10-15T00:00:00.000Z"
+              },
+              "receipt_hash": "8623e95832acb101c9394ba1da45221f749425266ad4623ffc8059fcdbceee63",
+              "result_operation_id": "00000017-aaaa-4aaa-8aaa-000000000017"
+            },
+            "notification": {
+              "id": "64398bce-44ca-4e69-81f6-342178549661",
+              "kind": "notification",
+              "state": "not_required",
+              "dispatch": null,
+              "receipt": null,
+              "receipt_hash": null,
+              "result_operation_id": null
+            }
+          },
+          "record_hash": "1ff3390b3310583cbd9784c1676f00c8e6fd6eb20275f6b2cc002a9899c70dde",
+          "state": "succeeded",
+          "execution_current": true,
+          "unresolved_subeffects": [],
+          "can_redispatch": false
+        },
+        "dispatch_permit": null
+      }
+    }
+  }
+}

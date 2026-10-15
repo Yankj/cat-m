@@ -8,6 +8,8 @@ import {TestRepository} from '../supabase/functions/_shared/core/integration/ser
 import {RecordTransaction,PostgresRepository} from '../supabase/functions/_shared/core/integration/server-foundation/src/postgres-repository.mjs';
 import {createChatMetrics} from '../supabase/functions/_shared/core/src/chat-metrics.mjs';
 import {ApiError} from '../supabase/functions/_shared/core/facade-r2/src/common.mjs';
+import {ChatService} from '../supabase/functions/_shared/core/src/chat-service.mjs';
+import {ChatRecoveryFence} from '../supabase/functions/_shared/core/integration/server-foundation/src/chat-recovery.mjs';
 globalThis.fetch=()=>{throw Error('external_network_forbidden');};
 const latch=()=>{let resolve;const promise=new Promise(r=>resolve=r);return {promise,resolve};};
 const delay=ms=>new Promise(r=>setTimeout(r,ms));
@@ -248,4 +250,41 @@ test('unexpected database failure during final metadata fence rolls back an awai
     await assert.rejects(f.runtime.chat.fail(failureEnv(f),new ApiError(409,'grant_conflict')),e=>e===error);assert.equal(writes,1);assert.deepEqual(await f.readRow(),before);assert.equal(notify(),0);
     restore();f.setSourceFailure(null);await f.runtime.chat.fail(failureEnv(f),new ApiError(409,'grant_conflict'));
   }finally{f.setSourceFailure(null);await f.stop();}
+});
+
+// Serialized fault injection at the last awaited write; not live PostgreSQL or provider evidence.
+async function leaseCommitFixture(phase){
+  const repository=new TestRepository(),owner='synthetic-commit-fence',scope={scope_id:randomUUID(),permissions:{local_output:true}},principal={subject_id:randomUUID()};
+  const cid=randomUUID(),tid=randomUUID();let clock=Date.now(),notifications=0,dispatches=0;
+  const fence=new ChatRecoveryFence(repository,{clock:()=>new Date(clock),lease_ms:1000}),token=await fence.acquire(owner,randomUUID());
+  const turn={id:tid,conversation_id:cid,scope_id:scope.scope_id,subject_id:principal.subject_id,grant_epoch:1,conversation_revision:2,state:'running',events:[],task_bindings:[],model_history:[],input:{context:[]},runtime_holder_id:token.holder_id,runtime_generation:token.generation};
+  const conversation={id:cid,subject_id:principal.subject_id,scope_id:scope.scope_id,grant_epoch:1,revision:phase==='admission'?1:2,state:'active',messages:[],last_turn_id:null};
+  await repository.transaction(async tx=>{await tx.put(owner,'native-chat-conversations',conversation);if(phase!=='admission')await tx.put(owner,'native-chat-turns',turn);});
+  const integration={prepare:async()=>{},beforeWrite:async(tx,ctx)=>ctx.turn?fence.assertTurnLive(tx,owner,token,ctx.turn):fence.assertLive(tx,owner,token),stampTurn:(tx,o,t)=>fence.stampTurn(tx,o,token,t),capture:async()=>{},renew:()=>fence.renew(owner,token)};
+  const provider={identity:{model:'synthetic'},reality:'provider_unverified',async *stream(){dispatches++;yield {type:'text_delta',text:'LATE_SYNTHETIC_TEXT'};yield {type:'done',finish_reason:'stop'};}};
+  const chat=new ChatService({facade:{repository,scoped:async()=>({owner,scope,principal})},provider,integration});chat.notify=()=>notifications++;
+  const transaction=repository.transaction.bind(repository);repository.transaction=(...args)=>{const callback=args.pop();return transaction(...args,async tx=>{const put=tx.put.bind(tx);tx.put=async(o,kind,value)=>{
+    const saved=await put(o,kind,value),event=value.events?.at(-1)?.type;
+    if(kind==='native-chat-turns'&&(phase==='admission'&&event==='turn_started'||phase==='delta'&&event==='text_delta'||phase==='tool'&&event==='tool_result'||phase==='completion'&&event==='turn_completed'||phase==='dispatch'&&value.dispatch_checkpoint))clock=Date.parse(token.lease_until)+1;
+    return saved;
+  };return callback(tx);});};
+  const env={owner,scope,principal,turn,signal:new AbortController().signal},read=()=>repository.transaction(async tx=>({turn:await tx.get(owner,'native-chat-turns',tid),conversation:await tx.get(owner,'native-chat-conversations',cid)}));
+  return {repository,chat,env,read,cid,tid,scope,counts:()=>({notifications,dispatches})};
+}
+for(const phase of ['delta','tool','completion'])test(`normal ${phase} write crossing runtime lease expiry rolls back before commit and notification`,async()=>{
+  const f=await leaseCommitFixture(phase),before=await f.read();
+  const write=phase==='delta'?()=>f.chat.append(f.env,'text_delta',{text:'LATE_SYNTHETIC_TEXT'}):phase==='tool'?()=>f.chat.executeTool(f.env,{id:randomUUID(),name:'agent_status',arguments:{}}):()=>f.chat.complete(f.env,randomUUID(),'LATE_SYNTHETIC_TEXT',[{role:'assistant',content:'LATE_SYNTHETIC_TEXT'}]);
+  await assert.rejects(write(),e=>e.code==='runtime_lease_lost');assert.deepEqual(await f.read(),before);assert.deepEqual(f.counts(),{notifications:0,dispatches:0});
+});
+test('admission crossing runtime lease expiry rolls back the original intent and never starts execution',async()=>{
+  const f=await leaseCommitFixture('admission'),before=await f.read();let executions=0;f.chat.execute=async()=>{executions++;};
+  const input={turn_id:f.tid,expected_revision:1,expected_grant_epoch:1,message:{id:randomUUID(),text:'Synthetic original intent'},context:[]};
+  await assert.rejects(f.chat.startTurn('Bearer synthetic',f.scope.scope_id,f.cid,input),e=>e.code==='runtime_lease_lost');
+  assert.deepEqual(await f.read(),before);assert.equal(executions,0);assert.equal(f.chat.active.size,0);assert.deepEqual(f.counts(),{notifications:0,dispatches:0});
+});
+test('dispatch checkpoint crossing runtime lease expiry rolls back before model transport',async()=>{
+  const f=await leaseCommitFixture('dispatch'),before=await f.read(),controller=new AbortController();
+  f.env.turn.events=[f.chat.event(f.env.turn,'turn_started',{})];
+  await f.chat.execute({...f.env,signal:controller.signal,controller});
+  assert.deepEqual(await f.read(),before);assert.deepEqual(f.counts(),{notifications:0,dispatches:0});
 });

@@ -1,0 +1,429 @@
+{
+  "candidate": "AF-W33-CONTROL-20261014-06",
+  "reality": "offline_injected_maintenance",
+  "files": [
+    {
+      "path": "services/edge/supabase/functions/_shared/api.mjs",
+      "bytes": 28433,
+      "sha256": "6b92e0f31e931aecad700094c4303b3a15264bf22d4b6bb090d0708ad7e7dea5"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/authority.mjs",
+      "bytes": 9385,
+      "sha256": "4108c59a8a0f1b7e134025c549d40a1e70379561206cfc4c846428b8c07189d0"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/bootstrap.ts",
+      "bytes": 1836,
+      "sha256": "da0c920f3face5196a2a4440b7bb5f2dd0b326aa3bc6a704f7f1b7cb4766893b"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/config.mjs",
+      "bytes": 4287,
+      "sha256": "468eaab57ba393fb350aa63023238e26d436ffb7ab411232e1ac0e9c322f7ff0"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/consent.mjs",
+      "bytes": 3597,
+      "sha256": "af0210248796da63c810a50a9bc4336b4ddf0497624f00f8e85fd07489f5aaab"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/facade-r2/patched-openmuse/apps/server/src/errors.ts",
+      "bytes": 233,
+      "sha256": "1b9236cd303b2958dd30e5f9ec376847be30b37826f621ab02404f6e3104bc31"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/facade-r2/src/common.mjs",
+      "bytes": 1992,
+      "sha256": "57482b53644a3e4c0e2e274b49e28b1c57d7570001896b6db756a9958665e9ab"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/facade-r2/src/facade.mjs",
+      "bytes": 18505,
+      "sha256": "d66b2b996b8546251b5462d659bdcca1d9d35ef04704fd147f64579979079919"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/facade-r2/src/fenced-worker-store.mjs",
+      "bytes": 2963,
+      "sha256": "4a4161baf12e7afd89c72111ecb831e26e560b727067d0ab719db3e09a7d837c"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/facade-r2/src/http.mjs",
+      "bytes": 2878,
+      "sha256": "b00cfc48b829de79ca09c06d063c8c17592e9d46893306283079b01a4bf7d528"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/integration/edge-adapter/src/bounded-store.mjs",
+      "bytes": 14893,
+      "sha256": "25dfc3317b4f56e3ddc371641299552066fe3dae3abcbf0f1b6f39902e22ffd6"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/integration/edge-adapter/src/bounded-tick.mjs",
+      "bytes": 8717,
+      "sha256": "999aca145346926c21e5b2403fb20254637744d388a65df27e2b4c4dd7bb0be8"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/integration/edge-adapter/src/common.mjs",
+      "bytes": 1093,
+      "sha256": "6033928ef8e2166494d84df32893d2e5eaf2acbef609c69104ffc366fcd8ed49"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/integration/edge-adapter/vendor/openmuse/runtime/engine/worker.mjs",
+      "bytes": 8320,
+      "sha256": "51973696df9b39cdda99366b31f663b86771ab4a44cce5dc2b02e12aa35a13ef"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/integration/edge-adapter/vendor/openmuse/runtime/log.mjs",
+      "bytes": 1056,
+      "sha256": "63e9674fae8ab5f090253f9018c4bbec162b79d14eb3ab33fc05dc8358e4abcc"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/integration/server-foundation/src/chat-recovery.mjs",
+      "bytes": 4673,
+      "sha256": "5e02edeeb821703401da7aff329ee2305556a9a09a113453eda8fea08ce00f6c"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/integration/server-foundation/src/common.mjs",
+      "bytes": 3283,
+      "sha256": "ae6b670c4635c7aa28745f1989be8a2884d884144d0fdb515a390cfe69fa33c4"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/integration/server-foundation/src/foundation.mjs",
+      "bytes": 35760,
+      "sha256": "165afb9dea4cf7e046aba9c30dc4bdea527501d1e8b45ec62b7179ec5d74cda9"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/integration/server-foundation/src/postgres-repository.mjs",
+      "bytes": 9240,
+      "sha256": "2b9b38becaa7743598bc0a0a304278c4ad19c1610ebb864631183265392f4d46"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/integration/server-foundation/src/provider-policy.mjs",
+      "bytes": 1787,
+      "sha256": "8a7ab3f6f0d0054f951905b3b08ec511df4feaa994b52e9ce6fa653263d0506f"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/integration/server-foundation/src/test-repository.mjs",
+      "bytes": 5086,
+      "sha256": "9de68fb86a263f8326d9016b10b7fce29820c8f5aed725b61f545881a44594c5"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/chat-metrics.mjs",
+      "bytes": 999,
+      "sha256": "f4c2c94bded2042dda8cc44466f1f41129910d2df766af27746b73e48adcb711"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/chat-service.mjs",
+      "bytes": 30788,
+      "sha256": "9e8be3b5807dd3ca7beabd84abd1b4cb5bb60d1d64cf9c69954226f67d4afcaa"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/foundation-http.mjs",
+      "bytes": 3030,
+      "sha256": "e020d7166ad568d87ee59bc9f08b5ad4c5d413252a531961f4aaf4ea4df4b138"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/foundation-runtime.mjs",
+      "bytes": 6845,
+      "sha256": "6363bad07bd2da39c0ef5b13fdcc7448cdfc2e2139a1b2a57a4968242e70fb64"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/http.mjs",
+      "bytes": 6382,
+      "sha256": "4fad927a6e65725780f054c249397e99abf00fa9954cbad1e53e8b4857520d02"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/local-output-facade.mjs",
+      "bytes": 22826,
+      "sha256": "c9d9c07df4fe6f23dd075f298298e9a105f554b903b48799c7df6a568048fc41"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/model-handler.mjs",
+      "bytes": 8592,
+      "sha256": "bec13d71ea0a4c243e08e9644252689226208e7159462f702982ae5f8d77b22d"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/openrouter-provider.mjs",
+      "bytes": 11932,
+      "sha256": "6877d045c7d5d1e187648ff6a951ab0645f2a62f8254599bad88a1a98e3c9319"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/plan-contract.mjs",
+      "bytes": 2393,
+      "sha256": "f78a14ea9fe3987b1e60dcf486dccad125fd14481344c5f8629afc279c030b20"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/projection-adapter.mjs",
+      "bytes": 3277,
+      "sha256": "86b1006b7fb39d5678e404bbf1c53c24d58e0b602b4ee21c0b847d6de8992eb8"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/provider-errors.mjs",
+      "bytes": 3159,
+      "sha256": "4e7ece3c47e031104a05a3134695a9f0fb0d777017c8e535cfe54b2973a87e14"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/public-source-contract.mjs",
+      "bytes": 7281,
+      "sha256": "e04ea3847d1b622cdd069a47b152e854e838947795b946eedd4ab3ad618fab41"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/purge-plan.mjs",
+      "bytes": 5577,
+      "sha256": "134ef79c249374709fa274dfa2884fcd11bc1ca9f54908bd0dcfc31d8500bf16"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/report-completion.mjs",
+      "bytes": 3993,
+      "sha256": "964ce92ec3aeb954a7ac9d1e20deb8e6bb3b7d39a46498f097c80cc4624583a6"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/runtime.mjs",
+      "bytes": 1870,
+      "sha256": "d46cfbc97e2c55974d1ff72eca7d1d63c90b1e60c13c4fb2abc8d661ae3b1f94"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/single-step-handler.mjs",
+      "bytes": 6941,
+      "sha256": "586fe50321d44fa94fabff26a3144709d6fd2a19822e1c9cda270e136dbe0d6d"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/source-erasure.mjs",
+      "bytes": 3807,
+      "sha256": "e343207ac354a8a5b3517cbeb892c3247cba8721144fdde33266a71c6d1fdb51"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/sourced-worker-tools.mjs",
+      "bytes": 2381,
+      "sha256": "ebfa84e84a44ba0d2dea2b64a7534ae283578f7668511dedfbbffc8c2cb8201e"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/supabase-auth.mjs",
+      "bytes": 3764,
+      "sha256": "d08a8440df3a692058da398aba1e8d3f754bdc7c402b74ba1617d0ba8febc986"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/supabase-scope-authority.mjs",
+      "bytes": 99,
+      "sha256": "2993c68e34e0f58e6f4b42295a72b94b965f31216c04500f6b133800c13a9340"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/task-action-contract.mjs",
+      "bytes": 5464,
+      "sha256": "cac7f24dfface85b550f28cd9311e4df73e4938d5fd5a28a6c4433b452024502"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/task-action-service.mjs",
+      "bytes": 17038,
+      "sha256": "0794def66e129ce29774dc30f900983ebb5caa6019c741bbfb14afab330658a9"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/task-artifact-contract.mjs",
+      "bytes": 3096,
+      "sha256": "24ce2e17866c4068f396c0e9144e7c371795262d1ba34cd3ba96d6e22d8264c5"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/task-artifact-service.mjs",
+      "bytes": 20350,
+      "sha256": "0816a4a22cff50e3404745a850e82fcb01d5994b47b0449dd1f3db31416b01e4"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/task-control-contract.mjs",
+      "bytes": 3332,
+      "sha256": "a2e3fbca9bfaca8261b2bc08b056b20bcb480f87d597715d3620d20fd49f6521"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/task-control-service.mjs",
+      "bytes": 13165,
+      "sha256": "9cee737cf0bdb18299573c98a5ef116195b29e9cdb12347d7d1c5cefc39ed043"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/task-execution-fence.mjs",
+      "bytes": 849,
+      "sha256": "1ecceaf4bbd048d649da668fe7fb548b291f2a8be8874661de52c17da727514d"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/task-execution-store.mjs",
+      "bytes": 9353,
+      "sha256": "8e4bd5c05d8277ee2caa1138de136eefa5bc8156bd2d0076aba1f6774e291cc3"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/task-plan-service.mjs",
+      "bytes": 17377,
+      "sha256": "57b9241e2ae0793a8279948de155ab82dcd0456d06e88c77f8a00699da057389"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/task-revision-contract.mjs",
+      "bytes": 2118,
+      "sha256": "95a6f245758de49536ccd8b136b30d9d1888b826c887c367c50a7dfeb7ce798a"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/task-revision-service.mjs",
+      "bytes": 22545,
+      "sha256": "3bbb3d65553d04f284b5da6c6b2210be9d39fdc29d68c90cb6fd97ad7db844ed"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/task-source-service.mjs",
+      "bytes": 16768,
+      "sha256": "00c23e84a133a256d6f8331af67a0be82f64b0693fb033cd16e76ffe5c525e92"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/text-batcher.mjs",
+      "bytes": 2036,
+      "sha256": "1a28b45cd0693d47c28d7f7f55a39a49c6d84fd13f908e3a81d90b51459fd0f0"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/tools.mjs",
+      "bytes": 11557,
+      "sha256": "b7007216144aec50a38fdd85b518d7c205585cf2b4a32d5949fc132c6f9f08c1"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/worker-output-contract.mjs",
+      "bytes": 6317,
+      "sha256": "ebd49073f856f8e9486fbb7202ee466e4f503ab63003a293264c6d3dca2ecacc"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/postgres-pool.mjs",
+      "bytes": 2729,
+      "sha256": "5151efd5cb92adb146f0a6092aa2ef4881c94dbe6745d8721506dc4a65d2cf29"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/public-web-reader.mjs",
+      "bytes": 11950,
+      "sha256": "6e75fa1cc8ae41dc7b90ab8c6fd328bda2d5ce04dbd177244c5ad79c7c418ac5"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/sensitivity.mjs",
+      "bytes": 624,
+      "sha256": "4002ea6e28a38b24f9482266d22bc5b275710f2d5cbe35280efe65ef4dc95376"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/tick-auth.mjs",
+      "bytes": 1608,
+      "sha256": "541e9d88070d68510a617810b749591629cbaf5c1fe82438bc0caf5b7f268999"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/worker-kick.mjs",
+      "bytes": 2974,
+      "sha256": "02e85731e8395f87b6ed49e3e6562a6aae4a4da2134ef947db9628e446e881a5"
+    },
+    {
+      "path": "services/edge/supabase/functions/catpaw-api/index.ts",
+      "bytes": 220,
+      "sha256": "d2138d5833a07ecbd022508c5ff8ee4061c538e1fe8ef7bc4109ce82078af32b"
+    },
+    {
+      "path": "services/edge/supabase/functions/deno.json",
+      "bytes": 96,
+      "sha256": "bca245843dc12d05fa9887b23d13e6a86231ff59e6419f2c032e76087fababbe"
+    },
+    {
+      "path": "services/edge/supabase/functions/deno.lock",
+      "bytes": 419,
+      "sha256": "fd9d62137782f681177bd09b5aa632c4e70617ade055deeae6aac4f9a3f53f15"
+    },
+    {
+      "path": "services/edge/test/anonymous-auth.test.mjs",
+      "bytes": 3417,
+      "sha256": "3a5174a68058aa8e8bc3dfe3325eb57e00d24cbdee2b636a30769b851b410b21"
+    },
+    {
+      "path": "services/edge/test/auto-kick.test.mjs",
+      "bytes": 4092,
+      "sha256": "489d03c943bed385a30aae6fd9dc246fea49c04472a9a0559f04fe97d163e8d1"
+    },
+    {
+      "path": "services/edge/test/chat-stream-budget.test.mjs",
+      "bytes": 12769,
+      "sha256": "5b1a2fa18ef67a21ee4f6b427eb8c78dda8a33d768037f6cd756853203285286"
+    },
+    {
+      "path": "services/edge/test/dialogue-p0.test.mjs",
+      "bytes": 30833,
+      "sha256": "db4efdad4354db040ceaf2370521da092fc5797a46ddc56a402f6f8b8c7e6cde"
+    },
+    {
+      "path": "services/edge/test/logout-owner-regression.test.mjs",
+      "bytes": 2400,
+      "sha256": "ee640555519c9f3279addebb5cdd9e6ff0ff810af82f44530b15ac457297e52e"
+    },
+    {
+      "path": "services/edge/test/minimum.test.mjs",
+      "bytes": 6408,
+      "sha256": "780e07a28c9af1dea5e814fc92ad96fe981f4ab6cf9163c863367dd071f13232"
+    },
+    {
+      "path": "services/edge/test/postgres-json-binding.test.mjs",
+      "bytes": 11040,
+      "sha256": "9e2c05c625d1b7c7aefd5ca459ab51ed40d0906775b2118bbf24f1485877fe69"
+    },
+    {
+      "path": "services/edge/test/short-task-chain.test.mjs",
+      "bytes": 10934,
+      "sha256": "8b9a64ded965f4bdc6891027fe8c3e86c72b35024cacae277d223a5eedd1814e"
+    },
+    {
+      "path": "services/edge/test/task-action-http.test.mjs",
+      "bytes": 13141,
+      "sha256": "49b6b24bb6d829372f71f1c4fbb180f5ba5566cf3c4b4c3d29cd9cceaeb78a76"
+    },
+    {
+      "path": "services/edge/test/task-action.test.mjs",
+      "bytes": 26015,
+      "sha256": "ad9d3b0e3965fa4636dd36e98e570a99c16d5536507296c2e47e7e5501e7b10e"
+    },
+    {
+      "path": "services/edge/test/task-artifact-http.test.mjs",
+      "bytes": 20056,
+      "sha256": "fc5ee18a290eed364656ea69ad86d13648ab4f70c7317b9b4e187f0be5216f95"
+    },
+    {
+      "path": "services/edge/test/task-artifact.test.mjs",
+      "bytes": 23686,
+      "sha256": "c624a42de8f5f4d6ae8b491405d31cd13471f115437727648a2884e2c413d4a3"
+    },
+    {
+      "path": "services/edge/test/task-control.test.mjs",
+      "bytes": 34614,
+      "sha256": "fa613757d1c5ddc90d2a3fb4fd791fb1e314c974ed0362560446ceea7fd9dbad"
+    },
+    {
+      "path": "services/edge/test/task-plan-http.test.mjs",
+      "bytes": 14963,
+      "sha256": "a5aa421905ba2269a129577a34b8747aa04c34e612fc1eb57c9a7be3778266ff"
+    },
+    {
+      "path": "services/edge/test/task-plan.test.mjs",
+      "bytes": 21115,
+      "sha256": "b516631ebf9da81f0587767ff627373b8c9869e4af57e08a3852a353cdeae508"
+    },
+    {
+      "path": "services/edge/test/task-public-sources.test.mjs",
+      "bytes": 24482,
+      "sha256": "54b7be223c9c6a1931bd2d544c781e4ad80634e07c4e5ff6cdd646787b3511a2"
+    },
+    {
+      "path": "services/edge/test/task-revision-http.test.mjs",
+      "bytes": 27879,
+      "sha256": "9b513e7a7119ab7014511fdef66ee18f781631aa877ac41944239490d1210709"
+    },
+    {
+      "path": "services/edge/test/task-revision.test.mjs",
+      "bytes": 21824,
+      "sha256": "cdee1bbe231a3c509655048289cfa4e51b946326339fb03824436aeab0567b86"
+    },
+    {
+      "path": "services/edge/test/task-source-http.test.mjs",
+      "bytes": 13711,
+      "sha256": "de1439868f331b5cca231d5b6f37d63efb95f4824e748b73cef41a266032d5c7"
+    },
+    {
+      "path": "services/edge/test/task-sourced-report.test.mjs",
+      "bytes": 14799,
+      "sha256": "3fef61fca3a3ba9235bb2916ec708b9d6223fb8e2462e375bd3db5f0d071bc76"
+    }
+  ],
+  "matching_final_test_log": "services/edge/build/authority-recovery-20261014/execution-review-all-final.log",
+  "matching_final_test_sha256": "98929b11a0a02956fb6e38aedbb506e0a22dffbdc88f6be9d9a330f60b1d787d",
+  "unchanged_since_final_run_confirmed_by_owners": true
+}

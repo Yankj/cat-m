@@ -2,6 +2,7 @@
 # This client imports UIKit; validate against the installed iOS Simulator SDK.
 set -eu
 cd "$(dirname "$0")/.."
+python3 ../../scripts/check-typography.py --self-test
 mkdir -p .build/module-cache
 sdk_path="$(xcrun --sdk iphonesimulator --show-sdk-path)"
 mkdir -p .build/check-modules

@@ -1,0 +1,2201 @@
+{
+  "schema_version": 1,
+  "fixture_kind": "actual_cloud_offline_accepted_work_wire_v2",
+  "scope": {
+    "scope_id": "51000000-0000-4000-8000-000000000001",
+    "profile_id": "51000000-0000-4000-8000-000000000002",
+    "workspace_id": "51000000-0000-4000-8000-000000000003"
+  },
+  "subject_id": "51000000-0000-4000-8000-000000000004",
+  "request": {
+    "schema_version": 1,
+    "contract": "catpaw.accepted-work-intent.v1",
+    "turn": {
+      "turn_id": "51000000-0000-4000-8000-000000000007",
+      "expected_revision": 1,
+      "expected_grant_epoch": 1,
+      "message": {
+        "id": "51000000-0000-4000-8000-000000000008",
+        "text": "请把给定虚构资料整理为本地报告。保留“原样”引用与 \"quoted\" 文本。"
+      },
+      "context": [
+        {
+          "id": "fictional-records",
+          "text": "虚构记录甲：已确认。\n虚构记录乙：待核对，保留 🐾。"
+        }
+      ]
+    },
+    "work": {
+      "decision_id": "51000000-0000-4000-8000-000000000009",
+      "input_hash": "8ae83196a2b03cbff228b1cdc3ee57d2a97f54ca8f51b11e98756691550ac9f6",
+      "route_hash": "eef4100e83db1b2ab5ea9a7efd4818e97dcd90c819f056b54082fbdf5cd5e305",
+      "tool_policy": "local_output_v1",
+      "not_after": "2026-10-14T18:27:11.962Z",
+      "execution_budget_ms": 60000,
+      "limits": {
+        "due": 1,
+        "model": 1,
+        "source": 0
+      }
+    }
+  },
+  "canonical_turn": "{\"context\":[{\"id\":\"fictional-records\",\"text\":\"虚构记录甲：已确认。\\n虚构记录乙：待核对，保留 🐾。\"}],\"expected_grant_epoch\":1,\"expected_revision\":1,\"message\":{\"id\":\"51000000-0000-4000-8000-000000000008\",\"text\":\"请把给定虚构资料整理为本地报告。保留“原样”引用与 \\\"quoted\\\" 文本。\"},\"turn_id\":\"51000000-0000-4000-8000-000000000007\"}",
+  "input_hash": "8ae83196a2b03cbff228b1cdc3ee57d2a97f54ca8f51b11e98756691550ac9f6",
+  "binding": {
+    "scope_id": "51000000-0000-4000-8000-000000000001",
+    "conversation_id": "51000000-0000-4000-8000-000000000006",
+    "turn_id": "51000000-0000-4000-8000-000000000007",
+    "call_id": "native-wire-original-plan",
+    "delegation_id": "81af2b9b-d900-4969-85ac-4f5a778133c9",
+    "operation_id": "fe0bb814-2ac7-48f2-89b1-470d603be1e4",
+    "run_id": "9a5fc6b2-86ef-448c-89a5-30c26cfacec1",
+    "task_id": "910254ecbe1eb0e961991f70ed6e09f5165c05702187d6b41f40e8b5aa0fe8d4",
+    "request_hash": "9e282f87b391ad9dd40a7917bb278735f7b3c2db40850525dc05040b2985715e",
+    "delegation_revision": 1,
+    "grant_epoch": 1,
+    "projection_url": "/catpaw/v1/scopes/51000000-0000-4000-8000-000000000001/runs/9a5fc6b2-86ef-448c-89a5-30c26cfacec1"
+  },
+  "readyz": {
+    "schema_version": 1,
+    "ready": true,
+    "model_route": "catpaw-free-consented-v1",
+    "authentication": "supabase_signed_jwt_and_fresh_session",
+    "execution": "bounded-chat-and-original-task-worker",
+    "chat_capabilities": {
+      "schema_version": 1,
+      "text_input": true,
+      "image_input": false,
+      "live_weather": false,
+      "web_search": false,
+      "tools": [
+        "delegate_task",
+        "delegate_plan_v1",
+        "agent_status"
+      ],
+      "task_plan": {
+        "contract": "catpaw.task-plan.v1",
+        "read": true,
+        "amend": true,
+        "local_report_only": true
+      },
+      "task_artifacts": {
+        "contract": "catpaw.task-artifact.v1",
+        "read": true,
+        "amend": true,
+        "manual_revision": true,
+        "model_revision": false
+      },
+      "task_revisions": {
+        "contract": "catpaw.task-revision.v1",
+        "revise": true,
+        "explain": true,
+        "same_task": true,
+        "immutable_target": true
+      },
+      "task_controls": {
+        "contract": "catpaw.task-control.v1",
+        "read": true,
+        "pause": true,
+        "resume": true,
+        "revoke": true,
+        "same_task": true,
+        "pause_preserves_grant": true,
+        "unknown_resend": false,
+        "live_verification": "not_verified"
+      },
+      "accepted_work": {
+        "contract": "catpaw.accepted-work-intent.v1",
+        "grant_contract": "catpaw.task-work-grant.v1",
+        "enabled": true,
+        "execution": "bounded_single_step_v1",
+        "single_run": true,
+        "independent_scheduler": false,
+        "native_producer": false,
+        "live_verification": "not_verified",
+        "limits_explicit": true,
+        "unknown_resend": false
+      },
+      "task_actions": {
+        "contract": "catpaw.task-action.v1",
+        "review": true,
+        "decision": false,
+        "execution": false,
+        "device_calendar_write": false,
+        "unavailable_reason": "action_target_verifier_not_configured"
+      },
+      "public_sources": {
+        "enabled": false,
+        "limited_to_user_urls": true,
+        "max_sources": 3,
+        "policy_hash": null,
+        "unavailable_reason": "public_source_policy_not_configured",
+        "transport_reality": null,
+        "live_verification": "not_verified"
+      },
+      "durable_acceptance": "turn_started",
+      "cursor_events": true
+    }
+  },
+  "model_route": {
+    "schema_version": 1,
+    "route": {
+      "id": "catpaw-free-consented-v1",
+      "free": true,
+      "provider": "OpenRouter",
+      "downstream_provider": "Novita",
+      "model": "apodex/apodex-1.1-mini:free",
+      "endpoint": "https://openrouter.ai/api/v1/chat/completions",
+      "routing_policy": {
+        "only": [
+          "novita/bf16"
+        ],
+        "allow_fallbacks": false,
+        "require_parameters": true,
+        "data_collection": "deny",
+        "max_price": {
+          "prompt": 0,
+          "completion": 0,
+          "request": 0,
+          "image": 0
+        }
+      },
+      "data_fields": [
+        "current_message_text",
+        "conversation_text_history_max_40_messages_80kB",
+        "explicit_context_text",
+        "local_report_task_instructions_and_feedback"
+      ],
+      "purposes": [
+        "chat_reply",
+        "local_report"
+      ],
+      "excluded_fields": [
+        "automatic_email_access",
+        "calendar",
+        "photos",
+        "contacts",
+        "other_apps",
+        "auth_tokens"
+      ],
+      "policy_url": "https://openrouter.ai/privacy",
+      "history_limit": 40,
+      "sensitive_requires_separate_confirmation": true
+    },
+    "route_hash": "eef4100e83db1b2ab5ea9a7efd4818e97dcd90c819f056b54082fbdf5cd5e305",
+    "consent_default": "deny",
+    "sensitive_confirmation_default": false,
+    "ui": {
+      "title": "允许云端模型处理此对话？",
+      "body": "本条消息、本对话最近最多40条文本（80kB）以及你主动加入的文字上下文，将发送给OpenRouter及固定服务商Novita，用于回复和本地报告。不会读取邮件、日历、照片、通讯录或其他App数据。云端保存对话、任务与成果，离开App不会撤销已受理任务，回来可查收状态与成果；普通发送受原会话许可期限约束；另行明确受理的有限工作，遵守原先确认的期限和调用次数。撤销可停止后续调用，但不能收回已发送数据。",
+      "allow": "允许此对话",
+      "deny": "暂不允许",
+      "sensitive_confirmation": "本会话含敏感信息，另外确认发送给这两个固定服务商"
+    }
+  },
+  "consent": {
+    "schema_version": 1,
+    "consent": {
+      "id": "a7e3930b-be15-4381-8ebf-009534f82170",
+      "scope_id": "51000000-0000-4000-8000-000000000001",
+      "conversation_id": "51000000-0000-4000-8000-000000000006",
+      "subject_id": "51000000-0000-4000-8000-000000000004",
+      "route_hash": "eef4100e83db1b2ab5ea9a7efd4818e97dcd90c819f056b54082fbdf5cd5e305",
+      "revision": 1,
+      "decision": "allow",
+      "sensitive_confirmed": false,
+      "updated_at": "2026-10-14T18:25:11.962Z"
+    }
+  },
+  "acceptance_sse": {
+    "content_type": "text/event-stream",
+    "raw": "data: {\"schema_version\":1,\"contract\":\"catpaw.native-chat.v1\",\"scope_id\":\"51000000-0000-4000-8000-000000000001\",\"conversation_id\":\"51000000-0000-4000-8000-000000000006\",\"turn_id\":\"51000000-0000-4000-8000-000000000007\",\"sequence\":1,\"cursor\":\"51000000-0000-4000-8000-000000000007:1\",\"grant_epoch\":1,\"model_reality\":\"injected_offline_only\",\"type\":\"turn_started\",\"data\":{\"request_hash\":\"43e7a1e30ec3d1aaea38e658163d0fba37b882b53727d25092c452e0c8cbe0bf\",\"conversation_revision\":2}}\n\ndata: {\"schema_version\":1,\"contract\":\"catpaw.native-chat.v1\",\"scope_id\":\"51000000-0000-4000-8000-000000000001\",\"conversation_id\":\"51000000-0000-4000-8000-000000000006\",\"turn_id\":\"51000000-0000-4000-8000-000000000007\",\"sequence\":2,\"cursor\":\"51000000-0000-4000-8000-000000000007:2\",\"grant_epoch\":1,\"model_reality\":\"injected_offline_only\",\"type\":\"tool_call\",\"data\":{\"call_id\":\"native-wire-original-plan\",\"name\":\"delegate_plan_v1\",\"arguments\":{\"title\":\"有限工作原生样例\",\"goal\":\"整理明确提供的虚构资料\",\"requirements\":\"仅使用原对话和已明确选择的文字上下文\",\"stop_conditions\":[\"保存并核对一份本地报告\"],\"steps\":[{\"id\":\"compose\",\"title\":\"整理\",\"detail\":\"\"},{\"id\":\"save\",\"title\":\"保存\",\"detail\":\"\"},{\"id\":\"verify\",\"title\":\"核对\",\"detail\":\"\"}]}}}\n\ndata: {\"schema_version\":1,\"contract\":\"catpaw.native-chat.v1\",\"scope_id\":\"51000000-0000-4000-8000-000000000001\",\"conversation_id\":\"51000000-0000-4000-8000-000000000006\",\"turn_id\":\"51000000-0000-4000-8000-000000000007\",\"sequence\":3,\"cursor\":\"51000000-0000-4000-8000-000000000007:3\",\"grant_epoch\":1,\"model_reality\":\"injected_offline_only\",\"type\":\"tool_result\",\"data\":{\"call_id\":\"native-wire-original-plan\",\"name\":\"delegate_plan_v1\",\"result\":{\"scope_id\":\"51000000-0000-4000-8000-000000000001\",\"conversation_id\":\"51000000-0000-4000-8000-000000000006\",\"turn_id\":\"51000000-0000-4000-8000-000000000007\",\"call_id\":\"native-wire-original-plan\",\"delegation_id\":\"81af2b9b-d900-4969-85ac-4f5a778133c9\",\"operation_id\":\"fe0bb814-2ac7-48f2-89b1-470d603be1e4\",\"run_id\":\"9a5fc6b2-86ef-448c-89a5-30c26cfacec1\",\"task_id\":\"910254ecbe1eb0e961991f70ed6e09f5165c05702187d6b41f40e8b5aa0fe8d4\",\"request_hash\":\"9e282f87b391ad9dd40a7917bb278735f7b3c2db40850525dc05040b2985715e\",\"delegation_revision\":1,\"grant_epoch\":1,\"projection_url\":\"/catpaw/v1/scopes/51000000-0000-4000-8000-000000000001/runs/9a5fc6b2-86ef-448c-89a5-30c26cfacec1\"}}}\n\ndata: {\"schema_version\":1,\"contract\":\"catpaw.native-chat.v1\",\"scope_id\":\"51000000-0000-4000-8000-000000000001\",\"conversation_id\":\"51000000-0000-4000-8000-000000000006\",\"turn_id\":\"51000000-0000-4000-8000-000000000007\",\"sequence\":4,\"cursor\":\"51000000-0000-4000-8000-000000000007:4\",\"grant_epoch\":1,\"model_reality\":\"injected_offline_only\",\"type\":\"turn_completed\",\"data\":{\"message_id\":\"6a8904d0-e793-43bd-82c3-297cc60a39db\",\"final_text_hash\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\",\"task_bindings\":[{\"scope_id\":\"51000000-0000-4000-8000-000000000001\",\"conversation_id\":\"51000000-0000-4000-8000-000000000006\",\"turn_id\":\"51000000-0000-4000-8000-000000000007\",\"call_id\":\"native-wire-original-plan\",\"delegation_id\":\"81af2b9b-d900-4969-85ac-4f5a778133c9\",\"operation_id\":\"fe0bb814-2ac7-48f2-89b1-470d603be1e4\",\"run_id\":\"9a5fc6b2-86ef-448c-89a5-30c26cfacec1\",\"task_id\":\"910254ecbe1eb0e961991f70ed6e09f5165c05702187d6b41f40e8b5aa0fe8d4\",\"request_hash\":\"9e282f87b391ad9dd40a7917bb278735f7b3c2db40850525dc05040b2985715e\",\"delegation_revision\":1,\"grant_epoch\":1,\"projection_url\":\"/catpaw/v1/scopes/51000000-0000-4000-8000-000000000001/runs/9a5fc6b2-86ef-448c-89a5-30c26cfacec1\"}]}}\n\n",
+    "events": [
+      {
+        "schema_version": 1,
+        "contract": "catpaw.native-chat.v1",
+        "scope_id": "51000000-0000-4000-8000-000000000001",
+        "conversation_id": "51000000-0000-4000-8000-000000000006",
+        "turn_id": "51000000-0000-4000-8000-000000000007",
+        "sequence": 1,
+        "cursor": "51000000-0000-4000-8000-000000000007:1",
+        "grant_epoch": 1,
+        "model_reality": "injected_offline_only",
+        "type": "turn_started",
+        "data": {
+          "request_hash": "43e7a1e30ec3d1aaea38e658163d0fba37b882b53727d25092c452e0c8cbe0bf",
+          "conversation_revision": 2
+        }
+      },
+      {
+        "schema_version": 1,
+        "contract": "catpaw.native-chat.v1",
+        "scope_id": "51000000-0000-4000-8000-000000000001",
+        "conversation_id": "51000000-0000-4000-8000-000000000006",
+        "turn_id": "51000000-0000-4000-8000-000000000007",
+        "sequence": 2,
+        "cursor": "51000000-0000-4000-8000-000000000007:2",
+        "grant_epoch": 1,
+        "model_reality": "injected_offline_only",
+        "type": "tool_call",
+        "data": {
+          "call_id": "native-wire-original-plan",
+          "name": "delegate_plan_v1",
+          "arguments": {
+            "title": "有限工作原生样例",
+            "goal": "整理明确提供的虚构资料",
+            "requirements": "仅使用原对话和已明确选择的文字上下文",
+            "stop_conditions": [
+              "保存并核对一份本地报告"
+            ],
+            "steps": [
+              {
+                "id": "compose",
+                "title": "整理",
+                "detail": ""
+              },
+              {
+                "id": "save",
+                "title": "保存",
+                "detail": ""
+              },
+              {
+                "id": "verify",
+                "title": "核对",
+                "detail": ""
+              }
+            ]
+          }
+        }
+      },
+      {
+        "schema_version": 1,
+        "contract": "catpaw.native-chat.v1",
+        "scope_id": "51000000-0000-4000-8000-000000000001",
+        "conversation_id": "51000000-0000-4000-8000-000000000006",
+        "turn_id": "51000000-0000-4000-8000-000000000007",
+        "sequence": 3,
+        "cursor": "51000000-0000-4000-8000-000000000007:3",
+        "grant_epoch": 1,
+        "model_reality": "injected_offline_only",
+        "type": "tool_result",
+        "data": {
+          "call_id": "native-wire-original-plan",
+          "name": "delegate_plan_v1",
+          "result": {
+            "scope_id": "51000000-0000-4000-8000-000000000001",
+            "conversation_id": "51000000-0000-4000-8000-000000000006",
+            "turn_id": "51000000-0000-4000-8000-000000000007",
+            "call_id": "native-wire-original-plan",
+            "delegation_id": "81af2b9b-d900-4969-85ac-4f5a778133c9",
+            "operation_id": "fe0bb814-2ac7-48f2-89b1-470d603be1e4",
+            "run_id": "9a5fc6b2-86ef-448c-89a5-30c26cfacec1",
+            "task_id": "910254ecbe1eb0e961991f70ed6e09f5165c05702187d6b41f40e8b5aa0fe8d4",
+            "request_hash": "9e282f87b391ad9dd40a7917bb278735f7b3c2db40850525dc05040b2985715e",
+            "delegation_revision": 1,
+            "grant_epoch": 1,
+            "projection_url": "/catpaw/v1/scopes/51000000-0000-4000-8000-000000000001/runs/9a5fc6b2-86ef-448c-89a5-30c26cfacec1"
+          }
+        }
+      },
+      {
+        "schema_version": 1,
+        "contract": "catpaw.native-chat.v1",
+        "scope_id": "51000000-0000-4000-8000-000000000001",
+        "conversation_id": "51000000-0000-4000-8000-000000000006",
+        "turn_id": "51000000-0000-4000-8000-000000000007",
+        "sequence": 4,
+        "cursor": "51000000-0000-4000-8000-000000000007:4",
+        "grant_epoch": 1,
+        "model_reality": "injected_offline_only",
+        "type": "turn_completed",
+        "data": {
+          "message_id": "6a8904d0-e793-43bd-82c3-297cc60a39db",
+          "final_text_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "task_bindings": [
+            {
+              "scope_id": "51000000-0000-4000-8000-000000000001",
+              "conversation_id": "51000000-0000-4000-8000-000000000006",
+              "turn_id": "51000000-0000-4000-8000-000000000007",
+              "call_id": "native-wire-original-plan",
+              "delegation_id": "81af2b9b-d900-4969-85ac-4f5a778133c9",
+              "operation_id": "fe0bb814-2ac7-48f2-89b1-470d603be1e4",
+              "run_id": "9a5fc6b2-86ef-448c-89a5-30c26cfacec1",
+              "task_id": "910254ecbe1eb0e961991f70ed6e09f5165c05702187d6b41f40e8b5aa0fe8d4",
+              "request_hash": "9e282f87b391ad9dd40a7917bb278735f7b3c2db40850525dc05040b2985715e",
+              "delegation_revision": 1,
+              "grant_epoch": 1,
+              "projection_url": "/catpaw/v1/scopes/51000000-0000-4000-8000-000000000001/runs/9a5fc6b2-86ef-448c-89a5-30c26cfacec1"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "accepted_turn": {
+    "schema_version": 1,
+    "contract": "catpaw.accepted-work-intent.v1",
+    "turn": {
+      "id": "51000000-0000-4000-8000-000000000007",
+      "conversation_id": "51000000-0000-4000-8000-000000000006",
+      "scope_id": "51000000-0000-4000-8000-000000000001",
+      "grant_epoch": 1,
+      "conversation_revision": 2,
+      "state": "completed",
+      "admission_hash": "812bde1fde8c30e4682731570087b8b1473a618f53f970dd2717f1c05d1c797f",
+      "request_hash": "43e7a1e30ec3d1aaea38e658163d0fba37b882b53727d25092c452e0c8cbe0bf",
+      "events": [
+        {
+          "schema_version": 1,
+          "contract": "catpaw.native-chat.v1",
+          "scope_id": "51000000-0000-4000-8000-000000000001",
+          "conversation_id": "51000000-0000-4000-8000-000000000006",
+          "turn_id": "51000000-0000-4000-8000-000000000007",
+          "sequence": 1,
+          "cursor": "51000000-0000-4000-8000-000000000007:1",
+          "grant_epoch": 1,
+          "model_reality": "injected_offline_only",
+          "type": "turn_started",
+          "data": {
+            "request_hash": "43e7a1e30ec3d1aaea38e658163d0fba37b882b53727d25092c452e0c8cbe0bf",
+            "conversation_revision": 2
+          }
+        },
+        {
+          "schema_version": 1,
+          "contract": "catpaw.native-chat.v1",
+          "scope_id": "51000000-0000-4000-8000-000000000001",
+          "conversation_id": "51000000-0000-4000-8000-000000000006",
+          "turn_id": "51000000-0000-4000-8000-000000000007",
+          "sequence": 2,
+          "cursor": "51000000-0000-4000-8000-000000000007:2",
+          "grant_epoch": 1,
+          "model_reality": "injected_offline_only",
+          "type": "tool_call",
+          "data": {
+            "call_id": "native-wire-original-plan",
+            "name": "delegate_plan_v1",
+            "arguments": {
+              "title": "有限工作原生样例",
+              "goal": "整理明确提供的虚构资料",
+              "requirements": "仅使用原对话和已明确选择的文字上下文",
+              "stop_conditions": [
+                "保存并核对一份本地报告"
+              ],
+              "steps": [
+                {
+                  "id": "compose",
+                  "title": "整理",
+                  "detail": ""
+                },
+                {
+                  "id": "save",
+                  "title": "保存",
+                  "detail": ""
+                },
+                {
+                  "id": "verify",
+                  "title": "核对",
+                  "detail": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "schema_version": 1,
+          "contract": "catpaw.native-chat.v1",
+          "scope_id": "51000000-0000-4000-8000-000000000001",
+          "conversation_id": "51000000-0000-4000-8000-000000000006",
+          "turn_id": "51000000-0000-4000-8000-000000000007",
+          "sequence": 3,
+          "cursor": "51000000-0000-4000-8000-000000000007:3",
+          "grant_epoch": 1,
+          "model_reality": "injected_offline_only",
+          "type": "tool_result",
+          "data": {
+            "call_id": "native-wire-original-plan",
+            "name": "delegate_plan_v1",
+            "result": {
+              "scope_id": "51000000-0000-4000-8000-000000000001",
+              "conversation_id": "51000000-0000-4000-8000-000000000006",
+              "turn_id": "51000000-0000-4000-8000-000000000007",
+              "call_id": "native-wire-original-plan",
+              "delegation_id": "81af2b9b-d900-4969-85ac-4f5a778133c9",
+              "operation_id": "fe0bb814-2ac7-48f2-89b1-470d603be1e4",
+              "run_id": "9a5fc6b2-86ef-448c-89a5-30c26cfacec1",
+              "task_id": "910254ecbe1eb0e961991f70ed6e09f5165c05702187d6b41f40e8b5aa0fe8d4",
+              "request_hash": "9e282f87b391ad9dd40a7917bb278735f7b3c2db40850525dc05040b2985715e",
+              "delegation_revision": 1,
+              "grant_epoch": 1,
+              "projection_url": "/catpaw/v1/scopes/51000000-0000-4000-8000-000000000001/runs/9a5fc6b2-86ef-448c-89a5-30c26cfacec1"
+            }
+          }
+        },
+        {
+          "schema_version": 1,
+          "contract": "catpaw.native-chat.v1",
+          "scope_id": "51000000-0000-4000-8000-000000000001",
+          "conversation_id": "51000000-0000-4000-8000-000000000006",
+          "turn_id": "51000000-0000-4000-8000-000000000007",
+          "sequence": 4,
+          "cursor": "51000000-0000-4000-8000-000000000007:4",
+          "grant_epoch": 1,
+          "model_reality": "injected_offline_only",
+          "type": "turn_completed",
+          "data": {
+            "message_id": "6a8904d0-e793-43bd-82c3-297cc60a39db",
+            "final_text_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "task_bindings": [
+              {
+                "scope_id": "51000000-0000-4000-8000-000000000001",
+                "conversation_id": "51000000-0000-4000-8000-000000000006",
+                "turn_id": "51000000-0000-4000-8000-000000000007",
+                "call_id": "native-wire-original-plan",
+                "delegation_id": "81af2b9b-d900-4969-85ac-4f5a778133c9",
+                "operation_id": "fe0bb814-2ac7-48f2-89b1-470d603be1e4",
+                "run_id": "9a5fc6b2-86ef-448c-89a5-30c26cfacec1",
+                "task_id": "910254ecbe1eb0e961991f70ed6e09f5165c05702187d6b41f40e8b5aa0fe8d4",
+                "request_hash": "9e282f87b391ad9dd40a7917bb278735f7b3c2db40850525dc05040b2985715e",
+                "delegation_revision": 1,
+                "grant_epoch": 1,
+                "projection_url": "/catpaw/v1/scopes/51000000-0000-4000-8000-000000000001/runs/9a5fc6b2-86ef-448c-89a5-30c26cfacec1"
+              }
+            ]
+          }
+        }
+      ],
+      "task_bindings": [
+        {
+          "scope_id": "51000000-0000-4000-8000-000000000001",
+          "conversation_id": "51000000-0000-4000-8000-000000000006",
+          "turn_id": "51000000-0000-4000-8000-000000000007",
+          "call_id": "native-wire-original-plan",
+          "delegation_id": "81af2b9b-d900-4969-85ac-4f5a778133c9",
+          "operation_id": "fe0bb814-2ac7-48f2-89b1-470d603be1e4",
+          "run_id": "9a5fc6b2-86ef-448c-89a5-30c26cfacec1",
+          "task_id": "910254ecbe1eb0e961991f70ed6e09f5165c05702187d6b41f40e8b5aa0fe8d4",
+          "request_hash": "9e282f87b391ad9dd40a7917bb278735f7b3c2db40850525dc05040b2985715e",
+          "delegation_revision": 1,
+          "grant_epoch": 1,
+          "projection_url": "/catpaw/v1/scopes/51000000-0000-4000-8000-000000000001/runs/9a5fc6b2-86ef-448c-89a5-30c26cfacec1"
+        }
+      ],
+      "created_at": "2026-10-14T18:25:11.963Z",
+      "work_intent": {
+        "schema_version": 1,
+        "contract": "catpaw.accepted-work-intent.v1",
+        "decision_id": "51000000-0000-4000-8000-000000000009",
+        "input_hash": "8ae83196a2b03cbff228b1cdc3ee57d2a97f54ca8f51b11e98756691550ac9f6",
+        "route_hash": "eef4100e83db1b2ab5ea9a7efd4818e97dcd90c819f056b54082fbdf5cd5e305",
+        "tool_policy": "local_output_v1",
+        "not_after": "2026-10-14T18:27:11.962Z",
+        "execution_budget_ms": 60000,
+        "limits": {
+          "due": 1,
+          "model": 1,
+          "source": 0
+        },
+        "subject_id": "51000000-0000-4000-8000-000000000004",
+        "scope_id": "51000000-0000-4000-8000-000000000001",
+        "conversation_id": "51000000-0000-4000-8000-000000000006",
+        "conversation_epoch": 1,
+        "turn_id": "51000000-0000-4000-8000-000000000007",
+        "message_id": "51000000-0000-4000-8000-000000000008",
+        "admitted_at": "2026-10-14T18:25:11.963Z"
+      },
+      "runtime_holder_id": "94cb58b4-e658-4d71-bafc-080fcf9feb39",
+      "runtime_generation": 1,
+      "finished_at": "2026-10-14T18:25:11.977Z",
+      "next_cursor": "51000000-0000-4000-8000-000000000007:4"
+    }
+  },
+  "accepted_projection": {
+    "schema_version": 1,
+    "run": {
+      "id": "9a5fc6b2-86ef-448c-89a5-30c26cfacec1",
+      "delegation_id": "81af2b9b-d900-4969-85ac-4f5a778133c9",
+      "operation_id": "fe0bb814-2ac7-48f2-89b1-470d603be1e4",
+      "run_id": "9a5fc6b2-86ef-448c-89a5-30c26cfacec1",
+      "delegation_revision": 1,
+      "grant_epoch": 1,
+      "request_hash": "9e282f87b391ad9dd40a7917bb278735f7b3c2db40850525dc05040b2985715e",
+      "task_id": "910254ecbe1eb0e961991f70ed6e09f5165c05702187d6b41f40e8b5aa0fe8d4",
+      "artifact_references": [],
+      "approval_ids": [],
+      "created_at": "2026-10-14T18:25:11.974Z",
+      "state": "queued",
+      "authorization_state": "current",
+      "attempts": []
+    },
+    "task": {
+      "id": "910254ecbe1eb0e961991f70ed6e09f5165c05702187d6b41f40e8b5aa0fe8d4",
+      "status": "queued",
+      "attempts": 0
+    },
+    "execution_layer": "native_chat_provider_ready_unverified",
+    "plan": {
+      "run_id": "9a5fc6b2-86ef-448c-89a5-30c26cfacec1",
+      "task_id": "910254ecbe1eb0e961991f70ed6e09f5165c05702187d6b41f40e8b5aa0fe8d4",
+      "conversation_id": "51000000-0000-4000-8000-000000000006",
+      "accepted_revision": 1,
+      "accepted_plan_hash": "69020b227125aeef69e28de4811bc9e255eb42735bb6609b6847f0c4763bcd51",
+      "applied_revision": 1,
+      "applied_plan_hash": "69020b227125aeef69e28de4811bc9e255eb42735bb6609b6847f0c4763bcd51",
+      "application_state": "applied",
+      "task_status": "queued",
+      "content": {
+        "title": "有限工作原生样例",
+        "goal": "整理明确提供的虚构资料",
+        "requirements": "仅使用原对话和已明确选择的文字上下文",
+        "stop_conditions": [
+          "保存并核对一份本地报告"
+        ],
+        "steps": [
+          {
+            "id": "compose",
+            "title": "整理",
+            "detail": ""
+          },
+          {
+            "id": "save",
+            "title": "保存",
+            "detail": ""
+          },
+          {
+            "id": "verify",
+            "title": "核对",
+            "detail": ""
+          }
+        ]
+      },
+      "applied_content": {
+        "title": "有限工作原生样例",
+        "goal": "整理明确提供的虚构资料",
+        "requirements": "仅使用原对话和已明确选择的文字上下文",
+        "stop_conditions": [
+          "保存并核对一份本地报告"
+        ],
+        "steps": [
+          {
+            "id": "compose",
+            "title": "整理",
+            "detail": ""
+          },
+          {
+            "id": "save",
+            "title": "保存",
+            "detail": ""
+          },
+          {
+            "id": "verify",
+            "title": "核对",
+            "detail": ""
+          }
+        ]
+      },
+      "step_receipts": []
+    }
+  },
+  "cursor_recovery": {
+    "schema_version": 1,
+    "contract": "catpaw.native-chat.v1",
+    "turn": {
+      "id": "51000000-0000-4000-8000-000000000007",
+      "conversation_id": "51000000-0000-4000-8000-000000000006",
+      "scope_id": "51000000-0000-4000-8000-000000000001",
+      "grant_epoch": 1,
+      "conversation_revision": 2,
+      "state": "completed",
+      "admission_hash": "812bde1fde8c30e4682731570087b8b1473a618f53f970dd2717f1c05d1c797f",
+      "request_hash": "43e7a1e30ec3d1aaea38e658163d0fba37b882b53727d25092c452e0c8cbe0bf",
+      "events": [
+        {
+          "schema_version": 1,
+          "contract": "catpaw.native-chat.v1",
+          "scope_id": "51000000-0000-4000-8000-000000000001",
+          "conversation_id": "51000000-0000-4000-8000-000000000006",
+          "turn_id": "51000000-0000-4000-8000-000000000007",
+          "sequence": 2,
+          "cursor": "51000000-0000-4000-8000-000000000007:2",
+          "grant_epoch": 1,
+          "model_reality": "injected_offline_only",
+          "type": "tool_call",
+          "data": {
+            "call_id": "native-wire-original-plan",
+            "name": "delegate_plan_v1",
+            "arguments": {
+              "title": "有限工作原生样例",
+              "goal": "整理明确提供的虚构资料",
+              "requirements": "仅使用原对话和已明确选择的文字上下文",
+              "stop_conditions": [
+                "保存并核对一份本地报告"
+              ],
+              "steps": [
+                {
+                  "id": "compose",
+                  "title": "整理",
+                  "detail": ""
+                },
+                {
+                  "id": "save",
+                  "title": "保存",
+                  "detail": ""
+                },
+                {
+                  "id": "verify",
+                  "title": "核对",
+                  "detail": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "schema_version": 1,
+          "contract": "catpaw.native-chat.v1",
+          "scope_id": "51000000-0000-4000-8000-000000000001",
+          "conversation_id": "51000000-0000-4000-8000-000000000006",
+          "turn_id": "51000000-0000-4000-8000-000000000007",
+          "sequence": 3,
+          "cursor": "51000000-0000-4000-8000-000000000007:3",
+          "grant_epoch": 1,
+          "model_reality": "injected_offline_only",
+          "type": "tool_result",
+          "data": {
+            "call_id": "native-wire-original-plan",
+            "name": "delegate_plan_v1",
+            "result": {
+              "scope_id": "51000000-0000-4000-8000-000000000001",
+              "conversation_id": "51000000-0000-4000-8000-000000000006",
+              "turn_id": "51000000-0000-4000-8000-000000000007",
+              "call_id": "native-wire-original-plan",
+              "delegation_id": "81af2b9b-d900-4969-85ac-4f5a778133c9",
+              "operation_id": "fe0bb814-2ac7-48f2-89b1-470d603be1e4",
+              "run_id": "9a5fc6b2-86ef-448c-89a5-30c26cfacec1",
+              "task_id": "910254ecbe1eb0e961991f70ed6e09f5165c05702187d6b41f40e8b5aa0fe8d4",
+              "request_hash": "9e282f87b391ad9dd40a7917bb278735f7b3c2db40850525dc05040b2985715e",
+              "delegation_revision": 1,
+              "grant_epoch": 1,
+              "projection_url": "/catpaw/v1/scopes/51000000-0000-4000-8000-000000000001/runs/9a5fc6b2-86ef-448c-89a5-30c26cfacec1"
+            }
+          }
+        },
+        {
+          "schema_version": 1,
+          "contract": "catpaw.native-chat.v1",
+          "scope_id": "51000000-0000-4000-8000-000000000001",
+          "conversation_id": "51000000-0000-4000-8000-000000000006",
+          "turn_id": "51000000-0000-4000-8000-000000000007",
+          "sequence": 4,
+          "cursor": "51000000-0000-4000-8000-000000000007:4",
+          "grant_epoch": 1,
+          "model_reality": "injected_offline_only",
+          "type": "turn_completed",
+          "data": {
+            "message_id": "6a8904d0-e793-43bd-82c3-297cc60a39db",
+            "final_text_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "task_bindings": [
+              {
+                "scope_id": "51000000-0000-4000-8000-000000000001",
+                "conversation_id": "51000000-0000-4000-8000-000000000006",
+                "turn_id": "51000000-0000-4000-8000-000000000007",
+                "call_id": "native-wire-original-plan",
+                "delegation_id": "81af2b9b-d900-4969-85ac-4f5a778133c9",
+                "operation_id": "fe0bb814-2ac7-48f2-89b1-470d603be1e4",
+                "run_id": "9a5fc6b2-86ef-448c-89a5-30c26cfacec1",
+                "task_id": "910254ecbe1eb0e961991f70ed6e09f5165c05702187d6b41f40e8b5aa0fe8d4",
+                "request_hash": "9e282f87b391ad9dd40a7917bb278735f7b3c2db40850525dc05040b2985715e",
+                "delegation_revision": 1,
+                "grant_epoch": 1,
+                "projection_url": "/catpaw/v1/scopes/51000000-0000-4000-8000-000000000001/runs/9a5fc6b2-86ef-448c-89a5-30c26cfacec1"
+              }
+            ]
+          }
+        }
+      ],
+      "task_bindings": [
+        {
+          "scope_id": "51000000-0000-4000-8000-000000000001",
+          "conversation_id": "51000000-0000-4000-8000-000000000006",
+          "turn_id": "51000000-0000-4000-8000-000000000007",
+          "call_id": "native-wire-original-plan",
+          "delegation_id": "81af2b9b-d900-4969-85ac-4f5a778133c9",
+          "operation_id": "fe0bb814-2ac7-48f2-89b1-470d603be1e4",
+          "run_id": "9a5fc6b2-86ef-448c-89a5-30c26cfacec1",
+          "task_id": "910254ecbe1eb0e961991f70ed6e09f5165c05702187d6b41f40e8b5aa0fe8d4",
+          "request_hash": "9e282f87b391ad9dd40a7917bb278735f7b3c2db40850525dc05040b2985715e",
+          "delegation_revision": 1,
+          "grant_epoch": 1,
+          "projection_url": "/catpaw/v1/scopes/51000000-0000-4000-8000-000000000001/runs/9a5fc6b2-86ef-448c-89a5-30c26cfacec1"
+        }
+      ],
+      "created_at": "2026-10-14T18:25:11.963Z",
+      "work_intent": {
+        "schema_version": 1,
+        "contract": "catpaw.accepted-work-intent.v1",
+        "decision_id": "51000000-0000-4000-8000-000000000009",
+        "input_hash": "8ae83196a2b03cbff228b1cdc3ee57d2a97f54ca8f51b11e98756691550ac9f6",
+        "route_hash": "eef4100e83db1b2ab5ea9a7efd4818e97dcd90c819f056b54082fbdf5cd5e305",
+        "tool_policy": "local_output_v1",
+        "not_after": "2026-10-14T18:27:11.962Z",
+        "execution_budget_ms": 60000,
+        "limits": {
+          "due": 1,
+          "model": 1,
+          "source": 0
+        },
+        "subject_id": "51000000-0000-4000-8000-000000000004",
+        "scope_id": "51000000-0000-4000-8000-000000000001",
+        "conversation_id": "51000000-0000-4000-8000-000000000006",
+        "conversation_epoch": 1,
+        "turn_id": "51000000-0000-4000-8000-000000000007",
+        "message_id": "51000000-0000-4000-8000-000000000008",
+        "admitted_at": "2026-10-14T18:25:11.963Z"
+      },
+      "runtime_holder_id": "94cb58b4-e658-4d71-bafc-080fcf9feb39",
+      "runtime_generation": 1,
+      "finished_at": "2026-10-14T18:25:11.977Z",
+      "next_cursor": "51000000-0000-4000-8000-000000000007:4"
+    }
+  },
+  "cursor_sse": {
+    "raw": "data: {\"schema_version\":1,\"contract\":\"catpaw.native-chat.v1\",\"scope_id\":\"51000000-0000-4000-8000-000000000001\",\"conversation_id\":\"51000000-0000-4000-8000-000000000006\",\"turn_id\":\"51000000-0000-4000-8000-000000000007\",\"sequence\":2,\"cursor\":\"51000000-0000-4000-8000-000000000007:2\",\"grant_epoch\":1,\"model_reality\":\"injected_offline_only\",\"type\":\"tool_call\",\"data\":{\"call_id\":\"native-wire-original-plan\",\"name\":\"delegate_plan_v1\",\"arguments\":{\"title\":\"有限工作原生样例\",\"goal\":\"整理明确提供的虚构资料\",\"requirements\":\"仅使用原对话和已明确选择的文字上下文\",\"stop_conditions\":[\"保存并核对一份本地报告\"],\"steps\":[{\"id\":\"compose\",\"title\":\"整理\",\"detail\":\"\"},{\"id\":\"save\",\"title\":\"保存\",\"detail\":\"\"},{\"id\":\"verify\",\"title\":\"核对\",\"detail\":\"\"}]}}}\n\ndata: {\"schema_version\":1,\"contract\":\"catpaw.native-chat.v1\",\"scope_id\":\"51000000-0000-4000-8000-000000000001\",\"conversation_id\":\"51000000-0000-4000-8000-000000000006\",\"turn_id\":\"51000000-0000-4000-8000-000000000007\",\"sequence\":3,\"cursor\":\"51000000-0000-4000-8000-000000000007:3\",\"grant_epoch\":1,\"model_reality\":\"injected_offline_only\",\"type\":\"tool_result\",\"data\":{\"call_id\":\"native-wire-original-plan\",\"name\":\"delegate_plan_v1\",\"result\":{\"scope_id\":\"51000000-0000-4000-8000-000000000001\",\"conversation_id\":\"51000000-0000-4000-8000-000000000006\",\"turn_id\":\"51000000-0000-4000-8000-000000000007\",\"call_id\":\"native-wire-original-plan\",\"delegation_id\":\"81af2b9b-d900-4969-85ac-4f5a778133c9\",\"operation_id\":\"fe0bb814-2ac7-48f2-89b1-470d603be1e4\",\"run_id\":\"9a5fc6b2-86ef-448c-89a5-30c26cfacec1\",\"task_id\":\"910254ecbe1eb0e961991f70ed6e09f5165c05702187d6b41f40e8b5aa0fe8d4\",\"request_hash\":\"9e282f87b391ad9dd40a7917bb278735f7b3c2db40850525dc05040b2985715e\",\"delegation_revision\":1,\"grant_epoch\":1,\"projection_url\":\"/catpaw/v1/scopes/51000000-0000-4000-8000-000000000001/runs/9a5fc6b2-86ef-448c-89a5-30c26cfacec1\"}}}\n\ndata: {\"schema_version\":1,\"contract\":\"catpaw.native-chat.v1\",\"scope_id\":\"51000000-0000-4000-8000-000000000001\",\"conversation_id\":\"51000000-0000-4000-8000-000000000006\",\"turn_id\":\"51000000-0000-4000-8000-000000000007\",\"sequence\":4,\"cursor\":\"51000000-0000-4000-8000-000000000007:4\",\"grant_epoch\":1,\"model_reality\":\"injected_offline_only\",\"type\":\"turn_completed\",\"data\":{\"message_id\":\"6a8904d0-e793-43bd-82c3-297cc60a39db\",\"final_text_hash\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\",\"task_bindings\":[{\"scope_id\":\"51000000-0000-4000-8000-000000000001\",\"conversation_id\":\"51000000-0000-4000-8000-000000000006\",\"turn_id\":\"51000000-0000-4000-8000-000000000007\",\"call_id\":\"native-wire-original-plan\",\"delegation_id\":\"81af2b9b-d900-4969-85ac-4f5a778133c9\",\"operation_id\":\"fe0bb814-2ac7-48f2-89b1-470d603be1e4\",\"run_id\":\"9a5fc6b2-86ef-448c-89a5-30c26cfacec1\",\"task_id\":\"910254ecbe1eb0e961991f70ed6e09f5165c05702187d6b41f40e8b5aa0fe8d4\",\"request_hash\":\"9e282f87b391ad9dd40a7917bb278735f7b3c2db40850525dc05040b2985715e\",\"delegation_revision\":1,\"grant_epoch\":1,\"projection_url\":\"/catpaw/v1/scopes/51000000-0000-4000-8000-000000000001/runs/9a5fc6b2-86ef-448c-89a5-30c26cfacec1\"}]}}\n\n",
+    "events": [
+      {
+        "schema_version": 1,
+        "contract": "catpaw.native-chat.v1",
+        "scope_id": "51000000-0000-4000-8000-000000000001",
+        "conversation_id": "51000000-0000-4000-8000-000000000006",
+        "turn_id": "51000000-0000-4000-8000-000000000007",
+        "sequence": 2,
+        "cursor": "51000000-0000-4000-8000-000000000007:2",
+        "grant_epoch": 1,
+        "model_reality": "injected_offline_only",
+        "type": "tool_call",
+        "data": {
+          "call_id": "native-wire-original-plan",
+          "name": "delegate_plan_v1",
+          "arguments": {
+            "title": "有限工作原生样例",
+            "goal": "整理明确提供的虚构资料",
+            "requirements": "仅使用原对话和已明确选择的文字上下文",
+            "stop_conditions": [
+              "保存并核对一份本地报告"
+            ],
+            "steps": [
+              {
+                "id": "compose",
+                "title": "整理",
+                "detail": ""
+              },
+              {
+                "id": "save",
+                "title": "保存",
+                "detail": ""
+              },
+              {
+                "id": "verify",
+                "title": "核对",
+                "detail": ""
+              }
+            ]
+          }
+        }
+      },
+      {
+        "schema_version": 1,
+        "contract": "catpaw.native-chat.v1",
+        "scope_id": "51000000-0000-4000-8000-000000000001",
+        "conversation_id": "51000000-0000-4000-8000-000000000006",
+        "turn_id": "51000000-0000-4000-8000-000000000007",
+        "sequence": 3,
+        "cursor": "51000000-0000-4000-8000-000000000007:3",
+        "grant_epoch": 1,
+        "model_reality": "injected_offline_only",
+        "type": "tool_result",
+        "data": {
+          "call_id": "native-wire-original-plan",
+          "name": "delegate_plan_v1",
+          "result": {
+            "scope_id": "51000000-0000-4000-8000-000000000001",
+            "conversation_id": "51000000-0000-4000-8000-000000000006",
+            "turn_id": "51000000-0000-4000-8000-000000000007",
+            "call_id": "native-wire-original-plan",
+            "delegation_id": "81af2b9b-d900-4969-85ac-4f5a778133c9",
+            "operation_id": "fe0bb814-2ac7-48f2-89b1-470d603be1e4",
+            "run_id": "9a5fc6b2-86ef-448c-89a5-30c26cfacec1",
+            "task_id": "910254ecbe1eb0e961991f70ed6e09f5165c05702187d6b41f40e8b5aa0fe8d4",
+            "request_hash": "9e282f87b391ad9dd40a7917bb278735f7b3c2db40850525dc05040b2985715e",
+            "delegation_revision": 1,
+            "grant_epoch": 1,
+            "projection_url": "/catpaw/v1/scopes/51000000-0000-4000-8000-000000000001/runs/9a5fc6b2-86ef-448c-89a5-30c26cfacec1"
+          }
+        }
+      },
+      {
+        "schema_version": 1,
+        "contract": "catpaw.native-chat.v1",
+        "scope_id": "51000000-0000-4000-8000-000000000001",
+        "conversation_id": "51000000-0000-4000-8000-000000000006",
+        "turn_id": "51000000-0000-4000-8000-000000000007",
+        "sequence": 4,
+        "cursor": "51000000-0000-4000-8000-000000000007:4",
+        "grant_epoch": 1,
+        "model_reality": "injected_offline_only",
+        "type": "turn_completed",
+        "data": {
+          "message_id": "6a8904d0-e793-43bd-82c3-297cc60a39db",
+          "final_text_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "task_bindings": [
+            {
+              "scope_id": "51000000-0000-4000-8000-000000000001",
+              "conversation_id": "51000000-0000-4000-8000-000000000006",
+              "turn_id": "51000000-0000-4000-8000-000000000007",
+              "call_id": "native-wire-original-plan",
+              "delegation_id": "81af2b9b-d900-4969-85ac-4f5a778133c9",
+              "operation_id": "fe0bb814-2ac7-48f2-89b1-470d603be1e4",
+              "run_id": "9a5fc6b2-86ef-448c-89a5-30c26cfacec1",
+              "task_id": "910254ecbe1eb0e961991f70ed6e09f5165c05702187d6b41f40e8b5aa0fe8d4",
+              "request_hash": "9e282f87b391ad9dd40a7917bb278735f7b3c2db40850525dc05040b2985715e",
+              "delegation_revision": 1,
+              "grant_epoch": 1,
+              "projection_url": "/catpaw/v1/scopes/51000000-0000-4000-8000-000000000001/runs/9a5fc6b2-86ef-448c-89a5-30c26cfacec1"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "grant_accepted": {
+    "schema_version": 1,
+    "contract": "catpaw.task-work-grant.v1",
+    "grant": {
+      "reference": {
+        "schema_version": 1,
+        "contract": "catpaw.task-work-grant.v1",
+        "grant_id": "51000000-0000-4000-8000-000000000009",
+        "terms_hash": "c1b88551d7d24c33851adcdf5d7e876cb8a1540c3169be5a1c5c8fa8e31e6ab8"
+      },
+      "terms": {
+        "schema_version": 1,
+        "contract": "catpaw.task-work-grant.v1",
+        "mode": "accepted_run",
+        "grant_id": "51000000-0000-4000-8000-000000000009",
+        "scope": {
+          "scope_id": "51000000-0000-4000-8000-000000000001",
+          "profile_id": "51000000-0000-4000-8000-000000000002",
+          "workspace_id": "51000000-0000-4000-8000-000000000003",
+          "owner": "catpaw:c5efd0ca766e5f92ec7e25284351986a01b2a0cae42d40327a56426adfd3bdfb"
+        },
+        "subject_id": "51000000-0000-4000-8000-000000000004",
+        "conversation_id": "51000000-0000-4000-8000-000000000006",
+        "source_auth": {
+          "subject_id": "51000000-0000-4000-8000-000000000004",
+          "scope_id": "51000000-0000-4000-8000-000000000001",
+          "issuer": "https://native-wire.example.invalid/auth/v1",
+          "session_id": "51000000-0000-4000-8000-000000000005",
+          "issued_at": 1,
+          "consent_revision": 1
+        },
+        "origin": {
+          "delegation_id": "81af2b9b-d900-4969-85ac-4f5a778133c9",
+          "operation_id": "fe0bb814-2ac7-48f2-89b1-470d603be1e4",
+          "run_id": "9a5fc6b2-86ef-448c-89a5-30c26cfacec1",
+          "task_id": "910254ecbe1eb0e961991f70ed6e09f5165c05702187d6b41f40e8b5aa0fe8d4"
+        },
+        "input_hash": "8ae83196a2b03cbff228b1cdc3ee57d2a97f54ca8f51b11e98756691550ac9f6",
+        "args_hash": "69020b227125aeef69e28de4811bc9e255eb42735bb6609b6847f0c4763bcd51",
+        "model_configuration_hash": "a2a2abc0d1178c8e38176bd1085d7d58fdb162a4986f0d42cdc7ffc7471d3e7b",
+        "route_hash": "eef4100e83db1b2ab5ea9a7efd4818e97dcd90c819f056b54082fbdf5cd5e305",
+        "source_catalog_hash": null,
+        "memory_generation": 1,
+        "accepted_at": "2026-10-14T18:25:11.974Z",
+        "not_after": "2026-10-14T18:27:11.962Z",
+        "execution_budget_ms": 60000,
+        "limits": {
+          "due": 1,
+          "model": 1,
+          "source": 0
+        },
+        "allowed_tools": [
+          "save_artifact",
+          "finish_task",
+          "ask_user"
+        ]
+      },
+      "run_binding": {
+        "operation_id": "fe0bb814-2ac7-48f2-89b1-470d603be1e4",
+        "run_id": "9a5fc6b2-86ef-448c-89a5-30c26cfacec1",
+        "delegation_id": "81af2b9b-d900-4969-85ac-4f5a778133c9",
+        "task_id": "910254ecbe1eb0e961991f70ed6e09f5165c05702187d6b41f40e8b5aa0fe8d4",
+        "run_request_hash": "9e282f87b391ad9dd40a7917bb278735f7b3c2db40850525dc05040b2985715e",
+        "grant_epoch": 1,
+        "delegation_revision": 1
+      },
+      "state": "active",
+      "revision": 1,
+      "consumed": {
+        "due": 0,
+        "model": 0,
+        "source": 0
+      },
+      "remaining": {
+        "due": 1,
+        "model": 1,
+        "source": 0
+      },
+      "expired": false,
+      "task_completed": false
+    },
+    "receipt": {
+      "contract": "catpaw.task-work-grant.v1",
+      "grant_id": "51000000-0000-4000-8000-000000000009",
+      "terms_hash": "c1b88551d7d24c33851adcdf5d7e876cb8a1540c3169be5a1c5c8fa8e31e6ab8",
+      "run_binding": {
+        "operation_id": "fe0bb814-2ac7-48f2-89b1-470d603be1e4",
+        "run_id": "9a5fc6b2-86ef-448c-89a5-30c26cfacec1",
+        "delegation_id": "81af2b9b-d900-4969-85ac-4f5a778133c9",
+        "task_id": "910254ecbe1eb0e961991f70ed6e09f5165c05702187d6b41f40e8b5aa0fe8d4",
+        "run_request_hash": "9e282f87b391ad9dd40a7917bb278735f7b3c2db40850525dc05040b2985715e",
+        "grant_epoch": 1,
+        "delegation_revision": 1
+      },
+      "accepted_at": "2026-10-14T18:25:11.974Z",
+      "task_completed": false,
+      "receipt_hash": "99ee2976ad360be18f77867a192fc86ae54a77c1b94ed6fe11eb1c015b375b98"
+    },
+    "reservations": []
+  },
+  "expired_viewer_error": {
+    "status": 409,
+    "body": {
+      "schema_version": 1,
+      "error": {
+        "code": "grant_conflict",
+        "retryable": false,
+        "reconciliation_required": false
+      }
+    }
+  },
+  "final_turn": {
+    "schema_version": 1,
+    "contract": "catpaw.accepted-work-intent.v1",
+    "turn": {
+      "id": "51000000-0000-4000-8000-000000000007",
+      "conversation_id": "51000000-0000-4000-8000-000000000006",
+      "scope_id": "51000000-0000-4000-8000-000000000001",
+      "grant_epoch": 1,
+      "conversation_revision": 2,
+      "state": "completed",
+      "admission_hash": "812bde1fde8c30e4682731570087b8b1473a618f53f970dd2717f1c05d1c797f",
+      "request_hash": "43e7a1e30ec3d1aaea38e658163d0fba37b882b53727d25092c452e0c8cbe0bf",
+      "events": [
+        {
+          "schema_version": 1,
+          "contract": "catpaw.native-chat.v1",
+          "scope_id": "51000000-0000-4000-8000-000000000001",
+          "conversation_id": "51000000-0000-4000-8000-000000000006",
+          "turn_id": "51000000-0000-4000-8000-000000000007",
+          "sequence": 1,
+          "cursor": "51000000-0000-4000-8000-000000000007:1",
+          "grant_epoch": 1,
+          "model_reality": "injected_offline_only",
+          "type": "turn_started",
+          "data": {
+            "request_hash": "43e7a1e30ec3d1aaea38e658163d0fba37b882b53727d25092c452e0c8cbe0bf",
+            "conversation_revision": 2
+          }
+        },
+        {
+          "schema_version": 1,
+          "contract": "catpaw.native-chat.v1",
+          "scope_id": "51000000-0000-4000-8000-000000000001",
+          "conversation_id": "51000000-0000-4000-8000-000000000006",
+          "turn_id": "51000000-0000-4000-8000-000000000007",
+          "sequence": 2,
+          "cursor": "51000000-0000-4000-8000-000000000007:2",
+          "grant_epoch": 1,
+          "model_reality": "injected_offline_only",
+          "type": "tool_call",
+          "data": {
+            "call_id": "native-wire-original-plan",
+            "name": "delegate_plan_v1",
+            "arguments": {
+              "title": "有限工作原生样例",
+              "goal": "整理明确提供的虚构资料",
+              "requirements": "仅使用原对话和已明确选择的文字上下文",
+              "stop_conditions": [
+                "保存并核对一份本地报告"
+              ],
+              "steps": [
+                {
+                  "id": "compose",
+                  "title": "整理",
+                  "detail": ""
+                },
+                {
+                  "id": "save",
+                  "title": "保存",
+                  "detail": ""
+                },
+                {
+                  "id": "verify",
+                  "title": "核对",
+                  "detail": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "schema_version": 1,
+          "contract": "catpaw.native-chat.v1",
+          "scope_id": "51000000-0000-4000-8000-000000000001",
+          "conversation_id": "51000000-0000-4000-8000-000000000006",
+          "turn_id": "51000000-0000-4000-8000-000000000007",
+          "sequence": 3,
+          "cursor": "51000000-0000-4000-8000-000000000007:3",
+          "grant_epoch": 1,
+          "model_reality": "injected_offline_only",
+          "type": "tool_result",
+          "data": {
+            "call_id": "native-wire-original-plan",
+            "name": "delegate_plan_v1",
+            "result": {
+              "scope_id": "51000000-0000-4000-8000-000000000001",
+              "conversation_id": "51000000-0000-4000-8000-000000000006",
+              "turn_id": "51000000-0000-4000-8000-000000000007",
+              "call_id": "native-wire-original-plan",
+              "delegation_id": "81af2b9b-d900-4969-85ac-4f5a778133c9",
+              "operation_id": "fe0bb814-2ac7-48f2-89b1-470d603be1e4",
+              "run_id": "9a5fc6b2-86ef-448c-89a5-30c26cfacec1",
+              "task_id": "910254ecbe1eb0e961991f70ed6e09f5165c05702187d6b41f40e8b5aa0fe8d4",
+              "request_hash": "9e282f87b391ad9dd40a7917bb278735f7b3c2db40850525dc05040b2985715e",
+              "delegation_revision": 1,
+              "grant_epoch": 1,
+              "projection_url": "/catpaw/v1/scopes/51000000-0000-4000-8000-000000000001/runs/9a5fc6b2-86ef-448c-89a5-30c26cfacec1"
+            }
+          }
+        },
+        {
+          "schema_version": 1,
+          "contract": "catpaw.native-chat.v1",
+          "scope_id": "51000000-0000-4000-8000-000000000001",
+          "conversation_id": "51000000-0000-4000-8000-000000000006",
+          "turn_id": "51000000-0000-4000-8000-000000000007",
+          "sequence": 4,
+          "cursor": "51000000-0000-4000-8000-000000000007:4",
+          "grant_epoch": 1,
+          "model_reality": "injected_offline_only",
+          "type": "turn_completed",
+          "data": {
+            "message_id": "6a8904d0-e793-43bd-82c3-297cc60a39db",
+            "final_text_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "task_bindings": [
+              {
+                "scope_id": "51000000-0000-4000-8000-000000000001",
+                "conversation_id": "51000000-0000-4000-8000-000000000006",
+                "turn_id": "51000000-0000-4000-8000-000000000007",
+                "call_id": "native-wire-original-plan",
+                "delegation_id": "81af2b9b-d900-4969-85ac-4f5a778133c9",
+                "operation_id": "fe0bb814-2ac7-48f2-89b1-470d603be1e4",
+                "run_id": "9a5fc6b2-86ef-448c-89a5-30c26cfacec1",
+                "task_id": "910254ecbe1eb0e961991f70ed6e09f5165c05702187d6b41f40e8b5aa0fe8d4",
+                "request_hash": "9e282f87b391ad9dd40a7917bb278735f7b3c2db40850525dc05040b2985715e",
+                "delegation_revision": 1,
+                "grant_epoch": 1,
+                "projection_url": "/catpaw/v1/scopes/51000000-0000-4000-8000-000000000001/runs/9a5fc6b2-86ef-448c-89a5-30c26cfacec1"
+              }
+            ]
+          }
+        }
+      ],
+      "task_bindings": [
+        {
+          "scope_id": "51000000-0000-4000-8000-000000000001",
+          "conversation_id": "51000000-0000-4000-8000-000000000006",
+          "turn_id": "51000000-0000-4000-8000-000000000007",
+          "call_id": "native-wire-original-plan",
+          "delegation_id": "81af2b9b-d900-4969-85ac-4f5a778133c9",
+          "operation_id": "fe0bb814-2ac7-48f2-89b1-470d603be1e4",
+          "run_id": "9a5fc6b2-86ef-448c-89a5-30c26cfacec1",
+          "task_id": "910254ecbe1eb0e961991f70ed6e09f5165c05702187d6b41f40e8b5aa0fe8d4",
+          "request_hash": "9e282f87b391ad9dd40a7917bb278735f7b3c2db40850525dc05040b2985715e",
+          "delegation_revision": 1,
+          "grant_epoch": 1,
+          "projection_url": "/catpaw/v1/scopes/51000000-0000-4000-8000-000000000001/runs/9a5fc6b2-86ef-448c-89a5-30c26cfacec1"
+        }
+      ],
+      "created_at": "2026-10-14T18:25:11.963Z",
+      "work_intent": {
+        "schema_version": 1,
+        "contract": "catpaw.accepted-work-intent.v1",
+        "decision_id": "51000000-0000-4000-8000-000000000009",
+        "input_hash": "8ae83196a2b03cbff228b1cdc3ee57d2a97f54ca8f51b11e98756691550ac9f6",
+        "route_hash": "eef4100e83db1b2ab5ea9a7efd4818e97dcd90c819f056b54082fbdf5cd5e305",
+        "tool_policy": "local_output_v1",
+        "not_after": "2026-10-14T18:27:11.962Z",
+        "execution_budget_ms": 60000,
+        "limits": {
+          "due": 1,
+          "model": 1,
+          "source": 0
+        },
+        "subject_id": "51000000-0000-4000-8000-000000000004",
+        "scope_id": "51000000-0000-4000-8000-000000000001",
+        "conversation_id": "51000000-0000-4000-8000-000000000006",
+        "conversation_epoch": 1,
+        "turn_id": "51000000-0000-4000-8000-000000000007",
+        "message_id": "51000000-0000-4000-8000-000000000008",
+        "admitted_at": "2026-10-14T18:25:11.963Z"
+      },
+      "runtime_holder_id": "94cb58b4-e658-4d71-bafc-080fcf9feb39",
+      "runtime_generation": 1,
+      "finished_at": "2026-10-14T18:25:11.977Z",
+      "next_cursor": "51000000-0000-4000-8000-000000000007:4"
+    }
+  },
+  "final_grant": {
+    "schema_version": 1,
+    "contract": "catpaw.task-work-grant.v1",
+    "grant": {
+      "reference": {
+        "schema_version": 1,
+        "contract": "catpaw.task-work-grant.v1",
+        "grant_id": "51000000-0000-4000-8000-000000000009",
+        "terms_hash": "c1b88551d7d24c33851adcdf5d7e876cb8a1540c3169be5a1c5c8fa8e31e6ab8"
+      },
+      "terms": {
+        "schema_version": 1,
+        "contract": "catpaw.task-work-grant.v1",
+        "mode": "accepted_run",
+        "grant_id": "51000000-0000-4000-8000-000000000009",
+        "scope": {
+          "scope_id": "51000000-0000-4000-8000-000000000001",
+          "profile_id": "51000000-0000-4000-8000-000000000002",
+          "workspace_id": "51000000-0000-4000-8000-000000000003",
+          "owner": "catpaw:c5efd0ca766e5f92ec7e25284351986a01b2a0cae42d40327a56426adfd3bdfb"
+        },
+        "subject_id": "51000000-0000-4000-8000-000000000004",
+        "conversation_id": "51000000-0000-4000-8000-000000000006",
+        "source_auth": {
+          "subject_id": "51000000-0000-4000-8000-000000000004",
+          "scope_id": "51000000-0000-4000-8000-000000000001",
+          "issuer": "https://native-wire.example.invalid/auth/v1",
+          "session_id": "51000000-0000-4000-8000-000000000005",
+          "issued_at": 1,
+          "consent_revision": 1
+        },
+        "origin": {
+          "delegation_id": "81af2b9b-d900-4969-85ac-4f5a778133c9",
+          "operation_id": "fe0bb814-2ac7-48f2-89b1-470d603be1e4",
+          "run_id": "9a5fc6b2-86ef-448c-89a5-30c26cfacec1",
+          "task_id": "910254ecbe1eb0e961991f70ed6e09f5165c05702187d6b41f40e8b5aa0fe8d4"
+        },
+        "input_hash": "8ae83196a2b03cbff228b1cdc3ee57d2a97f54ca8f51b11e98756691550ac9f6",
+        "args_hash": "69020b227125aeef69e28de4811bc9e255eb42735bb6609b6847f0c4763bcd51",
+        "model_configuration_hash": "a2a2abc0d1178c8e38176bd1085d7d58fdb162a4986f0d42cdc7ffc7471d3e7b",
+        "route_hash": "eef4100e83db1b2ab5ea9a7efd4818e97dcd90c819f056b54082fbdf5cd5e305",
+        "source_catalog_hash": null,
+        "memory_generation": 1,
+        "accepted_at": "2026-10-14T18:25:11.974Z",
+        "not_after": "2026-10-14T18:27:11.962Z",
+        "execution_budget_ms": 60000,
+        "limits": {
+          "due": 1,
+          "model": 1,
+          "source": 0
+        },
+        "allowed_tools": [
+          "save_artifact",
+          "finish_task",
+          "ask_user"
+        ]
+      },
+      "run_binding": {
+        "operation_id": "fe0bb814-2ac7-48f2-89b1-470d603be1e4",
+        "run_id": "9a5fc6b2-86ef-448c-89a5-30c26cfacec1",
+        "delegation_id": "81af2b9b-d900-4969-85ac-4f5a778133c9",
+        "task_id": "910254ecbe1eb0e961991f70ed6e09f5165c05702187d6b41f40e8b5aa0fe8d4",
+        "run_request_hash": "9e282f87b391ad9dd40a7917bb278735f7b3c2db40850525dc05040b2985715e",
+        "grant_epoch": 1,
+        "delegation_revision": 1
+      },
+      "state": "active",
+      "revision": 3,
+      "consumed": {
+        "due": 1,
+        "model": 1,
+        "source": 0
+      },
+      "remaining": {
+        "due": 0,
+        "model": 0,
+        "source": 0
+      },
+      "expired": false,
+      "task_completed": false
+    },
+    "receipt": {
+      "contract": "catpaw.task-work-grant.v1",
+      "grant_id": "51000000-0000-4000-8000-000000000009",
+      "terms_hash": "c1b88551d7d24c33851adcdf5d7e876cb8a1540c3169be5a1c5c8fa8e31e6ab8",
+      "run_binding": {
+        "operation_id": "fe0bb814-2ac7-48f2-89b1-470d603be1e4",
+        "run_id": "9a5fc6b2-86ef-448c-89a5-30c26cfacec1",
+        "delegation_id": "81af2b9b-d900-4969-85ac-4f5a778133c9",
+        "task_id": "910254ecbe1eb0e961991f70ed6e09f5165c05702187d6b41f40e8b5aa0fe8d4",
+        "run_request_hash": "9e282f87b391ad9dd40a7917bb278735f7b3c2db40850525dc05040b2985715e",
+        "grant_epoch": 1,
+        "delegation_revision": 1
+      },
+      "accepted_at": "2026-10-14T18:25:11.974Z",
+      "task_completed": false,
+      "receipt_hash": "99ee2976ad360be18f77867a192fc86ae54a77c1b94ed6fe11eb1c015b375b98"
+    },
+    "reservations": [
+      {
+        "id": "fe0bb814-2ac7-48f2-89b1-470d603be1e4",
+        "grant_id": "51000000-0000-4000-8000-000000000009",
+        "terms_hash": "c1b88551d7d24c33851adcdf5d7e876cb8a1540c3169be5a1c5c8fa8e31e6ab8",
+        "scope_id": "51000000-0000-4000-8000-000000000001",
+        "subject_id": "51000000-0000-4000-8000-000000000004",
+        "conversation_id": "51000000-0000-4000-8000-000000000006",
+        "run_id": "9a5fc6b2-86ef-448c-89a5-30c26cfacec1",
+        "task_id": "910254ecbe1eb0e961991f70ed6e09f5165c05702187d6b41f40e8b5aa0fe8d4",
+        "run_binding": {
+          "operation_id": "fe0bb814-2ac7-48f2-89b1-470d603be1e4",
+          "run_id": "9a5fc6b2-86ef-448c-89a5-30c26cfacec1",
+          "delegation_id": "81af2b9b-d900-4969-85ac-4f5a778133c9",
+          "task_id": "910254ecbe1eb0e961991f70ed6e09f5165c05702187d6b41f40e8b5aa0fe8d4",
+          "run_request_hash": "9e282f87b391ad9dd40a7917bb278735f7b3c2db40850525dc05040b2985715e",
+          "grant_epoch": 1,
+          "delegation_revision": 1
+        },
+        "frozen": {
+          "grant_reference": {
+            "schema_version": 1,
+            "contract": "catpaw.task-work-grant.v1",
+            "grant_id": "51000000-0000-4000-8000-000000000009",
+            "terms_hash": "c1b88551d7d24c33851adcdf5d7e876cb8a1540c3169be5a1c5c8fa8e31e6ab8"
+          },
+          "run_binding": {
+            "operation_id": "fe0bb814-2ac7-48f2-89b1-470d603be1e4",
+            "run_id": "9a5fc6b2-86ef-448c-89a5-30c26cfacec1",
+            "delegation_id": "81af2b9b-d900-4969-85ac-4f5a778133c9",
+            "task_id": "910254ecbe1eb0e961991f70ed6e09f5165c05702187d6b41f40e8b5aa0fe8d4",
+            "run_request_hash": "9e282f87b391ad9dd40a7917bb278735f7b3c2db40850525dc05040b2985715e",
+            "grant_epoch": 1,
+            "delegation_revision": 1
+          },
+          "execution": null,
+          "input": {
+            "operation_id": "fe0bb814-2ac7-48f2-89b1-470d603be1e4",
+            "operation_key": "a92970aa91d7a02a57db3ce0ade20c8c49c26b7d2d6e4ed257aed038ac7269ca",
+            "kind": "due",
+            "request_hash": "9e282f87b391ad9dd40a7917bb278735f7b3c2db40850525dc05040b2985715e",
+            "deadline_at": "2026-10-14T18:26:13.481Z"
+          }
+        },
+        "reservation_hash": "b1a74346e5bb8e22a422a612438abe7ad6b7d3f79846790e5c3973995f4d3f06",
+        "reserved_at": "2026-10-14T18:25:13.481Z",
+        "state": "received",
+        "outcome": {
+          "input": {
+            "operation_id": "fe0bb814-2ac7-48f2-89b1-470d603be1e4",
+            "request_hash": "9e282f87b391ad9dd40a7917bb278735f7b3c2db40850525dc05040b2985715e",
+            "outcome": "received",
+            "receipt_reference": {
+              "receipt_id": "adfecf0b4b33e66387f65ec2d27fcfc9e3f523ce9c846dda88b755cea2dc241e",
+              "receipt_hash": "a09d6c3dfa1467abd3e8a30b8c73fcc7908b7ea44840fe82d01a8871979016dd"
+            }
+          },
+          "recorded_at": "2026-10-14T18:25:16.481Z",
+          "checkpoint_hash": "c47ff04bb03c4e81f57c3babe446f0eaa3aafda6b5af9355d6fae5cf773f040b",
+          "acknowledgement": {
+            "contract": "catpaw.work-attempt-ack.v1",
+            "attempt_id": "2a8b266e-3b9c-4f02-97f5-4006bdccad41",
+            "execution_revision": 0,
+            "previous_task_hash": "c4325db0596eeca7915982838c2c9ef152ccba7520b1a2956d73121ad7e4172b",
+            "next_task_hash": "bb0b34ac50b59fd61b30c6792e56efc0fb8a3eda7645c7ae3db24f9ee19c2f20",
+            "checkpoint_hash": "2bb34b102ce50cac7c07ebb862b1d5d15863202fc962c503d4505c6e55d45ce6",
+            "task_status": "succeeded",
+            "run_binding": {
+              "operation_id": "fe0bb814-2ac7-48f2-89b1-470d603be1e4",
+              "run_id": "9a5fc6b2-86ef-448c-89a5-30c26cfacec1",
+              "delegation_id": "81af2b9b-d900-4969-85ac-4f5a778133c9",
+              "task_id": "910254ecbe1eb0e961991f70ed6e09f5165c05702187d6b41f40e8b5aa0fe8d4",
+              "run_request_hash": "9e282f87b391ad9dd40a7917bb278735f7b3c2db40850525dc05040b2985715e",
+              "grant_epoch": 1,
+              "delegation_revision": 1
+            },
+            "completion_receipt": {
+              "artifact_reference": {
+                "artifact_id": "a7d0b3faf0cedb5fc9020bac14e90450f15a5883427f50bbb2a850c1343cf1f1",
+                "version": 1,
+                "content_hash": "5a2c24e9cc2aa498a445f643219e1339dbb06fa41a560f65a8785e74a1c97c6d"
+              },
+              "plan_reference": {
+                "revision": 1,
+                "plan_hash": "69020b227125aeef69e28de4811bc9e255eb42735bb6609b6847f0c4763bcd51"
+              },
+              "verification_receipt": {
+                "id": "9a5fc6b2-86ef-448c-89a5-30c26cfacec1:1:verify",
+                "receipt_hash": "8251ea57e8b5f84e5f78d609a3ba07a4c0a5fa9b7ba9ea18335a2664ef92bea6"
+              }
+            },
+            "acknowledged_at": "2026-10-14T18:25:16.481Z"
+          }
+        }
+      },
+      {
+        "id": "51cd921e32a7ec9e89e49c348e2acce721f7706e46c2375a15d0503fcfebf990",
+        "grant_id": "51000000-0000-4000-8000-000000000009",
+        "terms_hash": "c1b88551d7d24c33851adcdf5d7e876cb8a1540c3169be5a1c5c8fa8e31e6ab8",
+        "scope_id": "51000000-0000-4000-8000-000000000001",
+        "subject_id": "51000000-0000-4000-8000-000000000004",
+        "conversation_id": "51000000-0000-4000-8000-000000000006",
+        "run_id": "9a5fc6b2-86ef-448c-89a5-30c26cfacec1",
+        "task_id": "910254ecbe1eb0e961991f70ed6e09f5165c05702187d6b41f40e8b5aa0fe8d4",
+        "run_binding": {
+          "operation_id": "fe0bb814-2ac7-48f2-89b1-470d603be1e4",
+          "run_id": "9a5fc6b2-86ef-448c-89a5-30c26cfacec1",
+          "delegation_id": "81af2b9b-d900-4969-85ac-4f5a778133c9",
+          "task_id": "910254ecbe1eb0e961991f70ed6e09f5165c05702187d6b41f40e8b5aa0fe8d4",
+          "run_request_hash": "9e282f87b391ad9dd40a7917bb278735f7b3c2db40850525dc05040b2985715e",
+          "grant_epoch": 1,
+          "delegation_revision": 1
+        },
+        "frozen": {
+          "grant_reference": {
+            "schema_version": 1,
+            "contract": "catpaw.task-work-grant.v1",
+            "grant_id": "51000000-0000-4000-8000-000000000009",
+            "terms_hash": "c1b88551d7d24c33851adcdf5d7e876cb8a1540c3169be5a1c5c8fa8e31e6ab8"
+          },
+          "run_binding": {
+            "operation_id": "fe0bb814-2ac7-48f2-89b1-470d603be1e4",
+            "run_id": "9a5fc6b2-86ef-448c-89a5-30c26cfacec1",
+            "delegation_id": "81af2b9b-d900-4969-85ac-4f5a778133c9",
+            "task_id": "910254ecbe1eb0e961991f70ed6e09f5165c05702187d6b41f40e8b5aa0fe8d4",
+            "run_request_hash": "9e282f87b391ad9dd40a7917bb278735f7b3c2db40850525dc05040b2985715e",
+            "grant_epoch": 1,
+            "delegation_revision": 1
+          },
+          "execution": {
+            "run_id": "9a5fc6b2-86ef-448c-89a5-30c26cfacec1",
+            "task_id": "910254ecbe1eb0e961991f70ed6e09f5165c05702187d6b41f40e8b5aa0fe8d4",
+            "run_request_hash": "9e282f87b391ad9dd40a7917bb278735f7b3c2db40850525dc05040b2985715e",
+            "lease_id": "6755fee2-403a-4964-a0cf-2698cc446b3b",
+            "execution_revision": 0
+          },
+          "input": {
+            "operation_id": "51cd921e32a7ec9e89e49c348e2acce721f7706e46c2375a15d0503fcfebf990",
+            "operation_key": "4bac9cb2ce3f864974425d44cc591ef144485d5d6547f3788fe957027c6a2c42",
+            "kind": "model",
+            "request_hash": "e0e93a62f378dd504bbbde483703e06c78ce1732bbf6353d19ba288a446a5ef0",
+            "deadline_at": "2026-10-14T18:25:14.281Z"
+          }
+        },
+        "reservation_hash": "b631b9a6873918847e2b5b2e974e32a2868956ab3ceb2adf092d656ab44e8be1",
+        "reserved_at": "2026-10-14T18:25:13.481Z",
+        "state": "received",
+        "outcome": {
+          "input": {
+            "operation_id": "51cd921e32a7ec9e89e49c348e2acce721f7706e46c2375a15d0503fcfebf990",
+            "request_hash": "e0e93a62f378dd504bbbde483703e06c78ce1732bbf6353d19ba288a446a5ef0",
+            "outcome": "received",
+            "receipt_reference": {
+              "receipt_id": "51cd921e32a7ec9e89e49c348e2acce721f7706e46c2375a15d0503fcfebf990",
+              "receipt_hash": "1e5786987aa8f78cd8f2fcdb2e82167efb2db9611e9a6585209c207a277af98f"
+            }
+          },
+          "recorded_at": "2026-10-14T18:25:13.481Z",
+          "checkpoint_hash": "a72a438c08968d087df99d3e32f86dbe4259705a6dde1bc53c1664ae5b14de8f",
+          "transport_checkpoint": {
+            "kind": "model",
+            "request_hash": "e0e93a62f378dd504bbbde483703e06c78ce1732bbf6353d19ba288a446a5ef0",
+            "checkpoint_hash": "1e5786987aa8f78cd8f2fcdb2e82167efb2db9611e9a6585209c207a277af98f",
+            "payload_hash": "a83290777f15d454e4f37c2b0c2ad5cde61cdd11c1146acab6e1ebabe2261c92"
+          }
+        }
+      }
+    ]
+  },
+  "final_projection": {
+    "schema_version": 1,
+    "run": {
+      "id": "9a5fc6b2-86ef-448c-89a5-30c26cfacec1",
+      "delegation_id": "81af2b9b-d900-4969-85ac-4f5a778133c9",
+      "operation_id": "fe0bb814-2ac7-48f2-89b1-470d603be1e4",
+      "run_id": "9a5fc6b2-86ef-448c-89a5-30c26cfacec1",
+      "delegation_revision": 1,
+      "grant_epoch": 1,
+      "request_hash": "9e282f87b391ad9dd40a7917bb278735f7b3c2db40850525dc05040b2985715e",
+      "task_id": "910254ecbe1eb0e961991f70ed6e09f5165c05702187d6b41f40e8b5aa0fe8d4",
+      "artifact_references": [
+        {
+          "artifact_id": "a7d0b3faf0cedb5fc9020bac14e90450f15a5883427f50bbb2a850c1343cf1f1",
+          "version": 1,
+          "content_hash": "5a2c24e9cc2aa498a445f643219e1339dbb06fa41a560f65a8785e74a1c97c6d"
+        }
+      ],
+      "approval_ids": [],
+      "created_at": "2026-10-14T18:25:11.974Z",
+      "state": "succeeded",
+      "authorization_state": "current",
+      "attempts": [
+        {
+          "upstream_run_id": "6755fee2-403a-4964-a0cf-2698cc446b3b",
+          "started_at": "2026-10-14T18:25:13.481Z",
+          "finished_at": "2026-10-14T18:25:13.481Z",
+          "status": "scheduled"
+        },
+        {
+          "upstream_run_id": "3ebfd357-9323-4918-a9d4-eb35e647441a",
+          "started_at": "2026-10-14T18:25:14.981Z",
+          "finished_at": "2026-10-14T18:25:14.981Z",
+          "status": "scheduled"
+        },
+        {
+          "upstream_run_id": "2a8b266e-3b9c-4f02-97f5-4006bdccad41",
+          "started_at": "2026-10-14T18:25:16.481Z",
+          "finished_at": "2026-10-14T18:25:16.481Z",
+          "status": "succeeded"
+        }
+      ]
+    },
+    "task": {
+      "id": "910254ecbe1eb0e961991f70ed6e09f5165c05702187d6b41f40e8b5aa0fe8d4",
+      "status": "succeeded",
+      "attempts": 3
+    },
+    "execution_layer": "native_chat_provider_ready_unverified",
+    "plan": {
+      "run_id": "9a5fc6b2-86ef-448c-89a5-30c26cfacec1",
+      "task_id": "910254ecbe1eb0e961991f70ed6e09f5165c05702187d6b41f40e8b5aa0fe8d4",
+      "conversation_id": "51000000-0000-4000-8000-000000000006",
+      "accepted_revision": 1,
+      "accepted_plan_hash": "69020b227125aeef69e28de4811bc9e255eb42735bb6609b6847f0c4763bcd51",
+      "applied_revision": 1,
+      "applied_plan_hash": "69020b227125aeef69e28de4811bc9e255eb42735bb6609b6847f0c4763bcd51",
+      "application_state": "applied",
+      "task_status": "succeeded",
+      "content": {
+        "title": "有限工作原生样例",
+        "goal": "整理明确提供的虚构资料",
+        "requirements": "仅使用原对话和已明确选择的文字上下文",
+        "stop_conditions": [
+          "保存并核对一份本地报告"
+        ],
+        "steps": [
+          {
+            "id": "compose",
+            "title": "整理",
+            "detail": ""
+          },
+          {
+            "id": "save",
+            "title": "保存",
+            "detail": ""
+          },
+          {
+            "id": "verify",
+            "title": "核对",
+            "detail": ""
+          }
+        ]
+      },
+      "applied_content": {
+        "title": "有限工作原生样例",
+        "goal": "整理明确提供的虚构资料",
+        "requirements": "仅使用原对话和已明确选择的文字上下文",
+        "stop_conditions": [
+          "保存并核对一份本地报告"
+        ],
+        "steps": [
+          {
+            "id": "compose",
+            "title": "整理",
+            "detail": ""
+          },
+          {
+            "id": "save",
+            "title": "保存",
+            "detail": ""
+          },
+          {
+            "id": "verify",
+            "title": "核对",
+            "detail": ""
+          }
+        ]
+      },
+      "step_receipts": [
+        {
+          "step_id": "compose",
+          "plan_revision": 1,
+          "plan_hash": "69020b227125aeef69e28de4811bc9e255eb42735bb6609b6847f0c4763bcd51",
+          "status": "succeeded",
+          "receipt_kind": "model_response",
+          "receipt_hash": "a83290777f15d454e4f37c2b0c2ad5cde61cdd11c1146acab6e1ebabe2261c92",
+          "created_at": "2026-10-14T18:25:12.051Z"
+        },
+        {
+          "step_id": "save",
+          "plan_revision": 1,
+          "plan_hash": "69020b227125aeef69e28de4811bc9e255eb42735bb6609b6847f0c4763bcd51",
+          "status": "succeeded",
+          "receipt_kind": "artifact_saved",
+          "receipt_hash": "2a641a06b18ea423d6b97bded497eb52c50422d06ac688a6efa5a91d4faa6f10",
+          "created_at": "2026-10-14T18:25:12.100Z"
+        },
+        {
+          "step_id": "verify",
+          "plan_revision": 1,
+          "plan_hash": "69020b227125aeef69e28de4811bc9e255eb42735bb6609b6847f0c4763bcd51",
+          "status": "succeeded",
+          "receipt_kind": "completion_validated",
+          "receipt_hash": "8251ea57e8b5f84e5f78d609a3ba07a4c0a5fa9b7ba9ea18335a2664ef92bea6",
+          "created_at": "2026-10-14T18:25:12.146Z"
+        }
+      ]
+    }
+  },
+  "final_artifact": {
+    "schema_version": 1,
+    "contract": "catpaw.task-artifact.v1",
+    "artifact": {
+      "artifact_id": "a7d0b3faf0cedb5fc9020bac14e90450f15a5883427f50bbb2a850c1343cf1f1",
+      "scope_id": "51000000-0000-4000-8000-000000000001",
+      "subject_id": "51000000-0000-4000-8000-000000000004",
+      "run_id": "9a5fc6b2-86ef-448c-89a5-30c26cfacec1",
+      "task_id": "910254ecbe1eb0e961991f70ed6e09f5165c05702187d6b41f40e8b5aa0fe8d4",
+      "conversation_id": "51000000-0000-4000-8000-000000000006",
+      "run_request_hash": "9e282f87b391ad9dd40a7917bb278735f7b3c2db40850525dc05040b2985715e",
+      "source_auth_hash": "8e4e7e14b8e56fa580a02906ac11671401087c035439d5278fda0f05c454485a",
+      "delegation_id": "81af2b9b-d900-4969-85ac-4f5a778133c9",
+      "delegation_revision": 1,
+      "grant_epoch": 1,
+      "version": 1,
+      "content_hash": "5a2c24e9cc2aa498a445f643219e1339dbb06fa41a560f65a8785e74a1c97c6d",
+      "mime_type": "application/json",
+      "body": "{\"data\":{\"content\":\"A useful synthetic report based only on the original conversation and explicitly selected fictional context.\",\"conversation_id\":\"51000000-0000-4000-8000-000000000006\",\"source\":\"model_local_output\"},\"kind\":\"report\",\"summary\":\"只使用虚构资料\",\"title\":\"原生有限工作成果\"}",
+      "created_at": "2026-10-14T18:25:12.100Z",
+      "plan_reference": {
+        "revision": 1,
+        "plan_hash": "69020b227125aeef69e28de4811bc9e255eb42735bb6609b6847f0c4763bcd51"
+      },
+      "origin": "agent",
+      "is_current": true,
+      "current_reference": {
+        "artifact_id": "a7d0b3faf0cedb5fc9020bac14e90450f15a5883427f50bbb2a850c1343cf1f1",
+        "version": 1,
+        "content_hash": "5a2c24e9cc2aa498a445f643219e1339dbb06fa41a560f65a8785e74a1c97c6d"
+      },
+      "source_evidence_boundary": "supplied_context_only",
+      "editable": false,
+      "edit_blocked_reason": "source_authority_changed"
+    }
+  },
+  "unknown": {
+    "request": {
+      "schema_version": 1,
+      "contract": "catpaw.accepted-work-intent.v1",
+      "turn": {
+        "turn_id": "51000000-0000-4000-8000-000000000007",
+        "expected_revision": 1,
+        "expected_grant_epoch": 1,
+        "message": {
+          "id": "51000000-0000-4000-8000-000000000008",
+          "text": "请把给定虚构资料整理为本地报告。保留“原样”引用与 \"quoted\" 文本。"
+        },
+        "context": [
+          {
+            "id": "fictional-records",
+            "text": "虚构记录甲：已确认。\n虚构记录乙：待核对，保留 🐾。"
+          }
+        ]
+      },
+      "work": {
+        "decision_id": "51000000-0000-4000-8000-000000000009",
+        "input_hash": "8ae83196a2b03cbff228b1cdc3ee57d2a97f54ca8f51b11e98756691550ac9f6",
+        "route_hash": "eef4100e83db1b2ab5ea9a7efd4818e97dcd90c819f056b54082fbdf5cd5e305",
+        "tool_policy": "local_output_v1",
+        "not_after": "2026-10-14T18:27:12.164Z",
+        "execution_budget_ms": 60000,
+        "limits": {
+          "due": 1,
+          "model": 1,
+          "source": 0
+        }
+      }
+    },
+    "turn": {
+      "schema_version": 1,
+      "contract": "catpaw.accepted-work-intent.v1",
+      "turn": {
+        "id": "51000000-0000-4000-8000-000000000007",
+        "conversation_id": "51000000-0000-4000-8000-000000000006",
+        "scope_id": "51000000-0000-4000-8000-000000000001",
+        "grant_epoch": 1,
+        "conversation_revision": 2,
+        "state": "completed",
+        "admission_hash": "3fd00de6923baf9d0d07687e4a14b741be9f5797a2d991a89853040a2bdc6167",
+        "request_hash": "74c55eca1a229f87cfdc75994c40bb3990ced3714bc393fb9fcadef2496039b6",
+        "events": [
+          {
+            "schema_version": 1,
+            "contract": "catpaw.native-chat.v1",
+            "scope_id": "51000000-0000-4000-8000-000000000001",
+            "conversation_id": "51000000-0000-4000-8000-000000000006",
+            "turn_id": "51000000-0000-4000-8000-000000000007",
+            "sequence": 1,
+            "cursor": "51000000-0000-4000-8000-000000000007:1",
+            "grant_epoch": 1,
+            "model_reality": "injected_offline_only",
+            "type": "turn_started",
+            "data": {
+              "request_hash": "74c55eca1a229f87cfdc75994c40bb3990ced3714bc393fb9fcadef2496039b6",
+              "conversation_revision": 2
+            }
+          },
+          {
+            "schema_version": 1,
+            "contract": "catpaw.native-chat.v1",
+            "scope_id": "51000000-0000-4000-8000-000000000001",
+            "conversation_id": "51000000-0000-4000-8000-000000000006",
+            "turn_id": "51000000-0000-4000-8000-000000000007",
+            "sequence": 2,
+            "cursor": "51000000-0000-4000-8000-000000000007:2",
+            "grant_epoch": 1,
+            "model_reality": "injected_offline_only",
+            "type": "tool_call",
+            "data": {
+              "call_id": "native-wire-original-plan",
+              "name": "delegate_plan_v1",
+              "arguments": {
+                "title": "有限工作原生样例",
+                "goal": "整理明确提供的虚构资料",
+                "requirements": "仅使用原对话和已明确选择的文字上下文",
+                "stop_conditions": [
+                  "保存并核对一份本地报告"
+                ],
+                "steps": [
+                  {
+                    "id": "compose",
+                    "title": "整理",
+                    "detail": ""
+                  },
+                  {
+                    "id": "save",
+                    "title": "保存",
+                    "detail": ""
+                  },
+                  {
+                    "id": "verify",
+                    "title": "核对",
+                    "detail": ""
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "schema_version": 1,
+            "contract": "catpaw.native-chat.v1",
+            "scope_id": "51000000-0000-4000-8000-000000000001",
+            "conversation_id": "51000000-0000-4000-8000-000000000006",
+            "turn_id": "51000000-0000-4000-8000-000000000007",
+            "sequence": 3,
+            "cursor": "51000000-0000-4000-8000-000000000007:3",
+            "grant_epoch": 1,
+            "model_reality": "injected_offline_only",
+            "type": "tool_result",
+            "data": {
+              "call_id": "native-wire-original-plan",
+              "name": "delegate_plan_v1",
+              "result": {
+                "scope_id": "51000000-0000-4000-8000-000000000001",
+                "conversation_id": "51000000-0000-4000-8000-000000000006",
+                "turn_id": "51000000-0000-4000-8000-000000000007",
+                "call_id": "native-wire-original-plan",
+                "delegation_id": "81af2b9b-d900-4969-85ac-4f5a778133c9",
+                "operation_id": "fe0bb814-2ac7-48f2-89b1-470d603be1e4",
+                "run_id": "9a5fc6b2-86ef-448c-89a5-30c26cfacec1",
+                "task_id": "910254ecbe1eb0e961991f70ed6e09f5165c05702187d6b41f40e8b5aa0fe8d4",
+                "request_hash": "217f40a382a4ad7f1e7d13a0aad6edea976d05a834b965bf0198e93defcdf6a6",
+                "delegation_revision": 1,
+                "grant_epoch": 1,
+                "projection_url": "/catpaw/v1/scopes/51000000-0000-4000-8000-000000000001/runs/9a5fc6b2-86ef-448c-89a5-30c26cfacec1"
+              }
+            }
+          },
+          {
+            "schema_version": 1,
+            "contract": "catpaw.native-chat.v1",
+            "scope_id": "51000000-0000-4000-8000-000000000001",
+            "conversation_id": "51000000-0000-4000-8000-000000000006",
+            "turn_id": "51000000-0000-4000-8000-000000000007",
+            "sequence": 4,
+            "cursor": "51000000-0000-4000-8000-000000000007:4",
+            "grant_epoch": 1,
+            "model_reality": "injected_offline_only",
+            "type": "turn_completed",
+            "data": {
+              "message_id": "6a8904d0-e793-43bd-82c3-297cc60a39db",
+              "final_text_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              "task_bindings": [
+                {
+                  "scope_id": "51000000-0000-4000-8000-000000000001",
+                  "conversation_id": "51000000-0000-4000-8000-000000000006",
+                  "turn_id": "51000000-0000-4000-8000-000000000007",
+                  "call_id": "native-wire-original-plan",
+                  "delegation_id": "81af2b9b-d900-4969-85ac-4f5a778133c9",
+                  "operation_id": "fe0bb814-2ac7-48f2-89b1-470d603be1e4",
+                  "run_id": "9a5fc6b2-86ef-448c-89a5-30c26cfacec1",
+                  "task_id": "910254ecbe1eb0e961991f70ed6e09f5165c05702187d6b41f40e8b5aa0fe8d4",
+                  "request_hash": "217f40a382a4ad7f1e7d13a0aad6edea976d05a834b965bf0198e93defcdf6a6",
+                  "delegation_revision": 1,
+                  "grant_epoch": 1,
+                  "projection_url": "/catpaw/v1/scopes/51000000-0000-4000-8000-000000000001/runs/9a5fc6b2-86ef-448c-89a5-30c26cfacec1"
+                }
+              ]
+            }
+          }
+        ],
+        "task_bindings": [
+          {
+            "scope_id": "51000000-0000-4000-8000-000000000001",
+            "conversation_id": "51000000-0000-4000-8000-000000000006",
+            "turn_id": "51000000-0000-4000-8000-000000000007",
+            "call_id": "native-wire-original-plan",
+            "delegation_id": "81af2b9b-d900-4969-85ac-4f5a778133c9",
+            "operation_id": "fe0bb814-2ac7-48f2-89b1-470d603be1e4",
+            "run_id": "9a5fc6b2-86ef-448c-89a5-30c26cfacec1",
+            "task_id": "910254ecbe1eb0e961991f70ed6e09f5165c05702187d6b41f40e8b5aa0fe8d4",
+            "request_hash": "217f40a382a4ad7f1e7d13a0aad6edea976d05a834b965bf0198e93defcdf6a6",
+            "delegation_revision": 1,
+            "grant_epoch": 1,
+            "projection_url": "/catpaw/v1/scopes/51000000-0000-4000-8000-000000000001/runs/9a5fc6b2-86ef-448c-89a5-30c26cfacec1"
+          }
+        ],
+        "created_at": "2026-10-14T18:25:12.164Z",
+        "work_intent": {
+          "schema_version": 1,
+          "contract": "catpaw.accepted-work-intent.v1",
+          "decision_id": "51000000-0000-4000-8000-000000000009",
+          "input_hash": "8ae83196a2b03cbff228b1cdc3ee57d2a97f54ca8f51b11e98756691550ac9f6",
+          "route_hash": "eef4100e83db1b2ab5ea9a7efd4818e97dcd90c819f056b54082fbdf5cd5e305",
+          "tool_policy": "local_output_v1",
+          "not_after": "2026-10-14T18:27:12.164Z",
+          "execution_budget_ms": 60000,
+          "limits": {
+            "due": 1,
+            "model": 1,
+            "source": 0
+          },
+          "subject_id": "51000000-0000-4000-8000-000000000004",
+          "scope_id": "51000000-0000-4000-8000-000000000001",
+          "conversation_id": "51000000-0000-4000-8000-000000000006",
+          "conversation_epoch": 1,
+          "turn_id": "51000000-0000-4000-8000-000000000007",
+          "message_id": "51000000-0000-4000-8000-000000000008",
+          "admitted_at": "2026-10-14T18:25:12.164Z"
+        },
+        "runtime_holder_id": "64949e67-05b1-44cf-9e8e-9d31c08f9180",
+        "runtime_generation": 1,
+        "finished_at": "2026-10-14T18:25:12.166Z",
+        "next_cursor": "51000000-0000-4000-8000-000000000007:4"
+      }
+    },
+    "grant": {
+      "schema_version": 1,
+      "contract": "catpaw.task-work-grant.v1",
+      "grant": {
+        "reference": {
+          "schema_version": 1,
+          "contract": "catpaw.task-work-grant.v1",
+          "grant_id": "51000000-0000-4000-8000-000000000009",
+          "terms_hash": "01730af590f2eea26f4b5c3ca949ae9b8ec50e6c0716a6fccdbf8e4e081da936"
+        },
+        "terms": {
+          "schema_version": 1,
+          "contract": "catpaw.task-work-grant.v1",
+          "mode": "accepted_run",
+          "grant_id": "51000000-0000-4000-8000-000000000009",
+          "scope": {
+            "scope_id": "51000000-0000-4000-8000-000000000001",
+            "profile_id": "51000000-0000-4000-8000-000000000002",
+            "workspace_id": "51000000-0000-4000-8000-000000000003",
+            "owner": "catpaw:c5efd0ca766e5f92ec7e25284351986a01b2a0cae42d40327a56426adfd3bdfb"
+          },
+          "subject_id": "51000000-0000-4000-8000-000000000004",
+          "conversation_id": "51000000-0000-4000-8000-000000000006",
+          "source_auth": {
+            "subject_id": "51000000-0000-4000-8000-000000000004",
+            "scope_id": "51000000-0000-4000-8000-000000000001",
+            "issuer": "https://native-wire.example.invalid/auth/v1",
+            "session_id": "51000000-0000-4000-8000-000000000005",
+            "issued_at": 1,
+            "consent_revision": 1
+          },
+          "origin": {
+            "delegation_id": "81af2b9b-d900-4969-85ac-4f5a778133c9",
+            "operation_id": "fe0bb814-2ac7-48f2-89b1-470d603be1e4",
+            "run_id": "9a5fc6b2-86ef-448c-89a5-30c26cfacec1",
+            "task_id": "910254ecbe1eb0e961991f70ed6e09f5165c05702187d6b41f40e8b5aa0fe8d4"
+          },
+          "input_hash": "8ae83196a2b03cbff228b1cdc3ee57d2a97f54ca8f51b11e98756691550ac9f6",
+          "args_hash": "69020b227125aeef69e28de4811bc9e255eb42735bb6609b6847f0c4763bcd51",
+          "model_configuration_hash": "a2a2abc0d1178c8e38176bd1085d7d58fdb162a4986f0d42cdc7ffc7471d3e7b",
+          "route_hash": "eef4100e83db1b2ab5ea9a7efd4818e97dcd90c819f056b54082fbdf5cd5e305",
+          "source_catalog_hash": null,
+          "memory_generation": 1,
+          "accepted_at": "2026-10-14T18:25:12.165Z",
+          "not_after": "2026-10-14T18:27:12.164Z",
+          "execution_budget_ms": 60000,
+          "limits": {
+            "due": 1,
+            "model": 1,
+            "source": 0
+          },
+          "allowed_tools": [
+            "save_artifact",
+            "finish_task",
+            "ask_user"
+          ]
+        },
+        "run_binding": {
+          "operation_id": "fe0bb814-2ac7-48f2-89b1-470d603be1e4",
+          "run_id": "9a5fc6b2-86ef-448c-89a5-30c26cfacec1",
+          "delegation_id": "81af2b9b-d900-4969-85ac-4f5a778133c9",
+          "task_id": "910254ecbe1eb0e961991f70ed6e09f5165c05702187d6b41f40e8b5aa0fe8d4",
+          "run_request_hash": "217f40a382a4ad7f1e7d13a0aad6edea976d05a834b965bf0198e93defcdf6a6",
+          "grant_epoch": 1,
+          "delegation_revision": 1
+        },
+        "state": "active",
+        "revision": 3,
+        "consumed": {
+          "due": 1,
+          "model": 1,
+          "source": 0
+        },
+        "remaining": {
+          "due": 0,
+          "model": 0,
+          "source": 0
+        },
+        "expired": false,
+        "task_completed": false
+      },
+      "receipt": {
+        "contract": "catpaw.task-work-grant.v1",
+        "grant_id": "51000000-0000-4000-8000-000000000009",
+        "terms_hash": "01730af590f2eea26f4b5c3ca949ae9b8ec50e6c0716a6fccdbf8e4e081da936",
+        "run_binding": {
+          "operation_id": "fe0bb814-2ac7-48f2-89b1-470d603be1e4",
+          "run_id": "9a5fc6b2-86ef-448c-89a5-30c26cfacec1",
+          "delegation_id": "81af2b9b-d900-4969-85ac-4f5a778133c9",
+          "task_id": "910254ecbe1eb0e961991f70ed6e09f5165c05702187d6b41f40e8b5aa0fe8d4",
+          "run_request_hash": "217f40a382a4ad7f1e7d13a0aad6edea976d05a834b965bf0198e93defcdf6a6",
+          "grant_epoch": 1,
+          "delegation_revision": 1
+        },
+        "accepted_at": "2026-10-14T18:25:12.165Z",
+        "task_completed": false,
+        "receipt_hash": "43d8929cb75afb7ab7485df42458b4745e03e5ab5fbae216917a5b89c78ea570"
+      },
+      "reservations": [
+        {
+          "id": "fe0bb814-2ac7-48f2-89b1-470d603be1e4",
+          "grant_id": "51000000-0000-4000-8000-000000000009",
+          "terms_hash": "01730af590f2eea26f4b5c3ca949ae9b8ec50e6c0716a6fccdbf8e4e081da936",
+          "scope_id": "51000000-0000-4000-8000-000000000001",
+          "subject_id": "51000000-0000-4000-8000-000000000004",
+          "conversation_id": "51000000-0000-4000-8000-000000000006",
+          "run_id": "9a5fc6b2-86ef-448c-89a5-30c26cfacec1",
+          "task_id": "910254ecbe1eb0e961991f70ed6e09f5165c05702187d6b41f40e8b5aa0fe8d4",
+          "run_binding": {
+            "operation_id": "fe0bb814-2ac7-48f2-89b1-470d603be1e4",
+            "run_id": "9a5fc6b2-86ef-448c-89a5-30c26cfacec1",
+            "delegation_id": "81af2b9b-d900-4969-85ac-4f5a778133c9",
+            "task_id": "910254ecbe1eb0e961991f70ed6e09f5165c05702187d6b41f40e8b5aa0fe8d4",
+            "run_request_hash": "217f40a382a4ad7f1e7d13a0aad6edea976d05a834b965bf0198e93defcdf6a6",
+            "grant_epoch": 1,
+            "delegation_revision": 1
+          },
+          "frozen": {
+            "grant_reference": {
+              "schema_version": 1,
+              "contract": "catpaw.task-work-grant.v1",
+              "grant_id": "51000000-0000-4000-8000-000000000009",
+              "terms_hash": "01730af590f2eea26f4b5c3ca949ae9b8ec50e6c0716a6fccdbf8e4e081da936"
+            },
+            "run_binding": {
+              "operation_id": "fe0bb814-2ac7-48f2-89b1-470d603be1e4",
+              "run_id": "9a5fc6b2-86ef-448c-89a5-30c26cfacec1",
+              "delegation_id": "81af2b9b-d900-4969-85ac-4f5a778133c9",
+              "task_id": "910254ecbe1eb0e961991f70ed6e09f5165c05702187d6b41f40e8b5aa0fe8d4",
+              "run_request_hash": "217f40a382a4ad7f1e7d13a0aad6edea976d05a834b965bf0198e93defcdf6a6",
+              "grant_epoch": 1,
+              "delegation_revision": 1
+            },
+            "execution": null,
+            "input": {
+              "operation_id": "fe0bb814-2ac7-48f2-89b1-470d603be1e4",
+              "operation_key": "a92970aa91d7a02a57db3ce0ade20c8c49c26b7d2d6e4ed257aed038ac7269ca",
+              "kind": "due",
+              "request_hash": "217f40a382a4ad7f1e7d13a0aad6edea976d05a834b965bf0198e93defcdf6a6",
+              "deadline_at": "2026-10-14T18:26:13.667Z"
+            }
+          },
+          "reservation_hash": "6507123110f31c669b32b36299415d332c38a81afcc790e7805930c4250a9c23",
+          "reserved_at": "2026-10-14T18:25:13.667Z",
+          "state": "unknown",
+          "outcome": {
+            "input": {
+              "operation_id": "fe0bb814-2ac7-48f2-89b1-470d603be1e4",
+              "request_hash": "217f40a382a4ad7f1e7d13a0aad6edea976d05a834b965bf0198e93defcdf6a6",
+              "outcome": "unknown",
+              "receipt_reference": null
+            },
+            "recorded_at": "2026-10-14T18:25:13.667Z",
+            "checkpoint_hash": "48c84c2db6ebecf79321841ae48557449114c2f17c6dd0bda43526944d24655c",
+            "acknowledgement": {
+              "contract": "catpaw.work-attempt-ack.v1",
+              "attempt_id": "e0b990a5-c676-4ba5-8126-1a40ebf39cd5",
+              "execution_revision": 0,
+              "previous_task_hash": "69bbaf2db420cb2501e5777584b55b5cde0b545cb26325996fcbdfbb2879ae5f",
+              "next_task_hash": "4494ca7d99dade3687e85583eaa3309a8e7dfb2a7fc51da185475f2c9fc9e173",
+              "checkpoint_hash": "f9929d0247c629e1a301d2e52a998cb4bd0fc79cd5f39d9de5fe8f1a63e5e121",
+              "task_status": "outcome_unknown",
+              "run_binding": {
+                "operation_id": "fe0bb814-2ac7-48f2-89b1-470d603be1e4",
+                "run_id": "9a5fc6b2-86ef-448c-89a5-30c26cfacec1",
+                "delegation_id": "81af2b9b-d900-4969-85ac-4f5a778133c9",
+                "task_id": "910254ecbe1eb0e961991f70ed6e09f5165c05702187d6b41f40e8b5aa0fe8d4",
+                "run_request_hash": "217f40a382a4ad7f1e7d13a0aad6edea976d05a834b965bf0198e93defcdf6a6",
+                "grant_epoch": 1,
+                "delegation_revision": 1
+              },
+              "completion_receipt": null,
+              "acknowledged_at": "2026-10-14T18:25:13.667Z"
+            }
+          }
+        },
+        {
+          "id": "51cd921e32a7ec9e89e49c348e2acce721f7706e46c2375a15d0503fcfebf990",
+          "grant_id": "51000000-0000-4000-8000-000000000009",
+          "terms_hash": "01730af590f2eea26f4b5c3ca949ae9b8ec50e6c0716a6fccdbf8e4e081da936",
+          "scope_id": "51000000-0000-4000-8000-000000000001",
+          "subject_id": "51000000-0000-4000-8000-000000000004",
+          "conversation_id": "51000000-0000-4000-8000-000000000006",
+          "run_id": "9a5fc6b2-86ef-448c-89a5-30c26cfacec1",
+          "task_id": "910254ecbe1eb0e961991f70ed6e09f5165c05702187d6b41f40e8b5aa0fe8d4",
+          "run_binding": {
+            "operation_id": "fe0bb814-2ac7-48f2-89b1-470d603be1e4",
+            "run_id": "9a5fc6b2-86ef-448c-89a5-30c26cfacec1",
+            "delegation_id": "81af2b9b-d900-4969-85ac-4f5a778133c9",
+            "task_id": "910254ecbe1eb0e961991f70ed6e09f5165c05702187d6b41f40e8b5aa0fe8d4",
+            "run_request_hash": "217f40a382a4ad7f1e7d13a0aad6edea976d05a834b965bf0198e93defcdf6a6",
+            "grant_epoch": 1,
+            "delegation_revision": 1
+          },
+          "frozen": {
+            "grant_reference": {
+              "schema_version": 1,
+              "contract": "catpaw.task-work-grant.v1",
+              "grant_id": "51000000-0000-4000-8000-000000000009",
+              "terms_hash": "01730af590f2eea26f4b5c3ca949ae9b8ec50e6c0716a6fccdbf8e4e081da936"
+            },
+            "run_binding": {
+              "operation_id": "fe0bb814-2ac7-48f2-89b1-470d603be1e4",
+              "run_id": "9a5fc6b2-86ef-448c-89a5-30c26cfacec1",
+              "delegation_id": "81af2b9b-d900-4969-85ac-4f5a778133c9",
+              "task_id": "910254ecbe1eb0e961991f70ed6e09f5165c05702187d6b41f40e8b5aa0fe8d4",
+              "run_request_hash": "217f40a382a4ad7f1e7d13a0aad6edea976d05a834b965bf0198e93defcdf6a6",
+              "grant_epoch": 1,
+              "delegation_revision": 1
+            },
+            "execution": {
+              "run_id": "9a5fc6b2-86ef-448c-89a5-30c26cfacec1",
+              "task_id": "910254ecbe1eb0e961991f70ed6e09f5165c05702187d6b41f40e8b5aa0fe8d4",
+              "run_request_hash": "217f40a382a4ad7f1e7d13a0aad6edea976d05a834b965bf0198e93defcdf6a6",
+              "lease_id": "e0b990a5-c676-4ba5-8126-1a40ebf39cd5",
+              "execution_revision": 0
+            },
+            "input": {
+              "operation_id": "51cd921e32a7ec9e89e49c348e2acce721f7706e46c2375a15d0503fcfebf990",
+              "operation_key": "4bac9cb2ce3f864974425d44cc591ef144485d5d6547f3788fe957027c6a2c42",
+              "kind": "model",
+              "request_hash": "e0e93a62f378dd504bbbde483703e06c78ce1732bbf6353d19ba288a446a5ef0",
+              "deadline_at": "2026-10-14T18:25:14.467Z"
+            }
+          },
+          "reservation_hash": "e70325508c20b4f609f805c349572a5b8f8e5913364b2da421bc190b81e992dd",
+          "reserved_at": "2026-10-14T18:25:13.667Z",
+          "state": "reserved",
+          "outcome": null
+        }
+      ]
+    },
+    "control": {
+      "schema_version": 1,
+      "contract": "catpaw.task-control.v1",
+      "control": {
+        "scope_id": "51000000-0000-4000-8000-000000000001",
+        "subject_id": "51000000-0000-4000-8000-000000000004",
+        "conversation_id": "51000000-0000-4000-8000-000000000006",
+        "run_id": "9a5fc6b2-86ef-448c-89a5-30c26cfacec1",
+        "task_id": "910254ecbe1eb0e961991f70ed6e09f5165c05702187d6b41f40e8b5aa0fe8d4",
+        "run_request_hash": "217f40a382a4ad7f1e7d13a0aad6edea976d05a834b965bf0198e93defcdf6a6",
+        "delegation_id": "81af2b9b-d900-4969-85ac-4f5a778133c9",
+        "delegation_revision": 1,
+        "grant_epoch": 1,
+        "authority_reference": {
+          "delegation_revision": 1,
+          "grant_epoch": 1,
+          "state": "active"
+        },
+        "execution_revision": 0,
+        "task_status": "outcome_unknown",
+        "plan_reference": {
+          "revision": 1,
+          "plan_hash": "69020b227125aeef69e28de4811bc9e255eb42735bb6609b6847f0c4763bcd51"
+        },
+        "source_authorization_current": true,
+        "blocked_reason": "original_outcome_unknown",
+        "unresolved_operations": [
+          {
+            "kind": "model",
+            "operation_id": "51cd921e32a7ec9e89e49c348e2acce721f7706e46c2375a15d0503fcfebf990",
+            "state": "dispatched",
+            "can_retry": false
+          }
+        ],
+        "can_pause": false,
+        "can_resume": false,
+        "can_revoke": true,
+        "snapshot_hash": "c6a8ce5868b983d04d24bd45c7ebd0fff281310a72f0280885b3545aaaa1fd0d"
+      }
+    },
+    "projection": {
+      "schema_version": 1,
+      "run": {
+        "id": "9a5fc6b2-86ef-448c-89a5-30c26cfacec1",
+        "delegation_id": "81af2b9b-d900-4969-85ac-4f5a778133c9",
+        "operation_id": "fe0bb814-2ac7-48f2-89b1-470d603be1e4",
+        "run_id": "9a5fc6b2-86ef-448c-89a5-30c26cfacec1",
+        "delegation_revision": 1,
+        "grant_epoch": 1,
+        "request_hash": "217f40a382a4ad7f1e7d13a0aad6edea976d05a834b965bf0198e93defcdf6a6",
+        "task_id": "910254ecbe1eb0e961991f70ed6e09f5165c05702187d6b41f40e8b5aa0fe8d4",
+        "artifact_references": [],
+        "approval_ids": [],
+        "created_at": "2026-10-14T18:25:12.165Z",
+        "state": "outcome_unknown",
+        "authorization_state": "current",
+        "attempts": [
+          {
+            "upstream_run_id": "e0b990a5-c676-4ba5-8126-1a40ebf39cd5",
+            "started_at": "2026-10-14T18:25:13.667Z",
+            "finished_at": "2026-10-14T18:25:13.667Z",
+            "status": "outcome_unknown"
+          }
+        ]
+      },
+      "task": {
+        "id": "910254ecbe1eb0e961991f70ed6e09f5165c05702187d6b41f40e8b5aa0fe8d4",
+        "status": "outcome_unknown",
+        "attempts": 1
+      },
+      "execution_layer": "native_chat_provider_ready_unverified",
+      "plan": {
+        "run_id": "9a5fc6b2-86ef-448c-89a5-30c26cfacec1",
+        "task_id": "910254ecbe1eb0e961991f70ed6e09f5165c05702187d6b41f40e8b5aa0fe8d4",
+        "conversation_id": "51000000-0000-4000-8000-000000000006",
+        "accepted_revision": 1,
+        "accepted_plan_hash": "69020b227125aeef69e28de4811bc9e255eb42735bb6609b6847f0c4763bcd51",
+        "applied_revision": 1,
+        "applied_plan_hash": "69020b227125aeef69e28de4811bc9e255eb42735bb6609b6847f0c4763bcd51",
+        "application_state": "applied",
+        "task_status": "outcome_unknown",
+        "content": {
+          "title": "有限工作原生样例",
+          "goal": "整理明确提供的虚构资料",
+          "requirements": "仅使用原对话和已明确选择的文字上下文",
+          "stop_conditions": [
+            "保存并核对一份本地报告"
+          ],
+          "steps": [
+            {
+              "id": "compose",
+              "title": "整理",
+              "detail": ""
+            },
+            {
+              "id": "save",
+              "title": "保存",
+              "detail": ""
+            },
+            {
+              "id": "verify",
+              "title": "核对",
+              "detail": ""
+            }
+          ]
+        },
+        "applied_content": {
+          "title": "有限工作原生样例",
+          "goal": "整理明确提供的虚构资料",
+          "requirements": "仅使用原对话和已明确选择的文字上下文",
+          "stop_conditions": [
+            "保存并核对一份本地报告"
+          ],
+          "steps": [
+            {
+              "id": "compose",
+              "title": "整理",
+              "detail": ""
+            },
+            {
+              "id": "save",
+              "title": "保存",
+              "detail": ""
+            },
+            {
+              "id": "verify",
+              "title": "核对",
+              "detail": ""
+            }
+          ]
+        },
+        "step_receipts": []
+      }
+    }
+  },
+  "provenance": {
+    "runtime": "actual maintained createCloudRuntime",
+    "repository": "serialized TestRepository",
+    "provider": "injected_offline_only",
+    "network": "deny-net; global fetch throws",
+    "real_auth": false,
+    "real_model": false,
+    "real_sql": false,
+    "device": false,
+    "contract_acceptance": false,
+    "source_hashes": {
+      "services/edge/test/fixtures/generate-native-accepted-work-wire.mjs": "847fbbe69583cad49f928861247a6a1cf7e66e77036fec798d19de61b6ff8653",
+      "services/edge/supabase/functions/_shared/api.mjs": "6c20d3466cb9b866a8ed22633fa85a627e60dcace56042ed9d2046e06ee5b4ba",
+      "services/edge/supabase/functions/_shared/authority.mjs": "b6215e2a2e4e06ea596d2b153a75d87666dd7f507bff4fe8336b622c8d9ee496",
+      "services/edge/supabase/functions/_shared/core/src/accepted-work-intent-contract.mjs": "1fa4f21f9250c88daa2b3b5ba5881ebdeaa704426c66b2b044841e3300fb9deb",
+      "services/edge/supabase/functions/_shared/core/src/chat-service.mjs": "ee4528a3bc53505f92fba2d9c02fa1cd13503a55a8a977214446ecadf31753b8",
+      "services/edge/supabase/functions/_shared/core/src/local-output-facade.mjs": "efb1a7c985ae75bddf3d4b3d63b4c998df7dd940f21c120d706a9520b41a61b4",
+      "services/edge/supabase/functions/_shared/core/src/task-work-grant-contract.mjs": "bf3eb12c1b9275c3d21a0c2c37581338b8af2239b112cd453da5f7ca06fd66d0",
+      "services/edge/supabase/functions/_shared/core/src/task-work-grant-service.mjs": "174831a5eed880a77f2f176344c0bd201921ebf708c13fd5bb0d02bc131e05b6",
+      "services/edge/supabase/functions/_shared/core/src/accepted-work-execution.mjs": "ad20f58ffaa7016402754fde81a97056dbda3ba92a838daebef0ef5f420f571b"
+    }
+  }
+}

@@ -1,0 +1,922 @@
+{
+  "schema_version": 1,
+  "candidate": "AF-W50-W60-CONTRACTS-20261015-01",
+  "recorded_at_utc": "2026-10-14T16:56:25.866258+00:00",
+  "baseline_commit": "2aca06884b89084e4a5dcfa786c97ce2d54ec7c9",
+  "branch": "feat/s05-bounded-work",
+  "status": "OFFLINE_PREPARATORY_CONTRACTS_PASS; W50_W60_PRODUCT_NOT_ACCEPTED",
+  "reviewed_changed_inputs": [
+    {
+      "path": "apps/ios-conversation/CatpawM.xcodeproj/project.pbxproj",
+      "bytes": 55749,
+      "sha256": "d4867d0833dc4f780428ae69114b53b5910ad3aa7dd077a3d38cf32b8b748883"
+    },
+    {
+      "path": "apps/ios-conversation/Scripts/test-device-effect-contract-portable.sh",
+      "bytes": 580,
+      "sha256": "bfdbe6cb3a07ceca66f27ed4dcc5e1e1a7e61535fb8f0f04caf5eefa01aba4a2"
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Domain/ConversationDeviceEffects.swift",
+      "bytes": 38723,
+      "sha256": "226d8b08478f469d3b2ced929e911440454f5402d913e583b08d74e471e599a8"
+    },
+    {
+      "path": "apps/ios-conversation/Tests/ConversationDeviceEffectContractTests.swift",
+      "bytes": 20028,
+      "sha256": "aae2e89a5ca58cb0087ef87cabbff67f7c3024f4d03ab0eafae4607110db617a"
+    },
+    {
+      "path": "apps/ios-conversation/Tests/Fixtures/device-effect-contract-v2.json",
+      "bytes": 99736,
+      "sha256": "9fc74cd27abf382da55295c74877afc1affe53afc05879a3616a9576ebb8f804"
+    },
+    {
+      "path": "scripts/reviewed-findings.json",
+      "bytes": 82905,
+      "sha256": "910ee88c63e42622ab22cfe946ac73b6cddc8cf95c2d95ee826f1e8780c84e16"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/authority.mjs",
+      "bytes": 14298,
+      "sha256": "a80ccbb33c52eb4666b190e7a7841fda2360222e1067ba0970baedfe0dbbf1a1"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/device-effect-contract.mjs",
+      "bytes": 9882,
+      "sha256": "3a2f49108789fbc91326f1111f2faafed09de3d286431fe75fe6870657bf8f5c"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/device-effect-service.mjs",
+      "bytes": 29675,
+      "sha256": "2cb283471760eab998387eeb50bbef033b57fe52ac94da16af84b592b28da32d"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/task-work-grant-contract.mjs",
+      "bytes": 9499,
+      "sha256": "bf3eb12c1b9275c3d21a0c2c37581338b8af2239b112cd453da5f7ca06fd66d0"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/task-work-grant-service.mjs",
+      "bytes": 42873,
+      "sha256": "93947162755e61554271593b6bc24497e7f893658ac1885e037c468df92bdd7b"
+    },
+    {
+      "path": "services/edge/test/accepted-work-source-authority.test.mjs",
+      "bytes": 10212,
+      "sha256": "22dd9f625ee75673539289c444c5a7f505451fe0eaed1698ef52629e50835ea6"
+    },
+    {
+      "path": "services/edge/test/device-effect-contract-fixture.mjs",
+      "bytes": 13728,
+      "sha256": "dc77efabc4c94734225422e5589aaf5f14b1afd5e5c112ae0598199798340894"
+    },
+    {
+      "path": "services/edge/test/device-effect.test.mjs",
+      "bytes": 33712,
+      "sha256": "cb00a365f8c47aa88294b3299ceabfcb3c875ee1d58276b5321268874924174b"
+    },
+    {
+      "path": "services/edge/test/task-work-grant.test.mjs",
+      "bytes": 53108,
+      "sha256": "4f57b10c38737fc91dac8ce6a04ed03c6014427c3ed6388627947d0b8ba81da9"
+    }
+  ],
+  "final_backend_inputs": [
+    {
+      "path": "services/edge/supabase/functions/_shared/api.mjs",
+      "bytes": 28433,
+      "sha256": "6b92e0f31e931aecad700094c4303b3a15264bf22d4b6bb090d0708ad7e7dea5"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/authority.mjs",
+      "bytes": 14298,
+      "sha256": "a80ccbb33c52eb4666b190e7a7841fda2360222e1067ba0970baedfe0dbbf1a1"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/bootstrap.ts",
+      "bytes": 1836,
+      "sha256": "da0c920f3face5196a2a4440b7bb5f2dd0b326aa3bc6a704f7f1b7cb4766893b"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/config.mjs",
+      "bytes": 4287,
+      "sha256": "468eaab57ba393fb350aa63023238e26d436ffb7ab411232e1ac0e9c322f7ff0"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/consent.mjs",
+      "bytes": 3597,
+      "sha256": "af0210248796da63c810a50a9bc4336b4ddf0497624f00f8e85fd07489f5aaab"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/facade-r2/patched-openmuse/apps/server/src/errors.ts",
+      "bytes": 233,
+      "sha256": "1b9236cd303b2958dd30e5f9ec376847be30b37826f621ab02404f6e3104bc31"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/facade-r2/src/common.mjs",
+      "bytes": 1992,
+      "sha256": "57482b53644a3e4c0e2e274b49e28b1c57d7570001896b6db756a9958665e9ab"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/facade-r2/src/facade.mjs",
+      "bytes": 18505,
+      "sha256": "d66b2b996b8546251b5462d659bdcca1d9d35ef04704fd147f64579979079919"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/facade-r2/src/fenced-worker-store.mjs",
+      "bytes": 2963,
+      "sha256": "4a4161baf12e7afd89c72111ecb831e26e560b727067d0ab719db3e09a7d837c"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/facade-r2/src/http.mjs",
+      "bytes": 2878,
+      "sha256": "b00cfc48b829de79ca09c06d063c8c17592e9d46893306283079b01a4bf7d528"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/integration/edge-adapter/src/bounded-store.mjs",
+      "bytes": 14893,
+      "sha256": "25dfc3317b4f56e3ddc371641299552066fe3dae3abcbf0f1b6f39902e22ffd6"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/integration/edge-adapter/src/bounded-tick.mjs",
+      "bytes": 8717,
+      "sha256": "999aca145346926c21e5b2403fb20254637744d388a65df27e2b4c4dd7bb0be8"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/integration/edge-adapter/src/common.mjs",
+      "bytes": 1093,
+      "sha256": "6033928ef8e2166494d84df32893d2e5eaf2acbef609c69104ffc366fcd8ed49"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/integration/edge-adapter/vendor/openmuse/runtime/engine/worker.mjs",
+      "bytes": 8320,
+      "sha256": "51973696df9b39cdda99366b31f663b86771ab4a44cce5dc2b02e12aa35a13ef"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/integration/edge-adapter/vendor/openmuse/runtime/log.mjs",
+      "bytes": 1056,
+      "sha256": "63e9674fae8ab5f090253f9018c4bbec162b79d14eb3ab33fc05dc8358e4abcc"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/integration/server-foundation/src/chat-recovery.mjs",
+      "bytes": 4673,
+      "sha256": "5e02edeeb821703401da7aff329ee2305556a9a09a113453eda8fea08ce00f6c"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/integration/server-foundation/src/common.mjs",
+      "bytes": 3283,
+      "sha256": "ae6b670c4635c7aa28745f1989be8a2884d884144d0fdb515a390cfe69fa33c4"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/integration/server-foundation/src/foundation.mjs",
+      "bytes": 35760,
+      "sha256": "165afb9dea4cf7e046aba9c30dc4bdea527501d1e8b45ec62b7179ec5d74cda9"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/integration/server-foundation/src/postgres-repository.mjs",
+      "bytes": 9240,
+      "sha256": "2b9b38becaa7743598bc0a0a304278c4ad19c1610ebb864631183265392f4d46"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/integration/server-foundation/src/provider-policy.mjs",
+      "bytes": 1787,
+      "sha256": "8a7ab3f6f0d0054f951905b3b08ec511df4feaa994b52e9ce6fa653263d0506f"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/integration/server-foundation/src/test-repository.mjs",
+      "bytes": 5086,
+      "sha256": "9de68fb86a263f8326d9016b10b7fce29820c8f5aed725b61f545881a44594c5"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/chat-metrics.mjs",
+      "bytes": 999,
+      "sha256": "f4c2c94bded2042dda8cc44466f1f41129910d2df766af27746b73e48adcb711"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/chat-service.mjs",
+      "bytes": 30788,
+      "sha256": "9e8be3b5807dd3ca7beabd84abd1b4cb5bb60d1d64cf9c69954226f67d4afcaa"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/device-effect-contract.mjs",
+      "bytes": 9882,
+      "sha256": "3a2f49108789fbc91326f1111f2faafed09de3d286431fe75fe6870657bf8f5c"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/device-effect-service.mjs",
+      "bytes": 29675,
+      "sha256": "2cb283471760eab998387eeb50bbef033b57fe52ac94da16af84b592b28da32d"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/foundation-http.mjs",
+      "bytes": 3030,
+      "sha256": "e020d7166ad568d87ee59bc9f08b5ad4c5d413252a531961f4aaf4ea4df4b138"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/foundation-runtime.mjs",
+      "bytes": 6845,
+      "sha256": "6363bad07bd2da39c0ef5b13fdcc7448cdfc2e2139a1b2a57a4968242e70fb64"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/http.mjs",
+      "bytes": 6382,
+      "sha256": "4fad927a6e65725780f054c249397e99abf00fa9954cbad1e53e8b4857520d02"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/local-output-facade.mjs",
+      "bytes": 22826,
+      "sha256": "c9d9c07df4fe6f23dd075f298298e9a105f554b903b48799c7df6a568048fc41"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/model-handler.mjs",
+      "bytes": 8592,
+      "sha256": "bec13d71ea0a4c243e08e9644252689226208e7159462f702982ae5f8d77b22d"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/openrouter-provider.mjs",
+      "bytes": 11932,
+      "sha256": "6877d045c7d5d1e187648ff6a951ab0645f2a62f8254599bad88a1a98e3c9319"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/plan-contract.mjs",
+      "bytes": 2393,
+      "sha256": "f78a14ea9fe3987b1e60dcf486dccad125fd14481344c5f8629afc279c030b20"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/projection-adapter.mjs",
+      "bytes": 3277,
+      "sha256": "86b1006b7fb39d5678e404bbf1c53c24d58e0b602b4ee21c0b847d6de8992eb8"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/provider-errors.mjs",
+      "bytes": 3159,
+      "sha256": "4e7ece3c47e031104a05a3134695a9f0fb0d777017c8e535cfe54b2973a87e14"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/public-source-contract.mjs",
+      "bytes": 7281,
+      "sha256": "e04ea3847d1b622cdd069a47b152e854e838947795b946eedd4ab3ad618fab41"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/purge-plan.mjs",
+      "bytes": 5577,
+      "sha256": "134ef79c249374709fa274dfa2884fcd11bc1ca9f54908bd0dcfc31d8500bf16"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/report-completion.mjs",
+      "bytes": 3993,
+      "sha256": "964ce92ec3aeb954a7ac9d1e20deb8e6bb3b7d39a46498f097c80cc4624583a6"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/runtime.mjs",
+      "bytes": 1870,
+      "sha256": "d46cfbc97e2c55974d1ff72eca7d1d63c90b1e60c13c4fb2abc8d661ae3b1f94"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/single-step-handler.mjs",
+      "bytes": 6941,
+      "sha256": "586fe50321d44fa94fabff26a3144709d6fd2a19822e1c9cda270e136dbe0d6d"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/source-erasure.mjs",
+      "bytes": 3807,
+      "sha256": "e343207ac354a8a5b3517cbeb892c3247cba8721144fdde33266a71c6d1fdb51"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/sourced-worker-tools.mjs",
+      "bytes": 2381,
+      "sha256": "ebfa84e84a44ba0d2dea2b64a7534ae283578f7668511dedfbbffc8c2cb8201e"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/supabase-auth.mjs",
+      "bytes": 3764,
+      "sha256": "d08a8440df3a692058da398aba1e8d3f754bdc7c402b74ba1617d0ba8febc986"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/supabase-scope-authority.mjs",
+      "bytes": 99,
+      "sha256": "2993c68e34e0f58e6f4b42295a72b94b965f31216c04500f6b133800c13a9340"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/task-action-contract.mjs",
+      "bytes": 5464,
+      "sha256": "cac7f24dfface85b550f28cd9311e4df73e4938d5fd5a28a6c4433b452024502"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/task-action-service.mjs",
+      "bytes": 17038,
+      "sha256": "0794def66e129ce29774dc30f900983ebb5caa6019c741bbfb14afab330658a9"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/task-artifact-contract.mjs",
+      "bytes": 3096,
+      "sha256": "24ce2e17866c4068f396c0e9144e7c371795262d1ba34cd3ba96d6e22d8264c5"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/task-artifact-service.mjs",
+      "bytes": 20350,
+      "sha256": "0816a4a22cff50e3404745a850e82fcb01d5994b47b0449dd1f3db31416b01e4"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/task-control-contract.mjs",
+      "bytes": 3332,
+      "sha256": "a2e3fbca9bfaca8261b2bc08b056b20bcb480f87d597715d3620d20fd49f6521"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/task-control-service.mjs",
+      "bytes": 13165,
+      "sha256": "9cee737cf0bdb18299573c98a5ef116195b29e9cdb12347d7d1c5cefc39ed043"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/task-execution-fence.mjs",
+      "bytes": 849,
+      "sha256": "1ecceaf4bbd048d649da668fe7fb548b291f2a8be8874661de52c17da727514d"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/task-execution-store.mjs",
+      "bytes": 9353,
+      "sha256": "8e4bd5c05d8277ee2caa1138de136eefa5bc8156bd2d0076aba1f6774e291cc3"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/task-plan-service.mjs",
+      "bytes": 17377,
+      "sha256": "57b9241e2ae0793a8279948de155ab82dcd0456d06e88c77f8a00699da057389"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/task-revision-contract.mjs",
+      "bytes": 2118,
+      "sha256": "95a6f245758de49536ccd8b136b30d9d1888b826c887c367c50a7dfeb7ce798a"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/task-revision-service.mjs",
+      "bytes": 22545,
+      "sha256": "3bbb3d65553d04f284b5da6c6b2210be9d39fdc29d68c90cb6fd97ad7db844ed"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/task-source-service.mjs",
+      "bytes": 16768,
+      "sha256": "00c23e84a133a256d6f8331af67a0be82f64b0693fb033cd16e76ffe5c525e92"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/task-work-grant-contract.mjs",
+      "bytes": 9499,
+      "sha256": "bf3eb12c1b9275c3d21a0c2c37581338b8af2239b112cd453da5f7ca06fd66d0"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/task-work-grant-service.mjs",
+      "bytes": 42873,
+      "sha256": "93947162755e61554271593b6bc24497e7f893658ac1885e037c468df92bdd7b"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/text-batcher.mjs",
+      "bytes": 2036,
+      "sha256": "1a28b45cd0693d47c28d7f7f55a39a49c6d84fd13f908e3a81d90b51459fd0f0"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/tools.mjs",
+      "bytes": 11557,
+      "sha256": "b7007216144aec50a38fdd85b518d7c205585cf2b4a32d5949fc132c6f9f08c1"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/worker-output-contract.mjs",
+      "bytes": 6317,
+      "sha256": "ebd49073f856f8e9486fbb7202ee466e4f503ab63003a293264c6d3dca2ecacc"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/postgres-pool.mjs",
+      "bytes": 2729,
+      "sha256": "5151efd5cb92adb146f0a6092aa2ef4881c94dbe6745d8721506dc4a65d2cf29"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/public-web-reader.mjs",
+      "bytes": 11950,
+      "sha256": "6e75fa1cc8ae41dc7b90ab8c6fd328bda2d5ce04dbd177244c5ad79c7c418ac5"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/sensitivity.mjs",
+      "bytes": 624,
+      "sha256": "4002ea6e28a38b24f9482266d22bc5b275710f2d5cbe35280efe65ef4dc95376"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/tick-auth.mjs",
+      "bytes": 1608,
+      "sha256": "541e9d88070d68510a617810b749591629cbaf5c1fe82438bc0caf5b7f268999"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/worker-kick.mjs",
+      "bytes": 2974,
+      "sha256": "02e85731e8395f87b6ed49e3e6562a6aae4a4da2134ef947db9628e446e881a5"
+    },
+    {
+      "path": "services/edge/supabase/functions/catpaw-api/index.ts",
+      "bytes": 220,
+      "sha256": "d2138d5833a07ecbd022508c5ff8ee4061c538e1fe8ef7bc4109ce82078af32b"
+    },
+    {
+      "path": "services/edge/supabase/functions/deno.json",
+      "bytes": 96,
+      "sha256": "bca245843dc12d05fa9887b23d13e6a86231ff59e6419f2c032e76087fababbe"
+    },
+    {
+      "path": "services/edge/test/accepted-work-source-authority.test.mjs",
+      "bytes": 10212,
+      "sha256": "22dd9f625ee75673539289c444c5a7f505451fe0eaed1698ef52629e50835ea6"
+    },
+    {
+      "path": "services/edge/test/anonymous-auth.test.mjs",
+      "bytes": 3417,
+      "sha256": "3a5174a68058aa8e8bc3dfe3325eb57e00d24cbdee2b636a30769b851b410b21"
+    },
+    {
+      "path": "services/edge/test/auto-kick.test.mjs",
+      "bytes": 4092,
+      "sha256": "489d03c943bed385a30aae6fd9dc246fea49c04472a9a0559f04fe97d163e8d1"
+    },
+    {
+      "path": "services/edge/test/chat-stream-budget.test.mjs",
+      "bytes": 12769,
+      "sha256": "5b1a2fa18ef67a21ee4f6b427eb8c78dda8a33d768037f6cd756853203285286"
+    },
+    {
+      "path": "services/edge/test/device-effect-contract-fixture.mjs",
+      "bytes": 13728,
+      "sha256": "dc77efabc4c94734225422e5589aaf5f14b1afd5e5c112ae0598199798340894"
+    },
+    {
+      "path": "services/edge/test/device-effect.test.mjs",
+      "bytes": 33712,
+      "sha256": "cb00a365f8c47aa88294b3299ceabfcb3c875ee1d58276b5321268874924174b"
+    },
+    {
+      "path": "services/edge/test/dialogue-p0.test.mjs",
+      "bytes": 30833,
+      "sha256": "db4efdad4354db040ceaf2370521da092fc5797a46ddc56a402f6f8b8c7e6cde"
+    },
+    {
+      "path": "services/edge/test/logout-owner-regression.test.mjs",
+      "bytes": 2400,
+      "sha256": "ee640555519c9f3279addebb5cdd9e6ff0ff810af82f44530b15ac457297e52e"
+    },
+    {
+      "path": "services/edge/test/minimum.test.mjs",
+      "bytes": 6408,
+      "sha256": "780e07a28c9af1dea5e814fc92ad96fe981f4ab6cf9163c863367dd071f13232"
+    },
+    {
+      "path": "services/edge/test/postgres-json-binding.test.mjs",
+      "bytes": 11040,
+      "sha256": "9e2c05c625d1b7c7aefd5ca459ab51ed40d0906775b2118bbf24f1485877fe69"
+    },
+    {
+      "path": "services/edge/test/short-task-chain.test.mjs",
+      "bytes": 10934,
+      "sha256": "8b9a64ded965f4bdc6891027fe8c3e86c72b35024cacae277d223a5eedd1814e"
+    },
+    {
+      "path": "services/edge/test/task-action-http.test.mjs",
+      "bytes": 13141,
+      "sha256": "49b6b24bb6d829372f71f1c4fbb180f5ba5566cf3c4b4c3d29cd9cceaeb78a76"
+    },
+    {
+      "path": "services/edge/test/task-action.test.mjs",
+      "bytes": 26015,
+      "sha256": "ad9d3b0e3965fa4636dd36e98e570a99c16d5536507296c2e47e7e5501e7b10e"
+    },
+    {
+      "path": "services/edge/test/task-artifact-http.test.mjs",
+      "bytes": 20056,
+      "sha256": "fc5ee18a290eed364656ea69ad86d13648ab4f70c7317b9b4e187f0be5216f95"
+    },
+    {
+      "path": "services/edge/test/task-artifact.test.mjs",
+      "bytes": 23686,
+      "sha256": "c624a42de8f5f4d6ae8b491405d31cd13471f115437727648a2884e2c413d4a3"
+    },
+    {
+      "path": "services/edge/test/task-control.test.mjs",
+      "bytes": 34614,
+      "sha256": "fa613757d1c5ddc90d2a3fb4fd791fb1e314c974ed0362560446ceea7fd9dbad"
+    },
+    {
+      "path": "services/edge/test/task-plan-http.test.mjs",
+      "bytes": 14963,
+      "sha256": "a5aa421905ba2269a129577a34b8747aa04c34e612fc1eb57c9a7be3778266ff"
+    },
+    {
+      "path": "services/edge/test/task-plan.test.mjs",
+      "bytes": 21115,
+      "sha256": "b516631ebf9da81f0587767ff627373b8c9869e4af57e08a3852a353cdeae508"
+    },
+    {
+      "path": "services/edge/test/task-public-sources.test.mjs",
+      "bytes": 24482,
+      "sha256": "54b7be223c9c6a1931bd2d544c781e4ad80634e07c4e5ff6cdd646787b3511a2"
+    },
+    {
+      "path": "services/edge/test/task-revision-http.test.mjs",
+      "bytes": 27879,
+      "sha256": "9b513e7a7119ab7014511fdef66ee18f781631aa877ac41944239490d1210709"
+    },
+    {
+      "path": "services/edge/test/task-revision.test.mjs",
+      "bytes": 21824,
+      "sha256": "cdee1bbe231a3c509655048289cfa4e51b946326339fb03824436aeab0567b86"
+    },
+    {
+      "path": "services/edge/test/task-source-http.test.mjs",
+      "bytes": 13711,
+      "sha256": "de1439868f331b5cca231d5b6f37d63efb95f4824e748b73cef41a266032d5c7"
+    },
+    {
+      "path": "services/edge/test/task-sourced-report.test.mjs",
+      "bytes": 14799,
+      "sha256": "3fef61fca3a3ba9235bb2916ec708b9d6223fb8e2462e375bd3db5f0d071bc76"
+    },
+    {
+      "path": "services/edge/test/task-work-grant.test.mjs",
+      "bytes": 53108,
+      "sha256": "4f57b10c38737fc91dac8ce6a04ed03c6014427c3ed6388627947d0b8ba81da9"
+    }
+  ],
+  "w50_transitive_local_imports": [
+    {
+      "path": "services/edge/supabase/functions/_shared/core/facade-r2/patched-openmuse/apps/server/src/errors.ts",
+      "bytes": 233,
+      "sha256": "1b9236cd303b2958dd30e5f9ec376847be30b37826f621ab02404f6e3104bc31"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/facade-r2/src/common.mjs",
+      "bytes": 1992,
+      "sha256": "57482b53644a3e4c0e2e274b49e28b1c57d7570001896b6db756a9958665e9ab"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/facade-r2/src/facade.mjs",
+      "bytes": 18505,
+      "sha256": "d66b2b996b8546251b5462d659bdcca1d9d35ef04704fd147f64579979079919"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/facade-r2/src/fenced-worker-store.mjs",
+      "bytes": 2963,
+      "sha256": "4a4161baf12e7afd89c72111ecb831e26e560b727067d0ab719db3e09a7d837c"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/integration/edge-adapter/src/bounded-store.mjs",
+      "bytes": 14893,
+      "sha256": "25dfc3317b4f56e3ddc371641299552066fe3dae3abcbf0f1b6f39902e22ffd6"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/integration/edge-adapter/src/common.mjs",
+      "bytes": 1093,
+      "sha256": "6033928ef8e2166494d84df32893d2e5eaf2acbef609c69104ffc366fcd8ed49"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/integration/edge-adapter/vendor/openmuse/runtime/engine/worker.mjs",
+      "bytes": 8320,
+      "sha256": "51973696df9b39cdda99366b31f663b86771ab4a44cce5dc2b02e12aa35a13ef"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/integration/edge-adapter/vendor/openmuse/runtime/log.mjs",
+      "bytes": 1056,
+      "sha256": "63e9674fae8ab5f090253f9018c4bbec162b79d14eb3ab33fc05dc8358e4abcc"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/integration/server-foundation/src/common.mjs",
+      "bytes": 3283,
+      "sha256": "ae6b670c4635c7aa28745f1989be8a2884d884144d0fdb515a390cfe69fa33c4"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/integration/server-foundation/src/test-repository.mjs",
+      "bytes": 5086,
+      "sha256": "9de68fb86a263f8326d9016b10b7fce29820c8f5aed725b61f545881a44594c5"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/local-output-facade.mjs",
+      "bytes": 22826,
+      "sha256": "c9d9c07df4fe6f23dd075f298298e9a105f554b903b48799c7df6a568048fc41"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/plan-contract.mjs",
+      "bytes": 2393,
+      "sha256": "f78a14ea9fe3987b1e60dcf486dccad125fd14481344c5f8629afc279c030b20"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/public-source-contract.mjs",
+      "bytes": 7281,
+      "sha256": "e04ea3847d1b622cdd069a47b152e854e838947795b946eedd4ab3ad618fab41"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/report-completion.mjs",
+      "bytes": 3993,
+      "sha256": "964ce92ec3aeb954a7ac9d1e20deb8e6bb3b7d39a46498f097c80cc4624583a6"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/task-action-contract.mjs",
+      "bytes": 5464,
+      "sha256": "cac7f24dfface85b550f28cd9311e4df73e4938d5fd5a28a6c4433b452024502"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/task-action-service.mjs",
+      "bytes": 17038,
+      "sha256": "0794def66e129ce29774dc30f900983ebb5caa6019c741bbfb14afab330658a9"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/task-control-contract.mjs",
+      "bytes": 3332,
+      "sha256": "a2e3fbca9bfaca8261b2bc08b056b20bcb480f87d597715d3620d20fd49f6521"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/task-execution-fence.mjs",
+      "bytes": 849,
+      "sha256": "1ecceaf4bbd048d649da668fe7fb548b291f2a8be8874661de52c17da727514d"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/task-execution-store.mjs",
+      "bytes": 9353,
+      "sha256": "8e4bd5c05d8277ee2caa1138de136eefa5bc8156bd2d0076aba1f6774e291cc3"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/task-plan-service.mjs",
+      "bytes": 17377,
+      "sha256": "57b9241e2ae0793a8279948de155ab82dcd0456d06e88c77f8a00699da057389"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/task-revision-contract.mjs",
+      "bytes": 2118,
+      "sha256": "95a6f245758de49536ccd8b136b30d9d1888b826c887c367c50a7dfeb7ce798a"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/task-revision-service.mjs",
+      "bytes": 22545,
+      "sha256": "3bbb3d65553d04f284b5da6c6b2210be9d39fdc29d68c90cb6fd97ad7db844ed"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/task-source-service.mjs",
+      "bytes": 16768,
+      "sha256": "00c23e84a133a256d6f8331af67a0be82f64b0693fb033cd16e76ffe5c525e92"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/task-work-grant-contract.mjs",
+      "bytes": 9499,
+      "sha256": "bf3eb12c1b9275c3d21a0c2c37581338b8af2239b112cd453da5f7ca06fd66d0"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/task-work-grant-service.mjs",
+      "bytes": 42873,
+      "sha256": "93947162755e61554271593b6bc24497e7f893658ac1885e037c468df92bdd7b"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/public-web-reader.mjs",
+      "bytes": 11950,
+      "sha256": "6e75fa1cc8ae41dc7b90ab8c6fd328bda2d5ce04dbd177244c5ad79c7c418ac5"
+    },
+    {
+      "path": "services/edge/test/task-work-grant.test.mjs",
+      "bytes": 53108,
+      "sha256": "4f57b10c38737fc91dac8ce6a04ed03c6014427c3ed6388627947d0b8ba81da9"
+    }
+  ],
+  "checks": {
+    "full_maintained_backend": {
+      "passed": 303,
+      "failed": 0,
+      "included_w50": 37,
+      "included_device_primitives": 34,
+      "included_source_authority": 7,
+      "scope": "cached-only existing public dependencies; deny-net; ignore-env; serialized synthetic Repository, no real PostgreSQL"
+    },
+    "independent_review": {
+      "original_authority_same_10_case_control": {
+        "passed": 1,
+        "failed": 9,
+        "expected_exit": 1,
+        "log": "final-old-source-10-red.log",
+        "failure_category": "AssertionError Missing expected rejection; no import/runtime/network errors"
+      },
+      "final_source_and_service": {
+        "passed": 11,
+        "failed": 0,
+        "exit": 0,
+        "log": "final-green.log",
+        "cases": "6 semantic frozen binding drifts after coherent self-hash/backpointer rewrites; final awaited timestamp jitter; scope-subject-grant lock trace with no writes; 2 coherent zero epoch/revision; service grantCurrent split-clock comparison"
+      },
+      "pure_binding_helper": {
+        "passed_methods": 6,
+        "failed_methods": 0,
+        "reject_mutations": 59,
+        "valid_local_and_sourced_baselines": 2,
+        "log": "helper-boundaries-green.log",
+        "hash_unchanged": true
+      }
+    },
+    "native_v2": {
+      "portable_groups_passed": 8,
+      "fixture_responses": 15,
+      "legacy_v1_cases_passed": 28,
+      "fixture_reproducible": true,
+      "scope": "Foundation portability and actual Node primitive fixture; no Simulator XCTest or OS effects"
+    },
+    "host_sdk": {
+      "status": "PASS",
+      "app_source_members": 100,
+      "targets": 3,
+      "bilingual_entries": 968,
+      "locale_bound_lookups": 960,
+      "semantic_default_sources": 99,
+      "classified_legacy_presenters": 10,
+      "scope": "non-DEBUG iOS Simulator SDK typecheck/syntax/project/localization; no link/build/install claim"
+    }
+  },
+  "w50_red_to_green": [
+    {
+      "red": "w50-store-current-red.log",
+      "failure": "actual whole store returned null; bounded store rejected valid terminal after task lease cleanup",
+      "green": "w50-store-current-green.log"
+    },
+    {
+      "red": "w50-delayed-continuation-red.log",
+      "failure": "later maintained slice incorrectly reused original model transport 30s deadline for durable local result",
+      "green": "w50-delayed-continuation-green.log"
+    },
+    {
+      "red": "w50-original-ack-red.log",
+      "failure": "generic due settlement rejected terminal Task; typed original acknowledged attempt needed",
+      "green": "w50-original-ack-green.log"
+    },
+    {
+      "red": "w50-dispatch-guard-red.log",
+      "failure": "missing typed original dispatched checkpoint/attempt guard",
+      "green": "w50-dispatch-guard-green.log"
+    },
+    {
+      "red": "w50-typed-receipt-red.log",
+      "failure": "received self-hash and missing original unknown checkpoint could be recorded as outcome",
+      "green": "w50-typed-receipt-green.log"
+    },
+    {
+      "red": "w50-continuation-identity-red.log",
+      "failure": "local continuation accepted missing/substituted received payload; unknown terminal could close without original reservation",
+      "green": "w50-continuation-identity-green.log"
+    },
+    {
+      "red": "w50-clock-red.log",
+      "passed": 35,
+      "failed": 2,
+      "failure": "split current-time lower/upper checks and backward clock could pass isolated service boundaries",
+      "green": "w50-clock-green-final.log",
+      "green_passed": 37
+    }
+  ],
+  "w50_actual_test_ports": [
+    "TaskExecutionStore actual claim/CAS/checkpoint/super.acknowledge (test-only same-tx adapter)",
+    "BoundedStore actual claim/CAS/checkpoint/acknowledge/onCommit same tx",
+    "LocalOutputFacade actual model plan receipt/artifact publication/assertTaskCompletion/immutable plan verify"
+  ],
+  "logs": [
+    {
+      "path": "services/edge/build/goal-resume-20261015/full-maintenance-final.log",
+      "bytes": 63189,
+      "sha256": "fbf3a6bde68d8d06c294483ed22f66ac94d11287b4214640d8bb99bb6b295c5c"
+    },
+    {
+      "path": "services/edge/build/goal-resume-20261015/accepted-source-red.log",
+      "bytes": 1065,
+      "sha256": "1291748d2274a0c0e27064e3be4cf84de3c64f325a6dd2a89b18104448bbb354"
+    },
+    {
+      "path": "services/edge/build/goal-resume-20261015/accepted-source-r1.log",
+      "bytes": 1390,
+      "sha256": "369e2fda4ce8e349afc9394e6bcd8c17b19372817cbc06272605f751f170acd5"
+    },
+    {
+      "path": "services/edge/build/goal-resume-20261015/accepted-source-shared-r6.log",
+      "bytes": 945,
+      "sha256": "f183702fbea6169ebc63ff712aa54f688b7037ebdd9a04068380e319691285e0"
+    },
+    {
+      "path": "services/edge/build/goal-resume-20261015/w50-clock-red.log",
+      "bytes": 5251,
+      "sha256": "d0deac5180a8e67531a9f76e7d0fc76713b77f31f7664f58de5db937dc690527"
+    },
+    {
+      "path": "services/edge/build/goal-resume-20261015/w50-clock-green-final.log",
+      "bytes": 4256,
+      "sha256": "772cc3d4c2895ea087c1bc17134b72a64c3d5103aa14554fb68b2d51af65e389"
+    },
+    {
+      "path": "build/accepted-work-authority-review-20261015/final-old-source-10-red.log",
+      "bytes": 7665,
+      "sha256": "c577b12270826d8a36c6abc113356c4f5717cd87542214cd2bb4ed33a17aef49"
+    },
+    {
+      "path": "build/accepted-work-authority-review-20261015/final-green.log",
+      "bytes": 1487,
+      "sha256": "56992bf2494a8907c48e443ae3a283a538da9a0d1d61568cd471d9485fe93ef9"
+    },
+    {
+      "path": "build/accepted-work-authority-review-20261015/helper-boundaries-green.log",
+      "bytes": 733,
+      "sha256": "56225c4044151f9b64c046afcd01765b4760c8c1dd8b9327502e24b84aa56dfb"
+    },
+    {
+      "path": "build/device-effect-contract-20261015/root-portable-final.log",
+      "bytes": 573,
+      "sha256": "2212444bd28255ffec6770dd102690a25d8a9ff262a32a97d357984c78490c16"
+    },
+    {
+      "path": "build/device-effect-contract-20261015/legacy-v1-regression.log",
+      "bytes": 2224,
+      "sha256": "e7d7cba896f0517e45ee867f9eda86655b826690c379a58572d8f2493312964a"
+    },
+    {
+      "path": "build/device-effect-contract-20261015/host-sdk-check.log",
+      "bytes": 8253,
+      "sha256": "d387152f43e3114b4bec22234e1f6b716de3ef7407352ef2c7f2e5d721a4e66c"
+    },
+    {
+      "path": "build/device-effect-contract-20261015/host-sdk-check-r2.log",
+      "bytes": 3360,
+      "sha256": "6512ca963f3754eb01263f416e1dccdcb8266dd4bbcde25df1be424d4e90dc1d"
+    },
+    {
+      "path": "build/device-effect-contract-20261015/node-fixture-repro.log",
+      "bytes": 235,
+      "sha256": "b03fd9b29407abae0588eb6a8cb8b6215c5431b9fe823e19c944d76249db61a5"
+    },
+    {
+      "path": "build/device-effect-contract-20261015/sensitivity.log",
+      "bytes": 3790,
+      "sha256": "f185fa39f4b7a4501f8907feb49cd857eafc99de0bf7f5fff178e89d2f527fc7"
+    },
+    {
+      "path": "build/device-effect-contract-20261015/root-sensitivity.json",
+      "bytes": 73562,
+      "sha256": "e2125a0f4f8cfba902de359136b1578b13be98c63e8d6d8f871b4d3b4c29dcb9"
+    }
+  ],
+  "agent_manifests": [
+    {
+      "path": "services/edge/build/goal-resume-20261015/w50-boundary-result.json",
+      "bytes": 11961,
+      "sha256": "7bc9766e5124243d53dba9a8bd643b0e87eb6fa7f19d76ece6cbc8249ea14161"
+    },
+    {
+      "path": "services/edge/build/goal-resume-20261015/w50-final-inputs.json",
+      "bytes": 5004,
+      "sha256": "bd8b7a5cb77d0c34a147239668684f2d54cc8cd4d7a9050e1f0be88741bc0345"
+    },
+    {
+      "path": "build/device-effect-contract-20261015/manifest.json",
+      "bytes": 10090,
+      "sha256": "3668c73973135535250625e397f2ca32a7defdad8ecf0e4c0719414385f73ca4"
+    },
+    {
+      "path": "build/accepted-work-authority-review-20261015/REVIEW-RESULT.json",
+      "bytes": 2499,
+      "sha256": "752260c135d2b3cb659fef2c3c0bf7a1744430eafd470f9e34219cb080f2a42e"
+    },
+    {
+      "path": "build/accepted-work-authority-review-20261015/EVIDENCE-SHA256.json",
+      "bytes": 7604,
+      "sha256": "dd3d056b75c234235ce9ec56a78db89c778edd7a79dce4bcb20c68f277ab1221"
+    }
+  ],
+  "provenance_clarifications": [
+    "Agent native manifest host registration/root sensitivity were pending when frozen; Root later registered host members and reviewed the exact 29 synthetic fixture findings.",
+    "Independent review byte-equality claim compares its reviewed iterations only; original strict source implementation was refactored, with expiry semantics retained.",
+    "Backend input hashes captured after final regression on otherwise unchanged source; baseline commit and changed-input hashes define reviewed source, no product package was built.",
+    "Ignored raw logs/reviewer execution copies remain local; curated JSON records identities and scope, not media or private runtime data.",
+    "First staged diff check found two new Swift files with one redundant blank EOF line; original frozen manifests/tests remain dated evidence, committed bytes differ only by deleting that LF as recorded."
+  ],
+  "limitations": [
+    "No production source/API/bootstrap/sourceChecker/purge integration in this owned slice",
+    "TaskSourceService has no public validateWorkGrantTransportReceiptInTransaction today; source received intentionally fails503 until Root implements real verifier using original receipt logic",
+    "No scheduler/Cron, recurring grant, new model/provider, paid fallback, Auth call, SQL, network request, dependency install, Simulator, phone install, deploy or publication",
+    "TestRepository is serialized synthetic test double; neither actual PostgreSQL transactional durability nor multi-instance concurrency is proven",
+    "Store test composition wraps real ports only inside owned test; no claim API dispatch is wired; previousTask and executor inputs are trusted server values and cannot be exposed as client authority",
+    "Original due authorizes one accepted run only; subsequent plan revision/recurring child work needs a separate versioned acceptance decision; no automatic extension",
+    "Task completed remains false on grant receipt/projection; domain completion and receipt persistence are distinct",
+    "New source helper has no API/tick caller; legacy source validation remains strict.",
+    "No v2 action producer/HTTP adapter/application service journal/device proof/OS executor or notification tap/update/delete implementation.",
+    "Codec fresh-dispatch permit requires future trusted transport and durable one-consumption enforcement.",
+    "No real PostgreSQL lock concurrency or external hosted Auth revocation signal was proven.",
+    "No new App package, Simulator execution, model/Auth/SQL request, scheduler/Cron, phone install, production deploy or provider change.",
+    "Existing build23 is the frozen offline native stage; W10–12 real model failure and unused second probe remain as dated facts."
+  ],
+  "release_gates_closed": [],
+  "publication_scope": "Reviewed UTF-8 code/tests/metadata only; previous held 22 PNGs require separate media authorization.",
+  "format_only_after_validation": [
+    {
+      "path": "apps/ios-conversation/Sources/Domain/ConversationDeviceEffects.swift",
+      "tested_sha256": "ff5d3fe21f2c38ef14fa2a09d0b2edcb9ff25951f8f637e6fc21a4f9864c9c36",
+      "committed_sha256": "226d8b08478f469d3b2ced929e911440454f5402d913e583b08d74e471e599a8",
+      "change": "Removed one extra trailing LF only; no token or logic change; existing portable/SDK tests were not rerun."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/ConversationDeviceEffectContractTests.swift",
+      "tested_sha256": "5cfb16ed7909468d9e2de49ea1792c3fd2ddfc387570ec52f195cd3e25ba176c",
+      "committed_sha256": "aae2e89a5ca58cb0087ef87cabbff67f7c3024f4d03ab0eafae4607110db617a",
+      "change": "Removed one extra trailing LF only; no token or logic change; existing portable/SDK tests were not rerun."
+    }
+  ]
+}

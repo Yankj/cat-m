@@ -174,9 +174,23 @@ final class DeviceTrialNativeTests: XCTestCase {
   try await p0Until { await remote.pendingUser() }
   let chat=try XCTUnwrap(app.chat);XCTAssertTrue(chat.loaded);XCTAssertEqual(chat.conversationID,id);XCTAssertEqual(chat.draft,"Existing local draft");XCTAssertFalse(chat.networkAdmissionAllowed)
   do { _=try await manager.authorization(subject:subject);XCTFail("Local receipt cannot authorize HTTP") } catch NativeAuthError.loginRequired { }
-  chat.prepareSend();try await p0Until { !chat.enqueueing };XCTAssertTrue(chat.session?.turns.isEmpty == true);XCTAssertEqual(chat.followups.pending.count,1)
-  await remote.rejectUser();_ = try? await start.value;try await p0Until { app.chat == nil }
-  let preserved=try await service.read(scope:partition.scope,conversationID:id);XCTAssertTrue(preserved.turns.isEmpty)
+  chat.prepareSend();let original=try XCTUnwrap(chat.outgoingMessages.first)
+  let producerQueue=ConversationFollowupQueueService(repository:chat.repository,scope:partition.scope,conversationID:id)
+  // Persistence completion and the repository subscription's UI publication
+  // are separate events. Observe both naturally; do not force a refresh.
+  try await p0Until("original local intent committed and projected") {
+   let durable=try await producerQueue.state()
+   return !chat.enqueueing && durable.inflight == nil && durable.pending.count == 1 && durable.pending.first?.id == original.id && durable.pending.first?.text == original.text && chat.followups.pending.count == 1 && chat.followups.pending.first?.id == original.id
+  }
+  XCTAssertEqual(original.text,"Existing local draft");XCTAssertTrue(chat.session?.turns.isEmpty == true);XCTAssertEqual(chat.followups.pending.count,1)
+  let storeURL=root.appendingPathComponent(partition.namespace).appendingPathComponent("local.store")
+  let cold=try Repository(persistence:SwiftDataPersistence(url:storeURL)),coldQueue=ConversationFollowupQueueService(repository:cold,scope:partition.scope,conversationID:id)
+  let persisted=try await coldQueue.state();XCTAssertNil(persisted.inflight);XCTAssertEqual(persisted.pending.map(\.id),[original.id]);XCTAssertEqual(persisted.pending.map(\.text),[original.text])
+  let coldSession=try await ConversationSessionService(repository:cold).read(scope:partition.scope,conversationID:id);XCTAssertTrue(coldSession.turns.isEmpty)
+  await remote.rejectUser();_ = try? await start.value;try await p0Until { app.chat == nil && !chat.loaded }
+  let reopened=try Repository(persistence:SwiftDataPersistence(url:storeURL)),preserved=try await ConversationSessionService(repository:reopened).read(scope:partition.scope,conversationID:id)
+  let preservedQueue=try await ConversationFollowupQueueService(repository:reopened,scope:partition.scope,conversationID:id).state()
+  XCTAssertTrue(preserved.turns.isEmpty);XCTAssertNil(preservedQueue.inflight);XCTAssertEqual(preservedQueue.pending.map(\.id),[original.id]);XCTAssertEqual(preservedQueue.pending.map(\.text),[original.text])
  }
  func testP0LocalReceiptCannotOpenAnotherSubjectOrAfterLogout() throws {
   let issuer="https://abcdefghijklmnopqrst.supabase.co/auth/v1",subject=UUID(),receipt=LocalConversationReceipt(issuer:issuer,subject:subject,serverScopeID:UUID())
