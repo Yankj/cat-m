@@ -1,34 +1,49 @@
 # Catpaw-m
 
-Swift优先的通用主动Agent应用：自然对话、可恢复任务、审批、成果、记忆与持续跟进。当前处于重启整合阶段，真实产品验收尚未通过；readiness、合成测试和安装成功都不等同模型/主动任务可用。
+Catpaw-m 的主线是对话、服务端任务执行及成果回流。本仓库是固定本地目录中的独立整合仓库：保留 canonical 历史，只整合已提交源码，不移动旧仓和 owner worktree。来源与本轮边界见 [整合来源](docs/status/local-integration-source.json)；唯一实时进展仍是 [主交付计划](docs/status/master-plan.md)。局部离线通过不能代替当前 R1 产品验收。
 
-本仓是用户指定维护目录的主代码入口。旧本地仓和工作树保留为来源；原始历史只在本地保存。GitHub发布基于远端main，使用经检查的差异，不发布机器/签名凭据。
+## 工程入口
 
-| 内容 | 入口 |
-|---|---|
-| 长任务开发与对话交互 | [启动合同](docs/planning/AF-1/development-start-contract.md)、[可复制prompt](docs/planning/AF-1/long-task-development-prompt.md)、[CGUI-1](docs/design/conversation-generative-ui-spec.md)、[10项验收](docs/acceptance/conversation-generative-ui-acceptance.md) |
-| Goal与唯一实时进度 | [master-plan](docs/status/master-plan.md) |
-| 新spec / 验收 | [AF-1 spec](docs/product/agent-foundation-spec.md) / [验收标准](docs/acceptance/agent-foundation-acceptance.md) |
-| 切片与依赖 | [delivery-slices.json](docs/status/delivery-slices.json) |
-| iOS主工程 | [apps/ios-conversation](apps/ios-conversation/README.md)，CatpawM.xcodeproj |
-| 服务端 | [services/edge](services/edge/README.md)，supabase/functions/ 下 catpaw-api＋_shared；独立tick入口见部署来源快照 |
-| 云电脑讨论 | [Proposed方案](docs/architecture/cloud-computer-proposal.md)，确认前不实施 |
-| 接手 / 来源 | [handoff](handoff.md) / [候选hash](docs/status/restart-import-candidate-2026-10-13.json) |
-| 架构与目录职责 | [本轮审查](docs/architecture/repository-review-2026-10-13.md) / [布局表](docs/development/repository-layout.json) |
-| Git治理 / 文档 | [branch-management](docs/development/branch-management.md) / [docs](docs/README.md) |
-| 历史过程资料 | [归档索引](docs/archive/README.md)，旧规格与阶段报告保留追溯，不作为当前开工入口 |
+| 模块 | 实际入口 | 本次固定目录边界 |
+|---|---|---|
+| 主 iOS 客户端 | [apps/ios-conversation](apps/ios-conversation/README.md)，`CatpawM.xcodeproj`；`Sources/App/CatpawApp.swift` → `ConversationFirstView` | 已整合 P0 bridge、流式文本性能、原生侧栏和本地单图输入；实际验收见主计划，本地配置为空 |
+| 服务端 | [services/edge](services/edge/README.md)，`supabase/functions/catpaw-api/index.ts` / `catpaw-worker/index.ts` | v14 基线＋未部署 dialogue P0 / 撤权失败收尾；离线测试不代表真实 PostgreSQL 或云部署 |
+| 侧栏组件 | [packages/ios-navigation](packages/ios-navigation/README.md) | 已接入主 iOS 的根页与实际导航路由；独立组件与宿主验收分层记录 |
+| 独立 QA | [qa/ios-dialogue-p0](qa/ios-dialogue-p0/REPORT.md)、[qa/backend-finalization-p0](qa/backend-finalization-p0/REPORT.md) | 已提交的测试与报告；iOS QA 的冻结输入早于后续 P0 bridge，不扩大为当前全量通过 |
+| 历史样机 | [apps/ios](apps/ios/README.md)、[apps/ios-openmuse-demo](apps/ios-openmuse-demo/README.md)、[services/facade](services/facade/README.md)、[services/offline](services/offline/README.md) | 保留 v1/r2/r3 的字节、合同和历史回归，不用作主客户端入口 |
+| 候选与其他资产 | canonical 中的未跟踪 `candidates/`、`assets/`、`research/`、开发脚本等 | 本批未导入，固定目录中没有这些内容；worker-stall / 新视觉链 / 长期授权不在本次整合范围 |
 
-## 本地验证
+文档从 [docs/README.md](docs/README.md) 开始。设计 tokens、A1 图标、上游 MIT 与冻结合同保持来源身份。
 
-需要已有Xcode；原生Swift与本地两个package无新增依赖。运行时模型与Supabase配置沿用本地配置/安全存储，不提交凭据。无配置可跑明确的离线合成测试，不能制造正常产品回答。
+## 本地检查
+
+使用已安装 Xcode，按实际位置设置进程 `DEVELOPER_DIR`，不要更改全局选择。以下只构建或执行合成测试，不安装 App：
 
 ```sh
 python3 scripts/check-repository.py
 python3 scripts/scan-repository.py
-python3 scripts/check-agent-foundation-plan.py
+zsh apps/ios-conversation/Scripts/check-source.sh
 zsh apps/ios-conversation/Scripts/test-conversation-portable.sh
 zsh apps/ios-conversation/Scripts/test-conversation-queue.sh
-zsh apps/ios-conversation/Scripts/check-source.sh
+swift test --package-path packages/ios-navigation --scratch-path packages/ios-navigation/.build-verification
+packages/ios-navigation/Scripts/verify-ios-sdk.sh
 ```
 
-SwiftUI宏、XCTest和Simulator可能需要主机允许相应进程。`CatpawM`方案的Debug测试使用人工fixture；`DeviceTrial`用于真实产品构建。模型、PG、安装与系统动作按同版验收记录执行。历史apps/ios、apps/ios-openmuse-demo和冻结来源保留，不用作当前入口。
+无签名 Simulator 构建：
+
+```sh
+xcodebuild -project apps/ios-conversation/CatpawM.xcodeproj -scheme DeviceTrial \
+  -configuration DeviceTrial -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+  -derivedDataPath apps/ios-conversation/.build-integration CODE_SIGNING_ALLOWED=NO build
+```
+
+后端离线测试复用**已有公开依赖缓存**，不安装、不读取 `.env`、禁网络。提供已有 Deno executable 和缓存路径后运行：
+
+```sh
+CATPAW_DENO_BIN=<已有Deno路径> CATPAW_PUBLIC_NPM_CACHE=<已有Deno公开cache目录> \
+  sh scripts/test-edge-offline.sh
+```
+
+该脚本在忽略的 `services/edge/build/` 生成 import map，将固定版本 jose/postgres 指向已有公开缓存；原生产源码/测试/lock 不改。没有缓存时明确失败，不联网补齐。原 QA `prepare.py` 需要相应冻结输入，且会重写其报告；不要在当前目录随意运行它或用新版本替换旧证据。
+
+运行时 public config、凭据、设备安装、云部署与 GitHub push 均另由协调安排。`origin` 只设置为指定 GitHub URL；本批未认证或访问远端。具体本次结果见 [固定目录验收](docs/acceptance/local-fixed-directory.md)。维护约定见 [CONTRIBUTING.md](CONTRIBUTING.md)。

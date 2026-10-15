@@ -1,114 +1,147 @@
-# Catpaw-m 重启 Goal 与交付计划
+# Catpaw-m 产品交付基线与主计划
 
-更新：2026-10-13；唯一实时状态页。旧主计划完整保存在[2026-10-12快照](master-plan-2026-10-12.md)，旧失败与证据边界不改写。16:07交接事实与待提交文件见[handoff](../../handoff.md)和[快照](handoff-snapshot-2026-10-13.json)；快照不另维护实时进度。
+更新：2026-10-12；本文件是唯一实时状态页。[对应spec](../product/conversation-first-delivery-spec.md)定义页面、4条用户故事、状态和API；[验收清单](../acceptance/README.md)定义测试，[一页用户说明](../product/Catpaw-m_Product_Delivery_Baseline_2026-10-12.md)是此次快照。
 
-**当前Goal（AF-1-G3-UX1）：交付可日常使用的Swift优先通用主动Agent iPhone App，体验对标Codex、能力对标Dot，并从唯一维护主仓持续同步GitHub。** 用户从自然对话交付目标，能够查看/修改计划、处理可找回审批、查收带来源版本的成果、管理记忆和持续跟进、从原生提醒回同事项；完整定义见[goal.md](../planning/AF-1/goal.md)。设计与功能同步推进，AF-GD为必需阶段；同版AF-A01–18、AF-U01–12及研究交付/变化跟进/本地日程三条CP路径全部通过才完成。2026-10-13 16:06运行Goal读回为`usageLimited`；产品尚未签收，本次交接没有改变Goal状态。云电脑用途为公开网页调研＋文件处理；现有Supabase先行、新增计算预算0，托管实施待确认。
+**最新真机产品验收FAIL，暂停R1放行。** 用户build13反馈连接待验证、发送慢、流式卡顿、后台回来断会话、图片输入缺失；天气问题得到重复任务进展和技术恢复提示。P0补为[连续多模态对话问题单MM01–MM05](../acceptance/r1-continuous-multimodal-issues.md)：即时本地响应、真实流式、前后台自动同turn续接、真图片送视觉模型、实时查询/不可用诚实说明。短CATPAW_OK不代表可用；既有一页是反馈前快照，不作为当前通过声明。
 
-需求：[AF-1 spec](../product/agent-foundation-spec.md)；验收：[AF-A01–18与AF-C01–03](../acceptance/agent-foundation-acceptance.md)；执行切片：[delivery-slices.json](delivery-slices.json)；云电脑提案：[Proposed](../architecture/cloud-computer-proposal.md)；接手：[handoff](../../handoff.md)。
+**交付目标：对话唯一主入口 → 自然形成目标/任务 → 可追踪执行 → 成果回到对话与收件箱 → 记忆可查看、更正、删除。** 不用手填委托表单替代自然任务，不新增独立执行状态机，保留现有黑灰/顶部入口/任务卡/阅读器设计。
 
-终版产品方向与验收已整合为[FINAL-1规格](../product/catpaw-final-product-spec.md)、[质量／具名优势验收](../acceptance/catpaw-final-product-acceptance.md)及[交互状态提案](../design/prototypes/catpaw-final/index.html)。当前运行AF-1-G3-UX1仍按原基础合同推进；终版Goal不是一次文档更新就切换或关闭的运行Goal。
+## 当前已交与未交
 
-| 终版目标 | 当前证据与判定 |
+| 范围 | 最新证据与验收 |
 |---|---|
-| FINAL-G1 日常可信体验 | 合同已制定；原18A／12U／3CP＋9项FQ＋10项CG对话细分需同版真实证据与7天日用；NOT_RUN |
-| FINAL-G2 限定竞争优势 | 8BP固定具名版本、输入与配对规则；尚无竞品配对测量，NOT_RUN，不能称优于 |
-| FINAL-G3 终版产品签收 | 依赖G1/G2同候选；NOT_RUN，设计/静态检查不关闭产品目标 |
+| 真实聊天/历史 | 真机连续对话产品FAIL；v13/v14短受控聊天/历史、CATPAW_OK及单次重开仅保留技术冒烟范围PASS。不能扩大为自然长对话、流畅续接、图片或实时查询通过；旧unknown不倒填 |
+| 自然任务形成 | v14一次自然委派chat completed，唯一持久binding通过；原task仍running、step0、lease已过期、artifact引用0。已确认30s预算在授权/checkpoint耗尽，过期guard连结算CAS也拒绝，留下running；DB us-east-1/API本次us-west-1跨区，出现两次55P03。worker四文件候选独立离线20/20、无新增候选阻塞；未部署，真实恢复未执行。后端撤权收尾修复14495be已获[独立QA小批](../../qa/backend-finalization-p0/REPORT.md)合成review：来源撤权用例0过1失败复现，修复20/20，未发现该补丁合成层blocker；lease/权限/终态/unknown/幂等覆盖，真实PG与部署未验。受理PASS，执行/成果BLOCKED |
+| 受控历史计数 | v12＋v13合计2；此前自然任务阶段新增1、累计provider准入3，当时未重发/手动tick/新建身份。用户新真机试用调用数未在本任务核验，不把旧3当实时总数/剩额度；后续复验按协调明确预算 |
+| 手机 | 协调转交原生owner：build14已安装并启动，同bundle保数据，原生源码仅d9a897cc；本次文档任务未独立验机。保留build13真实产品FAIL，build14性能/图片/侧栏及后端P0未放行；安装不抵扣产品验收 |
+| 体验修复 | 三补丁及9原生/50便携通过保留原测试范围，不覆盖新5个P0。原build13许可挂起缺稳定等待反馈已独立复现FAIL；冻结pending补丁独立便携7/7＋旧8场景8/8、最终Simulator XCTest 9/9（内含一个旧8场景聚合测试）、慢许可反馈UI 1/1，均为合成离线。详见[QA小批](../../qa/ios-dialogue-p0/REPORT.md)。生产scene/实际IME/即时savingLocal桥尚未接齐；设备100ms/主线程/后台5s与30s/真实弱网未验，手机build13产品FAIL与图片链阻塞不变；旧4/0/0记录不改 |
+| 记忆/收件箱 | capture/基础端口存在；cloud-foundation-next新增20/20、合并83/83仅离线PASS，memory-port/slice/outbox未接入生产/原生，产品链NOT RUN |
+| 持续执行 | tick更新此前取消，用户恢复tick批准仍待回复；worker候选20/20不表示获批或部署。恢复POST会推进原task且可能发模型，不能用GET/新chat绕过。无pg_cron/pg_net或独立云调用方，长期调度NOT RUN；session到期限制需单独可撤销任务授权 |
+| 系统扩展 | APNs缺Apple能力/发送链路；语音、朗读、桌面/锁屏、Live Activity后置，不抵扣核心验收 |
 
-## 当前基线与证据
+手机安装/用户试用均已发生，当前阻塞是产品体验失败。不重复索取已有匿名/Auth/API/Deno设置许可，不以安装/9＋50或短标记抵扣真机反馈。
 
-| 项目 | 实际状态 |
+## 用户将看到的产品
+
+| 页面/故事 | 交付形态 |
 |---|---|
-| 维护目录 | 用户指定的Desktop/ai-work/catpaw-m；应用入口 `apps/ios-conversation/CatpawM.xcodeproj`，服务端入口 `services/edge/supabase/functions/` |
-| 代码迁移 | 已复制原生集成HEAD `582e4e4`、663个跟踪文件与12个未提交候选；候选hash逐项核对，旧源目录不修改；本地原始分支历史保留为legacy-local引用 |
-| 最终handoff | 已读旧主仓handoff；用户确认相关任务停止。原文保存在忽略的local-audit；12项WIP与编译阻塞均相符 |
-| 首个修复 | 新仓已复现并修复getter缺return；候选包含许可review与弹窗分离、稳定确认入口、队列折叠、持久回复证据；新增拒绝重开/旧revision回归，最终合成验证通过 |
-| 本地检查 | 冻结合同/上游/历史来源完整性PASS；便携对话7/7、队列9/9 PASS；最终39/39原生＋1/1实际弹窗UI PASS，DeviceTrial无签名产品配置build PASS；证据限合成/Simulator，物理手机与provider未验 |
-| GitHub | 产品规划、源码调研、R1–R5设计与日期合成证据统一经[PR #8](https://github.com/Yankj/catpaw-m/pull/8)整合；实际合并提交以PR与main读回为准。main保持唯一主干；功能开发使用短分支，既有feat/conversation-genui及同期改动保留。默认main、合并后自动删head、本地hooks与PR核验沿用；当前私有仓库服务器保护不执行。legacy-local来源与旧工作树保留，详见[分支规范](../development/branch-management.md) |
-| 手机/API | 用户明确批准后，同bundle覆盖安装0.3.0(16)成功，系统读回16；未卸载/重置数据，原有内容待UI核对。镜像从连接失败进入Mac认证锁定页，待用户Touch ID解锁；截图已保存到本机忽略目录。Supabase APIv19/tick7无部署变化；实际50/43文件、14项共享差异已同步 |
-| 新候选包 | 0.3.0(16)，独立Git archive绑定原main `a905b47`；非DEBUG、严格签名、原证书/profile/entitlements及IPA逐字节PASS。已获安装及最多2次短文本原路由许可；尚未发送。见[包证据](../acceptance/restart-build16-2026-10-13.md)、[安装证据](../acceptance/restart-install16-2026-10-13.md)。PR #2阅读修复进入后续包 |
-| 真实链路 | 旧build15人工新会话同意后仍等待，未观察完整回复。许可→发送FAIL，模型UNVERIFIED；先复验现有路由 |
+| 首页：对话（US1/R1） | 文字＋图片连续输入，即时本地回显、真实云流式和前后台自动续接同turn；恢复最后会话。普通问题直接回答，实时能力不足诚实说明，不用重复任务观测替代 |
+| 自然短任务（US2/R1） | 用普通话提出目标，必要条件在对话补齐；持久binding后显示“已受理/进展”，真实成果后才能显示“已完成” |
+| 持续跟进/收件箱（US3/R2） | 离开App后云端按授权继续，需我回答/结果回原对话及App内收件箱；未验可靠调度前不承诺无限后台 |
+| 记忆管理（US4/R2） | 能看来源并记住、更正、删除；旧值/迟到job不复活。成果从对话或收件箱进入同版本阅读器 |
 
-旧仓不删除、用户数据不重置、签名凭据不发布。原始机器记录和大型旧性能采样保留本机/legacy历史，发布经扫描的spec、源码、合成摘要与原始trace hash。远端既有参数化签名模板与治理文档保留。
+核心状态：消息draft→sending→streaming→completed，已发不确定→unknown→只读核验；任务受理→排队/运行→真实成果/succeeded，或等待我/暂停/失败/unknown；记忆候选→确认→更正/forget。消息完成不等于任务完成，暂停本机队列不等于撤销服务端任务。详见spec的状态/API表。
 
-## 执行顺序与退出门槛
+## R1–R3与具体下一步
 
-| 切片 | 用户可见交付 | 依赖 | 门槛 / 当前 |
-|---|---|---|---|
-| S00 维护入口与同步 | 单一维护目录、GitHub源码、plan/spec/验收/handoff齐备 | 无 | PASS：PR #1/2源码tree与本地引用核对，部署来源和体验合同已同步；包/源码版本区分明确 |
-| S01 真对话与稳定许可 | 允许后能回答/追问/重开；许可可找回，队列轻量，状态诚实 | S00 | IN_PROGRESS：[队列sheet/暂停编辑/明确继续/unknown发送约束](../acceptance/restart-queue-ux-2026-10-13.md)已交付；追加[侧栏尺寸/搜索清空/按会话保留文字与图片草稿](../acceptance/restart-sidebar-drafts-2026-10-13.md)，最终43原生＋5实际UI、12侧栏包检查PASS。冻结build16已更新原手机，不含阅读、队列与本片；镜像待Touch ID解锁；真实模型0次，NOT_RUN |
-| S02 真图片与连续体验 | 合成图真实理解；长文/前后台可用 | S01 | AF-A06与A04/05；NOT_RUN，不自行放宽视觉路由 |
-| S03 执行审批成果 | 自然形成计划，可改/停/恢复；等待有入口；成果回对话/活动 | S01 | AF-A07–10；映射现有worker/store，先同task恢复试验。NOT_RUN |
-| S04 记忆闭环 | 保存/来源/更正/删除，新会话生效 | S01 | AF-A11；接既有端口与真实PG，NOT_RUN |
-| S05 主动跟进 | 时间/公开变化触发；无变化静默，暂停与退避 | S03 | AF-A12/13；调度托管部署先确认，产品配置代码可先做。NOT_RUN |
-| S06 原生动作触达 | 本地日程确认写入，提醒返回同事项 | S03 | AF-A14/15；已知时间本地提醒先做，APNs独立接线。NOT_RUN |
-| S07 智能UI与整体签收 | 六类卡、侧栏/输入/阅读；三条组合路径 | S02,S03,S04,S05,S06 | AF-A01/16/17/18与全部必需项同版通过。NOT_RUN |
-| S08 云电脑扩展 | 无登录网页＋文件处理；进展、恢复、停止和成果 | S03＋方案确认 | AF-C01–03；方向已选、新增计算预算0；资源/区域/供应商待确认，NOT_RUN |
+owner沿用现有线程：API＝“验证 OpenMuse 原生接入契约”；原生＝“开发 Catpaw-m iOS 应用”；存储＝“建设服务端持久化与记忆”；QA＝“验收 Catpaw-m 原生功能”；协调负责批准/预算及产品签收。
 
-S01通过后S02/S03/S04代码可在合同明确时独立推进；同一文件/设备由本任务统一整合。未经人类授权不向旧任务派发消息。失败定位输入→许可→POST→模型→事件→存储→UI具体段，不以组件完成代替用户路径。
+| 顺序/切片 | 负责人和马上做什么 | 放行门槛 / 当前 |
+|---|---|---|
+| R1-P0 连续多模态（MM01–05） | 原生负责响应/选图/渲染/自动续接，API负责流式/snapshot/视觉传输与查询能力，QA按协调已重设计三线跑同真机连续场景 | 当前FAIL；先关5个P0并保留旧失败，再谈R1放行。不把图片推到R3扩展 |
+| R1-1 原task执行恢复（A3） | 四文件候选独立离线20/20已交接；API/协调等用户回复tick更新/恢复POST及预算批准，批准后按同ID/撤权/过期/unknown与真实PG回归，不重发原chat | 未部署/未执行真实恢复；原task须有真实step→artifact version/hash→权威succeeded，不以跳过guard或假结算制造完成，保留原IDs/失败。当前BLOCKED |
+| R1-2 成果落回产品（A3/B3） | 原生接权威任务卡/成果阅读器＋最小App收件箱，API提供同引用投影；QA验双入口/重开/失败 | 对话和收件箱打开同一已提交成果；不造假回复/进度。成果0时不开放假阅读器；当前未验 |
+| R1-3 体验与手机（C1/C2） | 安装已过，原生/API/QA先关MM01–05；保留草稿/IME/主题/退出等旧回归，新增真实图片/长文/前后台自动同turn恢复和实时能力边界 | 用户真机产品FAIL；旧9/50不能抵扣新门槛，不能用技术恢复提示要求用户反复手动补救 |
+| R2-1 调度与任务授权（B1） | 存储/API准备独立云HMAC/nonce调用方、可撤销任务授权及恢复/取消语义；批准前只做离线/只读准备 | App/Mac离线任务仍推进，重复tick不双执行；不得绕过过期session认证。当前NOT RUN |
+| R2-2 记忆与原子收件箱（B2/B3） | 存储把已交候选接认证HTTP、有限重试抽取、buildContext与两个onCommit；原生接记忆管理/收件箱，QA验来源/更正/forget/迟到job | 真实PG隔离/恢复、删除屏障/outbox原子性、跨会话context通过；20/83离线不替代接线。当前NOT RUN |
+| R3 系统入口/语音 | 原生在R1/R2后交桌面/锁屏、语音/朗读、APNs；先确认能力和发送链路 | 权限/中断/无障碍、恢复同task、不泄露正文；当前后置 |
 
-## Goal 推进规则
+三线按协调新分工推进，当前P0以MM01–05为产品门槛；原task执行/成果仍保留阻塞，存储R2离线准备不替代前台连续性。真实模型/视觉复验与恢复由协调指定执行者/额度，不重发旧unknown或改历史。
 
-### AF-1 可验收 Goal 与详细执行合同
+**R1产品FAIL，暂停通过判断：连续多模态5个P0、短任务成果/收件箱和最后体验须合并放行。** 技术冒烟/唯一binding/安装不能代替。R2/D01仍NOT RUN；R1前后台自动续接不等于iOS常驻后台或可靠长程调度，R3不先行。
 
-2026-10-13用户要求将design/research、截图调用/观察、对标问题表、UX-1及12项体验验收纳入当前Goal。已更新[执行定义](../planning/AF-1/goal.md)、[输入的hash与映射](../planning/AF-1/goal-evidence-map.json)和D00–D50逐片设计线；本次不改变产品PASS/FAIL。可点按提案为设计基线，仍须原生同版验证。旧一周Demo/今天首页/飞书候选与旧预算估算不扩大范围。未来截图按用户要求保存并记录版本，私人原图只留本机。
+## 复用与记录
 
-[新计划与 AF-G0–G5](../planning/AF-1/plan.md)、[详细 spec / 用户故事](../planning/AF-1/spec-details.md)、[18 项操作脚本与 CP-01–03](../planning/AF-1/acceptance-scenarios.md)、[机器映射](../planning/AF-1/contract.json)细化现有 AF-R/AF-A/S00–S08，不建立第二份实时状态。本文仍是当前状态权威。
+复用[产品资产](../product/README.md)、[原生设计/截图](../design/README.md)、[tokens](../design/design-tokens.json)、[图标语义](../design/icon-semantics.json)、[成果/恢复样式](../design/openmuse-r3.md)；[旧整体设计](../architecture/server-first-delivery-design.md)及[记忆brief](../architecture/memory-brief-v1.md)保留原文，不再增写泛架构。冻结v1/r2/r3及LICENSE/固定commit/patch不变，活跃源码不导入。
 
-总 Goal AF-G5 只有在同版源码/包/服务上，AF-A01–18、AF-U01–12 和研究交付、变化跟进、本地日程三条组合路径全部通过才完成。AF-G0–G4及AF-GD可以分阶段签收；基线准备、短模型探针和组件通过均不关闭总 Goal。即时云端变化推送与云电脑分别按扩展范围验收；已知时间本地提醒不作 APNs 证据。
+此次当前事实来自原生/协调终态、NATURAL-TASK-V14-CHECKPOINT.json、experience-merge/PHONE-BASELINE-INSTALLED.json、云端基础审计及QA的dialogue-p0/worker-stall-acceptance报告；路径/IDs/报告与源码hash只在local-audit。spec是需求，用户页是带日期快照，当前进度仅更新这里。格式validator/succeeded不认证事实可靠性；新结果附部署/build、环境、精确case、调用计数、原IDs/hash及未验范围。本轮仅补充问题单和主计划，不导出附件，不执行模型、tick、安装或push。
 
-用户已明确以iPhone体验为主、借鉴桌面Codex信息结构。新增必需设计Goal AF-GD及[UX-1规格](../design/ios-codex-experience-spec.md) / [AF-U01–12](../acceptance/ios-codex-experience-acceptance.md)，并纳入AF-A17和总AF-G5。同版18项父验收、12项UX细分及三条组合路径全部通过才签收。前期Catpaw原图与ChatGPT/dot观察已核对，具体[对照记录](../design/ios-codex-reference-review-2026-10-13.md)保留证据边界；[可点按提案](../design/prototypes/catpaw-ios-ux/index.html)已准备，[浏览器样例交互检查](../acceptance/ios-ux-proposal-review-2026-10-13.md)通过；设计方向待用户审阅，原生UX验收NOT_RUN。Goal/验收映射、文档链接/截图hash、冻结资产完整性与候选敏感扫描通过，结果仅限本轮规划和合成提案。设计逐片推进，许可/模型首片继续。
+## Native P0 isolated branch import (2026-10-12)
 
-1. 每片固定source/合同/case；交源码、证据层、未验项与下一步，实时状态只更新本页。
-2. 真实模型试验限定数量与结束条件；旧unknown只读核对。现有路由失败后才讨论切换。
-3. 验证范围因变更、失败或风险扩大，不为测试数重复跑。构建与真机性能分别记录。
-4. 原始本地历史不推远端；main经检查的差异/PR推进，不force、不拼接无共同祖先历史。连接器发布后读回commit/tree并对齐维护分支。
-5. 云电脑方案未确认不实施。用户已批准冻结build16更新原手机与最多2次正常App短文本原路由验收；后续新包/新增范围另行确认。继续与方案无关的开发。
-6. AF-A01–18全部必需项签收后Goal才complete；云电脑扩展按独立确认范围。缺证据不算通过。
+Branch `fix/ios-p0-conversation` starts at `b7fa4ee`; active frozen native P0 code imported under `apps/ios-conversation`, preserving historical v1/r3. Source provenance: `ios-p0-import-provenance.json`. Runtime public config and personal signing values excluded. Prior 14 native/9 queue/7 conversation tests belong to the frozen source task; this worktree has not yet run native UI/performance acceptance. Next batch wires immediate echo, scene recovery and local startup; no sidebar/model/phone install. Current product FAIL and physical performance/background/network/media gates remain.
 
-## 最近验证
+## Native P0 bridge small batch (2026-10-12, isolated branch)
 
-2026-10-14按用户要求收齐最新内容并通过PR #8整合main。R5日期记录的47项输入／截图／保留R4来源hash逐项匹配；保留前次已发布的FINAL原型行尾空格修正，刷新当前Goal映射与精确误报复核，不改写日期证据。目录／冻结／部署来源、AF／Goal／FINAL／CG规划、敏感扫描与完整候选空白检查通过。候选不含同期GenUI业务开发改动；原生／真实模型／SQL／设备与产品签收状态不变。
+`fix/ios-p0-conversation` / `apps/ios-conversation`: frozen import `b733ec7`, local preview from prior verified workspace receipt while Auth waits (no HTTP admission), stable local message echo and atomic queue, native marked-text/CmdReturn guard, scene bridge wired. Final local26 native XCTest and4 actual offline Simulator UI tests PASS;9 queue/7 conversation Foundation checks PASS. Unsigned Keychain probe earlier failed -34018 and is excluded/blocked, not a passed test.
 
-2026-10-14根据用户提供的10张手机截图完成[UX-1 R5移动端对话设计](../design/mobile-conversation-reference-r5.md)、[参数](../design/mobile-conversation-reference-r5.json)和[可操作样机](../design/prototypes/catpaw-mobile-reference-r5/index.html)。图1–9与图10的视觉系统分别分析，不冒称Codex官方tokens或动效证据；私人原图仅在忽略目录按版本／hash归档。当前方向为白／近黑阅读面、深蓝本人消息、亮蓝操作、17号／1.6行高／24段间距，补紧凑／多行／全屏输入、来源、消息／会话／附件菜单与处理事件。停止正文与暂停工作独立；相机／正式分支／重新回答等保留候选合同边界，语音对话不纳入。UX-1、启动合同／prompt及72项来源同步；R4／R4.1和其他作者同期prompt改进保留。
+Measured20 Simulator action-to-visible-geometry callback proxies: p95 93.999ms, max113.349ms;1500 active callback intervals p95 40.895ms, max218.388ms,12 over100ms. Largest font case callback max899.943ms. These are real collected proxy values, not presented-frame proof; performance remains FAIL/NOT_MEASURED and product FAIL retained. Physical first-frame/Instruments, actual Chinese IME/VO, cloud continuation30s/network/media and reading anchor remain unverified. Actual Simulator Home5s recovered same synthetic turn with reply1/observe3, not cloud worker acceptance. Curated raw traces/source hashes: `../acceptance/evidence/ios-p0-native-bridge/RESULT.json`. Sidebars deferred to next batch; no phone/model/credential/signing/global selection changes.
 
-45组不透明语义色计算通过（所列小字最低4.8543、必要轮廓最低3.4444）；54组375／390／430 CSS视口的浅深色／普通放大字／阅读输入审批及菜单无横溢出，可见目标与决定区可达。复查全屏保稿、工具追加草稿、来源关闭回焦、各会话附件／草稿恢复、失败禁用停止、流中权重75与草稿保留、暂停申请等待独立人工回执，保存7张默认视口截图，见[日期证据](../acceptance/evidence/mobile-reference-20261013-r5/RESULT.json)。这些是人工浏览器样机和静态检查，原生玻璃／触觉／系统键盘／光标选区／VO／真实执行和所有release门保持未验。未修改App／后端、增加依赖或进行模型／SQL／安装／部署／发布；没有关闭运行Goal。
+Final safety guards also close admission before logout await, preserve pre-admission cancelled intents, and block conversation switch/new while marked draft active. They passed final26 native tests and final non-DEBUG iOS compile. The4 UI cases predate these final Model-only guards; same View/composer/probe hashes, accurate boundary recorded in RESULT.json. No performance acceptance inferred. Independent QA dc655574 old frozen gaps compared: current production scene/outgoing/marked-text bridges added, real IME/VO/savingLocal forced-delay rendering and physical gates still open.
 
-2026-10-13按用户要求，综合当前docs产品／UI交互／架构／研究／验收与历史索引，完善既有[长期目标与可验收prompt](../planning/AF-1/long-task-development-prompt.md)。补现状日期摘要、文档职责、AF-G5／FINAL-G1–G3分层终点、CP-01–03实际步骤、GenUI边界／算法真值、持久与unknown语义、原生矩阵／性能样本、7天日用和BP配对规则。保留同期另一作者新增的R4.1配色、R4连续机制、R3完整状态及已有WIP；未另建规格或运行Goal。现场本聊天get_goal返回空，交接usageLimited不被推定为本聊天当前状态；其他聊天未查询。
+## 独立 backend P0 来源快照
 
-本次目录、冻结来源／精确patch／MIT、部署快照、AF／Goal／FINAL／CG规划检查及diff空白检查通过，66项来源hash一致；仅更新E35的prompt hash。敏感扫描初次因映射文件hash变化，重新命中三条既有历史来源文件名；逐项核对原file字段／行号未变且为来源标识后，追加精确path／line／hash复核，规则未放宽，复扫无阻断或待审项。检查仅证明文档／来源一致性，不关闭产品用例。未修改App／后端，未真实模型／PG／设备测试、安装、部署、发布或安排日用／比较；全部产品未验状态保留。执行输出与修订前快照留忽略build目录。
+`fix/backend-p0-finalization` 从已提交 `b7fa4ee5f8d144208d51f6d0dcdee9259c4315b7` 建立独立工作树；导入冻结 dialogue P0 的6个修改生产文件、1个新增指标模块、test repository、lock 与8个合成测试文件。精确来源见 `services/edge/P0-PROVENANCE.json`；v14 source manifest、发布用本地config、上游及原worker字节保留。未纳入 worker-stall、长授权或新模型工具。
 
-2026-10-13根据用户提供的移动端Agent对话研究，完成[UX-1 R4.1配色与UI细节修订](../design/codex-color-detail-r4-1.md)、[语义色参数](../design/codex-color-detail-r4-1.json)及[新版样机](../design/prototypes/catpaw-codex-color-r4-1/index.html)。完整读取原文与6张内嵌图，区分Codex Remote、ChatGPT／Grok与插件示意，采样不标成官方tokens；原文／图留忽略本机目录。中性白灰／炭黑替换大面积靛蓝，紫色强调图标发送／文字操作，审批用黑白主按钮，辅助字提高到约13–15px。原R4引擎／CSS／SVG／生成图和日期证据不改，新版仅覆盖构图与样式；UX-1／启动合同／prompt同步，66项来源hash。
+来源复现：本工作树离线 Deno、缓存依赖、禁网络下，dialogue P0 12 PASS / 1 FAIL；FAIL 是撤权后失败收尾再次触发 grant_conflict。仅记录合成回归；修复、真实PG竞态、云部署、真模型及MM01–05产品验收尚未执行。主工作区和原冻结包未修改；没有push/merge/tick。
 
-52组不透明语义色对比计算PASS（文字最低5.3048、必要图形最低3.0921）；不代替玻璃合成与原生实际取色。24组375／390／430 CSS视口×浅深色×普通／放大字×对话／审批无横溢出，测试可见触控区约44px，决定区在框内；中大档切换确认区纵坐标差约0.01px。额外复查抽屉保稿／焦点返回、详情返回、锚点菜单与图片回源，保存4张默认视口截图。原R4数值检查未重复宣称为新测试，网页放大字不等于最大Dynamic Type。规划／66项来源／冻结／目录／链接／敏感／diff检查PASS，见[日期证据](../acceptance/evidence/codex-color-20261013-r4-1/RESULT.json)。没有生产源码／后端／依赖／模型／SQL／安装／部署／发布变化；原生材质、触觉、系统键盘、VO、真实执行与全部产品Goal未验状态保持。
+本批次修复完成（独立工作树，未部署）：独立 `beforeFailure` 只对白名单中的已失效source/consent允许静态失败回执，运行租约/turn代际/scope检查仍强制执行；`fail` 在conversation锁后读取当前行，并在await写入后、事务提交前重新检查。terminal/已脱敏/已删除行不重写、不重复通知；原timeout/dispatched unknown不被改成成功或自动重发。
 
-2026-10-13按用户提出的“效果优先、跟手／连续／可打断”完成[UX-1 R4原生交互与动效附录](../design/native-interaction-motion-r4.md)、[机器参数](../design/interaction-motion-r4.json)及[独立交互样机](../design/prototypes/catpaw-motion-study-r4/index.html)。并行完成App专用taste-skill生成的两张视觉方向图、解析弹簧和原生机制审查；新暖白／深靛蓝构图不沿用R3页面壳。R3完整42项对象场景与R2日期输入、A1／冻结tokens／合同保留。更新UX-1、启动合同／prompt与61项来源hash；没有新增release门或改变运行Goal。
+离线终态：完整8文件62 PASS / 0 FAIL，其中dialogue P0为30/30（原13项＋17项新增竞态）；Deno入口导入检查PASS。仅合成TestRepository/注入transport/离线driver serializers，未证明真实PG或多实例并发、部署、tick、真模型和产品MM01–05通过。修复及日志hash见 `services/edge/P0-FINALIZATION-MANIFEST.json`，复现及集成边界见[后端P0失败收尾验收](../acceptance/backend-p0-finalization.md)。
 
-实际浏览器拖动观察包括抽屉开关保稿、详情短拖取消／长拖回原位置、审批中大档切换且决定区坐标不变、图片关闭中向上接管回大图／下拉回源、锚点菜单与前景焦点返回、关闭编辑保稿／v2重新审阅／一次合成回执。三段正文补充期间滑杆值、焦点和可见偏移不变。24组校准后的375／390／430 CSS视口×浅深色×普通／放大字×对话／审批无横溢出、可见触控区约44px且决定区可达；手机模拟框有页面边距，不作为原生设备尺寸证据。13项独立弹簧／方向协调数值检查PASS；早期图片反向接管失败、精度跳变与viewport校准均保留迭代记录，修正后复查。规划／来源hash／冻结／目录／JS／敏感／diff检查PASS；[版本证据与4张截图](../acceptance/evidence/motion-design-20261013-r4/RESULT.json)区分浏览器观察、数值检查和限制。原生系统玻璃／scroll edge／触觉／键盘／最大Dynamic Type／VoiceOver／pinch／持久恢复与真流均未由本样机签收。未改App／后端、未加依赖、未请求模型／SQL、未安装／部署／发布；原18A／12U／3CP／9FQ／10CG／日用／竞品与运行Goal状态不变。
 
-2026-10-13完成[UX-1 R3完整交互设计](../design/interaction-scenarios-r3.md)：保留R2视觉基线与旧提案，交付[14入口可操作Demo](../design/prototypes/catpaw-interaction-r3/index.html)、[42项场景映射](../design/interaction-scenarios-r3.json)、原生落点/相对成本和4张版本截图。补侧滑/搜索/草稿恢复，过程展开/停止文字/安全点暂停，Sheet开关/下拖/保稿/放弃/同层返回，卡片未就绪→就绪→受理→生效，表图/权重/精确数值输入/同工作跟进，以及多待决/版本失效/未知原操作核对/交付恢复。原12U/10CG与开发prompt同步，49项来源hash；不增加release门或启动Goal。
+## 独立侧栏接入候选（2026-10-12）
 
-浏览器新增六场景72组尺寸/外观/字号无整页横溢出；12组审批布局、375大字键盘边界已查，发现25px home strip重叠后修正复验。实际拖动抽屉与Sheet关闭、焦点返回、后台3段正文中表单/位置稳定、两套算法真值、无效值与旧审批禁用、双击同一操作和unknown无重复写入已作合成观察。正文结束与工作暂停分轴保留。规划/冻结/布局/链接/JS/敏感及diff检查PASS；[日期证据](../acceptance/evidence/interaction-design-20261013-r3/RESULT.json)记录迭代失败读数、最终修正、source/截图hash与限制。慢速短拖/pointercancel、原生detents/VO/触觉/冷启动/部分效果复合事务和性能仍需原生/领域验证。未改App或后端、未新增依赖/模型/SQL/安装/部署/发布，真实产品验收与运行Goal保持原状态。
+`feat/ios-sidebar-navigation` 基于 `b7fa4ee` 新增零依赖 [CatpawNavigation](../../packages/ios-navigation/README.md)：根页汉堡/边缘打开、面板左滑/遮罩关闭、搜索/历史与任务成果入口、底部记忆设置、能力禁用和无障碍/Reduce Motion 代码。未写冻结客户端或活跃原生主线；由原生 owner 按现有路由接入。当前 12/12 SwiftPM 合成测试、全部源码 iOS SDK 编译和模拟器无安装策略检查 10/10 PASS，详见 [绑定源码 hash 的验收快照](../acceptance/ios-sidebar-navigation.md)。真实手势/VoiceOver/最大字号截图/延迟/触觉及主线接入 NOT RUN；不改变 R1 产品 FAIL 或任何云链路结论。
 
-2026-10-13按用户指定taste-skill完成[UX-1 R2视觉、交互与动效附录](../design/taste-visual-motion-r2.md)及[机器参数](../design/taste-visual-motion-r2.json)，保留R1产品行为、A1、冻结tokens、原生入口与全部验收门。采用native HIG、系统字体/SF Symbols与系统转场；补当前决定/成果/输入的层级、180/240/280ms有限运动、触觉事实门、减弱动态/透明度和焦点/阅读锚点规则。已同步UX-1、原12U/JSON及启动合同/prompt，没有实施新的App壳或改变运行Goal。
+## 固定本地目录整合小批（2026-10-12）
 
-[可点按R2提案](../design/prototypes/catpaw-taste/index.html)覆盖8个人工场景，实际浏览器检查流中选择、两份草稿、审批关闭重开/unknown、跟进编辑保留、时间试算负值/无效参数、离线草稿与搜索；375/390/430 CSS屏框×浅深色×17/30px审批矩阵12组合及375大字号键盘占位可达。44组语义配色计算通过，正文最低5.0319、必要轮廓最低3.0682；此为token计算，不代替实际原生取色。有限运动在预览可操作，未测量原生帧/手势/VoiceOver/系统最大字号/触觉。四份人工设计截图与来源hash、检查/扫描范围见[本轮证据](../acceptance/evidence/taste-design-20261013-r2/RESULT.json)。仓库布局、冻结身份、AF/FINAL/CGUI规划检查通过；41项Goal输入固定。JPEG元数据与旧文件名的扫描误报按精确hash复核，规则未放宽。真实模型/数据库/设备/安装/部署/发布均0，本轮设计不关闭产品验收。执行缓存与WIP前快照留忽略build，旧日期证据保留。
+`integration/local-fixed-directory` 从已提交canonical基线独立clone，指定iOS/后端/侧栏/QA七项提交均已本地整合；来源映射见[local-integration-source.json](local-integration-source.json)，实际入口见[根README](../../README.md)和[文档索引](../README.md)。未导入未跟踪候选/资产/tooling，不移动或改写owner源目录；侧栏仍未接宿主。主iOS generic Simulator无签名build PASS，当前固定目录对话7/7、队列9/9、侧栏12/12＋SDK library、后端禁网62/62 PASS；原生检查脚本的iOS编译/项目成员PASS，但现有本地化门槛99条命中、overall FAIL，保留待复核，不改生产文案掩盖。细节/源码tree/日志SHA见[固定目录验收](../acceptance/local-fixed-directory.md)。本批无装机、模型/云调用、部署或push；既有QA/设备结果保留输入边界，R1产品FAIL不变。
 
-2026-10-13完成用户要求的[产品与视觉交互评审R1](../design/product-experience-review-2026-10-13.md)：收紧体验承诺、主要用户与CP01首个价值路径，补可修改默认值、活动/管理层级、单工作摘要、当前待决、明确修改模式与两份草稿、成果复制/分享、首用权限节奏和克制反馈；已回写FINAL-1、UX-1、CGUI-1、原12项UX细则/JSON与[启动合同](../planning/AF-1/development-start-contract.md)/[prompt](../planning/AF-1/long-task-development-prompt.md)。全部18A/12U/3CP/9FQ/10CG、7天日用与BP门保留，运行Goal不切换。
+## 运行时研究归档（2026-10-12，文档小批）
 
-人工HTML提案修正日程关联错误计划、重复大计划卡、退出修改的草稿与静默开关丢字段；新增首用示例只填草稿。浏览器验证两份草稿、审批关闭重开/unknown、跟进字段、成果冲突保稿与分享说明，390px人工屏框浅色17px/深色22px样例和截图已保存，属于合成提案评审；不是原生Dynamic Type、系统分享或真实写入。Tabbit连接不可用，改用Codex内置浏览器，没有安装依赖或绕过安全页。4项规划检查、36项来源hash、冻结完整性、敏感扫描及空白检查结果见[本轮证据](../acceptance/evidence/product-design-review-20261013-r1/RESULT.json)。初次敏感扫描命中机器路径、两份JPEG与三条旧文件名；路径移除，JPEG像素/元数据复核，旧文件名仅按新精确hash续核，扫描规则未放宽。真实产品状态保留；本轮未改原生源码、未调用模型/PG、未安装/部署/发布或启动开发Goal。评审前WIP快照保留在忽略build执行目录，旧日期证据不改写。
+固定目录来源HEAD52ee352。已保存[OpenMuse源码核验](../research/openmuse-runtime-source-review.md)和[OpenDot暂定评估](../research/opendot-runtime-assessment.md)，补[ADR-005](../architecture/adr-005-runtime-reuse-and-hosting.md)与[现状快照](../architecture/runtime-state-2026-10-12.md)。当前实际为vendored OpenMuse TaskWorker＋自研适配，保留SwiftUI＋Supabase；常驻worker vs Edge分步与框架迁移为Proposed，未Accepted。OpenDot身份尚未用户确认、composio候选许可未核验、未采纳代码。手机build14仅d9a897cc，不含侧栏/图片能力；后端P0未部署。代码/版本/用户可用性分别记账，测试数量不替代产品放行。本批只归档已完成研究和本地源码对照，不运行大测试、引入资产、改应用或push。
 
-2026-10-13完成[对话UI与onboarding复核](../research/copilotkit-conversation-ui-onboarding-review-2026-10-13.md)：OpenIntelligentUI固定main读回与既有pin一致，6个选读文件blob／字节hash核验；第二链接实际是2058字节Markdown CLI提示，响应hash已固定，未执行CLI。采纳[CGUI-1](../design/conversation-generative-ui-spec.md)原生table/bar/line、两个确定计算内核和三类动作；本地调整零请求，明确跟进经新turn或安全点接同工作，写入仍精确审批／effect。10项CG必需细分已接FINAL-G1/G3与FQ，不替代18A／12U／3CP或改写冻结HTTP。
+## 图片输入独立组件小批（2026-10-12）
 
-本轮基础切片／Goal、FINAL、CGUI机器规划检查，35项输入hash、算法真值、来源身份与合同链接、冻结完整性、敏感扫描及diff空白检查PASS，范围见[日期证据](../acceptance/evidence/conversation-ui-plan-20261013/RESULT.json)。开发范围、spec与验收合同可用于[长任务启动](../planning/AF-1/development-start-contract.md)；[prompt](../planning/AF-1/long-task-development-prompt.md)仅供用户复制，未由本轮启动Goal、开发、安装或调度。模型／真实PG多实例／独立调度／物理设备／日用／竞品对照未执行；所有产品未验状态保留。SDK/Intelligence及云电脑托管仍须各自具体方案和资源门，现有route、新增compute 0及既有短文本授权边界保持。
+`feat/ios-image-composer` 从文档commit a1fd7e8另建worktree，只新增[单图PhotosPicker/附件状态/安全编码组件](../../packages/ios-image-composer/README.md)，不改宿主/主Model/网络/生命周期。默认PNG、支持JPEG，异步缩图至v2字节/像素上限、方向变换/去元数据、缩略图/移除/失败保留/显式本地重试，发送gate默认关闭。16/16 SwiftPM合成、含PhotosPicker的iOS SDK library编译/链接、无安装Simulator codec和Git8ce固定v2纯validator两格式联调PASS，详见[验收与hash](../acceptance/ios-image-composer.md)。原生owner尚待实际接线；相册交互/VoiceOver/大字/实机codec/性能/真实图片路线MM04 NOT RUN，不改R1产品FAIL或后端部署状态。没有私人相册、真实模型、装机、部署或push。
 
-2026-10-13完成[Grok分支与本地方案整合核读](../research/grok-companion-integration-review-2026-10-13.md)，固定commit `38c44457`的17个选读文件Git blob/size/byte hash全部PASS；新增E23–28进入28项hash输入。FINAL-1明确流中可操作六卡、同工作修改、持久待决/精确审批、unknown核对、成果冲突、why-now、手机跟进编辑和记忆控制；采纳原因/控制，修正四Tab/假执行/无来源排名。当前维护工程、A1、原route、预算与冻结合同保留。FINAL规划检查（3Goal/9FQ/8BP/4参照）、基础Goal/切片映射、文档链接、冻结来源、敏感扫描和diff空白PASS。人工交互提案JS语法PASS；本地file URL被浏览器安全策略拒绝，未绕过，浏览器视觉/交互验证NOT_RUN，不构成原生证据。本轮未调用模型/SQL/设备，未新增依赖、导入生产代码、部署或发布；新FQ/BP与产品未验状态保留。Supabase当前Edge/Cron文档已核对作为设计限制；changelog抓取失败，不宣称已审查其变更或现有项目资源可用。
+## Native performance small batch (2026-10-12)
 
-2026-10-13完成用户指定[四仓源码静态核读与决策修订](../research/copilotkit-four-repo-decision-update-2026-10-13.md)，commit及54个关键文件blob/byte hash见[研究来源manifest](../research/copilotkit-four-repo-source-manifest-2026-10-13.json)。新增输入E17–22，补细既有plan/spec/UX与AF-A16、AF-U06–08：后台持久待决、审批消费/结果/续聊恢复、成果版本冲突、受控registry和参数完整门槛。Goal/切片检查、22项输入hash、166条固定源码链接及19个本地链接、冻结来源完整性、敏感扫描和diff空白检查PASS；敏感扫描对三条既有catdesk历史文件名的误报仅续核原精确path/line/hash。无生产代码导入、依赖安装、模板运行、模型/PG/设备请求或部署；AF-1-G3-UX1、当前W10–12关键路径、原路由和新增计算预算0不变，所有产品未验状态保留，不继承上游测试为产品PASS。
+Original900ms callback gap reproduced before Send, independent main heartbeat661ms; XCTest AX startup contributes and unsymbolicated stack limits retained. No-XCTest same large4k autoplay confirms real App frame146ms/main163ms. Incremental TextKit/cache+50ms display/100ms scroll+token journal history filtering reduces standalone frame max58ms and main p950.81ms (baseline46.51ms), though max136ms remains. A per-character AX snapshot regression was fixed with single complete-text host AX. Final28 actual native tests and4 independent serial UI PASS; complete4096char label/Unicode/selection checked, nonDEBUG iOS build PASS. Overlap-induced earlierUI failure retained/excluded. No phone install/model/canonical write. Raw before/after, test identities, limitations: `../acceptance/evidence/ios-p0-performance/RESULT.json`. UI20 echo proxy max82ms/p9580ms; proxy is not GPU. Physical/GPU/realChineseIME/VO remain unverified; not an install candidate until sidebar/media/serverP0 integrated and QA gates passed. Sidebar host not yet integrated; image ownership/network boundary4343a4e ready.
 
-本轮追加侧栏/草稿片：同源码43原生＋5实际Simulator UI、侧栏包12项、non-DEBUG SDK源码和680双语资源PASS；首次中文系统取消定位失败已留档并完整复验。三张原生截图与source/log hash保存。未发图片切换保留限当前App会话，未扩展冷启动持久化范围。物理手机/真实模型0次，全部AF-U05及总Goal尚未签收，见[本片证据](../acceptance/restart-sidebar-drafts-2026-10-13.md)。
+## 2026-10-12 原生宿主集成阶段候选
 
-新仓复现getter编译FAIL，已修正；最终39原生＋1 UI、产品配置build、便携对话/队列、源码/本地化、完整性与敏感扫描PASS。追加[阅读锚点回归](../acceptance/restart-reading-2026-10-13.md)真实滚动＋共用许可UI 2/2、非DEBUG SDK源码检查与666双语资源PASS；该修复不在冻结build16中。build16签名构建及同身份覆盖安装PASS，系统读回16；镜像待恢复，真实模型0次，未部署云端或tick。实际部署源码50/43文件hash及14项差异PASS。原始日志和IPA在忽略build目录；精简证据见[许可回归](../acceptance/restart-permission-2026-10-13.md)、[build16](../acceptance/restart-build16-2026-10-13.md)、[安装](../acceptance/restart-install16-2026-10-13.md)和[部署来源](../../services/edge/deployed-baselines/README.md)。
+独立分支 `integration/ios-composer-navigation` 基于固定目录 cc10a72；原性能 6e77d4e 导入为 be3605d，保留双方主计划记录。主宿主已接本地侧栏、实际历史/搜索、任务/成果/设置路由、系统返回和系统 PhotosPicker 的本地选择/预览/移除。范围与结果见[阶段验收](../acceptance/ios-host-integration-20261012.md)，逐文件/产物身份另存 RESULT.json。
 
-## 仓库架构与开发规则（2026-10-13）
+实际 iOS 构建与原生 31 项、独立组件 12/16 项、可移植 7/9 项通过；最终 UI 与合成代理数据按阶段报告记录，真实发布仍未通过。v15 四项 GET 冒烟来源为 QA bd72ecc，实际 image_input=false；本批不请求模型或凭据。独立图片许可/v2发送/receipt、真实视觉与 terminal/cursor、真机呈现/IME/VO、30s/弱网/冷启动、阅读锚点仍待完成。本地化实际门槛 FAIL97 保留。阶段候选没有新装手机；按四项集成与六组验收放行后再安排安装。
 
-已核对目录、主App依赖、GitHub分支/PR及旧工作树；目录角色、分层AGENTS、CLI hooks与分支规范已建立。8个远端/4个本地已整合分支已删除，tip/完整历史bundle/51项原WIP已备份；新增规范按独立文件清单经PR同步，不夹带其他作者正在写入的规划/设计。未改业务源码、模型、包、部署或运行Goal；产品验收保持原未验结论。维护入口为catpaw-api＋_shared，tick独立入口仅存在部署来源，后续源对齐仍待逐片验收。[完整审查](../architecture/repository-review-2026-10-13.md)、[分支规范](../development/branch-management.md)。
+协调随后提供视觉候选 bdb938df07aee583c7999a26b5517e5ae471aecd（基于 ae3b9c0，契约2758c6d）。原生已实际读取 contract 与50文件 manifest，后续批次按独立图片同意、非敏感确认和55天/人工审核披露接 v2；本检查点仍是 v15 关闭能力下的本地图片成果，历史验收不改写。
+
+### 原生检查点交接回执
+
+功能代码已提交 `b4850ebd71995253afbefec1229254cf8749e8e2`，前置性能提交为 `be3605dfcd11bd14b185bfe3ea61ed2ba4890d22`；worktree 保持独立。Library 工程包 `catpaw-m-ios-host-b4850eb.zip` / `libfile_a5df65db9828819187786bc8a3aca0a9`，ZIP SHA256 `11a5160361f2471847e1715a8f44a86b108c2147a1ea5ededd984d00a1aaa934`，5,621,842 bytes，153 文件源字节校验通过，本地 Library 身份已保存。
+
+最终8项Simulator UI全部通过；仅DEBUG诊断面板后续隐藏在侧栏打开时，四项受影响用例复验通过，补验实际关闭按钮。非DEBUG源码行为相同，实际重新构建产物身份记录在阶段 RESULT。31项原生逻辑、12/16包策略/编码、7/9可移植回归通过；97条本地化门槛与排除1项Keychain用例保留。无新手机安装。
+
+新视觉候选已通过Git对象字节核对：bdb938df07aee583c7999a26b5517e5ae471aecd 的50文件图 SHA `db57d9e2bbc1d90c51fbcfe36c2c2f220d8390e33ffb773ef18afe24a33579c2`。协调随后告知已部署v16、live开关待用户设置；本线程未请求现网或读取凭据。原生下一批仍需独立图片同意/非敏感确认、v2不可变附件、严格admission/provider回执、accepted/unknown只读恢复与失败保留图；当前检查点仍关闭图片发送，不能声称真实视觉完成。源码检查点不等于六组真实发布放行。
+
+## 2026-10-12 Native vision chain 30-minute checkpoint
+
+Based on b6ad8d6: independent image approval/non-sensitive checkbox, exact preview/caption/scene fencing, local image byte queue, v2 HTTP preflight/body and strict admission/provider terminal receipt, original-turn unknown recovery. Actual latest iOS XCTest 40/40 PASS (9 new boundary cases), explicitly injected offline backend. New image UI resources added; localization remains FAIL97 owned literals. See [source checkpoint](../acceptance/ios-vision-chain-checkpoint-20261012.md).
+
+Coordinator latest deployment is v18 (Buffer runtime fix, QA3170f2f), vision disabled pending flag. Native reads live capability and refuses unavailable images. HTTP synthetic wire, actual image consent/Send UI, Home5s/30s/full App restart, localization/reading anchor, physical presentation/IME/VO and real synthetic-image provider receipts remain required. No phone build14 overwrite; full installation acceptance remains BLOCKED.
+
+## 2026-10-12 Nested vision readiness protocol fix
+
+QA URLSession/TCP report 56879b6 confirms root vision_contract lookup blocks the published nested shape. Native now decodes chat_capabilities.vision_contract only, requires ready/image_input/v2/available together, and fails closed for missing/malformed/unsupported fields. No server root alias is used. Foundation production-shape regression 8/8 PASS without Simulator use. One direct public readyz observation independently confirms the nested path and disabled image state at its recorded UTC; no credentials/model request. Evidence: [RESULT](../acceptance/evidence/ios-readiness-nested-contract/RESULT.json).
+
+
+## 2026-10-12 Native build15 frozen candidate
+
+Final feature source frozen at `4750142e9999bcf39a2231bd321169fe73e5e014`; nested contract-only fix `be60f24aaf8ebfb34666c8e3d5a5226fe04ee83f` is independently ready for QA. Main login/conversation/settings, image disclosure and shared native widgets now bind locale; strict gate630 lookups/653 bilingual entries/zero owned gaps, portable8/14/7/9 checks PASS. Same-commit nonDEBUG generic iOS device build15 plus source/project check PASS. Actual final iOS43 native PASS,3 explicit harness skips and1 separately excluded Keychain; actual main UI4/4 PASS, including system PhotosPicker owned synthetic preview/cancel/remove/closed gate. Details and identities: [dated acceptance](../acceptance/ios-final15-20261012.md).
+
+Public readyz at recorded UTC remains image_input=false/vision schema2 available=false state=disabled: live flag is the explicit external blocker. Normal image approval/Send/real provider semantics are NOT_RUN. Independent QA bde470dc e5 unknown text Home5/30/cold3/3 retained, not final-source or active-stream proof. Final wire/lifecycle confirmation and physical/weak-network/IME/VO/reading-anchor gates remain. Original iPhone13 connected, same valid signing/profile verified; build14/data untouched, no new identity or installation. Product release/phone overwrite BLOCKED; candidate/source frozen, no further design expansion.
+
+
+## 2026-10-12 Signed build15 and v19 capability update
+
+Frozen4750142 source was built from a fresh Git archive and signed with the same original cached certificate/profile/entitlements; no new signing account, profile, permission or provisioning update. NonDEBUG DeviceTrial0.3.0(15) build and strict codesign pass. IPA22 App files/CRC verified; Library `libfile_5266b37675588191830e1fad1c867046`. Identity, hashes and preserved setting failures: [signed handoff](../acceptance/ios-signed15-v19-20261012.md).
+
+Public readyz at2026-10-12T15:58:55Z now confirms image_input=true/schema2 available=true/live_configured; coordinator/backend attributionv19. Older disabled evidence is historical, superseded; no live-flag external blocker remains. Validation stillcatalog_only_until_real_fixture. Phone remainsbuild14/data/login untouched: latest instruction defers overwrite until real-chain release. Normal existing-login App independent image consent/explicit Send and actual provider/receipt/pixel semantics remainNOT_RUN. No model/Auth/tick/token export or new identity in signing preparation. Package ready; product acceptance not claimed.
+
+
+## 2026-10-12 Physical build15 test-candidate installed
+
+Latest user explicitly authorized installation for testing to remove the install-before-test cycle. Same signed frozen4750142 App actually installed over iPhone13 and normal launch succeeded; physical inventory now0.3.0(15). No uninstall/data reset/account/profile/permission change. Private screenshot verifies prior conversation restored and text consent alert waiting; no grant/Send action performed, no private screenshot published. [Installation receipt and exact remaining scope](../acceptance/ios-build15-install-20261012.md).
+
+QA5485aa31 fixed475 actualTCP/URLSession wire8/8 PASS is now committed; its model/Auth0 boundary retained. v19 capabilitylive_configured; live flag no longer blocked. Normal physical App real synthetic-image E2E remainsNOT_RUN: current tools lack reliable physical tap/type/photo interaction, no existing device test runner and only original App profile cached. Existing AX trust inspected without prompt; no new system permission/profile to bypass constraints. Phone candidate installed and running; model calls0; live provider/receipt/pixel semantics and broader product gates still unverified.

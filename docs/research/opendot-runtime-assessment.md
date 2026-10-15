@@ -1,7 +1,5 @@
 # OpenDot runtime assessment for Catpaw-m
 
-2026-10-13 identity clarification: the user has now explicitly named **CopilotKit/OpenDots**. Use the [pinned OpenDots code review](opendots-code-review-2026-10-13.md) and [four-repository decision update](copilotkit-four-repo-decision-update-2026-10-13.md) for current decisions. The original dated assessment below is retained as a historical review of other same-name candidates; its licensing and implementation claims do not describe CopilotKit/OpenDots.
-
 Checked: 2026-10-12. Scope: read-only review of current public upstream sources, not an execution/security audit. Branch links can change; pin a commit before implementation.
 
 ## Identity is not confirmed

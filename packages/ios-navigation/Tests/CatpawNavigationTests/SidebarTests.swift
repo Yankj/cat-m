@@ -43,10 +43,8 @@ final class SidebarTests: XCTestCase {
         for destination in [SidebarDestination.tasks, .results, .memory] { XCTAssertTrue(changed.permits(destination)) }
     }
     func testDrawerWidthLeavesDismissTargetAndCapsReadableWidth() {
-        for width: CGFloat in [375, 390, 430, 1024] {
-            XCTAssertEqual(SidebarGesturePolicy.drawerWidth(available: width), 320)
-        }
-        XCTAssertEqual(SidebarGesturePolicy.drawerWidth(available: 320), 275.2, accuracy: 0.01)
+        XCTAssertEqual(SidebarGesturePolicy.drawerWidth(available: 390), 327.6, accuracy: 0.01)
+        XCTAssertEqual(SidebarGesturePolicy.drawerWidth(available: 1024), 360)
         XCTAssertEqual(SidebarGesturePolicy.drawerWidth(available: 100), 56)
         XCTAssertEqual(SidebarGesturePolicy.drawerWidth(available: 0), 0)
     }

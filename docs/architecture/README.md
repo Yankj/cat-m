@@ -1,13 +1,6 @@
 # 架构与决策
 
-新增[项目目录/依赖/分支审查](repository-review-2026-10-13.md)与[机器目录角色](../development/repository-layout.json)，包括整合优先级、两个未合入候选和已应用的基础规则。
-
 **当前进展只见 [主交付计划](../status/master-plan.md)。** 新主线为自然对话与服务端持久任务；本仓库现有v1/r2/r3实现作为历史基线，不等于以下目标已部署。
-
-当前架构决策入口为 [AF-1规格](../product/agent-foundation-spec.md)、[ADR-005](adr-005-runtime-reuse-and-hosting.md)及[云电脑待确认方案](cloud-computer-proposal.md)。旧整体设计、记忆brief和v1/r2/r3关系保留作历史输入，集中见 [归档索引](../archive/README.md)。
-
-<details>
-<summary>历史设计输入与 v1/r2/r3 实现边界</summary>
 
 - [服务端优先整体设计全文](server-first-delivery-design.md)：协调提供的拟实施架构/交付闸门原文，API＋worker＋一个Postgres，持久状态为单权威。建议/v1接口与当前chat wire需对齐。
 - [记忆架构brief v1全文](memory-brief-v1.md)：建议字段/接口、来源与删除边界及A–L矩阵；待现有Store适配与migration。其M0/M1/M2是记忆子阶段。
@@ -39,8 +32,6 @@ v1 UI 写同一 Repository；成功事件只能在持久化事务成功后发出
 | [ADR-003 版本与授权](adr-003-version-authorization.md) | revision/epoch/lease、审批摘要防迟到和错版本 | 真实 SQL 并发仍待验 |
 | [ADR-004 版本与证据维护](adr-004-release-evidence.md) | v1/r2/r3分层，冻结源码后精确整合 | r3已导入，真实服务仍未验 |
 
-</details>
-
 ## 运行时研究与待评审选型
 
-[现状快照](runtime-state-2026-10-12.md)保留当时固定目录、旧手机包与未部署边界。当前为vendored OpenMuse TaskWorker＋自研chat/auth/store/model适配。[ADR-005](adr-005-runtime-reuse-and-hosting.md)保留SwiftUI＋Supabase，已加入[四仓源码决策增量](../research/copilotkit-four-repo-decision-update-2026-10-13.md)的模块选择；worker运行方式和框架迁移仍Proposed。用户已明确CopilotKit/OpenDots，早期同名候选评估仅留历史；[研究索引](../research/README.md)区分来源与限制。实时进展仍只见主计划。
+[现状快照](runtime-state-2026-10-12.md)记录固定目录52ee352、手机build14来源d9a897cc和未部署边界。当前为vendored OpenMuse TaskWorker＋自研chat/auth/store/model适配。[ADR-005](adr-005-runtime-reuse-and-hosting.md)保留SwiftUI＋Supabase；worker运行方式和框架迁移为Proposed，非Accepted。[两篇既有研究](../research/README.md)已归档，OpenDot身份/许可未确认且未采纳代码。实时进展仍只见主计划。

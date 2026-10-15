@@ -3,45 +3,6 @@ import UIKit
 import CatpawImageComposer
 @testable import CatpawM
 final class DeviceTrialNativeTests: XCTestCase {
- @MainActor func testConversationSwitchPreservesEachImageDraftWithoutReusingApproval() async throws {
-  let (model,backend,service,_)=try makeVisionModel();let firstHash=try await selectVisionImage(model)
-  let first=try XCTUnwrap(model.conversationID),firstDraft=model.imageDraft,firstImage=try XCTUnwrap(firstDraft.attachment?.id)
-  try await approveVisionImage(model);let second=try await service.create(scope:model.scope)
-  try await model.select(second);XCTAssertEqual(model.draft,"");XCTAssertEqual(model.imageDraft.phase,.empty)
-  model.editDraft("Second independent unsent image caption")
-  let raw=UIGraphicsImageRenderer(size:CGSize(width:24,height:12)).pngData{ctx in UIColor.red.setFill();ctx.fill(CGRect(x:0,y:0,width:24,height:12))}
-  let ticket=model.imageDraft.beginSelection();model.imageDraft.receiveSelectedData(raw,ticket:ticket)
-  try await p0Until {model.imageDraft.phase == .ready};let secondDraft=model.imageDraft,secondHash=try XCTUnwrap(secondDraft.attachment?.sha256)
-  try await model.select(first);XCTAssertEqual(model.draft,"Synthetic image caption");XCTAssertTrue(model.imageDraft === firstDraft)
-  XCTAssertEqual(model.imageDraft.attachment?.sha256,firstHash);XCTAssertEqual(model.imageDraft.attachment?.id,firstImage)
-  XCTAssertFalse(model.imageGate.imageConsentMatchesCurrentRoute);XCTAssertFalse(model.canAcceptDraft)
-  try await model.select(second);XCTAssertEqual(model.draft,"Second independent unsent image caption")
-  XCTAssertTrue(model.imageDraft === secondDraft);XCTAssertEqual(model.imageDraft.attachment?.sha256,secondHash)
-  let counts=await backend.counts();XCTAssertEqual(counts[0],0)
-  await model.deactivate();XCTAssertEqual(firstDraft.phase,.empty);XCTAssertEqual(secondDraft.phase,.empty)
- }
- @MainActor func testFailedConversationSwitchKeepsExactTextAndImage() async throws {
-  let storage=SelectedConversationTestStorage(),repo=try Repository(persistence:storage),service=ConversationSessionService(repository:repo)
-  let model=ConversationFirstModel(repository:repo,service:service);await model.start()
-  let first=try XCTUnwrap(model.conversationID),second=try await service.create(scope:model.scope)
-  let raw=UIGraphicsImageRenderer(size:CGSize(width:16,height:16)).pngData{ctx in UIColor.blue.setFill();ctx.fill(CGRect(x:0,y:0,width:16,height:16))}
-  let ticket=model.imageDraft.beginSelection();model.imageDraft.receiveSelectedData(raw,ticket:ticket)
-  try await p0Until {model.imageDraft.phase == .ready};let original=model.imageDraft,hash=original.attachment?.sha256
-  model.editDraft("Unsent draft retained after failed switch");storage.rejectNextSave()
-  do {try await model.select(second);XCTFail("Storage rejection must prevent selection")} catch CatpawError.unavailable { }
-  XCTAssertEqual(model.conversationID,first);XCTAssertEqual(model.draft,"Unsent draft retained after failed switch")
-  XCTAssertTrue(model.imageDraft === original);XCTAssertEqual(model.imageDraft.attachment?.sha256,hash);await model.deactivate()
- }
- @MainActor func testLatePhotoSelectionCannotEnterAnotherConversation() async throws {
-  let (model,backend,service,_)=try makeVisionModel();let hash=try await selectVisionImage(model)
-  let first=try XCTUnwrap(model.conversationID),original=model.imageDraft,ticket=original.beginSelection()
-  let second=try await service.create(scope:model.scope);try await model.select(second)
-  let raw=UIGraphicsImageRenderer(size:CGSize(width:32,height:16)).pngData{ctx in UIColor.red.setFill();ctx.fill(CGRect(x:0,y:0,width:32,height:16))}
-  original.receiveSelectedData(raw,ticket:ticket);XCTAssertEqual(model.imageDraft.phase,.empty)
-  try await model.select(first);XCTAssertEqual(model.imageDraft.attachment?.sha256,hash)
-  XCTAssertEqual(model.imageDraft.phase,.failed(.cancelled));XCTAssertFalse(model.canAcceptDraft)
-  let counts=await backend.counts();XCTAssertEqual(counts[0],0);await model.deactivate()
- }
  @MainActor func testVisionConsentCancelAndUnconfirmedCheckboxNeverSend() async throws {
   let (model,backend,_,_)=try makeVisionModel();let hash=try await selectVisionImage(model)
   model.requestImageConsent();try await p0Until {model.pendingImageConsent != nil};let consent=try XCTUnwrap(model.pendingImageConsent)
@@ -223,17 +184,6 @@ final class DeviceTrialNativeTests: XCTestCase {
   let counts=await backend.counts();XCTAssertEqual(counts[0],0)
   model.updateInputComposition(false);XCTAssertTrue(model.canAcceptDraft);await model.deactivate()
  }
- @MainActor func testP0UnknownKeepsNewDraftUntilOriginalIsRead() async throws {
-  let (model,backend,_,_)=try makeP0Model();await model.start()
-  model.editDraft("Synthetic original request");model.prepareSend();let original=try XCTUnwrap(model.outgoingMessages.first?.id)
-  try await p0Until {await backend.has(original)};await model.suspend()
-  try await p0Until {model.session?.unresolved?.state == .unknown && !model.busy}
-  model.editDraft("Retained new draft while original is unknown")
-  let before=model.outgoingMessages.map(\.id);model.prepareSend()
-  XCTAssertFalse(model.canAcceptDraft);XCTAssertEqual(model.draft,"Retained new draft while original is unknown")
-  XCTAssertEqual(model.outgoingMessages.map(\.id),before);XCTAssertEqual(model.session?.unresolved?.id,original)
-  let counts=await backend.counts();XCTAssertEqual(counts[0],1);await model.deactivate()
- }
  func testP0UserPauseSurvivesBackgroundAndReopen() async throws {
   let repo=try Repository(persistence:SelectedConversationTestStorage()),service=ConversationSessionService(repository:repo),cid=try await service.openLatest(scope:Profiles.user)
   let queue=ConversationFollowupQueueService(repository:repo,scope:Profiles.user,conversationID:cid)
@@ -335,27 +285,6 @@ final class DeviceTrialNativeTests: XCTestCase {
   model.allowPendingModelConsent(consent);try await p0Until {model.session?.turns.last?.state == .completed && !model.busy}
   model.allowPendingModelConsent(consent);await Task.yield()
   let counts=await backend.consentInvocationCounts();XCTAssertEqual(counts,[1,1]);await model.deactivate()
- }
- @MainActor func testDeferredConsentCanBeReopenedAndDispatchesOriginalOnce() async throws {
-  let repo=try Repository(persistence:SelectedConversationTestStorage()),backend=P0ExperienceBackend(scenario:"p0-ui-consent"),service=ConversationSessionService(repository:repo,backend:backend)
-  let model=ConversationFirstModel(repository:repo,service:service);await model.start();model.editDraft("Owned deferred permission")
-  model.prepareSend();try await p0Until {model.pendingModelConsent != nil}
-  model.deferModelConsent(try XCTUnwrap(model.pendingModelConsent));try await p0Until {model.followups.paused}
-  let before=await backend.consentInvocationCounts();XCTAssertEqual(before,[0,0])
-  model.requestModelConsentReview();try await p0Until {model.pendingModelConsent != nil}
-  model.allowPendingModelConsent(try XCTUnwrap(model.pendingModelConsent));try await p0Until {model.session?.turns.last?.state == .completed && !model.busy}
-  let after=await backend.consentInvocationCounts();XCTAssertEqual(after,[1,1]);XCTAssertEqual(model.session?.turns.count,1)
-  await model.deactivate()
- }
- @MainActor func testChangedConsentRevisionCannotDispatch() async throws {
-  let repo=try Repository(persistence:SelectedConversationTestStorage()),backend=P0ExperienceBackend(scenario:"p0-ui-consent"),service=ConversationSessionService(repository:repo,backend:backend)
-  let model=ConversationFirstModel(repository:repo,service:service);await model.start();model.editDraft("Owned stale permission")
-  model.prepareSend();try await p0Until {model.pendingModelConsent != nil}
-  let review=try XCTUnwrap(model.pendingModelConsent)
-  let stale=ConversationModelConsent(conversationID:review.conversationID,title:review.title,body:review.body,routeHash:review.routeHash,expectedRevision:review.expectedRevision+1)
-  model.allowPendingModelConsent(stale);await Task.yield()
-  let counts=await backend.consentInvocationCounts();XCTAssertEqual(counts,[0,0]);XCTAssertNotNil(model.pendingModelConsent)
-  await model.deactivate()
  }
  @MainActor func testColdQueuedPermissionIsPresentedWhileExplicitPauseSurvives() async throws {
   for paused in [false,true] {
