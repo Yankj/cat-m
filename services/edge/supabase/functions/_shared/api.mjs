@@ -1,4 +1,4 @@
-import {createRenderUITool,RENDER_UI} from './core/src/generative-ui.mjs';import {createAgentMemoryService} from './agent-memory/service.mjs';import {createAgentMemoryChatTools} from './agent-memory/chat-tools.mjs';import {featureAllows} from './config.mjs';import {createDeviceTools} from './core/src/device-call.mjs';
+import {createRenderUITool,RENDER_UI} from './core/src/generative-ui.mjs';import {createAgentMemoryService} from './agent-memory/service.mjs';import {createAgentMemoryChatTools} from './agent-memory/chat-tools.mjs';import {featureAllows} from './config.mjs';import {createSuggestionFeed} from './proactive/suggestion-feed.mjs';import {createDeviceTools} from './core/src/device-call.mjs';
 import {createTaskChatTools} from './proactive/chat-tools.mjs';import {createProactiveService} from './proactive/service.mjs';
 import {createFollowupTriggerHTTPHandler} from './core/src/followup-trigger-http.mjs';
 import {readInboxPage} from './core/src/inbox-service.mjs';
@@ -122,6 +122,8 @@ export async function createCloudRuntime({repository,authenticate,config,retain=
   const memoryGate=config.agentMemory??'off';
   if(agentMemoryStore&&memoryGate!=='off'){const service=createAgentMemoryService({store:agentMemoryStore,allow:uid=>featureAllows(memoryGate,config.featureAllowlist,uid),verifyUser:typeof verifyToken==='function'?h=>verifyToken(h):null,schedulerSecret:config.schedulerSecret??null,...agentMemoryOptions});
    runtime.facade.agentMemory=service;runtime.agentMemory=service;for(const [name,tool] of createAgentMemoryChatTools({service}))registry.set(name,tool);}
+  // proactive_suggestion SSE (catpaw.proactive.decision.v1): CATPAW_PROACTIVE_SUGGESTIONS_SSE_ENABLED default off; needs migrations 20261016030000 + 20261016040000.
+  const suggestionGate=config.proactiveSuggestionsSSE??'off';if(proactiveStore&&suggestionGate!=='off')runtime.facade.proactiveSuggestions=createSuggestionFeed({store:proactiveStore,allow:uid=>featureAllows(suggestionGate,config.featureAllowlist,uid)});
   // catpaw.device.v1 (Wave 2 B3): CATPAW_DEVICE_TOOLS_ENABLED default off; client opts in with X-Catpaw-Device-Contract.
   const deviceGate=config.deviceTools??'off';if(deviceGate!=='off')for(const [name,tool] of createDeviceTools({allow:turn=>gate(deviceGate,turn)}))registry.set(name,tool);
   if(registry.size)runtime.facade.gatedChatTools=registry;}

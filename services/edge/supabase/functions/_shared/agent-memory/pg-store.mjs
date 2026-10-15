@@ -22,6 +22,11 @@ export function createPgAgentMemoryStore(sql) {
       for (const [k, v] of Object.entries(f)) { if (!['content', 'pinned', 'updated_at', 'embedding'].includes(k)) continue; args.push(k === 'embedding' ? vec(v) : v); sets.push(`${k}=$${args.length}${k === 'embedding' ? '::extensions.vector' : ''}`); }
       return fix((await sql.unsafe(`update agent_memory.memories set ${sets.join(',')} where user_id=$1 and id=$2 returning ${COLS}`, args))[0] ?? null);
     },
+    async changedSince(uid, sinceIso) {
+      const rows = (await sql.unsafe(`select ${COLS} from agent_memory.memories where user_id=$1 and updated_at > $2::timestamptz order by updated_at limit 500`, [uid, sinceIso])).map(fix);
+      const deleted = (await sql.unsafe('select memory_id as id, deleted_at from agent_memory.memory_tombstones where user_id=$1 and deleted_at > $2::timestamptz order by deleted_at limit 500', [uid, sinceIso])).map(r => ({ id: r.id, deleted_at: r.deleted_at instanceof Date ? r.deleted_at.toISOString() : r.deleted_at }));
+      return { rows, deleted };
+    },
     async remove(uid, ids) { return ids.length ? (await sql.unsafe('delete from agent_memory.memories where user_id=$1 and id = any($2::uuid[]) returning id', [uid, ids])).length : 0; },
     async removeAll(uid) { await sql.unsafe('delete from agent_memory.journal_fragments where user_id=$1', [uid]); return (await sql.unsafe('delete from agent_memory.memories where user_id=$1 returning id', [uid])).length; },
     async byUndoHash(uid, h) { return fix((await sql.unsafe(`select ${COLS} from agent_memory.memories where user_id=$1 and undo_token_hash=$2`, [uid, h]))[0] ?? null); },
