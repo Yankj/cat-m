@@ -1,0 +1,367 @@
+{
+  "schema_version": 1,
+  "candidate": "AF-UX-CONSENT-ACTIVITY-20261015-38-R11",
+  "version": "0.3.0(38)",
+  "reality": "actual_native_ui_with_explicit_local_synthetic_fixtures",
+  "status": "SCOPED_NATIVE_PASS_PRODUCT_GATES_OPEN",
+  "source": {
+    "local_commit": "09c49301aa84dc2aa364f0c16f48430e25ee3c82",
+    "remote_commit": "cf2867b4511ef81fe1a96556d087283342db973c",
+    "remote_tree": "e6c8d3582f5a0826e948324529426ccb3c3e55a0",
+    "input_count": 440,
+    "snapshot_sha256": "109606ac0811cd749295ceeb37947b41a7826face75823af1e4eff1004c17101",
+    "all_inputs_match_local_commit_and_public_index": true,
+    "whole_local_remote_tree_identity_claimed": false
+  },
+  "package": {
+    "bundle_sha256": "872197b49d39f94299b6f1b73d4e3e13bd05308e216bb306fcacb752f410f855",
+    "file_count": 32,
+    "manifest_sha256": "64fadf998a311c6a79f7e5a8ce1521f62430000862d5625e7be394c108955841",
+    "installed_bytes_match": true
+  },
+  "native": {
+    "unit_methods": 57,
+    "ui_distinct_methods": 6,
+    "max_size_repeated_ui_methods": 1,
+    "runs": [
+      {
+        "log": "build/native-consent-handoff-20261015/native-default-r11.log",
+        "sha256": "824c38770eb4e07f37274010d42c6e9601d1a411a98713a1ea11a1681e1f6688",
+        "methods": [
+          {
+            "name": "CatpawMTests.ConversationConsentHandoffApplicationTests testCaptionChangeRetiresImageTokenWithoutLosingPreview",
+            "seconds": 0.203
+          },
+          {
+            "name": "CatpawMTests.ConversationConsentHandoffApplicationTests testChangedModelNoticeOrRevisionCannotConsumeMatchingToken",
+            "seconds": 0.011
+          },
+          {
+            "name": "CatpawMTests.ConversationConsentHandoffApplicationTests testImageAllowConsumesOnceWhileHeldAndOldCancelCannotAbortSaving",
+            "seconds": 0.01
+          },
+          {
+            "name": "CatpawMTests.ConversationConsentHandoffApplicationTests testImagePresentationClearCannotBecomeImplicitDenialOrSend",
+            "seconds": 0.013
+          },
+          {
+            "name": "CatpawMTests.ConversationConsentHandoffApplicationTests testNetworkClosureRetiresBothReviewKindsAndRejectsOldCallbacks",
+            "seconds": 0.033
+          },
+          {
+            "name": "CatpawMTests.ConversationConsentHandoffApplicationTests testOldImagePresentationCannotCancelOrAllowReopenedPreview",
+            "seconds": 0.023
+          },
+          {
+            "name": "CatpawMTests.ConversationConsentHandoffApplicationTests testOldTextPresentationCannotDeferOrAllowNewIdenticalReview",
+            "seconds": 0.024
+          },
+          {
+            "name": "CatpawMTests.ConversationConsentHandoffApplicationTests testTextAllowFastReturnQueuesExactImageReviewWithoutSending",
+            "seconds": 0.024
+          },
+          {
+            "name": "CatpawMTests.ConversationConsentHandoffApplicationTests testTextPresentationClearRetainsOriginalReviewAuthority",
+            "seconds": 0.088
+          },
+          {
+            "name": "CatpawMTests.ConversationConsentHandoffApplicationTests testUnknownImageGrantOutcomeKeepsInputAndNeverAutomaticallyRetries",
+            "seconds": 0.316
+          },
+          {
+            "name": "CatpawMTests.ConversationConsentPresentationTests testBackgroundOrAccountChangeBeforeDismissalCannotPromoteCachedReview",
+            "seconds": 0.002
+          },
+          {
+            "name": "CatpawMTests.ConversationConsentPresentationTests testFastNextReviewWaitsForActualDismissalAndLateNilCannotCancelIt",
+            "seconds": 0.0
+          },
+          {
+            "name": "CatpawMTests.ConversationConsentPresentationTests testImageSnapshotPreservesOriginalPreviewCaptionAndRoute",
+            "seconds": 0.001
+          },
+          {
+            "name": "CatpawMTests.ConversationConsentPresentationTests testReopeningSameConsentRequiresNewOwnerAndUnchangedReviewDoesNotClose",
+            "seconds": 0.001
+          },
+          {
+            "name": "CatpawMTests.ConversationConsentPresentationTests testSlowNextReviewArrivesAfterDismissalWithSameBehavior",
+            "seconds": 0.0
+          },
+          {
+            "name": "CatpawMTests.ConversationConsentPresentationTests testUnshownReviewCanBeCancelledOrReplacedWithoutWaitingForImpossibleDismissal",
+            "seconds": 0.001
+          },
+          {
+            "name": "CatpawMTests.ConversationConsentPresentationTests testUserDismissReturnsOnlyExactRenderedSnapshotOnce",
+            "seconds": 0.001
+          },
+          {
+            "name": "CatpawMTests.ConversationReviewLaunchConfigurationTests testAnyExplicitQAStoreOrScenarioWinsIncludingEmptyAndInvalidSelections",
+            "seconds": 0.029
+          },
+          {
+            "name": "CatpawMTests.ConversationReviewLaunchConfigurationTests testBadJSONVersionFieldsTypesUUIDPortAndExpiryAreNotRestored",
+            "seconds": 0.099
+          },
+          {
+            "name": "CatpawMTests.ConversationReviewLaunchConfigurationTests testDisableOnlyBlocksFallbackAndDoesNotDeleteTheOriginalDescriptor",
+            "seconds": 0.013
+          },
+          {
+            "name": "CatpawMTests.ConversationReviewLaunchConfigurationTests testExpiredDescriptorRetainsStoreAndOriginalExpiryButDoesNotRenewOrAuthorize",
+            "seconds": 0.015
+          },
+          {
+            "name": "CatpawMTests.ConversationReviewLaunchConfigurationTests testExplicitOptInStoresOnlyFourNonSensitiveFieldsAndPlainLaunchRestoresOriginalContext",
+            "seconds": 0.008
+          },
+          {
+            "name": "CatpawMTests.ConversationReviewLaunchConfigurationTests testInitialPortStoreAndExpiryValidationRejectsCoercionOverflowAndMoreThanSixHours",
+            "seconds": 0.004
+          },
+          {
+            "name": "CatpawMTests.ConversationReviewLaunchConfigurationTests testMissingOptInOrVisualModeOrExactScenarioNeverPersists",
+            "seconds": 0.011
+          },
+          {
+            "name": "CatpawMTests.ConversationReviewLaunchConfigurationTests testSixHourBoundaryIsAllowedAndOriginalIntegerExpiryIsPreserved",
+            "seconds": 0.017
+          },
+          {
+            "name": "CatpawMTests.ConversationReviewLaunchConfigurationTests testUnrelatedEnvironmentSecretsAreNeverStoredAndFallbackPreservesUnrelatedOptions",
+            "seconds": 0.022
+          },
+          {
+            "name": "CatpawMTests.ConversationTimelineProjectionTests testCallAndVerifiedResultReplaceInPlaceWithoutChangingOriginalMessages",
+            "seconds": 0.006
+          },
+          {
+            "name": "CatpawMTests.ConversationTimelineProjectionTests testCompletedCallWithoutResultCannotClaimSuccessfulRead",
+            "seconds": 0.001
+          },
+          {
+            "name": "CatpawMTests.ConversationTimelineProjectionTests testDedicatedToolRenderersReceiveExactOriginalResultIdentityAndPayload",
+            "seconds": 0.001
+          },
+          {
+            "name": "CatpawMTests.ConversationTimelineProjectionTests testDuplicateMessageUUIDsRemainVisibleWithUniqueRowIDs",
+            "seconds": 0.001
+          },
+          {
+            "name": "CatpawMTests.ConversationTimelineProjectionTests testFailureIsNeverCoveredByAResultAndUnknownRemainsVisible",
+            "seconds": 0.001
+          },
+          {
+            "name": "CatpawMTests.ConversationTimelineProjectionTests testIdenticalCallIDsInDifferentTurnsNeverCrossPair",
+            "seconds": 0.001
+          },
+          {
+            "name": "CatpawMTests.ConversationTimelineProjectionTests testInvalidOrphanAndAmbiguousRecordsFailVisibleWithoutGuessing",
+            "seconds": 0.001
+          },
+          {
+            "name": "CatpawMTests.ConversationTimelineProjectionTests testKnownToolResultAndOriginalArtifactEntrySurviveFailedOrUnknownProseStream",
+            "seconds": 0.002
+          },
+          {
+            "name": "CatpawMTests.ConversationTimelineProjectionTests testTerminalCompletedTurnWithoutToolResultRequiresReconciliationInsteadOfActivity",
+            "seconds": 0.0
+          },
+          {
+            "name": "CatpawMTests.ConversationTimelineProjectionTests testUserAndIncrementalAnswerKeepOriginalUUIDOrderAndTurn",
+            "seconds": 0.001
+          },
+          {
+            "name": "CatpawMTests.ConversationTurnActivityTests testCompletedCallWithoutResultNeedsReviewInsteadOfSuccessfulOrInfinitePendingStatus",
+            "seconds": 0.001
+          },
+          {
+            "name": "CatpawMTests.ConversationTurnActivityTests testDispatchedAndAdmittedBeforeFirstTokenHaveOneStableHonestStatus",
+            "seconds": 0.001
+          },
+          {
+            "name": "CatpawMTests.ConversationTurnActivityTests testIncrementalBodyKeepsSameActivityAndDoesNotPutTokensIntoSnapshot",
+            "seconds": 0.001
+          },
+          {
+            "name": "CatpawMTests.ConversationTurnActivityTests testInvalidPairAndUnknownNeverBecomeReceivedFromCompletedCallAlone",
+            "seconds": 0.001
+          },
+          {
+            "name": "CatpawMTests.ConversationTurnActivityTests testMultiplePendingToolsUseOneTurnSummaryWithOrderedRealFacts",
+            "seconds": 0.001
+          },
+          {
+            "name": "CatpawMTests.ConversationTurnActivityTests testReceivedBusinessResultSurvivesFailedOrUnknownProse",
+            "seconds": 0.001
+          },
+          {
+            "name": "CatpawMTests.ConversationTurnActivityTests testResultUpdatesOriginalCallFactWithoutInventingTaskCompletionOrRemovingBusinessResult",
+            "seconds": 0.001
+          },
+          {
+            "name": "CatpawMTests.ConversationTurnActivityTests testSameCallNameInDifferentTurnsDoesNotMergeAndDuplicateTurnIdentityIsNotGuessed",
+            "seconds": 0.001
+          },
+          {
+            "name": "CatpawMTests.ConversationTurnActivityTests testUnknownToolNameUsesControlledGenericLabelAndNeverDisplaysArguments",
+            "seconds": 0.001
+          },
+          {
+            "name": "CatpawMTests.ConversationTurnActivityTests testUnsentOrCancelledAndForeignConversationNeverClaimActivity",
+            "seconds": 0.001
+          },
+          {
+            "name": "CatpawMTests.DeviceTrialNativeTests testConversationSwitchPreservesEachImageDraftWithoutReusingApproval",
+            "seconds": 0.023
+          },
+          {
+            "name": "CatpawMTests.DeviceTrialNativeTests testFailedConversationSwitchKeepsExactTextAndImage",
+            "seconds": 0.006
+          },
+          {
+            "name": "CatpawMTests.DeviceTrialNativeTests testLatePhotoSelectionCannotEnterAnotherConversation",
+            "seconds": 0.008
+          },
+          {
+            "name": "CatpawMTests.DeviceTrialNativeTests testVisionConsentCancelAndUnconfirmedCheckboxNeverSend",
+            "seconds": 0.008
+          },
+          {
+            "name": "CatpawMTests.DeviceTrialNativeTests testVisionExactPreviewApprovalV2MetadataAndTerminalReceipt",
+            "seconds": 0.057
+          },
+          {
+            "name": "CatpawMTests.DeviceTrialNativeTests testVisionExpiredConsentRefusesPostAndPreservesExactInputAndImage",
+            "seconds": 0.015
+          },
+          {
+            "name": "CatpawMTests.DeviceTrialNativeTests testVisionLateGrantAfterDraftChangeCannotAuthorizeAnotherVersion",
+            "seconds": 0.01
+          },
+          {
+            "name": "CatpawMTests.DeviceTrialNativeTests testVisionMalformedImageNeverReachesPermissionOrTransport",
+            "seconds": 0.007
+          },
+          {
+            "name": "CatpawMTests.DeviceTrialNativeTests testVisionSaveFailureRollsBackBeforeProviderAndKeepsDraft",
+            "seconds": 0.01
+          },
+          {
+            "name": "CatpawMTests.DeviceTrialNativeTests testVisionUnknownResumesOriginalTurnAfterBackgroundWithoutSecondPost",
+            "seconds": 0.028
+          },
+          {
+            "name": "CatpawMTests.DeviceTrialNativeTests testVisionWrongProviderReceiptNeverCompletes",
+            "seconds": 0.014
+          },
+          {
+            "name": "CatpawMUITests.ConversationConsentHandoffUITests testTextConsentHandsOffToImageAndCancelReopenAllowKeepsUnsentDraft",
+            "seconds": 30.481
+          },
+          {
+            "name": "CatpawMUITests.ConversationDrawerRevealUITests testReadOnlyReplyPanRevealsForegroundStripAndClosesKeepingChineseDraft",
+            "seconds": 28.899
+          },
+          {
+            "name": "CatpawMUITests.ConversationReviewResumeUITests testOrdinaryColdLaunchRestoresOptedInReviewAndUnsentChineseDraftWithoutAuth",
+            "seconds": 29.919
+          },
+          {
+            "name": "CatpawMUITests.ConversationTurnActivityUITests testTwoPendingToolFactsShareOneTurnSummaryAndEditingDraftDoesNotSendAgain",
+            "seconds": 37.748
+          },
+          {
+            "name": "CatpawMUITests.P0NativeExperienceUITests testActualConsentAlertConfirmationDispatchesOriginalMessageOnce",
+            "seconds": 22.212
+          },
+          {
+            "name": "CatpawMUITests.P0NativeExperienceUITests testGenerativeDurationLocalEditSurvivesStreamingWithoutDispatch",
+            "seconds": 35.264
+          }
+        ]
+      },
+      {
+        "log": "build/native-consent-handoff-20261015/handoff-maximum-r11.log",
+        "sha256": "59f48d5406f767bdfe3e67a4e62f968e23f9f88de8ff5b9e45aa70e77f7fba6f",
+        "methods": [
+          {
+            "name": "CatpawMUITests.ConversationConsentHandoffUITests testTextConsentHandsOffToImageAndCancelReopenAllowKeepsUnsentDraft",
+            "seconds": 28.073
+          }
+        ]
+      }
+    ],
+    "maximum_confirmation_label_visually_complete": true
+  },
+  "sdk": {
+    "path": "build/native-consent-handoff-20261015/sdk-r11-zsh.log",
+    "sha256": "e8fef91e5d959369b9a273f9b03f812cf5bae9f84c94cc8b363b050c32e88402",
+    "result": "PASS",
+    "app_source_memberships": 124,
+    "bilingual_entries": 1139,
+    "incorrect_bash_invocation_preserved_as_harness_failure": true
+  },
+  "delivery": {
+    "launch_before": {
+      "requests": 104,
+      "accepted_posts": 0,
+      "dropped_responses": 0,
+      "memory_posts": 0,
+      "memory_original_gets": 0,
+      "provider_calls": 4,
+      "turns": 2
+    },
+    "launch_after": {
+      "requests": 105,
+      "accepted_posts": 0,
+      "dropped_responses": 0,
+      "memory_posts": 0,
+      "memory_original_gets": 0,
+      "provider_calls": 4,
+      "turns": 2
+    },
+    "ordinary_cold_launches": 2,
+    "provided_launch_environment": false,
+    "cold_before": {
+      "requests": 107,
+      "accepted_posts": 0,
+      "dropped_responses": 0,
+      "memory_posts": 0,
+      "memory_original_gets": 0,
+      "provider_calls": 4,
+      "turns": 2
+    },
+    "cold_after": {
+      "requests": 109,
+      "accepted_posts": 0,
+      "dropped_responses": 0,
+      "memory_posts": 0,
+      "memory_original_gets": 0,
+      "provider_calls": 4,
+      "turns": 2
+    },
+    "original_store_unchanged": true,
+    "original_session_expiry_unchanged": true,
+    "ordinary_launch_page_visually_reviewed": true,
+    "receipt_sha256": "9ef4572aa0577f4185e033c7f7c9cfd12e90a9085771d8a53a77db66ae64edf2",
+    "raw_media": "ignored private evidence only"
+  },
+  "backend": {
+    "maintenance_bytes_unchanged_since_local_build37": true,
+    "local_frozen_backend_source": "95ac3fd20c44b83e274f2728feb66aee2802c56f",
+    "production_deployed": false
+  },
+  "limits": {
+    "original_build29_popup_symptom": "NOT_REPRODUCED; unique root cause not established",
+    "live_model_success": "FAIL prior attempts; no new request",
+    "real_native_success_sse": "NOT_VERIFIED",
+    "live_success_persistence_and_reopen": "NOT_RUN",
+    "live_tool_card": "NOT_RUN",
+    "live_approval_then_effect": "NOT_RUN",
+    "full_theme_size_voiceover_reduce_motion_interrupt_matrix": "NOT_RUN",
+    "AF_G5": "OPEN",
+    "FINAL_G3": "ACTIVE"
+  }
+}
