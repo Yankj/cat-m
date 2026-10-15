@@ -5938,5 +5938,21 @@
   "，草稿，": {
     "en": ", draft, ",
     "zh-Hans": "，草稿，"
+  },
+  "本次用到的记忆": {
+    "en": "Memories used",
+    "zh-Hans": "本次用到的记忆"
+  },
+  "已遗忘的记忆": {
+    "en": "Forgotten memory",
+    "zh-Hans": "已遗忘的记忆"
+  },
+  "轻点可编辑或忘记": {
+    "en": "Tap to edit or forget",
+    "zh-Hans": "轻点可编辑或忘记"
+  },
+  "忘记这条记忆？": {
+    "en": "Forget this memory?",
+    "zh-Hans": "忘记这条记忆？"
   }
 }
