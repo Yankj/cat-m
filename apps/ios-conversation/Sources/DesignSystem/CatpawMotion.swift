@@ -17,8 +17,8 @@ enum CatpawMotion {
     static func resolved(_ animation: Animation, _ reduceMotion: Bool) -> Animation { reduceMotion ? .easeInOut(duration: 0.15) : animation }
 }
 
-/// Brand colour lives outside `CatpawColors` on purpose: R7 restricts it to identity surfaces
-/// (icon, launch, thinking paw, Live Activity glyph, completion stamp). Never actions/links/status.
+/// Brand colour lives outside `CatpawColors` on purpose. It covers Catpaw identity surfaces
+/// and the composer send/stop/queue control; generic actions, links and statuses stay semantic.
 enum CatpawBrand {
     static let paw = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(rgb: 0xF2A985) : UIColor(rgb: 0xE8946A) })
 }

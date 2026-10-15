@@ -35,10 +35,10 @@ import Combine
                     .contentTransition(.symbolEffect(.replace))
                     .foregroundStyle(mode == .disabled ? CatpawColors.secondary : CatpawColors.sendIcon)
                     .frame(width: 36, height: 36)
-                    .background(mode == .disabled ? CatpawColors.separator : (mode == .stop ? CatpawColors.ink : CatpawColors.send), in: Circle())
+                    .background(mode == .disabled ? CatpawColors.separator : CatpawBrand.paw, in: Circle())
                 if mode == .queue {
                     Image(systemName: "clock.fill").font(CatpawTypography.Role.caption.font.weight(.bold))
-                        .foregroundStyle(CatpawColors.ink).background(CatpawColors.background, in: Circle()).offset(x: 3, y: -3)
+                        .foregroundStyle(CatpawBrand.paw).background(CatpawColors.background, in: Circle()).offset(x: 3, y: -3)
                         .transition(.scale.combined(with: .opacity))
                 }
             }

@@ -2,11 +2,21 @@ import SwiftUI
 import UIKit
 
 @MainActor final class ConversationTextView: CatpawEditingTextView {
+    private let placeholderLabel=UILabel()
     var submit: (() -> Void)?
     var addAttachments: (([ComposerAttachment]) -> Void)?
     var compositionChanged: ((Bool) -> Void)?
     var lineCountChanged: ((Int) -> Void)?
     private var reportedLineCount = 0
+    func setPlaceholder(_ value:String,font:UIFont) {
+        if placeholderLabel.superview == nil {
+            placeholderLabel.isUserInteractionEnabled=false;placeholderLabel.isAccessibilityElement=false
+            addSubview(placeholderLabel)
+        }
+        placeholderLabel.text=value;placeholderLabel.font=font;placeholderLabel.textColor=UIColor(CatpawColors.secondary)
+        refreshPlaceholder();setNeedsLayout()
+    }
+    func refreshPlaceholder() {placeholderLabel.isHidden = !text.isEmpty;accessibilityValue=text.isEmpty ? placeholderLabel.text:nil}
     override var keyCommands: [UIKeyCommand]? { [UIKeyCommand(input:"\r",modifierFlags:.command,action:#selector(commandSubmit))] }
     @objc func commandSubmit() { guard markedTextRange == nil else { return };submit?() }
     override func paste(_ sender: Any?) {
@@ -18,7 +28,12 @@ import UIKit
         compositionChanged?(markedTextRange != nil);delegate?.textViewDidChange?(self)
     }
     override func unmarkText() { super.unmarkText();compositionChanged?(false);delegate?.textViewDidChange?(self) }
-    override func layoutSubviews() { super.layoutSubviews();reportLineCount() }
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        let x=textContainerInset.left+textContainer.lineFragmentPadding
+        placeholderLabel.frame=CGRect(x:x,y:textContainerInset.top,width:max(0,bounds.width-x-textContainerInset.right-textContainer.lineFragmentPadding),height:placeholderLabel.font.lineHeight)
+        reportLineCount()
+    }
     func reportLineCount() {
         layoutManager.ensureLayout(for:textContainer)
         let range=layoutManager.glyphRange(for:textContainer)
@@ -53,6 +68,7 @@ import UIKit
         view.textContainerInset=UIEdgeInsets(top:8,left:0,bottom:8,right:0)
         view.textContainer.lineFragmentPadding=0;view.returnKeyType = .default
         view.accessibilityLabel=AppLanguage(locale:context.environment.locale).ui("消息");view.accessibilityIdentifier="chat.input"
+        view.setPlaceholder(AppLanguage(locale:context.environment.locale).ui("给 Catpaw 发消息"),font:ConversationTypeScale.font(context.environment.dynamicTypeSize))
         view.setContentCompressionResistancePriority(.defaultLow,for:.horizontal)
         view.submit=submit;view.addAttachments=addAttachments;view.lineCountChanged=lineCountChanged;view.compositionChanged={ [weak model] in model?.updateInputComposition($0) }
         #if DEBUG
@@ -70,6 +86,7 @@ import UIKit
         let font=ConversationTypeScale.font(context.environment.dynamicTypeSize)
         let fontChanged=view.font?.isEqual(font) != true
         if fontChanged {view.font=font}
+        view.setPlaceholder(AppLanguage(locale:context.environment.locale).ui("给 Catpaw 发消息"),font:font)
         #if DEBUG
         let renderedPointSize=font.pointSize,systemCategory=view.traitCollection.preferredContentSizeCategory
         DispatchQueue.main.async {P0ExperienceProbe.shared.recordInputTypography(pointSize:renderedPointSize,systemCategory:systemCategory)}
@@ -78,7 +95,7 @@ import UIKit
         let old=view.selectedRange;context.coordinator.replacing=true;view.text=model.draft
         view.selectedRange=NSRange(location:min(old.location,view.text.utf16.count),length:0)
         context.coordinator.replacing=false
-        view.keepSelectionVisible();view.reportLineCount()
+        view.refreshPlaceholder();view.keepSelectionVisible();view.reportLineCount()
     }
     func sizeThatFits(_ proposal:ProposedViewSize,uiView:ConversationTextView,context:Context) -> CGSize? {
         #if DEBUG
@@ -101,7 +118,7 @@ import UIKit
             #endif
             guard !replacing else { return }
             parent.model.updateInputComposition(textView.markedTextRange != nil)
-            parent.model.editDraft(textView.text);textView.invalidateIntrinsicContentSize();(textView as? ConversationTextView)?.reportLineCount()
+            parent.model.editDraft(textView.text);textView.invalidateIntrinsicContentSize();(textView as? ConversationTextView)?.refreshPlaceholder();(textView as? ConversationTextView)?.reportLineCount()
             (textView as? CatpawEditingTextView)?.noteTextChanged()
         }
         func textViewDidChangeSelection(_ textView:UITextView) {

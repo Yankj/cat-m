@@ -3451,6 +3451,10 @@
     "en": "Message",
     "zh-Hans": "消息"
   },
+  "给 Catpaw 发消息": {
+    "en": "Message Catpaw",
+    "zh-Hans": "给 Catpaw 发消息"
+  },
   "消息尚未发送，需要确认处理方式。": {
     "en": "This message has not been sent. Review how it will be processed.",
     "zh-Hans": "消息尚未发送，需要确认处理方式。"

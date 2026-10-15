@@ -305,7 +305,7 @@ import CatpawImageComposer
         .onAppear { probe.start();probe.update(model) }
         .onChange(of:model.draft) { _, _ in probe.update(model) }
         .onChange(of:model.session?.turns.last?.lastSequence) { _, _ in probe.update(model) }
-        .overlay(alignment:.topTrailing) { if probe.enabled && P0ExperienceFixture.launchEnvironment["CATPAW_QA_VISUAL_REVIEW"] != "1" { VStack {
+        .overlay(alignment:.topTrailing) { if probe.enabled && CatpawDebugPresentation.showFixtureBadge() && P0ExperienceFixture.launchEnvironment["CATPAW_QA_VISUAL_REVIEW"] != "1" { VStack {
             Text("Synthetic offline fixture").font(.caption2).accessibilityIdentifier("qa.p0Fixture")
             Text("P0 probe").font(.caption2).accessibilityIdentifier("qa.p0Probe").accessibilityValue(probe.json)
             if P0PerformanceLog.shared.enabled {Button("Export metrics"){probe.exportMetrics()}.font(.caption2).accessibilityIdentifier("qa.p0Export")}
@@ -380,7 +380,7 @@ import CatpawImageComposer
                                         .font(CatpawTypography.Role.body.font.weight(.semibold))
                                         .foregroundStyle(canSendDraft ? CatpawColors.sendIcon : CatpawColors.secondary)
                                         .frame(width:composerControlSize,height:composerControlSize)
-                                        .background(canSendDraft ? CatpawColors.send : CatpawColors.input,in:Circle())
+                                        .background(canSendDraft ? CatpawBrand.paw : CatpawColors.input,in:Circle())
                                         .overlay{Circle().strokeBorder(CatpawColors.controlEdge)}
                                 }
                                 .buttonStyle(CatpawPressButtonStyle()).disabled(!canSendDraft)

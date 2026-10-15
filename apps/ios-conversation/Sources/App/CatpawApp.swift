@@ -82,10 +82,7 @@ import AppIntents
                 // fresh local journal falsely claiming an older server history.
                 _=try await pending.service.create(scope:pending.scope,id:stableID("accepted-work-test-conversation:"+testStore))
             }
-            let id=try await pending.service.openLatest(scope:pending.scope),record=try await pending.repository.record(id,scope:pending.scope)
-            if P0ExperienceFixture.scenario?.hasPrefix("p0-ui-accepted-work") != true,record.conversation?.draftText.isEmpty == true,try await pending.service.read(scope:pending.scope,conversationID:id).messages.isEmpty {
-                try await pending.service.saveDraft(scope:pending.scope,conversationID:id,text:"Saved local draft")
-            }
+            _=try await pending.service.openLatest(scope:pending.scope)
             await pending.start()
             if P0ExperienceFixture.scenario == "p0-ui-consent-handoff" {try await ConversationConsentHandoffFixture.prepare(model:pending)}
             model=pending
