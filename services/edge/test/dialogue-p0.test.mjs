@@ -115,7 +115,7 @@ test('production tail SQL projects away history/input/auth and binds cursor as a
   const calls=[],tx=new RecordTransaction({query:async(sql,args)=>{calls.push({sql,args});return {rows:[{data:{events:[]},event_count:4,subject_id:'internal'}]};}});
   await tx.chatConversationHead('owner','cid');await tx.chatTurnTail('owner','tid',3);
   assert.match(calls[0].sql,/jsonb_build_object/);assert.doesNotMatch(calls[0].sql,/SELECT data FROM/);
-  assert.match(calls[1].sql,/'input','history','model_history','subject_id','source_auth','dispatch_checkpoint','events'/);assert.match(calls[1].sql,/integer>\$3/);assert.deepEqual(calls[1].args,['owner','tid',3]);
+  const omitted=calls[1].sql.match(/data-ARRAY\[([^\]]+)\]/)?.[1].match(/'[^']+'/g).map(key=>key.slice(1,-1));assert.deepEqual(new Set(omitted),new Set(['input','history','model_history','subject_id','source_auth','dispatch_checkpoint','memory_extraction','memory_proposal_call','source_sensitivity','events']));assert.match(calls[1].sql,/integer>\$3/);assert.deepEqual(calls[1].args,['owner','tid',3]);
 });
 test('DB telemetry reports aggregate query duration/count without SQL or arguments',async()=>{
   let tick=0;const rows=[],metrics=createChatMetrics({now:()=>tick,sink:r=>rows.push(r)}),repository=new PostgresRepository({connect:async()=>({query:async()=>{tick+=7;return {rows:[]};},release(){}})});repository.metrics=metrics;

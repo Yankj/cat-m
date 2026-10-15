@@ -1,0 +1,132 @@
+{
+  "schema": "catpaw.conversation-memory-delivery.v1",
+  "date": "2026-10-15",
+  "candidate": "AF-W40-CONVERSATION-20261015-26",
+  "source_commit": "bd06a2f551d27c6cfe23d2ba63f1e7b9b532351e",
+  "remote_source_commit": "83466ffa83f5b024cee27ded631decb5294bcb0b",
+  "remote_source_tree": "0a52f07603f0239e3e29f7de0cc68f4d69685f24",
+  "published_source_paths": 24,
+  "source_inputs": 387,
+  "all_source_inputs_match_remote_index": true,
+  "version": "0.3.0(26)",
+  "delivery": "source_and_release_simulator_build_not_installed_not_product_acceptance",
+  "bundle_sha256": "21eb66692f329d1c361b01a59b2c309497bd7c9da626bc3e5bdbcc538a6e1f97",
+  "bundle_files": 20,
+  "local_package_manifest_sha256": "9971c3f200f0f1ddc73494e6bdc38b91541b001cbda081676359bf3087e580db",
+  "package_fingerprint_rule": "SHA256 of UTF-8 JSON array sorted by relative file path, each entry {bytes,path,sha256}, canonical sorted object keys and no whitespace. Per-file local manifest remains under ignored build.",
+  "verification": {
+    "backend_offline": {
+      "status": "PASS",
+      "cases": 385,
+      "new_http_cases": 10,
+      "new_extraction_seam_cases": 14,
+      "log": "backend-final-r4.log",
+      "environment": "existing Deno/public cache; deny-net/ignore-env; serialized TestRepository and named injected providers; not real model/PG"
+    },
+    "swift_conversation_portable": {
+      "status": "PASS",
+      "assertions": 52,
+      "log": "native-conversation-r1.log"
+    },
+    "swift_memory_portable": {
+      "status": "PASS",
+      "log": "native-memory-r1.log",
+      "coverage": "strict source-bound proposal refs incl 22 negative mutations, existing memory wire/hash/command journal"
+    },
+    "native_http_sse": {
+      "status": "PASS",
+      "assertions": 94,
+      "explicit_fixture_posts": 36,
+      "log": "native-wire-r3.log",
+      "coverage": "proposal success/forged source; one POST then cold original GET; client header; existing Unicode/replay/HTTP failures"
+    },
+    "product_release_build": {
+      "status": "PASS",
+      "log": "xcode-build26-r1.log",
+      "result_bundle_local": "Build26.xcresult",
+      "destination": "generic iOS Simulator; no boot/install/launch"
+    },
+    "non_debug_sdk": {
+      "status": "PASS_SUBPHASE",
+      "log": "native-sdk-r1.log",
+      "limit": "SDK typecheck and syntax parse passed; that full script later failed localization. Final localization separately passed r2; no whole-r1 PASS claim."
+    },
+    "project_memberships": {
+      "status": "PASS",
+      "members": 113,
+      "log": "native-project-r2.log"
+    },
+    "localization": {
+      "status": "PASS",
+      "bilingual_entries": 1077,
+      "log": "native-localization-r2.log"
+    },
+    "governance": {
+      "status": "PASS",
+      "sensitive_candidates": 1134,
+      "blocking": 0,
+      "manual_review": 0,
+      "note": "Three unchanged synthetic credential literals re-reviewed only at exact path/line/new file hash; rules unchanged."
+    }
+  },
+  "review": {
+    "independent_backend": "Two P1 issues found and fixed: missing legacy client negotiation; duplicate candidate references. Final review found no remaining blocking defect within reviewed source scope.",
+    "independent_native": "Typed source/turn binding, no Goal authority, optional old storage compatibility, dedicated failure display reviewed."
+  },
+  "mechanisms": [
+    "Existing model turn only, no second memory worker/provider loop",
+    "Current authenticated user source/job frozen; no queue-head claim or idle lease",
+    "Complete valid model terminal before candidate mutation; no mixed tool round",
+    "Ready job claim, Foundation inferred/proposed candidate, job completion and refs-only turn receipt in one transaction",
+    "Fresh source/consent/runtime/generation checks through final commit; no memory fact until separate explicit confirmation",
+    "New contract header is transport capability only; old client tools and admission hashes remain identical",
+    "Duplicate inputs share one Foundation candidate/reference; no-relearn guard still filters old themes",
+    "Original turn GET recovers receipt without another operation or provider request"
+  ],
+  "retained_failures": [
+    "HTTP baseline r1: 3 failed missing extraction path",
+    "Duplicate regression r2: 9 passed/1 failed; state1 versus receipt2 reproduced before common-layer deduplication",
+    "Full backend r3: 384 passed/1 failed due obsolete ordered SQL exclusion assertion; updated to explicit omission set incl private proposal fields; r4 385/385",
+    "Swift wire r1 missing explicit CATPAW_NODE environment; r2 existing Node passed; r3 includes two new full proposal wire paths",
+    "SDK r1 completed typecheck/parse but failed localization because Root first edited AppIntent .strings instead of UIStrings catalog; reverted .strings, registered canonical keys, r2 localization passed",
+    "Agent isolated Node18 --test failed; existing Deno isolated 14 cases passed; files remain in ignored build/memory-extraction-20261015"
+  ],
+  "limitations": [
+    "No new Simulator UI run, install, phone check, production deployment, Auth or model request; user build25 and its services/Simulator preserved",
+    "Semantic natural-language extraction exercised only with explicitly injected provider calls; real model tool accuracy is unverified",
+    "Real PG multi-instance concurrency and AF-A11 two-conversation/two-scope acceptance remain NOT_RUN",
+    "Existing lexical retrieval/no-relearn key semantics retained; no claim of paraphrase-level semantic blocking",
+    "Deterministic proposal acknowledgement currently Chinese; full language/VoiceOver/motion matrix remains unverified",
+    "AF-A11, AF-G5 and FINAL-G1/G2/G3 remain unaccepted; prior r7 real attempt is HTTP429, not model success"
+  ],
+  "evidence_logs": {
+    "build/conversation-memory-20261015/backend-red-r1.log": "3a631940aea1bbc88f8bd034a54d54bc2d436aadbcbd2f80686bd39687ba2c3d",
+    "build/conversation-memory-20261015/backend-green-r1.log": "ca152ba9496311c7c40dd17faef1f574798698545cfbe02baf933e33356a9209",
+    "build/conversation-memory-20261015/backend-duplicate-red-r2.log": "6d71eb753dbe03920b594764910650409e0da4734c5c248f30694b9667142d53",
+    "build/conversation-memory-20261015/backend-final-r3.log": "2d66acd66303b4ae74f23495d6be2bf8985c0d6fe28b022e148ae9ff75d34b45",
+    "build/conversation-memory-20261015/backend-final-r4.log": "e6e3b909ff6a1e90042bd5a6715b589710866d547c73a64fea8a9c6407982ed3",
+    "build/conversation-memory-20261015/native-conversation-r1.log": "4455cf1382bbe425dd2e956e6a9f282a570539b7969f6373fbd165958fcd335a",
+    "build/conversation-memory-20261015/native-memory-r1.log": "c103da66183e19bf3447ac5b1e49e44d9719ac70e1da9b998b501ed7110e99b3",
+    "build/conversation-memory-20261015/native-wire-r1.log": "46ad86823092e15556e162097f11fffa99f5c3a19795f919e9e11f20d482af23",
+    "build/conversation-memory-20261015/native-wire-r2.log": "29a194a289b9fad0ee13cdb2dda72d03876f311faebd1402d97fc0cbd6257531",
+    "build/conversation-memory-20261015/native-wire-r3.log": "34bdff81695f2b1867fbbe194b056633d1e0486543cd314d1fd6ea64e8fd6000",
+    "build/conversation-memory-20261015/native-sdk-r1.log": "dd3467d04b4fe1509cb516eee1aa5683cf289d8175fee01a0da1dcf2136bc39b",
+    "build/conversation-memory-20261015/native-localization-r2.log": "74f2038e177d8ff923f26ddac87b74db30d663925b672a1a3f9e22534c20e2f7",
+    "build/conversation-memory-20261015/native-project-r2.log": "9f38ad768db20fca6af59e656e7115354c9cac9e38163642247edd1779d68f9d",
+    "build/conversation-memory-20261015/xcode-build26-r1.log": "8ce7b80eac7d449c55e5bcfa5b07db8c799fa9e9a86db7c8f8bc542e3336000d",
+    "build/conversation-memory-20261015/check-layout.log": "d225b3174702f41d455fc0cd22c09a32011f6b961c278f3e66b88fc9ba7ca372",
+    "build/conversation-memory-20261015/check-frozen.log": "1bb67173eb0b659474afd45ac05604e9fb8492515d9f2408006c25fb5bf3865d",
+    "build/conversation-memory-20261015/check-deployed.log": "a68c4a239c7a9d8a2e3f2ffab1f5ae00b63c319b9999a42db6c27873688ee228",
+    "build/conversation-memory-20261015/check-af-plan.log": "71da24f70099c5cfb5c75ba771b66c4bf4a7191051c3bd879afd8ec58db3f748",
+    "build/conversation-memory-20261015/check-af-goals.log": "5e514e06da7e3f3b8a689bfeeb73d37027323026d35b3d55b36e0160fc816e5d",
+    "build/conversation-memory-20261015/check-final.log": "7b72c9e606d7cd160ae8d115c2f06fd10a8e293c8de3a662a01a92467c51161c",
+    "build/conversation-memory-20261015/check-cg.log": "0751a52050b8903f5812a6f0fc59db56a345f2b4dc1857e55e7d69c402873163",
+    "build/conversation-memory-20261015/check-sensitive-final.log": "ac58b1d27a171e9ace33d8bf24950fc865d52c88b9cd5bc2ae1951f7be3cc4e1",
+    "build/conversation-memory-20261015/check-whitespace.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "build/conversation-memory-20261015/check-typography-r2.log": "bb9da0aea31f9cd9668277d498e43db871b93c68595a2cdcdd463bbc0ff08727"
+  },
+  "isolated_agent_result": {
+    "path": "build/memory-extraction-20261015/RESULT-A-seam.json",
+    "sha256": "8a9df22bd34c16944e3f2934b9bc7a1733c2f78fa002d7f2b388153a53ed50d3"
+  }
+}

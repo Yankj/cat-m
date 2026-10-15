@@ -459,6 +459,17 @@ import CatpawImageComposer
                     }
                 }
             }
+            else if message.toolName=="propose_memory_v1" {
+                if message.role == .tool || !message.complete || message.failure != nil {
+                    if let failure=message.failure {Label(ui("记忆候选提取失败 · ")+failure,systemImage:"exclamationmark.circle").font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.attention)}
+                    else if message.role == .tool,let session=model.session,let receipt=try? ConversationMemoryProposalReceipt.transcript(message,session:session,serverScopeID:model.memoryService?.reference.serverScopeID) {
+                        VStack(alignment:.leading,spacing:8) {
+                            Label(receipt.candidates.isEmpty ? ui("没有新增记忆候选"):ui("记忆候选待确认"),systemImage:"brain").font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary).accessibilityIdentifier("chat.memoryProposal.pending")
+                            if !receipt.candidates.isEmpty,model.memoryConfigured {Button(ui("查看记忆候选")){path.append(.memory)}.touchTarget().accessibilityIdentifier("chat.memoryProposal.open")}
+                        }
+                    }else{Label(message.role == .tool ? ui("记忆候选回执待核对"):ui("提取记忆候选…"),systemImage:"circle.dotted").font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)}
+                }
+            }
             else if let goal = linkedGoal(message) { ConversationGoalCard(goal: goal, busy: model.busy, refresh: model.readOriginal, openPlan: model.taskPlansConfigured && goal.binding != nil ? { model.openTaskPlan(goal) } : nil,openActions:model.taskReviewsConfigured && goal.binding != nil ? {model.openTaskActions(goal)} : nil,openControl:model.taskControlsConfigured && goal.binding != nil ? {model.openTaskControl(goal)} : nil,openArtifact:{artifact in path.append(.artifact(goal.id,ConversationArtifactIdentity(artifact)))}) }
             else if message.failure != nil { Label(ui("任务请求失败 · ") + (message.failure ?? ""), systemImage: "exclamationmark.circle").font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.attention) }
             else { Label(message.toolName == "agent_status" ? (message.complete ? ui("任务进展已读取") : ui("读取任务进展…")) : (message.complete ? ui("任务请求已记录") : ui("等待后台保存任务…")), systemImage: message.complete ? "checkmark.circle" : "circle.dotted").font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary) }

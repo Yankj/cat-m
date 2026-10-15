@@ -91,7 +91,8 @@ public struct ConversationToolResult: Codable, Sendable {
     /// Only confirmed persistent service projections can populate this list. Tool arguments cannot.
     public let committedGoals: [ConversationGoalProjection]
     public let continuationReceipt: ConversationTaskRevisionReceipt?
-    public init(callID: String, name: String, content: String, committedGoals: [ConversationGoalProjection] = [], continuationReceipt: ConversationTaskRevisionReceipt? = nil) { self.callID = callID; self.name = name; self.content = content; self.committedGoals = committedGoals; self.continuationReceipt=continuationReceipt }
+    public let memoryProposalReceipt:ConversationMemoryProposalReceipt?
+    public init(callID: String, name: String, content: String, committedGoals: [ConversationGoalProjection] = [], continuationReceipt: ConversationTaskRevisionReceipt? = nil,memoryProposalReceipt:ConversationMemoryProposalReceipt?=nil) { self.callID = callID; self.name = name; self.content = content; self.committedGoals = committedGoals; self.continuationReceipt=continuationReceipt;self.memoryProposalReceipt=memoryProposalReceipt }
 }
 /// A fresh turn's immutable link to the original task. Acceptance is not task completion.
 public struct ConversationTaskRevisionReceipt:Codable,Sendable,Equatable {
