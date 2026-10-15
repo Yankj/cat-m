@@ -33,9 +33,9 @@ import Combine
                 Image(systemName: mode == .stop ? "stop.fill" : "arrow.up")
                     .font(CatpawTypography.Role.body.font.weight(.bold))
                     .contentTransition(.symbolEffect(.replace))
-                    .foregroundStyle(mode == .disabled ? CatpawColors.secondary : CatpawColors.sendIcon)
+                    .foregroundStyle(mode == .disabled ? Color.white.opacity(0.9) : CatpawColors.sendIcon)
                     .frame(width: 36, height: 36)
-                    .background(mode == .disabled ? CatpawColors.separator : CatpawBrand.paw, in: Circle())
+                    .background(mode == .disabled ? CatpawBrand.paw.opacity(0.35) : CatpawBrand.paw, in: Circle())
                 if mode == .queue {
                     Image(systemName: "clock.fill").font(CatpawTypography.Role.caption.font.weight(.bold))
                         .foregroundStyle(CatpawBrand.paw).background(CatpawColors.background, in: Circle()).offset(x: 3, y: -3)
@@ -218,8 +218,8 @@ struct ComposerGlass: ViewModifier {
     var draftIsEmpty: Bool { !sendsEnabled || (model?.draft.isEmpty ?? true) }
     var isComposingMarkedText: Bool { model?.isInputComposing ?? false }
     var runState: ComposerRunState {
-        guard let turns = model?.session?.turns else { return .idle }
-        return turns.contains(where: { activeOperations.contains($0.id) }) ? .responding : .idle
+        let turns = model?.session?.turns ?? []
+        _ = turns; return activeOperations.isEmpty ? .idle : .responding
     }
     var queuedDraftPreview: String? {
         guard runState == .responding else { return nil }
@@ -230,7 +230,8 @@ struct ComposerGlass: ViewModifier {
     func send() { guard sendsEnabled else {return};sendAction?() ?? model?.send() }
     func stop() {
         guard let model, let conversationID = model.conversationID else { return }
-        let operationIDs = Set(model.session?.turns.map(\.id) ?? []).intersection(activeOperations)
+        let operationIDs = activeOperations
+        NotificationCenter.default.post(name: AnswerPhaseProjection.stopNotification, object: nil, userInfo: ["operationIDs": activeOperations])
         Task {
             do {
                 try await model.service.stopObserving(scope: model.scope, conversationID: conversationID)
@@ -292,5 +293,45 @@ private struct JumpGlass: ViewModifier {
         #else
         content.background(.regularMaterial, in: Capsule()).shadow(color: .black.opacity(0.08), radius: 8, y: 2)
         #endif
+    }
+}
+
+
+/// Host composer primary control: send ↔ stop morph driven by turnEvents (adapter.runState), never model.busy.
+/// Enabled = paw-orange; disabled = tinted paw-orange (35%); stop = paw-orange square glyph.
+@MainActor struct ComposerPrimaryButton: View {
+    let responding: Bool
+    let draftEmpty: Bool
+    let canSend: Bool
+    let queued: Bool
+    let size: CGFloat
+    let send: () -> Void
+    let stop: () -> Void
+    @State private var tapCount = 0
+    @Environment(\.locale) private var locale
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    private func ui(_ k: String) -> String { AppLanguage(locale: locale).ui(k) }
+    private var showsStop: Bool { responding && draftEmpty }
+    private var enabled: Bool { showsStop || canSend }
+    var body: some View {
+        Button { tapCount += 1; if showsStop { stop() } else { send() } } label: {
+            ZStack {
+                Circle().fill(enabled ? CatpawBrand.paw : CatpawBrand.paw.opacity(0.35))
+                Image(systemName: showsStop ? "stop.fill" : (queued ? "clock.badge.checkmark" : "arrow.up"))
+                    .font(CatpawTypography.Role.body.font.weight(.bold))
+                    .foregroundStyle(enabled ? CatpawColors.sendIcon : Color.white.opacity(0.9))
+                    .contentTransition(.symbolEffect(.replace))
+                    .scaleEffect(showsStop ? 0.82 : 1)
+            }
+            .frame(width: size, height: size)
+            .rotationEffect(.degrees(showsStop && !reduceMotion ? 90 : 0))
+        }
+        .buttonStyle(CatpawPressButtonStyle())
+        .disabled(!enabled)
+        .animation(CatpawMotion.resolved(CatpawMotion.sendMorph, reduceMotion), value: showsStop)
+        .animation(.easeOut(duration: 0.18), value: enabled)
+        .sensoryFeedback(.impact(weight: showsStop ? .medium : .light), trigger: tapCount)
+        .accessibilityLabel(showsStop ? ui("停止回答") : (queued ? ui("排队发送") : ui("发送")))
+        .accessibilityIdentifier(showsStop ? "chat.stop" : "chat.send")
     }
 }

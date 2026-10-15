@@ -146,6 +146,10 @@ import CatpawImageComposer
                                 renderedTimelineRow(row).padding(.top,renderedSpacing(row,previous:index>0 ? rows[index-1]:nil))
                                     .background(ConversationReadingAnchorMarker(id:row.id,context:readingAnchorContext,coordinator:readingAnchor).accessibilityHidden(true)).id(row.id)
                             }
+                            if let pending = session.turns.last, [.dispatched,.running].contains(pending.state), pending.assistantMessageID == nil,
+                               !session.messages.contains(where:{ $0.role == .assistant && !$0.complete }) {
+                                PendingThinkingRow(service:model.service,turn:pending).id("pending-\(pending.id)").padding(.top,12)
+                            }
                             if let latest = session.turns.last, latest.state == .completed {
                                 Text(ui("回复完成")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary).accessibilityIdentifier("chat.reply.completed").padding(.top,8)
                             } else if let latest = session.turns.last, latest.state == .failed {
@@ -384,18 +388,9 @@ import CatpawImageComposer
             FloatingComposer(model:composerChrome,lineCount:composerLineCount,uploader:attachmentUploader,
                              accessory:AnyView(composerContextButton(budget:budget)),
                              trailingAccessory:AnyView(
-                                Button(action:submitDraft) {
-                                    Image(systemName:model.sending ? "clock.badge.checkmark":"arrow.up")
-                                        .font(CatpawTypography.Role.body.font.weight(.semibold))
-                                        .foregroundStyle(canSendDraft ? CatpawColors.sendIcon : CatpawColors.secondary)
-                                        .frame(width:composerControlSize,height:composerControlSize)
-                                        .background(canSendDraft ? CatpawBrand.paw : CatpawColors.input,in:Circle())
-                                        .overlay{Circle().strokeBorder(CatpawColors.controlEdge)}
-                                }
-                                .buttonStyle(CatpawPressButtonStyle()).disabled(!canSendDraft)
-                                .accessibilityLabel(model.sending ? ui("排队发送") : ui("发送"))
-                                .accessibilityHint(model.session?.unresolved?.state == .unknown ? ui("先读取原请求进展，当前草稿不会重发") : (model.sending ? ui("保存在后续消息队列，仅在前台发送") : ui("发送当前消息")))
-                                .accessibilityIdentifier("chat.send")
+                                ComposerPrimaryButton(responding:composerChrome.runState == .responding,
+                                                      draftEmpty:model.draft.isEmpty,canSend:canSendDraft,queued:model.sending,
+                                                      size:composerControlSize,send:submitDraft,stop:{composerChrome.stop()})
                              )) {
                 NativeConversationComposer(model:model,
                     enabled:!restrictToFrozenFixture && !model.switchingArtifactContinuation,
