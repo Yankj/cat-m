@@ -1,0 +1,132 @@
+{
+  "schema_version": 1,
+  "candidate": "AF-TRIGGER-DEVICE-IMAGE-20261015-39-R3",
+  "base_manifest": "docs/acceptance/evidence/native-consent-activity38/source-snapshot.json",
+  "base_manifest_sha256": "109606ac0811cd749295ceeb37947b41a7826face75823af1e4eff1004c17101",
+  "added_or_changed": [
+    {
+      "path": "apps/ios-conversation/CatpawM.xcodeproj/project.pbxproj",
+      "bytes": 75619,
+      "sha256": "3fa94d55992b53683ed4aa35e1764414b158ad75016f1337ed7819d6b0b2d0b1",
+      "git_blob_sha1": "a127fa80f9b3954bb8f820b683cb58a564fa3334"
+    },
+    {
+      "path": "apps/ios-conversation/Configuration/DeviceTrial.Info.plist",
+      "bytes": 2384,
+      "sha256": "d074f3767202eca7b39c5f4650969f67808cac72a6bffd2fe2fe59564fc3fdf1",
+      "git_blob_sha1": "c3e4d7f5179f7fd04ebcbdba1b7bb10757836aeb"
+    },
+    {
+      "path": "apps/ios-conversation/Configuration/Version.xcconfig",
+      "bytes": 133,
+      "sha256": "b5279689cd6b6ac3ae2df14c4c948e41e68e199bed63026913717b54fa206d32",
+      "git_blob_sha1": "ad5385b3ecef2be420f75668c8380978be1c82f8"
+    },
+    {
+      "path": "apps/ios-conversation/Resources/Info.plist",
+      "bytes": 2094,
+      "sha256": "f78a5b901e0b78814dcd1f1c3baf825b49c97b78bba9484aba50181c92d38dca",
+      "git_blob_sha1": "ed115e6b1fbd80eb471fdb45c98ef1aa4f88cced"
+    },
+    {
+      "path": "apps/ios-conversation/Resources/en.lproj/InfoPlist.strings",
+      "bytes": 864,
+      "sha256": "e3446b3bb5d2d7a8b2b2a18e43e84422de0de1bda748a101a2c4963a590cd367",
+      "git_blob_sha1": "63e0f311bf9ebddd629f8dd1d0528ef6d447fe5f"
+    },
+    {
+      "path": "apps/ios-conversation/Resources/zh-Hans.lproj/InfoPlist.strings",
+      "bytes": 784,
+      "sha256": "a608d7ec0815d0a93b02da3333e620edbbbe2faed7c0dc0e895fdd3a2dd3bac0",
+      "git_blob_sha1": "da718995cfce8c07ce1f340c1522eb23a2d5b556"
+    },
+    {
+      "path": "apps/ios-conversation/Scripts/check-localization.py",
+      "bytes": 7273,
+      "sha256": "e97e3693d4687b27a70b82fba06c47c1ca38744112acf242d28c1dd9023ce823",
+      "git_blob_sha1": "d51041edb77d841e13034294f94b536d123361bc"
+    },
+    {
+      "path": "apps/ios-conversation/Sources/App/ConversationFirstModel.swift",
+      "bytes": 74451,
+      "sha256": "470984a6acdcdfa2052cd0715831c3c86b122b855f2482194514062e44449cdb",
+      "git_blob_sha1": "262bdcdb98e13b5f1ab4b3d2fb8ee21992c65d17"
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Features/ConversationDeviceEffectExecutor.swift",
+      "bytes": 18263,
+      "sha256": "30281d10ddeeeba1afe7b57c96424eef5970c4f166cf64194a79d2be5e204ef3",
+      "git_blob_sha1": "989282d706eefa0b9fe32afce4c04e4a53b31261"
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Providers/NativeCalendarEffectExecutor.swift",
+      "bytes": 13632,
+      "sha256": "c3e942ed4ec17260338a8a28a0762b146586bed3e6f9384072cf3c0f93113348",
+      "git_blob_sha1": "db9e699d4cb6effb24eb1b69e39a485762756e6b"
+    },
+    {
+      "path": "apps/ios-conversation/Tests/ConversationDeviceEffectExecutorTests.swift",
+      "bytes": 16225,
+      "sha256": "379e5c8bb4e7fa406fb325bd7d673f64926c388bee2a34164c0a5e4fa669a58d",
+      "git_blob_sha1": "678b629fcc2246a65a06950174b408bc1418694d"
+    },
+    {
+      "path": "apps/ios-conversation/Tests/ConversationImageRecoveryApplicationTests.swift",
+      "bytes": 12458,
+      "sha256": "9774380bd35294ff2dd35fa87e63eeb087c3cfa9c1826be97c3c7823cb74f95b",
+      "git_blob_sha1": "514c026d5abdb0143c614be072c9349ec103b390"
+    },
+    {
+      "path": "packages/ios-image-composer/Sources/CatpawImageComposer/SystemImageAttachmentEncoder.swift",
+      "bytes": 13824,
+      "sha256": "ed29b41d075825227664563911ac9204250e76d29a35a3099d98f3d91b689759",
+      "git_blob_sha1": "860b3a1279d4963d3932fe189717ddce8e778127"
+    },
+    {
+      "path": "packages/ios-image-composer/Tests/CatpawImageComposerTests/EncodedRestorationTests.swift",
+      "bytes": 7006,
+      "sha256": "855e5e32c9987c8c0dcdfb2dd23e8af7b81f8cff1403d2a6d07c6a3aa21da84f",
+      "git_blob_sha1": "5025ad757f49b75bea08949fb617b5d8886ac367"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/api.mjs",
+      "bytes": 45546,
+      "sha256": "72e0e137d17a4781e98ebf82f939c565c2564244ffec56aeb87ccd0d989d56ad",
+      "git_blob_sha1": "980b40c1a5be5927e40c32a76c823245f56cd1a7"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/followup-trigger-contract.mjs",
+      "bytes": 5838,
+      "sha256": "a44ded7410f723e057794948a8c879d6897a8a85e9b518ff404b5dab526fe2f9",
+      "git_blob_sha1": "99df8450e903d16956d13cf112331b79923befe0"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/followup-trigger-http.mjs",
+      "bytes": 5902,
+      "sha256": "5a0fae53076a8d1cd6c7b068e14db6b42eff6ca3fb96d47bca15de5bbf0c5d20",
+      "git_blob_sha1": "3cab46bc9134cb4b0de40d1f73c8aeab2021e1e5"
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/followup-trigger-service.mjs",
+      "bytes": 18753,
+      "sha256": "2a39ded20b2b7f07b70d129cac2711ae247332c20368c8d76d78e2ebc168efcd",
+      "git_blob_sha1": "6486d74de31801be08c1a5a192f8b89fcc557d20"
+    },
+    {
+      "path": "services/edge/test/followup-trigger-http.test.mjs",
+      "bytes": 6905,
+      "sha256": "cc63a04cefd3c3b65aa5ea6f8d2a1361871613ec9cd478b43374bd8786fb4e89",
+      "git_blob_sha1": "90e65c17346a78cee9b9db10c28154a53befd73c"
+    },
+    {
+      "path": "services/edge/test/followup-trigger.test.mjs",
+      "bytes": 18925,
+      "sha256": "2d4f642d24fc0d4e66cec5f7c080559ff71c973e80372f82a816446e6389e40c",
+      "git_blob_sha1": "1f60570ef2beadc1e2ab1d988ec84df51bb85737"
+    }
+  ],
+  "removed": [],
+  "composed_input_count": 450,
+  "composed_rows_sha256": "5539bac84e2191146fb39fc71f7e770920eabac2b0efacb49aa349de7f0ad981",
+  "ignored_full_snapshot_sha256": "5ee156bf77b4f7fee8b6991ef0598f728a6472e70e6e0d6426d3d675351d19ec"
+}
