@@ -1,9 +1,10 @@
 import {check,shape,hash,clone} from '../facade-r2/src/common.mjs';
-import {TASK_WORK_GRANT_CONTRACT,TASK_WORK_ATTEMPT_ACK_CONTRACT,TASK_WORK_GRANT_KINDS as K,TASK_WORK_GRANT_LIMITS as L,validateWorkGrantTerms,validateWorkGrantRunBinding,validateWorkGrantIdentity,validateWorkGrantReservation,validateWorkGrantOutcome,validateWorkGrantExecution,validateWorkGrantDispatch,validateWorkGrantAttemptSettlement,validateWorkGrantCompletionReceipt,workGrantOperationID,workGrantInstant,workGrantReference,workGrantReceiptHash} from './task-work-grant-contract.mjs';
+import {TASK_WORK_GRANT_CONTRACT,TASK_REVISION_WORK_GRANT_CONTRACT,TASK_REVISION_WORK_GRANT_KINDS,workGrantKinds,workGrantDueIdentity,TASK_WORK_ATTEMPT_ACK_CONTRACT,TASK_WORK_GRANT_KINDS as K,TASK_WORK_GRANT_LIMITS as L,validateWorkGrantTerms,validateWorkGrantRunBinding,validateWorkGrantIdentity,validateWorkGrantReservation,validateWorkGrantOutcome,validateWorkGrantExecution,validateWorkGrantDispatch,validateWorkGrantAttemptSettlement,validateWorkGrantCompletionReceipt,workGrantOperationID,workGrantInstant,workGrantReference,workGrantReceiptHash} from './task-work-grant-contract.mjs';
 import {taskControlRevision} from './task-control-contract.mjs';
 import {completionAuthorityValid,evaluateReport} from './report-completion.mjs';
 import {completionPlanCheck,effectiveTaskRequest} from './task-plan-service.mjs';
 import {validateFrozenSourceCatalog,sourceReadIdentity} from './public-source-contract.mjs';
+import {readWorkGrantRevisionBindingInTransaction} from './task-work-execution-selector.mjs';
 import {lockTaskWorkSourceInTransaction} from './task-work-grant-lifecycle.mjs';
 
 const iso=ms=>new Date(ms).toISOString();
@@ -23,27 +24,29 @@ export class TaskWorkGrantService{
   live();await tx.withScope(identity.scope_id,async scoped=>{const row=await scoped.scope();live();check(same(row.identity,terms.scope),403,'work_grant_scope_conflict');});live();
   check(identity.owner===terms.scope.owner&&identity.subject_id===terms.subject_id&&identity.grant_id===terms.grant_id&&identity.scope_id===terms.scope.scope_id,403,'work_grant_scope_conflict');
   await lockTaskWorkSourceInTransaction(tx,{scope_id:identity.scope_id,owner:identity.owner,source:terms.source_auth});live();
-  await tx.lock(identity.owner,K.grants,identity.grant_id);live();
-  const run=await tx.get(identity.owner,'catpaw-runs',terms.origin.run_id);live();const runBinding=validateWorkGrantRunBinding(terms,run);
+  const kinds=workGrantKinds(terms);await tx.lock(identity.owner,kinds.grants,identity.grant_id);live();
+  const run=await tx.get(identity.owner,'catpaw-runs',terms.origin.run_id);live();check(run?.frozen_request&&hash(run.frozen_request)===run.request_hash,409,'work_grant_run_binding_conflict');
   const op=await tx.get(identity.owner,'catpaw-operations',run.operation_id);live();check(op?.run_id===run.id&&op.request_hash===run.request_hash,409,'work_grant_run_binding_conflict');
   const task=await tx.get(identity.owner,'tasks',run.task_id);live();check(task?.id===run.task_id&&same(task.state?.catpaw,{operation_id:run.operation_id,run_id:run.id,delegation_id:run.delegation_id,request_hash:run.request_hash,grant_epoch:run.grant_epoch,delegation_revision:run.delegation_revision}),409,'work_grant_task_binding_conflict');
+  const revision=terms.schema_version===2?await readWorkGrantRevisionBindingInTransaction(tx,identity.owner,run,terms,{assertLive:live}):null,runBinding=revision?.run_binding??validateWorkGrantRunBinding(terms,run);
   const delegation=await tx.get(identity.owner,'catpaw-delegations',run.delegation_id);live();const conversation=await tx.get(identity.owner,'native-chat-conversations',terms.conversation_id);live();
   check(delegation?.subject_id===terms.subject_id&&delegation.conversation_id===terms.conversation_id&&conversation?.subject_id===terms.subject_id&&conversation.scope_id===identity.scope_id,409,'work_grant_run_binding_conflict');
-  return {identity,owner:identity.owner,terms,run,task,delegation,conversation,run_binding:runBinding};
+  return {identity,owner:identity.owner,terms,run,task,delegation,conversation,kinds,revision,run_binding:runBinding,due:workGrantDueIdentity(terms,run)};
  }
  async current(tx,identity,live){
-  const row=await tx.get(identity.owner,K.terms,identity.grant_id);live();check(row,404,'work_grant_not_found');
+  const original=await tx.get(identity.owner,K.terms,identity.grant_id);live();const revised=await tx.get(identity.owner,TASK_REVISION_WORK_GRANT_KINDS.terms,identity.grant_id);live();check(!(original&&revised),409,'work_grant_record_corrupt');const row=original??revised;check(row,404,'work_grant_not_found');
   let terms;try{terms=validateWorkGrantTerms(row.terms);shape(row,['id','scope_id','subject_id','conversation_id','run_id','task_id','terms','terms_hash','run_binding','receipt']);}catch{check(false,409,'work_grant_record_corrupt');}
-  const ctx=await this.resolve(tx,identity,terms,live),state=await tx.get(identity.owner,K.grants,identity.grant_id);live();
+  check(terms.schema_version===(original?1:2),409,'work_grant_record_corrupt');const ctx=await this.resolve(tx,identity,terms,live),state=await tx.get(identity.owner,ctx.kinds.grants,identity.grant_id);live();
   check(row.id===terms.grant_id&&row.terms_hash===hash(terms)&&row.scope_id===identity.scope_id&&row.subject_id===identity.subject_id&&row.conversation_id===terms.conversation_id&&row.run_id===ctx.run.id&&row.task_id===ctx.task.id&&same(row.run_binding,ctx.run_binding),409,'work_grant_record_corrupt');
   const r=row.receipt;try{shape(r,['contract','grant_id','terms_hash','run_binding','accepted_at','task_completed','receipt_hash']);shape(state,['id','scope_id','subject_id','conversation_id','run_id','task_id','reference','run_binding','state','revision','consumed']);shape(state.consumed,['due','model','source']);}catch{check(false,409,'work_grant_record_corrupt');}
-  check(r?.contract===TASK_WORK_GRANT_CONTRACT&&r.grant_id===row.id&&r.terms_hash===row.terms_hash&&same(r.run_binding,ctx.run_binding)&&r.accepted_at===terms.accepted_at&&r.task_completed===false&&workGrantReceiptHash(r)===r.receipt_hash,409,'work_grant_record_corrupt');
+  check(r?.contract===terms.contract&&r.grant_id===row.id&&r.terms_hash===row.terms_hash&&same(r.run_binding,ctx.run_binding)&&r.accepted_at===terms.accepted_at&&r.task_completed===false&&workGrantReceiptHash(r)===r.receipt_hash,409,'work_grant_record_corrupt');
+  if(terms.schema_version===2)check(ctx.revision.operation.work_grant_receipt_hash===r.receipt_hash,409,'work_grant_record_corrupt');
   check(state?.id===row.id&&same(state.reference,workGrantReference(terms))&&same(state.run_binding,ctx.run_binding)&&Number.isSafeInteger(state.revision)&&state.revision>0&&['active','paused','revoked'].includes(state.state)&&state.scope_id===identity.scope_id&&state.subject_id===identity.subject_id&&state.conversation_id===terms.conversation_id&&state.run_id===ctx.run.id&&state.task_id===ctx.task.id,409,'work_grant_record_corrupt');
   check(['due','model','source'].every(k=>Number.isSafeInteger(state.consumed?.[k])&&state.consumed[k]>=0&&state.consumed[k]<=terms.limits[k]),409,'work_grant_record_corrupt');
   const current={...ctx,row,state};current.reservations=await this.inventory(tx,current,live);return current;
  }
  async inventory(tx,ctx,live){
-  const rows=(await tx.list(ctx.owner,K.reservations)).filter(r=>r.grant_id===ctx.terms.grant_id||r.run_id===ctx.run.id);live();
+  const rows=(await tx.list(ctx.owner,ctx.kinds.reservations)).filter(r=>r.grant_id===ctx.terms.grant_id||ctx.terms.schema_version===1&&r.run_id===ctx.run.id);live();
   check(rows.length<=L.due+L.model+L.source,409,'work_grant_record_corrupt');const counts={due:0,model:0,source:0},keys=new Set();
   for(const row of rows){
    let input;try{shape(row,['id','grant_id','terms_hash','scope_id','subject_id','conversation_id','run_id','task_id','run_binding','frozen','reservation_hash','reserved_at','state','outcome']);shape(row.frozen,['grant_reference','run_binding','execution','input']);input=validateWorkGrantReservation(row.frozen.input);if(input.kind!=='due')validateWorkGrantExecution(row.frozen.execution);}catch{check(false,409,'work_grant_record_corrupt');}
@@ -57,7 +60,7 @@ export class TaskWorkGrantService{
     else{const point=row.outcome.transport_checkpoint;check((point.kind===input.kind||input.kind==='source'&&row.state==='received'&&point.kind==='source_failure')&&point.request_hash===input.request_hash&&/^[a-f0-9]{64}$/.test(point.checkpoint_hash)&&(row.state==='unknown'?point.payload_hash===null:/^[a-f0-9]{64}$/.test(point.payload_hash)&&outcome.receipt_reference.receipt_id===row.id&&(input.kind==='model'?outcome.receipt_reference.receipt_hash===point.checkpoint_hash:outcome.receipt_reference.receipt_hash===point.payload_hash)),409,'work_grant_record_corrupt');}
    }
    const key=input.kind+':'+input.operation_key;check(!keys.has(key),409,'work_grant_record_corrupt');keys.add(key);counts[input.kind]++;
-   if(input.kind==='due')check(row.frozen.execution===null&&input.operation_id===ctx.run.operation_id&&input.request_hash===ctx.run.request_hash&&input.operation_key===hash({accepted_run:ctx.run.id}),409,'work_grant_record_corrupt');
+   if(input.kind==='due')check(row.frozen.execution===null&&input.operation_id===ctx.due.operation_id&&input.request_hash===ctx.due.request_hash&&input.operation_key===ctx.due.operation_key,409,'work_grant_record_corrupt');
    else check(row.frozen.execution.run_id===ctx.run.id&&row.frozen.execution.task_id===ctx.task.id&&row.frozen.execution.run_request_hash===ctx.run.request_hash,409,'work_grant_record_corrupt');
   }
   check(same(counts,ctx.state.consumed)&&['due','model','source'].every(k=>counts[k]<=ctx.terms.limits[k]),409,'work_grant_record_corrupt');
@@ -68,6 +71,8 @@ export class TaskWorkGrantService{
   const now=this.now();check(ctx.state.state==='active',409,'work_grant_not_active');check(Number.isSafeInteger(now)&&now>=Date.parse(ctx.terms.accepted_at)&&now<Date.parse(ctx.terms.not_after),409,'work_grant_expired');
   await tx.withScope(ctx.identity.scope_id,async scoped=>{const row=await scoped.scope();live();check(row.enabled&&row.generation===ctx.terms.memory_generation,409,'work_grant_generation_conflict');});live();
   check(ctx.delegation.state==='active'&&ctx.delegation.grant_epoch===ctx.run.grant_epoch&&ctx.delegation.revision===ctx.run.delegation_revision&&ctx.conversation.state==='active'&&ctx.conversation.grant_epoch===ctx.run.frozen_request.conversation_epoch,409,'work_grant_not_active');
+  if(ctx.terms.schema_version===2){const p=ctx.task.state?.task_revision,b=ctx.terms.revision_binding;check(p?.operation_id===b.operation_id&&p.operation_hash===b.operation_hash&&same(p.work_grant_reference,workGrantReference(ctx.terms))&&same(p.plan_reference,b.accepted_plan_reference)&&same(ctx.task.state.plan_binding,b.accepted_plan_reference),409,'work_grant_revision_superseded');}
+  else check(!ctx.task.state?.task_revision?.work_grant_reference,409,'work_grant_revision_superseded');
   const finalClock=this.now();check(Number.isSafeInteger(finalClock)&&finalClock>=Date.parse(ctx.terms.accepted_at)&&finalClock<Date.parse(ctx.terms.not_after),409,'work_grant_expired');live();
  }
  async execution(tx,ctx,live){await this.grantCurrent(tx,ctx,live);check(!['paused','cancelled','failed','succeeded','outcome_unknown'].includes(ctx.task.status),409,'work_grant_not_active');}
@@ -104,7 +109,7 @@ export class TaskWorkGrantService{
  projection(ctx){return {reference:workGrantReference(ctx.terms),terms:clone(ctx.terms),run_binding:clone(ctx.run_binding),state:ctx.state.state,revision:ctx.state.revision,consumed:clone(ctx.state.consumed),remaining:Object.fromEntries(['due','model','source'].map(k=>[k,ctx.terms.limits[k]-ctx.state.consumed[k]])),expired:this.now()>=Date.parse(ctx.terms.not_after),task_completed:false};}
  async admit({identity,principal,terms},{signal}={}){return this.repository.transaction(tx=>this.admitInTransaction(tx,{identity,principal,terms},{signal}));}
  async admitInTransaction(tx,{identity,principal,terms},{signal}={}){
-  identity=validateWorkGrantIdentity(identity);terms=validateWorkGrantTerms(terms);check(principal?.subject_id===terms.subject_id&&principal.session_id===terms.source_auth.session_id&&principal.issuer===terms.source_auth.issuer&&principal.issued_at===terms.source_auth.issued_at,403,'work_grant_admission_principal_conflict');const live=this.permission(signal),ctx=await this.resolve(tx,identity,terms,live);ctx.principal=principal;
+  identity=validateWorkGrantIdentity(identity);terms=validateWorkGrantTerms(terms);check(terms.schema_version===1,422,'work_grant_schema_invalid');check(principal?.subject_id===terms.subject_id&&principal.session_id===terms.source_auth.session_id&&principal.issuer===terms.source_auth.issuer&&principal.issued_at===terms.source_auth.issued_at,403,'work_grant_admission_principal_conflict');const live=this.permission(signal),ctx=await this.resolve(tx,identity,terms,live);ctx.principal=principal;
   await this.authority(tx,ctx,'admission',live);const prior=await tx.get(identity.owner,K.terms,identity.grant_id);live();
   if(prior){const current=await this.current(tx,identity,live);check(same(current.terms,terms),409,'work_grant_admission_conflict');await this.authority(tx,{...current,principal},'admission',live);return {created:false,grant:this.projection(current),receipt:clone(current.row.receipt)};}
   check(this.now()>=Date.parse(terms.accepted_at)&&this.now()-Date.parse(terms.accepted_at)<L.write_budget_ms&&ctx.run.created_at===terms.accepted_at&&ctx.task.createdAt===terms.accepted_at&&ctx.delegation.created_at===terms.accepted_at&&ctx.task.status==='queued'&&ctx.task.attempts===0&&ctx.task.leaseId===null&&ctx.task.leaseUntil===null&&!ctx.task.state.local_model,409,'work_grant_late_admission');
@@ -115,6 +120,33 @@ export class TaskWorkGrantService{
   check(await tx.insertIfAbsent(identity.owner,K.grants,state),409,'work_grant_admission_conflict');live();const final=await this.current(tx,identity,live);await this.execution(tx,final,live);await this.authority(tx,{...final,principal},'admission',live);check(this.now()<Date.parse(terms.not_after),409,'work_grant_expired');live();
   return {created:true,grant:this.projection(final),receipt};
  }
+ /** Explicit new authorization for a persisted report revision on the same
+  * physical Task/run. It never rewrites or renews the original grant. */
+ async admitRevisionInTransaction(tx,{identity,principal,terms},{signal,assertLive}={}){
+  identity=validateWorkGrantIdentity(identity);terms=validateWorkGrantTerms(terms);check(terms.schema_version===2,422,'work_grant_schema_invalid');
+  check(principal?.subject_id===terms.subject_id&&principal.session_id===terms.source_auth.session_id&&principal.issuer===terms.source_auth.issuer&&principal.issued_at===terms.source_auth.issued_at,403,'work_grant_admission_principal_conflict');
+  const live=this.permission(signal,assertLive),ctx=await this.resolve(tx,identity,terms,live);ctx.principal=principal;
+  await this.authority(tx,ctx,'admission',live);const prior=await tx.get(identity.owner,ctx.kinds.terms,identity.grant_id);live();
+  if(prior){const current=await this.current(tx,identity,live);check(same(current.terms,terms),409,'work_grant_admission_conflict');await this.authority(tx,{...current,principal},'admission',live);return {created:false,grant:this.projection(current),receipt:clone(current.row.receipt)};}
+  check(!await tx.get(identity.owner,K.terms,identity.grant_id),409,'work_grant_admission_conflict');live();
+  check(this.now()>=Date.parse(terms.accepted_at)&&this.now()-Date.parse(terms.accepted_at)<L.write_budget_ms&&ctx.task.status==='scheduled'&&ctx.task.leaseId===null&&ctx.task.leaseUntil===null&&!ctx.task.state.local_model,409,'work_grant_late_admission');
+  // Every predecessor must be an intact, closed received segment. An unknown,
+  // missing or pending original is not repaired by allocating a new budget.
+  const oldRef=ctx.run.frozen_request.work_grant_reference,previous=[];
+  check(oldRef?.contract===TASK_WORK_GRANT_CONTRACT,409,'work_grant_admission_conflict');
+  previous.push({...identity,grant_id:oldRef.grant_id});
+  const rows=(await tx.list(identity.owner,ctx.kinds.terms)).filter(r=>r.run_id===ctx.run.id||r.task_id===ctx.task.id||r.terms?.origin?.run_id===ctx.run.id);live();check(rows.length<32,409,'work_grant_budget_exhausted');
+  const ids=new Set(rows.map(r=>r.id));check(ids.size===rows.length,409,'work_grant_record_corrupt');
+  for(const kind of [ctx.kinds.grants,ctx.kinds.reservations])for(const row of await tx.list(identity.owner,kind))if(row.run_id===ctx.run.id||row.task_id===ctx.task.id)check(ids.has(kind===ctx.kinds.reservations?row.grant_id:row.id),409,'work_grant_record_corrupt');live();
+  for(const row of rows)previous.push({...identity,grant_id:row.id});
+  for(const id of previous){const current=await this.current(tx,id,live),due=current.reservations.find(r=>r.frozen.input.kind==='due');check(current.run.id===ctx.run.id&&due?.state==='received'&&current.reservations.every(r=>r.state==='received'),409,'work_grant_original_outcome_pending');}
+  const reference=workGrantReference(terms),metadata={scope_id:identity.scope_id,subject_id:identity.subject_id,conversation_id:terms.conversation_id,run_id:ctx.run.id,task_id:ctx.task.id};
+  const fields={contract:terms.contract,grant_id:terms.grant_id,terms_hash:reference.terms_hash,run_binding:ctx.run_binding,accepted_at:terms.accepted_at,task_completed:false},receipt={...fields,receipt_hash:workGrantReceiptHash(fields)},state={id:terms.grant_id,...metadata,reference,run_binding:ctx.run_binding,state:'active',revision:1,consumed:{due:0,model:0,source:0}};
+  await this.execution(tx,{...ctx,state},live);check(await tx.insertIfAbsent(identity.owner,ctx.kinds.terms,{id:terms.grant_id,...metadata,terms,terms_hash:reference.terms_hash,run_binding:ctx.run_binding,receipt}),409,'work_grant_admission_conflict');live();
+  check(await tx.insertIfAbsent(identity.owner,ctx.kinds.grants,state),409,'work_grant_admission_conflict');live();
+  await tx.put(identity.owner,'catpaw-task-revision-operations',{...ctx.revision.operation,work_grant_receipt_hash:receipt.receipt_hash});live();
+  const final=await this.current(tx,identity,live);await this.execution(tx,final,live);await this.authority(tx,{...final,principal},'admission',live);check(this.now()<Date.parse(terms.not_after),409,'work_grant_expired');live();return {created:true,grant:this.projection(final),receipt};
+ }
  async read(identity,{principal,signal}={}){
   identity=validateWorkGrantIdentity(identity);check(principal?.subject_id===identity.subject_id,403,'work_grant_viewer_conflict');const live=this.permission(signal);
   return this.repository.transaction(async tx=>{const ctx=await this.current(tx,identity,live);await this.authority(tx,{...ctx,principal},'read',live);live();return {grant:this.projection(ctx),receipt:clone(ctx.row.receipt),reservations:clone(ctx.reservations)};});
@@ -122,12 +154,12 @@ export class TaskWorkGrantService{
  async reserve(identity,input,{signal,execution}={}){return this.repository.transaction(tx=>this.reserveInTransaction(tx,identity,input,{signal,execution}));}
  async reserveInTransaction(tx,identity,input,{signal,execution}={}){
   identity=validateWorkGrantIdentity(identity);input=validateWorkGrantReservation(input);const live=this.permission(signal),ctx=await this.current(tx,identity,live);
-  const prior=await tx.get(identity.owner,K.reservations,input.operation_id);live();
+  const prior=await tx.get(identity.owner,ctx.kinds.reservations,input.operation_id);live();
   if(prior){check(ctx.reservations.some(r=>r.id===prior.id)&&same(prior.frozen.input,input),409,'work_grant_operation_conflict');await this.authority(tx,{...ctx,reservation:prior},'recovery',live);return {created:false,may_dispatch:false,reservation:clone(prior)};}
   check(!ctx.reservations.some(r=>r.frozen.input.kind===input.kind&&r.frozen.input.operation_key===input.operation_key),409,'work_grant_operation_key_conflict');
   execution=input.kind==='due'?null:this.executor(ctx,execution,live);if(execution)await this.runningAttempt(tx,ctx,execution,live);await this.authority(tx,{...ctx,input,execution},'dispatch',live);await this.execution(tx,ctx,live);
   const now=this.now(),due=ctx.reservations.find(r=>r.frozen.input.kind==='due');
-  if(input.kind==='due')check(input.operation_id===ctx.run.operation_id&&input.request_hash===ctx.run.request_hash&&input.operation_key===hash({accepted_run:ctx.run.id}),409,'work_grant_due_binding_conflict');
+  if(input.kind==='due')check(input.operation_id===ctx.due.operation_id&&input.request_hash===ctx.due.request_hash&&input.operation_key===ctx.due.operation_key,409,'work_grant_due_binding_conflict');
   else check(due,409,'work_grant_due_required');
   check(!ctx.reservations.some(r=>r.state==='unknown'),409,'work_grant_original_outcome_unknown');
   check(!ctx.reservations.some(r=>r.frozen.input.kind!=='due'&&r.state==='reserved'),409,'work_grant_original_outcome_pending');
@@ -135,8 +167,8 @@ export class TaskWorkGrantService{
   check(ctx.state.consumed[input.kind]<ctx.terms.limits[input.kind],409,'work_grant_budget_exhausted');
   check(Date.parse(input.deadline_at)>now&&Date.parse(input.deadline_at)<=Math.min(Date.parse(ctx.terms.not_after),input.kind==='due'?now+ctx.terms.execution_budget_ms:Math.min(now+L.result_budget_ms,Date.parse(due.frozen.input.deadline_at))),409,'work_grant_result_deadline');
   const frozen={grant_reference:workGrantReference(ctx.terms),run_binding:ctx.run_binding,execution,input},row={id:input.operation_id,grant_id:identity.grant_id,terms_hash:ctx.row.terms_hash,scope_id:identity.scope_id,subject_id:identity.subject_id,conversation_id:ctx.terms.conversation_id,run_id:ctx.run.id,task_id:ctx.task.id,run_binding:ctx.run_binding,frozen,reservation_hash:hash(frozen),reserved_at:iso(now),state:'reserved',outcome:null};
-  check(await tx.insertIfAbsent(identity.owner,K.reservations,row),409,'work_grant_operation_conflict');live();
-  const next={...ctx.state,revision:ctx.state.revision+1,consumed:{...ctx.state.consumed,[input.kind]:ctx.state.consumed[input.kind]+1}};check(Number.isSafeInteger(next.revision),409,'work_grant_record_corrupt');await tx.put(identity.owner,K.grants,next);live();
+  check(await tx.insertIfAbsent(identity.owner,ctx.kinds.reservations,row),409,'work_grant_operation_conflict');live();
+  const next={...ctx.state,revision:ctx.state.revision+1,consumed:{...ctx.state.consumed,[input.kind]:ctx.state.consumed[input.kind]+1}};check(Number.isSafeInteger(next.revision),409,'work_grant_record_corrupt');await tx.put(identity.owner,ctx.kinds.grants,next);live();
   const final=await this.current(tx,identity,live);await this.execution(tx,final,live);await this.authority(tx,{...final,input,reservation:row,execution},'dispatch',live);if(execution){this.executor(final,execution,live);await this.runningAttempt(tx,final,execution,live);}check(this.now()<Date.parse(input.deadline_at),409,'work_grant_result_deadline');live();
   return {created:true,may_dispatch:true,reservation:clone(row)};
  }
@@ -178,7 +210,7 @@ export class TaskWorkGrantService{
  async #recordTransportOutcomeInTransaction(tx,identity,input,{ctx,prior,execution,checkpoint,live}){
   await this.authority(tx,{...ctx,reservation:prior,outcome:input,execution},'settlement',live);await this.execution(tx,ctx,live);check(this.now()<Date.parse(prior.frozen.input.deadline_at),409,'work_grant_result_deadline');
   const recordedAt=iso(this.now()),fields={reservation_hash:prior.reservation_hash,input,recorded_at:recordedAt,transport_checkpoint:checkpoint},outcome={input,recorded_at:recordedAt,checkpoint_hash:hash(fields),transport_checkpoint:checkpoint},next={...prior,state:input.outcome,outcome};
-  check(await tx.compareAndSwap(identity.owner,K.reservations,prior.id,{state:'reserved',reservation_hash:prior.reservation_hash},{state:input.outcome,outcome}),409,'work_grant_outcome_conflict');live();
+  check(await tx.compareAndSwap(identity.owner,ctx.kinds.reservations,prior.id,{state:'reserved',reservation_hash:prior.reservation_hash},{state:input.outcome,outcome}),409,'work_grant_outcome_conflict');live();
   const final=await this.current(tx,identity,live);await this.execution(tx,final,live);await this.authority(tx,{...final,reservation:next,outcome:input,execution},'settlement',live);this.executor(final,execution,live);await this.runningAttempt(tx,final,execution,live);const verified=checkpoint.kind==='source_failure'?(await this.sourceFailureEvidence(tx,final,prior,execution,live)).checkpoint:await this.transportEvidence(tx,final,prior,input,execution,live);check(same(checkpoint,verified),409,'work_grant_transport_receipt_conflict');check(this.now()<Date.parse(prior.frozen.input.deadline_at),409,'work_grant_result_deadline');live();return {created:true,reservation:clone(next)};
  }
  async attemptEvidence(tx,ctx,attemptID,live){
@@ -225,7 +257,7 @@ export class TaskWorkGrantService{
   if(due.state!=='reserved'){
    const ack=due.outcome?.acknowledgement;check(ack?.attempt_id===input.attempt_id&&ack.previous_task_hash===hash(input.previous_task)&&same(ack.completion_receipt,input.completion_receipt),409,'work_grant_acknowledgement_conflict');await this.authority(tx,{...ctx,reservation:due},'recovery',live);return {created:false,reservation:clone(due)};
   }
-  const previous=input.previous_task,evidence=await this.attemptEvidence(tx,ctx,input.attempt_id,live),next=ctx.task;
+  const previous=input.previous_task; if(ctx.terms.schema_version===2)check(same(previous.state?.task_revision,ctx.task.state?.task_revision)&&same(previous.state?.plan_binding,ctx.terms.revision_binding.accepted_plan_reference),409,'work_grant_revision_superseded');const evidence=await this.attemptEvidence(tx,ctx,input.attempt_id,live),next=ctx.task;
   check(previous.id===next.id&&same(previous.state.catpaw,next.state.catpaw)&&Date.parse(previous.leaseUntil)>this.now()&&taskControlRevision(previous)===taskControlRevision(next)&&evidence.execution_revision===taskControlRevision(previous)&&['succeeded','failed','outcome_unknown'].includes(next.status)&&next.leaseId===null&&next.leaseUntil===null&&evidence.attempt.status===next.status&&evidence.proof.checkpoint_out===hash(next.state),409,'work_grant_attempt_conflict');
   if(next.status==='succeeded'){check(input.completion_receipt!==null&&!ctx.reservations.some(r=>r.frozen.input.kind!=='due'&&r.state!=='received')&&next.state.local_model?.round?.state!=='dispatched',409,'work_grant_completion_receipt_conflict');await this.completionEvidence(tx,ctx,input.completion_receipt,live);}
   else{check(input.completion_receipt===null&&(next.status==='outcome_unknown'||!ctx.reservations.some(r=>r.frozen.input.kind!=='due'&&r.state!=='received')),409,'work_grant_attempt_conflict');if(next.status==='outcome_unknown')await this.originalUnknownEvidence(tx,ctx,previous,live);}
@@ -233,7 +265,7 @@ export class TaskWorkGrantService{
   const at=iso(this.now()),ack={contract:TASK_WORK_ATTEMPT_ACK_CONTRACT,attempt_id:input.attempt_id,execution_revision:evidence.execution_revision,previous_task_hash:hash(previous),next_task_hash:hash(next),checkpoint_hash:hash(next.state),task_status:next.status,run_binding:ctx.run_binding,completion_receipt:input.completion_receipt,acknowledged_at:at};
   const outcomeInput={operation_id:due.id,request_hash:due.frozen.input.request_hash,outcome:next.status==='outcome_unknown'?'unknown':'received',receipt_reference:next.status==='outcome_unknown'?null:{receipt_id:hash({grant_id:identity.grant_id,attempt_id:input.attempt_id,next_task_hash:ack.next_task_hash}),receipt_hash:hash(ack)}};
   const fields={reservation_hash:due.reservation_hash,input:outcomeInput,recorded_at:at,acknowledgement:ack},outcome={input:outcomeInput,recorded_at:at,checkpoint_hash:hash(fields),acknowledgement:ack};
-  check(await tx.compareAndSwap(ctx.owner,K.reservations,due.id,{state:'reserved',reservation_hash:due.reservation_hash},{state:outcomeInput.outcome,outcome}),409,'work_grant_acknowledgement_conflict');live();
+  check(await tx.compareAndSwap(ctx.owner,ctx.kinds.reservations,due.id,{state:'reserved',reservation_hash:due.reservation_hash},{state:outcomeInput.outcome,outcome}),409,'work_grant_acknowledgement_conflict');live();
   const final=await this.current(tx,identity,live);check(hash(final.task)===ack.next_task_hash,409,'work_grant_attempt_conflict');await this.grantCurrent(tx,final,live);await this.authority(tx,{...final,previous_task:previous,attempt:evidence.attempt,completion_receipt:input.completion_receipt},'terminal_ack',live);check(this.now()<Date.parse(due.frozen.input.deadline_at),409,'work_grant_result_deadline');live();return {created:true,reservation:clone(final.reservations.find(r=>r.id===due.id))};
  }
  /** Internal alias for the first uninstalled WIP. The caller must still supply

@@ -2,9 +2,9 @@ import {FencedWorkerStore} from '../facade-r2/src/fenced-worker-store.mjs';
 import {LostLeaseError} from '../integration/edge-adapter/vendor/openmuse/runtime/engine/worker.mjs';
 import {ApiError,check,clone,hash} from '../facade-r2/src/common.mjs';
 import {taskControlRevision} from './task-control-contract.mjs';
-import {captureTaskExecutionFence,assertTaskExecutionFence} from './task-execution-fence.mjs';
+import {captureTaskExecutionFence,assertTaskExecutionFence,isTaskExecutionAuthorityFence} from './task-execution-fence.mjs';
 
-const stopped = error => error instanceof LostLeaseError || error instanceof ApiError && [403,409].includes(error.status);
+const stopped = error => isTaskExecutionAuthorityFence(error) || error instanceof ApiError && [403,409].includes(error.status);
 const unknown = task => task.state?.local_model?.round?.state === 'dispatched';
 const settledStatuses = new Set(['queued','scheduled','succeeded','failed','outcome_unknown','waiting_input','waiting_approval']);
 const iso = ms => new Date(ms).toISOString();
@@ -17,7 +17,7 @@ export class TaskExecutionStore extends FencedWorkerStore {
   async admission(tx,owner,id,{leaseId=null}={}) {
     this.ownerAllowed(owner);
     const admitted=await this.facade.admittedTask(tx,owner,id);
-    check(admitted.run?.frozen_request?.work_grant_reference===undefined,409,'accepted_work_whole_executor_unsupported');
+    check(admitted.run?.frozen_request?.work_grant_reference===undefined&&admitted.task?.state?.task_revision?.work_grant_reference===undefined,409,'accepted_work_whole_executor_unsupported');
     await tx.lock(owner,'tasks',id);
     const task=await tx.get(owner,'tasks',id);
     check(hash(task?.state?.catpaw)===hash(admitted.task.state.catpaw),409,'operation_conflict');

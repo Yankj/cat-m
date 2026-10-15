@@ -1,5 +1,7 @@
+import {TASK_REVISION_WORK_CONTRACT,validateTaskRevisionWorkRequest,freezeRevisionWorkIntent} from './task-revision-work-contract.mjs';
 import { ApiError,check,shape,UUID,hash,iso,clone } from '../facade-r2/src/common.mjs';
 import {MEMORY_PROPOSAL_CONTRACT} from './memory-extraction-service.mjs';
+import {readTaskRevisionWork} from './task-revision-work-service.mjs';
 import {freezeCompletionIntent} from './report-completion.mjs';
 import { LOCAL_POLICY,stableUUID } from './local-output-facade.mjs';
 import { chatPromptFor,chatToolsFor,validateProvidedToolCall,assistantToolMessage } from './tools.mjs';
@@ -39,14 +41,17 @@ export class ChatService {
     return this.startTurn(auth,scopeID,conversationID,request.turn,{workIntent:request.work});
   }
   async startRevisionTurn(auth,scopeID,conversationID,input){const request=validateTaskRevisionRequest(input);return this.startTurn(auth,scopeID,conversationID,request.turn,{revisionTarget:request.target});}
+  async startRevisionWorkTurn(auth,scopeID,conversationID,input){const request=validateTaskRevisionWorkRequest(input);check(this.facade.revisionWorkExecutionReady===true,503,'revision_work_execution_not_configured');return this.startTurn(auth,scopeID,conversationID,request.turn,{revisionTarget:request.target,revisionWork:request.work});}
   async readRevision(auth,scopeID,runID,operationID){return readTaskRevision(this.facade,auth,scopeID,runID,operationID);}
-  async startTurn(auth,scopeID,conversationID,input,{revisionTarget=null,workIntent=null,memoryProposalContract=null}={}){
+  async readRevisionWork(auth,scopeID,runID,operationID){return readTaskRevisionWork(this.facade,auth,scopeID,runID,operationID,readTaskRevision);}
+  async startTurn(auth,scopeID,conversationID,input,{revisionTarget=null,workIntent=null,revisionWork=null,memoryProposalContract=null}={}){
     check(memoryProposalContract===null||memoryProposalContract===MEMORY_PROPOSAL_CONTRACT,422,'memory_proposal_contract_invalid');
     check(!memoryProposalContract||(!revisionTarget&&!workIntent),422,'memory_proposal_turn_not_allowed');
+    check(!revisionWork||(revisionTarget&&!workIntent&&!memoryProposalContract),422,'revision_work_turn_not_allowed');
     check(!(revisionTarget&&workIntent),422,'work_intent_revision_not_supported');
     this.validateInput(input);const trusted=await this.scoped(auth,scopeID),{owner,scope,principal}=trusted,acceptedAt=this.metrics.now();
     await this.integration?.prepare({owner,scope,principal});
-    const admissionHash=hash({input,...memoryProposalContract?{memory_proposal_contract:memoryProposalContract}:{},...workIntent?{work_intent:workIntent,work_intent_contract:ACCEPTED_WORK_INTENT_CONTRACT}:{},...revisionTarget?{revision_target:revisionTarget,revision_contract:TASK_REVISION_CONTRACT}:{},conversation_id:conversationID,scope,subject:principal.subject_id,model:this.provider.identity});
+    const admissionHash=hash({input,...revisionWork?{revision_work:revisionWork,revision_work_contract:TASK_REVISION_WORK_CONTRACT}:{},...memoryProposalContract?{memory_proposal_contract:memoryProposalContract}:{},...workIntent?{work_intent:workIntent,work_intent_contract:ACCEPTED_WORK_INTENT_CONTRACT}:{},...revisionTarget?{revision_target:revisionTarget,revision_contract:TASK_REVISION_CONTRACT}:{},conversation_id:conversationID,scope,subject:principal.subject_id,model:this.provider.identity});
     const result=await this.repository.transaction(async tx=>{
       await this.integration?.beforeWrite(tx,{owner,scope});
       await tx.lock(owner,'native-chat-conversations',conversationID);
@@ -72,6 +77,7 @@ export class ChatService {
         t.work_intent=freezeAcceptedWorkIntent(workIntent,{turn:t,scope,principal,conversation:c,routeHash:this.facade.acceptedWorkRouteHash,now:this.facade.workGrantService.now()});
         t.request_hash=hash({original_chat_request_hash:t.request_hash,work_intent:t.work_intent});
       }
+      if(revisionWork){for(const kind of ['catpaw-work-grant-terms','catpaw-revision-work-grant-terms'])check(!await tx.get(owner,kind,revisionWork.decision_id),409,'revision_work_decision_reused');t.revision_work_intent=freezeRevisionWorkIntent(revisionWork,{turn:t,target:revisionTarget,scope,principal,conversation:c,routeHash:this.facade.acceptedWorkRouteHash,now:this.facade.workGrantService.now()});t.request_hash=hash({original_chat_request_hash:t.request_hash,revision_work_intent:t.revision_work_intent});}
       if(revisionTarget){t.revision_target=await freezeTaskRevisionTargetInTransaction(this.facade,tx,{owner,scope,principal,conversation:c,turn:t,target:revisionTarget});t.request_hash=hash({original_chat_request_hash:t.request_hash,revision_target:t.revision_target});t.continuations=[];}
       if(this.facade.completionPolicy&&this.facade.completionAuthorizer){
         const selection=await this.facade.completionAuthorizer({principal:clone(principal),scope:clone(scope),conversation_id:c.id,input:clone(input),policy:clone(this.facade.completionPolicy)});
@@ -126,12 +132,12 @@ export class ChatService {
   async executeTool(env,call){
     let wake=null;
     const t=await this.repository.transaction(async tx=>{
-      (env.assertLive??(()=>env.signal.throwIfAborted()))();const {t,c}=await this.live(tx,env);let result;
+      (env.assertLive??(()=>env.signal.throwIfAborted()))();const {t,c}=await this.live(tx,env);let result,continuationReceipt=null;
       if(call.name==='propose_memory_v1'){
         check(typeof this.integration?.proposeMemory==='function',503,'memory_proposal_not_configured');
         result=await this.integration.proposeMemory(tx,{principal:env.principal,scope:env.scope,conversation:c,turn:t,call});
-      }else if(call.name==='revise_current_report_v1'){
-        const admitted=await acceptTaskRevisionInTransaction(this.facade,tx,{...env,conversation:c,turn:t,call});result=admitted.receipt;wake=admitted.wake;
+      }else if(['revise_current_report_v1','revise_current_report_work_v1'].includes(call.name)){
+        const admitted=await acceptTaskRevisionInTransaction(this.facade,tx,{...env,conversation:c,turn:t,call});continuationReceipt=admitted.receipt;result=admitted.work_receipt??admitted.receipt;wake=admitted.wake;
       }else if(['delegate_task','delegate_plan_v1','delegate_sources_v1'].includes(call.name)){
         check(!t.revision_target,422,'revision_tool_not_allowed');
         check(t.task_bindings.length<1,422,'turn_task_limit');
@@ -141,7 +147,7 @@ export class ChatService {
         result={tasks:await Promise.all(runs.map(r=>this.facade.runProjection(tx,env.owner,r.id)))};
       }
       const event=this.event(t,'tool_result',{call_id:call.id,name:call.name,result});
-      const saved=await tx.put(env.owner,'native-chat-turns',{...t,...call.name==='propose_memory_v1'?{memory_proposal_receipt:result,memory_proposal_call:{id:call.id,hash:hash({id:call.id,name:call.name,arguments:call.arguments})}}:{},...call.name==='revise_current_report_v1'?{continuations:[result],dispatch_checkpoint:{...t.dispatch_checkpoint,next:1}}:{},task_bindings:['delegate_task','delegate_plan_v1','delegate_sources_v1'].includes(call.name)?[...t.task_bindings,result]:t.task_bindings,events:[...t.events,event]});await this.beforeCommit(tx,env,saved);if(t.revision_target)await this.assertRevisionLive(tx,env,saved);return saved;
+      const saved=await tx.put(env.owner,'native-chat-turns',{...t,...call.name==='propose_memory_v1'?{memory_proposal_receipt:result,memory_proposal_call:{id:call.id,hash:hash({id:call.id,name:call.name,arguments:call.arguments})}}:{},...continuationReceipt?{continuations:[continuationReceipt],...call.name==='revise_current_report_work_v1'?{revision_work_receipts:[result]}:{},dispatch_checkpoint:{...t.dispatch_checkpoint,next:1}}:{},task_bindings:['delegate_task','delegate_plan_v1','delegate_sources_v1'].includes(call.name)?[...t.task_bindings,result]:t.task_bindings,events:[...t.events,event]});await this.beforeCommit(tx,env,saved);if(t.revision_target)await this.assertRevisionLive(tx,env,saved);return saved;
     });this.notify(env.owner,t);if(wake)try{await this.facade.onTaskRevisionAccepted?.(wake);}catch{}return t.events.at(-1).data.result;
   }
   async execute(env){
@@ -167,7 +173,7 @@ export class ChatService {
         batcher=new TextBatcher({signal:env.signal,assertLive:env.assertLive,
           persist:delta=>this.append(env,'text_delta',{message_id:messageID,text:delta}),
           onFailure:error=>env.controller?.abort(error)});
-        const round=received?clone(received.round):await collectRound(this.provider,{messages:clone(messages),system_prompt:prompt,tools,signal:env.signal,assertDispatchReady:env.assertDispatchReady,provider_context:{source_auth:env.turn.source_auth,scope_id:env.scope.scope_id,conversation_id:env.turn.conversation_id,...env.turn.memory_usage?{memory_usage:clone(env.turn.memory_usage),memory_turn_id:env.turn.id}:{},...env.turn.revision_target?{revision_source_auth:clone(env.turn.revision_target.fresh_source_auth),revision_original_source_auth:clone(env.turn.revision_target.original_source_auth),revision_memory_generation:env.turn.revision_target.memory_generation,input_context:[{text:env.turn.revision_target.raw_instruction},{text:env.turn.revision_target.base_body}]}:{}}},delta=>{text+=delta;batcher.push(delta);});
+        const round=received?clone(received.round):await collectRound(this.provider,{messages:clone(messages),system_prompt:prompt,tools,signal:env.signal,assertDispatchReady:env.assertDispatchReady,provider_context:{source_auth:env.turn.source_auth,scope_id:env.scope.scope_id,conversation_id:env.turn.conversation_id,...env.turn.memory_usage?{memory_usage:clone(env.turn.memory_usage),memory_turn_id:env.turn.id}:{},...env.turn.revision_target?{revision_source_auth:clone(env.turn.revision_target.fresh_source_auth),revision_original_source_auth:clone(env.turn.revision_target.original_source_auth),revision_memory_generation:env.turn.revision_target.memory_generation,...env.turn.revision_work_intent?{revision_work_turn_id:env.turn.id}:{},input_context:[{text:env.turn.revision_target.raw_instruction},{text:env.turn.revision_target.base_body}]}:{}}},delta=>{text+=delta;batcher.push(delta);});
         if(received)text=round.text;
         phase='text_flush';await batcher.finish();await batcher.stop();batcher=null;env.assertLive();
         phase='tool_or_completion';
@@ -177,7 +183,7 @@ export class ChatService {
         // A complete valid provider terminal precedes every tool effect.
         if(!round.calls.length){await this.complete(env,messageID,text,[...messages,{role:'assistant',content:round.text}]);return;}
         messages.push(assistantToolMessage(round.text,round.calls));
-        if(received?.next===1){const result=env.turn.continuations?.[0];check(result,409,'revision_received_result_missing');messages.push({role:'tool',tool_call_id:round.calls[0].id,content:JSON.stringify(result)});await this.complete(env,messageID,text,messages);return;}
+        if(received?.next===1){const result=env.turn.revision_work_receipts?.[0]??env.turn.continuations?.[0];check(result,409,'revision_received_result_missing');messages.push({role:'tool',tool_call_id:round.calls[0].id,content:JSON.stringify(result)});await this.complete(env,messageID,text,messages);return;}
         for(const call of round.calls){
           if(!received||!env.turn.events.some(e=>e.type==='tool_call'&&e.data.call_id===call.id))await this.append(env,'tool_call',{call_id:call.id,name:call.name,arguments:call.arguments});
           const result=await this.executeTool(env,call);messages.push({role:'tool',tool_call_id:call.id,content:JSON.stringify(result)});
@@ -190,7 +196,7 @@ export class ChatService {
           await this.append(env,'text_delta',{message_id:messageID,text:suffix});text+=suffix;
           messages.push({role:'assistant',content:acknowledgement});await this.complete(env,messageID,text,messages);return;
         }
-        if(round.calls.some(c=>c.name==='revise_current_report_v1')||this.finishOnDelegationReceipt&&round.calls.some(c=>['delegate_task','delegate_plan_v1','delegate_sources_v1'].includes(c.name))){await this.complete(env,messageID,text,messages);return;}
+        if(round.calls.some(c=>['revise_current_report_v1','revise_current_report_work_v1'].includes(c.name))||this.finishOnDelegationReceipt&&round.calls.some(c=>['delegate_task','delegate_plan_v1','delegate_sources_v1'].includes(c.name))){await this.complete(env,messageID,text,messages);return;}
       }
       throw new ApiError(503,'model_step_limit');
     } catch(error){
@@ -206,7 +212,7 @@ export class ChatService {
     const t=await this.repository.transaction(async tx=>{
       const {t,c}=await this.live(tx,env);env.assertLive?.();
       await tx.put(env.owner,'native-chat-conversations',{...c,messages:this.finishOnDelegationReceipt&&!text.trim()?c.messages:[...c.messages,{id:messageID,role:'assistant',content:text}],model_messages:modelMessages});
-      env.assertLive?.();const saved=await tx.put(env.owner,'native-chat-turns',{...t,state:'completed',events:[...t.events,this.event(t,'turn_completed',{message_id:messageID,final_text_hash:hash(text),task_bindings:t.task_bindings,...t.continuations?{continuations:t.continuations}:{}})],finished_at:iso()});
+      env.assertLive?.();const saved=await tx.put(env.owner,'native-chat-turns',{...t,state:'completed',events:[...t.events,this.event(t,'turn_completed',{message_id:messageID,final_text_hash:hash(text),task_bindings:t.task_bindings,...t.continuations?{continuations:t.continuations}:{},...t.revision_work_receipts?{revision_work_receipts:t.revision_work_receipts}:{}})],finished_at:iso()});
       await this.integration?.capture(tx,{...env,turn:saved});await this.beforeCommit(tx,env,saved);if(saved.revision_target)await this.assertRevisionLive(tx,env,saved);return saved;
     });this.metrics.record('terminal_commit',started);this.notify(env.owner,t);
   }
