@@ -30,6 +30,10 @@ import AppIntents
                     p0Model=try ConversationAcceptedWorkLoopbackFixture.make(repository:repository,root:root)
                     return
                 }
+                if scenario == "p0-ui-consent-handoff" {
+                    p0Model=try ConversationConsentHandoffFixture.make(repository:repository,root:root)
+                    return
+                }
                 let planBackend = ConversationTaskPlanFixtureBackend(mode:scenario == "p0-ui-plan-pending" ? .pending : (scenario == "p0-ui-plan-unknown" ? .unknown : .applied))
                 let reviewSubject=stableID("P0-task-review-subject")
                 let actionBackend:ConversationTaskActionFixtureBackend?=scenario.contains("task-action") ? try ConversationTaskActionFixtureBackend(url:root.appendingPathComponent("task-actions-synthetic-server.json"),mode:scenario.contains("unavailable") ? .unavailable : (scenario.contains("unknown") ? .unknown : .normal),statsUpdated:{stats in Task{@MainActor in P0ExperienceProbe.shared.recordTaskReviewStats(stats)}}) : nil
@@ -81,7 +85,9 @@ import AppIntents
             if P0ExperienceFixture.scenario?.hasPrefix("p0-ui-accepted-work") != true,record.conversation?.draftText.isEmpty == true,try await pending.service.read(scope:pending.scope,conversationID:id).messages.isEmpty {
                 try await pending.service.saveDraft(scope:pending.scope,conversationID:id,text:"Saved local draft")
             }
-            await pending.start();model=pending
+            await pending.start()
+            if P0ExperienceFixture.scenario == "p0-ui-consent-handoff" {try await ConversationConsentHandoffFixture.prepare(model:pending)}
+            model=pending
             if P0ExperienceFixture.scenario == "p0-ui-large-autoplay" {
                 Task {
                     try? await Task.sleep(nanoseconds:1_000_000_000)

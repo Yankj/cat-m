@@ -50,7 +50,7 @@ import SwiftUI
                                  close(); onSelect(destination)
                              }, onClose: close)
                     .frame(width: width, height: geometry.size.height)
-                    .allowsHitTesting(active && !motion.isDragging).disabled(!active || motion.isDragging)
+                    .allowsHitTesting(active && !motion.isDragging)
                     .accessibilityHidden(!isAtRoot || !motion.isFullyOpen)
                 ZStack(alignment: .leading) {
                     // The blocked conversation and its dismiss action are siblings.
