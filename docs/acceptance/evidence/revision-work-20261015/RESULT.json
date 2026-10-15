@@ -1,0 +1,171 @@
+{
+  "schema": "catpaw.revision-work-delivery.v1",
+  "date": "2026-10-15",
+  "candidate": "AF-CP01-REVISION-WORK-20261015-27",
+  "version": "0.3.0(27)",
+  "source_commit": "261729d890e9c349e1ed6b71b3357c2c8849acaa",
+  "remote_source_commit": "4c7a6b87d9a7173c911a9073a351e081fa2ac457",
+  "remote_source_tree": "d6b3e782d9988fa9ad70c8eaa95ec8c3287a54b1",
+  "published_source_paths": 46,
+  "source_inputs": 402,
+  "all_source_inputs_match_remote_index": true,
+  "delivery": "source_and_release_simulator_build_not_installed_not_product_acceptance",
+  "bundle_files": 20,
+  "bundle_sha256": "7c9895377b619466a365cf39a60fe826286ac3fee717dc4f739ec82e5d4b595c",
+  "local_package_manifest_sha256": "1ca5f895695edb40c78b99c31c76e386874a3d4a84970b9257065c2fd1350f6e",
+  "package_fingerprint_rule": "SHA256 of UTF-8 JSON file-entry array sorted by relative path, each {bytes,path,sha256}, canonical sorted object keys, no whitespace. Local per-file manifest is retained under ignored build.",
+  "verification": {
+    "backend_offline": {
+      "status": "PASS",
+      "cases": 444,
+      "new_http_cases": 20,
+      "new_contract_cases": 19,
+      "new_grant_cases": 12,
+      "new_source_authority_cases": 8,
+      "log": "backend-final-r2.log",
+      "environment": "existing Deno/public cache, deny-net/ignore-env; serialized TestRepository, injected provider and named TLS/SQL ports; not real Auth/model/PostgreSQL"
+    },
+    "swift_domain": {
+      "status": "PASS",
+      "assertions": 86,
+      "maintained_node_goldens": 3,
+      "log": "native-domain-r2.log",
+      "alphabetic_uuid_values": true
+    },
+    "swift_application": {
+      "status": "PASS",
+      "groups": 8,
+      "log": "native-application-r2.log",
+      "boundary": "local persistence/queue/session and named backend doubles"
+    },
+    "native_revision_http_sse": {
+      "status": "PASS",
+      "assertions": 23,
+      "explicit_posts": 3,
+      "scenarios": [
+        "valid",
+        "drop_then_cold_GET",
+        "bad_outer_receipt"
+      ],
+      "log": "native-new-wire-r2.log",
+      "boundary": "actual URLSession through temporary loopback replay of unmodified maintained-handler envelopes; injected model/SQL only"
+    },
+    "existing_native_regressions": {
+      "status": "PASS",
+      "conversation_assertions": 52,
+      "queue_assertions": 16,
+      "http_assertions": 94,
+      "explicit_posts": 36,
+      "logs": [
+        "native-conversation-r1.log",
+        "native-queue-r1.log",
+        "native-old-wire-r1.log"
+      ],
+      "timing": "before the final new-only UUID hash fix; existing behavior unchanged, final SDK and new wire rechecked after that fix"
+    },
+    "sdk_project_localization": {
+      "status": "PASS",
+      "log": "native-sdk-r2.log",
+      "app_members": 114,
+      "bilingual_entries": 1086
+    },
+    "release_build": {
+      "status": "PASS",
+      "log": "xcode-build27-r1.log",
+      "destination": "generic iOS Simulator; no device boot/install/launch",
+      "result_bundle_local": "Build27.xcresult"
+    },
+    "governance": {
+      "status": "PASS",
+      "sensitive_candidates": 1155,
+      "blocking": 0,
+      "manual_review": 0
+    }
+  },
+  "mechanisms": [
+    "New versioned revision-work route and typed confirmation; ordinary revision endpoints retain their old contract",
+    "One original Task/run/tag and immutable original frozen request; each explicit revision gets a new plan, bounded grant, due, source, route, deadline and cumulative budgets",
+    "One maintained TaskWorker and scoped records algorithms; current selector binds revision operation, plan, new turn and grant at every execution/settlement boundary",
+    "Original source catalog fixes tool policy; native review locks it and verifies fresh projection before dispatch; no silent local downgrade",
+    "Current context and memory usage are from this reviewed turn; old frozen request and prior artifacts remain unchanged",
+    "New-session automatic kick and control resume carry the exact durable revision operation; no alternate worker",
+    "Source deletion and withdrawal are explicit execution fences; malformed bindings and unknown errors stay visible",
+    "Journal before first POST; original UUID GET recovery after deadline; no renewal or second POST; only strictly verified new receipt can lift the old presentation fence",
+    "Native wire UUID spelling is canonical lowercase, separate from user text; all new typography uses existing semantic roles; cheap resource/project checks run before full compilation"
+  ],
+  "independent_review": {
+    "backend": "Reviewed current selector, original bytes, lifecycle/revoke/purge, late writes and historical result boundary. Final integration tested 444/444.",
+    "native": "Found capability-key mismatch, source-policy default, new context loss and fallback intent omission; all fixed before final wire/build. Actual wire found UUID letter-case hash mismatch; alphabetic UUID goldens and strict actual HTTP regression fixed it."
+  },
+  "retained_failures": [
+    "Original finite report completed, ordinary revision correctly returned revision_new_work_intent_required; baseline new versioned route was missing (HTTP404)",
+    "HTTP r3 15/19, r4 19/20: expired/generation selection errors and deleted-source error classification; common execution fence/selector fixed, final full suites 444/444",
+    "Initial sourced fixture mistook delegate_sources_v1 for worker output; fixture tool classification corrected without changing product pass criteria",
+    "Native actual HTTP r1: tool_result rejected because JSONEncoder capitalized two UUID fields; no fake goal/receipt persisted. Canonical lowercase fields, alphabetic Node goldens and actual wire r2 passed",
+    "SDK r1 typecheck/parse/project passed but localization scanner rejected ui(ternary) despite both keys being cataloged; both branches now explicitly call ui, r2 full SDK/resource passed; check ordering now fails cheap resource errors before compilation"
+  ],
+  "limitations": [
+    "No new production deployment, Auth, real model/source request, PostgreSQL multi-instance run, Simulator install/launch/UI test, phone or OS effect",
+    "User build25 Simulator/client/ports and build24/26 packages preserved; build27 is a built candidate, not an installed or accepted daily-use release",
+    "Conversation semantics and actual providers remain unverified; prior r7 sole real request remains HTTP429 with authorization exhausted",
+    "Cross-conversation inbox, independent scheduler, change monitoring and actual calendar/notification execution remain next work, not closed by this slice",
+    "No new visual/motion/VoiceOver/large-text runtime matrix; semantic typography static guard is not visual acceptance",
+    "Source/pack/deploy are not yet one real release candidate; API21 remains previous approved package. AF-A/AF-U/CP and FINAL-G1/G2/G3 are not accepted"
+  ],
+  "evidence_logs": {
+    "build/revision-work-20261015/authority-execution-r1.log": "036508e61e9709152ba703c7a8ad08503c65b142fb4be07161aeec7bddb7cbb8",
+    "build/revision-work-20261015/backend-final-r2.log": "566324e2590bdf5a7c30f6decbccaaa8e12176726a79badf3cb1aa08b79beaa7",
+    "build/revision-work-20261015/backend-full-r1.log": "287b9527cd41b65ef2a404988ddb55d2550795265d15b44e741653a82c996ccb",
+    "build/revision-work-20261015/check-af-goals-final.log": "5e514e06da7e3f3b8a689bfeeb73d37027323026d35b3d55b36e0160fc816e5d",
+    "build/revision-work-20261015/check-af-goals-r1.log": "5e514e06da7e3f3b8a689bfeeb73d37027323026d35b3d55b36e0160fc816e5d",
+    "build/revision-work-20261015/check-af-plan-final.log": "71da24f70099c5cfb5c75ba771b66c4bf4a7191051c3bd879afd8ec58db3f748",
+    "build/revision-work-20261015/check-af-plan-r1.log": "71da24f70099c5cfb5c75ba771b66c4bf4a7191051c3bd879afd8ec58db3f748",
+    "build/revision-work-20261015/check-cg-final.log": "0751a52050b8903f5812a6f0fc59db56a345f2b4dc1857e55e7d69c402873163",
+    "build/revision-work-20261015/check-cg-r1.log": "0751a52050b8903f5812a6f0fc59db56a345f2b4dc1857e55e7d69c402873163",
+    "build/revision-work-20261015/check-deployed-final.log": "a68c4a239c7a9d8a2e3f2ffab1f5ae00b63c319b9999a42db6c27873688ee228",
+    "build/revision-work-20261015/check-deployed-r1.log": "a68c4a239c7a9d8a2e3f2ffab1f5ae00b63c319b9999a42db6c27873688ee228",
+    "build/revision-work-20261015/check-final-final.log": "7b72c9e606d7cd160ae8d115c2f06fd10a8e293c8de3a662a01a92467c51161c",
+    "build/revision-work-20261015/check-final-r1.log": "7b72c9e606d7cd160ae8d115c2f06fd10a8e293c8de3a662a01a92467c51161c",
+    "build/revision-work-20261015/check-frozen-final.log": "1bb67173eb0b659474afd45ac05604e9fb8492515d9f2408006c25fb5bf3865d",
+    "build/revision-work-20261015/check-frozen-r1.log": "1bb67173eb0b659474afd45ac05604e9fb8492515d9f2408006c25fb5bf3865d",
+    "build/revision-work-20261015/check-layout-final.log": "d225b3174702f41d455fc0cd22c09a32011f6b961c278f3e66b88fc9ba7ca372",
+    "build/revision-work-20261015/check-layout-r1.log": "d225b3174702f41d455fc0cd22c09a32011f6b961c278f3e66b88fc9ba7ca372",
+    "build/revision-work-20261015/check-sensitive-final.log": "50d1970f605f19d2aa7a7c7c8fdf27c607637266b30bbeabd534cd06b706e95f",
+    "build/revision-work-20261015/check-sensitive-r1.log": "eb0d5143c59456fa1f24c7aa7b039cab5e3d6c1d8dff079855c203c5f44d874b",
+    "build/revision-work-20261015/check-whitespace-final.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "build/revision-work-20261015/contract-r1.log": "f583a9a85360ae64ec1501cf61b1033f446bedcfd96b47c5023f9f67d09f2d51",
+    "build/revision-work-20261015/generator-r2.log": "3f05d6c4a58091b60cba709861081db0f20f53f4785bf66abca80ef0ddd819b2",
+    "build/revision-work-20261015/generator-r3.log": "70e3a857c8776a893f7da200b910cb71986393f2eb3115262989166f3a796951",
+    "build/revision-work-20261015/http-first-r2.log": "08982b061cfce6482461e1ac2c7b9deb7394e873c3d4cb1072197185f85c6433",
+    "build/revision-work-20261015/http-lateworker-r5.log": "76c79dcae5474c540877b375c97be96378e9e733ea22dde52ff059becbecba1a",
+    "build/revision-work-20261015/http-red-r1.log": "bfdc949d3a4c636c834b6689071707533e960b87a0cd96fa648231c7b4cb675d",
+    "build/revision-work-20261015/http-target-r3.log": "44cb0cfade92e48ef76f04670a8747a7ca518d705599745a09715c5ba7cf3fe1",
+    "build/revision-work-20261015/http-target-r4.log": "5b33f5af15ba178afca30c16a0139c299e6437ed840cfd497572d6f4ae6dca04",
+    "build/revision-work-20261015/legacy-revision-r1.log": "34c6dd9af46aebde35ff94d4343ccd191deae1d9bdfbc28fad2473bb101c12af",
+    "build/revision-work-20261015/native-application-r2.log": "6731d5e885d79ee2a2943737ad00b89a63fcab5b2242045e410ee0c17f75d25c",
+    "build/revision-work-20261015/native-conversation-r1.log": "4455cf1382bbe425dd2e956e6a9f282a570539b7969f6373fbd165958fcd335a",
+    "build/revision-work-20261015/native-domain-r2.log": "833f605361728a6348d8916e7f26404beae4dc59ad775a4e7520cfb576438683",
+    "build/revision-work-20261015/native-new-wire-r1.log": "9751505b512433ac0514e48f70f04c20d327c68c68bda6d5a7321af68d655178",
+    "build/revision-work-20261015/native-new-wire-r2.log": "6c11b3284295c731c79abb63b66510df915f4c04a489b689b4cb8780da29348b",
+    "build/revision-work-20261015/native-old-wire-r1.log": "34bdff81695f2b1867fbbe194b056633d1e0486543cd314d1fd6ea64e8fd6000",
+    "build/revision-work-20261015/native-queue-r1.log": "8f1a7f59f4c5ca299b4a61e7ab91ad206ce90ac21f2d35d60557889b1cdde5fd",
+    "build/revision-work-20261015/native-sdk-r1.log": "d7613ba78f2a86d62f8215f916bbec480e0446ac480688123e4790685dcffd41",
+    "build/revision-work-20261015/native-sdk-r2.log": "77be5004db56ecb79fbff0eb43d0ac2c91c84ba84ec3ff52489421d00428ee10",
+    "build/revision-work-20261015/native-wire-generator-r1.log": "b05b46ba4b0a6d87e23a94f121e38e2f07e9dcc526ddadb39a674f21a447e01a",
+    "build/revision-work-20261015/source-authority-v2-r1.log": "159f5b17d597a5413ae6f5462138e0dfb2df6ca7a635ed6368d162e14c1a4f12",
+    "build/revision-work-20261015/xcode-build27-r1.log": "184bec1b9456d72cfb14a6aab7b1707bec59740c95cc5320259217c18f276edb",
+    "build/revision-work-20261015/check-sensitive-evidence.log": "dc46041711c6fc320996c7741501611f818d38dc04b00c480984a567a93d0b9d",
+    "build/revision-work-20261015/check-goals-evidence.log": "5e514e06da7e3f3b8a689bfeeb73d37027323026d35b3d55b36e0160fc816e5d"
+  },
+  "wire_fixture": {
+    "path": "build/revision-work-20261015/native-wire.json",
+    "sha256": "f9cf040f48abb21a6bf37603c070c26d5277a6210bf19923ca61685f3e5d7af3",
+    "source_files": 83,
+    "original_session_expired": true,
+    "base_manual_editable": false,
+    "base_is_current": true,
+    "real_model": false,
+    "real_sql": false
+  },
+  "media_uploads": 0
+}
