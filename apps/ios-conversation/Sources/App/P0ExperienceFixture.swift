@@ -16,9 +16,10 @@ import SwiftUI
     static var scenario:String? {
         let env=ProcessInfo.processInfo.environment
         guard let id=env["CF_UI_TEST_STORE"],UUID(uuidString:id) != nil,
-              let s=env["CF_UI_TEST_SCENARIO"],["p0-ui-accepted-work","p0-ui-accepted-work-unknown","p0-ui-echo","p0-ui-consent","p0-ui-ime","p0-ui-lifecycle","p0-ui-large","p0-ui-large-autoplay","p0-ui-reading","p0-ui-queue","p0-ui-genui","p0-ui-genui-large","p0-ui-genui-table","p0-ui-genui-chart","p0-ui-genui-weighted","p0-ui-plan","p0-ui-plan-pending","p0-ui-plan-unknown","p0-ui-sourced-artifact","p0-ui-large-sourced-artifact","p0-ui-task-action","p0-ui-task-action-unknown","p0-ui-task-action-unavailable","p0-ui-large-task-action","p0-ui-artifact-edit","p0-ui-artifact-edit-unknown","p0-ui-large-artifact-edit","p0-ui-task-control","p0-ui-task-control-unknown","p0-ui-large-task-control","p0-ui-large-task-control-unresolved"].contains(s) else { return nil };return s
+              let s=env["CF_UI_TEST_SCENARIO"],["p0-ui-accepted-work","p0-ui-accepted-work-unknown","p0-ui-echo","p0-ui-consent","p0-ui-ime","p0-ui-lifecycle","p0-ui-large","p0-ui-large-autoplay","p0-ui-reading","p0-ui-reading-growth","p0-ui-queue","p0-ui-genui","p0-ui-genui-large","p0-ui-genui-table","p0-ui-genui-chart","p0-ui-genui-weighted","p0-ui-plan","p0-ui-plan-pending","p0-ui-plan-unknown","p0-ui-sourced-artifact","p0-ui-large-sourced-artifact","p0-ui-task-action","p0-ui-task-action-unknown","p0-ui-task-action-unavailable","p0-ui-large-task-action","p0-ui-artifact-edit","p0-ui-artifact-edit-unknown","p0-ui-large-artifact-edit","p0-ui-task-control","p0-ui-task-control-unknown","p0-ui-large-task-control","p0-ui-large-task-control-unresolved"].contains(s) else { return nil };return s
     }
     static var replyCalls=0,observeCalls=0,consentCalls=0
+    static var readingGrowthStage=0
 }
 
 /// All work here is explicitly in-process synthetic; no Auth, HTTP or provider.
@@ -69,6 +70,7 @@ actor P0ExperienceBackend:ConversationBackend {
     private func produce(_ r:ConversationTurnRequest) async {
         emit(.started(requestHash:textHash("P0-UI:"+r.operationID.uuidString),conversationRevision:1,grantEpoch:1),request:r)
         let message=stableID("P0-UI-assistant-"+r.operationID.uuidString)
+        if scenario == "p0-ui-reading-growth" {await produceReadingGrowth(r,message:message);return}
         if scenario.hasSuffix("sourced-artifact") || scenario.contains("artifact-edit") || scenario.contains("task-action") {
             do {
                 let call="synthetic-sourced-"+r.operationID.uuidString,run=stableID(call+"-run"),artifactID=textHash(call+"-artifact")
@@ -124,6 +126,31 @@ actor P0ExperienceBackend:ConversationBackend {
         while !remaining.isEmpty {
             let chunk=String(remaining.prefix(128));remaining=String(remaining.dropFirst(chunk.count))
             emit(.textDelta(messageID:message,text:chunk),request:r);try? await Task.sleep(nanoseconds:scenario.hasPrefix("p0-ui-genui") ? 600_000_000 : (scenario == "p0-ui-consent" ? 250_000_000 : (scenario == "p0-ui-reading" ? 100_000_000 : 20_000_000)))
+        }
+        emit(.completed(messageID:message,finalTextHash:textHash(body)),request:r);streams[r.operationID]?.finish()
+    }
+    /// Controlled native-layout fixture: actual transcript events, no network or model.
+    /// Test controls only delivery timing; the production renderer owns every pixel.
+    private func produceReadingGrowth(_ r:ConversationTurnRequest,message:UUID) async {
+        let upper="reading-upper-"+r.operationID.uuidString,lower="reading-lower-"+r.operationID.uuidString
+        emit(.toolStarted(callID:upper,name:"present_cgui_v1",arguments:"{}"),request:r)
+        let body=(1...18).map {"Reading checkpoint \($0). This stable paragraph stays at the same screen position when a result above it becomes ready.\n\n"}.joined()
+        emit(.textDelta(messageID:message,text:body),request:r)
+        emit(.toolStarted(callID:lower,name:"present_cgui_v1",arguments:"{}"),request:r)
+        for (stage,call) in [(1,upper),(2,lower)] {
+            var ready=false
+            for _ in 0..<600 {
+                if await MainActor.run(body:{P0ExperienceFixture.readingGrowthStage>=stage}) {ready=true;break}
+                try? await Task.sleep(nanoseconds:100_000_000)
+            }
+            guard ready else {emit(.failed(message:"Synthetic reading fixture gate expired",reconciliationRequired:false),request:r);streams[r.operationID]?.finish();return}
+            do {
+                let source=CGUISource(id:"fixture",label:"Explicit local layout fixture; no web or model",kind:.assumption)
+                let identity=CGUIIdentity(blockID:call,conversationID:r.conversationID,turnID:r.operationID,dataRevision:1)
+                let input=CGUIDurationBudgetInput(total:try CGUIDecimal("60"),reserved:try CGUIDecimal("10"),stepCount:4,perStep:try CGUIDecimal("8"))
+                let block=CGUIBlock(identity:identity,presentation:.calculator,title:stage==1 ? "Synthetic upper result":"Synthetic lower result",summary:"Actual native calculator from a controlled transcript result. No execution authority.",sources:[source],fallback:.init(text:"60 − 10 − 4 × 8 = 18 minutes"),calculator:.init(duration:input))
+                emit(.toolResult(.init(callID:call,name:"present_cgui_v1",content:String(decoding:try JSONEncoder().encode(block),as:UTF8.self))),request:r)
+            }catch {emit(.failed(message:"Synthetic reading fixture invalid",reconciliationRequired:false),request:r);streams[r.operationID]?.finish();return}
         }
         emit(.completed(messageID:message,finalTextHash:textHash(body)),request:r);streams[r.operationID]?.finish()
     }
