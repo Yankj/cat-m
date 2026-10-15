@@ -7,7 +7,14 @@ import XCTest
 final class CatpawAcceptanceUITests: XCTestCase {
     private let bundleID = ProcessInfo.processInfo.environment["CATPAW_UI_BUNDLE_ID"] ?? "com.example.CatpawM.ConversationFirst.Auth"
 
-    override func setUp() { continueAfterFailure = false }
+    /// Per-test isolation: kill any running instance (e.g. one launched by Device Hub/simctl) so every
+    /// test cold-launches with its own fresh CF_UI_TEST_STORE, never reusing a previous test's state.
+    override func setUp() {
+        continueAfterFailure = false
+        let app = XCUIApplication(bundleIdentifier: bundleID)
+        if app.state != .notRunning { app.terminate(); _ = app.wait(for: .notRunning, timeout: 10) }
+    }
+    override func tearDown() { XCUIApplication(bundleIdentifier: bundleID).terminate() }
 
     private func fixtureApp(_ scenario: String, extra: [String: String] = [:]) -> XCUIApplication {
         let app = XCUIApplication(bundleIdentifier: bundleID)
@@ -34,6 +41,11 @@ final class CatpawAcceptanceUITests: XCTestCase {
         let app = fixtureApp("p0-ui-acceptance"); app.launch()
         shot(app, "01-launch-mark-early")
         Thread.sleep(forTimeInterval: 0.5); shot(app, "01-launch-mark-mid")
+        if !input(app).waitForExistence(timeout: 20) {
+            // One cold relaunch with a brand-new store before failing (simulator launch hiccup).
+            shot(app, "01-retry-before-relaunch"); app.terminate(); _ = app.wait(for: .notRunning, timeout: 10)
+            app.launchEnvironment["CF_UI_TEST_STORE"] = UUID().uuidString; app.launch()
+        }
         XCTAssertTrue(input(app).waitForExistence(timeout: 20), "Composer must appear after the launch mark")
         shot(app, "01-launch-first-screen")
     }
