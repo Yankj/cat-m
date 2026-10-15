@@ -47,7 +47,9 @@ enum MarkdownTheme {
                 result[run.range].backgroundColor = MarkdownTheme.ink.opacity(0.06)
             }
             if run.link != nil {
-                result[run.range].foregroundColor = MarkdownTheme.pawOrange
+                // Color rule: paw orange is fill/icon only; link text stays ink, marked by underline.
+                result[run.range].foregroundColor = MarkdownTheme.ink
+                result[run.range].underlineStyle = .single
             }
         }
         if !streaming {
@@ -110,7 +112,7 @@ enum MarkdownTheme {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .tint(MarkdownTheme.pawOrange)
+        .tint(MarkdownTheme.ink)
         .environment(\.openURL, OpenURLAction { MarkdownLinkOpener.open($0) })
         .transaction { $0.animation = nil }
     }
@@ -120,9 +122,6 @@ struct MarkdownBlockView: View, Equatable {
     let block: MarkdownBlock
     let streaming: Bool
     var inkOpacity: Double = 1
-    @ScaledMetric(relativeTo: .title2) private var h1: CGFloat = 22
-    @ScaledMetric(relativeTo: .title3) private var h2: CGFloat = 19
-    @ScaledMetric(relativeTo: .body) private var h3: CGFloat = 17
     @ScaledMetric(relativeTo: .body) private var listIndent: CGFloat = 20
 
     static func == (lhs: MarkdownBlockView, rhs: MarkdownBlockView) -> Bool {
@@ -134,7 +133,7 @@ struct MarkdownBlockView: View, Equatable {
         switch block.kind {
         case let .heading(level, text):
             Text(MarkdownInlineRenderer.render(text, streaming: streaming))
-                .font(.system(size: level == 1 ? h1 : level == 2 ? h2 : h3, weight: .semibold))
+                .font((level == 1 ? Font.title2 : level == 2 ? Font.title3 : Font.body).weight(.semibold))
                 .foregroundStyle(MarkdownTheme.ink.opacity(inkOpacity))
                 .padding(.top, level == 1 ? 8 : level == 2 ? 4 : 0)
                 .fixedSize(horizontal: false, vertical: true)
@@ -197,7 +196,7 @@ struct MarkdownBlockView: View, Equatable {
             Text(verbatim: "\(item.number).").font(.body).monospacedDigit()
                 .foregroundStyle(MarkdownTheme.ink.opacity(0.55))
         } else {
-            Image(systemName: "circle.fill").font(.system(size: 6))
+            Image(systemName: "circle.fill").font(.footnote).imageScale(.small).scaleEffect(0.6)
                 .foregroundStyle(MarkdownTheme.ink.opacity(0.55)).accessibilityHidden(true)
         }
     }
@@ -270,7 +269,7 @@ struct MarkdownBlockView: View, Equatable {
             .padding(.horizontal, 12).frame(height: 32)
             ScrollView(.horizontal, showsIndicators: false) {
                 Text(MarkdownCodeHighlighter.attributed(shown, language: language))
-                    .font(.system(size: codeSize, design: .monospaced))
+                    .font(.system(.footnote, design: .monospaced))
                     .lineSpacing(codeSize * 0.4)
                     .foregroundStyle(MarkdownTheme.ink)
                     .fixedSize(horizontal: true, vertical: true)
