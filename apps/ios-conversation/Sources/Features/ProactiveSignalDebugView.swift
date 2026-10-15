@@ -16,7 +16,11 @@ import SwiftUI
                 Button(ui("扫描真实日历")) { Task { await ProactiveEngine.shared.scanCalendar(ask: true) } }.accessibilityIdentifier("proactive.engine.scan")
                 Button(ui("清空去重账本")) { ProactiveEngine.shared.resetLedger() }.accessibilityIdentifier("proactive.engine.resetLedger")
                 ForEach(ProactiveEngine.shared.log.prefix(12)) { e in
+<<<<<<< HEAD
                     Text(e.at.formatted(date: .omitted, time: .standard) + "  " + e.text).font(.footnote.monospaced()).foregroundStyle(e.text.contains("SUPPRESSED") ? CatpawColors.attention : CatpawColors.ink)
+=======
+                    Text(e.at.formatted(date: .omitted, time: .standard) + "  " + e.text).font(CatpawTypography.Role.caption.font.monospaced()).foregroundStyle(e.text.contains("SUPPRESSED") ? CatpawColors.attention : CatpawColors.ink)
+>>>>>>> 52be01d (Fix base checks: semantic font + zh/en strings for ProactiveEngine debug section)
                 }
             }
             Section(ui("模拟时间")) {
