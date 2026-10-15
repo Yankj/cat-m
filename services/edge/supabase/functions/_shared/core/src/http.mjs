@@ -86,7 +86,7 @@ export function createChatFetchHandler(runtime){
             if(initial&&!detach.signal.aborted)enqueue(initial);
             for await(const e of chat.observe(auth,scope,cid,tid,{...options,signal:detach.signal})){if(detach.signal.aborted)break;enqueue(e);}if(!detach.signal.aborted)controller.close();
             }finally{clearInterval(keepalive);}
-          }catch{if(!detach.signal.aborted)controller.error(new Error('Observation interrupted; read original turn snapshot'));}},
+          }catch(error){console.info(JSON.stringify({event:'catpaw_sse_observe_interrupted',name:error?.name??'unknown',code:error instanceof ApiError?error.code:typeof error?.code==='string'&&/^[A-Za-z0-9_]{1,40}$/.test(error.code)?error.code:null,status:error instanceof ApiError?error.status:null,frames:String(error?.stack??'').split('\n').slice(1,5).map(l=>l.trim().replace(/\(.*?:(\d+):\d+\)/,'@$1').replace(/^at /,'').slice(0,80)),aborted:detach.signal.aborted}));if(!detach.signal.aborted)controller.error(new Error('Observation interrupted; read original turn snapshot'));}},
           cancel(){detach.abort();} // never cancel a durable task or active model turn
         });
         return new Response(stream,{headers:{'Content-Type':'text/event-stream','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
