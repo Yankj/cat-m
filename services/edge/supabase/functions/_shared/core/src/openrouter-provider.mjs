@@ -1,6 +1,8 @@
+import {LIVE_VISION_ROUTE,LIVE_VISION_ROUTE_HASH,VISION_CATALOG_URL} from './live-vision-route.mjs';
+import {mapVisionMessages} from './vision-contract.mjs';
 import { safeProviderFailure } from './provider-errors.mjs';
 import {matchesGemmaPrivateReview,checkGemmaReviewFrame} from './private-route-review.mjs';
-import { ApiError,check,clone } from '../facade-r2/src/common.mjs';
+import { ApiError,check,clone,hash } from '../facade-r2/src/common.mjs';
 export const OPENROUTER_ENDPOINT='https://openrouter.ai/api/v1/chat/completions';
 export const FREE_MODEL='google/gemma-4-31b-it:free';
 export const FREE_ROUTER='openrouter/free';
@@ -13,13 +15,16 @@ export const ZERO_PRICE=Object.freeze({only:['google-ai-studio'],allow_fallbacks
 export class OpenRouterProvider {
   #secret;
   #observations=[];
-  constructor({model=null,secret=null,endpoint=OPENROUTER_ENDPOINT,liveNetworkEnabled=false,allowFreeRouter=false,fetchImpl=globalThis.fetch,maxTokens=2048,timeoutMs=30000,privateRoutingPolicy=null,beforeStream=null,expectedProviderDisplay=null,privateRouteReviewID=null}={}){
+  #catalog=null;
+  constructor({model=null,secret=null,endpoint=OPENROUTER_ENDPOINT,liveNetworkEnabled=false,allowFreeRouter=false,fetchImpl=globalThis.fetch,maxTokens=2048,timeoutMs=30000,privateRoutingPolicy=null,beforeStream=null,expectedProviderDisplay=null,allowImageInput=false,privateRouteReviewID=null}={}){
+    this.allowImageInput=allowImageInput===true;
     this.model=model;this.endpoint=endpoint;this.#secret=secret;this.liveNetworkEnabled=liveNetworkEnabled;this.allowFreeRouter=allowFreeRouter;this.fetchImpl=fetchImpl;
     check(Number.isInteger(maxTokens)&&maxTokens>0&&maxTokens<=2048&&Number.isInteger(timeoutMs)&&timeoutMs>0&&timeoutMs<=60000,422,'invalid_provider_limits');
     this.maxTokens=maxTokens;this.timeoutMs=timeoutMs;
     this.privateRoutingPolicy=privateRoutingPolicy;this.privateRouteReviewID=privateRouteReviewID;this.beforeStream=beforeStream;this.expectedProviderDisplay=expectedProviderDisplay;
     this.routingPolicy={...clone(ZERO_PRICE),only:clone(FREE_PROVIDER_ROUTES[model]??[])};if(model===FREE_ROUTER)delete this.routingPolicy.only;
     if(privateRoutingPolicy)this.routingPolicy=clone(privateRoutingPolicy);
+    if(this.allowImageInput){check(model===LIVE_VISION_ROUTE.model&&privateRoutingPolicy&&hash(privateRoutingPolicy)===hash(LIVE_VISION_ROUTE.routing_policy)&&expectedProviderDisplay===LIVE_VISION_ROUTE.downstream_provider,503,'vision_route_not_configured');this.visionContract={execution_layer:'live_image_adapter',route:clone(LIVE_VISION_ROUTE)};}
     this.identity={provider:'openrouter',model,endpoint,free_only:model?.endsWith(':free')===true,max_tokens:maxTokens,adapter_version:4,routing_policy:clone(this.routingPolicy)};
   }
   get observations(){return clone(this.#observations);}
@@ -27,27 +32,42 @@ export class OpenRouterProvider {
   assertReady(){
     check(typeof this.model==='string'&&typeof this.#secret==='string'&&this.#secret.trim(),503,'not_configured');
     check(this.endpoint===OPENROUTER_ENDPOINT,422,'endpoint_not_allowed');
-    if(this.privateRoutingPolicy){const original=this.privateRouteReviewID===null&&this.model===SUCCESSFUL_FREE_MODEL&&JSON.stringify(this.routingPolicy.only)===JSON.stringify(['novita/bf16'])&&Object.values(this.routingPolicy.max_price).every(v=>v===0)&&this.routingPolicy.only.length===1&&this.routingPolicy.allow_fallbacks===false&&this.routingPolicy.data_collection==='deny';const review=matchesGemmaPrivateReview({reviewID:this.privateRouteReviewID,model:this.model,expectedProviderDisplay:this.expectedProviderDisplay,routingPolicy:this.routingPolicy});check((original||review)&&typeof this.beforeStream==='function',503,'private_route_not_configured');}else check(Object.hasOwn(FREE_PROVIDER_ROUTES,this.model)&&(this.model!==FREE_ROUTER||this.allowFreeRouter===true),422,'paid_or_router_model_denied');
+    if(this.privateRoutingPolicy&&this.allowImageInput){check(this.model===LIVE_VISION_ROUTE.model&&hash(this.routingPolicy)===hash(LIVE_VISION_ROUTE.routing_policy)&&typeof this.beforeStream==='function',503,'vision_route_not_configured');}else if(this.privateRoutingPolicy){const original=this.privateRouteReviewID===null&&this.model===SUCCESSFUL_FREE_MODEL&&JSON.stringify(this.routingPolicy.only)===JSON.stringify(['novita/bf16'])&&Object.values(this.routingPolicy.max_price).every(v=>v===0)&&this.routingPolicy.only.length===1&&this.routingPolicy.allow_fallbacks===false&&this.routingPolicy.data_collection==='deny';const review=matchesGemmaPrivateReview({reviewID:this.privateRouteReviewID,model:this.model,expectedProviderDisplay:this.expectedProviderDisplay,routingPolicy:this.routingPolicy});check((original||review)&&typeof this.beforeStream==='function',503,'private_route_not_configured');}else check(Object.hasOwn(FREE_PROVIDER_ROUTES,this.model)&&(this.model!==FREE_ROUTER||this.allowFreeRouter===true),422,'paid_or_router_model_denied');
     check(!/[\r\n]/.test(this.#secret),422,'invalid_credential');
     check(this.liveNetworkEnabled===true,503,'live_calls_not_authorized');
   }
-  async *stream({messages,system_prompt,tools,signal,provider_context,assertDispatchReady}){
+  get catalogEvidence(){return clone(this.#catalog);}
+  async assertImageAvailable(signal){
+    check(this.allowImageInput,503,'image_live_route_disabled');if(this.#catalog&&Date.now()-this.#catalog.checked_at<300000)return this.catalogEvidence;
+    let response;try{response=await this.fetchImpl(VISION_CATALOG_URL,{method:'GET',redirect:'error',signal:signal?AbortSignal.any([signal,AbortSignal.timeout(5000)]):AbortSignal.timeout(5000)});}catch{throw new ApiError(503,'vision_catalog_unavailable');}
+    check(response.status===200&&response.body,503,'vision_catalog_unavailable');let text='',data,total=0;const reader=response.body.getReader(),decoder=new TextDecoder();try{while(true){const r=await reader.read();if(r.done)break;total+=r.value.byteLength;check(total<=100000,503,'vision_catalog_invalid');text+=decoder.decode(r.value,{stream:true});}text+=decoder.decode();}catch(e){await reader.cancel().catch(()=>{});throw e instanceof ApiError?e:new ApiError(503,'vision_catalog_unavailable');}finally{reader.releaseLock();}
+    try{data=JSON.parse(text).data;}catch{throw new ApiError(503,'vision_catalog_invalid');}
+    check(Array.isArray(data?.endpoints),503,'vision_catalog_invalid');
+    const eligible=data.endpoints.find(e=>e?.tag===LIVE_VISION_ROUTE.provider_tag&&e.provider_name===LIVE_VISION_ROUTE.downstream_provider&&e.model_id===this.model&&e.status===0&&e.pricing?.prompt==='0'&&e.pricing?.completion==='0');
+    check(data?.id===this.model&&data.architecture?.input_modalities?.includes('image')&&data.architecture?.output_modalities?.includes('text')&&eligible,503,'free_vision_endpoint_unavailable');
+    this.#catalog={checked_at:Date.now(),model:this.model,provider:eligible.provider_name,provider_tag:eligible.tag,prompt_price:0,completion_price:0,training_filter_required:'deny',zero_retention_claim:false};return this.catalogEvidence;
+  }
+  async *stream({messages,system_prompt,tools,signal,provider_context,assertDispatchReady,image_attachments,vision_user_index}){
+    const images=image_attachments??[];
+    check(!messages.some(m=>Array.isArray(m.content))&&(!images.length||this.allowImageInput),503,'image_live_route_disabled');
+    if(images.length){check(provider_context?.image_route_hash===LIVE_VISION_ROUTE_HASH,403,'provider_image_context_required');await this.assertImageAvailable(signal);}
     this.assertReady();signal?.throwIfAborted();await this.beforeStream?.(provider_context);signal?.throwIfAborted();assertDispatchReady?.();
     const controller=new AbortController(),cancel=()=>controller.abort();
     signal?.addEventListener('abort',cancel,{once:true});if(signal?.aborted)cancel();
     let timedOut=false;const timer=setTimeout(()=>{timedOut=true;cancel();},this.timeoutMs);
     let response;
     const evidence={attempt:this.#observations.length+1,requested_model:this.model,endpoint:this.endpoint,request_policy:clone(this.routingPolicy),http_status:null,actual_model:null,actual_provider:null,response_id:null,usage:null,terminal_validated:false};
-    const reviewFrames=matchesGemmaPrivateReview({reviewID:this.privateRouteReviewID,model:this.model,expectedProviderDisplay:this.expectedProviderDisplay,routingPolicy:this.routingPolicy})?{seen:{},validation:{schema_version:1,review_id:this.privateRouteReviewID,frames:0,passed:false}}:null;
+    if(images.length){evidence.image_count=images.length;evidence.image_hashes=images.map(a=>a.receipt.sha256);evidence.image_bytes=images.reduce((n,a)=>n+a.receipt.size_bytes,0);}const reviewFrames=matchesGemmaPrivateReview({reviewID:this.privateRouteReviewID,model:this.model,expectedProviderDisplay:this.expectedProviderDisplay,routingPolicy:this.routingPolicy})?{seen:{},validation:{schema_version:1,review_id:this.privateRouteReviewID,frames:0,passed:false}}:null;
     if(reviewFrames)evidence.review_frame_validation=reviewFrames.validation;
     this.#observations.push(evidence);
     try {
-      const payload={model:this.model,messages:[{role:'system',content:system_prompt},...clone(messages)],tools:clone(tools),tool_choice:'auto',stream:true,max_tokens:this.maxTokens,provider:clone(this.routingPolicy)};
+      const modelMessages=images.length?mapVisionMessages(messages,images,vision_user_index):clone(messages);
+      const payload={model:this.model,messages:[{role:'system',content:system_prompt},...modelMessages],...tools.length?{tools:clone(tools),tool_choice:'auto'}:{},stream:true,max_tokens:this.maxTokens,provider:clone(this.routingPolicy)};
       const fetchStarted=this.chatMetrics?.now();let firstText=false;
       response=await this.fetchImpl(this.endpoint,{method:'POST',redirect:'error',signal:controller.signal,
         headers:{Authorization:`Bearer ${this.#secret}`,'Content-Type':'application/json',Accept:'text/event-stream'},body:JSON.stringify(payload)});
       evidence.http_status=response.status;
-      if(response.status!==200)evidence.failure=await safeProviderFailure(response,{redact:text=>text.replaceAll(this.#secret,'[REDACTED]')});
+      if(response.status!==200){const failure=await safeProviderFailure(response,{redact:text=>text.replaceAll(this.#secret,'[REDACTED]').replace(/data:image\/[^;,\s]+;base64,[A-Za-z0-9+/=]+/gi,'[IMAGE_REDACTED]')});evidence.failure=images.length?Object.fromEntries(Object.entries(failure).filter(([key])=>['headers','category','retry_after_seconds','retry_at','retry_allowed','account_daily_reset_utc'].includes(key))):failure;}
       const codes={401:'unauthorized',402:'quota_exhausted',403:'forbidden',404:'free_model_unavailable',429:'rate_limited'};
       check(response.status===200,response.status===429?429:503,codes[response.status]??'provider_failed');
       check(response.headers.get('content-type')?.startsWith('text/event-stream')&&response.body,503,'invalid_provider_stream');
@@ -56,7 +76,7 @@ export class OpenRouterProvider {
         if(data==='[DONE]'){done=true;break;}
         let chunk;try{chunk=JSON.parse(data);}catch{throw new ApiError(503,'malformed_provider_json');}
         check(!chunk.error,503,Number(chunk.error?.code)===429?'rate_limited':'provider_stream_error');
-        if(chunk.model){const allowed=this.model===FREE_ROUTER?APPROVED_ROUTER_MODELS.flatMap(m=>[m,m.replace(/:free$/,'')]):[this.model,this.model.replace(/:free$/,'')];check(allowed.includes(chunk.model),503,'response_model_mismatch');}
+        if(chunk.model){const allowed=this.model===FREE_ROUTER?APPROVED_ROUTER_MODELS.flatMap(m=>[m,m.replace(/:free$/,'')]):[this.model,this.model.replace(/:free$/,'')];check(allowed.includes(chunk.model),503,'response_model_mismatch',{reconciliation:images.length>0});}
         if(reviewFrames)checkGemmaReviewFrame(chunk,reviewFrames);
         if(typeof chunk.model==='string')evidence.actual_model=chunk.model.slice(0,200);
         if(typeof chunk.provider==='string')evidence.actual_provider=chunk.provider.slice(0,160);
@@ -85,7 +105,7 @@ export class OpenRouterProvider {
       }
       check(done&&['stop','tool_calls'].includes(finish),503,'incomplete_provider_terminal',{reconciliation:true});
       check((finish==='tool_calls')===(calls.size>0),503,'tool_finish_mismatch');
-      if(this.privateRoutingPolicy)check(evidence.actual_model===this.model&&evidence.actual_provider?.toLowerCase()===this.expectedProviderDisplay?.toLowerCase()&&evidence.usage?.cost===0,503,'private_provider_receipt_mismatch',{reconciliation:true});
+      if(this.privateRoutingPolicy)check((evidence.actual_model===this.model||images.length&&evidence.actual_model===this.model.replace(/:free$/,''))&&evidence.actual_provider?.toLowerCase()===this.expectedProviderDisplay?.toLowerCase()&&evidence.usage?.cost===0,503,'private_provider_receipt_mismatch',{reconciliation:true});
       for(const [,t] of [...calls.entries()].sort(([a],[b])=>a-b)){
         check(t.id&&tools.some(x=>x.function.name===t.name),503,'tool_not_allowed');
         let args;try{args=JSON.parse(t.raw);}catch{throw new ApiError(503,'invalid_tool_arguments');}
@@ -93,7 +113,7 @@ export class OpenRouterProvider {
       }
       if(reviewFrames)reviewFrames.validation.passed=true;
       evidence.terminal_validated=true;
-      yield {type:'done',finish_reason:finish,response_id:responseID};
+      yield {type:'done',finish_reason:finish,response_id:responseID,...images.length?{provider_receipt:{requested_model:this.model,actual_model:evidence.actual_model,actual_provider:evidence.actual_provider,cost:evidence.usage.cost,image_count:evidence.image_count,image_hashes:clone(evidence.image_hashes),image_bytes:evidence.image_bytes,route_hash:LIVE_VISION_ROUTE_HASH,terminal_validated:true,response_id:responseID}}:{}};
     } catch(e){
       if(timedOut){evidence.error='provider_timeout';throw new ApiError(503,evidence.error,{reconciliation:true});}
       if(e instanceof ApiError){evidence.error=e.code;throw e;}
@@ -127,16 +147,16 @@ export async function* sseData(body){
   check(!buffer&&!lines.length,503,'incomplete_provider_terminal',{reconciliation:true});
 }
 export async function collectRound(provider,input,onText=async()=>{}){
-  let text='',terminal=false,finish=null;const calls=[];
+  let text='',terminal=false,finish=null,providerReceipt=null;const calls=[];
   for await(const e of provider.stream(input)){
     check(!terminal,503,'event_after_terminal');
     if(e.type==='text_delta'){check(typeof e.text==='string'&&Buffer.byteLength(text+e.text)<=64000,503,'invalid_provider_text');text+=e.text;await onText(e.text);}
     else if(e.type==='tool_call'){check(calls.length<4&&!calls.some(c=>c.id===e.id),503,'duplicate_tool_call');calls.push({id:e.id,name:e.name,arguments:clone(e.arguments)});}
     else if(e.type==='thinking_delta'){check(typeof e.text==='string',503,'invalid_provider_text');await input.onThinking?.(e.text);}
-    else if(e.type==='done'){terminal=true;finish=e.finish_reason;}
+    else if(e.type==='done'){terminal=true;finish=e.finish_reason;providerReceipt=e.provider_receipt??null;}
     else check(false,503,'unsupported_provider_event');
   }
   check(terminal&&['stop','tool_calls'].includes(finish)&&(finish==='tool_calls')===(calls.length>0),503,'incomplete_provider_terminal',{reconciliation:true});
   check(calls.length>0||text.trim().length>0,503,'empty_provider_response');
-  return {text,calls};
+  return {text,calls,...providerReceipt?{provider_receipt:clone(providerReceipt)}:{}};
 }
