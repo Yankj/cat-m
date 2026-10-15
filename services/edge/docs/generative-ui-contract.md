@@ -90,3 +90,10 @@ Model tool result: `{status:'submitted',response}` · `{status:'dismissed'|'expi
 - Same `operation_id` + same body (incl. response) replays; different body → 409. Interrupt id = stableUUID(turn:call:ui).
 - TTL 10 min (or the model's earlier `expiresAt`); lazy expiry → `expired` → model is told the user did not answer.
 - Cancel resolves pending ui interrupts as `cancelled`. Image, accepted-work and revision turns never get render_ui.
+
+## Server limits and ordering (verified against `test/generative-ui-demo-recording.test.mjs`)
+
+- A turn has at most **3 model rounds**, and a round has at most **4 tool calls**. Past either limit the turn fails with `model_step_limit` or `duplicate_tool_call`. The prompt should ask the model to merge blocks rather than emit one block per round.
+- In a round that suspends, display-only blocks (card/list/progress, plus `ui.block.update`) are sent **before** `turn_suspended`, not after the user answers.
+- A round with several interactive blocks emits one `turn_suspended` carrying every `interrupt_ids`. The client may answer them in any order. A partial answer returns `approval_resolved` + `ui.block.resolve` and leaves the turn suspended. The model resumes only once the last one is answered.
+- Recorded wire session: `docs/fixtures/catpaw-ui-demo.jsonl`.
