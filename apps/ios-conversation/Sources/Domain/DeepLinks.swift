@@ -22,7 +22,7 @@ public enum DeepLinkResolver {
 /// App-level routes for out-of-app entry points (widgets, Control Center, notifications, Live Activity).
 /// `catpawm://conversation/<uuid>` · `catpawm://new` · `catpawm://tasks` · `catpawm://memory` · `catpawm://proactive`
 public enum CatpawAppRoute: Equatable, Sendable {
-    case conversation(UUID), newConversation, tasks, memory, proactive
+    case conversation(UUID), newConversation, tasks, memory, proactive, proactiveDebug
     public init?(url: URL) {
         guard url.scheme == "catpawm", url.user == nil, url.password == nil, let host = url.host else { return nil }
         let tail = url.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
@@ -31,7 +31,7 @@ public enum CatpawAppRoute: Equatable, Sendable {
         case "new": self = .newConversation
         case "tasks": self = .tasks
         case "memory": self = .memory
-        case "proactive": self = .proactive
+        case "proactive": self = tail == "debug" ? .proactiveDebug : .proactive
         default: return nil
         }
     }

@@ -68,6 +68,7 @@ import CatpawImageComposer
               account:.init(name:accountLabel ?? ui("本机用户"),detail:isAnonymousAccount ? ui("未登录") : nil))
     }
     @State private var proactiveInboxPresented = false
+    @State private var proactiveDebugPresented = false
     private func consumeAppRoute() {
         guard model.loaded, let route = CatpawRouteCenter.shared.pending else { return }
         CatpawRouteCenter.shared.pending = nil
@@ -76,6 +77,7 @@ import CatpawImageComposer
         case .newConversation: self.route(.newConversation)
         case .tasks: path = []; self.route(.tasks)
         case .proactive: proactiveInboxPresented = true
+        case .proactiveDebug: proactiveDebugPresented = true
         case .memory: path = []; self.route(.memory)
         }
     }
@@ -359,6 +361,7 @@ import CatpawImageComposer
         feedbackNavigation
         .onChange(of: CatpawRouteCenter.shared.pending) { _, _ in consumeAppRoute() }
         .sheet(isPresented: $proactiveInboxPresented) { NavigationStack { ProactiveInboxView() } }
+        .sheet(isPresented: $proactiveDebugPresented) { NavigationStack { ProactiveSignalDebugView() } }
         .onChange(of: model.loaded) { _, _ in consumeAppRoute() }
         .modifier(ConversationConsentPresenter(model:model))
         .catpawSheet(isPresented:Binding(get:{model.acceptedWorkReviewPresented},set:{if !$0 {model.closeAcceptedWorkReview()}})) {

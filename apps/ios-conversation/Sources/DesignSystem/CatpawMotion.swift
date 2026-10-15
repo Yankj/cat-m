@@ -33,36 +33,132 @@ enum CatpawBrand {
 /// (highlight → base → shaded rim) plus a soft contact shadow, so toes can press in sequence.
 /// Geometry is in a 24-unit box and mirrors Resources/Assets.xcassets/LaunchPaw.svg exactly (frame-0 identity).
 /// `pressed[i]` (0–3 toes, 4 main pad) sinks that pad ~3% and squashes it to 0.9.
+/// Ultra-minimal jelly paw: one soft rounded main pad + 4 round toe beans, glossy highlight + soft shadow.
+/// No face, no outlines. `color` tints the whole mark (brand orange by default, pastel for category markers).
+/// `pressed[i]` squashes pad i (0–3 toes, 4 main pad) for the launch tap sequence.
 struct PawMark: View {
     var size: CGFloat
+    var color: Color = CatpawBrand.paw
     var pressed: [Bool] = [false, false, false, false, false]
     var shadow: Bool = true
-    /// (cx, cy, rx, ry, padIndex). Main pad = a tall centre lobe over two side lobes, as in the reference sheet.
-    static let pads: [(CGFloat, CGFloat, CGFloat, CGFloat, Int)] = [
-        (8.3, 16.9, 3.3, 3.9, 4), (15.7, 16.9, 3.3, 3.9, 4), (12, 15.9, 4.7, 5.3, 4),
-        (4.9, 9.7, 2.5, 2.7, 0), (9.3, 5.3, 2.6, 2.9, 1), (14.7, 5.3, 2.6, 2.9, 2), (19.1, 9.7, 2.5, 2.7, 3)]
+    /// 0…1 position of the glossy highlight sweep (launch); nil = resting highlight.
+    var sweep: CGFloat? = nil
+    init(size: CGFloat, color: Color = CatpawBrand.paw, pressed: [Bool] = [false, false, false, false, false], shadow: Bool = true, sweep: CGFloat? = nil) {
+        self.size = size; self.color = color; self.pressed = pressed; self.shadow = shadow; self.sweep = sweep
+    }
+    /// Toe beans in a 24-unit box: (cx, cy, r).
+    static let toes: [(CGFloat, CGFloat, CGFloat)] = [(4.6, 10.2, 2.55), (9.0, 5.6, 2.6), (15.0, 5.6, 2.6), (19.4, 10.2, 2.55)]
     var body: some View {
         let u = size / 24
         ZStack {
-            // contact shadow
-            Ellipse().fill(RadialGradient(colors: [CatpawBrand.clayShadow.opacity(shadow ? 0.28 : 0), CatpawBrand.clayShadow.opacity(0)],
-                                          center: .center, startRadius: 0, endRadius: 8 * u))
-                .frame(width: 16 * u, height: 3.2 * u).position(x: 12 * u, y: 22.2 * u)
-            ForEach(Array(Self.pads.enumerated()), id: \.offset) { _, pad in
-                let (cx, cy, rx, ry, index) = pad
-                let down = index < pressed.count && pressed[index]
-                Ellipse()
-                    .fill(RadialGradient(stops: [.init(color: CatpawBrand.clayLight, location: 0),
-                                                 .init(color: CatpawBrand.clayBase, location: 0.55),
-                                                 .init(color: CatpawBrand.clayRim, location: 1)],
-                                         center: UnitPoint(x: 0.36, y: 0.3), startRadius: 0, endRadius: max(rx, ry) * 2.1 * u))
-                    .frame(width: 2 * rx * u, height: 2 * ry * u)
-                    .scaleEffect(x: down ? 1.04 : 1, y: down ? 0.9 : 1, anchor: .bottom)
-                    .position(x: cx * u, y: cy * u + (down ? size * 0.03 : 0))
+            if shadow {
+                Ellipse().fill(CatpawBrand.clayShadow.opacity(0.22)).frame(width: 13 * u, height: 2.6 * u).blur(radius: 1.6 * u).offset(y: 9.6 * u)
             }
+            ForEach(0..<4, id: \.self) { i in
+                let t = Self.toes[i]
+                bean(Circle(), w: t.2 * 2 * u, h: t.2 * 2 * u, u: u)
+                    .scaleEffect(x: pressed[i] ? 1.08 : 1, y: pressed[i] ? 0.84 : 1, anchor: .bottom)
+                    .offset(x: (t.0 - 12) * u, y: (t.1 - 12) * u + (pressed[i] ? 0.5 * u : 0))
+            }
+            bean(MainPadShape(), w: 13.6 * u, h: 10.4 * u, u: u)
+                .scaleEffect(x: pressed[4] ? 1.06 : 1, y: pressed[4] ? 0.9 : 1, anchor: .bottom)
+                .offset(y: 3.4 * u)
         }
         .frame(width: size, height: size)
         .accessibilityHidden(true)
+    }
+    private func bean<S: Shape>(_ shape: S, w: CGFloat, h: CGFloat, u: CGFloat) -> some View {
+        shape.fill(color)
+            .overlay(shape.fill(LinearGradient(colors: [CatpawBrand.clayHighlight.opacity(0.28), .clear, CatpawBrand.clayShadow.opacity(0.18)], startPoint: .top, endPoint: .bottom)))
+            .overlay(alignment: .topLeading) {
+                Ellipse().fill(CatpawBrand.clayHighlight.opacity(0.75)).frame(width: w * 0.42, height: h * 0.2).blur(radius: 0.35 * u)
+                    .offset(x: w * (0.14 + (sweep ?? 0.1) * 0.35), y: h * 0.12)
+            }
+            .clipShape(shape)
+            .frame(width: w, height: h)
+            .shadow(color: CatpawBrand.clayShadow.opacity(shadow ? 0.18 : 0), radius: 0.9 * u, y: 0.7 * u)
+    }
+}
+
+/// Soft rounded-triangle main pad (wider bottom, gentle top dome), no lobes.
+struct MainPadShape: Shape {
+    func path(in r: CGRect) -> Path {
+        let w = r.width, h = r.height
+        var p = Path()
+        p.move(to: CGPoint(x: w * 0.5, y: 0))
+        p.addCurve(to: CGPoint(x: w, y: h * 0.72), control1: CGPoint(x: w * 0.82, y: 0), control2: CGPoint(x: w, y: h * 0.42))
+        p.addCurve(to: CGPoint(x: w * 0.5, y: h), control1: CGPoint(x: w, y: h * 0.96), control2: CGPoint(x: w * 0.76, y: h))
+        p.addCurve(to: CGPoint(x: 0, y: h * 0.72), control1: CGPoint(x: w * 0.24, y: h), control2: CGPoint(x: 0, y: h * 0.96))
+        p.addCurve(to: CGPoint(x: w * 0.5, y: 0), control1: CGPoint(x: 0, y: h * 0.42), control2: CGPoint(x: w * 0.18, y: 0))
+        p.closeSubpath()
+        return p.offsetBy(dx: r.minX, dy: r.minY)
+    }
+}
+
+/// Pastel category palette for small markers (tool cards, proactive inbox, memory chips).
+enum CatpawCategory: String, CaseIterable, Sendable {
+    case calendar, email, sms, phone, shopping, memory, maps, reminder
+    var tint: Color {
+        switch self {
+        case .calendar, .reminder: CatpawPastel.lavender
+        case .email: CatpawPastel.blue
+        case .sms: CatpawPastel.mint
+        case .phone: CatpawPastel.pink
+        case .shopping: CatpawPastel.yellow
+        case .memory, .maps: CatpawPastel.warmGray
+        }
+    }
+    static func forTool(_ tool: String) -> CatpawCategory {
+        if tool.hasPrefix("calendar") { return .calendar }
+        if tool.hasPrefix("reminder") || tool.hasPrefix("alarm") { return .reminder }
+        if tool.hasPrefix("mail") { return .email }
+        if tool.hasPrefix("sms") { return .sms }
+        if tool.hasPrefix("phone") || tool.hasPrefix("contacts") { return .phone }
+        if tool.hasPrefix("shop") { return .shopping }
+        if tool.hasPrefix("maps") { return .maps }
+        return .memory
+    }
+}
+enum CatpawPastel {
+    static let lavender = Color(UIColor(rgb: 0xCDB8EC))
+    static let pink = Color(UIColor(rgb: 0xF5B3CB))
+    static let blue = Color(UIColor(rgb: 0xA9C8F5))
+    static let yellow = Color(UIColor(rgb: 0xF6D58E))
+    static let mint = Color(UIColor(rgb: 0xA8DEC8))
+    static let warmGray = Color(UIColor(rgb: 0xC9C0B8))
+}
+/// Small pastel paw used as a category marker.
+struct CategoryPaw: View {
+    var category: CatpawCategory
+    @ScaledMetric(relativeTo: .body) private var size: CGFloat = 16
+    var body: some View { PawMark(size: size, color: category.tint, shadow: false) }
+}
+
+/// Grok-style functional icon: line glyph inside a circular base. Idle = light circle + ink glyph; active = ink circle + white glyph.
+struct CircleIcon: View {
+    var systemName: String
+    var active: Bool = false
+    var diameter: CGFloat = 36
+    var body: some View {
+        ZStack {
+            Circle().fill(active ? CatpawColors.ink : CatpawColors.card)
+                .overlay(Circle().strokeBorder(CatpawColors.hairline.opacity(active ? 0 : 1), lineWidth: 0.5))
+            Image(systemName: systemName).imageScale(.medium).fontWeight(.medium)
+                .foregroundStyle(active ? CatpawColors.onInk : CatpawColors.ink)
+        }
+        .frame(width: diameter, height: diameter)
+        .animation(.snappy(duration: 0.18), value: active)
+    }
+}
+/// Button style that flips CircleIcon to its active pair while pressed.
+struct CircleIconButtonStyle: ButtonStyle {
+    var systemName: String
+    var selected: Bool = false
+    var diameter: CGFloat = 36
+    func makeBody(configuration: Configuration) -> some View {
+        CircleIcon(systemName: systemName, active: selected || configuration.isPressed, diameter: diameter)
+            .scaleEffect(configuration.isPressed ? 0.94 : 1)
+            .contentShape(Circle())
     }
 }
 

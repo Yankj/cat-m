@@ -7,9 +7,17 @@
     "en": "In 1 hour",
     "zh-Hans": "1 小时后"
   },
+  "1 小时后提醒": {
+    "en": "Remind in 1 hour",
+    "zh-Hans": "1 小时后提醒"
+  },
   "10 分钟后": {
     "en": "In 10 minutes",
     "zh-Hans": "10 分钟后"
+  },
+  "10 分钟后提醒": {
+    "en": "Remind in 10 min",
+    "zh-Hans": "10 分钟后提醒"
   },
   "Agnes Flash（备选）": {
     "en": "Agnes Flash (fallback)",
@@ -2267,6 +2275,10 @@
     "en": "Starts",
     "zh-Hans": "开始时间"
   },
+  "引擎": {
+    "en": "Engine",
+    "zh-Hans": "引擎"
+  },
   "引用到草稿": {
     "en": "Quote in draft",
     "zh-Hans": "引用到草稿"
@@ -2750,6 +2762,10 @@
   "执行频率": {
     "en": "Frequency",
     "zh-Hans": "执行频率"
+  },
+  "扫描真实日历": {
+    "en": "Scan real calendar",
+    "zh-Hans": "扫描真实日历"
   },
   "批准": {
     "en": "Approve",
@@ -4418,6 +4434,10 @@
   "清理文档": {
     "en": "Clean up documents",
     "zh-Hans": "清理文档"
+  },
+  "清空去重账本": {
+    "en": "Clear dedupe ledger",
+    "zh-Hans": "清空去重账本"
   },
   "清除全部记忆？": {
     "en": "Clear all memories?",
