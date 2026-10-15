@@ -147,4 +147,24 @@ final class CatpawAcceptanceUITests: XCTestCase {
         shot(app, "r8-02-typing-multiline")
         app.descendants(matching: .any)["chat.title"].firstMatch.tap(); shot(app, "r8-03-title-menu")
     }
+
+    // Real backend: anonymous user + cloud consent + real message (CATPAW_ACCEPTANCE_REAL=1, DeviceTrial build).
+    func test07RealChatEndToEnd() throws {
+        guard ProcessInfo.processInfo.environment["CATPAW_ACCEPTANCE_REAL"] == "1" else { throw XCTSkip("real backend only") }
+        let app = XCUIApplication(bundleIdentifier: bundleID); app.launch()
+        let start = app.buttons["auth.startExperience"]
+        if start.waitForExistence(timeout: 8) { XCTAssertTrue(waitFor(start, "enabled == true", timeout: 20), "开始体验 must be enabled (config present)"); start.tap() }
+        XCTAssertTrue(input(app).waitForExistence(timeout: 45)); shot(app, "real-01-chat")
+        let field = input(app); field.tap(); field.typeText("用一句话介绍你自己")
+        app.buttons["chat.send"].tap()
+        let review = app.buttons["chat.consent.review"]
+        if review.waitForExistence(timeout: 8) { shot(app, "real-02a-consent-banner"); review.tap() }
+        let allow = app.buttons["chat.modelConsent.allow"]
+        if allow.waitForExistence(timeout: 8) { shot(app, "real-02-consent"); allow.tap() }
+        if app.descendants(matching: .any)["chat.answer.thinking"].firstMatch.waitForExistence(timeout: 15) { shot(app, "real-03-thinking") }
+        if app.descendants(matching: .any)["chat.assistantMessage"].firstMatch.waitForExistence(timeout: 60) { Thread.sleep(forTimeInterval: 0.8); shot(app, "real-04-streaming") }
+        let done = app.staticTexts["chat.reply.completed"].waitForExistence(timeout: 120)
+        shot(app, done ? "real-05-done" : "real-05-not-done")
+        XCTAssertTrue(done, "Real reply must complete")
+    }
 }
