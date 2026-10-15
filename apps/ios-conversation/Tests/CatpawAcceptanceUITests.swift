@@ -284,4 +284,28 @@ final class CatpawAcceptanceUITests: XCTestCase {
         if app.buttons["sidebar.open"].exists { app.buttons["sidebar.open"].tap(); Thread.sleep(forTimeInterval: 1); shot(app, "ux-09-drawer") }
         XCTAssertEqual(app.state, .runningForeground)
     }
+
+    /// Proactive chain: simulated non-user signal → engine (filter/dedupe/evaluate) → card + notification → confirm → EKReminder; repeat → suppressed.
+    private func openLink(_ s: String) {
+        XCUIDevice.shared.system.open(URL(string: s)!)
+        let sb = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        for label in ["打开", "Open"] where sb.buttons[label].waitForExistence(timeout: 2) { sb.buttons[label].tap(); break }
+    }
+    func test13ProactiveChain() throws {
+        guard ProcessInfo.processInfo.environment["CATPAW_PROACTIVE_TOUR"] == "1" else { throw XCTSkip("proactive tour only") }
+        let app = XCUIApplication(bundleIdentifier: bundleID); forwardPublicConfig(app); app.launchArguments += ["-CatpawSkipOnboarding", "-CatpawOpenURL", "catpawm://proactive/debug"]; app.launch()
+        let reset = app.buttons["proactive.engine.resetLedger"]; XCTAssertTrue(reset.waitForExistence(timeout: 40)); reset.tap()
+        app.buttons["debug.signal.addMeeting"].tap(); Thread.sleep(forTimeInterval: 0.4)
+        func run() { let b = app.buttons["debug.signal.run"]; var n = 0; while !(b.exists && b.isHittable) && n < 5 { app.swipeUp(); n += 1 }; b.tap() }
+        run(); Thread.sleep(forTimeInterval: 4)
+        shot(app, "w2-p01-pipeline-run")
+        app.swipeDown(); app.swipeDown(); shot(app, "w2-p01b-engine-log")
+        run(); Thread.sleep(forTimeInterval: 4); app.swipeDown(); app.swipeDown()
+        shot(app, "w2-p02-duplicate-suppressed")
+        app.terminate(); app.launchArguments = ["-CatpawSkipOnboarding", "-CatpawOpenURL", "catpawm://proactive"]; app.launch()
+        Thread.sleep(forTimeInterval: 2); shot(app, "w2-p03-inbox-card")
+        let create = app.buttons.matching(NSPredicate(format: "identifier == 'chat.proactiveSuggestion.create_reminder'")).firstMatch
+        if create.waitForExistence(timeout: 5) { create.tap(); Thread.sleep(forTimeInterval: 2.5); shot(app, "w2-p04-reminder-created") }
+        XCTAssertEqual(app.state, .runningForeground)
+    }
 }
