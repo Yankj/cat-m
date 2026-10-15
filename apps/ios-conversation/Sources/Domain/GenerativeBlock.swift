@@ -111,7 +111,7 @@ public struct GenerativeBlockResolution: Codable, Sendable, Equatable {
 /// `ConversationUIDecision` (4454bee), kept as an alias so block code reads naturally.
 public typealias GenerativeUIDecision = ConversationUIDecision
 
-/// Implemented by `ConversationServiceUIDecisionSubmitter` over `ConversationSessionService.submitUIDecision`
+/// Implemented by 三角's `ConversationUIDecisionSubmitter` (conformance in ConversationGenerativeUIHost.swift) over `ConversationSessionService.submitUIDecision`
 /// (approval.v1 decision route; the DEBUG demo backend serves the same path). `response` is the encoded
 /// `ui.response` (submit) or `ui.error` (report_error) JSON, nil for dismiss. Resend with the SAME `operationID` after
 /// `.transport`. Throws `ConversationApprovalFailure` (`.expired`, `.consumed`, `.stale`, `.notFound`, `.rejected`, …).
@@ -156,6 +156,30 @@ public struct GenerativeBlockResponse: Codable, Sendable, Equatable {
     public init(blockId: String, actionId: String?, values: [String: GenerativeValue] = [:], selected: [String] = [], other: String? = nil, respondedAt: Date = .now) {
         self.blockId = blockId; self.actionId = actionId; self.values = values; self.selected = selected; self.other = other; self.respondedAt = respondedAt
         if let other, !other.isEmpty { self.values["other"] = .string(other) }
+    }
+    /// Contract (65ec0c1): `actionId` may be omitted or null; `values` / `selected` may be omitted. Only `confirm`
+    /// must carry an existing actionId (enforced by the server and by the confirm view, which always sends one).
+    private enum CodingKeys: String, CodingKey { case type, blockId, actionId, values, selected, other, respondedAt }
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        type = try c.decodeIfPresent(String.self, forKey: .type) ?? "ui.response"
+        blockId = try c.decode(String.self, forKey: .blockId)
+        actionId = try c.decodeIfPresent(String.self, forKey: .actionId)
+        values = try c.decodeIfPresent([String: GenerativeValue].self, forKey: .values) ?? [:]
+        selected = try c.decodeIfPresent([String].self, forKey: .selected) ?? []
+        other = try c.decodeIfPresent(String.self, forKey: .other)
+        respondedAt = try c.decodeIfPresent(Date.self, forKey: .respondedAt) ?? .now
+    }
+    /// Omits a nil actionId and empty values / selected instead of sending nulls or empty containers.
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(type, forKey: .type)
+        try c.encode(blockId, forKey: .blockId)
+        try c.encodeIfPresent(actionId, forKey: .actionId)
+        if !values.isEmpty { try c.encode(values, forKey: .values) }
+        if !selected.isEmpty { try c.encode(selected, forKey: .selected) }
+        try c.encodeIfPresent(other, forKey: .other)
+        try c.encode(respondedAt, forKey: .respondedAt)
     }
 }
 

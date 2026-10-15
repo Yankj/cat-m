@@ -145,7 +145,7 @@ public struct AuthenticatedNativeChatCredentials: NativeChatSessionCredentials {
         let submitter = ConversationUIDecisionSubmitter(service: service, scope: scope)
         uiDecisionSubmitter = submitter
         // #36 merge: add the GenerativeUIDecisionSubmitting conformance (see ConversationUIDecisionSubmitter) and uncomment:
-        // GenerativeBlockStore.shared.submitter = submitter
+        GenerativeBlockStore.shared.submitter = submitter
     }
     /// Starts the background warm-up (local preview, restore, anonymous experience identity).
     /// Safe to call from `.task`: the warm-up is an unstructured task, so the gate can await it.
