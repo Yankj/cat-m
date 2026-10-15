@@ -36,7 +36,11 @@ actor EventLog { var items: [ConversationTurnEvent] = []; func add(_ e: Conversa
 func waitFor(_ condition: () async throws -> Bool) async throws { for _ in 0..<300 { if try await condition() { return }; try await Task.sleep(nanoseconds: 10_000_000) } }
 
 @main struct DemoFixtureRunner {
-    static func main() async throws {
+    static func main() async {
+        do { try await run() }
+        catch { print("FAIL DemoFixtureRunner: uncaught \(type(of: error)).\(error) — \(error.localizedDescription)"); exit(1) }
+    }
+    static func run() async throws {
         let defaults = UserDefaults(suiteName: "catpaw-demo-fixture-test")!
         defaults.removeObject(forKey: CatpawDemoBackendSwitch.defaultsKey)
         check(!CatpawDemoBackendSwitch.isEnabled(arguments: [], defaults: defaults) && CatpawDemoBackendSwitch.isEnabled(arguments: ["-CatpawDemoBackend"], defaults: defaults), "demo switch: off by default, launch argument turns it on")
