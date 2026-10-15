@@ -63,11 +63,14 @@ enum ConversationObserverLifecycle: String { case foregroundIdle, streaming, rec
     @Published private(set) var imageCapability=ConversationImageCapability()
     private var imageSubscription:AnyCancellable?
     @Published var pendingImageConsent:ConversationImageConsent?
+    @Published private(set) var imageConsentReviewToken:UUID?
     @Published private(set) var checkingImageConsent=false
     private var imageConsentTask:Task<Void,Never>?
     private var imageRecoveryTask:Task<Void,Never>?
     private var imageRecoveryToken:UUID?
     private var imageReview:ImageReview?
+    private var imageConsentReview:ConversationImageConsent?
+    private var consumedImageConsentReviewToken:UUID?
     private var approvedImage:ApprovedImage?
     private var imageConsentEpoch=UUID()
     private var cleanedImageOperations:Set<UUID>=[]
@@ -103,6 +106,7 @@ enum ConversationObserverLifecycle: String { case foregroundIdle, streaming, rec
         return nil
     }
     @Published var pendingModelConsent: ConversationModelConsent?
+    @Published private(set) var modelConsentReviewToken:UUID?
     @Published private(set) var checkingModelConsent = false
     @Published private(set) var isInputComposing = false
     @Published var draft = ""
@@ -394,12 +398,28 @@ enum ConversationObserverLifecycle: String { case foregroundIdle, streaming, rec
             do {
                 let consent=try await service.imageConsent(scope:scope,conversationID:review.conversation,previewID:review.preview,previewHash:review.hash)
                 guard imageConsentEpoch==epoch,reviewMatches(review),!Task.isCancelled,consent.conversationID==review.conversation,consent.previewID==review.preview,consent.previewHash==review.hash,consent.routeHash==imageCapability.routeHash else {return}
-                pendingImageConsent=consent
+                imageConsentReview=consent;imageConsentReviewToken=UUID();consumedImageConsentReviewToken=nil;pendingImageConsent=consent
             } catch {if imageConsentEpoch==epoch {self.error=error.localizedDescription;cancelImageConsent()}}
         }
     }
-    func allowPendingImageConsent(_ consent:ConversationImageConsent,confirmed:Bool) {
-        guard confirmed,pendingImageConsent==consent,let review=imageReview,reviewMatches(review),consent.routeHash==imageCapability.routeHash else {return}
+    func matchesImageConsent(_ consent:ConversationImageConsent,reviewToken:UUID)->Bool {
+        guard imageConsentReviewToken==reviewToken,imageConsentReview==consent,
+              let review=imageReview,reviewMatches(review),consent.routeHash==imageCapability.routeHash else {return false}
+        return true
+    }
+    @discardableResult func cancelImageConsent(matching consent:ConversationImageConsent,reviewToken:UUID)->Bool {
+        guard !checkingImageConsent,matchesImageConsent(consent,reviewToken:reviewToken) else {return false}
+        cancelImageConsent();return true
+    }
+    func allowPendingImageConsent(_ consent:ConversationImageConsent,confirmed:Bool,reviewToken:UUID?=nil) {
+        guard confirmed,!checkingImageConsent,let currentToken=imageConsentReviewToken,
+              reviewToken.map({$0==currentToken}) ?? true,
+              consumedImageConsentReviewToken != currentToken,matchesImageConsent(consent,reviewToken:currentToken),
+              let review=imageReview else {return}
+        // Consume the decision synchronously. Keep the current presentation token
+        // while saving, but neither a repeated button callback nor an old sheet
+        // cancellation can start a second consent POST or cancel this new owner.
+        consumedImageConsentReviewToken=currentToken
         imageConsentTask?.cancel();let epoch=UUID();imageConsentEpoch=epoch;checkingImageConsent=true
         imageConsentTask=Task {
             defer {if imageConsentEpoch==epoch {checkingImageConsent=false}}
@@ -407,14 +427,14 @@ enum ConversationObserverLifecycle: String { case foregroundIdle, streaming, rec
                 let revision=try await service.allowImageConsent(scope:scope,consent:consent,nonSensitiveConfirmed:true)
                 guard imageConsentEpoch==epoch,reviewMatches(review),!Task.isCancelled,revision==consent.expectedRevision+1 else {return}
                 approvedImage = .init(conversation:review.conversation,preview:review.preview,hash:review.hash,captionHash:review.captionHash,route:consent.routeHash,revision:revision)
-                imageReview=nil;pendingImageConsent=nil
+                imageReview=nil;imageConsentReview=nil;imageConsentReviewToken=nil;consumedImageConsentReviewToken=nil;pendingImageConsent=nil
             } catch {if imageConsentEpoch==epoch {self.error=error.localizedDescription;cancelImageConsent()}}
         }
     }
     func cancelImageConsent() {
         let hadReview=imageReview != nil
-        imageConsentEpoch=UUID();imageConsentTask?.cancel();imageConsentTask=nil;imageReview=nil;pendingImageConsent=nil;checkingImageConsent=false;approvedImage=nil
-        if hadReview {pendingModelConsent=nil;modelConsentReview=nil}
+        imageConsentEpoch=UUID();imageConsentTask?.cancel();imageConsentTask=nil;imageReview=nil;imageConsentReview=nil;imageConsentReviewToken=nil;consumedImageConsentReviewToken=nil;pendingImageConsent=nil;checkingImageConsent=false;approvedImage=nil
+        if hadReview {pendingModelConsent=nil;modelConsentReview=nil;modelConsentReviewToken=nil}
     }
     private func recoverOrCleanImage(_ current:ConversationSession) {
         for turn in current.turns where turn.state == .completed && turn.request.image != nil && !cleanedImageOperations.contains(turn.id) {
@@ -423,7 +443,7 @@ enum ConversationObserverLifecycle: String { case foregroundIdle, streaming, rec
             if recoveredImageOperation==turn.id {if draft==turn.request.history.last?.content {editDraft("")};recoveredImageOperation=nil}
             Task {try? await imageStore.remove(conversationID:current.conversationID,operationID:turn.id)}
         }
-        guard imageRecoveryTask==nil,imageDraft.phase == .empty else {return}
+        guard loaded,imageRecoveryTask==nil,imageDraft.phase == .empty else {return}
         let candidate=(followups.paused ? followups.pending.first(where:{$0.image != nil}) : nil).map{($0.id,$0.image!,$0.text)} ?? current.turns.last(where:{[.unknown,.failed,.notSent].contains($0.state) && $0.request.image != nil}).map{($0.id,$0.request.image!,$0.request.history.last?.content ?? "")}
         guard let (operation,reference,text)=candidate else {return}
         let id=current.conversationID,generation=sceneGeneration,token=UUID();imageRecoveryToken=token
@@ -431,10 +451,11 @@ enum ConversationObserverLifecycle: String { case foregroundIdle, streaming, rec
             defer {if imageRecoveryToken==token {imageRecoveryTask=nil;imageRecoveryToken=nil}}
             do {
                 let bytes=try await imageStore.read(reference:reference,conversationID:id,operationID:operation)
-                let packet=try await SystemImageAttachmentEncoder().encode(bytes,id:reference.receipt.id,format:.png,limits:.init())
+                let receipt=reference.receipt
+                let packet=try await SystemImageAttachmentEncoder().restoreEncoded(bytes,id:receipt.id,mimeType:receipt.mime_type,sha256:receipt.sha256,sizeBytes:receipt.size_bytes,width:receipt.width,height:receipt.height)
                 guard !Task.isCancelled,conversationID==id,sceneGeneration==generation,loaded,imageDraft.phase == .empty,packet.sha256==reference.receipt.sha256 else {return}
                 let unresolved=(followups.paused && followups.pending.contains(where:{$0.id==operation})) || session?.turns.contains(where:{$0.id==operation && [.unknown,.failed,.notSent].contains($0.state)})==true
-                guard unresolved else {return};imageDraft.restorePrepared(packet);recoveredImageOperation=operation;if draft.isEmpty {draft=text}
+                guard unresolved else {return};approvedImage=nil;imageDraft.restorePrepared(packet);recoveredImageOperation=operation;if draft.isEmpty {draft=text}
             } catch {if conversationID==id,loaded,!Task.isCancelled {self.error="本机图片读取未完成，原请求已保留。"}}
         }
     }
@@ -512,7 +533,7 @@ enum ConversationObserverLifecycle: String { case foregroundIdle, streaming, rec
         }
         // Commit all presentation state together after target reads and the last
         // lifecycle gate. An interrupted read cannot leave B with A's queue/draft.
-        permissionTask?.cancel();permissionID=nil;pendingModelConsent=nil;modelConsentReview=nil;checkingModelConsent=false;consentReady=false
+        permissionTask?.cancel();permissionID=nil;pendingModelConsent=nil;modelConsentReview=nil;modelConsentReviewToken=nil;checkingModelConsent=false;consentReady=false
         queue=ConversationFollowupQueueService(repository:repository,scope:scope,conversationID:id)
         acceptedWorkReviewTask?.cancel();acceptedWorkReviewTask=nil;acceptedWorkReviewToken=nil;acceptedWorkReviewPresented=false;acceptedWorkReviewSaving=false;acceptedWorkCapability = .init();revisionWorkReviewTarget=nil
         acceptedWorkDraftTask?.cancel();acceptedWorkDraftTask=nil;acceptedWorkDraft=targetWorkDraft
@@ -627,12 +648,21 @@ enum ConversationObserverLifecycle: String { case foregroundIdle, streaming, rec
             } catch { if permissionID == token { self.error="尚未发送；连接或许可读取未完成，本机消息已保留。" } }
         }
     }
-    func allowPendingModelConsent(_ consent:ConversationModelConsent) {
+    func matchesModelConsent(_ consent:ConversationModelConsent,reviewToken:UUID)->Bool {
+        guard loaded,foreground,networkAdmissionAllowed,conversationID==consent.conversationID,
+              modelConsentReviewToken==reviewToken,let review=modelConsentReview else {return false}
+        return sameModelConsent(review,consent)
+    }
+    private func sameModelConsent(_ first:ConversationModelConsent,_ second:ConversationModelConsent)->Bool {
+        first.conversationID==second.conversationID && first.routeHash==second.routeHash && first.expectedRevision==second.expectedRevision && first.title==second.title && first.body==second.body
+    }
+    func allowPendingModelConsent(_ consent:ConversationModelConsent,reviewToken:UUID?=nil) {
         guard networkAdmissionAllowed,foreground,loaded,conversationID == consent.conversationID,
+              reviewToken.map({modelConsentReviewToken==$0}) ?? true,
               let review=modelConsentReview,review.conversationID==consent.conversationID,
               review.routeHash==consent.routeHash,review.expectedRevision==consent.expectedRevision,
               review.title==consent.title,review.body==consent.body else {return}
-        modelConsentReview=nil
+        modelConsentReview=nil;modelConsentReviewToken=nil
         permissionTask?.cancel();let token=UUID();permissionID=token;checkingModelConsent=true;pendingModelConsent=nil
         permissionTask=Task {
             defer { if permissionID == token { permissionTask=nil;checkingModelConsent=false } }
@@ -641,20 +671,29 @@ enum ConversationObserverLifecycle: String { case foregroundIdle, streaming, rec
         }
     }
     private func presentModelConsent(_ consent:ConversationModelConsent) {
-        modelConsentReview=consent;pendingModelConsent=consent
+        modelConsentReview=consent;modelConsentReviewToken=UUID();pendingModelConsent=consent
     }
     var needsModelConsentReview:Bool {!consentReady && (modelConsentReview != nil || !followups.pending.isEmpty)}
     var canReviewModelConsent:Bool {loaded && foreground && networkAdmissionAllowed && !checkingModelConsent && !busy && session?.unresolved==nil}
     func requestModelConsentReview() {
         guard canReviewModelConsent else{return}
-        if let review=modelConsentReview,review.conversationID==conversationID {pendingModelConsent=review;return}
+        if let review=modelConsentReview,review.conversationID==conversationID {presentModelConsent(review);return}
         if followups.paused {resumeFollowups()} else {authorizePending()}
     }
-    func deferModelConsent(_ consent:ConversationModelConsent?=nil) {
-        if let consent {guard modelConsentReview?.conversationID==consent.conversationID,modelConsentReview?.routeHash==consent.routeHash,modelConsentReview?.expectedRevision==consent.expectedRevision else{return}}
-        modelConsentReview=nil;pendingModelConsent=nil;consentReady=false
+    @discardableResult func deferModelConsent(_ consent:ConversationModelConsent?=nil,reviewToken:UUID?=nil)->Bool {
+        if let consent {
+            guard let review=modelConsentReview,sameModelConsent(review,consent),
+                  reviewToken.map({matchesModelConsent(consent,reviewToken:$0)}) ?? true else {return false}
+        } else if reviewToken != nil {return false}
+        modelConsentReview=nil;modelConsentReviewToken=nil;pendingModelConsent=nil;consentReady=false
         if imageReview != nil {cancelImageConsent()}
-        Task {try? await queue?.pause();await refresh()}
+        let reviewQueue=queue,reviewConversation=conversationID
+        Task {
+            try? await reviewQueue?.pause()
+            guard loaded,conversationID==reviewConversation else {return}
+            await refresh()
+        }
+        return true
     }
     private var canDispatchFollowup:Bool { loaded && foreground && networkAdmissionAllowed }
     private func drainQueue() {
@@ -721,7 +760,7 @@ enum ConversationObserverLifecycle: String { case foregroundIdle, streaming, rec
         guard allowed != networkAdmissionAllowed else { return };networkAdmissionAllowed=allowed
         Task {await synchronizeServiceAdmission()}
         if allowed { Task { await resumeForeground();authorizePending() } }
-        else { stopTaskControlDelivery();permissionTask?.cancel();permissionTask=nil;permissionID=nil;checkingModelConsent=false;pendingModelConsent=nil;modelConsentReview=nil;connectionProbeID=UUID();connectionTask?.cancel();connectionLifecycle = .checking }
+        else { cancelImageConsent();stopTaskControlDelivery();permissionTask?.cancel();permissionTask=nil;permissionID=nil;checkingModelConsent=false;pendingModelConsent=nil;modelConsentReview=nil;modelConsentReviewToken=nil;connectionProbeID=UUID();connectionTask?.cancel();connectionLifecycle = .checking }
     }
     func refreshConnection() async {
         guard foreground,networkAdmissionAllowed else {connectionLifecycle = .checking;return}
@@ -817,7 +856,7 @@ enum ConversationObserverLifecycle: String { case foregroundIdle, streaming, rec
     }
     private func beginSuspension() -> Task<Void,Never> {
         cancelImageConsent();sceneGeneration += 1;foreground=false;stopTaskControlDelivery();foregroundTask?.cancel();foregroundTask=nil;connectionTask?.cancel()
-        permissionTask?.cancel();permissionTask=nil;permissionID=nil;checkingModelConsent=false;pendingModelConsent=nil;modelConsentReview=nil;connectionProbeID=UUID()
+        permissionTask?.cancel();permissionTask=nil;permissionID=nil;checkingModelConsent=false;pendingModelConsent=nil;modelConsentReview=nil;modelConsentReviewToken=nil;connectionProbeID=UUID()
         let old=turnTask;turnTask=nil;flightID=nil;busy=false;sending=false;observerLifecycle = .background
         let id=conversationID,service=self.service,scope=self.scope,queue=self.queue
         let previous=haltTask,persistence=persistenceTask

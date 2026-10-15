@@ -71,6 +71,39 @@ import CatpawImageComposer
         guard let session=model.session else {return []}
         return ConversationTimelineProjection.rows(messages:displayMessages,turns:session.turns)
     }
+    private enum RenderedTimelineRow:Identifiable {
+        case message(ConversationTimelineProjection.Row),activity(ConversationTurnActivitySnapshot)
+        var id:UUID {switch self {case .message(let row):return row.id;case .activity(let activity):return stableID("conversation-activity-\(activity.id)")}}
+        var turnID:UUID? {switch self {case .message(let row):return row.turnID;case .activity(let activity):return activity.id}}
+    }
+    private var renderedTimelineRows:[RenderedTimelineRow] {
+        let rows=timelineRows
+        guard let session=model.session else {return rows.map{.message($0)}}
+        let activities=ConversationTurnActivityProjection.snapshots(session:session,rows:rows)
+        let byTurn=Dictionary(uniqueKeysWithValues:activities.map{($0.id,$0)})
+        var emitted=Set<UUID>(),result:[RenderedTimelineRow]=[]
+        for row in rows {
+            let activity=row.turnID.flatMap{byTurn[$0]}
+            if row.message.role != .user,let activity,emitted.insert(activity.id).inserted {result.append(.activity(activity))}
+            // Pending and plain tool receipts live in the single turn summary.
+            // Actual task, result and interactive cards keep their original rows.
+            let plainReceipt=row.presentation == .message && row.message.role == .tool &&
+                !["present_cgui_v1","propose_memory_v1","revise_current_report_v1",ConversationRevisionWorkCodec.toolName].contains(row.message.toolName ?? "") && linkedGoal(row.message)==nil && row.message.failure==nil
+            let emptyTerminal=row.presentation == .message && row.message.role == .assistant && row.message.toolName==nil && row.message.toolCallID==nil && row.message.complete && row.message.failure==nil && row.message.content.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty
+            if !emptyTerminal && (activity==nil || (row.presentation != .processPending && !plainReceipt)) {result.append(.message(row))}
+            if row.message.role == .user,let activity,emitted.insert(activity.id).inserted {result.append(.activity(activity))}
+        }
+        for activity in activities where emitted.insert(activity.id).inserted {result.append(.activity(activity))}
+        return result
+    }
+    private func renderedSpacing(_ row:RenderedTimelineRow,previous:RenderedTimelineRow?)->CGFloat {
+        guard let previous else {return 0}
+        if case .message(let next)=row,case .message(let prior)=previous {return timelineSpacing(next,previous:prior)}
+        return row.turnID != nil && row.turnID==previous.turnID ? 8:24
+    }
+    @ViewBuilder private func renderedTimelineRow(_ row:RenderedTimelineRow)->some View {
+        switch row {case .message(let message):timelineRow(message);case .activity(let activity):ConversationTurnActivity(activity:activity)}
+    }
     private var chatNavigation: some View {
         SidebarHost(isPresented:$sidebarPresented,isAtRoot:path.isEmpty && !conversationMenuPresented && !settings && !history && !pendingMessagesPresented && !composerContextPresented && !model.acceptedWorkReviewPresented && model.selectedTaskPlan == nil && model.selectedTaskActions == nil && model.selectedTaskControl == nil && model.pendingModelConsent == nil && model.pendingImageConsent == nil,
                     snapshot:sidebarSnapshot,theme:sidebarTheme,localize:{ui($0)},allowsContentPan:true,onWillOpen:{UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder),to:nil,from:nil,for:nil)},
@@ -87,9 +120,9 @@ import CatpawImageComposer
                                     Text(ui("问一个问题，或说一件想做的事。")).foregroundStyle(CatpawColors.secondary)
                                 }.padding(.top, textSize.isAccessibilitySize ? 24 : 64).padding(.bottom, 32).accessibilityIdentifier("chat.empty")
                             }
-                            let rows=timelineRows
+                            let rows=renderedTimelineRows
                             ForEach(Array(rows.enumerated()),id:\.element.id) { index,row in
-                                timelineRow(row).padding(.top,timelineSpacing(row,previous:index>0 ? rows[index-1]:nil))
+                                renderedTimelineRow(row).padding(.top,renderedSpacing(row,previous:index>0 ? rows[index-1]:nil))
                                     .background(ConversationReadingAnchorMarker(id:row.id,context:readingAnchorContext,coordinator:readingAnchor).accessibilityHidden(true)).id(row.id)
                             }
                             if let latest = session.turns.last, latest.state == .completed {
@@ -105,7 +138,7 @@ import CatpawImageComposer
                         } else { ProgressView(ui("打开对话")) }
                         Color.clear.frame(height: 1).id("latest")
                     }.padding(20).frame(maxWidth: 680).frame(maxWidth: .infinity)
-                        .background(ConversationReadingAnchorTracker(context:readingAnchorContext,followingLatest:followingLatest,orderedIDs:timelineRows.map(\.id),coordinator:readingAnchor,onContentSizeChange:{[following = $followingLatest, pending = $scrollTask] in Self.scheduleScroll(proxy,following:following,pending:pending)}).accessibilityHidden(true))
+                        .background(ConversationReadingAnchorTracker(context:readingAnchorContext,followingLatest:followingLatest,orderedIDs:renderedTimelineRows.map(\.id),coordinator:readingAnchor,onContentSizeChange:{[following = $followingLatest, pending = $scrollTask] in Self.scheduleScroll(proxy,following:following,pending:pending)}).accessibilityHidden(true))
                         .background(ConversationScrollObserver { distance,userScrolled in
                             latestVisible=distance <= 48
                             if userScrolled {
@@ -211,18 +244,7 @@ import CatpawImageComposer
     }
     var body: some View {
         feedbackNavigation
-        .catpawSheet(item:Binding(get:{model.pendingModelConsent},set:{value in
-            if value==nil,let current=model.pendingModelConsent {model.deferModelConsent(current)}
-            else {model.pendingModelConsent=value}
-        })) { consent in
-            ConversationModelConsentView(consent:consent,canAllow:model.canReviewModelConsent,
-                allow:{model.allowPendingModelConsent(consent)},deferConsent:{model.deferModelConsent(consent)})
-                .id(consent.routeHash+"-"+String(consent.expectedRevision))
-        }
-        .catpawSheet(item:Binding(get:{model.pendingImageConsent},set:{value in if value==nil,model.pendingImageConsent != nil {model.cancelImageConsent()}})) {consent in
-            ConversationImageConsentView(consent:consent,preview:model.imageDraft.attachment?.thumbnailData,caption:model.draft,saving:model.checkingImageConsent,allow:{confirmed in model.allowPendingImageConsent(consent,confirmed:confirmed)},cancel:model.cancelImageConsent)
-                .presentationDetents([.large]).interactiveDismissDisabled(model.checkingImageConsent)
-        }
+        .modifier(ConversationConsentPresenter(model:model))
         .catpawSheet(isPresented:Binding(get:{model.acceptedWorkReviewPresented},set:{if !$0 {model.closeAcceptedWorkReview()}})) {
             ConversationAcceptedWorkReviewView(originalText:model.acceptedWorkReviewOriginalText,capability:model.acceptedWorkCapability,options:$model.acceptedWorkOptions,saving:model.acceptedWorkReviewSaving,error:model.acceptedWorkReviewError,confirm:model.confirmAcceptedWorkReview,close:model.closeAcceptedWorkReview,revisionTargetTitle:model.revisionWorkReviewTarget.map{$0.artifactTitle+" · v\($0.artifactReference.version)"},lockedToolPolicy:model.revisionWorkReviewPolicy?.toolPolicy,sourceLimitFloor:model.revisionWorkReviewPolicy?.sourceCount ?? 0)
                 .interactiveDismissDisabled(model.acceptedWorkReviewSaving)
@@ -256,7 +278,7 @@ import CatpawImageComposer
         .onChange(of:model.outgoingMessages) { _, _ in probe.update(model) }
         .onChange(of:model.draft) { _, _ in probe.update(model) }
         .onChange(of:model.session?.turns.last?.lastSequence) { _, _ in probe.update(model) }
-        .overlay(alignment:.topTrailing) { if probe.enabled && ProcessInfo.processInfo.environment["CATPAW_QA_VISUAL_REVIEW"] != "1" { VStack {
+        .overlay(alignment:.topTrailing) { if probe.enabled && P0ExperienceFixture.launchEnvironment["CATPAW_QA_VISUAL_REVIEW"] != "1" { VStack {
             Text("Synthetic offline fixture").font(.caption2).accessibilityIdentifier("qa.p0Fixture")
             Text("P0 probe").font(.caption2).accessibilityIdentifier("qa.p0Probe").accessibilityValue(probe.json)
             if P0PerformanceLog.shared.enabled {Button("Export metrics"){probe.exportMetrics()}.font(.caption2).accessibilityIdentifier("qa.p0Export")}
@@ -855,35 +877,6 @@ private enum ConversationHostDestination:Hashable {case settings,tasks,results,m
           let artifact=(goal.artifacts+goal.artifactHistory).first(where:{ConversationArtifactIdentity($0)==selected}) else {return}
     editReference=ConversationArtifactEditReference(scope:model.scope,binding:binding,subjectID:subject,artifact:artifact)
  }
-}
-
-@MainActor private struct ConversationImageConsentView:View {
-    let consent:ConversationImageConsent
-    let preview:Data?
-    let caption:String
-    let saving:Bool
-    let allow:(Bool)->Void
-    let cancel:()->Void
-    @State private var confirmed=false
-    @Environment(\.locale) private var locale
-    private func ui(_ key:String,arguments:[String]=[])->String {AppLanguage(locale:locale).ui(key,arguments:arguments)}
-    var body:some View {
-        NavigationStack {
-            ScrollView {VStack(alignment:.leading,spacing:20) {
-                if let preview,let image=UIImage(data:preview) {Image(uiImage:image).resizable().scaledToFit().frame(maxHeight:192).accessibilityLabel(ui("待确认的图片预览")).accessibilityIdentifier("image.consent.preview")}
-                Text(caption).textSelection(.enabled)
-                Text(ui(consent.body)).fixedSize(horizontal:false,vertical:true).accessibilityIdentifier("image.consent.notice")
-                Toggle(ui(consent.confirmation),isOn:$confirmed).accessibilityIdentifier("image.consent.nonSensitive")
-                Text(ui("确认后返回输入区，点击发送才会传输图片。")).font(CatpawTypography.Role.caption.font)
-            }.padding()}
-            .navigationTitle(ui(consent.title)).navigationBarTitleDisplayMode(.inline)
-            .safeAreaInset(edge:.bottom) {VStack(spacing:12) {
-                Button(ui(consent.allowLabel)){allow(confirmed)}.buttonStyle(.borderedProminent).disabled(!confirmed || saving).accessibilityIdentifier("image.consent.allow")
-                Button(ui(consent.denyLabel),action:cancel).disabled(saving).accessibilityIdentifier("image.consent.cancel")
-                if saving {ProgressView().accessibilityLabel(ui("正在保存确认…"))}
-            }.padding().frame(maxWidth:.infinity).background(CatpawColors.background)}
-        }.tint(CatpawColors.ink).foregroundStyle(CatpawColors.ink)
-    }
 }
 
 /// Only presentation geometry changes; editor, picker draft and send semantics

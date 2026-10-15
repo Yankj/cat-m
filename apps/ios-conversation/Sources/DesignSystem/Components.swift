@@ -156,6 +156,7 @@ struct CatpawPrimaryButtonStyle: ButtonStyle {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     func makeBody(configuration: Configuration) -> some View {
         configuration.label.font(CatpawTypography.Role.body.font.weight(.semibold))
+            .fixedSize(horizontal:false,vertical:true)
             .frame(minHeight: 24).padding(.horizontal, 20).padding(.vertical, 14)
             .foregroundStyle(isEnabled ? CatpawColors.onInk : CatpawColors.secondary)
             .background(isEnabled ? CatpawColors.ink : CatpawColors.input,
@@ -174,6 +175,28 @@ struct CatpawPressButtonStyle: ButtonStyle {
         configuration.label
             .opacity(isEnabled ? (configuration.isPressed ? 0.65 : 1) : 0.55)
             .animation(reduceMotion || configuration.isPressed ? nil : .easeOut(duration: 0.12), value: configuration.isPressed)
+    }
+}
+
+/// Consent checkboxes expose the entire readable row as one 44pt action.
+/// The check mark is visual; the label and selection are one accessibility item.
+struct CatpawConfirmationCheckbox:View {
+    let title:String
+    @Binding var isOn:Bool
+    @Environment(\.locale) private var locale
+    private func ui(_ key:String)->String {AppLanguage(locale:locale).ui(key)}
+    var body:some View {
+        Button {isOn.toggle()} label:{
+            HStack(alignment:.firstTextBaseline,spacing:12) {
+                Image(systemName:isOn ? "checkmark.square.fill":"square")
+                    .font(CatpawTypography.Role.body.font).symbolRenderingMode(.monochrome)
+                    .foregroundStyle(CatpawColors.action).accessibilityHidden(true)
+                Text(verbatim:title).font(CatpawTypography.Role.body.font).fixedSize(horizontal:false,vertical:true)
+                    .frame(maxWidth:.infinity,alignment:.leading)
+            }.frame(maxWidth:.infinity,minHeight:44,alignment:.leading).contentShape(Rectangle())
+        }.buttonStyle(CatpawPressButtonStyle()).accessibilityLabel(title)
+            .accessibilityValue(isOn ? ui("已选中"):ui("未选中"))
+            .accessibilityAddTraits(isOn ? [.isSelected]:[])
     }
 }
 
