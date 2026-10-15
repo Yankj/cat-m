@@ -1,4 +1,5 @@
 import { safeProviderFailure } from './provider-errors.mjs';
+import {matchesGemmaPrivateReview,checkGemmaReviewFrame} from './private-route-review.mjs';
 import { ApiError,check,clone } from '../facade-r2/src/common.mjs';
 export const OPENROUTER_ENDPOINT='https://openrouter.ai/api/v1/chat/completions';
 export const FREE_MODEL='google/gemma-4-31b-it:free';
@@ -12,11 +13,11 @@ export const ZERO_PRICE=Object.freeze({only:['google-ai-studio'],allow_fallbacks
 export class OpenRouterProvider {
   #secret;
   #observations=[];
-  constructor({model=null,secret=null,endpoint=OPENROUTER_ENDPOINT,liveNetworkEnabled=false,allowFreeRouter=false,fetchImpl=globalThis.fetch,maxTokens=2048,timeoutMs=30000,privateRoutingPolicy=null,beforeStream=null,expectedProviderDisplay=null}={}){
+  constructor({model=null,secret=null,endpoint=OPENROUTER_ENDPOINT,liveNetworkEnabled=false,allowFreeRouter=false,fetchImpl=globalThis.fetch,maxTokens=2048,timeoutMs=30000,privateRoutingPolicy=null,beforeStream=null,expectedProviderDisplay=null,privateRouteReviewID=null}={}){
     this.model=model;this.endpoint=endpoint;this.#secret=secret;this.liveNetworkEnabled=liveNetworkEnabled;this.allowFreeRouter=allowFreeRouter;this.fetchImpl=fetchImpl;
     check(Number.isInteger(maxTokens)&&maxTokens>0&&maxTokens<=2048&&Number.isInteger(timeoutMs)&&timeoutMs>0&&timeoutMs<=60000,422,'invalid_provider_limits');
     this.maxTokens=maxTokens;this.timeoutMs=timeoutMs;
-    this.privateRoutingPolicy=privateRoutingPolicy;this.beforeStream=beforeStream;this.expectedProviderDisplay=expectedProviderDisplay;
+    this.privateRoutingPolicy=privateRoutingPolicy;this.privateRouteReviewID=privateRouteReviewID;this.beforeStream=beforeStream;this.expectedProviderDisplay=expectedProviderDisplay;
     this.routingPolicy={...clone(ZERO_PRICE),only:clone(FREE_PROVIDER_ROUTES[model]??[])};if(model===FREE_ROUTER)delete this.routingPolicy.only;
     if(privateRoutingPolicy)this.routingPolicy=clone(privateRoutingPolicy);
     this.identity={provider:'openrouter',model,endpoint,free_only:model?.endsWith(':free')===true,max_tokens:maxTokens,adapter_version:4,routing_policy:clone(this.routingPolicy)};
@@ -26,7 +27,7 @@ export class OpenRouterProvider {
   assertReady(){
     check(typeof this.model==='string'&&typeof this.#secret==='string'&&this.#secret.trim(),503,'not_configured');
     check(this.endpoint===OPENROUTER_ENDPOINT,422,'endpoint_not_allowed');
-    if(this.privateRoutingPolicy){check(this.model===SUCCESSFUL_FREE_MODEL&&JSON.stringify(this.routingPolicy.only)===JSON.stringify(['novita/bf16'])&&Object.values(this.routingPolicy.max_price).every(v=>v===0)&&this.routingPolicy.only.length===1&&this.routingPolicy.allow_fallbacks===false&&this.routingPolicy.data_collection==='deny'&&typeof this.beforeStream==='function',503,'private_route_not_configured');}else check(Object.hasOwn(FREE_PROVIDER_ROUTES,this.model)&&(this.model!==FREE_ROUTER||this.allowFreeRouter===true),422,'paid_or_router_model_denied');
+    if(this.privateRoutingPolicy){const original=this.privateRouteReviewID===null&&this.model===SUCCESSFUL_FREE_MODEL&&JSON.stringify(this.routingPolicy.only)===JSON.stringify(['novita/bf16'])&&Object.values(this.routingPolicy.max_price).every(v=>v===0)&&this.routingPolicy.only.length===1&&this.routingPolicy.allow_fallbacks===false&&this.routingPolicy.data_collection==='deny';const review=matchesGemmaPrivateReview({reviewID:this.privateRouteReviewID,model:this.model,expectedProviderDisplay:this.expectedProviderDisplay,routingPolicy:this.routingPolicy});check((original||review)&&typeof this.beforeStream==='function',503,'private_route_not_configured');}else check(Object.hasOwn(FREE_PROVIDER_ROUTES,this.model)&&(this.model!==FREE_ROUTER||this.allowFreeRouter===true),422,'paid_or_router_model_denied');
     check(!/[\r\n]/.test(this.#secret),422,'invalid_credential');
     check(this.liveNetworkEnabled===true,503,'live_calls_not_authorized');
   }
@@ -37,6 +38,8 @@ export class OpenRouterProvider {
     let timedOut=false;const timer=setTimeout(()=>{timedOut=true;cancel();},this.timeoutMs);
     let response;
     const evidence={attempt:this.#observations.length+1,requested_model:this.model,endpoint:this.endpoint,request_policy:clone(this.routingPolicy),http_status:null,actual_model:null,actual_provider:null,response_id:null,usage:null,terminal_validated:false};
+    const reviewFrames=matchesGemmaPrivateReview({reviewID:this.privateRouteReviewID,model:this.model,expectedProviderDisplay:this.expectedProviderDisplay,routingPolicy:this.routingPolicy})?{seen:{},validation:{schema_version:1,review_id:this.privateRouteReviewID,frames:0,passed:false}}:null;
+    if(reviewFrames)evidence.review_frame_validation=reviewFrames.validation;
     this.#observations.push(evidence);
     try {
       const payload={model:this.model,messages:[{role:'system',content:system_prompt},...clone(messages)],tools:clone(tools),tool_choice:'auto',stream:true,max_tokens:this.maxTokens,provider:clone(this.routingPolicy)};
@@ -54,6 +57,7 @@ export class OpenRouterProvider {
         let chunk;try{chunk=JSON.parse(data);}catch{throw new ApiError(503,'malformed_provider_json');}
         check(!chunk.error,503,Number(chunk.error?.code)===429?'rate_limited':'provider_stream_error');
         if(chunk.model){const allowed=this.model===FREE_ROUTER?APPROVED_ROUTER_MODELS.flatMap(m=>[m,m.replace(/:free$/,'')]):[this.model,this.model.replace(/:free$/,'')];check(allowed.includes(chunk.model),503,'response_model_mismatch');}
+        if(reviewFrames)checkGemmaReviewFrame(chunk,reviewFrames);
         if(typeof chunk.model==='string')evidence.actual_model=chunk.model.slice(0,200);
         if(typeof chunk.provider==='string')evidence.actual_provider=chunk.provider.slice(0,160);
         if(typeof chunk.id==='string'){responseID=chunk.id.slice(0,200);evidence.response_id=responseID;}
@@ -87,6 +91,7 @@ export class OpenRouterProvider {
         let args;try{args=JSON.parse(t.raw);}catch{throw new ApiError(503,'invalid_tool_arguments');}
         yield {type:'tool_call',id:t.id,name:t.name,arguments:args};
       }
+      if(reviewFrames)reviewFrames.validation.passed=true;
       evidence.terminal_validated=true;
       yield {type:'done',finish_reason:finish,response_id:responseID};
     } catch(e){

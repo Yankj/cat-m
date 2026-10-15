@@ -24,13 +24,18 @@ enum NativeUIScrollReveal {
             guard !photosCancel.exists else {XCTFail("Close the actual PhotosPicker before interacting with another viewport.\n"+app.debugDescription,file:file,line:line);return}
             let details=app.scrollViews["chat.input.context.scroll"]
             let reader=app.scrollViews["chat.artifact.reader.viewport"]
-            let scroll=details.exists ? details : reader.exists ? reader : app.scrollViews["chat.transcript"]
+            let imageConsent=app.scrollViews["image.consent.viewport"]
+            let scroll=details.exists ? details : reader.exists ? reader : imageConsent.exists ? imageConsent : app.scrollViews["chat.transcript"]
             XCTAssertTrue(scroll.exists,app.debugDescription,file:file,line:line)
             let frame=scroll.frame.intersection(app.frame)
             let navigationBottom=app.navigationBars.allElementsBoundByIndex.filter{$0.isHittable}.map{$0.frame.maxY}.max() ?? frame.minY
             let top=max(frame.minY,navigationBottom)+8
             var bottom=min(frame.maxY,app.frame.maxY-20)
-            if !details.exists && !reader.exists {
+            if imageConsent.exists {
+                let decisions=[app.buttons["image.consent.cancel"],app.buttons["image.consent.allow"]].filter{$0.exists}.map{$0.frame.minY}
+                if let decisionTop=decisions.min() {bottom=min(bottom,decisionTop-8)}
+            }
+            if !details.exists && !reader.exists && !imageConsent.exists {
                 let composer=app.descendants(matching:.any).matching(identifier:"chat.composer").firstMatch
                 XCTAssertTrue(composer.exists,app.debugDescription,file:file,line:line)
                 bottom=min(bottom,composer.frame.minY-8)
@@ -39,11 +44,15 @@ enum NativeUIScrollReveal {
             guard bottom-top>44 else {XCTFail("The current viewport must leave a reachable reading area.\n"+app.debugDescription,file:file,line:line);return}
             let exists=element.exists,rect=exists ? element.frame:.zero
             let visible=exists ? min(rect.maxY,bottom)-max(rect.minY,top):0
-            if exists,element.isHittable,visible>=min(44,rect.height) {return}
+            // XCTest taps the element's center. A partially visible label may
+            // report hittable while that center is under a fixed decision bar.
+            let centerVisible=rect.midY>=top && rect.midY<=bottom
+            if exists,element.isHittable,visible>=min(44,rect.height),centerVisible {return}
             let center=(top+bottom)/2,down = !exists || rect.midY<center
             let distance=min(bottom-top-20,max(12,exists ? abs(rect.midY-center)*0.65:bottom-top-20))
             let start=down ? top+10:bottom-10,end=start+(down ? distance:-distance)
-            let x=frame.minX+min(14,frame.width/10)
+            // Keep modal scroll drags outside expanded confirmation hit areas.
+            let x=frame.minX+(imageConsent.exists ? 2:min(14,frame.width/10))
             app.coordinate(withNormalizedOffset:.init(dx:x/app.frame.width,dy:start/app.frame.height))
                 .press(forDuration:0.1,thenDragTo:app.coordinate(withNormalizedOffset:.init(dx:x/app.frame.width,dy:end/app.frame.height)),withVelocity:.slow,thenHoldForDuration:0.2)
         }

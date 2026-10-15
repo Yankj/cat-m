@@ -635,6 +635,10 @@
     "en": "Preparing",
     "zh-Hans": "准备中"
   },
+  "准备交互内容": {
+    "en": "Prepare interactive content",
+    "zh-Hans": "准备交互内容"
+  },
   "准备合成任务": {
     "en": "Prepare synthetic task",
     "zh-Hans": "准备合成任务"
@@ -702,6 +706,14 @@
   "创建定时任务": {
     "en": "Create scheduled task",
     "zh-Hans": "创建定时任务"
+  },
+  "创建工作计划": {
+    "en": "Create a work plan",
+    "zh-Hans": "创建工作计划"
+  },
+  "创建有来源工作": {
+    "en": "Create source-backed work",
+    "zh-Hans": "创建有来源工作"
   },
   "创建本地命令": {
     "en": "Create local command",
@@ -802,6 +814,10 @@
   "原对话": {
     "en": "Original conversation",
     "zh-Hans": "原对话"
+  },
+  "原对话与草稿仍保留。请准备下一次体验会话后继续。": {
+    "en": "Your conversations and drafts are preserved. Prepare the next review session to continue.",
+    "zh-Hans": "原对话与草稿仍保留。请准备下一次体验会话后继续。"
   },
   "原对话尚未保存在本机，可继续查阅这份成果。": {
     "en": "The original conversation is not saved on this device. You can still read this result.",
@@ -1419,6 +1435,14 @@
     "en": "Task in progress",
     "zh-Hans": "工作进行中"
   },
+  "工具回执待核对": {
+    "en": "Tool receipt needs review",
+    "zh-Hans": "工具回执待核对"
+  },
+  "工具处理": {
+    "en": "Tool processing",
+    "zh-Hans": "工具处理"
+  },
   "已保存到本机": {
     "en": "Saved on this device",
     "zh-Hans": "已保存到本机"
@@ -1479,6 +1503,10 @@
     "en": "Finished",
     "zh-Hans": "已完成"
   },
+  "已展开": {
+    "en": "Expanded",
+    "zh-Hans": "已展开"
+  },
   "已批准；当前授权已失效，尚未执行。": {
     "en": "Approved; current authority is no longer valid. Execution has not occurred.",
     "zh-Hans": "已批准；当前授权已失效，尚未执行。"
@@ -1507,9 +1535,17 @@
     "en": "Revoked",
     "zh-Hans": "已撤销"
   },
+  "已收到工具回执": {
+    "en": "Tool receipt received",
+    "zh-Hans": "已收到工具回执"
+  },
   "已收到并保存完整回复。": {
     "en": "A complete reply has been received and saved.",
     "zh-Hans": "已收到并保存完整回复。"
+  },
+  "已收起": {
+    "en": "Collapsed",
+    "zh-Hans": "已收起"
   },
   "已暂停": {
     "en": "Paused",
@@ -1562,6 +1598,10 @@
   "已连接": {
     "en": "Connected",
     "zh-Hans": "已连接"
+  },
+  "已选中": {
+    "en": "Selected",
+    "zh-Hans": "已选中"
   },
   "已选图片预览，尚未发送": {
     "en": "Selected image preview; not sent",
@@ -2691,6 +2731,10 @@
     "en": "Not connected",
     "zh-Hans": "未连接"
   },
+  "未选中": {
+    "en": "Not selected",
+    "zh-Hans": "未选中"
+  },
   "未验证 iOS 音频": {
     "en": "iOS audio unverified",
     "zh-Hans": "未验证 iOS 音频"
@@ -2839,6 +2883,10 @@
     "en": "Original ID for this control",
     "zh-Hans": "本次原控制编号"
   },
+  "本次回复已结束": {
+    "en": "This reply has ended",
+    "zh-Hans": "本次回复已结束"
+  },
   "本次工作范围或账号已变化，请重新核对后确认。": {
     "en": "The work scope or account has changed. Review it before confirming.",
     "zh-Hans": "本次工作范围或账号已变化，请重新核对后确认。"
@@ -2858,6 +2906,10 @@
   "本次确认已使用": {
     "en": "Confirmation used",
     "zh-Hans": "本次确认已使用"
+  },
+  "本次离线体验已到期": {
+    "en": "This offline review has expired",
+    "zh-Hans": "本次离线体验已到期"
   },
   "本次要求": {
     "en": "Requirements for this run",
@@ -2975,6 +3027,10 @@
     "en": "View local test status",
     "zh-Hans": "查看本地联调状态"
   },
+  "查看本次工具记录": {
+    "en": "View tools for this turn",
+    "zh-Hans": "查看本次工具记录"
+  },
   "查看计划": {
     "en": "View plan",
     "zh-Hans": "查看计划"
@@ -3006,6 +3062,10 @@
   "标题最多 160 字，修改草稿会保留。": {
     "en": "The title allows up to 160 characters. Your edit draft is retained.",
     "zh-Hans": "标题最多 160 字，修改草稿会保留。"
+  },
+  "核对修改请求": {
+    "en": "Check revision request",
+    "zh-Hans": "核对修改请求"
   },
   "核对原修改": {
     "en": "Check original amendment",
@@ -3143,6 +3203,10 @@
     "en": "Preparing to send…",
     "zh-Hans": "正在准备发送…"
   },
+  "正在发送…": {
+    "en": "Sending…",
+    "zh-Hans": "正在发送…"
+  },
   "正在取消": {
     "en": "Cancelling",
     "zh-Hans": "正在取消"
@@ -3150,6 +3214,10 @@
   "正在同步工作状态…": {
     "en": "Syncing work status…",
     "zh-Hans": "正在同步工作状态…"
+  },
+  "正在回复…": {
+    "en": "Replying…",
+    "zh-Hans": "正在回复…"
   },
   "正在处理图片…": {
     "en": "Processing the image…",
@@ -3206,6 +3274,10 @@
   "正在确认工作约定": {
     "en": "Confirming work agreement",
     "zh-Hans": "正在确认工作约定"
+  },
+  "正在等待回复": {
+    "en": "Waiting for a reply",
+    "zh-Hans": "正在等待回复"
   },
   "正在等待模拟回复…": {
     "en": "Waiting for simulated reply…",
@@ -3650,6 +3722,10 @@
   "等待审批": {
     "en": "Awaiting approval",
     "zh-Hans": "等待审批"
+  },
+  "等待工具回执": {
+    "en": "Waiting for a tool receipt",
+    "zh-Hans": "等待工具回执"
   },
   "等待开始": {
     "en": "Waiting to start",
