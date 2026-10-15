@@ -60,7 +60,7 @@ import UIKit
     /// The host may supply the remaining viewport after association/status chrome.
     /// A finite SwiftUI proposal is also respected; the text itself then scrolls.
     var maximumVisibleHeight:CGFloat? = nil
-    var placeholder:String = "问问 Catpaw"
+    var placeholder:String = ""
     var lineCountChanged:((Int)->Void)? = nil
     var addAttachments:(([ComposerAttachment])->Void)? = nil
     let submit:() -> Void
