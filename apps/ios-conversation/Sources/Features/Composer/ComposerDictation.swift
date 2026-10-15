@@ -5,60 +5,128 @@ import Speech
 import UIKit
 #endif
 
-/// Composer dictation on top of `NativeVoiceController` (on-device `SFSpeechRecognizer`, zh-CN).
+/// Composer dictation on top of `NativeVoiceController` (on-device `SFSpeechRecognizer`, zh-CN, PR #33 state machine).
 /// Partial results stream live into the draft after whatever was already typed; the final text stays editable.
-/// Permissions are requested only from the explicit mic tap (inside `NativeVoiceController.startDictation`).
+/// Permissions are requested only from an explicit mic gesture (inside `NativeVoiceController.startDictation`).
+///
+/// Two ways in, one session model (documented in PR):
+/// - **Tap** the mic → tap-to-dictate (unchanged): the bar shows; tap the waveform / ✓ to finish into the draft, ✕ to discard.
+/// - **Press and hold** (≥ 0.3 s) → hold-to-talk: release = text goes into the draft; slide up past the threshold = send
+///   right away; slide left past the threshold = cancel and discard. Haptics fire when a threshold is crossed.
+/// VoiceOver: the mic is a plain toggle (tap start/stop) with explicit 取消听写 / 发送 actions; holding is never required.
 @MainActor final class ComposerDictation: ObservableObject {
     enum Notice: Equatable { case permissionDenied, unsupported, failed }
-    /// True from the tap until the controller reports the end — including starting/finishing — so the
-    /// stop control is always visible and one tap always acts (cancel while starting, stop while recording).
+    enum Mode: Equatable { case tap, hold }
+    enum HoldZone: Equatable { case none, cancel, send }
+    static let shared = ComposerDictation()
+    static let cancelThreshold: CGFloat = 90, sendThreshold: CGFloat = 70, holdDelay: UInt64 = 300_000_000
+
+    /// True from the gesture until the controller reports the end — including starting/finishing.
     @Published private(set) var dictating = false
+    @Published private(set) var mode: Mode = .tap
+    @Published private(set) var zone: HoldZone = .none
     @Published var notice: Notice?
 
-    private let voice: NativeVoiceController
+    let voice: NativeVoiceController
     private weak var model: ConversationFirstModel?
+    var onSend: (() -> Void)?
     private var prefix = ""
     private var lastWritten: String?
+    private var sendWhenDone = false
+    #if os(iOS)
+    private let impact = UIImpactFeedbackGenerator(style: .medium)
+    private let soft = UIImpactFeedbackGenerator(style: .light)
+    #endif
 
     init(voice: NativeVoiceController = .shared) { self.voice = voice }
 
     func attach(_ model: ConversationFirstModel) { self.model = model }
 
-    func toggle() { dictating ? stop() : start() }
+    func toggle() { dictating ? stop() : start(.tap) }
 
-    private func start() {
+    // MARK: Hold-to-talk
+
+    func beginHold() {
+        guard !dictating else { return }
+        zone = .none
+        start(.hold)
+        #if os(iOS)
+        if dictating { soft.impactOccurred() }
+        #endif
+    }
+    /// Finger moved while holding. Left beats up (cancel is the safe interpretation).
+    func updateHold(_ translation: CGSize) {
+        guard dictating, mode == .hold else { return }
+        let next: HoldZone = translation.width < -Self.cancelThreshold ? .cancel : translation.height < -Self.sendThreshold ? .send : .none
+        guard next != zone else { return }
+        zone = next
+        #if os(iOS)
+        if next == .none { soft.impactOccurred(intensity: 0.5) } else { impact.impactOccurred() }
+        #endif
+    }
+    func endHold() {
+        guard dictating, mode == .hold else { return }
+        switch zone {
+        case .cancel: cancel()
+        case .send: confirmAndSend()
+        case .none: stop()
+        }
+        zone = .none
+    }
+
+    // MARK: Session
+
+    private func start(_ mode: Mode) {
         guard let model, !dictating else { return }
         // A stale session (e.g. another screen's capture) must never block the mic: clear it first.
         if voice.dictationPhase != .idle { voice.cancelDictation() }
-        prefix = model.draft; lastWritten = model.draft
+        prefix = model.draft; lastWritten = model.draft; sendWhenDone = false
+        self.mode = mode
         dictating = true
         let accepted = voice.startDictation(onText: { [weak self] text in self?.apply(text) },
                                             onEnd: { [weak self] reason in self?.ended(reason) })
         if !accepted { dictating = false; lastWritten = nil }
     }
 
-    /// Mic/stop tap: one tap stops (the controller caps the final-result wait).
+    /// ✓ / waveform tap / hold release: finish into the draft (the controller caps the final-result wait).
     func stop() {
         guard dictating else { return }
         if voice.dictationPhase == .idle { ended(.cancelled) } else { voice.stopDictation() }
+    }
+    /// Slide up / VoiceOver 发送: finish, then send once the final text has landed.
+    func confirmAndSend() {
+        guard dictating else { return }
+        sendWhenDone = true
+        stop()
+    }
+    /// ✕ / slide left: discard everything dictated in this session and restore the previous draft.
+    func cancel() {
+        guard dictating, let model else { return }
+        let restore = prefix
+        sendWhenDone = false
+        stopNow()
+        model.editDraft(restore)
     }
 
     /// Send / background / disappear: stop now and keep exactly what is in the draft.
     func stopNow() {
         guard dictating else { return }
+        sendWhenDone = false
         voice.cancelDictation()
         if dictating { ended(.cancelled) }   // controller was already idle
     }
 
     private func ended(_ reason: NativeVoiceController.DictationEnd) {
         let hadText = lastWritten != nil && lastWritten != prefix
-        dictating = false; lastWritten = nil
+        let send = sendWhenDone && hadText
+        dictating = false; lastWritten = nil; sendWhenDone = false; zone = .none
         switch reason {
         case .denied: notice = .permissionDenied; ConversationTextView.focusComposer()
         case .unsupported: notice = .unsupported; ConversationTextView.focusComposer()
         case .failed, .timedOut: if !hadText { notice = .failed; ConversationTextView.focusComposer() }
         case .finished, .cancelled, .interrupted: break
         }
+        if send, reason != .interrupted { onSend?() }
     }
 
     private func apply(_ text: String) {
@@ -87,7 +155,7 @@ import UIKit
     let size: CGFloat
     let send: () -> Void
     let stop: () -> Void
-    @StateObject private var dictation = ComposerDictation()
+    @ObservedObject private var dictation = ComposerDictation.shared
     @State private var comingSoon = false
     @Environment(\.scenePhase) private var scene
     @Environment(\.locale) private var locale
@@ -97,8 +165,9 @@ import UIKit
         ComposerTrailingControls(responding: responding, draftEmpty: model.draft.isEmpty, canSend: canSend, size: size,
                                  send: { dictation.stopNow(); send() }, stop: stop,
                                  dictate: { dictation.toggle() }, voice: { showComingSoon() },
-                                 dictating: dictation.dictating)
-            .onAppear { dictation.attach(model) }
+                                 dictating: dictation.dictating,
+                                 micOverride: AnyView(HoldToTalkMic(dictation: dictation, size: size)))
+            .onAppear { dictation.attach(model); dictation.onSend = { send() } }
             .onDisappear { dictation.stopNow() }
             .onChange(of: scene) { _, value in if value != .active { dictation.stopNow() } }
             .overlay(alignment: .top) {
