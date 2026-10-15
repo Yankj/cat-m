@@ -126,20 +126,19 @@ import UIKit
     private func ui(_ k: String) -> String { AppLanguage(locale: locale).ui(k) }
 
     var body: some View {
-        Menu {
-            if UIImagePickerController.isSourceTypeAvailable(.camera) {
-                Button { showCamera = true } label: { Label(ui("拍照"), systemImage: "camera").menuInkIcon() }
-            }
-            Button { showPhotos = true } label: { Label(ui("照片"), systemImage: "photo.on.rectangle").menuInkIcon() }
-            Button { showFiles = true } label: { Label(ui("文件"), systemImage: "doc").menuInkIcon() }
-            if let onDetails {
-                Divider()
-                Button(action: onDetails) { Label(ui("输入详情"), systemImage: "text.alignleft").menuInkIcon() }.accessibilityIdentifier("chat.composer.details")
-            }
+        // '+' opens the floating attach popover (#61): camera / photos / files + recent-photo grid.
+        Button {
+            let state = ComposerAttachPopoverState.shared
+            state.remaining = remaining; state.add = add
+            withAnimation(.snappy(duration: 0.22)) { state.isPresented.toggle() }
         } label: {
-            Image(systemName: "plus").font(CatpawTypography.Role.heading.font.weight(.medium)).foregroundStyle(CatpawColors.ink)
-                .frame(width: 36, height: 36).touchTarget()
+            CircleIcon(systemName: "plus", active: ComposerAttachPopoverState.shared.isPresented, diameter: 36)
+                .rotationEffect(.degrees(ComposerAttachPopoverState.shared.isPresented ? 45 : 0))
+                .touchTarget()
         }
+        .buttonStyle(.plain)
+        .sensoryFeedback(.selection, trigger: ComposerAttachPopoverState.shared.isPresented)
+        .contextMenu { if let onDetails { Button(action: onDetails) { Label(ui("输入详情"), systemImage: "text.alignleft") }.accessibilityIdentifier("chat.composer.details") } }
         .tint(CatpawColors.ink)
         .disabled(remaining <= 0)
         .accessibilityLabel(ui("添加附件"))
@@ -246,4 +245,13 @@ private extension Label where Title == Text, Icon == Image {
     func menuInkIcon() -> some View {
         self.symbolRenderingMode(.monochrome).fontWeight(.regular).foregroundStyle(CatpawColors.ink)
     }
+}
+
+
+/// Shared presentation state for the '+' attach popover (hosted once near the composer in ConversationFirstView).
+@MainActor @Observable final class ComposerAttachPopoverState {
+    static let shared = ComposerAttachPopoverState()
+    var isPresented = false
+    var remaining = 0
+    var add: ([ComposerAttachment]) -> Void = { _ in }
 }
