@@ -2,7 +2,7 @@
 
 更新：2026-10-15；唯一实时状态页。旧主计划完整保存在[2026-10-12快照](master-plan-2026-10-12.md)，旧失败与证据边界不改写。16:07交接事实与待提交文件见[handoff](../../handoff.md)和[快照](handoff-snapshot-2026-10-13.json)；快照不另维护实时进度。
 
-**当前长期Goal：FINAL-G3；2026-10-15 10:52 Shanghai最新读回控制器usageLimited，基础执行合同保持AF-1-G3-UX1。** 控制器updatedAt=1792030099；三路内部Agent已交实现/审查结论后报告账户额度限制，Root接回build25、授权探针与提交推送收口；没有擅自暂停、替换或标记Goal完成。08:39用户启动后ACTIVE、07:42 blocked（updatedAt=1792004664）及更早运行记录均保留为日期事实；不能把08:39状态当当前持续运行保证。build24/25已分版本交付，最新结果如下。长期目标、零新增计算预算和全部验收门保留，只优化执行顺序、并行边界、证据和分版本交付。长期目标是可日常使用的Swift优先、iPhone体验优先通用主动Agent：自然对话交代目标，查看/修改计划，找回审批，离开后继续已受理工作，回来查收有来源版本、可修改成果，并管理记忆、持续跟进和本地日程。[基础定义](../planning/AF-1/goal.md)与[开发入口](../planning/AF-1/development-start-contract.md)／[长期prompt](../planning/AF-1/long-task-development-prompt.md)共同约束执行。
+**当前长期Goal：FINAL-G3；2026-10-15 11:28 Shanghai最新读回控制器ACTIVE，基础执行合同保持AF-1-G3-UX1。** 控制器updatedAt=1792034903；10:52的usageLimited保留为当时事实。用户恢复后Root与三个内部Agent继续独立片，没有重复建Goal、擅自暂停、替换或标记完成。build24/25已分版本交付；26仅完成新源码与Release模拟器构建，未覆盖用户25。长期目标、零新增计算预算和全部验收门保持。长期目标是可日常使用的Swift优先、iPhone体验优先通用主动Agent：自然对话交代目标，查看/修改计划，找回审批，离开后继续已受理工作，回来查收有来源版本、可修改成果，并管理记忆、持续跟进和本地日程。[基础定义](../planning/AF-1/goal.md)与[开发入口](../planning/AF-1/development-start-contract.md)／[长期prompt](../planning/AF-1/long-task-development-prompt.md)共同约束执行。
 
 2026-10-14本聊天先读回运行Goal为空，核对既有合同与交接后按用户本次明确指令建立一个FINAL-G3长期Goal；未重复创建或替换现存运行Goal。2026-10-13 16:06的`usageLimited`保留为交接日期事实，不作为当前运行状态。AF-G5须同候选18A/12U/3CP全部通过；FINAL-G1再含9FQ/10CG与七天真实日用；FINAL-G2依8BP原合同完成具名配对并证明限定优势，两者同候选成立才签收FINAL-G3。必需FAIL/NOT_RUN/BLOCKED或证据不足不能算完成。现有Supabase、模型路由、A1和用户数据沿用，新增计算预算0；云电脑仅公开网页调研＋文件处理提案，托管实施待资源/区域/供应商确认。
 
@@ -17,6 +17,14 @@
 | FINAL-G3 终版产品签收 | 依赖G1/G2同候选；NOT_RUN，设计/静态检查不关闭产品目标 |
 
 ## 当前执行片与下一步
+
+2026-10-15 11:28三路并行完成[build26对话记忆接线片](https://github.com/Yankj/catpaw-m/blob/feat/s04-conversation-memory/docs/acceptance/restart-conversation-memory-2026-10-15.md)：在已有source/job/candidate/guard/generation与聊天事务内，把当前可信用户消息精确job接到现有模型工具。仅inferred/proposed，确认沿原记忆页；受理只冻ref，不占普通回答lease。完整模型终态后精确claim、候选/job结果/回执同tx，最后再核许可/源/代次。显式header仅协商客户端能力，旧工具与admission hash不变；重复候选在Foundation共有集合去重，修复两项独立审查P1。
+
+维护后台385/385离线PASS（10新HTTP＋14新seam）；Swift便携对话52断言、记忆typed合同/22负例、原生HTTP/SSE94断言/36次明确POST、113宿主成员与1077双语PASS。Release 0.3.0(26)实际编译链接PASS，20文件包指纹21eb66692f329d1c361b01a59b2c309497bd7c9da626bc3e5bdbcc538a6e1f97；387输入与独立远端索引逐项一致。源码本地bd06a2f551d27c6cfe23d2ba63f1e7b9b532351e，24条文本已推83466ffa83f5b024cee27ded631decb5294bcb0b，远端head/路径读回；日期证据在同分支收口。
+
+本片复用worktree-scan-fix检出点，分支feat/s04-conversation-memory；主目录仍24，memory-route-next仍交付25。用户继续在已有Catpaw-r5-conversation-qa体验25，本片未安装/启动/重置模拟器、改8769/8770会话或用户数据，无新增Auth/模型/部署/媒体上传。原HTTP缺接线、重复回执、SQL顺序断言、wire缺Node路径和Root误加文案到AppIntent表的失败均保留，修复后分项/最终结果按日期记录，不再散改字号。
+
+自然语义、真实PG多实例、AF-A11两会话/两scope与原生完整UI仍未验，不关闭AF/FINAL门。r7唯一真实请求429已耗尽授权，API21/默认路由及隔离绑定保持，不重试或混入W40数据合同。接下来收用户25反馈、继续W10–12真实阻断审查和CP-01；调度/跟进、系统日程按依赖推进独立片。新部署/真实检查/手机包先冻结具体候选与清单，再按已有授权执行。
 
 2026-10-15 10:49交付[build25原生记忆阶段版](https://github.com/Yankj/catpaw-m/blob/feat/s04-memory-lifecycle/docs/acceptance/restart-native-memory-2026-10-15.md)：候选`AF-W40-NATIVE-20261015-25-R6`，0.3.0(25)已在已有`Catpaw-r5-conversation-qa`（BE5C60E0-B415-4BF4-8F36-8975FB5314AA）安装/启动并恢复系统large，Device Hub已选中该设备供用户点测；左上菜单→记忆可明确开启、审阅保存、看原来源、更正、忘记及恢复草稿/原命令。原build24设备/包和8767/8768保持，W40仅用8769/8770。按用户复用要求，固定这两台已有设备，不按每次测试新建；Xcode关闭并行测试，复用DerivedData与test-without-building；25启动脚本默认resume保留同客户端、完整包一致则跳过重复安装。实际work/resume同客户端，启动前后命令POST 7→7、provider 0→0，不自动填发或续原会话。脚本位于已附着的独立`memory-route-next`维护工作树内`apps/ios-conversation/Scripts/run-simulator-review25.sh`，主目录仍保留24输入，不能误称主目录已切到25源码。
 
