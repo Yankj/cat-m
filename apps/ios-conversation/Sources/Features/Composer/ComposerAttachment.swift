@@ -186,6 +186,14 @@ enum ComposerAttachmentStager {
         return try stage(data: data, filename: fileURL.lastPathComponent, type: UTType(filenameExtension: fileURL.pathExtension))
     }
 
+    /// Off-main staging: file read, write and thumbnail run on a background executor (P1-6: no picker-dismiss jank).
+    static func stageOffMain(data: Data, filename: String, type: UTType?) async -> ComposerAttachment? {
+        await Task.detached(priority: .userInitiated) { try? ComposerAttachmentStager.stage(data: data, filename: filename, type: type) }.value
+    }
+    static func stageOffMain(fileURLs: [URL]) async -> [ComposerAttachment] {
+        await Task.detached(priority: .userInitiated) { fileURLs.compactMap { try? ComposerAttachmentStager.stage(fileURL: $0) } }.value
+    }
+
     /// Applies 10 × 20MB limits against what is already staged. Returns accepted items + first rejection to toast.
     static func admit(_ incoming: [ComposerAttachment], existing: Int) -> (accepted: [ComposerAttachment], rejection: ComposerAttachmentRejection?) {
         var accepted: [ComposerAttachment] = [], rejection: ComposerAttachmentRejection?

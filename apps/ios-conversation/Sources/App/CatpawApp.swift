@@ -109,6 +109,7 @@ import AppIntents
     @StateObject private var bootstrap = Bootstrap()
     @StateObject private var auth = NativeAuthApplicationModel()
     @Environment(\.scenePhase) private var scene
+    @State private var launchMarkVisible = LaunchMarkGate.shouldPlay(openedFromURLOrNotification: false)
     #if DEBUG
     @StateObject private var synthetic = NativeSyntheticApplicationModel()
     #endif
@@ -124,7 +125,16 @@ import AppIntents
                 #else
                 primaryView
                 #endif
-            }.task { if bootstrap.isP0Fixture { await bootstrap.startFixture() } else if bootstrap.model == nil { await auth.start() } }
+            }
+            .overlay {
+                if launchMarkVisible {
+                    LaunchMarkView(restoring: false) { withAnimation(.easeOut(duration: 0.25)) { launchMarkVisible = false } }
+                        .transition(.opacity)
+                        .zIndex(100)
+                }
+            }
+            .onOpenURL { _ in launchMarkVisible = false }
+            .task { if bootstrap.isP0Fixture { await bootstrap.startFixture() } else if bootstrap.model == nil { await auth.start() } }
                 .onChange(of:scene) { _, phase in if phase == .active,bootstrap.model == nil,!bootstrap.isP0Fixture { Task { await auth.foreground() } } }
         }
     }
