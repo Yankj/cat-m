@@ -5,10 +5,12 @@ import UIKit
 import AppKit
 #endif
 
-/// Defaults mirror the app's existing semantic palette; the host can inject its own tokens.
+/// R5 neutral navigation defaults. Hosts can inject their own semantic colors and fonts.
 public struct SidebarTheme {
     public var panel: Color
     public var input: Color
+    /// A selected conversation is independent of the search/input surface.
+    public var selection: Color
     public var ink: Color
     public var secondary: Color
     public var separator: Color
@@ -24,16 +26,19 @@ public struct SidebarTheme {
         result.secondaryFont=secondary;result.captionFont=caption
         return result
     }
-    public init(panel: Color, input: Color, ink: Color, secondary: Color, separator: Color) {
-        self.panel = panel; self.input = input; self.ink = ink
+    /// Omitting selection preserves the original input-backed selection for
+    /// independent hosts that already supply a custom palette.
+    public init(panel: Color, input: Color, ink: Color, secondary: Color, separator: Color, selection: Color? = nil) {
+        self.panel = panel; self.input = input; self.selection = selection ?? input; self.ink = ink
         self.secondary = secondary; self.separator = separator
     }
     public static var catpaw: SidebarTheme {
-        .init(panel: adaptive(light: 0xFFFFFF, dark: 0x1B1D21),
-              input: adaptive(light: 0xECEEF2, dark: 0x24272D),
-              ink: adaptive(light: 0x202329, dark: 0xF1F2F4),
-              secondary: adaptive(light: 0x606570, dark: 0xA7ADB8),
-              separator: adaptive(light: 0xDADDE3, dark: 0x393E48))
+        .init(panel: adaptive(light: 0xF5F5F5, dark: 0x141414),
+              input: adaptive(light: 0xF7F7F7, dark: 0x181818),
+              ink: adaptive(light: 0x202020, dark: 0xF2F2F2),
+              secondary: adaptive(light: 0x626262, dark: 0xA3A3A3),
+              separator: adaptive(light: 0xDEDEDE, dark: 0x333333),
+              selection: adaptive(light: 0xE8E8E8, dark: 0x202020))
     }
     private static func adaptive(light: UInt32, dark: UInt32) -> Color {
         #if os(iOS)
