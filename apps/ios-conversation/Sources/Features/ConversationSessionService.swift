@@ -499,6 +499,8 @@ public actor ConversationSessionService {
             if turn.pendingUIApprovals?.isEmpty == true { turn.pendingUIApprovals = nil }
             turn.pendingDeviceCalls?.removeAll { $0.interruptID == id.lowercased() }
             if turn.pendingDeviceCalls?.isEmpty == true { turn.pendingDeviceCalls = nil }
+        case .sideChannel:
+            break // memory.used / memory.update / proactive_suggestion: forwarded by the backend, no journal change
         case .failed(let reason, let reconciliation):
             turn.state = reconciliation ? .unknown : .failed; turn.error = reason
             if !reconciliation { turn.pendingApprovals = nil; turn.pendingDeviceCalls = nil }
