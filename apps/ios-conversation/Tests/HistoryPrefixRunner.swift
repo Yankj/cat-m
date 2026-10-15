@@ -37,6 +37,14 @@ import Foundation
         try check(interleavedUnsent == [failedNotice.id], "a local-only failure notice between confirmed messages is skipped, not compared")
         try check(conflict { try NativeChatHTTPBackend.checkServerHistory([], request: stuck, strict: true) }, "frozen-history requests stay strict with local-only notices")
         try check(conflict { try NativeChatHTTPBackend.checkServerHistory([wire(admittedReply), wire(admittedUser)], request: mixed, strict: false) }, "confirmed messages in a different order are a conflict")
-        try check(conflict { try NativeChatHTTPBackend.checkServerHistory([wire(admittedUser), wire(admittedReply), wire(orphanB)], request: request([admittedUser, admittedReply, current]), strict: false) }, "server longer than local is still a conflict")
+        let longer = request([admittedUser, admittedReply, current])
+        let realigned = try NativeChatHTTPBackend.checkServerHistory([wire(admittedUser), wire(admittedReply), wire(orphanB)], request: longer, strict: false)
+        try check(realigned.isEmpty, "plain turn: server longer than local realigns on the server instead of conflicting")
+        try check(conflict { try NativeChatHTTPBackend.checkServerHistory([wire(admittedUser), wire(admittedReply), wire(orphanB)], request: longer, strict: true) }, "strict request: server longer than local is still a conflict")
+        // Device log: local=[user:B1D31D0D:complete:4] server=[user:b09acdc3:-:128]
+        let serverOnly: [String: Any] = ["id": UUID().uuidString.lowercased(), "role": "user", "content": String(repeating: "x", count: 128)]
+        let logged = request([ConversationTranscriptMessage(role: .user, content: "你好吗？")])
+        try check(try NativeChatHTTPBackend.checkServerHistory([serverOnly], request: logged, strict: false).isEmpty, "logged stuck chat: one server-only user message, local only the current message, realigns and sends")
+        try check(conflict { try NativeChatHTTPBackend.checkServerHistory([serverOnly], request: logged, strict: true) }, "logged stuck chat stays a conflict for strict requests")
     }
 }
