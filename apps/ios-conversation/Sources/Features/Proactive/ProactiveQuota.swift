@@ -31,8 +31,11 @@ struct ProactiveQuotaLedger: Codable, Sendable, Equatable {
     /// Reserve a slot for a future (pre-scheduled) delivery. Same identity → idempotent. Returns false when the fire day is full.
     mutating func reserve(_ id: String, fire: Date, cap: Int = ProactiveRules.dailyNotifyCap, owner: String? = nil, calendar: Calendar = .current) -> Bool {
         if let e = entries[id] {
-            if e.state == .reserved, let owner { entries[id]?.owner = owner }   // the re-scan's request now holds it
-            return e.state == .reserved || e.day == Self.day(fire, calendar: calendar)
+            guard e.state == .reserved else { return e.day == Self.day(fire, calendar: calendar) }
+            // Codex PR90e #4: a still-pending reservation follows its request's new fire time (and day, if that day has room).
+            let day = Self.day(fire, calendar: calendar)
+            if day != e.day, count(on: fire, calendar: calendar) >= cap { return false }
+            entries[id] = .init(day: day, at: fire.timeIntervalSince1970, state: .reserved, owner: owner ?? e.owner); return true
         }
         guard count(on: fire, calendar: calendar) < cap else { return false }
         entries[id] = .init(day: Self.day(fire, calendar: calendar), at: fire.timeIntervalSince1970, state: .reserved, owner: owner); return true
@@ -85,8 +88,11 @@ struct ProactiveActionGenerations: Codable, Sendable, Equatable {
     }
 }
 extension ProactiveRules {
-    static func operationID(suggestion: String, action: String, generation: Int) -> String {
-        generation == 0 ? "op-\(suggestion)-\(action)" : "op-\(suggestion)-\(action)-g\(generation)"
+    /// Codex PR90e #5: `ordinal` = which intent of this action within the generation (the 2nd snooze is a new intent with
+    /// a new id; a retry of a queued op reuses the id stored with it). Ordinal 1 keeps the original format.
+    static func operationID(suggestion: String, action: String, generation: Int, ordinal: Int = 1) -> String {
+        let base = generation == 0 ? "op-\(suggestion)-\(action)" : "op-\(suggestion)-\(action)-g\(generation)"
+        return ordinal <= 1 ? base : base + "-n\(ordinal)"
     }
 }
 
