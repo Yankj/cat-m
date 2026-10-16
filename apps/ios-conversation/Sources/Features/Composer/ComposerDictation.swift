@@ -84,9 +84,6 @@ import UIKit
         if AVAudioSession.sharedInstance().recordPermission == .denied || [.denied, .restricted].contains(SFSpeechRecognizer.authorizationStatus()) {
             notice = .permissionDenied; ConversationTextView.focusComposer(); return
         }
-        if SFSpeechRecognizer(locale: Locale(identifier: "zh-CN"))?.supportsOnDeviceRecognition != true {
-            notice = .unsupported; ConversationTextView.focusComposer(); return
-        }
         prefix = model.draft; lastWritten = model.draft; sendWhenDone = false
         self.mode = mode
         dictating = true; userStopped = false; notice = nil
@@ -144,7 +141,7 @@ import UIKit
         guard dictating, let model else { return }
         // The user typed during dictation: hand the composer back to them.
         if let lastWritten, model.draft != lastWritten { stopNow(); return }
-        let joined = prefix.isEmpty ? text : ((prefix.hasSuffix("\n") || prefix.hasSuffix(" ")) ? prefix + text : prefix + " " + text)
+        let joined = DictationPolicy.join(prefix, text)   // no extra space before Chinese
         model.editDraft(joined)
         lastWritten = model.draft   // whatever the model actually stored (it may refuse/normalize)
     }
@@ -178,7 +175,8 @@ import UIKit
                                  dictate: { dictation.toggle() }, voice: { showComingSoon() },
                                  dictating: dictation.dictating,
                                  micOverride: AnyView(HoldToTalkMic(dictation: dictation, size: size)))
-            .onAppear { dictation.attach(model); dictation.onSend = { send() } }
+            .onAppear { dictation.attach(model); dictation.onSend = { send() }; dictation.voice.language = AppLanguage(locale: locale) }
+            .onChange(of: locale.identifier) { _, _ in dictation.voice.language = AppLanguage(locale: locale) }
             .onDisappear { dictation.stopNow() }
             // Only a real background stops: the mic/speech permission alerts make the scene .inactive, and stopping there
             // tore the session down mid-start (overlay flashed in and out, voice mode never entered).

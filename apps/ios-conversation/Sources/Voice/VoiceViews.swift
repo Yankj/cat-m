@@ -21,7 +21,6 @@ import SwiftUI
             if let message = voice.messageText { Text(message).foregroundStyle(.secondary) }
             TextEditor(text: Binding(get: { voice.transcript }, set: { voice.editTranscript($0) })).frame(minHeight: 160).accessibilityLabel(ui("可编辑转写"))
             Button(ui("将检查后的文字放入输入")) { do { let submission = try voice.freezeSubmission(); if let acceptSubmission { acceptSubmission(submission) } else { accept(submission.submittedText) }; dismiss() } catch { voice.message = error.localizedDescription } }.primaryAction().disabled(voice.transcript.isEmpty || voice.capturing || voice.state == "transcribing")
-            Button(ui("使用示例转写 · 模拟")) { voice.useSample() }.touchTarget()
             Button(ui("打断本轮")) { voice.interrupt() }.touchTarget()
             Text(ui("原音只在内存处理，最长 45 秒。仅创建 requiresOnDeviceRecognition 请求；不可用时回文字，不转云端识别。")).font(.footnote).foregroundStyle(.secondary)
         }.toolbar { Button(ui("改用文字")) { dismiss() } } }
