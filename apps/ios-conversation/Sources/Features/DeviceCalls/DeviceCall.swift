@@ -80,6 +80,11 @@ indirect enum DeviceCallValue: Codable, Sendable, Equatable {
 enum DeviceCallStatus: String, Codable, Sendable, CaseIterable { case ok, cancelled, denied, error }
 
 /// `{call_id, status, data}` for `POST /device-result`.
+struct DeviceSavedIdentity: Codable, Sendable, Equatable {
+    let title: String; let start: Date?
+    /// Reminder due components → Date, independent of whether EventKit kept the components' calendar.
+    static func due(_ c: DateComponents?) -> Date? { c.flatMap { Calendar.current.date(from: $0) } }
+}
 struct DeviceCallResult: Codable, Sendable, Equatable {
     let call_id: String
     let status: DeviceCallStatus
@@ -87,6 +92,9 @@ struct DeviceCallResult: Codable, Sendable, Equatable {
     /// Optional deep link for the receipt row's 打开 (e.g. `calshow:`), filled in by the executor. Local only: opened on the
     /// device, never sent to the server (excluded from `CodingKeys`).
     var openURL: String? = nil
+    /// p89h-2: identity of the object ACTUALLY saved / matched in EventKit (title + start/due), read back from the object.
+    /// Local only (not in CodingKeys); the ledger persists it and undo requires it to match.
+    var savedIdentity: DeviceSavedIdentity? = nil
     private enum CodingKeys: String, CodingKey { case call_id, status, data }
 }
 

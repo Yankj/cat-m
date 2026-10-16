@@ -271,7 +271,10 @@ import EventKit
         let dup = calCall("xctest-ledger-dup-" + UUID().uuidString, start)
         defer { cleanup([dup.call_id], around: start) }
         try add(dup.call_id, title: "PR89 gate", at: start); try add(dup.call_id, title: "PR89 gate", at: start.addingTimeInterval(3600))
-        ledger.record(call: dup, result: .init(call_id: dup.call_id, status: .ok, data: ["event_id": .string("stale-" + UUID().uuidString)]), token: token)
+        func result(_ c: DeviceCall, title: String, at date: Date?) -> DeviceCallResult {
+            var r = DeviceCallResult(call_id: c.call_id, status: .ok, data: ["event_id": .string("stale-" + UUID().uuidString)]); r.savedIdentity = .init(title: title, start: date); return r
+        }
+        ledger.record(call: dup, result: result(dup, title: "PR89 gate", at: start), token: token)
         XCTAssertEqual(ledger.undo(callID: dup.call_id), .unknown)
         XCTAssertFalse(ledger.isUndone(callID: dup.call_id))
         XCTAssertEqual(events(with: [dup.call_id], around: start), 2, "neither the original nor the copy was deleted")
@@ -279,7 +282,7 @@ import EventKit
         let other = calCall("xctest-ledger-mismatch-" + UUID().uuidString, start)
         defer { cleanup([other.call_id], around: start) }
         try add(other.call_id, title: "someone else's copy", at: start)
-        ledger.record(call: other, result: .init(call_id: other.call_id, status: .ok, data: ["event_id": .string("stale-" + UUID().uuidString)]), token: token)
+        ledger.record(call: other, result: result(other, title: "PR89 gate", at: start), token: token)
         XCTAssertEqual(ledger.undo(callID: other.call_id), .unknown)
         XCTAssertFalse(ledger.isUndone(callID: other.call_id))
         XCTAssertEqual(events(with: [other.call_id], around: start), 1)
@@ -287,9 +290,100 @@ import EventKit
         let moved = calCall("xctest-ledger-start-" + UUID().uuidString, start)
         defer { cleanup([moved.call_id], around: start) }
         try add(moved.call_id, title: "PR89 gate", at: start.addingTimeInterval(7200))
-        ledger.record(call: moved, result: .init(call_id: moved.call_id, status: .ok, data: ["event_id": .string("stale-" + UUID().uuidString)]), token: token)
+        ledger.record(call: moved, result: result(moved, title: "PR89 gate", at: start), token: token)
         XCTAssertEqual(ledger.undo(callID: moved.call_id), .unknown)
         XCTAssertEqual(events(with: [moved.call_id], around: start), 1)
+        // 4) p89h-2: missing identity is never a wildcard — single marker match, no saved identity → unknown, kept.
+        let legacy = calCall("xctest-ledger-noid-" + UUID().uuidString, start)
+        defer { cleanup([legacy.call_id], around: start) }
+        try add(legacy.call_id, title: "PR89 gate", at: start)
+        ledger.record(call: legacy, result: .init(call_id: legacy.call_id, status: .ok, data: ["event_id": .string("stale-" + UUID().uuidString)]), token: token)
+        XCTAssertEqual(ledger.undo(callID: legacy.call_id), .unknown)
+        XCTAssertEqual(events(with: [legacy.call_id], around: start), 1)
+        // 5) p89h-2: empty saved title must equal the object's title (no "empty = any"); saved start nil vs object start → unknown.
+        let blank = calCall("xctest-ledger-blank-" + UUID().uuidString, start)
+        defer { cleanup([blank.call_id], around: start) }
+        try add(blank.call_id, title: "someone's copy", at: start)
+        ledger.record(call: blank, result: result(blank, title: "", at: start), token: token)
+        XCTAssertEqual(ledger.undo(callID: blank.call_id), .unknown)
+        let nostart = calCall("xctest-ledger-nostart-" + UUID().uuidString, start)
+        defer { cleanup([nostart.call_id], around: start) }
+        try add(nostart.call_id, title: "PR89 gate", at: start)
+        ledger.record(call: nostart, result: result(nostart, title: "PR89 gate", at: nil), token: token)
+        XCTAssertEqual(ledger.undo(callID: nostart.call_id), .unknown)
+        XCTAssertEqual(events(with: [blank.call_id, nostart.call_id], around: start), 2)
+    }
+
+    /// Codex p89h-3: REAL Router → restore lookup → dedupe → Ledger → REAL Adapter with a user COPY (same marker notes).
+    /// Every stage refuses to pick: restore → nil (unknown), dedupe → duplicate_marker_ambiguous (no new write), undo →
+    /// unknown even though the recorded id still resolves. Counter-case: copy removed → undo really deletes (undone).
+    func testRouterRestoreDedupeLedgerRefuseMultiMatchCalendar() async throws {
+        try need(.event)
+        let start = Date().addingTimeInterval(14 * 86400)
+        let call = calCall("xctest-multi-cal-" + UUID().uuidString, start, title: "p89h multi")
+        defer { cleanup([call.call_id], around: start) }
+        DeviceCallGate.receive(call)
+        let router = DeviceToolRouter(store: Self.sharedStore)
+        let first = await router.execute(call, credential: try XCTUnwrap(credential(call)))
+        XCTAssertEqual(first.status, .ok); XCTAssertEqual(first.savedIdentity?.title, "p89h multi"); XCTAssertNotNil(first.savedIdentity?.start)
+        let restoredBefore = await router.lookup(call)
+        XCTAssertNotNil(restoredBefore, "control: a single original is restorable")
+        XCTAssertEqual(restoredBefore?.savedIdentity, first.savedIdentity)
+        // user duplicates the event (EventKit copy keeps notes)
+        let copy = EKEvent(eventStore: store); copy.title = "p89h multi"; copy.startDate = start.addingTimeInterval(3600); copy.endDate = start.addingTimeInterval(5400)
+        copy.notes = DeviceToolContract.callMarker(call.call_id); copy.calendar = store.defaultCalendarForNewEvents
+        try store.save(copy, span: .thisEvent, commit: true)
+        let restored = await router.lookup(call)
+        XCTAssertNil(restored, "restore never picks one of several")
+        var trace: [String] = []; DeviceToolRouter.trace = { trace.append($0) }
+        let again = await router.execute(call, credential: try XCTUnwrap(credential(call)))
+        DeviceToolRouter.trace = nil
+        XCTAssertEqual(trace, ["dedupe-ambiguous:calendar"]); XCTAssertEqual(again.data?["reason"], .string("duplicate_marker_ambiguous"))
+        XCTAssertEqual(events(with: [call.call_id], around: start), 2, "no third event")
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("ledger-multi-\(UUID().uuidString).json")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let ledger = DeviceLedger(url: url, epoch: DeviceCallGate.epoch, items: EventKitLedgerItemStore(store: Self.sharedStore))
+        ledger.record(call: call, result: first, token: try XCTUnwrap(DeviceCallGate.epoch.capture()))
+        XCTAssertEqual(ledger.undo(callID: call.call_id), .unknown, "id resolves but the marker is not unique → unknown")
+        XCTAssertFalse(ledger.isUndone(callID: call.call_id))
+        XCTAssertEqual(events(with: [call.call_id], around: start), 2, "nothing deleted")
+        store.reset(); if let c = store.event(withIdentifier: copy.eventIdentifier) { try store.remove(c, span: .thisEvent, commit: true) }
+        XCTAssertEqual(ledger.undo(callID: call.call_id), .undone, "counter-case: unique + identity match → really deleted")
+        XCTAssertEqual(events(with: [call.call_id], around: start), 0)
+    }
+
+    func testRouterRestoreDedupeLedgerRefuseMultiMatchReminder() async throws {
+        try need(.reminder)
+        let id = "xctest-multi-rem-" + UUID().uuidString
+        let call = DeviceCall(call_id: id, tool: "reminder_create", args: ["title": .string("p89h rem")], confirm: .card, ttl_sec: 600)
+        func marked() async -> [EKReminder] {
+            Self.sharedStore.reset()
+            let all: [EKReminder] = await withCheckedContinuation { c in Self.sharedStore.fetchReminders(matching: Self.sharedStore.predicateForReminders(in: nil)) { c.resume(returning: $0 ?? []) } }
+            return all.filter { $0.notes?.contains(DeviceToolContract.callMarker(id)) == true }
+        }
+        defer { Task { @MainActor in for r in await marked() { try? Self.sharedStore.remove(r, commit: true) } } }
+        DeviceCallGate.receive(call)
+        let router = DeviceToolRouter(store: Self.sharedStore)
+        let first = await router.execute(call, credential: try XCTUnwrap(credential(call)))
+        XCTAssertEqual(first.status, .ok); XCTAssertEqual(first.savedIdentity?.title, "p89h rem")
+        let control = await router.lookup(call); XCTAssertNotNil(control, "control: single original is restorable")
+        let copy = EKReminder(eventStore: store); copy.title = "p89h rem"; copy.notes = "Catpaw · " + DeviceToolContract.callMarker(id)
+        copy.calendar = store.defaultCalendarForNewReminders(); try store.save(copy, commit: true)
+        let restored = await router.lookup(call); XCTAssertNil(restored, "restore never picks one of several")
+        var trace: [String] = []; DeviceToolRouter.trace = { trace.append($0) }
+        let again = await router.execute(call, credential: try XCTUnwrap(credential(call)))
+        DeviceToolRouter.trace = nil
+        XCTAssertEqual(trace, ["dedupe-ambiguous:reminder"]); XCTAssertEqual(again.data?["reason"], .string("duplicate_marker_ambiguous"))
+        let count2 = await marked().count; XCTAssertEqual(count2, 2, "no third reminder")
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("ledger-multi-rem-\(UUID().uuidString).json")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let ledger = DeviceLedger(url: url, epoch: DeviceCallGate.epoch, items: EventKitLedgerItemStore(store: Self.sharedStore))
+        ledger.record(call: call, result: first, token: try XCTUnwrap(DeviceCallGate.epoch.capture()))
+        XCTAssertEqual(ledger.undo(callID: id), .unknown, "id resolves but marker not unique → unknown")
+        let count3 = await marked().count; XCTAssertEqual(count3, 2)
+        try store.remove(copy, commit: true)
+        XCTAssertEqual(ledger.undo(callID: id), .undone, "counter-case: unique + identity → deleted")
+        let count4 = await marked().count; XCTAssertEqual(count4, 0)
     }
 
     /// Codex p89e-3: REAL EventKit adapter. A stale id (moved / re-synced item) is resolved by the call marker and removed;
@@ -306,7 +400,9 @@ import EventKit
         let e = EKEvent(eventStore: store); e.title = "PR89 gate"; e.startDate = start; e.endDate = start.addingTimeInterval(1800)
         e.notes = DeviceToolContract.callMarker(moved.call_id); e.calendar = store.defaultCalendarForNewEvents
         try store.save(e, span: .thisEvent, commit: true)
-        ledger.record(call: moved, result: .init(call_id: moved.call_id, status: .ok, data: ["event_id": .string("stale-" + UUID().uuidString)]), token: token)
+        var movedResult = DeviceCallResult(call_id: moved.call_id, status: .ok, data: ["event_id": .string("stale-" + UUID().uuidString)])
+        movedResult.savedIdentity = .init(title: "PR89 gate", start: e.startDate)   // p89h-2: identity of the object actually saved
+        ledger.record(call: moved, result: movedResult, token: token)
         XCTAssertEqual(ledger.undo(callID: moved.call_id), .undone)
         XCTAssertEqual(events(with: [moved.call_id], around: start), 0, "the real item was removed")
         // 2) unresolvable id, no marker anywhere → unknown, not undone.
@@ -435,6 +531,21 @@ final class LifecycleRecorder: @unchecked Sendable {
     func token(_ id: String) -> AccountToken? { lock.lock(); defer { lock.unlock() }; return tokens[id] ?? nil }
 }
 
+actor CountingDemoBackend: ConversationBackend {
+    let inner = CatpawDemoConversationBackend()
+    private(set) var uiSubmits = 0
+    func connection(scope: DataScope) async -> ConversationConnection { await inner.connection(scope: scope) }
+    func reply(_ request: ConversationTurnRequest) async throws -> AsyncThrowingStream<ConversationTurnEvent, Error> { try await inner.reply(request) }
+    func observe(_ request: ConversationTurnRequest) async throws -> ConversationObservation { try await inner.observe(request) }
+    func submitApproval(_ request: ConversationTurnRequest, interruptID: String, decision: ConversationApprovalDecision, argsHash: String, operationID: UUID, afterSequence: Int) async throws -> AsyncThrowingStream<ConversationTurnEvent, Error> {
+        try await inner.submitApproval(request, interruptID: interruptID, decision: decision, argsHash: argsHash, operationID: operationID, afterSequence: afterSequence)
+    }
+    func submitUIDecision(_ request: ConversationTurnRequest, interruptID: String, decision: ConversationUIDecision, argsHash: String, response: Data?, operationID: UUID, afterSequence: Int) async throws -> AsyncThrowingStream<ConversationTurnEvent, Error> {
+        uiSubmits += 1
+        return try await inner.submitUIDecision(request, interruptID: interruptID, decision: decision, argsHash: argsHash, response: response, operationID: operationID, afterSequence: afterSequence)
+    }
+}
+
 actor HeldStreamUIBackend: ConversationBackend {
     private var live: AsyncThrowingStream<ConversationTurnEvent, Error>.Continuation?
     private(set) var uiSubmits = 0
@@ -504,6 +615,36 @@ actor HeldStreamUIBackend: ConversationBackend {
         XCTAssertTrue(AccountEpoch.shared.isValid(recorder.token(id2)), "counter-run carries the new login's source")
     }
 
+    /// Codex p89h-1: production (account-bound) service with a REAL pending ui block (DEBUG demo backend):
+    /// nil source (signed out) → refused before the backend; same login → submitted exactly once and succeeds.
+    func testUIDecisionProductionSourceRules() async throws {
+        let account = UUID().uuidString
+        AccountEpoch.shared.activate(account: nil); AccountEpoch.shared.activate(account: account)
+        defer { AccountEpoch.shared.activate(account: nil) }
+        let repo = try Repository(persistence: FilePersistence(url: FileManager.default.temporaryDirectory.appendingPathComponent("uiprod-\(UUID().uuidString).json")))
+        let backend = CountingDemoBackend()
+        let service = ConversationSessionService(repository: repo, backend: backend, principalAccount: account)
+        let conversation = try await service.create(scope: Profiles.user)
+        let operation = UUID()
+        _ = try await service.send(scope: Profiles.user, conversationID: conversation, text: "帮我建个跑步任务，再弹个窗", operationID: operation)
+        let approvals = try await service.pendingApprovals(scope: Profiles.user, conversationID: conversation)
+        try await service.submitApproval(scope: Profiles.user, conversationID: conversation, interruptID: try XCTUnwrap(approvals.first).interruptID, decision: .approve)
+        let pending = try await service.pendingUIBlocks(scope: Profiles.user, conversationID: conversation)
+        let block = try XCTUnwrap(pending.first { $0.id == "demo-choices" })
+        let choices = Data(#"{"type":"ui.response","blockId":"demo-choices","actionId":null,"values":{},"selected":["a"],"respondedAt":"2026-10-16T00:10:00Z"}"#.utf8)
+        // nil source: signed out (passive invalidation) → refused, backend never called.
+        AccountEpoch.shared.signOut()
+        do { try await service.submitUIDecision(scope: Profiles.user, conversationID: conversation, turnID: operation, interruptID: block.interruptID!, decision: .submit, argsHash: block.argsHash!, response: choices); XCTFail("nil source must be refused") }
+        catch { XCTAssertEqual(error as? ConversationApprovalFailure, ConversationSessionService.missingSource) }
+        var submits = await backend.uiSubmits; XCTAssertEqual(submits, 0)
+        // valid login (same account re-signed in, new generation; the decision is submitted fresh under it) → exactly one submit.
+        AccountEpoch.shared.activate(account: account)
+        try await service.submitUIDecision(scope: Profiles.user, conversationID: conversation, turnID: operation, interruptID: block.interruptID!, decision: .submit, argsHash: block.argsHash!, response: choices)
+        submits = await backend.uiSubmits; XCTAssertEqual(submits, 1, "normal submit reaches the backend exactly once")
+        let after = try await service.pendingUIBlocks(scope: Profiles.user, conversationID: conversation)
+        XCTAssertFalse(after.contains { $0.id == "demo-choices" }, "the block was really answered")
+    }
+
     /// Codex p89g-1: a UI decision QUEUED behind a running stream carries the login pinned at the public submit. Same
     /// account signs out and back in while it waits → at dequeue it dies (CancellationError) and never reaches the backend.
     /// Counter-run: queued under the same login → dequeued and really executed (the backend submit is called).
@@ -531,10 +672,11 @@ actor HeldStreamUIBackend: ConversationBackend {
                 guard case .failure(let error) = outcome, error is CancellationError else { return XCTFail("queued decision from the old login must die at dequeue, got \(outcome)") }
                 XCTAssertEqual(submits, 0, "never reached the backend under the new login")
             } else {
-                // The fixture turn has no pending ui block, so the REAL perform path runs its read + check and refuses with
-                // noPendingApproval — proof the dequeue reached performUIDecision (not a cancellation).
-                guard case .failure(let error) = outcome else { return XCTFail("expected noPendingApproval") }
-                XCTAssertFalse(error is CancellationError, "counter-run: same login is dequeued and executed, got \(error)")
+                // The fixture turn has no pending ui block: the dequeued decision reaches performUIDecision's read + check and
+                // is refused with exactly noPendingApproval (backend not called). Backend execution is proven in
+                // testUIDecisionProductionSourceRules with a real pending block.
+                guard case .failure(let error) = outcome, (error as? ConversationApprovalFailure) == .noPendingApproval else { return XCTFail("expected noPendingApproval, got \(outcome)") }
+                XCTAssertEqual(submits, 0)
             }
         }
         AccountEpoch.shared.activate(account: nil)

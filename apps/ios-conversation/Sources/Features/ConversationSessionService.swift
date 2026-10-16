@@ -979,6 +979,10 @@ public actor ConversationSessionService {
     /// synchronously at the operation's entry (before any await). A same-account sign-out → sign-in bumps the generation,
     /// so an operation that started under the old login can never be attached to the new one.
     nonisolated(unsafe) static var beforeClaimHook: (() -> Void)?
+    /// p89h-1: services built with a principal (every signed-in production chat) are account-bound: nil / stale source is
+    /// refused. Only unbound services (offline trial, fixtures — no principal) may run without a source.
+    nonisolated private var bindsAccount: Bool { principal != nil || principalAccount != nil }
+    static let missingSource = ConversationApprovalFailure.rejected(status: 401, code: "login_source_invalid")
     nonisolated private func pinnedSource() -> AccountToken? {
         if let principal { return principal }
         guard let current = AccountEpoch.shared.capture(), principalAccount == nil || current.account == principalAccount else { return nil }
@@ -1023,7 +1027,7 @@ public actor ConversationSessionService {
             var result: Result<UUID, Error>
             do {
                 // p89g-1: never re-capture at dequeue — a decision queued under an old login dies here, before any backend call.
-                if let source = entry.source, !AccountEpoch.shared.isValid(source) { throw CancellationError() }
+                if bindsAccount ? !AccountEpoch.shared.isValid(entry.source) : (entry.source.map { !AccountEpoch.shared.isValid($0) } ?? false) { throw CancellationError() }
                 let id = try await performUIDecision(scope: entry.scope, conversationID: conversationID, turnID: entry.turnID, interruptID: entry.interruptID, decision: entry.decision, argsHash: entry.argsHash, response: entry.response, operationID: entry.operationID, source: entry.source)
                 result = .success(id)
             } catch { result = .failure(error) }
@@ -1055,6 +1059,8 @@ public actor ConversationSessionService {
     @discardableResult
     public func submitUIDecision(scope: DataScope, conversationID: UUID, turnID: UUID, interruptID: String, decision: ConversationUIDecision, argsHash: String, response: Data?, operationID: UUID = UUID()) async throws -> UUID {
         let sourceToken = pinnedSource()   // p89g-1: pinned at the public entry, before the first await, and queued with the decision
+        // p89h-1: an account-bound (production) service never queues or submits a decision without a valid login source.
+        if bindsAccount, !AccountEpoch.shared.isValid(sourceToken) { throw Self.missingSource }
         let key = interruptID.lowercased()
         let idle = active[conversationID] == nil && !cancelling.contains(conversationID) && (uiQueue[conversationID] ?? []).isEmpty
         if idle { return try await performUIDecision(scope: scope, conversationID: conversationID, turnID: turnID, interruptID: key, decision: decision, argsHash: argsHash, response: response, operationID: operationID, source: sourceToken) }
@@ -1082,7 +1088,7 @@ public actor ConversationSessionService {
         // p89g-1: the source comes from the caller (public entry or queue entry), never from "current" here.
         guard active[conversationID] == nil, !cancelling.contains(conversationID) else { throw ConversationSessionError.busy }
         let saved = try await read(scope: scope, conversationID: conversationID)
-        if let sourceToken, !AccountEpoch.shared.isValid(sourceToken) { throw CancellationError() }
+        if bindsAccount ? !AccountEpoch.shared.isValid(sourceToken) : (sourceToken.map { !AccountEpoch.shared.isValid($0) } ?? false) { throw CancellationError() }
         guard let turn = saved.turns.first(where: { $0.id == turnID }), turn.awaitingApproval,
               let block = Self.uiApprovals(turn).first(where: { $0.interruptID == interruptID.lowercased() }) else { throw ConversationApprovalFailure.noPendingApproval }
         guard block.argsHash == argsHash else { throw ConversationApprovalFailure.stale }
