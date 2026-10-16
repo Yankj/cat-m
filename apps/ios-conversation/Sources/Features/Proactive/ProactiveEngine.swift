@@ -1133,7 +1133,6 @@ struct ProactiveSignal: Equatable, Sendable {
         ProactiveEngine.shared.note("feedback \(value.rawValue) id=\(id) trigger=\(trigger)")
     }
 }
-enum ProactiveEngineError: Error, Equatable { case remindersDenied, writeFailed, smsUnavailable, snoozeNotScheduled }
 
 extension ProactiveLocalBackend {
     /// Builds a short 「告诉参会人」 draft from the pending meeting and presents MessageUI.

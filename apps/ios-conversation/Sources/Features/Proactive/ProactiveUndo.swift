@@ -48,6 +48,12 @@ extension ProactiveUndo {
         return (kept + ["restore=" + outcome.replacingOccurrences(of: ";", with: ",")]).joined(separator: ";")
     }
     static func restoreOutcome(detail: String?) -> String? { field(detail, "restore").map(String.init) }
+    /// Codex PR90g #2: a recorded re-arm that did not post (refused / cardOnly / expired).
+    static func restoreFailed(detail: String?) -> Bool { false }
+    /// The status the device shows after undo: "snoozed" only when the restored snooze really is scheduled.
+    static func statusAfterRestore(_ planStatus: String, outcome: String?) -> String { planStatus }
+    /// A snooze entry's until: the detail (device), else the cloud's `until`, else the legacy default.
+    static func snoozeUntil(detail: String?, at: Date, until: Date?) -> Date { snoozeUntil(detail: detail, at: at) }
 }
 
 /// Codex PR90f #3: the device → cloud wire, one portable definition (the engine's drain and the golden fixture
@@ -60,6 +66,9 @@ enum ProactiveSyncWire {
         if let until { b["until"] = until }
         return b
     }
+    /// Codex PR90g #3: the decoder for cloud suggestions — ISO 8601 with or without fractional seconds (the server writes
+    /// `toISOString()`), so `taken[].at / until` never make the whole record undecodable.
+    static func decoder() -> JSONDecoder { let d = JSONDecoder(); d.dateDecodingStrategy = .iso8601; return d }
     static func route(action: String) -> String { action == "undo" ? "undo" : "action" }
     /// PR90f #5: `POST suggestions` — an offline-evaluated suggestion gets its cloud record (idempotent by client id).
     static func createBody(clientID: String, title: String, reason: String, actions: [String], createdAt: Date?) -> [String: Any] {
