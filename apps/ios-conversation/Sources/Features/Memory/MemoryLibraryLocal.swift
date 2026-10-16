@@ -73,6 +73,8 @@ enum AccountLocalData {
         if case .account(let id) = owner { return offKeyPrefix + id }
         return nil
     }
+    /// Owner of the signed-in account (AccountEpoch keeps the upper-case uuidString; owners use lower-case).
+    static var currentOwner: LocalMemoryOwner? { AccountEpoch.shared.currentAccount.map { .account($0.lowercased()) } }
     static func persistedOff(_ owner: LocalMemoryOwner) -> Bool { offKey(owner).map { defaults.bool(forKey: $0) } ?? false }
     static func record(off: Bool, owner: LocalMemoryOwner) {
         if let k = offKey(owner) { defaults.set(off, forKey: k) }
@@ -86,7 +88,7 @@ enum AccountLocalData {
         var cloudState: Bool? = nil   // nil = no cloud library / unknown
         if let cloud {
             do { let s = try await cloud.load(); snaps.append(s); cloudState = s.useMemory }
-            catch let e as MemoryLibraryError where e == .notEnabled || e == .unsupported { cloudState = nil }
+            // Codex PR91 p91b-4: a cloud library that is not enabled / unsupported does NOT fall back to local memories.
             catch { return [] }   // unreachable / partial failure: fail closed, keep the last known switch
         }
         if let local {
@@ -205,7 +207,11 @@ final class L2MemorySnapshotPersistence: MemorySnapshotPersisting {
                 break
             }
         }
-        if carryOff { try? await target.setUseMemory(false) }
+        // Codex PR91 p91b-4: a failed off-carry is reported (local copy of the switch stays, retried next launch).
+        if carryOff {
+            do { try await target.setUseMemory(false) }
+            catch { if report.stoppedBy == nil { report.stoppedBy = (error as? MemoryLibraryError) ?? .failed(String(describing: error)) } }
+        }
         report.kept = local.items.count
         return report
     }
@@ -249,6 +255,14 @@ extension MemoryLibraryLocal {
         if shared.owner == owner, shared.persistence is L2MemorySnapshotPersistence { return }
         if shared.owner == owner, store == nil, shared.persistence is UnavailableSnapshotPersistence { return }
         activate(owner: owner, persistence: store.map { L2MemorySnapshotPersistence(store: $0) } ?? UnavailableSnapshotPersistence())
+    }
+    /// Codex PR91 p91b-5: export entry for the quarantined pre-P0-2 library (Settings › 记忆 › 旧版记忆).
+    /// Returns the kept raw records as text; nil when there is nothing quarantined. Never merged or uploaded.
+    static func legacyExportText() -> String? {
+        guard let store = try? L2SecureStore(userID: LegacyMemoryQuarantine.vaultID, root: L2SecureStore.rootDirectory, keys: L2SecureStore.keys) else { return nil }
+        let kept = LegacyMemoryQuarantine.kept(in: L2MemorySnapshotPersistence(store: store, key: LegacyMemoryQuarantine.recordKey))
+        guard !kept.isEmpty else { return nil }
+        return kept.map { String(decoding: $0, as: UTF8.self) }.joined(separator: "\n\n")
     }
     /// Codex PR91 #4: seal the unowned legacy file into the device vault, then delete it (kept on any failure).
     @discardableResult static func quarantineLegacyFile() -> LegacyMemoryQuarantine.Outcome {

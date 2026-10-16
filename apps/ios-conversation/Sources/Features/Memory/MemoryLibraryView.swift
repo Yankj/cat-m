@@ -30,6 +30,8 @@ import SwiftUI
     }
     func setUse(_ on: Bool) async {
         let prior = snapshot; snapshot?.useMemory = on
+        // Codex PR91 p91b-4: switching OFF takes effect locally at once (persisted + next turn's header), before the network.
+        if !on, let owner = MemoryRecallLoader.currentOwner { MemoryRecallLoader.record(off: true, owner: owner) }
         await run(restore: prior) { try await self.backend.setUseMemory(on) }
     }
     func setAutoSave(_ on: Bool) async {
@@ -64,6 +66,8 @@ import SwiftUI
         _model = StateObject(wrappedValue: MemoryLibraryModel(backend: backend)); self.advanced = advanced
     }
 
+    /// Codex PR91 p91b-5: quarantined pre-upgrade library, read once when the page opens.
+    @State private var legacyExport: String? = MemoryLibraryLocal.legacyExportText()
     var body: some View {
         List {
             switchesSection
@@ -97,6 +101,11 @@ import SwiftUI
             }
             if let advanced {
                 Section { NavigationLink(ui("记忆核对与来源")) { advanced }.accessibilityIdentifier("memory.library.advanced") }
+            }
+            if let legacy = legacyExport {
+                Section {
+                    ShareLink(item: legacy) { Text(ui("导出旧版记忆")) }.touchTarget().accessibilityIdentifier("memory.library.legacyExport")
+                } header: { Text(ui("旧版记忆")) } footer: { Text(ui("升级前存在这台设备上的记忆没有归属账号，已单独加密保存，不会合并进你的账号。可以导出查看。")) }
             }
         }
         .listStyle(.insetGrouped)
