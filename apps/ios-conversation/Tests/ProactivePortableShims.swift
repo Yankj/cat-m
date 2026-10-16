@@ -10,4 +10,3 @@ enum SHA256 { // FNV-1a stand-in: stable, not cryptographic (tests only).
     }
 }
 #endif
-enum ProactiveFeedback: String, Codable, Sendable, CaseIterable { case helpful, not_helpful, intrusive }  // mirrors ProactiveSuggestion.swift

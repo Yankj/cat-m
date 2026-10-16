@@ -51,8 +51,6 @@ struct ProactiveSuggestion: Codable, Sendable, Equatable, Identifiable {
     var allEffectsDone: Bool { ProactiveActionStates.allEffectsDone(effectiveActions.map(\.rawValue), actionStates) }
 }
 
-enum ProactiveFeedback: String, Codable, Sendable, CaseIterable { case helpful, not_helpful, intrusive }
-
 @MainActor protocol ProactiveSuggestionBackend: AnyObject {
     func list() async throws -> [ProactiveSuggestion]
     func perform(_ action: ProactiveSuggestion.Action, on id: String) async throws -> ProactiveSuggestion
