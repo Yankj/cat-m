@@ -681,6 +681,9 @@ struct ProactiveSignal: Equatable, Sendable {
     }
 
     #if os(iOS)
+    // TODO(#89 AccountEpoch observer registry — Grok Bot 53381f7, not on GitHub yet): register this in init as
+    //   AccountEpoch.shared.<registerCleanup>("proactive") { await ProactiveEngine.shared.accountDidChange() }
+    // so sign-out bumps the epoch synchronously and then awaits this cleanup. Until then it is not called in production.
     /// AccountEpoch (b): after sign-out / account switch, remove every pending + delivered proactive notification and
     /// end the leave Live Activities. Call right after `AccountEpoch.shared.signOut()` (owner: auth flow, see report).
     func accountDidChange() async {
