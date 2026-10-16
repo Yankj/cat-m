@@ -78,5 +78,5 @@ export function readFeatureGate(value){const v=String(value??'').trim().toLowerC
 export function readAllowlist(value){const UUIDRE=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;return new Set(String(value??'').split(',').map(x=>x.trim().toLowerCase()).filter(x=>UUIDRE.test(x)));}
 export const featureAllows=(gate,allowlist,subjectID)=>gate==='on'||(gate==='allowlist'&&allowlist instanceof Set&&allowlist.has(String(subjectID??'').toLowerCase()));
 
-/** Per-subject daily model dispatch quota (every provider request counts, incl. device-result continuations). Default 300. */
-export function readDailyCallLimit(value){const v=String(value??'').trim();if(!v)return 300;const n=Number(v);return Number.isInteger(n)&&n>=1&&n<=100000?n:300;}
+/** Optional per-subject daily model dispatch quota. Unset/empty/invalid → null = unlimited (no counting). Only a positive integer enables it. */
+export function readDailyCallLimit(value){const v=String(value??'').trim();if(!v)return null;const n=Number(v);return /^\d+$/.test(v)&&Number.isSafeInteger(n)&&n>=1?n:null;}
