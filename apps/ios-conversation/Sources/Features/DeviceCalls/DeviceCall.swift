@@ -176,7 +176,11 @@ extension DeviceResultSubmitting { func reportUndo(callID: String, outcome: Devi
     func reset() { phases = [:]; edited = [:]; seen = [:]; records = [:]; interrupted = []; defaults.removeObject(forKey: Self.storageKey); undoQueue = .init(); defaults.removeObject(forKey: Self.undoKey) }
 
     private func persist(_ id: String, _ p: Phase, call: DeviceCall?, account: String? = nil) {
-        records[id] = .init(phase: p, call: call ?? records[id]?.call, updatedAt: .now, account: account ?? records[id]?.account ?? DeviceCallGate.currentAccount())
+        // Read the previous record into a local FIRST: reading records[id] inside the expression that assigns records[id]
+        // yields nil on Linux Swift 6.0.3 and drops the account (三角).
+        let previous = records[id]
+        let record = Record(phase: p, call: call ?? previous?.call, updatedAt: .now, account: account ?? previous?.account ?? DeviceCallGate.currentAccount())
+        records[id] = record
         if let data = try? JSONEncoder().encode(records) { defaults.set(data, forKey: Self.storageKey) }
     }
 
