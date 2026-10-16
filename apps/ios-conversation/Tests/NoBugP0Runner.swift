@@ -39,7 +39,7 @@ import Foundation
     static func expect(_ ok: Bool, _ m: String) { if ok { passed += 1; print("PASS \(m)") } else { failed += 1; print("FAIL \(m)") } }
 
     static func main() async {
-        await memory(); await deviceCalls(); proactive(); nearby(); groundedFixtures(); contactsPrivacy(); replyVariants(); followUps(); await deviceUndo(); dictation(); proactiveDelivery()
+        await memory(); await deviceCalls(); proactive(); nearby(); groundedFixtures(); contactsPrivacy(); replyVariants(); followUps(); await deviceUndo(); dictation(); proactiveDelivery(); proactiveLifecycle()
         print("nobug-p0 portable: \(passed) passed, \(failed) failed")
         exit(failed == 0 ? 0 : 1)
     }
@@ -386,5 +386,34 @@ import Foundation
         expect(l2.deliveredToday(now: day.addingTimeInterval(86400), calendar: cal) == 0, "P0-3 cap resets next local day")
         expect(ProactiveDelivery.isQuiet(night, calendar: cal, policy: p) && !ProactiveDelivery.isQuiet(day, calendar: cal, policy: p)
                && ProactiveDelivery.isQuiet(cal.date(from: DateComponents(year: 2026, month: 10, day: 17, hour: 7))!, calendar: cal, policy: p), "P0-3 quiet hours 22–8 wrap midnight")
+    }
+    /// P0-5: evaluated ≠ delivered (early silent can be re-evaluated), per-action state, cancelled SMS never synced.
+    static func proactiveLifecycle() {
+        let t0 = Date(timeIntervalSince1970: 1_800_000_000), h = "evt-h1"
+        var l = ProactiveSignalLedger()
+        // 120 min out, lead 10, no ETA → local rules stay silent (too early), but only "evaluated".
+        expect(ProactiveDelivery.localLevel(minutesUntil: 120, leadMinutes: 10, travelMinutes: nil) == .silent, "P0-5 early meeting → silent")
+        expect(l.shouldEvaluate(h, now: t0), "P0-5 first sighting evaluated")
+        l.markEvaluated(h, now: t0)
+        expect(!l.shouldEvaluate(h, now: t0.addingTimeInterval(120)), "P0-5 re-evaluation throttled (2 min later)")
+        expect(l.shouldEvaluate(h, now: t0.addingTimeInterval(ProactiveSignalLedger.reevaluateAfter)), "P0-5 early silent re-evaluated as the meeting nears")
+        expect(ProactiveDelivery.localLevel(minutesUntil: 20, leadMinutes: 10, travelMinutes: nil) == .notify, "P0-5 near meeting → reminder")
+        l.markDelivered(h, level: .notify, now: t0.addingTimeInterval(5400))
+        expect(!l.shouldEvaluate(h, now: t0.addingTimeInterval(9000)), "P0-5 delivered once → never again")
+        let data = try! JSONEncoder().encode(l), back = try! JSONDecoder().decode(ProactiveSignalLedger.self, from: data)
+        expect(!back.shouldEvaluate(h, now: t0.addingTimeInterval(9000)) && back.delivered[h] == "notify", "P0-5 ledger survives restart")
+        expect(ProactiveSignalLedger(legacy: ["old": 1]).delivered["old"] != nil, "P0-5 legacy v1 ledger entries treated as delivered (no duplicate after upgrade)")
+        // Per-action state.
+        let all = ["create_reminder", "notify_attendees", "snooze", "dismiss"]
+        var st: [String: ProactiveActionState] = [:]
+        st["create_reminder"] = .succeeded
+        expect(ProactiveActionStates.remaining(all, st) == ["notify_attendees", "snooze", "dismiss"], "P0-5 SMS still offered after reminder created")
+        expect(!ProactiveActionStates.allEffectsDone(all, st), "P0-5 not done while SMS open")
+        st["notify_attendees"] = .cancelled
+        expect(!ProactiveActionStates.shouldSync(.cancelled) && !ProactiveActionStates.shouldSync(.unavailable) && !ProactiveActionStates.shouldSync(.failed) && ProactiveActionStates.shouldSync(.succeeded), "P0-5 only succeeded effects sync to cloud")
+        expect(ProactiveActionStates.remaining(all, st).contains("notify_attendees"), "P0-5 cancelled SMS can be retried")
+        st["notify_attendees"] = .succeeded
+        expect(ProactiveActionStates.allEffectsDone(all, st) && ProactiveActionStates.remaining(all, st).isEmpty, "P0-5 done when every effect succeeded")
+        expect(ProactiveActionStates.from(serverStates: ["create_reminder": "done"]) == ["create_reminder": .succeeded], "P0-5 cloud action_states map to device state")
     }
 }
