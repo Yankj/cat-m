@@ -1,0 +1,45 @@
+name: ios-build
+on:
+  pull_request:
+    paths:
+      - "apps/ios-conversation/Sources/DesignSystem/CatpawPlushMascot.swift"
+      - "apps/ios-conversation/Sources/Features/ConversationFirstView.swift"
+      - "apps/ios-conversation/Resources/Mascot/**"
+      - "apps/ios-conversation/Resources/Assets.xcassets/CatpawBrand/Mascot/**"
+      - ".github/workflows/ios-build.yml"
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: macos-26
+    timeout-minutes: 30
+    defaults: { run: { working-directory: apps/ios-conversation } }
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select newest Xcode
+        run: sudo xcode-select -s "$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)" && xcodebuild -version
+      - uses: actions/cache@v4
+        with:
+          path: /tmp/dd
+          key: dd-${{ runner.os }}-${{ hashFiles('apps/ios-conversation/CatpawM.xcodeproj/project.pbxproj') }}
+          restore-keys: dd-${{ runner.os }}-
+      - name: Pick simulator
+        run: |
+          UDID=$(xcrun simctl list devices available -j | python3 -c "import json,sys;d=json.load(sys.stdin)['devices'];print(next(x['udid'] for k in sorted(d,reverse=True) if 'iOS' in k for x in d[k] if x['name'].startswith('iPhone')))")
+          echo "UDID=$UDID" >> $GITHUB_ENV
+      - name: Build
+        run: xcodebuild -project CatpawM.xcodeproj -scheme CatpawM -destination "id=$UDID" -derivedDataPath /tmp/dd build CODE_SIGNING_ALLOWED=NO | tail -60; test ${PIPESTATUS[0]} -eq 0
+      - name: Launch past onboarding and capture pop-out burst
+        run: |
+          xcrun simctl boot $UDID; xcrun simctl bootstatus $UDID
+          APP=/tmp/dd/Build/Products/Debug-iphonesimulator/CatpawM.app
+          BID=$(/usr/libexec/PlistBuddy -c "Print CFBundleIdentifier" $APP/Info.plist)
+          xcrun simctl install $UDID $APP
+          mkdir -p /tmp/shots
+          # warm launch once (first launch is slow), then relaunch for the timed burst
+          SIMCTL_CHILD_CF_UI_TEST_STORE=$(uuidgen) SIMCTL_CHILD_CF_UI_TEST_SCENARIO=p0-ui-echo xcrun simctl launch $UDID $BID -CatpawSkipOnboarding; sleep 15
+          xcrun simctl terminate $UDID $BID; sleep 2
+          SIMCTL_CHILD_CF_UI_TEST_STORE=$(uuidgen) SIMCTL_CHILD_CF_UI_TEST_SCENARIO=p0-ui-echo xcrun simctl launch $UDID $BID -CatpawSkipOnboarding
+          for i in $(seq -w 1 40); do xcrun simctl io $UDID screenshot /tmp/shots/s$i.png >/dev/null 2>&1; done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: popout-shots, path: /tmp/shots, retention-days: 3 }
