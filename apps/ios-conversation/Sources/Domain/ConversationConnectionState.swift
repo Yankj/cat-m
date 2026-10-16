@@ -75,7 +75,7 @@ public enum ConversationModelRoute: String, CaseIterable, Identifiable, Sendable
     public var id: String { rawValue }
     public var title: String {
         switch self {
-        case .automatic: return "自动（OpenRouter 优先）"
+        case .automatic: return "自动（Gemini 优先）"
         case .gemini: return "Gemini 免费层"
         case .groq: return "Groq 免费"
         case .openrouter: return "OpenRouter 免费"

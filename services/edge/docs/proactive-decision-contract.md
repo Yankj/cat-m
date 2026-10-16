@@ -47,7 +47,7 @@ You can also pass `data.text` to override the displayed signal text.
 2. `signal_hash` = sha256(type, source, dedupe_key or the canonical data). If every signal was already seen within `CATPAW_PROACTIVE_DEDUPE_WINDOW_SEC` (default 1800), the result is `silent` with `source=dedupe`.
 3. Load the learned trigger weights.
 4. Recall memories through the memory port (see "Memory" below).
-5. Ask the LLM. The route order comes from catpaw-api's catalog: OpenRouter `:free` first, then Gemini and Groq if their keys exist, then Agnes, with `CATPAW_MODEL_ROUTE_ORDER` able to reorder it. Keys are read only from env and are never logged or returned.
+5. Ask the LLM. The route order comes from catpaw-api's catalog: Gemini first (w6 default), then OpenRouter `:free`, Groq and OpenCode if their keys exist, then Agnes, with `CATPAW_MODEL_ROUTE_ORDER` able to reorder it. Keys are read only from env and are never logged or returned.
    - The model must return a JSON object `{decision, title, reason, confidence, trigger, suggested_actions[], used_memory_ids[]}`.
    - That output is validated. Unknown actions are dropped, `used_memory_ids` are filtered against the recalled ids, and `snooze` and `dismiss` are always appended.
    - If the model is unavailable or its output is invalid, deterministic rules decide instead (`source=rules`).
