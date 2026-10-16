@@ -197,6 +197,7 @@ struct NativeWorkspaceRetrySchedule: Sendable {
         ConversationDeviceCall.clientEnabled = true
         ConversationDeviceCall.clientTools = DeviceToolContract.clientTools   // NoBug P0-4: advertise what we execute
         DeviceCallHub.recorder = { DeviceLedger.shared.record(call: $0, result: $1) }
+        DeviceCallGate.currentAccount = { [weak self] in self?.state.user?.id.uuidString }   // Codex P0-1: grants are per account
         // NoBug P1-4: unacknowledged device results are re-sent on relaunch and whenever the app returns to foreground.
         Task { @MainActor in await DeviceCallStore.shared.retryPendingReports() }
         if Self.deviceReportObserver == nil {
@@ -611,6 +612,7 @@ struct NativeWorkspaceRetrySchedule: Sendable {
         uiDecisionSubmitter = nil
         GenerativeBlockStore.shared.submitter = nil
         DeviceCallHub.submitter = nil
+        DeviceCallGate.reset()
         GenerativeBlockStore.shared.activate(conversationID: nil)
         let previousBackend = backend; backend = nil
         let previousNamespace = namespace; namespace = nil
