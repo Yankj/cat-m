@@ -172,6 +172,7 @@ struct NativeWorkspaceRetrySchedule: Sendable {
             let credentials=AuthenticatedNativeChatCredentials(manager:manager!,partition:partition)
             Task { await CatpawPushTokenUploader.shared.setAuthorization { try await credentials.authorization(scope: partition.scope) } }
             let backend=NativeChatHTTPBackend(configuration:chatConfiguration,credentials:credentials)
+            if !isFixture { let routeScope=partition.scope; ModelRouteCatalog.shared.install { await backend.modelRoutes(scope:routeScope) } }
             let memory=isFixture ? nil : try NativeMemoryComposition.service(repository:repository,configuration:chatConfiguration,credentials:credentials)
             if !isFixture { MemoryLibraryHub.installAgentMemory(configuration:chatConfiguration,credentials:credentials); MemoryEventSink.installSideChannel() }
             var selected:any ConversationBackend=isFixture ? UnconfiguredConversationBackend() : backend
@@ -392,6 +393,7 @@ struct NativeWorkspaceRetrySchedule: Sendable {
             let credentials=AuthenticatedNativeChatCredentials(manager:manager,partition:partition)
             Task {await CatpawPushTokenUploader.shared.setAuthorization {try await credentials.authorization(scope:partition.scope)}}
             let http=NativeChatHTTPBackend(configuration:chatConfiguration,credentials:credentials)
+            if !isFixture { let routeScope=partition.scope; ModelRouteCatalog.shared.install { await http.modelRoutes(scope:routeScope) } }
             let memory=isFixture ? nil : try NativeMemoryComposition.service(repository:repository,configuration:chatConfiguration,credentials:credentials)
             if !isFixture {MemoryLibraryHub.installAgentMemory(configuration:chatConfiguration,credentials:credentials);MemoryEventSink.installSideChannel()}
             backend=http

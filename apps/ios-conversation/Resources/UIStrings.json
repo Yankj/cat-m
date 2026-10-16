@@ -6206,5 +6206,77 @@
   "恢复连接后继续": {
     "en": "continue when the connection returns",
     "zh-Hans": "恢复连接后继续"
+  },
+  "异常": {
+    "en": "Issue",
+    "zh-Hans": "异常"
+  },
+  "模型与接口": {
+    "en": "Models & routes",
+    "zh-Hans": "模型与接口"
+  },
+  "刷新路由状态": {
+    "en": "Refresh route status",
+    "zh-Hans": "刷新路由状态"
+  },
+  "隐私说明": {
+    "en": "Privacy",
+    "zh-Hans": "隐私说明"
+  },
+  "自动": {
+    "en": "Automatic",
+    "zh-Hans": "自动"
+  },
+  "OpenRouter": {
+    "en": "OpenRouter",
+    "zh-Hans": "OpenRouter"
+  },
+  "Gemini": {
+    "en": "Gemini",
+    "zh-Hans": "Gemini"
+  },
+  "Groq": {
+    "en": "Groq",
+    "zh-Hans": "Groq"
+  },
+  "Agnes": {
+    "en": "Agnes",
+    "zh-Hans": "Agnes"
+  },
+  "FreeLLMAPI": {
+    "en": "FreeLLMAPI",
+    "zh-Hans": "FreeLLMAPI"
+  },
+  "聚合器探活待接": {
+    "en": "Aggregator probe not wired yet",
+    "zh-Hans": "聚合器探活待接"
+  },
+  "只在服务端已同意的免费路由间选择；繁忙时是否切换由服务端配置决定。永不使用付费路由。密钥只在服务端。": {
+    "en": "Choose only among free routes the server allows. Busy failover is server-configured. Never paid routes. Keys stay server-side.",
+    "zh-Hans": "只在服务端已同意的免费路由间选择；繁忙时是否切换由服务端配置决定。永不使用付费路由。密钥只在服务端。"
+  },
+  "降级": {
+    "en": "Degraded",
+    "zh-Hans": "降级"
+  },
+  "免费": {
+    "en": "Free",
+    "zh-Hans": "免费"
+  },
+  "上次错误 {0}": {
+    "en": "Last error {0}",
+    "zh-Hans": "上次错误 {0}"
+  },
+  "冷却 {0} 秒": {
+    "en": "Cooling {0}s",
+    "zh-Hans": "冷却 {0} 秒"
+  },
+  "示例路由（服务端接口未部署）": {
+    "en": "Sample routes (server endpoint not deployed)",
+    "zh-Hans": "示例路由（服务端接口未部署）"
+  },
+  "所选模型路由暂不可用，已切回自动": {
+    "en": "Selected model route unavailable; switched back to Auto",
+    "zh-Hans": "所选模型路由暂不可用，已切回自动"
   }
 }

@@ -11,6 +11,10 @@ import Combine
     @Published public private(set) var pathSatisfied = true
     /// Operation IDs parked in the offline outbox; UI shows "等待网络 · 联网后自动发送" under these bubbles.
     @Published public private(set) var waitingForNetwork: Set<UUID> = []
+    /// Debounced offline / online notice for in-conversation system lines (not persisted).
+    @Published public private(set) var pathNotice: PathNoticeKind? = nil
+    private var pathNoticeTask: Task<Void, Never>?
+    private var lastEmittedPath: Bool? = nil
     private var busyCountdown: Task<Void, Never>?
     private let monitor = NWPathMonitor()
     private var resumedClear: Task<Void, Never>?
@@ -30,10 +34,28 @@ import Combine
     func pathChanged(_ ok: Bool) {
         pathSatisfied = ok
         for observer in pathObservers.values { observer.yield(ok) }
+        schedulePathNotice(ok)
         if !ok { state = .offline; return }
         if state == .offline { state = .online }
         let waiters = pathWaiters.values; pathWaiters.removeAll(); waiters.forEach { $0.resume() }
     }
+    /// Emit offline/online at most once per settled change after ~0.8 s (avoids alert/scene flicker spam).
+    private func schedulePathNotice(_ ok: Bool) {
+        pathNoticeTask?.cancel()
+        pathNoticeTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 800_000_000)
+            guard let self, !Task.isCancelled else { return }
+            if self.lastEmittedPath == ok { return }
+            self.lastEmittedPath = ok
+            self.pathNotice = ok ? .online : .offline
+            if ok {
+                try? await Task.sleep(nanoseconds: 2_000_000_000)
+                guard !Task.isCancelled, self.pathNotice == .online else { return }
+                self.pathNotice = nil
+            }
+        }
+    }
+    public func clearPathNotice() { pathNotice = nil }
     /// Suspends until the network path is usable again (offline attempts are not counted).
     public func waitForPath() async {
         if pathSatisfied { return }
