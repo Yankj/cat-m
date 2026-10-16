@@ -485,8 +485,12 @@ import UserNotifications
         center.removePendingNotificationRequests(withIdentifiers: [bID])
     }
 
-    // MARK: Codex PR90h #4 — delivered notifications in the REAL center: a local one stamped for A and an APNs-shaped
-    // one for A (`catpaw.account`, the shape the server pushes) are removed on the switch to B; a chat notification stays.
+    // MARK: Codex PR90h #4 — delivered notifications in the REAL center, in the real order: delivered while A is current
+    // (A's local stamp and A's APNs-shaped `catpaw` payload with a `decision` that warrants a system notification), then
+    // the switch to B removes both; a chat notification stays. An APNs-shaped payload for another account arriving
+    // while A is current is suppressed by willPresent (other_account) and never shows up as delivered.
+    // Root cause of the 9d49d25 failure: the APNs-shaped payload had no `decision`, so the gate read it as a card-level
+    // decision (inbox only) and willPresent returned [] — correctly not presented, so never "delivered".
     // Real APNs transport is not exercised (a simulator cannot receive one from a test); the payload is the server's.
     func testRealNotificationCenterDeliveredAndAPNsCleanup() async throws {
         ProactiveEngine.registerAccountObserver()
@@ -501,9 +505,12 @@ import UserNotifications
             let c = UNMutableNotificationContent(); c.title = "xctest delivered"; c.userInfo = info
             return UNNotificationRequest(identifier: id, content: c, trigger: UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false))
         }
-        let aLocal = "xctest-dl-a-" + tag, aAPNs = "xctest-dl-apns-a-" + tag, chat = "xctest-dl-chat-" + tag
+        ProactiveEngine.shared.quota = ProactiveQuotaLedger()   // today's cap starts empty (gate runs on ProactiveClock = 10:00, not quiet hours)
+        let aLocal = "xctest-dl-a-" + tag, aAPNs = "xctest-dl-apns-a-" + tag, bAPNs = "xctest-dl-apns-b-" + tag, chat = "xctest-dl-chat-" + tag
+        XCTAssertEqual(AccountEpoch.shared.currentAccount, "XCTEST-A", "delivered while A is current")
         try await center.add(soon(aLocal, ["catpaw_proactive_id": aLocal, ProactiveAccountGate.accountKey: "XCTEST-A", ProactiveAccountGate.epochKey: String(AccountEpoch.shared.epoch)]))
-        try await center.add(soon(aAPNs, ["catpaw": ["kind": "proactive_decision", "account": "xctest-a", "event_id": "E-" + tag]]))
+        try await center.add(soon(aAPNs, ["catpaw": ["kind": "proactive_decision", "decision": "notify", "account": "xctest-a", "event_id": "E-a-" + tag]]))
+        try await center.add(soon(bAPNs, ["catpaw": ["kind": "proactive_decision", "decision": "notify", "account": b.uuidString.lowercased(), "event_id": "E-b-" + tag]]))
         try await center.add(soon(chat, ["aps": ["alert": "hi"]]))
         var delivered: [String] = []
         for _ in 0..<30 {
@@ -511,13 +518,18 @@ import UserNotifications
             if [aLocal, aAPNs, chat].allSatisfy(delivered.contains) { break }
             try await Task.sleep(for: .milliseconds(500))
         }
-        XCTAssertTrue([aLocal, aAPNs, chat].allSatisfy(delivered.contains), "all three really delivered in the system center within 15 s: \(delivered)")
+        XCTAssertTrue([aLocal, aAPNs, chat].allSatisfy(delivered.contains), "A's local, A's APNs-shaped and the chat notification delivered within 15 s: \(delivered)")
+        try await Task.sleep(for: .seconds(1))
+        delivered = await center.deliveredNotifications().map(\.request.identifier)
+        XCTAssertFalse(delivered.contains(bAPNs), "another account's APNs-shaped notification is suppressed while A is current (willPresent other_account)")
+        let stillPending = await center.pendingNotificationRequests().contains { $0.identifier == bAPNs }
+        XCTAssertFalse(stillPending, "and it is not still pending (it fired)")
         await login(b)
         let after = await center.deliveredNotifications().map(\.request.identifier)
-        XCTAssertFalse(after.contains(aLocal), "A's delivered local notification removed")
-        XCTAssertFalse(after.contains(aAPNs), "A's delivered APNs-shaped notification removed")
+        XCTAssertFalse(after.contains(aLocal), "A's delivered local notification removed on the switch to B")
+        XCTAssertFalse(after.contains(aAPNs), "A's delivered APNs-shaped notification removed on the switch to B")
         XCTAssertTrue(after.contains(chat), "a non-proactive notification is never touched")
-        center.removeDeliveredNotifications(withIdentifiers: [chat])
+        center.removeDeliveredNotifications(withIdentifiers: [chat, bAPNs])
     }
 
     // MARK: Codex PR90h #3 — a cloud card, end to end through the real client entries: the chat adapter decodes the
