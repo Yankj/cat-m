@@ -10,7 +10,11 @@ struct ProactiveQuotaLedger: Codable, Sendable, Equatable {
     enum State: String, Codable, Sendable { case reserved, delivered }
     struct Entry: Codable, Sendable, Equatable { var day: String; var at: Double; var state: State }
     var entries: [String: Entry] = [:]
+    /// Alternate delivery ids (server event_id) → the identity they deliver, so an APNs push and the local post dedupe.
+    var aliases: [String: String] = [:]
     init() {}
+    mutating func alias(_ alt: String, to id: String) { if alt != id { aliases[alt] = id } }
+    private func resolve(_ id: String) -> String { aliases[id] ?? id }
 
     static func day(_ d: Date, calendar: Calendar = .current) -> String {
         let c = calendar.dateComponents([.year, .month, .day], from: d)
@@ -19,7 +23,7 @@ struct ProactiveQuotaLedger: Codable, Sendable, Equatable {
     func count(on d: Date, calendar: Calendar = .current) -> Int {
         let k = Self.day(d, calendar: calendar); return entries.values.filter { $0.day == k }.count
     }
-    func has(_ id: String) -> Bool { entries[id] != nil }
+    func has(_ id: String) -> Bool { entries[resolve(id)] != nil }
     /// Reserve a slot for a future (pre-scheduled) delivery. Same identity → idempotent. Returns false when the fire day is full.
     mutating func reserve(_ id: String, fire: Date, cap: Int = ProactiveRules.dailyNotifyCap, calendar: Calendar = .current) -> Bool {
         if let e = entries[id] { return e.state == .reserved || e.day == Self.day(fire, calendar: calendar) }
@@ -28,7 +32,8 @@ struct ProactiveQuotaLedger: Codable, Sendable, Equatable {
     }
     /// A real system notification was posted now. Converts this identity's reservation; never counts one identity twice.
     /// Returns false when the identity was already delivered (the second path must not post).
-    @discardableResult mutating func recordDelivery(_ id: String, at: Date, calendar: Calendar = .current) -> Bool {
+    @discardableResult mutating func recordDelivery(_ raw: String, at: Date, calendar: Calendar = .current) -> Bool {
+        let id = resolve(raw)
         if entries[id]?.state == .delivered { return false }
         entries[id] = .init(day: Self.day(at, calendar: calendar), at: at.timeIntervalSince1970, state: .delivered); return true
     }

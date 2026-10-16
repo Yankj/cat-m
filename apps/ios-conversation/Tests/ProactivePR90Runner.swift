@@ -48,6 +48,9 @@ func pr90_accountEpoch() {
     check(q.count(on: noon, calendar: shanghai) == 1, "real deliveries counted: 1")
     check(ProactiveAccountGate.verdict(push("user-b", "card"), epoch: epoch, now: noon, quota: &q, calendar: shanghai) == .inboxOnly, "server lower-case uuid == client uuidString")
     var local: [AnyHashable: Any] = [:]; ProactiveAccountGate.stamp(&local, epoch.capture()!, deliveryID: "E1", level: .notify)
+    var q2 = ProactiveQuotaLedger(); q2.recordDelivery("evt-9", at: noon, calendar: shanghai); q2.alias("E9", to: "evt-9")
+    check(ProactiveAccountGate.verdict(["catpaw": ["account": "USER-B", "kind": "proactive_decision", "decision": "notify", "event_id": "E9"]], epoch: epoch, now: noon, quota: &q2, calendar: shanghai) == .drop("duplicate"), "APNs after local post of the same event dedupes")
+    check(!ProactiveAccountGate.belongsToCurrent(info, epoch: epoch) && ProactiveAccountGate.belongsToCurrent(local, epoch: epoch), "didReceive ownership")
     check(ProactiveAccountGate.deliveryID(local) == "E1" && ProactiveAccountGate.deliveryID(push("USER-B", "notify")) == "E1", "shared delivery id")
 }
 
