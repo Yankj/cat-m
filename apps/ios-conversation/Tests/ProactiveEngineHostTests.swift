@@ -26,6 +26,7 @@ import UserNotifications
     }
     override func tearDown() async throws {
         if let saved { ProactiveEngine.shared.delivery.poster = saved }
+        ProactiveEngine.shared.delivery.clock = { .now }
         AccountEpoch.shared.signOut()
     }
     private func signal(_ id: String, inMinutes m: Double = 8) -> ProactiveSignal {
@@ -164,5 +165,89 @@ import UserNotifications
         var upd = base; upd.serverActionStates = ["notify_attendees": "done"]
         ProactiveSuggestionStore.shared.adopt(upd)
         XCTAssertEqual(ProactiveLocalBackend.load()[id]?.serverActionStates?["notify_attendees"], "done", "merged state reaches disk (a reload cannot resurrect the action)")
+    }
+    // MARK: Codex PR90e — real entries: NativeAuthApplicationModel.applyAccountBarrier (the auth model's own barrier +
+    // AccountChangeObservers hook), ProactiveLocalBackend.perform / undo / list.
+    private func login(_ id: UUID) async {
+        NativeAuthApplicationModel.applyAccountBarrier(NativeAuthSnapshot(phase: .authenticated, user: NativeAuthUser(id: id), generation: 1, message: nil), fresh: true, epoch: .shared)
+        await settle()
+    }
+    private func logout() async {
+        NativeAuthApplicationModel.applyAccountBarrier(NativeAuthSnapshot(phase: .loginRequired, user: nil, generation: 2, message: nil), fresh: false, epoch: .shared)
+        await settle()
+    }
+    private func card(_ prefix: String, actions: [ProactiveSuggestion.Action] = [.create_reminder, .snooze, .dismiss]) -> ProactiveSuggestion {
+        ProactiveSuggestion(id: prefix + UUID().uuidString, title: "t", reason: "r", actions: actions, status: .pending, createdAt: .now)
+    }
+    private var owner: String? { UserDefaults.standard.object(forKey: ProactiveDataOwner.key) as? String }
+
+    /// P1-1: A logs out (owner ""), B logs in and writes, B logs out, C logs in → none of B's data is visible or kept.
+    func testLogoutAndReloginViaRealEntry() async throws {
+        ProactiveEngine.registerAccountObserver()
+        let a = UUID(), b = UUID(), c = UUID()
+        await login(a)
+        let ca = card("xctest-la-"); ProactiveSuggestionStore.shared.adopt(ca)
+        _ = try await ProactiveLocalBackend().perform(.dismiss, on: ca.id)
+        await logout()
+        XCTAssertEqual(owner, ""); XCTAssertTrue(ProactiveLocalBackend.load().isEmpty)
+        await login(b)
+        let cb = card("xctest-lb-"); ProactiveSuggestionStore.shared.adopt(cb)
+        _ = try await ProactiveLocalBackend().perform(.dismiss, on: cb.id)
+        XCTAssertEqual(owner?.lowercased(), b.uuidString.lowercased(), "B registered as owner after A's logout (never stuck at \"\")")
+        XCTAssertNotNil(ProactiveLocalBackend.load()[cb.id])
+        await logout(); await login(c)
+        let listed = try await ProactiveLocalBackend().list()
+        XCTAssertFalse(listed.contains { $0.id == cb.id }, "C never sees B's card"); XCTAssertNil(ProactiveLocalBackend.load()[cb.id])
+        XCTAssertFalse(ProactiveEngine.shared.syncQueue.items.contains { $0.op.local == cb.id }, "B's write-backs gone")
+        // Same account again after a logout: starts clean and owns its new data.
+        await logout(); await login(c)
+        let cc = card("xctest-lc-"); ProactiveSuggestionStore.shared.adopt(cc)
+        _ = try await ProactiveLocalBackend().perform(.dismiss, on: cc.id)
+        XCTAssertNotNil(ProactiveLocalBackend.load()[cc.id])
+    }
+
+    /// P1-2: first run after the upgrade (no owner recorded): the signed-in account keeps its inbox and outbox.
+    func testFirstUpgradeKeepsData() async throws {
+        let legacy = card("xctest-up-"); ProactiveLocalBackend.save(legacy)
+        ProactiveEngine.shared.syncQueue.enqueue(.init(local: legacy.id, action: "dismiss", operationID: "op-up-a"), key: "op-up-a", account: "XCTEST-A", group: legacy.id)
+        ProactiveEngine.shared.syncQueue.enqueue(.init(local: legacy.id, action: "dismiss", operationID: "op-up-x"), key: "op-up-x", account: "XCTEST-OTHER", group: legacy.id)
+        UserDefaults.standard.removeObject(forKey: ProactiveDataOwner.key)        // what the previous build left behind
+        let listed = try await ProactiveLocalBackend().list()
+        XCTAssertTrue(listed.contains { $0.id == legacy.id }, "visible before any write")
+        ProactiveSuggestionStore.shared.adopt(legacy)
+        _ = try await ProactiveLocalBackend().perform(.dismiss, on: legacy.id)    // first write → migration
+        XCTAssertEqual(owner, "XCTEST-A", "migrated to the current account")
+        XCTAssertNotNil(ProactiveLocalBackend.load()[legacy.id], "upgrade kept the inbox")
+        XCTAssertTrue(ProactiveEngine.shared.syncQueue.contains(key: "op-up-a"), "this account's queued write-back kept")
+        XCTAssertFalse(ProactiveEngine.shared.syncQueue.contains(key: "op-up-x"), "another account's queued write-back removed")
+    }
+
+    /// P1-4 / P1-5: snooze → it rang → snooze again schedules again; each intent its own operation id and until.
+    func testRepeatedSnoozeViaBackend() async throws {
+        guard !ProactiveRules.isQuiet(.now.addingTimeInterval(600)), !ProactiveRules.isQuiet(.now.addingTimeInterval(1300)) else { throw XCTSkip("quiet hours") }
+        let c = card("xctest-rs-"); ProactiveSuggestionStore.shared.adopt(c)
+        let first = try await ProactiveLocalBackend().perform(.snooze, on: c.id)
+        XCTAssertEqual(first.effectiveStatus, .snoozed); XCTAssertEqual(poster.adds.count, 1)
+        ProactiveEngine.shared.delivery.clock = { .now.addingTimeInterval(660) }   // the first snooze has rung
+        let second = try await ProactiveLocalBackend().perform(.snooze, on: c.id)
+        XCTAssertEqual(second.effectiveStatus, .snoozed)
+        XCTAssertEqual(poster.adds.count, 2, "second snooze really scheduled"); XCTAssertNotEqual(poster.adds[0].id, poster.adds[1].id)
+        let ops = ProactiveEngine.shared.syncQueue.items.filter { $0.op.local == c.id }.map(\.op)
+        XCTAssertEqual(ops.map(\.action), ["snooze", "snooze"]); XCTAssertEqual(Set(ops.map(\.operationID)).count, 2, "new intent → new operation id")
+        XCTAssertEqual(ops.map(\.until), second.taken?.map { ProactiveUndo.snoozeUntil(detail: $0.detail, at: $0.at) }.map { ISO8601DateFormatter().string(from: $0) }, "device until synced with each intent")
+    }
+
+    /// P1-5: device → cloud undo after two snoozes: the queued ops are exactly the ones the server contract test replays
+    /// (op-<id>-snooze, op-<id>-snooze-n2, undo-<id>-g0); the device keeps the first snooze, like the server.
+    func testDeviceToCloudUndoAfterTwoSnoozes() async throws {
+        guard !ProactiveRules.isQuiet(.now.addingTimeInterval(600)) else { throw XCTSkip("quiet hours") }
+        let c = card("xctest-du-"); ProactiveSuggestionStore.shared.adopt(c)
+        _ = try await ProactiveLocalBackend().perform(.snooze, on: c.id)
+        _ = try await ProactiveLocalBackend().perform(.snooze, on: c.id)
+        let after = try await ProactiveLocalBackend().undo(c.id)
+        XCTAssertEqual(after.effectiveStatus, .snoozed); XCTAssertEqual(after.taken?.count, 1)
+        let ids = ProactiveEngine.shared.syncQueue.items.filter { $0.op.local == c.id }.map(\.op.operationID)
+        XCTAssertEqual(ids, ["op-\(c.id)-snooze", "op-\(c.id)-snooze-n2", "undo-\(c.id)-g0"])
+        XCTAssertTrue(poster.removed.contains { $0.hasPrefix(ProactiveDeliveryPipeline.snoozeBase(c.id, intent: "op-\(c.id)-snooze-n2")) }, "the undone snooze's own notification removed")
     }
 }
