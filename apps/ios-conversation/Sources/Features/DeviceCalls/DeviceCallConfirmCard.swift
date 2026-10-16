@@ -81,7 +81,8 @@ struct DeviceCallSpec: Sendable {
         }
         .onAppear {
             _ = store.firstSeen(call.id)
-            if call.confirm == DeviceCall.Confirm.none { Task { await store.run(call) } }
+            if store.isInterrupted(call.id) { Task { await store.resumeInterrupted(call.id) } }   // NoBug P0-3: killed mid-run
+            else if call.confirm == DeviceCall.Confirm.none { Task { await store.run(call) } }
         }
         .sheet(isPresented: $editing) { DeviceCallEditSheet(call: call, spec: spec, values: args) { store.edited[call.id] = $0 } }
         .accessibilityElement(children: .contain)
@@ -183,16 +184,6 @@ struct DeviceCallSpec: Sendable {
         case .error: ui("没有完成，请稍后重试")
         }
     }
-}
-
-enum DeviceCallDates {
-    static func parse(_ raw: String) -> Date? {
-        let f = ISO8601DateFormatter()
-        if let d = f.date(from: raw) { return d }
-        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        return f.date(from: raw)
-    }
-    static func format(_ date: Date) -> String { ISO8601DateFormatter().string(from: date) }
 }
 
 @MainActor struct DeviceCallEditSheet: View {

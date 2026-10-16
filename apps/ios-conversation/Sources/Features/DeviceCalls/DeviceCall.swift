@@ -66,7 +66,7 @@ indirect enum DeviceCallValue: Codable, Sendable, Equatable {
     }
 }
 
-enum DeviceCallStatus: String, Codable, Sendable { case ok, cancelled, denied, error }
+enum DeviceCallStatus: String, Codable, Sendable, CaseIterable { case ok, cancelled, denied, error }
 
 /// `{call_id, status, data}` for `POST /device-result`.
 struct DeviceCallResult: Codable, Sendable, Equatable {
@@ -109,30 +109,73 @@ struct DeviceCallResult: Codable, Sendable, Equatable {
 @MainActor enum DeviceCallHub {
     static var executor: any DeviceToolExecuting = DeviceToolExecutorStub()
     static var submitter: (any DeviceResultSubmitting)? = DeviceResultSubmitterStub()
+    /// Local ledger hook (DeviceLedger.shared.record in the app; nil in tests).
+    static var recorder: ((DeviceCall, DeviceCallResult) -> Void)?
 }
 
-/// Card state per call_id, kept across transcript re-renders.
+/// Card state per call_id, kept across transcript re-renders AND app kills (NoBug P0-3).
+/// Order in `run`: persist `.running` + the effective call → execute → persist the result as `.reportFailed` (executed,
+/// not yet acknowledged) → report → persist `.done`. On relaunch a call still `.running` is "interrupted":
+/// idempotent tools (executor dedupes by call_id marker) are re-run, others report `interrupted_outcome_unknown`.
+/// A call stuck in `.reportFailed` re-reports the saved result (the server is idempotent per operation_id).
 @MainActor final class DeviceCallStore: ObservableObject {
     static let shared = DeviceCallStore()
-    enum Phase: Equatable { case confirming, running, done(DeviceCallResult), reportFailed(DeviceCallResult), expired }
+    enum Phase: Equatable, Codable { case confirming, running, done(DeviceCallResult), reportFailed(DeviceCallResult), expired }
+    struct Record: Codable, Equatable { var phase: Phase; var call: DeviceCall?; var updatedAt: Date }
     @Published private(set) var phases: [String: Phase] = [:]
     @Published var edited: [String: [String: DeviceCallValue]] = [:]
     private var seen: [String: Date] = [:]
+    private var records: [String: Record] = [:]
+    private var interrupted: Set<String> = []
+    private let defaults: UserDefaults
+    static let storageKey = "catpaw.devicecall.records.v1"
+    static let retention: TimeInterval = 7 * 24 * 3600
+
+    init(defaults: UserDefaults = .standard, now: Date = .now) {
+        self.defaults = defaults
+        if let data = defaults.data(forKey: Self.storageKey), let saved = try? JSONDecoder().decode([String: Record].self, from: data) {
+            records = saved.filter { now.timeIntervalSince($0.value.updatedAt) < Self.retention }
+        }
+        for (id, r) in records {
+            phases[id] = r.phase
+            if r.phase == .running { interrupted.insert(id) }
+        }
+    }
 
     func phase(_ id: String) -> Phase { phases[id] ?? .confirming }
     func firstSeen(_ id: String) -> Date { if let d = seen[id] { return d }; let now = Date(); seen[id] = now; return now }
-    func set(_ id: String, _ p: Phase) { phases[id] = p }
-    func reset() { phases = [:]; edited = [:]; seen = [:] }
+    func set(_ id: String, _ p: Phase) { phases[id] = p; persist(id, p, call: nil) }
+    func isInterrupted(_ id: String) -> Bool { interrupted.contains(id) }
+    func record(_ id: String) -> Record? { records[id] }
+    func reset() { phases = [:]; edited = [:]; seen = [:]; records = [:]; interrupted = []; defaults.removeObject(forKey: Self.storageKey) }
+
+    private func persist(_ id: String, _ p: Phase, call: DeviceCall?) {
+        records[id] = .init(phase: p, call: call ?? records[id]?.call, updatedAt: .now)
+        if let data = try? JSONEncoder().encode(records) { defaults.set(data, forKey: Self.storageKey) }
+    }
 
     func run(_ call: DeviceCall) async {
-        let executor = DeviceCallHub.executor, submitter = DeviceCallHub.submitter
         guard phase(call.id) == .confirming else { return }
         var effective = call
         if let edits = edited[call.id] { effective.args.merge(edits) { _, new in new } }
-        set(call.id, .running)
-        let result = executor.canExecute(call.tool) ? await executor.execute(effective) : .init(call_id: call.call_id, status: .error)
-        DeviceLedger.shared.record(call: effective, result: result)
-        await report(result, submitter: submitter)
+        phases[call.id] = .running; persist(call.id, .running, call: effective)   // durable BEFORE any side effect
+        await execute(effective)
+    }
+    /// Relaunch path for a call that was `.running` when the app died.
+    func resumeInterrupted(_ id: String) async {
+        guard interrupted.remove(id) != nil, let call = records[id]?.call else { return }
+        if DeviceToolContract.idempotentTools.contains(call.tool) { await execute(call) }
+        else { await finish(call, DeviceToolContract.interruptedUnknown(call)) }
+    }
+    private func execute(_ call: DeviceCall) async {
+        let executor = DeviceCallHub.executor
+        let result = executor.canExecute(call.tool) ? await executor.execute(call) : DeviceToolContract.unsupported(call)
+        await finish(call, result)
+    }
+    private func finish(_ call: DeviceCall, _ result: DeviceCallResult) async {
+        set(call.id, .reportFailed(result))   // executed, not yet acknowledged — survives a kill before report
+        DeviceCallHub.recorder?(call, result)
+        await report(result, submitter: DeviceCallHub.submitter)
     }
     func cancel(_ call: DeviceCall) async {
         let submitter = DeviceCallHub.submitter

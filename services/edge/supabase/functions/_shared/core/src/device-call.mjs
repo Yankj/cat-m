@@ -5,6 +5,8 @@
 import {check} from '../facade-r2/src/common.mjs';
 export const DEVICE_CONTRACT='catpaw.device.v1';
 export const DEVICE_HEADER='X-Catpaw-Device-Contract';
+/** NoBug P0-4: comma list of tools the phone actually executes; absent = legacy client (all offered). */
+export const DEVICE_TOOLS_HEADER='X-Catpaw-Device-Tools';
 export const DEVICE_TTL_SEC=600;
 export const DEVICE_RESULT_STATUSES=Object.freeze(['ok','cancelled','denied','error']);
 export const DEVICE_RESULT_MAX_BYTES=32768;
@@ -25,6 +27,8 @@ export const DEVICE_TOOLS=Object.freeze([
  fn('shortcut_run','Run a Shortcuts shortcut by name.',{name:S,input:S},['name'],'card'),
 ]);
 export const DEVICE_TOOL_NAMES=Object.freeze(DEVICE_TOOLS.map(t=>t.definition.function.name));
+/** Parses X-Catpaw-Device-Tools into known tool names (unknown dropped); null when the header is absent. */
+export function parseDeviceTools(raw){if(raw===null||raw===undefined)return null;return [...new Set(String(raw).split(',').map(x=>x.trim()).filter(x=>DEVICE_TOOL_NAMES.includes(x)))];}
 const typeOK=(v,s)=>s.type==='string'?typeof v==='string'&&v.length<=4000&&(!s.enum||s.enum.includes(v)):s.type==='number'?Number.isFinite(v):s.type==='integer'?Number.isInteger(v)&&v>=s.minimum&&v<=s.maximum:s.type==='array'?Array.isArray(v)&&v.length<=s.maxItems&&v.every(x=>typeOK(x,s.items)):false;
 export function validateDeviceArgs(tool,args){
  const p=tool.definition.function.parameters;
@@ -37,7 +41,7 @@ export function validateDeviceArgs(tool,args){
 /** Gated-registry entries (facade.gatedChatTools). Offered only when the client negotiated device.v1 + approval.v1 and allow(turn). */
 export function createDeviceTools({allow=()=>true}={}){
  return new Map(DEVICE_TOOLS.map(tool=>[tool.definition.function.name,{definition:tool.definition,contractOnly:true,device:true,confirm:tool.confirm,
-  offer:turn=>turn?.device_contract===DEVICE_CONTRACT&&!!turn?.approval_contract&&allow(turn),
+  offer:turn=>turn?.device_contract===DEVICE_CONTRACT&&!!turn?.approval_contract&&(!Array.isArray(turn?.device_tools)||turn.device_tools.includes(tool.definition.function.name))&&allow(turn),
   validate:a=>validateDeviceArgs(tool,a),summarize:a=>`${tool.definition.function.name}: `+String(a.title??a.subject??a.query??a.name??a.number??a.time??'').slice(0,200),
   execute:async()=>{check(false,409,'device_call_not_reported');}}]));
 }
@@ -52,7 +56,7 @@ export function validateDeviceResult(input){
 export const deviceCallEvent=(it,args)=>({call_id:it.call_id,tool:it.tool,args,confirm:it.confirm,ttl_sec:it.ttl_sec,interrupt_id:it.interrupt_id,args_hash:it.args_hash,expires_at:it.expires_at});
 /** Model-facing result of a device call. */
 export function deviceResult(it){
- if(it.status==='expired')return {status:'pending_timeout',message:'The phone did not report back in time; nothing is known to have happened. Tell the user they can retry.'};
+ if(it.status==='expired')return {status:'pending_timeout',message:'The phone did not report back in time; the action\'s status is unknown (it may already have happened on the phone). Ask the user to verify on the phone before retrying; do not retry automatically.'};
  if(it.status==='cancelled')return {status:'cancelled',message:'The turn was cancelled before the phone reported back.'};
  return {status:it.response.status,...it.response.data!==undefined&&it.response.data!==null?{data:it.response.data}:{}};
 }
