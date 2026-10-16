@@ -245,7 +245,7 @@ struct ProactiveSignal: Equatable, Sendable {
         else {
             decision = evaluateLocal(signal, leadMinutes: lead.minutes, travelMinutes: usedETA ? travelMinutes : nil, now: now)
             // NoBug: learned feedback (三角's ProactiveFeedbackSync) gates offline decisions too.
-            let gated = ProactiveRules.applyFeedbackGate(decision.level, confidence: ProactiveRules.localConfidence(ProactiveRules.localTrigger, Int(signal.start.timeIntervalSince(now) / 60), nil), gate: Self.feedbackGate)
+            let gated = ProactiveRules.applyFeedbackGate(decision.level, confidence: ProactiveRules.localConfidence(ProactiveRules.localTrigger, Int(signal.start.timeIntervalSince(now) / 60), travelMinutes: usedETA ? travelMinutes : nil), gate: Self.feedbackGate)
             if gated != decision.level { decision = .init(level: gated, why: decision.why + " · feedback gate → \(gated.name)", via: decision.via) }
         }
         guard decision.intervene else { note("decide silent: \(decision.why)"); return nil }
