@@ -211,6 +211,9 @@ public struct ConversationTurnRequest: Codable, Sendable {
     /// catpaw.chat-attachments.v1: ready attachment ids sent as schema_version 2 `message.attachment_ids` (plain turns only).
     /// Single use on the server: a resend of a FAILED turn needs a new upload under new ids (ChatAttachmentSendCoordinator).
     public private(set) var attachmentIDs:[UUID]? = nil
+    /// Codex PR91 #1: account token captured when the send starts (never encoded; nil after a relaunch → account-bound
+    /// side channels are refused). Carried by the network layer to every side-channel event of this turn's stream.
+    public var accountToken:AccountToken? = nil
     private enum CodingKeys:String,CodingKey {case scope,conversationID,threadID,operationID,epoch,history,context,image,continuation,continuationOriginalBinding,continuationSubjectID,acceptedWork,revisionWork,attachmentIDs}
     public func withImageBytes(_ bytes:Data?) -> Self {var value=self;value.imageBytes=bytes;return value}
     public func withAttachmentIDs(_ ids:[UUID]?) -> Self {var value=self;value.attachmentIDs=(ids?.isEmpty ?? true) ? nil : ids;return value}
@@ -635,7 +638,7 @@ public extension ConversationBackend {
 /// Sink for side-channel turn events. The network layer calls `dispatch`; the app installs the handler at composition
 /// time (`MemoryEventSink.installSideChannel()`), so wire code and portable test scripts do not depend on feature files.
 public enum ConversationSideChannelEvents {
-    public typealias Handler = @Sendable (_ type: String, _ turnID: UUID, _ data: Data) -> Void
+    public typealias Handler = @Sendable (_ type: String, _ turnID: UUID, _ data: Data, _ token: AccountToken?) -> Void
     public static let types: Set<String> = ["memory.used", "memory.update", "memory_recalled", "proactive_suggestion"]
     private static let lock = NSLock()
     nonisolated(unsafe) private static var installed: Handler?
@@ -643,8 +646,41 @@ public enum ConversationSideChannelEvents {
         get { lock.lock(); defer { lock.unlock() }; return installed }
         set { lock.lock(); installed = newValue; lock.unlock() }
     }
-    public static func dispatch(type: String, turnID: UUID, data: Data) {
+    public static func dispatch(type: String, turnID: UUID, data: Data, token: AccountToken?) {
         guard let handler else { return }
-        handler(type, turnID, data)
+        handler(type, turnID, data, token)
     }
+    /// Network-layer entry (NativeChatHTTPBackend's event switch): the token bound to the stream's request — set at send,
+    /// or registered for the turn by `beginTurn` — travels with the event. Never captured on arrival.
+    /// Registers `token` for the turn (ConversationSessionService.send) and returns it so the request can carry it too.
+    public static func beginTurnToken(_ turnID: UUID, token: AccountToken? = AccountEpoch.shared.capture()) -> AccountToken? { beginTurn(turnID, token: token); return token }
+    public static func deliver(type: String, request: ConversationTurnRequest, data: Data) {
+        dispatch(type: type, turnID: request.operationID, data: data, token: request.accountToken ?? token(forTurn: request.operationID))
+    }
+    // Codex PR91 #1: the account token of a turn is captured ONCE when the send starts and travels with the turn's
+    // stream; memory.used / memory.update commit with it, so A's stream delivered after B signed in is dropped.
+    nonisolated(unsafe) private static var turnTokens: [UUID: AccountToken] = [:]
+    nonisolated(unsafe) private static var turnOrder: [UUID] = []
+    public static func beginTurn(_ turnID: UUID, token: AccountToken?) {
+        lock.lock(); defer { lock.unlock() }
+        guard let token else { turnTokens[turnID] = nil; return }
+        if turnTokens.updateValue(token, forKey: turnID) == nil { turnOrder.append(turnID) }
+        while turnOrder.count > 200 { turnTokens[turnOrder.removeFirst()] = nil }
+    }
+    /// nil = the turn started signed out (or is unknown): account-bound side effects must be refused.
+    public static func token(forTurn turnID: UUID) -> AccountToken? { lock.lock(); defer { lock.unlock() }; return turnTokens[turnID] }
+}
+
+/// Codex PR91 P0-2 (server side): the client's 「使用记忆」 switch for the signed-in account, sent on every chat turn as
+/// `X-Catpaw-Use-Memory: 0|1` (services/edge/docs/agent-memory-contract.md). nil = unknown → header omitted.
+public enum ConversationMemorySwitch {
+    public static let header = "X-Catpaw-Use-Memory"
+    private static let lock = NSLock()
+    nonisolated(unsafe) private static var value: Bool?
+    public static var useMemory: Bool? {
+        get { lock.lock(); defer { lock.unlock() }; return value }
+        set { lock.lock(); value = newValue; lock.unlock() }
+    }
+    /// Header value: "0" when off, "1" when on, nil when unknown.
+    public static var headerValue: String? { useMemory.map { $0 ? "1" : "0" } }
 }

@@ -57,6 +57,7 @@ enum AccountLocalData {
     @MainActor static func signOutCore(userID: UUID?, defaults: UserDefaults) {
         AccountEpoch.shared.signOut()   // FIRST: every token captured before this is dead
         MemoryCache.shared.reset()
+        ConversationMemorySwitch.useMemory = nil
         if let userID { MemoryLibraryLocal.purge(owner: .account(userID.uuidString.lowercased())) } else { MemoryLibraryLocal.purge(owner: .guest) }
         purge(defaults: defaults)
     }
@@ -73,11 +74,14 @@ enum AccountLocalData {
         return nil
     }
     static func persistedOff(_ owner: LocalMemoryOwner) -> Bool { offKey(owner).map { defaults.bool(forKey: $0) } ?? false }
-    static func record(off: Bool, owner: LocalMemoryOwner) { if let k = offKey(owner) { defaults.set(off, forKey: k) } }
+    static func record(off: Bool, owner: LocalMemoryOwner) {
+        if let k = offKey(owner) { defaults.set(off, forKey: k) }
+        ConversationMemorySwitch.useMemory = !off   // sent to the server on the next turn (X-Catpaw-Use-Memory)
+    }
 
     /// `cloud`: the installed backend (nil = none). `local`: the on-device library when it is not the cloud backend.
     static func snapshots(cloud: (any MemoryLibraryBackend)?, local: (any MemoryLibraryBackend)?, owner: LocalMemoryOwner) async -> [MemoryLibrarySnapshot] {
-        let epochAtStart = AccountEpoch.shared.epoch
+        let epochAtStart = AccountEpoch.shared.epoch, accountAtStart = AccountEpoch.shared.currentAccount
         var snaps: [MemoryLibrarySnapshot] = []
         var cloudState: Bool? = nil   // nil = no cloud library / unknown
         if let cloud {
@@ -88,10 +92,10 @@ enum AccountLocalData {
         if let local {
             do { snaps.append(try await local.load()) } catch { return [] }
         }
-        guard AccountEpoch.shared.epoch == epochAtStart else { return [] }   // signed out / switched meanwhile
+        guard AccountEpoch.shared.epoch == epochAtStart, AccountEpoch.shared.currentAccount == accountAtStart else { return [] }   // signed out / switched meanwhile
         let off = snaps.contains { !$0.useMemory }
         if cloudState != nil || cloud == nil { record(off: off, owner: owner) }
-        else if persistedOff(owner) { return [] }   // cloud state unknown now; last known was off
+        else if persistedOff(owner) { ConversationMemorySwitch.useMemory = false; return [] }   // cloud state unknown now; last known was off
         return MemoryRecallGate.effective(snaps)
     }
 }

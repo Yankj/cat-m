@@ -2,6 +2,8 @@
 // Separate from the source-backed catpaw.memory.v1 (core/src/memory-*.mjs); see docs/agent-memory-contract.md
 // for why both exist and how they should converge before the gate is flipped to `true`.
 export const AGENT_MEMORY_CONTRACT = 'catpaw.agent-memory.v1';
+// Client 「使用记忆」 switch ('0' off / '1' on / absent = server settings only). Either side off ⇒ off (Codex PR91 P0-2).
+export const USE_MEMORY_HEADER = 'X-Catpaw-Use-Memory';
 export const MEMORY_MODE_HEADER = 'X-Catpaw-Memory-Mode'; // 'ephemeral' = temporary conversation: no recall, no tools, no journal
 export const MEMORY_KINDS = Object.freeze(['profile', 'preference', 'person', 'fact', 'journal']);
 export const LIMITS = Object.freeze({ content_chars: 500, rows_per_user: 1000, search_k_max: 20, recall_k: 6, pinned_tokens: 1500, forget_max: 20, undo_ttl_ms: 24 * 3600 * 1000, decay_half_life_days: 30, journal_fragment_chars: 400 });

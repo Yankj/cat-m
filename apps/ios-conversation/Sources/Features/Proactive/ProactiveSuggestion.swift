@@ -228,10 +228,10 @@ enum ProactiveEngineError: Error, Equatable { case remindersDenied, writeFailed,
     /// Stops at the first sign of an account change; nothing of A is ever posted with B's session.
     @discardableResult func retryPending(serverIDs: [String: String]) async -> Int {
         ensureLoaded()
-        let epochAtStart = AccountEpoch.shared.epoch
+        let epochAtStart = AccountEpoch.shared.epoch, accountAtStart = AccountEpoch.shared.currentAccount
         var delivered = 0
         for e in ledger.pendingSync {
-            guard AccountEpoch.shared.epoch == epochAtStart else { break }
+            guard AccountEpoch.shared.epoch == epochAtStart, AccountEpoch.shared.currentAccount == accountAtStart else { break }
             if e.serverID == nil, let sid = serverIDs[e.suggestionID] { ledger.attach(serverID: sid, to: e.suggestionID); try? persist() }
             do { try await sync(e.suggestionID); delivered += 1 } catch SyncError.staleAccount { break } catch {}
         }

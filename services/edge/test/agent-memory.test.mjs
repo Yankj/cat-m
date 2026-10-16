@@ -168,7 +168,7 @@ test('client switch: X-Catpaw-Use-Memory 0 → no recall, no memory tools, no jo
  assert.equal(srvOff.events.some(x=>x.type==='memory_recalled'),false,'server off wins over client on');
  const c=(await s.f.json(await s.f.req(s.path))).conversation;
  const bad=await s.f.runtime.api(new Request(H+s.path+'/turns',{method:'POST',headers:{Authorization:'Bearer memory-fixture','Content-Type':'application/json','X-Catpaw-Approval-Contract':APPROVAL_CONTRACT,'X-Catpaw-Use-Memory':'maybe'},body:JSON.stringify({turn_id:randomUUID(),expected_revision:c.revision,expected_grant_epoch:c.grant_epoch,message:{id:randomUUID(),text:'hi'},context:[]})}));
- assert.equal(bad.status,422);assert.equal((await bad.json()).error,'use_memory_invalid');
+ assert.equal(bad.status,422);assert.equal((await bad.json()).error.code,'use_memory_invalid');
 });
 test('client switch: recallForTurn({clientUseMemory:false}) returns a disabled snapshot',async()=>{
  const s=svc();await consent(s);await s.call('POST','/items',{kind:'preference',content:'咖啡只喝美式'});

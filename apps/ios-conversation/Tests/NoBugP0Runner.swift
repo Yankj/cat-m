@@ -803,20 +803,27 @@ extension Result { var isFailure: Bool { if case .failure = self { return true }
         signOut(b)
         expect(MemoryCache.shared.items.isEmpty && MemoryCache.shared.boundStore == nil && beforeOut != nil && !AccountEpoch.shared.isValid(beforeOut) && AccountEpoch.shared.capture() == nil, "PR91 #1 sign-out resets MemoryCache and closes the generation")
 
-        // #1 (turn token) A's STREAM delivered after B signed in: memory.used / memory.update carry A's turn token → dropped.
+        // #1 (turn token) A's STREAM delivered after B signed in. Goes through the network layer's entry
+        // (ConversationSideChannelEvents.deliver, called from NativeChatHTTPBackend's event switch) and the installed
+        // MemoryEventSink handler; the token comes from the request / turn registry bound at send, never from the test.
+        MemoryEventSink.installSideChannel()
+        func req(_ op: UUID) -> ConversationTurnRequest { ConversationTurnRequest(scope: DataScope(profileID: UUID(), workspaceID: UUID()), conversationID: UUID(), threadID: nil, operationID: op, epoch: 1, history: []) }
         signIn(a)
-        let turnA = UUID()
-        ConversationSideChannelEvents.beginTurn(turnA, token: AccountEpoch.shared.capture())
+        let turnA = UUID(), turnA2 = UUID()
+        ConversationSideChannelEvents.beginTurn(turnA, token: AccountEpoch.shared.capture())   // what ConversationSessionService.send does
+        var streamA2 = req(turnA2); streamA2.accountToken = ConversationSideChannelEvents.beginTurnToken(turnA2)
         signOut(a); signIn(b)
-        MemoryEventSink.used(turnID: turnA, data: Data(#"{"ids":["sa"],"memories":[{"id":"sa","content":"A 的流"}]}"#.utf8))
-        MemoryEventSink.update(turnID: turnA, data: Data(#"{"op":"saved","ids":["sa2"],"memories":[{"id":"sa2","content":"A 的流2"}]}"#.utf8))
+        ConversationSideChannelEvents.deliver(type: "memory.used", request: req(turnA), data: Data(#"{"ids":["sa"],"memories":[{"id":"sa","content":"A 的流"}]}"#.utf8))
+        ConversationSideChannelEvents.deliver(type: "memory.update", request: req(turnA), data: Data(#"{"op":"saved","ids":["sa2"],"memories":[{"id":"sa2","content":"A 的流2"}]}"#.utf8))
+        ConversationSideChannelEvents.deliver(type: "memory.update", request: streamA2, data: Data(#"{"op":"saved","ids":["sa3"],"memories":[{"id":"sa3","content":"A 的流3"}]}"#.utf8))
         for _ in 0..<20 { await Task.yield() }
-        expect(MemoryCache.shared.items["sa"] == nil && MemoryCache.shared.items["sa2"] == nil && MemoryCache.shared.usedByTurn[turnA] == nil, "PR91 #1 A's stream delivered after B signed in is dropped (turn token from send)")
+        expect(MemoryCache.shared.items["sa"] == nil && MemoryCache.shared.items["sa2"] == nil && MemoryCache.shared.items["sa3"] == nil && MemoryCache.shared.usedByTurn[turnA] == nil, "PR91 #1 A's stream delivered after B signed in is dropped (token bound at send, carried by the network layer)")
         let turnB = UUID()
         ConversationSideChannelEvents.beginTurn(turnB, token: AccountEpoch.shared.capture())
-        MemoryEventSink.used(turnID: turnB, data: Data(#"{"ids":["sb"],"memories":[{"id":"sb","content":"B 的流"}]}"#.utf8))
+        ConversationSideChannelEvents.deliver(type: "memory.used", request: req(turnB), data: Data(#"{"ids":["sb"],"memories":[{"id":"sb","content":"B 的流"}]}"#.utf8))
         for _ in 0..<20 { await Task.yield() }
         expect(MemoryCache.shared.usedByTurn[turnB] == ["sb"], "PR91 #1 B's own stream still records memory.used")
+        ConversationSideChannelEvents.deliver(type: "memory.used", request: req(UUID()), data: Data(#"{"ids":["sx"],"memories":[]}"#.utf8))
         expect(ConversationSideChannelEvents.token(forTurn: UUID()) == nil, "PR91 #1 an unknown turn has no token (events refused)")
         signOut(b)
         // #1 DeviceCall needs a token: signed out → refused, nothing executed or persisted.

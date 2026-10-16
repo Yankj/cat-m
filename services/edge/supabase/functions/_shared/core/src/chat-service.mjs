@@ -64,10 +64,11 @@ export class ChatService {
   async startRevisionWorkTurn(auth,scopeID,conversationID,input){const request=validateTaskRevisionWorkRequest(input);check(this.facade.revisionWorkExecutionReady===true,503,'revision_work_execution_not_configured');return this.startTurn(auth,scopeID,conversationID,request.turn,{revisionTarget:request.target,revisionWork:request.work});}
   async readRevision(auth,scopeID,runID,operationID){return readTaskRevision(this.facade,auth,scopeID,runID,operationID);}
   async readRevisionWork(auth,scopeID,runID,operationID){return readTaskRevisionWork(this.facade,auth,scopeID,runID,operationID,readTaskRevision);}
-  async startTurn(auth,scopeID,conversationID,input,{revisionTarget=null,workIntent=null,revisionWork=null,memoryProposalContract=null,approvalContract=null,timeZone=null,uiContract=null,memoryMode=null,deviceContract=null,deviceTools=null,uiKinds=null}={}){
+  async startTurn(auth,scopeID,conversationID,input,{revisionTarget=null,workIntent=null,revisionWork=null,memoryProposalContract=null,approvalContract=null,timeZone=null,uiContract=null,memoryMode=null,useMemory=null,deviceContract=null,deviceTools=null,uiKinds=null}={}){
     check(approvalContract===null||approvalContract===APPROVAL_CONTRACT,422,'approval_contract_invalid');
     check(uiContract===null||uiContract===UI_CONTRACT,422,'ui_contract_invalid');
     check(memoryMode===null||memoryMode==='ephemeral',422,'memory_mode_invalid');
+    check(useMemory===null||useMemory==='0'||useMemory==='1',422,'use_memory_invalid');   // X-Catpaw-Use-Memory (Codex PR91 P0-2)
     check(deviceContract===null||deviceContract===DEVICE_CONTRACT,422,'device_contract_invalid');
     // catpaw.ui.v1 needs approval.v1 suspension; without it the header is ignored (no render_ui offered).
     if(!approvalContract)uiContract=null;
@@ -118,7 +119,7 @@ export class ChatService {
         if(selection)t.completion_intent=freezeCompletionIntent(this.facade.completionPolicy,selection,{subject_id:principal.subject_id,scope_id:scope.scope_id,conversation_id:c.id,turn_id:input.turn_id,user_message_id:input.message.id,input_hash:hash(input),conversation_epoch:c.grant_epoch});
       }
       // catpaw.agent-memory.v1: recall snapshot frozen at admission (edits/deletes apply from the next turn on); ephemeral turns read and write nothing.
-      const agentMemory=!revisionTarget&&!workIntent&&this.facade.agentMemory?await this.facade.agentMemory.recallForTurn({subjectID:principal.subject_id,query:input.message.text.slice(0,500),mode:memoryMode,conversationID:c.id,turnID:t.id}):null;
+      const agentMemory=!revisionTarget&&!workIntent&&this.facade.agentMemory?await this.facade.agentMemory.recallForTurn({subjectID:principal.subject_id,query:input.message.text.slice(0,500),mode:memoryMode,conversationID:c.id,turnID:t.id,clientUseMemory:useMemory===null?null:useMemory==='1'}):null;
       let claimedSuggestions=[];
       if(agentMemory){t.agent_memory=agentMemory;t.request_hash=hash({original_chat_request_hash:t.request_hash,agent_memory:agentMemory});}
       if(this.integration)t=await this.integration.stampTurn(tx,owner,t);

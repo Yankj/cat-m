@@ -476,7 +476,7 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
         catch is URLError { throw ConversationApprovalFailure.transport }
         let route = turnPath(request) + "/" + request.operationID.uuidString.lowercased() + (deviceResult ? "/device-result" : "/interrupts/" + interruptID.lowercased() + "/decision") + "?after_sequence=\(afterSequence)"
         var post = try self.request(route, auth: auth)
-        post.httpMethod = "POST"; post.timeoutInterval = ConversationReconnectPolicy.idleTimeout; post.setValue("text/event-stream, application/json", forHTTPHeaderField: "Accept"); post.setValue(TimeZone.current.identifier, forHTTPHeaderField: Self.timeZoneHeader)
+        post.httpMethod = "POST"; post.timeoutInterval = ConversationReconnectPolicy.idleTimeout; post.setValue("text/event-stream, application/json", forHTTPHeaderField: "Accept"); post.setValue(TimeZone.current.identifier, forHTTPHeaderField: Self.timeZoneHeader); post.setValue(ConversationMemorySwitch.headerValue, forHTTPHeaderField: ConversationMemorySwitch.header)
         post.httpBody = try Self.jsonData(decisionBody)
         let opened: (URLSession.AsyncBytes, URLResponse)
         do { opened = try await session.bytes(for: post) } catch is URLError { throw ConversationApprovalFailure.transport }
@@ -634,7 +634,7 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
         if request.image==nil,!request.hasUploadedAttachments,request.continuation==nil,request.acceptedWork==nil {upload.setValue(ConversationMemoryProposalReceipt.contractName,forHTTPHeaderField:"X-Catpaw-Memory-Proposal-Contract")}
         // catpaw.approval.v1 negotiation: only plain chat turns are offered approval-gated tools.
         if Self.supportsResume(request),request.image==nil,!request.hasUploadedAttachments {upload.setValue(Self.approvalContract,forHTTPHeaderField:Self.approvalHeader);upload.setValue(ConversationUIEvent.contract,forHTTPHeaderField:ConversationUIEvent.header);upload.setValue(ConversationUIEvent.kindsHeaderValue,forHTTPHeaderField:ConversationUIEvent.kindsHeader);if ConversationDeviceCall.clientEnabled {upload.setValue(ConversationDeviceCall.contract,forHTTPHeaderField:ConversationDeviceCall.header);if !ConversationDeviceCall.clientTools.isEmpty {upload.setValue(ConversationDeviceCall.clientTools.joined(separator:","),forHTTPHeaderField:ConversationDeviceCall.toolsHeader)}}}
-        upload.setValue(TimeZone.current.identifier,forHTTPHeaderField:Self.timeZoneHeader) // task tools resolve local times
+        upload.setValue(TimeZone.current.identifier,forHTTPHeaderField:Self.timeZoneHeader);upload.setValue(ConversationMemorySwitch.headerValue,forHTTPHeaderField:ConversationMemorySwitch.header) // task tools resolve local times
         try Task.checkCancellation()
         return (auth, grant, upload)
     }
@@ -791,7 +791,7 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
             // Side channel (#63): no transcript effect; raw data goes to MemoryEventSink / proactive store via the installed handler.
             guard let raw = type else { throw ConversationSessionError.invalidEvent }
             let body = try Self.jsonData(data)
-            ConversationSideChannelEvents.dispatch(type: raw, turnID: request.operationID, data: body)
+            ConversationSideChannelEvents.deliver(type: raw, request: request, data: body)   // token bound at send, not at arrival
             payload = .sideChannel(type: raw, data: body)
         case "device_call":
             guard reality != "not_configured", Self.supportsResume(request), request.image==nil, !request.hasUploadedAttachments,

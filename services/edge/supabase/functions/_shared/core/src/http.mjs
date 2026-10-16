@@ -102,9 +102,9 @@ export function createChatFetchHandler(runtime){
         {const idem=request.headers.get('Idempotency-Key');check(idem===null||(typeof raw?.turn_id==='string'&&idem.trim().toLowerCase()===raw.turn_id.toLowerCase()),422,'idempotency_key_mismatch');}
         const resolved=raw?.message?.attachment_ids===undefined?{input:raw,consume:async()=>{}}:await chat.attachments.resolveTurnInput(auth,scope,raw);
         if(resolved.replay)return json({turn:await chat.readTurn(auth,scope,tail[1],raw.turn_id),replayed:true});
-        const input=resolved.input,capability=request.headers.get('X-Catpaw-Memory-Proposal-Contract'),approvalContract=request.headers.get(APPROVAL_HEADER),timeZone=request.headers.get('X-Catpaw-Time-Zone'),uiContract=request.headers.get(UI_HEADER),memoryMode=request.headers.get('X-Catpaw-Memory-Mode'),deviceContract=request.headers.get(DEVICE_HEADER),deviceTools=request.headers.get(DEVICE_TOOLS_HEADER),uiKinds=request.headers.get(UI_KINDS_HEADER);
+        const input=resolved.input,capability=request.headers.get('X-Catpaw-Memory-Proposal-Contract'),approvalContract=request.headers.get(APPROVAL_HEADER),timeZone=request.headers.get('X-Catpaw-Time-Zone'),uiContract=request.headers.get(UI_HEADER),memoryMode=request.headers.get('X-Catpaw-Memory-Mode'),useMemory=request.headers.get('X-Catpaw-Use-Memory'),deviceContract=request.headers.get(DEVICE_HEADER),deviceTools=request.headers.get(DEVICE_TOOLS_HEADER),uiKinds=request.headers.get(UI_KINDS_HEADER);
         check(capability===null||capability===MEMORY_PROPOSAL_CONTRACT,422,'memory_proposal_contract_invalid');
-        const started=await chat.startTurn(auth,scope,tail[1],input,{memoryProposalContract:capability,approvalContract,timeZone,uiContract,memoryMode,deviceContract,deviceTools,uiKinds});
+        const started=await chat.startTurn(auth,scope,tail[1],input,{memoryProposalContract:capability,approvalContract,timeZone,uiContract,memoryMode,useMemory,deviceContract,deviceTools,uiKinds});
         if(!started.replayed)await resolved.consume();
         if(started.replayed)return json({turn:await chat.readTurn(auth,scope,tail[1],input.turn_id,{trusted:started.trusted}),replayed:true});
         runtime.onAccepted?.({owner:started.trusted.owner,principal:started.trusted.principal,turnId:input.turn_id});

@@ -549,7 +549,7 @@ struct ProactiveSignal: Equatable, Sendable {
         let travelMinutes = travel.minutes
         let usedETA = travel.usedETA
         let originNote = travel.originNote
-        guard AccountEpoch.shared.epoch == epochAtStart else { note("drop: account changed during ETA (no evaluate, no write-back)"); return nil }
+        guard AccountEpoch.shared.epoch == epochAtStart, AccountEpoch.shared.currentAccount == accountAtStart else { note("drop: account changed during ETA (no evaluate, no write-back)"); return nil }
         // leave_at = meeting_start - lead_minutes - travel_minutes (travel 0 only when ETA unused → lead only)
         let leaveAt = ProactiveRules.leaveAt(start: signal.start, leadMinutes: lead.minutes, travelMinutes: travelMinutes, usedETA: usedETA)
         let remindAt = leaveAt  // remind when user should leave
