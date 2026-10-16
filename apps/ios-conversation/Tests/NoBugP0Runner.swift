@@ -39,7 +39,7 @@ import Foundation
     static func expect(_ ok: Bool, _ m: String) { if ok { passed += 1; print("PASS \(m)") } else { failed += 1; print("FAIL \(m)") } }
 
     static func main() async {
-        await memory(); await deviceCalls(); proactive(); nearby(); groundedFixtures(); contactsPrivacy(); replyVariants(); followUps(); await deviceUndo(); dictation(); await p02AccountIsolation(); p04FeedbackUndoHandoff()
+        await memory(); await deviceCalls(); proactive(); nearby(); groundedFixtures(); contactsPrivacy(); replyVariants(); followUps(); await deviceUndo(); dictation(); await p02AccountIsolation(); await p02FromB8f0280(); p04FeedbackUndoHandoff()
         print("nobug-p0 portable: \(passed) passed, \(failed) failed")
         exit(failed == 0 ? 0 : 1)
     }
@@ -422,6 +422,18 @@ import Foundation
         expect(opened.status == .ok && opened.data?["handoff"] == .string("requested"), "P0-4 opened = requested, not task done")
         expect(DeviceToolContract.receiptKey(confirmKey: "运行", status: .ok, data: opened.data) == "已请求打开", "P0-4 shortcut receipt says 已请求打开, not 已运行")
         expect(DeviceToolContract.receiptKey(confirmKey: "运行", status: timedOut.status, data: timedOut.data) == "已请求打开，结果未知", "P0-4 unknown handoff shows 结果未知")
+    }
+
+    /// Incorporated from b8f0280 (Grok Bot's earlier P0-2): unowned legacy library and cloud-off/local-on cases.
+    static func p02FromB8f0280() async {
+        let legacy = MemoryLibraryStub(items: [.init(id: "l1", group: .preference, content: "旧文件")])
+        let target = RefusingBackend()
+        let r = await MemoryLibraryLocal.migrate(legacy, to: target, targetOwner: .account("user-b"))
+        expect(r.migrated == 0 && target.created.isEmpty, "codex P0-2 (b8f0280) unowned legacy items are not uploaded to a signed-in account")
+        let cloudOff = MemoryLibrarySnapshot(items: [], useMemory: false, autoSave: nil)
+        let localOn = MemoryLibrarySnapshot(items: [.init(id: "x", group: .preference, content: "开会提前 30 分钟准备")], useMemory: true, autoSave: nil)
+        expect(ProactiveRules.lead(in: [cloudOff, localOn]) == nil, "codex P0-2 (b8f0280) cloud 使用记忆 off also disables local lead memory")
+        expect(ProactiveRules.lead(in: [localOn])?.minutes == 30, "codex P0-2 (b8f0280) local lead still used when every switch is on")
     }
 }
 
