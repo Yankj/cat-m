@@ -74,3 +74,11 @@ extension ProactiveRules {
         generation == 0 ? "op-\(suggestion)-\(action)" : "op-\(suggestion)-\(action)-g\(generation)"
     }
 }
+
+extension ProactiveRules {
+    /// Codex PR90 P2: the on-device gate runs against the actual delivery instant. `evaluatedAt` is the (possibly
+    /// simulated) clock the chain started with; the wall-clock time spent in evaluation / ETA awaits is added to it.
+    static func deliveryInstant(evaluatedAt: Date, startedWall: Date, wall: Date = .now) -> Date {
+        evaluatedAt.addingTimeInterval(max(0, wall.timeIntervalSince(startedWall)))
+    }
+}

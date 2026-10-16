@@ -216,6 +216,7 @@ struct ProactiveSignal: Equatable, Sendable {
         guard ProactiveRules.inWindow(start: signal.start, now: now) else { note("filter drop: starts in \(Int(minutes)) min (window 0–180)"); return nil }
         // AccountEpoch (b): bind this chain to the signed-in account before any await; every write below commits under it.
         guard let token = AccountEpoch.shared.capture() else { note("signed out → no proactive work"); return nil }
+        let wallStart = Date.now
         // Dedupe ledger
         let hash = signal.signalHash
         // Codex P0-5: "evaluated" ≠ "delivered". Delivered → never again; evaluated-silent → re-evaluate later.
@@ -293,7 +294,8 @@ struct ProactiveSignal: Equatable, Sendable {
             ProactiveLocalBackend.save(suggestion)
             ProactiveSuggestionStore.shared.adopt(suggestion)
             lastSuggestionID = suggestion.id
-            intervene(suggestion, level: decision.level, now: now, token: token)
+            // Codex PR90 P2: quiet hours / cap against the real delivery instant (evaluation may have taken a while).
+            intervene(suggestion, level: decision.level, now: ProactiveRules.deliveryInstant(evaluatedAt: now, startedWall: wallStart), token: token)
             var delivered = signalLedger; delivered.markDelivered(hash, level: decision.level, now: now); signalLedger = delivered
             #if os(iOS)
             // Exactly once: the in-app delivery supersedes this meeting's pre-scheduled notification.
