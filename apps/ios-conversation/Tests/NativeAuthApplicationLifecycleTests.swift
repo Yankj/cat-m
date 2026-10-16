@@ -481,15 +481,22 @@ final class NativeAuthApplicationLifecycleTests:XCTestCase {
         let root=FileManager.default.temporaryDirectory.appendingPathComponent("native-pr91-atrest-launch-"+UUID().uuidString,isDirectory:true)
         defer {try? FileManager.default.removeItem(at:root)}
         let app=try pr91Model(root:root),order=PR91CallOrder()
-        let repository=try Repository(persistence:FilePersistence(url:root.appendingPathComponent("pr91-store.json")))
-        let seen=PR91CallOrder()
-        app.atRestMigrator={repo,subject in seen.add("\(ObjectIdentifier(repo))");order.add(subject.uuidString)}
-        let subject=UUID()
-        app.launchAtRestMigration(repository,subject:subject)
-        XCTAssertEqual(order.calls,[subject.uuidString],"migrator called once for the signed-in subject")
-        XCTAssertEqual(seen.calls,["\(ObjectIdentifier(repository))"],"migrator gets the composed repository")
-        app.launchAtRestMigration(repository)   // no signed-in user and no subject → nothing to migrate
-        XCTAssertEqual(order.calls.count,1)
+        // Codex PR91 p91d-4: no signed-in user yet (cold-start warmUp) — the partition alone carries the subject.
+        XCTAssertNil(app.state.user)
+        app.atRestMigrator={(_:Repository,partition:AuthenticatedLocalPartition) -> Void in order.add(partition.subject.uuidString+"|"+partition.namespace)}
+        let partition=AuthenticatedLocalPartition(issuer:"https://issuer.invalid",subject:UUID(),serverScopeID:UUID())
+        _=try await app.openAccountStores(partition:partition,directory:root.appendingPathComponent(partition.namespace,isDirectory:true),prepare:true)
+        XCTAssertEqual(order.calls,[partition.subject.uuidString+"|"+partition.namespace],"every opened account repository reaches the at-rest hook")
+    }
+
+    /// Codex PR91 p91d-4: every launch path (local receipt, sign-in, offline trial, workspace) opens its repository via
+    /// `openAccountStores`, so none can skip the hook. Guard against a new path calling the raw opener.
+    func testPR91EveryRepositoryOpenGoesThroughTheAtRestHook() throws {
+        let source=URL(fileURLWithPath:#filePath).deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("Sources/App/NativeAuthApplicationModel.swift")
+        let text=try String(contentsOf:source,encoding:.utf8)
+        XCTAssertEqual(text.components(separatedBy:"Self.openStores(").count-1,1,"only openAccountStores may call the raw store opener")
+        XCTAssertEqual(text.components(separatedBy:"Repository(persistence:").count-1,1,"repositories are created only inside openStores")
+        XCTAssertGreaterThanOrEqual(text.components(separatedBy:"openAccountStores(partition:").count-1,4,"local receipt, sign-in, offline trial and workspace paths")
     }
 
     @MainActor private func pr91Model(root:URL) throws -> NativeAuthApplicationModel {
