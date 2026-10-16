@@ -515,22 +515,44 @@ final class CatpawAcceptanceUITests: XCTestCase {
             return false
         }
         // DeviceTrial may be stuck on session-recovery; exit then retry anonymous experience.
-        if app.buttons["auth.closeUnrestoredSession"].waitForExistence(timeout: 5) {
-            app.buttons["auth.closeUnrestoredSession"].tap(); Thread.sleep(forTimeInterval: 2)
+        for _ in 0..<3 {
+            if app.buttons["auth.closeUnrestoredSession"].waitForExistence(timeout: 2) {
+                app.buttons["auth.closeUnrestoredSession"].tap(); Thread.sleep(forTimeInterval: 1.5)
+            } else { break }
         }
-        for l in ["再试一次", "Try again"] where app.buttons[l].exists { app.buttons[l].tap(); Thread.sleep(forTimeInterval: 3); break }
+        for l in ["再试一次", "Try again", "开始使用", "开始"] where app.buttons[l].exists {
+            app.buttons[l].tap(); Thread.sleep(forTimeInterval: 2); break
+        }
+        if app.buttons["auth.startExperience"].waitForExistence(timeout: 2) {
+            app.buttons["auth.startExperience"].tap(); Thread.sleep(forTimeInterval: 2)
+        }
         XCTAssertTrue(input(app).waitForExistence(timeout: 60)); Thread.sleep(forTimeInterval: 1)
-        if app.buttons["chat.new"].exists && app.buttons["chat.new"].isEnabled { app.buttons["chat.new"].tap(); Thread.sleep(forTimeInterval: 1) }
+        // Always start a fresh conversation so prior mail/reminder turns cannot poison tool choice
+        // (Gemini otherwise may skip phone_call after a failed mail_compose in the same thread).
+        if app.buttons["chat.new"].exists {
+            app.buttons["chat.new"].tap(); Thread.sleep(forTimeInterval: 1.2)
+        }
         func clearDraft() {
             let f = input(app); f.tap(); Thread.sleep(forTimeInterval: 0.5)
-            if let v = f.value as? String, !v.isEmpty, app.keyboards.firstMatch.exists { f.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: v.count + 4)) }
+            if let v = f.value as? String, !v.isEmpty, app.keyboards.firstMatch.exists { f.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: min(v.count + 4, 80))) }
         }
         func tapSend() {
             Thread.sleep(forTimeInterval: 0.6)
             let sends = app.buttons.matching(NSPredicate(format: "identifier == 'chat.send'")).allElementsBoundByIndex
             if let s = sends.first(where: { $0.isHittable && $0.isEnabled }) { s.tap() } else { app.buttons["chat.send"].firstMatch.tap() }
         }
+        /// Wait until the composer draft is empty (send accepted) or give up.
+        func waitDraftCleared(timeout: TimeInterval = 12) -> Bool {
+            let deadline = Date().addingTimeInterval(timeout)
+            while Date() < deadline {
+                let v = (input(app).value as? String) ?? ""
+                if v.isEmpty || v == "消息" || v == "Message" { return true }
+                Thread.sleep(forTimeInterval: 0.4)
+            }
+            return false
+        }
         clearDraft()
+        // Warmup only when this conversation has no assistant reply yet.
         if !app.descendants(matching: .any)["chat.assistant.message"].exists {
             input(app).typeText("你好"); tapSend()
             let allow = app.buttons["允许此对话"]
@@ -538,8 +560,9 @@ final class CatpawAcceptanceUITests: XCTestCase {
             else if app.buttons["chat.consent.review"].waitForExistence(timeout: 5), app.buttons["chat.consent.review"].isEnabled {
                 app.buttons["chat.consent.review"].tap(); if allow.waitForExistence(timeout: 8) { allow.tap() }
             }
+            _ = waitDraftCleared()
             for _ in 0..<40 { if app.descendants(matching: .any)["chat.assistant.message"].exists { break }; Thread.sleep(forTimeInterval: 1) }
-            Thread.sleep(forTimeInterval: 3)
+            Thread.sleep(forTimeInterval: 2)
             shot(app, tag + "00b-after-warmup")
         }
         clearDraft()
@@ -548,6 +571,8 @@ final class CatpawAcceptanceUITests: XCTestCase {
         if app.keyboards.firstMatch.exists { field.typeText(ask) }
         else { UIPasteboard.general.string = ask; field.press(forDuration: 1.0); if app.menuItems["粘贴"].waitForExistence(timeout: 2) { app.menuItems["粘贴"].tap() } else if app.menuItems["Paste"].waitForExistence(timeout: 1) { app.menuItems["Paste"].tap() } }
         tapSend()
+        // If the draft never cleared, send did not land — retry once (common after consent sheet).
+        if !waitDraftCleared(timeout: 8) { tapSend(); _ = waitDraftCleared(timeout: 8) }
         // Model consent sheet (auto or via 确认发送许可). Prefer accessibility ids from ConversationModelConsentView.
         func allowModelConsent() -> Bool {
             let allowBtn = app.descendants(matching: .any)["chat.modelConsent.allow"]
