@@ -134,6 +134,16 @@ func pr90_p2() {
     check(n == 1, "notify posts, night interrupt/card/silent don't, same identity m0 again doesn't (\(n))")
 }
 
+func nobug_gateAndTrigger() {
+    // Learned feedback gates the offline (local rules) decision too, keyed by the local trigger.
+    var seen: (String, Double, String)?
+    let down = ProactiveRules.applyFeedbackGate(.notify) { d, c, t in seen = (d, c, t); return "card" }
+    check(down == .card && seen?.0 == "notify" && seen?.2 == ProactiveRules.localTrigger, "gate downgrades local notify → card")
+    check(ProactiveRules.applyFeedbackGate(.notify) { _, _, _ in "interrupt" } == .notify, "gate can never raise a level")
+    check(ProactiveRules.applyFeedbackGate(.silent) { _, _, _ in "notify" } == .silent, "silent stays silent")
+    check(ProactiveRules.applyFeedbackGate(.notify, gate: nil) == .notify, "no gate installed → unchanged")
+}
+
 @main enum ProactivePR90Runner {
     static func main() async {
         pr90_3_prescheduleSharesDecisionAndQuota()
@@ -142,6 +152,7 @@ func pr90_p2() {
         await pr90_5_persistentQueue()
         pr90_6_undoIdentity()
         pr90_p2()
+        nobug_gateAndTrigger()
         print(failures == 0 ? "PR90 proactive: all passed" : "PR90 proactive: \(failures) failed"); exit(failures == 0 ? 0 : 1)
     }
 }

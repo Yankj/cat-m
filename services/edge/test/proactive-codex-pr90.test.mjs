@@ -78,3 +78,9 @@ test('PR90 #7: Postgres write is version-conditional (compare-and-set on suggest
   assert.equal(r, null, 'lost race → null (caller reloads and retries)');
   assert.match(calls[0][0], /payload->'suggestion'->>'rev'/); assert.equal(calls[0][1].at(-1), 2);
 });
+
+test('NoBug: suggestions carry their trigger (local and cloud share the feedback key)', async () => {
+  const { call } = setup();
+  const r = (await call('POST', BASE + '/evaluate', meeting(10))).body;
+  assert.equal(r.suggestion.trigger, 'meeting_upcoming');
+});
