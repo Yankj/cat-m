@@ -112,6 +112,28 @@ func pr90_6_undoIdentity() {
     let back = try! JSONDecoder().decode(ProactiveActionGenerations.self, from: JSONEncoder().encode(g)); check(back == g, "persisted")
 }
 
+func pr90_p2() {
+    // Quiet hours are checked at the real delivery instant, not when the (slow) evaluation started.
+    let started = at("2026-10-15T13:59:00Z")  // 21:59 CST
+    let deliver = ProactiveRules.deliveryInstant(evaluatedAt: started, startedWall: Date(timeIntervalSince1970: 1000), wall: Date(timeIntervalSince1970: 1000 + 90))
+    check(deliver == started.addingTimeInterval(90), "delivery instant = evaluation time + elapsed")
+    check(ProactiveRules.delivery(level: .notify, now: deliver, deliveredToday: 0, calendar: shanghai).level == .card, "22:00:30 delivery is in quiet hours")
+    // Cross-time-zone daily quota: a slot keeps the local day it was delivered on; travelling never re-opens the day.
+    var honolulu = Calendar(identifier: .gregorian); honolulu.timeZone = TimeZone(identifier: "Pacific/Honolulu")!
+    var q = ProactiveQuotaLedger(); let t = at("2026-10-15T04:00:00Z")  // 12:00 CST Oct 15
+    for i in 0..<ProactiveRules.dailyNotifyCap { q.recordDelivery("d\(i)", at: t, calendar: shanghai) }
+    // Fly to Honolulu: 2026-10-15T20:00Z = 10:00 HST Oct 15 → same local date, cap still reached.
+    check(q.count(on: at("2026-10-15T20:00:00Z"), calendar: honolulu) == ProactiveRules.dailyNotifyCap, "same local date after travel stays capped")
+    check(q.count(on: at("2026-10-16T20:00:00Z"), calendar: honolulu) == 0, "next local day is fresh")
+    // Real sends: offline matrix counts posts recorded in the ledger (the only path that posts), not verdicts.
+    var posts = ProactiveQuotaLedger(); var n = 0
+    for (i, (level, when)) in [(ProactiveLevel.notify, t), (.interrupt, at("2026-10-15T15:30:00Z")), (.card, t), (.silent, t), (.notify, t)].enumerated() {
+        let plan = ProactiveRules.delivery(level: level, now: when, deliveredToday: posts.count(on: when, calendar: shanghai), calendar: shanghai)
+        if plan.systemNotification, posts.recordDelivery("m\(i % 4)", at: when, calendar: shanghai) { n += 1 }
+    }
+    check(n == 1, "notify posts, night interrupt/card/silent don't, same identity m0 again doesn't (\(n))")
+}
+
 @main enum ProactivePR90Runner {
     static func main() async {
         pr90_3_prescheduleSharesDecisionAndQuota()
@@ -119,6 +141,7 @@ func pr90_6_undoIdentity() {
         pr90_4_serverActionStates()
         await pr90_5_persistentQueue()
         pr90_6_undoIdentity()
+        pr90_p2()
         print(failures == 0 ? "PR90 proactive: all passed" : "PR90 proactive: \(failures) failed"); exit(failures == 0 ? 0 : 1)
     }
 }
