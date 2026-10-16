@@ -41,7 +41,7 @@ struct DeviceCallSpec: Sendable {
         }
     }
     var doneKey: String {
-        switch confirmKey { case "加入": "已加入日历"; case "创建": "已创建提醒"; case "去发送": "已打开发送页"; case "呼叫": "已发起呼叫"; case "设置": "已设置"; case "运行": "已运行"; default: "已完成" }
+        switch confirmKey { case "加入": "已加入日历"; case "创建": "已创建提醒"; case "去发送": "已打开发送页"; case "呼叫": "已发起呼叫"; case "设置": "已设置"; case "运行": "已请求打开"; default: "已完成" }
     }
 }
 
@@ -167,7 +167,7 @@ struct DeviceCallSpec: Sendable {
         HStack(spacing: 8) {
             Image(systemName: result.status == .ok ? "checkmark.circle.fill" : result.status == .cancelled ? "xmark.circle" : "exclamationmark.circle")
                 .foregroundStyle(result.status == .ok ? CatpawBrand.paw : CatpawColors.secondary).accessibilityHidden(true)
-            Text(receiptText(result.status)).font(CatpawTypography.Role.body.font).foregroundStyle(CatpawColors.ink)
+            Text(DeviceToolContract.receiptKey(confirmKey: spec.confirmKey, status: result.status, data: result.data).map { ui($0) } ?? receiptText(result.status)).font(CatpawTypography.Role.body.font).foregroundStyle(CatpawColors.ink)
             if result.status == .ok, let raw = result.openURL, let url = URL(string: raw) {
                 Text("·").foregroundStyle(CatpawColors.tertiary).accessibilityHidden(true)
                 Button(ui("打开")) { openURL(url) }.font(CatpawTypography.Role.body.font.weight(.medium)).foregroundStyle(CatpawColors.ink).underline()
