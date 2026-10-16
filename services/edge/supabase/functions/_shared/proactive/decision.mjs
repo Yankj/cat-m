@@ -167,7 +167,9 @@ export function createDecisionService({ store, model = null, memory = null, now 
   async function act(uid, id, b) {
     const action = b?.action; if (!SUGGESTION_ACTIONS.includes(action)) throw bad('action_invalid');
     const opId = typeof b.operation_id === 'string' ? b.operation_id.slice(0, 80) : null;
+    let applied = false;
     return mutate(uid, id, (ev, st) => {
+      applied = false;
       if (opId && st.ops[opId]) return false;
       const last = st.taken.at(-1), effect = EFFECTS.includes(action);
       // A cancelled / unavailable / failed effect is never recorded (and never turns the suggestion done).
@@ -179,11 +181,18 @@ export function createDecisionService({ store, model = null, memory = null, now 
       if (effect) { const offered = (ev.payload.actions ?? []).filter(a => EFFECTS.includes(a)), done = actionStates(st); st.status = offered.every(a => done[a]) ? 'done' : 'pending'; }
       else st.status = ACTION_STATUS[action];
       if (opId) st.ops[opId] = action;
-      if (action === 'snooze') st.snooze_until = st.taken.at(-1).until = new Date(now() + (Number(b.minutes) > 0 ? Math.min(Number(b.minutes), 1440) : 10) * 60000).toISOString();
+      if (action === 'snooze') {
+        // Codex PR90e #5: the device's own until (one per snooze intent) is the cloud's, so both sides undo to the same one.
+        const u = typeof b.until === 'string' ? Date.parse(b.until) : NaN, t = now();
+        const until = Number.isFinite(u) && u > t && u <= t + 1440 * 60000 ? u : t + (Number(b.minutes) > 0 ? Math.min(Number(b.minutes), 1440) : 10) * 60000;
+        st.snooze_until = st.taken.at(-1).until = new Date(until).toISOString();
+      }
+      applied = true;
       return true;
     }).then(async sug => {
-      // Codex PR90d #5: a dismissed / snoozed suggestion must not be pushed by a still-pending row.
-      if ((action === 'dismiss' || action === 'snooze') && store.cancelPendingPush) await store.cancelPendingPush(uid, id, 'suggestion_' + ACTION_STATUS[action]);
+      // Codex PR90d #5 / PR90e: a dismissed / snoozed suggestion must not be pushed by a still-pending row — only when this
+      // call actually applied it (a replayed old op must never cancel a push that was re-armed since).
+      if (applied && sug.status === ACTION_STATUS[action] && (action === 'dismiss' || action === 'snooze') && store.cancelPendingPush) await store.cancelPendingPush(uid, id, 'suggestion_' + ACTION_STATUS[action]);
       return sug;
     });
   }
