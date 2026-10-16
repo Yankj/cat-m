@@ -897,6 +897,14 @@ extension Result { var isFailure: Bool { if case .failure = self { return true }
         let rOff = await MemoryLibraryLocal.migrate(offLocal, to: flaky, targetOwner: owner)
         expect(rOff.migrated == 1 && rOff.stoppedBy != nil, "PR91 p91b-4 failed off-carry during migration is reported, not swallowed")
         flaky.failSetUse = false
+        // p91c-4: local off + failed PATCH → after a restart (global cleared) the header is still "0".
+        MemoryRecallLoader.record(off: true, owner: owner); ConversationMemorySwitch.useMemory = nil
+        MemoryRecallLoader.restoreSwitch(owner: owner)
+        expect(ConversationMemorySwitch.headerValue == "0", "PR91 p91c-4 stored off restores the header at launch")
+        ConversationMemorySwitch.useMemory = nil; flaky.mode = .fail
+        _ = await MemoryRecallLoader.snapshots(cloud: flaky, local: localOn, owner: owner)
+        expect(ConversationMemorySwitch.headerValue == "0", "PR91 p91c-4 cloud load failure still sets the switch from the stored value")
+        MemoryRecallLoader.record(off: false, owner: owner); flaky.mode = .on
         // Empty local library with 使用记忆 off still carries off to the cloud.
         let emptyOff = MemoryLibraryStub(useMemory: false, owner: owner)
         let target = RefusingBackend()
@@ -928,6 +936,29 @@ extension Result { var isFailure: Bool { if case .failure = self { return true }
         ConversationMemoryAtRest.opener = { d, subj in guard subj == sA.userID else { throw L2SecureStoreError.unavailable }; return try sA.openSealed(d) }
         let row = try! ConversationMemoryAtRest.seal(Data("住在望京".utf8), subject: a)
         expect(row.hasPrefix("l2:") && !row.contains("望京") && ConversationMemoryAtRest.open(row, subject: a) == Data("住在望京".utf8), "PR91 #5 SwiftData memory row is sealed and opens for its subject")
+        // p91c-5: every plaintext row of the subject is sealed (not only rows that get read), verified, then gated.
+        do {
+            let url = FileManager.default.temporaryDirectory.appendingPathComponent("pr91-atrest-\(UUID().uuidString).json")
+            let repo = try Repository(persistence: FilePersistence(url: url))
+            let sc = DataScope(profileID: UUID(), workspaceID: UUID()), other = UUID()
+            let k1 = ConversationMemoryAtRest.keyPrefix + a.uuidString.lowercased() + ":" + UUID().uuidString.lowercased()
+            let k2 = ConversationMemoryAtRest.keyPrefix + a.uuidString.lowercased() + ":" + UUID().uuidString.lowercased()
+            let k3 = ConversationMemoryAtRest.keyPrefix + other.uuidString.lowercased() + ":" + UUID().uuidString.lowercased()
+            for k in [k1, k2, k3] { try await repo.commit(scope: sc, mutations: [.create(UUID(), .preference(.init(key: k, value: "{\"住址\":\"望京\"}")))]) }
+            let gd = UserDefaults(suiteName: "pr91-atrest-\(UUID().uuidString)")!
+            let realSealer = ConversationMemoryAtRest.sealer
+            ConversationMemoryAtRest.sealer = { _, _ in throw L2SecureStoreError.unavailable }
+            let r0 = await ConversationMemoryAtRest.migrateAll(repo, subject: a, defaults: gd)
+            expect(r0.failed == 2 && !r0.complete && !ConversationMemoryAtRest.isMigrated(a, defaults: gd), "PR91 p91c-5 seal failure leaves the gate unset (retried next launch)")
+            ConversationMemoryAtRest.sealer = realSealer
+            let r1 = await ConversationMemoryAtRest.migrateAll(repo, subject: a, defaults: gd)
+            let rows = await repo.preferenceRecords(keyPrefix: ConversationMemoryAtRest.keyPrefix)
+            let values = rows.compactMap { r -> (String, String)? in if case .preference(let p) = r.payload { return (p.key, p.value) }; return nil }
+            expect(r1.sealed == 2 && r1.complete && ConversationMemoryAtRest.isMigrated(a, defaults: gd)
+                   && values.filter { $0.0 != k3 }.allSatisfy { ConversationMemoryAtRest.isSealed($0.1) && !$0.1.contains("望京") },
+                   "PR91 p91c-5 retry seals ALL of the subject's rows, verifies them and sets the gate")
+            expect(values.first { $0.0 == k3 }.map { !ConversationMemoryAtRest.isSealed($0.1) } == true, "PR91 p91c-5 another subject's rows are left for that subject")
+        } catch { expect(false, "PR91 p91c-5 at-rest migration fixture: \(error)") }
         expect(ConversationMemoryAtRest.open(row, subject: b) == nil, "PR91 #5 another subject cannot open the row")
         signOut(a)
         ConversationMemoryAtRest.opener = { d, _ in guard let s = L2SecureStore.current else { throw L2SecureStoreError.unavailable }; return try s.openSealed(d) }
