@@ -187,3 +187,39 @@ test('pg: evidence — concurrent claims really ran on distinct server connectio
     assert.ok(pids.size >= 2, 'multi-connection'); assert.equal(r.filter(x => x.won).length, 1);
   } finally { await sql.end(); }
 });
+
+// PR90h #1 / #2 on real Postgres.
+test('pg PR90h: an old snooze cancel arriving after the resurface (next generation) is a no-op', { skip: !url }, async () => {
+  const sql = postgres(url, { max: 4, prepare: false, onnotice: () => {} });
+  try {
+    const clock = { t: Date.parse('2026-10-15T02:00:00Z') }, { U, store, call } = rig(sql, { configured: true, send: async () => ({ ok: true }) }, clock);
+    await sql`insert into auth.users(id) values(${U})`;
+    let open; const g = new Promise(r => { open = r; }), real = store.cancelPendingPush.bind(store); let hold = true;
+    store.cancelPendingPush = async (...a) => { if (hold) { hold = false; await g; } return real(...a); };
+    const id = (await call('POST', '/catpaw/proactive/v1/evaluate', meeting())).body.event_id;
+    const snooze = call('POST', `/catpaw/proactive/v1/suggestions/${id}/action`, { action: 'snooze', operation_id: 'op-pgh1', minutes: 10 });
+    await new Promise(r => setTimeout(r, 100));
+    clock.t += 11 * 60_000; await store.resurfaceSnoozed(new Date(clock.t).toISOString());
+    open(); await snooze;
+    const [r] = await sql`select push_state, push_generation, push_error, payload->'suggestion'->>'status' s from proactive.events where id=${id}`;
+    assert.deepEqual([r.push_state, r.push_generation, r.push_error, r.s], ['pending', 1, null, 'pending']);
+  } finally { await sql.end(); }
+});
+test('pg PR90h: multi-device — the lease expires during the first device send → no further device is sent', { skip: !url }, async () => {
+  const sql = postgres(url, { max: 4, prepare: false, onnotice: () => {} });
+  try {
+    let open; const g = new Promise(r => { open = r; }), calls = [];
+    const apns = { configured: true, send: async t => { calls.push(t.device_id); if (t.device_id === 'pgd1') await g; return { ok: true }; } };
+    const clock = { t: Date.parse('2026-10-15T02:00:00Z') }, { U, store, svc, call } = rig(sql, apns, clock);
+    await sql`insert into auth.users(id) values(${U})`;
+    for (const d of ['pgd1', 'pgd2']) await store.upsertToken(U, { device_id: d, kind: 'apns', token: (d === 'pgd1' ? 'ab' : 'cd').repeat(32), environment: 'sandbox', bundle_id: 'app.catpaw', activity_id: null });
+    const id = (await call('POST', '/catpaw/proactive/v1/evaluate', meeting())).body.event_id;
+    await sql`update proactive.events set push_state='skipped' where push_state='pending' and id<>${id}`;   // isolate from other users' rows
+    const old = svc.flushPush(); for (let i = 0; i < 50 && !calls.length; i++) await new Promise(r => setTimeout(r, 20));
+    clock.t += 10 * 60_000; await store.recoverStalePush(new Date(clock.t).toISOString(), 300);
+    open(); await old;
+    const [r] = await sql`select push_state, push_error, push_generation from proactive.events where id=${id}`;
+    assert.deepEqual([r.push_state, r.push_error, r.push_generation], ['failed', 'outcome_unknown', 1]);
+    assert.deepEqual(calls, ['pgd1'], 'no new external send after the licence was lost');
+  } finally { await sql.end(); }
+});
