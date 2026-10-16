@@ -74,7 +74,7 @@ import EventKit
         XCTAssertEqual(r.status, .error); XCTAssertEqual(r.data?["reason"], .string("credential_required"))
         // Counter-test: same id, with the real tap → written exactly once.
         let ok = await router.execute(call, credential: try XCTUnwrap(credential(call)))
-        XCTAssertEqual(ok.status, .ok)
+        XCTAssertEqual(ok.status, .ok, "\(String(describing: ok.data))")
         XCTAssertEqual(events(with: [call.call_id], around: start), 1)
         cleanup([call.call_id], around: start)
     }
@@ -243,7 +243,7 @@ import EventKit
         let router = DeviceToolRouter(), c = try XCTUnwrap(credential(call))
         let first = await router.execute(call, credential: c)
         let second = await router.execute(call, credential: try XCTUnwrap(credential(call)))
-        XCTAssertEqual(first.status, .ok); XCTAssertEqual(second.data?["deduped"], .bool(true))
+        XCTAssertEqual(first.status, .ok); XCTAssertEqual(second.data?["deduped"], .bool(true), "\(String(describing: second.data))")
         XCTAssertEqual(first.data?["reminder_id"], second.data?["reminder_id"])
         let marker = DeviceToolContract.callMarker(id)
         store.reset()
@@ -299,14 +299,15 @@ actor WiringDeviceCallBackend: ConversationBackend {
                                           argsHash: String(repeating: "a", count: 64), expiresAt: ISO8601DateFormatter().string(from: Date().addingTimeInterval(600)))
         }
         let id1 = "wire-1-" + UUID().uuidString, id2 = "wire-2-" + UUID().uuidString
+        let wire1 = wire(id1), wire2 = wire(id2)   // one wire object per call (interrupt id is part of the grant)
         let repo = try Repository(persistence: FilePersistence(url: FileManager.default.temporaryDirectory.appendingPathComponent("wiring-\(UUID().uuidString).json")))
-        let service = ConversationSessionService(repository: repo, backend: WiringDeviceCallBackend(calls: [wire(id1), wire(id2)]), principalAccount: uid.uuidString)
+        let service = ConversationSessionService(repository: repo, backend: WiringDeviceCallBackend(calls: [wire1, wire2]), principalAccount: uid.uuidString)
         let conversation = try await service.create(scope: Profiles.user)
         let sending = Task { _ = try? await service.send(scope: Profiles.user, conversationID: conversation, text: "建两个日程", operationID: UUID()) }
         defer { sending.cancel() }
         for _ in 0..<300 where !(DeviceCallGate.isLive(id1) && DeviceCallGate.isLive(id2)) { try await Task.sleep(nanoseconds: 10_000_000) }
         XCTAssertTrue(DeviceCallGate.isLive(id1) && DeviceCallGate.isLive(id2), "grants come from the real service's SSE boundary on the shared epoch")
-        guard let w1 = DeviceCall(wire(id1)), let w2 = DeviceCall(wire(id2)) else { return XCTFail("decode") }
+        guard let w1 = DeviceCall(wire1), let w2 = DeviceCall(wire2) else { return XCTFail("decode") }
         func cred(_ c: DeviceCall) -> DeviceCallGate.Credential? {
             if case .success(let x) = DeviceCallGate.authorize(c, finalArgs: c.args, tap: DeviceCallGate.confirmTap(c, finalArgs: c.args)) { return x }; return nil
         }
