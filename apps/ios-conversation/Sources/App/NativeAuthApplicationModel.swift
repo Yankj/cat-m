@@ -163,6 +163,7 @@ struct NativeWorkspaceRetrySchedule: Sendable {
         }.value
         guard let found=found,chat == nil else { return }
         let (receipt,partition)=found
+        let openEpoch=lifecycleEpoch,openToken=Self.principal(for:partition.subject)   // captured at open start
         let url=root.appendingPathComponent(partition.namespace).appendingPathComponent("local.store")
         do {
             let (repository,imageStore)=try await Self.openStores(directory:url.deletingLastPathComponent(),prepare:false)
@@ -180,7 +181,9 @@ struct NativeWorkspaceRetrySchedule: Sendable {
             selected=CatpawDemoBackendSwitch.select(selected)
             #endif
             let preview=ConversationFirstModel(repository:repository,service:ConversationSessionService(repository:repository,backend:selected,resilience:ConnectionMonitorResilience(),outbox:ConversationOutbox(fileURL:url.deletingLastPathComponent().appendingPathComponent("conversation-outbox.json")),principalAccount:partition.subject.uuidString),scope:partition.scope,imageStore:imageStore,taskPlanService:isFixture ? nil : ConversationTaskPlanService(repository:repository,scope:partition.scope,backend:backend),artifactEditService:isFixture ? nil : ConversationArtifactEditService(repository:repository,scope:partition.scope,backend:backend),taskActionService:isFixture ? nil : ConversationTaskActionService(repository:repository,scope:partition.scope,backend:backend),taskControlService:isFixture ? nil : ConversationTaskControlService(repository:repository,scope:partition.scope,backend:backend),memoryService:memory,inboxService:isFixture ? nil : ConversationInboxService(reference:.init(scope:partition.scope,serverScopeID:chatConfiguration.serverScopeID,subjectID:partition.subject),backend:backend),subjectID:partition.subject)
-            preview.setNetworkAdmissionAllowed(false);await preview.start();self.backend=backend;chat=preview;namespace=partition.namespace
+            preview.setNetworkAdmissionAllowed(false);await preview.start()
+            guard attachIfCurrent(preview,openEpoch:openEpoch,token:openToken) else { return }
+            self.backend=backend;namespace=partition.namespace
             installUIDecisionSubmitter(preview.service,scope:partition.scope)
         } catch { self.error=NativeAuthError.storage.localizedDescription }
     }
@@ -435,6 +438,15 @@ struct NativeWorkspaceRetrySchedule: Sendable {
             }
         }
     }
+    /// Every local chat open re-validates AFTER its last await (`start()`), so a logout / account switch / session-restart
+    /// that completed while the open was suspended can never reattach a chat. With an account token captured at open start,
+    /// the attach itself runs inside AccountEpoch.commit(token) (atomic with signOut / activate).
+    private func attachIfCurrent(_ opened: ConversationFirstModel, openEpoch: Int, token: AccountToken?, provisional: Bool = false) -> Bool {
+        let current = chat == nil && !logoutInProgress && lifecycleEpoch == openEpoch && !(provisional && requiresSessionRestart)
+        let attached = current && (token.map { t in AccountEpoch.shared.commit(t) { chat = opened; return true } ?? false } ?? { chat = opened; return true }())
+        if !attached { Task { await opened.deactivate() } }
+        return attached
+    }
     private func workspaceKeyIsCurrent(_ key:WorkspaceKey,user:NativeAuthUser) async -> Bool {
         guard let manager,!logoutInProgress,key.lifecycleEpoch == lifecycleEpoch else{return false}
         let current=await manager.snapshot()
@@ -442,7 +454,8 @@ struct NativeWorkspaceRetrySchedule: Sendable {
     }
     /// Local chat for entry/offline. Network stays closed until resolveWorkspace admits for real.
     private func admitProvisionalChat(user: NativeAuthUser, configuration: NativeAuthConfiguration) async {
-        guard chat == nil, !logoutInProgress else { return }
+        guard chat == nil, !logoutInProgress, !requiresSessionRestart else { return }
+        let openEpoch = lifecycleEpoch, openToken = Self.principal(for: user.id)   // captured at open start
         let serverScope = configuration.serverScopeID
             ?? provisionalScope(for: user.id)
         do {
@@ -467,7 +480,7 @@ struct NativeWorkspaceRetrySchedule: Sendable {
             guard chat == nil, !logoutInProgress else { return }
             opened.setNetworkAdmissionAllowed(false)
             await opened.start()
-            chat = opened
+            guard attachIfCurrent(opened, openEpoch: openEpoch, token: openToken, provisional: true) else { return }
             installUIDecisionSubmitter(opened.service, scope: partition.scope)
             namespace = partition.namespace
             // Do not clear workspaceFlight — real admit still runs in background.
@@ -482,6 +495,7 @@ struct NativeWorkspaceRetrySchedule: Sendable {
     /// First-launch / auth-unreachable: local trial store, no network admission, no fake cloud credential.
     private func openOfflineTrialChat(configuration: NativeAuthConfiguration) async {
         guard chat == nil, !logoutInProgress else { return }
+        let openEpoch = lifecycleEpoch
         let subject = offlineTrialSubject()
         let serverScope = configuration.serverScopeID ?? provisionalScope(for: subject)
         let issuer = configuration.issuer + "|offline-trial"
@@ -493,7 +507,7 @@ struct NativeWorkspaceRetrySchedule: Sendable {
             let opened = ConversationFirstModel(repository: repository, service: ConversationSessionService(repository: repository, backend: UnconfiguredConversationBackend(), resilience: ConnectionMonitorResilience(), outbox: ConversationOutbox(fileURL: directory.appendingPathComponent("conversation-outbox.json"))), scope: partition.scope, imageStore: imageStore, subjectID: subject)
             opened.setNetworkAdmissionAllowed(false)
             await opened.start()
-            chat = opened
+            guard attachIfCurrent(opened, openEpoch: openEpoch, token: nil) else { return }
             namespace = partition.namespace
             installUIDecisionSubmitter(opened.service, scope: partition.scope)
             error = nil
