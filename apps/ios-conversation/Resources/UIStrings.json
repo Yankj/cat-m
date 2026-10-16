@@ -6162,5 +6162,21 @@
   "这条消息没能确认送达，已停止等待。可以重新发送。": {
     "en": "This message couldn't be confirmed as delivered, so Catpaw stopped waiting. You can send it again.",
     "zh-Hans": "这条消息没能确认送达，已停止等待。可以重新发送。"
+  },
+  "这次会话需要重新开始，本机对话仍会保留。": {
+    "en": "Please start a new session. Your conversations on this device will be kept.",
+    "zh-Hans": "这次会话需要重新开始，本机对话仍会保留。"
+  },
+  "正在连接，恢复后会自动继续。": {
+    "en": "Connecting. We will continue automatically once the connection returns.",
+    "zh-Hans": "正在连接，恢复后会自动继续。"
+  },
+  "暂时无法打开工作区，本机对话仍会保留。": {
+    "en": "Unable to open your workspace right now. Your conversations on this device will be kept.",
+    "zh-Hans": "暂时无法打开工作区，本机对话仍会保留。"
+  },
+  "重新开始": {
+    "en": "Start again",
+    "zh-Hans": "重新开始"
   }
 }
