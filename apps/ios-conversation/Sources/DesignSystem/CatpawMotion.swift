@@ -280,14 +280,23 @@ struct TwoLineMenuGlyph: View {
     }
 }
 
-/// r10 streaming presence: an ultra-abstract soft-clay cat head (~22pt) that replaces the thinking/streaming dots.
-/// Each state maps to turn events; all motion uses springs and collapses to static poses under Reduce Motion.
-enum CatpawPresenceState: Equatable { case waiting, thinking, streaming, working, done, error }
+/// Soft-3D header / presence cat (`docs/refs/header-cat/six-states.png`).
+/// Six poses L→R: idle · spin · wobble · orbit-load · happy · ears-down(offline).
+/// Clay `#FF702A` body — not flat `BrandMark`. Reduce Motion → static pose.
+enum CatpawPresenceState: Equatable {
+    case waiting    // 1 idle/calm
+    case streaming  // 2 spin
+    case error      // 3 wobble
+    case thinking   // 4 orbit-load (also used for tool work)
+    case working    // 4 orbit-load (alias pose)
+    case done       // 5 happy ^_^
+    case offline    // 6 ears-down
+}
 
 struct CatpawPresence: View {
     var state: CatpawPresenceState
     var size: CGFloat = 22
-    /// Bumped by the host on each revealed chunk while streaming → subtle nod in rhythm with the reveal.
+    /// Bumped by the host on each revealed chunk while streaming → subtle nod.
     var revealTick: Int = 0
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var blink = false
@@ -296,28 +305,73 @@ struct CatpawPresence: View {
     @State private var orbit = false
     @State private var bounce = false
     @State private var nod = false
+    @State private var spin = false
+    @State private var wobble = false
 
     var body: some View {
         let u = size / 24
-        let clay = RadialGradient(stops: [.init(color: CatpawBrand.clayLight, location: 0), .init(color: CatpawBrand.clayBase, location: 0.55),
-                                          .init(color: CatpawBrand.clayRim, location: 1)], center: UnitPoint(x: 0.36, y: 0.28), startRadius: 0, endRadius: 15 * u)
-        let earDrop: Double = state == .error ? 38 : (state == .working ? -8 : 0)
+        // Soft clay #FF702A family — matches brand primary / App Icon, not flat BrandMark.
+        let clay = RadialGradient(
+            stops: [
+                .init(color: CatpawBrand.clayLight, location: 0),
+                .init(color: CatpawBrand.clayBase, location: 0.55),
+                .init(color: CatpawBrand.clayRim, location: 1),
+            ],
+            center: UnitPoint(x: 0.36, y: 0.28),
+            startRadius: 0,
+            endRadius: 15 * u
+        )
+        let earsDown = state == .offline
+        let earDrop: Double = earsDown ? 52 : (state == .error ? 10 : (state == .working || state == .thinking ? -6 : 0))
         ZStack {
-            Ellipse().fill(CatpawBrand.clayShadow.opacity(0.18)).frame(width: 16 * u, height: 2.4 * u).blur(radius: 1.2 * u).offset(y: 11.4 * u)
+            Ellipse()
+                .fill(CatpawBrand.clayShadow.opacity(0.20))
+                .frame(width: 16 * u, height: 2.6 * u)
+                .blur(radius: 1.2 * u)
+                .offset(y: 11.6 * u)
+
             ZStack {
                 CatEar().fill(clay).frame(width: 7 * u, height: 7 * u)
-                    .rotationEffect(.degrees(-14 - earDrop - (twitch ? 10 : 0)), anchor: .bottom).offset(x: -6 * u, y: -7.6 * u)
+                    .rotationEffect(.degrees((-14 - earDrop) - (twitch ? 10 : 0)), anchor: .bottom)
+                    .offset(x: -6 * u, y: earsDown ? -4.2 * u : -7.6 * u)
                 CatEar().fill(clay).frame(width: 7 * u, height: 7 * u)
-                    .rotationEffect(.degrees(14 + earDrop), anchor: .bottom).offset(x: 6 * u, y: -7.6 * u)
+                    .rotationEffect(.degrees(14 + earDrop), anchor: .bottom)
+                    .offset(x: 6 * u, y: earsDown ? -4.2 * u : -7.6 * u)
+
                 Ellipse().fill(clay).frame(width: 21 * u, height: 18 * u).offset(y: 1.5 * u)
-                Ellipse().fill(CatpawBrand.clayHighlight.opacity(0.35)).frame(width: 5 * u, height: 3 * u).blur(radius: 0.8 * u).offset(x: -4.5 * u, y: -3.2 * u)
+                Ellipse().fill(CatpawBrand.clayHighlight.opacity(0.35))
+                    .frame(width: 5 * u, height: 3 * u).blur(radius: 0.8 * u)
+                    .offset(x: -4.5 * u, y: -3.2 * u)
+
                 eyes(u).offset(y: (state == .streaming ? 3.4 : 2.2) * u)
+
+                if state == .error {
+                    wobbleTicks(u, side: -1)
+                    wobbleTicks(u, side: 1)
+                }
+                if state == .done {
+                    happyTicks(u, side: -1)
+                    happyTicks(u, side: 1)
+                }
             }
-            .rotationEffect(.degrees(state == .thinking && tilt ? -9 : 0))
+            .rotationEffect(.degrees(headTiltDegrees))
             .offset(y: (bounce ? -3 * u : 0) + (nod ? 0.8 * u : 0))
-            if state == .working {
-                Circle().fill(CatpawBrand.clayRim).frame(width: 3 * u, height: 3 * u)
-                    .offset(x: 11 * u).rotationEffect(.degrees(orbit ? 360 : 0)).offset(y: -12 * u).scaleEffect(x: 1, y: 0.35)
+
+            if state == .streaming {
+                spinArrows(u)
+                    .rotationEffect(.degrees(spin ? 360 : 0))
+            }
+
+            if state == .thinking || state == .working {
+                Circle()
+                    .stroke(CatpawBrand.clayBase.opacity(0.55), lineWidth: 1.2 * u)
+                    .frame(width: 26 * u, height: 26 * u)
+                    .offset(y: -1 * u)
+                Circle()
+                    .fill(CatpawBrand.clayRim)
+                    .frame(width: 3.2 * u, height: 3.2 * u)
+                    .offset(y: -14 * u)
+                    .rotationEffect(.degrees(orbit ? 360 : 0))
             }
         }
         .frame(width: size, height: size)
@@ -331,41 +385,89 @@ struct CatpawPresence: View {
         }
     }
 
+    private var headTiltDegrees: Double {
+        switch state {
+        case .streaming: return spin ? 12 : -8
+        case .error: return wobble ? 14 : -14
+        case .thinking: return tilt ? -9 : 0
+        default: return 0
+        }
+    }
+
     @ViewBuilder private func eyes(_ u: CGFloat) -> some View {
         HStack(spacing: 6 * u) {
             ForEach(0..<2, id: \.self) { _ in
                 switch state {
-                case .done: HappyEye().stroke(CatpawColors.ink, style: StrokeStyle(lineWidth: 1.3 * u, lineCap: .round)).frame(width: 3.4 * u, height: 2 * u)
-                case .error: Capsule().fill(CatpawColors.ink).frame(width: 3.4 * u, height: 1.2 * u)
-                default: Capsule().fill(CatpawColors.ink).frame(width: 2.3 * u, height: (blink ? 0.4 : 2.6) * u)
+                case .done:
+                    HappyEye().stroke(CatpawColors.ink, style: StrokeStyle(lineWidth: 1.3 * u, lineCap: .round))
+                        .frame(width: 3.4 * u, height: 2 * u)
+                case .offline, .error:
+                    Capsule().fill(CatpawColors.ink).frame(width: 3.6 * u, height: 1.15 * u)
+                default:
+                    Capsule().fill(CatpawColors.ink)
+                        .frame(width: 2.3 * u, height: (blink ? 0.4 : 2.6) * u)
                 }
             }
         }
     }
 
+    private func wobbleTicks(_ u: CGFloat, side: CGFloat) -> some View {
+        VStack(spacing: 1.2 * u) {
+            ForEach(0..<3, id: \.self) { i in
+                Capsule().fill(CatpawBrand.clayRim.opacity(0.55))
+                    .frame(width: (2.2 + CGFloat(i) * 0.4) * u, height: 0.7 * u)
+                    .rotationEffect(.degrees(Double(side) * -25))
+            }
+        }
+        .offset(x: side * 14 * u, y: 1 * u)
+    }
+
+    private func happyTicks(_ u: CGFloat, side: CGFloat) -> some View {
+        VStack(spacing: 1.1 * u) {
+            ForEach(0..<3, id: \.self) { _ in
+                Capsule().fill(CatpawBrand.clayRim.opacity(0.5))
+                    .frame(width: 2.4 * u, height: 0.65 * u)
+            }
+        }
+        .offset(x: side * 13.5 * u, y: 0.5 * u)
+    }
+
+    private func spinArrows(_ u: CGFloat) -> some View {
+        ZStack {
+            ForEach(0..<2, id: \.self) { i in
+                Circle()
+                    .trim(from: 0.08, to: 0.42)
+                    .stroke(CatpawBrand.clayRim.opacity(0.7), style: StrokeStyle(lineWidth: 1.4 * u, lineCap: .round))
+                    .frame(width: 28 * u, height: 28 * u)
+                    .rotationEffect(.degrees(Double(i) * 180))
+            }
+        }
+    }
+
     private func start() {
-        blink = false; tilt = false; twitch = false; orbit = false; bounce = false; nod = false
+        blink = false; tilt = false; twitch = false; orbit = false; bounce = false; nod = false; spin = false; wobble = false
         guard !reduceMotion else { return }
         switch state {
         case .waiting:
             withAnimation(.easeInOut(duration: 0.18).delay(1.6).repeatForever(autoreverses: true)) { blink = true }
-        case .thinking:
+        case .thinking, .working:
+            withAnimation(.linear(duration: 1.5).repeatForever(autoreverses: false)) { orbit = true }
             withAnimation(.smooth(duration: 1.4).repeatForever(autoreverses: true)) { tilt = true }
-            withAnimation(.bouncy(duration: 0.3).delay(0.9).repeatForever(autoreverses: true)) { twitch = true }
         case .streaming:
-            // r11 writing: steady "typing" nod (revealTick nods still layer on top).
+            withAnimation(.linear(duration: 1.8).repeatForever(autoreverses: false)) { spin = true }
             withAnimation(.easeInOut(duration: 0.42).repeatForever(autoreverses: true)) { nod = true }
-        case .working:
-            withAnimation(.linear(duration: 1.6).repeatForever(autoreverses: false)) { orbit = true }
         case .done:
             withAnimation(.bouncy(duration: 0.4, extraBounce: 0.2)) { bounce = true }
             withAnimation(.smooth(duration: 0.3).delay(0.32)) { bounce = false }
-        case .error: break
+        case .error:
+            withAnimation(.easeInOut(duration: 0.22).repeatForever(autoreverses: true)) { wobble = true }
+        case .offline:
+            break
         }
     }
 }
 
-private struct CatEar: Shape {   // rounded triangle
+private struct CatEar: Shape {
     func path(in r: CGRect) -> Path {
         var p = Path()
         p.move(to: CGPoint(x: r.minX, y: r.maxY))
@@ -376,8 +478,12 @@ private struct CatEar: Shape {   // rounded triangle
     }
 }
 
-private struct HappyEye: Shape {   // ^
+private struct HappyEye: Shape {
     func path(in r: CGRect) -> Path {
-        var p = Path(); p.move(to: CGPoint(x: r.minX, y: r.maxY)); p.addLine(to: CGPoint(x: r.midX, y: r.minY)); p.addLine(to: CGPoint(x: r.maxX, y: r.maxY)); return p
+        var p = Path()
+        p.move(to: CGPoint(x: r.minX, y: r.maxY))
+        p.addLine(to: CGPoint(x: r.midX, y: r.minY))
+        p.addLine(to: CGPoint(x: r.maxX, y: r.maxY))
+        return p
     }
 }
