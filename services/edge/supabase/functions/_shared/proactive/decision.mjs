@@ -148,30 +148,44 @@ export function createDecisionService({ store, model = null, memory = null, now 
     return { event_id: ev.id, kind: b.kind, applied: true, weights: next, memory_id };
   }
 
+  // Codex PR90 #7: read-modify-write under compare-and-set on suggestion.rev; a lost race reloads and re-applies.
+  async function mutate(uid, id, apply) {
+    for (let i = 0; i < 6; i++) {
+      const ev = await load(uid, id), st = ev.payload.suggestion, rev = st.rev ?? 0;
+      if (!apply(ev, st)) return toSuggestion(ev);
+      st.rev = rev + 1;
+      const saved = await store.updateEventPayload(uid, id, ev.payload, rev);
+      if (saved) return toSuggestion(saved);
+    }
+    throw bad('suggestion_write_conflict', 409);
+  }
   async function act(uid, id, b) {
     const action = b?.action; if (!SUGGESTION_ACTIONS.includes(action)) throw bad('action_invalid');
     const opId = typeof b.operation_id === 'string' ? b.operation_id.slice(0, 80) : null;
-    const ev = await load(uid, id), st = ev.payload.suggestion;
-    if (opId && st.ops[opId]) return toSuggestion(ev);
-    const last = st.taken.at(-1), effect = EFFECTS.includes(action);
-    // A cancelled / unavailable / failed effect is never recorded (and never turns the suggestion done).
-    if (effect && typeof b.outcome === 'string' && !['succeeded', 'sent', 'done'].includes(b.outcome)) return toSuggestion(ev);
-    if (!opId && (effect ? st.taken.some(t => t.action === action) : (last?.action === action && st.status === ACTION_STATUS[action]))) return toSuggestion(ev);
-    const at = new Date(now()).toISOString();
-    st.history.push({ status: st.status, taken_len: st.taken.length });
-    st.taken.push({ action, at, ...(typeof b.detail === 'string' ? { detail: b.detail.slice(0, 200) } : {}) });
-    if (effect) { const offered = (ev.payload.actions ?? []).filter(a => EFFECTS.includes(a)), done = actionStates(st); st.status = offered.every(a => done[a]) ? 'done' : 'pending'; }
-    else st.status = ACTION_STATUS[action];
-    if (opId) st.ops[opId] = action;
-    if (action === 'snooze') st.snooze_until = new Date(now() + (Number(b.minutes) > 0 ? Math.min(Number(b.minutes), 1440) : 10) * 60000).toISOString();
-    return toSuggestion(await store.updateEventPayload(uid, id, ev.payload));
+    return mutate(uid, id, (ev, st) => {
+      if (opId && st.ops[opId]) return false;
+      const last = st.taken.at(-1), effect = EFFECTS.includes(action);
+      // A cancelled / unavailable / failed effect is never recorded (and never turns the suggestion done).
+      if (effect && typeof b.outcome === 'string' && !['succeeded', 'sent', 'done'].includes(b.outcome)) return false;
+      if (!opId && (effect ? st.taken.some(t => t.action === action) : (last?.action === action && st.status === ACTION_STATUS[action]))) return false;
+      const at = new Date(now()).toISOString();
+      st.history.push({ status: st.status, taken_len: st.taken.length });
+      st.taken.push({ action, at, ...(typeof b.detail === 'string' ? { detail: b.detail.slice(0, 200) } : {}) });
+      if (effect) { const offered = (ev.payload.actions ?? []).filter(a => EFFECTS.includes(a)), done = actionStates(st); st.status = offered.every(a => done[a]) ? 'done' : 'pending'; }
+      else st.status = ACTION_STATUS[action];
+      if (opId) st.ops[opId] = action;
+      if (action === 'snooze') st.snooze_until = new Date(now() + (Number(b.minutes) > 0 ? Math.min(Number(b.minutes), 1440) : 10) * 60000).toISOString();
+      return true;
+    });
   }
   async function undo(uid, id, b = {}) {
-    const ev = await load(uid, id), st = ev.payload.suggestion, opId = typeof b.operation_id === 'string' ? b.operation_id.slice(0, 80) : null;
-    if (opId && st.ops['undo:' + opId]) return toSuggestion(ev);
-    const prev = st.history.pop(); if (!prev) return toSuggestion(ev);
-    st.status = prev.status; st.taken = st.taken.slice(0, prev.taken_len); delete st.snooze_until; if (opId) st.ops['undo:' + opId] = true;
-    return toSuggestion(await store.updateEventPayload(uid, id, ev.payload));
+    const opId = typeof b.operation_id === 'string' ? b.operation_id.slice(0, 80) : null;
+    return mutate(uid, id, (ev, st) => {
+      if (opId && st.ops['undo:' + opId]) return false;
+      const prev = st.history.pop(); if (!prev) return false;
+      st.status = prev.status; st.taken = st.taken.slice(0, prev.taken_len); delete st.snooze_until; if (opId) st.ops['undo:' + opId] = true;
+      return true;
+    });
   }
   async function load(uid, id) {
     const ev = /^[0-9a-f-]{36}$/i.test(id) && await store.getEvent(uid, id); if (!ev || ev.kind !== 'proactive_decision') throw bad('suggestion_not_found', 404);

@@ -38,7 +38,12 @@ export function createPgStore(sql) {
     async countDecisionsSince(uid, sinceIso, levels) { const r = await sql.unsafe(`select count(*)::int n from proactive.events where user_id=$1 and kind='proactive_decision' and created_at >= $2::timestamptz and payload->>'decision' = any($3::text[])`, [uid, sinceIso, levels]); return r[0]?.n ?? 0; },
     async getFeedback(uid, eid) { const r = await sql.unsafe('select kind, created_at from proactive.feedback where user_id=$1 and event_id=$2', [uid, eid]); return iso(r[0]) ?? null; },
     async insertFeedback(uid, eid, kind, at) { const r = await sql.unsafe('insert into proactive.feedback(user_id,event_id,kind,created_at) values($1,$2,$3,$4) on conflict(event_id) do nothing returning event_id', [uid, eid, kind, at]); return r.length > 0; },
-    async updateEventPayload(uid, id, payload) { const r = await sql.unsafe('update proactive.events set payload=$3::text::jsonb where user_id=$1 and id=$2 returning *', [uid, id, JSON.stringify(payload)]); return iso(r[0]) ?? null; },
+    async updateEventPayload(uid, id, payload, expectedRev) {
+      // Codex PR90 #7: compare-and-set on suggestion.rev when the caller read a version (lost race → null).
+      if (expectedRev === undefined) { const r = await sql.unsafe('update proactive.events set payload=$3::text::jsonb where user_id=$1 and id=$2 returning *', [uid, id, JSON.stringify(payload)]); return iso(r[0]) ?? null; }
+      const r = await sql.unsafe(`update proactive.events set payload=$3::text::jsonb where user_id=$1 and id=$2 and coalesce((payload->'suggestion'->>'rev')::int, 0) = $4 returning *`, [uid, id, JSON.stringify(payload), expectedRev]);
+      return iso(r[0]) ?? null;
+    },
     async claimSuggestionsForChat(uid, { limit, at, turnID }) {
       const r = await sql.unsafe(`update proactive.events e set payload = jsonb_set(jsonb_set(e.payload, '{suggestion,chat_delivered_at}', to_jsonb($3::text)), '{suggestion,chat_turn_id}', to_jsonb($4::text))
         where e.id in (select id from proactive.events where user_id=$1 and kind='proactive_decision' and payload->>'decision' <> 'silent'
