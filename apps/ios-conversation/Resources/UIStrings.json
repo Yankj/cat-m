@@ -6510,5 +6510,17 @@
   "升级前存在这台设备上的记忆没有归属账号，已单独加密保存，不会合并进你的账号。可以导出查看。": {
     "en": "Memories saved on this device before the update don't belong to any account. They're encrypted separately and never merged into your account. You can export them to review.",
     "zh-Hans": "升级前存在这台设备上的记忆没有归属账号，已单独加密保存，不会合并进你的账号。可以导出查看。"
+  },
+  "小猫有一条提醒": {
+    "en": "Catpaw has a reminder for you",
+    "zh-Hans": "小猫有一条提醒"
+  },
+  "即将开始的日程": {
+    "en": "Upcoming event",
+    "zh-Hans": "即将开始的日程"
+  },
+  "打开 Catpaw 查看": {
+    "en": "Open Catpaw to view",
+    "zh-Hans": "打开 Catpaw 查看"
   }
 }

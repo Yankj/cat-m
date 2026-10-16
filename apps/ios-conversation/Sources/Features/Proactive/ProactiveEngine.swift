@@ -1473,8 +1473,8 @@ struct ProactiveEngineSignalAdapter: ProactiveSignalEngine {
             var value: [String: Any] = [
                 // Codex PR91 p91b-5: the App Group file is not encrypted — only redacted fields (no titles/reasons/places).
                 "id": suggestion.id,
-                "title": "小猫有一条提醒",
-                "why": "打开 Catpaw 查看",
+                "title": AppLanguage(locale: .current).ui("小猫有一条提醒"),
+                "why": AppLanguage(locale: .current).ui("打开 Catpaw 查看"),
             ]
             if let reminder = ProactiveEngine.shared.pendingReminder(for: suggestion.id) {
                 value["expires_at"] = reminder.start.timeIntervalSince1970
@@ -1495,8 +1495,8 @@ struct ProactiveEngineSignalAdapter: ProactiveSignalEngine {
         if let meeting {
             var value: [String: Any] = [
                 "id": meeting.suggestion.id,
-                "title": "即将开始的日程",
-                "why": "打开 Catpaw 查看",
+                "title": AppLanguage(locale: .current).ui("即将开始的日程"),
+                "why": AppLanguage(locale: .current).ui("打开 Catpaw 查看"),
             ]
             if let reminder = meeting.reminder {
                 value["starts_at"] = reminder.start.timeIntervalSince1970
