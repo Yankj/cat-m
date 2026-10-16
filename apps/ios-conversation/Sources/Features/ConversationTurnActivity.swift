@@ -86,40 +86,52 @@ enum ConversationTurnActivityProjection {
     @State private var expanded=false
     @Environment(\.locale) private var locale
     private func ui(_ key:String)->String {AppLanguage(locale:locale).ui(key)}
-    private var symbol:String {activity.phase == .needsReview ? "exclamationmark.circle":"circle.dotted"}
+    /// Live send/wait/write/process is already shown by PendingThinkingRow / LivePhasedAnswerView
+    /// (presence + …). Emitting another "正在…" label next to them is the multi-status pile.
+    private var inFlight:Bool {
+        switch activity.phase {case .sending,.waiting,.writing,.processing:return true;default:return false}
+    }
     var body:some View {
-        VStack(alignment:.leading,spacing:0) {
-            if activity.tools.isEmpty {
-                Label(ui(activity.phase.summaryKey),systemImage:symbol)
+        Group {
+            if inFlight {
+                // PendingThinkingRow / LivePhasedAnswerView already owns the live visual.
+                EmptyView()
+            } else if activity.tools.isEmpty {
+                Label(ui(activity.phase.summaryKey),systemImage:activity.phase == .needsReview ? "exclamationmark.circle":"checkmark.circle")
+                    .font(CatpawTypography.Role.secondary.font)
+                    .foregroundStyle(activity.phase == .needsReview ? CatpawColors.attention:CatpawColors.secondary)
                     .accessibilityIdentifier("chat.activity.summary."+activity.id.uuidString)
             } else {
-                Button {expanded.toggle()} label:{
-                    HStack(spacing:8) {
-                        Label(ui(activity.phase.summaryKey),systemImage:symbol).lineLimit(1)
-                        Spacer(minLength:0)
-                        Image(systemName:expanded ? "chevron.up":"chevron.down").accessibilityHidden(true)
-                    }.frame(maxWidth:.infinity,minHeight:44,alignment:.leading).contentShape(Rectangle())
-                }.buttonStyle(CatpawPressButtonStyle())
-                    .accessibilityLabel(ui(activity.phase.summaryKey))
-                    .accessibilityValue(expanded ? ui("已展开"):ui("已收起"))
-                    .accessibilityHint(ui("查看本次工具记录"))
-                    .accessibilityIdentifier("chat.activity.toggle."+activity.id.uuidString)
-                if expanded {
-                    VStack(alignment:.leading,spacing:8) {
-                        ForEach(activity.tools) {tool in
-                            VStack(alignment:.leading,spacing:4) {
-                                Text(ui(tool.titleKey))
-                                Text(ui(tool.state.labelKey)).font(CatpawTypography.Role.caption.font)
-                            }.accessibilityElement(children:.combine)
-                                .accessibilityIdentifier("chat.activity.tool."+tool.id.uuidString)
-                        }
-                    }.padding(.top,8)
-                }
+                VStack(alignment:.leading,spacing:0) {
+                    Button {expanded.toggle()} label:{
+                        HStack(spacing:8) {
+                            Label(ui(activity.phase.summaryKey),systemImage:activity.phase == .needsReview ? "exclamationmark.circle":"checklist")
+                                .lineLimit(1)
+                            Spacer(minLength:0)
+                            Image(systemName:expanded ? "chevron.up":"chevron.down").accessibilityHidden(true)
+                        }.frame(maxWidth:.infinity,minHeight:44,alignment:.leading).contentShape(Rectangle())
+                    }.buttonStyle(CatpawPressButtonStyle())
+                        .accessibilityLabel(ui(activity.phase.summaryKey))
+                        .accessibilityValue(expanded ? ui("已展开"):ui("已收起"))
+                        .accessibilityHint(ui("查看本次工具记录"))
+                        .accessibilityIdentifier("chat.activity.toggle."+activity.id.uuidString)
+                    if expanded {
+                        VStack(alignment:.leading,spacing:8) {
+                            ForEach(activity.tools) {tool in
+                                VStack(alignment:.leading,spacing:4) {
+                                    Text(ui(tool.titleKey))
+                                    Text(ui(tool.state.labelKey)).font(CatpawTypography.Role.caption.font)
+                                }.accessibilityElement(children:.combine)
+                                    .accessibilityIdentifier("chat.activity.tool."+tool.id.uuidString)
+                            }
+                        }.padding(.top,8)
+                    }
+                }.font(CatpawTypography.Role.secondary.font)
+                    .foregroundStyle(activity.phase == .needsReview ? CatpawColors.attention:CatpawColors.secondary)
             }
-        }.font(CatpawTypography.Role.secondary.font)
-            .foregroundStyle(activity.phase == .needsReview ? CatpawColors.attention:CatpawColors.secondary)
-            .accessibilityElement(children:.contain)
-            .accessibilityIdentifier("chat.activity."+activity.id.uuidString)
-            .onChange(of:activity.id){_,_ in expanded=false}
+        }
+        .accessibilityElement(children:.contain)
+        .accessibilityIdentifier("chat.activity."+activity.id.uuidString)
+        .onChange(of:activity.id){_,_ in expanded=false}
     }
 }
