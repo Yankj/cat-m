@@ -180,16 +180,17 @@ func nobug_gateAndTrigger() {
     do {
         let e = AccountEpoch(account: "A"), poster = FakePoster(); poster.completeLater = true; let (p, _) = makePipeline(e, poster, clock: { noon })
         let out = await p.deliverNow(id: "evt-3", requestID: "evt-3", title: "t", body: "b", category: "c", info: [:], requested: .notify, token: e.capture()!)
-        check(out == .posted("evt-3") && poster.adds.count == 1, "posted")
+        let tok3 = poster.adds.first.map { _ in e.capture()! }!
+        check(out == .posted(ProactiveDeliveryPipeline.scoped("evt-3", tok3)) && poster.adds.count == 1, "posted (scoped id)")
         check(poster.adds.first?.info[ProactiveAccountGate.accountKey] == "A" && poster.adds.first?.info[ProactiveAccountGate.epochKey] != nil, "payload carries account + epoch")
         e.signOut(); poster.pendingCompletions.forEach { $0(true) }
-        check(poster.removed.contains("evt-3"), "late completion after commit → removed")
+        check(poster.removed.contains(ProactiveDeliveryPipeline.scoped("evt-3", tok3)), "late completion after commit → removed")
     }
     // 4. A fired pre-scheduled reservation is delivered: the instant path must not push again.
     do {
         var t = at("2026-10-15T03:00:00Z"); let e = AccountEpoch(account: "A"), poster = FakePoster(); let (p, q) = makePipeline(e, poster, clock: { t })
         let pre = await p.preschedule(identity: "evt-4", requestID: "pre-E4", title: "t", body: "b", category: "c", info: [:], fire: at("2026-10-15T03:30:00Z"), level: .notify, token: e.capture()!)
-        check(pre == .posted("pre-E4"), "prescheduled (\(pre))")
+        check(pre == .posted(ProactiveDeliveryPipeline.scoped("pre-E4", e.capture()!)), "prescheduled (\(pre))")
         t = at("2026-10-15T03:31:00Z")  // fired; user never tapped
         let now = await p.deliverNow(id: "evt-4", requestID: "evt-4", title: "t", body: "b", category: "c", info: [:], requested: .notify, token: e.capture()!)
         check(now == .cardOnly("already_delivered") && poster.adds.count == 1, "no second ring for a shown-not-tapped reservation (\(now))")
@@ -200,7 +201,7 @@ func nobug_gateAndTrigger() {
         let e = AccountEpoch(account: "A"), poster = FakePoster(); let (p, q) = makePipeline(e, poster, clock: { noon })
         _ = await p.preschedule(identity: "evt-5", requestID: "pre-E5", title: "t", body: "b", category: "c", info: [:], fire: at("2026-10-15T05:00:00Z"), level: .notify, token: e.capture()!)
         let out = await p.deliverNow(id: "evt-5", requestID: "evt-5", title: "t", body: "b", category: "c", info: [:], requested: .notify, token: e.capture()!, supersedes: ["pre-E5"])
-        check(out == .posted("evt-5") && poster.removed.contains("pre-E5") && q().count(on: noon, calendar: shanghai) == 1, "in-app supersedes the unfired one")
+        check(out == .posted(ProactiveDeliveryPipeline.scoped("evt-5", e.capture()!)) && poster.removed.contains(ProactiveDeliveryPipeline.scoped("pre-E5", e.capture()!)) && q().count(on: noon, calendar: shanghai) == 1, "in-app supersedes the unfired one")
     }
     // 6. Full quota: re-scanning never cancels a pre-scheduled notification that already holds a slot.
     do {
@@ -208,7 +209,7 @@ func nobug_gateAndTrigger() {
         let fire = at("2026-10-15T06:00:00Z")
         for i in 0..<ProactiveRules.dailyNotifyCap { _ = await p.preschedule(identity: "evt-6-\(i)", requestID: "pre-6-\(i)", title: "t", body: "b", category: "c", info: [:], fire: fire, level: .notify, token: e.capture()!) }
         let again = await p.preschedule(identity: "evt-6-0", requestID: "pre-6-0", title: "t", body: "b", category: "c", info: [:], fire: fire, level: .notify, token: e.capture()!)
-        check(again != .cardOnly("daily_cap") && !poster.removed.contains("pre-6-0") && q().count(on: fire, calendar: shanghai) == ProactiveRules.dailyNotifyCap, "own slot kept (\(again))")
+        check(again != .cardOnly("daily_cap") && !poster.removed.contains(ProactiveDeliveryPipeline.scoped("pre-6-0", e.capture()!)) && q().count(on: fire, calendar: shanghai) == ProactiveRules.dailyNotifyCap, "own slot kept (\(again))")
         let extra = await p.preschedule(identity: "evt-6-x", requestID: "pre-6-x", title: "t", body: "b", category: "c", info: [:], fire: fire, level: .notify, token: e.capture()!)
         check(extra == .cardOnly("daily_cap"), "a new one is refused at the cap")
     }
@@ -219,9 +220,10 @@ func nobug_gateAndTrigger() {
         let out = await p.preschedule(identity: "evt-7", requestID: "pre-7", title: "t", body: "b", category: "c", info: [:], fire: at("2026-10-15T06:00:00Z"), level: .notify, token: tok)
         check(out == .refused("stale_account") && poster.adds.isEmpty && q().entries["evt-7"] == nil, "stale token: no add, no slot")
         e.activate(account: "A")
-        _ = await p.preschedule(identity: "evt-8", requestID: "pre-8", title: "t", body: "b", category: "c", info: [:], fire: at("2026-10-15T06:00:00Z"), level: .notify, token: e.capture()!)
+        let tok8 = e.capture()!
+        _ = await p.preschedule(identity: "evt-8", requestID: "pre-8", title: "t", body: "b", category: "c", info: [:], fire: at("2026-10-15T06:00:00Z"), level: .notify, token: tok8)
         e.signOut(); poster.pendingCompletions.forEach { $0(true) }
-        check(poster.removed.contains("pre-8") && q().entries["evt-8"] == nil, "late completion → removed, slot released")
+        check(poster.removed.contains(ProactiveDeliveryPipeline.scoped("pre-8", tok8)) && q().entries["evt-8"] == nil, "late completion → removed, slot released")
     }
     // 8. Resume (tap) only for the account/epoch that scheduled it.
     do {
@@ -294,6 +296,95 @@ func pr90c_presentQuiet() {
     check(ProactiveAccountGate.verdict(info, epoch: epoch, now: at("2026-10-15T04:00:00Z"), quota: &q, calendar: shanghai) == .present(.notify), "daytime presents")
 }
 
+// MARK: Codex PR90d (2484e15)
+func pr90d_ownership() {
+    // Cold start: epoch nil → same account restored → nothing of that account is touched.
+    check(!ProactiveDataOwner.mustWipe(owner: "USER-A", current: "USER-A"), "same-account restore keeps data")
+    check(!ProactiveDataOwner.mustWipe(owner: "user-a", current: "USER-A"), "case-insensitive owner")
+    check(ProactiveDataOwner.mustWipe(owner: "USER-A", current: "USER-B"), "switch wipes A's data")
+    check(ProactiveDataOwner.mustWipe(owner: "USER-A", current: nil), "logout wipes")
+    check(!ProactiveDataOwner.mustWipe(owner: "", current: "USER-B"), "already clean (signed out) → B's new data is kept")
+    check(ProactiveDataOwner.mustWipe(owner: nil, current: "USER-A"), "unknown owner (pre-ownership data) fails closed")
+    // Notification cleanup by owner: only other accounts' / untagged proactive requests.
+    var a: [AnyHashable: Any] = ["catpaw_proactive_id": "x"]; ProactiveAccountGate.stamp(&a, AccountToken(account: "USER-A", epoch: 1), deliveryID: "x", level: .notify)
+    var b: [AnyHashable: Any] = ["catpaw_proactive_id": "y"]; ProactiveAccountGate.stamp(&b, AccountToken(account: "USER-B", epoch: 7), deliveryID: "y", level: .notify)
+    check(ProactiveDataOwner.removeOnChange(a, current: "USER-B") && !ProactiveDataOwner.removeOnChange(b, current: "USER-B"), "B's fresh notification survives A's cleanup")
+    check(!ProactiveDataOwner.removeOnChange(a, current: "user-a"), "same account (other process epoch) kept")
+    check(ProactiveDataOwner.removeOnChange(["catpaw_proactive_id": "z"], current: "USER-B"), "untagged proactive removed")
+    check(!ProactiveDataOwner.removeOnChange(["aps": ["alert": "chat"]], current: "USER-B"), "non-proactive untouched")
+}
+
+func pr90d_legacyRejected() {
+    let epoch = AccountEpoch(account: "A"); var q = ProactiveQuotaLedger(); let noon = at("2026-10-15T04:00:00Z")
+    let legacy: [AnyHashable: Any] = ["catpaw_proactive_id": "evt-old"]
+    check(ProactiveAccountGate.verdict(legacy, epoch: epoch, now: noon, quota: &q, calendar: shanghai) == .drop("untagged"), "legacy local payload rejected")
+    check(!ProactiveAccountGate.belongsToCurrent(legacy, epoch: epoch), "legacy tap never resumes into the current account")
+    check(ProactiveAccountGate.verdict(["catpaw": ["kind": "proactive_decision", "decision": "notify", "event_id": "E"]], epoch: epoch, now: noon, quota: &q, calendar: shanghai) == .drop("untagged"), "APNs without account rejected")
+    check(ProactiveAccountGate.belongsToCurrent(["aps": ["alert": "x"]], epoch: epoch), "non-proactive payloads unaffected")
+}
+
+@MainActor func pr90d_scopedRequests() async {
+    let noon = at("2026-10-15T04:00:00Z")
+    let e = AccountEpoch(account: "A"), poster = FakePoster(); poster.completeLater = true
+    var q = ProactiveQuotaLedger()
+    let p = ProactiveDeliveryPipeline(epoch: e, poster: poster, clock: { noon }, calendar: shanghai, loadQuota: { q }, saveQuota: { q = $0 })
+    let ta = e.capture()!
+    _ = await p.preschedule(identity: "evt-m", requestID: "pre-M", title: "t", body: "b", category: "c", info: [:], fire: at("2026-10-15T06:00:00Z"), level: .notify, token: ta)
+    let lateA = poster.pendingCompletions.removeFirst()
+    e.activate(account: "B"); q = ProactiveQuotaLedger(); let tb = e.capture()!   // B's data starts clean (owner wipe)
+    _ = await p.preschedule(identity: "evt-m", requestID: "pre-M", title: "t", body: "b", category: "c", info: [:], fire: at("2026-10-15T06:00:00Z"), level: .notify, token: tb)
+    check(poster.adds.count == 2 && poster.adds[0].id != poster.adds[1].id, "request ids carry account + epoch (\(poster.adds.map(\.id)))")
+    lateA(true)
+    check(poster.removed == [ProactiveDeliveryPipeline.scoped("pre-M", ta)], "A's late callback removes only A's request (\(poster.removed))")
+    check(q.entries["evt-m"]?.state == .reserved, "B's reservation survives A's late callback")
+    // Snooze goes through the pipeline: stamped, quota-gated, late-cleaned.
+    poster.completeLater = false
+    let out = await p.snooze(id: "evt-s", title: "t", body: "b", category: "c", info: ["catpaw_proactive_id": "evt-s"], fire: at("2026-10-15T04:10:00Z"), token: tb)
+    check(out == .posted(ProactiveDeliveryPipeline.scoped("evt-s-snooze", tb)) && poster.adds.last?.info[ProactiveAccountGate.accountKey] == "B", "snooze stamped + scoped (\(out))")
+    p.remove(bases: ["evt-s-snooze"], token: tb)
+    check(poster.removed.contains(ProactiveDeliveryPipeline.scoped("evt-s-snooze", tb)) && poster.removed.contains("evt-s-snooze"), "removal targets the scoped id (and the legacy one)")
+    e.signOut()
+    let stale = await p.snooze(id: "evt-s2", title: "t", body: "b", category: "c", info: [:], fire: at("2026-10-15T04:10:00Z"), token: tb)
+    check(stale == .refused("stale_account"), "stale snooze refused")
+}
+
+@MainActor func pr90d_deadLetterOrdering() async {
+    let kv = MemKV(); var t = at("2026-10-15T04:00:00Z")
+    let q = CatpawPersistentQueue<SyncOp>(name: "dl", store: kv, maxAttempts: 2, baseDelay: 1)
+    q.enqueue(SyncOp(local: "s1", action: "snooze"), key: "a", account: "A", group: "s1", now: t)
+    q.enqueue(SyncOp(local: "s1", action: "dismiss"), key: "b", account: "A", group: "s1", now: t)
+    q.enqueue(SyncOp(local: "s2", action: "dismiss"), key: "c", account: "A", group: "s2", now: t)
+    var server: [String] = []
+    for _ in 0..<3 { _ = await q.drain(now: t, account: "A") { op in if op.local == "s1" && op.action == "snooze" { return .retry }; server.append(op.local + ":" + op.action); return .done }; t = t.addingTimeInterval(60) }
+    check(!server.contains("s1:dismiss"), "after s1's snooze dead-letters, s1's later dismiss is not sent out of order (\(server))")
+    check(server == ["s2:dismiss"] && Set(q.deadLetters.map(\.key)) == ["a", "b"], "group poisoned → later ops parked with it (\(q.deadLetters.map(\.key)))")
+}
+
+func pr90d_snoozeRestore() {
+    let t0 = at("2026-10-15T04:00:00Z")
+    let first = ProactiveUndo.snoozeDetail(until: t0.addingTimeInterval(600))
+    check(ProactiveUndo.snoozeUntil(detail: first, at: t0) == t0.addingTimeInterval(600), "until round trip")
+    check(ProactiveUndo.snoozeUntil(detail: nil, at: t0) == t0.addingTimeInterval(600), "legacy entry → at + 10 min")
+    // snooze(10) → snooze(60) → undo: the remaining snooze's own until.
+    let taken: [(String, Date, String?)] = [("snooze", t0, first)]
+    check(ProactiveUndo.restoredSnooze(taken: taken, status: "snoozed") == t0.addingTimeInterval(600), "restored snooze_until")
+    check(ProactiveUndo.restoredSnooze(taken: taken, status: "pending") == nil, "not snoozed → nothing to restore")
+}
+
+func pr90d_localFeedbackGate() {
+    var f = ProactiveLocalFeedback()
+    check(f.gate("interrupt", trigger: "meeting_upcoming") == "interrupt", "no feedback → unchanged")
+    f.record(.intrusive, trigger: "meeting_upcoming")
+    check(f.gate("interrupt", trigger: "meeting_upcoming") == "notify", "intrusive → never interrupt")
+    f.record(.not_helpful, trigger: "meeting_upcoming")
+    check(f.gate("notify", trigger: "meeting_upcoming") == "card", "net negative → card only")
+    check(f.gate("notify", trigger: "flight_status") == "notify", "per trigger")
+    f.record(.helpful, trigger: "meeting_upcoming"); f.record(.helpful, trigger: "meeting_upcoming")
+    check(f.gate("notify", trigger: "meeting_upcoming") == "notify", "helpful feedback recovers (never above the request)")
+    check(ProactiveRules.applyFeedbackGate(.notify, gate: { d, _, t in f.gate(d, trigger: t) }) == .notify, "plugs into applyFeedbackGate")
+    let back = try! JSONDecoder().decode(ProactiveLocalFeedback.self, from: JSONEncoder().encode(f)); check(back == f, "persisted")
+}
+
 @main enum ProactivePR90Runner {
     static func main() async {
         pr90_3_prescheduleSharesDecisionAndQuota()
@@ -309,6 +400,7 @@ func pr90c_presentQuiet() {
         await pr90c_queueOrdering()
         pr90c_cardMerge()
         pr90c_presentQuiet()
+        pr90d_ownership(); pr90d_legacyRejected(); await pr90d_scopedRequests(); await pr90d_deadLetterOrdering(); pr90d_snoozeRestore(); pr90d_localFeedbackGate()
         print(failures == 0 ? "PR90 proactive: all passed" : "PR90 proactive: \(failures) failed"); exit(failures == 0 ? 0 : 1)
     }
 }
