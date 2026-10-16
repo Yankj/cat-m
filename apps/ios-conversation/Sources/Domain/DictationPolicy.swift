@@ -44,3 +44,21 @@ public enum DictationRestart {
         return sessionHasText ? .finish : .fail
     }
 }
+
+/// Root cause 1: which recognizer runs, best first. iOS 26: SpeechAnalyzer with SpeechTranscriber (model asset via
+/// AssetInventory), else DictationTranscriber. Older iOS or no analyzer support: SFSpeechRecognizer on-device when the
+/// device supports it for the locale, otherwise Apple's server recognition (instead of refusing to start).
+public enum DictationEngineTier: String, Sendable, CaseIterable {
+    case speechTranscriber, dictationTranscriber, onDeviceRecognizer, serverRecognizer, unavailable
+    /// SFSpeechRecognizer requests are capped (~1 min for server recognition); rotate before that and keep going.
+    public static let recognizerSegmentLimit: TimeInterval = 55
+    public var segmentLimit: TimeInterval? { self == .onDeviceRecognizer || self == .serverRecognizer ? Self.recognizerSegmentLimit : nil }
+    public var usesNetwork: Bool { self == .serverRecognizer }
+    public static func choose(analyzerOS: Bool, speechTranscriberReady: Bool, dictationTranscriberReady: Bool,
+                              recognizerAvailable: Bool, recognizerOnDevice: Bool) -> DictationEngineTier {
+        if analyzerOS && speechTranscriberReady { return .speechTranscriber }
+        if analyzerOS && dictationTranscriberReady { return .dictationTranscriber }
+        guard recognizerAvailable else { return .unavailable }
+        return recognizerOnDevice ? .onDeviceRecognizer : .serverRecognizer
+    }
+}

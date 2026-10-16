@@ -327,6 +327,12 @@ import Foundation
         expect(DictationRestart.decide(failed: true, segmentHadText: false, emptyFailures: 2, sessionHasText: true) == .finish, "dictation: repeated empty errors finish with the text so far")
         expect(DictationRestart.decide(failed: true, segmentHadText: false, emptyFailures: 2, sessionHasText: false) == .fail, "dictation: repeated empty errors with nothing said fail")
         expect(DictationRestart.decide(failed: true, segmentHadText: true, emptyFailures: 2, sessionHasText: true) == .restart, "dictation: an error after text restarts")
+        expect(DictationEngineTier.choose(analyzerOS: true, speechTranscriberReady: true, dictationTranscriberReady: true, recognizerAvailable: true, recognizerOnDevice: true) == .speechTranscriber, "dictation: iOS 26 prefers SpeechTranscriber")
+        expect(DictationEngineTier.choose(analyzerOS: true, speechTranscriberReady: false, dictationTranscriberReady: true, recognizerAvailable: true, recognizerOnDevice: false) == .dictationTranscriber, "dictation: then DictationTranscriber")
+        expect(DictationEngineTier.choose(analyzerOS: false, speechTranscriberReady: false, dictationTranscriberReady: false, recognizerAvailable: true, recognizerOnDevice: false) == .serverRecognizer, "dictation: no on-device support uses server recognition instead of refusing")
+        expect(DictationEngineTier.choose(analyzerOS: false, speechTranscriberReady: false, dictationTranscriberReady: false, recognizerAvailable: true, recognizerOnDevice: true) == .onDeviceRecognizer, "dictation: on-device recognizer when supported")
+        expect(DictationEngineTier.choose(analyzerOS: false, speechTranscriberReady: false, dictationTranscriberReady: false, recognizerAvailable: false, recognizerOnDevice: false) == .unavailable, "dictation: unavailable only when no recognizer")
+        expect(DictationEngineTier.serverRecognizer.segmentLimit == 55 && DictationEngineTier.speechTranscriber.segmentLimit == nil, "dictation: auto-continue before the ~1 min request limit; analyzer has none")
         expect(DictationPolicy.localeIdentifier(for: .english) == "en-US" && DictationPolicy.localeIdentifier(for: .chinese) == "zh-CN", "dictation: locale follows app language")
     }
     static func followUps() {
