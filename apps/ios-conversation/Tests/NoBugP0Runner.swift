@@ -750,4 +750,16 @@ extension Result { var isFailure: Bool { if case .failure = self { return true }
         expect(ProactiveActionStates.allEffectsDone(all, st) && ProactiveActionStates.remaining(all, st).isEmpty, "P0-5 done when every effect succeeded")
         expect(ProactiveActionStates.from(serverStates: ["create_reminder": "done"]) == ["create_reminder": .succeeded], "P0-5 cloud action_states map to device state")
     }
+
+    /// Incorporated from b8f0280 (Grok Bot's earlier P0-2): unowned legacy library and cloud-off/local-on cases.
+    static func p02FromB8f0280() async {
+        let legacy = MemoryLibraryStub(items: [.init(id: "l1", group: .preference, content: "旧文件")])
+        let target = RefusingBackend()
+        let r = await MemoryLibraryLocal.migrate(legacy, to: target, targetOwner: .account("user-b"))
+        expect(r.migrated == 0 && target.created.isEmpty, "codex P0-2 (b8f0280) unowned legacy items are not uploaded to a signed-in account")
+        let cloudOff = MemoryLibrarySnapshot(items: [], useMemory: false, autoSave: nil)
+        let localOn = MemoryLibrarySnapshot(items: [.init(id: "x", group: .preference, content: "开会提前 30 分钟准备")], useMemory: true, autoSave: nil)
+        expect(ProactiveRules.lead(in: [cloudOff, localOn]) == nil, "codex P0-2 (b8f0280) cloud 使用记忆 off also disables local lead memory")
+        expect(ProactiveRules.lead(in: [localOn])?.minutes == 30, "codex P0-2 (b8f0280) local lead still used when every switch is on")
+    }
 }
