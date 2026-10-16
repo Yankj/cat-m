@@ -2058,6 +2058,22 @@
       "reason": "Test fixture: synthetic contact email (a at x.cn) for the minimalContact privacy test; not a real address.",
       "reviewed_utc_date": "2026-10-17",
       "reviewer": "Grok Bot"
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NoBugP0Runner.swift",
+      "category": "email_review",
+      "line": 583,
+      "sha256": "0019d415d6d88f5eef6e78643a9fc4d6a5282bf691faa5ad6261fa2410c3333b",
+      "reason": "Test fixture: synthetic contact email (a at x.cn) for the minimalContact privacy test; not a real address.",
+      "reviewed_utc_date": "2026-10-17",
+      "reviewer": "Grok Bot"
+    },
+    {
+      "path": "apps/ios-conversation/Tests/DeviceToolRouterEventKitTests.swift",
+      "category": "deployment_public_key",
+      "line": 287,
+      "sha256": "73a39464bef39054daefd2db768571d5216ba2a022f83dede5ee191de8ee822c",
+      "reason": "Synthetic offline fixture (#89 3616c94 EventKit test): placeholder project URL and sb_publishable_offline test key, no real deployment; reviewed 2026-10-17 by Grok Bot"
     }
   ]
 }

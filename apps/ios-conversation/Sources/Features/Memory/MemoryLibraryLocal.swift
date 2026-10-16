@@ -94,58 +94,109 @@ enum AccountLocalData {
         guard succeeded else { return false }   // a failed ON keeps the sticky off
         record(off: false, owner: owner); return true
     }
-    // MARK: Codex PR91 v2-2 — ordered user choices (same account)
-    // Each toggle takes a new generation. Requests are serialized per owner, so the server sees them in order and its
-    // final state is the LAST choice; a choice superseded before it is sent is not sent; only the latest generation's
-    // response may write back (a late ON can never clear a newer OFF).
+    // MARK: Codex PR91 v2-2 / v3-2 — ordered user choices with a server-checked sequence
+    // Each toggle takes a new generation (local ordering) and a persisted, strictly increasing sequence that is SENT to the
+    // server (use_memory_seq): the server applies a choice only if it is newer, so a timed-out older request that still
+    // runs on the server can never overwrite a newer one. While an outcome is unknown the switch is effectively OFF (fail
+    // closed) and the pending choice is re-sent with the SAME sequence until acknowledged (idempotent).
     enum ChoiceOutcome: Equatable { case applied, failed, superseded, stale }
-    static let unsyncedKeyPrefix = "catpaw.memory.use-unsynced.v1."
+    struct PendingChoice: Codable, Equatable { let on: Bool; let seq: Int64 }
+    struct Ticket { let on: Bool; let owner: LocalMemoryOwner; let token: AccountToken?; let generation: Int; let seq: Int64 }
+    static let pendingKeyPrefix = "catpaw.memory.use-pending.v1."
+    static let seqKeyPrefix = "catpaw.memory.use-seq.v1."
     private static var generations: [LocalMemoryOwner: Int] = [:]
     private static var tails: [LocalMemoryOwner: Task<Void, Never>] = [:]
     private static var pendingOn: Set<LocalMemoryOwner> = []
+    static var now: () -> Date = { Date() }
     static func generation(_ owner: LocalMemoryOwner) -> Int { generations[owner] ?? 0 }
-    /// A choice the server has not acknowledged yet (persisted: survives relaunch).
-    static func unsynced(_ owner: LocalMemoryOwner) -> Bool { offKey(owner).map { defaults.bool(forKey: unsyncedKeyPrefix + String($0.dropFirst(offKeyPrefix.count))) } ?? false }
-    private static func setUnsynced(_ owner: LocalMemoryOwner, _ value: Bool) {
-        guard case .account(let id) = owner else { return }
-        if value { defaults.set(true, forKey: unsyncedKeyPrefix + id) } else { defaults.removeObject(forKey: unsyncedKeyPrefix + id) }
+    private static func id(_ owner: LocalMemoryOwner) -> String? { if case .account(let id) = owner { return id }; return nil }
+    /// Strictly increasing per account across launches: max(last + 1, wall-clock ms).
+    static func nextSeq(_ owner: LocalMemoryOwner) -> Int64 {
+        let key = id(owner).map { seqKeyPrefix + $0 }
+        let last = key.map { Int64(defaults.integer(forKey: $0)) } ?? 0
+        let next = max(last + 1, Int64(now().timeIntervalSince1970 * 1000))
+        if let key { defaults.set(Int(next), forKey: key) }
+        return next
     }
+    static func pending(_ owner: LocalMemoryOwner) -> PendingChoice? {
+        guard let id = id(owner), let data = defaults.data(forKey: pendingKeyPrefix + id) else { return nil }
+        return try? JSONDecoder().decode(PendingChoice.self, from: data)
+    }
+    private static func setPending(_ owner: LocalMemoryOwner, _ choice: PendingChoice?) {
+        guard let id = id(owner) else { return }
+        if let choice, let data = try? JSONEncoder().encode(choice) { defaults.set(data, forKey: pendingKeyPrefix + id) }
+        else { defaults.removeObject(forKey: pendingKeyPrefix + id) }
+    }
+    /// A choice the server has not acknowledged yet (persisted: survives relaunch).
+    static func unsynced(_ owner: LocalMemoryOwner) -> Bool { pending(owner) != nil }
     static func isEnabling(_ owner: LocalMemoryOwner) -> Bool { pendingOn.contains(owner) }
-    @discardableResult
-    static func submitChoice(on: Bool, owner: LocalMemoryOwner, token: AccountToken?, send: @escaping @MainActor (Bool) async throws -> Void) async -> ChoiceOutcome {
-        guard stillCurrent(token, owner) else { return .stale }
+
+    /// Synchronous part of a toggle (v3-3: the page publishes the immediate state right after this returns).
+    static func beginChoice(on: Bool, owner: LocalMemoryOwner, token: AccountToken?) -> Ticket? {
+        guard stillCurrent(token, owner) else { return nil }
         let mine = generation(owner) + 1; generations[owner] = mine
-        if on { pendingOn.insert(owner) } else { pendingOn.remove(owner); record(off: true, owner: owner) }   // OFF effective at once
-        setUnsynced(owner, true)
-        let previous = tails[owner]
+        let seq = nextSeq(owner)
+        if on { pendingOn.insert(owner) } else { pendingOn.remove(owner) }
+        record(off: true, owner: owner)   // OFF effective at once; ON stays off until the server acknowledged it (fail closed)
+        setPending(owner, PendingChoice(on: on, seq: seq))
+        return Ticket(on: on, owner: owner, token: token, generation: mine, seq: seq)
+    }
+    /// `send(on, seq)` returns the server's resulting use_memory (it may differ when a newer choice won there).
+    static func deliver(_ t: Ticket, send: @escaping @MainActor (Bool, Int64) async throws -> Bool) async -> ChoiceOutcome {
+        let previous = tails[t.owner]
         let work = Task { @MainActor () -> ChoiceOutcome in
             await previous?.value
-            guard stillCurrent(token, owner) else { return .stale }
-            guard generation(owner) == mine else { return .superseded }   // a newer choice follows and will be sent
-            var outcome = ChoiceOutcome.applied
-            do { try await send(on) } catch { outcome = .failed }
-            guard stillCurrent(token, owner) else { return .stale }
-            guard generation(owner) == mine else { return .superseded }
-            if on { pendingOn.remove(owner) }
-            guard outcome == .applied else { return .failed }   // OFF stays effective locally and unsynced; a failed ON keeps off
-            if on { record(off: false, owner: owner) }
-            setUnsynced(owner, false)
+            guard stillCurrent(t.token, t.owner) else { return .stale }
+            guard generation(t.owner) == t.generation else { return .superseded }   // a newer choice follows and will be sent
+            var server: Bool?
+            do { server = try await send(t.on, t.seq) } catch { server = nil }
+            guard stillCurrent(t.token, t.owner) else { return .stale }
+            guard generation(t.owner) == t.generation else { return .superseded }
+            pendingOn.remove(t.owner)
+            guard let server else { record(off: true, owner: t.owner); return .failed }   // unknown → off, pending kept for re-send
+            record(off: !server, owner: t.owner)   // the server's last-writer-by-sequence result is authoritative
+            setPending(t.owner, nil)
             return .applied
         }
-        tails[owner] = Task { _ = await work.value }
+        tails[t.owner] = Task { _ = await work.value }
         return await work.value
     }
-    // MARK: Codex PR91 v2-4 — one effective state (UI == X-Catpaw-Use-Memory == server rule)
+    @discardableResult
+    static func submitChoice(on: Bool, owner: LocalMemoryOwner, token: AccountToken?, send: @escaping @MainActor (Bool, Int64) async throws -> Bool) async -> ChoiceOutcome {
+        guard let t = beginChoice(on: on, owner: owner, token: token) else { return .stale }
+        return await deliver(t, send: send)
+    }
+    /// Re-sends an unacknowledged choice with its original sequence (page open / relaunch). Idempotent on the server.
+    @discardableResult
+    static func reconcile(owner: LocalMemoryOwner, token: AccountToken?, send: @escaping @MainActor (Bool, Int64) async throws -> Bool) async -> ChoiceOutcome? {
+        guard let p = pending(owner), stillCurrent(token, owner) else { return nil }
+        let t = Ticket(on: p.on, owner: owner, token: token, generation: generation(owner), seq: p.seq)
+        if p.on { pendingOn.insert(owner) }
+        return await deliver(t, send: send)
+    }
+
+    // MARK: Codex PR91 v2-4 / v3-3 — one effective state over ALL libraries (UI == X-Catpaw-Use-Memory == recall)
+    private static var libraries: [LocalMemoryOwner: [String: Bool]] = [:]
+    /// Records a library's own switch (keyed by backend type) as seen by the page or by recall.
+    static func noteLibrary(_ backend: any MemoryLibraryBackend, on: Bool, owner: LocalMemoryOwner) {
+        libraries[owner, default: [:]][String(describing: type(of: backend))] = on
+    }
+    static func knownLibraries(_ owner: LocalMemoryOwner) -> [String: Bool] { libraries[owner] ?? [:] }
     /// Effective 「使用记忆」 for `owner`: a persisted user off always wins; otherwise every known library must be on.
     static func effectiveUse(owner: LocalMemoryOwner, libraries: [Bool]) -> Bool {
         !persistedOff(owner) && !libraries.isEmpty && libraries.allSatisfy { $0 }
     }
+    static func effectiveUse(owner: LocalMemoryOwner) -> Bool { effectiveUse(owner: owner, libraries: Array(knownLibraries(owner).values)) }
     /// Applies the effective state to the header source and returns it (what the page must show).
     @discardableResult static func applyEffective(owner: LocalMemoryOwner, token: AccountToken?, libraries: [Bool]) -> Bool? {
         guard stillCurrent(token, owner) else { return nil }
         let value = effectiveUse(owner: owner, libraries: libraries)
         ConversationMemorySwitch.useMemory = value
         return value
+    }
+    /// Same, over every library known for the owner (page and recall share this).
+    @discardableResult static func applyEffective(owner: LocalMemoryOwner, token: AccountToken?) -> Bool? {
+        applyEffective(owner: owner, token: token, libraries: Array(knownLibraries(owner).values))
     }
     static func record(off: Bool, owner: LocalMemoryOwner) {
         if let k = offKey(owner) { defaults.set(off, forKey: k) }
@@ -160,14 +211,14 @@ enum AccountLocalData {
         var snaps: [MemoryLibrarySnapshot] = []
         var cloudState: Bool? = nil   // nil = no cloud library / unknown
         if let cloud {
-            do { let s = try await cloud.load(); snaps.append(s); cloudState = s.useMemory }
+            do { let s = try await cloud.load(); snaps.append(s); cloudState = s.useMemory; if stillCurrent(token, owner) { noteLibrary(cloud, on: s.useMemory, owner: owner) } }
             // Codex PR91 p91b-4: a cloud library that is not enabled / unsupported does NOT fall back to local memories.
             // p91c-4: the switch is still restored from the stored value before the fail-closed return.
             // p91d-1: a late failure never overwrites (or clears) the global; only a still-current sticky off is re-applied.
             catch { if stillCurrent(token, owner), persistedOff(owner) { ConversationMemorySwitch.useMemory = false }; return [] }
         }
         if let local {
-            do { snaps.append(try await local.load()) } catch { return [] }
+            do { let s = try await local.load(); snaps.append(s); if stillCurrent(token, owner) { noteLibrary(local, on: s.useMemory, owner: owner) } } catch { return [] }
         }
         guard stillCurrent(token, owner) else { return [] }   // signed out / switched meanwhile: no write-back
         // p91d-2: an explicit user off is sticky until an explicit user on succeeds — it wins over any cloud snapshot.
