@@ -39,7 +39,11 @@ jobs:
           SIMCTL_CHILD_CF_UI_TEST_STORE=$(uuidgen) SIMCTL_CHILD_CF_UI_TEST_SCENARIO=p0-ui-echo xcrun simctl launch $UDID $BID -CatpawSkipOnboarding; sleep 15
           xcrun simctl terminate $UDID $BID; sleep 2
           SIMCTL_CHILD_CF_UI_TEST_STORE=$(uuidgen) SIMCTL_CHILD_CF_UI_TEST_SCENARIO=p0-ui-echo xcrun simctl launch $UDID $BID -CatpawSkipOnboarding
-          for i in $(seq -w 1 40); do xcrun simctl io $UDID screenshot /tmp/shots/s$i.png >/dev/null 2>&1; done
+          for i in $(seq -w 1 12); do xcrun simctl io $UDID screenshot /tmp/shots/s$i.png >/dev/null 2>&1; done
+          # deterministic mid-pop frame: hold the popped pose
+          xcrun simctl terminate $UDID $BID; sleep 2
+          SIMCTL_CHILD_CF_UI_TEST_STORE=$(uuidgen) SIMCTL_CHILD_CF_UI_TEST_SCENARIO=p0-ui-echo xcrun simctl launch $UDID $BID -CatpawSkipOnboarding -CatpawMascotPopHold YES; sleep 10
+          xcrun simctl io $UDID screenshot /tmp/shots/popped-hold.png
       - uses: actions/upload-artifact@v4
         if: always()
         with: { name: popout-shots, path: /tmp/shots, retention-days: 3 }
