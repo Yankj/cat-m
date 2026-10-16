@@ -22,9 +22,10 @@ export const FREE_ROUTE_CATALOG = Object.freeze({
   agnes: Object.freeze({ id: 'agnes', provider: 'Agnes AI', endpoint: 'https://apihub.agnes-ai.com/v1/chat/completions', model: 'agnes-3.0-flash', secret: 'CATPAW_AGNES_API_KEY', policy_url: 'https://wiki.agnes-ai.com/en/docs/privacy-policy.md', thinking_summary: true, billing: 'promo_free_flash_paid_pro' }),
   openrouter: Object.freeze({ id: 'openrouter', provider: 'OpenRouter (:free models)', endpoint: 'https://openrouter.ai/api/v1/chat/completions', model: 'apodex/apodex-1.1-mini:free', secret: 'CATPAW_PRIVATE_MODEL_KEY', policy_url: 'https://openrouter.ai/privacy', thinking_summary: false }),
 
-  // Self-hosted FreeLLMAPI (https://github.com/tashfeenahmed/freellmapi): OpenAI-compatible /v1 aggregator for personal
-  // experimentation. User supplies BASE_URL + API_KEY; OpenCode Zen free models are configured inside FreeLLMAPI, not here.
-  freellmapi: Object.freeze({ id: 'freellmapi', provider: 'Self-hosted FreeLLMAPI (aggregator)', endpoint: null, model: 'auto', secret: 'CATPAW_FREELLMAPI_API_KEY', policy_url: 'https://freellmapi.co', thinking_summary: false, billing: 'upstream_free_tiers_via_self_hosted_router' }),
+  // OpenCode Zen (https://opencode.ai/docs/zen/, read 2026-10-16): direct OpenAI-compatible chat completions with the
+  // user's OpenCode Console key. Only *-free models are $0 (limited time); the default allow-list is the free models the
+  // docs mark zero-retention / no training. Paid Zen models are refused (must end in -free) so the key can't bill.
+  opencode: Object.freeze({ id: 'opencode', provider: 'OpenCode Zen (free models)', endpoint: 'https://opencode.ai/inference/openai/v1/chat/completions', model: 'deepseek-v4.1-flash-free', default_models: Object.freeze(['deepseek-v4.1-flash-free', 'glm-5.3-flash-free', 'longcat-2.5-preview-free', 'space-bunny-free']), secret: 'CATPAW_OPENCODE_API_KEY', policy_url: 'https://opencode.ai/legal/privacy-policy', thinking_summary: false, billing: 'free_models_only_limited_time' }),
 });
 // Production default stays the existing OpenRouter free route (existing key); Gemini/Groq are optional extras.
 // Agnes is the busy fallback after the free routes; CATPAW_MODEL_ROUTE_ORDER can reorder.
@@ -34,22 +35,25 @@ export const ROUTE_META = Object.freeze({
   openrouter: { display_name: 'OpenRouter (free)', data_note: 'no_data_collection_requested' },
   gemini: { display_name: 'Google Gemini', data_note: 'free_tier_may_train' },
   groq: { display_name: 'Groq', data_note: 'provider_policy' },
-  freellmapi: { display_name: 'Self-hosted FreeLLMAPI', data_note: 'aggregator_forwards_upstream' },
+  opencode: { display_name: 'OpenCode Zen (free)', data_note: 'zero_retention' },
   agnes: { display_name: 'Agnes AI', data_note: 'provider_policy' },
 });
 const MODEL_RE = /^[A-Za-z0-9._:/-]{1,120}$/;
 /** Allowed models for a route: default model + optional CATPAW_<ID>_MODELS (comma list), same paid-model guards. */
 export function readRouteModels(get, id, defaultModel) {
-  const extra = String(get(`CATPAW_${id.toUpperCase()}_MODELS`) ?? '').split(',').map(x => x.trim()).filter(Boolean);
+  const listed = String(get(`CATPAW_${id.toUpperCase()}_MODELS`) ?? '').split(',').map(x => x.trim()).filter(Boolean);
+  // OpenCode: CATPAW_OPENCODE_MODELS replaces the default zero-retention list (other routes: extras on top of the default).
+  const extra = id === 'opencode' && !listed.length ? FREE_ROUTE_CATALOG.opencode.default_models : listed;
   const all = [...new Set([defaultModel, ...extra])].slice(0, 20);
   for (const m of all) {
     check(MODEL_RE.test(m), 422, 'model_route_model_invalid');
     if (id === 'openrouter') check(m.endsWith(':free'), 422, 'paid_or_router_model_denied');
     if (id === 'agnes') check(/^agnes-[0-9a-z.-]+$/.test(m), 422, 'model_route_model_invalid');
+    if (id === 'opencode') check(/-free$/.test(m), 422, 'paid_or_router_model_denied');
   }
   return all;
 }
-export const DEFAULT_CHAIN_ORDER = Object.freeze(['openrouter', 'gemini', 'groq', 'freellmapi', 'agnes']);
+export const DEFAULT_CHAIN_ORDER = Object.freeze(['openrouter', 'gemini', 'groq', 'opencode', 'agnes']);
 // Codes that mean "this free route is busy/unavailable right now"; safe to fail over
 // only because nothing has been streamed to the user yet.
 export const FAILOVER_CODES = new Set(['rate_limited', 'quota_exhausted', 'free_model_unavailable', 'provider_failed', 'provider_overloaded', 'provider_timeout_before_output', 'not_configured']);
@@ -95,11 +99,14 @@ export function readFreeRouteChain(get) {
     check(/^[A-Za-z0-9._:/-]{1,120}$/.test(model), 422, 'model_route_model_invalid');
     if (id === 'openrouter') check(model.endsWith(':free'), 422, 'paid_or_router_model_denied');
     if (id === 'agnes') check(/^agnes-[0-9a-z.-]+$/.test(model), 422, 'model_route_model_invalid');
+    if (id === 'opencode') check(/-free$/.test(model), 422, 'paid_or_router_model_denied');
     let endpoint = id === 'gemini' && gemini.protocol === 'openai_compat' ? r.compat_endpoint : r.endpoint;
-    if (id === 'freellmapi') {
-      const base = String(get('CATPAW_FREELLMAPI_BASE_URL') ?? '').trim().replace(/\/+$/, '');
-      check(/^https:\/\/[A-Za-z0-9._~:/?#\[\]@!$&'()*+,;=%-]{1,200}$/.test(base) && !/[\r\n]/.test(base), 422, 'freellmapi_base_url_invalid');
-      endpoint = base.endsWith('/v1/chat/completions') ? base : base.replace(/\/v1\/?$/, '') + '/v1/chat/completions';
+    if (id === 'opencode') {
+      const base = String(get('CATPAW_OPENCODE_BASE_URL') ?? '').trim().replace(/\/+$/, '');
+      if (base) {
+        check(/^https:\/\/[A-Za-z0-9._~:/?#\[\]@!$&'()*+,;=%-]{1,200}$/.test(base) && !/[\r\n]/.test(base), 422, 'opencode_base_url_invalid');
+        endpoint = base.endsWith('/chat/completions') ? base : base + '/chat/completions';
+      }
     }
     const ms = name => { const v = get(`CATPAW_${id.toUpperCase()}_${name}_TIMEOUT_MS`); if (v === undefined || v === null || v === '') return undefined; check(/^[0-9]{4,6}$/.test(v), 422, 'model_route_timeout_invalid'); return Number(v); };
     const timeouts = Object.fromEntries([['firstEventMs', ms('FIRST_EVENT')], ['idleMs', ms('IDLE')], ['totalMs', ms('TOTAL')]].filter(([, v]) => v !== undefined));
