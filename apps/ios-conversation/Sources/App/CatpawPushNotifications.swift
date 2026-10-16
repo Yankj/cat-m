@@ -93,7 +93,7 @@ struct CatpawNotificationPayload: Equatable, Sendable {
         nonisolated(unsafe) let gateInfo = content.userInfo
         let verdict: ProactiveAccountGate.Verdict = await MainActor.run {
             var q = ProactiveEngine.shared.quota
-            let v = ProactiveAccountGate.verdict(gateInfo, epoch: .shared, now: .now, quota: &q)
+            let v = ProactiveAccountGate.verdict(gateInfo, epoch: .shared, now: ProactiveClock.now(), quota: &q)   // PR90h: the engine's clock (quiet hours / daily cap), not the wall clock
             ProactiveEngine.shared.quota = q; return v
         }
         switch verdict {
