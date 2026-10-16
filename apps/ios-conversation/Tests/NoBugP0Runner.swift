@@ -39,7 +39,7 @@ import Foundation
     static func expect(_ ok: Bool, _ m: String) { if ok { passed += 1; print("PASS \(m)") } else { failed += 1; print("FAIL \(m)") } }
 
     static func main() async {
-        await memory(); await deviceCalls(); proactive(); nearby(); groundedFixtures(); contactsPrivacy(); replyVariants(); followUps(); await deviceUndo()
+        await memory(); await deviceCalls(); proactive(); nearby(); groundedFixtures(); contactsPrivacy(); replyVariants(); followUps(); await deviceUndo(); dictation()
         print("nobug-p0 portable: \(passed) passed, \(failed) failed")
         exit(failed == 0 ? 0 : 1)
     }
@@ -312,6 +312,14 @@ import Foundation
         let op = UUID()
         expect(DeviceUndoRules.body(callID: "c1", outcome: .alreadyGone, operationID: op) == ["call_id": "c1", "operation_id": op.uuidString.lowercased(), "status": "already_gone"], "#6 wire body matches server statuses")
         expect(Set(DeviceUndoOutcome.allCases.map(\.rawValue)) == ["undone", "already_gone", "failed"], "#6 statuses mirror DEVICE_UNDO_STATUSES")
+    }
+    static func dictation() {
+        expect(DictationPolicy.join("帮我订", "明天的会议室") == "帮我订明天的会议室", "dictation: no space joining Chinese")
+        expect(DictationPolicy.join("好的。", "明天见") == "好的。明天见", "dictation: no space after CJK punctuation")
+        expect(DictationPolicy.join("Book", "a room") == "Book a room", "dictation: Latin words get one space")
+        expect(DictationPolicy.join("call", "，谢谢") == "call，谢谢" && DictationPolicy.join("hi\n", "there") == "hi\nthere" && DictationPolicy.join("", "你好") == "你好", "dictation: punctuation/newline/empty joins")
+        expect(DictationPolicy.join("用 Swift", "写") == "用 Swift写", "dictation: Latin then CJK has no inserted space")
+        expect(DictationPolicy.localeIdentifier(for: .english) == "en-US" && DictationPolicy.localeIdentifier(for: .chinese) == "zh-CN", "dictation: locale follows app language")
     }
     static func followUps() {
         let d = { (t: String) in Data(t.utf8) }

@@ -72,9 +72,9 @@ private final class DictationLevelMeter: @unchecked Sendable {
     private lazy var audioNotifications = AudioSessionNotifications(source: notificationSource) { [weak self] in self?.interrupt() }
     var voices: [AVSpeechSynthesisVoice] { AVSpeechSynthesisVoice.speechVoices().filter { $0.language.hasPrefix("zh") && !$0.voiceTraits.contains(.isPersonalVoice) && $0.identifier.hasPrefix("com.apple.") } }
     var voiceOptions: [(String, String)] { voices.map { ($0.identifier, $0.name + " · " + $0.language) } }
-    var onDeviceSupported: Bool { SFSpeechRecognizer(locale: Locale(identifier: "zh-CN"))?.supportsOnDeviceRecognition == true }
+    var onDeviceSupported: Bool { SFSpeechRecognizer(locale: Locale(identifier: DictationPolicy.localeIdentifier(for: language)))?.supportsOnDeviceRecognition == true }
     var messageText: String? { message.map { language.ui($0) } }
-    var stateText: String { language.ui(["idle": "空闲", "recording": "录音中", "transcribing": "转写中", "preview": "检查转写", "sample": "示例转写 · 模拟", "starting": "准备播放", "playing": "正在播放", "paused": "已暂停", "stopped": "已停止", "finished": "已完成", "failed": "播放未完成", "unverified": "未验证 iOS 音频"][state] ?? state) }
+    var stateText: String { language.ui(["idle": "空闲", "recording": "录音中", "transcribing": "转写中", "preview": "检查转写", "starting": "准备播放", "playing": "正在播放", "paused": "已暂停", "stopped": "已停止", "finished": "已完成", "failed": "播放未完成", "unverified": "未验证 iOS 音频"][state] ?? state) }
     var permissionDescription: String { permissionDescription(language: language) }
     func permissionDescription(language: AppLanguage) -> String {
         let microphone: String
@@ -94,7 +94,7 @@ private final class DictationLevelMeter: @unchecked Sendable {
         guard mic else { message = "麦克风权限未开启，文字输入仍可用。"; return }
         let speech = await withCheckedContinuation { c in SFSpeechRecognizer.requestAuthorization { c.resume(returning: $0) } }
         guard consent == consentEpoch else { return }
-        guard speech == .authorized, let recognizer = SFSpeechRecognizer(locale: Locale(identifier: "zh-CN")), recognizer.supportsOnDeviceRecognition, recognizer.isAvailable else { message = "本地识别不可用，未创建网络识别请求。"; return }
+        guard speech == .authorized, let recognizer = SFSpeechRecognizer(locale: Locale(identifier: DictationPolicy.localeIdentifier(for: language))), recognizer.supportsOnDeviceRecognition, recognizer.isAvailable else { message = "本地识别不可用，未创建网络识别请求。"; return }
         stopPlayback(); abortCapture()
         let epoch = guardState.startCapture(); rawRevision = 0; transcript = ""; capturing = true; message = nil
         do {
@@ -134,7 +134,6 @@ private final class DictationLevelMeter: @unchecked Sendable {
     /// behind by any path (config change, early throw) would make the next installTap assert `nullptr == Tap()`.
     private func stopEngine() { if engine.isRunning { engine.stop() }; engine.inputNode.removeTap(onBus: 0); tapInstalled = false }
     func editTranscript(_ text: String) { guardState.edit(text); transcript = text }
-    func useSample() { abortCapture(); _ = guardState.startCapture(); _ = guardState.receive("本周持续跟进 AI 助理的工作机制，先整理一份私有短稿。", epoch: guardState.captureEpoch, revision: 1); guardState.finish(); transcript = guardState.text; state = "sample" }
     func freezeSubmission() throws -> FrozenTranscriptSubmission { guardState.edit(transcript); return try guardState.freeze() }
     func freezeTranscript() throws -> String { try freezeSubmission().submittedText }
     func abortCapture() {
@@ -210,7 +209,7 @@ private final class DictationLevelMeter: @unchecked Sendable {
     }
 
     private func runDictationStart(_ epoch: Int) async {
-        guard SFSpeechRecognizer(locale: Locale(identifier: "zh-CN"))?.supportsOnDeviceRecognition == true else { return endDictation(epoch, .unsupported) }
+        guard SFSpeechRecognizer(locale: Locale(identifier: DictationPolicy.localeIdentifier(for: language)))?.supportsOnDeviceRecognition == true else { return endDictation(epoch, .unsupported) }
         // Permission callbacks arrive on arbitrary queues; the continuation hops back to this actor.
         let mic: Bool
         switch AVAudioSession.sharedInstance().recordPermission {
@@ -224,7 +223,7 @@ private final class DictationLevelMeter: @unchecked Sendable {
             ? await withCheckedContinuation { c in SFSpeechRecognizer.requestAuthorization { c.resume(returning: $0) } } : SFSpeechRecognizer.authorizationStatus()
         guard epoch == dictationEpoch, dictationPhase == .starting else { return }
         guard auth == .authorized else { return endDictation(epoch, .denied) }
-        guard let recognizer = SFSpeechRecognizer(locale: Locale(identifier: "zh-CN")), recognizer.supportsOnDeviceRecognition, recognizer.isAvailable else { return endDictation(epoch, .unsupported) }
+        guard let recognizer = SFSpeechRecognizer(locale: Locale(identifier: DictationPolicy.localeIdentifier(for: language))), recognizer.supportsOnDeviceRecognition, recognizer.isAvailable else { return endDictation(epoch, .unsupported) }
         armWatchdog(epoch, after: Self.dictationStartTimeout, phase: .starting)
         // Never share the engine with the sheet capture or playback.
         stopPlayback(); abortCapture(); teardownDictationAudio(deactivate: false)
@@ -339,13 +338,12 @@ private final class DictationLevelMeter: @unchecked Sendable {
     private var guardState = VoiceGuard()
     var voiceOptions: [(String, String)] { [] }; var onDeviceSupported: Bool { false }
     var messageText: String? { message.map { language.ui($0) } }
-    var stateText: String { language.ui(["idle": "空闲", "recording": "录音中", "transcribing": "转写中", "preview": "检查转写", "sample": "示例转写 · 模拟", "starting": "准备播放", "playing": "正在播放", "paused": "已暂停", "stopped": "已停止", "finished": "已完成", "failed": "播放未完成", "unverified": "未验证 iOS 音频"][state] ?? state) }
+    var stateText: String { language.ui(["idle": "空闲", "recording": "录音中", "transcribing": "转写中", "preview": "检查转写", "starting": "准备播放", "playing": "正在播放", "paused": "已暂停", "stopped": "已停止", "finished": "已完成", "failed": "播放未完成", "unverified": "未验证 iOS 音频"][state] ?? state) }
     var permissionDescription: String { permissionDescription(language: language) }
     func permissionDescription(language: AppLanguage) -> String { language.ui("当前 macOS 类型检查环境不提供 iOS 权限结果") }
     func startFromUserAction() async { message = "请在 iOS 设备上验证本地识别与权限。" }
     func finishInput() {}
     func editTranscript(_ text: String) { guardState.edit(text); transcript = text }
-    func useSample() { _ = guardState.startCapture(); _ = guardState.receive("本周持续跟进 AI 助理的工作机制。", epoch: guardState.captureEpoch, revision: 1); guardState.finish(); transcript = guardState.text; state = "sample" }
     func freezeSubmission() throws -> FrozenTranscriptSubmission { guardState.edit(transcript); return try guardState.freeze() }
     func freezeTranscript() throws -> String { try freezeSubmission().submittedText }
     func play(text: String, reference: DocumentReference, sourceKind: String) { message = PublicReadoutSample.allows(reference: reference, sourceKind: sourceKind, text: text) ? "iOS 系统朗读尚未运行验证。" : PublicReadoutSample.restriction }
