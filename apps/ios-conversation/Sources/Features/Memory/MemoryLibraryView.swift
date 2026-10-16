@@ -144,7 +144,7 @@ import SwiftUI
 
     private var emptyState: some View {
         VStack(spacing: 8) {
-            Image(systemName: "pawprint.fill").font(.title2).foregroundStyle(CatpawBrand.paw).accessibilityHidden(true)
+            BrandMark(size: 28, color: CatpawColors.fill, style: .template).accessibilityHidden(true)
             Text(ui("还没有记住任何内容")).font(CatpawTypography.Role.heading.font)
             Text(ui("聊天时说“记住……”，小猫就会把它放在这里。")).font(CatpawTypography.Role.secondary.font).foregroundStyle(CatpawColors.secondary).multilineTextAlignment(.center)
         }

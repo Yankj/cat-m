@@ -3,10 +3,10 @@ import UIKit
 
 /// Launch splash matching docs/refs/launch-splash-keyframes.png.
 /// Soft beige canvas; four keyframes (~1.3 s), always completes:
-/// 0.0s 浮现 — faint translucent warm-orange paw emerges
+/// 0.0s 浮现 — faint translucent warm-orange cat-head mark emerges
 /// 0.3s 轻触 — solid paw forms
 /// 0.7s 呼吸 — slight scale-up + soft outer glow
-/// 1.1s 衔接 — merges into solid orange circle (white paw) with glow, then enters landing/main
+/// 1.1s 衔接 — merges into solid orange circle (white cat-head mark) with glow, then enters landing/main
 /// Soft spring-like eased windows. Reduce Motion: short fade of the final circle only.
 /// `toOrb`: next screen is onboarding — leave the circle in place for a seamless handoff to NativeLoginView.
 @MainActor struct LaunchMarkView: View {
@@ -116,14 +116,14 @@ import UIKit
                             .padding(size * 0.08)
                     )
                     .shadow(color: CatpawColors.orbDeep.opacity(0.38 * merge), radius: 18, y: 8)
-                PawMark(size: size * 0.42, color: CatpawColors.calmGlyph, shadow: false)
+                BrandMark(size: size * 0.42, style: .onOrange)
             }
             .frame(width: size, height: size)
             .scaleEffect(circleScale)
             .opacity(circleOpacity)
 
-            // Pre-merge warm-orange paw (keyframes 1–3).
-            PawMark(size: size, color: CatpawColors.action, shadow: true)
+            // Pre-merge warm-orange cat-head mark (keyframes 1–3).
+            BrandMark(size: size, style: .fill)
                 .scaleEffect(pawScale)
                 .opacity(pawOpacity)
         }

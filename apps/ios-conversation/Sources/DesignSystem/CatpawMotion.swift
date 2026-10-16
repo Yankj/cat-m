@@ -17,16 +17,43 @@ enum CatpawMotion {
     static func resolved(_ animation: Animation, _ reduceMotion: Bool) -> Animation { reduceMotion ? .easeInOut(duration: 0.15) : animation }
 }
 
-/// Brand colour lives outside `CatpawColors` on purpose. It covers Catpaw identity surfaces
-/// and the composer send/stop/queue control; generic actions, links and statuses stay semantic.
+/// Identity colours and the cat-head mark. Hex lives in `CatpawBrandTokens`;
+/// `paw` / clay roles alias semantic `CatpawColors` so there is one palette.
+/// Composer send/stop chrome may keep using `CatpawBrand.paw` (Mac worker owns morph).
 enum CatpawBrand {
-    static let paw = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(rgb: 0xF2A985) : UIColor(rgb: 0xE8946A) })
-    /// r10 soft-clay logo palette; mirrored in Resources/Assets.xcassets/LaunchPaw.svg.
-    static let clayLight = Color(UIColor(rgb: 0xFFB48A))
-    static let clayBase = Color(UIColor(rgb: 0xF5843F))
-    static let clayRim = Color(UIColor(rgb: 0xE0652A))
-    static let clayShadow = Color(UIColor(rgb: 0x8A3A12))
-    static let clayHighlight = Color(UIColor(rgb: 0xFFFFFF))
+    /// Alias of `CatpawColors.fill` (Primary #FF702A). Fills/icons only — never body text.
+    static var paw: Color { CatpawColors.fill }
+    static var clayLight: Color { CatpawColors.orbLight }
+    static var clayBase: Color { CatpawColors.fill }
+    static var clayRim: Color { CatpawColors.actionText }
+    static var clayShadow: Color { Color(UIColor(rgb: CatpawBrandTokens.clayShadow)) }
+    static var clayHighlight: Color { CatpawColors.calmGlyph }
+}
+
+/// Cat-head brand mark from `Assets.xcassets/CatpawBrand/`.
+/// Prefer this over `PawMark` for identity (splash, landing orb, sidebar header).
+/// Category pastel markers may still use `PawMark`.
+struct BrandMark: View {
+    var size: CGFloat
+    var color: Color = CatpawColors.fill
+    /// `template` tints with `color`; `fill` = orange silhouette; `onOrange` = white on orange orbs.
+    var style: Style = .template
+    enum Style { case template, fill, onOrange }
+    var body: some View {
+        Group {
+            switch style {
+            case .template:
+                Image("BrandMark").renderingMode(.template).resizable().scaledToFit()
+                    .foregroundStyle(color)
+            case .fill:
+                Image("BrandMarkFill").resizable().scaledToFit()
+            case .onOrange:
+                Image("BrandMarkOnOrange").resizable().scaledToFit()
+            }
+        }
+        .frame(width: size, height: size)
+        .accessibilityHidden(true)
+    }
 }
 
 /// The single Catpaw logo (r10, "soft clay" 3D style): every pad is its own ellipse with a radial clay gradient
@@ -38,14 +65,14 @@ enum CatpawBrand {
 /// `pressed[i]` squashes pad i (0–3 toes, 4 main pad) for the launch tap sequence.
 struct PawMark: View {
     var size: CGFloat
-    var color: Color = CatpawBrand.paw
+    var color: Color = CatpawColors.fill
     var pressed: [Bool] = [false, false, false, false, false]
     var shadow: Bool = true
     /// 0…1 position of the glossy highlight sweep (launch); nil = resting highlight.
     var sweep: CGFloat? = nil
     /// 0…1 launch exit: pieces drift outward (staggered), grow and fade. 0 = assembled.
     var scatter: Double = 0
-    init(size: CGFloat, color: Color = CatpawBrand.paw, pressed: [Bool] = [false, false, false, false, false], shadow: Bool = true, sweep: CGFloat? = nil, scatter: Double = 0) {
+    init(size: CGFloat, color: Color = CatpawColors.fill, pressed: [Bool] = [false, false, false, false, false], shadow: Bool = true, sweep: CGFloat? = nil, scatter: Double = 0) {
         self.size = size; self.color = color; self.pressed = pressed; self.shadow = shadow; self.sweep = sweep; self.scatter = scatter
     }
     /// Per-piece stagger (toes 0–3, pad 4): outer toes leave first, the pad last.

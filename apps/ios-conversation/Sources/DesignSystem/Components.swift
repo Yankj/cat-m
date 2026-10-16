@@ -9,46 +9,50 @@ import AppKit
 /// Reading, temporary surfaces, sending and exact approval are independent roles:
 /// changing an action tint cannot recolor a message or grant an approval emphasis.
 enum CatpawColors {
-    static let background = adaptive(light: 0xFFFFFF, dark: 0x050505)
-    static let panel = adaptive(light: 0xF7F7F7, dark: 0x181818)
-    static let input = adaptive(light: 0xF7F7F7, dark: 0x141414)
+    // Surfaces — brand Background #FFFCF8
+    static let background = adaptive(light: CatpawBrandTokens.background, dark: CatpawBrandTokens.canvasDark)
+    static let panel = adaptive(light: CatpawBrandTokens.panelLight, dark: CatpawBrandTokens.panelDark)
+    static let input = adaptive(light: CatpawBrandTokens.panelLight, dark: 0x141414)
     static let drawer = adaptive(light: 0xF5F5F5, dark: 0x141414)
-    static let ink = adaptive(light: 0x1C1B1A, dark: 0xF2F0ED)
+    /// Brand Ink #292622 — primary text
+    static let ink = adaptive(light: CatpawBrandTokens.ink, dark: CatpawBrandTokens.inkDark)
     static let onInk = adaptive(light: 0xFFFFFF, dark: 0x151515)
-    static let secondary = adaptive(light: 0x6E6A66, dark: 0xA39E98)
-    static let tertiary = adaptive(light: 0xA8A39E, dark: 0x6B6662)
-    // r9: settings / drawer grouped surfaces.
-    static let groupedBackground = adaptive(light: 0xF7F5F2, dark: 0x121110)
+    /// Brand Grey #929298 — secondary text / captions
+    static let secondary = adaptive(light: CatpawBrandTokens.secondaryLight, dark: CatpawBrandTokens.greyDark)
+    static let tertiary = adaptive(light: CatpawBrandTokens.grey, dark: 0x6B6662)  // sheet Grey (muted)
+    static let groupedBackground = adaptive(light: CatpawBrandTokens.background, dark: 0x121110)
     static let card = adaptive(light: 0xFFFFFF, dark: 0x1C1B19)
     static let fillSelected = adaptive(light: 0xEAE6E1, dark: 0x2E2B28)
-    static let hairline = adaptiveAlpha(light: 0x1C1B1A, lightAlpha: 0.08, dark: 0xFFFFFF, darkAlpha: 0.10)
+    static let hairline = adaptiveAlpha(light: CatpawBrandTokens.ink, lightAlpha: 0.08, dark: 0xFFFFFF, darkAlpha: 0.10)
     static let destructive = adaptive(light: 0xD9402B, dark: 0xFF6B57)
-    // r9: brand paw orange replaces the former blue action role.
-    static let action = adaptive(light: 0xEA5F2C, dark: 0xFF8A5C)   // fills/icons/non-text only (≥3:1)
-    /// Orange text where unavoidable (≥4.5:1 on white). Prefer ink for text.
-    static let actionText = adaptive(light: 0xC4511F, dark: 0xFF9E78)
+    /// Brand Primary #FF702A — fills / icons / non-text only (never body copy).
+    static let action = adaptive(light: CatpawBrandTokens.fillLight, dark: CatpawBrandTokens.primaryDark)
+    /// Semantic alias for brand fill (same as `action`).
+    static let fill = action
+    /// Brand Deep #C64A0B — orange text only when unavoidable (≥4.5:1). Prefer `ink`.
+    static let actionText = adaptive(light: CatpawBrandTokens.deep, dark: CatpawBrandTokens.deepDark)
     static let send = adaptive(light: 0x3567EE, dark: 0x3567EE)
     static let sendIcon = adaptive(light: 0xFFFFFF, dark: 0xFFFFFF)
     static let userMessageBackground = adaptive(light: 0xF2EFEB, dark: 0x262422)
-    static let userMessageInk = adaptive(light: 0x1C1B1A, dark: 0xF2F0ED)
+    static let userMessageInk = adaptive(light: CatpawBrandTokens.ink, dark: CatpawBrandTokens.inkDark)
     static let controlEdge = adaptive(light: 0x858585, dark: 0x777777)
-    // Decorative separators do not carry a control's affordance or state.
     static let separator = adaptive(light: 0xDEDEDE, dark: 0x383838)
     static let success = adaptive(light: 0x267146, dark: 0x9BD4AF)
     static let attention = adaptive(light: 0x895700, dark: 0xE9BC69)
     static let failure = adaptive(light: 0xB3261E, dark: 0xFFB4AB)
-    // Calm launch/onboarding/voice surface (warm page, peach + lavender glow, orange orb).
-    static let calmPage = adaptive(light: 0xFBF7F3, dark: 0xFBF7F3)
-    static let calmPeach = adaptive(light: 0xFFC79E, dark: 0xFFC79E)
-    static let calmLavender = adaptive(light: 0xD6CCFA, dark: 0xD6CCFA)
-    static let orbLight = adaptive(light: 0xFFBD85, dark: 0xFFBD85)
-    static let orbDeep = adaptive(light: 0xF57333, dark: 0xF57333)
+    // Calm launch / onboarding / voice (warm page + orb)
+    static let calmPage = adaptive(light: CatpawBrandTokens.background, dark: CatpawBrandTokens.background)
+    static let calmPeach = adaptive(light: CatpawBrandTokens.peach, dark: CatpawBrandTokens.peach)
+    static let calmLavender = adaptive(light: CatpawBrandTokens.lavender, dark: CatpawBrandTokens.lavender)
+    static let orbLight = adaptive(light: CatpawBrandTokens.orbLight, dark: CatpawBrandTokens.orbLight)
+    static let orbDeep = adaptive(light: CatpawBrandTokens.primary, dark: CatpawBrandTokens.primary)
     static let calmSurface = adaptive(light: 0xFFFFFF, dark: 0xFFFFFF)
     static let calmGlyph = adaptive(light: 0xFFFFFF, dark: 0xFFFFFF)
     static let calmShadow = adaptive(light: 0x000000, dark: 0x000000)
-    // Compatibility names inherit the shared semantic role, never a second palette.
+    // Compatibility aliases — never a second palette.
     static let accent = action
     static let green = success
+    static let primary = action
 
     private static func adaptiveAlpha(light: UInt32, lightAlpha: CGFloat, dark: UInt32, darkAlpha: CGFloat) -> Color {
         #if os(iOS)
