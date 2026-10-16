@@ -234,7 +234,7 @@ import UserNotifications
         XCTAssertEqual(poster.adds.count, 2, "second snooze really scheduled"); XCTAssertNotEqual(poster.adds[0].id, poster.adds[1].id)
         let ops = ProactiveEngine.shared.syncQueue.items.filter { $0.op.local == c.id }.map(\.op)
         XCTAssertEqual(ops.map(\.action), ["snooze", "snooze"]); XCTAssertEqual(Set(ops.map(\.operationID)).count, 2, "new intent → new operation id")
-        XCTAssertEqual(ops.map(\.until), second.taken?.map { ProactiveUndo.snoozeUntil(detail: $0.detail, at: $0.at) }.map { ISO8601DateFormatter().string(from: $0) }, "device until synced with each intent")
+        XCTAssertEqual(ops.map(\.until), (second.taken ?? []).map { Optional(ISO8601DateFormatter().string(from: ProactiveUndo.snoozeUntil(detail: $0.detail, at: $0.at))) }, "device until synced with each intent")
     }
 
     /// P1-5: device → cloud undo after two snoozes: the queued ops are exactly the ones the server contract test replays

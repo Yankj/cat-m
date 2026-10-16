@@ -88,12 +88,22 @@ struct ProactiveSignal: Equatable, Sendable {
     }
     func resetLedger() { ledger = [:]; signalLedger = .init(); note("ledger cleared") }
 
-    /// Codex PR90d #1: owner-scoped cleanup. Synchronous (no await), so it runs at the first write or account change
-    /// that sees a different owner; data of the same account (cold restore) is never touched, and data the new account
-    /// has already written is owned by it and survives a later observer call.
+    /// Codex PR90d #1 / PR90e #1 #2: owner-scoped data lifecycle (`ProactiveDataOwner.plan`). Synchronous (no await), at
+    /// every write entry and account change: same owner → nothing; no owner recorded (first run after the upgrade) →
+    /// the data is migrated to the signed-in account (only other accounts' queued write-backs go); otherwise the
+    /// previous owner's data is wiped. Adopt and wipe both register the new owner, so it never stays "".
     func claimData(for account: String?, force: Bool = false) {
         let owner = defaults.object(forKey: ProactiveDataOwner.key) as? String
-        guard force || ProactiveDataOwner.mustWipe(owner: owner, current: account) else { return }
+        let plan: ProactiveDataOwner.Plan = force ? .wipe : ProactiveDataOwner.plan(owner: owner, current: account)
+        switch plan {
+        case .keep: return
+        case .adopt:
+            if let account { syncQueue.retainOnly(account: account) }
+            defaults.set(account ?? "", forKey: ProactiveDataOwner.key)
+            note("proactive data without a recorded owner migrated to \(account ?? "-") (upgrade)")
+            return
+        case .wipe: break
+        }
         for id in Set(ProactiveSuggestionStore.shared.items.keys).union(ProactiveLocalBackend.load().keys) { CatpawLeaveActivity.stop(suggestionID: id) }
         quota = ProactiveQuotaLedger()
         syncQueue.purge(account: nil); serverIDs = [:]; localOnly = []; localFeedback = .init()
@@ -269,9 +279,9 @@ struct ProactiveSignal: Equatable, Sendable {
         let remindAt = leaveAt  // remind when user should leave
         var decision: Decision
         if let remote = await evaluateRemote(signal, leadMinutes: lead.minutes, travelMinutes: usedETA ? travelMinutes : nil, token: token) { decision = remote }
-        else {
-            decision = evaluateLocal(signal, leadMinutes: lead.minutes, travelMinutes: usedETA ? travelMinutes : nil, now: now)
-            // NoBug: learned feedback (三角's ProactiveFeedbackSync) gates offline decisions too.
+        else { decision = evaluateLocal(signal, leadMinutes: lead.minutes, travelMinutes: usedETA ? travelMinutes : nil, now: now) }
+        do {
+            // NoBug / Codex PR90e: learned feedback gates online and offline decisions alike (it can only lower a level).
             let gated = ProactiveRules.applyFeedbackGate(decision.level, confidence: ProactiveRules.localConfidence(ProactiveRules.localTrigger, Int(signal.start.timeIntervalSince(now) / 60), travelMinutes: usedETA ? travelMinutes : nil), gate: Self.effectiveFeedbackGate)
             if gated != decision.level { decision = .init(level: gated, why: decision.why + " · feedback gate → \(gated.name)", via: decision.via) }
         }
@@ -409,7 +419,11 @@ struct ProactiveSignal: Equatable, Sendable {
         set { UserDefaults.standard.set(newValue, forKey: Self.serverIDsKey) }
     }
     /// Pending action/undo write-backs: persisted, retried with backoff, bound to the account (Codex PR90 #5).
-    struct SyncOp: Codable, Sendable { var local: String; var action: String; var operationID: String }
+    struct SyncOp: Codable, Sendable {
+        var local: String; var action: String; var operationID: String
+        /// Codex PR90e #5: a snooze's own until (ISO 8601), so the cloud records the device's instant, not its own.
+        var until: String? = nil
+    }
     let syncQueue = CatpawPersistentQueue<SyncOp>(name: "proactive.sync")
     /// Codex PR90 #6: undo generations → fresh idempotency identity for actions re-taken after undo.
     private static let generationsKey = "catpaw.proactive.generations.v1"
@@ -417,8 +431,13 @@ struct ProactiveSignal: Equatable, Sendable {
         get { UserDefaults.standard.data(forKey: Self.generationsKey).flatMap { try? JSONDecoder().decode(ProactiveActionGenerations.self, from: $0) } ?? .init() }
         set { UserDefaults.standard.set(try? JSONEncoder().encode(newValue), forKey: Self.generationsKey) }
     }
-    func operationID(_ local: String, _ action: String) -> String {
-        ProactiveRules.operationID(suggestion: local, action: action, generation: generations[local])
+    func operationID(_ local: String, _ action: String, ordinal: Int = 1) -> String {
+        ProactiveRules.operationID(suggestion: local, action: action, generation: generations[local], ordinal: ordinal)
+    }
+    /// Every snooze notification this card may have pending: one per snooze intent, plus the pre-PR90e legacy id.
+    func snoozeBases(_ s: ProactiveSuggestion) -> [String] {
+        [s.id + "-snooze"] + (s.taken ?? []).filter { $0.action == .snooze }
+            .compactMap { ProactiveUndo.snoozeIntent(detail: $0.detail) }.map { ProactiveDeliveryPipeline.snoozeBase(s.id, intent: $0) }
     }
     /// Codex PR90c #5 / PR90d #4 — the complete undo (catpaw.proactive.undo.v1, same as the server); the real UI entry
     /// `ProactiveLocalBackend.undo` calls this. Token bound before any await; reverts the last reversible action's real
@@ -438,14 +457,19 @@ struct ProactiveSignal: Equatable, Sendable {
             #endif
         }
         guard AccountEpoch.shared.isValid(token) else { throw ProactiveEngineError.writeFailed }   // switched meanwhile: nothing saved
-        if removed == "snooze" { delivery.remove(bases: [id + "-snooze"], token: token) }
+        if removed == "snooze" {   // exactly the undone intent's notification (+ the legacy id)
+            delivery.remove(bases: [id + "-snooze"] + (ProactiveUndo.snoozeIntent(detail: taken[index].detail).map { [ProactiveDeliveryPipeline.snoozeBase(id, intent: $0)] } ?? []), token: token)
+        }
         CatpawLeaveActivity.stop(suggestionID: id)
         var kept = taken; kept.remove(at: index); s.taken = kept
         s.status = ProactiveSuggestion.Status(rawValue: plan.status) ?? .pending
         s.serverActionStates?[removed] = nil   // the cloud's success of the undone action must not beat the undo
         let restore = ProactiveUndo.restoredSnooze(taken: kept.map { ($0.action.rawValue, $0.at, $0.detail) }, status: plan.status)
         guard AccountEpoch.shared.commit(token, { () -> Void in ProactiveLocalBackend.save(s, token: token) }) != nil else { throw ProactiveEngineError.writeFailed }
-        if let restore, restore > .now { scheduleSnooze(s, until: restore, token: token) }
+        if let restore, restore > .now {
+            let intent = kept.last(where: { $0.action == .snooze }).flatMap { ProactiveUndo.snoozeIntent(detail: $0.detail) } ?? "restored-\(Int(restore.timeIntervalSince1970))"
+            scheduleSnooze(s, until: restore, intent: intent, token: token)
+        }
         var g = generations; let op = g.undo(id); generations = g
         syncAction("undo", local: id, operationID: op, token: token)
         return s
@@ -478,10 +502,17 @@ struct ProactiveSignal: Equatable, Sendable {
     /// Codex PR90d #2: queued under the account the action was taken for (`token`), never "whoever is signed in now";
     /// a stale token enqueues nothing. One FIFO group per suggestion and no superseding: the cloud history must match the
     /// device's exactly, or a later undo reverts different actions on each side.
-    func syncAction(_ action: String, local: String, operationID: String, token: AccountToken?) {
+    func syncAction(_ action: String, local: String, operationID: String, until: Date? = nil, token: AccountToken?) {
         guard let token, AccountEpoch.shared.isValid(token) else { note("sync \(action) dropped: account changed"); return }
-        syncQueue.enqueue(SyncOp(local: local, action: action, operationID: operationID), key: operationID, account: token.account, group: local)
+        syncQueue.enqueue(SyncOp(local: local, action: action, operationID: operationID, until: until.map { ISO8601DateFormatter().string(from: $0) }),
+                          key: operationID, account: token.account, group: local)
         Task { await drainSync() }
+    }
+    static func syncBody(_ op: SyncOp) -> [String: Any] {
+        if op.action == "undo" { return ["operation_id": op.operationID] }
+        var b: [String: Any] = ["action": op.action, "operation_id": op.operationID]
+        if let until = op.until { b["until"] = until }
+        return b
     }
     /// Sends due write-backs. A missing server id (evaluated offline) or a network failure → retry later; restart-safe.
     func drainSync() async {
@@ -492,7 +523,7 @@ struct ProactiveSignal: Equatable, Sendable {
                 if self.localOnly.contains(op.local) { self.note("sync \(op.action) for local-only \(op.local): no cloud record → kept on device only"); return .drop }
                 return .retry
             }
-            let res = await Self.post("suggestions/\(id)/\(op.action == "undo" ? "undo" : "action")", op.action == "undo" ? ["operation_id": op.operationID] : ["action": op.action, "operation_id": op.operationID], token: token)
+            let res = await Self.post("suggestions/\(id)/\(op.action == "undo" ? "undo" : "action")", Self.syncBody(op), token: token)
             self.note("server \(op.action) id=\(id) \(res == nil ? "failed → queued for retry" : "recorded")")
             return res == nil ? .retry : .done
         }
@@ -629,19 +660,17 @@ struct ProactiveSignal: Equatable, Sendable {
     #endif
 
     /// Codex PR90d #3: through the delivery pipeline (account/epoch stamp, scoped id, quota + quiet hours at the fire
-    /// instant, late-completion cleanup). Returns the snooze_until recorded on the snooze entry.
-    @discardableResult func snooze(_ suggestionID: String, minutes: Int = 10, token: AccountToken?) -> Date {
-        let until = Date.now.addingTimeInterval(TimeInterval(minutes * 60))
-        if let s = ProactiveSuggestionStore.shared.items[suggestionID], let token { scheduleSnooze(s, until: until, token: token) }
-        note("snooze \(minutes) min id=\(suggestionID)")
-        return until
+    /// instant, late-completion cleanup).
+    /// Awaited by the real entry, so the card says "snoozed" only when the notification really got scheduled (Codex PR90e #4).
+    func snooze(_ s: ProactiveSuggestion, until: Date, intent: String, token: AccountToken) async -> ProactiveDeliveryPipeline.Outcome {
+        let out = await delivery.snooze(id: s.id, intent: intent, title: s.title, body: s.reason, category: Self.notificationCategory,
+                                        info: ["catpaw_proactive_id": s.id], fire: until, token: token)
+        note("snooze id=\(s.id) intent=\(intent) until=\(until) → \(out)")
+        return out
     }
-    func scheduleSnooze(_ s: ProactiveSuggestion, until: Date, token: AccountToken) {
-        Task { @MainActor in
-            let out = await delivery.snooze(id: s.id, title: s.title, body: s.reason, category: Self.notificationCategory,
-                                            info: ["catpaw_proactive_id": s.id], fire: until, token: token)
-            note("snooze notification id=\(s.id) → \(out)")
-        }
+    /// Re-arm (undo back to a snooze): fire-and-forget through the same pipeline.
+    func scheduleSnooze(_ s: ProactiveSuggestion, until: Date, intent: String, token: AccountToken) {
+        Task { @MainActor in _ = await snooze(s, until: until, intent: intent, token: token) }
     }
 
     // MARK: MapKit travel ETA (transit preferred)
@@ -746,14 +775,10 @@ struct ProactiveSignal: Equatable, Sendable {
 
     #if os(iOS)
     /// AccountEpoch (b) / Codex PR90d #1: runs via AccountChangeObservers ("proactive") after the synchronous epoch bump.
-    /// Same-account restore (nil → the owner) does nothing. Otherwise the previous owner's data is wiped synchronously,
-    /// before any await (`claimData`, a no-op if the new account already claimed it), and only notifications that are not
-    /// the current account's are removed — the new account's fresh requests survive.
+    /// Data: `claimData` (synchronous, before any await; same-account restore keeps everything). Notifications: only those
+    /// that are not the current account's — resolved exactly like the receive gate, local stamp or APNs `catpaw.account`.
     func accountDidChange(previous: String?, current: String?) async {
-        let now = AccountEpoch.shared.currentAccount
-        let owner = defaults.object(forKey: ProactiveDataOwner.key) as? String
-        if previous == nil, now != nil, !ProactiveDataOwner.mustWipe(owner: owner, current: now) { note("same-account restore → nothing to clean"); return }
-        claimData(for: now)
+        claimData(for: AccountEpoch.shared.currentAccount)   // same account → keep; never-owned → migrate; else wipe
         let center = UNUserNotificationCenter.current()
         let pending = await center.pendingNotificationRequests()
         let shown = await center.deliveredNotifications()
@@ -918,14 +943,19 @@ struct ProactiveSignal: Equatable, Sendable {
         UserDefaults.standard.data(forKey: key).flatMap { try? JSONDecoder().decode([String: ProactiveSuggestion].self, from: $0) } ?? [:]
     }
     private let mock = ProactiveSuggestionMock([])
+    /// Codex PR90e #1: the inbox is shown only to its owner (or, before the upgrade migration ran, to the signed-in account).
+    static var readable: Bool {
+        ProactiveDataOwner.plan(owner: UserDefaults.standard.object(forKey: ProactiveDataOwner.key) as? String, current: AccountEpoch.shared.currentAccount) != .wipe
+    }
     init() {
-        for s in Self.load().values { mock.upsert(s); ProactiveSuggestionStore.shared.adopt(s) }
+        if Self.readable { for s in Self.load().values { mock.upsert(s); ProactiveSuggestionStore.shared.adopt(s) } }
         // Codex PR90d: a cloud state merged into an existing card is persisted, so a reload cannot resurrect the action.
         ProactiveSuggestionStore.shared.onMerged = { Self.save($0) }
     }
     /// Codex P0-5: refresh reads the persisted inbox (the source every write path saves to), not an insert-only cache.
     func list() async throws -> [ProactiveSuggestion] {
-        Self.load().values.sorted { ($0.createdAt ?? .distantPast) > ($1.createdAt ?? .distantPast) }
+        guard Self.readable else { return [] }
+        return Self.load().values.sorted { ($0.createdAt ?? .distantPast) > ($1.createdAt ?? .distantPast) }
     }
     func perform(_ action: ProactiveSuggestion.Action, on id: String) async throws -> ProactiveSuggestion {
         // Codex PR90d #2: bound before any await; every effect, save and enqueue below commits for this account only.
@@ -945,11 +975,18 @@ struct ProactiveSignal: Equatable, Sendable {
             case .failed: throw ProactiveEngineError.writeFailed
             }
         case .snooze:
-            let until = ProactiveEngine.shared.snooze(id, token: token)
-            s.status = .snoozed; s.taken = (s.taken ?? []) + [.init(action: action, at: .now, detail: ProactiveUndo.snoozeDetail(until: until))]
+            // Codex PR90e #4 #5: one intent = one operation id = one notification; shown snoozed only if it was scheduled.
+            let intent = ProactiveEngine.shared.operationID(id, action.rawValue, ordinal: (s.taken ?? []).filter { $0.action == .snooze }.count + 1)
+            let until = Date.now.addingTimeInterval(600)
+            switch await ProactiveEngine.shared.snooze(s, until: until, intent: intent, token: token) {
+            case .posted: break
+            case .cardOnly: throw ProactiveEngineError.snoozeNotScheduled
+            case .refused: throw ProactiveEngineError.writeFailed
+            }
+            s.status = .snoozed; s.taken = (s.taken ?? []) + [.init(action: action, at: .now, detail: ProactiveUndo.snoozeDetail(until: until, intent: intent))]
         case .dismiss:
             CatpawLeaveActivity.stop(suggestionID: id)
-            ProactiveEngine.shared.delivery.remove(bases: [id + "-snooze"], token: token)  // Codex PR90c #5: dismiss cancels a pending snooze
+            ProactiveEngine.shared.delivery.remove(bases: ProactiveEngine.shared.snoozeBases(s), token: token)  // dismiss cancels every pending snooze
             s.status = .dismissed; s.taken = (s.taken ?? []) + [.init(action: action, at: .now)]
         case .notify_attendees:
             // P0-4: MessageUI via DeviceToolRouter — never mark done unless compose was presented and user sent.
@@ -976,7 +1013,10 @@ struct ProactiveSignal: Equatable, Sendable {
         // Only a real success is synced; a cancelled / unavailable SMS never reaches the cloud as notify_attendees.
         let state = s.actionStates[action.rawValue]
         if !ProactiveActionStates.effects.contains(action.rawValue) || state.map(ProactiveActionStates.shouldSync) == true {
-            ProactiveEngine.shared.syncAction(action.rawValue, local: id, operationID: ProactiveEngine.shared.operationID(id, action.rawValue), token: token)
+            // Codex PR90e #5: a new intent of a repeatable action (snooze, dismiss) gets a new id; a queued retry keeps its own.
+            let ordinal = ProactiveActionStates.effects.contains(action.rawValue) ? 1 : (s.taken ?? []).filter { $0.action == action }.count
+            let until = action == .snooze ? s.taken?.last.map { ProactiveUndo.snoozeUntil(detail: $0.detail, at: $0.at) } : nil
+            ProactiveEngine.shared.syncAction(action.rawValue, local: id, operationID: ProactiveEngine.shared.operationID(id, action.rawValue, ordinal: ordinal), until: until, token: token)
         }
         guard AccountEpoch.shared.isValid(token) else { throw ProactiveEngineError.writeFailed }
         mock.upsert(s); Self.save(s, token: token); return s
@@ -993,7 +1033,7 @@ struct ProactiveSignal: Equatable, Sendable {
         ProactiveEngine.shared.note("feedback \(value.rawValue) id=\(id) trigger=\(trigger)")
     }
 }
-enum ProactiveEngineError: Error, Equatable { case remindersDenied, writeFailed, smsUnavailable }
+enum ProactiveEngineError: Error, Equatable { case remindersDenied, writeFailed, smsUnavailable, snoozeNotScheduled }
 
 extension ProactiveLocalBackend {
     /// Builds a short 「告诉参会人」 draft from the pending meeting and presents MessageUI.
