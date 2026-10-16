@@ -416,7 +416,8 @@ import CatpawImageComposer
                         scrollTask?.cancel();scrollTask=nil
                         proxy.scrollTo("latest",anchor:.bottom)
                     }.frame(width:0,height:0).accessibilityHidden(true))
-                    .safeAreaInset(edge: .top, spacing: 0) {
+                    // Floating toast: overlays the transcript (no layout shift), sits just under the header.
+                    .overlay(alignment: .top) {
                         ConversationConnectionStatusCapsule(service: model.service, scope: model.scope,
                                                             conversationID: model.conversationID,
                                                             reportError: { model.error = $0 })
@@ -707,10 +708,11 @@ import CatpawImageComposer
                     Button(ui("确认发送许可")){contextAction(.modelConsent,inDetails:inDetails)}.touchTarget().disabled(!model.canReviewModelConsent).accessibilityIdentifier(inDetails ? "chat.input.context.modelConsent" : "chat.consent.review")
                 }.padding(10).background(CatpawColors.input,in:RoundedRectangle(cornerRadius:12))
             }
-            if !model.followups.pending.isEmpty {
+            // The strip is for real follow-ups (queued behind a reply, paused, or several). A single message that is
+            // being admitted right now already shows as a bubble with its own spinner.
+            if !model.followups.pending.isEmpty, inDetails || model.followups.paused || model.busy || model.followups.pending.count > 1 {
                 pendingStatusBar(inDetails:inDetails)
             }
-            if model.checkingModelConsent { Text(ui("正在准备发送…")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary).accessibilityIdentifier("chat.preparing") }
             if model.quotaNotice {
                 ConversationSystemNotice(kind: .quota, actionTitle: ui("重试")) { model.retryAfterQuota() }
             } else if let error = model.error, !(model.quotaReached && (error == ui("尚未发送的消息已保留，恢复连接后继续。") || error.contains(ui("恢复连接后继续")))) {
@@ -955,7 +957,7 @@ import CatpawImageComposer
     enum BubbleStatus { case none, sending, failed }
     private func bubbleStatus(_ id:UUID) -> BubbleStatus {
         if let intent=model.outgoingMessages.first(where:{$0.id == id}) {
-            switch intent.state { case .sending: return .sending; case .failed, .unknown: return .failed; default: return .none }
+            switch intent.state { case .sending, .savingLocal: return .sending; case .queued: return model.followups.paused ? .none : .sending; case .failed, .unknown: return .failed; default: return .none }
         }
         guard let turn = model.session?.turns.first(where:{$0.id == id}) else { return .none }
         if turn.state == .failed && turn.error != "cancelled" && turn.assistantMessageID == nil { return .failed }
@@ -989,6 +991,7 @@ import CatpawImageComposer
                         .messageLongPress(id:message.id.uuidString,content:.text(message.content),alignment:.trailing,onReply:quote){userBubblePreview(message)}   // long-press menu (MessageActions/)
                 }
                     .accessibilityIdentifier("chat.userMessage")
+                    .onAppear { if let id=operationID(message) { model.outgoingDidRender(id) } }
                     #if DEBUG
                     .background { if let id=operationID(message),probe.enabled { P0EchoWitness(operationID:id) } }
                     #endif
@@ -1105,21 +1108,19 @@ import CatpawImageComposer
     var body: some View {
         Group {
             if monitor.state != .online, let label = monitor.state.labelKey {
-                HStack(spacing: 8) {
-                    statusSymbol
+                HStack(spacing: 6) {
+                    statusSymbol.controlSize(.mini).imageScale(.small)
                     Text(ui(label.key, arguments: label.arguments))
-                        .font(CatpawTypography.Role.caption.font.weight(.medium))
-                        .fixedSize(horizontal: false, vertical: true)
-                    Spacer(minLength: 4)
-                    action
+                        .font(CatpawTypography.Role.caption.font)
+                        .lineLimit(1)
+                    action.font(CatpawTypography.Role.caption.font.weight(.medium))
                 }
-                .foregroundStyle(CatpawColors.ink)
-                .padding(.horizontal, 12).padding(.vertical, 8)
-                .frame(maxWidth: 680)
-                .background(CatpawColors.panel, in: Capsule())
-                .overlay(Capsule().strokeBorder(CatpawColors.controlEdge))
-                .padding(.horizontal, 20).padding(.vertical, 6)
-                .transition(.scale(scale: 0.96).combined(with: .opacity))
+                .foregroundStyle(CatpawColors.secondary)
+                .padding(.horizontal, 12).padding(.vertical, 6)
+                .background(.regularMaterial, in: Capsule())
+                .shadow(color: .black.opacity(0.10), radius: 10, y: 3)
+                .padding(.top, 6)
+                .transition(.move(edge: .top).combined(with: .opacity))
                 .accessibilityIdentifier("chat.connectionStatus")
             }
         }
@@ -1130,7 +1131,7 @@ import CatpawImageComposer
     @ViewBuilder private var statusSymbol: some View {
         switch monitor.state {
         case .offline: Image(systemName: "wifi.slash")
-        case .reconnecting, .syncing: ProgressView().controlSize(.small)
+        case .reconnecting, .syncing: ProgressView().controlSize(.mini)
         case .resumed: Image(systemName: "checkmark.circle.fill").foregroundStyle(CatpawColors.success)
         case .unreachable: Image(systemName: "exclamationmark.circle")
         case .busy: Image(systemName: "clock")
@@ -1639,16 +1640,19 @@ private extension View {
         // Keep top alignment for empty/short transcripts. Do NOT pin .sizeChanges to bottom:
         // that made the scroll view claim horizontal pans and blocked the sidebar gesture.
         // Keyboard follow is handled by CatpawKeyboardFollowScroll below.
-        if #available(iOS 18.0, *) { self.defaultScrollAnchor(.top, for: .alignment) } else { self }
+        // .sizeChanges = .top: when the empty-state block is removed on the first send the content shrinks;
+        // without this the old offset survived and short transcripts sat ~170 pt below the header ("centered").
+        if #available(iOS 18.0, *) { self.defaultScrollAnchor(.top, for: .alignment).defaultScrollAnchor(.top, for: .sizeChanges) } else { self }
     }
 }
 
-/// Shows a tiny spinner only if sending lasts longer than ~2 s.
+/// Tiny spinner under the user bubble while the message is being admitted. Fades in after 250 ms so an
+/// instant send shows nothing, but any wait (consent read, dispatch) is visibly "sending", not frozen.
 private struct DelayedSendingSpinner: View {
     @State private var visible = false
     var body: some View {
         ProgressView().controlSize(.mini).opacity(visible ? 1 : 0)
-            .task { try? await Task.sleep(nanoseconds: 2_000_000_000); withAnimation(.easeOut(duration: 0.2)) { visible = true } }
+            .task { try? await Task.sleep(nanoseconds: 250_000_000); withAnimation(.easeOut(duration: 0.2)) { visible = true } }
     }
 }
 

@@ -169,10 +169,13 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
     public func modelConsent(scope: DataScope, conversationID: UUID) async throws -> ConversationModelConsent? {
         guard configuration.publishableKey != nil else { return nil }
         let auth = try await authorization(scope),base = scopePath+"/conversations/"+conversationID.uuidString.lowercased()
+        // Route metadata does not depend on the conversation row: fetch it concurrently with the
+        // upsert → consent read chain (one round trip less before the first send).
+        async let routeMetadata = json("/catpaw/privacy/v1/model-route",auth:auth)
         do { _ = try await json(base,auth:auth) } catch NativeChatHTTPFailure.status(404) { _ = try await json(scopePath+"/conversations",auth:auth,body:["conversation_id":conversationID.uuidString.lowercased()]) }
-        let metadata = try await json("/catpaw/privacy/v1/model-route",auth:auth),ui = try Self.object(metadata["ui"]),routeHash = try Self.sha(metadata["route_hash"])
         let path = "/catpaw/privacy/v1/scopes/"+configuration.serverScopeID.uuidString.lowercased()+"/conversations/"+conversationID.uuidString.lowercased()+"/model-consent"
         let stored = try await json(path,auth:auth);let prior = stored["consent"] as? [String:Any]
+        let metadata = try await routeMetadata,ui = try Self.object(metadata["ui"]),routeHash = try Self.sha(metadata["route_hash"])
         if prior?["decision"] as? String == "allow",prior?["route_hash"] as? String == routeHash,AppModelConsentGrant.serverAllowHonored { return nil }
         guard let title = ui["title"] as? String,let body = ui["body"] as? String,title.utf8.count <= 512,body.utf8.count <= 12000 else { throw ConversationSessionError.invalidEvent }
         let revision = prior?["revision"] as? Int ?? 0;guard revision >= 0 else { throw ConversationSessionError.invalidEvent }

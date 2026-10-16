@@ -143,6 +143,9 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
     private var foreground = true
     private var savingCount = 0
     private var consentReady = false
+    /// A send that arrives while the open-time consent read is still in flight. Previously it was dropped
+    /// and only picked up by the 2 s foreground tick (0.5–2.5 s of dead time after tapping send).
+    private var reauthorizeAfterPermission = false
     private var modelConsentReview:ConversationModelConsent?
     private var connectionProbeID=UUID()
     private var reflectedReplyID:UUID?
@@ -501,6 +504,7 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
             let current=try await service.read(scope:scope,conversationID:id)
             let queued=try await queue?.state() ?? ConversationFollowupState()
             guard conversationID == id,refreshGeneration == generation else { return };session=current;followups=queued
+            if let t=current.turns.last { if t.lastSequence > 0 { SendClock.once("stream.firstEvent",t.id) }; if t.assistantMessageID != nil { SendClock.once("assistant.firstRow",t.id) }; if t.state == .completed { SendClock.once("turn.completed",t.id) } }
             let durable=(queued.pending + [queued.inflight].compactMap { $0 })
             let unresolvedIDs=Set(current.turns.filter { [.unknown,.notSent].contains($0.state) }.map(\.id))
             outgoingMessages=outgoingMessages.filter { value in
@@ -548,7 +552,7 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
         }
         // Commit all presentation state together after target reads and the last
         // lifecycle gate. An interrupted read cannot leave B with A's queue/draft.
-        permissionTask?.cancel();permissionID=nil;pendingModelConsent=nil;modelConsentReview=nil;modelConsentReviewToken=nil;checkingModelConsent=false;consentReady=false
+        permissionTask?.cancel();permissionID=nil;pendingModelConsent=nil;modelConsentReview=nil;modelConsentReviewToken=nil;checkingModelConsent=false;consentReady=false;reauthorizeAfterPermission=false
         queue=ConversationFollowupQueueService(repository:repository,scope:scope,conversationID:id)
         acceptedWorkReviewTask?.cancel();acceptedWorkReviewTask=nil;acceptedWorkReviewToken=nil;acceptedWorkReviewPresented=false;acceptedWorkReviewSaving=false;acceptedWorkCapability = .init();revisionWorkReviewTarget=nil
         acceptedWorkDraftTask?.cancel();acceptedWorkDraftTask=nil;acceptedWorkDraft=targetWorkDraft
@@ -620,8 +624,8 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
         guard revisionWork==nil || (acceptedWork==nil && payload==nil && target==revisionWorkReviewTarget && continuation==revisionWork?.target && revisionWork?.originalText.utf8.elementsEqual(draft.utf8)==true && reviewDraft?.revisionTarget==continuation) else {return}
         let message=ConversationFollowup(text:draft,image:payload?.reference,continuation:continuation,acceptedWork:acceptedWork,revisionWork:revisionWork)
         draftTask?.cancel();draftTask=nil
-        tapTimes[message.id]=tap;outgoingMessages.append(.init(id:message.id,text:message.text,image:payload?.reference.receipt,continuation:continuation,acceptedWork:acceptedWork,revisionWork:revisionWork,state:.savingLocal,error:nil));draft="";if target != nil {continuationEditSequence += 1;continuationDraftSaved=false}
-        savingCount += 1;enqueueing=true;tapToLocalPublishMs=(ProcessInfo.processInfo.systemUptime-tap)*1000
+        SendClock.tap(message.id);tapTimes[message.id]=tap;outgoingMessages.append(.init(id:message.id,text:message.text,image:payload?.reference.receipt,continuation:continuation,acceptedWork:acceptedWork,revisionWork:revisionWork,state:.savingLocal,error:nil));draft="";if target != nil {continuationEditSequence += 1;continuationDraftSaved=false}
+        savingCount += 1;enqueueing=true;tapToLocalPublishMs=(ProcessInfo.processInfo.systemUptime-tap)*1000;SendClock.mark("local.publish",message.id)
         let previous=persistenceTask
         persistenceTask=Task {
             await previous?.value
@@ -636,7 +640,7 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
                 if let prepared,imageDraft.attachment?.id==prepared.id,imageDraft.attachment?.sha256==prepared.sha256 {imageDraft.clear();approvedImage=nil}
                 guard conversationID == id else { return }
                 if acceptedWork != nil || revisionWork != nil {acceptedWorkDraft=nil;revisionWorkReviewTarget=nil}
-                setIntent(message.id,.queued);await refresh()
+                SendClock.mark("local.enqueued",message.id);setIntent(message.id,.queued);await refresh();SendClock.mark("local.refreshed",message.id)
                 if foreground { authorizePending() }
             } catch {
                 if payload != nil {try? await imageStore.remove(conversationID:id,operationID:message.id)}
@@ -646,15 +650,15 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
         }
     }
     func send() { prepareSend() }
-    func outgoingDidRender(_ id:UUID) { if let time=tapTimes.removeValue(forKey:id) { tapToFirstRenderedMs=(ProcessInfo.processInfo.systemUptime-time)*1000 } }
+    func outgoingDidRender(_ id:UUID) { if let time=tapTimes.removeValue(forKey:id) { SendClock.mark("bubble.appear",id); tapToFirstRenderedMs=(ProcessInfo.processInfo.systemUptime-time)*1000 } }
     private func setIntent(_ id:UUID,_ state:OutgoingMessageIntent.State,error:String?=nil) { if let i=outgoingMessages.firstIndex(where:{$0.id == id}) { outgoingMessages[i].state=state;outgoingMessages[i].error=error } }
     private func authorizePending() {
-        guard networkAdmissionAllowed,foreground,loaded,permissionTask == nil,pendingModelConsent == nil,let id=conversationID else { return }
+        guard networkAdmissionAllowed,foreground,loaded,permissionTask == nil,pendingModelConsent == nil,let id=conversationID else { if permissionTask != nil { reauthorizeAfterPermission=true };SendClock.mark("authorize.skipped admit=\(networkAdmissionAllowed) fg=\(foreground) loaded=\(loaded) permTask=\(permissionTask != nil) pending=\(pendingModelConsent != nil)");return }
         if consentReady,!AppModelConsentGrant.serverAllowHonored { consentReady=false }   // revoked in 设置: stop future calls
-        if consentReady { drainQueue();return }
-        let token=UUID();permissionID=token;checkingModelConsent=true
+        if consentReady { SendClock.mark("consent.cached");drainQueue();return }
+        SendClock.mark("consent.check.begin");let token=UUID();permissionID=token;checkingModelConsent=true
         permissionTask=Task {
-            defer { if permissionID == token { permissionTask=nil;checkingModelConsent=false } }
+            defer { if permissionID == token { permissionTask=nil;checkingModelConsent=false;if reauthorizeAfterPermission { reauthorizeAfterPermission=false;SendClock.mark("authorize.rerun");authorizePending() } } }
             do {
                 var state=try await queue?.state()
                 // A preflight hold (send threw before the turn was journaled: readiness timeout, admission
@@ -673,7 +677,7 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
                 let consent=try await service.modelConsent(scope:scope,conversationID:id)
                 guard !Task.isCancelled,permissionID == token,foreground,conversationID == id else { return }
                 if let consent { presentModelConsent(consent);for i in outgoingMessages.indices where outgoingMessages[i].state == .queued { outgoingMessages[i].state = .awaitingPermission } }
-                else { consentReady=true;drainQueue() }
+                else { SendClock.mark("consent.check.done");consentReady=true;drainQueue() }
             } catch { if permissionID == token { self.error="尚未发送；连接或许可读取未完成，本机消息已保留。" } }
         }
     }
@@ -703,7 +707,9 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
     private func presentModelConsent(_ consent:ConversationModelConsent) {
         modelConsentReview=consent;modelConsentReviewToken=UUID();pendingModelConsent=consent
     }
-    var needsModelConsentReview:Bool {!consentReady && (modelConsentReview != nil || !followups.pending.isEmpty)}
+    /// Only an actual consent request (or a paused queue that needs one) shows the banner. The ~1 s automatic
+    /// consent read after a send in a new conversation is silent — the bubble's own spinner covers it.
+    var needsModelConsentReview:Bool {!consentReady && !checkingModelConsent && (modelConsentReview != nil || (followups.paused && !followups.pending.isEmpty))}
     var canReviewModelConsent:Bool {loaded && foreground && networkAdmissionAllowed && !checkingModelConsent && !busy && session?.unresolved==nil}
     func requestModelConsentReview() {
         guard canReviewModelConsent else{return}
@@ -728,7 +734,7 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
     private var canDispatchFollowup:Bool { loaded && foreground && networkAdmissionAllowed }
     private func drainQueue() {
         guard networkAdmissionAllowed,foreground,let id=conversationID,let queue,!busy,session?.unresolved == nil else { sendLog.info("catpaw.send drain skipped admit=\(self.networkAdmissionAllowed, privacy: .public) fg=\(self.foreground, privacy: .public) busy=\(self.busy, privacy: .public) unresolved=\(self.session?.unresolved != nil, privacy: .public)");return }
-        sendLog.info("catpaw.send drain start")
+        sendLog.info("catpaw.send drain start");SendClock.mark("drain.start")
         let token=UUID();flightID=token;busy=true;sending=true;observerLifecycle = .streaming;error=nil
         turnTask=Task {
             defer { if flightID == token { flightID=nil;busy=false;sending=false;observerLifecycle=session?.unresolved == nil ? .foregroundIdle : .unknown } }
@@ -741,7 +747,7 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
                         let image:ConversationVisionPayload?
                         if let reference=message.image {let bytes=try await imageStore.read(reference:reference,conversationID:id,operationID:message.id);image = .init(reference:reference,bytes:bytes)} else {image=nil}
                         guard !Task.isCancelled,await self?.canDispatchFollowup == true else {return .heldBeforeAdmission}
-                        sendLog.info("catpaw.send dispatch");let t0=Date();defer { sendLog.info("catpaw.send dispatch end \(Date().timeIntervalSince(t0), privacy: .public)s") }
+                        sendLog.info("catpaw.send dispatch");await SendClock.mark("dispatch.begin",message.id);let t0=Date();defer { sendLog.info("catpaw.send dispatch end \(Date().timeIntervalSince(t0), privacy: .public)s") }
                         _=try await service.send(scope:scope,conversationID:id,text:message.text,operationID:message.id,preserveDraft:true,image:image,continuation:message.continuation,acceptedWork:message.acceptedWork,revisionWork:message.revisionWork);return .sent
                     }
                     catch {
@@ -964,4 +970,20 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
         draft="";history=[];session=nil;conversationID=nil;followups=ConversationFollowupState();queue=nil;outgoingMessages=[];tapTimes=[:];isInputComposing=false;error=nil;loaded=false
         return planDraftsSaved && artifactDraftsSaved && composerSaved
     }
+}
+
+import os
+/// Send-path timing: `log stream --predicate 'subsystem == "catpaw.send.timing"'`. ms are relative to the tap.
+@MainActor enum SendClock {
+    private static let log = Logger(subsystem: "catpaw.send.timing", category: "send")
+    private static var taps: [UUID: TimeInterval] = [:]
+    private static var lastTap: TimeInterval?
+    static func tap(_ id: UUID) { let now = ProcessInfo.processInfo.systemUptime; taps[id] = now; lastTap = now; log.notice("catpaw.send.timing tap op=\(id.uuidString.prefix(8), privacy: .public) ms=0") }
+    static func mark(_ step: String, _ id: UUID? = nil) {
+        guard let start = id.flatMap({ taps[$0] }) ?? lastTap else { return }
+        let ms = Int((ProcessInfo.processInfo.systemUptime - start) * 1000)
+        log.notice("catpaw.send.timing \(step, privacy: .public) ms=\(ms, privacy: .public)")
+    }
+    static func once(_ step: String, _ id: UUID) { let key = "\(step)-\(id)"; guard !seen.contains(key) else { return }; seen.insert(key); mark(step, id) }
+    private static var seen = Set<String>()
 }
