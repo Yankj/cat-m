@@ -258,16 +258,16 @@ extension DeviceResultSubmitting { func reportUndo(callID: String, outcome: Devi
 /// Codex P0-1 (PR #89 re-review): the single execution authority for device calls.
 /// - Grants come ONLY from `receive`, called by the app service at the authenticated SSE boundary
 ///   (`ConversationDeviceCall.lifecycle`), never from a view. A grant binds call_id + tool + args hash + interrupt +
-///   conversation + turn + non-nil account + session generation + a strict, non-extendable deadline.
+///   conversation + turn + non-nil account + AccountEpoch token + a strict, non-extendable deadline.
 /// - Writes additionally consume a one-shot local tap token minted by the card button for the FINAL (edited) args.
 /// - `commitCheck` is synchronous and is called by the executor immediately before each system side effect, so expiry,
-///   sign-out (generation bump) or revocation during an await (permission prompt, lookup) still stops the write.
+///   sign-out (AccountEpoch bump) or revocation during an await (permission prompt, lookup) still stops the write.
 /// - Cancel / resolve / turn end revoke; repeated events never extend; a wall-clock rollback cannot extend
 ///   (an uptime budget is checked too); the boundary is fail-first (`now >= deadline` is expired).
 @MainActor enum DeviceCallGate {
     struct Grant: Equatable {
         let callID: String, tool: String, argsHash: String, interruptID: String?, conversationID: String?, turnID: String?
-        let account: String, generation: Int, deadline: Date, uptimeAtGrant: TimeInterval, budget: TimeInterval
+        let token: AccountToken, deadline: Date, uptimeAtGrant: TimeInterval, budget: TimeInterval
         var revoked = false
     }
     struct TapToken: Equatable, Sendable { let callID: String; let finalArgsHash: String; let nonce: UUID }
@@ -276,11 +276,11 @@ extension DeviceResultSubmitting { func reportUndo(callID: String, outcome: Devi
              invalidExpiry = "invalid_expiry", revoked = "call_revoked", mismatch = "call_mismatch", tapRequired = "tap_required", staleSession = "stale_session"
     }
     /// Signed-in user id (NativeAuthApplicationModel); nil when signed out → nothing may run.
-    static var currentAccount: () -> String? = { nil }
-    static var epoch: AccountEpoch = .shared   // red scaffold: not yet used
+    /// Account barrier shared with memory sync and proactive delivery (Sources/Domain/AccountEpoch.swift). Injectable.
+    static var epoch: AccountEpoch = .shared
+    static func currentAccount() -> String? { epoch.currentAccount }
     static var wallClock: () -> Date = { Date() }
     static var uptime: () -> TimeInterval = { ProcessInfo.processInfo.systemUptime }
-    private(set) static var generation = 0
     private static var grants: [String: Grant] = [:]
     private static var taps: [String: TapToken] = [:]
 
@@ -292,11 +292,11 @@ extension DeviceResultSubmitting { func reportUndo(callID: String, outcome: Devi
 
     /// The only grant source. A second event for the same call_id never replaces or extends the first grant.
     static func receive(_ call: DeviceCall, conversationID: String? = nil, turnID: String? = nil) {
-        guard grants[call.call_id] == nil, let account = currentAccount() else { return }
+        guard grants[call.call_id] == nil, let token = epoch.capture() else { return }
         let now = wallClock()
         let deadline = call.strictDeadline(receivedAt: now) ?? .distantPast   // missing / unparsable → fail closed
         grants[call.call_id] = .init(callID: call.call_id, tool: call.tool, argsHash: argsHash(call.args), interruptID: call.interrupt_id,
-                                     conversationID: conversationID, turnID: turnID, account: account, generation: generation,
+                                     conversationID: conversationID, turnID: turnID, token: token,
                                      deadline: deadline, uptimeAtGrant: uptime(), budget: max(0, deadline.timeIntervalSince(now)))
     }
     /// Cancelled / resolved elsewhere / turn finished: the grant dies and any confirming card shows as no longer valid.
@@ -323,9 +323,9 @@ extension DeviceResultSubmitting { func reportUndo(callID: String, outcome: Devi
     static func commitCheck(_ callID: String) -> Rejection? {
         guard let g = grants[callID] else { return .unregistered }
         if g.revoked { return .revoked }
-        guard let account = currentAccount() else { return .noAccount }
-        guard g.account == account else { return .accountMismatch }
-        guard g.generation == generation else { return .staleSession }
+        guard let now = epoch.capture() else { return .noAccount }
+        guard g.token.account == now.account else { return .accountMismatch }
+        guard epoch.isValid(g.token) else { return .staleSession }   // signed out / switched / re-signed-in since the grant
         if g.deadline == .distantPast { return .invalidExpiry }
         if wallClock() >= g.deadline || uptime() - g.uptimeAtGrant >= g.budget { return .expired }
         return nil
@@ -351,7 +351,7 @@ extension DeviceResultSubmitting { func reportUndo(callID: String, outcome: Devi
         }
     }
     /// Sign-out / account switch: every grant and tap dies, and in-flight executions fail their commit check.
-    static func reset() { grants = [:]; taps = [:]; generation += 1 }
+    static func reset() { grants = [:]; taps = [:]; epoch.bump() }
 }
 
 extension DeviceCall {

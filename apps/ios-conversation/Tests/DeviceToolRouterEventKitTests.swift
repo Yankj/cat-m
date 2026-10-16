@@ -13,8 +13,8 @@ import EventKit
         }
     }
 
-    override func setUp() async throws { DeviceCallGate.reset(); DeviceCallGate.currentAccount = { "xctest-user" } }
-    override func tearDown() async throws { DeviceCallGate.reset(); DeviceCallGate.currentAccount = { nil } }
+    override func setUp() async throws { DeviceCallGate.reset(); DeviceCallGate.epoch.activate(account: "xctest-user") }
+    override func tearDown() async throws { DeviceCallGate.reset(); DeviceCallGate.epoch.activate(account: nil) }
 
     /// Codex PR #89 re-review: the real router refuses a call with no live grant (never registered / revoked / signed out)
     /// before touching EventKit, and re-checks right before the save.
