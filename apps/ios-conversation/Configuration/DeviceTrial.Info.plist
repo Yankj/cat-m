@@ -96,6 +96,6 @@
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>用于估算去会议地点的公共交通时间，以便在合适的时间提醒你出发。</string>
 	<key>CatpawGitSHA</key>
-	<string>2a39ee2</string>
+	<string>3621f70</string>
 </dict>
 </plist>
