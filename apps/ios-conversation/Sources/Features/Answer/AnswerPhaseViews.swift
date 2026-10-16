@@ -20,7 +20,8 @@ import UIKit
             }
             switch model.phase {
             case .settled:
-                SettledFooter(text: model.text, sources: model.sources, canQuote: canQuote, onQuote: onQuote, onRegenerate: onRegenerate)
+                SettledFooter(text: model.text, sources: model.sources, canQuote: canQuote, onQuote: onQuote, onRegenerate: onRegenerate,
+                              generationSeconds: model.generationSeconds)
                     .transition(.opacity.combined(with: .offset(y: 4)))
             case let .interrupted(reason, reconciliation):
                 InterruptedFooter(reason: reason, reconciliationRequired: reconciliation, onVerify: onVerify, onRegenerate: onRegenerate)
@@ -87,66 +88,88 @@ import UIKit
 
 @MainActor private struct ThinkingHeader<Model: AnswerPhaseProviding>: View {
     @ObservedObject var model: Model
-    @State private var expanded = false
+    /// nil = follow the phase (open while thinking with steps, closed once text arrives); set once the user taps.
+    @State private var userExpanded: Bool?
     @Environment(\.locale) private var locale
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private func ui(_ k: String, _ a: [String] = []) -> String { AppLanguage(locale: locale).ui(k, arguments: a) }
     private var thinking: Bool { model.phase == .thinking }
+    private var expanded: Bool { userExpanded ?? thinking }
+    private var hasDetail: Bool { !model.steps.isEmpty || !(model.thinkingSummary ?? "").isEmpty }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            if thinking { liveRow } else { chip }
-            // Steps only under the settled chip — live thinking no longer lists tool titles beside the …
-            if !thinking && expanded {
-                VStack(alignment: .leading, spacing: 4) {
-                    ForEach(model.steps) { ToolStepRow(step: $0) }
+        VStack(alignment: .leading, spacing: 8) {
+            if thinking { liveRow } else if hasDetail { resultRow }
+            if expanded && !model.steps.isEmpty {
+                VStack(alignment: .leading, spacing: 10) {
+                    ForEach(model.steps) { step in
+                        ReplyStepRow(step: step, current: thinking && step.id == currentStepID)
+                    }
+                    if !model.sources.isEmpty { SourceCapsuleStrip(sources: Array(model.sources.prefix(4))) }
                 }
-                .padding(.leading, 24)
                 .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+            if !thinking && expanded, let summary = model.thinkingSummary, !summary.isEmpty {
+                Text(summary).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .transition(.opacity)
             }
         }
         .animation(CatpawMotion.resolved(CatpawMotion.thinkingCollapse, reduceMotion), value: expanded)
+        .animation(CatpawMotion.resolved(CatpawMotion.thinkingCollapse, reduceMotion), value: model.steps.count)
         .accessibilityIdentifier("chat.answer.thinking")
     }
 
-    /// Compact in-progress affordance: cat presence + shimmer … . Summary and tool titles stay in
-    /// accessibility / the post-settle chip — no secondary status text pile next to the bubble.
+    private var currentStepID: String? { model.steps.last(where: { $0.state == .running })?.id }
+
+    /// Stage 1: one quiet line — paw presence + 「思考中 · Ns」, ticking once a second (no shimmer pile).
+    /// With steps, the line carries the running step's title instead and becomes the collapse toggle.
     private var liveRow: some View {
-        HStack(spacing: 10) {
-            CatpawPresence(state: model.thinkingSummary != nil ? .thinking : .waiting)
-            StreamShimmerEllipsis(active: !reduceMotion)
-            Spacer(minLength: 0)
+        Button { if !model.steps.isEmpty { userExpanded = !expanded } } label: {
+            HStack(spacing: 8) {
+                CatpawPresence(state: model.thinkingSummary != nil ? .thinking : .waiting)
+                    .scaleEffect(0.75).frame(width: 24, height: 24)
+                TimelineView(.periodic(from: model.thinkingStartedAt, by: 1)) { ctx in
+                    Text(liveTitle(now: ctx.date))
+                        .font(CatpawTypography.Role.secondary.font)
+                        .foregroundStyle(CatpawColors.secondary)
+                        .lineLimit(1).truncationMode(.tail)
+                        .monospacedDigit()
+                }
+                Spacer(minLength: 0)
+            }
+            .frame(minHeight: 32)
+            .contentShape(Rectangle())
         }
-        .frame(minHeight: 32)
+        .buttonStyle(.plain)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(ui("思考中") + " " + (model.thinkingSummary ?? model.steps.last?.title ?? ""))
         .accessibilityValue(Self.elapsed(from: model.thinkingStartedAt, to: Date()))
     }
 
-    private var chip: some View {
-        Button { expanded.toggle() } label: {
-            HStack(spacing: 6) {
-                PawShape().fill(CatpawBrand.paw).frame(width: 12, height: 12).accessibilityHidden(true)
-                Text(chipTitle).font(CatpawTypography.Role.caption.font.weight(.medium))
-                if !model.steps.isEmpty {
-                    Image(systemName: "chevron.right").font(CatpawTypography.Role.caption.font.weight(.semibold))
-                        .rotationEffect(.degrees(expanded ? 90 : 0)).accessibilityHidden(true)
-                }
-            }
-            .foregroundStyle(CatpawColors.secondary)
-            .padding(.horizontal, 10).frame(minHeight: 28)
-            .background(CatpawColors.panel, in: Capsule())
-            .touchTarget()
-        }
-        .buttonStyle(CatpawPressButtonStyle())
-        .disabled(model.steps.isEmpty)
-        .accessibilityValue(expanded ? ui("已展开") : ui("已收起"))
-        .accessibilityIdentifier("chat.answer.thoughtChip")
+    private func liveTitle(now: Date) -> String {
+        let secs = String(max(0, Int(now.timeIntervalSince(model.thinkingStartedAt))))
+        if let running = model.steps.last(where: { $0.state == .running }) { return running.title + " · " + secs + "s" }
+        return ui("思考中 · {0} 秒", [secs])
     }
 
-    private var chipTitle: String {
-        let seconds = String(model.thoughtSeconds ?? 0)
-        return model.steps.isEmpty ? ui("思考了 {0} 秒", [seconds]) : ui("思考了 {0} 秒 · {1} 个步骤", [seconds, String(model.steps.count)])
+    /// Stage 4: 「思考结果 ›」 — plain secondary text row, no capsule, chevron rotates when open.
+    private var resultRow: some View {
+        Button { userExpanded = !expanded } label: {
+            HStack(spacing: 4) {
+                Text(ui("思考结果")).font(CatpawTypography.Role.secondary.font)
+                if let s = model.thoughtSeconds, s > 0 {
+                    Text("· \(s)s").font(CatpawTypography.Role.secondary.font).monospacedDigit()
+                }
+                Image(systemName: "chevron.right").font(CatpawTypography.Role.caption.font.weight(.semibold))
+                    .rotationEffect(.degrees(expanded ? 90 : 0)).accessibilityHidden(true)
+            }
+            .foregroundStyle(CatpawColors.secondary)
+            .frame(minHeight: 32).contentShape(Rectangle())
+        }
+        .buttonStyle(CatpawPressButtonStyle())
+        .accessibilityValue(expanded ? ui("已展开") : ui("已收起"))
+        .accessibilityIdentifier("chat.answer.thoughtChip")
     }
 
     static func elapsed(from start: Date, to now: Date) -> String {
@@ -155,25 +178,65 @@ import UIKit
     }
 }
 
-@MainActor private struct ToolStepRow: View {
+/// Stage 2 step row: glyph + one-line title + duration. Only the running step is ink; finished ones recede.
+@MainActor private struct ReplyStepRow: View {
     let step: AnswerToolStep
+    let current: Bool
+    private var glyph: String {
+        let k = step.kind.lowercased()
+        if k.contains("search") { return "magnifyingglass" }
+        if k.contains("fetch") || k.contains("browse") || k.contains("web") || k.contains("url") { return "globe" }
+        if k.contains("image") || k.contains("vision") { return "photo" }
+        return "sparkle"
+    }
     var body: some View {
-        HStack(spacing: 8) {
-            Group {
-                if step.state == .running { ProgressView().controlSize(.mini) }
-                else { Image(systemName: "checkmark").font(CatpawTypography.Role.caption.font.weight(.bold)).foregroundStyle(CatpawColors.success) }
-            }.frame(width: 14)
-            Text(step.title).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary).lineLimit(1)
+        HStack(alignment: .firstTextBaseline, spacing: 10) {
+            Image(systemName: glyph).font(CatpawTypography.Role.caption.font)
+                .frame(width: 16).accessibilityHidden(true)
+            Text(step.title).font(CatpawTypography.Role.secondary.font.weight(current ? .medium : .regular))
+                .lineLimit(1).truncationMode(.tail)
+            if let d = duration { Text(d).font(CatpawTypography.Role.caption.font).monospacedDigit().foregroundStyle(CatpawColors.secondary) }
+            Spacer(minLength: 0)
         }
-        .frame(minHeight: 22)
+        .foregroundStyle(current ? CatpawColors.ink : CatpawColors.secondary)
+        .frame(minHeight: 24)
         .accessibilityElement(children: .combine)
         .transition(.opacity)
     }
+    private var duration: String? {
+        guard let start = step.startedAt, let end = step.endedAt else { return nil }
+        let s = end.timeIntervalSince(start)
+        return s < 10 ? String(format: "%.1fs", s) : "\(Int(s))s"
+    }
 }
 
-/// Three ink dots that shimmer in sequence. Reduce Motion → static "…".
-
-/// Soft highlight that sweeps across the streaming bubble (ink, not brand orange).
+/// Small host capsules under search/browse steps (favicon slot = host initial; no network fetch).
+@MainActor struct SourceCapsuleStrip: View {
+    let sources: [AnswerSource]
+    @Environment(\.openURL) private var openURL
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 6) {
+                ForEach(sources) { s in
+                    Button { if let u = s.url { openURL(u) } } label: {
+                        HStack(spacing: 5) {
+                            Text(String((s.host.isEmpty ? s.title : s.host).prefix(1)).uppercased())
+                                .font(CatpawTypography.Role.caption.font.weight(.bold))
+                                .frame(width: 18, height: 18).background(CatpawColors.separator, in: Circle())
+                            Text(s.host.isEmpty ? s.title : s.host).font(CatpawTypography.Role.caption.font).lineLimit(1)
+                        }
+                        .padding(.horizontal, 8).frame(minHeight: 28)
+                        .background(CatpawColors.panel, in: Capsule())
+                    }
+                    .buttonStyle(CatpawPressButtonStyle()).foregroundStyle(CatpawColors.secondary)
+                    .accessibilityLabel(s.title)
+                }
+            }
+            .padding(.leading, 26)
+        }
+        .accessibilityIdentifier("chat.answer.stepSources")
+    }
+}
 
 // MARK: B — full-width body, per-batch fade
 
@@ -211,48 +274,39 @@ import UIKit
     let canQuote: Bool
     let onQuote: (String) -> Void
     let onRegenerate: (() -> Void)?
+    var generationSeconds: Double? = nil
+    @State private var sourcesOpen = false
     @Environment(\.locale) private var locale
-    @Environment(\.openURL) private var openURL
-    @State private var copied = 0
-    private func ui(_ k: String) -> String { AppLanguage(locale: locale).ui(k) }
+    private func ui(_ k: String, _ a: [String] = []) -> String { AppLanguage(locale: locale).ui(k, arguments: a) }
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             if !sources.isEmpty {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        ForEach(Array(sources.enumerated()), id: \.element.id) { i, s in
-                            Button { if let u = s.url { openURL(u) } } label: {
-                                HStack(spacing: 6) {
-                                    Text("\(i + 1)").font(CatpawTypography.Role.caption.font.weight(.bold)).monospacedDigit()
-                                        .frame(width: 18, height: 18).background(CatpawColors.separator, in: Circle())
-                                    Text(s.host.isEmpty ? s.title : s.host).font(CatpawTypography.Role.caption.font).lineLimit(1)
-                                }
-                                .padding(.horizontal, 10).frame(minHeight: 32)
-                                .background(CatpawColors.panel, in: Capsule())
+                // 「N 个来源」 summary pill; tap reveals the host capsules.
+                Button { sourcesOpen.toggle() } label: {
+                    HStack(spacing: 6) {
+                        HStack(spacing: -5) {
+                            ForEach(sources.prefix(3)) { s in
+                                Text(String((s.host.isEmpty ? s.title : s.host).prefix(1)).uppercased())
+                                    .font(CatpawTypography.Role.caption.font.weight(.bold))
+                                    .frame(width: 18, height: 18).background(CatpawColors.separator, in: Circle())
+                                    .overlay(Circle().strokeBorder(CatpawColors.card, lineWidth: 1))
                             }
-                            .buttonStyle(CatpawPressButtonStyle()).foregroundStyle(CatpawColors.ink)
-                            .accessibilityLabel(s.title)
-                        }
+                        }.accessibilityHidden(true)
+                        Text(ui("{0} 个来源", [String(sources.count)])).font(CatpawTypography.Role.caption.font)
                     }
+                    .padding(.horizontal, 10).frame(minHeight: 32)
+                    .overlay(Capsule().strokeBorder(CatpawColors.hairline, lineWidth: 0.5))
                 }
+                .buttonStyle(CatpawPressButtonStyle()).foregroundStyle(CatpawColors.ink)
+                .accessibilityValue(sourcesOpen ? ui("已展开") : ui("已收起"))
                 .accessibilityIdentifier("chat.answer.sources")
+                if sourcesOpen { SourceCapsuleStrip(sources: sources).padding(.leading, -26).transition(.opacity) }
             }
-            HStack(spacing: 14) {
-                Button { UIPasteboard.general.string = text; copied += 1 } label: { Image(systemName: "doc.on.doc").answerActionIcon() }
-                    .accessibilityLabel(ui("复制回复")).sensoryFeedback(.success, trigger: copied)
-                ShareLink(item: text) { Image(systemName: "square.and.arrow.up").answerActionIcon() }
-                    .accessibilityLabel(ui("分享回复"))
-                Button { onQuote(text) } label: { Image(systemName: "quote.bubble").answerActionIcon() }
-                    .accessibilityLabel(ui("引用到草稿")).disabled(!canQuote)
-                if let onRegenerate {
-                    Button(action: onRegenerate) { Image(systemName: "arrow.clockwise").answerActionIcon() }
-                        .accessibilityLabel(ui("重新生成"))
-                }
-                Spacer(minLength: 0)
-            }
-            .foregroundStyle(CatpawColors.secondary).buttonStyle(CatpawPressButtonStyle())
-            .modifier(ActionRowEntrance())
+            ReplyActionRow(text: text, id: "phased", canQuote: canQuote, onQuote: onQuote,
+                           onRegenerate: onRegenerate, generationSeconds: generationSeconds)
+                .modifier(ActionRowEntrance())
         }
+        .animation(.easeOut(duration: 0.2), value: sourcesOpen)
     }
 }
 

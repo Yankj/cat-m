@@ -3,6 +3,7 @@ import UIKit
 import Combine
 
 /// Send ↔ stop morph. Idle+empty → disabled arrow; responding+empty draft → stop; responding+draft → queue (clock badge).
+/// Ownership: Mac worker owns this chrome. feat/reply-chrome only needs the existing stop morph while streaming — leave styling alone.
 @MainActor struct ComposerSendButton<Model: ComposerChromeModel>: View {
     @ObservedObject var model: Model
     @State private var sentCount = 0
