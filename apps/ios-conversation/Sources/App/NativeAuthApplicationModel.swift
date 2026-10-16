@@ -313,11 +313,15 @@ struct NativeWorkspaceRetrySchedule: Sendable {
         else if current.phase == .authenticated { error = nil;recoveryImpossible=false;await receive(current) }
         else { await foreground() }
     }
-    /// Retryable workspace failures stay in the background flight; only a terminal safety/configuration
-    /// result ends the onboarding wait.
-    private func waitForChat() async -> Bool {
-        while chat == nil,!Task.isCancelled {
-            if recoveryImpossible || (workspaceFlight == nil && !sessionRecoveryActive && !actionBusy && ![.restoring,.signingIn,.refreshing,.authenticated].contains(state.phase)) {return false}
+    /// Bounded wait for a chat shell. Background workspace / auth recovery continues after return.
+    private func waitForChat(maxSeconds: Double = 2.5) async -> Bool {
+        let deadline = Date().addingTimeInterval(maxSeconds)
+        while chat == nil, !Task.isCancelled, Date() < deadline {
+            if recoveryImpossible, requiresSessionRestart { return false }
+            if workspaceFlight == nil, !sessionRecoveryActive, !actionBusy,
+               ![.restoring, .signingIn, .refreshing, .authenticated].contains(state.phase) {
+                return false
+            }
             try? await Task.sleep(nanoseconds: 100_000_000)
         }
         return chat != nil
@@ -552,12 +556,20 @@ struct NativeWorkspaceRetrySchedule: Sendable {
     private func friendlyWorkspaceFailure(_ error:Error)->String {
         workspaceFailureNeedsRestart(error) ? NativeAuthError.sessionRecoveryRequired.localizedDescription : "暂时无法打开工作区，本机对话仍会保留。"
     }
+
+    /// Soft reachability / provider failures — never used as the onboarding door lock.
+    static func isTransientConnectFailure(_ message: String) -> Bool {
+        message == NativeAuthError.unavailable.localizedDescription
+            || message == NativeAuthError.rateLimited.localizedDescription
+            || message == NativeAuthError.anonymousUnavailable.localizedDescription
+            || message == "暂时连不上服务，请稍后重试。"
+    }
     private func friendlyAuthFailure(_ error:NativeAuthError)->String {
         switch error {
         case .loginRequired,.invalidResponse,.sessionRecoveryRequired:return NativeAuthError.sessionRecoveryRequired.localizedDescription
         case .storage:return NativeAuthError.storage.localizedDescription
         case .notConfigured,.invalidConfiguration:return error.localizedDescription
-        default:return "暂时连不上服务，请稍后重试。"
+        default:return NativeAuthError.unavailable.localizedDescription
         }
     }
     private func hasSafelyRecoverableCredential() async ->Bool {
