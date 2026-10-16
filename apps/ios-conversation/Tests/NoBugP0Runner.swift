@@ -39,7 +39,7 @@ import Foundation
     static func expect(_ ok: Bool, _ m: String) { if ok { passed += 1; print("PASS \(m)") } else { failed += 1; print("FAIL \(m)") } }
 
     static func main() async {
-        await memory(); await deviceCalls(); proactive(); nearby(); groundedFixtures(); contactsPrivacy(); replyVariants(); followUps()
+        await memory(); await deviceCalls(); proactive(); nearby(); groundedFixtures(); contactsPrivacy(); replyVariants(); followUps(); deviceUndo()
         print("nobug-p0 portable: \(passed) passed, \(failed) failed")
         exit(failed == 0 ? 0 : 1)
     }
@@ -275,6 +275,18 @@ import Foundation
     }
 
     /// chat-ux #4: follow-up fence parsing.
+    static func deviceUndo() {
+        expect(DeviceUndoRules.canUndo(tool: "calendar_create", status: "ok", alreadyUndone: false), "#6 ok calendar_create can be undone")
+        expect(DeviceUndoRules.canUndo(tool: "alarm_set", status: "ok", alreadyUndone: false) && DeviceUndoRules.canUndo(tool: "reminder_create", status: "ok", alreadyUndone: false), "#6 reminder/alarm undoable")
+        expect(!DeviceUndoRules.canUndo(tool: "calendar_create", status: "denied", alreadyUndone: false), "#6 failed write has nothing to undo")
+        expect(!DeviceUndoRules.canUndo(tool: "calendar_create", status: "ok", alreadyUndone: true), "#6 undo only once")
+        expect(!DeviceUndoRules.canUndo(tool: "contacts_search", status: "ok", alreadyUndone: false), "#6 reads are not undoable")
+        expect(DeviceUndoRules.outcome(found: true, deleted: true) == .undone && DeviceUndoRules.outcome(found: false, deleted: true) == .alreadyGone && DeviceUndoRules.outcome(found: true, deleted: false) == .failed, "#6 outcome mapping")
+        expect(DeviceUndoOutcome.alreadyGone.removed && !DeviceUndoOutcome.failed.removed, "#6 already gone counts as removed (same as proactive undo)")
+        let op = UUID()
+        expect(DeviceUndoRules.body(callID: "c1", outcome: .alreadyGone, operationID: op) == ["call_id": "c1", "operation_id": op.uuidString.lowercased(), "status": "already_gone"], "#6 wire body matches server statuses")
+        expect(Set(DeviceUndoOutcome.allCases.map(\.rawValue)) == ["undone", "already_gone", "failed"], "#6 statuses mirror DEVICE_UNDO_STATUSES")
+    }
     static func followUps() {
         let d = { (t: String) in Data(t.utf8) }
         expect(FollowUpSuggestions.parse(d("猫能吃鱼吗？\n- 猫一天吃几顿\n2. 猫粮怎么选\n第四个"), closed: true) == ["猫能吃鱼吗？", "猫一天吃几顿", "猫粮怎么选"], "followups: ≤3, bullets/numbers stripped")

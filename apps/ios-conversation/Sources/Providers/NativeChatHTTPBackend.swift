@@ -456,6 +456,17 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
         }
         return try await decisionStream(request, interruptID: call.interruptID, afterSequence: afterSequence, body: body, deviceResult: true)
     }
+    public func submitDeviceUndo(_ request: ConversationTurnRequest, callID: String, outcome: DeviceUndoOutcome, operationID: UUID) async throws {
+        let auth: String
+        do { auth = try await authorization(request.scope) } catch { throw ConversationApprovalFailure.rejected(status: 401, code: nil) }
+        let route = path(request) + "/turns/" + request.operationID.uuidString.lowercased() + "/device-undo"
+        do { _ = try await json(route, auth: auth, body: DeviceUndoRules.body(callID: callID, outcome: outcome, operationID: operationID), timeout: 15) }
+        catch NativeChatHTTPFailure.status(let status) {
+            if status == 0 || status == 408 || status == 429 || status >= 500 { throw ConversationApprovalFailure.transport }
+            throw ConversationApprovalFailure.rejected(status: status, code: nil)
+        }
+        catch is URLError { throw ConversationApprovalFailure.transport }
+    }
     private func decisionStream(_ request: ConversationTurnRequest, interruptID: String, afterSequence: Int, body decisionBody: [String: Any], deviceResult: Bool = false) async throws -> AsyncThrowingStream<ConversationTurnEvent, Error> {
         guard Self.supportsResume(request), afterSequence >= 0, UUID(uuidString: interruptID) != nil else { throw ConversationApprovalFailure.unsupported }
         let auth: String

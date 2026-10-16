@@ -6442,5 +6442,9 @@
   "建议追问": {
     "en": "Suggested follow-ups",
     "zh-Hans": "建议追问"
+  },
+  "没能撤销，请到日历或提醒事项里删除": {
+    "en": "Couldn't undo. Delete it in Calendar or Reminders.",
+    "zh-Hans": "没能撤销，请到日历或提醒事项里删除"
   }
 }

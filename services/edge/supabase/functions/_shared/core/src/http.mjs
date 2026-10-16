@@ -76,6 +76,7 @@ export function createChatFetchHandler(runtime){
         check(Number.isSafeInteger(afterSequence)&&afterSequence>=0&&afterSequence<=decided.turn.events.length,422,'invalid_cursor');
         return streamTurn(request,auth,scope,tail[1],tail[3],{trusted:decided.trusted,afterSequence});
       }
+      if(method==='POST'&&tail.length===5&&tail[0]==='conversations'&&tail[2]==='turns'&&tail[4]==='device-undo')return json({undo:await chat.submitDeviceUndo(auth,scope,tail[1],tail[3],await boundedJsonBody(request,1024))});   // chat-ux #6
       if(method==='POST'&&tail.length===5&&tail[0]==='conversations'&&tail[2]==='turns'&&tail[4]==='device-result'){
         // catpaw.device.v1: the phone reports one device_call; streams the SAME turn from approval_resolved on.
         const decided=await chat.submitDeviceResult(auth,scope,tail[1],tail[3],await boundedJsonBody(request,DEVICE_RESULT_MAX_BYTES));

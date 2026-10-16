@@ -15,7 +15,7 @@ import {ACCEPTED_WORK_INTENT_CONTRACT,validateAcceptedWorkRequest,freezeAccepted
 import {validateVisionTurn} from './vision-contract.mjs';
 import {UI_CONTRACT,RENDER_UI,UI_DECISIONS,validateResponse,validateUIError,uiResult,uiBlockEvent,uiBlockUpdate,uiBlockResolve,uiPrompt,blockOf,GROUNDED_PROMPT,parseUIKinds,FOLLOWUP_PROMPT} from './generative-ui.mjs';import {toolResultsFrom,groundUIArgs,autoPlaceBlock,ungroundedResult} from './grounded-ui.mjs';
 import {agentMemoryPrompt} from '../../agent-memory/chat-tools.mjs';
-import {DEVICE_CONTRACT,parseDeviceTools,validateDeviceResult,deviceCallEvent,deviceResult} from './device-call.mjs';
+import {DEVICE_CONTRACT,parseDeviceTools,validateDeviceResult,deviceCallEvent,deviceResult,validateDeviceUndo,deviceUndoNote,DEVICE_UNDOABLE_TOOLS} from './device-call.mjs';
 import {APPROVAL_CONTRACT,gatedCalls,interruptFor,requestedEvent,resolvedEvent,pendingApprovals,validateDecision,settleExpired,resumedTurn,deniedResult,APPROVAL_PREFERENCES,preferenceID,isoAt} from './approval.mjs';
 const positive=v=>Number.isSafeInteger(v)&&v>0;
 const terminal=s=>s!=='running';
@@ -89,7 +89,9 @@ export class ChatService {
       if(c.last_turn_id){const last=await tx.get(owner,'native-chat-turns',c.last_turn_id);check(!['running','awaiting_approval'].includes(last?.state),409,'conversation_busy');}
       check(!c.messages.some(m=>m.id===input.message.id),409,'message_conflict');
       const user={id:input.message.id,role:'user',content:input.message.text,...vision.receipts.length?{attachments:vision.receipts}:{}},history=[...c.messages,user];
-      const modelHistory=[...(c.model_messages??c.messages.map(({id,...m})=>m)),{role:'user',content:input.message.text}];
+      // chat-ux #6: undo results from chat receipts reach the model with the next message (then cleared).
+      const undoNote=deviceUndoNote(c.device_undo_notes);
+      const modelHistory=[...(c.model_messages??c.messages.map(({id,...m})=>m)),{role:'user',content:(undoNote?undoNote+'\n\n':'')+input.message.text}];
       check(history.length<=40&&Buffer.byteLength(JSON.stringify(history))<=80000,422,'history_limit_reached');
       let t={id:input.turn_id,conversation_id:c.id,scope_id:scope.scope_id,subject_id:principal.subject_id,grant_epoch:c.grant_epoch,conversation_revision:c.revision+1,state:'running',
         admission_hash:admissionHash,request_hash:hash({history,model_history:modelHistory,...vision.receipts.length?{image_attachments:vision.receipts}:{},context:input.context,scope,subject:principal.subject_id,model:this.provider.identity,policy:LOCAL_POLICY}),
@@ -125,7 +127,7 @@ export class ChatService {
       if(agentMemory?.ids.length&&t.approval_contract)t={...t,events:[...t.events,this.event(t,'memory_recalled',{ids:agentMemory.ids})]};
       if(agentMemory?.ids.length&&t.approval_contract&&agentMemory.items)t={...t,events:[...t.events,this.event(t,'memory.used',{ids:agentMemory.ids,memories:agentMemory.items})]};
       if(this.facade.proactiveSuggestions&&t.approval_contract){claimedSuggestions=await this.facade.proactiveSuggestions.claimForTurn({subjectID:principal.subject_id,conversationID:c.id,turnID:t.id}).catch(()=>[]);for(const s of claimedSuggestions)t={...t,events:[...t.events,this.event(t,'proactive_suggestion',s)]};}
-      check(await tx.insertIfAbsent(owner,'native-chat-turns',t),409,'turn_conflict');await tx.put(owner,'native-chat-conversations',{...c,revision:c.revision+1,messages:history,model_messages:modelHistory,last_turn_id:t.id});
+      check(await tx.insertIfAbsent(owner,'native-chat-turns',t),409,'turn_conflict');await tx.put(owner,'native-chat-conversations',{...c,revision:c.revision+1,messages:history,model_messages:modelHistory,last_turn_id:t.id,device_undo_notes:[]});
       await this.integration?.capture(tx,{owner,scope,principal,turn:t});
       const extraction=await this.integration?.stageMemoryExtraction?.(tx,{principal,scope,conversation:c,turn:t});
       if(extraction){
@@ -421,6 +423,26 @@ export class ChatService {
     check(t&&t.conversation_id===cid&&t.subject_id===trusted.principal.subject_id,404,'not_found');
     const it=(t.interrupts??[]).find(i=>i.kind==='device'&&i.call_id===input.call_id);check(it,404,'device_call_not_found');
     return this.decideInterrupt(auth,scopeID,cid,tid,it.interrupt_id,{operation_id:input.operation_id,decision:'device_result',args_hash:input.args_hash,response:{status:input.status,...input.data!==undefined&&input.data!==null?{data:input.data}:{}}});
+  }
+  /** chat-ux #6: POST …/turns/{t}/device-undo {call_id,operation_id,status}. The phone already deleted (or failed to delete)
+   * the EventKit item by its call_id marker; this records the outcome so the model learns it on the next message.
+   * Only for calendar_create / reminder_create / alarm_set calls that were reported ok. Idempotent per call_id+operation_id. */
+  async submitDeviceUndo(auth,scopeID,cid,tid,raw){
+    const input=validateDeviceUndo(raw);check(UUID.test(cid)&&UUID.test(tid),404,'not_found');
+    const trusted=await this.scoped(auth,scopeID),{owner,principal}=trusted;
+    return this.repository.transaction(async tx=>{
+      await tx.lock(owner,'native-chat-conversations',cid);
+      const c=await this.conversation(tx,owner,cid,principal.subject_id,trusted.scope?.scope_id);
+      const t=await tx.get(owner,'native-chat-turns',tid);check(t&&t.conversation_id===cid&&t.subject_id===principal.subject_id,404,'not_found');
+      const it=(t.interrupts??[]).find(i=>i.kind==='device'&&i.call_id===input.call_id);check(it,404,'device_call_not_found');
+      check(DEVICE_UNDOABLE_TOOLS.includes(it.tool)&&it.status==='reported'&&it.response?.status==='ok',409,'device_undo_not_applicable');
+      const prior=c.device_undos?.[input.call_id];
+      if(prior){check(prior.operation_id===input.operation_id&&prior.status===input.status,409,'device_undo_conflict');return {call_id:input.call_id,status:prior.status,replayed:true};}
+      const args=t.events.find(e=>e.type==='tool_call'&&e.data?.call_id===input.call_id)?.data?.arguments??{};
+      const note={call_id:input.call_id,tool:it.tool,status:input.status,title:String(args.title??args.label??'').slice(0,60),at:new Date(this.now()).toISOString()};
+      await tx.put(owner,'native-chat-conversations',{...c,device_undos:{...c.device_undos,[input.call_id]:{operation_id:input.operation_id,status:input.status,at:note.at}},device_undo_notes:[...(c.device_undo_notes??[]),note].slice(-8)});
+      return {call_id:input.call_id,status:input.status,replayed:false};
+    });
   }
   /** POST …/turns/{t}/interrupts/{i}/decision. Idempotent per operation_id; resumes the SAME turn in place
    * (sequence continues) once no approval is pending. Codes mirror actions/v1 decisions. */
