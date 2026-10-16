@@ -69,11 +69,43 @@ func pr90_4_serverActionStates() {
     check(w.action_states?["notify_attendees"] == "done", "wire shape")
 }
 
+final class MemKV: CatpawKeyValueStore { var d: [String: Data] = [:]
+    func data(forKey k: String) -> Data? { d[k] }
+    func set(_ v: Any?, forKey k: String) { d[k] = v as? Data } }
+struct SyncOp: Codable, Sendable, Equatable { var local: String; var action: String }
+
+@MainActor func pr90_5_persistentQueue() async {
+    let kv = MemKV(); var t = at("2026-10-15T04:00:00Z")
+    var q = CatpawPersistentQueue<SyncOp>(name: "t", store: kv, maxAttempts: 3, baseDelay: 30)
+    check(q.enqueue(SyncOp(local: "s1", action: "create_reminder"), key: "op-1", account: "A", now: t), "enqueue")
+    check(!q.enqueue(SyncOp(local: "s1", action: "create_reminder"), key: "op-1", account: "A", now: t), "same key dedupes")
+    _ = q.enqueue(SyncOp(local: "s2", action: "dismiss"), key: "op-2", account: "A", now: t)
+    var sends: [String] = []
+    // Offline: both fail → retried with backoff, nothing lost.
+    var r = await q.drain(now: t, account: "A") { op in sends.append(op.local); return .retry }
+    check(r.retried == 2 && q.items.count == 2, "failures kept")
+    // Restart: a new instance on the same store sees the pending ops.
+    q = CatpawPersistentQueue<SyncOp>(name: "t", store: kv, maxAttempts: 3, baseDelay: 30)
+    check(q.items.count == 2, "survives restart")
+    r = await q.drain(now: t.addingTimeInterval(10), account: "A") { _ in sends.append("early"); return .done }
+    check(r.sent == 0 && !sends.contains("early"), "backoff respected")
+    t = t.addingTimeInterval(120)
+    r = await q.drain(now: t, account: "B") { _ in sends.append("wrong-account"); return .done }
+    check(!sends.contains("wrong-account"), "never sent under another account")
+    r = await q.drain(now: t, account: "A") { op in op.local == "s1" ? .done : .retry }
+    check(r.sent == 1 && q.items.map(\.key) == ["op-2"], "success removed exactly once")
+    t = t.addingTimeInterval(7200); _ = await q.drain(now: t, account: "A") { _ in .retry }
+    check(q.items.isEmpty && q.deadLetters.map(\.key) == ["op-2"], "max attempts → dead letter")
+    _ = q.enqueue(SyncOp(local: "s3", action: "x"), key: "op-3", account: "A", now: t); q.purge(account: "A")
+    check(q.items.isEmpty, "purge on sign-out")
+}
+
 @main enum ProactivePR90Runner {
-    static func main() {
+    static func main() async {
         pr90_3_prescheduleSharesDecisionAndQuota()
         pr90_accountEpoch()
         pr90_4_serverActionStates()
+        await pr90_5_persistentQueue()
         print(failures == 0 ? "PR90 proactive: all passed" : "PR90 proactive: \(failures) failed"); exit(failures == 0 ? 0 : 1)
     }
 }
