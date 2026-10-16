@@ -46,7 +46,7 @@ export function createMemoryStore() {
     },
     async resurfaceSnoozed(nowIso) {
       const out = [];
-      for (const e of events) { const st = e.payload?.suggestion; if (e.kind === 'proactive_decision' && st?.status === 'snoozed' && st.snooze_until && st.snooze_until <= nowIso) { st.status = 'pending'; st.resurfaced_at = nowIso; delete st.snooze_until; delete st.chat_delivered_at; if (['notify', 'interrupt'].includes(e.payload.decision)) { e.push_state = 'pending'; e.push_after = null; } out.push(e.id); } }
+      for (const e of events) { const st = e.payload?.suggestion; if (e.kind === 'proactive_decision' && st?.status === 'snoozed' && st.snooze_until && st.snooze_until <= nowIso) { st.status = 'pending'; st.resurfaced_at = nowIso; delete st.snooze_until; delete st.chat_delivered_at; if (['notify', 'interrupt'].includes(e.payload.decision) && e.payload.delivery === 'remote') { e.push_state = 'pending'; e.push_after = null; } out.push(e.id); } }
       return out;
     },
     async idemGet(uid, key) { return idem.get(uid + '|' + key) ?? null; },
