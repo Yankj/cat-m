@@ -497,6 +497,7 @@ final class NativeAuthApplicationLifecycleTests:XCTestCase {
         XCTAssertEqual(text.components(separatedBy:"Self.openStores(").count-1,1,"only openAccountStores may call the raw store opener")
         XCTAssertEqual(text.components(separatedBy:"Repository(persistence:").count-1,1,"repositories are created only inside openStores")
         XCTAssertGreaterThanOrEqual(text.components(separatedBy:"openAccountStores(partition:").count-1,4,"local receipt, sign-in, offline trial and workspace paths")
+        XCTAssertEqual(text.components(separatedBy:"launchAtRestMigration(repository, partition: partition)").count-1,1,"openAccountStores itself calls the at-rest hook")
     }
 
     @MainActor private func pr91Model(root:URL) throws -> NativeAuthApplicationModel {
