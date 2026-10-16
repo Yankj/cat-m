@@ -1,4 +1,6 @@
 import test from 'node:test';import assert from 'node:assert/strict';
+import {beforeEach} from 'node:test';import {_routeHealthForTests as __health} from '../supabase/functions/_shared/core/src/free-route-chain.mjs';
+beforeEach(()=>__health.clear()); // w7: route breaker state is per isolate; isolate tests
 import {FreeRouteChainProvider,readFreeRouteChain,routeTimeouts,REASONING_ROUTE_TIMEOUTS,withRoutePreference} from '../supabase/functions/_shared/core/src/free-route-chain.mjs';
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const env=o=>k=>o[k];
@@ -9,12 +11,12 @@ const chain=(timeouts,order='agnes,openrouter')=>{const c=readFreeRouteChain(env
 const run=async(p)=>{const out=[];await withRoutePreference('agnes',async()=>{for await(const e of p.stream({messages:[],system_prompt:'s',tools:[]}))if(e.type!=='route_info')out.push(e);},{reasoningSummary:true});return out;};
 const done=[[0,chunk({}).replace('{}','{}')],[0,JSON.stringify({choices:[{index:0,delta:{},finish_reason:'stop'}]})],[0,'[DONE]']];
 
-test('agnes defaults to staged timeouts; other routes keep the single historical budget; env overrides are bounded',()=>{
+test('agnes defaults to staged timeouts; fast routes get a short first-event wait (w7); env overrides are bounded',()=>{
  assert.deepEqual(routeTimeouts({id:'agnes'},20000),REASONING_ROUTE_TIMEOUTS);
- assert.deepEqual(REASONING_ROUTE_TIMEOUTS,{firstEventMs:75000,idleMs:20000,totalMs:100000});
- assert.deepEqual(routeTimeouts({id:'gemini'},20000),{firstEventMs:20000,idleMs:20000,totalMs:20000});
+ assert.deepEqual(REASONING_ROUTE_TIMEOUTS,{firstEventMs:30000,idleMs:20000,totalMs:60000});
+ assert.deepEqual(routeTimeouts({id:'gemini'},20000),{firstEventMs:12000,idleMs:20000,totalMs:45000});
  const c=readFreeRouteChain(env({CATPAW_AGNES_API_KEY:'a',CATPAW_AGNES_FIRST_EVENT_TIMEOUT_MS:'60000',CATPAW_AGNES_IDLE_TIMEOUT_MS:'15000'}));
- assert.deepEqual(routeTimeouts(c.routes[0],20000),{firstEventMs:60000,idleMs:15000,totalMs:100000});
+ assert.deepEqual(routeTimeouts(c.routes[0],20000),{firstEventMs:60000,idleMs:15000,totalMs:60000});
  assert.throws(()=>readFreeRouteChain(env({CATPAW_AGNES_API_KEY:'a',CATPAW_AGNES_IDLE_TIMEOUT_MS:'abc'})));
  assert.throws(()=>routeTimeouts({id:'agnes',timeouts:{totalMs:500000}},20000));
 });

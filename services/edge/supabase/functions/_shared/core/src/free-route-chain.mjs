@@ -125,9 +125,14 @@ export function readFreeRouteChain(get) {
 // One answer is ≤2048 tokens (≤64kB text) plus reasoning; OpenAI-style chunks carry ~200-300 bytes of
 // JSON framing per token, so the wire cap must be far above the text cap.
 export const STREAM_MAX_BYTES = 4_000_000, THOUGHT_MAX_BYTES = 16000;
-export const REASONING_ROUTE_TIMEOUTS = Object.freeze({ firstEventMs: 75000, idleMs: 20000, totalMs: 100000 });
+// w7 latency: a free route that has not sent ANY upstream frame (hidden thinking counts) within firstEventMs is treated
+// as busy and the chain moves on, instead of burning the old 20 s single budget per hop. totalMs is no longer equal to the
+// first-event budget, so a long but steadily streaming answer is not cut at 20 s. Agnes (busy fallback, reasoning) gets
+// a shorter first-event wait than before (75 s let one turn eat the whole chat budget).
+export const FAST_ROUTE_TIMEOUTS = Object.freeze({ firstEventMs: 12000, idleMs: 20000, totalMs: 45000 });
+export const REASONING_ROUTE_TIMEOUTS = Object.freeze({ firstEventMs: 30000, idleMs: 20000, totalMs: 60000 });
 export function routeTimeouts(route, timeoutMs) {
-  const base = route.id === 'agnes' ? REASONING_ROUTE_TIMEOUTS : { firstEventMs: timeoutMs, idleMs: timeoutMs, totalMs: timeoutMs };
+  const base = route.id === 'agnes' ? REASONING_ROUTE_TIMEOUTS : { ...FAST_ROUTE_TIMEOUTS, idleMs: Math.min(FAST_ROUTE_TIMEOUTS.idleMs, timeoutMs), firstEventMs: Math.min(FAST_ROUTE_TIMEOUTS.firstEventMs, timeoutMs) };
   const t = { ...base, ...route.timeouts };
   check(['firstEventMs', 'idleMs', 'totalMs'].every(k => Number.isInteger(t[k]) && t[k] >= 1000 && t[k] <= 110000) && t.firstEventMs <= t.totalMs && t.idleMs <= t.totalMs, 422, 'model_route_timeout_invalid');
   return t;
@@ -159,8 +164,9 @@ class OpenAICompatibleRoute {
     let timedOut = false, emitted = false, timer = null;
     const expire = phase => () => { timedOut = phase; cancel(); };
     const arm = ms => { clearTimeout(timer); timer = setTimeout(expire(emittedOrActive ? 'idle' : 'first_event'), ms); };
-    let emittedOrActive = false; arm(this.timeouts.firstEventMs);
-    const totalTimer = setTimeout(expire('total'), this.timeouts.totalMs);
+    const cap = ms => Math.max(1, Math.min(ms, input.attempt_budget_ms ?? Infinity)); // chain/turn budget clamp (w7)
+    let emittedOrActive = false; arm(cap(this.timeouts.firstEventMs));
+    const totalTimer = setTimeout(expire('total'), cap(this.timeouts.totalMs));
     let response;
     try {
       response = await this.fetchImpl(this.route.endpoint, { method: 'POST', redirect: 'error', signal: controller.signal, headers: { Authorization: `Bearer ${this.#secret}`, 'Content-Type': 'application/json', Accept: 'text/event-stream' }, body: JSON.stringify(this.payload(input)) });
@@ -233,11 +239,21 @@ export function freeRouteStatus(chain, { now = Date.now(), geminiGuard = geminiG
 // Per-isolate route health (best effort). Only codes and timestamps; no upstream bodies.
 const routeHealth = new Map();
 export const _routeHealthForTests = routeHealth;
-export function noteRouteResult(id, error = null, now = Date.now()) {
-  const h = routeHealth.get(id) ?? { lastOk: 0, lastError: null, fails: 0 };
-  if (error) { h.lastError = { code: String(error).slice(0, 60), at: now }; h.fails += 1; } else { h.lastOk = now; h.fails = 0; }
+// w7 circuit breaker: after a busy/unavailable failure the route is skipped to the END of the auto chain for a short
+// cool-down, so the next turns go straight to a healthy route instead of paying the same failed hop again.
+// Seconds per failure code; Retry-After (when the provider sent one) wins, capped at 10 min.
+export const ROUTE_COOLDOWN_SECONDS = Object.freeze({ free_model_unavailable: 600, not_configured: 600, unauthorized: 600, forbidden: 600, quota_exhausted: 600, rate_limited: 60, provider_overloaded: 30, provider_timeout_before_output: 60, provider_failed: 30 });
+export function noteRouteResult(id, error = null, now = Date.now(), { retryAfterSeconds = null } = {}) {
+  const h = routeHealth.get(id) ?? { lastOk: 0, lastError: null, fails: 0, openUntil: 0 };
+  if (error) {
+    const code = String(error).slice(0, 60); h.lastError = { code, at: now }; h.fails += 1;
+    const base = ROUTE_COOLDOWN_SECONDS[code];
+    if (base) { const s = Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0 ? Math.min(600, retryAfterSeconds) : base; h.openUntil = Math.max(h.openUntil ?? 0, now + s * 1000); }
+  } else { h.lastOk = now; h.fails = 0; h.openUntil = 0; }
   routeHealth.set(id, h);
 }
+/** True while the route's breaker is open (recent busy failure). */
+export const routeCircuitOpen = (id, now = Date.now()) => (routeHealth.get(id)?.openUntil ?? 0) > now;
 export function routeState(id, { now = Date.now(), coolingSeconds = 0 } = {}) {
   const h = routeHealth.get(id);
   if (coolingSeconds > 0 || (h && h.fails >= 3)) return 'offline';
@@ -279,6 +295,14 @@ export function modelRouteFromObservations(observations) {
   };
 }
 
+// Smallest budget worth starting a hop with (first upstream frame + a short answer).
+export const MIN_ATTEMPT_MS = 4000;
+// input.turn_deadline_at: wall-clock ms by which the provider must be done (chat-service sets it; plain data so inputs stay cloneable).
+const remainingMs = input => Number.isFinite(input?.turn_deadline_at) ? input.turn_deadline_at - Date.now() : Infinity;
+// One structured line per route attempt: route, outcome code, time to first upstream event, elapsed. No bodies, no secrets.
+function logAttempt(evidence, startedAt, firstAt, outcome) {
+  try { console.info(JSON.stringify({ event: 'catpaw_route_attempt', route: evidence.route, model: String(evidence.requested_model ?? '').slice(0, 120), attempt: evidence.attempt, outcome, http_status: evidence.http_status ?? null, timeout_phase: evidence.timeout_phase ?? null, first_event_ms: firstAt === null ? null : firstAt - startedAt, elapsed_ms: Date.now() - startedAt })); } catch {}
+}
 /** Provider port compatible with OpenRouterProvider (identity/reality/assertReady/stream). */
 export class FreeRouteChainProvider {
   #routes; #observations = [];
@@ -294,9 +318,9 @@ export class FreeRouteChainProvider {
   get observations() { return clone(this.#observations); }
   get reality() { return 'provider_unverified'; }
   assertReady() { check(this.#routes.length > 0, 503, 'not_configured'); }
-  order() {
+  order(now = Date.now()) {
     const pref = currentRoutePreference();
-    if (!pref) return this.#routes;
+    if (!pref) { const ok = this.#routes.filter(r => !routeCircuitOpen(r.route.id, now)); return ok.length === this.#routes.length ? this.#routes : [...ok, ...this.#routes.filter(r => routeCircuitOpen(r.route.id, now))]; }
     const chosen = this.#routes.filter(r => r.route.id === pref);
     return chosen.length ? [...chosen, ...this.#routes.filter(r => r.route.id !== pref)] : this.#routes;
   }
@@ -308,6 +332,9 @@ export class FreeRouteChainProvider {
       // and the provider's retry-after fits the Edge budget.
       const wait = e?.retryAfterSeconds;
       if (!(e instanceof ApiError) || e.code !== 'rate_limited' || e.emitted || !Number.isFinite(wait) || wait > this.maxInPlaceRetrySeconds) throw e;
+      // w7: with failover routes the pass already tried every route; waiting and re-running all of them only adds latency.
+      if (this.autoFailover && this.#routes.length > 1) throw e;
+      if (remainingMs(input) < wait * 1000 + MIN_ATTEMPT_MS) throw e;
       await new Promise((resolve, reject) => { const t = setTimeout(resolve, wait * 1000); input.signal?.addEventListener('abort', () => { clearTimeout(t); reject(input.signal.reason ?? new ApiError(503, 'provider_interrupted')); }, { once: true }); });
       yield* this.#pass(input);
     }
@@ -315,13 +342,19 @@ export class FreeRouteChainProvider {
   async *#pass(input) {
     let last = null; const passStart = this.#observations.length; const prefModel = currentModelPreference(), pref = currentRoutePreference();
     for (const route of this.order()) {
-      const routeInput = prefModel && route.route.id === pref ? Object.assign(Object.create(input), { model_override: prefModel }) : input;
+      // w7: never start a hop that cannot finish inside the turn budget; clamp the hop's own timers to what is left.
+      const remaining = remainingMs(input);
+      if (remaining < MIN_ATTEMPT_MS) { if (last) throw last; throw new ApiError(503, 'chat_dispatch_budget_exhausted', { reconciliation: true }); }
+      const base = prefModel && route.route.id === pref ? { model_override: prefModel } : {};
+      const routeInput = Object.keys(base).length || Number.isFinite(remaining) ? Object.assign(Object.create(input), base, Number.isFinite(remaining) ? { attempt_budget_ms: remaining } : {}) : input;
+      const startedAt = Date.now(); let firstAt = null;
       const evidence = { attempt: this.#observations.length + 1, route: route.route.id, requested_model: routeInput.model_override ?? route.route.model, http_status: null, actual_model: null, terminal_validated: false };
       this.#observations.push(evidence);
       let emitted = false;
       try {
         let announced = false;
         for await (const event of route.stream(routeInput, evidence)) {
+          firstAt ??= Date.now();
           if (event.type === 'thinking_delta' && !(this.emitThinking && clientAcceptsReasoningSummary())) { evidence.thinking_bytes = (evidence.thinking_bytes ?? 0) + Buffer.byteLength(event.text); continue; }
           if (!announced) {
             announced = true;
@@ -333,13 +366,15 @@ export class FreeRouteChainProvider {
           }
           emitted = true; yield event;
         }
-        evidence.terminal_validated = true; noteRouteResult(route.route.id); return;
+        evidence.terminal_validated = true; noteRouteResult(route.route.id); logAttempt(evidence, startedAt, firstAt, 'ok'); return;
       } catch (e) {
-        evidence.error = e?.code ?? 'provider_failed'; noteRouteResult(route.route.id, evidence.error);
+        evidence.error = e?.code ?? 'provider_failed';
+        const ra = Number.isFinite(e?.retryAfterSeconds) ? e.retryAfterSeconds : evidence.failure?.headers?.retry_after_seconds;
+        if (!input.signal?.aborted) noteRouteResult(route.route.id, evidence.error, Date.now(), { retryAfterSeconds: ra }); logAttempt(evidence, startedAt, firstAt, evidence.error);
         input.signal?.throwIfAborted();
         if (emitted && e && typeof e === 'object') e.emitted = true;
         if (emitted || !(e instanceof ApiError) || !FAILOVER_CODES.has(e.code)) throw e;
-        const ra = evidence.failure?.headers?.retry_after_seconds; if (Number.isFinite(ra)) e.retryAfterSeconds = Math.min(3600, Math.ceil(ra));
+        if (Number.isFinite(ra) && !Number.isFinite(e.retryAfterSeconds)) e.retryAfterSeconds = Math.min(3600, Math.ceil(ra));
         if (!this.autoFailover) throw e;
         last = e; // busy before any output: try next free route
       }
