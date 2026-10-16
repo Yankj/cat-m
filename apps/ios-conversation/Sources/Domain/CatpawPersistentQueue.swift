@@ -17,6 +17,8 @@ extension UserDefaults: CatpawKeyValueStore {}
 @MainActor final class CatpawPersistentQueue<Op: Codable & Sendable> {
     struct Item: Codable, Sendable {
         let key: String; var op: Op; var account: String?
+        /// Ordering group (e.g. the suggestion id): items of one group are sent strictly FIFO; a failure blocks the rest.
+        var group: String? = nil
         var attempts: Int; var nextAt: Double; let enqueuedAt: Double
     }
     enum Result: Sendable { case done, retry, drop }
@@ -37,9 +39,11 @@ extension UserDefaults: CatpawKeyValueStore {}
     private func persist() { store.set(try? JSONEncoder().encode(Saved(items: items, dead: deadLetters)), forKey: storageKey) }
 
     /// Returns false when an item with this key is already queued (idempotent enqueue).
-    @discardableResult func enqueue(_ op: Op, key: String, account: String?, now: Date = .now) -> Bool {
+    /// `supersedes`: earlier, still-queued items of the same group this op makes pointless (e.g. dismiss over snooze).
+    @discardableResult func enqueue(_ op: Op, key: String, account: String?, group: String? = nil, supersedes: ((Op) -> Bool)? = nil, now: Date = .now) -> Bool {
         guard !items.contains(where: { $0.key == key }) else { return false }
-        items.append(Item(key: key, op: op, account: account, attempts: 0, nextAt: now.timeIntervalSince1970, enqueuedAt: now.timeIntervalSince1970))
+        if let group, let supersedes { items.removeAll { $0.group == group && $0.account == account && supersedes($0.op) } }
+        items.append(Item(key: key, op: op, account: account, group: group, attempts: 0, nextAt: now.timeIntervalSince1970, enqueuedAt: now.timeIntervalSince1970))
         persist(); return true
     }
     func remove(key: String) { items.removeAll { $0.key == key }; persist() }
@@ -50,9 +54,12 @@ extension UserDefaults: CatpawKeyValueStore {}
         guard !draining else { return (0, 0, 0) }
         draining = true; defer { draining = false }
         var sent = 0, retried = 0, dropped = 0
-        let due = items.filter { $0.nextAt <= now.timeIntervalSince1970 && $0.account == account }.map(\.key)
-        for key in due {
+        var blocked = Set<String>()
+        let candidates = items.filter { $0.account == account }.map(\.key)
+        for key in candidates {
             guard let item = items.first(where: { $0.key == key }) else { continue }
+            if let g = item.group, blocked.contains(g) { continue }
+            guard item.nextAt <= now.timeIntervalSince1970 else { if let g = item.group { blocked.insert(g) }; continue }
             let result = await send(item.op)
             guard let i = items.firstIndex(where: { $0.key == key }) else { continue }
             switch result {
@@ -66,6 +73,7 @@ extension UserDefaults: CatpawKeyValueStore {}
                 } else {
                     items[i].nextAt = now.timeIntervalSince1970 + min(maxDelay, baseDelay * pow(2, Double(items[i].attempts - 1)))
                     retried += 1
+                    if let g = items[i].group { blocked.insert(g) }  // keep this suggestion's later ops behind it
                 }
             }
             persist()
