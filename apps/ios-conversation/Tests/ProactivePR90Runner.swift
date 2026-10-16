@@ -483,6 +483,17 @@ func pr90f_quarantine() {
     q.purge(account: nil); check(q.deadLetters.isEmpty, "purge(nil) clears every dead letter")
     check(CatpawPersistentQueue<SyncOp>(name: "pdl", store: kv).deadLetters.isEmpty, "persisted")
 }
+@MainActor func pr90f_quarantineQueue() {
+    let kv = MemKV(); let t = at("2026-10-15T04:00:00Z")
+    let q = CatpawPersistentQueue<SyncOp>(name: "qq", store: kv)
+    q.enqueue(SyncOp(local: "s1", action: "dismiss"), key: "a", account: "user-a", group: "s1", now: t)
+    q.enqueue(SyncOp(local: "s1", action: "snooze"), key: "n", account: nil, group: "s1", now: t)
+    q.enqueue(SyncOp(local: "s2", action: "dismiss"), key: "x", account: "USER-X", group: "s2", now: t)
+    let moved = q.extractAll()
+    check(moved.count == 3 && q.items.isEmpty && q.deadLetters.isEmpty, "quarantine takes every queued item out (nothing sendable)")
+    q.reinstate(moved, account: "USER-A")
+    check(q.items.map(\.key) == ["a", "n"] && q.items.allSatisfy { $0.account == "USER-A" }, "release re-binds only unstamped / same-account items, in order (\(q.items.map(\.key)))")
+}
 @MainActor final class RejectingPoster: ProactiveNotificationPoster {
     var adds: [ProactiveNotificationRequest] = [], removed: [String] = [], result = false, pending: [(Bool) -> Void] = []; var hold = false
     func requestAuthorization() async -> Bool { true }
@@ -559,7 +570,7 @@ func pr90f_golden() {
         pr90c_presentQuiet()
         pr90d_ownership(); pr90d_legacyRejected(); await pr90d_scopedRequests(); await pr90d_deadLetterOrdering(); pr90d_snoozeRestore(); pr90d_localFeedbackGate()
         pr90e_owner(); await pr90e_repeatedSnooze(); pr90e_operationIDs(); pr90e_snoozeDetail(); await pr90e_resnoozeReleasesSlot(); await pr90e_deadLetterFuture()
-        pr90f_quarantine(); await pr90f_purgeDeadLetters(); await pr90f_snoozeAwaitsAdd(); pr90f_clock(); pr90f_wire(); pr90f_golden()
+        pr90f_quarantine(); pr90f_quarantineQueue(); await pr90f_purgeDeadLetters(); await pr90f_snoozeAwaitsAdd(); pr90f_clock(); pr90f_wire(); pr90f_golden()
         print(failures == 0 ? "PR90 proactive: all passed" : "PR90 proactive: \(failures) failed"); exit(failures == 0 ? 0 : 1)
     }
 }
