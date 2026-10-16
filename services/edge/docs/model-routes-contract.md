@@ -1,7 +1,7 @@
 # Model routes contract (`catpaw.model-routes.v1`)
 
 Client-facing route list, route/model selection and per-turn route reporting. No secrets, no internal
-base URLs (e.g. the self-hosted FreeLLMAPI address) are ever returned.
+base URLs are ever returned.
 
 ## 1. `GET /catpaw/model-routes/v1` (auth required, same Supabase JWT as chat)
 
@@ -9,7 +9,7 @@ base URLs (e.g. the self-hosted FreeLLMAPI address) are ever returned.
 {
   "contract": "catpaw.model-routes.v1",
   "default_route": "auto",
-  "chain": ["openrouter", "gemini", "freellmapi", "agnes"],
+  "chain": ["openrouter", "gemini", "opencode", "agnes"],
   "auto_failover": true,
   "routes": [
     {
@@ -30,16 +30,16 @@ base URLs (e.g. the self-hosted FreeLLMAPI address) are ever returned.
 
 | Field | Type | Notes |
 |---|---|---|
-| `routes[].id` | string | `openrouter` \| `gemini` \| `groq` \| `freellmapi` \| `agnes`. Only routes whose key is configured are listed. |
-| `routes[].display_name` | string | Human label (e.g. `Self-hosted FreeLLMAPI`). |
+| `routes[].id` | string | `openrouter` \| `gemini` \| `groq` \| `opencode` \| `agnes`. Only routes whose key is configured are listed. |
+| `routes[].display_name` | string | Human label (e.g. `OpenCode Zen (free)`). |
 | `routes[].models[]` | `{id, default}` | Allow-list accepted in `X-Catpaw-Model`. Default model first. |
 | `routes[].status` | enum | `online` (configured, no recent error), `degraded` (last error newer than last success, within 5 min), `offline` (cooling down after 429/quota, or last 3 attempts failed). |
 | `routes[].last_error` | object\|null | `{code, at}` only — code is a server error code (`rate_limited`, `quota_exhausted`, `provider_timeout_before_output`, …), `at` ISO-8601 UTC. No upstream bodies. |
 | `routes[].cooling_seconds` | int | >0 while the local guard holds the route (currently Gemini). |
 | `routes[].free` | bool | `true` for every route the server enables (paid models are rejected at config). |
 | `routes[].billing` | string | e.g. `free_tier`, `promo_free_flash_paid_pro`, `upstream_free_tiers_via_self_hosted_router`. |
-| `routes[].policy_url` | string | Provider privacy policy. FreeLLMAPI: aggregator docs; upstream policies apply. |
-| `routes[].data_note` | string | Short machine tag for the privacy copy (`zero_retention`, `free_tier_may_train`, `aggregator_forwards_upstream`, …). |
+| `routes[].policy_url` | string | Provider privacy policy. OpenCode: `https://opencode.ai/legal/privacy-policy`. |
+| `routes[].data_note` | string | Short machine tag for the privacy copy (`zero_retention`, `free_tier_may_train`, `zero_retention` (OpenCode default free models), …). |
 | `chain` | string[] | Auto order. |
 
 Status is per Edge isolate (best effort, in memory); a fresh isolate reports `online` until it sees an error.
@@ -95,16 +95,17 @@ unknown event types, same pattern as `X-Catpaw-Reasoning-Summary`). At most one 
 ## 5. Consent
 
 `config.routeHash` hashes the whole chain description (providers, models, policy URLs, data fields), so adding
-FreeLLMAPI or changing models forces re-consent. With FreeLLMAPI configured the consented route also carries
-`aggregator_disclosure` and the data field `prompt_and_history_forwarded_via_self_hosted_freellmapi_to_upstream_free_providers`;
-the consent screen must show that text and the policy URLs.
+OpenCode or changing models forces re-consent. With OpenCode configured the consented route also carries
+`opencode_disclosure` (messages and history are sent to OpenCode Zen, with its policy links) and the data field
+`prompt_and_history_sent_to_opencode_zen_free_models`; the consent screen must show that text and the policy URLs.
 
 ## 6. Server configuration (env, no secrets returned)
 
 | Env | Meaning |
 |---|---|
-| `CATPAW_FREELLMAPI_API_KEY` | FreeLLMAPI unified key (Bearer). Route enabled only when set. |
-| `CATPAW_FREELLMAPI_BASE_URL` | `https://…` base of the self-hosted router; `/v1` and `/v1/chat/completions` suffixes are normalised. Never returned to clients; the consented route shows `self-hosted`. |
-| `CATPAW_FREELLMAPI_MODEL` | Default model, default `auto` (follow the FreeLLMAPI fallback chain). `auto:fast`, `auto:coding` or a concrete id also work. |
-| `CATPAW_<ROUTE>_MODELS` | Extra allowed models for `X-Catpaw-Model`, comma list, max 20 (e.g. `CATPAW_FREELLMAPI_MODELS=deepseek-v4.1-flash-free,glm-5.3-flash-free`). OpenRouter entries must end in `:free`. |
-| `CATPAW_MODEL_ROUTE_ORDER` | Optional explicit order; default `openrouter,gemini,groq,freellmapi,agnes` (Gemini first when `CATPAW_GEMINI_ROUTE=primary`). |
+| `CATPAW_OPENCODE_API_KEY` | OpenCode Console API key (Bearer). Route enabled only when set. See `opencode-route.md`. |
+| `CATPAW_OPENCODE_BASE_URL` | Optional `https://…` base; default `https://opencode.ai/inference/openai/v1` (official docs). `/chat/completions` is appended. |
+| `CATPAW_OPENCODE_MODEL` | Default model, default `deepseek-v4.1-flash-free`. Must end in `-free`. |
+| `CATPAW_OPENCODE_MODELS` | `X-Catpaw-Model` allow-list for OpenCode; **replaces** the default `deepseek-v4.1-flash-free,glm-5.3-flash-free,longcat-2.5-preview-free,space-bunny-free` (zero-retention free models). Every entry must end in `-free`. |
+| `CATPAW_<ROUTE>_MODELS` | Other routes: extra allowed models on top of the default, comma list, max 20. OpenRouter entries must end in `:free`. |
+| `CATPAW_MODEL_ROUTE_ORDER` | Optional explicit order; default `openrouter,gemini,groq,opencode,agnes` (Gemini first when `CATPAW_GEMINI_ROUTE=primary`). |
