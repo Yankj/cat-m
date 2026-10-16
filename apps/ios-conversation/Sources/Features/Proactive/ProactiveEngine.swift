@@ -33,6 +33,13 @@ struct ProactiveSignal: Equatable, Sendable {
     var title: String
     var start: Date
     var place: String
+    /// Debug 「模拟起点」— Why must say 「从模拟起点 X」; never silent.
+    var simulatedOriginLabel: String? = nil
+    var simulatedOriginLat: Double? = nil
+    var simulatedOriginLon: Double? = nil
+    /// EKEvent attendee names / phones for notify draft.
+    var attendeeNames: [String] = []
+    var attendeeRecipients: [String] = []
     /// Stable per (event, start): the same meeting never triggers twice.
     var signalHash: String {
         let raw = "\(eventID)|\(Int(start.timeIntervalSince1970))"
@@ -75,9 +82,6 @@ struct ProactiveSignal: Equatable, Sendable {
 
     /// Looks for "提前 N 分钟" / "N minutes early" in the live agent memory; falls back to `defaultLeadMinutes`.
     /// Settings/debug writes the same phrase via `setLeadMinutes` so evaluate has hard evidence.
-    static let leadPreferenceKey = "catpaw.proactive.leadMinutes.v1"
-    static let leadMemoryID = "proactive-lead-minutes"
-
     func leadTime() async -> (minutes: Int, memory: ProactiveSuggestion.MemoryRef?) {
         if let backend = MemoryLibraryHub.backend, let snapshot = try? await backend.load(), snapshot.useMemory {
             for item in snapshot.items {
@@ -89,36 +93,47 @@ struct ProactiveSignal: Equatable, Sendable {
                 }
             }
         }
-        let stored = defaults.object(forKey: Self.leadPreferenceKey) as? Int
-        if let stored, stored > 0, stored <= 180 {
-            return (stored, .init(id: Self.leadMemoryID, content: "开会提前 \(stored) 分钟准备"))
-        }
         return (defaultLeadMinutes, nil)
     }
 
-    /// Settings / debug: persist lead preference and mirror into MemoryLibrary when possible.
-    func setLeadMinutes(_ minutes: Int) async {
-        let n = min(180, max(1, minutes))
-        defaults.set(n, forKey: Self.leadPreferenceKey)
-        let phrase = "开会提前 \(n) 分钟准备"
-        if let stub = MemoryLibraryHub.backend as? MemoryLibraryStub {
-            stub.upsert(id: Self.leadMemoryID, content: phrase)
-        } else if let backend = MemoryLibraryHub.backend {
-            if let snap = try? await backend.load(),
-               let item = snap.items.first(where: { $0.id == Self.leadMemoryID || ($0.content.contains("提前") && $0.content.contains("分钟")) }) {
-                try? await backend.update(id: item.id, content: phrase)
-            } else {
-                note("lead preference saved locally (\(n) min); no matching memory row to update")
+    /// Settings / debug: writes a REAL memory item into the store Settings › 记忆 lists (MemoryLibraryHub.backend).
+    /// Returns a user-facing outcome; no shadow store — if the library refuses, nothing is used.
+    @discardableResult func setLeadMinutes(_ minutes: Int) async -> String {
+        let n = min(180, max(1, minutes)), phrase = "开会提前 \(n) 分钟准备"
+        guard let backend = MemoryLibraryHub.backend else { note("lead write failed: no memory library"); return "记忆库不可用，未写入" }
+        do {
+            let snap = try await backend.load()
+            let old = snap.items.filter { $0.content.range(of: #"提前\s*\d{1,3}\s*分钟"#, options: .regularExpression) != nil }.map(\.id)
+            if !old.isEmpty { try await backend.forget(ids: old) }
+            let id = try await backend.create(kind: "preference", content: phrase)
+            note("lead memory created id=\(id) “\(phrase)” in \(type(of: backend))")
+            return "已写入记忆：\(phrase)"
+        } catch MemoryLibraryError.notEnabled, MemoryLibraryError.unsupported {
+            // Settings › 记忆 lists Hub.backend. If agent-memory is 未开通 / no create, install a local
+            // stub as the same page backend so the row is visible+deletable (honest label, no UserDefaults).
+            let stub: MemoryLibraryStub
+            if let s = MemoryLibraryHub.backend as? MemoryLibraryStub { stub = s }
+            else {
+                stub = MemoryLibraryStub(items: [], useMemory: true, autoSave: true)
+                MemoryLibraryHub.install(backend: stub)
             }
-        }
-        note("lead_minutes set to \(n) — evaluate will cite it")
+            do {
+                let snap = try await stub.load()
+                let old = snap.items.filter { $0.content.range(of: #"提前\s*\d{1,3}\s*分钟"#, options: .regularExpression) != nil }.map(\.id)
+                if !old.isEmpty { try await stub.forget(ids: old) }
+                let id = try await stub.create(kind: "preference", content: phrase)
+                note("lead memory local-stub id=\(id) (agent-memory unavailable)")
+                return "agent-memory 未开通 — 已写入本机记忆库（设置 › 记忆可见可删）：\(phrase)"
+            } catch {
+                note("lead local-stub failed: \(error)"); return "写入本机记忆库失败"
+            }
+        } catch { note("lead write failed: \(error)"); return "写入记忆失败" }
     }
 
     /// Delete lead preference + matching memory so evaluate falls back to default.
     func clearLeadMinutes() async {
-        defaults.removeObject(forKey: Self.leadPreferenceKey)
         if let backend = MemoryLibraryHub.backend, let snap = try? await backend.load() {
-            let ids = snap.items.filter { $0.id == Self.leadMemoryID || ($0.content.contains("提前") && $0.content.contains("分钟")) }.map(\.id)
+            let ids = snap.items.filter { ($0.content.contains("提前") && $0.content.contains("分钟")) }.map(\.id)
             if !ids.isEmpty { try? await backend.forget(ids: ids) }
         }
         note("lead_minutes cleared — evaluate uses default \(defaultLeadMinutes)")
@@ -144,7 +159,18 @@ struct ProactiveSignal: Equatable, Sendable {
         guard let event = store.events(matching: predicate).filter({ !$0.isAllDay && $0.startDate > now }).sorted(by: { $0.startDate < $1.startDate }).first else {
             note("collect source=\(source.rawValue) upcoming=0 → nothing to do"); return
         }
-        await handle(.init(source: source, eventID: event.calendarItemIdentifier, title: event.title ?? "日程", start: event.startDate, place: event.location ?? ""))
+        let names = (event.attendees ?? []).compactMap { $0.name }.filter { !$0.isEmpty }
+        let recipients = (event.attendees ?? []).compactMap { att -> String? in
+            let url = att.url
+            guard let scheme = url.scheme?.lowercased() else { return nil }
+            if scheme == "tel" || scheme == "sms" {
+                let prefix = scheme + ":"
+                return url.absoluteString.replacingOccurrences(of: prefix, with: "")
+            }
+            return nil
+        }
+        await handle(.init(source: source, eventID: event.calendarItemIdentifier, title: event.title ?? "日程", start: event.startDate, place: event.location ?? "",
+                           attendeeNames: names, attendeeRecipients: recipients))
         #endif
     }
     private func calendarUnavailable() {
@@ -171,9 +197,14 @@ struct ProactiveSignal: Equatable, Sendable {
         note("dedupe new signal_hash=\(hash)")
         // Evaluate
         let lead = await leadTime()
-        let travel = await Self.travelETA(to: signal.place)
+        let simOrigin: CLLocationCoordinate2D? = {
+            guard let la = signal.simulatedOriginLat, let lo = signal.simulatedOriginLon else { return nil }
+            return CLLocationCoordinate2D(latitude: la, longitude: lo)
+        }()
+        let travel = await Self.travelETA(to: signal.place, from: simOrigin, simulatedLabel: signal.simulatedOriginLabel)
         let travelMinutes = travel.minutes
         let usedETA = travel.usedETA
+        let originNote = travel.originNote
         // leave_at = meeting_start - lead_minutes - travel_minutes (travel 0 only when ETA unused → lead only)
         let buffer = lead.minutes + (usedETA ? (travelMinutes ?? 0) : 0)
         let leaveAt = signal.start.addingTimeInterval(TimeInterval(-buffer * 60))
@@ -194,7 +225,8 @@ struct ProactiveSignal: Equatable, Sendable {
                   : "提前 \(lead.minutes) 分钟（默认） · signal_hash=\(hash)")
         ]
         if usedETA, let tm = travelMinutes, tm > 0 {
-            signals.insert(.init(kind: "travel", text: "路途约 \(tm) 分钟（MapKit）"), at: 1)
+            let originBit = originNote.map { " · \($0)" } ?? ""
+            signals.insert(.init(kind: "travel", text: "路途约 \(tm) 分钟（MapKit）\(originBit)"), at: 1)
         } else {
             signals.insert(.init(kind: "travel", text: "未用到 ETA"), at: 1)
         }
@@ -202,9 +234,10 @@ struct ProactiveSignal: Equatable, Sendable {
         let reason: String
         if usedETA, let tm = travelMinutes, tm > 0 {
             title = "\(leaveAt.formatted(f)) 该出发 · \(signal.title)"
+            let originBit = originNote.map { "（\($0)）" } ?? ""
             reason = lead.memory != nil
-                ? "记忆提前 \(lead.minutes) 分钟 + 路途 \(tm) 分钟 → \(leaveAt.formatted(f)) 出发（会 \(signal.start.formatted(f)) 开始）"
-                : "默认提前 \(lead.minutes) 分钟 + 路途 \(tm) 分钟 → \(leaveAt.formatted(f)) 出发"
+                ? "记忆提前 \(lead.minutes) 分钟 + 路途 \(tm) 分钟\(originBit) → \(leaveAt.formatted(f)) 出发（会 \(signal.start.formatted(f)) 开始）"
+                : "默认提前 \(lead.minutes) 分钟 + 路途 \(tm) 分钟\(originBit) → \(leaveAt.formatted(f)) 出发"
         } else {
             title = "\(signal.start.formatted(f)) \(signal.title) · 要我 \(leaveAt.formatted(f)) 提醒你吗？"
             reason = lead.memory != nil
@@ -222,6 +255,9 @@ struct ProactiveSignal: Equatable, Sendable {
         pendingReminders[suggestion.id] = .init(title: signal.title, due: remindAt, start: signal.start, place: signal.place,
                                                 operationID: "op-" + hash, leaveAt: leaveAt, leadMinutes: lead.minutes,
                                                 travelMinutes: usedETA ? travelMinutes : nil, usedETA: usedETA)
+        if !signal.attendeeNames.isEmpty || !signal.attendeeRecipients.isEmpty {
+            pendingAttendees[suggestion.id] = (signal.attendeeNames, signal.attendeeRecipients)
+        }
         rememberServerID(local: suggestion.id)
         ProactiveLocalBackend.save(suggestion)
         ProactiveSuggestionStore.shared.adopt(suggestion)
@@ -317,6 +353,7 @@ struct ProactiveSignal: Equatable, Sendable {
         /// false when MapKit ETA failed / skipped — Why must say 「未用到 ETA」.
         var usedETA: Bool = false
     }
+    private var pendingAttendees: [String: (names: [String], recipients: [String])] = [:]
     private var pendingReminders: [String: PendingReminder] {
         get { (defaults.data(forKey: suggestionsKey)).flatMap { try? JSONDecoder().decode([String: PendingReminder].self, from: $0) } ?? [:] }
         set { defaults.set(try? JSONEncoder().encode(newValue), forKey: suggestionsKey) }
@@ -324,6 +361,9 @@ struct ProactiveSignal: Equatable, Sendable {
 
     func pendingReminder(for suggestionID: String) -> PendingReminder? {
         pendingReminders[suggestionID]
+    }
+    func attendees(for suggestionID: String) -> (names: [String], recipients: [String]) {
+        pendingAttendees[suggestionID] ?? ([], [])
     }
 
     enum WriteOutcome: Equatable { case created(String), alreadyExists(String), denied, failed(String) }
@@ -389,20 +429,35 @@ struct ProactiveSignal: Equatable, Sendable {
 
     // MARK: MapKit travel ETA (transit preferred)
 
-    /// Geocode meeting place → MKDirections. Returns usedETA=false on any failure (Why: 「未用到 ETA」).
-    static func travelETA(to place: String, from origin: CLLocationCoordinate2D? = nil) async -> (minutes: Int?, usedETA: Bool) {
+    /// Geocode meeting place → MKDirections.
+    /// Origin = real CLLocation When-In-Use, or explicit debug 模拟起点. No silent Shanghai/CBD fallback.
+    /// travel > 180 min → invalid → usedETA=false. Why must never claim ETA when unused.
+    static func travelETA(
+        to place: String,
+        from origin: CLLocationCoordinate2D? = nil,
+        simulatedLabel: String? = nil
+    ) async -> (minutes: Int?, usedETA: Bool, originNote: String?) {
         let trimmed = place.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return (nil, false) }
+        guard !trimmed.isEmpty else { return (nil, false, nil) }
+        let src: CLLocationCoordinate2D
+        let note: String?
+        if let origin, let label = simulatedLabel, !label.isEmpty {
+            src = origin
+            note = "从模拟起点 \(label)"
+        } else if let origin, simulatedLabel == nil {
+            // Caller passed a real/resolved coordinate (e.g. pipeline location) without a sim label.
+            src = origin
+            note = nil
+        } else if let real = await Self.requestCurrentCoordinate() {
+            src = real
+            note = nil
+        } else {
+            return (nil, false, nil)  // no auth / no fix → 未用到 ETA
+        }
         do {
             let geocoder = CLGeocoder()
             let marks = try await geocoder.geocodeAddressString(trimmed)
-            guard let dest = marks.first?.location?.coordinate else { return (nil, false) }
-            let src: CLLocationCoordinate2D
-            if let origin { src = origin }
-            else {
-                // Prefer last known / Shanghai CBD fallback for Simulator demos without CoreLocation grant.
-                src = CLLocationCoordinate2D(latitude: 31.2304, longitude: 121.4737)
-            }
+            guard let dest = marks.first?.location?.coordinate else { return (nil, false, note) }
             for mode in [MKDirectionsTransportType.transit, .automobile, .walking] {
                 let req = MKDirections.Request()
                 req.source = MKMapItem(placemark: MKPlacemark(coordinate: src))
@@ -412,12 +467,25 @@ struct ProactiveSignal: Equatable, Sendable {
                 let directions = MKDirections(request: req)
                 guard let resp = try? await directions.calculate(), let route = resp.routes.first else { continue }
                 let mins = max(1, Int(route.expectedTravelTime / 60))
-                return (mins, true)
+                if mins > 180 { return (nil, false, note) }  // cap: treat as invalid
+                return (mins, true, note)
             }
-            return (nil, false)
+            return (nil, false, note)
         } catch {
-            return (nil, false)
+            return (nil, false, note)
         }
+    }
+
+    /// One-shot When-In-Use location. Returns nil if denied / undetermined (no prompt from background) / timeout.
+    private static func requestCurrentCoordinate() async -> CLLocationCoordinate2D? {
+        #if canImport(CoreLocation) && os(iOS)
+        let status = CLLocationManager.authorizationStatus()
+        guard status == .authorizedWhenInUse || status == .authorizedAlways else { return nil }
+        let probe = await MainActor.run { LocationOnceProbe() }
+        return await probe.coordinate(timeout: 4)
+        #else
+        return nil
+        #endif
     }
 
     // MARK: Out-of-app: pre-scheduled notification + BGAppRefresh
@@ -640,10 +708,17 @@ struct ProactiveSignal: Equatable, Sendable {
         mock.adopt(s); Self.save(s); return s
     }
     func undo(_ id: String) async throws -> ProactiveSuggestion {
+        CatpawLeaveActivity.stop(suggestionID: id)
         #if canImport(EventKit)
         await ProactiveEngine.shared.removeReminder(id)
         #endif
-        var s = ProactiveSuggestionStore.shared.items[id] ?? ProactiveSuggestion(id: id, title: "", reason: ""); s.status = .pending; s.taken = []; return s
+        var s = ProactiveSuggestionStore.shared.items[id] ?? ProactiveSuggestion(id: id, title: "", reason: "")
+        // Keep sent-SMS evidence; undo only rolls back reminder / pending state.
+        let kept = (s.taken ?? []).filter { $0.action == .notify_attendees && ($0.detail?.contains("已发送") == true) }
+        s.status = .pending
+        s.taken = kept
+        mock.adopt(s); Self.save(s)
+        return s
     }
     func feedback(_ value: ProactiveFeedback, on id: String) async throws { ProactiveEngine.shared.note("feedback \(value.rawValue) id=\(id)") }
 }
@@ -657,15 +732,18 @@ extension ProactiveLocalBackend {
         let title = pending?.title ?? "会议"
         let start = pending.map { $0.start.formatted(f) } ?? ""
         let place = pending?.place ?? ""
-        var lines = ["我会可能稍晚到一下（Catpaw 提醒）。", "会议：\(title)" + (start.isEmpty ? "" : " · \(start)")]
+        var lines = ["我可能稍晚到一下（Catpaw 提醒）。", "会议：\(title)" + (start.isEmpty ? "" : " · \(start)")]
         if !place.isEmpty { lines.append("地点：\(place)") }
         if let leaveAt = pending?.leaveAt {
             lines.append("我计划 \(leaveAt.formatted(f)) 出发")
         }
+        let attendees = ProactiveEngine.shared.attendees(for: suggestionID)
+        if !attendees.names.isEmpty { lines.append("参会人：" + attendees.names.joined(separator: "、")) }
         let body = lines.joined(separator: "\n")
+        let recipients = attendees.recipients
         let router = (DeviceCallHub.executor as? DeviceToolRouter) ?? DeviceToolRouter()
-        ProactiveEngine.shared.note("notify_attendees present MessageUI suggestion=\(suggestionID)")
-        return await router.notifyAttendeesCompose(body: body)
+        ProactiveEngine.shared.note("notify_attendees present MessageUI suggestion=\(suggestionID) recipients=\(recipients.count)")
+        return await router.notifyAttendeesCompose(body: body, recipients: recipients)
     }
 }
 
@@ -755,6 +833,38 @@ struct ProactiveEngineSignalAdapter: ProactiveSignalEngine {
 
 
 #if canImport(ActivityKit) && os(iOS)
+
+#if canImport(CoreLocation) && os(iOS)
+/// Single-fix CLLocationManager wrapper for travelETA origin.
+@MainActor private final class LocationOnceProbe: NSObject, CLLocationManagerDelegate {
+    private let manager = CLLocationManager()
+    private var cont: CheckedContinuation<CLLocationCoordinate2D?, Never>?
+    func coordinate(timeout: TimeInterval) async -> CLLocationCoordinate2D? {
+        await withCheckedContinuation { cont in
+            self.cont = cont
+            manager.delegate = self
+            manager.desiredAccuracy = kCLLocationAccuracyHundredMeters
+            manager.requestLocation()
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: UInt64(timeout * 1_000_000_000))
+                self.finish(nil)
+            }
+        }
+    }
+    private func finish(_ c: CLLocationCoordinate2D?) {
+        guard let cont else { return }
+        self.cont = nil
+        cont.resume(returning: c)
+    }
+    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        finish(locations.last?.coordinate)
+    }
+    func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+        finish(nil)
+    }
+}
+#endif
+
 @MainActor enum CatpawLeaveActivity {
     static func start(suggestionID: String, meetingTitle: String, leaveAt: Date) {
         CatpawLiveActivityCoordinator.shared.startLeaveCountdown(suggestionID: suggestionID, meetingTitle: meetingTitle, leaveAt: leaveAt)

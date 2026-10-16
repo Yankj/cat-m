@@ -29,6 +29,12 @@ import Foundation
         return .init(items: items.map { .init(id: $0.id, group: MemoryGroup(kind: $0.kind), content: $0.content, updatedAt: $0.updated_at.flatMap(ConversationMemoryCodec.date)) },
                      useMemory: settings.use_memory, autoSave: settings.auto_save)
     }
+    private struct Created: Decodable { let memory: Item? ; let id: String? }
+    func create(kind: String, content: String) async throws -> String {
+        let data = try await call("POST", "/items", ["kind": kind, "content": content])
+        let c = try? JSONDecoder().decode(Created.self, from: data)
+        return c?.memory?.id ?? c?.id ?? ""
+    }
     func update(id: String, content: String) async throws { _ = try await call("PATCH", "/items/" + Self.path(id), ["content": content]) }
     func forget(ids: [String]) async throws { for id in ids { _ = try await call("DELETE", "/items/" + Self.path(id)) } }
     /// Contract: turning either switch on requires `consent:true` in the same PATCH.

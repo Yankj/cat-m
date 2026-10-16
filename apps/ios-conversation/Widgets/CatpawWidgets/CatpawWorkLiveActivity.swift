@@ -277,8 +277,11 @@ struct CatpawLeaveLiveActivity: Widget {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(context.state.title).font(.headline)
                     Text(context.state.meetingTitle).font(.subheadline).foregroundStyle(.secondary)
-                    Text("出发 \(context.state.leaveAt, style: .time) · 约 \(context.state.minutesLeft) 分钟")
-                        .font(.caption.monospacedDigit())
+                    HStack(spacing: 0) {
+                        Text("出发 \(context.state.leaveAt, style: .time) · 还剩 ")
+                        Text(context.state.leaveAt, style: .timer)
+                    }
+                    .font(.caption.monospacedDigit())
                 }
                 Spacer(minLength: 0)
             }
@@ -291,13 +294,15 @@ struct CatpawLeaveLiveActivity: Widget {
                     Text(context.state.meetingTitle).font(.headline)
                 }
                 DynamicIslandExpandedRegion(.bottom) {
-                    Text("出发 \(context.state.leaveAt, style: .time) · \(context.state.minutesLeft) 分钟")
-                        .font(.caption.monospacedDigit())
+                    HStack(spacing: 0) {
+                        Text("出发 \(context.state.leaveAt, style: .time) · 还剩 ")
+                        Text(context.state.leaveAt, style: .timer)
+                    }.font(.caption.monospacedDigit())
                 }
             } compactLeading: {
                 Image(systemName: "tram.fill")
             } compactTrailing: {
-                Text("\(context.state.minutesLeft)分").font(.caption2.monospacedDigit())
+                Text(context.state.leaveAt, style: .timer).font(.caption2.monospacedDigit())
             } minimal: {
                 Image(systemName: "tram.fill")
             }
