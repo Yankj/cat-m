@@ -5,6 +5,18 @@ import UIKit
 
 /// Rendered-font and UIKit editor regressions. These do not close physical-device UX gates.
 final class CatpawTextLayoutTests:XCTestCase {
+    /// Regression: 「猫吃什么」 bubble rendered ~2 empty lines tall (trailing newlines from Return/dictation).
+    @MainActor func testShortUserBubbleHugsOneLine() {
+        XCTAssertEqual(ConversationUserBubbleText.display("猫吃什么\n\n"),"猫吃什么")
+        XCTAssertEqual(ConversationUserBubbleText.display("\n 猫吃什么 \n"),"猫吃什么")
+        XCTAssertEqual(ConversationUserBubbleText.display("a\n\nb"),"a\n\nb")
+        let line=UIFont.preferredFont(forTextStyle:.body,compatibleWith:UITraitCollection(preferredContentSizeCategory:.large)).lineHeight
+        for raw in ["猫吃什么","猫吃什么\n\n","猫吃什么\n \n"] {
+            let host=UIHostingController(rootView:ConversationUserBubbleText(content:raw).environment(\.dynamicTypeSize,.large))
+            let h=host.sizeThatFits(in:CGSize(width:300,height:CGFloat.greatestFiniteMagnitude)).height
+            XCTAssertEqual(h,line+18,accuracy:3,"bubble for \(raw.debugDescription) must be one line + 18pt, got \(h)")
+        }
+    }
     @MainActor func testEverySwiftUITextCategoryMatchesUIKitWithoutImplicitRescaling() {
         let sizes:[DynamicTypeSize]=[.xSmall,.small,.medium,.large,.xLarge,.xxLarge,.xxxLarge,.accessibility1,.accessibility2,.accessibility3,.accessibility4,.accessibility5]
         let categories:[UIContentSizeCategory]=[.extraSmall,.small,.medium,.large,.extraLarge,.extraExtraLarge,.extraExtraExtraLarge,.accessibilityMedium,.accessibilityLarge,.accessibilityExtraLarge,.accessibilityExtraExtraLarge,.accessibilityExtraExtraExtraLarge]
