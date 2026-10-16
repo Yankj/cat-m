@@ -229,3 +229,12 @@ extension DeviceResultSubmitting { func reportUndo(callID: String, outcome: Devi
         catch { set(result.call_id, .reportFailed(result)) }
     }
 }
+
+/// Codex review P0-1 scaffold (red step): API only, no enforcement yet.
+@MainActor enum DeviceCallGate {
+    enum Rejection: String, Equatable { case unregistered = "unauthorized_call", accountMismatch = "account_mismatch", expired = "call_expired" }
+    static var currentAccount: () -> String? = { nil }
+    static func register(_ call: DeviceCall, now: Date = .now) {}
+    static func check(_ call: DeviceCall, now: Date = .now) -> Rejection? { nil }
+    static func reset() {}
+}

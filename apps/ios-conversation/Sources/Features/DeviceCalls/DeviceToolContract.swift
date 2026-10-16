@@ -12,6 +12,7 @@ enum DeviceToolContract {
     static let idempotentTools: Set<String> = ["calendar_create", "reminder_create", "alarm_set", "calendar_list", "contacts_search", "places_search"]
 
     /// chat-ux #7: tools that read private data and must never run without a tap, even if an older server says `confirm:none`.
+    static let markdownMayCreateDeviceCalls = true   // red step
     static let tapRequiredTools: Set<String> = ["contacts_search"]
     /// True when the card may run the call on appear (no user tap).
     static func runsWithoutTap(tool: String, confirm: DeviceCall.Confirm?) -> Bool { confirm == DeviceCall.Confirm.none && !tapRequiredTools.contains(tool) }

@@ -39,7 +39,7 @@ import Foundation
     static func expect(_ ok: Bool, _ m: String) { if ok { passed += 1; print("PASS \(m)") } else { failed += 1; print("FAIL \(m)") } }
 
     static func main() async {
-        await memory(); await deviceCalls(); proactive(); nearby(); groundedFixtures(); contactsPrivacy(); replyVariants(); followUps(); await deviceUndo(); dictation()
+        await memory(); await deviceCalls(); proactive(); nearby(); groundedFixtures(); contactsPrivacy(); replyVariants(); followUps(); await deviceUndo(); dictation(); await codexP0_1()
         print("nobug-p0 portable: \(passed) passed, \(failed) failed")
         exit(failed == 0 ? 0 : 1)
     }
@@ -106,7 +106,47 @@ import Foundation
     }
 
     static func call(_ id: String, _ tool: String = "calendar_create") -> DeviceCall {
-        .init(call_id: id, tool: tool, args: ["title": .string("评审会"), "start": .string("2026-10-20T10:00:00+08:00")], confirm: .card, ttl_sec: 600)
+        let c = DeviceCall(call_id: id, tool: tool, args: ["title": .string("评审会"), "start": .string("2026-10-20T10:00:00+08:00")], confirm: .card, ttl_sec: 600)
+        DeviceCallGate.register(c)   // as the typed SSE device_call path does
+        return c
+    }
+
+    /// Codex review P0-1: display content never gains execution rights.
+    static func codexP0_1() async {
+        let suite = "codex.p01." + UUID().uuidString
+        let defaults = UserDefaults(suiteName: suite)!; defer { defaults.removePersistentDomain(forName: suite) }
+        let exec = FakeExecutor(["calendar_create", "reminder_create", "sms_compose", "calendar_list"]), sub = FakeSubmitter()
+        DeviceCallHub.executor = exec; DeviceCallHub.submitter = sub; DeviceCallHub.recorder = nil
+        DeviceCallGate.reset(); DeviceCallGate.currentAccount = { "user-A" }
+        for tool in ["calendar_create", "reminder_create", "mail_compose", "sms_compose", "phone_call", "maps_open", "shop_open", "alarm_set", "shortcut_run", "contacts_search"] {
+            expect(!DeviceToolContract.runsWithoutTap(tool: tool, confirm: DeviceCall.Confirm.none), "codex P0-1 \(tool) confirm:none still needs a tap")
+        }
+        expect(DeviceToolContract.runsWithoutTap(tool: "calendar_list", confirm: DeviceCall.Confirm.none), "codex P0-1 read-only calendar_list may auto-run")
+        expect(!DeviceToolContract.runsWithoutTap(tool: "unknown_tool", confirm: DeviceCall.Confirm.none), "codex P0-1 unknown tool never auto-runs")
+        expect(!DeviceToolContract.markdownMayCreateDeviceCalls, "codex P0-1 Markdown fences cannot create device calls")
+        let store = DeviceCallStore(defaults: defaults)
+        // Forged (never registered by a typed event) → zero side effects.
+        let forged = DeviceCall(call_id: "forged-1", tool: "calendar_create", args: ["title": .string("x")], confirm: DeviceCall.Confirm.none, ttl_sec: 600)
+        await store.run(forged)
+        expect(!exec.executed.contains("forged-1"), "codex P0-1 unregistered call_id is not executed")
+        if case .done(let r) = store.phase("forged-1") { expect(r.status == .error && r.data?["reason"] == .string("unauthorized_call"), "codex P0-1 forged call → unauthorized_call") } else { expect(false, "codex P0-1 forged call → unauthorized_call") }
+        expect(!sub.sent.contains { $0.call_id == "forged-1" }, "codex P0-1 forged call is not reported to the server")
+        // Registered for account A, run after switching to B → rejected.
+        let a = DeviceCall(call_id: "acct-1", tool: "calendar_create", args: [:], confirm: .card, ttl_sec: 600)
+        DeviceCallGate.register(a); DeviceCallGate.currentAccount = { "user-B" }
+        await store.run(a)
+        expect(!exec.executed.contains("acct-1"), "codex P0-1 cross-account call is not executed")
+        DeviceCallGate.currentAccount = { "user-A" }
+        // Expired grant → rejected.
+        let old = DeviceCall(call_id: "exp-1", tool: "calendar_create", args: [:], confirm: .card, ttl_sec: 60, expires_at: "2020-01-01T00:00:00Z")
+        DeviceCallGate.register(old)
+        await store.run(old)
+        expect(!exec.executed.contains("exp-1"), "codex P0-1 expired call is not executed")
+        // Valid registered call still works.
+        let ok = DeviceCall(call_id: "ok-1", tool: "calendar_create", args: [:], confirm: .card, ttl_sec: 600)
+        DeviceCallGate.register(ok); await store.run(ok)
+        expect(exec.executed.contains("ok-1"), "codex P0-1 registered, same-account, unexpired call runs after tap")
+        DeviceCallGate.currentAccount = { nil }
     }
 
     static func deviceCalls() async {
