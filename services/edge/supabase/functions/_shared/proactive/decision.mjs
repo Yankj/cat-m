@@ -72,7 +72,7 @@ export function validateModelDecision(j, memoryIds) {
 }
 
 export function createDecisionService({ store, model = null, memory = null, now = () => Date.now(), log = () => {}, config = {} }) {
-  const cfg = { threshold: 0.6, silentBelow: 0.3, dedupeWindowSec: 1800, quietHours: { start: 22, end: 8 }, dailyCap: 5, timeZone: 'Asia/Shanghai', ...config };
+  const cfg = { threshold: 0.6, dedupeWindowSec: 1800, quietHours: { start: 22, end: 8 }, dailyCap: 5, timeZone: 'Asia/Shanghai', ...config };
 
   async function evaluate(uid, input) {
     const { signals, context } = validateEvaluate(input), at = now(), tz = context.time_zone || cfg.timeZone;
@@ -98,9 +98,7 @@ export function createDecisionService({ store, model = null, memory = null, now 
     const proposed = r.decision; let decision = r.decision;
     // learned weight scales confidence; threshold rises with negative feedback
     const tw = w(r.trigger), conf = Math.max(0, Math.min(1, r.confidence * tw.weight)), threshold = Math.min(0.95, cfg.threshold + tw.threshold_bump);
-    // P0-3: far below the threshold the assistant stays silent instead of being floored at card.
-    if (decision !== 'silent' && conf < cfg.silentBelow) { decision = 'silent'; trace.push(`confidence ${conf.toFixed(2)} < ${cfg.silentBelow}: ${proposed} → silent`); }
-    else if (decision !== 'silent' && conf < threshold) { const steps = conf < threshold - 0.15 ? 2 : 1; decision = LEVELS[Math.max(1, lvl(decision) - steps)]; trace.push(`confidence ${conf.toFixed(2)} < threshold ${threshold.toFixed(2)}: ${proposed} → ${decision}`); }
+    if (decision !== 'silent' && conf < threshold) { const steps = conf < threshold - 0.15 ? 2 : 1; decision = LEVELS[Math.max(1, lvl(decision) - steps)]; trace.push(`confidence ${conf.toFixed(2)} < threshold ${threshold.toFixed(2)}: ${proposed} → ${decision}`); }
     if (lvl(decision) >= 2 && isQuiet(at, tz, cfg.quietHours) && !(decision === 'interrupt' && conf >= 0.9)) { trace.push(`quiet hours: ${decision} → card`); decision = 'card'; }
     if (lvl(decision) >= 2) { const n = await store.countDecisionsSince(uid, new Date(localDayStart(at, tz)).toISOString(), ['notify', 'interrupt']); if (n >= cfg.dailyCap) { trace.push(`daily cap ${cfg.dailyCap} reached: ${decision} → card`); decision = 'card'; } }
     await store.markSignalHashes(uid, hashes, new Date(at).toISOString());
