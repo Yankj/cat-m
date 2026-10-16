@@ -48,7 +48,7 @@ import Foundation
     static func expect(_ ok: Bool, _ m: String) { if ok { passed += 1; print("PASS \(m)") } else { failed += 1; print("FAIL \(m)") } }
 
     static func main() async {
-        await memory(); await deviceCalls(); proactive(); nearby(); groundedFixtures(); contactsPrivacy(); replyVariants(); followUps(); await deviceUndo(); dictation(); await codexP0_1(); await codexPR89()
+        await memory(); await deviceCalls(); proactive(); nearby(); groundedFixtures(); contactsPrivacy(); replyVariants(); followUps(); await deviceUndo(); dictation(); await codexP0_1(); await codexPR89(); await accountEpoch()
         print("nobug-p0 portable: \(passed) passed, \(failed) failed")
         exit(failed == 0 ? 0 : 1)
     }
@@ -123,6 +123,50 @@ import Foundation
     static func tapRun(_ store: DeviceCallStore, _ c: DeviceCall) async {
         let final = c.args.merging(store.edited[c.id] ?? [:]) { _, new in new }
         await store.run(c, tap: DeviceCallGate.confirmTap(c, finalArgs: final))
+    }
+
+    /// AccountEpoch (shared barrier for #89/#90/#91): a token captured before an await is refused after sign-out / switch.
+    static func accountEpoch() async {
+        let e = AccountEpoch(account: "user-A")
+        let a = e.capture()!
+        expect(e.isValid(a), "epoch: fresh token is valid")
+        // Logout race: token captured → async op in flight → sign-out → late write must be refused.
+        var written: [String] = []
+        let late = Task { @MainActor in try? await Task.sleep(nanoseconds: 20_000_000); return e.commit(a) { written.append("A-late") } }
+        e.signOut()
+        let r = await late.value
+        expect(r == nil && written.isEmpty, "epoch: late write after sign-out is refused")
+        expect(e.capture() == nil, "epoch: signed out → no token")
+        // Account switch A → B: A's token dies, B's lives.
+        e.activate(account: "user-B")
+        let b = e.capture()!
+        expect(!e.isValid(a) && e.isValid(b) && b.epoch > a.epoch, "epoch: switch A→B invalidates A's token")
+        expect(e.commit(a) { written.append("A") } == nil && e.commit(b) { written.append("B") } != nil && written == ["B"], "epoch: commit runs only for a valid token")
+        // Re-activating the same account keeps tokens (no spurious bump); a different account or nil bumps.
+        e.activate(account: "user-B"); expect(e.isValid(b), "epoch: same account re-activate keeps tokens")
+        e.activate(account: "user-A"); e.activate(account: "user-B"); expect(!e.isValid(b), "epoch: B→A→B is a new epoch (old B token refused)")
+        expect(!e.isValid(nil), "epoch: nil token never valid")
+        // Write is atomic w.r.t. bump: sign-out during commit waits for it (no half-written state after the barrier).
+        let c = e.capture()!
+        var order: [String] = []
+        let lock = NSLock()
+        DispatchQueue.global().async { usleep(5_000); e.signOut(); lock.lock(); order.append("signOut"); lock.unlock() }
+        e.commit(c) { usleep(30_000); lock.lock(); order.append("write"); lock.unlock() }
+        usleep(60_000)
+        lock.lock(); let o = order; lock.unlock()
+        expect(o == ["write", "signOut"], "epoch: bump waits for an in-progress commit")
+        // Thread safety: concurrent captures and bumps.
+        let f = AccountEpoch(account: "u"); let start = f.epoch
+        DispatchQueue.concurrentPerform(iterations: 200) { i in if i % 2 == 0 { f.bump() } else { _ = f.isValid(f.capture()) } }
+        expect(f.epoch == start + 100, "epoch: 100 concurrent bumps counted exactly")
+        // DeviceCallGate uses the shared barrier.
+        let g = AccountEpoch(account: "user-A"); DeviceCallGate.epoch = g; DeviceCallGate.reset()
+        let call = DeviceCall(call_id: "ep-1", tool: "calendar_create", args: [:], confirm: .card, ttl_sec: 600)
+        DeviceCallGate.receive(call)
+        expect(DeviceCallGate.commitCheck("ep-1") == nil, "epoch: gate grant live for its epoch")
+        g.signOut(); expect(DeviceCallGate.commitCheck("ep-1") != nil, "epoch: gate grant dies on AccountEpoch.signOut")
+        g.activate(account: "user-A"); expect(DeviceCallGate.commitCheck("ep-1") != nil, "epoch: same user signing back in does not revive the old grant")
+        DeviceCallGate.epoch = .shared
     }
 
     /// Codex re-review of PR #89 (3f00095): every counterexample from CODEX-PR89-3f00095.md.
