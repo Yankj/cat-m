@@ -40,13 +40,13 @@ export function createMemoryStore() {
         if (out.length >= limit) break;
         const st = e.payload?.suggestion;
         if (e.user_id !== uid || e.kind !== 'proactive_decision' || e.payload.decision === 'silent' || st?.status !== 'pending' || st.chat_delivered_at) continue;
-        st.chat_delivered_at = at; st.chat_turn_id = turnID; out.push(c(e));
+        st.chat_delivered_at = at; st.chat_turn_id = turnID; st.rev = (st.rev ?? 0) + 1; out.push(c(e));
       }
       return out;
     },
     async resurfaceSnoozed(nowIso) {
       const out = [];
-      for (const e of events) { const st = e.payload?.suggestion; if (e.kind === 'proactive_decision' && st?.status === 'snoozed' && st.snooze_until && st.snooze_until <= nowIso) { st.status = 'pending'; st.resurfaced_at = nowIso; delete st.snooze_until; delete st.chat_delivered_at; if (['notify', 'interrupt'].includes(e.payload.decision) && e.payload.delivery === 'remote') { e.push_state = 'pending'; e.push_after = null; } out.push(e.id); } }
+      for (const e of events) { const st = e.payload?.suggestion; if (e.kind === 'proactive_decision' && st?.status === 'snoozed' && st.snooze_until && st.snooze_until <= nowIso) { st.status = 'pending'; st.resurfaced_at = nowIso; st.rev = (st.rev ?? 0) + 1; delete st.snooze_until; delete st.chat_delivered_at; if (['notify', 'interrupt'].includes(e.payload.decision) && e.payload.delivery === 'remote') { e.push_state = 'pending'; e.push_after = null; } out.push(e.id); } }
       return out;
     },
     async idemGet(uid, key) { return idem.get(uid + '|' + key) ?? null; },
