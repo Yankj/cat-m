@@ -45,7 +45,8 @@ No schema change, no migration: device calls are approval.v1 interrupts of `kind
 
 | tool | confirm |
 |---|---|
-| `calendar_list{from,to}` · `contacts_search{query}` | none |
+| `calendar_list{from,to}` | none |
+| `contacts_search{query,include_email?}` | card (chat-ux #7: contacts leave the phone only after a tap; result = name + phones, emails only with include_email) |
 | `calendar_create{title,start,end,location?,notes?,alarms?}` · `reminder_create{title,due?,list?,priority?}` · `mail_compose{to[],cc?,subject,body}` · `sms_compose{to[],body}` · `phone_call{number,name?}` · `maps_open{query｜lat+lng,mode?}` · `shop_open{platform,query｜url}` · `alarm_set{time,label?}` · `shortcut_run{name,input?}` | card |
 
 Not cloud tools: `pay_apple` (merchant entitlement, phase 2), `timer_start`/`focus` (App Intents, reverse direction).

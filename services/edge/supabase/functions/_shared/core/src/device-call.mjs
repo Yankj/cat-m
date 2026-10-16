@@ -20,7 +20,8 @@ export const DEVICE_TOOLS=Object.freeze([
  fn('mail_compose','Open a prefilled email for the user to send (never sent silently).',{to:SA,cc:SA,subject:S,body:S},['to','subject','body'],'card'),
  fn('sms_compose','Open a prefilled SMS for the user to send (never sent silently).',{to:SA,body:S},['to','body'],'card'),
  fn('phone_call','Start a phone call (the system asks again).',{number:S,name:S},['number'],'card'),
- fn('contacts_search','Search the user\'s contacts.',{query:S},['query'],'none'),
+ // chat-ux #7: contact data leaves the phone only after the user taps 查找 on the card (was 'none').
+ fn('contacts_search','Search the user\'s contacts by name; returns name and phone numbers (emails only when asked).',{query:S,include_email:{type:'boolean'}},['query'],'card'),
  fn('maps_open','Open a place or route in Maps.',{query:S,lat:N,lng:N,mode:{type:'string',enum:['driving','walking','transit']}},[],'card'),
  fn('shop_open','Open a shopping app search or link (never places orders).',{platform:{type:'string',enum:['taobao','jd','meituan','pdd']},query:S,url:S},['platform'],'card'),
  fn('alarm_set','Set an alarm.',{time:S,label:S},['time'],'card'),
@@ -30,7 +31,7 @@ export const DEVICE_TOOLS=Object.freeze([
 export const DEVICE_TOOL_NAMES=Object.freeze(DEVICE_TOOLS.map(t=>t.definition.function.name));
 /** Parses X-Catpaw-Device-Tools into known tool names (unknown dropped); null when the header is absent. */
 export function parseDeviceTools(raw){if(raw===null||raw===undefined)return null;return [...new Set(String(raw).split(',').map(x=>x.trim()).filter(x=>DEVICE_TOOL_NAMES.includes(x)))];}
-const typeOK=(v,s)=>s.type==='string'?typeof v==='string'&&v.length<=4000&&(!s.enum||s.enum.includes(v)):s.type==='number'?Number.isFinite(v):s.type==='integer'?Number.isInteger(v)&&v>=s.minimum&&v<=s.maximum:s.type==='array'?Array.isArray(v)&&v.length<=s.maxItems&&v.every(x=>typeOK(x,s.items)):false;
+const typeOK=(v,s)=>s.type==='boolean'?typeof v==='boolean':s.type==='string'?typeof v==='string'&&v.length<=4000&&(!s.enum||s.enum.includes(v)):s.type==='number'?Number.isFinite(v):s.type==='integer'?Number.isInteger(v)&&v>=s.minimum&&v<=s.maximum:s.type==='array'?Array.isArray(v)&&v.length<=s.maxItems&&v.every(x=>typeOK(x,s.items)):false;
 export function validateDeviceArgs(tool,args){
  const p=tool.definition.function.parameters;
  check(args&&typeof args==='object'&&!Array.isArray(args)&&Object.keys(args).every(k=>Object.hasOwn(p.properties,k)&&typeOK(args[k],p.properties[k]))&&p.required.every(k=>args[k]!==undefined),422,'invalid_tool_arguments');
