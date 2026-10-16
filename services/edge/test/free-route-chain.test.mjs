@@ -5,7 +5,7 @@ const sse=frames=>new Response(new ReadableStream({start(c){for(const f of frame
 const ok=text=>sse([JSON.stringify({choices:[{index:0,delta:{content:text}}]}),JSON.stringify({choices:[{index:0,delta:{},finish_reason:'stop'}]}),'[DONE]']);
 const busy=()=>new Response('{"error":{"message":"rate limit"}}',{status:429,headers:{'retry-after':'18'}});
 const env=o=>k=>o[k];
-const routes=readFreeRouteChain(env({CATPAW_GEMINI_API_KEY:'g',CATPAW_GROQ_API_KEY:'q',CATPAW_MODEL_ROUTE_ORDER:'gemini,groq,openrouter'}));
+const routes=readFreeRouteChain(env({CATPAW_GEMINI_API_KEY:'g',CATPAW_GEMINI_PROTOCOL:'openai_compat',CATPAW_GROQ_API_KEY:'q',CATPAW_MODEL_ROUTE_ORDER:'gemini,groq,openrouter'}));
 const collect=async p=>{const out=[];for await(const e of p.stream({messages:[],system_prompt:'s',tools:[]}))out.push(e);return out;};
 test('no extra key keeps frozen route; default order openrouter first',()=>{assert.equal(readFreeRouteChain(env({CATPAW_PRIVATE_MODEL_KEY:'o'})),null);assert.equal(readFreeRouteChain(env({CATPAW_PRIVATE_MODEL_KEY:'o',CATPAW_GEMINI_API_KEY:'g'})).routes[0].id,'openrouter');assert.equal(readConfig(env({})).route.id,'catpaw-free-consented-v1');});
 test('chain route changes consented hash',()=>{const c=readConfig(env({CATPAW_GEMINI_API_KEY:'g'}));assert.equal(c.route.id,'catpaw-free-chain-v1');assert.notEqual(c.routeHash,readConfig(env({})).routeHash);});
