@@ -118,6 +118,9 @@ export function createProactiveService({ store, verifyUser, schedulerSecret, mod
     const tokens = (await store.tokensFor(ev.user_id)).filter(t => t.enabled);
     if (!tokens.length) { await store.setPush(ev.id, 'no_device', null); out.no_device++; return; }
     if (!apns?.configured) { await store.setPush(ev.id, 'skipped', 'apns_not_configured'); out.skipped++; return; }
+    // Codex PR90e #6: the send licence. Atomically pending → sending, and only while the suggestion is still pending;
+    // a dismiss / snooze that completed during the awaits above has cancelled the row (or changed its status) → not sent.
+    if (store.claimPush && !(await store.claimPush(ev.id))) { out.skipped++; return; }
     let ok = false, err = null;
     for (const t of tokens) {
       const r = await apns.send(t, ev).catch(e => ({ ok: false, reason: e.message }));

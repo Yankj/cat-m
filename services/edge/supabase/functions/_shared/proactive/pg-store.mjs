@@ -58,7 +58,9 @@ export function createPgStore(sql) {
     async deferPush(id, until) { await sql.unsafe('update proactive.events set push_after=$2, push_attempts=greatest(push_attempts-1,0) where id=$1', [id, until]); },
     async countPushedSince(uid, sinceIso) { const r = await sql.unsafe(`select count(*)::int n from proactive.events where user_id=$1 and push_state='sent' and pushed_at >= $2::timestamptz`, [uid, sinceIso]); return r[0]?.n ?? 0; },
     async cancelPendingPush(uid, id, reason) { await sql.unsafe(`update proactive.events set push_state='skipped', push_error=$3 where id=$1 and user_id=$2 and push_state='pending'`, [id, uid, reason]); },
-    async setPush(id, state, err) { await sql.unsafe(`update proactive.events set push_state=$2, push_error=$3, pushed_at=case when $2='sent' then now() else pushed_at end where id=$1`, [id, state, err]); },
+    // Codex PR90e #6: terminal states are final — only a pending / sending row moves (never overwrites skipped/sent/…).
+    async setPush(id, state, err) { await sql.unsafe(`update proactive.events set push_state=$2, push_error=$3, pushed_at=case when $2='sent' then now() else pushed_at end where id=$1 and push_state in ('pending','sending')`, [id, state, err]); },
+    async claimPush(id) { const r = await sql.unsafe(`update proactive.events set push_state='sending' where id=$1 and push_state='pending' and coalesce(payload->'suggestion'->>'status','pending')='pending' returning id`, [id]); return r.length === 1; },
     async tokensFor(uid) { return sql.unsafe('select * from proactive.device_push_tokens where user_id=$1 and enabled', [uid]); },
     async upsertToken(uid, t) { const r = await sql.unsafe(`insert into proactive.device_push_tokens(user_id,device_id,kind,token,environment,bundle_id,activity_id) values($1,$2,$3,$4,$5,$6,$7)
        on conflict(user_id,device_id,kind,coalesce(activity_id,'')) do update set token=excluded.token,environment=excluded.environment,bundle_id=excluded.bundle_id,enabled=true,last_error=null returning id,device_id,kind,environment,bundle_id,activity_id,enabled`, [uid, t.device_id, t.kind, t.token, t.environment, t.bundle_id, t.activity_id]); return r[0]; },
