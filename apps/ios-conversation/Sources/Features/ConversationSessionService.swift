@@ -293,7 +293,7 @@ public actor ConversationSessionService {
             session.turns.append(ConversationTurnRecord(id: operationID, request: request, state: .dispatched, lastSequence: 0, error: nil))
         }
         guard active[conversationID] == nil else { throw ConversationSessionError.busy }
-        let observationToken = UUID(); active[conversationID] = observationToken
+        let observationToken = claimObservation(conversationID)
         defer { if active[conversationID] == observationToken { releaseActive(conversationID) } }
         let cr = try await repository.record(conversationID, scope: scope)
         guard var conversation = cr.conversation else { throw CatpawError.missing }
@@ -521,7 +521,7 @@ public actor ConversationSessionService {
         session.turns[index] = turn; try await save(session, expectedRevision: journalRevision, fence: request, observationToken: observationToken)
         // Codex PR #89: only now (authenticated SSE event, journal saved) may the execution gate grant or revoke.
         if case .deviceCall(let call) = event.payload, (turn.pendingDeviceCalls ?? []).contains(where: { $0.callID == call.callID }) {
-            ConversationDeviceCall.lifecycle?(.received(call, conversationID: request.conversationID, turnID: request.operationID))
+            ConversationDeviceCall.lifecycle?(.received(call, conversationID: request.conversationID, turnID: request.operationID, token: observationAccounts[observationToken]))
         }
         let deviceCallsGone = deviceCallsBefore.subtracting((turn.pendingDeviceCalls ?? []).map(\.callID))
         if !deviceCallsGone.isEmpty { ConversationDeviceCall.lifecycle?(.revoked(callIDs: deviceCallsGone.sorted())) }
@@ -590,7 +590,7 @@ public actor ConversationSessionService {
         let saved = try await read(scope: scope, conversationID: conversationID)
         guard let turn = saved.unresolved ?? saved.turns.last(where: { ![.notSent, .cancelledBeforeSend].contains($0.state) }) else { return }
         guard active[conversationID] == nil else { throw ConversationSessionError.busy }
-        let observationToken = UUID(); active[conversationID] = observationToken
+        let observationToken = claimObservation(conversationID)
         defer { if active[conversationID] == observationToken { releaseActive(conversationID) } }
         // R7 §5.3 rebuild: a still-running plain turn first reattaches by GET-after-lastSequence
         // (append only); the authoritative snapshot below then reconciles goals and terminal state.
@@ -691,7 +691,7 @@ public actor ConversationSessionService {
         if let route { ModelRouteSelection.select(route: route) }
         if automatic { autoRetryCounts[original.id, default: 0] += 1 } else { busyRetryCancelled.remove(original.id) }
         await resilience?.clearBusy()
-        let observationToken = UUID(); active[conversationID] = observationToken
+        let observationToken = claimObservation(conversationID)
         defer { if active[conversationID] == observationToken { releaseActive(conversationID) } }
         do {
             let stream = try await backend.retryBusyTurn(original.request, afterSequence: original.lastSequence)
@@ -794,7 +794,7 @@ public actor ConversationSessionService {
         next.artifactHistory = history; session.goals[goal.id] = next
     }
     public func stopObserving(scope: DataScope, conversationID: UUID) async throws {
-        let stopToken = UUID();active[conversationID] = stopToken
+        let stopToken = claimObservation(conversationID)
         defer { if active[conversationID] == stopToken { releaseActive(conversationID) } }
         if let turn = try await read(scope: scope, conversationID: conversationID).unresolved { try await markUnknown(turn.request, reason: "已停止本机观察，未取消后台任务。读取原请求后继续。", observationToken:stopToken) }
     }
@@ -812,7 +812,7 @@ public actor ConversationSessionService {
         guard !cancelling.contains(conversationID) else { throw ConversationSessionError.busy }
         guard let target = try await read(scope: scope, conversationID: conversationID).unresolved else { return .noActiveTurn }
         cancelling.insert(conversationID)
-        let token = UUID(); active[conversationID] = token
+        let token = claimObservation(conversationID)
         defer {
             cancelling.remove(conversationID); scheduleUIDrain(conversationID)
             if active[conversationID] == token { releaseActive(conversationID) }
@@ -851,6 +851,10 @@ public actor ConversationSessionService {
         }
         // Read-back failed. A confirmed cancel is still reported once, but the journal stays `unknown`
         // (sequence unchanged) so observe/continueFetching later appends the server's events.
+        // Codex p89b-3: the stop was requested/confirmed, so this turn's device calls lose execution rights NOW, even though
+        // the journal stays `unknown` (markUnknown keeps pendingDeviceCalls for display). Stale cards cannot run.
+        let staleCalls = Set((target.pendingDeviceCalls ?? []).map(\.callID)).union((current?.pendingDeviceCalls ?? []).map(\.callID))
+        if !staleCalls.isEmpty { ConversationDeviceCall.lifecycle?(.revoked(callIDs: staleCalls.sorted())) }
         try await markUnknown(target.request, reason: "已请求停止，结果待核对；读取原请求后继续。", observationToken: token)
         if let receipt, receipt.cancelled, receipt.state == "failed" {
             emit(ConversationTurnEvent(operationID: operationID, epoch: target.request.epoch, sequence: current?.lastSequence ?? target.lastSequence, payload: .failed(message: Self.cancelledCode, reconciliationRequired: false), conversationID: target.request.conversationID, turnID: operationID))
@@ -925,7 +929,7 @@ public actor ConversationSessionService {
         let saved = try await read(scope: scope, conversationID: conversationID)
         guard let turn = saved.turns.last(where: { $0.awaitingApproval }), let approval = turn.pendingApprovals?.first(where: { $0.interruptID == interruptID }) else { throw ConversationApprovalFailure.noPendingApproval }
         guard decision != .approveAlways || approval.rememberAllowed else { throw ConversationApprovalFailure.rejected(status: 422, code: "approval_remember_not_allowed") }
-        let token = UUID(); active[conversationID] = token
+        let token = claimObservation(conversationID)
         defer { if active[conversationID] == token { releaseActive(conversationID) } }
         let stream: AsyncThrowingStream<ConversationTurnEvent, Error>
         do { stream = try await backend.submitApproval(turn.request, interruptID: interruptID, decision: decision, argsHash: approval.argsHash, operationID: operationID, afterSequence: turn.lastSequence) }
@@ -948,7 +952,16 @@ public actor ConversationSessionService {
     public func pendingUIBlocks(scope: DataScope, conversationID: UUID) async throws -> [ConversationUIEvent] {
         try await read(scope: scope, conversationID: conversationID).turns.last(where: { $0.awaitingApproval })?.pendingUIBlocks ?? []
     }
-    private func releaseActive(_ conversationID: UUID) { active.removeValue(forKey: conversationID); scheduleUIDrain(conversationID) }
+    private func releaseActive(_ conversationID: UUID) { if let t = active.removeValue(forKey: conversationID) { observationAccounts[t] = nil }; scheduleUIDrain(conversationID) }
+    /// Codex p89c-4: the AccountEpoch token of the account that OPENED this observation (stream / read-back / submit).
+    /// Device-call lifecycle events carry it from the source, so an event of A's stream that is applied late (after
+    /// sign-out / switch to B) can never be granted under B's generation.
+    private var observationAccounts: [UUID: AccountToken] = [:]
+    private func claimObservation(_ conversationID: UUID) -> UUID {
+        let token = UUID(); active[conversationID] = token
+        if let account = AccountEpoch.shared.capture() { observationAccounts[token] = account }
+        return token
+    }
     private func scheduleUIDrain(_ conversationID: UUID) {
         guard !(uiQueue[conversationID] ?? []).isEmpty else { return }
         Task { await self.drainUIQueue(conversationID) }
@@ -1044,7 +1057,7 @@ public actor ConversationSessionService {
         if let deadline = Self.uiDate(block.expiresAt), deadline <= uiClock() { throw ConversationApprovalFailure.expired }
         if decision == .dismiss { guard response == nil else { throw ConversationApprovalFailure.rejected(status: 422, code: "ui_response_invalid") } }
         else { guard response != nil else { throw ConversationApprovalFailure.rejected(status: 422, code: "ui_response_invalid") } }
-        let token = UUID(); active[conversationID] = token
+        let token = claimObservation(conversationID)
         defer { if active[conversationID] == token { releaseActive(conversationID) } }
         let stream: AsyncThrowingStream<ConversationTurnEvent, Error>
         do { stream = try await backend.submitUIDecision(turn.request, interruptID: interruptID.lowercased(), decision: decision, argsHash: argsHash, response: response, operationID: operationID, afterSequence: turn.lastSequence) }
@@ -1075,7 +1088,7 @@ public actor ConversationSessionService {
         let saved = try await read(scope: scope, conversationID: conversationID)
         guard let turn = saved.turns.first(where: { $0.id == turnID }), let call = turn.pendingDeviceCalls?.first(where: { $0.callID == callID }) else { throw ConversationApprovalFailure.noPendingApproval }
         let operationID = stableID("device-result-\(turnID)-\(callID)")
-        let token = UUID(); active[conversationID] = token
+        let token = claimObservation(conversationID)
         defer { if active[conversationID] == token { releaseActive(conversationID) } }
         let stream: AsyncThrowingStream<ConversationTurnEvent, Error>
         do { stream = try await backend.submitDeviceResult(turn.request, call: call, status: status, data: data, operationID: operationID, afterSequence: turn.lastSequence) }

@@ -17,13 +17,15 @@ import UserNotifications
 
     func canExecute(_ tool: String) -> Bool { Self.tools.contains(tool) }
 
-    /// Call whose system effect is in flight (open / present re-check the gate for it).
-    private var activeCallID: String?
-    func execute(_ call: DeviceCall) async -> DeviceCallResult {
-        // Codex PR #89: refuse without a live grant, and re-check synchronously right before every system effect.
-        if let why = DeviceCallGate.commitCheck(call.call_id) { return DeviceCallGate.rejected(call, why) }
-        activeCallID = call.call_id; defer { activeCallID = nil }
-        func gate() -> DeviceCallResult? { DeviceCallGate.commitCheck(call.call_id).map { DeviceCallGate.rejected(call, $0) } }
+    func execute(_ call: DeviceCall, credential: DeviceCallGate.Credential) async -> DeviceCallResult {
+        // Codex p89b-1: refuse without the execution credential minted by DeviceCallGate.authorize for THIS grant, tool and
+        // final args (writes: only after the one-shot tap was consumed). Re-checked synchronously before every system effect.
+        // p89b-2: the check is per call (captured credential), never a shared "active call" field.
+        func gate() -> DeviceCallResult? { DeviceCallGate.commitCheck(credential, call).map { DeviceCallGate.rejected(call, $0) } }
+        if let refused = gate() { return refused }
+        let allowed: @MainActor () -> Bool = { DeviceCallGate.commitCheck(credential, call) == nil }
+        func open(_ url: URL?) async -> Bool { await self.open(url, allowed: allowed) }
+        func opened(_ ok: Bool, _ success: DeviceCallResult, _ failure: DeviceCallResult) -> DeviceCallResult { ok ? success : (gate() ?? failure) }
         let a = call.args
         func s(_ k: String) -> String { a[k]?.text ?? "" }
         func d(_ k: String) -> Date? { DeviceCallDates.parse(s(k)) }
@@ -32,9 +34,10 @@ import UserNotifications
         }
         switch call.tool {
         case "places_search":
-            return await NearbyPlaces.search(call: call)
+            return await NearbyPlaces.search(call: call, gate: gate)   // p89b-5: re-checked after location, before every map query
         case "calendar_list":
             guard await access(.event) else { return done(.denied) }
+            if let refused = gate() { return refused }   // p89b-5: revoked / signed out during the permission prompt
             let from = d("from") ?? Date(), to = d("to") ?? from.addingTimeInterval(86400)
             guard to > from, to.timeIntervalSince(from) <= 31 * 86400 else { return done(.error, ["reason": .string("invalid_range"), "retryable": .bool(false)]) }
             let events = store.events(matching: store.predicateForEvents(withStart: from, end: to, calendars: nil)).sorted { $0.startDate < $1.startDate }.prefix(50)
@@ -48,6 +51,7 @@ import UserNotifications
             var ok = st == .authorized
             if #available(iOS 18.0, *) { ok = ok || st == .limited }
             guard ok else { return done(.denied) }
+            if let refused = gate() { return refused }   // p89b-5
             let keys = [CNContactGivenNameKey, CNContactFamilyNameKey, CNContactPhoneNumbersKey, CNContactEmailAddressesKey] as [CNKeyDescriptor]
             let found = ((try? cs.unifiedContacts(matching: CNContact.predicateForContacts(matchingName: s("query")), keysToFetch: keys)) ?? []).prefix(10)
             let includeEmail: Bool = { if case .bool(let b)? = a["include_email"] { return b }; return false }()
@@ -70,7 +74,9 @@ import UserNotifications
             if case .array(let alarms)? = a["alarms"] { for case .number(let m) in alarms { e.addAlarm(EKAlarm(relativeOffset: m * 60)) } }
             e.calendar = store.defaultCalendarForNewEvents
             if let refused = gate() { return refused }
-            do { try store.save(e, span: .thisEvent, commit: true) } catch { return done(.error) }
+            // p89c: the write itself runs inside AccountEpoch.commit(token) — atomic with respect to sign-out / switch.
+            do { guard try DeviceCallGate.epoch.commit(credential.token, { try store.save(e, span: .thisEvent, commit: true) }) != nil else { return DeviceCallGate.rejected(call, .staleSession) } }
+            catch { return done(.error) }
             return done(.ok, ["event_id": .string(e.eventIdentifier ?? "")], open: "calshow:\(Int(e.startDate.timeIntervalSinceReferenceDate))")
         case "reminder_create", "alarm_set":
             // No public alarm API: alarm_set becomes a reminder with an absolute alarm (stated on the card).
@@ -86,7 +92,8 @@ import UserNotifications
             r.calendar = store.calendars(for: .reminder).first { $0.title == s("list") } ?? store.defaultCalendarForNewReminders()
             r.notes = "Catpaw · " + DeviceToolContract.callMarker(call.call_id)
             if let refused = gate() { return refused }
-            do { try store.save(r, commit: true) } catch { return done(.error) }
+            do { guard try DeviceCallGate.epoch.commit(credential.token, { try store.save(r, commit: true) }) != nil else { return DeviceCallGate.rejected(call, .staleSession) } }
+            catch { return done(.error) }
             return done(.ok, ["reminder_id": .string(r.calendarItemIdentifier)], open: "x-apple-reminderkit://")
         case "sms_compose":
             guard MFMessageComposeViewController.canSendText() else { return done(.error, ["reason": .string("sms_unavailable")]) }
@@ -99,7 +106,7 @@ import UserNotifications
             guard MFMailComposeViewController.canSendMail() else {
                 var c = URLComponents(); c.scheme = "mailto"; c.path = s("to").replacingOccurrences(of: "、", with: ",")
                 c.queryItems = [.init(name: "subject", value: s("subject")), .init(name: "body", value: s("body"))]
-                return await open(c.url) ? done(.ok, ["via": .string("mailto")]) : done(.error, ["reason": .string("mail_unavailable")])
+                return opened(await open(c.url), done(.ok, ["via": .string("mailto")]), done(.error, ["reason": .string("mail_unavailable")]))
             }
             let vc = MFMailComposeViewController(); vc.mailComposeDelegate = self
             vc.setToRecipients(s("to").split(whereSeparator: { "、, ".contains($0) }).map(String.init))
@@ -109,21 +116,22 @@ import UserNotifications
             return done(await present(vc))
         case "phone_call":
             let digits = s("number").filter { $0.isNumber || $0 == "+" }
-            return await open(URL(string: "tel:\(digits)")) ? done(.ok) : done(.error, ["reason": .string("tel_unavailable")])
+            return opened(await open(URL(string: "tel:\(digits)")), done(.ok), done(.error, ["reason": .string("tel_unavailable")]))
         case "maps_open":
             let q = s("query").addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
             let mode = ["walk": "w", "walking": "w", "transit": "r", "drive": "d", "driving": "d"][s("mode")] ?? "d"
-            return await open(URL(string: "maps://?daddr=\(q)&dirflg=\(mode)")) ? done(.ok) : done(.error)
+            return opened(await open(URL(string: "maps://?daddr=\(q)&dirflg=\(mode)")), done(.ok), done(.error))
         case "shop_open":
             let (app, web) = DeviceToolContract.shopURLs(platform: s("platform"), query: s("query"))   // meituan → imeituan:// (P0-4)
             // Prefer installed app only when canOpenURL is true; otherwise go straight to https
             // so Simulator / devices without 淘宝 don't stall on a dead custom scheme.
             if let app, UIApplication.shared.canOpenURL(app), await open(app) { return done(.ok) }
-            return await open(web) ? done(.ok, ["via": .string("web")]) : done(.error)
+            if let refused = gate() { return refused }   // p89b-2: web fallback never skips the check (fail closed)
+            return opened(await open(web), done(.ok, ["via": .string("web")]), done(.error))
         case "shortcut_run":
             var c = URLComponents(string: "shortcuts://run-shortcut")!
             c.queryItems = [.init(name: "name", value: s("name"))] + (s("input").isEmpty ? [] : [.init(name: "input", value: "text"), .init(name: "text", value: s("input"))])
-            return await open(c.url) ? done(.ok) : done(.error)
+            return opened(await open(c.url), done(.ok), done(.error))
         default:
             return DeviceToolContract.unsupported(call)
         }
@@ -180,16 +188,18 @@ import UserNotifications
     /// Opens an external URL. Must not await return-to-foreground: on Simulator, `https`/`tel`/
     /// store schemes hand off to Safari/Phone and the async open continuation can stall for minutes
     /// (UITests then miss `chat.deviceCall.receipt`). Race a short timeout and treat handoff as success.
-    private func open(_ url: URL?) async -> Bool {
-        guard let url else { return false }
-        if let id = activeCallID, DeviceCallGate.commitCheck(id) != nil { return false }   // Codex PR #89: last check before handoff
+    /// p89b-2: `allowed` is the per-call gate check. It runs BEFORE and again synchronously inside the same MainActor
+    /// segment that calls `UIApplication.open` (no task hop between the final check and the handoff). Fails closed.
+    private func open(_ url: URL?, allowed: @escaping @MainActor () -> Bool) async -> Bool {
+        guard let url, allowed() else { return false }
         let scheme = (url.scheme ?? "").lowercased()
-        let allowed = UIApplication.shared.canOpenURL(url)
+        let schemeAllowed = UIApplication.shared.canOpenURL(url)
             || ["https", "http", "tel", "maps", "mailto"].contains(scheme)
-        guard allowed else { return false }
+        guard schemeAllowed else { return false }
         return await withTaskGroup(of: Bool?.self) { group in
             group.addTask { @MainActor in
                 await withCheckedContinuation { (cont: CheckedContinuation<Bool, Never>) in
+                    guard allowed() else { cont.resume(returning: false); return }   // final check, same synchronous segment as open
                     UIApplication.shared.open(url, options: [:]) { cont.resume(returning: $0) }
                 }
             }

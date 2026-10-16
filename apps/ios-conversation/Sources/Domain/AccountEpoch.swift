@@ -58,3 +58,19 @@ public final class AccountEpoch: @unchecked Sendable {
         return try write()
     }
 }
+
+/// Hook point for account-bound subsystems (e.g. #90 `ProactiveEngine.shared.accountDidChange()`).
+/// Order contract: the caller bumps `AccountEpoch` SYNCHRONOUSLY first (sign-out / passive invalidation / switch), then
+/// awaits `notify`, which runs every registered async cleanup in key order. Cleanups must not re-grant anything; they only
+/// tear down state of `previous`.
+@MainActor public enum AccountChangeObservers {
+    public typealias Cleanup = @MainActor (_ previous: String?, _ current: String?) async -> Void
+    private static var observers: [String: Cleanup] = [:]
+    public static func register(_ key: String, _ cleanup: @escaping Cleanup) { observers[key] = cleanup }
+    public static func unregister(_ key: String) { observers[key] = nil }
+    public static var registeredKeys: [String] { observers.keys.sorted() }
+    /// Call only AFTER the synchronous epoch bump.
+    public static func notify(previous: String?, current: String?) async {
+        for key in observers.keys.sorted() { await observers[key]?(previous, current) }
+    }
+}

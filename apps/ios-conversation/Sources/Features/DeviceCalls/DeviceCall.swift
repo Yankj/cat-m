@@ -94,7 +94,9 @@ struct DeviceCallResult: Codable, Sendable, Equatable {
 /// system permission prompt and the system compose sheets (cancel there → `.cancelled`).
 @MainActor protocol DeviceToolExecuting: AnyObject {
     func canExecute(_ tool: String) -> Bool
-    func execute(_ call: DeviceCall) async -> DeviceCallResult
+    /// Codex p89b-1: `credential` comes from `DeviceCallGate.authorize`; verify it with `commitCheck(credential, call)`
+    /// immediately before every system effect. No credential → no effect.
+    func execute(_ call: DeviceCall, credential: DeviceCallGate.Credential) async -> DeviceCallResult
     /// Restart recovery: find the original effect by call_id WITHOUT writing (nil = not found / unknown).
     func lookup(_ call: DeviceCall) async -> DeviceCallResult?
 }
@@ -111,8 +113,9 @@ extension DeviceResultSubmitting { func reportUndo(callID: String, outcome: Devi
 @MainActor final class DeviceToolExecutorStub: DeviceToolExecuting {
     var outcome: DeviceCallStatus = .ok
     func canExecute(_ tool: String) -> Bool { true }
-    func execute(_ call: DeviceCall) async -> DeviceCallResult {
+    func execute(_ call: DeviceCall, credential: DeviceCallGate.Credential) async -> DeviceCallResult {
         try? await Task.sleep(for: .milliseconds(400))
+        if let why = DeviceCallGate.commitCheck(credential, call) { return DeviceCallGate.rejected(call, why) }
         return .init(call_id: call.call_id, status: outcome, data: nil, openURL: nil)
     }
 }
@@ -128,8 +131,8 @@ extension DeviceResultSubmitting { func reportUndo(callID: String, outcome: Devi
 @MainActor enum DeviceCallHub {
     static var executor: any DeviceToolExecuting = DeviceToolExecutorStub()
     static var submitter: (any DeviceResultSubmitting)? = DeviceResultSubmitterStub()
-    /// Local ledger hook (DeviceLedger.shared.record in the app; nil in tests).
-    static var recorder: ((DeviceCall, DeviceCallResult) -> Void)?
+    /// Local ledger hook (DeviceLedger.shared.record in the app; nil in tests). Gets the account token the call ran under.
+    static var recorder: ((DeviceCall, DeviceCallResult, AccountToken) -> Void)?
 }
 
 /// Card state per call_id, kept across transcript re-renders AND app kills (NoBug P0-3).
@@ -171,8 +174,8 @@ extension DeviceResultSubmitting { func reportUndo(callID: String, outcome: Devi
     func record(_ id: String) -> Record? { records[id] }
     func reset() { phases = [:]; edited = [:]; seen = [:]; records = [:]; interrupted = []; defaults.removeObject(forKey: Self.storageKey); undoQueue = .init(); defaults.removeObject(forKey: Self.undoKey) }
 
-    private func persist(_ id: String, _ p: Phase, call: DeviceCall?) {
-        records[id] = .init(phase: p, call: call ?? records[id]?.call, updatedAt: .now, account: records[id]?.account ?? DeviceCallGate.currentAccount())
+    private func persist(_ id: String, _ p: Phase, call: DeviceCall?, account: String? = nil) {
+        records[id] = .init(phase: p, call: call ?? records[id]?.call, updatedAt: .now, account: account ?? records[id]?.account ?? DeviceCallGate.currentAccount())
         if let data = try? JSONEncoder().encode(records) { defaults.set(data, forKey: Self.storageKey) }
     }
 
@@ -184,33 +187,50 @@ extension DeviceResultSubmitting { func reportUndo(callID: String, outcome: Devi
         if let edits = edited[call.id] { effective.args.merge(edits) { _, new in new } }
         // Codex P0-1: refuse anything not registered by a typed event for this account and still valid. Not executed and
         // not reported (an unknown call_id has no turn to report into); the card shows it as not done.
-        if let why = DeviceCallGate.check(call, finalArgs: effective.args, tap: tap) { set(call.id, .done(DeviceCallGate.rejected(call, why))); return }
-        phases[call.id] = .running; persist(call.id, .running, call: effective)   // durable BEFORE any side effect
-        await execute(effective)
+        let credential: DeviceCallGate.Credential
+        switch DeviceCallGate.authorize(call, finalArgs: effective.args, tap: tap) {
+        case .failure(let e): set(call.id, .done(DeviceCallGate.rejected(call, e.why))); return
+        case .success(let c): credential = c
+        }
+        // p89c-a: the account token and the submitter are bound at run start; nothing after the await uses "current" globals.
+        let submitter = DeviceCallHub.submitter
+        guard DeviceCallGate.epoch.commit(credential.token, { () -> Bool in phases[call.id] = .running; persist(call.id, .running, call: effective, account: credential.token.account); return true }) != nil
+        else { set(call.id, .done(DeviceCallGate.rejected(call, .staleSession))); return }   // durable BEFORE any side effect
+        await execute(effective, credential: credential, submitter: submitter)
     }
     /// Relaunch path for a call that was `.running` when the app died.
     func resumeInterrupted(_ id: String) async {
         // Codex PR #89: a restart never re-grants a write. Only the account that ran it may recover it, and recovery only
         // LOOKS UP the original effect (call_id marker); if it is not found the outcome is unknown — nothing is re-executed.
-        guard let record = records[id], let call = record.call, record.account != nil, record.account == DeviceCallGate.currentAccount(),
+        guard let token = DeviceCallGate.epoch.capture(), let record = records[id], let call = record.call, record.account == token.account,
               interrupted.remove(id) != nil else { return }
+        let submitter = DeviceCallHub.submitter
         let found = DeviceToolContract.idempotentTools.contains(call.tool) ? await DeviceCallHub.executor.lookup(call) : nil
-        await finish(call, found ?? DeviceToolContract.interruptedUnknown(call))
+        await finish(call, found ?? DeviceToolContract.interruptedUnknown(call), token: token, submitter: submitter)
     }
-    private func execute(_ call: DeviceCall) async {
+    private func execute(_ call: DeviceCall, credential: DeviceCallGate.Credential, submitter: (any DeviceResultSubmitting)?) async {
         let executor = DeviceCallHub.executor
-        let result = executor.canExecute(call.tool) ? await executor.execute(call) : DeviceToolContract.unsupported(call)
-        await finish(call, result)
+        let result = executor.canExecute(call.tool) ? await executor.execute(call, credential: credential) : DeviceToolContract.unsupported(call)
+        DeviceCallGate.retire(credential)   // one execution per credential
+        await finish(call, result, token: credential.token, submitter: submitter)
     }
-    private func finish(_ call: DeviceCall, _ result: DeviceCallResult) async {
-        set(call.id, .reportFailed(result))   // executed, not yet acknowledged — survives a kill before report
-        DeviceCallHub.recorder?(call, result)
-        await report(result, submitter: DeviceCallHub.submitter)
+    /// p89c-a: state write, ledger and report are bound to the account the call ran under. If that account signed out /
+    /// switched while the executor was awaiting, the late result is dropped: no shared state write, no ledger entry, and
+    /// it is never handed to the new account's submitter.
+    private func finish(_ call: DeviceCall, _ result: DeviceCallResult, token: AccountToken, submitter: (any DeviceResultSubmitting)?) async {
+        guard DeviceCallGate.epoch.commit(token, { () -> Bool in
+            set(call.id, .reportFailed(result))   // executed, not yet acknowledged — survives a kill before report
+            DeviceCallHub.recorder?(call, result, token); return true
+        }) != nil else { return }
+        await report(result, submitter: submitter, token: token)
     }
     func cancel(_ call: DeviceCall) async {
         let submitter = DeviceCallHub.submitter
         guard phase(call.id) == .confirming else { return }
-        await report(.init(call_id: call.call_id, status: .cancelled), submitter: submitter)
+        // Codex p89b-3: execution rights die NOW (grant + tap + credential), before awaiting the report, so the cancel
+        // cannot race a tap/run. The card leaves `.confirming` so `run` refuses it locally as well.
+        DeviceCallGate.revoke([call.call_id]); expireIfConfirming(call.id)
+        await report(.init(call_id: call.call_id, status: .cancelled), submitter: submitter, token: DeviceCallGate.epoch.capture())
     }
     /// Calls whose result was executed but never acknowledged (persisted `.reportFailed`).
     var pendingReportIDs: [String] { phases.compactMap { if case .reportFailed = $0.value { $0.key } else { nil } }.sorted() }
@@ -221,7 +241,7 @@ extension DeviceResultSubmitting { func reportUndo(callID: String, outcome: Devi
         guard DeviceCallHub.submitter != nil else { return 0 }
         await retryUndoReports()
         var ok = 0
-        for id in pendingReportIDs where !retrying.contains(id) && (records[id]?.account == nil || records[id]?.account == DeviceCallGate.currentAccount()) {
+        for id in pendingReportIDs where !retrying.contains(id) && records[id]?.account != nil && records[id]?.account == DeviceCallGate.currentAccount() {
             retrying.insert(id); await retryReport(id); retrying.remove(id)
             if case .done = phase(id) { ok += 1 }
         }
@@ -246,12 +266,16 @@ extension DeviceResultSubmitting { func reportUndo(callID: String, outcome: Devi
     }
     func retryReport(_ id: String) async {
         let submitter = DeviceCallHub.submitter
-        guard case .reportFailed(let result) = phase(id) else { return }
-        await report(result, submitter: submitter)
+        guard let token = DeviceCallGate.epoch.capture(), records[id]?.account == token.account, case .reportFailed(let result) = phase(id) else { return }
+        await report(result, submitter: submitter, token: token)
     }
-    private func report(_ result: DeviceCallResult, submitter: (any DeviceResultSubmitting)?) async {
-        do { try await submitter?.submit(result); set(result.call_id, submitter == nil ? .reportFailed(result) : .done(result)) }
-        catch { set(result.call_id, .reportFailed(result)) }
+    /// The phase write after the network await only lands if the reporting account is still the signed-in one.
+    private func report(_ result: DeviceCallResult, submitter: (any DeviceResultSubmitting)?, token: AccountToken?) async {
+        guard let token else { return }
+        let next: Phase
+        do { try await submitter?.submit(result); next = submitter == nil ? .reportFailed(result) : .done(result) }
+        catch { next = .reportFailed(result) }
+        DeviceCallGate.epoch.commit(token) { () -> Void in set(result.call_id, next) }
     }
 }
 
@@ -268,40 +292,63 @@ extension DeviceResultSubmitting { func reportUndo(callID: String, outcome: Devi
     struct Grant: Equatable {
         let callID: String, tool: String, argsHash: String, interruptID: String?, conversationID: String?, turnID: String?
         let token: AccountToken, deadline: Date, uptimeAtGrant: TimeInterval, budget: TimeInterval
+        /// Identity of THIS grant instance (a credential minted for it never matches any other grant).
+        let generation: UUID
         var revoked = false
+        /// Codex p89b-6: once judged expired, the grant stays dead even if the wall clock is rolled back.
+        var expiredLatched = false
     }
     struct TapToken: Equatable, Sendable { let callID: String; let finalArgsHash: String; let nonce: UUID }
+    /// Codex p89b-1: the execution credential handed to the executor. Binds the call_id, tool, FINAL args hash, the
+    /// AccountEpoch token captured at grant time and the grant generation. Minted only by `authorize` (after the tap
+    /// token for writes was consumed); the executor re-verifies it with `commitCheck(_:_:)` before every effect.
+    struct Credential: Equatable, Sendable {
+        let callID: String, tool: String, finalArgsHash: String
+        let token: AccountToken, generation: UUID, nonce: UUID
+    }
     enum Rejection: String, Equatable {
         case unregistered = "unauthorized_call", accountMismatch = "account_mismatch", noAccount = "no_account", expired = "call_expired",
-             invalidExpiry = "invalid_expiry", revoked = "call_revoked", mismatch = "call_mismatch", tapRequired = "tap_required", staleSession = "stale_session"
+             invalidExpiry = "invalid_expiry", revoked = "call_revoked", mismatch = "call_mismatch", tapRequired = "tap_required", staleSession = "stale_session",
+             credentialRequired = "credential_required"
     }
-    /// Signed-in user id (NativeAuthApplicationModel); nil when signed out → nothing may run.
     /// Account barrier shared with memory sync and proactive delivery (Sources/Domain/AccountEpoch.swift). Injectable.
-    static var epoch: AccountEpoch = .shared
+    /// nonisolated: the SSE lifecycle hook captures a token synchronously on the service's executor (AccountEpoch is thread-safe).
+    nonisolated(unsafe) static var epoch: AccountEpoch = .shared
     static func currentAccount() -> String? { epoch.currentAccount }
     static var wallClock: () -> Date = { Date() }
     static var uptime: () -> TimeInterval = { ProcessInfo.processInfo.systemUptime }
     private static var grants: [String: Grant] = [:]
     private static var taps: [String: TapToken] = [:]
+    private static var issued: [String: Credential] = [:]
+    /// Revocations recorded synchronously from any thread (service actor) so there is no Task-hop gap before they bite.
+    nonisolated static let revokedIDs = RevokedSet()
+    final class RevokedSet: @unchecked Sendable {
+        private let lock = NSLock(); private var ids: Set<String> = []
+        func insert(_ new: [String]) { lock.lock(); ids.formUnion(new); lock.unlock() }
+        func contains(_ id: String) -> Bool { lock.lock(); defer { lock.unlock() }; return ids.contains(id) }
+    }
 
-    static func argsHash(_ args: [String: DeviceCallValue]) -> String {
+    nonisolated static func argsHash(_ args: [String: DeviceCallValue]) -> String {
         let enc = JSONEncoder(); enc.outputFormatting = [.sortedKeys]
         let data = (try? enc.encode(args)) ?? Data()
         return SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
     }
 
     /// The only grant source. A second event for the same call_id never replaces or extends the first grant.
-    static func receive(_ call: DeviceCall, conversationID: String? = nil, turnID: String? = nil) {
-        guard grants[call.call_id] == nil, let token = epoch.capture() else { return }
+    /// `token` = AccountEpoch token captured when the SSE event was CREATED (p89b-4); a stale token is dropped.
+    static func receive(_ call: DeviceCall, conversationID: String? = nil, turnID: String? = nil, token captured: AccountToken? = nil) {
+        // Production passes the source token (installLifecycle); the nil default (tests / previews) means "current".
+        guard grants[call.call_id] == nil, !revokedIDs.contains(call.call_id), let token = captured ?? epoch.capture(), epoch.isValid(token) else { return }
         let now = wallClock()
         let deadline = call.strictDeadline(receivedAt: now) ?? .distantPast   // missing / unparsable → fail closed
         grants[call.call_id] = .init(callID: call.call_id, tool: call.tool, argsHash: argsHash(call.args), interruptID: call.interrupt_id,
                                      conversationID: conversationID, turnID: turnID, token: token,
-                                     deadline: deadline, uptimeAtGrant: uptime(), budget: max(0, deadline.timeIntervalSince(now)))
+                                     deadline: deadline, uptimeAtGrant: uptime(), budget: max(0, deadline.timeIntervalSince(now)), generation: UUID())
     }
-    /// Cancelled / resolved elsewhere / turn finished: the grant dies and any confirming card shows as no longer valid.
+    /// Cancelled / resolved elsewhere / turn finished: the grant, tap and any credential die; a confirming card goes inert.
     static func revoke(_ callIDs: [String]) {
-        for id in callIDs { grants[id]?.revoked = true; taps[id] = nil; DeviceCallStore.shared.expireIfConfirming(id) }
+        revokedIDs.insert(callIDs)
+        for id in callIDs { grants[id]?.revoked = true; taps[id] = nil; issued[id] = nil; DeviceCallStore.shared.expireIfConfirming(id) }
     }
     static func isLive(_ callID: String) -> Bool { commitCheck(callID) == nil }
 
@@ -312,22 +359,53 @@ extension DeviceResultSubmitting { func reportUndo(callID: String, outcome: Devi
         taps[call.call_id] = token; return token
     }
     /// Run start: the call must match its grant exactly; a write must present (and consumes) the tap token for `finalArgs`.
-    static func check(_ call: DeviceCall, finalArgs: [String: DeviceCallValue], tap: TapToken?) -> Rejection? {
-        if let why = validate(call) { return why }
-        if DeviceToolContract.runsWithoutTap(tool: call.tool, confirm: call.confirm), tap == nil { return nil }
-        guard let tap, let issued = taps[call.call_id], issued == tap, tap.finalArgsHash == argsHash(finalArgs) else { return .tapRequired }
-        taps[call.call_id] = nil   // one-shot
-        return nil
+    /// Success mints the execution credential the executor must present.
+    static func authorize(_ call: DeviceCall, finalArgs: [String: DeviceCallValue], tap: TapToken?) -> Result<Credential, RejectionError> {
+        if let why = validate(call) { return .failure(.init(why)) }
+        let hash = argsHash(finalArgs)
+        if DeviceToolContract.runsWithoutTap(tool: call.tool, confirm: call.confirm), tap == nil {
+            guard hash == grants[call.call_id]?.argsHash else { return .failure(.init(.mismatch)) }   // auto-run never with edited args
+        } else {
+            guard let tap, let issuedTap = taps[call.call_id], issuedTap == tap, tap.finalArgsHash == hash else { return .failure(.init(.tapRequired)) }
+            taps[call.call_id] = nil   // one-shot
+        }
+        guard let g = grants[call.call_id] else { return .failure(.init(.unregistered)) }
+        let cred = Credential(callID: call.call_id, tool: g.tool, finalArgsHash: hash, token: g.token, generation: g.generation, nonce: UUID())
+        issued[call.call_id] = cred
+        return .success(cred)
     }
-    /// Synchronous re-validation immediately before a system side effect.
+    struct RejectionError: Error, Equatable { let why: Rejection; init(_ w: Rejection) { why = w } }
+    /// Compatibility shim for callers that only need the verdict.
+    static func check(_ call: DeviceCall, finalArgs: [String: DeviceCallValue], tap: TapToken?) -> Rejection? {
+        if case .failure(let e) = authorize(call, finalArgs: finalArgs, tap: tap) { return e.why }; return nil
+    }
+    /// Execution finished: the credential cannot be replayed.
+    static func retire(_ cred: Credential) { if issued[cred.callID] == cred { issued[cred.callID] = nil } }
+
+    /// Grant liveness by id (card display / auto-run eligibility). NOT sufficient to execute — see `commitCheck(_:_:)`.
     static func commitCheck(_ callID: String) -> Rejection? {
-        guard let g = grants[callID] else { return .unregistered }
-        if g.revoked { return .revoked }
+        guard var g = grants[callID] else { return .unregistered }
+        if g.revoked || revokedIDs.contains(callID) { return .revoked }
         guard let now = epoch.capture() else { return .noAccount }
         guard g.token.account == now.account else { return .accountMismatch }
         guard epoch.isValid(g.token) else { return .staleSession }   // signed out / switched / re-signed-in since the grant
         if g.deadline == .distantPast { return .invalidExpiry }
-        if wallClock() >= g.deadline || uptime() - g.uptimeAtGrant >= g.budget { return .expired }
+        if g.expiredLatched { return .expired }
+        if wallClock() >= g.deadline || uptime() - g.uptimeAtGrant >= g.budget {
+            g.expiredLatched = true; grants[callID] = g; taps[callID] = nil; issued[callID] = nil   // p89b-6: latch
+            return .expired
+        }
+        return nil
+    }
+    /// Codex p89b-1: synchronous re-validation immediately before EVERY system side effect, by the executor.
+    /// Requires the credential minted by `authorize` for this exact grant generation, account token, tool and final args.
+    static func commitCheck(_ cred: Credential?, _ call: DeviceCall) -> Rejection? {
+        guard let cred else { return .credentialRequired }
+        guard cred.callID == call.call_id else { return .mismatch }
+        if let why = commitCheck(call.call_id) { return why }
+        guard let g = grants[call.call_id], g.generation == cred.generation, g.token == cred.token, epoch.isValid(cred.token) else { return .staleSession }
+        guard issued[call.call_id] == cred else { return .credentialRequired }   // forged / retired / revoked credential
+        guard cred.tool == g.tool, call.tool == g.tool, argsHash(call.args) == cred.finalArgsHash else { return .mismatch }
         return nil
     }
     private static func validate(_ call: DeviceCall) -> Rejection? {
@@ -335,23 +413,29 @@ extension DeviceResultSubmitting { func reportUndo(callID: String, outcome: Devi
         guard let g = grants[call.call_id], g.tool == call.tool, g.argsHash == argsHash(call.args), g.interruptID == call.interrupt_id else { return .mismatch }
         return nil
     }
-    static func rejected(_ call: DeviceCall, _ why: Rejection) -> DeviceCallResult {
+    nonisolated static func rejected(_ call: DeviceCall, _ why: Rejection) -> DeviceCallResult {
         .init(call_id: call.call_id, status: .error, data: ["reason": .string(why.rawValue), "retryable": .bool(false)])
     }
     /// Wires the session service's SSE boundary (received / resolved / cancelled / turn ended) to this gate.
+    /// p89b-4 / p89c-4: the account token comes from the SOURCE (the session service's observation that produced the event),
+    /// so a delayed `.received` that lands after sign-out / switch is dropped instead of registering under the new generation.
+    /// Revocations take effect synchronously (revokedIDs) before the main-actor hop.
     static func installLifecycle() {
         ConversationDeviceCall.lifecycle = { event in
-            Task { @MainActor in
-                switch event {
-                case .received(let wire, let conversationID, let turnID):
-                    if let call = DeviceCall(wire) { receive(call, conversationID: conversationID.uuidString, turnID: turnID.uuidString) }
-                case .revoked(let ids): revoke(ids)
+            switch event {
+            case .received(let wire, let conversationID, let turnID, let token):
+                guard let token else { return }   // no source account → never a grant
+                Task { @MainActor in
+                    if let call = DeviceCall(wire) { receive(call, conversationID: conversationID.uuidString, turnID: turnID.uuidString, token: token) }
                 }
+            case .revoked(let ids):
+                revokedIDs.insert(ids)
+                Task { @MainActor in revoke(ids) }
             }
         }
     }
-    /// Sign-out / account switch: every grant and tap dies, and in-flight executions fail their commit check.
-    static func reset() { grants = [:]; taps = [:]; epoch.bump() }
+    /// Sign-out / account switch: every grant, tap and credential dies, and in-flight executions fail their commit check.
+    static func reset() { grants = [:]; taps = [:]; issued = [:]; epoch.bump() }
 }
 
 extension DeviceCall {

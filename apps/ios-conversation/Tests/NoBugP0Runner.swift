@@ -13,15 +13,17 @@ import Foundation
     }
     /// Simulates an await inside the real router (permission prompt / reminder lookup) before the system write.
     var beforeCommit: (() -> Void)?
-    func execute(_ call: DeviceCall) async -> DeviceCallResult {
+    func execute(_ call: DeviceCall, credential: DeviceCallGate.Credential) async -> DeviceCallResult {
+        if let why = DeviceCallGate.commitCheck(credential, call) { return DeviceCallGate.rejected(call, why) }   // entry, as DeviceToolRouter does
         executed.append(call.call_id)
         if let id = writes[call.call_id] { return .init(call_id: call.call_id, status: .ok, data: ["event_id": .string(id), "deduped": .bool(true)]) }
         beforeCommit?()
-        if let why = DeviceCallGate.commitCheck(call.call_id) { return DeviceCallGate.rejected(call, why) }   // as DeviceToolRouter does
+        if let why = DeviceCallGate.commitCheck(credential, call) { return DeviceCallGate.rejected(call, why) }   // final, as DeviceToolRouter does
         let id = "evt-\(writes.count + 1)"; writes[call.call_id] = id
         return .init(call_id: call.call_id, status: .ok, data: ["event_id": .string(id)])
     }
 }
+extension Result { var isFailure: Bool { if case .failure = self { return true }; return false } }
 @MainActor final class FakeSubmitter: DeviceResultSubmitting {
     var sent: [DeviceCallResult] = []; var fail = false
     func submit(_ result: DeviceCallResult) async throws { if fail { throw URLError(.notConnectedToInternet) }; sent.append(result) }
@@ -48,7 +50,7 @@ import Foundation
     static func expect(_ ok: Bool, _ m: String) { if ok { passed += 1; print("PASS \(m)") } else { failed += 1; print("FAIL \(m)") } }
 
     static func main() async {
-        await memory(); await deviceCalls(); proactive(); nearby(); groundedFixtures(); contactsPrivacy(); replyVariants(); followUps(); await deviceUndo(); dictation(); await codexP0_1(); await codexPR89(); await accountEpoch()
+        await memory(); await deviceCalls(); proactive(); nearby(); groundedFixtures(); contactsPrivacy(); replyVariants(); followUps(); await deviceUndo(); dictation(); await codexP0_1(); await codexPR89(); await accountEpoch(); await codexP89c()
         print("nobug-p0 portable: \(passed) passed, \(failed) failed")
         exit(failed == 0 ? 0 : 1)
     }
@@ -169,6 +171,86 @@ import Foundation
         DeviceCallGate.epoch = .shared
     }
 
+    /// Codex p89b / p89c (c025a24, 53381f7): execution credential, cancel revoke, source-token lifecycle, latch, late results.
+    static func codexP89c() async {
+        let suite = "codex.p89c." + UUID().uuidString
+        let defaults = UserDefaults(suiteName: suite)!; defer { defaults.removePersistentDomain(forName: suite) }
+        let exec = FakeExecutor(["calendar_create", "calendar_list"]), sub = FakeSubmitter()
+        DeviceCallHub.executor = exec; DeviceCallHub.submitter = sub; DeviceCallHub.recorder = nil
+        var wall = Date(timeIntervalSince1970: 2_100_000_000), up: TimeInterval = 5000
+        DeviceCallGate.wallClock = { wall }; DeviceCallGate.uptime = { up }
+        DeviceCallGate.reset(); DeviceCallGate.epoch.activate(account: "user-A")
+        func mk(_ id: String, _ tool: String = "calendar_create", args: [String: DeviceCallValue] = ["title": .string("t")]) -> DeviceCall {
+            DeviceCall(call_id: id, tool: tool, args: args, confirm: .card, ttl_sec: 600)
+        }
+        func cred(_ c: DeviceCall, _ final: [String: DeviceCallValue]? = nil) -> DeviceCallGate.Credential? {
+            let f = final ?? c.args
+            if case .success(let x) = DeviceCallGate.authorize(c, finalArgs: f, tap: DeviceCallGate.confirmTap(c, finalArgs: f)) { return x }; return nil
+        }
+        // 1. executor level: no credential path exists; forged / replayed / swapped credentials are refused.
+        let w = mk("c-w"); DeviceCallGate.receive(w)
+        expect(DeviceCallGate.authorize(w, finalArgs: w.args, tap: nil).isFailure, "p89b-1 write without a tap mints no credential")
+        let forged = DeviceCallGate.Credential(callID: "c-w", tool: "calendar_create", finalArgsHash: DeviceCallGate.argsHash(w.args), token: DeviceCallGate.epoch.capture()!, generation: UUID(), nonce: UUID())
+        let r1 = await exec.execute(w, credential: forged)
+        expect(r1.status == .error && exec.writes["c-w"] == nil, "p89b-1 forged credential (wrong grant generation) is refused by the executor")
+        let good = cred(w)!
+        var swapped = w; swapped.args = ["title": .string("换掉")]
+        let r2 = await exec.execute(swapped, credential: good)
+        expect(r2.data?["reason"] == .string("call_mismatch") && exec.writes["c-w"] == nil, "p89b-1 credential is bound to the final args (swap refused)")
+        let ro = mk("c-ro", "calendar_list", args: [:]); DeviceCallGate.receive(ro)
+        let roCred = cred(ro)!
+        let asWrite = DeviceCall(call_id: "c-ro", tool: "calendar_create", args: [:], confirm: .card, ttl_sec: 600)
+        let r3 = await exec.execute(asWrite, credential: roCred)
+        expect(r3.status == .error && exec.writes["c-ro"] == nil, "p89b-1 a read-only grant's credential cannot drive a write tool")
+        let r4 = await exec.execute(w, credential: good)
+        expect(r4.status == .ok, "p89b-1 the real credential executes")
+        DeviceCallGate.retire(good)
+        exec.writes["c-w"] = nil
+        let r5 = await exec.execute(w, credential: good)
+        expect(r5.data?["reason"] == .string("credential_required"), "p89b-1 a retired credential cannot be replayed")
+        // 3. local cancel revokes before the report await.
+        let store = DeviceCallStore(defaults: defaults)
+        let k = mk("c-cancel"); DeviceCallGate.receive(k)
+        sub.fail = true
+        let tap = DeviceCallGate.confirmTap(k, finalArgs: k.args)
+        await store.cancel(k)
+        expect(!DeviceCallGate.isLive("c-cancel") && store.phase("c-cancel") != .confirming, "p89b-3 local cancel revokes immediately (report failed / pending)")
+        await store.run(k, tap: tap)
+        expect(!exec.executed.contains("c-cancel"), "p89b-3 a tap minted before cancel cannot run")
+        sub.fail = false
+        // 4. lifecycle: source token. A's event applied after B signed in is not granted; revocation is synchronous.
+        DeviceCallGate.installLifecycle()
+        let tokA = DeviceCallGate.epoch.capture()
+        DeviceCallGate.epoch.activate(account: "user-B")
+        let wire = ConversationDeviceCall(interruptID: "i", callID: "c-late", tool: "calendar_create", args: try! JSONEncoder().encode(["title": DeviceCallValue.string("t")]), confirm: "card", ttlSec: 600, argsHash: String(repeating: "a", count: 64), expiresAt: ISO8601DateFormatter().string(from: wall.addingTimeInterval(600)))
+        ConversationDeviceCall.lifecycle?(.received(wire, conversationID: UUID(), turnID: UUID(), token: tokA))
+        try? await Task.sleep(nanoseconds: 50_000_000)
+        expect(!DeviceCallGate.isLive("c-late"), "p89c-4 a delayed event carrying A's source token is not granted under B")
+        ConversationDeviceCall.lifecycle?(.received(wire, conversationID: UUID(), turnID: UUID(), token: nil))
+        try? await Task.sleep(nanoseconds: 50_000_000)
+        expect(!DeviceCallGate.isLive("c-late"), "p89c-4 an event without a source token is never granted")
+        let b = mk("c-sync"); DeviceCallGate.receive(b)
+        ConversationDeviceCall.lifecycle?(.revoked(callIDs: ["c-sync"]))
+        expect(!DeviceCallGate.isLive("c-sync"), "p89c-4 revocation bites synchronously (before the main-actor hop)")
+        // 6. latch.
+        let l = mk("c-latch"); DeviceCallGate.receive(l)
+        wall += 700
+        expect(DeviceCallGate.commitCheck("c-latch") == .expired, "p89b-6 expired after the wall clock passes the deadline")
+        wall -= 700
+        expect(DeviceCallGate.commitCheck("c-latch") == .expired && cred(l) == nil, "p89b-6 clock rollback cannot revive an expired grant (latched)")
+        // p89c-a: a result that returns after sign-out / switch is not written nor reported to the new account's submitter.
+        let subA = FakeSubmitter(), subB = FakeSubmitter()
+        DeviceCallHub.submitter = subA
+        let late = mk("c-after"); DeviceCallGate.receive(late)
+        exec.beforeCommit = { DeviceCallGate.epoch.activate(account: "user-C"); DeviceCallHub.submitter = subB }
+        await store.run(late, tap: DeviceCallGate.confirmTap(late, finalArgs: late.args))
+        exec.beforeCommit = nil
+        expect(exec.writes["c-after"] == nil && subA.sent.isEmpty && subB.sent.isEmpty && store.phase("c-after") == .running,
+               "p89c-a switching account mid-execution: no write, no state write, nothing handed to the new submitter")
+        DeviceCallHub.submitter = sub
+        DeviceCallGate.wallClock = { Date() }; DeviceCallGate.uptime = { ProcessInfo.processInfo.systemUptime }; DeviceCallGate.epoch.activate(account: nil)
+    }
+
     /// Codex re-review of PR #89 (3f00095): every counterexample from CODEX-PR89-3f00095.md.
     static func codexPR89() async {
         let suite = "codex.pr89." + UUID().uuidString
@@ -232,7 +314,7 @@ import Foundation
         ConversationDeviceCall.lifecycle?(.revoked(callIDs: ["x1c"]))   // the service boundary hook is installed by the app
         let wire = ConversationDeviceCall(interruptID: UUID().uuidString.lowercased(), callID: "x2", tool: "calendar_create", args: try! JSONEncoder().encode(["title": DeviceCallValue.string("t")]), confirm: "card", ttlSec: 600, argsHash: String(repeating: "a", count: 64), expiresAt: ISO8601DateFormatter().string(from: wall.addingTimeInterval(600)))
         DeviceCallGate.installLifecycle()
-        ConversationDeviceCall.lifecycle?(.received(wire, conversationID: UUID(), turnID: UUID()))
+        ConversationDeviceCall.lifecycle?(.received(wire, conversationID: UUID(), turnID: UUID(), token: DeviceCallGate.epoch.capture()))
         try? await Task.sleep(nanoseconds: 50_000_000)
         expect(DeviceCallGate.isLive("x2"), "PR89-3/4 the SSE boundary (service lifecycle hook) is the grant source")
         ConversationDeviceCall.lifecycle?(.revoked(callIDs: ["x2"]))
@@ -527,7 +609,7 @@ import Foundation
         expect(DeviceUndoOutcome.alreadyGone.removed && !DeviceUndoOutcome.failed.removed, "#6 already gone counts as removed (same as proactive undo)")
         let op = UUID()
         expect(DeviceUndoRules.body(callID: "c1", outcome: .alreadyGone, operationID: op) == ["call_id": "c1", "operation_id": op.uuidString.lowercased(), "status": "already_gone"], "#6 wire body matches server statuses")
-        expect(Set(DeviceUndoOutcome.allCases.map(\.rawValue)) == ["undone", "already_gone", "failed"], "#6 statuses mirror DEVICE_UNDO_STATUSES")
+        expect(Set(DeviceUndoOutcome.allCases.filter(\.reportable).map(\.rawValue)) == ["undone", "already_gone", "failed"] && !DeviceUndoOutcome.unknown.reportable && !DeviceUndoOutcome.unknown.removed, "#6 reportable statuses mirror DEVICE_UNDO_STATUSES; unknown stays local")
     }
     static func dictation() {
         expect(DictationPolicy.join("帮我订", "明天的会议室") == "帮我订明天的会议室", "dictation: no space joining Chinese")

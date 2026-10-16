@@ -63,7 +63,8 @@ struct DeviceCallSpec: Sendable {
 
     var body: some View {
         TimelineView(.periodic(from: .now, by: 30)) { context in
-            let phase: DeviceCallStore.Phase = expired(at: context.date) && store.phase(call.id) == .confirming ? .expired : store.phase(call.id)
+            let isExpired = expired(at: context.date)
+            let phase: DeviceCallStore.Phase = isExpired && store.phase(call.id) == .confirming ? .expired : store.phase(call.id)
             VStack(alignment: .leading, spacing: 12) {
                 header
                 switch phase {
@@ -85,6 +86,8 @@ struct DeviceCallSpec: Sendable {
             .background(CatpawColors.panel, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(CatpawColors.ink.opacity(0.08), lineWidth: 0.5))
             .animation(reduceMotion ? nil : .smooth(duration: 0.3), value: phase)
+            // Codex p89b-6: once shown expired, the card is durably expired (persisted phase) — a clock rollback cannot revive it.
+            .onChange(of: isExpired, initial: true) { _, now in if now { store.expireIfConfirming(call.id) } }
         }
         .onAppear {
             _ = store.firstSeen(call.id)
@@ -230,7 +233,7 @@ struct DeviceCallSpec: Sendable {
     private func undo() async {
         let outcome = ledger.undo(callID: call.call_id)
         undoFailed = !outcome.removed
-        await store.reportUndo(callID: call.call_id, outcome: outcome)
+        if outcome.reportable { await store.reportUndo(callID: call.call_id, outcome: outcome) }   // unknown stays local (p89c)
     }
     private func receiptText(_ status: DeviceCallStatus) -> String {
         switch status {
