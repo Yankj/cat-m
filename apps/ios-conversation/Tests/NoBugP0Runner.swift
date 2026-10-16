@@ -192,7 +192,7 @@ import Foundation
         expect(ProactiveRules.leadMinutes(in: "提前 500 分钟") == nil && ProactiveRules.leadMinutes(in: "喜欢靠窗") == nil, "lead memory bounds")
         let on = MemoryLibrarySnapshot(items: [.init(id: "a", group: .preference, content: "提前 7 分钟")], useMemory: true, autoSave: nil)
         var off = on; off.useMemory = false
-        expect(ProactiveRules.lead(in: [off, on])?.minutes == 7 && ProactiveRules.lead(in: [off]) == nil, "lead honours 使用记忆 per library")
+        expect(ProactiveRules.lead(in: [off, on]) == nil && ProactiveRules.lead(in: [off]) == nil && ProactiveRules.lead(in: [on])?.minutes == 7, "P0-2 lead: any 使用记忆=off library ⇒ no memory at all (was per-library)")
     }
 
     static func nearby() {
