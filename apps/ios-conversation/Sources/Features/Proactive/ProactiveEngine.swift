@@ -1,4 +1,6 @@
 import Foundation
+import MapKit
+import CoreLocation
 import CryptoKit
 import Observation
 #if canImport(EventKit)
@@ -72,17 +74,56 @@ struct ProactiveSignal: Equatable, Sendable {
     // MARK: Memory → lead time
 
     /// Looks for "提前 N 分钟" / "N minutes early" in the live agent memory; falls back to `defaultLeadMinutes`.
+    /// Settings/debug writes the same phrase via `setLeadMinutes` so evaluate has hard evidence.
+    static let leadPreferenceKey = "catpaw.proactive.leadMinutes.v1"
+    static let leadMemoryID = "proactive-lead-minutes"
+
     func leadTime() async -> (minutes: Int, memory: ProactiveSuggestion.MemoryRef?) {
-        guard let backend = MemoryLibraryHub.backend, let snapshot = try? await backend.load(), snapshot.useMemory else { return (defaultLeadMinutes, nil) }
-        for item in snapshot.items {
-            let text = item.content
-            if let r = text.range(of: #"提前\s*(\d{1,3})\s*分钟"#, options: .regularExpression) ?? text.range(of: #"(\d{1,3})\s*min(ute)?s? (early|ahead)"#, options: .regularExpression),
-               let n = Int(text[r].filter(\.isNumber)), n > 0, n <= 180 {
-                return (n, .init(id: item.id, content: text))
+        if let backend = MemoryLibraryHub.backend, let snapshot = try? await backend.load(), snapshot.useMemory {
+            for item in snapshot.items {
+                let text = item.content
+                if let r = text.range(of: #"提前\s*(\d{1,3})\s*分钟"#, options: .regularExpression)
+                    ?? text.range(of: #"(\d{1,3})\s*min(ute)?s? (early|ahead)"#, options: .regularExpression),
+                   let n = Int(text[r].filter(\.isNumber)), n > 0, n <= 180 {
+                    return (n, .init(id: item.id, content: text))
+                }
             }
+        }
+        let stored = defaults.object(forKey: Self.leadPreferenceKey) as? Int
+        if let stored, stored > 0, stored <= 180 {
+            return (stored, .init(id: Self.leadMemoryID, content: "开会提前 \(stored) 分钟准备"))
         }
         return (defaultLeadMinutes, nil)
     }
+
+    /// Settings / debug: persist lead preference and mirror into MemoryLibrary when possible.
+    func setLeadMinutes(_ minutes: Int) async {
+        let n = min(180, max(1, minutes))
+        defaults.set(n, forKey: Self.leadPreferenceKey)
+        let phrase = "开会提前 \(n) 分钟准备"
+        if let stub = MemoryLibraryHub.backend as? MemoryLibraryStub {
+            stub.upsert(id: Self.leadMemoryID, content: phrase)
+        } else if let backend = MemoryLibraryHub.backend {
+            if let snap = try? await backend.load(),
+               let item = snap.items.first(where: { $0.id == Self.leadMemoryID || ($0.content.contains("提前") && $0.content.contains("分钟")) }) {
+                try? await backend.update(id: item.id, content: phrase)
+            } else {
+                note("lead preference saved locally (\(n) min); no matching memory row to update")
+            }
+        }
+        note("lead_minutes set to \(n) — evaluate will cite it")
+    }
+
+    /// Delete lead preference + matching memory so evaluate falls back to default.
+    func clearLeadMinutes() async {
+        defaults.removeObject(forKey: Self.leadPreferenceKey)
+        if let backend = MemoryLibraryHub.backend, let snap = try? await backend.load() {
+            let ids = snap.items.filter { $0.id == Self.leadMemoryID || ($0.content.contains("提前") && $0.content.contains("分钟")) }.map(\.id)
+            if !ids.isEmpty { try? await backend.forget(ids: ids) }
+        }
+        note("lead_minutes cleared — evaluate uses default \(defaultLeadMinutes)")
+    }
+
 
     // MARK: Signals
 
@@ -130,26 +171,57 @@ struct ProactiveSignal: Equatable, Sendable {
         note("dedupe new signal_hash=\(hash)")
         // Evaluate
         let lead = await leadTime()
-        let remindAt = signal.start.addingTimeInterval(TimeInterval(-lead.minutes * 60))
-        let decision = await evaluateRemote(signal, leadMinutes: lead.minutes) ?? evaluateLocal(signal, leadMinutes: lead.minutes, now: now)
+        let travel = await Self.travelETA(to: signal.place)
+        let travelMinutes = travel.minutes
+        let usedETA = travel.usedETA
+        // leave_at = meeting_start - lead_minutes - travel_minutes (travel 0 only when ETA unused → lead only)
+        let buffer = lead.minutes + (usedETA ? (travelMinutes ?? 0) : 0)
+        let leaveAt = signal.start.addingTimeInterval(TimeInterval(-buffer * 60))
+        let remindAt = leaveAt  // remind when user should leave
+        let decision = await evaluateRemote(signal, leadMinutes: lead.minutes, travelMinutes: usedETA ? travelMinutes : nil)
+            ?? evaluateLocal(signal, leadMinutes: lead.minutes, now: now)
         guard decision.intervene else { note("decide silent: \(decision.why)"); return nil }
-        note("decide intervene (\(decision.via)): \(decision.why)")
+        note("decide intervene (\(decision.via)): \(decision.why); lead=\(lead.minutes) travel=\(usedETA ? String(travelMinutes ?? 0) : "unused") leaveAt=\(leaveAt.formatted(date: .omitted, time: .shortened))")
         let f = Date.FormatStyle(date: .omitted, time: .shortened)
         var memories: [ProactiveSuggestion.MemoryRef] = []
         if let m = lead.memory { memories.append(m) }
+        var signals: [ProactiveSuggestion.Signal] = [
+            .init(kind: signal.source == .eventKit || signal.source == .background ? "calendar" : signal.source.rawValue,
+                  text: "\(signal.start.formatted(f)) \(signal.title)\(signal.place.isEmpty ? "" : " · " + signal.place)"),
+            .init(kind: "time", text: "现在 \(now.formatted(f)) · 建议 \(leaveAt.formatted(f)) 出发"),
+            .init(kind: "rule", text: lead.memory != nil
+                  ? "提前 \(lead.minutes) 分钟（记忆） · signal_hash=\(hash)"
+                  : "提前 \(lead.minutes) 分钟（默认） · signal_hash=\(hash)")
+        ]
+        if usedETA, let tm = travelMinutes, tm > 0 {
+            signals.insert(.init(kind: "travel", text: "路途约 \(tm) 分钟（MapKit）"), at: 1)
+        } else {
+            signals.insert(.init(kind: "travel", text: "未用到 ETA"), at: 1)
+        }
+        let title: String
+        let reason: String
+        if usedETA, let tm = travelMinutes, tm > 0 {
+            title = "\(leaveAt.formatted(f)) 该出发 · \(signal.title)"
+            reason = lead.memory != nil
+                ? "记忆提前 \(lead.minutes) 分钟 + 路途 \(tm) 分钟 → \(leaveAt.formatted(f)) 出发（会 \(signal.start.formatted(f)) 开始）"
+                : "默认提前 \(lead.minutes) 分钟 + 路途 \(tm) 分钟 → \(leaveAt.formatted(f)) 出发"
+        } else {
+            title = "\(signal.start.formatted(f)) \(signal.title) · 要我 \(leaveAt.formatted(f)) 提醒你吗？"
+            reason = lead.memory != nil
+                ? "你习惯提前 \(lead.minutes) 分钟准备（未用到 ETA），提醒定在 \(leaveAt.formatted(f))"
+                : "会议 \(Int(minutes)) 分钟后开始，默认提前 \(lead.minutes) 分钟（未用到 ETA）"
+        }
         let suggestion = ProactiveSuggestion(
             id: "evt-" + hash,
-            title: "\(signal.start.formatted(f)) \(signal.title) · 要我 \(remindAt.formatted(f)) 提醒你吗？",
-            reason: lead.memory != nil ? "你习惯提前 \(lead.minutes) 分钟准备，所以提醒定在 \(remindAt.formatted(f))" : "会议 \(Int(minutes)) 分钟后开始，默认提前 \(lead.minutes) 分钟提醒",
-            memories: memories, actions: [.create_reminder, .snooze, .dismiss],
-            signals: [.init(kind: signal.source == .eventKit || signal.source == .background ? "calendar" : signal.source.rawValue,
-                            text: "\(signal.start.formatted(f)) \(signal.title)\(signal.place.isEmpty ? "" : " · " + signal.place)"),
-                      .init(kind: "time", text: "现在 \(now.formatted(f))"), .init(kind: "rule", text: "signal_hash=\(hash)")],
-            status: .pending, createdAt: now)
+            title: title, reason: reason,
+            memories: memories, actions: [.create_reminder, .notify_attendees, .snooze, .dismiss],
+            signals: signals, status: .pending, createdAt: now)
         // A notification may have recovered and acted on this same meeting while evaluation awaited
         // its response. Preserve that newer inbox state instead of replacing it with a pending card.
         if let existing = ProactiveSuggestionStore.shared.items[suggestion.id] { return existing }
-        pendingReminders[suggestion.id] = .init(title: signal.title, due: remindAt, start: signal.start, place: signal.place, operationID: "op-" + hash)
+        pendingReminders[suggestion.id] = .init(title: signal.title, due: remindAt, start: signal.start, place: signal.place,
+                                                operationID: "op-" + hash, leaveAt: leaveAt, leadMinutes: lead.minutes,
+                                                travelMinutes: usedETA ? travelMinutes : nil, usedETA: usedETA)
         rememberServerID(local: suggestion.id)
         ProactiveLocalBackend.save(suggestion)
         ProactiveSuggestionStore.shared.adopt(suggestion)
@@ -190,10 +262,12 @@ struct ProactiveSignal: Equatable, Sendable {
     private(set) var serverIDs: [String: String] = [:]
     private var lastRemote: [String: Any]?
     /// `POST /catpaw/proactive/v1/evaluate`; nil (offline / not deployed) → local rules.
-    private func evaluateRemote(_ s: ProactiveSignal, leadMinutes: Int) async -> Decision? {
+    private func evaluateRemote(_ s: ProactiveSignal, leadMinutes: Int, travelMinutes: Int? = nil) async -> Decision? {
         let minutes = Int(s.start.timeIntervalSince(.now) / 60)
-        let body: [String: Any] = ["signals": [["type": "meeting_upcoming", "source": s.source.rawValue, "dedupe_key": s.signalHash,
-                                                "data": ["title": s.title, "location": s.place, "minutes_until": minutes, "travel_minutes": 0]]],
+        var data: [String: Any] = ["title": s.title, "location": s.place, "minutes_until": minutes]
+        // Never claim ETA when unused / zero — omit the key rather than send 0.
+        if let travelMinutes, travelMinutes > 0 { data["travel_minutes"] = travelMinutes }
+        let body: [String: Any] = ["signals": [["type": "meeting_upcoming", "source": s.source.rawValue, "dedupe_key": s.signalHash, "data": data]],
                                    "context": ["time_zone": TimeZone.current.identifier, "lead_minutes": leadMinutes]]
         guard let json = await Self.post("evaluate", body) else { note("evaluate server unavailable → local rules"); lastRemote = nil; return nil }
         lastRemote = json
@@ -226,12 +300,23 @@ struct ProactiveSignal: Equatable, Sendable {
             try? await center.add(request)
         }
         note("intervene card + banner + local notification id=\(s.id)")
+        if let leave = pendingReminders[s.id]?.leaveAt {
+            CatpawLeaveActivity.start(suggestionID: s.id, meetingTitle: pendingReminders[s.id]?.title ?? s.title, leaveAt: leave)
+        }
         #endif
     }
 
     // MARK: Confirmed write (idempotent)
 
-    struct PendingReminder: Codable, Sendable { var title: String; var due: Date; var start: Date; var place: String; var operationID: String }
+    struct PendingReminder: Codable, Sendable {
+        var title: String; var due: Date; var start: Date; var place: String; var operationID: String
+        /// leave_at = start - lead_minutes - travel_minutes (nil travel → lead only).
+        var leaveAt: Date? = nil
+        var leadMinutes: Int = 10
+        var travelMinutes: Int? = nil
+        /// false when MapKit ETA failed / skipped — Why must say 「未用到 ETA」.
+        var usedETA: Bool = false
+    }
     private var pendingReminders: [String: PendingReminder] {
         get { (defaults.data(forKey: suggestionsKey)).flatMap { try? JSONDecoder().decode([String: PendingReminder].self, from: $0) } ?? [:] }
         set { defaults.set(try? JSONEncoder().encode(newValue), forKey: suggestionsKey) }
@@ -299,6 +384,40 @@ struct ProactiveSignal: Equatable, Sendable {
                                                                      trigger: UNTimeIntervalNotificationTrigger(timeInterval: TimeInterval(minutes * 60), repeats: false)))
         note("snooze \(minutes) min id=\(s.id)")
         #endif
+    }
+
+
+    // MARK: MapKit travel ETA (transit preferred)
+
+    /// Geocode meeting place → MKDirections. Returns usedETA=false on any failure (Why: 「未用到 ETA」).
+    static func travelETA(to place: String, from origin: CLLocationCoordinate2D? = nil) async -> (minutes: Int?, usedETA: Bool) {
+        let trimmed = place.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return (nil, false) }
+        do {
+            let geocoder = CLGeocoder()
+            let marks = try await geocoder.geocodeAddressString(trimmed)
+            guard let dest = marks.first?.location?.coordinate else { return (nil, false) }
+            let src: CLLocationCoordinate2D
+            if let origin { src = origin }
+            else {
+                // Prefer last known / Shanghai CBD fallback for Simulator demos without CoreLocation grant.
+                src = CLLocationCoordinate2D(latitude: 31.2304, longitude: 121.4737)
+            }
+            for mode in [MKDirectionsTransportType.transit, .automobile, .walking] {
+                let req = MKDirections.Request()
+                req.source = MKMapItem(placemark: MKPlacemark(coordinate: src))
+                req.destination = MKMapItem(placemark: MKPlacemark(coordinate: dest))
+                req.transportType = mode
+                req.requestsAlternateRoutes = false
+                let directions = MKDirections(request: req)
+                guard let resp = try? await directions.calculate(), let route = resp.routes.first else { continue }
+                let mins = max(1, Int(route.expectedTravelTime / 60))
+                return (mins, true)
+            }
+            return (nil, false)
+        } catch {
+            return (nil, false)
+        }
     }
 
     // MARK: Out-of-app: pre-scheduled notification + BGAppRefresh
@@ -494,8 +613,26 @@ struct ProactiveSignal: Equatable, Sendable {
             case .failed: throw ProactiveEngineError.writeFailed
             }
         case .snooze: ProactiveEngine.shared.snooze(id); s.status = .snoozed; s.taken = (s.taken ?? []) + [.init(action: action, at: .now)]
-        case .dismiss: s.status = .dismissed; s.taken = (s.taken ?? []) + [.init(action: action, at: .now)]
-        case .notify_attendees: s.status = .done; s.taken = (s.taken ?? []) + [.init(action: action, at: .now)]
+        case .dismiss:
+            CatpawLeaveActivity.stop(suggestionID: id)
+            s.status = .dismissed; s.taken = (s.taken ?? []) + [.init(action: action, at: .now)]
+        case .notify_attendees:
+            // P0-4: MessageUI via DeviceToolRouter — never mark done unless compose was presented and user sent.
+            let outcome = await Self.notifyAttendees(for: id)
+            switch outcome {
+            case .sent:
+                s.status = .done
+                s.taken = (s.taken ?? []) + [.init(action: action, at: .now, detail: "已发送短信")]
+            case .cancelled:
+                // Sheet opened then cancelled — stay pending; record evidence without done.
+                s.taken = (s.taken ?? []) + [.init(action: action, at: .now, detail: "已打开短信 · 已取消")]
+            case .unavailable:
+                s.taken = (s.taken ?? []) + [.init(action: action, at: .now, detail: "本机无法发短信（模拟器常见）")]
+                throw ProactiveEngineError.smsUnavailable
+            case .error:
+                s.taken = (s.taken ?? []) + [.init(action: action, at: .now, detail: "短信打开失败")]
+                throw ProactiveEngineError.writeFailed
+            }
         }
         ProactiveEngine.shared.syncAction(action.rawValue, local: id, operationID: "op-\(id)-\(action.rawValue)")
         mock.adopt(s); Self.save(s); return s
@@ -508,7 +645,28 @@ struct ProactiveSignal: Equatable, Sendable {
     }
     func feedback(_ value: ProactiveFeedback, on id: String) async throws { ProactiveEngine.shared.note("feedback \(value.rawValue) id=\(id)") }
 }
-enum ProactiveEngineError: Error { case remindersDenied, writeFailed }
+enum ProactiveEngineError: Error, Equatable { case remindersDenied, writeFailed, smsUnavailable }
+
+extension ProactiveLocalBackend {
+    /// Builds a short 「告诉参会人」 draft from the pending meeting and presents MessageUI.
+    fileprivate static func notifyAttendees(for suggestionID: String) async -> DeviceToolRouter.NotifyComposeOutcome {
+        let pending = ProactiveEngine.shared.pendingReminder(for: suggestionID)
+        let f = Date.FormatStyle(date: .omitted, time: .shortened)
+        let title = pending?.title ?? "会议"
+        let start = pending.map { $0.start.formatted(f) } ?? ""
+        let place = pending?.place ?? ""
+        var lines = ["我会可能稍晚到一下（Catpaw 提醒）。", "会议：\(title)" + (start.isEmpty ? "" : " · \(start)")]
+        if !place.isEmpty { lines.append("地点：\(place)") }
+        if let leaveAt = pending?.leaveAt {
+            lines.append("我计划 \(leaveAt.formatted(f)) 出发")
+        }
+        let body = lines.joined(separator: "\n")
+        let router = (DeviceCallHub.executor as? DeviceToolRouter) ?? DeviceToolRouter()
+        ProactiveEngine.shared.note("notify_attendees present MessageUI suggestion=\(suggestionID)")
+        return await router.notifyAttendeesCompose(body: body)
+    }
+}
+
 
 /// Debug panel / degrade card adapter: simulated meetings go through the same real pipeline.
 struct ProactiveEngineSignalAdapter: ProactiveSignalEngine {
@@ -592,3 +750,21 @@ struct ProactiveEngineSignalAdapter: ProactiveSignalEngine {
         WidgetCenter.shared.reloadAllTimelines()
     }
 }
+
+
+#if canImport(ActivityKit) && os(iOS)
+@MainActor enum CatpawLeaveActivity {
+    static func start(suggestionID: String, meetingTitle: String, leaveAt: Date) {
+        CatpawLiveActivityCoordinator.shared.startLeaveCountdown(suggestionID: suggestionID, meetingTitle: meetingTitle, leaveAt: leaveAt)
+    }
+    static func stop(suggestionID: String) {
+        CatpawLiveActivityCoordinator.shared.stopLeaveCountdown(suggestionID: suggestionID)
+    }
+}
+#else
+@MainActor enum CatpawLeaveActivity {
+    static func start(suggestionID: String, meetingTitle: String, leaveAt: Date) {}
+    static func stop(suggestionID: String) {}
+}
+#endif
+
