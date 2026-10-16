@@ -229,7 +229,8 @@ struct NativeWorkspaceRetrySchedule: Sendable {
                 let restored=await manager.snapshot()
                 if restored.phase == .authenticated {recoveryImpossible=false;requiresSessionRestart=false;error=nil;await receive(restored)}
                 else if allowAutomaticExperience,!isFixture,restored.phase == .signedOut,restored.user == nil,restored.message == nil,autoAnonymousSession {
-                    if !connectionMonitor.pathSatisfied {await waitForRecoveryPath();continue}
+                    // Offline: do not block entry waiting for path — provisional chat opens from completeOnboarding.
+                    if !connectionMonitor.pathSatisfied {return}
                     await startExperience()
                     if !recoveryImpossible,await hasSafelyRecoverableCredential(),(await manager.snapshot()).phase != .authenticated {
                         await waitForRetry(attempt:attempt);attempt += 1;continue
@@ -254,15 +255,48 @@ struct NativeWorkspaceRetrySchedule: Sendable {
         }
     }
     /// Info.plist `CatpawAutoAnonymousSession` = NO disables the automatic experience identity.
-    /// "开启" joins the pre-warmed lifecycle. The intro flag is persisted only after a usable chat exists.
+    /// "开启" joins the pre-warmed lifecycle. Entry never waits on model/provider health —
+    /// a local (possibly offline) chat is enough; routes/workspace keep retrying in the background.
     func completeOnboarding() async {
         guard onboarding != .entering, onboarding != .completed else { return }
         onboarding = .entering
         if warmup == nil { await start() } else { await warmup?.value }
-        if recoveryImpossible,requiresSessionRestart {onboarding = .failed(error ?? NativeAuthError.sessionRecoveryRequired.localizedDescription);return}
+        // Only terminal session/storage/config blocks entry — never model API reachability.
+        if manager == nil || (error.map { NativeAuthApplicationModel.configurationMessages.contains($0) } == true) {
+            onboarding = .failed(error ?? NativeAuthError.notConfigured.localizedDescription); return
+        }
+        if recoveryImpossible, requiresSessionRestart {
+            onboarding = .failed(error ?? NativeAuthError.sessionRecoveryRequired.localizedDescription); return
+        }
         await retryWarmup()
-        if await waitForChat() {CatpawOnboarding.markCompleted();onboarding = .completed;return}
-        onboarding = .failed(error ?? (manager == nil ? "登录连接尚未配置。" : "暂时连不上服务，请稍后重试。"))
+        await ensureEntryChat()
+        if chat != nil {
+            error = nil
+            CatpawOnboarding.markCompleted(); onboarding = .completed
+            return
+        }
+        // Last resort: still do not cite model health — storage/config only.
+        onboarding = .failed(error ?? NativeAuthError.storage.localizedDescription)
+    }
+    private static let configurationMessages: Set<String> = [
+        NativeAuthError.notConfigured.localizedDescription,
+        NativeAuthError.invalidConfiguration.localizedDescription,
+        "登录连接尚未配置。",
+        "登录公开配置未通过校验。",
+    ]
+    /// Open a usable chat for entry without requiring live workspace/model APIs.
+    private func ensureEntryChat() async {
+        if chat != nil { return }
+        guard let configuration else { return }
+        if let manager {
+            let snap = await manager.snapshot()
+            if let user = snap.user, snap.phase == .authenticated {
+                await admitProvisionalChat(user: user, configuration: configuration)
+                return
+            }
+        }
+        // Auth unreachable: local trial identity (no model key, no network admission).
+        await openOfflineTrialChat(configuration: configuration)
     }
     private func retryWarmup() async {
         guard let manager else { return }
@@ -327,6 +361,8 @@ struct NativeWorkspaceRetrySchedule: Sendable {
         if workspaceReadyKey == key,chat?.networkAdmissionAllowed == true {return}
         if workspaceFlight?.key == key {return}
         workspaceFlight?.task.cancel();wakeRetry();workspaceReadyKey=nil
+        // Open local chat immediately — do not gate UI on workspace/model reachability.
+        Task { [weak self] in await self?.admitProvisionalChat(user: user, configuration: configuration) }
         let id=UUID()
         let task=Task { [weak self] in
             guard let self else{return}
@@ -356,14 +392,22 @@ struct NativeWorkspaceRetrySchedule: Sendable {
                 guard !Task.isCancelled,await workspaceKeyIsCurrent(key,user:user) else{return}
                 if workspaceFailureIsRetryable(error) {
                     chat?.setNetworkAdmissionAllowed(false);self.error=nil;recoveryImpossible=false;requiresSessionRestart=false
+                    await admitProvisionalChat(user: user, configuration: configuration)
                     if !connectionMonitor.pathSatisfied {await connectionMonitor.waitForPath()}
                     else {await waitForRetry(attempt:attempt);attempt += 1}
                     continue
                 }
-                chat?.setNetworkAdmissionAllowed(false);recoveryImpossible=true
+                // Terminal workspace failure: keep local chat usable; surface via status dots, not entry gate.
+                chat?.setNetworkAdmissionAllowed(false)
+                await admitProvisionalChat(user: user, configuration: configuration)
                 requiresSessionRestart=workspaceFailureNeedsRestart(error)
-                self.error=friendlyWorkspaceFailure(error)
-                chat?.error=self.error
+                recoveryImpossible=requiresSessionRestart
+                if requiresSessionRestart {
+                    self.error=friendlyWorkspaceFailure(error)
+                    chat?.error=self.error
+                } else {
+                    self.error=nil; chat?.error=nil
+                }
                 return
             }
         }
@@ -373,6 +417,85 @@ struct NativeWorkspaceRetrySchedule: Sendable {
         let current=await manager.snapshot()
         return !Task.isCancelled && !logoutInProgress && key.lifecycleEpoch == lifecycleEpoch && current.generation == key.generation && current.user == user && current.phase == .authenticated
     }
+    /// Local chat for entry/offline. Network stays closed until resolveWorkspace admits for real.
+    private func admitProvisionalChat(user: NativeAuthUser, configuration: NativeAuthConfiguration) async {
+        guard chat == nil, !logoutInProgress else { return }
+        let serverScope = configuration.serverScopeID
+            ?? provisionalScope(for: user.id)
+        do {
+            let partition = AuthenticatedLocalPartition(issuer: configuration.issuer, subject: user.id, serverScopeID: serverScope)
+            let directory = root.appendingPathComponent(partition.namespace, isDirectory: true)
+            let (repository, imageStore) = try await Self.openStores(directory: directory, prepare: true)
+            guard chat == nil, !logoutInProgress else { return }
+            let region = (Bundle.main.object(forInfoDictionaryKey: "CatpawEdgeRegion") as? String).flatMap { $0.isEmpty ? nil : $0 }
+            let chatConfiguration = try NativeChatConfiguration(origin: configuration.backendOrigin, localScope: partition.scope, serverScopeID: serverScope, publishableKey: configuration.publishableKey, edgeRegion: region, expectedSubjectID: partition.subject)
+            let credentials = AuthenticatedNativeChatCredentials(manager: manager!, partition: partition)
+            let http = NativeChatHTTPBackend(configuration: chatConfiguration, credentials: credentials)
+            if !isFixture { let routeScope = partition.scope; ModelRouteCatalog.shared.install { await http.modelRoutes(scope: routeScope) } }
+            let memory = isFixture ? nil : try? NativeMemoryComposition.service(repository: repository, configuration: chatConfiguration, credentials: credentials)
+            if !isFixture { MemoryLibraryHub.installAgentMemory(configuration: chatConfiguration, credentials: credentials); MemoryEventSink.installSideChannel() }
+            backend = http
+            var selected: any ConversationBackend = isFixture ? UnconfiguredConversationBackend() : http
+            #if DEBUG
+            selected = CatpawDemoBackendSwitch.select(selected)
+            #endif
+            let opened = ConversationFirstModel(repository: repository, service: ConversationSessionService(repository: repository, backend: selected, resilience: ConnectionMonitorResilience(), outbox: ConversationOutbox(fileURL: directory.appendingPathComponent("conversation-outbox.json"))), scope: partition.scope, imageStore: imageStore, taskPlanService: isFixture ? nil : ConversationTaskPlanService(repository: repository, scope: partition.scope, backend: http), artifactEditService: isFixture ? nil : ConversationArtifactEditService(repository: repository, scope: partition.scope, backend: http), taskActionService: isFixture ? nil : ConversationTaskActionService(repository: repository, scope: partition.scope, backend: http), taskControlService: isFixture ? nil : ConversationTaskControlService(repository: repository, scope: partition.scope, backend: http), memoryService: memory, inboxService: isFixture ? nil : ConversationInboxService(reference: .init(scope: partition.scope, serverScopeID: chatConfiguration.serverScopeID, subjectID: partition.subject), backend: http), subjectID: partition.subject)
+            try? await saveLocalReceipt(.init(issuer: configuration.issuer, subject: user.id, serverScopeID: serverScope))
+            guard chat == nil, !logoutInProgress else { return }
+            opened.setNetworkAdmissionAllowed(false)
+            await opened.start()
+            chat = opened
+            installUIDecisionSubmitter(opened.service, scope: partition.scope)
+            namespace = partition.namespace
+            // Do not clear workspaceFlight — real admit still runs in background.
+            error = nil
+        } catch {
+            // Leave chat nil; completeOnboarding may fall through to offline trial.
+        }
+    }
+    private func provisionalScope(for subject: UUID) -> UUID {
+        stableID("catpaw-provisional-scope-" + subject.uuidString.lowercased())
+    }
+    /// First-launch / auth-unreachable: local trial store, no network admission, no fake cloud credential.
+    private func openOfflineTrialChat(configuration: NativeAuthConfiguration) async {
+        guard chat == nil, !logoutInProgress else { return }
+        let subject = offlineTrialSubject()
+        let serverScope = configuration.serverScopeID ?? provisionalScope(for: subject)
+        let issuer = configuration.issuer + "|offline-trial"
+        do {
+            let partition = AuthenticatedLocalPartition(issuer: issuer, subject: subject, serverScopeID: serverScope)
+            let directory = root.appendingPathComponent(partition.namespace, isDirectory: true)
+            let (repository, imageStore) = try await Self.openStores(directory: directory, prepare: true)
+            guard chat == nil, !logoutInProgress else { return }
+            let opened = ConversationFirstModel(repository: repository, service: ConversationSessionService(repository: repository, backend: UnconfiguredConversationBackend(), resilience: ConnectionMonitorResilience(), outbox: ConversationOutbox(fileURL: directory.appendingPathComponent("conversation-outbox.json"))), scope: partition.scope, imageStore: imageStore, subjectID: subject)
+            opened.setNetworkAdmissionAllowed(false)
+            await opened.start()
+            chat = opened
+            namespace = partition.namespace
+            installUIDecisionSubmitter(opened.service, scope: partition.scope)
+            error = nil
+            recoveryImpossible = false
+            requiresSessionRestart = false
+            // When path returns, upgrade to a real anonymous session without blocking entry.
+            Task { [weak self] in
+                guard let self else { return }
+                await self.connectionMonitor.waitForPath()
+                guard !self.logoutInProgress, let manager = self.manager else { return }
+                let phase = (await manager.snapshot()).phase
+                if phase == .signedOut || phase == .loginRequired { await self.startExperience() }
+            }
+        } catch {
+            self.error = NativeAuthError.storage.localizedDescription
+        }
+    }
+    private func offlineTrialSubject() -> UUID {
+        let key = "catpaw.offlineTrial.subject.v1"
+        if let raw = UserDefaults.standard.string(forKey: key), let id = UUID(uuidString: raw) { return id }
+        let id = UUID()
+        UserDefaults.standard.set(id.uuidString, forKey: key)
+        return id
+    }
+
     private func admitWorkspace(serverScope:UUID,key:WorkspaceKey,user:NativeAuthUser,configuration:NativeAuthConfiguration) async {
         guard let manager else{return}
         let partition=AuthenticatedLocalPartition(issuer:configuration.issuer,subject:user.id,serverScopeID:serverScope)
@@ -502,8 +625,13 @@ struct NativeWorkspaceRetrySchedule: Sendable {
                 if !sessionRecoveryActive {await restoreSession(manager,allowAutomaticExperience:false)}
                 return
             }
-            let ambiguous=await hasAmbiguousCredential();recoveryImpossible=true
+            let ambiguous=await hasAmbiguousCredential()
             requiresSessionRestart=[.loginRequired,.invalidResponse,.sessionRecoveryRequired].contains(failure) || ambiguous
+            // Network blips must not poison entry — provisional/offline trial still opens.
+            if [.unavailable,.rateLimited].contains(failure), !requiresSessionRestart {
+                recoveryImpossible=false; self.error=nil; return
+            }
+            recoveryImpossible=true
             self.error=requiresSessionRestart ? NativeAuthError.sessionRecoveryRequired.localizedDescription : friendlyAuthFailure(failure)
         }
     }
