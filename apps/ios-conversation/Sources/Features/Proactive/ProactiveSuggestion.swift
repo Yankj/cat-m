@@ -111,6 +111,8 @@ enum ProactiveFeedback: String, Codable, Sendable, CaseIterable { case helpful, 
     private var backend: any ProactiveSuggestionBackend { ProactiveSuggestionHub.backend }
 
     func current(_ s: ProactiveSuggestion) -> ProactiveSuggestion { items[s.id] ?? s }
+    /// Codex PR90c #1: sign-out / switch — nothing of the previous account stays on screen.
+    func resetForAccountChange() { items = [:]; busy = []; errorKey = nil }
     func adopt(_ s: ProactiveSuggestion) {
         if items[s.id] == nil { items[s.id] = s }
         (backend as? ProactiveSuggestionMock)?.adopt(s)

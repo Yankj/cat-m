@@ -35,7 +35,14 @@ struct ProactiveQuotaLedger: Codable, Sendable, Equatable {
     @discardableResult mutating func recordDelivery(_ raw: String, at: Date, calendar: Calendar = .current) -> Bool {
         let id = resolve(raw)
         if entries[id]?.state == .delivered { return false }
+        if let e = entries[id], e.state == .reserved, e.at <= at.timeIntervalSince1970 { entries[id]?.state = .delivered; return false }  // already fired
         entries[id] = .init(day: Self.day(at, calendar: calendar), at: at.timeIntervalSince1970, state: .delivered); return true
+    }
+    /// Fired reservations become deliveries ("shown but not tapped"): the in-app path must not post them again.
+    @discardableResult mutating func settle(now: Date) -> Bool {
+        var changed = false
+        for (k, e) in entries where e.state == .reserved && e.at <= now.timeIntervalSince1970 { entries[k]?.state = .delivered; changed = true }
+        return changed
     }
     /// Drop an unfired reservation (pre-scheduled request removed / superseded).
     mutating func release(_ id: String, now: Date) {
@@ -86,12 +93,35 @@ extension ProactiveRules {
 extension ProactiveRules {
     /// NoBug: trigger key for on-device meeting suggestions (same key the cloud learns feedback weights under).
     static let localTrigger = "meeting_upcoming"
-    /// Confidence the offline rules stand for when the learned feedback gate is applied (no model score offline).
-    static let localConfidence = 0.7
     /// Applies 三角's learned feedback gate (`ProactiveFeedbackSync.shared.gate`) to a local decision. Never raises a level.
-    static func applyFeedbackGate(_ level: ProactiveLevel, trigger: String = localTrigger, confidence: Double = localConfidence,
+    static func applyFeedbackGate(_ level: ProactiveLevel, trigger: String = localTrigger, confidence: Double? = nil,
                                   gate: ((String, Double, String) -> String)?) -> ProactiveLevel {
         guard level > .silent, let gate else { return level }
-        return min(level, ProactiveLevel(server: gate(level.name, confidence, trigger)))
+        return min(level, ProactiveLevel(server: gate(level.name, confidence ?? localConfidence(trigger, nil, nil), trigger)))
+    }
+}
+
+extension ProactiveRules {
+    /// 三角's per-trigger confidences for offline decisions (same table the feedback gate is calibrated on).
+    /// `detail` for flights: "cancelled" | "delay_60" | "delay_30" | anything else (gate change etc.).
+    static func localConfidence(_ trigger: String, _ minutesUntil: Int?, _ detail: String?) -> Double {
+        switch trigger {
+        case "meeting_upcoming": return (minutesUntil ?? .max) <= 10 ? 0.7 : 0.6
+        case "travel_conflict": return 0.85
+        case "flight_status": return detail == "cancelled" ? 0.9 : detail == "delay_60" ? 0.8 : detail == "delay_30" ? 0.75 : 0.7
+        case "meeting_conflict", "schedule_conflict": return 0.75
+        case "traffic": return 0.65
+        default: return 0.6
+        }
+    }
+    /// Pre-scheduled notification fires when the user should start getting ready: start − lead (no fixed +5).
+    static func prescheduleFire(start: Date, leadMinutes: Int) -> Date { start.addingTimeInterval(TimeInterval(-leadMinutes * 60)) }
+    /// Level for the pre-scheduled notification: the cloud decision for the fire instant when available, else local rules;
+    /// then the learned feedback gate with the trigger's confidence. nil → don't schedule (silent / card).
+    static func prescheduleDecision(cloud: ProactiveLevel?, leadMinutes: Int, trigger: String = localTrigger,
+                                    gate: ((String, Double, String) -> String)?) -> ProactiveLevel? {
+        let base = cloud ?? localLevel(minutesUntil: leadMinutes, leadMinutes: leadMinutes, travelMinutes: nil)
+        let level = applyFeedbackGate(base, trigger: trigger, confidence: localConfidence(trigger, leadMinutes, nil), gate: gate)
+        return level >= .notify ? level : nil
     }
 }
