@@ -43,8 +43,24 @@ struct PawMark: View {
     var shadow: Bool = true
     /// 0…1 position of the glossy highlight sweep (launch); nil = resting highlight.
     var sweep: CGFloat? = nil
-    init(size: CGFloat, color: Color = CatpawBrand.paw, pressed: [Bool] = [false, false, false, false, false], shadow: Bool = true, sweep: CGFloat? = nil) {
-        self.size = size; self.color = color; self.pressed = pressed; self.shadow = shadow; self.sweep = sweep
+    /// 0…1 launch exit: pieces drift outward (staggered), grow and fade. 0 = assembled.
+    var scatter: Double = 0
+    init(size: CGFloat, color: Color = CatpawBrand.paw, pressed: [Bool] = [false, false, false, false, false], shadow: Bool = true, sweep: CGFloat? = nil, scatter: Double = 0) {
+        self.size = size; self.color = color; self.pressed = pressed; self.shadow = shadow; self.sweep = sweep; self.scatter = scatter
+    }
+    /// Per-piece stagger (toes 0–3, pad 4): outer toes leave first, the pad last.
+    static let scatterDelay: [Double] = [0.0, 0.08, 0.12, 0.04, 0.18]
+    /// Outward direction per piece (unit-ish), pad sinks downward.
+    static let scatterDirection: [CGSize] = [CGSize(width: -1, height: -0.35), CGSize(width: -0.35, height: -1), CGSize(width: 0.35, height: -1), CGSize(width: 1, height: -0.35), CGSize(width: 0, height: 1)]
+    /// Eased progress of one piece; slight spring-like settle via easeOutBack-lite.
+    func piece(_ i: Int) -> Double {
+        let d = Self.scatterDelay[i]
+        let x = min(1, max(0, (scatter - d) / (1 - 0.18)))
+        return 1 - pow(1 - x, 3)
+    }
+    private func scatterOffset(_ i: Int, u: CGFloat) -> CGSize {
+        let k = CGFloat(piece(i)) * 24 * u * 1.9
+        return CGSize(width: Self.scatterDirection[i].width * k, height: Self.scatterDirection[i].height * k)
     }
     /// Toe beans in a 24-unit box: (cx, cy, r).
     static let toes: [(CGFloat, CGFloat, CGFloat)] = [(4.6, 10.2, 2.55), (9.0, 5.6, 2.6), (15.0, 5.6, 2.6), (19.4, 10.2, 2.55)]
@@ -59,10 +75,14 @@ struct PawMark: View {
                 bean(Circle(), w: t.2 * 2 * u, h: t.2 * 2 * u, u: u)
                     .scaleEffect(x: pressed[i] ? 1.08 : 1, y: pressed[i] ? 0.84 : 1, anchor: .bottom)
                     .offset(x: (t.0 - 12) * u, y: (t.1 - 12) * u + (pressed[i] ? 0.5 * u : 0))
+                    .scaleEffect(1 + 1.4 * piece(i)).opacity(1 - piece(i))
+                    .offset(scatterOffset(i, u: u))
             }
             bean(MainPadShape(), w: 13.6 * u, h: 10.4 * u, u: u)
                 .scaleEffect(x: pressed[4] ? 1.06 : 1, y: pressed[4] ? 0.9 : 1, anchor: .bottom)
                 .offset(y: 3.4 * u)
+                .scaleEffect(1 + 1.2 * piece(4)).opacity(1 - piece(4))
+                .offset(scatterOffset(4, u: u))
         }
         .frame(width: size, height: size)
         .accessibilityHidden(true)

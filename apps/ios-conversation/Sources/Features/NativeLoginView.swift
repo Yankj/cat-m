@@ -52,7 +52,7 @@ import UIKit
                 debugBanner.padding(.top, 8)
                 #endif
                 Text(ui("解放双手，\n让工作\n自己向前走"))
-                    .font(serif.font(size: 40))
+                    .font(serif.headline)
                     .lineSpacing(4).foregroundStyle(CatpawColors.ink)
                     .padding(.top, 36)
                     .opacity(shown ? 1 : 0).offset(y: shown ? 0 : 10)
