@@ -62,7 +62,7 @@ test('PR90f #4: an old send completing after the row was re-armed does not swall
   assert.equal(sent.length, 2, 'the re-armed round is sent');
 });
 
-test('PR90f #4: a crashed claim is recovered after the lease (never attempted → resent; unknown → resent, same collapse id)', async () => {
+test('PR90f #4: a crashed claim is recovered after the lease (never attempted → resent; unknown → PR90g at-most-once: not resent)', async () => {
   const { call, svc, store, clock, sent } = setup(); await store.upsertToken(U, TOK);
   const a = (await call('POST', BASE + '/evaluate', meeting({ delivery: 'remote' }))).body.event_id;
   const b = (await call('POST', BASE + '/evaluate', meeting({ delivery: 'remote' }))).body.event_id;
@@ -71,9 +71,9 @@ test('PR90f #4: a crashed claim is recovered after the lease (never attempted �
   const cb = await store.claimPush(b, T()); await store.markPushAttempt(b, cb.claim, T());  // crashed after APNs was called
   await svc.flushPush(); assert.equal(sent.length, 0, 'within the lease nothing is touched');
   clock.t += 5 * 60_000; await svc.flushPush();
-  assert.equal(sent.length, 1, 'recovered rows go out (two of one user coalesce into one push, as before)');
-  const eb = await store.getEvent(U, b); assert.ok(['sent', 'skipped'].includes(eb.push_state)); assert.equal(eb.push_recovered, 'unknown');
-  assert.notEqual((await store.getEvent(U, a)).push_state, 'sending');
+  assert.deepEqual(sent.map(e => e.id), [a], 'only the never-attempted row is resent');
+  const eb = await store.getEvent(U, b); assert.deepEqual([eb.push_state, eb.push_error, eb.push_recovered], ['failed', 'outcome_unknown', 'unknown']);
+  assert.equal((await store.getEvent(U, a)).push_state, 'sent');
   assert.equal((await store.getEvent(U, a)).push_recovered, 'unsent');
   assert.equal(await store.finishPush(a, ca.claim, 'failed', 'late'), false, 'the crashed claim can never complete');
 });

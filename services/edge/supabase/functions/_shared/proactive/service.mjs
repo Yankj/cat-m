@@ -80,9 +80,8 @@ export function createProactiveService({ store, verifyUser, schedulerSecret, mod
   }
   async function flushPush(limit = 100) {
     const at = now();
-    // Codex PR90f #4: a 'sending' claim older than the lease (sender crashed) is re-armed with a new generation; the old
-    // claim can never complete. Never attempted → plain resend; attempted (outcome unknown) → resend under the same
-    // apns-collapse-id (the event id), so a device that already got it shows one notification.
+    // Codex PR90f/g #4: a 'sending' claim older than the lease (sender crashed) loses its licence. Never attempted → a new
+    // generation (own retry budget) resends; attempted (outcome unknown) → not resent (at-most-once, outcome_unknown).
     if (store.recoverStalePush) { const n = await store.recoverStalePush(new Date(at).toISOString(), pushLeaseSeconds); if (n) log('push_lease_recovered', n); }
     const pending = await store.pendingPushEvents(limit, new Date(at).toISOString());
     const out = { sent: 0, skipped: 0, failed: 0, no_device: 0, deferred: 0, coalesced: 0, capped: 0 };
@@ -90,10 +89,10 @@ export function createProactiveService({ store, verifyUser, schedulerSecret, mod
     for (const ev of pending) {
       // Codex PR90c #2: delivery ownership is enforced at the sender. A proactive decision is pushed only when the
       // client explicitly handed it off (delivery='remote'); device-owned and legacy (pre-ownership) rows never are.
-      if (ev.kind === 'proactive_decision' && ev.payload?.delivery !== 'remote') { await store.setPush(ev.id, 'skipped', 'device_owned'); out.skipped++; continue; }
+      if (ev.kind === 'proactive_decision' && ev.payload?.delivery !== 'remote') { await store.setPush(ev.id, 'skipped', 'device_owned', ev.push_generation); out.skipped++; continue; }
       // Codex PR90d #5: only a suggestion that is still pending is pushed (dismissed / snoozed / done never are).
       const sst = ev.payload?.suggestion?.status;
-      if (ev.kind === 'proactive_decision' && sst && sst !== 'pending') { await store.setPush(ev.id, 'skipped', 'suggestion_' + sst); out.skipped++; continue; }
+      if (ev.kind === 'proactive_decision' && sst && sst !== 'pending') { await store.setPush(ev.id, 'skipped', 'suggestion_' + sst, ev.push_generation); out.skipped++; continue; }
       (byUser.get(ev.user_id) ?? byUser.set(ev.user_id, []).get(ev.user_id)).push(ev);
     }
     for (const [uid, evs] of byUser) {
@@ -103,14 +102,14 @@ export function createProactiveService({ store, verifyUser, schedulerSecret, mod
       if (rest.length) {
         if (isQuiet(at, tz, quietHours)) {
           const until = new Date(quietEndsAt(at, tz, quietHours)).toISOString();
-          for (const ev of rest) { await store.deferPush(ev.id, until); out.deferred++; }
+          for (const ev of rest) { await store.deferPush(ev.id, until, ev.push_generation); out.deferred++; }
         } else {
           const used = await store.countPushedSince(uid, new Date(localDayStart(at, tz)).toISOString());
-          if (dailyPushCap != null && used >= dailyPushCap) { for (const ev of rest) { await store.setPush(ev.id, 'skipped', 'daily_cap'); out.capped++; } }
+          if (dailyPushCap != null && used >= dailyPushCap) { for (const ev of rest) { await store.setPush(ev.id, 'skipped', 'daily_cap', ev.push_generation); out.capped++; } }
           else if (rest.length === 1) deliver.push(rest[0]);
           else { // coalesce (e.g. backlog released at quiet-hours end) into one push about the newest event
             const head = rest[rest.length - 1];
-            for (const ev of rest.slice(0, -1)) { await store.setPush(ev.id, 'skipped', 'coalesced'); out.coalesced++; }
+            for (const ev of rest.slice(0, -1)) { await store.setPush(ev.id, 'skipped', 'coalesced', ev.push_generation); out.coalesced++; }
             deliver.push({ ...head, title: `小猫有 ${rest.length} 条消息`, body: head.body, payload: { ...head.payload, coalesced: rest.length } });
           }
         }
@@ -121,13 +120,15 @@ export function createProactiveService({ store, verifyUser, schedulerSecret, mod
   }
   async function sendOne(ev, out) {
     const tokens = (await store.tokensFor(ev.user_id)).filter(t => t.enabled);
-    if (!tokens.length) { await store.setPush(ev.id, 'no_device', null); out.no_device++; return; }
-    if (!apns?.configured) { await store.setPush(ev.id, 'skipped', 'apns_not_configured'); out.skipped++; return; }
+    if (!tokens.length) { await store.setPush(ev.id, 'no_device', null, ev.push_generation); out.no_device++; return; }
+    if (!apns?.configured) { await store.setPush(ev.id, 'skipped', 'apns_not_configured', ev.push_generation); out.skipped++; return; }
     // Codex PR90e #6: the send licence. Atomically pending → sending, and only while the suggestion is still pending;
     // a dismiss / snooze that completed during the awaits above has cancelled the row (or changed its status) → not sent.
-    const claim = store.claimPush ? await store.claimPush(ev.id, new Date(now()).toISOString()) : { claim: null };
+    const claim = store.claimPush ? await store.claimPush(ev.id, new Date(now()).toISOString(), ev.push_generation) : { claim: null };
     if (!claim) { out.skipped++; return; }
-    if (store.markPushAttempt) await store.markPushAttempt(ev.id, claim.claim, new Date(now()).toISOString());
+    // Codex PR90g #4: the licence is re-checked atomically right before APNs; a claim recovered meanwhile (lease expired)
+    // never sends — the recovered generation is the only sender.
+    if (store.markPushAttempt && !(await store.markPushAttempt(ev.id, claim.claim, new Date(now()).toISOString()))) { log('push_claim_lost', ev.id); out.skipped++; return; }
     let ok = false, err = null;
     for (const t of tokens) {
       const r = await apns.send(t, ev).catch(e => ({ ok: false, reason: e.message }));

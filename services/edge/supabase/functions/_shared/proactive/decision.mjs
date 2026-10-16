@@ -186,7 +186,8 @@ export function createDecisionService({ store, model = null, memory = null, now 
         // Codex PR90f #3: a late sync keeps the device's own until (bounded: ≤ 7 days old, ≤ 24 h ahead). Already past →
         // recorded as expired and resurfaced by the next resurface pass; never silently replaced by "now + 10 min".
         const u = typeof b.until === 'string' ? Date.parse(b.until) : NaN, t = now();
-        const valid = Number.isFinite(u) && u >= t - 7 * 86400000 && u <= t + 1440 * 60000;
+        // PR90g #3: any past until is kept (expired); only a malformed or > 24 h-ahead one falls back.
+        const valid = Number.isFinite(u) && u <= t + 1440 * 60000;
         const until = valid ? u : t + (Number(b.minutes) > 0 ? Math.min(Number(b.minutes), 1440) : 10) * 60000;
         const entry = st.taken.at(-1); entry.until = st.snooze_until = new Date(until).toISOString(); if (until <= t) entry.expired = true;
       }
