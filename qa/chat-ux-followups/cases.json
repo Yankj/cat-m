@@ -1,0 +1,13 @@
+{"note":"chat-ux #4 follow-up suggestions. Each case is an ordinary question whose answer should end with a catpaw-card:followups fence of 2-3 short, distinct, user-voice questions. Pass = the iOS parser rules (FollowUpSuggestions.parse) yield 2-3 items, each <= 18 chars, none equal to the question.",
+ "cases":[
+ {"id":"f01","text":"解释一下什么是通货膨胀"},
+ {"id":"f02","text":"猫为什么喜欢钻纸箱"},
+ {"id":"f03","text":"第一次去日本旅行要准备什么"},
+ {"id":"f04","text":"怎么做番茄炒蛋"},
+ {"id":"f05","text":"你觉得我该先学 Swift 还是 Kotlin"},
+ {"id":"f06","text":"每天走一万步真的有用吗"},
+ {"id":"f07","text":"帮我写一首关于秋天的四行短诗"},
+ {"id":"f08","text":"咖啡喝多了会怎样"},
+ {"id":"f09","text":"怎么提高睡眠质量"},
+ {"id":"f10","text":"租房和买房怎么选"}
+ ]}
