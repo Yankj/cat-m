@@ -628,9 +628,11 @@ struct ProactiveSignal: Equatable, Sendable {
                 s.taken = (s.taken ?? []) + [.init(action: action, at: .now, detail: "已打开短信 · 已取消")]
             case .unavailable:
                 s.taken = (s.taken ?? []) + [.init(action: action, at: .now, detail: "本机无法发短信（模拟器常见）")]
+                mock.adopt(s); Self.save(s)  // persist evidence; stay pending
                 throw ProactiveEngineError.smsUnavailable
             case .error:
                 s.taken = (s.taken ?? []) + [.init(action: action, at: .now, detail: "短信打开失败")]
+                mock.adopt(s); Self.save(s)
                 throw ProactiveEngineError.writeFailed
             }
         }
