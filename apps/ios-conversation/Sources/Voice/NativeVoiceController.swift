@@ -45,6 +45,14 @@ private final class DictationLevelMeter: @unchecked Sendable {
     }
 }
 
+/// Where the input tap sends audio. Swapped from the main actor (new segment / engine tier); read on the render thread.
+final class DictationAudioSink: @unchecked Sendable {
+    private let lock = NSLock()
+    private var target: ((AVAudioPCMBuffer) -> Void)?
+    func set(_ target: ((AVAudioPCMBuffer) -> Void)?) { lock.lock(); self.target = target; lock.unlock() }
+    func send(_ buffer: AVAudioPCMBuffer) { lock.lock(); let t = target; lock.unlock(); t?(buffer) }
+}
+
 @MainActor final class NativeVoiceController: NSObject, ObservableObject, AVSpeechSynthesizerDelegate {
     static let shared = NativeVoiceController()
     @Published var language: AppLanguage = .chinese
@@ -195,6 +203,7 @@ private final class DictationLevelMeter: @unchecked Sendable {
     private var dictationOnText: (@MainActor (String) -> Void)?
     private var dictationOnEnd: (@MainActor (DictationEnd) -> Void)?
     private var dictationObservers: [NSObjectProtocol] = []
+    private let dictationSink = DictationAudioSink()
     /// Hard caps so no failure can leave the mic stuck: start (after permissions), capture length, final-result wait.
     static let dictationStartTimeout: UInt64 = 6_000_000_000, dictationMaxCapture: UInt64 = 60_000_000_000, dictationFinishTimeout: UInt64 = 2_500_000_000
 
@@ -228,21 +237,17 @@ private final class DictationLevelMeter: @unchecked Sendable {
         // Never share the engine with the sheet capture or playback.
         stopPlayback(); abortCapture(); teardownDictationAudio(deactivate: false)
         do {
-            audioNotifications.begin()
+            // Root cause 4: .playAndRecord (not .measurement) keeps the normal voice-processing path and lets other audio
+            // duck; defaultToSpeaker so a reply read aloud afterwards isn't stuck on the receiver. No route-change
+            // teardown here: a route change rebuilds the input (observeEngineChanges) and dictation carries on.
             let audio = AVAudioSession.sharedInstance()
-            try audio.setCategory(.record, mode: .measurement, options: [.duckOthers])
+            try audio.setCategory(.playAndRecord, mode: .default, options: [.duckOthers, .defaultToSpeaker, .allowBluetooth])
             try audio.setActive(true, options: .notifyOthersOnDeactivation)
             let req = SFSpeechAudioBufferRecognitionRequest(); req.requiresOnDeviceRecognition = true; req.shouldReportPartialResults = true
             req.addsPunctuation = true   // iOS 16+: 。，？ instead of one unpunctuated run
             dictationRequest = req
-            let input = engine.inputNode
-            let format = input.outputFormat(forBus: 0)   // read after activation so it matches the live hardware route
-            guard format.sampleRate > 0, format.channelCount > 0 else { throw CatpawError.unavailable("麦克风音频格式不可用。") }
-            input.removeTap(onBus: 0)
-            // The tap only appends and measures; it never touches engine state, so the remove-before-install rule stands.
-            let meter = DictationLevelMeter { [weak self] level in self?.receiveLevel(level, epoch: epoch) }
-            input.installTap(onBus: 0, bufferSize: 1024, format: format) { [weak req] buffer, _ in req?.append(buffer); meter.ingest(buffer) }
-            tapInstalled = true
+            dictationSink.set { [weak req] buffer in req?.append(buffer) }
+            try installDictationTap(epoch)
             dictationTask = recognizer.recognitionTask(with: req) { [weak self] result, error in
                 let text = result?.bestTranscription.formattedString, final = result?.isFinal ?? false, failed = error != nil
                 Task { @MainActor [weak self] in self?.dictationResult(epoch, text: text, final: final, failed: failed) }
@@ -289,12 +294,36 @@ private final class DictationLevelMeter: @unchecked Sendable {
         }
     }
 
+    /// Input tap at the CURRENT hardware format (read after activation / after a route change). Always remove first:
+    /// a stale tap would make installTap assert. The tap only measures and forwards to the sink.
+    private func installDictationTap(_ epoch: Int) throws {
+        let input = engine.inputNode
+        input.removeTap(onBus: 0)
+        let format = input.outputFormat(forBus: 0)
+        guard format.sampleRate > 0, format.channelCount > 0 else { throw CatpawError.unavailable("麦克风音频格式不可用。") }
+        let meter = DictationLevelMeter { [weak self] level in self?.receiveLevel(level, epoch: epoch) }
+        let sink = dictationSink
+        input.installTap(onBus: 0, bufferSize: 1024, format: format) { buffer, _ in sink.send(buffer); meter.ingest(buffer) }
+        tapInstalled = true
+    }
+    /// Route change (AirPods in/out, CarPlay, receiver↔speaker): the engine stopped behind our back. Rebuild the tap at
+    /// the new format and restart; recognition keeps its request, so the text so far stays.
+    private func rebuildDictationInput(_ epoch: Int) {
+        guard epoch == dictationEpoch, dictationPhase == .recording || dictationPhase == .starting else { return }
+        do { if engine.isRunning { engine.stop() }; try installDictationTap(epoch); engine.prepare(); try engine.start() }
+        catch { endDictation(epoch, .interrupted) }
+    }
+
     private func observeEngineChanges(_ epoch: Int) {
         removeDictationObservers()
         let center = NotificationCenter.default
-        // Route/format change stops the engine behind our back; a later installTap on the stale node would crash.
         dictationObservers.append(center.addObserver(forName: .AVAudioEngineConfigurationChange, object: engine, queue: .main) { [weak self] _ in
-            Task { @MainActor [weak self] in guard let self, epoch == self.dictationEpoch else { return }; self.endDictation(epoch, .interrupted) }
+            Task { @MainActor [weak self] in self?.rebuildDictationInput(epoch) }
+        })
+        // A real interruption (call, Siri, alarm) still ends the session; the text delivered so far stays in the draft.
+        dictationObservers.append(center.addObserver(forName: AVAudioSession.interruptionNotification, object: AVAudioSession.sharedInstance(), queue: .main) { [weak self] note in
+            let began = (note.userInfo?[AVAudioSessionInterruptionTypeKey] as? NSNumber)?.uintValue == AVAudioSession.InterruptionType.began.rawValue
+            Task { @MainActor [weak self] in guard began, let self, epoch == self.dictationEpoch else { return }; self.endDictation(epoch, .interrupted) }
         })
         dictationObservers.append(center.addObserver(forName: UIApplication.willResignActiveNotification, object: nil, queue: .main) { [weak self] _ in
             Task { @MainActor [weak self] in guard let self, epoch == self.dictationEpoch else { return }; self.endDictation(epoch, .interrupted) }
@@ -311,7 +340,7 @@ private final class DictationLevelMeter: @unchecked Sendable {
         audioLevel = 0
         dictationWatchdog?.cancel(); dictationWatchdog = nil
         removeDictationObservers()
-        stopEngine()
+        stopEngine(); dictationSink.set(nil)
         dictationRequest?.endAudio(); dictationRequest = nil
         dictationTask?.cancel(); dictationTask = nil
         if deactivate { audioNotifications.end(); try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation) }
