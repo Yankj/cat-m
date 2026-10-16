@@ -5,7 +5,7 @@ import Speech
 import UIKit
 #endif
 
-/// Composer dictation on top of `NativeVoiceController` (on-device `SFSpeechRecognizer`, zh-CN, PR #33 state machine).
+/// Composer dictation on top of `NativeVoiceController` (tiered engine: iOS 26 SpeechAnalyzer → SFSpeechRecognizer on-device → server; locale follows the app language).
 /// Partial results stream live into the draft after whatever was already typed; the final text stays editable.
 /// Permissions are requested only from an explicit mic gesture (inside `NativeVoiceController.startDictation`).
 ///

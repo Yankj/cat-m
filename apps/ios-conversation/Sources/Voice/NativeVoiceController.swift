@@ -204,12 +204,16 @@ final class DictationAudioSink: @unchecked Sendable {
     private var dictationRecognizer: SFSpeechRecognizer?
     private var dictationSegment = 0
     private var dictationEmptyFailures = 0
+    private var analyzerEngine: AnyObject?                 // AnalyzerDictationEngine on iOS 26
+    private var segmentRotation: Task<Void, Never>?
+    /// Which recognizer this session uses (for the hint text and the WER harness).
+    @Published private(set) var dictationTier: DictationEngineTier = .unavailable
     private var dictationOnText: (@MainActor (String) -> Void)?
     private var dictationOnEnd: (@MainActor (DictationEnd) -> Void)?
     private var dictationObservers: [NSObjectProtocol] = []
     private let dictationSink = DictationAudioSink()
     /// Hard caps so no failure can leave the mic stuck: start (after permissions), capture length, final-result wait.
-    static let dictationStartTimeout: UInt64 = 6_000_000_000, dictationMaxCapture: UInt64 = 60_000_000_000, dictationFinishTimeout: UInt64 = 2_500_000_000
+    static let dictationStartTimeout: UInt64 = 6_000_000_000, dictationMaxCapture: UInt64 = 600_000_000_000, dictationFinishTimeout: UInt64 = 2_500_000_000
 
     /// Returns immediately; results arrive through the callbacks on the main actor. `onEnd` fires exactly once per accepted start.
     @discardableResult
@@ -222,7 +226,6 @@ final class DictationAudioSink: @unchecked Sendable {
     }
 
     private func runDictationStart(_ epoch: Int) async {
-        guard SFSpeechRecognizer(locale: Locale(identifier: DictationPolicy.localeIdentifier(for: language)))?.supportsOnDeviceRecognition == true else { return endDictation(epoch, .unsupported) }
         // Permission callbacks arrive on arbitrary queues; the continuation hops back to this actor.
         let mic: Bool
         switch AVAudioSession.sharedInstance().recordPermission {
@@ -236,10 +239,29 @@ final class DictationAudioSink: @unchecked Sendable {
             ? await withCheckedContinuation { c in SFSpeechRecognizer.requestAuthorization { c.resume(returning: $0) } } : SFSpeechRecognizer.authorizationStatus()
         guard epoch == dictationEpoch, dictationPhase == .starting else { return }
         guard auth == .authorized else { return endDictation(epoch, .denied) }
-        guard let recognizer = SFSpeechRecognizer(locale: Locale(identifier: DictationPolicy.localeIdentifier(for: language))), recognizer.supportsOnDeviceRecognition, recognizer.isAvailable else { return endDictation(epoch, .unsupported) }
-        armWatchdog(epoch, after: Self.dictationStartTimeout, phase: .starting)
         // Never share the engine with the sheet capture or playback.
         stopPlayback(); abortCapture(); teardownDictationAudio(deactivate: false)
+        let localeID = DictationPolicy.localeIdentifier(for: language)
+        // Root cause 1: tiered engine instead of "on-device or nothing".
+        var analyzerReady = false
+        if #available(iOS 26.0, *) {
+            if let engine = await AnalyzerDictationEngine.start(localeID: localeID,
+                                                               onText: { [weak self] text in self?.analyzerText(epoch, text) },
+                                                               onEnd: { [weak self] failed in self?.analyzerEnded(epoch, failed: failed) }) {
+                guard epoch == dictationEpoch, dictationPhase == .starting else { engine.cancel(); return }
+                analyzerEngine = engine; dictationTier = engine.tier; analyzerReady = true
+                dictationSink.set { [feeder = engine.feeder] buffer in feeder.feed(buffer) }
+            }
+        }
+        guard epoch == dictationEpoch, dictationPhase == .starting else { return }
+        if !analyzerReady {
+            let recognizer = SFSpeechRecognizer(locale: Locale(identifier: localeID))
+            dictationTier = DictationEngineTier.choose(analyzerOS: false, speechTranscriberReady: false, dictationTranscriberReady: false,
+                                                       recognizerAvailable: recognizer?.isAvailable == true, recognizerOnDevice: recognizer?.supportsOnDeviceRecognition == true)
+            guard dictationTier != .unavailable, let recognizer else { return endDictation(epoch, .unsupported) }
+            dictationRecognizer = recognizer
+        }
+        armWatchdog(epoch, after: Self.dictationStartTimeout, phase: .starting)
         do {
             // Root cause 4: .playAndRecord (not .measurement) keeps the normal voice-processing path and lets other audio
             // duck; defaultToSpeaker so a reply read aloud afterwards isn't stuck on the receiver. No route-change
@@ -247,8 +269,7 @@ final class DictationAudioSink: @unchecked Sendable {
             let audio = AVAudioSession.sharedInstance()
             try audio.setCategory(.playAndRecord, mode: .default, options: [.duckOthers, .defaultToSpeaker, .allowBluetooth])
             try audio.setActive(true, options: .notifyOthersOnDeactivation)
-            dictationRecognizer = recognizer
-            startSegment(epoch)
+            if !analyzerReady { startSegment(epoch) }
             try installDictationTap(epoch)
             observeEngineChanges(epoch)
             engine.prepare(); try engine.start()
@@ -268,7 +289,8 @@ final class DictationAudioSink: @unchecked Sendable {
         case .starting: endDictation(epoch, .cancelled)
         case .recording:
             dictationPhase = .finishing
-            stopEngine(); dictationRequest?.endAudio()
+            stopEngine(); dictationRequest?.endAudio(); segmentRotation?.cancel()
+            if #available(iOS 26.0, *), let engine = analyzerEngine as? AnalyzerDictationEngine { engine.finish() }
             armWatchdog(epoch, after: Self.dictationFinishTimeout, phase: .finishing)
         case .finishing: endDictation(epoch, .finished)   // second tap: don't wait
         }
@@ -281,9 +303,20 @@ final class DictationAudioSink: @unchecked Sendable {
         guard let recognizer = dictationRecognizer else { return }
         dictationTask?.cancel(); dictationRequest?.endAudio()
         dictationSegment += 1; let segment = dictationSegment
-        let req = SFSpeechAudioBufferRecognitionRequest(); req.requiresOnDeviceRecognition = true; req.shouldReportPartialResults = true
+        let req = SFSpeechAudioBufferRecognitionRequest()
+        // On-device when the device supports this locale; otherwise Apple's server recognition (root cause 1).
+        req.requiresOnDeviceRecognition = dictationTier == .onDeviceRecognizer; req.shouldReportPartialResults = true
         req.addsPunctuation = true   // iOS 16+: 。，？ instead of one unpunctuated run
         dictationRequest = req
+        // Auto-continue at the per-request limit (~1 min for server recognition): commit and start the next segment.
+        segmentRotation?.cancel()
+        if let limit = dictationTier.segmentLimit {
+            segmentRotation = Task { @MainActor [weak self] in
+                try? await Task.sleep(nanoseconds: UInt64(limit * 1_000_000_000))
+                guard !Task.isCancelled, let self, epoch == self.dictationEpoch, segment == self.dictationSegment, self.dictationPhase == .recording else { return }
+                self.dictationTranscript.commit(); self.startSegment(epoch)
+            }
+        }
         dictationSink.set { [weak req] buffer in req?.append(buffer) }
         dictationTask = recognizer.recognitionTask(with: req) { [weak self] result, error in
             let text = result?.bestTranscription.formattedString, final = result?.isFinal ?? false, failed = error != nil
@@ -306,6 +339,21 @@ final class DictationAudioSink: @unchecked Sendable {
         case .finish: dictationTranscript.commit(); endDictation(epoch, .finished)
         case .fail: endDictation(epoch, .failed(""))
         }
+    }
+    private func analyzerText(_ epoch: Int, _ text: String) {
+        guard epoch == dictationEpoch, dictationPhase == .recording || dictationPhase == .finishing else { return }
+        dictationTranscript.update(text); deliverDictationText()
+    }
+    /// The analyzer's results ended: after the user's stop that is the normal finish; while still recording it is a
+    /// failure of the iOS 26 tier, so keep the text and continue on SFSpeechRecognizer.
+    private func analyzerEnded(_ epoch: Int, failed: Bool) {
+        guard epoch == dictationEpoch, dictationPhase != .idle else { return }
+        if dictationPhase == .finishing || dictationPhase == .starting { return endDictation(epoch, dictationTranscript.text.isEmpty && failed ? .failed("") : .finished) }
+        analyzerEngine = nil
+        let recognizer = SFSpeechRecognizer(locale: Locale(identifier: DictationPolicy.localeIdentifier(for: language)))
+        guard let recognizer, recognizer.isAvailable else { return endDictation(epoch, dictationTranscript.text.isEmpty ? .failed("") : .finished) }
+        dictationTier = recognizer.supportsOnDeviceRecognition ? .onDeviceRecognizer : .serverRecognizer
+        dictationRecognizer = recognizer; dictationTranscript.commit(); startSegment(epoch)
     }
     private func deliverDictationText() {
         let text = dictationTranscript.text
@@ -368,7 +416,9 @@ final class DictationAudioSink: @unchecked Sendable {
         audioLevel = 0
         dictationWatchdog?.cancel(); dictationWatchdog = nil
         removeDictationObservers()
-        stopEngine(); dictationSink.set(nil)
+        stopEngine(); dictationSink.set(nil); segmentRotation?.cancel(); segmentRotation = nil
+        if #available(iOS 26.0, *), let engine = analyzerEngine as? AnalyzerDictationEngine { engine.cancel() }
+        analyzerEngine = nil
         dictationRequest?.endAudio(); dictationRequest = nil
         dictationTask?.cancel(); dictationTask = nil
         if deactivate { audioNotifications.end(); try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation) }
