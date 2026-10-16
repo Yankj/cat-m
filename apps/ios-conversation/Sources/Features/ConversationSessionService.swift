@@ -672,7 +672,7 @@ public actor ConversationSessionService {
     /// before any assistant output. That original turn is terminal, so this is a new turn with the
     /// same text, never a resend of an accepted POST. `route` sets the DEBUG developer route first.
     @discardableResult
-    public func retryBusy(scope: DataScope, conversationID: UUID, route: ConversationModelRoute? = nil, automatic: Bool = false) async throws -> UUID? {
+    public func retryBusy(scope: DataScope, conversationID: UUID, route: String? = nil, automatic: Bool = false) async throws -> UUID? {
         guard let entry = busyRetry[conversationID] else { return nil }
         guard active[conversationID] == nil else { throw ConversationSessionError.busy }
         busyRetry[conversationID] = nil
@@ -681,7 +681,7 @@ public actor ConversationSessionService {
         guard let original = saved.turns.first(where: { $0.id == entry.operationID }), saved.turns.last?.id == original.id,
               original.state == .failed, original.error == Self.rateLimitedCode,
               original.assistantMessageID == nil, Self.isPlain(original.request) else { return nil }
-        if let route { route.select() }
+        if let route { ModelRouteSelection.select(route: route) }
         if automatic { autoRetryCounts[original.id, default: 0] += 1 } else { busyRetryCancelled.remove(original.id) }
         await resilience?.clearBusy()
         let observationToken = UUID(); active[conversationID] = observationToken

@@ -6,6 +6,7 @@ import CatpawImageComposer
 @MainActor struct ConversationFirstView: View {
     @ObservedObject var model: ConversationFirstModel
     @ObservedObject private var connectionMonitor = ConnectionMonitor.shared
+    @ObservedObject private var routeCatalog = ModelRouteCatalog.shared
     @StateObject private var composerChrome:ConversationComposerChromeAdapter
     @ObservedObject private var proactiveFeed = CatpawProactiveFeed.shared
     @ObservedObject private var presenceHub = CatpawPresenceHub.shared
@@ -104,13 +105,21 @@ import CatpawImageComposer
     }
     private var r8Title:String { model.history.first(where:{$0.id==model.conversationID}) == nil ? "Catpaw" : shortConversationTitle }
     private var r8ModelLabel:String {
-        switch ConversationModelRoute.current { case .automatic: return "Auto"; case .gemini: return "Gemini"; case .groq: return "Groq"; case .openrouter: return "OpenRouter"; case .agnes: return "Flash" }
+        // Prefer the model the server actually used (SSE / verified reply); else the selected free route.
+        if let live = model.connection.model, !live.isEmpty {
+            let short = live.split(separator: "/").last.map(String.init) ?? live
+            return short.count > 18 ? String(short.prefix(16)) + "…" : short
+        }
+        if let e = routeCatalog.lastEvent { return e.model ?? routeCatalog.displayName(e.route) }
+        let id = ModelRouteSelection.route
+        return id == ModelRouteSelection.autoID ? ui("自动") : routeCatalog.displayName(id)
     }
     private var conversationTitleMenu: some View {
         Menu {
             Section(ui("模型")) {
-                ForEach(ConversationModelRoute.allCases) { route in
-                    Button { route.select() } label: { if route == .current { Label(route.title, systemImage:"checkmark") } else { Text(route.title) } }
+                Button { ModelRouteSelection.resetToAuto() } label: { if ModelRouteSelection.route == ModelRouteSelection.autoID { Label(ui("自动"), systemImage:"checkmark") } else { Text(ui("自动")) } }
+                ForEach(routeCatalog.routes) { r in
+                    Button { ModelRouteSelection.select(route: r.id, model: r.defaultModel) } label: { if ModelRouteSelection.route == r.id { Label(r.display_name, systemImage:"checkmark") } else { Text(r.display_name) } }
                 }
             }
             Section {
@@ -125,13 +134,6 @@ import CatpawImageComposer
                     .background(Circle().fill(CatpawBrand.paw.opacity(presenceHub.state == nil ? 0.10 : 0.20)))
                     .scaleEffect(presenceHub.state == nil ? 1 : 1.06)
                     .animation(CatpawMotion.statusCapsule, value: presenceHub.state)
-                    .overlay(alignment:.bottomTrailing) {
-                        if connectionMonitor.state != .online {
-                            Circle().fill(connectionMonitor.state == .offline ? CatpawColors.tertiary : CatpawBrand.paw).frame(width:7,height:7)
-                                .overlay(Circle().stroke(CatpawColors.background,lineWidth:1.5))
-                                .accessibilityIdentifier("chat.title.statusDot")
-                        }
-                    }
                     .accessibilityIdentifier("chat.title.presence")
                 VStack(alignment:.leading,spacing:0) {
                     HStack(spacing:4) {
@@ -143,6 +145,7 @@ import CatpawImageComposer
                         .contentTransition(.opacity).animation(CatpawMotion.statusCapsule, value: presenceHub.step)
                         .accessibilityIdentifier("chat.title.step")
                 }
+                ConnectionStatusHeaderDot(monitor: connectionMonitor)
             }
             .padding(.leading,4).padding(.trailing,12).padding(.vertical,3)
             .r11HeaderGlass()
@@ -288,6 +291,14 @@ import CatpawImageComposer
                                 }
                             } else if model.quotaNotice {
                                 ConversationSystemNotice(kind: .quota, actionTitle: ui("重试")) { model.retryAfterQuota() }
+                            }
+                            if let routeNotice = routeCatalog.notice {
+                                ConversationSystemNotice(kind: routeNotice).task { try? await Task.sleep(nanoseconds: 4_000_000_000); routeCatalog.notice = nil }
+                            }
+                            if let notice = connectionMonitor.pathNotice {
+                                ConversationSystemNotice(kind: notice == .offline ? .offline : .online)
+                                    .id("path-notice-\(notice)")
+                                    .transition(.opacity)
                             }
                             if let turn = session.unresolved, !turn.awaitingApproval, turn.state == .unknown || !model.sending {
                                 Label(turn.error ?? ui("原请求状态待确认"), systemImage: "arrow.clockwise").font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.attention).accessibilityIdentifier("chat.unresolved")
@@ -1056,7 +1067,7 @@ import CatpawImageComposer
         actionInFlight = true
         Task {
             defer { actionInFlight = false }
-            do { _ = try await service.retryBusy(scope: scope, conversationID: conversationID, route: ConversationModelRoute.current, automatic: false) }
+            do { _ = try await service.retryBusy(scope: scope, conversationID: conversationID, route: ModelRouteSelection.route, automatic: false) }
             catch { reportError(error.localizedDescription) }
         }
     }
@@ -1203,6 +1214,7 @@ private struct ConversationPendingMessageEditor:View {
     @ObservedObject var model: ConversationFirstModel
     var embedded=false
     @Environment(\.dismiss) private var dismiss
+    @State private var refreshingConnection = false
     private var stateName: String {
         if model.connectionLifecycle == .checking {return ui("正在检查连接")}
         if model.connectionLifecycle == .reconnecting {return ui("正在重新连接")}
@@ -1225,16 +1237,41 @@ private struct ConversationPendingMessageEditor:View {
                         .textSelection(.enabled).accessibilityIdentifier("settings.appBuild")
                 }
                 Section(ui("模型连接")) {
-                    LabeledContent(ui("状态")) { Text(stateName).foregroundStyle(CatpawColors.ink) }.accessibilityIdentifier("connection.state")
-
+                    ConnectionStatusRow(
+                        kind: {
+                            if model.connectionLifecycle == .checking || model.connectionLifecycle == .reconnecting { return .error }
+                            switch model.connection.state {
+                            case .connected, .providerUnverified: return .online
+                            case .notConfigured: return .offline
+                            case .unavailable: return .error
+                            }
+                        }(),
+                        detail: ui(model.connection.detail),
+                        refreshing: model.connectionLifecycle == .checking || refreshingConnection
+                    )
+                    .accessibilityIdentifier("connection.state")
                     if let modelID = model.connection.model { LabeledContent(ui("已验证模型")) { Text(modelID).foregroundStyle(CatpawColors.secondary) } }
-                    Text(ui(model.connection.detail)).font(CatpawTypography.Role.caption.font)
                     if let at=model.connection.verifiedReplyAt {LabeledContent(ui("最近确认回复"),value:at.formatted(date:.omitted,time:.shortened))}
-                    Button(ui("重新检查连接")) { Task { await model.refreshConnection() } }.accessibilityIdentifier("connection.refresh")
+                    Button {
+                        Task {
+                            refreshingConnection = true
+                            await model.refreshConnection()
+                            await ModelRouteCatalog.shared.refresh()
+                            refreshingConnection = false
+                        }
+                    } label: {
+                        HStack {
+                            Text(ui("重新检查连接"))
+                            Spacer()
+                            if refreshingConnection || model.connectionLifecycle == .checking { ProgressView().controlSize(.small) }
+                        }
+                    }
+                    .accessibilityIdentifier("connection.refresh")
+                    .disabled(refreshingConnection)
                 }
                 FeatureEnrollmentSection()
                 #if DEBUG || DEVICE_TRIAL
-                DeveloperModelRouteSection()
+                ModelRoutesSettingsView()
                 Section(ui("调试")) { NavigationLink(ui("主动信号模拟")) { ProactiveSignalDebugView() }.accessibilityIdentifier("settings.debug.proactiveSignals") }
                 #endif
                 Section(ui("数据")) { Text(model.connection.state == .notConfigured ? ui("当前未连接云端；输入保存在此设备。") : ui("此设备保存对话副本；发送的消息会交给已连接的云端服务处理。")); Text(ui("离开 App 后不会发送排队中的消息。任务后台执行的状态需要重新读取确认。")).font(CatpawTypography.Role.caption.font) }
@@ -1382,8 +1419,36 @@ private extension ToolbarContent {
 
 
 /// Centered, small, neutral in-conversation system line (network, quota, route, memory). Not a bubble; not persisted.
+
+/// Small status dot beside the chat title; tap shows a brief popover with the shared status copy.
+private struct ConnectionStatusHeaderDot: View {
+    @ObservedObject var monitor: ConnectionMonitor
+    @State private var showDetail = false
+    @Environment(\.locale) private var locale
+    private func ui(_ k: String, arguments: [String] = []) -> String { AppLanguage(locale: locale).ui(k, arguments: arguments) }
+    private var kind: ConnectionStatusKind { .from(monitor.state) }
+    var body: some View {
+        Button { showDetail.toggle() } label: {
+            ConnectionStatusDot(kind: kind, size: 8)
+                .padding(6)
+                .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(ui(kind.labelKey))
+        .accessibilityIdentifier("chat.title.statusDot")
+        .popover(isPresented: $showDetail, attachmentAnchor: .point(.bottom), arrowEdge: .top) {
+            VStack(alignment: .leading, spacing: 6) {
+                ConnectionStatusRow(kind: kind, detail: monitor.state.labelKey.map { ui($0.key, arguments: $0.arguments) } ?? ui("连接正常"))
+            }
+            .padding(12)
+            .frame(minWidth: 200)
+            .presentationCompactAdaptation(.popover)
+        }
+    }
+}
+
 struct ConversationSystemNotice: View {
-    enum Kind: Equatable { case offline, online, quota, route(String), memorySaved, custom(String) }
+    enum Kind: Equatable { case offline, online, quota, route(String), routeRejected, memorySaved, custom(String) }
     let kind: Kind
     var actionTitle: String? = nil
     var action: (() -> Void)? = nil
@@ -1395,6 +1460,7 @@ struct ConversationSystemNotice: View {
         case .online: return "wifi"
         case .quota: return "moon.zzz"
         case .route: return "arrow.triangle.branch"
+        case .routeRejected: return "arrow.uturn.backward"
         case .memorySaved: return "brain"
         case .custom: return "info.circle"
         }
@@ -1405,6 +1471,7 @@ struct ConversationSystemNotice: View {
         case .online: return ui("已恢复连接")
         case .quota: return ui("今日对话额度已用完，北京时间 8:00 恢复")
         case .route(let name): return ui("已切换到 {0}", arguments: [name])
+        case .routeRejected: return ui("所选模型路由暂不可用，已切回自动")
         case .memorySaved: return ui("已写入记忆")
         case .custom(let t): return t
         }
