@@ -31,7 +31,7 @@ struct ProactiveNotificationRequest: Sendable, Equatable {
     private let loadQuota: () -> ProactiveQuotaLedger
     private let saveQuota: (ProactiveQuotaLedger) -> Void
 
-    init(epoch: AccountEpoch, poster: ProactiveNotificationPoster, clock: @escaping () -> Date = { .now }, calendar: Calendar = .current,
+    init(epoch: AccountEpoch, poster: ProactiveNotificationPoster, clock: @escaping () -> Date = { ProactiveClock.now() }, calendar: Calendar = .current,
          loadQuota: @escaping () -> ProactiveQuotaLedger, saveQuota: @escaping (ProactiveQuotaLedger) -> Void) {
         self.epoch = epoch; self.poster = poster; self.clock = clock; self.calendar = calendar; self.loadQuota = loadQuota; self.saveQuota = saveQuota
     }
@@ -94,8 +94,10 @@ struct ProactiveNotificationRequest: Sendable, Equatable {
     }
 
     /// Out-of-app delivery at `fire`. Holds one quota slot per identity; a re-scan never cancels a slot it already holds.
+    /// `awaitAdd` (PR90f #2): returns only after the system answered the add — `.refused("system_rejected")` (slot and
+    /// request already taken back) when it failed, so a caller can keep its previous state instead of claiming success.
     func preschedule(identity: String, requestID: String, title: String, body: String, category: String, info: [String: String],
-                     fire: Date, level: ProactiveLevel, token: AccountToken) async -> Outcome {
+                     fire: Date, level: ProactiveLevel, token: AccountToken, awaitAdd: Bool = false) async -> Outcome {
         guard epoch.isValid(token) else { return .refused("stale_account") }
         var q = quota()
         if q.entries[identity]?.state == .delivered { return .cardOnly("already_delivered") }
@@ -109,13 +111,29 @@ struct ProactiveNotificationRequest: Sendable, Equatable {
         let rid = Self.scoped(requestID, token)
         let req = ProactiveNotificationRequest(id: rid, title: title, body: body, category: category,
                                                info: stamped(info, token, id: identity, level: plan.level), level: plan.level, fireAt: fire)
-        let done: Outcome? = epoch.commit(token) { () -> Outcome in
-            var q = quota(); guard q.reserve(identity, fire: fire, owner: rid, calendar: calendar) else { return .cardOnly("daily_cap") }
-            saveQuota(q)
-            poster.add(req) { [weak self] ok in self?.lateCompletion(ok: ok, token: token, requestID: rid, identity: identity, releaseReservation: true) }
-            return .posted(rid)
+        guard awaitAdd else {
+            let done: Outcome? = epoch.commit(token) { () -> Outcome in
+                var q = quota(); guard q.reserve(identity, fire: fire, owner: rid, calendar: calendar) else { return .cardOnly("daily_cap") }
+                saveQuota(q)
+                poster.add(req) { [weak self] ok in self?.lateCompletion(ok: ok, token: token, requestID: rid, identity: identity, releaseReservation: true) }
+                return .posted(rid)
+            }
+            return done ?? .refused("stale_account")
         }
-        return done ?? .refused("stale_account")
+        // The add is still enqueued inside the barrier (never awaited there); only its answer is awaited after it.
+        return await withCheckedContinuation { (cont: CheckedContinuation<Outcome, Never>) in
+            let done: Outcome? = epoch.commit(token) { () -> Outcome in
+                var q = quota(); guard q.reserve(identity, fire: fire, owner: rid, calendar: calendar) else { return .cardOnly("daily_cap") }
+                saveQuota(q)
+                poster.add(req) { [weak self] ok in
+                    self?.lateCompletion(ok: ok, token: token, requestID: rid, identity: identity, releaseReservation: true)
+                    let valid = self?.epoch.isValid(token) ?? false
+                    cont.resume(returning: !ok ? .refused("system_rejected") : valid ? .posted(rid) : .refused("stale_account"))
+                }
+                return .posted(rid)
+            }
+            if done != .posted(rid) { cont.resume(returning: done ?? .refused("stale_account")) }
+        }
     }
 
     /// The system finished adding after the barrier: if the account changed meanwhile (or the add failed), take it back.
@@ -132,7 +150,7 @@ struct ProactiveNotificationRequest: Sendable, Equatable {
     func snooze(id: String, intent: String, title: String, body: String, category: String, info: [String: String], fire: Date, token: AccountToken, awaitAdd: Bool = true) async -> Outcome {
         let base = Self.snoozeBase(id, intent: intent)
         return await preschedule(identity: base, requestID: base, title: title, body: body, category: category, info: info,
-                                 fire: fire, level: .notify, token: token)
+                                 fire: fire, level: .notify, token: token, awaitAdd: awaitAdd)
     }
 
     /// Notification tap / action: the token it was posted under, only if still the signed-in account and epoch.

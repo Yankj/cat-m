@@ -78,7 +78,7 @@ struct ProactiveSignal: Equatable, Sendable {
     // MARK: Log + ledger
 
     func note(_ text: String) {
-        log.insert(.init(at: .now, text: text), at: 0)
+        log.insert(.init(at: ProactiveClock.now(), text: text), at: 0)
         if log.count > 80 { log.removeLast(log.count - 80) }
         print("catpaw.proactive \(text)")
     }
@@ -97,12 +97,9 @@ struct ProactiveSignal: Equatable, Sendable {
         let plan: ProactiveDataOwner.Plan = force ? .wipe : ProactiveDataOwner.plan(owner: owner, current: account)
         switch plan {
         case .keep: return
-        case .adopt:
-            if let account { syncQueue.retainOnly(account: account) }
-            defaults.set(account ?? "", forKey: ProactiveDataOwner.key)
-            note("proactive data without a recorded owner migrated to \(account ?? "-") (upgrade)")
-            return
-        case .wipe, .quarantine: break
+        case .adopt, .quarantine:   // PR90f #1: never claimed for whoever is signed in, never dropped
+            quarantineUnownedData()
+        case .wipe: break
         }
         for id in Set(ProactiveSuggestionStore.shared.items.keys).union(ProactiveLocalBackend.load().keys) { CatpawLeaveActivity.stop(suggestionID: id) }
         quota = ProactiveQuotaLedger()
@@ -110,7 +107,72 @@ struct ProactiveSignal: Equatable, Sendable {
         ProactiveLocalBackend.wipe(); ProactiveSuggestionStore.shared.resetForAccountChange()
         pendingReminders = [:]; pendingAttendees = [:]; generations = .init(); ledger = [:]; signalLedger = .init(); lastSuggestionID = nil
         defaults.set(account ?? "", forKey: ProactiveDataOwner.key)
-        note("proactive data owner \(owner ?? "unknown") → \(account ?? "signed out"): previous owner's data wiped")
+        if plan == .wipe { note("proactive data owner \(owner ?? "unknown") → \(account ?? "signed out"): previous owner's data wiped") }
+        else { note("proactive data without a recorded owner quarantined (not shown / sent / synced until proven or expired)"); Task { await reconcileQuarantine() } }
+    }
+
+    // MARK: Quarantine (Codex PR90f #1)
+
+    /// Raw persisted blobs moved into the quarantine (inbox, reminder + attendee contexts, undo generations).
+    private var quarantineBlobKeys: [String] { [ProactiveLocalBackend.storageKey, suggestionsKey, Self.attendeesKey, Self.generationsKey] }
+    /// The isolated store: a plist dictionary under `ProactiveQuarantine.key`. Only reconcile reads it.
+    private func quarantineUnownedData() {
+        guard defaults.dictionary(forKey: ProactiveQuarantine.key) == nil else { return }   // first quarantine wins; later unowned data is wiped below
+        var blobs: [String: Data] = [:]
+        for k in quarantineBlobKeys { if let d = defaults.data(forKey: k) { blobs[k] = d } }
+        let items = syncQueue.extractAll()
+        let record: [String: Any] = ["at": ProactiveClock.now().timeIntervalSince1970, "blobs": blobs, "serverIDs": serverIDs, "localOnly": Array(localOnly),
+                                     "queue": (try? JSONEncoder().encode(items)) ?? Data(), "stamps": items.compactMap(\.account)]
+        defaults.set(record, forKey: ProactiveQuarantine.key)
+    }
+    var hasQuarantine: Bool { defaults.dictionary(forKey: ProactiveQuarantine.key) != nil }
+    /// Server evidence: the cloud returns this server id for the bearer of `token` (owner-scoped). Replaceable in tests.
+    var serverProbe: (String, AccountToken) async -> Bool = { id, token in await ProactiveEngine.get("suggestions/\(id)", token: token) != nil }
+    /// Release (merge into the current owner's stores) on evidence, expire after `ProactiveQuarantine.ttl`, else hold.
+    @discardableResult func reconcileQuarantine() async -> ProactiveQuarantine.Verdict? {
+        guard let record = defaults.dictionary(forKey: ProactiveQuarantine.key) else { return nil }
+        let at = Date(timeIntervalSince1970: record["at"] as? Double ?? 0), stamps = record["stamps"] as? [String] ?? []
+        let token = AccountEpoch.shared.capture(), ids = Array((record["serverIDs"] as? [String: String] ?? [:]).values.prefix(3))
+        var verdict = ProactiveQuarantine.decide(quarantinedAt: at, stampedAccounts: stamps, current: token?.account, serverConfirmed: false, now: ProactiveClock.now())
+        if verdict == .hold, let token {
+            for id in ids {
+                guard await serverProbe(id, token) else { continue }
+                verdict = ProactiveQuarantine.decide(quarantinedAt: at, stampedAccounts: stamps, current: token.account, serverConfirmed: true, now: ProactiveClock.now()); break
+            }
+        }
+        switch verdict {
+        case .hold: note("quarantine held (no evidence yet)")
+        case .expire:
+            defaults.removeObject(forKey: ProactiveQuarantine.key); note("quarantine expired after \(Int(ProactiveQuarantine.ttl / 86400)) days without evidence → dropped")
+        case .release:
+            guard let token, AccountEpoch.shared.commit(token, { () -> Void in
+                claimData(for: token.account)
+                releaseQuarantine(record, to: token.account)
+            }) != nil else { return .hold }
+            note("quarantine released to \(token.account) on evidence")
+            Task { await drainSync() }
+        }
+        return verdict
+    }
+    private func releaseQuarantine(_ record: [String: Any], to account: String) {
+        let blobs = record["blobs"] as? [String: Data] ?? [:]
+        for (k, old) in blobs {
+            if k == Self.generationsKey {
+                var g = generations; let o = (try? JSONDecoder().decode(ProactiveActionGenerations.self, from: old)) ?? .init()
+                for (id, v) in o.values where v > g[id] { g.values[id] = v }; generations = g; continue
+            }
+            // JSON object blobs: the current owner's entries win, the released ones fill in.
+            let cur = defaults.data(forKey: k).flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] } ?? [:]
+            let rel = (try? JSONSerialization.jsonObject(with: old) as? [String: Any]) ?? [:]
+            if let d = try? JSONSerialization.data(withJSONObject: rel.merging(cur) { _, c in c }) { defaults.set(d, forKey: k) }
+        }
+        serverIDs = (record["serverIDs"] as? [String: String] ?? [:]).merging(serverIDs) { _, c in c }
+        localOnly = localOnly.union(record["localOnly"] as? [String] ?? [])
+        if let q = record["queue"] as? Data, let items = try? JSONDecoder().decode([CatpawPersistentQueue<SyncOp>.Item].self, from: q) { syncQueue.reinstate(items, account: account) }
+        defaults.removeObject(forKey: ProactiveQuarantine.key)
+        let all = ProactiveLocalBackend.load()
+        for s in all.values { ProactiveSuggestionStore.shared.adopt(s) }
+        CatpawWidgetSnapshotWriter.write(Array(all.values))
     }
     /// Codex P0-5: evaluated vs delivered (v2). v1 entries migrate as delivered.
     private let signalLedgerKey = "catpaw.proactive.ledger.v2"
@@ -217,7 +279,7 @@ struct ProactiveSignal: Equatable, Sendable {
             if !granted { return calendarUnavailable() }
         } else if status != .fullAccess && status != .authorized { return calendarUnavailable() }
         calendarDenied = false
-        let now = Date.now
+        let now = ProactiveClock.now()
         let predicate = store.predicateForEvents(withStart: now, end: now.addingTimeInterval(3 * 3600), calendars: nil)
         guard let event = store.events(matching: predicate).filter({ !$0.isAllDay && $0.startDate > now }).sorted(by: { $0.startDate < $1.startDate }).first else {
             note("collect source=\(source.rawValue) upcoming=0 → nothing to do"); return
@@ -240,12 +302,12 @@ struct ProactiveSignal: Equatable, Sendable {
         calendarDenied = true
         note("collect calendar=denied → degrade card (manual meeting input)")
         let degrade = ProactiveSuggestion(id: "permission-calendar", title: "日历权限未开启", reason: "开启日历后我能在会前主动提醒你；也可以手动告诉我下一场会。",
-                                          actions: [.dismiss], signals: [.init(kind: "permission", text: "calendar=denied")], createdAt: .now)
+                                          actions: [.dismiss], signals: [.init(kind: "permission", text: "calendar=denied")], createdAt: ProactiveClock.now())
         ProactiveSuggestionStore.shared.adopt(degrade)
     }
 
     /// Pipeline core shared by EventKit, BGAppRefresh, the debug panel and the manual degrade input.
-    @discardableResult func handle(_ signal: ProactiveSignal, now: Date = .now) async -> ProactiveSuggestion? {
+    @discardableResult func handle(_ signal: ProactiveSignal, now: Date = ProactiveClock.now()) async -> ProactiveSuggestion? {
         note("collect source=\(signal.source.rawValue) event=\(signal.title) start=\(signal.start.formatted(date: .omitted, time: .shortened))")
         // Rule pre-filter
         let minutes = signal.start.timeIntervalSince(now) / 60
@@ -253,7 +315,7 @@ struct ProactiveSignal: Equatable, Sendable {
         // AccountEpoch (b): bind this chain to the signed-in account before any await; every write below commits under it.
         guard let token = AccountEpoch.shared.capture() else { note("signed out → no proactive work"); return nil }
         claimData(for: token.account)
-        let wallStart = Date.now
+        let wallStart = ProactiveClock.now()
         // Dedupe ledger
         let hash = signal.signalHash
         // Codex P0-5: "evaluated" ≠ "delivered". Delivered → never again; evaluated-silent → re-evaluate later.
@@ -339,7 +401,7 @@ struct ProactiveSignal: Equatable, Sendable {
             ProactiveSuggestionStore.shared.adopt(suggestion)
             lastSuggestionID = suggestion.id
             // Codex PR90 P2: quiet hours / cap against the real delivery instant (evaluation may have taken a while).
-            intervene(suggestion, level: decision.level, now: ProactiveRules.deliveryInstant(evaluatedAt: now, startedWall: wallStart), token: token, eventID: signal.eventID)
+            intervene(suggestion, level: decision.level, now: ProactiveRules.deliveryInstant(evaluatedAt: now, startedWall: wallStart, wall: ProactiveClock.now()), token: token, eventID: signal.eventID)
             var delivered = signalLedger; delivered.markDelivered(hash, level: decision.level, now: now); signalLedger = delivered
             // Exactly once: the pipeline posts in place of this meeting's unfired pre-scheduled notification (or, if that one
             // already fired, treats it as the delivery and only shows the card).
@@ -412,6 +474,19 @@ struct ProactiveSignal: Equatable, Sendable {
         guard status == 200 else { return nil }
         return try? JSONSerialization.jsonObject(with: data) as? [String: Any]
     }
+    /// Codex PR90f #1: read-only `GET` under the same token rules as `post` (quarantine evidence: the cloud owns that id
+    /// for this account). Next to 三角's `post`; `post` itself is unchanged.
+    static func get(_ path: String, token: AccountToken) async -> [String: Any]? {
+        guard AccountEpoch.shared.isValid(token), let base = apiBase(), let bearer = try? await CatpawPushTokenUploader.shared.bearer() else { return nil }
+        guard AccountEpoch.shared.isValid(token) else { return nil }
+        var request = URLRequest(url: base.appendingPathComponent(path), timeoutInterval: 6)
+        request.httpMethod = "GET"; request.setValue(bearer, forHTTPHeaderField: "Authorization")
+        guard let (data, response) = try? await URLSession.shared.data(for: request), AccountEpoch.shared.isValid(token),
+              (response as? HTTPURLResponse)?.statusCode == 200 else { return nil }
+        return try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+    }
+    /// The write-back transport (`post`); replaceable in tests so the real drain can be driven offline → online.
+    var transport: (String, [String: Any], AccountToken) async -> [String: Any]? = { path, body, token in await ProactiveEngine.post(path, body, token: token) }
     /// Server suggestion id per local suggestion, for action/undo/feedback write-back. Persisted (Codex PR90 #5).
     private static let serverIDsKey = "catpaw.proactive.serverIDs.v1"
     private(set) var serverIDs: [String: String] {
@@ -426,7 +501,7 @@ struct ProactiveSignal: Equatable, Sendable {
     }
     let syncQueue = CatpawPersistentQueue<SyncOp>(name: "proactive.sync")
     /// Codex PR90 #6: undo generations → fresh idempotency identity for actions re-taken after undo.
-    private static let generationsKey = "catpaw.proactive.generations.v1"
+    fileprivate static let generationsKey = "catpaw.proactive.generations.v1"
     private var generations: ProactiveActionGenerations {
         get { UserDefaults.standard.data(forKey: Self.generationsKey).flatMap { try? JSONDecoder().decode(ProactiveActionGenerations.self, from: $0) } ?? .init() }
         set { UserDefaults.standard.set(try? JSONEncoder().encode(newValue), forKey: Self.generationsKey) }
@@ -444,6 +519,7 @@ struct ProactiveSignal: Equatable, Sendable {
     /// effect (reminder delete errors propagate; snooze notification cancelled; a snooze that becomes current again is
     /// re-armed at its own until), clears the cloud success state of the undone action, then persists and queues the
     /// cloud undo (fresh generation) under that token only.
+    private(set) var lastUndoRestore: (id: String, outcome: String)?
     func undoLast(_ id: String) async throws -> ProactiveSuggestion {
         guard let token = AccountEpoch.shared.capture() else { throw ProactiveEngineError.writeFailed }
         claimData(for: token.account)
@@ -465,11 +541,22 @@ struct ProactiveSignal: Equatable, Sendable {
         s.status = ProactiveSuggestion.Status(rawValue: plan.status) ?? .pending
         s.serverActionStates?[removed] = nil   // the cloud's success of the undone action must not beat the undo
         let restore = ProactiveUndo.restoredSnooze(taken: kept.map { ($0.action.rawValue, $0.at, $0.detail) }, status: plan.status)
-        guard AccountEpoch.shared.commit(token, { () -> Void in ProactiveLocalBackend.save(s, token: token) }) != nil else { throw ProactiveEngineError.writeFailed }
-        if let restore, restore > .now {
-            let intent = kept.last(where: { $0.action == .snooze }).flatMap { ProactiveUndo.snoozeIntent(detail: $0.detail) } ?? "restored-\(Int(restore.timeIntervalSince1970))"
-            scheduleSnooze(s, until: restore, intent: intent, token: token)
+        // Codex PR90f #2: the re-arm is awaited and its outcome recorded on the kept snooze entry (and `lastUndoRestore`),
+        // so "snoozed again" is verifiable: posted / cardOnly:<reason> / refused:<reason> / expired.
+        if let restore, let k = kept.lastIndex(where: { $0.action == .snooze }) {
+            let outcome: String
+            if restore > ProactiveClock.now() {
+                let intent = ProactiveUndo.snoozeIntent(detail: kept[k].detail) ?? "restored-\(Int(restore.timeIntervalSince1970))"
+                switch await snooze(s, until: restore, intent: intent, token: token) {
+                case .posted: outcome = "posted"
+                case .cardOnly(let r): outcome = "cardOnly:" + r
+                case .refused(let r): outcome = "refused:" + r
+                }
+            } else { outcome = "expired" }
+            kept[k].detail = ProactiveUndo.withRestore(kept[k].detail, outcome); s.taken = kept
+            lastUndoRestore = (id, outcome)
         }
+        guard AccountEpoch.shared.commit(token, { () -> Void in ProactiveLocalBackend.save(s, token: token) }) != nil else { throw ProactiveEngineError.writeFailed }
         var g = generations; let op = g.undo(id); generations = g
         syncAction("undo", local: id, operationID: op, token: token)
         return s
@@ -480,7 +567,7 @@ struct ProactiveSignal: Equatable, Sendable {
         // Codex PR90d #2: bound to the originating token for real — `post(token:)` re-checks it around the bearer await
         // and the response.
         if let token, !AccountEpoch.shared.isValid(token) { return nil }
-        let minutes = minutesUntil ?? Int(s.start.timeIntervalSince(.now) / 60)
+        let minutes = minutesUntil ?? Int(s.start.timeIntervalSince(ProactiveClock.now()) / 60)
         var data: [String: Any] = ["title": s.title, "location": s.place, "minutes_until": minutes]
         // Never claim ETA when unused / zero — omit the key rather than send 0.
         if let travelMinutes, travelMinutes > 0 { data["travel_minutes"] = travelMinutes }
@@ -505,25 +592,30 @@ struct ProactiveSignal: Equatable, Sendable {
     func syncAction(_ action: String, local: String, operationID: String, until: Date? = nil, token: AccountToken?) {
         guard let token, AccountEpoch.shared.isValid(token) else { note("sync \(action) dropped: account changed"); return }
         syncQueue.enqueue(SyncOp(local: local, action: action, operationID: operationID, until: until.map { ISO8601DateFormatter().string(from: $0) }),
-                          key: operationID, account: token.account, group: local)
+                          key: operationID, account: token.account, group: local, now: ProactiveClock.now())
         Task { await drainSync() }
     }
-    static func syncBody(_ op: SyncOp) -> [String: Any] {
-        if op.action == "undo" { return ["operation_id": op.operationID] }
-        var b: [String: Any] = ["action": op.action, "operation_id": op.operationID]
-        if let until = op.until { b["until"] = until }
-        return b
-    }
+    static func syncBody(_ op: SyncOp) -> [String: Any] { ProactiveSyncWire.body(action: op.action, operationID: op.operationID, until: op.until) }
     /// Sends due write-backs. A missing server id (evaluated offline) or a network failure → retry later; restart-safe.
     func drainSync() async {
         guard let token = AccountEpoch.shared.capture() else { return }
-        let r = await syncQueue.drain(account: token.account) { op in
+        let r = await syncQueue.drain(now: ProactiveClock.now(), account: token.account) { op in
             guard AccountEpoch.shared.isValid(token) else { return .retry }
-            guard let id = self.serverIDs[op.local] else {
-                if self.localOnly.contains(op.local) { self.note("sync \(op.action) for local-only \(op.local): no cloud record → kept on device only"); return .drop }
-                return .retry
+            var sid = self.serverIDs[op.local]
+            if sid == nil, self.localOnly.contains(op.local) {
+                // Codex PR90f #5: offline-evaluated → create its cloud record first (idempotent by client id), then this
+                // op and the rest of its FIFO group replay in order. Never dropped; a failure retries the whole group.
+                guard let s = ProactiveSuggestionStore.shared.items[op.local] ?? ProactiveLocalBackend.load()[op.local] else { return .retry }
+                let created = await self.transport("suggestions", ProactiveSyncWire.createBody(clientID: s.id, title: s.title, reason: s.reason,
+                                                   actions: s.effectiveActions.map(\.rawValue), createdAt: s.createdAt), token)
+                guard AccountEpoch.shared.isValid(token), let id = (created?["suggestion"] as? [String: Any])?["id"] as? String ?? created?["event_id"] as? String else {
+                    self.note("offline suggestion \(op.local): cloud create failed → retry"); return .retry
+                }
+                AccountEpoch.shared.commit(token) { () -> Void in self.serverIDs[op.local] = id; self.localOnly.remove(op.local) }
+                self.note("offline suggestion \(op.local) created in the cloud as \(id)"); sid = id
             }
-            let res = await Self.post("suggestions/\(id)/\(op.action == "undo" ? "undo" : "action")", Self.syncBody(op), token: token)
+            guard let id = sid else { return .retry }
+            let res = await self.transport("suggestions/\(id)/\(ProactiveSyncWire.route(action: op.action))", Self.syncBody(op), token)
             self.note("server \(op.action) id=\(id) \(res == nil ? "failed → queued for retry" : "recorded")")
             return res == nil ? .retry : .done
         }
@@ -536,7 +628,7 @@ struct ProactiveSignal: Equatable, Sendable {
     private let quotaKey = "catpaw.proactive.quota.v2"
     var quota: ProactiveQuotaLedger {
         get { defaults.data(forKey: quotaKey).flatMap { try? JSONDecoder().decode(ProactiveQuotaLedger.self, from: $0) } ?? ProactiveQuotaLedger() }
-        set { var q = newValue; q.prune(now: .now); defaults.set(try? JSONEncoder().encode(q), forKey: quotaKey) }
+        set { var q = newValue; q.prune(now: ProactiveClock.now()); defaults.set(try? JSONEncoder().encode(q), forKey: quotaKey) }
     }
     private func deliveredToday(_ now: Date) -> Int { quota.count(on: now) }
 
@@ -575,7 +667,7 @@ struct ProactiveSignal: Equatable, Sendable {
         /// false when MapKit ETA failed / skipped — Why must say 「未用到 ETA」.
         var usedETA: Bool = false
     }
-    private static let attendeesKey = "catpaw.proactive.attendees.v1"
+    fileprivate static let attendeesKey = "catpaw.proactive.attendees.v1"
     private var pendingAttendees: [String: (names: [String], recipients: [String])] {
         get {
             guard let data = defaults.data(forKey: Self.attendeesKey),
@@ -668,10 +760,6 @@ struct ProactiveSignal: Equatable, Sendable {
         note("snooze id=\(s.id) intent=\(intent) until=\(until) → \(out)")
         return out
     }
-    /// Re-arm (undo back to a snooze): fire-and-forget through the same pipeline.
-    func scheduleSnooze(_ s: ProactiveSuggestion, until: Date, intent: String, token: AccountToken) {
-        Task { @MainActor in _ = await snooze(s, until: until, intent: intent, token: token) }
-    }
 
     // MARK: MapKit travel ETA (transit preferred)
 
@@ -743,7 +831,7 @@ struct ProactiveSignal: Equatable, Sendable {
         guard status == .fullAccess || status == .authorized else { return }
         guard let token = AccountEpoch.shared.capture() else { return }   // before any await (Codex PR90c / PR91c #2)
         claimData(for: token.account)
-        let now = Date.now, lead = await leadTime()
+        let now = ProactiveClock.now(), lead = await leadTime()
         guard AccountEpoch.shared.isValid(token) else { note("preschedule dropped: account changed during lead lookup"); return }
         let predicate = store.predicateForEvents(withStart: now, end: now.addingTimeInterval(24 * 3600), calendars: nil)
         guard let e = store.events(matching: predicate).filter({ !$0.isAllDay && $0.startDate > now }).sorted(by: { $0.startDate < $1.startDate }).first else { return }
@@ -774,18 +862,21 @@ struct ProactiveSignal: Equatable, Sendable {
     }
 
     #if os(iOS)
+    /// The system's pending / delivered notifications (UNUserNotificationCenter); replaceable so a host test can drive the
+    /// real account-change entry with local and APNs payloads of several accounts (Codex PR90f #6).
+    var inventory: ProactiveNotificationInventory = SystemNotificationInventory()
     /// AccountEpoch (b) / Codex PR90d #1: runs via AccountChangeObservers ("proactive") after the synchronous epoch bump.
     /// Data: `claimData` (synchronous, before any await; same-account restore keeps everything). Notifications: only those
     /// that are not the current account's — resolved exactly like the receive gate, local stamp or APNs `catpaw.account`.
     func accountDidChange(previous: String?, current: String?) async {
         claimData(for: AccountEpoch.shared.currentAccount)   // same account → keep; never-owned → migrate; else wipe
-        let center = UNUserNotificationCenter.current()
-        let pending = await center.pendingNotificationRequests()
-        let shown = await center.deliveredNotifications()
+        let pending = await inventory.pending()
+        let shown = await inventory.delivered()
         let live = AccountEpoch.shared.currentAccount
-        let p = pending.filter { ProactiveDataOwner.removeOnChange($0.content.userInfo, current: live) }.map(\.identifier)
-        let d = shown.filter { ProactiveDataOwner.removeOnChange($0.request.content.userInfo, current: live) }.map(\.request.identifier)
-        center.removePendingNotificationRequests(withIdentifiers: p); center.removeDeliveredNotifications(withIdentifiers: d)
+        let p = pending.filter { ProactiveDataOwner.removeOnChange($0.info, current: live) }.map(\.id)
+        let d = shown.filter { ProactiveDataOwner.removeOnChange($0.info, current: live) }.map(\.id)
+        inventory.remove(pending: p, delivered: d)
+        await reconcileQuarantine()
         note("account \(previous ?? "-") → \(current ?? "-"): removed \(p.count) pending / \(d.count) delivered notifications of other accounts")
     }
     static var categories: Set<UNNotificationCategory> {
@@ -844,7 +935,7 @@ struct ProactiveSignal: Equatable, Sendable {
         if userInfo["catpaw_proactive_event"] != nil && context == nil { return nil }
         if let id, let signal, id != "evt-" + signal.signalHash { return nil }
         if let id, let suggestion = ProactiveSuggestionStore.shared.items[id] {
-            guard pendingReminder(for: id).map({ $0.start > .now }) ?? true else { return nil }
+            guard pendingReminder(for: id).map({ $0.start > ProactiveClock.now() }) ?? true else { return nil }
             return suggestion
         }
 
@@ -859,7 +950,7 @@ struct ProactiveSignal: Equatable, Sendable {
         return AccountEpoch.shared.commit(token) { () -> ProactiveSuggestion in
         claimData(for: token.account)
         var seen = ledger
-        seen[signal.signalHash] = Date.now.timeIntervalSince1970
+        seen[signal.signalHash] = ProactiveClock.now().timeIntervalSince1970
         ledger = seen
         var reminders = pendingReminders
         let reminder = reminders[expectedID] ?? PendingReminder(
@@ -875,7 +966,7 @@ struct ProactiveSignal: Equatable, Sendable {
             reason: "会议即将开始，准备提醒定在 \(reminder.due.formatted(time))",
             actions: [.create_reminder, .snooze, .dismiss],
             signals: [.init(kind: "calendar", text: "\(signal.start.formatted(time)) \(signal.title)")],
-            status: .pending, createdAt: .now
+            status: .pending, createdAt: ProactiveClock.now()
         )
         ProactiveLocalBackend.save(suggestion, token: token)
         ProactiveSuggestionStore.shared.adopt(suggestion)
@@ -884,7 +975,7 @@ struct ProactiveSignal: Equatable, Sendable {
     }
 
     private func notificationContext(_ userInfo: [AnyHashable: Any]) -> CatpawScheduledMeetingNotification? {
-        let now = Date.now
+        let now = ProactiveClock.now()
         if let context = CatpawScheduledMeetingNotification(userInfo: userInfo, defaultLeadMinutes: defaultLeadMinutes, now: now) {
             return context
         }
@@ -918,7 +1009,7 @@ struct ProactiveSignal: Equatable, Sendable {
     }
     static func scheduleBackgroundRefresh() {
         let r = BGAppRefreshTaskRequest(identifier: bgTaskID)
-        r.earliestBeginDate = Date.now.addingTimeInterval(15 * 60)
+        r.earliestBeginDate = ProactiveClock.now().addingTimeInterval(15 * 60)
         try? BGTaskScheduler.shared.submit(r)
     }
     #endif
@@ -927,6 +1018,7 @@ struct ProactiveSignal: Equatable, Sendable {
 /// Real backend for the suggestion card/inbox: confirm writes the EKReminder.
 @MainActor final class ProactiveLocalBackend: ProactiveSuggestionBackend {
     private static let key = "catpaw.proactive.inbox.v1"
+    static var storageKey: String { key }
     /// Persisted inbox so cards survive relaunch / notification cold start.
     /// Codex PR90d #2: written only while `token` (the account the action started under) is current, owned by it.
     static func save(_ s: ProactiveSuggestion, token: AccountToken? = AccountEpoch.shared.capture()) {
@@ -945,7 +1037,7 @@ struct ProactiveSignal: Equatable, Sendable {
     private let mock = ProactiveSuggestionMock([])
     /// Codex PR90e #1: the inbox is shown only to its owner (or, before the upgrade migration ran, to the signed-in account).
     static var readable: Bool {
-        ProactiveDataOwner.plan(owner: UserDefaults.standard.object(forKey: ProactiveDataOwner.key) as? String, current: AccountEpoch.shared.currentAccount) != .wipe
+        ProactiveDataOwner.plan(owner: UserDefaults.standard.object(forKey: ProactiveDataOwner.key) as? String, current: AccountEpoch.shared.currentAccount) == .keep   // PR90f: unknown owner → not shown
     }
     init() {
         if Self.readable { for s in Self.load().values { mock.upsert(s); ProactiveSuggestionStore.shared.adopt(s) } }
@@ -969,42 +1061,46 @@ struct ProactiveSignal: Equatable, Sendable {
         switch action {
         case .create_reminder:
             switch await ProactiveEngine.shared.confirmReminder(id, token: token) {
-            case .created: s.taken = (s.taken ?? []) + [.init(action: action, at: .now, detail: "已写入提醒事项", outcome: .succeeded)]
-            case .alreadyExists: s.taken = (s.taken ?? []) + [.init(action: action, at: .now, detail: "提醒已存在，未重复创建", outcome: .succeeded)]
+            case .created: s.taken = (s.taken ?? []) + [.init(action: action, at: ProactiveClock.now(), detail: "已写入提醒事项", outcome: .succeeded)]
+            case .alreadyExists: s.taken = (s.taken ?? []) + [.init(action: action, at: ProactiveClock.now(), detail: "提醒已存在，未重复创建", outcome: .succeeded)]
             case .denied: throw ProactiveEngineError.remindersDenied
             case .failed: throw ProactiveEngineError.writeFailed
             }
         case .snooze:
             // Codex PR90e #4 #5: one intent = one operation id = one notification; shown snoozed only if it was scheduled.
             let intent = ProactiveEngine.shared.operationID(id, action.rawValue, ordinal: (s.taken ?? []).filter { $0.action == .snooze }.count + 1)
-            let until = Date.now.addingTimeInterval(600)
-            ProactiveEngine.shared.delivery.remove(bases: ProactiveEngine.shared.snoozeBases(s), token: token)   // the new snooze replaces any pending one
+            let until = ProactiveClock.now().addingTimeInterval(600)
+            // Codex PR90f #2: the new snooze is scheduled (and confirmed by the system) first; only then is the previous one
+            // removed. Any failure throws with the original reminder, status and history untouched.
+            let previous = ProactiveEngine.shared.snoozeBases(s)
             switch await ProactiveEngine.shared.snooze(s, until: until, intent: intent, token: token) {
             case .posted: break
             case .cardOnly: throw ProactiveEngineError.snoozeNotScheduled
             case .refused: throw ProactiveEngineError.writeFailed
             }
-            s.status = .snoozed; s.taken = (s.taken ?? []) + [.init(action: action, at: .now, detail: ProactiveUndo.snoozeDetail(until: until, intent: intent))]
+            let fresh = ProactiveDeliveryPipeline.snoozeBase(id, intent: intent)
+            ProactiveEngine.shared.delivery.remove(bases: previous.filter { $0 != fresh }, token: token)
+            s.status = .snoozed; s.taken = (s.taken ?? []) + [.init(action: action, at: ProactiveClock.now(), detail: ProactiveUndo.snoozeDetail(until: until, intent: intent))]
         case .dismiss:
             CatpawLeaveActivity.stop(suggestionID: id)
             ProactiveEngine.shared.delivery.remove(bases: ProactiveEngine.shared.snoozeBases(s), token: token)  // dismiss cancels every pending snooze
-            s.status = .dismissed; s.taken = (s.taken ?? []) + [.init(action: action, at: .now)]
+            s.status = .dismissed; s.taken = (s.taken ?? []) + [.init(action: action, at: ProactiveClock.now())]
         case .notify_attendees:
             // P0-4: MessageUI via DeviceToolRouter — never mark done unless compose was presented and user sent.
             let outcome = await Self.notifyAttendees(for: id)
             guard AccountEpoch.shared.isValid(token) else { throw ProactiveEngineError.writeFailed }   // switched while the sheet was up
             switch outcome {
             case .sent:
-                s.taken = (s.taken ?? []) + [.init(action: action, at: .now, detail: "已发送短信", outcome: .succeeded)]
+                s.taken = (s.taken ?? []) + [.init(action: action, at: ProactiveClock.now(), detail: "已发送短信", outcome: .succeeded)]
             case .cancelled:
                 // Sheet opened then cancelled — stay pending; record evidence without done (and never sync it).
-                s.taken = (s.taken ?? []) + [.init(action: action, at: .now, detail: "已打开短信 · 已取消", outcome: .cancelled)]
+                s.taken = (s.taken ?? []) + [.init(action: action, at: ProactiveClock.now(), detail: "已打开短信 · 已取消", outcome: .cancelled)]
             case .unavailable:
-                s.taken = (s.taken ?? []) + [.init(action: action, at: .now, detail: "本机无法发短信（模拟器常见）", outcome: .unavailable)]
+                s.taken = (s.taken ?? []) + [.init(action: action, at: ProactiveClock.now(), detail: "本机无法发短信（模拟器常见）", outcome: .unavailable)]
                 mock.upsert(s); Self.save(s, token: token)  // persist evidence; stay pending
                 throw ProactiveEngineError.smsUnavailable
             case .error:
-                s.taken = (s.taken ?? []) + [.init(action: action, at: .now, detail: "短信打开失败", outcome: .failed)]
+                s.taken = (s.taken ?? []) + [.init(action: action, at: ProactiveClock.now(), detail: "短信打开失败", outcome: .failed)]
                 mock.upsert(s); Self.save(s, token: token)
                 throw ProactiveEngineError.writeFailed
             }
@@ -1088,7 +1184,7 @@ struct ProactiveEngineSignalAdapter: ProactiveSignalEngine {
     static let file = "catpaw.widget.snapshot.v1.json"
     static func write(_ suggestions: [ProactiveSuggestion]) {
         guard let dir = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: group) else { return }
-        let now = Date.now
+        let now = ProactiveClock.now()
         let pending = suggestions
             .filter {
                 $0.effectiveStatus == .pending &&
@@ -1254,3 +1350,24 @@ struct ProactiveEngineSignalAdapter: ProactiveSignalEngine {
         #endif
     }
 }
+
+/// Codex PR90f #6: pending / delivered notifications, narrowed (UNUserNotificationCenter in the app, a fake in host tests).
+struct ProactiveInventoryItem: @unchecked Sendable { var id: String; var info: [AnyHashable: Any] }
+@MainActor protocol ProactiveNotificationInventory {
+    func pending() async -> [ProactiveInventoryItem]
+    func delivered() async -> [ProactiveInventoryItem]
+    func remove(pending: [String], delivered: [String])
+}
+#if os(iOS)
+@MainActor struct SystemNotificationInventory: ProactiveNotificationInventory {
+    func pending() async -> [ProactiveInventoryItem] {
+        await UNUserNotificationCenter.current().pendingNotificationRequests().map { .init(id: $0.identifier, info: $0.content.userInfo) }
+    }
+    func delivered() async -> [ProactiveInventoryItem] {
+        await UNUserNotificationCenter.current().deliveredNotifications().map { .init(id: $0.request.identifier, info: $0.request.content.userInfo) }
+    }
+    func remove(pending: [String], delivered: [String]) {
+        let c = UNUserNotificationCenter.current(); c.removePendingNotificationRequests(withIdentifiers: pending); c.removeDeliveredNotifications(withIdentifiers: delivered)
+    }
+}
+#endif

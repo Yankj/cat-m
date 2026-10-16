@@ -26,7 +26,7 @@ extension ProactiveUndo {
     static func snoozeDetail(until: Date, intent: String? = nil) -> String {
         "until=\(Int(until.timeIntervalSince1970))" + (intent.map { ";op=\($0)" } ?? "")
     }
-    private static func field(_ detail: String?, _ name: String) -> Substring? {
+    fileprivate static func field(_ detail: String?, _ name: String) -> Substring? {
         detail?.split(separator: ";").first { $0.hasPrefix(name + "=") }?.dropFirst(name.count + 1)
     }
     static func snoozeUntil(detail: String?, at: Date) -> Date {
@@ -43,8 +43,11 @@ extension ProactiveUndo {
 
 extension ProactiveUndo {
     /// Codex PR90f #2: the outcome of re-arming a restored snooze, recorded on that snooze entry (verifiable after undo).
-    static func withRestore(_ detail: String?, _ outcome: String) -> String { detail ?? "" }
-    static func restoreOutcome(detail: String?) -> String? { nil }
+    static func withRestore(_ detail: String?, _ outcome: String) -> String {
+        let kept = (detail ?? "").split(separator: ";").filter { !$0.hasPrefix("restore=") }.map(String.init)
+        return (kept + ["restore=" + outcome.replacingOccurrences(of: ";", with: ",")]).joined(separator: ";")
+    }
+    static func restoreOutcome(detail: String?) -> String? { field(detail, "restore").map(String.init) }
 }
 
 /// Codex PR90f #3: the device → cloud wire, one portable definition (the engine's drain and the golden fixture
@@ -60,6 +63,8 @@ enum ProactiveSyncWire {
     static func route(action: String) -> String { action == "undo" ? "undo" : "action" }
     /// PR90f #5: `POST suggestions` — an offline-evaluated suggestion gets its cloud record (idempotent by client id).
     static func createBody(clientID: String, title: String, reason: String, actions: [String], createdAt: Date?) -> [String: Any] {
-        [:]
+        var b: [String: Any] = ["client_id": clientID, "title": title, "reason": reason, "actions": actions, "decision": "notify"]
+        if let createdAt { b["created_at"] = iso(createdAt) }
+        return b
     }
 }
