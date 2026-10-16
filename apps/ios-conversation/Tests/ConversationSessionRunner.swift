@@ -190,7 +190,7 @@ private func memoryProposalSessionChecks(directory:URL) async throws {
 
 // R2 stop: cancelCurrentTurn → POST cancel, one `.failed(cancelled)` on turnEvents, no resend.
 actor CancelScenarioBackend: ConversationBackend {
-    enum Mode: Sendable { case cancelled, raced, readBackFails }
+    enum Mode: Sendable { case cancelled, raced, readBackFails, readBackFailsWithDeviceCall }
     let mode: Mode
     let message = UUID()
     private var transportFailures: Int
@@ -202,6 +202,9 @@ actor CancelScenarioBackend: ConversationBackend {
         replies += 1
         let (stream, c) = AsyncThrowingStream.makeStream(of: ConversationTurnEvent.self)
         c.yield(ConversationTurnEvent(operationID: r.operationID, epoch: r.epoch, sequence: 1, payload: .textDelta(messageID: message, text: "部分回答")))
+        if mode == .readBackFailsWithDeviceCall {
+            c.yield(ConversationTurnEvent(operationID: r.operationID, epoch: r.epoch, sequence: 2, payload: .deviceCall(ConversationDeviceCall(interruptID: UUID().uuidString.lowercased(), callID: "p89b-cancel-call", tool: "calendar_create", args: Data(#"{"title":"t"}"#.utf8), confirm: "card", ttlSec: 600, argsHash: String(repeating: "a", count: 64), expiresAt: "2099-01-01T00:00:00Z"))))
+        }
         live = c // stays open like a running SSE turn
         return stream
     }
@@ -211,6 +214,7 @@ actor CancelScenarioBackend: ConversationBackend {
     func cancelTurn(_ r: ConversationTurnRequest) async throws -> ConversationTurnCancelReceipt {
         cancels += 1
         if transportFailures > 0 { transportFailures -= 1; throw ConversationTurnCancelFailure.transport }
+        if mode == .readBackFailsWithDeviceCall { return .init(turnID: r.operationID, state: "failed", cancelled: true, alreadyTerminal: false) }   // stream stays silent
         live?.yield(terminal(r)); live?.finish(); live = nil // the stream's own terminal event races the response
         return mode == .raced ? .init(turnID: r.operationID, state: "completed", cancelled: false, alreadyTerminal: true)
                               : .init(turnID: r.operationID, state: "failed", cancelled: true, alreadyTerminal: false)
@@ -218,6 +222,7 @@ actor CancelScenarioBackend: ConversationBackend {
     func observe(_ r: ConversationTurnRequest) async throws -> ConversationObservation {
         observes += 1
         if mode == .readBackFails && observes == 1 { throw CatpawError.unavailable("offline read-back") }
+        if mode == .readBackFailsWithDeviceCall { throw CatpawError.unavailable("offline read-back") }
         return ConversationObservation(request: r, events: [ConversationTurnEvent(operationID: r.operationID, epoch: r.epoch, sequence: 1, payload: .textDelta(messageID: message, text: "部分回答")), terminal(r)])
     }
     func counts() -> [Int] { [replies, cancels, observes] }
@@ -285,6 +290,34 @@ func cancelSessionChecks(directory: URL) async throws {
         let items = await log.items
         try require(outcome == .reconciling(operationID: operation) && pending.turns.last?.state == .unknown, "a failed read-back leaves the turn unknown for reconciliation")
         try require(resolved.turns.last?.state == .failed && resolved.turns.last?.error == "cancelled" && items.filter { $0 == "failed:cancelled" }.count == 1, "later reconciliation applies the server stop without a second cancelled event")
+    }
+    do {
+        // Codex p89b-3 (real service path): cancel confirmed, read-back fails → the turn's device calls are revoked at the
+        // gate boundary even though the journal stays `unknown` and still lists the card.
+        final class HookLog: @unchecked Sendable { let lock = NSLock(); var received: [String] = []; var revoked: [String] = [] }
+        let hook = HookLog(), previous = ConversationDeviceCall.lifecycle
+        ConversationDeviceCall.lifecycle = { e in
+            hook.lock.lock(); defer { hook.lock.unlock() }
+            switch e { case .received(let c, _, _, _): hook.received.append(c.callID); case .revoked(let ids): hook.revoked += ids }
+        }
+        defer { ConversationDeviceCall.lifecycle = previous }
+        let backend = CancelScenarioBackend(mode: .readBackFailsWithDeviceCall)
+        let repository = try Repository(persistence: FilePersistence(url: directory.appendingPathComponent("cancel-devicecall.json")))
+        let service = ConversationSessionService(repository: repository, backend: backend)
+        let conversation = try await service.create(scope: Profiles.user)
+        let sending = Task { _ = try? await service.send(scope: Profiles.user, conversationID: conversation, text: "帮我建个日程", operationID: UUID()) }
+        for _ in 0..<200 {
+            if try await service.read(scope: Profiles.user, conversationID: conversation).turns.last?.pendingDeviceCalls?.isEmpty == false { break }
+            try await Task.sleep(nanoseconds: 10_000_000)
+        }
+        let before: ([String], [String]) = { hook.lock.lock(); defer { hook.lock.unlock() }; return (hook.received, hook.revoked) }()
+        try require(before.0 == ["p89b-cancel-call"] && before.1.isEmpty, "p89b-3 setup: the device call was granted at the SSE boundary and not yet revoked")
+        let outcome = try await service.cancelCurrentTurn(scope: Profiles.user, conversationID: conversation)
+        let pending = try await service.read(scope: Profiles.user, conversationID: conversation)
+        let after: [String] = { hook.lock.lock(); defer { hook.lock.unlock() }; return hook.revoked }()
+        sending.cancel()
+        try require(outcome == .reconciling(operationID: pending.turns.last!.id) && pending.turns.last?.state == .unknown && pending.turns.last?.pendingDeviceCalls?.first?.callID == "p89b-cancel-call", "p89b-3 setup: read-back failed, journal unknown, card still listed")
+        try require(after == ["p89b-cancel-call"], "p89b-3 cancel confirmed + read-back failed revokes the turn's device calls (stale card cannot run)")
     }
 }
 

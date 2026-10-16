@@ -196,7 +196,7 @@ struct NativeWorkspaceRetrySchedule: Sendable {
         DeviceCallHub.submitter = ConversationDeviceResultSubmitter(service: service, scope: scope)
         ConversationDeviceCall.clientEnabled = true
         ConversationDeviceCall.clientTools = DeviceToolContract.clientTools   // NoBug P0-4: advertise what we execute
-        DeviceCallHub.recorder = { DeviceLedger.shared.record(call: $0, result: $1) }
+        DeviceCallHub.recorder = { DeviceLedger.shared.record(call: $0, result: $1, token: $2) }
         AccountEpoch.shared.activate(account: state.user?.id.uuidString)   // shared account barrier (grants, memory, proactive)
         DeviceCallGate.installLifecycle()   // Codex PR #89: grants/revocations come from the session service's SSE boundary
         // NoBug P1-4: unacknowledged device results are re-sent on relaunch and whenever the app returns to foreground.
@@ -336,11 +336,15 @@ struct NativeWorkspaceRetrySchedule: Sendable {
     }
     private var autoAnonymousSession: Bool { (Bundle.main.object(forInfoDictionaryKey:"CatpawAutoAnonymousSession") as? Bool) ?? true }
     private func receive(_ snapshot: NativeAuthSnapshot) async {
+        // Codex p89c-c: passive invalidation (loginRequired / signedOut / storageBlocked from the session manager) closes the
+        // shared account barrier synchronously on arrival — before any await and without waiting for a SwiftUI `.task`.
+        Self.applyAccountBarrier(snapshot, fresh: false)
         guard let manager, !Task.isCancelled,!logoutInProgress else { return }
         let openingEpoch=lifecycleEpoch
         let current = await manager.snapshot()
         guard !Task.isCancelled,!logoutInProgress,openingEpoch==lifecycleEpoch, current.generation == snapshot.generation,
               current.phase == snapshot.phase, current.user == snapshot.user else { return }
+        Self.applyAccountBarrier(snapshot, fresh: true)   // verified-current snapshot may (re)activate an account
         state = snapshot
         if snapshot.phase == .restoring { chat?.setNetworkAdmissionAllowed(false);return }
         if [.authenticated,.refreshing].contains(snapshot.phase), let user = snapshot.user, let configuration {
@@ -659,12 +663,30 @@ struct NativeWorkspaceRetrySchedule: Sendable {
         guard canSignIn, let manager else { return }; actionBusy = true; error = nil;recoveryImpossible=false;requiresSessionRestart=false;registrationNotice = nil; defer { actionBusy = false }
         do { try await manager.signIn(email:email,password:password) } catch {let failure=error as? NativeAuthError ?? .unavailable;recoveryImpossible=true;self.error=friendlyAuthFailure(failure)}
     }
+    /// Synchronous AccountEpoch update for an auth snapshot. Any phase without a usable session signs the barrier out
+    /// (fail closed, also for not-yet-verified snapshots); only a verified-current authenticated snapshot activates.
+    static func applyAccountBarrier(_ snapshot: NativeAuthSnapshot, fresh: Bool, epoch: AccountEpoch = .shared) {
+        let usable: [NativeAuthSnapshot.Phase] = [.authenticated, .refreshing, .restoring]
+        if !usable.contains(snapshot.phase) || snapshot.user == nil {
+            guard let gone = epoch.currentAccount else { return }
+            epoch.signOut(); DeviceCallGate.reset(); DeviceLedger.shared.signOut(account: gone)
+            Task { @MainActor in await AccountChangeObservers.notify(previous: gone, current: nil) }   // after the sync bump
+        } else if fresh, snapshot.phase == .authenticated, let id = snapshot.user?.id.uuidString, id != epoch.currentAccount {
+            let previous = epoch.currentAccount
+            epoch.activate(account: id); DeviceCallGate.reset()
+            Task { @MainActor in await AccountChangeObservers.notify(previous: previous, current: id) }
+        }
+    }
     func signOut() async {
         guard let manager, !actionBusy else { return };actionBusy=true;logoutInProgress=true;lifecycleEpoch += 1
+        let leaving = AccountEpoch.shared.currentAccount
         AccountEpoch.shared.signOut()   // synchronous barrier FIRST: every in-flight account-bound write is refused from here
+        DeviceLedger.shared.signOut(account: leaving)   // p89c-b: that account's local ledger is cleared
+        DeviceCallGate.reset()          // Codex p89b-4: grants/taps/credentials die synchronously, before any await
         warmup?.cancel();recoveryPathWait?.cancel();recoveryPathWait=nil
         workspaceFlight?.task.cancel();workspaceFlight=nil;workspaceReadyKey=nil;wakeRetry()
         defer {logoutInProgress=false;actionBusy=false;recoveryImpossible=false;requiresSessionRestart=false}
+        await AccountChangeObservers.notify(previous: leaving, current: nil)   // #90 hook (ProactiveEngine.accountDidChange) — after the sync bump
         await CatpawPushTokenUploader.shared.clearAuthorization()
         let detached=takeChat()
         // Close manager admission immediately; local draining must not postpone its barrier.

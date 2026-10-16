@@ -6,8 +6,13 @@ import Foundation
 /// the same rule the proactive card's 撤销 and 任务's 本机 rows use.
 public enum DeviceUndoOutcome: String, Sendable, Equatable, CaseIterable, Codable {
     case undone, alreadyGone = "already_gone", failed
-    /// Item is no longer on the phone.
-    public var removed: Bool { self != .failed }
+    /// Codex p89c: the outcome cannot be established for THIS account (no ledger entry for the signed-in account, signed out,
+    /// account switched mid-undo). Local only — never reported to the server as a status.
+    case unknown
+    /// Item is known to be no longer on the phone.
+    public var removed: Bool { self == .undone || self == .alreadyGone }
+    /// Only definite outcomes go into the turn's undo report.
+    public var reportable: Bool { self != .unknown }
 }
 
 public enum DeviceUndoRules {

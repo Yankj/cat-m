@@ -315,7 +315,8 @@ public struct ConversationDeviceCall: Codable, Sendable, Equatable, Identifiable
     public static let toolsHeader = "X-Catpaw-Device-Tools"
     nonisolated(unsafe) public static var clientTools: [String] = []
     /// Codex P0-1 (PR #89): the authenticated SSE boundary reports received / revoked calls to the execution gate.
-    public enum Lifecycle: Sendable { case received(ConversationDeviceCall, conversationID: UUID, turnID: UUID), revoked(callIDs: [String]) }
+    /// `token`: AccountEpoch token of the account whose observation produced the event (nil → never granted).
+    public enum Lifecycle: Sendable { case received(ConversationDeviceCall, conversationID: UUID, turnID: UUID, token: AccountToken?), revoked(callIDs: [String]) }
     nonisolated(unsafe) public static var lifecycle: (@Sendable (Lifecycle) -> Void)?
     public static let statuses: Set<String> = ["ok", "cancelled", "denied", "error"]
     public let interruptID: String
