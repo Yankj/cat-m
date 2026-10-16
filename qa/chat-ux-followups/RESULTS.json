@@ -1,0 +1,372 @@
+{
+ "ran_at": "2026-10-16T14:50:50.643Z",
+ "model": "agnes-3.0-flash",
+ "runs": 3,
+ "cases": 10,
+ "scored": 30,
+ "errors": 0,
+ "pass": 19,
+ "pass_rate": 0.6333,
+ "per_run": [
+  "6/10",
+  "6/10",
+  "7/10"
+ ],
+ "fence_rate": 0.7,
+ "prompt_sha256": "2155fb1f2cea22891abe6c74cdd43fb152e1e16f79fba6791623aaf2dcdf2486",
+ "rows": [
+  {
+   "run": 1,
+   "id": "f01",
+   "fence": true,
+   "items": [
+    "CPI 和 PPI 有什么区别？",
+    "通胀高时普通人该怎么办？",
+    "为什么央行目标都是 2%？"
+   ],
+   "all_le_18": true,
+   "pass": true,
+   "tools_called": []
+  },
+  {
+   "run": 1,
+   "id": "f02",
+   "fence": true,
+   "items": [
+    "猫害怕什么声音",
+    "为什么猫总叼玩具",
+    "怎么让猫少抓沙发"
+   ],
+   "all_le_18": true,
+   "pass": true,
+   "tools_called": []
+  },
+  {
+   "run": 1,
+   "id": "f03",
+   "fence": true,
+   "items": [
+    "帮我排个 7 天东京+京都路线",
+    "日本必吃的几家店推荐",
+    "落地后怎么坐去酒店最方便"
+   ],
+   "all_le_18": true,
+   "pass": true,
+   "tools_called": []
+  },
+  {
+   "run": 1,
+   "id": "f04",
+   "fence": false,
+   "items": [],
+   "all_le_18": true,
+   "pass": false,
+   "tools_called": []
+  },
+  {
+   "run": 1,
+   "id": "f05",
+   "fence": true,
+   "items": [
+    "帮我列个 Kotlin 入门路线",
+    "Swift 和 Kotlin 语法有哪些坑",
+    "我这两个项目更适合哪个"
+   ],
+   "all_le_18": false,
+   "pass": false,
+   "tools_called": []
+  },
+  {
+   "run": 1,
+   "id": "f06",
+   "fence": true,
+   "items": [
+    "快走和散步对膝盖影响一样吗",
+    "一周走多少步最不容易长胖",
+    "走路能替代跑步吗"
+   ],
+   "all_le_18": true,
+   "pass": true,
+   "tools_called": []
+  },
+  {
+   "run": 1,
+   "id": "f07",
+   "fence": true,
+   "items": [
+    "换个意象，比如写秋雨",
+    "把这首诗改得伤感一点",
+    "再来一首秋天的藏头诗"
+   ],
+   "all_le_18": true,
+   "pass": true,
+   "tools_called": []
+  },
+  {
+   "run": 1,
+   "id": "f08",
+   "fence": false,
+   "items": [],
+   "all_le_18": true,
+   "pass": false,
+   "tools_called": []
+  },
+  {
+   "run": 1,
+   "id": "f09",
+   "fence": true,
+   "items": [
+    "入睡难怎么办",
+    "睡前怎么放松",
+    "需要看医生吗"
+   ],
+   "all_le_18": true,
+   "pass": true,
+   "tools_called": []
+  },
+  {
+   "run": 1,
+   "id": "f10",
+   "fence": false,
+   "items": [],
+   "all_le_18": true,
+   "pass": false,
+   "tools_called": [
+    "render_ui"
+   ]
+  },
+  {
+   "run": 2,
+   "id": "f01",
+   "fence": true,
+   "items": [
+    "CPI 怎么计算出来的？",
+    "通胀和通缩哪个更可怕？",
+    "加息为什么能抑制通胀？"
+   ],
+   "all_le_18": true,
+   "pass": true,
+   "tools_called": []
+  },
+  {
+   "run": 2,
+   "id": "f02",
+   "fence": false,
+   "items": [],
+   "all_le_18": true,
+   "pass": false,
+   "tools_called": []
+  },
+  {
+   "run": 2,
+   "id": "f03",
+   "fence": false,
+   "items": [],
+   "all_le_18": true,
+   "pass": false,
+   "tools_called": []
+  },
+  {
+   "run": 2,
+   "id": "f04",
+   "fence": true,
+   "items": [
+    "番茄炒蛋怎么做出汁",
+    "鸡蛋炒老了怎么办",
+    "推荐一道快手菜"
+   ],
+   "all_le_18": true,
+   "pass": true,
+   "tools_called": []
+  },
+  {
+   "run": 2,
+   "id": "f05",
+   "fence": true,
+   "items": [
+    "Swift 两周入门路线怎么排",
+    "Kotlin 和 Swift 语法对照",
+    "用哪本教材学 Swift 好"
+   ],
+   "all_le_18": false,
+   "pass": false,
+   "tools_called": []
+  },
+  {
+   "run": 2,
+   "id": "f06",
+   "fence": false,
+   "items": [],
+   "all_le_18": true,
+   "pass": false,
+   "tools_called": []
+  },
+  {
+   "run": 2,
+   "id": "f07",
+   "fence": true,
+   "items": [
+    "再写一首更明亮的",
+    "把这首诗配个英文译名",
+    "帮我写一首春天的"
+   ],
+   "all_le_18": true,
+   "pass": true,
+   "tools_called": []
+  },
+  {
+   "run": 2,
+   "id": "f08",
+   "fence": true,
+   "items": [
+    "每天喝几杯比较合适",
+    "咖啡因戒断怎么缓解",
+    "咖啡和胃有什么影响"
+   ],
+   "all_le_18": true,
+   "pass": true,
+   "tools_called": []
+  },
+  {
+   "run": 2,
+   "id": "f09",
+   "fence": true,
+   "items": [
+    "长期失眠该怎么办",
+    "咖啡因要几点前停",
+    "怎么设置睡觉前的提醒"
+   ],
+   "all_le_18": true,
+   "pass": true,
+   "tools_called": []
+  },
+  {
+   "run": 2,
+   "id": "f10",
+   "fence": true,
+   "items": [
+    "我在杭州工作，预算500万",
+    "租房和买房哪个更划算",
+    "我现在该不该卖掉再买"
+   ],
+   "all_le_18": true,
+   "pass": true,
+   "tools_called": []
+  },
+  {
+   "run": 3,
+   "id": "f01",
+   "fence": true,
+   "items": [
+    "低通胀和高通胀哪里不一样",
+    "通胀和通缩哪个更可怕"
+   ],
+   "all_le_18": true,
+   "pass": true,
+   "tools_called": []
+  },
+  {
+   "run": 3,
+   "id": "f02",
+   "fence": true,
+   "items": [
+    "猫为什么不进猫窝只睡纸箱",
+    "怎么让猫多钻纸箱"
+   ],
+   "all_le_18": true,
+   "pass": true,
+   "tools_called": []
+  },
+  {
+   "run": 3,
+   "id": "f03",
+   "fence": false,
+   "items": [],
+   "all_le_18": true,
+   "pass": false,
+   "tools_called": []
+  },
+  {
+   "run": 3,
+   "id": "f04",
+   "fence": true,
+   "items": [
+    "番茄怎么挑更沙瓤",
+    "这道菜热量大概多少",
+    "还有啥简单的家常菜"
+   ],
+   "all_le_18": true,
+   "pass": true,
+   "tools_called": []
+  },
+  {
+   "run": 3,
+   "id": "f05",
+   "fence": true,
+   "items": [
+    "iPhone开发入门要准备什么",
+    "Kotlin和Java的区别",
+    "怎么学Swift比较快"
+   ],
+   "all_le_18": true,
+   "pass": true,
+   "tools_called": []
+  },
+  {
+   "run": 3,
+   "id": "f06",
+   "fence": false,
+   "items": [],
+   "all_le_18": true,
+   "pass": false,
+   "tools_called": []
+  },
+  {
+   "run": 3,
+   "id": "f07",
+   "fence": true,
+   "items": [
+    "再来一首现代诗",
+    "换成写冬天的",
+    "把这首翻译成英文"
+   ],
+   "all_le_18": true,
+   "pass": true,
+   "tools_called": []
+  },
+  {
+   "run": 3,
+   "id": "f08",
+   "fence": true,
+   "items": [
+    "一天到底能喝几杯咖啡",
+    "空腹喝咖啡伤胃吗",
+    "怎么让下午喝了咖啡不失眠"
+   ],
+   "all_le_18": true,
+   "pass": true,
+   "tools_called": []
+  },
+  {
+   "run": 3,
+   "id": "f09",
+   "fence": true,
+   "items": [
+    "我最近经常凌晨醒来怎么办",
+    "适合助眠的运动有哪些"
+   ],
+   "all_le_18": true,
+   "pass": true,
+   "tools_called": []
+  },
+  {
+   "run": 3,
+   "id": "f10",
+   "fence": false,
+   "items": [],
+   "all_le_18": true,
+   "pass": false,
+   "tools_called": []
+  }
+ ]
+}
