@@ -6,9 +6,18 @@ import Foundation
     var supported: Set<String>; var executed: [String] = []; var writes: [String: String] = [:]   // call_id → item id (dedupe)
     init(_ s: Set<String>) { supported = s }
     func canExecute(_ tool: String) -> Bool { supported.contains(tool) }
+    var lookedUp: [String] = []
+    func lookup(_ call: DeviceCall) async -> DeviceCallResult? {
+        lookedUp.append(call.call_id)
+        return writes[call.call_id].map { .init(call_id: call.call_id, status: .ok, data: ["event_id": .string($0), "deduped": .bool(true)]) }
+    }
+    /// Simulates an await inside the real router (permission prompt / reminder lookup) before the system write.
+    var beforeCommit: (() -> Void)?
     func execute(_ call: DeviceCall) async -> DeviceCallResult {
         executed.append(call.call_id)
         if let id = writes[call.call_id] { return .init(call_id: call.call_id, status: .ok, data: ["event_id": .string(id), "deduped": .bool(true)]) }
+        beforeCommit?()
+        if let why = DeviceCallGate.commitCheck(call.call_id) { return DeviceCallGate.rejected(call, why) }   // as DeviceToolRouter does
         let id = "evt-\(writes.count + 1)"; writes[call.call_id] = id
         return .init(call_id: call.call_id, status: .ok, data: ["event_id": .string(id)])
     }
@@ -39,7 +48,7 @@ import Foundation
     static func expect(_ ok: Bool, _ m: String) { if ok { passed += 1; print("PASS \(m)") } else { failed += 1; print("FAIL \(m)") } }
 
     static func main() async {
-        await memory(); await deviceCalls(); proactive(); nearby(); groundedFixtures(); contactsPrivacy(); replyVariants(); followUps(); await deviceUndo(); dictation(); await codexP0_1()
+        await memory(); await deviceCalls(); proactive(); nearby(); groundedFixtures(); contactsPrivacy(); replyVariants(); followUps(); await deviceUndo(); dictation(); await codexP0_1(); await codexPR89()
         print("nobug-p0 portable: \(passed) passed, \(failed) failed")
         exit(failed == 0 ? 0 : 1)
     }
@@ -107,8 +116,130 @@ import Foundation
 
     static func call(_ id: String, _ tool: String = "calendar_create") -> DeviceCall {
         let c = DeviceCall(call_id: id, tool: tool, args: ["title": .string("评审会"), "start": .string("2026-10-20T10:00:00+08:00")], confirm: .card, ttl_sec: 600)
-        DeviceCallGate.register(c)   // as the typed SSE device_call path does
+        DeviceCallGate.receive(c)   // as the SSE boundary (ConversationDeviceCall.lifecycle) does
         return c
+    }
+    /// What the card's confirm button does: mint a tap token for the final args, then run.
+    static func tapRun(_ store: DeviceCallStore, _ c: DeviceCall) async {
+        let final = c.args.merging(store.edited[c.id] ?? [:]) { _, new in new }
+        await store.run(c, tap: DeviceCallGate.confirmTap(c, finalArgs: final))
+    }
+
+    /// Codex re-review of PR #89 (3f00095): every counterexample from CODEX-PR89-3f00095.md.
+    static func codexPR89() async {
+        let suite = "codex.pr89." + UUID().uuidString
+        let defaults = UserDefaults(suiteName: suite)!; defer { defaults.removePersistentDomain(forName: suite) }
+        let exec = FakeExecutor(["calendar_create", "reminder_create", "alarm_set", "calendar_list"]), sub = FakeSubmitter()
+        DeviceCallHub.executor = exec; DeviceCallHub.submitter = sub; DeviceCallHub.recorder = nil
+        var wall = Date(timeIntervalSince1970: 2_000_000_000), up: TimeInterval = 1000
+        DeviceCallGate.wallClock = { wall }; DeviceCallGate.uptime = { up }
+        DeviceCallGate.reset(); DeviceCallGate.currentAccount = { "user-A" }
+        func mk(_ id: String, _ tool: String = "calendar_create", ttl: Int = 600, expires: String? = nil, args: [String: DeviceCallValue] = ["title": .string("评审会")]) -> DeviceCall {
+            DeviceCall(call_id: id, tool: tool, args: args, confirm: .card, ttl_sec: ttl, expires_at: expires)
+        }
+        func reason(_ store: DeviceCallStore, _ id: String) -> String? { if case .done(let r) = store.phase(id), case .string(let x)? = r.data?["reason"] { return x }; return nil }
+
+        // 1. Restart recovery with an EMPTY gate (fresh process) must not write; it may only look up the original result.
+        for (id, tool) in [("r1", "calendar_create"), ("r2", "reminder_create"), ("r3", "alarm_set")] {
+            defaults.set(try! JSONEncoder().encode([id: DeviceCallStore.Record(phase: .running, call: mk(id, tool), updatedAt: .now, account: "user-A")]), forKey: DeviceCallStore.storageKey)
+            DeviceCallGate.reset()   // relaunch: no grants
+            let st = DeviceCallStore(defaults: defaults); await st.resumeInterrupted(id)
+            expect(!exec.executed.contains(id) && exec.writes[id] == nil, "PR89-1 resume after restart never writes \(tool) (empty gate)")
+            expect(sub.sent.last?.call_id == id && sub.sent.last?.data?["reason"] == .string("interrupted_outcome_unknown"), "PR89-1 resume with no original result → outcome unknown (\(tool))")
+        }
+        exec.writes["r4"] = "evt-r4"
+        defaults.set(try! JSONEncoder().encode(["r4": DeviceCallStore.Record(phase: .running, call: mk("r4"), updatedAt: .now, account: "user-A")]), forKey: DeviceCallStore.storageKey)
+        let st4 = DeviceCallStore(defaults: defaults); await st4.resumeInterrupted("r4")
+        expect(!exec.executed.contains("r4") && exec.lookedUp.contains("r4") && sub.sent.last?.data?["event_id"] == .string("evt-r4"), "PR89-1 resume reports the original result found by lookup")
+        defaults.set(try! JSONEncoder().encode(["r5": DeviceCallStore.Record(phase: .running, call: mk("r5"), updatedAt: .now, account: "user-B")]), forKey: DeviceCallStore.storageKey)
+        let sent0 = sub.sent.count
+        let st5 = DeviceCallStore(defaults: defaults); await st5.resumeInterrupted("r5")
+        expect(!exec.executed.contains("r5") && !exec.lookedUp.contains("r5") && sub.sent.count == sent0, "PR89-1 another account's interrupted record is neither resumed nor reported")
+        let rec = DeviceCallStore(defaults: defaults)
+        DeviceCallGate.reset()
+        let fresh = mk("acct-rec"); DeviceCallGate.receive(fresh); await tapRun(rec, fresh)
+        expect(rec.record("acct-rec")?.account == "user-A", "PR89-1 persisted records carry the account")
+
+        // 2. Re-validated right before the system write (after awaits).
+        let store = DeviceCallStore(defaults: UserDefaults(suiteName: suite + ".2")!)
+        let e1 = mk("w1", ttl: 60); DeviceCallGate.receive(e1)
+        exec.beforeCommit = { wall += 120; up += 120 }   // user sat on the permission prompt past expiry
+        await tapRun(store, e1)
+        expect(exec.writes["w1"] == nil && reason(store, "w1") == "call_expired", "PR89-2 expiry during the permission await blocks the write")
+        let e2 = mk("w2"); DeviceCallGate.receive(e2)
+        exec.beforeCommit = { DeviceCallGate.reset() }   // signed out while waiting
+        await tapRun(store, e2)
+        expect(exec.writes["w2"] == nil, "PR89-2 sign-out during the await blocks the write")
+        let e3 = mk("w3"); DeviceCallGate.receive(e3)
+        exec.beforeCommit = { DeviceCallGate.revoke(["w3"]) }
+        await tapRun(store, e3)
+        expect(exec.writes["w3"] == nil && reason(store, "w3") == "call_revoked", "PR89-2 revocation during the await blocks the write")
+        exec.beforeCommit = nil
+
+        // 3. Cancelled / resolved calls lose their grant; the stale card cannot run.
+        let c1 = mk("x1"); DeviceCallGate.receive(c1); DeviceCallGate.revoke(["x1"])
+        expect(DeviceCallGate.confirmTap(c1, finalArgs: c1.args) == nil, "PR89-3 a revoked call cannot mint a tap")
+        await tapRun(store, c1)
+        expect(!exec.executed.contains("x1"), "PR89-3 tapping a stale card after cancel/resolve does nothing")
+        let c1b = mk("x1b"); DeviceCallGate.receive(c1b)
+        let shared = DeviceCallStore.shared
+        DeviceCallGate.revoke(["x1b"])
+        expect(shared.phase("x1b") == .expired, "PR89-3 revoke dismisses the confirming card (shows as no longer valid)")
+        ConversationDeviceCall.lifecycle?(.revoked(callIDs: ["x1c"]))   // the service boundary hook is installed by the app
+        let wire = ConversationDeviceCall(interruptID: UUID().uuidString.lowercased(), callID: "x2", tool: "calendar_create", args: try! JSONEncoder().encode(["title": DeviceCallValue.string("t")]), confirm: "card", ttlSec: 600, argsHash: String(repeating: "a", count: 64), expiresAt: ISO8601DateFormatter().string(from: wall.addingTimeInterval(600)))
+        DeviceCallGate.installLifecycle()
+        ConversationDeviceCall.lifecycle?(.received(wire, conversationID: UUID(), turnID: UUID()))
+        try? await Task.sleep(nanoseconds: 50_000_000)
+        expect(DeviceCallGate.isLive("x2"), "PR89-3/4 the SSE boundary (service lifecycle hook) is the grant source")
+        ConversationDeviceCall.lifecycle?(.revoked(callIDs: ["x2"]))
+        try? await Task.sleep(nanoseconds: 50_000_000)
+        expect(!DeviceCallGate.isLive("x2"), "PR89-3 service-side resolve/cancel revokes through the same hook")
+
+        // 4. Full identity + one-shot tap bound to final args; nil account never passes.
+        let list = mk("same", "calendar_list", args: [:]); DeviceCallGate.receive(list)
+        let swapped = mk("same", "calendar_create")
+        await store.run(swapped, tap: DeviceCallGate.confirmTap(swapped, finalArgs: swapped.args))
+        expect(!exec.executed.contains("same"), "PR89-4 same call_id with a different tool is refused")
+        let a1 = mk("args", args: ["title": .string("A")]); DeviceCallGate.receive(a1)
+        let a2 = mk("args", args: ["title": .string("B")])
+        await store.run(a2, tap: DeviceCallGate.confirmTap(a2, finalArgs: a2.args))
+        expect(!exec.executed.contains("args"), "PR89-4 same call_id with different args is refused")
+        let nt = mk("notap"); DeviceCallGate.receive(nt); await store.run(nt)
+        expect(!exec.executed.contains("notap") && reason(store, "notap") == "tap_required", "PR89-4 a write without a tap token is refused")
+        let ed = mk("edit"); DeviceCallGate.receive(ed)
+        let token = DeviceCallGate.confirmTap(ed, finalArgs: ["title": .string("用户看到的")])
+        store.edited["edit"] = ["title": .string("被换掉的")]
+        await store.run(ed, tap: token)
+        expect(!exec.executed.contains("edit"), "PR89-4 tap token is bound to the final args the user confirmed")
+        let once = mk("once"); DeviceCallGate.receive(once)
+        let t1 = DeviceCallGate.confirmTap(once, finalArgs: once.args)
+        let other = DeviceCallStore(defaults: UserDefaults(suiteName: suite + ".3")!)
+        await store.run(once, tap: t1); await other.run(once, tap: t1)
+        expect(exec.executed.filter { $0 == "once" }.count == 1, "PR89-4 a tap token is one-shot")
+        DeviceCallGate.currentAccount = { nil }
+        let anon = mk("anon"); DeviceCallGate.receive(anon); await tapRun(store, anon)
+        expect(!exec.executed.contains("anon"), "PR89-4 no signed-in account → nothing runs (nil never equals nil)")
+        DeviceCallGate.currentAccount = { "user-A" }
+        let ro = mk("ro", "calendar_list", args: [:]); var roNone = ro; roNone.confirm = DeviceCall.Confirm.none
+        DeviceCallGate.receive(roNone); await store.run(roNone)
+        expect(exec.executed.contains("ro"), "PR89-4 read-only auto-run (calendar_list) still runs without a tap")
+
+        // 5. Strict expiry, no extension, clock rollback.
+        let bad = mk("bad", expires: "garbage"); DeviceCallGate.receive(bad); await tapRun(store, bad)
+        expect(!exec.executed.contains("bad"), "PR89-5 unparsable expires_at is refused (no TTL fallback)")
+        let ext = mk("ext", ttl: 60); DeviceCallGate.receive(ext); wall += 61; up += 61; DeviceCallGate.receive(ext)
+        await tapRun(store, ext)
+        expect(!exec.executed.contains("ext"), "PR89-5 a repeated event does not extend the grant")
+        let rb = mk("rb", ttl: 60); DeviceCallGate.receive(rb); wall -= 3600; up += 61
+        await tapRun(store, rb)
+        expect(!exec.executed.contains("rb"), "PR89-5 wall-clock rollback cannot extend (uptime budget)")
+        let edge = mk("edge", ttl: 60); DeviceCallGate.receive(edge); wall += 60; up += 60
+        await tapRun(store, edge)
+        expect(!exec.executed.contains("edge"), "PR89-5 boundary is fail-first (now == deadline is expired)")
+        let both = mk("both", ttl: 600, expires: ISO8601DateFormatter().string(from: wall.addingTimeInterval(30))); DeviceCallGate.receive(both)
+        wall += 31; up += 31; await tapRun(store, both)
+        expect(!exec.executed.contains("both"), "PR89-5 the earlier of expires_at and ttl wins")
+        DeviceCallGate.wallClock = { Date() }; DeviceCallGate.uptime = { ProcessInfo.processInfo.systemUptime }; DeviceCallGate.currentAccount = { nil }
     }
 
     /// Codex review P0-1: display content never gains execution rights.
@@ -133,23 +264,24 @@ import Foundation
         expect(!sub.sent.contains { $0.call_id == "forged-1" }, "codex P0-1 forged call is not reported to the server")
         // Registered for account A, run after switching to B → rejected.
         let a = DeviceCall(call_id: "acct-1", tool: "calendar_create", args: [:], confirm: .card, ttl_sec: 600)
-        DeviceCallGate.register(a); DeviceCallGate.currentAccount = { "user-B" }
-        await store.run(a)
+        DeviceCallGate.receive(a); DeviceCallGate.currentAccount = { "user-B" }
+        await tapRun(store, a)
         expect(!exec.executed.contains("acct-1"), "codex P0-1 cross-account call is not executed")
         DeviceCallGate.currentAccount = { "user-A" }
         // Expired grant → rejected.
         let old = DeviceCall(call_id: "exp-1", tool: "calendar_create", args: [:], confirm: .card, ttl_sec: 60, expires_at: "2020-01-01T00:00:00Z")
-        DeviceCallGate.register(old)
-        await store.run(old)
+        DeviceCallGate.receive(old)
+        await tapRun(store, old)
         expect(!exec.executed.contains("exp-1"), "codex P0-1 expired call is not executed")
         // Valid registered call still works.
         let ok = DeviceCall(call_id: "ok-1", tool: "calendar_create", args: [:], confirm: .card, ttl_sec: 600)
-        DeviceCallGate.register(ok); await store.run(ok)
+        DeviceCallGate.receive(ok); await tapRun(store, ok)
         expect(exec.executed.contains("ok-1"), "codex P0-1 registered, same-account, unexpired call runs after tap")
         DeviceCallGate.currentAccount = { nil }
     }
 
     static func deviceCalls() async {
+        DeviceCallGate.reset(); DeviceCallGate.currentAccount = { "user-A" }; DeviceCallGate.wallClock = { Date() }
         let suite = "nobug.devicecall." + UUID().uuidString
         let defaults = UserDefaults(suiteName: suite)!; defer { defaults.removePersistentDomain(forName: suite) }
         let exec = FakeExecutor(["calendar_create", "sms_compose"]), sub = FakeSubmitter()
@@ -157,16 +289,16 @@ import Foundation
 
         // Round trip.
         let s1 = DeviceCallStore(defaults: defaults)
-        await s1.run(call("c1"))
+        await tapRun(s1, call("c1"))
         expect(sub.sent.map(\.call_id) == ["c1"] && sub.sent[0].status == .ok, "P0-5 device_call round trip: execute → report ok")
         if case .done = s1.phase("c1") { expect(true, "phase done after report") } else { expect(false, "phase done after report") }
         expect(DeviceCallStore(defaults: defaults).phase("c1") != .confirming, "P0-3 done phase persists (card never re-asks after relaunch)")
-        await DeviceCallStore(defaults: defaults).run(call("c1"))
+        await tapRun(DeviceCallStore(defaults: defaults), call("c1"))
         expect(exec.executed == ["c1"], "P0-3 relaunched store does not re-execute a finished call")
 
         // Kill between execute and report: persisted as reportFailed(result) → re-report, no re-execute.
         sub.fail = true
-        await s1.run(call("c2"))
+        await tapRun(s1, call("c2"))
         let s2 = DeviceCallStore(defaults: defaults)
         if case .reportFailed(let r) = s2.phase("c2") { expect(r.status == .ok, "P0-3 executed-but-unreported result persisted") } else { expect(false, "P0-3 executed-but-unreported result persisted") }
         sub.fail = false
@@ -174,7 +306,7 @@ import Foundation
         expect(sub.sent.last?.call_id == "c2" && exec.executed.filter { $0 == "c2" }.count == 1, "P0-3 report resumes after relaunch without re-execute")
 
         // P1-4 auto retry of every pending report after relaunch; offline → stays pending, never re-executes.
-        sub.fail = true; await s1.run(call("c2b")); await s1.run(call("c2c"))
+        sub.fail = true; await tapRun(s1, call("c2b")); await tapRun(s1, call("c2c"))
         let s2b = DeviceCallStore(defaults: defaults)
         expect(Set(s2b.pendingReportIDs).isSuperset(of: ["c2b", "c2c"]), "P1-4 pending reports survive relaunch")
         expect(await s2b.retryPendingReports() == 0 && s2b.pendingReportIDs.contains("c2b"), "P1-4 offline retry keeps them pending")
@@ -187,22 +319,22 @@ import Foundation
 
         // Kill during execute (phase .running persisted) → idempotent tool re-run, executor dedupes by call_id.
         exec.writes["c3"] = "evt-already"   // event was written before the kill
-        let running = try! JSONEncoder().encode(["c3": DeviceCallStore.Record(phase: .running, call: call("c3"), updatedAt: .now)])
+        let running = try! JSONEncoder().encode(["c3": DeviceCallStore.Record(phase: .running, call: call("c3"), updatedAt: .now, account: "user-A")])
         defaults.set(running, forKey: DeviceCallStore.storageKey)
         let s3 = DeviceCallStore(defaults: defaults)
         expect(s3.isInterrupted("c3") && s3.phase("c3") == .running, "P0-3 interrupted call detected on relaunch (no confirm card)")
-        await s3.run(call("c3"))
+        await tapRun(s3, call("c3"))
         expect(exec.executed.filter { $0 == "c3" }.isEmpty, "P0-3 tapping again cannot start a second write")
         await s3.resumeInterrupted("c3")
-        expect(sub.sent.last?.data?["event_id"] == .string("evt-already") && exec.writes["c3"] == "evt-already", "P0-3 resume dedupes calendar_create by call_id")
+        expect(sub.sent.last?.data?["event_id"] == .string("evt-already") && exec.writes["c3"] == "evt-already", "P0-3 resume finds the existing calendar_create by call_id (lookup, no write)")
 
         // Non-idempotent interrupted → outcome unknown, not re-run.
-        defaults.set(try! JSONEncoder().encode(["c4": DeviceCallStore.Record(phase: .running, call: call("c4", "sms_compose"), updatedAt: .now)]), forKey: DeviceCallStore.storageKey)
+        defaults.set(try! JSONEncoder().encode(["c4": DeviceCallStore.Record(phase: .running, call: call("c4", "sms_compose"), updatedAt: .now, account: "user-A")]), forKey: DeviceCallStore.storageKey)
         let s4 = DeviceCallStore(defaults: defaults); await s4.resumeInterrupted("c4")
         expect(sub.sent.last?.data?["reason"] == .string("interrupted_outcome_unknown") && !exec.executed.contains("c4"), "P0-3 interrupted compose → outcome_unknown, never re-sent")
 
         // P0-4 unsupported tool → error with non-retryable reason.
-        await s4.run(call("c5", "pay_apple"))
+        await tapRun(s4, call("c5", "pay_apple"))
         let last = sub.sent.last
         expect(last?.status == .error && last?.data?["reason"] == .string("unsupported_tool") && last?.data?["retryable"] == .bool(false), "P0-4 canExecute=false → .error reason unsupported_tool retryable=false")
         // P0-4 meituan.

@@ -84,7 +84,10 @@ struct DeviceCallResult: Codable, Sendable, Equatable {
 @MainActor protocol DeviceToolExecuting: AnyObject {
     func canExecute(_ tool: String) -> Bool
     func execute(_ call: DeviceCall) async -> DeviceCallResult
+    /// Restart recovery: find the original effect by call_id WITHOUT writing (nil = not found / unknown).
+    func lookup(_ call: DeviceCall) async -> DeviceCallResult?
 }
+extension DeviceToolExecuting { func lookup(_ call: DeviceCall) async -> DeviceCallResult? { nil } }
 
 /// 三角 (B6 DeviceResultClient): delivers the result to the cloud agent for the same turn.
 @MainActor protocol DeviceResultSubmitting {   // not class-bound: 三角's ConversationDeviceResultSubmitter is a struct
@@ -126,7 +129,10 @@ extension DeviceResultSubmitting { func reportUndo(callID: String, outcome: Devi
 @MainActor final class DeviceCallStore: ObservableObject {
     static let shared = DeviceCallStore()
     enum Phase: Equatable, Codable { case confirming, running, done(DeviceCallResult), reportFailed(DeviceCallResult), expired }
-    struct Record: Codable, Equatable { var phase: Phase; var call: DeviceCall?; var updatedAt: Date }
+    struct Record: Codable, Equatable {
+        var phase: Phase; var call: DeviceCall?; var updatedAt: Date; var account: String? = nil
+        init(phase: Phase, call: DeviceCall?, updatedAt: Date, account: String? = nil) { self.phase = phase; self.call = call; self.updatedAt = updatedAt; self.account = account }
+    }
     @Published private(set) var phases: [String: Phase] = [:]
     @Published var edited: [String: [String: DeviceCallValue]] = [:]
     private var seen: [String: Date] = [:]
@@ -159,11 +165,12 @@ extension DeviceResultSubmitting { func reportUndo(callID: String, outcome: Devi
         if let data = try? JSONEncoder().encode(records) { defaults.set(data, forKey: Self.storageKey) }
     }
 
-    func run(_ call: DeviceCall) async {
+    func expireIfConfirming(_ id: String) {}
+    func run(_ call: DeviceCall, tap: DeviceCallGate.TapToken? = nil) async {
         guard phase(call.id) == .confirming else { return }
         // Codex P0-1: refuse anything not registered by a typed event for this account and still valid. Not executed and
         // not reported (an unknown call_id has no turn to report into); the card shows it as not done.
-        if let why = DeviceCallGate.check(call) { set(call.id, .done(DeviceCallGate.rejected(call, why))); return }
+        if let why = DeviceCallGate.check(call, finalArgs: call.args, tap: tap) { set(call.id, .done(DeviceCallGate.rejected(call, why))); return }
         var effective = call
         if let edits = edited[call.id] { effective.args.merge(edits) { _, new in new } }
         phases[call.id] = .running; persist(call.id, .running, call: effective)   // durable BEFORE any side effect
@@ -233,24 +240,26 @@ extension DeviceResultSubmitting { func reportUndo(callID: String, outcome: Devi
     }
 }
 
-/// Codex review P0-1: only calls that arrived as an authenticated, typed `device_call` SSE event (registered here by
-/// `ConversationApprovalHost`) may execute, for the account that received them and before they expire. Display content
-/// (Markdown fences, quoted / historical replies) can never register a call, so it has zero side effects.
+/// PR #89 re-review RED scaffold: new API shape with the OLD (id-only) semantics. Replaced by the fix commit.
 @MainActor enum DeviceCallGate {
-    struct Grant: Equatable { let account: String?; let deadline: Date? }
+    struct TapToken: Equatable, Sendable { let callID: String; let finalArgsHash: String; let nonce: UUID }
     enum Rejection: String, Equatable { case unregistered = "unauthorized_call", accountMismatch = "account_mismatch", expired = "call_expired" }
-    /// Signed-in user id (set by NativeAuthApplicationModel); nil when signed out / guest.
     static var currentAccount: () -> String? = { nil }
-    private static var grants: [String: Grant] = [:]
-    static func register(_ call: DeviceCall, now: Date = .now) {
-        grants[call.call_id] = .init(account: currentAccount(), deadline: call.deadline(firstSeen: now))
-    }
-    static func check(_ call: DeviceCall, now: Date = .now) -> Rejection? {
-        guard let grant = grants[call.call_id] else { return .unregistered }
-        guard grant.account == currentAccount() else { return .accountMismatch }
-        if let deadline = grant.deadline, now > deadline { return .expired }
+    static var wallClock: () -> Date = { Date() }
+    static var uptime: () -> TimeInterval = { ProcessInfo.processInfo.systemUptime }
+    private static var grants: [String: (account: String?, deadline: Date?)] = [:]
+    static func receive(_ call: DeviceCall, conversationID: String? = nil, turnID: String? = nil) { grants[call.call_id] = (currentAccount(), call.deadline(firstSeen: wallClock())) }
+    static func revoke(_ callIDs: [String]) {}
+    static func isLive(_ callID: String) -> Bool { grants[callID] != nil }
+    static func confirmTap(_ call: DeviceCall, finalArgs: [String: DeviceCallValue]) -> TapToken? { .init(callID: call.call_id, finalArgsHash: "", nonce: UUID()) }
+    static func check(_ call: DeviceCall, finalArgs: [String: DeviceCallValue], tap: TapToken?) -> Rejection? {
+        guard let g = grants[call.call_id] else { return .unregistered }
+        guard g.account == currentAccount() else { return .accountMismatch }
+        if let d = g.deadline, wallClock() > d { return .expired }
         return nil
     }
+    static func commitCheck(_ callID: String) -> Rejection? { nil }
+    static func installLifecycle() {}
     static func rejected(_ call: DeviceCall, _ why: Rejection) -> DeviceCallResult {
         .init(call_id: call.call_id, status: .error, data: ["reason": .string(why.rawValue), "retryable": .bool(false)])
     }
