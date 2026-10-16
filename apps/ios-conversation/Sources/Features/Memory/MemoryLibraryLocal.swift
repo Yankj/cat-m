@@ -82,6 +82,18 @@ enum AccountLocalData {
         guard let k = offKey(owner) else { ConversationMemorySwitch.useMemory = nil; return }
         ConversationMemorySwitch.useMemory = defaults.object(forKey: k) == nil ? nil : !defaults.bool(forKey: k)
     }
+    /// Codex PR91 p91d-1: true only while `token` is still the session and `owner` is still the signed-in account.
+    static func stillCurrent(_ token: AccountToken?, _ owner: LocalMemoryOwner) -> Bool {
+        AccountEpoch.shared.isValid(token) && currentOwner == owner
+    }
+    /// The user's explicit switch, bound to the owner + token taken when the toggle started. Off is written at once;
+    /// on only after the server accepted it (`succeeded`). Nothing is written for an account that is gone.
+    @discardableResult static func userChoice(on: Bool, owner: LocalMemoryOwner, token: AccountToken?, succeeded: Bool) -> Bool {
+        guard stillCurrent(token, owner) else { return false }
+        if !on { record(off: true, owner: owner); return true }
+        guard succeeded else { return false }   // a failed ON keeps the sticky off
+        record(off: false, owner: owner); return true
+    }
     static func record(off: Bool, owner: LocalMemoryOwner) {
         if let k = offKey(owner) { defaults.set(off, forKey: k) }
         ConversationMemorySwitch.useMemory = !off   // sent to the server on the next turn (X-Catpaw-Use-Memory)
@@ -89,22 +101,27 @@ enum AccountLocalData {
 
     /// `cloud`: the installed backend (nil = none). `local`: the on-device library when it is not the cloud backend.
     static func snapshots(cloud: (any MemoryLibraryBackend)?, local: (any MemoryLibraryBackend)?, owner: LocalMemoryOwner) async -> [MemoryLibrarySnapshot] {
-        let epochAtStart = AccountEpoch.shared.epoch, accountAtStart = AccountEpoch.shared.currentAccount
+        // Codex PR91 p91d-1: owner + token bound when the recall starts; every write-back below re-checks them.
+        let token = AccountEpoch.shared.capture()
+        guard token != nil else { return [] }
         var snaps: [MemoryLibrarySnapshot] = []
         var cloudState: Bool? = nil   // nil = no cloud library / unknown
         if let cloud {
             do { let s = try await cloud.load(); snaps.append(s); cloudState = s.useMemory }
             // Codex PR91 p91b-4: a cloud library that is not enabled / unsupported does NOT fall back to local memories.
             // p91c-4: the switch is still restored from the stored value before the fail-closed return.
-            catch { restoreSwitch(owner: owner); return [] }   // unreachable / partial failure: fail closed, keep the last known switch
+            // p91d-1: a late failure never overwrites (or clears) the global; only a still-current sticky off is re-applied.
+            catch { if stillCurrent(token, owner), persistedOff(owner) { ConversationMemorySwitch.useMemory = false }; return [] }
         }
         if let local {
             do { snaps.append(try await local.load()) } catch { return [] }
         }
-        guard AccountEpoch.shared.epoch == epochAtStart, AccountEpoch.shared.currentAccount == accountAtStart else { return [] }   // signed out / switched meanwhile
+        guard stillCurrent(token, owner) else { return [] }   // signed out / switched meanwhile: no write-back
+        // p91d-2: an explicit user off is sticky until an explicit user on succeeds — it wins over any cloud snapshot.
+        if persistedOff(owner) { ConversationMemorySwitch.useMemory = false; return [] }
         let off = snaps.contains { !$0.useMemory }
-        if cloudState != nil || cloud == nil { record(off: off, owner: owner) }
-        else if persistedOff(owner) { ConversationMemorySwitch.useMemory = false; return [] }   // cloud state unknown now; last known was off
+        // A cloud/local snapshot only drives the global for this turn; it never writes (or clears) the user's choice.
+        if cloudState != nil || cloud == nil { ConversationMemorySwitch.useMemory = !off }
         return MemoryRecallGate.effective(snaps)
     }
 }

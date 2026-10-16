@@ -30,11 +30,14 @@ import SwiftUI
     }
     func setUse(_ on: Bool) async {
         let prior = snapshot; snapshot?.useMemory = on
-        // Codex PR91 p91b-4: switching OFF takes effect locally at once (persisted + next turn's header), before the network.
-        if !on, let owner = MemoryRecallLoader.currentOwner { MemoryRecallLoader.record(off: true, owner: owner) }
+        // Codex PR91 p91d-1: owner + token bound when the toggle starts; both branches re-check them before writing.
+        let token = AccountEpoch.shared.capture()
+        guard let owner = MemoryRecallLoader.currentOwner else { return }
+        // OFF takes effect locally at once (persisted + next turn's header), before the network.
+        if !on { MemoryRecallLoader.userChoice(on: false, owner: owner, token: token, succeeded: true) }
         await run(restore: prior) { try await self.backend.setUseMemory(on) }
-        // p91c-4: switching ON updates the global only once the server accepted it.
-        if on, errorKey == nil, let owner = MemoryRecallLoader.currentOwner { MemoryRecallLoader.record(off: false, owner: owner) }
+        // ON updates the global only once the server accepted it, and only for the same account.
+        if on { MemoryRecallLoader.userChoice(on: true, owner: owner, token: token, succeeded: errorKey == nil) }
     }
     func setAutoSave(_ on: Bool) async {
         let prior = snapshot; snapshot?.autoSave = on

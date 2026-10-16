@@ -878,7 +878,7 @@ extension Result { var isFailure: Bool { if case .failure = self { return true }
         expect(snaps.isEmpty && ProactiveRules.lead(in: snaps) == nil, "PR91 #3 cloud load failure ⇒ 0 memories (not local-only)")
         flaky.mode = .off
         snaps = await MemoryRecallLoader.snapshots(cloud: flaky, local: localOn, owner: owner)
-        expect(snaps.isEmpty && MemoryRecallLoader.persistedOff(owner), "PR91 #3 cloud off ⇒ 0 memories, switch stored for the account")
+        expect(snaps.isEmpty && ConversationMemorySwitch.headerValue == "0" && !MemoryRecallLoader.persistedOff(owner), "PR91 #3 cloud off ⇒ 0 memories, header off; the user's own choice is not rewritten (p91d-2)")
         flaky.mode = .notEnabled
         snaps = await MemoryRecallLoader.snapshots(cloud: flaky, local: localOn, owner: owner)
         expect(snaps.isEmpty, "PR91 #3 cloud state unknown + last known off ⇒ still 0 memories")
@@ -905,6 +905,34 @@ extension Result { var isFailure: Bool { if case .failure = self { return true }
         _ = await MemoryRecallLoader.snapshots(cloud: flaky, local: localOn, owner: owner)
         expect(ConversationMemorySwitch.headerValue == "0", "PR91 p91c-4 cloud load failure still sets the switch from the stored value")
         MemoryRecallLoader.record(off: false, owner: owner); flaky.mode = .on
+        // p91d-2: an explicit user off is sticky — a (stale) cloud GET saying on never re-enables it.
+        MemoryRecallLoader.userChoice(on: false, owner: owner, token: AccountEpoch.shared.capture(), succeeded: true)
+        flaky.mode = .on
+        snaps = await MemoryRecallLoader.snapshots(cloud: flaky, local: localOn, owner: owner)
+        expect(snaps.isEmpty && ConversationMemorySwitch.headerValue == "0" && MemoryRecallLoader.persistedOff(owner), "PR91 p91d-2 user off wins over a cloud snapshot saying on")
+        MemoryRecallLoader.userChoice(on: true, owner: owner, token: AccountEpoch.shared.capture(), succeeded: false)
+        expect(MemoryRecallLoader.persistedOff(owner), "PR91 p91d-2 a failed user ON keeps the sticky off")
+        MemoryRecallLoader.userChoice(on: true, owner: owner, token: AccountEpoch.shared.capture(), succeeded: true)
+        snaps = await MemoryRecallLoader.snapshots(cloud: flaky, local: localOn, owner: owner)
+        expect(!MemoryRecallLoader.persistedOff(owner) && ConversationMemorySwitch.headerValue == "1" && ProactiveRules.lead(in: snaps)?.minutes == 25, "PR91 p91d-2 only a successful user ON clears it")
+        // p91d-1: a toggle / recall that lands after the account switched never writes back (success or failure).
+        let tokA = AccountEpoch.shared.capture()
+        signOut(a); signIn(b)
+        let ownerB = LocalMemoryOwner.account(b.uuidString.lowercased())
+        ConversationMemorySwitch.useMemory = true
+        expect(!MemoryRecallLoader.userChoice(on: false, owner: owner, token: tokA, succeeded: true) && !MemoryRecallLoader.persistedOff(owner) && ConversationMemorySwitch.headerValue == "1", "PR91 p91d-1 A's late OFF is not written into B's session")
+        expect(!MemoryRecallLoader.userChoice(on: true, owner: owner, token: tokA, succeeded: true), "PR91 p91d-1 A's late ON success is dropped")
+        signOut(b); signIn(a)
+        flaky.mode = .fail
+        flaky.onLoad = { signOut(a); signIn(b); ConversationMemorySwitch.useMemory = true }   // switch lands mid-recall
+        snaps = await MemoryRecallLoader.snapshots(cloud: flaky, local: localOn, owner: owner)
+        expect(snaps.isEmpty && ConversationMemorySwitch.useMemory == true, "PR91 p91d-1 A's late recall failure neither overwrites nor clears B's switch")
+        flaky.mode = .on
+        flaky.onLoad = { signOut(b); signIn(a); ConversationMemorySwitch.useMemory = false }   // A's own value lands first
+        snaps = await MemoryRecallLoader.snapshots(cloud: flaky, local: nil, owner: ownerB)
+        expect(snaps.isEmpty && ConversationMemorySwitch.useMemory == false, "PR91 p91d-1 B's late recall success is not written into A's session")
+        flaky.onLoad = nil
+        MemoryRecallLoader.record(off: false, owner: ownerB)
         // Empty local library with 使用记忆 off still carries off to the cloud.
         let emptyOff = MemoryLibraryStub(useMemory: false, owner: owner)
         let target = RefusingBackend()
@@ -948,16 +976,42 @@ extension Result { var isFailure: Bool { if case .failure = self { return true }
             let gd = UserDefaults(suiteName: "pr91-atrest-\(UUID().uuidString)")!
             let realSealer = ConversationMemoryAtRest.sealer
             ConversationMemoryAtRest.sealer = { _, _ in throw L2SecureStoreError.unavailable }
-            let r0 = await ConversationMemoryAtRest.migrateAll(repo, subject: a, defaults: gd)
-            expect(r0.failed == 2 && !r0.complete && !ConversationMemoryAtRest.isMigrated(a, defaults: gd), "PR91 p91c-5 seal failure leaves the gate unset (retried next launch)")
+            let r0 = await ConversationMemoryAtRest.migrateAll(repo, subject: a, partition: "pA", defaults: gd)
+            expect(r0.failed == 2 && !r0.complete && !ConversationMemoryAtRest.isMigrated(a, partition: "pA", defaults: gd), "PR91 p91c-5 seal failure leaves the gate unset (retried next launch)")
             ConversationMemoryAtRest.sealer = realSealer
-            let r1 = await ConversationMemoryAtRest.migrateAll(repo, subject: a, defaults: gd)
+            let r1 = await ConversationMemoryAtRest.migrateAll(repo, subject: a, partition: "pA", defaults: gd)
             let rows = await repo.preferenceRecords(keyPrefix: ConversationMemoryAtRest.keyPrefix)
             let values = rows.compactMap { r -> (String, String)? in if case .preference(let p) = r.payload { return (p.key, p.value) }; return nil }
-            expect(r1.sealed == 2 && r1.complete && ConversationMemoryAtRest.isMigrated(a, defaults: gd)
+            expect(r1.sealed == 2 && r1.complete && ConversationMemoryAtRest.isMigrated(a, partition: "pA", defaults: gd)
                    && values.filter { $0.0 != k3 }.allSatisfy { ConversationMemoryAtRest.isSealed($0.1) && !$0.1.contains("望京") },
                    "PR91 p91c-5 retry seals ALL of the subject's rows, verifies them and sets the gate")
             expect(values.first { $0.0 == k3 }.map { !ConversationMemoryAtRest.isSealed($0.1) } == true, "PR91 p91c-5 another subject's rows are left for that subject")
+            // p91d-4: marker keyed by version + partition + subject; the scheduler waits for the sealer and retries.
+            expect(!ConversationMemoryAtRest.isMigrated(a, partition: "pB", defaults: gd)
+                   && ConversationMemoryAtRest.gateKey(a, partition: "pA").hasPrefix("catpaw.memory.atrest-sealed.v2.pA."),
+                   "PR91 p91d-4 completion marker is per partition and versioned")
+            let url2 = FileManager.default.temporaryDirectory.appendingPathComponent("pr91-atrest-\(UUID().uuidString).json")
+            let repo2 = try Repository(persistence: FilePersistence(url: url2))
+            try await repo2.commit(scope: sc, mutations: [.create(UUID(), .preference(.init(key: ConversationMemoryAtRest.keyPrefix + a.uuidString.lowercased() + ":" + UUID().uuidString.lowercased(), value: "{\"住址\":\"望京\"}")))])
+            let sched = AtRestMigrationScheduler(), sd = UserDefaults(suiteName: "pr91-sched-\(UUID().uuidString)")!
+            final class Flags: @unchecked Sendable { var ready = false, failOnce = true, sleeps = 0 }
+            let flags = Flags()
+            sched.defaults = sd; sched.delays = [1, 1, 1, 1]
+            sched.sealerReady = { _ in flags.ready }
+            sched.sleep = { _ in await MainActor.run { flags.sleeps += 1; flags.ready = true } }
+            let real = ConversationMemoryAtRest.sealer
+            ConversationMemoryAtRest.sealer = { d, subj in
+                if flags.failOnce { flags.failOnce = false; throw L2SecureStoreError.unavailable }
+                return try real!(d, subj)
+            }
+            sched.repositoryOpened(repo2, subject: a, partition: "pB")   // cold start: store open, sealer not ready yet
+            await sched.waitIdle()
+            let key = ConversationMemoryAtRest.gateKey(a, partition: "pB")
+            expect(sched.attempts[key] == 2 && sched.reports[key]?.complete == true && ConversationMemoryAtRest.isMigrated(a, partition: "pB", defaults: sd) && flags.sleeps == 2,
+                   "PR91 p91d-4 scheduler waits for the sealer, retries a failed run, then sets the marker (attempts \(sched.attempts[key] ?? -1), sleeps \(flags.sleeps))")
+            sched.repositoryOpened(repo2, subject: a, partition: "pB"); await sched.waitIdle()
+            expect(sched.attempts[key] == 2, "PR91 p91d-4 a completed partition is not migrated again")
+            ConversationMemoryAtRest.sealer = real
         } catch { expect(false, "PR91 p91c-5 at-rest migration fixture: \(error)") }
         expect(ConversationMemoryAtRest.open(row, subject: b) == nil, "PR91 #5 another subject cannot open the row")
         signOut(a)
