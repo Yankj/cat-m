@@ -88,6 +88,18 @@ struct CatpawNotificationPayload: Equatable, Sendable {
     /// Foreground: show Catpaw's own floating capsule instead of the system banner (V4 / #47).
     nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification) async -> UNNotificationPresentationOptions {
         let content = notification.request.content
+        // AccountEpoch (b): local + APNs proactive notifications pass the account check and the same device gate.
+        nonisolated(unsafe) let gateInfo = content.userInfo
+        let verdict: ProactiveAccountGate.Verdict = await MainActor.run {
+            var q = ProactiveEngine.shared.quota
+            let v = ProactiveAccountGate.verdict(gateInfo, epoch: .shared, now: .now, quota: &q)
+            ProactiveEngine.shared.quota = q; return v
+        }
+        switch verdict {
+        case .drop(let why): await MainActor.run { ProactiveEngine.shared.note("notification dropped: \(why)") }; return []
+        case .inboxOnly: await MainActor.run { CatpawProactiveFeed.shared.refreshSoon() }; return []
+        case .present: break
+        }
         let isProactive = content.userInfo["catpaw_proactive_id"] is String || content.userInfo["catpaw_proactive_event"] is String
         let link = CatpawNotificationPayload(userInfo: content.userInfo)?.conversationURL
             ?? (isProactive ? URL(string: "catpawm://proactive") : nil)
@@ -99,6 +111,7 @@ struct CatpawNotificationPayload: Equatable, Sendable {
     nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) async {
         let info = response.notification.request.content.userInfo, actionID = response.actionIdentifier
         nonisolated(unsafe) let sendableInfo = info
+        guard ProactiveAccountGate.belongsToCurrent(sendableInfo, epoch: .shared) else { return }  // other / stale account: no navigation, no action
         if await ProactiveEngine.shared.handleNotification(actionIdentifier: actionID, userInfo: sendableInfo) { return }
         guard let payload = CatpawNotificationPayload(userInfo: response.notification.request.content.userInfo) else { return }
         // Category buttons write back through /push/action; a plain tap counts as `open`.

@@ -213,6 +213,8 @@ struct ProactiveSignal: Equatable, Sendable {
         // Rule pre-filter
         let minutes = signal.start.timeIntervalSince(now) / 60
         guard ProactiveRules.inWindow(start: signal.start, now: now) else { note("filter drop: starts in \(Int(minutes)) min (window 0–180)"); return nil }
+        // AccountEpoch (b): bind this chain to the signed-in account before any await; every write below commits under it.
+        guard let token = AccountEpoch.shared.capture() else { note("signed out → no proactive work"); return nil }
         // Dedupe ledger
         let hash = signal.signalHash
         // Codex P0-5: "evaluated" ≠ "delivered". Delivered → never again; evaluated-silent → re-evaluate later.
@@ -276,27 +278,31 @@ struct ProactiveSignal: Equatable, Sendable {
             title: title, reason: reason,
             memories: memories, actions: [.create_reminder, .notify_attendees, .snooze, .dismiss],
             signals: signals, status: .pending, createdAt: now)
-        // A notification may have recovered and acted on this same meeting while evaluation awaited
-        // its response. Preserve that newer inbox state instead of replacing it with a pending card.
-        if let existing = ProactiveSuggestionStore.shared.items[suggestion.id] { return existing }
-        pendingReminders[suggestion.id] = .init(title: signal.title, due: remindAt, start: signal.start, place: signal.place,
-                                                operationID: "op-" + hash, leaveAt: leaveAt, leadMinutes: lead.minutes,
-                                                travelMinutes: usedETA ? travelMinutes : nil, usedETA: usedETA)
-        if !signal.attendeeNames.isEmpty || !signal.attendeeRecipients.isEmpty {
-            pendingAttendees[suggestion.id] = (signal.attendeeNames, signal.attendeeRecipients)
+        let committed: ProactiveSuggestion? = AccountEpoch.shared.commit(token) { () -> ProactiveSuggestion in
+            // A notification may have recovered and acted on this same meeting while evaluation awaited
+            // its response. Preserve that newer inbox state instead of replacing it with a pending card.
+            if let existing = ProactiveSuggestionStore.shared.items[suggestion.id] { return existing }
+            pendingReminders[suggestion.id] = .init(title: signal.title, due: remindAt, start: signal.start, place: signal.place,
+                                                    operationID: "op-" + hash, leaveAt: leaveAt, leadMinutes: lead.minutes,
+                                                    travelMinutes: usedETA ? travelMinutes : nil, usedETA: usedETA)
+            if !signal.attendeeNames.isEmpty || !signal.attendeeRecipients.isEmpty {
+                pendingAttendees[suggestion.id] = (signal.attendeeNames, signal.attendeeRecipients)
+            }
+            rememberServerID(local: suggestion.id)
+            ProactiveLocalBackend.save(suggestion)
+            ProactiveSuggestionStore.shared.adopt(suggestion)
+            lastSuggestionID = suggestion.id
+            intervene(suggestion, level: decision.level, now: now, token: token)
+            var delivered = signalLedger; delivered.markDelivered(hash, level: decision.level, now: now); signalLedger = delivered
+            #if os(iOS)
+            // Exactly once: the in-app delivery supersedes this meeting's pre-scheduled notification.
+            UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ["pre-" + signal.eventID])
+            #endif
+            var q = quota; if q.entries[suggestion.id]?.state == .reserved { q.release(suggestion.id, now: now) }; quota = q
+            return suggestion
         }
-        rememberServerID(local: suggestion.id)
-        ProactiveLocalBackend.save(suggestion)
-        ProactiveSuggestionStore.shared.adopt(suggestion)
-        lastSuggestionID = suggestion.id
-        intervene(suggestion, level: decision.level, now: now)
-        var delivered = signalLedger; delivered.markDelivered(hash, level: decision.level, now: now); signalLedger = delivered
-        #if os(iOS)
-        // Exactly once: the in-app delivery supersedes this meeting's pre-scheduled notification.
-        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ["pre-" + signal.eventID])
-        #endif
-        var q = quota; if q.entries[suggestion.id]?.state == .reserved { q.release(suggestion.id, now: now) }; quota = q
-        return suggestion
+        guard let committed else { note("account changed during evaluation → dropped (no save / notification / widget)"); return nil }
+        return committed
     }
 
     struct Decision {
@@ -372,7 +378,7 @@ struct ProactiveSignal: Equatable, Sendable {
     }
     private func deliveredToday(_ now: Date) -> Int { quota.count(on: now) }
 
-    private func intervene(_ s: ProactiveSuggestion, level: ProactiveLevel, now: Date) {
+    private func intervene(_ s: ProactiveSuggestion, level: ProactiveLevel, now: Date, token: AccountToken) {
         #if os(iOS)
         let ownReservation = quota.entries[s.id]?.state == .reserved ? 1 : 0  // this identity's own pre-scheduled slot
         let plan = ProactiveRules.delivery(level: level, now: now, deliveredToday: deliveredToday(now) - ownReservation)
@@ -381,14 +387,18 @@ struct ProactiveSignal: Equatable, Sendable {
         CatpawInAppBannerCenter.shared.show(CatpawInAppBanner(title: s.title, body: s.reason, symbol: "calendar.badge.clock", deepLink: URL(string: "catpawm://proactive")))
         guard plan.systemNotification else { note("intervene card only (no system notification) id=\(s.id)"); return }
         var q = quota
+        let deliveryID = serverIDs[s.id] ?? s.id  // one delivery id shared with APNs (server event_id when known)
+        q.alias(deliveryID, to: s.id)
         guard q.recordDelivery(s.id, at: now) else { note("intervene skipped: \(s.id) already delivered as a system notification"); return }
         quota = q
         let content = UNMutableNotificationContent()
         content.title = s.title; content.body = s.reason; content.sound = plan.sound ? .default : nil
         if plan.timeSensitive { content.interruptionLevel = .timeSensitive }
         content.categoryIdentifier = Self.notificationCategory
-        content.userInfo = ["catpaw_proactive_id": s.id]
-        let request = UNNotificationRequest(identifier: s.id, content: content, trigger: UNTimeIntervalNotificationTrigger(timeInterval: 2, repeats: false))
+        var info: [AnyHashable: Any] = ["catpaw_proactive_id": s.id]
+        ProactiveAccountGate.stamp(&info, token, deliveryID: deliveryID, level: plan.level)
+        content.userInfo = info
+        let request = UNNotificationRequest(identifier: deliveryID, content: content, trigger: UNTimeIntervalNotificationTrigger(timeInterval: 2, repeats: false))
         Task {
             let center = UNUserNotificationCenter.current()
             _ = try? await center.requestAuthorization(options: [.alert, .sound, .badge])
@@ -566,6 +576,7 @@ struct ProactiveSignal: Equatable, Sendable {
         #if canImport(EventKit) && os(iOS)
         let status = EKEventStore.authorizationStatus(for: .event)
         guard status == .fullAccess || status == .authorized else { return }
+        guard let token = AccountEpoch.shared.capture() else { return }
         let now = Date.now, lead = await leadTime()
         let predicate = store.predicateForEvents(withStart: now, end: now.addingTimeInterval(24 * 3600), calendars: nil)
         guard let e = store.events(matching: predicate).filter({ !$0.isAllDay && $0.startDate > now }).sorted(by: { $0.startDate < $1.startDate }).first else { return }
@@ -605,13 +616,29 @@ struct ProactiveSignal: Equatable, Sendable {
             "catpaw_proactive_due": e.startDate.addingTimeInterval(TimeInterval(-lead.minutes * 60)).timeIntervalSince1970,
             "catpaw_proactive_place": signal.place,
         ]
+        ProactiveAccountGate.stamp(&content.userInfo, token, deliveryID: identity, level: level)
         let comps = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: fire)
-        try? await UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: "pre-" + e.calendarItemIdentifier, content: content, trigger: UNCalendarNotificationTrigger(dateMatching: comps, repeats: false)))
+        let request = UNNotificationRequest(identifier: "pre-" + e.calendarItemIdentifier, content: content, trigger: UNCalendarNotificationTrigger(dateMatching: comps, repeats: false))
+        guard AccountEpoch.shared.commit(token, { UNUserNotificationCenter.current().add(request) { _ in } }) != nil else {
+            var undo = quota; undo.release(identity, now: .now); quota = undo
+            note("preschedule dropped: account changed while scheduling"); return
+        }
         note("prescheduled notification at \(fire.formatted(date: .omitted, time: .shortened)) for \(e.title ?? "")")
         #endif
     }
 
     #if os(iOS)
+    /// AccountEpoch (b): after sign-out / account switch, remove every pending + delivered proactive notification and
+    /// end the leave Live Activities. Call right after `AccountEpoch.shared.signOut()` (owner: auth flow, see report).
+    func accountDidChange() async {
+        let center = UNUserNotificationCenter.current()
+        let pending = await center.pendingNotificationRequests().filter { ProactiveAccountGate.isProactive($0.content.userInfo) }.map(\.identifier)
+        let shown = await center.deliveredNotifications().filter { ProactiveAccountGate.isProactive($0.request.content.userInfo) }.map(\.request.identifier)
+        center.removePendingNotificationRequests(withIdentifiers: pending); center.removeDeliveredNotifications(withIdentifiers: shown)
+        for id in ProactiveSuggestionStore.shared.items.keys { CatpawLeaveActivity.stop(suggestionID: id) }
+        quota = ProactiveQuotaLedger()
+        note("account changed → removed \(pending.count) pending / \(shown.count) delivered proactive notifications")
+    }
     static var categories: Set<UNNotificationCategory> {
         let isChinese = Locale.current.language.languageCode?.identifier == "zh"
         return [UNNotificationCategory(identifier: notificationCategory, actions: [
