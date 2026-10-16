@@ -172,6 +172,7 @@ struct ProactiveSignal: Equatable, Sendable {
     /// `ask`: only explicit user actions (debug panel, permission card) may show the system prompt; background /
     /// foreground scans stay silent while the status is undetermined.
     func scanCalendar(source: ProactiveSignal.Source = .eventKit, ask: Bool = false) async {
+        await drainSync()  // Codex PR90 #5: retry write-backs left over from a failure or a previous launch
         #if canImport(EventKit)
         let status = EKEventStore.authorizationStatus(for: .event)
         if status == .notDetermined && !ask { return }
@@ -342,8 +343,15 @@ struct ProactiveSignal: Equatable, Sendable {
         guard status == 200 else { return nil }
         return try? JSONSerialization.jsonObject(with: data) as? [String: Any]
     }
-    /// Server suggestion id per local suggestion, for action/undo/feedback write-back.
-    private(set) var serverIDs: [String: String] = [:]
+    /// Server suggestion id per local suggestion, for action/undo/feedback write-back. Persisted (Codex PR90 #5).
+    private static let serverIDsKey = "catpaw.proactive.serverIDs.v1"
+    private(set) var serverIDs: [String: String] {
+        get { (UserDefaults.standard.dictionary(forKey: Self.serverIDsKey) as? [String: String]) ?? [:] }
+        set { UserDefaults.standard.set(newValue, forKey: Self.serverIDsKey) }
+    }
+    /// Pending action/undo write-backs: persisted, retried with backoff, bound to the account (Codex PR90 #5).
+    struct SyncOp: Codable, Sendable { var local: String; var action: String; var operationID: String }
+    let syncQueue = CatpawPersistentQueue<SyncOp>(name: "proactive.sync")
     private var lastRemote: [String: Any]?
     /// `POST /catpaw/proactive/v1/evaluate`; nil (offline / not deployed) → local rules.
     private func evaluateRemote(_ s: ProactiveSignal, leadMinutes: Int, travelMinutes: Int? = nil) async -> Decision? {
@@ -361,11 +369,23 @@ struct ProactiveSignal: Equatable, Sendable {
     func rememberServerID(local: String) {
         if let sug = lastRemote?["suggestion"] as? [String: Any], let id = sug["id"] as? String { serverIDs[local] = id }
         else if let id = lastRemote?["event_id"] as? String { serverIDs[local] = id }
+        if serverIDs[local] != nil, syncQueue.items.contains(where: { $0.op.local == local }) { Task { await drainSync() } }
     }
     func syncAction(_ action: String, local: String, operationID: String) {
-        guard let id = serverIDs[local] else { return }
-        Task { let r = await Self.post("suggestions/\(id)/\(action == "undo" ? "undo" : "action")", action == "undo" ? ["operation_id": operationID] : ["action": action, "operation_id": operationID])
-            note("server \(action) id=\(id) \(r == nil ? "failed (kept local)" : "recorded")") }
+        syncQueue.enqueue(SyncOp(local: local, action: action, operationID: operationID), key: operationID, account: AccountEpoch.shared.currentAccount)
+        Task { await drainSync() }
+    }
+    /// Sends due write-backs. A missing server id (evaluated offline) or a network failure → retry later; restart-safe.
+    func drainSync() async {
+        guard let token = AccountEpoch.shared.capture() else { return }
+        let r = await syncQueue.drain(account: token.account) { op in
+            guard AccountEpoch.shared.isValid(token) else { return .retry }
+            guard let id = self.serverIDs[op.local] else { return .retry }
+            let res = await Self.post("suggestions/\(id)/\(op.action == "undo" ? "undo" : "action")", op.action == "undo" ? ["operation_id": op.operationID] : ["action": op.action, "operation_id": op.operationID])
+            self.note("server \(op.action) id=\(id) \(res == nil ? "failed → queued for retry" : "recorded")")
+            return res == nil ? .retry : .done
+        }
+        if r.sent + r.retried + r.dropped > 0 { note("sync queue sent=\(r.sent) retry=\(r.retried) dead=\(r.dropped) left=\(syncQueue.items.count)") }
     }
 
     // MARK: Intervene: card + banner + actionable notification
@@ -637,6 +657,7 @@ struct ProactiveSignal: Equatable, Sendable {
         center.removePendingNotificationRequests(withIdentifiers: pending); center.removeDeliveredNotifications(withIdentifiers: shown)
         for id in ProactiveSuggestionStore.shared.items.keys { CatpawLeaveActivity.stop(suggestionID: id) }
         quota = ProactiveQuotaLedger()
+        syncQueue.purge(account: nil); serverIDs = [:]  // the previous account's write-backs never go out under the next one
         note("account changed → removed \(pending.count) pending / \(shown.count) delivered proactive notifications")
     }
     static var categories: Set<UNNotificationCategory> {
