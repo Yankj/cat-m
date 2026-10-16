@@ -1,4 +1,4 @@
-import {createRenderUITool,RENDER_UI} from './core/src/generative-ui.mjs';import {createAgentMemoryService} from './agent-memory/service.mjs';import {createAgentMemoryChatTools} from './agent-memory/chat-tools.mjs';import {featureAllows} from './config.mjs';import {createEnrollmentRegistry} from './enrollment/registry.mjs';import {createEnrollmentService} from './enrollment/service.mjs';import {FEATURES} from './enrollment/contract.mjs';import {createSuggestionFeed} from './proactive/suggestion-feed.mjs';import {createDeviceTools} from './core/src/device-call.mjs';
+import {createRenderUITool,RENDER_UI} from './core/src/generative-ui.mjs';import {createAgentMemoryService,createAgentMemoryPrivacy} from './agent-memory/service.mjs';import {createAgentMemoryChatTools} from './agent-memory/chat-tools.mjs';import {featureAllows} from './config.mjs';import {createEnrollmentRegistry} from './enrollment/registry.mjs';import {createEnrollmentService} from './enrollment/service.mjs';import {FEATURES} from './enrollment/contract.mjs';import {createSuggestionFeed} from './proactive/suggestion-feed.mjs';import {createDeviceTools} from './core/src/device-call.mjs';
 import {createTaskChatTools} from './proactive/chat-tools.mjs';import {createProactiveService} from './proactive/service.mjs';
 import {createFollowupTriggerHTTPHandler} from './core/src/followup-trigger-http.mjs';
 import {readInboxPage} from './core/src/inbox-service.mjs';
@@ -124,6 +124,8 @@ export async function createCloudRuntime({repository,authenticate,config,retain=
   if(uiGate!=='off')registry.set(RENDER_UI,createRenderUITool({allow:turn=>gate(uiGate,turn,'generative_ui')}));
   // catpaw.agent-memory.v1 (Wave 2 B1): CATPAW_AGENT_MEMORY_ENABLED default on (allowlist/off honored; BLOCKLIST_SUBJECTS wins); needs migration 20261016090000 (not applied).
   const memoryGate=config.agentMemory??'off';
+  // Codex PR91 v2-3: the stored privacy off is read whenever the store exists, even with the feature gate off.
+  if(agentMemoryStore)runtime.facade.agentMemoryPrivacy=createAgentMemoryPrivacy({store:agentMemoryStore});
   if(agentMemoryStore&&memoryGate!=='off'){const service=createAgentMemoryService({store:agentMemoryStore,allow:uid=>featureAllows(memoryGate,config.featureAllowlist,uid,enrolled,'agent_memory'),verifyUser:typeof verifyToken==='function'?h=>verifyToken(h):null,schedulerSecret:config.schedulerSecret??null,...agentMemoryOptions});
    runtime.facade.agentMemory=service;runtime.agentMemory=service;for(const [name,tool] of createAgentMemoryChatTools({service}))registry.set(name,tool);}
   // proactive_suggestion SSE (catpaw.proactive.decision.v1): CATPAW_PROACTIVE_SUGGESTIONS_SSE_ENABLED default on (allowlist/off honored; BLOCKLIST_SUBJECTS wins); needs migrations 20261016030000 + 20261016040000.

@@ -107,7 +107,9 @@ export class ChatService {
       if(this.beforeTurnAdmission)t.source_auth=await this.beforeTurnAdmission(tx,{principal,scope,conversation:c,turn:t});
       // Codex PR91 p91d-3: ONE effective off for both memory systems — agent-memory settings off, OR header 0, OR the
       // legacy user switch off. The header is only an extra restriction; it never re-enables either side.
-      const agentOff=this.facade.agentMemory?.userTurnedOff?await this.facade.agentMemory.userTurnedOff(principal.subject_id):false;
+      // v2-3: the privacy reader does not depend on the feature gate (the service is absent when the gate is off).
+      const privacy=this.facade.agentMemoryPrivacy??this.facade.agentMemory;
+      const agentOff=privacy?.userTurnedOff?await privacy.userTurnedOff(principal.subject_id):false;
       const legacyOff=this.integration?.memoryUserDisabled?await this.integration.memoryUserDisabled(tx,{principal,scope}):false;
       const memoryOff=useMemory==='0'||agentOff||legacyOff;
       const memoryUsage=memoryOff?null:await this.integration?.memoryUsage?.(tx,{principal,scope,conversation:c,turn:t});
