@@ -461,43 +461,41 @@ final class NativeAuthApplicationLifecycleTests:XCTestCase {
         }
     }
 
-    /// Codex PR91 p91c-3: sign-out ends every Live Activity (stopAll) before its first await, after the epoch closed.
+    /// Codex PR91 p91c-3: sign-out stops every Live Activity after the epoch closed and before its first await.
+    /// Model constructed directly (no start / lifecycle gate); one deterministic await on signOut().
     @MainActor func testPR91SignOutStopsLiveActivitiesBeforeFirstAwait() async throws {
         let root=FileManager.default.temporaryDirectory.appendingPathComponent("native-pr91-signout-order-"+UUID().uuidString,isDirectory:true)
-        defer {try? FileManager.default.removeItem(at:root);NativeAuthApplicationModel.signOutTrace=nil;CatpawLeaveActivity.stopAllObserver=nil}
-        let (app,_)=try await pr91SignedInApp(root:root)
-        let order=PR91CallOrder()
-        CatpawLeaveActivity.stopAllObserver={order.add(AccountEpoch.shared.capture()==nil ? "stopAll(epochClosed)" : "stopAll(epochOpen)")}
-        NativeAuthApplicationModel.signOutTrace={order.add($0)}
+        defer {try? FileManager.default.removeItem(at:root);AccountEpoch.shared.signOut()}
+        let app=try pr91Model(root:root),order=PR91CallOrder()
+        AccountEpoch.shared.activate(account:UUID().uuidString)
+        app.stopLiveActivities={order.add(AccountEpoch.shared.capture()==nil ? "stopAll(epochClosed)" : "stopAll(epochOpen)")}
+        app.signOutTrace={order.add($0)}
         await app.signOut()
-        let calls=order.calls
-        XCTAssertEqual(calls.first,"stopAll(epochClosed)","stopAll must run first, after AccountEpoch.signOut(): \(calls)")
-        let stop=try XCTUnwrap(calls.firstIndex(of:"stopAll(epochClosed)")),firstAwait=try XCTUnwrap(calls.firstIndex(of:"firstAwait"))
-        XCTAssertLessThan(stop,firstAwait,"stopAll must precede the first await of signOut: \(calls)")
+        XCTAssertEqual(Array(order.calls.prefix(2)),["stopAll(epochClosed)","firstAwait"],"stopAll runs once, after AccountEpoch.signOut(), before the first await: \(order.calls)")
+        XCTAssertEqual(order.calls.filter {$0.hasPrefix("stopAll")}.count,1)
     }
 
-    /// Codex PR91 p91c-5: the all-row at-rest memory migration is started when the signed-in chat is composed at launch.
+    /// Codex PR91 p91c-5: the launch hook hands the composed repository and the signed-in subject to the migrator.
+    /// Synchronous: the injected migrator records the call; no lifecycle gate, no polling.
     @MainActor func testPR91LaunchStartsAtRestMemoryMigration() async throws {
         let root=FileManager.default.temporaryDirectory.appendingPathComponent("native-pr91-atrest-launch-"+UUID().uuidString,isDirectory:true)
-        defer {try? FileManager.default.removeItem(at:root);NativeAuthApplicationModel.atRestMigrationTrace=nil}
-        let started=PR91CallOrder()
-        NativeAuthApplicationModel.atRestMigrationTrace={started.add($0.uuidString)}
-        let (app,subject)=try await pr91SignedInApp(root:root)
-        XCTAssertFalse(started.calls.isEmpty,"launch must start ConversationMemoryAtRest.migrateAll")
-        XCTAssertTrue(started.calls.allSatisfy {$0==subject.uuidString},"migration runs only for the signed-in subject: \(started.calls)")
-        await app.signOut()
+        defer {try? FileManager.default.removeItem(at:root)}
+        let app=try pr91Model(root:root),order=PR91CallOrder()
+        let repository=try Repository(persistence:FilePersistence(url:root.appendingPathComponent("pr91-store.json")))
+        let seen=PR91CallOrder()
+        app.atRestMigrator={repo,subject in seen.add("\(ObjectIdentifier(repo))");order.add(subject.uuidString)}
+        let subject=UUID()
+        app.launchAtRestMigration(repository,subject:subject)
+        XCTAssertEqual(order.calls,[subject.uuidString],"migrator called once for the signed-in subject")
+        XCTAssertEqual(seen.calls,["\(ObjectIdentifier(repository))"],"migrator gets the composed repository")
+        app.launchAtRestMigration(repository)   // no signed-in user and no subject → nothing to migrate
+        XCTAssertEqual(order.calls.count,1)
     }
 
-    @MainActor private func pr91SignedInApp(root:URL) async throws -> (NativeAuthApplicationModel,UUID) {
-        let scope=UUID(),clock=AuthTestClock(),storage=LifecycleStorage(),configuration=try lifecycleConfiguration(scope:scope)
-        let remote=AnonymousTestRemote(issuer:configuration.issuer,clock:clock)
-        try storage.save(await remote.candidate())
-        let subject=await remote.id
-        let manager=NativeAuthSessionManager(configuration:configuration,remote:remote,vault:storage,barrier:storage,now:{clock.now()})
-        let resolver=LifecycleWorkspaceResolver(subject:subject,scope:scope,steps:[.success,.success],accessToken:"synthetic.anon.signature")
-        let app=NativeAuthApplicationModel(configuration:configuration,manager:manager,vault:storage,barrier:storage,root:root,workspaceResolver:resolver,retryClock:LifecycleRetryClock())
-        await app.start();try await waitUntil {app.chat?.networkAdmissionAllowed == true}
-        return (app,subject)
+    @MainActor private func pr91Model(root:URL) throws -> NativeAuthApplicationModel {
+        let configuration=try lifecycleConfiguration(scope:UUID()),storage=LifecycleStorage()
+        let manager=NativeAuthSessionManager(configuration:configuration,remote:AnonymousTestRemote(issuer:configuration.issuer),vault:storage,barrier:storage)
+        return NativeAuthApplicationModel(configuration:configuration,manager:manager,vault:storage,barrier:storage,root:root)
     }
 
     @MainActor private func waitUntil(_ predicate:@escaping @MainActor () async -> Bool) async throws {
