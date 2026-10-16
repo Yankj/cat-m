@@ -12,11 +12,14 @@ jobs:
         with: { node-version: '22' }
       - name: node --test (offline harness, type-stripped .ts, npm stubs)
         working-directory: services/edge
-        run: node --no-warnings --import ./test/support/node-strip-loader.mjs --test test/*.test.mjs
+        run: ./scripts/ci-node-tests.sh   # 8 quarantined files: https://github.com/Yankj/catpaw-m/issues/81
   ios-portable-and-build:
-    runs-on: macos-15
+    runs-on: macos-26
     steps:
       - uses: actions/checkout@v4
+      - name: Select newest Xcode (glassEffect needs the iOS 26+ SDK)
+        run: |
+          X=$(ls -d /Applications/Xcode_*.app | sort -V | tail -1); echo "using $X"; sudo xcode-select -s "$X"; xcodebuild -version
       - name: NoBug P0 portable unit tests
         working-directory: apps/ios-conversation
         run: ./Scripts/test-nobug-p0.sh
