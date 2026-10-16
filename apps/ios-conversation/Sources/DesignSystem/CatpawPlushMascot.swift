@@ -235,3 +235,75 @@ private struct PlushMascotClip: UIViewRepresentable {
         func teardown() { player.pause(); statusObs = nil; looper?.disableLooping(); looper = nil; playerLayer.player = nil }
     }
 }
+
+/// Header mascot in a small recessed circular well. Normally clipped inside; occasionally it "pops out"
+/// (naked-eye 3D, Taikoo Li billboard style): scales up over the rim and capsule, casts a growing shadow,
+/// then springs back and re-clips. Overlay-only, so layout never shifts. Reduce Motion → no pop.
+/// Triggers: reply done, conversation opened, tap. At most once per 20s (shared across instances).
+struct PlushMascotWell: View {
+    var state: CatpawPresenceState
+    var conversationKey: AnyHashable?
+    var size: CGFloat = 28
+    var well: CGFloat = 32
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var popped = false
+    @State private var popTask: Task<Void, Never>?
+    @MainActor private static var lastPop = Date.distantPast
+    static let minInterval: TimeInterval = 20
+
+    var body: some View {
+        ZStack {
+            // Recessed well: sunken fill, inner shadow, rim highlight.
+            Circle()
+                .fill(CatpawColors.panel)
+                .overlay(
+                    Circle().stroke(CatpawBrand.clayShadow.opacity(0.22), lineWidth: 3)
+                        .blur(radius: 2).offset(y: 1.2).mask(Circle())
+                )
+                .overlay(
+                    Circle().strokeBorder(
+                        LinearGradient(colors: [CatpawBrand.clayShadow.opacity(0.18), .white.opacity(0.9)],
+                                       startPoint: .top, endPoint: .bottom),
+                        lineWidth: 1)
+                )
+            // Soft drop shadow cast on the capsule while the cat is out.
+            Ellipse()
+                .fill(CatpawBrand.clayShadow.opacity(popped ? 0.22 : 0))
+                .frame(width: well * (popped ? 1.25 : 0.6), height: well * 0.28)
+                .blur(radius: popped ? 4 : 1)
+                .offset(x: popped ? 4 : 0, y: well * 0.62)
+        }
+        .frame(width: well, height: well)
+        // The cat lives in an overlay so scaling never affects layout; when popped it is unclipped and
+        // drawn above the rim (the part crossing the edge sits in front of it).
+        .overlay {
+            PlushMascot(pose: popped ? .done : PlushMascotPose(state), size: size)
+                .frame(width: well, height: well)
+                .clipShape(Circle().scale(popped ? 3 : 1))
+                .scaleEffect(popped ? 1.7 : 1, anchor: .bottom)
+                .offset(x: popped ? 3 : 0, y: popped ? 5 : 0)
+                .shadow(color: CatpawBrand.clayShadow.opacity(popped ? 0.25 : 0), radius: popped ? 5 : 0, y: popped ? 3 : 0)
+        }
+        .zIndex(popped ? 10 : 0)
+        .contentShape(Circle())
+        .onTapGesture { pop() }
+        .onChange(of: state) { _, s in if s == .done { pop() } }
+        .onChange(of: conversationKey, initial: true) { _, _ in pop(delay: 0.6) }
+        .onDisappear { popTask?.cancel(); popped = false }
+        .accessibilityHidden(true)
+    }
+
+    private func pop(delay: Double = 0) {
+        guard !reduceMotion, !popped, Date().timeIntervalSince(Self.lastPop) >= Self.minInterval else { return }
+        Self.lastPop = Date()
+        popTask?.cancel()
+        popTask = Task { @MainActor in
+            if delay > 0 { try? await Task.sleep(for: .seconds(delay)) }
+            guard !Task.isCancelled else { return }
+            withAnimation(.spring(response: 0.28, dampingFraction: 0.62)) { popped = true }
+            try? await Task.sleep(for: .milliseconds(420))
+            guard !Task.isCancelled else { popped = false; return }
+            withAnimation(.spring(response: 0.34, dampingFraction: 0.78)) { popped = false }
+        }
+    }
+}
