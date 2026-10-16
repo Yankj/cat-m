@@ -60,6 +60,16 @@ def run():
         blocked={item['path'] for item in internal_result[1]['blocking_hits'] if item['category']=='excluded_directory_kind'}
         assert blocked==set(internal),'An original repository-relative directory exclusion was weakened'
 
+        # Email rule (addresses assembled at runtime, like the credential fixture below): real dotted-domain addresses are still caught; @2x/@3x image scale names are not.
+        emails=base/'email'/'candidate'
+        make_fixture(emails,{'Contents.json':'{ "images" : [ { "filename" : "Mark@2x.png", "scale" : "2x" }, { "filename" : "Mark@3x.png", "scale" : "3x" } ] }\n',
+                             'brand.py':'open("Logo@2x.png"); open("Logo@3x.pdf")\n',
+                             'contact.txt':'mail reviewer.name'+'@'+'corp-mail.org\nshort a'+'@'+'x.cn\n'})
+        email_result=scan(emails)
+        email_hits={(item['path'],item.get('line')) for item in email_result[1]['manual_review_hits'] if item['category']=='email_review'}
+        assert email_hits=={('contact.txt',1),('contact.txt',2)},'Email rule changed: real addresses must be caught, image scale names must not'
+        assert email_result[0]==1
+
         # Construct a syntactically valid credential only in the temporary Git
         # candidate. It is never printed, committed or transmitted.
         secret='gh'+'p_'+hashlib.sha256(b'named scanner credential fixture').hexdigest()

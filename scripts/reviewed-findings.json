@@ -1901,6 +1901,24 @@
       "line": 459,
       "sha256": "ce734c055ee32a7a0e6977cc9cee353d0dee14ba3bc982665af5d8563da59f26",
       "reason": "Reviewed named offline auth fixture: synthetic public-key/access-token markers and injected mock remotes only; no real credential or network request. Exact current bytes and line pinned. Re-pinned 2026-10-17 after adding the PR91 XCTests (same synthetic markers, lines shifted)."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NoBugP0Runner.swift",
+      "category": "email_review",
+      "line": 256,
+      "sha256": "e7a33b406c66835459c16102d9375da295059532e80abdf761f48085efa96e90",
+      "reason": "Test fixture: synthetic contact email (a at x.cn) for the minimalContact privacy test; not a real address.",
+      "reviewed_utc_date": "2026-10-17",
+      "reviewer": "Grok Bot"
+    },
+    {
+      "path": "services/edge/test/proactive-decision.test.mjs",
+      "category": "secret_assignment_review",
+      "line": 93,
+      "sha256": "cc1bab0a73a324c77e4715c9025baa71834dd53c3d471dc2f499d26be087866e",
+      "reason": "Test fixture: placeholder model keys (k-or-xxxxxxxx / k-ag-xxxxxxxx) in an env stub; no real credential.",
+      "reviewed_utc_date": "2026-10-17",
+      "reviewer": "Grok Bot"
     }
   ]
 }
