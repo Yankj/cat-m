@@ -80,6 +80,10 @@ export function createDecisionService({ store, model = null, memory = null, now 
 
   async function evaluate(uid, input) {
     const { signals, context } = validateEvaluate(input), at = now(), tz = context.time_zone || cfg.timeZone;
+    // Codex PR90d P2: a pre-scheduled notification is judged at its future fire instant (quiet hours / daily cap),
+    // bounded to [now, now+36h]; anything else is ignored and the request time is used.
+    const ea = typeof context.evaluate_at === 'string' ? Date.parse(context.evaluate_at) : NaN;
+    const when = Number.isFinite(ea) && ea >= at && ea <= at + 36 * 3600_000 ? ea : at;
     const hashes = await Promise.all(signals.map(signalHash));
     const since = new Date(at - cfg.dedupeWindowSec * 1000).toISOString();
     const seen = await store.seenSignalHashes(uid, hashes, since);
@@ -105,8 +109,8 @@ export function createDecisionService({ store, model = null, memory = null, now 
     // Codex P0-3: far below the bar → say nothing (a 1% guess must not become a card).
     if (decision !== 'silent' && conf < threshold - cfg.silentMargin) { trace.push(`confidence ${conf.toFixed(2)} < ${(threshold - cfg.silentMargin).toFixed(2)}: ${proposed} → silent`); decision = 'silent'; }
     else if (decision !== 'silent' && conf < threshold) { const steps = conf < threshold - 0.15 ? 2 : 1; decision = LEVELS[Math.max(1, lvl(decision) - steps)]; trace.push(`confidence ${conf.toFixed(2)} < threshold ${threshold.toFixed(2)}: ${proposed} → ${decision}`); }
-    if (lvl(decision) >= 2 && isQuiet(at, tz, cfg.quietHours)) { trace.push(`quiet hours: ${decision} → card`); decision = 'card'; }
-    if (lvl(decision) >= 2) { const n = await store.countDecisionsSince(uid, new Date(localDayStart(at, tz)).toISOString(), ['notify', 'interrupt']); if (n >= cfg.dailyCap) { trace.push(`daily cap ${cfg.dailyCap} reached: ${decision} → card`); decision = 'card'; } }
+    if (lvl(decision) >= 2 && isQuiet(when, tz, cfg.quietHours)) { trace.push(`quiet hours: ${decision} → card`); decision = 'card'; }
+    if (lvl(decision) >= 2) { const n = await store.countDecisionsSince(uid, new Date(localDayStart(when, tz)).toISOString(), ['notify', 'interrupt']); if (n >= cfg.dailyCap) { trace.push(`daily cap ${cfg.dailyCap} reached: ${decision} → card`); decision = 'card'; } }
     // Codex PR90 #1: "evaluated" ≠ "delivered" in the cloud too. Only a delivered (non-silent) decision closes the
     // dedupe window; a silent verdict (incl. a dedupe hit) never refreshes seen_at, so the meeting is re-evaluated as it nears.
     if (decision !== 'silent') await store.markSignalHashes(uid, hashes, new Date(at).toISOString());
@@ -175,8 +179,12 @@ export function createDecisionService({ store, model = null, memory = null, now 
       if (effect) { const offered = (ev.payload.actions ?? []).filter(a => EFFECTS.includes(a)), done = actionStates(st); st.status = offered.every(a => done[a]) ? 'done' : 'pending'; }
       else st.status = ACTION_STATUS[action];
       if (opId) st.ops[opId] = action;
-      if (action === 'snooze') st.snooze_until = new Date(now() + (Number(b.minutes) > 0 ? Math.min(Number(b.minutes), 1440) : 10) * 60000).toISOString();
+      if (action === 'snooze') st.snooze_until = st.taken.at(-1).until = new Date(now() + (Number(b.minutes) > 0 ? Math.min(Number(b.minutes), 1440) : 10) * 60000).toISOString();
       return true;
+    }).then(async sug => {
+      // Codex PR90d #5: a dismissed / snoozed suggestion must not be pushed by a still-pending row.
+      if ((action === 'dismiss' || action === 'snooze') && store.cancelPendingPush) await store.cancelPendingPush(uid, id, 'suggestion_' + ACTION_STATUS[action]);
+      return sug;
     });
   }
   async function undo(uid, id, b = {}) {
@@ -189,7 +197,9 @@ export function createDecisionService({ store, model = null, memory = null, now 
       const [removed] = st.taken.splice(i, 1);
       const last = st.taken.at(-1)?.action, offered = (ev.payload.actions ?? []).filter(a => EFFECTS.includes(a)), done = actionStates(st);
       st.status = last === 'snooze' ? 'snoozed' : last === 'dismiss' ? 'dismissed' : (offered.length && offered.every(a => done[a]) ? 'done' : 'pending');
-      if (removed.action === 'snooze' || st.status !== 'snoozed') delete st.snooze_until;
+      // Codex PR90d #4: back to snoozed → the remaining (previous) snooze's own until, so it still resurfaces on time.
+      if (st.status === 'snoozed') { const prev = st.taken.findLast(t => t.action === 'snooze'); const until = prev?.until ?? (prev && new Date(Date.parse(prev.at) + 10 * 60000).toISOString()); if (until) st.snooze_until = until; else delete st.snooze_until; }
+      else delete st.snooze_until;
       st.history.push({ undo: removed.action, at: new Date(now()).toISOString() });
       if (opId) st.ops['undo:' + opId] = true;
       return true;
