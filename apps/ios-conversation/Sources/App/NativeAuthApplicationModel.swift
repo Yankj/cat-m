@@ -760,6 +760,7 @@ struct NativeWorkspaceRetrySchedule: Sendable {
         // Close manager admission immediately; local draining must not postpone its barrier.
         async let cleanup:Bool=finishDetaching(detached)
         try? FileManager.default.removeItem(at:receiptURL)
+        AccountLocalData.signOut(userID: state.user?.id)   // Codex P0-2: local memory, proactive items, pending reports
         if let uid = state.user?.id { L2SecureStore.wipe(userID: uid) }
         error=nil
         do { try await manager.signOut() } catch { self.error = NativeAuthError.storage.localizedDescription }
