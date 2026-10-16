@@ -169,6 +169,55 @@ import EventKit
         }
     }
 
+    /// Codex p89e-2: revoked while the reminder dedupe fetch was suspended → the dedupe hit is refused at the commit gate.
+    func testReminderDedupeHitRechecksRevoke() async throws {
+        try need(.reminder)
+        let id = "xctest-rem-revoke-" + UUID().uuidString
+        let call = DeviceCall(call_id: id, tool: "reminder_create", args: ["title": .string("p89e dedupe revoke")], confirm: .card, ttl_sec: 600)
+        DeviceCallGate.receive(call)
+        let router = DeviceToolRouter(store: Self.sharedStore)
+        let first = await router.execute(call, credential: try XCTUnwrap(credential(call)))
+        XCTAssertEqual(first.status, .ok)
+        let c2 = try XCTUnwrap(credential(call))
+        DeviceCallGate.beforeCommitHook = { DeviceCallGate.revokedIDs.insert([id]) }   // lands after the awaited fetch, before success
+        let second = await router.execute(call, credential: c2)
+        DeviceCallGate.beforeCommitHook = nil
+        XCTAssertEqual(second.data?["reason"], .string("call_revoked"), "\(String(describing: second.data))")
+        XCTAssertNil(second.data?["deduped"])
+        Self.sharedStore.reset()
+        let all: [EKReminder] = await withCheckedContinuation { c in Self.sharedStore.fetchReminders(matching: Self.sharedStore.predicateForReminders(in: nil)) { c.resume(returning: $0 ?? []) } }
+        for r in all where r.notes?.contains(DeviceToolContract.callMarker(id)) == true { try? Self.sharedStore.remove(r, commit: true) }
+    }
+
+    /// Codex p89e-3: REAL EventKit adapter. A stale id (moved / re-synced item) is resolved by the call marker and removed;
+    /// an id that can't be resolved and has no marker stays `.unknown` (never "already gone", never marked undone).
+    func testRealEventKitLedgerAdapterKeepsUnknownWhenAbsenceUnproven() async throws {
+        try need(.event); try need(.reminder)
+        let start = Date().addingTimeInterval(11 * 86400)
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("ledger-real-\(UUID().uuidString).json")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let ledger = DeviceLedger(url: url, epoch: DeviceCallGate.epoch, items: EventKitLedgerItemStore(store: Self.sharedStore))
+        let token = try XCTUnwrap(DeviceCallGate.epoch.capture())
+        // 1) event exists, ledger id is stale → found by marker → removed.
+        let moved = calCall("xctest-ledger-moved-" + UUID().uuidString, start)
+        let e = EKEvent(eventStore: store); e.title = "p89e moved"; e.startDate = start; e.endDate = start.addingTimeInterval(1800)
+        e.notes = DeviceToolContract.callMarker(moved.call_id); e.calendar = store.defaultCalendarForNewEvents
+        try store.save(e, span: .thisEvent, commit: true)
+        ledger.record(call: moved, result: .init(call_id: moved.call_id, status: .ok, data: ["event_id": .string("stale-" + UUID().uuidString)]), token: token)
+        XCTAssertEqual(ledger.undo(callID: moved.call_id), .undone)
+        XCTAssertEqual(events(with: [moved.call_id], around: start), 0, "the real item was removed")
+        // 2) unresolvable id, no marker anywhere → unknown, not undone.
+        let ghost = calCall("xctest-ledger-ghost-" + UUID().uuidString, start)
+        ledger.record(call: ghost, result: .init(call_id: ghost.call_id, status: .ok, data: ["event_id": .string("gone-" + UUID().uuidString)]), token: token)
+        XCTAssertEqual(ledger.undo(callID: ghost.call_id), .unknown)
+        XCTAssertFalse(ledger.isUndone(callID: ghost.call_id))
+        // 3) reminder id that doesn't resolve → unknown.
+        let rem = DeviceCall(call_id: "xctest-ledger-rem-" + UUID().uuidString, tool: "reminder_create", args: ["title": .string("x")], confirm: .card, ttl_sec: 600)
+        ledger.record(call: rem, result: .init(call_id: rem.call_id, status: .ok, data: ["reminder_id": .string("gone-" + UUID().uuidString)]), token: token)
+        XCTAssertEqual(ledger.undo(callID: rem.call_id), .unknown)
+        XCTAssertFalse(ledger.isUndone(callID: rem.call_id))
+    }
+
     /// Codex p89c-c: passive invalidation (loginRequired) closes the barrier synchronously and runs the account hooks.
     func testPassiveInvalidationIsSynchronous() async throws {
         let call = calCall("xctest-passive-" + UUID().uuidString, Date().addingTimeInterval(86400)); DeviceCallGate.receive(call)
@@ -280,11 +329,49 @@ actor WiringDeviceCallBackend: ConversationBackend {
     private var ek: EKEventStore { DeviceToolRouterEventKitTests.sharedStore }
     override func tearDown() async throws { DeviceCallGate.reset(); AccountEpoch.shared.activate(account: nil); DeviceCallGate.epoch = .shared; ConversationDeviceCall.lifecycle = nil }
 
+    /// Codex p89e-1: the operation's source = account AND login generation, pinned before its first await. The same account
+    /// signing out and back in while the operation is suspended must NOT let the old operation's device_call be granted.
+    func testSameAccountReloginDuringFirstAwaitRefusesOldOperation() async throws {
+        let account = UUID().uuidString
+        AccountEpoch.shared.activate(account: account)
+        let oldLogin = try XCTUnwrap(AccountEpoch.shared.capture())
+        DeviceCallGate.installLifecycle()
+        let id = "relogin-" + UUID().uuidString
+        let args: [String: DeviceCallValue] = ["title": .string("relogin")]
+        let wire = ConversationDeviceCall(interruptID: UUID().uuidString.lowercased(), callID: id, tool: "reminder_create", args: try JSONEncoder().encode(args), confirm: "card", ttlSec: 600,
+                                          argsHash: String(repeating: "a", count: 64), expiresAt: ISO8601DateFormatter().string(from: Date().addingTimeInterval(600)))
+        let repo = try Repository(persistence: FilePersistence(url: FileManager.default.temporaryDirectory.appendingPathComponent("relogin-\(UUID().uuidString).json")))
+        let service = ConversationSessionService(repository: repo, backend: WiringDeviceCallBackend(calls: [wire]), principalAccount: account)
+        let conversation = try await service.create(scope: Profiles.user)
+        var relogged: AccountToken?
+        ConversationSessionService.beforeClaimHook = {   // inside the operation, after its source was pinned
+            AccountEpoch.shared.signOut(); AccountEpoch.shared.activate(account: account); relogged = AccountEpoch.shared.capture()
+            ConversationSessionService.beforeClaimHook = nil
+        }
+        defer { ConversationSessionService.beforeClaimHook = nil }
+        let sending = Task { _ = try? await service.send(scope: Profiles.user, conversationID: conversation, text: "提醒我", operationID: UUID()) }
+        defer { sending.cancel() }
+        for _ in 0..<100 { try await Task.sleep(nanoseconds: 10_000_000) }
+        let newLogin = try XCTUnwrap(relogged)
+        XCTAssertEqual(newLogin.account, oldLogin.account); XCTAssertNotEqual(newLogin, oldLogin, "same account, new login generation")
+        XCTAssertFalse(DeviceCallGate.isLive(id), "the old operation's device_call is never granted under the new login")
+        // Counter-test: an operation that starts under the new login IS granted.
+        let id2 = "relogin-new-" + UUID().uuidString
+        let wire2 = ConversationDeviceCall(interruptID: UUID().uuidString.lowercased(), callID: id2, tool: "reminder_create", args: try JSONEncoder().encode(args), confirm: "card", ttlSec: 600,
+                                           argsHash: String(repeating: "a", count: 64), expiresAt: ISO8601DateFormatter().string(from: Date().addingTimeInterval(600)))
+        let service2 = ConversationSessionService(repository: repo, backend: WiringDeviceCallBackend(calls: [wire2]), principalAccount: account)
+        let c2 = try await service2.create(scope: Profiles.user)
+        let sending2 = Task { _ = try? await service2.send(scope: Profiles.user, conversationID: c2, text: "提醒我", operationID: UUID()) }
+        defer { sending2.cancel() }
+        for _ in 0..<300 where !DeviceCallGate.isLive(id2) { try await Task.sleep(nanoseconds: 10_000_000) }
+        XCTAssertTrue(DeviceCallGate.isLive(id2))
+    }
+
     func testAuthServiceGateRouterLedgerOnSharedEpoch() async throws {
         guard EKEventStore.authorizationStatus(for: .event) == .fullAccess else { return XCTFail("calendar access must be granted (simctl privacy) — a skip is a failure") }
         XCTAssertTrue(DeviceCallGate.epoch === AccountEpoch.shared)
         // Auth: real manager, shared barrier.
-        let config = try NativeAuthConfiguration(projectURL: URL(string: "https://abcdefghijklmnopqrst.supabase.co")!, publishableKey: "sb_publishable_offline_lifecycle_test",
+        let config = try NativeAuthConfiguration(projectURL: URL(string: "https://abcdefghijklmnopqrst.supabase.co")!, publishableKey: "sb_publishable_test_public_value",
                                                  backendOrigin: URL(string: "https://backend.example.invalid")!, serverScopeID: UUID())
         let clock = AuthTestClock(), storage = AuthTestStorage(), uid = UUID()
         let remote = AuthTestRemote(issuer: config.issuer, id: uid, clock: clock)

@@ -81,6 +81,7 @@ import UserNotifications
             // NoBug P0-3: dedupe by call_id — a relaunch after kill must not write a second event.
             let window = store.predicateForEvents(withStart: start.addingTimeInterval(-86400), end: end.addingTimeInterval(86400), calendars: nil)
             if let existing = store.events(matching: window).first(where: { $0.notes?.contains(marker) == true }) {
+                if let refused = save({}) { return refused }   // p89e-2: a dedupe hit reports success only through the commit gate
                 return done(.ok, ["event_id": .string(existing.eventIdentifier ?? ""), "deduped": .bool(true)], open: "calshow:\(Int(existing.startDate.timeIntervalSinceReferenceDate))")
             }
             let e = EKEvent(eventStore: store)
@@ -96,6 +97,7 @@ import UserNotifications
             guard await access(.reminder) else { return done(.denied) }
             if let refused = gate() { return refused }   // p89d-5
             if let existing = await existingReminder(call.call_id) {   // NoBug P0-3 dedupe
+                if let refused = save({}) { return refused }   // p89e-2: revoked while the fetch was suspended → refused, not "ok"
                 return done(.ok, ["reminder_id": .string(existing), "deduped": .bool(true)], open: "x-apple-reminderkit://")
             }
             let r = EKReminder(eventStore: store)
@@ -113,7 +115,8 @@ import UserNotifications
             if case .list(let to)? = a["to"] { vc.recipients = to } else if !s("to").isEmpty { vc.recipients = [s("to")] }
             vc.body = s("body")
             if let refused = gate() { return refused }
-            return done(await present(vc))
+            guard let st = await present(vc, commit: commit) else { return gate() ?? done(.error) }   // p89e-2: present inside the commit gate
+            return done(st)
         case "mail_compose":
             guard MFMailComposeViewController.canSendMail() else {
                 var c = URLComponents(); c.scheme = "mailto"; c.path = s("to").replacingOccurrences(of: "、", with: ",")
@@ -125,7 +128,8 @@ import UserNotifications
             vc.setCcRecipients(s("cc").split(whereSeparator: { "、, ".contains($0) }).map(String.init))
             vc.setSubject(s("subject")); vc.setMessageBody(s("body"), isHTML: false)
             if let refused = gate() { return refused }
-            return done(await present(vc))
+            guard let st = await present(vc, commit: commit) else { return gate() ?? done(.error) }   // p89e-2: present inside the commit gate
+            return done(st)
         case "phone_call":
             let digits = s("number").filter { $0.isNumber || $0 == "+" }
             return opened(await open(URL(string: "tel:\(digits)")), done(.ok), done(.error, ["reason": .string("tel_unavailable")]))
@@ -184,7 +188,8 @@ import UserNotifications
         vc.messageComposeDelegate = self
         if !recipients.isEmpty { vc.recipients = recipients }
         vc.body = body
-        switch await present(vc) {
+        // Local user action (proactive card tap), not an agent device call: no credential to gate on.
+        switch await present(vc, commit: { $0(); return true }) ?? .error {
         case .ok: return .sent
         case .cancelled: return .cancelled
         case .denied: return .unavailable
@@ -229,9 +234,16 @@ import UserNotifications
             return result
         }
     }
-    private func present(_ vc: UIViewController) async -> DeviceCallStatus {
+    /// p89e-2: the system draft sheet is shown INSIDE the commit gate (same lock as revoke / sign-out). Refused → nil, nothing shown.
+    private func present(_ vc: UIViewController, commit: @MainActor (() -> Void) -> Bool) async -> DeviceCallStatus? {
         guard let top = Self.topController() else { return .error }
-        return await withCheckedContinuation { c in composeContinuation = c; top.present(vc, animated: true) }
+        var shown = false
+        let status: DeviceCallStatus = await withCheckedContinuation { c in
+            composeContinuation = c
+            shown = commit { top.present(vc, animated: true) }
+            if !shown { composeContinuation = nil; c.resume(returning: .error) }
+        }
+        return shown ? status : nil
     }
     private func finish(_ controller: UIViewController, _ status: DeviceCallStatus) {
         controller.dismiss(animated: true); composeContinuation?.resume(returning: status); composeContinuation = nil
