@@ -514,19 +514,28 @@ final class CatpawAcceptanceUITests: XCTestCase {
             for l in ["允许", "Allow", "好", "OK", "允许完全访问", "Allow Full Access"] where alert.buttons[l].exists { alert.buttons[l].tap(); return true }
             return false
         }
-        // DeviceTrial may be stuck on session-recovery; exit then retry anonymous experience.
-        for _ in 0..<3 {
-            if app.buttons["auth.closeUnrestoredSession"].waitForExistence(timeout: 2) {
-                app.buttons["auth.closeUnrestoredSession"].tap(); Thread.sleep(forTimeInterval: 1.5)
-            } else { break }
+        // DeviceTrial after fresh install may show landing before SkipOnboarding/chat attach.
+        // Poll either chat.input or the start CTA (id or label) for up to ~45s.
+        let enterDeadline = Date().addingTimeInterval(45)
+        while Date() < enterDeadline, !input(app).exists {
+            if app.buttons["auth.closeUnrestoredSession"].waitForExistence(timeout: 0.4) {
+                app.buttons["auth.closeUnrestoredSession"].tap(); Thread.sleep(forTimeInterval: 1.0); continue
+            }
+            if app.buttons["auth.startExperience"].waitForExistence(timeout: 0.4) {
+                app.buttons["auth.startExperience"].tap(); Thread.sleep(forTimeInterval: 1.5); continue
+            }
+            var tappedLabel = false
+            for l in ["再试一次", "Try again", "开始使用", "开始体验", "开始"] where app.buttons[l].exists {
+                app.buttons[l].tap(); Thread.sleep(forTimeInterval: 1.5); tappedLabel = true; break
+            }
+            if tappedLabel { continue }
+            // SkipOnboarding path: intro cleared, chat still attaching.
+            if app.otherElements["onboarding.enteringChat"].exists || app.activityIndicators.firstMatch.exists {
+                Thread.sleep(forTimeInterval: 0.8); continue
+            }
+            Thread.sleep(forTimeInterval: 0.5)
         }
-        for l in ["再试一次", "Try again", "开始使用", "开始"] where app.buttons[l].exists {
-            app.buttons[l].tap(); Thread.sleep(forTimeInterval: 2); break
-        }
-        if app.buttons["auth.startExperience"].waitForExistence(timeout: 2) {
-            app.buttons["auth.startExperience"].tap(); Thread.sleep(forTimeInterval: 2)
-        }
-        XCTAssertTrue(input(app).waitForExistence(timeout: 60)); Thread.sleep(forTimeInterval: 1)
+        XCTAssertTrue(input(app).waitForExistence(timeout: 30), "chat.input missing after entry poll"); Thread.sleep(forTimeInterval: 1)
         // Always start a fresh conversation so prior mail/reminder turns cannot poison tool choice
         // (Gemini otherwise may skip phone_call after a failed mail_compose in the same thread).
         if app.buttons["chat.new"].exists {
