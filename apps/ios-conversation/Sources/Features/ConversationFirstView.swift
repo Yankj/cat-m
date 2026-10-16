@@ -372,6 +372,10 @@ import CatpawImageComposer
                         scrollTask?.cancel();scrollTask=nil
                         withAnimation(reduceMotion ? nil : CatpawInteractionMotion.sendRise) {proxy.scrollTo("latest",anchor:.bottom)}
                     }
+                    .background(CatpawKeyboardFollowScroll(enabled:followingLatest && !reduceMotion) {
+                        scrollTask?.cancel();scrollTask=nil
+                        proxy.scrollTo("latest",anchor:.bottom)
+                    }.frame(width:0,height:0).accessibilityHidden(true))
                     .safeAreaInset(edge: .top, spacing: 0) {
                         ConversationConnectionStatusCapsule(service: model.service, scope: model.scope,
                                                             conversationID: model.conversationID,
@@ -1325,6 +1329,45 @@ private struct ConversationPendingMessageEditor:View {
     }
 }
 
+/// Runs `scroll` inside the system keyboard animation curve (willChangeFrame).
+/// Only fires while `enabled` (followingLatest). Avoids a post-keyboard jump.
+@MainActor private struct CatpawKeyboardFollowScroll: UIViewRepresentable {
+    var enabled: Bool
+    var scroll: () -> Void
+    func makeCoordinator() -> Coordinator { Coordinator(enabled: enabled, scroll: scroll) }
+    func makeUIView(context: Context) -> UIView {
+        let v = UIView(); v.isUserInteractionEnabled = false; context.coordinator.attach(); return v
+    }
+    func updateUIView(_ view: UIView, context: Context) {
+        context.coordinator.enabled = enabled; context.coordinator.scroll = scroll
+    }
+    static func dismantleUIView(_ view: UIView, coordinator: Coordinator) { coordinator.detach() }
+    final class Coordinator {
+        var enabled: Bool
+        var scroll: () -> Void
+        private var observers: [NSObjectProtocol] = []
+        init(enabled: Bool, scroll: @escaping () -> Void) { self.enabled = enabled; self.scroll = scroll }
+        func attach() {
+            guard observers.isEmpty else { return }
+            let names = [UIResponder.keyboardWillChangeFrameNotification, UIResponder.keyboardWillHideNotification]
+            for name in names {
+                observers.append(NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] note in
+                    MainActor.assumeIsolated { self?.animate(with: note) }
+                })
+            }
+        }
+        func detach() { observers.forEach(NotificationCenter.default.removeObserver); observers = [] }
+        private func animate(with note: Notification) {
+            guard enabled else { return }
+            let info = note.userInfo ?? [:]
+            let duration = (info[UIResponder.keyboardAnimationDurationUserInfoKey] as? NSNumber)?.doubleValue ?? 0.25
+            let curveRaw = (info[UIResponder.keyboardAnimationCurveUserInfoKey] as? NSNumber)?.intValue ?? 7
+            let options = UIView.AnimationOptions(rawValue: UInt(curveRaw) << 16)
+            UIView.animate(withDuration: duration, delay: 0, options: [options, .beginFromCurrentState]) { self.scroll() }
+        }
+    }
+}
+
 @MainActor private enum P0ScrollTiming {
  static func scroll(_ body:()->Void) {
   #if DEBUG
@@ -1538,10 +1581,10 @@ struct ConversationSystemNotice: View {
 private extension View {
     /// Short transcripts start right under the nav bar; long/streaming ones still follow the bottom via scrollTo.
     @ViewBuilder func r9TopAlignedTranscript() -> some View {
-        // .sizeChanges → bottom: when the keyboard (or composer growth) shrinks the viewport,
-        // the visible bottom stays pinned inside the same keyboard animation, so the last
-        // message rises with the input instead of being covered and jumping later.
-        if #available(iOS 18.0, *) { self.defaultScrollAnchor(.top, for: .alignment).defaultScrollAnchor(.bottom, for: .sizeChanges) } else { self }
+        // Keep top alignment for empty/short transcripts. Do NOT pin .sizeChanges to bottom:
+        // that made the scroll view claim horizontal pans and blocked the sidebar gesture.
+        // Keyboard follow is handled by CatpawKeyboardFollowScroll below.
+        if #available(iOS 18.0, *) { self.defaultScrollAnchor(.top, for: .alignment) } else { self }
     }
 }
 
