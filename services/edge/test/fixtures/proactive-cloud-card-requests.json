@@ -1,0 +1,10 @@
+{
+  "comment": "PR90h #3: what the device sends for a card it first received from the cloud (id SERVER-ID): snooze, dismiss, undo (restores the snooze), undo again. The iOS host test ProactiveEngineHostTests/testCloudCardFullRoundTrip asserts its real queue sends exactly these paths / operation ids; this suite replays them against the real service.",
+  "requests": [
+    { "path": "suggestions/SERVER-ID/action", "body": { "action": "snooze", "operation_id": "op-SERVER-ID-snooze" } },
+    { "path": "suggestions/SERVER-ID/action", "body": { "action": "dismiss", "operation_id": "op-SERVER-ID-dismiss" } },
+    { "path": "suggestions/SERVER-ID/undo", "body": { "operation_id": "undo-SERVER-ID-g0" } },
+    { "path": "suggestions/SERVER-ID/undo", "body": { "operation_id": "undo-SERVER-ID-g1" } }
+  ],
+  "expect_status_after": ["snoozed", "dismissed", "snoozed", "pending"]
+}
