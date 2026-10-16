@@ -14,9 +14,9 @@ import CoreLocation
             .init(call_id: call.call_id, status: .error, data: ["reason": .string(reason), "retryable": .bool(false), "message": .string(message)])
         }
         guard !query.isEmpty else { return fail("invalid_query", "Empty query.") }
-        var snaps: [MemoryLibrarySnapshot] = []
-        if let b = MemoryLibraryHub.backend, let s = try? await b.load() { snaps.append(s) }
-        if MemoryLibraryHub.backend !== MemoryLibraryHub.local, let s = try? await MemoryLibraryHub.local.load() { snaps.append(s) }
+        // Codex PR91 #3: same fail-closed loader as leadTime (load error / unknown switch ⇒ no memory).
+        let local: (any MemoryLibraryBackend)? = MemoryLibraryHub.backend === MemoryLibraryHub.local ? nil : MemoryLibraryHub.local
+        let snaps = await MemoryRecallLoader.snapshots(cloud: MemoryLibraryHub.backend, local: local, owner: MemoryLibraryHub.local.owner)
         let prefs = NearbyRules.preferences(in: snaps)
         let argMode = call.args["mode"]?.text ?? ""
         let mode = NearbyRules.effectiveMode(arg: argMode, prefs: prefs)

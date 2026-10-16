@@ -1,5 +1,7 @@
 import Foundation
+#if canImport(os)
 import os
+#endif
 
 /// L2 memory cache + incremental sync (memory-layers.md §1/§3, PR #63 S2).
 /// - `GET /catpaw/agent-memory/v1/memories?since=` → `{cursor, memories, deleted[]}`; cursor is the next `since`.
@@ -35,21 +37,47 @@ struct CachedMemory: Codable, Sendable, Equatable, Identifiable {
     @Published private(set) var usedByTurn: [UUID: [String]] = [:]
     private(set) var cursor: String?
     private var syncing = false
+    #if canImport(os)
     private let log = Logger(subsystem: "catpaw", category: "memory-sync")
+    #endif
     private static let key = "memory.cache.v1"
+    /// Codex PR91 #1: the cache is bound to ONE account's L2 store + session generation. Every write path (sync
+    /// response, SSE event, local edit) must still match both, so A's late response can never land in B's store.
+    private(set) weak var boundStore: L2SecureStore?
+    private(set) var boundToken: AccountToken?
+    private func note(_ text: String) {
+        #if canImport(os)
+        log.info("\(text, privacy: .public)")
+        #endif
+    }
+    /// True while the cache still belongs to the account/session that `token` was taken in.
+    func admits(_ token: AccountToken) -> Bool {
+        guard let store = boundStore, boundToken == token, AccountEpoch.shared.isValid(token) else { return false }
+        return store.userID.uuidString == token.account && L2SecureStore.current === store
+    }
 
     private struct Snapshot: Codable { var items: [String: CachedMemory]; var cursor: String?; var usedByTurn: [UUID: [String]] }
 
     // MARK: L2
     /// Re-reads the cache of the active L2 user (call after `L2SecureStore.activate`).
     func reloadFromL2() {
-        let saved = L2SecureStore.current?.get(Snapshot.self, forKey: Self.key)
+        let store = L2SecureStore.current
+        let saved = store?.get(Snapshot.self, forKey: Self.key)
         items = saved?.items ?? [:]; cursor = saved?.cursor; usedByTurn = saved?.usedByTurn ?? [:]
+        let token = AccountEpoch.shared.capture()
+        // Bound only when the store belongs to the signed-in account of this epoch.
+        if let store, let token, store.userID.uuidString == token.account { boundStore = store; boundToken = token } else { boundStore = nil; boundToken = nil }
     }
     private func persist() {
         // Keep the per-turn index bounded (most recent 200 turns is plenty for chips).
         if usedByTurn.count > 200 { usedByTurn = Dictionary(uniqueKeysWithValues: Array(usedByTurn).suffix(200)) }
-        L2SecureStore.current?.put(Snapshot(items: items, cursor: cursor, usedByTurn: usedByTurn), forKey: Self.key)
+        // Only into the store this cache was loaded from, and only while it is still the active one.
+        guard let store = boundStore, let token = boundToken, admits(token) else { note("memory cache persist skipped: account changed"); return }
+        let snapshot = Snapshot(items: items, cursor: cursor, usedByTurn: usedByTurn)
+        let wrote: Bool? = AccountEpoch.shared.commit(token) {
+            do { try store.put(snapshot, forKey: Self.key); return true } catch { return false }
+        }
+        if wrote != true { note(wrote == nil ? "memory cache persist refused: account epoch changed" : "memory cache persist failed") }
     }
 
     // MARK: Conflict rules (memory-layers.md §3): tombstone wins; newer server version wins;
@@ -79,7 +107,8 @@ struct CachedMemory: Codable, Sendable, Equatable, Identifiable {
     func localForget(id: String) { tombstone(id); persist() }
 
     // MARK: Live events
-    func applyUpdate(op: String, ids: [String], memories: [MemoryEventSink.Memory]) {
+    func applyUpdate(op: String, ids: [String], memories: [MemoryEventSink.Memory], token: AccountToken? = nil) {
+        if let token, !admits(token) { note("memory.update dropped: other account/session"); return }
         if op == "forgotten" { ids.forEach(tombstone) }
         else {
             // Live events carry no server version: update content in place, keep the version so the next sync decides.
@@ -91,7 +120,8 @@ struct CachedMemory: Codable, Sendable, Equatable, Identifiable {
         }
         persist()
     }
-    func recordUsed(turnID: UUID, ids: [String], memories: [MemoryEventSink.Memory]) {
+    func recordUsed(turnID: UUID, ids: [String], memories: [MemoryEventSink.Memory], token: AccountToken? = nil) {
+        if let token, !admits(token) { note("memory.used dropped: other account/session"); return }
         for m in memories where items[m.id] == nil { items[m.id] = m.cached(version: "") }
         usedByTurn[turnID] = ids; persist()
     }
@@ -105,13 +135,23 @@ struct CachedMemory: Codable, Sendable, Equatable, Identifiable {
         let cursor: String?; let memories: [Item]; let deleted: [Gone]?
     }
     /// Pulls changes since `cursor` (everything on first run). No-op without the agent-memory backend or L2 user.
+    #if !MEMORY_PORTABLE
     func sync() async {
-        guard !syncing, L2SecureStore.current != nil, let backend = MemoryLibraryHub.backend as? AgentMemoryLibraryBackend else { return }
+        guard let backend = MemoryLibraryHub.backend as? AgentMemoryLibraryBackend else { return }
+        await sync { route in try await backend.call("GET", route) }
+    }
+    #endif
+    /// Core of `sync()` with the transport injected (portable tests). The account + generation are captured BEFORE the
+    /// request; a response that comes back after sign-out / account switch is dropped, never merged or persisted.
+    func sync(fetch: (String) async throws -> Data) async {
+        guard !syncing, let store = L2SecureStore.current, boundStore === store, let token = boundToken, admits(token) else { return }
         syncing = true; defer { syncing = false }
         var route = "/memories"
         if let cursor, let q = cursor.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed.subtracting(CharacterSet(charactersIn: "+&="))) { route += "?since=" + q }
         do {
-            let wire = try JSONDecoder().decode(Wire.self, from: try await backend.call("GET", route))
+            let raw = try await fetch(route)
+            guard admits(token) else { note("memory sync response dropped: account changed while in flight"); return }
+            let wire = try JSONDecoder().decode(Wire.self, from: raw)
             for m in wire.memories {
                 merge(.init(id: m.id, kind: m.kind, content: m.content, source: .init(wire: m.source), confidence: m.confidence ?? 1,
                             expiresAt: m.expires_at.flatMap(ConversationMemoryCodec.date), version: m.version ?? m.updated_at ?? ""))
@@ -119,10 +159,11 @@ struct CachedMemory: Codable, Sendable, Equatable, Identifiable {
             (wire.deleted ?? []).forEach { tombstone($0.id) }
             if let next = wire.cursor { cursor = next }
             persist()
-        } catch { log.info("memory sync skipped: \(String(describing: error), privacy: .public)") }
+        } catch { note("memory sync skipped: \(String(describing: error))") }
     }
 
-    func reset() { items = [:]; usedByTurn = [:]; cursor = nil }
+    /// Sign-out: forget everything in memory and unbind from the store (the L2 files go with `L2SecureStore.wipe`).
+    func reset() { items = [:]; usedByTurn = [:]; cursor = nil; boundStore = nil; boundToken = nil }
 }
 
 /// Client entry point for the #63 SSE events. The stream parser lives in the network layer (三角); it forwards the raw
@@ -141,11 +182,13 @@ enum MemoryEventSink {
 
     static func used(turnID: UUID, data: Data) {
         guard let v = try? JSONDecoder().decode(Used.self, from: data) else { return }
-        Task { @MainActor in MemoryCache.shared.recordUsed(turnID: turnID, ids: v.ids, memories: v.memories ?? []) }
+        guard let token = AccountEpoch.shared.capture() else { return }   // taken on arrival; a sign-out before the hop drops it
+        Task { @MainActor in MemoryCache.shared.recordUsed(turnID: turnID, ids: v.ids, memories: v.memories ?? [], token: token) }
     }
     static func update(data: Data) {
         guard let v = try? JSONDecoder().decode(Update.self, from: data) else { return }
-        Task { @MainActor in MemoryCache.shared.applyUpdate(op: v.op, ids: v.ids, memories: v.memories ?? []) }
+        guard let token = AccountEpoch.shared.capture() else { return }
+        Task { @MainActor in MemoryCache.shared.applyUpdate(op: v.op, ids: v.ids, memories: v.memories ?? [], token: token) }
     }
 }
 

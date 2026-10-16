@@ -221,4 +221,11 @@ enum ProactiveUndoRules {
     static func statusAfterUndo(current: ProactiveItemStatus, removal: DeviceUndoOutcome) -> ProactiveItemStatus? {
         removal.removed ? .pending : nil
     }
+    /// Codex PR91 #8: `nil` removal = outcome unknown (unreadable / no mapping) → keep the status, like a failed delete.
+    static func statusAfterReminderUndo(current: ProactiveItemStatus, removal: DeviceUndoOutcome?) -> ProactiveItemStatus? {
+        guard let removal else { return nil }
+        return statusAfterUndo(current: current, removal: removal)
+    }
+    /// A reminder exists to delete only if the card's create_reminder ran.
+    static func wroteReminder(takenActions: [String]) -> Bool { takenActions.contains("create_reminder") }
 }

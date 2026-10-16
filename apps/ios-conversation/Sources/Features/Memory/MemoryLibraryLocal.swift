@@ -33,12 +33,113 @@ final class FileSnapshotPersistence: MemorySnapshotPersisting {
     func erase() { try? FileManager.default.removeItem(at: url) }
 }
 
-/// Everything account-scoped that lives outside L2 and must go at sign-out (Codex P0-2).
+/// Persistence for an account whose L2 store could not be opened (Keychain/disk unavailable): every write throws, so
+/// `create` reports failure instead of "saved" and nothing is lost silently on restart (Codex PR91 #6).
+final class UnavailableSnapshotPersistence: MemorySnapshotPersisting {
+    init() {}
+    func read() -> Data? { nil }
+    func write(_ data: Data) throws { throw L2SecureStoreError.unavailable }
+    func erase() {}
+}
+
+/// Everything account-scoped that lives outside L2 and must go at sign-out (Codex P0-2, PR91 #2).
 enum AccountLocalData {
-    /// Proactive inbox/dedupe ledger/ops/suggestions, undelivered device-call results and undo reports.
+    /// Proactive inbox/dedupe ledger/ops/suggestions/attendees/server ids, undelivered device-call results and undo reports.
     static let userDefaultsKeys = ["catpaw.proactive.inbox.v1", "catpaw.proactive.ledger.v1", "catpaw.proactive.ops.v1", "catpaw.proactive.suggestions.v1",
+                                   "catpaw.proactive.attendees.v1", "catpaw.proactive.serverids.v1",
                                    "catpaw.devicecall.records.v1", "catpaw.devicecall.undos.v1"]
-    static func purge(defaults: UserDefaults) { for k in userDefaultsKeys { defaults.removeObject(forKey: k) } }
+    static func purge(defaults: UserDefaults) {
+        for k in userDefaultsKeys { defaults.removeObject(forKey: k) }
+        for k in defaults.dictionaryRepresentation().keys where k.hasPrefix(MemoryRecallLoader.offKeyPrefix) { defaults.removeObject(forKey: k) }
+    }
+    /// Portable core of sign-out (the app adds notifications, widget, Live Activity, L2 wipe): first close the session
+    /// generation so in-flight work cannot write back, then drop the memory cache, the local library and the keys.
+    @MainActor static func signOutCore(userID: UUID?, defaults: UserDefaults) {
+        AccountEpoch.shared.signOut()   // FIRST: every token captured before this is dead
+        MemoryCache.shared.reset()
+        if let userID { MemoryLibraryLocal.purge(owner: .account(userID.uuidString.lowercased())) } else { MemoryLibraryLocal.purge(owner: .guest) }
+        purge(defaults: defaults)
+    }
+}
+
+/// Codex PR91 #3: every memory read path (leadTime, nearby search) goes through here. Fail closed: a cloud load error
+/// (other than "no cloud library": not enabled / unsupported) or a local load error yields NO memories, and the last
+/// known 「使用记忆」 switch is kept per account so an unknown cloud state never re-opens recall.
+@MainActor enum MemoryRecallLoader {
+    static let offKeyPrefix = "catpaw.memory.use-off.v1."
+    static var defaults: UserDefaults = .standard
+    static func offKey(_ owner: LocalMemoryOwner) -> String? {
+        if case .account(let id) = owner { return offKeyPrefix + id }
+        return nil
+    }
+    static func persistedOff(_ owner: LocalMemoryOwner) -> Bool { offKey(owner).map { defaults.bool(forKey: $0) } ?? false }
+    static func record(off: Bool, owner: LocalMemoryOwner) { if let k = offKey(owner) { defaults.set(off, forKey: k) } }
+
+    /// `cloud`: the installed backend (nil = none). `local`: the on-device library when it is not the cloud backend.
+    static func snapshots(cloud: (any MemoryLibraryBackend)?, local: (any MemoryLibraryBackend)?, owner: LocalMemoryOwner) async -> [MemoryLibrarySnapshot] {
+        let epochAtStart = AccountEpoch.shared.epoch
+        var snaps: [MemoryLibrarySnapshot] = []
+        var cloudState: Bool? = nil   // nil = no cloud library / unknown
+        if let cloud {
+            do { let s = try await cloud.load(); snaps.append(s); cloudState = s.useMemory }
+            catch let e as MemoryLibraryError where e == .notEnabled || e == .unsupported { cloudState = nil }
+            catch { return [] }   // unreachable / partial failure: fail closed, keep the last known switch
+        }
+        if let local {
+            do { snaps.append(try await local.load()) } catch { return [] }
+        }
+        guard AccountEpoch.shared.epoch == epochAtStart else { return [] }   // signed out / switched meanwhile
+        let off = snaps.contains { !$0.useMemory }
+        if cloudState != nil || cloud == nil { record(off: off, owner: owner) }
+        else if persistedOff(owner) { return [] }   // cloud state unknown now; last known was off
+        return MemoryRecallGate.effective(snaps)
+    }
+}
+
+/// Codex PR91 #4: the pre-P0-2 global plaintext library has no known owner. It is sealed into a device vault (its own
+/// AES-GCM key, not any account's, never merged or uploaded) and the plaintext file is deleted ONLY after the sealed copy
+/// reads back identical. Any failure keeps the file for the next launch.
+enum LegacyMemoryQuarantine {
+    static let recordKey = "memory.legacy-quarantine.v1"
+    /// Reserved L2 "user" id for the vault (not an auth user; not wiped at sign-out).
+    static let vaultID = UUID(uuidString: "00000000-0000-0000-0000-00000000c0de")!
+    enum Outcome: Equatable { case nothing, quarantined(Int), failed(String) }
+    static func run(legacyFile: URL, vault: (any MemorySnapshotPersisting)?) -> Outcome {
+        guard FileManager.default.fileExists(atPath: legacyFile.path) else { return .nothing }
+        guard let vault else { return .failed("vault_unavailable") }
+        guard let raw = try? Data(contentsOf: legacyFile) else { return .failed("unreadable") }
+        var kept: [Data] = []
+        if let existing = vault.read() {
+            guard let decoded = try? JSONDecoder().decode([Data].self, from: existing) else { return .failed("vault_unreadable") }
+            kept = decoded
+        }
+        if !kept.contains(raw) { kept.append(raw) }
+        do {
+            let encoded = try JSONEncoder().encode(kept)
+            try vault.write(encoded)
+            guard vault.read() == encoded else { return .failed("verify_failed") }
+            try FileManager.default.removeItem(at: legacyFile)
+        } catch { return .failed(String(describing: error)) }
+        return .quarantined(kept.count)
+    }
+    /// Sealed copies kept in the vault (for a future, explicit "restore" flow; never shown to another account).
+    static func kept(in vault: any MemorySnapshotPersisting) -> [Data] {
+        vault.read().flatMap { try? JSONDecoder().decode([Data].self, from: $0) } ?? []
+    }
+}
+
+/// Sealed record in an L2 store (AES-GCM, per-user key, wiped at sign-out). Default key: the per-account local library.
+final class L2MemorySnapshotPersistence: MemorySnapshotPersisting {
+    static let recordKey = "memory.local-library.v2"
+    let store: L2SecureStore
+    let key: String
+    init(store: L2SecureStore, key: String = L2MemorySnapshotPersistence.recordKey) { self.store = store; self.key = key }
+    func read() -> Data? { store.data(forKey: key) }
+    func write(_ data: Data) throws {
+        try store.write(data, forKey: key)
+        guard store.data(forKey: key) == data else { throw CocoaError(.fileWriteUnknown) }
+    }
+    func erase() { try? store.write(nil, forKey: key) }
 }
 
 // NoBug P0-1 + Codex P0-2: the on-device memory library used when cloud agent-memory is 未开通 (gate off / not enrolled).
@@ -46,7 +147,7 @@ enum AccountLocalData {
 // - Starts EMPTY. Sample memories exist only in Previews/tests (`MemoryLibraryStub.sample`).
 // - When the cloud gate opens, `migrate(_:to:targetOwner:)` copies local items into the SAME account's backend only.
 @MainActor enum MemoryLibraryLocal {
-    /// Pre-P0-2 global file. Its owner is unknown, so it is deleted, never migrated.
+    /// Pre-P0-2 global file. Its owner is unknown: sealed into the device vault, never migrated (Codex PR91 #4).
     static let legacyFileName = "catpaw-local-memory.v1.json"
     /// The active account's library (guest, in memory, while signed out).
     static private(set) var shared = MemoryLibraryStub(owner: .guest)
@@ -71,9 +172,16 @@ enum AccountLocalData {
     /// - local 「使用记忆」 off is carried over (`setUseMemory(false)` after all creates; unsupported is ignored).
     static func migrate(_ local: MemoryLibraryStub, to target: any MemoryLibraryBackend, targetOwner: LocalMemoryOwner) async -> MigrationReport {
         var report = MigrationReport()
-        guard target !== local, !local.items.isEmpty else { report.kept = local.items.count; return report }
+        guard target !== local else { report.kept = local.items.count; return report }
         // Codex P0-2: only the original owner's own cloud library may receive these items; guest data is never uploaded.
         guard case .account = targetOwner, local.owner == targetOwner else { report.stoppedBy = .failed("owner_mismatch"); report.kept = local.items.count; return report }
+        // Codex PR91 #3: an empty library whose 「使用记忆」 is off still carries the off switch to the cloud.
+        if local.items.isEmpty {
+            if !local.currentSnapshot.useMemory {
+                do { try await target.setUseMemory(false) } catch { report.stoppedBy = (error as? MemoryLibraryError) ?? .failed(String(describing: error)) }
+            }
+            return report
+        }
         var existing: Set<String>
         do { existing = Set(try await target.load().items.map { normalize($0.content) }) }
         catch { report.stoppedBy = (error as? MemoryLibraryError) ?? .failed(String(describing: error)); report.kept = local.items.count; return report }
@@ -124,50 +232,43 @@ extension MemoryGroup {
 }
 
 #if !MEMORY_PORTABLE
-/// Sealed per-account record in the signed-in user's L2 store (AES-GCM, Keychain key, wiped at sign-out).
-final class L2MemorySnapshotPersistence: MemorySnapshotPersisting {
-    static let recordKey = "memory.local-library.v2"
-    let store: L2SecureStore
-    init(store: L2SecureStore) { self.store = store }
-    func read() -> Data? { store.data(forKey: Self.recordKey) }
-    func write(_ data: Data) throws {
-        store.set(data, forKey: Self.recordKey)
-        guard store.data(forKey: Self.recordKey) == data else { throw CocoaError(.fileWriteUnknown) }
-    }
-    func erase() { store.set(nil, forKey: Self.recordKey) }
-}
-
 extension MemoryLibraryLocal {
-    /// App entry (after `L2SecureStore.activate`): account → its sealed library; nil → in-memory guest.
+    /// App entry (after `AccountEpoch.shared.activate` + `L2SecureStore.activate`): account → its sealed library (or a library whose
+    /// writes fail honestly when L2 is unavailable); nil → in-memory guest.
     static func activate(userID: UUID?) {
-        removeLegacyFile()
+        quarantineLegacyFile()
         guard let userID else { activate(owner: .guest, persistence: nil); return }
         let owner = LocalMemoryOwner.account(userID.uuidString.lowercased())
         let store = L2SecureStore.current?.userID == userID ? L2SecureStore.current : nil
         // A page backend still pointing at another account's local library must not survive the switch.
         if let stub = MemoryLibraryHub.backend as? MemoryLibraryStub, stub.owner != owner { MemoryLibraryHub.install(backend: nil) }
-        if shared.owner == owner && (shared.isPersistent || store == nil) { return }
-        let previous = shared
-        activate(owner: owner, persistence: store.map(L2MemorySnapshotPersistence.init(store:)))
-        // Same account, L2 became ready after the cloud backend: keep what was written in memory meanwhile.
-        if previous.owner == owner, !previous.isPersistent, !previous.items.isEmpty, shared.items.isEmpty {
-            try? shared.adopt(previous.currentSnapshot)
-        }
+        if shared.owner == owner, shared.persistence is L2MemorySnapshotPersistence { return }
+        if shared.owner == owner, store == nil, shared.persistence is UnavailableSnapshotPersistence { return }
+        activate(owner: owner, persistence: store.map { L2MemorySnapshotPersistence(store: $0) } ?? UnavailableSnapshotPersistence())
     }
-    static func removeLegacyFile() {
-        guard let dir = try? FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: false) else { return }
-        try? FileManager.default.removeItem(at: dir.appendingPathComponent(legacyFileName))
+    /// Codex PR91 #4: seal the unowned legacy file into the device vault, then delete it (kept on any failure).
+    @discardableResult static func quarantineLegacyFile() -> LegacyMemoryQuarantine.Outcome {
+        guard let dir = try? FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: false) else { return .nothing }
+        let file = dir.appendingPathComponent(legacyFileName)
+        guard FileManager.default.fileExists(atPath: file.path) else { return .nothing }
+        let vault = (try? L2SecureStore(userID: LegacyMemoryQuarantine.vaultID, root: L2SecureStore.rootDirectory, keys: L2SecureStore.keys))
+            .map { L2MemorySnapshotPersistence(store: $0, key: LegacyMemoryQuarantine.recordKey) }
+        return LegacyMemoryQuarantine.run(legacyFile: file, vault: vault)
     }
 }
 
 extension AccountLocalData {
     /// Sign-out (Codex P0-2): local memory, proactive items + scheduled notifications, undelivered device reports.
     @MainActor static func signOut(userID: UUID?) {
-        if let userID { MemoryLibraryLocal.purge(owner: .account(userID.uuidString.lowercased())) } else { MemoryLibraryLocal.purge(owner: .guest) }
+        // Live Activities are keyed by suggestion id: read the inbox before it is purged.
+        for id in ProactiveLocalBackend.load().keys { CatpawLeaveActivity.stop(suggestionID: id) }
+        CatpawLeaveActivity.stopAll()
+        signOutCore(userID: userID, defaults: .standard)   // generation first, then memory cache + library + keys
         MemoryLibraryHub.reset()
         DeviceCallStore.shared.reset()
         ProactiveFeedbackSync.shared.reset()
-        purge(defaults: .standard)
+        ProactiveEngine.shared.clearForSignOut()           // in-memory log + server ids
+        ProactiveLocalBackend.clearForSignOut()            // sealed inbox
         ProactiveSuggestionStore.shared.clearForSignOut()
         #if os(iOS)
         UNUserNotificationCenter.current().removeAllPendingNotificationRequests()

@@ -92,3 +92,29 @@ enum DeviceCallDates {
 
 /// Result of handing a URL to iOS.
 enum DeviceHandoffOutcome: Sendable, Equatable { case opened, timedOut, refused }
+
+/// Codex PR91 #8: resumes its continuation exactly once; later calls are ignored (thread-safe).
+final class OnceContinuation<T: Sendable>: @unchecked Sendable {
+    private var continuation: CheckedContinuation<T, Never>?
+    private let lock = NSLock()
+    init(_ c: CheckedContinuation<T, Never>) { continuation = c }
+    func resume(_ value: T) {
+        lock.lock(); let c = continuation; continuation = nil; lock.unlock()
+        c?.resume(returning: value)
+    }
+}
+
+extension DeviceToolContract {
+    /// Unstructured race between the system open completion and a timer. Returns `.timedOut` as soon as the timer fires,
+    /// even when the completion never comes (a task group would keep waiting for it).
+    @MainActor static func raceHandoff(timeoutNanoseconds: UInt64, start: @MainActor (@escaping @Sendable (DeviceHandoffOutcome) -> Void) -> Void) async -> DeviceHandoffOutcome {
+        await withCheckedContinuation { (c: CheckedContinuation<DeviceHandoffOutcome, Never>) in
+            let once = OnceContinuation(c)
+            Task.detached {
+                try? await Task.sleep(nanoseconds: timeoutNanoseconds)
+                once.resume(.timedOut)
+            }
+            start { once.resume($0) }
+        }
+    }
+}
