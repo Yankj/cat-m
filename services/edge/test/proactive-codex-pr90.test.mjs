@@ -60,3 +60,21 @@ test('PR90 #6: undo loop — old operation ids stay burned, a fresh identity app
   s = await act('create_reminder', 'op-r-g0'); assert.deepEqual(s.taken, [], 'undone reminder op id stays burned');
   s = await act('create_reminder', 'op-r-g2'); assert.deepEqual(s.action_states, { create_reminder: 'done' });
 });
+
+test('PR90 #7: concurrent write-backs on one suggestion never overwrite each other', async () => {
+  const { call } = setup({ model: fakeLLM({ decision: 'notify', reason: '该出发了', confidence: 0.9, suggested_actions: ['create_reminder', 'notify_attendees', 'snooze', 'dismiss'] }) });
+  const id = (await call('POST', BASE + '/evaluate', meeting(20))).body.event_id, S = `${BASE}/suggestions/${id}`;
+  await Promise.all([call('POST', S + '/action', { action: 'create_reminder', operation_id: 'op-a' }), call('POST', S + '/action', { action: 'notify_attendees', operation_id: 'op-b' })]);
+  const s = (await call('GET', S)).body.suggestion;
+  assert.deepEqual(s.action_states, { create_reminder: 'done', notify_attendees: 'done' });
+  assert.equal(s.status, 'done'); assert.equal(s.taken.length, 2);
+});
+
+test('PR90 #7: Postgres write is version-conditional (compare-and-set on suggestion.rev)', async () => {
+  const { createPgStore } = await import('../supabase/functions/_shared/proactive/pg-store.mjs');
+  const calls = []; const sql = { unsafe: async (q, args) => { calls.push([q, args]); return []; } };
+  const store = createPgStore(sql);
+  const r = await store.updateEventPayload('u', 'e', { suggestion: { rev: 3 } }, 2);
+  assert.equal(r, null, 'lost race → null (caller reloads and retries)');
+  assert.match(calls[0][0], /payload->'suggestion'->>'rev'/); assert.equal(calls[0][1].at(-1), 2);
+});
