@@ -311,6 +311,9 @@ public struct ConversationDeviceCall: Codable, Sendable, Equatable, Identifiable
     public static let header = "X-Catpaw-Device-Contract"
     /// The app turns this on once a device-call renderer and executor are installed (DeviceCallHub, #44); off = header not sent, server never offers device tools.
     nonisolated(unsafe) public static var clientEnabled = false
+    /// Tools this build executes (DeviceToolContract.clientTools), sent as `X-Catpaw-Device-Tools`; server offers only these.
+    public static let toolsHeader = "X-Catpaw-Device-Tools"
+    nonisolated(unsafe) public static var clientTools: [String] = []
     public static let statuses: Set<String> = ["ok", "cancelled", "denied", "error"]
     public let interruptID: String
     public let callID: String
