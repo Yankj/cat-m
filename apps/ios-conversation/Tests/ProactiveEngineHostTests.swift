@@ -90,4 +90,15 @@ import XCTest
         XCTAssertTrue(ProactiveEngine.shared.syncQueue.items.contains { $0.op.local == id && $0.op.action == "undo" })
         XCTAssertNotEqual(ProactiveEngine.shared.operationID(id, "dismiss"), "op-\(id)-dismiss", "fresh identity after undo")
     }
+
+    func testAccountChangeObserverRegisteredAndWipesOnSignOutNotify() async {
+        ProactiveEngine.registerAccountObserver()          // launch path (idempotent; init registers too)
+        _ = ProactiveEngine.shared
+        XCTAssertTrue(AccountChangeObservers.registeredKeys.contains("proactive"))
+        let id = "xctest-observer-" + UUID().uuidString
+        ProactiveLocalBackend.save(ProactiveSuggestion(id: id, title: "t", reason: "r", status: .pending, createdAt: .now))
+        AccountEpoch.shared.signOut()                       // sync bump first (NativeAuthApplicationModel order)
+        await AccountChangeObservers.notify(previous: "XCTEST-A", current: nil)
+        XCTAssertNil(ProactiveLocalBackend.load()[id], "previous account's inbox wiped by the registered observer")
+    }
 }
