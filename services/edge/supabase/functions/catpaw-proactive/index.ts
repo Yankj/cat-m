@@ -8,6 +8,7 @@ import { createProactiveService } from '../_shared/proactive/service.mjs';
 import { createPgStore } from '../_shared/proactive/pg-store.mjs';
 import { createReminderModel } from '../_shared/proactive/model.mjs';
 import { createApnsSender } from '../_shared/proactive/apns.mjs';
+import { readProactiveApnsEnv } from '../_shared/proactive/apns-env.mjs';
 import { createDecisionService } from '../_shared/proactive/decision.mjs';
 import { createDecisionModel } from '../_shared/proactive/decision-model.mjs';
 import { parseQuietHours } from '../_shared/proactive/throttle.mjs';
@@ -35,7 +36,7 @@ const service = createProactiveService({
   verifyUser: createSupabaseTokenVerifier({ projectUrl: env('SUPABASE_URL') ?? cfg.projectUrl }),
   schedulerSecret: env('CATPAW_SCHEDULER_SECRET'),
   model: createReminderModel({ apiKey: cfg.modelKey ?? env('OPENROUTER_API_KEY'), route: cfg.route }),
-  apns: createApnsSender({ keyId: env('APNS_KEY_ID'), teamId: env('APNS_TEAM_ID'), privateKeyPem: env('APNS_PRIVATE_KEY'), topic: env('APNS_BUNDLE_ID') }),
+  apns: createApnsSender(readProactiveApnsEnv(env)),
   quietHours, dailyPushCap,
   allow: async (uid: string) => { await enrolled.fresh(); return allows(cfg.proactive ?? 'off', uid, 'proactive'); },
   log: (...a: unknown[]) => console.log('[catpaw-proactive]', ...a),
