@@ -222,6 +222,7 @@ public actor ConversationSessionService {
         return session.messages.filter { !unsent.contains($0.id) }
     }
     public func send(scope: DataScope, conversationID: UUID, text: String, operationID: UUID, context: [ConversationExplicitContext] = [], preserveDraft:Bool = false,image:ConversationVisionPayload?=nil,continuation:ConversationArtifactContinuationIntent?=nil,acceptedWork:ConversationAcceptedWorkSelection?=nil,revisionWork:ConversationRevisionWorkSelection?=nil) async throws -> UUID {
+        let sourceToken = pinnedSource()   // p89e-1: account AND login generation, pinned before the first await
         guard active[conversationID] == nil else { throw ConversationSessionError.busy }
         // R7 offline send: a plain text turn is journaled and parked in the outbox without any POST.
         let plainSend = context.isEmpty && image == nil && continuation == nil && acceptedWork == nil && revisionWork == nil && outbox != nil
@@ -299,7 +300,7 @@ public actor ConversationSessionService {
             session.turns.append(ConversationTurnRecord(id: operationID, request: request, state: .dispatched, lastSequence: 0, error: nil))
         }
         guard active[conversationID] == nil else { throw ConversationSessionError.busy }
-        let observationToken = claimObservation(conversationID)
+        let observationToken = claimObservation(conversationID, source: sourceToken)
         defer { if active[conversationID] == observationToken { releaseActive(conversationID) } }
         let cr = try await repository.record(conversationID, scope: scope)
         guard var conversation = cr.conversation else { throw CatpawError.missing }
@@ -592,11 +593,12 @@ public actor ConversationSessionService {
         try await save(session, expectedRevision: journalRevision, fence: request, observationToken: observationToken)
     }
     public func observe(scope: DataScope, conversationID: UUID) async throws {
+        let sourceToken = pinnedSource()   // p89e-1: account AND login generation, pinned before the first await
         guard active[conversationID] == nil else { throw ConversationSessionError.busy }
         let saved = try await read(scope: scope, conversationID: conversationID)
         guard let turn = saved.unresolved ?? saved.turns.last(where: { ![.notSent, .cancelledBeforeSend].contains($0.state) }) else { return }
         guard active[conversationID] == nil else { throw ConversationSessionError.busy }
-        let observationToken = claimObservation(conversationID)
+        let observationToken = claimObservation(conversationID, source: sourceToken)
         defer { if active[conversationID] == observationToken { releaseActive(conversationID) } }
         // R7 §5.3 rebuild: a still-running plain turn first reattaches by GET-after-lastSequence
         // (append only); the authoritative snapshot below then reconciles goals and terminal state.
@@ -686,6 +688,7 @@ public actor ConversationSessionService {
     /// same text, never a resend of an accepted POST. `route` sets the DEBUG developer route first.
     @discardableResult
     public func retryBusy(scope: DataScope, conversationID: UUID, route: String? = nil, automatic: Bool = false) async throws -> UUID? {
+        let sourceToken = pinnedSource()   // p89e-1: account AND login generation, pinned before the first await
         guard let entry = busyRetry[conversationID] else { return nil }
         guard active[conversationID] == nil else { throw ConversationSessionError.busy }
         busyRetry[conversationID] = nil
@@ -697,7 +700,7 @@ public actor ConversationSessionService {
         if let route { ModelRouteSelection.select(route: route) }
         if automatic { autoRetryCounts[original.id, default: 0] += 1 } else { busyRetryCancelled.remove(original.id) }
         await resilience?.clearBusy()
-        let observationToken = claimObservation(conversationID)
+        let observationToken = claimObservation(conversationID, source: sourceToken)
         defer { if active[conversationID] == observationToken { releaseActive(conversationID) } }
         do {
             let stream = try await backend.retryBusyTurn(original.request, afterSequence: original.lastSequence)
@@ -800,7 +803,8 @@ public actor ConversationSessionService {
         next.artifactHistory = history; session.goals[goal.id] = next
     }
     public func stopObserving(scope: DataScope, conversationID: UUID) async throws {
-        let stopToken = claimObservation(conversationID)
+        let sourceToken = pinnedSource()   // p89e-1: account AND login generation, pinned before the first await
+        let stopToken = claimObservation(conversationID, source: sourceToken)
         defer { if active[conversationID] == stopToken { releaseActive(conversationID) } }
         if let turn = try await read(scope: scope, conversationID: conversationID).unresolved { try await markUnknown(turn.request, reason: "已停止本机观察，未取消后台任务。读取原请求后继续。", observationToken:stopToken) }
     }
@@ -814,11 +818,12 @@ public actor ConversationSessionService {
     /// grant_epoch (GET …/conversations/{c}) before every POST.
     @discardableResult
     public func cancelCurrentTurn(scope: DataScope, conversationID: UUID) async throws -> ConversationTurnCancelOutcome {
+        let sourceToken = pinnedSource()   // p89e-1: account AND login generation, pinned before the first await
         cancelBusyRetry(conversationID: conversationID)
         guard !cancelling.contains(conversationID) else { throw ConversationSessionError.busy }
         guard let target = try await read(scope: scope, conversationID: conversationID).unresolved else { return .noActiveTurn }
         cancelling.insert(conversationID)
-        let token = claimObservation(conversationID)
+        let token = claimObservation(conversationID, source: sourceToken)
         defer {
             cancelling.remove(conversationID); scheduleUIDrain(conversationID)
             if active[conversationID] == token { releaseActive(conversationID) }
@@ -935,11 +940,12 @@ public actor ConversationSessionService {
     /// `.expired`/`.consumed` refresh the journal from the snapshot before rethrowing.
     @discardableResult
     public func submitApproval(scope: DataScope, conversationID: UUID, interruptID: String, decision: ConversationApprovalDecision, operationID: UUID = UUID()) async throws -> UUID {
+        let sourceToken = pinnedSource()   // p89e-1: account AND login generation, pinned before the first await
         guard active[conversationID] == nil, !cancelling.contains(conversationID) else { throw ConversationSessionError.busy }
         let saved = try await read(scope: scope, conversationID: conversationID)
         guard let turn = saved.turns.last(where: { $0.awaitingApproval }), let approval = turn.pendingApprovals?.first(where: { $0.interruptID == interruptID }) else { throw ConversationApprovalFailure.noPendingApproval }
         guard decision != .approveAlways || approval.rememberAllowed else { throw ConversationApprovalFailure.rejected(status: 422, code: "approval_remember_not_allowed") }
-        let token = claimObservation(conversationID)
+        let token = claimObservation(conversationID, source: sourceToken)
         defer { if active[conversationID] == token { releaseActive(conversationID) } }
         let stream: AsyncThrowingStream<ConversationTurnEvent, Error>
         do { stream = try await backend.submitApproval(turn.request, interruptID: interruptID, decision: decision, argsHash: approval.argsHash, operationID: operationID, afterSequence: turn.lastSequence) }
@@ -967,10 +973,19 @@ public actor ConversationSessionService {
     /// Device-call lifecycle events carry it from the source, so an event of A's stream that is applied late (after
     /// sign-out / switch to B) can never be granted under B's generation.
     private var observationAccounts: [UUID: AccountToken] = [:]
-    private func claimObservation(_ conversationID: UUID) -> UUID {
+    /// p89e-1: the source identity of an operation = the service principal's account AND its login generation, captured
+    /// synchronously at the operation's entry (before any await). A same-account sign-out → sign-in bumps the generation,
+    /// so an operation that started under the old login can never be attached to the new one.
+    nonisolated(unsafe) static var beforeClaimHook: (() -> Void)?
+    nonisolated private func pinnedSource() -> AccountToken? {
+        if let principal { return principal }
+        guard let current = AccountEpoch.shared.capture(), principalAccount == nil || current.account == principalAccount else { return nil }
+        return current
+    }
+    private func claimObservation(_ conversationID: UUID, source: AccountToken?) -> UUID {
         let token = UUID(); active[conversationID] = token
-        if let principal { if AccountEpoch.shared.isValid(principal) { observationAccounts[token] = principal } }
-        else if let current = AccountEpoch.shared.capture(), principalAccount == nil || current.account == principalAccount { observationAccounts[token] = current }
+        Self.beforeClaimHook?()   // test seam: "the operation's first await" (sign-out / re-login lands here)
+        if let source, AccountEpoch.shared.isValid(source) { observationAccounts[token] = source }   // stale login → no grants
         return token
     }
     private func scheduleUIDrain(_ conversationID: UUID) {
@@ -1059,6 +1074,7 @@ public actor ConversationSessionService {
         return result
     }
     private func performUIDecision(scope: DataScope, conversationID: UUID, turnID: UUID, interruptID: String, decision: ConversationUIDecision, argsHash: String, response: Data?, operationID: UUID) async throws -> UUID {
+        let sourceToken = pinnedSource()   // p89e-1: account AND login generation, pinned before the first await
         guard active[conversationID] == nil, !cancelling.contains(conversationID) else { throw ConversationSessionError.busy }
         let saved = try await read(scope: scope, conversationID: conversationID)
         guard let turn = saved.turns.first(where: { $0.id == turnID }), turn.awaitingApproval,
@@ -1068,7 +1084,7 @@ public actor ConversationSessionService {
         if let deadline = Self.uiDate(block.expiresAt), deadline <= uiClock() { throw ConversationApprovalFailure.expired }
         if decision == .dismiss { guard response == nil else { throw ConversationApprovalFailure.rejected(status: 422, code: "ui_response_invalid") } }
         else { guard response != nil else { throw ConversationApprovalFailure.rejected(status: 422, code: "ui_response_invalid") } }
-        let token = claimObservation(conversationID)
+        let token = claimObservation(conversationID, source: sourceToken)
         defer { if active[conversationID] == token { releaseActive(conversationID) } }
         let stream: AsyncThrowingStream<ConversationTurnEvent, Error>
         do { stream = try await backend.submitUIDecision(turn.request, interruptID: interruptID.lowercased(), decision: decision, argsHash: argsHash, response: response, operationID: operationID, afterSequence: turn.lastSequence) }
@@ -1091,6 +1107,7 @@ public actor ConversationSessionService {
     /// Errors are `ConversationApprovalFailure` (`.expired` past `ttl_sec`, `.stale`, `.consumed`, `.notFound`) or `.busy` while a stream runs.
     @discardableResult
     public func submitDeviceResult(scope: DataScope, callID: String, status: String, data: Data?) async throws -> UUID {
+        let sourceToken = pinnedSource()   // p89e-1: account AND login generation, pinned before the first await
         guard let entry = deviceCallIndex[callID] else { throw ConversationApprovalFailure.noPendingApproval }
         let (conversationID, turnID) = entry
         // A read-only observer may briefly hold the conversation; give it a moment instead of failing the user's tap.
@@ -1099,7 +1116,7 @@ public actor ConversationSessionService {
         let saved = try await read(scope: scope, conversationID: conversationID)
         guard let turn = saved.turns.first(where: { $0.id == turnID }), let call = turn.pendingDeviceCalls?.first(where: { $0.callID == callID }) else { throw ConversationApprovalFailure.noPendingApproval }
         let operationID = stableID("device-result-\(turnID)-\(callID)")
-        let token = claimObservation(conversationID)
+        let token = claimObservation(conversationID, source: sourceToken)
         defer { if active[conversationID] == token { releaseActive(conversationID) } }
         let stream: AsyncThrowingStream<ConversationTurnEvent, Error>
         do { stream = try await backend.submitDeviceResult(turn.request, call: call, status: status, data: data, operationID: operationID, afterSequence: turn.lastSequence) }
