@@ -167,9 +167,9 @@ export function createDecisionService({ store, model = null, memory = null, now 
   async function act(uid, id, b) {
     const action = b?.action; if (!SUGGESTION_ACTIONS.includes(action)) throw bad('action_invalid');
     const opId = typeof b.operation_id === 'string' ? b.operation_id.slice(0, 80) : null;
-    let applied = false;
+    let applied = false, seenGen = null;
     return mutate(uid, id, (ev, st) => {
-      applied = false;
+      applied = false; seenGen = ev.push_generation ?? 0;   // PR90h #1: the generation this action acted on
       if (opId && st.ops[opId]) return false;
       const last = st.taken.at(-1), effect = EFFECTS.includes(action);
       // A cancelled / unavailable / failed effect is never recorded (and never turns the suggestion done).
@@ -196,7 +196,7 @@ export function createDecisionService({ store, model = null, memory = null, now 
     }).then(async sug => {
       // Codex PR90d #5 / PR90e: a dismissed / snoozed suggestion must not be pushed by a still-pending row — only when this
       // call actually applied it (a replayed old op must never cancel a push that was re-armed since).
-      if (applied && sug.status === ACTION_STATUS[action] && (action === 'dismiss' || action === 'snooze') && store.cancelPendingPush) await store.cancelPendingPush(uid, id, 'suggestion_' + ACTION_STATUS[action]);
+      if (applied && sug.status === ACTION_STATUS[action] && (action === 'dismiss' || action === 'snooze') && store.cancelPendingPush) await store.cancelPendingPush(uid, id, 'suggestion_' + ACTION_STATUS[action], seenGen, ACTION_STATUS[action]);
       return sug;
     });
   }

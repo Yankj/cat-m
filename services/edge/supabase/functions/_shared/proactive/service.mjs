@@ -130,7 +130,9 @@ export function createProactiveService({ store, verifyUser, schedulerSecret, mod
     // never sends — the recovered generation is the only sender.
     if (store.markPushAttempt && !(await store.markPushAttempt(ev.id, claim.claim, new Date(now()).toISOString()))) { log('push_claim_lost', ev.id); out.skipped++; return; }
     let ok = false, err = null;
-    for (const t of tokens) {
+    for (const [i, t] of tokens.entries()) {
+      // PR90h #2: every NEW external send re-checks the licence; a claim recovered meanwhile (lease expired) stops here.
+      if (i > 0 && store.markPushAttempt && !(await store.markPushAttempt(ev.id, claim.claim, new Date(now()).toISOString()))) { log('push_claim_lost_midsend', ev.id); out.skipped++; return; }
       const r = await apns.send(t, ev).catch(e => ({ ok: false, reason: e.message }));
       if (r.ok) ok = true; else { err = r.reason; if (r.unregistered) await store.disableToken(t.id, r.reason); }
     }
