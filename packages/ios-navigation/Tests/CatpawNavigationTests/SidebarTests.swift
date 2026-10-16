@@ -130,6 +130,22 @@ final class SidebarTests: XCTestCase {
         state.advance(seconds: 2)
         XCTAssertEqual(state.position, 0); XCTAssertFalse(state.isVisible)
     }
+    func testReleaseProjectsVelocityInsteadOfFixedHalfway() {
+        // Slow drag to 40% with a modest push keeps going open; a flick back closes from 80%.
+        XCTAssertTrue(SidebarMotionState.projectedOpen(position: 0.4, velocity: 0.8))
+        XCTAssertFalse(SidebarMotionState.projectedOpen(position: 0.8, velocity: -3))
+        XCTAssertTrue(SidebarMotionState.projectedOpen(position: 0.1, velocity: 3))
+        XCTAssertFalse(SidebarMotionState.projectedOpen(position: 0.55, velocity: -0.5))
+    }
+    func testDragPastOpenRubberBandsAndSettlesBackToExactEndpoint() {
+        var state = SidebarMotionState()
+        state.beginDrag(); state.drag(translationX: 640, width: 320)
+        XCTAssertGreaterThan(state.position, 1)
+        XCTAssertLessThanOrEqual(state.position, 1 + SidebarMotionState.overshootLimit)
+        XCTAssertTrue(state.endDrag(velocityX: 0, width: 320, cancelled: false, reduceMotion: false))
+        state.advance(seconds: 2)
+        XCTAssertEqual(state.position, 1); XCTAssertTrue(state.isFullyOpen)
+    }
     func testReducedMotionStillTracksFingerAndOnlyRemovesSettleInertia() {
         var state = SidebarMotionState()
         state.beginDrag(); state.drag(translationX: 96, width: 320)

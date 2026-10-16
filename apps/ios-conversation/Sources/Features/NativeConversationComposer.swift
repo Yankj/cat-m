@@ -108,13 +108,23 @@ import UIKit
         defer {P0PerformanceLog.shared.record("composer_size_fit",start:start,end:ProcessInfo.processInfo.systemUptime,main:true)}
         #endif
         let width=proposal.width ?? 240,line=uiView.font?.lineHeight ?? 22
-        let desired=uiView.sizeThatFits(CGSize(width:width,height:.greatestFiniteMagnitude))
+        // SwiftUI probes several proposals per layout pass (and every keystroke re-lays
+        // out the whole host). A full TextKit measure per probe showed up as the top app
+        // frame in keyboard/typing stalls, so reuse it while text, font and width match.
+        let desired:CGSize
+        let cache=context.coordinator.measured
+        if let cache,cache.width==width,cache.pointSize==(uiView.font?.pointSize ?? 0),cache.text==uiView.text {desired=cache.size}
+        else {
+            desired=uiView.sizeThatFits(CGSize(width:width,height:.greatestFiniteMagnitude))
+            context.coordinator.measured=(width,uiView.font?.pointSize ?? 0,uiView.text,desired)
+        }
         let available=[maximumVisibleHeight,proposal.height].compactMap{$0}.filter{$0.isFinite}.map{max(0,$0)}.min()
         return CGSize(width:width,height:CatpawTextViewport.composerHeight(desired:desired.height,lineHeight:line,textInsets:16,maximumLines:5,availableHeight:available))
     }
     @MainActor final class Coordinator:NSObject,UITextViewDelegate {
         var parent:NativeConversationComposer
         var replacing=false
+        var measured:(width:CGFloat,pointSize:CGFloat,text:String,size:CGSize)?
         init(_ parent:NativeConversationComposer){self.parent=parent}
         func textViewDidChange(_ textView:UITextView) {
             #if DEBUG

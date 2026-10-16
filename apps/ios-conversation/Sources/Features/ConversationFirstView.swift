@@ -43,8 +43,38 @@ import CatpawImageComposer
     private enum ComposerContextAction {case modelConsent,imageConsent,acceptedWork,pendingMessages,settings,latest}
     @State private var pendingContextAction:(action:ComposerContextAction,conversation:UUID?,scope:UUID,modelIdentity:ObjectIdentifier)?
     @State private var contextJumpRequested=false
+    /// Bumped on send so the transcript glides to the new bubble in the same spring
+    /// as its insertion, instead of a 100 ms-late unanimated jump.
+    @State private var sendScrollTick=0
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @ScaledMetric(relativeTo: .footnote) private var followupRowHeight = 64.0
     @FocusState private var focused: Bool
+    /// One timeline projection per body pass. Previously every row, the reading-anchor
+    /// tracker and each assistant row's `lastAssistantMessageID` re-ran the full projection
+    /// (O(n²) per keystroke / streamed token; 235 ms main-thread stalls in Time Profiler).
+    private final class TimelineMemo {
+        var display:[ConversationTranscriptMessage]=[]
+        var rendered:[RenderedTimelineRow]=[]
+        var visible:[RenderedTimelineRow]=[]
+        var lastAssistantID:UUID?
+        var operations:[UUID:UUID]=[:]
+    }
+    @State private var timelineMemo=TimelineMemo()
+    private func refreshTimelineMemo() {
+        var operations:[UUID:UUID]=[:]
+        for turn in model.session?.turns ?? [] {operations[stableID("conversation-user-\(turn.id)")]=turn.id}
+        for intent in model.outgoingMessages {operations[stableID("conversation-user-\(intent.id)")]=intent.id}
+        let memo=timelineMemo
+        memo.operations=operations
+        memo.display=computeDisplayMessages()
+        memo.rendered=computeRenderedTimelineRows()
+        memo.visible=memo.rendered.filter { row in
+            if case .message(let m)=row {return replyVariants.isVisible(turnID:m.turnID,isUserPrompt:m.message.role == .user)}
+            return replyVariants.isVisible(turnID:row.turnID,isUserPrompt:false)
+        }
+        memo.lastAssistantID=nil
+        for row in memo.visible.reversed() { if case .message(let m)=row,m.presentation == .message,m.message.role == .assistant {memo.lastAssistantID=m.message.id;break} }
+    }
 
     init(model:ConversationFirstModel,accountLabel:String?=nil,onSignOut:(()->Void)?=nil,
          isAnonymousAccount:Bool=false,restrictToFrozenFixture:Bool=false) {
@@ -171,18 +201,11 @@ import CatpawImageComposer
         case message(ConversationTimelineProjection.Row),activity(ConversationTurnActivitySnapshot),proactive(CatpawProactiveFeed.Entry)
         var id:UUID {switch self {case .message(let row):return row.id;case .activity(let activity):return stableID("conversation-activity-\(activity.id)");case .proactive(let entry):return entry.rowID}}
         var turnID:UUID? {switch self {case .message(let row):return row.turnID;case .activity(let activity):return activity.id;case .proactive:return nil}}
+        var isUserMessage:Bool {if case .message(let row)=self {return row.message.role == .user};return false}
     }
     /// Regenerate pager: hide re-sent prompts and non-selected variants (ReplyVariantStore).
-    private var visibleTimelineRows:[RenderedTimelineRow] {
-        renderedTimelineRows.filter { row in
-            if case .message(let m)=row {return replyVariants.isVisible(turnID:m.turnID,isUserPrompt:m.message.role == .user)}
-            return replyVariants.isVisible(turnID:row.turnID,isUserPrompt:false)
-        }
-    }
-    private var lastAssistantMessageID:UUID? {
-        for row in visibleTimelineRows.reversed() { if case .message(let m)=row,m.presentation == .message,m.message.role == .assistant {return m.message.id} }
-        return nil
-    }
+    private var visibleTimelineRows:[RenderedTimelineRow] {timelineMemo.visible}
+    private var lastAssistantMessageID:UUID? {timelineMemo.lastAssistantID}
     private func replyActions(_ message:ConversationTranscriptMessage,turnID:UUID?)->ReplyActionControl? {
         guard let turnID else {return nil}
         let group=replyVariants.group(for:turnID),root=replyVariants.original(of:turnID)
@@ -197,7 +220,11 @@ import CatpawImageComposer
         model.editDraft(prompt);model.prepareSend()
         if let admitted=model.outgoingMessages.last(where:{!old.contains($0.id)}) {followingLatest=true;replyVariants.addVariant(original:root,newTurn:admitted.id)}
     }
-    private var renderedTimelineRows:[RenderedTimelineRow] {
+    private var renderedTimelineRows:[RenderedTimelineRow] {timelineMemo.rendered}
+    private func computeRenderedTimelineRows()->[RenderedTimelineRow] {
+        #if DEBUG
+        InteractionFrameProbe.shared.count("timeline.project")
+        #endif
         let rows=timelineRows
         guard let session=model.session else {return rows.map{.message($0)}}
         let activities=ConversationTurnActivityProjection.snapshots(session:session,rows:rows)
@@ -244,10 +271,16 @@ import CatpawImageComposer
         return row.turnID != nil && row.turnID==previous.turnID ? 8:24
     }
     @ViewBuilder private func renderedTimelineRow(_ row:RenderedTimelineRow)->some View {
+        #if DEBUG
+        let _=InteractionFrameProbe.shared.count("timeline.row")
+        #endif
         switch row {case .message(let message):timelineRow(message);case .activity(let activity):ConversationTurnActivity(activity:activity);case .proactive(let entry):ProactiveReminderCardView(entry:entry,feed:proactiveFeed)}
     }
     private var chatNavigation: some View {
-        SidebarHost(isPresented:$sidebarPresented,isAtRoot:path.isEmpty && !conversationMenuPresented && !settings && !history && !pendingMessagesPresented && !composerContextPresented && !model.acceptedWorkReviewPresented && model.selectedTaskPlan == nil && model.selectedTaskActions == nil && model.selectedTaskControl == nil && model.pendingModelConsent == nil && model.pendingImageConsent == nil,
+        #if DEBUG
+        InteractionFrameProbe.shared.count("chat.body")
+        #endif
+        return SidebarHost(isPresented:$sidebarPresented,isAtRoot:path.isEmpty && !conversationMenuPresented && !settings && !history && !pendingMessagesPresented && !composerContextPresented && !model.acceptedWorkReviewPresented && model.selectedTaskPlan == nil && model.selectedTaskActions == nil && model.selectedTaskControl == nil && model.pendingModelConsent == nil && model.pendingImageConsent == nil,
                     snapshot:sidebarSnapshot,theme:sidebarTheme,localize:{ui($0)},allowsContentPan:true,onWillOpen:{UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder),to:nil,from:nil,for:nil)},
                     onDismissed:{menuFocused=true},onSelect:route) {
         NavigationStack(path:$path) {
@@ -272,6 +305,7 @@ import CatpawImageComposer
                                     if let turn=row.turnID,turnTails[turn]==row.id {ConversationTurnUIRow(model:model,session:session,turnID:turn)}
                                 }.padding(.top,renderedSpacing(row,previous:index>0 ? rows[index-1]:nil))
                                     .background(ConversationReadingAnchorMarker(id:row.id,context:readingAnchorContext,coordinator:readingAnchor).accessibilityHidden(true)).id(row.id)
+                                    .transition(row.isUserMessage && !reduceMotion ? .catpawSendRise : .opacity)
                             }
                             if let pending = session.turns.last, [.dispatched,.running].contains(pending.state), !pending.awaitingApproval, pending.assistantMessageID == nil, !composerChrome.stoppedOperations.contains(pending.id),
                                !session.messages.contains(where:{ $0.role == .assistant && !$0.complete }) {
@@ -334,6 +368,14 @@ import CatpawImageComposer
                         } else {scheduleScroll(proxy)}
                     }
                     .onChange(of:contextJumpRequested){_,_ in proxy.scrollTo("latest",anchor:.bottom)}
+                    .onChange(of:sendScrollTick){_,_ in
+                        scrollTask?.cancel();scrollTask=nil
+                        withAnimation(reduceMotion ? nil : CatpawInteractionMotion.sendRise) {proxy.scrollTo("latest",anchor:.bottom)}
+                    }
+                    .background(CatpawKeyboardFollowScroll(enabled:followingLatest && !reduceMotion) {
+                        scrollTask?.cancel();scrollTask=nil
+                        proxy.scrollTo("latest",anchor:.bottom)
+                    }.frame(width:0,height:0).accessibilityHidden(true))
                     .safeAreaInset(edge: .top, spacing: 0) {
                         ConversationConnectionStatusCapsule(service: model.service, scope: model.scope,
                                                             conversationID: model.conversationID,
@@ -415,7 +457,8 @@ import CatpawImageComposer
             .sensoryFeedback(.warning, trigger: model.error != nil, condition: { _, present in present })
     }
     var body: some View {
-        feedbackNavigation
+        refreshTimelineMemo()
+        return feedbackNavigation
         .overlay { VoiceModeHost().animation(.easeOut(duration: 0.25), value: ComposerDictation.shared.dictating) }
         .onChange(of: CatpawRouteCenter.shared.pending) { _, _ in consumeAppRoute() }
         .sheet(isPresented: $proactiveInboxPresented) { NavigationStack { ProactiveInboxView() } }
@@ -470,7 +513,7 @@ import CatpawImageComposer
             #endif
         }
         #if DEBUG
-        .onAppear { probe.start();probe.update(model) }
+        .onAppear { probe.start();probe.update(model);InteractionFrameProbe.shared.start() }
         .onChange(of:model.draft) { _, _ in probe.update(model) }
         .onChange(of:model.session?.turns.last?.lastSequence) { _, _ in probe.update(model) }
         .overlay(alignment:.topTrailing) { if probe.enabled && CatpawDebugPresentation.showFixtureBadge() && P0ExperienceFixture.launchEnvironment["CATPAW_QA_VISUAL_REVIEW"] != "1" { VStack {
@@ -754,7 +797,8 @@ import CatpawImageComposer
         return (try? JSONSerialization.data(withJSONObject:values,options:.sortedKeys)).map { String(decoding:$0,as:UTF8.self) } ?? "{}"
     }
     #endif
-    private var displayMessages:[ConversationTranscriptMessage] {
+    private var displayMessages:[ConversationTranscriptMessage] {timelineMemo.display}
+    private func computeDisplayMessages()->[ConversationTranscriptMessage] {
         #if DEBUG
         let timingStart=ProcessInfo.processInfo.systemUptime
         defer {P0PerformanceLog.shared.record("display_messages",start:timingStart,end:ProcessInfo.processInfo.systemUptime,main:true)}
@@ -788,9 +832,13 @@ import CatpawImageComposer
         switch row.presentation {
         case .message:messageView(row.message,turnID:row.turnID)
         case .processPending:
-            Label(row.message.toolName == "agent_status" ? ui("读取任务进展…"):ui("正在处理请求…"),systemImage:"circle.dotted")
-                .font(CatpawTypography.Role.caption.font).symbolRenderingMode(.monochrome)
-                .foregroundStyle(CatpawColors.secondary).accessibilityIdentifier("chat.process.\(row.id)")
+            HStack(spacing:10) {
+                CatpawPresence(state:.working, size:18)
+                StreamShimmerEllipsis(active:!reduceMotion)
+            }
+            .accessibilityElement(children:.combine)
+            .accessibilityLabel(row.message.toolName == "agent_status" ? ui("读取任务进展…"):ui("正在处理请求…"))
+            .accessibilityIdentifier("chat.process.\(row.id)")
         case .fallback:
             VStack(alignment:.leading,spacing:4) {
                 Label(ui("处理进展待核对"),systemImage:"exclamationmark.circle").font(CatpawTypography.Role.caption.font)
@@ -829,11 +877,14 @@ import CatpawImageComposer
         if continueImageConsent(start:true) {return}
         sendAfterImageConsent=false
         let sentAttachment=model.imageDraft.phase == .ready ? model.imageDraft.attachment : nil
-        model.prepareSend()
+        // One transaction: the draft leaves the composer while the bubble rises into the
+        // transcript (CatpawSendRise) and the composer height collapses on the same spring.
+        withAnimation(reduceMotion ? nil : CatpawInteractionMotion.sendRise) {model.prepareSend()}
         let admitted=model.outgoingMessages.last(where:{!old.contains($0.id)})
         // Keep the sent image for the bubble/viewer after the image store drops it at turn completion (#64).
         if let sentAttachment,let admitted,admitted.image != nil {SentImageCache.shared.store(sentAttachment.encodedData,for:admitted.id,sha:sentAttachment.sha256)}
         if hadAttachments {pendingAttachmentIntentID=admitted?.id}
+        if admitted != nil {sendScrollTick &+= 1}
         #if DEBUG
         if let intent=admitted { probe.pressed(intent.id,at:time);probe.update(model) }
         #endif
@@ -850,7 +901,8 @@ import CatpawImageComposer
         }
     }
     private func operationID(_ message:ConversationTranscriptMessage) -> UUID? {
-        model.outgoingMessages.first(where:{stableID("conversation-user-\($0.id)") == message.id})?.id ?? model.session?.turns.first(where:{stableID("conversation-user-\($0.id)") == message.id})?.id
+        guard message.role == .user else {return nil}
+        return timelineMemo.operations[message.id]
     }
     /// r9 bubble status: sent → nothing; queued/offline → nothing (pending strip owns it);
     /// sending → tiny spinner only after ~2 s without turn start; failed → red ! + "未发送·点按重试".
@@ -1282,6 +1334,45 @@ private struct ConversationPendingMessageEditor:View {
     }
 }
 
+/// Runs `scroll` inside the system keyboard animation curve (willChangeFrame).
+/// Only fires while `enabled` (followingLatest). Avoids a post-keyboard jump.
+@MainActor private struct CatpawKeyboardFollowScroll: UIViewRepresentable {
+    var enabled: Bool
+    var scroll: () -> Void
+    func makeCoordinator() -> Coordinator { Coordinator(enabled: enabled, scroll: scroll) }
+    func makeUIView(context: Context) -> UIView {
+        let v = UIView(); v.isUserInteractionEnabled = false; context.coordinator.attach(); return v
+    }
+    func updateUIView(_ view: UIView, context: Context) {
+        context.coordinator.enabled = enabled; context.coordinator.scroll = scroll
+    }
+    static func dismantleUIView(_ view: UIView, coordinator: Coordinator) { coordinator.detach() }
+    final class Coordinator {
+        var enabled: Bool
+        var scroll: () -> Void
+        private var observers: [NSObjectProtocol] = []
+        init(enabled: Bool, scroll: @escaping () -> Void) { self.enabled = enabled; self.scroll = scroll }
+        func attach() {
+            guard observers.isEmpty else { return }
+            let names = [UIResponder.keyboardWillChangeFrameNotification, UIResponder.keyboardWillHideNotification]
+            for name in names {
+                observers.append(NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] note in
+                    MainActor.assumeIsolated { self?.animate(with: note) }
+                })
+            }
+        }
+        func detach() { observers.forEach(NotificationCenter.default.removeObserver); observers = [] }
+        private func animate(with note: Notification) {
+            guard enabled else { return }
+            let info = note.userInfo ?? [:]
+            let duration = (info[UIResponder.keyboardAnimationDurationUserInfoKey] as? NSNumber)?.doubleValue ?? 0.25
+            let curveRaw = (info[UIResponder.keyboardAnimationCurveUserInfoKey] as? NSNumber)?.intValue ?? 7
+            let options = UIView.AnimationOptions(rawValue: UInt(curveRaw) << 16)
+            UIView.animate(withDuration: duration, delay: 0, options: [options, .beginFromCurrentState]) { self.scroll() }
+        }
+    }
+}
+
 @MainActor private enum P0ScrollTiming {
  static func scroll(_ body:()->Void) {
   #if DEBUG
@@ -1495,6 +1586,9 @@ struct ConversationSystemNotice: View {
 private extension View {
     /// Short transcripts start right under the nav bar; long/streaming ones still follow the bottom via scrollTo.
     @ViewBuilder func r9TopAlignedTranscript() -> some View {
+        // Keep top alignment for empty/short transcripts. Do NOT pin .sizeChanges to bottom:
+        // that made the scroll view claim horizontal pans and blocked the sidebar gesture.
+        // Keyboard follow is handled by CatpawKeyboardFollowScroll below.
         if #available(iOS 18.0, *) { self.defaultScrollAnchor(.top, for: .alignment) } else { self }
     }
 }
