@@ -39,7 +39,7 @@ import Foundation
     static func expect(_ ok: Bool, _ m: String) { if ok { passed += 1; print("PASS \(m)") } else { failed += 1; print("FAIL \(m)") } }
 
     static func main() async {
-        await memory(); await deviceCalls(); proactive(); nearby(); groundedFixtures(); contactsPrivacy()
+        await memory(); await deviceCalls(); proactive(); nearby(); groundedFixtures(); contactsPrivacy(); replyVariants()
         print("nobug-p0 portable: \(passed) passed, \(failed) failed")
         exit(failed == 0 ? 0 : 1)
     }
@@ -251,5 +251,26 @@ import Foundation
         let row = DeviceToolContract.minimalContact(name: "张三", phones: ["1", "2", "3", "4"], emails: ["a@x.cn"], includeEmail: false)
         expect(row["emails"] == nil && row["phones"] == .list(["1", "2", "3"]) && Set(row.keys) == ["name", "phones"], "contacts: minimal fields (name + ≤3 phones, no email by default)")
         expect(DeviceToolContract.minimalContact(name: "张三", phones: [], emails: ["a", "b", "c"], includeEmail: true)["emails"] == .list(["a", "b"]), "contacts: emails only when asked, ≤2")
+    }
+
+    /// chat-ux #1: edit & resend keeps the old answer as a switchable version (ReplyVariantGroup behind ReplyVariantStore).
+    static func replyVariants() {
+        let root = UUID(), regen = UUID(), edited = UUID(), regenEdited = UUID()
+        var g = ReplyVariantGroup(root: root)
+        g.addRegenerate(regen)
+        expect(g.selectedTurn == regen && g.visiblePromptTurn == root && g.isVisible(turn: root, isUserPrompt: true) && !g.isVisible(turn: regen, isUserPrompt: true), "variants: regenerate keeps the original prompt row")
+        g.addEdit(edited)
+        expect(g.turns.count == 3 && g.selected == 2 && g.visiblePromptTurn == edited, "variants: edit → new answer selected, edited prompt shown")
+        expect(g.isVisible(turn: edited, isUserPrompt: true) && !g.isVisible(turn: root, isUserPrompt: true) && g.isVisible(turn: edited, isUserPrompt: false) && !g.isVisible(turn: regen, isUserPrompt: false), "variants: old prompt + old answers hidden while on the edit")
+        g.step(-2)
+        expect(g.selectedTurn == root && g.visiblePromptTurn == root && g.isVisible(turn: root, isUserPrompt: false) && !g.isVisible(turn: edited, isUserPrompt: true), "variants: switch back → original prompt + original answer")
+        g.step(2); g.addRegenerate(regenEdited)
+        expect(g.promptTurn(of: regenEdited) == edited && g.visiblePromptTurn == edited && g.promptTurns == [root, edited], "variants: regenerate on an edited version re-answers the edited prompt")
+        g.addEdit(edited); expect(g.turns.count == 4, "variants: duplicate add ignored")
+        let legacy = Data(#"{"turns":["\#(root.uuidString)"],"selected":0}"#.utf8)
+        expect((try? JSONDecoder().decode(ReplyVariantGroup.self, from: legacy))?.visiblePromptTurn == root, "variants: v1 persisted groups still decode")
+        let round = try? JSONDecoder().decode(ReplyVariantGroup.self, from: (try? JSONEncoder().encode(g)) ?? Data())
+        expect(round == g, "variants: edited groups persist")
+        expect(!MessageEditRules.canSend("  猫吃什么 ", original: "猫吃什么") && !MessageEditRules.canSend("   ", original: "x") && MessageEditRules.canSend("狗吃什么", original: "猫吃什么"), "edit: unchanged / empty edits cannot be sent")
     }
 }

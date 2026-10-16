@@ -9,7 +9,7 @@ import SwiftUI
 /// API needed for server-side variants: `POST /conversations/{c}/turns/{t}/regenerate` returning a variant id,
 /// plus `variants[]` on the turn so other devices see the same pager.
 @MainActor @Observable final class ReplyVariantStore {
-    struct Group: Codable, Equatable { var turns: [UUID]; var selected: Int }
+    typealias Group = ReplyVariantGroup
     private(set) var groups: [UUID: Group] = [:]      // key = original turn ID
     private var owner: [UUID: UUID] = [:]              // any variant turn → original
     private var conversationID: UUID?
@@ -24,29 +24,29 @@ import SwiftUI
 
     func original(of turn: UUID) -> UUID { owner[turn] ?? turn }
     func group(for turn: UUID) -> Group? { groups[original(of: turn)] }
+    /// Turn whose user prompt a regenerate of this group should re-send (edited prompt if one is selected).
+    func promptTurn(for turn: UUID) -> UUID { group(for: turn)?.visiblePromptTurn ?? original(of: turn) }
 
-    func addVariant(original turn: UUID, newTurn: UUID) {
-        let root = original(of: turn)
-        var g = groups[root] ?? Group(turns: [root], selected: 0)
-        guard !g.turns.contains(newTurn) else { return }
-        g.turns.append(newTurn); g.selected = g.turns.count - 1
-        groups[root] = g; reindex(); save()
-    }
-
+    func addVariant(original turn: UUID, newTurn: UUID) { mutate(turn) { $0.addRegenerate(newTurn) } }
+    /// Edit & resend (chat-ux #1): new prompt + new answer; the previous answer stays as a version.
+    func addEdit(original turn: UUID, newTurn: UUID) { mutate(turn) { $0.addEdit(newTurn) } }
     func step(_ turn: UUID, by delta: Int) {
         let root = original(of: turn)
-        guard var g = groups[root] else { return }
-        g.selected = min(max(0, g.selected + delta), g.turns.count - 1)
-        groups[root] = g; save()
+        guard groups[root] != nil else { return }
+        groups[root]?.step(delta); save()
     }
 
-    /// Prompt rows of regenerated turns are hidden; reply rows show only for the selected variant.
+    /// Prompt rows show only for the prompt the selected variant answers; reply rows only for the selected variant.
     func isVisible(turnID: UUID?, isUserPrompt: Bool) -> Bool {
         guard let turnID, let root = owner[turnID], let g = groups[root] else { return true }
-        if isUserPrompt { return turnID == root }
-        return g.turns[g.selected] == turnID
+        return g.isVisible(turn: turnID, isUserPrompt: isUserPrompt)
     }
 
+    private func mutate(_ turn: UUID, _ change: (inout Group) -> Void) {
+        let root = original(of: turn)
+        var g = groups[root] ?? Group(root: root)
+        change(&g); groups[root] = g; reindex(); save()
+    }
     private func reindex() { owner = [:]; for (root, g) in groups { for t in g.turns { owner[t] = root } } }
     private func key(_ id: UUID) -> String { "catpaw.replyVariants.v1." + id.uuidString }
     private func save() {
