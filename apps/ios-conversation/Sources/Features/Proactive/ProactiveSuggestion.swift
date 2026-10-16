@@ -15,6 +15,9 @@ struct ProactiveSuggestion: Codable, Sendable, Equatable, Identifiable {
         let action: Action; let at: Date; var detail: String?
         /// Codex P0-5: per-action outcome (nil on older records: a create_reminder entry is a success).
         var outcome: ProactiveActionState? = nil
+        /// Codex PR90g #3: the cloud's own record of a snooze's until (`taken[].until`), so a record read back from the
+        /// server restores the original instant, not `at + 10 min`.
+        var until: Date? = nil
     }
 
     let id: String
@@ -50,6 +53,8 @@ struct ProactiveSuggestion: Codable, Sendable, Equatable, Identifiable {
     }
     var allEffectsDone: Bool { ProactiveActionStates.allEffectsDone(effectiveActions.map(\.rawValue), actionStates) }
 }
+
+enum ProactiveEngineError: Error, Equatable { case remindersDenied, writeFailed, smsUnavailable, snoozeNotScheduled }
 
 @MainActor protocol ProactiveSuggestionBackend: AnyObject {
     func list() async throws -> [ProactiveSuggestion]

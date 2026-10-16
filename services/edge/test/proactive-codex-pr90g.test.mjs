@@ -74,3 +74,22 @@ test('PR90g #3: an until older than 7 days is still the device until (expired), 
   const st = (await store.getEvent(U, id)).payload.suggestion;
   assert.equal(Date.parse(st.taken.at(-1).until), Date.parse('2026-10-08T02:10:00Z')); assert.equal(st.taken.at(-1).expired, true);
 });
+
+import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+test('PR90g #3: golden round trip — the server response the client decodes (fixture shared with the Swift runner)', async () => {
+  const g = JSON.parse(readFileSync(new URL('./fixtures/proactive-sync-golden.json', import.meta.url)));
+  // Synced 20 minutes late: the cloud's `at` is the sync time, so only `until` can give back the device's instant.
+  const { call } = setup({ t: new Date(Date.parse(g.server_now) + 20 * 60_000).toISOString() });
+  const ev = await call('POST', BASE + '/evaluate', { context: { time_zone: 'Asia/Shanghai' }, signals: [{ type: 'meeting_upcoming', source: 'calendar', dedupe_key: 'golden', data: { title: '评审', minutes_until: 20 } }] });
+  const id = ev.body.event_id;
+  for (const r of g.requests) assert.equal((await call('POST', `${BASE}/suggestions/${id}/${r.route}`, JSON.parse(JSON.stringify(r.body).replaceAll(g.local_id, id)))).status, 200);
+  const got = (await call('GET', `${BASE}/suggestions/${id}`)).body.suggestion;
+  const norm = JSON.parse(JSON.stringify({ status: got.status, actions: got.actions, taken: got.taken, snooze_until: got.snooze_until, id: got.id }).replaceAll(id, g.local_id));
+  const url = new URL('./fixtures/proactive-sync-golden-response.json', import.meta.url);
+  if (process.env.CATPAW_WRITE_GOLDEN === '1') writeFileSync(url, JSON.stringify(norm, null, 2) + '\n');
+  assert.ok(existsSync(url), 'response fixture committed'); assert.deepEqual(norm, JSON.parse(readFileSync(url)));
+  assert.equal(Date.parse(norm.taken.at(-1).until), Date.parse(g.expect.snooze_until), 'the kept snooze carries its own until on the wire');
+  // The device decodes this (Swift runner pr90g_roundTrip) and its next undo removes the kept snooze → pending on both sides.
+  assert.equal((await call('POST', `${BASE}/suggestions/${id}/undo`, { operation_id: `undo-${id}-g1` })).status, 200);
+  assert.equal((await call('GET', `${BASE}/suggestions/${id}`)).body.suggestion.status, 'pending');
+});
