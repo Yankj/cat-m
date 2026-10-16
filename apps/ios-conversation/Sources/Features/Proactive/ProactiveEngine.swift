@@ -523,7 +523,7 @@ struct ProactiveSignal: Equatable, Sendable {
     func undoLast(_ id: String) async throws -> ProactiveSuggestion {
         guard let token = AccountEpoch.shared.capture() else { throw ProactiveEngineError.writeFailed }
         claimData(for: token.account)
-        var s = ProactiveSuggestionStore.shared.items[id] ?? ProactiveLocalBackend.load()[id] ?? ProactiveSuggestion(id: id, title: "", reason: "")
+        var s = ProactiveLocalBackend.load()[id] ?? ProactiveSuggestionStore.shared.items[id] ?? ProactiveSuggestion(id: id, title: "", reason: "")   // persisted first (Mac c8aee26)
         let taken = s.taken ?? []
         let plan = ProactiveUndo.plan(offered: s.effectiveActions.map(\.rawValue), taken: taken.map(\.action.rawValue), status: s.effectiveStatus.rawValue)
         guard let removed = plan.removed, let index = plan.removedIndex else { note("undo: nothing reversible id=\(id)"); return s }
@@ -1053,7 +1053,10 @@ struct ProactiveSignal: Equatable, Sendable {
         // Codex PR90d #2: bound before any await; every effect, save and enqueue below commits for this account only.
         guard let token = AccountEpoch.shared.capture() else { throw ProactiveEngineError.writeFailed }
         ProactiveEngine.shared.claimData(for: token.account)
-        var s = ProactiveSuggestionStore.shared.items[id] ?? ProactiveSuggestion(id: id, title: "", reason: "")
+        // Mac c8aee26: read the persisted inbox first — the source every write saves to. The card store's copy is not
+        // updated by this entry, so a stale copy reused the first snooze's intent (same id → already_delivered / the
+        // failed re-snooze tearing down the original).
+        var s = ProactiveLocalBackend.load()[id] ?? ProactiveSuggestionStore.shared.items[id] ?? ProactiveSuggestion(id: id, title: "", reason: "")
         // Codex PR90 #4: check the persisted success (local + cloud action_states) before running an effect again.
         guard ProactiveActionStates.shouldExecute(action.rawValue, s.actionStates) else {
             ProactiveEngine.shared.note("\(action.rawValue) already succeeded for \(id) → not run again"); return s
