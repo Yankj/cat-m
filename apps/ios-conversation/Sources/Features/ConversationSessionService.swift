@@ -1,4 +1,6 @@
 import Foundation
+import os
+private let observeLog=Logger(subsystem:"catpaw",category:"observe")
 
 public actor ConversationSessionService {
     private let repository: Repository
@@ -327,6 +329,7 @@ public actor ConversationSessionService {
                 for try await event in stream {
                     try Task.checkCancellation()
                     guard active[conversationID] == observationToken else { throw CancellationError() }
+                    observeLog.info("pump event seq=\(event.sequence, privacy: .public) \(String(describing: event.payload).prefix(60), privacy: .public)")
                     try await apply(event, request: request, observationToken: observationToken)
                     if attempt > 0 { attempt = 0; await resilience?.resumed() }
                     let saved = try await read(scope: scope, conversationID: conversationID)
@@ -491,6 +494,9 @@ public actor ConversationSessionService {
         case .suspended(let ids, _):
             let pending = Set((turn.pendingApprovals ?? []).map(\.interruptID)).union((turn.pendingDeviceCalls ?? []).map(\.interruptID)).union(turn.pendingUIBlocks.compactMap(\.interruptID)).union((turn.pendingUIApprovals ?? []).map(\.interruptID))
             guard !ids.isEmpty, Set(ids).isSubset(of: pending) else { throw ConversationSessionError.invalidEvent }
+            // A server-confirmed suspension proves the turn is alive and waiting on this client: an `unknown` left by an
+            // earlier failed apply must become `running` again, otherwise awaitingApproval stays false and no card shows.
+            if turn.state == .unknown { turn.state = .running }
         case .approvalResolved(let id, let call, _, _):
             // A replay/observe may resolve an interrupt this journal never saw pending (e.g. expired while offline).
             if let i = turn.pendingApprovals?.firstIndex(where: { $0.interruptID == id }) { guard turn.pendingApprovals?[i].callID == call else { throw ConversationSessionError.invalidEvent }; turn.pendingApprovals?.remove(at: i) }
@@ -581,20 +587,29 @@ public actor ConversationSessionService {
         defer { if active[conversationID] == observationToken { releaseActive(conversationID) } }
         // R7 §5.3 rebuild: a still-running plain turn first reattaches by GET-after-lastSequence
         // (append only); the authoritative snapshot below then reconciles goals and terminal state.
+        observeLog.info("observe start state=\(String(describing: turn.state), privacy: .public) seq=\(turn.lastSequence, privacy: .public)")
+        defer { observeLog.info("observe end") }
         if Self.isPlain(turn.request), [.dispatched, .running, .unknown].contains(turn.state) {
             await resilience?.syncing()
             do {
                 let stream = try await backend.resumeEvents(turn.request, afterSequence: turn.lastSequence)
                 for try await event in stream {
+                    observeLog.info("observe event seq=\(event.sequence, privacy: .public) \(String(describing: event.payload).prefix(80), privacy: .public)")
                     guard active[conversationID] == observationToken else { throw CancellationError() }
                     try await apply(event, request: turn.request, observing: true, observationToken: observationToken)
-                    if let current = try await read(scope: scope, conversationID: conversationID).turns.first(where: { $0.id == turn.id }), [.completed, .failed].contains(current.state) { break }
+                    let current = try await read(scope: scope, conversationID: conversationID).turns.first(where: { $0.id == turn.id })
+                    if let current, [.completed, .failed].contains(current.state) { break }
+                    // Same stop rule as pump(): a turn suspended on an approval (device_call / UI decision) keeps the
+                    // stream open until the client answers. Waiting for terminal here deadlocked the observer
+                    // (busy forever → queue never drains, confirm card never restored).
+                    if case .suspended = event.payload, current?.awaitingApproval == true { break }
                 }
             } catch is CancellationError { await resilience?.settled(); throw CancellationError() }
-            catch { /* fall back to the snapshot read below */ }
+            catch { observeLog.info("observe stream error \(String(describing: error).prefix(120), privacy: .public)") /* fall back to the snapshot read below */ }
             await resilience?.settled()
         }
         let observation = try await backend.observe(turn.request)
+        observeLog.info("observe snapshot server=\(observation.serverState ?? "nil", privacy: .public) events=\(observation.events.count, privacy: .public) approvals=\(observation.pendingApprovals.count, privacy: .public)")
         try Task.checkCancellation()
         guard active[conversationID] == observationToken else { throw CancellationError() }
         guard try Self.encode(observation.request) == Self.encode(turn.request) else { throw ConversationSessionError.invalidEvent }
@@ -830,13 +845,21 @@ public actor ConversationSessionService {
         return state == .completed || state == .failed
     }
     // MARK: catpaw.approval.v1 (services/edge/docs/approval-contract.md)
-    static let approvalToolNames: Set<String> = ["render_ui", "list_tasks", "create_task", "update_task", "create_calendar_event", "update_calendar_event", "create_reminder", "update_reminder", "external_write"]
+    /// Single source with the transport (includes catpaw.device.v1 tools). A drifted local copy here rejected
+    /// `reminder_create` tool_started as invalidEvent → turn stuck `unknown`, observer looped, queue never drained.
+    static var approvalToolNames: Set<String> { NativeChatHTTPBackend.approvalToolNames }
     /// Cold start / observe: the snapshot's `pending_approvals` is authoritative for a turn the server reports `awaiting_approval`.
     private func restoreApprovals(_ observation: ConversationObservation, turnID: UUID, observationToken: UUID) async throws {
         let request = observation.request
         var (session, revision) = try await readVersioned(scope: request.scope, conversationID: request.conversationID)
         guard let i = session.turns.firstIndex(where: { $0.id == turnID }) else { return }
         var turn = session.turns[i]
+        // Device calls (catpaw.device.v1) live in the journal (pendingDeviceCalls); the snapshot only confirms the turn is
+        // still suspended on them. Revive an `unknown` turn so its confirm card renders instead of an endless re-observe.
+        var deviceRevived = false
+        if observation.serverState == "awaiting_approval", !(turn.pendingDeviceCalls ?? []).isEmpty, [.unknown, .dispatched].contains(turn.state) {
+            turn.state = .running; turn.error = nil; deviceRevived = true
+        }
         let uiChanged: Bool
         if observation.serverState == "awaiting_approval", !observation.pendingUIApprovals.isEmpty, [.running, .unknown, .dispatched].contains(turn.state) {
             uiChanged = turn.pendingUIApprovals != observation.pendingUIApprovals
@@ -854,7 +877,7 @@ public actor ConversationSessionService {
             turn.state = .running; turn.error = nil; turn.pendingApprovals = observation.pendingApprovals
         } else if turn.pendingApprovals != nil, observation.serverState != nil, observation.serverState != "awaiting_approval" {
             turn.pendingApprovals = nil
-        } else if !uiChanged { return }
+        } else if !uiChanged && !deviceRevived { return }
         session.turns[i] = turn
         try await save(session, expectedRevision: revision, fence: request, observationToken: observationToken)
     }
@@ -1017,7 +1040,9 @@ public actor ConversationSessionService {
     public func submitDeviceResult(scope: DataScope, callID: String, status: String, data: Data?) async throws -> UUID {
         guard let entry = deviceCallIndex[callID] else { throw ConversationApprovalFailure.noPendingApproval }
         let (conversationID, turnID) = entry
-        guard active[conversationID] == nil, !cancelling.contains(conversationID) else { throw ConversationSessionError.busy }
+        // A read-only observer may briefly hold the conversation; give it a moment instead of failing the user's tap.
+        for _ in 0..<20 where active[conversationID] != nil { try await Task.sleep(nanoseconds: 250_000_000) }
+        guard active[conversationID] == nil, !cancelling.contains(conversationID) else { observeLog.error("device result busy"); throw ConversationSessionError.busy }
         let saved = try await read(scope: scope, conversationID: conversationID)
         guard let turn = saved.turns.first(where: { $0.id == turnID }), let call = turn.pendingDeviceCalls?.first(where: { $0.callID == callID }) else { throw ConversationApprovalFailure.noPendingApproval }
         let operationID = stableID("device-result-\(turnID)-\(callID)")
