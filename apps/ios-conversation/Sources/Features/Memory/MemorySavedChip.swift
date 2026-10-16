@@ -35,7 +35,7 @@ struct MemorySavedEvent: Codable, Sendable, Equatable {
         guard !local.items.isEmpty else { return .init() }
         guard let target = preferred, target !== local else { return .init(kept: local.items.count) }
         let report = await MemoryLibraryLocal.migrate(local, to: target)
-        if report.kept > 0 { install(backend: local) }
+        if MemoryLibraryLocal.shouldSurfaceLocal(report) { install(backend: local) }   // gate off only; never replace a working cloud library
         return report
     }
 }
