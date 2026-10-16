@@ -9,7 +9,8 @@ import CatpawImageComposer
     @StateObject private var composerChrome:ConversationComposerChromeAdapter
     @ObservedObject private var proactiveFeed = CatpawProactiveFeed.shared
     @ObservedObject private var presenceHub = CatpawPresenceHub.shared
-    @StateObject private var attachmentUploader:LocalMockComposerAttachmentUploader
+    @StateObject private var attachmentUploader:ModelImageComposerAttachmentUploader
+    @State private var sendAfterImageConsent=false
     var accountLabel: String? = nil
     var onSignOut: (() -> Void)? = nil
     var isAnonymousAccount = false
@@ -49,7 +50,7 @@ import CatpawImageComposer
         self.model=model
         let chrome=ConversationComposerChromeAdapter(model:model,sendsEnabled:!restrictToFrozenFixture)
         _composerChrome=StateObject(wrappedValue:chrome)
-        _attachmentUploader=StateObject(wrappedValue:LocalMockComposerAttachmentUploader { [weak chrome] id,status in
+        _attachmentUploader=StateObject(wrappedValue:ModelImageComposerAttachmentUploader(model:model) { [weak chrome] id,status in
             guard let chrome,let index=chrome.attachments.firstIndex(where:{$0.id==id}) else {return false}
             chrome.attachments[index].status=status
             return true
@@ -536,6 +537,9 @@ import CatpawImageComposer
                     .background{GeometryReader{geometry in Color.clear.preference(key:ConversationComposerMeasurements.self,value:["text":geometry.size.height])}}
             }
                 .onAppear{composerChrome.setSendAction(submitDraft)}
+                .onChange(of:model.imageSendBlock){_,block in
+                    if sendAfterImageConsent,block==nil,model.imageDraft.phase == .ready {sendAfterImageConsent=false;submitDraft()}
+                }
                 .accessibilityElement(children:.contain).accessibilityIdentifier("chat.input.container")
         }.background(alignment:.topLeading) {
             if let target=model.artifactContinuation {
@@ -768,6 +772,12 @@ import CatpawImageComposer
         if canSendDraft {followingLatest=true}
         let time=ProcessInfo.processInfo.systemUptime,old=Set(model.outgoingMessages.map(\.id))
         let hadAttachments = !composerChrome.attachments.isEmpty
+        if model.imageSendBlock == .imageConsentRequired {
+            // #64: an attached image needs its one-time consent; send continues once it is approved.
+            if model.canReviewImage {sendAfterImageConsent=true;model.requestImageConsent()}
+            return
+        }
+        sendAfterImageConsent=false
         model.prepareSend()
         let admitted=model.outgoingMessages.last(where:{!old.contains($0.id)})
         if hadAttachments {pendingAttachmentIntentID=admitted?.id}
