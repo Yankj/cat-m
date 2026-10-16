@@ -831,9 +831,13 @@ import CatpawImageComposer
         switch row.presentation {
         case .message:messageView(row.message,turnID:row.turnID)
         case .processPending:
-            Label(row.message.toolName == "agent_status" ? ui("读取任务进展…"):ui("正在处理请求…"),systemImage:"circle.dotted")
-                .font(CatpawTypography.Role.caption.font).symbolRenderingMode(.monochrome)
-                .foregroundStyle(CatpawColors.secondary).accessibilityIdentifier("chat.process.\(row.id)")
+            HStack(spacing:10) {
+                CatpawPresence(state:.working, size:18)
+                StreamShimmerEllipsis(active:!reduceMotion)
+            }
+            .accessibilityElement(children:.combine)
+            .accessibilityLabel(row.message.toolName == "agent_status" ? ui("读取任务进展…"):ui("正在处理请求…"))
+            .accessibilityIdentifier("chat.process.\(row.id)")
         case .fallback:
             VStack(alignment:.leading,spacing:4) {
                 Label(ui("处理进展待核对"),systemImage:"exclamationmark.circle").font(CatpawTypography.Role.caption.font)
