@@ -17,6 +17,7 @@ const ACTION_KINDS = SUGGESTION_ACTIONS;
 const EFFECTS = ['create_reminder', 'notify_attendees'];
 const actionStates = st => Object.fromEntries((st.taken ?? []).filter(t => EFFECTS.includes(t.action)).map(t => [t.action, 'done']));
 const lvl = d => LEVELS.indexOf(d);
+const UNDO_IRREVERSIBLE = ['notify_attendees'];
 
 export async function signalHash(s) {
   const canon = JSON.stringify([s.type, s.source ?? null, s.dedupe_key ?? stable(s.data ?? {})]);
@@ -182,8 +183,15 @@ export function createDecisionService({ store, model = null, memory = null, now 
     const opId = typeof b.operation_id === 'string' ? b.operation_id.slice(0, 80) : null;
     return mutate(uid, id, (ev, st) => {
       if (opId && st.ops['undo:' + opId]) return false;
-      const prev = st.history.pop(); if (!prev) return false;
-      st.status = prev.status; st.taken = st.taken.slice(0, prev.taken_len); delete st.snooze_until; if (opId) st.ops['undo:' + opId] = true;
+      // catpaw.proactive.undo.v1 (same as the device's ProactiveUndo): revert the most recent reversible action; a sent
+      // SMS is irreversible and kept; status derived from what remains. Nothing reversible → no-op.
+      const i = st.taken.findLastIndex(t => !UNDO_IRREVERSIBLE.includes(t.action)); if (i < 0) return false;
+      const [removed] = st.taken.splice(i, 1);
+      const last = st.taken.at(-1)?.action, offered = (ev.payload.actions ?? []).filter(a => EFFECTS.includes(a)), done = actionStates(st);
+      st.status = last === 'snooze' ? 'snoozed' : last === 'dismiss' ? 'dismissed' : (offered.length && offered.every(a => done[a]) ? 'done' : 'pending');
+      if (removed.action === 'snooze' || st.status !== 'snoozed') delete st.snooze_until;
+      st.history.push({ undo: removed.action, at: new Date(now()).toISOString() });
+      if (opId) st.ops['undo:' + opId] = true;
       return true;
     });
   }
