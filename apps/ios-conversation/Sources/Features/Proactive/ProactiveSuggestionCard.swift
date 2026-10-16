@@ -39,7 +39,7 @@ import SwiftUI
         .background(CatpawColors.panel, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(CatpawColors.ink.opacity(0.08), lineWidth: 0.5))
         .onAppear { store.adopt(suggestion) }
-        .sheet(isPresented: $memoryOpen) { NavigationStack { MemoryLibraryView(backend: MemoryLibraryHub.backend ?? MemoryLibraryStub()) } }
+        .sheet(isPresented: $memoryOpen) { NavigationStack { MemoryLibraryView(backend: MemoryLibraryHub.pageBackend) } }
         .sheet(isPresented: $inboxOpen) { NavigationStack { ProactiveInboxView() } }
         .sheet(isPresented: $whyOpen) { ProactiveWhyHost(suggestion: s) }
         .accessibilityElement(children: .contain)
