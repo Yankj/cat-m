@@ -172,5 +172,21 @@ import ActivityKit
             await CatpawPushTokenUploader.shared.forgetActivity(activityID)
         }
     }
+
+    /// Simulator acceptance: start → update → end a local Live Activity when `CATPAW_ACCEPTANCE_LIVE_ACTIVITY=1`.
+    /// No-op when Live Activities are disabled by the system.
+    func acceptanceProbe() async {
+        #if DEBUG || DEVICE_TRIAL
+        guard ProcessInfo.processInfo.environment["CATPAW_ACCEPTANCE_LIVE_ACTIVITY"] == "1" else { return }
+        guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
+        let id = UUID()
+        turns[id] = Turn(conversationID: "acceptance", body: ui("正在思考…"))
+        startIfNeeded(id)
+        try? await Task.sleep(nanoseconds: 1_500_000_000)
+        mutate(id) { $0.kind = CatpawWorkAttributes.ContentState.Kind.writing; $0.body = self.ui("正在整理回答…") }
+        try? await Task.sleep(nanoseconds: 1_500_000_000)
+        finish(id, kind: CatpawWorkAttributes.ContentState.Kind.done, title: ui("已完成"))
+        #endif
+    }
 }
 #endif

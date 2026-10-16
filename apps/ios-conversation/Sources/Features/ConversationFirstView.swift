@@ -454,6 +454,7 @@ import CatpawImageComposer
         .onReceive(NotificationCenter.default.publisher(for:UIApplication.willEnterForegroundNotification)) { _ in proactiveFeed.refreshSoon() }
         #if canImport(ActivityKit) && os(iOS)
         .task { await CatpawLiveActivityCoordinator.shared.observe(model.service) { [model] in model.conversationID } }
+        .task { await CatpawLiveActivityCoordinator.shared.acceptanceProbe() }
         .onChange(of:model.conversationID,initial:true) { _,id in replyVariants.activate(id) }   // regenerate pager variants
         #endif
         .onDisappear {scrollTask?.cancel();scrollTask=nil}
