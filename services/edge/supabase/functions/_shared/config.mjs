@@ -81,5 +81,5 @@ export function readAllowlist(value){const UUIDRE=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9
 /** enrolled: optional {has(subjectID, feature)} (enrollment registry); an enrolled subject counts as allowlisted for that feature. */
 export const featureAllows=(gate,allowlist,subjectID,enrolled=null,feature=null)=>gate==='on'||(gate==='allowlist'&&subjectID!=null&&((allowlist instanceof Set&&allowlist.has(String(subjectID).toLowerCase()))||(typeof enrolled?.has==='function'&&enrolled.has(subjectID,feature))));
 
-/** Per-subject daily model dispatch quota (every provider request counts, incl. device-result continuations). Default 300. */
-export function readDailyCallLimit(value){const v=String(value??'').trim();if(!v)return 300;const n=Number(v);return Number.isInteger(n)&&n>=1&&n<=100000?n:300;}
+/** Optional per-subject daily model dispatch quota. Unset/empty/invalid → null = unlimited (no counting). Only a positive integer enables it. */
+export function readDailyCallLimit(value){const v=String(value??'').trim();if(!v)return null;const n=Number(v);return /^\d+$/.test(v)&&Number.isSafeInteger(n)&&n>=1?n:null;}
