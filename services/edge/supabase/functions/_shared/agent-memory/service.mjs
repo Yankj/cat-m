@@ -51,8 +51,10 @@ export function createAgentMemoryService({ store, allow = () => false, verifyUse
     return rank(uid, query, LIMITS.forget_max);
   }
   /** Recall snapshot frozen on the turn at admission. Ephemeral (temporary) turns read and write nothing. */
-  async function recallForTurn({ subjectID, query, mode = null, conversationID = null, turnID = null }) {
+  async function recallForTurn({ subjectID, query, mode = null, conversationID = null, turnID = null, clientUseMemory = null }) {
     if (!allow(subjectID)) return null;
+    // Client 「使用记忆」 off (X-Catpaw-Use-Memory: 0) ⇒ same as server off: no recall, no tools, no journal.
+    if (clientUseMemory === false) return { contract: AGENT_MEMORY_CONTRACT, mode: 'normal', enabled: false, auto_save: false, ids: [], prompt: '' };
     if (mode === 'ephemeral') return { contract: AGENT_MEMORY_CONTRACT, mode: 'ephemeral', enabled: false, auto_save: false, ids: [], prompt: '' };
     // Unmigrated schema (42P01 table / 42703 column missing): no memory for this turn instead of failing the chat turn.
     let s; try { s = await settings(subjectID); } catch (e) { if (e?.code === '42P01' || e?.code === '42703') return null; throw e; }
