@@ -113,6 +113,8 @@ enum ProactiveFeedback: String, Codable, Sendable, CaseIterable { case helpful, 
     func current(_ s: ProactiveSuggestion) -> ProactiveSuggestion { items[s.id] ?? s }
     /// Codex PR90c #1: sign-out / switch — nothing of the previous account stays on screen.
     func resetForAccountChange() { items = [:]; busy = []; errorKey = nil }
+    /// Persistence hook for a merged card (set by the real backend).
+    var onMerged: ((ProactiveSuggestion) -> Void)?
     func adopt(_ s: ProactiveSuggestion) {
         if var existing = items[s.id] {
             // Codex PR90c #6: an existing card takes the cloud's newer success states (never loses one it had).
@@ -121,6 +123,7 @@ enum ProactiveFeedback: String, Codable, Sendable, CaseIterable { case helpful, 
                 existing.serverActionStates = merged
                 if existing.allEffectsDone { existing.status = .done }
                 items[s.id] = existing
+                onMerged?(existing)   // Codex PR90d: persisted, so a reload from disk cannot resurrect the action
             }
         } else { items[s.id] = s }
         (backend as? ProactiveSuggestionMock)?.adopt(s)
