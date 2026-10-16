@@ -461,6 +461,45 @@ final class NativeAuthApplicationLifecycleTests:XCTestCase {
         }
     }
 
+    /// Codex PR91 p91c-3: sign-out ends every Live Activity (stopAll) before its first await, after the epoch closed.
+    @MainActor func testPR91SignOutStopsLiveActivitiesBeforeFirstAwait() async throws {
+        let root=FileManager.default.temporaryDirectory.appendingPathComponent("native-pr91-signout-order-"+UUID().uuidString,isDirectory:true)
+        defer {try? FileManager.default.removeItem(at:root);NativeAuthApplicationModel.signOutTrace=nil;CatpawLeaveActivity.stopAllObserver=nil}
+        let (app,_)=try await pr91SignedInApp(root:root)
+        let order=PR91CallOrder()
+        CatpawLeaveActivity.stopAllObserver={order.add(AccountEpoch.shared.capture()==nil ? "stopAll(epochClosed)" : "stopAll(epochOpen)")}
+        NativeAuthApplicationModel.signOutTrace={order.add($0)}
+        await app.signOut()
+        let calls=order.calls
+        XCTAssertEqual(calls.first,"stopAll(epochClosed)","stopAll must run first, after AccountEpoch.signOut(): \(calls)")
+        let stop=try XCTUnwrap(calls.firstIndex(of:"stopAll(epochClosed)")),firstAwait=try XCTUnwrap(calls.firstIndex(of:"firstAwait"))
+        XCTAssertLessThan(stop,firstAwait,"stopAll must precede the first await of signOut: \(calls)")
+    }
+
+    /// Codex PR91 p91c-5: the all-row at-rest memory migration is started when the signed-in chat is composed at launch.
+    @MainActor func testPR91LaunchStartsAtRestMemoryMigration() async throws {
+        let root=FileManager.default.temporaryDirectory.appendingPathComponent("native-pr91-atrest-launch-"+UUID().uuidString,isDirectory:true)
+        defer {try? FileManager.default.removeItem(at:root);NativeAuthApplicationModel.atRestMigrationTrace=nil}
+        let started=PR91CallOrder()
+        NativeAuthApplicationModel.atRestMigrationTrace={started.add($0.uuidString)}
+        let (app,subject)=try await pr91SignedInApp(root:root)
+        XCTAssertFalse(started.calls.isEmpty,"launch must start ConversationMemoryAtRest.migrateAll")
+        XCTAssertTrue(started.calls.allSatisfy {$0==subject.uuidString},"migration runs only for the signed-in subject: \(started.calls)")
+        await app.signOut()
+    }
+
+    @MainActor private func pr91SignedInApp(root:URL) async throws -> (NativeAuthApplicationModel,UUID) {
+        let scope=UUID(),clock=AuthTestClock(),storage=LifecycleStorage(),configuration=try lifecycleConfiguration(scope:scope)
+        let remote=AnonymousTestRemote(issuer:configuration.issuer,clock:clock)
+        try storage.save(await remote.candidate())
+        let subject=await remote.id
+        let manager=NativeAuthSessionManager(configuration:configuration,remote:remote,vault:storage,barrier:storage,now:{clock.now()})
+        let resolver=LifecycleWorkspaceResolver(subject:subject,scope:scope,steps:[.success,.success],accessToken:"synthetic.anon.signature")
+        let app=NativeAuthApplicationModel(configuration:configuration,manager:manager,vault:storage,barrier:storage,root:root,workspaceResolver:resolver,retryClock:LifecycleRetryClock())
+        await app.start();try await waitUntil {app.chat?.networkAdmissionAllowed == true}
+        return (app,subject)
+    }
+
     @MainActor private func waitUntil(_ predicate:@escaping @MainActor () async -> Bool) async throws {
         let deadline=ProcessInfo.processInfo.systemUptime+10
         while ProcessInfo.processInfo.systemUptime<deadline {
@@ -632,4 +671,12 @@ private actor LifecycleRetryClock:NativeWorkspaceRetryClock {
     func delays()->[UInt64] {recordedDelays}
     func advance() {let pending=waiters.values;waiters.removeAll();pending.forEach{$0.resume()}}
     private func cancel(_ id:UUID){waiters.removeValue(forKey:id)?.resume(throwing:CancellationError())}
+}
+
+/// Thread-safe call recorder for the PR91 ordering tests (observers fire from nonisolated code).
+private final class PR91CallOrder:@unchecked Sendable {
+    private let lock=NSLock()
+    private var values:[String]=[]
+    func add(_ value:String){lock.lock();values.append(value);lock.unlock()}
+    var calls:[String] {lock.lock();defer{lock.unlock()};return values}
 }

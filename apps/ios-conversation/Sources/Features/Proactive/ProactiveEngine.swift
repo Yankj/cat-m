@@ -1571,7 +1571,10 @@ struct ProactiveEngineSignalAdapter: ProactiveSignalEngine {
     /// Sign-out: end every departure countdown, including ones started before a relaunch.
     /// Sign-out: end every Live Activity of every type — departure countdowns (also from before a relaunch) and the
     /// work activity, whose pending start timer is cancelled (Codex PR91 p91b-3).
+    /// Test seam (PR91 XCTest): observes stopAll() for sign-out ordering.
+    nonisolated(unsafe) static var stopAllObserver: (() -> Void)?
     static func stopAll() {
+        stopAllObserver?()
         let ids = Set(Activity<CatpawLeaveAttributes>.activities.map { $0.attributes.suggestionID })
         for id in ids { stop(suggestionID: id) }
         CatpawLiveActivityCoordinator.shared.resetForSignOut()
@@ -1581,7 +1584,8 @@ struct ProactiveEngineSignalAdapter: ProactiveSignalEngine {
 @MainActor enum CatpawLeaveActivity {
     static func start(suggestionID: String, meetingTitle: String, leaveAt: Date) {}
     static func stop(suggestionID: String) {}
-    static func stopAll() {}
+    nonisolated(unsafe) static var stopAllObserver: (() -> Void)?
+    static func stopAll() { stopAllObserver?() }
 }
 #endif
 
