@@ -203,9 +203,17 @@ import ActivityKit
 
     func stopLeaveCountdown(suggestionID: String) {
         #if canImport(ActivityKit) && os(iOS)
-        guard let activity = leaveActivities.removeValue(forKey: suggestionID) else { return }
-        let final = CatpawLeaveAttributes.ContentState(title: "已结束", leaveAt: .now, minutesLeft: 0, meetingTitle: activity.attributes.meetingTitle)
-        Task { await activity.end(ActivityContent(state: final, staleDate: nil), dismissalPolicy: .immediate) }
+        var targets: [Activity<CatpawLeaveAttributes>] = []
+        if let cached = leaveActivities.removeValue(forKey: suggestionID) { targets.append(cached) }
+        // Process may have restarted — also scan system Activity.activities by suggestionID.
+        for a in Activity<CatpawLeaveAttributes>.activities where a.attributes.suggestionID == suggestionID {
+            if !targets.contains(where: { $0.id == a.id }) { targets.append(a) }
+            leaveActivities.removeValue(forKey: suggestionID)
+        }
+        for activity in targets {
+            let final = CatpawLeaveAttributes.ContentState(title: "已结束", leaveAt: .now, minutesLeft: 0, meetingTitle: activity.attributes.meetingTitle)
+            Task { await activity.end(ActivityContent(state: final, staleDate: nil), dismissalPolicy: .immediate) }
+        }
         #endif
     }
 

@@ -8,6 +8,7 @@ import SwiftUI
     @State private var meetingIn: Double = 45
     @State private var emitted = false
     @State private var leadMinutes: Double = 15
+    @State private var leadResult = ""
     @Environment(\.locale) private var locale
     private func ui(_ k: String, _ a: [String] = []) -> String { AppLanguage(locale: locale).ui(k, arguments: a) }
 
@@ -22,11 +23,15 @@ import SwiftUI
                 Stepper(ui("提前 {0} 分钟", [String(Int(leadMinutes))]), value: $leadMinutes, in: 5...60, step: 5)
                     .accessibilityIdentifier("proactive.debug.leadMinutes")
                 Button(ui("写入记忆并生效")) {
-                    Task { await ProactiveEngine.shared.setLeadMinutes(Int(leadMinutes)) }
+                    Task { leadResult = await ProactiveEngine.shared.setLeadMinutes(Int(leadMinutes)) }
                 }.accessibilityIdentifier("proactive.debug.setLead")
                 Button(ui("删除该记忆"), role: .destructive) {
                     Task { await ProactiveEngine.shared.clearLeadMinutes() }
                 }.accessibilityIdentifier("proactive.debug.clearLead")
+                if !leadResult.isEmpty { Text(leadResult).font(.footnote).accessibilityIdentifier("proactive.debug.leadResult") }
+                LabeledContent(ui("记忆库"), value: MemoryLibraryHub.backend.map { String(describing: type(of: $0)) } ?? "—")
+                NavigationLink(ui("打开 设置 › 记忆")) { MemoryLibraryView(backend: MemoryLibraryHub.backend ?? MemoryLibraryStub()) }
+                    .accessibilityIdentifier("proactive.debug.openMemory")
             }
             Section(ui("一键注入")) {
                 Button(ui("注入 {0} 分钟后·望京 SOHO 的会", [String(Int(meetingIn))])) {
@@ -36,10 +41,16 @@ import SwiftUI
                     Task {
                         ProactiveEngine.shared.resetLedger()
                         let id = "inject-" + UUID().uuidString
+                        // Optional 「模拟起点」: when debug location is set, pass it explicitly (Why: 从模拟起点 X).
+                        // When unset, travelETA uses real CLLocation / fails → 未用到 ETA (no Shanghai fallback).
+                        let loc = model.location
                         _ = await ProactiveEngine.shared.handle(
                             .init(source: .simulated, eventID: id, title: "产品评审会",
                                   start: Date.now.addingTimeInterval(Double(mins) * 60),
-                                  place: "北京市朝阳区望京 SOHO T1")
+                                  place: "北京市朝阳区望京 SOHO T1",
+                                  simulatedOriginLabel: loc.map { "模拟起点·\($0.name)" },
+                                  simulatedOriginLat: loc?.latitude,
+                                  simulatedOriginLon: loc?.longitude)
                         )
                     }
                 }
@@ -74,8 +85,8 @@ import SwiftUI
                 }.foregroundStyle(CatpawColors.ink).accessibilityIdentifier("debug.signal.addMeeting")
                 Toggle(ui("日历权限已允许"), isOn: $model.calendarAuthorized)
             }
-            Section(ui("位置")) {
-                Picker(ui("预设位置"), selection: Binding(get: { model.location?.name ?? "" }, set: { n in model.location = ProactiveSignalDebugModel.presets.first { $0.name == n } })) {
+            Section(ui("模拟起点（可选）")) {
+                Picker(ui("模拟起点"), selection: Binding(get: { model.location?.name ?? "" }, set: { n in model.location = ProactiveSignalDebugModel.presets.first { $0.name == n } })) {
                     Text(ui("无位置")).tag("")
                     ForEach(ProactiveSignalDebugModel.presets) { p in Text(ui(p.name)).tag(p.name) }
                 }.accessibilityIdentifier("debug.signal.location")
