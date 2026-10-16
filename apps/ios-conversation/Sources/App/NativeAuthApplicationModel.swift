@@ -186,6 +186,7 @@ struct NativeWorkspaceRetrySchedule: Sendable {
     }
     /// catpaw.ui.v1 decisions for the chat just built (scope-bound; #36's protocol has no scope).
     private(set) var uiDecisionSubmitter: ConversationUIDecisionSubmitter?
+    private static var deviceReportObserver: NSObjectProtocol?
     private func installUIDecisionSubmitter(_ service: ConversationSessionService, scope: DataScope) {
         let submitter = ConversationUIDecisionSubmitter(service: service, scope: scope)
         uiDecisionSubmitter = submitter
@@ -196,6 +197,13 @@ struct NativeWorkspaceRetrySchedule: Sendable {
         ConversationDeviceCall.clientEnabled = true
         ConversationDeviceCall.clientTools = DeviceToolContract.clientTools   // NoBug P0-4: advertise what we execute
         DeviceCallHub.recorder = { DeviceLedger.shared.record(call: $0, result: $1) }
+        // NoBug P1-4: unacknowledged device results are re-sent on relaunch and whenever the app returns to foreground.
+        Task { @MainActor in await DeviceCallStore.shared.retryPendingReports() }
+        if Self.deviceReportObserver == nil {
+            Self.deviceReportObserver = NotificationCenter.default.addObserver(forName: UIApplication.willEnterForegroundNotification, object: nil, queue: .main) { _ in
+                Task { @MainActor in await DeviceCallStore.shared.retryPendingReports() }
+            }
+        }
     }
     /// Starts the background warm-up (local preview, restore, anonymous experience identity).
     /// Safe to call from `.task`: the warm-up is an unstructured task, so the gate can await it.
