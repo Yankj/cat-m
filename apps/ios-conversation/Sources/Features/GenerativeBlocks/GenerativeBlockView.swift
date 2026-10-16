@@ -102,6 +102,8 @@ import SwiftUI
         case .form: GenerativeFormView(block: block, response: store.responses[block.id], expired: expired, respond: respond)
         case .list: GenerativeListView(block: block, expired: expired, respond: respond)
         case .progress: GenerativeProgressView(block: block)
+        case .place: GenerativePlaceView(block: block)
+        case .event: GenerativeEventView(block: block)
         case .card, .sheet: GenerativeCardView(block: block, response: store.responses[block.id], expired: expired, respond: respond)
         } }
         .disabled(disabled && store.responses[block.id] == nil)

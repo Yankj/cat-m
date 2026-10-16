@@ -97,3 +97,21 @@ Model tool result: `{status:'submitted',response}` · `{status:'dismissed'|'expi
 - In a round that suspends, display-only blocks (card/list/progress, plus `ui.block.update`) are sent **before** `turn_suspended`, not after the user answers.
 - A round with several interactive blocks emits one `turn_suspended` carrying every `interrupt_ids`. The client may answer them in any order. A partial answer returns `approval_resolved` + `ui.block.resolve` and leaves the turn suspended. The model resumes only once the last one is answered.
 - Recorded wire session: `docs/fixtures/catpaw-ui-demo.jsonl`.
+
+## 7. Grounded kinds: `place` and `event` (chat-ux P0 #2)
+
+Content of these two kinds comes **only** from a tool_result of the same turn; the model can never write POIs or events.
+
+- Client opt-in: `X-Catpaw-UI-Kinds: card,choices,…,place,event` (with the UI contract). Without it the grounded prompt is not
+  added, no place block is auto-emitted and `render_ui` place/event returns `{status:'error',error:{code:'kind_unsupported_by_client'}}`.
+- Model sends `render_ui({block:{id,kind:'place'|'event',title?,body?,source:{callId,ids?}}})`. The server (core/src/grounded-ui.mjs)
+  rebuilds `places` / `events` from that call's result and drops anything the model wrote:
+  - `place` ← `places_search` `data.places` (ids `p1…` when the phone sent none; `caption` = `data.why`), ≤ 5.
+  - `event` ← `calendar_list` `data.events` (ids `e1…`) or `calendar_create` (args + ok result → one event `e1`), ≤ 8.
+- Each row carries in-card deep links `actions:[{id,label,url}]`, allowlisted to `maps://`, `https://maps.apple.com/`, `tel:`, `calshow:`;
+  anything else is dropped. Grounded blocks are display-only (no block `actions`, no `ui.response`).
+- Errors (no block shown; model told to answer in text): `source_not_found`, `source_not_ok`, `source_wrong_tool`, `source_id_unknown`, `source_empty`.
+- After a successful `places_search` the server itself emits `ui.block` `{id:'places-<callId>',kind:'place',title:'附近',…}` — the nearby list
+  now lives on this path; the device receipt keeps its old list only when no such block exists (older server).
+- Contract fixtures: `docs/fixtures/catpaw-ui-grounded.json` (generator `test/fixtures/generate-ui-grounded.mjs`), asserted by
+  `test/ui-grounded.test.mjs` and, one-to-one, by the iOS portable runner (`Tests/NoBugP0Runner.swift › groundedFixtures`).

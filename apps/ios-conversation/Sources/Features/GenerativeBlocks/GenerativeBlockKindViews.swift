@@ -312,3 +312,81 @@ import SwiftUI
         }
     }
 }
+
+// MARK: place / event (grounded: server-filled from tool results; deep links open locally)
+
+@MainActor struct GenerativeDeepLinkButtons: View {
+    let links: [GenerativeBlock.DeepLink]
+    let idPrefix: String
+    @Environment(\.openURL) private var openURL
+    var body: some View {
+        ForEach(links.filter(\.isAllowed)) { link in
+            if let url = URL(string: link.url) {
+                Button(link.label) { openURL(url) }
+                    .font(CatpawTypography.Role.caption.font.weight(.medium)).foregroundStyle(CatpawColors.ink).touchTarget()
+                    .accessibilityLabel(link.label).accessibilityIdentifier(idPrefix + link.id)
+            }
+        }
+    }
+}
+
+@MainActor struct GenerativePlaceView: View {
+    let block: GenerativeBlock
+    static func detail(_ p: GenerativeBlock.Place) -> String {
+        [p.etaMin.map { "约 \(Int($0)) 分钟" }, p.distanceM.map { $0 >= 1000 ? String(format: "%.1f 公里", $0 / 1000) : "\(Int($0)) 米" }, p.address]
+            .compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · ")
+    }
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            GenerativeBlockHeader(block: block)
+            ForEach(block.places ?? []) { p in
+                HStack(alignment: .center, spacing: 8) {
+                    Image(systemName: "mappin.circle.fill").foregroundStyle(CatpawColors.secondary).frame(width: 24).accessibilityHidden(true)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(p.name).font(CatpawTypography.Role.body.font.weight(.medium)).foregroundStyle(CatpawColors.ink)
+                        Text(Self.detail(p)).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary).lineLimit(2)
+                    }
+                    .accessibilityElement(children: .combine)
+                    Spacer(minLength: 0)
+                    GenerativeDeepLinkButtons(links: p.actions, idPrefix: "chat.place.\(p.id).")
+                }
+                .frame(minHeight: 44).accessibilityIdentifier("chat.place." + p.id)
+            }
+            if let caption = block.caption, !caption.isEmpty {
+                Text(caption).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary).fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("chat.places.why")
+            }
+        }
+    }
+}
+
+@MainActor struct GenerativeEventView: View {
+    let block: GenerativeBlock
+    static func when(_ e: GenerativeBlock.Event) -> String {
+        let iso = ISO8601DateFormatter()
+        guard let start = iso.date(from: e.start) else { return e.start }
+        let f = DateFormatter(); f.locale = Locale(identifier: "zh_CN"); f.dateFormat = e.allDay == true ? "M月d日 全天" : "M月d日 HH:mm"
+        var out = f.string(from: start)
+        if e.allDay != true, let raw = e.end, let end = iso.date(from: raw) { let t = DateFormatter(); t.dateFormat = "HH:mm"; out += "–" + t.string(from: end) }
+        return out
+    }
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            GenerativeBlockHeader(block: block)
+            ForEach(block.events ?? []) { e in
+                HStack(alignment: .center, spacing: 8) {
+                    Image(systemName: "calendar").foregroundStyle(CatpawColors.secondary).frame(width: 24).accessibilityHidden(true)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(e.title.isEmpty ? "（无标题）" : e.title).font(CatpawTypography.Role.body.font.weight(.medium)).foregroundStyle(CatpawColors.ink)
+                        Text([Self.when(e), e.location].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · "))
+                            .font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary).lineLimit(2)
+                    }
+                    .accessibilityElement(children: .combine)
+                    Spacer(minLength: 0)
+                    GenerativeDeepLinkButtons(links: e.actions, idPrefix: "chat.event.\(e.id).")
+                }
+                .frame(minHeight: 44).accessibilityIdentifier("chat.event." + e.id)
+            }
+        }
+    }
+}
