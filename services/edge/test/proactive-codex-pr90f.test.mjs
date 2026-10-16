@@ -88,3 +88,13 @@ test('PR90f #5: an offline device suggestion is created server-side once (idempo
   await call('POST', `${BASE}/suggestions/${id}/action`, { action: 'dismiss', operation_id: 'op-local-abc-dismiss' });
   assert.equal((await store.getEvent(U, id)).payload.suggestion.status, 'dismissed');
 });
+
+test('PR90e P2: the cloud daily cap counts decisions by their delivery day (pre-scheduled ones reserve tomorrow)', async () => {
+  const { call, clock } = setup({ t: '2026-10-15T02:00:00Z' });   // 10:00 Asia/Shanghai
+  const tomorrow = '2026-10-16T02:00:00.000Z';
+  for (let i = 0; i < 5; i++) assert.equal((await call('POST', BASE + '/evaluate', meeting({ evaluate_at: tomorrow }))).body.decision, 'notify');
+  assert.equal((await call('POST', BASE + '/evaluate', meeting())).body.decision, 'notify', 'today is not charged for tomorrow');
+  clock.t = Date.parse('2026-10-16T01:00:00Z');
+  const r = await call('POST', BASE + '/evaluate', meeting());
+  assert.equal(r.body.decision, 'card', 'tomorrow already holds 5 notify deliveries → capped');
+});
