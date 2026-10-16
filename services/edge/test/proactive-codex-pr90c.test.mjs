@@ -78,3 +78,10 @@ test('PR90c #5: server undo follows the shared device contract (undo-vectors.jso
     assert.deepEqual(s.taken.map(t => t.action), v.after, v.name); assert.equal(s.status, v.after_status, v.name);
   }
 });
+
+test('PR90c confidences: ruleDecide matches the shared vectors (Swift localConfidence mirrors the same file)', async () => {
+  const { ruleDecide } = await import('../supabase/functions/_shared/proactive/decision.mjs');
+  const { vectors } = JSON.parse(readFileSync(new URL('./fixtures/proactive/confidence-vectors.json', import.meta.url), 'utf8'));
+  assert.ok(vectors.length >= 15);
+  for (const v of vectors) assert.equal(ruleDecide([{ id: 's1', type: v.type, data: v.data }], {}).confidence, v.confidence, v.name);
+});
