@@ -63,7 +63,10 @@ for name in paths:
         value=match.group(1)
         if not re.search(r'synthetic|fixture|example|placeholder|not-configured|your[-_]|process\.env',value,re.I):
             review.append({'path':name,'category':'secret_assignment_review','line':text.count('\n',0,match.start())+1})
-    for match in re.finditer(r'[\w.+-]+@([\w.-]+\.[A-Za-z]{2,})',text):
+    # Email: a dotted domain is required after the @. Image scale names (Name@2x.png / @3x.pdf, as used by asset-catalog
+    # Contents.json "filename" fields and the brand scripts) are not addresses.
+    for match in re.finditer(r'[\w.+-]+@([\w-]+(?:\.[\w-]+)*\.[A-Za-z]{2,})',text):
+        if re.fullmatch(r'\d+(?:\.\d+)?x\.(?:png|jpe?g|pdf|svg|heic|webp)',match.group(1),re.I):continue
         if match.group(1).lower() not in ['example.invalid','example.com']:
             review.append({'path':name,'category':'email_review','line':text.count('\n',0,match.start())+1})
 exceptions=json.loads((root/'scripts/reviewed-findings.json').read_text())['findings']
