@@ -426,7 +426,11 @@ struct ProactiveSignal: Equatable, Sendable {
         if serverIDs[local] != nil, syncQueue.items.contains(where: { $0.op.local == local }) { Task { await drainSync() } }
     }
     func syncAction(_ action: String, local: String, operationID: String) {
-        syncQueue.enqueue(SyncOp(local: local, action: action, operationID: operationID), key: operationID, account: AccountEpoch.shared.currentAccount)
+        // Codex PR90c #6: one ordering group per suggestion (FIFO, a failure blocks later ops); a dismiss replaces an unsent
+        // snooze it would cancel anyway. Undo never supersedes: it must revert exactly the op before it.
+        let cancelsSnooze = action == "dismiss"
+        syncQueue.enqueue(SyncOp(local: local, action: action, operationID: operationID), key: operationID, account: AccountEpoch.shared.currentAccount,
+                          group: local, supersedes: cancelsSnooze ? { $0.action == "snooze" } : nil)
         Task { await drainSync() }
     }
     /// Sends due write-backs. A missing server id (evaluated offline) or a network failure → retry later; restart-safe.
