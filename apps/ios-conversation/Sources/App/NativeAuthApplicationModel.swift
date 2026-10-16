@@ -197,7 +197,7 @@ struct NativeWorkspaceRetrySchedule: Sendable {
         ConversationDeviceCall.clientEnabled = true
         ConversationDeviceCall.clientTools = DeviceToolContract.clientTools   // NoBug P0-4: advertise what we execute
         DeviceCallHub.recorder = { DeviceLedger.shared.record(call: $0, result: $1) }
-        DeviceCallGate.currentAccount = { [weak self] in self?.state.user?.id.uuidString }   // Codex P0-1: grants are per account
+        AccountEpoch.shared.activate(account: state.user?.id.uuidString)   // shared account barrier (grants, memory, proactive)
         DeviceCallGate.installLifecycle()   // Codex PR #89: grants/revocations come from the session service's SSE boundary
         // NoBug P1-4: unacknowledged device results are re-sent on relaunch and whenever the app returns to foreground.
         Task { @MainActor in await DeviceCallStore.shared.retryPendingReports() }
@@ -661,6 +661,7 @@ struct NativeWorkspaceRetrySchedule: Sendable {
     }
     func signOut() async {
         guard let manager, !actionBusy else { return };actionBusy=true;logoutInProgress=true;lifecycleEpoch += 1
+        AccountEpoch.shared.signOut()   // synchronous barrier FIRST: every in-flight account-bound write is refused from here
         warmup?.cancel();recoveryPathWait?.cancel();recoveryPathWait=nil
         workspaceFlight?.task.cancel();workspaceFlight=nil;workspaceReadyKey=nil;wakeRetry()
         defer {logoutInProgress=false;actionBusy=false;recoveryImpossible=false;requiresSessionRestart=false}

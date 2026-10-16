@@ -177,7 +177,7 @@ import Foundation
         DeviceCallHub.executor = exec; DeviceCallHub.submitter = sub; DeviceCallHub.recorder = nil
         var wall = Date(timeIntervalSince1970: 2_000_000_000), up: TimeInterval = 1000
         DeviceCallGate.wallClock = { wall }; DeviceCallGate.uptime = { up }
-        DeviceCallGate.reset(); DeviceCallGate.currentAccount = { "user-A" }
+        DeviceCallGate.reset(); DeviceCallGate.epoch.activate(account: "user-A")
         func mk(_ id: String, _ tool: String = "calendar_create", ttl: Int = 600, expires: String? = nil, args: [String: DeviceCallValue] = ["title": .string("评审会")]) -> DeviceCall {
             DeviceCall(call_id: id, tool: tool, args: args, confirm: .card, ttl_sec: ttl, expires_at: expires)
         }
@@ -260,10 +260,10 @@ import Foundation
         let other = DeviceCallStore(defaults: UserDefaults(suiteName: suite + ".3")!)
         await store.run(once, tap: t1); await other.run(once, tap: t1)
         expect(exec.executed.filter { $0 == "once" }.count == 1, "PR89-4 a tap token is one-shot")
-        DeviceCallGate.currentAccount = { nil }
+        DeviceCallGate.epoch.activate(account: nil)
         let anon = mk("anon"); DeviceCallGate.receive(anon); await tapRun(store, anon)
         expect(!exec.executed.contains("anon"), "PR89-4 no signed-in account → nothing runs (nil never equals nil)")
-        DeviceCallGate.currentAccount = { "user-A" }
+        DeviceCallGate.epoch.activate(account: "user-A")
         let ro = mk("ro", "calendar_list", args: [:]); var roNone = ro; roNone.confirm = DeviceCall.Confirm.none
         DeviceCallGate.receive(roNone); await store.run(roNone)
         expect(exec.executed.contains("ro"), "PR89-4 read-only auto-run (calendar_list) still runs without a tap")
@@ -283,7 +283,7 @@ import Foundation
         let both = mk("both", ttl: 600, expires: ISO8601DateFormatter().string(from: wall.addingTimeInterval(30))); DeviceCallGate.receive(both)
         wall += 31; up += 31; await tapRun(store, both)
         expect(!exec.executed.contains("both"), "PR89-5 the earlier of expires_at and ttl wins")
-        DeviceCallGate.wallClock = { Date() }; DeviceCallGate.uptime = { ProcessInfo.processInfo.systemUptime }; DeviceCallGate.currentAccount = { nil }
+        DeviceCallGate.wallClock = { Date() }; DeviceCallGate.uptime = { ProcessInfo.processInfo.systemUptime }; DeviceCallGate.epoch.activate(account: nil)
     }
 
     /// Codex review P0-1: display content never gains execution rights.
@@ -292,7 +292,7 @@ import Foundation
         let defaults = UserDefaults(suiteName: suite)!; defer { defaults.removePersistentDomain(forName: suite) }
         let exec = FakeExecutor(["calendar_create", "reminder_create", "sms_compose", "calendar_list"]), sub = FakeSubmitter()
         DeviceCallHub.executor = exec; DeviceCallHub.submitter = sub; DeviceCallHub.recorder = nil
-        DeviceCallGate.reset(); DeviceCallGate.currentAccount = { "user-A" }
+        DeviceCallGate.reset(); DeviceCallGate.epoch.activate(account: "user-A")
         for tool in ["calendar_create", "reminder_create", "mail_compose", "sms_compose", "phone_call", "maps_open", "shop_open", "alarm_set", "shortcut_run", "contacts_search"] {
             expect(!DeviceToolContract.runsWithoutTap(tool: tool, confirm: DeviceCall.Confirm.none), "codex P0-1 \(tool) confirm:none still needs a tap")
         }
@@ -308,10 +308,10 @@ import Foundation
         expect(!sub.sent.contains { $0.call_id == "forged-1" }, "codex P0-1 forged call is not reported to the server")
         // Registered for account A, run after switching to B → rejected.
         let a = DeviceCall(call_id: "acct-1", tool: "calendar_create", args: [:], confirm: .card, ttl_sec: 600)
-        DeviceCallGate.receive(a); DeviceCallGate.currentAccount = { "user-B" }
+        DeviceCallGate.receive(a); DeviceCallGate.epoch.activate(account: "user-B")
         await tapRun(store, a)
         expect(!exec.executed.contains("acct-1"), "codex P0-1 cross-account call is not executed")
-        DeviceCallGate.currentAccount = { "user-A" }
+        DeviceCallGate.epoch.activate(account: "user-A")
         // Expired grant → rejected.
         let old = DeviceCall(call_id: "exp-1", tool: "calendar_create", args: [:], confirm: .card, ttl_sec: 60, expires_at: "2020-01-01T00:00:00Z")
         DeviceCallGate.receive(old)
@@ -321,11 +321,11 @@ import Foundation
         let ok = DeviceCall(call_id: "ok-1", tool: "calendar_create", args: [:], confirm: .card, ttl_sec: 600)
         DeviceCallGate.receive(ok); await tapRun(store, ok)
         expect(exec.executed.contains("ok-1"), "codex P0-1 registered, same-account, unexpired call runs after tap")
-        DeviceCallGate.currentAccount = { nil }
+        DeviceCallGate.epoch.activate(account: nil)
     }
 
     static func deviceCalls() async {
-        DeviceCallGate.reset(); DeviceCallGate.currentAccount = { "user-A" }; DeviceCallGate.wallClock = { Date() }
+        DeviceCallGate.reset(); DeviceCallGate.epoch.activate(account: "user-A"); DeviceCallGate.wallClock = { Date() }
         let suite = "nobug.devicecall." + UUID().uuidString
         let defaults = UserDefaults(suiteName: suite)!; defer { defaults.removePersistentDomain(forName: suite) }
         let exec = FakeExecutor(["calendar_create", "sms_compose"]), sub = FakeSubmitter()
