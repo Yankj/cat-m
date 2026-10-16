@@ -194,6 +194,8 @@ struct NativeWorkspaceRetrySchedule: Sendable {
         // catpaw.device.v1 (#49/#44): device results go back into the same suspended turn.
         DeviceCallHub.submitter = ConversationDeviceResultSubmitter(service: service, scope: scope)
         ConversationDeviceCall.clientEnabled = true
+        ConversationDeviceCall.clientTools = DeviceToolContract.clientTools   // NoBug P0-4: advertise what we execute
+        DeviceCallHub.recorder = { DeviceLedger.shared.record(call: $0, result: $1) }
     }
     /// Starts the background warm-up (local preview, restore, anonymous experience identity).
     /// Safe to call from `.task`: the warm-up is an unstructured task, so the gate can await it.
