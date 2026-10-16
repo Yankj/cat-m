@@ -189,7 +189,7 @@ import AppIntents
             } else { ProgressView("Offline fixture loading").accessibilityIdentifier("qa.p0Fixture.loading") }
             #endif
         }
-        // Onboarding gate: the session may already be pre-warmed, but the intro stays until 开启.
+        // Onboarding gate: intro until「开始使用」; entry is not blocked on provider health.
         else if let model = auth.chat, !auth.needsOnboarding {
             ConversationFirstView(model:model,accountLabel:auth.isFixture ? ui("合成登录测试 · 无真实 Auth/模型") : (auth.state.user?.isAnonymous == true ? ui("体验账号") : auth.state.user?.email),onSignOut:{ Task { let l2User=auth.state.user?.id; await auth.signOut(); if let l2User { L2SecureStore.wipe(userID:l2User) } } },isAnonymousAccount:auth.state.user?.isAnonymous == true)
                 // L2 memory: per-user encrypted store follows the signed-in user (memory-layers.md).
@@ -201,6 +201,16 @@ import AppIntents
                     }
                 }
                 #endif
+        }
+        else if !auth.needsOnboarding {
+            // Intro cleared; chat shell still attaching (background auth/workspace). Not a door lock.
+            ZStack {
+                CatpawColors.calmPage.ignoresSafeArea()
+                ProgressView()
+                    .tint(CatpawColors.ink)
+            }
+            .accessibilityIdentifier("onboarding.enteringChat")
+            .task { if auth.chat == nil { await auth.foreground() } }
         }
         else {
             NativeLoginView(auth:auth)
