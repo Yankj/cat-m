@@ -98,3 +98,16 @@ test('pg: offline device suggestion create is idempotent across concurrent calls
     assert.equal(row.push_state, 'skipped'); assert.equal(row.d, 'device');
   } finally { await sql.end(); }
 });
+
+test('pg: daily cap counts by delivery day (deliver_at), not creation day', { skip: !url }, async () => {
+  const sql = postgres(url, { max: 3, prepare: false, onnotice: () => {} });
+  try {
+    const clock = { t: Date.parse('2026-10-15T02:00:00Z') }, { U, call, store } = rig(sql, { configured: true, send: async () => ({ ok: true }) }, clock);
+    await sql`insert into auth.users(id) values(${U})`;
+    const m = ctx => ({ context: { time_zone: 'Asia/Shanghai', ...ctx }, signals: [{ type: 'meeting_upcoming', source: 'calendar', dedupe_key: 'evt-' + crypto.randomUUID(), data: { title: '评审', minutes_until: 20 } }] });
+    for (let i = 0; i < 2; i++) await call('POST', '/catpaw/proactive/v1/evaluate', m({ evaluate_at: '2026-10-16T02:00:00.000Z' }));
+    const day = (s, e) => store.countDecisionsForDay(U, s, e, ['notify', 'interrupt']);
+    assert.equal(await day('2026-10-15T16:00:00Z', '2026-10-16T16:00:00Z'), 2, 'charged to the fire day');
+    assert.equal(await day('2026-10-14T16:00:00Z', '2026-10-15T16:00:00Z'), 0, 'not to the creation day');
+  } finally { await sql.end(); }
+});

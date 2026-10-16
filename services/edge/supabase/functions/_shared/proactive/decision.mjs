@@ -110,7 +110,7 @@ export function createDecisionService({ store, model = null, memory = null, now 
     if (decision !== 'silent' && conf < threshold - cfg.silentMargin) { trace.push(`confidence ${conf.toFixed(2)} < ${(threshold - cfg.silentMargin).toFixed(2)}: ${proposed} → silent`); decision = 'silent'; }
     else if (decision !== 'silent' && conf < threshold) { const steps = conf < threshold - 0.15 ? 2 : 1; decision = LEVELS[Math.max(1, lvl(decision) - steps)]; trace.push(`confidence ${conf.toFixed(2)} < threshold ${threshold.toFixed(2)}: ${proposed} → ${decision}`); }
     if (lvl(decision) >= 2 && isQuiet(when, tz, cfg.quietHours)) { trace.push(`quiet hours: ${decision} → card`); decision = 'card'; }
-    if (lvl(decision) >= 2) { const n = await store.countDecisionsSince(uid, new Date(localDayStart(when, tz)).toISOString(), ['notify', 'interrupt']); if (n >= cfg.dailyCap) { trace.push(`daily cap ${cfg.dailyCap} reached: ${decision} → card`); decision = 'card'; } }
+    if (lvl(decision) >= 2) { const d0 = localDayStart(when, tz), n = await store.countDecisionsForDay(uid, new Date(d0).toISOString(), new Date(d0 + 86_400_000).toISOString(), ['notify', 'interrupt']); if (n >= cfg.dailyCap) { trace.push(`daily cap ${cfg.dailyCap} reached: ${decision} → card`); decision = 'card'; } }
     // Codex PR90 #1: "evaluated" ≠ "delivered" in the cloud too. Only a delivered (non-silent) decision closes the
     // dedupe window; a silent verdict (incl. a dedupe hit) never refreshes seen_at, so the meeting is re-evaluated as it nears.
     if (decision !== 'silent') await store.markSignalHashes(uid, hashes, new Date(at).toISOString());
@@ -119,7 +119,7 @@ export function createDecisionService({ store, model = null, memory = null, now 
     // gate (local notification); APNs only delivers decisions the client explicitly hands off (context.delivery='remote').
     const delivery = context.delivery === 'remote' ? 'remote' : 'device';
     const explanation = {
-      time_zone: tz, delivery,
+      time_zone: tz, delivery, deliver_at: new Date(when).toISOString(),   // Codex PR90e P2: the cap counts the delivery day, not the creation day
       contract: DECISION_CONTRACT, why: r.reason, proposed, decision, source, trigger: r.trigger,
       confidence: Number(conf.toFixed(3)), raw_confidence: r.confidence, threshold: Number(threshold.toFixed(3)), weight: tw.weight, trace,
       signals: signals.map((s, i) => ({ ...s, signal_hash: hashes[i], duplicate: seen.includes(hashes[i]) })),
