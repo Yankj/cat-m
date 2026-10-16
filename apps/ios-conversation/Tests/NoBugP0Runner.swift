@@ -155,6 +155,13 @@ import Foundation
         expect(NearbyRules.preferences(in: [.init(items: items, useMemory: false, autoSave: nil)]) == .init(), "nearby: 使用记忆 off → no memories used")
         expect(NearbyRules.effectiveMode(arg: "driving", prefs: p) == .driving && NearbyRules.effectiveMode(arg: "", prefs: p) == .transit && NearbyRules.effectiveMode(arg: "", prefs: .init()) == .walking, "nearby: mode arg > memory > walking")
         let why = NearbyRules.why(prefs: p, mode: .transit, modeFromArg: false, originNote: "起点是你当前的真实位置")
+        let cands: [NearbyRules.Candidate] = [.init(name: "香菜面馆", category: "Restaurant", distance: 100), .init(name: "粤式茶餐厅", category: "Restaurant", distance: 200), .init(name: "重庆麻辣烫", category: "Restaurant", distance: 600)]
+        let kw = NearbyRules.tasteKeywords(p)
+        expect(kw.likes == ["辣"] && kw.dislikes == ["香菜"], "nearby: taste keywords like 辣 / dislike 香菜")
+        let withTaste = NearbyRules.rank(cands, prefs: p), without = NearbyRules.rank(cands, prefs: .init())
+        expect(without == [0, 1, 2] && withTaste == [2, 1, 0] && withTaste != without, "nearby: taste memory changes ranking (with ≠ without)")
+        expect(NearbyRules.needsWiderSearch(2) && !NearbyRules.needsWiderSearch(NearbyRules.minResults), "nearby: < minResults widens radius")
+        expect(why.contains("调整了排序") && NearbyRules.why(prefs: .init(), mode: .walking, modeFromArg: false, originNote: "o").contains("口味") == false, "nearby: Why mentions taste only when it changed ranking")
         expect(why.contains("喜欢吃辣") && why.contains("出门一般坐地铁") && why.contains("真实位置"), "nearby: Why cites memories + origin")
         expect(NearbyRules.telURL("021-6123 4567") == "tel:02161234567" && NearbyRules.telURL(nil) == nil, "nearby: tel url")
         expect(NearbyRules.mapsURL(lat: 31.2, lng: 121.4, name: "店", mode: .walking).hasSuffix("dirflg=w"), "nearby: maps url mode")
