@@ -39,6 +39,10 @@ extension ProactiveUndo {
         guard status == "snoozed", let last = taken.last(where: { $0.action == "snooze" }) else { return nil }
         return snoozeUntil(detail: last.detail, at: last.at)
     }
+    static func restoredSnooze(taken: [(action: String, at: Date, detail: String?, until: Date?)], status: String) -> Date? {
+        guard status == "snoozed", let last = taken.last(where: { $0.action == "snooze" }) else { return nil }
+        return snoozeUntil(detail: last.detail, at: last.at, until: last.until)
+    }
 }
 
 extension ProactiveUndo {
@@ -49,11 +53,16 @@ extension ProactiveUndo {
     }
     static func restoreOutcome(detail: String?) -> String? { field(detail, "restore").map(String.init) }
     /// Codex PR90g #2: a recorded re-arm that did not post (refused / cardOnly / expired).
-    static func restoreFailed(detail: String?) -> Bool { false }
+    static func restoreFailed(detail: String?) -> Bool { restoreOutcome(detail: detail).map { $0 != "posted" } ?? false }
     /// The status the device shows after undo: "snoozed" only when the restored snooze really is scheduled.
-    static func statusAfterRestore(_ planStatus: String, outcome: String?) -> String { planStatus }
+    static func statusAfterRestore(_ planStatus: String, outcome: String?) -> String {
+        planStatus == "snoozed" && outcome != nil && outcome != "posted" ? "pending" : planStatus
+    }
     /// A snooze entry's until: the detail (device), else the cloud's `until`, else the legacy default.
-    static func snoozeUntil(detail: String?, at: Date, until: Date?) -> Date { snoozeUntil(detail: detail, at: at) }
+    static func snoozeUntil(detail: String?, at: Date, until: Date?) -> Date {
+        if let t = field(detail, "until").flatMap({ Double($0) }) { return Date(timeIntervalSince1970: t) }
+        return until ?? at.addingTimeInterval(600)
+    }
 }
 
 /// Codex PR90f #3: the device → cloud wire, one portable definition (the engine's drain and the golden fixture
@@ -68,7 +77,16 @@ enum ProactiveSyncWire {
     }
     /// Codex PR90g #3: the decoder for cloud suggestions — ISO 8601 with or without fractional seconds (the server writes
     /// `toISOString()`), so `taken[].at / until` never make the whole record undecodable.
-    static func decoder() -> JSONDecoder { let d = JSONDecoder(); d.dateDecodingStrategy = .iso8601; return d }
+    static func decoder() -> JSONDecoder {
+        let d = JSONDecoder()
+        d.dateDecodingStrategy = .custom { dec in
+            let raw = try dec.singleValueContainer().decode(String.self)
+            let f = ISO8601DateFormatter(); f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            if let v = f.date(from: raw) ?? ISO8601DateFormatter().date(from: raw) { return v }
+            throw DecodingError.dataCorrupted(.init(codingPath: dec.codingPath, debugDescription: "not ISO 8601: \(raw)"))
+        }
+        return d
+    }
     static func route(action: String) -> String { action == "undo" ? "undo" : "action" }
     /// PR90f #5: `POST suggestions` — an offline-evaluated suggestion gets its cloud record (idempotent by client id).
     static func createBody(clientID: String, title: String, reason: String, actions: [String], createdAt: Date?) -> [String: Any] {

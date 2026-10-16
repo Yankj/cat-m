@@ -128,51 +128,70 @@ struct ProactiveSignal: Equatable, Sendable {
     var hasQuarantine: Bool { defaults.dictionary(forKey: ProactiveQuarantine.key) != nil }
     /// Server evidence: the cloud returns this server id for the bearer of `token` (owner-scoped). Replaceable in tests.
     var serverProbe: (String, AccountToken) async -> Bool = { id, token in await ProactiveEngine.get("suggestions/\(id)", token: token) != nil }
-    /// Release (merge into the current owner's stores) on evidence, expire after `ProactiveQuarantine.ttl`, else hold.
+    /// Codex PR90g #1: ownership is proven per record (`ProactiveQuarantine.releasable`): a record is released — with its
+    /// own reminder / attendee context, server id, generation and write-backs — only on its own evidence (its queued
+    /// write-backs all name this account, or the cloud returns its own server id for this account). Everything else
+    /// stays quarantined; whatever is left after `ttl` expires.
     @discardableResult func reconcileQuarantine() async -> ProactiveQuarantine.Verdict? {
-        guard let record = defaults.dictionary(forKey: ProactiveQuarantine.key) else { return nil }
-        let at = Date(timeIntervalSince1970: record["at"] as? Double ?? 0), stamps = record["stamps"] as? [String] ?? []
-        let token = AccountEpoch.shared.capture(), ids = Array((record["serverIDs"] as? [String: String] ?? [:]).values.prefix(3))
-        var verdict = ProactiveQuarantine.decide(quarantinedAt: at, stampedAccounts: stamps, current: token?.account, serverConfirmed: false, now: ProactiveClock.now())
-        if verdict == .hold, let token {
-            for id in ids {
-                guard await serverProbe(id, token) else { continue }
-                verdict = ProactiveQuarantine.decide(quarantinedAt: at, stampedAccounts: stamps, current: token.account, serverConfirmed: true, now: ProactiveClock.now()); break
-            }
+        guard var record = defaults.dictionary(forKey: ProactiveQuarantine.key) else { return nil }
+        let at = Date(timeIntervalSince1970: record["at"] as? Double ?? 0), token = AccountEpoch.shared.capture()
+        let items = (record["queue"] as? Data).flatMap { try? JSONDecoder().decode([CatpawPersistentQueue<SyncOp>.Item].self, from: $0) } ?? []
+        let blobs = record["blobs"] as? [String: Data] ?? [:], sids = record["serverIDs"] as? [String: String] ?? [:]
+        let inbox = blobs[ProactiveLocalBackend.storageKey].flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] } ?? [:]
+        let ids = Array(Set(inbox.keys).union(items.map(\.op.local)).union(sids.keys)).sorted()
+        let stamps = Dictionary(grouping: items, by: \.op.local).mapValues { $0.map(\.account) }
+        var confirmed = Set<String>()
+        if let token {
+            let unproven = ids.filter { !ProactiveQuarantine.releasable(ids: [$0], stamps: stamps, confirmed: [], current: token.account).contains($0) }
+            for id in unproven.prefix(20) { if let sid = sids[id], await serverProbe(sid, token) { confirmed.insert(id) } }
         }
-        switch verdict {
-        case .hold: note("quarantine held (no evidence yet)")
-        case .expire:
-            defaults.removeObject(forKey: ProactiveQuarantine.key); note("quarantine expired after \(Int(ProactiveQuarantine.ttl / 86400)) days without evidence → dropped")
-        case .release:
-            guard let token, AccountEpoch.shared.commit(token, { () -> Void in
+        let released = ProactiveQuarantine.releasable(ids: ids, stamps: stamps, confirmed: confirmed, current: token?.account)
+        if let token, !released.isEmpty {
+            guard AccountEpoch.shared.commit(token, { () -> Void in
                 claimData(for: token.account)
-                releaseQuarantine(record, to: token.account)
+                record = releaseQuarantine(record, ids: released, items: items, to: token.account)
             }) != nil else { return .hold }
-            note("quarantine released to \(token.account) on evidence")
+            note("quarantine released \(released.count) of \(ids.count) record(s) to \(token.account) on their own evidence")
             Task { await drainSync() }
         }
-        return verdict
+        let left = ids.filter { !released.contains($0) }
+        if left.isEmpty { defaults.removeObject(forKey: ProactiveQuarantine.key); return released.isEmpty ? nil : .release }
+        if ProactiveClock.now().timeIntervalSince(at) > ProactiveQuarantine.ttl {
+            defaults.removeObject(forKey: ProactiveQuarantine.key)
+            note("quarantine: \(left.count) unproven record(s) expired after \(Int(ProactiveQuarantine.ttl / 86400)) days → dropped")
+            return released.isEmpty ? .expire : .release
+        }
+        if released.isEmpty { note("quarantine held: \(left.count) record(s) without evidence") }
+        return released.isEmpty ? .hold : .release
     }
-    private func releaseQuarantine(_ record: [String: Any], to account: String) {
-        let blobs = record["blobs"] as? [String: Data] ?? [:]
+    /// Moves the released records (and only their own entries) into the active stores; returns the remaining record.
+    private func releaseQuarantine(_ record: [String: Any], ids: Set<String>, items: [CatpawPersistentQueue<SyncOp>.Item], to account: String) -> [String: Any] {
+        var record = record, blobs = record["blobs"] as? [String: Data] ?? [:]
         for (k, old) in blobs {
             if k == Self.generationsKey {
-                var g = generations; let o = (try? JSONDecoder().decode(ProactiveActionGenerations.self, from: old)) ?? .init()
-                for (id, v) in o.values where v > g[id] { g.values[id] = v }; generations = g; continue
+                var o = (try? JSONDecoder().decode(ProactiveActionGenerations.self, from: old)) ?? .init(), g = generations
+                for id in ids { if let v = o.values[id], v > g[id] { g.values[id] = v }; o.values[id] = nil }
+                generations = g; blobs[k] = try? JSONEncoder().encode(o); continue
             }
-            // JSON object blobs: the current owner's entries win, the released ones fill in.
-            let cur = defaults.data(forKey: k).flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] } ?? [:]
-            let rel = (try? JSONSerialization.jsonObject(with: old) as? [String: Any]) ?? [:]
-            if let d = try? JSONSerialization.data(withJSONObject: rel.merging(cur) { _, c in c }) { defaults.set(d, forKey: k) }
+            var rel = (try? JSONSerialization.jsonObject(with: old) as? [String: Any]) ?? [:]
+            var cur = defaults.data(forKey: k).flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] } ?? [:]
+            for id in ids { if let v = rel.removeValue(forKey: id), cur[id] == nil { cur[id] = v } }   // the current owner's entry wins
+            if let d = try? JSONSerialization.data(withJSONObject: cur) { defaults.set(d, forKey: k) }
+            blobs[k] = try? JSONSerialization.data(withJSONObject: rel)
         }
-        serverIDs = (record["serverIDs"] as? [String: String] ?? [:]).merging(serverIDs) { _, c in c }
-        localOnly = localOnly.union(record["localOnly"] as? [String] ?? [])
-        if let q = record["queue"] as? Data, let items = try? JSONDecoder().decode([CatpawPersistentQueue<SyncOp>.Item].self, from: q) { syncQueue.reinstate(items, account: account) }
-        defaults.removeObject(forKey: ProactiveQuarantine.key)
+        record["blobs"] = blobs
+        var sids = record["serverIDs"] as? [String: String] ?? [:], cur = serverIDs
+        for id in ids { if let v = sids.removeValue(forKey: id), cur[id] == nil { cur[id] = v } }
+        serverIDs = cur; record["serverIDs"] = sids
+        var lo = Set(record["localOnly"] as? [String] ?? []); localOnly = localOnly.union(lo.intersection(ids)); lo.subtract(ids); record["localOnly"] = Array(lo)
+        syncQueue.reinstate(items.filter { ids.contains($0.op.local) }, account: account)     // only this record's, only unstamped / this account's
+        let rest = items.filter { !ids.contains($0.op.local) }
+        record["queue"] = (try? JSONEncoder().encode(rest)) ?? Data(); record["stamps"] = rest.compactMap(\.account)
+        defaults.set(record, forKey: ProactiveQuarantine.key)
         let all = ProactiveLocalBackend.load()
-        for s in all.values { ProactiveSuggestionStore.shared.adopt(s) }
+        for id in ids { if let s = all[id] { ProactiveSuggestionStore.shared.adopt(s) } }
         CatpawWidgetSnapshotWriter.write(Array(all.values))
+        return record
     }
     /// Codex P0-5: evaluated vs delivered (v2). v1 entries migrate as delivered.
     private let signalLedgerKey = "catpaw.proactive.ledger.v2"
@@ -540,7 +559,7 @@ struct ProactiveSignal: Equatable, Sendable {
         var kept = taken; kept.remove(at: index); s.taken = kept
         s.status = ProactiveSuggestion.Status(rawValue: plan.status) ?? .pending
         s.serverActionStates?[removed] = nil   // the cloud's success of the undone action must not beat the undo
-        let restore = ProactiveUndo.restoredSnooze(taken: kept.map { ($0.action.rawValue, $0.at, $0.detail) }, status: plan.status)
+        let restore = ProactiveUndo.restoredSnooze(taken: kept.map { ($0.action.rawValue, $0.at, $0.detail, $0.until) }, status: plan.status)
         // Codex PR90f #2: the re-arm is awaited and its outcome recorded on the kept snooze entry (and `lastUndoRestore`),
         // so "snoozed again" is verifiable: posted / cardOnly:<reason> / refused:<reason> / expired.
         if let restore, let k = kept.lastIndex(where: { $0.action == .snooze }) {
@@ -555,6 +574,9 @@ struct ProactiveSignal: Equatable, Sendable {
             } else { outcome = "expired" }
             kept[k].detail = ProactiveUndo.withRestore(kept[k].detail, outcome); s.taken = kept
             lastUndoRestore = (id, outcome)
+            // Codex PR90g #2: shown "snoozed" only when the restored reminder really is scheduled; else the card is
+            // actionable again (pending) and says the reminder could not be restored.
+            s.status = ProactiveSuggestion.Status(rawValue: ProactiveUndo.statusAfterRestore(plan.status, outcome: outcome)) ?? .pending
         }
         guard AccountEpoch.shared.commit(token, { () -> Void in ProactiveLocalBackend.save(s, token: token) }) != nil else { throw ProactiveEngineError.writeFailed }
         var g = generations; let op = g.undo(id); generations = g
@@ -1115,7 +1137,7 @@ struct ProactiveSignal: Equatable, Sendable {
         if !ProactiveActionStates.effects.contains(action.rawValue) || state.map(ProactiveActionStates.shouldSync) == true {
             // Codex PR90e #5: a new intent of a repeatable action (snooze, dismiss) gets a new id; a queued retry keeps its own.
             let ordinal = ProactiveActionStates.effects.contains(action.rawValue) ? 1 : (s.taken ?? []).filter { $0.action == action }.count
-            let until = action == .snooze ? s.taken?.last.map { ProactiveUndo.snoozeUntil(detail: $0.detail, at: $0.at) } : nil
+            let until = action == .snooze ? s.taken?.last.map { ProactiveUndo.snoozeUntil(detail: $0.detail, at: $0.at, until: $0.until) } : nil
             ProactiveEngine.shared.syncAction(action.rawValue, local: id, operationID: ProactiveEngine.shared.operationID(id, action.rawValue, ordinal: ordinal), until: until, token: token)
         }
         guard AccountEpoch.shared.isValid(token) else { throw ProactiveEngineError.writeFailed }

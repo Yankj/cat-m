@@ -102,8 +102,11 @@ enum ProactiveQuarantine {
     /// account. A record is released only on its own evidence; everything else stays quarantined.
     static func releasable(ids: [String], stamps: [String: [String?]], confirmed: Set<String>, current: String?) -> Set<String> {
         guard let current else { return [] }
-        let all = stamps.values.flatMap { $0 }.compactMap { $0 }
-        let whole = !all.isEmpty && all.allSatisfy { $0.caseInsensitiveCompare(current) == .orderedSame }
-        return whole || !confirmed.isEmpty ? Set(ids) : []
+        return Set(ids.filter { id in
+            if confirmed.contains(id) { return true }
+            let own = (stamps[id] ?? []).compactMap { $0 }
+            // Every write-back of this record names the current account (an unstamped one is no proof either way).
+            return !own.isEmpty && own.count == (stamps[id] ?? []).count && own.allSatisfy { $0.caseInsensitiveCompare(current) == .orderedSame }
+        })
     }
 }

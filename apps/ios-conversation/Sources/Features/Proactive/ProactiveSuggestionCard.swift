@@ -26,7 +26,9 @@ import SwiftUI
             Text(s.reason).font(CatpawTypography.Role.secondary.font).foregroundStyle(CatpawColors.secondary).fixedSize(horizontal: false, vertical: true)
             if !s.usedMemories.isEmpty { memoryChips }
             switch s.effectiveStatus {
-            case .pending: actions
+            case .pending:
+                if s.snoozeRestoreFailed { ProactiveStatusRow(textKey: "没能恢复稍后提醒", symbol: "exclamationmark.circle", accent: false) }
+                actions
             case .done: ProactiveStatusRow(textKey: "已处理", symbol: "checkmark.circle.fill", accent: true)
             case .snoozed: ProactiveStatusRow(textKey: "稍后再提醒你", symbol: "clock", accent: false)
             case .dismissed: ProactiveStatusRow(textKey: "已忽略", symbol: "minus.circle", accent: false)
@@ -146,8 +148,7 @@ struct ProactiveStatusRow: View {
         }
     }
     static func decode(_ data: Data) -> ProactiveSuggestion? {
-        let d = JSONDecoder(); d.dateDecodingStrategy = .iso8601
-        return try? d.decode(ProactiveSuggestion.self, from: data)
+        try? ProactiveSyncWire.decoder().decode(ProactiveSuggestion.self, from: data)   // PR90g: fractional-second ISO dates
     }
 }
 
