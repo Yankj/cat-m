@@ -100,12 +100,25 @@ struct SyncOp: Codable, Sendable, Equatable { var local: String; var action: Str
     check(q.items.isEmpty, "purge on sign-out")
 }
 
+func pr90_6_undoIdentity() {
+    var g = ProactiveActionGenerations()
+    let first = ProactiveRules.operationID(suggestion: "evt-1", action: "snooze", generation: g["evt-1"])
+    check(first == "op-evt-1-snooze", "generation 0 keeps the legacy id (in-flight ops still dedupe)")
+    let undo0 = g.undo("evt-1")
+    check(undo0 == "undo-evt-1-g0", "undo identity per generation")
+    let after = ProactiveRules.operationID(suggestion: "evt-1", action: "snooze", generation: g["evt-1"])
+    check(after != first && after == "op-evt-1-snooze-g1", "fresh identity after undo")
+    check(g.undo("evt-1") == "undo-evt-1-g1" && g["evt-1"] == 2 && g["evt-2"] == 0, "per suggestion")
+    let back = try! JSONDecoder().decode(ProactiveActionGenerations.self, from: JSONEncoder().encode(g)); check(back == g, "persisted")
+}
+
 @main enum ProactivePR90Runner {
     static func main() async {
         pr90_3_prescheduleSharesDecisionAndQuota()
         pr90_accountEpoch()
         pr90_4_serverActionStates()
         await pr90_5_persistentQueue()
+        pr90_6_undoIdentity()
         print(failures == 0 ? "PR90 proactive: all passed" : "PR90 proactive: \(failures) failed"); exit(failures == 0 ? 0 : 1)
     }
 }
