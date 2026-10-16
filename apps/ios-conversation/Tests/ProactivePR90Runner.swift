@@ -245,6 +245,17 @@ func pr90c_confidences() {
     check(ProactiveRules.prescheduleFire(start: at("2026-10-15T06:00:00Z"), leadMinutes: 25) == at("2026-10-15T05:35:00Z"), "fire = start − lead")
 }
 
+func pr90c_undoContract() {
+    struct V: Decodable { let name: String; let offered: [String]; let taken: [String]; let status: String; let removed: String?; let after: [String]; let after_status: String }
+    struct F: Decodable { let vectors: [V] }
+    let url = URL(fileURLWithPath: "../../services/edge/test/fixtures/proactive/undo-vectors.json")
+    guard let data = try? Data(contentsOf: url), let f = try? JSONDecoder().decode(F.self, from: data) else { check(false, "undo vectors readable"); return }
+    for v in f.vectors {
+        let plan = ProactiveUndo.plan(offered: v.offered, taken: v.taken, status: v.status)
+        check(plan.removed == v.removed && plan.after == v.after && plan.status == v.after_status, "undo \(v.name): \(plan)")
+    }
+}
+
 @main enum ProactivePR90Runner {
     static func main() async {
         pr90_3_prescheduleSharesDecisionAndQuota()
@@ -256,6 +267,7 @@ func pr90c_confidences() {
         nobug_gateAndTrigger()
         await pr90c_pipeline()
         pr90c_confidences()
+        pr90c_undoContract()
         print(failures == 0 ? "PR90 proactive: all passed" : "PR90 proactive: \(failures) failed"); exit(failures == 0 ? 0 : 1)
     }
 }
