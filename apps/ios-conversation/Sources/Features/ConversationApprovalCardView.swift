@@ -22,7 +22,7 @@ import SwiftUI
     }
     private func syncDeviceCalls() {
         let live = (turn?.awaitingApproval == true ? (turn?.pendingDeviceCalls ?? []) : []).compactMap(DeviceCall.init)
-        for call in live where !deviceCalls.contains(where: { $0.id == call.id }) { deviceCalls.append(call) }
+        for call in live where !deviceCalls.contains(where: { $0.id == call.id }) { DeviceCallGate.register(call); deviceCalls.append(call) }   // Codex P0-1: typed event = only grant
     }
 
     var body: some View {
