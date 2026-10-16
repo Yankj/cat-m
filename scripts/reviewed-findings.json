@@ -1553,6 +1553,298 @@
       "line": 93,
       "sha256": "ec8e08098ba39e173c9d51fcd3c05726df696e1ffda150f46fa7364256e7f8fb",
       "reason": "Reviewed unchanged k-or-xxxxxxxx and k-ag-xxxxxxxx mock values in an offline injected transport test; not deployment keys."
+    },
+    {
+      "path": "apps/ios-conversation/Resources/Assets.xcassets/AppIcon.appiconset/AppIcon-dark.png",
+      "category": "png_metadata_requires_review",
+      "sha256": "b75d8bf52afd51b7795ce0f1c7509ac77cab873d154ff1d05285b6a9085ef8a6",
+      "reason": "PR90h review 2026-10-17: the only metadata chunk is a 68-byte eXIf (TIFF header + pixel X/Y dimension tags); no text, device, user, GPS or software identity. Bytes unchanged."
+    },
+    {
+      "path": "apps/ios-conversation/Resources/Assets.xcassets/AppIcon.appiconset/AppIcon-light.png",
+      "category": "png_metadata_requires_review",
+      "sha256": "b75d8bf52afd51b7795ce0f1c7509ac77cab873d154ff1d05285b6a9085ef8a6",
+      "reason": "PR90h review 2026-10-17: the only metadata chunk is a 68-byte eXIf (TIFF header + pixel X/Y dimension tags); no text, device, user, GPS or software identity. Bytes unchanged."
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Features/DeviceCalls/DeviceToolContract.swift",
+      "category": "internal_domain",
+      "line": 54,
+      "sha256": "737b30d3ad2ecd9ed9097651b1e71b72b669c37f4ea6a21da728491473fdd2cd",
+      "reason": "PR90h review 2026-10-17: public consumer Meituan app deep link (the app URL scheme plus its public mobile web fallback) used by the shop_open device tool and its contract test/evidence; not an internal or corporate endpoint."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
+      "category": "deployment_public_key",
+      "line": 307,
+      "sha256": "f7fd59c19cd6172a3d6fc1184c53f8aa897a0eed2fca25f8769d530f99c0c2b5",
+      "reason": "PR90h review 2026-10-17 (re-review after #89 appended tests shifted lines/hash): synthetic placeholder sb_publishable_* literal for the offline lifecycle test against https://abcdefghijklmnopqrst.supabase.co / backend.example.invalid; not a deployment key."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
+      "category": "deployment_public_key",
+      "line": 489,
+      "sha256": "f7fd59c19cd6172a3d6fc1184c53f8aa897a0eed2fca25f8769d530f99c0c2b5",
+      "reason": "PR90h review 2026-10-17 (re-review after #89 appended tests shifted lines/hash): synthetic placeholder sb_publishable_* literal for the offline lifecycle test against https://abcdefghijklmnopqrst.supabase.co / backend.example.invalid; not a deployment key."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NoBugP0Runner.swift",
+      "category": "internal_domain",
+      "line": 498,
+      "sha256": "067076bc4910aa6d96b5d7e401a126d3782c2de92235bead499809fd1ba59264",
+      "reason": "PR90h review 2026-10-17: public consumer Meituan app deep link (the app URL scheme plus its public mobile web fallback) used by the shop_open device tool and its contract test/evidence; not an internal or corporate endpoint."
+    },
+    {
+      "path": "docs/refs/brand/03-flat-mark-black.png",
+      "category": "png_metadata_requires_review",
+      "sha256": "901802d063f3edab3338efbdb2096c3d9d4e79381c3751d27b2d52dde97c0159",
+      "reason": "PR90h review 2026-10-17: the only metadata chunk is a 68-byte eXIf (TIFF header + pixel X/Y dimension tags); no text, device, user, GPS or software identity. Bytes unchanged."
+    },
+    {
+      "path": "docs/refs/grok-reply/01-thinking.jpg",
+      "category": "unexpected_binary",
+      "sha256": "8ce534d2e35f6c3258ab121dc6f4f5e13ae12320ed4d474010b85f6af734585a",
+      "reason": "PR90h review 2026-10-17: JPEG reference screenshot; APP1 Exif holds only orientation/resolution tags, APP13 Photoshop resolution block and an ICC profile; no XMP, no device/user/GPS identity. Bytes unchanged."
+    },
+    {
+      "path": "docs/refs/grok-reply/02-steps.jpg",
+      "category": "unexpected_binary",
+      "sha256": "9fa011c70d8ef17bbc841adfe95422051e2a60d1d968365b36d8ccea4423499b",
+      "reason": "PR90h review 2026-10-17: JPEG reference screenshot; APP1 Exif holds only orientation/resolution tags, APP13 Photoshop resolution block and an ICC profile; no XMP, no device/user/GPS identity. Bytes unchanged."
+    },
+    {
+      "path": "docs/refs/grok-reply/03-streaming.jpg",
+      "category": "unexpected_binary",
+      "sha256": "b2a14317f26d8f31abef6e5eeaf3d0fc6ed07bfdb823534ad7a05d2f19219f26",
+      "reason": "PR90h review 2026-10-17: JPEG reference screenshot; APP1 Exif holds only orientation/resolution tags, APP13 Photoshop resolution block and an ICC profile; no XMP, no device/user/GPS identity. Bytes unchanged."
+    },
+    {
+      "path": "docs/refs/grok-reply/04-done.jpg",
+      "category": "unexpected_binary",
+      "sha256": "9abe35fb65143f9dd5dd05674f9fb0ea2aa456aea4246b7c819d666142a662ba",
+      "reason": "PR90h review 2026-10-17: JPEG reference screenshot; APP1 Exif holds only orientation/resolution tags, APP13 Photoshop resolution block and an ICC profile; no XMP, no device/user/GPS identity. Bytes unchanged."
+    },
+    {
+      "path": "docs/refs/landing-capability-hub.png",
+      "category": "png_metadata_requires_review",
+      "sha256": "9c16441a6ff9e2120606209afb14bdb0bbe58f096c7ee44d463725f1d545e932",
+      "reason": "PR90h review 2026-10-17: the only metadata chunk is a 68-byte eXIf (TIFF header + pixel X/Y dimension tags); no text, device, user, GPS or software identity. Bytes unchanged."
+    },
+    {
+      "path": "docs/refs/launch-splash-keyframes.png",
+      "category": "png_metadata_requires_review",
+      "sha256": "56f078e752236949927f31dbd2ffd15d1d1ce87295580b440b1220b102b95f94",
+      "reason": "PR90h review 2026-10-17: the only metadata chunk is a 68-byte eXIf (TIFF header + pixel X/Y dimension tags); no text, device, user, GPS or software identity. Bytes unchanged."
+    },
+    {
+      "path": "docs/submission/NOBUG-P0-EVIDENCE.md",
+      "category": "internal_domain",
+      "line": 8,
+      "sha256": "0a923e948fa892148691ca41d122d73534cafd63b4d95cd371282ee93913657f",
+      "reason": "PR90h review 2026-10-17: public consumer Meituan app deep link (the app URL scheme plus its public mobile web fallback) used by the shop_open device tool and its contract test/evidence; not an internal or corporate endpoint."
+    },
+    {
+      "path": "apps/ios-conversation/Resources/Assets.xcassets/CatpawBrand/BrandMark.imageset/Contents.json",
+      "category": "email_review",
+      "line": 4,
+      "sha256": "3361e255d3daa6271e9ca9d5872dab9c12e8041913ea16cd0f56f23c7ac2fce5",
+      "reason": "PR90h review 2026-10-17: false positive — an asset filename with an at-sign scale suffix (2x / 3x image variants) or a synthetic one-letter test address in a contact fixture; no personal e-mail."
+    },
+    {
+      "path": "apps/ios-conversation/Resources/Assets.xcassets/CatpawBrand/BrandMark.imageset/Contents.json",
+      "category": "email_review",
+      "line": 5,
+      "sha256": "3361e255d3daa6271e9ca9d5872dab9c12e8041913ea16cd0f56f23c7ac2fce5",
+      "reason": "PR90h review 2026-10-17: false positive — an asset filename with an at-sign scale suffix (2x / 3x image variants) or a synthetic one-letter test address in a contact fixture; no personal e-mail."
+    },
+    {
+      "path": "apps/ios-conversation/Resources/Assets.xcassets/CatpawBrand/BrandMarkFill.imageset/Contents.json",
+      "category": "email_review",
+      "line": 4,
+      "sha256": "db2b9f919a244d91a0856d749f67fd65b80c3136c4338a9416dcb4dfbebbb111",
+      "reason": "PR90h review 2026-10-17: false positive — an asset filename with an at-sign scale suffix (2x / 3x image variants) or a synthetic one-letter test address in a contact fixture; no personal e-mail."
+    },
+    {
+      "path": "apps/ios-conversation/Resources/Assets.xcassets/CatpawBrand/BrandMarkFill.imageset/Contents.json",
+      "category": "email_review",
+      "line": 5,
+      "sha256": "db2b9f919a244d91a0856d749f67fd65b80c3136c4338a9416dcb4dfbebbb111",
+      "reason": "PR90h review 2026-10-17: false positive — an asset filename with an at-sign scale suffix (2x / 3x image variants) or a synthetic one-letter test address in a contact fixture; no personal e-mail."
+    },
+    {
+      "path": "apps/ios-conversation/Resources/Assets.xcassets/CatpawBrand/BrandMarkOnOrange.imageset/Contents.json",
+      "category": "email_review",
+      "line": 4,
+      "sha256": "6bdfa2e9e205ccd72964809c23ee9d79208cc66471d618bc68282aaaeab1a11d",
+      "reason": "PR90h review 2026-10-17: false positive — an asset filename with an at-sign scale suffix (2x / 3x image variants) or a synthetic one-letter test address in a contact fixture; no personal e-mail."
+    },
+    {
+      "path": "apps/ios-conversation/Resources/Assets.xcassets/CatpawBrand/BrandMarkOnOrange.imageset/Contents.json",
+      "category": "email_review",
+      "line": 5,
+      "sha256": "6bdfa2e9e205ccd72964809c23ee9d79208cc66471d618bc68282aaaeab1a11d",
+      "reason": "PR90h review 2026-10-17: false positive — an asset filename with an at-sign scale suffix (2x / 3x image variants) or a synthetic one-letter test address in a contact fixture; no personal e-mail."
+    },
+    {
+      "path": "apps/ios-conversation/Resources/Assets.xcassets/CatpawBrand/Mascot/MascotDone.imageset/Contents.json",
+      "category": "email_review",
+      "line": 3,
+      "sha256": "0352b65cb243866245239d2656853b14c7706515d954c951b358ea288fa475e2",
+      "reason": "PR90h review 2026-10-17: false positive — an asset filename with an at-sign scale suffix (2x / 3x image variants) or a synthetic one-letter test address in a contact fixture; no personal e-mail."
+    },
+    {
+      "path": "apps/ios-conversation/Resources/Assets.xcassets/CatpawBrand/Mascot/MascotDone.imageset/Contents.json",
+      "category": "email_review",
+      "line": 4,
+      "sha256": "0352b65cb243866245239d2656853b14c7706515d954c951b358ea288fa475e2",
+      "reason": "PR90h review 2026-10-17: false positive — an asset filename with an at-sign scale suffix (2x / 3x image variants) or a synthetic one-letter test address in a contact fixture; no personal e-mail."
+    },
+    {
+      "path": "apps/ios-conversation/Resources/Assets.xcassets/CatpawBrand/Mascot/MascotError.imageset/Contents.json",
+      "category": "email_review",
+      "line": 3,
+      "sha256": "7a2b198a287ca30c5b16ed48e61d1cef63f21fc5a437ef5c40e5e374bc5e0ba1",
+      "reason": "PR90h review 2026-10-17: false positive — an asset filename with an at-sign scale suffix (2x / 3x image variants) or a synthetic one-letter test address in a contact fixture; no personal e-mail."
+    },
+    {
+      "path": "apps/ios-conversation/Resources/Assets.xcassets/CatpawBrand/Mascot/MascotError.imageset/Contents.json",
+      "category": "email_review",
+      "line": 4,
+      "sha256": "7a2b198a287ca30c5b16ed48e61d1cef63f21fc5a437ef5c40e5e374bc5e0ba1",
+      "reason": "PR90h review 2026-10-17: false positive — an asset filename with an at-sign scale suffix (2x / 3x image variants) or a synthetic one-letter test address in a contact fixture; no personal e-mail."
+    },
+    {
+      "path": "apps/ios-conversation/Resources/Assets.xcassets/CatpawBrand/Mascot/MascotExecuting.imageset/Contents.json",
+      "category": "email_review",
+      "line": 3,
+      "sha256": "8bd7dc4b368342414179a61f9d1ab59a473f9e08d7e149b53a2a1ee8d2a39233",
+      "reason": "PR90h review 2026-10-17: false positive — an asset filename with an at-sign scale suffix (2x / 3x image variants) or a synthetic one-letter test address in a contact fixture; no personal e-mail."
+    },
+    {
+      "path": "apps/ios-conversation/Resources/Assets.xcassets/CatpawBrand/Mascot/MascotExecuting.imageset/Contents.json",
+      "category": "email_review",
+      "line": 4,
+      "sha256": "8bd7dc4b368342414179a61f9d1ab59a473f9e08d7e149b53a2a1ee8d2a39233",
+      "reason": "PR90h review 2026-10-17: false positive — an asset filename with an at-sign scale suffix (2x / 3x image variants) or a synthetic one-letter test address in a contact fixture; no personal e-mail."
+    },
+    {
+      "path": "apps/ios-conversation/Resources/Assets.xcassets/CatpawBrand/Mascot/MascotFront.imageset/Contents.json",
+      "category": "email_review",
+      "line": 3,
+      "sha256": "5bf39f7b27942b8483e45ae1212fa2cb58d9d9fee63b8031a9a7e3eaeb991398",
+      "reason": "PR90h review 2026-10-17: false positive — an asset filename with an at-sign scale suffix (2x / 3x image variants) or a synthetic one-letter test address in a contact fixture; no personal e-mail."
+    },
+    {
+      "path": "apps/ios-conversation/Resources/Assets.xcassets/CatpawBrand/Mascot/MascotFront.imageset/Contents.json",
+      "category": "email_review",
+      "line": 4,
+      "sha256": "5bf39f7b27942b8483e45ae1212fa2cb58d9d9fee63b8031a9a7e3eaeb991398",
+      "reason": "PR90h review 2026-10-17: false positive — an asset filename with an at-sign scale suffix (2x / 3x image variants) or a synthetic one-letter test address in a contact fixture; no personal e-mail."
+    },
+    {
+      "path": "apps/ios-conversation/Resources/Assets.xcassets/CatpawBrand/Mascot/MascotIdle.imageset/Contents.json",
+      "category": "email_review",
+      "line": 3,
+      "sha256": "e0f97a183aae517937b8898e02c6ceca0db109f3aef12f75578df65d940d87d2",
+      "reason": "PR90h review 2026-10-17: false positive — an asset filename with an at-sign scale suffix (2x / 3x image variants) or a synthetic one-letter test address in a contact fixture; no personal e-mail."
+    },
+    {
+      "path": "apps/ios-conversation/Resources/Assets.xcassets/CatpawBrand/Mascot/MascotIdle.imageset/Contents.json",
+      "category": "email_review",
+      "line": 4,
+      "sha256": "e0f97a183aae517937b8898e02c6ceca0db109f3aef12f75578df65d940d87d2",
+      "reason": "PR90h review 2026-10-17: false positive — an asset filename with an at-sign scale suffix (2x / 3x image variants) or a synthetic one-letter test address in a contact fixture; no personal e-mail."
+    },
+    {
+      "path": "apps/ios-conversation/Resources/Assets.xcassets/CatpawBrand/Mascot/MascotThinking.imageset/Contents.json",
+      "category": "email_review",
+      "line": 3,
+      "sha256": "b3a482029bba6d1cfe5c298b81787e6ec6f73aa1f6b84c4d2e4cfd974595a92e",
+      "reason": "PR90h review 2026-10-17: false positive — an asset filename with an at-sign scale suffix (2x / 3x image variants) or a synthetic one-letter test address in a contact fixture; no personal e-mail."
+    },
+    {
+      "path": "apps/ios-conversation/Resources/Assets.xcassets/CatpawBrand/Mascot/MascotThinking.imageset/Contents.json",
+      "category": "email_review",
+      "line": 4,
+      "sha256": "b3a482029bba6d1cfe5c298b81787e6ec6f73aa1f6b84c4d2e4cfd974595a92e",
+      "reason": "PR90h review 2026-10-17: false positive — an asset filename with an at-sign scale suffix (2x / 3x image variants) or a synthetic one-letter test address in a contact fixture; no personal e-mail."
+    },
+    {
+      "path": "apps/ios-conversation/Resources/Assets.xcassets/CatpawBrand/Mascot/MascotWriting.imageset/Contents.json",
+      "category": "email_review",
+      "line": 3,
+      "sha256": "954597bfeae65703ff636600b9b7efcad225ac57374a2576fdad72dc3adfa9d6",
+      "reason": "PR90h review 2026-10-17: false positive — an asset filename with an at-sign scale suffix (2x / 3x image variants) or a synthetic one-letter test address in a contact fixture; no personal e-mail."
+    },
+    {
+      "path": "apps/ios-conversation/Resources/Assets.xcassets/CatpawBrand/Mascot/MascotWriting.imageset/Contents.json",
+      "category": "email_review",
+      "line": 4,
+      "sha256": "954597bfeae65703ff636600b9b7efcad225ac57374a2576fdad72dc3adfa9d6",
+      "reason": "PR90h review 2026-10-17: false positive — an asset filename with an at-sign scale suffix (2x / 3x image variants) or a synthetic one-letter test address in a contact fixture; no personal e-mail."
+    },
+    {
+      "path": "apps/ios-conversation/Resources/Assets.xcassets/LaunchBrandHead.imageset/Contents.json",
+      "category": "email_review",
+      "line": 8,
+      "sha256": "71a1aff09453eb770ea897370e4fdfc1263b08e816e6a5c7f46e10227d0cab02",
+      "reason": "PR90h review 2026-10-17: false positive — an asset filename with an at-sign scale suffix (2x / 3x image variants) or a synthetic one-letter test address in a contact fixture; no personal e-mail."
+    },
+    {
+      "path": "apps/ios-conversation/Resources/Assets.xcassets/LaunchBrandHead.imageset/Contents.json",
+      "category": "email_review",
+      "line": 13,
+      "sha256": "71a1aff09453eb770ea897370e4fdfc1263b08e816e6a5c7f46e10227d0cab02",
+      "reason": "PR90h review 2026-10-17: false positive — an asset filename with an at-sign scale suffix (2x / 3x image variants) or a synthetic one-letter test address in a contact fixture; no personal e-mail."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
+      "category": "secret_assignment_review",
+      "line": 183,
+      "sha256": "f7fd59c19cd6172a3d6fc1184c53f8aa897a0eed2fca25f8769d530f99c0c2b5",
+      "reason": "PR90h review 2026-10-17: synthetic test literal (offline lifecycle access token / masked k-xx-xxxxxxxx env stub); no real credential."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
+      "category": "secret_assignment_review",
+      "line": 524,
+      "sha256": "f7fd59c19cd6172a3d6fc1184c53f8aa897a0eed2fca25f8769d530f99c0c2b5",
+      "reason": "PR90h review 2026-10-17: synthetic test literal (offline lifecycle access token / masked k-xx-xxxxxxxx env stub); no real credential."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NoBugP0Runner.swift",
+      "category": "email_review",
+      "line": 579,
+      "sha256": "067076bc4910aa6d96b5d7e401a126d3782c2de92235bead499809fd1ba59264",
+      "reason": "PR90h review 2026-10-17: false positive — an asset filename with an at-sign scale suffix (2x / 3x image variants) or a synthetic one-letter test address in a contact fixture; no personal e-mail."
+    },
+    {
+      "path": "apps/ios-conversation/design/brand/regenerate_appicon.py",
+      "category": "email_review",
+      "line": 25,
+      "sha256": "5c1f211cc31050fe0423093c11640748fbfbc872d6e6f656839e214cc4a1bd15",
+      "reason": "PR90h review 2026-10-17: false positive — an asset filename with an at-sign scale suffix (2x / 3x image variants) or a synthetic one-letter test address in a contact fixture; no personal e-mail."
+    },
+    {
+      "path": "apps/ios-conversation/design/brand/render_brand.py",
+      "category": "email_review",
+      "line": 61,
+      "sha256": "21e640379aaccb3ed2c5314694e4852b98d37c37b044e0c1bd5341e376ef57f4",
+      "reason": "PR90h review 2026-10-17: false positive — an asset filename with an at-sign scale suffix (2x / 3x image variants) or a synthetic one-letter test address in a contact fixture; no personal e-mail."
+    },
+    {
+      "path": "apps/ios-conversation/design/brand/render_brand.py",
+      "category": "email_review",
+      "line": 62,
+      "sha256": "21e640379aaccb3ed2c5314694e4852b98d37c37b044e0c1bd5341e376ef57f4",
+      "reason": "PR90h review 2026-10-17: false positive — an asset filename with an at-sign scale suffix (2x / 3x image variants) or a synthetic one-letter test address in a contact fixture; no personal e-mail."
+    },
+    {
+      "path": "services/edge/test/proactive-decision.test.mjs",
+      "category": "secret_assignment_review",
+      "line": 102,
+      "sha256": "1b76a3b7ec4ac6de617b7095267b1b7ebce64eb9da3c4aa02176a27d0ea60794",
+      "reason": "PR90h review 2026-10-17: synthetic test literal (offline lifecycle access token / masked k-xx-xxxxxxxx env stub); no real credential."
     }
   ]
 }
