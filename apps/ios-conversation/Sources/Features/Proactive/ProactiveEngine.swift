@@ -241,11 +241,11 @@ struct ProactiveSignal: Equatable, Sendable {
         let leaveAt = ProactiveRules.leaveAt(start: signal.start, leadMinutes: lead.minutes, travelMinutes: travelMinutes, usedETA: usedETA)
         let remindAt = leaveAt  // remind when user should leave
         var decision: Decision
-        if let remote = await evaluateRemote(signal, leadMinutes: lead.minutes, travelMinutes: usedETA ? travelMinutes : nil) { decision = remote }
+        if let remote = await evaluateRemote(signal, leadMinutes: lead.minutes, travelMinutes: usedETA ? travelMinutes : nil, token: token) { decision = remote }
         else {
             decision = evaluateLocal(signal, leadMinutes: lead.minutes, travelMinutes: usedETA ? travelMinutes : nil, now: now)
             // NoBug: learned feedback (三角's ProactiveFeedbackSync) gates offline decisions too.
-            let gated = ProactiveRules.applyFeedbackGate(decision.level, gate: Self.feedbackGate)
+            let gated = ProactiveRules.applyFeedbackGate(decision.level, confidence: ProactiveRules.localConfidence(ProactiveRules.localTrigger, Int(signal.start.timeIntervalSince(now) / 60), nil), gate: Self.feedbackGate)
             if gated != decision.level { decision = .init(level: gated, why: decision.why + " · feedback gate → \(gated.name)", via: decision.via) }
         }
         guard decision.intervene else { note("decide silent: \(decision.why)"); return nil }
@@ -301,13 +301,10 @@ struct ProactiveSignal: Equatable, Sendable {
             ProactiveSuggestionStore.shared.adopt(suggestion)
             lastSuggestionID = suggestion.id
             // Codex PR90 P2: quiet hours / cap against the real delivery instant (evaluation may have taken a while).
-            intervene(suggestion, level: decision.level, now: ProactiveRules.deliveryInstant(evaluatedAt: now, startedWall: wallStart), token: token)
+            intervene(suggestion, level: decision.level, now: ProactiveRules.deliveryInstant(evaluatedAt: now, startedWall: wallStart), token: token, eventID: signal.eventID)
             var delivered = signalLedger; delivered.markDelivered(hash, level: decision.level, now: now); signalLedger = delivered
-            #if os(iOS)
-            // Exactly once: the in-app delivery supersedes this meeting's pre-scheduled notification.
-            UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ["pre-" + signal.eventID])
-            #endif
-            var q = quota; if q.entries[suggestion.id]?.state == .reserved { q.release(suggestion.id, now: now) }; quota = q
+            // Exactly once: the pipeline posts in place of this meeting's unfired pre-scheduled notification (or, if that one
+            // already fired, treats it as the delivery and only shows the card).
             return suggestion
         }
         guard let committed else { note("account changed during evaluation → dropped (no save / notification / widget)"); return nil }
@@ -382,14 +379,18 @@ struct ProactiveSignal: Equatable, Sendable {
     }
     private var lastRemote: [String: Any]?
     /// `POST /catpaw/proactive/v1/evaluate`; nil (offline / not deployed) → local rules.
-    private func evaluateRemote(_ s: ProactiveSignal, leadMinutes: Int, travelMinutes: Int? = nil) async -> Decision? {
-        let minutes = Int(s.start.timeIntervalSince(.now) / 60)
+    private func evaluateRemote(_ s: ProactiveSignal, leadMinutes: Int, travelMinutes: Int? = nil, minutesUntil: Int? = nil, token: AccountToken? = nil) async -> Decision? {
+        // Codex PR90c #1: bound to the originating token. `post` (三角, #91 1f1f13b) captures its token synchronously before
+        // its first await, so checking here with no await in between binds the request and bearer to this chain's account.
+        if let token, !AccountEpoch.shared.isValid(token) { return nil }
+        let minutes = minutesUntil ?? Int(s.start.timeIntervalSince(.now) / 60)
         var data: [String: Any] = ["title": s.title, "location": s.place, "minutes_until": minutes]
         // Never claim ETA when unused / zero — omit the key rather than send 0.
         if let travelMinutes, travelMinutes > 0 { data["travel_minutes"] = travelMinutes }
         let body: [String: Any] = ["signals": [["type": "meeting_upcoming", "source": s.source.rawValue, "dedupe_key": s.signalHash, "data": data]],
                                    "context": ["time_zone": TimeZone.current.identifier, "lead_minutes": leadMinutes]]
         guard let json = await Self.post("evaluate", body) else { note("evaluate server unavailable → local rules"); lastRemote = nil; return nil }
+        if let token, !AccountEpoch.shared.isValid(token) { lastRemote = nil; return nil }  // response of a gone account
         lastRemote = json
         let decision = (json["decision"] as? String) ?? "card"
         return .init(level: ProactiveLevel(server: decision), why: "\(decision) · \((json["reason"] as? String) ?? "") conf=\((json["confidence"] as? Double).map { String(format: "%.2f", $0) } ?? "-") source=\((json["source"] as? String) ?? "?")", via: "server")
@@ -426,37 +427,28 @@ struct ProactiveSignal: Equatable, Sendable {
     }
     private func deliveredToday(_ now: Date) -> Int { quota.count(on: now) }
 
-    private func intervene(_ s: ProactiveSuggestion, level: ProactiveLevel, now: Date, token: AccountToken) {
-        #if os(iOS)
-        let ownReservation = quota.entries[s.id]?.state == .reserved ? 1 : 0  // this identity's own pre-scheduled slot
-        let plan = ProactiveRules.delivery(level: level, now: now, deliveredToday: deliveredToday(now) - ownReservation)
-        note("deliver requested=\(level.name) final=\(plan.level.name) notification=\(plan.systemNotification) sound=\(plan.sound)")
+    /// Codex PR90c: every proactive system notification goes through one pipeline (account barrier after the
+    /// authorization await, quiet hours at the real fire instant, shared quota, late-completion removal).
+    lazy var delivery = ProactiveDeliveryPipeline(epoch: .shared, poster: ProactiveSystemPoster(), loadQuota: { [unowned self] in self.quota }, saveQuota: { [unowned self] in self.quota = $0 })
+
+    private func intervene(_ s: ProactiveSuggestion, level: ProactiveLevel, now: Date, token: AccountToken, eventID: String? = nil) {
+        let plan = ProactiveRules.delivery(level: level, now: now, deliveredToday: 0)
+        note("deliver requested=\(level.name) → in-app=\(plan.inAppCard)")
         guard plan.inAppCard else { return }
+        #if os(iOS)
         CatpawInAppBannerCenter.shared.show(CatpawInAppBanner(title: s.title, body: s.reason, symbol: "calendar.badge.clock", deepLink: URL(string: "catpawm://proactive")))
-        guard plan.systemNotification else { note("intervene card only (no system notification) id=\(s.id)"); return }
-        var q = quota
-        let deliveryID = serverIDs[s.id] ?? s.id  // one delivery id shared with APNs (server event_id when known)
-        q.alias(deliveryID, to: s.id)
-        guard q.recordDelivery(s.id, at: now) else { note("intervene skipped: \(s.id) already delivered as a system notification"); return }
-        quota = q
-        let content = UNMutableNotificationContent()
-        content.title = s.title; content.body = s.reason; content.sound = plan.sound ? .default : nil
-        if plan.timeSensitive { content.interruptionLevel = .timeSensitive }
-        content.categoryIdentifier = Self.notificationCategory
-        var info: [AnyHashable: Any] = ["catpaw_proactive_id": s.id]
-        ProactiveAccountGate.stamp(&info, token, deliveryID: deliveryID, level: plan.level)
-        content.userInfo = info
-        let request = UNNotificationRequest(identifier: deliveryID, content: content, trigger: UNTimeIntervalNotificationTrigger(timeInterval: 2, repeats: false))
-        Task {
-            let center = UNUserNotificationCenter.current()
-            _ = try? await center.requestAuthorization(options: [.alert, .sound, .badge])
-            try? await center.add(request)
-        }
-        note("intervene \(plan.level.name): card + banner + local notification id=\(s.id)")
-        if plan.liveActivity, let leave = pendingReminders[s.id]?.leaveAt {
-            CatpawLeaveActivity.start(suggestionID: s.id, meetingTitle: pendingReminders[s.id]?.title ?? s.title, leaveAt: leave)
-        }
         #endif
+        let deliveryID = serverIDs[s.id] ?? s.id  // one delivery id shared with APNs (server event_id when known)
+        var q = quota; q.alias(deliveryID, to: s.id); quota = q
+        let leave = pendingReminders[s.id]?.leaveAt, meeting = pendingReminders[s.id]?.title ?? s.title
+        Task { @MainActor in
+            let out = await delivery.deliverNow(id: s.id, requestID: deliveryID, title: s.title, body: s.reason, category: Self.notificationCategory,
+                                                info: ["catpaw_proactive_id": s.id], requested: level, token: token,
+                                                supersedes: eventID.map { ["pre-" + $0] } ?? [])
+            note("intervene \(level.name) id=\(s.id) → \(out)")
+            guard case .posted = out, level == .interrupt, let leave else { return }
+            AccountEpoch.shared.commit(token) { CatpawLeaveActivity.start(suggestionID: s.id, meetingTitle: meeting, leaveAt: leave) }
+        }
     }
 
     // MARK: Confirmed write (idempotent)
@@ -624,54 +616,34 @@ struct ProactiveSignal: Equatable, Sendable {
         #if canImport(EventKit) && os(iOS)
         let status = EKEventStore.authorizationStatus(for: .event)
         guard status == .fullAccess || status == .authorized else { return }
-        guard let token = AccountEpoch.shared.capture() else { return }
+        guard let token = AccountEpoch.shared.capture() else { return }   // before any await (Codex PR90c / PR91c #2)
         let now = Date.now, lead = await leadTime()
+        guard AccountEpoch.shared.isValid(token) else { note("preschedule dropped: account changed during lead lookup"); return }
         let predicate = store.predicateForEvents(withStart: now, end: now.addingTimeInterval(24 * 3600), calendars: nil)
         guard let e = store.events(matching: predicate).filter({ !$0.isAllDay && $0.startDate > now }).sorted(by: { $0.startDate < $1.startDate }).first else { return }
-        let fire = e.startDate.addingTimeInterval(TimeInterval(-(lead.minutes + 5) * 60))
+        let fire = ProactiveRules.prescheduleFire(start: e.startDate, leadMinutes: lead.minutes)
         guard fire > now.addingTimeInterval(60) else { return }
-        let hash = ProactiveRules.signalHash(eventID: e.calendarItemIdentifier, start: e.startDate), identity = "evt-" + hash
+        let signal = ProactiveSignal(source: .background, eventID: e.calendarItemIdentifier, title: e.title ?? "日程", start: e.startDate, place: e.location ?? "")
+        let hash = signal.signalHash, identity = "evt-" + hash
         guard signalLedger.delivered[hash] == nil else { return }  // already delivered in-app
-        // PR90 #3: same decision as the in-app path (offline level at the fire instant + quiet hours at fire time),
-        // and a persisted quota reservation for that identity (counts even if shown but never tapped).
-        let level = ProactiveRules.prescheduleLevel(minutesUntilAtFire: lead.minutes + 5, leadMinutes: lead.minutes, travelMinutes: nil,
-                                                    fire: fire, deliveredOnFireDay: quota.count(on: fire))
-        var q = quota
-        guard let level, q.reserve(identity, fire: fire) else {
-            q.release(identity, now: now); quota = q
-            UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ["pre-" + e.calendarItemIdentifier])
-            note("preschedule skipped: \(fire.formatted(date: .omitted, time: .shortened)) silent / quiet hours / over the daily cap"); return
+        // Codex PR90c #4: the cloud decision for the fire instant (silent → nothing), else local rules; then the learned
+        // feedback gate with the trigger's confidence; then the device gate at the fire instant inside the pipeline.
+        let cloud = await evaluateRemote(signal, leadMinutes: lead.minutes, minutesUntil: lead.minutes, token: token)
+        guard AccountEpoch.shared.isValid(token) else { note("preschedule dropped: account changed during evaluate"); return }
+        guard let level = ProactiveRules.prescheduleDecision(cloud: cloud?.level, leadMinutes: lead.minutes, gate: Self.feedbackGate) else {
+            delivery.poster.remove(ids: ["pre-" + e.calendarItemIdentifier])
+            note("preschedule skipped: decision \(cloud?.level.name ?? "local") below notify"); return
         }
-        quota = q
-        let signal = ProactiveSignal(
-            source: .background,
-            eventID: e.calendarItemIdentifier,
-            title: e.title ?? "日程",
-            start: e.startDate,
-            place: e.location ?? ""
-        )
-        let content = UNMutableNotificationContent()
-        content.title = "\(e.startDate.formatted(date: .omitted, time: .shortened)) \(e.title ?? "日程")"
-        content.body = "要我提前 \(lead.minutes) 分钟提醒你准备吗？"
-        content.categoryIdentifier = Self.notificationCategory
-        content.sound = .default
-        content.interruptionLevel = level == .interrupt ? .timeSensitive : .active
-        content.userInfo = [
-            "catpaw_proactive_id": identity,
-            "catpaw_proactive_event": e.calendarItemIdentifier,
-            "catpaw_proactive_title": signal.title,
-            "catpaw_proactive_start": e.startDate.timeIntervalSince1970,
-            "catpaw_proactive_due": e.startDate.addingTimeInterval(TimeInterval(-lead.minutes * 60)).timeIntervalSince1970,
-            "catpaw_proactive_place": signal.place,
-        ]
-        ProactiveAccountGate.stamp(&content.userInfo, token, deliveryID: identity, level: level)
-        let comps = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: fire)
-        let request = UNNotificationRequest(identifier: "pre-" + e.calendarItemIdentifier, content: content, trigger: UNCalendarNotificationTrigger(dateMatching: comps, repeats: false))
-        guard AccountEpoch.shared.commit(token, { UNUserNotificationCenter.current().add(request) { _ in } }) != nil else {
-            var undo = quota; undo.release(identity, now: .now); quota = undo
-            note("preschedule dropped: account changed while scheduling"); return
-        }
-        note("prescheduled notification at \(fire.formatted(date: .omitted, time: .shortened)) for \(e.title ?? "")")
+        if cloud != nil { rememberServerID(local: identity) }  // the cloud event_id becomes the shared delivery id
+        let f = Date.FormatStyle(date: .omitted, time: .shortened)
+        let out = await delivery.preschedule(
+            identity: identity, requestID: "pre-" + e.calendarItemIdentifier,
+            title: "\(e.startDate.formatted(f)) \(e.title ?? "日程")", body: "要我提前 \(lead.minutes) 分钟提醒你准备吗？", category: Self.notificationCategory,
+            info: ["catpaw_proactive_id": identity, "catpaw_proactive_event": e.calendarItemIdentifier, "catpaw_proactive_title": signal.title,
+                   "catpaw_proactive_start": String(e.startDate.timeIntervalSince1970),
+                   "catpaw_proactive_due": String(fire.timeIntervalSince1970), "catpaw_proactive_place": signal.place],
+            fire: fire, level: level, token: token)
+        note("preschedule \(fire.formatted(f)) \(e.title ?? "") → \(out)")
         #endif
     }
 
@@ -686,6 +658,9 @@ struct ProactiveSignal: Equatable, Sendable {
         for id in ProactiveSuggestionStore.shared.items.keys { CatpawLeaveActivity.stop(suggestionID: id) }
         quota = ProactiveQuotaLedger()
         syncQueue.purge(account: nil); serverIDs = [:]  // the previous account's write-backs never go out under the next one
+        // Codex PR90c #1: the previous account's inbox, meeting details and attendees never surface for the next one.
+        ProactiveLocalBackend.wipe(); ProactiveSuggestionStore.shared.resetForAccountChange()
+        pendingReminders = [:]; pendingAttendees = [:]; generations = .init(); ledger = [:]; signalLedger = .init(); lastSuggestionID = nil
         note("account changed → removed \(pending.count) pending / \(shown.count) delivered proactive notifications")
     }
     static var categories: Set<UNNotificationCategory> {
@@ -701,6 +676,8 @@ struct ProactiveSignal: Equatable, Sendable {
     func handleNotification(actionIdentifier: String, userInfo: [AnyHashable: Any]) async -> Bool {
         let isProactive = userInfo["catpaw_proactive_id"] is String || userInfo["catpaw_proactive_event"] is String
         guard isProactive else { return false }
+        // Codex PR90c / PR91c #2: a tap or action resumes only for the account + sign-in that scheduled it.
+        guard ProactiveAccountGate.belongsToCurrent(userInfo, epoch: .shared) else { note("notification of another account/epoch dropped"); return true }
 
         if actionIdentifier == UNNotificationDefaultActionIdentifier {
             _ = resolveNotificationSuggestion(userInfo)
@@ -752,6 +729,9 @@ struct ProactiveSignal: Equatable, Sendable {
 
         // Recover the scheduled meeting without evaluating it or posting another notification. Mark
         // its existing signal as seen so a foreground scan cannot generate a second intervention.
+        // Written only under the token it was scheduled with (legacy untagged → the current one).
+        guard let token = delivery.resumeToken(userInfo) ?? (ProactiveAccountGate.token(userInfo) == nil ? AccountEpoch.shared.capture() : nil) else { return nil }
+        return AccountEpoch.shared.commit(token) { () -> ProactiveSuggestion in
         var seen = ledger
         seen[signal.signalHash] = Date.now.timeIntervalSince1970
         ledger = seen
@@ -774,6 +754,7 @@ struct ProactiveSignal: Equatable, Sendable {
         ProactiveLocalBackend.save(suggestion)
         ProactiveSuggestionStore.shared.adopt(suggestion)
         return suggestion
+        }
     }
 
     private func notificationContext(_ userInfo: [AnyHashable: Any]) -> CatpawScheduledMeetingNotification? {
@@ -826,6 +807,7 @@ struct ProactiveSignal: Equatable, Sendable {
         UserDefaults.standard.set(try? JSONEncoder().encode(all), forKey: key)
         CatpawWidgetSnapshotWriter.write(Array(all.values))
     }
+    static func wipe() { UserDefaults.standard.removeObject(forKey: key); CatpawWidgetSnapshotWriter.write([]) }
     static func load() -> [String: ProactiveSuggestion] {
         UserDefaults.standard.data(forKey: key).flatMap { try? JSONDecoder().decode([String: ProactiveSuggestion].self, from: $0) } ?? [:]
     }
@@ -852,6 +834,7 @@ struct ProactiveSignal: Equatable, Sendable {
         case .snooze: ProactiveEngine.shared.snooze(id); s.status = .snoozed; s.taken = (s.taken ?? []) + [.init(action: action, at: .now)]
         case .dismiss:
             CatpawLeaveActivity.stop(suggestionID: id)
+            ProactiveEngine.shared.delivery.poster.remove(ids: [id + "-snooze"])  // Codex PR90c #5: dismiss cancels a pending snooze
             s.status = .dismissed; s.taken = (s.taken ?? []) + [.init(action: action, at: .now)]
         case .notify_attendees:
             // P0-4: MessageUI via DeviceToolRouter — never mark done unless compose was presented and user sent.
@@ -1072,3 +1055,44 @@ struct ProactiveEngineSignalAdapter: ProactiveSignalEngine {
 }
 #endif
 
+
+
+/// UNUserNotificationCenter behind `ProactiveNotificationPoster` (Codex PR90c). The add is enqueued, never awaited
+/// inside the account barrier; its completion feeds the pipeline's late-completion cleanup.
+@MainActor final class ProactiveSystemPoster: ProactiveNotificationPoster {
+    /// Keys CatpawScheduledMeetingNotification reads as TimeInterval.
+    static let numericKeys: Set<String> = ["catpaw_proactive_start", "catpaw_proactive_due"]
+    func requestAuthorization() async -> Bool {
+        #if os(iOS)
+        return (try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge])) ?? false
+        #else
+        return false
+        #endif
+    }
+    func add(_ r: ProactiveNotificationRequest, completion: @escaping @MainActor (Bool) -> Void) {
+        #if os(iOS)
+        let content = UNMutableNotificationContent()
+        content.title = r.title; content.body = r.body; content.categoryIdentifier = r.category
+        content.sound = r.level >= .notify ? .default : nil
+        content.interruptionLevel = r.level == .interrupt ? .timeSensitive : .active
+        content.userInfo = r.info.reduce(into: [AnyHashable: Any]()) { out, kv in
+            out[kv.key] = Self.numericKeys.contains(kv.key) ? (Double(kv.value) as Any? ?? kv.value) : kv.value
+        }
+        let trigger: UNNotificationTrigger = r.fireAt.map {
+            UNCalendarNotificationTrigger(dateMatching: Calendar.current.dateComponents([.year, .month, .day, .hour, .minute, .second], from: $0), repeats: false)
+        } ?? UNTimeIntervalNotificationTrigger(timeInterval: ProactiveDeliveryPipeline.postDelay, repeats: false)
+        UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: r.id, content: content, trigger: trigger)) { error in
+            let ok = error == nil
+            Task { @MainActor in completion(ok) }
+        }
+        #else
+        completion(false)
+        #endif
+    }
+    func remove(ids: [String]) {
+        #if os(iOS)
+        let c = UNUserNotificationCenter.current()
+        c.removePendingNotificationRequests(withIdentifiers: ids); c.removeDeliveredNotifications(withIdentifiers: ids)
+        #endif
+    }
+}
