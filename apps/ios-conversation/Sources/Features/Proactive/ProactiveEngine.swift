@@ -978,6 +978,7 @@ struct ProactiveSignal: Equatable, Sendable {
             // Codex PR90e #4 #5: one intent = one operation id = one notification; shown snoozed only if it was scheduled.
             let intent = ProactiveEngine.shared.operationID(id, action.rawValue, ordinal: (s.taken ?? []).filter { $0.action == .snooze }.count + 1)
             let until = Date.now.addingTimeInterval(600)
+            ProactiveEngine.shared.delivery.remove(bases: ProactiveEngine.shared.snoozeBases(s), token: token)   // the new snooze replaces any pending one
             switch await ProactiveEngine.shared.snooze(s, until: until, intent: intent, token: token) {
             case .posted: break
             case .cardOnly: throw ProactiveEngineError.snoozeNotScheduled

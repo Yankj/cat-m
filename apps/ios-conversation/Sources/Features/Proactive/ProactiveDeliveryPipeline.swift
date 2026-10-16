@@ -43,6 +43,10 @@ struct ProactiveNotificationRequest: Sendable, Equatable {
     func remove(bases: [String], token: AccountToken?) {
         guard !bases.isEmpty else { return }
         poster.remove(ids: bases.flatMap { b in token.map { [Self.scoped(b, $0), b] } ?? [b] })
+        // PR90e: a removed request no longer holds its unfired slot (only this token's instance may free it).
+        var q = loadQuota(), changed = false
+        for b in bases where q.entries[b]?.state == .reserved { q.release(b, now: clock(), owner: token.map { Self.scoped(b, $0) }); changed = changed || q.entries[b] == nil }
+        if changed { saveQuota(q) }
     }
 
     /// Quota with fired reservations settled into deliveries ("shown but not tapped").
