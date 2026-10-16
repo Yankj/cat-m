@@ -106,7 +106,9 @@ export function createDecisionService({ store, model = null, memory = null, now 
     else if (decision !== 'silent' && conf < threshold) { const steps = conf < threshold - 0.15 ? 2 : 1; decision = LEVELS[Math.max(1, lvl(decision) - steps)]; trace.push(`confidence ${conf.toFixed(2)} < threshold ${threshold.toFixed(2)}: ${proposed} → ${decision}`); }
     if (lvl(decision) >= 2 && isQuiet(at, tz, cfg.quietHours) && !(decision === 'interrupt' && conf >= 0.9)) { trace.push(`quiet hours: ${decision} → card`); decision = 'card'; }
     if (lvl(decision) >= 2) { const n = await store.countDecisionsSince(uid, new Date(localDayStart(at, tz)).toISOString(), ['notify', 'interrupt']); if (n >= cfg.dailyCap) { trace.push(`daily cap ${cfg.dailyCap} reached: ${decision} → card`); decision = 'card'; } }
-    await store.markSignalHashes(uid, hashes, new Date(at).toISOString());
+    // Codex PR90 #1: "evaluated" ≠ "delivered" in the cloud too. Only a delivered (non-silent) decision closes the
+    // dedupe window; a silent verdict (incl. a dedupe hit) never refreshes seen_at, so the meeting is re-evaluated as it nears.
+    if (decision !== 'silent') await store.markSignalHashes(uid, hashes, new Date(at).toISOString());
     const used = memories.filter(m => r.used.includes(m.id));
     const explanation = {
       contract: DECISION_CONTRACT, why: r.reason, proposed, decision, source, trigger: r.trigger,
