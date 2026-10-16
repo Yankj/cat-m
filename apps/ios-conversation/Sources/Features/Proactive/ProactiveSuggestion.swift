@@ -11,7 +11,11 @@ struct ProactiveSuggestion: Codable, Sendable, Equatable, Identifiable {
     enum Status: String, Codable, Sendable { case pending, done, snoozed, dismissed }
     struct MemoryRef: Codable, Sendable, Equatable, Identifiable { let id: String; let content: String }
     struct Signal: Codable, Sendable, Equatable { let kind: String; let text: String }
-    struct Taken: Codable, Sendable, Equatable { let action: Action; let at: Date; var detail: String? }
+    struct Taken: Codable, Sendable, Equatable {
+        let action: Action; let at: Date; var detail: String?
+        /// Codex P0-5: per-action outcome (nil on older records: a create_reminder entry is a success).
+        var outcome: ProactiveActionState? = nil
+    }
 
     let id: String
     var title: String
@@ -26,6 +30,17 @@ struct ProactiveSuggestion: Codable, Sendable, Equatable, Identifiable {
     var usedMemories: [MemoryRef] { memories ?? [] }
     var effectiveActions: [Action] { actions ?? Action.allCases }
     var effectiveStatus: Status { status ?? .pending }
+    /// Codex P0-5: latest outcome per action, derived from `taken` (so undo, which trims `taken`, stays consistent).
+    var actionStates: [String: ProactiveActionState] {
+        var st: [String: ProactiveActionState] = [:]
+        for t in taken ?? [] { st[t.action.rawValue] = t.outcome ?? (t.action == .create_reminder ? .succeeded : nil) ?? st[t.action.rawValue] }
+        return st
+    }
+    /// Actions still offered on the card (a created reminder no longer hides 「告诉参会人」).
+    var remainingActions: [Action] {
+        ProactiveActionStates.remaining(effectiveActions.map(\.rawValue), actionStates).compactMap(Action.init(rawValue:))
+    }
+    var allEffectsDone: Bool { ProactiveActionStates.allEffectsDone(effectiveActions.map(\.rawValue), actionStates) }
 }
 
 enum ProactiveFeedback: String, Codable, Sendable, CaseIterable { case helpful, not_helpful, intrusive }
@@ -58,6 +73,8 @@ enum ProactiveFeedback: String, Codable, Sendable, CaseIterable { case helpful, 
     }
     func feedback(_ value: ProactiveFeedback, on id: String) async throws {}
     func adopt(_ s: ProactiveSuggestion) { if items[s.id] == nil { items[s.id] = s } }
+    /// Codex P0-5: the local cache must take updates (adopt only inserts).
+    func upsert(_ s: ProactiveSuggestion) { items[s.id] = s }
 
     static let samples: [ProactiveSuggestion] = [
         .init(id: "demo-meeting", title: "该出发去望京 SOHO 了", reason: "因为你 10:30 有会，地铁 25 分钟",
