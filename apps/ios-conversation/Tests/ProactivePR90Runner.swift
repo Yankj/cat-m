@@ -233,10 +233,13 @@ func nobug_gateAndTrigger() {
     }
 }
 func pr90c_confidences() {
-    let c = ProactiveRules.localConfidence
-    check(c("meeting_upcoming", 8, nil) == 0.7 && c("meeting_upcoming", 30, nil) == 0.6, "meeting")
-    check(c("travel_conflict", nil, nil) == 0.85 && c("meeting_conflict", nil, nil) == 0.75 && c("traffic", nil, nil) == 0.65 && c("whatever", nil, nil) == 0.6, "triggers")
-    check(c("flight_status", nil, "cancelled") == 0.9 && c("flight_status", nil, "delay_60") == 0.8 && c("flight_status", nil, "delay_30") == 0.75 && c("flight_status", nil, "gate") == 0.7, "flight")
+    struct V: Decodable { let name: String; let type: String; let data: [String: ProactiveRules.SignalValue]; let confidence: Double }
+    struct F: Decodable { let vectors: [V] }
+    let url = URL(fileURLWithPath: "../../services/edge/test/fixtures/proactive/confidence-vectors.json")
+    guard let d = try? Data(contentsOf: url), let f = try? JSONDecoder().decode(F.self, from: d), f.vectors.count >= 15 else { check(false, "confidence vectors readable"); return }
+    for v in f.vectors { let got = ProactiveRules.localConfidence(v.type, data: v.data); check(got == v.confidence, "confidence \(v.name): \(got)") }
+    check(ProactiveRules.localConfidence("schedule_conflict", data: [:]) == 0.75, "schedule_conflict alias")
+    check(ProactiveRules.localConfidence("meeting_upcoming", 8, travelMinutes: nil) == 0.7 && ProactiveRules.localConfidence("meeting_upcoming", 20, travelMinutes: 15) == 0.85, "minutes wrapper")
     // Pre-scheduling: cloud silent → nothing; feedback gate applied with the trigger's confidence; no fixed lead+5.
     var seen: Double?
     check(ProactiveRules.prescheduleDecision(cloud: .silent, leadMinutes: 10, gate: nil) == nil, "cloud silent → no preschedule")

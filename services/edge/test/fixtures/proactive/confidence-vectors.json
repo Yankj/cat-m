@@ -1,0 +1,18 @@
+{ "contract": "catpaw.proactive.decision.v1 ruleDecide confidence (mirrored by ProactiveRules.localConfidence)",
+  "vectors": [
+  {"name":"meeting travel conflict","type":"meeting_upcoming","data":{"minutes_until":20,"travel_minutes":15},"confidence":0.85},
+  {"name":"meeting travel late","type":"meeting_upcoming","data":{"minutes_until":10,"travel_minutes":25},"confidence":0.85},
+  {"name":"meeting travel no conflict, soon","type":"meeting_upcoming","data":{"minutes_until":8,"travel_minutes":2},"confidence":0.7},
+  {"name":"meeting within 10","type":"meeting_upcoming","data":{"minutes_until":10},"confidence":0.7},
+  {"name":"meeting far","type":"meeting_upcoming","data":{"minutes_until":30,"travel_minutes":10},"confidence":0.6},
+  {"name":"flight cancelled","type":"flight_status","data":{"status":"cancelled","delay_minutes":90,"affects_meeting":"评审"},"confidence":0.9},
+  {"name":"flight delay 60 affects","type":"flight_status","data":{"delay_minutes":60,"affects_meeting":"评审"},"confidence":0.8},
+  {"name":"flight delay 60 no meeting","type":"flight_status","data":{"delay_minutes":75},"confidence":0.75},
+  {"name":"flight delay 30","type":"flight_status","data":{"delay_minutes":30,"gate_changed":true},"confidence":0.75},
+  {"name":"flight gate","type":"flight_status","data":{"delay_minutes":10,"gate_changed":true},"confidence":0.7},
+  {"name":"flight nothing","type":"flight_status","data":{"delay_minutes":10},"confidence":0.6},
+  {"name":"schedule conflict","type":"meeting_conflict","data":{"minutes_until":30},"confidence":0.75},
+  {"name":"traffic 15","type":"traffic","data":{"extra_minutes":15},"confidence":0.65},
+  {"name":"traffic small","type":"traffic","data":{"extra_minutes":14},"confidence":0.6},
+  {"name":"default","type":"weather","data":{},"confidence":0.6}
+]}
