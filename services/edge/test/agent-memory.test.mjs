@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {randomUUID} from 'node:crypto';
 import {memoryHTTPFixture as fixture} from './fixtures/memory-http-fixture.mjs';
 import {APPROVAL_CONTRACT} from '../supabase/functions/_shared/core/src/approval.mjs';
-import {createAgentMemoryService} from '../supabase/functions/_shared/agent-memory/service.mjs';
+import {createAgentMemoryService,storedPrivacyOff} from '../supabase/functions/_shared/agent-memory/service.mjs';
 import {createAgentMemoryStore} from '../supabase/functions/_shared/agent-memory/memory-store.mjs';
 import {createAgentMemoryChatTools} from '../supabase/functions/_shared/agent-memory/chat-tools.mjs';
 import {MEMORY_TOOLS,validateToolArgs,estimateTokens} from '../supabase/functions/_shared/agent-memory/contract.mjs';
@@ -205,4 +205,38 @@ test('effective off: legacy user switch off also stops agent-memory recall (head
   assert.equal(t.events.some(x=>x.type==='memory_recalled'),false,'legacy off ⇒ no agent recall '+JSON.stringify(headers));
   assert.equal(s.probe.prompts.at(-1).includes('靠窗'),false);
  }
+});
+
+// Codex PR91 v2-3: the stored privacy off does not depend on the feature gate. Gate off (real composition: no agent-memory
+// service installed) or allow()=false must NOT bring legacy confirmed memory back.
+test('effective off: saved agent-memory off still stops legacy memory when the feature gate is off (real composition)',async()=>{
+ const store=createAgentMemoryStore(),f=await fixture({agentMemoryStore:store,env:{CATPAW_AGENT_MEMORY_ENABLED:'off'}});
+ assert.equal(f.runtime.chat.facade.agentMemory,undefined,'gate off → no agent-memory service (CATPAW_AGENT_MEMORY_ENABLED default off)');
+ await f.json((await f.post({type:'set_enabled',enabled:true})).response);
+ await f.json((await f.post(legacyRemember(await f.newConversation(),'coffee'))).response);
+ const cid=await f.newConversation();await f.json(await f.req(`/catpaw/privacy/v1/scopes/${f.scope.scope_id}/conversations/${cid}/model-consent`,{decision:'allow',expected_revision:0,route_hash:f.config.routeHash}));
+ const s={f,probe:{prompts:[]},path:`/catpaw/chat/v1/scopes/${f.scope.scope_id}/conversations/${cid}`};
+ const before=await send(s,'What coffee drink do I prefer?');
+ assert.ok((await turnOf(s,before.tid)).memory_usage,'legacy memory used while nothing is off');
+ await store.putSettings(f.principal.subject_id,{use_memory:false,auto_save:false,consented_at:new Date().toISOString()});
+ for(const headers of [{},{'X-Catpaw-Use-Memory':'1'}]){
+  const t=await send(s,'What coffee drink do I prefer?',headers);
+  assert.equal((await turnOf(s,t.tid)).memory_usage,undefined,'saved off honoured with the gate off '+JSON.stringify(headers));
+ }
+});
+test('effective off: allow()=false (enrollment revoked) does not void the saved off',async()=>{
+ const s=await chatSetup([]);const owner=s.f.principal.subject_id;
+ await s.f.json((await s.f.post({type:'set_enabled',enabled:true})).response);
+ await s.f.json((await s.f.post(legacyRemember(await s.f.newConversation(),'coffee'))).response);
+ await s.service.patchSettings(owner,{consent:true,use_memory:true});await s.service.patchSettings(owner,{use_memory:false});
+ s.f.runtime.chat.facade.agentMemory=createAgentMemoryService({store:s.store,allow:()=>false});
+ const t=await send(s,'What coffee drink do I prefer?');
+ assert.equal((await turnOf(s,t.tid)).memory_usage,undefined,'revoked enrollment keeps legacy memory off');
+ assert.equal(s.f.calls.at(-1)?.provider_context?.memory_context?.includes?.('coffee')??false,false);
+});
+test('storedPrivacyOff: missing table → no stored off; any other read error fails closed',async()=>{
+ assert.equal(await storedPrivacyOff({getSettings:async()=>{throw Object.assign(Error('x'),{code:'42P01'});}},'u'),false);
+ assert.equal(await storedPrivacyOff({getSettings:async()=>{throw Error('connection reset');}},'u'),true);
+ assert.equal(await storedPrivacyOff({getSettings:async()=>null},'u'),false);
+ assert.equal(await storedPrivacyOff({getSettings:async()=>({use_memory:false})},'u'),true);
 });
