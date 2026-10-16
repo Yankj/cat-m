@@ -26,15 +26,24 @@ struct SidebarMotionState {
         dragStart = position; dragReturnOpen = targetOpen
         isDragging = true; isSettling = false; velocity = 0
     }
+    /// Past fully open the finger keeps a rubber-band hold (no dead stop at the edge).
+    static let overshootLimit: CGFloat = 0.04
     mutating func drag(translationX: CGFloat, width: CGFloat) {
         guard isDragging, width > 0, width.isFinite, translationX.isFinite else { return }
-        position = min(1, max(0, dragStart + translationX / width))
+        let raw = dragStart + translationX / width
+        position = raw > 1 ? 1 + Self.overshootLimit * (1 - 1 / (1 + (raw - 1) * 3)) : max(0, raw)
+    }
+    /// UIScrollView-style projection: where the release would coast to. A slow drag past
+    /// half opens; a short flick in either direction wins even from near the edge.
+    static func projectedOpen(position: CGFloat, velocity: CGFloat) -> Bool {
+        if abs(velocity) > 2.4 { return velocity > 0 }   // ≈ 750 pt/s on a 310 pt drawer
+        return position + velocity * 0.2 >= 0.5
     }
     @discardableResult mutating func endDrag(velocityX: CGFloat, width: CGFloat, cancelled: Bool, reduceMotion: Bool) -> Bool {
         guard isDragging else { return targetOpen }
         let speed = velocityX.isFinite ? velocityX : 0
-        let open = cancelled ? dragReturnOpen : (speed > 400 ? true : (speed < -400 ? false : position >= 0.5))
         velocity = !cancelled && width > 0 && width.isFinite ? speed / width : 0
+        let open = cancelled ? dragReturnOpen : Self.projectedOpen(position: position, velocity: velocity)
         move(to: open, reduceMotion: reduceMotion)
         return open
     }
@@ -42,13 +51,16 @@ struct SidebarMotionState {
     /// can jump ahead of the position a subsequent finger gesture will acquire.
     mutating func advance(seconds: TimeInterval) {
         guard isSettling, !isDragging, seconds > 0, seconds.isFinite else { return }
-        let t = CGFloat(seconds), omega: CGFloat = 18
+        // ω 20 critically damped: ~0.3 s settle, carries the finger's release velocity.
+        let t = CGFloat(seconds), omega: CGFloat = 20
         let displacement = position - endpoint
         let c = velocity + omega * displacement
         let decay = exp(-omega * t)
         let next = endpoint + (displacement + c * t) * decay
         velocity = (velocity - omega * c * t) * decay
-        position = min(1, max(0, next))
+        // A fast open may coast a few points past the edge and settle back instead of
+        // hitting a wall; closing still clamps at 0 (nothing to reveal off-screen).
+        position = min(1 + Self.overshootLimit, max(0, next))
         if next != position { velocity = 0 }
         if abs(position - endpoint) < 0.0001 && abs(velocity) < 0.005 { finish() }
     }
