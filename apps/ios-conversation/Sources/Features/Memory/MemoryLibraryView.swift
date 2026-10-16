@@ -10,6 +10,9 @@ import SwiftUI
     /// The user's last choice is not acknowledged by the server yet (off already effective on this phone).
     @Published private(set) var useUnsynced = false
     @Published private(set) var enabling = false
+    /// v3-3: the toggle position (user's latest choice) and how many known libraries are themselves off.
+    @Published private(set) var choiceOn = false
+    @Published private(set) var offLibraries = 0
     @Published var errorKey: String?
     @Published var query = ""
     let backend: any MemoryLibraryBackend
@@ -28,37 +31,36 @@ import SwiftUI
         let token = AccountEpoch.shared.capture()
         await run { self.snapshot = try await self.backend.load() }
         refreshEffective(token: token)
+        // v3-2: an unacknowledged choice (timeout / network error) is re-sent with its original sequence.
+        if let owner = MemoryRecallLoader.currentOwner, MemoryRecallLoader.unsynced(owner) {
+            let backend = self.backend
+            await MemoryRecallLoader.reconcile(owner: owner, token: token) { (on: Bool, seq: Int64) async throws -> Bool in try await backend.setUseMemory(on, seq: seq) }
+            refreshEffective(token: token)
+        }
     }
-    /// v2-4: recompute from the persisted choice + the loaded library; also feeds the next turn's header.
+    /// Codex PR91 v3-3: the page summarizes BOTH states from the same source as recall and the header:
+    /// - `choiceOn` (immediate): the user's latest choice — the toggle position, published synchronously on tap.
+    /// - `effectiveUse` (full): persisted off + pending/unknown outcome + every known library (cloud and on-device).
     func refreshEffective(token: AccountToken? = AccountEpoch.shared.capture()) {
-        guard let owner = MemoryRecallLoader.currentOwner else { effectiveUse = false; useUnsynced = false; enabling = false; return }
-        if let snapshot, let value = MemoryRecallLoader.applyEffective(owner: owner, token: token, libraries: [snapshot.useMemory]) { effectiveUse = value }
-        else { effectiveUse = !MemoryRecallLoader.persistedOff(owner) && (ConversationMemorySwitch.useMemory ?? false) }
-        useUnsynced = MemoryRecallLoader.unsynced(owner); enabling = MemoryRecallLoader.isEnabling(owner)
-    }
-    func forget(_ item: MemoryLibraryItem) async {
-        let prior = snapshot
-        snapshot?.items.removeAll { $0.id == item.id }   // optimistic, restored on failure
-        await run(restore: prior) { try await self.backend.forget(ids: [item.id]) }
-    }
-    func update(_ item: MemoryLibraryItem, content: String) async {
-        await run { try await self.backend.update(id: item.id, content: content); self.snapshot = try await self.backend.load() }
+        guard let owner = MemoryRecallLoader.currentOwner else { effectiveUse = false; choiceOn = false; useUnsynced = false; enabling = false; return }
+        if let snapshot, MemoryRecallLoader.stillCurrent(token, owner) { MemoryRecallLoader.noteLibrary(backend, on: snapshot.useMemory, owner: owner) }
+        effectiveUse = MemoryRecallLoader.applyEffective(owner: owner, token: token) ?? false
+        let pending = MemoryRecallLoader.pending(owner)
+        choiceOn = pending?.on ?? effectiveUse
+        useUnsynced = pending != nil; enabling = MemoryRecallLoader.isEnabling(owner)
+        offLibraries = MemoryRecallLoader.knownLibraries(owner).filter { !$0.value }.count
     }
     func setUse(_ on: Bool) async {
-        // Codex PR91 p91d-1: owner + token bound when the toggle starts. v2-2: each toggle gets a generation; requests are
-        // serialized and only the latest choice's response writes back. v2-4: the page shows the effective state, never
-        // an optimistic or restored snapshot value.
+        // p91d-1: owner + token bound at the tap. v2-2/v3-2: generation + server-checked sequence. v3-3: the immediate state
+        // is published synchronously (beginChoice runs before any await), then the full effective state after delivery.
         let token = AccountEpoch.shared.capture()
-        guard let owner = MemoryRecallLoader.currentOwner else { return }
+        guard let owner = MemoryRecallLoader.currentOwner, let ticket = MemoryRecallLoader.beginChoice(on: on, owner: owner, token: token) else { return }
+        refreshEffective(token: token)
         let backend = self.backend
-        let pending = Task { @MainActor in
-            await MemoryRecallLoader.submitChoice(on: on, owner: owner, token: token) { (value: Bool) async throws -> Void in try await backend.setUseMemory(value) }
-        }
-        refreshEffective(token: token)   // OFF is already effective here; ON shows 正在开启…
-        let outcome = await pending.value
+        let outcome = await MemoryRecallLoader.deliver(ticket) { (value: Bool, seq: Int64) async throws -> Bool in try await backend.setUseMemory(value, seq: seq) }
         guard MemoryRecallLoader.stillCurrent(token, owner) else { return }
         switch outcome {
-        case .applied: snapshot?.useMemory = on; errorKey = nil
+        case .applied: snapshot?.useMemory = !MemoryRecallLoader.persistedOff(owner); errorKey = nil
         case .failed:
             errorKey = MemoryLibraryError.unavailable.messageKey
             UINotificationFeedbackGenerator().notificationOccurred(.error)
@@ -158,12 +160,16 @@ import SwiftUI
 
     @ViewBuilder private var switchesSection: some View {
         Section {
-            Toggle(isOn: Binding(get: { model.effectiveUse }, set: { v in Task { await model.setUse(v) } })) {
+            Toggle(isOn: Binding(get: { model.choiceOn }, set: { v in Task { await model.setUse(v) } })) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(ui("使用记忆")).font(CatpawTypography.Role.body.font)
-                    Text(ui(model.enabling ? "正在开启…" : (model.useUnsynced && !model.effectiveUse ? "已在本机关闭，待同步" : "回复时参考已记住的内容")))
+                    Text(ui(model.enabling ? "正在开启…" : (model.useUnsynced && !model.choiceOn ? "已在本机关闭，待同步" : "回复时参考已记住的内容")))
                         .font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
                         .accessibilityIdentifier("memory.library.use.state")
+                    // v3-3: full effective state (same source as recall and X-Catpaw-Use-Memory).
+                    Text(ui(model.effectiveUse ? "实际生效：开启" : (model.useUnsynced ? "实际生效：关闭（结果未确认，已按关闭处理）" : (model.offLibraries > 0 ? "实际生效：关闭（有记忆库已关闭）" : "实际生效：关闭"))))
+                        .font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
+                        .accessibilityIdentifier("memory.library.use.effective")
                 }
             }
             .tint(CatpawBrand.paw)

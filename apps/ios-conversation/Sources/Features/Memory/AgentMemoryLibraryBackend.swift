@@ -39,6 +39,14 @@ import Foundation
     func forget(ids: [String]) async throws { for id in ids { _ = try await call("DELETE", "/items/" + Self.path(id)) } }
     /// Contract: turning either switch on requires `consent:true` in the same PATCH.
     func setUseMemory(_ on: Bool) async throws { _ = try await call("PATCH", "/settings", on ? ["consent": true, "use_memory": true] : ["use_memory": false]) }
+    /// Codex PR91 v3-2: `use_memory_seq` lets the server reject an older choice that arrives late (last writer by sequence).
+    func setUseMemory(_ on: Bool, seq: Int64) async throws -> Bool {
+        let body: [String: Any] = on ? ["consent": true, "use_memory": true, "use_memory_seq": seq] : ["use_memory": false, "use_memory_seq": seq]
+        let data = try await call("PATCH", "/settings", body)
+        struct Reply: Decodable { struct S: Decodable { let use_memory: Bool }; let settings: S }
+        guard let reply = try? JSONDecoder().decode(Reply.self, from: data) else { throw MemoryLibraryError.unavailable }   // unknown → fail closed
+        return reply.settings.use_memory
+    }
     func setAutoSave(_ on: Bool) async throws { _ = try await call("PATCH", "/settings", on ? ["consent": true, "auto_save": true] : ["auto_save": false]) }
     /// The page shows the second confirmation before calling this.
     func clearAll() async throws { _ = try await call("POST", "/clear", ["confirm": "delete_all"]) }
