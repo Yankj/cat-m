@@ -136,6 +136,47 @@ struct SwipeToStart: View {
     }
 }
 
+
+/// Large gradient CTA matching the landing hub reference: tap only (no swipe).
+/// Soft glow + press scale. VoiceOver / Reduce Motion friendly. Action hooks to
+/// `NativeLoginView.start` → `auth.completeOnboarding()` / `startExperience()`.
+struct StartUsingCTA: View {
+    let title: String
+    var busy = false
+    let action: () -> Void
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    var body: some View {
+        Button(action: { if !busy { action() } }) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 28, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [CatpawColors.orbLight, CatpawColors.orbDeep],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .shadow(color: CatpawColors.orbDeep.opacity(0.38), radius: 18, y: 8)
+                if busy {
+                    ProgressView().tint(CatpawColors.calmGlyph)
+                } else {
+                    Text(title)
+                        .font(CatpawTypography.Role.heading.font.weight(.semibold))
+                        .foregroundStyle(CatpawColors.calmGlyph)
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: 56)
+        }
+        .buttonStyle(CatpawPressButtonStyle())
+        .disabled(busy)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(title)
+        .accessibilityAddTraits(.isButton)
+        .accessibilityAction { if !busy { action() } }
+    }
+}
+
 /// Live waveform: thin orange vertical bars following recent audio levels.
 struct ThinWaveform: View {
     let levels: [Float]

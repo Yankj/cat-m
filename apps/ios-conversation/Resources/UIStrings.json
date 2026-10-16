@@ -6274,5 +6274,89 @@
   "所选模型路由暂不可用，已切回自动": {
     "en": "Selected model route unavailable; switched back to Auto",
     "zh-Hans": "所选模型路由暂不可用，已切回自动"
+  },
+  "解放双手，\n让工作自己向前走": {
+    "en": "Hands free.\nLet work move itself.",
+    "zh-Hans": "解放双手，\n让工作自己向前走"
+  },
+  "从一句话开始，把事情交给我。": {
+    "en": "Start with one sentence. Leave the rest to me.",
+    "zh-Hans": "从一句话开始，把事情交给我。"
+  },
+  "开始使用": {
+    "en": "Get started",
+    "zh-Hans": "开始使用"
+  },
+  "无需注册，即刻开始": {
+    "en": "No sign-up. Start right away.",
+    "zh-Hans": "无需注册，即刻开始"
+  },
+  "智能提醒": {
+    "en": "Smart reminders",
+    "zh-Hans": "智能提醒"
+  },
+  "日程安排": {
+    "en": "Scheduling",
+    "zh-Hans": "日程安排"
+  },
+  "网页研究": {
+    "en": "Web research",
+    "zh-Hans": "网页研究"
+  },
+  "内容写作": {
+    "en": "Writing",
+    "zh-Hans": "内容写作"
+  },
+  "任务拆解": {
+    "en": "Task breakdown",
+    "zh-Hans": "任务拆解"
+  },
+  "信息整理": {
+    "en": "Info organizing",
+    "zh-Hans": "信息整理"
+  },
+  "文件处理": {
+    "en": "File handling",
+    "zh-Hans": "文件处理"
+  },
+  "长期记忆": {
+    "en": "Long-term memory",
+    "zh-Hans": "长期记忆"
+  },
+  "Catpaw-m": {
+    "en": "Catpaw-m",
+    "zh-Hans": "Catpaw-m"
+  },
+  "onboarding.chip.reminder": {
+    "en": "Smart reminders",
+    "zh-Hans": "智能提醒"
+  },
+  "onboarding.chip.schedule": {
+    "en": "Scheduling",
+    "zh-Hans": "日程安排"
+  },
+  "onboarding.chip.research": {
+    "en": "Web research",
+    "zh-Hans": "网页研究"
+  },
+  "onboarding.chip.writing": {
+    "en": "Writing",
+    "zh-Hans": "内容写作"
+  },
+  "onboarding.chip.breakdown": {
+    "en": "Task breakdown",
+    "zh-Hans": "任务拆解"
+  },
+  "onboarding.chip.organize": {
+    "en": "Info organizing",
+    "zh-Hans": "信息整理"
+  },
+  "onboarding.chip.files": {
+    "en": "File handling",
+    "zh-Hans": "文件处理"
+  },
+  "onboarding.chip.memory": {
+    "en": "Long-term memory",
+    "zh-Hans": "长期记忆"
   }
 }
