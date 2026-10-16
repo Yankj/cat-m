@@ -55,6 +55,7 @@ export function createMemoryStore() {
     async pendingPushEvents(limit, nowIso) { return events.filter(e => e.push_state === 'pending' && (!e.push_after || !nowIso || e.push_after <= nowIso)).slice(0, limit).map(c); },
     async deferPush(eid, until) { const e = events.find(e => e.id === eid); e.push_after = until; },
     async countPushedSince(uid, sinceIso) { return events.filter(e => e.user_id === uid && e.push_state === 'sent' && (e.pushed_at ?? e.created_at) >= sinceIso).length; },
+    async cancelPendingPush(uid, eid, reason) { const e = events.find(e => e.id === eid && e.user_id === uid && e.push_state === 'pending'); if (e) { e.push_state = 'skipped'; e.push_error = reason; } },
     async setPush(eid, state, err) { const e = events.find(e => e.id === eid); e.push_state = state; e.push_error = err; if (state === 'sent') e.pushed_at = new Date().toISOString(); },
     async tokensFor(uid) { return tokens.filter(t => t.user_id === uid).map(c); },
     async upsertToken(uid, t) { let r = tokens.find(x => x.user_id === uid && x.device_id === t.device_id && x.kind === t.kind && (x.activity_id ?? '') === (t.activity_id ?? '')); if (r) Object.assign(r, t, { enabled: true, last_error: null }); else { r = { id: id(), user_id: uid, enabled: true, last_error: null, ...t }; tokens.push(r); } return c(r); },
