@@ -144,6 +144,107 @@ func nobug_gateAndTrigger() {
     check(ProactiveRules.applyFeedbackGate(.notify, gate: nil) == .notify, "no gate installed → unchanged")
 }
 
+// MARK: Codex PR90c — the delivery pipeline ProactiveEngine.intervene / prescheduleNextEvent / resume delegate to.
+// FakePoster stands in for UNUserNotificationCenter only; adds/removes are the real system calls the engine makes.
+@MainActor final class FakePoster: ProactiveNotificationPoster {
+    var adds: [ProactiveNotificationRequest] = [], removed: [String] = [], authorized = true
+    var duringAuthorization: (() -> Void)?; var completeLater = false; var pendingCompletions: [(Bool) -> Void] = []
+    func requestAuthorization() async -> Bool { duringAuthorization?(); return authorized }
+    func add(_ r: ProactiveNotificationRequest, completion: @escaping @MainActor (Bool) -> Void) {
+        adds.append(r); if completeLater { pendingCompletions.append(completion) } else { completion(true) }
+    }
+    func remove(ids: [String]) { removed += ids }
+}
+@MainActor func makePipeline(_ epoch: AccountEpoch, _ poster: FakePoster, clock: @escaping () -> Date) -> (ProactiveDeliveryPipeline, () -> ProactiveQuotaLedger) {
+    var q = ProactiveQuotaLedger()
+    let p = ProactiveDeliveryPipeline(epoch: epoch, poster: poster, clock: clock, calendar: shanghai, loadQuota: { q }, saveQuota: { q = $0 })
+    return (p, { q })
+}
+@MainActor func pr90c_pipeline() async {
+    let noon = at("2026-10-15T04:00:00Z")
+    // 1. Sign-out while awaiting notification authorization → nothing is added.
+    do {
+        let e = AccountEpoch(account: "A"), poster = FakePoster(); let (p, _) = makePipeline(e, poster, clock: { noon })
+        poster.duringAuthorization = { e.signOut() }
+        let out = await p.deliverNow(id: "evt-1", requestID: "evt-1", title: "t", body: "b", category: "c", info: [:], requested: .notify, token: e.capture()!)
+        check(out == .refused("stale_account") && poster.adds.isEmpty, "token re-validated after the authorization await (\(out))")
+    }
+    // 2. Quiet hours re-checked after the await and at the real fire instant (+2 s): 21:59:59 decision, 22:00:01 fire.
+    do {
+        var t = at("2026-10-15T13:59:59Z"); let e = AccountEpoch(account: "A"), poster = FakePoster(); let (p, _) = makePipeline(e, poster, clock: { t })
+        let out = await p.deliverNow(id: "evt-2", requestID: "evt-2", title: "t", body: "b", category: "c", info: [:], requested: .notify, token: e.capture()!)
+        check(out == .cardOnly("quiet_hours") && poster.adds.isEmpty, "fire instant crosses 22:00 → no ring (\(out))")
+        t = noon; _ = t
+    }
+    // 3. Late completion after sign-out → the request is removed again.
+    do {
+        let e = AccountEpoch(account: "A"), poster = FakePoster(); poster.completeLater = true; let (p, _) = makePipeline(e, poster, clock: { noon })
+        let out = await p.deliverNow(id: "evt-3", requestID: "evt-3", title: "t", body: "b", category: "c", info: [:], requested: .notify, token: e.capture()!)
+        check(out == .posted("evt-3") && poster.adds.count == 1, "posted")
+        check(poster.adds.first?.info[ProactiveAccountGate.accountKey] == "A" && poster.adds.first?.info[ProactiveAccountGate.epochKey] != nil, "payload carries account + epoch")
+        e.signOut(); poster.pendingCompletions.forEach { $0(true) }
+        check(poster.removed.contains("evt-3"), "late completion after commit → removed")
+    }
+    // 4. A fired pre-scheduled reservation is delivered: the instant path must not push again.
+    do {
+        var t = at("2026-10-15T03:00:00Z"); let e = AccountEpoch(account: "A"), poster = FakePoster(); let (p, q) = makePipeline(e, poster, clock: { t })
+        let pre = await p.preschedule(identity: "evt-4", requestID: "pre-E4", title: "t", body: "b", category: "c", info: [:], fire: at("2026-10-15T03:30:00Z"), level: .notify, token: e.capture()!)
+        check(pre == .posted("pre-E4"), "prescheduled (\(pre))")
+        t = at("2026-10-15T03:31:00Z")  // fired; user never tapped
+        let now = await p.deliverNow(id: "evt-4", requestID: "evt-4", title: "t", body: "b", category: "c", info: [:], requested: .notify, token: e.capture()!)
+        check(now == .cardOnly("already_delivered") && poster.adds.count == 1, "no second ring for a shown-not-tapped reservation (\(now))")
+        check(q().entries["evt-4"]?.state == .delivered && q().count(on: t, calendar: shanghai) == 1, "reservation settled as delivered, counted once")
+    }
+    // 5. Unfired reservation + in-app delivery → converted, pending request removed, counted once.
+    do {
+        let e = AccountEpoch(account: "A"), poster = FakePoster(); let (p, q) = makePipeline(e, poster, clock: { noon })
+        _ = await p.preschedule(identity: "evt-5", requestID: "pre-E5", title: "t", body: "b", category: "c", info: [:], fire: at("2026-10-15T05:00:00Z"), level: .notify, token: e.capture()!)
+        let out = await p.deliverNow(id: "evt-5", requestID: "evt-5", title: "t", body: "b", category: "c", info: [:], requested: .notify, token: e.capture()!, supersedes: ["pre-E5"])
+        check(out == .posted("evt-5") && poster.removed.contains("pre-E5") && q().count(on: noon, calendar: shanghai) == 1, "in-app supersedes the unfired one")
+    }
+    // 6. Full quota: re-scanning never cancels a pre-scheduled notification that already holds a slot.
+    do {
+        let e = AccountEpoch(account: "A"), poster = FakePoster(); let (p, q) = makePipeline(e, poster, clock: { noon })
+        let fire = at("2026-10-15T06:00:00Z")
+        for i in 0..<ProactiveRules.dailyNotifyCap { _ = await p.preschedule(identity: "evt-6-\(i)", requestID: "pre-6-\(i)", title: "t", body: "b", category: "c", info: [:], fire: fire, level: .notify, token: e.capture()!) }
+        let again = await p.preschedule(identity: "evt-6-0", requestID: "pre-6-0", title: "t", body: "b", category: "c", info: [:], fire: fire, level: .notify, token: e.capture()!)
+        check(again != .cardOnly("daily_cap") && !poster.removed.contains("pre-6-0") && q().count(on: fire, calendar: shanghai) == ProactiveRules.dailyNotifyCap, "own slot kept (\(again))")
+        let extra = await p.preschedule(identity: "evt-6-x", requestID: "pre-6-x", title: "t", body: "b", category: "c", info: [:], fire: fire, level: .notify, token: e.capture()!)
+        check(extra == .cardOnly("daily_cap"), "a new one is refused at the cap")
+    }
+    // 7. Preschedule: signed out before commit → nothing added; late completion → removed + slot released.
+    do {
+        let e = AccountEpoch(account: "A"), poster = FakePoster(); poster.completeLater = true; let (p, q) = makePipeline(e, poster, clock: { noon })
+        let tok = e.capture()!; e.signOut()
+        let out = await p.preschedule(identity: "evt-7", requestID: "pre-7", title: "t", body: "b", category: "c", info: [:], fire: at("2026-10-15T06:00:00Z"), level: .notify, token: tok)
+        check(out == .refused("stale_account") && poster.adds.isEmpty && q().entries["evt-7"] == nil, "stale token: no add, no slot")
+        e.activate(account: "A")
+        _ = await p.preschedule(identity: "evt-8", requestID: "pre-8", title: "t", body: "b", category: "c", info: [:], fire: at("2026-10-15T06:00:00Z"), level: .notify, token: e.capture()!)
+        e.signOut(); poster.pendingCompletions.forEach { $0(true) }
+        check(poster.removed.contains("pre-8") && q().entries["evt-8"] == nil, "late completion → removed, slot released")
+    }
+    // 8. Resume (tap) only for the account/epoch that scheduled it.
+    do {
+        let e = AccountEpoch(account: "A"), poster = FakePoster(); let (p, _) = makePipeline(e, poster, clock: { noon })
+        _ = await p.preschedule(identity: "evt-9", requestID: "pre-9", title: "t", body: "b", category: "c", info: [:], fire: at("2026-10-15T06:00:00Z"), level: .notify, token: e.capture()!)
+        let info: [AnyHashable: Any] = poster.adds[0].info.reduce(into: [:]) { $0[$1.key] = $1.value }
+        check(p.resumeToken(info) != nil, "same account resumes")
+        e.activate(account: "B"); check(p.resumeToken(info) == nil, "other account: dropped, nothing written")
+    }
+}
+func pr90c_confidences() {
+    let c = ProactiveRules.localConfidence
+    check(c("meeting_upcoming", 8, nil) == 0.7 && c("meeting_upcoming", 30, nil) == 0.6, "meeting")
+    check(c("travel_conflict", nil, nil) == 0.85 && c("meeting_conflict", nil, nil) == 0.75 && c("traffic", nil, nil) == 0.65 && c("whatever", nil, nil) == 0.6, "triggers")
+    check(c("flight_status", nil, "cancelled") == 0.9 && c("flight_status", nil, "delay_60") == 0.8 && c("flight_status", nil, "delay_30") == 0.75 && c("flight_status", nil, "gate") == 0.7, "flight")
+    // Pre-scheduling: cloud silent → nothing; feedback gate applied with the trigger's confidence; no fixed lead+5.
+    var seen: Double?
+    check(ProactiveRules.prescheduleDecision(cloud: .silent, leadMinutes: 10, gate: nil) == nil, "cloud silent → no preschedule")
+    check(ProactiveRules.prescheduleDecision(cloud: nil, leadMinutes: 10, gate: { _, conf, _ in seen = conf; return "card" }) == nil && seen == 0.7, "feedback gate → card → nothing scheduled")
+    check(ProactiveRules.prescheduleDecision(cloud: .interrupt, leadMinutes: 25, gate: nil) == .interrupt, "cloud level kept")
+    check(ProactiveRules.prescheduleFire(start: at("2026-10-15T06:00:00Z"), leadMinutes: 25) == at("2026-10-15T05:35:00Z"), "fire = start − lead")
+}
+
 @main enum ProactivePR90Runner {
     static func main() async {
         pr90_3_prescheduleSharesDecisionAndQuota()
@@ -153,6 +254,8 @@ func nobug_gateAndTrigger() {
         pr90_6_undoIdentity()
         pr90_p2()
         nobug_gateAndTrigger()
+        await pr90c_pipeline()
+        pr90c_confidences()
         print(failures == 0 ? "PR90 proactive: all passed" : "PR90 proactive: \(failures) failed"); exit(failures == 0 ? 0 : 1)
     }
 }
