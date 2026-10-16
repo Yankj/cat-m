@@ -69,11 +69,11 @@ import SwiftUI
     }
 }
 
-/// Shown over the composer pill while dictating: ✕ · hint · live dotted waveform · ✓ (Grok-style).
+/// Hold-to-talk only (tap mode uses the full-screen VoiceModeOverlay): ✕ · hint · live dotted waveform · ✓ (Grok-style).
 @MainActor struct ComposerDictationBarHost: View {
     @ObservedObject private var dictation = ComposerDictation.shared
     var body: some View {
-        if dictation.dictating {
+        if dictation.dictating && dictation.mode == .hold {
             ComposerDictationBar(dictation: dictation, voice: dictation.voice)
                 .transition(.opacity.combined(with: .scale(scale: 0.98)))
         }
@@ -144,6 +144,17 @@ struct DottedWaveform: View {
                 let rect = CGRect(x: CGFloat(i) * step + (step - dot) / 2, y: (size.height - h) / 2, width: dot, height: h)
                 context.fill(Path(roundedRect: rect, cornerRadius: dot / 2), with: .color(CatpawColors.ink.opacity(0.25 + Double(level) * 0.6)))
             }
+        }
+    }
+}
+
+/// Full-screen calm voice mode while tap-dictating.
+@MainActor struct VoiceModeHost: View {
+    @ObservedObject private var dictation = ComposerDictation.shared
+    var body: some View {
+        if dictation.dictating && dictation.mode == .tap {
+            VoiceModeOverlay(dictation: dictation, voice: dictation.voice)
+                .transition(.opacity)
         }
     }
 }
