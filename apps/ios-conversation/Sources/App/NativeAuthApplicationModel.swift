@@ -152,6 +152,7 @@ struct NativeWorkspaceRetrySchedule: Sendable {
         }.value
     }
     private func openLocalConversation() async {
+        LaunchClock.mark("auth.openLocal");defer{LaunchClock.mark("auth.openLocal.end chat=\(chat != nil)")}
         guard let configuration,let localVault,let localBarrier else { return }
         let receiptURL=receiptURL,root=root,issuer=configuration.issuer
         let found:(LocalConversationReceipt,AuthenticatedLocalPartition)? = await Task.detached(priority:.userInitiated) {
@@ -198,6 +199,7 @@ struct NativeWorkspaceRetrySchedule: Sendable {
     /// Starts the background warm-up (local preview, restore, anonymous experience identity).
     /// Safe to call from `.task`: the warm-up is an unstructured task, so the gate can await it.
     func start() async {
+        LaunchClock.mark("auth.start started=\(started) manager=\(manager != nil)")
         guard !started, let manager else { return }; started = true
         let changes=connectionMonitor.pathChanges()
         reachabilitySubscription=Task { [weak self] in
@@ -292,6 +294,20 @@ struct NativeWorkspaceRetrySchedule: Sendable {
         "登录公开配置未通过校验。",
     ]
     /// Open a usable chat for entry without requiring live workspace/model APIs.
+    /// Cold start with onboarding already done: never leave the user on the attach spinner while
+    /// session restore / workspace calls wait on the network. After a short grace, open the local
+    /// (network-closed) entry chat; an authenticated restore later replaces it via `receive`.
+    /// False when the build carries no public auth configuration (e.g. a worktree without Local.xcconfig).
+    var entryConfigured: Bool { manager != nil && configuration != nil }
+    func ensureEntryAfterGrace(nanoseconds: UInt64 = 1_200_000_000) async {
+        LaunchClock.mark("entry.grace.begin chat=\(chat != nil) onboarding=\(needsOnboarding)")
+        if chat == nil { Task { await self.foreground() } }
+        try? await Task.sleep(nanoseconds: nanoseconds)
+        LaunchClock.mark("entry.grace.wake chat=\(chat != nil) cancelled=\(Task.isCancelled) logout=\(logoutInProgress)")
+        guard chat == nil, !needsOnboarding, !logoutInProgress, !Task.isCancelled else { return }
+        LaunchClock.mark("entry.graceFallback")
+        await ensureEntryChat()
+    }
     private func ensureEntryChat() async {
         if chat != nil { return }
         guard let configuration else { return }
@@ -426,6 +442,7 @@ struct NativeWorkspaceRetrySchedule: Sendable {
     }
     /// Local chat for entry/offline. Network stays closed until resolveWorkspace admits for real.
     private func admitProvisionalChat(user: NativeAuthUser, configuration: NativeAuthConfiguration) async {
+        LaunchClock.mark("auth.provisional");defer{LaunchClock.mark("auth.provisional.end chat=\(chat != nil)")}
         guard chat == nil, !logoutInProgress else { return }
         let serverScope = configuration.serverScopeID
             ?? provisionalScope(for: user.id)
@@ -465,6 +482,7 @@ struct NativeWorkspaceRetrySchedule: Sendable {
     }
     /// First-launch / auth-unreachable: local trial store, no network admission, no fake cloud credential.
     private func openOfflineTrialChat(configuration: NativeAuthConfiguration) async {
+        LaunchClock.mark("auth.offlineTrial");defer{LaunchClock.mark("auth.offlineTrial.end chat=\(chat != nil)")}
         guard chat == nil, !logoutInProgress else { return }
         let subject = offlineTrialSubject()
         let serverScope = configuration.serverScopeID ?? provisionalScope(for: subject)

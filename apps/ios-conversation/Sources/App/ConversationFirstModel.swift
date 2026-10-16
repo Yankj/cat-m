@@ -476,12 +476,12 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
     func start() async {
         guard !loaded else { return }
         do {
-            let id=try await service.openLatest(scope:scope);try await select(id)
+            LaunchClock.mark("model.start.openLatest");let id=try await service.openLatest(scope:scope);LaunchClock.mark("model.start.select");try await select(id);LaunchClock.mark("model.start.selected")
             let snapshot=await repository.read(scope:scope)
             subscription=Task { [weak self,repository,scope] in
                 for await notice in await repository.changes(scope:scope,after:snapshot.sequence) { guard let self,!Task.isCancelled else { return };let latest=await repository.read(scope:scope);if !notice.recordIDs.isEmpty,notice.recordIDs.allSatisfy({latest.records[$0]?.payload.kind=="conversationUIState"}) {continue};let headerChanged=notice.recordIDs.contains(where:{id in self.history.contains(where:{$0.id == id}) || id == self.conversationID});await self.refresh(rebuildHistory:headerChanged) }
             }
-            loaded=true;await resumeForeground()
+            loaded=true;LaunchClock.mark("model.start.resumeForeground");await resumeForeground();LaunchClock.mark("model.start.done")
         } catch { self.error=error.localizedDescription }
     }
     func refresh(rebuildHistory:Bool = true) async {
@@ -650,6 +650,7 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
     private func setIntent(_ id:UUID,_ state:OutgoingMessageIntent.State,error:String?=nil) { if let i=outgoingMessages.firstIndex(where:{$0.id == id}) { outgoingMessages[i].state=state;outgoingMessages[i].error=error } }
     private func authorizePending() {
         guard networkAdmissionAllowed,foreground,loaded,permissionTask == nil,pendingModelConsent == nil,let id=conversationID else { return }
+        if consentReady,!AppModelConsentGrant.serverAllowHonored { consentReady=false }   // revoked in 设置: stop future calls
         if consentReady { drainQueue();return }
         let token=UUID();permissionID=token;checkingModelConsent=true
         permissionTask=Task {
@@ -836,6 +837,8 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
             } catch {if foreground,networkAdmissionAllowed,generation==sceneGeneration,connectionProbeID==probe,conversationID==id {imageCapability=ConversationImageCapability(state:"unavailable",detail:error.localizedDescription)}}
         }
     }
+    /// True from foreground entry until the first automatic reconcile of an unresolved turn has run.
+    @Published private(set) var foregroundReconcilePending=false
     func readOriginal() {
         guard networkAdmissionAllowed,foreground,let id=conversationID,!busy else { return }
         let token=UUID();flightID=token;busy=true;observerLifecycle = .reconnecting
@@ -885,15 +888,16 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
     }
     private func enterForeground(generation:Int) async {
         guard loaded,generation == sceneGeneration,foreground else { return }
+        foregroundReconcilePending=true;defer{foregroundReconcilePending=false}
         await haltTask?.value;guard generation == sceneGeneration,foreground else { return }
-        await synchronizeServiceAdmission()
+        LaunchClock.mark("fg.admission");await synchronizeServiceAdmission();LaunchClock.mark("fg.admission.done")
         if networkAdmissionAllowed,let id=conversationID { syncServerTranscript(id) }
         foregroundTask?.cancel();connectionTask?.cancel()
         // Reachability is informative; it must not block GET of the exact unresolved turn.
         connectionTask=Task { await refreshConnection() }
-        await refresh()
+        LaunchClock.mark("fg.refresh");await refresh()
         guard generation == sceneGeneration,foreground else { return }
-        await restoreAppliedTaskControlDeliveriesAcrossConversations()
+        LaunchClock.mark("fg.taskControl");await restoreAppliedTaskControlDeliveriesAcrossConversations();LaunchClock.mark("fg.taskControl.done")
         guard generation == sceneGeneration,foreground else {return}
         for id in pendingTaskControlDeliveries.keys {pendingTaskControlDeliveries[id]?.nextAttemptAt = .distantPast}
         drainTaskControlDeliveries()

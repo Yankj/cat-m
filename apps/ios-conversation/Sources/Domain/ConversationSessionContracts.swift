@@ -489,6 +489,24 @@ public struct ConversationObservation: Sendable {
     public init(request: ConversationTurnRequest, events: [ConversationTurnEvent], requestHash: String? = nil, grantEpoch: Int? = nil, goals: [ConversationGoalProjection] = [], pendingApprovals: [ConversationApprovalRequest] = [], serverState: String? = nil, pendingUIApprovals: [ConversationUIApproval] = []) { self.pendingUIApprovals = pendingUIApprovals; self.request = request; self.events = events; self.requestHash = requestHash; self.grantEpoch = grantEpoch; self.goals = goals; self.pendingApprovals = pendingApprovals; self.serverState = serverState }
 }
 /// Client projection seam, not a new Agent engine. A verified server adapter supplies the wire.
+/// App-wide cloud-model consent: asked once, keyed by the disclosure/route hash (a material provider change
+/// produces a new hash and re-asks). New conversations reuse it by auto-posting the server's per-conversation
+/// allow, so server-side consent records stay per conversation. Revocation (设置) stops future model calls.
+public enum AppModelConsentGrant {
+    public struct Grant: Codable, Equatable, Sendable { public let routeHash: String; public let grantedAt: Date }
+    static let key = "catpaw.appModelConsent.v1", revokedKey = "catpaw.appModelConsent.revokedAt"
+    public static var defaults: UserDefaults = .standard
+    public static var current: Grant? { defaults.data(forKey: key).flatMap { try? JSONDecoder().decode(Grant.self, from: $0) } }
+    public static var revokedAt: Date? { defaults.object(forKey: revokedKey) as? Date }
+    public static func matches(_ routeHash: String) -> Bool { current?.routeHash == routeHash }
+    public static func record(routeHash: String, at date: Date = Date()) {
+        if let data = try? JSONEncoder().encode(Grant(routeHash: routeHash, grantedAt: date)) { defaults.set(data, forKey: key) }
+        defaults.removeObject(forKey: revokedKey)
+    }
+    public static func revoke(at date: Date = Date()) { defaults.removeObject(forKey: key); defaults.set(date, forKey: revokedKey) }
+    /// A per-conversation server allow only counts while the app-level grant has not been revoked.
+    public static var serverAllowHonored: Bool { current != nil || revokedAt == nil }
+}
 public struct ConversationModelConsent: Sendable, Identifiable {
     public var id: UUID { conversationID }
     public let conversationID: UUID

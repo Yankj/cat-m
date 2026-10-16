@@ -63,7 +63,7 @@ import ActivityKit
         let id = event.operationID
         let hub = CatpawPresenceHub.shared
         switch event.payload {
-        case .started: hub.set(.waiting, step: ui("正在思考…"))
+        case .started: hub.set(.thinking, step: ui("正在思考…")) // was .waiting → header stayed on the idle pose until the first text delta
         case .reasoningSummary: hub.set(.thinking, step: ui("正在思考…"))
         case .toolStarted(_, let name, _): hub.set(.working, step: ui("正在调用工具：{0}", [name]))
         case .toolResult: hub.set(.thinking, step: ui("正在思考…"))
