@@ -85,3 +85,51 @@ enum ProactiveLevel: Int, Comparable, Equatable, Sendable {
     var name: String { ["silent", "card", "notify", "interrupt"][rawValue] }
     static func < (a: Self, b: Self) -> Bool { a.rawValue < b.rawValue }
 }
+
+// MARK: Codex P0-5 — "evaluated" is not "delivered"; per-action state.
+
+/// An early silent verdict is only *evaluated*: the same meeting is re-evaluated as it nears.
+/// Only an actual delivery (card / notification) closes the hash for good.
+struct ProactiveSignalLedger: Codable, Sendable, Equatable {
+    static let reevaluateAfter: TimeInterval = 10 * 60
+    var evaluated: [String: Double] = [:]
+    var delivered: [String: String] = [:]
+    init() {}
+    /// v1 ledger entries were written for delivered and silent alike; treat them as delivered (never re-notify after upgrade).
+    init(legacy: [String: Double]) { delivered = legacy.mapValues { _ in "legacy" } }
+    func shouldEvaluate(_ hash: String, now: Date) -> Bool {
+        guard delivered[hash] == nil else { return false }
+        guard let at = evaluated[hash] else { return true }
+        return now.timeIntervalSince1970 - at >= Self.reevaluateAfter
+    }
+    mutating func markEvaluated(_ hash: String, now: Date) { evaluated[hash] = now.timeIntervalSince1970 }
+    mutating func markDelivered(_ hash: String, level: ProactiveLevel, now: Date) {
+        delivered[hash] = level.name; evaluated[hash] = now.timeIntervalSince1970
+    }
+}
+
+extension ProactiveRules {
+    /// Offline rules: too late → silent; too early (well before lead + travel) → silent for now (re-evaluated later); else notify.
+    static func localLevel(minutesUntil: Int, leadMinutes: Int, travelMinutes: Int?) -> ProactiveLevel {
+        if minutesUntil < 3 { return .silent }
+        if minutesUntil > leadMinutes + (travelMinutes ?? 0) + 15 { return .silent }
+        return .notify
+    }
+}
+
+enum ProactiveActionState: String, Codable, Sendable, Equatable { case pending, succeeded, cancelled, unavailable, failed }
+
+/// Per-action state on one suggestion: creating the reminder must not hide 「告诉参会人」, and only a real success syncs.
+enum ProactiveActionStates {
+    static let effects: Set<String> = ["create_reminder", "notify_attendees"]
+    static func allEffectsDone(_ all: [String], _ st: [String: ProactiveActionState]) -> Bool {
+        let e = all.filter(effects.contains); return !e.isEmpty && e.allSatisfy { st[$0] == .succeeded }
+    }
+    static func remaining(_ all: [String], _ st: [String: ProactiveActionState]) -> [String] {
+        allEffectsDone(all, st) ? [] : all.filter { st[$0] != .succeeded }
+    }
+    static func shouldSync(_ s: ProactiveActionState) -> Bool { s == .succeeded }
+    static func from(serverStates: [String: String]) -> [String: ProactiveActionState] {
+        serverStates.compactMapValues { $0 == "done" ? .succeeded : nil }
+    }
+}
