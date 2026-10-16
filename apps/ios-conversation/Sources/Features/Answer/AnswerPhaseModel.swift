@@ -15,6 +15,10 @@ struct AnswerToolStep: Identifiable, Equatable, Sendable {
     let id: String          // ConversationTurnEvent callID
     var title: String       // display name, already localised by the projection
     var state: State
+    var startedAt: Date? = nil
+    var endedAt: Date? = nil
+    /// Raw tool name, used only to pick the step glyph (search / browse / generic).
+    var kind: String = ""
 }
 
 struct AnswerSource: Identifiable, Equatable, Sendable {
@@ -35,7 +39,11 @@ struct AnswerSource: Identifiable, Equatable, Sendable {
     var thoughtSeconds: Int? { get }
     var text: String { get }
     var sources: [AnswerSource] { get }
+    /// Wall time from request to `.completed`, for the trailing "15.66s" in the action row.
+    var generationSeconds: Double? { get }
 }
+
+extension AnswerPhaseProviding { var generationSeconds: Double? { nil } }
 
 /// Default pure projection from the existing `ConversationTurnEvent` contract.
 /// Owns no I/O; 三角's stream pump calls `apply` in sequence order (dedupe by `sequence` happens upstream,
@@ -48,6 +56,7 @@ struct AnswerSource: Identifiable, Equatable, Sendable {
     @Published private(set) var thoughtSeconds: Int?
     @Published private(set) var text = ""
     @Published var sources: [AnswerSource] = []
+    @Published private(set) var generationSeconds: Double?
     private var lastSequence = 0
     private var streamTask: Task<Void, Never>?
     private var stopObserver: NSObjectProtocol?
@@ -143,9 +152,9 @@ struct AnswerSource: Identifiable, Equatable, Sendable {
             phase = .thinking
         case let .toolStarted(callID, name, _):
             guard !steps.contains(where: { $0.id == callID }) else { return }
-            steps.append(.init(id: callID, title: stepTitle(name), state: .running))
+            steps.append(.init(id: callID, title: stepTitle(name), state: .running, startedAt: clock(), kind: name))
         case let .toolResult(result):
-            if let i = steps.firstIndex(where: { $0.id == result.callID }) { steps[i].state = .done }
+            if let i = steps.firstIndex(where: { $0.id == result.callID }) { steps[i].state = .done; steps[i].endedAt = clock() }
         case let .textDelta(_, delta):
             // Phase switch and first batch land in the same transaction (mapping §2 B) so there's no blank jump.
             if phase == .thinking {
@@ -156,6 +165,7 @@ struct AnswerSource: Identifiable, Equatable, Sendable {
             text += delta
         case .completed:
             if thoughtSeconds == nil { thoughtSeconds = max(0, Int(clock().timeIntervalSince(thinkingStartedAt).rounded())) }
+            generationSeconds = max(0, clock().timeIntervalSince(thinkingStartedAt))
             phase = .settled
         case let .failed(message, reconciliation):
             phase = .interrupted(reason: message, reconciliationRequired: reconciliation)
