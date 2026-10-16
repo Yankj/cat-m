@@ -16,6 +16,15 @@ import UserNotifications
     /// Additive: tests share one store (many EKEventStore instances → EventKit error 1021).
     init(store: EKEventStore = EKEventStore()) { self.store = store; super.init() }
     private var composeContinuation: CheckedContinuation<DeviceCallStatus, Never>?
+    /// p89g-4 test seams (production: real MessageUI availability / controllers / top-controller presentation).
+    /// Tests use them to drive sms_compose / mail_compose through the REAL commit-gated `present` on a simulator without MessageUI.
+    var canCompose: (_ tool: String) -> Bool = { $0 == "sms_compose" ? MFMessageComposeViewController.canSendText() : MFMailComposeViewController.canSendMail() }
+    var makeComposer: ((_ tool: String) -> UIViewController)?
+    var presentOverride: (@MainActor (UIViewController) -> Void)?
+    /// p89g-4: branch trace ("dedupe-hit:calendar", "dedupe-hit:reminder", "present:<tool>") so tests prove the target path ran.
+    static var trace: ((String) -> Void)?
+    /// Completes a presented compose sheet (delegate path; tests call it for a seam-presented controller).
+    func completeCompose(_ controller: UIViewController, _ status: DeviceCallStatus) { finish(controller, status) }
 
     func canExecute(_ tool: String) -> Bool { Self.tools.contains(tool) }
 
@@ -81,6 +90,7 @@ import UserNotifications
             // NoBug P0-3: dedupe by call_id — a relaunch after kill must not write a second event.
             let window = store.predicateForEvents(withStart: start.addingTimeInterval(-86400), end: end.addingTimeInterval(86400), calendars: nil)
             if let existing = store.events(matching: window).first(where: { $0.notes?.contains(marker) == true }) {
+                Self.trace?("dedupe-hit:calendar")
                 if let refused = save({}) { return refused }   // p89e-2: a dedupe hit reports success only through the commit gate
                 return done(.ok, ["event_id": .string(existing.eventIdentifier ?? ""), "deduped": .bool(true)], open: "calshow:\(Int(existing.startDate.timeIntervalSinceReferenceDate))")
             }
@@ -97,6 +107,7 @@ import UserNotifications
             guard await access(.reminder) else { return done(.denied) }
             if let refused = gate() { return refused }   // p89d-5
             if let existing = await existingReminder(call.call_id) {   // NoBug P0-3 dedupe
+                Self.trace?("dedupe-hit:reminder")
                 if let refused = save({}) { return refused }   // p89e-2: revoked while the fetch was suspended → refused, not "ok"
                 return done(.ok, ["reminder_id": .string(existing), "deduped": .bool(true)], open: "x-apple-reminderkit://")
             }
@@ -110,25 +121,31 @@ import UserNotifications
             if let refused = save({ try store.save(r, commit: true) }) { return refused }   // p89d-2 single commit gate
             return done(.ok, ["reminder_id": .string(r.calendarItemIdentifier)], open: "x-apple-reminderkit://")
         case "sms_compose":
-            guard MFMessageComposeViewController.canSendText() else { return done(.error, ["reason": .string("sms_unavailable")]) }
-            let vc = MFMessageComposeViewController(); vc.messageComposeDelegate = self
-            if case .list(let to)? = a["to"] { vc.recipients = to } else if !s("to").isEmpty { vc.recipients = [s("to")] }
-            vc.body = s("body")
+            guard canCompose(call.tool) else { return done(.error, ["reason": .string("sms_unavailable")]) }
+            let vc: UIViewController
+            if let make = makeComposer { vc = make(call.tool) } else {
+                let m = MFMessageComposeViewController(); m.messageComposeDelegate = self
+                if case .list(let to)? = a["to"] { m.recipients = to } else if !s("to").isEmpty { m.recipients = [s("to")] }
+                m.body = s("body"); vc = m
+            }
             if let refused = gate() { return refused }
-            guard let st = await present(vc, commit: commit) else { return gate() ?? done(.error) }   // p89e-2: present inside the commit gate
+            guard let st = await present(vc, tool: call.tool, commit: commit) else { return gate() ?? done(.error) }   // p89e-2: present inside the commit gate
             return done(st)
         case "mail_compose":
-            guard MFMailComposeViewController.canSendMail() else {
+            guard canCompose(call.tool) else {
                 var c = URLComponents(); c.scheme = "mailto"; c.path = s("to").replacingOccurrences(of: "、", with: ",")
                 c.queryItems = [.init(name: "subject", value: s("subject")), .init(name: "body", value: s("body"))]
                 return opened(await open(c.url), done(.ok, ["via": .string("mailto")]), done(.error, ["reason": .string("mail_unavailable")]))
             }
-            let vc = MFMailComposeViewController(); vc.mailComposeDelegate = self
-            vc.setToRecipients(s("to").split(whereSeparator: { "、, ".contains($0) }).map(String.init))
-            vc.setCcRecipients(s("cc").split(whereSeparator: { "、, ".contains($0) }).map(String.init))
-            vc.setSubject(s("subject")); vc.setMessageBody(s("body"), isHTML: false)
+            let vc: UIViewController
+            if let make = makeComposer { vc = make(call.tool) } else {
+                let m = MFMailComposeViewController(); m.mailComposeDelegate = self
+                m.setToRecipients(s("to").split(whereSeparator: { "、, ".contains($0) }).map(String.init))
+                m.setCcRecipients(s("cc").split(whereSeparator: { "、, ".contains($0) }).map(String.init))
+                m.setSubject(s("subject")); m.setMessageBody(s("body"), isHTML: false); vc = m
+            }
             if let refused = gate() { return refused }
-            guard let st = await present(vc, commit: commit) else { return gate() ?? done(.error) }   // p89e-2: present inside the commit gate
+            guard let st = await present(vc, tool: call.tool, commit: commit) else { return gate() ?? done(.error) }   // p89e-2: present inside the commit gate
             return done(st)
         case "phone_call":
             let digits = s("number").filter { $0.isNumber || $0 == "+" }
@@ -235,12 +252,17 @@ import UserNotifications
         }
     }
     /// p89e-2: the system draft sheet is shown INSIDE the commit gate (same lock as revoke / sign-out). Refused → nil, nothing shown.
-    private func present(_ vc: UIViewController, commit: @MainActor (() -> Void) -> Bool) async -> DeviceCallStatus? {
-        guard let top = Self.topController() else { return .error }
+    private func present(_ vc: UIViewController, tool: String = "notify", commit: @MainActor (() -> Void) -> Bool) async -> DeviceCallStatus? {
+        let override = presentOverride
+        let top = Self.topController()
+        guard override != nil || top != nil else { return .error }
         var shown = false
         let status: DeviceCallStatus = await withCheckedContinuation { c in
             composeContinuation = c
-            shown = commit { top.present(vc, animated: true) }
+            shown = commit {
+                Self.trace?("present:" + tool)
+                if let override { override(vc) } else { top?.present(vc, animated: true) }
+            }
             if !shown { composeContinuation = nil; c.resume(returning: .error) }
         }
         return shown ? status : nil
