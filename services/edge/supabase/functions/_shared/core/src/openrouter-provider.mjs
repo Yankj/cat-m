@@ -147,10 +147,11 @@ export async function* sseData(body,{maxBytes=256000}={}){
   check(!buffer&&!lines.length,503,'incomplete_provider_terminal',{reconciliation:true});
 }
 export async function collectRound(provider,input,onText=async()=>{}){
-  let text='',terminal=false,finish=null,providerReceipt=null;const calls=[];
+  let text='',terminal=false,finish=null,providerReceipt=null,routeInfo=null;const calls=[];
   for await(const e of provider.stream(input)){
     check(!terminal,503,'event_after_terminal');
-    if(e.type==='text_delta'){check(typeof e.text==='string'&&Buffer.byteLength(text+e.text)<=64000,503,'invalid_provider_text');text+=e.text;await onText(e.text);}
+    if(e.type==='route_info'){routeInfo={route:e.route,model:e.model??null,requested_route:e.requested_route??'auto',failover:e.failover===true,from:Array.isArray(e.from)?e.from.slice(0,8):[],switches:Array.isArray(e.switches)?e.switches.slice(0,8):[],attempt:e.attempt??1};await input.onRoute?.(routeInfo);}
+    else if(e.type==='text_delta'){check(typeof e.text==='string'&&Buffer.byteLength(text+e.text)<=64000,503,'invalid_provider_text');text+=e.text;await onText(e.text);}
     else if(e.type==='tool_call'){check(calls.length<4&&!calls.some(c=>c.id===e.id),503,'duplicate_tool_call');calls.push({id:e.id,name:e.name,arguments:clone(e.arguments)});}
     else if(e.type==='thinking_delta'){check(typeof e.text==='string',503,'invalid_provider_text');await input.onThinking?.(e.text);}
     else if(e.type==='done'){terminal=true;finish=e.finish_reason;providerReceipt=e.provider_receipt??null;}
@@ -158,5 +159,5 @@ export async function collectRound(provider,input,onText=async()=>{}){
   }
   check(terminal&&['stop','tool_calls'].includes(finish)&&(finish==='tool_calls')===(calls.length>0),503,'incomplete_provider_terminal',{reconciliation:true});
   check(calls.length>0||text.trim().length>0,503,'empty_provider_response');
-  return {text,calls,...providerReceipt?{provider_receipt:clone(providerReceipt)}:{}};
+  return {text,calls,...providerReceipt?{provider_receipt:clone(providerReceipt)}:{},...routeInfo?{route_info:clone(routeInfo)}:{}};
 }

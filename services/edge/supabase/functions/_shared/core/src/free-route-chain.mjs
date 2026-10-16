@@ -21,22 +21,54 @@ export const FREE_ROUTE_CATALOG = Object.freeze({
   // Overriding CATPAW_AGNES_MODEL to a Pro model, or the promo ending, makes this route billable.
   agnes: Object.freeze({ id: 'agnes', provider: 'Agnes AI', endpoint: 'https://apihub.agnes-ai.com/v1/chat/completions', model: 'agnes-3.0-flash', secret: 'CATPAW_AGNES_API_KEY', policy_url: 'https://wiki.agnes-ai.com/en/docs/privacy-policy.md', thinking_summary: true, billing: 'promo_free_flash_paid_pro' }),
   openrouter: Object.freeze({ id: 'openrouter', provider: 'OpenRouter (:free models)', endpoint: 'https://openrouter.ai/api/v1/chat/completions', model: 'apodex/apodex-1.1-mini:free', secret: 'CATPAW_PRIVATE_MODEL_KEY', policy_url: 'https://openrouter.ai/privacy', thinking_summary: false }),
+
+  // Self-hosted FreeLLMAPI (https://github.com/tashfeenahmed/freellmapi): OpenAI-compatible /v1 aggregator for personal
+  // experimentation. User supplies BASE_URL + API_KEY; OpenCode Zen free models are configured inside FreeLLMAPI, not here.
+  freellmapi: Object.freeze({ id: 'freellmapi', provider: 'Self-hosted FreeLLMAPI (aggregator)', endpoint: null, model: 'auto', secret: 'CATPAW_FREELLMAPI_API_KEY', policy_url: 'https://freellmapi.co', thinking_summary: false, billing: 'upstream_free_tiers_via_self_hosted_router' }),
 });
 // Production default stays the existing OpenRouter free route (existing key); Gemini/Groq are optional extras.
 // Agnes is the busy fallback after the free routes; CATPAW_MODEL_ROUTE_ORDER can reorder.
-export const DEFAULT_CHAIN_ORDER = Object.freeze(['openrouter', 'gemini', 'groq', 'agnes']);
+
+// Client-facing labels / privacy tags (model-routes contract). Never includes endpoints or secrets.
+export const ROUTE_META = Object.freeze({
+  openrouter: { display_name: 'OpenRouter (free)', data_note: 'no_data_collection_requested' },
+  gemini: { display_name: 'Google Gemini', data_note: 'free_tier_may_train' },
+  groq: { display_name: 'Groq', data_note: 'provider_policy' },
+  freellmapi: { display_name: 'Self-hosted FreeLLMAPI', data_note: 'aggregator_forwards_upstream' },
+  agnes: { display_name: 'Agnes AI', data_note: 'provider_policy' },
+});
+const MODEL_RE = /^[A-Za-z0-9._:/-]{1,120}$/;
+/** Allowed models for a route: default model + optional CATPAW_<ID>_MODELS (comma list), same paid-model guards. */
+export function readRouteModels(get, id, defaultModel) {
+  const extra = String(get(`CATPAW_${id.toUpperCase()}_MODELS`) ?? '').split(',').map(x => x.trim()).filter(Boolean);
+  const all = [...new Set([defaultModel, ...extra])].slice(0, 20);
+  for (const m of all) {
+    check(MODEL_RE.test(m), 422, 'model_route_model_invalid');
+    if (id === 'openrouter') check(m.endsWith(':free'), 422, 'paid_or_router_model_denied');
+    if (id === 'agnes') check(/^agnes-[0-9a-z.-]+$/.test(m), 422, 'model_route_model_invalid');
+  }
+  return all;
+}
+export const DEFAULT_CHAIN_ORDER = Object.freeze(['openrouter', 'gemini', 'groq', 'freellmapi', 'agnes']);
 // Codes that mean "this free route is busy/unavailable right now"; safe to fail over
 // only because nothing has been streamed to the user yet.
 export const FAILOVER_CODES = new Set(['rate_limited', 'quota_exhausted', 'free_model_unavailable', 'provider_failed', 'provider_overloaded', 'provider_timeout_before_output', 'not_configured']);
 
 const preferenceStore = new AsyncLocalStorage();
-/** Run an HTTP request with a developer route preference (header X-Catpaw-Route; allow-list only). */
-export function withRoutePreference(preference, fn, { reasoningSummary = false } = {}) {
-  const value = typeof preference === 'string' && Object.hasOwn(FREE_ROUTE_CATALOG, preference) ? preference : null;
-  return preferenceStore.run({ preference: value, reasoningSummary: reasoningSummary === true }, fn);
+/** Run an HTTP request with a client route/model selection (X-Catpaw-Route / X-Catpaw-Model). Raw values are kept so
+ * assertRouteSelection() can reject invalid ones with explicit codes (see docs/model-routes-contract.md). */
+export function withRoutePreference(preference, fn, { reasoningSummary = false, model = null, routeEvents = false } = {}) {
+  const raw = typeof preference === 'string' && preference.trim() ? preference.trim().toLowerCase() : null;
+  const value = raw && raw !== 'auto' && Object.hasOwn(FREE_ROUTE_CATALOG, raw) ? raw : null;
+  const m = typeof model === 'string' && model.trim() ? model.trim() : null;
+  return preferenceStore.run({ preference: value, rawRoute: raw, model: m, reasoningSummary: reasoningSummary === true, routeEvents: routeEvents === true }, fn);
 }
 /** Only clients that advertise `X-Catpaw-Reasoning-Summary: 1` decode the optional wire event. */
 export const clientAcceptsReasoningSummary = () => preferenceStore.getStore()?.reasoningSummary === true;
+/** Only clients that send `X-Catpaw-Route-Events: 1` get the `model_route` SSE event (older iOS builds reject unknown types). */
+export const clientAcceptsRouteEvents = () => preferenceStore.getStore()?.routeEvents === true;
+export const currentModelPreference = () => preferenceStore.getStore()?.model ?? null;
+export const requestedRouteLabel = () => preferenceStore.getStore()?.preference ?? 'auto';
 export const currentRoutePreference = () => preferenceStore.getStore()?.preference ?? null;
 
 /** Build the consented route description from env. Only routes with an explicitly configured key are
@@ -63,10 +95,17 @@ export function readFreeRouteChain(get) {
     check(/^[A-Za-z0-9._:/-]{1,120}$/.test(model), 422, 'model_route_model_invalid');
     if (id === 'openrouter') check(model.endsWith(':free'), 422, 'paid_or_router_model_denied');
     if (id === 'agnes') check(/^agnes-[0-9a-z.-]+$/.test(model), 422, 'model_route_model_invalid');
+    let endpoint = id === 'gemini' && gemini.protocol === 'openai_compat' ? r.compat_endpoint : r.endpoint;
+    if (id === 'freellmapi') {
+      const base = String(get('CATPAW_FREELLMAPI_BASE_URL') ?? '').trim().replace(/\/+$/, '');
+      check(/^https:\/\/[A-Za-z0-9._~:/?#\[\]@!$&'()*+,;=%-]{1,200}$/.test(base) && !/[\r\n]/.test(base), 422, 'freellmapi_base_url_invalid');
+      endpoint = base.endsWith('/v1/chat/completions') ? base : base.replace(/\/v1\/?$/, '') + '/v1/chat/completions';
+    }
     const ms = name => { const v = get(`CATPAW_${id.toUpperCase()}_${name}_TIMEOUT_MS`); if (v === undefined || v === null || v === '') return undefined; check(/^[0-9]{4,6}$/.test(v), 422, 'model_route_timeout_invalid'); return Number(v); };
     const timeouts = Object.fromEntries([['firstEventMs', ms('FIRST_EVENT')], ['idleMs', ms('IDLE')], ['totalMs', ms('TOTAL')]].filter(([, v]) => v !== undefined));
     const geminiExtra = id === 'gemini' ? { protocol: gemini.protocol, rpm: gemini.rpm, image_input: gemini.protocol === 'interactions' } : {};
-    return { id, provider: r.provider, endpoint: id === 'gemini' && gemini.protocol === 'openai_compat' ? r.compat_endpoint : r.endpoint, model, ...geminiExtra, policy_url: r.policy_url, billing: r.billing ?? 'free_tier', thinking_summary: r.thinking_summary && get('CATPAW_THINKING_SUMMARY') !== '0', ...Object.keys(timeouts).length ? { timeouts } : {} };
+    const models = readRouteModels(get, id, model);
+    return { id, provider: r.provider, endpoint, model, models, ...geminiExtra, policy_url: r.policy_url, billing: r.billing ?? 'free_tier', thinking_summary: r.thinking_summary && get('CATPAW_THINKING_SUMMARY') !== '0', ...Object.keys(timeouts).length ? { timeouts } : {} };
   });
   // Chain only exists when an extra free route key is deployed; otherwise the frozen single route stays.
   if (!routes.length || !routes.some(r => r.id !== 'openrouter')) return null;
@@ -93,10 +132,10 @@ class OpenAICompatibleRoute {
     this.route = route; this.#secret = secret; this.fetchImpl = fetchImpl; this.maxTokens = maxTokens; this.timeoutMs = timeoutMs; this.thinkingVisible = thinkingVisible;
     this.timeouts = routeTimeouts(route, timeoutMs);
   }
-  payload({ messages, system_prompt, tools }) {
-    const body = { model: this.route.model, messages: [{ role: 'system', content: system_prompt }, ...clone(messages)], stream: true, max_tokens: this.maxTokens };
+  payload({ messages, system_prompt, tools, model_override }) {
+    const body = { model: model_override ?? this.route.model, messages: [{ role: 'system', content: system_prompt }, ...clone(messages)], stream: true, max_tokens: this.maxTokens };
     if (tools?.length) { body.tools = clone(tools); body.tool_choice = 'auto'; }
-    if (this.route.id === 'openrouter') body.provider = { ...(this.route.model === 'apodex/apodex-1.1-mini:free' ? { only: ['novita/bf16'] } : {}), allow_fallbacks: false, data_collection: 'deny', max_price: { prompt: 0, completion: 0, request: 0, image: 0 } };
+    if (this.route.id === 'openrouter') body.provider = { ...((model_override ?? this.route.model) === 'apodex/apodex-1.1-mini:free' ? { only: ['novita/bf16'] } : {}), allow_fallbacks: false, data_collection: 'deny', max_price: { prompt: 0, completion: 0, request: 0, image: 0 } };
     // Gemini OpenAI-compat: request thought summaries; they arrive as separate parts.
     if (this.route.id === 'gemini' && this.route.thinking_summary) body.extra_body = { google: { thinking_config: { include_thoughts: true } } };
     // Agnes (vLLM-style): Thinking only when the client will render reasoning_summary (saves latency otherwise).
@@ -173,6 +212,66 @@ class OpenAICompatibleRoute {
 // One limiter per isolate so concurrent turns share the Gemini RPM budget and 429 cooldown.
 let geminiGuardSingleton = null;
 const sharedGeminiGuard = rpm => { if (!geminiGuardSingleton || geminiGuardSingleton.rpm !== rpm) geminiGuardSingleton = new GeminiRateGuard({ rpm }); return geminiGuardSingleton; };
+
+/** Snapshot of configured free routes for /readyz (no secrets). gemini_cooling_seconds > 0 means local RPM/429 guard is holding. */
+export function freeRouteStatus(chain, { now = Date.now(), geminiGuard = geminiGuardSingleton } = {}) {
+  if (!chain?.routes?.length) return { schema_version: 1, chain: false, routes: [] };
+  const cool = geminiGuard && typeof geminiGuard.coolUntil === 'number' ? Math.max(0, Math.ceil((geminiGuard.coolUntil - now) / 1000)) : 0;
+  return { schema_version: 1, chain: true, auto_failover: chain.autoFailover !== false, routes: chain.routes.map(r => ({
+    id: r.id, provider: r.provider, model: r.model, configured: true, available: !(r.id === 'gemini' && cool > 0),
+    ...(r.id === 'gemini' && cool > 0 ? { cooling_seconds: cool } : {}), billing: r.billing ?? 'free_tier',
+  })) };
+}
+
+// Per-isolate route health (best effort). Only codes and timestamps; no upstream bodies.
+const routeHealth = new Map();
+export const _routeHealthForTests = routeHealth;
+export function noteRouteResult(id, error = null, now = Date.now()) {
+  const h = routeHealth.get(id) ?? { lastOk: 0, lastError: null, fails: 0 };
+  if (error) { h.lastError = { code: String(error).slice(0, 60), at: now }; h.fails += 1; } else { h.lastOk = now; h.fails = 0; }
+  routeHealth.set(id, h);
+}
+export function routeState(id, { now = Date.now(), coolingSeconds = 0 } = {}) {
+  const h = routeHealth.get(id);
+  if (coolingSeconds > 0 || (h && h.fails >= 3)) return 'offline';
+  if (h?.lastError && h.lastError.at > h.lastOk && now - h.lastError.at < 300000) return 'degraded';
+  return 'online';
+}
+/** Validate X-Catpaw-Route / X-Catpaw-Model for this deployment. Throws 422 with contract codes. */
+export function assertRouteSelection(chain, store = preferenceStore.getStore()) {
+  const raw = store?.rawRoute ?? null, model = store?.model ?? null;
+  if (!raw || raw === 'auto') { check(!model, 422, 'model_not_allowed'); return; }
+  check(Object.hasOwn(FREE_ROUTE_CATALOG, raw), 422, 'model_route_unknown');
+  const routes = chain?.routes ?? [{ id: 'openrouter', model: FREE_ROUTE_CATALOG.openrouter.model, models: [FREE_ROUTE_CATALOG.openrouter.model] }];
+  const r = routes.find(x => x.id === raw); check(r, 422, 'model_route_unavailable');
+  if (model) check((r.models ?? [r.model]).includes(model), 422, 'model_not_allowed');
+}
+/** GET /catpaw/model-routes/v1 body. */
+export function modelRoutesList(chain, { now = Date.now(), geminiGuard = geminiGuardSingleton } = {}) {
+  const routes = chain?.routes ?? [{ id: 'openrouter', provider: FREE_ROUTE_CATALOG.openrouter.provider, model: FREE_ROUTE_CATALOG.openrouter.model, models: [FREE_ROUTE_CATALOG.openrouter.model], policy_url: FREE_ROUTE_CATALOG.openrouter.policy_url, billing: 'free_tier' }];
+  return { contract: 'catpaw.model-routes.v1', default_route: 'auto', chain: routes.map(r => r.id), auto_failover: chain ? chain.autoFailover !== false : false,
+    routes: routes.map(r => {
+      const cooling = r.id === 'gemini' && geminiGuard ? Math.max(0, Math.ceil((geminiGuard.coolUntil - now) / 1000)) : 0;
+      const h = routeHealth.get(r.id);
+      return { id: r.id, display_name: ROUTE_META[r.id]?.display_name ?? r.id, models: (r.models ?? [r.model]).map(m => ({ id: m, default: m === r.model })),
+        status: routeState(r.id, { now, coolingSeconds: cooling }), last_error: h?.lastError ? { code: h.lastError.code, at: new Date(h.lastError.at).toISOString() } : null,
+        cooling_seconds: cooling, free: true, billing: r.billing ?? 'free_tier', policy_url: r.policy_url ?? FREE_ROUTE_CATALOG[r.id]?.policy_url ?? null, data_note: ROUTE_META[r.id]?.data_note ?? 'provider_policy' };
+    }) };
+}
+/** Summarise last stream observations into a client-safe model_route payload. */
+export function modelRouteFromObservations(observations) {
+  const obs = Array.isArray(observations) ? observations : [];
+  const ok = [...obs].reverse().find(o => o && !o.error && o.terminal_validated !== false && (o.route || o.requested_model));
+  const failed = obs.filter(o => o?.error);
+  if (!ok && !failed.length) return null;
+  const route = ok?.route ?? failed.at(-1)?.route ?? null;
+  return {
+    route, model: ok?.actual_model ?? ok?.requested_model ?? null,
+    failover: failed.length > 0, failed_routes: failed.map(o => ({ id: o.route, error: o.error })).slice(0, 8),
+    attempt: ok?.attempt ?? failed.length,
+  };
+}
+
 /** Provider port compatible with OpenRouterProvider (identity/reality/assertReady/stream). */
 export class FreeRouteChainProvider {
   #routes; #observations = [];
@@ -207,19 +306,29 @@ export class FreeRouteChainProvider {
     }
   }
   async *#pass(input) {
-    let last = null;
+    let last = null; const passStart = this.#observations.length; const prefModel = currentModelPreference(), pref = currentRoutePreference();
     for (const route of this.order()) {
-      const evidence = { attempt: this.#observations.length + 1, route: route.route.id, requested_model: route.route.model, http_status: null, actual_model: null, terminal_validated: false };
+      const routeInput = prefModel && route.route.id === pref ? Object.assign(Object.create(input), { model_override: prefModel }) : input;
+      const evidence = { attempt: this.#observations.length + 1, route: route.route.id, requested_model: routeInput.model_override ?? route.route.model, http_status: null, actual_model: null, terminal_validated: false };
       this.#observations.push(evidence);
       let emitted = false;
       try {
-        for await (const event of route.stream(input, evidence)) {
+        let announced = false;
+        for await (const event of route.stream(routeInput, evidence)) {
           if (event.type === 'thinking_delta' && !(this.emitThinking && clientAcceptsReasoningSummary())) { evidence.thinking_bytes = (evidence.thinking_bytes ?? 0) + Buffer.byteLength(event.text); continue; }
+          if (!announced) {
+            announced = true;
+            const failed = this.#observations.slice(passStart).filter(o => o.error);
+            const hops = []; let prev = null; for (const o of failed) { if (prev) hops.push({ from: prev.route, to: o.route, code: prev.error }); prev = o; }
+            if (prev) hops.push({ from: prev.route, to: route.route.id, code: prev.error });
+            yield { type: 'route_info', route: route.route.id, model: routeInput.model_override ?? route.route.model, requested_route: requestedRouteLabel(), failover: failed.length > 0,
+              from: failed.map(o => o.route), switches: hops, attempt: evidence.attempt };
+          }
           emitted = true; yield event;
         }
-        return;
+        evidence.terminal_validated = true; noteRouteResult(route.route.id); return;
       } catch (e) {
-        evidence.error = e?.code ?? 'provider_failed';
+        evidence.error = e?.code ?? 'provider_failed'; noteRouteResult(route.route.id, evidence.error);
         input.signal?.throwIfAborted();
         if (emitted && e && typeof e === 'object') e.emitted = true;
         if (emitted || !(e instanceof ApiError) || !FAILOVER_CODES.has(e.code)) throw e;

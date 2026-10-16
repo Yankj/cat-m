@@ -11,7 +11,7 @@ const completed = status => ({ event_type: 'interaction.completed', interaction:
 const gText = (...parts) => sse([created, { event_type: 'step.start', index: 0, step: { type: 'model_output' } }, ...parts.map(t => ({ event_type: 'step.delta', index: 0, delta: { type: 'text', text: t } })), { event_type: 'step.stop', index: 0 }, completed('completed'), '[DONE]']);
 const REMINDER = [{ type: 'function', function: { name: 'reminder_create', description: '创建提醒', parameters: { type: 'object', properties: { title: { type: 'string' }, due_at: { type: 'string' } }, required: ['title'] } } }];
 const chain = (o, extra = {}) => { const c = readFreeRouteChain(env({ CATPAW_PRIVATE_MODEL_KEY: 'o', CATPAW_GEMINI_API_KEY: KEY, ...o })); return new FreeRouteChainProvider({ ...c, ...extra }); };
-const collect = async (p, input = {}) => { const out = []; for await (const e of p.stream({ messages: [{ role: 'user', content: '你好' }], system_prompt: '你是猫爪', tools: [], ...input })) out.push(e); return out; };
+const collect = async (p, input = {}) => { const out = []; for await (const e of p.stream({ messages: [{ role: 'user', content: '你好' }], system_prompt: '你是猫爪', tools: [], ...input })) if (e.type !== 'route_info') out.push(e); return out; };
 
 test('switch: off / primary / fallback, Interactions endpoint by default, invalid values rejected', () => {
   assert.equal(readFreeRouteChain(env({ CATPAW_PRIVATE_MODEL_KEY: 'o', CATPAW_GEMINI_API_KEY: KEY, CATPAW_GEMINI_ROUTE: 'off' })), null);
