@@ -2303,10 +2303,6 @@
     "en": "Start",
     "zh-Hans": "开始"
   },
-  "开始体验": {
-    "en": "Get started",
-    "zh-Hans": "开始体验"
-  },
   "开始前 {0} 分钟": {
     "en": "{0} minutes before start",
     "zh-Hans": "开始前 {0} 分钟"
@@ -6090,5 +6086,25 @@
   "图片处理失败": {
     "en": "Couldn't prepare the image",
     "zh-Hans": "图片处理失败"
+  },
+  "解放双手，\n让工作\n自己向前走": {
+    "en": "Hands free.\nLet work\nmove itself.",
+    "zh-Hans": "解放双手，\n让工作\n自己向前走"
+  },
+  "右滑开始": {
+    "en": "Swipe right to start",
+    "zh-Hans": "右滑开始"
+  },
+  "正在聆听…": {
+    "en": "Listening…",
+    "zh-Hans": "正在聆听…"
+  },
+  "onboarding.ring.outer": {
+    "en": "Calendar · Mail · Messages · Calls · Shopping · Memory · Reminders · ",
+    "zh-Hans": "日程 · 邮件 · 短信 · 电话 · 购物 · 记忆 · 提醒 · "
+  },
+  "onboarding.ring.inner": {
+    "en": "Reminders · Memory · Shopping · Calls · Messages · Mail · Calendar · ",
+    "zh-Hans": "提醒 · 记忆 · 购物 · 电话 · 短信 · 邮件 · 日程 · "
   }
 }

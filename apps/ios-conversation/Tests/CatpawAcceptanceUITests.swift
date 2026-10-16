@@ -1,4 +1,5 @@
 import XCTest
+import UIKit
 
 /// One-click acceptance suite (scripts/run-ui-acceptance.sh). Every step attaches a keepAlways screenshot
 /// named "NN-step" so the script can build an ordered report. Fixture cases use the offline P0 backend
@@ -415,4 +416,102 @@ final class CatpawAcceptanceUITests: XCTestCase {
         if create.waitForExistence(timeout: 5) { create.tap(); Thread.sleep(forTimeInterval: 2.5); shot(app, "w2-p04-reminder-created") }
         XCTAssertEqual(app.state, .runningForeground)
     }
+    /// Live device_tools check: ask for a Reminder, expect chat.deviceCall confirm, run it.
+    func test16DeviceReminder() throws {
+        guard ProcessInfo.processInfo.environment["CATPAW_DEVICE_TOUR"] == "1" else { throw XCTSkip("device tour only") }
+        let app = XCUIApplication(bundleIdentifier: bundleID); forwardPublicConfig(app); app.launchArguments += ["-CatpawSkipOnboarding"]; app.launch()
+        addUIInterruptionMonitor(withDescription: "perm") { alert in
+            for l in ["允许", "Allow", "好", "OK", "允许完全访问", "Allow Full Access"] where alert.buttons[l].exists { alert.buttons[l].tap(); return true }
+            return false
+        }
+        // DeviceTrial may be stuck on session-recovery; exit then retry anonymous experience.
+        if app.buttons["auth.closeUnrestoredSession"].waitForExistence(timeout: 5) {
+            app.buttons["auth.closeUnrestoredSession"].tap(); Thread.sleep(forTimeInterval: 2)
+        }
+        for l in ["再试一次", "Try again"] where app.buttons[l].exists { app.buttons[l].tap(); Thread.sleep(forTimeInterval: 3); break }
+        XCTAssertTrue(input(app).waitForExistence(timeout: 60)); Thread.sleep(forTimeInterval: 1)
+        if app.buttons["chat.new"].exists && app.buttons["chat.new"].isEnabled { app.buttons["chat.new"].tap(); Thread.sleep(forTimeInterval: 1) }
+        // Warm-up text turn (same path as test14) so model consent sheet presents and is granted before the reminder ask.
+        do {
+            let field = input(app); field.tap(); Thread.sleep(forTimeInterval: 0.6)
+            if app.keyboards.firstMatch.exists { field.typeText("你好") }
+            else { UIPasteboard.general.string = "你好"; field.press(forDuration: 1.0); if app.menuItems["粘贴"].waitForExistence(timeout: 2) { app.menuItems["粘贴"].tap() } else if app.menuItems["Paste"].waitForExistence(timeout: 1) { app.menuItems["Paste"].tap() } }
+            app.buttons.matching(NSPredicate(format: "identifier == 'chat.send'")).allElementsBoundByIndex.first(where: { $0.isHittable && $0.isEnabled })?.tap()
+            let allow = app.buttons["允许此对话"]
+            if allow.waitForExistence(timeout: 12) { shot(app, "w2-d00-consent-sheet"); allow.tap(); Thread.sleep(forTimeInterval: 2) }
+            else if app.descendants(matching: .any)["chat.modelConsent.allow"].waitForExistence(timeout: 5) { app.descendants(matching: .any)["chat.modelConsent.allow"].tap(); Thread.sleep(forTimeInterval: 2) }
+            else if app.buttons["chat.consent.review"].waitForExistence(timeout: 5), app.buttons["chat.consent.review"].isEnabled {
+                app.buttons["chat.consent.review"].tap(); Thread.sleep(forTimeInterval: 1)
+                if allow.waitForExistence(timeout: 8) { allow.tap() }
+            }
+            // Wait for first reply to finish so the queue is idle.
+            for _ in 0..<40 {
+                if app.descendants(matching: .any)["chat.assistant.message"].exists { break }
+                Thread.sleep(forTimeInterval: 1)
+            }
+            Thread.sleep(forTimeInterval: 3)
+            shot(app, "w2-d00b-after-warmup")
+        }
+        let field = input(app); field.tap(); Thread.sleep(forTimeInterval: 0.8)
+        if !app.keyboards.firstMatch.exists { field.tap(); Thread.sleep(forTimeInterval: 0.8) }
+        if app.keyboards.firstMatch.exists { field.typeText("帮我在提醒事项里建一个明天上午9点的提醒：交周报") }
+        else { UIPasteboard.general.string = "帮我在提醒事项里建一个明天上午9点的提醒：交周报"; field.press(forDuration: 1.0); if app.menuItems["粘贴"].waitForExistence(timeout: 2) { app.menuItems["粘贴"].tap() } else if app.menuItems["Paste"].waitForExistence(timeout: 1) { app.menuItems["Paste"].tap() } }
+        let sends = app.buttons.matching(NSPredicate(format: "identifier == 'chat.send'")).allElementsBoundByIndex
+        sends.first(where: { $0.isHittable && $0.isEnabled })?.tap()
+        // Model consent sheet (auto or via 确认发送许可). Prefer accessibility ids from ConversationModelConsentView.
+        func allowModelConsent() -> Bool {
+            let allowBtn = app.descendants(matching: .any)["chat.modelConsent.allow"]
+            if allowBtn.waitForExistence(timeout: 2), allowBtn.isHittable { allowBtn.tap(); return true }
+            for l in ["允许此对话", "Allow this conversation"] where app.buttons[l].exists && app.buttons[l].isHittable { app.buttons[l].tap(); return true }
+            return false
+        }
+        var allowed = allowModelConsent()
+        if !allowed {
+            let review = app.buttons["chat.consent.review"]
+            if review.waitForExistence(timeout: 15) {
+                for _ in 0..<45 {
+                    if allowModelConsent() { allowed = true; break }
+                    if review.exists && review.isEnabled { review.tap(); Thread.sleep(forTimeInterval: 1.2); if allowModelConsent() { allowed = true; break } }
+                    // If review stays disabled, something is "busy"/inflight — wait it out.
+                    Thread.sleep(forTimeInterval: 1)
+                }
+            }
+        }
+        shot(app, allowed ? "w2-d00-consent-allowed" : "w2-d00-consent-stuck")
+        // After allow, pending strip should drain once the turn starts.
+        if allowed {
+            let pending = app.descendants(matching: .any)["chat.pendingSummary"]
+            for _ in 0..<40 where pending.exists { Thread.sleep(forTimeInterval: 1) }
+            Thread.sleep(forTimeInterval: 2)
+        }
+        // Wait for device confirm card (or capture whatever the model said).
+        let run = app.descendants(matching: .any).matching(identifier: "chat.deviceCall.run").firstMatch
+        var sawCard = run.waitForExistence(timeout: 55)
+        if !sawCard {
+            app.swipeUp(); Thread.sleep(forTimeInterval: 0.5)
+            sawCard = run.waitForExistence(timeout: 10)
+        }
+        shot(app, sawCard ? "w2-d01-device-confirm" : "w2-d01-no-device-card")
+        // Capture assistant text for the report.
+        let assistant = app.descendants(matching: .any).matching(identifier: "chat.assistant.message").allElementsBoundByIndex.last
+        if let assistant, assistant.exists {
+            let a = XCTAttachment(string: "assistant=\(assistant.label)"); a.name = "w2-d01-assistant-label"; a.lifetime = .keepAlways; add(a)
+        }
+        XCTAssertTrue(sawCard, "device_call confirm card (chat.deviceCall.run) must appear — CATPAW_DEVICE_TOOLS_ENABLED may still be off for this subject")
+        run.tap(); Thread.sleep(forTimeInterval: 1.5)
+        app.tap() // flush interruption monitor
+        let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        for l in ["允许", "Allow", "好", "OK"] where springboard.buttons[l].waitForExistence(timeout: 2) { springboard.buttons[l].tap(); break }
+        Thread.sleep(forTimeInterval: 3)
+        let receipt = app.descendants(matching: .any).matching(identifier: "chat.deviceCall.receipt").firstMatch
+        let running = app.descendants(matching: .any).matching(identifier: "chat.deviceCall.running").firstMatch
+        shot(app, receipt.exists ? "w2-d02-device-receipt" : (running.exists ? "w2-d02-device-running" : "w2-d02-after-run"))
+        XCTAssertTrue(receipt.waitForExistence(timeout: 20) || !run.exists, "reminder confirm should complete to a receipt")
+        // 任务 list should show the Catpaw reminder created by the device tool / local mirror.
+        if app.buttons["sidebar.open"].exists { app.buttons["sidebar.open"].tap(); Thread.sleep(forTimeInterval: 1) }
+        if app.buttons["sidebar.tasks"].exists { app.buttons["sidebar.tasks"].tap(); Thread.sleep(forTimeInterval: 2); shot(app, "w2-d03-tasks-after-reminder") }
+        XCTAssertEqual(app.state, .runningForeground)
+    }
+
+
 }

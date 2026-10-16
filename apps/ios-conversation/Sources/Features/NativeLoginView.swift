@@ -1,7 +1,7 @@
 import SwiftUI
 import UIKit
 
-/// First-run flow: launch mark → animated background → 3 auto-advancing intro pages → one "开启" button
+/// First-run flow: launch mark → ONE calm page (serif headline, glowing orb, orbit rings) → swipe-to-start pill
 /// that runs anonymous sign-in. Developer configuration problems are never shown to end users (DEBUG banner only).
 /// Shown while `auth.needsOnboarding` (gate owned by NativeAuthApplicationModel / `CatpawOnboarding`).
 /// Accessibility identifiers `auth.*` are kept for existing UI tests.
@@ -13,18 +13,9 @@ import UIKit
     private func ui(_ key:String,arguments:[String]=[])->String {AppLanguage(locale:uiLocale).ui(key,arguments:arguments)}
     @State private var email = ""
     @State private var password = ""
-    @State private var page = 0
-    @State private var userPaged = false
     @State private var startTapped = false
     @Environment(\.scenePhase) private var scene
 
-    private struct IntroPage: Identifiable { let id: Int; let symbol: String; let title: String; let body: String }
-    private var pages: [IntroPage] {[
-        .init(id: 0, symbol: "sparkles", title: ui("你的主动式助理"), body: ui("说一句想做的事，Catpaw 就开始帮你拆解、执行。")),
-        .init(id: 1, symbol: "cloud", title: ui("在云端持续工作"), body: ui("关掉 App 也没关系，任务会在云端继续进行。")),
-        .init(id: 2, symbol: "bell.badge", title: ui("到点提醒你"), body: ui("有进展、需要你确认或该行动时，会及时提醒你。")),
-    ]}
-    private var lastPage: Int { pages.count - 1 }
     private var busy: Bool { auth.onboarding == .entering || auth.actionBusy || auth.state.phase == .restoring || auth.state.phase == .signingIn }
     private var gateFailure: String? { if case .failed(let message) = auth.onboarding { return message }; return nil }
     private static let configurationMessages: Set<String> = [NativeAuthError.notConfigured.localizedDescription, NativeAuthError.invalidConfiguration.localizedDescription, "登录连接尚未配置。", "登录公开配置未通过校验。"]
@@ -39,62 +30,44 @@ import UIKit
         return nil
     }
 
+    @State private var shown = false
+
     var body: some View {
         ZStack {
-            OnboardingBackgroundView()
-            VStack(spacing: 0) {
-                HStack {
-                    Spacer()
-                    if page < lastPage {
-                        Button(ui("跳过")) { withAnimation(.easeInOut(duration: 0.3)) { userPaged = true; page = lastPage } }
-                            .font(.subheadline.weight(.medium)).foregroundStyle(CatpawColors.secondary)
-                            .frame(minWidth: 44, minHeight: 44).accessibilityIdentifier("onboarding.skip")
-                    }
-                }.padding(.horizontal, 16).frame(height: 44)
+            CalmGlowBackground()
+            VStack(alignment: .leading, spacing: 0) {
                 #if DEBUG
-                debugBanner
+                debugBanner.padding(.top, 8)
                 #endif
-                TabView(selection: $page) {
-                    ForEach(pages) { p in pageView(p).tag(p.id) }
+                Text(ui("解放双手，\n让工作\n自己向前走"))
+                    .font(.system(size: 40, weight: .semibold, design: .serif))
+                    .lineSpacing(4).foregroundStyle(CatpawColors.ink)
+                    .padding(.top, 36)
+                    .opacity(shown ? 1 : 0).offset(y: shown ? 0 : 10)
+                    .accessibilityAddTraits(.isHeader).accessibilityIdentifier("onboarding.headline")
+                Spacer()
+                ZStack {
+                    OrbitText(text: ui("onboarding.ring.outer"), radius: 130, speed: 1, fontSize: 12)
+                    OrbitText(text: ui("onboarding.ring.inner"), radius: 92, speed: -1.4, fontSize: 10).opacity(0.8)
+                    CalmOrb(size: 100)
                 }
-                .tabViewStyle(.page(indexDisplayMode: .never))
-                .simultaneousGesture(DragGesture().onChanged { _ in userPaged = true })
-                .accessibilityIdentifier("onboarding.pages")
-                dots.padding(.bottom, 24)
-                footer.padding(.horizontal, 24).padding(.bottom, 24).frame(maxWidth: 520)
+                .frame(maxWidth: .infinity)
+                .opacity(shown ? 1 : 0).scaleEffect(shown ? 1 : 0.92)
+                Spacer()
+                footer.frame(maxWidth: 520).frame(maxWidth: .infinity)
+                    .padding(.bottom, 16)
             }
+            .padding(.horizontal, 24)
         }
         .foregroundStyle(CatpawColors.ink)
-        .task { await autoAdvance() }
+        .onAppear { withAnimation(reduceMotion ? nil : .easeOut(duration: 0.7)) { shown = true } }
+        .accessibilityIdentifier("onboarding.pages")
         .overlay { if scene != .active || !UIApplication.shared.isProtectedDataAvailable { CatpawColors.background.ignoresSafeArea() } }
     }
 
-    private func pageView(_ p: IntroPage) -> some View {
-        VStack(spacing: 20) {
-            Spacer(minLength: 12)
-            ZStack {
-                Circle().fill(CatpawBrand.paw.opacity(0.16)).frame(width: 132, height: 132)
-                if p.id == 0 { PawMark(size: 64) }
-                else { Image(systemName: p.symbol).resizable().scaledToFit().frame(width: 56, height: 56).foregroundStyle(CatpawBrand.paw).symbolEffect(.pulse, isActive: !reduceMotion && page == p.id) }
-            }.accessibilityHidden(true)
-            if p.id == 0 { Text(verbatim: "Catpaw").font(.largeTitle.weight(.bold)) }
-            Text(p.title).font(.title2.weight(.semibold)).multilineTextAlignment(.center)
-            Text(p.body).font(.body).foregroundStyle(CatpawColors.secondary).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
-            Spacer(minLength: 12)
-        }
-        .padding(.horizontal, 32).frame(maxWidth: 520)
-        .accessibilityElement(children: .combine).accessibilityIdentifier("onboarding.page.\(p.id)")
-    }
-
-    private var dots: some View {
-        HStack(spacing: 8) {
-            ForEach(pages) { p in
-                Capsule().fill(p.id == page ? CatpawBrand.paw : CatpawColors.secondary.opacity(0.3))
-                    .frame(width: p.id == page ? 22 : 8, height: 8)
-            }
-        }
-        .animation(.easeInOut(duration: 0.25), value: page)
-        .accessibilityHidden(true)
+    private func start() {
+        startTapped = true
+        Task { if auth.needsOnboarding { await auth.completeOnboarding() } else { await auth.startExperience() } }
     }
 
     @ViewBuilder private var footer: some View {
@@ -103,27 +76,9 @@ import UIKit
             if let message = friendlyError {
                 Text(message).font(.footnote).foregroundStyle(CatpawColors.attention).multilineTextAlignment(.center).accessibilityIdentifier("auth.error")
             }
-            Button {
-                startTapped = true
-                // Gate open (fresh install): persist the flag + enter via the pre-warmed session.
-                // Gate already completed (returning user signed out, or -CatpawSkipOnboarding): plain anonymous start.
-                Task { if auth.needsOnboarding { await auth.completeOnboarding() } else { await auth.startExperience() } }
-            } label: {
-                HStack(spacing: 8) {
-                    Spacer()
-                    if busy { ProgressView().tint(CatpawColors.onInk) }
-                    Text(busy ? ui("正在开启…") : (friendlyError != nil ? ui("再试一次") : ui("开启")))
-                    Spacer()
-                }.frame(minHeight: 30)
-            }
-            .primaryAction()
-            .disabled(busy)
-            .opacity(page == lastPage ? 1 : 0.0).allowsHitTesting(page == lastPage)
-            .accessibilityHidden(page != lastPage)
-            .accessibilityIdentifier("auth.startExperience")
-            if page == lastPage {
-                Text(ui("无需注册。此设备会安全保存你的体验身份。")).font(.footnote).foregroundStyle(CatpawColors.secondary).multilineTextAlignment(.center)
-            }
+            SwipeToStart(title: busy ? ui("正在开启…") : (friendlyError != nil ? ui("再试一次") : ui("右滑开始")), busy: busy, action: start)
+                .accessibilityIdentifier("auth.startExperience")
+            Text(ui("无需注册。此设备会安全保存你的体验身份。")).font(.footnote).foregroundStyle(CatpawColors.secondary).multilineTextAlignment(.center)
             if auth.error == NativeAuthError.sessionRecoveryRequired.localizedDescription { Button(ui("退出未恢复的会话")) { Task { await auth.signOut() } }.accessibilityIdentifier("auth.closeUnrestoredSession") }
             if auth.state.phase == .signingIn { Button(ui("取消登录")) { password = ""; Task { await auth.cancelLogin() } }.accessibilityIdentifier("auth.cancel") }
             if auth.state.phase == .storageBlocked { Button(ui("重试安全保存")) { Task { await auth.retryStorage() } }.accessibilityIdentifier("auth.retryStorage") }
@@ -153,16 +108,5 @@ import UIKit
     }
     #endif
 
-    /// Auto-advance every 3.2 s until the user swipes or reaches the last page. Fixtures/UI tests jump to the end.
-    private func autoAdvance() async {
-        #if DEBUG
-        if auth.isFixture { page = lastPage; return }
-        #endif
-        if !auth.needsOnboarding || ProcessInfo.processInfo.arguments.contains(CatpawOnboarding.skipArgument) { page = lastPage; return }
-        while page < lastPage && !userPaged {
-            try? await Task.sleep(nanoseconds: 3_200_000_000)
-            if Task.isCancelled || userPaged { return }
-            withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.45)) { page = min(page + 1, lastPage) }
-        }
-    }
 }
+
