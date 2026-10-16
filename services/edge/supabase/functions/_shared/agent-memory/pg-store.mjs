@@ -6,7 +6,7 @@ const vec = v => Array.isArray(v) ? JSON.stringify(v) : null;
 export function createPgAgentMemoryStore(sql) {
   return {
     async getSettings(uid) { const r = await sql.unsafe('select use_memory,auto_save,consented_at from agent_memory.memory_settings where user_id=$1', [uid]); if (!r.length) return null; const s = r[0]; return { use_memory: s.use_memory, auto_save: s.auto_save, consented_at: s.consented_at instanceof Date ? s.consented_at.toISOString() : s.consented_at }; },
-    /** Codex PR91 v3-2: conditional upsert — only a strictly newer use_memory_seq wins (migration 20261017020000). */
+    /** Codex PR91 v3-2: conditional upsert — only a strictly newer use_memory_seq wins (migration 20261017030000). */
     async putSettingsIfNewer(uid, s, seq) {
       const r = await sql.unsafe('insert into agent_memory.memory_settings(user_id,use_memory,auto_save,consented_at,use_memory_seq,updated_at) values($1,$2,$3,$4,$5,now()) on conflict(user_id) do update set use_memory=excluded.use_memory,auto_save=excluded.auto_save,consented_at=excluded.consented_at,use_memory_seq=excluded.use_memory_seq,updated_at=now() where coalesce(agent_memory.memory_settings.use_memory_seq,0) < excluded.use_memory_seq returning user_id', [uid, s.use_memory, s.auto_save, s.consented_at, seq]);
       return r.length ? { ...s } : null;
