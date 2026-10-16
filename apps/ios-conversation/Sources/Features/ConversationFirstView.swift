@@ -188,7 +188,7 @@ import CatpawImageComposer
         return line.count>18 ? String(line.prefix(18))+"…" : line
     }
     private var sidebarTheme:SidebarTheme {
-        SidebarTheme.catpaw.typography(title:CatpawTypography.Role.title.font,heading:CatpawTypography.Role.heading.font,body:CatpawTypography.Role.body.font,secondary:CatpawTypography.Role.secondary.font,caption:CatpawTypography.Role.caption.font).brand(PawMark(size:26,shadow:false))
+        SidebarTheme.catpaw.typography(title:CatpawTypography.Role.title.font,heading:CatpawTypography.Role.heading.font,body:CatpawTypography.Role.body.font,secondary:CatpawTypography.Role.secondary.font,caption:CatpawTypography.Role.caption.font).brand(BrandMark(size:26, style: .fill))
     }
     private var readingAnchorContext:ConversationReadingAnchorContext? {
         model.conversationID.map {ConversationReadingAnchorContext(profileID:model.scope.profileID,scopeID:model.scope.workspaceID,conversationID:$0)}

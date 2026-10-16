@@ -57,9 +57,41 @@ def body(text, declaration):
     return ""
 
 
-def adaptive_values(code, declaration):
-    pattern = declaration + r"\s*=\s*adaptive\s*\(\s*light\s*:\s*0x([0-9a-fA-F]{6})\s*,\s*dark\s*:\s*0x([0-9a-fA-F]{6})\s*\)"
-    return [("#" + light.upper(), "#" + dark.upper()) for light, dark in re.findall(pattern, masked(code))]
+TOKENS_PATH = HOST + "DesignSystem/CatpawBrandTokens.swift"
+
+def load_brand_tokens(sources):
+    """Resolve CatpawBrandTokens hex constants so Components can reference them."""
+    code = masked(sources.get(TOKENS_PATH, ""))
+    found = {
+        name: value.upper()
+        for name, value in re.findall(
+            r"\bstatic\s+let\s+(\w+)\s*:\s*UInt32\s*=\s*0x([0-9a-fA-F]{6})\b",
+            code,
+        )
+    }
+    return found
+
+def resolve_hex(token_or_hex, tokens):
+    raw = token_or_hex.strip()
+    if re.fullmatch(r"0x[0-9a-fA-F]{6}", raw):
+        return raw[2:].upper()
+    match = re.fullmatch(r"CatpawBrandTokens\.(\w+)", raw)
+    if match and match.group(1) in tokens:
+        return tokens[match.group(1)]
+    return None
+
+def adaptive_values(code, declaration, tokens=None):
+    tokens = tokens or {}
+    pattern = (
+        declaration
+        + r"\s*=\s*adaptive\s*\(\s*light\s*:\s*(0x[0-9a-fA-F]{6}|CatpawBrandTokens\.\w+)\s*,\s*dark\s*:\s*(0x[0-9a-fA-F]{6}|CatpawBrandTokens\.\w+)\s*\)"
+    )
+    out = []
+    for light, dark in re.findall(pattern, masked(code)):
+        lh, dh = resolve_hex(light, tokens), resolve_hex(dark, tokens)
+        if lh and dh:
+            out.append(("#" + lh, "#" + dh))
+    return out
 
 
 def luminance(value):
@@ -69,13 +101,14 @@ def luminance(value):
 
 
 # r9 (design-owner approved 2026-10-15): r9 palette replaces r5 values for these roles.
+# Brand sheet 2026-10 (Primary/Deep/Background/Ink/Grey). Hex authority: CatpawBrandTokens.
 R9_OVERRIDES = {
+    "bg": ("#FFFCF8", "#050505"),
     "bubble": ("#F2EFEB", "#262422"),
-    "bubble_ink": ("#1C1B1A", "#F2F0ED"),
-    # r9 palette from PR #29 (warm ink/secondary, orange action)
-    "ink": ("#1C1B1A", "#F2F0ED"),
+    "bubble_ink": ("#292622", "#F2F0ED"),
+    "ink": ("#292622", "#F2F0ED"),
     "secondary": ("#6E6A66", "#A39E98"),
-    "tint": ("#EA5F2C", "#FF8A5C"),
+    "tint": ("#C64A0B", "#FF8A5C"),
 }
 
 def contrast(a, b):
@@ -92,9 +125,12 @@ def check(sources, spec):
             issue(path, message)
 
     palette = sources[COMPONENTS]
+    tokens = load_brand_tokens(sources)
+    if not tokens.get("primary"):
+        issue(TOKENS_PATH, "CatpawBrandTokens must define brand sheet hex (primary/deep/background/ink/grey)")
     values = {}
     for role, key in ROLES.items():
-        actual = adaptive_values(palette, r"\bstatic\s+let\s+" + role + r"\b")
+        actual = adaptive_values(palette, r"\bstatic\s+let\s+" + role + r"\b", tokens)
         expected = R9_OVERRIDES.get(key) or tuple(spec["colors"][mode][key].upper() for mode in ("light", "dark"))
         if actual != [expected]:
             issue(COMPONENTS, f"R5 role {role} must map once to {key}: {expected}; found {actual}")
@@ -119,7 +155,7 @@ def check(sources, spec):
         if actual < minimum:
             issue(COMPONENTS, f"{mode} {pair['role']} contrast {actual:.3f} is below {pair['minimum']}")
 
-    require(COMPONENTS, masked(palette), r"\bstatic\s+let\s+actionText\s*=\s*adaptive\(\s*light:\s*0xC4511F\b", "orange text token actionText must be #C4511F in light mode")
+    require(COMPONENTS, masked(palette), r"\bstatic\s+let\s+actionText\s*=\s*adaptive\(\s*light:\s*(?:0xC64A0B|CatpawBrandTokens\.deep)\b", "orange text token actionText must be Deep #C64A0B in light mode")
     for path, code in sources.items():
         for number, line in enumerate(code.splitlines(), 1):
             if "Text(" in line and re.search(r"\.foregroundStyle\(\s*CatpawColors\.(action|accent)\s*\)", line):
@@ -179,7 +215,7 @@ def self_test(sources, spec):
     # These are guard regressions, not product/visual tests.
     sources = {path: sources[path] for path in (COMPONENTS, TYPE, FIRST, STREAM, READER, COMPOSER, CHROME, SIDEBAR, PANEL)}
     tests = [
-        (COMPONENTS, "light: 0xFFFFFF, dark: 0x050505", "light: 0xF7F8FA, dark: 0x111214", "R5 role background"),
+        (COMPONENTS, "light: CatpawBrandTokens.background, dark: CatpawBrandTokens.canvasDark", "light: 0xF7F8FA, dark: 0x111214", "R5 role background"),
         (COMPONENTS, "static let accent = action", "static let accent = ink", "compatibility alias"),
         (CHROME, ".foregroundStyle(CatpawColors.sendIcon)\n                            .frame", ".foregroundStyle(CatpawColors.onInk)\n                            .frame", "enabled send glyph"),
         (CHROME, "canSend ? CatpawBrand.paw", "canSend ? CatpawColors.action", "enabled send background"),

@@ -31,7 +31,7 @@ struct PermissionDegradePayload: Codable, Sendable, Equatable {
         DeviceCardShell(identifier: "chat.permissionDegrade." + payload.id) {
             HStack(alignment: .top, spacing: 12) {
                 ZStack(alignment: .bottomTrailing) {
-                    PawMark(size: artSize, shadow: false).frame(width: artSize, height: artSize)
+                    BrandMark(size: artSize, style: .fill).frame(width: artSize, height: artSize)
                     Image(systemName: "xmark").font(.footnote.weight(.bold)).foregroundStyle(CatpawColors.onInk)
                         .padding(5).background(CatpawColors.ink, in: Circle()).offset(x: 6, y: 6)
                 }.accessibilityHidden(true)

@@ -444,8 +444,8 @@
     "zh-Hans": "你可以随时调整目标、暂停或结束跟进。"
   },
   "你的个人助理": {
-    "en": "Your personal assistant",
-    "zh-Hans": "你的个人助理"
+    "en": "Your personal AI assistant",
+    "zh-Hans": "你的个人 AI 助手"
   },
   "你的主动式助理": {
     "en": "Your proactive assistant",
@@ -5940,8 +5940,8 @@
     "zh-Hans": "问一个问题，或说一件想做的事。"
   },
   "问问 Catpaw": {
-    "en": "Ask Catpaw",
-    "zh-Hans": "问问 Catpaw"
+    "en": "How can I help you?",
+    "zh-Hans": "有什么我可以帮你？"
   },
   "间隔": {
     "en": "Interval",
@@ -6378,5 +6378,17 @@
   "追问建议": {
     "en": "Suggested follow-ups",
     "zh-Hans": "追问建议"
+  },
+  "有什么我可以帮你？": {
+    "en": "How can I help you?",
+    "zh-Hans": "有什么我可以帮你？"
+  },
+  "你的个人 AI 助手": {
+    "en": "Your personal AI assistant",
+    "zh-Hans": "你的个人 AI 助手"
+  },
+  "把交代的事，变成可用成果。": {
+    "en": "Turn what you assign into usable results.",
+    "zh-Hans": "把交代的事，变成可用成果。"
   }
 }

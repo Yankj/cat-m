@@ -125,7 +125,7 @@ struct PermissionCardPayload: Codable, Sendable, Equatable {
     private var header: some View {
         HStack(alignment: .top, spacing: 12) {
             ZStack(alignment: .bottomTrailing) {
-                PawMark(size: artSize, shadow: false).frame(width: artSize, height: artSize)
+                BrandMark(size: artSize, style: .fill).frame(width: artSize, height: artSize)
                 Image(systemName: kind.symbol).font(.footnote.weight(.semibold)).foregroundStyle(CatpawColors.onInk)
                     .padding(5).background(CatpawColors.ink, in: Circle()).offset(x: 6, y: 6)
             }.accessibilityHidden(true)
