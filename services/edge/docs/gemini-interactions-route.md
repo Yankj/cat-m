@@ -6,14 +6,14 @@ The Gemini route in the free route chain (`_shared/core/src/free-route-chain.mjs
 | Variable | Values | Default |
 | --- | --- | --- |
 | `CATPAW_GEMINI_API_KEY` | AI Studio API key | unset = no Gemini route |
-| `CATPAW_GEMINI_ROUTE` | `off` / `primary` / `fallback` | `fallback` once the key is set |
+| `CATPAW_GEMINI_ROUTE` | `off` / `primary` / `fallback` | `primary` once the key is set (w6; was `fallback`) |
 | `CATPAW_GEMINI_MODEL` | model id | `gemini-3.5-flash-lite` (use `gemini-3.8-flash` for better quality) |
 | `CATPAW_GEMINI_RPM` | per-instance requests per minute | `10` |
 | `CATPAW_GEMINI_PROTOCOL` | `interactions` / `openai_compat` | `interactions` |
 | `CATPAW_GEMINI_{FIRST_EVENT,IDLE,TOTAL}_TIMEOUT_MS` | 1000–110000 | 20000 |
 
-- `primary` puts Gemini first: `gemini, openrouter, groq, agnes`, keeping only routes that have a key.
-- `fallback` puts it after OpenRouter.
+- `primary` (default since w6, also when unset) puts Gemini first: `gemini, openrouter, groq, opencode, agnes`, keeping only routes that have a key.
+- `fallback` puts OpenRouter first and Gemini second (pre-w6 behaviour).
 - An explicit `CATPAW_MODEL_ROUTE_ORDER` always wins.
 - Setting the key changes the consented route hash, so users see the model-consent sheet again. That is intended: the Gemini free tier is "used to improve our products".
 
