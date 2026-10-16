@@ -200,3 +200,31 @@ struct ThinWaveform: View {
         .buttonStyle(CatpawPressButtonStyle()).accessibilityLabel(label).accessibilityIdentifier(id)
     }
 }
+
+import CoreText
+
+/// Editorial Chinese serif for headlines. Songti SC ships as an on-demand system font on iOS, so we
+/// request it once (CoreText downloadable asset) and fall back to New York serif until it is ready.
+@MainActor final class EditorialSerif: ObservableObject {
+    static let shared = EditorialSerif()
+    static let postScriptName = "STSongti-SC-Bold"
+    @Published private(set) var ready = UIFont(name: EditorialSerif.postScriptName, size: 12) != nil
+    private var requested = false
+    func font(size: CGFloat) -> Font {
+        ready ? .custom(Self.postScriptName, fixedSize: size) : .system(size: size, weight: .semibold, design: .serif)
+    }
+    func ensure() {
+        guard !ready, !requested else { return }
+        requested = true
+        let desc = CTFontDescriptorCreateWithAttributes([kCTFontNameAttribute: Self.postScriptName] as CFDictionary)
+        CTFontDescriptorMatchFontDescriptorsWithProgressHandler([desc] as CFArray, nil) { state, _ in
+            if state == .didFinish {
+                Task { @MainActor in
+                    let ok = UIFont(name: EditorialSerif.postScriptName, size: 12) != nil
+                    withAnimation(.easeOut(duration: 0.3)) { EditorialSerif.shared.ready = ok }
+                }
+            }
+            return true
+        }
+    }
+}
