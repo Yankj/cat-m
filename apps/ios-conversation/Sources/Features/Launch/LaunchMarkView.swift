@@ -5,7 +5,7 @@ import UIKit
 /// Frame 0 matches the static launch screen (plain `LaunchCanvas`), the paw is on screen from the first frame.
 /// In-place only, ~1 s, always completes:
 /// 0–0.14 pop-in · 0.14–0.34 soft press-squash + bounce · 0.36/0.45/0.54/0.63 toe beans tap in sequence (light haptic)
-/// · 0.30–0.80 glossy highlight sweep · 0.55–0.80 "Catpaw" wordmark rises in · 0.86–1.0 crossfade into the app.
+/// · 0.30–0.80 glossy highlight sweep · 0.55–0.80 "Catpaw" wordmark rises in · 0–0.9 calm peach/lavender glow wakes · 0.85–1.35 paw morphs into the onboarding orb · 1.38–1.6 crossfade into the app.
 /// Reduce Motion: static mark + wordmark, short fade.
 @MainActor struct LaunchMarkView: View {
     var restoring: Bool = false
@@ -16,7 +16,7 @@ import UIKit
     @State private var finished = false
     @State private var taps = 0
 
-    static let total: Double = 1.0
+    static let total: Double = 1.6
     static let toeTimes: [Double] = [0.36, 0.45, 0.54, 0.63]
 
     var body: some View {
@@ -55,7 +55,7 @@ import UIKit
     private func content(t: Double, width: CGFloat) -> some View {
         let size = max(88, width * 0.25)
         // pop-in
-        let pop = 0.92 + 0.08 * Self.ease(Self.window(t, 0, 0.14))
+        let pop = 1.0 // paw is at full size from the very first frame
         // press-squash with a damped bounce
         let p = Self.window(t, 0.14, 0.34)
         let squash = p < 0.4 ? -0.10 * (p / 0.4) : -0.10 * cos((p - 0.4) / 0.6 * .pi * 1.5) * (1 - (p - 0.4) / 0.6)
@@ -63,18 +63,25 @@ import UIKit
         let pressed: [Bool] = (0..<4).map { i in t >= Self.toeTimes[i] && t < Self.toeTimes[i] + 0.08 } + [p > 0.05 && p < 0.4]
         let sweep = CGFloat(Self.ease(Self.window(t, 0.30, 0.80)))
         let word = Self.ease(Self.window(t, 0.55, 0.80))
-        let fade = 1 - Self.window(t, 0.86, 1.0)
+        let fade = 1 - Self.window(t, 1.38, 1.6)
+        // Calm hand-off: page glow wakes in, then the paw melts into the onboarding orb (same bg → seamless).
+        let glow = Self.ease(Self.window(t, 0, 0.9))
+        let morph = Self.ease(Self.window(t, 0.85, 1.35))
         return ZStack {
             Color("LaunchCanvas")
+            CalmGlowBackground(intensity: glow)
+            CalmOrb(size: 100).opacity(morph).scaleEffect(0.6 + 0.4 * morph)
             VStack(spacing: size * 0.18) {
                 PawMark(size: size, color: CatpawColors.action, pressed: pressed, sweep: sweep)
-                    .scaleEffect(x: pop * sx, y: pop * sy, anchor: .bottom)
+                    .scaleEffect(x: pop * sx * (1 - 0.6 * morph), y: pop * sy * (1 - 0.6 * morph), anchor: .center)
+                    .blur(radius: 6 * morph)
                 Text(verbatim: "Catpaw")
                     .font(.title.weight(.bold)).fontDesign(.rounded)
                     .foregroundStyle(CatpawColors.ink)
-                    .opacity(word).offset(y: (1 - word) * 8)
+                    .opacity(word * (1 - morph)).offset(y: (1 - word) * 8)
             }
-            .offset(y: size * 0.12)
+            .offset(y: size * 0.12 * (1 - morph))
+            .opacity(1 - morph)
         }
         .opacity(fade)
     }

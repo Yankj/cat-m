@@ -391,6 +391,7 @@ import CatpawImageComposer
     }
     var body: some View {
         feedbackNavigation
+        .overlay { VoiceModeHost().animation(.easeOut(duration: 0.25), value: ComposerDictation.shared.dictating) }
         .onChange(of: CatpawRouteCenter.shared.pending) { _, _ in consumeAppRoute() }
         .sheet(isPresented: $proactiveInboxPresented) { NavigationStack { ProactiveInboxView() } }
         .composerAttachPopover(isPresented: Binding(get: { ComposerAttachPopoverState.shared.isPresented }, set: { ComposerAttachPopoverState.shared.isPresented = $0 }),
