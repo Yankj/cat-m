@@ -53,23 +53,31 @@ enum ProactiveAccountGate {
     }
 }
 
-/// Codex PR90d #1: the persisted proactive data (inbox, reminders, attendees, ledgers, quota, outbox, server ids) has one
-/// owner account, stored next to it. Cleanup is by owner, synchronously, at the first write or account change that sees a
-/// different account — so a same-account restore keeps everything, and data the new account already wrote survives.
+/// Codex PR90d #1 / PR90e: the persisted proactive data (inbox, reminders, attendees, ledgers, quota, outbox, server ids)
+/// has one owner account, stored next to it. One decision per write / account change:
+/// - `.keep`  — same account (cold restore, any case), or signed out and already clean;
+/// - `.adopt` — no owner recorded yet (first run after the upgrade, signed in): the data is migrated to the current
+///   account, never dropped (outbox items tagged with another account are the only thing removed);
+/// - `.wipe`  — anything else (switch, logout, "" → a new account). Adopt and wipe both register the new owner, so the
+///   owner can never stay "" while an account writes.
 enum ProactiveDataOwner {
     static let key = "catpaw.proactive.owner.v1"
-    /// `owner`: nil = never recorded (data from before ownership, owner unknown → fail closed); "" = clean, signed out.
-    static func mustWipe(owner: String?, current: String?) -> Bool {
-        guard let owner else { return true }
-        if owner.isEmpty { return false }
-        guard let current else { return true }
-        return owner.caseInsensitiveCompare(current) != .orderedSame
+    enum Plan: Equatable { case keep, adopt, wipe }
+    static func plan(owner: String?, current: String?) -> Plan {
+        guard let owner else { return current == nil ? .wipe : .adopt }
+        guard let current else { return owner.isEmpty ? .keep : .wipe }
+        return owner.caseInsensitiveCompare(current) == .orderedSame ? .keep : .wipe
     }
-    /// A pending / delivered proactive notification is removed on an account change only if it is not the current
-    /// account's (other account or untagged); the current account's requests (any epoch) are left alone.
+    /// The account a proactive notification belongs to — the same resolution as the receive gate: the local stamp
+    /// (`catpaw_account`), else the APNs payload's `catpaw.account`; nil = untagged.
+    static func owner(of info: [AnyHashable: Any]) -> String? {
+        ProactiveAccountGate.token(info)?.account ?? ((info["catpaw"] as? [String: Any])?["account"] as? String)
+    }
+    /// Removed on an account change only if it is not the current account's (other account or untagged); the current
+    /// account's requests — local or APNs, any epoch — are left alone.
     static func removeOnChange(_ info: [AnyHashable: Any], current: String?) -> Bool {
         guard ProactiveAccountGate.isProactive(info) else { return false }
-        guard let current, let a = ProactiveAccountGate.token(info)?.account else { return true }
+        guard let current, let a = owner(of: info) else { return true }
         return a.caseInsensitiveCompare(current) != .orderedSame
     }
 }

@@ -121,11 +121,14 @@ struct ProactiveNotificationRequest: Sendable, Equatable {
         if releaseReservation { var q = loadQuota(); q.release(identity, now: clock(), owner: requestID); saveQuota(q) }
     }
 
-    /// Codex PR90d #3: a user snooze is a system notification like any other — stamped, quota/quiet-gated at its fire
-    /// instant, scoped id, late-completion cleanup. Request id base: `<id>-snooze`.
-    func snooze(id: String, title: String, body: String, category: String, info: [String: String], fire: Date, token: AccountToken) async -> Outcome {
-        await preschedule(identity: id + "-snooze", requestID: id + "-snooze", title: title, body: body, category: category, info: info,
-                          fire: fire, level: .notify, token: token)
+    /// Codex PR90d #3 / PR90e #4: a user snooze is a system notification like any other — stamped, quota/quiet-gated at
+    /// its fire instant, scoped id, late-completion cleanup. One identity per snooze intent (its operation id), so a
+    /// second snooze after the first one rang is a new delivery, not `already_delivered`.
+    nonisolated static func snoozeBase(_ id: String, intent: String) -> String { "\(id)-snooze-\(intent)" }
+    func snooze(id: String, intent: String, title: String, body: String, category: String, info: [String: String], fire: Date, token: AccountToken) async -> Outcome {
+        let base = Self.snoozeBase(id, intent: intent)
+        return await preschedule(identity: base, requestID: base, title: title, body: body, category: category, info: info,
+                                 fire: fire, level: .notify, token: token)
     }
 
     /// Notification tap / action: the token it was posted under, only if still the signed-in account and epoch.
