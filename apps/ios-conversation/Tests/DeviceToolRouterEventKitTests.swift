@@ -15,8 +15,10 @@ import EventKit
         }
     }
 
-    override func setUp() async throws { DeviceCallGate.reset(); DeviceCallGate.epoch.activate(account: "xctest-user") }
-    override func tearDown() async throws { DeviceCallGate.reset(); DeviceCallGate.epoch.activate(account: nil); DeviceCallHub.executor = DeviceToolExecutorStub(); DeviceCallHub.submitter = DeviceResultSubmitterStub() }
+    // Isolated barrier: the test HOST app runs its own auth lifecycle on AccountEpoch.shared (passive invalidation signs
+    // it out when the host has no session), which would race these tests. The gate/router/store all read DeviceCallGate.epoch.
+    override func setUp() async throws { DeviceCallGate.epoch = AccountEpoch(account: "xctest-user"); DeviceCallGate.reset() }
+    override func tearDown() async throws { DeviceCallGate.reset(); DeviceCallGate.epoch = .shared; DeviceCallHub.executor = DeviceToolExecutorStub(); DeviceCallHub.submitter = DeviceResultSubmitterStub() }
 
     private func calCall(_ id: String, _ start: Date, title: String = "PR89 gate") -> DeviceCall {
         DeviceCall(call_id: id, tool: "calendar_create", args: ["title": .string(title), "start": .string(DeviceCallDates.format(start)), "end": .string(DeviceCallDates.format(start.addingTimeInterval(1800)))], confirm: .card, ttl_sec: 600)
