@@ -327,6 +327,9 @@ final class CatpawAcceptanceUITests: XCTestCase {
         if app.buttons["proactive.engine.resetLedger"].waitForExistence(timeout: 30) { app.buttons["proactive.engine.resetLedger"].tap(); app.buttons["debug.signal.addMeeting"].tap()
             let run = app.buttons["debug.signal.run"]; var n = 0; while !(run.exists && run.isHittable) && n < 5 { app.swipeUp(); n += 1 }; run.tap(); Thread.sleep(forTimeInterval: 3) }
         app.terminate(); app.launchArguments = ["-CatpawSkipOnboarding", "-CatpawOpenURL", "catpawm://proactive"]; app.launch(); Thread.sleep(forTimeInterval: 3); shot(app, "w2-s08c-proactive-card")
+        // Populate the task list: accept the card's reminder action so 任务 shows a real Catpaw reminder.
+        let createReminder = app.buttons.matching(NSPredicate(format: "identifier == 'chat.proactiveSuggestion.create_reminder'")).firstMatch
+        if createReminder.waitForExistence(timeout: 4) { createReminder.tap(); Thread.sleep(forTimeInterval: 2.5); shot(app, "w2-s08d-reminder-created") }
         for l in ["完成", "Done"] where app.buttons[l].exists { app.buttons[l].tap(); break }; Thread.sleep(forTimeInterval: 0.8)
         func drawer() { for _ in 0..<3 where !app.buttons["sidebar.open"].exists { if app.navigationBars.buttons.firstMatch.exists { app.navigationBars.buttons.firstMatch.tap() }; Thread.sleep(forTimeInterval: 0.8) }
             if app.buttons["sidebar.open"].exists { app.buttons["sidebar.open"].tap(); Thread.sleep(forTimeInterval: 1) } }
@@ -339,7 +342,11 @@ final class CatpawAcceptanceUITests: XCTestCase {
         for _ in 0..<4 where !app.buttons["settings.invite"].exists { app.swipeUp() }
         if app.buttons["settings.invite"].exists { app.buttons["settings.invite"].tap(); Thread.sleep(forTimeInterval: 1); shot(app, "w2-s14-invite-sheet") }
         // Dictation: first tap starts, second tap stops + commits (no alert).
-        app.terminate(); app.launchArguments = ["-CatpawSkipOnboarding"]; app.launch(); XCTAssertTrue(input(app).waitForExistence(timeout: 30)); Thread.sleep(forTimeInterval: 1)
+        app.terminate(); app.launchArguments = ["-CatpawSkipOnboarding"]; app.launch(); Thread.sleep(forTimeInterval: 2)
+        // A restored proactive inbox / sheet must not cover the composer in the dictation shots.
+        for _ in 0..<3 { var closed = false; for l in ["完成", "Done", "关闭"] where app.buttons[l].exists && app.buttons[l].isHittable { app.buttons[l].tap(); closed = true; break }
+            if !closed { if app.sheets.firstMatch.exists || app.otherElements["proactive.inbox"].exists { app.swipeDown(velocity: .fast) } else { break } }; Thread.sleep(forTimeInterval: 0.8) }
+        XCTAssertTrue(input(app).waitForExistence(timeout: 30)); Thread.sleep(forTimeInterval: 1)
         addUIInterruptionMonitor(withDescription: "perm") { alert in for l in ["允许", "好", "Allow", "OK"] where alert.buttons[l].exists { alert.buttons[l].tap(); return true }; return false }
         let mic = app.buttons["chat.composer.mic"]
         if mic.exists { mic.tap(); Thread.sleep(forTimeInterval: 0.35); screen("w2-s15-dictation-recording"); Thread.sleep(forTimeInterval: 1.2); screen("w2-s15b-dictation-after-1s5")
@@ -362,7 +369,7 @@ final class CatpawAcceptanceUITests: XCTestCase {
         let field = input(app); field.tap(); Thread.sleep(forTimeInterval: 0.8); if !app.keyboards.firstMatch.exists { field.tap(); Thread.sleep(forTimeInterval: 0.8) }; if app.keyboards.firstMatch.exists { field.typeText("这是什么？") }
         let sends = app.buttons.matching(NSPredicate(format: "identifier == 'chat.send'")).allElementsBoundByIndex
         sends.first(where: { $0.isHittable })?.tap()
-        for l in ["允许此对话", "允许"] where app.buttons[l].waitForExistence(timeout: 2) { app.buttons[l].tap(); break } // text consent if this chat is new
+        for l in ["允许此对话"] where app.buttons[l].waitForExistence(timeout: 10) { app.buttons[l].tap(); break } // text consent if this chat is new
         if sends.first(where: { $0.isHittable && $0.isEnabled }) != nil, !app.descendants(matching: .any)["image.consent.viewport"].exists { sends.first(where: { $0.isHittable && $0.isEnabled })?.tap() }
         let allow = app.buttons["image.consent.allow"]
         if allow.waitForExistence(timeout: 12) {
@@ -375,8 +382,12 @@ final class CatpawAcceptanceUITests: XCTestCase {
         guard image.waitForExistence(timeout: 15) else { shot(app, "w2-v02b-no-image-message"); return }
         Thread.sleep(forTimeInterval: 8); shot(app, "w2-v02c-image-in-message")
         image.tap(); Thread.sleep(forTimeInterval: 1); shot(app, "w2-v03-viewer")
-        let save = app.buttons["chat.imageViewer.save"]
-        if save.exists { save.tap(); Thread.sleep(forTimeInterval: 1.5); app.tap(); Thread.sleep(forTimeInterval: 1); shot(app, "w2-v04-viewer-saved") }
+        let save = app.descendants(matching: .any).matching(identifier: "chat.imageViewer.save").firstMatch
+        // The viewer lives in an overlay window that XCUI may not expose; fall back to the button's on-screen spot.
+        if save.waitForExistence(timeout: 4) || true { if save.exists { save.tap() } else { app.coordinate(withNormalizedOffset: CGVector(dx: 0.77, dy: 0.105)).tap() }; Thread.sleep(forTimeInterval: 1.2)
+            let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+            for l in ["允许", "Allow", "好", "OK"] where springboard.buttons[l].waitForExistence(timeout: 1.5) { shot(app, "w2-v04a-photos-permission"); springboard.buttons[l].tap(); break }
+            Thread.sleep(forTimeInterval: 1.5); shot(app, "w2-v04-viewer-saved") } else { shot(app, "w2-v04-no-save-button") }
         XCTAssertEqual(app.state, .runningForeground)
     }
 
