@@ -54,6 +54,8 @@ extension Result { var isFailure: Bool { if case .failure = self { return true }
 
 @main @MainActor enum NoBugP0Runner {
     static var passed = 0, failed = 0
+    /// Injected account barrier for device-call tests that are not about sign-out (a signed-in fixture account).
+    static let testEpoch = AccountEpoch(account: "TEST-ACCOUNT")
     static func expect(_ ok: Bool, _ m: String) { if ok { passed += 1; print("PASS \(m)") } else { failed += 1; print("FAIL \(m)") } }
 
     static func main() async {
@@ -475,14 +477,14 @@ extension Result { var isFailure: Bool { if case .failure = self { return true }
         let acked = await s2b.retryPendingReports()
         expect(acked >= 2 && s2b.pendingReportIDs.isEmpty && exec.executed.filter { ["c2b", "c2c"].contains($0) }.count == 2, "P1-4 foreground/relaunch retry acknowledges all, no re-execute")
         DeviceCallHub.submitter = nil
-        expect(await DeviceCallStore(defaults: defaults).retryPendingReports() == 0, "P1-4 no submitter → no-op")
+        expect(await DeviceCallStore(defaults: defaults, epoch: testEpoch).retryPendingReports() == 0, "P1-4 no submitter → no-op")
         DeviceCallHub.submitter = sub
 
         // Kill during execute (phase .running persisted) → idempotent tool re-run, executor dedupes by call_id.
         exec.writes["c3"] = "evt-already"   // event was written before the kill
         let running = try! JSONEncoder().encode(["c3": DeviceCallStore.Record(phase: .running, call: call("c3"), updatedAt: .now, account: "user-A")])
         defaults.set(running, forKey: DeviceCallStore.storageKey)
-        let s3 = DeviceCallStore(defaults: defaults)
+        let s3 = DeviceCallStore(defaults: defaults, epoch: testEpoch)
         expect(s3.isInterrupted("c3") && s3.phase("c3") == .running, "P0-3 interrupted call detected on relaunch (no confirm card)")
         await tapRun(s3, call("c3"))
         expect(exec.executed.filter { $0 == "c3" }.isEmpty, "P0-3 tapping again cannot start a second write")
@@ -617,14 +619,14 @@ extension Result { var isFailure: Bool { if case .failure = self { return true }
         let defaults = UserDefaults(suiteName: "nobug-undo-\(UUID())")!
         let saved = DeviceCallHub.submitter; defer { DeviceCallHub.submitter = saved }
         let flaky = FlakyUndoSubmitter(); DeviceCallHub.submitter = flaky
-        await DeviceCallStore(defaults: defaults).reportUndo(callID: "u1", outcome: .undone)
+        await DeviceCallStore(defaults: defaults, epoch: testEpoch).reportUndo(callID: "u1", outcome: .undone)
         expect(flaky.sent.isEmpty, "#6 offline undo report not sent yet")
-        let relaunched = DeviceCallStore(defaults: defaults)            // app restart: queue comes back from disk
+        let relaunched = DeviceCallStore(defaults: defaults, epoch: testEpoch)            // app restart: queue comes back from disk
         expect(relaunched.undoQueue.pending == ["u1": .undone], "#6 pending undo survives an app restart")
         flaky.online = true
         _ = await relaunched.retryPendingReports()
         expect(flaky.sent == ["u1:undone"] && relaunched.undoQueue.isEmpty, "#6 retryPendingReports delivers the queued undo to the model")
-        expect(DeviceCallStore(defaults: defaults).undoQueue.isEmpty, "#6 acknowledged undo is not re-sent after another restart")
+        expect(DeviceCallStore(defaults: defaults, epoch: testEpoch).undoQueue.isEmpty, "#6 acknowledged undo is not re-sent after another restart")
         var q = DeviceUndoQueue(); q.enqueue("a", .failed); q.enqueue("b", .undone)
         let left = await q.drained { id, _ in if id == "a" { throw URLError(.timedOut) } }
         expect(left.pending == ["a": .failed], "#6 drain keeps only failed reports")
@@ -801,6 +803,33 @@ extension Result { var isFailure: Bool { if case .failure = self { return true }
         signOut(b)
         expect(MemoryCache.shared.items.isEmpty && MemoryCache.shared.boundStore == nil && beforeOut != nil && !AccountEpoch.shared.isValid(beforeOut) && AccountEpoch.shared.capture() == nil, "PR91 #1 sign-out resets MemoryCache and closes the generation")
 
+        // #1 (turn token) A's STREAM delivered after B signed in: memory.used / memory.update carry A's turn token → dropped.
+        signIn(a)
+        let turnA = UUID()
+        ConversationSideChannelEvents.beginTurn(turnA, token: AccountEpoch.shared.capture())
+        signOut(a); signIn(b)
+        MemoryEventSink.used(turnID: turnA, data: Data(#"{"ids":["sa"],"memories":[{"id":"sa","content":"A 的流"}]}"#.utf8))
+        MemoryEventSink.update(turnID: turnA, data: Data(#"{"op":"saved","ids":["sa2"],"memories":[{"id":"sa2","content":"A 的流2"}]}"#.utf8))
+        for _ in 0..<20 { await Task.yield() }
+        expect(MemoryCache.shared.items["sa"] == nil && MemoryCache.shared.items["sa2"] == nil && MemoryCache.shared.usedByTurn[turnA] == nil, "PR91 #1 A's stream delivered after B signed in is dropped (turn token from send)")
+        let turnB = UUID()
+        ConversationSideChannelEvents.beginTurn(turnB, token: AccountEpoch.shared.capture())
+        MemoryEventSink.used(turnID: turnB, data: Data(#"{"ids":["sb"],"memories":[{"id":"sb","content":"B 的流"}]}"#.utf8))
+        for _ in 0..<20 { await Task.yield() }
+        expect(MemoryCache.shared.usedByTurn[turnB] == ["sb"], "PR91 #1 B's own stream still records memory.used")
+        expect(ConversationSideChannelEvents.token(forTurn: UUID()) == nil, "PR91 #1 an unknown turn has no token (events refused)")
+        signOut(b)
+        // #1 DeviceCall needs a token: signed out → refused, nothing executed or persisted.
+        let outEpoch = AccountEpoch()
+        let ex0 = FakeExecutor(["calendar_create"]); DeviceCallHub.executor = ex0
+        let d0 = UserDefaults(suiteName: "pr91-out-\(UUID().uuidString)")!
+        await DeviceCallStore(defaults: d0, epoch: outEpoch).run(DeviceCall(call_id: "c-out", tool: "calendar_create", args: [:]))
+        expect(ex0.executed.isEmpty && d0.data(forKey: DeviceCallStore.storageKey) == nil, "PR91 #2 device call while signed out is refused (no capture → no execute)")
+        // P0-2 server side: the switch travels as X-Catpaw-Use-Memory.
+        MemoryRecallLoader.record(off: true, owner: .account("h"))
+        expect(ConversationMemorySwitch.headerValue == "0", "PR91 P0-2 client sends X-Catpaw-Use-Memory: 0 when off")
+        MemoryRecallLoader.record(off: false, owner: .account("h"))
+        expect(ConversationMemorySwitch.headerValue == "1", "PR91 P0-2 client sends X-Catpaw-Use-Memory: 1 when on")
         // #2 AccountEpoch contract as used here: a token captured before sign-out can never commit; accounts are UUID.uuidString.
         signIn(a)
         let preOut = AccountEpoch.shared.capture()
