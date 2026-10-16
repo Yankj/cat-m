@@ -1,4 +1,6 @@
 import SwiftUI
+import AVFoundation
+import UIKit
 
 /// 毛绒小伙伴 plush mascot (`Assets.xcassets/CatpawBrand/Mascot/`).
 /// Six poses: 等待 · 思考 · 写回复 · 执行 · 完成 · 出错. Reduce Motion → still pose.
@@ -28,6 +30,9 @@ enum PlushMascotPose: String, CaseIterable, Equatable {
         }
     }
 
+    /// Bundled HEVC-with-alpha loop (`Resources/Mascot/<asset>.mov`), if shipped for this pose.
+    var clipURL: URL? { Bundle.main.url(forResource: assetName, withExtension: "mov") }
+
     /// zh source key for the header status line.
     var statusKey: String {
         switch self {
@@ -48,13 +53,31 @@ struct PlushMascot: View {
     @State private var phase = false
     @State private var orbit = false
     @State private var blink = false
+    @State private var clipFailed: Set<PlushMascotPose> = []
+    @Environment(\.scenePhase) private var scenePhase
 
     init(pose: PlushMascotPose, size: CGFloat = 26) { self.pose = pose; self.size = size }
     init(state: CatpawPresenceState, size: CGFloat = 26) { self.init(pose: PlushMascotPose(state), size: size) }
 
     var body: some View {
+        Group {
+            if !reduceMotion, !clipFailed.contains(pose), let url = pose.clipURL {
+                PlushMascotClip(url: url, playing: scenePhase == .active) { clipFailed.insert(pose) }
+                    .frame(width: size * 1.15, height: size * 1.15)
+                    .id(pose)
+                    .transition(.opacity)
+                    .accessibilityHidden(true)
+            } else {
+                staticPose
+            }
+        }
+        .animation(.easeInOut(duration: 0.15), value: pose)
+    }
+
+    /// Static PNG + SwiftUI motion fallback (Reduce Motion → still; also used when no clip / playback fails).
+    private var staticPose: some View {
         let animate = !reduceMotion
-        ZStack {
+        return ZStack {
             Image(pose.assetName)
                 .resizable().interpolation(.high).scaledToFit()
                 .frame(width: size, height: size)
@@ -167,6 +190,49 @@ struct PlushEmptyBackdrop: View {
         }
         .allowsHitTesting(false)
         .accessibilityHidden(true)
+    }
+}
+
+/// Muted, looping, transparent mascot clip. Pauses offscreen / when the scene is not active.
+private struct PlushMascotClip: UIViewRepresentable {
+    let url: URL
+    var playing: Bool
+    var onFail: () -> Void
+
+    func makeUIView(context: Context) -> ClipView { ClipView(url: url, onFail: onFail) }
+    func updateUIView(_ v: ClipView, context: Context) { v.setPlaying(playing) }
+    static func dismantleUIView(_ v: ClipView, coordinator: ()) { v.teardown() }
+
+    final class ClipView: UIView {
+        override class var layerClass: AnyClass { AVPlayerLayer.self }
+        private var playerLayer: AVPlayerLayer { layer as! AVPlayerLayer }
+        private let player = AVQueuePlayer()
+        private var looper: AVPlayerLooper?
+        private var statusObs: NSKeyValueObservation?
+        private var wantsPlay = true
+
+        init(url: URL, onFail: @escaping () -> Void) {
+            super.init(frame: .zero)
+            backgroundColor = .clear; isOpaque = false; isUserInteractionEnabled = false
+            playerLayer.backgroundColor = UIColor.clear.cgColor
+            playerLayer.pixelBufferAttributes = [kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA]
+            playerLayer.videoGravity = .resizeAspect
+            player.isMuted = true
+            player.preventsDisplaySleepDuringVideoPlayback = false
+            player.audiovisualBackgroundPlaybackPolicy = .pauses
+            let item = AVPlayerItem(url: url)
+            looper = AVPlayerLooper(player: player, templateItem: item)
+            statusObs = looper?.observe(\.status) { l, _ in
+                if l.status == .failed { DispatchQueue.main.async { onFail() } }
+            }
+            playerLayer.player = player
+        }
+        required init?(coder: NSCoder) { nil }
+
+        override func didMoveToWindow() { super.didMoveToWindow(); apply() }
+        func setPlaying(_ on: Bool) { wantsPlay = on; apply() }
+        private func apply() { if wantsPlay && window != nil { player.play() } else { player.pause() } }
+        func teardown() { player.pause(); statusObs = nil; looper?.disableLooping(); looper = nil; playerLayer.player = nil }
     }
 }
 
