@@ -890,6 +890,7 @@ import CatpawImageComposer
 
         } else {
             assistantMessage(message,turnID:turnID)
+                .accessibilityElement(children:.contain).accessibilityIdentifier("chat.assistant.message")
                 .messageLongPress(id:message.id.uuidString,content:.text(message.content),enabled:message.complete && !message.content.isEmpty,onReply:quote){ConversationAnswerView(message:message,canQuote:false,quote:{_ in})}
         }
     }

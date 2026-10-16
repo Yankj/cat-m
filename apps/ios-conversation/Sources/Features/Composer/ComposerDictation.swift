@@ -185,11 +185,12 @@ import UIKit
                 // Real failures only: a small inline hint above the composer, never a modal alert.
                 if dictation.notice != nil {
                     HStack(spacing: 8) {
-                        Text(noticeMessage).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.ink).lineLimit(2)
+                        Text(noticeMessage).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.ink).lineLimit(3).fixedSize(horizontal: false, vertical: true)
                         if dictation.notice == .permissionDenied { Button(ui("去设置")) { ComposerDictation.openSettings() }.font(CatpawTypography.Role.caption.font.weight(.semibold)) }
                     }
-                    .padding(.horizontal, 12).padding(.vertical, 8).background(.regularMaterial, in: Capsule())
-                    .frame(maxWidth: 300).fixedSize(horizontal: false, vertical: true).offset(y: -48)
+                    .padding(.horizontal, 12).padding(.vertical, 8).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    // Anchored to the narrow mic button: give the hint its own width so it never truncates.
+                    .fixedSize(horizontal: false, vertical: true).frame(width: 280, alignment: .trailing).offset(y: -56)
                     .transition(.opacity.combined(with: .move(edge: .bottom)))
                     .onTapGesture { dictation.notice = nil }
                     .task(id: dictation.notice) { try? await Task.sleep(nanoseconds: 4_000_000_000); withAnimation { dictation.notice = nil } }
