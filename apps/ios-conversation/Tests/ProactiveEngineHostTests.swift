@@ -485,6 +485,41 @@ import UserNotifications
         center.removePendingNotificationRequests(withIdentifiers: [bID])
     }
 
+    // MARK: Codex PR90h #4 — delivered notifications in the REAL center: a local one stamped for A and an APNs-shaped
+    // one for A (`catpaw.account`, the shape the server pushes) are removed on the switch to B; a chat notification stays.
+    // Real APNs transport is not exercised (a simulator cannot receive one from a test); the payload is the server's.
+    func testRealNotificationCenterDeliveredAndAPNsCleanup() async throws {
+        ProactiveEngine.registerAccountObserver()
+        ProactiveEngine.shared.inventory = SystemNotificationInventory()
+        let center = UNUserNotificationCenter.current(), b = UUID(), tag = UUID().uuidString
+        let status = await center.notificationSettings().authorizationStatus
+        guard status == .authorized || status == .provisional || status == .ephemeral else {
+            XCTFail("Notifications not authorized on this simulator (status \(status.rawValue)). Run CatpawMUITests/ProactiveNotificationAuthUITests/testGrantNotificationAuthorizationForHostTests first (same simulator, do not uninstall), then this test.")
+            return
+        }
+        func soon(_ id: String, _ info: [String: Any]) -> UNNotificationRequest {
+            let c = UNMutableNotificationContent(); c.title = "xctest delivered"; c.userInfo = info
+            return UNNotificationRequest(identifier: id, content: c, trigger: UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false))
+        }
+        let aLocal = "xctest-dl-a-" + tag, aAPNs = "xctest-dl-apns-a-" + tag, chat = "xctest-dl-chat-" + tag
+        try await center.add(soon(aLocal, ["catpaw_proactive_id": aLocal, ProactiveAccountGate.accountKey: "XCTEST-A", ProactiveAccountGate.epochKey: String(AccountEpoch.shared.epoch)]))
+        try await center.add(soon(aAPNs, ["catpaw": ["kind": "proactive_decision", "account": "xctest-a", "event_id": "E-" + tag]]))
+        try await center.add(soon(chat, ["aps": ["alert": "hi"]]))
+        var delivered: [String] = []
+        for _ in 0..<30 {
+            delivered = await center.deliveredNotifications().map(\.request.identifier)
+            if [aLocal, aAPNs, chat].allSatisfy(delivered.contains) { break }
+            try await Task.sleep(for: .milliseconds(500))
+        }
+        XCTAssertTrue([aLocal, aAPNs, chat].allSatisfy(delivered.contains), "all three really delivered in the system center within 15 s: \(delivered)")
+        await login(b)
+        let after = await center.deliveredNotifications().map(\.request.identifier)
+        XCTAssertFalse(after.contains(aLocal), "A's delivered local notification removed")
+        XCTAssertFalse(after.contains(aAPNs), "A's delivered APNs-shaped notification removed")
+        XCTAssertTrue(after.contains(chat), "a non-proactive notification is never touched")
+        center.removeDeliveredNotifications(withIdentifiers: [chat])
+    }
+
     // MARK: Codex PR90h #3 — a cloud card, end to end through the real client entries: the chat adapter decodes the
     // server's response (fixture written by the Edge suite), the store's perform / undo run the real backend + queue, and
     // the queue writes back to the cloud record. The Edge suite replays exactly these requests on the real service.
