@@ -8,3 +8,8 @@ test('PR90 #2: APNs payload follows the level — notify is a normal alert, only
   assert.equal(p('interrupt')['interruption-level'], 'time-sensitive');
   assert.equal(raw('card'), null, 'card/silent are never pushed');
 });
+
+test('AccountEpoch: APNs payload carries the account and the decision; event_id is the shared delivery id', () => {
+  const p = apnsPayload({ kind: 'apns' }, { id: 'E1', user_id: 'U-1', title: 't', body: 'b', kind: 'proactive_decision', payload: { decision: 'notify' } }, 'app.catpaw', 0).body.catpaw;
+  assert.equal(p.account, 'U-1'); assert.equal(p.decision, 'notify'); assert.equal(p.event_id, 'E1');
+});

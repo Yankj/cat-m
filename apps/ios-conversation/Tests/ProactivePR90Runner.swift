@@ -29,9 +29,32 @@ func pr90_3_prescheduleSharesDecisionAndQuota() {
     let back = try! JSONDecoder().decode(ProactiveQuotaLedger.self, from: JSONEncoder().encode(q)); check(back == q, "codable")
 }
 
+func pr90_accountEpoch() {
+    let epoch = AccountEpoch(account: "USER-A"); var q = ProactiveQuotaLedger(); let noon = at("2026-10-15T04:00:00Z")
+    // Local: token captured before the await; sign-out while suspended → the notification is dropped at presentation.
+    let t = epoch.capture()!; var info: [AnyHashable: Any] = ["catpaw_proactive_id": "evt-1"]
+    ProactiveAccountGate.stamp(&info, t, deliveryID: "evt-1", level: .notify)
+    check(ProactiveAccountGate.verdict(info, epoch: epoch, now: noon, quota: &q, calendar: shanghai) == .present(.notify), "valid token presents")
+    epoch.signOut(); check(ProactiveAccountGate.verdict(info, epoch: epoch, now: noon, quota: &q, calendar: shanghai) == .drop("stale_account"), "signed out drops")
+    epoch.activate(account: "USER-B"); check(ProactiveAccountGate.verdict(info, epoch: epoch, now: noon, quota: &q, calendar: shanghai) == .drop("stale_account"), "switched drops")
+    check(epoch.commit(t) { true } == nil, "write under A's token refused after switch")
+    // Remote: account compared, then the same device gate; one delivery id dedupes APNs vs local.
+    let push: (String, String) -> [AnyHashable: Any] = { acct, d in ["catpaw": ["account": acct, "kind": "proactive_decision", "decision": d, "event_id": "E1"]] }
+    check(ProactiveAccountGate.verdict(push("USER-A", "notify"), epoch: epoch, now: noon, quota: &q, calendar: shanghai) == .drop("other_account"), "A's push on B")
+    check(ProactiveAccountGate.verdict(push("USER-B", "card"), epoch: epoch, now: noon, quota: &q, calendar: shanghai) == .inboxOnly, "card never banners")
+    check(ProactiveAccountGate.verdict(push("USER-B", "interrupt"), epoch: epoch, now: at("2026-10-15T15:30:00Z"), quota: &q, calendar: shanghai) == .inboxOnly, "quiet hours downgrade the push")
+    check(ProactiveAccountGate.verdict(push("USER-B", "notify"), epoch: epoch, now: noon, quota: &q, calendar: shanghai) == .present(.notify), "push presents once")
+    check(ProactiveAccountGate.verdict(push("USER-B", "notify"), epoch: epoch, now: noon, quota: &q, calendar: shanghai) == .drop("duplicate"), "same event_id twice")
+    check(q.count(on: noon, calendar: shanghai) == 1, "real deliveries counted: 1")
+    check(ProactiveAccountGate.verdict(push("user-b", "card"), epoch: epoch, now: noon, quota: &q, calendar: shanghai) == .inboxOnly, "server lower-case uuid == client uuidString")
+    var local: [AnyHashable: Any] = [:]; ProactiveAccountGate.stamp(&local, epoch.capture()!, deliveryID: "E1", level: .notify)
+    check(ProactiveAccountGate.deliveryID(local) == "E1" && ProactiveAccountGate.deliveryID(push("USER-B", "notify")) == "E1", "shared delivery id")
+}
+
 @main enum ProactivePR90Runner {
     static func main() {
         pr90_3_prescheduleSharesDecisionAndQuota()
+        pr90_accountEpoch()
         print(failures == 0 ? "PR90 proactive: all passed" : "PR90 proactive: \(failures) failed"); exit(failures == 0 ? 0 : 1)
     }
 }
