@@ -30,7 +30,7 @@ const CANNED={calendar_list:{status:'ok',data:{events:[]}},list_tasks:{tasks:[{i
 const cannedFor=name=>CANNED[name]??{status:'pending_user_confirmation',note:'需要用户在卡片上确认后才会执行'};
 async function post(body){
   for(let attempt=0;attempt<5;attempt++){
-    const r=await realFetch(route.endpoint,{method:'POST',headers:{Authorization:'Bearer '+key,'Content-Type':'application/json'},body:JSON.stringify(body),signal:AbortSignal.timeout(60000)}).catch(()=>({status:599,ok:false}));
+    const r=await realFetch(route.endpoint,{method:'POST',headers:{Authorization:'Bearer '+key,'Content-Type':'application/json'},body:JSON.stringify(body),signal:AbortSignal.timeout(45000)}).catch(()=>({status:599,ok:false}));
     if(r.status===429||r.status>=500){await sleep(5000*(attempt+1));continue;}
     if(!r.ok)return {error:'http_'+r.status};
     return {message:(await r.json()).choices?.[0]?.message??{}};
@@ -72,17 +72,18 @@ async function ask(c){
 const only=process.argv.includes('--only')?process.argv[process.argv.indexOf('--only')+1].split(','):null;
 const rows=[];
 for(let run=1;run<=runs;run++){await freshFixture();for(const c of set.cases.filter(c=>!only||only.includes(c.id))){
-  const r=await ask(c),hit=!r.error&&(c.expect==='card'?r.got==='card'&&r.kind===c.kind:r.got==='text');
+  let r=await ask(c);for(let retry=1;r.error&&retry<=4;retry++){process.stdout.write(`(retry ${retry}: ${r.error}) `);await sleep(10000*retry);await freshFixture();r=await ask(c);}
+  const hit=!r.error&&(c.expect==='card'?r.got==='card'&&r.kind===c.kind:r.got==='text');
   rows.push({run,id:c.id,expect:c.expect,expect_kind:c.kind??null,...r,card_vs_text_hit:r.got===c.expect,hit});
   process.stdout.write(`${run}:${c.id}:${r.kind??r.got??r.error}${hit?'':' ✗ '+JSON.stringify([r.tools_called,r.text])} `);await sleep(3000);}}
 const scored=rows.filter(r=>!r.error),hits=scored.filter(r=>r.hit).length,rate=scored.length?hits/scored.length:0,cvt=scored.filter(r=>r.card_vs_text_hit).length;
 const perRun=[...Array(runs)].map((_,i)=>{const s=scored.filter(r=>r.run===i+1);return {run:i+1,hits:s.filter(r=>r.hit).length,scored:s.length};});
 const out={ran_at:new Date().toISOString(),route:'agnes',model,runs,cases:set.cases.length,scored:scored.length,errors:rows.length-scored.length,
-  type_hits:hits,type_hit_rate:Number(rate.toFixed(4)),card_vs_text_hits:cvt,card_vs_text_rate:Number((cvt/scored.length).toFixed(4)),per_run:perRun,threshold:0.85,pass:rate>=0.85&&scored.length===rows.length,
+  type_hits:hits,type_hit_rate:Number(rate.toFixed(4)),card_vs_text_hits:cvt,card_vs_text_rate:Number((cvt/scored.length).toFixed(4)),per_run:perRun,threshold:0.85,pass:rate>=0.85&&scored.length===rows.length&&perRun.every(p=>p.hits/p.scored>=0.8),per_run_floor:0.8,
   tools_offered:seen?.tools??[],prompt_sha256:createHash('sha256').update(seen?.system??'').digest('hex'),cases_sha256:createHash('sha256').update(readFileSync(new URL('cases.json',here))).digest('hex'),rows};
 if(only){console.log('\n'+hits+'/'+scored.length);process.exit(0);}
 writeFileSync(new URL('RESULTS.json',here),JSON.stringify(out,null,1)+'\n');
 const miss=rows.filter(r=>!r.hit).map(r=>`| ${r.run} | ${r.id} | ${r.expect_kind??r.expect} | ${r.error??(r.kind??r.got)} | ${(r.tools_called??[]).join(', ')} |`).join('\n')||'| – | – | – | – | – |';
-writeFileSync(new URL('REPORT.md',here),`# chat-ux #3 card-type eval (v2)\n\n- Ran: ${out.ran_at} (UTC) · route agnes · model \`${model}\` · temperature 0 · ${runs} runs × ${set.cases.length} cases\n- **Type hit rate: ${hits}/${scored.length} = ${(rate*100).toFixed(1)}%** (threshold 85%) · per run ${perRun.map(p=>p.hits+'/'+p.scored).join(', ')} · errors ${out.errors} · ${out.pass?'PASS':'FAIL'}\n- Card-vs-text only (old metric): ${cvt}/${scored.length}\n- Scoring: card case = render_ui with the expected kind; text case = no render_ui.\n- Path: real chat service (createCloudRuntime, in-memory repo) with production gates on; system prompt sha256 \`${out.prompt_sha256.slice(0,16)}…\` is what the server built; tools offered (${out.tools_offered.length}): ${out.tools_offered.join(', ')}.\n- Limits: one provider route (Agnes; production chain also has OpenRouter/Gemini); memory tools offered without a memory snapshot prompt; tool calls recorded, not executed; history cases inject fixture tool results; other tool calls get canned results (CANNED in run-eval.mjs) and the loop continues up to 4 steps.\n\n## Misses\n\n| run | case | expected | got | tools called |\n|---|---|---|---|---|\n${miss}\n`);
-console.log(`\ntype ${hits}/${scored.length} = ${(rate*100).toFixed(1)}% · card-vs-text ${cvt}/${scored.length} · errors=${out.errors} · tools=${out.tools_offered.length}`);
+writeFileSync(new URL('REPORT.md',here),`# chat-ux #3 card-type eval (v2)\n\n- Ran: ${out.ran_at} (UTC) · route agnes · model \`${model}\` · temperature 0 · ${runs} runs × ${set.cases.length} cases\n- **Type hit rate: ${hits}/${scored.length} = ${(rate*100).toFixed(1)}%** (bar: total ≥ 85% and each run ≥ 80%) · per run ${perRun.map(p=>p.hits+'/'+p.scored).join(', ')} · errors ${out.errors} · ${out.pass?'PASS':'FAIL'}\n- Card-vs-text only (old metric): ${cvt}/${scored.length}\n- Scoring: card case = render_ui with the expected kind; text case = no render_ui.\n- Path: real chat service (createCloudRuntime, in-memory repo) with production gates on; system prompt sha256 \`${out.prompt_sha256.slice(0,16)}…\` is what the server built; tools offered (${out.tools_offered.length}): ${out.tools_offered.join(', ')}.\n- Limits: one provider route (Agnes; production chain also has OpenRouter/Gemini); memory tools offered without a memory snapshot prompt; tool calls recorded, not executed; history cases inject fixture tool results; other tool calls get canned results (CANNED in run-eval.mjs) and the loop continues up to 4 steps.\n\n## Misses\n\n| run | case | expected | got | tools called |\n|---|---|---|---|---|\n${miss}\n`);
+console.log(`\nper run ${perRun.map(p=>p.hits+'/'+p.scored).join(', ')} · type ${hits}/${scored.length} = ${(rate*100).toFixed(1)}% · card-vs-text ${cvt}/${scored.length} · errors=${out.errors} · tools=${out.tools_offered.length}`);
 process.exit(0);
