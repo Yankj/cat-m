@@ -788,6 +788,10 @@ struct ProactiveSignal: Equatable, Sendable {
     }
     func perform(_ action: ProactiveSuggestion.Action, on id: String) async throws -> ProactiveSuggestion {
         var s = ProactiveSuggestionStore.shared.items[id] ?? ProactiveSuggestion(id: id, title: "", reason: "")
+        // Codex PR90 #4: check the persisted success (local + cloud action_states) before running an effect again.
+        guard ProactiveActionStates.shouldExecute(action.rawValue, s.actionStates) else {
+            ProactiveEngine.shared.note("\(action.rawValue) already succeeded for \(id) → not run again"); return s
+        }
         switch action {
         case .create_reminder:
             switch await ProactiveEngine.shared.confirmReminder(id) {
