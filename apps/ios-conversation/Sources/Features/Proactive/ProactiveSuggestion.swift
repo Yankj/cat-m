@@ -180,10 +180,12 @@ enum ProactiveEngineError: Error, Equatable { case remindersDenied, writeFailed,
         catch let e as ProactiveEngineError where e == .undoUnknown { errorKey = "没能确认提醒是否已删除，未做改动" }   // p90i S2
         catch { errorKey = "没有完成，请稍后重试" }
     }
-    enum FeedbackOutcome: Equatable { case synced, queued }
-    /// Codex P0-4: the result is surfaced (待同步) instead of swallowed.
+    enum FeedbackOutcome: Equatable { case synced, queued, notSaved }
+    /// Codex P0-4: the result is surfaced (待同步) instead of swallowed; PR91 #7: a failed local write is 没记下, not 待同步.
     func feedback(_ value: ProactiveFeedback, _ s: ProactiveSuggestion) async -> FeedbackOutcome {
-        do { try await backend.feedback(value, on: s.id); return .synced } catch { return .queued }
+        do { try await backend.feedback(value, on: s.id); return .synced }
+        catch ProactiveFeedbackSync.SyncError.notSaved { return .notSaved }
+        catch { return .queued }
     }
     func sorted(_ status: ProactiveSuggestion.Status) -> [ProactiveSuggestion] {
         items.values.filter { $0.effectiveStatus == status || (status == .pending && $0.effectiveStatus == .snoozed) }
@@ -195,7 +197,7 @@ enum ProactiveEngineError: Error, Equatable { case remindersDenied, writeFailed,
 @MainActor final class ProactiveFeedbackSync {
     static let shared = ProactiveFeedbackSync()
     static let recordKey = "proactive.feedback-ledger.v1"
-    enum SyncError: Error { case queued }
+    enum SyncError: Error { case queued, notSaved, staleAccount }
     private(set) var ledger = ProactiveFeedbackLedger()
     private var loadedFor: UUID?
 
@@ -205,7 +207,11 @@ enum ProactiveEngineError: Error, Equatable { case remindersDenied, writeFailed,
         ledger = store.get(ProactiveFeedbackLedger.self, forKey: Self.recordKey) ?? ProactiveFeedbackLedger()
         loadedFor = store.userID
     }
-    private func persist() { if loadedFor != nil { L2SecureStore.current?.put(ledger, forKey: Self.recordKey) } }
+    /// Codex PR91 #7: write errors surface; without the account's L2 store nothing counts as saved.
+    private func persist() throws {
+        guard let store = L2SecureStore.current, store.userID == loadedFor else { throw SyncError.notSaved }
+        try store.put(ledger, forKey: Self.recordKey)
+    }
 
     func gate(decision: String, confidence: Double, trigger: String) -> String {
         ensureLoaded(); return ledger.gate(decision: decision, confidence: confidence, trigger: trigger)
@@ -213,21 +219,37 @@ enum ProactiveEngineError: Error, Equatable { case remindersDenied, writeFailed,
     /// Records locally first, then posts {value} to suggestions/{serverID}/feedback; throws `.queued` when not synced.
     func submit(_ value: ProactiveFeedback, suggestionID: String, trigger: String, serverID: String?) async throws {
         ensureLoaded()
-        if ledger.record(value, suggestionID: suggestionID, trigger: trigger, serverID: serverID) { persist() }
+        if ledger.record(value, suggestionID: suggestionID, trigger: trigger, serverID: serverID) {
+            do { try persist() } catch { throw SyncError.notSaved }
+        }
         try await sync(suggestionID)
     }
-    /// Retries every queued entry whose server id is known now.
-    func retryPending(serverIDs: [String: String]) async {
+    /// Retries every queued entry whose server id is known now (launch + every return to foreground).
+    /// Stops at the first sign of an account change; nothing of A is ever posted with B's session.
+    @discardableResult func retryPending(serverIDs: [String: String]) async -> Int {
         ensureLoaded()
+        let epochAtStart = AccountEpoch.shared.epoch
+        var delivered = 0
         for e in ledger.pendingSync {
-            if e.serverID == nil, let sid = serverIDs[e.suggestionID] { ledger.attach(serverID: sid, to: e.suggestionID); persist() }
-            try? await sync(e.suggestionID)
+            guard AccountEpoch.shared.epoch == epochAtStart else { break }
+            if e.serverID == nil, let sid = serverIDs[e.suggestionID] { ledger.attach(serverID: sid, to: e.suggestionID); try? persist() }
+            do { try await sync(e.suggestionID); delivered += 1 } catch SyncError.staleAccount { break } catch {}
         }
+        return delivered
+    }
+    /// Transport seam (tests): returns true when the server acknowledged.
+    var send: (String, ProactiveFeedback) async -> Bool = { sid, value in
+        await ProactiveEngine.post("suggestions/\(sid)/feedback", ["value": value.rawValue]) != nil
     }
     private func sync(_ suggestionID: String) async throws {
         guard let e = ledger.pendingSync.first(where: { $0.suggestionID == suggestionID }) else { return }
-        guard let sid = e.serverID, await ProactiveEngine.post("suggestions/\(sid)/feedback", ["value": e.value.rawValue]) != nil else { throw SyncError.queued }
-        ledger.markSynced(suggestionID); persist()
+        guard let sid = e.serverID else { throw SyncError.queued }
+        let owner = loadedFor, token = AccountEpoch.shared.capture()
+        let ok = await send(sid, e.value)
+        guard AccountEpoch.shared.isValid(token), token?.account == owner?.uuidString, loadedFor == owner, L2SecureStore.current?.userID == owner else { throw SyncError.staleAccount }
+        guard ok else { throw SyncError.queued }
+        ledger.markSynced(suggestionID)
+        try? persist()   // synced already; a failed write only means it is re-sent (server dedupes per suggestion)
     }
     func reset() { ledger = ProactiveFeedbackLedger(); loadedFor = nil }
 }

@@ -209,7 +209,7 @@ import AppIntents
                     AccountParkedDecisionSheet(items:auth.parkedPrompt) { auth.resolveParked($0) }
                 }
                 // L2 memory: per-user encrypted store follows the signed-in user (memory-layers.md).
-                .task(id:auth.state.user?.id) { AccountEpoch.shared.activate(account:auth.state.user?.id.uuidString); L2SecureStore.activate(userID:auth.state.user?.id); MemoryLibraryLocal.activate(userID:auth.state.user?.id); GenerativeBlockStore.shared.reloadFromL2(); MemoryCache.shared.reloadFromL2(); await MemoryCache.shared.sync() }
+                .task(id:auth.state.user?.id) { AccountEpoch.shared.activate(account:auth.state.user?.id.uuidString); L2SecureStore.activate(userID:auth.state.user?.id); CatpawL2Sealing.install(); MemoryLibraryLocal.activate(userID:auth.state.user?.id); GenerativeBlockStore.shared.reloadFromL2(); MemoryCache.shared.reloadFromL2(); await MemoryCache.shared.sync() }
                 #if DEBUG
                 .overlay(alignment:.topTrailing) {
                     if auth.isFixture {
@@ -283,4 +283,18 @@ struct CatpawAppShortcuts: AppShortcutsProvider {
 @MainActor @Observable final class CatpawRouteCenter {
     static let shared = CatpawRouteCenter()
     var pending: CatpawAppRoute?
+}
+
+/// Codex PR91 #5: SwiftData memory rows sealed with the signed-in subject's L2 key; no store → the save fails.
+enum CatpawL2Sealing {
+    static func install() {
+        ConversationMemoryAtRest.sealer = { data, subject in
+            guard let store = L2SecureStore.currentForSealing, store.userID == subject else { throw L2SecureStoreError.unavailable }
+            return try store.seal(data)
+        }
+        ConversationMemoryAtRest.opener = { data, subject in
+            guard let store = L2SecureStore.currentForSealing, store.userID == subject else { throw L2SecureStoreError.unavailable }
+            return try store.openSealed(data)
+        }
+    }
 }

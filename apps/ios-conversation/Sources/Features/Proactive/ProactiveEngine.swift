@@ -12,6 +12,9 @@ import UserNotifications
 import BackgroundTasks
 import WidgetKit
 #endif
+#if canImport(ActivityKit) && os(iOS)
+import ActivityKit
+#endif
 
 // On-device ProactiveEngine (interview demo core).
 // Non-user signal (EventKit next event / BGAppRefresh / simulated signal) → rule pre-filter → dedupe ledger
@@ -400,9 +403,9 @@ struct ProactiveSignal: Equatable, Sendable {
     /// Settings/debug writes the same phrase via `setLeadMinutes` so evaluate has hard evidence.
     func leadTime() async -> (minutes: Int, memory: ProactiveSuggestion.MemoryRef?) {
         // Cloud backend first, then the persisted on-device library (NoBug P0-1: survives cold start).
-        var snaps: [MemoryLibrarySnapshot] = []
-        if let backend = MemoryLibraryHub.backend, let snapshot = try? await backend.load() { snaps.append(snapshot) }
-        if MemoryLibraryHub.backend !== MemoryLibraryHub.local, let local = try? await MemoryLibraryHub.local.load() { snaps.append(local) }
+        // Codex PR91 #3: fail closed — a load error or an unknown cloud switch (last known off) means no memory.
+        let local: (any MemoryLibraryBackend)? = MemoryLibraryHub.backend === MemoryLibraryHub.local ? nil : MemoryLibraryHub.local
+        let snaps = await MemoryRecallLoader.snapshots(cloud: MemoryLibraryHub.backend, local: local, owner: MemoryLibraryHub.local.owner)
         if let hit = ProactiveRules.lead(in: snaps) { return (hit.minutes, .init(id: hit.item.id, content: hit.item.content)) }
         return (defaultLeadMinutes, nil)
     }
@@ -546,6 +549,7 @@ struct ProactiveSignal: Equatable, Sendable {
         let travelMinutes = travel.minutes
         let usedETA = travel.usedETA
         let originNote = travel.originNote
+        guard AccountEpoch.shared.epoch == epochAtStart else { note("drop: account changed during ETA (no evaluate, no write-back)"); return nil }
         // leave_at = meeting_start - lead_minutes - travel_minutes (travel 0 only when ETA unused → lead only)
         let leaveAt = ProactiveRules.leaveAt(start: signal.start, leadMinutes: lead.minutes, travelMinutes: travelMinutes, usedETA: usedETA)
         let remindAt = leaveAt  // remind when user should leave
@@ -1296,7 +1300,11 @@ struct ProactiveSignal: Equatable, Sendable {
     }
     static func wipe() { UserDefaults.standard.removeObject(forKey: key); CatpawWidgetSnapshotWriter.write([]) }
     static func load() -> [String: ProactiveSuggestion] {
-        UserDefaults.standard.data(forKey: key).flatMap { try? JSONDecoder().decode([String: ProactiveSuggestion].self, from: $0) } ?? [:]
+        L2SecureStore.current?.get([String: ProactiveSuggestion].self, forKey: sealedKey) ?? [:]
+    }
+    static func clearForSignOut() {
+        UserDefaults.standard.removeObject(forKey: legacyKey)
+        try? L2SecureStore.current?.write(nil, forKey: sealedKey)
     }
     private let mock = ProactiveSuggestionMock([])
     /// Codex PR90e #1: the inbox is shown only to its owner (or, before the upgrade migration ran, to the signed-in account).
@@ -1567,11 +1575,17 @@ struct ProactiveEngineSignalAdapter: ProactiveSignalEngine {
     static func stop(suggestionID: String) {
         CatpawLiveActivityCoordinator.shared.stopLeaveCountdown(suggestionID: suggestionID)
     }
+    /// Sign-out: end every departure countdown, including ones started before a relaunch.
+    static func stopAll() {
+        let ids = Set(Activity<CatpawLeaveAttributes>.activities.map { $0.attributes.suggestionID })
+        for id in ids { stop(suggestionID: id) }
+    }
 }
 #else
 @MainActor enum CatpawLeaveActivity {
     static func start(suggestionID: String, meetingTitle: String, leaveAt: Date) {}
     static func stop(suggestionID: String) {}
+    static func stopAll() {}
 }
 #endif
 

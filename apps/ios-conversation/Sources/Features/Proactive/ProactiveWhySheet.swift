@@ -52,7 +52,7 @@ import SwiftUI
                         HStack(spacing: 8) { feedbackButtons }
                         VStack(alignment: .leading, spacing: 6) { feedbackButtons }
                     }
-                    if sent != nil { Text(ui(feedbackState == .queued ? "已记在本机，暂未同步，稍后自动重试" : feedbackState == .synced ? "谢谢，小猫记下了" : "正在记下…")).font(CatpawTypography.Role.secondary.font).foregroundStyle(CatpawColors.secondary) }
+                    if sent != nil { Text(ui(feedbackState == .notSaved ? "没能记下，请重试" : feedbackState == .queued ? "已记在本机，暂未同步，稍后自动重试" : feedbackState == .synced ? "谢谢，小猫记下了" : "正在记下…")).font(CatpawTypography.Role.secondary.font).foregroundStyle(CatpawColors.secondary) }
                 }
             }
             .navigationTitle(ui("为什么找你")).navigationBarTitleDisplayMode(.inline)
