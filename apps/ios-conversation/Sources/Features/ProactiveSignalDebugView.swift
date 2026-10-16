@@ -31,7 +31,7 @@ import SwiftUI
                 }.accessibilityIdentifier("proactive.debug.clearLead")
                 if !leadResult.isEmpty { Text(leadResult).font(.footnote).accessibilityIdentifier("proactive.debug.leadResult") }
                 LabeledContent(ui("记忆库"), value: MemoryLibraryHub.backend.map { String(describing: type(of: $0)) } ?? "—")
-                NavigationLink(ui("打开 设置 › 记忆")) { MemoryLibraryView(backend: MemoryLibraryHub.backend ?? MemoryLibraryStub()) }
+                NavigationLink(ui("打开 设置 › 记忆")) { MemoryLibraryView(backend: MemoryLibraryHub.pageBackend) }
                     .accessibilityIdentifier("proactive.debug.openMemory")
             }
             Section(ui("一键注入")) {

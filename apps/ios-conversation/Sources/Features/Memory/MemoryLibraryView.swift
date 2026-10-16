@@ -195,5 +195,5 @@ import SwiftUI
     }
 }
 
-#Preview("记忆页") { NavigationStack { MemoryLibraryView(backend: MemoryLibraryStub()) } }
+#Preview("记忆页") { NavigationStack { MemoryLibraryView(backend: MemoryLibraryStub(items: MemoryLibraryStub.sample)) } }
 #Preview("记忆页 · 空") { NavigationStack { MemoryLibraryView(backend: MemoryLibraryStub(items: [])) } }
