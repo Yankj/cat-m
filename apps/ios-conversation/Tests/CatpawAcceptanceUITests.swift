@@ -312,8 +312,22 @@ final class CatpawAcceptanceUITests: XCTestCase {
         Thread.sleep(forTimeInterval: 3); XCUIDevice.shared.press(.home); Thread.sleep(forTimeInterval: 2); screen("w2-s06-dynamic-island")
         app.activate(); Thread.sleep(forTimeInterval: 25)
         shot(app, "w2-s07-answer-actionrow")
-        let text = app.staticTexts.allElementsBoundByIndex.last(where: { $0.isHittable && $0.label.count > 30 })
-        if let text { text.press(forDuration: 0.8); Thread.sleep(forTimeInterval: 0.9); shot(app, "w2-s08-longpress"); app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.08)).tap(); Thread.sleep(forTimeInterval: 0.6) }
+        let bubble = app.descendants(matching: .any).matching(identifier: "chat.assistant.message").allElementsBoundByIndex.last(where: { $0.isHittable }) ?? app.descendants(matching: .any).matching(identifier: "chat.assistant.message").allElementsBoundByIndex.last
+        if let bubble { bubble.press(forDuration: 0.8); Thread.sleep(forTimeInterval: 0.9)
+            XCTAssertTrue(app.descendants(matching: .any)["chat.message.reactionBar"].exists, "#62 overlay")
+            shot(app, "w2-s08-longpress"); app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.95)).tap(); Thread.sleep(forTimeInterval: 0.8) }
+        // Tool card (pastel CategoryPaw): ask for a reminder → device_call confirm card.
+        let f2 = input(app); f2.tap(); Thread.sleep(forTimeInterval: 0.6); if !app.keyboards.firstMatch.exists { f2.tap(); Thread.sleep(forTimeInterval: 0.6) }
+        if app.keyboards.firstMatch.exists { f2.typeText("帮我在提醒事项里建一个明天上午9点的提醒：交周报")
+            app.buttons.matching(NSPredicate(format: "identifier == 'chat.send'")).allElementsBoundByIndex.first(where: { $0.isHittable && $0.isEnabled })?.tap()
+            if app.buttons["允许此对话"].waitForExistence(timeout: 3) { app.buttons["允许此对话"].tap() }
+            Thread.sleep(forTimeInterval: 25); app.swipeUp(); Thread.sleep(forTimeInterval: 0.5); shot(app, "w2-s08b-tool-card") }
+        // Proactive card via debug deep link (pastel CategoryPaw on the card).
+        app.terminate(); app.launchArguments = ["-CatpawSkipOnboarding", "-CatpawOpenURL", "catpawm://proactive/debug"]; app.launch()
+        if app.buttons["proactive.engine.resetLedger"].waitForExistence(timeout: 30) { app.buttons["proactive.engine.resetLedger"].tap(); app.buttons["debug.signal.addMeeting"].tap()
+            let run = app.buttons["debug.signal.run"]; var n = 0; while !(run.exists && run.isHittable) && n < 5 { app.swipeUp(); n += 1 }; run.tap(); Thread.sleep(forTimeInterval: 3) }
+        app.terminate(); app.launchArguments = ["-CatpawSkipOnboarding", "-CatpawOpenURL", "catpawm://proactive"]; app.launch(); Thread.sleep(forTimeInterval: 3); shot(app, "w2-s08c-proactive-card")
+        for l in ["完成", "Done"] where app.buttons[l].exists { app.buttons[l].tap(); break }; Thread.sleep(forTimeInterval: 0.8)
         func drawer() { for _ in 0..<3 where !app.buttons["sidebar.open"].exists { if app.navigationBars.buttons.firstMatch.exists { app.navigationBars.buttons.firstMatch.tap() }; Thread.sleep(forTimeInterval: 0.8) }
             if app.buttons["sidebar.open"].exists { app.buttons["sidebar.open"].tap(); Thread.sleep(forTimeInterval: 1) } }
         drawer(); shot(app, "w2-s09-drawer")
@@ -325,10 +339,10 @@ final class CatpawAcceptanceUITests: XCTestCase {
         for _ in 0..<4 where !app.buttons["settings.invite"].exists { app.swipeUp() }
         if app.buttons["settings.invite"].exists { app.buttons["settings.invite"].tap(); Thread.sleep(forTimeInterval: 1); shot(app, "w2-s14-invite-sheet") }
         // Dictation: first tap starts, second tap stops + commits (no alert).
-        app.terminate(); app.launch(); XCTAssertTrue(input(app).waitForExistence(timeout: 30)); Thread.sleep(forTimeInterval: 1)
+        app.terminate(); app.launchArguments = ["-CatpawSkipOnboarding"]; app.launch(); XCTAssertTrue(input(app).waitForExistence(timeout: 30)); Thread.sleep(forTimeInterval: 1)
         addUIInterruptionMonitor(withDescription: "perm") { alert in for l in ["允许", "好", "Allow", "OK"] where alert.buttons[l].exists { alert.buttons[l].tap(); return true }; return false }
         let mic = app.buttons["chat.composer.mic"]
-        if mic.exists { mic.tap(); Thread.sleep(forTimeInterval: 1.5); app.tap(); Thread.sleep(forTimeInterval: 1); screen("w2-s15-dictation-first-tap")
+        if mic.exists { mic.tap(); Thread.sleep(forTimeInterval: 0.35); screen("w2-s15-dictation-recording"); Thread.sleep(forTimeInterval: 1.2); screen("w2-s15b-dictation-after-1s5")
             if app.buttons["chat.composer.dictation.confirm"].exists { app.buttons["chat.composer.dictation.confirm"].tap() } else if mic.exists { mic.tap() }
             Thread.sleep(forTimeInterval: 1.5); screen("w2-s16-dictation-second-tap") }
         XCTAssertEqual(app.state, .runningForeground)
@@ -344,8 +358,8 @@ final class CatpawAcceptanceUITests: XCTestCase {
         app.buttons["chat.composer.add"].tap(); Thread.sleep(forTimeInterval: 1.2); app.swipeUp(velocity: .slow); Thread.sleep(forTimeInterval: 0.5)
         let thumb = app.descendants(matching: .any).matching(identifier: "chat.attach.thumb").firstMatch
         guard thumb.waitForExistence(timeout: 5) else { shot(app, "w2-v00-no-recent-photos"); return }
-        thumb.tap(); Thread.sleep(forTimeInterval: 1); shot(app, "w2-v01-image-attached")
-        let field = input(app); field.tap(); field.typeText("这是什么？")
+        thumb.tap(); Thread.sleep(forTimeInterval: 0.6); shot(app, "w2-v00-photo-selected"); let addSel = app.buttons["chat.attach.add"]; if addSel.exists { addSel.tap() }; Thread.sleep(forTimeInterval: 1.2); shot(app, "w2-v01-image-attached")
+        let field = input(app); field.tap(); Thread.sleep(forTimeInterval: 0.8); if !app.keyboards.firstMatch.exists { field.tap(); Thread.sleep(forTimeInterval: 0.8) }; if app.keyboards.firstMatch.exists { field.typeText("这是什么？") }
         let sends = app.buttons.matching(NSPredicate(format: "identifier == 'chat.send'")).allElementsBoundByIndex
         sends.first(where: { $0.isHittable })?.tap()
         for l in ["允许此对话", "允许发送图片", "允许"] where app.buttons[l].waitForExistence(timeout: 3) { shot(app, "w2-v02-image-consent"); app.buttons[l].tap(); break }
