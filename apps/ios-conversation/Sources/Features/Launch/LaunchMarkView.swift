@@ -3,7 +3,7 @@ import UIKit
 
 /// Launch splash matching docs/refs/launch-splash-keyframes.png.
 /// Soft beige canvas; four keyframes (~1.3 s), always completes:
-/// 0.0s 浮现 — faint translucent warm-orange cat-head mark emerges
+/// 0.0s 浮现 — warm-orange cat-head mark visible immediately (matches static launch)
 /// 0.3s 轻触 — solid cat-head mark forms
 /// 0.7s 呼吸 — slight scale-up + soft outer glow
 /// 1.1s 衔接 — merges into solid orange circle (white cat-head mark) with glow, then enters landing/main
@@ -60,7 +60,7 @@ import UIKit
     private func content(t: Double, width: CGFloat, height: CGFloat) -> some View {
         let size = max(96, width * 0.28)
         // 0.0 → 0.3 浮现：opacity + slight scale
-        let emerge = Self.ease(Self.window(t, 0.0, 0.30))
+        let emerge = 1.0 // visible from frame 0: continues the static launch cat-head, no blank first second
         // 0.3 → 0.55 轻触：reach full solid
         let form = Self.ease(Self.window(t, 0.22, 0.45))
         // 0.7 → 1.0 呼吸：scale + glow
@@ -70,10 +70,10 @@ import UIKit
         let merge = Self.ease(Self.window(t, 1.05, 1.32))
         // Chat exit: fade splash after merge. Onboarding: keep circle, fade only the pre-merge mark layer.
         let exitFade = toOrb ? 1.0 : 1 - Self.ease(Self.window(t, 1.32, Self.total))
-        let markOpacity = (0.22 + 0.78 * form) * emerge * (1 - merge) * exitFade
+        let markOpacity = (1 - merge) * exitFade
         let circleOpacity = merge * exitFade
         let glowStrength = (0.15 + 0.55 * breathe + 0.35 * merge) * emerge * exitFade
-        let markScale = (0.88 + 0.12 * emerge) * breathPulse * (1 - 0.08 * merge)
+        let markScale = (0.96 + 0.04 * form) * breathPulse * (1 - 0.08 * merge)
         let circleScale = 0.72 + 0.28 * merge
 
         return ZStack {
