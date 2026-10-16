@@ -4,7 +4,7 @@ import UIKit
 /// Launch splash matching docs/refs/launch-splash-keyframes.png.
 /// Soft beige canvas; four keyframes (~1.3 s), always completes:
 /// 0.0s 浮现 — faint translucent warm-orange cat-head mark emerges
-/// 0.3s 轻触 — solid paw forms
+/// 0.3s 轻触 — solid cat-head mark forms
 /// 0.7s 呼吸 — slight scale-up + soft outer glow
 /// 1.1s 衔接 — merges into solid orange circle (white cat-head mark) with glow, then enters landing/main
 /// Soft spring-like eased windows. Reduce Motion: short fade of the final circle only.
@@ -66,14 +66,14 @@ import UIKit
         // 0.7 → 1.0 呼吸：scale + glow
         let breathe = Self.ease(Self.window(t, 0.55, 0.85))
         let breathPulse = 1 + 0.06 * breathe
-        // 1.1 → 1.35 衔接：circle blooms; paw turns white inside
+        // 1.1 → 1.35 衔接：circle blooms; mark turns white inside
         let merge = Self.ease(Self.window(t, 1.05, 1.32))
-        // Chat exit: fade splash after merge. Onboarding: keep circle, fade only the pre-merge paw layer.
+        // Chat exit: fade splash after merge. Onboarding: keep circle, fade only the pre-merge mark layer.
         let exitFade = toOrb ? 1.0 : 1 - Self.ease(Self.window(t, 1.32, Self.total))
-        let pawOpacity = (0.22 + 0.78 * form) * emerge * (1 - merge) * exitFade
+        let markOpacity = (0.22 + 0.78 * form) * emerge * (1 - merge) * exitFade
         let circleOpacity = merge * exitFade
         let glowStrength = (0.15 + 0.55 * breathe + 0.35 * merge) * emerge * exitFade
-        let pawScale = (0.88 + 0.12 * emerge) * breathPulse * (1 - 0.08 * merge)
+        let markScale = (0.88 + 0.12 * emerge) * breathPulse * (1 - 0.08 * merge)
         let circleScale = 0.72 + 0.28 * merge
 
         return ZStack {
@@ -124,8 +124,8 @@ import UIKit
 
             // Pre-merge warm-orange cat-head mark (keyframes 1–3).
             BrandMark(size: size, style: .fill)
-                .scaleEffect(pawScale)
-                .opacity(pawOpacity)
+                .scaleEffect(markScale)
+                .opacity(markOpacity)
         }
     }
 }
