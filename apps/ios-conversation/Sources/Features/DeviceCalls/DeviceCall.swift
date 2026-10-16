@@ -277,6 +277,7 @@ extension DeviceResultSubmitting { func reportUndo(callID: String, outcome: Devi
     }
     /// Signed-in user id (NativeAuthApplicationModel); nil when signed out → nothing may run.
     static var currentAccount: () -> String? = { nil }
+    static var epoch: AccountEpoch = .shared   // red scaffold: not yet used
     static var wallClock: () -> Date = { Date() }
     static var uptime: () -> TimeInterval = { ProcessInfo.processInfo.systemUptime }
     private(set) static var generation = 0
