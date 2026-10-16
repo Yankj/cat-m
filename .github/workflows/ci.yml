@@ -1,0 +1,58 @@
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      ios: ${{ steps.filter.outputs.ios }}
+      edge: ${{ steps.filter.outputs.edge }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            ios:
+              - 'apps/ios-conversation/**'
+              - '.github/workflows/**'
+            edge:
+              - 'services/edge/**'
+              - '.github/workflows/**'
+  edge-node-tests:
+    needs: changes
+    if: ${{ needs.changes.outputs.edge == 'true' || github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - name: node --test (offline harness, type-stripped .ts, npm stubs)
+        if: ${{ hashFiles('services/edge/scripts/ci-node-tests.sh') != '' }}   # script lands with feat/chat-ux-p0
+        working-directory: services/edge
+        run: ./scripts/ci-node-tests.sh   # 8 quarantined files: https://github.com/Yankj/catpaw-m/issues/81
+  ios-portable-and-build:
+    needs: changes
+    if: ${{ needs.changes.outputs.ios == 'true' || github.event_name == 'workflow_dispatch' }}
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select newest Xcode (glassEffect needs the iOS 26+ SDK)
+        run: |
+          X=$(ls -d /Applications/Xcode_*.app | sort -V | tail -1); echo "using $X"; sudo xcode-select -s "$X"; xcodebuild -version
+      - name: NoBug P0 portable unit tests
+        if: ${{ hashFiles('apps/ios-conversation/Scripts/test-nobug-p0.sh') != '' }}   # script lands with feat/chat-ux-p0
+        working-directory: apps/ios-conversation
+        run: ./Scripts/test-nobug-p0.sh
+      - name: Project membership
+        working-directory: apps/ios-conversation
+        run: python3 Scripts/validate-project.py
+      - name: xcodebuild build-for-testing (simulator)
+        working-directory: apps/ios-conversation
+        run: xcodebuild -project CatpawM.xcodeproj -scheme CatpawM -destination 'generic/platform=iOS Simulator' build-for-testing CODE_SIGNING_ALLOWED=NO
