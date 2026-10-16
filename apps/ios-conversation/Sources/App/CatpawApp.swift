@@ -157,6 +157,11 @@ import AppIntents
                     UserDefaults.standard.removeObject(forKey: "CatpawOpenURL")
                     CatpawRouteCenter.shared.pending = CatpawAppRoute(url: url)
                 }
+                // Demo chains: pin route/model before the first turn (e.g. CATPAW_MODEL_ROUTE=gemini).
+                if let route = ProcessInfo.processInfo.environment["CATPAW_MODEL_ROUTE"], !route.isEmpty {
+                    let model = ProcessInfo.processInfo.environment["CATPAW_MODEL"].flatMap { $0.isEmpty ? nil : $0 }
+                    ModelRouteSelection.select(route: route, model: model)
+                }
             }
             #endif
             .task { if bootstrap.isP0Fixture { await bootstrap.startFixture() } else if bootstrap.model == nil { await auth.start() } }
