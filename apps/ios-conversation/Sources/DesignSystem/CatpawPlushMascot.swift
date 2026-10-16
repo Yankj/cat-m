@@ -1,6 +1,9 @@
 import SwiftUI
 import AVFoundation
 import UIKit
+import os
+
+private let mascotLog = Logger(subsystem: "catpaw", category: "mascot")
 
 /// 毛绒小伙伴 plush mascot (`Assets.xcassets/CatpawBrand/Mascot/`).
 /// Six poses: 等待 · 思考 · 写回复 · 执行 · 完成 · 出错. Reduce Motion → still pose.
@@ -207,10 +210,12 @@ private struct PlushMascotClip: UIViewRepresentable {
     final class ClipView: UIView {
         override class var layerClass: AnyClass { AVPlayerLayer.self }
         private var playerLayer: AVPlayerLayer { layer as! AVPlayerLayer }
-        private let player = AVQueuePlayer()
+        private var player: AVQueuePlayer?
         private var looper: AVPlayerLooper?
         private var statusObs: NSKeyValueObservation?
         private var wantsPlay = true
+        private var url: URL?
+        private var onFail: () -> Void = {}
 
         init(url: URL, onFail: @escaping () -> Void) {
             super.init(frame: .zero)
@@ -218,32 +223,35 @@ private struct PlushMascotClip: UIViewRepresentable {
             playerLayer.backgroundColor = UIColor.clear.cgColor
             playerLayer.pixelBufferAttributes = [kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA]
             playerLayer.videoGravity = .resizeAspect
-            player.isMuted = true
-            player.preventsDisplaySleepDuringVideoPlayback = false
-            player.audiovisualBackgroundPlaybackPolicy = .pauses
             self.onFail = onFail
-            playerLayer.player = player
             load(url)
         }
-        private var url: URL?
-        private var onFail: () -> Void = {}
+        /// Pose change: build a fresh player + looper. Re-seeding one AVQueuePlayer with a second
+        /// AVPlayerLooper left the layer showing the first clip (header stuck on the idle pose).
         func load(_ next: URL) {
             guard next != url else { return }
             url = next
-            statusObs = nil; looper?.disableLooping(); player.removeAllItems()
-            looper = AVPlayerLooper(player: player, templateItem: AVPlayerItem(url: next))
+            mascotLog.info("clip load \(next.lastPathComponent, privacy: .public)")
+            teardown()
+            let p = AVQueuePlayer()
+            p.isMuted = true
+            p.preventsDisplaySleepDuringVideoPlayback = false
+            p.audiovisualBackgroundPlaybackPolicy = .pauses
+            let l = AVPlayerLooper(player: p, templateItem: AVPlayerItem(url: next))
             let fail = onFail
-            statusObs = looper?.observe(\.status) { l, _ in
+            statusObs = l.observe(\.status) { l, _ in
                 if l.status == .failed { DispatchQueue.main.async { fail() } }
             }
+            player = p; looper = l
+            playerLayer.player = p
             apply()
         }
         required init?(coder: NSCoder) { nil }
 
         override func didMoveToWindow() { super.didMoveToWindow(); apply() }
         func setPlaying(_ on: Bool) { wantsPlay = on; apply() }
-        private func apply() { if wantsPlay && window != nil { player.play() } else { player.pause() } }
-        func teardown() { player.pause(); statusObs = nil; looper?.disableLooping(); looper = nil; playerLayer.player = nil }
+        private func apply() { if wantsPlay && window != nil { player?.play() } else { player?.pause() } }
+        func teardown() { player?.pause(); statusObs = nil; looper?.disableLooping(); looper = nil; player = nil; playerLayer.player = nil }
     }
 }
 
@@ -288,7 +296,9 @@ struct PlushMascotWell: View {
         // The cat lives in an overlay so scaling never affects layout; when popped it is unclipped and
         // drawn above the rim (the part crossing the edge sits in front of it).
         .overlay {
-            PlushMascot(pose: popped ? .done : PlushMascotPose(state), size: size)
+            // The pop is scale/offset only; it never overrides the pose (it used to force .done, so every
+            // PopHold preview showed the same happy cat).
+            PlushMascot(pose: PlushMascotPose(state), size: size)
                 .frame(width: well, height: well)
                 .clipShape(Circle().scale(popped ? 3 : 1))
                 .scaleEffect(popped ? 1.7 : 1, anchor: .bottom)
@@ -298,7 +308,10 @@ struct PlushMascotWell: View {
         .zIndex(popped ? 10 : 0)
         .contentShape(Circle())
         .onTapGesture { pop() }
-        .onChange(of: state) { _, s in if s == .done { pop() } }
+        .onChange(of: state) { _, s in
+            mascotLog.info("header state \(String(describing: s), privacy: .public)")
+            if s == .done { pop() }
+        }
         .onChange(of: conversationKey, initial: true) { _, _ in
             if CatpawAcceptanceLaunch.mascotPopHold { popped = true } else { pop(delay: 0.6) }
         }
