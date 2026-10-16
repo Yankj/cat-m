@@ -159,7 +159,9 @@ import CatpawImageComposer
                 }
             }
             Section {
-                Label(connectionMonitor.state.labelKey.map{ui($0.key,arguments:$0.arguments)} ?? ui("连接正常"), systemImage: connectionMonitor.state == .online ? "wifi" : "wifi.slash")
+                // Same state source as Settings › 模型 (ModelRouteCatalog.presence): live green only when online.
+                Label { Text(menuPresenceLine) } icon: { StatusDotImage.image(menuPresence.online ? ConnectionStatusKind.liveGreen : ConnectionStatusKind.neutralDot) }
+                    .accessibilityIdentifier("chat.menu.connection")
                 Button { path.append(.settings) } label: { Label(ui("设置"), systemImage:"slider.horizontal.3") }.accessibilityIdentifier("chat.settings")
             }
             } label: {
@@ -191,6 +193,14 @@ import CatpawImageComposer
         if presenceHub.state != nil, !presenceHub.step.isEmpty { return presenceHub.step }
         let pose = PlushMascotPose(headerCatState)
         return pose == .idle ? r8ModelLabel : ui(pose.statusKey)
+    }
+    private var menuPresence: ModelRouteCatalog.Presence { routeCatalog.presence(connection: .from(connectionMonitor.state)) }
+    /// 「连接正常 · Gemini」 when online; otherwise the monitor's own label.
+    private var menuPresenceLine: String {
+        let p = menuPresence
+        guard p.online else { return connectionMonitor.state.labelKey.map{ui($0.key,arguments:$0.arguments)} ?? ui("未连接") }
+        if let a = p.actualID { return ui("连接正常") + " · " + routeCatalog.displayName(a) }
+        return ui("连接正常")
     }
     /// Header plush pose from connection + turn hub (six-state 毛绒小伙伴 set).
     private var headerCatState: CatpawPresenceState {
@@ -1318,43 +1328,10 @@ private struct ConversationPendingMessageEditor:View {
                     LabeledContent(ui("构建号"), value:Bundle.main.object(forInfoDictionaryKey:"CFBundleVersion") as? String ?? "—")
                         .textSelection(.enabled).accessibilityIdentifier("settings.appBuild")
                 }
-                Section(ui("模型连接")) {
-                    ConnectionStatusRow(
-                        kind: {
-                            if model.connectionLifecycle == .checking || model.connectionLifecycle == .reconnecting { return .error }
-                            switch model.connection.state {
-                            case .connected, .providerUnverified: return .online
-                            case .notConfigured: return .offline
-                            case .unavailable: return .error
-                            }
-                        }(),
-                        detail: ui(model.connection.detail),
-                        refreshing: model.connectionLifecycle == .checking || refreshingConnection
-                    )
-                    .accessibilityIdentifier("connection.state")
-                    if let modelID = model.connection.model { LabeledContent(ui("已验证模型")) { Text(modelID).foregroundStyle(CatpawColors.secondary) } }
-                    if let at=model.connection.verifiedReplyAt {LabeledContent(ui("最近确认回复"),value:at.formatted(date:.omitted,time:.shortened))}
-                    Button {
-                        Task {
-                            refreshingConnection = true
-                            await model.refreshConnection()
-                            await ModelRouteCatalog.shared.refresh()
-                            refreshingConnection = false
-                        }
-                    } label: {
-                        HStack {
-                            Text(ui("重新检查连接"))
-                            Spacer()
-                            if refreshingConnection || model.connectionLifecycle == .checking { ProgressView().controlSize(.small) }
-                        }
-                    }
-                    .accessibilityIdentifier("connection.refresh")
-                    .disabled(refreshingConnection)
-                }
+                ModelSettingsSection(model: model)
                 FeatureEnrollmentSection()
                 AppModelConsentSection()
                 #if DEBUG || DEVICE_TRIAL
-                ModelRoutesSettingsView()
                 Section(ui("调试")) { NavigationLink(ui("主动信号模拟")) { ProactiveSignalDebugView() }.accessibilityIdentifier("settings.debug.proactiveSignals") }
                 #endif
                 Section(ui("数据")) { Text(model.connection.state == .notConfigured ? ui("当前未连接云端；输入保存在此设备。") : ui("此设备保存对话副本；发送的消息会交给已连接的云端服务处理。")); Text(ui("离开 App 后不会发送排队中的消息。任务后台执行的状态需要重新读取确认。")).font(CatpawTypography.Role.caption.font) }

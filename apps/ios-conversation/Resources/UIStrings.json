@@ -6422,5 +6422,53 @@
   "尚未允许；下次发送消息时会询问一次，之后新对话沿用。": {
     "en": "Not allowed yet; you'll be asked once on your next message, then new conversations reuse it.",
     "zh-Hans": "尚未允许；下次发送消息时会询问一次，之后新对话沿用。"
+  },
+  "当前：自动，实际在用 {0} · {1}": {
+    "en": "Current: Auto, actually using {0} \u00b7 {1}",
+    "zh-Hans": "当前：自动，实际在用 {0} · {1}"
+  },
+  "当前：自动 · {0}": {
+    "en": "Current: Auto \u00b7 {0}",
+    "zh-Hans": "当前：自动 · {0}"
+  },
+  "当前：{0} · {1}": {
+    "en": "Current: {0} \u00b7 {1}",
+    "zh-Hans": "当前：{0} · {1}"
+  },
+  "免费 · 待选": {
+    "en": "Free \u00b7 Available",
+    "zh-Hans": "免费 · 待选"
+  },
+  "待选": {
+    "en": "Available",
+    "zh-Hans": "待选"
+  },
+  "实际在用": {
+    "en": "In use",
+    "zh-Hans": "实际在用"
+  },
+  "失败时依次切换：{0}": {
+    "en": "Fails over in order: {0}",
+    "zh-Hans": "失败时依次切换：{0}"
+  },
+  "隐私与数据": {
+    "en": "Privacy & data",
+    "zh-Hans": "隐私与数据"
+  },
+  "连接详情": {
+    "en": "Connection details",
+    "zh-Hans": "连接详情"
+  },
+  "最近路由": {
+    "en": "Latest route",
+    "zh-Hans": "最近路由"
+  },
+  "已切换": {
+    "en": "Switched",
+    "zh-Hans": "已切换"
+  },
+  "路由状态": {
+    "en": "Route status",
+    "zh-Hans": "路由状态"
   }
 }
