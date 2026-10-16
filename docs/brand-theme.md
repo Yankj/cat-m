@@ -10,7 +10,7 @@ Single source of truth for palette and logo. Brand sheet refs live in `docs/refs
 | Semantic colors | `CatpawColors` in `Components.swift` | `ink`, `secondary`, `fill`/`action`/`primary`, `attention`, calm/orb roles — **use these at call sites** |
 | Identity alias | `CatpawBrand` in `CatpawMotion.swift` | `paw` → `CatpawColors.fill`; clay roles for presence animation |
 | Mark view | `BrandMark` | Cat-head asset wrapper (template / fill / onOrange) |
-| Assets | `Resources/Assets.xcassets/CatpawBrand/` | `BrandMark*`, `LaunchPaw*`, `LaunchFirstFrame`, `LaunchGlow` |
+| Assets | `Resources/Assets.xcassets/CatpawBrand/` | `BrandMark*`, `LaunchFirstFrame` (orange orb + white mark) |
 | App icon | `Assets.xcassets/AppIcon.appiconset` | Soft 3D white-on-orange hero (stays at catalog root) |
 | Launch canvas | `LaunchCanvas.colorset` + storyboard | Warm background `#FFFCF8` |
 
@@ -37,6 +37,13 @@ Composer send/stop morph and voice-capsule chrome are owned by the Mac worker �
 | Grey `#929298` | `CatpawColors.tertiary` (muted) | Placeholders / chrome |
 | Grey → `#6E6A66` | `CatpawColors.secondary` (`secondaryLight`) | ≥4.5:1 secondary text on Background/panel |
 | Ink `#292622` | `CatpawColors.ink` | Primary text |
+
+## Launch splash
+
+- Static `LaunchScreen.storyboard` shows `LaunchFirstFrame`: cream `LaunchCanvas` + orange orb with white cat-head (`BrandMarkOnOrange`).
+- Animated `LaunchMarkView` uses `BrandMark` only (`.fill` → merge `.onOrange`). No jelly / 4-pad paw on splash.
+- Obsolete imagesets removed: `LaunchPaw`, `LaunchPawMark`, `LaunchGlow`. Do not regenerate them.
+- Regenerate the static frame: `python3 apps/ios-conversation/design/brand/render_brand.py apps/ios-conversation/Resources/Assets.xcassets`.
 
 ## How to swap the palette later
 
