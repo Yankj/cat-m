@@ -90,7 +90,7 @@ public actor ConversationMemoryService {
     }
     private var key:String {"conversation_memory_v1:"+reference.subjectID.uuidString.lowercased()+":"+reference.serverScopeID.uuidString.lowercased()}
     private func load() async throws -> (ConversationMemoryLocalState,StoredRecord?) {
-        let record:StoredRecord
+        var record:StoredRecord
         do {record=try await repository.record(stableID(key),scope:reference.scope)}catch CatpawError.missing {return (.init(reference:reference),nil)}
         guard case .preference(let p)=record.payload,p.key==key,p.value.utf8.count<=2_000_000 else {throw ConversationMemoryError.invalidResponse}
         guard let plain=ConversationMemoryAtRest.open(p.value,subject:reference.subjectID) else {return (.init(reference:reference),record)}   // other key / shredded at sign-out: start empty
@@ -98,6 +98,11 @@ public actor ConversationMemoryService {
         guard state.schemaVersion==1,state.subjectID==reference.subjectID,state.serverScopeID==reference.serverScopeID else {throw ConversationMemoryError.invalidResponse}
         if let value=state.latest {try value.validate(reference)}
         if let pending=state.pending {try pending.request.command.validate()}
+        // Codex PR91 p91b-5: an old plaintext row is re-written sealed on first read (active migration).
+        if !ConversationMemoryAtRest.isSealed(p.value),ConversationMemoryAtRest.sealer != nil {
+            try await save(state,record:record)
+            record=try await repository.record(stableID(key),scope:reference.scope)
+        }
         return (state,record)
     }
     private func save(_ state:ConversationMemoryLocalState,record:StoredRecord?) async throws {
@@ -118,8 +123,19 @@ enum ConversationMemoryAtRest {
     static let prefix = "l2:"
     nonisolated(unsafe) static var sealer: ((Data, UUID) throws -> Data)?
     nonisolated(unsafe) static var opener: ((Data, UUID) throws -> Data)?
+    /// Codex PR91 p91b-5: no plaintext fallback in release builds — without a sealer the write fails.
+    /// Debug / fixture builds keep plaintext rows so test runners without L2 still work.
+    nonisolated(unsafe) static var allowPlaintext: Bool = {
+        #if DEBUG
+        true
+        #else
+        false
+        #endif
+    }()
+    struct NoSealer: Error {}
+    static func isSealed(_ value: String) -> Bool { value.hasPrefix(prefix) }
     static func seal(_ data: Data, subject: UUID) throws -> String {
-        guard let sealer else { return String(decoding: data, as: UTF8.self) }
+        guard let sealer else { guard allowPlaintext else { throw NoSealer() }; return String(decoding: data, as: UTF8.self) }
         return prefix + (try sealer(data, subject)).base64EncodedString()
     }
     /// nil = sealed but cannot be opened (another account's or shredded key).

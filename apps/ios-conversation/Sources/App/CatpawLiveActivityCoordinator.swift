@@ -137,6 +137,17 @@ import ActivityKit
         }
     }
 
+    /// Codex PR91 p91b-3: sign-out. Cancels every pending 5 s start timer (so no `Activity.request` fires after sign-out),
+    /// drops tracked turns and token observers, and ends every work activity — including ones from before a relaunch.
+    func resetForSignOut() {
+        for turn in turns.values { turn.timer?.cancel() }
+        turns.removeAll()
+        for task in tokenObservers.values { task.cancel() }
+        tokenObservers.removeAll()
+        let ending = Activity<CatpawWorkAttributes>.activities
+        Task { for a in ending { await a.end(nil, dismissalPolicy: .immediate) } }
+    }
+
     private var pushToStartObserver: Task<Void, Never>?
     /// Push-to-start (iOS 17.2+): lets the server start a Live Activity, e.g. for `reminder_due`.
     private func observePushToStartTokens() {
