@@ -333,6 +333,7 @@ import EventKit
         let copy = EKEvent(eventStore: store); copy.title = "p89h multi"; copy.startDate = start.addingTimeInterval(3600); copy.endDate = start.addingTimeInterval(5400)
         copy.notes = DeviceToolContract.callMarker(call.call_id); copy.calendar = store.defaultCalendarForNewEvents
         try store.save(copy, span: .thisEvent, commit: true)
+        let copyID = try XCTUnwrap(copy.eventIdentifier)
         let restored = await router.lookup(call)
         XCTAssertNil(restored, "restore never picks one of several")
         var trace: [String] = []; DeviceToolRouter.trace = { trace.append($0) }
@@ -347,7 +348,7 @@ import EventKit
         XCTAssertEqual(ledger.undo(callID: call.call_id), .unknown, "id resolves but the marker is not unique → unknown")
         XCTAssertFalse(ledger.isUndone(callID: call.call_id))
         XCTAssertEqual(events(with: [call.call_id], around: start), 2, "nothing deleted")
-        store.reset(); if let c = store.event(withIdentifier: copy.eventIdentifier) { try store.remove(c, span: .thisEvent, commit: true) }
+        store.reset(); if let c = store.event(withIdentifier: copyID) { try store.remove(c, span: .thisEvent, commit: true) }
         XCTAssertEqual(ledger.undo(callID: call.call_id), .undone, "counter-case: unique + identity match → really deleted")
         XCTAssertEqual(events(with: [call.call_id], around: start), 0)
     }
@@ -624,6 +625,7 @@ actor HeldStreamUIBackend: ConversationBackend {
         let repo = try Repository(persistence: FilePersistence(url: FileManager.default.temporaryDirectory.appendingPathComponent("uiprod-\(UUID().uuidString).json")))
         let backend = CountingDemoBackend()
         let service = ConversationSessionService(repository: repo, backend: backend, principalAccount: account)
+        await service.setUIClock { Date(timeIntervalSince1970: 1_700_000_000) }   // demo blocks carry fixed 2026 deadlines
         let conversation = try await service.create(scope: Profiles.user)
         let operation = UUID()
         _ = try await service.send(scope: Profiles.user, conversationID: conversation, text: "帮我建个跑步任务，再弹个窗", operationID: operation)
