@@ -82,8 +82,11 @@ enum NearbyRules {
         return "tel:\(digits)"
     }
     /// Why line: cites memories (content), the mode source, and the origin honestly.
-    static func why(prefs: Preferences, mode: Mode, modeFromArg: Bool, originNote: String) -> String {
+    static func why(prefs: Preferences, mode: Mode, modeFromArg: Bool, originNote: String, radius: Double = radii[0]) -> String {
         var parts: [String] = []
+        if radius > radii[0] {
+            parts.append("\(Int(radii[0] / 1000)) 公里内不足 \(minResults) 家，已扩到 \(Int(radius / 1000)) 公里")
+        }
         let kw = tasteKeywords(prefs)
         if !kw.likes.isEmpty || !kw.dislikes.isEmpty {
             parts.append("按口味记忆「" + prefs.tastes.map(\.content).joined(separator: "」「") + "」调整了排序（" + (kw.likes.isEmpty ? "" : "优先含 " + kw.likes.joined(separator: "/")) + (kw.dislikes.isEmpty ? "" : (kw.likes.isEmpty ? "" : "，") + "靠后含 " + kw.dislikes.joined(separator: "/")) + "）")
