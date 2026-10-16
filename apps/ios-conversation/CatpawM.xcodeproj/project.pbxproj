@@ -88,8 +88,6 @@ BA4CF9CD04833C9FB39E1B7B = { isa = PBXFileReference; lastKnownFileType = sourcec
 B39E1B7BAD4911DDEC91E260 = { isa = PBXBuildFile; fileRef = BA4CF9CD04833C9FB39E1B7B; };
 7433E7858A35768B46A00DA7 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/Features/Proactive/ProactiveRules.swift"; sourceTree = "<group>"; };
 46A00DA725AFB04899D5CAFC = { isa = PBXBuildFile; fileRef = 7433E7858A35768B46A00DA7; };
-D0F3A1000000000000000001 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/Features/Proactive/ProactiveDelivery.swift"; sourceTree = "<group>"; };
-D0F3A1000000000000000002 = { isa = PBXBuildFile; fileRef = D0F3A1000000000000000001; };
 F3DB4104CDCCCCD2638F6B4C = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/Features/Memory/MemoryLibraryLocal.swift"; sourceTree = "<group>"; };
 638F6B4CC203FEDBD68E976C = { isa = PBXBuildFile; fileRef = F3DB4104CDCCCCD2638F6B4C; };
 A4B25EADD8B04CE1BFE12DA3 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/Features/Proactive/ReminderTaskListSource.swift"; sourceTree = "<group>"; };

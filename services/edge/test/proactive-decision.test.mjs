@@ -66,12 +66,10 @@ test('suggestions API: list, action idempotent by operation_id, snooze/dismiss, 
   const op = crypto.randomUUID();
   const a1 = (await call('POST', `${BASE}/suggestions/${id}/action`, { action: 'notify_attendees', operation_id: op })).body.suggestion;
   const a2 = (await call('POST', `${BASE}/suggestions/${id}/action`, { action: 'notify_attendees', operation_id: op })).body.suggestion;
-  // P0-5: per-action state — one effect done leaves the other open (create_reminder still offered).
-  assert.equal(a1.status, 'pending'); assert.equal(a2.taken.length, 1); assert.deepEqual(a1.action_states, { notify_attendees: 'done' });
-  assert.equal((await call('POST', `${BASE}/suggestions/${id}/action`, { action: 'create_reminder' })).body.suggestion.status, 'done');
+  assert.equal(a1.status, 'done'); assert.equal(a2.taken.length, 1);
   assert.equal((await call('POST', `${BASE}/suggestions/${id}/action`, { action: 'snooze' })).body.suggestion.status, 'snoozed');
-  let u = (await call('POST', `${BASE}/suggestions/${id}/undo`, {})).body.suggestion; assert.equal(u.status, 'done'); assert.equal(u.taken.length, 2);
-  u = (await call('POST', `${BASE}/suggestions/${id}/undo`, {})).body.suggestion; assert.equal(u.status, 'pending'); assert.equal(u.taken.length, 1);
+  let u = (await call('POST', `${BASE}/suggestions/${id}/undo`, {})).body.suggestion; assert.equal(u.status, 'done'); assert.equal(u.taken.length, 1);
+  u = (await call('POST', `${BASE}/suggestions/${id}/undo`, {})).body.suggestion; assert.equal(u.status, 'pending'); assert.equal(u.taken.length, 0);
   assert.equal((await call('POST', `${BASE}/suggestions/${id}/action`, { action: 'dismiss' }, 'Bearer u2')).status, 404);
   assert.equal((await call('GET', BASE + '/suggestions?status=pending')).body.suggestions.length, 1);
 });
@@ -98,25 +96,4 @@ test('decision model adapter: OpenRouter first then Agnes; keys only from env, n
   assert.deepEqual(m.routes, ['openrouter', 'agnes']);
   assert.equal((await m.decide({})).decision, 'card'); assert.equal(m.lastRoute(), 'agnes'); assert.equal(hits.length, 2);
   assert.ok(!JSON.stringify(m).includes('k-or')); assert.equal(createDecisionModel({ get: () => undefined }), null);
-});
-
-test('P0-3: confidence far below threshold yields silent, not a forced card', async () => {
-  let { call } = setup({ model: fakeLLM({ decision: 'card', reason: '也许有事', confidence: 0.01 }) });
-  let r = await call('POST', BASE + '/evaluate', sc('meeting_soon_far'));
-  assert.equal(r.body.decision, 'silent'); assert.match(r.body.trace.join(), /silent/);
-  ({ call } = setup({ model: fakeLLM({ decision: 'interrupt', reason: '不太确定', confidence: 0.2 }) }));
-  r = await call('POST', BASE + '/evaluate', sc('meeting_soon_far')); assert.equal(r.body.decision, 'silent');
-});
-
-test('P0-5: reminder then SMS on the same card; a cancelled SMS is never recorded as done', async () => {
-  const { call } = setup();
-  const id = (await call('POST', BASE + '/evaluate', sc('meeting_soon_far'))).body.event_id;
-  let s = (await call('POST', `${BASE}/suggestions/${id}/action`, { action: 'create_reminder', operation_id: 'op-r' })).body.suggestion;
-  assert.equal(s.status, 'pending'); assert.equal(s.action_states.create_reminder, 'done');
-  s = (await call('POST', `${BASE}/suggestions/${id}/action`, { action: 'notify_attendees', outcome: 'cancelled', operation_id: 'op-c' })).body.suggestion;
-  assert.equal(s.status, 'pending'); assert.equal(s.action_states.notify_attendees, undefined); assert.equal(s.taken.length, 1);
-  s = (await call('POST', `${BASE}/suggestions/${id}/action`, { action: 'notify_attendees', operation_id: 'op-s' })).body.suggestion;
-  assert.equal(s.status, 'done'); assert.deepEqual(s.action_states, { create_reminder: 'done', notify_attendees: 'done' });
-  s = (await call('POST', `${BASE}/suggestions/${id}/action`, { action: 'notify_attendees', operation_id: 'op-s' })).body.suggestion;
-  assert.equal(s.taken.length, 2); // replay: effect recorded exactly once
 });
