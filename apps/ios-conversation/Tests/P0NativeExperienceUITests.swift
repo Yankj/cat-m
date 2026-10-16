@@ -161,6 +161,8 @@ final class P0NativeExperienceUITests:XCTestCase {
         clear(input);input.typeText("Synthetic message action check");app.buttons["chat.send"].tap()
         wait({self.probe(app)["turn_state"] as? String == "completed"},seconds:10)
         input.tap();input.typeText("Preserve my unfinished draft")
+        let more=app.buttons.matching(NSPredicate(format:"identifier BEGINSWITH %@","chat.answer.more.")).firstMatch
+        XCTAssertTrue(more.waitForExistence(timeout:3));more.tap()
         let quote=app.buttons.matching(NSPredicate(format:"identifier BEGINSWITH %@","chat.answer.quote.")).firstMatch
         XCTAssertTrue(quote.waitForExistence(timeout:3));quote.tap()
         let draft=input.value as? String ?? ""
