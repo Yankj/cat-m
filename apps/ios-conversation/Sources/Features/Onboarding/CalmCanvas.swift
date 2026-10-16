@@ -53,7 +53,11 @@ struct CalmOrb: View {
                     .frame(width: size, height: size)
                     .shadow(color: CalmPalette.orbDeep.opacity(0.35), radius: 16, y: 8)
                     .scaleEffect(1 + 0.025 * b)
-                Image(systemName: glyph).resizable().scaledToFit().frame(width: size * 0.26, height: size * 0.26).foregroundStyle(CatpawColors.calmGlyph.opacity(0.95))
+                if glyph == "pawprint.fill" {
+                    BrandMark(size: size * 0.42, style: .onOrange)
+                } else {
+                    Image(systemName: glyph).resizable().scaledToFit().frame(width: size * 0.26, height: size * 0.26).foregroundStyle(CatpawColors.calmGlyph.opacity(0.95))
+                }
             }
         }
         .accessibilityHidden(true)
