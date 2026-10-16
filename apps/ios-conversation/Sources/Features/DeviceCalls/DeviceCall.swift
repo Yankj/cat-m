@@ -152,7 +152,7 @@ extension DeviceResultSubmitting { func reportUndo(callID: String, outcome: Devi
     func set(_ id: String, _ p: Phase) { phases[id] = p; persist(id, p, call: nil) }
     func isInterrupted(_ id: String) -> Bool { interrupted.contains(id) }
     func record(_ id: String) -> Record? { records[id] }
-    func reset() { phases = [:]; edited = [:]; seen = [:]; records = [:]; interrupted = []; defaults.removeObject(forKey: Self.storageKey) }
+    func reset() { phases = [:]; edited = [:]; seen = [:]; records = [:]; interrupted = []; defaults.removeObject(forKey: Self.storageKey); undoQueue = .init(); defaults.removeObject(forKey: Self.undoKey) }
 
     private func persist(_ id: String, _ p: Phase, call: DeviceCall?) {
         records[id] = .init(phase: p, call: call ?? records[id]?.call, updatedAt: .now)
@@ -194,12 +194,30 @@ extension DeviceResultSubmitting { func reportUndo(callID: String, outcome: Devi
     /// Never re-executes; the server is idempotent per operation_id. Returns how many were acknowledged.
     @discardableResult func retryPendingReports() async -> Int {
         guard DeviceCallHub.submitter != nil else { return 0 }
+        await retryUndoReports()
         var ok = 0
         for id in pendingReportIDs where !retrying.contains(id) {
             retrying.insert(id); await retryReport(id); retrying.remove(id)
             if case .done = phase(id) { ok += 1 }
         }
         return ok
+    }
+    // Chat-UX #6: undo reports are queued durably first, so a failure (offline, app restart, unknown turn) retries later.
+    static let undoKey = "catpaw.devicecall.undos.v1"
+    private(set) lazy var undoQueue: DeviceUndoQueue = defaults.data(forKey: Self.undoKey).flatMap { try? JSONDecoder().decode(DeviceUndoQueue.self, from: $0) } ?? .init()
+    private func saveUndoQueue() { if let data = try? JSONEncoder().encode(undoQueue) { defaults.set(data, forKey: Self.undoKey) } }
+    func reportUndo(callID: String, outcome: DeviceUndoOutcome) async {
+        undoQueue.enqueue(callID, outcome); saveUndoQueue()
+        await retryUndoReports()
+    }
+    private var drainingUndos = false
+    func retryUndoReports() async {
+        guard !drainingUndos, !undoQueue.isEmpty, let submitter = DeviceCallHub.submitter else { return }
+        drainingUndos = true; defer { drainingUndos = false }
+        for (id, outcome) in undoQueue.pending.sorted(by: { $0.key < $1.key }) {
+            do { try await submitter.reportUndo(callID: id, outcome: outcome); if undoQueue.pending[id] == outcome { undoQueue.acknowledge(id) } } catch {}
+        }
+        saveUndoQueue()
     }
     func retryReport(_ id: String) async {
         let submitter = DeviceCallHub.submitter

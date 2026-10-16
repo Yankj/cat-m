@@ -225,11 +225,11 @@ struct DeviceCallSpec: Sendable {
             Text(message).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary).fixedSize(horizontal: false, vertical: true)
         }
     }
-    /// Chat-UX #6: delete by call_id (same ledger/EventKit path as 任务's 撤销), then tell the turn. The report is best-effort.
+    /// Chat-UX #6: delete by call_id (same ledger/EventKit path as 任务's 撤销), then queue the report for the turn (retried on launch/foreground until acknowledged).
     private func undo() async {
         let outcome = ledger.undo(callID: call.call_id)
         undoFailed = !outcome.removed
-        try? await DeviceCallHub.submitter?.reportUndo(callID: call.call_id, outcome: outcome)
+        await store.reportUndo(callID: call.call_id, outcome: outcome)
     }
     private func receiptText(_ status: DeviceCallStatus) -> String {
         switch status {
