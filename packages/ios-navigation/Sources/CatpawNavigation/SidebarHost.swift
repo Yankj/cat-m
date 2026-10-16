@@ -43,13 +43,16 @@ import SwiftUI
             let foregroundShape = UnevenRoundedRectangle(topLeadingRadius: radius, bottomLeadingRadius: radius,
                                                          bottomTrailingRadius: 0, topTrailingRadius: 0, style: .continuous)
             ZStack(alignment: .leading) {
-                SidebarPanel(snapshot: snapshot, query: $query, theme: theme, localize: localize,
-                             isActive: isAtRoot && motion.isFullyOpen, isModal: false,
-                             onSelect: { destination in
-                                 guard snapshot.permits(destination) else { return }
-                                 close(); onSelect(destination)
-                             }, onClose: close)
+                // Equatable slot: the panel body is not re-evaluated on each spring frame,
+                // only the cheap parallax offset below changes per frame.
+                SidebarPanelSlot(snapshot: snapshot, query: $query, theme: theme, localize: localize,
+                                 isActive: isAtRoot && motion.isFullyOpen,
+                                 onSelect: { destination in
+                                     guard snapshot.permits(destination) else { return }
+                                     close(); onSelect(destination)
+                                 }, onClose: close).equatable()
                     .frame(width: width, height: geometry.size.height)
+                    .offset(x: reduceMotion ? 0 : -width * 0.22 * (1 - min(1, progress)))
                     .allowsHitTesting(active && !motion.isDragging)
                     .accessibilityHidden(!isAtRoot || !motion.isFullyOpen)
                 ZStack(alignment: .leading) {
@@ -64,7 +67,7 @@ import SwiftUI
                         // full-width translated conversation behind it. Keep
                         // its leading edge local to the translated foreground.
                         Button(action: close) {
-                            Color.black.opacity(0.22 * Double(progress))
+                            Color.black.opacity(0.22 * Double(min(1, progress)))
                                 .frame(width: visibleForegroundWidth, height: geometry.size.height)
                                 .contentShape(Rectangle())
                         }.buttonStyle(.plain)
@@ -124,6 +127,25 @@ import SwiftUI
     }
     private func close() { isPresented = false; motion.move(to: false, reduceMotion: reduceMotion) }
     private func reset() { isPresented = false; motion.reset() }
+}
+
+/// Closures are excluded from equality on purpose: they only capture the binding,
+/// the motion driver and `snapshot`, which is compared.
+private struct SidebarPanelSlot: View, Equatable {
+    let snapshot: SidebarSnapshot
+    @Binding var query: String
+    let theme: SidebarTheme
+    let localize: (String) -> String
+    let isActive: Bool
+    let onSelect: (SidebarDestination) -> Void
+    let onClose: () -> Void
+    static func == (a: Self, b: Self) -> Bool {
+        a.snapshot == b.snapshot && a.query == b.query && a.isActive == b.isActive
+    }
+    var body: some View {
+        SidebarPanel(snapshot: snapshot, query: $query, theme: theme, localize: localize,
+                     isActive: isActive, isModal: false, onSelect: onSelect, onClose: onClose)
+    }
 }
 
 /// The dismiss button has its own on-screen geometry. Clipping a wider Button
