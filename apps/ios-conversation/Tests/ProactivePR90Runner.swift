@@ -553,6 +553,40 @@ func pr90f_golden() {
     check(onDisk == (try! JSONSerialization.jsonObject(with: data) as! NSDictionary), "golden device → cloud fixture matches the client's payloads")
 }
 
+// MARK: Codex PR90g (c8aee26)
+func pr90g_quarantinePerRecord() {
+    let ids = ["a1", "b1", "c1", "m1", "u1"]
+    let stamps: [String: [String?]] = ["a1": ["USER-A", "user-a"], "b1": ["USER-B"], "m1": ["USER-A", "USER-B"], "u1": [nil]]
+    let r = ProactiveQuarantine.releasable(ids: ids, stamps: stamps, confirmed: ["c1"], current: "USER-A")
+    check(r == ["a1", "c1"], "only records with their own evidence are released (\(r.sorted()))")
+    check(ProactiveQuarantine.releasable(ids: ids, stamps: ["a1": ["USER-A"]], confirmed: [], current: "USER-A") == ["a1"], "one record's stamp never releases the batch")
+    check(ProactiveQuarantine.releasable(ids: ids, stamps: [:], confirmed: ["b1"], current: "USER-A") == ["b1"], "one confirmed server id releases that record only")
+    check(ProactiveQuarantine.releasable(ids: ids, stamps: stamps, confirmed: [], current: nil).isEmpty, "signed out → nothing")
+}
+func pr90g_restoreVisible() {
+    for o in ["refused:system_rejected", "cardOnly:quiet_hours", "expired"] {
+        let d = ProactiveUndo.withRestore("until=1;op=x", o)
+        check(ProactiveUndo.restoreFailed(detail: d), "\(o) is a failed restore")
+        check(ProactiveUndo.statusAfterRestore("snoozed", outcome: o) == "pending", "\(o): never shown as snoozed")
+    }
+    check(!ProactiveUndo.restoreFailed(detail: ProactiveUndo.withRestore("until=1", "posted")) && ProactiveUndo.statusAfterRestore("snoozed", outcome: "posted") == "snoozed", "posted stays snoozed")
+    check(ProactiveUndo.statusAfterRestore("dismissed", outcome: nil) == "dismissed", "no restore → plan status")
+}
+/// The return half of the device → cloud → device round trip: decode the server's own response (fixture written by
+/// services/edge test PR90g "golden round trip", synced 20 min late) with the shipping decoder, then restore from it.
+func pr90g_roundTrip() {
+    let url = URL(fileURLWithPath: "../../services/edge/test/fixtures/proactive-sync-golden-response.json")
+    guard let data = try? Data(contentsOf: url) else { check(false, "response fixture readable"); return }
+    let s = try? ProactiveSyncWire.decoder().decode(ProactiveSuggestion.self, from: data)
+    check(s != nil, "the cloud record (fractional-second ISO dates) decodes")
+    guard let s, let kept = s.taken?.last else { return }
+    check(s.effectiveStatus == .snoozed && kept.until == at("2026-10-15T02:10:00Z"), "taken[].until decoded (\(String(describing: kept.until)))")
+    let u = ProactiveUndo.snoozeUntil(detail: kept.detail, at: kept.at, until: kept.until)
+    check(u == at("2026-10-15T02:10:00Z"), "restore uses the original until, not the sync time + 10 min (\(u))")
+    let plan = ProactiveUndo.plan(offered: s.effectiveActions.map(\.rawValue), taken: (s.taken ?? []).map(\.action.rawValue), status: s.effectiveStatus.rawValue)
+    check(plan.status == "pending" && plan.removed == "snooze", "the next undo matches the server's (pending)")
+}
+
 @main enum ProactivePR90Runner {
     static func main() async {
         pr90_3_prescheduleSharesDecisionAndQuota()
@@ -571,6 +605,7 @@ func pr90f_golden() {
         pr90d_ownership(); pr90d_legacyRejected(); await pr90d_scopedRequests(); await pr90d_deadLetterOrdering(); pr90d_snoozeRestore(); pr90d_localFeedbackGate()
         pr90e_owner(); await pr90e_repeatedSnooze(); pr90e_operationIDs(); pr90e_snoozeDetail(); await pr90e_resnoozeReleasesSlot(); await pr90e_deadLetterFuture()
         pr90f_quarantine(); pr90f_quarantineQueue(); await pr90f_purgeDeadLetters(); await pr90f_snoozeAwaitsAdd(); pr90f_clock(); pr90f_wire(); pr90f_golden()
+        pr90g_quarantinePerRecord(); pr90g_restoreVisible(); pr90g_roundTrip()
         print(failures == 0 ? "PR90 proactive: all passed" : "PR90 proactive: \(failures) failed"); exit(failures == 0 ? 0 : 1)
     }
 }

@@ -10,3 +10,8 @@ enum SHA256 { // FNV-1a stand-in: stable, not cryptographic (tests only).
     }
 }
 #endif
+#if !canImport(Combine)
+// Linux: ProactiveSuggestion.swift's store is an ObservableObject (Combine is Apple-only). Test-only stand-ins.
+protocol ObservableObject: AnyObject {}
+@propertyWrapper struct Published<Value> { var wrappedValue: Value; init(wrappedValue: Value) { self.wrappedValue = wrappedValue } }
+#endif

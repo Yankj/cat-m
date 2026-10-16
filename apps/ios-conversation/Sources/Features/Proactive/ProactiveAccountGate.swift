@@ -97,4 +97,13 @@ enum ProactiveQuarantine {
         }
         return now.timeIntervalSince(quarantinedAt) > ttl ? .expire : .hold
     }
+    /// Codex PR90g #1: ownership is proven per record. `stamps[id]`: the accounts stamped on that record's own queued
+    /// write-backs (nil = unstamped); `confirmed`: records whose own server id the cloud returned for the current
+    /// account. A record is released only on its own evidence; everything else stays quarantined.
+    static func releasable(ids: [String], stamps: [String: [String?]], confirmed: Set<String>, current: String?) -> Set<String> {
+        guard let current else { return [] }
+        let all = stamps.values.flatMap { $0 }.compactMap { $0 }
+        let whole = !all.isEmpty && all.allSatisfy { $0.caseInsensitiveCompare(current) == .orderedSame }
+        return whole || !confirmed.isEmpty ? Set(ids) : []
+    }
 }
