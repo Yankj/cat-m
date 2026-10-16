@@ -1,5 +1,7 @@
 import SwiftUI
 import UIKit
+import os
+import Darwin
 
 /// Launch splash matching docs/refs/launch-splash-keyframes.png.
 /// Soft beige canvas; four keyframes (~1.3 s), always completes:
@@ -32,7 +34,7 @@ import UIKit
         .ignoresSafeArea()
         .accessibilityHidden(true)
         .allowsHitTesting(false)
-        .onAppear { if start == nil { start = Date() } }
+        .onAppear { if start == nil { start = Date(); LaunchClock.mark("launchMark.onAppear") } }
         .task {
             try? await Task.sleep(nanoseconds: UInt64((reduceMotion ? 0.45 : Self.total + 0.25) * 1_000_000_000))
             finish()
@@ -135,4 +137,19 @@ import UIKit
     /// Decided once per process (App/RootView structs can be initialised more than once; every caller gets the same answer).
     private static let decision: Bool = !UIAccessibility.isVoiceOverRunning
     static func shouldPlay(openedFromURLOrNotification: Bool) -> Bool { decision && !openedFromURLOrNotification }
+}
+
+/// Time since process start (kernel start time), logged once per milestone: `log show --predicate 'subsystem == "catpaw.launch"'`.
+enum LaunchClock {
+    private static let log = Logger(subsystem: "catpaw.launch", category: "timing")
+    static let processStart: Date = {
+        var info = kinfo_proc(), size = MemoryLayout<kinfo_proc>.stride, mib: [Int32] = [CTL_KERN, KERN_PROC, KERN_PROC_PID, getpid()]
+        guard sysctl(&mib, 4, &info, &size, nil, 0) == 0 else { return Date() }
+        let t = info.kp_proc.p_un.__p_starttime
+        return Date(timeIntervalSince1970: TimeInterval(t.tv_sec) + TimeInterval(t.tv_usec) / 1e6)
+    }()
+    static func mark(_ name: String) {
+        let ms = Int(Date().timeIntervalSince(processStart) * 1000)
+        log.notice("catpaw.launch \(name, privacy: .public) ms=\(ms, privacy: .public)")
+    }
 }
