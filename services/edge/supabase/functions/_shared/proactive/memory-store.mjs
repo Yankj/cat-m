@@ -46,7 +46,7 @@ export function createMemoryStore() {
     },
     async resurfaceSnoozed(nowIso) {
       const out = [];
-      for (const e of events) { const st = e.payload?.suggestion; if (e.kind === 'proactive_decision' && st?.status === 'snoozed' && st.snooze_until && st.snooze_until <= nowIso) { st.status = 'pending'; st.resurfaced_at = nowIso; st.rev = (st.rev ?? 0) + 1; delete st.snooze_until; delete st.chat_delivered_at; if (['notify', 'interrupt'].includes(e.payload.decision) && e.payload.delivery === 'remote') { e.push_state = 'pending'; e.push_after = null; } out.push(e.id); } }
+      for (const e of events) { const st = e.payload?.suggestion; if (e.kind === 'proactive_decision' && st?.status === 'snoozed' && st.snooze_until && st.snooze_until <= nowIso) { st.status = 'pending'; st.resurfaced_at = nowIso; st.rev = (st.rev ?? 0) + 1; delete st.snooze_until; delete st.chat_delivered_at; if (['notify', 'interrupt'].includes(e.payload.decision) && e.payload.delivery === 'remote') { e.push_state = 'pending'; e.push_after = null; e.push_generation = (e.push_generation ?? 0) + 1; e.push_claim = null; } out.push(e.id); } }
       return out;
     },
     async idemGet(uid, key) { return idem.get(uid + '|' + key) ?? null; },
@@ -56,8 +56,14 @@ export function createMemoryStore() {
     async deferPush(eid, until) { const e = events.find(e => e.id === eid); e.push_after = until; },
     async countPushedSince(uid, sinceIso) { return events.filter(e => e.user_id === uid && e.push_state === 'sent' && (e.pushed_at ?? e.created_at) >= sinceIso).length; },
     async cancelPendingPush(uid, eid, reason) { const e = events.find(e => e.id === eid && e.user_id === uid && e.push_state === 'pending'); if (e) { e.push_state = 'skipped'; e.push_error = reason; } },
-    async setPush(eid, state, err) { const e = events.find(e => e.id === eid); if (!e || !['pending', 'sending'].includes(e.push_state)) return; e.push_state = state; e.push_error = err; if (state === 'sent') e.pushed_at = new Date().toISOString(); },
-    async claimPush(eid) { const e = events.find(e => e.id === eid); if (!e || e.push_state !== 'pending' || (e.payload?.suggestion?.status ?? 'pending') !== 'pending') return false; e.push_state = 'sending'; return true; },
+    // Pre-claim dispositions only (skipped / no_device / …): never touches a claimed or finished row.
+    async setPush(eid, state, err) { const e = events.find(e => e.id === eid); if (!e || e.push_state !== 'pending') return; e.push_state = state; e.push_error = err; if (state === 'sent') e.pushed_at = new Date().toISOString(); },
+    // Codex PR90f #4: send licence = claim token for the current generation.
+    async claimPush(eid, nowIso = new Date().toISOString()) { const e = events.find(e => e.id === eid); if (!e || e.push_state !== 'pending' || (e.payload?.suggestion?.status ?? 'pending') !== 'pending') return null; e.push_state = 'sending'; e.push_claim = crypto.randomUUID(); e.push_claimed_at = nowIso; e.push_attempted_at = null; e.push_generation ??= 0; return { claim: e.push_claim, generation: e.push_generation }; },
+    async markPushAttempt(eid, claim, nowIso = new Date().toISOString()) { const e = events.find(e => e.id === eid); if (e && e.push_state === 'sending' && e.push_claim === claim) e.push_attempted_at = nowIso; },
+    async finishPush(eid, claim, state, err, nowIso = new Date().toISOString()) { const e = events.find(e => e.id === eid); if (!e || e.push_state !== 'sending' || !claim || e.push_claim !== claim) return false; e.push_state = state; e.push_error = err; e.push_claim = null; if (state === 'sent') e.pushed_at = nowIso; return true; },
+    async recoverStalePush(nowIso, leaseSeconds) { let n = 0; const cut = new Date(Date.parse(nowIso) - leaseSeconds * 1000).toISOString(); for (const e of events) if (e.push_state === 'sending' && e.push_claimed_at && e.push_claimed_at < cut) { e.push_state = 'pending'; e.push_recovered = e.push_attempted_at ? 'unknown' : 'unsent'; e.push_generation = (e.push_generation ?? 0) + 1; e.push_claim = null; e.push_claimed_at = null; n++; } return n; },
+    async getEventByDedupe(uid, key) { const e = events.find(e => e.user_id === uid && e.dedupe_key === key); return e ? c(e) : null; },
     async tokensFor(uid) { return tokens.filter(t => t.user_id === uid).map(c); },
     async upsertToken(uid, t) { let r = tokens.find(x => x.user_id === uid && x.device_id === t.device_id && x.kind === t.kind && (x.activity_id ?? '') === (t.activity_id ?? '')); if (r) Object.assign(r, t, { enabled: true, last_error: null }); else { r = { id: id(), user_id: uid, enabled: true, last_error: null, ...t }; tokens.push(r); } return c(r); },
     async deleteToken(uid, dev, kind) { let n = 0; for (let i = tokens.length - 1; i >= 0; i--) if (tokens[i].user_id === uid && tokens[i].device_id === dev && (!kind || tokens[i].kind === kind)) { tokens.splice(i, 1); n++; } return n; },

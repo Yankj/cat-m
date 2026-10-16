@@ -183,9 +183,12 @@ export function createDecisionService({ store, model = null, memory = null, now 
       if (opId) st.ops[opId] = action;
       if (action === 'snooze') {
         // Codex PR90e #5: the device's own until (one per snooze intent) is the cloud's, so both sides undo to the same one.
+        // Codex PR90f #3: a late sync keeps the device's own until (bounded: ≤ 7 days old, ≤ 24 h ahead). Already past →
+        // recorded as expired and resurfaced by the next resurface pass; never silently replaced by "now + 10 min".
         const u = typeof b.until === 'string' ? Date.parse(b.until) : NaN, t = now();
-        const until = Number.isFinite(u) && u > t && u <= t + 1440 * 60000 ? u : t + (Number(b.minutes) > 0 ? Math.min(Number(b.minutes), 1440) : 10) * 60000;
-        st.snooze_until = st.taken.at(-1).until = new Date(until).toISOString();
+        const valid = Number.isFinite(u) && u >= t - 7 * 86400000 && u <= t + 1440 * 60000;
+        const until = valid ? u : t + (Number(b.minutes) > 0 ? Math.min(Number(b.minutes), 1440) : 10) * 60000;
+        const entry = st.taken.at(-1); entry.until = st.snooze_until = new Date(until).toISOString(); if (until <= t) entry.expired = true;
       }
       applied = true;
       return true;
@@ -214,6 +217,19 @@ export function createDecisionService({ store, model = null, memory = null, now 
       return true;
     });
   }
+  async function createFromDevice(uid, b) {
+    const cid = typeof b?.client_id === 'string' ? b.client_id.trim().slice(0, 120) : '';
+    if (!cid || typeof b.title !== 'string') throw bad('suggestion_invalid');
+    const key = 'client:' + cid, decision = ['card', 'notify', 'interrupt'].includes(b.decision) ? b.decision : 'card';
+    const created = Date.parse(b.created_at), at = Number.isFinite(created) && created <= now() ? created : now();
+    const payload = { decision, delivery: 'device', origin: 'device_offline', client_id: cid, title: b.title.slice(0, 80), why: String(b.reason ?? '').slice(0, 300),
+      actions: (Array.isArray(b.actions) ? b.actions : []).filter(a => SUGGESTION_ACTIONS.includes(a)), device_created_at: new Date(at).toISOString(),
+      suggestion: { status: 'pending', taken: [], history: [], ops: {} } };
+    const ev = await store.insertEvent({ user_id: uid, task_id: null, conversation_id: null, kind: 'proactive_decision', title: payload.title, body: payload.why, payload, dedupe_key: key, push_state: 'skipped' })
+      ?? await store.getEventByDedupe(uid, key);
+    if (!ev) throw bad('suggestion_write_conflict', 409);
+    return { suggestion: toSuggestion(ev), event_id: ev.id, created: ev.payload?.client_id === cid };
+  }
   async function load(uid, id) {
     const ev = /^[0-9a-f-]{36}$/i.test(id) && await store.getEvent(uid, id); if (!ev || ev.kind !== 'proactive_decision') throw bad('suggestion_not_found', 404);
     ev.payload.suggestion ??= { status: 'pending', taken: [], history: [], ops: {} }; return ev;
@@ -235,6 +251,9 @@ export function createDecisionService({ store, model = null, memory = null, now 
   async function routeInner(uid, req, rawPath, url, readBody) {
     const path = rawPath.replace(/^\/catpaw\/proactive\/v1(?=\/)/, '/proactive');
     if (path === '/proactive/suggestions' && req.method === 'GET') { const st = url.searchParams.get('status'); const rows = (await store.listEvents(uid, null, Math.min(Number(url.searchParams.get('limit')) || 50, 200))).filter(e => e.kind === 'proactive_decision' && e.payload?.decision !== 'silent').reverse().map(toSuggestion); return [200, { suggestions: st ? rows.filter(r => r.status === st) : rows }]; }
+    // Codex PR90f #5: offline compensation — a suggestion the device made without the cloud is created here once (dedupe
+    // by the device's id), device-owned (never pushed), so its queued actions can then be replayed in order.
+    if (path === '/proactive/suggestions' && req.method === 'POST') return [200, await createFromDevice(uid, await readBody())];
     let sm = path.match(/^\/proactive\/suggestions\/([^/]+)\/(action|undo|feedback)$/);
     if (sm && req.method === 'POST') {
       const b = await readBody();
@@ -259,7 +278,7 @@ export function toSuggestion(e) {
   const p = e.payload ?? {}, st = p.suggestion ?? { status: 'pending', taken: [] };
   return { id: e.id, title: p.title ?? e.title, reason: p.why ?? e.body, memories: (p.memories ?? []).map(m => ({ id: m.id, content: m.content })),
     actions: (p.actions ?? []).filter(x => SUGGESTION_ACTIONS.includes(x)), signals: (p.signals ?? []).map(signalView), status: st.status,
-    createdAt: e.created_at, taken: st.taken.map(t => ({ action: t.action, at: t.at, ...(t.detail ? { detail: t.detail } : {}) })),
+    createdAt: e.created_at, taken: st.taken.map(t => ({ action: t.action, at: t.at, ...(t.detail ? { detail: t.detail } : {}), ...(t.until ? { until: t.until } : {}) })),
     action_states: actionStates(st), decision: p.decision, confidence: p.confidence, trigger: p.trigger ?? null };
 }
 const SIGNAL_KIND = { meeting_upcoming: 'calendar', meeting_conflict: 'calendar', calendar_change: 'calendar', flight_status: 'travel', traffic: 'travel', location: 'location', weather: 'weather', message: 'message', custom: 'custom' };
