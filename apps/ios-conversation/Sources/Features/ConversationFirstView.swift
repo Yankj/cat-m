@@ -157,13 +157,13 @@ import CatpawImageComposer
                 Button { path.append(.settings) } label: { Label(ui("设置"), systemImage:"slider.horizontal.3") }.accessibilityIdentifier("chat.settings")
             }
         } label: {
-            // r11 header capsule (Grok Bot style): animated cat head avatar + title, live step text while a turn runs.
+            // Soft-3D header cat (docs/refs/header-cat/six-states.png) — not flat BrandMark.
+            // Map: offline→ears-down; error→wobble; thinking/working→orbit-load; streaming→spin; done→happy; else idle.
             HStack(spacing:8) {
-                CatpawPresence(state: presenceHub.state ?? .waiting, size: 24)
-                    .frame(width:30,height:30)
-                    .background(Circle().fill(CatpawBrand.paw.opacity(presenceHub.state == nil ? 0.10 : 0.20)))
-                    .scaleEffect(presenceHub.state == nil ? 1 : 1.06)
-                    .animation(CatpawMotion.statusCapsule, value: presenceHub.state)
+                CatpawPresence(state: headerCatState, size: 26)
+                    .frame(width:32,height:32)
+                    .scaleEffect(presenceHub.state == nil && connectionMonitor.state == .online ? 1 : 1.04)
+                    .animation(CatpawMotion.statusCapsule, value: headerCatState)
                     .accessibilityIdentifier("chat.title.presence")
                 VStack(alignment:.leading,spacing:0) {
                     HStack(spacing:4) {

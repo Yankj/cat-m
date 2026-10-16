@@ -38,6 +38,12 @@ Composer send/stop morph and voice-capsule chrome are owned by the Mac worker �
 | Grey → `#6E6A66` | `CatpawColors.secondary` (`secondaryLight`) | ≥4.5:1 secondary text on Background/panel |
 | Ink `#292622` | `CatpawColors.ink` | Primary text |
 
+## Header cat
+
+- Soft-3D clay head beside the chat title: `CatpawPresence` (`docs/refs/header-cat/six-states.png`).
+- Do **not** use flat `BrandMark` in the header capsule.
+- Connection: offline → ears-down; error → wobble; thinking/working → orbit-load; streaming → spin; done → happy; else idle.
+
 ## Launch splash
 
 - Static `LaunchScreen.storyboard` shows `LaunchFirstFrame`: cream `LaunchCanvas` + orange orb with white cat-head (`BrandMarkOnOrange`).
