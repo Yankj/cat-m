@@ -4,7 +4,14 @@ export function createSupabaseTokenVerifier({projectUrl=null,mode='production',t
  check(['production','test'].includes(mode)&& (mode==='test'||testJWKS===undefined),503,'test_identity_denied');let config,keyset;
  return async authorization=>{const c=config??supabaseAuthConfig(projectUrl);if(!config){config=c;keyset=testJWKS?createLocalJWKSet(clone(testJWKS)):createRemoteJWKSet(new URL(c.jwks_url),{cacheMaxAge:600000,cooldownDuration:30000,timeoutDuration:5000});}
   check(typeof authorization==='string'&&/^Bearer [A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(authorization)&&authorization.length<12000,401,'session_required');const token=authorization.slice(7);let p;
-  try{const h=decodeProtectedHeader(token),u=decodeJwt(token);check(c.algorithms.includes(h.alg)&&typeof h.kid==='string'&&h.kid.length>0&&h.kid.length<=160&&!h.jku&&!h.jwk&&!h.x5u&&(h.typ===undefined||h.typ==='JWT')&&u.iss===c.issuer,401,'invalid_session');p=(await jwtVerify(token,keyset,{issuer:c.issuer,audience:c.audience,algorithms:c.algorithms,requiredClaims:['iss','aud','sub','exp','iat','session_id']})).payload;}catch(e){throw e instanceof ApiError?e:new ApiError(e.code==='ERR_JWKS_TIMEOUT'?503:401,e.code==='ERR_JWKS_TIMEOUT'?'auth_key_service_unavailable':'invalid_session');}
+  try{const h=decodeProtectedHeader(token),u=decodeJwt(token);check(c.algorithms.includes(h.alg)&&typeof h.kid==='string'&&h.kid.length>0&&h.kid.length<=160&&!h.jku&&!h.jwk&&!h.x5u&&(h.typ===undefined||h.typ==='JWT')&&u.iss===c.issuer,401,'invalid_session');p=(await jwtVerify(token,async(...args)=>{
+    try{return await keyset(...args);}catch(e){
+      // A key endpoint outage says nothing about the user's session. Keep verification
+      // fail-closed, but distinguish fetch/HTTP/JSON failures from a bad signature or kid.
+      if(e instanceof TypeError||['AbortError','TimeoutError'].includes(e.name)||['ERR_JWKS_TIMEOUT','ERR_JOSE_GENERIC','ERR_JWKS_INVALID'].includes(e.code))throw new ApiError(503,'auth_key_service_unavailable');
+      throw e;
+    }
+  },{issuer:c.issuer,audience:c.audience,algorithms:c.algorithms,requiredClaims:['iss','aud','sub','exp','iat','session_id']})).payload;}catch(e){throw e instanceof ApiError?e:new ApiError(401,'invalid_session');}
   const now=Math.floor(Date.now()/1000);check(UUID.test(p.sub)&&UUID.test(p.session_id)&&p.role==='authenticated'&&(p.is_anonymous===undefined||typeof p.is_anonymous==='boolean')&&(p.is_anonymous!==true||c.project_url==='https://dbyklgxdvjbutxzsjeth.supabase.co')&&Number.isInteger(p.iat)&&Number.isInteger(p.exp)&&p.iat<=now+30&&p.exp>p.iat,401,'invalid_session');return p;
  };
 }
