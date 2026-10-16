@@ -50,6 +50,8 @@ export function createAgentMemoryService({ store, allow = () => false, verifyUse
     if (ids) { const out = []; for (const id of ids) { const r = await store.get(uid, id); if (r) out.push(r); } return out; }
     return rank(uid, query, LIMITS.forget_max);
   }
+  /** Codex PR91 p91d-3: the user explicitly turned agent memory off (stored settings say use_memory false). */
+  async function userTurnedOff(uid) { if (!allow(uid)) return false; const raw = await store.getSettings(uid); return raw?.use_memory === false; }
   /** Recall snapshot frozen on the turn at admission. Ephemeral (temporary) turns read and write nothing. */
   async function recallForTurn({ subjectID, query, mode = null, conversationID = null, turnID = null, clientUseMemory = null }) {
     if (!allow(subjectID)) return null;
@@ -139,6 +141,7 @@ export function createAgentMemoryService({ store, allow = () => false, verifyUse
     throw bad('not_found', 404);
   }
   return {
+    userTurnedOff,
     settings, save, rank, update, recallForTurn, executeTool, forgetPreview, journalTick, patchSettings, allow,
     async handle(req) { try { return await route(req); } catch (e) { if (e instanceof MemoryError) return json(e.status, { error: e.code }); return json(500, { error: 'internal_error' }); } },
   };
