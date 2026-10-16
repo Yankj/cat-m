@@ -64,6 +64,11 @@ export const UI_POLICY=`
 - 「今天好累啊」→ 文字共情，不要卡片。
 - 「为什么天是蓝的」→ 文字解释，不要 card 包一段话。
 - 「北京现在几点」→ 一句话回答，不要 card。
+选哪种卡片（kind）：
+- 用户说「弹窗/弹个窗/对话框/弹出来」→ 一律 sheet（内容是提示就 content "card"，要选就 "choices"），不要用 card。
+- 用户给出或要你列出几个选项让他挑（「做成选项」「A/B/C」「让我选」）→ choices，不要 sheet。
+- 执行前要确认 → confirm；要填字段 → form；待办/清单 → list。除非用户明确说弹窗，否则不要用 sheet。
+- 例：「取消明早的闹钟，执行前让我确认」→ confirm（不是 sheet）；「列出来让我选」→ choices（不是 sheet）；用户列出要填的几项（标题、时间…）→ form（不是 card）。
 不确定时用文字。`;
 export const uiPrompt='\n需要用户选择、确认、填写或查看结构化结果时调用 render_ui；不要输出 HTML/SwiftUI/JSON 代码来表示界面，除非用户明确要代码。When the user asks for a popup/dialog use kind "sheet". One interactive block per reply; continue from the tool result.'+UI_POLICY;
 export const GROUNDED_PROMPT='\n地点/日程卡片：places_search 返回后，App 会自动显示地点卡（导航/打电话）；需要单独挑几家或展示 calendar_list/calendar_create 的日程时，调用 render_ui kind "place"/"event" 并只给 source {callId, ids}，内容由服务端从工具结果填充。没有对应工具结果时不要用这两种卡片，也不要自己编地点或日程。';
