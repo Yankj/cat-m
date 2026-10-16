@@ -3,11 +3,11 @@ import SwiftUI
 /// Calm, professional visual language shared by launch → onboarding → voice mode.
 /// Warm off-white page, slow-drifting peach glow (bottom) + faint lavender (top). No emoji / cartoon.
 enum CalmPalette {
-    static let page = Color(red: 0xFB/255, green: 0xF7/255, blue: 0xF3/255)
-    static let peach = Color(red: 1.0, green: 0.78, blue: 0.62)
-    static let lavender = Color(red: 0.84, green: 0.80, blue: 0.98)
-    static let orbLight = Color(red: 1.0, green: 0.74, blue: 0.52)
-    static let orbDeep = Color(red: 0.96, green: 0.45, blue: 0.20)
+    static let page = CatpawColors.calmPage
+    static let peach = CatpawColors.calmPeach
+    static let lavender = CatpawColors.calmLavender
+    static let orbLight = CatpawColors.orbLight
+    static let orbDeep = CatpawColors.orbDeep
 }
 
 struct CalmGlowBackground: View {
@@ -49,11 +49,11 @@ struct CalmOrb: View {
                 Circle().fill(CalmPalette.orbLight.opacity(0.28 + 0.14 * b))
                     .frame(width: size * (1.9 + 0.25 * b)).blur(radius: size * 0.32)
                 Circle().fill(RadialGradient(colors: [CalmPalette.orbLight, CalmPalette.orbDeep], center: UnitPoint(x: 0.38, y: 0.32), startRadius: 2, endRadius: size * 0.62))
-                    .overlay(Circle().fill(LinearGradient(colors: [.white.opacity(0.35), .clear], startPoint: .top, endPoint: .center)).padding(size * 0.08))
+                    .overlay(Circle().fill(LinearGradient(colors: [CatpawColors.calmGlyph.opacity(0.35), .clear], startPoint: .top, endPoint: .center)).padding(size * 0.08))
                     .frame(width: size, height: size)
                     .shadow(color: CalmPalette.orbDeep.opacity(0.35), radius: 16, y: 8)
                     .scaleEffect(1 + 0.025 * b)
-                Image(systemName: glyph).resizable().scaledToFit().frame(width: size * 0.26, height: size * 0.26).foregroundStyle(.white.opacity(0.95))
+                Image(systemName: glyph).resizable().scaledToFit().frame(width: size * 0.26, height: size * 0.26).foregroundStyle(CatpawColors.calmGlyph.opacity(0.95))
             }
         }
         .accessibilityHidden(true)
@@ -97,7 +97,7 @@ struct SwipeToStart: View {
         GeometryReader { g in
             let knob: CGFloat = 52, maxX = g.size.width - knob - 8
             ZStack(alignment: .leading) {
-                Capsule().fill(.white).shadow(color: .black.opacity(0.06), radius: 14, y: 6)
+                Capsule().fill(CatpawColors.calmSurface).shadow(color: CatpawColors.calmShadow.opacity(0.06), radius: 14, y: 6)
                 HStack(spacing: 10) {
                     Text(title).font(.subheadline.weight(.medium)).foregroundStyle(CatpawColors.ink.opacity(0.78))
                     TimelineView(.animation(minimumInterval: 1 / 20, paused: reduceMotion)) { tl in
@@ -114,7 +114,7 @@ struct SwipeToStart: View {
                 .opacity(1 - Double(drag / max(maxX, 1)))
                 ZStack {
                     Circle().fill(LinearGradient(colors: [CalmPalette.orbLight, CalmPalette.orbDeep], startPoint: .topLeading, endPoint: .bottomTrailing))
-                    if busy { ProgressView().tint(.white) } else { Image(systemName: "pawprint.fill").font(.body).foregroundStyle(.white) }
+                    if busy { ProgressView().tint(CatpawColors.calmGlyph) } else { Image(systemName: "pawprint.fill").font(.body).foregroundStyle(CatpawColors.calmGlyph) }
                 }
                 .frame(width: knob, height: knob).padding(.leading, 4).offset(x: drag)
                 .gesture(DragGesture().onChanged { v in drag = min(max(0, v.translation.width), maxX) }
@@ -195,8 +195,8 @@ struct ThinWaveform: View {
     private func circleButton(_ icon: String, label: String, id: String, _ act: @escaping () -> Void) -> some View {
         Button(action: act) {
             Image(systemName: icon).font(.body).foregroundStyle(CatpawColors.ink.opacity(0.7))
-                .frame(width: 48, height: 48).background(.white, in: Circle())
-                .shadow(color: .black.opacity(0.06), radius: 8, y: 3)
+                .frame(width: 48, height: 48).background(CatpawColors.calmSurface, in: Circle())
+                .shadow(color: CatpawColors.calmShadow.opacity(0.06), radius: 8, y: 3)
         }
         .buttonStyle(CatpawPressButtonStyle()).accessibilityLabel(label).accessibilityIdentifier(id)
     }
@@ -212,9 +212,9 @@ import CoreText
     @Published private(set) var ready = EditorialSerif.isInstalled()
     private var requested = false
     nonisolated static func isInstalled() -> Bool { UIFont.fontNames(forFamilyName: "Songti SC").contains(postScriptName) }
-    func font(size: CGFloat) -> Font {
-        ready ? .custom(Self.postScriptName, fixedSize: size) : .system(size: size, weight: .semibold, design: .serif)
-    }
+    /// Semantic largeTitle in the serif design (scales with Dynamic Type). Per the typography gate,
+    /// no named/sized font factory: the system serif cascade renders the CJK headline in its Song face.
+    var headline: Font { .system(.largeTitle, design: .serif, weight: .semibold) }
     func ensure() {
         guard !ready, !requested else { return }
         requested = true

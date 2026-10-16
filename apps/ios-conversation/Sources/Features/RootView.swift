@@ -29,6 +29,7 @@ import Combine
         .overlay {
             if launchMarkVisible {
                 LaunchMarkView(restoring:!model.loaded) {launchMarkVisible=false}
+                    .transition(.opacity)
                     .zIndex(100)
             }
         }

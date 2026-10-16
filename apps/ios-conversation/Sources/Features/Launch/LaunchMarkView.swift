@@ -5,10 +5,12 @@ import UIKit
 /// Frame 0 matches the static launch screen (plain `LaunchCanvas`), the paw is on screen from the first frame.
 /// In-place only, ~1 s, always completes:
 /// 0–0.14 pop-in · 0.14–0.34 soft press-squash + bounce · 0.36/0.45/0.54/0.63 toe beans tap in sequence (light haptic)
-/// · 0.30–0.80 glossy highlight sweep · 0.55–0.80 "Catpaw" wordmark rises in · 0–0.9 calm peach/lavender glow wakes · 0.85–1.35 paw morphs into the onboarding orb · 1.38–1.6 crossfade into the app.
-/// Reduce Motion: static mark + wordmark, short fade.
+/// · 0.30–0.80 glossy highlight sweep · 0.55–0.80 "Catpaw" wordmark rises in · 0–0.9 calm peach/lavender glow wakes · 0.85–1.5 exit: toe beans + pad scatter outward (staggered easeOut), grow and fade; onboarding: orb glow blooms in place; chat: background cross-fades out (to 1.65). No hard cut.
+/// Reduce Motion: static mark + wordmark, simple 0.35 s fade.
 @MainActor struct LaunchMarkView: View {
     var restoring: Bool = false
+    /// true → next screen is onboarding: the scatter resolves into the orb glow. false → chat: scatter + background cross-fade.
+    var toOrb: Bool = false
     var onFinished: () -> Void
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// Set on the first rendered frame, so a slow cold start never skips the beats.
@@ -16,7 +18,7 @@ import UIKit
     @State private var finished = false
     @State private var taps = 0
 
-    static let total: Double = 1.6
+    static let total: Double = 1.65
     static let toeTimes: [Double] = [0.36, 0.45, 0.54, 0.63]
 
     var body: some View {
@@ -46,7 +48,7 @@ import UIKit
     private func finish() {
         guard !finished else { return }
         finished = true
-        onFinished()
+        withAnimation(.easeOut(duration: reduceMotion ? 0.35 : 0.2)) { onFinished() }
     }
 
     private static func ease(_ x: Double) -> Double { let c = min(1, max(0, x)); return 1 - pow(1 - c, 3) }
@@ -63,25 +65,31 @@ import UIKit
         let pressed: [Bool] = (0..<4).map { i in t >= Self.toeTimes[i] && t < Self.toeTimes[i] + 0.08 } + [p > 0.05 && p < 0.4]
         let sweep = CGFloat(Self.ease(Self.window(t, 0.30, 0.80)))
         let word = Self.ease(Self.window(t, 0.55, 0.80))
-        let fade = 1 - Self.window(t, 1.38, 1.6)
-        // Calm hand-off: page glow wakes in, then the paw melts into the onboarding orb (same bg → seamless).
+        // Exit (0.85–1.5): pieces scatter outward with staggered easeOut, growing and fading.
+        let scatter = Self.window(t, 0.85, 1.5)
+        let wordOut = Self.window(t, 0.82, 1.02)
         let glow = Self.ease(Self.window(t, 0, 0.9))
-        let morph = Self.ease(Self.window(t, 0.85, 1.35))
+        // Onboarding: the orb glow blooms in where the paw was (same page background → seamless).
+        let orb = toOrb ? Self.ease(Self.window(t, 1.0, 1.5)) : 0
+        // Chat: the breathing background cross-fades out over the scatter; onboarding keeps it (identical page).
+        let bg = toOrb ? 1 : 1 - Self.ease(Self.window(t, 1.05, 1.65))
+        let fade = toOrb ? 1 - Self.window(t, 1.5, 1.65) : 1.0
         return ZStack {
-            Color("LaunchCanvas")
-            CalmGlowBackground(intensity: glow)
-            CalmOrb(size: 100).opacity(morph).scaleEffect(0.6 + 0.4 * morph)
+            ZStack {
+                Color("LaunchCanvas")
+                CalmGlowBackground(intensity: glow)
+            }
+            .opacity(bg)
+            if toOrb { CalmOrb(size: 100).opacity(orb).scaleEffect(0.7 + 0.3 * orb) }
             VStack(spacing: size * 0.18) {
-                PawMark(size: size, color: CatpawColors.action, pressed: pressed, sweep: sweep)
-                    .scaleEffect(x: pop * sx * (1 - 0.6 * morph), y: pop * sy * (1 - 0.6 * morph), anchor: .center)
-                    .blur(radius: 6 * morph)
+                PawMark(size: size, color: CatpawColors.action, pressed: pressed, sweep: sweep, scatter: scatter)
+                    .scaleEffect(x: pop * sx, y: pop * sy, anchor: .center)
                 Text(verbatim: "Catpaw")
                     .font(.title.weight(.bold)).fontDesign(.rounded)
                     .foregroundStyle(CatpawColors.ink)
-                    .opacity(word * (1 - morph)).offset(y: (1 - word) * 8)
+                    .opacity(word * (1 - wordOut)).offset(y: (1 - word) * 8)
             }
-            .offset(y: size * 0.12 * (1 - morph))
-            .opacity(1 - morph)
+            .offset(y: size * 0.12)
         }
         .opacity(fade)
     }

@@ -141,7 +141,7 @@ import AppIntents
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .overlay {
                 if launchMarkVisible {
-                    LaunchMarkView(restoring: false) { launchMarkVisible = false }
+                    LaunchMarkView(restoring: false, toOrb: auth.chat == nil || auth.needsOnboarding) { launchMarkVisible = false }
                         .transition(.opacity)
                         .zIndex(100)
                 }

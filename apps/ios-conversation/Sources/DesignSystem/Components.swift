@@ -37,6 +37,15 @@ enum CatpawColors {
     static let success = adaptive(light: 0x267146, dark: 0x9BD4AF)
     static let attention = adaptive(light: 0x895700, dark: 0xE9BC69)
     static let failure = adaptive(light: 0xB3261E, dark: 0xFFB4AB)
+    // Calm launch/onboarding/voice surface (warm page, peach + lavender glow, orange orb).
+    static let calmPage = adaptive(light: 0xFBF7F3, dark: 0xFBF7F3)
+    static let calmPeach = adaptive(light: 0xFFC79E, dark: 0xFFC79E)
+    static let calmLavender = adaptive(light: 0xD6CCFA, dark: 0xD6CCFA)
+    static let orbLight = adaptive(light: 0xFFBD85, dark: 0xFFBD85)
+    static let orbDeep = adaptive(light: 0xF57333, dark: 0xF57333)
+    static let calmSurface = adaptive(light: 0xFFFFFF, dark: 0xFFFFFF)
+    static let calmGlyph = adaptive(light: 0xFFFFFF, dark: 0xFFFFFF)
+    static let calmShadow = adaptive(light: 0x000000, dark: 0x000000)
     // Compatibility names inherit the shared semantic role, never a second palette.
     static let accent = action
     static let green = success
