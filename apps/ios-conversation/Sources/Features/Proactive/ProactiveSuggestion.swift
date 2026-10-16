@@ -72,7 +72,8 @@ enum ProactiveEngineError: Error, Equatable { case remindersDenied, writeFailed,
 
 @MainActor final class ProactiveSuggestionMock: ProactiveSuggestionBackend {
     private var items: [String: ProactiveSuggestion]
-    init(_ seed: [ProactiveSuggestion] = ProactiveSuggestionMock.samples) { items = Dictionary(uniqueKeysWithValues: seed.map { ($0.id, $0) }) }
+    /// Swift 6: the default seed is read inside the (main-actor) initializer, not in a nonisolated default argument.
+    init(_ seed: [ProactiveSuggestion]? = nil) { items = Dictionary(uniqueKeysWithValues: (seed ?? Self.samples).map { ($0.id, $0) }) }
     func list() async throws -> [ProactiveSuggestion] { items.values.sorted { ($0.createdAt ?? .distantPast) > ($1.createdAt ?? .distantPast) } }
     func perform(_ action: ProactiveSuggestion.Action, on id: String) async throws -> ProactiveSuggestion {
         try? await Task.sleep(for: .milliseconds(350))

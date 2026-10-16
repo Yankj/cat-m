@@ -157,12 +157,14 @@ extension Result { var isFailure: Bool { if case .failure = self { return true }
         expect(!e.isValid(nil), "epoch: nil token never valid")
         // Write is atomic w.r.t. bump: sign-out during commit waits for it (no half-written state after the barrier).
         let c = e.capture()!
-        var order: [String] = []
-        let lock = NSLock()
-        DispatchQueue.global().async { usleep(5_000); e.signOut(); lock.lock(); order.append("signOut"); lock.unlock() }
-        e.commit(c) { usleep(30_000); lock.lock(); order.append("write"); lock.unlock() }
+        // Swift 6: a lock-guarded box (no lock()/unlock() in async code, no captured var mutated concurrently).
+        final class OrderLog: @unchecked Sendable { private let lock = NSLock(); private var items: [String] = []
+            func append(_ s: String) { lock.withLock { items.append(s) } }; var snapshot: [String] { lock.withLock { items } } }
+        let log = OrderLog()
+        DispatchQueue.global().async { usleep(5_000); e.signOut(); log.append("signOut") }
+        e.commit(c) { usleep(30_000); log.append("write") }
         usleep(60_000)
-        lock.lock(); let o = order; lock.unlock()
+        let o = log.snapshot
         expect(o == ["write", "signOut"], "epoch: bump waits for an in-progress commit")
         // Thread safety: concurrent captures and bumps.
         let f = AccountEpoch(account: "u"); let start = f.epoch
