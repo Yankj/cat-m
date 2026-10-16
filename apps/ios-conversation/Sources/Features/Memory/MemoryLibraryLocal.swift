@@ -22,14 +22,15 @@ import Foundation
     /// - content dedupe: an item whose text already exists in the target is not created again (a crash between create and
     ///   local forget therefore never duplicates on the next run);
     /// - an empty id from `create` counts as failure (local copy kept);
-    /// - local 「使用记忆」 off is carried over (`setUseMemory(false)`; unsupported is ignored).
+    /// - local 「使用记忆」 off is carried over (`setUseMemory(false)` after all creates; unsupported is ignored).
     static func migrate(_ local: MemoryLibraryStub, to target: any MemoryLibraryBackend) async -> MigrationReport {
         var report = MigrationReport()
         guard target !== local, !local.items.isEmpty else { report.kept = local.items.count; return report }
         var existing: Set<String>
         do { existing = Set(try await target.load().items.map { normalize($0.content) }) }
         catch { report.stoppedBy = (error as? MemoryLibraryError) ?? .failed(String(describing: error)); report.kept = local.items.count; return report }
-        if let snap = try? await local.load(), !snap.useMemory { try? await target.setUseMemory(false) }
+        // 「使用记忆」 off is applied LAST: the server rejects POST /items with 409 memory_consent_required while off.
+        let carryOff = (try? await local.load()).map { !$0.useMemory } ?? false
         for item in local.items.reversed() {
             do {
                 let key = normalize(item.content)
@@ -44,6 +45,7 @@ import Foundation
                 break
             }
         }
+        if carryOff { try? await target.setUseMemory(false) }
         report.kept = local.items.count
         return report
     }
