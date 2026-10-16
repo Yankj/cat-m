@@ -151,9 +151,11 @@ struct DottedWaveform: View {
 /// Full-screen calm voice mode while tap-dictating.
 @MainActor struct VoiceModeHost: View {
     @ObservedObject private var dictation = ComposerDictation.shared
+    @ObservedObject private var voice = ComposerDictation.shared.voice
     var body: some View {
         // `-CatpawVoiceModePreview YES` (launch argument) pins the overlay for visual QA on simulators without speech.
-        if (dictation.dictating && dictation.mode == .tap) || UserDefaults.standard.bool(forKey: "CatpawVoiceModePreview") {
+        // Shown once audio is actually live, so permission prompts / a failed start never flash the full-screen layer.
+        if (dictation.dictating && dictation.mode == .tap && voice.dictationPhase == .recording) || UserDefaults.standard.bool(forKey: "CatpawVoiceModePreview") {
             VoiceModeOverlay(dictation: dictation, voice: dictation.voice)
                 .transition(.opacity)
         }

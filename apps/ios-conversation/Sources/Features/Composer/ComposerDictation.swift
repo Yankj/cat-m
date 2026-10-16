@@ -80,6 +80,13 @@ import UIKit
         guard let model, !dictating else { return }
         // A stale session (e.g. another screen's capture) must never block the mic: clear it first.
         if voice.dictationPhase != .idle { voice.cancelDictation() }
+        // Known-terminal states answer inline without flashing a session in and out.
+        if AVAudioSession.sharedInstance().recordPermission == .denied || [.denied, .restricted].contains(SFSpeechRecognizer.authorizationStatus()) {
+            notice = .permissionDenied; ConversationTextView.focusComposer(); return
+        }
+        if SFSpeechRecognizer(locale: Locale(identifier: "zh-CN"))?.supportsOnDeviceRecognition != true {
+            notice = .unsupported; ConversationTextView.focusComposer(); return
+        }
         prefix = model.draft; lastWritten = model.draft; sendWhenDone = false
         self.mode = mode
         dictating = true; userStopped = false; notice = nil
@@ -173,7 +180,9 @@ import UIKit
                                  micOverride: AnyView(HoldToTalkMic(dictation: dictation, size: size)))
             .onAppear { dictation.attach(model); dictation.onSend = { send() } }
             .onDisappear { dictation.stopNow() }
-            .onChange(of: scene) { _, value in if value != .active { dictation.stopNow() } }
+            // Only a real background stops: the mic/speech permission alerts make the scene .inactive, and stopping there
+            // tore the session down mid-start (overlay flashed in and out, voice mode never entered).
+            .onChange(of: scene) { _, value in if value == .background { dictation.stopNow() } }
             .overlay(alignment: .top) {
                 if comingSoon {
                     Text(ui("语音对话即将支持")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.ink)

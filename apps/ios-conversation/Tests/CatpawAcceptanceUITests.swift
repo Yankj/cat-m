@@ -443,6 +443,51 @@ final class CatpawAcceptanceUITests: XCTestCase {
         XCTAssertTrue(ok, "voice mode overlay must appear on tap-to-dictate")
     }
 
+    // test18: frame-level probes for 新建对话 empty-state stability and first-run voice permissions.
+    func test18NewChatAndVoiceFirstRun() throws {
+        guard ProcessInfo.processInfo.environment["CATPAW_DEVICE_TOUR"] == "1" else { throw XCTSkip("device tour only") }
+        let app = XCUIApplication(bundleIdentifier: bundleID); forwardPublicConfig(app); app.launchArguments += ["-CatpawSkipOnboarding"]; app.launch()
+        if app.buttons["auth.closeUnrestoredSession"].waitForExistence(timeout: 5) { app.buttons["auth.closeUnrestoredSession"].tap(); Thread.sleep(forTimeInterval: 2) }
+        XCTAssertTrue(input(app).waitForExistence(timeout: 60)); Thread.sleep(forTimeInterval: 1.5)
+        // A. sidebar → 新建对话, sample the empty-state position every frame we can.
+        for round in 0..<2 {
+            app.buttons["sidebar.open"].tap(); Thread.sleep(forTimeInterval: 1)
+            app.buttons["sidebar.new"].tap()
+            var ys: [String] = []
+            let t0 = Date()
+            while Date().timeIntervalSince(t0) < 1.6 {
+                let e = app.otherElements["chat.empty"]
+                ys.append(String(format: "%.2f:%@", Date().timeIntervalSince(t0), e.exists ? String(format: "%.0f", e.frame.minY) : "-"))
+            }
+            let a = XCTAttachment(string: ys.joined(separator: " ")); a.name = "newchat-y-\(round)"; a.lifetime = .keepAlways; add(a)
+            NSLog("CATPAW_NEWCHAT_Y \(round) \(ys.joined(separator: " "))")
+            shot(app, "t18-newchat-\(round)")
+        }
+        // B. voice: first tap (permission prompts), then a second tap.
+        let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        let mic = app.buttons["chat.composer.mic"].firstMatch
+        XCTAssertTrue(mic.waitForExistence(timeout: 5)); mic.tap()
+        for i in 0..<3 {
+            let a = springboard.alerts.firstMatch
+            guard a.waitForExistence(timeout: 3) else { break }
+            shot(app, "t18-voice-perm-\(i)")
+            for l in ["允许", "好", "Allow", "OK"] where a.buttons[l].exists { a.buttons[l].tap(); break }
+            Thread.sleep(forTimeInterval: 0.3)
+        }
+        var states: [String] = []
+        let t1 = Date()
+        while Date().timeIntervalSince(t1) < 2.5 { states.append(String(format: "%.2f:%@", Date().timeIntervalSince(t1), app.otherElements["chat.voice.mode"].exists ? "V" : (app.buttons["chat.composer.dictating"].exists ? "d" : "_"))) }
+        NSLog("CATPAW_VOICE_A \(states.joined(separator: " "))")
+        shot(app, "t18-voice-after-perm")
+        if app.otherElements["chat.voice.mode"].exists || app.buttons["chat.composer.dictating"].exists { app.buttons["chat.composer.dictation.confirm"].firstMatch.tap(); Thread.sleep(forTimeInterval: 1.5) }
+        if app.buttons["chat.composer.mic"].firstMatch.exists { app.buttons["chat.composer.mic"].firstMatch.tap() }
+        states = []
+        let t2 = Date()
+        while Date().timeIntervalSince(t2) < 2.5 { states.append(String(format: "%.2f:%@", Date().timeIntervalSince(t2), app.otherElements["chat.voice.mode"].exists ? "V" : (app.buttons["chat.composer.dictating"].exists ? "d" : "_"))) }
+        NSLog("CATPAW_VOICE_B \(states.joined(separator: " "))")
+        shot(app, "t18-voice-second-tap")
+    }
+
     func test16DeviceReminder() throws {
         guard ProcessInfo.processInfo.environment["CATPAW_DEVICE_TOUR"] == "1" else { throw XCTSkip("device tour only") }
         let ask = ProcessInfo.processInfo.environment["CATPAW_DEVICE_ASK"] ?? "帮我在提醒事项里建一个明天上午9点的提醒：交周报"
