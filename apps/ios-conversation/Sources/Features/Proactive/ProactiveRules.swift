@@ -50,4 +50,34 @@ enum ProactiveRules {
     static func isLeadMemory(_ text: String) -> Bool {
         text.range(of: #"提前\s*\d{1,3}\s*分钟"#, options: .regularExpression) != nil
     }
+
+    // MARK: Codex P0-3 — delivery per level, with on-device quiet hours and daily cap (same defaults as the server).
+    static let dailyNotifyCap = 5
+    static let quietStartHour = 22, quietEndHour = 8
+    static func isQuiet(_ now: Date, calendar: Calendar = .current) -> Bool {
+        let h = calendar.component(.hour, from: now); return h >= quietStartHour || h < quietEndHour
+    }
+    struct Delivery: Equatable {
+        var level: ProactiveLevel; var inAppCard: Bool; var systemNotification: Bool; var sound: Bool; var timeSensitive: Bool; var liveActivity: Bool
+    }
+    /// The final, on-device gate: applies even when the server already decided (offline rules use it too).
+    static func delivery(level requested: ProactiveLevel, now: Date, deliveredToday: Int, calendar: Calendar = .current) -> Delivery {
+        var level = requested
+        if level >= .notify, isQuiet(now, calendar: calendar) { level = .card }
+        if level >= .notify, deliveredToday >= dailyNotifyCap { level = .card }
+        switch level {
+        case .silent: return .init(level: level, inAppCard: false, systemNotification: false, sound: false, timeSensitive: false, liveActivity: false)
+        case .card: return .init(level: level, inAppCard: true, systemNotification: false, sound: false, timeSensitive: false, liveActivity: false)
+        case .notify: return .init(level: level, inAppCard: true, systemNotification: true, sound: true, timeSensitive: false, liveActivity: false)
+        case .interrupt: return .init(level: level, inAppCard: true, systemNotification: true, sound: true, timeSensitive: true, liveActivity: true)
+        }
+    }
+}
+
+/// catpaw.proactive.decision.v1 LEVELS, ordered.
+enum ProactiveLevel: Int, Comparable, Equatable, Sendable {
+    case silent, card, notify, interrupt
+    init(server raw: String?) { self = ["silent": .silent, "card": .card, "notify": .notify, "interrupt": .interrupt][raw ?? ""] ?? .card }
+    var name: String { ["silent", "card", "notify", "interrupt"][rawValue] }
+    static func < (a: Self, b: Self) -> Bool { a.rawValue < b.rawValue }
 }
