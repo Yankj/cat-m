@@ -545,10 +545,23 @@ final class CatpawAcceptanceUITests: XCTestCase {
             let f = input(app); f.tap(); Thread.sleep(forTimeInterval: 0.5)
             if let v = f.value as? String, !v.isEmpty, app.keyboards.firstMatch.exists { f.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: min(v.count + 4, 80))) }
         }
+        func waitComposerIdle(timeout: TimeInterval = 45) {
+            // reply-chrome: while streaming, send morphs to chat.stop — wait it out before typing/sending.
+            let deadline = Date().addingTimeInterval(timeout)
+            while Date() < deadline {
+                let stopping = app.buttons["chat.stop"].exists
+                let sendReady = app.buttons["chat.send"].firstMatch.exists || app.buttons["chat.composer.send"].firstMatch.exists
+                if !stopping && sendReady { return }
+                Thread.sleep(forTimeInterval: 0.5)
+            }
+        }
         func tapSend() {
-            Thread.sleep(forTimeInterval: 0.6)
-            let sends = app.buttons.matching(NSPredicate(format: "identifier == 'chat.send'")).allElementsBoundByIndex
-            if let s = sends.first(where: { $0.isHittable && $0.isEnabled }) { s.tap() } else { app.buttons["chat.send"].firstMatch.tap() }
+            waitComposerIdle()
+            Thread.sleep(forTimeInterval: 0.4)
+            let sends = app.buttons.matching(NSPredicate(format: "identifier == 'chat.send' OR identifier == 'chat.composer.send'")).allElementsBoundByIndex
+            if let s = sends.first(where: { $0.isHittable && $0.isEnabled }) { s.tap(); return }
+            if app.buttons["chat.send"].firstMatch.exists { app.buttons["chat.send"].firstMatch.tap(); return }
+            app.buttons["chat.composer.send"].firstMatch.tap()
         }
         /// Wait until the composer draft is empty (send accepted) or give up.
         func waitDraftCleared(timeout: TimeInterval = 12) -> Bool {
@@ -573,8 +586,10 @@ final class CatpawAcceptanceUITests: XCTestCase {
             for _ in 0..<40 { if app.descendants(matching: .any)["chat.assistant.message"].exists { break }; Thread.sleep(forTimeInterval: 1) }
             Thread.sleep(forTimeInterval: 2)
             shot(app, tag + "00b-after-warmup")
+            waitComposerIdle(timeout: 60)
         }
         clearDraft()
+        waitComposerIdle(timeout: 30)
         let field = input(app); field.tap(); Thread.sleep(forTimeInterval: 0.8)
         if !app.keyboards.firstMatch.exists { field.tap(); Thread.sleep(forTimeInterval: 0.8) }
         if app.keyboards.firstMatch.exists { field.typeText(ask) }
