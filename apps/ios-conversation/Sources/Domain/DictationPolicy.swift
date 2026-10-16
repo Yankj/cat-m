@@ -21,3 +21,26 @@ public enum DictationPolicy {
         }
     }
 }
+
+/// Text of one dictation session across recognition segments. A segment ends on a pause (final result), a recognizer
+/// error or the per-request time limit; its text is committed and a new segment starts, so nothing said is lost.
+public struct DictationTranscript: Equatable, Sendable {
+    public private(set) var committed = ""
+    public private(set) var current = ""
+    public init() {}
+    public var text: String { DictationPolicy.join(committed, current) }
+    public mutating func update(_ partial: String) { current = partial }
+    public mutating func commit() { committed = text; current = "" }
+}
+
+public enum DictationRestart {
+    /// Consecutive segments that ended in an error without any text before we give up (mic broken, recognizer down).
+    public static let maxEmptyFailures = 3
+    public enum Decision: Equatable { case restart, finish, fail }
+    /// Called when a segment ends while the user is still dictating (not after they tapped stop / released).
+    public static func decide(failed: Bool, segmentHadText: Bool, emptyFailures: Int, sessionHasText: Bool) -> Decision {
+        if !failed { return .restart }                                  // pause → keep listening
+        if segmentHadText || emptyFailures + 1 < maxEmptyFailures { return .restart }
+        return sessionHasText ? .finish : .fail
+    }
+}
