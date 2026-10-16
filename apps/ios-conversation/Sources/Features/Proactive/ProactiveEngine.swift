@@ -370,6 +370,31 @@ struct ProactiveSignal: Equatable, Sendable {
     }
     /// Device→cloud undo loop (hook for the undo owner, 三角): queue the cloud undo under its own identity, advance the
     /// generation so later actions get fresh operation ids, and cancel the pending snooze notification.
+    /// Codex PR90c #5 — the complete engine side of undo (catpaw.proactive.undo.v1, same as the server). 三角's
+    /// `ProactiveLocalBackend.undo` should be `try await ProactiveEngine.shared.undoLast(id)`.
+    /// Reverts the last reversible action's real effect first (reminder delete errors propagate; snooze notification
+    /// cancelled), then persists under the account token and queues the cloud undo with a fresh generation.
+    func undoLast(_ id: String) async throws -> ProactiveSuggestion {
+        guard let token = AccountEpoch.shared.capture() else { throw ProactiveEngineError.writeFailed }
+        var s = ProactiveSuggestionStore.shared.items[id] ?? ProactiveLocalBackend.load()[id] ?? ProactiveSuggestion(id: id, title: "", reason: "")
+        let taken = s.taken ?? []
+        let plan = ProactiveUndo.plan(offered: s.effectiveActions.map(\.rawValue), taken: taken.map(\.action.rawValue), status: s.effectiveStatus.rawValue)
+        guard let removed = plan.removed, let index = plan.removedIndex else { note("undo: nothing reversible id=\(id)"); return s }
+        switch removed {
+        case "create_reminder":
+            #if canImport(EventKit)
+            try await removeReminderChecked(id)
+            #endif
+        case "snooze": delivery.poster.remove(ids: [id + "-snooze"])
+        default: break
+        }
+        CatpawLeaveActivity.stop(suggestionID: id)
+        var kept = taken; kept.remove(at: index); s.taken = kept
+        s.status = ProactiveSuggestion.Status(rawValue: plan.status) ?? .pending
+        guard AccountEpoch.shared.commit(token, { ProactiveLocalBackend.save(s) }) != nil else { throw ProactiveEngineError.writeFailed }
+        didUndo(local: id)
+        return s
+    }
     func didUndo(local: String) {
         var g = generations; let op = g.undo(local); generations = g
         #if os(iOS)
@@ -529,9 +554,13 @@ struct ProactiveSignal: Equatable, Sendable {
         return found.first
     }
     func removeReminder(_ suggestionID: String) async {
+        do { try await removeReminderChecked(suggestionID) } catch { note("undo reminder delete FAILED: \(error.localizedDescription)") }
+    }
+    /// Codex PR90c #5: a failed delete is an error (undo must not report success). Not found → nothing to remove.
+    func removeReminderChecked(_ suggestionID: String) async throws {
         guard let p = pendingReminders[suggestionID], let id = await findReminder(marker: URL(string: "catpawm://op/\(p.operationID)")!),
               let item = store.calendarItem(withIdentifier: id) as? EKReminder else { return }
-        try? store.remove(item, commit: true); note("undo removed reminder operation_id=\(p.operationID)")
+        try store.remove(item, commit: true); note("undo removed reminder operation_id=\(p.operationID)")
     }
     #endif
 
