@@ -481,6 +481,8 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
             subscription=Task { [weak self,repository,scope] in
                 for await notice in await repository.changes(scope:scope,after:snapshot.sequence) { guard let self,!Task.isCancelled else { return };let latest=await repository.read(scope:scope);if !notice.recordIDs.isEmpty,notice.recordIDs.allSatisfy({latest.records[$0]?.payload.kind=="conversationUIState"}) {continue};let headerChanged=notice.recordIDs.contains(where:{id in self.history.contains(where:{$0.id == id}) || id == self.conversationID});await self.refresh(rebuildHistory:headerChanged) }
             }
+            // A start that was still awaiting openLatest when the model was deactivated (logout) must not revive it.
+            guard !continuationClosing else { subscription?.cancel(); subscription=nil; return }
             loaded=true;await resumeForeground()
         } catch { self.error=error.localizedDescription }
     }
