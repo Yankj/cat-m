@@ -41,6 +41,7 @@ enum ConversationInboxReturnResult {case returned,unavailable(String)}
                     Text(ui("显示上次读取的内容；本次尚未完成更新。")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
                         .accessibilityIdentifier("inbox.stale")
                 }
+                if mode == .tasks { DeviceLedgerSection() }
                 if mode == .tasks {
                     ForEach(model.items) { item in
                         NavigationLink {
@@ -57,7 +58,7 @@ enum ConversationInboxReturnResult {case returned,unavailable(String)}
                         .accessibilityIdentifier("inbox.artifact." + row.identity.id)
                     }
                 }
-                if model.didLoad && !model.loading && model.errorText == nil && visibleCount == 0 {
+                if model.didLoad && !model.loading && model.errorText == nil && visibleCount == 0 && (mode != .tasks || DeviceLedger.shared.active.isEmpty) {
                     if mode == .results && model.hasMore {
                         Text(ui("当前已读取的工作还没有成果，可以加载更多。")).font(CatpawTypography.Role.secondary.font).foregroundStyle(CatpawColors.secondary)
                     } else {
