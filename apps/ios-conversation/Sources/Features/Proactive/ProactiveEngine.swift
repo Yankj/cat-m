@@ -352,6 +352,24 @@ struct ProactiveSignal: Equatable, Sendable {
     /// Pending action/undo write-backs: persisted, retried with backoff, bound to the account (Codex PR90 #5).
     struct SyncOp: Codable, Sendable { var local: String; var action: String; var operationID: String }
     let syncQueue = CatpawPersistentQueue<SyncOp>(name: "proactive.sync")
+    /// Codex PR90 #6: undo generations → fresh idempotency identity for actions re-taken after undo.
+    private static let generationsKey = "catpaw.proactive.generations.v1"
+    private var generations: ProactiveActionGenerations {
+        get { UserDefaults.standard.data(forKey: Self.generationsKey).flatMap { try? JSONDecoder().decode(ProactiveActionGenerations.self, from: $0) } ?? .init() }
+        set { UserDefaults.standard.set(try? JSONEncoder().encode(newValue), forKey: Self.generationsKey) }
+    }
+    func operationID(_ local: String, _ action: String) -> String {
+        ProactiveRules.operationID(suggestion: local, action: action, generation: generations[local])
+    }
+    /// Device→cloud undo loop (hook for the undo owner, 三角): queue the cloud undo under its own identity, advance the
+    /// generation so later actions get fresh operation ids, and cancel the pending snooze notification.
+    func didUndo(local: String) {
+        var g = generations; let op = g.undo(local); generations = g
+        #if os(iOS)
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [local + "-snooze"])
+        #endif
+        syncAction("undo", local: local, operationID: op)
+    }
     private var lastRemote: [String: Any]?
     /// `POST /catpaw/proactive/v1/evaluate`; nil (offline / not deployed) → local rules.
     private func evaluateRemote(_ s: ProactiveSignal, leadMinutes: Int, travelMinutes: Int? = nil) async -> Decision? {
@@ -849,7 +867,7 @@ struct ProactiveSignal: Equatable, Sendable {
         // Only a real success is synced; a cancelled / unavailable SMS never reaches the cloud as notify_attendees.
         let state = s.actionStates[action.rawValue]
         if !ProactiveActionStates.effects.contains(action.rawValue) || state.map(ProactiveActionStates.shouldSync) == true {
-            ProactiveEngine.shared.syncAction(action.rawValue, local: id, operationID: "op-\(id)-\(action.rawValue)")
+            ProactiveEngine.shared.syncAction(action.rawValue, local: id, operationID: ProactiveEngine.shared.operationID(id, action.rawValue))
         }
         mock.upsert(s); Self.save(s); return s
     }

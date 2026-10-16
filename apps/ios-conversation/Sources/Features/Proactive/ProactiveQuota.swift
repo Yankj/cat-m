@@ -56,3 +56,21 @@ extension ProactiveRules {
         return plan.systemNotification ? plan.level : nil
     }
 }
+
+// Codex PR90 #6: idempotency identity across undo. Each undo starts a new generation for that suggestion, so an
+// action re-taken after undo gets a fresh operation_id (the cloud keeps old ids burned: a late retry of an undone
+// op never resurrects it). Generation 0 keeps the legacy id so ops already in flight still dedupe.
+struct ProactiveActionGenerations: Codable, Sendable, Equatable {
+    var values: [String: Int] = [:]
+    init() {}
+    subscript(_ suggestion: String) -> Int { values[suggestion] ?? 0 }
+    /// Returns the undo's own operation id, then advances the generation.
+    mutating func undo(_ suggestion: String) -> String {
+        let g = self[suggestion]; values[suggestion] = g + 1; return "undo-\(suggestion)-g\(g)"
+    }
+}
+extension ProactiveRules {
+    static func operationID(suggestion: String, action: String, generation: Int) -> String {
+        generation == 0 ? "op-\(suggestion)-\(action)" : "op-\(suggestion)-\(action)-g\(generation)"
+    }
+}
