@@ -319,6 +319,14 @@ import Foundation
         expect(DictationPolicy.join("Book", "a room") == "Book a room", "dictation: Latin words get one space")
         expect(DictationPolicy.join("call", "，谢谢") == "call，谢谢" && DictationPolicy.join("hi\n", "there") == "hi\nthere" && DictationPolicy.join("", "你好") == "你好", "dictation: punctuation/newline/empty joins")
         expect(DictationPolicy.join("用 Swift", "写") == "用 Swift写", "dictation: Latin then CJK has no inserted space")
+        var t = DictationTranscript(); t.update("明天上午"); t.commit(); t.update("九点开会")
+        expect(t.text == "明天上午九点开会", "dictation: text from a finished segment is kept when the next one starts")
+        t.commit(); t.update(""); expect(t.text == "明天上午九点开会", "dictation: empty new segment keeps the text so far")
+        expect(DictationRestart.decide(failed: false, segmentHadText: true, emptyFailures: 0, sessionHasText: true) == .restart, "dictation: pause (final) restarts a segment")
+        expect(DictationRestart.decide(failed: true, segmentHadText: false, emptyFailures: 0, sessionHasText: false) == .restart, "dictation: one error restarts")
+        expect(DictationRestart.decide(failed: true, segmentHadText: false, emptyFailures: 2, sessionHasText: true) == .finish, "dictation: repeated empty errors finish with the text so far")
+        expect(DictationRestart.decide(failed: true, segmentHadText: false, emptyFailures: 2, sessionHasText: false) == .fail, "dictation: repeated empty errors with nothing said fail")
+        expect(DictationRestart.decide(failed: true, segmentHadText: true, emptyFailures: 2, sessionHasText: true) == .restart, "dictation: an error after text restarts")
         expect(DictationPolicy.localeIdentifier(for: .english) == "en-US" && DictationPolicy.localeIdentifier(for: .chinese) == "zh-CN", "dictation: locale follows app language")
     }
     static func followUps() {
