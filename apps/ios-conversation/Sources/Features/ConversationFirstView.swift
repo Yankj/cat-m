@@ -488,7 +488,13 @@ import CatpawImageComposer
         if composerChrome.queuedDraftPreview != nil { return ui("已排队 · 当前回复结束后发送") }
         return nil
     }
-    private var canSendDraft: Bool { !restrictToFrozenFixture && model.canAcceptDraft && !draftTooLong && composerChrome.attachmentsAreReady }
+    private var canSendDraft: Bool { !restrictToFrozenFixture && !draftTooLong && composerChrome.attachmentsAreReady && (model.canAcceptDraft || imageSendNeedsConsent) }
+    /// #64: a chrome image whose only blocker is a consent step; tapping send opens that step and then continues.
+    private var imageSendNeedsConsent: Bool {
+        guard !composerChrome.attachments.isEmpty,let block=model.imageSendBlock,!model.draft.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty else {return false}
+        return block == .imageConsentRequired || block == .textConsentRequired
+    }
+    private var chromeOwnsImage: Bool { !composerChrome.attachments.isEmpty }
     private var composerIsDrafting:Bool { !model.draft.isEmpty || model.isInputComposing }
     private var composerControlSize:CGFloat { max(44,CatpawTypography.font(.body,size:textSize).lineHeight) }
     private func composerBudget(_ viewport:GeometryProxy)->CatpawTextViewport.ComposerBudget {
@@ -537,8 +543,9 @@ import CatpawImageComposer
                     .background{GeometryReader{geometry in Color.clear.preference(key:ConversationComposerMeasurements.self,value:["text":geometry.size.height])}}
             }
                 .onAppear{composerChrome.setSendAction(submitDraft)}
-                .onChange(of:model.imageSendBlock){_,block in
-                    if sendAfterImageConsent,block==nil,model.imageDraft.phase == .ready {sendAfterImageConsent=false;submitDraft()}
+                .onChange(of:model.imageSendBlock){_,_ in
+                    guard sendAfterImageConsent,model.imageDraft.phase == .ready else {return}
+                    if !continueImageConsent(start:false) {sendAfterImageConsent=false;submitDraft()}
                 }
                 .accessibilityElement(children:.contain).accessibilityIdentifier("chat.input.container")
         }.background(alignment:.topLeading) {
@@ -575,8 +582,8 @@ import CatpawImageComposer
                 Text(ui(block)).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.attention).fixedSize(horizontal:false,vertical:true)
                     .accessibilityLabel(ui(block)).accessibilityIdentifier(inDetails ? "chat.input.context.blocked" : "chat.artifact.continuation.blocked")
             }
-            if let block=model.imageSendBlock,block != .unavailable {Text(ui(block.message)).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.attention).accessibilityIdentifier("attachment.sendBlock")}
-            if model.imageDraft.phase == .ready,model.imageCapability.available,!model.imageGate.imageConsentMatchesCurrentRoute {
+            if let block=model.imageSendBlock,block != .unavailable,inDetails || !chromeOwnsImage || !imageSendNeedsConsent {Text(ui(block.message)).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.attention).accessibilityIdentifier("attachment.sendBlock")}
+            if model.imageDraft.phase == .ready,model.imageCapability.available,!model.imageGate.imageConsentMatchesCurrentRoute,inDetails || !chromeOwnsImage {
                 Button(ui("确认图片处理方式")){contextAction(.imageConsent,inDetails:inDetails)}.touchTarget().disabled(!model.canReviewImage).accessibilityIdentifier(inDetails ? "chat.input.context.imageConsent" : "image.consent.review")
             }
             if model.checkingImageConsent {Text(ui("正在读取图片处理方式…")).font(CatpawTypography.Role.caption.font).accessibilityIdentifier("image.consent.loading")}
@@ -607,9 +614,10 @@ import CatpawImageComposer
                 ImageAttachmentPicker(draft:model.imageDraft,gate:model.imageGate,localize:{ui($0)}).id(model.scope.workspaceID.uuidString+(model.conversationID?.uuidString ?? ""))
                     // Keep its import ticket and selected-item state mounted. The
                     // compact + opens this same scoped draft in input details.
-                    .frame(height:!inDetails && model.imageDraft.phase == .empty ? 0:nil).clipped()
-                    .allowsHitTesting(inDetails || model.imageDraft.phase != .empty)
-                    .accessibilityHidden(!inDetails && model.imageDraft.phase == .empty)
+                    // A composer-chrome image (#64) already shows its own thumbnail; keep the picker mounted but hidden.
+                    .frame(height:!inDetails && (model.imageDraft.phase == .empty || chromeOwnsImage) ? 0:nil).clipped()
+                    .allowsHitTesting(inDetails || (model.imageDraft.phase != .empty && !chromeOwnsImage))
+                    .accessibilityHidden(!inDetails && (model.imageDraft.phase == .empty || chromeOwnsImage))
             }
             if inDetails, [.offline,.notConfigured].contains(model.connectionLifecycle) { Button {contextAction(.settings,inDetails:inDetails)} label: {
                 HStack(spacing: 8) {
@@ -768,18 +776,29 @@ import CatpawImageComposer
             }.accessibilityIdentifier("chat.process.\(row.id)")
         }
     }
+    /// #64 consent chain for a chrome image: text consent (this chat) → image consent (this image) → send.
+    /// Returns true while a consent step is still pending.
+    private func continueImageConsent(start:Bool) -> Bool {
+        switch model.imageSendBlock {
+        case .textConsentRequired?,.imageConsentRequired?:
+            // requestImageConsent asks for this chat's text consent first when needed, then the image consent.
+            if start {sendAfterImageConsent=true
+                if model.pendingImageConsent == nil,model.pendingModelConsent == nil,!model.checkingImageConsent,model.canReviewImage {model.requestImageConsent()}}
+            return true
+        default: return false
+        }
+    }
     private func submitDraft() {
         if canSendDraft {followingLatest=true}
         let time=ProcessInfo.processInfo.systemUptime,old=Set(model.outgoingMessages.map(\.id))
         let hadAttachments = !composerChrome.attachments.isEmpty
-        if model.imageSendBlock == .imageConsentRequired {
-            // #64: an attached image needs its one-time consent; send continues once it is approved.
-            if model.canReviewImage {sendAfterImageConsent=true;model.requestImageConsent()}
-            return
-        }
+        if continueImageConsent(start:true) {return}
         sendAfterImageConsent=false
+        let sentAttachment=model.imageDraft.phase == .ready ? model.imageDraft.attachment : nil
         model.prepareSend()
         let admitted=model.outgoingMessages.last(where:{!old.contains($0.id)})
+        // Keep the sent image for the bubble/viewer after the image store drops it at turn completion (#64).
+        if let sentAttachment,let admitted,admitted.image != nil {SentImageCache.shared.store(sentAttachment.encodedData,for:admitted.id,sha:sentAttachment.sha256)}
         if hadAttachments {pendingAttachmentIntentID=admitted?.id}
         #if DEBUG
         if let intent=admitted { probe.pressed(intent.id,at:time);probe.update(model) }
@@ -843,7 +862,7 @@ import CatpawImageComposer
                     #if DEBUG
                     .background { if let id=operationID(message),probe.enabled { P0EchoWitness(operationID:id) } }
                     #endif
-                if message.image != nil {MessageImageThumbnail(id:message.id.uuidString,load:{await loadMessageImage(turnID)},onReply:quote)}
+                if message.image != nil {MessageImageThumbnail(id:message.id.uuidString,load:{await loadMessageImage(turnID,sha:message.image?.sha256)},onReply:quote)}
                 if let id=operationID(message) {
                     if connectionMonitor.waitingForNetwork.contains(id) {
                         Text(ui("等待网络")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
@@ -909,9 +928,14 @@ import CatpawImageComposer
         Text(message.content).font(CatpawTypography.Role.body.font).foregroundStyle(CatpawColors.userMessageInk).padding(.horizontal,14).padding(.vertical,9)
             .background(CatpawColors.userMessageBackground,in:RoundedRectangle(cornerRadius:20,style:.continuous))
     }
-    private func loadMessageImage(_ turnID:UUID?) async -> Data? {
-        guard let turnID,let session=model.session,let reference=session.turns.first(where:{$0.id==turnID})?.request.image else {return nil}
-        return try? await model.imageStore.read(reference:reference,conversationID:session.conversationID,operationID:turnID)
+    private func loadMessageImage(_ turnID:UUID?,sha:String?) async -> Data? {
+        if let sha,let cached=SentImageCache.shared.data(sha:sha) {return cached}
+        guard let turnID else {return nil}
+        if let cached=SentImageCache.shared.data(for:turnID) {return cached}
+        guard let session=model.session,let reference=session.turns.first(where:{$0.id==turnID})?.request.image else {return nil}
+        let data=try? await model.imageStore.read(reference:reference,conversationID:session.conversationID,operationID:turnID)
+        if let data {SentImageCache.shared.store(data,for:turnID)}
+        return data
     }
     @ViewBuilder private func assistantMessage(_ message:ConversationTranscriptMessage,turnID:UUID?)->some View {
         if let turnID,let turn=model.session?.turns.first(where:{$0.id==turnID}),usesPhasedAnswer(turn,message:message) {
