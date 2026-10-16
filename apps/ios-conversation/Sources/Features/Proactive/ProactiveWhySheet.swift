@@ -56,7 +56,7 @@ import SwiftUI
             }
             .navigationTitle(ui("为什么找你")).navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button(ui("完成")) { dismiss() } } }
-            .sheet(isPresented: $memoryOpen) { NavigationStack { MemoryLibraryView(backend: MemoryLibraryHub.backend ?? MemoryLibraryStub()) } }
+            .sheet(isPresented: $memoryOpen) { NavigationStack { MemoryLibraryView(backend: MemoryLibraryHub.pageBackend) } }
         }
         .presentationDetents([.medium, .large])
         .accessibilityIdentifier("proactive.why")
