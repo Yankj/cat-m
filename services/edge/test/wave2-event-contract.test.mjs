@@ -4,7 +4,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
-const DEVICE_TOOLS={calendar_list:'none',contacts_search:'none',calendar_create:'card',reminder_create:'card',mail_compose:'card',sms_compose:'card',phone_call:'card',maps_open:'card',shop_open:'card',alarm_set:'card',shortcut_run:'card'};
+const DEVICE_TOOLS={calendar_list:'none',contacts_search:'none',calendar_create:'card',reminder_create:'card',mail_compose:'card',sms_compose:'card',phone_call:'card',maps_open:'card',shop_open:'card',alarm_set:'card',shortcut_run:'card',places_search:'none'};
 const obj=v=>v&&typeof v==='object'&&!Array.isArray(v);
 export function validateWave2Event(e){
  const fail=m=>{throw new Error(m);};
