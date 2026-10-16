@@ -41,7 +41,21 @@ const block={type:'object',required:['id','kind'],additionalProperties:false,pro
     properties:{callId:{type:'string',maxLength:160},ids:{type:'array',maxItems:8,items:{type:'string',maxLength:64},description:'optional subset/order of result ids (p1…, e1…)'}}}}};
 export const renderUISchema={type:'object',required:['block'],additionalProperties:false,properties:{block}};
 export const renderUITool={type:'function',function:{name:RENDER_UI,description:'Render a native UI block in the chat instead of writing code or long text. Use for choices, confirmations, forms, cards, lists, progress and sheets (popups). Interactive blocks wait for the user; the tool result is then the user\'s ui.response ({status:"submitted",response}) or {status:"dismissed"|"expired"|"cancelled"|"error"}. Display-only blocks return {status:"shown"}. Reuse the same block id to update a progress or card block.',parameters:renderUISchema}};
-export const uiPrompt='\n需要用户选择、确认、填写或查看结构化结果时调用 render_ui；不要输出 HTML/SwiftUI/JSON 代码来表示界面，除非用户明确要代码。When the user asks for a popup/dialog use kind "sheet". One interactive block per reply; continue from the tool result.';
+/** chat-ux #3: when a card beats text (eval: qa/chat-ux-ui-policy). Kept short; examples are the policy's test set anchors. */
+export const UI_POLICY=`
+卡片还是文字（先判断再决定是否调用 render_ui）：
+用卡片：①用户要在 2-8 个明确选项里挑（choices）；②要执行有后果的操作前需要用户确认（confirm）；③需要用户填 2 个以上字段（form）；④展示 3 条以上可逐项操作的结构化结果（list/place/event）；⑤长任务进度（progress）。
+用文字：闲聊、情绪、解释原因、观点建议、单一事实答案、写作/翻译/总结、一两句就能说清的内容；信息不足时直接用一句话追问，不要为单个开放问题做表单。
+正例（用卡片）：
+- 「帮我在周五三个空档里挑一个开会」→ choices，三个时段做选项。
+- 「把这 12 条提醒全删了」→ confirm（destructive），说明删除数量。
+- 「帮我登记报销：金额、日期、事由」→ form，三个字段。
+反例（用文字）：
+- 「今天好累啊」→ 文字共情，不要卡片。
+- 「为什么天是蓝的」→ 文字解释，不要 card 包一段话。
+- 「北京现在几点」→ 一句话回答，不要 card。
+不确定时用文字。`;
+export const uiPrompt='\n需要用户选择、确认、填写或查看结构化结果时调用 render_ui；不要输出 HTML/SwiftUI/JSON 代码来表示界面，除非用户明确要代码。When the user asks for a popup/dialog use kind "sheet". One interactive block per reply; continue from the tool result.'+UI_POLICY;
 export const GROUNDED_PROMPT='\n地点/日程卡片：places_search 返回后，App 会自动显示地点卡（导航/打电话）；需要单独挑几家或展示 calendar_list/calendar_create 的日程时，调用 render_ui kind "place"/"event" 并只给 source {callId, ids}，内容由服务端从工具结果填充。没有对应工具结果时不要用这两种卡片，也不要自己编地点或日程。';
 const sheetContent=b=>b.content??(b.fields?.length?'form':b.items?.length?'choices':'card');
 /** true when the block waits for a user answer (suspends the turn). */

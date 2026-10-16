@@ -1,0 +1,35 @@
+{
+ "note": "chat-ux #3 fixed eval set: 20 cases, expected = card (render_ui call) | text. Disjoint from the prompt's own examples.",
+ "fixtures": {
+  "places": [{"role":"assistant","content":null,"tool_calls":[{"id":"call-places-1","type":"function","function":{"name":"places_search","arguments":"{\"query\":\"川菜\"}"}}]},
+             {"role":"tool","tool_call_id":"call-places-1","content":"{\"status\":\"ok\",\"data\":{\"mode\":\"walking\",\"count\":4,\"why\":\"起点是你当前的真实位置\",\"places\":[{\"id\":\"p1\",\"name\":\"川味小馆\",\"distance_m\":420,\"eta_min\":6},{\"id\":\"p2\",\"name\":\"蜀香园\",\"distance_m\":650,\"eta_min\":9},{\"id\":\"p3\",\"name\":\"巴蜀人家\",\"distance_m\":900,\"eta_min\":12},{\"id\":\"p4\",\"name\":\"辣府\",\"distance_m\":1300,\"eta_min\":17}]}}"},
+             {"role":"assistant","content":"附近找到 4 家川菜，地点卡已经显示在上面。"}],
+  "calendar": [{"role":"assistant","content":null,"tool_calls":[{"id":"call-cal-1","type":"function","function":{"name":"calendar_list","arguments":"{\"from\":\"2026-10-17T00:00:00+08:00\",\"to\":\"2026-10-18T00:00:00+08:00\"}"}}]},
+               {"role":"tool","tool_call_id":"call-cal-1","content":"{\"status\":\"ok\",\"data\":{\"count\":3,\"events\":[{\"id\":\"e1\",\"title\":\"站会\",\"start\":\"2026-10-17T09:30:00+08:00\",\"end\":\"2026-10-17T09:45:00+08:00\"},{\"id\":\"e2\",\"title\":\"产品评审\",\"start\":\"2026-10-17T14:00:00+08:00\",\"end\":\"2026-10-17T15:00:00+08:00\"},{\"id\":\"e3\",\"title\":\"1:1\",\"start\":\"2026-10-17T16:00:00+08:00\",\"end\":\"2026-10-17T16:30:00+08:00\"}]}}"},
+               {"role":"assistant","content":"明天有 3 个会：站会、产品评审和 1:1。"}],
+  "places_denied": [{"role":"assistant","content":null,"tool_calls":[{"id":"call-places-2","type":"function","function":{"name":"places_search","arguments":"{\"query\":\"美食\"}"}}]},
+                    {"role":"tool","tool_call_id":"call-places-2","content":"{\"status\":\"denied\"}"}]
+ },
+ "cases": [
+  {"id":"c01","expect":"card","kind":"choices","text":"下周二下午 2 点、3 点半、5 点我都有空，列出来让我选一个约牙医"},
+  {"id":"c02","expect":"card","kind":"confirm","text":"把我所有已完成的任务都归档吧，一共 23 个，归档前跟我确认一下"},
+  {"id":"c03","expect":"card","kind":"form","text":"我想订个会议室，要填日期、开始时间、人数和用途"},
+  {"id":"c04","expect":"card","kind":"sheet","text":"给我弹个窗，提醒我喝水"},
+  {"id":"c05","expect":"card","kind":"choices","text":"去杭州出差：A 自驾、B 高铁、C 飞机，给我做成选项我来挑"},
+  {"id":"c06","expect":"card","kind":"list","text":"把这次出差的待办列成清单：订票、订酒店、写报告、约客户、报销"},
+  {"id":"c07","expect":"card","kind":"place","history":"places","text":"只挑最近的两家给我看看"},
+  {"id":"c08","expect":"card","kind":"event","history":"calendar","text":"把明天这几个会用卡片列给我"},
+  {"id":"c09","expect":"card","kind":"form","text":"帮我新建一个联系人，名字、电话、公司都要填"},
+  {"id":"c10","expect":"card","kind":"confirm","text":"取消明早 8 点的闹钟和明晚的健身预约，执行前让我确认"},
+  {"id":"t01","expect":"text","text":"你好呀"},
+  {"id":"t02","expect":"text","text":"我失恋了，好难受"},
+  {"id":"t03","expect":"text","text":"解释一下什么是通货膨胀"},
+  {"id":"t04","expect":"text","text":"把这句话翻译成英文：今天天气真好"},
+  {"id":"t05","expect":"text","text":"1 公里等于多少米"},
+  {"id":"t06","expect":"text","text":"你觉得我该先学 Swift 还是 Kotlin"},
+  {"id":"t07","expect":"text","text":"帮我写一首关于秋天的四行短诗"},
+  {"id":"t08","expect":"text","text":"总结一下：会议决定下周上线，小王负责测试，小李负责文档"},
+  {"id":"t09","expect":"text","text":"猫为什么喜欢钻纸箱"},
+  {"id":"t10","expect":"text","history":"places_denied","text":"附近有什么好吃的"}
+ ]
+}
