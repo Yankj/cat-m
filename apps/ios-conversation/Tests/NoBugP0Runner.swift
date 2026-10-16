@@ -14,16 +14,23 @@ import Foundation
     /// Simulates an await inside the real router (permission prompt / reminder lookup) before the system write.
     var beforeCommit: (() -> Void)?
     func execute(_ call: DeviceCall, credential: DeviceCallGate.Credential) async -> DeviceCallResult {
-        if let why = DeviceCallGate.commitCheck(credential, call) { return DeviceCallGate.rejected(call, why) }   // entry, as DeviceToolRouter does
+        if let why = DeviceCallGate.consume(credential, call) { return DeviceCallGate.rejected(call, why) }   // entry: one-shot, as DeviceToolRouter
+        defer { DeviceCallGate.retire(credential) }
         executed.append(call.call_id)
         if let id = writes[call.call_id] { return .init(call_id: call.call_id, status: .ok, data: ["event_id": .string(id), "deduped": .bool(true)]) }
         beforeCommit?()
-        if let why = DeviceCallGate.commitCheck(credential, call) { return DeviceCallGate.rejected(call, why) }   // final, as DeviceToolRouter does
-        let id = "evt-\(writes.count + 1)"; writes[call.call_id] = id
+        let id = "evt-\(writes.count + 1)"
+        // final effect inside the single commit gate, as DeviceToolRouter does
+        if case .refused(let why) = DeviceCallGate.commitEffect(credential, call, { writes[call.call_id] = id }) { return DeviceCallGate.rejected(call, why) }
         return .init(call_id: call.call_id, status: .ok, data: ["event_id": .string(id)])
     }
 }
 extension Result { var isFailure: Bool { if case .failure = self { return true }; return false } }
+@MainActor final class FakeUndoSubmitter: DeviceResultSubmitting {
+    var online = true; var sent: [String] = []
+    func submit(_ result: DeviceCallResult) async throws {}
+    func reportUndo(callID: String, outcome: DeviceUndoOutcome) async throws { guard online else { throw URLError(.notConnectedToInternet) }; sent.append(callID + ":" + outcome.rawValue) }
+}
 @MainActor final class FakeSubmitter: DeviceResultSubmitting {
     var sent: [DeviceCallResult] = []; var fail = false
     func submit(_ result: DeviceCallResult) async throws { if fail { throw URLError(.notConnectedToInternet) }; sent.append(result) }
@@ -204,10 +211,33 @@ extension Result { var isFailure: Bool { if case .failure = self { return true }
         expect(r3.status == .error && exec.writes["c-ro"] == nil, "p89b-1 a read-only grant's credential cannot drive a write tool")
         let r4 = await exec.execute(w, credential: good)
         expect(r4.status == .ok, "p89b-1 the real credential executes")
-        DeviceCallGate.retire(good)
         exec.writes["c-w"] = nil
         let r5 = await exec.execute(w, credential: good)
-        expect(r5.data?["reason"] == .string("credential_required"), "p89b-1 a retired credential cannot be replayed")
+        expect(r5.data?["reason"] == .string("credential_required") && exec.writes["c-w"] == nil, "p89d-1 the executor consumes the credential once (replay refused, no retire by the caller)")
+        // p89d-1: the confirm policy is part of the grant.
+        let cardList = DeviceCall(call_id: "c-confirm", tool: "calendar_list", args: [:], confirm: .card, ttl_sec: 600); DeviceCallGate.receive(cardList)
+        var asNone = cardList; asNone.confirm = DeviceCall.Confirm.none
+        expect(DeviceCallGate.authorize(asNone, finalArgs: [:], tap: nil).isFailure && DeviceCallGate.authorize(cardList, finalArgs: [:], tap: nil).isFailure,
+               "p89d-1 a .card grant cannot be run tap-less by rewriting confirm to .none")
+        // p89d-2: revoke right after every earlier check (inside the commit seam) → the effect does not run.
+        let rv = mk("c-commit"); DeviceCallGate.receive(rv)
+        DeviceCallGate.beforeCommitHook = { DeviceCallGate.revokedIDs.insert(["c-commit"]) }   // as the service thread does
+        let rr = await exec.execute(rv, credential: cred(rv)!)
+        DeviceCallGate.beforeCommitHook = nil
+        expect(rr.data?["reason"] == .string("call_revoked") && exec.writes["c-commit"] == nil, "p89d-2 revoke between the last check and the effect is caught by the single commit gate")
+        // p89d-4: undo reports belong to the account that did them.
+        let ustore = DeviceCallStore(defaults: UserDefaults(suiteName: suite + ".undo")!)
+        let undoA = FakeUndoSubmitter(); undoA.online = false; DeviceCallHub.submitter = undoA
+        await ustore.reportUndo(callID: "u-1", outcome: .undone)
+        DeviceCallGate.epoch.activate(account: "user-Z"); let undoB = FakeUndoSubmitter(); DeviceCallHub.submitter = undoB
+        await ustore.retryUndoReports()
+        expect(undoB.sent.isEmpty && ustore.undoQueue.pending["u-1"] == .undone, "p89d-4 A's queued undo is never sent through B's submitter")
+        DeviceCallGate.epoch.activate(account: "user-A"); undoA.online = true; DeviceCallHub.submitter = undoA
+        await ustore.retryUndoReports()
+        expect(undoA.sent == ["u-1:undone"] && ustore.undoQueue.isEmpty, "p89d-4 back on A, the queued undo is delivered by A's submitter")
+        await ustore.reportUndo(callID: "u-2", outcome: .unknown)
+        expect(undoA.sent.count == 1, "p89d-5 unknown undo outcomes are never reported")
+        DeviceCallHub.submitter = sub
         // 3. local cancel revokes before the report await.
         let store = DeviceCallStore(defaults: defaults)
         let k = mk("c-cancel"); DeviceCallGate.receive(k)

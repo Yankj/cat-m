@@ -16,21 +16,27 @@ struct DeviceLedgerEntry: Codable, Identifiable, Equatable {
     var account: String? = nil
 }
 
+/// Outcome of trying to remove a ledger item from the OS store (Codex p89d-5: "not found" is only claimed when the store
+/// could actually be read; no permission / read failure is `.undetermined`, never "already gone").
+enum DeviceLedgerRemoval: Equatable { case removed, notFound, removeFailed, permissionRevoked, undetermined }
 /// EventKit removal seam (tests inject a fake; the app uses EKEventStore).
 @MainActor protocol DeviceLedgerItemStore: AnyObject {
-    /// nil = item not found; true = removed; false = removal failed.
-    func remove(kind: DeviceLedgerEntry.Kind, itemID: String) -> Bool?
+    func remove(kind: DeviceLedgerEntry.Kind, itemID: String) -> DeviceLedgerRemoval
 }
 @MainActor final class EventKitLedgerItemStore: DeviceLedgerItemStore {
     private let store = EKEventStore()
-    func remove(kind: DeviceLedgerEntry.Kind, itemID: String) -> Bool? {
+    func remove(kind: DeviceLedgerEntry.Kind, itemID: String) -> DeviceLedgerRemoval {
+        let type: EKEntityType = kind == .reminder ? .reminder : .event
+        guard EKEventStore.authorizationStatus(for: type) == .fullAccess else { return .permissionRevoked }
+        // A store with no readable sources (e.g. account / iCloud unavailable) cannot prove absence.
+        guard !store.calendars(for: type).isEmpty else { return .undetermined }
         switch kind {
         case .reminder:
-            guard let r = store.calendarItem(withIdentifier: itemID) as? EKReminder else { return nil }
-            do { try store.remove(r, commit: true); return true } catch { return false }
+            guard let r = store.calendarItem(withIdentifier: itemID) as? EKReminder else { return .notFound }
+            do { try store.remove(r, commit: true); return .removed } catch { return .removeFailed }
         case .event:
-            guard let e = store.event(withIdentifier: itemID) else { return nil }
-            do { try store.remove(e, span: .thisEvent, commit: true); return true } catch { return false }
+            guard let e = store.event(withIdentifier: itemID) else { return .notFound }
+            do { try store.remove(e, span: .thisEvent, commit: true); return .removed } catch { return .removeFailed }
         }
     }
 }
@@ -89,8 +95,13 @@ struct DeviceLedgerEntry: Codable, Identifiable, Equatable {
         guard let token = epoch.capture(), let entry = entry(callID: callID) else { return .unknown }   // other account / signed out / never recorded
         if entry.undone { return .alreadyGone }
         let outcome: DeviceUndoOutcome? = epoch.commit(token) {
-            let removed = items.remove(kind: entry.kind, itemID: entry.itemID)
-            let o: DeviceUndoOutcome = removed == nil ? .alreadyGone : removed == true ? .undone : .failed
+            let o: DeviceUndoOutcome
+            switch items.remove(kind: entry.kind, itemID: entry.itemID) {
+            case .removed: o = .undone
+            case .notFound: o = .alreadyGone
+            case .removeFailed: o = .failed
+            case .permissionRevoked, .undetermined: o = .unknown   // can't tell → never marked undone, never reported
+            }
             if o.removed, let i = entries.firstIndex(where: { $0.id == entry.id && $0.account == token.account }) { entries[i].undone = true; save() }
             return o
         }

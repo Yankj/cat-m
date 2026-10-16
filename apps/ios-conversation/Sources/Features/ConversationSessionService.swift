@@ -10,7 +10,13 @@ public actor ConversationSessionService {
     private static let selectionKey = "conversation_first_selected"
     public nonisolated var supportsArtifactContinuations:Bool {backend.supportsArtifactContinuations}
     public nonisolated var artifactContinuationSubjectID:UUID? {backend.artifactContinuationSubjectID}
-    public init(repository: Repository, backend: any ConversationBackend = UnconfiguredConversationBackend(), resilience: (any ConversationStreamResilience)? = nil, reconnectPolicy: ConversationReconnectPolicy = .init(), outbox: ConversationOutbox? = nil) { self.repository = repository; self.backend = backend; self.resilience = resilience; self.reconnectPolicy = reconnectPolicy; self.outbox = outbox }
+    public init(repository: Repository, backend: any ConversationBackend = UnconfiguredConversationBackend(), resilience: (any ConversationStreamResilience)? = nil, reconnectPolicy: ConversationReconnectPolicy = .init(), outbox: ConversationOutbox? = nil, principal: AccountToken? = nil, principalAccount: String? = nil) { self.repository = repository; self.backend = backend; self.resilience = resilience; self.reconnectPolicy = reconnectPolicy; self.outbox = outbox; self.principal = principal; self.principalAccount = principal?.account ?? principalAccount }
+    /// Codex p89d-4: the authenticated principal this service was opened for (AccountEpoch token captured by the auth model
+    /// when it opened the workspace for that user). Device-call lifecycle events carry THIS token — never "current global".
+    /// nil (fixtures / previews) → legacy: the token is captured when the observation is claimed.
+    private let principal: AccountToken?
+    /// The authenticated user id this service belongs to. A token captured for any other account is never attached.
+    private let principalAccount: String?
     private let outbox: ConversationOutbox?
     private struct BusyRetry: Sendable { var due: Date; var operationID: UUID; var autoRetried: Bool }
     private var busyRetry: [UUID: BusyRetry] = [:]
@@ -818,6 +824,10 @@ public actor ConversationSessionService {
             if active[conversationID] == token { releaseActive(conversationID) }
         }
         let operationID = target.id
+        // Codex p89d-3: a whole-turn stop revokes this turn's device calls synchronously, BEFORE awaiting the cancel POST,
+        // its retries and the read-back.
+        let stopping = (target.pendingDeviceCalls ?? []).map(\.callID)
+        if !stopping.isEmpty { ConversationDeviceCall.lifecycle?(.revoked(callIDs: stopping.sorted())) }
         // A user stop is never resent automatically.
         if busyRetry[conversationID]?.operationID == operationID { busyRetry[conversationID] = nil; await resilience?.clearBusy() }
         autoRetryCounts.removeValue(forKey: operationID); busyRetryCancelled.remove(operationID)
@@ -959,7 +969,8 @@ public actor ConversationSessionService {
     private var observationAccounts: [UUID: AccountToken] = [:]
     private func claimObservation(_ conversationID: UUID) -> UUID {
         let token = UUID(); active[conversationID] = token
-        if let account = AccountEpoch.shared.capture() { observationAccounts[token] = account }
+        if let principal { if AccountEpoch.shared.isValid(principal) { observationAccounts[token] = principal } }
+        else if let current = AccountEpoch.shared.capture(), principalAccount == nil || current.account == principalAccount { observationAccounts[token] = current }
         return token
     }
     private func scheduleUIDrain(_ conversationID: UUID) {
