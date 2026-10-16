@@ -31,7 +31,7 @@ const CREATE={name:'calendar_create',arguments:{title:'牙医',start:'2026-10-20
 test('gate default off; tool list follows plan §3.2; read-only tools need no card; result schema',()=>{
  assert.equal(readConfig(()=>undefined).deviceTools,'allowlist');
  assert.deepEqual(DEVICE_TOOL_NAMES,['calendar_list','calendar_create','reminder_create','mail_compose','sms_compose','phone_call','contacts_search','maps_open','shop_open','alarm_set','shortcut_run','places_search']);
- const tools=createDeviceTools();assert.equal(tools.get('calendar_list').confirm,'none');assert.equal(tools.get('contacts_search').confirm,'none');assert.equal(tools.get('calendar_create').confirm,'card');
+ const tools=createDeviceTools();assert.equal(tools.get('calendar_list').confirm,'none');assert.equal(tools.get('contacts_search').confirm,'card');assert.equal(tools.get('calendar_create').confirm,'card');
  assert.throws(()=>tools.get('calendar_create').validate({title:'x'}));assert.throws(()=>tools.get('maps_open').validate({}));
  assert.throws(()=>validateDeviceResult({call_id:'c',operation_id:randomUUID(),args_hash:'a',status:'done'}));
 });
@@ -70,4 +70,15 @@ test('ttl: no result before expires_at → expired, the model hears pending_time
  const real=s.f.runtime.chat.now.bind(s.f.runtime.chat);s.f.runtime.chat.now=()=>real()+601000;
  const r=await report(s,tid,{call_id:dc.call_id,operation_id:randomUUID(),args_hash:dc.args_hash,status:'ok'});assert.equal(r.status,409);assert.match(await r.text(),/approval_expired/);
  await s.f.runtime.chat.waitIdle();assert.equal(s.probe.results.at(-1).status,'pending_timeout');
+});
+
+test('chat-ux #7: contacts_search needs a tap — device_call confirm:card, turn waits, nothing reaches the model before the report',async()=>{
+ const s=await setup({name:'contacts_search',arguments:{query:'张三'}}),{tid,events}=await send(s);
+ const dc=events.find(e=>e.type==='device_call').data;assert.equal(dc.confirm,'card');assert.equal(events.at(-1).type,'turn_suspended');
+ assert.equal(s.probe.results.length,0,'no contact data before the user taps');
+ assert.equal((await turn(s,tid)).pending_approvals[0].device_call.confirm,'card');
+ const r=await report(s,tid,{call_id:dc.call_id,operation_id:randomUUID(),args_hash:dc.args_hash,status:'cancelled'});assert.equal(r.status,200);await sse(r);await s.f.runtime.chat.waitIdle();
+ assert.deepEqual(s.probe.results.at(-1),{status:'cancelled'},'user declined → model gets no contact fields');
+ assert.doesNotThrow(()=>createDeviceTools().get('contacts_search').validate({query:'张三',include_email:true}));
+ assert.throws(()=>createDeviceTools().get('contacts_search').validate({query:'张三',include_email:'yes'}));
 });

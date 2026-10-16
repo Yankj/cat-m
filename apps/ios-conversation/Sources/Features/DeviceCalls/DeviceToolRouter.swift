@@ -44,8 +44,9 @@ import UserNotifications
             guard ok else { return done(.denied) }
             let keys = [CNContactGivenNameKey, CNContactFamilyNameKey, CNContactPhoneNumbersKey, CNContactEmailAddressesKey] as [CNKeyDescriptor]
             let found = ((try? cs.unifiedContacts(matching: CNContact.predicateForContacts(matchingName: s("query")), keysToFetch: keys)) ?? []).prefix(10)
-            return done(.ok, ["contacts": .array(found.map { c in .object(["name": .string((c.familyName + c.givenName).trimmingCharacters(in: .whitespaces)),
-                "phones": .list(c.phoneNumbers.map(\.value.stringValue)), "emails": .list(c.emailAddresses.map { $0.value as String })]) }),
+            let includeEmail: Bool = { if case .bool(let b)? = a["include_email"] { return b }; return false }()
+            return done(.ok, ["contacts": .array(found.map { c in .object(DeviceToolContract.minimalContact(name: (c.familyName + c.givenName).trimmingCharacters(in: .whitespaces),
+                phones: c.phoneNumbers.map(\.value.stringValue), emails: c.emailAddresses.map { $0.value as String }, includeEmail: includeEmail)) }),
                 "count": .number(Double(found.count))])
         case "calendar_create":
             guard await access(.event) else { return done(.denied) }

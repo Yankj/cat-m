@@ -39,7 +39,7 @@ import Foundation
     static func expect(_ ok: Bool, _ m: String) { if ok { passed += 1; print("PASS \(m)") } else { failed += 1; print("FAIL \(m)") } }
 
     static func main() async {
-        await memory(); await deviceCalls(); proactive(); nearby(); groundedFixtures()
+        await memory(); await deviceCalls(); proactive(); nearby(); groundedFixtures(); contactsPrivacy()
         print("nobug-p0 portable: \(passed) passed, \(failed) failed")
         exit(failed == 0 ? 0 : 1)
     }
@@ -241,5 +241,15 @@ import Foundation
         if case .fallback = GenerativeBlockCodec.decode(Data(#"{"id":"x","kind":"place"}"#.utf8)) { expect(true, "grounded: place without server rows is not rendered") } else { expect(false, "grounded: place without server rows is not rendered") }
         expect(NearbyRules.placeBlockID(callID: "call-ab:12") == "places-call-ab12", "grounded: auto place block id mirrors server")
         expect(ConversationUIEvent.kinds.contains("place") && ConversationUIEvent.kindsHeaderValue.contains("event"), "grounded: client advertises place/event")
+    }
+
+    /// chat-ux #7: contacts never leave the phone without a tap; result is minimal.
+    static func contactsPrivacy() {
+        expect(!DeviceToolContract.runsWithoutTap(tool: "contacts_search", confirm: .none), "contacts: no auto-run even if an old server sends confirm:none")
+        expect(!DeviceToolContract.runsWithoutTap(tool: "contacts_search", confirm: .card), "contacts: card → waits for tap")
+        expect(DeviceToolContract.runsWithoutTap(tool: "calendar_list", confirm: .none) && DeviceToolContract.runsWithoutTap(tool: "places_search", confirm: .none), "contacts: other read-only tools still auto-run")
+        let row = DeviceToolContract.minimalContact(name: "张三", phones: ["1", "2", "3", "4"], emails: ["a@x.cn"], includeEmail: false)
+        expect(row["emails"] == nil && row["phones"] == .list(["1", "2", "3"]) && Set(row.keys) == ["name", "phones"], "contacts: minimal fields (name + ≤3 phones, no email by default)")
+        expect(DeviceToolContract.minimalContact(name: "张三", phones: [], emails: ["a", "b", "c"], includeEmail: true)["emails"] == .list(["a", "b"]), "contacts: emails only when asked, ≤2")
     }
 }

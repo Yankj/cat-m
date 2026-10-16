@@ -33,6 +33,8 @@ struct DeviceCallSpec: Sendable {
             .init(key: "time", labelKey: "时间", kind: .date), .init(key: "label", labelKey: "标签")])
         case "shortcut_run": .init(symbol: "square.stack.3d.up", titleKey: "运行快捷指令", confirmKey: "运行", fields: [
             .init(key: "name", labelKey: "快捷指令", editable: false), .init(key: "input", labelKey: "输入")])
+        case "contacts_search": .init(symbol: "person.crop.circle", titleKey: "查联系人", confirmKey: "查找", fields: [
+            .init(key: "query", labelKey: "找谁")], noteKey: "点「查找」后，匹配到的姓名和电话才会发给小猫。")
         case "places_search": .init(symbol: "mappin.and.ellipse", titleKey: "查附近", confirmKey: "查找", fields: [
             .init(key: "query", labelKey: "找什么"), .init(key: "mode", labelKey: "出行方式", editable: false)])
         default: .init(symbol: "iphone", titleKey: "在这台 iPhone 上执行", confirmKey: "执行", fields: [])
@@ -85,7 +87,7 @@ struct DeviceCallSpec: Sendable {
         .onAppear {
             _ = store.firstSeen(call.id)
             if store.isInterrupted(call.id) { Task { await store.resumeInterrupted(call.id) } }   // NoBug P0-3: killed mid-run
-            else if call.confirm == DeviceCall.Confirm.none { Task { await store.run(call) } }
+            else if DeviceToolContract.runsWithoutTap(tool: call.tool, confirm: call.confirm) { Task { await store.run(call) } }
         }
         .sheet(isPresented: $editing) { DeviceCallEditSheet(call: call, spec: spec, values: args) { store.edited[call.id] = $0 } }
         .accessibilityElement(children: .contain)

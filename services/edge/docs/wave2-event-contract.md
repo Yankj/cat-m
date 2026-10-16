@@ -33,6 +33,6 @@ Plan §6 draws the fields flat (`{"type":"memory_saved","memory":…}`); on the 
 {"type":"device_call","data":{"call_id":"…","tool":"calendar_create","args":{},"confirm":"card|none","ttl_sec":600,"interrupt_id":"uuid","args_hash":"64 hex","expires_at":"ISO 8601"}}
 ```
 - Order: `tool_call` (same call_id) → `device_call` → `turn_suspended` (`interrupt_ids` contains `interrupt_id`).
-- `confirm:"none"` only for `calendar_list` and `contacts_search`.
+- `confirm:"none"` only for `calendar_list` and `places_search`; `contacts_search` is `card` (chat-ux #7).
 - Answered by `POST …/turns/{t}/device-result {call_id, operation_id, args_hash, status:"ok|cancelled|denied|error", data?}`;
   resolution shows as `approval_resolved{kind:"device", decision:"reported"|"expired"|"cancelled", device_status?}`.
