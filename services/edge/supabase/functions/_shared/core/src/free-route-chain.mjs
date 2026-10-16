@@ -27,7 +27,7 @@ export const FREE_ROUTE_CATALOG = Object.freeze({
   // docs mark zero-retention / no training. Paid Zen models are refused (must end in -free) so the key can't bill.
   opencode: Object.freeze({ id: 'opencode', provider: 'OpenCode Zen (free models)', endpoint: 'https://opencode.ai/inference/openai/v1/chat/completions', model: 'deepseek-v4.1-flash-free', default_models: Object.freeze(['deepseek-v4.1-flash-free', 'glm-5.3-flash-free', 'longcat-2.5-preview-free', 'space-bunny-free']), secret: 'CATPAW_OPENCODE_API_KEY', policy_url: 'https://opencode.ai/legal/privacy-policy', thinking_summary: false, billing: 'free_models_only_limited_time' }),
 });
-// Production default stays the existing OpenRouter free route (existing key); Gemini/Groq are optional extras.
+// Default auto order is Gemini first (w6); OpenRouter/Groq/OpenCode/Agnes follow as failover. A single OpenRouter key alone keeps the frozen route.
 // Agnes is the busy fallback after the free routes; CATPAW_MODEL_ROUTE_ORDER can reorder.
 
 // Client-facing labels / privacy tags (model-routes contract). Never includes endpoints or secrets.
@@ -53,7 +53,7 @@ export function readRouteModels(get, id, defaultModel) {
   }
   return all;
 }
-export const DEFAULT_CHAIN_ORDER = Object.freeze(['openrouter', 'gemini', 'groq', 'opencode', 'agnes']);
+export const DEFAULT_CHAIN_ORDER = Object.freeze(['gemini', 'openrouter', 'groq', 'opencode', 'agnes']);
 // Codes that mean "this free route is busy/unavailable right now"; safe to fail over
 // only because nothing has been streamed to the user yet.
 export const FAILOVER_CODES = new Set(['rate_limited', 'quota_exhausted', 'free_model_unavailable', 'provider_failed', 'provider_overloaded', 'provider_timeout_before_output', 'not_configured']);
@@ -77,10 +77,10 @@ export const currentRoutePreference = () => preferenceStore.getStore()?.preferen
 
 /** Build the consented route description from env. Only routes with an explicitly configured key are
  * enabled; returns null (frozen single OpenRouter route) unless a Gemini, Groq or Agnes key is deployed. */
-// Gemini switch CATPAW_GEMINI_ROUTE: off | primary | fallback (unset = fallback once CATPAW_GEMINI_API_KEY is set).
-// primary puts Gemini first in the default order; an explicit CATPAW_MODEL_ROUTE_ORDER always wins.
+// Gemini switch CATPAW_GEMINI_ROUTE: off | primary | fallback (unset = primary once CATPAW_GEMINI_API_KEY is set).
+// primary (default) puts Gemini first; fallback moves it right after OpenRouter; an explicit CATPAW_MODEL_ROUTE_ORDER always wins.
 export function readGeminiSwitch(get) {
-  const mode = String(get('CATPAW_GEMINI_ROUTE') ?? '').trim().toLowerCase() || 'fallback';
+  const mode = String(get('CATPAW_GEMINI_ROUTE') ?? '').trim().toLowerCase() || 'primary';
   check(['off', 'primary', 'fallback'].includes(mode), 422, 'gemini_route_mode_invalid');
   const protocol = String(get('CATPAW_GEMINI_PROTOCOL') ?? '').trim().toLowerCase() || 'interactions';
   check(['interactions', 'openai_compat'].includes(protocol), 422, 'gemini_protocol_invalid');
@@ -90,7 +90,7 @@ export function readGeminiSwitch(get) {
 }
 export function readFreeRouteChain(get) {
   const gemini = readGeminiSwitch(get);
-  const defaultOrder = gemini.mode === 'primary' ? ['gemini', ...DEFAULT_CHAIN_ORDER.filter(id => id !== 'gemini')] : DEFAULT_CHAIN_ORDER;
+  const defaultOrder = gemini.mode === 'fallback' ? ['openrouter', 'gemini', ...DEFAULT_CHAIN_ORDER.filter(id => id !== 'gemini' && id !== 'openrouter')] : DEFAULT_CHAIN_ORDER;
   const configuredOrder = (get('CATPAW_MODEL_ROUTE_ORDER') || defaultOrder.join(',')).split(',').map(s => s.trim()).filter(Boolean);
   check(configuredOrder.every(id => Object.hasOwn(FREE_ROUTE_CATALOG, id)) && new Set(configuredOrder).size === configuredOrder.length, 422, 'model_route_order_invalid');
   const routes = configuredOrder.filter(id => !!get(FREE_ROUTE_CATALOG[id].secret) && !(id === 'gemini' && gemini.mode === 'off')).map(id => {
@@ -256,11 +256,11 @@ export function assertRouteSelection(chain, store = preferenceStore.getStore()) 
 /** GET /catpaw/model-routes/v1 body. */
 export function modelRoutesList(chain, { now = Date.now(), geminiGuard = geminiGuardSingleton } = {}) {
   const routes = chain?.routes ?? [{ id: 'openrouter', provider: FREE_ROUTE_CATALOG.openrouter.provider, model: FREE_ROUTE_CATALOG.openrouter.model, models: [FREE_ROUTE_CATALOG.openrouter.model], policy_url: FREE_ROUTE_CATALOG.openrouter.policy_url, billing: 'free_tier' }];
-  return { contract: 'catpaw.model-routes.v1', default_route: 'auto', chain: routes.map(r => r.id), auto_failover: chain ? chain.autoFailover !== false : false,
-    routes: routes.map(r => {
+  return { contract: 'catpaw.model-routes.v1', default_route: 'auto', primary_route: routes[0]?.id ?? null, chain: routes.map(r => r.id), auto_failover: chain ? chain.autoFailover !== false : false,
+    routes: routes.map((r, index) => {
       const cooling = r.id === 'gemini' && geminiGuard ? Math.max(0, Math.ceil((geminiGuard.coolUntil - now) / 1000)) : 0;
       const h = routeHealth.get(r.id);
-      return { id: r.id, display_name: ROUTE_META[r.id]?.display_name ?? r.id, models: (r.models ?? [r.model]).map(m => ({ id: m, default: m === r.model })),
+      return { id: r.id, primary: index === 0, display_name: ROUTE_META[r.id]?.display_name ?? r.id, models: (r.models ?? [r.model]).map(m => ({ id: m, default: m === r.model })),
         status: routeState(r.id, { now, coolingSeconds: cooling }), last_error: h?.lastError ? { code: h.lastError.code, at: new Date(h.lastError.at).toISOString() } : null,
         cooling_seconds: cooling, free: true, billing: r.billing ?? 'free_tier', policy_url: r.policy_url ?? FREE_ROUTE_CATALOG[r.id]?.policy_url ?? null, data_note: ROUTE_META[r.id]?.data_note ?? 'provider_policy' };
     }) };

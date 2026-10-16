@@ -15,7 +15,8 @@ const collect = async (p, input = {}) => { const out = []; for await (const e of
 
 test('switch: off / primary / fallback, Interactions endpoint by default, invalid values rejected', () => {
   assert.equal(readFreeRouteChain(env({ CATPAW_PRIVATE_MODEL_KEY: 'o', CATPAW_GEMINI_API_KEY: KEY, CATPAW_GEMINI_ROUTE: 'off' })), null);
-  const fb = readFreeRouteChain(env({ CATPAW_PRIVATE_MODEL_KEY: 'o', CATPAW_GEMINI_API_KEY: KEY }));
+  assert.deepEqual(readFreeRouteChain(env({ CATPAW_PRIVATE_MODEL_KEY: 'o', CATPAW_GEMINI_API_KEY: KEY })).routes.map(r => r.id), ['gemini', 'openrouter']);
+  const fb = readFreeRouteChain(env({ CATPAW_PRIVATE_MODEL_KEY: 'o', CATPAW_GEMINI_API_KEY: KEY, CATPAW_GEMINI_ROUTE: 'fallback' }));
   assert.deepEqual(fb.routes.map(r => r.id), ['openrouter', 'gemini']);
   assert.equal(fb.routes[1].endpoint, 'https://generativelanguage.googleapis.com/v1beta/interactions?alt=sse'); assert.equal(fb.routes[1].protocol, 'interactions');
   const pr = readFreeRouteChain(env({ CATPAW_PRIVATE_MODEL_KEY: 'o', CATPAW_GEMINI_API_KEY: KEY, CATPAW_AGNES_API_KEY: 'a', CATPAW_GEMINI_ROUTE: 'primary' }));

@@ -9,7 +9,8 @@ base URLs are ever returned.
 {
   "contract": "catpaw.model-routes.v1",
   "default_route": "auto",
-  "chain": ["openrouter", "gemini", "opencode", "agnes"],
+  "primary_route": "gemini",
+  "chain": ["gemini", "openrouter", "opencode", "agnes"],
   "auto_failover": true,
   "routes": [
     {
@@ -40,7 +41,9 @@ base URLs are ever returned.
 | `routes[].billing` | string | e.g. `free_tier`, `promo_free_flash_paid_pro`, `upstream_free_tiers_via_self_hosted_router`. |
 | `routes[].policy_url` | string | Provider privacy policy. OpenCode: `https://opencode.ai/legal/privacy-policy`. |
 | `routes[].data_note` | string | Short machine tag for the privacy copy (`zero_retention`, `free_tier_may_train`, `zero_retention` (OpenCode default free models), …). |
-| `chain` | string[] | Auto order. |
+| `primary_route` | string \| null | First route of `chain`, tried first in auto mode (default `gemini` since w6; `openrouter` when only the frozen single route exists). |
+| `routes[].primary` | bool | `true` only for `primary_route`. Per-route `status` is availability, not "selected". |
+| `chain` | string[] | Auto order. Default since w6: `gemini, openrouter, groq, opencode, agnes` (only routes with a key). |
 
 Status is per Edge isolate (best effort, in memory); a fresh isolate reports `online` until it sees an error.
 
@@ -108,4 +111,4 @@ OpenCode or changing models forces re-consent. With OpenCode configured the cons
 | `CATPAW_OPENCODE_MODEL` | Default model, default `deepseek-v4.1-flash-free`. Must end in `-free`. |
 | `CATPAW_OPENCODE_MODELS` | `X-Catpaw-Model` allow-list for OpenCode; **replaces** the default `deepseek-v4.1-flash-free,glm-5.3-flash-free,longcat-2.5-preview-free,space-bunny-free` (zero-retention free models). Every entry must end in `-free`. |
 | `CATPAW_<ROUTE>_MODELS` | Other routes: extra allowed models on top of the default, comma list, max 20. OpenRouter entries must end in `:free`. |
-| `CATPAW_MODEL_ROUTE_ORDER` | Optional explicit order; default `openrouter,gemini,groq,opencode,agnes` (Gemini first when `CATPAW_GEMINI_ROUTE=primary`). |
+| `CATPAW_MODEL_ROUTE_ORDER` | Optional explicit order; default `gemini,openrouter,groq,opencode,agnes` (w6). `CATPAW_GEMINI_ROUTE` unset = `primary`; `fallback` restores the old `openrouter,gemini,…` order. |

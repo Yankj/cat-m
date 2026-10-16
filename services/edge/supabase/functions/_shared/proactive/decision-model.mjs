@@ -1,4 +1,4 @@
-// LLM adapter for proactive decisions. Reuses catpaw-api's route catalog + order (OpenRouter first, Agnes fallback);
+// LLM adapter for proactive decisions. Reuses catpaw-api's route catalog + order (Gemini first, then OpenRouter/Groq/OpenCode, Agnes last);
 // keys come only from env via `get` and are held in this closure (never logged or returned).
 import { FREE_ROUTE_CATALOG, DEFAULT_CHAIN_ORDER } from '../core/src/free-route-chain.mjs';
 const SYSTEM = `你是 CatPaw 的主动式助理决策器，场景是会议与出行。根据 signals、context、memories 和 weights 判断是否该主动打扰用户。

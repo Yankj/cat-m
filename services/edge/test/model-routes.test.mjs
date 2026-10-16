@@ -1,3 +1,4 @@
+import { DEFAULT_CHAIN_ORDER as DEFAULT_CHAIN_ORDER_W6, modelRoutesList as modelRoutesListW6 } from '../supabase/functions/_shared/core/src/free-route-chain.mjs';
 import test from 'node:test'; import assert from 'node:assert/strict';
 import { FreeRouteChainProvider, readFreeRouteChain, withRoutePreference, assertRouteSelection, modelRoutesList, _routeHealthForTests, freeRouteStatus } from '../supabase/functions/_shared/core/src/free-route-chain.mjs';
 import { readConfig } from '../supabase/functions/_shared/config.mjs';
@@ -20,7 +21,7 @@ test('opencode: enabled only with key; official endpoint; zero-retention default
   assert.throws(() => readFreeRouteChain(env({ ...E, CATPAW_OPENCODE_MODEL: 'gpt-6-sol' })), e => e.code === 'paid_or_router_model_denied');
   assert.throws(() => readFreeRouteChain(env({ ...E, CATPAW_OPENCODE_MODELS: 'deepseek-v4-pro' })), e => e.code === 'paid_or_router_model_denied');
   assert.equal(readFreeRouteChain(env({ CATPAW_PRIVATE_MODEL_KEY: 'o', CATPAW_OPENCODE_BASE_URL: 'https://x' })), null);
-  assert.deepEqual(readFreeRouteChain(env({ ...E, CATPAW_GEMINI_API_KEY: 'g', CATPAW_GROQ_API_KEY: 'q', CATPAW_AGNES_API_KEY: 'a' })).routes.map(r => r.id), ['openrouter', 'gemini', 'groq', 'opencode', 'agnes']);
+  assert.deepEqual(readFreeRouteChain(env({ ...E, CATPAW_GEMINI_API_KEY: 'g', CATPAW_GROQ_API_KEY: 'q', CATPAW_AGNES_API_KEY: 'a' })).routes.map(r => r.id), ['gemini', 'openrouter', 'groq', 'opencode', 'agnes']);
 });
 test('consent: opencode changes routeHash and discloses OpenCode Zen with policy link', () => {
   const c = readConfig(env(E)); const s = JSON.stringify(c.route);
@@ -66,4 +67,18 @@ test('stream: X-Catpaw-Route + X-Catpaw-Model pick route and model', async () =>
   const out = await all(p, { route: 'opencode', model: 'glm-5.3-flash-free' });
   assert.equal(calls[0].url, 'https://opencode.ai/inference/openai/v1/chat/completions'); assert.equal(calls[0].body.model, 'glm-5.3-flash-free');
   const ri = out.find(e => e.type === 'route_info'); assert.equal(ri.model, 'glm-5.3-flash-free'); assert.equal(ri.requested_route, 'opencode'); assert.equal(ri.failover, false);
+});
+
+test('w6: Gemini is the default first route; full auto order; GET reports primary', () => {
+  assert.deepEqual([...DEFAULT_CHAIN_ORDER_W6], ['gemini', 'openrouter', 'groq', 'opencode', 'agnes']);
+  const all = readFreeRouteChain(env({ ...E, CATPAW_GEMINI_API_KEY: 'g', CATPAW_GROQ_API_KEY: 'q', CATPAW_AGNES_API_KEY: 'a' }));
+  assert.deepEqual(all.routes.map(r => r.id), ['gemini', 'openrouter', 'groq', 'opencode', 'agnes']);
+  const body = modelRoutesListW6(all, { geminiGuard: null });
+  assert.equal(body.default_route, 'auto'); assert.equal(body.primary_route, 'gemini');
+  assert.deepEqual(body.chain, ['gemini', 'openrouter', 'groq', 'opencode', 'agnes']);
+  assert.deepEqual(body.routes.map(r => [r.id, r.primary]), [['gemini', true], ['openrouter', false], ['groq', false], ['opencode', false], ['agnes', false]]);
+  assert.ok(body.routes.every(r => ['online', 'degraded', 'offline'].includes(r.status)));
+  const fb = readFreeRouteChain(env({ ...E, CATPAW_GEMINI_API_KEY: 'g', CATPAW_GEMINI_ROUTE: 'fallback' }));
+  assert.deepEqual(fb.routes.map(r => r.id), ['openrouter', 'gemini', 'opencode']);
+  assert.equal(modelRoutesListW6(null, { geminiGuard: null }).primary_route, 'openrouter');
 });
