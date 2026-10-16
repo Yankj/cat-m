@@ -20,7 +20,7 @@ create or replace function cron.unschedule(bigint) returns boolean language sql 
 SQL
 for f in $(ls supabase/migrations/*proactive*.sql | sort); do
   case "$f" in *20261015120100_proactive_cron.sql) echo "skip (pg_cron/pg_net/vault): $f"; continue;; esac
-  echo "apply $f"; "${P[@]}" -d "$DB" -f "$f" >/dev/null
+  echo "apply (one transaction, like supabase db push) $f"; "${P[@]}" -1 -d "$DB" -f "$f" >/dev/null
 done
 URL="postgres://${PGUSER:-postgres}@${PGTCPHOST:-localhost}:${PGPORT:-5432}/$DB"
 CATPAW_PG_TEST_URL="$URL" deno test -A --no-check test/proactive-push-pg.test.mjs test/proactive-tasks-pg.test.mjs
