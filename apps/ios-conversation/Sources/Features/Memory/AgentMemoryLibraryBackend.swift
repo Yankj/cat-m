@@ -78,6 +78,9 @@ extension MemoryLibraryHub {
         guard let subject = configuration.expectedSubjectID else { return }
         let owner = LocalMemoryOwner.account(subject.uuidString.lowercased())
         Task { @MainActor in
+            // Codex PR91 #2: a backend built for A must not re-bind A's library once B's session has started.
+            let current = AccountEpoch.shared.currentAccount
+            guard current == nil || current == subject.uuidString else { return }
             MemoryLibraryLocal.activate(userID: subject)
             await reconcileLocal(owner: owner)
         }

@@ -33,7 +33,8 @@ struct MemorySavedEvent: Codable, Sendable, Equatable {
     /// unsupported), surface the local library instead so the items stay visible + deletable (labelled 本机).
     /// Codex P0-2: `owner` is the account the cloud backend was built for; another owner's (or guest) items never move.
     @discardableResult static func reconcileLocal(owner: LocalMemoryOwner) async -> MemoryLibraryLocal.MigrationReport {
-        guard !local.items.isEmpty else { return .init() }
+        // Codex PR91 #3: an empty library still carries a 「使用记忆」 off switch to the cloud.
+        guard !local.items.isEmpty || !local.currentSnapshot.useMemory else { return .init() }
         guard let target = preferred, target !== local else { return .init(kept: local.items.count) }
         let report = await MemoryLibraryLocal.migrate(local, to: target, targetOwner: owner)
         if MemoryLibraryLocal.shouldSurfaceLocal(report) { install(backend: local) }   // gate off only; never replace a working cloud library

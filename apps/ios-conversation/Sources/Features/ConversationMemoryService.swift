@@ -93,7 +93,8 @@ public actor ConversationMemoryService {
         let record:StoredRecord
         do {record=try await repository.record(stableID(key),scope:reference.scope)}catch CatpawError.missing {return (.init(reference:reference),nil)}
         guard case .preference(let p)=record.payload,p.key==key,p.value.utf8.count<=2_000_000 else {throw ConversationMemoryError.invalidResponse}
-        let state=try JSONDecoder().decode(ConversationMemoryLocalState.self,from:Data(p.value.utf8))
+        guard let plain=ConversationMemoryAtRest.open(p.value,subject:reference.subjectID) else {return (.init(reference:reference),record)}   // other key / shredded at sign-out: start empty
+        let state=try JSONDecoder().decode(ConversationMemoryLocalState.self,from:plain)
         guard state.schemaVersion==1,state.subjectID==reference.subjectID,state.serverScopeID==reference.serverScopeID else {throw ConversationMemoryError.invalidResponse}
         if let value=state.latest {try value.validate(reference)}
         if let pending=state.pending {try pending.request.command.validate()}
@@ -101,7 +102,7 @@ public actor ConversationMemoryService {
     }
     private func save(_ state:ConversationMemoryLocalState,record:StoredRecord?) async throws {
         guard !closed else {throw CancellationError()};let data=try ConversationMemoryCodec.encoded(state);guard data.count<=2_000_000 else {throw ConversationMemoryError.invalidResponse}
-        let payload=Payload.preference(.init(key:key,value:String(decoding:data,as:UTF8.self)))
+        let payload=Payload.preference(.init(key:key,value:try ConversationMemoryAtRest.seal(data,subject:reference.subjectID)))
         try await repository.commit(scope:reference.scope,mutations:[record.map{.update($0.id,$0.header.revision,payload)} ?? .create(stableID(key),payload)])
     }
     private func ensure(_ epoch:Int) throws {guard !closed,admitted,generation==epoch,!Task.isCancelled else {throw CancellationError()}}
@@ -109,3 +110,22 @@ public actor ConversationMemoryService {
     private func unlock(){if waiters.isEmpty{locked=false}else{waiters.removeFirst().resume()}}
 }
 public extension ConversationMemoryBackend {func close() async {}}
+
+/// Codex PR91 #5: memory snapshots/drafts stored in the Repository (SwiftData JSON) are sealed with the subject's L2 key
+/// (AES-GCM) when a sealer is installed (app: `CatpawApp`). Sign-out shreds the key, so the rows become unreadable.
+/// No sealer (portable tests / previews) → plain JSON as before. Legacy plain rows are still read and re-sealed on save.
+enum ConversationMemoryAtRest {
+    static let prefix = "l2:"
+    nonisolated(unsafe) static var sealer: ((Data, UUID) throws -> Data)?
+    nonisolated(unsafe) static var opener: ((Data, UUID) throws -> Data)?
+    static func seal(_ data: Data, subject: UUID) throws -> String {
+        guard let sealer else { return String(decoding: data, as: UTF8.self) }
+        return prefix + (try sealer(data, subject)).base64EncodedString()
+    }
+    /// nil = sealed but cannot be opened (another account's or shredded key).
+    static func open(_ value: String, subject: UUID) -> Data? {
+        guard value.hasPrefix(prefix) else { return Data(value.utf8) }
+        guard let opener, let raw = Data(base64Encoded: String(value.dropFirst(prefix.count))) else { return nil }
+        return try? opener(raw, subject)
+    }
+}

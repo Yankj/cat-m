@@ -213,10 +213,17 @@ struct NativeWorkspaceRetrySchedule: Sendable {
         AccountEpoch.shared.activate(account: state.user?.id.uuidString); Self.lastBarrierAccount = state.user?.id.uuidString   // shared account barrier (grants, memory, proactive)
         DeviceCallGate.installLifecycle()   // Codex PR #89: grants/revocations come from the session service's SSE boundary
         // NoBug P1-4: unacknowledged device results are re-sent on relaunch and whenever the app returns to foreground.
-        Task { @MainActor in await DeviceCallStore.shared.retryPendingReports() }
+        // Codex PR91 #7: queued proactive feedback is drained at the same moments (ids survive restart).
+        Task { @MainActor in
+            await DeviceCallStore.shared.retryPendingReports()
+            await ProactiveFeedbackSync.shared.retryPending(serverIDs: ProactiveEngine.shared.serverIDs)
+        }
         if Self.deviceReportObserver == nil {
             Self.deviceReportObserver = NotificationCenter.default.addObserver(forName: UIApplication.willEnterForegroundNotification, object: nil, queue: .main) { _ in
-                Task { @MainActor in await DeviceCallStore.shared.retryPendingReports() }
+                Task { @MainActor in
+                    await DeviceCallStore.shared.retryPendingReports()
+                    await ProactiveFeedbackSync.shared.retryPending(serverIDs: ProactiveEngine.shared.serverIDs)
+                }
             }
         }
     }
