@@ -200,7 +200,8 @@ private struct PlushMascotClip: UIViewRepresentable {
     var onFail: () -> Void
 
     func makeUIView(context: Context) -> ClipView { ClipView(url: url, onFail: onFail) }
-    func updateUIView(_ v: ClipView, context: Context) { v.setPlaying(playing) }
+    // Toolbar-hosted headers can keep the same UIView across a pose change even with `.id(pose)`; swap the clip in place.
+    func updateUIView(_ v: ClipView, context: Context) { v.load(url); v.setPlaying(playing) }
     static func dismantleUIView(_ v: ClipView, coordinator: ()) { v.teardown() }
 
     final class ClipView: UIView {
@@ -220,12 +221,22 @@ private struct PlushMascotClip: UIViewRepresentable {
             player.isMuted = true
             player.preventsDisplaySleepDuringVideoPlayback = false
             player.audiovisualBackgroundPlaybackPolicy = .pauses
-            let item = AVPlayerItem(url: url)
-            looper = AVPlayerLooper(player: player, templateItem: item)
-            statusObs = looper?.observe(\.status) { l, _ in
-                if l.status == .failed { DispatchQueue.main.async { onFail() } }
-            }
+            self.onFail = onFail
             playerLayer.player = player
+            load(url)
+        }
+        private var url: URL?
+        private var onFail: () -> Void = {}
+        func load(_ next: URL) {
+            guard next != url else { return }
+            url = next
+            statusObs = nil; looper?.disableLooping(); player.removeAllItems()
+            looper = AVPlayerLooper(player: player, templateItem: AVPlayerItem(url: next))
+            let fail = onFail
+            statusObs = looper?.observe(\.status) { l, _ in
+                if l.status == .failed { DispatchQueue.main.async { fail() } }
+            }
+            apply()
         }
         required init?(coder: NSCoder) { nil }
 

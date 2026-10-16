@@ -833,7 +833,12 @@ import CatpawImageComposer
             if pendingIDs.contains(intent.id),!primaryAdmission {continue}
             if intent.state == .savingLocal,(model.sending || model.session?.unresolved != nil || !model.followups.pending.isEmpty) {continue}
             let id=stableID("conversation-user-\(intent.id)")
-            if !messages.contains(where:{$0.id == id}) { messages.append(.init(id:id,role:.user,content:intent.text,image:intent.image)) }
+            // Right after consent the journal row can land before the intent is retired; if the session's
+            // latest user row already carries this operation (or is the same text without an operation id),
+            // the echo would render a second identical bubble.
+            let lastUser=messages.last(where:{$0.role == .user})
+            let echoed=lastUser.map{ last in operationID(last) == intent.id || (operationID(last) == nil && last.content == intent.text) } ?? false
+            if !echoed,!messages.contains(where:{$0.id == id}) { messages.append(.init(id:id,role:.user,content:intent.text,image:intent.image)) }
         }
         // Older busy-retry journals could contain more than one user row for the
         // same operation. Current retries reuse operationID, so render it once.
