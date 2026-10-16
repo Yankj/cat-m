@@ -1919,6 +1919,34 @@
       "reason": "Test fixture: placeholder model keys (k-or-xxxxxxxx / k-ag-xxxxxxxx) in an env stub; no real credential.",
       "reviewed_utc_date": "2026-10-17",
       "reviewer": "Grok Bot"
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
+      "category": "deployment_public_key",
+      "line": 273,
+      "sha256": "07ebb2d26d40412ae1a07c55d3e8e1791b2ab815a44425fbb75f2cb46e056606",
+      "reason": "Reviewed named offline auth fixture: synthetic public-key/access-token markers and injected mock remotes only; no real credential or network request. Exact current bytes and line pinned. Re-pinned 2026-10-17 after adding the PR91 XCTests (same synthetic markers, lines shifted)."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
+      "category": "deployment_public_key",
+      "line": 422,
+      "sha256": "07ebb2d26d40412ae1a07c55d3e8e1791b2ab815a44425fbb75f2cb46e056606",
+      "reason": "Reviewed named offline auth fixture: synthetic public-key/access-token markers and injected mock remotes only; no real credential or network request. Exact current bytes and line pinned. Re-pinned 2026-10-17 after adding the PR91 XCTests (same synthetic markers, lines shifted)."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
+      "category": "secret_assignment_review",
+      "line": 149,
+      "sha256": "07ebb2d26d40412ae1a07c55d3e8e1791b2ab815a44425fbb75f2cb46e056606",
+      "reason": "Reviewed named offline auth fixture: synthetic public-key/access-token markers and injected mock remotes only; no real credential or network request. Exact current bytes and line pinned. Re-pinned 2026-10-17 after adding the PR91 XCTests (same synthetic markers, lines shifted)."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
+      "category": "secret_assignment_review",
+      "line": 457,
+      "sha256": "07ebb2d26d40412ae1a07c55d3e8e1791b2ab815a44425fbb75f2cb46e056606",
+      "reason": "Reviewed named offline auth fixture: synthetic public-key/access-token markers and injected mock remotes only; no real credential or network request. Exact current bytes and line pinned. Re-pinned 2026-10-17 after adding the PR91 XCTests (same synthetic markers, lines shifted)."
     }
   ]
 }
