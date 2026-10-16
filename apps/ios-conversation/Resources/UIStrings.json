@@ -6106,5 +6106,9 @@
   "onboarding.ring.inner": {
     "en": "Reminders · Memory · Shopping · Calls · Messages · Mail · Calendar · ",
     "zh-Hans": "提醒 · 记忆 · 购物 · 电话 · 短信 · 邮件 · 日程 · "
+  },
+  "voice.preview.transcript": {
+    "en": "Remind me tomorrow at 9 to send the weekly report, and draft a note to the team…",
+    "zh-Hans": "明天上午九点提醒我交周报，再帮我给团队写个简短的说明……"
   }
 }
