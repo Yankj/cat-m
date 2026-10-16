@@ -15,7 +15,7 @@ import {ACCEPTED_WORK_INTENT_CONTRACT,validateAcceptedWorkRequest,freezeAccepted
 import {validateVisionTurn} from './vision-contract.mjs';
 import {UI_CONTRACT,RENDER_UI,UI_DECISIONS,validateResponse,validateUIError,uiResult,uiBlockEvent,uiBlockUpdate,uiBlockResolve,uiPrompt,blockOf} from './generative-ui.mjs';
 import {agentMemoryPrompt} from '../../agent-memory/chat-tools.mjs';
-import {DEVICE_CONTRACT,validateDeviceResult,deviceCallEvent,deviceResult} from './device-call.mjs';
+import {DEVICE_CONTRACT,parseDeviceTools,validateDeviceResult,deviceCallEvent,deviceResult} from './device-call.mjs';
 import {APPROVAL_CONTRACT,gatedCalls,interruptFor,requestedEvent,resolvedEvent,pendingApprovals,validateDecision,settleExpired,resumedTurn,deniedResult,APPROVAL_PREFERENCES,preferenceID,isoAt} from './approval.mjs';
 const positive=v=>Number.isSafeInteger(v)&&v>0;
 const terminal=s=>s!=='running';
@@ -64,7 +64,7 @@ export class ChatService {
   async startRevisionWorkTurn(auth,scopeID,conversationID,input){const request=validateTaskRevisionWorkRequest(input);check(this.facade.revisionWorkExecutionReady===true,503,'revision_work_execution_not_configured');return this.startTurn(auth,scopeID,conversationID,request.turn,{revisionTarget:request.target,revisionWork:request.work});}
   async readRevision(auth,scopeID,runID,operationID){return readTaskRevision(this.facade,auth,scopeID,runID,operationID);}
   async readRevisionWork(auth,scopeID,runID,operationID){return readTaskRevisionWork(this.facade,auth,scopeID,runID,operationID,readTaskRevision);}
-  async startTurn(auth,scopeID,conversationID,input,{revisionTarget=null,workIntent=null,revisionWork=null,memoryProposalContract=null,approvalContract=null,timeZone=null,uiContract=null,memoryMode=null,deviceContract=null}={}){
+  async startTurn(auth,scopeID,conversationID,input,{revisionTarget=null,workIntent=null,revisionWork=null,memoryProposalContract=null,approvalContract=null,timeZone=null,uiContract=null,memoryMode=null,deviceContract=null,deviceTools=null}={}){
     check(approvalContract===null||approvalContract===APPROVAL_CONTRACT,422,'approval_contract_invalid');
     check(uiContract===null||uiContract===UI_CONTRACT,422,'ui_contract_invalid');
     check(memoryMode===null||memoryMode==='ephemeral',422,'memory_mode_invalid');
@@ -98,6 +98,7 @@ export class ChatService {
       if(approvalContract)t.approval_contract=approvalContract;
       if(uiContract)t.ui_contract=uiContract;
       if(deviceContract&&approvalContract)t.device_contract=deviceContract;
+      if(deviceContract&&approvalContract){const listed=parseDeviceTools(deviceTools);if(listed)t.device_tools=listed;}
       if(approvalContract)t.client_time_zone=validTimeZone(timeZone)?timeZone:null;
       if(this.beforeTurnAdmission)t.source_auth=await this.beforeTurnAdmission(tx,{principal,scope,conversation:c,turn:t});
       const memoryUsage=await this.integration?.memoryUsage?.(tx,{principal,scope,conversation:c,turn:t});

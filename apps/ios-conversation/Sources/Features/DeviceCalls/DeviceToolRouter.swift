@@ -11,7 +11,7 @@ import UserNotifications
 /// M1: real on-device executor for catpaw.device.v1. Writes only after the confirm card (the store calls us on 确认).
 /// Compose-type tools open the system sheet; the user sends there (cancel → `.cancelled`).
 @MainActor final class DeviceToolRouter: NSObject, DeviceToolExecuting {
-    static let tools: Set<String> = ["calendar_create", "reminder_create", "alarm_set", "sms_compose", "mail_compose", "phone_call", "maps_open", "shop_open", "shortcut_run"]
+    static let tools: Set<String> = Set(DeviceToolContract.clientTools)
     private let store = EKEventStore()
     private var composeContinuation: CheckedContinuation<DeviceCallStatus, Never>?
 
@@ -25,11 +25,39 @@ import UserNotifications
             var r = DeviceCallResult(call_id: call.call_id, status: status, data: data); r.openURL = open; return r
         }
         switch call.tool {
+        case "calendar_list":
+            guard await access(.event) else { return done(.denied) }
+            let from = d("from") ?? Date(), to = d("to") ?? from.addingTimeInterval(86400)
+            guard to > from, to.timeIntervalSince(from) <= 31 * 86400 else { return done(.error, ["reason": .string("invalid_range"), "retryable": .bool(false)]) }
+            let events = store.events(matching: store.predicateForEvents(withStart: from, end: to, calendars: nil)).sorted { $0.startDate < $1.startDate }.prefix(50)
+            return done(.ok, ["events": .array(events.map { e in .object(["title": .string(e.title ?? ""), "start": .string(DeviceCallDates.format(e.startDate)),
+                "end": .string(DeviceCallDates.format(e.endDate)), "all_day": .bool(e.isAllDay), "location": .string(e.location ?? "")]) }),
+                "count": .number(Double(events.count))])
+        case "contacts_search":
+            let cs = CNContactStore()
+            if CNContactStore.authorizationStatus(for: .contacts) == .notDetermined { _ = try? await cs.requestAccess(for: .contacts) }
+            let st = CNContactStore.authorizationStatus(for: .contacts)
+            var ok = st == .authorized
+            if #available(iOS 18.0, *) { ok = ok || st == .limited }
+            guard ok else { return done(.denied) }
+            let keys = [CNContactGivenNameKey, CNContactFamilyNameKey, CNContactPhoneNumbersKey, CNContactEmailAddressesKey] as [CNKeyDescriptor]
+            let found = ((try? cs.unifiedContacts(matching: CNContact.predicateForContacts(matchingName: s("query")), keysToFetch: keys)) ?? []).prefix(10)
+            return done(.ok, ["contacts": .array(found.map { c in .object(["name": .string((c.familyName + c.givenName).trimmingCharacters(in: .whitespaces)),
+                "phones": .list(c.phoneNumbers.map(\.value.stringValue)), "emails": .list(c.emailAddresses.map { $0.value as String })]) }),
+                "count": .number(Double(found.count))])
         case "calendar_create":
             guard await access(.event) else { return done(.denied) }
+            let marker = DeviceToolContract.callMarker(call.call_id)
+            let start = d("start") ?? Date().addingTimeInterval(3600), end = d("end") ?? start.addingTimeInterval(3600)
+            // NoBug P0-3: dedupe by call_id — a relaunch after kill must not write a second event.
+            let window = store.predicateForEvents(withStart: start.addingTimeInterval(-86400), end: end.addingTimeInterval(86400), calendars: nil)
+            if let existing = store.events(matching: window).first(where: { $0.notes?.contains(marker) == true }) {
+                return done(.ok, ["event_id": .string(existing.eventIdentifier ?? ""), "deduped": .bool(true)], open: "calshow:\(Int(existing.startDate.timeIntervalSinceReferenceDate))")
+            }
             let e = EKEvent(eventStore: store)
-            e.title = s("title"); e.location = s("location").isEmpty ? nil : s("location"); e.notes = s("notes").isEmpty ? nil : s("notes")
-            e.startDate = d("start") ?? Date().addingTimeInterval(3600); e.endDate = d("end") ?? e.startDate.addingTimeInterval(3600)
+            e.title = s("title"); e.location = s("location").isEmpty ? nil : s("location")
+            e.notes = (s("notes").isEmpty ? "" : s("notes") + "\n") + marker
+            e.startDate = start; e.endDate = end
             if case .array(let alarms)? = a["alarms"] { for case .number(let m) in alarms { e.addAlarm(EKAlarm(relativeOffset: m * 60)) } }
             e.calendar = store.defaultCalendarForNewEvents
             do { try store.save(e, span: .thisEvent, commit: true) } catch { return done(.error) }
@@ -37,13 +65,16 @@ import UserNotifications
         case "reminder_create", "alarm_set":
             // No public alarm API: alarm_set becomes a reminder with an absolute alarm (stated on the card).
             guard await access(.reminder) else { return done(.denied) }
+            if let existing = await existingReminder(call.call_id) {   // NoBug P0-3 dedupe
+                return done(.ok, ["reminder_id": .string(existing), "deduped": .bool(true)], open: "x-apple-reminderkit://")
+            }
             let r = EKReminder(eventStore: store)
             r.title = call.tool == "alarm_set" ? (s("label").isEmpty ? "闹钟" : s("label")) : s("title")
             if let due = d(call.tool == "alarm_set" ? "time" : "due") {
                 r.dueDateComponents = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: due); r.addAlarm(EKAlarm(absoluteDate: due))
             }
             r.calendar = store.calendars(for: .reminder).first { $0.title == s("list") } ?? store.defaultCalendarForNewReminders()
-            r.notes = "Catpaw · call_id=\(call.call_id)"
+            r.notes = "Catpaw · " + DeviceToolContract.callMarker(call.call_id)
             do { try store.save(r, commit: true) } catch { return done(.error) }
             return done(.ok, ["reminder_id": .string(r.calendarItemIdentifier)], open: "x-apple-reminderkit://")
         case "sms_compose":
@@ -71,18 +102,7 @@ import UserNotifications
             let mode = ["walk": "w", "walking": "w", "transit": "r", "drive": "d", "driving": "d"][s("mode")] ?? "d"
             return await open(URL(string: "maps://?daddr=\(q)&dirflg=\(mode)")) ? done(.ok) : done(.error)
         case "shop_open":
-            let q = s("query").addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
-            let platform = s("platform").lowercased()
-            let app: URL? = switch platform {
-            case "jd", "京东": URL(string: "openapp.jdmobile://virtual?params=%7B%22des%22:%22search%22,%22keyWord%22:%22\(q)%22%7D")
-            case "pdd", "拼多多": URL(string: "pinduoduo://com.xunmeng.pinduoduo/search_result.html?search_key=\(q)")
-            default: URL(string: "taobao://s.taobao.com/search?q=\(q)")
-            }
-            let web: URL? = switch platform {
-            case "jd", "京东": URL(string: "https://search.jd.com/Search?keyword=\(q)")
-            case "pdd", "拼多多": URL(string: "https://mobile.yangkeduo.com/search_result.html?search_key=\(q)")
-            default: URL(string: "https://s.taobao.com/search?q=\(q)")
-            }
+            let (app, web) = DeviceToolContract.shopURLs(platform: s("platform"), query: s("query"))   // meituan → imeituan:// (P0-4)
             // Prefer installed app only when canOpenURL is true; otherwise go straight to https
             // so Simulator / devices without 淘宝 don't stall on a dead custom scheme.
             if let app, UIApplication.shared.canOpenURL(app), await open(app) { return done(.ok) }
@@ -92,8 +112,17 @@ import UserNotifications
             c.queryItems = [.init(name: "name", value: s("name"))] + (s("input").isEmpty ? [] : [.init(name: "input", value: "text"), .init(name: "text", value: s("input"))])
             return await open(c.url) ? done(.ok) : done(.error)
         default:
-            return done(.error)
+            return DeviceToolContract.unsupported(call)
         }
+    }
+
+    private func existingReminder(_ callID: String) async -> String? {
+        let marker = DeviceToolContract.callMarker(callID)
+        let predicate = store.predicateForReminders(in: nil)
+        let ids: [String] = await withCheckedContinuation { c in
+            store.fetchReminders(matching: predicate) { rs in c.resume(returning: (rs ?? []).filter { $0.notes?.contains(marker) == true }.map(\.calendarItemIdentifier)) }
+        }
+        return ids.first
     }
 
 
