@@ -119,3 +119,13 @@ test('P0-5: reminder then SMS on the same card; a cancelled SMS is never recorde
   s = (await call('POST', `${BASE}/suggestions/${id}/action`, { action: 'notify_attendees', operation_id: 'op-s' })).body.suggestion;
   assert.equal(s.taken.length, 2); // replay: effect recorded exactly once
 });
+test('P0-4 client contract: iOS posts {value} to suggestions/:id/feedback for meeting_upcoming; next same-type decision degrades; weights persist', async () => {
+  const { call } = setup({ model: fakeLLM({ decision: 'notify', reason: '该出发了', confidence: 0.8, trigger: 'meeting_upcoming' }) });
+  const req = () => ({ signals: [{ type: 'meeting_upcoming', source: 'calendar', dedupe_key: crypto.randomUUID(), data: { title: '周会', location: '望京', minutes_until: 40 } }], context: { time_zone: 'Asia/Shanghai', lead_minutes: 10 } });
+  const first = await call('POST', BASE + '/evaluate', req()); assert.equal(first.body.decision, 'notify');
+  const f = await call('POST', `${BASE}/suggestions/${first.body.event_id}/feedback`, { value: 'intrusive' });
+  assert.equal(f.status, 200); assert.equal(f.body.applied, true); assert.equal(f.body.weights.meeting_upcoming.weight, 0.7);
+  const next = await call('POST', BASE + '/evaluate', req());
+  assert.equal(next.body.decision, 'card'); // 0.8×0.7=0.56 < 0.6+0.1 → one step down
+  assert.equal((await call('GET', BASE + '/weights')).body.weights.meeting_upcoming.threshold_bump, 0.1);
+});
