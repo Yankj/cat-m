@@ -619,6 +619,17 @@ struct ProactiveSignal: Equatable, Sendable {
     }
     static func syncBody(_ op: SyncOp) -> [String: Any] { ProactiveSyncWire.body(action: op.action, operationID: op.operationID, until: op.until) }
     /// Sends due write-backs. A missing server id (evaluated offline) or a network failure → retry later; restart-safe.
+    /// Codex PR90h #3: registers a cloud card's write-back identity for the current account (never overwrites one). The
+    /// card itself is persisted by the first perform / undo (both read the store's copy when the inbox has none).
+    func adoptCloudIdentity(local: String, server: String) {
+        guard let token = AccountEpoch.shared.capture() else { return }
+        AccountEpoch.shared.commit(token) { () -> Void in
+            claimData(for: token.account)
+            if serverIDs[local] == nil { serverIDs[local] = server }
+            localOnly.remove(local)
+        }
+        note("cloud card \(local) writes back to \(server)")
+    }
     func drainSync() async {
         guard let token = AccountEpoch.shared.capture() else { return }
         let r = await syncQueue.drain(now: ProactiveClock.now(), account: token.account) { op in
@@ -1065,6 +1076,9 @@ struct ProactiveSignal: Equatable, Sendable {
         if Self.readable { for s in Self.load().values { mock.upsert(s); ProactiveSuggestionStore.shared.adopt(s) } }
         // Codex PR90d: a cloud state merged into an existing card is persisted, so a reload cannot resurrect the action.
         ProactiveSuggestionStore.shared.onMerged = { Self.save($0) }
+        // Codex PR90h #3: a card that arrived from the cloud writes back to its own cloud record (and is kept locally, so
+        // perform / undo / relaunch find it).
+        ProactiveSuggestionStore.shared.onCloudIdentity = { local, server in ProactiveEngine.shared.adoptCloudIdentity(local: local, server: server) }
     }
     /// Codex P0-5: refresh reads the persisted inbox (the source every write path saves to), not an insert-only cache.
     func list() async throws -> [ProactiveSuggestion] {
