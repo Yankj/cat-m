@@ -69,18 +69,22 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
         session = URLSession(configuration: policy, delegate: NativeChatNoRedirect(), delegateQueue: nil)
     }
     public func close() { session.invalidateAndCancel(); bindingCache.removeAll(); toolTitles.removeAll(); continuationReceipts.removeAll();revisionWorkReceipts.removeAll();continuationSourceHashes.removeAll(); observedModelState = nil;verifiedReplyAt=nil;verifiedModel=nil;replyCandidates.removeAll() }
-    /// Append policy links from GET /catpaw/privacy/v1/model-route → `route` (not .../model-consent).
-    /// `route.policy_url` + `route.policy_urls[]` only; unknown keys (legacy aggregator fields) ignored.
+    /// Append OpenCode disclosure + policy links from GET /catpaw/privacy/v1/model-route → `route`
+    /// (not .../model-consent). `route.opencode_disclosure` (only when OpenCode is enabled) +
+    /// `route.policy_url` / `route.policy_urls[]`. Legacy aggregator fields ignored.
     static func consentBody(_ body:String,metadata:[String:Any],ui:[String:Any]) -> String {
         _ = ui
         guard let route = metadata["route"] as? [String:Any] else { return body }
+        var parts: [String] = [body]
+        if let d = route["opencode_disclosure"] as? String, !d.isEmpty, !body.contains(d) { parts.append(d) }
         var urls: [String] = []
         if let list = route["policy_urls"] as? [String] { urls.append(contentsOf: list) }
         if let one = route["policy_url"] as? String { urls.append(one) }
         let https = urls.filter { $0.hasPrefix("https://") && !body.contains($0) }
         var seen = Set<String>(); let ordered = https.filter { seen.insert($0).inserted }
-        guard !ordered.isEmpty else { return body }
-        let joined = ([body] + [ordered.joined(separator: "\n")]).joined(separator: "\n\n")
+        if !ordered.isEmpty { parts.append(ordered.joined(separator: "\n")) }
+        guard parts.count > 1 else { return body }
+        let joined = parts.joined(separator: "\n\n")
         return joined.utf8.count <= 12000 ? joined : body
     }
     /// GET /catpaw/model-routes/v1. nil when not deployed / unreachable (callers use `ModelRoutesFixture`).
