@@ -13,6 +13,13 @@ import SwiftUI
     /// (previously only the markdown fallback block rendered one, so a real device call never showed a card).
     /// Calls stay listed after the server resolves them so the receipt row remains visible.
     @State private var deviceCalls: [DeviceCall] = []
+    @ObservedObject private var deviceStore = DeviceCallStore.shared
+    private var doneSummaries: [String] {
+        deviceCalls.compactMap { call in
+            guard case .done(let r) = deviceStore.phase(call.id), r.status == .ok else { return nil }
+            return DeviceCallSummary.line(call, ui)
+        }
+    }
     private func syncDeviceCalls() {
         let live = (turn?.awaitingApproval == true ? (turn?.pendingDeviceCalls ?? []) : []).compactMap(DeviceCall.init)
         for call in live where !deviceCalls.contains(where: { $0.id == call.id }) { deviceCalls.append(call) }
@@ -21,6 +28,20 @@ import SwiftUI
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             ForEach(deviceCalls, id: \.id) { call in DeviceCallConfirmCard(call: call) }
+            // Server follow-up after device_result can fail (e.g. provider_timeout). Never leave a dangling turn:
+            // state what happened on the phone and offer to continue (a follow-up, not a regenerate that would redo the action).
+            if turn?.state == .failed, !doneSummaries.isEmpty {
+                VStack(alignment: .leading, spacing: 6) {
+                    ForEach(doneSummaries, id: \.self) { line in
+                        Label(line, systemImage: "checkmark.circle.fill").font(CatpawTypography.Role.body.font).foregroundStyle(CatpawColors.ink)
+                    }
+                    HStack(spacing: 12) {
+                        Text(ui("小猫的回复没有完成")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
+                        Button(ui("继续回复")) { model.draft = ui("继续"); model.send() }
+                            .font(CatpawTypography.Role.caption.font.weight(.semibold)).accessibilityIdentifier("chat.deviceCall.followupRetry")
+                    }
+                }.accessibilityElement(children: .contain).accessibilityIdentifier("chat.deviceCall.finalLine")
+            }
             ForEach(pending) { approval in
                 ConversationApprovalCardView(approval: approval, working: controller.working.contains(approval.interruptID),
                                              error: controller.errors[approval.interruptID].map { ui($0) },
@@ -113,5 +134,30 @@ import SwiftUI
         .background(CatpawColors.panel, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("chat.approval." + approval.interruptID)
+    }
+}
+
+/// One-line, user-facing receipt for a finished device call: "已创建提醒：交周报 · 明天 9:00".
+@MainActor enum DeviceCallSummary {
+    static func line(_ call: DeviceCall, _ ui: (String, [String]) -> String) -> String {
+        let a = call.args
+        let title = a["title"]?.text ?? a["label"]?.text ?? ""
+        let when = DeviceLedger.date(a["due"]?.text ?? a["start"]?.text ?? a["time"]?.text).map { relative($0, ui) } ?? ""
+        let head: String = switch call.tool {
+        case "reminder_create", "alarm_set": ui("已创建提醒：{0}", [title])
+        case "calendar_create": ui("已加入日历：{0}", [title])
+        case "sms_compose": ui("已打开短信", [])
+        case "mail_compose": ui("已打开邮件", [])
+        case "phone_call": ui("已发起呼叫", [])
+        default: ui("已完成", [])
+        }
+        return when.isEmpty ? head : head + " · " + when
+    }
+    private static func relative(_ d: Date, _ ui: (String, [String]) -> String) -> String {
+        let cal = Calendar.current
+        let time = d.formatted(date: .omitted, time: .shortened)
+        if cal.isDateInToday(d) { return ui("今天", []) + " " + time }
+        if cal.isDateInTomorrow(d) { return ui("明天", []) + " " + time }
+        return d.formatted(date: .abbreviated, time: .shortened)
     }
 }
