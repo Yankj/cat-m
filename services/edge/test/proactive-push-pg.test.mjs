@@ -223,3 +223,27 @@ test('pg PR90h: multi-device — the lease expires during the first device send 
     assert.deepEqual(calls, ['pgd1'], 'no new external send after the licence was lost');
   } finally { await sql.end(); }
 });
+
+// p90g review: the multi-connection evidence must come from the production claim (PgStore.claimPush), not inline SQL.
+test('pg evidence: PgStore.claimPush from 6 connections — all observed waiting on distinct backends, exactly one claim', { skip: !url }, async () => {
+  const sql = postgres(url, { max: 6, prepare: false, onnotice: () => {} }), lock = postgres(url, { max: 1, prepare: false, onnotice: () => {} }), obs = postgres(url, { max: 1, prepare: false, onnotice: () => {} });
+  try {
+    const clock = { t: Date.parse('2026-10-15T02:00:00Z') }, { U, store, call } = rig(sql, { configured: true, send: async () => ({ ok: true }) }, clock);
+    await sql`insert into auth.users(id) values(${U})`;
+    const id = (await call('POST', '/catpaw/proactive/v1/evaluate', meeting())).body.event_id;
+    let release; const held = new Promise(r => { release = r; });
+    const locker = lock.begin(async t => { await t`select id from proactive.events where id=${id} for update`; await held; });
+    await new Promise(r => setTimeout(r, 50));
+    const claims = Array.from({ length: 6 }, () => store.claimPush(id, new Date(clock.t).toISOString(), 0));
+    let waiting = [];
+    for (let i = 0; i < 100 && waiting.length < 6; i++) {
+      waiting = (await obs`select pid from pg_stat_activity where wait_event_type='Lock' and query like '%push_claim=gen_random_uuid()%'`).map(r => r.pid);
+      await new Promise(r => setTimeout(r, 20));
+    }
+    release(); await locker;
+    const won = (await Promise.all(claims)).filter(Boolean);
+    console.log(`pg-evidence: PgStore.claimPush waiting on ${new Set(waiting).size} distinct backends ${waiting.join(',')}; winners=${won.length}`);
+    assert.equal(new Set(waiting).size, 6, 'six production claims really ran concurrently on six server connections');
+    assert.equal(won.length, 1, 'exactly one claim token');
+  } finally { await sql.end(); await lock.end(); await obs.end(); }
+});
