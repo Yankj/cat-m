@@ -9,9 +9,18 @@ import SwiftUI
     private func ui(_ k: String, _ a: [String] = []) -> String { AppLanguage(locale: locale).ui(k, arguments: a) }
     private var turn: ConversationTurnRecord? { session.turns.last }
     private var pending: [ConversationApprovalRequest] { turn?.awaitingApproval == true ? (turn?.pendingApprovals ?? []) : [] }
+    /// catpaw.device.v1: the SSE `device_call` lands in `turn.pendingDeviceCalls`; render its confirm card here
+    /// (previously only the markdown fallback block rendered one, so a real device call never showed a card).
+    /// Calls stay listed after the server resolves them so the receipt row remains visible.
+    @State private var deviceCalls: [DeviceCall] = []
+    private func syncDeviceCalls() {
+        let live = (turn?.awaitingApproval == true ? (turn?.pendingDeviceCalls ?? []) : []).compactMap(DeviceCall.init)
+        for call in live where !deviceCalls.contains(where: { $0.id == call.id }) { deviceCalls.append(call) }
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
+            ForEach(deviceCalls, id: \.id) { call in DeviceCallConfirmCard(call: call) }
             ForEach(pending) { approval in
                 ConversationApprovalCardView(approval: approval, working: controller.working.contains(approval.interruptID),
                                              error: controller.errors[approval.interruptID].map { ui($0) },
@@ -21,8 +30,10 @@ import SwiftUI
                 if let item = controller.outcomes[id] { receipt(item.tool, item.outcome).accessibilityIdentifier("chat.approval.resolved." + id) }
             }
         }
-        .padding(.top, pending.isEmpty && controller.outcomes.isEmpty ? 0 : 12)
-        .onAppear { controller.observe(model, turn: turn) }
+        .padding(.top, pending.isEmpty && controller.outcomes.isEmpty && deviceCalls.isEmpty ? 0 : 12)
+        .onAppear { controller.observe(model, turn: turn); syncDeviceCalls() }
+        .onChange(of: turn?.pendingDeviceCalls) { _, _ in syncDeviceCalls() }
+        .onChange(of: turn?.state) { _, _ in syncDeviceCalls() }
         .onChange(of: turn?.id) { _, _ in controller.observe(model, turn: turn) }
         .onChange(of: turn?.pendingApprovals) { _, _ in controller.observe(model, turn: turn) }
     }
