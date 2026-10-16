@@ -11,6 +11,7 @@ import CatpawImageComposer
     @ObservedObject private var proactiveFeed = CatpawProactiveFeed.shared
     @ObservedObject private var presenceHub = CatpawPresenceHub.shared
     @StateObject private var attachmentUploader:ModelImageComposerAttachmentUploader
+    @State private var openedAcceptanceEmpty=false
     @State private var sendAfterImageConsent=false
     var accountLabel: String? = nil
     var onSignOut: (() -> Void)? = nil
@@ -190,6 +191,7 @@ import CatpawImageComposer
     }
     /// Header plush pose from connection + turn hub (six-state 毛绒小伙伴 set).
     private var headerCatState: CatpawPresenceState {
+        if let preview = CatpawAcceptanceLaunch.mascotPreview { return preview }
         let kind = ConnectionStatusKind.from(connectionMonitor.state)
         if kind == .offline { return .offline }
         if kind == .error, presenceHub.state == nil { return .error }
@@ -505,6 +507,7 @@ import CatpawImageComposer
         }
         .catpawSheet(isPresented:$composerContextPresented,onDismiss:completeContextAction) {composerContextSheet}
         .task { await model.start() }
+        .task(id:model.loaded) { if model.loaded,CatpawAcceptanceLaunch.openEmptyConversation,!openedAcceptanceEmpty { openedAcceptanceEmpty=true;model.newConversation() } }
         .task(id:model.conversationID) {
             proactiveFeed.currentAnchor={ [model] in
                 guard let session=model.session else {return nil}
@@ -1341,6 +1344,7 @@ private struct ConversationPendingMessageEditor:View {
                     .disabled(refreshingConnection)
                 }
                 FeatureEnrollmentSection()
+                AppModelConsentSection()
                 #if DEBUG || DEVICE_TRIAL
                 ModelRoutesSettingsView()
                 Section(ui("调试")) { NavigationLink(ui("主动信号模拟")) { ProactiveSignalDebugView() }.accessibilityIdentifier("settings.debug.proactiveSignals") }
@@ -1491,6 +1495,23 @@ private struct ConversationComposerLayout:Layout {
             subviews[0].place(at:.init(x:bounds.minX+s.leading.width+gap,y:bounds.maxY),anchor:.bottomLeading,proposal:.init(width:s.text.width,height:s.text.height))
         }
         subviews[2].place(at:.init(x:bounds.maxX,y:bounds.maxY),anchor:.bottomTrailing,proposal:.init(s.send))
+    }
+}
+
+/// 设置 · 云端模型许可: shows the app-wide grant and lets the user revoke it (future calls stop until re-allowed).
+struct AppModelConsentSection:View {
+    @Environment(\.locale) private var locale
+    @State private var grant=AppModelConsentGrant.current
+    private func ui(_ k:String)->String {AppLanguage(locale:locale).ui(k)}
+    var body:some View {
+        Section(ui("云端模型许可")) {
+            if let grant {
+                LabeledContent(ui("已允许"),value:grant.grantedAt.formatted(date:.abbreviated,time:.shortened))
+                Button(ui("撤回许可"),role:.destructive) {AppModelConsentGrant.revoke();self.grant=nil}.accessibilityIdentifier("settings.modelConsent.revoke")
+            } else {
+                Text(ui("尚未允许；下次发送消息时会询问一次，之后新对话沿用。")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
+            }
+        }.onAppear {grant=AppModelConsentGrant.current}
     }
 }
 
