@@ -67,3 +67,14 @@ test('PR90c #3: snooze resurfacing bumps rev (memory store + pg claim SQL share 
   const pg = readFileSync(new URL('../supabase/functions/_shared/proactive/pg-store.mjs', import.meta.url), 'utf8');
   assert.match(pg.slice(pg.indexOf('claimSuggestionsForChat')), /'\{suggestion,rev\}'/);
 });
+
+test('PR90c #5: server undo follows the shared device contract (undo-vectors.json)', async () => {
+  const V = JSON.parse(readFileSync(new URL('./fixtures/proactive/undo-vectors.json', import.meta.url))).vectors;
+  for (const v of V) {
+    const store = createMemoryStore(), decision = createDecisionService({ store, now: () => Date.parse('2026-10-15T02:00:00Z') });
+    const ev = await store.insertEvent({ user_id: U, task_id: null, conversation_id: null, kind: 'proactive_decision', title: 't', body: 'b', dedupe_key: 'u-' + v.name, push_state: 'skipped',
+      payload: { decision: 'card', actions: v.offered, suggestion: { status: v.status, taken: v.taken.map(action => ({ action, at: '2026-10-15T01:00:00Z' })), history: [], ops: {} } } });
+    const s = await decision.undo(U, ev.id, { operation_id: 'undo-' + v.name });
+    assert.deepEqual(s.taken.map(t => t.action), v.after, v.name); assert.equal(s.status, v.after_status, v.name);
+  }
+});
