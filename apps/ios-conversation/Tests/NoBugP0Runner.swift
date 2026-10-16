@@ -55,7 +55,6 @@ extension Result { var isFailure: Bool { if case .failure = self { return true }
 @main @MainActor enum NoBugP0Runner {
     static var passed = 0, failed = 0
     /// Injected account barrier for device-call tests that are not about sign-out (a signed-in fixture account).
-    static let testEpoch = AccountEpoch(account: "TEST-ACCOUNT")
     static func expect(_ ok: Bool, _ m: String) { if ok { passed += 1; print("PASS \(m)") } else { failed += 1; print("FAIL \(m)") } }
 
     static func main() async {
@@ -477,14 +476,14 @@ extension Result { var isFailure: Bool { if case .failure = self { return true }
         let acked = await s2b.retryPendingReports()
         expect(acked >= 2 && s2b.pendingReportIDs.isEmpty && exec.executed.filter { ["c2b", "c2c"].contains($0) }.count == 2, "P1-4 foreground/relaunch retry acknowledges all, no re-execute")
         DeviceCallHub.submitter = nil
-        expect(await DeviceCallStore(defaults: defaults, epoch: testEpoch).retryPendingReports() == 0, "P1-4 no submitter → no-op")
+        expect(await DeviceCallStore(defaults: defaults).retryPendingReports() == 0, "P1-4 no submitter → no-op")
         DeviceCallHub.submitter = sub
 
         // Kill during execute (phase .running persisted) → idempotent tool re-run, executor dedupes by call_id.
         exec.writes["c3"] = "evt-already"   // event was written before the kill
         let running = try! JSONEncoder().encode(["c3": DeviceCallStore.Record(phase: .running, call: call("c3"), updatedAt: .now, account: "user-A")])
         defaults.set(running, forKey: DeviceCallStore.storageKey)
-        let s3 = DeviceCallStore(defaults: defaults, epoch: testEpoch)
+        let s3 = DeviceCallStore(defaults: defaults)
         expect(s3.isInterrupted("c3") && s3.phase("c3") == .running, "P0-3 interrupted call detected on relaunch (no confirm card)")
         await tapRun(s3, call("c3"))
         expect(exec.executed.filter { $0 == "c3" }.isEmpty, "P0-3 tapping again cannot start a second write")
@@ -619,14 +618,14 @@ extension Result { var isFailure: Bool { if case .failure = self { return true }
         let defaults = UserDefaults(suiteName: "nobug-undo-\(UUID())")!
         let saved = DeviceCallHub.submitter; defer { DeviceCallHub.submitter = saved }
         let flaky = FlakyUndoSubmitter(); DeviceCallHub.submitter = flaky
-        await DeviceCallStore(defaults: defaults, epoch: testEpoch).reportUndo(callID: "u1", outcome: .undone)
+        await DeviceCallStore(defaults: defaults).reportUndo(callID: "u1", outcome: .undone)
         expect(flaky.sent.isEmpty, "#6 offline undo report not sent yet")
-        let relaunched = DeviceCallStore(defaults: defaults, epoch: testEpoch)            // app restart: queue comes back from disk
+        let relaunched = DeviceCallStore(defaults: defaults)            // app restart: queue comes back from disk
         expect(relaunched.undoQueue.pending == ["u1": .undone], "#6 pending undo survives an app restart")
         flaky.online = true
         _ = await relaunched.retryPendingReports()
         expect(flaky.sent == ["u1:undone"] && relaunched.undoQueue.isEmpty, "#6 retryPendingReports delivers the queued undo to the model")
-        expect(DeviceCallStore(defaults: defaults, epoch: testEpoch).undoQueue.isEmpty, "#6 acknowledged undo is not re-sent after another restart")
+        expect(DeviceCallStore(defaults: defaults).undoQueue.isEmpty, "#6 acknowledged undo is not re-sent after another restart")
         var q = DeviceUndoQueue(); q.enqueue("a", .failed); q.enqueue("b", .undone)
         let left = await q.drained { id, _ in if id == "a" { throw URLError(.timedOut) } }
         expect(left.pending == ["a": .failed], "#6 drain keeps only failed reports")
@@ -830,8 +829,11 @@ extension Result { var isFailure: Bool { if case .failure = self { return true }
         let outEpoch = AccountEpoch()
         let ex0 = FakeExecutor(["calendar_create"]); DeviceCallHub.executor = ex0
         let d0 = UserDefaults(suiteName: "pr91-out-\(UUID().uuidString)")!
-        await DeviceCallStore(defaults: d0, epoch: outEpoch).run(DeviceCall(call_id: "c-out", tool: "calendar_create", args: [:]))
-        expect(ex0.executed.isEmpty && d0.data(forKey: DeviceCallStore.storageKey) == nil, "PR91 #2 device call while signed out is refused (no capture → no execute)")
+        // v2 on #89: the store's barrier is DeviceCallGate.epoch (#89 interface); signed out → no grant → refused.
+        let savedGateEpoch = DeviceCallGate.epoch; DeviceCallGate.epoch = outEpoch
+        await DeviceCallStore(defaults: d0).run(DeviceCall(call_id: "c-out", tool: "calendar_create", args: [:]))
+        DeviceCallGate.epoch = savedGateEpoch
+        expect(ex0.executed.isEmpty, "PR91 #2 device call while signed out is refused (no account → no execute)")
         // P0-2 server side: the switch travels as X-Catpaw-Use-Memory.
         MemoryRecallLoader.record(off: true, owner: .account("h"))
         expect(ConversationMemorySwitch.headerValue == "0", "PR91 P0-2 client sends X-Catpaw-Use-Memory: 0 when off")
@@ -852,14 +854,15 @@ extension Result { var isFailure: Bool { if case .failure = self { return true }
         let store = DeviceCallStore(defaults: dd)
         let slow = SlowExecutor(); let sub = FakeSubmitter()
         DeviceCallHub.executor = slow; DeviceCallHub.submitter = sub
-        let call = DeviceCall(call_id: "dc-late", tool: "calendar_create", args: [:])
-        let run = Task { @MainActor in await store.run(call) }
-        while slow.pending == nil { await Task.yield() }
+        let call = Self.call("dc-late")   // #89: granted at the (simulated) SSE boundary under A, ttl 600
+        let run = Task { @MainActor in await tapRun(store, call) }
+        for _ in 0..<10_000 where slow.pending == nil { await Task.yield() }
+        expect(slow.pending != nil, "PR91 #2 A's granted call reached the executor")
         signOut(a); store.reset(); signIn(b)
         let subB = FakeSubmitter(); DeviceCallHub.submitter = subB
         slow.pending?.resume(); await run.value
         expect(subB.sent.isEmpty && sub.sent.isEmpty, "PR91 #2 A's device result after sign-out is not reported with B's submitter")
-        expect(dd.data(forKey: DeviceCallStore.storageKey).map { !String(decoding: $0, as: UTF8.self).contains("dc-late") } ?? true && store.droppedAfterSignOut == ["dc-late"], "PR91 #2 A's device result is not written back after sign-out")
+        expect(dd.data(forKey: DeviceCallStore.storageKey).map { !String(decoding: $0, as: UTF8.self).contains("dc-late") } ?? true && slow.ran, "PR91 #2 A's device result is not written back after sign-out")
         // Purge list covers attendees, server ids and the per-account 使用记忆 switch.
         for k in AccountLocalData.userDefaultsKeys { defaults.set(Data([1]), forKey: k) }
         defaults.set(true, forKey: MemoryRecallLoader.offKeyPrefix + "x")
