@@ -84,7 +84,7 @@ export async function createCloudRuntime({repository,authenticate,config,retain=
      checkTextConsent(JSON.stringify(conversation?.messages??[])+JSON.stringify(context.input_context??[])+JSON.stringify(context.memory_context??null),consent);
      const date=new Date().toISOString().slice(0,10),id=`${context.source_auth.subject_id}:${date}`;
      await tx.lock('system:provider-budget','daily-model-calls',id);const old=await tx.get('system:provider-budget','daily-model-calls',id);
-     check((old?.count??0)<config.dailyCallLimit,429,'model_daily_limit');await tx.put('system:provider-budget','daily-model-calls',{id,count:(old?.count??0)+1});
+     check((old?.count??0)<(config.dailyCallLimit??20)||config.dailyCallExempt?.has?.(String(context.source_auth.subject_id).toLowerCase()),429,'model_daily_limit');await tx.put('system:provider-budget','daily-model-calls',{id,count:(old?.count??0)+1});
      await verify();
    }));
  };
