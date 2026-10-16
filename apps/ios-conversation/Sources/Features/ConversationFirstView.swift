@@ -183,6 +183,16 @@ import CatpawImageComposer
         }
         .accessibilityLabel(conversationTitle).accessibilityAddTraits(.isHeader).accessibilityIdentifier("chat.title")
     }
+    /// Header cat pose from connection + turn hub (soft-3D six-state set).
+    private var headerCatState: CatpawPresenceState {
+        let kind = ConnectionStatusKind.from(connectionMonitor.state)
+        if kind == .offline { return .offline }
+        if kind == .error, presenceHub.state == nil { return .error }
+        switch presenceHub.state {
+        case .none: return .waiting
+        case .some(let s): return s
+        }
+    }
     private var shortConversationTitle:String {
         let line=String(conversationTitle.split(separator:"\n",maxSplits:1).first ?? Substring(conversationTitle))
         return line.count>18 ? String(line.prefix(18))+"…" : line
