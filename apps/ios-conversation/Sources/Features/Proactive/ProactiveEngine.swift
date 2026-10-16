@@ -42,8 +42,7 @@ struct ProactiveSignal: Equatable, Sendable {
     var attendeeRecipients: [String] = []
     /// Stable per (event, start): the same meeting never triggers twice.
     var signalHash: String {
-        let raw = "\(eventID)|\(Int(start.timeIntervalSince1970))"
-        return SHA256.hash(data: Data(raw.utf8)).prefix(8).map { String(format: "%02x", $0) }.joined()
+        ProactiveRules.signalHash(eventID: eventID, start: start)
     }
 }
 
@@ -83,16 +82,11 @@ struct ProactiveSignal: Equatable, Sendable {
     /// Looks for "提前 N 分钟" / "N minutes early" in the live agent memory; falls back to `defaultLeadMinutes`.
     /// Settings/debug writes the same phrase via `setLeadMinutes` so evaluate has hard evidence.
     func leadTime() async -> (minutes: Int, memory: ProactiveSuggestion.MemoryRef?) {
-        if let backend = MemoryLibraryHub.backend, let snapshot = try? await backend.load(), snapshot.useMemory {
-            for item in snapshot.items {
-                let text = item.content
-                if let r = text.range(of: #"提前\s*(\d{1,3})\s*分钟"#, options: .regularExpression)
-                    ?? text.range(of: #"(\d{1,3})\s*min(ute)?s? (early|ahead)"#, options: .regularExpression),
-                   let n = Int(text[r].filter(\.isNumber)), n > 0, n <= 180 {
-                    return (n, .init(id: item.id, content: text))
-                }
-            }
-        }
+        // Cloud backend first, then the persisted on-device library (NoBug P0-1: survives cold start).
+        var snaps: [MemoryLibrarySnapshot] = []
+        if let backend = MemoryLibraryHub.backend, let snapshot = try? await backend.load() { snaps.append(snapshot) }
+        if MemoryLibraryHub.backend !== MemoryLibraryHub.local, let local = try? await MemoryLibraryHub.local.load() { snaps.append(local) }
+        if let hit = ProactiveRules.lead(in: snaps) { return (hit.minutes, .init(id: hit.item.id, content: hit.item.content)) }
         return (defaultLeadMinutes, nil)
     }
 
@@ -111,12 +105,9 @@ struct ProactiveSignal: Equatable, Sendable {
         } catch MemoryLibraryError.notEnabled, MemoryLibraryError.unsupported {
             // Settings › 记忆 lists Hub.backend. If agent-memory is 未开通 / no create, install a local
             // stub as the same page backend so the row is visible+deletable (honest label, no UserDefaults).
-            let stub: MemoryLibraryStub
-            if let s = MemoryLibraryHub.backend as? MemoryLibraryStub { stub = s }
-            else {
-                stub = MemoryLibraryStub(items: [], useMemory: true, autoSave: true)
-                MemoryLibraryHub.install(backend: stub)
-            }
+            // Persisted on-device library (Application Support) — survives cold start; migrated when the gate opens.
+            let stub = MemoryLibraryHub.local
+            if MemoryLibraryHub.backend !== stub { MemoryLibraryHub.install(backend: stub) }
             do {
                 let snap = try await stub.load()
                 let old = snap.items.filter { $0.content.range(of: #"提前\s*\d{1,3}\s*分钟"#, options: .regularExpression) != nil }.map(\.id)
@@ -136,6 +127,8 @@ struct ProactiveSignal: Equatable, Sendable {
             let ids = snap.items.filter { ($0.content.contains("提前") && $0.content.contains("分钟")) }.map(\.id)
             if !ids.isEmpty { try? await backend.forget(ids: ids) }
         }
+        let localIDs = MemoryLibraryHub.local.items.filter { ProactiveRules.isLeadMemory($0.content) }.map(\.id)
+        if !localIDs.isEmpty { try? await MemoryLibraryHub.local.forget(ids: localIDs) }
         note("lead_minutes cleared — evaluate uses default \(defaultLeadMinutes)")
     }
 
@@ -210,14 +203,14 @@ struct ProactiveSignal: Equatable, Sendable {
         note("collect source=\(signal.source.rawValue) event=\(signal.title) start=\(signal.start.formatted(date: .omitted, time: .shortened))")
         // Rule pre-filter
         let minutes = signal.start.timeIntervalSince(now) / 60
-        guard minutes > 0, minutes <= 180 else { note("filter drop: starts in \(Int(minutes)) min (window 0–180)"); return nil }
+        guard ProactiveRules.inWindow(start: signal.start, now: now) else { note("filter drop: starts in \(Int(minutes)) min (window 0–180)"); return nil }
         // Dedupe ledger
         let hash = signal.signalHash
         if let seen = ledger[hash] {
             note("dedupe SUPPRESSED duplicate signal_hash=\(hash) (first seen \(Date(timeIntervalSince1970: seen).formatted(date: .omitted, time: .shortened)))")
             return nil
         }
-        var l = ledger; l[hash] = now.timeIntervalSince1970; ledger = l
+        var l = ledger; _ = ProactiveRules.admit(hash, ledger: &l, now: now); ledger = l
         note("dedupe new signal_hash=\(hash)")
         // Evaluate
         let lead = await leadTime()
@@ -230,8 +223,7 @@ struct ProactiveSignal: Equatable, Sendable {
         let usedETA = travel.usedETA
         let originNote = travel.originNote
         // leave_at = meeting_start - lead_minutes - travel_minutes (travel 0 only when ETA unused → lead only)
-        let buffer = lead.minutes + (usedETA ? (travelMinutes ?? 0) : 0)
-        let leaveAt = signal.start.addingTimeInterval(TimeInterval(-buffer * 60))
+        let leaveAt = ProactiveRules.leaveAt(start: signal.start, leadMinutes: lead.minutes, travelMinutes: travelMinutes, usedETA: usedETA)
         let remindAt = leaveAt  // remind when user should leave
         let decision = await evaluateRemote(signal, leadMinutes: lead.minutes, travelMinutes: usedETA ? travelMinutes : nil)
             ?? evaluateLocal(signal, leadMinutes: lead.minutes, now: now)
@@ -503,7 +495,7 @@ struct ProactiveSignal: Equatable, Sendable {
                 let directions = MKDirections(request: req)
                 guard let resp = try? await directions.calculate(), let route = resp.routes.first else { continue }
                 let mins = max(1, Int(route.expectedTravelTime / 60))
-                if mins > 180 { return (nil, false, note) }  // cap: treat as invalid
+                if ProactiveRules.validTravel(mins) == nil { return (nil, false, note) }  // cap: > 180 min → invalid
                 return (mins, true, note)
             }
             return (nil, false, note)

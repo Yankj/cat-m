@@ -21,6 +21,23 @@ struct MemorySavedEvent: Codable, Sendable, Equatable {
     static func install(_ service: ConversationMemoryService?) { legacy = service.map { ConversationMemoryLibraryAdapter(service: $0) } }
     static func install(backend value: (any MemoryLibraryBackend)?) { preferred = value }
     static func reset() { preferred = nil; legacy = nil; MemorySavedChipState.shared.reset() }
+    /// The persisted on-device library (cloud agent-memory 未开通). Starts empty.
+    static var local: MemoryLibraryStub { MemoryLibraryLocal.shared }
+    /// Backend for Settings › 记忆 pages opened from cards/debug (NoBug P0-2): the real backend, else the local
+    /// library when it holds items, else an honest 未开通 state. Never sample data.
+    static var pageBackend: any MemoryLibraryBackend {
+        if let backend { return backend }
+        return local.items.isEmpty ? MemoryLibraryNotEnabled() : local
+    }
+    /// After a cloud backend is installed: migrate local items into it. If it refuses (gate off → notEnabled /
+    /// unsupported), surface the local library instead so the items stay visible + deletable (labelled 本机).
+    @discardableResult static func reconcileLocal() async -> MemoryLibraryLocal.MigrationReport {
+        guard !local.items.isEmpty else { return .init() }
+        guard let target = preferred, target !== local else { return .init(kept: local.items.count) }
+        let report = await MemoryLibraryLocal.migrate(local, to: target)
+        if report.kept > 0 { install(backend: local) }
+        return report
+    }
 }
 
 /// Per memory id: undone / dismissed, so re-rendered transcripts keep the outcome.
@@ -133,6 +150,6 @@ struct PawLabelStyle: LabelStyle {
 
 #Preview("已记住") {
     VStack(alignment: .leading) {
-        MemorySavedChip(event: .init(memory: .init(id: "m2", kind: "preference", content: "你喜欢靠窗座位"), undo_token: "t"), backendOverride: MemoryLibraryStub())
+        MemorySavedChip(event: .init(memory: .init(id: "m2", kind: "preference", content: "你喜欢靠窗座位"), undo_token: "t"), backendOverride: MemoryLibraryStub(items: MemoryLibraryStub.sample))
     }.padding()
 }
