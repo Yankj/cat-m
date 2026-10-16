@@ -165,6 +165,9 @@ extension ProactiveRules {
 /// Codex PR90d: safe default feedback gate when 三角's learned gate (`ProactiveEngine.feedbackGate`) is not installed.
 /// Counts the user's own feedback per trigger on this device; it can only lower a level: any "intrusive" → never
 /// interrupt; clearly negative (not_helpful + intrusive ≥ helpful + 2) → card only. No feedback → unchanged.
+/// Feedback values (moved here from ProactiveSuggestion.swift so the portable runners compile without UI files).
+enum ProactiveFeedback: String, Codable, Sendable, CaseIterable { case helpful, not_helpful, intrusive }
+
 struct ProactiveLocalFeedback: Codable, Sendable, Equatable {
     struct Counts: Codable, Sendable, Equatable { var helpful = 0, notHelpful = 0, intrusive = 0 }
     var byTrigger: [String: Counts] = [:]
