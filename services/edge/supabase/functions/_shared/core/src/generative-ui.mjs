@@ -12,7 +12,17 @@ export const UI_KINDS=Object.freeze(['card','choices','confirm','form','sheet','
 export const GROUNDED_KINDS=Object.freeze(['place','event']);
 /** Comma list of block kinds the client renders; absent = legacy client (grounded kinds not offered). */
 export const UI_KINDS_HEADER='X-Catpaw-UI-Kinds';
-export function parseUIKinds(raw){if(raw===null||raw===undefined)return null;return [...new Set(String(raw).split(',').map(x=>x.trim()).filter(x=>UI_KINDS.includes(x)))];}
+/** Client capabilities carried in X-Catpaw-UI-Kinds that are not render_ui kinds. `followups` = renders ```catpaw-card:followups chips. */
+export const UI_EXTRAS=Object.freeze(['followups']);
+export function parseUIKinds(raw){if(raw===null||raw===undefined)return null;return [...new Set(String(raw).split(',').map(x=>x.trim()).filter(x=>UI_KINDS.includes(x)||UI_EXTRAS.includes(x)))];}
+/** chat-ux #4: 2–3 tappable follow-up questions after an answer (clients advertising `followups`). */
+export const FOLLOWUP_PROMPT=`
+回答完以后，另起一行给 2-3 个用户最可能接着问的问题，用用户的口吻，每个不超过 18 个字，彼此不重复，也不要重复刚回答过的内容。格式必须严格如下（放在回答最后，前后不要加别的话）：
+\`\`\`catpaw-card:followups
+问题一
+问题二
+\`\`\`
+以下情况不要给：闲聊寒暄、你在向用户提问或等用户确认、本轮调用了等待用户回应的卡片、回答失败或拒绝。`;
 export const UI_DECISIONS=Object.freeze(['submit','dismiss','report_error']);
 export const FIELD_TYPES=Object.freeze(['text','multiline','number','date','time','datetime','toggle','select','stepper']);
 export const UI_ERROR_CODES=Object.freeze(['schema_invalid','payload_too_large','schema_version_unsupported','too_long','too_many','duplicate_id','items_missing','fields_missing','steps_missing','options_missing','image_not_https','id_missing']);

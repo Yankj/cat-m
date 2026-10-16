@@ -39,7 +39,7 @@ import Foundation
     static func expect(_ ok: Bool, _ m: String) { if ok { passed += 1; print("PASS \(m)") } else { failed += 1; print("FAIL \(m)") } }
 
     static func main() async {
-        await memory(); await deviceCalls(); proactive(); nearby(); groundedFixtures(); contactsPrivacy(); replyVariants()
+        await memory(); await deviceCalls(); proactive(); nearby(); groundedFixtures(); contactsPrivacy(); replyVariants(); followUps()
         print("nobug-p0 portable: \(passed) passed, \(failed) failed")
         exit(failed == 0 ? 0 : 1)
     }
@@ -272,5 +272,15 @@ import Foundation
         let round = try? JSONDecoder().decode(ReplyVariantGroup.self, from: (try? JSONEncoder().encode(g)) ?? Data())
         expect(round == g, "variants: edited groups persist")
         expect(!MessageEditRules.canSend("  猫吃什么 ", original: "猫吃什么") && !MessageEditRules.canSend("   ", original: "x") && MessageEditRules.canSend("狗吃什么", original: "猫吃什么"), "edit: unchanged / empty edits cannot be sent")
+    }
+
+    /// chat-ux #4: follow-up fence parsing.
+    static func followUps() {
+        let d = { (t: String) in Data(t.utf8) }
+        expect(FollowUpSuggestions.parse(d("猫能吃鱼吗？\n- 猫一天吃几顿\n2. 猫粮怎么选\n第四个"), closed: true) == ["猫能吃鱼吗？", "猫一天吃几顿", "猫粮怎么选"], "followups: ≤3, bullets/numbers stripped")
+        expect(FollowUpSuggestions.parse(d("a\nb"), closed: false).isEmpty, "followups: unclosed fence renders nothing while streaming")
+        expect(FollowUpSuggestions.parse(d("只有一个"), closed: true).isEmpty && FollowUpSuggestions.parse(d("x\nx"), closed: true).isEmpty, "followups: fewer than 2 distinct → nothing")
+        expect(FollowUpSuggestions.parse(d(String(repeating: "长", count: 31) + "\n短一\n短二"), closed: true) == ["短一", "短二"], "followups: over-long lines dropped")
+        expect(ConversationUIEvent.kindsHeaderValue.hasSuffix(",followups") && !ConversationUIEvent.kinds.contains("followups"), "followups: advertised as capability, not a ui.block kind")
     }
 }

@@ -6430,5 +6430,17 @@
   "点「查找」后，匹配到的姓名和电话才会发给小猫。": {
     "en": "Names and numbers are shared with Catpaw only after you tap Search.",
     "zh-Hans": "点「查找」后，匹配到的姓名和电话才会发给小猫。"
+  },
+  "追问：{0}": {
+    "en": "Follow-up: {0}",
+    "zh-Hans": "追问：{0}"
+  },
+  "发送这个问题": {
+    "en": "Sends this question",
+    "zh-Hans": "发送这个问题"
+  },
+  "建议追问": {
+    "en": "Suggested follow-ups",
+    "zh-Hans": "建议追问"
   }
 }

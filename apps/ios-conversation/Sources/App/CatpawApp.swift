@@ -124,6 +124,7 @@ import AppIntents
         PermissionDegradeCardAdapter.register() // proactive demo: permission-denied degrade card
         DeviceCallCardAdapter.register() // wave2 V3 device_call confirm card
         ProactiveSuggestionAdapter.register() // wave2 demo proactive_suggestion
+        FollowUpChipsAdapter.register() // chat-ux #4 ```catpaw-card:followups chips
     }
     var body: some Scene {
         WindowGroup {
