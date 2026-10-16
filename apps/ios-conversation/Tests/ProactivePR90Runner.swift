@@ -299,12 +299,12 @@ func pr90c_presentQuiet() {
 // MARK: Codex PR90d (2484e15)
 func pr90d_ownership() {
     // Cold start: epoch nil → same account restored → nothing of that account is touched.
-    check(!ProactiveDataOwner.mustWipe(owner: "USER-A", current: "USER-A"), "same-account restore keeps data")
-    check(!ProactiveDataOwner.mustWipe(owner: "user-a", current: "USER-A"), "case-insensitive owner")
-    check(ProactiveDataOwner.mustWipe(owner: "USER-A", current: "USER-B"), "switch wipes A's data")
-    check(ProactiveDataOwner.mustWipe(owner: "USER-A", current: nil), "logout wipes")
-    check(!ProactiveDataOwner.mustWipe(owner: "", current: "USER-B"), "already clean (signed out) → B's new data is kept")
-    check(ProactiveDataOwner.mustWipe(owner: nil, current: "USER-A"), "unknown owner (pre-ownership data) fails closed")
+    // Codex PR90e: one decision (keep / adopt / wipe); adopting or wiping always registers the new owner.
+    check(ProactiveDataOwner.plan(owner: "USER-A", current: "USER-A") == .keep, "same-account restore keeps data")
+    check(ProactiveDataOwner.plan(owner: "user-a", current: "USER-A") == .keep, "case-insensitive owner")
+    check(ProactiveDataOwner.plan(owner: "USER-A", current: "USER-B") == .wipe, "switch wipes A's data")
+    check(ProactiveDataOwner.plan(owner: "USER-A", current: nil) == .wipe, "logout wipes")
+    check(ProactiveDataOwner.plan(owner: "", current: nil) == .keep, "signed out and clean stays clean")
     // Notification cleanup by owner: only other accounts' / untagged proactive requests.
     var a: [AnyHashable: Any] = ["catpaw_proactive_id": "x"]; ProactiveAccountGate.stamp(&a, AccountToken(account: "USER-A", epoch: 1), deliveryID: "x", level: .notify)
     var b: [AnyHashable: Any] = ["catpaw_proactive_id": "y"]; ProactiveAccountGate.stamp(&b, AccountToken(account: "USER-B", epoch: 7), deliveryID: "y", level: .notify)
@@ -339,12 +339,13 @@ func pr90d_legacyRejected() {
     check(q.entries["evt-m"]?.state == .reserved, "B's reservation survives A's late callback")
     // Snooze goes through the pipeline: stamped, quota-gated, late-cleaned.
     poster.completeLater = false
-    let out = await p.snooze(id: "evt-s", title: "t", body: "b", category: "c", info: ["catpaw_proactive_id": "evt-s"], fire: at("2026-10-15T04:10:00Z"), token: tb)
-    check(out == .posted(ProactiveDeliveryPipeline.scoped("evt-s-snooze", tb)) && poster.adds.last?.info[ProactiveAccountGate.accountKey] == "B", "snooze stamped + scoped (\(out))")
-    p.remove(bases: ["evt-s-snooze"], token: tb)
-    check(poster.removed.contains(ProactiveDeliveryPipeline.scoped("evt-s-snooze", tb)) && poster.removed.contains("evt-s-snooze"), "removal targets the scoped id (and the legacy one)")
+    let out = await p.snooze(id: "evt-s", intent: "op-evt-s-snooze", title: "t", body: "b", category: "c", info: ["catpaw_proactive_id": "evt-s"], fire: at("2026-10-15T04:10:00Z"), token: tb)
+    let sb = ProactiveDeliveryPipeline.snoozeBase("evt-s", intent: "op-evt-s-snooze")
+    check(out == .posted(ProactiveDeliveryPipeline.scoped(sb, tb)) && poster.adds.last?.info[ProactiveAccountGate.accountKey] == "B", "snooze stamped + scoped (\(out))")
+    p.remove(bases: [sb], token: tb)
+    check(poster.removed.contains(ProactiveDeliveryPipeline.scoped(sb, tb)) && poster.removed.contains(sb), "removal targets the scoped id (and the legacy one)")
     e.signOut()
-    let stale = await p.snooze(id: "evt-s2", title: "t", body: "b", category: "c", info: [:], fire: at("2026-10-15T04:10:00Z"), token: tb)
+    let stale = await p.snooze(id: "evt-s2", intent: "op-evt-s2-snooze", title: "t", body: "b", category: "c", info: [:], fire: at("2026-10-15T04:10:00Z"), token: tb)
     check(stale == .refused("stale_account"), "stale snooze refused")
 }
 
@@ -385,6 +386,68 @@ func pr90d_localFeedbackGate() {
     let back = try! JSONDecoder().decode(ProactiveLocalFeedback.self, from: JSONEncoder().encode(f)); check(back == f, "persisted")
 }
 
+// MARK: Codex PR90e (e76f019)
+func pr90e_owner() {
+    // P1-1: after a logout the owner is "" — the next account must still be registered (and anything left wiped).
+    check(ProactiveDataOwner.plan(owner: "", current: "USER-B") == .wipe, "\"\" → B registers B (never stays \"\")")
+    // P1-2: first run after upgrade (no owner recorded) adopts the data for the signed-in account — never drops it.
+    check(ProactiveDataOwner.plan(owner: nil, current: "USER-A") == .adopt, "upgrade: unknown owner migrates to the current account")
+    check(ProactiveDataOwner.plan(owner: nil, current: nil) == .wipe, "unknown owner at an explicit sign-out → wiped with it")
+    // P1-3: cleanup reads ownership exactly like the receive gate (local stamp or APNs catpaw.account).
+    let apnsB: [AnyHashable: Any] = ["catpaw": ["kind": "proactive_decision", "account": "USER-B", "event_id": "E1"]]
+    let apnsA: [AnyHashable: Any] = ["catpaw": ["kind": "proactive_decision", "account": "USER-A", "event_id": "E2"]]
+    check(!ProactiveDataOwner.removeOnChange(apnsB, current: "user-b"), "current account's APNs notification survives cleanup")
+    check(ProactiveDataOwner.removeOnChange(apnsA, current: "USER-B"), "other account's APNs notification removed")
+    check(ProactiveDataOwner.owner(of: apnsB) == "USER-B", "one owner resolver for gate + cleanup")
+}
+
+@MainActor func pr90e_repeatedSnooze() async {
+    // P1-4: snooze → it fires → snooze again must schedule a new notification (one identity per snooze intent).
+    var t = at("2026-10-15T04:00:00Z"); let e = AccountEpoch(account: "A"), poster = FakePoster(); let (p, _) = makePipeline(e, poster, clock: { t })
+    let tok = e.capture()!
+    let u1 = t.addingTimeInterval(600)
+    let o1 = await p.snooze(id: "sug", intent: "op-sug-snooze", title: "t", body: "b", category: "c", info: [:], fire: u1, token: tok)
+    t = u1.addingTimeInterval(60)   // first snooze rang
+    let u2 = t.addingTimeInterval(600)
+    let o2 = await p.snooze(id: "sug", intent: "op-sug-snooze-n2", title: "t", body: "b", category: "c", info: [:], fire: u2, token: tok)
+    check(o1 != o2 && { if case .posted = o2 { return true }; return false }(), "second snooze scheduled (\(o1) / \(o2))")
+    check(poster.adds.count == 2 && poster.adds[1].fireAt == u2, "second request fires at its own until")
+    // Re-reserving a still-pending identity moves its slot to the new fire day.
+    var q = ProactiveQuotaLedger(); _ = q.reserve("x", fire: at("2026-10-15T04:00:00Z"), calendar: shanghai)
+    _ = q.reserve("x", fire: at("2026-10-16T04:00:00Z"), calendar: shanghai)
+    check(q.entries["x"]?.day == "2026-10-16" && q.entries["x"]?.at == at("2026-10-16T04:00:00Z").timeIntervalSince1970, "reservation follows the new fire time")
+}
+
+func pr90e_snoozeDetail() {
+    let d = ProactiveUndo.snoozeDetail(until: at("2026-10-15T04:10:00Z"), intent: "op-s-snooze-n2")
+    check(ProactiveUndo.snoozeUntil(detail: d, at: .distantPast) == at("2026-10-15T04:10:00Z") && ProactiveUndo.snoozeIntent(detail: d) == "op-s-snooze-n2", "snooze entry carries its until and its intent (\(d))")
+    check(ProactiveUndo.snoozeUntil(detail: "until=100", at: .distantPast) == Date(timeIntervalSince1970: 100) && ProactiveUndo.snoozeIntent(detail: "until=100") == nil, "older entries still parse")
+}
+
+func pr90e_operationIDs() {
+    // P1-5: a new intent gets a new id; a retry of the same queued op reuses its stored id.
+    let a = ProactiveRules.operationID(suggestion: "s", action: "snooze", generation: 0, ordinal: 1)
+    let b = ProactiveRules.operationID(suggestion: "s", action: "snooze", generation: 0, ordinal: 2)
+    check(a != b, "two snoozes → two operation ids (\(a), \(b))")
+    check(a == ProactiveRules.operationID(suggestion: "s", action: "snooze", generation: 0), "first intent keeps the old id format")
+    check(ProactiveRules.operationID(suggestion: "s", action: "snooze", generation: 1, ordinal: 2) != b, "after undo, fresh generation")
+}
+
+@MainActor func pr90e_deadLetterFuture() async {
+    let kv = MemKV(); var t = at("2026-10-15T04:00:00Z")
+    let q = CatpawPersistentQueue<SyncOp>(name: "dl2", store: kv, maxAttempts: 1, baseDelay: 1)
+    q.enqueue(SyncOp(local: "s1", action: "snooze"), key: "a", account: "A", group: "s1", now: t)
+    _ = await q.drain(now: t, account: "A") { _ in .retry }
+    t = t.addingTimeInterval(60)
+    q.enqueue(SyncOp(local: "s1", action: "undo"), key: "u", account: "A", group: "s1", now: t)
+    var sent: [String] = []
+    _ = await q.drain(now: t, account: "A") { op in sent.append(op.action); return .done }
+    check(sent.isEmpty && q.deadLetters.map(\.key).contains("u"), "an op enqueued after its group dead-lettered is parked, not sent (\(sent))")
+    let reloaded = CatpawPersistentQueue<SyncOp>(name: "dl2", store: kv, maxAttempts: 1, baseDelay: 1)
+    reloaded.enqueue(SyncOp(local: "s1", action: "dismiss"), key: "d", account: "A", group: "s1", now: t)
+    check(reloaded.items.isEmpty, "poison survives a restart")
+}
+
 @main enum ProactivePR90Runner {
     static func main() async {
         pr90_3_prescheduleSharesDecisionAndQuota()
@@ -401,6 +464,7 @@ func pr90d_localFeedbackGate() {
         pr90c_cardMerge()
         pr90c_presentQuiet()
         pr90d_ownership(); pr90d_legacyRejected(); await pr90d_scopedRequests(); await pr90d_deadLetterOrdering(); pr90d_snoozeRestore(); pr90d_localFeedbackGate()
+        pr90e_owner(); await pr90e_repeatedSnooze(); pr90e_operationIDs(); pr90e_snoozeDetail(); await pr90e_deadLetterFuture()
         print(failures == 0 ? "PR90 proactive: all passed" : "PR90 proactive: \(failures) failed"); exit(failures == 0 ? 0 : 1)
     }
 }
