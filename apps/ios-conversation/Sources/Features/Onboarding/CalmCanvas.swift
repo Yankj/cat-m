@@ -166,7 +166,7 @@ struct ThinWaveform: View {
             VStack(alignment: .leading, spacing: 0) {
                 Spacer()
                 Text(ui("你")).font(.caption).foregroundStyle(CatpawColors.secondary).padding(.bottom, 6)
-                Text(voice.transcript.isEmpty ? ui("正在聆听…") : voice.transcript)
+                Text(voice.transcript.isEmpty ? (UserDefaults.standard.bool(forKey: "CatpawVoiceModePreview") ? ui("voice.preview.transcript") : ui("正在聆听…")) : voice.transcript)
                     .font(.system(size: 20, weight: .regular)).foregroundStyle(CatpawColors.ink.opacity(0.55))
                     .lineSpacing(4).frame(maxWidth: .infinity, alignment: .leading)
                     .animation(.easeOut(duration: 0.2), value: voice.transcript)
@@ -188,6 +188,7 @@ struct ThinWaveform: View {
             .padding(.horizontal, 28).padding(.bottom, 8)
         }
         .onReceive(voice.$audioLevel) { l in levels.removeFirst(); levels.append(l) }
+        .onAppear { if UserDefaults.standard.bool(forKey: "CatpawVoiceModePreview") { levels = (0..<64).map { i in Float(0.15 + 0.6 * abs(sin(Double(i) * 0.55)) * abs(cos(Double(i) * 0.13))) } } }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("chat.voice.mode")
     }

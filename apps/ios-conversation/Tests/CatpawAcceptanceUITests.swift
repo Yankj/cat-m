@@ -188,7 +188,6 @@ final class CatpawAcceptanceUITests: XCTestCase {
         let voice = app.buttons["chat.composer.voice"]; XCTAssertTrue(voice.waitForExistence(timeout: 10)); voice.tap()
         XCTAssertTrue(app.descendants(matching: .any)["chat.composer.voice.comingSoon"].waitForExistence(timeout: 3), "Voice conversation must show a coming-soon toast")
         shot(app, "09a-voice-coming-soon")
-        let mic = app.buttons["chat.composer.mic"]; XCTAssertTrue(mic.waitForExistence(timeout: 10)); mic.tap()
         let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
         let dictating = app.buttons["chat.composer.dictating"], notice = app.alerts.firstMatch
         let deadline = Date().addingTimeInterval(15)
@@ -417,6 +416,32 @@ final class CatpawAcceptanceUITests: XCTestCase {
         XCTAssertEqual(app.state, .runningForeground)
     }
     /// Live device_tools check: ask for a Reminder, expect chat.deviceCall confirm, run it.
+    /// Voice mode look: tap mic → full-screen calm voice overlay (glow, transcript, waveform, mic orb, keyboard/camera).
+    func test17VoiceMode() throws {
+        guard ProcessInfo.processInfo.environment["CATPAW_DEVICE_TOUR"] == "1" else { throw XCTSkip("device tour only") }
+        let app = XCUIApplication(bundleIdentifier: bundleID); forwardPublicConfig(app); app.launchArguments += ["-CatpawSkipOnboarding", "-CatpawVoiceModePreview", "YES"]; app.launch()
+        addUIInterruptionMonitor(withDescription: "perm") { alert in
+            for l in ["允许", "Allow", "好", "OK"] where alert.buttons[l].exists { alert.buttons[l].tap(); return true }
+            return false
+        }
+        if app.buttons["auth.closeUnrestoredSession"].waitForExistence(timeout: 5) { app.buttons["auth.closeUnrestoredSession"].tap(); Thread.sleep(forTimeInterval: 2) }
+        if app.buttons["auth.startExperience"].waitForExistence(timeout: 5) { app.buttons["auth.startExperience"].tap() }
+        XCTAssertTrue(input(app).waitForExistence(timeout: 60))
+        let mic = app.buttons["chat.composer.mic"]; XCTAssertTrue(mic.waitForExistence(timeout: 10)); mic.tap()
+        let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        let mode = app.descendants(matching: .any)["chat.voice.mode"]
+        let deadline = Date().addingTimeInterval(15)
+        while Date() < deadline && !mode.exists && !app.alerts.firstMatch.exists {
+            let prompt = springboard.alerts.firstMatch
+            if prompt.exists { prompt.buttons.element(boundBy: prompt.buttons.count - 1).tap() }
+            Thread.sleep(forTimeInterval: 0.5)
+        }
+        let ok = mode.exists
+        Thread.sleep(forTimeInterval: 2)
+        shot(app, ok ? "w2-v10-voice-mode" : "w2-v10-voice-missing")
+        XCTAssertTrue(ok, "voice mode overlay must appear on tap-to-dictate")
+    }
+
     func test16DeviceReminder() throws {
         guard ProcessInfo.processInfo.environment["CATPAW_DEVICE_TOUR"] == "1" else { throw XCTSkip("device tour only") }
         let app = XCUIApplication(bundleIdentifier: bundleID); forwardPublicConfig(app); app.launchArguments += ["-CatpawSkipOnboarding"]; app.launch()

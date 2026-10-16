@@ -152,7 +152,8 @@ struct DottedWaveform: View {
 @MainActor struct VoiceModeHost: View {
     @ObservedObject private var dictation = ComposerDictation.shared
     var body: some View {
-        if dictation.dictating && dictation.mode == .tap {
+        // `-CatpawVoiceModePreview YES` (launch argument) pins the overlay for visual QA on simulators without speech.
+        if (dictation.dictating && dictation.mode == .tap) || UserDefaults.standard.bool(forKey: "CatpawVoiceModePreview") {
             VoiceModeOverlay(dictation: dictation, voice: dictation.voice)
                 .transition(.opacity)
         }
