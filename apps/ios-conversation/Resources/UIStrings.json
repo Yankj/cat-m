@@ -6410,5 +6410,25 @@
   "暂时出错了": {
     "en": "Something went wrong",
     "zh-Hans": "暂时出错了"
+  },
+  "编辑消息": {
+    "en": "Edit message",
+    "zh-Hans": "编辑消息"
+  },
+  "查联系人": {
+    "en": "Find contact",
+    "zh-Hans": "查联系人"
+  },
+  "查找": {
+    "en": "Search",
+    "zh-Hans": "查找"
+  },
+  "找谁": {
+    "en": "Who",
+    "zh-Hans": "找谁"
+  },
+  "点「查找」后，匹配到的姓名和电话才会发给小猫。": {
+    "en": "Names and numbers are shared with Catpaw only after you tap Search.",
+    "zh-Hans": "点「查找」后，匹配到的姓名和电话才会发给小猫。"
   }
 }

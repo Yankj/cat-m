@@ -49,10 +49,10 @@ enum MessageLongPressContent {
 extension View {
     /// `preview` re-renders the message inside the lifted overlay (pass the same bubble/answer view).
     func messageLongPress<Preview: View>(id: String, content: MessageLongPressContent, alignment: HorizontalAlignment = .leading,
-                                        enabled: Bool = true, onReply: ((String) -> Void)? = nil,
+                                        enabled: Bool = true, onReply: ((String) -> Void)? = nil, onEdit: ((String) -> Void)? = nil,
                                         @ViewBuilder preview: @escaping () -> Preview) -> some View {
         // #62: the long-press overlay owns the gesture (it has 选择文本), so inline system selection is off inside the row.
-        modifier(MessageLongPressModifier(id: id, content: content, alignment: alignment, enabled: enabled, onReply: onReply, preview: preview))
+        modifier(MessageLongPressModifier(id: id, content: content, alignment: alignment, enabled: enabled, onReply: onReply, onEdit: onEdit, preview: preview))
             .environment(\.catpawInlineSelection, !enabled)
     }
 }
@@ -76,6 +76,7 @@ extension View { func catpawTextSelection() -> some View { modifier(CatpawTextSe
     let alignment: HorizontalAlignment
     let enabled: Bool
     let onReply: ((String) -> Void)?
+    var onEdit: ((String) -> Void)? = nil
     let preview: () -> Preview
     @State private var presented = false
     @ObservedObject private var reactions = MessageReactionStore.shared
@@ -104,7 +105,7 @@ extension View { func catpawTextSelection() -> some View { modifier(CatpawTextSe
             }
         }
         .fullScreenCover(isPresented: $presented) {
-            MessageLongPressOverlay(id: id, content: content, alignment: alignment, onReply: onReply, preview: preview) { setPresented(false) }
+            MessageLongPressOverlay(id: id, content: content, alignment: alignment, onReply: onReply, onEdit: onEdit, preview: preview) { setPresented(false) }
                 .presentationBackground(.clear)
         }
     }
@@ -120,6 +121,7 @@ extension View { func catpawTextSelection() -> some View { modifier(CatpawTextSe
     let content: MessageLongPressContent
     let alignment: HorizontalAlignment
     let onReply: ((String) -> Void)?
+    var onEdit: ((String) -> Void)? = nil
     let preview: () -> Preview
     let close: () -> Void
     @State private var shown = false
@@ -188,11 +190,12 @@ extension View { func catpawTextSelection() -> some View { modifier(CatpawTextSe
         case .text(let text):
             return [
                 .init(id: "reply", titleKey: "回复", symbol: "arrowshape.turn.up.left") { onReply?(text); dismiss() },
+                .init(id: "edit", titleKey: "编辑", symbol: "pencil") { let edit = onEdit; dismiss(); edit?(text) },
                 .init(id: "copy", titleKey: "复制", symbol: "doc.on.doc") { UIPasteboard.general.string = text; flash("已复制") },
                 .init(id: "select", titleKey: "选择", symbol: "character.cursor.ibeam") { selecting = true },
                 .init(id: "speak", titleKey: speaker.speakingID == id ? "停止朗读" : "朗读", symbol: speaker.speakingID == id ? "stop.circle" : "speaker.wave.2") {
                     speaker.toggle(text, id: id, locale: locale); dismiss() },
-            ].filter { $0.id != "reply" || onReply != nil }
+            ].filter { ($0.id != "reply" || onReply != nil) && ($0.id != "edit" || onEdit != nil) }
         case .image(let image):
             return [
                 .init(id: "reply", titleKey: "回复", symbol: "arrowshape.turn.up.left") { onReply?(""); dismiss() },
@@ -262,4 +265,33 @@ struct MessageShareSheet: UIViewControllerRepresentable {
     let items: [Any]
     func makeUIViewController(context: Context) -> UIActivityViewController { UIActivityViewController(activityItems: items, applicationActivities: nil) }
     func updateUIViewController(_ vc: UIActivityViewController, context: Context) {}
+}
+
+/// chat-ux #1: edit your own prompt and resend; the old answer stays as a switchable version (ReplyVariantStore).
+@MainActor struct MessageEditSheet: View {
+    let original: String
+    let send: (String) -> Void
+    @State private var text: String
+    @FocusState private var focused: Bool
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.locale) private var locale
+    private func ui(_ k: String) -> String { AppLanguage(locale: locale).ui(k) }
+    init(original: String, send: @escaping (String) -> Void) { self.original = original; self.send = send; _text = State(initialValue: original) }
+    static func canSend(_ text: String, original: String) -> Bool { MessageEditRules.canSend(text, original: original) }
+    var body: some View {
+        NavigationStack {
+            TextEditor(text: $text).focused($focused).font(CatpawTypography.Role.body.font).foregroundStyle(CatpawColors.ink)
+                .padding(12).accessibilityLabel(ui("编辑消息")).accessibilityIdentifier("chat.edit.field")
+                .navigationTitle(ui("编辑消息")).navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) { Button(ui("取消")) { dismiss() }.accessibilityIdentifier("chat.edit.cancel") }
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button(ui("发送")) { let t = MessageEditRules.normalized(text); dismiss(); send(t) }
+                            .disabled(!Self.canSend(text, original: original)).accessibilityIdentifier("chat.edit.send")
+                    }
+                }
+                .onAppear { focused = true }
+        }
+        .presentationDetents([.medium, .large])
+    }
 }
