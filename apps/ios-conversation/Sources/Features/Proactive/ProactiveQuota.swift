@@ -82,3 +82,16 @@ extension ProactiveRules {
         evaluatedAt.addingTimeInterval(max(0, wall.timeIntervalSince(startedWall)))
     }
 }
+
+extension ProactiveRules {
+    /// NoBug: trigger key for on-device meeting suggestions (same key the cloud learns feedback weights under).
+    static let localTrigger = "meeting_upcoming"
+    /// Confidence the offline rules stand for when the learned feedback gate is applied (no model score offline).
+    static let localConfidence = 0.7
+    /// Applies 三角's learned feedback gate (`ProactiveFeedbackSync.shared.gate`) to a local decision. Never raises a level.
+    static func applyFeedbackGate(_ level: ProactiveLevel, trigger: String = localTrigger, confidence: Double = localConfidence,
+                                  gate: ((String, Double, String) -> String)?) -> ProactiveLevel {
+        guard level > .silent, let gate else { return level }
+        return min(level, ProactiveLevel(server: gate(level.name, confidence, trigger)))
+    }
+}
