@@ -551,6 +551,12 @@ struct ProactiveSignal: Equatable, Sendable {
         guard let e = store.events(matching: predicate).filter({ !$0.isAllDay && $0.startDate > now }).sorted(by: { $0.startDate < $1.startDate }).first else { return }
         let fire = e.startDate.addingTimeInterval(TimeInterval(-(lead.minutes + 5) * 60))
         guard fire > now.addingTimeInterval(60) else { return }
+        // Codex P0-3: quiet hours / daily cap apply to the out-of-app path too (counted at fire time's day).
+        let firedDayCount = Calendar.current.isDate(fire, inSameDayAs: now) ? deliveredToday(now) : 0
+        guard ProactiveRules.prescheduleAllowed(fire: fire, deliveredToday: firedDayCount) else {
+            UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ["pre-" + e.calendarItemIdentifier])
+            note("preschedule skipped: \(fire.formatted(date: .omitted, time: .shortened)) is in quiet hours or over the daily cap"); return
+        }
         let signal = ProactiveSignal(
             source: .background,
             eventID: e.calendarItemIdentifier,

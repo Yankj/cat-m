@@ -72,6 +72,10 @@ enum ProactiveRules {
         case .interrupt: return .init(level: level, inAppCard: true, systemNotification: true, sound: true, timeSensitive: true, liveActivity: true)
         }
     }
+    /// The pre-scheduled notification fires while the app may be killed/offline: same gate, evaluated at fire time.
+    static func prescheduleAllowed(fire: Date, deliveredToday: Int, calendar: Calendar = .current) -> Bool {
+        delivery(level: .notify, now: fire, deliveredToday: deliveredToday, calendar: calendar).systemNotification
+    }
 }
 
 /// catpaw.proactive.decision.v1 LEVELS, ordered.
