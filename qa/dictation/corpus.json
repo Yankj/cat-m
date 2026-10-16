@@ -1,0 +1,23 @@
+{"note":"20-sentence dictation corpus for device runs (iPhone 13, iOS 26). Read each sentence once at a normal pace in a quiet room, then once with background noise. Categories cover dates/times, numbers, names, mixed Chinese-English, long sentences (> 1 min auto-continue is s20) and punctuation.",
+ "sentences":[
+ {"id":"s01","lang":"zh-CN","cat":"time","text":"明天上午九点提醒我给妈妈打电话。"},
+ {"id":"s02","lang":"zh-CN","cat":"time","text":"下周二下午三点半和王经理开会，地点在三楼会议室。"},
+ {"id":"s03","lang":"zh-CN","cat":"number","text":"这个月的房租是四千八百五十元，记得二十号之前交。"},
+ {"id":"s04","lang":"zh-CN","cat":"number","text":"帮我把闹钟设在早上六点四十五分。"},
+ {"id":"s05","lang":"zh-CN","cat":"place","text":"附近有没有评分高一点的川菜馆？"},
+ {"id":"s06","lang":"zh-CN","cat":"place","text":"从公司到浦东机场大概要多久？"},
+ {"id":"s07","lang":"zh-CN","cat":"name","text":"给李晓明发消息，说我晚点到。"},
+ {"id":"s08","lang":"zh-CN","cat":"question","text":"今天天气怎么样，需要带伞吗？"},
+ {"id":"s09","lang":"zh-CN","cat":"mixed","text":"把这份 PPT 发给 Kevin，抄送给 HR。"},
+ {"id":"s10","lang":"zh-CN","cat":"mixed","text":"我想用 Swift 写一个 iOS 小程序。"},
+ {"id":"s11","lang":"zh-CN","cat":"list","text":"周末要做的事：买菜、洗车、给猫剪指甲。"},
+ {"id":"s12","lang":"zh-CN","cat":"emotion","text":"今天好累啊，工作一点都不顺利。"},
+ {"id":"s13","lang":"zh-CN","cat":"punct","text":"你觉得呢？我觉得还可以，不过价格有点贵。"},
+ {"id":"s14","lang":"zh-CN","cat":"date","text":"二零二六年十月二十号是星期几？"},
+ {"id":"s15","lang":"zh-CN","cat":"command","text":"取消明晚八点的健身预约。"},
+ {"id":"s16","lang":"en-US","cat":"time","text":"Remind me to call the dentist tomorrow at ten."},
+ {"id":"s17","lang":"en-US","cat":"question","text":"What's a good Italian restaurant near me?"},
+ {"id":"s18","lang":"en-US","cat":"number","text":"Set a timer for twenty five minutes."},
+ {"id":"s19","lang":"zh-CN","cat":"pause","text":"帮我订一张去杭州的高铁票。（停顿两秒）要明天早上的，二等座。"},
+ {"id":"s20","lang":"zh-CN","cat":"long","text":"我想写一封邮件给团队，主要讲三件事：第一，下周一开始新的项目排期，每个人在周五之前把自己的任务拆好；第二，测试环境周三会停机维护一整天，请大家提前准备；第三，月底团建定在杭州，具体行程我会另外发群里，有特殊情况的同学单独跟我说。另外提醒一下，报销单这个月起统一走新系统，旧系统下个月就关闭了，请大家尽快把还没提交的单据补上，谢谢大家这段时间的辛苦付出。"}
+ ]}
