@@ -41,7 +41,9 @@ struct ProactiveSignal: Equatable, Sendable {
 @MainActor @Observable final class ProactiveEngine {
     static let shared = ProactiveEngine()
     static let notificationCategory = "CATPAW_PROACTIVE"
-    static let createAction = "CATPAW_PROACTIVE_CREATE", laterAction = "CATPAW_PROACTIVE_LATER"
+    static let createAction = "CATPAW_PROACTIVE_CREATE"
+    static let laterAction = "CATPAW_PROACTIVE_LATER"
+    static let notNowAction = "CATPAW_PROACTIVE_NOT_NOW"
     static let bgTaskID = "com.yankj.catpawm.proactive.refresh"
 
     private(set) var log: [ProactiveLogEntry] = []
@@ -232,6 +234,10 @@ struct ProactiveSignal: Equatable, Sendable {
         set { defaults.set(try? JSONEncoder().encode(newValue), forKey: suggestionsKey) }
     }
 
+    func pendingReminder(for suggestionID: String) -> PendingReminder? {
+        pendingReminders[suggestionID]
+    }
+
     enum WriteOutcome: Equatable { case created(String), alreadyExists(String), denied, failed(String) }
 
     /// Creates the EKReminder once per operation_id; a second confirm finds the existing one.
@@ -304,11 +310,24 @@ struct ProactiveSignal: Equatable, Sendable {
         guard let e = store.events(matching: predicate).filter({ !$0.isAllDay && $0.startDate > now }).sorted(by: { $0.startDate < $1.startDate }).first else { return }
         let fire = e.startDate.addingTimeInterval(TimeInterval(-(lead.minutes + 5) * 60))
         guard fire > now.addingTimeInterval(60) else { return }
+        let signal = ProactiveSignal(
+            source: .background,
+            eventID: e.calendarItemIdentifier,
+            title: e.title ?? "日程",
+            start: e.startDate,
+            place: e.location ?? ""
+        )
         let content = UNMutableNotificationContent()
         content.title = "\(e.startDate.formatted(date: .omitted, time: .shortened)) \(e.title ?? "日程")"
         content.body = "要我提前 \(lead.minutes) 分钟提醒你准备吗？"
         content.categoryIdentifier = Self.notificationCategory
-        content.userInfo = ["catpaw_proactive_event": e.calendarItemIdentifier]
+        content.userInfo = [
+            "catpaw_proactive_id": "evt-" + signal.signalHash,
+            "catpaw_proactive_event": e.calendarItemIdentifier,
+            "catpaw_proactive_title": signal.title,
+            "catpaw_proactive_start": e.startDate.timeIntervalSince1970,
+            "catpaw_proactive_place": signal.place,
+        ]
         let comps = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: fire)
         try? await UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: "pre-" + e.calendarItemIdentifier, content: content, trigger: UNCalendarNotificationTrigger(dateMatching: comps, repeats: false)))
         note("prescheduled notification at \(fire.formatted(date: .omitted, time: .shortened)) for \(e.title ?? "")")
@@ -320,30 +339,76 @@ struct ProactiveSignal: Equatable, Sendable {
         let lang = AppLanguage(locale: .current)
         return [UNNotificationCategory(identifier: notificationCategory, actions: [
             UNNotificationAction(identifier: createAction, title: lang.ui("创建提醒"), options: [], icon: UNNotificationActionIcon(systemImageName: "checklist")),
-            UNNotificationAction(identifier: laterAction, title: lang.ui("稍后"), options: [], icon: UNNotificationActionIcon(systemImageName: "clock"))],
+            UNNotificationAction(identifier: laterAction, title: lang.ui("稍后"), options: [], icon: UNNotificationActionIcon(systemImageName: "clock")),
+            UNNotificationAction(identifier: notNowAction, title: lang.ui("不用了"), options: [], icon: UNNotificationActionIcon(systemImageName: "xmark"))],
             intentIdentifiers: [], options: [.customDismissAction])]
     }
-    /// Notification action → confirm / snooze. Returns true if handled.
+    /// Notification action → the existing proactive action client. Returns true for every proactive payload,
+    /// including malformed/unknown actions, so it can never fall through to an unrelated push action path.
     func handleNotification(actionIdentifier: String, userInfo: [AnyHashable: Any]) async -> Bool {
-        if let eventID = userInfo["catpaw_proactive_event"] as? String {
-            // Pre-scheduled notification: rebuild the signal from EventKit, then act.
-            await scanCalendar(source: .background)
-            _ = eventID
-            if actionIdentifier == Self.createAction, let id = lastSuggestionID { await act(.create_reminder, id) }
+        let isProactive = userInfo["catpaw_proactive_id"] is String || userInfo["catpaw_proactive_event"] is String
+        guard isProactive else { return false }
+
+        if actionIdentifier == UNNotificationDefaultActionIdentifier {
+            CatpawRouteCenter.shared.pending = .proactive
             return true
         }
-        guard let id = userInfo["catpaw_proactive_id"] as? String else { return false }
+
+        let action: ProactiveSuggestion.Action
         switch actionIdentifier {
-        case Self.createAction: await act(.create_reminder, id)
-        case Self.laterAction: await act(.snooze, id)
-        case UNNotificationDefaultActionIdentifier: CatpawRouteCenter.shared.pending = .proactive
-        default: break
+        case Self.createAction: action = .create_reminder
+        case Self.laterAction: action = .snooze
+        case Self.notNowAction: action = .dismiss
+        default:
+            note("notification ignored action=\(actionIdentifier)")
+            return true
         }
+
+        guard let suggestion = await resolveNotificationSuggestion(userInfo) else {
+            note("notification unresolved suggestion")
+            return true
+        }
+        await ProactiveSuggestionStore.shared.perform(action, suggestion)
         return true
     }
-    private func act(_ action: ProactiveSuggestion.Action, _ id: String) async {
-        guard let s = ProactiveSuggestionStore.shared.items[id] else { return }
-        await ProactiveSuggestionStore.shared.perform(action, s)
+
+    private func resolveNotificationSuggestion(_ userInfo: [AnyHashable: Any]) async -> ProactiveSuggestion? {
+        if let id = userInfo["catpaw_proactive_id"] as? String,
+           let suggestion = ProactiveSuggestionStore.shared.items[id] {
+            return suggestion
+        }
+
+        guard let signal = notificationSignal(userInfo) else { return nil }
+        let expectedID = "evt-" + signal.signalHash
+        if let existing = ProactiveSuggestionStore.shared.items[expectedID] { return existing }
+        if let created = await handle(signal) { return created }
+        return ProactiveSuggestionStore.shared.items[expectedID]
+    }
+
+    private func notificationSignal(_ userInfo: [AnyHashable: Any]) -> ProactiveSignal? {
+        guard let eventID = userInfo["catpaw_proactive_event"] as? String else { return nil }
+        if let title = userInfo["catpaw_proactive_title"] as? String,
+           let timestamp = userInfo["catpaw_proactive_start"] as? TimeInterval {
+            return .init(
+                source: .background,
+                eventID: eventID,
+                title: title,
+                start: Date(timeIntervalSince1970: timestamp),
+                place: userInfo["catpaw_proactive_place"] as? String ?? ""
+            )
+        }
+        #if canImport(EventKit)
+        if let event = store.calendarItem(withIdentifier: eventID) as? EKEvent {
+            return .init(
+                source: .background,
+                eventID: eventID,
+                title: event.title ?? "日程",
+                start: event.startDate,
+                place: event.location ?? ""
+            )
+        }
+        #endif
+        return nil
     }
 
     static func registerBackgroundRefresh() {
@@ -372,7 +437,7 @@ struct ProactiveSignal: Equatable, Sendable {
     static func save(_ s: ProactiveSuggestion) {
         var all = load(); all[s.id] = s
         UserDefaults.standard.set(try? JSONEncoder().encode(all), forKey: key)
-        CatpawWidgetSnapshotWriter.write(all.values.sorted { $0.id < $1.id })
+        CatpawWidgetSnapshotWriter.write(Array(all.values))
     }
     static func load() -> [String: ProactiveSuggestion] {
         UserDefaults.standard.data(forKey: key).flatMap { try? JSONDecoder().decode([String: ProactiveSuggestion].self, from: $0) } ?? [:]
@@ -429,19 +494,50 @@ struct ProactiveEngineSignalAdapter: ProactiveSignalEngine {
 
 /// #48: App Group snapshot for the Home/Lock widgets. The widget reads the same JSON (`catpaw.widget.snapshot.v1.json`);
 /// without the App Group entitlement (`group.com.yankj.catpawm`, needs portal registration) the container is nil,
-/// nothing is written and the widget keeps its built-in sample.
-enum CatpawWidgetSnapshotWriter {
+/// nothing is written and the widget shows its truthful empty state.
+@MainActor enum CatpawWidgetSnapshotWriter {
     static let group = "group.com.yankj.catpawm"
     static let file = "catpaw.widget.snapshot.v1.json"
     static func write(_ suggestions: [ProactiveSuggestion]) {
         guard let dir = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: group) else { return }
-        let tasks: [[String: Any]] = suggestions.filter { $0.status == .pending || $0.status == .done }.prefix(6).map {
-            ["id": $0.id, "title": $0.title, "done": $0.status == .done]
+        let pending = suggestions
+            .filter { $0.effectiveStatus == .pending }
+            .sorted { ($0.createdAt ?? .distantPast) > ($1.createdAt ?? .distantPast) }
+
+        var body: [String: Any] = [
+            "version": 2,
+            "updated_at": Date().timeIntervalSince1970,
+        ]
+        if let suggestion = pending.first {
+            body["suggestion"] = [
+                "id": suggestion.id,
+                "title": suggestion.title,
+                "why": suggestion.reason,
+            ]
         }
-        let pending = suggestions.filter { $0.status == .pending }.count
-        let body: [String: Any] = ["updated_at": Date().timeIntervalSince1970, "tasks": tasks,
-                                   "mood": pending > 0 ? "needsUser" : "idle",
-                                   "status": pending > 0 ? "有 \(pending) 条提醒等你确认" : "小猫在待命"]
+
+        let meetings: [(suggestion: ProactiveSuggestion, signal: ProactiveSuggestion.Signal, reminder: ProactiveEngine.PendingReminder?)] = pending.compactMap { suggestion in
+            guard let signal = suggestion.signals?.first(where: { $0.kind == "calendar" }) else { return nil }
+            return (suggestion, signal, ProactiveEngine.shared.pendingReminder(for: suggestion.id))
+        }
+        let meeting = meetings.min { lhs, rhs in
+            if let left = lhs.reminder?.start, let right = rhs.reminder?.start { return left < right }
+            if lhs.reminder != nil { return true }
+            if rhs.reminder != nil { return false }
+            return (lhs.suggestion.createdAt ?? .distantFuture) < (rhs.suggestion.createdAt ?? .distantFuture)
+        }
+        if let meeting {
+            var value: [String: Any] = [
+                "id": meeting.suggestion.id,
+                "title": meeting.reminder?.title ?? meeting.signal.text,
+                "why": meeting.suggestion.reason,
+            ]
+            if let reminder = meeting.reminder {
+                value["starts_at"] = reminder.start.timeIntervalSince1970
+                if !reminder.place.isEmpty { value["place"] = reminder.place }
+            }
+            body["meeting"] = value
+        }
         guard let data = try? JSONSerialization.data(withJSONObject: body) else { return }
         try? data.write(to: dir.appendingPathComponent(file), options: .atomic)
         WidgetCenter.shared.reloadAllTimelines()
