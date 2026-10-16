@@ -6243,10 +6243,6 @@
     "en": "Agnes",
     "zh-Hans": "Agnes"
   },
-  "FreeLLMAPI": {
-    "en": "FreeLLMAPI",
-    "zh-Hans": "FreeLLMAPI"
-  },
   "聚合器探活待接": {
     "en": "Aggregator probe not wired yet",
     "zh-Hans": "聚合器探活待接"

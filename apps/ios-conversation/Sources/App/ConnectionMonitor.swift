@@ -28,6 +28,15 @@ import Combine
             Task { @MainActor in self?.pathChanged(ok) }
         }
         monitor.start(queue: DispatchQueue(label: "catpaw.connection-monitor"))
+        #if DEBUG || DEVICE_TRIAL
+        // Simulator acceptance: CATPAW_ACCEPTANCE_PATH_FLAP="<offAt>:<onAt>" seconds fakes a path drop + recovery.
+        if let flap = ProcessInfo.processInfo.environment["CATPAW_ACCEPTANCE_PATH_FLAP"]?.split(separator: ":").compactMap({ Double($0) }), flap.count == 2 {
+            Task { @MainActor [weak self] in
+                try? await Task.sleep(nanoseconds: UInt64(flap[0] * 1e9)); self?.pathChanged(false)
+                try? await Task.sleep(nanoseconds: UInt64(max(0, flap[1] - flap[0]) * 1e9)); self?.pathChanged(true)
+            }
+        }
+        #endif
     }
     deinit { monitor.cancel() }
 
@@ -46,6 +55,8 @@ import Combine
             try? await Task.sleep(nanoseconds: 800_000_000)
             guard let self, !Task.isCancelled else { return }
             if self.lastEmittedPath == ok { return }
+            // Cold start online is the baseline, not a recovery.
+            if self.lastEmittedPath == nil, ok { self.lastEmittedPath = true; return }
             self.lastEmittedPath = ok
             self.pathNotice = ok ? .online : .offline
             if ok {

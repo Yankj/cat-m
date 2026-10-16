@@ -69,14 +69,18 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
         session = URLSession(configuration: policy, delegate: NativeChatNoRedirect(), delegateQueue: nil)
     }
     public func close() { session.invalidateAndCancel(); bindingCache.removeAll(); toolTitles.removeAll(); continuationReceipts.removeAll();revisionWorkReceipts.removeAll();continuationSourceHashes.removeAll(); observedModelState = nil;verifiedReplyAt=nil;verifiedModel=nil;replyCandidates.removeAll() }
-    /// FreeLLMAPI enabled → server adds `aggregator_disclosure` (+ per-route policy URLs); show them inside the consent body.
+    /// Append policy links from GET /catpaw/privacy/v1/model-route → `route` (not .../model-consent).
+    /// `route.policy_url` + `route.policy_urls[]` only; unknown keys (legacy aggregator fields) ignored.
     static func consentBody(_ body:String,metadata:[String:Any],ui:[String:Any]) -> String {
-        var parts=[body]
-        if let d=(ui["aggregator_disclosure"] ?? metadata["aggregator_disclosure"]) as? String,!d.isEmpty,!body.contains(d) {parts.append(d)}
-        let routes=(metadata["routes"] as? [[String:Any]]) ?? []
-        let urls=routes.compactMap{$0["policy_url"] as? String}.filter{$0.hasPrefix("https://") && !body.contains($0)}
-        if !urls.isEmpty {parts.append(urls.joined(separator:"\n"))}
-        let joined=parts.joined(separator:"\n\n")
+        _ = ui
+        guard let route = metadata["route"] as? [String:Any] else { return body }
+        var urls: [String] = []
+        if let list = route["policy_urls"] as? [String] { urls.append(contentsOf: list) }
+        if let one = route["policy_url"] as? String { urls.append(one) }
+        let https = urls.filter { $0.hasPrefix("https://") && !body.contains($0) }
+        var seen = Set<String>(); let ordered = https.filter { seen.insert($0).inserted }
+        guard !ordered.isEmpty else { return body }
+        let joined = ([body] + [ordered.joined(separator: "\n")]).joined(separator: "\n\n")
         return joined.utf8.count <= 12000 ? joined : body
     }
     /// GET /catpaw/model-routes/v1. nil when not deployed / unreachable (callers use `ModelRoutesFixture`).
