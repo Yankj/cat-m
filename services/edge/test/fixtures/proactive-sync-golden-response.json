@@ -1,4 +1,6 @@
 {
+  "title": "小猫提醒",
+  "reason": "该出发了",
   "status": "snoozed",
   "actions": [
     "snooze",
