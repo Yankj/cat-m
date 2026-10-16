@@ -105,12 +105,16 @@ struct MockProactiveSignalEngine: ProactiveSignalEngine {
         }
         await step(.filter, .passed, ["upcoming=\(upcoming.count)", "dropped=\(dropped)", "next=\(next.title) @ \(next.start.formatted(f))"])
         // 合并: meeting + location + travel estimate
-        let eta = await ProactiveEngine.travelETA(to: next.place, from: input.location.map { .init(latitude: $0.latitude, longitude: $0.longitude) })
+        let eta = await ProactiveEngine.travelETA(
+            to: next.place,
+            from: input.location.map { .init(latitude: $0.latitude, longitude: $0.longitude) },
+            simulatedLabel: input.location.map { "模拟起点·\($0.name)" }
+        )
         let lead = 10
         let travel: Int
         let etaNote: String
         if eta.usedETA, let m = eta.minutes, m > 0 {
-            travel = m; etaNote = "travel=\(m) min (MapKit)"
+            travel = m; etaNote = "travel=\(m) min (MapKit)" + (eta.originNote.map { " · \($0)" } ?? "") + (eta.originNote.map { " · \($0)" } ?? "")
         } else {
             travel = 0; etaNote = "未用到 ETA"
         }
@@ -131,9 +135,9 @@ await step(.decide, .passed, ["kind=\(kind)", "minutesToLeave=\(minutesToLeave)"
 
 @MainActor @Observable final class ProactiveSignalDebugModel {
     static let presets: [ProactiveSimulatedLocation] = [
-        .init(name: "家", latitude: 31.2304, longitude: 121.4737),
-        .init(name: "公司", latitude: 31.2397, longitude: 121.4998),
-        .init(name: "浦东机场", latitude: 31.1443, longitude: 121.8083),
+        .init(name: "望京", latitude: 39.9961, longitude: 116.4806),
+        .init(name: "国贸", latitude: 39.9087, longitude: 116.4602),
+        .init(name: "首都机场", latitude: 40.0799, longitude: 116.6031),
     ]
     var clockOffsetMinutes: Double = 0
     var meetings: [ProactiveSimulatedMeeting] = []

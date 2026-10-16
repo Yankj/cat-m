@@ -84,6 +84,11 @@ enum MemoryLibraryError: Error, Equatable, Sendable {
     func clearAll() async throws
     /// Undo of a `memory_saved` receipt. `undoToken` is the plan §6 token when the server sends one.
     func undoSave(memoryID: String, undoToken: String?) async throws
+    /// Create a real library item (shown + deletable in Settings › 记忆). Returns the new id.
+    func create(kind: String, content: String) async throws -> String
+}
+extension MemoryLibraryBackend {
+    func create(kind: String, content: String) async throws -> String { throw MemoryLibraryError.unsupported }
 }
 
 /// In-memory stub for Previews, demo mode and until the real APIs exist.
@@ -103,13 +108,9 @@ enum MemoryLibraryError: Error, Equatable, Sendable {
     func setAutoSave(_ on: Bool) async throws { snapshot.autoSave = on }
     func clearAll() async throws { snapshot.items = [] }
     func undoSave(memoryID: String, undoToken: String?) async throws { try await forget(ids: [memoryID]) }
-    /// Demo/settings: upsert a local memory row (Agent backend has no create from this seam).
-    func upsert(id: String, content: String, group: MemoryGroup = .preference) {
-        if let i = snapshot.items.firstIndex(where: { $0.id == id }) {
-            snapshot.items[i].content = content; snapshot.items[i].updatedAt = .now
-        } else {
-            snapshot.items.insert(.init(id: id, group: group, content: content, updatedAt: .now), at: 0)
-        }
+    func create(kind: String, content: String) async throws -> String {
+        let id = "local-" + UUID().uuidString.lowercased()
+        snapshot.items.insert(.init(id: id, group: MemoryGroup(kind: kind), content: content, updatedAt: .now), at: 0); return id
     }
 
     static let sample: [MemoryLibraryItem] = [
