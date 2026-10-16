@@ -54,6 +54,7 @@
 		<string>pinduoduo</string>
 		<string>shortcuts</string>
 		<string>mailto</string>
+		<string>tel</string>
 	</array>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>

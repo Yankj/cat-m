@@ -72,13 +72,21 @@ import UserNotifications
             return await open(URL(string: "maps://?daddr=\(q)&dirflg=\(mode)")) ? done(.ok) : done(.error)
         case "shop_open":
             let q = s("query").addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
-            let app: URL? = switch s("platform").lowercased() {
+            let platform = s("platform").lowercased()
+            let app: URL? = switch platform {
             case "jd", "京东": URL(string: "openapp.jdmobile://virtual?params=%7B%22des%22:%22search%22,%22keyWord%22:%22\(q)%22%7D")
             case "pdd", "拼多多": URL(string: "pinduoduo://com.xunmeng.pinduoduo/search_result.html?search_key=\(q)")
             default: URL(string: "taobao://s.taobao.com/search?q=\(q)")
             }
-            if await open(app) { return done(.ok) }
-            return await open(URL(string: "https://s.taobao.com/search?q=\(q)")) ? done(.ok, ["via": .string("web")]) : done(.error)
+            let web: URL? = switch platform {
+            case "jd", "京东": URL(string: "https://search.jd.com/Search?keyword=\(q)")
+            case "pdd", "拼多多": URL(string: "https://mobile.yangkeduo.com/search_result.html?search_key=\(q)")
+            default: URL(string: "https://s.taobao.com/search?q=\(q)")
+            }
+            // Prefer installed app only when canOpenURL is true; otherwise go straight to https
+            // so Simulator / devices without 淘宝 don't stall on a dead custom scheme.
+            if let app, UIApplication.shared.canOpenURL(app), await open(app) { return done(.ok) }
+            return await open(web) ? done(.ok, ["via": .string("web")]) : done(.error)
         case "shortcut_run":
             var c = URLComponents(string: "shortcuts://run-shortcut")!
             c.queryItems = [.init(name: "name", value: s("name"))] + (s("input").isEmpty ? [] : [.init(name: "input", value: "text"), .init(name: "text", value: s("input"))])
@@ -93,9 +101,35 @@ import UserNotifications
         if type == .event { return (try? await store.requestFullAccessToEvents()) ?? false }
         return (try? await store.requestFullAccessToReminders()) ?? false
     }
+    /// Opens an external URL. Must not await return-to-foreground: on Simulator, `https`/`tel`/
+    /// store schemes hand off to Safari/Phone and the async open continuation can stall for minutes
+    /// (UITests then miss `chat.deviceCall.receipt`). Race a short timeout and treat handoff as success.
     private func open(_ url: URL?) async -> Bool {
-        guard let url, UIApplication.shared.canOpenURL(url) || url.scheme == "https" || url.scheme == "tel" || url.scheme == "maps" else { return false }
-        return await UIApplication.shared.open(url)
+        guard let url else { return false }
+        let scheme = (url.scheme ?? "").lowercased()
+        let allowed = UIApplication.shared.canOpenURL(url)
+            || ["https", "http", "tel", "maps", "mailto"].contains(scheme)
+        guard allowed else { return false }
+        return await withTaskGroup(of: Bool?.self) { group in
+            group.addTask { @MainActor in
+                await withCheckedContinuation { (cont: CheckedContinuation<Bool, Never>) in
+                    UIApplication.shared.open(url, options: [:]) { cont.resume(returning: $0) }
+                }
+            }
+            group.addTask {
+                try? await Task.sleep(nanoseconds: 1_200_000_000)
+                return true // handed off / backgrounded — count as attempted
+            }
+            var result = false
+            for await value in group {
+                if let value {
+                    result = value
+                    group.cancelAll()
+                    break
+                }
+            }
+            return result
+        }
     }
     private func present(_ vc: UIViewController) async -> DeviceCallStatus {
         guard let top = Self.topController() else { return .error }
