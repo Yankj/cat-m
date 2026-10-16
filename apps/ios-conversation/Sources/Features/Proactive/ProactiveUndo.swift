@@ -19,3 +19,17 @@ enum ProactiveUndo {
         return !effects.isEmpty && effects.allSatisfy(taken.contains) ? "done" : "pending"
     }
 }
+
+extension ProactiveUndo {
+    /// Codex PR90d #4: a snooze entry records its own until (server: taken[].until), so undo can restore the previous one.
+    static func snoozeDetail(until: Date) -> String { "until=\(Int(until.timeIntervalSince1970))" }
+    static func snoozeUntil(detail: String?, at: Date) -> Date {
+        if let d = detail, d.hasPrefix("until="), let t = Double(d.dropFirst(6)) { return Date(timeIntervalSince1970: t) }
+        return at.addingTimeInterval(600)   // legacy entry: the default 10 minutes
+    }
+    /// After undo: back to "snoozed" → the remaining last snooze's until (to re-arm its notification); else nil.
+    static func restoredSnooze(taken: [(action: String, at: Date, detail: String?)], status: String) -> Date? {
+        guard status == "snoozed", let last = taken.last(where: { $0.action == "snooze" }) else { return nil }
+        return snoozeUntil(detail: last.detail, at: last.at)
+    }
+}

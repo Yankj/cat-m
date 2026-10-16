@@ -36,6 +36,15 @@ struct ProactiveNotificationRequest: Sendable, Equatable {
         self.epoch = epoch; self.poster = poster; self.clock = clock; self.calendar = calendar; self.loadQuota = loadQuota; self.saveQuota = saveQuota
     }
 
+    /// Codex PR90d #3: every system request id carries the account and epoch it was made under, so cleanup (late
+    /// callbacks, removals) can only ever hit that one instance — never another account's request for the same meeting.
+    nonisolated static func scoped(_ base: String, _ token: AccountToken) -> String { "\(base)~\(token.account)~\(token.epoch)" }
+    /// Removes this token's instance of each base id (plus the legacy unscoped id from older builds).
+    func remove(bases: [String], token: AccountToken?) {
+        guard !bases.isEmpty else { return }
+        poster.remove(ids: bases.flatMap { b in token.map { [Self.scoped(b, $0), b] } ?? [b] })
+    }
+
     /// Quota with fired reservations settled into deliveries ("shown but not tapped").
     func quota() -> ProactiveQuotaLedger { var q = loadQuota(); if q.settle(now: clock()) { saveQuota(q) }; return q }
 
@@ -67,14 +76,15 @@ struct ProactiveNotificationRequest: Sendable, Equatable {
         if q.entries[id]?.state == .delivered { return .cardOnly("already_delivered") }
         plan = gate(requested, at: fire, identity: id, q: q)
         guard plan.systemNotification else { return .cardOnly(reason(plan, at: fire)) }
-        let req = ProactiveNotificationRequest(id: requestID, title: title, body: body, category: category,
+        let rid = Self.scoped(requestID, token)
+        let req = ProactiveNotificationRequest(id: rid, title: title, body: body, category: category,
                                                info: stamped(info, token, id: id, level: plan.level), level: plan.level, fireAt: nil)
         let done: Outcome? = epoch.commit(token) { () -> Outcome in
             var q = quota(); guard q.recordDelivery(id, at: fire, calendar: calendar) else { return .cardOnly("already_delivered") }
             saveQuota(q)
-            if !supersedes.isEmpty { poster.remove(ids: supersedes) }
-            poster.add(req) { [weak self] ok in self?.lateCompletion(ok: ok, token: token, requestID: requestID, identity: id, releaseReservation: false) }
-            return .posted(requestID)
+            remove(bases: supersedes, token: token)
+            poster.add(req) { [weak self] ok in self?.lateCompletion(ok: ok, token: token, requestID: rid, identity: id, releaseReservation: false) }
+            return .posted(rid)
         }
         return done ?? .refused("stale_account")
     }
@@ -88,17 +98,18 @@ struct ProactiveNotificationRequest: Sendable, Equatable {
         let plan = gate(level, at: fire, identity: identity, q: q)
         guard plan.systemNotification else {
             if ProactiveRules.isQuiet(fire, calendar: calendar) || plan.level == .silent {  // never ring at that instant
-                q.release(identity, now: clock()); saveQuota(q); poster.remove(ids: [requestID])
+                q.release(identity, now: clock()); saveQuota(q); remove(bases: [requestID], token: token)
             }
             return .cardOnly(reason(plan, at: fire))
         }
-        let req = ProactiveNotificationRequest(id: requestID, title: title, body: body, category: category,
+        let rid = Self.scoped(requestID, token)
+        let req = ProactiveNotificationRequest(id: rid, title: title, body: body, category: category,
                                                info: stamped(info, token, id: identity, level: plan.level), level: plan.level, fireAt: fire)
         let done: Outcome? = epoch.commit(token) { () -> Outcome in
-            var q = quota(); guard q.reserve(identity, fire: fire, calendar: calendar) else { return .cardOnly("daily_cap") }
+            var q = quota(); guard q.reserve(identity, fire: fire, owner: rid, calendar: calendar) else { return .cardOnly("daily_cap") }
             saveQuota(q)
-            poster.add(req) { [weak self] ok in self?.lateCompletion(ok: ok, token: token, requestID: requestID, identity: identity, releaseReservation: true) }
-            return .posted(requestID)
+            poster.add(req) { [weak self] ok in self?.lateCompletion(ok: ok, token: token, requestID: rid, identity: identity, releaseReservation: true) }
+            return .posted(rid)
         }
         return done ?? .refused("stale_account")
     }
@@ -107,7 +118,14 @@ struct ProactiveNotificationRequest: Sendable, Equatable {
     private func lateCompletion(ok: Bool, token: AccountToken, requestID: String, identity: String, releaseReservation: Bool) {
         guard !ok || !epoch.isValid(token) else { return }
         poster.remove(ids: [requestID])
-        if releaseReservation { var q = loadQuota(); q.release(identity, now: clock()); saveQuota(q) }
+        if releaseReservation { var q = loadQuota(); q.release(identity, now: clock(), owner: requestID); saveQuota(q) }
+    }
+
+    /// Codex PR90d #3: a user snooze is a system notification like any other — stamped, quota/quiet-gated at its fire
+    /// instant, scoped id, late-completion cleanup. Request id base: `<id>-snooze`.
+    func snooze(id: String, title: String, body: String, category: String, info: [String: String], fire: Date, token: AccountToken) async -> Outcome {
+        await preschedule(identity: id + "-snooze", requestID: id + "-snooze", title: title, body: body, category: category, info: info,
+                          fire: fire, level: .notify, token: token)
     }
 
     /// Notification tap / action: the token it was posted under, only if still the signed-in account and epoch.
