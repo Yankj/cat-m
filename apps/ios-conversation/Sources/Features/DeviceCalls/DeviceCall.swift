@@ -182,6 +182,20 @@ struct DeviceCallResult: Codable, Sendable, Equatable {
         guard phase(call.id) == .confirming else { return }
         await report(.init(call_id: call.call_id, status: .cancelled), submitter: submitter)
     }
+    /// Calls whose result was executed but never acknowledged (persisted `.reportFailed`).
+    var pendingReportIDs: [String] { phases.compactMap { if case .reportFailed = $0.value { $0.key } else { nil } }.sorted() }
+    private var retrying: Set<String> = []
+    /// NoBug P1-4: re-send every unacknowledged result (on relaunch once the submitter is installed, and on foreground).
+    /// Never re-executes; the server is idempotent per operation_id. Returns how many were acknowledged.
+    @discardableResult func retryPendingReports() async -> Int {
+        guard DeviceCallHub.submitter != nil else { return 0 }
+        var ok = 0
+        for id in pendingReportIDs where !retrying.contains(id) {
+            retrying.insert(id); await retryReport(id); retrying.remove(id)
+            if case .done = phase(id) { ok += 1 }
+        }
+        return ok
+    }
     func retryReport(_ id: String) async {
         let submitter = DeviceCallHub.submitter
         guard case .reportFailed(let result) = phase(id) else { return }

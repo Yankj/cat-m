@@ -124,6 +124,18 @@ import Foundation
         await s2.retryReport("c2")
         expect(sub.sent.last?.call_id == "c2" && exec.executed.filter { $0 == "c2" }.count == 1, "P0-3 report resumes after relaunch without re-execute")
 
+        // P1-4 auto retry of every pending report after relaunch; offline → stays pending, never re-executes.
+        sub.fail = true; await s1.run(call("c2b")); await s1.run(call("c2c"))
+        let s2b = DeviceCallStore(defaults: defaults)
+        expect(Set(s2b.pendingReportIDs).isSuperset(of: ["c2b", "c2c"]), "P1-4 pending reports survive relaunch")
+        expect(await s2b.retryPendingReports() == 0 && s2b.pendingReportIDs.contains("c2b"), "P1-4 offline retry keeps them pending")
+        sub.fail = false
+        let acked = await s2b.retryPendingReports()
+        expect(acked >= 2 && s2b.pendingReportIDs.isEmpty && exec.executed.filter { ["c2b", "c2c"].contains($0) }.count == 2, "P1-4 foreground/relaunch retry acknowledges all, no re-execute")
+        DeviceCallHub.submitter = nil
+        expect(await DeviceCallStore(defaults: defaults).retryPendingReports() == 0, "P1-4 no submitter → no-op")
+        DeviceCallHub.submitter = sub
+
         // Kill during execute (phase .running persisted) → idempotent tool re-run, executor dedupes by call_id.
         exec.writes["c3"] = "evt-already"   // event was written before the kill
         let running = try! JSONEncoder().encode(["c3": DeviceCallStore.Record(phase: .running, call: call("c3"), updatedAt: .now)])
@@ -133,7 +145,7 @@ import Foundation
         await s3.run(call("c3"))
         expect(exec.executed.filter { $0 == "c3" }.isEmpty, "P0-3 tapping again cannot start a second write")
         await s3.resumeInterrupted("c3")
-        expect(sub.sent.last?.data?["event_id"] == .string("evt-already") && exec.writes.count == 3, "P0-3 resume dedupes calendar_create by call_id")
+        expect(sub.sent.last?.data?["event_id"] == .string("evt-already") && exec.writes["c3"] == "evt-already", "P0-3 resume dedupes calendar_create by call_id")
 
         // Non-idempotent interrupted → outcome unknown, not re-run.
         defaults.set(try! JSONEncoder().encode(["c4": DeviceCallStore.Record(phase: .running, call: call("c4", "sms_compose"), updatedAt: .now)]), forKey: DeviceCallStore.storageKey)
