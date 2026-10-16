@@ -109,7 +109,9 @@ import UserNotifications
         let s = ProactiveSuggestion(id: id, title: "t", reason: "r", actions: [.create_reminder, .snooze, .dismiss], status: .dismissed, createdAt: .now,
                                     taken: [.init(action: .snooze, at: .now, detail: ProactiveUndo.snoozeDetail(until: .now.addingTimeInterval(600))), .init(action: .dismiss, at: .now)])
         ProactiveSuggestionStore.shared.adopt(s); ProactiveLocalBackend.save(s)
+        guard !ProactiveRules.isQuiet(.now.addingTimeInterval(600)) else { throw XCTSkip("quiet hours at the restored snooze time") }
         let after = try await ProactiveLocalBackend().undo(id)   // the real UI entry
+        await settle()
         XCTAssertEqual(after.taken?.map(\.action), [.snooze], "undo.v1: only the last action reverted")
         XCTAssertEqual(after.effectiveStatus, .snoozed)
         XCTAssertTrue(poster.adds.contains { $0.id.hasPrefix(id + "-snooze") }, "undoing the dismiss restores the snooze notification")
