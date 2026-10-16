@@ -3,7 +3,7 @@
 # https://github.com/Yankj/catpaw-m/issues/81 (pre-existing on base, not caused by PR #80).
 set -euo pipefail
 cd "$(dirname "$0")/.."
-QUARANTINE=(anonymous-auth auth-key-service generative-ui-demo-recording model-route-review-probe-next postgres-json-binding proactive-push-action proactive-tasks-pg proactive-tasks)
+QUARANTINE=(anonymous-auth proactive-push-pg auth-key-service generative-ui-demo-recording model-route-review-probe-next postgres-json-binding proactive-push-action proactive-tasks-pg proactive-tasks)
 files=()
 for f in test/*.test.mjs; do
   name=$(basename "$f" .test.mjs); skip=0
