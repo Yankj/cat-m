@@ -151,13 +151,14 @@ import UIKit
                 CapabilityChip(icon: item.icon, title: ui(item.key))
                     .opacity(shown ? 1 : 0)
                     .scaleEffect(shown ? 1 : 0.86)
-                    .offset(
-                        x: CGFloat(cos(angle.radians)) * radius,
-                        y: CGFloat(sin(angle.radians)) * radius
-                    )
                     .animation(
                         reduceMotion ? nil : .easeOut(duration: 0.48).delay(0.12 + Double(index) * 0.05),
                         value: shown
+                    )
+                    .modifier(CapabilityFloat(index: index, enabled: !reduceMotion))
+                    .offset(
+                        x: CGFloat(cos(angle.radians)) * radius,
+                        y: CGFloat(sin(angle.radians)) * radius
                     )
             }
         }
@@ -295,5 +296,28 @@ struct CapabilityChip: View {
         .shadow(color: CatpawColors.calmShadow.opacity(0.08), radius: 8, y: 3)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(title)
+    }
+}
+
+/// Slow, desynchronised vertical drift per capability chip. Each chip gets its own
+/// amplitude (3–7pt), period (2.8–4.5s) and phase so the ring never moves in lockstep.
+/// Reduce Motion → static (no TimelineView ticks).
+struct CapabilityFloat: ViewModifier {
+    let index: Int
+    let enabled: Bool
+    private static let amplitudes: [CGFloat] = [4.0, 6.5, 3.2, 5.6, 7.0, 3.8, 5.0, 6.0]
+    private static let periods: [Double] = [3.4, 4.2, 2.9, 3.9, 4.5, 3.1, 3.7, 2.8]
+    private static let phases: [Double] = [0.0, 1.9, 4.1, 0.7, 3.3, 5.4, 2.6, 4.8]
+    func body(content: Content) -> some View {
+        if enabled {
+            TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { context in
+                let i = index % Self.periods.count
+                let t = context.date.timeIntervalSinceReferenceDate
+                let y = sin(t / Self.periods[i] * 2 * .pi + Self.phases[i]) * Self.amplitudes[i]
+                content.offset(y: CGFloat(y))
+            }
+        } else {
+            content
+        }
     }
 }
