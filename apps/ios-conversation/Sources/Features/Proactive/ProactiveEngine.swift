@@ -75,7 +75,16 @@ struct ProactiveSignal: Equatable, Sendable {
         get { defaults.dictionary(forKey: ledgerKey) as? [String: Double] ?? [:] }
         set { defaults.set(newValue, forKey: ledgerKey) }
     }
-    func resetLedger() { ledger = [:]; note("ledger cleared") }
+    func resetLedger() { ledger = [:]; signalLedger = .init(); note("ledger cleared") }
+    /// Codex P0-5: evaluated vs delivered (v2). v1 entries migrate as delivered.
+    private let signalLedgerKey = "catpaw.proactive.ledger.v2"
+    private var signalLedger: ProactiveSignalLedger {
+        get {
+            if let d = defaults.data(forKey: signalLedgerKey), let l = try? JSONDecoder().decode(ProactiveSignalLedger.self, from: d) { return l }
+            return ProactiveSignalLedger(legacy: ledger)
+        }
+        set { defaults.set(try? JSONEncoder().encode(newValue), forKey: signalLedgerKey) }
+    }
 
     // MARK: Memory → lead time
 
@@ -206,12 +215,14 @@ struct ProactiveSignal: Equatable, Sendable {
         guard ProactiveRules.inWindow(start: signal.start, now: now) else { note("filter drop: starts in \(Int(minutes)) min (window 0–180)"); return nil }
         // Dedupe ledger
         let hash = signal.signalHash
-        if let seen = ledger[hash] {
-            note("dedupe SUPPRESSED duplicate signal_hash=\(hash) (first seen \(Date(timeIntervalSince1970: seen).formatted(date: .omitted, time: .shortened)))")
+        // Codex P0-5: "evaluated" ≠ "delivered". Delivered → never again; evaluated-silent → re-evaluate later.
+        var sl = signalLedger
+        guard sl.shouldEvaluate(hash, now: now) else {
+            note(sl.delivered[hash] != nil ? "dedupe SUPPRESSED delivered signal_hash=\(hash)" : "dedupe: evaluated recently, re-evaluate later signal_hash=\(hash)")
             return nil
         }
-        var l = ledger; _ = ProactiveRules.admit(hash, ledger: &l, now: now); ledger = l
-        note("dedupe new signal_hash=\(hash)")
+        sl.markEvaluated(hash, now: now); signalLedger = sl
+        note("dedupe evaluate signal_hash=\(hash)")
         // Evaluate
         let lead = await leadTime()
         let simOrigin: CLLocationCoordinate2D? = {
@@ -226,7 +237,7 @@ struct ProactiveSignal: Equatable, Sendable {
         let leaveAt = ProactiveRules.leaveAt(start: signal.start, leadMinutes: lead.minutes, travelMinutes: travelMinutes, usedETA: usedETA)
         let remindAt = leaveAt  // remind when user should leave
         let decision = await evaluateRemote(signal, leadMinutes: lead.minutes, travelMinutes: usedETA ? travelMinutes : nil)
-            ?? evaluateLocal(signal, leadMinutes: lead.minutes, now: now)
+            ?? evaluateLocal(signal, leadMinutes: lead.minutes, travelMinutes: usedETA ? travelMinutes : nil, now: now)
         guard decision.intervene else { note("decide silent: \(decision.why)"); return nil }
         note("decide intervene (\(decision.via)): \(decision.why); lead=\(lead.minutes) travel=\(usedETA ? String(travelMinutes ?? 0) : "unused") leaveAt=\(leaveAt.formatted(date: .omitted, time: .shortened))")
         let f = Date.FormatStyle(date: .omitted, time: .shortened)
@@ -279,6 +290,11 @@ struct ProactiveSignal: Equatable, Sendable {
         ProactiveSuggestionStore.shared.adopt(suggestion)
         lastSuggestionID = suggestion.id
         intervene(suggestion, level: decision.level, now: now)
+        var delivered = signalLedger; delivered.markDelivered(hash, level: decision.level, now: now); signalLedger = delivered
+        #if os(iOS)
+        // Exactly once: the in-app delivery supersedes this meeting's pre-scheduled notification.
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ["pre-" + signal.eventID])
+        #endif
         return suggestion
     }
 
@@ -288,9 +304,13 @@ struct ProactiveSignal: Equatable, Sendable {
         init(level: ProactiveLevel, why: String, via: String) { self.level = level; self.why = why; self.via = via }
         init(intervene: Bool, why: String, via: String) { self.init(level: intervene ? .notify : .silent, why: why, via: via) }
     }
-    private func evaluateLocal(_ s: ProactiveSignal, leadMinutes: Int, now: Date) -> Decision {
+    private func evaluateLocal(_ s: ProactiveSignal, leadMinutes: Int, travelMinutes: Int? = nil, now: Date) -> Decision {
         let minutes = Int(s.start.timeIntervalSince(now) / 60)
         if minutes < 3 { return .init(intervene: false, why: "too late to help (\(minutes) min)", via: "local") }
+        // Codex P0-5: too early → silent for now; the ledger lets it be re-evaluated as the meeting nears.
+        if ProactiveRules.localLevel(minutesUntil: minutes, leadMinutes: leadMinutes, travelMinutes: travelMinutes) == .silent {
+            return .init(intervene: false, why: "too early (\(minutes) min) · re-evaluate later", via: "local")
+        }
         return .init(intervene: true, why: "meeting in \(minutes) min, lead \(leadMinutes) min", via: "local rules")
     }
     /// 三角's `/catpaw/proactive/v1` base (edge fn catpaw-proactive); nil when not configured / signed out.
@@ -551,6 +571,7 @@ struct ProactiveSignal: Equatable, Sendable {
         guard let e = store.events(matching: predicate).filter({ !$0.isAllDay && $0.startDate > now }).sorted(by: { $0.startDate < $1.startDate }).first else { return }
         let fire = e.startDate.addingTimeInterval(TimeInterval(-(lead.minutes + 5) * 60))
         guard fire > now.addingTimeInterval(60) else { return }
+        guard signalLedger.delivered[ProactiveRules.signalHash(eventID: e.calendarItemIdentifier, start: e.startDate)] == nil else { return }  // already delivered in-app
         // Codex P0-3: quiet hours / daily cap apply to the out-of-app path too (counted at fire time's day).
         let firedDayCount = Calendar.current.isDate(fire, inSameDayAs: now) ? deliveredToday(now) : 0
         guard ProactiveRules.prescheduleAllowed(fire: fire, deliveredToday: firedDayCount) else {
@@ -725,15 +746,18 @@ struct ProactiveSignal: Equatable, Sendable {
         UserDefaults.standard.data(forKey: key).flatMap { try? JSONDecoder().decode([String: ProactiveSuggestion].self, from: $0) } ?? [:]
     }
     private let mock = ProactiveSuggestionMock([])
-    init() { for s in Self.load().values { mock.adopt(s); ProactiveSuggestionStore.shared.adopt(s) } }
-    func list() async throws -> [ProactiveSuggestion] { try await mock.list() }
+    init() { for s in Self.load().values { mock.upsert(s); ProactiveSuggestionStore.shared.adopt(s) } }
+    /// Codex P0-5: refresh reads the persisted inbox (the source every write path saves to), not an insert-only cache.
+    func list() async throws -> [ProactiveSuggestion] {
+        Self.load().values.sorted { ($0.createdAt ?? .distantPast) > ($1.createdAt ?? .distantPast) }
+    }
     func perform(_ action: ProactiveSuggestion.Action, on id: String) async throws -> ProactiveSuggestion {
         var s = ProactiveSuggestionStore.shared.items[id] ?? ProactiveSuggestion(id: id, title: "", reason: "")
         switch action {
         case .create_reminder:
             switch await ProactiveEngine.shared.confirmReminder(id) {
-            case .created: s.status = .done; s.taken = (s.taken ?? []) + [.init(action: action, at: .now, detail: "已写入提醒事项")]
-            case .alreadyExists: s.status = .done; s.taken = (s.taken ?? []) + [.init(action: action, at: .now, detail: "提醒已存在，未重复创建")]
+            case .created: s.taken = (s.taken ?? []) + [.init(action: action, at: .now, detail: "已写入提醒事项", outcome: .succeeded)]
+            case .alreadyExists: s.taken = (s.taken ?? []) + [.init(action: action, at: .now, detail: "提醒已存在，未重复创建", outcome: .succeeded)]
             case .denied: throw ProactiveEngineError.remindersDenied
             case .failed: throw ProactiveEngineError.writeFailed
             }
@@ -746,23 +770,28 @@ struct ProactiveSignal: Equatable, Sendable {
             let outcome = await Self.notifyAttendees(for: id)
             switch outcome {
             case .sent:
-                s.status = .done
-                s.taken = (s.taken ?? []) + [.init(action: action, at: .now, detail: "已发送短信")]
+                s.taken = (s.taken ?? []) + [.init(action: action, at: .now, detail: "已发送短信", outcome: .succeeded)]
             case .cancelled:
-                // Sheet opened then cancelled — stay pending; record evidence without done.
-                s.taken = (s.taken ?? []) + [.init(action: action, at: .now, detail: "已打开短信 · 已取消")]
+                // Sheet opened then cancelled — stay pending; record evidence without done (and never sync it).
+                s.taken = (s.taken ?? []) + [.init(action: action, at: .now, detail: "已打开短信 · 已取消", outcome: .cancelled)]
             case .unavailable:
-                s.taken = (s.taken ?? []) + [.init(action: action, at: .now, detail: "本机无法发短信（模拟器常见）")]
-                mock.adopt(s); Self.save(s)  // persist evidence; stay pending
+                s.taken = (s.taken ?? []) + [.init(action: action, at: .now, detail: "本机无法发短信（模拟器常见）", outcome: .unavailable)]
+                mock.upsert(s); Self.save(s)  // persist evidence; stay pending
                 throw ProactiveEngineError.smsUnavailable
             case .error:
-                s.taken = (s.taken ?? []) + [.init(action: action, at: .now, detail: "短信打开失败")]
-                mock.adopt(s); Self.save(s)
+                s.taken = (s.taken ?? []) + [.init(action: action, at: .now, detail: "短信打开失败", outcome: .failed)]
+                mock.upsert(s); Self.save(s)
                 throw ProactiveEngineError.writeFailed
             }
         }
-        ProactiveEngine.shared.syncAction(action.rawValue, local: id, operationID: "op-\(id)-\(action.rawValue)")
-        mock.adopt(s); Self.save(s); return s
+        // Codex P0-5: an effect is done for the card only when every offered effect succeeded.
+        if action == .create_reminder || action == .notify_attendees { s.status = s.allEffectsDone ? .done : .pending }
+        // Only a real success is synced; a cancelled / unavailable SMS never reaches the cloud as notify_attendees.
+        let state = s.actionStates[action.rawValue]
+        if !ProactiveActionStates.effects.contains(action.rawValue) || state.map(ProactiveActionStates.shouldSync) == true {
+            ProactiveEngine.shared.syncAction(action.rawValue, local: id, operationID: "op-\(id)-\(action.rawValue)")
+        }
+        mock.upsert(s); Self.save(s); return s
     }
     func undo(_ id: String) async throws -> ProactiveSuggestion {
         CatpawLeaveActivity.stop(suggestionID: id)
