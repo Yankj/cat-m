@@ -191,9 +191,8 @@ struct CatpawPrimaryButtonStyle: ButtonStyle {
             .foregroundStyle(isEnabled ? CatpawColors.onInk : CatpawColors.secondary)
             .background(isEnabled ? CatpawColors.ink : CatpawColors.input,
                         in: RoundedRectangle(cornerRadius: CatpawLayout.controlRadius, style: .continuous))
-            .opacity(configuration.isPressed ? 0.78 : 1)
-            // Press-down is immediate. Only release may ease back to rest.
-            .animation(reduceMotion || configuration.isPressed ? nil : .easeOut(duration: 0.12), value: configuration.isPressed)
+            // Press-down answers in the touch frame with scale + soft haptic; release springs back.
+            .modifier(CatpawPressEffect(pressed: configuration.isPressed && isEnabled, scale: CatpawInteractionMotion.primaryPressScale, dimmed: 0.86))
     }
 }
 
@@ -203,8 +202,8 @@ struct CatpawPressButtonStyle: ButtonStyle {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .opacity(isEnabled ? (configuration.isPressed ? 0.65 : 1) : 0.55)
-            .animation(reduceMotion || configuration.isPressed ? nil : .easeOut(duration: 0.12), value: configuration.isPressed)
+            .opacity(isEnabled ? 1 : 0.55)
+            .modifier(CatpawPressEffect(pressed: configuration.isPressed && isEnabled, dimmed: 0.7))
     }
 }
 
