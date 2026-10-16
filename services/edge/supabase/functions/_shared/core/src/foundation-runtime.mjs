@@ -37,6 +37,8 @@ export async function createFoundationChatRuntime({repository,authenticate,provi
     async stageMemoryExtraction(tx,args){return normalized(()=>stageConversationMemoryExtraction(runtime,tx,args));},
     async proposeMemory(tx,args){return normalized(()=>commitConversationMemoryCandidates(runtime,tx,args));},
     async memoryUsage(tx,args){return normalized(()=>freezeMemoryUsage(runtime,tx,args));},
+    // Codex PR91 p91d-3: the legacy user switch was explicitly turned off (memory_user_enabled === false).
+    async memoryUserDisabled(tx,{scope}){return normalized(()=>tx.withScope(scope.scope_id,async scoped=>(await scoped.scope()).memory_user_enabled===false));},
     async prepare({owner}){
       const token=await normalized(()=>fence.acquire(owner,holderId));check(token,503,'chat_runtime_busy');tokens.set(owner,token);
       recoveryReports.push(await normalized(()=>fence.recoverExpiredOwner(owner,token)));

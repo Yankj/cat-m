@@ -176,3 +176,33 @@ test('client switch: recallForTurn({clientUseMemory:false}) returns a disabled s
  assert.equal(r.enabled,false);assert.deepEqual(r.ids,[]);assert.equal(r.prompt,'');
  assert.ok((await s.service.recallForTurn({subjectID:U1,query:'咖啡',turnID:randomUUID()})).ids.length>0,'default unchanged');
 });
+
+// Codex PR91 p91d-3: ONE effective server-side off covers both memory systems. Agent-memory settings off, OR header 0,
+// OR the legacy user switch (memory_user_enabled) off ⇒ neither agent recall nor legacy confirmed memory is used,
+// even when the header is absent or 1.
+const legacyRemember=(cid,value)=>{const source='Fictional user preference source';return {type:'remember',conversation_id:cid,source_text:source,claim:{kind:'preference',predicate:'drink.preference',value,conditions:{},assertion:'explicit',evidence:{span_start:0,span_end:source.length}},allow_relearn:false,sensitive_consent:false};};
+const turnOf=async(s,tid)=>(await s.f.json(await s.f.req(s.path+'/turns/'+tid))).turn;
+test('effective off: agent-memory settings off also stops legacy confirmed memory (header absent or 1)',async()=>{
+ const s=await chatSetup([]);const owner=s.f.principal.subject_id;
+ await s.f.json((await s.f.post({type:'set_enabled',enabled:true})).response);
+ await s.f.json((await s.f.post(legacyRemember(await s.f.newConversation(),'coffee'))).response);
+ const before=await send(s,'What coffee drink do I prefer?');
+ assert.ok((await turnOf(s,before.tid)).memory_usage,'legacy confirmed memory in use while nothing is off');
+ await s.service.patchSettings(owner,{consent:true,use_memory:true});await s.service.patchSettings(owner,{use_memory:false});
+ for(const headers of [{},{'X-Catpaw-Use-Memory':'1'}]){
+  const t=await send(s,'What coffee drink do I prefer?',headers);
+  assert.equal((await turnOf(s,t.tid)).memory_usage,undefined,'agent-memory off ⇒ legacy memory not frozen/injected '+JSON.stringify(headers));
+ }
+});
+test('effective off: legacy user switch off also stops agent-memory recall (header absent or 1)',async()=>{
+ const s=await chatSetup([]);const owner=s.f.principal.subject_id;
+ await s.service.patchSettings(owner,{consent:true,use_memory:true});await s.service.save(owner,{kind:'preference',content:'喜欢靠窗座位'});
+ const on=await send(s,'帮我订靠窗座位');assert.ok(on.events.some(x=>x.type==='memory_recalled'),'agent recall works while nothing is off');
+ await s.f.json((await s.f.post({type:'set_enabled',enabled:true})).response);
+ await s.f.json((await s.f.post({type:'set_enabled',enabled:false})).response);
+ for(const headers of [{},{'X-Catpaw-Use-Memory':'1'}]){
+  const t=await send(s,'帮我订靠窗座位',headers);
+  assert.equal(t.events.some(x=>x.type==='memory_recalled'),false,'legacy off ⇒ no agent recall '+JSON.stringify(headers));
+  assert.equal(s.probe.prompts.at(-1).includes('靠窗'),false);
+ }
+});
