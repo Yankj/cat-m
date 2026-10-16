@@ -9,6 +9,7 @@ import SwiftUI
     @State private var emitted = false
     @State private var leadMinutes: Double = 15
     @State private var leadResult = ""
+    @State private var locAuthResult = ""
     @Environment(\.locale) private var locale
     private func ui(_ k: String, _ a: [String] = []) -> String { AppLanguage(locale: locale).ui(k, arguments: a) }
 
@@ -48,7 +49,7 @@ import SwiftUI
                             .init(source: .simulated, eventID: id, title: "产品评审会",
                                   start: Date.now.addingTimeInterval(Double(mins) * 60),
                                   place: "北京市朝阳区望京 SOHO T1",
-                                  simulatedOriginLabel: loc.map { "模拟起点·\($0.name)" },
+                                  simulatedOriginLabel: loc.map(\.name),
                                   simulatedOriginLat: loc?.latitude,
                                   simulatedOriginLon: loc?.longitude)
                         )
@@ -86,6 +87,10 @@ import SwiftUI
                 Toggle(ui("日历权限已允许"), isOn: $model.calendarAuthorized)
             }
             Section(ui("模拟起点（可选）")) {
+                Button(ui("请求定位权限（When-In-Use）")) {
+                    Task { locAuthResult = await ProactiveEngine.shared.requestLocationAccess() }
+                }.accessibilityIdentifier("proactive.debug.requestLocation")
+                if !locAuthResult.isEmpty { Text(locAuthResult).font(.footnote) }
                 Picker(ui("模拟起点"), selection: Binding(get: { model.location?.name ?? "" }, set: { n in model.location = ProactiveSignalDebugModel.presets.first { $0.name == n } })) {
                     Text(ui("无位置")).tag("")
                     ForEach(ProactiveSignalDebugModel.presets) { p in Text(ui(p.name)).tag(p.name) }
