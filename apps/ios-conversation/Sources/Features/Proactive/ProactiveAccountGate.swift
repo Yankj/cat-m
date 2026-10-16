@@ -33,7 +33,10 @@ enum ProactiveAccountGate {
     static func verdict(_ info: [AnyHashable: Any], epoch: AccountEpoch, now: Date, quota: inout ProactiveQuotaLedger, calendar: Calendar = .current) -> Verdict {
         if info[accountKey] != nil || info[epochKey] != nil {   // local: posted under a token
             guard epoch.isValid(token(info)) else { return .drop("stale_account") }
-            return .present(ProactiveLevel(server: info[levelKey] as? String))
+            let level = ProactiveLevel(server: info[levelKey] as? String)
+            // Codex PR90c P2: the stamped level is re-checked against quiet hours at the instant it actually comes up.
+            if level >= .notify, ProactiveRules.isQuiet(now, calendar: calendar) { return .inboxOnly }
+            return .present(level)
         }
         if let r = remote(info), let account = r["account"] as? String {  // APNs: server has no epoch → compare the account
             guard let cur = epoch.currentAccount, account.caseInsensitiveCompare(cur) == .orderedSame else { return .drop("other_account") }
