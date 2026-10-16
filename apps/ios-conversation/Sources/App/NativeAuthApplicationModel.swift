@@ -278,7 +278,14 @@ struct NativeWorkspaceRetrySchedule: Sendable {
         // Last resort: still do not cite model health — storage/config only.
         onboarding = .failed(error ?? NativeAuthError.storage.localizedDescription)
     }
-    private static let configurationMessages: Set<String> = [
+    /// Soft reachability / provider failures — never used as the onboarding door lock.
+    static func isTransientConnectFailure(_ message: String) -> Bool {
+        message == NativeAuthError.unavailable.localizedDescription
+            || message == NativeAuthError.rateLimited.localizedDescription
+            || message == NativeAuthError.anonymousUnavailable.localizedDescription
+            || message == "暂时连不上服务，请稍后重试。"
+    }
+        private static let configurationMessages: Set<String> = [
         NativeAuthError.notConfigured.localizedDescription,
         NativeAuthError.invalidConfiguration.localizedDescription,
         "登录连接尚未配置。",

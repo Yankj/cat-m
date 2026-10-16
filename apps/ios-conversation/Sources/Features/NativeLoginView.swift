@@ -25,11 +25,15 @@ import UIKit
         guard let e = gateFailure ?? auth.error else { return false }
         return Self.configurationMessages.contains(e)
     }
+    /// Door-lock copy is never shown here. Transient network / model-route failures belong
+    /// in-chat later. Hard session-restart and non-config auth errors can still surface.
     private var friendlyError: String? {
-        if let e = gateFailure ?? auth.error, !isConfigurationError { return ui(e) }
-        if startTapped, !busy, isConfigurationError || !auth.canStartExperience { return ui("暂时连不上服务，请稍后重试。") }
-        return nil
+        let raw = gateFailure ?? auth.error
+        guard let e = raw, !isConfigurationError else { return nil }
+        if NativeAuthApplicationModel.isTransientConnectFailure(e) { return nil }
+        return ui(e)
     }
+
 
     @State private var shown = false
     @ObservedObject private var serif = EditorialSerif.shared
@@ -199,7 +203,7 @@ import UIKit
                     .accessibilityIdentifier("auth.error")
             }
             StartUsingCTA(
-                title: busy ? ui("正在开启…") : (friendlyError != nil ? ui("再试一次") : ui("开始使用")),
+                title: busy ? ui("正在开启…") : (auth.requiresSessionRestart ? ui("再试一次") : ui("开始使用")),
                 busy: busy,
                 action: start
             )
