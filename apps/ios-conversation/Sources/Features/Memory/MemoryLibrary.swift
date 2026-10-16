@@ -73,6 +73,14 @@ enum MemoryLibraryError: Error, Equatable, Sendable {
     }
 }
 
+/// One 「使用记忆」 switch for every read path (Codex P0-2): if any library the user can see has it off, no path may read
+/// memory at all (local included), so the reference count is zero.
+enum MemoryRecallGate {
+    static func effective(_ snapshots: [MemoryLibrarySnapshot]) -> [MemoryLibrarySnapshot] {
+        snapshots.contains { !$0.useMemory } ? [] : snapshots
+    }
+}
+
 /// Seam for the memory page and the "已记住" chip. All calls are async and may throw `MemoryLibraryError`.
 @MainActor protocol MemoryLibraryBackend: AnyObject {
     var capabilities: MemoryLibraryCapabilities { get }
@@ -91,39 +99,51 @@ extension MemoryLibraryBackend {
     func create(kind: String, content: String) async throws -> String { throw MemoryLibraryError.unsupported }
 }
 
-/// Memory library kept on this device. `fileURL == nil` → in-memory only (Previews / tests).
-/// With a `fileURL` (see `MemoryLibraryLocal.shared`) every mutation is written atomically, so items survive a cold start.
+/// Memory library kept on this device, owned by one account or the explicit guest (Codex P0-2).
+/// `persistence == nil` → in-memory only (guest / Previews / tests). With persistence (account: sealed L2 record, see
+/// `MemoryLibraryLocal.activate(userID:)`) every mutation is written; a failed write throws instead of pretending.
 /// Default init is EMPTY (NoBug P0-2): pass `MemoryLibraryStub.sample` explicitly in Previews.
 @MainActor final class MemoryLibraryStub: MemoryLibraryBackend {
     var capabilities: MemoryLibraryCapabilities = .all
     private var snapshot: MemoryLibrarySnapshot
-    let fileURL: URL?
-    init(items: [MemoryLibraryItem] = [], useMemory: Bool = true, autoSave: Bool = true, fileURL: URL? = nil) {
-        self.fileURL = fileURL
-        if let fileURL, let data = try? Data(contentsOf: fileURL),
-           let saved = try? JSONDecoder().decode(MemoryLibrarySnapshot.self, from: data) { snapshot = saved }
+    let owner: LocalMemoryOwner
+    let persistence: (any MemorySnapshotPersisting)?
+    init(items: [MemoryLibraryItem] = [], useMemory: Bool = true, autoSave: Bool = true, owner: LocalMemoryOwner = .guest, persistence: (any MemorySnapshotPersisting)? = nil) {
+        self.owner = owner; self.persistence = persistence
+        if let data = persistence?.read(), let saved = try? JSONDecoder().decode(MemoryLibrarySnapshot.self, from: data) { snapshot = saved }
         else { snapshot = .init(items: items, useMemory: useMemory, autoSave: autoSave) }
+    }
+    /// Plain-file persistence (tests / legacy callers). The app uses `activate(userID:)` (sealed, per account).
+    convenience init(items: [MemoryLibraryItem] = [], useMemory: Bool = true, autoSave: Bool = true, fileURL: URL?) {
+        self.init(items: items, useMemory: useMemory, autoSave: autoSave, owner: .guest, persistence: fileURL.map(FileSnapshotPersistence.init(url:)))
     }
     /// Synchronous view for routing decisions (e.g. show local items vs 未开通).
     var items: [MemoryLibraryItem] { snapshot.items }
-    var isPersistent: Bool { fileURL != nil }
-    private func save() {
-        guard let fileURL, let data = try? JSONEncoder().encode(snapshot) else { return }
-        try? data.write(to: fileURL, options: [.atomic])
+    var isPersistent: Bool { persistence != nil }
+    private func commit(_ next: MemoryLibrarySnapshot) throws {
+        if let persistence {
+            do { try persistence.write(try JSONEncoder().encode(next)) } catch { throw MemoryLibraryError.failed("本机记忆没有保存成功，请重试。") }
+        }
+        snapshot = next
     }
+    var currentSnapshot: MemoryLibrarySnapshot { snapshot }
+    /// Same owner, storage became available later (L2 activated after the backend): carry the in-memory items over.
+    func adopt(_ carried: MemoryLibrarySnapshot) throws { try commit(carried) }
+    /// Sign-out: drop everything this library holds, in memory and on disk.
+    func erase() { snapshot = .init(items: [], useMemory: true, autoSave: true); persistence?.erase() }
     func load() async throws -> MemoryLibrarySnapshot { snapshot }
     func update(id: String, content: String) async throws {
         guard let i = snapshot.items.firstIndex(where: { $0.id == id }) else { throw MemoryLibraryError.notFound }
-        snapshot.items[i].content = content; snapshot.items[i].updatedAt = .now; save()
+        var next = snapshot; next.items[i].content = content; next.items[i].updatedAt = .now; try commit(next)
     }
-    func forget(ids: [String]) async throws { snapshot.items.removeAll { ids.contains($0.id) }; save() }
-    func setUseMemory(_ on: Bool) async throws { snapshot.useMemory = on; save() }
-    func setAutoSave(_ on: Bool) async throws { snapshot.autoSave = on; save() }
-    func clearAll() async throws { snapshot.items = []; save() }
+    func forget(ids: [String]) async throws { var next = snapshot; next.items.removeAll { ids.contains($0.id) }; try commit(next) }
+    func setUseMemory(_ on: Bool) async throws { var next = snapshot; next.useMemory = on; try commit(next) }
+    func setAutoSave(_ on: Bool) async throws { var next = snapshot; next.autoSave = on; try commit(next) }
+    func clearAll() async throws { var next = snapshot; next.items = []; try commit(next) }
     func undoSave(memoryID: String, undoToken: String?) async throws { try await forget(ids: [memoryID]) }
     func create(kind: String, content: String) async throws -> String {
         let id = "local-" + UUID().uuidString.lowercased()
-        snapshot.items.insert(.init(id: id, group: MemoryGroup(kind: kind), content: content, updatedAt: .now), at: 0); save(); return id
+        var next = snapshot; next.items.insert(.init(id: id, group: MemoryGroup(kind: kind), content: content, updatedAt: .now), at: 0); try commit(next); return id
     }
 
     /// Previews / tests only — never the default.

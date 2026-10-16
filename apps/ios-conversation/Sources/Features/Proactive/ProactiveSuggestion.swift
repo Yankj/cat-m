@@ -128,6 +128,11 @@ enum ProactiveEngineError: Error, Equatable { case remindersDenied, writeFailed,
     var onMerged: ((ProactiveSuggestion) -> Void)?
     /// Codex PR90h #3: (device card id, cloud record id) for a card that arrived from the cloud (set by the real backend).
     var onCloudIdentity: ((String, String) -> Void)?
+    /// Codex P0-2: sign-out drops every card of the old account (the local backend re-reads the purged inbox).
+    func clearForSignOut() {
+        items = [:]; busy = []; errorKey = nil
+        if ProactiveSuggestionHub.backend is ProactiveLocalBackend { ProactiveSuggestionHub.backend = ProactiveLocalBackend() }
+    }
     func adopt(_ s: ProactiveSuggestion) {
         // Codex PR90h #3: a cloud card registers its write-back identity; an offline-created card coming back from the
         // cloud (client_id = one of ours) is the same card — it maps onto ours instead of appearing twice.

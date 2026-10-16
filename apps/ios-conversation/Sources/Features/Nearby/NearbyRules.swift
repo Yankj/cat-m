@@ -60,7 +60,7 @@ enum NearbyRules {
     /// Taste + travel-mode memories, honouring 「使用记忆」 per library.
     static func preferences(in snapshots: [MemoryLibrarySnapshot]) -> Preferences {
         var p = Preferences()
-        for snap in snapshots where snap.useMemory {
+        for snap in MemoryRecallGate.effective(snapshots) {   // Codex P0-2: one switch
             for item in snap.items {
                 let t = item.content
                 if p.tastes.count < 3, tasteHints.contains(where: t.contains) { p.tastes.append(item) }

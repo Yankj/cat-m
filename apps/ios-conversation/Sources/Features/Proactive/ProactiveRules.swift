@@ -42,9 +42,9 @@ enum ProactiveRules {
               let n = Int(text[r].filter(\.isNumber)), n > 0, n <= maxLeadMinutes else { return nil }
         return n
     }
-    /// First lead memory across snapshots (in order: cloud backend, then local), honouring each 「使用记忆」 toggle.
+    /// First lead memory across snapshots (in order: cloud backend, then local). Any 「使用记忆」 off ⇒ none (Codex P0-2).
     static func lead(in snapshots: [MemoryLibrarySnapshot]) -> (minutes: Int, item: MemoryLibraryItem)? {
-        for snap in snapshots where snap.useMemory {
+        for snap in MemoryRecallGate.effective(snapshots) {
             for item in snap.items { if let n = leadMinutes(in: item.content) { return (n, item) } }
         }
         return nil
