@@ -16,6 +16,18 @@ export const memorySource = r => r.created_by === 'user' ? 'user' : r.created_by
 export const syncMemory = r => ({ source: memorySource(r), confidence: typeof r.confidence === 'number' ? r.confidence : 1, version: r.updated_at ?? null });
 const chip = r => ({ id: r.id, kind: r.kind, content: r.content, ...syncMemory(r) });
 const memUpdate = (op, rows) => ({ type: 'memory.update', data: { op, ids: rows.map(r => r.id), memories: rows.map(chip) } });
+/**
+ * Codex PR91 v2-3: the user's stored agent-memory privacy off, independent of CATPAW_AGENT_MEMORY_ENABLED / allowlist /
+ * enrollment. Closing the feature or revoking enrollment must never re-enable memory the user turned off.
+ * A missing table (migration not applied, 42P01) means no off can have been stored; any other read error fails CLOSED.
+ */
+export async function storedPrivacyOff(store, uid) {
+  if (!store || !uid) return false;
+  try { return (await store.getSettings(uid))?.use_memory === false; }
+  catch (e) { return e?.code === '42P01' ? false : true; }
+}
+export function createAgentMemoryPrivacy({ store }) { return { userTurnedOff: uid => storedPrivacyOff(store, uid) }; }
+
 export function createAgentMemoryService({ store, allow = () => false, verifyUser = null, schedulerSecret = null, embed = null, summarize = null, now = () => Date.now() }) {
   const iso = () => new Date(now()).toISOString();
   async function settings(uid) { return { ...DEFAULT_SETTINGS, ...(await store.getSettings(uid) ?? {}) }; }
@@ -51,7 +63,8 @@ export function createAgentMemoryService({ store, allow = () => false, verifyUse
     return rank(uid, query, LIMITS.forget_max);
   }
   /** Codex PR91 p91d-3: the user explicitly turned agent memory off (stored settings say use_memory false). */
-  async function userTurnedOff(uid) { if (!allow(uid)) return false; const raw = await store.getSettings(uid); return raw?.use_memory === false; }
+  // Codex PR91 v2-3: a stored privacy off is honoured regardless of the feature gate (no `allow` check).
+  async function userTurnedOff(uid) { return storedPrivacyOff(store, uid); }
   /** Recall snapshot frozen on the turn at admission. Ephemeral (temporary) turns read and write nothing. */
   async function recallForTurn({ subjectID, query, mode = null, conversationID = null, turnID = null, clientUseMemory = null }) {
     if (!allow(subjectID)) return null;
