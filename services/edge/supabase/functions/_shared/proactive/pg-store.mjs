@@ -45,7 +45,7 @@ export function createPgStore(sql) {
       return iso(r[0]) ?? null;
     },
     async claimSuggestionsForChat(uid, { limit, at, turnID }) {
-      const r = await sql.unsafe(`update proactive.events e set payload = jsonb_set(jsonb_set(e.payload, '{suggestion,chat_delivered_at}', to_jsonb($3::text)), '{suggestion,chat_turn_id}', to_jsonb($4::text))
+      const r = await sql.unsafe(`update proactive.events e set payload = jsonb_set(jsonb_set(jsonb_set(e.payload, '{suggestion,chat_delivered_at}', to_jsonb($3::text)), '{suggestion,chat_turn_id}', to_jsonb($4::text)), '{suggestion,rev}', to_jsonb(coalesce((e.payload->'suggestion'->>'rev')::int, 0) + 1))
         where e.id in (select id from proactive.events where user_id=$1 and kind='proactive_decision' and payload->>'decision' <> 'silent'
           and payload->'suggestion'->>'status' = 'pending' and payload->'suggestion'->>'chat_delivered_at' is null order by created_at limit $2 for update skip locked) returning e.*`, [uid, limit, at, turnID ?? '']);
       return r.map(iso);
