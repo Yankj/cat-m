@@ -64,3 +64,36 @@ test('PR90h #2: multi-device — with the licence held, every device is sent', a
   await svc.flushPush();
   assert.deepEqual(calls.sort(), ['d1', 'd2']); assert.equal((await store.getEvent(U, id)).push_state, 'sent');
 });
+
+import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+test('PR90h #3: a cloud card carries its write-back identity (server_id) on the wire the client decodes', async () => {
+  const { call } = setup();
+  const id = (await call('POST', BASE + '/evaluate', meeting())).body.event_id;
+  const got = (await call('GET', `${BASE}/suggestions/${id}`)).body.suggestion;
+  assert.equal(got.server_id, id, 'server_id = the record the device writes back to');
+  const norm = JSON.parse(JSON.stringify({ id: got.id, server_id: got.server_id, title: got.title, reason: got.reason, status: got.status, actions: got.actions, taken: got.taken, createdAt: got.createdAt }).replaceAll(id, 'SERVER-ID'));
+  norm.createdAt = '2026-10-15T02:00:00.000Z';
+  const url = new URL('./fixtures/proactive-cloud-card.json', import.meta.url);
+  if (process.env.CATPAW_WRITE_GOLDEN === '1') writeFileSync(url, JSON.stringify(norm, null, 2) + '\n');
+  assert.ok(existsSync(url), 'cloud card fixture committed'); assert.deepEqual(norm, JSON.parse(readFileSync(url)));
+});
+test('PR90h #3: an offline-created card comes back with its client_id (the device maps it onto its own card)', async () => {
+  const { call } = setup();
+  const r = await call('POST', BASE + '/suggestions', { client_id: 'local-abc', title: '离线建议', reason: 'r', actions: ['snooze', 'dismiss'] });
+  assert.equal(r.body.suggestion.client_id, 'local-abc'); assert.equal(r.body.suggestion.server_id, r.body.event_id);
+});
+test('PR90h #3: full round trip — the device requests for a cloud card, replayed on the real service (snooze → dismiss → undo restores → undo again)', async () => {
+  const g = JSON.parse(readFileSync(new URL('./fixtures/proactive-cloud-card-requests.json', import.meta.url)));
+  const { call, clock } = setup();
+  const id = (await call('POST', BASE + '/evaluate', meeting())).body.event_id;
+  const seen = [];
+  for (const [i, r] of g.requests.entries()) {
+    const body = JSON.parse(JSON.stringify(r.body).replaceAll('SERVER-ID', id));
+    if (body.action === 'snooze') body.until = new Date(clock.t + 10 * 60_000).toISOString();
+    const res = await call('POST', BASE + '/' + r.path.replaceAll('SERVER-ID', id), body);
+    assert.equal(res.status, 200, r.path);
+    seen.push((await call('GET', `${BASE}/suggestions/${id}`)).body.suggestion.status);
+    if (i === 2) { const s = (await call('GET', `${BASE}/suggestions/${id}`)).body.suggestion; assert.equal(Date.parse(s.taken.at(-1).until), clock.t + 10 * 60_000, 'restored snooze keeps its own until'); }
+  }
+  assert.deepEqual(seen, g.expect_status_after);
+});
