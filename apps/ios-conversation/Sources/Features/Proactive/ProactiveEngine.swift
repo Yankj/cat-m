@@ -278,11 +278,16 @@ struct ProactiveSignal: Equatable, Sendable {
         ProactiveLocalBackend.save(suggestion)
         ProactiveSuggestionStore.shared.adopt(suggestion)
         lastSuggestionID = suggestion.id
-        intervene(suggestion)
+        intervene(suggestion, level: decision.level, now: now)
         return suggestion
     }
 
-    struct Decision { var intervene: Bool; var why: String; var via: String }
+    struct Decision {
+        var level: ProactiveLevel; var why: String; var via: String
+        var intervene: Bool { level != .silent }
+        init(level: ProactiveLevel, why: String, via: String) { self.level = level; self.why = why; self.via = via }
+        init(intervene: Bool, why: String, via: String) { self.init(level: intervene ? .notify : .silent, why: why, via: via) }
+    }
     private func evaluateLocal(_ s: ProactiveSignal, leadMinutes: Int, now: Date) -> Decision {
         let minutes = Int(s.start.timeIntervalSince(now) / 60)
         if minutes < 3 { return .init(intervene: false, why: "too late to help (\(minutes) min)", via: "local") }
@@ -324,7 +329,7 @@ struct ProactiveSignal: Equatable, Sendable {
         guard let json = await Self.post("evaluate", body) else { note("evaluate server unavailable → local rules"); lastRemote = nil; return nil }
         lastRemote = json
         let decision = (json["decision"] as? String) ?? "card"
-        return .init(intervene: decision != "silent", why: "\(decision) · \((json["reason"] as? String) ?? "") conf=\((json["confidence"] as? Double).map { String(format: "%.2f", $0) } ?? "-") source=\((json["source"] as? String) ?? "?")", via: "server")
+        return .init(level: ProactiveLevel(server: decision), why: "\(decision) · \((json["reason"] as? String) ?? "") conf=\((json["confidence"] as? Double).map { String(format: "%.2f", $0) } ?? "-") source=\((json["source"] as? String) ?? "?")", via: "server")
     }
     func rememberServerID(local: String) {
         if let sug = lastRemote?["suggestion"] as? [String: Any], let id = sug["id"] as? String { serverIDs[local] = id }
@@ -338,11 +343,29 @@ struct ProactiveSignal: Equatable, Sendable {
 
     // MARK: Intervene: card + banner + actionable notification
 
-    private func intervene(_ s: ProactiveSuggestion) {
+    /// Codex P0-3: notify/interrupt deliveries per local day (on-device daily cap).
+    private let deliveredKey = "catpaw.proactive.delivered.v1"
+    private func deliveredToday(_ now: Date) -> Int {
+        let day = Calendar.current.startOfDay(for: now).timeIntervalSince1970
+        let saved = defaults.dictionary(forKey: deliveredKey) as? [String: Double] ?? [:]
+        return saved["day"] == day ? Int(saved["count"] ?? 0) : 0
+    }
+    private func countDelivery(_ now: Date) {
+        let day = Calendar.current.startOfDay(for: now).timeIntervalSince1970
+        defaults.set(["day": day, "count": Double(deliveredToday(now) + 1)], forKey: deliveredKey)
+    }
+
+    private func intervene(_ s: ProactiveSuggestion, level: ProactiveLevel, now: Date) {
         #if os(iOS)
+        let plan = ProactiveRules.delivery(level: level, now: now, deliveredToday: deliveredToday(now))
+        note("deliver requested=\(level.name) final=\(plan.level.name) notification=\(plan.systemNotification) sound=\(plan.sound)")
+        guard plan.inAppCard else { return }
         CatpawInAppBannerCenter.shared.show(CatpawInAppBanner(title: s.title, body: s.reason, symbol: "calendar.badge.clock", deepLink: URL(string: "catpawm://proactive")))
+        guard plan.systemNotification else { note("intervene card only (no system notification) id=\(s.id)"); return }
+        countDelivery(now)
         let content = UNMutableNotificationContent()
-        content.title = s.title; content.body = s.reason; content.sound = .default
+        content.title = s.title; content.body = s.reason; content.sound = plan.sound ? .default : nil
+        if plan.timeSensitive { content.interruptionLevel = .timeSensitive }
         content.categoryIdentifier = Self.notificationCategory
         content.userInfo = ["catpaw_proactive_id": s.id]
         let request = UNNotificationRequest(identifier: s.id, content: content, trigger: UNTimeIntervalNotificationTrigger(timeInterval: 2, repeats: false))
@@ -351,8 +374,8 @@ struct ProactiveSignal: Equatable, Sendable {
             _ = try? await center.requestAuthorization(options: [.alert, .sound, .badge])
             try? await center.add(request)
         }
-        note("intervene card + banner + local notification id=\(s.id)")
-        if let leave = pendingReminders[s.id]?.leaveAt {
+        note("intervene \(plan.level.name): card + banner + local notification id=\(s.id)")
+        if plan.liveActivity, let leave = pendingReminders[s.id]?.leaveAt {
             CatpawLeaveActivity.start(suggestionID: s.id, meetingTitle: pendingReminders[s.id]?.title ?? s.title, leaveAt: leave)
         }
         #endif

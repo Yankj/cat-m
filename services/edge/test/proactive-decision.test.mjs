@@ -47,6 +47,13 @@ test('LLM invalid / unavailable → deterministic rules fallback; low confidence
   r = await call('POST', BASE + '/evaluate', sc('meeting_soon_far')); assert.equal(r.body.decision, 'card');
 });
 
+test('Codex P0-3: very low confidence is silent, not a card (better say nothing than say it wrong)', async () => {
+  const { call } = setup({ model: fakeLLM({ decision: 'interrupt', reason: '几乎不确定', confidence: 0.01 }) });
+  const r = await call('POST', BASE + '/evaluate', sc('meeting_soon_far'));
+  assert.equal(r.body.decision, 'silent'); assert.match(r.body.trace.join(), /silent/);
+  assert.equal(r.body.suggestion.status, 'dismissed');
+});
+
 test('dedupe by signal_hash within window; quiet hours and daily cap downgrade to card', async () => {
   const { call, clock } = setup({ config: { dailyCap: 1 } });
   assert.equal((await call('POST', BASE + '/evaluate', sc('meeting_soon_far'))).body.decision, 'interrupt');

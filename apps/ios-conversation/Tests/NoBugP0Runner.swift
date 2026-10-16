@@ -39,7 +39,7 @@ import Foundation
     static func expect(_ ok: Bool, _ m: String) { if ok { passed += 1; print("PASS \(m)") } else { failed += 1; print("FAIL \(m)") } }
 
     static func main() async {
-        await memory(); await deviceCalls(); proactive(); nearby(); groundedFixtures(); contactsPrivacy(); replyVariants(); followUps(); await deviceUndo(); dictation(); await codexP0_1(); await codexP0_2()
+        await memory(); await deviceCalls(); proactive(); nearby(); groundedFixtures(); contactsPrivacy(); replyVariants(); followUps(); await deviceUndo(); dictation(); await codexP0_1(); await codexP0_2(); codexP0_3()
         print("nobug-p0 portable: \(passed) passed, \(failed) failed")
         exit(failed == 0 ? 0 : 1)
     }
@@ -109,6 +109,24 @@ import Foundation
         let c = DeviceCall(call_id: id, tool: tool, args: ["title": .string("评审会"), "start": .string("2026-10-20T10:00:00+08:00")], confirm: .card, ttl_sec: 600)
         DeviceCallGate.register(c)   // as the typed SSE device_call path does
         return c
+    }
+
+    /// Codex review P0-3: the client keeps all four levels and applies its own quiet hours + daily cap.
+    static func codexP0_3() {
+        var cal = Calendar(identifier: .gregorian); cal.timeZone = TimeZone(identifier: "Asia/Shanghai")!
+        let noon = cal.date(from: DateComponents(year: 2026, month: 10, day: 16, hour: 12))!
+        let night = cal.date(from: DateComponents(year: 2026, month: 10, day: 16, hour: 23, minute: 30))!
+        let p = { (l: ProactiveLevel, at: Date, n: Int) in ProactiveRules.delivery(level: l, now: at, deliveredToday: n, calendar: cal) }
+        expect(p(.silent, noon, 0) == .init(level: .silent, inAppCard: false, systemNotification: false, sound: false, timeSensitive: false, liveActivity: false), "codex P0-3 silent → nothing")
+        let card = p(.card, noon, 0)
+        expect(card.inAppCard && !card.systemNotification && !card.sound && !card.liveActivity, "codex P0-3 card → in-app card only, no sound notification")
+        let notify = p(.notify, noon, 0)
+        expect(notify.systemNotification && notify.sound && !notify.timeSensitive, "codex P0-3 notify → notification with sound")
+        let interrupt = p(.interrupt, noon, 0)
+        expect(interrupt.systemNotification && interrupt.timeSensitive && interrupt.liveActivity, "codex P0-3 interrupt → time-sensitive + Live Activity")
+        expect(p(.notify, night, 0).level == .card && !p(.interrupt, night, 0).sound, "codex P0-3 on-device quiet hours (22–8) → card, no sound")
+        expect(p(.notify, noon, ProactiveRules.dailyNotifyCap).level == .card, "codex P0-3 on-device daily cap → card")
+        expect(ProactiveLevel(server: "notify") == .notify && ProactiveLevel(server: "bogus") == .card && ProactiveLevel(server: "silent") == .silent, "codex P0-3 server level parsed, unknown → card (never louder)")
     }
 
     /// Codex review P0-2: on-device memory is per account, owner-bound on migration, cleared at sign-out, and the
