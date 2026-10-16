@@ -28,7 +28,12 @@ import UIKit
         }
         .accessibilityIdentifier("chat.message.image")
         .task(id: id) {
-            if let data = await load(), let img = UIImage(data: data) { image = img }
+            // The turn row may appear a moment after the bubble; retry briefly before falling back to the label.
+            for attempt in 0..<6 {
+                if let data = await load(), let img = UIImage(data: data) { image = img; break }
+                if attempt < 5 { try? await Task.sleep(nanoseconds: 600_000_000) }
+                if Task.isCancelled { return }
+            }
             loaded = true
         }
         .modifier(MessageImageViewerHook(image: image, isPresented: $viewerOpen))
@@ -53,5 +58,22 @@ struct MessageImageViewerHook: ViewModifier {
                     .presentationBackground(.clear)
             }
         }
+    }
+}
+
+/// Session memory of images the user sent, keyed by turn id, so the bubble thumbnail, viewer and 存到相册 keep
+/// working after `ConversationImageStore` deletes the bytes at `turn_completed`. Bounded; never written to disk.
+@MainActor final class SentImageCache {
+    static let shared = SentImageCache()
+    private var items: [String: Data] = [:]
+    private var order: [String] = []
+    func data(for id: UUID) -> Data? { items[id.uuidString] }
+    func data(sha: String) -> Data? { items["sha:" + sha] }
+    func store(_ data: Data, for id: UUID, sha: String? = nil) {
+        for key in [id.uuidString] + (sha.map { ["sha:" + $0] } ?? []) {
+            if items[key] == nil { order.append(key) }
+            items[key] = data
+        }
+        while order.count > 48 { items.removeValue(forKey: order.removeFirst()) }
     }
 }
