@@ -927,20 +927,13 @@ struct ProactiveSignal: Equatable, Sendable {
     }
     fileprivate static let attendeesKey = "catpaw.proactive.attendees.v1"
     private var pendingAttendees: [String: (names: [String], recipients: [String])] {
-        get {
-            guard let data = defaults.data(forKey: Self.attendeesKey),
-                  let raw = try? JSONDecoder().decode([String: AttendeesDTO].self, from: data) else { return [:] }
-            return raw.mapValues { ($0.names, $0.recipients) }
-        }
-        set {
-            let raw = newValue.mapValues { AttendeesDTO(names: $0.names, recipients: $0.recipients) }
-            defaults.set(try? JSONEncoder().encode(raw), forKey: Self.attendeesKey)
-        }
+        get { (sealed([String: AttendeesDTO].self, sealedKey: Self.sealedAttendeesKey, legacyKey: Self.attendeesKey) ?? [:]).mapValues { ($0.names, $0.recipients) } }
+        set { seal(newValue.mapValues { AttendeesDTO(names: $0.names, recipients: $0.recipients) }, sealedKey: Self.sealedAttendeesKey, legacyKey: Self.attendeesKey) }
     }
     private struct AttendeesDTO: Codable { var names: [String]; var recipients: [String] }
     private var pendingReminders: [String: PendingReminder] {
-        get { (defaults.data(forKey: suggestionsKey)).flatMap { try? JSONDecoder().decode([String: PendingReminder].self, from: $0) } ?? [:] }
-        set { defaults.set(try? JSONEncoder().encode(newValue), forKey: suggestionsKey) }
+        get { sealed([String: PendingReminder].self, sealedKey: Self.sealedRemindersKey, legacyKey: suggestionsKey) ?? [:] }
+        set { seal(newValue, sealedKey: Self.sealedRemindersKey, legacyKey: suggestionsKey) }
     }
 
     func pendingReminder(for suggestionID: String) -> PendingReminder? {
@@ -1478,9 +1471,10 @@ struct ProactiveEngineSignalAdapter: ProactiveSignalEngine {
         ]
         if let suggestion = pending.first {
             var value: [String: Any] = [
+                // Codex PR91 p91b-5: the App Group file is not encrypted — only redacted fields (no titles/reasons/places).
                 "id": suggestion.id,
-                "title": suggestion.title,
-                "why": suggestion.reason,
+                "title": "小猫有一条提醒",
+                "why": "打开 Catpaw 查看",
             ]
             if let reminder = ProactiveEngine.shared.pendingReminder(for: suggestion.id) {
                 value["expires_at"] = reminder.start.timeIntervalSince1970
@@ -1501,12 +1495,11 @@ struct ProactiveEngineSignalAdapter: ProactiveSignalEngine {
         if let meeting {
             var value: [String: Any] = [
                 "id": meeting.suggestion.id,
-                "title": meeting.reminder?.title ?? meeting.signal.text,
-                "why": meeting.suggestion.reason,
+                "title": "即将开始的日程",
+                "why": "打开 Catpaw 查看",
             ]
             if let reminder = meeting.reminder {
                 value["starts_at"] = reminder.start.timeIntervalSince1970
-                if !reminder.place.isEmpty { value["place"] = reminder.place }
             }
             body["meeting"] = value
         }
@@ -1576,9 +1569,12 @@ struct ProactiveEngineSignalAdapter: ProactiveSignalEngine {
         CatpawLiveActivityCoordinator.shared.stopLeaveCountdown(suggestionID: suggestionID)
     }
     /// Sign-out: end every departure countdown, including ones started before a relaunch.
+    /// Sign-out: end every Live Activity of every type — departure countdowns (also from before a relaunch) and the
+    /// work activity, whose pending start timer is cancelled (Codex PR91 p91b-3).
     static func stopAll() {
         let ids = Set(Activity<CatpawLeaveAttributes>.activities.map { $0.attributes.suggestionID })
         for id in ids { stop(suggestionID: id) }
+        CatpawLiveActivityCoordinator.shared.resetForSignOut()
     }
 }
 #else

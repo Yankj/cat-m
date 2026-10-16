@@ -6498,5 +6498,17 @@
   "没法确认提醒是否还在（可能没有提醒事项权限），状态保持不变": {
     "en": "Couldn't confirm whether the reminder still exists (Reminders access may be off); status unchanged",
     "zh-Hans": "没法确认提醒是否还在（可能没有提醒事项权限），状态保持不变"
+  },
+  "导出旧版记忆": {
+    "en": "Export old memories",
+    "zh-Hans": "导出旧版记忆"
+  },
+  "旧版记忆": {
+    "en": "Old memories",
+    "zh-Hans": "旧版记忆"
+  },
+  "升级前存在这台设备上的记忆没有归属账号，已单独加密保存，不会合并进你的账号。可以导出查看。": {
+    "en": "Memories saved on this device before the update don't belong to any account. They're encrypted separately and never merged into your account. You can export them to review.",
+    "zh-Hans": "升级前存在这台设备上的记忆没有归属账号，已单独加密保存，不会合并进你的账号。可以导出查看。"
   }
 }
