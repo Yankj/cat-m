@@ -26,6 +26,12 @@ struct ProactiveSuggestion: Codable, Sendable, Equatable, Identifiable {
     var status: Status? = nil
     var createdAt: Date? = nil
     var taken: [Taken]? = nil
+    /// Codex PR90 #4: the cloud's per-action state (`action_states`, e.g. {"notify_attendees":"done"}).
+    var serverActionStates: [String: String]? = nil
+    enum CodingKeys: String, CodingKey {
+        case id, title, reason, memories, actions, signals, status, createdAt, taken
+        case serverActionStates = "action_states"
+    }
 
     var usedMemories: [MemoryRef] { memories ?? [] }
     var effectiveActions: [Action] { actions ?? Action.allCases }
@@ -34,7 +40,7 @@ struct ProactiveSuggestion: Codable, Sendable, Equatable, Identifiable {
     var actionStates: [String: ProactiveActionState] {
         var st: [String: ProactiveActionState] = [:]
         for t in taken ?? [] { st[t.action.rawValue] = t.outcome ?? (t.action == .create_reminder ? .succeeded : nil) ?? st[t.action.rawValue] }
-        return st
+        return ProactiveActionStates.merge(local: st, server: serverActionStates)
     }
     /// Actions still offered on the card (a created reminder no longer hides 「告诉参会人」).
     var remainingActions: [Action] {

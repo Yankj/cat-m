@@ -134,4 +134,12 @@ enum ProactiveActionStates {
     static func from(serverStates: [String: String]) -> [String: ProactiveActionState] {
         serverStates.compactMapValues { $0 == "done" ? .succeeded : nil }
     }
+    /// Codex PR90 #4: the cloud's `action_states` (decoded on every suggestion) merged with local outcomes; a cloud success wins.
+    static func merge(local: [String: ProactiveActionState], server: [String: String]?) -> [String: ProactiveActionState] {
+        local.merging(from(serverStates: server ?? [:])) { l, r in r == .succeeded ? r : l }
+    }
+    /// Execution entry: an effect already succeeded (locally or in the cloud) is never run again.
+    static func shouldExecute(_ action: String, _ st: [String: ProactiveActionState]) -> Bool {
+        !effects.contains(action) || st[action] != .succeeded
+    }
 }
