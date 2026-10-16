@@ -1,5 +1,7 @@
 import Foundation
+#if canImport(CryptoKit)
 import CryptoKit
+#endif
 
 /// Pure rules behind ProactiveEngine (NoBug P0-5: unit-testable without EventKit/MapKit/UIKit).
 enum ProactiveRules {
