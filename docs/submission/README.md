@@ -1,7 +1,7 @@
 # CatPaw Mobile · NoBug B 交付说明（会议出发助理）
 
 > 仓库：`github.com/Yankj/catpaw-m` · 分支 `feat/ios-mvp-integration-v2`  
-> **冻结 tip SHA：`009a58a`**（2026-10-16 18:30 北京时间）  
+> **冻结 tip SHA：`29a3745`**（2026-10-16 18:30 北京时间）  
 > 架构细节：[ARCHITECTURE.md](./ARCHITECTURE.md) · 录屏分镜：[demo-video-plan.md](./demo-video-plan.md)  
 > 同内容镜像：仓库 `docs/submission/`
 
@@ -14,7 +14,7 @@ CatPaw Mobile 主动式个人助理的 **NoBug B 切片**：在会前算出 `lea
 
 | 标记 | 含义 |
 |---|---|
-| **[已实现]** | 代码在 tip `009a58a`，可在 DeviceTrial / BE5C 演示 |
+| **[已实现]** | 代码在 tip `29a3745`，可在 DeviceTrial / BE5C 演示 |
 | **[部分]** | 有路径但依赖系统能力或后端 gate |
 | **[设计]** | 文档有、本切片未做 |
 
@@ -74,7 +74,7 @@ CatPaw Mobile 主动式个人助理的 **NoBug B 切片**：在会前算出 `lea
 
 ```sh
 git clone -b feat/ios-mvp-integration-v2 https://github.com/Yankj/catpaw-m.git
-cd catpaw-m && git checkout 009a58a
+cd catpaw-m && git checkout 29a3745
 open apps/ios-conversation/CatpawM.xcodeproj
 # Scheme: DeviceTrial → 目标 BE5C 或真机
 ```
@@ -93,7 +93,7 @@ xcrun simctl location BE5C60E0-B415-4BF4-8F36-8975FB5314AA set 39.9961,116.4806
 
 | SHA | 说明 |
 |---|---|
-| `009a58a` | 本交付冻结 tip（定位入口 / 标签去重 / attendees 持久化） |
+| `29a3745` | 本交付冻结 tip（定位入口 / 标签去重 / attendees 持久化） |
 | `68c8c0c` | 真实记忆 lead + CLLocation ETA（NoBug P0 红线） |
 | `e8f5502` | notify unavailable 留证不标 done |
 | `12160c8` | reply-chrome（已合入，勿重写） |

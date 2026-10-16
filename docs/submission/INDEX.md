@@ -1,8 +1,7 @@
 # Submission (NoBug B)
 
-Frozen deliverable: branch `feat/ios-mvp-integration-v2`.
+Frozen tip: `29a3745` on `feat/ios-mvp-integration-v2`.
 
-- **Pinned content tip:** `009a58a` (DeviceTrial `CatpawGitSHA` / docs body)
-- **Branch HEAD:** see `git rev-parse --short HEAD` after pull
+Primary: [README.md](./README.md) · [ARCHITECTURE.md](./ARCHITECTURE.md) · [demo-video-plan.md](./demo-video-plan.md)
 
-Primary page: [README.md](./README.md)
+Also mirrored at `/workspace/catpaw-design/submission/` (design box).

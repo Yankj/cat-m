@@ -1,13 +1,13 @@
 # NoBug B · 演示视频方案（会议出发助理）
 
-> 冻结 tip：`009a58a` · 分支 `feat/ios-mvp-integration-v2`  
+> 冻结 tip：`29a3745` · 分支 `feat/ios-mvp-integration-v2`  
 > 目标：**≤ 4 分钟**，拍齐 B 八步；**不出现**电话/购物；不假装 prod migration 已上。
 
 ## 1. 八步分镜
 
 | # | 时间 | 步骤 | 画面 | 屏幕标签 |
 |---|---|---|---|---|
-| 1 | 0:00–0:20 | Hook + S1 | 建议卡 / 通知：「该出发」+ 调试页 git SHA = `009a58a` | 主动开口 · tip 可核对 |
+| 1 | 0:00–0:20 | Hook + S1 | 建议卡 / 通知：「该出发」+ 调试页 git SHA = `29a3745` | 主动开口 · tip 可核对 |
 | 2 | 0:20–0:50 | S2 记忆 | 调试「写入记忆并生效」→ 设置 › 记忆 出现「开会提前 N 分钟」 | 真实记忆条目 |
 | 3 | 0:50–1:20 | S3 ETA | 请求定位或 simctl 望京；注入会；Why 显示路途 **或**「未用到 ETA」；切「模拟起点 望京」→「从模拟起点 望京」 | 无上海兜底 |
 | 4 | 1:20–1:45 | S4 Why | 打开为什么：日历信号、lead、travel、leave_at | 可解释 |
@@ -35,7 +35,7 @@
 
 ## 4. 录制前检查
 
-- `git rev-parse --short HEAD` == `009a58a`（或文档已声明的更新 tip）  
+- `git rev-parse --short HEAD` == `29a3745`（或文档已声明的更新 tip）  
 - DeviceTrial 已装 BE5C；Info `CatpawGitSHA` 可见  
 - `xcrun simctl location BE5C60E0-B415-4BF4-8F36-8975FB5314AA set 39.9961,116.4806`  
 - 中文环境；假会议「产品评审会 · 望京 SOHO」  
