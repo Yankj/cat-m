@@ -58,7 +58,7 @@ struct BrandMark: View {
 
 /// The single Catpaw logo (r10, "soft clay" 3D style): every pad is its own ellipse with a radial clay gradient
 /// (highlight → base → shaded rim) plus a soft contact shadow, so toes can press in sequence.
-/// Geometry is in a 24-unit box and mirrors Resources/Assets.xcassets/LaunchPaw.svg exactly (frame-0 identity).
+/// Geometry is in a 24-unit box (pastel category marker only — not used on splash).
 /// `pressed[i]` (0–3 toes, 4 main pad) sinks that pad ~3% and squashes it to 0.9.
 /// Ultra-minimal jelly paw: one soft rounded main pad + 4 round toe beans, glossy highlight + soft shadow.
 /// No face, no outlines. `color` tints the whole mark (brand orange by default, pastel for category markers).
