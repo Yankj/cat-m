@@ -66,7 +66,7 @@ import SwiftUI
     }
 
     private var actions: some View {
-        let list = s.effectiveActions
+        let list = s.remainingActions   // Codex P0-5: per-action state
         return ViewThatFits(in: .horizontal) {
             HStack(spacing: 8) { ForEach(list, id: \.self) { button($0) } }
             VStack(alignment: .leading, spacing: 6) { ForEach(list, id: \.self) { button($0) } }

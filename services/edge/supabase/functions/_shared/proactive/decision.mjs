@@ -13,6 +13,9 @@ export const SUGGESTION_ACTIONS = ['create_reminder', 'notify_attendees', 'snooz
 const ACTION_STATUS = { create_reminder: 'done', notify_attendees: 'done', snooze: 'snoozed', dismiss: 'dismissed' };
 const SIGNAL_TYPES = ['meeting_upcoming', 'meeting_conflict', 'flight_status', 'traffic', 'location', 'calendar_change', 'weather', 'message', 'custom'];
 const ACTION_KINDS = SUGGESTION_ACTIONS;
+// Codex P0-5: effect actions have their own state; the suggestion is done only when every offered effect is done.
+const EFFECTS = ['create_reminder', 'notify_attendees'];
+const actionStates = st => Object.fromEntries((st.taken ?? []).filter(t => EFFECTS.includes(t.action)).map(t => [t.action, 'done']));
 const lvl = d => LEVELS.indexOf(d);
 
 export async function signalHash(s) {
@@ -144,12 +147,16 @@ export function createDecisionService({ store, model = null, memory = null, now 
     const opId = typeof b.operation_id === 'string' ? b.operation_id.slice(0, 80) : null;
     const ev = await load(uid, id), st = ev.payload.suggestion;
     if (opId && st.ops[opId]) return toSuggestion(ev);
-    const last = st.taken.at(-1);
-    if (!opId && last?.action === action && st.status === ACTION_STATUS[action]) return toSuggestion(ev);
+    const last = st.taken.at(-1), effect = EFFECTS.includes(action);
+    // A cancelled / unavailable / failed effect is never recorded (and never turns the suggestion done).
+    if (effect && typeof b.outcome === 'string' && !['succeeded', 'sent', 'done'].includes(b.outcome)) return toSuggestion(ev);
+    if (!opId && (effect ? st.taken.some(t => t.action === action) : (last?.action === action && st.status === ACTION_STATUS[action]))) return toSuggestion(ev);
     const at = new Date(now()).toISOString();
     st.history.push({ status: st.status, taken_len: st.taken.length });
     st.taken.push({ action, at, ...(typeof b.detail === 'string' ? { detail: b.detail.slice(0, 200) } : {}) });
-    st.status = ACTION_STATUS[action]; if (opId) st.ops[opId] = action;
+    if (effect) { const offered = (ev.payload.actions ?? []).filter(a => EFFECTS.includes(a)), done = actionStates(st); st.status = offered.every(a => done[a]) ? 'done' : 'pending'; }
+    else st.status = ACTION_STATUS[action];
+    if (opId) st.ops[opId] = action;
     if (action === 'snooze') st.snooze_until = new Date(now() + (Number(b.minutes) > 0 ? Math.min(Number(b.minutes), 1440) : 10) * 60000).toISOString();
     return toSuggestion(await store.updateEventPayload(uid, id, ev.payload));
   }
@@ -206,7 +213,7 @@ export function toSuggestion(e) {
   return { id: e.id, title: p.title ?? e.title, reason: p.why ?? e.body, memories: (p.memories ?? []).map(m => ({ id: m.id, content: m.content })),
     actions: (p.actions ?? []).filter(x => SUGGESTION_ACTIONS.includes(x)), signals: (p.signals ?? []).map(signalView), status: st.status,
     createdAt: e.created_at, taken: st.taken.map(t => ({ action: t.action, at: t.at, ...(t.detail ? { detail: t.detail } : {}) })),
-    decision: p.decision, confidence: p.confidence };
+    action_states: actionStates(st), decision: p.decision, confidence: p.confidence };
 }
 const SIGNAL_KIND = { meeting_upcoming: 'calendar', meeting_conflict: 'calendar', calendar_change: 'calendar', flight_status: 'travel', traffic: 'travel', location: 'location', weather: 'weather', message: 'message', custom: 'custom' };
 export function signalView(s) {
