@@ -33,6 +33,8 @@ import SwiftUI
         // Codex PR91 p91b-4: switching OFF takes effect locally at once (persisted + next turn's header), before the network.
         if !on, let owner = MemoryRecallLoader.currentOwner { MemoryRecallLoader.record(off: true, owner: owner) }
         await run(restore: prior) { try await self.backend.setUseMemory(on) }
+        // p91c-4: switching ON updates the global only once the server accepted it.
+        if on, errorKey == nil, let owner = MemoryRecallLoader.currentOwner { MemoryRecallLoader.record(off: false, owner: owner) }
     }
     func setAutoSave(_ on: Bool) async {
         let prior = snapshot; snapshot?.autoSave = on

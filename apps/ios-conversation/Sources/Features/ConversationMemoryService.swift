@@ -145,3 +145,35 @@ enum ConversationMemoryAtRest {
         return try? opener(raw, subject)
     }
 }
+
+/// Codex PR91 p91c-5: seals EVERY plaintext memory row of `subject` (not just rows that happen to be read), verifies
+/// each sealed row reads back identical, and sets a per-subject completion gate only when all rows passed. Any failure
+/// leaves the gate unset, so the next launch retries.
+extension ConversationMemoryAtRest {
+    static let keyPrefix = "conversation_memory_v1:"
+    static func gateKey(_ subject: UUID) -> String { "catpaw.memory.atrest-sealed.v1." + subject.uuidString.lowercased() }
+    struct MigrationReport: Equatable { var sealed = 0, failed = 0, complete = false }
+    static func isMigrated(_ subject: UUID, defaults: UserDefaults = .standard) -> Bool { defaults.bool(forKey: gateKey(subject)) }
+    static func migrateAll(_ repository: Repository, subject: UUID, defaults: UserDefaults = .standard) async -> MigrationReport {
+        var report = MigrationReport()
+        guard !isMigrated(subject, defaults: defaults) else { report.complete = true; return report }
+        guard sealer != nil, opener != nil else { return report }
+        let mine = keyPrefix + subject.uuidString.lowercased() + ":"
+        for record in await repository.preferenceRecords(keyPrefix: mine) {
+            guard case .preference(let p) = record.payload, !isSealed(p.value) else { continue }
+            do {
+                let plain = Data(p.value.utf8)
+                let sealedValue = try seal(plain, subject: subject)
+                guard isSealed(sealedValue) else { throw NoSealer() }
+                try await repository.commit(scope: record.header.scope, mutations: [.update(record.header.id, record.header.revision, .preference(.init(key: p.key, value: sealedValue)))])
+                let back = try await repository.record(record.header.id, scope: record.header.scope)
+                guard case .preference(let q) = back.payload, isSealed(q.value), open(q.value, subject: subject) == plain else { throw NoSealer() }
+                report.sealed += 1
+            } catch { report.failed += 1 }
+        }
+        // Gate: every row of this subject is sealed now (re-scan, not just the count above).
+        let leftover = await repository.preferenceRecords(keyPrefix: mine).contains { if case .preference(let p) = $0.payload { return !isSealed(p.value) }; return false }
+        if report.failed == 0, !leftover { defaults.set(true, forKey: gateKey(subject)); report.complete = true }
+        return report
+    }
+}

@@ -105,7 +105,7 @@ export class ChatService {
       if(deviceContract&&approvalContract){const listed=parseDeviceTools(deviceTools);if(listed)t.device_tools=listed;}
       if(approvalContract)t.client_time_zone=validTimeZone(timeZone)?timeZone:null;
       if(this.beforeTurnAdmission)t.source_auth=await this.beforeTurnAdmission(tx,{principal,scope,conversation:c,turn:t});
-      const memoryUsage=await this.integration?.memoryUsage?.(tx,{principal,scope,conversation:c,turn:t});
+      const memoryUsage=useMemory==='0'?null:await this.integration?.memoryUsage?.(tx,{principal,scope,conversation:c,turn:t});   // Codex PR91 p91c-4: client 使用记忆 off also gates confirmed-memory usage
       if(memoryUsage){t.memory_usage=memoryUsage;t.request_hash=hash({original_chat_request_hash:t.request_hash,memory_usage:memoryUsage});}
       if(workIntent){
         check(this.facade.workGrantService&&this.facade.acceptedWorkExecutionReady===true&&t.source_auth,503,'accepted_work_execution_not_configured');

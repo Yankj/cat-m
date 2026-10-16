@@ -76,6 +76,12 @@ enum AccountLocalData {
     /// Owner of the signed-in account (AccountEpoch keeps the upper-case uuidString; owners use lower-case).
     static var currentOwner: LocalMemoryOwner? { AccountEpoch.shared.currentAccount.map { .account($0.lowercased()) } }
     static func persistedOff(_ owner: LocalMemoryOwner) -> Bool { offKey(owner).map { defaults.bool(forKey: $0) } ?? false }
+    /// Codex PR91 p91c-4: the global switch (next turn's X-Catpaw-Use-Memory) from the stored per-account value — at
+    /// launch / sign-in and whenever the cloud cannot be read, so a local off whose PATCH failed is still sent.
+    static func restoreSwitch(owner: LocalMemoryOwner) {
+        guard let k = offKey(owner) else { ConversationMemorySwitch.useMemory = nil; return }
+        ConversationMemorySwitch.useMemory = defaults.object(forKey: k) == nil ? nil : !defaults.bool(forKey: k)
+    }
     static func record(off: Bool, owner: LocalMemoryOwner) {
         if let k = offKey(owner) { defaults.set(off, forKey: k) }
         ConversationMemorySwitch.useMemory = !off   // sent to the server on the next turn (X-Catpaw-Use-Memory)
@@ -89,7 +95,8 @@ enum AccountLocalData {
         if let cloud {
             do { let s = try await cloud.load(); snaps.append(s); cloudState = s.useMemory }
             // Codex PR91 p91b-4: a cloud library that is not enabled / unsupported does NOT fall back to local memories.
-            catch { return [] }   // unreachable / partial failure: fail closed, keep the last known switch
+            // p91c-4: the switch is still restored from the stored value before the fail-closed return.
+            catch { restoreSwitch(owner: owner); return [] }   // unreachable / partial failure: fail closed, keep the last known switch
         }
         if let local {
             do { snaps.append(try await local.load()) } catch { return [] }
@@ -249,6 +256,7 @@ extension MemoryLibraryLocal {
         quarantineLegacyFile()
         guard let userID else { activate(owner: .guest, persistence: nil); return }
         let owner = LocalMemoryOwner.account(userID.uuidString.lowercased())
+        MemoryRecallLoader.restoreSwitch(owner: owner)   // Codex PR91 p91c-4: header right from launch
         let store = L2SecureStore.current?.userID == userID ? L2SecureStore.current : nil
         // A page backend still pointing at another account's local library must not survive the switch.
         if let stub = MemoryLibraryHub.backend as? MemoryLibraryStub, stub.owner != owner { MemoryLibraryHub.install(backend: nil) }
