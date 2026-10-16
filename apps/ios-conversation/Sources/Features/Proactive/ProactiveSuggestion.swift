@@ -133,6 +133,7 @@ struct ProactiveSuggestion: Codable, Sendable, Equatable, Identifiable {
         busy.insert(s.id); defer { busy.remove(s.id) }
         do { items[s.id] = try await backend.perform(action, on: s.id); errorKey = nil }
         catch let e as ProactiveEngineError where e == .smsUnavailable { errorKey = "本机无法打开短信（模拟器上常见），未标记完成" }
+        catch let e as ProactiveEngineError where e == .snoozeNotScheduled { errorKey = "那个时间在免打扰时段或今天的提醒已满，没有设置稍后提醒" }
         catch { errorKey = "没有完成，请稍后重试" }
     }
     func undo(_ s: ProactiveSuggestion) async {
