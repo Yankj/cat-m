@@ -40,6 +40,7 @@ struct ProactiveSuggestion: Codable, Sendable, Equatable, Identifiable {
     enum CodingKeys: String, CodingKey {
         case id, title, reason, memories, actions, signals, status, createdAt, taken, trigger
         case serverActionStates = "action_states"
+        case serverID = "server_id", clientID = "client_id"
     }
 
     var usedMemories: [MemoryRef] { memories ?? [] }
@@ -127,6 +128,21 @@ enum ProactiveEngineError: Error, Equatable { case remindersDenied, writeFailed,
     /// Codex PR90h #3: (device card id, cloud record id) for a card that arrived from the cloud (set by the real backend).
     var onCloudIdentity: ((String, String) -> Void)?
     func adopt(_ s: ProactiveSuggestion) {
+        // Codex PR90h #3: a cloud card registers its write-back identity; an offline-created card coming back from the
+        // cloud (client_id = one of ours) is the same card — it maps onto ours instead of appearing twice.
+        if let sid = s.serverID {
+            if let cid = s.clientID, cid != s.id, items[cid] != nil {
+                onCloudIdentity?(cid, sid)
+                let mine = ProactiveSuggestion(id: cid, title: s.title, reason: s.reason, memories: s.memories, actions: s.actions, signals: s.signals,
+                                                         status: s.status, createdAt: s.createdAt, taken: s.taken, serverActionStates: s.serverActionStates,
+                                                         trigger: s.trigger, serverID: sid, clientID: cid)
+                return adoptKeyed(mine)
+            }
+            onCloudIdentity?(s.id, sid)
+        }
+        adoptKeyed(s)
+    }
+    private func adoptKeyed(_ s: ProactiveSuggestion) {
         if var existing = items[s.id] {
             // Codex PR90c #6: an existing card takes the cloud's newer success states (never loses one it had).
             let merged = ProactiveActionStates.mergeServer(existing: existing.serverActionStates, incoming: s.serverActionStates)
