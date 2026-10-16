@@ -11,6 +11,17 @@ enum DeviceToolContract {
     /// cannot create a second item. Compose / open-URL tools are never re-run automatically.
     static let idempotentTools: Set<String> = ["calendar_create", "reminder_create", "alarm_set", "calendar_list", "contacts_search", "places_search"]
 
+    /// chat-ux #7: tools that read private data and must never run without a tap, even if an older server says `confirm:none`.
+    static let tapRequiredTools: Set<String> = ["contacts_search"]
+    /// True when the card may run the call on appear (no user tap).
+    static func runsWithoutTap(tool: String, confirm: DeviceCall.Confirm) -> Bool { confirm == DeviceCall.Confirm.none && !tapRequiredTools.contains(tool) }
+    /// contacts_search result: name + up to 3 phones; emails only when the model asked (`include_email`). Pure, unit-tested.
+    static func minimalContact(name: String, phones: [String], emails: [String], includeEmail: Bool) -> [String: DeviceCallValue] {
+        var row: [String: DeviceCallValue] = ["name": .string(name), "phones": .list(Array(phones.prefix(3)))]
+        if includeEmail { row["emails"] = .list(Array(emails.prefix(2))) }
+        return row
+    }
+
     /// Embedded in notes of anything we write; looked up before writing again.
     static func callMarker(_ callID: String) -> String { "catpaw call_id=\(callID)" }
 
