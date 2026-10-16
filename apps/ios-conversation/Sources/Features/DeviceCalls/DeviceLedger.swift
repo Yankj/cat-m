@@ -22,20 +22,39 @@ enum DeviceLedgerRemoval: Equatable { case removed, notFound, removeFailed, perm
 /// EventKit removal seam (tests inject a fake; the app uses EKEventStore).
 @MainActor protocol DeviceLedgerItemStore: AnyObject {
     func remove(kind: DeviceLedgerEntry.Kind, itemID: String) -> DeviceLedgerRemoval
+    /// p89e-3: the ledger calls this one (call id available for a marker lookup); default forwards to the id-only form.
+    func remove(kind: DeviceLedgerEntry.Kind, itemID: String, callID: String) -> DeviceLedgerRemoval
 }
+extension DeviceLedgerItemStore {
+    func remove(kind: DeviceLedgerEntry.Kind, itemID: String, callID: String) -> DeviceLedgerRemoval { remove(kind: kind, itemID: itemID) }
+}
+/// p89e-3: an identifier that no longer resolves does NOT prove the item is gone (EventKit ids change when an item moves
+/// calendar / re-syncs — EKEvent.h). The real adapter therefore never reports `.notFound`:
+/// - id resolves → remove it;
+/// - events: id misses → search the call marker (our notes) in a ±400-day window; found → remove THAT item;
+/// - anything else (reminder id miss, marker not found, no permission, no readable calendars) → `.undetermined` / `.permissionRevoked`
+///   → the ledger keeps `.unknown` (never "already gone", never marked undone).
 @MainActor final class EventKitLedgerItemStore: DeviceLedgerItemStore {
-    private let store = EKEventStore()
-    func remove(kind: DeviceLedgerEntry.Kind, itemID: String) -> DeviceLedgerRemoval {
+    private let store: EKEventStore
+    init(store: EKEventStore = EKEventStore()) { self.store = store }
+    func remove(kind: DeviceLedgerEntry.Kind, itemID: String) -> DeviceLedgerRemoval { remove(kind: kind, itemID: itemID, callID: nil) }
+    func remove(kind: DeviceLedgerEntry.Kind, itemID: String, callID: String) -> DeviceLedgerRemoval { remove(kind: kind, itemID: itemID, callID: Optional(callID)) }
+    private func remove(kind: DeviceLedgerEntry.Kind, itemID: String, callID: String?) -> DeviceLedgerRemoval {
         let type: EKEntityType = kind == .reminder ? .reminder : .event
         guard EKEventStore.authorizationStatus(for: type) == .fullAccess else { return .permissionRevoked }
-        // A store with no readable sources (e.g. account / iCloud unavailable) cannot prove absence.
         guard !store.calendars(for: type).isEmpty else { return .undetermined }
         switch kind {
         case .reminder:
-            guard let r = store.calendarItem(withIdentifier: itemID) as? EKReminder else { return .notFound }
+            guard let r = store.calendarItem(withIdentifier: itemID) as? EKReminder else { return .undetermined }
             do { try store.remove(r, commit: true); return .removed } catch { return .removeFailed }
         case .event:
-            guard let e = store.event(withIdentifier: itemID) else { return .notFound }
+            var target = store.event(withIdentifier: itemID)
+            if target == nil, let callID {
+                let marker = DeviceToolContract.callMarker(callID), now = Date()
+                let window = store.predicateForEvents(withStart: now.addingTimeInterval(-400 * 86400), end: now.addingTimeInterval(400 * 86400), calendars: nil)
+                target = store.events(matching: window).first { $0.notes?.contains(marker) == true }
+            }
+            guard let e = target else { return .undetermined }
             do { try store.remove(e, span: .thisEvent, commit: true); return .removed } catch { return .removeFailed }
         }
     }
@@ -96,7 +115,7 @@ enum DeviceLedgerRemoval: Equatable { case removed, notFound, removeFailed, perm
         if entry.undone { return .alreadyGone }
         let outcome: DeviceUndoOutcome? = epoch.commit(token) {
             let o: DeviceUndoOutcome
-            switch items.remove(kind: entry.kind, itemID: entry.itemID) {
+            switch items.remove(kind: entry.kind, itemID: entry.itemID, callID: entry.id) {
             case .removed: o = .undone
             case .notFound: o = .alreadyGone
             case .removeFailed: o = .failed
