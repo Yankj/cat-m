@@ -608,7 +608,26 @@ public actor ConversationSessionService {
             catch { observeLog.info("observe stream error \(String(describing: error).prefix(120), privacy: .public)") /* fall back to the snapshot read below */ }
             await resilience?.settled()
         }
-        let observation = try await backend.observe(turn.request)
+        let observation: ConversationObservation
+        do { observation = try await backend.observe(turn.request); observeFailures[turn.id] = nil }
+        catch is CancellationError { throw CancellationError() }
+        catch {
+            // Self-heal: an `unknown` turn the server never shows us (POST failed before admission, 404, persistent
+            // read errors) must not block the conversation forever. After ~1 min of failed reads mark it failed
+            // (resend allowed); a real server turn that later becomes readable is still reconciled by its id.
+            let first = observeFailures[turn.id] ?? Date(); observeFailures[turn.id] = first
+            if turn.state == .unknown, Date().timeIntervalSince(first) > Self.unknownTurnGiveUpSeconds, active[conversationID] == observationToken {
+                observeLog.error("observe give up on unknown turn after \(Int(Date().timeIntervalSince(first)), privacy: .public)s")
+                var (session, revision) = try await readVersioned(scope: scope, conversationID: conversationID)
+                if let i = session.turns.firstIndex(where: { $0.id == turn.id }), session.turns[i].state == .unknown {
+                    session.turns[i].state = .failed; session.turns[i].error = Self.unknownTurnGaveUp
+                    try await save(session, expectedRevision: revision, fence: turn.request, observationToken: observationToken)
+                }
+                observeFailures[turn.id] = nil
+                return
+            }
+            throw error
+        }
         observeLog.info("observe snapshot server=\(observation.serverState ?? "nil", privacy: .public) events=\(observation.events.count, privacy: .public) approvals=\(observation.pendingApprovals.count, privacy: .public)")
         try Task.checkCancellation()
         guard active[conversationID] == observationToken else { throw CancellationError() }
@@ -620,6 +639,9 @@ public actor ConversationSessionService {
         if !observation.goals.isEmpty { var (current, revision) = try await readVersioned(scope: scope, conversationID: conversationID); for goal in observation.goals { try Self.merge(goal, into: &current) }; try await save(current, expectedRevision: revision, fence: turn.request, observationToken: observationToken) }
     }
     static let rateLimitedCode = "rate_limited"
+    static let unknownTurnGiveUpSeconds: TimeInterval = 60
+    static let unknownTurnGaveUp = "这条消息没能确认送达，已停止等待。可以重新发送。"
+    private var observeFailures: [UUID: Date] = [:]
     static let cancelledCode = "cancelled"
     static let waitingForNetwork = "等待网络 · 联网后自动发送"
     private static func isPlain(_ r: ConversationTurnRequest) -> Bool { r.continuation == nil && r.acceptedWork == nil && r.revisionWork == nil && r.image == nil }
