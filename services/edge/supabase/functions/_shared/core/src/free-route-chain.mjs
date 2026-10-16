@@ -9,9 +9,11 @@ import { Buffer } from 'node:buffer';
 import { ApiError, check, clone } from '../facade-r2/src/common.mjs';
 import { safeProviderFailure } from './provider-errors.mjs';
 import { sseData } from './openrouter-provider.mjs';
+import { GeminiInteractionsRoute, GeminiRateGuard, GEMINI_INTERACTIONS_ENDPOINT } from './gemini-interactions-route.mjs';
 
 export const FREE_ROUTE_CATALOG = Object.freeze({
-  gemini: Object.freeze({ id: 'gemini', provider: 'Google Gemini API (free tier)', endpoint: 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', model: 'gemini-3.5-flash-lite', secret: 'CATPAW_GEMINI_API_KEY', policy_url: 'https://ai.google.dev/gemini-api/terms', thinking_summary: true }),
+  // Gemini: Interactions API by default (docs' recommended interface since 2026-06); CATPAW_GEMINI_PROTOCOL=openai_compat keeps the old endpoint.
+  gemini: Object.freeze({ id: 'gemini', provider: 'Google Gemini API (free tier)', endpoint: GEMINI_INTERACTIONS_ENDPOINT, compat_endpoint: 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', protocol: 'interactions', model: 'gemini-3.5-flash-lite', secret: 'CATPAW_GEMINI_API_KEY', policy_url: 'https://ai.google.dev/gemini-api/terms', thinking_summary: true }),
   groq: Object.freeze({ id: 'groq', provider: 'Groq (free tier)', endpoint: 'https://api.groq.com/openai/v1/chat/completions', model: 'openai/gpt-oss-120b', secret: 'CATPAW_GROQ_API_KEY', policy_url: 'https://groq.com/privacy-policy', thinking_summary: false }),
   // Agnes AI (https://wiki.agnes-ai.com/en/docs/pricing.md, read 2026-10-15): agnes-3.0-flash and
   // agnes-2.5-flash are currently $0 (promo; list price $0.05/M in, $0.15/M out, $0.005/M cached).
@@ -39,10 +41,23 @@ export const currentRoutePreference = () => preferenceStore.getStore()?.preferen
 
 /** Build the consented route description from env. Only routes with an explicitly configured key are
  * enabled; returns null (frozen single OpenRouter route) unless a Gemini, Groq or Agnes key is deployed. */
+// Gemini switch CATPAW_GEMINI_ROUTE: off | primary | fallback (unset = fallback once CATPAW_GEMINI_API_KEY is set).
+// primary puts Gemini first in the default order; an explicit CATPAW_MODEL_ROUTE_ORDER always wins.
+export function readGeminiSwitch(get) {
+  const mode = String(get('CATPAW_GEMINI_ROUTE') ?? '').trim().toLowerCase() || 'fallback';
+  check(['off', 'primary', 'fallback'].includes(mode), 422, 'gemini_route_mode_invalid');
+  const protocol = String(get('CATPAW_GEMINI_PROTOCOL') ?? '').trim().toLowerCase() || 'interactions';
+  check(['interactions', 'openai_compat'].includes(protocol), 422, 'gemini_protocol_invalid');
+  const rpmText = get('CATPAW_GEMINI_RPM'); const rpm = rpmText ? Number(rpmText) : 10;
+  check(Number.isInteger(rpm) && rpm >= 1 && rpm <= 1000, 422, 'gemini_rpm_invalid');
+  return { mode, protocol, rpm };
+}
 export function readFreeRouteChain(get) {
-  const configuredOrder = (get('CATPAW_MODEL_ROUTE_ORDER') || DEFAULT_CHAIN_ORDER.join(',')).split(',').map(s => s.trim()).filter(Boolean);
+  const gemini = readGeminiSwitch(get);
+  const defaultOrder = gemini.mode === 'primary' ? ['gemini', ...DEFAULT_CHAIN_ORDER.filter(id => id !== 'gemini')] : DEFAULT_CHAIN_ORDER;
+  const configuredOrder = (get('CATPAW_MODEL_ROUTE_ORDER') || defaultOrder.join(',')).split(',').map(s => s.trim()).filter(Boolean);
   check(configuredOrder.every(id => Object.hasOwn(FREE_ROUTE_CATALOG, id)) && new Set(configuredOrder).size === configuredOrder.length, 422, 'model_route_order_invalid');
-  const routes = configuredOrder.filter(id => !!get(FREE_ROUTE_CATALOG[id].secret)).map(id => {
+  const routes = configuredOrder.filter(id => !!get(FREE_ROUTE_CATALOG[id].secret) && !(id === 'gemini' && gemini.mode === 'off')).map(id => {
     const r = FREE_ROUTE_CATALOG[id];
     const model = get(`CATPAW_${id.toUpperCase()}_MODEL`) || r.model;
     check(/^[A-Za-z0-9._:/-]{1,120}$/.test(model), 422, 'model_route_model_invalid');
@@ -50,7 +65,8 @@ export function readFreeRouteChain(get) {
     if (id === 'agnes') check(/^agnes-[0-9a-z.-]+$/.test(model), 422, 'model_route_model_invalid');
     const ms = name => { const v = get(`CATPAW_${id.toUpperCase()}_${name}_TIMEOUT_MS`); if (v === undefined || v === null || v === '') return undefined; check(/^[0-9]{4,6}$/.test(v), 422, 'model_route_timeout_invalid'); return Number(v); };
     const timeouts = Object.fromEntries([['firstEventMs', ms('FIRST_EVENT')], ['idleMs', ms('IDLE')], ['totalMs', ms('TOTAL')]].filter(([, v]) => v !== undefined));
-    return { id, provider: r.provider, endpoint: r.endpoint, model, policy_url: r.policy_url, billing: r.billing ?? 'free_tier', thinking_summary: r.thinking_summary && get('CATPAW_THINKING_SUMMARY') !== '0', ...Object.keys(timeouts).length ? { timeouts } : {} };
+    const geminiExtra = id === 'gemini' ? { protocol: gemini.protocol, rpm: gemini.rpm, image_input: gemini.protocol === 'interactions' } : {};
+    return { id, provider: r.provider, endpoint: id === 'gemini' && gemini.protocol === 'openai_compat' ? r.compat_endpoint : r.endpoint, model, ...geminiExtra, policy_url: r.policy_url, billing: r.billing ?? 'free_tier', thinking_summary: r.thinking_summary && get('CATPAW_THINKING_SUMMARY') !== '0', ...Object.keys(timeouts).length ? { timeouts } : {} };
   });
   // Chain only exists when an extra free route key is deployed; otherwise the frozen single route stays.
   if (!routes.length || !routes.some(r => r.id !== 'openrouter')) return null;
@@ -73,8 +89,8 @@ export function routeTimeouts(route, timeoutMs) {
 
 class OpenAICompatibleRoute {
   #secret;
-  constructor(route, secret, { fetchImpl = globalThis.fetch, maxTokens = 2048, timeoutMs = 20000 } = {}) {
-    this.route = route; this.#secret = secret; this.fetchImpl = fetchImpl; this.maxTokens = maxTokens; this.timeoutMs = timeoutMs;
+  constructor(route, secret, { fetchImpl = globalThis.fetch, maxTokens = 2048, timeoutMs = 20000, thinkingVisible = () => true } = {}) {
+    this.route = route; this.#secret = secret; this.fetchImpl = fetchImpl; this.maxTokens = maxTokens; this.timeoutMs = timeoutMs; this.thinkingVisible = thinkingVisible;
     this.timeouts = routeTimeouts(route, timeoutMs);
   }
   payload({ messages, system_prompt, tools }) {
@@ -118,7 +134,7 @@ class OpenAICompatibleRoute {
         const delta = c.delta ?? {};
         // Thought summary: Gemini marks thought parts; OpenRouter/Groq may use `reasoning`.
         const thought = delta.extra_content?.google?.thought === true ? delta.content : (typeof delta.reasoning === 'string' ? delta.reasoning : typeof delta.reasoning_content === 'string' ? delta.reasoning_content : null);
-        if (thought) { thoughtBytes += Buffer.byteLength(thought); emitted = true; if (thoughtBytes <= THOUGHT_MAX_BYTES) yield { type: 'thinking_delta', text: thought }; /* longer thinking still counts as activity; only the summary is capped */ }
+        if (thought) { thoughtBytes += Buffer.byteLength(thought); if (this.thinkingVisible()) emitted = true; /* hidden thinking is not user-visible output: a later timeout stays 'before output' and can fail over */ if (thoughtBytes <= THOUGHT_MAX_BYTES) yield { type: 'thinking_delta', text: thought }; /* longer thinking still counts as activity; only the summary is capped */ }
         else if (delta.content) {
           check(typeof delta.content === 'string', 503, 'invalid_provider_chunk');
           // Agnes (verified live 2026-10-15) streams `reasoning_content` then `\n\n` before the answer; drop leading blank text.
@@ -154,12 +170,18 @@ class OpenAICompatibleRoute {
   }
 }
 
+// One limiter per isolate so concurrent turns share the Gemini RPM budget and 429 cooldown.
+let geminiGuardSingleton = null;
+const sharedGeminiGuard = rpm => { if (!geminiGuardSingleton || geminiGuardSingleton.rpm !== rpm) geminiGuardSingleton = new GeminiRateGuard({ rpm }); return geminiGuardSingleton; };
 /** Provider port compatible with OpenRouterProvider (identity/reality/assertReady/stream). */
 export class FreeRouteChainProvider {
   #routes; #observations = [];
-  constructor({ routes, secrets, fetchImpl, timeoutMs = 20000, beforeStream = null, emitThinking = true, autoFailover = true, maxInPlaceRetrySeconds = 12 }) {
+  constructor({ routes, secrets, fetchImpl, timeoutMs = 20000, beforeStream = null, emitThinking = true, autoFailover = true, maxInPlaceRetrySeconds = 12, geminiGuard = null }) {
     check(Array.isArray(routes) && routes.length > 0, 503, 'not_configured');
-    this.#routes = routes.map(r => new OpenAICompatibleRoute(r, secrets[r.id], { fetchImpl, timeoutMs }));
+    const thinkingVisible = () => this.emitThinking && clientAcceptsReasoningSummary();
+    this.#routes = routes.map(r => r.id === 'gemini' && r.protocol === 'interactions'
+      ? new GeminiInteractionsRoute(r, secrets[r.id], { fetchImpl, timeouts: routeTimeouts(r, timeoutMs), guard: geminiGuard ?? sharedGeminiGuard(r.rpm), thinkingVisible })
+      : new OpenAICompatibleRoute(r, secrets[r.id], { fetchImpl, timeoutMs, thinkingVisible }));
     this.beforeStream = beforeStream; this.emitThinking = emitThinking; this.autoFailover = autoFailover; this.maxInPlaceRetrySeconds = maxInPlaceRetrySeconds;
     this.identity = { provider: 'free-route-chain', routes: routes.map(r => ({ id: r.id, model: r.model, endpoint: r.endpoint })), free_only: false, keyed_routes_only: true, billing: routes.map(r => ({ id: r.id, billing: r.billing ?? 'free_tier' })), max_tokens: 2048, adapter_version: 1 };
   }
