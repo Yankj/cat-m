@@ -489,6 +489,21 @@ final class NativeAuthApplicationLifecycleTests:XCTestCase {
         XCTAssertEqual(order.calls,[partition.subject.uuidString+"|"+partition.namespace],"every opened account repository reaches the at-rest hook")
     }
 
+    /// Codex PR91 v2-1: the PRODUCTION default migrator (no seam override) reaches the shared scheduler from the host's
+    /// repository open; the scheduler's trace line is the same text the unified log shows (category "atrest").
+    @MainActor func testPR91ProductionHostOpenSchedulesAtRestMigration() async throws {
+        let root=FileManager.default.temporaryDirectory.appendingPathComponent("native-pr91-atrest-host-"+UUID().uuidString,isDirectory:true)
+        defer {try? FileManager.default.removeItem(at:root)}
+        let app=try pr91Model(root:root),lines=PR91CallOrder(),scheduler=AtRestMigrationScheduler.shared
+        let savedDelays=scheduler.delays;scheduler.delays=[];scheduler.trace={lines.add($0)}
+        defer {scheduler.trace=nil;scheduler.delays=savedDelays}
+        let partition=AuthenticatedLocalPartition(issuer:"https://issuer.invalid",subject:UUID(),serverScopeID:UUID())
+        _=try await app.openAccountStores(partition:partition,directory:root.appendingPathComponent(partition.namespace,isDirectory:true),prepare:true)
+        XCTAssertEqual(lines.calls.first,"scheduled","the host open path schedules the at-rest migration through the production default")
+        await scheduler.waitIdle()
+        XCTAssertTrue(lines.calls.contains{ $0.hasPrefix("waiting sealer") || $0.hasPrefix("complete") },"scheduler ran an attempt: \(lines.calls)")
+    }
+
     /// Codex PR91 p91d-4: every launch path (local receipt, sign-in, offline trial, workspace) opens its repository via
     /// `openAccountStores`, so none can skip the hook. Guard against a new path calling the raw opener.
     func testPR91EveryRepositoryOpenGoesThroughTheAtRestHook() throws {

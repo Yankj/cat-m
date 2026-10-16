@@ -209,7 +209,7 @@ import AppIntents
                     AccountParkedDecisionSheet(items:auth.parkedPrompt) { auth.resolveParked($0) }
                 }
                 // L2 memory: per-user encrypted store follows the signed-in user (memory-layers.md).
-                .task(id:auth.state.user?.id) { AccountEpoch.shared.activate(account:auth.state.user?.id.uuidString); L2SecureStore.activate(userID:auth.state.user?.id); CatpawL2Sealing.install(); MemoryLibraryLocal.activate(userID:auth.state.user?.id); GenerativeBlockStore.shared.reloadFromL2(); MemoryCache.shared.reloadFromL2(); await MemoryCache.shared.sync() }
+                .task(id:auth.state.user?.id) { AccountEpoch.shared.activate(account:auth.state.user?.id.uuidString); L2SecureStore.activate(userID:auth.state.user?.id); CatpawL2Sealing.install(); AtRestMigrationScheduler.shared.sealerMayBeReady(); MemoryLibraryLocal.activate(userID:auth.state.user?.id); GenerativeBlockStore.shared.reloadFromL2(); MemoryCache.shared.reloadFromL2(); await MemoryCache.shared.sync() }
                 #if DEBUG
                 .overlay(alignment:.topTrailing) {
                     if auth.isFixture {
