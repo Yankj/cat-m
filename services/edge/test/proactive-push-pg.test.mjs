@@ -17,6 +17,20 @@ function rig(sql, apns, clock) {
   return { U, store, svc, call };
 }
 
+// Runs first: later tests flush every pending row (any user).
+test('pg: upgrade with old data — legacy rows seeded before 20261017020000/030000 are migrated', { skip: !url }, async () => {
+  const sql = postgres(url, { max: 2, prepare: false, onnotice: () => {} });
+  try {
+    const rows = await sql`select dedupe_key, push_state, push_error, push_recovered, push_generation, push_claim from proactive.events where dedupe_key like 'upgrade-seed-%' order by dedupe_key`;
+    assert.equal(rows.length, 3, 'seed present (scripts/pg-proactive-local.sh seeds before the PR90 migrations)');
+    const m = Object.fromEntries(rows.map(r => [r.dedupe_key, r]));
+    assert.deepEqual([m['upgrade-seed-pending'].push_state, m['upgrade-seed-pending'].push_generation], ['pending', 0], 'pending kept');
+    assert.equal(m['upgrade-seed-sent'].push_state, 'sent', 'terminal kept');
+    const s = m['upgrade-seed-sending'];
+    assert.deepEqual([s.push_state, s.push_error, s.push_recovered], ['failed', 'outcome_unknown_legacy', 'unknown'], 'a legacy sending row is resolved, never stuck');
+  } finally { await sql.end(); }
+});
+
 test('pg: migrations — sending state + generation/claim columns', { skip: !url }, async () => {
   const sql = postgres(url, { max: 2, prepare: false, onnotice: () => {} });
   try {
@@ -109,5 +123,67 @@ test('pg: daily cap counts by delivery day (deliver_at), not creation day', { sk
     const day = (s, e) => store.countDecisionsForDay(U, s, e, ['notify', 'interrupt']);
     assert.equal(await day('2026-10-15T16:00:00Z', '2026-10-16T16:00:00Z'), 2, 'charged to the fire day');
     assert.equal(await day('2026-10-14T16:00:00Z', '2026-10-15T16:00:00Z'), 0, 'not to the creation day');
+  } finally { await sql.end(); }
+});
+
+// ── Codex PR90g ────────────────────────────────────────────────────────────────────────────────────────────────
+test('pg: every pre-claim change is bound to the generation it read (setPush / deferPush / claimPush)', { skip: !url }, async () => {
+  const sql = postgres(url, { max: 3, prepare: false, onnotice: () => {} });
+  try {
+    const clock = { t: Date.parse('2026-10-15T02:00:00Z') }, { U, store, call } = rig(sql, { configured: true, send: async () => ({ ok: true }) }, clock);
+    await sql`insert into auth.users(id) values(${U})`;
+    const id = (await call('POST', '/catpaw/proactive/v1/evaluate', meeting())).body.event_id;
+    await sql`update proactive.events set push_generation = 1 where id = ${id}`;             // re-armed meanwhile
+    await store.setPush(id, 'no_device', null, 0); await store.deferPush(id, new Date(clock.t + 3600_000).toISOString(), 0);
+    assert.equal(await store.claimPush(id, null, 0), null, 'old generation cannot claim');
+    const r = (await sql`select push_state, push_after from proactive.events where id=${id}`)[0];
+    assert.equal(r.push_state, 'pending'); assert.equal(r.push_after, null);
+  } finally { await sql.end(); }
+});
+
+test('pg: a recovered claim cannot mark an attempt (stale sender blocked); unknown → outcome_unknown, never resent', { skip: !url }, async () => {
+  const sql = postgres(url, { max: 3, prepare: false, onnotice: () => {} });
+  try {
+    const clock = { t: Date.parse('2026-10-15T02:00:00Z') }, { U, store, call } = rig(sql, { configured: true, send: async () => ({ ok: true }) }, clock);
+    await sql`insert into auth.users(id) values(${U})`;
+    const a = (await call('POST', '/catpaw/proactive/v1/evaluate', meeting())).body.event_id, b = (await call('POST', '/catpaw/proactive/v1/evaluate', meeting())).body.event_id;
+    const t0 = '2026-10-15T02:00:00Z', later = '2026-10-15T02:10:00Z';
+    const ca = await store.claimPush(a, t0, 0), cb = await store.claimPush(b, t0, 0);
+    assert.equal(await store.markPushAttempt(b, cb.claim, t0), true);
+    await store.recoverStalePush(later, 120);
+    assert.equal(await store.markPushAttempt(a, ca.claim, later), false, 'recovered claim lost its licence');
+    const m = Object.fromEntries((await sql`select id, push_state, push_error, push_recovered from proactive.events where id in (${a}, ${b})`).map(r => [r.id, r]));
+    assert.equal(m[a].push_state, 'pending'); assert.equal(m[a].push_recovered, 'unsent');
+    assert.deepEqual([m[b].push_state, m[b].push_error, m[b].push_recovered], ['failed', 'outcome_unknown', 'unknown']);
+  } finally { await sql.end(); }
+});
+
+test('pg: retry budget per generation — resurface resets push_attempts', { skip: !url }, async () => {
+  const sql = postgres(url, { max: 3, prepare: false, onnotice: () => {} });
+  try {
+    const clock = { t: Date.parse('2026-10-15T02:00:00Z') }, { U, call } = rig(sql, { configured: true, send: async () => ({ ok: true }) }, clock);
+    await sql`insert into auth.users(id) values(${U})`;
+    const id = (await call('POST', '/catpaw/proactive/v1/evaluate', meeting())).body.event_id;
+    await call('POST', `/catpaw/proactive/v1/suggestions/${id}/action`, { action: 'snooze', operation_id: 'op-pg-b', minutes: 10 });
+    await sql`update proactive.events set push_attempts = 5, push_state = 'sent' where id = ${id}`;
+    await sql`select count(*) from proactive.resurface_snoozed_suggestions(${new Date(clock.t + 11 * 60_000).toISOString()}::timestamptz)`;
+    const r = (await sql`select push_state, push_attempts, push_generation from proactive.events where id=${id}`)[0];
+    assert.deepEqual([r.push_state, r.push_attempts, r.push_generation], ['pending', 0, 1]);
+  } finally { await sql.end(); }
+});
+
+test('pg: evidence — concurrent claims really ran on distinct server connections', { skip: !url }, async () => {
+  const sql = postgres(url, { max: 6, prepare: false, onnotice: () => {} });
+  try {
+    const clock = { t: Date.parse('2026-10-15T02:00:00Z') }, { U, call } = rig(sql, { configured: true, send: async () => ({ ok: true }) }, clock);
+    await sql`insert into auth.users(id) values(${U})`;
+    const id = (await call('POST', '/catpaw/proactive/v1/evaluate', meeting())).body.event_id;
+    const r = await Promise.all(Array.from({ length: 6 }, () => sql.begin(async t => {
+      const [p] = await t`select pg_backend_pid() pid`; await t`select pg_sleep(0.05)`;
+      const c = await t`update proactive.events set push_state='sending', push_claim=gen_random_uuid() where id=${id} and push_state='pending' returning push_claim`;
+      return { pid: p.pid, won: c.length === 1 };
+    })));
+    const pids = new Set(r.map(x => x.pid)); console.log(`pg-evidence: ${pids.size} backend pids ${[...pids].join(',')}; winners=${r.filter(x => x.won).length}`);
+    assert.ok(pids.size >= 2, 'multi-connection'); assert.equal(r.filter(x => x.won).length, 1);
   } finally { await sql.end(); }
 });
