@@ -362,9 +362,18 @@ final class CatpawAcceptanceUITests: XCTestCase {
         let field = input(app); field.tap(); Thread.sleep(forTimeInterval: 0.8); if !app.keyboards.firstMatch.exists { field.tap(); Thread.sleep(forTimeInterval: 0.8) }; if app.keyboards.firstMatch.exists { field.typeText("这是什么？") }
         let sends = app.buttons.matching(NSPredicate(format: "identifier == 'chat.send'")).allElementsBoundByIndex
         sends.first(where: { $0.isHittable })?.tap()
-        for l in ["允许此对话", "允许发送图片", "允许"] where app.buttons[l].waitForExistence(timeout: 3) { shot(app, "w2-v02-image-consent"); app.buttons[l].tap(); break }
+        for l in ["允许此对话", "允许"] where app.buttons[l].waitForExistence(timeout: 2) { app.buttons[l].tap(); break } // text consent if this chat is new
+        if sends.first(where: { $0.isHittable && $0.isEnabled }) != nil, !app.descendants(matching: .any)["image.consent.viewport"].exists { sends.first(where: { $0.isHittable && $0.isEnabled })?.tap() }
+        let allow = app.buttons["image.consent.allow"]
+        if allow.waitForExistence(timeout: 12) {
+            shot(app, "w2-v02-image-consent")
+            let ns = app.descendants(matching: .any)["image.consent.nonSensitive"]; if ns.exists { ns.tap(); Thread.sleep(forTimeInterval: 0.4) }
+            if !allow.isEnabled, ns.switches.firstMatch.exists { ns.switches.firstMatch.tap() }
+            allow.tap(); Thread.sleep(forTimeInterval: 2)
+        } else { shot(app, "w2-v02-no-image-consent") }
         let image = app.descendants(matching: .any).matching(identifier: "chat.message.image").firstMatch
         guard image.waitForExistence(timeout: 15) else { shot(app, "w2-v02b-no-image-message"); return }
+        Thread.sleep(forTimeInterval: 8); shot(app, "w2-v02c-image-in-message")
         image.tap(); Thread.sleep(forTimeInterval: 1); shot(app, "w2-v03-viewer")
         let save = app.buttons["chat.imageViewer.save"]
         if save.exists { save.tap(); Thread.sleep(forTimeInterval: 1.5); app.tap(); Thread.sleep(forTimeInterval: 1); shot(app, "w2-v04-viewer-saved") }
