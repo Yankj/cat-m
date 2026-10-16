@@ -7,7 +7,12 @@ export function createAgentMemoryStore() {
   return {
     _dump: () => ({ rows: [...rows.values()].map(c), settings: Object.fromEntries(settings), fragments: fragments.map(c) }),
     async getSettings(uid) { return settings.has(uid) ? c(settings.get(uid)) : null; },
-    async putSettings(uid, s) { settings.set(uid, c(s)); return c(s); },
+    async putSettings(uid, s) { const seq = settings.get(uid)?.use_memory_seq; settings.set(uid, c({ ...s, ...(seq !== undefined ? { use_memory_seq: seq } : {}) })); return c(s); },
+    /** Codex PR91 v3-2: atomic last-writer-by-sequence (null when `seq` is not newer than the stored one). */
+    async putSettingsIfNewer(uid, s, seq) {
+      const prev = settings.get(uid)?.use_memory_seq ?? 0; if (seq <= prev) return null;
+      settings.set(uid, c({ ...s, use_memory_seq: seq })); return c(s);
+    },
     async insert(uid, row) {
       for (const r of rows.values()) if (r.user_id === uid && row.operation_id && r.operation_id === row.operation_id) return { row: c(r), created: false };
       const full = { ...c(row), user_id: uid }; rows.set(full.id, full); return { row: c(full), created: true };

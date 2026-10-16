@@ -118,7 +118,15 @@ export function createAgentMemoryService({ store, allow = () => false, verifyUse
     const next = { ...s, ...patch.consent === true ? { consented_at: s.consented_at ?? iso() } : {} };
     if (patch.use_memory !== undefined) next.use_memory = patch.use_memory; if (patch.auto_save !== undefined) next.auto_save = patch.auto_save;
     if ((next.use_memory || next.auto_save) && !next.consented_at) throw bad('memory_consent_required', 409);
-    delete next.consent; return store.putSettings(uid, next);
+    delete next.consent;
+    // Codex PR91 v3-2: with a choice sequence the write is conditional and atomic in the store — an older choice that
+    // reaches the server late (client timed out, server still ran it) can never overwrite a newer one.
+    if (patch.use_memory_seq !== undefined) {
+      delete next.use_memory_seq;
+      const applied = await store.putSettingsIfNewer(uid, next, patch.use_memory_seq);
+      return applied ? { ...applied, use_memory_seq: patch.use_memory_seq } : { ...(await settings(uid)), stale: true };
+    }
+    delete next.use_memory_seq; return store.putSettings(uid, next);
   }
   const json = (status, body) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
   async function body(req) { const t = await req.text(); if (t.length > 8000) throw bad('request_too_large', 413); try { return t ? JSON.parse(t) : {}; } catch { throw bad('json_invalid', 400); } }

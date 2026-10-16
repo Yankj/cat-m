@@ -30,7 +30,14 @@ export function validateToolArgs(name, a) {
   if (name === 'memory_forget') { exact(a, ['ids', 'query']); const ids = a.ids !== undefined, q = a.query !== undefined; if (ids === q) throw bad('memory_schema_invalid'); if (ids && !(Array.isArray(a.ids) && a.ids.length >= 1 && a.ids.length <= LIMITS.forget_max && a.ids.every(isUUID))) throw bad('memory_schema_invalid'); if (q && !str(a.query, 200)) throw bad('memory_schema_invalid'); return; }
   throw bad('memory_schema_invalid');
 }
-export function validateSettingsPatch(a) { exact(a, ['use_memory', 'auto_save', 'consent']); if (Object.values(a).some(v => typeof v !== 'boolean') || !Object.keys(a).length) throw bad('memory_schema_invalid'); return a; }
+export function validateSettingsPatch(a) {
+  exact(a, ['use_memory', 'auto_save', 'consent', 'use_memory_seq']);
+  const { use_memory_seq: seq, ...flags } = a;
+  if (Object.values(flags).some(v => typeof v !== 'boolean') || !Object.keys(flags).length) throw bad('memory_schema_invalid');
+  // Codex PR91 v3-2: client choice sequence for the 使用记忆 switch (last writer by sequence wins). Needs use_memory.
+  if (seq !== undefined && (!Number.isSafeInteger(seq) || seq <= 0 || flags.use_memory === undefined)) throw bad('memory_schema_invalid');
+  return a;
+}
 /** Rough token estimate: CJK ≈ 1 token per char, other text ≈ 4 chars per token. */
 export function estimateTokens(text) { let cjk = 0; for (const ch of text) if (/[\u3000-\u9fff\uac00-\ud7af\uff00-\uffef]/.test(ch)) cjk++; return cjk + Math.ceil((text.length - cjk) / 4); }
 /** Lexical terms: lowercase words plus CJK bigrams (fallback when no embedding provider is configured). */
