@@ -546,22 +546,40 @@ final class CatpawAcceptanceUITests: XCTestCase {
             if let v = f.value as? String, !v.isEmpty, app.keyboards.firstMatch.exists { f.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: min(v.count + 4, 80))) }
         }
         func waitComposerIdle(timeout: TimeInterval = 45) {
-            // reply-chrome: while streaming, send morphs to chat.stop — wait it out before typing/sending.
+            // reply-chrome / DictationControls: while streaming, trailing control is chat.stop (empty draft)
+            // or chat.send-as-queue. Idle empty draft shows mic — that is fine; do not demand chat.send.
             let deadline = Date().addingTimeInterval(timeout)
             while Date() < deadline {
-                let stopping = app.buttons["chat.stop"].exists
-                let sendReady = app.buttons["chat.send"].firstMatch.exists || app.buttons["chat.composer.send"].firstMatch.exists
-                if !stopping && sendReady { return }
+                if !app.buttons["chat.stop"].exists { return }
                 Thread.sleep(forTimeInterval: 0.5)
             }
         }
+        func pasteAsk(_ text: String) {
+            let field = input(app)
+            field.tap(); Thread.sleep(forTimeInterval: 0.5)
+            // Chinese asks: prefer paste — typeText often drops CJK or never fills the draft (then mic stays, no chat.send).
+            UIPasteboard.general.string = text
+            field.press(forDuration: 1.0)
+            if app.menuItems["粘贴"].waitForExistence(timeout: 2) { app.menuItems["粘贴"].tap() }
+            else if app.menuItems["Paste"].waitForExistence(timeout: 1) { app.menuItems["Paste"].tap() }
+            else if app.keyboards.firstMatch.exists { field.typeText(text) }
+            Thread.sleep(forTimeInterval: 0.6)
+        }
         func tapSend() {
             waitComposerIdle()
-            Thread.sleep(forTimeInterval: 0.4)
-            let sends = app.buttons.matching(NSPredicate(format: "identifier == 'chat.send' OR identifier == 'chat.composer.send'")).allElementsBoundByIndex
-            if let s = sends.first(where: { $0.isHittable && $0.isEnabled }) { s.tap(); return }
-            if app.buttons["chat.send"].firstMatch.exists { app.buttons["chat.send"].firstMatch.tap(); return }
-            app.buttons["chat.composer.send"].firstMatch.tap()
+            // Draft must be non-empty for DictationControls to show chat.send (else mic/voice only).
+            let deadline = Date().addingTimeInterval(20)
+            while Date() < deadline {
+                let sends = app.buttons.matching(NSPredicate(format: "identifier == 'chat.send'")).allElementsBoundByIndex
+                if let s = sends.first(where: { $0.exists && $0.isHittable && $0.isEnabled }) { s.tap(); return }
+                if app.buttons["chat.composer.send"].firstMatch.exists,
+                   app.buttons["chat.composer.send"].firstMatch.isHittable,
+                   app.buttons["chat.composer.send"].firstMatch.isEnabled {
+                    app.buttons["chat.composer.send"].firstMatch.tap(); return
+                }
+                Thread.sleep(forTimeInterval: 0.4)
+            }
+            XCTFail("chat.send never became hittable — draft may still be empty after paste/type")
         }
         /// Wait until the composer draft is empty (send accepted) or give up.
         func waitDraftCleared(timeout: TimeInterval = 12) -> Bool {
@@ -590,10 +608,7 @@ final class CatpawAcceptanceUITests: XCTestCase {
         }
         clearDraft()
         waitComposerIdle(timeout: 30)
-        let field = input(app); field.tap(); Thread.sleep(forTimeInterval: 0.8)
-        if !app.keyboards.firstMatch.exists { field.tap(); Thread.sleep(forTimeInterval: 0.8) }
-        if app.keyboards.firstMatch.exists { field.typeText(ask) }
-        else { UIPasteboard.general.string = ask; field.press(forDuration: 1.0); if app.menuItems["粘贴"].waitForExistence(timeout: 2) { app.menuItems["粘贴"].tap() } else if app.menuItems["Paste"].waitForExistence(timeout: 1) { app.menuItems["Paste"].tap() } }
+        pasteAsk(ask)
         tapSend()
         // If the draft never cleared, send did not land — retry once (common after consent sheet).
         if !waitDraftCleared(timeout: 8) { tapSend(); _ = waitDraftCleared(timeout: 8) }
