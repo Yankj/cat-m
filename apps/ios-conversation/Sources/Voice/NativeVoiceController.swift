@@ -100,7 +100,7 @@ private final class DictationLevelMeter: @unchecked Sendable {
         do {
             audioNotifications.begin()
             let audio = AVAudioSession.sharedInstance(); try audio.setCategory(.record, mode: .measurement, options: []); try audio.setActive(true)
-            let req = SFSpeechAudioBufferRecognitionRequest(); req.requiresOnDeviceRecognition = true; req.shouldReportPartialResults = true; request = req
+            let req = SFSpeechAudioBufferRecognitionRequest(); req.requiresOnDeviceRecognition = true; req.shouldReportPartialResults = true; req.addsPunctuation = true; request = req
             let input = engine.inputNode; let format = input.outputFormat(forBus: 0)
             guard format.sampleRate > 0, format.channelCount > 0 else { throw CatpawError.unavailable("麦克风音频格式不可用。") }
             speechTask = recognizer.recognitionTask(with: req) { [weak self] result, error in
@@ -234,6 +234,7 @@ private final class DictationLevelMeter: @unchecked Sendable {
             try audio.setCategory(.record, mode: .measurement, options: [.duckOthers])
             try audio.setActive(true, options: .notifyOthersOnDeactivation)
             let req = SFSpeechAudioBufferRecognitionRequest(); req.requiresOnDeviceRecognition = true; req.shouldReportPartialResults = true
+            req.addsPunctuation = true   // iOS 16+: 。，？ instead of one unpunctuated run
             dictationRequest = req
             let input = engine.inputNode
             let format = input.outputFormat(forBus: 0)   // read after activation so it matches the live hardware route
