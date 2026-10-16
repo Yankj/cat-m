@@ -30,6 +30,7 @@ import UserNotifications
     static func local(_ h: Int, _ m: Int = 0, day: Int = 15) -> Date { Calendar.current.date(from: DateComponents(year: 2026, month: 10, day: day, hour: h, minute: m))! }
     static let day = local(10), night = local(23, 30)
     private var calls: [String] = []
+    private var savedBackend: (any ProactiveSuggestionBackend)?
 
     override func setUp() async throws {
         ProactiveClock.now = { Self.day }
@@ -43,6 +44,8 @@ import UserNotifications
         AccountEpoch.shared.activate(account: "XCTEST-A")
         ProactiveEngine.shared.claimData(for: "XCTEST-A", force: true)   // clean inbox/ledgers, owned by this account
         ProactiveEngine.shared.resetLedger()
+        savedBackend = ProactiveSuggestionHub.backend; ProactiveSuggestionHub.backend = ProactiveLocalBackend()   // PR90g: the real UI path
+        ProactiveSuggestionStore.shared.resetForAccountChange()
     }
     override func tearDown() async throws {
         if let saved { ProactiveEngine.shared.delivery.poster = saved }
@@ -53,6 +56,7 @@ import UserNotifications
         UserDefaults.standard.removeObject(forKey: ProactiveQuarantine.key)
         AccountEpoch.shared.signOut()
         ProactiveClock.now = { Date() }
+        if let savedBackend { ProactiveSuggestionHub.backend = savedBackend }
     }
     private func signal(_ id: String, inMinutes m: Double = 8) -> ProactiveSignal {
         ProactiveSignal(source: .simulated, eventID: id + UUID().uuidString, title: "XCTest 会议", start: ProactiveClock.now().addingTimeInterval(m * 60), place: "")
@@ -328,20 +332,54 @@ import UserNotifications
         let tok = try XCTUnwrap(AccountEpoch.shared.capture())
         let original = [ProactiveDeliveryPipeline.scoped(firstBase, tok), firstBase]
         XCTAssertFalse(poster.removed.contains { original.contains($0) }, "the original snooze notification is kept (removed: \(poster.removed))")
+        XCTAssertFalse(poster.removed.isEmpty, "the rejected new request itself is cleaned up")
         XCTAssertTrue(poster.removed.allSatisfy { $0.contains("-snooze-n2") }, "only the rejected new request is cleaned up")
         let stored = try XCTUnwrap(ProactiveLocalBackend.load()[c.id])
         XCTAssertEqual(stored.taken, first.taken, "history unchanged"); XCTAssertEqual(stored.effectiveStatus, .snoozed)
         XCTAssertEqual(ProactiveEngine.shared.syncQueue.items.filter { $0.op.local == c.id }.map(\.op.operationID), ["op-\(c.id)-snooze"], "nothing synced for the failed one")
         XCTAssertEqual(ProactiveEngine.shared.delivery.quota().entries[firstBase]?.state, .reserved, "the original keeps its slot")
     }
-    func testUndoRecordsAFailedReArm() async throws {
+    // MARK: Codex PR90g #2 — a failed re-arm is visible: through the store (UI path) the card is actionable again,
+    // the outcome is recorded and persisted, and the store shows an error. Three failure kinds.
+    private func undoAfterDismissedSnooze(until: Date) async throws -> ProactiveSuggestion {
         let id = "xctest-undofail-" + UUID().uuidString
         let s = ProactiveSuggestion(id: id, title: "t", reason: "r", actions: [.snooze, .dismiss], status: .dismissed, createdAt: Self.day,
-                                    taken: [.init(action: .snooze, at: Self.day, detail: ProactiveUndo.snoozeDetail(until: Self.day.addingTimeInterval(600), intent: "op-\(id)-snooze")), .init(action: .dismiss, at: Self.day)])
+                                    taken: [.init(action: .snooze, at: Self.day, detail: ProactiveUndo.snoozeDetail(until: until, intent: "op-\(id)-snooze")), .init(action: .dismiss, at: Self.day)])
         ProactiveSuggestionStore.shared.adopt(s); ProactiveLocalBackend.save(s)
+        await ProactiveSuggestionStore.shared.undo(s)                       // what the card's undo button calls
+        return try XCTUnwrap(ProactiveSuggestionStore.shared.items[id])
+    }
+    private func assertVisibleFailure(_ after: ProactiveSuggestion, _ prefix: String, file: StaticString = #filePath, line: UInt = #line) {
+        XCTAssertTrue(ProactiveUndo.restoreOutcome(detail: after.taken?.last?.detail)?.hasPrefix(prefix) == true, "outcome recorded: \(String(describing: after.taken?.last?.detail))", file: file, line: line)
+        XCTAssertEqual(after.effectiveStatus, .pending, "not silently shown as snoozed", file: file, line: line)
+        XCTAssertTrue(after.snoozeRestoreFailed, file: file, line: line)
+        XCTAssertEqual(ProactiveLocalBackend.load()[after.id]?.effectiveStatus, .pending, "persisted", file: file, line: line)
+        XCTAssertNotNil(ProactiveSuggestionStore.shared.errorKey, "the user is told", file: file, line: line)
+    }
+    func testUndoRestoreRefusedIsVisible() async throws {
         poster.addResult = false
-        let after = try await ProactiveLocalBackend().undo(id)
-        XCTAssertEqual(ProactiveUndo.restoreOutcome(detail: after.taken?.last?.detail), "refused:system_rejected", "a re-arm the system rejected is visible, not silently 'snoozed'")
+        assertVisibleFailure(try await undoAfterDismissedSnooze(until: Self.day.addingTimeInterval(600)), "refused")
+    }
+    func testUndoRestoreCardOnlyIsVisible() async throws {
+        ProactiveClock.now = { Self.night }
+        assertVisibleFailure(try await undoAfterDismissedSnooze(until: Self.night.addingTimeInterval(600)), "cardOnly")
+    }
+    func testUndoRestoreExpiredIsVisible() async throws {
+        assertVisibleFailure(try await undoAfterDismissedSnooze(until: Self.day.addingTimeInterval(-60)), "expired")
+    }
+    func testUndoRestorePostedStaysSnoozedWithoutError() async throws {
+        let after = try await undoAfterDismissedSnooze(until: Self.day.addingTimeInterval(600))
+        XCTAssertEqual(after.effectiveStatus, .snoozed); XCTAssertFalse(after.snoozeRestoreFailed); XCTAssertNil(ProactiveSuggestionStore.shared.errorKey)
+    }
+    /// PR90g #3: a cloud snooze without a device detail re-arms at the cloud's own until, not "at + 10 min".
+    func testUndoUsesTheCloudUntil() async throws {
+        let id = "xctest-cu-" + UUID().uuidString, until = Self.day.addingTimeInterval(3 * 3600)
+        let s = ProactiveSuggestion(id: id, title: "t", reason: "r", actions: [.snooze, .dismiss], status: .dismissed, createdAt: Self.day,
+                                    taken: [.init(action: .snooze, at: Self.day, until: until), .init(action: .dismiss, at: Self.day)])
+        ProactiveSuggestionStore.shared.adopt(s); ProactiveLocalBackend.save(s)
+        await ProactiveSuggestionStore.shared.undo(s)
+        let add = try XCTUnwrap(poster.adds.last)
+        XCTAssertEqual(add.fireAt?.timeIntervalSince1970 ?? 0, until.timeIntervalSince1970, accuracy: 1)
     }
     func testQuietHoursAtFixedNightInstant() async throws {
         ProactiveClock.now = { Self.night }
@@ -391,5 +429,53 @@ import UserNotifications
         let handled = await ProactiveEngine.shared.handleNotification(actionIdentifier: ProactiveEngine.notNowAction,
                                                                       userInfo: ["catpaw_proactive_id": "evt-a", "catpaw": ["kind": "proactive_decision", "account": "XCTEST-A", "event_id": "E1"]])
         XCTAssertTrue(handled); XCTAssertEqual(ProactiveLocalBackend.load().count, before)
+    }
+
+    // MARK: Codex PR90g #1 — per-record evidence: one proven record never releases another.
+    func testQuarantineReleasesOnlyTheProvenRecord() async throws {
+        let mine = card("xctest-qa-"), other = card("xctest-qb-")
+        ProactiveLocalBackend.save(mine); ProactiveLocalBackend.save(other)
+        ProactiveEngine.shared.syncQueue.enqueue(.init(local: mine.id, action: "dismiss", operationID: "op-qa"), key: "op-qa", account: "XCTEST-A", group: mine.id)
+        ProactiveEngine.shared.syncQueue.enqueue(.init(local: other.id, action: "dismiss", operationID: "op-qb"), key: "op-qb", account: "XCTEST-OTHER", group: other.id)
+        UserDefaults.standard.set([mine.id: "srv-qa", other.id: "srv-qb"], forKey: "catpaw.proactive.serverIDs.v1")
+        UserDefaults.standard.removeObject(forKey: ProactiveDataOwner.key)
+        ProactiveEngine.shared.claimData(for: "XCTEST-A")
+        XCTAssertTrue(ProactiveEngine.shared.hasQuarantine)
+        var probed: [String] = []
+        ProactiveEngine.shared.serverProbe = { id, _ in probed.append(id); return false }
+        let v = await ProactiveEngine.shared.reconcileQuarantine()
+        XCTAssertEqual(v, .release)
+        XCTAssertEqual(probed, ["srv-qb"], "only the unproven record is probed, by its own server id")
+        let inbox = ProactiveLocalBackend.load()
+        XCTAssertNotNil(inbox[mine.id], "A's own record released"); XCTAssertNil(inbox[other.id], "the other record stays quarantined")
+        XCTAssertEqual(ProactiveEngine.shared.serverIDs[mine.id], "srv-qa"); XCTAssertNil(ProactiveEngine.shared.serverIDs[other.id])
+        XCTAssertTrue(ProactiveEngine.shared.syncQueue.contains(key: "op-qa")); XCTAssertFalse(ProactiveEngine.shared.syncQueue.contains(key: "op-qb"))
+        XCTAssertTrue(ProactiveEngine.shared.hasQuarantine, "remainder kept")
+        // Later the cloud confirms the other one under this account → released on its own evidence.
+        ProactiveEngine.shared.serverProbe = { id, _ in id == "srv-qb" }
+        _ = await ProactiveEngine.shared.reconcileQuarantine()
+        XCTAssertNotNil(ProactiveLocalBackend.load()[other.id]); XCTAssertFalse(ProactiveEngine.shared.hasQuarantine)
+        XCTAssertFalse(ProactiveEngine.shared.syncQueue.contains(key: "op-qb"), "another account's write-back never re-bound")
+    }
+
+    // MARK: Codex PR90g #5 — the real UNUserNotificationCenter: owner cleanup through the real sign-in entry (no fake inventory).
+    func testRealNotificationCenterOwnerCleanup() async throws {
+        ProactiveEngine.registerAccountObserver()
+        ProactiveEngine.shared.inventory = SystemNotificationInventory()
+        let center = UNUserNotificationCenter.current(), b = UUID(), tag = UUID().uuidString
+        func request(_ id: String, _ account: String) -> UNNotificationRequest {
+            let c = UNMutableNotificationContent(); c.title = "xctest"
+            c.userInfo = ["catpaw_proactive_id": id, ProactiveAccountGate.accountKey: account, ProactiveAccountGate.epochKey: "1"]
+            return UNNotificationRequest(identifier: id, content: c, trigger: UNTimeIntervalNotificationTrigger(timeInterval: 3600, repeats: false))
+        }
+        let aID = "xctest-real-a-" + tag, bID = "xctest-real-b-" + tag
+        try await center.add(request(aID, "XCTEST-A")); try await center.add(request(bID, b.uuidString))
+        let before = await center.pendingNotificationRequests().map(\.identifier)
+        XCTAssertTrue(before.contains(aID) && before.contains(bID), "both really pending in the system center: \(before)")
+        await login(b)
+        let after = await center.pendingNotificationRequests().map(\.identifier)
+        XCTAssertFalse(after.contains(aID), "A's pending request removed from the real center")
+        XCTAssertTrue(after.contains(bID), "B's kept")
+        center.removePendingNotificationRequests(withIdentifiers: [bID])
     }
 }
