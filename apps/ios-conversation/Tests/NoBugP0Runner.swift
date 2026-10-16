@@ -39,7 +39,7 @@ import Foundation
     static func expect(_ ok: Bool, _ m: String) { if ok { passed += 1; print("PASS \(m)") } else { failed += 1; print("FAIL \(m)") } }
 
     static func main() async {
-        await memory(); await deviceCalls(); proactive(); nearby(); groundedFixtures(); contactsPrivacy(); replyVariants(); followUps(); await deviceUndo(); dictation(); codexP0_3()
+        await memory(); await deviceCalls(); proactive(); nearby(); groundedFixtures(); contactsPrivacy(); replyVariants(); followUps(); await deviceUndo(); dictation(); codexP0_3(); codexP0_3Matrix()
         print("nobug-p0 portable: \(passed) passed, \(failed) failed")
         exit(failed == 0 ? 0 : 1)
     }
@@ -361,4 +361,31 @@ import Foundation
         expect(ProactiveLevel(server: "notify") == .notify && ProactiveLevel(server: "bogus") == .card && ProactiveLevel(server: "silent") == .silent, "codex P0-3 server level parsed, unknown → card (never louder)")
     }
 
+    /// Codex P0-3 acceptance matrix: night / daily cap / low confidence / offline — actual system notifications == decision.
+    /// Covers both delivery paths: in-app evaluation and the pre-scheduled (app killed / offline) notification.
+    static func codexP0_3Matrix() {
+        var cal = Calendar(identifier: .gregorian); cal.timeZone = TimeZone(identifier: "Asia/Shanghai")!
+        let noon = cal.date(from: DateComponents(year: 2026, month: 10, day: 16, hour: 12))!
+        let night = cal.date(from: DateComponents(year: 2026, month: 10, day: 16, hour: 23, minute: 30))!
+        let cap = ProactiveRules.dailyNotifyCap
+        // (name, server level or nil = offline local rules → notify, at, deliveredToday, expected system notification)
+        let rows: [(String, String?, Date, Int, Bool)] = [
+            ("day notify", "notify", noon, 0, true), ("day card", "card", noon, 0, false),
+            ("night notify", "notify", night, 0, false), ("night interrupt", "interrupt", night, 0, false),
+            ("cap reached", "notify", noon, cap, false), ("low confidence (server silent)", "silent", noon, 0, false),
+            ("offline day", nil, noon, 0, true), ("offline night", nil, night, 0, false), ("offline cap", nil, noon, cap, false),
+        ]
+        var sent = 0, decided = 0
+        for (name, server, at, n, want) in rows {
+            let level = server.map { ProactiveLevel(server: $0) } ?? .notify
+            let d = ProactiveRules.delivery(level: level, now: at, deliveredToday: n, calendar: cal)
+            expect(d.systemNotification == want, "codex P0-3 matrix \(name)")
+            sent += d.systemNotification ? 1 : 0; decided += want ? 1 : 0
+        }
+        expect(sent == decided && sent == 2, "codex P0-3 matrix: notifications sent (\(sent)) == decided (\(decided))")
+        // Pre-scheduled path (fires while the app is killed / offline) obeys the same gate at its fire time.
+        expect(ProactiveRules.prescheduleAllowed(fire: noon, deliveredToday: 0, calendar: cal), "codex P0-3 preschedule daytime allowed")
+        expect(!ProactiveRules.prescheduleAllowed(fire: night, deliveredToday: 0, calendar: cal), "codex P0-3 preschedule never fires in quiet hours")
+        expect(!ProactiveRules.prescheduleAllowed(fire: noon, deliveredToday: cap, calendar: cal), "codex P0-3 preschedule respects the daily cap")
+    }
 }
