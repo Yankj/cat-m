@@ -381,6 +381,76 @@ final class NativeAuthApplicationLifecycleTests:XCTestCase {
         }
         throw LifecycleFailure(message:"Named offline lifecycle gate did not reach its expected state.")
     }
+    /// Codex p89g-2: logout completes while the FIRST detached local read (receipt + vault) is suspended. The read returns
+    /// old credentials/receipt afterwards; the open must end there (lifecycle snapshot taken at entry), never attach.
+    /// Counter-run (no logout) proves the same path attaches, so the refusal is not vacuous.
+    @MainActor func testLogoutDuringFirstLocalReadNeverAttachesOldChat() async throws {
+        for logout in [true,false] {
+            let root=FileManager.default.temporaryDirectory.appendingPathComponent("native-first-read-"+UUID().uuidString,isDirectory:true)
+            defer {try? FileManager.default.removeItem(at:root);NativeAuthApplicationModel.afterLocalReadHook=nil}
+            let scope=UUID(),subject=UUID(),clock=LifecycleClock(),storage=LifecycleStorage()
+            let configuration=try lifecycleConfiguration(scope:scope)
+            let remote=LifecycleRemote(issuer:configuration.issuer,subject:subject,clock:clock)
+            // Seed a returning user: signed in once → local receipt + store on disk, credential in the vault.
+            let seed=NativeAuthApplicationModel(configuration:configuration,manager:NativeAuthSessionManager(configuration:configuration,remote:remote,vault:storage,barrier:storage,now:{clock.now()}),vault:storage,barrier:storage,root:root)
+            await seed.start();await seed.signIn(email:"synthetic@example.invalid",password:"fixture-only")
+            try await waitUntil {seed.chat != nil}
+            _=await seed.chat?.deactivate()
+            let gate=LifecycleLocalDrainGate()
+            var reached=false
+            NativeAuthApplicationModel.afterLocalReadHook={reached=true;await gate.hold()}
+            let app=NativeAuthApplicationModel(configuration:configuration,manager:NativeAuthSessionManager(configuration:configuration,remote:remote,vault:storage,barrier:storage,now:{clock.now()}),vault:storage,barrier:storage,root:root)
+            let startup=Task {@MainActor in await app.start()}
+            try await waitUntil {reached}
+            XCTAssertNil(app.chat,"suspended inside the first read")
+            if logout {
+                await app.signOut()
+                NativeAuthApplicationModel.afterLocalReadHook=nil
+                await gate.release();await startup.value
+                XCTAssertNil(app.chat,"the stale first read never re-attaches after logout")
+                XCTAssertEqual(app.state.phase,.signedOut)
+            } else {
+                NativeAuthApplicationModel.afterLocalReadHook=nil
+                await gate.release()
+                try await waitUntil {app.chat != nil}
+                XCTAssertEqual(app.chat?.trustedSubjectID,subject,"counter-run: the same read path attaches when nothing changed")
+                await startup.value
+                await app.signOut()
+            }
+        }
+    }
+
+    /// Codex p89g-2: the offline-trial "upgrade when the network returns" task is owned and cancelled by logout, and bound
+    /// to its lifecycle epoch: network returning AFTER logout never starts an experience. Counter-run proves the path fires.
+    @MainActor func testLogoutCancelsOfflineRecoveryTaskBeforeNetworkReturns() async throws {
+        defer {NativeAuthApplicationModel.offlineRecoveryWillStartExperience=nil}
+        for logout in [true,false] {
+            let root=FileManager.default.temporaryDirectory.appendingPathComponent("native-offline-recovery-"+UUID().uuidString,isDirectory:true)
+            defer {try? FileManager.default.removeItem(at:root)}
+            let scope=UUID(),subject=UUID(),clock=LifecycleClock(),storage=LifecycleStorage()
+            let configuration=try lifecycleConfiguration(scope:scope)
+            let remote=LifecycleRemote(issuer:configuration.issuer,subject:subject,clock:clock)
+            let manager=NativeAuthSessionManager(configuration:configuration,remote:remote,vault:storage,barrier:storage,now:{clock.now()})
+            let monitor=ConnectionMonitor(start:false);monitor.pathChanged(false)
+            let app=NativeAuthApplicationModel(configuration:configuration,manager:manager,vault:storage,barrier:storage,root:root,connectionMonitor:monitor)
+            var fired=0
+            NativeAuthApplicationModel.offlineRecoveryWillStartExperience={fired += 1}
+            await app.openOfflineTrialChat(configuration:configuration)
+            XCTAssertNotNil(app.chat);let recovery=try XCTUnwrap(app.offlineRecoveryTask)
+            if logout {
+                await app.signOut()
+                XCTAssertNil(app.offlineRecoveryTask,"logout owns and cancels the recovery task")
+                monitor.pathChanged(true)
+                await recovery.value
+                XCTAssertEqual(fired,0,"network returning after logout never starts an experience")
+            } else {
+                monitor.pathChanged(true)
+                await recovery.value
+                XCTAssertEqual(fired,1,"counter-run: the recovery path really reaches startExperience")
+            }
+        }
+    }
+
     private func lifecycleConfiguration(scope:UUID) throws ->NativeAuthConfiguration {
         try NativeAuthConfiguration(projectURL:URL(string:"https://abcdefghijklmnopqrst.supabase.co")!,publishableKey:"sb_publishable_offline_lifecycle_test",backendOrigin:URL(string:"https://backend.example.invalid")!,serverScopeID:scope)
     }

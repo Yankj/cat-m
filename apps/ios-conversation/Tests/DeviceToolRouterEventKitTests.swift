@@ -20,7 +20,7 @@ import EventKit
     // Isolated barrier: the test HOST app runs its own auth lifecycle on AccountEpoch.shared (passive invalidation signs
     // it out when the host has no session), which would race these tests. The gate/router/store all read DeviceCallGate.epoch.
     override func setUp() async throws { DeviceCallGate.epoch = AccountEpoch(account: "xctest-user"); DeviceCallGate.reset() }
-    override func tearDown() async throws { DeviceCallGate.reset(); DeviceCallGate.epoch = .shared; DeviceCallHub.executor = DeviceToolExecutorStub(); DeviceCallHub.submitter = DeviceResultSubmitterStub() }
+    override func tearDown() async throws { DeviceCallGate.reset(); DeviceCallGate.epoch = .shared; DeviceCallHub.executor = DeviceToolExecutorStub(); DeviceCallHub.submitter = DeviceResultSubmitterStub(); DeviceToolRouter.trace = nil; DeviceCallGate.beforeCommitHook = nil }
 
     private func calCall(_ id: String, _ start: Date, title: String = "PR89 gate") -> DeviceCall {
         DeviceCall(call_id: id, tool: "calendar_create", args: ["title": .string(title), "start": .string(DeviceCallDates.format(start)), "end": .string(DeviceCallDates.format(start.addingTimeInterval(1800)))], confirm: .card, ttl_sec: 600)
@@ -179,14 +179,117 @@ import EventKit
         let first = await router.execute(call, credential: try XCTUnwrap(credential(call)))
         XCTAssertEqual(first.status, .ok)
         let c2 = try XCTUnwrap(credential(call))
-        DeviceCallGate.beforeCommitHook = { DeviceCallGate.revokedIDs.insert([id]) }   // lands after the awaited fetch, before success
+        var trace: [String] = []; DeviceToolRouter.trace = { trace.append($0) }
+        var hookRan = false
+        DeviceCallGate.beforeCommitHook = { hookRan = true; DeviceCallGate.revokedIDs.insert([id]) }   // lands after the awaited fetch, before success
         let second = await router.execute(call, credential: c2)
-        DeviceCallGate.beforeCommitHook = nil
+        DeviceCallGate.beforeCommitHook = nil; DeviceToolRouter.trace = nil
+        XCTAssertEqual(trace, ["dedupe-hit:reminder"], "p89g-4: the second execute really took the dedupe-hit branch")
+        XCTAssertTrue(hookRan, "p89g-4: and reached the commit gate")
         XCTAssertEqual(second.data?["reason"], .string("call_revoked"), "\(String(describing: second.data))")
         XCTAssertNil(second.data?["deduped"])
         Self.sharedStore.reset()
         let all: [EKReminder] = await withCheckedContinuation { c in Self.sharedStore.fetchReminders(matching: Self.sharedStore.predicateForReminders(in: nil)) { c.resume(returning: $0 ?? []) } }
         for r in all where r.notes?.contains(DeviceToolContract.callMarker(id)) == true { try? Self.sharedStore.remove(r, commit: true) }
+    }
+
+    /// Codex p89g-4: calendar dedupe hit (after a real first write) re-checks revoke at the commit gate; trace proves the branch.
+    func testCalendarDedupeHitRechecksRevoke() async throws {
+        try need(.event)
+        let start = Date().addingTimeInterval(13 * 86400)
+        let call = calCall("xctest-cal-revoke-" + UUID().uuidString, start)
+        defer { cleanup([call.call_id], around: start) }
+        DeviceCallGate.receive(call)
+        let router = DeviceToolRouter(store: Self.sharedStore)
+        let first = await router.execute(call, credential: try XCTUnwrap(credential(call))); XCTAssertEqual(first.status, .ok)
+        let c2 = try XCTUnwrap(credential(call))
+        var trace: [String] = []; DeviceToolRouter.trace = { trace.append($0) }
+        var hookRan = false
+        DeviceCallGate.beforeCommitHook = { hookRan = true; DeviceCallGate.revokedIDs.insert([call.call_id]) }
+        let second = await router.execute(call, credential: c2)
+        XCTAssertEqual(trace, ["dedupe-hit:calendar"]); XCTAssertTrue(hookRan)
+        XCTAssertEqual(second.data?["reason"], .string("call_revoked"), "\(String(describing: second.data))")
+        XCTAssertNil(second.data?["deduped"])
+        XCTAssertEqual(events(with: [call.call_id], around: start), 1, "no second write")
+    }
+
+    /// Codex p89g-4: sms_compose / mail_compose present ONLY inside the commit gate (real Router, real credential, real
+    /// `present`; MessageUI replaced by seams because the simulator has none). Positive run proves the sheet path executes;
+    /// revoke-after-check and sign-out-after-check prove the gate refuses with nothing shown.
+    func testComposeSheetsPresentOnlyThroughCommitGate() async throws {
+        for tool in ["sms_compose", "mail_compose"] {
+            for scenario in ["ok", "revoked", "signedOut"] {
+                DeviceCallGate.reset(); DeviceCallGate.epoch = AccountEpoch(account: "xctest-user")
+                let call = DeviceCall(call_id: "xctest-\(tool)-\(scenario)-" + UUID().uuidString, tool: tool, args: ["to": .string("10086"), "body": .string("p89g"), "subject": .string("s")], confirm: .card, ttl_sec: 600)
+                DeviceCallGate.receive(call)
+                let router = DeviceToolRouter(store: Self.sharedStore)
+                var presented: [UIViewController] = []
+                router.canCompose = { _ in true }
+                router.makeComposer = { _ in UIViewController() }
+                router.presentOverride = { vc in presented.append(vc); router.completeCompose(vc, .ok) }
+                var trace: [String] = []; DeviceToolRouter.trace = { trace.append($0) }
+                var hookRan = false
+                DeviceCallGate.beforeCommitHook = {
+                    hookRan = true
+                    if scenario == "revoked" { DeviceCallGate.revokedIDs.insert([call.call_id]) }
+                    if scenario == "signedOut" { DeviceCallGate.epoch.signOut() }
+                }
+                let result = await router.execute(call, credential: try XCTUnwrap(credential(call), "\(tool) \(scenario)"))
+                DeviceCallGate.beforeCommitHook = nil; DeviceToolRouter.trace = nil
+                XCTAssertTrue(hookRan, "\(tool) \(scenario): reached the commit gate")
+                switch scenario {
+                case "ok":
+                    XCTAssertEqual(result.status, .ok, "\(tool)"); XCTAssertEqual(presented.count, 1, "\(tool): the sheet path really ran")
+                    XCTAssertEqual(trace, ["present:\(tool)"])
+                case "revoked":
+                    XCTAssertEqual(result.data?["reason"], .string("call_revoked"), "\(tool) \(String(describing: result.data))")
+                    XCTAssertTrue(presented.isEmpty, "\(tool): nothing shown after revoke"); XCTAssertTrue(trace.isEmpty)
+                default:
+                    XCTAssertNotEqual(result.status, .ok, "\(tool) signed out")
+                    XCTAssertTrue(presented.isEmpty, "\(tool): nothing shown after sign-out"); XCTAssertTrue(trace.isEmpty)
+                }
+            }
+        }
+    }
+
+    /// Codex p89g-3: REAL EventKit adapter, stale ledger id. A user COPY keeps our notes, so the marker matches twice →
+    /// ambiguous → nothing deleted, `.unknown`, not undone. A single marker match whose identity (title/start) differs is
+    /// also not proof. Counter-case (unique + identity match) is case 1 of the test below.
+    func testRealEventKitLedgerAdapterRefusesAmbiguousOrMismatchedMarker() async throws {
+        try need(.event)
+        let start = Date().addingTimeInterval(12 * 86400)
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("ledger-amb-\(UUID().uuidString).json")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let ledger = DeviceLedger(url: url, epoch: DeviceCallGate.epoch, items: EventKitLedgerItemStore(store: Self.sharedStore))
+        let token = try XCTUnwrap(DeviceCallGate.epoch.capture())
+        func add(_ id: String, title: String, at date: Date) throws {
+            let e = EKEvent(eventStore: store); e.title = title; e.startDate = date; e.endDate = date.addingTimeInterval(1800)
+            e.notes = DeviceToolContract.callMarker(id); e.calendar = store.defaultCalendarForNewEvents
+            try store.save(e, span: .thisEvent, commit: true)
+        }
+        // 1) original + user copy (same notes) → two matches.
+        let dup = calCall("xctest-ledger-dup-" + UUID().uuidString, start)
+        defer { cleanup([dup.call_id], around: start) }
+        try add(dup.call_id, title: "PR89 gate", at: start); try add(dup.call_id, title: "PR89 gate", at: start.addingTimeInterval(3600))
+        ledger.record(call: dup, result: .init(call_id: dup.call_id, status: .ok, data: ["event_id": .string("stale-" + UUID().uuidString)]), token: token)
+        XCTAssertEqual(ledger.undo(callID: dup.call_id), .unknown)
+        XCTAssertFalse(ledger.isUndone(callID: dup.call_id))
+        XCTAssertEqual(events(with: [dup.call_id], around: start), 2, "neither the original nor the copy was deleted")
+        // 2) single marker match, identity differs (title) → unknown, kept.
+        let other = calCall("xctest-ledger-mismatch-" + UUID().uuidString, start)
+        defer { cleanup([other.call_id], around: start) }
+        try add(other.call_id, title: "someone else's copy", at: start)
+        ledger.record(call: other, result: .init(call_id: other.call_id, status: .ok, data: ["event_id": .string("stale-" + UUID().uuidString)]), token: token)
+        XCTAssertEqual(ledger.undo(callID: other.call_id), .unknown)
+        XCTAssertFalse(ledger.isUndone(callID: other.call_id))
+        XCTAssertEqual(events(with: [other.call_id], around: start), 1)
+        // 3) single marker match, start moved → unknown, kept.
+        let moved = calCall("xctest-ledger-start-" + UUID().uuidString, start)
+        defer { cleanup([moved.call_id], around: start) }
+        try add(moved.call_id, title: "PR89 gate", at: start.addingTimeInterval(7200))
+        ledger.record(call: moved, result: .init(call_id: moved.call_id, status: .ok, data: ["event_id": .string("stale-" + UUID().uuidString)]), token: token)
+        XCTAssertEqual(ledger.undo(callID: moved.call_id), .unknown)
+        XCTAssertEqual(events(with: [moved.call_id], around: start), 1)
     }
 
     /// Codex p89e-3: REAL EventKit adapter. A stale id (moved / re-synced item) is resolved by the call marker and removed;
@@ -200,7 +303,7 @@ import EventKit
         let token = try XCTUnwrap(DeviceCallGate.epoch.capture())
         // 1) event exists, ledger id is stale → found by marker → removed.
         let moved = calCall("xctest-ledger-moved-" + UUID().uuidString, start)
-        let e = EKEvent(eventStore: store); e.title = "p89e moved"; e.startDate = start; e.endDate = start.addingTimeInterval(1800)
+        let e = EKEvent(eventStore: store); e.title = "PR89 gate"; e.startDate = start; e.endDate = start.addingTimeInterval(1800)
         e.notes = DeviceToolContract.callMarker(moved.call_id); e.calendar = store.defaultCalendarForNewEvents
         try store.save(e, span: .thisEvent, commit: true)
         ledger.record(call: moved, result: .init(call_id: moved.call_id, status: .ok, data: ["event_id": .string("stale-" + UUID().uuidString)]), token: token)
@@ -325,6 +428,22 @@ actor WiringDeviceCallBackend: ConversationBackend {
     func observe(_ r: ConversationTurnRequest) async throws -> ConversationObservation { throw CatpawError.unavailable("wiring test") }
 }
 
+actor HeldStreamUIBackend: ConversationBackend {
+    private var live: AsyncThrowingStream<ConversationTurnEvent, Error>.Continuation?
+    private(set) var uiSubmits = 0
+    var streaming: Bool { live != nil }
+    func connection(scope: DataScope) async -> ConversationConnection { ConversationConnection(state: .connected, provider: "Held test backend", detail: "Test only") }
+    func reply(_ r: ConversationTurnRequest) async throws -> AsyncThrowingStream<ConversationTurnEvent, Error> {
+        let (stream, c) = AsyncThrowingStream.makeStream(of: ConversationTurnEvent.self); live = c; return stream
+    }
+    func finishStream() { live?.finish(); live = nil }
+    func submitUIDecision(_ request: ConversationTurnRequest, interruptID: String, decision: ConversationUIDecision, argsHash: String, response: Data?, operationID: UUID, afterSequence: Int) async throws -> AsyncThrowingStream<ConversationTurnEvent, Error> {
+        uiSubmits += 1; throw ConversationApprovalFailure.notFound
+    }
+    func cancelTurn(_ r: ConversationTurnRequest) async throws -> ConversationTurnCancelReceipt { .init(turnID: r.operationID, state: "failed", cancelled: true, alreadyTerminal: false) }
+    func observe(_ r: ConversationTurnRequest) async throws -> ConversationObservation { throw CatpawError.unavailable("held test") }
+}
+
 @MainActor final class DeviceCallSharedEpochWiringTests: XCTestCase {
     private var ek: EKEventStore { DeviceToolRouterEventKitTests.sharedStore }
     override func tearDown() async throws { DeviceCallGate.reset(); AccountEpoch.shared.activate(account: nil); DeviceCallGate.epoch = .shared; ConversationDeviceCall.lifecycle = nil }
@@ -348,10 +467,14 @@ actor WiringDeviceCallBackend: ConversationBackend {
             AccountEpoch.shared.signOut(); AccountEpoch.shared.activate(account: account); relogged = AccountEpoch.shared.capture()
             ConversationSessionService.beforeClaimHook = nil
         }
-        defer { ConversationSessionService.beforeClaimHook = nil }
+        defer { ConversationSessionService.beforeClaimHook = nil; DeviceCallGate.receiveTrace = nil }
+        var received: [String: Bool] = [:]
+        DeviceCallGate.receiveTrace = { id, granted in received[id] = granted }
         let sending = Task { _ = try? await service.send(scope: Profiles.user, conversationID: conversation, text: "提醒我", operationID: UUID()) }
         defer { sending.cancel() }
-        for _ in 0..<100 { try await Task.sleep(nanoseconds: 10_000_000) }
+        // p89g-4: wait until the old operation's device_call actually REACHED the gate (no fixed sleep, no vacuous pass).
+        for _ in 0..<500 where received[id] == nil { try await Task.sleep(nanoseconds: 10_000_000) }
+        XCTAssertEqual(received[id], false, "the old operation's device_call reached DeviceCallGate.receive and was refused")
         let newLogin = try XCTUnwrap(relogged)
         XCTAssertEqual(newLogin.account, oldLogin.account); XCTAssertNotEqual(newLogin, oldLogin, "same account, new login generation")
         XCTAssertFalse(DeviceCallGate.isLive(id), "the old operation's device_call is never granted under the new login")
@@ -365,6 +488,43 @@ actor WiringDeviceCallBackend: ConversationBackend {
         defer { sending2.cancel() }
         for _ in 0..<300 where !DeviceCallGate.isLive(id2) { try await Task.sleep(nanoseconds: 10_000_000) }
         XCTAssertTrue(DeviceCallGate.isLive(id2))
+        XCTAssertEqual(received[id2], true)
+    }
+
+    /// Codex p89g-1: a UI decision QUEUED behind a running stream carries the login pinned at the public submit. Same
+    /// account signs out and back in while it waits → at dequeue it dies (CancellationError) and never reaches the backend.
+    /// Counter-run: queued under the same login → dequeued and really executed (the backend submit is called).
+    func testQueuedUIDecisionSameAccountReloginNeverReachesBackend() async throws {
+        for relogin in [true, false] {
+            let account = UUID().uuidString
+            AccountEpoch.shared.activate(account: nil); AccountEpoch.shared.activate(account: account)
+            let repo = try Repository(persistence: FilePersistence(url: FileManager.default.temporaryDirectory.appendingPathComponent("uiq-\(UUID().uuidString).json")))
+            let backend = HeldStreamUIBackend()
+            let service = ConversationSessionService(repository: repo, backend: backend, principalAccount: account)
+            let conversation = try await service.create(scope: Profiles.user)
+            let sending = Task { _ = try? await service.send(scope: Profiles.user, conversationID: conversation, text: "hi", operationID: UUID()) }
+            for _ in 0..<500 where !(await backend.streaming) { try await Task.sleep(nanoseconds: 10_000_000) }
+            let isStreaming = await backend.streaming; XCTAssertTrue(isStreaming, "a stream is running → the decision is queued")
+            let turnID = UUID()
+            let submit = Task { try await service.submitUIDecision(scope: Profiles.user, conversationID: conversation, turnID: turnID, interruptID: "ui-1", decision: .dismiss, argsHash: String(repeating: "a", count: 64), response: nil) }
+            for _ in 0..<500 where (await service.queuedUIDecisions(conversationID: conversation)).isEmpty { try await Task.sleep(nanoseconds: 10_000_000) }
+            let queued = await service.queuedUIDecisions(conversationID: conversation); XCTAssertEqual(queued, ["ui-1"])
+            if relogin { AccountEpoch.shared.signOut(); AccountEpoch.shared.activate(account: account) }
+            await backend.finishStream()
+            let outcome = await submit.result
+            _ = await sending.result
+            let submits = await backend.uiSubmits
+            if relogin {
+                guard case .failure(let error) = outcome, error is CancellationError else { return XCTFail("queued decision from the old login must die at dequeue, got \(outcome)") }
+                XCTAssertEqual(submits, 0, "never reached the backend under the new login")
+            } else {
+                // The fixture turn has no pending ui block, so the REAL perform path runs its read + check and refuses with
+                // noPendingApproval — proof the dequeue reached performUIDecision (not a cancellation).
+                guard case .failure(let error) = outcome else { return XCTFail("expected noPendingApproval") }
+                XCTAssertFalse(error is CancellationError, "counter-run: same login is dequeued and executed, got \(error)")
+            }
+        }
+        AccountEpoch.shared.activate(account: nil)
     }
 
     func testAuthServiceGateRouterLedgerOnSharedEpoch() async throws {
