@@ -11,6 +11,7 @@ import CatpawImageComposer
     @ObservedObject private var proactiveFeed = CatpawProactiveFeed.shared
     @ObservedObject private var presenceHub = CatpawPresenceHub.shared
     @StateObject private var attachmentUploader:ModelImageComposerAttachmentUploader
+    @State private var openedAcceptanceEmpty=false
     @State private var sendAfterImageConsent=false
     var accountLabel: String? = nil
     var onSignOut: (() -> Void)? = nil
@@ -193,6 +194,7 @@ import CatpawImageComposer
     }
     /// Header plush pose from connection + turn hub (six-state 毛绒小伙伴 set).
     private var headerCatState: CatpawPresenceState {
+        if let preview = CatpawAcceptanceLaunch.mascotPreview { return preview }
         let kind = ConnectionStatusKind.from(connectionMonitor.state)
         if kind == .offline { return .offline }
         if kind == .error, presenceHub.state == nil { return .error }
@@ -508,6 +510,7 @@ import CatpawImageComposer
         }
         .catpawSheet(isPresented:$composerContextPresented,onDismiss:completeContextAction) {composerContextSheet}
         .task { await model.start() }
+        .task(id:model.loaded) { if model.loaded,CatpawAcceptanceLaunch.openEmptyConversation,!openedAcceptanceEmpty { openedAcceptanceEmpty=true;model.newConversation() } }
         .task(id:model.conversationID) {
             proactiveFeed.currentAnchor={ [model] in
                 guard let session=model.session else {return nil}
@@ -960,9 +963,7 @@ import CatpawImageComposer
         if message.role == .user {
             VStack(alignment:.trailing,spacing:4) {
                 ConversationUserMessageLayout {
-                    Text(message.content).font(CatpawTypography.Role.body.font)   // selection moved to the long-press 选择 sheet
-                        .foregroundStyle(CatpawColors.userMessageInk).padding(.horizontal,14).padding(.vertical,9)
-                        .background(CatpawColors.userMessageBackground,in:RoundedRectangle(cornerRadius:20,style:.continuous))
+                    ConversationUserBubbleText(content:message.content)   // selection moved to the long-press 选择 sheet
                         .messageLongPress(id:message.id.uuidString,content:.text(message.content),alignment:.trailing,onReply:quote){userBubblePreview(message)}   // long-press menu (MessageActions/)
                 }
                     .accessibilityIdentifier("chat.userMessage")
@@ -1032,8 +1033,7 @@ import CatpawImageComposer
     }
     // Long-press / image helpers (MessageActions/). Minimal: no change to row layout.
     private func userBubblePreview(_ message:ConversationTranscriptMessage)->some View {
-        Text(message.content).font(CatpawTypography.Role.body.font).foregroundStyle(CatpawColors.userMessageInk).padding(.horizontal,14).padding(.vertical,9)
-            .background(CatpawColors.userMessageBackground,in:RoundedRectangle(cornerRadius:20,style:.continuous))
+        ConversationUserBubbleText(content:message.content)
     }
     private func loadMessageImage(_ turnID:UUID?,sha:String?) async -> Data? {
         if let sha,let cached=SentImageCache.shared.data(sha:sha) {return cached}
@@ -1347,6 +1347,7 @@ private struct ConversationPendingMessageEditor:View {
                     .disabled(refreshingConnection)
                 }
                 FeatureEnrollmentSection()
+                AppModelConsentSection()
                 #if DEBUG || DEVICE_TRIAL
                 ModelRoutesSettingsView()
                 Section(ui("调试")) { NavigationLink(ui("主动信号模拟")) { ProactiveSignalDebugView() }.accessibilityIdentifier("settings.debug.proactiveSignals") }
@@ -1497,6 +1498,42 @@ private struct ConversationComposerLayout:Layout {
             subviews[0].place(at:.init(x:bounds.minX+s.leading.width+gap,y:bounds.maxY),anchor:.bottomLeading,proposal:.init(width:s.text.width,height:s.text.height))
         }
         subviews[2].place(at:.init(x:bounds.maxX,y:bounds.maxY),anchor:.bottomTrailing,proposal:.init(s.send))
+    }
+}
+
+/// 设置 · 云端模型许可: shows the app-wide grant and lets the user revoke it (future calls stop until re-allowed).
+struct AppModelConsentSection:View {
+    @Environment(\.locale) private var locale
+    @State private var grant=AppModelConsentGrant.current
+    private func ui(_ k:String)->String {AppLanguage(locale:locale).ui(k)}
+    var body:some View {
+        Section(ui("云端模型许可")) {
+            if let grant {
+                LabeledContent(ui("已允许"),value:grant.grantedAt.formatted(date:.abbreviated,time:.shortened))
+                Button(ui("撤回许可"),role:.destructive) {AppModelConsentGrant.revoke();self.grant=nil}.accessibilityIdentifier("settings.modelConsent.revoke")
+            } else {
+                Text(ui("尚未允许；下次发送消息时会询问一次，之后新对话沿用。")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
+            }
+        }.onAppear {grant=AppModelConsentGrant.current}
+    }
+}
+
+/// User bubble body. The sent text keeps its raw form (accepted/revision work compares it byte-for-byte),
+/// but trailing newlines/spaces from Return, dictation or paste must not render as empty lines under a
+/// short message: the bubble hugs the visible text (one line = line height + 18pt).
+struct ConversationUserBubbleText:View {
+    let content:String
+    static func display(_ raw:String)->String {
+        var s=Substring(raw)
+        while let last=s.last,last.isWhitespace || last.isNewline {s=s.dropLast()}
+        while let first=s.first,first.isNewline {s=s.dropFirst()}
+        return String(s)
+    }
+    var body:some View {
+        Text(verbatim:Self.display(content)).font(CatpawTypography.Role.body.font)
+            .fixedSize(horizontal:false,vertical:true)
+            .foregroundStyle(CatpawColors.userMessageInk).padding(.horizontal,14).padding(.vertical,9)
+            .background(CatpawColors.userMessageBackground,in:RoundedRectangle(cornerRadius:20,style:.continuous))
     }
 }
 

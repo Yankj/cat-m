@@ -307,3 +307,31 @@ struct PlushMascotWell: View {
         }
     }
 }
+
+/// Acceptance-only launch args (DEBUG / DeviceTrial): `-CatpawMascotPreview <idle|thinking|writing|executing|done|error>`
+/// forces the title-capsule pose; `-CatpawOpenEmptyConversation YES` opens a fresh empty conversation once loaded.
+/// Launch arguments land in UserDefaults' argument domain, so nothing is persisted.
+enum CatpawAcceptanceLaunch {
+    static var mascotPreview: CatpawPresenceState? {
+        #if DEBUG || DEVICE_TRIAL
+        switch UserDefaults.standard.string(forKey: "CatpawMascotPreview") {
+        case "idle": return .waiting
+        case "thinking": return .thinking
+        case "writing": return .streaming
+        case "executing": return .working
+        case "done": return .done
+        case "error": return .error
+        default: return nil
+        }
+        #else
+        return nil
+        #endif
+    }
+    static var openEmptyConversation: Bool {
+        #if DEBUG || DEVICE_TRIAL
+        return UserDefaults.standard.bool(forKey: "CatpawOpenEmptyConversation")
+        #else
+        return false
+        #endif
+    }
+}

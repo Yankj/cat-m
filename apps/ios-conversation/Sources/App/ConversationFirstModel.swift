@@ -650,6 +650,7 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
     private func setIntent(_ id:UUID,_ state:OutgoingMessageIntent.State,error:String?=nil) { if let i=outgoingMessages.firstIndex(where:{$0.id == id}) { outgoingMessages[i].state=state;outgoingMessages[i].error=error } }
     private func authorizePending() {
         guard networkAdmissionAllowed,foreground,loaded,permissionTask == nil,pendingModelConsent == nil,let id=conversationID else { return }
+        if consentReady,!AppModelConsentGrant.serverAllowHonored { consentReady=false }   // revoked in 设置: stop future calls
         if consentReady { drainQueue();return }
         let token=UUID();permissionID=token;checkingModelConsent=true
         permissionTask=Task {
