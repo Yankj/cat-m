@@ -31,3 +31,10 @@
 - **开屏**：属对方范围，本分支未改。
 - **页面跳转**：未单独做自定义导航转场；NavigationStack 默认。
 - **真机触感 / Instruments 终态**：需 BE5C 空闲后补一轮 `Scripts/measure-interaction.sh after` + Time Profiler。
+
+## 后续反馈（状态文案 / 图2）
+
+- **流式 / 进行中**：`ThinkingHeader` 去掉「思考中 + 摘要 + 计时 + 工具列表」文案堆；改为猫咪 presence + 墨色 … 闪烁；流式气泡加 ink shimmer 扫过（`StreamProgressVisuals`）。步骤只在结算后的 chip 展开。
+- **多状态叠在一起**：时间线里 `ConversationTurnActivity` 在 sending/waiting/writing/processing 阶段改为 `EmptyView()`，避免再叠一层「正在…」；`processPending` 行同样改成 presence + …。
+- **归属说明（未改代码）**：顶栏 `ConnectionStatusHeaderDot`、`ConversationConnectionStatusCapsule`、以及 `ConversationSystemNotice`（额度 / 离线 / 路由）归 Grok Bot worker；本分支不合并它们与对话进度指示。若「图2」指的是这几块叠在顶栏/安全区，需要对方在那一侧做单一主指示。
+- **落地页「点按开启」**：Grok Bot，未动。
