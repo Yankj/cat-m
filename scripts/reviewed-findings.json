@@ -1984,6 +1984,15 @@
       "reason": "Test fixture: synthetic contact email (a at x.cn) for the minimalContact privacy test; not a real address.",
       "reviewed_utc_date": "2026-10-17",
       "reviewer": "Grok Bot"
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NoBugP0Runner.swift",
+      "category": "email_review",
+      "line": 553,
+      "sha256": "1ee3230b42f1ac23c7a47afc16dbe2bcb8af2ebec49a030807fbe00e3455a47a",
+      "reason": "Test fixture: synthetic contact email (a at x.cn) for the minimalContact privacy test; not a real address.",
+      "reviewed_utc_date": "2026-10-17",
+      "reviewer": "Grok Bot"
     }
   ]
 }
