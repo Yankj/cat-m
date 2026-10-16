@@ -2,7 +2,7 @@
 
 > 作业：CatPaw Mobile 主动式个人助理（iOS Swift Demo）  
 > 仓库：`github.com/Yankj/catpaw-m`，分支 `feat/ios-mvp-integration-v2`  
-> **本文核对到冻结 tip `009a58a`**（2026-10-16 18:30 北京时间）  
+> **本文核对到冻结 tip `29a3745`**（2026-10-16 18:30 北京时间）  
 > iOS：`apps/ios-conversation/CatpawM.xcodeproj` · 服务端：`services/edge`  
 > 演示场景：**会议出发助理（leave_at）** — 不含电话/购物链
 
@@ -10,7 +10,7 @@
 
 | 标记 | 含义 |
 |---|---|
-| **[已实现]** | tip `009a58a` 有可演示代码 |
+| **[已实现]** | tip `29a3745` 有可演示代码 |
 | **[部分]** | 有代码但依赖权限 / 模拟器限制 / 后端 gate |
 | **[设计]** | 方案在文档，本切片未落地 |
 
