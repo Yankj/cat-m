@@ -129,7 +129,7 @@ struct ProactiveNotificationRequest: Sendable, Equatable {
     /// its fire instant, scoped id, late-completion cleanup. One identity per snooze intent (its operation id), so a
     /// second snooze after the first one rang is a new delivery, not `already_delivered`.
     nonisolated static func snoozeBase(_ id: String, intent: String) -> String { "\(id)-snooze-\(intent)" }
-    func snooze(id: String, intent: String, title: String, body: String, category: String, info: [String: String], fire: Date, token: AccountToken) async -> Outcome {
+    func snooze(id: String, intent: String, title: String, body: String, category: String, info: [String: String], fire: Date, token: AccountToken, awaitAdd: Bool = true) async -> Outcome {
         let base = Self.snoozeBase(id, intent: intent)
         return await preschedule(identity: base, requestID: base, title: title, body: body, category: category, info: info,
                                  fire: fire, level: .notify, token: token)

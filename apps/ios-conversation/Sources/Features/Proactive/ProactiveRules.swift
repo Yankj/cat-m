@@ -147,3 +147,9 @@ enum ProactiveActionStates {
         !effects.contains(action) || st[action] != .succeeded
     }
 }
+
+/// Codex PR90f (Mac run): the one "now" of the proactive engine, rules, pipeline and backend. Tests pin it to a fixed
+/// instant; nothing proactive may read the wall clock directly.
+enum ProactiveClock {
+    nonisolated(unsafe) static var now: () -> Date = { Date() }
+}

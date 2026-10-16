@@ -62,7 +62,7 @@ enum ProactiveAccountGate {
 ///   owner can never stay "" while an account writes.
 enum ProactiveDataOwner {
     static let key = "catpaw.proactive.owner.v1"
-    enum Plan: Equatable { case keep, adopt, wipe }
+    enum Plan: Equatable { case keep, adopt, wipe, quarantine }
     static func plan(owner: String?, current: String?) -> Plan {
         guard let owner else { return current == nil ? .wipe : .adopt }
         guard let current else { return owner.isEmpty ? .keep : .wipe }
@@ -79,5 +79,18 @@ enum ProactiveDataOwner {
         guard ProactiveAccountGate.isProactive(info) else { return false }
         guard let current, let a = owner(of: info) else { return true }
         return a.caseInsensitiveCompare(current) != .orderedSame
+    }
+}
+
+/// Codex PR90f #1: data whose owner is unknown (written by a build that recorded none) is neither wiped nor handed to
+/// whoever is signed in. It is moved into an isolated store (not shown, not sent, not synced) and released only on
+/// evidence — every stamped queued write-back names the current account, or the cloud confirms one of its server ids
+/// under the current account's bearer (`GET suggestions/<id>`, owner-scoped by RLS) — else it expires after `ttl`.
+enum ProactiveQuarantine {
+    static let key = "catpaw.proactive.quarantine.v1"
+    static let ttl: TimeInterval = 7 * 24 * 3600
+    enum Verdict: Equatable { case hold, release, expire }
+    static func decide(quarantinedAt: Date, stampedAccounts: [String], current: String?, serverConfirmed: Bool, now: Date) -> Verdict {
+        .hold
     }
 }

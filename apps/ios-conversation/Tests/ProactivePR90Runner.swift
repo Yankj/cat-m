@@ -391,8 +391,7 @@ func pr90e_owner() {
     // P1-1: after a logout the owner is "" — the next account must still be registered (and anything left wiped).
     check(ProactiveDataOwner.plan(owner: "", current: "USER-B") == .wipe, "\"\" → B registers B (never stays \"\")")
     // P1-2: first run after upgrade (no owner recorded) adopts the data for the signed-in account — never drops it.
-    check(ProactiveDataOwner.plan(owner: nil, current: "USER-A") == .adopt, "upgrade: unknown owner migrates to the current account")
-    check(ProactiveDataOwner.plan(owner: nil, current: nil) == .wipe, "unknown owner at an explicit sign-out → wiped with it")
+    // PR90f #1: an unknown owner is neither adopted nor wiped — quarantined (pr90f_quarantine).
     // P1-3: cleanup reads ownership exactly like the receive gate (local stamp or APNs catpaw.account).
     let apnsB: [AnyHashable: Any] = ["catpaw": ["kind": "proactive_decision", "account": "USER-B", "event_id": "E1"]]
     let apnsA: [AnyHashable: Any] = ["catpaw": ["kind": "proactive_decision", "account": "USER-A", "event_id": "E2"]]
@@ -458,6 +457,91 @@ func pr90e_operationIDs() {
     check(reloaded.items.isEmpty, "poison survives a restart")
 }
 
+
+// MARK: Codex PR90f (d544ea2)
+func pr90f_quarantine() {
+    check(ProactiveDataOwner.plan(owner: nil, current: "USER-A") == .quarantine, "unknown owner, signed in → quarantined (not claimed)")
+    check(ProactiveDataOwner.plan(owner: nil, current: nil) == .quarantine, "unknown owner, signed out → quarantined (not wiped)")
+    let t0 = at("2026-10-15T04:00:00Z"), soon = t0.addingTimeInterval(3600), late = t0.addingTimeInterval(ProactiveQuarantine.ttl + 60)
+    check(ProactiveQuarantine.decide(quarantinedAt: t0, stampedAccounts: ["user-a", "USER-A"], current: "USER-A", serverConfirmed: false, now: soon) == .release, "every stamp names the current account → released")
+    check(ProactiveQuarantine.decide(quarantinedAt: t0, stampedAccounts: ["USER-A", "USER-B"], current: "USER-A", serverConfirmed: false, now: soon) == .hold, "mixed stamps are no proof")
+    check(ProactiveQuarantine.decide(quarantinedAt: t0, stampedAccounts: [], current: "USER-A", serverConfirmed: false, now: soon) == .hold, "no evidence → held")
+    check(ProactiveQuarantine.decide(quarantinedAt: t0, stampedAccounts: ["USER-B"], current: "USER-A", serverConfirmed: true, now: soon) == .release, "the cloud confirms its server id for this account → released")
+    check(ProactiveQuarantine.decide(quarantinedAt: t0, stampedAccounts: [], current: nil, serverConfirmed: false, now: soon) == .hold, "signed out → held")
+    check(ProactiveQuarantine.decide(quarantinedAt: t0, stampedAccounts: [], current: "USER-A", serverConfirmed: false, now: late) == .expire, "no evidence within the bound → expired")
+    check(ProactiveQuarantine.decide(quarantinedAt: t0, stampedAccounts: [], current: nil, serverConfirmed: false, now: late) == .expire, "expires signed out too")
+    check(ProactiveQuarantine.decide(quarantinedAt: t0, stampedAccounts: ["USER-A"], current: "USER-A", serverConfirmed: false, now: late) == .release, "evidence still wins at expiry time")
+}
+@MainActor func pr90f_purgeDeadLetters() async {
+    let kv = MemKV(); let t = at("2026-10-15T04:00:00Z")
+    let q = CatpawPersistentQueue<SyncOp>(name: "pdl", store: kv, maxAttempts: 1, baseDelay: 1)
+    q.enqueue(SyncOp(local: "s1", action: "snooze"), key: "a", account: "A", group: "s1", now: t)
+    q.enqueue(SyncOp(local: "s2", action: "snooze"), key: "b", account: "B", group: "s2", now: t)
+    _ = await q.drain(now: t, account: "A") { _ in .retry }; _ = await q.drain(now: t, account: "B") { _ in .retry }
+    q.purge(account: "A")
+    check(!q.deadLetters.contains { $0.account == "A" } && q.deadLetters.contains { $0.account == "B" }, "purge(account) clears that account's dead letters only")
+    q.purge(account: nil); check(q.deadLetters.isEmpty, "purge(nil) clears every dead letter")
+    check(CatpawPersistentQueue<SyncOp>(name: "pdl", store: kv).deadLetters.isEmpty, "persisted")
+}
+@MainActor final class RejectingPoster: ProactiveNotificationPoster {
+    var adds: [ProactiveNotificationRequest] = [], removed: [String] = [], result = false, pending: [(Bool) -> Void] = []; var hold = false
+    func requestAuthorization() async -> Bool { true }
+    func add(_ r: ProactiveNotificationRequest, completion: @escaping @MainActor (Bool) -> Void) { adds.append(r); if hold { pending.append(completion) } else { completion(result) } }
+    func remove(ids: [String]) { removed += ids }
+}
+@MainActor func pr90f_snoozeAwaitsAdd() async {
+    let t = at("2026-10-15T04:00:00Z"); let e = AccountEpoch(account: "A"), poster = RejectingPoster(); var q = ProactiveQuotaLedger()
+    let p = ProactiveDeliveryPipeline(epoch: e, poster: poster, clock: { t }, calendar: shanghai, loadQuota: { q }, saveQuota: { q = $0 })
+    let tok = e.capture()!, base = ProactiveDeliveryPipeline.snoozeBase("sug", intent: "op-1")
+    let out = await p.snooze(id: "sug", intent: "op-1", title: "t", body: "b", category: "c", info: [:], fire: t.addingTimeInterval(600), token: tok)
+    check(out == .refused("system_rejected"), "the system rejected the add → not reported as posted (\(out))")
+    check(q.entries[base] == nil, "rejected snooze holds no slot")
+    // The awaited add only returns after the system answered.
+    poster.hold = true; poster.result = true; var done: ProactiveDeliveryPipeline.Outcome?
+    let task = Task { @MainActor in done = await p.snooze(id: "sug", intent: "op-2", title: "t", body: "b", category: "c", info: [:], fire: t.addingTimeInterval(600), token: tok) }
+    for _ in 0..<20 { await Task.yield() }
+    check(done == nil && poster.pending.count == 1, "still waiting for the system add")
+    poster.pending.removeFirst()(true); await task.value
+    check({ if case .posted = done { return true }; return false }(), "posted after the system confirmed (\(String(describing: done)))")
+}
+@MainActor func pr90f_clock() {
+    let fixed = at("2026-10-15T02:00:00Z"), saved = ProactiveClock.now; ProactiveClock.now = { fixed }; defer { ProactiveClock.now = saved }
+    let p = ProactiveDeliveryPipeline(epoch: AccountEpoch(account: "A"), poster: FakePoster(), loadQuota: { ProactiveQuotaLedger() }, saveQuota: { _ in })
+    check(p.clock() == fixed, "the pipeline's default clock is the injected ProactiveClock")
+}
+func pr90f_wire() {
+    let b = ProactiveSyncWire.createBody(clientID: "local-1", title: "评审", reason: "r", actions: ["snooze", "dismiss"], createdAt: at("2026-10-15T02:00:00Z"))
+    check(b["client_id"] as? String == "local-1" && b["title"] as? String == "评审" && b["reason"] as? String == "r" && b["actions"] as? [String] == ["snooze", "dismiss"]
+          && b["created_at"] as? String == "2026-10-15T02:00:00Z" && b["decision"] as? String == "notify", "offline create body (\(b))")
+    let d = ProactiveUndo.withRestore(ProactiveUndo.snoozeDetail(until: at("2026-10-15T04:10:00Z"), intent: "op-1"), "posted")
+    check(ProactiveUndo.restoreOutcome(detail: d) == "posted" && ProactiveUndo.snoozeIntent(detail: d) == "op-1" && ProactiveUndo.snoozeUntil(detail: d, at: .distantPast) == at("2026-10-15T04:10:00Z"), "undo records the re-arm outcome on the kept snooze (\(d))")
+    check(ProactiveUndo.restoreOutcome(detail: ProactiveUndo.withRestore(d, "cardOnly:quiet_hours")) == "cardOnly:quiet_hours", "latest outcome wins")
+}
+/// The device side of the golden device → cloud round trip: two snoozes then undo, built only from the shipping
+/// portable functions (operation ids, snooze detail, wire body, undo plan). CATPAW_WRITE_GOLDEN=1 rewrites the fixture;
+/// otherwise the fixture must match what the client produces today (so neither side can drift alone).
+func pr90f_golden() {
+    let local = "LOCAL-SUGGESTION", t = at("2026-10-15T02:00:00Z")
+    var taken: [(action: String, at: Date, detail: String?)] = [], requests: [[String: Any]] = [], gens = ProactiveActionGenerations()
+    for (k, minutes) in [(1, 10.0), (2, 30.0)] {
+        let op = ProactiveRules.operationID(suggestion: local, action: "snooze", generation: gens[local], ordinal: k)
+        let until = t.addingTimeInterval(minutes * 60)
+        taken.append(("snooze", t, ProactiveUndo.snoozeDetail(until: until, intent: op)))
+        requests.append(["route": ProactiveSyncWire.route(action: "snooze"), "body": ProactiveSyncWire.body(action: "snooze", operationID: op, until: ProactiveSyncWire.iso(until))])
+    }
+    let plan = ProactiveUndo.plan(offered: ["create_reminder", "snooze", "dismiss"], taken: taken.map(\.action), status: "snoozed")
+    let undoOp = gens.undo(local); taken.remove(at: plan.removedIndex!)
+    requests.append(["route": ProactiveSyncWire.route(action: "undo"), "body": ProactiveSyncWire.body(action: "undo", operationID: undoOp, until: nil)])
+    let restored = ProactiveUndo.restoredSnooze(taken: taken, status: plan.status)
+    let g: [String: Any] = ["local_id": local, "server_now": ProactiveSyncWire.iso(t), "requests": requests,
+                            "expect": ["status": plan.status, "taken": plan.after, "snooze_until": restored.map(ProactiveSyncWire.iso) ?? NSNull()]]
+    let data = try! JSONSerialization.data(withJSONObject: g, options: [.sortedKeys, .prettyPrinted])
+    let url = URL(fileURLWithPath: "../../services/edge/test/fixtures/proactive-sync-golden.json")
+    if ProcessInfo.processInfo.environment["CATPAW_WRITE_GOLDEN"] == "1" { try! data.write(to: url); print("golden written: \(url.path)") }
+    let onDisk = (try? Data(contentsOf: url)).flatMap { try? JSONSerialization.jsonObject(with: $0) } as? NSDictionary
+    check(onDisk == (try! JSONSerialization.jsonObject(with: data) as! NSDictionary), "golden device → cloud fixture matches the client's payloads")
+}
+
 @main enum ProactivePR90Runner {
     static func main() async {
         pr90_3_prescheduleSharesDecisionAndQuota()
@@ -475,6 +559,7 @@ func pr90e_operationIDs() {
         pr90c_presentQuiet()
         pr90d_ownership(); pr90d_legacyRejected(); await pr90d_scopedRequests(); await pr90d_deadLetterOrdering(); pr90d_snoozeRestore(); pr90d_localFeedbackGate()
         pr90e_owner(); await pr90e_repeatedSnooze(); pr90e_operationIDs(); pr90e_snoozeDetail(); await pr90e_resnoozeReleasesSlot(); await pr90e_deadLetterFuture()
+        pr90f_quarantine(); await pr90f_purgeDeadLetters(); await pr90f_snoozeAwaitsAdd(); pr90f_clock(); pr90f_wire(); pr90f_golden()
         print(failures == 0 ? "PR90 proactive: all passed" : "PR90 proactive: \(failures) failed"); exit(failures == 0 ? 0 : 1)
     }
 }

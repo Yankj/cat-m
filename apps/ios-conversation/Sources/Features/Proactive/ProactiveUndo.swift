@@ -40,3 +40,26 @@ extension ProactiveUndo {
         return snoozeUntil(detail: last.detail, at: last.at)
     }
 }
+
+extension ProactiveUndo {
+    /// Codex PR90f #2: the outcome of re-arming a restored snooze, recorded on that snooze entry (verifiable after undo).
+    static func withRestore(_ detail: String?, _ outcome: String) -> String { detail ?? "" }
+    static func restoreOutcome(detail: String?) -> String? { nil }
+}
+
+/// Codex PR90f #3: the device → cloud wire, one portable definition (the engine's drain and the golden fixture
+/// `services/edge/test/fixtures/proactive-sync-golden.json` the Edge suite replays both come from here).
+enum ProactiveSyncWire {
+    static func iso(_ d: Date) -> String { ISO8601DateFormatter().string(from: d) }
+    static func body(action: String, operationID: String, until: String?) -> [String: Any] {
+        if action == "undo" { return ["operation_id": operationID] }
+        var b: [String: Any] = ["action": action, "operation_id": operationID]
+        if let until { b["until"] = until }
+        return b
+    }
+    static func route(action: String) -> String { action == "undo" ? "undo" : "action" }
+    /// PR90f #5: `POST suggestions` — an offline-evaluated suggestion gets its cloud record (idempotent by client id).
+    static func createBody(clientID: String, title: String, reason: String, actions: [String], createdAt: Date?) -> [String: Any] {
+        [:]
+    }
+}
