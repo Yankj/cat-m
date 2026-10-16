@@ -200,6 +200,10 @@ final class DictationAudioSink: @unchecked Sendable {
     private var dictationRequest: SFSpeechAudioBufferRecognitionRequest?
     private var dictationWatchdog: Task<Void, Never>?
     private var dictationText = ""
+    private var dictationTranscript = DictationTranscript()
+    private var dictationRecognizer: SFSpeechRecognizer?
+    private var dictationSegment = 0
+    private var dictationEmptyFailures = 0
     private var dictationOnText: (@MainActor (String) -> Void)?
     private var dictationOnEnd: (@MainActor (DictationEnd) -> Void)?
     private var dictationObservers: [NSObjectProtocol] = []
@@ -212,7 +216,7 @@ final class DictationAudioSink: @unchecked Sendable {
     func startDictation(onText: @escaping @MainActor (String) -> Void, onEnd: @escaping @MainActor (DictationEnd) -> Void) -> Bool {
         guard dictationPhase == .idle else { return false }
         dictationEpoch += 1; let epoch = dictationEpoch
-        dictationPhase = .starting; dictationText = ""; dictationOnText = onText; dictationOnEnd = onEnd
+        dictationPhase = .starting; dictationText = ""; dictationTranscript = DictationTranscript(); dictationEmptyFailures = 0; dictationOnText = onText; dictationOnEnd = onEnd
         Task { @MainActor [weak self] in await self?.runDictationStart(epoch) }
         return true
     }
@@ -243,15 +247,9 @@ final class DictationAudioSink: @unchecked Sendable {
             let audio = AVAudioSession.sharedInstance()
             try audio.setCategory(.playAndRecord, mode: .default, options: [.duckOthers, .defaultToSpeaker, .allowBluetooth])
             try audio.setActive(true, options: .notifyOthersOnDeactivation)
-            let req = SFSpeechAudioBufferRecognitionRequest(); req.requiresOnDeviceRecognition = true; req.shouldReportPartialResults = true
-            req.addsPunctuation = true   // iOS 16+: 。，？ instead of one unpunctuated run
-            dictationRequest = req
-            dictationSink.set { [weak req] buffer in req?.append(buffer) }
+            dictationRecognizer = recognizer
+            startSegment(epoch)
             try installDictationTap(epoch)
-            dictationTask = recognizer.recognitionTask(with: req) { [weak self] result, error in
-                let text = result?.bestTranscription.formattedString, final = result?.isFinal ?? false, failed = error != nil
-                Task { @MainActor [weak self] in self?.dictationResult(epoch, text: text, final: final, failed: failed) }
-            }
             observeEngineChanges(epoch)
             engine.prepare(); try engine.start()
             guard epoch == dictationEpoch else { return }
@@ -278,11 +276,41 @@ final class DictationAudioSink: @unchecked Sendable {
     /// Immediate stop (send / background / owner gone): keeps text already delivered.
     func cancelDictation(_ reason: DictationEnd = .cancelled) { if dictationPhase != .idle { endDictation(dictationEpoch, reason) } }
 
-    private func dictationResult(_ epoch: Int, text: String?, final: Bool, failed: Bool) {
-        guard epoch == dictationEpoch, dictationPhase == .recording || dictationPhase == .finishing else { return }
-        if let text, !text.isEmpty, text != dictationText { dictationText = text; dictationOnText?(text) }
-        if final { endDictation(epoch, .finished) }
-        else if failed { endDictation(epoch, dictationText.isEmpty ? .failed("") : .finished) }
+    /// New recognition request on the running engine (first segment, after a pause / error, or at the request limit).
+    private func startSegment(_ epoch: Int) {
+        guard let recognizer = dictationRecognizer else { return }
+        dictationTask?.cancel(); dictationRequest?.endAudio()
+        dictationSegment += 1; let segment = dictationSegment
+        let req = SFSpeechAudioBufferRecognitionRequest(); req.requiresOnDeviceRecognition = true; req.shouldReportPartialResults = true
+        req.addsPunctuation = true   // iOS 16+: 。，？ instead of one unpunctuated run
+        dictationRequest = req
+        dictationSink.set { [weak req] buffer in req?.append(buffer) }
+        dictationTask = recognizer.recognitionTask(with: req) { [weak self] result, error in
+            let text = result?.bestTranscription.formattedString, final = result?.isFinal ?? false, failed = error != nil
+            Task { @MainActor [weak self] in self?.dictationResult(epoch, segment: segment, text: text, final: final, failed: failed) }
+        }
+    }
+
+    /// Root cause 3: a final result or an error while the user is still talking no longer ends the session. The
+    /// segment's text is committed and a new segment starts; only the user's stop (phase .finishing) ends it.
+    private func dictationResult(_ epoch: Int, segment: Int, text: String?, final: Bool, failed: Bool) {
+        guard epoch == dictationEpoch, segment == dictationSegment, dictationPhase == .recording || dictationPhase == .finishing else { return }
+        if let text, !text.isEmpty { dictationTranscript.update(text); deliverDictationText() }
+        guard final || failed else { return }
+        if dictationPhase == .finishing { return endDictation(epoch, dictationTranscript.text.isEmpty && failed ? .failed("") : .finished) }
+        let hadText = !dictationTranscript.current.isEmpty
+        switch DictationRestart.decide(failed: failed, segmentHadText: hadText, emptyFailures: dictationEmptyFailures, sessionHasText: !dictationTranscript.text.isEmpty) {
+        case .restart:
+            dictationEmptyFailures = failed && !hadText ? dictationEmptyFailures + 1 : 0
+            dictationTranscript.commit(); startSegment(epoch)
+        case .finish: dictationTranscript.commit(); endDictation(epoch, .finished)
+        case .fail: endDictation(epoch, .failed(""))
+        }
+    }
+    private func deliverDictationText() {
+        let text = dictationTranscript.text
+        guard !text.isEmpty, text != dictationText else { return }
+        dictationText = text; dictationOnText?(text)
     }
 
     private func armWatchdog(_ epoch: Int, after nanoseconds: UInt64, phase: DictationPhase) {
