@@ -76,10 +76,25 @@ test('pg: lease recovery — unsent and unknown claims are re-armed exactly once
     const ca = await store.claimPush(a), cb = await store.claimPush(b); await store.markPushAttempt(b, cb.claim);
     const later = new Date(Date.now() + 10 * 60_000).toISOString();
     const n = await Promise.all([store.recoverStalePush(later, 120), store.recoverStalePush(later, 120)]);
-    assert.equal(n[0] + n[1], 2, 'two concurrent recoverers re-arm each row once');
+    assert.ok(n[0] + n[1] >= 2, 'both stale claims recovered');
     const rows = await sql`select id, push_state, push_recovered, push_generation from proactive.events where id in (${a}, ${b})`;
     const m = Object.fromEntries(rows.map(r => [r.id, r]));
+    assert.equal(m[a].push_generation, 1); assert.equal(m[b].push_generation, 1, 'two concurrent recoverers re-arm each row exactly once');
     assert.equal(m[a].push_state, 'pending'); assert.equal(m[a].push_recovered, 'unsent'); assert.equal(m[b].push_recovered, 'unknown');
     assert.equal(await store.finishPush(a, ca.claim, 'sent', null), false, 'stale claim cannot complete after recovery');
+  } finally { await sql.end(); }
+});
+
+test('pg: offline device suggestion create is idempotent across concurrent calls (dedupe by client id)', { skip: !url }, async () => {
+  const sql = postgres(url, { max: 5, prepare: false, onnotice: () => {} });
+  try {
+    const clock = { t: Date.parse('2026-10-15T02:00:00Z') }, { U, call } = rig(sql, { configured: true, send: async () => ({ ok: true }) }, clock);
+    await sql`insert into auth.users(id) values(${U})`;
+    const body = { client_id: 'local-' + crypto.randomUUID(), title: '评审', reason: 'r', actions: ['snooze', 'dismiss'], decision: 'notify' };
+    const rs = await Promise.all([1, 2, 3].map(() => call('POST', '/catpaw/proactive/v1/suggestions', body)));
+    assert.ok(rs.every(r => r.status === 200), JSON.stringify(rs.map(r => r.body)));
+    assert.equal(new Set(rs.map(r => r.body.suggestion.id)).size, 1, 'one cloud record');
+    const row = (await sql`select push_state, payload->>'delivery' d from proactive.events where id=${rs[0].body.suggestion.id}`)[0];
+    assert.equal(row.push_state, 'skipped'); assert.equal(row.d, 'device');
   } finally { await sql.end(); }
 });

@@ -6,7 +6,7 @@ const json = (status, body) => new Response(JSON.stringify(body), { status, head
 const PUSH_ACTIONS = ['open', 'done', 'snooze_10m', 'snooze_1h', 'dismiss'];
 const TOKEN_KINDS = ['apns', 'live_activity_update', 'live_activity_start'];
 
-export function createProactiveService({ store, verifyUser, schedulerSecret, model = null, apns = null, decision = null, quietHours = { start: 22, end: 8 }, dailyPushCap = 5, defaultTimeZone = 'Asia/Shanghai', now = () => Date.now(), log = () => {}, allow = null }) {
+export function createProactiveService({ store, verifyUser, schedulerSecret, model = null, apns = null, decision = null, quietHours = { start: 22, end: 8 }, dailyPushCap = 5, defaultTimeZone = 'Asia/Shanghai', now = () => Date.now(), log = () => {}, allow = null, pushLeaseSeconds = 120 }) {
   async function user(req) {
     const p = await verifyUser(req.headers.get('authorization')).catch(e => { throw bad(e.code === 'auth_key_service_unavailable' ? e.code : 'session_required', e.status === 503 ? 503 : 401); });
     if (!isUUID(p?.sub)) throw bad('session_required', 401);
@@ -79,7 +79,12 @@ export function createProactiveService({ store, verifyUser, schedulerSecret, mod
     }
   }
   async function flushPush(limit = 100) {
-    const at = now(), pending = await store.pendingPushEvents(limit, new Date(at).toISOString());
+    const at = now();
+    // Codex PR90f #4: a 'sending' claim older than the lease (sender crashed) is re-armed with a new generation; the old
+    // claim can never complete. Never attempted → plain resend; attempted (outcome unknown) → resend under the same
+    // apns-collapse-id (the event id), so a device that already got it shows one notification.
+    if (store.recoverStalePush) { const n = await store.recoverStalePush(new Date(at).toISOString(), pushLeaseSeconds); if (n) log('push_lease_recovered', n); }
+    const pending = await store.pendingPushEvents(limit, new Date(at).toISOString());
     const out = { sent: 0, skipped: 0, failed: 0, no_device: 0, deferred: 0, coalesced: 0, capped: 0 };
     const byUser = new Map();
     for (const ev of pending) {
@@ -120,13 +125,18 @@ export function createProactiveService({ store, verifyUser, schedulerSecret, mod
     if (!apns?.configured) { await store.setPush(ev.id, 'skipped', 'apns_not_configured'); out.skipped++; return; }
     // Codex PR90e #6: the send licence. Atomically pending → sending, and only while the suggestion is still pending;
     // a dismiss / snooze that completed during the awaits above has cancelled the row (or changed its status) → not sent.
-    if (store.claimPush && !(await store.claimPush(ev.id))) { out.skipped++; return; }
+    const claim = store.claimPush ? await store.claimPush(ev.id, new Date(now()).toISOString()) : { claim: null };
+    if (!claim) { out.skipped++; return; }
+    if (store.markPushAttempt) await store.markPushAttempt(ev.id, claim.claim, new Date(now()).toISOString());
     let ok = false, err = null;
     for (const t of tokens) {
       const r = await apns.send(t, ev).catch(e => ({ ok: false, reason: e.message }));
       if (r.ok) ok = true; else { err = r.reason; if (r.unregistered) await store.disableToken(t.id, r.reason); }
     }
-    await store.setPush(ev.id, ok ? 'sent' : 'failed', ok ? null : err); ok ? out.sent++ : out.failed++;
+    // Completion is bound to this claim (generation): a row re-armed or recovered meanwhile is not overwritten.
+    const done = store.finishPush ? await store.finishPush(ev.id, claim.claim, ok ? 'sent' : 'failed', ok ? null : err, new Date(now()).toISOString()) : (await store.setPush(ev.id, ok ? 'sent' : 'failed', ok ? null : err), true);
+    if (!done) { log('push_completion_stale', ev.id); out.skipped++; return; }
+    ok ? out.sent++ : out.failed++;
   }
 
   async function route(req) {
