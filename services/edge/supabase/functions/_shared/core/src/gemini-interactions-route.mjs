@@ -98,7 +98,8 @@ export class GeminiInteractionsRoute {
     let timedOut = false, visible = false, active = false, timer = null;
     const expire = phase => () => { timedOut = phase; cancel(); };
     const arm = ms => { clearTimeout(timer); timer = setTimeout(expire(active ? 'idle' : 'first_event'), ms); };
-    arm(this.timeouts.firstEventMs); const totalTimer = setTimeout(expire('total'), this.timeouts.totalMs);
+    const cap = ms => Math.max(1, Math.min(ms, input.attempt_budget_ms ?? Infinity)); // chain/turn budget clamp (w7)
+    arm(cap(this.timeouts.firstEventMs)); const totalTimer = setTimeout(expire('total'), cap(this.timeouts.totalMs));
     let response;
     try {
       const body = this.payload(input);

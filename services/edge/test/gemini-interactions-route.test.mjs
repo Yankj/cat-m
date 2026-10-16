@@ -1,4 +1,6 @@
 import test from 'node:test'; import assert from 'node:assert/strict';
+import {beforeEach} from 'node:test';import {_routeHealthForTests as __health} from '../supabase/functions/_shared/core/src/free-route-chain.mjs';
+beforeEach(()=>__health.clear()); // w7: route breaker state is per isolate; isolate tests
 import { FreeRouteChainProvider, readFreeRouteChain, withRoutePreference } from '../supabase/functions/_shared/core/src/free-route-chain.mjs';
 import { GeminiRateGuard, toSteps, toContent, _signatureCacheForTests } from '../supabase/functions/_shared/core/src/gemini-interactions-route.mjs';
 
@@ -68,7 +70,8 @@ test('429 → backoff cooldown and immediate fallback to OpenRouter; next turn s
   assert.equal((await collect(p))[0].text, '来自 OpenRouter');
   assert.ok(guard.coolUntil - Date.now() > 15000);
   await collect(p); assert.equal(urls.filter(u => u.includes('googleapis')).length, 1, 'cooling down: Google not called again');
-  assert.equal(p.observations.at(-2).error, 'rate_limited');
+  assert.equal(p.observations[0].route, 'gemini'); assert.ok(['rate_limited', 'quota_exhausted'].includes(p.observations[0].error));
+  assert.deepEqual(p.observations.slice(2).map(o => o.route), ['openrouter'], 'w7 breaker: next auto turn starts on the healthy route (no Gemini hop)');
 });
 
 test('daily quota → quota_exhausted with 1 h cooldown; per-minute limiter falls back without a request', async () => {

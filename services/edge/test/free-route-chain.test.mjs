@@ -1,4 +1,6 @@
 import test from 'node:test';import assert from 'node:assert/strict';
+import {beforeEach} from 'node:test';import {_routeHealthForTests as __health} from '../supabase/functions/_shared/core/src/free-route-chain.mjs';
+beforeEach(()=>__health.clear()); // w7: route breaker state is per isolate; isolate tests
 import {FreeRouteChainProvider,readFreeRouteChain,withRoutePreference} from '../supabase/functions/_shared/core/src/free-route-chain.mjs';
 import {readConfig} from '../supabase/functions/_shared/config.mjs';
 const sse=frames=>new Response(new ReadableStream({start(c){for(const f of frames)c.enqueue(new TextEncoder().encode(`data: ${f}\n\n`));c.close();}}),{status:200,headers:{'content-type':'text/event-stream'}});
