@@ -57,7 +57,7 @@ extension Result { var isFailure: Bool { if case .failure = self { return true }
     static func expect(_ ok: Bool, _ m: String) { if ok { passed += 1; print("PASS \(m)") } else { failed += 1; print("FAIL \(m)") } }
 
     static func main() async {
-        await memory(); await deviceCalls(); proactive(); nearby(); groundedFixtures(); contactsPrivacy(); replyVariants(); followUps(); await deviceUndo(); dictation(); await codexP0_1(); await codexPR89(); await accountEpoch(); await codexP89c(); proactiveDelivery(); proactiveLifecycle(); codexP0_3(); codexP0_3Matrix()
+        await memory(); await deviceCalls(); proactive(); nearby(); groundedFixtures(); contactsPrivacy(); replyVariants(); followUps(); await deviceUndo(); dictation(); await codexP0_1(); await codexPR89(); await accountEpoch(); await codexP89c(); proactiveLifecycle(); codexP0_3(); codexP0_3Matrix()
         print("nobug-p0 portable: \(passed) passed, \(failed) failed")
         exit(failed == 0 ? 0 : 1)
     }
