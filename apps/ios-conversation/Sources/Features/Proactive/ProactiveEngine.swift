@@ -295,6 +295,7 @@ struct ProactiveSignal: Equatable, Sendable {
         // Exactly once: the in-app delivery supersedes this meeting's pre-scheduled notification.
         UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ["pre-" + signal.eventID])
         #endif
+        var q = quota; if q.entries[suggestion.id]?.state == .reserved { q.release(suggestion.id, now: now) }; quota = q
         return suggestion
     }
 
@@ -363,26 +364,25 @@ struct ProactiveSignal: Equatable, Sendable {
 
     // MARK: Intervene: card + banner + actionable notification
 
-    /// Codex P0-3: notify/interrupt deliveries per local day (on-device daily cap).
-    private let deliveredKey = "catpaw.proactive.delivered.v1"
-    private func deliveredToday(_ now: Date) -> Int {
-        let day = Calendar.current.startOfDay(for: now).timeIntervalSince1970
-        let saved = defaults.dictionary(forKey: deliveredKey) as? [String: Double] ?? [:]
-        return saved["day"] == day ? Int(saved["count"] ?? 0) : 0
+    /// Codex P0-3 / PR90 #3: one persisted quota for in-app and pre-scheduled notifications (reservations + deliveries by identity).
+    private let quotaKey = "catpaw.proactive.quota.v2"
+    var quota: ProactiveQuotaLedger {
+        get { defaults.data(forKey: quotaKey).flatMap { try? JSONDecoder().decode(ProactiveQuotaLedger.self, from: $0) } ?? ProactiveQuotaLedger() }
+        set { var q = newValue; q.prune(now: .now); defaults.set(try? JSONEncoder().encode(q), forKey: quotaKey) }
     }
-    private func countDelivery(_ now: Date) {
-        let day = Calendar.current.startOfDay(for: now).timeIntervalSince1970
-        defaults.set(["day": day, "count": Double(deliveredToday(now) + 1)], forKey: deliveredKey)
-    }
+    private func deliveredToday(_ now: Date) -> Int { quota.count(on: now) }
 
     private func intervene(_ s: ProactiveSuggestion, level: ProactiveLevel, now: Date) {
         #if os(iOS)
-        let plan = ProactiveRules.delivery(level: level, now: now, deliveredToday: deliveredToday(now))
+        let ownReservation = quota.entries[s.id]?.state == .reserved ? 1 : 0  // this identity's own pre-scheduled slot
+        let plan = ProactiveRules.delivery(level: level, now: now, deliveredToday: deliveredToday(now) - ownReservation)
         note("deliver requested=\(level.name) final=\(plan.level.name) notification=\(plan.systemNotification) sound=\(plan.sound)")
         guard plan.inAppCard else { return }
         CatpawInAppBannerCenter.shared.show(CatpawInAppBanner(title: s.title, body: s.reason, symbol: "calendar.badge.clock", deepLink: URL(string: "catpawm://proactive")))
         guard plan.systemNotification else { note("intervene card only (no system notification) id=\(s.id)"); return }
-        countDelivery(now)
+        var q = quota
+        guard q.recordDelivery(s.id, at: now) else { note("intervene skipped: \(s.id) already delivered as a system notification"); return }
+        quota = q
         let content = UNMutableNotificationContent()
         content.title = s.title; content.body = s.reason; content.sound = plan.sound ? .default : nil
         if plan.timeSensitive { content.interruptionLevel = .timeSensitive }
@@ -571,13 +571,19 @@ struct ProactiveSignal: Equatable, Sendable {
         guard let e = store.events(matching: predicate).filter({ !$0.isAllDay && $0.startDate > now }).sorted(by: { $0.startDate < $1.startDate }).first else { return }
         let fire = e.startDate.addingTimeInterval(TimeInterval(-(lead.minutes + 5) * 60))
         guard fire > now.addingTimeInterval(60) else { return }
-        guard signalLedger.delivered[ProactiveRules.signalHash(eventID: e.calendarItemIdentifier, start: e.startDate)] == nil else { return }  // already delivered in-app
-        // Codex P0-3: quiet hours / daily cap apply to the out-of-app path too (counted at fire time's day).
-        let firedDayCount = Calendar.current.isDate(fire, inSameDayAs: now) ? deliveredToday(now) : 0
-        guard ProactiveRules.prescheduleAllowed(fire: fire, deliveredToday: firedDayCount) else {
+        let hash = ProactiveRules.signalHash(eventID: e.calendarItemIdentifier, start: e.startDate), identity = "evt-" + hash
+        guard signalLedger.delivered[hash] == nil else { return }  // already delivered in-app
+        // PR90 #3: same decision as the in-app path (offline level at the fire instant + quiet hours at fire time),
+        // and a persisted quota reservation for that identity (counts even if shown but never tapped).
+        let level = ProactiveRules.prescheduleLevel(minutesUntilAtFire: lead.minutes + 5, leadMinutes: lead.minutes, travelMinutes: nil,
+                                                    fire: fire, deliveredOnFireDay: quota.count(on: fire))
+        var q = quota
+        guard let level, q.reserve(identity, fire: fire) else {
+            q.release(identity, now: now); quota = q
             UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ["pre-" + e.calendarItemIdentifier])
-            note("preschedule skipped: \(fire.formatted(date: .omitted, time: .shortened)) is in quiet hours or over the daily cap"); return
+            note("preschedule skipped: \(fire.formatted(date: .omitted, time: .shortened)) silent / quiet hours / over the daily cap"); return
         }
+        quota = q
         let signal = ProactiveSignal(
             source: .background,
             eventID: e.calendarItemIdentifier,
@@ -589,8 +595,10 @@ struct ProactiveSignal: Equatable, Sendable {
         content.title = "\(e.startDate.formatted(date: .omitted, time: .shortened)) \(e.title ?? "日程")"
         content.body = "要我提前 \(lead.minutes) 分钟提醒你准备吗？"
         content.categoryIdentifier = Self.notificationCategory
+        content.sound = .default
+        content.interruptionLevel = level == .interrupt ? .timeSensitive : .active
         content.userInfo = [
-            "catpaw_proactive_id": "evt-" + signal.signalHash,
+            "catpaw_proactive_id": identity,
             "catpaw_proactive_event": e.calendarItemIdentifier,
             "catpaw_proactive_title": signal.title,
             "catpaw_proactive_start": e.startDate.timeIntervalSince1970,
