@@ -323,7 +323,12 @@ import UserNotifications
         let firstBase = ProactiveDeliveryPipeline.snoozeBase(c.id, intent: "op-\(c.id)-snooze")
         poster.addResult = false; poster.removed = []
         do { _ = try await ProactiveLocalBackend().perform(.snooze, on: c.id); XCTFail("must throw") } catch {}
-        XCTAssertFalse(poster.removed.contains { $0.hasPrefix(firstBase) }, "the original snooze notification is kept")
+        // Exact ids: the failed one's own id ("…-snooze-op-…-snooze-n2~…") starts with firstBase, and removing that
+        // rejected request is correct; the original's scoped and legacy ids must never be touched.
+        let tok = try XCTUnwrap(AccountEpoch.shared.capture())
+        let original = [ProactiveDeliveryPipeline.scoped(firstBase, tok), firstBase]
+        XCTAssertFalse(poster.removed.contains { original.contains($0) }, "the original snooze notification is kept (removed: \(poster.removed))")
+        XCTAssertTrue(poster.removed.allSatisfy { $0.contains("-snooze-n2") }, "only the rejected new request is cleaned up")
         let stored = try XCTUnwrap(ProactiveLocalBackend.load()[c.id])
         XCTAssertEqual(stored.taken, first.taken, "history unchanged"); XCTAssertEqual(stored.effectiveStatus, .snoozed)
         XCTAssertEqual(ProactiveEngine.shared.syncQueue.items.filter { $0.op.local == c.id }.map(\.op.operationID), ["op-\(c.id)-snooze"], "nothing synced for the failed one")
