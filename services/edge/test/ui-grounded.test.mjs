@@ -73,3 +73,9 @@ test('render_ui place without a tool result → no ui.block, model told to answe
  const dc=sent.events.find(e=>e.type==='device_call').data,r=await report(s,sent.tid,{call_id:dc.call_id,operation_id:randomUUID(),args_hash:dc.args_hash,status:'ok',data:PLACES.data});
  const resumed=await sse(r);await s.f.runtime.chat.waitIdle();assert.ok(!resumed.some(e=>e.type==='ui.block'),'legacy client keeps its receipt list');
 });
+test('chat-ux #4: follow-up prompt only for clients advertising `followups`',async()=>{
+ const text=[{name:RENDER_UI,arguments:{block:{id:'c',kind:'card',title:'x'}}}];
+ let s=await setup(text);await send(s,{kinds:'card,place,event,followups'});assert.match(s.probe.prompts[0],/```catpaw-card:followups/);
+ s=await setup(text);await send(s);assert.doesNotMatch(s.probe.prompts[0],/catpaw-card:followups/);
+ assert.deepEqual(parseUIKinds('followups,bogus'),['followups']);
+});

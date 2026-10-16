@@ -364,7 +364,8 @@ public struct ConversationUIEvent: Codable, Sendable, Equatable {
     public static let kinds: Set<String> = ["card", "choices", "confirm", "form", "sheet", "list", "progress", "place", "event"]
     /// Kinds this build renders, sent as `X-Catpaw-UI-Kinds`; the server only grounds place/event cards for clients that list them.
     public static let kindsHeader = "X-Catpaw-UI-Kinds"
-    public static var kindsHeaderValue: String { kinds.sorted().joined(separator: ",") }
+    /// Plus non-block capabilities (`followups` chips, chat-ux #4).
+    public static var kindsHeaderValue: String { (kinds.sorted() + [FollowUpSuggestions.kind]).joined(separator: ",") }
     public let type: EventType
     public let sequence: Int
     public let payload: Data

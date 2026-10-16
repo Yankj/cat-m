@@ -82,3 +82,38 @@ struct ReplyActionControl {
         }
     }
 }
+
+/// chat-ux #4: 2–3 follow-up questions under an answer. A tap posts `FollowUpSuggestions.tapNotification`;
+/// ConversationFirstView sends it as the next prompt when a new turn can start.
+@MainActor struct FollowUpChips: View {
+    let questions: [String]
+    @Environment(\.locale) private var locale
+    private func ui(_ k: String, _ a: [String] = []) -> String { AppLanguage(locale: locale).ui(k, arguments: a) }
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            ForEach(Array(questions.enumerated()), id: \.offset) { i, q in
+                Button { NotificationCenter.default.post(name: FollowUpSuggestions.tapNotification, object: q) } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "arrow.turn.down.right").imageScale(.small).foregroundStyle(CatpawColors.secondary).accessibilityHidden(true)
+                        Text(q).font(CatpawTypography.Role.secondary.font).foregroundStyle(CatpawColors.ink).multilineTextAlignment(.leading)
+                    }
+                    .padding(.horizontal, 12).padding(.vertical, 8).frame(minHeight: 44)
+                    .background(CatpawColors.panel, in: Capsule()).overlay(Capsule().strokeBorder(CatpawColors.hairline, lineWidth: 0.5))
+                }
+                .buttonStyle(CatpawPressButtonStyle())
+                .accessibilityLabel(ui("追问：{0}", [q])).accessibilityHint(ui("发送这个问题")).accessibilityIdentifier("chat.followup.\(i)")
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .contain).accessibilityLabel(ui("建议追问")).accessibilityIdentifier("chat.followups")
+    }
+}
+
+@MainActor enum FollowUpChipsAdapter {
+    static func register() {
+        MarkdownCustomBlockRegistry.shared.register(kind: FollowUpSuggestions.kind) { payload, closed in
+            let questions = FollowUpSuggestions.parse(payload, closed: closed)
+            if questions.isEmpty { EmptyView() } else { FollowUpChips(questions: questions) }   // streaming: nothing (no flicker)
+        }
+    }
+}

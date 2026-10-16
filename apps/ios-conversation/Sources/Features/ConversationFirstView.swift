@@ -253,6 +253,12 @@ import CatpawImageComposer
         model.editDraft(text);model.prepareSend()
         if let admitted=model.outgoingMessages.last(where:{!old.contains($0.id)}) {followingLatest=true;replyVariants.addEdit(original:root,newTurn:admitted.id)}
     }
+    /// chat-ux #4: a tapped follow-up chip becomes the next prompt (only when a new turn can start and the draft is empty).
+    private func sendFollowUp(_ text:String?) {
+        guard let text,!text.isEmpty,!model.busy,model.draft.isEmpty,model.canAcceptDraft else {return}
+        UIImpactFeedbackGenerator(style:.light).impactOccurred()
+        model.editDraft(text);model.prepareSend();followingLatest=true
+    }
     private var renderedTimelineRows:[RenderedTimelineRow] {timelineMemo.rendered}
     private func computeRenderedTimelineRows()->[RenderedTimelineRow] {
         #if DEBUG
@@ -499,6 +505,7 @@ import CatpawImageComposer
         .onChange(of: CatpawRouteCenter.shared.pending) { _, _ in consumeAppRoute() }
         .sheet(isPresented: $proactiveInboxPresented) { NavigationStack { ProactiveInboxView() } }
         .sheet(item: $editingPrompt) { e in MessageEditSheet(original: e.text) { resendEdited(e.root, $0) } }
+        .onReceive(NotificationCenter.default.publisher(for: FollowUpSuggestions.tapNotification)) { note in sendFollowUp(note.object as? String) }
         .composerAttachPopover(isPresented: Binding(get: { ComposerAttachPopoverState.shared.isPresented }, set: { ComposerAttachPopoverState.shared.isPresented = $0 }),
                                remaining: ComposerAttachPopoverState.shared.remaining,
                                onAdd: { items in ComposerAttachPopoverState.shared.add(items); ComposerAttachPopoverState.shared.isPresented = false })
