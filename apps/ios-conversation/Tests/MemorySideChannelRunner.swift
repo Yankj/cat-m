@@ -11,15 +11,15 @@ final class SideChannelLog: @unchecked Sendable {
         func check(_ condition: Bool, _ text: String) throws { guard condition else { throw CatpawError.invalid(text) }; print("PASS: " + text) }
         let url = URL(fileURLWithPath: CommandLine.arguments[1])
         guard let wire = try JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [[String: Any]] else { throw CatpawError.invalid("fixture") }
-        ConversationSideChannelEvents.dispatch(type: "memory.used", turnID: UUID(), data: Data("{}".utf8))
+        ConversationSideChannelEvents.dispatch(type: "memory.used", turnID: UUID(), data: Data("{}".utf8), token: nil)
         try check(ConversationSideChannelEvents.handler == nil, "dispatch without an installed handler is a no-op")
         let log = SideChannelLog(), turn = UUID()
-        ConversationSideChannelEvents.handler = { type, turnID, data in log.add((type, turnID, data)) }
+        ConversationSideChannelEvents.handler = { type, turnID, data, _ in log.add((type, turnID, data)) }
         for event in wire {
             let type = event["type"] as? String ?? ""
             try check(ConversationSideChannelEvents.types.contains(type), "fixture type \(type) is a side-channel type")
             let data = try JSONSerialization.data(withJSONObject: event["data"] ?? [:])
-            ConversationSideChannelEvents.dispatch(type: type, turnID: turn, data: data)
+            ConversationSideChannelEvents.dispatch(type: type, turnID: turn, data: data, token: nil)
             let payload = ConversationTurnEvent.Payload.sideChannel(type: type, data: data)
             if case let .sideChannel(t, d) = payload { try check(t == type && d == data, "payload carries \(type) bytes") }
         }

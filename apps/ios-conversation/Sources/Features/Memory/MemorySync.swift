@@ -180,14 +180,15 @@ enum MemoryEventSink {
     private struct Used: Decodable { let ids: [String]; let memories: [Memory]? }
     private struct Update: Decodable { let op: String; let ids: [String]; let memories: [Memory]? }
 
-    static func used(turnID: UUID, data: Data) {
+    /// `token`: the turn's account token, bound when the stream was established (network layer). nil → dropped.
+    static func used(turnID: UUID, data: Data, token: AccountToken?) {
         guard let v = try? JSONDecoder().decode(Used.self, from: data) else { return }
-        guard let token = AccountEpoch.shared.capture() else { return }   // taken on arrival; a sign-out before the hop drops it
+        guard let token else { return }
         Task { @MainActor in MemoryCache.shared.recordUsed(turnID: turnID, ids: v.ids, memories: v.memories ?? [], token: token) }
     }
-    static func update(data: Data) {
+    static func update(turnID: UUID, data: Data, token: AccountToken?) {
         guard let v = try? JSONDecoder().decode(Update.self, from: data) else { return }
-        guard let token = AccountEpoch.shared.capture() else { return }
+        guard let token else { return }
         Task { @MainActor in MemoryCache.shared.applyUpdate(op: v.op, ids: v.ids, memories: v.memories ?? [], token: token) }
     }
 }
@@ -195,10 +196,10 @@ enum MemoryEventSink {
 extension MemoryEventSink {
     /// Routes the network layer's side-channel events here. Call once where the memory service is created.
     static func installSideChannel() {
-        ConversationSideChannelEvents.handler = { type, turnID, data in
+        ConversationSideChannelEvents.handler = { type, turnID, data, token in
             switch type {
-            case "memory.used": MemoryEventSink.used(turnID: turnID, data: data)
-            case "memory.update": MemoryEventSink.update(data: data)
+            case "memory.used": MemoryEventSink.used(turnID: turnID, data: data, token: token)
+            case "memory.update": MemoryEventSink.update(turnID: turnID, data: data, token: token)
             default: break
             }
         }

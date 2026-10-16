@@ -226,6 +226,7 @@ public actor ConversationSessionService {
     public func send(scope: DataScope, conversationID: UUID, text: String, operationID: UUID, context: [ConversationExplicitContext] = [], preserveDraft:Bool = false,image:ConversationVisionPayload?=nil,continuation:ConversationArtifactContinuationIntent?=nil,acceptedWork:ConversationAcceptedWorkSelection?=nil,revisionWork:ConversationRevisionWorkSelection?=nil) async throws -> UUID {
         let sourceToken = pinnedSource()   // p89e-1: account AND login generation, pinned before the first await
         guard active[conversationID] == nil else { throw ConversationSessionError.busy }
+        let turnToken = ConversationSideChannelEvents.beginTurnToken(operationID)   // Codex PR91 #1: one token per turn, bound before any await; resumed streams use the registry
         // R7 offline send: a plain text turn is journaled and parked in the outbox without any POST.
         let plainSend = context.isEmpty && image == nil && continuation == nil && acceptedWork == nil && revisionWork == nil && outbox != nil
         let offline = plainSend ? !(await resilience?.isPathSatisfied() ?? true) : false
@@ -241,7 +242,7 @@ public actor ConversationSessionService {
             catch { sendDiagnostic("catpaw.send transcript sync skipped: \(String(describing: error))") }
         }
         var (session, journalRevision) = try await readVersioned(scope: scope, conversationID: conversationID)
-        let request: ConversationTurnRequest
+        var request: ConversationTurnRequest
         let epoch: Int
         if let index = session.turns.firstIndex(where: { $0.id == operationID }) {
             let prior = session.turns[index]
@@ -301,6 +302,7 @@ public actor ConversationSessionService {
             if let image,let message=request.history.last {try image.reference.validate(image.bytes,messageID:message.id)}
             session.turns.append(ConversationTurnRecord(id: operationID, request: request, state: .dispatched, lastSequence: 0, error: nil))
         }
+        request.accountToken = turnToken
         guard active[conversationID] == nil else { throw ConversationSessionError.busy }
         let observationToken = claimObservation(conversationID, source: sourceToken)
         defer { if active[conversationID] == observationToken { releaseActive(conversationID) } }
