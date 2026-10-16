@@ -39,7 +39,7 @@ import Foundation
     static func expect(_ ok: Bool, _ m: String) { if ok { passed += 1; print("PASS \(m)") } else { failed += 1; print("FAIL \(m)") } }
 
     static func main() async {
-        await memory(); await deviceCalls(); proactive(); nearby(); groundedFixtures(); contactsPrivacy(); replyVariants(); followUps(); await deviceUndo(); dictation()
+        await memory(); await deviceCalls(); proactive(); nearby(); groundedFixtures(); contactsPrivacy(); replyVariants(); followUps(); await deviceUndo(); dictation(); await p02AccountIsolation()
         print("nobug-p0 portable: \(passed) passed, \(failed) failed")
         exit(failed == 0 ? 0 : 1)
     }
@@ -343,4 +343,59 @@ import Foundation
         expect(FollowUpSuggestions.parse(d(String(repeating: "长", count: 31) + "\n短一\n短二"), closed: true) == ["短一", "短二"], "followups: over-long lines dropped")
         expect(ConversationUIEvent.kindsHeaderValue.hasSuffix(",followups") && !ConversationUIEvent.kinds.contains("followups"), "followups: advertised as capability, not a ui.block kind")
     }
+
+    // MARK: Codex review P0-2 — local memory bound to an account (or explicit guest), sign-out purge, one 「使用记忆」 switch.
+    static func p02AccountIsolation() async {
+        let pA = InMemorySnapshotPersistence(), pB = InMemorySnapshotPersistence()
+        MemoryLibraryLocal.activate(owner: .account("aaaa"), persistence: pA)
+        expect(MemoryLibraryLocal.shared.owner == .account("aaaa"), "P0-2 local library is bound to the signed-in account")
+        _ = try? await MemoryLibraryLocal.shared.create(kind: "preference", content: "开会提前 25 分钟准备")
+        expect(pA.read() != nil, "P0-2 A's memory is written to A's (sealed) store, not a shared file")
+        // Account switch without sign-out: B starts empty, A's data stays in A's store.
+        MemoryLibraryLocal.activate(owner: .account("bbbb"), persistence: pB)
+        let bSnap = try? await MemoryLibraryLocal.shared.load()
+        expect(MemoryLibraryLocal.shared.items.isEmpty, "P0-2 B does not see A's local memory")
+        expect(ProactiveRules.lead(in: bSnap.map { [$0] } ?? []) == nil, "P0-2 B cannot recall A's lead memory")
+        MemoryLibraryLocal.activate(owner: .account("aaaa"), persistence: pA)
+        expect(MemoryLibraryLocal.shared.items.count == 1, "P0-2 A's memory survives a cold start in A's own store")
+        // Migration is bound to the original owner.
+        let target = RefusingBackend()
+        let cross = await MemoryLibraryLocal.migrate(MemoryLibraryLocal.shared, to: target, targetOwner: .account("bbbb"))
+        expect(target.created.isEmpty && cross.stoppedBy == .failed("owner_mismatch") && cross.kept == 1, "P0-2 A's local memory is never uploaded into B's cloud library")
+        let guest = MemoryLibraryStub(owner: .guest)
+        _ = try? await guest.create(kind: "preference", content: "guest note")
+        let fromGuest = await MemoryLibraryLocal.migrate(guest, to: target, targetOwner: .account("aaaa"))
+        expect(target.created.isEmpty && fromGuest.stoppedBy == .failed("owner_mismatch"), "P0-2 guest memory is never auto-uploaded into an account")
+        let same = await MemoryLibraryLocal.migrate(MemoryLibraryLocal.shared, to: target, targetOwner: .account("aaaa"))
+        expect(same.migrated == 1 && target.created == ["开会提前 25 分钟准备"], "P0-2 same-owner migration still works")
+        // Sign-out purge: A's store erased, library falls back to an empty in-memory guest.
+        _ = try? await MemoryLibraryLocal.shared.create(kind: "preference", content: "住在杭州")
+        MemoryLibraryLocal.purge(owner: .account("aaaa"))
+        expect(pA.read() == nil && MemoryLibraryLocal.shared.items.isEmpty && MemoryLibraryLocal.shared.owner == .guest, "P0-2 sign-out erases A's local memory")
+        MemoryLibraryLocal.activate(owner: .account("aaaa"), persistence: pA)
+        expect(MemoryLibraryLocal.shared.items.isEmpty, "P0-2 after sign-out nothing of A comes back")
+        // Write errors are not swallowed.
+        let broken = MemoryLibraryStub(owner: .account("cccc"), persistence: FailingPersistence())
+        do { _ = try await broken.create(kind: "preference", content: "x"); expect(false, "P0-2 failed write throws") }
+        catch { expect(true, "P0-2 a failed local write throws instead of pretending it was saved") }
+        // Sign-out also clears proactive items and undelivered device/undo reports.
+        let d = UserDefaults(suiteName: "p02-\(UUID().uuidString)")!
+        for k in AccountLocalData.userDefaultsKeys { d.set(Data([1]), forKey: k) }
+        AccountLocalData.purge(defaults: d)
+        expect(AccountLocalData.userDefaultsKeys.allSatisfy { d.object(forKey: $0) == nil }, "P0-2 sign-out clears proactive inbox/ledger and pending device reports")
+        expect(Set(["catpaw.proactive.inbox.v1", "catpaw.proactive.ledger.v1", "catpaw.proactive.ops.v1", "catpaw.proactive.suggestions.v1", "catpaw.devicecall.records.v1", "catpaw.devicecall.undos.v1"]).isSubset(of: Set(AccountLocalData.userDefaultsKeys)), "P0-2 purge list covers proactive + pending delivery keys")
+        // One switch: cloud 「使用记忆」 off ⇒ no path reads any memory (local included).
+        let off = MemoryLibrarySnapshot(items: [], useMemory: false, autoSave: nil)
+        let local = MemoryLibrarySnapshot(items: [.init(id: "l1", group: .preference, content: "开会提前 25 分钟准备"), .init(id: "l2", group: .preference, content: "喜欢吃辣，爱吃川菜")], useMemory: true, autoSave: true)
+        expect(ProactiveRules.lead(in: [off, local]) == nil, "P0-2 使用记忆 off ⇒ leadTime reads no memory (0 refs)")
+        expect(NearbyRules.preferences(in: [off, local]).cited.isEmpty, "P0-2 使用记忆 off ⇒ nearby search cites no memory (0 refs)")
+        expect(MemoryRecallGate.effective([off, local]).isEmpty && MemoryRecallGate.effective([local]).count == 1, "P0-2 single recall gate for every path")
+        MemoryLibraryLocal.activate(owner: .guest, persistence: nil)
+    }
+}
+
+final class FailingPersistence: MemorySnapshotPersisting {
+    func read() -> Data? { nil }
+    func write(_ data: Data) throws { throw CocoaError(.fileWriteNoPermission) }
+    func erase() {}
 }
