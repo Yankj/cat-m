@@ -89,7 +89,10 @@ struct DeviceCallResult: Codable, Sendable, Equatable {
 /// 三角 (B6 DeviceResultClient): delivers the result to the cloud agent for the same turn.
 @MainActor protocol DeviceResultSubmitting {   // not class-bound: 三角's ConversationDeviceResultSubmitter is a struct
     func submit(_ result: DeviceCallResult) async throws
+    /// Chat-UX #6: report a receipt undo to the turn.
+    func reportUndo(callID: String, outcome: DeviceUndoOutcome) async throws
 }
+extension DeviceResultSubmitting { func reportUndo(callID: String, outcome: DeviceUndoOutcome) async throws {} }
 
 @MainActor final class DeviceToolExecutorStub: DeviceToolExecuting {
     var outcome: DeviceCallStatus = .ok
@@ -103,6 +106,8 @@ struct DeviceCallResult: Codable, Sendable, Equatable {
 @MainActor final class DeviceResultSubmitterStub: DeviceResultSubmitting {
     private(set) var sent: [DeviceCallResult] = []
     func submit(_ result: DeviceCallResult) async throws { sent.append(result) }
+    private(set) var undos: [(String, DeviceUndoOutcome)] = []
+    func reportUndo(callID: String, outcome: DeviceUndoOutcome) async throws { undos.append((callID, outcome)) }
 }
 
 /// Injection points: M1 sets `executor`, 三角's installer sets `submitter` (and clears both at sign-out).

@@ -55,6 +55,21 @@ export function validateDeviceResult(input){
  check(input.data===undefined||input.data===null||typeof input.data==='object',422,'device_result_schema_invalid');
  return input;
 }
+/** chat-ux #6: undo of a device write from the chat receipt. Body of POST …/turns/{t}/device-undo. */
+export const DEVICE_UNDOABLE_TOOLS=Object.freeze(['calendar_create','reminder_create','alarm_set']);
+export const DEVICE_UNDO_STATUSES=Object.freeze(['undone','already_gone','failed']);
+export function validateDeviceUndo(input){
+ check(input&&typeof input==='object'&&!Array.isArray(input),422,'device_undo_schema_invalid');
+ const keys=Object.keys(input);check(['call_id','operation_id','status'].every(k=>keys.includes(k))&&keys.every(k=>['call_id','operation_id','status'].includes(k)),422,'device_undo_schema_invalid');
+ check(typeof input.call_id==='string'&&input.call_id.length>0&&input.call_id.length<=160&&typeof input.operation_id==='string'&&/^[0-9a-f-]{36}$/i.test(input.operation_id)&&DEVICE_UNDO_STATUSES.includes(input.status),422,'device_undo_schema_invalid');
+ return input;
+}
+/** Model-facing note prepended (as untrusted system record) to the next user message after an undo. */
+export function deviceUndoNote(notes){
+ if(!Array.isArray(notes)||!notes.length)return '';
+ const what={calendar_create:'日程',reminder_create:'提醒',alarm_set:'闹钟'},how={undone:'已删除',already_gone:'已不存在（用户可能已手动删除）',failed:'撤销失败，可能仍在手机上'};
+ return '（系统记录，不是用户的话：'+notes.map(n=>`用户在手机上撤销了你创建的${what[n.tool]??'项目'}「${String(n.title??'').slice(0,60)}」(call_id ${n.call_id})，结果：${how[n.status]??n.status}`).join('；')+'。之后不要再假设它存在，除非用户要求重新创建。）';
+}
 export const deviceCallEvent=(it,args)=>({call_id:it.call_id,tool:it.tool,args,confirm:it.confirm,ttl_sec:it.ttl_sec,interrupt_id:it.interrupt_id,args_hash:it.args_hash,expires_at:it.expires_at});
 /** Model-facing result of a device call. */
 export function deviceResult(it){

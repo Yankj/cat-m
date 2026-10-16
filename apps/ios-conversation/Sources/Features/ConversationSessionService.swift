@@ -1086,6 +1086,14 @@ public actor ConversationSessionService {
             throw error
         }
     }
+    /// Chat-UX #6: tells the turn that created `callID` that the user undid it on the phone (the model hears it with
+    /// the next message). Needs the call to have been seen this session; the local delete never waits on this.
+    public func submitDeviceUndo(scope: DataScope, callID: String, outcome: DeviceUndoOutcome) async throws {
+        guard let (conversationID, turnID) = deviceCallIndex[callID] else { throw ConversationApprovalFailure.noPendingApproval }
+        let saved = try await read(scope: scope, conversationID: conversationID)
+        guard let turn = saved.turns.first(where: { $0.id == turnID }) else { throw ConversationApprovalFailure.noPendingApproval }
+        try await backend.submitDeviceUndo(turn.request, callID: callID, outcome: outcome, operationID: stableID("device-undo-\(turnID)-\(callID)"))
+    }
     /// Pending device calls of a conversation (cold start: show their cards again).
     public func pendingDeviceCalls(scope: DataScope, conversationID: UUID) async throws -> [ConversationDeviceCall] {
         let saved = try await read(scope: scope, conversationID: conversationID)
@@ -1144,6 +1152,9 @@ public struct ConversationDeviceResultSubmitter: Sendable {
     /// `data` is a JSON object (or nil). Failures are `ConversationApprovalFailure` / `ConversationSessionError.busy` (retry later).
     public func submit(callID: String, status: String, data: Data?) async throws {
         try await service.submitDeviceResult(scope: scope, callID: callID, status: status, data: data)
+    }
+    public func submitUndo(callID: String, outcome: DeviceUndoOutcome) async throws {
+        try await service.submitDeviceUndo(scope: scope, callID: callID, outcome: outcome)
     }
     public func pendingDeviceCalls(conversationID: UUID) async throws -> [ConversationDeviceCall] {
         try await service.pendingDeviceCalls(scope: scope, conversationID: conversationID)

@@ -52,6 +52,8 @@ struct DeviceCallSpec: Sendable {
     @ObservedObject private var store = DeviceCallStore.shared
     @ObservedObject private var blockStore = GenerativeBlockStore.shared
     @State private var editing = false
+    @ObservedObject private var ledger = DeviceLedger.shared
+    @State private var undoFailed = false
     @Environment(\.openURL) private var openURL
     @Environment(\.locale) private var locale
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -172,8 +174,15 @@ struct DeviceCallSpec: Sendable {
                     .accessibilityIdentifier("chat.deviceCall.open")
             }
             Spacer(minLength: 0)
+            if ledger.isUndone(callID: call.call_id) {
+                Text(ui("已撤销")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary).accessibilityIdentifier("chat.deviceCall.undone")
+            } else if DeviceUndoRules.canUndo(tool: call.tool, status: result.status.rawValue, alreadyUndone: false), ledger.entry(callID: call.call_id) != nil {
+                Button(ui("撤销")) { Task { await undo() } }.font(CatpawTypography.Role.body.font).foregroundStyle(CatpawColors.secondary).touchTarget()
+                    .accessibilityLabel(ui("撤销")).accessibilityIdentifier("chat.deviceCall.undo")
+            }
         }
-        .frame(minHeight: 44).accessibilityElement(children: .combine).accessibilityIdentifier("chat.deviceCall.receipt")
+        .frame(minHeight: 44).accessibilityElement(children: .contain).accessibilityIdentifier("chat.deviceCall.receipt")
+        if undoFailed { Text(ui("没能撤销，请到日历或提醒事项里删除")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary) }
         // The place card (server ui.block, kind:place) is the primary nearby view; this list is the fallback for an older server.
         if call.tool == "places_search", blockStore.blocks[NearbyRules.placeBlockID(callID: call.call_id)] == nil { placesList(result) }
         if reportFailed {
@@ -215,6 +224,12 @@ struct DeviceCallSpec: Sendable {
         } else if let message = result.data?["message"]?.text, result.status == .error {
             Text(message).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary).fixedSize(horizontal: false, vertical: true)
         }
+    }
+    /// Chat-UX #6: delete by call_id (same ledger/EventKit path as 任务's 撤销), then tell the turn. The report is best-effort.
+    private func undo() async {
+        let outcome = ledger.undo(callID: call.call_id)
+        undoFailed = !outcome.removed
+        try? await DeviceCallHub.submitter?.reportUndo(callID: call.call_id, outcome: outcome)
     }
     private func receiptText(_ status: DeviceCallStatus) -> String {
         switch status {

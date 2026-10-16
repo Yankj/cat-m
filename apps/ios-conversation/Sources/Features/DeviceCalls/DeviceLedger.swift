@@ -55,6 +55,21 @@ struct DeviceLedgerEntry: Codable, Identifiable, Equatable {
         return ok
     }
 
+    func entry(callID: String) -> DeviceLedgerEntry? { entries.first { $0.id == callID } }
+    func isUndone(callID: String) -> Bool { entry(callID: callID)?.undone == true }
+    /// Chat-UX #6: delete what this call_id created. Same EventKit path as `undo(_:)`, with a precise outcome for the model.
+    func undo(callID: String) -> DeviceUndoOutcome {
+        guard let entry = entry(callID: callID) else { return .alreadyGone }
+        if entry.undone { return .alreadyGone }
+        let found: Bool
+        switch entry.kind {
+        case .reminder: found = store.calendarItem(withIdentifier: entry.itemID) is EKReminder
+        case .event: found = store.event(withIdentifier: entry.itemID) != nil
+        }
+        let outcome = DeviceUndoRules.outcome(found: found, deleted: undo(entry))
+        return outcome
+    }
+
     private func save() { if let data = try? JSONEncoder().encode(entries) { try? data.write(to: url, options: .atomic) } }
     nonisolated static func date(_ s: String?) -> Date? {
         guard let s, !s.isEmpty else { return nil }

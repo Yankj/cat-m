@@ -82,3 +82,19 @@ test('chat-ux #7: contacts_search needs a tap — device_call confirm:card, turn
  assert.doesNotThrow(()=>createDeviceTools().get('contacts_search').validate({query:'张三',include_email:true}));
  assert.throws(()=>createDeviceTools().get('contacts_search').validate({query:'张三',include_email:'yes'}));
 });
+
+test('chat-ux #6: device-undo records the outcome by call_id; the model learns it with the next message; idempotent; only ok writes',async()=>{
+ const s=await setup(CREATE),{tid,events}=await send(s);const dc=events.find(e=>e.type==='device_call').data;
+ const undo=body=>s.f.runtime.api(new Request(H+s.path+'/turns/'+tid+'/device-undo',{method:'POST',headers:{Authorization:'Bearer memory-fixture','Content-Type':'application/json'},body:JSON.stringify(body)}));
+ const op=randomUUID();
+ assert.equal((await undo({call_id:dc.call_id,operation_id:op,status:'undone'})).status,409,'not reported yet → not applicable');
+ const r=await report(s,tid,{call_id:dc.call_id,operation_id:randomUUID(),args_hash:dc.args_hash,status:'ok',data:{event_id:'EK-1'}});await sse(r);await s.f.runtime.chat.waitIdle();
+ assert.equal((await undo({call_id:'nope',operation_id:op,status:'undone'})).status,404);
+ assert.equal((await undo({call_id:dc.call_id,operation_id:op,status:'gone'})).status,422);
+ const ok=await undo({call_id:dc.call_id,operation_id:op,status:'undone'});assert.equal(ok.status,200);assert.deepEqual((await ok.json()).undo,{call_id:dc.call_id,status:'undone',replayed:false});
+ assert.equal((await (await undo({call_id:dc.call_id,operation_id:op,status:'undone'})).json()).undo.replayed,true,'replay accepted');
+ assert.equal((await undo({call_id:dc.call_id,operation_id:randomUUID(),status:'failed'})).status,409,'different outcome for the same call');
+ const seen=[];s.f.runtime.chat.provider.stream=async function*(input){seen.push(input.messages.at(-1).content);yield {type:'text_delta',text:'好'};yield {type:'done',finish_reason:'stop'};};
+ await send(s);assert.match(seen[0],/用户在手机上撤销了你创建的日程「牙医」/);assert.match(seen[0],/已删除/);assert.match(seen[0],/帮我加个日程$/);
+ await send(s);assert.doesNotMatch(seen[1],/撤销/,'note delivered once');
+});

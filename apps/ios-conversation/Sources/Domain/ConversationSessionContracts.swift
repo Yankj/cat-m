@@ -548,6 +548,8 @@ public protocol ConversationBackend: Sendable {
     func submitUIDecision(_ request: ConversationTurnRequest, interruptID: String, decision: ConversationUIDecision, argsHash: String, response: Data?, operationID: UUID, afterSequence: Int) async throws -> AsyncThrowingStream<ConversationTurnEvent, Error>
     /// catpaw.device.v1: `POST …/turns/{t}/device-result` `{call_id, operation_id, args_hash, status, data?}`; streams the SAME turn like a decision.
     func submitDeviceResult(_ request: ConversationTurnRequest, call: ConversationDeviceCall, status: String, data: Data?, operationID: UUID, afterSequence: Int) async throws -> AsyncThrowingStream<ConversationTurnEvent, Error>
+    /// Chat-UX #6: `POST …/turns/{t}/device-undo` `{call_id, operation_id, status}` (undone / already_gone / failed). JSON reply, no stream.
+    func submitDeviceUndo(_ request: ConversationTurnRequest, callID: String, outcome: DeviceUndoOutcome, operationID: UUID) async throws
 }
 /// `cancel{turn_id,state,cancelled,already_terminal}` from the Edge cancel route (services/edge/docs/turn-cancel-contract.md).
 public struct ConversationTurnCancelReceipt: Sendable, Equatable {
@@ -612,6 +614,7 @@ public extension ConversationBackend {
     func submitApproval(_ request: ConversationTurnRequest, interruptID: String, decision: ConversationApprovalDecision, argsHash: String, operationID: UUID, afterSequence: Int) async throws -> AsyncThrowingStream<ConversationTurnEvent, Error> { throw ConversationApprovalFailure.unsupported }
     func submitUIDecision(_ request: ConversationTurnRequest, interruptID: String, decision: ConversationUIDecision, argsHash: String, response: Data?, operationID: UUID, afterSequence: Int) async throws -> AsyncThrowingStream<ConversationTurnEvent, Error> { throw ConversationApprovalFailure.unsupported }
     func submitDeviceResult(_ request: ConversationTurnRequest, call: ConversationDeviceCall, status: String, data: Data?, operationID: UUID, afterSequence: Int) async throws -> AsyncThrowingStream<ConversationTurnEvent, Error> { throw ConversationApprovalFailure.unsupported }
+    func submitDeviceUndo(_ request: ConversationTurnRequest, callID: String, outcome: DeviceUndoOutcome, operationID: UUID) async throws { throw ConversationApprovalFailure.unsupported }
     func revisionWorkCapability(scope:DataScope,conversationID:UUID) async throws -> ConversationAcceptedWorkCapability {.init()}
     func freezeRevisionWork(_ request:ConversationTurnRequest,selection:ConversationRevisionWorkSelection) async throws -> ConversationRevisionWorkIntent {throw ConversationAcceptedWorkError.unavailable}
     func acceptedWorkCapability(scope:DataScope,conversationID:UUID) async throws -> ConversationAcceptedWorkCapability {.init()}
