@@ -48,6 +48,17 @@ struct ProactiveSignal: Equatable, Sendable {
 
 @MainActor @Observable final class ProactiveEngine {
     static let shared = ProactiveEngine()
+
+    private init() { Self.registerAccountObserver() }
+    /// #89 AccountChangeObservers: sign-out / passive expiry / switch bump AccountEpoch synchronously, then await this
+    /// cleanup. Idempotent (keyed). The closure resolves `.shared` only when it runs, so registering from `init`
+    /// neither retains the instance nor re-enters the `shared` initializer. Also called at launch so a sign-out
+    /// before the engine is first touched still wipes the persisted inbox/ledgers.
+    static func registerAccountObserver() {
+        #if os(iOS)
+        AccountChangeObservers.register("proactive") { _, _ in await ProactiveEngine.shared.accountDidChange() }
+        #endif
+    }
     static let notificationCategory = "CATPAW_PROACTIVE"
     static let createAction = "CATPAW_PROACTIVE_CREATE"
     static let laterAction = "CATPAW_PROACTIVE_LATER"
@@ -681,11 +692,8 @@ struct ProactiveSignal: Equatable, Sendable {
     }
 
     #if os(iOS)
-    // TODO(#89 AccountEpoch observer registry — Grok Bot 53381f7, not on GitHub yet): register this in init as
-    //   AccountEpoch.shared.<registerCleanup>("proactive") { await ProactiveEngine.shared.accountDidChange() }
-    // so sign-out bumps the epoch synchronously and then awaits this cleanup. Until then it is not called in production.
     /// AccountEpoch (b): after sign-out / account switch, remove every pending + delivered proactive notification and
-    /// end the leave Live Activities. Call right after `AccountEpoch.shared.signOut()` (owner: auth flow, see report).
+    /// end the leave Live Activities. Runs via AccountChangeObservers ("proactive") after the synchronous epoch bump.
     func accountDidChange() async {
         let center = UNUserNotificationCenter.current()
         let pending = await center.pendingNotificationRequests().filter { ProactiveAccountGate.isProactive($0.content.userInfo) }.map(\.identifier)

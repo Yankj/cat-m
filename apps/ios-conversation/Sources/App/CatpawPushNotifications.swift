@@ -70,6 +70,7 @@ struct CatpawNotificationPayload: Equatable, Sendable {
         center.setNotificationCategories(CatpawPushAction.categories.union(ProactiveEngine.categories))
         ProactiveSuggestionHub.backend = ProactiveLocalBackend(); DeviceCallHub.executor = DeviceToolRouter(); DevicePermissionHub.provider = SystemDevicePermissionProvider()
         ProactiveSignalHub.engine = ProactiveEngineSignalAdapter()
+        ProactiveEngine.registerAccountObserver()
         ProactiveEngine.registerBackgroundRefresh()
         ProactiveEngine.scheduleBackgroundRefresh()
         application.registerForRemoteNotifications()
