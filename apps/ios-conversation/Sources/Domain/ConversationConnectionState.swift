@@ -2,6 +2,28 @@ import Foundation
 
 /// R7 §5.1 connection state machine (design/ios26-swift-mapping-r7 §4).
 /// Presentation-free: the status capsule / cards (Grok Bot UI lane) observe this.
+
+/// Shared status semantics for Settings + chat header dots (presentation-free).
+public enum PathNoticeKind: Equatable, Sendable { case offline, online }
+
+public enum ConnectionStatusKind: String, Equatable, Sendable {
+    case online, offline, error
+    public var labelKey: String {
+        switch self {
+        case .online: return "在线"
+        case .offline: return "离线"
+        case .error: return "异常"
+        }
+    }
+    public static func from(_ state: ConversationConnectionState) -> ConnectionStatusKind {
+        switch state {
+        case .online, .resumed, .syncing: return .online
+        case .offline: return .offline
+        case .unreachable, .busy, .reconnecting: return .error
+        }
+    }
+}
+
 public enum ConversationConnectionState: Equatable, Sendable {
     case online
     case offline
@@ -68,36 +90,96 @@ public enum ConversationAttachmentLimits {
     public static let tooManyMessage = "每条消息最多添加 10 个附件。"
 }
 
-/// Developer-only free model route override (free-model review §13.3). Sent as `X-Catpaw-Route`;
-/// the Edge accepts only its allow-list and only routes whose key is explicitly deployed (Agnes Flash is promo-free).
-public enum ConversationModelRoute: String, CaseIterable, Identifiable, Sendable {
-    case automatic, gemini, groq, openrouter, agnes
-    public var id: String { rawValue }
-    public var title: String {
-        switch self {
-        case .automatic: return "自动（OpenRouter 优先）"
-        case .gemini: return "Gemini 免费层"
-        case .groq: return "Groq 免费"
-        case .openrouter: return "OpenRouter 免费"
-        case .agnes: return "Agnes Flash（备选）"
-        }
+/// `catpaw.model-routes.v1` (services/edge/docs/model-routes-contract.md). Server-driven; no keys/URLs on the client.
+public struct ModelRoutesContract: Codable, Equatable, Sendable {
+    public let contract: String
+    public let default_route: String
+    public let chain: [String]
+    public let auto_failover: Bool
+    public let routes: [ModelRouteInfo]
+    public static let contractID = "catpaw.model-routes.v1"
+}
+public struct ModelRouteModel: Codable, Equatable, Sendable, Identifiable {
+    public let id: String
+    public let `default`: Bool?
+}
+public struct ModelRouteError: Codable, Equatable, Sendable { public let code: String; public let at: String? }
+public struct ModelRouteInfo: Codable, Equatable, Sendable, Identifiable {
+    public let id: String
+    public let display_name: String
+    public let models: [ModelRouteModel]
+    public let status: String
+    public let last_error: ModelRouteError?
+    public let cooling_seconds: Int?
+    public let free: Bool?
+    public let billing: String?
+    public let policy_url: String?
+    public let data_note: String?
+    public var statusKind: ConnectionStatusKind { status == "online" ? .online : status == "offline" ? .offline : .error }
+    public var defaultModel: String? { models.first(where: { $0.default == true })?.id ?? models.first?.id }
+}
+/// SSE `model_route` data.
+public struct ModelRouteEvent: Codable, Equatable, Sendable {
+    public struct Switch: Codable, Equatable, Sendable { public let from: String; public let to: String; public let code: String? }
+    public let route: String
+    public let model: String?
+    public let requested_route: String?
+    public let failover: Bool?
+    public let from: [String]?
+    public let switches: [Switch]?
+    public let attempt: Int?
+}
+/// The user's route/model choice + the last fetched route list (header validation). Thread-safe.
+public enum ModelRouteSelection {
+    public static let autoID = "auto"
+    public static let routeKey = "catpaw.modelRoute.v1"
+    public static let modelKey = "catpaw.modelRoute.model.v1"
+    public static let rejectionCodes: Set<String> = ["model_route_unknown", "model_route_unavailable", "model_not_allowed"]
+    private static let lock = NSLock()
+    nonisolated(unsafe) private static var cached: [ModelRouteInfo] = []
+    public static var route: String { UserDefaults.standard.string(forKey: routeKey).flatMap { $0.isEmpty ? nil : $0 } ?? autoID }
+    public static var model: String? { UserDefaults.standard.string(forKey: modelKey).flatMap { $0.isEmpty ? nil : $0 } }
+    public static func select(route: String, model: String? = nil) {
+        UserDefaults.standard.set(route, forKey: routeKey)
+        if route == autoID || model == nil { UserDefaults.standard.removeObject(forKey: modelKey) } else { UserDefaults.standard.set(model, forKey: modelKey) }
     }
-    public static let defaultsKey = "catpaw.developer.modelRoute"
-    public static var current: ConversationModelRoute {
-        #if DEBUG || DEVICE_TRIAL
-        return ConversationModelRoute(rawValue: UserDefaults.standard.string(forKey: defaultsKey) ?? "") ?? .automatic
-        #else
-        return .automatic
-        #endif
+    public static func resetToAuto() { select(route: autoID) }
+    public static func cache(_ routes: [ModelRouteInfo]) { lock.lock(); cached = routes; lock.unlock() }
+    public static var routes: [ModelRouteInfo] { lock.lock(); defer { lock.unlock() }; return cached }
+    public static func info(_ id: String) -> ModelRouteInfo? { routes.first { $0.id == id } }
+    /// `X-Catpaw-Route`: `auto` or a listed id (unknown cached → auto, so headers stay valid).
+    public static var headerRoute: String {
+        let r = route
+        if r == autoID { return autoID }
+        let list = routes
+        return list.isEmpty || list.contains(where: { $0.id == r }) ? r : autoID
     }
-    /// Persist the developer choice (DEBUG and DeviceTrial builds; Release always uses automatic).
-    public func select() {
-        #if DEBUG || DEVICE_TRIAL
-        UserDefaults.standard.set(rawValue, forKey: Self.defaultsKey)
-        #endif
+    /// `X-Catpaw-Model`: only with a concrete route and only if in that route's allow-list.
+    public static var headerModel: String? {
+        let r = headerRoute
+        guard r != autoID, let m = model, let info = info(r), info.models.contains(where: { $0.id == m }) else { return nil }
+        return m
     }
-    /// Header value, nil for automatic.
-    public var headerValue: String? { self == .automatic ? nil : rawValue }
+    public static func displayName(_ id: String) -> String { info(id)?.display_name ?? id }
+}
+/// Backend → UI bridge (NotificationCenter keeps the Domain free of UI types).
+public enum ModelRouteNotifications {
+    public static let event = Notification.Name("catpaw.modelRoute.event")        // object: ModelRouteEvent
+    public static let rejected = Notification.Name("catpaw.modelRoute.rejected")  // object: String code
+    public static func report(_ e: ModelRouteEvent) { NotificationCenter.default.post(name: event, object: e) }
+    public static func reject(_ code: String) { ModelRouteSelection.resetToAuto(); NotificationCenter.default.post(name: rejected, object: code) }
+}
+/// Fixture matching the contract until the Edge endpoint is deployed.
+public enum ModelRoutesFixture {
+    public static let contract = ModelRoutesContract(
+        contract: ModelRoutesContract.contractID, default_route: "auto",
+        chain: ["openrouter", "gemini", "freellmapi", "agnes"], auto_failover: true,
+        routes: [
+            .init(id: "openrouter", display_name: "OpenRouter", models: [.init(id: "google/gemma-4-31b-it:free", default: true)], status: "online", last_error: nil, cooling_seconds: 0, free: true, billing: "free_tier", policy_url: "https://openrouter.ai/privacy", data_note: "zero_retention"),
+            .init(id: "gemini", display_name: "Google Gemini", models: [.init(id: "gemini-3.5-flash-lite", default: true)], status: "online", last_error: .init(code: "rate_limited", at: "2026-10-16T08:01:02.000Z"), cooling_seconds: 0, free: true, billing: "free_tier", policy_url: "https://ai.google.dev/gemini-api/terms", data_note: "free_tier_may_train"),
+            .init(id: "freellmapi", display_name: "Self-hosted FreeLLMAPI", models: [.init(id: "auto", default: true)], status: "online", last_error: nil, cooling_seconds: 0, free: true, billing: "upstream_free_tiers_via_self_hosted_router", policy_url: "https://github.com/freellmapi", data_note: "aggregator_forwards_upstream"),
+            .init(id: "agnes", display_name: "Agnes", models: [.init(id: "agnes-flash", default: true)], status: "online", last_error: nil, cooling_seconds: 0, free: true, billing: "promo_free_flash_paid_pro", policy_url: nil, data_note: nil),
+        ])
 }
 
 /// First-launch intro gate (PR #24 OnboardingView). PR #24 defines no persisted flag, so this is

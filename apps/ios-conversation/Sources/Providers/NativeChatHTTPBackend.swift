@@ -30,7 +30,10 @@ public struct NativeChatConfiguration: Sendable {
         request.setValue(authorization,forHTTPHeaderField:"Authorization");request.setValue("application/json",forHTTPHeaderField:"Content-Type");request.setValue("text/event-stream, application/json",forHTTPHeaderField:"Accept")
         if let publishableKey { request.setValue(publishableKey,forHTTPHeaderField:"apikey") }
         if let edgeRegion { request.setValue(edgeRegion,forHTTPHeaderField:"x-region") }
-        if let route = ConversationModelRoute.current.headerValue { request.setValue(route,forHTTPHeaderField:"X-Catpaw-Route") } // DEBUG/DeviceTrial developer override (e.g. agnes)
+        // catpaw.model-routes.v1: always a valid route (auto or a listed id); model only with a concrete route + allow-list.
+        request.setValue(ModelRouteSelection.headerRoute,forHTTPHeaderField:"X-Catpaw-Route")
+        if let model = ModelRouteSelection.headerModel { request.setValue(model,forHTTPHeaderField:"X-Catpaw-Model") }
+        request.setValue("1",forHTTPHeaderField:"X-Catpaw-Route-Events")
         request.setValue("1",forHTTPHeaderField:"X-Catpaw-Reasoning-Summary") // decodes optional reasoning_summary
         return request
     }
@@ -66,6 +69,23 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
         session = URLSession(configuration: policy, delegate: NativeChatNoRedirect(), delegateQueue: nil)
     }
     public func close() { session.invalidateAndCancel(); bindingCache.removeAll(); toolTitles.removeAll(); continuationReceipts.removeAll();revisionWorkReceipts.removeAll();continuationSourceHashes.removeAll(); observedModelState = nil;verifiedReplyAt=nil;verifiedModel=nil;replyCandidates.removeAll() }
+    /// FreeLLMAPI enabled → server adds `aggregator_disclosure` (+ per-route policy URLs); show them inside the consent body.
+    static func consentBody(_ body:String,metadata:[String:Any],ui:[String:Any]) -> String {
+        var parts=[body]
+        if let d=(ui["aggregator_disclosure"] ?? metadata["aggregator_disclosure"]) as? String,!d.isEmpty,!body.contains(d) {parts.append(d)}
+        let routes=(metadata["routes"] as? [[String:Any]]) ?? []
+        let urls=routes.compactMap{$0["policy_url"] as? String}.filter{$0.hasPrefix("https://") && !body.contains($0)}
+        if !urls.isEmpty {parts.append(urls.joined(separator:"\n"))}
+        let joined=parts.joined(separator:"\n\n")
+        return joined.utf8.count <= 12000 ? joined : body
+    }
+    /// GET /catpaw/model-routes/v1. nil when not deployed / unreachable (callers use `ModelRoutesFixture`).
+    public func modelRoutes(scope: DataScope) async -> ModelRoutesContract? {
+        guard let auth = try? await authorization(scope), let raw = try? await json("/catpaw/model-routes/v1", auth: auth, timeout: 15),
+              let data = try? Self.jsonData(raw), let c = try? JSONDecoder().decode(ModelRoutesContract.self, from: data),
+              c.contract == ModelRoutesContract.contractID else { return nil }
+        return c
+    }
     public func connection(scope: DataScope) async -> ConversationConnection {
         let auth: String
         do { auth = try await authorization(scope) }
@@ -148,7 +168,7 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
         if prior?["decision"] as? String == "allow",prior?["route_hash"] as? String == routeHash { return nil }
         guard let title = ui["title"] as? String,let body = ui["body"] as? String,title.utf8.count <= 512,body.utf8.count <= 12000 else { throw ConversationSessionError.invalidEvent }
         let revision = prior?["revision"] as? Int ?? 0;guard revision >= 0 else { throw ConversationSessionError.invalidEvent }
-        return .init(conversationID:conversationID,title:title,body:body,routeHash:routeHash,expectedRevision:revision)
+        return .init(conversationID:conversationID,title:title,body:Self.consentBody(body,metadata:metadata,ui:ui),routeHash:routeHash,expectedRevision:revision)
     }
     public func serverTranscript(scope: DataScope, conversationID: UUID) async throws -> [ConversationTranscriptMessage]? {
         guard scope == configuration.localScope, !configuration.useFrozenFixtureMetadata else { return nil }
@@ -304,6 +324,7 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
                             if let envelope=try? JSONSerialization.jsonObject(with:errorData) as? [String:Any] {
                                 let problem=(envelope["error"] as? [String:Any]) ?? envelope
                                 if let code=problem["code"] as? String,ConversationTerminalServerError.isQuota(code) {throw ConversationDispatchFailure.notSent(reason:code)}
+                                if status == 422,let code=problem["code"] as? String,ModelRouteSelection.rejectionCodes.contains(code) {ModelRouteNotifications.reject(code);throw ConversationDispatchFailure.notSent(reason:code)}
                             }
                         }
                         throw NativeChatHTTPFailure.turnResponse(status)
@@ -742,6 +763,11 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
             guard reality != "not_configured", Self.supportsResume(request), request.image==nil, !request.hasUploadedAttachments, let raw = type else { throw ConversationSessionError.invalidEvent }
             let ui = try ConversationUIEvent.decode(type: raw, sequence: sequence, payload: try Self.jsonData(data))
             payload = ui.type == .block ? .uiBlock(ui) : ui.type == .update ? .uiBlockUpdate(ui) : .uiBlockResolve(ui)
+        case "model_route":
+            // Reported once per turn (opt-in X-Catpaw-Route-Events: 1); no transcript effect.
+            let body = try Self.jsonData(data)
+            if let event = try? JSONDecoder().decode(ModelRouteEvent.self, from: body) { ModelRouteNotifications.report(event) }
+            payload = .sideChannel(type: "model_route", data: body)
         case "memory.used", "memory.update", "memory_recalled", "proactive_suggestion":
             // Side channel (#63): no transcript effect; raw data goes to MemoryEventSink / proactive store via the installed handler.
             guard let raw = type else { throw ConversationSessionError.invalidEvent }
@@ -776,7 +802,9 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
             guard let code = data["code"] as? String, let reconciliation = data["reconciliation_required"] as? Bool else { throw ConversationSessionError.invalidEvent }
             payload = .failed(message: code, reconciliationRequired: reconciliation)
             if code == "rate_limited", let raw = data["retry_after_seconds"] as? NSNumber, CFGetTypeID(raw) != CFBooleanGetTypeID(), (0...3600).contains(raw.intValue) { retryAfter = raw.intValue }
-        default: throw ConversationSessionError.invalidEvent
+        default:
+            // Forward-compatible: unknown event types are ignored (no transcript effect).
+            payload = .sideChannel(type: type ?? "unknown", data: (try? Self.jsonData(data)) ?? Data())
         }
         return ConversationTurnEvent(operationID: request.operationID, epoch: request.epoch, sequence: sequence, payload: payload, retryAfterSeconds: retryAfter, conversationID: request.conversationID, turnID: request.operationID)
     }
