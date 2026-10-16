@@ -6470,5 +6470,25 @@
   "提醒已不存在": {
     "en": "Reminder no longer exists",
     "zh-Hans": "提醒已不存在"
+  },
+  "已请求打开": {
+    "en": "Open requested",
+    "zh-Hans": "已请求打开"
+  },
+  "已请求打开，结果未知": {
+    "en": "Open requested, result unknown",
+    "zh-Hans": "已请求打开，结果未知"
+  },
+  "已记在本机，暂未同步，稍后自动重试": {
+    "en": "Saved on this phone, not synced yet; will retry",
+    "zh-Hans": "已记在本机，暂未同步，稍后自动重试"
+  },
+  "正在记下…": {
+    "en": "Saving…",
+    "zh-Hans": "正在记下…"
+  },
+  "提醒没有删掉，状态保持不变，请稍后重试": {
+    "en": "The reminder wasn't deleted; nothing changed. Try again later.",
+    "zh-Hans": "提醒没有删掉，状态保持不变，请稍后重试"
   }
 }
