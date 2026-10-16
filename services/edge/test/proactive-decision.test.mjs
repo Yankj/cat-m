@@ -97,3 +97,14 @@ test('decision model adapter: OpenRouter first then Agnes; keys only from env, n
   assert.equal((await m.decide({})).decision, 'card'); assert.equal(m.lastRoute(), 'agnes'); assert.equal(hits.length, 2);
   assert.ok(!JSON.stringify(m).includes('k-or')); assert.equal(createDecisionModel({ get: () => undefined }), null);
 });
+
+test('P0-4 client contract: iOS posts {value} to suggestions/:id/feedback for meeting_upcoming; next same-type decision degrades; weights persist', async () => {
+  const { call } = setup({ model: fakeLLM({ decision: 'notify', reason: '该出发了', confidence: 0.8, trigger: 'meeting_upcoming' }) });
+  const req = () => ({ signals: [{ type: 'meeting_upcoming', source: 'calendar', dedupe_key: crypto.randomUUID(), data: { title: '周会', location: '望京', minutes_until: 40 } }], context: { time_zone: 'Asia/Shanghai', lead_minutes: 10 } });
+  const first = await call('POST', BASE + '/evaluate', req()); assert.equal(first.body.decision, 'notify');
+  const f = await call('POST', `${BASE}/suggestions/${first.body.event_id}/feedback`, { value: 'intrusive' });
+  assert.equal(f.status, 200); assert.equal(f.body.applied, true); assert.equal(f.body.weights.meeting_upcoming.weight, 0.7);
+  const next = await call('POST', BASE + '/evaluate', req());
+  assert.equal(next.body.decision, 'card'); // 0.8×0.7=0.56 < 0.6+0.1 → one step down
+  assert.equal((await call('GET', BASE + '/weights')).body.weights.meeting_upcoming.threshold_bump, 0.1);
+});
