@@ -146,17 +146,20 @@ enum ConversationMemoryAtRest {
     }
 }
 
-/// Codex PR91 p91c-5: seals EVERY plaintext memory row of `subject` (not just rows that happen to be read), verifies
-/// each sealed row reads back identical, and sets a per-subject completion gate only when all rows passed. Any failure
-/// leaves the gate unset, so the next launch retries.
+/// Codex PR91 p91c-5 / p91d-4: seals EVERY plaintext memory row of `subject` in one local partition, verifies each
+/// sealed row reads back identical, and sets a completion marker keyed by (version, partition, subject) only when all
+/// rows passed. Any failure leaves the marker unset, so `AtRestMigrationScheduler` retries.
 extension ConversationMemoryAtRest {
     static let keyPrefix = "conversation_memory_v1:"
-    static func gateKey(_ subject: UUID) -> String { "catpaw.memory.atrest-sealed.v1." + subject.uuidString.lowercased() }
+    static let migrationVersion = 2
+    static func gateKey(_ subject: UUID, partition: String) -> String {
+        "catpaw.memory.atrest-sealed.v\(migrationVersion).\(partition).\(subject.uuidString.lowercased())"
+    }
     struct MigrationReport: Equatable { var sealed = 0, failed = 0, complete = false }
-    static func isMigrated(_ subject: UUID, defaults: UserDefaults = .standard) -> Bool { defaults.bool(forKey: gateKey(subject)) }
-    static func migrateAll(_ repository: Repository, subject: UUID, defaults: UserDefaults = .standard) async -> MigrationReport {
+    static func isMigrated(_ subject: UUID, partition: String, defaults: UserDefaults = .standard) -> Bool { defaults.bool(forKey: gateKey(subject, partition: partition)) }
+    static func migrateAll(_ repository: Repository, subject: UUID, partition: String, defaults: UserDefaults = .standard) async -> MigrationReport {
         var report = MigrationReport()
-        guard !isMigrated(subject, defaults: defaults) else { report.complete = true; return report }
+        guard !isMigrated(subject, partition: partition, defaults: defaults) else { report.complete = true; return report }
         guard sealer != nil, opener != nil else { return report }
         let mine = keyPrefix + subject.uuidString.lowercased() + ":"
         for record in await repository.preferenceRecords(keyPrefix: mine) {
@@ -173,7 +176,48 @@ extension ConversationMemoryAtRest {
         }
         // Gate: every row of this subject is sealed now (re-scan, not just the count above).
         let leftover = await repository.preferenceRecords(keyPrefix: mine).contains { if case .preference(let p) = $0.payload { return !isSealed(p.value) }; return false }
-        if report.failed == 0, !leftover { defaults.set(true, forKey: gateKey(subject)); report.complete = true }
+        if report.failed == 0, !leftover { defaults.set(true, forKey: gateKey(subject, partition: partition)); report.complete = true }
         return report
+    }
+}
+
+/// Codex PR91 p91d-4: runs the at-rest migration for every opened account repository once the sealer for that subject
+/// is ready (cold start opens the store before the L2 key / signed-in user exist), consumes the report, and retries
+/// with backoff until the marker is set. Dropped when the account changes (AccountEpoch).
+@MainActor final class AtRestMigrationScheduler {
+    static let shared = AtRestMigrationScheduler()
+    var sealerReady: @MainActor (UUID) -> Bool = { subject in
+        ConversationMemoryAtRest.sealer != nil && L2SecureStore.currentForSealing?.userID == subject
+    }
+    var defaults: UserDefaults = .standard
+    var delays: [UInt64] = [1, 2, 5, 10, 30, 60, 120, 300].map { $0 * 1_000_000_000 }
+    var sleep: @Sendable (UInt64) async -> Void = { try? await Task.sleep(nanoseconds: $0) }
+    private var running: [String: Task<Void, Never>] = [:]
+    private(set) var reports: [String: ConversationMemoryAtRest.MigrationReport] = [:]
+    private(set) var attempts: [String: Int] = [:]
+
+    func repositoryOpened(_ repository: Repository, subject: UUID, partition: String) {
+        let key = ConversationMemoryAtRest.gateKey(subject, partition: partition)
+        guard running[key] == nil, !defaults.bool(forKey: key) else { return }
+        let token = AccountEpoch.shared.capture()
+        running[key] = Task { [weak self] in await self?.drive(repository, subject, partition, key, token) }
+    }
+    /// Tests: wait for every scheduled migration to finish.
+    func waitIdle() async { while let task = running.values.first { await task.value } }
+
+    private func drive(_ repository: Repository, _ subject: UUID, _ partition: String, _ key: String, _ token: AccountToken?) async {
+        defer { running[key] = nil }
+        var attempt = 0
+        while !Task.isCancelled {
+            if token != nil, !AccountEpoch.shared.isValid(token) { return }
+            if sealerReady(subject) {
+                attempts[key, default: 0] += 1
+                let report = await ConversationMemoryAtRest.migrateAll(repository, subject: subject, partition: partition, defaults: defaults)
+                reports[key] = report
+                if report.complete { return }
+            }
+            guard attempt < delays.count else { return }
+            await sleep(delays[attempt]); attempt += 1
+        }
     }
 }
