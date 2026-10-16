@@ -198,6 +198,7 @@ struct NativeWorkspaceRetrySchedule: Sendable {
         ConversationDeviceCall.clientTools = DeviceToolContract.clientTools   // NoBug P0-4: advertise what we execute
         DeviceCallHub.recorder = { DeviceLedger.shared.record(call: $0, result: $1) }
         DeviceCallGate.currentAccount = { [weak self] in self?.state.user?.id.uuidString }   // Codex P0-1: grants are per account
+        DeviceCallGate.installLifecycle()   // Codex PR #89: grants/revocations come from the session service's SSE boundary
         // NoBug P1-4: unacknowledged device results are re-sent on relaunch and whenever the app returns to foreground.
         Task { @MainActor in await DeviceCallStore.shared.retryPendingReports() }
         if Self.deviceReportObserver == nil {

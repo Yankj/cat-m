@@ -89,7 +89,8 @@ struct DeviceCallSpec: Sendable {
         .onAppear {
             _ = store.firstSeen(call.id)
             if store.isInterrupted(call.id) { Task { await store.resumeInterrupted(call.id) } }   // NoBug P0-3: killed mid-run
-            else if DeviceToolContract.runsWithoutTap(tool: call.tool, confirm: call.confirm) { Task { await store.run(call) } }
+            else if DeviceToolContract.runsWithoutTap(tool: call.tool, confirm: call.confirm), DeviceCallGate.isLive(call.id) { Task { await store.run(call) } }
+            else if store.phase(call.id) == .confirming, !DeviceCallGate.isLive(call.id) { store.expireIfConfirming(call.id) }   // stale / revoked / other account
         }
         .sheet(isPresented: $editing) { DeviceCallEditSheet(call: call, spec: spec, values: args) { store.edited[call.id] = $0 } }
         .accessibilityElement(children: .contain)
@@ -151,7 +152,7 @@ struct DeviceCallSpec: Sendable {
     }
     private var hasEditable: Bool { spec.fields.contains { $0.editable } }
     private var primary: some View {
-        Button(ui(spec.confirmKey)) { UIImpactFeedbackGenerator(style: .medium).impactOccurred(); Task { await store.run(call) } }
+        Button(ui(spec.confirmKey)) { UIImpactFeedbackGenerator(style: .medium).impactOccurred(); Task { await store.run(call, tap: DeviceCallGate.confirmTap(call, finalArgs: args)) } }   // one-shot tap token for the final args
             .buttonStyle(CatpawPrimaryButtonStyle()).accessibilityIdentifier("chat.deviceCall.run")
     }
     private var editButton: some View {
@@ -297,7 +298,7 @@ struct DeviceCallSpec: Sendable {
     static func register() {
         guard !registered else { return }; registered = true
         // Codex P0-1: a device_call fence in reply text is display content and never becomes an executable card.
-        // Real calls arrive only as the typed SSE `device_call` event (ConversationApprovalHost → DeviceCallGate.register).
+        // Real calls arrive only as the typed SSE `device_call` event (session service → ConversationDeviceCall.lifecycle → DeviceCallGate.receive).
         MarkdownCustomBlockRegistry.shared.register(kind: "device_call") { _, closed in
             if closed && !DeviceToolContract.markdownMayCreateDeviceCalls { InertDeviceCallNotice() } else { EmptyView() }
         }

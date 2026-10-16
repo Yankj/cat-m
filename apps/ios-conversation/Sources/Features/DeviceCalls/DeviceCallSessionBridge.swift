@@ -18,12 +18,4 @@ extension ConversationDeviceResultSubmitter: DeviceResultSubmitting {
     }
     func reportUndo(callID: String, outcome: DeviceUndoOutcome) async throws { try await submitUndo(callID: callID, outcome: outcome) }
 }
-
-extension DeviceCall {
-    /// Full catpaw.device.v1 fields (the session's `wireJSON` only carries call_id, tool, args, confirm, ttl_sec).
-    init?(_ call: ConversationDeviceCall) {
-        guard let args = try? JSONDecoder().decode([String: DeviceCallValue].self, from: call.args) else { return nil }
-        self.init(call_id: call.callID, tool: call.tool, args: args, confirm: Confirm(rawValue: call.confirm) ?? .card,
-                  ttl_sec: call.ttlSec, interrupt_id: call.interruptID, args_hash: call.argsHash, expires_at: call.expiresAt)
-    }
-}
+// `DeviceCall.init?(ConversationDeviceCall)` moved to DeviceCall.swift (used by DeviceCallGate.installLifecycle).

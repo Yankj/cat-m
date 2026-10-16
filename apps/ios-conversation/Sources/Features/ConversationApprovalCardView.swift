@@ -22,7 +22,7 @@ import SwiftUI
     }
     private func syncDeviceCalls() {
         let live = (turn?.awaitingApproval == true ? (turn?.pendingDeviceCalls ?? []) : []).compactMap(DeviceCall.init)
-        for call in live where !deviceCalls.contains(where: { $0.id == call.id }) { DeviceCallGate.receive(call); deviceCalls.append(call) }   // Codex P0-1: typed event = only grant
+        for call in live where !deviceCalls.contains(where: { $0.id == call.id }) { deviceCalls.append(call) }   // display only — grants come from the SSE boundary (DeviceCallGate.installLifecycle)
     }
 
     var body: some View {
