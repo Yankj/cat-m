@@ -197,7 +197,7 @@ struct NativeWorkspaceRetrySchedule: Sendable {
         ConversationDeviceCall.clientEnabled = true
         ConversationDeviceCall.clientTools = DeviceToolContract.clientTools   // NoBug P0-4: advertise what we execute
         DeviceCallHub.recorder = { DeviceLedger.shared.record(call: $0, result: $1, token: $2) }
-        AccountEpoch.shared.activate(account: state.user?.id.uuidString)   // shared account barrier (grants, memory, proactive)
+        AccountEpoch.shared.activate(account: state.user?.id.uuidString); Self.lastBarrierAccount = state.user?.id.uuidString   // shared account barrier (grants, memory, proactive)
         DeviceCallGate.installLifecycle()   // Codex PR #89: grants/revocations come from the session service's SSE boundary
         // NoBug P1-4: unacknowledged device results are re-sent on relaunch and whenever the app returns to foreground.
         Task { @MainActor in await DeviceCallStore.shared.retryPendingReports() }
@@ -670,21 +670,27 @@ struct NativeWorkspaceRetrySchedule: Sendable {
         guard let t = epoch.capture(), t.account == subject.uuidString else { return nil }
         return t
     }
+    /// The account this barrier last activated. The session manager may already have closed AccountEpoch itself (passive
+    /// invalidation at the source), so `epoch.currentAccount` can be nil here while that account's ledger still needs clearing.
+    private static var lastBarrierAccount: String?
     static func applyAccountBarrier(_ snapshot: NativeAuthSnapshot, fresh: Bool, epoch: AccountEpoch = .shared) {
         let usable: [NativeAuthSnapshot.Phase] = [.authenticated, .refreshing, .restoring]
         if !usable.contains(snapshot.phase) || snapshot.user == nil {
-            guard let gone = epoch.currentAccount else { return }
+            guard let gone = epoch.currentAccount ?? lastBarrierAccount else { return }   // captured BEFORE signOut()
+            lastBarrierAccount = nil
             epoch.signOut(); DeviceCallGate.reset(); DeviceLedger.shared.signOut(account: gone)
             Task { @MainActor in await AccountChangeObservers.notify(previous: gone, current: nil) }   // after the sync bump
         } else if fresh, snapshot.phase == .authenticated, let id = snapshot.user?.id.uuidString, id != epoch.currentAccount {
-            let previous = epoch.currentAccount
-            epoch.activate(account: id); DeviceCallGate.reset()
+            let previous = epoch.currentAccount ?? lastBarrierAccount
+            epoch.activate(account: id); DeviceCallGate.reset(); lastBarrierAccount = id
+            if let previous, previous != id { DeviceLedger.shared.signOut(account: previous) }   // switch: previous account's ledger is cleared
             Task { @MainActor in await AccountChangeObservers.notify(previous: previous, current: id) }
         }
     }
     func signOut() async {
         guard let manager, !actionBusy else { return };actionBusy=true;logoutInProgress=true;lifecycleEpoch += 1
-        let leaving = AccountEpoch.shared.currentAccount
+        let leaving = AccountEpoch.shared.currentAccount ?? Self.lastBarrierAccount   // captured BEFORE the barrier closes
+        Self.lastBarrierAccount = nil
         AccountEpoch.shared.signOut()   // synchronous barrier FIRST: every in-flight account-bound write is refused from here
         DeviceLedger.shared.signOut(account: leaving)   // p89c-b: that account's local ledger is cleared
         DeviceCallGate.reset()          // Codex p89b-4: grants/taps/credentials die synchronously, before any await
