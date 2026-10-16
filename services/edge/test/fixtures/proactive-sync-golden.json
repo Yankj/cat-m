@@ -1,0 +1,35 @@
+{
+  "expect" : {
+    "snooze_until" : "2026-10-15T02:10:00Z",
+    "status" : "snoozed",
+    "taken" : [
+      "snooze"
+    ]
+  },
+  "local_id" : "LOCAL-SUGGESTION",
+  "requests" : [
+    {
+      "body" : {
+        "action" : "snooze",
+        "operation_id" : "op-LOCAL-SUGGESTION-snooze",
+        "until" : "2026-10-15T02:10:00Z"
+      },
+      "route" : "action"
+    },
+    {
+      "body" : {
+        "action" : "snooze",
+        "operation_id" : "op-LOCAL-SUGGESTION-snooze-n2",
+        "until" : "2026-10-15T02:30:00Z"
+      },
+      "route" : "action"
+    },
+    {
+      "body" : {
+        "operation_id" : "undo-LOCAL-SUGGESTION-g0"
+      },
+      "route" : "undo"
+    }
+  ],
+  "server_now" : "2026-10-15T02:00:00Z"
+}
