@@ -5135,9 +5135,9 @@
     "en": "Remember new things automatically",
     "zh-Hans": "自动记住新内容"
   },
-  "自动（OpenRouter 优先）": {
-    "en": "Automatic (OpenRouter first)",
-    "zh-Hans": "自动（OpenRouter 优先）"
+  "自动（Gemini 优先）": {
+    "en": "Automatic (Gemini first)",
+    "zh-Hans": "自动（Gemini 优先）"
   },
   "自定义命令": {
     "en": "Custom commands",
