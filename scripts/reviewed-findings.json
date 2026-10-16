@@ -1441,6 +1441,118 @@
       "line": 15,
       "sha256": "3e3dd57b0d875a76c7c7937190a53a97b2ea7200a49a47fe90dfa6e98fbc5f8e",
       "reason": "Reviewed R0 v22 vision port: line holds public storage collection identifiers (revision artifact receipt kinds); the task- substring matches the sk- credential pattern. The vision change only clears vision_provider_receipt/image_attachments elsewhere. Not a credential."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/AuthTestSupport.swift",
+      "category": "deployment_public_key",
+      "line": 85,
+      "sha256": "4f0c3320733952b019b15823b9f75cabbef9d2093a33e9c84ca247c45ad23f0f",
+      "reason": "Reviewed named offline auth fixture: synthetic public-key/access-token markers and injected mock remotes only; no real credential or network request. Exact current bytes and line pinned."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
+      "category": "deployment_public_key",
+      "line": 273,
+      "sha256": "cb8ddaa0b7be298d7db183425da215f40265612b003dabfc6103919cb85ab5ff",
+      "reason": "Reviewed named offline auth fixture: synthetic public-key/access-token markers and injected mock remotes only; no real credential or network request. Exact current bytes and line pinned."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
+      "category": "deployment_public_key",
+      "line": 385,
+      "sha256": "cb8ddaa0b7be298d7db183425da215f40265612b003dabfc6103919cb85ab5ff",
+      "reason": "Reviewed named offline auth fixture: synthetic public-key/access-token markers and injected mock remotes only; no real credential or network request. Exact current bytes and line pinned."
+    },
+    {
+      "path": "apps/ios-conversation/Resources/Assets.xcassets/LaunchGlow.imageset/Contents.json",
+      "category": "email_review",
+      "line": 8,
+      "sha256": "b38ae94627207648c6d95d37d68397522f3051e68cb7ceed9408e8a6c6929697",
+      "reason": "Reviewed unchanged Xcode asset metadata: @2x.png and @3x.png filenames resemble email addresses; no email, account identity or secret. Visual asset bytes are unchanged."
+    },
+    {
+      "path": "apps/ios-conversation/Resources/Assets.xcassets/LaunchGlow.imageset/Contents.json",
+      "category": "email_review",
+      "line": 13,
+      "sha256": "b38ae94627207648c6d95d37d68397522f3051e68cb7ceed9408e8a6c6929697",
+      "reason": "Reviewed unchanged Xcode asset metadata: @2x.png and @3x.png filenames resemble email addresses; no email, account identity or secret. Visual asset bytes are unchanged."
+    },
+    {
+      "path": "apps/ios-conversation/Resources/Assets.xcassets/LaunchPaw.imageset/Contents.json",
+      "category": "email_review",
+      "line": 8,
+      "sha256": "429a2a63d009eb4d23ec0fa782f8b68db08ac4ba56d84d9c6b072a60e021bea8",
+      "reason": "Reviewed unchanged Xcode asset metadata: @2x.png and @3x.png filenames resemble email addresses; no email, account identity or secret. Visual asset bytes are unchanged."
+    },
+    {
+      "path": "apps/ios-conversation/Resources/Assets.xcassets/LaunchPaw.imageset/Contents.json",
+      "category": "email_review",
+      "line": 13,
+      "sha256": "429a2a63d009eb4d23ec0fa782f8b68db08ac4ba56d84d9c6b072a60e021bea8",
+      "reason": "Reviewed unchanged Xcode asset metadata: @2x.png and @3x.png filenames resemble email addresses; no email, account identity or secret. Visual asset bytes are unchanged."
+    },
+    {
+      "path": "apps/ios-conversation/Resources/Assets.xcassets/LaunchPawMark.imageset/Contents.json",
+      "category": "email_review",
+      "line": 8,
+      "sha256": "f4c8f2b02aa08672daa97551cf5c0f5c47611b953638d5ffa9cd9b9aaa003a75",
+      "reason": "Reviewed unchanged Xcode asset metadata: @2x.png and @3x.png filenames resemble email addresses; no email, account identity or secret. Visual asset bytes are unchanged."
+    },
+    {
+      "path": "apps/ios-conversation/Resources/Assets.xcassets/LaunchPawMark.imageset/Contents.json",
+      "category": "email_review",
+      "line": 13,
+      "sha256": "f4c8f2b02aa08672daa97551cf5c0f5c47611b953638d5ffa9cd9b9aaa003a75",
+      "reason": "Reviewed unchanged Xcode asset metadata: @2x.png and @3x.png filenames resemble email addresses; no email, account identity or secret. Visual asset bytes are unchanged."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/AuthTestSupport.swift",
+      "category": "secret_assignment_review",
+      "line": 25,
+      "sha256": "4f0c3320733952b019b15823b9f75cabbef9d2093a33e9c84ca247c45ad23f0f",
+      "reason": "Reviewed named offline auth fixture: synthetic public-key/access-token markers and injected mock remotes only; no real credential or network request. Exact current bytes and line pinned."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/AuthTestSupport.swift",
+      "category": "secret_assignment_review",
+      "line": 26,
+      "sha256": "4f0c3320733952b019b15823b9f75cabbef9d2093a33e9c84ca247c45ad23f0f",
+      "reason": "Reviewed named offline auth fixture: synthetic public-key/access-token markers and injected mock remotes only; no real credential or network request. Exact current bytes and line pinned."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/AuthTestSupport.swift",
+      "category": "secret_assignment_review",
+      "line": 39,
+      "sha256": "4f0c3320733952b019b15823b9f75cabbef9d2093a33e9c84ca247c45ad23f0f",
+      "reason": "Reviewed named offline auth fixture: synthetic public-key/access-token markers and injected mock remotes only; no real credential or network request. Exact current bytes and line pinned."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
+      "category": "secret_assignment_review",
+      "line": 149,
+      "sha256": "cb8ddaa0b7be298d7db183425da215f40265612b003dabfc6103919cb85ab5ff",
+      "reason": "Reviewed named offline auth fixture: synthetic public-key/access-token markers and injected mock remotes only; no real credential or network request. Exact current bytes and line pinned."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
+      "category": "secret_assignment_review",
+      "line": 420,
+      "sha256": "cb8ddaa0b7be298d7db183425da215f40265612b003dabfc6103919cb85ab5ff",
+      "reason": "Reviewed named offline auth fixture: synthetic public-key/access-token markers and injected mock remotes only; no real credential or network request. Exact current bytes and line pinned."
+    },
+    {
+      "path": "scripts/check-git-policy.py",
+      "category": "email_review",
+      "line": 43,
+      "sha256": "14c439d03e28f7c6d0f3199dcf1d1e55a3564c67a64cc333e20bff8b8e7817f7",
+      "reason": "Reviewed unchanged public Git SSH origin allowlist syntax; this is a repository URL, not an email address or credential."
+    },
+    {
+      "path": "services/edge/test/proactive-decision.test.mjs",
+      "category": "secret_assignment_review",
+      "line": 93,
+      "sha256": "ec8e08098ba39e173c9d51fcd3c05726df696e1ffda150f46fa7364256e7f8fb",
+      "reason": "Reviewed unchanged k-or-xxxxxxxx and k-ag-xxxxxxxx mock values in an offline injected transport test; not deployment keys."
     }
   ]
 }
