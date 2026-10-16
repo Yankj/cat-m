@@ -288,7 +288,9 @@ struct PlushMascotWell: View {
         .contentShape(Circle())
         .onTapGesture { pop() }
         .onChange(of: state) { _, s in if s == .done { pop() } }
-        .onChange(of: conversationKey, initial: true) { _, _ in pop(delay: 0.6) }
+        .onChange(of: conversationKey, initial: true) { _, _ in
+            if CatpawAcceptanceLaunch.mascotPopHold { popped = true } else { pop(delay: 0.6) }
+        }
         .onDisappear { popTask?.cancel(); popped = false }
         .accessibilityHidden(true)
     }
@@ -325,6 +327,14 @@ enum CatpawAcceptanceLaunch {
         }
         #else
         return nil
+        #endif
+    }
+    /// `-CatpawMascotPopHold YES`: freeze the header mascot in its popped-out pose (screenshot acceptance).
+    static var mascotPopHold: Bool {
+        #if DEBUG || DEVICE_TRIAL
+        return UserDefaults.standard.bool(forKey: "CatpawMascotPopHold")
+        #else
+        return false
         #endif
     }
     static var openEmptyConversation: Bool {
