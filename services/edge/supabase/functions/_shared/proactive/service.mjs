@@ -82,7 +82,12 @@ export function createProactiveService({ store, verifyUser, schedulerSecret, mod
     const at = now(), pending = await store.pendingPushEvents(limit, new Date(at).toISOString());
     const out = { sent: 0, skipped: 0, failed: 0, no_device: 0, deferred: 0, coalesced: 0, capped: 0 };
     const byUser = new Map();
-    for (const ev of pending) (byUser.get(ev.user_id) ?? byUser.set(ev.user_id, []).get(ev.user_id)).push(ev);
+    for (const ev of pending) {
+      // Codex PR90c #2: delivery ownership is enforced at the sender. A proactive decision is pushed only when the
+      // client explicitly handed it off (delivery='remote'); device-owned and legacy (pre-ownership) rows never are.
+      if (ev.kind === 'proactive_decision' && ev.payload?.delivery !== 'remote') { await store.setPush(ev.id, 'skipped', 'device_owned'); out.skipped++; continue; }
+      (byUser.get(ev.user_id) ?? byUser.set(ev.user_id, []).get(ev.user_id)).push(ev);
+    }
     for (const [uid, evs] of byUser) {
       const tz = evs.find(e => e.payload?.time_zone)?.payload.time_zone ?? defaultTimeZone;
       const exempt = evs.filter(isExempt), rest = evs.filter(e => !isExempt(e));
