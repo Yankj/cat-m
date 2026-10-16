@@ -215,7 +215,7 @@ extension UIColor {
     }
 }
 
-/// Vector paw matching `catpaw.paw.svg` (24pt grid). Parts are individually addressable for the launch animation.
+/// Vector 4-pad category marker (24pt grid). Identity surfaces use `BrandMark` / soft-3D `CatpawPresence` — not this shape.
 struct PawShape: Shape {
     enum Part: CaseIterable { case toe0, toe1, toe2, toe3, pad }
     var part: Part? = nil

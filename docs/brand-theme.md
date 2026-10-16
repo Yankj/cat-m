@@ -70,3 +70,30 @@ Composer send/stop morph and voice-capsule chrome are owned by the Mac worker �
 - Do: `CatpawColors.ink`, `.secondary`, `.fill`, `.attention`, `BrandMark(...)`.
 - Don’t: raw `Color(UIColor(rgb: 0x…))` / magic oranges at feature call sites.
 - Don’t: orange body text; orange is fill/icon only.
+
+## App Icon regeneration
+
+Master: `docs/refs/brand/01-icon-hero-3d.png` (soft 3D white cat-head on `#FF702A`).
+
+```bash
+# light + dark (1024×1024)
+sips -s format png -z 1024 1024 docs/refs/brand/01-icon-hero-3d.png \
+  --out apps/ios-conversation/Resources/Assets.xcassets/AppIcon.appiconset/AppIcon-light.png
+cp apps/ios-conversation/Resources/Assets.xcassets/AppIcon.appiconset/AppIcon-light.png \
+   apps/ios-conversation/Resources/Assets.xcassets/AppIcon.appiconset/AppIcon-dark.png
+# tinted = white BrandMarkOnOrange on black (see Scripts/regenerate-appicon.py)
+python3 apps/ios-conversation/design/brand/regenerate_appicon.py
+```
+
+After installing a build that changes `AppIcon.appiconset`, **delete the app from the simulator/device before reinstalling**. SpringBoard caches the home-screen / app-switcher icon; a plain reinstall often keeps the old jelly paw.
+
+## Obsolete jelly 4-toe assets (removed)
+
+Do **not** restore these imagesets or design SVGs:
+
+- `Assets.xcassets/catpaw.paw*.imageset` (app + Widgets)
+- `design/symbols/catpaw.paw*.svg`
+- `LaunchPaw` / `LaunchPawMark` / `LaunchGlow`
+
+In-app identity: `BrandMark` / `LaunchFirstFrame` / soft-3D `CatpawPresence` only. `PawMark` / `CategoryPaw` remain as **pastel category markers** (not the App Icon).
+
