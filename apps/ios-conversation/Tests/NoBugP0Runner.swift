@@ -39,7 +39,7 @@ import Foundation
     static func expect(_ ok: Bool, _ m: String) { if ok { passed += 1; print("PASS \(m)") } else { failed += 1; print("FAIL \(m)") } }
 
     static func main() async {
-        await memory(); await deviceCalls(); proactive(); nearby(); groundedFixtures(); contactsPrivacy(); replyVariants(); followUps(); await deviceUndo(); dictation(); await p02AccountIsolation()
+        await memory(); await deviceCalls(); proactive(); nearby(); groundedFixtures(); contactsPrivacy(); replyVariants(); followUps(); await deviceUndo(); dictation(); await p02AccountIsolation(); p04FeedbackUndoHandoff()
         print("nobug-p0 portable: \(passed) passed, \(failed) failed")
         exit(failed == 0 ? 0 : 1)
     }
@@ -394,6 +394,34 @@ import Foundation
         expect(NearbyRules.preferences(in: [off, local]).cited.isEmpty, "P0-2 使用记忆 off ⇒ nearby search cites no memory (0 refs)")
         expect(MemoryRecallGate.effective([off, local]).isEmpty && MemoryRecallGate.effective([local]).count == 1, "P0-2 single recall gate for every path")
         MemoryLibraryLocal.activate(owner: .guest, persistence: nil)
+    }
+    // MARK: Codex review P0-4 — feedback persisted + changes the next decision; undo/handoff report the real outcome.
+    static func p04FeedbackUndoHandoff() {
+        var ledger = ProactiveFeedbackLedger()
+        let before = ledger.gate(decision: "notify", confidence: 0.8, trigger: "meeting_upcoming")
+        expect(before == "notify", "P0-4 baseline: confident notify stays notify")
+        expect(ledger.record(.intrusive, suggestionID: "s1", trigger: "meeting_upcoming", serverID: nil), "P0-4 first feedback applies")
+        expect(!ledger.record(.helpful, suggestionID: "s1", trigger: "meeting_upcoming", serverID: nil), "P0-4 one feedback per suggestion (same as server)")
+        let w = ledger.weights["meeting_upcoming"]
+        expect(w?.weight == 0.7 && w?.threshold_bump == 0.1, "P0-4 intrusive mirrors server weights (×0.7, +0.1)")
+        expect(ledger.gate(decision: "notify", confidence: 0.8, trigger: "meeting_upcoming") == "card", "P0-4 negative feedback measurably downgrades the next same-trigger decision")
+        expect(ledger.gate(decision: "notify", confidence: 0.8, trigger: "flight_status") == "notify", "P0-4 other triggers unaffected")
+        expect(ledger.pendingSync.map(\.suggestionID) == ["s1"], "P0-4 feedback without server id stays queued (待同步)")
+        let data = try! JSONEncoder().encode(ledger)
+        var reloaded = try! JSONDecoder().decode(ProactiveFeedbackLedger.self, from: data)
+        expect(reloaded == ledger, "P0-4 feedback ledger survives restart")
+        reloaded.markSynced("s1"); expect(reloaded.pendingSync.isEmpty, "P0-4 synced feedback leaves the queue")
+        // Undo: a failed EventKit delete keeps the real state.
+        expect(ProactiveUndoRules.statusAfterUndo(current: .done, removal: .failed) == nil, "P0-4 undo with failed delete keeps 已完成 (no fake undo)")
+        expect(ProactiveUndoRules.statusAfterUndo(current: .done, removal: .undone) == .pending && ProactiveUndoRules.statusAfterUndo(current: .done, removal: .alreadyGone) == .pending, "P0-4 undo succeeds only when removed / already gone")
+        // External URL handoff: timeout is unknown, never success.
+        let timedOut = DeviceToolContract.handoffResult(.timedOut, callID: "c1")
+        expect(timedOut.status != .ok && timedOut.data?["reason"] == .string("handoff_unknown"), "P0-4 open-URL timeout is not reported as success")
+        expect(DeviceToolContract.handoffResult(.refused, callID: "c1").status == .error, "P0-4 refused open is an error")
+        let opened = DeviceToolContract.handoffResult(.opened, callID: "c1")
+        expect(opened.status == .ok && opened.data?["handoff"] == .string("requested"), "P0-4 opened = requested, not task done")
+        expect(DeviceToolContract.receiptKey(confirmKey: "运行", status: .ok, data: opened.data) == "已请求打开", "P0-4 shortcut receipt says 已请求打开, not 已运行")
+        expect(DeviceToolContract.receiptKey(confirmKey: "运行", status: timedOut.status, data: timedOut.data) == "已请求打开，结果未知", "P0-4 unknown handoff shows 结果未知")
     }
 }
 
