@@ -254,15 +254,42 @@ struct NativeWorkspaceRetrySchedule: Sendable {
         }
     }
     /// Info.plist `CatpawAutoAnonymousSession` = NO disables the automatic experience identity.
-    /// "开启" joins the pre-warmed lifecycle. The intro flag is persisted only after a usable chat exists.
+    /// 「开始使用」opens the main UI. Entry is never blocked on provider health, model-routes, or
+    /// network reachability — those surface later as in-chat notices. Only a hard session restart
+    /// (ambiguous / revoked credential) keeps the intro with an error.
     func completeOnboarding() async {
         guard onboarding != .entering, onboarding != .completed else { return }
         onboarding = .entering
         if warmup == nil { await start() } else { await warmup?.value }
-        if recoveryImpossible,requiresSessionRestart {onboarding = .failed(error ?? NativeAuthError.sessionRecoveryRequired.localizedDescription);return}
+        if manager == nil {
+            onboarding = .failed(error ?? "登录连接尚未配置。")
+            return
+        }
+        if recoveryImpossible, requiresSessionRestart, chat == nil {
+            onboarding = .failed(error ?? NativeAuthError.sessionRecoveryRequired.localizedDescription)
+            return
+        }
         await retryWarmup()
-        if await waitForChat() {CatpawOnboarding.markCompleted();onboarding = .completed;return}
-        onboarding = .failed(error ?? (manager == nil ? "登录连接尚未配置。" : "暂时连不上服务，请稍后重试。"))
+        // Soft wait for a prewarmed shell; never fail the door on health/timeout.
+        _ = await waitForChat(maxSeconds: 2.5)
+        if recoveryImpossible, requiresSessionRestart, chat == nil {
+            onboarding = .failed(error ?? NativeAuthError.sessionRecoveryRequired.localizedDescription)
+            return
+        }
+        // If auth already succeeded but applicationScope/model-routes are slow/down, open the
+        // local chat shell from the configured server scope so entry is not blocked on health.
+        if chat == nil, state.phase == .authenticated, let user = state.user, let configuration,
+           let scope = configuration.serverScopeID {
+            let key = WorkspaceKey(lifecycleEpoch: lifecycleEpoch, generation: state.generation, subject: user.id)
+            await admitWorkspace(serverScope: scope, key: key, user: user, configuration: configuration)
+        }
+        // Transient network / model-route failures must not lock the door.
+        if !requiresSessionRestart {
+            recoveryImpossible = false
+            if let e = error, Self.isTransientConnectFailure(e) { error = nil }
+        }
+        CatpawOnboarding.markCompleted()
+        onboarding = .completed
     }
     private func retryWarmup() async {
         guard let manager else { return }
@@ -272,11 +299,15 @@ struct NativeWorkspaceRetrySchedule: Sendable {
         else if current.phase == .authenticated { error = nil;recoveryImpossible=false;await receive(current) }
         else { await foreground() }
     }
-    /// Retryable workspace failures stay in the background flight; only a terminal safety/configuration
-    /// result ends the onboarding wait.
-    private func waitForChat() async -> Bool {
-        while chat == nil,!Task.isCancelled {
-            if recoveryImpossible || (workspaceFlight == nil && !sessionRecoveryActive && !actionBusy && ![.restoring,.signingIn,.refreshing,.authenticated].contains(state.phase)) {return false}
+    /// Bounded wait for a chat shell. Background workspace / auth recovery continues after return.
+    private func waitForChat(maxSeconds: Double = 2.5) async -> Bool {
+        let deadline = Date().addingTimeInterval(maxSeconds)
+        while chat == nil, !Task.isCancelled, Date() < deadline {
+            if recoveryImpossible, requiresSessionRestart { return false }
+            if workspaceFlight == nil, !sessionRecoveryActive, !actionBusy,
+               ![.restoring, .signingIn, .refreshing, .authenticated].contains(state.phase) {
+                return false
+            }
             try? await Task.sleep(nanoseconds: 100_000_000)
         }
         return chat != nil
@@ -422,12 +453,20 @@ struct NativeWorkspaceRetrySchedule: Sendable {
     private func friendlyWorkspaceFailure(_ error:Error)->String {
         workspaceFailureNeedsRestart(error) ? NativeAuthError.sessionRecoveryRequired.localizedDescription : "暂时无法打开工作区，本机对话仍会保留。"
     }
+
+    /// Soft reachability / provider failures — never used as the onboarding door lock.
+    static func isTransientConnectFailure(_ message: String) -> Bool {
+        message == NativeAuthError.unavailable.localizedDescription
+            || message == NativeAuthError.rateLimited.localizedDescription
+            || message == NativeAuthError.anonymousUnavailable.localizedDescription
+            || message == "暂时连不上服务，请稍后重试。"
+    }
     private func friendlyAuthFailure(_ error:NativeAuthError)->String {
         switch error {
         case .loginRequired,.invalidResponse,.sessionRecoveryRequired:return NativeAuthError.sessionRecoveryRequired.localizedDescription
         case .storage:return NativeAuthError.storage.localizedDescription
         case .notConfigured,.invalidConfiguration:return error.localizedDescription
-        default:return "暂时连不上服务，请稍后重试。"
+        default:return NativeAuthError.unavailable.localizedDescription
         }
     }
     private func hasSafelyRecoverableCredential() async ->Bool {
