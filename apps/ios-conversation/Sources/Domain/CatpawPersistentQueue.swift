@@ -58,7 +58,20 @@ extension UserDefaults: CatpawKeyValueStore {}
     func contains(key: String) -> Bool { items.contains { $0.key == key } }
     func purge(account: String?) {
         items.removeAll { $0.account == account || account == nil }
+        deadLetters.removeAll { $0.account == account || account == nil }   // Codex PR90f: nothing of that account survives
         poisoned = account.map { a in poisoned.filter { !$0.hasPrefix(a + "|") } } ?? []
+        persist()
+    }
+    /// Codex PR90f #1: move every item (live and dead) out — into the proactive quarantine; nothing of it is sent meanwhile.
+    func extractAll() -> [Item] {
+        let all = items + deadLetters; items = []; deadLetters = []; poisoned = []; persist(); return all
+    }
+    /// Release from quarantine: the items come back bound to the proven owner (never sent under anyone else).
+    func reinstate(_ moved: [Item], account: String) {
+        // Only unstamped items or ones already stamped with that account; another account's write-back is never re-bound.
+        for var i in moved where (i.account == nil || i.account!.caseInsensitiveCompare(account) == .orderedSame) && !items.contains(where: { $0.key == i.key }) {
+            i.account = account; i.attempts = 0; items.append(i)
+        }
         persist()
     }
     /// Keep only `account`'s items (migration of unknown-owner data to the signed-in account).

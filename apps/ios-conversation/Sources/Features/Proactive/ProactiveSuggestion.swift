@@ -71,7 +71,7 @@ struct ProactiveSuggestion: Codable, Sendable, Equatable, Identifiable {
         case .snooze: .snoozed
         case .dismiss: .dismissed
         }
-        s.taken = (s.taken ?? []) + [.init(action: action, at: .now)]
+        s.taken = (s.taken ?? []) + [.init(action: action, at: ProactiveClock.now())]
         items[id] = s; return s
     }
     func undo(_ id: String) async throws -> ProactiveSuggestion {
@@ -86,12 +86,12 @@ struct ProactiveSuggestion: Codable, Sendable, Equatable, Identifiable {
         .init(id: "demo-meeting", title: "该出发去望京 SOHO 了", reason: "因为你 10:30 有会，地铁 25 分钟",
               memories: [.init(id: "m1", content: "住在北京望京"), .init(id: "m6", content: "通勤习惯坐地铁")],
               signals: [.init(kind: "calendar", text: "10:30 与张三开会 · 望京 SOHO T1"), .init(kind: "travel", text: "地铁 14 号线约 25 分钟"), .init(kind: "time", text: "现在 09:50")],
-              createdAt: .now),
+              createdAt: ProactiveClock.now()),
         .init(id: "demo-flight", title: "航班延误 40 分钟", reason: "CA1234 延误，你 15:00 的会可能赶不上",
               memories: [.init(id: "m7", content: "常坐国航")], signals: [.init(kind: "travel", text: "CA1234 预计 14:20 到达")],
-              status: .done, createdAt: .now.addingTimeInterval(-3600), taken: [.init(action: .notify_attendees, at: .now.addingTimeInterval(-3500))]),
+              status: .done, createdAt: ProactiveClock.now().addingTimeInterval(-3600), taken: [.init(action: .notify_attendees, at: ProactiveClock.now().addingTimeInterval(-3500))]),
         .init(id: "demo-coffee", title: "附近有你喜欢的咖啡", reason: "会前还有 15 分钟", memories: [.init(id: "m3", content: "咖啡只喝燕麦拿铁")],
-              status: .dismissed, createdAt: .now.addingTimeInterval(-7200)),
+              status: .dismissed, createdAt: ProactiveClock.now().addingTimeInterval(-7200)),
     ]
 }
 

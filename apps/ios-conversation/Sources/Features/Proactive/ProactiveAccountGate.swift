@@ -56,15 +56,15 @@ enum ProactiveAccountGate {
 /// Codex PR90d #1 / PR90e: the persisted proactive data (inbox, reminders, attendees, ledgers, quota, outbox, server ids)
 /// has one owner account, stored next to it. One decision per write / account change:
 /// - `.keep`  — same account (cold restore, any case), or signed out and already clean;
-/// - `.adopt` — no owner recorded yet (first run after the upgrade, signed in): the data is migrated to the current
-///   account, never dropped (outbox items tagged with another account are the only thing removed);
+/// - `.quarantine` — no owner recorded (first run after the upgrade): moved into `ProactiveQuarantine`, released only
+///   on evidence or expired (PR90f #1). `.adopt` is no longer produced (kept for source compatibility).
 /// - `.wipe`  — anything else (switch, logout, "" → a new account). Adopt and wipe both register the new owner, so the
 ///   owner can never stay "" while an account writes.
 enum ProactiveDataOwner {
     static let key = "catpaw.proactive.owner.v1"
     enum Plan: Equatable { case keep, adopt, wipe, quarantine }
     static func plan(owner: String?, current: String?) -> Plan {
-        guard let owner else { return current == nil ? .wipe : .adopt }
+        guard let owner else { return .quarantine }   // PR90f #1: unknown owner → isolated, never claimed or dropped
         guard let current else { return owner.isEmpty ? .keep : .wipe }
         return owner.caseInsensitiveCompare(current) == .orderedSame ? .keep : .wipe
     }
@@ -91,6 +91,10 @@ enum ProactiveQuarantine {
     static let ttl: TimeInterval = 7 * 24 * 3600
     enum Verdict: Equatable { case hold, release, expire }
     static func decide(quarantinedAt: Date, stampedAccounts: [String], current: String?, serverConfirmed: Bool, now: Date) -> Verdict {
-        .hold
+        if let current {
+            if serverConfirmed { return .release }
+            if !stampedAccounts.isEmpty, stampedAccounts.allSatisfy({ $0.caseInsensitiveCompare(current) == .orderedSame }) { return .release }
+        }
+        return now.timeIntervalSince(quarantinedAt) > ttl ? .expire : .hold
     }
 }

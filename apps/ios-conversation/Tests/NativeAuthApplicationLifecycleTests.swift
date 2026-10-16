@@ -195,6 +195,40 @@ final class NativeAuthApplicationLifecycleTests:XCTestCase {
         await app.signOut()
     }
 
+    /// Codex PR90f #6: the real login / logout path (NativeAuthApplicationModel.signIn / signOut → account barrier →
+    /// AccountEpoch → AccountChangeObservers → ProactiveEngine) — not a hand-built snapshot.
+    @MainActor func testProactiveDataFollowsRealSignInAndSignOut() async throws {
+        ProactiveClock.now={Date(timeIntervalSince1970:1_792_040_400)}   // fixed instant 2026-10-15T05:00Z (no wall clock)
+        defer {ProactiveClock.now={Date()}}
+        ProactiveEngine.registerAccountObserver()
+        func session(_ subject:UUID) async throws -> NativeAuthApplicationModel {
+            let root=FileManager.default.temporaryDirectory.appendingPathComponent("native-proactive-"+UUID().uuidString,isDirectory:true)
+            let scope=UUID(),clock=LifecycleClock(),storage=LifecycleStorage(),configuration=try lifecycleConfiguration(scope:scope)
+            let remote=LifecycleRemote(issuer:configuration.issuer,subject:subject,clock:clock)
+            let manager=NativeAuthSessionManager(configuration:configuration,remote:remote,vault:storage,barrier:storage,now:{clock.now()})
+            let resolver=LifecycleWorkspaceResolver(subject:subject,scope:scope,steps:[.success])
+            let app=NativeAuthApplicationModel(configuration:configuration,manager:manager,vault:storage,barrier:storage,root:root,workspaceResolver:resolver,retrySchedule:.init(nominalSeconds:[0],jitter:{$0}))
+            await app.start();await app.signIn(email:"synthetic@example.invalid",password:"fixture-only")
+            try await waitUntil {AccountEpoch.shared.currentAccount==subject.uuidString}
+            return app
+        }
+        let a=UUID(),b=UUID()
+        let appA=try await session(a)
+        let card=ProactiveSuggestion(id:"xctest-real-"+UUID().uuidString,title:"t",reason:"r",actions:[.dismiss],status:.pending,createdAt:ProactiveClock.now())
+        ProactiveSuggestionStore.shared.adopt(card)
+        _=try await ProactiveLocalBackend().perform(.dismiss,on:card.id)
+        XCTAssertNotNil(ProactiveLocalBackend.load()[card.id],"A's write landed under A")
+        XCTAssertEqual((UserDefaults.standard.object(forKey:ProactiveDataOwner.key) as? String)?.lowercased(),a.uuidString.lowercased())
+        await appA.signOut()
+        try await waitUntil {AccountEpoch.shared.currentAccount==nil && ProactiveLocalBackend.load()[card.id]==nil}
+        XCTAssertFalse(ProactiveEngine.shared.syncQueue.items.contains {$0.op.local==card.id},"A's write-backs gone on the real logout")
+        let appB=try await session(b)
+        let listed=try await ProactiveLocalBackend().list()
+        XCTAssertFalse(listed.contains {$0.id==card.id},"B never sees A's card after the real login")
+        await appB.signOut()
+        try await waitUntil {AccountEpoch.shared.currentAccount==nil}
+    }
+
     @MainActor func testReturningLocalChatStaysReadableAndForegroundWakesRetryInPlace() async throws {
         let root=FileManager.default.temporaryDirectory.appendingPathComponent("native-workspace-local-"+UUID().uuidString,isDirectory:true)
         defer {try? FileManager.default.removeItem(at:root)}
