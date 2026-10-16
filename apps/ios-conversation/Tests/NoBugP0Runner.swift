@@ -751,6 +751,165 @@ extension Result { var isFailure: Bool { if case .failure = self { return true }
         expect(ProactiveActionStates.from(serverStates: ["create_reminder": "done"]) == ["create_reminder": .succeeded], "P0-5 cloud action_states map to device state")
     }
 
+
+    // MARK: Codex PR91 review (882db80) — counterexamples as integration assertions on the REAL L2 store
+    // (AES-GCM files under a temp root, injectable key stand-in instead of the Keychain).
+    static func pr91Review() async {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("pr91-l2-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let keys = EphemeralL2KeyProvider()
+        L2SecureStore.rootDirectory = root; L2SecureStore.keys = keys
+        let a = UUID(), b = UUID()
+        func signIn(_ u: UUID) {
+            AccountEpoch.shared.activate(account: u.uuidString); L2SecureStore.activate(userID: u)
+            MemoryLibraryLocal.activate(owner: .account(u.uuidString.lowercased()), persistence: L2SecureStore.current.map { L2MemorySnapshotPersistence(store: $0) })
+            MemoryCache.shared.reloadFromL2()
+        }
+        let defaults = UserDefaults(suiteName: "pr91-\(UUID().uuidString)")!
+        func signOut(_ u: UUID) { AccountLocalData.signOutCore(userID: u, defaults: defaults); L2SecureStore.wipe(userID: u) }
+        let wire = { (id: String, text: String) in Data(#"{"cursor":"c1","memories":[{"id":"\#(id)","kind":"preference","content":"\#(text)","updated_at":"2026-10-16T00:00:00Z"}],"deleted":[]}"#.utf8) }
+
+        // Real L2: sealed on disk, not plaintext; wrong key cannot read.
+        signIn(a)
+        try? L2SecureStore.current?.put(["k": "开会提前 25 分钟"], forKey: "probe")
+        let files = (try? FileManager.default.contentsOfDirectory(at: root.appendingPathComponent(a.uuidString.lowercased()), includingPropertiesForKeys: nil)) ?? []
+        let onDisk = files.compactMap { try? Data(contentsOf: $0) }
+        expect(!onDisk.isEmpty && !onDisk.contains { String(decoding: $0, as: UTF8.self).contains("开会提前") }, "PR91 #5 L2 record is AES-GCM sealed on disk (no plaintext)")
+
+        // #1 A's sync response arrives after B signed in → not merged, not persisted with B's key.
+        var release: CheckedContinuation<Void, Never>?
+        let inflight = Task { @MainActor in
+            await MemoryCache.shared.sync { _ in await withCheckedContinuation { release = $0 }; return wire("ma", "A 的秘密：住在望京") }
+        }
+        while release == nil { await Task.yield() }
+        signOut(a); signIn(b)
+        release?.resume(); await inflight.value
+        expect(MemoryCache.shared.items.isEmpty, "PR91 #1 A's late sync response is not merged into B's cache")
+        MemoryCache.shared.reloadFromL2()
+        expect(MemoryCache.shared.items.isEmpty, "PR91 #1 A's late sync response is not persisted in B's L2 store")
+        // B's own sync still works.
+        await MemoryCache.shared.sync { _ in wire("mb", "B 喜欢川菜") }
+        MemoryCache.shared.reloadFromL2()
+        expect(MemoryCache.shared.items["mb"]?.content == "B 喜欢川菜", "PR91 #1 B's own sync merges + persists in B's store")
+        // SSE event taken under A, delivered after the switch → dropped.
+        let staleToken = AccountToken(account: a.uuidString, epoch: 0)
+        MemoryCache.shared.applyUpdate(op: "updated", ids: ["ma"], memories: [], token: staleToken)
+        MemoryCache.shared.recordUsed(turnID: UUID(), ids: ["ma"], memories: [], token: staleToken)
+        expect(MemoryCache.shared.items["ma"] == nil && MemoryCache.shared.usedByTurn.isEmpty, "PR91 #1 memory.used/update from A's session are dropped in B's")
+        // Sign-out resets the cache (MemoryCache.reset) and the generation.
+        let beforeOut = AccountEpoch.shared.capture()
+        signOut(b)
+        expect(MemoryCache.shared.items.isEmpty && MemoryCache.shared.boundStore == nil && beforeOut != nil && !AccountEpoch.shared.isValid(beforeOut) && AccountEpoch.shared.capture() == nil, "PR91 #1 sign-out resets MemoryCache and closes the generation")
+
+        // #2 AccountEpoch contract as used here: a token captured before sign-out can never commit; accounts are UUID.uuidString.
+        signIn(a)
+        let preOut = AccountEpoch.shared.capture()
+        expect(preOut?.account == a.uuidString, "PR91 #2 epoch account is the upper-case UUID string")
+        signOut(a); signIn(b)
+        var wroteLate = false
+        let committed: Bool? = AccountEpoch.shared.commit(preOut) { wroteLate = true; return true }
+        expect(committed == nil && !wroteLate, "PR91 #2 A's in-flight write after sign-out + B login is refused by commit")
+        signOut(b)
+        // #2 an in-flight device call finishing after sign-out writes nothing back and reports through nobody.
+        signIn(a)
+        let dd = UserDefaults(suiteName: "pr91-dc-\(UUID().uuidString)")!
+        let store = DeviceCallStore(defaults: dd)
+        let slow = SlowExecutor(); let sub = FakeSubmitter()
+        DeviceCallHub.executor = slow; DeviceCallHub.submitter = sub
+        let call = DeviceCall(call_id: "dc-late", tool: "calendar_create", args: [:])
+        let run = Task { @MainActor in await store.run(call) }
+        while slow.pending == nil { await Task.yield() }
+        signOut(a); store.reset(); signIn(b)
+        let subB = FakeSubmitter(); DeviceCallHub.submitter = subB
+        slow.pending?.resume(); await run.value
+        expect(subB.sent.isEmpty && sub.sent.isEmpty, "PR91 #2 A's device result after sign-out is not reported with B's submitter")
+        expect(dd.data(forKey: DeviceCallStore.storageKey).map { !String(decoding: $0, as: UTF8.self).contains("dc-late") } ?? true && store.droppedAfterSignOut == ["dc-late"], "PR91 #2 A's device result is not written back after sign-out")
+        // Purge list covers attendees, server ids and the per-account 使用记忆 switch.
+        for k in AccountLocalData.userDefaultsKeys { defaults.set(Data([1]), forKey: k) }
+        defaults.set(true, forKey: MemoryRecallLoader.offKeyPrefix + "x")
+        signOut(b)
+        expect(["catpaw.proactive.attendees.v1", "catpaw.proactive.serverids.v1"].allSatisfy { AccountLocalData.userDefaultsKeys.contains($0) && defaults.object(forKey: $0) == nil }
+               && defaults.object(forKey: MemoryRecallLoader.offKeyPrefix + "x") == nil, "PR91 #2 sign-out clears attendees, server ids and the stored 使用记忆 switch")
+
+        // #3 使用记忆 fails closed.
+        signIn(a)
+        MemoryRecallLoader.defaults = defaults
+        let owner = LocalMemoryOwner.account(a.uuidString.lowercased())
+        let localOn = MemoryLibraryStub(items: [.init(id: "l1", group: .preference, content: "开会提前 25 分钟准备")], owner: owner)
+        let flaky = FlakyBackend()
+        flaky.mode = .fail
+        var snaps = await MemoryRecallLoader.snapshots(cloud: flaky, local: localOn, owner: owner)
+        expect(snaps.isEmpty && ProactiveRules.lead(in: snaps) == nil, "PR91 #3 cloud load failure ⇒ 0 memories (not local-only)")
+        flaky.mode = .off
+        snaps = await MemoryRecallLoader.snapshots(cloud: flaky, local: localOn, owner: owner)
+        expect(snaps.isEmpty && MemoryRecallLoader.persistedOff(owner), "PR91 #3 cloud off ⇒ 0 memories, switch stored for the account")
+        flaky.mode = .notEnabled
+        snaps = await MemoryRecallLoader.snapshots(cloud: flaky, local: localOn, owner: owner)
+        expect(snaps.isEmpty, "PR91 #3 cloud state unknown + last known off ⇒ still 0 memories")
+        expect(!MemoryRecallLoader.persistedOff(.account("other")), "PR91 #3 the stored switch is per account")
+        flaky.mode = .on
+        snaps = await MemoryRecallLoader.snapshots(cloud: flaky, local: localOn, owner: owner)
+        expect(ProactiveRules.lead(in: snaps)?.minutes == 25, "PR91 #3 recall resumes once the cloud says on")
+        // Empty local library with 使用记忆 off still carries off to the cloud.
+        let emptyOff = MemoryLibraryStub(useMemory: false, owner: owner)
+        let target = RefusingBackend()
+        _ = await MemoryLibraryLocal.migrate(emptyOff, to: target, targetOwner: owner)
+        expect(!target.useMemory, "PR91 #3 empty local library still syncs 使用记忆 off")
+
+        // #4 legacy plaintext is deleted only after a verified sealed copy; failure keeps it.
+        let legacy = root.appendingPathComponent("catpaw-local-memory.v1.json")
+        try? FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        try? Data(#"{"items":[{"id":"x","content":"旧记忆"}]}"#.utf8).write(to: legacy)
+        expect(LegacyMemoryQuarantine.run(legacyFile: legacy, vault: FailingPersistence()) != .quarantined(1) && FileManager.default.fileExists(atPath: legacy.path), "PR91 #4 failed quarantine keeps the old file")
+        expect(LegacyMemoryQuarantine.run(legacyFile: legacy, vault: nil) == .failed("vault_unavailable") && FileManager.default.fileExists(atPath: legacy.path), "PR91 #4 no vault (keychain down) keeps the old file")
+        let vaultStore = try! L2SecureStore(userID: LegacyMemoryQuarantine.vaultID, root: root, keys: keys)
+        let vault = L2MemorySnapshotPersistence(store: vaultStore, key: LegacyMemoryQuarantine.recordKey)
+        expect(LegacyMemoryQuarantine.run(legacyFile: legacy, vault: vault) == .quarantined(1) && !FileManager.default.fileExists(atPath: legacy.path), "PR91 #4 old file removed only after the sealed copy verifies")
+        expect(LegacyMemoryQuarantine.kept(in: vault).first.map { String(decoding: $0, as: UTF8.self).contains("旧记忆") } == true && MemoryLibraryLocal.shared.items.isEmpty, "PR91 #4 unowned data kept sealed, not merged into the account")
+
+        // #5 L2 unavailable → create fails; SwiftData memory rows sealed per subject.
+        let noL2 = MemoryLibraryStub(owner: owner, persistence: UnavailableSnapshotPersistence())
+        do { _ = try await noL2.create(kind: "preference", content: "x"); expect(false, "PR91 #5 create without L2 must fail") }
+        catch { expect(noL2.items.isEmpty, "PR91 #5 L2 unavailable ⇒ create fails, nothing shown as saved") }
+        keys.failNext = true
+        expect((try? L2SecureStore(userID: UUID(), root: root, keys: keys)) == nil, "PR91 #5 keychain failure ⇒ no L2 store (not a plaintext fallback)")
+        let sA = L2SecureStore.current!
+        ConversationMemoryAtRest.sealer = { d, subj in guard subj == sA.userID else { throw L2SecureStoreError.unavailable }; return try sA.seal(d) }
+        ConversationMemoryAtRest.opener = { d, subj in guard subj == sA.userID else { throw L2SecureStoreError.unavailable }; return try sA.openSealed(d) }
+        let row = try! ConversationMemoryAtRest.seal(Data("住在望京".utf8), subject: a)
+        expect(row.hasPrefix("l2:") && !row.contains("望京") && ConversationMemoryAtRest.open(row, subject: a) == Data("住在望京".utf8), "PR91 #5 SwiftData memory row is sealed and opens for its subject")
+        expect(ConversationMemoryAtRest.open(row, subject: b) == nil, "PR91 #5 another subject cannot open the row")
+        signOut(a)
+        ConversationMemoryAtRest.opener = { d, _ in guard let s = L2SecureStore.current else { throw L2SecureStoreError.unavailable }; return try s.openSealed(d) }
+        signIn(a)
+        expect(ConversationMemoryAtRest.open(row, subject: a) == nil, "PR91 #5 after sign-out (key shredded) the old row is unreadable")
+        ConversationMemoryAtRest.sealer = nil; ConversationMemoryAtRest.opener = nil
+
+        // #6 L2 put surfaces write failures; feedback ledger survives a real reopen.
+        var ledger = ProactiveFeedbackLedger(); _ = ledger.record(.intrusive, suggestionID: "s9", trigger: "meeting_upcoming", serverID: nil)
+        try? L2SecureStore.current?.put(ledger, forKey: "proactive.feedback-ledger.v1")
+        let reopened = try! L2SecureStore(userID: a, root: root, keys: keys)
+        expect(reopened.get(ProactiveFeedbackLedger.self, forKey: "proactive.feedback-ledger.v1") == ledger, "PR91 #6 feedback ledger survives reopening the real L2 store")
+        try? FileManager.default.removeItem(at: root.appendingPathComponent(a.uuidString.lowercased()))
+        do { try reopened.put(ledger, forKey: "proactive.feedback-ledger.v1"); expect(false, "PR91 #6 put must throw") }
+        catch { expect(true, "PR91 #6 L2 put throws when the write fails (not swallowed)") }
+
+        // #7 open-URL: the completion never comes → unknown within the deadline.
+        let t0 = Date()
+        let outcome = await DeviceToolContract.raceHandoff(timeoutNanoseconds: 200_000_000) { _ in }
+        expect(outcome == .timedOut && Date().timeIntervalSince(t0) < 1.5, "PR91 #7 hung open() returns handoff_unknown on time")
+        let quick = await DeviceToolContract.raceHandoff(timeoutNanoseconds: 2_000_000_000) { done in done(.opened); done(.refused) }
+        expect(quick == .opened, "PR91 #7 first outcome wins, resumed once")
+
+        // #8 undo: unreadable / unmapped = unknown → status kept.
+        expect(ProactiveUndoRules.statusAfterReminderUndo(current: .done, removal: nil) == nil, "PR91 #8 undo without read access keeps 已完成 (unknown, not already gone)")
+        expect(ProactiveUndoRules.statusAfterReminderUndo(current: .done, removal: .alreadyGone) == .pending, "PR91 #8 proven absence still undoes")
+        expect(ProactiveUndoRules.wroteReminder(takenActions: ["create_reminder"]) && !ProactiveUndoRules.wroteReminder(takenActions: ["dismiss"]), "PR91 #8 only a written reminder is looked up")
+        signOut(a)
+        L2SecureStore.rootDirectory = L2SecureStore.defaultRoot; L2SecureStore.keys = L2SecureStore.defaultKeys
+        MemoryLibraryLocal.activate(owner: .guest, persistence: nil)
+    }
+
     /// Incorporated from b8f0280 (Grok Bot's earlier P0-2): unowned legacy library and cloud-off/local-on cases.
     static func p02FromB8f0280() async {
         let legacy = MemoryLibraryStub(items: [.init(id: "l1", group: .preference, content: "旧文件")])
