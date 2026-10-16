@@ -10,6 +10,11 @@ enum NearbyRules {
         var cited: [MemoryLibraryItem] { tastes + (modeItem.map { [$0] } ?? []) }
     }
     static let maxResults = 5, minResults = 3
+    /// Id of the place card the server emits after a places_search (mirror of grounded-ui.mjs autoPlaceBlock).
+    static func placeBlockID(callID: String) -> String {
+        let safe = callID.unicodeScalars.filter { $0.isASCII && (CharacterSet.alphanumerics.contains($0) || $0 == "_" || $0 == "-") }
+        return String(("places-" + String(safe)).prefix(64))
+    }
     /// Search radii: start at 3 km; widen once when fewer than `minResults` came back.
     static let radii: [Double] = [3000, 8000]
     static func needsWiderSearch(_ count: Int) -> Bool { count < minResults }

@@ -39,7 +39,7 @@ import Foundation
     static func expect(_ ok: Bool, _ m: String) { if ok { passed += 1; print("PASS \(m)") } else { failed += 1; print("FAIL \(m)") } }
 
     static func main() async {
-        await memory(); await deviceCalls(); proactive(); nearby()
+        await memory(); await deviceCalls(); proactive(); nearby(); groundedFixtures()
         print("nobug-p0 portable: \(passed) passed, \(failed) failed")
         exit(failed == 0 ? 0 : 1)
     }
@@ -213,5 +213,33 @@ import Foundation
         expect(why.contains("喜欢吃辣") && why.contains("出门一般坐地铁") && why.contains("真实位置"), "nearby: Why cites memories + origin")
         expect(NearbyRules.telURL("021-6123 4567") == "tel:02161234567" && NearbyRules.telURL(nil) == nil, "nearby: tel url")
         expect(NearbyRules.mapsURL(lat: 31.2, lng: 121.4, name: "店", mode: .walking).hasSuffix("dirflg=w"), "nearby: maps url mode")
+    }
+
+    /// Mirror of services/edge/test/ui-grounded.test.mjs: every server-grounded block in the shared fixture decodes
+    /// into GenerativeBlock as `.ready` with the same rows; errors/passthrough cases stay out of the client.
+    static func groundedFixtures() {
+        let url = URL(fileURLWithPath: "../../services/edge/docs/fixtures/catpaw-ui-grounded.json")
+        guard let data = try? Data(contentsOf: url), let root = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+              let cases = root["cases"] as? [[String: Any]], let auto = root["auto"] as? [[String: Any]] else { expect(false, "grounded: fixture readable"); return }
+        var decoded = 0
+        for c in cases + auto {
+            let name = c["name"] as? String ?? "?"
+            guard let exp = c["expect"] as? [String: Any], let raw = exp["block"] as? [String: Any] else { continue }
+            let bytes = (try? JSONSerialization.data(withJSONObject: raw)) ?? Data()
+            guard case .ready(let b) = GenerativeBlockCodec.decode(bytes) else { expect(false, "grounded: \(name) decodes .ready"); continue }
+            let rows = (raw["places"] as? [[String: Any]]) ?? (raw["events"] as? [[String: Any]]) ?? []
+            let ids = b.kind == .place ? (b.places ?? []).map(\.id) : (b.events ?? []).map(\.id)
+            let names = b.kind == .place ? (b.places ?? []).map(\.name) : (b.events ?? []).map(\.title)
+            expect(b.kind.isGrounded && !b.needsAnswer && ids == rows.compactMap { $0["id"] as? String }
+                   && names == rows.compactMap { ($0["name"] ?? $0["title"]) as? String } && b.source?.callId == (raw["source"] as? [String: Any])?["callId"] as? String,
+                   "grounded: \(name) mirrors server rows")
+            decoded += 1
+        }
+        expect(decoded == 6, "grounded: 6 server blocks decoded (5 render_ui + 1 auto), got \(decoded)")
+        let fake = #"{"id":"x","kind":"place","source":{"callId":"c"},"places":[{"id":"p1","name":"n","actions":[{"id":"go","label":"去","url":"javascript:alert(1)"}]}]}"#
+        if case .fallback(let card, let err) = GenerativeBlockCodec.decode(Data(fake.utf8)) { expect(card.kind == .card && err.code == "schema_invalid", "grounded: unsafe deep link degrades to card") } else { expect(false, "grounded: unsafe deep link degrades to card") }
+        if case .fallback = GenerativeBlockCodec.decode(Data(#"{"id":"x","kind":"place"}"#.utf8)) { expect(true, "grounded: place without server rows is not rendered") } else { expect(false, "grounded: place without server rows is not rendered") }
+        expect(NearbyRules.placeBlockID(callID: "call-ab:12") == "places-call-ab12", "grounded: auto place block id mirrors server")
+        expect(ConversationUIEvent.kinds.contains("place") && ConversationUIEvent.kindsHeaderValue.contains("event"), "grounded: client advertises place/event")
     }
 }

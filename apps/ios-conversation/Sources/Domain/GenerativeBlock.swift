@@ -12,10 +12,17 @@ public enum GenerativeBlockLimits {
     public static let bodyCharacters = 600
     public static let items = 8, fields = 8, actions = 3, steps = 12
     public static let itemLabelCharacters = 40, actionLabelCharacters = 16
+    public static let places = 5, events = 8
+    /// Deep links a grounded card may open (server allowlist mirror: grounded-ui.mjs).
+    public static let deepLinkPrefixes = ["maps://", "https://maps.apple.com/", "tel:", "calshow:"]
 }
 
 public struct GenerativeBlock: Codable, Sendable, Equatable, Identifiable {
-    public enum Kind: String, Codable, Sendable, CaseIterable { case card, choices, confirm, form, sheet, list, progress }
+    public enum Kind: String, Codable, Sendable, CaseIterable {
+        case card, choices, confirm, form, sheet, list, progress, place, event
+        /// Content comes only from a tool_result (server-filled); never accepted from a markdown fence.
+        public var isGrounded: Bool { self == .place || self == .event }
+    }
     public enum Presentation: String, Codable, Sendable { case inline, sheet }
     public enum Selection: String, Codable, Sendable { case single, multiple, none }
 
@@ -37,6 +44,25 @@ public struct GenerativeBlock: Codable, Sendable, Equatable, Identifiable {
         public let id: String; public let label: String; public var style: Style?
         public init(id: String, label: String, style: Style? = nil) { self.id = id; self.label = label; self.style = style }
     }
+    /// Grounded kinds: an in-card deep link (`maps://`, `tel:`, `calshow:`), opened locally; never a server response.
+    public struct DeepLink: Codable, Sendable, Equatable, Identifiable {
+        public let id: String; public let label: String; public let url: String
+        public var isAllowed: Bool { url.count <= 2048 && GenerativeBlockLimits.deepLinkPrefixes.contains { url.hasPrefix($0) } }
+    }
+    /// `place` row, built by the server from a `places_search` tool_result (services/edge/.../grounded-ui.mjs).
+    public struct Place: Codable, Sendable, Equatable, Identifiable {
+        public let id: String; public let name: String
+        public var address: String?; public var lat: Double?; public var lng: Double?
+        public var distanceM: Double?; public var etaMin: Double?; public var mode: String?; public var phone: String?
+        public var actions: [DeepLink]
+    }
+    /// `event` row, built by the server from a `calendar_list` / `calendar_create` tool_result.
+    public struct Event: Codable, Sendable, Equatable, Identifiable {
+        public let id: String; public let title: String; public let start: String
+        public var end: String?; public var allDay: Bool?; public var location: String?
+        public var actions: [DeepLink]
+    }
+    public struct Source: Codable, Sendable, Equatable { public let callId: String; public var ids: [String]? }
     /// PROPOSAL extension for `progress` (not in the r10 schema): ordered steps, patched via `ui.block.update`.
     public struct Step: Codable, Sendable, Equatable, Identifiable {
         public enum State: String, Codable, Sendable { case pending, running, done, failed }
@@ -63,6 +89,11 @@ public struct GenerativeBlock: Codable, Sendable, Equatable, Identifiable {
     /// Server linkage, present only on blocks that wait for an answer (contract §0.2).
     public var interruptId: String?
     public var argsHash: String?
+    /// Grounded kinds only (`place` / `event`).
+    public var source: Source?
+    public var places: [Place]?
+    public var events: [Event]?
+    public var caption: String?
 
     public init(id: String, kind: Kind, title: String? = nil, body: String? = nil, presentation: Presentation? = nil, image: URL? = nil, items: [Item]? = nil, selection: Selection? = nil,
                 allowOther: Bool? = nil, fields: [Field]? = nil, actions: [Action]? = nil, steps: [Step]? = nil, expiresAt: Date? = nil, content: Kind? = nil) {
@@ -87,7 +118,7 @@ public struct GenerativeBlock: Codable, Sendable, Equatable, Identifiable {
         case .choices: return !(effectiveSelection == .none && (actions ?? []).isEmpty)
         case .confirm, .form: return true
         case .card, .list: return !(actions ?? []).isEmpty
-        case .progress, .sheet: return false
+        case .progress, .sheet, .place, .event: return false
         }
     }
     public var opensAsSheet: Bool { kind == .sheet || presentation == .sheet || (kind == .form && (fields?.count ?? 0) > 4) }
@@ -251,6 +282,16 @@ public enum GenerativeBlockCodec {
         case .list: if (b.items ?? []).isEmpty { return err("items_missing", "items") }
         case .form: if (b.fields ?? []).isEmpty { return err("fields_missing", "fields") }
         case .progress: if (b.steps ?? []).isEmpty { return err("steps_missing", "steps") }
+        case .place:
+            guard b.source != nil, let places = b.places, !places.isEmpty else { return err("items_missing", "places") }
+            if places.count > GenerativeBlockLimits.places { return err("too_many", "places") }
+            if Set(places.map(\.id)).count != places.count { return err("duplicate_id", "places") }
+            if places.contains(where: { $0.actions.contains { !$0.isAllowed } }) { return err("schema_invalid", "places") }
+        case .event:
+            guard b.source != nil, let events = b.events, !events.isEmpty else { return err("items_missing", "events") }
+            if events.count > GenerativeBlockLimits.events { return err("too_many", "events") }
+            if Set(events.map(\.id)).count != events.count { return err("duplicate_id", "events") }
+            if events.contains(where: { $0.actions.contains { !$0.isAllowed } }) { return err("schema_invalid", "events") }
         case .card, .confirm, .sheet: break
         }
         return nil

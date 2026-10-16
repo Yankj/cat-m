@@ -226,7 +226,8 @@ import os
 /// Fence blocks have no interrupt: they render and answer locally (display semantics).
 @MainActor enum GenerativeBlockAdapter {
     typealias Builder = @MainActor (Data, Bool) -> AnyView
-    static var kinds: [String] { GenerativeBlock.Kind.allCases.map(\.rawValue) }
+    /// Grounded kinds (place/event) are server-filled from tool results only; a model-written fence never renders them.
+    static var kinds: [String] { GenerativeBlock.Kind.allCases.filter { !$0.isGrounded }.map(\.rawValue) }
 
     private static var registered = false
     /// Registers every kind with the markdown renderer (`MarkdownCustomBlockRegistry`, #34). Idempotent.
