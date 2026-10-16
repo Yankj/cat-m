@@ -19,14 +19,17 @@ import Foundation
 }
 @MainActor final class RefusingBackend: MemoryLibraryBackend {
     var capabilities: MemoryLibraryCapabilities { [] }; var created: [String] = []; var refuse: MemoryLibraryError? = nil
-    func load() async throws -> MemoryLibrarySnapshot { .init(items: [], useMemory: true, autoSave: nil) }
+    var useMemory = true; var emptyID = false; var failAfter: Int? = nil
+    func load() async throws -> MemoryLibrarySnapshot { if refuse == .notEnabled { throw MemoryLibraryError.notEnabled }; return .init(items: created.enumerated().map { .init(id: "cloud-\($0.offset)", group: .preference, content: $0.element) }, useMemory: useMemory, autoSave: nil) }
     func update(id: String, content: String) async throws {}
     func forget(ids: [String]) async throws {}
-    func setUseMemory(_ on: Bool) async throws {}
+    func setUseMemory(_ on: Bool) async throws { useMemory = on }
     func setAutoSave(_ on: Bool) async throws {}
     func clearAll() async throws {}
     func undoSave(memoryID: String, undoToken: String?) async throws {}
-    func create(kind: String, content: String) async throws -> String { if let refuse { throw refuse }; created.append(content); return "cloud-\(created.count)" }
+    func create(kind: String, content: String) async throws -> String {
+        if let refuse { throw refuse }; if let n = failAfter, created.count >= n { throw MemoryLibraryError.unavailable }
+        created.append(content); return emptyID ? "" : "cloud-\(created.count)" }
 }
 
 @main @MainActor enum NoBugP0Runner {
@@ -70,6 +73,27 @@ import Foundation
         let off = RefusingBackend(); off.refuse = .notEnabled
         let r2 = await MemoryLibraryLocal.migrate(c, to: off)
         expect(r2.migrated == 0 && r2.kept == 1 && r2.stoppedBy == .notEnabled, "P0-1 gate off → items kept locally")
+        expect(MemoryLibraryLocal.shouldSurfaceLocal(r2), "gate off → local library surfaced in 设置›记忆")
+        // Idempotency: crash after cloud create but before local forget → rerun must not duplicate.
+        let url2 = FileManager.default.temporaryDirectory.appendingPathComponent("nobug-mem2-\(UUID().uuidString).json"); defer { try? FileManager.default.removeItem(at: url2) }
+        let d = MemoryLibraryStub(fileURL: url2); _ = try! await d.create(kind: "preference", content: "开会提前 20 分钟准备")
+        let cloud2 = RefusingBackend(); cloud2.created = ["开会提前 20 分钟准备"]   // already created before the "crash"
+        let r3 = await MemoryLibraryLocal.migrate(d, to: cloud2)
+        expect(cloud2.created.count == 1 && r3.deduped == 1 && r3.kept == 0, "P1-3 migration idempotent: content dedupe, no duplicate after crash")
+        // Empty id = failure, local kept.
+        let e = MemoryLibraryStub(fileURL: url2); _ = try! await e.create(kind: "preference", content: "喜欢靠窗")
+        let cloud3 = RefusingBackend(); cloud3.emptyID = true
+        let r4 = await MemoryLibraryLocal.migrate(e, to: cloud3)
+        expect(r4.migrated == 0 && r4.kept == 1, "P1-3 empty id from create is an error (local kept)")
+        // useMemory=false carried over.
+        try! await e.setUseMemory(false)
+        let cloud4 = RefusingBackend(); _ = await MemoryLibraryLocal.migrate(e, to: cloud4)
+        expect(cloud4.useMemory == false, "P1-3 local 使用记忆=off carried to cloud")
+        // Partial failure keeps cloud library (no local overwrite).
+        let f = MemoryLibraryStub(fileURL: url2); try! await f.clearAll(); _ = try! await f.create(kind: "preference", content: "A"); _ = try! await f.create(kind: "preference", content: "B")
+        let cloud5 = RefusingBackend(); cloud5.failAfter = 1
+        let r5 = await MemoryLibraryLocal.migrate(f, to: cloud5)
+        expect(r5.migrated == 1 && r5.kept == 1 && !MemoryLibraryLocal.shouldSurfaceLocal(r5), "P1-3 partial failure keeps cloud as page backend")
     }
 
     static func call(_ id: String, _ tool: String = "calendar_create") -> DeviceCall {
