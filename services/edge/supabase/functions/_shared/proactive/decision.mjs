@@ -277,7 +277,8 @@ export function createDecisionService({ store, model = null, memory = null, now 
 /** Client shape (方块 PR #54/#56 ProactiveSuggestion; also the SSE `proactive_suggestion` payload). */
 export function toSuggestion(e) {
   const p = e.payload ?? {}, st = p.suggestion ?? { status: 'pending', taken: [] };
-  return { id: e.id, title: p.title ?? e.title, reason: p.why ?? e.body, memories: (p.memories ?? []).map(m => ({ id: m.id, content: m.content })),
+  // PR90h #3: server_id = the record a device writes back to; client_id = the device's own id of an offline-created card.
+  return { id: e.id, server_id: e.id, ...(p.client_id ? { client_id: p.client_id } : {}), title: p.title ?? e.title, reason: p.why ?? e.body, memories: (p.memories ?? []).map(m => ({ id: m.id, content: m.content })),
     actions: (p.actions ?? []).filter(x => SUGGESTION_ACTIONS.includes(x)), signals: (p.signals ?? []).map(signalView), status: st.status,
     createdAt: e.created_at, taken: st.taken.map(t => ({ action: t.action, at: t.at, ...(t.detail ? { detail: t.detail } : {}), ...(t.until ? { until: t.until } : {}) })),
     action_states: actionStates(st), decision: p.decision, confidence: p.confidence, trigger: p.trigger ?? null };
