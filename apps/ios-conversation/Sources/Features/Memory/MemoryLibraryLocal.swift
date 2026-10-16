@@ -94,6 +94,59 @@ enum AccountLocalData {
         guard succeeded else { return false }   // a failed ON keeps the sticky off
         record(off: false, owner: owner); return true
     }
+    // MARK: Codex PR91 v2-2 — ordered user choices (same account)
+    // Each toggle takes a new generation. Requests are serialized per owner, so the server sees them in order and its
+    // final state is the LAST choice; a choice superseded before it is sent is not sent; only the latest generation's
+    // response may write back (a late ON can never clear a newer OFF).
+    enum ChoiceOutcome: Equatable { case applied, failed, superseded, stale }
+    static let unsyncedKeyPrefix = "catpaw.memory.use-unsynced.v1."
+    private static var generations: [LocalMemoryOwner: Int] = [:]
+    private static var tails: [LocalMemoryOwner: Task<Void, Never>] = [:]
+    private static var pendingOn: Set<LocalMemoryOwner> = []
+    static func generation(_ owner: LocalMemoryOwner) -> Int { generations[owner] ?? 0 }
+    /// A choice the server has not acknowledged yet (persisted: survives relaunch).
+    static func unsynced(_ owner: LocalMemoryOwner) -> Bool { offKey(owner).map { defaults.bool(forKey: unsyncedKeyPrefix + String($0.dropFirst(offKeyPrefix.count))) } ?? false }
+    private static func setUnsynced(_ owner: LocalMemoryOwner, _ value: Bool) {
+        guard case .account(let id) = owner else { return }
+        if value { defaults.set(true, forKey: unsyncedKeyPrefix + id) } else { defaults.removeObject(forKey: unsyncedKeyPrefix + id) }
+    }
+    static func isEnabling(_ owner: LocalMemoryOwner) -> Bool { pendingOn.contains(owner) }
+    @discardableResult
+    static func submitChoice(on: Bool, owner: LocalMemoryOwner, token: AccountToken?, send: @escaping @MainActor (Bool) async throws -> Void) async -> ChoiceOutcome {
+        guard stillCurrent(token, owner) else { return .stale }
+        let mine = generation(owner) + 1; generations[owner] = mine
+        if on { pendingOn.insert(owner) } else { pendingOn.remove(owner); record(off: true, owner: owner) }   // OFF effective at once
+        setUnsynced(owner, true)
+        let previous = tails[owner]
+        let work = Task { @MainActor () -> ChoiceOutcome in
+            await previous?.value
+            guard stillCurrent(token, owner) else { return .stale }
+            guard generation(owner) == mine else { return .superseded }   // a newer choice follows and will be sent
+            var outcome = ChoiceOutcome.applied
+            do { try await send(on) } catch { outcome = .failed }
+            guard stillCurrent(token, owner) else { return .stale }
+            guard generation(owner) == mine else { return .superseded }
+            if on { pendingOn.remove(owner) }
+            guard outcome == .applied else { return .failed }   // OFF stays effective locally and unsynced; a failed ON keeps off
+            if on { record(off: false, owner: owner) }
+            setUnsynced(owner, false)
+            return .applied
+        }
+        tails[owner] = Task { _ = await work.value }
+        return await work.value
+    }
+    // MARK: Codex PR91 v2-4 — one effective state (UI == X-Catpaw-Use-Memory == server rule)
+    /// Effective 「使用记忆」 for `owner`: a persisted user off always wins; otherwise every known library must be on.
+    static func effectiveUse(owner: LocalMemoryOwner, libraries: [Bool]) -> Bool {
+        !persistedOff(owner) && !libraries.isEmpty && libraries.allSatisfy { $0 }
+    }
+    /// Applies the effective state to the header source and returns it (what the page must show).
+    @discardableResult static func applyEffective(owner: LocalMemoryOwner, token: AccountToken?, libraries: [Bool]) -> Bool? {
+        guard stillCurrent(token, owner) else { return nil }
+        let value = effectiveUse(owner: owner, libraries: libraries)
+        ConversationMemorySwitch.useMemory = value
+        return value
+    }
     static func record(off: Bool, owner: LocalMemoryOwner) {
         if let k = offKey(owner) { defaults.set(off, forKey: k) }
         ConversationMemorySwitch.useMemory = !off   // sent to the server on the next turn (X-Catpaw-Use-Memory)
@@ -118,10 +171,10 @@ enum AccountLocalData {
         }
         guard stillCurrent(token, owner) else { return [] }   // signed out / switched meanwhile: no write-back
         // p91d-2: an explicit user off is sticky until an explicit user on succeeds — it wins over any cloud snapshot.
+        // v2-4: the same `effectiveUse` rule drives the header and the memory page.
         if persistedOff(owner) { ConversationMemorySwitch.useMemory = false; return [] }
-        let off = snaps.contains { !$0.useMemory }
         // A cloud/local snapshot only drives the global for this turn; it never writes (or clears) the user's choice.
-        if cloudState != nil || cloud == nil { ConversationMemorySwitch.useMemory = !off }
+        if cloudState != nil || cloud == nil { applyEffective(owner: owner, token: token, libraries: snaps.map(\.useMemory)) }
         return MemoryRecallGate.effective(snaps)
     }
 }

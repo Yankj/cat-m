@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(os)
+import os
+#endif
 
 public struct ConversationMemoryDraft:Codable,Sendable,Equatable {
     public var targetID:UUID?,base:ConversationMemoryEntry?,topic:String="",text:String="",workspaceWide=false
@@ -195,12 +198,31 @@ extension ConversationMemoryAtRest {
     private var running: [String: Task<Void, Never>] = [:]
     private(set) var reports: [String: ConversationMemoryAtRest.MigrationReport] = [:]
     private(set) var attempts: [String: Int] = [:]
+    /// Unfinished partitions (marker not set), so `sealerMayBeReady()` can restart them after backoff gave up.
+    private var waiting: [String: (Repository, UUID, String)] = [:]
+    /// Codex PR91 v2-1: verifiable trace of the production path. No subject / partition / content in the text.
+    /// Production: unified log, subsystem "catpaw.ios", category "atrest" (`log stream --predicate 'category == "atrest"'`).
+    var log: (String) -> Void = { message in
+        #if canImport(os)
+        Logger(subsystem: "catpaw.ios", category: "atrest").notice("\(message, privacy: .public)")
+        #endif
+    }
+    /// Tests: observe the same lines.
+    var trace: ((String) -> Void)?
+    private func emit(_ message: String) { log("catpaw.atrest " + message); trace?(message) }
 
     func repositoryOpened(_ repository: Repository, subject: UUID, partition: String) {
         let key = ConversationMemoryAtRest.gateKey(subject, partition: partition)
-        guard running[key] == nil, !defaults.bool(forKey: key) else { return }
+        guard !defaults.bool(forKey: key) else { emit("already-complete"); return }
+        waiting[key] = (repository, subject, partition)
+        guard running[key] == nil else { emit("already-running"); return }
+        emit("scheduled")
         let token = AccountEpoch.shared.capture()
         running[key] = Task { [weak self] in await self?.drive(repository, subject, partition, key, token) }
+    }
+    /// Called when the L2 key for the signed-in user is installed (CatpawApp): restart partitions still waiting.
+    func sealerMayBeReady() {
+        for (_, w) in waiting { repositoryOpened(w.0, subject: w.1, partition: w.2) }
     }
     /// Tests: wait for every scheduled migration to finish.
     func waitIdle() async { while let task = running.values.first { await task.value } }
@@ -209,14 +231,16 @@ extension ConversationMemoryAtRest {
         defer { running[key] = nil }
         var attempt = 0
         while !Task.isCancelled {
-            if token != nil, !AccountEpoch.shared.isValid(token) { return }
-            if sealerReady(subject) {
+            if token != nil, !AccountEpoch.shared.isValid(token) { emit("dropped account-changed"); return }
+            let ready = sealerReady(subject)
+            if ready {
                 attempts[key, default: 0] += 1
                 let report = await ConversationMemoryAtRest.migrateAll(repository, subject: subject, partition: partition, defaults: defaults)
                 reports[key] = report
-                if report.complete { return }
-            }
-            guard attempt < delays.count else { return }
+                if report.complete { waiting[key] = nil; emit("complete sealed=\(report.sealed)"); return }
+                emit("incomplete sealed=\(report.sealed) failed=\(report.failed)")
+            } else { emit("waiting sealer attempt=\(attempt)") }
+            guard attempt < delays.count else { emit("gave-up until sealerMayBeReady"); return }
             await sleep(delays[attempt]); attempt += 1
         }
     }
