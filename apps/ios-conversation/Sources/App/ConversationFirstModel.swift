@@ -655,7 +655,7 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
                         if s0.paused,s0.pauseReason == .background || s0.pauseReason == .preflight { try? await queue?.resume();state=try await queue?.state() }
                     }
                 }
-                guard !Task.isCancelled,permissionID == token,foreground,conversationID == id,let state,!state.pending.isEmpty,!state.paused else { if consentReady { drainQueue() };sendLog.info("catpaw.send authorize skipped paused=\(state?.paused ?? false, privacy: .public)");return }
+                guard !Task.isCancelled,permissionID == token,foreground,conversationID == id,let state,!state.pending.isEmpty,!state.paused else { if consentReady { drainQueue() };sendLog.info("catpaw.send authorize skipped paused=\(state?.paused ?? false, privacy: .public) pending=\(state?.pending.count ?? -1, privacy: .public) tokenOK=\(self.permissionID == token, privacy: .public) fg=\(self.foreground, privacy: .public) ready=\(self.consentReady, privacy: .public) busy=\(self.busy, privacy: .public)");return }
                 let consent=try await service.modelConsent(scope:scope,conversationID:id)
                 guard !Task.isCancelled,permissionID == token,foreground,conversationID == id else { return }
                 if let consent { presentModelConsent(consent);for i in outgoingMessages.indices where outgoingMessages[i].state == .queued { outgoingMessages[i].state = .awaitingPermission } }
@@ -676,13 +676,14 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
               reviewToken.map({modelConsentReviewToken==$0}) ?? true,
               let review=modelConsentReview,review.conversationID==consent.conversationID,
               review.routeHash==consent.routeHash,review.expectedRevision==consent.expectedRevision,
-              review.title==consent.title,review.body==consent.body else {return}
+              review.title==consent.title,review.body==consent.body else {sendLog.info("catpaw.send allow rejected review=\(self.modelConsentReview != nil, privacy: .public)");return}
+        sendLog.info("catpaw.send allow accepted")
         modelConsentReview=nil;modelConsentReviewToken=nil
         permissionTask?.cancel();let token=UUID();permissionID=token;checkingModelConsent=true;pendingModelConsent=nil
         permissionTask=Task {
             defer { if permissionID == token { permissionTask=nil;checkingModelConsent=false } }
             do { try await service.allowModelConsent(scope:scope,consent:consent);guard !Task.isCancelled,permissionID == token,foreground,conversationID == consent.conversationID else { return };consentReady=true;if imageReview != nil {fetchImageConsent()} else {drainQueue()} }
-            catch { if permissionID == token { self.error="许可保存未确认，本机消息已保留，未发送。" } }
+            catch { sendLog.error("catpaw.send allow failed \(String(describing:error), privacy: .public)");if permissionID == token { self.error="许可保存未确认，本机消息已保留，未发送。" } }
         }
     }
     private func presentModelConsent(_ consent:ConversationModelConsent) {
@@ -712,7 +713,8 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
     }
     private var canDispatchFollowup:Bool { loaded && foreground && networkAdmissionAllowed }
     private func drainQueue() {
-        guard networkAdmissionAllowed,foreground,let id=conversationID,let queue,!busy,session?.unresolved == nil else { return }
+        guard networkAdmissionAllowed,foreground,let id=conversationID,let queue,!busy,session?.unresolved == nil else { sendLog.info("catpaw.send drain skipped admit=\(self.networkAdmissionAllowed, privacy: .public) fg=\(self.foreground, privacy: .public) busy=\(self.busy, privacy: .public) unresolved=\(self.session?.unresolved != nil, privacy: .public)");return }
+        sendLog.info("catpaw.send drain start")
         let token=UUID();flightID=token;busy=true;sending=true;observerLifecycle = .streaming;error=nil
         turnTask=Task {
             defer { if flightID == token { flightID=nil;busy=false;sending=false;observerLifecycle=session?.unresolved == nil ? .foregroundIdle : .unknown } }
@@ -725,9 +727,11 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
                         let image:ConversationVisionPayload?
                         if let reference=message.image {let bytes=try await imageStore.read(reference:reference,conversationID:id,operationID:message.id);image = .init(reference:reference,bytes:bytes)} else {image=nil}
                         guard !Task.isCancelled,await self?.canDispatchFollowup == true else {return .heldBeforeAdmission}
+                        sendLog.info("catpaw.send dispatch");let t0=Date();defer { sendLog.info("catpaw.send dispatch end \(Date().timeIntervalSince(t0), privacy: .public)s") }
                         _=try await service.send(scope:scope,conversationID:id,text:message.text,operationID:message.id,preserveDraft:true,image:image,continuation:message.continuation,acceptedWork:message.acceptedWork,revisionWork:message.revisionWork);return .sent
                     }
                     catch {
+                        sendLog.error("catpaw.send dispatch failed \(String(describing:error).prefix(160), privacy: .public)")
                         let saved=try await service.read(scope:scope,conversationID:id)
                         if !saved.turns.contains(where:{$0.id == message.id}) || saved.turns.first(where:{$0.id == message.id})?.state == .notSent { sendLog.error("catpaw.send held before admission: \(String(describing:error), privacy: .public)");return .heldBeforeAdmission }
                         throw error
@@ -860,12 +864,15 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
         guard generation == sceneGeneration,foreground else {return}
         for id in pendingTaskControlDeliveries.keys {pendingTaskControlDeliveries[id]?.nextAttemptAt = .distantPast}
         drainTaskControlDeliveries()
-        if session?.unresolved != nil { readOriginal() } else { await resumeBackgroundQueueIfSafe();authorizePending() }
+        if session?.unresolved != nil { if session?.unresolved?.awaitingApproval != true { readOriginal() } } else { await resumeBackgroundQueueIfSafe();authorizePending() }
         foregroundTask=Task { [weak self] in
             while !Task.isCancelled {
                 guard let self,self.foreground,self.sceneGeneration == generation else { return }
                 if !self.busy,let session=self.session {
                     if self.drainTaskControlDeliveries() { }
+                    // A turn suspended on our own approval/device card has nothing new to read until we answer; re-observing
+                    // it every tick held the conversation busy and made submitDeviceResult fail with .busy ("结果还没告诉小猫").
+                    else if session.unresolved?.awaitingApproval == true { }
                     else if session.unresolved != nil || session.goals.values.contains(where:{[.queued,.working,.waitingInput,.unknown].contains($0.state)}) { self.readOriginal() }
                     else {
                         // R7: due busy auto-retry (once) and offline outbox drain, both service-owned.
