@@ -28,8 +28,10 @@ struct ProactiveSuggestion: Codable, Sendable, Equatable, Identifiable {
     var taken: [Taken]? = nil
     /// Codex PR90 #4: the cloud's per-action state (`action_states`, e.g. {"notify_attendees":"done"}).
     var serverActionStates: [String: String]? = nil
+    /// NoBug: the trigger this suggestion came from (feedback weights are keyed by it; cloud sends the same field).
+    var trigger: String? = nil
     enum CodingKeys: String, CodingKey {
-        case id, title, reason, memories, actions, signals, status, createdAt, taken
+        case id, title, reason, memories, actions, signals, status, createdAt, taken, trigger
         case serverActionStates = "action_states"
     }
 

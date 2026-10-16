@@ -233,7 +233,7 @@ export function toSuggestion(e) {
   return { id: e.id, title: p.title ?? e.title, reason: p.why ?? e.body, memories: (p.memories ?? []).map(m => ({ id: m.id, content: m.content })),
     actions: (p.actions ?? []).filter(x => SUGGESTION_ACTIONS.includes(x)), signals: (p.signals ?? []).map(signalView), status: st.status,
     createdAt: e.created_at, taken: st.taken.map(t => ({ action: t.action, at: t.at, ...(t.detail ? { detail: t.detail } : {}) })),
-    action_states: actionStates(st), decision: p.decision, confidence: p.confidence };
+    action_states: actionStates(st), decision: p.decision, confidence: p.confidence, trigger: p.trigger ?? null };
 }
 const SIGNAL_KIND = { meeting_upcoming: 'calendar', meeting_conflict: 'calendar', calendar_change: 'calendar', flight_status: 'travel', traffic: 'travel', location: 'location', weather: 'weather', message: 'message', custom: 'custom' };
 export function signalView(s) {
