@@ -5,7 +5,10 @@ import CoreLocation
 /// places_search executor: real When-In-Use location → MKLocalSearch (3–5) → MKDirections ETA per result.
 /// No location → honest error (never a hardcoded city). Taste / travel-mode memories shape the query and are cited.
 @MainActor enum NearbyPlaces {
-    static func search(call: DeviceCall) async -> DeviceCallResult {
+    /// `gate` (Codex p89b-5): the executor's per-call credential check. Re-run after every await and immediately before each
+    /// location-bearing network query (MKLocalSearch / MKDirections), so a revoke / sign-out while waiting for location
+    /// stops the query from ever leaving the device.
+    static func search(call: DeviceCall, gate: () -> DeviceCallResult?) async -> DeviceCallResult {
         let query = call.args["query"]?.text ?? ""
         func fail(_ reason: String, _ message: String) -> DeviceCallResult {
             .init(call_id: call.call_id, status: .error, data: ["reason": .string(reason), "retryable": .bool(false), "message": .string(message)])
@@ -18,6 +21,7 @@ import CoreLocation
         let argMode = call.args["mode"]?.text ?? ""
         let mode = NearbyRules.effectiveMode(arg: argMode, prefs: prefs)
         if CLLocationManager().authorizationStatus == .notDetermined { _ = await ProactiveEngine.shared.requestLocationAccess() }   // When-In-Use prompt
+        if let refused = gate() { return refused }
         guard let origin = await ProactiveEngine.requestCurrentCoordinate() else {
             return fail("location_unavailable", "没有拿到你的当前位置（未授权定位或定位超时），所以没法查附近。请在 设置 › 隐私 › 定位 打开 Catpaw 的「使用期间」后再试。")
         }
@@ -30,6 +34,7 @@ import CoreLocation
             req.naturalLanguageQuery = query
             req.region = MKCoordinateRegion(center: origin, latitudinalMeters: radius, longitudinalMeters: radius)
             req.resultTypes = .pointOfInterest
+            if let refused = gate() { return refused }   // after location returned / previous search, before sending coordinates
             found = (try? await MKLocalSearch(request: req).start())?.mapItems ?? []
             if !NearbyRules.needsWiderSearch(found.count) { break }
         }
@@ -47,6 +52,7 @@ import CoreLocation
             let dReq = MKDirections.Request()
             dReq.source = MKMapItem(placemark: MKPlacemark(coordinate: origin)); dReq.destination = item; dReq.transportType = transport
             var eta: Double? = nil
+            if let refused = gate() { return refused }
             if transport == .transit { eta = (try? await MKDirections(request: dReq).calculateETA())?.expectedTravelTime }
             else { eta = (try? await MKDirections(request: dReq).calculate())?.routes.first?.expectedTravelTime }
             let name = item.name ?? query
