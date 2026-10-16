@@ -256,6 +256,33 @@ func pr90c_undoContract() {
     }
 }
 
+@MainActor func pr90c_queueOrdering() async {
+    let kv = MemKV(); let t = at("2026-10-15T04:00:00Z")
+    let q = CatpawPersistentQueue<SyncOp>(name: "o", store: kv, maxAttempts: 5, baseDelay: 30)
+    q.enqueue(SyncOp(local: "s1", action: "snooze"), key: "op-snooze", account: "A", group: "s1", now: t)
+    q.enqueue(SyncOp(local: "s2", action: "create_reminder"), key: "op-other", account: "A", group: "s2", now: t)
+    var server: [String] = []
+    // snooze fails → the later dismiss of the SAME suggestion must wait; other suggestions still flow.
+    _ = await q.drain(now: t, account: "A") { op in op.action == "snooze" ? .retry : { server.append(op.local + ":" + op.action); return .done }() }
+    q.enqueue(SyncOp(local: "s1", action: "dismiss"), key: "op-dismiss", account: "A", group: "s1", now: t)
+    _ = await q.drain(now: t.addingTimeInterval(1), account: "A") { op in server.append(op.local + ":" + op.action); return .done }
+    check(server == ["s2:create_reminder"], "dismiss never overtakes the failed snooze (\(server))")
+    _ = await q.drain(now: t.addingTimeInterval(120), account: "A") { op in server.append(op.local + ":" + op.action); return .done }
+    check(server == ["s2:create_reminder", "s1:snooze", "s1:dismiss"], "per-suggestion FIFO: final state = dismissed (\(server))")
+    // Supersede: a dismiss queued behind an unsent snooze replaces it (the snooze would only be undone by it).
+    q.enqueue(SyncOp(local: "s3", action: "snooze"), key: "op-s3-snooze", account: "A", group: "s3", now: t)
+    q.enqueue(SyncOp(local: "s3", action: "dismiss"), key: "op-s3-dismiss", account: "A", group: "s3", supersedes: { $0.action == "snooze" }, now: t)
+    check(q.items.map(\.key) == ["op-s3-dismiss"], "superseded snooze dropped")
+    // Restart keeps groups.
+    let q2 = CatpawPersistentQueue<SyncOp>(name: "o", store: kv); check(q2.items.first?.group == "s3", "group persisted")
+}
+func pr90c_cardMerge() {
+    // An existing pending card receives the cloud's later success states (SMS sent elsewhere) and stops offering them.
+    let merged = ProactiveActionStates.mergeServer(existing: ["create_reminder": "done"], incoming: ["notify_attendees": "done"])
+    check(merged == ["create_reminder": "done", "notify_attendees": "done"], "success states union (\(merged))")
+    check(ProactiveActionStates.mergeServer(existing: ["notify_attendees": "done"], incoming: [:]) == ["notify_attendees": "done"], "a success is never lost by a stale update")
+}
+
 @main enum ProactivePR90Runner {
     static func main() async {
         pr90_3_prescheduleSharesDecisionAndQuota()
@@ -268,6 +295,8 @@ func pr90c_undoContract() {
         await pr90c_pipeline()
         pr90c_confidences()
         pr90c_undoContract()
+        await pr90c_queueOrdering()
+        pr90c_cardMerge()
         print(failures == 0 ? "PR90 proactive: all passed" : "PR90 proactive: \(failures) failed"); exit(failures == 0 ? 0 : 1)
     }
 }
