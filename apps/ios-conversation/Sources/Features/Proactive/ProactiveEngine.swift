@@ -76,12 +76,6 @@ struct ProactiveSignal: Equatable, Sendable {
         set { defaults.set(newValue, forKey: ledgerKey) }
     }
     func resetLedger() { ledger = [:]; note("ledger cleared") }
-    /// P0-3: system notifications actually delivered, for the on-device daily cap (survives relaunch).
-    private var deliveryLog: ProactiveDeliveryLog {
-        get { defaults.data(forKey: deliveryLogKey).flatMap { try? JSONDecoder().decode(ProactiveDeliveryLog.self, from: $0) } ?? .init() }
-        set { defaults.set(try? JSONEncoder().encode(newValue), forKey: deliveryLogKey) }
-    }
-    private let deliveryLogKey = "catpaw.proactive.deliveryLog.v1"
 
     // MARK: Memory → lead time
 
@@ -233,12 +227,8 @@ struct ProactiveSignal: Equatable, Sendable {
         let remindAt = leaveAt  // remind when user should leave
         let decision = await evaluateRemote(signal, leadMinutes: lead.minutes, travelMinutes: usedETA ? travelMinutes : nil)
             ?? evaluateLocal(signal, leadMinutes: lead.minutes, now: now)
-        // P0-3: on-device final gate (confidence floor, quiet hours, daily cap) — also when the remote call failed.
-        let level = ProactiveDelivery.finalLevel(proposed: decision.level, confidence: decision.confidence, now: now, calendar: .current,
-                                                 deliveredToday: deliveryLog.deliveredToday(now: now, calendar: .current))
-        if level != decision.level { note("device gate: \(decision.level.rawValue) → \(level.rawValue)") }
-        guard level != .silent else { note("decide silent: \(decision.why)"); return nil }
-        note("decide \(level.rawValue) (\(decision.via)): \(decision.why); lead=\(lead.minutes) travel=\(usedETA ? String(travelMinutes ?? 0) : "unused") leaveAt=\(leaveAt.formatted(date: .omitted, time: .shortened))")
+        guard decision.intervene else { note("decide silent: \(decision.why)"); return nil }
+        note("decide intervene (\(decision.via)): \(decision.why); lead=\(lead.minutes) travel=\(usedETA ? String(travelMinutes ?? 0) : "unused") leaveAt=\(leaveAt.formatted(date: .omitted, time: .shortened))")
         let f = Date.FormatStyle(date: .omitted, time: .shortened)
         var memories: [ProactiveSuggestion.MemoryRef] = []
         if let m = lead.memory { memories.append(m) }
@@ -288,16 +278,15 @@ struct ProactiveSignal: Equatable, Sendable {
         ProactiveLocalBackend.save(suggestion)
         ProactiveSuggestionStore.shared.adopt(suggestion)
         lastSuggestionID = suggestion.id
-        intervene(suggestion, level: level, now: now)
+        intervene(suggestion)
         return suggestion
     }
 
-    /// `confidence == nil` → local rules (remote unavailable).
-    struct Decision { var level: ProactiveLevel; var confidence: Double?; var why: String; var via: String }
+    struct Decision { var intervene: Bool; var why: String; var via: String }
     private func evaluateLocal(_ s: ProactiveSignal, leadMinutes: Int, now: Date) -> Decision {
         let minutes = Int(s.start.timeIntervalSince(now) / 60)
-        let level = ProactiveDelivery.localLevel(minutesUntil: minutes)
-        return .init(level: level, confidence: nil, why: level == .silent ? "too late to help (\(minutes) min)" : "meeting in \(minutes) min, lead \(leadMinutes) min", via: "local rules")
+        if minutes < 3 { return .init(intervene: false, why: "too late to help (\(minutes) min)", via: "local") }
+        return .init(intervene: true, why: "meeting in \(minutes) min, lead \(leadMinutes) min", via: "local rules")
     }
     /// 三角's `/catpaw/proactive/v1` base (edge fn catpaw-proactive); nil when not configured / signed out.
     static func apiBase() -> URL? {
@@ -335,7 +324,7 @@ struct ProactiveSignal: Equatable, Sendable {
         guard let json = await Self.post("evaluate", body) else { note("evaluate server unavailable → local rules"); lastRemote = nil; return nil }
         lastRemote = json
         let decision = (json["decision"] as? String) ?? "card"
-        return .init(level: ProactiveLevel(server: decision), confidence: json["confidence"] as? Double, why: "\(decision) · \((json["reason"] as? String) ?? "") conf=\((json["confidence"] as? Double).map { String(format: "%.2f", $0) } ?? "-") source=\((json["source"] as? String) ?? "?")", via: "server")
+        return .init(intervene: decision != "silent", why: "\(decision) · \((json["reason"] as? String) ?? "") conf=\((json["confidence"] as? Double).map { String(format: "%.2f", $0) } ?? "-") source=\((json["source"] as? String) ?? "?")", via: "server")
     }
     func rememberServerID(local: String) {
         if let sug = lastRemote?["suggestion"] as? [String: Any], let id = sug["id"] as? String { serverIDs[local] = id }
@@ -349,16 +338,11 @@ struct ProactiveSignal: Equatable, Sendable {
 
     // MARK: Intervene: card + banner + actionable notification
 
-    /// P0-3: card → in-app only; notify → normal notification; interrupt → time-sensitive notification + Live Activity.
-    private func intervene(_ s: ProactiveSuggestion, level: ProactiveLevel, now: Date) {
+    private func intervene(_ s: ProactiveSuggestion) {
         #if os(iOS)
-        let ch = ProactiveDelivery.channels(level)
         CatpawInAppBannerCenter.shared.show(CatpawInAppBanner(title: s.title, body: s.reason, symbol: "calendar.badge.clock", deepLink: URL(string: "catpawm://proactive")))
-        guard ch.notification else { note("intervene card (in-app only) id=\(s.id)"); return }
-        var log = deliveryLog; log.record(level, at: now); deliveryLog = log
         let content = UNMutableNotificationContent()
         content.title = s.title; content.body = s.reason; content.sound = .default
-        content.interruptionLevel = ch.timeSensitive ? .timeSensitive : .active
         content.categoryIdentifier = Self.notificationCategory
         content.userInfo = ["catpaw_proactive_id": s.id]
         let request = UNNotificationRequest(identifier: s.id, content: content, trigger: UNTimeIntervalNotificationTrigger(timeInterval: 2, repeats: false))
@@ -367,8 +351,8 @@ struct ProactiveSignal: Equatable, Sendable {
             _ = try? await center.requestAuthorization(options: [.alert, .sound, .badge])
             try? await center.add(request)
         }
-        note("intervene \(level.rawValue): banner + local notification\(ch.timeSensitive ? " (time-sensitive)" : "") id=\(s.id)")
-        if ch.liveActivity, let leave = pendingReminders[s.id]?.leaveAt {
+        note("intervene card + banner + local notification id=\(s.id)")
+        if let leave = pendingReminders[s.id]?.leaveAt {
             CatpawLeaveActivity.start(suggestionID: s.id, meetingTitle: pendingReminders[s.id]?.title ?? s.title, leaveAt: leave)
         }
         #endif
