@@ -202,7 +202,7 @@ import AppIntents
         }
         // Onboarding gate: intro until「开始使用」; entry is not blocked on provider health.
         else if let model = auth.chat, !auth.needsOnboarding {
-            ConversationFirstView(model:model,accountLabel:auth.isFixture ? ui("合成登录测试 · 无真实 Auth/模型") : (auth.state.user?.isAnonymous == true ? ui("体验账号") : auth.state.user?.email),onSignOut:{ Task { let l2User=auth.state.user?.id; await auth.requestSignOut { AccountLocalData.signOut(userID:l2User); if let l2User { L2SecureStore.wipe(userID:l2User) } } } },isAnonymousAccount:auth.state.user?.isAnonymous == true)
+            ConversationFirstView(model:model,accountLabel:auth.isFixture ? ui("合成登录测试 · 无真实 Auth/模型") : (auth.state.user?.isAnonymous == true ? ui("体验账号") : auth.state.user?.email),onSignOut:{ CatpawLeaveActivity.stopAll(); Task { let l2User=auth.state.user?.id; await auth.requestSignOut { AccountLocalData.signOut(userID:l2User); if let l2User { L2SecureStore.wipe(userID:l2User) } } } },isAnonymousAccount:auth.state.user?.isAnonymous == true)
                 // p89i: one shared confirmation UI for parked items of the leaving account (#89/#90/#91 sources).
                 .onAppear { auth.attachParkedPrompt() }
                 .sheet(isPresented:Binding(get:{ !auth.parkedPrompt.isEmpty }, set:{ if !$0 && !auth.parkedPrompt.isEmpty { auth.resolveParked([:]) } })) {

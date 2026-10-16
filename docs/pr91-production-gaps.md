@@ -19,4 +19,3 @@
 7. 应用重启后恢复的轮次没有账号 token（不入 journal），这些轮次的 memory.used/update 会被丢弃（安全侧）。
 8. SSE token 的测试走网络层入口 `ConversationSideChannelEvents.deliver`（NativeChatHTTPBackend 调用的同一函数）；完整的会话 send 路径只能在 Mac 原生测试里覆盖。
 9. DeviceLedger 的账号隔离、登出清理、unknown 撤销不在本 PR，归 #89。
-
