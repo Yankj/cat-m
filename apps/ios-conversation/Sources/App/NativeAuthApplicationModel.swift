@@ -10,6 +10,28 @@ public struct AuthenticatedNativeChatCredentials: NativeChatSessionCredentials {
     }
     public func rejected(scope: DataScope) async { if scope == partition.scope { try? await manager.rejectAuthorization(subject: partition.subject) } }
 }
+
+protocol NativeWorkspaceRetryClock: Sendable {
+    func sleep(nanoseconds: UInt64) async throws
+}
+struct NativeWorkspaceSystemClock: NativeWorkspaceRetryClock {
+    func sleep(nanoseconds: UInt64) async throws { try await Task.sleep(nanoseconds: nanoseconds) }
+}
+struct NativeWorkspaceRetrySchedule: Sendable {
+    let nominalSeconds: [Double]
+    let jitter: @Sendable (Double) -> Double
+    static let production = NativeWorkspaceRetrySchedule(
+        nominalSeconds: [1, 2, 4, 8, 16],
+        jitter: { $0 * Double.random(in: 0.8...1.0) }
+    )
+    func nanoseconds(attempt: Int) -> UInt64 {
+        guard let last = nominalSeconds.last else { return 0 }
+        let base = nominalSeconds[min(max(0, attempt), nominalSeconds.count - 1)]
+        let seconds = min(last, max(0, jitter(base)))
+        return UInt64(seconds * 1_000_000_000)
+    }
+}
+
 @MainActor final class NativeAuthApplicationModel: ObservableObject {
     @Published private(set) var state = NativeAuthSnapshot(phase: .signedOut, user: nil, generation: 0, message: nil)
     @Published private(set) var chat: ConversationFirstModel?
@@ -20,6 +42,7 @@ public struct AuthenticatedNativeChatCredentials: NativeChatSessionCredentials {
     /// until `completeOnboarding()` succeeds. Key: `CatpawOnboarding.completedKey`.
     @Published private(set) var onboarding: OnboardingGateState = .needsOnboarding { didSet { needsOnboarding = onboarding.needsOnboarding } }
     @Published private(set) var needsOnboarding = true
+    @Published private(set) var requiresSessionRestart = false
     private var warmup: Task<Void, Never>?
     let isFixture: Bool
     private let configuration: NativeAuthConfiguration?
@@ -30,13 +53,28 @@ public struct AuthenticatedNativeChatCredentials: NativeChatSessionCredentials {
     private var namespace: String?
     private var backend: NativeChatHTTPBackend?
     private var subscription: Task<Void, Never>?
+    private var reachabilitySubscription: Task<Void, Never>?
     private var started = false
-    private var openingAccountEpoch: Int?
     private var lifecycleEpoch=0
     private var logoutInProgress=false
+    private var sessionRecoveryActive=false
+    private var recoveryPathWait:Task<Void,Never>?
+    private var recoveryImpossible=false
+    private struct WorkspaceKey:Equatable {let lifecycleEpoch:Int;let generation:Int;let subject:UUID}
+    private var workspaceFlight:(id:UUID,key:WorkspaceKey,task:Task<Void,Never>)?
+    private var workspaceReadyKey:WorkspaceKey?
+    private var retryDelayTask:Task<Void,Never>?
+    private var retryWaiter:(id:UUID,continuation:CheckedContinuation<Void,Never>)?
+    private var workspaceResolver:(any NativeApplicationScopeResolving)?
+    private var connectionMonitor:ConnectionMonitor
+    private var retryClock:any NativeWorkspaceRetryClock
+    private var retrySchedule:NativeWorkspaceRetrySchedule
     var canSignIn: Bool { manager != nil && !actionBusy && state.phase != .signingIn && state.phase != .restoring }
     var canStartExperience: Bool { canSignIn && state.phase != .storageBlocked }
     init() {
+        connectionMonitor = .shared
+        retryClock = NativeWorkspaceSystemClock()
+        retrySchedule = .production
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         // Keep the production storage/Keychain namespace stable across this fix.
         var directory = "CatpawM-ConversationFirst-r7"
@@ -64,10 +102,13 @@ public struct AuthenticatedNativeChatCredentials: NativeChatSessionCredentials {
             if let configuration {
                 var vault: any NativeAuthVault = NativeAuthKeychainVault(service:"com.example.CatpawM.ConversationFirst.Auth." + directory,issuer:configuration.issuer)
                 var barrier: any NativeAuthLogoutBarrier = NativeAuthFileLogoutBarrier(url:root.appendingPathComponent("auth-state"))
-                var remote: any NativeAuthRemote = NativeAuthHTTPRemote(configuration:configuration)
+                let http = NativeAuthHTTPRemote(configuration:configuration)
+                workspaceResolver = http
+                var remote: any NativeAuthRemote = http
                 #if DEBUG
                 if fixture {
                     remote = NativeAuthFixtureRemote(issuer:configuration.issuer,scenario:fixtureScenario)
+                    workspaceResolver = nil
                     if fixtureScenario.hasPrefix("cold-") {
                         let id = stableID("a.test@example.invalid")
                         let saved = NativeAuthCredential(issuer:configuration.issuer,user:.init(id:id,email:"a.test@example.invalid"),accessToken:"fixture."+id.uuidString+".signature",refreshToken:"fixture-"+id.uuidString,expiresAt:Date().addingTimeInterval(fixtureScenario == "cold-expired" ? -1 : 3600))
@@ -82,8 +123,9 @@ public struct AuthenticatedNativeChatCredentials: NativeChatSessionCredentials {
         let gate = CatpawOnboarding.initialState(fixture: fixture); onboarding = gate; needsOnboarding = gate.needsOnboarding
     }
     // Test initializer is mock-only; production continues using the configured Keychain.
-    init(configuration:NativeAuthConfiguration,manager:NativeAuthSessionManager,vault:any NativeAuthVault,barrier:any NativeAuthLogoutBarrier,root:URL) {
+    init(configuration:NativeAuthConfiguration,manager:NativeAuthSessionManager,vault:any NativeAuthVault,barrier:any NativeAuthLogoutBarrier,root:URL,workspaceResolver:(any NativeApplicationScopeResolving)? = nil,connectionMonitor:ConnectionMonitor? = nil,retryClock:any NativeWorkspaceRetryClock = NativeWorkspaceSystemClock(),retrySchedule:NativeWorkspaceRetrySchedule = .production) {
         self.configuration=configuration;self.manager=manager;self.localVault=vault;self.localBarrier=barrier;self.root=root;self.isFixture=true
+        self.workspaceResolver=workspaceResolver;self.connectionMonitor=connectionMonitor ?? ConnectionMonitor(start:false);self.retryClock=retryClock;self.retrySchedule=retrySchedule
         onboarding = .completed; needsOnboarding = false
     }
     private var receiptURL:URL { root.appendingPathComponent("last-local-workspace.json") }
@@ -156,6 +198,10 @@ public struct AuthenticatedNativeChatCredentials: NativeChatSessionCredentials {
     /// Safe to call from `.task`: the warm-up is an unstructured task, so the gate can await it.
     func start() async {
         guard !started, let manager else { return }; started = true
+        let changes=connectionMonitor.pathChanges()
+        reachabilitySubscription=Task { [weak self] in
+            for await satisfied in changes {guard let self,!Task.isCancelled else{return};if satisfied {self.wakeRetry()}}
+        }
         let task = Task { [weak self] in guard let self else { return }; await self.warmUp(manager) }
         warmup = task; await task.value
     }
@@ -164,38 +210,72 @@ public struct AuthenticatedNativeChatCredentials: NativeChatSessionCredentials {
         subscription = Task { [weak self] in
             for await snapshot in await manager.changes() { guard let self, !Task.isCancelled else { return }; await self.receive(snapshot) }
         }
-        do { try await manager.restore() } catch { self.error = (error as? NativeAuthError ?? .unavailable).localizedDescription }
-        // Normal launch goes straight into the conversation: with no saved session, open the
-        // existing anonymous experience identity (Supabase signInAnonymously) instead of a login wall.
-        let restored = await manager.snapshot()
-        if !isFixture, restored.phase == .signedOut, restored.user == nil, restored.message == nil, autoAnonymousSession { await startExperience() }
+        await restoreSession(manager,allowAutomaticExperience:true)
+    }
+    /// Cold validation is a read-only request and can safely retry while the logout barrier remains open.
+    /// An expired-token rotation writes the barrier first; a failed rotation is therefore terminal here and
+    /// is never silently replayed.
+    private func restoreSession(_ manager:NativeAuthSessionManager,allowAutomaticExperience:Bool) async {
+        guard !sessionRecoveryActive else{return}
+        let epoch=lifecycleEpoch
+        sessionRecoveryActive=true;defer{sessionRecoveryActive=false}
+        var attempt=0
+        while !Task.isCancelled,!logoutInProgress,epoch == lifecycleEpoch {
+            if !connectionMonitor.pathSatisfied,await hasSafelyRecoverableCredential() {await waitForRecoveryPath();continue}
+            do {
+                try await manager.restore()
+                guard !Task.isCancelled,!logoutInProgress,epoch == lifecycleEpoch else{return}
+                let restored=await manager.snapshot()
+                if restored.phase == .authenticated {recoveryImpossible=false;requiresSessionRestart=false;error=nil;await receive(restored)}
+                else if allowAutomaticExperience,!isFixture,restored.phase == .signedOut,restored.user == nil,restored.message == nil,autoAnonymousSession {
+                    if !connectionMonitor.pathSatisfied {await waitForRecoveryPath();continue}
+                    await startExperience()
+                    if !recoveryImpossible,await hasSafelyRecoverableCredential(),(await manager.snapshot()).phase != .authenticated {
+                        await waitForRetry(attempt:attempt);attempt += 1;continue
+                    }
+                }
+                return
+            } catch {
+                guard !Task.isCancelled,!logoutInProgress,epoch == lifecycleEpoch else{return}
+                let safe=error as? NativeAuthError ?? .unavailable
+                if [.unavailable,.rateLimited].contains(safe),await hasSafelyRecoverableCredential() {
+                    self.error=nil;chat?.setNetworkAdmissionAllowed(false)
+                    if connectionMonitor.pathSatisfied {await waitForRetry(attempt:attempt);attempt += 1}
+                    continue
+                }
+                recoveryImpossible=true
+                let ambiguous=await hasAmbiguousCredential()
+                requiresSessionRestart = [.loginRequired,.invalidResponse,.sessionRecoveryRequired].contains(safe) || ambiguous
+                self.error=requiresSessionRestart ? NativeAuthError.sessionRecoveryRequired.localizedDescription : friendlyAuthFailure(safe)
+                chat?.error=self.error
+                return
+            }
+        }
     }
     /// Info.plist `CatpawAutoAnonymousSession` = NO disables the automatic experience identity.
-    /// "开启" button. Persists the intro flag, waits for the background warm-up, retries once, then
-    /// either enters the conversation (`.completed`) or exposes `.failed(message)`; calling again retries.
+    /// "开启" joins the pre-warmed lifecycle. The intro flag is persisted only after a usable chat exists.
     func completeOnboarding() async {
         guard onboarding != .entering, onboarding != .completed else { return }
-        CatpawOnboarding.markCompleted(); onboarding = .entering
+        onboarding = .entering
         if warmup == nil { await start() } else { await warmup?.value }
-        if await waitForChat() { onboarding = .completed; return }
+        if recoveryImpossible,requiresSessionRestart {onboarding = .failed(error ?? NativeAuthError.sessionRecoveryRequired.localizedDescription);return}
         await retryWarmup()
-        if await waitForChat() { onboarding = .completed; return }
+        if await waitForChat() {CatpawOnboarding.markCompleted();onboarding = .completed;return}
         onboarding = .failed(error ?? (manager == nil ? "登录连接尚未配置。" : "暂时连不上服务，请稍后重试。"))
     }
     private func retryWarmup() async {
         guard let manager else { return }
+        wakeRetry()
         let current = await manager.snapshot()
         if current.phase == .signedOut, current.user == nil { error = nil; await startExperience() }
-        else if current.phase == .authenticated, chat == nil { error = nil; await receive(current) }
+        else if current.phase == .authenticated { error = nil;recoveryImpossible=false;await receive(current) }
         else { await foreground() }
     }
-    /// Waits while auth/workspace opening is in flight; gives up ~1s after it goes idle without a chat.
+    /// Retryable workspace failures stay in the background flight; only a terminal safety/configuration
+    /// result ends the onboarding wait.
     private func waitForChat() async -> Bool {
-        let deadline = Date().addingTimeInterval(30); var idleTicks = 0
-        while chat == nil, Date() < deadline, !Task.isCancelled {
-            let inFlight = actionBusy || openingAccountEpoch != nil || [.restoring,.signingIn,.refreshing].contains(state.phase)
-            idleTicks = inFlight ? 0 : idleTicks + 1
-            if idleTicks > 10 { break }
+        while chat == nil,!Task.isCancelled {
+            if recoveryImpossible || (workspaceFlight == nil && !sessionRecoveryActive && !actionBusy && ![.restoring,.signingIn,.refreshing,.authenticated].contains(state.phase)) {return false}
             try? await Task.sleep(nanoseconds: 100_000_000)
         }
         return chat != nil
@@ -210,60 +290,176 @@ public struct AuthenticatedNativeChatCredentials: NativeChatSessionCredentials {
         state = snapshot
         if snapshot.phase == .restoring { chat?.setNetworkAdmissionAllowed(false);return }
         if [.authenticated,.refreshing].contains(snapshot.phase), let user = snapshot.user, let configuration {
-            if snapshot.phase == .refreshing { if chat == nil { await detachChat() };return }
-            guard openingAccountEpoch != openingEpoch else { return };openingAccountEpoch=openingEpoch;defer {if openingAccountEpoch==openingEpoch {openingAccountEpoch=nil}}
-            let serverScope: UUID
-            do {
-                if isFixture,let fixed = configuration.serverScopeID { serverScope = fixed }
-                else { let token = try await manager.authorization(subject:user.id);serverScope = try await NativeAuthHTTPRemote(configuration:configuration).applicationScope(accessToken:String(token.dropFirst(7)),subject:user.id) }
-            } catch {guard !logoutInProgress,openingEpoch==lifecycleEpoch else {return};await detachChat();guard !logoutInProgress,openingEpoch==lifecycleEpoch else {return};self.error = (error as? NativeApplicationSessionError)?.localizedDescription ?? "工作区连接失败，请点‘开始体验’重试。";return }
-            let afterScope = await manager.snapshot();guard !logoutInProgress,openingEpoch==lifecycleEpoch,afterScope.generation == snapshot.generation,afterScope.phase == .authenticated,afterScope.user == user else { return }
-            let partition = AuthenticatedLocalPartition(issuer:configuration.issuer,subject:user.id,serverScopeID:serverScope)
-            if namespace == partition.namespace {
-                try? await saveLocalReceipt(.init(issuer:configuration.issuer,subject:user.id,serverScopeID:serverScope))
-                chat?.setNetworkAdmissionAllowed(true);error=nil;return
+            if snapshot.phase == .refreshing {
+                chat?.setNetworkAdmissionAllowed(false)
+                if let flight=workspaceFlight {flight.task.cancel();workspaceFlight=nil;wakeRetry()}
+                workspaceReadyKey=nil;return
             }
-            // Refresh may retain an already opened, validated account; only a
-            // fully authenticated snapshot may open a new local partition.
-            guard snapshot.phase == .authenticated else { await detachChat(); return }
-            await detachChat()
-            let admitted = await manager.snapshot()
-            guard !Task.isCancelled,!logoutInProgress,openingEpoch==lifecycleEpoch, admitted.generation == snapshot.generation,
-                  admitted.phase == .authenticated, admitted.user == user else { return }
-            do {
-                let directory = root.appendingPathComponent(partition.namespace,isDirectory:true)
-                let (repository,imageStore) = try await Self.openStores(directory:directory,prepare:true)
-                let reopened = await manager.snapshot()
-                guard !Task.isCancelled,!logoutInProgress,openingEpoch==lifecycleEpoch,chat == nil,reopened.generation == snapshot.generation,
-                      reopened.phase == .authenticated,reopened.user == user else { return }
-                let region = (Bundle.main.object(forInfoDictionaryKey:"CatpawEdgeRegion") as? String).flatMap { $0.isEmpty ? nil : $0 }
-                let chatConfiguration=try NativeChatConfiguration(origin:configuration.backendOrigin,localScope:partition.scope,serverScopeID:serverScope,publishableKey:configuration.publishableKey,edgeRegion:region,expectedSubjectID:partition.subject)
-                let credentials=AuthenticatedNativeChatCredentials(manager:manager,partition:partition)
-                Task { await CatpawPushTokenUploader.shared.setAuthorization { try await credentials.authorization(scope: partition.scope) } }
-                let http=NativeChatHTTPBackend(configuration:chatConfiguration,credentials:credentials)
-                let memory=isFixture ? nil : try NativeMemoryComposition.service(repository:repository,configuration:chatConfiguration,credentials:credentials)
-            if !isFixture { MemoryLibraryHub.installAgentMemory(configuration:chatConfiguration,credentials:credentials); MemoryEventSink.installSideChannel() }
-                backend = http
-                var selected: any ConversationBackend = isFixture ? UnconfiguredConversationBackend() : http
-                #if DEBUG
-                selected = CatpawDemoBackendSwitch.select(selected)
-                #endif
-                chat = ConversationFirstModel(repository:repository,service:ConversationSessionService(repository:repository,backend:selected,resilience:ConnectionMonitorResilience(),outbox:ConversationOutbox(fileURL:directory.appendingPathComponent("conversation-outbox.json"))),scope:partition.scope,imageStore:imageStore,taskPlanService:isFixture ? nil : ConversationTaskPlanService(repository:repository,scope:partition.scope,backend:http),artifactEditService:isFixture ? nil : ConversationArtifactEditService(repository:repository,scope:partition.scope,backend:http),taskActionService:isFixture ? nil : ConversationTaskActionService(repository:repository,scope:partition.scope,backend:http),taskControlService:isFixture ? nil : ConversationTaskControlService(repository:repository,scope:partition.scope,backend:http),memoryService:memory,inboxService:isFixture ? nil : ConversationInboxService(reference:.init(scope:partition.scope,serverScopeID:chatConfiguration.serverScopeID,subjectID:partition.subject),backend:http),subjectID:partition.subject)
-                if let chat { installUIDecisionSubmitter(chat.service, scope: partition.scope) }
-                namespace = partition.namespace; error = nil
-                try await saveLocalReceipt(.init(issuer:configuration.issuer,subject:user.id,serverScopeID:serverScope))
-            } catch { self.error = "此账号的本地存储无法打开；原文件已保留。" }
+            let key=WorkspaceKey(lifecycleEpoch:openingEpoch,generation:snapshot.generation,subject:user.id)
+            beginWorkspaceResolution(key:key,user:user,configuration:configuration)
         } else {
-            // Transient restore failure retains an already admitted local receipt only.
-            let barrier = localBarrier
-            var mayReadLocally = false
-            if snapshot.phase == .signedOut && snapshot.message != nil {
-                mayReadLocally = await Task.detached(priority:.userInitiated) { (try? barrier?.isSignedOut()) == false }.value
+            // A locally opened receipt remains read-only. Logout owns detachment and invalid-session
+            // recovery owns the explicit restart action; neither path grants network admission.
+            chat?.setNetworkAdmissionAllowed(false)
+            if let flight=workspaceFlight {flight.task.cancel();workspaceFlight=nil;wakeRetry()}
+            workspaceReadyKey=nil
+            if snapshot.phase == .loginRequired {
+                recoveryImpossible=true;requiresSessionRestart=true;error=NativeAuthError.sessionRecoveryRequired.localizedDescription
+                chat?.error=error
+            } else if snapshot.phase == .storageBlocked {
+                recoveryImpossible=true;error=NativeAuthError.storage.localizedDescription
+                chat?.error=error
             }
-            if mayReadLocally { chat?.setNetworkAdmissionAllowed(false) }
-            else { await detachChat() }
-            if let message = snapshot.message { error = message }
+            if snapshot.message == nil,chat == nil {await detachChat()}
+            if snapshot.phase == .signedOut,snapshot.message != nil,!sessionRecoveryActive,!actionBusy,await hasSafelyRecoverableCredential() {
+                Task { [weak self] in
+                    guard let self,!self.logoutInProgress,self.lifecycleEpoch == openingEpoch else{return}
+                    let latest=await manager.snapshot()
+                    guard latest.generation == snapshot.generation,latest.phase == .signedOut else{return}
+                    await self.restoreSession(manager,allowAutomaticExperience:false)
+                }
+            }
         }
+    }
+
+    private func beginWorkspaceResolution(key:WorkspaceKey,user:NativeAuthUser,configuration:NativeAuthConfiguration) {
+        if workspaceReadyKey == key,chat?.networkAdmissionAllowed == true {return}
+        if workspaceFlight?.key == key {return}
+        workspaceFlight?.task.cancel();wakeRetry();workspaceReadyKey=nil
+        let id=UUID()
+        let task=Task { [weak self] in
+            guard let self else{return}
+            await self.resolveWorkspace(key:key,user:user,configuration:configuration)
+            self.finishWorkspaceFlight(id)
+        }
+        workspaceFlight=(id,key,task)
+    }
+    private func resolveWorkspace(key:WorkspaceKey,user:NativeAuthUser,configuration:NativeAuthConfiguration) async {
+        guard let manager else{return}
+        var attempt=0
+        while !Task.isCancelled,await workspaceKeyIsCurrent(key,user:user) {
+            if !connectionMonitor.pathSatisfied {await connectionMonitor.waitForPath();continue}
+            do {
+                let serverScope:UUID
+                if isFixture,workspaceResolver == nil,let fixed=configuration.serverScopeID {serverScope=fixed}
+                else {
+                    guard let workspaceResolver else {throw NativeAuthError.notConfigured}
+                    let authorization=try await manager.authorization(subject:user.id)
+                    guard authorization.hasPrefix("Bearer ") else {throw NativeAuthError.invalidResponse}
+                    serverScope=try await workspaceResolver.applicationScope(accessToken:String(authorization.dropFirst(7)),subject:user.id)
+                }
+                guard await workspaceKeyIsCurrent(key,user:user) else{return}
+                await admitWorkspace(serverScope:serverScope,key:key,user:user,configuration:configuration)
+                return
+            } catch {
+                guard !Task.isCancelled,await workspaceKeyIsCurrent(key,user:user) else{return}
+                if workspaceFailureIsRetryable(error) {
+                    chat?.setNetworkAdmissionAllowed(false);self.error=nil;recoveryImpossible=false;requiresSessionRestart=false
+                    if !connectionMonitor.pathSatisfied {await connectionMonitor.waitForPath()}
+                    else {await waitForRetry(attempt:attempt);attempt += 1}
+                    continue
+                }
+                chat?.setNetworkAdmissionAllowed(false);recoveryImpossible=true
+                requiresSessionRestart=workspaceFailureNeedsRestart(error)
+                self.error=friendlyWorkspaceFailure(error)
+                chat?.error=self.error
+                return
+            }
+        }
+    }
+    private func workspaceKeyIsCurrent(_ key:WorkspaceKey,user:NativeAuthUser) async -> Bool {
+        guard let manager,!logoutInProgress,key.lifecycleEpoch == lifecycleEpoch else{return false}
+        let current=await manager.snapshot()
+        return !Task.isCancelled && !logoutInProgress && key.lifecycleEpoch == lifecycleEpoch && current.generation == key.generation && current.user == user && current.phase == .authenticated
+    }
+    private func admitWorkspace(serverScope:UUID,key:WorkspaceKey,user:NativeAuthUser,configuration:NativeAuthConfiguration) async {
+        guard let manager else{return}
+        let partition=AuthenticatedLocalPartition(issuer:configuration.issuer,subject:user.id,serverScopeID:serverScope)
+        if namespace == partition.namespace,let chat {
+            try? await saveLocalReceipt(.init(issuer:configuration.issuer,subject:user.id,serverScopeID:serverScope))
+            guard await workspaceKeyIsCurrent(key,user:user) else{return}
+            if chat.error == error {chat.error=nil}
+            chat.setNetworkAdmissionAllowed(true);workspaceReadyKey=key;error=nil;recoveryImpossible=false;requiresSessionRestart=false;return
+        }
+        await detachChat()
+        guard await workspaceKeyIsCurrent(key,user:user) else{return}
+        do {
+            let directory=root.appendingPathComponent(partition.namespace,isDirectory:true)
+            let (repository,imageStore)=try await Self.openStores(directory:directory,prepare:true)
+            guard await workspaceKeyIsCurrent(key,user:user),chat == nil else{return}
+            let region=(Bundle.main.object(forInfoDictionaryKey:"CatpawEdgeRegion") as? String).flatMap{$0.isEmpty ? nil : $0}
+            let chatConfiguration=try NativeChatConfiguration(origin:configuration.backendOrigin,localScope:partition.scope,serverScopeID:serverScope,publishableKey:configuration.publishableKey,edgeRegion:region,expectedSubjectID:partition.subject)
+            let credentials=AuthenticatedNativeChatCredentials(manager:manager,partition:partition)
+            Task {await CatpawPushTokenUploader.shared.setAuthorization {try await credentials.authorization(scope:partition.scope)}}
+            let http=NativeChatHTTPBackend(configuration:chatConfiguration,credentials:credentials)
+            let memory=isFixture ? nil : try NativeMemoryComposition.service(repository:repository,configuration:chatConfiguration,credentials:credentials)
+            if !isFixture {MemoryLibraryHub.installAgentMemory(configuration:chatConfiguration,credentials:credentials);MemoryEventSink.installSideChannel()}
+            backend=http
+            var selected:any ConversationBackend=isFixture ? UnconfiguredConversationBackend() : http
+            #if DEBUG
+            selected=CatpawDemoBackendSwitch.select(selected)
+            #endif
+            let opened=ConversationFirstModel(repository:repository,service:ConversationSessionService(repository:repository,backend:selected,resilience:ConnectionMonitorResilience(),outbox:ConversationOutbox(fileURL:directory.appendingPathComponent("conversation-outbox.json"))),scope:partition.scope,imageStore:imageStore,taskPlanService:isFixture ? nil : ConversationTaskPlanService(repository:repository,scope:partition.scope,backend:http),artifactEditService:isFixture ? nil : ConversationArtifactEditService(repository:repository,scope:partition.scope,backend:http),taskActionService:isFixture ? nil : ConversationTaskActionService(repository:repository,scope:partition.scope,backend:http),taskControlService:isFixture ? nil : ConversationTaskControlService(repository:repository,scope:partition.scope,backend:http),memoryService:memory,inboxService:isFixture ? nil : ConversationInboxService(reference:.init(scope:partition.scope,serverScopeID:chatConfiguration.serverScopeID,subjectID:partition.subject),backend:http),subjectID:partition.subject)
+            try await saveLocalReceipt(.init(issuer:configuration.issuer,subject:user.id,serverScopeID:serverScope))
+            guard await workspaceKeyIsCurrent(key,user:user),chat == nil else{return}
+            opened.setNetworkAdmissionAllowed(true);chat=opened;installUIDecisionSubmitter(opened.service,scope:partition.scope);namespace=partition.namespace
+            workspaceReadyKey=key;error=nil;recoveryImpossible=false;requiresSessionRestart=false
+        } catch {chat?.setNetworkAdmissionAllowed(false);self.error="此账号的本地存储无法打开；原文件已保留。";recoveryImpossible=true}
+    }
+    private func finishWorkspaceFlight(_ id:UUID) {if workspaceFlight?.id == id {workspaceFlight=nil;wakeRetry()}}
+    private func workspaceFailureIsRetryable(_ error:Error)->Bool {
+        if let failure=error as? NativeApplicationSessionError {return failure.isRetryable}
+        if let failure=error as? NativeAuthError {return [.unavailable,.rateLimited].contains(failure)}
+        return false
+    }
+    private func workspaceFailureNeedsRestart(_ error:Error)->Bool {
+        if let failure=error as? NativeApplicationSessionError {return [401,403].contains(failure.httpStatus)}
+        if let failure=error as? NativeAuthError {return [.loginRequired,.sessionRecoveryRequired].contains(failure)}
+        return false
+    }
+    private func friendlyWorkspaceFailure(_ error:Error)->String {
+        workspaceFailureNeedsRestart(error) ? NativeAuthError.sessionRecoveryRequired.localizedDescription : "暂时无法打开工作区，本机对话仍会保留。"
+    }
+    private func friendlyAuthFailure(_ error:NativeAuthError)->String {
+        switch error {
+        case .loginRequired,.invalidResponse,.sessionRecoveryRequired:return NativeAuthError.sessionRecoveryRequired.localizedDescription
+        case .storage:return NativeAuthError.storage.localizedDescription
+        case .notConfigured,.invalidConfiguration:return error.localizedDescription
+        default:return "暂时连不上服务，请稍后重试。"
+        }
+    }
+    private func hasSafelyRecoverableCredential() async ->Bool {
+        (try? await manager?.canRetryRecovery()) == true
+    }
+    private func hasAmbiguousCredential() async ->Bool {
+        guard let localVault,let localBarrier else{return false}
+        return await Task.detached(priority:.userInitiated) {(try? localBarrier.isSignedOut()) == true && (try? localVault.load()) != nil}.value
+    }
+    private func waitForRecoveryPath() async {
+        let monitor=connectionMonitor
+        let wait=Task {await monitor.waitForPath()}
+        recoveryPathWait=wait;await wait.value;recoveryPathWait=nil
+    }
+    private func waitForRetry(attempt:Int) async {
+        let delay=retrySchedule.nanoseconds(attempt:attempt),clock=retryClock
+        if delay == 0 {await Task.yield();return}
+        let id=UUID()
+        await withTaskCancellationHandler(operation:{
+            await withCheckedContinuation {continuation in
+                guard !Task.isCancelled else{continuation.resume();return}
+                retryWaiter=(id,continuation)
+                retryDelayTask=Task { [weak self] in
+                    do {try await clock.sleep(nanoseconds:delay)} catch{return}
+                    guard !Task.isCancelled else{return}
+                    self?.finishRetry(id)
+                }
+            }
+        },onCancel:{Task {@MainActor [weak self] in self?.finishRetry(id)}})
+    }
+    private func finishRetry(_ id:UUID) {if retryWaiter?.id == id {wakeRetry()}}
+    private func wakeRetry() {
+        retryDelayTask?.cancel();retryDelayTask=nil
+        let waiter=retryWaiter;retryWaiter=nil;waiter?.continuation.resume()
     }
     private func detachChat() async {
         if !(await finishDetaching(takeChat())) {error="有修改草稿未能保存，请核对此前已保存的版本。"}
@@ -294,23 +490,37 @@ public struct AuthenticatedNativeChatCredentials: NativeChatSessionCredentials {
         catch { self.error = (error as? NativeAuthError ?? .unavailable).localizedDescription }
     }
     func startExperience() async {
-        guard canStartExperience,let manager else { return };actionBusy = true;error = nil;defer { actionBusy = false }
+        guard canStartExperience,let manager else { return };actionBusy = true;error = nil;recoveryImpossible=false;requiresSessionRestart=false;defer { actionBusy = false }
+        let epoch=lifecycleEpoch
         do { try await manager.startExperience();await receive(await manager.snapshot()) }
-        catch { self.error = (error as? NativeAuthError ?? .unavailable).localizedDescription }
+        catch {
+            guard !Task.isCancelled,!logoutInProgress,epoch == lifecycleEpoch else{return}
+            let failure=error as? NativeAuthError ?? .unavailable
+            if [.unavailable,.rateLimited].contains(failure),await hasSafelyRecoverableCredential() {
+                if !sessionRecoveryActive {await restoreSession(manager,allowAutomaticExperience:false)}
+                return
+            }
+            let ambiguous=await hasAmbiguousCredential();recoveryImpossible=true
+            requiresSessionRestart=[.loginRequired,.invalidResponse,.sessionRecoveryRequired].contains(failure) || ambiguous
+            self.error=requiresSessionRestart ? NativeAuthError.sessionRecoveryRequired.localizedDescription : friendlyAuthFailure(failure)
+        }
     }
     func signIn(email: String, password: String) async {
-        guard canSignIn, let manager else { return }; actionBusy = true; error = nil;registrationNotice = nil; defer { actionBusy = false }
-        do { try await manager.signIn(email:email,password:password) } catch { self.error = (error as? NativeAuthError ?? .unavailable).localizedDescription }
+        guard canSignIn, let manager else { return }; actionBusy = true; error = nil;recoveryImpossible=false;requiresSessionRestart=false;registrationNotice = nil; defer { actionBusy = false }
+        do { try await manager.signIn(email:email,password:password) } catch {let failure=error as? NativeAuthError ?? .unavailable;recoveryImpossible=true;self.error=friendlyAuthFailure(failure)}
     }
     func signOut() async {
         guard let manager, !actionBusy else { return };actionBusy=true;logoutInProgress=true;lifecycleEpoch += 1
-        defer {logoutInProgress=false;actionBusy=false}
+        warmup?.cancel();recoveryPathWait?.cancel();recoveryPathWait=nil
+        workspaceFlight?.task.cancel();workspaceFlight=nil;workspaceReadyKey=nil;wakeRetry()
+        defer {logoutInProgress=false;actionBusy=false;recoveryImpossible=false;requiresSessionRestart=false}
         await CatpawPushTokenUploader.shared.clearAuthorization()
         let detached=takeChat()
         // Close manager admission immediately; local draining must not postpone its barrier.
         async let cleanup:Bool=finishDetaching(detached)
         try? FileManager.default.removeItem(at:receiptURL)
         if let uid = state.user?.id { L2SecureStore.wipe(userID: uid) }
+        error=nil
         do { try await manager.signOut() } catch { self.error = NativeAuthError.storage.localizedDescription }
         if !(await cleanup) {error="有修改草稿未能保存，请核对此前已保存的版本。"}
         state=await manager.snapshot()
@@ -319,9 +529,13 @@ public struct AuthenticatedNativeChatCredentials: NativeChatSessionCredentials {
     func retryStorage() async { guard let manager else { return }; do { try await manager.retryPersistence() } catch { self.error = (error as? NativeAuthError ?? .storage).localizedDescription } }
     func foreground() async {
         guard let manager, !actionBusy, started else { return }
+        wakeRetry()
+        if sessionRecoveryActive {return}
         let current = await manager.snapshot()
         guard !Task.isCancelled, current.phase != .restoring, current.phase != .signingIn else { return }
-        do { try await manager.restore() } catch { self.error = (error as? NativeAuthError ?? .unavailable).localizedDescription }
+        if recoveryImpossible,requiresSessionRestart {return}
+        if current.phase == .authenticated {await receive(current);return}
+        await restoreSession(manager,allowAutomaticExperience:false)
     }
 }
 

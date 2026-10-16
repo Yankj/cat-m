@@ -14,7 +14,8 @@ import Combine
     private var busyCountdown: Task<Void, Never>?
     private let monitor = NWPathMonitor()
     private var resumedClear: Task<Void, Never>?
-    private var pathWaiters: [CheckedContinuation<Void, Never>] = []
+    private var pathWaiters: [UUID:CheckedContinuation<Void, Never>] = [:]
+    private var pathObservers: [UUID: AsyncStream<Bool>.Continuation] = [:]
 
     public init(start: Bool = true) {
         guard start else { return }
@@ -28,14 +29,33 @@ import Combine
 
     func pathChanged(_ ok: Bool) {
         pathSatisfied = ok
+        for observer in pathObservers.values { observer.yield(ok) }
         if !ok { state = .offline; return }
         if state == .offline { state = .online }
-        let waiters = pathWaiters; pathWaiters.removeAll(); waiters.forEach { $0.resume() }
+        let waiters = pathWaiters.values; pathWaiters.removeAll(); waiters.forEach { $0.resume() }
     }
     /// Suspends until the network path is usable again (offline attempts are not counted).
     public func waitForPath() async {
         if pathSatisfied { return }
-        await withCheckedContinuation { pathWaiters.append($0) }
+        let id=UUID()
+        await withTaskCancellationHandler(operation:{
+            await withCheckedContinuation {continuation in
+                if Task.isCancelled {continuation.resume()}
+                else if pathSatisfied {continuation.resume()}
+                else {pathWaiters[id]=continuation}
+            }
+        },onCancel:{Task {@MainActor [weak self] in self?.pathWaiters.removeValue(forKey:id)?.resume()}})
+    }
+    /// App lifecycle consumers can wake a sleeping, read-only bootstrap as soon as reachability returns.
+    public func pathChanges() -> AsyncStream<Bool> {
+        let id = UUID()
+        return AsyncStream { continuation in
+            pathObservers[id] = continuation
+            continuation.yield(pathSatisfied)
+            continuation.onTermination = { [weak self] _ in
+                Task { @MainActor in self?.pathObservers.removeValue(forKey: id) }
+            }
+        }
     }
     public func reconnecting(attempt: Int, retryIn: Double) { state = .reconnecting(attempt: attempt, retryIn: Int(retryIn.rounded())) }
     public func resumed() {

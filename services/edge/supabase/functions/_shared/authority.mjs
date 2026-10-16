@@ -135,13 +135,18 @@ export async function revokeAppSession(repository,claims,runtime){const stopped=
 });for(const id of stopped)runtime.facade?.abortTask(id);}
 export function officialUserVerifier({projectUrl,publishableKey,fetchImpl=fetch}){
  return async({authorization,subject_id,is_anonymous=false})=>{
-  const r=await fetchImpl(projectUrl+'/auth/v1/user',{
-   headers:{Authorization:authorization,apikey:publishableKey},
-   signal:AbortSignal.timeout(5000),
-   redirect:'error'
-  });
+  let r,user;
+  try{
+   r=await fetchImpl(projectUrl+'/auth/v1/user',{
+    headers:{Authorization:authorization,apikey:publishableKey},
+    signal:AbortSignal.timeout(5000),
+    redirect:'error'
+   });
+  }catch{throw new ApiError(503,'auth_service_unavailable');}
+  check(![408,429].includes(r.status)&&r.status<500,503,'auth_service_unavailable');
   check(r.status===200,401,'invalid_session');
-  const user=await r.json();
+  try{user=await r.json();}catch{throw new ApiError(503,'auth_service_unavailable');}
+  check(user&&typeof user==='object',503,'auth_service_unavailable');
   check(
    user.id===subject_id&&
    (user.is_anonymous===true)===is_anonymous&&

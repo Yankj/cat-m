@@ -34,7 +34,7 @@ import UIKit
         return Self.configurationMessages.contains(e)
     }
     private var friendlyError: String? {
-        if let e = gateFailure ?? auth.error ?? auth.state.message, !isConfigurationError { return ui(e) }
+        if let e = gateFailure ?? auth.error, !isConfigurationError { return ui(e) }
         if startTapped, !busy, isConfigurationError || !auth.canStartExperience { return ui("暂时连不上服务，请稍后重试。") }
         return nil
     }
@@ -124,7 +124,7 @@ import UIKit
             if page == lastPage {
                 Text(ui("无需注册。此设备会安全保存你的体验身份。")).font(.footnote).foregroundStyle(CatpawColors.secondary).multilineTextAlignment(.center)
             }
-            if auth.error == NativeAuthError.sessionRecoveryRequired.localizedDescription { Button(ui("退出未恢复的会话")) { Task { await auth.signOut() } }.accessibilityIdentifier("auth.closeUnrestoredSession") }
+            if auth.requiresSessionRestart { Button(ui("重新开始")) { Task { await auth.signOut() } }.accessibilityIdentifier("auth.closeUnrestoredSession") }
             if auth.state.phase == .signingIn { Button(ui("取消登录")) { password = ""; Task { await auth.cancelLogin() } }.accessibilityIdentifier("auth.cancel") }
             if auth.state.phase == .storageBlocked { Button(ui("重试安全保存")) { Task { await auth.retryStorage() } }.accessibilityIdentifier("auth.retryStorage") }
             #if DEBUG
