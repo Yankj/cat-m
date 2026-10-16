@@ -350,7 +350,8 @@ final class CatpawAcceptanceUITests: XCTestCase {
         addUIInterruptionMonitor(withDescription: "perm") { alert in for l in ["允许", "好", "Allow", "OK"] where alert.buttons[l].exists { alert.buttons[l].tap(); return true }; return false }
         let mic = app.buttons["chat.composer.mic"]
         if mic.exists { mic.tap(); Thread.sleep(forTimeInterval: 0.35); screen("w2-s15-dictation-recording"); Thread.sleep(forTimeInterval: 1.2); screen("w2-s15b-dictation-after-1s5")
-            if app.buttons["chat.composer.dictation.confirm"].exists { app.buttons["chat.composer.dictation.confirm"].tap() } else if mic.exists { mic.tap() }
+            let confirm = app.descendants(matching: .any).matching(identifier: "chat.composer.dictation.confirm").firstMatch
+            if confirm.exists { confirm.tap() } else if mic.exists { mic.tap() }
             Thread.sleep(forTimeInterval: 1.5); screen("w2-s16-dictation-second-tap") }
         XCTAssertEqual(app.state, .runningForeground)
     }
