@@ -34,7 +34,7 @@ import Foundation
     static func expect(_ ok: Bool, _ m: String) { if ok { passed += 1; print("PASS \(m)") } else { failed += 1; print("FAIL \(m)") } }
 
     static func main() async {
-        await memory(); await deviceCalls(); proactive()
+        await memory(); await deviceCalls(); proactive(); nearby()
         print("nobug-p0 portable: \(passed) passed, \(failed) failed")
         exit(failed == 0 ? 0 : 1)
     }
@@ -124,7 +124,7 @@ import Foundation
         let m = DeviceToolContract.shopURLs(platform: "meituan", query: "咖啡")
         expect(m.app?.scheme == "imeituan" && m.web?.host == "i.meituan.com", "P0-4 shop_open meituan → imeituan:// + i.meituan.com fallback")
         expect(DeviceToolContract.shopURLs(platform: "taobao", query: "x").app?.scheme == "taobao", "shop_open taobao unchanged")
-        expect(Set(DeviceToolContract.clientTools).count == 11 && DeviceToolContract.clientTools.contains("calendar_list") && DeviceToolContract.clientTools.contains("contacts_search"), "P0-4 client advertises 11 tools incl. calendar_list/contacts_search")
+        expect(Set(DeviceToolContract.clientTools).count == 12 && DeviceToolContract.clientTools.contains("places_search") && DeviceToolContract.clientTools.contains("calendar_list") && DeviceToolContract.clientTools.contains("contacts_search"), "P0-4 client advertises 12 tools incl. calendar_list/contacts_search/places_search")
     }
 
     static func proactive() {
@@ -145,5 +145,18 @@ import Foundation
         let on = MemoryLibrarySnapshot(items: [.init(id: "a", group: .preference, content: "提前 7 分钟")], useMemory: true, autoSave: nil)
         var off = on; off.useMemory = false
         expect(ProactiveRules.lead(in: [off, on])?.minutes == 7 && ProactiveRules.lead(in: [off]) == nil, "lead honours 使用记忆 per library")
+    }
+
+    static func nearby() {
+        let items: [MemoryLibraryItem] = [.init(id: "t1", group: .preference, content: "喜欢吃辣，不吃香菜"), .init(id: "m1", group: .preference, content: "出门一般坐地铁"),
+                                          .init(id: "x", group: .profile, content: "住在杭州")]
+        let p = NearbyRules.preferences(in: [.init(items: items, useMemory: true, autoSave: nil)])
+        expect(p.tastes.map(\.id) == ["t1"] && p.mode == .transit && p.modeItem?.id == "m1", "nearby: taste + travel-mode memories picked")
+        expect(NearbyRules.preferences(in: [.init(items: items, useMemory: false, autoSave: nil)]) == .init(), "nearby: 使用记忆 off → no memories used")
+        expect(NearbyRules.effectiveMode(arg: "driving", prefs: p) == .driving && NearbyRules.effectiveMode(arg: "", prefs: p) == .transit && NearbyRules.effectiveMode(arg: "", prefs: .init()) == .walking, "nearby: mode arg > memory > walking")
+        let why = NearbyRules.why(prefs: p, mode: .transit, modeFromArg: false, originNote: "起点是你当前的真实位置")
+        expect(why.contains("喜欢吃辣") && why.contains("出门一般坐地铁") && why.contains("真实位置"), "nearby: Why cites memories + origin")
+        expect(NearbyRules.telURL("021-6123 4567") == "tel:02161234567" && NearbyRules.telURL(nil) == nil, "nearby: tel url")
+        expect(NearbyRules.mapsURL(lat: 31.2, lng: 121.4, name: "店", mode: .walking).hasSuffix("dirflg=w"), "nearby: maps url mode")
     }
 }

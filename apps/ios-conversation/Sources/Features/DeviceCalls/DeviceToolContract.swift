@@ -4,12 +4,12 @@ import Foundation
 /// server contract test (services/edge/test/device-tool-client-contract.test.mjs reads `clientTools` from this file).
 enum DeviceToolContract {
     /// Tools this app actually executes. Sent as `X-Catpaw-Device-Tools` so the server offers only these.
-    static let clientTools: [String] = ["calendar_list", "calendar_create", "reminder_create", "mail_compose", "sms_compose", "phone_call", "contacts_search", "maps_open", "shop_open", "alarm_set", "shortcut_run"]
+    static let clientTools: [String] = ["calendar_list", "calendar_create", "reminder_create", "mail_compose", "sms_compose", "phone_call", "contacts_search", "maps_open", "shop_open", "alarm_set", "shortcut_run", "places_search"]
     static let toolsHeader = "X-Catpaw-Device-Tools"
     static var toolsHeaderValue: String { clientTools.joined(separator: ",") }
     /// Tools whose executor de-duplicates by call_id (marker in EKEvent/EKReminder notes), so re-running after a kill
     /// cannot create a second item. Compose / open-URL tools are never re-run automatically.
-    static let idempotentTools: Set<String> = ["calendar_create", "reminder_create", "alarm_set", "calendar_list", "contacts_search"]
+    static let idempotentTools: Set<String> = ["calendar_create", "reminder_create", "alarm_set", "calendar_list", "contacts_search", "places_search"]
 
     /// Embedded in notes of anything we write; looked up before writing again.
     static func callMarker(_ callID: String) -> String { "catpaw call_id=\(callID)" }
