@@ -1367,6 +1367,7 @@ private struct ConversationPendingMessageEditor:View {
                     .disabled(refreshingConnection)
                 }
                 FeatureEnrollmentSection()
+                AssistantAccessSection()
                 #if DEBUG || DEVICE_TRIAL
                 ModelRoutesSettingsView()
                 Section(ui("调试")) { NavigationLink(ui("主动信号模拟")) { ProactiveSignalDebugView() }.accessibilityIdentifier("settings.debug.proactiveSignals") }

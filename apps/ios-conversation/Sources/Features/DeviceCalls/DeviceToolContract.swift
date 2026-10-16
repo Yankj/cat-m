@@ -86,3 +86,68 @@ enum DeviceCallDates {
 
 /// Result of handing a URL to iOS.
 enum DeviceHandoffOutcome: Sendable, Equatable { case opened, timedOut, refused }
+
+/// Trust: what kind of effect a device tool has, shown on the confirm card so the user knows what they approve.
+enum DeviceRiskTier: String, Sendable, Equatable {
+    /// Reads phone data; nothing changes.
+    case read
+    /// Writes to the phone and can be undone from the receipt (calendar, reminder, alarm).
+    case undoable
+    /// Hands off to another app; the user finishes there (Maps, shopping, Shortcuts).
+    case handoff
+    /// Reaches other people; the system sheet / dialer asks again before anything is sent.
+    case outbound
+}
+
+extension DeviceToolContract {
+    static func riskTier(_ tool: String) -> DeviceRiskTier {
+        switch tool {
+        case "calendar_list", "contacts_search", "places_search": .read
+        case "calendar_create", "reminder_create", "alarm_set": .undoable
+        case "sms_compose", "mail_compose", "phone_call": .outbound
+        default: .handoff
+        }
+    }
+    /// One line under the card fields.
+    static func riskNoteKey(_ tool: String) -> String {
+        switch riskTier(tool) {
+        case .read: "只读取，不会改动手机上的内容"
+        case .undoable: "会写入手机，完成后可以撤销"
+        case .handoff: "会打开其他 App，后续由你在那里完成"
+        case .outbound: "会联系他人；系统界面会再让你确认一次"
+        }
+    }
+    /// The model's one-line reason (`why` arg), trimmed for the card; nil when absent/blank.
+    static func whyText(_ args: [String: DeviceCallValue]) -> String? {
+        guard case .string(let raw)? = args["why"] else { return nil }
+        let t = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        return t.isEmpty ? nil : String(t.prefix(80))
+    }
+    /// maps_open: coordinates win over the text query (server allows either); mode → Apple Maps dirflg.
+    static func mapsURL(query: String, lat: Double?, lng: Double?, mode: String) -> URL? {
+        let flag = ["walk": "w", "walking": "w", "transit": "r", "drive": "d", "driving": "d"][mode] ?? "d"
+                var items: [URLQueryItem] = []
+        if let lat, let lng, lat.isFinite, lng.isFinite, abs(lat) <= 90, abs(lng) <= 180 {
+            items.append(.init(name: "daddr", value: "\(lat),\(lng)"))
+            if !query.isEmpty { items.append(.init(name: "q", value: query)) }
+        } else {
+            guard !query.trimmingCharacters(in: .whitespaces).isEmpty else { return nil }
+            items.append(.init(name: "daddr", value: query))
+        }
+        items.append(.init(name: "dirflg", value: flag))
+        var c = URLComponents(); c.queryItems = items
+        return URL(string: "maps://?" + (c.percentEncodedQuery ?? ""))
+    }
+    /// shortcut_run → shortcuts://run-shortcut?name=…[&input=text&text=…]
+    static func shortcutURL(name: String, input: String) -> URL? {
+        guard !name.trimmingCharacters(in: .whitespaces).isEmpty else { return nil }
+        var c = URLComponents(string: "shortcuts://run-shortcut")!
+        c.queryItems = [.init(name: "name", value: name)] + (input.isEmpty ? [] : [.init(name: "input", value: "text"), .init(name: "text", value: input)])
+        return c.url
+    }
+    /// shop_open `url`: only an https link is opened directly (no custom schemes from the model).
+    static func shopDirectURL(_ raw: String) -> URL? {
+        guard let u = URL(string: raw.trimmingCharacters(in: .whitespaces)), u.scheme?.lowercased() == "https", u.host?.isEmpty == false else { return nil }
+        return u
+    }
+}

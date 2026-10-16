@@ -6466,5 +6466,49 @@
   "提醒没有删掉，状态保持不变，请稍后重试": {
     "en": "The reminder wasn't deleted; nothing changed. Try again later.",
     "zh-Hans": "提醒没有删掉，状态保持不变，请稍后重试"
+  },
+  "为什么：{0}": {
+    "en": "Why: {0}",
+    "zh-Hans": "为什么：{0}"
+  },
+  "只读取，不会改动手机上的内容": {
+    "en": "Read-only; nothing on your phone changes",
+    "zh-Hans": "只读取，不会改动手机上的内容"
+  },
+  "会写入手机，完成后可以撤销": {
+    "en": "Writes to your phone; you can undo it afterwards",
+    "zh-Hans": "会写入手机，完成后可以撤销"
+  },
+  "会打开其他 App，后续由你在那里完成": {
+    "en": "Opens another app; you finish there",
+    "zh-Hans": "会打开其他 App，后续由你在那里完成"
+  },
+  "会联系他人；系统界面会再让你确认一次": {
+    "en": "Contacts someone; the system will ask you once more",
+    "zh-Hans": "会联系他人；系统界面会再让你确认一次"
+  },
+  "部分允许": {
+    "en": "Limited",
+    "zh-Hans": "部分允许"
+  },
+  "此设备不可用": {
+    "en": "Unavailable on this device",
+    "zh-Hans": "此设备不可用"
+  },
+  "用到时再问": {
+    "en": "Asks when needed",
+    "zh-Hans": "用到时再问"
+  },
+  "在系统设置里修改": {
+    "en": "Change in Settings",
+    "zh-Hans": "在系统设置里修改"
+  },
+  "记住什么：在「记忆」里查看、删除，或关闭「使用记忆」。做什么：写入日历、发消息等都会先出确认卡，写入类可以撤销。": {
+    "en": "What it remembers: view, delete or turn off Use Memory in Memory. What it does: calendar writes, messages and more always show a confirmation card first; writes can be undone.",
+    "zh-Hans": "记住什么：在「记忆」里查看、删除，或关闭「使用记忆」。做什么：写入日历、发消息等都会先出确认卡，写入类可以撤销。"
+  },
+  "小猫能看到什么": {
+    "en": "What Catpaw can see",
+    "zh-Hans": "小猫能看到什么"
   }
 }

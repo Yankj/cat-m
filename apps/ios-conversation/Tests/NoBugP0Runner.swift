@@ -39,7 +39,7 @@ import Foundation
     static func expect(_ ok: Bool, _ m: String) { if ok { passed += 1; print("PASS \(m)") } else { failed += 1; print("FAIL \(m)") } }
 
     static func main() async {
-        await memory(); await deviceCalls(); proactive(); nearby(); groundedFixtures(); contactsPrivacy(); replyVariants(); followUps(); await deviceUndo(); dictation(); await p02AccountIsolation(); await p02FromB8f0280(); p04FeedbackUndoHandoff()
+        await memory(); await deviceCalls(); proactive(); nearby(); groundedFixtures(); contactsPrivacy(); replyVariants(); followUps(); await deviceUndo(); dictation(); await p02AccountIsolation(); await p02FromB8f0280(); peripheralPolish(); p04FeedbackUndoHandoff()
         print("nobug-p0 portable: \(passed) passed, \(failed) failed")
         exit(failed == 0 ? 0 : 1)
     }
@@ -434,6 +434,30 @@ import Foundation
         let localOn = MemoryLibrarySnapshot(items: [.init(id: "x", group: .preference, content: "开会提前 30 分钟准备")], useMemory: true, autoSave: nil)
         expect(ProactiveRules.lead(in: [cloudOff, localOn]) == nil, "codex P0-2 (b8f0280) cloud 使用记忆 off also disables local lead memory")
         expect(ProactiveRules.lead(in: [localOn])?.minutes == 30, "codex P0-2 (b8f0280) local lead still used when every switch is on")
+    }
+
+    /// feat/peripheral-polish: system entry points + demo paths + trust copy (contract level; EventKit/UIKit need a device).
+    static func peripheralPolish() {
+        expect(CatpawAppRoute.quickActionTypes.compactMap(CatpawAppRoute.init(quickActionType:)) == [.newConversation, .proactive, .memory], "quick actions: 新对话 / 主动提醒 / 记忆 route")
+        expect(CatpawAppRoute(quickActionType: "bogus") == nil && CatpawAppRoute(url: URL(string: "catpawm://new")!) == .newConversation, "quick actions: unknown type ignored; catpawm://new deep link")
+        // Demo path 1 — calendar_create: undoable write, card says so.
+        expect(DeviceToolContract.riskTier("calendar_create") == .undoable && DeviceToolContract.idempotentTools.contains("calendar_create"), "demo calendar_create: undoable + idempotent by call_id")
+        // Demo path 2 — maps_open: coordinates win, mode mapped, empty query refused.
+        let m = DeviceToolContract.mapsURL(query: "望京 SOHO", lat: 39.99, lng: 116.48, mode: "transit")?.absoluteString ?? ""
+        expect(m.hasPrefix("maps://?") && m.contains("daddr=39.99,116.48") && m.contains("dirflg=r"), "demo maps_open: lat/lng used, transit → dirflg=r")
+        let q = DeviceToolContract.mapsURL(query: "望京 SOHO", lat: nil, lng: nil, mode: "walking")?.absoluteString ?? ""
+        expect(q.contains("daddr=%E6%9C%9B%E4%BA%AC") && q.contains("dirflg=w"), "demo maps_open: text query percent-encoded, walking → w")
+        expect(DeviceToolContract.mapsURL(query: " ", lat: nil, lng: nil, mode: "") == nil && DeviceToolContract.mapsURL(query: "x", lat: 200, lng: 0, mode: "")?.absoluteString.contains("daddr=x") == true, "demo maps_open: blank refused, bad coordinates fall back to query")
+        // Demo path 3 — shortcut_run / shop_open: handoff, never success-by-timeout.
+        let sc = DeviceToolContract.shortcutURL(name: "记一笔", input: "午饭 32")?.absoluteString ?? ""
+        expect(sc.hasPrefix("shortcuts://run-shortcut?name=") && sc.contains("input=text") && DeviceToolContract.shortcutURL(name: "", input: "") == nil, "demo shortcut_run: URL with text input; empty name refused")
+        expect(DeviceToolContract.shopDirectURL("https://s.taobao.com/search?q=x") != nil && DeviceToolContract.shopDirectURL("taobao://x") == nil && DeviceToolContract.shopDirectURL("javascript:alert(1)") == nil, "shop_open url: https only")
+        expect(DeviceToolContract.handoffResult(.timedOut, callID: "c").status == .error, "handoff timeout never reported as done")
+        // Trust: why + risk tier on every confirm card.
+        expect(DeviceToolContract.whyText(["why": .string("  你说周五要和小王开会  ")]) == "你说周五要和小王开会" && DeviceToolContract.whyText([:]) == nil && DeviceToolContract.whyText(["why": .string(" ")]) == nil, "trust: why trimmed, blank hidden")
+        expect(DeviceToolContract.whyText(["why": .string(String(repeating: "长", count: 200))])?.count == 80, "trust: why capped at 80")
+        expect(DeviceToolContract.clientTools.allSatisfy { !DeviceToolContract.riskNoteKey($0).isEmpty }, "trust: every client tool has a risk note")
+        expect(DeviceToolContract.riskTier("sms_compose") == .outbound && DeviceToolContract.riskTier("maps_open") == .handoff && DeviceToolContract.riskTier("contacts_search") == .read, "trust: tiers outbound / handoff / read")
     }
 }
 

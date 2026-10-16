@@ -68,7 +68,13 @@ struct DeviceCallSpec: Sendable {
                 header
                 switch phase {
                 case .confirming:
+                    if let why = DeviceToolContract.whyText(args) {
+                        Label(ui("为什么：{0}", [why]), systemImage: "lightbulb").font(CatpawTypography.Role.secondary.font).foregroundStyle(CatpawColors.secondary)
+                            .fixedSize(horizontal: false, vertical: true).accessibilityIdentifier("chat.deviceCall.why")
+                    }
                     fields
+                    Text(ui(DeviceToolContract.riskNoteKey(call.tool))).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
+                        .fixedSize(horizontal: false, vertical: true).accessibilityIdentifier("chat.deviceCall.risk")
                     if let note = spec.noteKey { Text(ui(note)).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary).fixedSize(horizontal: false, vertical: true) }
                     actions
                 case .running:

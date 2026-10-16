@@ -104,19 +104,17 @@ import UserNotifications
             let digits = s("number").filter { $0.isNumber || $0 == "+" }
             return handoff(await open(URL(string: "tel:\(digits)")), refused: "tel_unavailable")
         case "maps_open":
-            let q = s("query").addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
-            let mode = ["walk": "w", "walking": "w", "transit": "r", "drive": "d", "driving": "d"][s("mode")] ?? "d"
-            return handoff(await open(URL(string: "maps://?daddr=\(q)&dirflg=\(mode)")))
+            func num(_ k: String) -> Double? { if case .number(let n)? = a[k] { return n }; return nil }
+            return handoff(await open(DeviceToolContract.mapsURL(query: s("query"), lat: num("lat"), lng: num("lng"), mode: s("mode"))))
         case "shop_open":
+            if let direct = DeviceToolContract.shopDirectURL(s("url")) { return handoff(await open(direct), ["via": .string("url")]) }
             let (app, web) = DeviceToolContract.shopURLs(platform: s("platform"), query: s("query"))   // meituan → imeituan:// (P0-4)
             // Prefer installed app only when canOpenURL is true; otherwise go straight to https
             // so Simulator / devices without 淘宝 don't stall on a dead custom scheme.
             if let app, UIApplication.shared.canOpenURL(app) { let o = await open(app); if o != .refused { return handoff(o) } }
             return handoff(await open(web), ["via": .string("web")])
         case "shortcut_run":
-            var c = URLComponents(string: "shortcuts://run-shortcut")!
-            c.queryItems = [.init(name: "name", value: s("name"))] + (s("input").isEmpty ? [] : [.init(name: "input", value: "text"), .init(name: "text", value: s("input"))])
-            return handoff(await open(c.url))
+            return handoff(await open(DeviceToolContract.shortcutURL(name: s("name"), input: s("input"))))
         default:
             return DeviceToolContract.unsupported(call)
         }

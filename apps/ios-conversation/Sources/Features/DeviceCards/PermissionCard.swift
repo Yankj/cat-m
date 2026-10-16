@@ -171,3 +171,44 @@ private struct PermissionIconLabelStyle: LabelStyle {
         PermissionCard(payload: .init(id: "p2", capability: .contacts, reason: nil), providerOverride: DevicePermissionStub(states: [.contacts: .denied]))
     }.padding()
 }
+
+/// Trust: 设置 › 「小猫能看到什么」 — one place for what the assistant can see (system permissions + purpose),
+/// what it remembers (link to 记忆) and how it acts (confirm card + undo). Changing a permission goes through iOS Settings.
+@MainActor struct AssistantAccessSection: View {
+    static let kinds: [DevicePermissionKind] = [.calendar, .reminders, .contacts, .location, .notifications, .microphone]
+    @State private var states: [DevicePermissionKind: DevicePermissionStatus] = [:]
+    @Environment(\.locale) private var locale
+    @Environment(\.openURL) private var openURL
+    @Environment(\.scenePhase) private var scenePhase
+    private func ui(_ k: String) -> String { AppLanguage(locale: locale).ui(k) }
+    static func statusKey(_ s: DevicePermissionStatus?) -> String {
+        switch s {
+        case .authorized?: "已允许"
+        case .limited?: "部分允许"
+        case .denied?, .restricted?: "未允许"
+        case .unavailable?: "此设备不可用"
+        case .notDetermined?, nil: "用到时再问"
+        }
+    }
+    var body: some View {
+        Section {
+            ForEach(Self.kinds, id: \.self) { kind in
+                VStack(alignment: .leading, spacing: 2) {
+                    LabeledContent { Text(ui(Self.statusKey(states[kind]))) } label: { Label(ui(kind.titleKey), systemImage: kind.symbol) }
+                    Text(ui(kind.defaultReasonKey)).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
+                }
+                .accessibilityElement(children: .combine).accessibilityIdentifier("settings.access." + kind.rawValue)
+            }
+            Button(ui("在系统设置里修改")) { if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) } }
+                .accessibilityIdentifier("settings.access.openSettings")
+            Text(ui("记住什么：在「记忆」里查看、删除，或关闭「使用记忆」。做什么：写入日历、发消息等都会先出确认卡，写入类可以撤销。"))
+                .font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
+        } header: { Text(ui("小猫能看到什么")) }
+        .task(id: scenePhase) { await refresh() }
+    }
+    private func refresh() async {
+        var next: [DevicePermissionKind: DevicePermissionStatus] = [:]
+        for kind in Self.kinds { next[kind] = await DevicePermissionHub.provider.status(kind) }
+        states = next
+    }
+}

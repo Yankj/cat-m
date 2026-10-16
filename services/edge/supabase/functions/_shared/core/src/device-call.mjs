@@ -11,7 +11,10 @@ export const DEVICE_TTL_SEC=600;
 export const DEVICE_RESULT_STATUSES=Object.freeze(['ok','cancelled','denied','error']);
 export const DEVICE_RESULT_MAX_BYTES=32768;
 const S={type:'string'},SA={type:'array',items:{type:'string'},maxItems:20},N={type:'number'};
-const fn=(name,description,properties,required,confirm)=>({confirm,definition:{type:'function',function:{name,description:description+(confirm==='none'?' Read-only; runs without a confirmation card.':' The user confirms on the phone before anything happens.'),parameters:{type:'object',properties,required,additionalProperties:false}}}});
+// Trust: every confirm-card tool takes an optional `why` the phone shows on the card ("为什么：…").
+const WHY={type:'string',description:'One short sentence in the user\'s language (≤40 characters) saying why you propose this; shown on the confirmation card.'};
+const HANDOFF=new Set(['maps_open','shop_open','shortcut_run','phone_call','mail_compose','sms_compose']);
+const fn=(name,description,properties,required,confirm)=>({confirm,definition:{type:'function',function:{name,description:description+(confirm==='none'?' Read-only; runs without a confirmation card.':' The user confirms on the phone before anything happens; pass `why`.')+(HANDOFF.has(name)?' Success only means the other app was asked to open; say 已请求打开, never that the task is done.':''),parameters:{type:'object',properties:confirm==='none'?properties:{...properties,why:WHY},required,additionalProperties:false}}}});
 // Plan §3.2. pay_apple (needs merchant entitlement, phase 2) and App Intents (reverse direction) are not cloud tools.
 export const DEVICE_TOOLS=Object.freeze([
  fn('calendar_list','List calendar events in a time range on the user\'s phone (free/busy lookup).',{from:S,to:S},['from','to'],'none'),
