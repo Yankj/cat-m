@@ -9,7 +9,7 @@ enum ProactiveAccountGate {
         info[accountKey] = token.account; info[epochKey] = NSNumber(value: token.epoch); info[eventKey] = deliveryID; info[levelKey] = level.name
     }
     static func token(_ info: [AnyHashable: Any]) -> AccountToken? {
-        guard let a = info[accountKey] as? String, let e = (info[epochKey] as? NSNumber)?.uint64Value ?? (info[epochKey] as? UInt64) else { return nil }
+        guard let a = info[accountKey] as? String, let e = (info[epochKey] as? String).flatMap(UInt64.init) ?? (info[epochKey] as? NSNumber)?.uint64Value ?? (info[epochKey] as? UInt64) else { return nil }
         return AccountToken(account: a, epoch: e)
     }
     private static func remote(_ info: [AnyHashable: Any]) -> [String: Any]? { info["catpaw"] as? [String: Any] }
