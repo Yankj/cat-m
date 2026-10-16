@@ -53,7 +53,7 @@ struct CalmOrb: View {
                     .frame(width: size, height: size)
                     .shadow(color: CalmPalette.orbDeep.opacity(0.35), radius: 16, y: 8)
                     .scaleEffect(1 + 0.025 * b)
-                Image(systemName: glyph).font(.system(size: size * 0.24, weight: .regular)).foregroundStyle(.white.opacity(0.95))
+                Image(systemName: glyph).resizable().scaledToFit().frame(width: size * 0.26, height: size * 0.26).foregroundStyle(.white.opacity(0.95))
             }
         }
         .accessibilityHidden(true)
@@ -73,7 +73,7 @@ struct OrbitText: View {
             let angle = reduceMotion ? 0 : tl.date.timeIntervalSinceReferenceDate * 6 * speed
             ZStack {
                 ForEach(chars.indices, id: \.self) { i in
-                    Text(String(chars[i])).font(.system(size: fontSize, weight: .medium))
+                    Text(String(chars[i])).font(CatpawTypography.Role.caption.font)
                         .foregroundStyle(CatpawColors.actionText.opacity(0.62))
                         .offset(y: -radius)
                         .rotationEffect(.degrees(Double(i) / Double(chars.count) * 360))
@@ -104,7 +104,7 @@ struct SwipeToStart: View {
                         let t = tl.date.timeIntervalSinceReferenceDate
                         HStack(spacing: 1) {
                             ForEach(0..<3) { i in
-                                Image(systemName: "chevron.right").font(.caption.weight(.semibold))
+                                Image(systemName: "chevron.right").font(.footnote.weight(.semibold))
                                     .foregroundStyle(CatpawColors.actionText.opacity(0.25 + 0.6 * max(0, sin(t * 3 - Double(i) * 0.7))))
                             }
                         }
@@ -114,7 +114,7 @@ struct SwipeToStart: View {
                 .opacity(1 - Double(drag / max(maxX, 1)))
                 ZStack {
                     Circle().fill(LinearGradient(colors: [CalmPalette.orbLight, CalmPalette.orbDeep], startPoint: .topLeading, endPoint: .bottomTrailing))
-                    if busy { ProgressView().tint(.white) } else { Image(systemName: "pawprint.fill").font(.system(size: 17)).foregroundStyle(.white) }
+                    if busy { ProgressView().tint(.white) } else { Image(systemName: "pawprint.fill").font(.body).foregroundStyle(.white) }
                 }
                 .frame(width: knob, height: knob).padding(.leading, 4).offset(x: drag)
                 .gesture(DragGesture().onChanged { v in drag = min(max(0, v.translation.width), maxX) }
@@ -165,9 +165,9 @@ struct ThinWaveform: View {
             CalmGlowBackground()
             VStack(alignment: .leading, spacing: 0) {
                 Spacer()
-                Text(ui("你")).font(.caption).foregroundStyle(CatpawColors.secondary).padding(.bottom, 6)
+                Text(ui("你")).font(.footnote).foregroundStyle(CatpawColors.secondary).padding(.bottom, 6)
                 Text(voice.transcript.isEmpty ? (UserDefaults.standard.bool(forKey: "CatpawVoiceModePreview") ? ui("voice.preview.transcript") : ui("正在聆听…")) : voice.transcript)
-                    .font(.system(size: 20, weight: .regular)).foregroundStyle(CatpawColors.ink.opacity(0.55))
+                    .font(.title3).foregroundStyle(CatpawColors.ink.opacity(0.55))
                     .lineSpacing(4).frame(maxWidth: .infinity, alignment: .leading)
                     .animation(.easeOut(duration: 0.2), value: voice.transcript)
                     .accessibilityIdentifier("chat.voice.transcript")
@@ -194,7 +194,7 @@ struct ThinWaveform: View {
     }
     private func circleButton(_ icon: String, label: String, id: String, _ act: @escaping () -> Void) -> some View {
         Button(action: act) {
-            Image(systemName: icon).font(.system(size: 16)).foregroundStyle(CatpawColors.ink.opacity(0.7))
+            Image(systemName: icon).font(.body).foregroundStyle(CatpawColors.ink.opacity(0.7))
                 .frame(width: 48, height: 48).background(.white, in: Circle())
                 .shadow(color: .black.opacity(0.06), radius: 8, y: 3)
         }
@@ -209,8 +209,9 @@ import CoreText
 @MainActor final class EditorialSerif: ObservableObject {
     static let shared = EditorialSerif()
     static let postScriptName = "STSongti-SC-Bold"
-    @Published private(set) var ready = UIFont(name: EditorialSerif.postScriptName, size: 12) != nil
+    @Published private(set) var ready = EditorialSerif.isInstalled()
     private var requested = false
+    nonisolated static func isInstalled() -> Bool { UIFont.fontNames(forFamilyName: "Songti SC").contains(postScriptName) }
     func font(size: CGFloat) -> Font {
         ready ? .custom(Self.postScriptName, fixedSize: size) : .system(size: size, weight: .semibold, design: .serif)
     }
@@ -221,7 +222,7 @@ import CoreText
         CTFontDescriptorMatchFontDescriptorsWithProgressHandler([desc] as CFArray, nil) { state, _ in
             if state == .didFinish {
                 Task { @MainActor in
-                    let ok = UIFont(name: EditorialSerif.postScriptName, size: 12) != nil
+                    let ok = EditorialSerif.isInstalled()
                     withAnimation(.easeOut(duration: 0.3)) { EditorialSerif.shared.ready = ok }
                 }
             }
