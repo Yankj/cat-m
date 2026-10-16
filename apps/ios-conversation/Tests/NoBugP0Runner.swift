@@ -28,7 +28,9 @@ import Foundation
     func clearAll() async throws {}
     func undoSave(memoryID: String, undoToken: String?) async throws {}
     func create(kind: String, content: String) async throws -> String {
-        if let refuse { throw refuse }; if let n = failAfter, created.count >= n { throw MemoryLibraryError.unavailable }
+        if let refuse { throw refuse }
+        if !useMemory { throw MemoryLibraryError.failed("409 memory_consent_required") }   // server requireActive
+        if let n = failAfter, created.count >= n { throw MemoryLibraryError.unavailable }
         created.append(content); return emptyID ? "" : "cloud-\(created.count)" }
 }
 
@@ -89,6 +91,13 @@ import Foundation
         try! await e.setUseMemory(false)
         let cloud4 = RefusingBackend(); _ = await MemoryLibraryLocal.migrate(e, to: cloud4)
         expect(cloud4.useMemory == false, "P1-3 local 使用记忆=off carried to cloud")
+        // Order: creates must happen while use_memory is on, setUseMemory(false) last (old order → 409, nothing migrated).
+        let g = MemoryLibraryStub(fileURL: url2); try! await g.clearAll(); try! await g.setUseMemory(false)
+        _ = try! await g.create(kind: "preference", content: "开会提前 12 分钟准备"); _ = try! await g.create(kind: "profile", content: "住在苏州")
+        let cloud6 = RefusingBackend()
+        let r6 = await MemoryLibraryLocal.migrate(g, to: cloud6)
+        expect(r6.migrated == 2 && r6.kept == 0 && cloud6.created.count == 2 && cloud6.useMemory == false && r6.stoppedBy == nil,
+               "P1-3 use_memory off: all items created first, then setUseMemory(false) (no 409)")
         // Partial failure keeps cloud library (no local overwrite).
         let f = MemoryLibraryStub(fileURL: url2); try! await f.clearAll(); _ = try! await f.create(kind: "preference", content: "A"); _ = try! await f.create(kind: "preference", content: "B")
         let cloud5 = RefusingBackend(); cloud5.failAfter = 1
@@ -197,6 +206,9 @@ import Foundation
         let withTaste = NearbyRules.rank(cands, prefs: p), without = NearbyRules.rank(cands, prefs: .init())
         expect(without == [0, 1, 2] && withTaste == [2, 1, 0] && withTaste != without, "nearby: taste memory changes ranking (with ≠ without)")
         expect(NearbyRules.needsWiderSearch(2) && !NearbyRules.needsWiderSearch(NearbyRules.minResults), "nearby: < minResults widens radius")
+        let wide = NearbyRules.why(prefs: .init(), mode: .walking, modeFromArg: false, originNote: "o", radius: 8000)
+        expect(wide.contains("3 公里内不足 3 家，已扩到 8 公里"), "nearby: widened search stated in Why")
+        expect(!NearbyRules.why(prefs: .init(), mode: .walking, modeFromArg: false, originNote: "o", radius: 3000).contains("已扩到"), "nearby: no widen note at 3 km")
         expect(why.contains("调整了排序") && NearbyRules.why(prefs: .init(), mode: .walking, modeFromArg: false, originNote: "o").contains("口味") == false, "nearby: Why mentions taste only when it changed ranking")
         expect(why.contains("喜欢吃辣") && why.contains("出门一般坐地铁") && why.contains("真实位置"), "nearby: Why cites memories + origin")
         expect(NearbyRules.telURL("021-6123 4567") == "tel:02161234567" && NearbyRules.telURL(nil) == nil, "nearby: tel url")
