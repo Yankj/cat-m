@@ -130,3 +130,12 @@ test('same-scope foreign subject cannot initialize, forget, replay a guard or di
  input=await f.command({type:'forget',target_id:target.id,expected_version:target.version,no_relearn:true});before=f.repository.snapshot();response=await f.req(f.base+'/commands',input,'Bearer foreign-fixture');assert.equal(response.status,403);assert.deepEqual(f.repository.snapshot(),before);
  assert.equal((await f.req(f.base+'/state',undefined,'Bearer foreign-fixture')).status,403);assert.equal(f.calls.length,0);
 });
+// Codex PR91 p91c-4: the client's X-Catpaw-Use-Memory: 0 also gates the confirmed-memory (integration.memoryUsage) path.
+test('client switch off: confirmed memory is not frozen or injected; absent header unchanged',async()=>{
+ const f=await fixture(),cid=await f.newConversation();await f.json((await f.post({type:'set_enabled',enabled:true})).response);
+ await f.json((await f.post(remember(cid,'coffee'))).response);
+ const off=await f.send(await f.newConversation(),'What coffee drink do I prefer?',{headers:{'X-Catpaw-Use-Memory':'0'}});
+ assert.equal(off.state,'completed');assert.equal(off.memory_usage,undefined);assert.equal(f.calls.at(-1).provider_context?.memory_context,undefined);
+ const on=await f.send(await f.newConversation(),'What coffee drink do I prefer?');
+ assert.equal(f.calls.at(-1).provider_context.memory_context.claims[0].value,'coffee');assert.ok(on.memory_usage);
+});
