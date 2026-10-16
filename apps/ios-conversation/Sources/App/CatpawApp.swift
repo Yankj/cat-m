@@ -148,8 +148,16 @@ import AppIntents
             }
             .onOpenURL { url in launchMarkVisible = false; CatpawRouteCenter.shared.pending = CatpawAppRoute(url: url) }
             .catpawInAppBanner()
-            #if DEBUG
-            .task { if let raw = UserDefaults.standard.string(forKey: "CatpawOpenURL"), let url = URL(string: raw) { CatpawRouteCenter.shared.pending = CatpawAppRoute(url: url) } }
+            #if DEBUG || DEVICE_TRIAL
+            .task {
+                // Acceptance: `defaults write … CatpawOpenURL catpawm://tasks` or env CATPAW_ACCEPTANCE_OPEN_URL.
+                let raw = ProcessInfo.processInfo.environment["CATPAW_ACCEPTANCE_OPEN_URL"]
+                    ?? UserDefaults.standard.string(forKey: "CatpawOpenURL")
+                if let raw, let url = URL(string: raw) {
+                    UserDefaults.standard.removeObject(forKey: "CatpawOpenURL")
+                    CatpawRouteCenter.shared.pending = CatpawAppRoute(url: url)
+                }
+            }
             #endif
             .task { if bootstrap.isP0Fixture { await bootstrap.startFixture() } else if bootstrap.model == nil { await auth.start() } }
                 .onChange(of:scene) { _, phase in if phase == .active { Task { try? await Task.sleep(nanoseconds: 1_500_000_000); await ProactiveEngine.shared.scanCalendar(); await ProactiveEngine.shared.prescheduleNextEvent() } }; if phase == .active,bootstrap.model == nil,!bootstrap.isP0Fixture { Task { await auth.foreground() } } }
