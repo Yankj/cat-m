@@ -51,6 +51,8 @@ struct ProactiveSuggestion: Codable, Sendable, Equatable, Identifiable {
     var remainingActions: [Action] {
         ProactiveActionStates.remaining(effectiveActions.map(\.rawValue), actionStates).compactMap(Action.init(rawValue:))
     }
+    /// Codex PR90g #2: the last undo tried to restore a snooze and it did not get scheduled (shown on the card).
+    var snoozeRestoreFailed: Bool { ProactiveUndo.restoreFailed(detail: taken?.last(where: { $0.action == .snooze })?.detail) }
     var allEffectsDone: Bool { ProactiveActionStates.allEffectsDone(effectiveActions.map(\.rawValue), actionStates) }
 }
 
@@ -143,7 +145,10 @@ enum ProactiveEngineError: Error, Equatable { case remindersDenied, writeFailed,
     }
     func undo(_ s: ProactiveSuggestion) async {
         busy.insert(s.id); defer { busy.remove(s.id) }
-        do { items[s.id] = try await backend.undo(s.id); errorKey = nil } catch { errorKey = "没有完成，请稍后重试" }
+        do {
+            let after = try await backend.undo(s.id); items[s.id] = after
+            errorKey = after.snoozeRestoreFailed ? "已撤销，但没能重新设置稍后提醒，请重新选择" : nil   // Codex PR90g #2
+        } catch { errorKey = "没有完成，请稍后重试" }
     }
     func feedback(_ value: ProactiveFeedback, _ s: ProactiveSuggestion) async { try? await backend.feedback(value, on: s.id) }
     func sorted(_ status: ProactiveSuggestion.Status) -> [ProactiveSuggestion] {

@@ -84,7 +84,7 @@ test('PR90g #3: golden round trip — the server response the client decodes (fi
   const id = ev.body.event_id;
   for (const r of g.requests) assert.equal((await call('POST', `${BASE}/suggestions/${id}/${r.route}`, JSON.parse(JSON.stringify(r.body).replaceAll(g.local_id, id)))).status, 200);
   const got = (await call('GET', `${BASE}/suggestions/${id}`)).body.suggestion;
-  const norm = JSON.parse(JSON.stringify({ status: got.status, actions: got.actions, taken: got.taken, snooze_until: got.snooze_until, id: got.id }).replaceAll(id, g.local_id));
+  const norm = JSON.parse(JSON.stringify({ title: got.title, reason: got.reason, status: got.status, actions: got.actions, taken: got.taken, snooze_until: got.snooze_until, id: got.id }).replaceAll(id, g.local_id));
   const url = new URL('./fixtures/proactive-sync-golden-response.json', import.meta.url);
   if (process.env.CATPAW_WRITE_GOLDEN === '1') writeFileSync(url, JSON.stringify(norm, null, 2) + '\n');
   assert.ok(existsSync(url), 'response fixture committed'); assert.deepEqual(norm, JSON.parse(readFileSync(url)));
