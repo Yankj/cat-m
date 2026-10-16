@@ -42,7 +42,9 @@ enum ProactiveRules {
     }
     /// First lead memory across snapshots (in order: cloud backend, then local), honouring each 「使用记忆」 toggle.
     static func lead(in snapshots: [MemoryLibrarySnapshot]) -> (minutes: Int, item: MemoryLibraryItem)? {
-        for snap in snapshots where snap.useMemory {
+        // Codex P0-2: one 「使用记忆」 switch for the user — any source switched off disables memory for every source.
+        guard snapshots.allSatisfy(\.useMemory) else { return nil }
+        for snap in snapshots {
             for item in snap.items { if let n = leadMinutes(in: item.content) { return (n, item) } }
         }
         return nil

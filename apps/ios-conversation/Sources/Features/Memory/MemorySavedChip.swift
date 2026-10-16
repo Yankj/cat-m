@@ -31,10 +31,10 @@ struct MemorySavedEvent: Codable, Sendable, Equatable {
     }
     /// After a cloud backend is installed: migrate local items into it. If it refuses (gate off → notEnabled /
     /// unsupported), surface the local library instead so the items stay visible + deletable (labelled 本机).
-    @discardableResult static func reconcileLocal() async -> MemoryLibraryLocal.MigrationReport {
+    @discardableResult static func reconcileLocal(owner: String?) async -> MemoryLibraryLocal.MigrationReport {
         guard !local.items.isEmpty else { return .init() }
-        guard let target = preferred, target !== local else { return .init(kept: local.items.count) }
-        let report = await MemoryLibraryLocal.migrate(local, to: target)
+        guard owner != nil, let target = preferred, target !== local else { return .init(kept: local.items.count) }   // Codex P0-2: never upload guest items
+        let report = await MemoryLibraryLocal.migrate(local, to: target, owner: owner)
         if MemoryLibraryLocal.shouldSurfaceLocal(report) { install(backend: local) }   // gate off only; never replace a working cloud library
         return report
     }

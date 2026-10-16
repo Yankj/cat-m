@@ -6,15 +6,24 @@ import Foundation
 // - When the cloud gate opens, `migrate(_:to:)` copies every local item into the real backend via `create`, and removes
 //   each local item only after the backend accepted it. Items the backend refuses stay local (still labelled 本机).
 
+// Codex P0-2: the library is per account. Signed in → persisted in that user's L2SecureStore (encrypted, per-user
+// directory); signed out → an empty in-memory guest library. Migration only moves items into the SAME owner's cloud.
 @MainActor enum MemoryLibraryLocal {
-    static let fileName = "catpaw-local-memory.v1.json"
-    static var fileURL: URL {
-        let dir = (try? FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true))
-            ?? FileManager.default.temporaryDirectory
-        return dir.appendingPathComponent(fileName)
+    /// Pre-fix global plaintext file (no owner). Deleted on activation; never migrated to any account.
+    static let legacyFileName = "catpaw-local-memory.v1.json"
+    static var legacyFileURL: URL? {
+        (try? FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: false))?.appendingPathComponent(legacyFileName)
     }
-    /// The single persisted on-device library (lazy; reads the file once).
-    static let shared = MemoryLibraryStub(items: [], fileURL: fileURL)
+    static func removeLegacyPlaintext() { if let url = legacyFileURL { try? FileManager.default.removeItem(at: url) } }
+    /// The active account's on-device library.
+    static private(set) var shared = MemoryLibraryStub()
+    /// Bind the library to `owner` (nil = guest, memory only). Idempotent for the same owner.
+    static func activate(owner: String?, storage: MemoryLibraryStorage?) {
+        if owner != nil, shared.owner == owner { return }
+        shared = owner == nil ? MemoryLibraryStub() : MemoryLibraryStub(storage: storage, owner: owner)
+    }
+    /// Sign-out: erase the account's copy and fall back to an empty guest library.
+    static func signOut() { shared.erase(); shared = MemoryLibraryStub() }
 
     struct MigrationReport: Equatable, Sendable { var migrated = 0; var kept = 0; var deduped = 0; var stoppedBy: MemoryLibraryError? }
 
@@ -23,8 +32,10 @@ import Foundation
     ///   local forget therefore never duplicates on the next run);
     /// - an empty id from `create` counts as failure (local copy kept);
     /// - local 「使用记忆」 off is carried over (`setUseMemory(false)` after all creates; unsupported is ignored).
-    static func migrate(_ local: MemoryLibraryStub, to target: any MemoryLibraryBackend) async -> MigrationReport {
+    static func migrate(_ local: MemoryLibraryStub, to target: any MemoryLibraryBackend, owner: String? = nil) async -> MigrationReport {
         var report = MigrationReport()
+        // Codex P0-2: items move only into the cloud library of the account that wrote them.
+        guard local.owner == owner else { report.kept = local.items.count; report.stoppedBy = .failed("owner_mismatch"); return report }
         guard target !== local, !local.items.isEmpty else { report.kept = local.items.count; return report }
         var existing: Set<String>
         do { existing = Set(try await target.load().items.map { normalize($0.content) }) }

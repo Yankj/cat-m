@@ -94,21 +94,35 @@ extension MemoryLibraryBackend {
 /// Memory library kept on this device. `fileURL == nil` → in-memory only (Previews / tests).
 /// With a `fileURL` (see `MemoryLibraryLocal.shared`) every mutation is written atomically, so items survive a cold start.
 /// Default init is EMPTY (NoBug P0-2): pass `MemoryLibraryStub.sample` explicitly in Previews.
+/// Codex P0-2: where a local library persists. The app binds it to the signed-in user's L2SecureStore (per-user
+/// directory, AES-GCM, Keychain key, wiped at sign-out); `write(nil)` erases.
+struct MemoryLibraryStorage {
+    let read: () -> Data?
+    let write: (Data?) -> Void
+}
+
 @MainActor final class MemoryLibraryStub: MemoryLibraryBackend {
     var capabilities: MemoryLibraryCapabilities = .all
     private var snapshot: MemoryLibrarySnapshot
     let fileURL: URL?
-    init(items: [MemoryLibraryItem] = [], useMemory: Bool = true, autoSave: Bool = true, fileURL: URL? = nil) {
-        self.fileURL = fileURL
-        if let fileURL, let data = try? Data(contentsOf: fileURL),
-           let saved = try? JSONDecoder().decode(MemoryLibrarySnapshot.self, from: data) { snapshot = saved }
+    private let storage: MemoryLibraryStorage?
+    /// Codex P0-2: account that owns these items (nil = unowned guest / legacy / preview).
+    let owner: String?
+    init(items: [MemoryLibraryItem] = [], useMemory: Bool = true, autoSave: Bool = true, fileURL: URL? = nil, storage: MemoryLibraryStorage? = nil, owner: String? = nil) {
+        self.fileURL = fileURL; self.storage = storage; self.owner = owner
+        let data = storage?.read() ?? fileURL.flatMap { try? Data(contentsOf: $0) }
+        if let data, let saved = try? JSONDecoder().decode(MemoryLibrarySnapshot.self, from: data) { snapshot = saved }
         else { snapshot = .init(items: items, useMemory: useMemory, autoSave: autoSave) }
     }
+    /// Sign-out: erase the persisted copy and the in-memory items.
+    func erase() { snapshot.items = []; storage?.write(nil); if let fileURL { try? FileManager.default.removeItem(at: fileURL) } }
     /// Synchronous view for routing decisions (e.g. show local items vs 未开通).
     var items: [MemoryLibraryItem] { snapshot.items }
-    var isPersistent: Bool { fileURL != nil }
+    var isPersistent: Bool { fileURL != nil || storage != nil }
     private func save() {
-        guard let fileURL, let data = try? JSONEncoder().encode(snapshot) else { return }
+        guard let data = try? JSONEncoder().encode(snapshot) else { return }
+        if let storage { storage.write(data); return }
+        guard let fileURL else { return }
         try? data.write(to: fileURL, options: [.atomic])
     }
     func load() async throws -> MemoryLibrarySnapshot { snapshot }

@@ -72,8 +72,24 @@ import Foundation
 
 extension MemoryLibraryHub {
     /// Prefer catpaw.agent-memory.v1 over the claim-based adapter once 三角 installs it.
-    static func installAgentMemory(configuration: NativeChatConfiguration, credentials: any NativeChatSessionCredentials) {
+    static func installAgentMemory(configuration: NativeChatConfiguration, credentials: any NativeChatSessionCredentials, owner: UUID?) {
+        MemoryLibraryLocal.activate(userID: owner)
         install(backend: AgentMemoryLibraryBackend(configuration: configuration, credentials: credentials))
-        Task { @MainActor in await reconcileLocal() }   // NoBug P0-1: local → cloud when the gate is open
+        let ownerKey = MemoryLibraryLocal.shared.owner
+        Task { @MainActor in await reconcileLocal(owner: ownerKey) }   // NoBug P0-1 + Codex P0-2: same owner only
+    }
+}
+
+extension MemoryLibraryLocal {
+    static let l2Key = "local-memory.v2"
+    /// Codex P0-2: bind the on-device library to `userID`'s L2SecureStore (AES-GCM, per-user dir, wiped at sign-out).
+    static func activate(userID: UUID?) {
+        removeLegacyPlaintext()
+        let previous = shared
+        if let userID { L2SecureStore.activate(userID: userID) }
+        if let userID, let l2 = L2SecureStore.current, l2.userID == userID {
+            activate(owner: userID.uuidString.lowercased(), storage: .init(read: { l2.data(forKey: l2Key) }, write: { l2.set($0, forKey: l2Key) }))
+        } else { activate(owner: nil, storage: nil) }
+        if shared !== previous, MemoryLibraryHub.backend === previous { MemoryLibraryHub.install(backend: nil) }   // never keep another account's library installed
     }
 }

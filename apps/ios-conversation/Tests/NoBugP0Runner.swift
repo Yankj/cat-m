@@ -39,7 +39,7 @@ import Foundation
     static func expect(_ ok: Bool, _ m: String) { if ok { passed += 1; print("PASS \(m)") } else { failed += 1; print("FAIL \(m)") } }
 
     static func main() async {
-        await memory(); await deviceCalls(); proactive(); nearby(); groundedFixtures(); contactsPrivacy(); replyVariants(); followUps(); await deviceUndo(); dictation(); await codexP0_1()
+        await memory(); await deviceCalls(); proactive(); nearby(); groundedFixtures(); contactsPrivacy(); replyVariants(); followUps(); await deviceUndo(); dictation(); await codexP0_1(); await codexP0_2()
         print("nobug-p0 portable: \(passed) passed, \(failed) failed")
         exit(failed == 0 ? 0 : 1)
     }
@@ -109,6 +109,43 @@ import Foundation
         let c = DeviceCall(call_id: id, tool: tool, args: ["title": .string("评审会"), "start": .string("2026-10-20T10:00:00+08:00")], confirm: .card, ttl_sec: 600)
         DeviceCallGate.register(c)   // as the typed SSE device_call path does
         return c
+    }
+
+    /// Codex review P0-2: on-device memory is per account, owner-bound on migration, cleared at sign-out, and the
+    /// cloud 「使用记忆」 switch governs every source.
+    static func codexP0_2() async {
+        final class Box { var data: [String: Data] = [:] }
+        let disk = Box()
+        let storage = { (owner: String) in MemoryLibraryStorage(read: { disk.data[owner] }, write: { disk.data[owner] = $0 }) }
+        MemoryLibraryLocal.activate(owner: "user-A", storage: storage("user-A"))
+        _ = try! await MemoryLibraryLocal.shared.create(kind: "preference", content: "A 的秘密：开会提前 40 分钟")
+        expect(MemoryLibraryLocal.shared.owner == "user-A", "codex P0-2 local library is bound to its account")
+        MemoryLibraryLocal.signOut()
+        expect(disk.data["user-A"] == nil, "codex P0-2 sign-out clears the account's on-device memory")
+        expect(MemoryLibraryLocal.shared.items.isEmpty && MemoryLibraryLocal.shared.owner == nil, "codex P0-2 signed out → empty guest library")
+        // A writes, then B signs in on the same phone: B sees nothing of A.
+        MemoryLibraryLocal.activate(owner: "user-A", storage: storage("user-A"))
+        _ = try! await MemoryLibraryLocal.shared.create(kind: "preference", content: "A 的秘密")
+        let aLib = MemoryLibraryLocal.shared
+        MemoryLibraryLocal.activate(owner: "user-B", storage: storage("user-B"))
+        expect(MemoryLibraryLocal.shared.items.isEmpty, "codex P0-2 B never sees A's local memory")
+        // A's library must never migrate into B's cloud.
+        let bCloud = RefusingBackend()
+        let r = await MemoryLibraryLocal.migrate(aLib, to: bCloud, owner: "user-B")
+        expect(bCloud.created.isEmpty && r.migrated == 0 && r.kept == 1, "codex P0-2 migration refuses a different owner")
+        let aCloud = RefusingBackend()
+        let r2 = await MemoryLibraryLocal.migrate(aLib, to: aCloud, owner: "user-A")
+        expect(aCloud.created == ["A 的秘密"] && r2.migrated == 1, "codex P0-2 migration to the same owner still works")
+        // Unowned legacy library (pre-fix plaintext file) is never migrated anywhere.
+        let legacy = MemoryLibraryStub(items: [.init(id: "l1", group: .preference, content: "旧文件", updatedAt: .now)])
+        let r3 = await MemoryLibraryLocal.migrate(legacy, to: RefusingBackend(), owner: "user-B")
+        expect(r3.migrated == 0, "codex P0-2 unowned legacy items are not uploaded to a signed-in account")
+        // Cloud 使用记忆 off → no lead from the local library either.
+        let cloudOff = MemoryLibrarySnapshot(items: [], useMemory: false, autoSave: nil)
+        let localOn = MemoryLibrarySnapshot(items: [.init(id: "x", group: .preference, content: "开会提前 30 分钟准备", updatedAt: .now)], useMemory: true, autoSave: nil)
+        expect(ProactiveRules.lead(in: [cloudOff, localOn]) == nil, "codex P0-2 cloud 使用记忆 off also disables local lead memory")
+        expect(ProactiveRules.lead(in: [localOn])?.minutes == 30, "codex P0-2 local lead still used when every switch is on")
+        MemoryLibraryLocal.activate(owner: nil, storage: nil)
     }
 
     /// Codex review P0-1: display content never gains execution rights.
@@ -229,7 +266,7 @@ import Foundation
         expect(ProactiveRules.leadMinutes(in: "提前 500 分钟") == nil && ProactiveRules.leadMinutes(in: "喜欢靠窗") == nil, "lead memory bounds")
         let on = MemoryLibrarySnapshot(items: [.init(id: "a", group: .preference, content: "提前 7 分钟")], useMemory: true, autoSave: nil)
         var off = on; off.useMemory = false
-        expect(ProactiveRules.lead(in: [off, on])?.minutes == 7 && ProactiveRules.lead(in: [off]) == nil, "lead honours 使用记忆 per library")
+        expect(ProactiveRules.lead(in: [off, on]) == nil && ProactiveRules.lead(in: [off]) == nil && ProactiveRules.lead(in: [on])?.minutes == 7, "lead honours 使用记忆 (any source off → none; Codex P0-2)")
     }
 
     static func nearby() {
