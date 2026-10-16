@@ -89,10 +89,16 @@ import UserNotifications
             let start = d("start") ?? Date().addingTimeInterval(3600), end = d("end") ?? start.addingTimeInterval(3600)
             // NoBug P0-3: dedupe by call_id — a relaunch after kill must not write a second event.
             let window = store.predicateForEvents(withStart: start.addingTimeInterval(-86400), end: end.addingTimeInterval(86400), calendars: nil)
-            if let existing = store.events(matching: window).first(where: { $0.notes?.contains(marker) == true }) {
+            let marked = store.events(matching: window).filter { $0.notes?.contains(marker) == true }
+            if marked.count > 1 {   // p89h-3: a copy exists — never pick one, never write another
+                Self.trace?("dedupe-ambiguous:calendar")
+                return done(.error, ["reason": .string("duplicate_marker_ambiguous"), "retryable": .bool(false)])
+            }
+            if let existing = marked.first {
                 Self.trace?("dedupe-hit:calendar")
                 if let refused = save({}) { return refused }   // p89e-2: a dedupe hit reports success only through the commit gate
-                return done(.ok, ["event_id": .string(existing.eventIdentifier ?? ""), "deduped": .bool(true)], open: "calshow:\(Int(existing.startDate.timeIntervalSinceReferenceDate))")
+                var r = done(.ok, ["event_id": .string(existing.eventIdentifier ?? ""), "deduped": .bool(true)], open: "calshow:\(Int(existing.startDate.timeIntervalSinceReferenceDate))")
+                r.savedIdentity = .init(title: existing.title ?? "", start: existing.startDate); return r
             }
             let e = EKEvent(eventStore: store)
             e.title = s("title"); e.location = s("location").isEmpty ? nil : s("location")
@@ -101,15 +107,23 @@ import UserNotifications
             if case .array(let alarms)? = a["alarms"] { for case .number(let m) in alarms { e.addAlarm(EKAlarm(relativeOffset: m * 60)) } }
             e.calendar = store.defaultCalendarForNewEvents
             if let refused = save({ try store.save(e, span: .thisEvent, commit: true) }) { return refused }   // p89d-2 single commit gate
-            return done(.ok, ["event_id": .string(e.eventIdentifier ?? "")], open: "calshow:\(Int(e.startDate.timeIntervalSinceReferenceDate))")
+            var created = done(.ok, ["event_id": .string(e.eventIdentifier ?? "")], open: "calshow:\(Int(e.startDate.timeIntervalSinceReferenceDate))")
+            created.savedIdentity = .init(title: e.title ?? "", start: e.startDate)   // p89h-2: the saved object's identity, not the args
+            return created
         case "reminder_create", "alarm_set":
             // No public alarm API: alarm_set becomes a reminder with an absolute alarm (stated on the card).
             guard await access(.reminder) else { return done(.denied) }
             if let refused = gate() { return refused }   // p89d-5
-            if let existing = await existingReminder(call.call_id) {   // NoBug P0-3 dedupe
+            switch await reminderMatches(call.call_id) {   // NoBug P0-3 dedupe; p89h-3 uniqueness
+            case .many:
+                Self.trace?("dedupe-ambiguous:reminder")
+                return done(.error, ["reason": .string("duplicate_marker_ambiguous"), "retryable": .bool(false)])
+            case .one(let existing):
                 Self.trace?("dedupe-hit:reminder")
                 if let refused = save({}) { return refused }   // p89e-2: revoked while the fetch was suspended → refused, not "ok"
-                return done(.ok, ["reminder_id": .string(existing), "deduped": .bool(true)], open: "x-apple-reminderkit://")
+                var r = done(.ok, ["reminder_id": .string(existing.id), "deduped": .bool(true)], open: "x-apple-reminderkit://")
+                r.savedIdentity = existing.identity; return r
+            case .none: break
             }
             let r = EKReminder(eventStore: store)
             r.title = call.tool == "alarm_set" ? (s("label").isEmpty ? "闹钟" : s("label")) : s("title")
@@ -119,7 +133,9 @@ import UserNotifications
             r.calendar = store.calendars(for: .reminder).first { $0.title == s("list") } ?? store.defaultCalendarForNewReminders()
             r.notes = "Catpaw · " + DeviceToolContract.callMarker(call.call_id)
             if let refused = save({ try store.save(r, commit: true) }) { return refused }   // p89d-2 single commit gate
-            return done(.ok, ["reminder_id": .string(r.calendarItemIdentifier)], open: "x-apple-reminderkit://")
+            var created = done(.ok, ["reminder_id": .string(r.calendarItemIdentifier)], open: "x-apple-reminderkit://")
+            created.savedIdentity = .init(title: r.title ?? "", start: DeviceSavedIdentity.due(r.dueDateComponents))   // p89h-2
+            return created
         case "sms_compose":
             guard canCompose(call.tool) else { return done(.error, ["reason": .string("sms_unavailable")]) }
             let vc: UIViewController
@@ -178,22 +194,29 @@ import UserNotifications
             guard EKEventStore.authorizationStatus(for: .event) == .fullAccess else { return nil }
             let start = DeviceCallDates.parse(call.args["start"]?.text ?? "") ?? Date()
             let window = store.predicateForEvents(withStart: start.addingTimeInterval(-86400 * 2), end: start.addingTimeInterval(86400 * 2), calendars: nil)
-            guard let e = store.events(matching: window).first(where: { $0.notes?.contains(marker) == true }) else { return nil }
-            return .init(call_id: call.call_id, status: .ok, data: ["event_id": .string(e.eventIdentifier ?? ""), "deduped": .bool(true), "recovered": .bool(true)])
+            let marked = store.events(matching: window).filter { $0.notes?.contains(marker) == true }
+            guard marked.count == 1, let e = marked.first else { return nil }   // p89h-3: none OR several (copy) → unknown, never a guess
+            var r = DeviceCallResult(call_id: call.call_id, status: .ok, data: ["event_id": .string(e.eventIdentifier ?? ""), "deduped": .bool(true), "recovered": .bool(true)])
+            r.savedIdentity = .init(title: e.title ?? "", start: e.startDate); return r
         case "reminder_create", "alarm_set":
-            guard EKEventStore.authorizationStatus(for: .reminder) == .fullAccess, let id = await existingReminder(call.call_id) else { return nil }
-            return .init(call_id: call.call_id, status: .ok, data: ["reminder_id": .string(id), "deduped": .bool(true), "recovered": .bool(true)])
+            guard EKEventStore.authorizationStatus(for: .reminder) == .fullAccess, case .one(let m) = await reminderMatches(call.call_id) else { return nil }   // p89h-3
+            var r = DeviceCallResult(call_id: call.call_id, status: .ok, data: ["reminder_id": .string(m.id), "deduped": .bool(true), "recovered": .bool(true)])
+            r.savedIdentity = m.identity; return r
         default: return nil
         }
     }
 
-    private func existingReminder(_ callID: String) async -> String? {
+    enum ReminderMatch { case none, one((id: String, identity: DeviceSavedIdentity)), many }
+    /// p89h-3: every marker lookup is uniqueness-checked; several matches (user copy) are ambiguous, never "the first".
+    private func reminderMatches(_ callID: String) async -> ReminderMatch {
         let marker = DeviceToolContract.callMarker(callID)
         let predicate = store.predicateForReminders(in: nil)
-        let ids: [String] = await withCheckedContinuation { c in
-            store.fetchReminders(matching: predicate) { rs in c.resume(returning: (rs ?? []).filter { $0.notes?.contains(marker) == true }.map(\.calendarItemIdentifier)) }
+        let found: [(String, DeviceSavedIdentity)] = await withCheckedContinuation { c in
+            store.fetchReminders(matching: predicate) { rs in
+                c.resume(returning: (rs ?? []).filter { $0.notes?.contains(marker) == true }.map { ($0.calendarItemIdentifier, DeviceSavedIdentity(title: $0.title ?? "", start: DeviceSavedIdentity.due($0.dueDateComponents))) })
+            }
         }
-        return ids.first
+        switch found.count { case 0: return .none; case 1: return .one((found[0].0, found[0].1)); default: return .many }
     }
 
 
