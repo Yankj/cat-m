@@ -175,7 +175,7 @@ struct NativeWorkspaceRetrySchedule: Sendable {
         let openToken=Self.principal(for:partition.subject)
         let url=root.appendingPathComponent(partition.namespace).appendingPathComponent("local.store")
         do {
-            let (repository,imageStore)=try await Self.openStores(directory:url.deletingLastPathComponent(),prepare:false)
+            let (repository,imageStore)=try await openAccountStores(partition:partition,directory:url.deletingLastPathComponent(),prepare:false)
             guard chat == nil,!logoutInProgress,!Task.isCancelled,openEpoch == lifecycleEpoch else { return }
             // The local receipt conveys local reading only; it never authorizes HTTP.
             let chatConfiguration=try NativeChatConfiguration(origin:configuration.backendOrigin,localScope:partition.scope,serverScopeID:receipt.serverScopeID,publishableKey:configuration.publishableKey,expectedSubjectID:partition.subject)
@@ -481,7 +481,7 @@ struct NativeWorkspaceRetrySchedule: Sendable {
         do {
             let partition = AuthenticatedLocalPartition(issuer: configuration.issuer, subject: user.id, serverScopeID: serverScope)
             let directory = root.appendingPathComponent(partition.namespace, isDirectory: true)
-            let (repository, imageStore) = try await Self.openStores(directory: directory, prepare: true)
+            let (repository, imageStore) = try await openAccountStores(partition: partition, directory: directory, prepare: true)
             guard chat == nil, !logoutInProgress else { return }
             let region = (Bundle.main.object(forInfoDictionaryKey: "CatpawEdgeRegion") as? String).flatMap { $0.isEmpty ? nil : $0 }
             let chatConfiguration = try NativeChatConfiguration(origin: configuration.backendOrigin, localScope: partition.scope, serverScopeID: serverScope, publishableKey: configuration.publishableKey, edgeRegion: region, expectedSubjectID: partition.subject)
@@ -522,7 +522,7 @@ struct NativeWorkspaceRetrySchedule: Sendable {
         do {
             let partition = AuthenticatedLocalPartition(issuer: issuer, subject: subject, serverScopeID: serverScope)
             let directory = root.appendingPathComponent(partition.namespace, isDirectory: true)
-            let (repository, imageStore) = try await Self.openStores(directory: directory, prepare: true)
+            let (repository, imageStore) = try await openAccountStores(partition: partition, directory: directory, prepare: true)
             guard chat == nil, !logoutInProgress else { return }
             let opened = ConversationFirstModel(repository: repository, service: ConversationSessionService(repository: repository, backend: UnconfiguredConversationBackend(), resilience: ConnectionMonitorResilience(), outbox: ConversationOutbox(fileURL: directory.appendingPathComponent("conversation-outbox.json"))), scope: partition.scope, imageStore: imageStore, subjectID: subject)
             opened.setNetworkAdmissionAllowed(false)
@@ -569,7 +569,7 @@ struct NativeWorkspaceRetrySchedule: Sendable {
         guard await workspaceKeyIsCurrent(key,user:user) else{return}
         do {
             let directory=root.appendingPathComponent(partition.namespace,isDirectory:true)
-            let (repository,imageStore)=try await Self.openStores(directory:directory,prepare:true)
+            let (repository,imageStore)=try await openAccountStores(partition:partition,directory:directory,prepare:true)
             guard await workspaceKeyIsCurrent(key,user:user),chat == nil else{return}
             let region=(Bundle.main.object(forInfoDictionaryKey:"CatpawEdgeRegion") as? String).flatMap{$0.isEmpty ? nil : $0}
             let chatConfiguration=try NativeChatConfiguration(origin:configuration.backendOrigin,localScope:partition.scope,serverScopeID:serverScope,publishableKey:configuration.publishableKey,edgeRegion:region,expectedSubjectID:partition.subject)
@@ -750,6 +750,23 @@ struct NativeWorkspaceRetrySchedule: Sendable {
         ProactiveEngine.registerParkedSource()   // #90 wiring (one line): EventKit items Catpaw created, cold start → sign-out
     }
     func requestSignOut(after: (@MainActor () async -> Void)? = nil) async { await signOut(); await after?() }
+    /// Seams (PR91 XCTest; production defaults): sign-out Live Activity stop, the at-rest migrator, an order trace.
+    var stopLiveActivities: @MainActor () -> Void = { CatpawLeaveActivity.stopAll() }
+    var atRestMigrator: @MainActor (Repository, AuthenticatedLocalPartition) -> Void = { repository, partition in
+        AtRestMigrationScheduler.shared.repositoryOpened(repository, subject: partition.subject, partition: partition.namespace)
+    }
+    var signOutTrace: ((String) -> Void)?
+    /// Codex PR91 p91d-4: the ONLY way the model opens an account repository. Every launch / sign-in / offline path goes
+    /// through here, so each opened repository reaches the at-rest hook with its partition's subject — no dependence on
+    /// `state.user`, which is still nil during cold-start warmUp.
+    func openAccountStores(partition: AuthenticatedLocalPartition, directory: URL, prepare: Bool) async throws -> (Repository, FileConversationImageByteStore) {
+        let (repository, imageStore) = try await Self.openStores(directory: directory, prepare: prepare)
+        launchAtRestMigration(repository, partition: partition)   // p91d-4: every opened account repository reaches the hook
+        return (repository, imageStore)
+    }
+    func launchAtRestMigration(_ repository: Repository, partition: AuthenticatedLocalPartition) {
+        atRestMigrator(repository, partition)
+    }
     func signOut() async {
         guard let manager, !actionBusy else { return };actionBusy=true;logoutInProgress=true;lifecycleEpoch += 1
         let leaving = AccountEpoch.shared.currentAccount ?? Self.lastBarrierAccount   // captured BEFORE the barrier closes
@@ -757,11 +774,12 @@ struct NativeWorkspaceRetrySchedule: Sendable {
         // p89i deterministic order: 1 sync epoch bump → 2 collect parked → 3 user decision → 4 apply → 5 observers.
         AccountEpoch.shared.signOut()   // 1. synchronous barrier FIRST: every in-flight account-bound write is refused from here
         DeviceCallGate.reset()          //    Codex p89b-4: grants/taps/credentials die synchronously, before any await
-        CatpawLeaveActivity.stopAll()   // Codex PR91 p91c-3: Live Activities + pending work-activity timers, before the first await
+        stopLiveActivities()   // Codex PR91 p91c-3: Live Activities + pending work-activity timers, before the first await
         warmup?.cancel();recoveryPathWait?.cancel();recoveryPathWait=nil
         offlineRecoveryTask?.cancel();offlineRecoveryTask=nil   // p89g-2
         workspaceFlight?.task.cancel();workspaceFlight=nil;workspaceReadyKey=nil;wakeRetry()
         defer {logoutInProgress=false;actionBusy=false;recoveryImpossible=false;requiresSessionRestart=false}
+        signOutTrace?("firstAwait")
         Self.registerDeviceParkedSources()
         await AccountParkedItems.resolve(account: leaving, decider: parkedDecider)   // 2–4 (no silent clear, default keep)
         await CatpawPushTokenUploader.shared.clearAuthorization()
