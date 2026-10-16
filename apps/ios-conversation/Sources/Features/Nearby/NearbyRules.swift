@@ -10,6 +10,46 @@ enum NearbyRules {
         var cited: [MemoryLibraryItem] { tastes + (modeItem.map { [$0] } ?? []) }
     }
     static let maxResults = 5, minResults = 3
+    /// Search radii: start at 3 km; widen once when fewer than `minResults` came back.
+    static let radii: [Double] = [3000, 8000]
+    static func needsWiderSearch(_ count: Int) -> Bool { count < minResults }
+
+    /// Keywords pulled from taste memories: likes boost, dislikes demote (e.g. 「喜欢吃辣，不吃香菜」 → like 辣, dislike 香菜).
+    static func tasteKeywords(_ prefs: Preferences) -> (likes: [String], dislikes: [String]) {
+        var likes: [String] = [], dislikes: [String] = []
+        let stop = CharacterSet(charactersIn: "，,。.、；;！!？? ")
+        func grab(_ text: String, after marker: String) -> [String] {
+            var out: [String] = []; var rest = Substring(text)
+            while let r = rest.range(of: marker) {
+                let tail = rest[r.upperBound...]
+                let word = String(tail.prefix { ch in !ch.unicodeScalars.contains { stop.contains($0) } }).trimmingCharacters(in: .whitespaces)
+                if !word.isEmpty { out.append(String(word.prefix(6))) }
+                rest = tail
+            }
+            return out
+        }
+        for item in prefs.tastes {
+            let t = item.content
+            for m in ["不吃", "忌口", "不喝"] { dislikes += grab(t, after: m) }
+            var cleaned = t; for m in ["不吃", "忌口", "不喝"] { cleaned = cleaned.replacingOccurrences(of: m, with: "|") }
+            for m in ["喜欢吃", "爱吃", "喜欢喝", "爱喝", "只喝", "口味偏"] { likes += grab(cleaned, after: m) }
+        }
+        likes = likes.flatMap { w in w.hasSuffix("的") ? [String(w.dropLast())] : [w] }.filter { !$0.isEmpty && !$0.contains("|") }
+        return (Array(Set(likes)).sorted(), Array(Set(dislikes)).sorted())
+    }
+    struct Candidate: Equatable, Sendable { var name: String; var category: String; var distance: Double }
+    /// Order candidates: taste likes first, dislikes last, then by distance. Without taste memory → pure distance order.
+    static func rank(_ cands: [Candidate], prefs: Preferences) -> [Int] {
+        let (likes, dislikes) = tasteKeywords(prefs)
+        func score(_ c: Candidate) -> Int {
+            let text = c.name + " " + c.category
+            return likes.filter { text.contains($0) }.count - 2 * dislikes.filter { text.contains($0) }.count
+        }
+        return cands.indices.sorted { a, b in
+            let sa = score(cands[a]), sb = score(cands[b])
+            return sa != sb ? sa > sb : cands[a].distance < cands[b].distance
+        }
+    }
 
     private static let tasteHints = ["喜欢吃", "爱吃", "口味", "不吃", "忌口", "吃辣", "不辣", "素食", "清淡", "咖啡", "拿铁", "茶"]
     /// Taste + travel-mode memories, honouring 「使用记忆」 per library.
@@ -44,7 +84,10 @@ enum NearbyRules {
     /// Why line: cites memories (content), the mode source, and the origin honestly.
     static func why(prefs: Preferences, mode: Mode, modeFromArg: Bool, originNote: String) -> String {
         var parts: [String] = []
-        if !prefs.tastes.isEmpty { parts.append("按你的口味记忆「" + prefs.tastes.map(\.content).joined(separator: "」「") + "」") }
+        let kw = tasteKeywords(prefs)
+        if !kw.likes.isEmpty || !kw.dislikes.isEmpty {
+            parts.append("按口味记忆「" + prefs.tastes.map(\.content).joined(separator: "」「") + "」调整了排序（" + (kw.likes.isEmpty ? "" : "优先含 " + kw.likes.joined(separator: "/")) + (kw.dislikes.isEmpty ? "" : (kw.likes.isEmpty ? "" : "，") + "靠后含 " + kw.dislikes.joined(separator: "/")) + "）")
+        }
         let modeName = ["driving": "开车", "walking": "步行", "transit": "公共交通"][mode.rawValue] ?? "步行"
         if modeFromArg { parts.append("按你指定的\(modeName)估算") }
         else if let item = prefs.modeItem { parts.append("按出行记忆「\(item.content)」用\(modeName)估算") }

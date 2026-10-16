@@ -21,16 +21,26 @@ import CoreLocation
         guard let origin = await ProactiveEngine.requestCurrentCoordinate() else {
             return fail("location_unavailable", "没有拿到你的当前位置（未授权定位或定位超时），所以没法查附近。请在 设置 › 隐私 › 定位 打开 Catpaw 的「使用期间」后再试。")
         }
-        let req = MKLocalSearch.Request()
-        req.naturalLanguageQuery = query
-        req.region = MKCoordinateRegion(center: origin, latitudinalMeters: 3000, longitudinalMeters: 3000)
-        req.resultTypes = .pointOfInterest
-        guard let resp = try? await MKLocalSearch(request: req).start(), !resp.mapItems.isEmpty else {
-            return .init(call_id: call.call_id, status: .ok, data: ["places": .array([]), "count": .number(0), "why": .string("附近 3 公里没搜到「\(query)」")])
+        // Radius widens once when fewer than NearbyRules.minResults came back.
+        var found: [MKMapItem] = []
+        for radius in NearbyRules.radii {
+            let req = MKLocalSearch.Request()
+            req.naturalLanguageQuery = query
+            req.region = MKCoordinateRegion(center: origin, latitudinalMeters: radius, longitudinalMeters: radius)
+            req.resultTypes = .pointOfInterest
+            found = (try? await MKLocalSearch(request: req).start())?.mapItems ?? []
+            if !NearbyRules.needsWiderSearch(found.count) { break }
         }
+        guard !found.isEmpty else {
+            return .init(call_id: call.call_id, status: .ok, data: ["places": .array([]), "count": .number(0), "why": .string("附近 8 公里内没搜到「\(query)」")])
+        }
+        let here = CLLocation(latitude: origin.latitude, longitude: origin.longitude)
+        let cands = found.map { NearbyRules.Candidate(name: $0.name ?? "", category: $0.pointOfInterestCategory?.rawValue ?? "",
+            distance: CLLocation(latitude: $0.placemark.coordinate.latitude, longitude: $0.placemark.coordinate.longitude).distance(from: here)) }
+        let ranked = NearbyRules.rank(cands, prefs: prefs).map { found[$0] }   // taste memory changes the order
         let transport: MKDirectionsTransportType = mode == .driving ? .automobile : mode == .transit ? .transit : .walking
         var rows: [DeviceCallValue] = []
-        for item in resp.mapItems.prefix(NearbyRules.maxResults) {
+        for item in ranked.prefix(NearbyRules.maxResults) {
             let c = item.placemark.coordinate
             let dReq = MKDirections.Request()
             dReq.source = MKMapItem(placemark: MKPlacemark(coordinate: origin)); dReq.destination = item; dReq.transportType = transport
