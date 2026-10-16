@@ -6110,5 +6110,57 @@
   "voice.preview.transcript": {
     "en": "Remind me tomorrow at 9 to send the weekly report, and draft a note to the team…",
     "zh-Hans": "明天上午九点提醒我交周报，再帮我给团队写个简短的说明……"
+  },
+  "本机提醒": {
+    "en": "On-device reminder",
+    "zh-Hans": "本机提醒"
+  },
+  "本机日程": {
+    "en": "On-device event",
+    "zh-Hans": "本机日程"
+  },
+  "撤销未完成，请在系统 App 中删除。": {
+    "en": "Couldn't undo. Delete it in the system app.",
+    "zh-Hans": "撤销未完成，请在系统 App 中删除。"
+  },
+  "Catpaw 在本机创建的": {
+    "en": "Created by Catpaw on this phone",
+    "zh-Hans": "Catpaw 在本机创建的"
+  },
+  "小猫的回复没有完成": {
+    "en": "Catpaw's reply didn't finish",
+    "zh-Hans": "小猫的回复没有完成"
+  },
+  "继续回复": {
+    "en": "Continue",
+    "zh-Hans": "继续回复"
+  },
+  "已创建提醒：{0}": {
+    "en": "Reminder created: {0}",
+    "zh-Hans": "已创建提醒：{0}"
+  },
+  "已加入日历：{0}": {
+    "en": "Added to calendar: {0}",
+    "zh-Hans": "已加入日历：{0}"
+  },
+  "已打开短信": {
+    "en": "Opened Messages",
+    "zh-Hans": "已打开短信"
+  },
+  "已打开邮件": {
+    "en": "Opened Mail",
+    "zh-Hans": "已打开邮件"
+  },
+  "今天": {
+    "en": "Today",
+    "zh-Hans": "今天"
+  },
+  "明天": {
+    "en": "Tomorrow",
+    "zh-Hans": "明天"
+  },
+  "这条消息没能确认送达，已停止等待。可以重新发送。": {
+    "en": "This message couldn't be confirmed as delivered, so Catpaw stopped waiting. You can send it again.",
+    "zh-Hans": "这条消息没能确认送达，已停止等待。可以重新发送。"
   }
 }
