@@ -262,7 +262,7 @@ final class CatpawAcceptanceUITests: XCTestCase {
 
     /// Debug builds have no CATPAW_* in Info.plist; forward the PUBLIC values from the runner env (TEST_RUNNER_CATPAW_*).
     private func forwardPublicConfig(_ app: XCUIApplication) {
-        for name in ["CATPAW_SUPABASE_PROJECT_URL", "CATPAW_SUPABASE_PUBLISHABLE_KEY", "CATPAW_BACKEND_ORIGIN", "CATPAW_SERVER_SCOPE_ID"] {
+        for name in ["CATPAW_SUPABASE_PROJECT_URL", "CATPAW_SUPABASE_PUBLISHABLE_KEY", "CATPAW_BACKEND_ORIGIN", "CATPAW_SERVER_SCOPE_ID", "CATPAW_MODEL_ROUTE", "CATPAW_MODEL"] {
             if let value = ProcessInfo.processInfo.environment[name], !value.isEmpty { app.launchEnvironment[name] = value }
         }
     }

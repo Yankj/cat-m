@@ -177,7 +177,7 @@ public enum ModelRoutesFixture {
         routes: [
             .init(id: "openrouter", display_name: "OpenRouter", models: [.init(id: "google/gemma-4-31b-it:free", default: true)], status: "online", last_error: nil, cooling_seconds: 0, free: true, billing: "free_tier", policy_url: "https://openrouter.ai/privacy", data_note: "zero_retention"),
             .init(id: "gemini", display_name: "Google Gemini", models: [.init(id: "gemini-3.5-flash-lite", default: true)], status: "online", last_error: .init(code: "rate_limited", at: "2026-10-16T08:01:02.000Z"), cooling_seconds: 0, free: true, billing: "free_tier", policy_url: "https://ai.google.dev/gemini-api/terms", data_note: "free_tier_may_train"),
-            .init(id: "opencode", display_name: "OpenCode Zen", models: [.init(id: "opencode-zen", default: true)], status: "online", last_error: nil, cooling_seconds: 0, free: true, billing: "free_tier", policy_url: "https://opencode.ai/privacy", data_note: nil),
+            .init(id: "opencode", display_name: "OpenCode Zen", models: [.init(id: "deepseek-v4.1-flash-free", default: true)], status: "online", last_error: nil, cooling_seconds: 0, free: true, billing: "free_tier", policy_url: "https://opencode.ai/legal/privacy-policy", data_note: "zero_retention"),
             .init(id: "agnes", display_name: "Agnes", models: [.init(id: "agnes-flash", default: true)], status: "online", last_error: nil, cooling_seconds: 0, free: true, billing: "promo_free_flash_paid_pro", policy_url: nil, data_note: nil),
         ])
 }
