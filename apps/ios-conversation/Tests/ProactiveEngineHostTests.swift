@@ -484,4 +484,36 @@ import UserNotifications
         XCTAssertTrue(after.contains(bID), "B's kept")
         center.removePendingNotificationRequests(withIdentifiers: [bID])
     }
+
+    // MARK: Codex PR90h #3 — a cloud card, end to end through the real client entries: the chat adapter decodes the
+    // server's response (fixture written by the Edge suite), the store's perform / undo run the real backend + queue, and
+    // the queue writes back to the cloud record. The Edge suite replays exactly these requests on the real service.
+    private static let edgeFixtures = URL(fileURLWithPath: #filePath).deletingLastPathComponent().appendingPathComponent("../../../services/edge/test/fixtures")
+    func testCloudCardFullRoundTrip() async throws {
+        let card = try XCTUnwrap(ProactiveSuggestionAdapter.decode(try Data(contentsOf: Self.edgeFixtures.appendingPathComponent("proactive-cloud-card.json"))), "real adapter decodes the server response")
+        let expected = try XCTUnwrap(try JSONSerialization.jsonObject(with: Data(contentsOf: Self.edgeFixtures.appendingPathComponent("proactive-cloud-card-requests.json"))) as? [String: Any])
+        let want = (expected["requests"] as? [[String: Any]] ?? []).map { ($0["path"] as? String ?? "") + " " + (($0["body"] as? [String: Any])?["operation_id"] as? String ?? "") }
+        var sent: [String] = [], untils: [String?] = []
+        ProactiveEngine.shared.transport = { path, body, _ in
+            if path.hasPrefix("suggestions/") { sent.append(path + " " + (body["operation_id"] as? String ?? "")); if body["action"] as? String == "snooze" { untils.append(body["until"] as? String) } }
+            return ["ok": true]
+        }
+        ProactiveSuggestionStore.shared.adopt(card)                                      // what the chat card does on render
+        XCTAssertEqual(ProactiveEngine.shared.serverIDs[card.id], "SERVER-ID", "the cloud card's write-back identity is registered")
+        await ProactiveSuggestionStore.shared.perform(.snooze, card)
+        XCTAssertEqual(ProactiveSuggestionStore.shared.items[card.id]?.effectiveStatus, .snoozed)
+        await ProactiveSuggestionStore.shared.perform(.dismiss, card)
+        XCTAssertEqual(ProactiveSuggestionStore.shared.items[card.id]?.effectiveStatus, .dismissed)
+        let addsBefore = poster.adds.count
+        await ProactiveSuggestionStore.shared.undo(card)                                 // restores the snooze
+        XCTAssertEqual(ProactiveSuggestionStore.shared.items[card.id]?.effectiveStatus, .snoozed)
+        XCTAssertGreaterThan(poster.adds.count, addsBefore, "the restored snooze is re-armed"); XCTAssertNil(ProactiveSuggestionStore.shared.errorKey)
+        await ProactiveSuggestionStore.shared.undo(card)                                 // undo again
+        XCTAssertEqual(ProactiveSuggestionStore.shared.items[card.id]?.effectiveStatus, .pending)
+        ProactiveClock.now = { Self.day.addingTimeInterval(7200) }
+        await ProactiveEngine.shared.drainSync(); await settle()
+        XCTAssertEqual(sent, want, "the queue writes back to the cloud record, in order, with the operation ids the server replays")
+        XCTAssertEqual(untils.count, 1); XCTAssertNotNil(untils.first ?? nil, "the snooze carries the device until")
+        XCTAssertFalse(ProactiveEngine.shared.syncQueue.items.contains { $0.op.local == card.id }, "nothing left stuck in .retry")
+    }
 }
