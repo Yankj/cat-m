@@ -96,9 +96,10 @@ import UIKit
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             if thinking { liveRow } else { chip }
-            if thinking || expanded {
+            // Steps only under the settled chip — live thinking no longer lists tool titles beside the …
+            if !thinking && expanded {
                 VStack(alignment: .leading, spacing: 4) {
-                    ForEach(thinking ? Array(model.steps.suffix(3)) : model.steps) { ToolStepRow(step: $0) }
+                    ForEach(model.steps) { ToolStepRow(step: $0) }
                 }
                 .padding(.leading, 24)
                 .transition(.opacity.combined(with: .move(edge: .top)))
@@ -108,24 +109,18 @@ import UIKit
         .accessibilityIdentifier("chat.answer.thinking")
     }
 
+    /// Compact in-progress affordance: cat presence + shimmer … . Summary and tool titles stay in
+    /// accessibility / the post-settle chip — no secondary status text pile next to the bubble.
     private var liveRow: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 10) {
             CatpawPresence(state: model.thinkingSummary != nil ? .thinking : .waiting)
-            ShimmerText(text: ui("思考中"), active: !reduceMotion)
-                .font(CatpawTypography.Role.secondary.font.weight(.semibold))
-            Text(model.thinkingSummary ?? model.steps.last?.title ?? "")
-                .font(CatpawTypography.Role.secondary.font).foregroundStyle(CatpawColors.secondary)
-                .lineLimit(1).contentTransition(.opacity)
-                .animation(.easeOut(duration: 0.2), value: model.thinkingSummary)
-            Spacer(minLength: 4)
-            TimelineView(.periodic(from: model.thinkingStartedAt, by: 1)) { ctx in
-                Text(Self.elapsed(from: model.thinkingStartedAt, to: ctx.date))
-                    .font(CatpawTypography.Role.caption.font).monospacedDigit().foregroundStyle(CatpawColors.secondary)
-            }
+            StreamShimmerEllipsis(active: !reduceMotion)
+            Spacer(minLength: 0)
         }
         .frame(minHeight: 32)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel(ui("思考中") + " " + (model.thinkingSummary ?? ""))
+        .accessibilityLabel(ui("思考中") + " " + (model.thinkingSummary ?? model.steps.last?.title ?? ""))
+        .accessibilityValue(Self.elapsed(from: model.thinkingStartedAt, to: Date()))
     }
 
     private var chip: some View {
@@ -176,26 +171,9 @@ import UIKit
     }
 }
 
-/// Gradient sweep across the "思考中" label. Reduce Motion → plain text.
-private struct ShimmerText: View {
-    let text: String
-    let active: Bool
-    var body: some View {
-        if active {
-            TimelineView(.animation) { ctx in
-                let t = ctx.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 1.6) / 1.6
-                Text(text).foregroundStyle(CatpawColors.secondary)
-                    .overlay {
-                        LinearGradient(stops: [.init(color: .clear, location: t - 0.25), .init(color: CatpawColors.ink, location: t), .init(color: .clear, location: t + 0.25)],
-                                       startPoint: .leading, endPoint: .trailing)
-                            .mask(Text(text))
-                    }
-            }
-        } else {
-            Text(text).foregroundStyle(CatpawColors.ink)
-        }
-    }
-}
+/// Three ink dots that shimmer in sequence. Reduce Motion → static "…".
+
+/// Soft highlight that sweeps across the streaming bubble (ink, not brand orange).
 
 // MARK: B — full-width body, per-batch fade
 
@@ -214,22 +192,16 @@ private struct ShimmerText: View {
             StreamingConversationText(text: text, complete: complete)
                 .opacity(pulse)
         }
-        .overlay(alignment: .bottomTrailing) {
-            if !complete { StreamCursor().offset(x: 0, y: -4) }
+        .overlay {
+            if !complete && !reduceMotion { BubbleShimmerSweep().allowsHitTesting(false) }
         }
+        .overlay(alignment: .bottomTrailing) {
+            if !complete { StreamShimmerEllipsis(active: !reduceMotion).offset(x: 2, y: 2) }
+        }
+        .accessibilityAddTraits(complete ? [] : .updatesFrequently)
     }
 }
 
-private struct StreamCursor: View {
-    @State private var on = false
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    var body: some View {
-        Circle().fill(CatpawBrand.paw).frame(width: 7, height: 7)
-            .opacity(reduceMotion ? 0.8 : (on ? 1 : 0.3))
-            .animation(reduceMotion ? nil : .easeInOut(duration: 0.55).repeatForever(), value: on)
-            .onAppear { on = true }.accessibilityHidden(true)
-    }
-}
 
 // MARK: C — settled
 
