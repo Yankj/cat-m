@@ -139,6 +139,30 @@ struct ProactiveSignal: Equatable, Sendable {
         note("lead_minutes cleared — evaluate uses default \(defaultLeadMinutes)")
     }
 
+    /// Debug / Settings entry: prompt When-In-Use so travelETA can use a real fix (no silent CBD fallback).
+    @discardableResult func requestLocationAccess() async -> String {
+        #if canImport(CoreLocation) && os(iOS)
+        let status = CLLocationManager.authorizationStatus()
+        switch status {
+        case .authorizedWhenInUse, .authorizedAlways:
+            if let c = await Self.requestCurrentCoordinate() {
+                return String(format: "已授权 · 当前约 %.4f, %.4f", c.latitude, c.longitude)
+            }
+            return "已授权 · 暂无定位点（可在模拟器 Features › Location 设望京）"
+        case .denied, .restricted:
+            return "定位被拒绝 — 请到系统设置开启"
+        case .notDetermined:
+            let ok = await LocationOnceProbe().requestWhenInUse()
+            return ok ? "已授权 When-In-Use" : "未授权"
+        @unknown default:
+            return "未知定位状态"
+        }
+        #else
+        return "本平台无定位"
+        #endif
+    }
+
+
 
     // MARK: Signals
 
@@ -353,7 +377,19 @@ struct ProactiveSignal: Equatable, Sendable {
         /// false when MapKit ETA failed / skipped — Why must say 「未用到 ETA」.
         var usedETA: Bool = false
     }
-    private var pendingAttendees: [String: (names: [String], recipients: [String])] = [:]
+    private static let attendeesKey = "catpaw.proactive.attendees.v1"
+    private var pendingAttendees: [String: (names: [String], recipients: [String])] {
+        get {
+            guard let data = defaults.data(forKey: Self.attendeesKey),
+                  let raw = try? JSONDecoder().decode([String: AttendeesDTO].self, from: data) else { return [:] }
+            return raw.mapValues { ($0.names, $0.recipients) }
+        }
+        set {
+            let raw = newValue.mapValues { AttendeesDTO(names: $0.names, recipients: $0.recipients) }
+            defaults.set(try? JSONEncoder().encode(raw), forKey: Self.attendeesKey)
+        }
+    }
+    private struct AttendeesDTO: Codable { var names: [String]; var recipients: [String] }
     private var pendingReminders: [String: PendingReminder] {
         get { (defaults.data(forKey: suggestionsKey)).flatMap { try? JSONDecoder().decode([String: PendingReminder].self, from: $0) } ?? [:] }
         set { defaults.set(try? JSONEncoder().encode(newValue), forKey: suggestionsKey) }
@@ -832,13 +868,22 @@ struct ProactiveEngineSignalAdapter: ProactiveSignalEngine {
 }
 
 
-#if canImport(ActivityKit) && os(iOS)
-
 #if canImport(CoreLocation) && os(iOS)
 /// Single-fix CLLocationManager wrapper for travelETA origin.
 @MainActor private final class LocationOnceProbe: NSObject, CLLocationManagerDelegate {
     private let manager = CLLocationManager()
     private var cont: CheckedContinuation<CLLocationCoordinate2D?, Never>?
+    private var authCont: CheckedContinuation<Bool, Never>?
+    func requestWhenInUse() async -> Bool {
+        let status = manager.authorizationStatus
+        if status == .authorizedWhenInUse || status == .authorizedAlways { return true }
+        if status == .denied || status == .restricted { return false }
+        return await withCheckedContinuation { cont in
+            self.authCont = cont
+            manager.delegate = self
+            manager.requestWhenInUseAuthorization()
+        }
+    }
     func coordinate(timeout: TimeInterval) async -> CLLocationCoordinate2D? {
         await withCheckedContinuation { cont in
             self.cont = cont
@@ -862,8 +907,17 @@ struct ProactiveEngineSignalAdapter: ProactiveSignalEngine {
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
         finish(nil)
     }
+    func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        let status = manager.authorizationStatus
+        guard status != .notDetermined, let authCont else { return }
+        self.authCont = nil
+        authCont.resume(returning: status == .authorizedWhenInUse || status == .authorizedAlways)
+    }
 }
 #endif
+
+#if canImport(ActivityKit) && os(iOS)
+
 
 @MainActor enum CatpawLeaveActivity {
     static func start(suggestionID: String, meetingTitle: String, leaveAt: Date) {

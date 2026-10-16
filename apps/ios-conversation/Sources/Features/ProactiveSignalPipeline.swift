@@ -108,13 +108,13 @@ struct MockProactiveSignalEngine: ProactiveSignalEngine {
         let eta = await ProactiveEngine.travelETA(
             to: next.place,
             from: input.location.map { .init(latitude: $0.latitude, longitude: $0.longitude) },
-            simulatedLabel: input.location.map { "模拟起点·\($0.name)" }
+            simulatedLabel: input.location.map(\.name)
         )
         let lead = 10
         let travel: Int
         let etaNote: String
         if eta.usedETA, let m = eta.minutes, m > 0 {
-            travel = m; etaNote = "travel=\(m) min (MapKit)" + (eta.originNote.map { " · \($0)" } ?? "") + (eta.originNote.map { " · \($0)" } ?? "")
+            travel = m; etaNote = "travel=\(m) min (MapKit)" + (eta.originNote.map { " · \($0)" } ?? "")
         } else {
             travel = 0; etaNote = "未用到 ETA"
         }
