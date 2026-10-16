@@ -145,7 +145,12 @@ import CatpawImageComposer
         return id == ModelRouteSelection.autoID ? ui("自动") : routeCatalog.displayName(id)
     }
     private var conversationTitleMenu: some View {
-        Menu {
+        // Plush header cat in a recessed well; it occasionally pops out over the capsule ("naked-eye 3D").
+        // The well sits outside the Menu so a tap triggers the pop instead of opening the menu.
+        HStack(spacing:8) {
+            PlushMascotWell(state: headerCatState, conversationKey: model.conversationID.map { AnyHashable($0) }, size: 28)
+                .accessibilityIdentifier("chat.title.presence")
+            Menu {
             Section(ui("模型")) {
                 Button { ModelRouteSelection.resetToAuto() } label: { if ModelRouteSelection.route == ModelRouteSelection.autoID { Label(ui("自动"), systemImage:"checkmark") } else { Text(ui("自动")) } }
                 ForEach(routeCatalog.routes) { r in
@@ -156,31 +161,29 @@ import CatpawImageComposer
                 Label(connectionMonitor.state.labelKey.map{ui($0.key,arguments:$0.arguments)} ?? ui("连接正常"), systemImage: connectionMonitor.state == .online ? "wifi" : "wifi.slash")
                 Button { path.append(.settings) } label: { Label(ui("设置"), systemImage:"slider.horizontal.3") }.accessibilityIdentifier("chat.settings")
             }
-        } label: {
-            // Soft-3D header cat (docs/refs/header-cat/six-states.png) — not flat BrandMark.
-            // Map: offline→ears-down; error→wobble; thinking/working→orbit-load; streaming→spin; done→happy; else idle.
-            HStack(spacing:8) {
-                PlushMascot(state: headerCatState, size: 28)
-                    .frame(width:32,height:32)
-                    .accessibilityIdentifier("chat.title.presence")
-                VStack(alignment:.leading,spacing:0) {
-                    HStack(spacing:4) {
-                        Text(r8Title).font(CatpawTypography.Role.body.font.weight(.semibold)).foregroundStyle(CatpawColors.ink).lineLimit(1).truncationMode(.tail)
-                        Image(systemName:"chevron.down").font(CatpawTypography.Role.caption.font.weight(.semibold)).imageScale(.small).foregroundStyle(CatpawColors.tertiary)
+            } label: {
+                HStack(spacing:8) {
+                    VStack(alignment:.leading,spacing:0) {
+                        HStack(spacing:4) {
+                            Text(r8Title).font(CatpawTypography.Role.body.font.weight(.semibold)).foregroundStyle(CatpawColors.ink).lineLimit(1).truncationMode(.tail)
+                            Image(systemName:"chevron.down").font(CatpawTypography.Role.caption.font.weight(.semibold)).imageScale(.small).foregroundStyle(CatpawColors.tertiary)
+                        }
+                        Text(headerStatusLine)
+                            .font(CatpawTypography.Role.caption.font.weight(.medium)).foregroundStyle(CatpawColors.secondary).lineLimit(1)
+                            .contentTransition(.opacity).animation(CatpawMotion.statusCapsule, value: headerStatusLine)
+                            .accessibilityIdentifier("chat.title.step")
                     }
-                    Text(headerStatusLine)
-                        .font(CatpawTypography.Role.caption.font.weight(.medium)).foregroundStyle(CatpawColors.secondary).lineLimit(1)
-                        .contentTransition(.opacity).animation(CatpawMotion.statusCapsule, value: headerStatusLine)
-                        .accessibilityIdentifier("chat.title.step")
+                    ConnectionStatusHeaderDot(monitor: connectionMonitor)
                 }
-                ConnectionStatusHeaderDot(monitor: connectionMonitor)
+                .contentShape(Rectangle())
             }
-            .padding(.leading,4).padding(.trailing,12).padding(.vertical,3)
-            .background(CatpawColors.card, in: Capsule())
-            .shadow(color: CatpawBrand.clayShadow.opacity(0.08), radius: 8, y: 2)
-            .frame(maxWidth:240).contentShape(Capsule())
+            .accessibilityLabel(conversationTitle).accessibilityAddTraits(.isHeader).accessibilityIdentifier("chat.title")
         }
-        .accessibilityLabel(conversationTitle).accessibilityAddTraits(.isHeader).accessibilityIdentifier("chat.title")
+        .padding(.leading,4).padding(.trailing,12).padding(.vertical,3)
+        .background(CatpawColors.card, in: Capsule())
+        .shadow(color: CatpawBrand.clayShadow.opacity(0.08), radius: 8, y: 2)
+        .zIndex(1)
+        .frame(maxWidth:240)
     }
     /// Capsule secondary line: live step, else plush pose status while busy, else model label.
     private var headerStatusLine: String {
