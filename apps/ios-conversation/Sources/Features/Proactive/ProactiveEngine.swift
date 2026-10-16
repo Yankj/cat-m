@@ -102,7 +102,7 @@ struct ProactiveSignal: Equatable, Sendable {
             defaults.set(account ?? "", forKey: ProactiveDataOwner.key)
             note("proactive data without a recorded owner migrated to \(account ?? "-") (upgrade)")
             return
-        case .wipe: break
+        case .wipe, .quarantine: break
         }
         for id in Set(ProactiveSuggestionStore.shared.items.keys).union(ProactiveLocalBackend.load().keys) { CatpawLeaveActivity.stop(suggestionID: id) }
         quota = ProactiveQuotaLedger()
