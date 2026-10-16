@@ -669,11 +669,14 @@ struct ProactiveSignal: Equatable, Sendable {
 
     static func registerBackgroundRefresh() {
         BGTaskScheduler.shared.register(forTaskWithIdentifier: bgTaskID, using: nil) { task in
+            // iOS terminates apps that overrun a refresh without an expiration handler: stop cleanly (the next
+            // request is submitted first thing below, so an expired run still keeps the chain alive).
+            task.expirationHandler = { task.setTaskCompleted(success: false) }
             Task { @MainActor in
+                scheduleBackgroundRefresh()
                 ProactiveEngine.shared.note("BGAppRefresh fired")
                 await ProactiveEngine.shared.scanCalendar(source: .background)
                 await ProactiveEngine.shared.prescheduleNextEvent()
-                scheduleBackgroundRefresh()
                 task.setTaskCompleted(success: true)
             }
         }

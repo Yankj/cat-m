@@ -86,6 +86,33 @@
 		<key>UIApplicationSupportsMultipleScenes</key>
 		<false/>
 	</dict>
+	<key>UIApplicationShortcutItems</key>
+	<array>
+		<dict>
+			<key>UIApplicationShortcutItemIconSymbolName</key>
+			<string>square.and.pencil</string>
+			<key>UIApplicationShortcutItemTitle</key>
+			<string>新对话</string>
+			<key>UIApplicationShortcutItemType</key>
+			<string>catpawm.quick.new</string>
+		</dict>
+		<dict>
+			<key>UIApplicationShortcutItemIconSymbolName</key>
+			<string>bell.badge</string>
+			<key>UIApplicationShortcutItemTitle</key>
+			<string>主动提醒</string>
+			<key>UIApplicationShortcutItemType</key>
+			<string>catpawm.quick.proactive</string>
+		</dict>
+		<dict>
+			<key>UIApplicationShortcutItemIconSymbolName</key>
+			<string>brain</string>
+			<key>UIApplicationShortcutItemTitle</key>
+			<string>记忆</string>
+			<key>UIApplicationShortcutItemType</key>
+			<string>catpawm.quick.memory</string>
+		</dict>
+	</array>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>fetch</string>

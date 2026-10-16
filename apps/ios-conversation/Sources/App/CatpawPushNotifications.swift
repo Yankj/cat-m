@@ -76,6 +76,14 @@ struct CatpawNotificationPayload: Equatable, Sendable {
         return true
     }
 
+    /// Home-screen quick actions: cold launch arrives in the connection options, warm launch in the scene delegate.
+    func application(_ application: UIApplication, configurationForConnecting connectingSceneSession: UISceneSession, options: UIScene.ConnectionOptions) -> UISceneConfiguration {
+        if let item = options.shortcutItem { CatpawSceneDelegate.route(item) }
+        let configuration = UISceneConfiguration(name: nil, sessionRole: connectingSceneSession.role)
+        configuration.delegateClass = CatpawSceneDelegate.self
+        return configuration
+    }
+
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
         let registration = CatpawDeviceTokenRegistration(kind: .apns, token: deviceToken)
         Task { await CatpawPushTokenUploader.shared.enqueue(registration) }
@@ -100,7 +108,13 @@ struct CatpawNotificationPayload: Equatable, Sendable {
         let info = response.notification.request.content.userInfo, actionID = response.actionIdentifier
         nonisolated(unsafe) let sendableInfo = info
         if await ProactiveEngine.shared.handleNotification(actionIdentifier: actionID, userInfo: sendableInfo) { return }
-        guard let payload = CatpawNotificationPayload(userInfo: response.notification.request.content.userInfo) else { return }
+        guard let payload = CatpawNotificationPayload(userInfo: response.notification.request.content.userInfo) else {
+            // A proactive push without a conversation still lands somewhere useful: the 主动 inbox.
+            if info["catpaw_proactive_event"] is String, actionID == UNNotificationDefaultActionIdentifier {
+                await MainActor.run { CatpawRouteCenter.shared.pending = .proactive }
+            }
+            return
+        }
         // Category buttons write back through /push/action; a plain tap counts as `open`.
         let action = CatpawPushAction.serverAction(for: response.actionIdentifier)
         if let action { await CatpawPushTokenUploader.shared.sendPushAction(eventID: payload.eventID, action: action) }
@@ -108,7 +122,7 @@ struct CatpawNotificationPayload: Equatable, Sendable {
         await MainActor.run {
             CatpawAppDelegate.lastOpened = payload
             CatpawProactiveFeed.shared.refreshSoon()
-            if let url = payload.conversationURL { UIApplication.shared.open(url) }
+            if let url = payload.conversationURL { UIApplication.shared.open(url) } else { CatpawRouteCenter.shared.pending = .proactive }
         }
     }
 }
@@ -133,6 +147,17 @@ enum CatpawPushAction {
         case snooze60: return "snooze_1h"
         default: return nil
         }
+    }
+}
+/// Only handles quick actions; SwiftUI keeps owning the window.
+@MainActor final class CatpawSceneDelegate: NSObject, UIWindowSceneDelegate {
+    func windowScene(_ windowScene: UIWindowScene, performActionFor shortcutItem: UIApplicationShortcutItem, completionHandler: @escaping (Bool) -> Void) {
+        completionHandler(Self.route(shortcutItem))
+    }
+    @discardableResult static func route(_ item: UIApplicationShortcutItem) -> Bool {
+        guard let route = CatpawAppRoute(quickActionType: item.type) else { return false }
+        CatpawRouteCenter.shared.pending = route
+        return true
     }
 }
 #endif

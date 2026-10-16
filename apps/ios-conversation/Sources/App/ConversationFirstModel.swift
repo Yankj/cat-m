@@ -865,7 +865,7 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
         // Capture intent synchronously, so delayed scene Tasks cannot invert active/background.
         switch phase {
         case .active:sceneGeneration += 1;foreground=true;let generation=sceneGeneration;Task { await enterForeground(generation:generation) }
-        case .background:cancelImageConsent();let finish=beginSuspension();Task { await finish.value }
+        case .background:cancelImageConsent();let finish=beginSuspension();let grace=CatpawBackgroundGrace.begin("catpaw.suspend");Task { await finish.value;grace.end() }
         case .inactive:Task { try? await flushDraft() }
         @unknown default:break
         }
@@ -961,3 +961,20 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
         return planDraftsSaved && artifactDraftsSaved && composerSaved
     }
 }
+
+#if canImport(UIKit)
+import UIKit
+/// Asks iOS for a few seconds after backgrounding so draft/UI-state flush and stopObserving finish
+/// instead of being frozen mid-write. Ends on completion or when the system expires it.
+@MainActor final class CatpawBackgroundGrace {
+    private var id: UIBackgroundTaskIdentifier = .invalid
+    static func begin(_ name: String) -> CatpawBackgroundGrace {
+        let grace = CatpawBackgroundGrace()
+        grace.id = UIApplication.shared.beginBackgroundTask(withName: name) { [weak grace] in grace?.end() }
+        return grace
+    }
+    func end() { guard id != .invalid else { return }; UIApplication.shared.endBackgroundTask(id); id = .invalid }
+}
+#else
+@MainActor final class CatpawBackgroundGrace { static func begin(_ name: String) -> CatpawBackgroundGrace { .init() }; func end() {} }
+#endif

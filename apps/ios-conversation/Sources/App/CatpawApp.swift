@@ -256,8 +256,19 @@ struct OpenCatpawConversationIntent: AppIntent {
     func perform() async throws -> some IntentResult { .result() }
 }
 
+/// Long-press / Siri / Spotlight: open straight into a new conversation (never sends anything).
+struct NewCatpawConversationIntent: AppIntent {
+    static var title: LocalizedStringResource = "New Catpaw Conversation"
+    static var description = IntentDescription("Open Catpaw on a new, empty conversation. Nothing is sent until you type.")
+    static var openAppWhenRun = true
+    @MainActor func perform() async throws -> some IntentResult { CatpawRouteCenter.shared.pending = .newConversation; return .result() }
+}
+
 struct CatpawAppShortcuts: AppShortcutsProvider {
     static var appShortcuts: [AppShortcut] {
+        AppShortcut(intent: NewCatpawConversationIntent(),
+                    phrases: ["New conversation in \(.applicationName)", "Ask \(.applicationName)"],
+                    shortTitle: "New conversation", systemImageName: "square.and.pencil")
         AppShortcut(intent: OpenCatpawConversationIntent(),
                     phrases: ["Open a conversation in \(.applicationName)", "Open \(.applicationName)"],
                     shortTitle: "Open conversation", systemImageName: "bubble.left.and.bubble.right")

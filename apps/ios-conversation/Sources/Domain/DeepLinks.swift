@@ -35,4 +35,14 @@ public enum CatpawAppRoute: Equatable, Sendable {
         default: return nil
         }
     }
+    /// Home-screen quick actions (Info.plist `UIApplicationShortcutItems`). Types are app-local strings.
+    public static let quickActionTypes = ["catpawm.quick.new", "catpawm.quick.proactive", "catpawm.quick.memory"]
+    public init?(quickActionType type: String) {
+        switch type {
+        case "catpawm.quick.new": self = .newConversation
+        case "catpawm.quick.proactive": self = .proactive
+        case "catpawm.quick.memory": self = .memory
+        default: return nil
+        }
+    }
 }
