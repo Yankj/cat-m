@@ -10,5 +10,5 @@ test('uiPrompt carries the card-vs-text policy with 3 positive + 3 negative exam
  const set=JSON.parse(readFileSync(new URL('../../../qa/chat-ux-ui-policy/cases.json',import.meta.url),'utf8'));
  assert.equal(set.cases.length,20);assert.equal(set.cases.filter(c=>c.expect==='card').length,10);
  const examples=[...UI_POLICY.matchAll(/「([^」]+)」/g)].map(m=>m[1]);for(const c of set.cases)assert.ok(!examples.includes(c.text),c.id);
- const res=JSON.parse(readFileSync(new URL('../../../qa/chat-ux-ui-policy/RESULTS.json',import.meta.url),'utf8'));assert.ok(res.hit_rate>=0.85&&res.errors===0,'committed live result meets the bar');
+ const res=JSON.parse(readFileSync(new URL('../../../qa/chat-ux-ui-policy/RESULTS.json',import.meta.url),'utf8'));assert.ok(res.type_hit_rate>=0.85&&res.errors===0&&res.runs>=3,'committed live result: card TYPE >= 85% over >= 3 runs');
 });
