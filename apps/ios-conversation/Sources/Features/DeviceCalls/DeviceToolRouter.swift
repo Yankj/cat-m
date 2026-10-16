@@ -12,7 +12,9 @@ import UserNotifications
 /// Compose-type tools open the system sheet; the user sends there (cancel → `.cancelled`).
 @MainActor final class DeviceToolRouter: NSObject, DeviceToolExecuting {
     static let tools: Set<String> = Set(DeviceToolContract.clientTools)
-    private let store = EKEventStore()
+    private let store: EKEventStore
+    /// Additive: tests share one store (many EKEventStore instances → EventKit error 1021).
+    init(store: EKEventStore = EKEventStore()) { self.store = store; super.init() }
     private var composeContinuation: CheckedContinuation<DeviceCallStatus, Never>?
 
     func canExecute(_ tool: String) -> Bool { Self.tools.contains(tool) }

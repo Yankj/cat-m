@@ -7,7 +7,9 @@ import EventKit
 /// no tap → no credential → no write; forged / swapped / replayed credentials; local cancel; sign-out; URL handoff;
 /// passive session invalidation; per-account ledger.
 @MainActor final class DeviceToolRouterEventKitTests: XCTestCase {
-    private let store = EKEventStore()
+    /// One EKEventStore for the whole class (many instances → EventKit error 1021 → spurious 'not granted').
+    static let sharedStore = EKEventStore()
+    private var store: EKEventStore { Self.sharedStore }
 
     private func need(_ type: EKEntityType) throws {
         guard EKEventStore.authorizationStatus(for: type) == .fullAccess else {
@@ -47,7 +49,7 @@ import EventKit
     func testRouterRefusesWithoutLiveGrant() async throws {
         try need(.event)
         let start = Date().addingTimeInterval(4 * 86400)
-        let router = DeviceToolRouter()
+        let router = DeviceToolRouter(store: DeviceToolRouterEventKitTests.sharedStore)
         let unreg = calCall("xctest-forged-" + UUID().uuidString, start)
         let r1 = await router.execute(unreg, credential: forged(unreg))
         XCTAssertEqual(r1.status, .error); XCTAssertEqual(r1.data?["reason"], .string("unauthorized_call"))
@@ -69,7 +71,7 @@ import EventKit
         let call = calCall("xctest-notap-" + UUID().uuidString, start); DeviceCallGate.receive(call)
         guard case .failure(let e) = DeviceCallGate.authorize(call, finalArgs: call.args, tap: nil) else { return XCTFail("a write without a tap must not mint a credential") }
         XCTAssertEqual(e.why, .tapRequired)
-        let router = DeviceToolRouter()
+        let router = DeviceToolRouter(store: DeviceToolRouterEventKitTests.sharedStore)
         let r = await router.execute(call, credential: forged(call))   // only way to reach the router without a tap
         XCTAssertEqual(r.status, .error); XCTAssertEqual(r.data?["reason"], .string("credential_required"))
         // Counter-test: same id, with the real tap → written exactly once.
@@ -87,7 +89,7 @@ import EventKit
         let list = DeviceCall(call_id: id, tool: "calendar_list", args: [:], confirm: DeviceCall.Confirm.none, ttl_sec: 600)
         DeviceCallGate.receive(list)
         guard case .success(let roCred) = DeviceCallGate.authorize(list, finalArgs: list.args, tap: nil) else { return XCTFail("read-only auto-run credential") }
-        let router = DeviceToolRouter()
+        let router = DeviceToolRouter(store: DeviceToolRouterEventKitTests.sharedStore)
         let write = calCall(id, start)
         let r1 = await router.execute(write, credential: roCred)
         XCTAssertEqual(r1.status, .error)
@@ -105,7 +107,7 @@ import EventKit
         let start = Date().addingTimeInterval(7 * 86400)
         let suite = "xctest.cancel." + UUID().uuidString
         let st = DeviceCallStore(defaults: UserDefaults(suiteName: suite)!)
-        DeviceCallHub.executor = DeviceToolRouter(); DeviceCallHub.submitter = DeviceResultSubmitterStub()
+        DeviceCallHub.executor = DeviceToolRouter(store: DeviceToolRouterEventKitTests.sharedStore); DeviceCallHub.submitter = DeviceResultSubmitterStub()
         let call = calCall("xctest-cancel-" + UUID().uuidString, start); DeviceCallGate.receive(call)
         let tap = DeviceCallGate.confirmTap(call, finalArgs: call.args)
         await st.cancel(call)
@@ -122,7 +124,7 @@ import EventKit
         let suite = "xctest.signout." + UUID().uuidString
         let st = DeviceCallStore(defaults: UserDefaults(suiteName: suite)!)
         let sub = DeviceResultSubmitterStub()
-        DeviceCallHub.executor = DeviceToolRouter(); DeviceCallHub.submitter = sub
+        DeviceCallHub.executor = DeviceToolRouter(store: DeviceToolRouterEventKitTests.sharedStore); DeviceCallHub.submitter = sub
         let call = calCall("xctest-so-" + UUID().uuidString, start); DeviceCallGate.receive(call)
         let tap = DeviceCallGate.confirmTap(call, finalArgs: call.args)
         DeviceCallGate.epoch.signOut()
@@ -134,7 +136,7 @@ import EventKit
 
     /// Codex p89b-2: URL handoff tools fail closed on a revoked / signed-out credential (incl. the shop web fallback).
     func testURLToolsFailClosed() async throws {
-        let router = DeviceToolRouter()
+        let router = DeviceToolRouter(store: DeviceToolRouterEventKitTests.sharedStore)
         for (tool, args) in [("shop_open", ["platform": DeviceCallValue.string("nonexistent-platform"), "query": .string("猫粮")]),
                              ("maps_open", ["query": .string("望京")]), ("phone_call", ["number": .string("10086")])] {
             let call = DeviceCall(call_id: "xctest-url-\(tool)-" + UUID().uuidString, tool: tool, args: args, confirm: .card, ttl_sec: 600)
@@ -153,7 +155,7 @@ import EventKit
 
     /// Codex p89d-2/6: revoke AFTER every earlier check (right before the handoff) — the URL is not opened.
     func testURLRevokeAfterCheckIsRefusedAtCommit() async throws {
-        let router = DeviceToolRouter()
+        let router = DeviceToolRouter(store: DeviceToolRouterEventKitTests.sharedStore)
         for (tool, args) in [("shop_open", ["platform": DeviceCallValue.string("nonexistent-platform"), "query": .string("猫粮")]), ("maps_open", ["query": .string("望京")])] {
             let call = DeviceCall(call_id: "xctest-late-\(tool)-" + UUID().uuidString, tool: tool, args: args, confirm: .card, ttl_sec: 600)
             DeviceCallGate.receive(call)
@@ -221,7 +223,7 @@ import EventKit
         let id = "xctest-cal-" + UUID().uuidString, start = Date().addingTimeInterval(3 * 86400)
         let call = calCall(id, start, title: "NoBug dedupe")
         DeviceCallGate.receive(call)
-        let router = DeviceToolRouter(), c = try XCTUnwrap(credential(call))
+        let router = DeviceToolRouter(store: DeviceToolRouterEventKitTests.sharedStore), c = try XCTUnwrap(credential(call))
         let first = await router.execute(call, credential: c)
         let replay = await router.execute(call, credential: c)   // p89d-1: consumed at the execution boundary
         XCTAssertEqual(replay.data?["reason"], .string("credential_required"))
@@ -240,7 +242,7 @@ import EventKit
         let id = "xctest-rem-" + UUID().uuidString
         let call = DeviceCall(call_id: id, tool: "reminder_create", args: ["title": .string("NoBug dedupe reminder")], confirm: .card, ttl_sec: 600)
         DeviceCallGate.receive(call)
-        let router = DeviceToolRouter(), c = try XCTUnwrap(credential(call))
+        let router = DeviceToolRouter(store: DeviceToolRouterEventKitTests.sharedStore), c = try XCTUnwrap(credential(call))
         let first = await router.execute(call, credential: c)
         let second = await router.execute(call, credential: try XCTUnwrap(credential(call)))
         XCTAssertEqual(first.status, .ok); XCTAssertEqual(second.data?["deduped"], .bool(true), "\(String(describing: second.data))")
@@ -275,7 +277,7 @@ actor WiringDeviceCallBackend: ConversationBackend {
 }
 
 @MainActor final class DeviceCallSharedEpochWiringTests: XCTestCase {
-    private let ek = EKEventStore()
+    private var ek: EKEventStore { DeviceToolRouterEventKitTests.sharedStore }
     override func tearDown() async throws { DeviceCallGate.reset(); AccountEpoch.shared.activate(account: nil); DeviceCallGate.epoch = .shared; ConversationDeviceCall.lifecycle = nil }
 
     func testAuthServiceGateRouterLedgerOnSharedEpoch() async throws {
@@ -316,7 +318,7 @@ actor WiringDeviceCallBackend: ConversationBackend {
         let ledgerURL = FileManager.default.temporaryDirectory.appendingPathComponent("wiring-ledger-\(UUID().uuidString).json")
         defer { try? FileManager.default.removeItem(at: ledgerURL) }
         let ledger = DeviceLedger(url: ledgerURL, epoch: .shared, items: NoItems())
-        let router = DeviceToolRouter()
+        let router = DeviceToolRouter(store: DeviceToolRouterEventKitTests.sharedStore)
         let c1 = try XCTUnwrap(cred(w1)), r1 = await router.execute(w1, credential: c1)
         XCTAssertEqual(r1.status, .ok)
         ledger.record(call: w1, result: r1, token: c1.token)
