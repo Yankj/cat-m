@@ -39,7 +39,7 @@ import Foundation
     static func expect(_ ok: Bool, _ m: String) { if ok { passed += 1; print("PASS \(m)") } else { failed += 1; print("FAIL \(m)") } }
 
     static func main() async {
-        await memory(); await deviceCalls(); proactive(); nearby(); groundedFixtures(); contactsPrivacy(); replyVariants(); followUps(); deviceUndo()
+        await memory(); await deviceCalls(); proactive(); nearby(); groundedFixtures(); contactsPrivacy(); replyVariants(); followUps(); await deviceUndo()
         print("nobug-p0 portable: \(passed) passed, \(failed) failed")
         exit(failed == 0 ? 0 : 1)
     }
@@ -275,7 +275,33 @@ import Foundation
     }
 
     /// chat-ux #4: follow-up fence parsing.
-    static func deviceUndo() {
+    @MainActor final class FlakyUndoSubmitter: DeviceResultSubmitting {
+        var online = false; var sent: [String] = []
+        func submit(_ result: DeviceCallResult) async throws {}
+        func reportUndo(callID: String, outcome: DeviceUndoOutcome) async throws { guard online else { throw URLError(.notConnectedToInternet) }; sent.append(callID + ":" + outcome.rawValue) }
+    }
+    @MainActor static func deviceUndoQueue() async {
+        let defaults = UserDefaults(suiteName: "nobug-undo-\(UUID())")!
+        let saved = DeviceCallHub.submitter; defer { DeviceCallHub.submitter = saved }
+        let flaky = FlakyUndoSubmitter(); DeviceCallHub.submitter = flaky
+        await DeviceCallStore(defaults: defaults).reportUndo(callID: "u1", outcome: .undone)
+        expect(flaky.sent.isEmpty, "#6 offline undo report not sent yet")
+        let relaunched = DeviceCallStore(defaults: defaults)            // app restart: queue comes back from disk
+        expect(relaunched.undoQueue.pending == ["u1": .undone], "#6 pending undo survives an app restart")
+        flaky.online = true
+        _ = await relaunched.retryPendingReports()
+        expect(flaky.sent == ["u1:undone"] && relaunched.undoQueue.isEmpty, "#6 retryPendingReports delivers the queued undo to the model")
+        expect(DeviceCallStore(defaults: defaults).undoQueue.isEmpty, "#6 acknowledged undo is not re-sent after another restart")
+        var q = DeviceUndoQueue(); q.enqueue("a", .failed); q.enqueue("b", .undone)
+        let left = await q.drained { id, _ in if id == "a" { throw URLError(.timedOut) } }
+        expect(left.pending == ["a": .failed], "#6 drain keeps only failed reports")
+        var idx = DeviceCallTurnIndex(); let c = UUID(), t = UUID(); idx.set("k", conversationID: c, turnID: t)
+        idx.save(defaults); expect(DeviceCallTurnIndex.load(defaults).turn(for: "k").map { $0 == (c, t) } == true, "#6 call→turn index persists for post-restart undo")
+        for i in 0..<(DeviceCallTurnIndex.capacity + 5) { idx.set("x\(i)", conversationID: c, turnID: t, at: Date(timeIntervalSince1970: Double(i))) }
+        expect(idx.entries.count == DeviceCallTurnIndex.capacity, "#6 index is capped")
+    }
+    static func deviceUndo() async {
+        await deviceUndoQueue()
         expect(DeviceUndoRules.canUndo(tool: "calendar_create", status: "ok", alreadyUndone: false), "#6 ok calendar_create can be undone")
         expect(DeviceUndoRules.canUndo(tool: "alarm_set", status: "ok", alreadyUndone: false) && DeviceUndoRules.canUndo(tool: "reminder_create", status: "ok", alreadyUndone: false), "#6 reminder/alarm undoable")
         expect(!DeviceUndoRules.canUndo(tool: "calendar_create", status: "denied", alreadyUndone: false), "#6 failed write has nothing to undo")

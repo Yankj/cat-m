@@ -490,7 +490,7 @@ public actor ConversationSessionService {
         case .deviceCall(let call):
             guard Self.isPlain(request) else { throw ConversationSessionError.invalidEvent }
             if !(turn.pendingDeviceCalls ?? []).contains(where: { $0.callID == call.callID }) { turn.pendingDeviceCalls = (turn.pendingDeviceCalls ?? []) + [call] }
-            deviceCallIndex[call.callID] = (request.conversationID, request.operationID)
+            deviceCallIndex[call.callID] = (request.conversationID, request.operationID); rememberDeviceTurn(call.callID, request.conversationID, request.operationID)
         case .suspended(let ids, _):
             let pending = Set((turn.pendingApprovals ?? []).map(\.interruptID)).union((turn.pendingDeviceCalls ?? []).map(\.interruptID)).union(turn.pendingUIBlocks.compactMap(\.interruptID)).union((turn.pendingUIApprovals ?? []).map(\.interruptID))
             guard !ids.isEmpty, Set(ids).isSubset(of: pending) else { throw ConversationSessionError.invalidEvent }
@@ -1089,7 +1089,7 @@ public actor ConversationSessionService {
     /// Chat-UX #6: tells the turn that created `callID` that the user undid it on the phone (the model hears it with
     /// the next message). Needs the call to have been seen this session; the local delete never waits on this.
     public func submitDeviceUndo(scope: DataScope, callID: String, outcome: DeviceUndoOutcome) async throws {
-        guard let (conversationID, turnID) = deviceCallIndex[callID] else { throw ConversationApprovalFailure.noPendingApproval }
+        guard let (conversationID, turnID) = deviceCallIndex[callID] ?? DeviceCallTurnIndex.load(.standard).turn(for: callID) else { throw ConversationApprovalFailure.noPendingApproval }
         let saved = try await read(scope: scope, conversationID: conversationID)
         guard let turn = saved.turns.first(where: { $0.id == turnID }) else { throw ConversationApprovalFailure.noPendingApproval }
         try await backend.submitDeviceUndo(turn.request, callID: callID, outcome: outcome, operationID: stableID("device-undo-\(turnID)-\(callID)"))
@@ -1098,8 +1098,14 @@ public actor ConversationSessionService {
     public func pendingDeviceCalls(scope: DataScope, conversationID: UUID) async throws -> [ConversationDeviceCall] {
         let saved = try await read(scope: scope, conversationID: conversationID)
         var out: [ConversationDeviceCall] = []
-        for turn in saved.turns { for call in turn.pendingDeviceCalls ?? [] { deviceCallIndex[call.callID] = (conversationID, turn.id); out.append(call) } }
+        for turn in saved.turns { for call in turn.pendingDeviceCalls ?? [] { deviceCallIndex[call.callID] = (conversationID, turn.id); rememberDeviceTurn(call.callID, conversationID, turn.id); out.append(call) } }
         return out
+    }
+    /// Persisted call_id → turn for device-undo after an app restart (chat-ux #6).
+    private func rememberDeviceTurn(_ callID: String, _ conversationID: UUID, _ turnID: UUID) {
+        var index = DeviceCallTurnIndex.load(.standard)
+        guard index.turn(for: callID) == nil else { return }
+        index.set(callID, conversationID: conversationID, turnID: turnID); index.save(.standard)
     }
     private static func journalID(_ id: UUID) -> UUID { stableID("conversation-first-journal-\(id)") }
     private static func encode<T: Encodable>(_ value: T) throws -> String { let encoder = JSONEncoder(); encoder.outputFormatting = [.sortedKeys]; return String(decoding: try encoder.encode(value), as: UTF8.self) }
