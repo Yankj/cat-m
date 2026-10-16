@@ -127,8 +127,8 @@ import UIKit
     private var liveRow: some View {
         Button { if !model.steps.isEmpty { userExpanded = !expanded } } label: {
             HStack(spacing: 8) {
-                CatpawPresence(state: model.thinkingSummary != nil ? .thinking : .waiting)
-                    .scaleEffect(0.75).frame(width: 24, height: 24)
+                PlushMascot(pose: model.thinkingSummary != nil ? .thinking : .idle, size: 22)
+                    .frame(width: 24, height: 24)
                 TimelineView(.periodic(from: model.thinkingStartedAt, by: 1)) { ctx in
                     Text(liveTitle(now: ctx.date))
                         .font(CatpawTypography.Role.secondary.font)
