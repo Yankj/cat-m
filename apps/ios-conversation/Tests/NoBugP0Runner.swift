@@ -57,7 +57,7 @@ extension Result { var isFailure: Bool { if case .failure = self { return true }
     static func expect(_ ok: Bool, _ m: String) { if ok { passed += 1; print("PASS \(m)") } else { failed += 1; print("FAIL \(m)") } }
 
     static func main() async {
-        await memory(); await deviceCalls(); proactive(); nearby(); groundedFixtures(); contactsPrivacy(); replyVariants(); followUps(); await deviceUndo(); dictation(); await codexP0_1(); await codexPR89(); await accountEpoch(); await codexP89c()
+        await memory(); await deviceCalls(); proactive(); nearby(); groundedFixtures(); contactsPrivacy(); replyVariants(); followUps(); await deviceUndo(); dictation(); await codexP0_1(); await codexPR89(); await accountEpoch(); await codexP89c(); proactiveDelivery()
         print("nobug-p0 portable: \(passed) passed, \(failed) failed")
         exit(failed == 0 ? 0 : 1)
     }
@@ -670,5 +670,49 @@ extension Result { var isFailure: Bool { if case .failure = self { return true }
         expect(FollowUpSuggestions.parse(d("只有一个"), closed: true).isEmpty && FollowUpSuggestions.parse(d("x\nx"), closed: true).isEmpty, "followups: fewer than 2 distinct → nothing")
         expect(FollowUpSuggestions.parse(d(String(repeating: "长", count: 31) + "\n短一\n短二"), closed: true) == ["短一", "短二"], "followups: over-long lines dropped")
         expect(ConversationUIEvent.kindsHeaderValue.hasSuffix(",followups") && !ConversationUIEvent.kinds.contains("followups"), "followups: advertised as capability, not a ui.block kind")
+    }
+    /// P0-3: four delivery levels survive on the client; on-device daily cap + quiet hours apply even offline.
+    static func proactiveDelivery() {
+        var cal = Calendar(identifier: .gregorian); cal.timeZone = TimeZone(identifier: "Asia/Shanghai")!
+        let day = cal.date(from: DateComponents(year: 2026, month: 10, day: 16, hour: 14))!
+        let night = cal.date(from: DateComponents(year: 2026, month: 10, day: 16, hour: 23, minute: 30))!
+        let p = ProactiveDeliveryPolicy.standard
+        let c = ProactiveDelivery.channels
+        expect(c(.silent) == .init(inApp: false, notification: false, timeSensitive: false, liveActivity: false), "P0-3 silent: nothing delivered")
+        expect(c(.card) == .init(inApp: true, notification: false, timeSensitive: false, liveActivity: false), "P0-3 card: in-app only, no system notification")
+        expect(c(.notify) == .init(inApp: true, notification: true, timeSensitive: false, liveActivity: false), "P0-3 notify: normal notification")
+        expect(c(.interrupt) == .init(inApp: true, notification: true, timeSensitive: true, liveActivity: true), "P0-3 interrupt: time-sensitive + Live Activity")
+        expect(ProactiveLevel(server: "notify") == .notify && ProactiveLevel(server: "bogus") == .card, "P0-3 server level parsed; unknown → card (never louder)")
+        // Matrix: (proposed, confidence, now, deliveredToday) → final level; notification count must match the decision.
+        struct Row { let name: String; let proposed: ProactiveLevel; let conf: Double?; let now: Date; let today: Int; let want: ProactiveLevel }
+        let rows: [Row] = [
+            .init(name: "day notify", proposed: .notify, conf: 0.8, now: day, today: 0, want: .notify),
+            .init(name: "day card", proposed: .card, conf: 0.8, now: day, today: 0, want: .card),
+            .init(name: "night notify → card", proposed: .notify, conf: 0.8, now: night, today: 0, want: .card),
+            .init(name: "night interrupt (low conf) → card", proposed: .interrupt, conf: 0.7, now: night, today: 0, want: .card),
+            .init(name: "night interrupt (≥0.9) kept", proposed: .interrupt, conf: 0.95, now: night, today: 0, want: .interrupt),
+            .init(name: "daily cap → card", proposed: .notify, conf: 0.8, now: day, today: p.dailyCap, want: .card),
+            .init(name: "low confidence 0.01 → silent", proposed: .card, conf: 0.01, now: day, today: 0, want: .silent),
+            .init(name: "offline day notify", proposed: .notify, conf: nil, now: day, today: 0, want: .notify),
+            .init(name: "offline night → card", proposed: .notify, conf: nil, now: night, today: 0, want: .card),
+            .init(name: "offline interrupt at night → card (no conf to justify)", proposed: .interrupt, conf: nil, now: night, today: 0, want: .card),
+            .init(name: "offline cap → card", proposed: .interrupt, conf: nil, now: day, today: p.dailyCap, want: .card),
+        ]
+        var log = ProactiveDeliveryLog(), sent = 0, expected = 0
+        for r in rows {
+            let got = ProactiveDelivery.finalLevel(proposed: r.proposed, confidence: r.conf, now: r.now, calendar: cal, deliveredToday: r.today, policy: p)
+            expect(got == r.want, "P0-3 matrix \(r.name): \(got.rawValue)")
+            if c(got).notification { sent += 1; log.record(got, at: r.now) }
+            if c(r.want).notification { expected += 1 }
+        }
+        expect(sent == expected && sent == 3, "P0-3 matrix: actual notifications (\(sent)) == decided (\(expected))")
+        // On-device cap counts only notify/interrupt delivered on the same local day.
+        var l2 = ProactiveDeliveryLog()
+        for i in 0..<p.dailyCap { l2.record(.notify, at: day.addingTimeInterval(Double(i) * 60)) }
+        l2.record(.card, at: day)
+        expect(l2.deliveredToday(now: day.addingTimeInterval(3600), calendar: cal) == p.dailyCap, "P0-3 cap counts notify/interrupt only")
+        expect(l2.deliveredToday(now: day.addingTimeInterval(86400), calendar: cal) == 0, "P0-3 cap resets next local day")
+        expect(ProactiveDelivery.isQuiet(night, calendar: cal, policy: p) && !ProactiveDelivery.isQuiet(day, calendar: cal, policy: p)
+               && ProactiveDelivery.isQuiet(cal.date(from: DateComponents(year: 2026, month: 10, day: 17, hour: 7))!, calendar: cal, policy: p), "P0-3 quiet hours 22–8 wrap midnight")
     }
 }

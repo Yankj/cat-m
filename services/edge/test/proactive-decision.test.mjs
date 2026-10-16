@@ -97,3 +97,11 @@ test('decision model adapter: OpenRouter first then Agnes; keys only from env, n
   assert.equal((await m.decide({})).decision, 'card'); assert.equal(m.lastRoute(), 'agnes'); assert.equal(hits.length, 2);
   assert.ok(!JSON.stringify(m).includes('k-or')); assert.equal(createDecisionModel({ get: () => undefined }), null);
 });
+
+test('P0-3: confidence far below threshold yields silent, not a forced card', async () => {
+  let { call } = setup({ model: fakeLLM({ decision: 'card', reason: '也许有事', confidence: 0.01 }) });
+  let r = await call('POST', BASE + '/evaluate', sc('meeting_soon_far'));
+  assert.equal(r.body.decision, 'silent'); assert.match(r.body.trace.join(), /silent/);
+  ({ call } = setup({ model: fakeLLM({ decision: 'interrupt', reason: '不太确定', confidence: 0.2 }) }));
+  r = await call('POST', BASE + '/evaluate', sc('meeting_soon_far')); assert.equal(r.body.decision, 'silent');
+});
