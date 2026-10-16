@@ -43,6 +43,7 @@ import ActivityKit
         var timer: Task<Void, Never>?
         var answering = false
         var kind = CatpawWorkAttributes.ContentState.Kind.thinking
+        var token = AccountEpoch.shared.capture()   // Codex PR91 p91c-3: account the turn started under
     }
     private var turns: [UUID: Turn] = [:]
     private var tokenObservers: [String: Task<Void, Never>] = [:]
@@ -121,6 +122,7 @@ import ActivityKit
 
     private func startIfNeeded(_ id: UUID) {
         guard var turn = turns[id], turn.activity == nil, !turn.conversationID.isEmpty else { return }
+        guard turn.token != nil, AccountEpoch.shared.isValid(turn.token) else { turns[id] = nil; return }   // signed out / switched: never request
         guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
         let attributes = CatpawWorkAttributes(taskID: id.uuidString, conversationID: turn.conversationID, title: ui("Catpaw 正在工作"))
         do {

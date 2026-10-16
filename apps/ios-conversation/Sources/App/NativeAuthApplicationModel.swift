@@ -185,6 +185,7 @@ struct NativeWorkspaceRetrySchedule: Sendable {
             if !isFixture { let routeScope=partition.scope; ModelRouteCatalog.shared.install { await backend.modelRoutes(scope:routeScope) } }
             let memory=isFixture ? nil : try NativeMemoryComposition.service(repository:repository,configuration:chatConfiguration,credentials:credentials)
             if !isFixture { MemoryLibraryHub.installAgentMemory(configuration:chatConfiguration,credentials:credentials); MemoryEventSink.installSideChannel() }
+            if !isFixture, let uid=state.user?.id { Task { _ = await ConversationMemoryAtRest.migrateAll(repository, subject: uid) } }   // Codex PR91 p91c-5: all rows, gated, retried each launch
             var selected:any ConversationBackend=isFixture ? UnconfiguredConversationBackend() : backend
             #if DEBUG
             selected=CatpawDemoBackendSwitch.select(selected)
@@ -756,6 +757,7 @@ struct NativeWorkspaceRetrySchedule: Sendable {
         // p89i deterministic order: 1 sync epoch bump → 2 collect parked → 3 user decision → 4 apply → 5 observers.
         AccountEpoch.shared.signOut()   // 1. synchronous barrier FIRST: every in-flight account-bound write is refused from here
         DeviceCallGate.reset()          //    Codex p89b-4: grants/taps/credentials die synchronously, before any await
+        CatpawLeaveActivity.stopAll()   // Codex PR91 p91c-3: Live Activities + pending work-activity timers, before the first await
         warmup?.cancel();recoveryPathWait?.cancel();recoveryPathWait=nil
         offlineRecoveryTask?.cancel();offlineRecoveryTask=nil   // p89g-2
         workspaceFlight?.task.cancel();workspaceFlight=nil;workspaceReadyKey=nil;wakeRetry()

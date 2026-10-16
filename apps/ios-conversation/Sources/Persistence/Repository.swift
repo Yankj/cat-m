@@ -35,6 +35,13 @@ public actor Repository {
         scoped.journal = snapshot.journal.filter { $0.value.scope == scope }
         return scoped
     }
+    /// Live preference records whose key starts with `prefix`, across scopes (at-rest migration only).
+    public func preferenceRecords(keyPrefix prefix: String) -> [StoredRecord] {
+        snapshot.records.values.filter { r in
+            guard r.header.deletedAt == nil, case .preference(let p) = r.payload else { return false }
+            return p.key.hasPrefix(prefix)
+        }.sorted { $0.header.id.uuidString < $1.header.id.uuidString }
+    }
     public func record(_ id: UUID, scope: DataScope) throws -> StoredRecord {
         guard let r = snapshot.records[id], r.header.deletedAt == nil else { throw CatpawError.missing }
         guard r.header.scope == scope else { throw CatpawError.scopeMismatch }
