@@ -16,9 +16,12 @@ public actor NativeAuthSessionManager {
     private var recoveryCandidate: NativeAuthCredential?
     private var value = NativeAuthSnapshot(phase: .signedOut, user: nil, generation: 0, message: nil)
     private var observers: [UUID: AsyncStream<NativeAuthSnapshot>.Continuation] = [:]
-    public init(configuration: NativeAuthConfiguration, remote: any NativeAuthRemote, vault: any NativeAuthVault, barrier: any NativeAuthLogoutBarrier, now: @escaping @Sendable () -> Date = { Date() }) {
-        self.configuration = configuration; self.remote = remote; self.vault = vault; self.barrier = barrier; self.now = now
+    public init(configuration: NativeAuthConfiguration, remote: any NativeAuthRemote, vault: any NativeAuthVault, barrier: any NativeAuthLogoutBarrier, now: @escaping @Sendable () -> Date = { Date() }, accountBarrier: AccountEpoch? = nil) {
+        self.configuration = configuration; self.remote = remote; self.vault = vault; self.barrier = barrier; self.now = now; self.accountBarrier = accountBarrier
     }
+    /// Codex p89d-3: when set (the app passes AccountEpoch.shared), publishing a phase without a usable session signs the
+    /// shared account barrier out synchronously, inside the manager, before the snapshot is delivered to any observer.
+    private let accountBarrier: AccountEpoch?
     public func snapshot() -> NativeAuthSnapshot { value }
     public func canRetryRecovery() throws -> Bool {
         guard !logoutInProgress, pendingPersistence == nil else { return false }
@@ -108,6 +111,10 @@ public actor NativeAuthSessionManager {
     private func detach(_ id: UUID) { observers.removeValue(forKey: id) }
     private func publish(_ phase: NativeAuthSnapshot.Phase, message: String? = nil) {
         value = NativeAuthSnapshot(phase: phase, user: credential?.user, generation: generation, message: message)
+        if let accountBarrier, accountBarrier.currentAccount != nil,
+           ![.authenticated, .refreshing, .restoring].contains(phase) || value.user == nil || value.user?.id.uuidString != accountBarrier.currentAccount {
+            accountBarrier.signOut()
+        }
         for observer in observers.values { observer.yield(value) }
     }
     public func signUp(email: String,password: String) async throws -> Bool {
