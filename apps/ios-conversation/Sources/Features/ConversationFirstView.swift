@@ -29,6 +29,9 @@ import CatpawImageComposer
     @AccessibilityFocusState private var menuFocused:Bool
     @State private var history = false
     @State private var replyVariants = ReplyVariantStore()
+    /// chat-ux #1: prompt being edited (root turn of its variant group + current text).
+    private struct EditingPrompt: Identifiable { let root: UUID; let text: String; var id: UUID { root } }
+    @State private var editingPrompt: EditingPrompt?
     @State private var settings = false
     @State private var conversationMenuPresented=false
     @State private var pendingConversationSettings=false
@@ -230,10 +233,25 @@ import CatpawImageComposer
     }
     /// Client-side regenerate: re-send the original prompt as a new turn and record it as a variant.
     private func regenerate(_ root:UUID) {
-        guard model.draft.isEmpty,let prompt=timelineRows.first(where:{$0.turnID==root && $0.message.role == .user})?.message.content,!prompt.isEmpty else {return}
+        let promptTurn=replyVariants.promptTurn(for:root)   // edited prompt when the user is on an edited version
+        guard model.draft.isEmpty,let prompt=timelineRows.first(where:{$0.turnID==promptTurn && $0.message.role == .user})?.message.content,!prompt.isEmpty else {return}
         let old=Set(model.outgoingMessages.map(\.id))
         model.editDraft(prompt);model.prepareSend()
         if let admitted=model.outgoingMessages.last(where:{!old.contains($0.id)}) {followingLatest=true;replyVariants.addVariant(original:root,newTurn:admitted.id)}
+    }
+    /// chat-ux #1: edit is offered on the latest prompt only (variants are linear), when a new turn can start.
+    private func editAction(_ message:ConversationTranscriptMessage,turnID:UUID?)->((String)->Void)? {
+        guard let turnID,!model.busy,model.draft.isEmpty,model.canAcceptDraft,
+              let last=visibleTimelineRows.last(where:{$0.isUserMessage})?.turnID,replyVariants.original(of:last)==replyVariants.original(of:turnID) else {return nil}
+        let root=replyVariants.original(of:turnID)
+        return {text in editingPrompt=EditingPrompt(root:root,text:text)}
+    }
+    /// Edit & resend: send the edited prompt as a new turn, recorded as an edited version of the same group.
+    private func resendEdited(_ root:UUID,_ text:String) {
+        guard model.draft.isEmpty,!text.isEmpty else {return}
+        let old=Set(model.outgoingMessages.map(\.id))
+        model.editDraft(text);model.prepareSend()
+        if let admitted=model.outgoingMessages.last(where:{!old.contains($0.id)}) {followingLatest=true;replyVariants.addEdit(original:root,newTurn:admitted.id)}
     }
     private var renderedTimelineRows:[RenderedTimelineRow] {timelineMemo.rendered}
     private func computeRenderedTimelineRows()->[RenderedTimelineRow] {
@@ -480,6 +498,7 @@ import CatpawImageComposer
         .overlay { VoiceModeHost().animation(.easeOut(duration: 0.25), value: ComposerDictation.shared.dictating) }
         .onChange(of: CatpawRouteCenter.shared.pending) { _, _ in consumeAppRoute() }
         .sheet(isPresented: $proactiveInboxPresented) { NavigationStack { ProactiveInboxView() } }
+        .sheet(item: $editingPrompt) { e in MessageEditSheet(original: e.text) { resendEdited(e.root, $0) } }
         .composerAttachPopover(isPresented: Binding(get: { ComposerAttachPopoverState.shared.isPresented }, set: { ComposerAttachPopoverState.shared.isPresented = $0 }),
                                remaining: ComposerAttachPopoverState.shared.remaining,
                                onAdd: { items in ComposerAttachPopoverState.shared.add(items); ComposerAttachPopoverState.shared.isPresented = false })
@@ -958,7 +977,7 @@ import CatpawImageComposer
             VStack(alignment:.trailing,spacing:4) {
                 ConversationUserMessageLayout {
                     ConversationUserBubbleText(content:message.content)   // selection moved to the long-press 选择 sheet
-                        .messageLongPress(id:message.id.uuidString,content:.text(message.content),alignment:.trailing,onReply:quote){userBubblePreview(message)}   // long-press menu (MessageActions/)
+                        .messageLongPress(id:message.id.uuidString,content:.text(message.content),alignment:.trailing,onReply:quote,onEdit:editAction(message,turnID:turnID)){userBubblePreview(message)}   // long-press menu (MessageActions/)
                 }
                     .accessibilityIdentifier("chat.userMessage")
                     #if DEBUG
