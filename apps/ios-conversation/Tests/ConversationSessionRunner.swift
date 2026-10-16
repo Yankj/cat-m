@@ -196,7 +196,8 @@ actor CancelScenarioBackend: ConversationBackend {
     private var transportFailures: Int
     private var live: AsyncThrowingStream<ConversationTurnEvent, Error>.Continuation?
     private(set) var replies = 0, cancels = 0, observes = 0
-    init(mode: Mode, transportFailures: Int = 0) { self.mode = mode; self.transportFailures = transportFailures }
+    let onCancel: (@Sendable () -> Void)?
+    init(mode: Mode, transportFailures: Int = 0, onCancel: (@Sendable () -> Void)? = nil) { self.mode = mode; self.transportFailures = transportFailures; self.onCancel = onCancel }
     func connection(scope: DataScope) async -> ConversationConnection { ConversationConnection(state: .connected, provider: "Explicit test backend", detail: "Test only") }
     func reply(_ r: ConversationTurnRequest) async throws -> AsyncThrowingStream<ConversationTurnEvent, Error> {
         replies += 1
@@ -212,7 +213,7 @@ actor CancelScenarioBackend: ConversationBackend {
         ConversationTurnEvent(operationID: r.operationID, epoch: r.epoch, sequence: 2, payload: mode == .raced ? .completed(messageID: message, finalTextHash: textHash("部分回答")) : .failed(message: "cancelled", reconciliationRequired: false))
     }
     func cancelTurn(_ r: ConversationTurnRequest) async throws -> ConversationTurnCancelReceipt {
-        cancels += 1
+        cancels += 1; onCancel?()
         if transportFailures > 0 { transportFailures -= 1; throw ConversationTurnCancelFailure.transport }
         if mode == .readBackFailsWithDeviceCall { return .init(turnID: r.operationID, state: "failed", cancelled: true, alreadyTerminal: false) }   // stream stays silent
         live?.yield(terminal(r)); live?.finish(); live = nil // the stream's own terminal event races the response
@@ -294,14 +295,14 @@ func cancelSessionChecks(directory: URL) async throws {
     do {
         // Codex p89b-3 (real service path): cancel confirmed, read-back fails → the turn's device calls are revoked at the
         // gate boundary even though the journal stays `unknown` and still lists the card.
-        final class HookLog: @unchecked Sendable { let lock = NSLock(); var received: [String] = []; var revoked: [String] = [] }
+        final class HookLog: @unchecked Sendable { let lock = NSLock(); var received: [String] = []; var revoked: [String] = []; var revokedAtCancelPOST: [String]? }
         let hook = HookLog(), previous = ConversationDeviceCall.lifecycle
         ConversationDeviceCall.lifecycle = { e in
             hook.lock.lock(); defer { hook.lock.unlock() }
             switch e { case .received(let c, _, _, _): hook.received.append(c.callID); case .revoked(let ids): hook.revoked += ids }
         }
         defer { ConversationDeviceCall.lifecycle = previous }
-        let backend = CancelScenarioBackend(mode: .readBackFailsWithDeviceCall)
+        let backend = CancelScenarioBackend(mode: .readBackFailsWithDeviceCall, onCancel: { hook.lock.lock(); hook.revokedAtCancelPOST = hook.revoked; hook.lock.unlock() })
         let repository = try Repository(persistence: FilePersistence(url: directory.appendingPathComponent("cancel-devicecall.json")))
         let service = ConversationSessionService(repository: repository, backend: backend)
         let conversation = try await service.create(scope: Profiles.user)
@@ -317,7 +318,9 @@ func cancelSessionChecks(directory: URL) async throws {
         let after: [String] = { hook.lock.lock(); defer { hook.lock.unlock() }; return hook.revoked }()
         sending.cancel()
         try require(outcome == .reconciling(operationID: pending.turns.last!.id) && pending.turns.last?.state == .unknown && pending.turns.last?.pendingDeviceCalls?.first?.callID == "p89b-cancel-call", "p89b-3 setup: read-back failed, journal unknown, card still listed")
-        try require(after == ["p89b-cancel-call"], "p89b-3 cancel confirmed + read-back failed revokes the turn's device calls (stale card cannot run)")
+        let atPOST: [String]? = { hook.lock.lock(); defer { hook.lock.unlock() }; return hook.revokedAtCancelPOST }()
+        try require(atPOST == ["p89b-cancel-call"], "p89d-3 whole-turn stop revokes the turn's device calls BEFORE the cancel POST is sent")
+        try require(Set(after) == ["p89b-cancel-call"], "p89b-3 cancel confirmed + read-back failed keeps the turn's device calls revoked (stale card cannot run)")
     }
 }
 

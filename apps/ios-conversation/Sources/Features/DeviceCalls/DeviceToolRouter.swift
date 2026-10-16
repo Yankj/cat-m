@@ -21,10 +21,23 @@ import UserNotifications
         // Codex p89b-1: refuse without the execution credential minted by DeviceCallGate.authorize for THIS grant, tool and
         // final args (writes: only after the one-shot tap was consumed). Re-checked synchronously before every system effect.
         // p89b-2: the check is per call (captured credential), never a shared "active call" field.
+        // p89d-1: consume the one-shot credential at the execution boundary (a second execute with it is refused).
+        if let why = DeviceCallGate.consume(credential, call) { return DeviceCallGate.rejected(call, why) }
+        defer { DeviceCallGate.retire(credential) }
         func gate() -> DeviceCallResult? { DeviceCallGate.commitCheck(credential, call).map { DeviceCallGate.rejected(call, $0) } }
-        if let refused = gate() { return refused }
-        let allowed: @MainActor () -> Bool = { DeviceCallGate.commitCheck(credential, call) == nil }
-        func open(_ url: URL?) async -> Bool { await self.open(url, allowed: allowed) }
+        // p89d-2: final effects run INSIDE the commit gate (revoked-set + generation + epoch checked under one lock).
+        let commit: @MainActor (() -> Void) -> Bool = { effect in
+            if case .done = DeviceCallGate.commitEffect(credential, call, effect) { return true }; return false
+        }
+        func save(_ write: () throws -> Void) -> DeviceCallResult? {
+            do {
+                switch try DeviceCallGate.commitEffect(credential, call, write) {
+                case .done: return nil
+                case .refused(let why): return DeviceCallGate.rejected(call, why)
+                }
+            } catch { return DeviceCallResult(call_id: call.call_id, status: .error, data: nil) }
+        }
+        func open(_ url: URL?) async -> Bool { await self.open(url, commit: commit) }
         func opened(_ ok: Bool, _ success: DeviceCallResult, _ failure: DeviceCallResult) -> DeviceCallResult { ok ? success : (gate() ?? failure) }
         let a = call.args
         func s(_ k: String) -> String { a[k]?.text ?? "" }
@@ -60,6 +73,7 @@ import UserNotifications
                 "count": .number(Double(found.count))])
         case "calendar_create":
             guard await access(.event) else { return done(.denied) }
+            if let refused = gate() { return refused }   // p89d-5: no dedupe read after a revoke during the permission prompt
             let marker = DeviceToolContract.callMarker(call.call_id)
             let start = d("start") ?? Date().addingTimeInterval(3600), end = d("end") ?? start.addingTimeInterval(3600)
             // NoBug P0-3: dedupe by call_id — a relaunch after kill must not write a second event.
@@ -73,14 +87,12 @@ import UserNotifications
             e.startDate = start; e.endDate = end
             if case .array(let alarms)? = a["alarms"] { for case .number(let m) in alarms { e.addAlarm(EKAlarm(relativeOffset: m * 60)) } }
             e.calendar = store.defaultCalendarForNewEvents
-            if let refused = gate() { return refused }
-            // p89c: the write itself runs inside AccountEpoch.commit(token) — atomic with respect to sign-out / switch.
-            do { guard try DeviceCallGate.epoch.commit(credential.token, { try store.save(e, span: .thisEvent, commit: true) }) != nil else { return DeviceCallGate.rejected(call, .staleSession) } }
-            catch { return done(.error) }
+            if let refused = save({ try store.save(e, span: .thisEvent, commit: true) }) { return refused }   // p89d-2 single commit gate
             return done(.ok, ["event_id": .string(e.eventIdentifier ?? "")], open: "calshow:\(Int(e.startDate.timeIntervalSinceReferenceDate))")
         case "reminder_create", "alarm_set":
             // No public alarm API: alarm_set becomes a reminder with an absolute alarm (stated on the card).
             guard await access(.reminder) else { return done(.denied) }
+            if let refused = gate() { return refused }   // p89d-5
             if let existing = await existingReminder(call.call_id) {   // NoBug P0-3 dedupe
                 return done(.ok, ["reminder_id": .string(existing), "deduped": .bool(true)], open: "x-apple-reminderkit://")
             }
@@ -91,9 +103,7 @@ import UserNotifications
             }
             r.calendar = store.calendars(for: .reminder).first { $0.title == s("list") } ?? store.defaultCalendarForNewReminders()
             r.notes = "Catpaw · " + DeviceToolContract.callMarker(call.call_id)
-            if let refused = gate() { return refused }
-            do { guard try DeviceCallGate.epoch.commit(credential.token, { try store.save(r, commit: true) }) != nil else { return DeviceCallGate.rejected(call, .staleSession) } }
-            catch { return done(.error) }
+            if let refused = save({ try store.save(r, commit: true) }) { return refused }   // p89d-2 single commit gate
             return done(.ok, ["reminder_id": .string(r.calendarItemIdentifier)], open: "x-apple-reminderkit://")
         case "sms_compose":
             guard MFMessageComposeViewController.canSendText() else { return done(.error, ["reason": .string("sms_unavailable")]) }
@@ -188,10 +198,9 @@ import UserNotifications
     /// Opens an external URL. Must not await return-to-foreground: on Simulator, `https`/`tel`/
     /// store schemes hand off to Safari/Phone and the async open continuation can stall for minutes
     /// (UITests then miss `chat.deviceCall.receipt`). Race a short timeout and treat handoff as success.
-    /// p89b-2: `allowed` is the per-call gate check. It runs BEFORE and again synchronously inside the same MainActor
-    /// segment that calls `UIApplication.open` (no task hop between the final check and the handoff). Fails closed.
-    private func open(_ url: URL?, allowed: @escaping @MainActor () -> Bool) async -> Bool {
-        guard let url, allowed() else { return false }
+    /// p89d-2: `commit` runs the handoff inside DeviceCallGate.commitEffect (same lock as revocation); returns false if refused.
+    private func open(_ url: URL?, commit: @escaping @MainActor (() -> Void) -> Bool) async -> Bool {
+        guard let url else { return false }
         let scheme = (url.scheme ?? "").lowercased()
         let schemeAllowed = UIApplication.shared.canOpenURL(url)
             || ["https", "http", "tel", "maps", "mailto"].contains(scheme)
@@ -199,8 +208,8 @@ import UserNotifications
         return await withTaskGroup(of: Bool?.self) { group in
             group.addTask { @MainActor in
                 await withCheckedContinuation { (cont: CheckedContinuation<Bool, Never>) in
-                    guard allowed() else { cont.resume(returning: false); return }   // final check, same synchronous segment as open
-                    UIApplication.shared.open(url, options: [:]) { cont.resume(returning: $0) }
+                    let issued = commit { UIApplication.shared.open(url, options: [:]) { cont.resume(returning: $0) } }
+                    if !issued { cont.resume(returning: false) }   // refused under the commit gate: nothing opened
                 }
             }
             group.addTask {

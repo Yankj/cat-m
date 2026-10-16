@@ -11,7 +11,7 @@ import EventKit
 
     private func need(_ type: EKEntityType) throws {
         guard EKEventStore.authorizationStatus(for: type) == .fullAccess else {
-            throw XCTSkip("EventKit \(type == .event ? "calendar" : "reminders") not granted; run `xcrun simctl privacy <udid> grant \(type == .event ? "calendar" : "reminders") <bundle>` first")
+            XCTFail("skip is a failure"); throw CatpawError.unavailable("EventKit \(type == .event ? "calendar" : "reminders") not granted; run `xcrun simctl privacy <udid> grant \(type == .event ? "calendar" : "reminders") <bundle>` first")
         }
     }
 
@@ -71,7 +71,7 @@ import EventKit
         XCTAssertEqual(e.why, .tapRequired)
         let router = DeviceToolRouter()
         let r = await router.execute(call, credential: forged(call))   // only way to reach the router without a tap
-        XCTAssertEqual(r.status, .error); XCTAssertEqual(r.data?["reason"], .string("stale_session"))
+        XCTAssertEqual(r.status, .error); XCTAssertEqual(r.data?["reason"], .string("credential_required"))
         // Counter-test: same id, with the real tap → written exactly once.
         let ok = await router.execute(call, credential: try XCTUnwrap(credential(call)))
         XCTAssertEqual(ok.status, .ok)
@@ -151,6 +151,22 @@ import EventKit
         XCTAssertEqual(r.status, .error)
     }
 
+    /// Codex p89d-2/6: revoke AFTER every earlier check (right before the handoff) — the URL is not opened.
+    func testURLRevokeAfterCheckIsRefusedAtCommit() async throws {
+        let router = DeviceToolRouter()
+        for (tool, args) in [("shop_open", ["platform": DeviceCallValue.string("nonexistent-platform"), "query": .string("猫粮")]), ("maps_open", ["query": .string("望京")])] {
+            let call = DeviceCall(call_id: "xctest-late-\(tool)-" + UUID().uuidString, tool: tool, args: args, confirm: .card, ttl_sec: 600)
+            DeviceCallGate.receive(call)
+            let c = try XCTUnwrap(credential(call))
+            var hookRan = false
+            DeviceCallGate.beforeCommitHook = { hookRan = true; DeviceCallGate.revokedIDs.insert([call.call_id]) }   // service-thread style revoke
+            let r = await router.execute(call, credential: c)
+            DeviceCallGate.beforeCommitHook = nil
+            XCTAssertTrue(hookRan, "\(tool): the router reached the final commit")
+            XCTAssertEqual(r.data?["reason"], .string("call_revoked"), tool)
+        }
+    }
+
     /// Codex p89c-c: passive invalidation (loginRequired) closes the barrier synchronously and runs the account hooks.
     func testPassiveInvalidationIsSynchronous() async throws {
         let call = calCall("xctest-passive-" + UUID().uuidString, Date().addingTimeInterval(86400)); DeviceCallGate.receive(call)
@@ -168,7 +184,10 @@ import EventKit
 
     /// Codex p89c-b: the ledger is per account; another account can't see or undo; sign-out clears; uncertain → unknown.
     func testLedgerIsPerAccount() throws {
-        final class FakeItems: DeviceLedgerItemStore { var removed: [String] = []; func remove(kind: DeviceLedgerEntry.Kind, itemID: String) -> Bool? { removed.append(itemID); return true } }
+        final class FakeItems: DeviceLedgerItemStore {
+            var removed: [String] = []; var next: DeviceLedgerRemoval = .removed
+            func remove(kind: DeviceLedgerEntry.Kind, itemID: String) -> DeviceLedgerRemoval { removed.append(itemID); return next }
+        }
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("ledger-\(UUID().uuidString).json")
         defer { try? FileManager.default.removeItem(at: url) }
         let epoch = AccountEpoch(account: "A"), items = FakeItems()
@@ -185,7 +204,13 @@ import EventKit
                       result: .init(call_id: "led-late", status: .ok, data: ["event_id": .string("evt-late")]), token: tokA)
         epoch.activate(account: "A")
         XCTAssertEqual(ledger.active.map(\.id), ["led-1"], "a late result with A's old token is not recorded")
-        XCTAssertEqual(ledger.undo(callID: "led-1"), .undone); XCTAssertEqual(items.removed, ["evt-A"])
+        items.next = .permissionRevoked
+        XCTAssertEqual(ledger.undo(callID: "led-1"), .unknown, "p89d-5 no permission → unknown, not alreadyGone")
+        items.next = .undetermined
+        XCTAssertEqual(ledger.undo(callID: "led-1"), .unknown, "p89d-5 unreadable store → unknown")
+        XCTAssertFalse(ledger.isUndone(callID: "led-1"), "an unknown outcome never marks the entry undone")
+        items.next = .removed
+        XCTAssertEqual(ledger.undo(callID: "led-1"), .undone); XCTAssertEqual(items.removed, ["evt-A", "evt-A", "evt-A"])
         ledger.signOut(account: "A")
         XCTAssertTrue(ledger.entries.isEmpty)
         XCTAssertTrue(DeviceLedger(url: url, epoch: epoch, items: items).entries.isEmpty, "cleared on disk too")
@@ -197,7 +222,10 @@ import EventKit
         let call = calCall(id, start, title: "NoBug dedupe")
         DeviceCallGate.receive(call)
         let router = DeviceToolRouter(), c = try XCTUnwrap(credential(call))
-        let first = await router.execute(call, credential: c), second = await router.execute(call, credential: c)
+        let first = await router.execute(call, credential: c)
+        let replay = await router.execute(call, credential: c)   // p89d-1: consumed at the execution boundary
+        XCTAssertEqual(replay.data?["reason"], .string("credential_required"))
+        let second = await router.execute(call, credential: try XCTUnwrap(credential(call)))   // a fresh tap (e.g. relaunch re-run)
         XCTAssertEqual(first.status, .ok); XCTAssertEqual(second.status, .ok)
         XCTAssertEqual(first.data?["event_id"], second.data?["event_id"])
         XCTAssertEqual(second.data?["deduped"], .bool(true))
@@ -213,7 +241,8 @@ import EventKit
         let call = DeviceCall(call_id: id, tool: "reminder_create", args: ["title": .string("NoBug dedupe reminder")], confirm: .card, ttl_sec: 600)
         DeviceCallGate.receive(call)
         let router = DeviceToolRouter(), c = try XCTUnwrap(credential(call))
-        let first = await router.execute(call, credential: c), second = await router.execute(call, credential: c)
+        let first = await router.execute(call, credential: c)
+        let second = await router.execute(call, credential: try XCTUnwrap(credential(call)))
         XCTAssertEqual(first.status, .ok); XCTAssertEqual(second.data?["deduped"], .bool(true))
         XCTAssertEqual(first.data?["reminder_id"], second.data?["reminder_id"])
         let marker = DeviceToolContract.callMarker(id)
@@ -223,5 +252,88 @@ import EventKit
         print("nobug.eventkit reminder call_id=\(id) reminders_with_marker=\(matches.count)")
         XCTAssertEqual(matches.count, 1)
         for r in matches { try? store.remove(r, commit: true) }
+    }
+}
+
+/// Codex p89d-6: end-to-end wiring on the REAL AccountEpoch.shared (no injected epoch):
+/// Auth (NativeAuthSessionManager with accountBarrier .shared + the app's barrier) → ConversationSessionService (typed SSE
+/// device_call, principal-bound source token) → DeviceCallGate lifecycle → DeviceToolRouter (EventKit) / DeviceLedger.
+/// Passive invalidation happens at the manager (refresh fails) — no app model, no SwiftUI task.
+actor WiringDeviceCallBackend: ConversationBackend {
+    let calls: [ConversationDeviceCall]
+    private var live: AsyncThrowingStream<ConversationTurnEvent, Error>.Continuation?
+    init(calls: [ConversationDeviceCall]) { self.calls = calls }
+    func connection(scope: DataScope) async -> ConversationConnection { ConversationConnection(state: .connected, provider: "Wiring test backend", detail: "Test only") }
+    func reply(_ r: ConversationTurnRequest) async throws -> AsyncThrowingStream<ConversationTurnEvent, Error> {
+        let (stream, c) = AsyncThrowingStream.makeStream(of: ConversationTurnEvent.self)
+        for (i, call) in calls.enumerated() { c.yield(ConversationTurnEvent(operationID: r.operationID, epoch: r.epoch, sequence: i + 1, payload: .deviceCall(call))) }
+        live = c
+        return stream
+    }
+    func cancelTurn(_ r: ConversationTurnRequest) async throws -> ConversationTurnCancelReceipt { .init(turnID: r.operationID, state: "failed", cancelled: true, alreadyTerminal: false) }
+    func observe(_ r: ConversationTurnRequest) async throws -> ConversationObservation { throw CatpawError.unavailable("wiring test") }
+}
+
+@MainActor final class DeviceCallSharedEpochWiringTests: XCTestCase {
+    private let ek = EKEventStore()
+    override func tearDown() async throws { DeviceCallGate.reset(); AccountEpoch.shared.activate(account: nil); DeviceCallGate.epoch = .shared; ConversationDeviceCall.lifecycle = nil }
+
+    func testAuthServiceGateRouterLedgerOnSharedEpoch() async throws {
+        guard EKEventStore.authorizationStatus(for: .event) == .fullAccess else { return XCTFail("calendar access must be granted (simctl privacy) — a skip is a failure") }
+        XCTAssertTrue(DeviceCallGate.epoch === AccountEpoch.shared)
+        // Auth: real manager, shared barrier.
+        let config = try NativeAuthConfiguration(projectURL: URL(string: "https://abcdefghijklmnopqrst.supabase.co")!, publishableKey: "sb_publishable_offline_lifecycle_test",
+                                                 backendOrigin: URL(string: "https://backend.example.invalid")!, serverScopeID: UUID())
+        let clock = AuthTestClock(), storage = AuthTestStorage(), uid = UUID()
+        let remote = AuthTestRemote(issuer: config.issuer, id: uid, clock: clock)
+        let manager = NativeAuthSessionManager(configuration: config, remote: remote, vault: storage, barrier: storage, now: { clock.now() }, accountBarrier: .shared)
+        try await manager.signIn(email: "wiring@example.invalid", password: "fixture-only")
+        NativeAuthApplicationModel.applyAccountBarrier(await manager.snapshot(), fresh: true)
+        XCTAssertEqual(AccountEpoch.shared.currentAccount, uid.uuidString)
+        // Service → Gate: typed SSE device_call events, principal-bound.
+        DeviceCallGate.installLifecycle()
+        let start = Date().addingTimeInterval(9 * 86400)
+        func wire(_ id: String) -> ConversationDeviceCall {
+            let args: [String: DeviceCallValue] = ["title": .string("wiring"), "start": .string(DeviceCallDates.format(start)), "end": .string(DeviceCallDates.format(start.addingTimeInterval(1800)))]
+            return ConversationDeviceCall(interruptID: UUID().uuidString.lowercased(), callID: id, tool: "calendar_create", args: try! JSONEncoder().encode(args), confirm: "card", ttlSec: 600,
+                                          argsHash: String(repeating: "a", count: 64), expiresAt: ISO8601DateFormatter().string(from: Date().addingTimeInterval(600)))
+        }
+        let id1 = "wire-1-" + UUID().uuidString, id2 = "wire-2-" + UUID().uuidString
+        let repo = try Repository(persistence: FilePersistence(url: FileManager.default.temporaryDirectory.appendingPathComponent("wiring-\(UUID().uuidString).json")))
+        let service = ConversationSessionService(repository: repo, backend: WiringDeviceCallBackend(calls: [wire(id1), wire(id2)]), principalAccount: uid.uuidString)
+        let conversation = try await service.create(scope: Profiles.user)
+        let sending = Task { _ = try? await service.send(scope: Profiles.user, conversationID: conversation, text: "建两个日程", operationID: UUID()) }
+        defer { sending.cancel() }
+        for _ in 0..<300 where !(DeviceCallGate.isLive(id1) && DeviceCallGate.isLive(id2)) { try await Task.sleep(nanoseconds: 10_000_000) }
+        XCTAssertTrue(DeviceCallGate.isLive(id1) && DeviceCallGate.isLive(id2), "grants come from the real service's SSE boundary on the shared epoch")
+        guard let w1 = DeviceCall(wire(id1)), let w2 = DeviceCall(wire(id2)) else { return XCTFail("decode") }
+        func cred(_ c: DeviceCall) -> DeviceCallGate.Credential? {
+            if case .success(let x) = DeviceCallGate.authorize(c, finalArgs: c.args, tap: DeviceCallGate.confirmTap(c, finalArgs: c.args)) { return x }; return nil
+        }
+        // Router + Ledger while signed in.
+        final class NoItems: DeviceLedgerItemStore { func remove(kind: DeviceLedgerEntry.Kind, itemID: String) -> DeviceLedgerRemoval { .removed } }
+        let ledgerURL = FileManager.default.temporaryDirectory.appendingPathComponent("wiring-ledger-\(UUID().uuidString).json")
+        defer { try? FileManager.default.removeItem(at: ledgerURL) }
+        let ledger = DeviceLedger(url: ledgerURL, epoch: .shared, items: NoItems())
+        let router = DeviceToolRouter()
+        let c1 = try XCTUnwrap(cred(w1)), r1 = await router.execute(w1, credential: c1)
+        XCTAssertEqual(r1.status, .ok)
+        ledger.record(call: w1, result: r1, token: c1.token)
+        XCTAssertEqual(ledger.active.map(\.id), [id1])
+        // Passive invalidation AT THE SOURCE: the refresh fails inside the manager → shared barrier closes synchronously.
+        let c2 = try XCTUnwrap(cred(w2))
+        await remote.behavior(failRefresh: true); clock.advance(4000)
+        _ = try? await manager.authorization(subject: uid)
+        XCTAssertNil(AccountEpoch.shared.currentAccount, "manager closed AccountEpoch.shared itself (no app model / SwiftUI task)")
+        let r2 = await router.execute(w2, credential: c2)
+        XCTAssertEqual(r2.status, .error)
+        ledger.record(call: w2, result: .init(call_id: id2, status: .ok, data: ["event_id": .string("late")]), token: c2.token)
+        XCTAssertTrue(ledger.active.isEmpty); XCTAssertEqual(ledger.undo(callID: id1), .unknown)
+        // EventKit: exactly the signed-in write landed.
+        ek.reset()
+        let all = ek.events(matching: ek.predicateForEvents(withStart: start.addingTimeInterval(-86400), end: start.addingTimeInterval(86400), calendars: nil))
+        XCTAssertEqual(all.filter { $0.notes?.contains(DeviceToolContract.callMarker(id1)) == true }.count, 1)
+        XCTAssertEqual(all.filter { $0.notes?.contains(DeviceToolContract.callMarker(id2)) == true }.count, 0)
+        for e in all where e.notes?.contains(DeviceToolContract.callMarker(id1)) == true { try? ek.remove(e, span: .thisEvent, commit: true) }
     }
 }
