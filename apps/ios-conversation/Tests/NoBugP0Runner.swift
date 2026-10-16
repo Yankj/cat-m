@@ -67,43 +67,46 @@ import Foundation
         expect(MemoryLibraryStub(fileURL: url).items.count == 1, "forget persists")
         // Gate opens: migrate local → cloud, then local empty.
         let cloud = RefusingBackend()
-        let r1 = await MemoryLibraryLocal.migrate(MemoryLibraryStub(fileURL: url), to: cloud)
+        let r1 = await MemoryLibraryLocal.migrate(owned(url), to: cloud, targetOwner: .account("t"))
         expect(r1.migrated == 1 && r1.kept == 0 && cloud.created == ["住在杭州"], "P0-1 gate open → local items migrated to backend")
-        expect(MemoryLibraryStub(fileURL: url).items.isEmpty, "P0-1 migrated items removed locally (no double)")
+        expect(owned(url).items.isEmpty, "P0-1 migrated items removed locally (no double)")
         // Gate still off: refuse → kept.
-        let c = MemoryLibraryStub(fileURL: url); _ = try! await c.create(kind: "preference", content: "提前 5 分钟")
+        let c = owned(url); _ = try! await c.create(kind: "preference", content: "提前 5 分钟")
         let off = RefusingBackend(); off.refuse = .notEnabled
-        let r2 = await MemoryLibraryLocal.migrate(c, to: off)
+        let r2 = await MemoryLibraryLocal.migrate(c, to: off, targetOwner: .account("t"))
         expect(r2.migrated == 0 && r2.kept == 1 && r2.stoppedBy == .notEnabled, "P0-1 gate off → items kept locally")
         expect(MemoryLibraryLocal.shouldSurfaceLocal(r2), "gate off → local library surfaced in 设置›记忆")
         // Idempotency: crash after cloud create but before local forget → rerun must not duplicate.
         let url2 = FileManager.default.temporaryDirectory.appendingPathComponent("nobug-mem2-\(UUID().uuidString).json"); defer { try? FileManager.default.removeItem(at: url2) }
-        let d = MemoryLibraryStub(fileURL: url2); _ = try! await d.create(kind: "preference", content: "开会提前 20 分钟准备")
+        let d = owned(url2); _ = try! await d.create(kind: "preference", content: "开会提前 20 分钟准备")
         let cloud2 = RefusingBackend(); cloud2.created = ["开会提前 20 分钟准备"]   // already created before the "crash"
-        let r3 = await MemoryLibraryLocal.migrate(d, to: cloud2)
+        let r3 = await MemoryLibraryLocal.migrate(d, to: cloud2, targetOwner: .account("t"))
         expect(cloud2.created.count == 1 && r3.deduped == 1 && r3.kept == 0, "P1-3 migration idempotent: content dedupe, no duplicate after crash")
         // Empty id = failure, local kept.
-        let e = MemoryLibraryStub(fileURL: url2); _ = try! await e.create(kind: "preference", content: "喜欢靠窗")
+        let e = owned(url2); _ = try! await e.create(kind: "preference", content: "喜欢靠窗")
         let cloud3 = RefusingBackend(); cloud3.emptyID = true
-        let r4 = await MemoryLibraryLocal.migrate(e, to: cloud3)
+        let r4 = await MemoryLibraryLocal.migrate(e, to: cloud3, targetOwner: .account("t"))
         expect(r4.migrated == 0 && r4.kept == 1, "P1-3 empty id from create is an error (local kept)")
         // useMemory=false carried over.
         try! await e.setUseMemory(false)
-        let cloud4 = RefusingBackend(); _ = await MemoryLibraryLocal.migrate(e, to: cloud4)
+        let cloud4 = RefusingBackend(); _ = await MemoryLibraryLocal.migrate(e, to: cloud4, targetOwner: .account("t"))
         expect(cloud4.useMemory == false, "P1-3 local 使用记忆=off carried to cloud")
         // Order: creates must happen while use_memory is on, setUseMemory(false) last (old order → 409, nothing migrated).
-        let g = MemoryLibraryStub(fileURL: url2); try! await g.clearAll(); try! await g.setUseMemory(false)
+        let g = owned(url2); try! await g.clearAll(); try! await g.setUseMemory(false)
         _ = try! await g.create(kind: "preference", content: "开会提前 12 分钟准备"); _ = try! await g.create(kind: "profile", content: "住在苏州")
         let cloud6 = RefusingBackend()
-        let r6 = await MemoryLibraryLocal.migrate(g, to: cloud6)
+        let r6 = await MemoryLibraryLocal.migrate(g, to: cloud6, targetOwner: .account("t"))
         expect(r6.migrated == 2 && r6.kept == 0 && cloud6.created.count == 2 && cloud6.useMemory == false && r6.stoppedBy == nil,
                "P1-3 use_memory off: all items created first, then setUseMemory(false) (no 409)")
         // Partial failure keeps cloud library (no local overwrite).
-        let f = MemoryLibraryStub(fileURL: url2); try! await f.clearAll(); _ = try! await f.create(kind: "preference", content: "A"); _ = try! await f.create(kind: "preference", content: "B")
+        let f = owned(url2); try! await f.clearAll(); _ = try! await f.create(kind: "preference", content: "A"); _ = try! await f.create(kind: "preference", content: "B")
         let cloud5 = RefusingBackend(); cloud5.failAfter = 1
-        let r5 = await MemoryLibraryLocal.migrate(f, to: cloud5)
+        let r5 = await MemoryLibraryLocal.migrate(f, to: cloud5, targetOwner: .account("t"))
         expect(r5.migrated == 1 && r5.kept == 1 && !MemoryLibraryLocal.shouldSurfaceLocal(r5), "P1-3 partial failure keeps cloud as page backend")
     }
+
+    /// Pre-P0-2 migration tests now run as the owning account "t" (cross-owner cases: p02AccountIsolation).
+    static func owned(_ url: URL) -> MemoryLibraryStub { MemoryLibraryStub(owner: .account("t"), persistence: FileSnapshotPersistence(url: url)) }
 
     static func call(_ id: String, _ tool: String = "calendar_create") -> DeviceCall {
         .init(call_id: id, tool: tool, args: ["title": .string("评审会"), "start": .string("2026-10-20T10:00:00+08:00")], confirm: .card, ttl_sec: 600)

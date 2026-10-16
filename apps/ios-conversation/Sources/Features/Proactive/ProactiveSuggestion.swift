@@ -86,6 +86,11 @@ enum ProactiveFeedback: String, Codable, Sendable, CaseIterable { case helpful, 
     private var backend: any ProactiveSuggestionBackend { ProactiveSuggestionHub.backend }
 
     func current(_ s: ProactiveSuggestion) -> ProactiveSuggestion { items[s.id] ?? s }
+    /// Codex P0-2: sign-out drops every card of the old account (the local backend re-reads the purged inbox).
+    func clearForSignOut() {
+        items = [:]; busy = []; errorKey = nil
+        if ProactiveSuggestionHub.backend is ProactiveLocalBackend { ProactiveSuggestionHub.backend = ProactiveLocalBackend() }
+    }
     func adopt(_ s: ProactiveSuggestion) {
         if items[s.id] == nil { items[s.id] = s }
         (backend as? ProactiveSuggestionMock)?.adopt(s)
