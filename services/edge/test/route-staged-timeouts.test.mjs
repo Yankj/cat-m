@@ -6,7 +6,7 @@ const chunk=delta=>JSON.stringify({choices:[{index:0,delta}]});
 // Upstream stream: [delayMs, frame] pairs, honoring fetch abort.
 const timed=(plan,signal)=>new Response(new ReadableStream({async start(c){for(const [ms,f] of plan){await sleep(ms);if(signal.aborted){c.error(new DOMException('aborted','AbortError'));return;}c.enqueue(new TextEncoder().encode(`data: ${f}\n\n`));}c.close();}}),{status:200,headers:{'content-type':'text/event-stream'}});
 const chain=(timeouts,order='agnes,openrouter')=>{const c=readFreeRouteChain(env({CATPAW_PRIVATE_MODEL_KEY:'o',CATPAW_AGNES_API_KEY:'a',CATPAW_MODEL_ROUTE_ORDER:order}));c.routes=c.routes.map(r=>r.id==='agnes'?{...r,timeouts}:r);return c;};
-const run=async(p)=>{const out=[];await withRoutePreference('agnes',async()=>{for await(const e of p.stream({messages:[],system_prompt:'s',tools:[]}))out.push(e);},{reasoningSummary:true});return out;};
+const run=async(p)=>{const out=[];await withRoutePreference('agnes',async()=>{for await(const e of p.stream({messages:[],system_prompt:'s',tools:[]}))if(e.type!=='route_info')out.push(e);},{reasoningSummary:true});return out;};
 const done=[[0,chunk({}).replace('{}','{}')],[0,JSON.stringify({choices:[{index:0,delta:{},finish_reason:'stop'}]})],[0,'[DONE]']];
 
 test('agnes defaults to staged timeouts; other routes keep the single historical budget; env overrides are bounded',()=>{
