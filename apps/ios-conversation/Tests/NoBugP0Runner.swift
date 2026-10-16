@@ -886,6 +886,17 @@ extension Result { var isFailure: Bool { if case .failure = self { return true }
         flaky.mode = .on
         snaps = await MemoryRecallLoader.snapshots(cloud: flaky, local: localOn, owner: owner)
         expect(ProactiveRules.lead(in: snaps)?.minutes == 25, "PR91 #3 recall resumes once the cloud says on")
+        // p91b-4: 未开通 / unsupported cloud never falls back to local memories, even when last known was on.
+        flaky.mode = .notEnabled
+        snaps = await MemoryRecallLoader.snapshots(cloud: flaky, local: localOn, owner: owner)
+        expect(snaps.isEmpty && !MemoryRecallLoader.persistedOff(owner), "PR91 p91b-4 cloud 未开通 ⇒ 0 memories (no local fallback)")
+        flaky.mode = .on
+        // p91b-4: carrying 使用记忆 off at the end of a migration reports its failure.
+        let offLocal = MemoryLibraryStub(items: [.init(id: "m1", group: .preference, content: "喜欢靠窗")], useMemory: false, owner: owner)
+        flaky.failSetUse = true
+        let rOff = await MemoryLibraryLocal.migrate(offLocal, to: flaky, targetOwner: owner)
+        expect(rOff.migrated == 1 && rOff.stoppedBy != nil, "PR91 p91b-4 failed off-carry during migration is reported, not swallowed")
+        flaky.failSetUse = false
         // Empty local library with 使用记忆 off still carries off to the cloud.
         let emptyOff = MemoryLibraryStub(useMemory: false, owner: owner)
         let target = RefusingBackend()
@@ -910,6 +921,9 @@ extension Result { var isFailure: Bool { if case .failure = self { return true }
         keys.failNext = true
         expect((try? L2SecureStore(userID: UUID(), root: root, keys: keys)) == nil, "PR91 #5 keychain failure ⇒ no L2 store (not a plaintext fallback)")
         let sA = L2SecureStore.current!
+        ConversationMemoryAtRest.sealer = nil; ConversationMemoryAtRest.allowPlaintext = false
+        expect((try? ConversationMemoryAtRest.seal(Data("住在望京".utf8), subject: a)) == nil, "PR91 p91b-5 release build: no sealer ⇒ write refused (no plaintext fallback)")
+        ConversationMemoryAtRest.allowPlaintext = true
         ConversationMemoryAtRest.sealer = { d, subj in guard subj == sA.userID else { throw L2SecureStoreError.unavailable }; return try sA.seal(d) }
         ConversationMemoryAtRest.opener = { d, subj in guard subj == sA.userID else { throw L2SecureStoreError.unavailable }; return try sA.openSealed(d) }
         let row = try! ConversationMemoryAtRest.seal(Data("住在望京".utf8), subject: a)
