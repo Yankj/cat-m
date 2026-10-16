@@ -17,7 +17,13 @@ import UserNotifications
 
     func canExecute(_ tool: String) -> Bool { Self.tools.contains(tool) }
 
+    /// Call whose system effect is in flight (open / present re-check the gate for it).
+    private var activeCallID: String?
     func execute(_ call: DeviceCall) async -> DeviceCallResult {
+        // Codex PR #89: refuse without a live grant, and re-check synchronously right before every system effect.
+        if let why = DeviceCallGate.commitCheck(call.call_id) { return DeviceCallGate.rejected(call, why) }
+        activeCallID = call.call_id; defer { activeCallID = nil }
+        func gate() -> DeviceCallResult? { DeviceCallGate.commitCheck(call.call_id).map { DeviceCallGate.rejected(call, $0) } }
         let a = call.args
         func s(_ k: String) -> String { a[k]?.text ?? "" }
         func d(_ k: String) -> Date? { DeviceCallDates.parse(s(k)) }
@@ -63,6 +69,7 @@ import UserNotifications
             e.startDate = start; e.endDate = end
             if case .array(let alarms)? = a["alarms"] { for case .number(let m) in alarms { e.addAlarm(EKAlarm(relativeOffset: m * 60)) } }
             e.calendar = store.defaultCalendarForNewEvents
+            if let refused = gate() { return refused }
             do { try store.save(e, span: .thisEvent, commit: true) } catch { return done(.error) }
             return done(.ok, ["event_id": .string(e.eventIdentifier ?? "")], open: "calshow:\(Int(e.startDate.timeIntervalSinceReferenceDate))")
         case "reminder_create", "alarm_set":
@@ -78,6 +85,7 @@ import UserNotifications
             }
             r.calendar = store.calendars(for: .reminder).first { $0.title == s("list") } ?? store.defaultCalendarForNewReminders()
             r.notes = "Catpaw · " + DeviceToolContract.callMarker(call.call_id)
+            if let refused = gate() { return refused }
             do { try store.save(r, commit: true) } catch { return done(.error) }
             return done(.ok, ["reminder_id": .string(r.calendarItemIdentifier)], open: "x-apple-reminderkit://")
         case "sms_compose":
@@ -85,6 +93,7 @@ import UserNotifications
             let vc = MFMessageComposeViewController(); vc.messageComposeDelegate = self
             if case .list(let to)? = a["to"] { vc.recipients = to } else if !s("to").isEmpty { vc.recipients = [s("to")] }
             vc.body = s("body")
+            if let refused = gate() { return refused }
             return done(await present(vc))
         case "mail_compose":
             guard MFMailComposeViewController.canSendMail() else {
@@ -96,6 +105,7 @@ import UserNotifications
             vc.setToRecipients(s("to").split(whereSeparator: { "、, ".contains($0) }).map(String.init))
             vc.setCcRecipients(s("cc").split(whereSeparator: { "、, ".contains($0) }).map(String.init))
             vc.setSubject(s("subject")); vc.setMessageBody(s("body"), isHTML: false)
+            if let refused = gate() { return refused }
             return done(await present(vc))
         case "phone_call":
             let digits = s("number").filter { $0.isNumber || $0 == "+" }
@@ -116,6 +126,23 @@ import UserNotifications
             return await open(c.url) ? done(.ok) : done(.error)
         default:
             return DeviceToolContract.unsupported(call)
+        }
+    }
+
+    /// Restart recovery (Codex PR #89): find the original item by call_id marker; never prompts, never writes.
+    func lookup(_ call: DeviceCall) async -> DeviceCallResult? {
+        let marker = DeviceToolContract.callMarker(call.call_id)
+        switch call.tool {
+        case "calendar_create":
+            guard EKEventStore.authorizationStatus(for: .event) == .fullAccess else { return nil }
+            let start = DeviceCallDates.parse(call.args["start"]?.text ?? "") ?? Date()
+            let window = store.predicateForEvents(withStart: start.addingTimeInterval(-86400 * 2), end: start.addingTimeInterval(86400 * 2), calendars: nil)
+            guard let e = store.events(matching: window).first(where: { $0.notes?.contains(marker) == true }) else { return nil }
+            return .init(call_id: call.call_id, status: .ok, data: ["event_id": .string(e.eventIdentifier ?? ""), "deduped": .bool(true), "recovered": .bool(true)])
+        case "reminder_create", "alarm_set":
+            guard EKEventStore.authorizationStatus(for: .reminder) == .fullAccess, let id = await existingReminder(call.call_id) else { return nil }
+            return .init(call_id: call.call_id, status: .ok, data: ["reminder_id": .string(id), "deduped": .bool(true), "recovered": .bool(true)])
+        default: return nil
         }
     }
 
@@ -155,6 +182,7 @@ import UserNotifications
     /// (UITests then miss `chat.deviceCall.receipt`). Race a short timeout and treat handoff as success.
     private func open(_ url: URL?) async -> Bool {
         guard let url else { return false }
+        if let id = activeCallID, DeviceCallGate.commitCheck(id) != nil { return false }   // Codex PR #89: last check before handoff
         let scheme = (url.scheme ?? "").lowercased()
         let allowed = UIApplication.shared.canOpenURL(url)
             || ["https", "http", "tel", "maps", "mailto"].contains(scheme)
