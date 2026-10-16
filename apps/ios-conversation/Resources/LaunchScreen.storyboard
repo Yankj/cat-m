@@ -13,7 +13,7 @@
                         <rect key="frame" x="0.0" y="0.0" width="402" height="874"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
-                            <imageView userInteractionEnabled="NO" contentMode="center" image="LaunchBrandHead" translatesAutoresizingMaskIntoConstraints="NO" id="I01">
+                            <imageView userInteractionEnabled="NO" contentMode="center" image="LaunchStaticHead" translatesAutoresizingMaskIntoConstraints="NO" id="I01">
                                 <rect key="frame" x="96" y="376" width="210" height="210"/>
                             </imageView>
                         </subviews>
@@ -29,7 +29,7 @@
         </scene>
     </scenes>
     <resources>
-        <image name="LaunchBrandHead" width="105" height="105"/>
+        <image name="LaunchStaticHead" width="105" height="105"/>
         <namedColor name="LaunchCanvas"><color red="1.000" green="0.988" blue="0.973" alpha="1" colorSpace="custom" customColorSpace="sRGB"/></namedColor>
     </resources>
 </document>
