@@ -33,7 +33,7 @@ export function createMemoryStore() {
     async countDecisionsSince(uid, sinceIso, levels) { return events.filter(e => e.user_id === uid && e.kind === 'proactive_decision' && levels.includes(e.payload?.decision) && e.created_at >= sinceIso).length; },
     async getFeedback(uid, eid) { return feedback.get(uid + '|' + eid) ?? null; },
     async insertFeedback(uid, eid, kind, at) { const k = uid + '|' + eid; if (feedback.has(k)) return false; feedback.set(k, { kind, created_at: at }); return true; },
-    async updateEventPayload(uid, eid, payload) { const e = events.find(e => e.id === eid && e.user_id === uid); if (!e) return null; e.payload = c(payload); return c(e); },
+    async updateEventPayload(uid, eid, payload, expectedRev) { const e = events.find(e => e.id === eid && e.user_id === uid); if (!e) return null; if (expectedRev !== undefined && (e.payload?.suggestion?.rev ?? 0) !== expectedRev) return null; e.payload = c(payload); return c(e); },
     async claimSuggestionsForChat(uid, { limit, at, conversationID, turnID }) {
       const out = [];
       for (const e of events) {
