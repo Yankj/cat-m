@@ -458,7 +458,7 @@ struct ProactiveSignal: Equatable, Sendable {
 
     /// Codex PR90c: every proactive system notification goes through one pipeline (account barrier after the
     /// authorization await, quiet hours at the real fire instant, shared quota, late-completion removal).
-    lazy var delivery = ProactiveDeliveryPipeline(epoch: .shared, poster: ProactiveSystemPoster(), loadQuota: { [unowned self] in self.quota }, saveQuota: { [unowned self] in self.quota = $0 })
+    @ObservationIgnored lazy var delivery = ProactiveDeliveryPipeline(epoch: .shared, poster: ProactiveSystemPoster(), loadQuota: { [unowned self] in self.quota }, saveQuota: { [unowned self] in self.quota = $0 })
 
     private func intervene(_ s: ProactiveSuggestion, level: ProactiveLevel, now: Date, token: AccountToken, eventID: String? = nil) {
         let plan = ProactiveRules.delivery(level: level, now: now, deliveredToday: 0)
@@ -1114,9 +1114,12 @@ struct ProactiveEngineSignalAdapter: ProactiveSignalEngine {
         content.userInfo = r.info.reduce(into: [AnyHashable: Any]()) { out, kv in
             out[kv.key] = Self.numericKeys.contains(kv.key) ? (Double(kv.value) as Any? ?? kv.value) : kv.value
         }
-        let trigger: UNNotificationTrigger = r.fireAt.map {
-            UNCalendarNotificationTrigger(dateMatching: Calendar.current.dateComponents([.year, .month, .day, .hour, .minute, .second], from: $0), repeats: false)
-        } ?? UNTimeIntervalNotificationTrigger(timeInterval: ProactiveDeliveryPipeline.postDelay, repeats: false)
+        let trigger: UNNotificationTrigger
+        if let fireAt = r.fireAt {
+            trigger = UNCalendarNotificationTrigger(dateMatching: Calendar.current.dateComponents([.year, .month, .day, .hour, .minute, .second], from: fireAt), repeats: false)
+        } else {
+            trigger = UNTimeIntervalNotificationTrigger(timeInterval: ProactiveDeliveryPipeline.postDelay, repeats: false)
+        }
         UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: r.id, content: content, trigger: trigger)) { error in
             let ok = error == nil
             Task { @MainActor in completion(ok) }
