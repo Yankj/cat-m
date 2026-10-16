@@ -19,6 +19,7 @@
 ## 当前执行片与下一步
 
 2026-10-16 用户单独授权工作区连接故障修复、模拟器构建与本地提交，分支 `fix/workspace-connect`；未恢复或替换原长期Goal。静态追踪确认 `auth_key_service_unavailable` 为服务端JWKS拉取超时，客户端一次性查询和瞬态错误展示放大了故障；现实现启动预热复用、同身份只读校验恢复、后台有界退避/联网与前台唤醒、退出与刷新竞争围栏，以及服务端依赖可用性和无效身份的错误分类。保留不确定刷新结果的安全屏障、原本地数据和启动/引导视觉；未知写请求不重放。无签名双架构Simulator构建、24＋17项离线Auth断言、11项离线Edge Auth测试和non-DEBUG源码检查通过；Edge测试仅用现成Jose6.2.10，固定Deno/Jose6.2.12未运行。首轮原生回归发现无保存会话时离线启动等待错误并中断，已修正且重建，最终11应用生命周期＋6原生Auth实际Simulator测试17/17通过（独立离线fixture，排除Keychain往返项，用户体验模拟器保持）；目录/冻结/部署来源/敏感扫描通过，精确hash复核不放宽扫描规则；详细结果与服务器待检查项记录在[CODEX_REPORT](../../CODEX_REPORT.md)。无线上Auth/模型请求、手机安装、部署、密钥或供应商变更、推送/PR，AF/FINAL真实验收不关闭。
+2026-10-16 用户单独批准 widgets/Live Activity/通知实施与本地提交，沿用 `feat/widgets-notify` 既有 `437ee8a` 实现继续收口。下一条建议/下一场会议与 why、指定深链、暖白橙色专业 Live Activity 保留；补齐会议/快照过期时间线、小尺寸排版、预排通知原上下文恢复、三按钮复用既有 action client 与已处理/忙碌/不可用动作围栏，普通点击先恢复原建议再打开主动入口。Simulator Debug 0.3.0(39) 宿主及 Widget 扩展 build PASS；34 项便携合成断言通过，范围为真实解码器/通知元数据解析，不含系统动作执行。源码门、布局/冻结来源/部署快照检查通过；敏感扫描零阻断，8 个未变的文件名/测试与治理字面量命中经人工核读保留，不改扫描基线。详细命令、输入身份与证据限制见根目录 [CODEX_REPORT](../../CODEX_REPORT.md)。App Group 仍未 provision；真实跨进程共享、通知投递/系统提醒写入、Live Activity/Dynamic Island 像素、真机与完整可访问性均未验。未调用模型/Auth、申请权限、安装、部署或推送；长期 Goal 保持原 PAUSED，AF/FINAL 产品门不关闭。
 
 交接main整合：已在真实远端基线515f98f与公开handoff aad003上准备无冲突普通merge；四份main独有文档保持原字节，未引入旧本地历史或22张私有媒体。PR #19（https://github.com/Yankj/catpaw-m/pull/19）已创建，自动审批因缺少可信直接主干合并授权而拒绝merge，现待用户确认；远端main仍515f98f，本地main尚未同步。Desktop与Projects是独立dirty仓，各自HEAD/index/WIP保留，managed短分支为实际可审阅整合候选。Goal保持PAUSED，r8仍not_sent，S06无新源码；本次不新增模型/Auth/部署/安装。
 

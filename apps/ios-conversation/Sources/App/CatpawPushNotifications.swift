@@ -1,4 +1,40 @@
 import Foundation
+
+/// The local, version-independent context carried by pre-scheduled meeting notifications. Parsing
+/// never reads calendars or evaluates a new suggestion; malformed or expired dates cannot create work.
+struct CatpawScheduledMeetingNotification: Equatable, Sendable {
+    let eventID: String
+    let title: String
+    let start: Date
+    let due: Date
+    let place: String
+
+    init?(userInfo: [AnyHashable: Any], defaultLeadMinutes: Int, now: Date) {
+        guard let eventID = userInfo["catpaw_proactive_event"] as? String,
+              !eventID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              let title = userInfo["catpaw_proactive_title"] as? String,
+              !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              let seconds = userInfo["catpaw_proactive_start"] as? TimeInterval, seconds.isFinite else { return nil }
+        let start = Date(timeIntervalSince1970: seconds)
+        guard start > now, start <= now.addingTimeInterval(24 * 3600) else { return nil }
+        let due: Date
+        if let value = userInfo["catpaw_proactive_due"] {
+            guard let seconds = value as? TimeInterval, seconds.isFinite else { return nil }
+            due = Date(timeIntervalSince1970: seconds)
+        } else {
+            // Older local notifications did not carry their lead time.
+            guard (1...180).contains(defaultLeadMinutes) else { return nil }
+            due = start.addingTimeInterval(TimeInterval(-defaultLeadMinutes * 60))
+        }
+        guard due <= start, due >= start.addingTimeInterval(-180 * 60) else { return nil }
+        self.eventID = eventID
+        self.title = title
+        self.start = start
+        self.due = due
+        self.place = userInfo["catpaw_proactive_place"] as? String ?? ""
+    }
+}
+
 #if os(iOS)
 import UIKit
 import UserNotifications
@@ -52,7 +88,9 @@ struct CatpawNotificationPayload: Equatable, Sendable {
     /// Foreground: show Catpaw's own floating capsule instead of the system banner (V4 / #47).
     nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification) async -> UNNotificationPresentationOptions {
         let content = notification.request.content
+        let isProactive = content.userInfo["catpaw_proactive_id"] is String || content.userInfo["catpaw_proactive_event"] is String
         let link = CatpawNotificationPayload(userInfo: content.userInfo)?.conversationURL
+            ?? (isProactive ? URL(string: "catpawm://proactive") : nil)
         let title = content.title, body = content.body
         await MainActor.run { CatpawInAppBannerCenter.shared.show(CatpawInAppBanner(title: title, body: body, deepLink: link)) }
         return [.list, .sound]

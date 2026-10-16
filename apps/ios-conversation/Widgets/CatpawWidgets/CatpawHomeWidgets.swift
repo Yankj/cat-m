@@ -1,205 +1,391 @@
 import SwiftUI
 import WidgetKit
 
-// V5 (wave2 plan): Home/Lock Screen widget views. Demo-grade; data comes from `CatpawWidgetDataSource`
-// (mock now). Real data needs an App Group snapshot written by the app (M4): today's tasks
-// (GET /tasks?due=today from catpaw-proactive) and cat status (latest Live Activity / turn status).
+struct CatpawWidgetSuggestion: Hashable, Sendable {
+    let id: String
+    let title: String
+    let why: String
+    var expiresAt: Date? = nil
+}
 
-struct CatpawWidgetTask: Identifiable, Hashable, Sendable { let id: String; let title: String; let dueAt: Date?; let done: Bool }
-enum CatpawCatMood: String, Sendable { case idle, working, needsUser, done }
+struct CatpawWidgetMeeting: Hashable, Sendable {
+    let id: String
+    let title: String
+    let why: String
+    let startsAt: Date?
+    let place: String?
+}
 
 struct CatpawWidgetEntry: TimelineEntry, Sendable {
     let date: Date
-    let tasks: [CatpawWidgetTask]
-    let mood: CatpawCatMood
-    let statusLine: String
-}
+    let suggestion: CatpawWidgetSuggestion?
+    let meeting: CatpawWidgetMeeting?
+    let isPlaceholder: Bool
+    var validUntil: Date? = nil
 
-protocol CatpawWidgetDataSource: Sendable { func snapshot(now: Date) -> CatpawWidgetEntry }
+    var expirations: [Date] {
+        Array(Set([validUntil, suggestion?.expiresAt, meeting?.startsAt].compactMap { $0 }))
+            .filter { $0 > date }.sorted()
+    }
 
-struct MockCatpawWidgetDataSource: CatpawWidgetDataSource {
-    func snapshot(now: Date) -> CatpawWidgetEntry {
-        CatpawWidgetEntry(date: now, tasks: [
-            .init(id: "t1", title: LA.s("喝水提醒", "Drink water"), dueAt: now.addingTimeInterval(1800), done: false),
-            .init(id: "t2", title: LA.s("整理会议纪要", "Tidy meeting notes"), dueAt: now.addingTimeInterval(5400), done: false),
-            .init(id: "t3", title: LA.s("提交报销单", "Submit expenses"), dueAt: now.addingTimeInterval(-3600), done: true),
-        ], mood: .working, statusLine: LA.s("正在整理会议纪要", "Tidying meeting notes"))
+    static func empty(at date: Date) -> Self {
+        .init(date: date, suggestion: nil, meeting: nil, isPlaceholder: false)
+    }
+
+    static func placeholder(at date: Date) -> Self {
+        .init(
+            date: date,
+            suggestion: .init(
+                id: "placeholder-suggestion",
+                title: LA.s("会前留出 15 分钟准备", "Leave 15 minutes to prepare"),
+                why: LA.s("下一场会议临近，资料还没有整理", "Your next meeting is approaching and the notes are not ready")
+            ),
+            meeting: .init(
+                id: "placeholder-meeting",
+                title: LA.s("项目复盘", "Project review"),
+                why: LA.s("根据日历，这是接下来最早的会议", "This is the earliest upcoming meeting on your calendar"),
+                startsAt: date.addingTimeInterval(45 * 60),
+                place: LA.s("线上", "Online")
+            ),
+            isPlaceholder: true
+        )
     }
 }
 
-/// #48: reads the app's App Group snapshot; falls back to the sample when there is none (no entitlement yet / first run).
+protocol CatpawWidgetDataSource: Sendable {
+    func snapshot(now: Date) -> CatpawWidgetEntry
+}
+
+/// Reads the minimal, versioned projection written by the app. Missing, corrupt, and older snapshots are
+/// intentionally empty: a widget must never turn sample content into an apparent real suggestion.
 struct AppGroupCatpawWidgetDataSource: CatpawWidgetDataSource {
+    private let group = "group.com.yankj.catpawm"
+    private let file = "catpaw.widget.snapshot.v1.json"
+
     func snapshot(now: Date) -> CatpawWidgetEntry {
-        guard let dir = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.com.yankj.catpawm"),
-              let data = try? Data(contentsOf: dir.appendingPathComponent("catpaw.widget.snapshot.v1.json")),
-              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return MockCatpawWidgetDataSource().snapshot(now: now) }
-        let tasks = (json["tasks"] as? [[String: Any]] ?? []).compactMap { t -> CatpawWidgetTask? in
-            guard let id = t["id"] as? String, let title = t["title"] as? String else { return nil }
-            return .init(id: id, title: title, dueAt: nil, done: t["done"] as? Bool ?? false)
+        guard let directory = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: group),
+              let data = try? Data(contentsOf: directory.appendingPathComponent(file)) else {
+            return .empty(at: now)
         }
-        return CatpawWidgetEntry(date: now, tasks: tasks, mood: CatpawCatMood(rawValue: json["mood"] as? String ?? "") ?? .idle, statusLine: json["status"] as? String ?? "")
+        return Self.decode(data, now: now)
+    }
+
+    static func decode(_ data: Data, now: Date) -> CatpawWidgetEntry {
+        guard data.count <= 64 * 1024,
+              let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              object["version"] as? Int == 2,
+              let updated = timestamp(object["updated_at"]),
+              updated <= now.addingTimeInterval(5 * 60),
+              now < updated.addingTimeInterval(24 * 3600) else {
+            return .empty(at: now)
+        }
+
+        let meeting = meeting(from: object["meeting"])
+        let suggestion = suggestion(from: object["suggestion"])
+        // Version-2 snapshots written before expires_at still carry the meeting's stable ID/start.
+        let expiredMeetingID: String?
+        if let meeting, let start = meeting.startsAt, start <= now { expiredMeetingID = meeting.id }
+        else { expiredMeetingID = nil }
+        return .init(
+            date: now,
+            suggestion: suggestion.flatMap {
+                ($0.expiresAt.map { now < $0 } ?? true) && $0.id != expiredMeetingID ? $0 : nil
+            },
+            meeting: meeting.flatMap { ($0.startsAt.map { now < $0 } ?? true) ? $0 : nil },
+            isPlaceholder: false,
+            validUntil: updated.addingTimeInterval(24 * 3600)
+        )
+    }
+
+    private static func suggestion(from value: Any?) -> CatpawWidgetSuggestion? {
+        guard let value = value as? [String: Any],
+              let id = nonempty(value["id"]),
+              let title = nonempty(value["title"]),
+              let why = nonempty(value["why"]) else { return nil }
+        let expiry = timestamp(value["expires_at"])
+        guard value["expires_at"] == nil || expiry != nil else { return nil }
+        return .init(id: id, title: title, why: why, expiresAt: expiry)
+    }
+
+    private static func meeting(from value: Any?) -> CatpawWidgetMeeting? {
+        guard let value = value as? [String: Any],
+              let id = nonempty(value["id"]),
+              let title = nonempty(value["title"]),
+              let why = nonempty(value["why"]) else { return nil }
+        let startsAt = timestamp(value["starts_at"])
+        guard value["starts_at"] == nil || startsAt != nil else { return nil }
+        return .init(id: id, title: title, why: why, startsAt: startsAt, place: nonempty(value["place"]))
+    }
+
+    private static func timestamp(_ value: Any?) -> Date? {
+        guard let seconds = value as? TimeInterval, seconds.isFinite else { return nil }
+        let date = Date(timeIntervalSince1970: seconds)
+        return (.distantPast ... .distantFuture).contains(date) ? date : nil
+    }
+
+    private static func nonempty(_ value: Any?) -> String? {
+        guard let value = value as? String else { return nil }
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
     }
 }
 
 struct CatpawWidgetProvider: TimelineProvider {
     var source: any CatpawWidgetDataSource = AppGroupCatpawWidgetDataSource()
-    func placeholder(in context: Context) -> CatpawWidgetEntry { source.snapshot(now: .now) }
-    func getSnapshot(in context: Context, completion: @escaping (CatpawWidgetEntry) -> Void) { completion(source.snapshot(now: .now)) }
+
+    func placeholder(in context: Context) -> CatpawWidgetEntry {
+        .placeholder(at: .now)
+    }
+
+    func getSnapshot(in context: Context, completion: @escaping (CatpawWidgetEntry) -> Void) {
+        completion(context.isPreview ? .placeholder(at: .now) : source.snapshot(now: .now))
+    }
+
     func getTimeline(in context: Context, completion: @escaping (Timeline<CatpawWidgetEntry>) -> Void) {
         let now = Date.now
-        completion(Timeline(entries: [source.snapshot(now: now)], policy: .after(now.addingTimeInterval(30 * 60))))
+        let entry = source.snapshot(now: now)
+        // Expiry entries remove past meetings even when WidgetKit defers the next refresh.
+        let entries = [entry] + entry.expirations.map { source.snapshot(now: $0) }
+        completion(.init(entries: entries, policy: .after(now.addingTimeInterval(30 * 60))))
     }
 }
 
+#if os(iOS)
 enum CatpawWidgetLinks {
-    // DeepLinkResolver currently only accepts conversation/<uuid>; `catpawm://` opens the app root.
-    // Needed routes (M4): catpawm://tasks, catpawm://new?focus=composer.
-    static let root = URL(string: "catpawm://")!
-    static let tasks = URL(string: "catpawm://tasks")!
+    static let proactive = URL(string: "catpawm://proactive")!
     static let new = URL(string: "catpawm://new")!
 }
 
-// MARK: - Today's tasks (small / medium)
+enum CatpawWidgetStyle {
+    static let canvas = Color(red: 0.984, green: 0.969, blue: 0.941)
+    static let ink = Color(red: 0.145, green: 0.125, blue: 0.105)
+    static let secondary = Color(red: 0.385, green: 0.345, blue: 0.305)
+    static let accent = Color(red: 0.867, green: 0.333, blue: 0.118)
+    static let accentSoft = Color(red: 0.965, green: 0.827, blue: 0.718)
+}
 
-struct CatpawTodayTasksView: View {
+private struct WidgetEyebrow: View {
+    let title: String
+    let symbol: String
+
+    var body: some View {
+        HStack(spacing: 7) {
+            Image(systemName: symbol)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(CatpawWidgetStyle.accent)
+                .frame(width: 24, height: 24)
+                .background(CatpawWidgetStyle.accent.opacity(0.11), in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+                .widgetAccentable()
+            Text(title.uppercased())
+                .font(.caption2.weight(.bold))
+                .tracking(0.7)
+                .foregroundStyle(CatpawWidgetStyle.secondary)
+            Spacer(minLength: 0)
+        }
+    }
+}
+
+private struct WidgetWhyLine: View {
+    let why: String
+    let lines: Int
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 5) {
+            Text(LA.s("原因", "WHY"))
+                .font(.caption2.weight(.bold))
+                .foregroundStyle(CatpawWidgetStyle.accent)
+            Text(why)
+                .font(.caption)
+                .foregroundStyle(CatpawWidgetStyle.secondary)
+                .lineLimit(lines)
+        }
+    }
+}
+
+// MARK: - Next proactive suggestion
+
+struct CatpawNextSuggestionView: View {
     let entry: CatpawWidgetEntry
     @Environment(\.widgetFamily) private var family
+
     var body: some View {
-        let open = entry.tasks.filter { !$0.done }
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 6) {
-                Image("catpaw.paw").resizable().scaledToFit().frame(width: 18, height: 18).widgetAccentable().accessibilityHidden(true)
-                Text(LA.s("今日任务", "Today")).font(.headline).foregroundStyle(LA.ink)
-                Spacer()
-                Text("\(open.count)").font(.headline.monospacedDigit()).foregroundStyle(LA.ink)
+        VStack(alignment: .leading, spacing: family == .systemSmall ? 8 : 10) {
+            WidgetEyebrow(title: LA.s("下一条建议", "Next suggestion"), symbol: "bell.badge.fill")
+            if let suggestion = entry.suggestion {
+                Text(suggestion.title)
+                    .font(family == .systemSmall ? .headline : .title3.weight(.semibold))
+                    .foregroundStyle(CatpawWidgetStyle.ink)
+                    .lineLimit(2)
+                Spacer(minLength: 0)
+                WidgetWhyLine(why: suggestion.why, lines: 2)
+            } else {
+                Text(LA.s("现在没有待处理建议", "No suggestion needs attention"))
+                    .font(.headline)
+                    .foregroundStyle(CatpawWidgetStyle.ink)
+                    .lineLimit(2)
+                Spacer(minLength: 0)
+                WidgetWhyLine(
+                    why: LA.s("有明确变化或需要你决定时才会出现", "Catpaw surfaces only meaningful changes or decisions"),
+                    lines: 2
+                )
             }
-            if open.isEmpty {
-                Text(LA.s("今天没有待办", "Nothing due today")).font(.footnote).foregroundStyle(.secondary)
-            }
-            ForEach(open.prefix(family == .systemSmall ? 2 : 4)) { t in
-                HStack(spacing: 6) {
-                    Circle().fill(LA.paw).frame(width: 6, height: 6).accessibilityHidden(true)
-                    Text(t.title).font(.footnote).foregroundStyle(LA.ink).lineLimit(1)
-                    Spacer(minLength: 0)
-                    if let d = t.dueAt, family != .systemSmall { Text(d, style: .time).font(.caption).foregroundStyle(.secondary) }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .widgetURL(CatpawWidgetLinks.proactive)
+        .containerBackground(for: .widget) { CatpawWidgetStyle.canvas }
+        .accessibilityElement(children: .combine)
+    }
+}
+
+struct CatpawNextSuggestionWidget: Widget {
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: "catpaw.next-suggestion", provider: CatpawWidgetProvider()) {
+            CatpawNextSuggestionView(entry: $0)
+        }
+        .configurationDisplayName(LA.s("下一条主动建议", "Next proactive suggestion"))
+        .description(LA.s("查看下一条建议和出现原因", "See the next suggestion and why it appeared"))
+        .supportedFamilies([.systemSmall, .systemMedium])
+    }
+}
+
+// MARK: - Next meeting
+
+struct CatpawNextMeetingView: View {
+    let entry: CatpawWidgetEntry
+    @Environment(\.widgetFamily) private var family
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: family == .systemSmall ? 8 : 10) {
+            HStack(spacing: 4) {
+                WidgetEyebrow(
+                    title: family == .systemSmall ? LA.s("会议", "Meeting") : LA.s("下一场会议", "Next meeting"),
+                    symbol: "calendar"
+                )
+                if let startsAt = entry.meeting?.startsAt {
+                    Text(startsAt, style: .time)
+                        .font(.headline.monospacedDigit())
+                        .foregroundStyle(CatpawWidgetStyle.accent)
+                        .fixedSize()
                 }
             }
-            Spacer(minLength: 0)
-        }
-        .widgetURL(CatpawWidgetLinks.tasks)
-        .containerBackground(for: .widget) { Color(.systemBackground) }
-    }
-}
-
-struct CatpawTodayTasksWidget: Widget {
-    var body: some WidgetConfiguration {
-        StaticConfiguration(kind: "catpaw.today-tasks", provider: CatpawWidgetProvider()) { CatpawTodayTasksView(entry: $0) }
-            .configurationDisplayName(LA.s("今日任务", "Today's tasks"))
-            .description(LA.s("查看今天的提醒和任务", "See today's reminders and tasks"))
-            .supportedFamilies([.systemSmall, .systemMedium])
-    }
-}
-
-// MARK: - Quick ask (small)
-
-struct CatpawQuickAskView: View {
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Image("catpaw.paw").resizable().scaledToFit().frame(width: 32, height: 32).widgetAccentable().accessibilityHidden(true)
-            Spacer(minLength: 0)
-            Text(LA.s("问问小爪", "Ask Catpaw")).font(.headline).foregroundStyle(LA.ink)
-            HStack(spacing: 6) {
-                Image(systemName: "mic.fill").foregroundStyle(.white).padding(6).background(LA.paw, in: Circle()).accessibilityHidden(true)
-                Text(LA.s("说点什么…", "Say something…")).font(.footnote).foregroundStyle(.secondary)
+            if let meeting = entry.meeting {
+                Text(meeting.title)
+                    .font(family == .systemSmall ? .headline : .title3.weight(.semibold))
+                    .foregroundStyle(CatpawWidgetStyle.ink)
+                    .lineLimit(family == .systemSmall ? 2 : 1)
+                if let place = meeting.place, family == .systemMedium {
+                    Label(place, systemImage: "location.fill")
+                        .font(.caption)
+                        .foregroundStyle(CatpawWidgetStyle.secondary)
+                        .lineLimit(1)
+                }
+                Spacer(minLength: 0)
+                WidgetWhyLine(why: meeting.why, lines: family == .systemSmall ? 2 : 1)
+            } else {
+                Text(LA.s("暂无已同步的会议", "No meeting shared yet"))
+                    .font(.headline)
+                    .foregroundStyle(CatpawWidgetStyle.ink)
+                    .lineLimit(2)
+                Spacer(minLength: 0)
+                WidgetWhyLine(
+                    why: LA.s("打开 Catpaw 可以新建对话并安排下一步", "Open Catpaw to start a conversation and plan what is next"),
+                    lines: 2
+                )
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .widgetURL(CatpawWidgetLinks.root)
-        .containerBackground(for: .widget) { Color(.systemBackground) }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .widgetURL(CatpawWidgetLinks.new)
+        .containerBackground(for: .widget) { CatpawWidgetStyle.canvas }
+        .accessibilityElement(children: .combine)
     }
 }
 
-struct CatpawQuickAskWidget: Widget {
+struct CatpawNextMeetingWidget: Widget {
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: "catpaw.quick-ask", provider: CatpawWidgetProvider()) { _ in CatpawQuickAskView() }
-            .configurationDisplayName(LA.s("快速提问", "Quick ask"))
-            .description(LA.s("一键打开对话", "Jump straight into a conversation"))
-            .supportedFamilies([.systemSmall])
-    }
-}
-
-// MARK: - Cat status (small) + lock screen accessories
-
-enum CatpawMoodUI {
-    static func image(_ m: CatpawCatMood) -> String {
-        switch m { case .idle: "catpaw.paw"; case .working: "catpaw.paw.thinking"; case .needsUser: "catpaw.paw.badge.hand"; case .done: "catpaw.paw.badge.check" }
-    }
-    static func label(_ m: CatpawCatMood) -> String {
-        switch m { case .idle: LA.s("休息中", "Resting"); case .working: LA.s("干活中", "Working"); case .needsUser: LA.s("需要你", "Needs you"); case .done: LA.s("搞定了", "Done") }
-    }
-}
-
-struct CatpawCatStatusView: View {
-    let entry: CatpawWidgetEntry
-    var body: some View {
-        VStack(spacing: 6) {
-            Image(CatpawMoodUI.image(entry.mood)).resizable().scaledToFit().frame(width: 48, height: 48).widgetAccentable().accessibilityHidden(true)
-            Text(CatpawMoodUI.label(entry.mood)).font(.headline).foregroundStyle(LA.ink)
-            Text(entry.statusLine).font(.caption).foregroundStyle(.secondary).lineLimit(2).multilineTextAlignment(.center)
+        StaticConfiguration(kind: "catpaw.next-meeting", provider: CatpawWidgetProvider()) {
+            CatpawNextMeetingView(entry: $0)
         }
-        .widgetURL(CatpawWidgetLinks.root)
-        .containerBackground(for: .widget) { Color(.systemBackground) }
+        .configurationDisplayName(LA.s("下一场会议", "Next meeting"))
+        .description(LA.s("查看下一场会议和关注原因", "See the next meeting and why it matters"))
+        .supportedFamilies([.systemSmall, .systemMedium])
     }
 }
 
-struct CatpawCatStatusWidget: Widget {
-    var body: some WidgetConfiguration {
-        StaticConfiguration(kind: "catpaw.cat-status", provider: CatpawWidgetProvider()) { CatpawCatStatusView(entry: $0) }
-            .configurationDisplayName(LA.s("小爪状态", "Catpaw status"))
-            .description(LA.s("看看小爪在忙什么", "See what Catpaw is doing"))
-            .supportedFamilies([.systemSmall])
+// MARK: - Lock Screen
+
+private extension CatpawWidgetEntry {
+    var lockTitle: String {
+        suggestion?.title ?? meeting?.title ?? LA.s("没有待处理建议", "Nothing needs attention")
+    }
+
+    var lockWhy: String {
+        suggestion?.why ?? meeting?.why ?? LA.s("有重要变化时会显示在这里", "Important changes will appear here")
+    }
+
+    var lockURL: URL {
+        suggestion == nil ? CatpawWidgetLinks.new : CatpawWidgetLinks.proactive
+    }
+
+    var lockSymbol: String {
+        suggestion != nil ? "bell.badge.fill" : "calendar"
     }
 }
 
 struct CatpawLockScreenView: View {
     let entry: CatpawWidgetEntry
     @Environment(\.widgetFamily) private var family
+
     var body: some View {
-        let next = entry.tasks.first { !$0.done }
         Group {
             switch family {
             case .accessoryCircular:
                 ZStack {
                     AccessoryWidgetBackground()
-                    Image(CatpawMoodUI.image(entry.mood)).resizable().scaledToFit().padding(10).widgetAccentable()
-                }.accessibilityLabel(CatpawMoodUI.label(entry.mood))
+                    Image(systemName: entry.lockSymbol)
+                        .font(.title3.weight(.semibold))
+                        .widgetAccentable()
+                }
+                .accessibilityLabel(entry.lockTitle)
             case .accessoryInline:
-                Label(next.map { $0.title } ?? CatpawMoodUI.label(entry.mood), systemImage: "pawprint.fill")
-            default: // accessoryRectangular
-                VStack(alignment: .leading, spacing: 1) {
-                    Label(CatpawMoodUI.label(entry.mood), systemImage: "pawprint.fill").font(.headline).widgetAccentable()
-                    if let next {
-                        Text(next.title).font(.footnote).lineLimit(1)
-                        if let d = next.dueAt { Text(d, style: .time).font(.caption) }
-                    } else { Text(LA.s("今天没有待办", "Nothing due today")).font(.footnote) }
-                }.frame(maxWidth: .infinity, alignment: .leading)
+                Label(entry.lockTitle, systemImage: entry.lockSymbol)
+            default:
+                VStack(alignment: .leading, spacing: 2) {
+                    Label(entry.lockTitle, systemImage: entry.lockSymbol)
+                        .font(.headline)
+                        .lineLimit(1)
+                        .widgetAccentable()
+                    Text(LA.s("原因：", "Why: ") + entry.lockWhy)
+                        .font(.caption)
+                        .lineLimit(2)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
-        .widgetURL(CatpawWidgetLinks.root)
+        .widgetURL(entry.lockURL)
         .containerBackground(for: .widget) { Color.clear }
     }
 }
 
 struct CatpawLockScreenWidget: Widget {
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: "catpaw.lock-screen", provider: CatpawWidgetProvider()) { CatpawLockScreenView(entry: $0) }
-            .configurationDisplayName(LA.s("小爪锁屏", "Catpaw lock screen"))
-            .description(LA.s("锁屏上看下一项任务和小爪状态", "Next task and Catpaw status on the Lock Screen"))
-            .supportedFamilies([.accessoryCircular, .accessoryRectangular, .accessoryInline])
+        StaticConfiguration(kind: "catpaw.lock-screen", provider: CatpawWidgetProvider()) {
+            CatpawLockScreenView(entry: $0)
+        }
+        .configurationDisplayName(LA.s("Catpaw 提醒", "Catpaw glance"))
+        .description(LA.s("在锁屏查看下一项和原因", "See the next item and why it matters on the Lock Screen"))
+        .supportedFamilies([.accessoryCircular, .accessoryRectangular, .accessoryInline])
     }
 }
 
 #if DEBUG
-#Preview("Today", as: .systemMedium) { CatpawTodayTasksWidget() } timeline: { MockCatpawWidgetDataSource().snapshot(now: .now) }
-#Preview("Lock", as: .accessoryRectangular) { CatpawLockScreenWidget() } timeline: { MockCatpawWidgetDataSource().snapshot(now: .now) }
+#Preview("Suggestion", as: .systemMedium) { CatpawNextSuggestionWidget() } timeline: {
+    CatpawWidgetEntry.placeholder(at: .now)
+}
+#Preview("Meeting", as: .systemSmall) { CatpawNextMeetingWidget() } timeline: {
+    CatpawWidgetEntry.placeholder(at: .now)
+}
+#Preview("Lock", as: .accessoryRectangular) { CatpawLockScreenWidget() } timeline: {
+    CatpawWidgetEntry.placeholder(at: .now)
+}
+#endif
 #endif
