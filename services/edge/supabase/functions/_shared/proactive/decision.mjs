@@ -104,13 +104,17 @@ export function createDecisionService({ store, model = null, memory = null, now 
     // Codex P0-3: far below the bar → say nothing (a 1% guess must not become a card).
     if (decision !== 'silent' && conf < threshold - cfg.silentMargin) { trace.push(`confidence ${conf.toFixed(2)} < ${(threshold - cfg.silentMargin).toFixed(2)}: ${proposed} → silent`); decision = 'silent'; }
     else if (decision !== 'silent' && conf < threshold) { const steps = conf < threshold - 0.15 ? 2 : 1; decision = LEVELS[Math.max(1, lvl(decision) - steps)]; trace.push(`confidence ${conf.toFixed(2)} < threshold ${threshold.toFixed(2)}: ${proposed} → ${decision}`); }
-    if (lvl(decision) >= 2 && isQuiet(at, tz, cfg.quietHours) && !(decision === 'interrupt' && conf >= 0.9)) { trace.push(`quiet hours: ${decision} → card`); decision = 'card'; }
+    if (lvl(decision) >= 2 && isQuiet(at, tz, cfg.quietHours)) { trace.push(`quiet hours: ${decision} → card`); decision = 'card'; }
     if (lvl(decision) >= 2) { const n = await store.countDecisionsSince(uid, new Date(localDayStart(at, tz)).toISOString(), ['notify', 'interrupt']); if (n >= cfg.dailyCap) { trace.push(`daily cap ${cfg.dailyCap} reached: ${decision} → card`); decision = 'card'; } }
     // Codex PR90 #1: "evaluated" ≠ "delivered" in the cloud too. Only a delivered (non-silent) decision closes the
     // dedupe window; a silent verdict (incl. a dedupe hit) never refreshes seen_at, so the meeting is re-evaluated as it nears.
     if (decision !== 'silent') await store.markSignalHashes(uid, hashes, new Date(at).toISOString());
     const used = memories.filter(m => r.used.includes(m.id));
+    // Codex PR90 #2: one delivery owner per decision. A device-evaluated decision is delivered by the device's own
+    // gate (local notification); APNs only delivers decisions the client explicitly hands off (context.delivery='remote').
+    const delivery = context.delivery === 'remote' ? 'remote' : 'device';
     const explanation = {
+      time_zone: tz, delivery,
       contract: DECISION_CONTRACT, why: r.reason, proposed, decision, source, trigger: r.trigger,
       confidence: Number(conf.toFixed(3)), raw_confidence: r.confidence, threshold: Number(threshold.toFixed(3)), weight: tw.weight, trace,
       signals: signals.map((s, i) => ({ ...s, signal_hash: hashes[i], duplicate: seen.includes(hashes[i]) })),
@@ -119,8 +123,8 @@ export function createDecisionService({ store, model = null, memory = null, now 
     };
     explanation.title = r.title || titleFor(decision, r);
     explanation.suggestion = { status: decision === 'silent' ? 'dismissed' : 'pending', taken: [], history: [], ops: {} };
-    const ev = await store.insertEvent({ user_id: uid, task_id: null, conversation_id: context.conversation_id ?? null, kind: 'proactive_decision', title: explanation.title, body: r.reason, payload: explanation, dedupe_key: 'decision:' + crypto.randomUUID(), push_state: lvl(decision) >= 2 ? 'pending' : 'skipped' });
-    return { event_id: ev.id, suggestion: toSuggestion(ev), decision, reason: r.reason, confidence: explanation.confidence, used_memories: used, suggested_actions: r.actions, source, trace };
+    const ev = await store.insertEvent({ user_id: uid, task_id: null, conversation_id: context.conversation_id ?? null, kind: 'proactive_decision', title: explanation.title, body: r.reason, payload: explanation, dedupe_key: 'decision:' + crypto.randomUUID(), push_state: delivery === 'remote' && lvl(decision) >= 2 ? 'pending' : 'skipped' });
+    return { event_id: ev.id, suggestion: toSuggestion(ev), decision, delivery, reason: r.reason, confidence: explanation.confidence, used_memories: used, suggested_actions: r.actions, source, trace };
   }
 
   async function feedback(uid, b) {
