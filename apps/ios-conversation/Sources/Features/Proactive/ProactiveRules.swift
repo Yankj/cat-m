@@ -138,6 +138,10 @@ enum ProactiveActionStates {
     static func merge(local: [String: ProactiveActionState], server: [String: String]?) -> [String: ProactiveActionState] {
         local.merging(from(serverStates: server ?? [:])) { l, r in r == .succeeded ? r : l }
     }
+    /// Codex PR90c #6: an update to a card already on screen keeps every success it knew and adds the new ones.
+    static func mergeServer(existing: [String: String]?, incoming: [String: String]?) -> [String: String] {
+        (existing ?? [:]).merging(incoming ?? [:]) { old, new in old == "done" ? old : new }
+    }
     /// Execution entry: an effect already succeeded (locally or in the cloud) is never run again.
     static func shouldExecute(_ action: String, _ st: [String: ProactiveActionState]) -> Bool {
         !effects.contains(action) || st[action] != .succeeded
