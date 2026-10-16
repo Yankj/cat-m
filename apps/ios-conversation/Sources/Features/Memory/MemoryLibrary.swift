@@ -5,7 +5,7 @@ import Foundation
 // seam for list / edit / forget / "使用记忆"; the plan's extra controls ("自动记住新内容", "全部清除", undo_token) are
 // reported as unsupported until 三角 exposes them, so the page hides or disables them instead of faking success.
 
-enum MemoryGroup: String, CaseIterable, Sendable, Identifiable {
+enum MemoryGroup: String, CaseIterable, Sendable, Identifiable, Codable {
     case profile, preference, person, journal
     var id: String { rawValue }
     /// Plan §1.2 kinds: profile | preference | person | fact | journal. `fact` is shown under 关于我.
@@ -35,14 +35,14 @@ enum MemoryGroup: String, CaseIterable, Sendable, Identifiable {
     }
 }
 
-struct MemoryLibraryItem: Identifiable, Sendable, Equatable {
+struct MemoryLibraryItem: Identifiable, Sendable, Equatable, Codable {
     let id: String
     var group: MemoryGroup
     var content: String
     var updatedAt: Date?
 }
 
-struct MemoryLibrarySnapshot: Sendable, Equatable {
+struct MemoryLibrarySnapshot: Sendable, Equatable, Codable {
     var items: [MemoryLibraryItem]
     var useMemory: Bool
     /// nil = the backend cannot report or change it yet.
@@ -91,28 +91,42 @@ extension MemoryLibraryBackend {
     func create(kind: String, content: String) async throws -> String { throw MemoryLibraryError.unsupported }
 }
 
-/// In-memory stub for Previews, demo mode and until the real APIs exist.
+/// Memory library kept on this device. `fileURL == nil` → in-memory only (Previews / tests).
+/// With a `fileURL` (see `MemoryLibraryLocal.shared`) every mutation is written atomically, so items survive a cold start.
+/// Default init is EMPTY (NoBug P0-2): pass `MemoryLibraryStub.sample` explicitly in Previews.
 @MainActor final class MemoryLibraryStub: MemoryLibraryBackend {
     var capabilities: MemoryLibraryCapabilities = .all
     private var snapshot: MemoryLibrarySnapshot
-    init(items: [MemoryLibraryItem] = MemoryLibraryStub.sample, useMemory: Bool = true, autoSave: Bool = true) {
-        snapshot = .init(items: items, useMemory: useMemory, autoSave: autoSave)
+    let fileURL: URL?
+    init(items: [MemoryLibraryItem] = [], useMemory: Bool = true, autoSave: Bool = true, fileURL: URL? = nil) {
+        self.fileURL = fileURL
+        if let fileURL, let data = try? Data(contentsOf: fileURL),
+           let saved = try? JSONDecoder().decode(MemoryLibrarySnapshot.self, from: data) { snapshot = saved }
+        else { snapshot = .init(items: items, useMemory: useMemory, autoSave: autoSave) }
+    }
+    /// Synchronous view for routing decisions (e.g. show local items vs 未开通).
+    var items: [MemoryLibraryItem] { snapshot.items }
+    var isPersistent: Bool { fileURL != nil }
+    private func save() {
+        guard let fileURL, let data = try? JSONEncoder().encode(snapshot) else { return }
+        try? data.write(to: fileURL, options: [.atomic])
     }
     func load() async throws -> MemoryLibrarySnapshot { snapshot }
     func update(id: String, content: String) async throws {
         guard let i = snapshot.items.firstIndex(where: { $0.id == id }) else { throw MemoryLibraryError.notFound }
-        snapshot.items[i].content = content; snapshot.items[i].updatedAt = .now
+        snapshot.items[i].content = content; snapshot.items[i].updatedAt = .now; save()
     }
-    func forget(ids: [String]) async throws { snapshot.items.removeAll { ids.contains($0.id) } }
-    func setUseMemory(_ on: Bool) async throws { snapshot.useMemory = on }
-    func setAutoSave(_ on: Bool) async throws { snapshot.autoSave = on }
-    func clearAll() async throws { snapshot.items = [] }
+    func forget(ids: [String]) async throws { snapshot.items.removeAll { ids.contains($0.id) }; save() }
+    func setUseMemory(_ on: Bool) async throws { snapshot.useMemory = on; save() }
+    func setAutoSave(_ on: Bool) async throws { snapshot.autoSave = on; save() }
+    func clearAll() async throws { snapshot.items = []; save() }
     func undoSave(memoryID: String, undoToken: String?) async throws { try await forget(ids: [memoryID]) }
     func create(kind: String, content: String) async throws -> String {
         let id = "local-" + UUID().uuidString.lowercased()
-        snapshot.items.insert(.init(id: id, group: MemoryGroup(kind: kind), content: content, updatedAt: .now), at: 0); return id
+        snapshot.items.insert(.init(id: id, group: MemoryGroup(kind: kind), content: content, updatedAt: .now), at: 0); save(); return id
     }
 
+    /// Previews / tests only — never the default.
     static let sample: [MemoryLibraryItem] = [
         .init(id: "m1", group: .profile, content: "住在北京望京", updatedAt: .now),
         .init(id: "m2", group: .preference, content: "喜欢靠窗座位", updatedAt: .now),
