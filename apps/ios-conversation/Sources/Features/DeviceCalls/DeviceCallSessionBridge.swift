@@ -16,6 +16,7 @@ extension ConversationDeviceResultSubmitter: DeviceResultSubmitting {
         let data = try result.data.map { try JSONEncoder().encode($0) }
         try await submit(callID: result.call_id, status: result.status.rawValue, data: data)
     }
+    func reportUndo(callID: String, outcome: DeviceUndoOutcome) async throws { try await submitUndo(callID: callID, outcome: outcome) }
 }
 
 extension DeviceCall {
