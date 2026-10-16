@@ -166,6 +166,7 @@ extension AccountLocalData {
         if let userID { MemoryLibraryLocal.purge(owner: .account(userID.uuidString.lowercased())) } else { MemoryLibraryLocal.purge(owner: .guest) }
         MemoryLibraryHub.reset()
         DeviceCallStore.shared.reset()
+        ProactiveFeedbackSync.shared.reset()
         purge(defaults: .standard)
         ProactiveSuggestionStore.shared.clearForSignOut()
         #if os(iOS)

@@ -24,6 +24,9 @@ import UserNotifications
         func done(_ status: DeviceCallStatus, _ data: [String: DeviceCallValue]? = nil, open: String? = nil) -> DeviceCallResult {
             var r = DeviceCallResult(call_id: call.call_id, status: status, data: data); r.openURL = open; return r
         }
+        func handoff(_ o: DeviceHandoffOutcome, _ extra: [String: DeviceCallValue] = [:], refused: String? = nil) -> DeviceCallResult {
+            DeviceToolContract.handoffResult(o, callID: call.call_id, extra: extra, refusedReason: refused)
+        }
         switch call.tool {
         case "places_search":
             return await NearbyPlaces.search(call: call)
@@ -90,7 +93,7 @@ import UserNotifications
             guard MFMailComposeViewController.canSendMail() else {
                 var c = URLComponents(); c.scheme = "mailto"; c.path = s("to").replacingOccurrences(of: "、", with: ",")
                 c.queryItems = [.init(name: "subject", value: s("subject")), .init(name: "body", value: s("body"))]
-                return await open(c.url) ? done(.ok, ["via": .string("mailto")]) : done(.error, ["reason": .string("mail_unavailable")])
+                return handoff(await open(c.url), ["via": .string("mailto")], refused: "mail_unavailable")
             }
             let vc = MFMailComposeViewController(); vc.mailComposeDelegate = self
             vc.setToRecipients(s("to").split(whereSeparator: { "、, ".contains($0) }).map(String.init))
@@ -99,21 +102,21 @@ import UserNotifications
             return done(await present(vc))
         case "phone_call":
             let digits = s("number").filter { $0.isNumber || $0 == "+" }
-            return await open(URL(string: "tel:\(digits)")) ? done(.ok) : done(.error, ["reason": .string("tel_unavailable")])
+            return handoff(await open(URL(string: "tel:\(digits)")), refused: "tel_unavailable")
         case "maps_open":
             let q = s("query").addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
             let mode = ["walk": "w", "walking": "w", "transit": "r", "drive": "d", "driving": "d"][s("mode")] ?? "d"
-            return await open(URL(string: "maps://?daddr=\(q)&dirflg=\(mode)")) ? done(.ok) : done(.error)
+            return handoff(await open(URL(string: "maps://?daddr=\(q)&dirflg=\(mode)")))
         case "shop_open":
             let (app, web) = DeviceToolContract.shopURLs(platform: s("platform"), query: s("query"))   // meituan → imeituan:// (P0-4)
             // Prefer installed app only when canOpenURL is true; otherwise go straight to https
             // so Simulator / devices without 淘宝 don't stall on a dead custom scheme.
-            if let app, UIApplication.shared.canOpenURL(app), await open(app) { return done(.ok) }
-            return await open(web) ? done(.ok, ["via": .string("web")]) : done(.error)
+            if let app, UIApplication.shared.canOpenURL(app) { let o = await open(app); if o != .refused { return handoff(o) } }
+            return handoff(await open(web), ["via": .string("web")])
         case "shortcut_run":
             var c = URLComponents(string: "shortcuts://run-shortcut")!
             c.queryItems = [.init(name: "name", value: s("name"))] + (s("input").isEmpty ? [] : [.init(name: "input", value: "text"), .init(name: "text", value: s("input"))])
-            return await open(c.url) ? done(.ok) : done(.error)
+            return handoff(await open(c.url))
         default:
             return DeviceToolContract.unsupported(call)
         }
@@ -152,24 +155,25 @@ import UserNotifications
     }
     /// Opens an external URL. Must not await return-to-foreground: on Simulator, `https`/`tel`/
     /// store schemes hand off to Safari/Phone and the async open continuation can stall for minutes
-    /// (UITests then miss `chat.deviceCall.receipt`). Race a short timeout and treat handoff as success.
-    private func open(_ url: URL?) async -> Bool {
-        guard let url else { return false }
+    /// (UITests then miss `chat.deviceCall.receipt`). Race a short timeout; Codex P0-4: a timeout is `.timedOut`
+    /// (outcome unknown), never success.
+    private func open(_ url: URL?) async -> DeviceHandoffOutcome {
+        guard let url else { return .refused }
         let scheme = (url.scheme ?? "").lowercased()
         let allowed = UIApplication.shared.canOpenURL(url)
             || ["https", "http", "tel", "maps", "mailto"].contains(scheme)
-        guard allowed else { return false }
-        return await withTaskGroup(of: Bool?.self) { group in
+        guard allowed else { return .refused }
+        return await withTaskGroup(of: DeviceHandoffOutcome?.self) { group in
             group.addTask { @MainActor in
-                await withCheckedContinuation { (cont: CheckedContinuation<Bool, Never>) in
-                    UIApplication.shared.open(url, options: [:]) { cont.resume(returning: $0) }
+                await withCheckedContinuation { (cont: CheckedContinuation<DeviceHandoffOutcome?, Never>) in
+                    UIApplication.shared.open(url, options: [:]) { cont.resume(returning: $0 ? .opened : .refused) }
                 }
             }
             group.addTask {
                 try? await Task.sleep(nanoseconds: 1_200_000_000)
-                return true // handed off / backgrounded — count as attempted
+                return .timedOut // handed off but unconfirmed — outcome unknown
             }
-            var result = false
+            var result: DeviceHandoffOutcome = .timedOut
             for await value in group {
                 if let value {
                     result = value

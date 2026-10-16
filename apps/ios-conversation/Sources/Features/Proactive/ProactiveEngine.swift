@@ -435,10 +435,13 @@ struct ProactiveSignal: Equatable, Sendable {
         }
         return found.first
     }
-    func removeReminder(_ suggestionID: String) async {
-        guard let p = pendingReminders[suggestionID], let id = await findReminder(marker: URL(string: "catpawm://op/\(p.operationID)")!),
-              let item = store.calendarItem(withIdentifier: id) as? EKReminder else { return }
-        try? store.remove(item, commit: true); note("undo removed reminder operation_id=\(p.operationID)")
+    /// Codex P0-4: report the real removal outcome; a failed EventKit delete is never swallowed.
+    func removeReminder(_ suggestionID: String) async -> DeviceUndoOutcome {
+        guard let p = pendingReminders[suggestionID] else { return .alreadyGone }
+        guard let id = await findReminder(marker: URL(string: "catpawm://op/\(p.operationID)")!),
+              let item = store.calendarItem(withIdentifier: id) as? EKReminder else { return .alreadyGone }
+        do { try store.remove(item, commit: true); note("undo removed reminder operation_id=\(p.operationID)"); return .undone }
+        catch { note("undo failed operation_id=\(p.operationID): \(error.localizedDescription)"); return .failed }
     }
     #endif
 
@@ -736,21 +739,31 @@ struct ProactiveSignal: Equatable, Sendable {
         mock.adopt(s); Self.save(s); return s
     }
     func undo(_ id: String) async throws -> ProactiveSuggestion {
-        CatpawLeaveActivity.stop(suggestionID: id)
+        var removal: DeviceUndoOutcome = .undone
         #if canImport(EventKit)
-        await ProactiveEngine.shared.removeReminder(id)
+        removal = await ProactiveEngine.shared.removeReminder(id)
         #endif
         var s = ProactiveSuggestionStore.shared.items[id] ?? ProactiveSuggestion(id: id, title: "", reason: "")
+        guard let next = ProactiveUndoRules.statusAfterUndo(current: s.effectiveStatus, removal: removal) else {
+            ProactiveEngine.shared.note("undo kept status id=\(id) (reminder delete failed)")
+            throw ProactiveEngineError.undoFailed
+        }
+        CatpawLeaveActivity.stop(suggestionID: id)
         // Keep sent-SMS evidence; undo only rolls back reminder / pending state.
         let kept = (s.taken ?? []).filter { $0.action == .notify_attendees && ($0.detail?.contains("已发送") == true) }
-        s.status = .pending
+        s.status = next
         s.taken = kept
         mock.adopt(s); Self.save(s)
+        ProactiveEngine.shared.syncAction("undo", local: id, operationID: "op-\(id)-undo")
         return s
     }
-    func feedback(_ value: ProactiveFeedback, on id: String) async throws { ProactiveEngine.shared.note("feedback \(value.rawValue) id=\(id)") }
+    /// Codex P0-4: persisted per account and posted to the server; throws when only queued (待同步).
+    func feedback(_ value: ProactiveFeedback, on id: String) async throws {
+        ProactiveEngine.shared.note("feedback \(value.rawValue) id=\(id)")
+        try await ProactiveFeedbackSync.shared.submit(value, suggestionID: id, trigger: "meeting_upcoming", serverID: ProactiveEngine.shared.serverIDs[id])
+    }
 }
-enum ProactiveEngineError: Error, Equatable { case remindersDenied, writeFailed, smsUnavailable }
+enum ProactiveEngineError: Error, Equatable { case remindersDenied, writeFailed, smsUnavailable, undoFailed }
 
 extension ProactiveLocalBackend {
     /// Builds a short 「告诉参会人」 draft from the pending meeting and presents MessageUI.
