@@ -351,6 +351,8 @@ extension DeviceResultSubmitting { func reportUndo(callID: String, outcome: Devi
     enum CommitOutcome<T> { case done(T), refused(Rejection) }
     /// Test seam: runs right before the final commit (after every earlier check), e.g. to revoke "after the check".
     static var beforeCommitHook: (() -> Void)?
+    /// p89g-4 test seam: every `receive` reports (call_id, granted) so tests can prove the event actually reached the gate.
+    static var receiveTrace: ((String, Bool) -> Void)?
     /// The final side effect. Under the commit-gate lock: revoked-set + grant generation + in-flight credential + tool/args
     /// + expiry + account epoch (AccountEpoch.commit) are checked together and `effect` runs inside. No gap.
     static func commitEffect<T>(_ cred: Credential, _ call: DeviceCall, _ effect: () throws -> T) rethrows -> CommitOutcome<T> {
@@ -372,7 +374,8 @@ extension DeviceResultSubmitting { func reportUndo(callID: String, outcome: Devi
     /// `token` = AccountEpoch token captured when the SSE event was CREATED (p89b-4); a stale token is dropped.
     static func receive(_ call: DeviceCall, conversationID: String? = nil, turnID: String? = nil, token captured: AccountToken? = nil) {
         // Production passes the source token (installLifecycle); the nil default (tests / previews) means "current".
-        guard grants[call.call_id] == nil, !revokedIDs.contains(call.call_id), let token = captured ?? epoch.capture(), epoch.isValid(token) else { return }
+        guard grants[call.call_id] == nil, !revokedIDs.contains(call.call_id), let token = captured ?? epoch.capture(), epoch.isValid(token) else { receiveTrace?(call.call_id, false); return }
+        receiveTrace?(call.call_id, true)
         let now = wallClock()
         let deadline = call.strictDeadline(receivedAt: now) ?? .distantPast   // missing / unparsable → fail closed
         grants[call.call_id] = .init(callID: call.call_id, tool: call.tool, argsHash: argsHash(call.args), interruptID: call.interrupt_id,

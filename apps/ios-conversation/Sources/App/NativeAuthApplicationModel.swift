@@ -59,6 +59,12 @@ struct NativeWorkspaceRetrySchedule: Sendable {
     private var logoutInProgress=false
     private var sessionRecoveryActive=false
     private var recoveryPathWait:Task<Void,Never>?
+    /// p89g-2: the offline-trial "upgrade when the network returns" task; owned, cancelled by logout, bound to its lifecycleEpoch.
+    private(set) var offlineRecoveryTask:Task<Void,Never>?
+    /// p89g-2 test seams (nil in production): run after the first detached local read returns / right before the offline
+    /// recovery task would start an experience.
+    static var afterLocalReadHook:(@MainActor () async -> Void)?
+    static var offlineRecoveryWillStartExperience:(@MainActor () -> Void)?
     private var recoveryImpossible=false
     private struct WorkspaceKey:Equatable {let lifecycleEpoch:Int;let generation:Int;let subject:UUID}
     private var workspaceFlight:(id:UUID,key:WorkspaceKey,task:Task<Void,Never>)?
@@ -154,6 +160,7 @@ struct NativeWorkspaceRetrySchedule: Sendable {
     private func openLocalConversation() async {
         guard let configuration,let localVault,let localBarrier else { return }
         let receiptURL=receiptURL,root=root,issuer=configuration.issuer
+        let openEpoch=lifecycleEpoch   // p89g-2: lifecycle snapshot at ENTRY, before the first await (detached read)
         let found:(LocalConversationReceipt,AuthenticatedLocalPartition)? = await Task.detached(priority:.userInitiated) {
             guard let bytes=try? Data(contentsOf:receiptURL),let receipt=try? JSONDecoder().decode(LocalConversationReceipt.self,from:bytes),
                   let candidate=try? localVault.load(),let signedOut=try? localBarrier.isSignedOut(),
@@ -161,13 +168,15 @@ struct NativeWorkspaceRetrySchedule: Sendable {
                   FileManager.default.fileExists(atPath:root.appendingPathComponent(partition.namespace).appendingPathComponent("local.store").path) else { return nil }
             return (receipt,partition)
         }.value
-        guard let found=found,chat == nil else { return }
+        if let hook=Self.afterLocalReadHook { await hook() }
+        // p89g-2: a logout (or session restart) that completed while the read was suspended ends this open here.
+        guard let found=found,chat == nil,!Task.isCancelled,!logoutInProgress,openEpoch == lifecycleEpoch else { return }
         let (receipt,partition)=found
-        let openEpoch=lifecycleEpoch,openToken=Self.principal(for:partition.subject)   // captured at open start
+        let openToken=Self.principal(for:partition.subject)
         let url=root.appendingPathComponent(partition.namespace).appendingPathComponent("local.store")
         do {
             let (repository,imageStore)=try await Self.openStores(directory:url.deletingLastPathComponent(),prepare:false)
-            guard chat == nil,!logoutInProgress else { return }
+            guard chat == nil,!logoutInProgress,!Task.isCancelled,openEpoch == lifecycleEpoch else { return }
             // The local receipt conveys local reading only; it never authorizes HTTP.
             let chatConfiguration=try NativeChatConfiguration(origin:configuration.backendOrigin,localScope:partition.scope,serverScopeID:receipt.serverScopeID,publishableKey:configuration.publishableKey,expectedSubjectID:partition.subject)
             let credentials=AuthenticatedNativeChatCredentials(manager:manager!,partition:partition)
@@ -182,6 +191,7 @@ struct NativeWorkspaceRetrySchedule: Sendable {
             #endif
             let preview=ConversationFirstModel(repository:repository,service:ConversationSessionService(repository:repository,backend:selected,resilience:ConnectionMonitorResilience(),outbox:ConversationOutbox(fileURL:url.deletingLastPathComponent().appendingPathComponent("conversation-outbox.json")),principalAccount:partition.subject.uuidString),scope:partition.scope,imageStore:imageStore,taskPlanService:isFixture ? nil : ConversationTaskPlanService(repository:repository,scope:partition.scope,backend:backend),artifactEditService:isFixture ? nil : ConversationArtifactEditService(repository:repository,scope:partition.scope,backend:backend),taskActionService:isFixture ? nil : ConversationTaskActionService(repository:repository,scope:partition.scope,backend:backend),taskControlService:isFixture ? nil : ConversationTaskControlService(repository:repository,scope:partition.scope,backend:backend),memoryService:memory,inboxService:isFixture ? nil : ConversationInboxService(reference:.init(scope:partition.scope,serverScopeID:chatConfiguration.serverScopeID,subjectID:partition.subject),backend:backend),subjectID:partition.subject)
             preview.setNetworkAdmissionAllowed(false);await preview.start()
+            guard !Task.isCancelled else { Task { await preview.deactivate() }; return }
             guard attachIfCurrent(preview,openEpoch:openEpoch,token:openToken) else { return }
             self.backend=backend;namespace=partition.namespace
             installUIDecisionSubmitter(preview.service,scope:partition.scope)
@@ -423,15 +433,17 @@ struct NativeWorkspaceRetrySchedule: Sendable {
                     else {await waitForRetry(attempt:attempt);attempt += 1}
                     continue
                 }
-                // Terminal workspace failure: keep local chat usable; surface via status dots, not entry gate.
+                // Terminal workspace failure. Product decision (coordinator, p89g-5 / :116): a REJECTED workspace (needs a
+                // session restart) drops its provisional chat — restart is set FIRST so no in-flight admit can reattach, and
+                // the network stays closed. Non-restart terminal failures keep the local chat usable.
                 chat?.setNetworkAdmissionAllowed(false)
-                await admitProvisionalChat(user: user, configuration: configuration)
                 requiresSessionRestart=workspaceFailureNeedsRestart(error)
                 recoveryImpossible=requiresSessionRestart
                 if requiresSessionRestart {
                     self.error=friendlyWorkspaceFailure(error)
-                    chat?.error=self.error
+                    if chat != nil { _ = await finishDetaching(takeChat()) }
                 } else {
+                    await admitProvisionalChat(user: user, configuration: configuration)
                     self.error=nil; chat?.error=nil
                 }
                 return
@@ -493,7 +505,7 @@ struct NativeWorkspaceRetrySchedule: Sendable {
         stableID("catpaw-provisional-scope-" + subject.uuidString.lowercased())
     }
     /// First-launch / auth-unreachable: local trial store, no network admission, no fake cloud credential.
-    private func openOfflineTrialChat(configuration: NativeAuthConfiguration) async {
+    func openOfflineTrialChat(configuration: NativeAuthConfiguration) async {
         guard chat == nil, !logoutInProgress else { return }
         let openEpoch = lifecycleEpoch
         let subject = offlineTrialSubject()
@@ -514,12 +526,15 @@ struct NativeWorkspaceRetrySchedule: Sendable {
             recoveryImpossible = false
             requiresSessionRestart = false
             // When path returns, upgrade to a real anonymous session without blocking entry.
-            Task { [weak self] in
+            // p89g-2: owned + cancelled by logout; re-validated against openEpoch after EVERY await.
+            offlineRecoveryTask?.cancel()
+            offlineRecoveryTask = Task { [weak self] in
                 guard let self else { return }
                 await self.connectionMonitor.waitForPath()
-                guard !self.logoutInProgress, let manager = self.manager else { return }
+                guard !Task.isCancelled, !self.logoutInProgress, openEpoch == self.lifecycleEpoch, let manager = self.manager else { return }
                 let phase = (await manager.snapshot()).phase
-                if phase == .signedOut || phase == .loginRequired { await self.startExperience() }
+                guard !Task.isCancelled, !self.logoutInProgress, openEpoch == self.lifecycleEpoch else { return }
+                if phase == .signedOut || phase == .loginRequired { Self.offlineRecoveryWillStartExperience?(); await self.startExperience() }
             }
         } catch {
             self.error = NativeAuthError.storage.localizedDescription
@@ -709,6 +724,7 @@ struct NativeWorkspaceRetrySchedule: Sendable {
         DeviceLedger.shared.signOut(account: leaving)   // p89c-b: that account's local ledger is cleared
         DeviceCallGate.reset()          // Codex p89b-4: grants/taps/credentials die synchronously, before any await
         warmup?.cancel();recoveryPathWait?.cancel();recoveryPathWait=nil
+        offlineRecoveryTask?.cancel();offlineRecoveryTask=nil   // p89g-2
         workspaceFlight?.task.cancel();workspaceFlight=nil;workspaceReadyKey=nil;wakeRetry()
         defer {logoutInProgress=false;actionBusy=false;recoveryImpossible=false;requiresSessionRestart=false}
         await CatpawPushTokenUploader.shared.clearAuthorization()

@@ -39,9 +39,11 @@ public actor ConversationSessionService {
     private final class QueuedUIDecision: @unchecked Sendable {
         let id = UUID(); let scope: DataScope; let conversationID: UUID; let turnID: UUID; let interruptID: String
         let decision: ConversationUIDecision; let argsHash: String; let response: Data?; let operationID: UUID
+        /// p89g-1: login source pinned at the PUBLIC submit entry; carried through the queue and checked at dequeue.
+        let source: AccountToken?
         var waiters: [CheckedContinuation<UUID, Error>] = []
-        init(scope: DataScope, conversationID: UUID, turnID: UUID, interruptID: String, decision: ConversationUIDecision, argsHash: String, response: Data?, operationID: UUID) {
-            self.scope = scope; self.conversationID = conversationID; self.turnID = turnID; self.interruptID = interruptID; self.decision = decision; self.argsHash = argsHash; self.response = response; self.operationID = operationID
+        init(scope: DataScope, conversationID: UUID, turnID: UUID, interruptID: String, decision: ConversationUIDecision, argsHash: String, response: Data?, operationID: UUID, source: AccountToken?) {
+            self.source = source; self.scope = scope; self.conversationID = conversationID; self.turnID = turnID; self.interruptID = interruptID; self.decision = decision; self.argsHash = argsHash; self.response = response; self.operationID = operationID
         }
         func finish(_ result: Result<UUID, Error>) { let all = waiters; waiters = []; for w in all { w.resume(with: result) } }
     }
@@ -1020,7 +1022,9 @@ public actor ConversationSessionService {
             if uiQueue[conversationID]?.isEmpty == true { uiQueue[conversationID] = nil }
             var result: Result<UUID, Error>
             do {
-                let id = try await performUIDecision(scope: entry.scope, conversationID: conversationID, turnID: entry.turnID, interruptID: entry.interruptID, decision: entry.decision, argsHash: entry.argsHash, response: entry.response, operationID: entry.operationID)
+                // p89g-1: never re-capture at dequeue — a decision queued under an old login dies here, before any backend call.
+                if let source = entry.source, !AccountEpoch.shared.isValid(source) { throw CancellationError() }
+                let id = try await performUIDecision(scope: entry.scope, conversationID: conversationID, turnID: entry.turnID, interruptID: entry.interruptID, decision: entry.decision, argsHash: entry.argsHash, response: entry.response, operationID: entry.operationID, source: entry.source)
                 result = .success(id)
             } catch { result = .failure(error) }
             entry.finish(result)
@@ -1050,15 +1054,16 @@ public actor ConversationSessionService {
     /// Blocks may be answered in any order.
     @discardableResult
     public func submitUIDecision(scope: DataScope, conversationID: UUID, turnID: UUID, interruptID: String, decision: ConversationUIDecision, argsHash: String, response: Data?, operationID: UUID = UUID()) async throws -> UUID {
+        let sourceToken = pinnedSource()   // p89g-1: pinned at the public entry, before the first await, and queued with the decision
         let key = interruptID.lowercased()
         let idle = active[conversationID] == nil && !cancelling.contains(conversationID) && (uiQueue[conversationID] ?? []).isEmpty
-        if idle { return try await performUIDecision(scope: scope, conversationID: conversationID, turnID: turnID, interruptID: key, decision: decision, argsHash: argsHash, response: response, operationID: operationID) }
+        if idle { return try await performUIDecision(scope: scope, conversationID: conversationID, turnID: turnID, interruptID: key, decision: decision, argsHash: argsHash, response: response, operationID: operationID, source: sourceToken) }
         let entry: QueuedUIDecision
         if let queued = uiQueue[conversationID]?.first(where: { $0.interruptID == key }) {
-            guard queued.turnID == turnID, queued.decision == decision, queued.argsHash == argsHash, queued.response == response else { throw ConversationApprovalFailure.rejected(status: 409, code: "approval_operation_conflict") }
+            guard queued.source == sourceToken, queued.turnID == turnID, queued.decision == decision, queued.argsHash == argsHash, queued.response == response else { throw ConversationApprovalFailure.rejected(status: 409, code: "approval_operation_conflict") }
             entry = queued
         } else {
-            entry = QueuedUIDecision(scope: scope, conversationID: conversationID, turnID: turnID, interruptID: key, decision: decision, argsHash: argsHash, response: response, operationID: operationID)
+            entry = QueuedUIDecision(scope: scope, conversationID: conversationID, turnID: turnID, interruptID: key, decision: decision, argsHash: argsHash, response: response, operationID: operationID, source: sourceToken)
             uiQueue[conversationID, default: []].append(entry)
         }
         let entryID = entry.id
@@ -1073,10 +1078,11 @@ public actor ConversationSessionService {
         }
         return result
     }
-    private func performUIDecision(scope: DataScope, conversationID: UUID, turnID: UUID, interruptID: String, decision: ConversationUIDecision, argsHash: String, response: Data?, operationID: UUID) async throws -> UUID {
-        let sourceToken = pinnedSource()   // p89e-1: account AND login generation, pinned before the first await
+    private func performUIDecision(scope: DataScope, conversationID: UUID, turnID: UUID, interruptID: String, decision: ConversationUIDecision, argsHash: String, response: Data?, operationID: UUID, source sourceToken: AccountToken?) async throws -> UUID {
+        // p89g-1: the source comes from the caller (public entry or queue entry), never from "current" here.
         guard active[conversationID] == nil, !cancelling.contains(conversationID) else { throw ConversationSessionError.busy }
         let saved = try await read(scope: scope, conversationID: conversationID)
+        if let sourceToken, !AccountEpoch.shared.isValid(sourceToken) { throw CancellationError() }
         guard let turn = saved.turns.first(where: { $0.id == turnID }), turn.awaitingApproval,
               let block = Self.uiApprovals(turn).first(where: { $0.interruptID == interruptID.lowercased() }) else { throw ConversationApprovalFailure.noPendingApproval }
         guard block.argsHash == argsHash else { throw ConversationApprovalFailure.stale }

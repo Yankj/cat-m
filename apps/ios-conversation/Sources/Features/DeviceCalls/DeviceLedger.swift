@@ -24,14 +24,19 @@ enum DeviceLedgerRemoval: Equatable { case removed, notFound, removeFailed, perm
     func remove(kind: DeviceLedgerEntry.Kind, itemID: String) -> DeviceLedgerRemoval
     /// p89e-3: the ledger calls this one (call id available for a marker lookup); default forwards to the id-only form.
     func remove(kind: DeviceLedgerEntry.Kind, itemID: String, callID: String) -> DeviceLedgerRemoval
+    /// p89g-3: marker lookup with the recorded identity (title / due) so a copy can never be taken for the original.
+    func remove(kind: DeviceLedgerEntry.Kind, itemID: String, callID: String, title: String, due: Date?) -> DeviceLedgerRemoval
 }
 extension DeviceLedgerItemStore {
     func remove(kind: DeviceLedgerEntry.Kind, itemID: String, callID: String) -> DeviceLedgerRemoval { remove(kind: kind, itemID: itemID) }
+    func remove(kind: DeviceLedgerEntry.Kind, itemID: String, callID: String, title: String, due: Date?) -> DeviceLedgerRemoval { remove(kind: kind, itemID: itemID, callID: callID) }
 }
 /// p89e-3: an identifier that no longer resolves does NOT prove the item is gone (EventKit ids change when an item moves
 /// calendar / re-syncs — EKEvent.h). The real adapter therefore never reports `.notFound`:
 /// - id resolves → remove it;
-/// - events: id misses → search the call marker (our notes) in a ±400-day window; found → remove THAT item;
+/// - events: id misses → search the call marker (our notes) in a ±400-day window; remove only when EXACTLY ONE event carries
+///   the marker AND it matches the recorded identity (title, start == due). A user copy keeps our notes, so several matches
+///   (or an identity mismatch) are ambiguous → `.undetermined` (p89g-3: never delete a guess, never mark undone);
 /// - anything else (reminder id miss, marker not found, no permission, no readable calendars) → `.undetermined` / `.permissionRevoked`
 ///   → the ledger keeps `.unknown` (never "already gone", never marked undone).
 @MainActor final class EventKitLedgerItemStore: DeviceLedgerItemStore {
@@ -39,7 +44,10 @@ extension DeviceLedgerItemStore {
     init(store: EKEventStore = EKEventStore()) { self.store = store }
     func remove(kind: DeviceLedgerEntry.Kind, itemID: String) -> DeviceLedgerRemoval { remove(kind: kind, itemID: itemID, callID: nil) }
     func remove(kind: DeviceLedgerEntry.Kind, itemID: String, callID: String) -> DeviceLedgerRemoval { remove(kind: kind, itemID: itemID, callID: Optional(callID)) }
-    private func remove(kind: DeviceLedgerEntry.Kind, itemID: String, callID: String?) -> DeviceLedgerRemoval {
+    func remove(kind: DeviceLedgerEntry.Kind, itemID: String, callID: String, title: String, due: Date?) -> DeviceLedgerRemoval {
+        remove(kind: kind, itemID: itemID, callID: Optional(callID), identity: (title, due))
+    }
+    private func remove(kind: DeviceLedgerEntry.Kind, itemID: String, callID: String?, identity: (title: String, due: Date?)? = nil) -> DeviceLedgerRemoval {
         let type: EKEntityType = kind == .reminder ? .reminder : .event
         guard EKEventStore.authorizationStatus(for: type) == .fullAccess else { return .permissionRevoked }
         guard !store.calendars(for: type).isEmpty else { return .undetermined }
@@ -52,7 +60,12 @@ extension DeviceLedgerItemStore {
             if target == nil, let callID {
                 let marker = DeviceToolContract.callMarker(callID), now = Date()
                 let window = store.predicateForEvents(withStart: now.addingTimeInterval(-400 * 86400), end: now.addingTimeInterval(400 * 86400), calendars: nil)
-                target = store.events(matching: window).first { $0.notes?.contains(marker) == true }
+                let matches = store.events(matching: window).filter { $0.notes?.contains(marker) == true }
+                // p89g-3: unique AND identity-verified, else ambiguous. Without a recorded identity there is no proof.
+                guard matches.count == 1, let only = matches.first, let identity else { return .undetermined }
+                guard identity.title.isEmpty || only.title == identity.title else { return .undetermined }
+                if let due = identity.due { guard let start = only.startDate, abs(start.timeIntervalSince(due)) < 1 else { return .undetermined } }
+                target = only
             }
             guard let e = target else { return .undetermined }
             do { try store.remove(e, span: .thisEvent, commit: true); return .removed } catch { return .removeFailed }
@@ -115,7 +128,7 @@ extension DeviceLedgerItemStore {
         if entry.undone { return .alreadyGone }
         let outcome: DeviceUndoOutcome? = epoch.commit(token) {
             let o: DeviceUndoOutcome
-            switch items.remove(kind: entry.kind, itemID: entry.itemID, callID: entry.id) {
+            switch items.remove(kind: entry.kind, itemID: entry.itemID, callID: entry.id, title: entry.title, due: entry.due) {
             case .removed: o = .undone
             case .notFound: o = .alreadyGone
             case .removeFailed: o = .failed
