@@ -74,6 +74,12 @@ extension MemoryLibraryHub {
     /// Prefer catpaw.agent-memory.v1 over the claim-based adapter once 三角 installs it.
     static func installAgentMemory(configuration: NativeChatConfiguration, credentials: any NativeChatSessionCredentials) {
         install(backend: AgentMemoryLibraryBackend(configuration: configuration, credentials: credentials))
-        Task { @MainActor in await reconcileLocal() }   // NoBug P0-1: local → cloud when the gate is open
+        // NoBug P0-1 + Codex P0-2: local → cloud only for the account this backend authenticates as.
+        guard let subject = configuration.expectedSubjectID else { return }
+        let owner = LocalMemoryOwner.account(subject.uuidString.lowercased())
+        Task { @MainActor in
+            MemoryLibraryLocal.activate(userID: subject)
+            await reconcileLocal(owner: owner)
+        }
     }
 }
