@@ -97,22 +97,50 @@ extension ProactiveRules {
     static func applyFeedbackGate(_ level: ProactiveLevel, trigger: String = localTrigger, confidence: Double? = nil,
                                   gate: ((String, Double, String) -> String)?) -> ProactiveLevel {
         guard level > .silent, let gate else { return level }
-        return min(level, ProactiveLevel(server: gate(level.name, confidence ?? localConfidence(trigger, nil, nil), trigger)))
+        return min(level, ProactiveLevel(server: gate(level.name, confidence ?? localConfidence(trigger, data: [:]), trigger)))
     }
 }
 
 extension ProactiveRules {
-    /// 三角's per-trigger confidences for offline decisions (same table the feedback gate is calibrated on).
-    /// `detail` for flights: "cancelled" | "delay_60" | "delay_30" | anything else (gate change etc.).
-    static func localConfidence(_ trigger: String, _ minutesUntil: Int?, _ detail: String?) -> Double {
+    /// A signal `data` field value (number / string / bool), as sent to and read by decision.mjs.
+    enum SignalValue: Decodable, Equatable {
+        case number(Double), string(String), bool(Bool)
+        init(from decoder: Decoder) throws {
+            let c = try decoder.singleValueContainer()
+            if let b = try? c.decode(Bool.self) { self = .bool(b) } else if let n = try? c.decode(Double.self) { self = .number(n) } else { self = .string(try c.decode(String.self)) }
+        }
+        var number: Double? { if case .number(let n) = self { return n }; if case .string(let s) = self { return Double(s) }; return nil }
+        /// JS truthiness (used for affects_meeting / gate_changed).
+        var truthy: Bool { switch self { case .bool(let b): return b; case .number(let n): return n != 0 && !n.isNaN; case .string(let s): return !s.isEmpty } }
+    }
+    /// Mirrors decision.mjs ruleDecide exactly (shared vectors: services/edge/test/fixtures/proactive/confidence-vectors.json).
+    /// A signal that matches no rule keeps the default 0.6, as on the server.
+    static func localConfidence(_ trigger: String, data: [String: SignalValue]) -> Double {
+        let num = { (k: String) in data[k]?.number }
         switch trigger {
-        case "meeting_upcoming": return (minutesUntil ?? .max) <= 10 ? 0.7 : 0.6
-        case "travel_conflict": return 0.85
-        case "flight_status": return detail == "cancelled" ? 0.9 : detail == "delay_60" ? 0.8 : detail == "delay_30" ? 0.75 : 0.7
+        case "meeting_upcoming":
+            let travel = num("travel_minutes") ?? 0
+            guard let until = num("minutes_until") else { return 0.6 }
+            if travel > 0 && travel + 5 >= until { return 0.85 }
+            return until <= 10 ? 0.7 : 0.6
+        case "flight_status":
+            let delay = num("delay_minutes") ?? 0
+            if data["status"] == .string("cancelled") { return 0.9 }
+            if delay >= 60 && (data["affects_meeting"]?.truthy ?? false) { return 0.8 }
+            if delay >= 30 { return 0.75 }
+            if data["gate_changed"]?.truthy ?? false { return 0.7 }
+            return 0.6
         case "meeting_conflict", "schedule_conflict": return 0.75
-        case "traffic": return 0.65
+        case "traffic": return (num("extra_minutes") ?? 0) >= 15 ? 0.65 : 0.6
         default: return 0.6
         }
+    }
+    /// Meeting convenience: same rule from minutes until start and (used) travel minutes.
+    static func localConfidence(_ trigger: String, _ minutesUntil: Int?, travelMinutes: Int?) -> Double {
+        var d: [String: SignalValue] = [:]
+        if let m = minutesUntil { d["minutes_until"] = .number(Double(m)) }
+        if let t = travelMinutes { d["travel_minutes"] = .number(Double(t)) }
+        return localConfidence(trigger, data: d)
     }
     /// Pre-scheduled notification fires when the user should start getting ready: start − lead (no fixed +5).
     static func prescheduleFire(start: Date, leadMinutes: Int) -> Date { start.addingTimeInterval(TimeInterval(-leadMinutes * 60)) }
@@ -121,7 +149,7 @@ extension ProactiveRules {
     static func prescheduleDecision(cloud: ProactiveLevel?, leadMinutes: Int, trigger: String = localTrigger,
                                     gate: ((String, Double, String) -> String)?) -> ProactiveLevel? {
         let base = cloud ?? localLevel(minutesUntil: leadMinutes, leadMinutes: leadMinutes, travelMinutes: nil)
-        let level = applyFeedbackGate(base, trigger: trigger, confidence: localConfidence(trigger, leadMinutes, nil), gate: gate)
+        let level = applyFeedbackGate(base, trigger: trigger, confidence: localConfidence(trigger, leadMinutes, travelMinutes: nil), gate: gate)
         return level >= .notify ? level : nil
     }
 }
