@@ -6178,5 +6178,33 @@
   "重新开始": {
     "en": "Start again",
     "zh-Hans": "重新开始"
+  },
+  "今日对话额度已用完，北京时间 8:00 恢复": {
+    "en": "Today's chat quota is used up. It resets at 08:00 Beijing time.",
+    "zh-Hans": "今日对话额度已用完，北京时间 8:00 恢复"
+  },
+  "已离线": {
+    "en": "Offline",
+    "zh-Hans": "已离线"
+  },
+  "已恢复连接": {
+    "en": "Back online",
+    "zh-Hans": "已恢复连接"
+  },
+  "已切换到 {0}": {
+    "en": "Switched to {0}",
+    "zh-Hans": "已切换到 {0}"
+  },
+  "已写入记忆": {
+    "en": "Saved to memory",
+    "zh-Hans": "已写入记忆"
+  },
+  "尚未发送的消息已保留，恢复连接后继续。": {
+    "en": "Unsent messages are kept on this device. They will continue when the connection returns.",
+    "zh-Hans": "尚未发送的消息已保留，恢复连接后继续。"
+  },
+  "恢复连接后继续": {
+    "en": "continue when the connection returns",
+    "zh-Hans": "恢复连接后继续"
   }
 }

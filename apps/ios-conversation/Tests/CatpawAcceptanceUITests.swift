@@ -443,6 +443,23 @@ final class CatpawAcceptanceUITests: XCTestCase {
         XCTAssertTrue(ok, "voice mode overlay must appear on tap-to-dictate")
     }
 
+    // test19: one plain send, for capturing the client's failure path (quota etc.).
+    func test19PlainSend() throws {
+        guard ProcessInfo.processInfo.environment["CATPAW_DEVICE_TOUR"] == "1" else { throw XCTSkip("device tour only") }
+        let app = XCUIApplication(bundleIdentifier: bundleID); forwardPublicConfig(app); app.launchArguments += ["-CatpawSkipOnboarding"]; app.launch()
+        XCTAssertTrue(input(app).waitForExistence(timeout: 60)); Thread.sleep(forTimeInterval: 1.5)
+        if app.buttons["chat.new"].exists && app.buttons["chat.new"].isEnabled { app.buttons["chat.new"].tap(); Thread.sleep(forTimeInterval: 1) }
+        let f = input(app); f.tap(); f.typeText(ProcessInfo.processInfo.environment["CATPAW_DEVICE_ASK"] ?? "你好")
+        Thread.sleep(forTimeInterval: 0.6)
+        let sends = app.buttons.matching(NSPredicate(format: "identifier == 'chat.send'")).allElementsBoundByIndex
+        if let s = sends.first(where: { $0.isHittable && $0.isEnabled }) { s.tap() } else { app.buttons["chat.send"].firstMatch.tap() }
+        for _ in 0..<2 { for id in ["chat.modelConsent.allow"] where app.buttons[id].waitForExistence(timeout: 4) { app.buttons[id].tap() }; for l in ["确认发送许可", "允许此对话"] where app.buttons[l].exists { app.buttons[l].tap(); Thread.sleep(forTimeInterval: 1) } }
+        Thread.sleep(forTimeInterval: 10); shot(app, "t19-after-send")
+        f.tap(); f.typeText("再试一次"); Thread.sleep(forTimeInterval: 0.6)
+        if let s = app.buttons.matching(NSPredicate(format: "identifier == 'chat.send'")).allElementsBoundByIndex.first(where: { $0.isHittable && $0.isEnabled }) { s.tap() }
+        Thread.sleep(forTimeInterval: 8); shot(app, "t19-after-second")
+    }
+
     // test18: frame-level probes for 新建对话 empty-state stability and first-run voice permissions.
     func test18NewChatAndVoiceFirstRun() throws {
         guard ProcessInfo.processInfo.environment["CATPAW_DEVICE_TOUR"] == "1" else { throw XCTSkip("device tour only") }
