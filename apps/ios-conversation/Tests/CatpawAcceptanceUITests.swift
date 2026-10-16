@@ -618,9 +618,19 @@ final class CatpawAcceptanceUITests: XCTestCase {
         shot(app, sawCard ? tag + "01-device-confirm" : tag + "01-no-device-card")
         // Capture assistant text for the report.
         let assistant = app.descendants(matching: .any).matching(identifier: "chat.assistant.message").allElementsBoundByIndex.last
+        var assistantLabel = ""
         if let assistant, assistant.exists {
+            assistantLabel = assistant.label
             let a = XCTAttachment(string: "assistant=\(assistant.label)"); a.name = tag + "01-assistant-label"; a.lifetime = .keepAlways; add(a)
         }
+        // File diag survives xcresult wipe / perl alarm.
+        let diag = """
+        tag=\(tag) sawCard=\(sawCard) allowedConsent=\(allowed)
+        assistant=\(assistantLabel)
+        runExists=\(run.exists) receiptExists=\(app.descendants(matching: .any)["chat.deviceCall.receipt"].exists)
+        """
+        try? diag.write(toFile: "/tmp/chain-\(tag)-diag.txt", atomically: true, encoding: .utf8)
+        NSLog("CATPAW_DEVICE_DIAG \(diag)")
         XCTAssertTrue(sawCard, "device_call confirm card (chat.deviceCall.run) must appear — CATPAW_DEVICE_TOOLS_ENABLED may still be off for this subject")
         run.tap(); Thread.sleep(forTimeInterval: 1.5)
         app.tap() // flush interruption monitor
