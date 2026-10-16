@@ -160,30 +160,35 @@ import CatpawImageComposer
             // Soft-3D header cat (docs/refs/header-cat/six-states.png) — not flat BrandMark.
             // Map: offline→ears-down; error→wobble; thinking/working→orbit-load; streaming→spin; done→happy; else idle.
             HStack(spacing:8) {
-                CatpawPresence(state: headerCatState, size: 26)
+                PlushMascot(state: headerCatState, size: 28)
                     .frame(width:32,height:32)
-                    .scaleEffect(presenceHub.state == nil && connectionMonitor.state == .online ? 1 : 1.04)
-                    .animation(CatpawMotion.statusCapsule, value: headerCatState)
                     .accessibilityIdentifier("chat.title.presence")
                 VStack(alignment:.leading,spacing:0) {
                     HStack(spacing:4) {
                         Text(r8Title).font(CatpawTypography.Role.body.font.weight(.semibold)).foregroundStyle(CatpawColors.ink).lineLimit(1).truncationMode(.tail)
                         Image(systemName:"chevron.down").font(CatpawTypography.Role.caption.font.weight(.semibold)).imageScale(.small).foregroundStyle(CatpawColors.tertiary)
                     }
-                    Text(presenceHub.state == nil || presenceHub.step.isEmpty ? r8ModelLabel : presenceHub.step)
-                        .font(CatpawTypography.Role.caption.font.weight(.medium)).foregroundStyle(CatpawColors.tertiary).lineLimit(1)
-                        .contentTransition(.opacity).animation(CatpawMotion.statusCapsule, value: presenceHub.step)
+                    Text(headerStatusLine)
+                        .font(CatpawTypography.Role.caption.font.weight(.medium)).foregroundStyle(CatpawColors.secondary).lineLimit(1)
+                        .contentTransition(.opacity).animation(CatpawMotion.statusCapsule, value: headerStatusLine)
                         .accessibilityIdentifier("chat.title.step")
                 }
                 ConnectionStatusHeaderDot(monitor: connectionMonitor)
             }
             .padding(.leading,4).padding(.trailing,12).padding(.vertical,3)
-            .r11HeaderGlass()
+            .background(CatpawColors.card, in: Capsule())
+            .shadow(color: CatpawBrand.clayShadow.opacity(0.08), radius: 8, y: 2)
             .frame(maxWidth:240).contentShape(Capsule())
         }
         .accessibilityLabel(conversationTitle).accessibilityAddTraits(.isHeader).accessibilityIdentifier("chat.title")
     }
-    /// Header cat pose from connection + turn hub (soft-3D six-state set).
+    /// Capsule secondary line: live step, else plush pose status while busy, else model label.
+    private var headerStatusLine: String {
+        if presenceHub.state != nil, !presenceHub.step.isEmpty { return presenceHub.step }
+        let pose = PlushMascotPose(headerCatState)
+        return pose == .idle ? r8ModelLabel : ui(pose.statusKey)
+    }
+    /// Header plush pose from connection + turn hub (six-state 毛绒小伙伴 set).
     private var headerCatState: CatpawPresenceState {
         let kind = ConnectionStatusKind.from(connectionMonitor.state)
         if kind == .offline { return .offline }
@@ -303,7 +308,10 @@ import CatpawImageComposer
                                 VStack(alignment: .leading, spacing: 16) {
                                     Text(ui("想一起完成什么？")).font(CatpawTypography.Role.title.font.weight(.semibold)).accessibilityAddTraits(.isHeader)
                                     Text(ui("问一个问题，或说一件想做的事。")).foregroundStyle(CatpawColors.secondary)
-                                }.padding(.top, textSize.isAccessibilitySize ? 24 : 64).padding(.bottom, 32).accessibilityIdentifier("chat.empty")
+                                }.frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.top, textSize.isAccessibilitySize ? 24 : 64).padding(.bottom, 32)
+                                .background(PlushEmptyBackdrop().frame(height: 360).offset(y: 40), alignment: .top)
+                                .accessibilityIdentifier("chat.empty")
                                     .transaction { $0.animation = nil }.id("chat.empty")
                             }
                             let rows=visibleTimelineRows
@@ -843,7 +851,7 @@ import CatpawImageComposer
         case .message:messageView(row.message,turnID:row.turnID)
         case .processPending:
             HStack(spacing:10) {
-                CatpawPresence(state:.working, size:18)
+                PlushMascot(pose:.executing, size:18)
                 StreamShimmerEllipsis(active:!reduceMotion)
             }
             .accessibilityElement(children:.combine)
@@ -949,9 +957,7 @@ import CatpawImageComposer
         if message.role == .user {
             VStack(alignment:.trailing,spacing:4) {
                 ConversationUserMessageLayout {
-                    Text(message.content).font(CatpawTypography.Role.body.font)   // selection moved to the long-press 选择 sheet
-                        .foregroundStyle(CatpawColors.userMessageInk).padding(.horizontal,14).padding(.vertical,9)
-                        .background(CatpawColors.userMessageBackground,in:RoundedRectangle(cornerRadius:20,style:.continuous))
+                    ConversationUserBubbleText(content:message.content)   // selection moved to the long-press 选择 sheet
                         .messageLongPress(id:message.id.uuidString,content:.text(message.content),alignment:.trailing,onReply:quote){userBubblePreview(message)}   // long-press menu (MessageActions/)
                 }
                     .accessibilityIdentifier("chat.userMessage")
@@ -1021,8 +1027,7 @@ import CatpawImageComposer
     }
     // Long-press / image helpers (MessageActions/). Minimal: no change to row layout.
     private func userBubblePreview(_ message:ConversationTranscriptMessage)->some View {
-        Text(message.content).font(CatpawTypography.Role.body.font).foregroundStyle(CatpawColors.userMessageInk).padding(.horizontal,14).padding(.vertical,9)
-            .background(CatpawColors.userMessageBackground,in:RoundedRectangle(cornerRadius:20,style:.continuous))
+        ConversationUserBubbleText(content:message.content)
     }
     private func loadMessageImage(_ turnID:UUID?,sha:String?) async -> Data? {
         if let sha,let cached=SentImageCache.shared.data(sha:sha) {return cached}
@@ -1486,6 +1491,25 @@ private struct ConversationComposerLayout:Layout {
             subviews[0].place(at:.init(x:bounds.minX+s.leading.width+gap,y:bounds.maxY),anchor:.bottomLeading,proposal:.init(width:s.text.width,height:s.text.height))
         }
         subviews[2].place(at:.init(x:bounds.maxX,y:bounds.maxY),anchor:.bottomTrailing,proposal:.init(s.send))
+    }
+}
+
+/// User bubble body. The sent text keeps its raw form (accepted/revision work compares it byte-for-byte),
+/// but trailing newlines/spaces from Return, dictation or paste must not render as empty lines under a
+/// short message: the bubble hugs the visible text (one line = line height + 18pt).
+struct ConversationUserBubbleText:View {
+    let content:String
+    static func display(_ raw:String)->String {
+        var s=Substring(raw)
+        while let last=s.last,last.isWhitespace || last.isNewline {s=s.dropLast()}
+        while let first=s.first,first.isNewline {s=s.dropFirst()}
+        return String(s)
+    }
+    var body:some View {
+        Text(verbatim:Self.display(content)).font(CatpawTypography.Role.body.font)
+            .fixedSize(horizontal:false,vertical:true)
+            .foregroundStyle(CatpawColors.userMessageInk).padding(.horizontal,14).padding(.vertical,9)
+            .background(CatpawColors.userMessageBackground,in:RoundedRectangle(cornerRadius:20,style:.continuous))
     }
 }
 
