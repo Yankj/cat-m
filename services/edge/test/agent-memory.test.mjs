@@ -147,3 +147,32 @@ test('chat: temporary conversation header → no recall, no tools, no rows; forg
  const r=await s.f.runtime.api(new Request(H+s.path+'/turns/'+f.tid+'/interrupts/'+req.data.interrupt_id+'/decision',{method:'POST',headers:{Authorization:'Bearer memory-fixture','Content-Type':'application/json'},body:JSON.stringify({operation_id:randomUUID(),decision:'approve',args_hash:req.data.args_hash})}));
  assert.equal(r.status,200);await sse(r);await s.f.runtime.chat.waitIdle();assert.equal(s.store._dump().rows.length,0);assert.equal(s.probe.results.at(-1).count,1);
 });
+
+// Codex PR91 P0-2 (server side): the client's 「使用记忆」 switch arrives as X-Catpaw-Use-Memory: 0|1.
+// Either side off ⇒ off. Absent header (older clients) ⇒ server settings decide, unchanged.
+test('client switch: X-Catpaw-Use-Memory 0 → no recall, no memory tools, no journal; absent/1 unchanged; invalid → 422',async()=>{
+ const s=await chatSetup([]);const owner=s.f.principal.subject_id;
+ await s.service.patchSettings(owner,{consent:true,use_memory:true,auto_save:true});await s.service.save(owner,{kind:'preference',content:'喜欢靠窗座位'});
+ const frags=()=>s.store._dump().fragments.length;
+ const off=await send(s,'帮我订靠窗座位',{'X-Catpaw-Use-Memory':'0'});
+ assert.equal(off.events.some(x=>x.type==='memory_recalled'||x.type==='memory.used'),false,'client off → nothing recalled');
+ assert.equal(s.probe.prompts.at(-1).includes('靠窗'),false,'client off → no memory in the prompt');
+ assert.equal(s.probe.tools.at(-1).some(n=>n.startsWith('memory_')),false,'client off → no memory tools');
+ assert.equal(frags(),0,'client off → no journal fragment');
+ const legacy=await send(s,'帮我订靠窗座位');
+ assert.ok(legacy.events.some(x=>x.type==='memory_recalled'),'no header (old client) → unchanged');
+ const on=await send(s,'帮我订靠窗座位',{'X-Catpaw-Use-Memory':'1'});
+ assert.ok(on.events.some(x=>x.type==='memory_recalled'),'client on + server on → recalled');
+ await s.service.patchSettings(owner,{use_memory:false});
+ const srvOff=await send(s,'帮我订靠窗座位',{'X-Catpaw-Use-Memory':'1'});
+ assert.equal(srvOff.events.some(x=>x.type==='memory_recalled'),false,'server off wins over client on');
+ const c=(await s.f.json(await s.f.req(s.path))).conversation;
+ const bad=await s.f.runtime.api(new Request(H+s.path+'/turns',{method:'POST',headers:{Authorization:'Bearer memory-fixture','Content-Type':'application/json','X-Catpaw-Approval-Contract':APPROVAL_CONTRACT,'X-Catpaw-Use-Memory':'maybe'},body:JSON.stringify({turn_id:randomUUID(),expected_revision:c.revision,expected_grant_epoch:c.grant_epoch,message:{id:randomUUID(),text:'hi'},context:[]})}));
+ assert.equal(bad.status,422);assert.equal((await bad.json()).error,'use_memory_invalid');
+});
+test('client switch: recallForTurn({clientUseMemory:false}) returns a disabled snapshot',async()=>{
+ const s=svc();await consent(s);await s.call('POST','/items',{kind:'preference',content:'咖啡只喝美式'});
+ const r=await s.service.recallForTurn({subjectID:U1,query:'咖啡',turnID:randomUUID(),clientUseMemory:false});
+ assert.equal(r.enabled,false);assert.deepEqual(r.ids,[]);assert.equal(r.prompt,'');
+ assert.ok((await s.service.recallForTurn({subjectID:U1,query:'咖啡',turnID:randomUUID()})).ids.length>0,'default unchanged');
+});
