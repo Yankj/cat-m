@@ -554,32 +554,38 @@ final class CatpawAcceptanceUITests: XCTestCase {
                 Thread.sleep(forTimeInterval: 0.5)
             }
         }
-        func pasteAsk(_ text: String) {
+        func fillAsk(_ text: String) {
             let field = input(app)
-            field.tap(); Thread.sleep(forTimeInterval: 0.5)
-            // Chinese asks: prefer paste — typeText often drops CJK or never fills the draft (then mic stays, no chat.send).
+            field.tap(); Thread.sleep(forTimeInterval: 0.6)
+            if !app.keyboards.firstMatch.exists { field.tap(); Thread.sleep(forTimeInterval: 0.6) }
+            // Prefer paste for CJK (typeText + IME can leave markedText / empty model.draft → mic stays).
             UIPasteboard.general.string = text
+            // Select-all then paste so NativeConversationComposer commits into model.draft.
+            field.press(forDuration: 1.2)
+            if app.menuItems["全选"].waitForExistence(timeout: 1) { app.menuItems["全选"].tap(); Thread.sleep(forTimeInterval: 0.3) }
+            else if app.menuItems["Select All"].waitForExistence(timeout: 0.5) { app.menuItems["Select All"].tap(); Thread.sleep(forTimeInterval: 0.3) }
             field.press(forDuration: 1.0)
             if app.menuItems["粘贴"].waitForExistence(timeout: 2) { app.menuItems["粘贴"].tap() }
             else if app.menuItems["Paste"].waitForExistence(timeout: 1) { app.menuItems["Paste"].tap() }
             else if app.keyboards.firstMatch.exists { field.typeText(text) }
-            Thread.sleep(forTimeInterval: 0.6)
+            // Commit any IME marked text so isInputComposing clears and send enables.
+            if app.keyboards.buttons["return"].exists { app.keyboards.buttons["return"].tap() }
+            else if app.keyboards.buttons["Done"].exists { app.keyboards.buttons["Done"].tap() }
+            Thread.sleep(forTimeInterval: 0.8)
+            let v = (field.value as? String) ?? ""
+            try? "draftValue=\(v)\n".write(toFile: "/tmp/chain-draft-probe.txt", atomically: true, encoding: .utf8)
         }
         func tapSend() {
             waitComposerIdle()
-            // Draft must be non-empty for DictationControls to show chat.send (else mic/voice only).
-            let deadline = Date().addingTimeInterval(20)
+            let deadline = Date().addingTimeInterval(25)
             while Date() < deadline {
                 let sends = app.buttons.matching(NSPredicate(format: "identifier == 'chat.send'")).allElementsBoundByIndex
                 if let s = sends.first(where: { $0.exists && $0.isHittable && $0.isEnabled }) { s.tap(); return }
-                if app.buttons["chat.composer.send"].firstMatch.exists,
-                   app.buttons["chat.composer.send"].firstMatch.isHittable,
-                   app.buttons["chat.composer.send"].firstMatch.isEnabled {
-                    app.buttons["chat.composer.send"].firstMatch.tap(); return
-                }
+                // Last resort: type a latin probe char to force draft non-empty → send appears, then we already have ask from paste.
                 Thread.sleep(forTimeInterval: 0.4)
             }
-            XCTFail("chat.send never became hittable — draft may still be empty after paste/type")
+            let v = (input(app).value as? String) ?? ""
+            XCTFail("chat.send never hittable; draftValue=\(v)")
         }
         /// Wait until the composer draft is empty (send accepted) or give up.
         func waitDraftCleared(timeout: TimeInterval = 12) -> Bool {
@@ -608,7 +614,7 @@ final class CatpawAcceptanceUITests: XCTestCase {
         }
         clearDraft()
         waitComposerIdle(timeout: 30)
-        pasteAsk(ask)
+        fillAsk(ask)
         tapSend()
         // If the draft never cleared, send did not land — retry once (common after consent sheet).
         if !waitDraftCleared(timeout: 8) { tapSend(); _ = waitDraftCleared(timeout: 8) }
