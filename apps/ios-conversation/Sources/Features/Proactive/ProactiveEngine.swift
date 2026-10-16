@@ -240,8 +240,14 @@ struct ProactiveSignal: Equatable, Sendable {
         // leave_at = meeting_start - lead_minutes - travel_minutes (travel 0 only when ETA unused → lead only)
         let leaveAt = ProactiveRules.leaveAt(start: signal.start, leadMinutes: lead.minutes, travelMinutes: travelMinutes, usedETA: usedETA)
         let remindAt = leaveAt  // remind when user should leave
-        let decision = await evaluateRemote(signal, leadMinutes: lead.minutes, travelMinutes: usedETA ? travelMinutes : nil)
-            ?? evaluateLocal(signal, leadMinutes: lead.minutes, travelMinutes: usedETA ? travelMinutes : nil, now: now)
+        var decision: Decision
+        if let remote = await evaluateRemote(signal, leadMinutes: lead.minutes, travelMinutes: usedETA ? travelMinutes : nil) { decision = remote }
+        else {
+            decision = evaluateLocal(signal, leadMinutes: lead.minutes, travelMinutes: usedETA ? travelMinutes : nil, now: now)
+            // NoBug: learned feedback (三角's ProactiveFeedbackSync) gates offline decisions too.
+            let gated = ProactiveRules.applyFeedbackGate(decision.level, gate: Self.feedbackGate)
+            if gated != decision.level { decision = .init(level: gated, why: decision.why + " · feedback gate → \(gated.name)", via: decision.via) }
+        }
         guard decision.intervene else { note("decide silent: \(decision.why)"); return nil }
         note("decide intervene (\(decision.via)): \(decision.why); lead=\(lead.minutes) travel=\(usedETA ? String(travelMinutes ?? 0) : "unused") leaveAt=\(leaveAt.formatted(date: .omitted, time: .shortened))")
         let f = Date.FormatStyle(date: .omitted, time: .shortened)
@@ -279,7 +285,7 @@ struct ProactiveSignal: Equatable, Sendable {
             id: "evt-" + hash,
             title: title, reason: reason,
             memories: memories, actions: [.create_reminder, .notify_attendees, .snooze, .dismiss],
-            signals: signals, status: .pending, createdAt: now)
+            signals: signals, status: .pending, createdAt: now, trigger: ProactiveRules.localTrigger)
         let committed: ProactiveSuggestion? = AccountEpoch.shared.commit(token) { () -> ProactiveSuggestion in
             // A notification may have recovered and acted on this same meeting while evaluation awaited
             // its response. Preserve that newer inbox state instead of replacing it with a pending card.
@@ -308,6 +314,8 @@ struct ProactiveSignal: Equatable, Sendable {
         return committed
     }
 
+    /// NoBug: set to `{ ProactiveFeedbackSync.shared.gate(decision: $0, confidence: $1, trigger: $2) }` once 三角's P0-4 lands.
+    static var feedbackGate: ((String, Double, String) -> String)?
     struct Decision {
         var level: ProactiveLevel; var why: String; var via: String
         var intervene: Bool { level != .silent }
