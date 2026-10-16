@@ -1029,7 +1029,10 @@ import CatpawImageComposer
                                  onQuote:quote,onVerify:turn.state == .unknown ? {model.readOriginal()}:nil)
         } else {
             let isLast=message.id==lastAssistantMessageID
-            ConversationAnswerView(message:message,canQuote:!model.isInputComposing,quote:quote,showsActions:isLast,actions:isLast ? replyActions(message,turnID:turnID):nil)
+            let pastTurn=turnID.flatMap{id in model.session?.turns.first{$0.id==id}}
+            ConversationAnswerView(message:message,canQuote:!model.isInputComposing,quote:quote,showsActions:isLast,actions:isLast ? replyActions(message,turnID:turnID):nil,
+                                   thoughtSummary:pastTurn?.reasoningSummary,
+                                   thoughtSeconds:pastTurn?.thinkingMs.map{max(1,Int(ceil(Double($0)/1000)))})
         }
     }
     private func usesPhasedAnswer(_ turn:ConversationTurnRecord,message:ConversationTranscriptMessage)->Bool {

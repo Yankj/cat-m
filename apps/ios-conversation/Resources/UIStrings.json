@@ -6358,5 +6358,25 @@
   "onboarding.chip.memory": {
     "en": "Long-term memory",
     "zh-Hans": "长期记忆"
+  },
+  "思考中 · {0} 秒": {
+    "en": "Thinking · {0}s",
+    "zh-Hans": "思考中 · {0} 秒"
+  },
+  "思考结果": {
+    "en": "Thought process",
+    "zh-Hans": "思考结果"
+  },
+  "{0} 个来源": {
+    "en": "{0} sources",
+    "zh-Hans": "{0} 个来源"
+  },
+  "没帮助": {
+    "en": "Not helpful",
+    "zh-Hans": "没帮助"
+  },
+  "追问建议": {
+    "en": "Suggested follow-ups",
+    "zh-Hans": "追问建议"
   }
 }
