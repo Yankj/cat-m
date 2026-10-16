@@ -424,6 +424,16 @@ func pr90e_snoozeDetail() {
     check(ProactiveUndo.snoozeUntil(detail: "until=100", at: .distantPast) == Date(timeIntervalSince1970: 100) && ProactiveUndo.snoozeIntent(detail: "until=100") == nil, "older entries still parse")
 }
 
+@MainActor func pr90e_resnoozeReleasesSlot() async {
+    // Re-snoozing before the first one rang (or dismissing) frees that snooze's quota slot, so snoozes never eat the cap.
+    let t = at("2026-10-15T04:00:00Z"); let e = AccountEpoch(account: "A"), poster = FakePoster(); let (p, q) = makePipeline(e, poster, clock: { t })
+    let tok = e.capture()!
+    _ = await p.snooze(id: "sug", intent: "op-1", title: "t", body: "b", category: "c", info: [:], fire: t.addingTimeInterval(600), token: tok)
+    check(q().entries[ProactiveDeliveryPipeline.snoozeBase("sug", intent: "op-1")]?.state == .reserved, "snooze holds a slot")
+    p.remove(bases: [ProactiveDeliveryPipeline.snoozeBase("sug", intent: "op-1")], token: tok)
+    check(q().entries[ProactiveDeliveryPipeline.snoozeBase("sug", intent: "op-1")] == nil, "removed snooze frees its unfired slot")
+}
+
 func pr90e_operationIDs() {
     // P1-5: a new intent gets a new id; a retry of the same queued op reuses its stored id.
     let a = ProactiveRules.operationID(suggestion: "s", action: "snooze", generation: 0, ordinal: 1)
@@ -464,7 +474,7 @@ func pr90e_operationIDs() {
         pr90c_cardMerge()
         pr90c_presentQuiet()
         pr90d_ownership(); pr90d_legacyRejected(); await pr90d_scopedRequests(); await pr90d_deadLetterOrdering(); pr90d_snoozeRestore(); pr90d_localFeedbackGate()
-        pr90e_owner(); await pr90e_repeatedSnooze(); pr90e_operationIDs(); pr90e_snoozeDetail(); await pr90e_deadLetterFuture()
+        pr90e_owner(); await pr90e_repeatedSnooze(); pr90e_operationIDs(); pr90e_snoozeDetail(); await pr90e_resnoozeReleasesSlot(); await pr90e_deadLetterFuture()
         print(failures == 0 ? "PR90 proactive: all passed" : "PR90 proactive: \(failures) failed"); exit(failures == 0 ? 0 : 1)
     }
 }
