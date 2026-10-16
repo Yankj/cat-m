@@ -149,25 +149,21 @@ struct StartUsingCTA: View {
     var busy = false
     let action: () -> Void
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// Sheen sweeps every `sheenPeriod`s; breathing cycles every `breathPeriod`s.
+    private static let sheenPeriod: Double = 3.6
+    private static let sheenDuration: Double = 1.1
+    private static let breathPeriod: Double = 2.8
     var body: some View {
         Button(action: { if !busy { action() } }) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 28, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [CatpawColors.orbLight, CatpawColors.orbDeep],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .shadow(color: CatpawColors.orbDeep.opacity(0.38), radius: 18, y: 8)
-                if busy {
-                    ProgressView().tint(CatpawColors.calmGlyph)
-                } else {
-                    Text(title)
-                        .font(CatpawTypography.Role.heading.font.weight(.semibold))
-                        .foregroundStyle(CatpawColors.calmGlyph)
-                }
+            TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: reduceMotion || busy)) { context in
+                let t = context.date.timeIntervalSinceReferenceDate
+                let animate = !reduceMotion && !busy
+                let breath = animate ? (1 - cos(t / Self.breathPeriod * 2 * .pi)) / 2 : 0
+                let cycle = t.truncatingRemainder(dividingBy: Self.sheenPeriod)
+                let sheen: Double? = animate && cycle < Self.sheenDuration ? cycle / Self.sheenDuration : nil
+                content(sheen: sheen)
+                    .shadow(color: CatpawColors.orbDeep.opacity(0.30 + 0.12 * breath), radius: 16 + 6 * breath, y: 7 + 2 * breath)
+                    .scaleEffect(1 + 0.02 * breath)
             }
             .frame(maxWidth: .infinity)
             .frame(height: 56)
@@ -178,6 +174,47 @@ struct StartUsingCTA: View {
         .accessibilityLabel(title)
         .accessibilityAddTraits(.isButton)
         .accessibilityAction { if !busy { action() } }
+    }
+
+    private func content(sheen: Double?) -> some View {
+        let shape = RoundedRectangle(cornerRadius: 28, style: .continuous)
+        return ZStack {
+            shape.fill(
+                LinearGradient(
+                    colors: [CatpawColors.orbLight, CatpawColors.orbDeep],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+            if let sheen {
+                GeometryReader { geo in
+                    let w = geo.size.width * 0.32
+                    LinearGradient(
+                        colors: [CatpawColors.calmGlyph.opacity(0), CatpawColors.calmGlyph.opacity(0.38), CatpawColors.calmGlyph.opacity(0)],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                    .frame(width: w)
+                    .rotationEffect(.degrees(18))
+                    .offset(x: -w + (geo.size.width + 2 * w) * sheen)
+                }
+                .clipShape(shape)
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+            }
+            if busy {
+                ProgressView().tint(CatpawColors.calmGlyph)
+            } else {
+                HStack(spacing: 8) {
+                    Image(systemName: "hand.tap.fill")
+                        .font(CatpawTypography.Role.body.font.weight(.semibold))
+                        .accessibilityHidden(true)
+                    Text(title)
+                        .font(CatpawTypography.Role.heading.font.weight(.semibold))
+                }
+                .foregroundStyle(CatpawColors.calmGlyph)
+            }
+        }
     }
 }
 
