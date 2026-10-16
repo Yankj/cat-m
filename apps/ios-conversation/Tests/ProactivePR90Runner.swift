@@ -587,6 +587,25 @@ func pr90g_roundTrip() {
     check(plan.status == "pending" && plan.removed == "snooze", "the next undo matches the server's (pending)")
 }
 
+/// Codex PR90h #3: a card first received from the cloud carries its write-back identity; adopting it registers that
+/// identity (Store hook → engine serverIDs); an offline-created card coming back maps onto the device's own card.
+@MainActor func pr90h_cloudIdentity() {
+    let url = URL(fileURLWithPath: "../../services/edge/test/fixtures/proactive-cloud-card.json")
+    guard let data = try? Data(contentsOf: url), let s = try? ProactiveSyncWire.decoder().decode(ProactiveSuggestion.self, from: data) else { check(false, "cloud card fixture decodes"); return }
+    check(s.serverID == "SERVER-ID", "server_id decoded (\(String(describing: s.serverID)))")
+    let store = ProactiveSuggestionStore.shared, saved = store.onCloudIdentity
+    var seen: [String] = []
+    store.onCloudIdentity = { local, server in seen.append(local + "→" + server) }
+    store.adopt(s)
+    check(seen == ["SERVER-ID→SERVER-ID"], "adopting a cloud card registers its write-back identity (\(seen))")
+    let local = ProactiveSuggestion(id: "local-h3", title: "t", reason: "r"); store.adopt(local); seen = []
+    var back = s; back.serverID = "srv-h3"; back.clientID = "local-h3"
+    let cloud = ProactiveSuggestion(id: "srv-h3", title: "t", reason: "r", serverID: "srv-h3", clientID: "local-h3")
+    store.adopt(cloud)
+    check(seen == ["local-h3→srv-h3"] && store.items["srv-h3"] == nil, "an offline card coming back maps onto the device's own card, no duplicate (\(seen))")
+    store.onCloudIdentity = saved; _ = back
+}
+
 @main enum ProactivePR90Runner {
     static func main() async {
         pr90_3_prescheduleSharesDecisionAndQuota()
@@ -604,6 +623,7 @@ func pr90g_roundTrip() {
         pr90c_presentQuiet()
         pr90d_ownership(); pr90d_legacyRejected(); await pr90d_scopedRequests(); await pr90d_deadLetterOrdering(); pr90d_snoozeRestore(); pr90d_localFeedbackGate()
         pr90e_owner(); await pr90e_repeatedSnooze(); pr90e_operationIDs(); pr90e_snoozeDetail(); await pr90e_resnoozeReleasesSlot(); await pr90e_deadLetterFuture()
+        await pr90h_cloudIdentity()
         pr90f_quarantine(); pr90f_quarantineQueue(); await pr90f_purgeDeadLetters(); await pr90f_snoozeAwaitsAdd(); pr90f_clock(); pr90f_wire(); pr90f_golden()
         pr90g_quarantinePerRecord(); pr90g_restoreVisible(); pr90g_roundTrip()
         print(failures == 0 ? "PR90 proactive: all passed" : "PR90 proactive: \(failures) failed"); exit(failures == 0 ? 0 : 1)

@@ -33,6 +33,10 @@ struct ProactiveSuggestion: Codable, Sendable, Equatable, Identifiable {
     var serverActionStates: [String: String]? = nil
     /// NoBug: the trigger this suggestion came from (feedback weights are keyed by it; cloud sends the same field).
     var trigger: String? = nil
+    /// Codex PR90h #3: the cloud record this card writes back to (`server_id`), and, for a card the device created
+    /// offline, the device's own id of it (`client_id`).
+    var serverID: String? = nil
+    var clientID: String? = nil
     enum CodingKeys: String, CodingKey {
         case id, title, reason, memories, actions, signals, status, createdAt, taken, trigger
         case serverActionStates = "action_states"
@@ -120,6 +124,8 @@ enum ProactiveEngineError: Error, Equatable { case remindersDenied, writeFailed,
     func resetForAccountChange() { items = [:]; busy = []; errorKey = nil }
     /// Persistence hook for a merged card (set by the real backend).
     var onMerged: ((ProactiveSuggestion) -> Void)?
+    /// Codex PR90h #3: (device card id, cloud record id) for a card that arrived from the cloud (set by the real backend).
+    var onCloudIdentity: ((String, String) -> Void)?
     func adopt(_ s: ProactiveSuggestion) {
         if var existing = items[s.id] {
             // Codex PR90c #6: an existing card takes the cloud's newer success states (never loses one it had).
