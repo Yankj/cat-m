@@ -45,3 +45,18 @@ test('PR90 #2: remote-owned decisions keep the user time zone — Honolulu 23:30
   const ev = await store.getEvent(U, r.event_id); assert.equal(ev.payload.time_zone, 'Pacific/Honolulu');
   await svc.tick(); assert.equal(sent.length, 0);
 });
+
+test('PR90 #6: undo loop — old operation ids stay burned, a fresh identity applies, undo replays never double-pop', async () => {
+  const { call } = setup({ model: fakeLLM({ decision: 'notify', reason: '该出发了', confidence: 0.9, suggested_actions: ['create_reminder', 'notify_attendees', 'snooze', 'dismiss'] }) });
+  const id = (await call('POST', BASE + '/evaluate', meeting(20))).body.event_id, S = `${BASE}/suggestions/${id}`;
+  const act = (action, operation_id) => call('POST', S + '/action', { action, operation_id }).then(r => r.body.suggestion);
+  const undo = operation_id => call('POST', S + '/undo', { operation_id }).then(r => r.body.suggestion);
+  await act('create_reminder', 'op-r-g0'); await act('snooze', 'op-s-g0');
+  let s = await undo('undo-g0'); assert.equal(s.status, 'pending'); assert.equal(s.snooze_until, undefined);
+  s = await undo('undo-g0'); assert.deepEqual(s.taken.map(t => t.action), ['create_reminder'], 'undo replay is a no-op');
+  s = await act('snooze', 'op-s-g0'); assert.deepEqual(s.taken.map(t => t.action), ['create_reminder'], 'a late retry of an undone op never resurrects it');
+  s = await act('snooze', 'op-s-g1'); assert.equal(s.status, 'snoozed', 'fresh identity after undo applies');
+  s = await undo('undo-g1'); s = await undo('undo-g2'); assert.deepEqual(s.taken, [], 'each distinct undo pops one level');
+  s = await act('create_reminder', 'op-r-g0'); assert.deepEqual(s.taken, [], 'undone reminder op id stays burned');
+  s = await act('create_reminder', 'op-r-g2'); assert.deepEqual(s.action_states, { create_reminder: 'done' });
+});
