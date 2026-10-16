@@ -5,6 +5,7 @@ import WidgetKit
 @main struct CatpawWidgetsBundle: WidgetBundle {
     var body: some Widget {
         CatpawWorkLiveActivity()
+        CatpawLeaveLiveActivity()
         CatpawNextSuggestionWidget()
         CatpawNextMeetingWidget()
         CatpawLockScreenWidget()
@@ -266,3 +267,41 @@ struct LAProgressTrack: View {
     CatpawWorkAttributes.ContentState(title: "一页带来源的报告", body: "报告已生成", kind: "done", taskID: "t1")
 }
 #endif
+
+
+struct CatpawLeaveLiveActivity: Widget {
+    var body: some WidgetConfiguration {
+        ActivityConfiguration(for: CatpawLeaveAttributes.self) { context in
+            HStack(spacing: 12) {
+                Image(systemName: "tram.fill").foregroundStyle(Color.orange)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(context.state.title).font(.headline)
+                    Text(context.state.meetingTitle).font(.subheadline).foregroundStyle(.secondary)
+                    Text("出发 \(context.state.leaveAt, style: .time) · 约 \(context.state.minutesLeft) 分钟")
+                        .font(.caption.monospacedDigit())
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(12)
+            .activityBackgroundTint(Color.black.opacity(0.08))
+        } dynamicIsland: { context in
+            DynamicIsland {
+                DynamicIslandExpandedRegion(.leading) { Image(systemName: "tram.fill") }
+                DynamicIslandExpandedRegion(.center) {
+                    Text(context.state.meetingTitle).font(.headline)
+                }
+                DynamicIslandExpandedRegion(.bottom) {
+                    Text("出发 \(context.state.leaveAt, style: .time) · \(context.state.minutesLeft) 分钟")
+                        .font(.caption.monospacedDigit())
+                }
+            } compactLeading: {
+                Image(systemName: "tram.fill")
+            } compactTrailing: {
+                Text("\(context.state.minutesLeft)分").font(.caption2.monospacedDigit())
+            } minimal: {
+                Image(systemName: "tram.fill")
+            }
+        }
+    }
+}
+

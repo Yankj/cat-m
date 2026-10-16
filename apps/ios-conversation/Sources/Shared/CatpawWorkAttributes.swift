@@ -47,4 +47,19 @@ struct CatpawWorkAttributes: ActivityAttributes {
     var conversationID: String
     var title: String
 }
+
+
+/// Isolated from chat-turn Live Activities. Countdown to leave_at for proactive travel cards.
+struct CatpawLeaveAttributes: ActivityAttributes {
+    struct ContentState: Codable, Hashable {
+        var title: String
+        /// Absolute leave time (seconds since reference date) for TimeInterval-based UI.
+        var leaveAt: Date
+        var minutesLeft: Int
+        var meetingTitle: String
+    }
+    var suggestionID: String
+    var meetingTitle: String
+}
+
 #endif

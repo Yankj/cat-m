@@ -1,4 +1,5 @@
 import Foundation
+import CoreLocation
 import Observation
 
 // Proactive meeting/travel assistant — signal pipeline seam (demo-grade).
@@ -104,14 +105,22 @@ struct MockProactiveSignalEngine: ProactiveSignalEngine {
         }
         await step(.filter, .passed, ["upcoming=\(upcoming.count)", "dropped=\(dropped)", "next=\(next.title) @ \(next.start.formatted(f))"])
         // 合并: meeting + location + travel estimate
-        let travel = Self.travelMinutes(from: input.location, to: next)
-        let leaveAt = next.start.addingTimeInterval(TimeInterval(-(travel + 10) * 60))
-        await step(.merge, .passed, ["place=\(next.place)", "travel≈\(travel) min", "leaveAt=\(leaveAt.formatted(f))"])
+        let eta = await ProactiveEngine.travelETA(to: next.place, from: input.location.map { .init(latitude: $0.latitude, longitude: $0.longitude) })
+        let lead = 10
+        let travel: Int
+        let etaNote: String
+        if eta.usedETA, let m = eta.minutes, m > 0 {
+            travel = m; etaNote = "travel=\(m) min (MapKit)"
+        } else {
+            travel = 0; etaNote = "未用到 ETA"
+        }
+        let leaveAt = next.start.addingTimeInterval(TimeInterval(-(lead + travel) * 60))
+        await step(.merge, .passed, ["place=\(next.place)", etaNote, "lead=\(lead)", "leaveAt=\(leaveAt.formatted(f))"])
         // 决策
         let minutesToLeave = Int(leaveAt.timeIntervalSince(input.now) / 60)
         let urgent = minutesToLeave <= 15
         let kind = input.location == nil ? "meeting_prep" : "meeting_departure"
-        await step(.decide, .passed, ["kind=\(kind)", "minutesToLeave=\(minutesToLeave)", urgent ? "score=0.9 urgent" : "score=0.6"])
+await step(.decide, .passed, ["kind=\(kind)", "minutesToLeave=\(minutesToLeave)", urgent ? "score=0.9 urgent" : "score=0.6"])
         // 介入方式
         let channel: ProactivePipelineSuggestion.Channel = minutesToLeave < 0 ? .push : (urgent ? .banner : .inAppCard)
         await step(.intervene, .passed, ["channel=\(channel.rawValue)", "quietHours=off", "cap=ok"])
@@ -147,9 +156,10 @@ struct MockProactiveSignalEngine: ProactiveSignalEngine {
         }
     }
 
-    func addFakeMeeting(title: String, inMinutes: Int, place: String) {
+    func addFakeMeeting(title: String, inMinutes: Int, place: String, latitude: Double? = nil, longitude: Double? = nil) {
         let target = Self.presets[1]
-        meetings.append(.init(title: title, start: now.addingTimeInterval(TimeInterval(inMinutes * 60)), place: place, latitude: target.latitude, longitude: target.longitude))
+        meetings.append(.init(title: title, start: now.addingTimeInterval(TimeInterval(inMinutes * 60)), place: place,
+                              latitude: latitude ?? target.latitude, longitude: longitude ?? target.longitude))
     }
 
     func run() {
