@@ -64,3 +64,21 @@ Not cloud tools: `pay_apple` (merchant entitlement, phase 2), `timer_start`/`foc
   from the event, turn from the call index). `openURL` stays on the device and is not sent.
 - #44 `DeviceCallValue` has no numeric arrays: `calendar_create.alarms` (minutes) decodes as `.null` there.
 - Plan `POST /device-result` is turn-scoped here (`…/turns/{t}/device-result`), like the decision route.
+
+## Client execution gate (Codex P0-1 / PR #89 re-review)
+
+- **Where grants come from.** Grants are created only at the authenticated SSE boundary: `ConversationSessionService` saves the journal, then fires `ConversationDeviceCall.lifecycle(.received)`, and `DeviceCallGate.receive` creates the grant. Views and Markdown can never create one.
+- **What a grant is bound to.** call_id + tool + args hash + interrupt_id + conversation + turn + a non-nil account + the session generation.
+  - The deadline is strict: if `expires_at` can't be parsed, the call is refused. When both values are present, the earlier of `expires_at` and `ttl` wins. A repeated event never extends the deadline. An uptime budget stops wall-clock rollback from extending it. At exactly the deadline the call already counts as expired.
+- **Revocation.** Grants are revoked when the journal drops the call (resolved, cancelled, turn completed or failed). Sign-out bumps the generation, which revokes everything. A card that is still waiting for confirmation then shows as expired.
+- **Writes need a tap.** Every write consumes a one-shot tap token from the card button, bound to the final edited args.
+- **Check before every side effect.** `DeviceToolRouter` re-checks `commitCheck` synchronously right before each system effect (EventKit save, compose sheet, URL handoff), so a permission prompt or other await cannot outlive the grant.
+- **Restart recovery never writes.**
+  - Only the account that recorded the call can recover it.
+  - Recovery only looks up the original effect by its call_id marker. If nothing is found, the result is `interrupted_outcome_unknown`.
+  - Pending calls restored from the journal after a cold start are not executable until the server re-sends them.
+- **Tradeoff: auto-run reads.** `calendar_list` and `places_search` run without a tap but still need a live, account-bound grant. They are read-only but **not privacy-free**:
+  - calendar_list returns event titles, times and locations;
+  - places_search uses the current location and preference memory.
+
+  Their results go only to the turn that requested them.

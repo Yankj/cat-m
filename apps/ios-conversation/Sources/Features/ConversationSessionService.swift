@@ -399,6 +399,7 @@ public actor ConversationSessionService {
         guard event.sequence == turn.lastSequence + 1, busyRestart || ![.completed, .failed].contains(turn.state), observing || turn.state != .unknown else { throw ConversationSessionError.invalidEvent }
         if busyRestart { turn.error = nil; turn.retryAfterSeconds = nil }
         turn.state = .running; turn.lastSequence = event.sequence
+        let deviceCallsBefore = Set((turn.pendingDeviceCalls ?? []).map(\.callID))   // Codex PR #89: gate lifecycle
         switch event.payload {
         case .thread(let id):
             guard !id.isEmpty, session.threadID == nil || session.threadID == id else { throw ConversationSessionError.invalidEvent }; session.threadID = id
@@ -518,6 +519,12 @@ public actor ConversationSessionService {
             }
         }
         session.turns[index] = turn; try await save(session, expectedRevision: journalRevision, fence: request, observationToken: observationToken)
+        // Codex PR #89: only now (authenticated SSE event, journal saved) may the execution gate grant or revoke.
+        if case .deviceCall(let call) = event.payload, (turn.pendingDeviceCalls ?? []).contains(where: { $0.callID == call.callID }) {
+            ConversationDeviceCall.lifecycle?(.received(call, conversationID: request.conversationID, turnID: request.operationID))
+        }
+        let deviceCallsGone = deviceCallsBefore.subtracting((turn.pendingDeviceCalls ?? []).map(\.callID))
+        if !deviceCallsGone.isEmpty { ConversationDeviceCall.lifecycle?(.revoked(callIDs: deviceCallsGone.sorted())) }
         emit(event.stamped(conversationID: request.conversationID, turnID: request.operationID))
     }
     /// The SSE `turn_failed{cancelled}` and the cancel response are equivalent; turnEvents() sees one stop per turn.

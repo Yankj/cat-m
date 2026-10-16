@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 
 // Wave 2 · V3 device tools (plan §3.1): `device_call` → confirm card → execute on device → `device_result`.
@@ -20,9 +21,19 @@ struct DeviceCall: Codable, Sendable, Equatable, Identifiable {
     var id: String { call_id }
     /// Absolute deadline: `expires_at`, else `ttl_sec` counted from when the card was first seen.
     func deadline(firstSeen: Date) -> Date? {
-        if let raw = expires_at, let date = DeviceCallDates.parse(raw) { return date }
+        if let raw = expires_at { return DeviceCallDates.parse(raw) ?? .distantPast }   // unparsable → already expired (fail closed)
         if let ttl = ttl_sec, ttl > 0 { return firstSeen.addingTimeInterval(TimeInterval(ttl)) }
         return nil
+    }
+    /// Codex PR #89 P2: absolute deadline for a grant. Unparsable `expires_at` → nil (refused); when both are present the
+    /// EARLIER of expires_at and receivedAt+ttl wins; neither → nil (refused).
+    func strictDeadline(receivedAt: Date) -> Date? {
+        let ttl = ttl_sec.flatMap { $0 > 0 ? receivedAt.addingTimeInterval(TimeInterval($0)) : nil }
+        if let raw = expires_at {
+            guard let abs = DeviceCallDates.parse(raw) else { return nil }
+            return ttl.map { min($0, abs) } ?? abs
+        }
+        return ttl
     }
 }
 
@@ -161,26 +172,30 @@ extension DeviceResultSubmitting { func reportUndo(callID: String, outcome: Devi
     func reset() { phases = [:]; edited = [:]; seen = [:]; records = [:]; interrupted = []; defaults.removeObject(forKey: Self.storageKey); undoQueue = .init(); defaults.removeObject(forKey: Self.undoKey) }
 
     private func persist(_ id: String, _ p: Phase, call: DeviceCall?) {
-        records[id] = .init(phase: p, call: call ?? records[id]?.call, updatedAt: .now)
+        records[id] = .init(phase: p, call: call ?? records[id]?.call, updatedAt: .now, account: records[id]?.account ?? DeviceCallGate.currentAccount())
         if let data = try? JSONEncoder().encode(records) { defaults.set(data, forKey: Self.storageKey) }
     }
 
-    func expireIfConfirming(_ id: String) {}
+    /// Revoked by the service (cancelled / resolved elsewhere / turn ended): a still-confirming card becomes inert.
+    func expireIfConfirming(_ id: String) { if phase(id) == .confirming { set(id, .expired) } }
     func run(_ call: DeviceCall, tap: DeviceCallGate.TapToken? = nil) async {
         guard phase(call.id) == .confirming else { return }
-        // Codex P0-1: refuse anything not registered by a typed event for this account and still valid. Not executed and
-        // not reported (an unknown call_id has no turn to report into); the card shows it as not done.
-        if let why = DeviceCallGate.check(call, finalArgs: call.args, tap: tap) { set(call.id, .done(DeviceCallGate.rejected(call, why))); return }
         var effective = call
         if let edits = edited[call.id] { effective.args.merge(edits) { _, new in new } }
+        // Codex P0-1: refuse anything not registered by a typed event for this account and still valid. Not executed and
+        // not reported (an unknown call_id has no turn to report into); the card shows it as not done.
+        if let why = DeviceCallGate.check(call, finalArgs: effective.args, tap: tap) { set(call.id, .done(DeviceCallGate.rejected(call, why))); return }
         phases[call.id] = .running; persist(call.id, .running, call: effective)   // durable BEFORE any side effect
         await execute(effective)
     }
     /// Relaunch path for a call that was `.running` when the app died.
     func resumeInterrupted(_ id: String) async {
-        guard interrupted.remove(id) != nil, let call = records[id]?.call else { return }
-        if DeviceToolContract.idempotentTools.contains(call.tool) { await execute(call) }
-        else { await finish(call, DeviceToolContract.interruptedUnknown(call)) }
+        // Codex PR #89: a restart never re-grants a write. Only the account that ran it may recover it, and recovery only
+        // LOOKS UP the original effect (call_id marker); if it is not found the outcome is unknown — nothing is re-executed.
+        guard let record = records[id], let call = record.call, record.account != nil, record.account == DeviceCallGate.currentAccount(),
+              interrupted.remove(id) != nil else { return }
+        let found = DeviceToolContract.idempotentTools.contains(call.tool) ? await DeviceCallHub.executor.lookup(call) : nil
+        await finish(call, found ?? DeviceToolContract.interruptedUnknown(call))
     }
     private func execute(_ call: DeviceCall) async {
         let executor = DeviceCallHub.executor
@@ -206,7 +221,7 @@ extension DeviceResultSubmitting { func reportUndo(callID: String, outcome: Devi
         guard DeviceCallHub.submitter != nil else { return 0 }
         await retryUndoReports()
         var ok = 0
-        for id in pendingReportIDs where !retrying.contains(id) {
+        for id in pendingReportIDs where !retrying.contains(id) && (records[id]?.account == nil || records[id]?.account == DeviceCallGate.currentAccount()) {
             retrying.insert(id); await retryReport(id); retrying.remove(id)
             if case .done = phase(id) { ok += 1 }
         }
@@ -240,28 +255,109 @@ extension DeviceResultSubmitting { func reportUndo(callID: String, outcome: Devi
     }
 }
 
-/// PR #89 re-review RED scaffold: new API shape with the OLD (id-only) semantics. Replaced by the fix commit.
+/// Codex P0-1 (PR #89 re-review): the single execution authority for device calls.
+/// - Grants come ONLY from `receive`, called by the app service at the authenticated SSE boundary
+///   (`ConversationDeviceCall.lifecycle`), never from a view. A grant binds call_id + tool + args hash + interrupt +
+///   conversation + turn + non-nil account + session generation + a strict, non-extendable deadline.
+/// - Writes additionally consume a one-shot local tap token minted by the card button for the FINAL (edited) args.
+/// - `commitCheck` is synchronous and is called by the executor immediately before each system side effect, so expiry,
+///   sign-out (generation bump) or revocation during an await (permission prompt, lookup) still stops the write.
+/// - Cancel / resolve / turn end revoke; repeated events never extend; a wall-clock rollback cannot extend
+///   (an uptime budget is checked too); the boundary is fail-first (`now >= deadline` is expired).
 @MainActor enum DeviceCallGate {
+    struct Grant: Equatable {
+        let callID: String, tool: String, argsHash: String, interruptID: String?, conversationID: String?, turnID: String?
+        let account: String, generation: Int, deadline: Date, uptimeAtGrant: TimeInterval, budget: TimeInterval
+        var revoked = false
+    }
     struct TapToken: Equatable, Sendable { let callID: String; let finalArgsHash: String; let nonce: UUID }
-    enum Rejection: String, Equatable { case unregistered = "unauthorized_call", accountMismatch = "account_mismatch", expired = "call_expired" }
+    enum Rejection: String, Equatable {
+        case unregistered = "unauthorized_call", accountMismatch = "account_mismatch", noAccount = "no_account", expired = "call_expired",
+             invalidExpiry = "invalid_expiry", revoked = "call_revoked", mismatch = "call_mismatch", tapRequired = "tap_required", staleSession = "stale_session"
+    }
+    /// Signed-in user id (NativeAuthApplicationModel); nil when signed out → nothing may run.
     static var currentAccount: () -> String? = { nil }
     static var wallClock: () -> Date = { Date() }
     static var uptime: () -> TimeInterval = { ProcessInfo.processInfo.systemUptime }
-    private static var grants: [String: (account: String?, deadline: Date?)] = [:]
-    static func receive(_ call: DeviceCall, conversationID: String? = nil, turnID: String? = nil) { grants[call.call_id] = (currentAccount(), call.deadline(firstSeen: wallClock())) }
-    static func revoke(_ callIDs: [String]) {}
-    static func isLive(_ callID: String) -> Bool { grants[callID] != nil }
-    static func confirmTap(_ call: DeviceCall, finalArgs: [String: DeviceCallValue]) -> TapToken? { .init(callID: call.call_id, finalArgsHash: "", nonce: UUID()) }
+    private(set) static var generation = 0
+    private static var grants: [String: Grant] = [:]
+    private static var taps: [String: TapToken] = [:]
+
+    static func argsHash(_ args: [String: DeviceCallValue]) -> String {
+        let enc = JSONEncoder(); enc.outputFormatting = [.sortedKeys]
+        let data = (try? enc.encode(args)) ?? Data()
+        return SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
+    }
+
+    /// The only grant source. A second event for the same call_id never replaces or extends the first grant.
+    static func receive(_ call: DeviceCall, conversationID: String? = nil, turnID: String? = nil) {
+        guard grants[call.call_id] == nil, let account = currentAccount() else { return }
+        let now = wallClock()
+        let deadline = call.strictDeadline(receivedAt: now) ?? .distantPast   // missing / unparsable → fail closed
+        grants[call.call_id] = .init(callID: call.call_id, tool: call.tool, argsHash: argsHash(call.args), interruptID: call.interrupt_id,
+                                     conversationID: conversationID, turnID: turnID, account: account, generation: generation,
+                                     deadline: deadline, uptimeAtGrant: uptime(), budget: max(0, deadline.timeIntervalSince(now)))
+    }
+    /// Cancelled / resolved elsewhere / turn finished: the grant dies and any confirming card shows as no longer valid.
+    static func revoke(_ callIDs: [String]) {
+        for id in callIDs { grants[id]?.revoked = true; taps[id] = nil; DeviceCallStore.shared.expireIfConfirming(id) }
+    }
+    static func isLive(_ callID: String) -> Bool { commitCheck(callID) == nil }
+
+    /// Called only by the card's confirm button: binds the tap to the final args the user saw.
+    static func confirmTap(_ call: DeviceCall, finalArgs: [String: DeviceCallValue]) -> TapToken? {
+        guard validate(call) == nil else { return nil }
+        let token = TapToken(callID: call.call_id, finalArgsHash: argsHash(finalArgs), nonce: UUID())
+        taps[call.call_id] = token; return token
+    }
+    /// Run start: the call must match its grant exactly; a write must present (and consumes) the tap token for `finalArgs`.
     static func check(_ call: DeviceCall, finalArgs: [String: DeviceCallValue], tap: TapToken?) -> Rejection? {
-        guard let g = grants[call.call_id] else { return .unregistered }
-        guard g.account == currentAccount() else { return .accountMismatch }
-        if let d = g.deadline, wallClock() > d { return .expired }
+        if let why = validate(call) { return why }
+        if DeviceToolContract.runsWithoutTap(tool: call.tool, confirm: call.confirm), tap == nil { return nil }
+        guard let tap, let issued = taps[call.call_id], issued == tap, tap.finalArgsHash == argsHash(finalArgs) else { return .tapRequired }
+        taps[call.call_id] = nil   // one-shot
         return nil
     }
-    static func commitCheck(_ callID: String) -> Rejection? { nil }
-    static func installLifecycle() {}
+    /// Synchronous re-validation immediately before a system side effect.
+    static func commitCheck(_ callID: String) -> Rejection? {
+        guard let g = grants[callID] else { return .unregistered }
+        if g.revoked { return .revoked }
+        guard let account = currentAccount() else { return .noAccount }
+        guard g.account == account else { return .accountMismatch }
+        guard g.generation == generation else { return .staleSession }
+        if g.deadline == .distantPast { return .invalidExpiry }
+        if wallClock() >= g.deadline || uptime() - g.uptimeAtGrant >= g.budget { return .expired }
+        return nil
+    }
+    private static func validate(_ call: DeviceCall) -> Rejection? {
+        if let why = commitCheck(call.call_id) { return why }
+        guard let g = grants[call.call_id], g.tool == call.tool, g.argsHash == argsHash(call.args), g.interruptID == call.interrupt_id else { return .mismatch }
+        return nil
+    }
     static func rejected(_ call: DeviceCall, _ why: Rejection) -> DeviceCallResult {
         .init(call_id: call.call_id, status: .error, data: ["reason": .string(why.rawValue), "retryable": .bool(false)])
     }
-    static func reset() { grants = [:] }
+    /// Wires the session service's SSE boundary (received / resolved / cancelled / turn ended) to this gate.
+    static func installLifecycle() {
+        ConversationDeviceCall.lifecycle = { event in
+            Task { @MainActor in
+                switch event {
+                case .received(let wire, let conversationID, let turnID):
+                    if let call = DeviceCall(wire) { receive(call, conversationID: conversationID.uuidString, turnID: turnID.uuidString) }
+                case .revoked(let ids): revoke(ids)
+                }
+            }
+        }
+    }
+    /// Sign-out / account switch: every grant and tap dies, and in-flight executions fail their commit check.
+    static func reset() { grants = [:]; taps = [:]; generation += 1 }
+}
+
+extension DeviceCall {
+    /// Full catpaw.device.v1 fields (the session's `wireJSON` only carries call_id, tool, args, confirm, ttl_sec).
+    init?(_ call: ConversationDeviceCall) {
+        guard let args = try? JSONDecoder().decode([String: DeviceCallValue].self, from: call.args) else { return nil }
+        self.init(call_id: call.callID, tool: call.tool, args: args, confirm: Confirm(rawValue: call.confirm) ?? .card,
+                  ttl_sec: call.ttlSec, interrupt_id: call.interruptID, args_hash: call.argsHash, expires_at: call.expiresAt)
+    }
 }
