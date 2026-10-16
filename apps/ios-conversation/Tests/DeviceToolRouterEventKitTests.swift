@@ -428,6 +428,13 @@ actor WiringDeviceCallBackend: ConversationBackend {
     func observe(_ r: ConversationTurnRequest) async throws -> ConversationObservation { throw CatpawError.unavailable("wiring test") }
 }
 
+final class LifecycleRecorder: @unchecked Sendable {
+    private let lock = NSLock(); private var tokens: [String: AccountToken?] = [:]
+    func add(_ id: String, _ token: AccountToken?) { lock.lock(); tokens[id] = .some(token); lock.unlock() }
+    func seen(_ id: String) -> Bool { lock.lock(); defer { lock.unlock() }; return tokens[id] != nil }
+    func token(_ id: String) -> AccountToken? { lock.lock(); defer { lock.unlock() }; return tokens[id] ?? nil }
+}
+
 actor HeldStreamUIBackend: ConversationBackend {
     private var live: AsyncThrowingStream<ConversationTurnEvent, Error>.Continuation?
     private(set) var uiSubmits = 0
@@ -467,14 +474,20 @@ actor HeldStreamUIBackend: ConversationBackend {
             AccountEpoch.shared.signOut(); AccountEpoch.shared.activate(account: account); relogged = AccountEpoch.shared.capture()
             ConversationSessionService.beforeClaimHook = nil
         }
-        defer { ConversationSessionService.beforeClaimHook = nil; DeviceCallGate.receiveTrace = nil }
-        var received: [String: Bool] = [:]
-        DeviceCallGate.receiveTrace = { id, granted in received[id] = granted }
+        defer { ConversationSessionService.beforeClaimHook = nil }
+        // p89g-4: record what reaches the service→gate lifecycle entry (call id → source token carried), then forward.
+        let recorder = LifecycleRecorder()
+        let installed = ConversationDeviceCall.lifecycle
+        ConversationDeviceCall.lifecycle = { event in
+            if case .received(let wire, _, _, let token) = event { recorder.add(wire.callID, token) }
+            installed?(event)
+        }
         let sending = Task { _ = try? await service.send(scope: Profiles.user, conversationID: conversation, text: "提醒我", operationID: UUID()) }
         defer { sending.cancel() }
         // p89g-4: wait until the old operation's device_call actually REACHED the gate (no fixed sleep, no vacuous pass).
-        for _ in 0..<500 where received[id] == nil { try await Task.sleep(nanoseconds: 10_000_000) }
-        XCTAssertEqual(received[id], false, "the old operation's device_call reached DeviceCallGate.receive and was refused")
+        for _ in 0..<500 where !recorder.seen(id) { try await Task.sleep(nanoseconds: 10_000_000) }
+        XCTAssertTrue(recorder.seen(id), "the old operation's device_call really reached the lifecycle entry")
+        XCTAssertFalse(AccountEpoch.shared.isValid(recorder.token(id)), "…carrying no valid source for the new login")
         let newLogin = try XCTUnwrap(relogged)
         XCTAssertEqual(newLogin.account, oldLogin.account); XCTAssertNotEqual(newLogin, oldLogin, "same account, new login generation")
         XCTAssertFalse(DeviceCallGate.isLive(id), "the old operation's device_call is never granted under the new login")
@@ -488,7 +501,7 @@ actor HeldStreamUIBackend: ConversationBackend {
         defer { sending2.cancel() }
         for _ in 0..<300 where !DeviceCallGate.isLive(id2) { try await Task.sleep(nanoseconds: 10_000_000) }
         XCTAssertTrue(DeviceCallGate.isLive(id2))
-        XCTAssertEqual(received[id2], true)
+        XCTAssertTrue(AccountEpoch.shared.isValid(recorder.token(id2)), "counter-run carries the new login's source")
     }
 
     /// Codex p89g-1: a UI decision QUEUED behind a running stream carries the login pinned at the public submit. Same
