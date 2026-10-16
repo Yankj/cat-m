@@ -25,6 +25,8 @@ import UserNotifications
             var r = DeviceCallResult(call_id: call.call_id, status: status, data: data); r.openURL = open; return r
         }
         switch call.tool {
+        case "places_search":
+            return await NearbyPlaces.search(call: call)
         case "calendar_list":
             guard await access(.event) else { return done(.denied) }
             let from = d("from") ?? Date(), to = d("to") ?? from.addingTimeInterval(86400)

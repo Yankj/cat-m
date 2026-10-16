@@ -33,6 +33,8 @@ struct DeviceCallSpec: Sendable {
             .init(key: "time", labelKey: "时间", kind: .date), .init(key: "label", labelKey: "标签")])
         case "shortcut_run": .init(symbol: "square.stack.3d.up", titleKey: "运行快捷指令", confirmKey: "运行", fields: [
             .init(key: "name", labelKey: "快捷指令", editable: false), .init(key: "input", labelKey: "输入")])
+        case "places_search": .init(symbol: "mappin.and.ellipse", titleKey: "查附近", confirmKey: "查找", fields: [
+            .init(key: "query", labelKey: "找什么"), .init(key: "mode", labelKey: "出行方式", editable: false)])
         default: .init(symbol: "iphone", titleKey: "在这台 iPhone 上执行", confirmKey: "执行", fields: [])
         }
     }
@@ -169,11 +171,45 @@ struct DeviceCallSpec: Sendable {
             Spacer(minLength: 0)
         }
         .frame(minHeight: 44).accessibilityElement(children: .combine).accessibilityIdentifier("chat.deviceCall.receipt")
+        if call.tool == "places_search" { placesList(result) }
         if reportFailed {
             HStack {
                 Text(ui("结果还没告诉小猫")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.attention)
                 Button(ui("重试")) { Task { await store.retryReport(call.id) } }.font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.ink).touchTarget()
             }
+        }
+    }
+    /// 附近 POI rows: name · ETA · distance, with 导航 / 打电话 per row, plus the honest Why (memories + origin).
+    @ViewBuilder private func placesList(_ result: DeviceCallResult) -> some View {
+        if case .array(let rows)? = result.data?["places"] {
+            VStack(alignment: .leading, spacing: 10) {
+                ForEach(Array(rows.enumerated()), id: \.offset) { i, row in
+                    if case .object(let p) = row {
+                        HStack(alignment: .center, spacing: 8) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(p["name"]?.text ?? "").font(CatpawTypography.Role.body.font.weight(.medium)).foregroundStyle(CatpawColors.ink)
+                                Text([p["eta_min"].map { "约 \($0.text) 分钟" }, p["distance_m"].map { "\($0.text) 米" }, p["address"]?.text].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · "))
+                                    .font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary).lineLimit(2)
+                            }
+                            Spacer(minLength: 0)
+                            if let u = p["maps_url"]?.text, let url = URL(string: u) {
+                                Button(ui("导航")) { openURL(url) }.font(CatpawTypography.Role.caption.font.weight(.medium)).foregroundStyle(CatpawColors.ink).touchTarget()
+                                    .accessibilityIdentifier("chat.places.nav.\(i)")
+                            }
+                            if let t = p["tel_url"]?.text, let url = URL(string: t) {
+                                Button(ui("打电话")) { openURL(url) }.font(CatpawTypography.Role.caption.font.weight(.medium)).foregroundStyle(CatpawColors.ink).touchTarget()
+                                    .accessibilityIdentifier("chat.places.call.\(i)")
+                            }
+                        }
+                    }
+                }
+                if let why = result.data?["why"]?.text, !why.isEmpty {
+                    Text(why).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary).fixedSize(horizontal: false, vertical: true)
+                        .accessibilityIdentifier("chat.places.why")
+                }
+            }
+        } else if let message = result.data?["message"]?.text, result.status == .error {
+            Text(message).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary).fixedSize(horizontal: false, vertical: true)
         }
     }
     private func receiptText(_ status: DeviceCallStatus) -> String {

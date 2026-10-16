@@ -505,7 +505,7 @@ struct ProactiveSignal: Equatable, Sendable {
     }
 
     /// One-shot When-In-Use location. Returns nil if denied / undetermined (no prompt from background) / timeout.
-    private static func requestCurrentCoordinate() async -> CLLocationCoordinate2D? {
+    static func requestCurrentCoordinate() async -> CLLocationCoordinate2D? {
         #if canImport(CoreLocation) && os(iOS)
         let status = CLLocationManager.authorizationStatus()
         guard status == .authorizedWhenInUse || status == .authorizedAlways else { return nil }

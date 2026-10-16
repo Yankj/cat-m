@@ -25,6 +25,7 @@ export const DEVICE_TOOLS=Object.freeze([
  fn('shop_open','Open a shopping app search or link (never places orders).',{platform:{type:'string',enum:['taobao','jd','meituan','pdd']},query:S,url:S},['platform'],'card'),
  fn('alarm_set','Set an alarm.',{time:S,label:S},['time'],'card'),
  fn('shortcut_run','Run a Shortcuts shortcut by name.',{name:S,input:S},['name'],'card'),
+ fn('places_search','Find 3-5 nearby places (food, coffee, shops…) around the user\'s real current location, each with travel ETA, distance, phone; the phone shows them as a list with 导航/打电话 and cites taste/travel-mode memories. Use for 附近/nearby/路线 questions instead of opening Maps.',{query:S,mode:{type:'string',enum:['driving','walking','transit']}},['query'],'none'),
 ]);
 export const DEVICE_TOOL_NAMES=Object.freeze(DEVICE_TOOLS.map(t=>t.definition.function.name));
 /** Parses X-Catpaw-Device-Tools into known tool names (unknown dropped); null when the header is absent. */
