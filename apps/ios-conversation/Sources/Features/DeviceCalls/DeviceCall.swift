@@ -161,6 +161,9 @@ extension DeviceResultSubmitting { func reportUndo(callID: String, outcome: Devi
 
     func run(_ call: DeviceCall) async {
         guard phase(call.id) == .confirming else { return }
+        // Codex P0-1: refuse anything not registered by a typed event for this account and still valid. Not executed and
+        // not reported (an unknown call_id has no turn to report into); the card shows it as not done.
+        if let why = DeviceCallGate.check(call) { set(call.id, .done(DeviceCallGate.rejected(call, why))); return }
         var effective = call
         if let edits = edited[call.id] { effective.args.merge(edits) { _, new in new } }
         phases[call.id] = .running; persist(call.id, .running, call: effective)   // durable BEFORE any side effect
@@ -228,4 +231,28 @@ extension DeviceResultSubmitting { func reportUndo(callID: String, outcome: Devi
         do { try await submitter?.submit(result); set(result.call_id, submitter == nil ? .reportFailed(result) : .done(result)) }
         catch { set(result.call_id, .reportFailed(result)) }
     }
+}
+
+/// Codex review P0-1: only calls that arrived as an authenticated, typed `device_call` SSE event (registered here by
+/// `ConversationApprovalHost`) may execute, for the account that received them and before they expire. Display content
+/// (Markdown fences, quoted / historical replies) can never register a call, so it has zero side effects.
+@MainActor enum DeviceCallGate {
+    struct Grant: Equatable { let account: String?; let deadline: Date? }
+    enum Rejection: String, Equatable { case unregistered = "unauthorized_call", accountMismatch = "account_mismatch", expired = "call_expired" }
+    /// Signed-in user id (set by NativeAuthApplicationModel); nil when signed out / guest.
+    static var currentAccount: () -> String? = { nil }
+    private static var grants: [String: Grant] = [:]
+    static func register(_ call: DeviceCall, now: Date = .now) {
+        grants[call.call_id] = .init(account: currentAccount(), deadline: call.deadline(firstSeen: now))
+    }
+    static func check(_ call: DeviceCall, now: Date = .now) -> Rejection? {
+        guard let grant = grants[call.call_id] else { return .unregistered }
+        guard grant.account == currentAccount() else { return .accountMismatch }
+        if let deadline = grant.deadline, now > deadline { return .expired }
+        return nil
+    }
+    static func rejected(_ call: DeviceCall, _ why: Rejection) -> DeviceCallResult {
+        .init(call_id: call.call_id, status: .error, data: ["reason": .string(why.rawValue), "retryable": .bool(false)])
+    }
+    static func reset() { grants = [:] }
 }

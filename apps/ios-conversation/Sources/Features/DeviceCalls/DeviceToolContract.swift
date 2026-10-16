@@ -12,9 +12,12 @@ enum DeviceToolContract {
     static let idempotentTools: Set<String> = ["calendar_create", "reminder_create", "alarm_set", "calendar_list", "contacts_search", "places_search"]
 
     /// chat-ux #7: tools that read private data and must never run without a tap, even if an older server says `confirm:none`.
-    static let tapRequiredTools: Set<String> = ["contacts_search"]
-    /// True when the card may run the call on appear (no user tap).
-    static func runsWithoutTap(tool: String, confirm: DeviceCall.Confirm?) -> Bool { confirm == DeviceCall.Confirm.none && !tapRequiredTools.contains(tool) }
+    /// Codex P0-1: Markdown (model text, quotes, history) only renders; a `catpaw-card:device_call` fence is inert.
+    static let markdownMayCreateDeviceCalls = false
+    /// Codex P0-1: local risk table. Only these read-only, non-private tools may run on appear when the server says
+    /// `confirm:none`; every write / compose / open / private-read tool (and any unknown tool) always waits for a tap.
+    static let autoRunReadOnlyTools: Set<String> = ["calendar_list", "places_search"]
+    static func runsWithoutTap(tool: String, confirm: DeviceCall.Confirm?) -> Bool { confirm == DeviceCall.Confirm.none && autoRunReadOnlyTools.contains(tool) }
     /// contacts_search result: name + up to 3 phones; emails only when the model asked (`include_email`). Pure, unit-tested.
     static func minimalContact(name: String, phones: [String], emails: [String], includeEmail: Bool) -> [String: DeviceCallValue] {
         var row: [String: DeviceCallValue] = ["name": .string(name), "phones": .list(Array(phones.prefix(3)))]

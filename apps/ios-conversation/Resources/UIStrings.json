@@ -6446,5 +6446,9 @@
   "没能撤销，请到日历或提醒事项里删除": {
     "en": "Couldn't undo. Delete it in Calendar or Reminders.",
     "zh-Hans": "没能撤销，请到日历或提醒事项里删除"
+  },
+  "这里提到的手机操作没有执行；需要的话再跟小猫说一次": {
+    "en": "The phone action mentioned here did not run. Ask the cat again if you need it.",
+    "zh-Hans": "这里提到的手机操作没有执行；需要的话再跟小猫说一次"
   }
 }

@@ -296,9 +296,21 @@ struct DeviceCallSpec: Sendable {
     private static var registered = false
     static func register() {
         guard !registered else { return }; registered = true
-        MarkdownCustomBlockRegistry.shared.register(kind: "device_call") { payload, closed in
-            if closed, let call = try? JSONDecoder().decode(DeviceCall.self, from: payload) { DeviceCallConfirmCard(call: call) } else { EmptyView() }
+        // Codex P0-1: a device_call fence in reply text is display content and never becomes an executable card.
+        // Real calls arrive only as the typed SSE `device_call` event (ConversationApprovalHost → DeviceCallGate.register).
+        MarkdownCustomBlockRegistry.shared.register(kind: "device_call") { _, closed in
+            if closed && !DeviceToolContract.markdownMayCreateDeviceCalls { InertDeviceCallNotice() } else { EmptyView() }
         }
+    }
+}
+
+/// Shown in place of a device_call fence found in plain text: explains that nothing ran.
+@MainActor struct InertDeviceCallNotice: View {
+    @Environment(\.locale) private var locale
+    var body: some View {
+        Label(AppLanguage(locale: locale).ui("这里提到的手机操作没有执行；需要的话再跟小猫说一次"), systemImage: "hand.raised")
+            .font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
+            .accessibilityIdentifier("chat.deviceCall.inert")
     }
 }
 
