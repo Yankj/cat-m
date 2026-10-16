@@ -6074,5 +6074,21 @@
   "，草稿，": {
     "en": ", draft, ",
     "zh-Hans": "，草稿，"
+  },
+  "暂时只能发送图片": {
+    "en": "Only images can be sent for now",
+    "zh-Hans": "暂时只能发送图片"
+  },
+  "每条消息只能附一张图片": {
+    "en": "One image per message",
+    "zh-Hans": "每条消息只能附一张图片"
+  },
+  "图片读取失败": {
+    "en": "Couldn't read the image",
+    "zh-Hans": "图片读取失败"
+  },
+  "图片处理失败": {
+    "en": "Couldn't prepare the image",
+    "zh-Hans": "图片处理失败"
   }
 }
