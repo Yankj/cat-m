@@ -5,6 +5,7 @@ struct CatpawWidgetSuggestion: Hashable, Sendable {
     let id: String
     let title: String
     let why: String
+    var expiresAt: Date? = nil
 }
 
 struct CatpawWidgetMeeting: Hashable, Sendable {
@@ -20,6 +21,12 @@ struct CatpawWidgetEntry: TimelineEntry, Sendable {
     let suggestion: CatpawWidgetSuggestion?
     let meeting: CatpawWidgetMeeting?
     let isPlaceholder: Bool
+    var validUntil: Date? = nil
+
+    var expirations: [Date] {
+        Array(Set([validUntil, suggestion?.expiresAt, meeting?.startsAt].compactMap { $0 }))
+            .filter { $0 > date }.sorted()
+    }
 
     static func empty(at date: Date) -> Self {
         .init(date: date, suggestion: nil, meeting: nil, isPlaceholder: false)
@@ -57,38 +64,66 @@ struct AppGroupCatpawWidgetDataSource: CatpawWidgetDataSource {
 
     func snapshot(now: Date) -> CatpawWidgetEntry {
         guard let directory = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: group),
-              let data = try? Data(contentsOf: directory.appendingPathComponent(file)),
+              let data = try? Data(contentsOf: directory.appendingPathComponent(file)) else {
+            return .empty(at: now)
+        }
+        return Self.decode(data, now: now)
+    }
+
+    static func decode(_ data: Data, now: Date) -> CatpawWidgetEntry {
+        guard data.count <= 64 * 1024,
               let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              object["version"] as? Int == 2 else {
+              object["version"] as? Int == 2,
+              let updated = timestamp(object["updated_at"]),
+              updated <= now.addingTimeInterval(5 * 60),
+              now < updated.addingTimeInterval(24 * 3600) else {
             return .empty(at: now)
         }
 
+        let meeting = meeting(from: object["meeting"])
+        let suggestion = suggestion(from: object["suggestion"])
+        // Version-2 snapshots written before expires_at still carry the meeting's stable ID/start.
+        let expiredMeetingID: String?
+        if let meeting, let start = meeting.startsAt, start <= now { expiredMeetingID = meeting.id }
+        else { expiredMeetingID = nil }
         return .init(
             date: now,
-            suggestion: suggestion(from: object["suggestion"]),
-            meeting: meeting(from: object["meeting"]),
-            isPlaceholder: false
+            suggestion: suggestion.flatMap {
+                ($0.expiresAt.map { now < $0 } ?? true) && $0.id != expiredMeetingID ? $0 : nil
+            },
+            meeting: meeting.flatMap { ($0.startsAt.map { now < $0 } ?? true) ? $0 : nil },
+            isPlaceholder: false,
+            validUntil: updated.addingTimeInterval(24 * 3600)
         )
     }
 
-    private func suggestion(from value: Any?) -> CatpawWidgetSuggestion? {
+    private static func suggestion(from value: Any?) -> CatpawWidgetSuggestion? {
         guard let value = value as? [String: Any],
               let id = nonempty(value["id"]),
               let title = nonempty(value["title"]),
               let why = nonempty(value["why"]) else { return nil }
-        return .init(id: id, title: title, why: why)
+        let expiry = timestamp(value["expires_at"])
+        guard value["expires_at"] == nil || expiry != nil else { return nil }
+        return .init(id: id, title: title, why: why, expiresAt: expiry)
     }
 
-    private func meeting(from value: Any?) -> CatpawWidgetMeeting? {
+    private static func meeting(from value: Any?) -> CatpawWidgetMeeting? {
         guard let value = value as? [String: Any],
               let id = nonempty(value["id"]),
               let title = nonempty(value["title"]),
               let why = nonempty(value["why"]) else { return nil }
-        let startsAt = (value["starts_at"] as? TimeInterval).map(Date.init(timeIntervalSince1970:))
+        let startsAt = timestamp(value["starts_at"])
+        guard value["starts_at"] == nil || startsAt != nil else { return nil }
         return .init(id: id, title: title, why: why, startsAt: startsAt, place: nonempty(value["place"]))
     }
 
-    private func nonempty(_ value: Any?) -> String? {
+    private static func timestamp(_ value: Any?) -> Date? {
+        guard let seconds = value as? TimeInterval, seconds.isFinite else { return nil }
+        let date = Date(timeIntervalSince1970: seconds)
+        return (.distantPast ... .distantFuture).contains(date) ? date : nil
+    }
+
+    private static func nonempty(_ value: Any?) -> String? {
         guard let value = value as? String else { return nil }
         let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? nil : trimmed
@@ -108,10 +143,14 @@ struct CatpawWidgetProvider: TimelineProvider {
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<CatpawWidgetEntry>) -> Void) {
         let now = Date.now
-        completion(.init(entries: [source.snapshot(now: now)], policy: .after(now.addingTimeInterval(30 * 60))))
+        let entry = source.snapshot(now: now)
+        // Expiry entries remove past meetings even when WidgetKit defers the next refresh.
+        let entries = [entry] + entry.expirations.map { source.snapshot(now: $0) }
+        completion(.init(entries: entries, policy: .after(now.addingTimeInterval(30 * 60))))
     }
 }
 
+#if os(iOS)
 enum CatpawWidgetLinks {
     static let proactive = URL(string: "catpawm://proactive")!
     static let new = URL(string: "catpawm://new")!
@@ -170,15 +209,15 @@ struct CatpawNextSuggestionView: View {
     @Environment(\.widgetFamily) private var family
 
     var body: some View {
-        VStack(alignment: .leading, spacing: family == .systemSmall ? 9 : 10) {
+        VStack(alignment: .leading, spacing: family == .systemSmall ? 8 : 10) {
             WidgetEyebrow(title: LA.s("下一条建议", "Next suggestion"), symbol: "bell.badge.fill")
             if let suggestion = entry.suggestion {
                 Text(suggestion.title)
                     .font(family == .systemSmall ? .headline : .title3.weight(.semibold))
                     .foregroundStyle(CatpawWidgetStyle.ink)
-                    .lineLimit(family == .systemSmall ? 3 : 2)
+                    .lineLimit(2)
                 Spacer(minLength: 0)
-                WidgetWhyLine(why: suggestion.why, lines: family == .systemSmall ? 2 : 2)
+                WidgetWhyLine(why: suggestion.why, lines: 2)
             } else {
                 Text(LA.s("现在没有待处理建议", "No suggestion needs attention"))
                     .font(.headline)
@@ -217,13 +256,19 @@ struct CatpawNextMeetingView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: family == .systemSmall ? 8 : 10) {
-            WidgetEyebrow(title: LA.s("下一场会议", "Next meeting"), symbol: "calendar")
-            if let meeting = entry.meeting {
-                if let startsAt = meeting.startsAt {
+            HStack(spacing: 4) {
+                WidgetEyebrow(
+                    title: family == .systemSmall ? LA.s("会议", "Meeting") : LA.s("下一场会议", "Next meeting"),
+                    symbol: "calendar"
+                )
+                if let startsAt = entry.meeting?.startsAt {
                     Text(startsAt, style: .time)
-                        .font(.title2.monospacedDigit().weight(.semibold))
+                        .font(.headline.monospacedDigit())
                         .foregroundStyle(CatpawWidgetStyle.accent)
+                        .fixedSize()
                 }
+            }
+            if let meeting = entry.meeting {
                 Text(meeting.title)
                     .font(family == .systemSmall ? .headline : .title3.weight(.semibold))
                     .foregroundStyle(CatpawWidgetStyle.ink)
@@ -237,7 +282,7 @@ struct CatpawNextMeetingView: View {
                 Spacer(minLength: 0)
                 WidgetWhyLine(why: meeting.why, lines: family == .systemSmall ? 2 : 1)
             } else {
-                Text(LA.s("日历里没有接下来的会议", "No upcoming meeting"))
+                Text(LA.s("暂无已同步的会议", "No meeting shared yet"))
                     .font(.headline)
                     .foregroundStyle(CatpawWidgetStyle.ink)
                     .lineLimit(2)
@@ -278,11 +323,11 @@ private extension CatpawWidgetEntry {
     }
 
     var lockURL: URL {
-        suggestion == nil && meeting != nil ? CatpawWidgetLinks.new : CatpawWidgetLinks.proactive
+        suggestion == nil ? CatpawWidgetLinks.new : CatpawWidgetLinks.proactive
     }
 
     var lockSymbol: String {
-        suggestion != nil ? "bell.badge.fill" : (meeting != nil ? "calendar" : "checkmark")
+        suggestion != nil ? "bell.badge.fill" : "calendar"
     }
 }
 
@@ -342,4 +387,5 @@ struct CatpawLockScreenWidget: Widget {
 #Preview("Lock", as: .accessoryRectangular) { CatpawLockScreenWidget() } timeline: {
     CatpawWidgetEntry.placeholder(at: .now)
 }
+#endif
 #endif

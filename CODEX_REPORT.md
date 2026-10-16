@@ -1,73 +1,88 @@
-# CatpawM widgets, notifications, and Live Activity implementation report
+# CatpawM widgets, notifications, and Live Activity report
 
-Date: 2026-10-16 (Asia/Shanghai)
+Date: 2026-10-16 (Asia/Shanghai). This is dated implementation/build evidence; live project status remains in `docs/status/master-plan.md`.
 
-## Source identity
+## Source identity and scope
 
-- Branch: `feat/widgets-notify`
-- Starting commit: `1632deb058fff4809453ef9b80eaf170647a4347`
-- Configured upstream: `origin/feat/ios-mvp-integration-v2` (the local branch was 0 ahead / 5 behind before this commit)
-- App version compiled: `0.3.0 (39)`
-- A pre-existing modification to `.eden/quickstart/prd.md` was preserved and excluded from this implementation and commit.
+- Branch: `feat/widgets-notify`.
+- Original slice base: `1632deb058fff4809453ef9b80eaf170647a4347`.
+- Retained implementation: `437ee8a` (`feat(ios): polish widgets notifications and live activity`). This continuation reviewed that commit and completed the fixes below without rewriting history.
+- Existing upstream remains `origin/feat/ios-mvp-integration-v2`; its five newer commits were not merged into this scoped change. No push or PR was performed.
+- Compiled app version: `0.3.0 (39)`; no package was installed or shared.
+- The pre-existing approved `.eden/quickstart/prd.md` modification was preserved and excluded from the commit.
 
 ## Delivered behavior
 
-- Replaced the demo task/status home widgets with focused next-suggestion and next-meeting widgets. Populated views show a primary title and an explicit why line; missing, corrupt, or older snapshots render truthful empty states.
-- Added a version-2 minimal widget snapshot projection for the next pending suggestion and earliest projected meeting. The writer remains atomic and reloads WidgetKit timelines.
-- Applied the requested deep links: next suggestion and suggestion-oriented Lock Screen states use `catpawm://proactive`; next meeting and meeting continuation use `catpawm://new`.
-- Polished the Lock Screen accessory families with monochrome-compatible SF Symbols and a compact why line in the rectangular family.
-- Replaced the custom illustrated cat Live Activity with a professional status system: warm off-white Lock Screen surface, restrained orange accent, semantic SF Symbols, explicit status labels, and a three-phase progress track. Activity lifecycle, token registration, content-state mapping, and conversation deep linking are unchanged.
-- Registered Create reminder, Snooze, and Not now proactive notification actions. All three resolve a stable suggestion and execute through `ProactiveSuggestionStore` / `ProactiveSuggestionBackend`; Not now maps to the existing dismiss action. Default taps route to the proactive inbox, while custom dismiss and unknown identifiers do not create effects.
-- Added stable metadata to pre-scheduled meeting notifications so cold-start actions can recover the exact meeting suggestion. Foreground proactive banners now also link to the proactive inbox.
+- Next-suggestion and next-meeting home widgets show a title and why line using the existing minimal App Group projection. Their deep links are `catpawm://proactive` and `catpawm://new` respectively. Compact meeting layouts put the time in the header to leave room for the title and reason.
+- Lock Screen accessories use monochrome-compatible SF Symbols. Suggestions open the proactive inbox; meeting/empty continuation states open the new conversation route. Empty states do not claim completed work or knowledge of an unshared calendar.
+- Version-2 snapshots decode defensively. Missing, corrupt, unsupported, oversized, stale, or invalid-date data produces truthful empty content. Meeting suggestions expire at their start; explicit timeline entries clear expired content even when refresh is deferred. The freshness limit is 24 hours, with a five-minute clock-skew allowance. Writes remain atomic and local.
+- The retained Live Activity implementation replaces the illustrated cat with warm off-white, orange accents, semantic status symbols/text, and a restrained phase track. Compact, minimal, and expanded Dynamic Island layouts retain their conversation links. Attributes, coordinator lifecycle, content-state contract, and token behavior were preserved.
+- Create reminder, Snooze, and Not now call `ProactiveSuggestionStore.perform` and the existing `ProactiveSuggestionBackend`. Not now maps to dismiss. Create reminder brings the app foreground for normal permission handling; unknown and system-dismiss actions do not create effects. Existing remote categories and `/push/action` mapping remain intact.
+- Pre-scheduled notification metadata now preserves the original reminder due time. Cold-start actions recover the stable local meeting suggestion without remote reevaluation or another notification. Dates and meeting identity are validated; busy, unavailable, or terminal actions are ignored. A late evaluation cannot replace a notification's newer inbox state. Default taps recover the suggestion before routing to the proactive inbox.
 
-## Changed files
+## Reviewed file set
+
+Implementation across this slice:
 
 - `apps/ios-conversation/Widgets/CatpawWidgets/CatpawHomeWidgets.swift`
-- `apps/ios-conversation/Widgets/CatpawWidgets/CatpawWorkLiveActivity.swift`
+- `apps/ios-conversation/Widgets/CatpawWidgets/CatpawWorkLiveActivity.swift` (retained from `437ee8a`)
 - `apps/ios-conversation/Sources/App/CatpawPushNotifications.swift`
-- `apps/ios-conversation/Sources/Features/Proactive/ProactiveEngine.swift`
+- `apps/ios-conversation/Sources/Features/Proactive/ProactiveEngine.swift` (notification recovery and existing snapshot seam)
+
+Supporting changes:
+
+- `apps/ios-conversation/Tests/WidgetNotificationSurfaceRunner.swift`
+- `apps/ios-conversation/Scripts/test-widget-notification-surfaces.sh`
+- `docs/status/master-plan.md` (required dated slice entry; long-term Goal remains paused)
 - `CODEX_REPORT.md`
 
-No backend, database, model, authentication, deployment, conversation UI, package, or historical application source was changed.
+No backend, model route, Auth, conversation UI, package, historical app, entitlement, or Xcode project changes were made.
 
 ## Verification
 
-PASS:
+PASS — final simulator build, including `CatpawWidgets.appex` embedded in the host:
 
 ```sh
 xcodebuild -project apps/ios-conversation/CatpawM.xcodeproj \
   -scheme CatpawM -configuration Debug -sdk iphonesimulator \
   -destination 'generic/platform=iOS Simulator' \
-  -derivedDataPath /tmp/catpawm-widgets-dd \
+  -derivedDataPath /tmp/catpawm-widgets-notify-20261016-dd \
   CODE_SIGNING_ALLOWED=NO build
 ```
 
-Result: `BUILD SUCCEEDED`; the `CatpawWidgets` extension compiled and embedded in the simulator app. Existing Swift 6 isolation and EventKit/audio deprecation warnings remain; no new build error or warning category was introduced by this slice.
+Result: `BUILD SUCCEEDED` (Xcode 27.1). Existing actor-isolation and deprecation warnings remain. The initial sandboxed attempt failed to access CoreSimulator/SwiftPM caches; authorized host execution passed without dependency installation.
 
 PASS:
 
 ```sh
+zsh apps/ios-conversation/Scripts/test-widget-notification-surfaces.sh
 zsh apps/ios-conversation/Scripts/check-source.sh
+python3 apps/ios-conversation/Scripts/app-version.py check --app /tmp/catpawm-widgets-notify-20261016-dd/Build/Products/Debug-iphonesimulator/CatpawM.app
 python3 scripts/check-repository-layout.py
 python3 scripts/check-repository.py
 python3 scripts/check-deployed-source.py
 git diff --check
 ```
 
-The native source gate passed project membership, localization, non-Debug Simulator SDK typecheck, and syntax parsing. Repository layout, frozen source/provenance, and deployed-source snapshot identity passed.
+The portable runner executes the actual snapshot decoder and notification metadata parser: 34 assertions covering valid/partial payloads, unsupported versions, corruption, stale and extreme dates, expiry ordering, original scheduled lead time, legacy defaults, and malformed notification context. It does not execute the notification delegate, backend actions, or OS effects. The source gate passed after host execution allowed Swift macro plugins; its sandbox-only macro failure is retained in the ignored log. Version readback passed `0.3.0 (39)`.
 
-Sensitivity scan:
+Sensitivity command: `python3 scripts/scan-repository.py`. Result: zero blocking hits; exit 1 for eight unchanged manual-review matches. Six are asset scale filenames, one is the repository SSH allowlist literal, and one is a synthetic test-key literal. All were read and confirmed as non-secret; no new match was introduced and the baseline was not modified.
 
-```sh
-python3 scripts/scan-repository.py
-```
+Raw logs remain under ignored `build/widgets-notify-review/`: `xcodebuild-final.log`, `native-source-host.log`, `surface-tests.log`, `layout.log`, `integrity.log`, `deployed-source.log`, and `sensitivity.log`. Initial sandbox failures are kept separately.
 
-The scan found zero blocking hits. It exited 1 for eight unchanged manual-review matches outside this patch: six image-set filenames containing scale suffixes, one repository SSH allowlist literal, and one synthetic test-key literal. Manual review confirmed these are filenames or test/governance fixtures, not credentials or personal data; the unrelated reviewed-findings baseline was not modified.
+## Final implementation SHA256
+
+| Input | SHA256 |
+|---|---|
+| CatpawHomeWidgets.swift | `1319990ae60debd94dbcceafc9c2cc88e7812ef0d692dfe127c80ea63ecb436d` |
+| CatpawWorkLiveActivity.swift | `9a8b59632708d15c80a679f10d53cfec9bc5fb7cc4338259ce9705447230530c` |
+| CatpawPushNotifications.swift | `b22ec9df9f88e65a1f64d644a0b7f46d6a4a0346bed0b03ea307a48e90b258e0` |
+| ProactiveEngine.swift | `db54a4cee8cc5c2095e96564895127ea9af750275e7aff27e2152e9d816d8c86` |
+| test-widget-notification-surfaces.sh | `510c6a48cea587810ac83f994cbaefc46785aef55ac01b62ecae8b7661e6c25c` |
+| WidgetNotificationSurfaceRunner.swift | `7a70dfdf4e39d79dd2db6f9f42edb97a90fc0c0fc058e35bc78d657623e23bac` |
 
 ## Evidence limits
 
-- This is simulator compilation and static verification, not physical-device or product acceptance.
-- No widget gallery/Lock Screen pixels, notification delivery/action execution, EventKit reminder write, Live Activity presentation, Dynamic Island presentation, VoiceOver, or maximum Dynamic Type path was executed on a device.
-- The existing App Group identifier remains unprovisioned in this checkout. The versioned snapshot code compiles, but real cross-process widget data requires a valid shared entitlement/profile and separate device evidence; without it, widgets intentionally show their empty state.
-- No model/Auth request, deployment, device installation, permission prompt, or server write was performed.
-- This slice does not close AF-A15, AF-A17, AF-U10–12, FINAL-G1, or FINAL-G3.
+- Compilation and synthetic parsing checks do not prove widget/Live Activity pixels, Dynamic Island layout, actual notification delivery/actions, EventKit reminder creation, VoiceOver, maximum Dynamic Type, or physical-device behavior. Those paths were not run.
+- The existing App Group remains unprovisioned. Real cross-process sharing requires the valid shared entitlement/profile and separate system evidence; the extension intentionally shows empty content when sharing is unavailable.
+- No permission prompt, device installation, model/Auth request, deployment, or server operation was executed. AF-A15, AF-A17, AF-U10–12, FINAL-G1, and FINAL-G3 remain unaccepted; the paused long-term Goal was not resumed.

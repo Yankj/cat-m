@@ -1,6 +1,6 @@
 # Catpaw-m 重启 Goal 与交付计划
 
-更新：2026-10-15；唯一实时状态页。旧主计划完整保存在[2026-10-12快照](master-plan-2026-10-12.md)，旧失败与证据边界不改写。16:07交接事实与待提交文件见[handoff](../../handoff.md)和[快照](handoff-snapshot-2026-10-13.json)；快照不另维护实时进度。
+更新：2026-10-16；唯一实时状态页。旧主计划完整保存在[2026-10-12快照](master-plan-2026-10-12.md)，旧失败与证据边界不改写。16:07交接事实与待提交文件见[handoff](../../handoff.md)和[快照](handoff-snapshot-2026-10-13.json)；快照不另维护实时进度。
 
 **当前长期Goal：FINAL-G3；2026-10-15 18:39 Shanghai控制器读回PAUSED。** 用户中断后要求整理交接；本轮不恢复Goal、不新建替代Goal，也不继续模型检查/开发/安装/部署。基础执行合同AF-1-G3-UX1及全部AF/FINAL完成门保持，尚未签收；恢复需用户明确启动原Goal。最新中断点见[handoff](../../handoff.md)与[日期快照](handoff-snapshot-2026-10-15.json)。
 
@@ -17,6 +17,8 @@
 | FINAL-G3 终版产品签收 | 依赖G1/G2同候选；NOT_RUN，设计/静态检查不关闭产品目标 |
 
 ## 当前执行片与下一步
+
+2026-10-16 用户单独批准 widgets/Live Activity/通知实施与本地提交，沿用 `feat/widgets-notify` 既有 `437ee8a` 实现继续收口。下一条建议/下一场会议与 why、指定深链、暖白橙色专业 Live Activity 保留；补齐会议/快照过期时间线、小尺寸排版、预排通知原上下文恢复、三按钮复用既有 action client 与已处理/忙碌/不可用动作围栏，普通点击先恢复原建议再打开主动入口。Simulator Debug 0.3.0(39) 宿主及 Widget 扩展 build PASS；34 项便携合成断言通过，范围为真实解码器/通知元数据解析，不含系统动作执行。源码门、布局/冻结来源/部署快照检查通过；敏感扫描零阻断，8 个未变的文件名/测试与治理字面量命中经人工核读保留，不改扫描基线。详细命令、输入身份与证据限制见根目录 [CODEX_REPORT](../../CODEX_REPORT.md)。App Group 仍未 provision；真实跨进程共享、通知投递/系统提醒写入、Live Activity/Dynamic Island 像素、真机与完整可访问性均未验。未调用模型/Auth、申请权限、安装、部署或推送；长期 Goal 保持原 PAUSED，AF/FINAL 产品门不关闭。
 
 交接main整合：已在真实远端基线515f98f与公开handoff aad003上准备无冲突普通merge；四份main独有文档保持原字节，未引入旧本地历史或22张私有媒体。PR #19（https://github.com/Yankj/catpaw-m/pull/19）已创建，自动审批因缺少可信直接主干合并授权而拒绝merge，现待用户确认；远端main仍515f98f，本地main尚未同步。Desktop与Projects是独立dirty仓，各自HEAD/index/WIP保留，managed短分支为实际可审阅整合候选。Goal保持PAUSED，r8仍not_sent，S06无新源码；本次不新增模型/Auth/部署/安装。
 
