@@ -1,4 +1,7 @@
 import SwiftUI
+#if os(iOS)
+import UserNotifications
+#endif
 import AppIntents
 
 @MainActor final class Bootstrap: ObservableObject {
@@ -125,6 +128,13 @@ import AppIntents
         DeviceCallCardAdapter.register() // wave2 V3 device_call confirm card
         ProactiveSuggestionAdapter.register() // wave2 demo proactive_suggestion
         FollowUpChipsAdapter.register() // chat-ux #4 ```catpaw-card:followups chips
+        #if DEBUG && os(iOS)
+        // PR90g (QA only): ProactiveNotificationAuthUITests launches with this flag so the system prompt appears and can be
+        // allowed once; simctl privacy cannot pre-grant notifications. Debug builds only; no effect without the flag.
+        if CommandLine.arguments.contains("-CatpawRequestNotificationAuth") {
+            Task { _ = try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) }
+        }
+        #endif
     }
     var body: some Scene {
         WindowGroup {
