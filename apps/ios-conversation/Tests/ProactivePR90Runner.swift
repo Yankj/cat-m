@@ -54,10 +54,26 @@ func pr90_accountEpoch() {
     check(ProactiveAccountGate.deliveryID(local) == "E1" && ProactiveAccountGate.deliveryID(push("USER-B", "notify")) == "E1", "shared delivery id")
 }
 
+func pr90_4_serverActionStates() {
+    // Cloud says the SMS was sent (another device / before restart); local has no record → never offered or re-run.
+    let local: [String: ProactiveActionState] = ["create_reminder": .succeeded]
+    let merged = ProactiveActionStates.merge(local: local, server: ["notify_attendees": "done"])
+    check(merged["notify_attendees"] == .succeeded && merged["create_reminder"] == .succeeded, "server success merged")
+    check(!ProactiveActionStates.shouldExecute("notify_attendees", merged), "persisted success blocks re-execution")
+    check(ProactiveActionStates.shouldExecute("snooze", merged), "non-effects always run")
+    check(ProactiveActionStates.remaining(["create_reminder", "notify_attendees", "snooze", "dismiss"], merged).isEmpty, "card has nothing left")
+    // A local cancel never overrides a cloud success; an unknown server value is ignored.
+    check(ProactiveActionStates.merge(local: ["notify_attendees": .cancelled], server: ["notify_attendees": "done", "x": "weird"])["notify_attendees"] == .succeeded, "cloud success wins")
+    struct Wire: Decodable { let action_states: [String: String]? }
+    let w = try! JSONDecoder().decode(Wire.self, from: Data(#"{"action_states":{"notify_attendees":"done"}}"#.utf8))
+    check(w.action_states?["notify_attendees"] == "done", "wire shape")
+}
+
 @main enum ProactivePR90Runner {
     static func main() {
         pr90_3_prescheduleSharesDecisionAndQuota()
         pr90_accountEpoch()
+        pr90_4_serverActionStates()
         print(failures == 0 ? "PR90 proactive: all passed" : "PR90 proactive: \(failures) failed"); exit(failures == 0 ? 0 : 1)
     }
 }
