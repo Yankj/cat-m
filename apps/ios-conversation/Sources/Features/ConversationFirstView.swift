@@ -258,6 +258,7 @@ import CatpawImageComposer
                                     Text(ui("想一起完成什么？")).font(CatpawTypography.Role.title.font.weight(.semibold)).accessibilityAddTraits(.isHeader)
                                     Text(ui("问一个问题，或说一件想做的事。")).foregroundStyle(CatpawColors.secondary)
                                 }.padding(.top, textSize.isAccessibilitySize ? 24 : 64).padding(.bottom, 32).accessibilityIdentifier("chat.empty")
+                                    .transaction { $0.animation = nil }.id("chat.empty")
                             }
                             let rows=visibleTimelineRows
                             let turnTails=ConversationTurnUIRow.tails(rows.compactMap{row->(UUID,UUID?)? in if case .message(let m)=row {return (m.id,m.turnID)};return nil})
@@ -289,7 +290,7 @@ import CatpawImageComposer
                         } else { ProgressView(ui("打开对话")) }
                         Color.clear.frame(height: 1).id("latest")
                     }.padding(20).frame(maxWidth: 680).frame(maxWidth: .infinity)
-                        .background(ConversationReadingAnchorTracker(context:readingAnchorContext,followingLatest:followingLatest,orderedIDs:renderedTimelineRows.map(\.id),coordinator:readingAnchor,onContentSizeChange:{[following = $followingLatest, pending = $scrollTask] in Self.scheduleScroll(proxy,following:following,pending:pending)}).accessibilityHidden(true))
+                        .background(ConversationReadingAnchorTracker(context:readingAnchorContext,followingLatest:followingLatest,orderedIDs:renderedTimelineRows.map(\.id),coordinator:readingAnchor,onContentSizeChange:{[following = $followingLatest, pending = $scrollTask, empty = displayMessages.isEmpty] in if !empty {Self.scheduleScroll(proxy,following:following,pending:pending)}}).accessibilityHidden(true))
                         .background(ConversationScrollObserver { distance,userScrolled in
                             latestVisible=distance <= 48
                             if userScrolled {
@@ -309,7 +310,10 @@ import CatpawImageComposer
                         scrollTask?.cancel();scrollTask=nil;followingLatest=true;latestVisible=true
                         pendingAttachmentIntentID=nil
                         composerChrome.discardAttachments(using:attachmentUploader)
-                        scheduleScroll(proxy)
+                        if displayMessages.isEmpty {
+                            var reset=Transaction();reset.disablesAnimations=true
+                            withTransaction(reset){proxy.scrollTo("chat.empty",anchor:.top)}
+                        } else {scheduleScroll(proxy)}
                     }
                     .onChange(of:contextJumpRequested){_,_ in proxy.scrollTo("latest",anchor:.bottom)}
                     .safeAreaInset(edge: .top, spacing: 0) {
@@ -370,6 +374,9 @@ import CatpawImageComposer
         }
     }
     private func scheduleScroll(_ proxy:ScrollViewProxy) {
+        // An empty conversation has nothing to follow; scrolling "latest" to the bottom while the new
+        // conversation's rows swap in briefly lifted the empty state ~60pt before it snapped back.
+        guard !displayMessages.isEmpty else {return}
         Self.scheduleScroll(proxy,following:$followingLatest,pending:$scrollTask)
     }
     private static func scheduleScroll(_ proxy:ScrollViewProxy,following:Binding<Bool>,pending:Binding<Task<Void,Never>?>) {
