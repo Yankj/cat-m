@@ -283,6 +283,14 @@ func pr90c_cardMerge() {
     check(ProactiveActionStates.mergeServer(existing: ["notify_attendees": "done"], incoming: [:]) == ["notify_attendees": "done"], "a success is never lost by a stale update")
 }
 
+func pr90c_presentQuiet() {
+    // A local notification stamped "notify" that comes up after 22:00 (late trigger) is shown in the inbox only.
+    let epoch = AccountEpoch(account: "A"); var q = ProactiveQuotaLedger(); var info: [AnyHashable: Any] = [:]
+    ProactiveAccountGate.stamp(&info, epoch.capture()!, deliveryID: "evt-q", level: .notify)
+    check(ProactiveAccountGate.verdict(info, epoch: epoch, now: at("2026-10-15T14:00:01Z"), quota: &q, calendar: shanghai) == .inboxOnly, "presentation re-checks quiet hours")
+    check(ProactiveAccountGate.verdict(info, epoch: epoch, now: at("2026-10-15T04:00:00Z"), quota: &q, calendar: shanghai) == .present(.notify), "daytime presents")
+}
+
 @main enum ProactivePR90Runner {
     static func main() async {
         pr90_3_prescheduleSharesDecisionAndQuota()
@@ -297,6 +305,7 @@ func pr90c_cardMerge() {
         pr90c_undoContract()
         await pr90c_queueOrdering()
         pr90c_cardMerge()
+        pr90c_presentQuiet()
         print(failures == 0 ? "PR90 proactive: all passed" : "PR90 proactive: \(failures) failed"); exit(failures == 0 ? 0 : 1)
     }
 }
