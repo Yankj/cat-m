@@ -16,15 +16,28 @@ import Foundation
     /// The single persisted on-device library (lazy; reads the file once).
     static let shared = MemoryLibraryStub(items: [], fileURL: fileURL)
 
-    struct MigrationReport: Equatable, Sendable { var migrated = 0; var kept = 0; var stoppedBy: MemoryLibraryError? }
+    struct MigrationReport: Equatable, Sendable { var migrated = 0; var kept = 0; var deduped = 0; var stoppedBy: MemoryLibraryError? }
 
-    /// Copy local items into `target` (oldest first, preserving order), deleting each local copy only after success.
+    /// Copy local items into `target` (oldest first), idempotently:
+    /// - content dedupe: an item whose text already exists in the target is not created again (a crash between create and
+    ///   local forget therefore never duplicates on the next run);
+    /// - an empty id from `create` counts as failure (local copy kept);
+    /// - local 「使用记忆」 off is carried over (`setUseMemory(false)`; unsupported is ignored).
     static func migrate(_ local: MemoryLibraryStub, to target: any MemoryLibraryBackend) async -> MigrationReport {
         var report = MigrationReport()
-        guard target !== local else { return report }
+        guard target !== local, !local.items.isEmpty else { report.kept = local.items.count; return report }
+        var existing: Set<String>
+        do { existing = Set(try await target.load().items.map { normalize($0.content) }) }
+        catch { report.stoppedBy = (error as? MemoryLibraryError) ?? .failed(String(describing: error)); report.kept = local.items.count; return report }
+        if let snap = try? await local.load(), !snap.useMemory { try? await target.setUseMemory(false) }
         for item in local.items.reversed() {
             do {
-                _ = try await target.create(kind: item.group.kind, content: item.content)
+                let key = normalize(item.content)
+                if !existing.contains(key) {
+                    let id = try await target.create(kind: item.group.kind, content: item.content)
+                    guard !id.trimmingCharacters(in: .whitespaces).isEmpty else { throw MemoryLibraryError.failed("empty id from create") }
+                    existing.insert(key)
+                } else { report.deduped += 1 }
                 try await local.forget(ids: [item.id]); report.migrated += 1
             } catch {
                 report.stoppedBy = (error as? MemoryLibraryError) ?? .failed(String(describing: error))
@@ -33,6 +46,13 @@ import Foundation
         }
         report.kept = local.items.count
         return report
+    }
+    static func normalize(_ s: String) -> String { s.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: " ", with: "") }
+    /// Install the local library as the page backend only when the cloud is not usable at all (gate off) and accepted
+    /// nothing; a partial failure keeps the cloud library in place (local leftovers retry next launch).
+    static func shouldSurfaceLocal(_ r: MigrationReport) -> Bool {
+        guard r.kept > 0, r.migrated == 0, let e = r.stoppedBy else { return false }
+        return e == .notEnabled || e == .unsupported
     }
 }
 
