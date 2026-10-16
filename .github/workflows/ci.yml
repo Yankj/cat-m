@@ -12,7 +12,7 @@ jobs:
         with: { node-version: '22' }
       - name: node --test (offline harness, type-stripped .ts, npm stubs)
         working-directory: services/edge
-        run: ./scripts/ci-node-tests.sh   # 8 quarantined files: https://github.com/Yankj/catpaw-m/issues/81
+        run: ./scripts/ci-node-tests.sh   # quarantined files are listed in that script's QUARANTINE array (tracked in https://github.com/Yankj/catpaw-m/issues/81; the count shrinks as fixes like PR #83 land)
   ios-portable-and-build:
     runs-on: macos-26
     steps:
@@ -29,3 +29,47 @@ jobs:
       - name: xcodebuild build-for-testing (simulator)
         working-directory: apps/ios-conversation
         run: xcodebuild -project CatpawM.xcodeproj -scheme CatpawM -destination 'generic/platform=iOS Simulator' build-for-testing CODE_SIGNING_ALLOWED=NO
+  ios-eventkit-xctest:
+    # NoBug P1-5: real EventKit call_id dedupe on a cloud simulator. Must show Executed 2 tests, 0 failures, 0 skipped.
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select newest Xcode
+        run: |
+          X=$(ls -d /Applications/Xcode_*.app | sort -V | tail -1); echo "using $X"; sudo xcode-select -s "$X"; xcodebuild -version
+      - name: Boot an iPhone simulator
+        id: sim
+        run: |
+          UDID=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin)["devices"]; c=[x for k,v in d.items() if "iOS" in k for x in v if x["name"].startswith("iPhone")]; print(c[-1]["udid"])')
+          echo "udid=$UDID" >> "$GITHUB_OUTPUT"; xcrun simctl boot "$UDID" || true; xcrun simctl bootstatus "$UDID" -b
+      - name: Build for testing
+        working-directory: apps/ios-conversation
+        run: xcodebuild -project CatpawM.xcodeproj -scheme CatpawM -destination "id=${{ steps.sim.outputs.udid }}" -derivedDataPath /tmp/dd build-for-testing CODE_SIGNING_ALLOWED=NO | tail -5
+      - name: Install host app + grant calendar/reminders full access
+        run: |
+          APP=$(ls -d /tmp/dd/Build/Products/Debug-iphonesimulator/CatpawM.app); xcrun simctl install "${{ steps.sim.outputs.udid }}" "$APP"
+          B=com.example.CatpawM.ConversationFirst.Auth
+          xcrun simctl privacy "${{ steps.sim.outputs.udid }}" grant calendar $B
+          xcrun simctl privacy "${{ steps.sim.outputs.udid }}" grant reminders $B
+      - name: Run EventKit dedupe XCTest
+        working-directory: apps/ios-conversation
+        run: |
+          mkdir -p ../../qa/nobug
+          set -o pipefail
+          xcodebuild -project CatpawM.xcodeproj -scheme CatpawM -destination "id=${{ steps.sim.outputs.udid }}" -derivedDataPath /tmp/dd test-without-building \
+            -only-testing:CatpawMTests/DeviceToolRouterEventKitTests CODE_SIGNING_ALLOWED=NO 2>&1 | tee /tmp/xctest-full.log | tail -20
+      - name: Assert 2 executed, 0 failures, 0 skipped
+        if: always()
+        run: |
+          L=qa/nobug/xctest-eventkit-ci.log
+          { echo "# ci run ${{ github.run_id }} sha ${{ github.sha }} sim ${{ steps.sim.outputs.udid }}"; grep -E "nobug.eventkit|Test Case.*(passed|failed|skipped)|Executed|TEST (SUCC|FAIL)" /tmp/xctest-full.log | sort -u; } > $L
+          cat $L
+          grep -q "Executed 2 tests, with 0 failures" $L
+          ! grep -qi "skipped" $L
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: xctest-eventkit-log
+          path: |
+            qa/nobug/xctest-eventkit-ci.log
+            /tmp/xctest-full.log
