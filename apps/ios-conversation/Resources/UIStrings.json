@@ -6390,5 +6390,25 @@
   "把交代的事，变成可用成果。": {
     "en": "Turn what you assign into usable results.",
     "zh-Hans": "把交代的事，变成可用成果。"
+  },
+  "在这里等你": {
+    "en": "Here for you",
+    "zh-Hans": "在这里等你"
+  },
+  "正在思考": {
+    "en": "Thinking",
+    "zh-Hans": "正在思考"
+  },
+  "正在写回复": {
+    "en": "Writing a reply",
+    "zh-Hans": "正在写回复"
+  },
+  "正在执行": {
+    "en": "Working on it",
+    "zh-Hans": "正在执行"
+  },
+  "暂时出错了": {
+    "en": "Something went wrong",
+    "zh-Hans": "暂时出错了"
   }
 }
