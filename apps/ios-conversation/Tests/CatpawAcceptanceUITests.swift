@@ -431,33 +431,33 @@ final class CatpawAcceptanceUITests: XCTestCase {
         for l in ["再试一次", "Try again"] where app.buttons[l].exists { app.buttons[l].tap(); Thread.sleep(forTimeInterval: 3); break }
         XCTAssertTrue(input(app).waitForExistence(timeout: 60)); Thread.sleep(forTimeInterval: 1)
         if app.buttons["chat.new"].exists && app.buttons["chat.new"].isEnabled { app.buttons["chat.new"].tap(); Thread.sleep(forTimeInterval: 1) }
-        // Warm-up text turn (same path as test14) so model consent sheet presents and is granted before the reminder ask.
-        do {
-            let field = input(app); field.tap(); Thread.sleep(forTimeInterval: 0.6)
-            if app.keyboards.firstMatch.exists { field.typeText("你好") }
-            else { UIPasteboard.general.string = "你好"; field.press(forDuration: 1.0); if app.menuItems["粘贴"].waitForExistence(timeout: 2) { app.menuItems["粘贴"].tap() } else if app.menuItems["Paste"].waitForExistence(timeout: 1) { app.menuItems["Paste"].tap() } }
-            app.buttons.matching(NSPredicate(format: "identifier == 'chat.send'")).allElementsBoundByIndex.first(where: { $0.isHittable && $0.isEnabled })?.tap()
+        func clearDraft() {
+            let f = input(app); f.tap(); Thread.sleep(forTimeInterval: 0.5)
+            if let v = f.value as? String, !v.isEmpty, app.keyboards.firstMatch.exists { f.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: v.count + 4)) }
+        }
+        func tapSend() {
+            Thread.sleep(forTimeInterval: 0.6)
+            let sends = app.buttons.matching(NSPredicate(format: "identifier == 'chat.send'")).allElementsBoundByIndex
+            if let s = sends.first(where: { $0.isHittable && $0.isEnabled }) { s.tap() } else { app.buttons["chat.send"].firstMatch.tap() }
+        }
+        clearDraft()
+        if !app.descendants(matching: .any)["chat.assistant.message"].exists {
+            input(app).typeText("你好"); tapSend()
             let allow = app.buttons["允许此对话"]
             if allow.waitForExistence(timeout: 12) { shot(app, "w2-d00-consent-sheet"); allow.tap(); Thread.sleep(forTimeInterval: 2) }
-            else if app.descendants(matching: .any)["chat.modelConsent.allow"].waitForExistence(timeout: 5) { app.descendants(matching: .any)["chat.modelConsent.allow"].tap(); Thread.sleep(forTimeInterval: 2) }
             else if app.buttons["chat.consent.review"].waitForExistence(timeout: 5), app.buttons["chat.consent.review"].isEnabled {
-                app.buttons["chat.consent.review"].tap(); Thread.sleep(forTimeInterval: 1)
-                if allow.waitForExistence(timeout: 8) { allow.tap() }
+                app.buttons["chat.consent.review"].tap(); if allow.waitForExistence(timeout: 8) { allow.tap() }
             }
-            // Wait for first reply to finish so the queue is idle.
-            for _ in 0..<40 {
-                if app.descendants(matching: .any)["chat.assistant.message"].exists { break }
-                Thread.sleep(forTimeInterval: 1)
-            }
+            for _ in 0..<40 { if app.descendants(matching: .any)["chat.assistant.message"].exists { break }; Thread.sleep(forTimeInterval: 1) }
             Thread.sleep(forTimeInterval: 3)
             shot(app, "w2-d00b-after-warmup")
         }
+        clearDraft()
         let field = input(app); field.tap(); Thread.sleep(forTimeInterval: 0.8)
         if !app.keyboards.firstMatch.exists { field.tap(); Thread.sleep(forTimeInterval: 0.8) }
         if app.keyboards.firstMatch.exists { field.typeText("帮我在提醒事项里建一个明天上午9点的提醒：交周报") }
         else { UIPasteboard.general.string = "帮我在提醒事项里建一个明天上午9点的提醒：交周报"; field.press(forDuration: 1.0); if app.menuItems["粘贴"].waitForExistence(timeout: 2) { app.menuItems["粘贴"].tap() } else if app.menuItems["Paste"].waitForExistence(timeout: 1) { app.menuItems["Paste"].tap() } }
-        let sends = app.buttons.matching(NSPredicate(format: "identifier == 'chat.send'")).allElementsBoundByIndex
-        sends.first(where: { $0.isHittable && $0.isEnabled })?.tap()
+        tapSend()
         // Model consent sheet (auto or via 确认发送许可). Prefer accessibility ids from ConversationModelConsentView.
         func allowModelConsent() -> Bool {
             let allowBtn = app.descendants(matching: .any)["chat.modelConsent.allow"]
