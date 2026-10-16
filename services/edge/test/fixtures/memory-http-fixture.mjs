@@ -18,17 +18,17 @@ export async function memoryHTTPFixture({snapshot=null,identity=null,delegate=fa
  await runtime.foundation.bootstrapScope(principal,scope.scope_id);
  if(!snapshot)await repository.transaction(async tx=>{for(const p of [principal,foreign])await tx.put(membershipOwner(p.issuer),'app-sessions',{id:p.session_id,subject_id:p.subject_id,state:'active',expires_at:9999999999});});
  const base='/catpaw/memory/v1/scopes/'+scope.scope_id;
- const req=(path,body,auth='Bearer memory-fixture')=>runtime.api(new Request('https://memory-test.example.invalid'+path,{method:body===undefined?'GET':'POST',headers:{Authorization:auth,'Content-Type':'application/json',...memoryProposals&&body!==undefined&&/\/catpaw\/chat\/v1\/.*\/turns$/.test(path)?{'X-Catpaw-Memory-Proposal-Contract':'catpaw.memory-proposal.v1'}:{}},...body===undefined?{}:{body:typeof body==='string'?body:JSON.stringify(body)}}));
+ const req=(path,body,auth='Bearer memory-fixture',extra={})=>runtime.api(new Request('https://memory-test.example.invalid'+path,{method:body===undefined?'GET':'POST',headers:{Authorization:auth,'Content-Type':'application/json',...extra,...memoryProposals&&body!==undefined&&/\/catpaw\/chat\/v1\/.*\/turns$/.test(path)?{'X-Catpaw-Memory-Proposal-Contract':'catpaw.memory-proposal.v1'}:{}},...body===undefined?{}:{body:typeof body==='string'?body:JSON.stringify(body)}}));
  const json=async response=>{const value=await response.json();assert.equal(response.status,200,JSON.stringify(value));return value;};
  const state=()=>req(base+'/state').then(json);
  const command=async(command,extra={})=>({schema_version:1,contract:MEMORY_CONTRACT,operation_id:randomUUID(),expected_memory_generation:(await state()).memory_generation,command,...extra});
  const post=async(command,extra={})=>{const input=await f.command(command,extra);return {input,response:await req(base+'/commands',input)};};
  const newConversation=async()=>{const cid=randomUUID(),response=await req('/catpaw/chat/v1/scopes/'+scope.scope_id+'/conversations',{conversation_id:cid});assert.equal(response.status,201);return cid;};
- const send=async(cid,text,{sensitive=false}={})=>{
+ const send=async(cid,text,{sensitive=false,headers={}}={})=>{
   const privacy='/catpaw/privacy/v1/scopes/'+scope.scope_id+'/conversations/'+cid+'/model-consent';const prior=(await json(await req(privacy))).consent;
   await json(await req(privacy,{decision:'allow',expected_revision:prior?.revision??0,route_hash:config.routeHash,sensitive_confirmed:sensitive}));
   const path='/catpaw/chat/v1/scopes/'+scope.scope_id+'/conversations/'+cid,conversation=(await json(await req(path))).conversation,tid=randomUUID();
-  const response=await req(path+'/turns',{turn_id:tid,expected_revision:conversation.revision,expected_grant_epoch:conversation.grant_epoch,message:{id:randomUUID(),text},context:[]});assert.equal(response.status,200);await response.text();await runtime.chat.waitIdle();return (await json(await req(path+'/turns/'+tid))).turn;
+  const response=await req(path+'/turns',{turn_id:tid,expected_revision:conversation.revision,expected_grant_epoch:conversation.grant_epoch,message:{id:randomUUID(),text},context:[]},'Bearer memory-fixture',headers);assert.equal(response.status,200);await response.text();await runtime.chat.waitIdle();return (await json(await req(path+'/turns/'+tid))).turn;
  };
  const f={repository,runtime,scope,principal,foreign,calls,config,base,req,json,state,command,post,newConversation,send,setSourceActive:value=>{sourceActive=value;},restore:()=>memoryHTTPFixture({snapshot:repository.snapshot(),identity:{scope,principal,foreign},delegate,stream,memoryProposals})};return f;
 }
