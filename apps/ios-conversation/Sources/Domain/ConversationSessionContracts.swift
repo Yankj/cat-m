@@ -23,6 +23,11 @@ public enum ConversationSessionError: Error, LocalizedError, Sendable {
     }
 }
 /// Use only when the adapter proves it did not initiate a turn POST.
+/// Server answers that end a send for now but are not connectivity problems (no queue pause, no "reconnect").
+public enum ConversationTerminalServerError {
+    public static let quotaCodes: Set<String> = ["model_daily_limit", "daily_limit", "quota_exceeded", "model_quota_exceeded"]
+    public static func isQuota(_ code: String?) -> Bool { code.map { quotaCodes.contains($0) } ?? false }
+}
 public enum ConversationDispatchFailure: Error, LocalizedError, Sendable {
     case notSent(reason: String)
     public var errorDescription: String? { if case .notSent(let reason) = self { return "消息尚未发送，输入已保留。" + reason }; return nil }

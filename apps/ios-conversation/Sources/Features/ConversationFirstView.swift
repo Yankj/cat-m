@@ -280,7 +280,14 @@ import CatpawImageComposer
                             if let latest = session.turns.last, latest.state == .completed, !composerChrome.stoppedOperations.contains(latest.id) {
                                 Color.clear.frame(width:1,height:1).accessibilityElement().accessibilityLabel(ui("回复完成")).accessibilityIdentifier("chat.reply.completed")
                             } else if let latest = session.turns.last, latest.state == .failed {
-                                Text(ui("此轮回复未完成")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.attention).accessibilityIdentifier("chat.reply.failed").padding(.top,8)
+                                if ConversationTerminalServerError.isQuota(latest.error) || model.quotaNotice {
+                                    ConversationSystemNotice(kind: .quota, actionTitle: ui("重试")) { model.retryAfterQuota() }
+                                        .accessibilityIdentifier("chat.reply.failed")
+                                } else {
+                                    Text(ui("此轮回复未完成")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary).accessibilityIdentifier("chat.reply.failed").padding(.top,8)
+                                }
+                            } else if model.quotaNotice {
+                                ConversationSystemNotice(kind: .quota, actionTitle: ui("重试")) { model.retryAfterQuota() }
                             }
                             if let turn = session.unresolved, !turn.awaitingApproval, turn.state == .unknown || !model.sending {
                                 Label(turn.error ?? ui("原请求状态待确认"), systemImage: "arrow.clockwise").font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.attention).accessibilityIdentifier("chat.unresolved")
@@ -608,7 +615,11 @@ import CatpawImageComposer
                 pendingStatusBar(inDetails:inDetails)
             }
             if model.checkingModelConsent { Text(ui("正在准备发送…")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary).accessibilityIdentifier("chat.preparing") }
-            if let error = model.error { Text(ui(error)).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.attention).fixedSize(horizontal:false,vertical:true).accessibilityIdentifier("chat.error") }
+            if model.quotaNotice {
+                ConversationSystemNotice(kind: .quota, actionTitle: ui("重试")) { model.retryAfterQuota() }
+            } else if let error = model.error, !(model.quotaReached && (error == ui("尚未发送的消息已保留，恢复连接后继续。") || error.contains(ui("恢复连接后继续")))) {
+                Text(ui(error)).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary).fixedSize(horizontal:false,vertical:true).accessibilityIdentifier("chat.error")
+            }
             if draftTooLong {
                 Text(ui("消息过长。请缩短后再发送（长度上限 8000）。"))
                     .font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.attention)
@@ -639,6 +650,7 @@ import CatpawImageComposer
     /// Compact pending-send strip above the composer: one 32pt line, hairline outline, no grey slab.
     /// The inline copy anchors the queue popover; the details copy routes through contextAction.
     @ViewBuilder private func pendingStatusBar(inDetails:Bool)->some View {
+        if model.quotaReached || model.quotaNotice { EmptyView() } else {
         let bar=Button {contextAction(.pendingMessages,inDetails:inDetails)} label: {
             HStack(spacing:6) {
                 Image(systemName:model.followups.paused ? "pause.circle" : "clock").imageScale(.small).accessibilityHidden(true)
@@ -660,6 +672,8 @@ import CatpawImageComposer
             }
         }
     }
+        }
+
     private func artifactContinuationChip(_ target:ConversationArtifactContinuationReference)->some View {
         VStack(alignment:.leading,spacing:4) {
             HStack(alignment:.center,spacing:8) {
@@ -883,7 +897,7 @@ import CatpawImageComposer
                         Button { model.resumeFollowups() } label: {
                             HStack(spacing: 4) {
                                 Image(systemName: "exclamationmark.circle.fill").foregroundStyle(CatpawColors.attention).imageScale(.small)
-                                Text(ui("未发送·点按重试")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.attention)
+                                Text(ui("未发送·点按重试")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
                             }
                         }.buttonStyle(CatpawPressButtonStyle()).accessibilityIdentifier("chat.bubble.retry")
                     }
@@ -1362,6 +1376,51 @@ private extension ToolbarContent {
         #else
         self
         #endif
+    }
+}
+
+
+
+/// Centered, small, neutral in-conversation system line (network, quota, route, memory). Not a bubble; not persisted.
+struct ConversationSystemNotice: View {
+    enum Kind: Equatable { case offline, online, quota, route(String), memorySaved, custom(String) }
+    let kind: Kind
+    var actionTitle: String? = nil
+    var action: (() -> Void)? = nil
+    @Environment(\.locale) private var locale
+    private func ui(_ k: String, arguments: [String] = []) -> String { AppLanguage(locale: locale).ui(k, arguments: arguments) }
+    private var glyph: String {
+        switch kind {
+        case .offline: return "wifi.slash"
+        case .online: return "wifi"
+        case .quota: return "moon.zzz"
+        case .route: return "arrow.triangle.branch"
+        case .memorySaved: return "brain"
+        case .custom: return "info.circle"
+        }
+    }
+    private var label: String {
+        switch kind {
+        case .offline: return ui("已离线")
+        case .online: return ui("已恢复连接")
+        case .quota: return ui("今日对话额度已用完，北京时间 8:00 恢复")
+        case .route(let name): return ui("已切换到 {0}", arguments: [name])
+        case .memorySaved: return ui("已写入记忆")
+        case .custom(let t): return t
+        }
+    }
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: glyph).imageScale(.small).foregroundStyle(CatpawColors.secondary)
+            Text(label).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
+            if let actionTitle, let action {
+                Button(actionTitle, action: action).font(CatpawTypography.Role.caption.font.weight(.semibold)).foregroundStyle(CatpawColors.ink)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 6)
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("chat.system.notice")
     }
 }
 

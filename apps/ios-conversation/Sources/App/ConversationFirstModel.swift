@@ -113,6 +113,17 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
     @Published private(set) var isInputComposing = false
     @Published var draft = ""
     @Published var error: String?
+    /// Set when the server says the daily model quota is used up. Sends are held in the composer (never piled
+    /// into the paused outbox) and a neutral system notice explains when it resets.
+    @Published var quotaNotice: Bool = false
+    /// True while the latest turn failed on the daily quota (SSE) or a send was refused for it.
+    var quotaReached: Bool { quotaNotice || (session?.turns.last.map { $0.state == .failed && ConversationTerminalServerError.isQuota($0.error) } ?? false) }
+    func retryAfterQuota() {
+        quotaNotice=false;error=nil
+        if draft.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty, let last=session?.turns.last, last.state == .failed, ConversationTerminalServerError.isQuota(last.error),
+           let text=session?.messages.last(where:{ $0.role == .user })?.content { editDraft(text) }
+        if !draft.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty { send() }
+    }
     @Published private(set) var networkAdmissionAllowed = true
     @Published private(set) var loaded = false
     @Published private(set) var busy = false
@@ -511,6 +522,7 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
         } catch { self.error=error.localizedDescription }
     }
     func select(_ id:UUID,admission:(()->Bool)?=nil) async throws {
+        quotaNotice=false
         func ensureSelection() throws {try Task.checkCancellation();guard !isInputComposing,admission?() != false else {throw CancellationError()}}
         try ensureSelection()
         guard !busy,!isInputComposing else { throw ConversationSessionError.busy }
@@ -591,6 +603,7 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
         if let block=artifactContinuationSendBlock {error=block;return}
         if revisionRequiresWorkReview,revisionWork==nil {requestAcceptedWorkReview();return}
         if let block=imageSendBlock { error=block.message;return }
+        if quotaNotice { return }   // keep the draft; the quota notice offers 重试
         guard canAcceptDraft,let id=conversationID,let queue else { return }
         let tap=ProcessInfo.processInfo.systemUptime
         let prepared=imageDraft.attachment
@@ -732,16 +745,36 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
                     }
                     catch {
                         sendLog.error("catpaw.send dispatch failed \(String(describing:error).prefix(160), privacy: .public)")
+                        if case ConversationDispatchFailure.notSent(let code)=error,ConversationTerminalServerError.isQuota(code) { await self?.markQuota();return .heldBeforeAdmission }
                         let saved=try await service.read(scope:scope,conversationID:id)
                         if !saved.turns.contains(where:{$0.id == message.id}) || saved.turns.first(where:{$0.id == message.id})?.state == .notSent { sendLog.error("catpaw.send held before admission: \(String(describing:error), privacy: .public)");return .heldBeforeAdmission }
                         throw error
                     }
                 }
-                guard flightID == token else { return };let state=try await queue.state()
-                if state.paused && !state.pending.isEmpty { error=state.pauseReason == .preflight ? "消息尚未发送，已保留在本机；再次发送或确认许可后会自动重试。" : "尚未发送的消息已保留，恢复连接后继续。";if draft.isEmpty,artifactContinuation==nil,state.pending.first?.continuation==nil { draft=state.pending.first?.text ?? "" } }
+                guard flightID == token else { return };var state=try await queue.state()
+                if quotaNotice { state=try await returnQueuedToDraft(queue,conversationID:id) }
+                if state.paused && !quotaNotice && !state.pending.isEmpty { error=state.pauseReason == .preflight ? "消息尚未发送，已保留在本机；再次发送或确认许可后会自动重试。" : "尚未发送的消息已保留，恢复连接后继续。";if draft.isEmpty,artifactContinuation==nil,state.pending.first?.continuation==nil { draft=state.pending.first?.text ?? "" } }
             } catch { if flightID == token { self.error=error.localizedDescription } }
+            if !quotaNotice { /* keep notice across refresh */ }
             guard flightID == token else { return };await refresh()
         }
+    }
+    private func markQuota() { quotaNotice=true;error=nil }
+    /// Quota reached: hand every queued (unsent) message back to the composer instead of a paused outbox.
+    private func returnQueuedToDraft(_ queue:ConversationFollowupQueueService,conversationID id:UUID) async throws -> ConversationFollowupState {
+        let state=try await queue.state()
+        let plain=state.pending.filter { $0.continuation == nil && $0.acceptedWork == nil && $0.revisionWork == nil && $0.image == nil }
+        guard !plain.isEmpty else { return state }
+        let texts=plain.map(\.text)
+        for message in plain {
+            try? await service.discardUnsent(scope:scope,conversationID:id,operationID:message.id)
+            try await queue.remove(message.id)
+            outgoingMessages.removeAll { $0.id == message.id }
+        }
+        let joined=texts.joined(separator:"\n")
+        draft=draft.isEmpty ? joined : draft+"\n"+joined
+        try? await queue.resume()
+        return try await queue.state()
     }
     func pauseFollowups() { Task { do { try await queue?.pause();await refresh() } catch { self.error=error.localizedDescription } } }
     func pauseQueueForEditing(_ message:ConversationFollowup) async throws {

@@ -297,6 +297,15 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
                                Self.boolean(problem["reconciliation_required"])==false,Self.boolean(problem["retryable"])==false,let code=problem["code"] as? String,
                                Self.continuationDenials.contains(code) {throw ConversationDispatchFailure.notSent(reason:code)}
                         }
+                        // A definite quota refusal (e.g. 429 model_daily_limit) proves non-admission: report it as
+                        // not sent with its code so the client shows a quota notice instead of "connection lost".
+                        if request.continuation == nil,(response as? HTTPURLResponse)?.mimeType == "application/json",(400...499).contains(status) {
+                            var errorData=Data();for try await byte in bytes {guard errorData.count<65536 else {break};errorData.append(byte)}
+                            if let envelope=try? JSONSerialization.jsonObject(with:errorData) as? [String:Any] {
+                                let problem=(envelope["error"] as? [String:Any]) ?? envelope
+                                if let code=problem["code"] as? String,ConversationTerminalServerError.isQuota(code) {throw ConversationDispatchFailure.notSent(reason:code)}
+                            }
+                        }
                         throw NativeChatHTTPFailure.turnResponse(status)
                     }
                     if http.mimeType == "application/json" {
