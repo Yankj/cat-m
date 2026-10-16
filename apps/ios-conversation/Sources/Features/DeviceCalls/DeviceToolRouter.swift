@@ -96,6 +96,23 @@ import UserNotifications
         }
     }
 
+
+    /// Proactive 「告诉参会人」: present MessageUI. Never invent sent/done — Simulator `canSendText=false` → `.unavailable`.
+    enum NotifyComposeOutcome: String, Sendable { case sent, cancelled, unavailable, error }
+    func notifyAttendeesCompose(body: String, recipients: [String] = []) async -> NotifyComposeOutcome {
+        guard MFMessageComposeViewController.canSendText() else { return .unavailable }
+        let vc = MFMessageComposeViewController()
+        vc.messageComposeDelegate = self
+        if !recipients.isEmpty { vc.recipients = recipients }
+        vc.body = body
+        switch await present(vc) {
+        case .ok: return .sent
+        case .cancelled: return .cancelled
+        case .denied: return .unavailable
+        case .error: return .error
+        }
+    }
+
     private func access(_ type: EKEntityType) async -> Bool {
         if EKEventStore.authorizationStatus(for: type) == .fullAccess { return true }
         if type == .event { return (try? await store.requestFullAccessToEvents()) ?? false }

@@ -87,7 +87,7 @@ import SwiftUI
     }
 
     static func label(_ a: ProactiveSuggestion.Action) -> String {
-        switch a { case .create_reminder: "创建提醒"; case .notify_attendees: "通知参会人"; case .snooze: "稍后"; case .dismiss: "不用了" }
+        switch a { case .create_reminder: "创建提醒"; case .notify_attendees: "告诉参会人"; case .snooze: "稍后"; case .dismiss: "不用了" }
     }
 }
 

@@ -7,11 +7,45 @@ import SwiftUI
     @State private var meetingPlace = ""
     @State private var meetingIn: Double = 45
     @State private var emitted = false
+    @State private var leadMinutes: Double = 15
     @Environment(\.locale) private var locale
     private func ui(_ k: String, _ a: [String] = []) -> String { AppLanguage(locale: locale).ui(k, arguments: a) }
 
     var body: some View {
         Form {
+            Section(ui("构建")) {
+                LabeledContent("git", value: Self.gitSHA)
+                LabeledContent(ui("版本"), value: Self.bundleVersion)
+            }
+            .accessibilityIdentifier("proactive.debug.build")
+            Section(ui("会前提前量（记忆）")) {
+                Stepper(ui("提前 {0} 分钟", [String(Int(leadMinutes))]), value: $leadMinutes, in: 5...60, step: 5)
+                    .accessibilityIdentifier("proactive.debug.leadMinutes")
+                Button(ui("写入记忆并生效")) {
+                    Task { await ProactiveEngine.shared.setLeadMinutes(Int(leadMinutes)) }
+                }.accessibilityIdentifier("proactive.debug.setLead")
+                Button(ui("删除该记忆"), role: .destructive) {
+                    Task { await ProactiveEngine.shared.clearLeadMinutes() }
+                }.accessibilityIdentifier("proactive.debug.clearLead")
+            }
+            Section(ui("一键注入")) {
+                Button(ui("注入 {0} 分钟后·望京 SOHO 的会", [String(Int(meetingIn))])) {
+                    let mins = Int(meetingIn)
+                    model.addFakeMeeting(title: "产品评审会", inMinutes: mins, place: "北京市朝阳区望京 SOHO T1",
+                                         latitude: 39.9961, longitude: 116.4806)
+                    Task {
+                        ProactiveEngine.shared.resetLedger()
+                        let id = "inject-" + UUID().uuidString
+                        _ = await ProactiveEngine.shared.handle(
+                            .init(source: .simulated, eventID: id, title: "产品评审会",
+                                  start: Date.now.addingTimeInterval(Double(mins) * 60),
+                                  place: "北京市朝阳区望京 SOHO T1")
+                        )
+                    }
+                }
+                .accessibilityIdentifier("proactive.debug.injectMeeting")
+            }
+
             Section(ui("引擎")) {
                 Button(ui("扫描真实日历")) { Task { await ProactiveEngine.shared.scanCalendar(ask: true) } }.accessibilityIdentifier("proactive.engine.scan")
                 Button(ui("清空去重账本")) { ProactiveEngine.shared.resetLedger() }.accessibilityIdentifier("proactive.engine.resetLedger")
@@ -71,6 +105,17 @@ import SwiftUI
         .font(CatpawTypography.Role.body.font)
         .navigationTitle(ui("主动信号模拟"))
         .onChange(of: model.suggestion) { _, _ in emitted = false }
+    }
+
+
+    private static var gitSHA: String {
+        (Bundle.main.object(forInfoDictionaryKey: "CatpawGitSHA") as? String).flatMap { $0.isEmpty ? nil : $0 }
+            ?? String((Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "?").prefix(7))
+    }
+    private static var bundleVersion: String {
+        let short = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "?"
+        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "?"
+        return "\(short) (\(build))"
     }
 
     private func stageRow(_ s: ProactiveStageResult) -> some View {

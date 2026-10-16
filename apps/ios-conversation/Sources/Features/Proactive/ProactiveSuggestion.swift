@@ -44,7 +44,12 @@ enum ProactiveFeedback: String, Codable, Sendable, CaseIterable { case helpful, 
     func perform(_ action: ProactiveSuggestion.Action, on id: String) async throws -> ProactiveSuggestion {
         try? await Task.sleep(for: .milliseconds(350))
         var s = items[id] ?? ProactiveSuggestion(id: id, title: "", reason: "")
-        s.status = switch action { case .create_reminder, .notify_attendees: .done; case .snooze: .snoozed; case .dismiss: .dismissed }
+        s.status = switch action {
+        case .create_reminder: .done
+        case .notify_attendees: s.status ?? .pending  // real MessageUI path is ProactiveLocalBackend only
+        case .snooze: .snoozed
+        case .dismiss: .dismissed
+        }
         s.taken = (s.taken ?? []) + [.init(action: action, at: .now)]
         items[id] = s; return s
     }
@@ -90,7 +95,9 @@ enum ProactiveFeedback: String, Codable, Sendable, CaseIterable { case helpful, 
     }
     func perform(_ action: ProactiveSuggestion.Action, _ s: ProactiveSuggestion) async {
         busy.insert(s.id); defer { busy.remove(s.id) }
-        do { items[s.id] = try await backend.perform(action, on: s.id); errorKey = nil } catch { errorKey = "没有完成，请稍后重试" }
+        do { items[s.id] = try await backend.perform(action, on: s.id); errorKey = nil }
+        catch let e as ProactiveEngineError where e == .smsUnavailable { errorKey = "本机无法打开短信（模拟器上常见），未标记完成" }
+        catch { errorKey = "没有完成，请稍后重试" }
     }
     func undo(_ s: ProactiveSuggestion) async {
         busy.insert(s.id); defer { busy.remove(s.id) }

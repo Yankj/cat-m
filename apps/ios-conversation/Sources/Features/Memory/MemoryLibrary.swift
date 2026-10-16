@@ -103,6 +103,14 @@ enum MemoryLibraryError: Error, Equatable, Sendable {
     func setAutoSave(_ on: Bool) async throws { snapshot.autoSave = on }
     func clearAll() async throws { snapshot.items = [] }
     func undoSave(memoryID: String, undoToken: String?) async throws { try await forget(ids: [memoryID]) }
+    /// Demo/settings: upsert a local memory row (Agent backend has no create from this seam).
+    func upsert(id: String, content: String, group: MemoryGroup = .preference) {
+        if let i = snapshot.items.firstIndex(where: { $0.id == id }) {
+            snapshot.items[i].content = content; snapshot.items[i].updatedAt = .now
+        } else {
+            snapshot.items.insert(.init(id: id, group: group, content: content, updatedAt: .now), at: 0)
+        }
+    }
 
     static let sample: [MemoryLibraryItem] = [
         .init(id: "m1", group: .profile, content: "住在北京望京", updatedAt: .now),

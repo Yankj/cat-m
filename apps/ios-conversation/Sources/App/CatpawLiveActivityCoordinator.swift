@@ -175,6 +175,40 @@ import ActivityKit
 
     /// Simulator acceptance: start → update → end a local Live Activity when `CATPAW_ACCEPTANCE_LIVE_ACTIVITY=1`.
     /// No-op when Live Activities are disabled by the system.
+
+
+    // MARK: Proactive leave_at countdown (isolated from chat-turn LA)
+
+    private var leaveActivities: [String: Activity<CatpawLeaveAttributes>] = [:]
+
+    /// Start / refresh a leave_at Live Activity for a proactive card. No-op when ActivityKit unavailable.
+    func startLeaveCountdown(suggestionID: String, meetingTitle: String, leaveAt: Date) {
+        #if canImport(ActivityKit) && os(iOS)
+        guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
+        let minutes = max(0, Int(leaveAt.timeIntervalSinceNow / 60))
+        let state = CatpawLeaveAttributes.ContentState(title: "该出发了", leaveAt: leaveAt, minutesLeft: minutes, meetingTitle: meetingTitle)
+        let attrs = CatpawLeaveAttributes(suggestionID: suggestionID, meetingTitle: meetingTitle)
+        if let existing = leaveActivities[suggestionID] {
+            Task { await existing.update(ActivityContent(state: state, staleDate: leaveAt.addingTimeInterval(600))) }
+            return
+        }
+        do {
+            let activity = try Activity.request(attributes: attrs, content: ActivityContent(state: state, staleDate: leaveAt.addingTimeInterval(600)), pushType: nil)
+            leaveActivities[suggestionID] = activity
+        } catch {
+            print("catpaw.leaveLA start failed \(error)")
+        }
+        #endif
+    }
+
+    func stopLeaveCountdown(suggestionID: String) {
+        #if canImport(ActivityKit) && os(iOS)
+        guard let activity = leaveActivities.removeValue(forKey: suggestionID) else { return }
+        let final = CatpawLeaveAttributes.ContentState(title: "已结束", leaveAt: .now, minutesLeft: 0, meetingTitle: activity.attributes.meetingTitle)
+        Task { await activity.end(ActivityContent(state: final, staleDate: nil), dismissalPolicy: .immediate) }
+        #endif
+    }
+
     func acceptanceProbe() async {
         #if DEBUG || DEVICE_TRIAL
         guard ProcessInfo.processInfo.environment["CATPAW_ACCEPTANCE_LIVE_ACTIVITY"] == "1" else { return }
