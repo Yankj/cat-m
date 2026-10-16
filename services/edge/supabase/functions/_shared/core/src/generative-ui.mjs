@@ -7,11 +7,16 @@ export const UI_CONTRACT='catpaw.ui.v1';
 export const UI_HEADER='X-Catpaw-UI-Contract';
 export const RENDER_UI='render_ui';
 export const UI_SCHEMA_VERSION=1;
-export const UI_KINDS=Object.freeze(['card','choices','confirm','form','sheet','list','progress']);
+export const UI_KINDS=Object.freeze(['card','choices','confirm','form','sheet','list','progress','place','event']);
+/** Kinds whose content is filled by the server from a tool_result of the same turn (never by the model). */
+export const GROUNDED_KINDS=Object.freeze(['place','event']);
+/** Comma list of block kinds the client renders; absent = legacy client (grounded kinds not offered). */
+export const UI_KINDS_HEADER='X-Catpaw-UI-Kinds';
+export function parseUIKinds(raw){if(raw===null||raw===undefined)return null;return [...new Set(String(raw).split(',').map(x=>x.trim()).filter(x=>UI_KINDS.includes(x)))];}
 export const UI_DECISIONS=Object.freeze(['submit','dismiss','report_error']);
 export const FIELD_TYPES=Object.freeze(['text','multiline','number','date','time','datetime','toggle','select','stepper']);
 export const UI_ERROR_CODES=Object.freeze(['schema_invalid','payload_too_large','schema_version_unsupported','too_long','too_many','duplicate_id','items_missing','fields_missing','steps_missing','options_missing','image_not_https','id_missing']);
-const LIMITS=Object.freeze({title:60,body:600,items:8,itemLabel:40,detail:120,fields:8,fieldLabel:40,options:20,option:40,actions:3,actionLabel:16,steps:12,stepLabel:60,id:64,payload:32*1024});
+const LIMITS=Object.freeze({places:5,events:8,title:60,body:600,items:8,itemLabel:40,detail:120,fields:8,fieldLabel:40,options:20,option:40,actions:3,actionLabel:16,steps:12,stepLabel:60,id:64,payload:32*1024});
 const str=(v,max,min=1)=>typeof v==='string'&&v.trim().length>=min&&v.length<=max;
 const isID=v=>str(v,LIMITS.id);
 const bad=detail=>{throw new ApiError(422,'invalid_tool_arguments',detail);};
@@ -31,10 +36,13 @@ const block={type:'object',required:['id','kind'],additionalProperties:false,pro
   actions:{type:'array',maxItems:3,items:{type:'object',required:['id','label'],additionalProperties:false,properties:{id:{type:'string',maxLength:64},label:{type:'string',maxLength:16},style:{enum:['primary','secondary','destructive']}}}},
   steps:{type:'array',maxItems:12,items:{type:'object',required:['id','label','state'],additionalProperties:false,properties:{id:{type:'string',maxLength:64},label:{type:'string',maxLength:60},state:{enum:['pending','running','done','failed']}}},description:'progress only'},
   content:{enum:['card','choices','confirm','form','list'],description:'sheet only: the kind shown inside the sheet'},
-  expiresAt:{type:'string',format:'date-time'}}};
+  expiresAt:{type:'string',format:'date-time'},
+  source:{type:'object',required:['callId'],additionalProperties:false,description:'place/event only: the tool call whose result supplies the content (places_search → place; calendar_list/calendar_create → event). The server fills places/events from that tool_result; never write POIs or events yourself.',
+    properties:{callId:{type:'string',maxLength:160},ids:{type:'array',maxItems:8,items:{type:'string',maxLength:64},description:'optional subset/order of result ids (p1…, e1…)'}}}}};
 export const renderUISchema={type:'object',required:['block'],additionalProperties:false,properties:{block}};
 export const renderUITool={type:'function',function:{name:RENDER_UI,description:'Render a native UI block in the chat instead of writing code or long text. Use for choices, confirmations, forms, cards, lists, progress and sheets (popups). Interactive blocks wait for the user; the tool result is then the user\'s ui.response ({status:"submitted",response}) or {status:"dismissed"|"expired"|"cancelled"|"error"}. Display-only blocks return {status:"shown"}. Reuse the same block id to update a progress or card block.',parameters:renderUISchema}};
 export const uiPrompt='\n需要用户选择、确认、填写或查看结构化结果时调用 render_ui；不要输出 HTML/SwiftUI/JSON 代码来表示界面，除非用户明确要代码。When the user asks for a popup/dialog use kind "sheet". One interactive block per reply; continue from the tool result.';
+export const GROUNDED_PROMPT='\n地点/日程卡片：places_search 返回后，App 会自动显示地点卡（导航/打电话）；需要单独挑几家或展示 calendar_list/calendar_create 的日程时，调用 render_ui kind "place"/"event" 并只给 source {callId, ids}，内容由服务端从工具结果填充。没有对应工具结果时不要用这两种卡片，也不要自己编地点或日程。';
 const sheetContent=b=>b.content??(b.fields?.length?'form':b.items?.length?'choices':'card');
 /** true when the block waits for a user answer (suspends the turn). */
 export function requiresResponse(b){
@@ -47,7 +55,7 @@ export function requiresResponse(b){
 export function validateBlock(args){
   const b=args&&typeof args==='object'&&'block' in args&&Object.keys(args).length===1?args.block:args;
   if(JSON.stringify(b??null).length>LIMITS.payload)bad('payload_too_large');
-  only(b,Object.keys(block.properties),['id','kind']);
+  only(b,[...Object.keys(block.properties),'places','events','caption'],['id','kind']);
   if(!isID(b.id))bad('id_missing');if(!UI_KINDS.includes(b.kind))bad('kind');
   opt(b,'schemaVersion',v=>v===UI_SCHEMA_VERSION);opt(b,'title',v=>str(v,LIMITS.title));opt(b,'body',v=>typeof v==='string'&&v.length<=LIMITS.body);
   opt(b,'presentation',v=>['inline','sheet'].includes(v));opt(b,'image',v=>typeof v==='string'&&v.length<=2048&&/^https:\/\/[^\s]+$/.test(v));
@@ -60,10 +68,28 @@ export function validateBlock(args){
     if('default' in f&&!fieldValueOK(f,f.default))bad('default');}if(!unique(b.fields))bad('duplicate_id');}
   if('actions' in b){if(!Array.isArray(b.actions)||b.actions.length>LIMITS.actions)bad('too_many');for(const a of b.actions){only(a,['id','label','style'],['id','label']);if(!isID(a.id)||!str(a.label,LIMITS.actionLabel))bad('action');opt(a,'style',v=>['primary','secondary','destructive'].includes(v));}if(!unique(b.actions))bad('duplicate_id');}
   if('steps' in b){if(b.kind!=='progress'||!Array.isArray(b.steps)||b.steps.length>LIMITS.steps)bad('steps');for(const s of b.steps){only(s,['id','label','state'],['id','label','state']);if(!isID(s.id)||!str(s.label,LIMITS.stepLabel)||!['pending','running','done','failed'].includes(s.state))bad('step');}if(!unique(b.steps))bad('duplicate_id');}
+  if(GROUNDED_KINDS.includes(b.kind))validateGrounded(b);else for(const k of ['source','places','events','caption'])if(k in b)bad(k);
   const kind=b.kind==='sheet'?sheetContent(b):b.kind;
   if(kind==='choices'&&!b.items?.length)bad('items_missing');if(kind==='form'&&!b.fields?.length)bad('fields_missing');if(b.kind==='progress'&&!b.steps?.length)bad('steps_missing');
   if(kind==='list'&&!b.items?.length)bad('items_missing');
   return clone({schemaVersion:UI_SCHEMA_VERSION,...b});
+}
+const URL_OK=/^(maps:\/\/|https:\/\/maps\.apple\.com\/|tel:|calshow:)[^\s]*$/;
+const NUM=v=>typeof v==='number'&&Number.isFinite(v);
+function validateGrounded(b){
+  for(const k of ['items','fields','actions','steps','selection','allowOther','image','content'])if(k in b)bad('grounded_'+k);
+  only(b.source,['callId','ids'],['callId']);if(!str(b.source.callId,160))bad('source');
+  opt(b.source,'ids',v=>Array.isArray(v)&&v.length>0&&v.length<=8&&v.every(isID)&&new Set(v).size===v.length);
+  opt(b,'caption',v=>typeof v==='string'&&v.length<=200);
+  const acts=a=>Array.isArray(a)&&a.length<=3&&a.every(x=>{only(x,['id','label','url'],['id','label','url']);return isID(x.id)&&str(x.label,LIMITS.actionLabel)&&typeof x.url==='string'&&x.url.length<=2048&&URL_OK.test(x.url);});
+  if(b.kind==='place'){if('events' in b)bad('events');if('places' in b){if(!Array.isArray(b.places)||!b.places.length||b.places.length>LIMITS.places)bad('places');
+    for(const p of b.places){only(p,['id','name','address','lat','lng','distanceM','etaMin','mode','phone','actions'],['id','name','actions']);if(!isID(p.id)||!str(p.name,80))bad('place');
+      opt(p,'address',v=>typeof v==='string'&&v.length<=200);for(const k of ['lat','lng','distanceM','etaMin'])opt(p,k,NUM);opt(p,'mode',v=>['driving','walking','transit'].includes(v));opt(p,'phone',v=>str(v,40));if(!acts(p.actions))bad('place_actions');}
+    if(!unique(b.places))bad('duplicate_id');}}
+  if(b.kind==='event'){if('places' in b)bad('places');if('events' in b){if(!Array.isArray(b.events)||!b.events.length||b.events.length>LIMITS.events)bad('events');
+    for(const e of b.events){only(e,['id','title','start','end','allDay','location','actions'],['id','title','start','actions']);if(!isID(e.id)||!str(e.title,120,0)||!ISO(e.start))bad('event');
+      opt(e,'end',ISO);opt(e,'allDay',v=>typeof v==='boolean');opt(e,'location',v=>typeof v==='string'&&v.length<=200);if(!acts(e.actions))bad('event_actions');}
+    if(!unique(b.events))bad('duplicate_id');}}
 }
 function fieldValueOK(f,x){
   switch(f.type){
@@ -92,6 +118,7 @@ export function validateResponse(b,r){
   if('other' in r){if(!b.allowOther||typeof r.other!=='string'||!str(r.other,200))rbad();if('other' in values&&values.other!==r.other)rbad();}
   if(kind==='confirm'&&!r.actionId)rbad();
   if(['card','list'].includes(kind)&&!r.actionId&&!selected.length)rbad();
+  if(GROUNDED_KINDS.includes(kind))rbad();
   return clone(r);
 }
 /** Client-reported invalid block (`ui.error`). */

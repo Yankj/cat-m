@@ -48,6 +48,7 @@ struct DeviceCallSpec: Sendable {
 @MainActor struct DeviceCallConfirmCard: View {
     let call: DeviceCall
     @ObservedObject private var store = DeviceCallStore.shared
+    @ObservedObject private var blockStore = GenerativeBlockStore.shared
     @State private var editing = false
     @Environment(\.openURL) private var openURL
     @Environment(\.locale) private var locale
@@ -171,7 +172,8 @@ struct DeviceCallSpec: Sendable {
             Spacer(minLength: 0)
         }
         .frame(minHeight: 44).accessibilityElement(children: .combine).accessibilityIdentifier("chat.deviceCall.receipt")
-        if call.tool == "places_search" { placesList(result) }
+        // The place card (server ui.block, kind:place) is the primary nearby view; this list is the fallback for an older server.
+        if call.tool == "places_search", blockStore.blocks[NearbyRules.placeBlockID(callID: call.call_id)] == nil { placesList(result) }
         if reportFailed {
             HStack {
                 Text(ui("结果还没告诉小猫")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.attention)

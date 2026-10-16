@@ -42,7 +42,7 @@ import CoreLocation
         let ranked = NearbyRules.rank(cands, prefs: prefs).map { found[$0] }   // taste memory changes the order
         let transport: MKDirectionsTransportType = mode == .driving ? .automobile : mode == .transit ? .transit : .walking
         var rows: [DeviceCallValue] = []
-        for item in ranked.prefix(NearbyRules.maxResults) {
+        for (index, item) in ranked.prefix(NearbyRules.maxResults).enumerated() {
             let c = item.placemark.coordinate
             let dReq = MKDirections.Request()
             dReq.source = MKMapItem(placemark: MKPlacemark(coordinate: origin)); dReq.destination = item; dReq.transportType = transport
@@ -51,6 +51,7 @@ import CoreLocation
             else { eta = (try? await MKDirections(request: dReq).calculate())?.routes.first?.expectedTravelTime }
             let name = item.name ?? query
             var row: [String: DeviceCallValue] = [
+                "id": .string("p\(index + 1)"), "lat": .number(c.latitude), "lng": .number(c.longitude),   // place card source ids (render_ui kind:place)
                 "name": .string(name), "address": .string(item.placemark.title ?? ""),
                 "distance_m": .number((CLLocation(latitude: c.latitude, longitude: c.longitude).distance(from: CLLocation(latitude: origin.latitude, longitude: origin.longitude))).rounded()),
                 "maps_url": .string(NearbyRules.mapsURL(lat: c.latitude, lng: c.longitude, name: name, mode: mode))]
