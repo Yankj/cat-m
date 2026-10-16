@@ -52,7 +52,9 @@ struct CatpawNotificationPayload: Equatable, Sendable {
     /// Foreground: show Catpaw's own floating capsule instead of the system banner (V4 / #47).
     nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification) async -> UNNotificationPresentationOptions {
         let content = notification.request.content
+        let isProactive = content.userInfo["catpaw_proactive_id"] is String || content.userInfo["catpaw_proactive_event"] is String
         let link = CatpawNotificationPayload(userInfo: content.userInfo)?.conversationURL
+            ?? (isProactive ? URL(string: "catpawm://proactive") : nil)
         let title = content.title, body = content.body
         await MainActor.run { CatpawInAppBannerCenter.shared.show(CatpawInAppBanner(title: title, body: body, deepLink: link)) }
         return [.list, .sound]
