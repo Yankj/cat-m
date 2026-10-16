@@ -292,6 +292,16 @@ struct NativeWorkspaceRetrySchedule: Sendable {
         "登录公开配置未通过校验。",
     ]
     /// Open a usable chat for entry without requiring live workspace/model APIs.
+    /// Cold start with onboarding already done: never leave the user on the attach spinner while
+    /// session restore / workspace calls wait on the network. After a short grace, open the local
+    /// (network-closed) entry chat; an authenticated restore later replaces it via `receive`.
+    func ensureEntryAfterGrace(nanoseconds: UInt64 = 1_200_000_000) async {
+        if chat == nil { Task { await self.foreground() } }
+        try? await Task.sleep(nanoseconds: nanoseconds)
+        guard chat == nil, !needsOnboarding, !logoutInProgress, !Task.isCancelled else { return }
+        LaunchClock.mark("entry.graceFallback")
+        await ensureEntryChat()
+    }
     private func ensureEntryChat() async {
         if chat != nil { return }
         guard let configuration else { return }

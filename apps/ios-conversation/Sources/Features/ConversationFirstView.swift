@@ -368,9 +368,16 @@ import CatpawImageComposer
                                     .transition(.opacity)
                             }
                             if let turn = session.unresolved, !turn.awaitingApproval, turn.state == .unknown || !model.sending {
-                                Label(turn.error ?? ui("原请求状态待确认"), systemImage: "arrow.clockwise").font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.attention).accessibilityIdentifier("chat.unresolved")
-                                Text(ui("发送结果尚未确认。先读取原请求，避免重复发送；草稿会保留。")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary).fixedSize(horizontal:false,vertical:true).accessibilityIdentifier("chat.recoveryHelp")
-                                Button(ui("读取原请求进展")) { model.readOriginal() }.touchTarget().buttonStyle(CatpawPressButtonStyle()).disabled(model.busy).accessibilityHint(ui("只查询原请求，不重新发送消息")).accessibilityIdentifier("chat.observe")
+                                // Returning from background auto-reconciles (readOriginal). While that runs, show a quiet
+                                // spinner line only; the manual button appears just when the automatic read could not finish.
+                                if model.busy || model.foregroundReconcilePending {
+                                    HStack(spacing:6) { ProgressView().controlSize(.mini); Text(ui("正在核对上次回复…")) }
+                                        .font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary).padding(.top,8)
+                                        .accessibilityIdentifier("chat.unresolved")
+                                } else {
+                                    Label(turn.error ?? ui("原请求状态待确认"), systemImage: "arrow.clockwise").font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary).accessibilityIdentifier("chat.unresolved")
+                                    Button(ui("读取原请求进展")) { model.readOriginal() }.font(CatpawTypography.Role.caption.font).touchTarget().buttonStyle(CatpawPressButtonStyle()).disabled(model.busy).accessibilityHint(ui("只查询原请求，不重新发送消息")).accessibilityIdentifier("chat.observe")
+                                }
                             }
                         } else { ProgressView(ui("打开对话")) }
                         Color.clear.frame(height: 1).id("latest")

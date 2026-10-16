@@ -789,7 +789,7 @@ public actor ConversationSessionService {
     public func stopObserving(scope: DataScope, conversationID: UUID) async throws {
         let stopToken = UUID();active[conversationID] = stopToken
         defer { if active[conversationID] == stopToken { releaseActive(conversationID) } }
-        if let turn = try await read(scope: scope, conversationID: conversationID).unresolved { try await markUnknown(turn.request, reason: "已停止本机观察，未取消后台任务。读取原请求后继续。", observationToken:stopToken) }
+        if let turn = try await read(scope: scope, conversationID: conversationID).unresolved { try await markUnknown(turn.request, reason: "已离开对话，回来后自动核对回复。", observationToken:stopToken) }
     }
     /// R2 stop of the current server turn: `POST …/turns/{id}/cancel` (`{}`, idempotent).
     /// Takes over the conversation's observation fence first, so the live pump stops (no SSE reconnect,

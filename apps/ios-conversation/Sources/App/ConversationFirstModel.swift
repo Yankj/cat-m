@@ -837,6 +837,8 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
             } catch {if foreground,networkAdmissionAllowed,generation==sceneGeneration,connectionProbeID==probe,conversationID==id {imageCapability=ConversationImageCapability(state:"unavailable",detail:error.localizedDescription)}}
         }
     }
+    /// True from foreground entry until the first automatic reconcile of an unresolved turn has run.
+    @Published private(set) var foregroundReconcilePending=false
     func readOriginal() {
         guard networkAdmissionAllowed,foreground,let id=conversationID,!busy else { return }
         let token=UUID();flightID=token;busy=true;observerLifecycle = .reconnecting
@@ -886,6 +888,7 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
     }
     private func enterForeground(generation:Int) async {
         guard loaded,generation == sceneGeneration,foreground else { return }
+        foregroundReconcilePending=true;defer{foregroundReconcilePending=false}
         await haltTask?.value;guard generation == sceneGeneration,foreground else { return }
         await synchronizeServiceAdmission()
         if networkAdmissionAllowed,let id=conversationID { syncServerTranscript(id) }

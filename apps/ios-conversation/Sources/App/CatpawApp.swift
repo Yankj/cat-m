@@ -212,7 +212,7 @@ import AppIntents
                     .tint(CatpawColors.ink)
             }
             .accessibilityIdentifier("onboarding.enteringChat")
-            .task { if auth.chat == nil { await auth.foreground() } }
+            .task { if auth.chat == nil { await auth.ensureEntryAfterGrace() } }
         }
         else {
             NativeLoginView(auth:auth)
