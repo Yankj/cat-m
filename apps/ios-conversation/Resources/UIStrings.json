@@ -6410,5 +6410,17 @@
   "暂时出错了": {
     "en": "Something went wrong",
     "zh-Hans": "暂时出错了"
+  },
+  "云端模型许可": {
+    "en": "Cloud model consent",
+    "zh-Hans": "云端模型许可"
+  },
+  "撤回许可": {
+    "en": "Revoke consent",
+    "zh-Hans": "撤回许可"
+  },
+  "尚未允许；下次发送消息时会询问一次，之后新对话沿用。": {
+    "en": "Not allowed yet; you'll be asked once on your next message, then new conversations reuse it.",
+    "zh-Hans": "尚未允许；下次发送消息时会询问一次，之后新对话沿用。"
   }
 }

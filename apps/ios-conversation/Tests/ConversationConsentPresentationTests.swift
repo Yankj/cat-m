@@ -60,3 +60,23 @@ final class ConversationConsentPresentationTests:XCTestCase {
         XCTAssertEqual(consent,c);XCTAssertEqual(preview,bytes);XCTAssertTrue(caption.utf8.elementsEqual(raw.utf8))
     }
 }
+
+final class AppModelConsentGrantTests: XCTestCase {
+    override func setUp() { AppModelConsentGrant.defaults = UserDefaults(suiteName: "AppModelConsentGrantTests")!; AppModelConsentGrant.defaults.removePersistentDomain(forName: "AppModelConsentGrantTests") }
+    override func tearDown() { AppModelConsentGrant.defaults = .standard }
+    func testAskOnceThenReuseByRouteHash() {
+        XCTAssertNil(AppModelConsentGrant.current); XCTAssertTrue(AppModelConsentGrant.serverAllowHonored)
+        let t = Date(timeIntervalSince1970: 1_800_000_000)
+        AppModelConsentGrant.record(routeHash: "h1", at: t)
+        XCTAssertEqual(AppModelConsentGrant.current, .init(routeHash: "h1", grantedAt: t))
+        XCTAssertTrue(AppModelConsentGrant.matches("h1"))
+        XCTAssertFalse(AppModelConsentGrant.matches("h2"), "a material disclosure change must re-ask")
+    }
+    func testRevocationStopsServerAllowUntilReGranted() {
+        AppModelConsentGrant.record(routeHash: "h1"); AppModelConsentGrant.revoke()
+        XCTAssertNil(AppModelConsentGrant.current); XCTAssertFalse(AppModelConsentGrant.matches("h1"))
+        XCTAssertFalse(AppModelConsentGrant.serverAllowHonored)
+        AppModelConsentGrant.record(routeHash: "h1")
+        XCTAssertTrue(AppModelConsentGrant.serverAllowHonored); XCTAssertNil(AppModelConsentGrant.revokedAt)
+    }
+}

@@ -1,9 +1,11 @@
 import SwiftUI
 import UIKit
+import os
+import Darwin
 
 /// Launch splash matching docs/refs/launch-splash-keyframes.png.
 /// Soft beige canvas; four keyframes (~1.3 s), always completes:
-/// 0.0s 浮现 — faint translucent warm-orange cat-head mark emerges
+/// 0.0s 浮现 — cat-head mark emerges from the cream-only launch screen
 /// 0.3s 轻触 — solid cat-head mark forms
 /// 0.7s 呼吸 — slight scale-up + soft outer glow
 /// 1.1s 衔接 — merges into solid orange circle (white cat-head mark) with glow, then enters landing/main
@@ -32,7 +34,7 @@ import UIKit
         .ignoresSafeArea()
         .accessibilityHidden(true)
         .allowsHitTesting(false)
-        .onAppear { if start == nil { start = Date() } }
+        .onAppear { if start == nil { start = Date(); LaunchClock.mark("launchMark.onAppear") } }
         .task {
             try? await Task.sleep(nanoseconds: UInt64((reduceMotion ? 0.45 : Self.total + 0.25) * 1_000_000_000))
             finish()
@@ -60,7 +62,7 @@ import UIKit
     private func content(t: Double, width: CGFloat, height: CGFloat) -> some View {
         let size = max(96, width * 0.28)
         // 0.0 → 0.3 浮现：opacity + slight scale
-        let emerge = Self.ease(Self.window(t, 0.0, 0.30))
+        let emerge = Self.ease(Self.window(t, 0.0, 0.30))   // fades in from the cream-only launch screen
         // 0.3 → 0.55 轻触：reach full solid
         let form = Self.ease(Self.window(t, 0.22, 0.45))
         // 0.7 → 1.0 呼吸：scale + glow
@@ -135,4 +137,19 @@ import UIKit
     /// Decided once per process (App/RootView structs can be initialised more than once; every caller gets the same answer).
     private static let decision: Bool = !UIAccessibility.isVoiceOverRunning
     static func shouldPlay(openedFromURLOrNotification: Bool) -> Bool { decision && !openedFromURLOrNotification }
+}
+
+/// Time since process start (kernel start time), logged once per milestone: `log show --predicate 'subsystem == "catpaw.launch"'`.
+enum LaunchClock {
+    private static let log = Logger(subsystem: "catpaw.launch", category: "timing")
+    static let processStart: Date = {
+        var info = kinfo_proc(), size = MemoryLayout<kinfo_proc>.stride, mib: [Int32] = [CTL_KERN, KERN_PROC, KERN_PROC_PID, getpid()]
+        guard sysctl(&mib, 4, &info, &size, nil, 0) == 0 else { return Date() }
+        let t = info.kp_proc.p_un.__p_starttime
+        return Date(timeIntervalSince1970: TimeInterval(t.tv_sec) + TimeInterval(t.tv_usec) / 1e6)
+    }()
+    static func mark(_ name: String) {
+        let ms = Int(Date().timeIntervalSince(processStart) * 1000)
+        log.notice("catpaw.launch \(name, privacy: .public) ms=\(ms, privacy: .public)")
+    }
 }
