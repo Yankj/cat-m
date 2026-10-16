@@ -82,9 +82,12 @@ export async function createCloudRuntime({repository,authenticate,config,retain=
      if(context.memory_usage){const current=await resolveMemoryUsageInTransaction(runtime,tx,context);check(hash(current)===hash(context.memory_context),409,'memory_context_fenced');}
      if(context.memory_context)check(![...context.memory_context.claims,...context.memory_context.conflicts.flatMap(group=>group.claims)].some(claim=>claim.sensitivity==='sensitive')||consent.sensitive_confirmed===true,403,'sensitive_content_requires_confirmation');
      checkTextConsent(JSON.stringify(conversation?.messages??[])+JSON.stringify(context.input_context??[])+JSON.stringify(context.memory_context??null),consent);
-     const date=new Date().toISOString().slice(0,10),id=`${context.source_auth.subject_id}:${date}`;
-     await tx.lock('system:provider-budget','daily-model-calls',id);const old=await tx.get('system:provider-budget','daily-model-calls',id);
-     check((old?.count??0)<config.dailyCallLimit,429,'model_daily_limit');await tx.put('system:provider-budget','daily-model-calls',{id,count:(old?.count??0)+1});
+     // Daily quota is opt-in (CATPAW_DAILY_CALL_LIMIT). Unset → no counter row is read or written.
+     if(Number.isSafeInteger(config.dailyCallLimit)&&config.dailyCallLimit>0&&!config.dailyCallExempt?.has?.(String(context.source_auth.subject_id).toLowerCase())){
+      const date=new Date().toISOString().slice(0,10),id=`${context.source_auth.subject_id}:${date}`;
+      await tx.lock('system:provider-budget','daily-model-calls',id);const old=await tx.get('system:provider-budget','daily-model-calls',id);
+      check((old?.count??0)<config.dailyCallLimit,429,'model_daily_limit');await tx.put('system:provider-budget','daily-model-calls',{id,count:(old?.count??0)+1});
+     }
      await verify();
    }));
  };
