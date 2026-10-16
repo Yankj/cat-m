@@ -79,12 +79,19 @@ extension View { func catpawTextSelection() -> some View { modifier(CatpawTextSe
     let preview: () -> Preview
     @State private var presented = false
     @ObservedObject private var reactions = MessageReactionStore.shared
+    @GestureState private var pressing = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     func body(content view: Content) -> some View {
         VStack(alignment: alignment, spacing: 4) {
             view
+                // Hold feedback: the bubble sinks while the finger rests. The sink waits ~90 ms
+                // so a scroll that starts on a bubble never flickers it.
+                .scaleEffect(pressing && enabled && !reduceMotion ? CatpawInteractionMotion.messagePressScale : 1,
+                             anchor: alignment == .trailing ? .trailing : .leading)
+                .animation(pressing ? .easeOut(duration: 0.25).delay(0.09) : CatpawInteractionMotion.pressOut, value: pressing)
                 // simultaneous: assistant Markdown keeps .textSelection, which would otherwise swallow the press
-                .simultaneousGesture(LongPressGesture(minimumDuration: 0.35).onEnded { _ in
+                .simultaneousGesture(LongPressGesture(minimumDuration: 0.35).updating($pressing) { value, state, _ in state = value }.onEnded { _ in
                     guard enabled else { return }
                     UIImpactFeedbackGenerator(style: .medium).impactOccurred(); setPresented(true)
                 })
