@@ -27,7 +27,7 @@ import SwiftUI
     private func chip(_ m: CachedMemory) -> some View {
         Button { if m.isLive { selected = m } } label: {
             HStack(spacing: 4) {
-                (m.isLive ? AnyView(CategoryPaw(category: .memory)) : AnyView(PawMark(size: 14, color: CatpawColors.tertiary.opacity(0.5), shadow: false))).accessibilityHidden(true)
+                (m.isLive ? AnyView(CategoryPaw(category: .memory)) : AnyView(BrandMark(size: 14, color: CatpawColors.tertiary.opacity(0.5)))).accessibilityHidden(true)
                 Text(m.isLive ? m.content : ui("已遗忘的记忆"))
                     .font(CatpawTypography.Role.secondary.font)
                     .foregroundStyle(m.isLive ? CatpawColors.ink : CatpawColors.tertiary)
