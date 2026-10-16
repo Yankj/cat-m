@@ -12,9 +12,6 @@ import UserNotifications
 import BackgroundTasks
 import WidgetKit
 #endif
-#if canImport(ActivityKit) && os(iOS)
-import ActivityKit
-#endif
 
 // On-device ProactiveEngine (interview demo core).
 // Non-user signal (EventKit next event / BGAppRefresh / simulated signal) → rule pre-filter → dedupe ledger
@@ -403,9 +400,9 @@ struct ProactiveSignal: Equatable, Sendable {
     /// Settings/debug writes the same phrase via `setLeadMinutes` so evaluate has hard evidence.
     func leadTime() async -> (minutes: Int, memory: ProactiveSuggestion.MemoryRef?) {
         // Cloud backend first, then the persisted on-device library (NoBug P0-1: survives cold start).
-        // Codex PR91 #3: fail closed — a load error or an unknown cloud switch (last known off) means no memory.
-        let local: (any MemoryLibraryBackend)? = MemoryLibraryHub.backend === MemoryLibraryHub.local ? nil : MemoryLibraryHub.local
-        let snaps = await MemoryRecallLoader.snapshots(cloud: MemoryLibraryHub.backend, local: local, owner: MemoryLibraryHub.local.owner)
+        var snaps: [MemoryLibrarySnapshot] = []
+        if let backend = MemoryLibraryHub.backend, let snapshot = try? await backend.load() { snaps.append(snapshot) }
+        if MemoryLibraryHub.backend !== MemoryLibraryHub.local, let local = try? await MemoryLibraryHub.local.load() { snaps.append(local) }
         if let hit = ProactiveRules.lead(in: snaps) { return (hit.minutes, .init(id: hit.item.id, content: hit.item.content)) }
         return (defaultLeadMinutes, nil)
     }
@@ -549,7 +546,6 @@ struct ProactiveSignal: Equatable, Sendable {
         let travelMinutes = travel.minutes
         let usedETA = travel.usedETA
         let originNote = travel.originNote
-        guard AccountEpoch.shared.epoch == epochAtStart, AccountEpoch.shared.currentAccount == accountAtStart else { note("drop: account changed during ETA (no evaluate, no write-back)"); return nil }
         // leave_at = meeting_start - lead_minutes - travel_minutes (travel 0 only when ETA unused → lead only)
         let leaveAt = ProactiveRules.leaveAt(start: signal.start, leadMinutes: lead.minutes, travelMinutes: travelMinutes, usedETA: usedETA)
         let remindAt = leaveAt  // remind when user should leave
@@ -927,13 +923,20 @@ struct ProactiveSignal: Equatable, Sendable {
     }
     fileprivate static let attendeesKey = "catpaw.proactive.attendees.v1"
     private var pendingAttendees: [String: (names: [String], recipients: [String])] {
-        get { (sealed([String: AttendeesDTO].self, sealedKey: Self.sealedAttendeesKey, legacyKey: Self.attendeesKey) ?? [:]).mapValues { ($0.names, $0.recipients) } }
-        set { seal(newValue.mapValues { AttendeesDTO(names: $0.names, recipients: $0.recipients) }, sealedKey: Self.sealedAttendeesKey, legacyKey: Self.attendeesKey) }
+        get {
+            guard let data = defaults.data(forKey: Self.attendeesKey),
+                  let raw = try? JSONDecoder().decode([String: AttendeesDTO].self, from: data) else { return [:] }
+            return raw.mapValues { ($0.names, $0.recipients) }
+        }
+        set {
+            let raw = newValue.mapValues { AttendeesDTO(names: $0.names, recipients: $0.recipients) }
+            defaults.set(try? JSONEncoder().encode(raw), forKey: Self.attendeesKey)
+        }
     }
     private struct AttendeesDTO: Codable { var names: [String]; var recipients: [String] }
     private var pendingReminders: [String: PendingReminder] {
-        get { sealed([String: PendingReminder].self, sealedKey: Self.sealedRemindersKey, legacyKey: suggestionsKey) ?? [:] }
-        set { seal(newValue, sealedKey: Self.sealedRemindersKey, legacyKey: suggestionsKey) }
+        get { (defaults.data(forKey: suggestionsKey)).flatMap { try? JSONDecoder().decode([String: PendingReminder].self, from: $0) } ?? [:] }
+        set { defaults.set(try? JSONEncoder().encode(newValue), forKey: suggestionsKey) }
     }
 
     func pendingReminder(for suggestionID: String) -> PendingReminder? {
@@ -1293,11 +1296,7 @@ struct ProactiveSignal: Equatable, Sendable {
     }
     static func wipe() { UserDefaults.standard.removeObject(forKey: key); CatpawWidgetSnapshotWriter.write([]) }
     static func load() -> [String: ProactiveSuggestion] {
-        L2SecureStore.current?.get([String: ProactiveSuggestion].self, forKey: sealedKey) ?? [:]
-    }
-    static func clearForSignOut() {
-        UserDefaults.standard.removeObject(forKey: legacyKey)
-        try? L2SecureStore.current?.write(nil, forKey: sealedKey)
+        UserDefaults.standard.data(forKey: key).flatMap { try? JSONDecoder().decode([String: ProactiveSuggestion].self, from: $0) } ?? [:]
     }
     private let mock = ProactiveSuggestionMock([])
     /// Codex PR90e #1: the inbox is shown only to its owner (or, before the upgrade migration ran, to the signed-in account).
@@ -1399,6 +1398,8 @@ struct ProactiveSignal: Equatable, Sendable {
         let trigger = ProactiveSuggestionStore.shared.items[id]?.trigger ?? ProactiveRules.localTrigger
         var f = ProactiveEngine.shared.localFeedback; f.record(value, trigger: trigger); ProactiveEngine.shared.localFeedback = f
         ProactiveEngine.shared.note("feedback \(value.rawValue) id=\(id) trigger=\(trigger)")
+        // PR91 P0-4 (trial merge): also persisted per account and posted to the server; throws when only queued (待同步).
+        try await ProactiveFeedbackSync.shared.submit(value, suggestionID: id, trigger: trigger, serverID: ProactiveEngine.shared.serverIDs[id])
     }
 }
 
@@ -1471,10 +1472,9 @@ struct ProactiveEngineSignalAdapter: ProactiveSignalEngine {
         ]
         if let suggestion = pending.first {
             var value: [String: Any] = [
-                // Codex PR91 p91b-5: the App Group file is not encrypted — only redacted fields (no titles/reasons/places).
                 "id": suggestion.id,
-                "title": AppLanguage(locale: .current).ui("小猫有一条提醒"),
-                "why": AppLanguage(locale: .current).ui("打开 Catpaw 查看"),
+                "title": suggestion.title,
+                "why": suggestion.reason,
             ]
             if let reminder = ProactiveEngine.shared.pendingReminder(for: suggestion.id) {
                 value["expires_at"] = reminder.start.timeIntervalSince1970
@@ -1495,11 +1495,12 @@ struct ProactiveEngineSignalAdapter: ProactiveSignalEngine {
         if let meeting {
             var value: [String: Any] = [
                 "id": meeting.suggestion.id,
-                "title": AppLanguage(locale: .current).ui("即将开始的日程"),
-                "why": AppLanguage(locale: .current).ui("打开 Catpaw 查看"),
+                "title": meeting.reminder?.title ?? meeting.signal.text,
+                "why": meeting.suggestion.reason,
             ]
             if let reminder = meeting.reminder {
                 value["starts_at"] = reminder.start.timeIntervalSince1970
+                if !reminder.place.isEmpty { value["place"] = reminder.place }
             }
             body["meeting"] = value
         }
@@ -1568,24 +1569,11 @@ struct ProactiveEngineSignalAdapter: ProactiveSignalEngine {
     static func stop(suggestionID: String) {
         CatpawLiveActivityCoordinator.shared.stopLeaveCountdown(suggestionID: suggestionID)
     }
-    /// Sign-out: end every departure countdown, including ones started before a relaunch.
-    /// Sign-out: end every Live Activity of every type — departure countdowns (also from before a relaunch) and the
-    /// work activity, whose pending start timer is cancelled (Codex PR91 p91b-3).
-    /// Test seam (PR91 XCTest): observes stopAll() for sign-out ordering.
-    nonisolated(unsafe) static var stopAllObserver: (() -> Void)?
-    static func stopAll() {
-        stopAllObserver?()
-        let ids = Set(Activity<CatpawLeaveAttributes>.activities.map { $0.attributes.suggestionID })
-        for id in ids { stop(suggestionID: id) }
-        CatpawLiveActivityCoordinator.shared.resetForSignOut()
-    }
 }
 #else
 @MainActor enum CatpawLeaveActivity {
     static func start(suggestionID: String, meetingTitle: String, leaveAt: Date) {}
     static func stop(suggestionID: String) {}
-    nonisolated(unsafe) static var stopAllObserver: (() -> Void)?
-    static func stopAll() { stopAllObserver?() }
 }
 #endif
 

@@ -74,7 +74,7 @@ struct CachedMemory: Codable, Sendable, Equatable, Identifiable {
         // Only into the store this cache was loaded from, and only while it is still the active one.
         guard let store = boundStore, let token = boundToken, admits(token) else { note("memory cache persist skipped: account changed"); return }
         let snapshot = Snapshot(items: items, cursor: cursor, usedByTurn: usedByTurn)
-        let wrote: Bool? = AccountEpoch.shared.commit(token) {
+        let wrote: Bool? = AccountEpoch.shared.commit(token) { () -> Bool in
             do { try store.put(snapshot, forKey: Self.key); return true } catch { return false }
         }
         if wrote != true { note(wrote == nil ? "memory cache persist refused: account epoch changed" : "memory cache persist failed") }
