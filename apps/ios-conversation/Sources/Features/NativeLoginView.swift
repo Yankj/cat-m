@@ -31,28 +31,32 @@ import UIKit
     }
 
     @State private var shown = false
+    @ObservedObject private var serif = EditorialSerif.shared
 
     var body: some View {
         ZStack {
             CalmGlowBackground()
+            // Orb sits at the exact screen centre (ignoring safe areas) so the launch paw→orb morph lands on it pixel-for-pixel.
+            ZStack {
+                ZStack {
+                    OrbitText(text: ui("onboarding.ring.outer"), radius: 130, speed: 1, fontSize: 12)
+                    OrbitText(text: ui("onboarding.ring.inner"), radius: 92, speed: -1.4, fontSize: 10).opacity(0.8)
+                }
+                .opacity(shown ? 1 : 0).scaleEffect(shown ? 1 : 0.92)
+                CalmOrb(size: 100) // already on screen from the launch morph; no entrance animation
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .ignoresSafeArea()
             VStack(alignment: .leading, spacing: 0) {
                 #if DEBUG
                 debugBanner.padding(.top, 8)
                 #endif
                 Text(ui("解放双手，\n让工作\n自己向前走"))
-                    .font(.system(size: 40, weight: .semibold, design: .serif))
+                    .font(serif.font(size: 40))
                     .lineSpacing(4).foregroundStyle(CatpawColors.ink)
                     .padding(.top, 36)
                     .opacity(shown ? 1 : 0).offset(y: shown ? 0 : 10)
                     .accessibilityAddTraits(.isHeader).accessibilityIdentifier("onboarding.headline")
-                Spacer()
-                ZStack {
-                    OrbitText(text: ui("onboarding.ring.outer"), radius: 130, speed: 1, fontSize: 12)
-                    OrbitText(text: ui("onboarding.ring.inner"), radius: 92, speed: -1.4, fontSize: 10).opacity(0.8)
-                    CalmOrb(size: 100)
-                }
-                .frame(maxWidth: .infinity)
-                .opacity(shown ? 1 : 0).scaleEffect(shown ? 1 : 0.92)
                 Spacer()
                 footer.frame(maxWidth: 520).frame(maxWidth: .infinity)
                     .padding(.bottom, 16)
@@ -60,7 +64,7 @@ import UIKit
             .padding(.horizontal, 24)
         }
         .foregroundStyle(CatpawColors.ink)
-        .onAppear { withAnimation(reduceMotion ? nil : .easeOut(duration: 0.7)) { shown = true } }
+        .onAppear { serif.ensure(); withAnimation(reduceMotion ? nil : .easeOut(duration: 0.7)) { shown = true } }
         .accessibilityIdentifier("onboarding.pages")
         .overlay { if scene != .active || !UIApplication.shared.isProtectedDataAvailable { CatpawColors.background.ignoresSafeArea() } }
     }
