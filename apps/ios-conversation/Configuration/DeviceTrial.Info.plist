@@ -51,6 +51,7 @@
 	<string>$(CATPAW_SUPABASE_PUBLISHABLE_KEY)</string>
 	<key>LSApplicationQueriesSchemes</key>
 	<array>
+		<string>imeituan</string>
 		<string>taobao</string>
 		<string>openapp.jdmobile</string>
 		<string>pinduoduo</string>
