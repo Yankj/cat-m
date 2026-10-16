@@ -82,8 +82,8 @@ export class GeminiInteractionsRoute {
   constructor(route, secret, { fetchImpl = globalThis.fetch, maxTokens = 2048, timeouts, guard, thinkingVisible = () => false } = {}) {
     this.route = route; this.#secret = secret; this.fetchImpl = fetchImpl; this.maxTokens = maxTokens; this.timeouts = timeouts; this.guard = guard; this.thinkingVisible = thinkingVisible;
   }
-  payload({ messages, system_prompt, tools }) {
-    const body = { model: this.route.model, input: toSteps(messages), stream: true, store: false, generation_config: { max_output_tokens: this.maxTokens } };
+  payload({ messages, system_prompt, tools, model_override }) {
+    const body = { model: model_override ?? this.route.model, input: toSteps(messages), stream: true, store: false, generation_config: { max_output_tokens: this.maxTokens } };
     if (system_prompt) body.system_instruction = system_prompt;
     if (tools?.length) { body.tools = toTools(tools); body.generation_config.tool_choice = 'auto'; }
     if (this.route.thinking_summary && this.thinkingVisible()) body.generation_config.thinking_summaries = 'auto';

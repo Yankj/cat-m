@@ -49,7 +49,10 @@ Status is per Edge isolate (best effort, in memory); a fresh isolate reports `on
 | Header | Values | Behaviour |
 |---|---|---|
 | `X-Catpaw-Route` | `auto` (default) \| a route `id` | Chosen route is tried first; the rest of the chain stays as failover. |
-| `X-Catpaw-Model` | a model `id` from that route's `models[]` | Only valid together with a concrete `X-Catpaw-Route`. |
+| `X-Catpaw-Model` | a model `id` from that route's `models[]` | Only valid together with a concrete `X-Catpaw-Route`. Applied to that route only; failover routes use their default model. |
+| `X-Catpaw-Route-Events` | `1` | Opt in to the SSE `model_route` event (§3). |
+
+Validation runs on every catpaw-api request that carries the headers (not only chat), so send them only on chat calls or keep them valid.
 
 **Invalid values are rejected, not silently ignored** (decision):
 
@@ -81,9 +84,9 @@ turn fails over along the chain and the SSE `model_route` event reports it.
 | `switches[]` | `{from, to, code}` hops; `code` is the failure code. |
 | `attempt` | 1-based attempt number. |
 
-Emitted by every chain deployment (the event type is ignored by clients that don't know it). A
-continuation after a tool/device result is a new round and may emit another `model_route`.
-Client copy suggestion: when `failover` is true show “已切换到 {display_name}”.
+**Opt-in:** only sent when the chat request carries `X-Catpaw-Route-Events: 1` (current iOS builds throw on
+unknown event types, same pattern as `X-Catpaw-Reasoning-Summary`). At most one `model_route` per turn
+(the first provider round); later rounds after tool/device results are not re-announced in v1. Client copy suggestion: when `failover` is true show “已切换到 {display_name}”.
 
 ## 4. `/readyz` additions
 
@@ -95,3 +98,13 @@ Client copy suggestion: when `failover` is true show “已切换到 {display_na
 FreeLLMAPI or changing models forces re-consent. With FreeLLMAPI configured the consented route also carries
 `aggregator_disclosure` and the data field `prompt_and_history_forwarded_via_self_hosted_freellmapi_to_upstream_free_providers`;
 the consent screen must show that text and the policy URLs.
+
+## 6. Server configuration (env, no secrets returned)
+
+| Env | Meaning |
+|---|---|
+| `CATPAW_FREELLMAPI_API_KEY` | FreeLLMAPI unified key (Bearer). Route enabled only when set. |
+| `CATPAW_FREELLMAPI_BASE_URL` | `https://…` base of the self-hosted router; `/v1` and `/v1/chat/completions` suffixes are normalised. Never returned to clients; the consented route shows `self-hosted`. |
+| `CATPAW_FREELLMAPI_MODEL` | Default model, default `auto` (follow the FreeLLMAPI fallback chain). `auto:fast`, `auto:coding` or a concrete id also work. |
+| `CATPAW_<ROUTE>_MODELS` | Extra allowed models for `X-Catpaw-Model`, comma list, max 20 (e.g. `CATPAW_FREELLMAPI_MODELS=deepseek-v4.1-flash-free,glm-5.3-flash-free`). OpenRouter entries must end in `:free`. |
+| `CATPAW_MODEL_ROUTE_ORDER` | Optional explicit order; default `openrouter,gemini,groq,freellmapi,agnes` (Gemini first when `CATPAW_GEMINI_ROUTE=primary`). |
