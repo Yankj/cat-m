@@ -65,7 +65,7 @@ import SwiftUI
                     Button { presented = true } label: {
                         Label(ui("邀请码"), systemImage: "ticket").foregroundStyle(CatpawColors.ink)
                     }.accessibilityIdentifier("settings.invite")
-                } footer: { Text(ui("输入邀请码开启主动提醒、记忆和设备工具。")) }
+                } header: { Text(ui("主动提醒与权限")) } footer: { Text(ui("输入邀请码开启主动提醒、记忆和设备工具。")) }
             }
         }
         .task { await enrollment.refresh() }

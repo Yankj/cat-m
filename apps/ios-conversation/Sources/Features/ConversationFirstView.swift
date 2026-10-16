@@ -11,6 +11,7 @@ import CatpawImageComposer
     @ObservedObject private var proactiveFeed = CatpawProactiveFeed.shared
     @ObservedObject private var presenceHub = CatpawPresenceHub.shared
     @StateObject private var attachmentUploader:ModelImageComposerAttachmentUploader
+    @State private var openedAcceptanceEmpty=false
     @State private var sendAfterImageConsent=false
     var accountLabel: String? = nil
     var onSignOut: (() -> Void)? = nil
@@ -145,7 +146,12 @@ import CatpawImageComposer
         return id == ModelRouteSelection.autoID ? ui("自动") : routeCatalog.displayName(id)
     }
     private var conversationTitleMenu: some View {
-        Menu {
+        // Plush header cat in a recessed well; it occasionally pops out over the capsule ("naked-eye 3D").
+        // The well sits outside the Menu so a tap triggers the pop instead of opening the menu.
+        HStack(spacing:8) {
+            PlushMascotWell(state: headerCatState, conversationKey: model.conversationID.map { AnyHashable($0) }, size: 28)
+                .accessibilityIdentifier("chat.title.presence")
+            Menu {
             Section(ui("模型")) {
                 Button { ModelRouteSelection.resetToAuto() } label: { if ModelRouteSelection.route == ModelRouteSelection.autoID { Label(ui("自动"), systemImage:"checkmark") } else { Text(ui("自动")) } }
                 ForEach(routeCatalog.routes) { r in
@@ -153,34 +159,34 @@ import CatpawImageComposer
                 }
             }
             Section {
-                Label(connectionMonitor.state.labelKey.map{ui($0.key,arguments:$0.arguments)} ?? ui("连接正常"), systemImage: connectionMonitor.state == .online ? "wifi" : "wifi.slash")
+                // Same state source as Settings › 模型 (ModelRouteCatalog.presence): live green only when online.
+                Label { Text(menuPresenceLine) } icon: { StatusDotImage.image(menuPresence.online ? ConnectionStatusKind.liveGreen : ConnectionStatusKind.neutralDot) }
+                    .accessibilityIdentifier("chat.menu.connection")
                 Button { path.append(.settings) } label: { Label(ui("设置"), systemImage:"slider.horizontal.3") }.accessibilityIdentifier("chat.settings")
             }
-        } label: {
-            // Soft-3D header cat (docs/refs/header-cat/six-states.png) — not flat BrandMark.
-            // Map: offline→ears-down; error→wobble; thinking/working→orbit-load; streaming→spin; done→happy; else idle.
-            HStack(spacing:8) {
-                PlushMascot(state: headerCatState, size: 28)
-                    .frame(width:32,height:32)
-                    .accessibilityIdentifier("chat.title.presence")
-                VStack(alignment:.leading,spacing:0) {
-                    HStack(spacing:4) {
-                        Text(r8Title).font(CatpawTypography.Role.body.font.weight(.semibold)).foregroundStyle(CatpawColors.ink).lineLimit(1).truncationMode(.tail)
-                        Image(systemName:"chevron.down").font(CatpawTypography.Role.caption.font.weight(.semibold)).imageScale(.small).foregroundStyle(CatpawColors.tertiary)
+            } label: {
+                HStack(spacing:8) {
+                    VStack(alignment:.leading,spacing:0) {
+                        HStack(spacing:4) {
+                            Text(r8Title).font(CatpawTypography.Role.body.font.weight(.semibold)).foregroundStyle(CatpawColors.ink).lineLimit(1).truncationMode(.tail)
+                            Image(systemName:"chevron.down").font(CatpawTypography.Role.caption.font.weight(.semibold)).imageScale(.small).foregroundStyle(CatpawColors.tertiary)
+                        }
+                        Text(headerStatusLine)
+                            .font(CatpawTypography.Role.caption.font.weight(.medium)).foregroundStyle(CatpawColors.secondary).lineLimit(1)
+                            .contentTransition(.opacity).animation(CatpawMotion.statusCapsule, value: headerStatusLine)
+                            .accessibilityIdentifier("chat.title.step")
                     }
-                    Text(headerStatusLine)
-                        .font(CatpawTypography.Role.caption.font.weight(.medium)).foregroundStyle(CatpawColors.secondary).lineLimit(1)
-                        .contentTransition(.opacity).animation(CatpawMotion.statusCapsule, value: headerStatusLine)
-                        .accessibilityIdentifier("chat.title.step")
+                    ConnectionStatusHeaderDot(monitor: connectionMonitor)
                 }
-                ConnectionStatusHeaderDot(monitor: connectionMonitor)
+                .contentShape(Rectangle())
             }
-            .padding(.leading,4).padding(.trailing,12).padding(.vertical,3)
-            .background(CatpawColors.card, in: Capsule())
-            .shadow(color: CatpawBrand.clayShadow.opacity(0.08), radius: 8, y: 2)
-            .frame(maxWidth:240).contentShape(Capsule())
+            .accessibilityLabel(conversationTitle).accessibilityAddTraits(.isHeader).accessibilityIdentifier("chat.title")
         }
-        .accessibilityLabel(conversationTitle).accessibilityAddTraits(.isHeader).accessibilityIdentifier("chat.title")
+        .padding(.leading,4).padding(.trailing,12).padding(.vertical,3)
+        .background(CatpawColors.card, in: Capsule())
+        .shadow(color: CatpawBrand.clayShadow.opacity(0.08), radius: 8, y: 2)
+        .zIndex(1)
+        .frame(maxWidth:240)
     }
     /// Capsule secondary line: live step, else plush pose status while busy, else model label.
     private var headerStatusLine: String {
@@ -188,8 +194,17 @@ import CatpawImageComposer
         let pose = PlushMascotPose(headerCatState)
         return pose == .idle ? r8ModelLabel : ui(pose.statusKey)
     }
+    private var menuPresence: ModelRouteCatalog.Presence { routeCatalog.presence(connection: .from(connectionMonitor.state)) }
+    /// 「连接正常 · Gemini」 when online; otherwise the monitor's own label.
+    private var menuPresenceLine: String {
+        let p = menuPresence
+        guard p.online else { return connectionMonitor.state.labelKey.map{ui($0.key,arguments:$0.arguments)} ?? ui("未连接") }
+        if let a = p.actualID { return ui("连接正常") + " · " + routeCatalog.displayName(a) }
+        return ui("连接正常")
+    }
     /// Header plush pose from connection + turn hub (six-state 毛绒小伙伴 set).
     private var headerCatState: CatpawPresenceState {
+        if let preview = CatpawAcceptanceLaunch.mascotPreview { return preview }
         let kind = ConnectionStatusKind.from(connectionMonitor.state)
         if kind == .offline { return .offline }
         if kind == .error, presenceHub.state == nil { return .error }
@@ -505,6 +520,7 @@ import CatpawImageComposer
         }
         .catpawSheet(isPresented:$composerContextPresented,onDismiss:completeContextAction) {composerContextSheet}
         .task { await model.start() }
+        .task(id:model.loaded) { if model.loaded,CatpawAcceptanceLaunch.openEmptyConversation,!openedAcceptanceEmpty { openedAcceptanceEmpty=true;model.newConversation() } }
         .task(id:model.conversationID) {
             proactiveFeed.currentAnchor={ [model] in
                 guard let session=model.session else {return nil}
@@ -552,8 +568,7 @@ import CatpawImageComposer
         .overlay { if scene != .active || !UIApplication.shared.isProtectedDataAvailable { ZStack { CatpawColors.background.ignoresSafeArea(); Label(ui("解锁后查看对话"), systemImage: "lock.fill") }.accessibilityIdentifier("chat.privacyShield") } }
     }
     private var settingsSheet: some View {
-        ConversationConnectionView(model: model,embedded:true)
-            .safeAreaInset(edge:.bottom) { if onSignOut != nil { VStack(spacing:12) { if let accountLabel { Text(accountLabel).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary) }; Button(ui("退出此账号"), role:.destructive) { confirmSignOut = true }.touchTarget().accessibilityIdentifier("auth.signOut") }.padding().frame(maxWidth:.infinity).background(CatpawColors.background) } }
+        ConversationConnectionView(model: model,embedded:true,accountLabel:accountLabel,isAnonymousAccount:isAnonymousAccount,onSignOut:onSignOut == nil ? nil : { confirmSignOut = true })
             .confirmationDialog(ui("退出此账号？"), isPresented:$confirmSignOut, titleVisibility:.visible) {
                 Button(ui("确认退出"), role:.destructive) { path=[];settings = false;onSignOut?() }
                 Button(ui("取消"), role:.cancel) { }
@@ -830,7 +845,12 @@ import CatpawImageComposer
             if pendingIDs.contains(intent.id),!primaryAdmission {continue}
             if intent.state == .savingLocal,(model.sending || model.session?.unresolved != nil || !model.followups.pending.isEmpty) {continue}
             let id=stableID("conversation-user-\(intent.id)")
-            if !messages.contains(where:{$0.id == id}) { messages.append(.init(id:id,role:.user,content:intent.text,image:intent.image)) }
+            // Right after consent the journal row can land before the intent is retired; if the session's
+            // latest user row already carries this operation (or is the same text without an operation id),
+            // the echo would render a second identical bubble.
+            let lastUser=messages.last(where:{$0.role == .user})
+            let echoed=lastUser.map{ last in operationID(last) == intent.id || (operationID(last) == nil && last.content == intent.text) } ?? false
+            if !echoed,!messages.contains(where:{$0.id == id}) { messages.append(.init(id:id,role:.user,content:intent.text,image:intent.image)) }
         }
         // Older busy-retry journals could contain more than one user row for the
         // same operation. Current retries reuse operationID, so render it once.
@@ -1284,6 +1304,10 @@ private struct ConversationPendingMessageEditor:View {
 
     @ObservedObject var model: ConversationFirstModel
     var embedded=false
+    var accountLabel:String?=nil
+    var isAnonymousAccount=false
+    /// Shows the sign-out confirmation (owned by the host); nil = no account (fixture / signed out).
+    var onSignOut:(()->Void)?=nil
     @Environment(\.dismiss) private var dismiss
     @State private var refreshingConnection = false
     private var stateName: String {
@@ -1301,54 +1325,48 @@ private struct ConversationPendingMessageEditor:View {
     }
     private var content:some View {
             Form {
-                Section(ui("关于")) {
+                // 1 账号 — card first; sign-out is an ordinary destructive row that scrolls with the list.
+                Section {
+                    SettingsAccountCard(label:accountLabel,isAnonymous:isAnonymousAccount,signedIn:onSignOut != nil)
+                    if let onSignOut {
+                        Button(role:.destructive) { onSignOut() } label: { Text(ui("退出此账号")).frame(maxWidth:.infinity,alignment:.leading) }
+                            .accessibilityIdentifier("auth.signOut")
+                    }
+                } header: { Text(ui("账号")) }
+                // 2 模型
+                ModelSettingsSection(model: model)
+                if model.connection.state == .notConfigured {
+                    Section { } footer: { Text(ui("真实模型尚未配置；不会使用演示回复代替模型。")) }
+                }
+                // 4 主动提醒与权限 (invite code, only while not enrolled)
+                FeatureEnrollmentSection()
+                // 5 记忆与隐私
+                Section {
+                    NavigationLink { MemoryLibraryView(backend: MemoryLibraryHub.backend ?? MemoryLibraryStub()) } label: { Text(ui("记忆")) }
+                        .accessibilityIdentifier("settings.memory")
+                    AppModelConsentRows()
+                } header: { Text(ui("记忆与隐私")) } footer: {
+                    VStack(alignment:.leading,spacing:4) {
+                        Text(model.connection.state == .notConfigured ? ui("当前未连接云端；输入保存在此设备。") : ui("此设备保存对话副本；发送的消息会交给已连接的云端服务处理。"))
+                        Text(ui("离开 App 后不会发送排队中的消息。任务后台执行的状态需要重新读取确认。"))
+                    }
+                }
+                // 6 关于
+                Section {
                     LabeledContent(ui("版本"), value:Bundle.main.object(forInfoDictionaryKey:"CFBundleShortVersionString") as? String ?? "—")
                         .textSelection(.enabled).accessibilityIdentifier("settings.appVersion")
                     LabeledContent(ui("构建号"), value:Bundle.main.object(forInfoDictionaryKey:"CFBundleVersion") as? String ?? "—")
                         .textSelection(.enabled).accessibilityIdentifier("settings.appBuild")
-                }
-                Section(ui("模型连接")) {
-                    ConnectionStatusRow(
-                        kind: {
-                            if model.connectionLifecycle == .checking || model.connectionLifecycle == .reconnecting { return .error }
-                            switch model.connection.state {
-                            case .connected, .providerUnverified: return .online
-                            case .notConfigured: return .offline
-                            case .unavailable: return .error
-                            }
-                        }(),
-                        detail: ui(model.connection.detail),
-                        refreshing: model.connectionLifecycle == .checking || refreshingConnection
-                    )
-                    .accessibilityIdentifier("connection.state")
-                    if let modelID = model.connection.model { LabeledContent(ui("已验证模型")) { Text(modelID).foregroundStyle(CatpawColors.secondary) } }
-                    if let at=model.connection.verifiedReplyAt {LabeledContent(ui("最近确认回复"),value:at.formatted(date:.omitted,time:.shortened))}
-                    Button {
-                        Task {
-                            refreshingConnection = true
-                            await model.refreshConnection()
-                            await ModelRouteCatalog.shared.refresh()
-                            refreshingConnection = false
-                        }
-                    } label: {
-                        HStack {
-                            Text(ui("重新检查连接"))
-                            Spacer()
-                            if refreshingConnection || model.connectionLifecycle == .checking { ProgressView().controlSize(.small) }
-                        }
-                    }
-                    .accessibilityIdentifier("connection.refresh")
-                    .disabled(refreshingConnection)
-                }
-                FeatureEnrollmentSection()
+                    NavigationLink {
+                        Form { LabeledContent(ui("服务"),value:model.connection.provider); Text(model.connection.state.rawValue).font(CatpawTypography.Role.caption.font).textSelection(.enabled) }
+                            .settingsCanvas().navigationTitle(ui("诊断"))
+                    } label: { Text(ui("诊断")) }
+                } header: { Text(ui("关于")) }
+                // 7 调试 — never in Release
                 #if DEBUG || DEVICE_TRIAL
-                ModelRoutesSettingsView()
                 Section(ui("调试")) { NavigationLink(ui("主动信号模拟")) { ProactiveSignalDebugView() }.accessibilityIdentifier("settings.debug.proactiveSignals") }
                 #endif
-                Section(ui("数据")) { Text(model.connection.state == .notConfigured ? ui("当前未连接云端；输入保存在此设备。") : ui("此设备保存对话副本；发送的消息会交给已连接的云端服务处理。")); Text(ui("离开 App 后不会发送排队中的消息。任务后台执行的状态需要重新读取确认。")).font(CatpawTypography.Role.caption.font) }
-                Section { DisclosureGroup(ui("诊断")) { LabeledContent(ui("服务"),value:model.connection.provider); Text(model.connection.state.rawValue).font(CatpawTypography.Role.caption.font).textSelection(.enabled) } }
-                if model.connection.state == .notConfigured { Text(ui("真实模型尚未配置；不会使用演示回复代替模型。")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary) }
-            }.foregroundStyle(CatpawColors.ink).navigationTitle(ui("设置"))
+            }.settingsCanvas().foregroundStyle(CatpawColors.ink).navigationTitle(ui("设置"))
     }
 }
 
@@ -1491,6 +1509,76 @@ private struct ConversationComposerLayout:Layout {
             subviews[0].place(at:.init(x:bounds.minX+s.leading.width+gap,y:bounds.maxY),anchor:.bottomLeading,proposal:.init(width:s.text.width,height:s.text.height))
         }
         subviews[2].place(at:.init(x:bounds.maxX,y:bounds.maxY),anchor:.bottomTrailing,proposal:.init(s.send))
+    }
+}
+
+/// 设置 · 云端模型许可: shows the app-wide grant and lets the user revoke it (future calls stop until re-allowed).
+/// One uniform settings canvas: inset-grouped, a single light warm-gray page colour, white cards.
+extension View {
+    func settingsCanvas()->some View {
+        self.formStyle(.grouped).scrollContentBackground(.hidden).background(SettingsPalette.canvas.ignoresSafeArea())
+    }
+}
+enum SettingsPalette {
+    static let canvas=Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(white:0.06,alpha:1) : UIColor(red:0.957,green:0.953,blue:0.945,alpha:1) })
+}
+/// 账号 card: avatar, name, sign-in state.
+struct SettingsAccountCard:View {
+    let label:String?
+    let isAnonymous:Bool
+    let signedIn:Bool
+    @Environment(\.locale) private var locale
+    private func ui(_ k:String)->String {AppLanguage(locale:locale).ui(k)}
+    private var initial:String? { guard !isAnonymous, let c=label?.first, c.isLetter else {return nil}; return String(c).uppercased() }
+    var body:some View {
+        HStack(spacing:12) {
+            ZStack {
+                Circle().fill(CatpawColors.panel)
+                if let initial { Text(initial).font(CatpawTypography.Role.heading.font).foregroundStyle(CatpawColors.ink) }
+                else { Image(systemName:"person.fill").font(.system(size:20)).foregroundStyle(CatpawColors.secondary) }
+            }
+            .frame(width:44,height:44)
+            .accessibilityHidden(true)
+            VStack(alignment:.leading,spacing:2) {
+                Text(label ?? ui("未登录")).font(CatpawTypography.Role.body.font.weight(.semibold)).foregroundStyle(CatpawColors.ink).lineLimit(1)
+                Text(!signedIn ? ui("未登录") : isAnonymous ? ui("体验账号 · 无法找回") : ui("已登录"))
+                    .font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
+            }
+            Spacer(minLength:0)
+        }
+        .padding(.vertical,4)
+        .accessibilityElement(children:.combine)
+        .accessibilityIdentifier("settings.account")
+    }
+}
+struct AppModelConsentRows:View {
+    @Environment(\.locale) private var locale
+    @State private var grant=AppModelConsentGrant.current
+    private func ui(_ k:String)->String {AppLanguage(locale:locale).ui(k)}
+    var body:some View {
+        Group {
+            if let grant {
+                LabeledContent(ui("云端模型许可"),value:grant.grantedAt.formatted(date:.abbreviated,time:.shortened))
+                Button(ui("撤回许可"),role:.destructive) {AppModelConsentGrant.revoke();self.grant=nil}.accessibilityIdentifier("settings.modelConsent.revoke")
+            } else {
+                LabeledContent(ui("云端模型许可"),value:ui("尚未允许"))
+            }
+        }.onAppear {grant=AppModelConsentGrant.current}
+    }
+}
+struct AppModelConsentSection:View {
+    @Environment(\.locale) private var locale
+    @State private var grant=AppModelConsentGrant.current
+    private func ui(_ k:String)->String {AppLanguage(locale:locale).ui(k)}
+    var body:some View {
+        Section(ui("云端模型许可")) {
+            if let grant {
+                LabeledContent(ui("已允许"),value:grant.grantedAt.formatted(date:.abbreviated,time:.shortened))
+                Button(ui("撤回许可"),role:.destructive) {AppModelConsentGrant.revoke();self.grant=nil}.accessibilityIdentifier("settings.modelConsent.revoke")
+            } else {
+                Text(ui("尚未允许；下次发送消息时会询问一次，之后新对话沿用。")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
+            }
+        }.onAppear {grant=AppModelConsentGrant.current}
     }
 }
 

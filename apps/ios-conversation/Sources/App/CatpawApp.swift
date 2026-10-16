@@ -118,12 +118,14 @@ import AppIntents
     #endif
     /// catpaw.ui.v1 blocks render natively inside ```catpaw-card fences (r10 §4).
     init() {
+        LaunchClock.mark("app.init")
         GenerativeBlockAdapter.registerWithMarkdown()
         MemorySavedChipAdapter.register() // wave2 V1
         DeviceStatusCardAdapter.register() // wave2 V3 receipt + permission cards
         PermissionDegradeCardAdapter.register() // proactive demo: permission-denied degrade card
         DeviceCallCardAdapter.register() // wave2 V3 device_call confirm card
         ProactiveSuggestionAdapter.register() // wave2 demo proactive_suggestion
+        LaunchClock.mark("app.init.done")
     }
     var body: some Scene {
         WindowGroup {

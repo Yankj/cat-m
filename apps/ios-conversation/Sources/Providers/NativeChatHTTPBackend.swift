@@ -173,10 +173,13 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
         let metadata = try await json("/catpaw/privacy/v1/model-route",auth:auth),ui = try Self.object(metadata["ui"]),routeHash = try Self.sha(metadata["route_hash"])
         let path = "/catpaw/privacy/v1/scopes/"+configuration.serverScopeID.uuidString.lowercased()+"/conversations/"+conversationID.uuidString.lowercased()+"/model-consent"
         let stored = try await json(path,auth:auth);let prior = stored["consent"] as? [String:Any]
-        if prior?["decision"] as? String == "allow",prior?["route_hash"] as? String == routeHash { return nil }
+        if prior?["decision"] as? String == "allow",prior?["route_hash"] as? String == routeHash,AppModelConsentGrant.serverAllowHonored { return nil }
         guard let title = ui["title"] as? String,let body = ui["body"] as? String,title.utf8.count <= 512,body.utf8.count <= 12000 else { throw ConversationSessionError.invalidEvent }
         let revision = prior?["revision"] as? Int ?? 0;guard revision >= 0 else { throw ConversationSessionError.invalidEvent }
-        return .init(conversationID:conversationID,title:title,body:Self.consentBody(body,metadata:metadata,ui:ui),routeHash:routeHash,expectedRevision:revision)
+        let consent = ConversationModelConsent(conversationID:conversationID,title:title,body:Self.consentBody(body,metadata:metadata,ui:ui),routeHash:routeHash,expectedRevision:revision)
+        // App-level grant for this exact disclosure: issue this conversation's server allow automatically.
+        if AppModelConsentGrant.matches(routeHash) { try await allowModelConsent(scope:scope,consent:consent);return nil }
+        return consent
     }
     public func serverTranscript(scope: DataScope, conversationID: UUID) async throws -> [ConversationTranscriptMessage]? {
         guard scope == configuration.localScope, !configuration.useFrozenFixtureMetadata else { return nil }
@@ -197,6 +200,7 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
         let auth = try await authorization(scope),path = "/catpaw/privacy/v1/scopes/"+configuration.serverScopeID.uuidString.lowercased()+"/conversations/"+consent.conversationID.uuidString.lowercased()+"/model-consent"
         let reply = try await json(path,auth:auth,body:["decision":"allow","expected_revision":consent.expectedRevision,"route_hash":consent.routeHash]),row = try Self.object(reply["consent"])
         guard row["decision"] as? String == "allow",row["route_hash"] as? String == consent.routeHash,row["revision"] as? Int == consent.expectedRevision+1 else { throw ConversationSessionError.invalidEvent }
+        if !AppModelConsentGrant.matches(consent.routeHash) { AppModelConsentGrant.record(routeHash:consent.routeHash) }
     }
     public func acceptedWorkCapability(scope:DataScope,conversationID:UUID) async throws -> ConversationAcceptedWorkCapability {
         guard scope==configuration.localScope else {throw CatpawError.scopeMismatch}
