@@ -11,6 +11,7 @@
 | （w3，未上线） | `3628c45` | 包含在 `chore/w4-model-routes` 中 | #70 + #71 |
 | catpaw-api v42 | `cc98949` | `chore/w4-model-routes` | #70 + #71 + #72（FreeLLMAPI 版） |
 | catpaw-api v43（当前） | `952ca4e` | `chore/w5-opencode-zen` | #72 改为 OpenCode Zen 直连 |
+| w6（**未部署**，待用户确认） | `c20ddd5` | `chore/w6-gemini-default` | 默认路由改 Gemini：`gemini → openrouter → groq → opencode → agnes`；GET 增加 `primary_route`/`routes[].primary`；bundle sha256 `a0f6b90a…212f`；consent route_hash 会变，老用户需重新同意一次 |
 
 catpaw-proactive v3、catpaw-tick v11 本轮未改动。
 
@@ -47,7 +48,7 @@ npx -y esbuild@0.24.0 catpaw-api/index.ts --bundle --format=esm --platform=neutr
 ## 未完成
 
 - #63、#69 的迁移没上生产（因此部署包基于 eb3bf1c 系列，不基于 integration-v2）；proactive_cron、pg_cron/pg_net 未启用。
-- `CATPAW_OPENROUTER_MODEL` 待在 Dashboard 改为 `google/gemma-4-31b-it:free`（当前默认模型已下架，每轮 failover 到 Gemini）。
+- `CATPAW_OPENROUTER_MODEL` 待在 Dashboard 改为 `google/gemma-4-31b-it:free`（当前默认模型已下架，每轮 failover 到 Gemini）。w6 上线后不再阻塞主路径（Gemini 已排第一），但 OpenRouter 作为第二兜底仍是坏的，建议仍改。
 - OpenCode Zen：用户放弃（需境外信用卡）。代码已在 v43，`CATPAW_OPENCODE_API_KEY` 未配置，路由不出现。
 - 设备工具闸门目前对所有人开放，待收回到 `allowlist`。
 - 匿名测试账号（4122078e、3137bd48）待清理。
