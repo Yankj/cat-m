@@ -463,6 +463,12 @@ import UserNotifications
         ProactiveEngine.registerAccountObserver()
         ProactiveEngine.shared.inventory = SystemNotificationInventory()
         let center = UNUserNotificationCenter.current(), b = UUID(), tag = UUID().uuidString
+        // Precondition, not a skip: simctl cannot pre-grant notifications, so the UI test grants it once on this install.
+        let status = await center.notificationSettings().authorizationStatus
+        guard status == .authorized || status == .provisional || status == .ephemeral else {
+            XCTFail("Notifications not authorized on this simulator (status \(status.rawValue): \(status == .denied ? "denied" : status == .notDetermined ? "notDetermined" : "other")). Run CatpawMUITests/ProactiveNotificationAuthUITests/testGrantNotificationAuthorizationForHostTests first (same simulator, do not uninstall), then this test.")
+            return
+        }
         func request(_ id: String, _ account: String) -> UNNotificationRequest {
             let c = UNMutableNotificationContent(); c.title = "xctest"
             c.userInfo = ["catpaw_proactive_id": id, ProactiveAccountGate.accountKey: account, ProactiveAccountGate.epochKey: "1"]
