@@ -25,7 +25,8 @@ enum ProactiveAccountGate {
     static func belongsToCurrent(_ info: [AnyHashable: Any], epoch: AccountEpoch) -> Bool {
         if info[accountKey] != nil || info[epochKey] != nil { return epoch.isValid(token(info)) }
         if let account = remote(info)?["account"] as? String { return epoch.currentAccount.map { account.caseInsensitiveCompare($0) == .orderedSame } ?? false }
-        return !(isProactive(info) || remote(info) != nil) || epoch.currentAccount != nil
+        // Codex PR90d #3: a proactive payload without an owner (pre-ownership build) never resumes into whoever is signed in.
+        return !(isProactive(info) || remote(info) != nil)
     }
 
     enum Verdict: Equatable { case drop(String), inboxOnly, present(ProactiveLevel) }
@@ -47,7 +48,28 @@ enum ProactiveAccountGate {
             guard let id = deliveryID(info), quota.recordDelivery(id, at: now, calendar: calendar) else { return .drop("duplicate") }
             return .present(plan.level)
         }
-        if isProactive(info) || remote(info) != nil { return epoch.currentAccount == nil ? .drop("signed_out") : .present(.notify) }  // legacy, untagged
+        if isProactive(info) || remote(info) != nil { return .drop("untagged") }  // Codex PR90d #3: no owner → rejected
         return .present(.notify)
+    }
+}
+
+/// Codex PR90d #1: the persisted proactive data (inbox, reminders, attendees, ledgers, quota, outbox, server ids) has one
+/// owner account, stored next to it. Cleanup is by owner, synchronously, at the first write or account change that sees a
+/// different account — so a same-account restore keeps everything, and data the new account already wrote survives.
+enum ProactiveDataOwner {
+    static let key = "catpaw.proactive.owner.v1"
+    /// `owner`: nil = never recorded (data from before ownership, owner unknown → fail closed); "" = clean, signed out.
+    static func mustWipe(owner: String?, current: String?) -> Bool {
+        guard let owner else { return true }
+        if owner.isEmpty { return false }
+        guard let current else { return true }
+        return owner.caseInsensitiveCompare(current) != .orderedSame
+    }
+    /// A pending / delivered proactive notification is removed on an account change only if it is not the current
+    /// account's (other account or untagged); the current account's requests (any epoch) are left alone.
+    static func removeOnChange(_ info: [AnyHashable: Any], current: String?) -> Bool {
+        guard ProactiveAccountGate.isProactive(info) else { return false }
+        guard let current, let a = ProactiveAccountGate.token(info)?.account else { return true }
+        return a.caseInsensitiveCompare(current) != .orderedSame
     }
 }

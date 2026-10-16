@@ -8,7 +8,11 @@ import Foundation
 // of its delivery instant, stored as a "yyyy-MM-dd" key, so travelling never re-opens or double-charges a day.
 struct ProactiveQuotaLedger: Codable, Sendable, Equatable {
     enum State: String, Codable, Sendable { case reserved, delivered }
-    struct Entry: Codable, Sendable, Equatable { var day: String; var at: Double; var state: State }
+    struct Entry: Codable, Sendable, Equatable {
+        var day: String; var at: Double; var state: State
+        /// Codex PR90d #3: the request instance (scoped id) holding a reservation; only it may release it.
+        var owner: String? = nil
+    }
     var entries: [String: Entry] = [:]
     /// Alternate delivery ids (server event_id) → the identity they deliver, so an APNs push and the local post dedupe.
     var aliases: [String: String] = [:]
@@ -25,10 +29,13 @@ struct ProactiveQuotaLedger: Codable, Sendable, Equatable {
     }
     func has(_ id: String) -> Bool { entries[resolve(id)] != nil }
     /// Reserve a slot for a future (pre-scheduled) delivery. Same identity → idempotent. Returns false when the fire day is full.
-    mutating func reserve(_ id: String, fire: Date, cap: Int = ProactiveRules.dailyNotifyCap, calendar: Calendar = .current) -> Bool {
-        if let e = entries[id] { return e.state == .reserved || e.day == Self.day(fire, calendar: calendar) }
+    mutating func reserve(_ id: String, fire: Date, cap: Int = ProactiveRules.dailyNotifyCap, owner: String? = nil, calendar: Calendar = .current) -> Bool {
+        if let e = entries[id] {
+            if e.state == .reserved, let owner { entries[id]?.owner = owner }   // the re-scan's request now holds it
+            return e.state == .reserved || e.day == Self.day(fire, calendar: calendar)
+        }
         guard count(on: fire, calendar: calendar) < cap else { return false }
-        entries[id] = .init(day: Self.day(fire, calendar: calendar), at: fire.timeIntervalSince1970, state: .reserved); return true
+        entries[id] = .init(day: Self.day(fire, calendar: calendar), at: fire.timeIntervalSince1970, state: .reserved, owner: owner); return true
     }
     /// A real system notification was posted now. Converts this identity's reservation; never counts one identity twice.
     /// Returns false when the identity was already delivered (the second path must not post).
@@ -45,8 +52,9 @@ struct ProactiveQuotaLedger: Codable, Sendable, Equatable {
         return changed
     }
     /// Drop an unfired reservation (pre-scheduled request removed / superseded).
-    mutating func release(_ id: String, now: Date) {
-        if let e = entries[id], e.state == .reserved, e.at > now.timeIntervalSince1970 { entries[id] = nil }
+    /// `owner` set → only that request instance's reservation is released (a late callback never frees another one's).
+    mutating func release(_ id: String, now: Date, owner: String? = nil) {
+        if let e = entries[id], e.state == .reserved, e.at > now.timeIntervalSince1970, owner == nil || e.owner == nil || e.owner == owner { entries[id] = nil }
     }
     mutating func prune(now: Date, keepDays: Double = 3) {
         entries = entries.filter { $0.value.at > now.timeIntervalSince1970 - keepDays * 86400 }
@@ -151,5 +159,26 @@ extension ProactiveRules {
         let base = cloud ?? localLevel(minutesUntil: leadMinutes, leadMinutes: leadMinutes, travelMinutes: nil)
         let level = applyFeedbackGate(base, trigger: trigger, confidence: localConfidence(trigger, leadMinutes, travelMinutes: nil), gate: gate)
         return level >= .notify ? level : nil
+    }
+}
+
+/// Codex PR90d: safe default feedback gate when 三角's learned gate (`ProactiveEngine.feedbackGate`) is not installed.
+/// Counts the user's own feedback per trigger on this device; it can only lower a level: any "intrusive" → never
+/// interrupt; clearly negative (not_helpful + intrusive ≥ helpful + 2) → card only. No feedback → unchanged.
+struct ProactiveLocalFeedback: Codable, Sendable, Equatable {
+    struct Counts: Codable, Sendable, Equatable { var helpful = 0, notHelpful = 0, intrusive = 0 }
+    var byTrigger: [String: Counts] = [:]
+    init() {}
+    mutating func record(_ v: ProactiveFeedback, trigger: String) {
+        var c = byTrigger[trigger] ?? Counts()
+        switch v { case .helpful: c.helpful += 1; case .not_helpful: c.notHelpful += 1; case .intrusive: c.intrusive += 1 }
+        byTrigger[trigger] = c
+    }
+    func gate(_ decision: String, trigger: String) -> String {
+        guard let c = byTrigger[trigger] else { return decision }
+        var level = ProactiveLevel(server: decision)
+        if c.notHelpful + c.intrusive >= c.helpful + 2 { level = min(level, .card) }
+        else if c.intrusive > 0 { level = min(level, .notify) }
+        return level.name
     }
 }

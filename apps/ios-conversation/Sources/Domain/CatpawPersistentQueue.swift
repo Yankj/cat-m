@@ -68,8 +68,14 @@ extension UserDefaults: CatpawKeyValueStore {}
             case .retry:
                 items[i].attempts += 1
                 if items[i].attempts >= maxAttempts {
-                    deadLetters.append(items.remove(at: i)); if deadLetters.count > maxDead { deadLetters.removeFirst(deadLetters.count - maxDead) }
-                    dropped += 1
+                    let dead = items.remove(at: i); deadLetters.append(dead); dropped += 1
+                    // Codex PR90d: a dead op poisons its group — later ops of it are parked with it, never sent out of order.
+                    if let g = dead.group {
+                        let later = items.filter { $0.group == g && $0.account == dead.account }
+                        items.removeAll { $0.group == g && $0.account == dead.account }; deadLetters += later; dropped += later.count
+                        blocked.insert(g)
+                    }
+                    if deadLetters.count > maxDead { deadLetters.removeFirst(deadLetters.count - maxDead) }
                 } else {
                     items[i].nextAt = now.timeIntervalSince1970 + min(maxDelay, baseDelay * pow(2, Double(items[i].attempts - 1)))
                     retried += 1
