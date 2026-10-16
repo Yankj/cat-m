@@ -131,6 +131,7 @@ struct DeviceCallResult: Codable, Sendable, Equatable {
         if let edits = edited[call.id] { effective.args.merge(edits) { _, new in new } }
         set(call.id, .running)
         let result = executor.canExecute(call.tool) ? await executor.execute(effective) : .init(call_id: call.call_id, status: .error)
+        DeviceLedger.shared.record(call: effective, result: result)
         await report(result, submitter: submitter)
     }
     func cancel(_ call: DeviceCall) async {
