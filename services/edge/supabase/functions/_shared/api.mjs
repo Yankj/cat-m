@@ -35,7 +35,7 @@ import {assertImageConsent,imageConsent} from './image-consent.mjs';
 import {LIVE_VISION_ROUTE,VISION_CONSENT_UI} from './core/src/live-vision-route.mjs';
 import {AttachmentService,createStorageAdapter,ATTACHMENT_CONTRACT,ATTACHMENT_LIMITS} from './attachments.mjs';
 const reply=(v,status=200)=>Response.json({schema_version:1,...v},{status,headers:{'Cache-Control':'no-store'}});
-export async function createCloudRuntime({repository,authenticate,config,retain=(_promise)=>{},sourceChecker=assertSourceAuthority,provider=null,imageProvider=null,attachmentStorage=null,verifyToken=null,autoKick=true,kickOptions={},diagnostic=entry=>console.info(JSON.stringify(entry)),taskActionTargetVerifier=null,publicSourceReader=null,acceptedSourceChecker=assertAcceptedWorkSourceAuthority,acceptedControlSourceChecker=assertAcceptedWorkControlSourceAuthority,proactiveStore=null,agentMemoryStore=null,agentMemoryOptions={},enrollmentStore=null}){
+export async function createCloudRuntime({repository,authenticate,config,retain=(_promise)=>{},sourceChecker=assertSourceAuthority,provider=null,imageProvider=null,attachmentStorage=null,verifyToken=null,autoKick=true,kickOptions={},diagnostic=entry=>console.info(JSON.stringify(entry)),taskActionTargetVerifier=null,publicSourceReader=null,acceptedSourceChecker=assertAcceptedWorkSourceAuthority,acceptedControlSourceChecker=assertAcceptedWorkControlSourceAuthority,proactiveStore=null,agentMemoryStore=null,agentMemoryPrivacyStore=null,agentMemoryOptions={},enrollmentStore=null}){
  let beforeImageStream=async()=>{throw new ApiError(503,'vision_dispatch_not_configured');};
  const chatMetrics=createChatMetrics({sink:diagnostic});repository.metrics=chatMetrics;
  const beforeModel=async context=>{
@@ -125,7 +125,7 @@ export async function createCloudRuntime({repository,authenticate,config,retain=
   // catpaw.agent-memory.v1 (Wave 2 B1): CATPAW_AGENT_MEMORY_ENABLED default on (allowlist/off honored; BLOCKLIST_SUBJECTS wins); needs migration 20261016090000 (not applied).
   const memoryGate=config.agentMemory??'off';
   // Codex PR91 v2-3: the stored privacy off is read whenever the store exists, even with the feature gate off.
-  if(agentMemoryStore)runtime.facade.agentMemoryPrivacy=createAgentMemoryPrivacy({store:agentMemoryStore});
+  {const privacyStore=agentMemoryPrivacyStore??agentMemoryStore;if(privacyStore)runtime.facade.agentMemoryPrivacy=createAgentMemoryPrivacy({store:privacyStore});}
   if(agentMemoryStore&&memoryGate!=='off'){const service=createAgentMemoryService({store:agentMemoryStore,allow:uid=>featureAllows(memoryGate,config.featureAllowlist,uid,enrolled,'agent_memory'),verifyUser:typeof verifyToken==='function'?h=>verifyToken(h):null,schedulerSecret:config.schedulerSecret??null,...agentMemoryOptions});
    runtime.facade.agentMemory=service;runtime.agentMemory=service;for(const [name,tool] of createAgentMemoryChatTools({service}))registry.set(name,tool);}
   // proactive_suggestion SSE (catpaw.proactive.decision.v1): CATPAW_PROACTIVE_SUGGESTIONS_SSE_ENABLED default on (allowlist/off honored; BLOCKLIST_SUBJECTS wins); needs migrations 20261016030000 + 20261016040000.

@@ -5,8 +5,10 @@ import {memoryHTTPFixture as fixture} from './fixtures/memory-http-fixture.mjs';
 import {APPROVAL_CONTRACT} from '../supabase/functions/_shared/core/src/approval.mjs';
 import {createAgentMemoryService,storedPrivacyOff} from '../supabase/functions/_shared/agent-memory/service.mjs';
 import {createAgentMemoryStore} from '../supabase/functions/_shared/agent-memory/memory-store.mjs';
+import {memoryStores} from '../supabase/functions/_shared/bootstrap-stores.mjs';
+import {readFileSync} from 'node:fs';
 import {createAgentMemoryChatTools} from '../supabase/functions/_shared/agent-memory/chat-tools.mjs';
-import {MEMORY_TOOLS,validateToolArgs,estimateTokens} from '../supabase/functions/_shared/agent-memory/contract.mjs';
+import {MEMORY_TOOLS,validateToolArgs,validateSettingsPatch,estimateTokens} from '../supabase/functions/_shared/agent-memory/contract.mjs';
 import {toolApprovalPolicy} from '../supabase/functions/_shared/core/src/tools.mjs';
 import {readConfig,readFeatureGate} from '../supabase/functions/_shared/config.mjs';
 globalThis.fetch=()=>{throw Error('external_network_forbidden');};
@@ -239,4 +241,42 @@ test('storedPrivacyOff: missing table → no stored off; any other read error fa
  assert.equal(await storedPrivacyOff({getSettings:async()=>{throw Error('connection reset');}},'u'),true);
  assert.equal(await storedPrivacyOff({getSettings:async()=>null},'u'),false);
  assert.equal(await storedPrivacyOff({getSettings:async()=>({use_memory:false})},'u'),true);
+});
+
+// Codex PR91 v3-1: the PRODUCTION bootstrap store selection (bootstrap.ts → memoryStores). Gate off ⇒ no agent-memory store,
+// but the privacy store is still installed, so a saved off keeps legacy memory off.
+test('bootstrap: gate off still installs the privacy store; saved off keeps legacy memory off through that composition',async()=>{
+ const src=readFileSync(new URL('../supabase/functions/_shared/bootstrap.ts',import.meta.url),'utf8');
+ assert.ok(src.includes('...memoryStores(config,sql,createPgAgentMemoryStore)')&&!/agentMemoryStore:config\.agentMemory/.test(src),'bootstrap.ts selects stores via memoryStores (no gate on the privacy store)');
+ const backing=createAgentMemoryStore(),stores=memoryStores({agentMemory:'off'},'sql',()=>backing);
+ assert.equal(stores.agentMemoryStore,null);assert.equal(stores.agentMemoryPrivacyStore,backing);
+ const f=await fixture({...stores,env:{CATPAW_AGENT_MEMORY_ENABLED:'off'}});
+ assert.equal(f.runtime.chat.facade.agentMemory,undefined);assert.ok(f.runtime.chat.facade.agentMemoryPrivacy);
+ await f.json((await f.post({type:'set_enabled',enabled:true})).response);
+ await f.json((await f.post(legacyRemember(await f.newConversation(),'coffee'))).response);
+ const cid=await f.newConversation();await f.json(await f.req(`/catpaw/privacy/v1/scopes/${f.scope.scope_id}/conversations/${cid}/model-consent`,{decision:'allow',expected_revision:0,route_hash:f.config.routeHash}));
+ const s={f,probe:{prompts:[]},path:`/catpaw/chat/v1/scopes/${f.scope.scope_id}/conversations/${cid}`};
+ assert.ok((await turnOf(s,(await send(s,'What coffee drink do I prefer?')).tid)).memory_usage,'legacy memory used before the off');
+ await backing.putSettings(f.principal.subject_id,{use_memory:false,auto_save:false,consented_at:new Date().toISOString()});
+ const t=await send(s,'What coffee drink do I prefer?',{'X-Catpaw-Use-Memory':'1'});
+ assert.equal((await turnOf(s,t.tid)).memory_usage,undefined,'saved off honoured through the bootstrap gate-off composition');
+});
+// Codex PR91 v3-2: a late older choice (client timed out, server still ran it) never overwrites a newer one.
+test('settings: use_memory_seq is last-writer-by-sequence; a late older ON cannot overwrite a newer OFF',async()=>{
+ const store=createAgentMemoryStore();let release;const gate=new Promise(r=>release=r);
+ const slow={...store,async putSettingsIfNewer(uid,s,seq){if(s.use_memory)await gate;return store.putSettingsIfNewer(uid,s,seq);}};
+ const service=createAgentMemoryService({store:slow,allow:()=>true});
+ await service.patchSettings(U1,{consent:true,use_memory:false,use_memory_seq:1});
+ const lateOn=service.patchSettings(U1,{consent:true,use_memory:true,use_memory_seq:2});   // server still running; client times out
+ const off=await service.patchSettings(U1,{use_memory:false,use_memory_seq:3});              // the user's newer OFF
+ assert.equal(off.use_memory,false);
+ release();const r=await lateOn;
+ assert.equal(r.stale,true,'late older choice reported stale');
+ assert.equal((await service.settings(U1)).use_memory,false,'final server state = the last choice (off)');
+ const retry=await service.patchSettings(U1,{use_memory:false,use_memory_seq:3});
+ assert.equal(retry.stale,true,'a retry of the same sequence is idempotent (no change)');
+ assert.equal((await service.patchSettings(U1,{consent:true,use_memory:true,use_memory_seq:4})).use_memory,true,'a newer choice applies');
+ assert.throws(()=>validateSettingsPatch({use_memory_seq:5}),/memory_schema_invalid/);
+ assert.throws(()=>validateSettingsPatch({use_memory:true,use_memory_seq:-1}),/memory_schema_invalid/);
+ assert.throws(()=>validateSettingsPatch({use_memory:true,use_memory_seq:'7'}),/memory_schema_invalid/);
 });
