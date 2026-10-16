@@ -65,15 +65,15 @@ actor AuthTestHTTPTransport: NativeAuthHTTPTransport {
 actor AnonymousTestRemote: NativeAuthRemote {
     let issuer: String; let id = UUID(); let clock: AuthTestClock
     private var creations = 0; private var refreshes = 0; private var users = 0
-    private var unavailable = false;private var holdCreation = false
+    private var unavailable = false;private var userUnavailable = false;private var holdCreation = false
     private var creationWait: CheckedContinuation<NativeAuthCredential,Error>?
     init(issuer:String,clock:AuthTestClock = AuthTestClock()) { self.issuer = issuer;self.clock = clock }
-    func behavior(unavailable:Bool = false,hold:Bool = false) { self.unavailable = unavailable;holdCreation = hold }
+    func behavior(unavailable:Bool = false,userUnavailable:Bool = false,hold:Bool = false) { self.unavailable = unavailable;self.userUnavailable = userUnavailable;holdCreation = hold }
     func candidate(expired:Bool = false) -> NativeAuthCredential { .init(issuer:issuer,user:.init(id:id,isAnonymous:true),accessToken:"synthetic.anon.signature",refreshToken:"synthetic-anon-only",expiresAt:clock.now().addingTimeInterval(expired ? -1 : 3600)) }
     func signInAnonymously() async throws -> NativeAuthCredential { creations += 1;if holdCreation { return try await withCheckedThrowingContinuation { creationWait = $0 } };return candidate() }
     func signIn(email:String,password:String) async throws -> NativeAuthCredential { throw NativeAuthError.invalidCredentials }
     func refresh(refreshToken:String) async throws -> NativeAuthCredential { refreshes += 1;if unavailable { throw NativeAuthError.unavailable };return candidate() }
-    func user(accessToken:String) async throws -> NativeAuthUser { users += 1;if unavailable { throw NativeAuthError.unavailable };return .init(id:id,isAnonymous:true) }
+    func user(accessToken:String) async throws -> NativeAuthUser { users += 1;if unavailable || userUnavailable { throw NativeAuthError.unavailable };return .init(id:id,isAnonymous:true) }
     func signOut(accessToken:String) async throws { }
     func revokeApplicationSession(accessToken:String) async throws { }
     func counts() -> (Int,Int,Int) { (creations,refreshes,users) }
@@ -102,6 +102,28 @@ enum AnonymousAuthScenarios {
         do { try await failed.startExperience();throw NativeAuthError.invalidResponse } catch NativeAuthError.sessionRecoveryRequired { }
         let failedCount = await failedRemote.counts()
         try authCheck(failedCount.0 == 0 && failedStore.load() != nil,"failed and uncertain restore never substitutes a new identity")
+        let knownRemote = AnonymousTestRemote(issuer:config.issuer),knownStore = AuthTestStorage()
+        try knownStore.save(await knownRemote.candidate(expired:true));await knownRemote.behavior(userUnavailable:true)
+        let known = NativeAuthSessionManager(configuration:config,remote:knownRemote,vault:knownStore,barrier:knownStore)
+        do { try await known.restore();throw NativeAuthError.invalidResponse } catch NativeAuthError.unavailable { }
+        try authCheck(try await known.canRetryRecovery() && knownStore.isSignedOut(),"known rotation remains unauthorized while read-only validation can recover")
+        await knownRemote.behavior();try await known.restore()
+        let knownCount = await knownRemote.counts(),knownState = await known.snapshot()
+        try authCheck(knownCount.0 == 0 && knownCount.1 == 1 && knownCount.2 == 2 && knownState.phase == .authenticated && !knownStore.isSignedOut(),"known rotation retries user validation once without repeating refresh or signup")
+        let createdRemote = AnonymousTestRemote(issuer:config.issuer),createdStore = AuthTestStorage()
+        await createdRemote.behavior(userUnavailable:true)
+        let created = NativeAuthSessionManager(configuration:config,remote:createdRemote,vault:createdStore,barrier:createdStore)
+        do { try await created.startExperience();throw NativeAuthError.invalidResponse } catch NativeAuthError.unavailable { }
+        await createdRemote.behavior();try await created.startExperience()
+        let createdCount = await createdRemote.counts()
+        try authCheck(createdCount.0 == 1 && createdCount.1 == 0 && createdCount.2 == 2,"received signup candidate recovers without creating another anonymous identity")
+        let liveClock=AuthTestClock(),liveRemote=AnonymousTestRemote(issuer:config.issuer,clock:liveClock),liveStore=AuthTestStorage()
+        let live=NativeAuthSessionManager(configuration:config,remote:liveRemote,vault:liveStore,barrier:liveStore,now:{liveClock.now()})
+        try await live.startExperience();liveClock.advance(4000);await liveRemote.behavior(userUnavailable:true)
+        do { _=try await live.authorization(subject:await liveRemote.id);throw NativeAuthError.invalidResponse } catch NativeAuthError.unavailable { }
+        await liveRemote.behavior();try await live.restore()
+        let liveCount=await liveRemote.counts()
+        try authCheck(liveCount.0 == 1 && liveCount.1 == 1 && liveCount.2 == 3,"active-session rotation also retries only known-token validation")
         let slowRemote = AnonymousTestRemote(issuer:config.issuer),slowStore = AuthTestStorage();await slowRemote.behavior(hold:true)
         let slow = NativeAuthSessionManager(configuration:config,remote:slowRemote,vault:slowStore,barrier:slowStore)
         let active = Task { try await slow.startExperience() }
