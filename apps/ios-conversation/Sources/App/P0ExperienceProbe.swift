@@ -53,13 +53,16 @@ import UIKit
     }
     @objc private func tick() {
         guard active,!exported else { last=nil;return };let now=ProcessInfo.processInfo.systemUptime
-        if let last,intervals.count<1500 { intervals.append((now-last)*1000);callbackPoints.append(["uptime_ns":Int64(now*1e9),"delta_ms":(now-last)*1000,"display_timestamp_ns":Int64((link?.timestamp ?? 0)*1e9)]) };last=now
+        var appended=false
+        if let last,intervals.count<1500 { intervals.append((now-last)*1000);callbackPoints.append(["uptime_ns":Int64(now*1e9),"delta_ms":(now-last)*1000,"display_timestamp_ns":Int64((link?.timestamp ?? 0)*1e9)]);appended=true };last=now
         for (id,time) in presses {
             guard let view=witnesses[id]?.view,let window=view.window,!view.isHidden,view.alpha>0,view.bounds.width>0,view.bounds.height>0,
                   isVisible(view,in:window) else { continue }
             samples.append(["operation_id":id.uuidString,"press_action_uptime_ns":Int64(time*1e9),"visible_geometry_callback_ns":Int64(now*1e9),"latency_ms":(now-time)*1000]);presses.removeValue(forKey:id)
         }
-        if intervals.count % 30 == 0 { revision += 1 }
+        // Once the 1500-sample buffer is full the count stops moving; without `appended`
+        // this republished every frame and re-evaluated the whole conversation body at 60 Hz.
+        if appended && intervals.count % 30 == 0 { revision += 1 }
     }
     private func isVisible(_ view:UIView,in window:UIWindow) -> Bool {
         var visible=view.convert(view.bounds,to:window).intersection(window.bounds),ancestor=view.superview

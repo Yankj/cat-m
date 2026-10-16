@@ -198,6 +198,9 @@ import CatpawImageComposer
         if let admitted=model.outgoingMessages.last(where:{!old.contains($0.id)}) {followingLatest=true;replyVariants.addVariant(original:root,newTurn:admitted.id)}
     }
     private var renderedTimelineRows:[RenderedTimelineRow] {
+        #if DEBUG
+        InteractionFrameProbe.shared.count("timeline.project")
+        #endif
         let rows=timelineRows
         guard let session=model.session else {return rows.map{.message($0)}}
         let activities=ConversationTurnActivityProjection.snapshots(session:session,rows:rows)
@@ -244,10 +247,16 @@ import CatpawImageComposer
         return row.turnID != nil && row.turnID==previous.turnID ? 8:24
     }
     @ViewBuilder private func renderedTimelineRow(_ row:RenderedTimelineRow)->some View {
+        #if DEBUG
+        let _=InteractionFrameProbe.shared.count("timeline.row")
+        #endif
         switch row {case .message(let message):timelineRow(message);case .activity(let activity):ConversationTurnActivity(activity:activity);case .proactive(let entry):ProactiveReminderCardView(entry:entry,feed:proactiveFeed)}
     }
     private var chatNavigation: some View {
-        SidebarHost(isPresented:$sidebarPresented,isAtRoot:path.isEmpty && !conversationMenuPresented && !settings && !history && !pendingMessagesPresented && !composerContextPresented && !model.acceptedWorkReviewPresented && model.selectedTaskPlan == nil && model.selectedTaskActions == nil && model.selectedTaskControl == nil && model.pendingModelConsent == nil && model.pendingImageConsent == nil,
+        #if DEBUG
+        InteractionFrameProbe.shared.count("chat.body")
+        #endif
+        return SidebarHost(isPresented:$sidebarPresented,isAtRoot:path.isEmpty && !conversationMenuPresented && !settings && !history && !pendingMessagesPresented && !composerContextPresented && !model.acceptedWorkReviewPresented && model.selectedTaskPlan == nil && model.selectedTaskActions == nil && model.selectedTaskControl == nil && model.pendingModelConsent == nil && model.pendingImageConsent == nil,
                     snapshot:sidebarSnapshot,theme:sidebarTheme,localize:{ui($0)},allowsContentPan:true,onWillOpen:{UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder),to:nil,from:nil,for:nil)},
                     onDismissed:{menuFocused=true},onSelect:route) {
         NavigationStack(path:$path) {
@@ -469,7 +478,7 @@ import CatpawImageComposer
             #endif
         }
         #if DEBUG
-        .onAppear { probe.start();probe.update(model) }
+        .onAppear { probe.start();probe.update(model);InteractionFrameProbe.shared.start() }
         .onChange(of:model.draft) { _, _ in probe.update(model) }
         .onChange(of:model.session?.turns.last?.lastSequence) { _, _ in probe.update(model) }
         .overlay(alignment:.topTrailing) { if probe.enabled && CatpawDebugPresentation.showFixtureBadge() && P0ExperienceFixture.launchEnvironment["CATPAW_QA_VISUAL_REVIEW"] != "1" { VStack {
