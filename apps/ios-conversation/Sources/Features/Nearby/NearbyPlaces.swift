@@ -23,7 +23,9 @@ import CoreLocation
         }
         // Radius widens once when fewer than NearbyRules.minResults came back.
         var found: [MKMapItem] = []
+        var usedRadius = NearbyRules.radii[0]
         for radius in NearbyRules.radii {
+            usedRadius = radius
             let req = MKLocalSearch.Request()
             req.naturalLanguageQuery = query
             req.region = MKCoordinateRegion(center: origin, latitudinalMeters: radius, longitudinalMeters: radius)
@@ -56,7 +58,7 @@ import CoreLocation
             if let phone = item.phoneNumber, let tel = NearbyRules.telURL(phone) { row["phone"] = .string(phone); row["tel_url"] = .string(tel) }
             rows.append(.object(row))
         }
-        let why = NearbyRules.why(prefs: prefs, mode: mode, modeFromArg: NearbyRules.Mode(rawValue: argMode) != nil, originNote: "起点是你当前的真实位置")
+        let why = NearbyRules.why(prefs: prefs, mode: mode, modeFromArg: NearbyRules.Mode(rawValue: argMode) != nil, originNote: "起点是你当前的真实位置", radius: usedRadius)
         return .init(call_id: call.call_id, status: .ok, data: ["places": .array(rows), "count": .number(Double(rows.count)), "mode": .string(mode.rawValue), "why": .string(why),
             "memory_ids": .list(prefs.cited.map(\.id))])
     }
