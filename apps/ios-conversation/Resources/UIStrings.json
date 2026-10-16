@@ -6526,5 +6526,21 @@
   "已在本机关闭，待同步": {
     "en": "Off on this phone, waiting to sync",
     "zh-Hans": "已在本机关闭，待同步"
+  },
+  "实际生效：开启": {
+    "en": "In effect: on",
+    "zh-Hans": "实际生效：开启"
+  },
+  "实际生效：关闭": {
+    "en": "In effect: off",
+    "zh-Hans": "实际生效：关闭"
+  },
+  "实际生效：关闭（结果未确认，已按关闭处理）": {
+    "en": "In effect: off (result unconfirmed, treated as off)",
+    "zh-Hans": "实际生效：关闭（结果未确认，已按关闭处理）"
+  },
+  "实际生效：关闭（有记忆库已关闭）": {
+    "en": "In effect: off (a memory library is off)",
+    "zh-Hans": "实际生效：关闭（有记忆库已关闭）"
   }
 }

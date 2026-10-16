@@ -88,12 +88,18 @@ enum MemoryRecallGate {
     func update(id: String, content: String) async throws
     func forget(ids: [String]) async throws
     func setUseMemory(_ on: Bool) async throws
+    /// Codex PR91 v3-2: the 使用记忆 choice with its client sequence; returns the server's resulting use_memory.
+    func setUseMemory(_ on: Bool, seq: Int64) async throws -> Bool
     func setAutoSave(_ on: Bool) async throws
     func clearAll() async throws
     /// Undo of a `memory_saved` receipt. `undoToken` is the plan §6 token when the server sends one.
     func undoSave(memoryID: String, undoToken: String?) async throws
     /// Create a real library item (shown + deletable in Settings › 记忆). Returns the new id.
     func create(kind: String, content: String) async throws -> String
+}
+extension MemoryLibraryBackend {
+    /// Backends without a server sequence (local library): apply in order; the result is the requested value.
+    func setUseMemory(_ on: Bool, seq: Int64) async throws -> Bool { try await setUseMemory(on); return on }
 }
 extension MemoryLibraryBackend {
     func create(kind: String, content: String) async throws -> String { throw MemoryLibraryError.unsupported }
