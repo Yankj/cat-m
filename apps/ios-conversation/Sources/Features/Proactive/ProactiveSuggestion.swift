@@ -8,7 +8,7 @@ import Foundation
 ///   "actions":["create_reminder","notify_attendees","snooze","dismiss"],"signals":[{"kind":"calendar","text":"…"}]}`
 struct ProactiveSuggestion: Codable, Sendable, Equatable, Identifiable {
     enum Action: String, Codable, Sendable, CaseIterable { case create_reminder, notify_attendees, snooze, dismiss }
-    enum Status: String, Codable, Sendable { case pending, done, snoozed, dismissed }
+    typealias Status = ProactiveItemStatus
     struct MemoryRef: Codable, Sendable, Equatable, Identifiable { let id: String; let content: String }
     struct Signal: Codable, Sendable, Equatable { let kind: String; let text: String }
     struct Taken: Codable, Sendable, Equatable {
@@ -61,7 +61,7 @@ struct ProactiveSuggestion: Codable, Sendable, Equatable, Identifiable {
     var allEffectsDone: Bool { ProactiveActionStates.allEffectsDone(effectiveActions.map(\.rawValue), actionStates) }
 }
 
-enum ProactiveEngineError: Error, Equatable { case remindersDenied, writeFailed, smsUnavailable, snoozeNotScheduled, undoUnknown }
+enum ProactiveEngineError: Error, Equatable { case remindersDenied, writeFailed, smsUnavailable, snoozeNotScheduled, undoFailed, undoUnknown }
 
 @MainActor protocol ProactiveSuggestionBackend: AnyObject {
     func list() async throws -> [ProactiveSuggestion]
@@ -176,12 +176,58 @@ enum ProactiveEngineError: Error, Equatable { case remindersDenied, writeFailed,
         do {
             let after = try await backend.undo(s.id); items[s.id] = after
             errorKey = after.snoozeRestoreFailed ? "已撤销，但没能重新设置稍后提醒，请重新选择" : nil   // Codex PR90g #2
-        } catch let e as ProactiveEngineError where e == .undoUnknown { errorKey = "没能确认提醒是否已删除，未做改动" }   // p90i S2
+        } catch let e as ProactiveEngineError where e == .undoFailed { errorKey = "提醒没有删掉，状态保持不变，请稍后重试" }
+        catch let e as ProactiveEngineError where e == .undoUnknown { errorKey = "没能确认提醒是否已删除，未做改动" }   // p90i S2
         catch { errorKey = "没有完成，请稍后重试" }
     }
-    func feedback(_ value: ProactiveFeedback, _ s: ProactiveSuggestion) async { try? await backend.feedback(value, on: s.id) }
+    enum FeedbackOutcome: Equatable { case synced, queued }
+    /// Codex P0-4: the result is surfaced (待同步) instead of swallowed.
+    func feedback(_ value: ProactiveFeedback, _ s: ProactiveSuggestion) async -> FeedbackOutcome {
+        do { try await backend.feedback(value, on: s.id); return .synced } catch { return .queued }
+    }
     func sorted(_ status: ProactiveSuggestion.Status) -> [ProactiveSuggestion] {
         items.values.filter { $0.effectiveStatus == status || (status == .pending && $0.effectiveStatus == .snoozed) }
             .sorted { ($0.createdAt ?? .distantPast) > ($1.createdAt ?? .distantPast) }
     }
+}
+
+/// Codex P0-4: feedback ledger per account in L2 (survives restart, wiped at sign-out), mirrored to the server.
+@MainActor final class ProactiveFeedbackSync {
+    static let shared = ProactiveFeedbackSync()
+    static let recordKey = "proactive.feedback-ledger.v1"
+    enum SyncError: Error { case queued }
+    private(set) var ledger = ProactiveFeedbackLedger()
+    private var loadedFor: UUID?
+
+    private func ensureLoaded() {
+        guard let store = L2SecureStore.current else { ledger = ProactiveFeedbackLedger(); loadedFor = nil; return }
+        guard loadedFor != store.userID else { return }
+        ledger = store.get(ProactiveFeedbackLedger.self, forKey: Self.recordKey) ?? ProactiveFeedbackLedger()
+        loadedFor = store.userID
+    }
+    private func persist() { if loadedFor != nil { L2SecureStore.current?.put(ledger, forKey: Self.recordKey) } }
+
+    func gate(decision: String, confidence: Double, trigger: String) -> String {
+        ensureLoaded(); return ledger.gate(decision: decision, confidence: confidence, trigger: trigger)
+    }
+    /// Records locally first, then posts {value} to suggestions/{serverID}/feedback; throws `.queued` when not synced.
+    func submit(_ value: ProactiveFeedback, suggestionID: String, trigger: String, serverID: String?) async throws {
+        ensureLoaded()
+        if ledger.record(value, suggestionID: suggestionID, trigger: trigger, serverID: serverID) { persist() }
+        try await sync(suggestionID)
+    }
+    /// Retries every queued entry whose server id is known now.
+    func retryPending(serverIDs: [String: String]) async {
+        ensureLoaded()
+        for e in ledger.pendingSync {
+            if e.serverID == nil, let sid = serverIDs[e.suggestionID] { ledger.attach(serverID: sid, to: e.suggestionID); persist() }
+            try? await sync(e.suggestionID)
+        }
+    }
+    private func sync(_ suggestionID: String) async throws {
+        guard let e = ledger.pendingSync.first(where: { $0.suggestionID == suggestionID }) else { return }
+        guard let sid = e.serverID, await ProactiveEngine.post("suggestions/\(sid)/feedback", ["value": e.value.rawValue]) != nil else { throw SyncError.queued }
+        ledger.markSynced(suggestionID); persist()
+    }
+    func reset() { ledger = ProactiveFeedbackLedger(); loadedFor = nil }
 }

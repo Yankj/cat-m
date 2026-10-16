@@ -6,6 +6,7 @@ import SwiftUI
     @ObservedObject private var store = ProactiveSuggestionStore.shared
     @State private var memoryOpen = false
     @State private var sent: ProactiveFeedback?
+    @State private var feedbackState: ProactiveSuggestionStore.FeedbackOutcome?
     @Environment(\.dismiss) private var dismiss
     @Environment(\.locale) private var locale
     private func ui(_ k: String, _ a: [String] = []) -> String { AppLanguage(locale: locale).ui(k, arguments: a) }
@@ -51,7 +52,7 @@ import SwiftUI
                         HStack(spacing: 8) { feedbackButtons }
                         VStack(alignment: .leading, spacing: 6) { feedbackButtons }
                     }
-                    if sent != nil { Text(ui("谢谢，小猫记下了")).font(CatpawTypography.Role.secondary.font).foregroundStyle(CatpawColors.secondary) }
+                    if sent != nil { Text(ui(feedbackState == .queued ? "已记在本机，暂未同步，稍后自动重试" : feedbackState == .synced ? "谢谢，小猫记下了" : "正在记下…")).font(CatpawTypography.Role.secondary.font).foregroundStyle(CatpawColors.secondary) }
                 }
             }
             .navigationTitle(ui("为什么找你")).navigationBarTitleDisplayMode(.inline)
@@ -64,7 +65,7 @@ import SwiftUI
 
     @ViewBuilder private var feedbackButtons: some View {
         ForEach(ProactiveFeedback.allCases, id: \.self) { f in
-            Button { sent = f; Task { await store.feedback(f, s) } } label: {
+            Button { sent = f; Task { feedbackState = await store.feedback(f, s) } } label: {
                 Label(ui(Self.feedbackKey(f)), systemImage: sent == f ? "checkmark.circle.fill" : Self.feedbackSymbol(f))
                     .font(CatpawTypography.Role.secondary.font).foregroundStyle(CatpawColors.ink)
                     .padding(.horizontal, 10).padding(.vertical, 8)

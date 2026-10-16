@@ -42,6 +42,26 @@ enum DeviceToolContract {
                                                          "message": .string("The app restarted during this action; it may or may not have happened. Ask the user to check before retrying.")])
     }
 
+    /// Codex P0-4: an external-URL handoff only *requests* the other app; a timeout is unknown, never success.
+    static func handoffResult(_ outcome: DeviceHandoffOutcome, callID: String, extra: [String: DeviceCallValue] = [:], refusedReason: String? = nil) -> DeviceCallResult {
+        switch outcome {
+        case .opened:
+            return .init(call_id: callID, status: .ok, data: extra.merging(["handoff": .string("requested")]) { a, _ in a })
+        case .timedOut:
+            return .init(call_id: callID, status: .error, data: extra.merging(["reason": .string("handoff_unknown"), "retryable": .bool(false),
+                "message": .string("The open request was sent but iOS did not confirm it. Ask the user whether it opened before retrying.")]) { _, b in b })
+        case .refused:
+            var d = extra; d["reason"] = .string(refusedReason ?? "handoff_refused")
+            return .init(call_id: callID, status: .error, data: d)
+        }
+    }
+    /// Receipt wording for handoff results (nil → the card's normal wording).
+    static func receiptKey(confirmKey: String, status: DeviceCallStatus, data: [String: DeviceCallValue]?) -> String? {
+        if status == .ok, data?["handoff"] == .string("requested") { return "已请求打开" }
+        if status != .ok, data?["reason"] == .string("handoff_unknown") { return "已请求打开，结果未知" }
+        return nil
+    }
+
     /// shop_open: app scheme + https fallback per platform. meituan → imeituan:// (NoBug P0-4), unknown → taobao.
     static func shopURLs(platform raw: String, query: String) -> (app: URL?, web: URL?) {
         let q = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
@@ -69,3 +89,6 @@ enum DeviceCallDates {
     }
     static func format(_ date: Date) -> String { ISO8601DateFormatter().string(from: date) }
 }
+
+/// Result of handing a URL to iOS.
+enum DeviceHandoffOutcome: Sendable, Equatable { case opened, timedOut, refused }
