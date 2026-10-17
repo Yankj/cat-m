@@ -318,8 +318,9 @@ export class ChatService {
         if(blocked.length){
           for(const {call,result} of blocked)messages.push({role:'tool',tool_call_id:call.id,content:JSON.stringify(result)});
           await this.repository.transaction(async tx=>{const {t}=await this.live(tx,env);
-            // P1-1: never the raw arguments — only title/time keys (cut to 40 chars) plus a digest; bounded entries and bytes.
-            const saved=await tx.put(env.owner,'native-chat-turns',{...t,parallel_blocked:boundedParallelBlocked(t.parallel_blocked,blocked.map(({call,result})=>({call_id:String(call.id).slice(0,160),name:String(call.name).slice(0,80),args:whitelistedArgs(call.arguments),args_hash:hash({name:call.name,arguments:call.arguments}),status:result.status})))});
+            // P1-1: never the raw arguments — only title/time keys (cut to 40 chars); bounded entries and bytes. No args digest:
+            // an unsalted hash of low-entropy args (phone numbers) is brute-forceable offline, and nothing reads it (NoBug R3 P2).
+            const saved=await tx.put(env.owner,'native-chat-turns',{...t,parallel_blocked:boundedParallelBlocked(t.parallel_blocked,blocked.map(({call,result})=>({call_id:String(call.id).slice(0,160),name:String(call.name).slice(0,80),args:whitelistedArgs(call.arguments),status:result.status})))});
             await this.beforeCommit(tx,env,saved);});
         }
         if(round.calls.some(c=>c.name==='propose_memory_v1')){
