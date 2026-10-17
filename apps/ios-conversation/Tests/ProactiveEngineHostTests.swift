@@ -294,39 +294,63 @@ import UserNotifications
         let later = await ProactiveEngine.shared.reconcileQuarantine()
         XCTAssertEqual(later, .hold)
         XCTAssertTrue(ProactiveEngine.shared.hasQuarantine, "kept past the old TTL"); XCTAssertNil(ProactiveLocalBackend.load()[legacy.id], "never handed to this account")
-        // Released only by the user's own decision (the #89 decision UI calls this), under the current token.
-        XCTAssertTrue(await ProactiveEngine.shared.releaseQuarantineByUser())
-        XCTAssertFalse(ProactiveEngine.shared.hasQuarantine); XCTAssertNotNil(ProactiveLocalBackend.load()[legacy.id], "the user claimed it")
-        XCTAssertEqual(ProactiveEngine.shared.serverIDs[legacy.id], "srv-up-2")
+        // Still kept after a sign-out / another account (never deleted; released only on its own proof).
+        AccountEpoch.shared.activate(account: "XCTEST-B"); ProactiveEngine.shared.claimData(for: "XCTEST-B")
+        _ = await ProactiveEngine.shared.reconcileQuarantine()
+        XCTAssertTrue(ProactiveEngine.shared.hasQuarantine, "kept across accounts"); XCTAssertNil(ProactiveLocalBackend.load()[legacy.id])
     }
 
-    // MARK: p90i P1-a — account switch through the real sign-in entry: the old account's unsynced ops and reminders are
-    // parked under it (never executed under the new account, never silently cleared).
-    func testSwitchParksOldAccountsOpsViaRealSignIn() async throws {
+    // MARK: p90i P1-a (user standard 08:50) — app-managed data is bound to its account and managed automatically: on a
+    // switch the old account's unsynced ops / inbox / context / generations are parked under it; when THAT account signs
+    // in again they are restored and synced under it. Another account never sees or sends them. Nothing is dropped.
+    func testSwitchParksAndOwnerReloginRestoresAndSyncsViaRealSignIn() async throws {
         ProactiveEngine.registerAccountObserver()
         let a = UUID(), b = UUID()
         await login(a)
         let ca = card("xctest-pa-"); ProactiveSuggestionStore.shared.adopt(ca)
-        _ = try await ProactiveLocalBackend().perform(.dismiss, on: ca.id)        // offline: queued, unsynced
+        ProactiveEngine.shared.adoptCloudIdentity(local: ca.id, server: "srv-pa")
+        _ = try await ProactiveLocalBackend().perform(.dismiss, on: ca.id)        // offline (setUp transport → nil): queued, unsynced
         let cs = card("xctest-ps-"); ProactiveSuggestionStore.shared.adopt(cs)
-        _ = try await ProactiveLocalBackend().perform(.snooze, on: cs.id)         // a scheduled reminder
-        let keyA = a.uuidString.lowercased()
+        ProactiveEngine.shared.adoptCloudIdentity(local: cs.id, server: "srv-ps")
+        _ = try await ProactiveLocalBackend().perform(.snooze, on: cs.id)
+        let genA = ProactiveEngine.shared.operationID(ca.id, "dismiss")
         XCTAssertTrue(ProactiveEngine.shared.syncQueue.items.contains { $0.op.local == ca.id })
+        // B signs in: nothing of A is visible or sendable; A's data is parked under A, not dropped.
         await login(b)
         XCTAssertFalse(ProactiveEngine.shared.syncQueue.items.contains { $0.op.local == ca.id || $0.op.local == cs.id }, "nothing of A is sendable under B")
-        calls = []; ProactiveEngine.shared.transport = { [weak self] path, _, _ in self?.calls.append(path); return ["ok": true] }
-        await ProactiveEngine.shared.drainSync(); await settle()
-        XCTAssertTrue(calls.isEmpty, "A's ops never sent under B")
         XCTAssertNil(ProactiveLocalBackend.load()[ca.id]); XCTAssertNil(ProactiveLocalBackend.load()[cs.id])
-        let parked = try XCTUnwrap(ProactiveEngine.shared.parkedOps(for: keyA))
-        XCTAssertTrue(parked.contains { $0.local == ca.id && $0.action == "dismiss" }, "A's dismiss parked (\(parked))")
-        XCTAssertTrue(parked.contains { $0.local == cs.id && $0.action == "snooze" }, "A's snooze parked")
-        XCTAssertNotNil(ProactiveEngine.shared.parkedInbox(for: keyA)[cs.id], "A's card (with its snooze until) kept for re-arming")
-        // A comes back: still parked (default keep; the user decides via #89's API), not auto-executed.
-        await login(a)
+        let listedB = try await ProactiveLocalBackend().list()
+        XCTAssertFalse(listedB.contains { $0.id == ca.id || $0.id == cs.id }, "B never sees A's cards")
+        XCTAssertNil(ProactiveEngine.shared.serverIDs[ca.id], "B does not resolve A's server ids")
+        var sent: [(String, String)] = []
+        ProactiveEngine.shared.transport = { path, _, token in sent.append((path, token.account)); return ["ok": true] }
+        ProactiveClock.now = { Self.day.addingTimeInterval(3600) }                     // past any retry backoff
         await ProactiveEngine.shared.drainSync(); await settle()
-        XCTAssertFalse(calls.contains { $0.contains(ca.id) }, "not executed without the user's decision")
-        XCTAssertNotNil(ProactiveEngine.shared.parkedOps(for: keyA))
+        XCTAssertTrue(sent.isEmpty, "A's ops never sent under B (\(sent))")
+        XCTAssertNotNil(ProactiveEngine.shared.parkedOps(for: a.uuidString), "parked under A")
+        // A signs in again: its inbox, context, generations and ops come back and are synced under A.
+        await login(a)
+        XCTAssertNotNil(ProactiveLocalBackend.load()[ca.id], "A's inbox restored"); XCTAssertNotNil(ProactiveLocalBackend.load()[cs.id])
+        XCTAssertEqual(ProactiveEngine.shared.operationID(ca.id, "dismiss"), genA, "A's generations restored")
+        await ProactiveEngine.shared.drainSync(); await settle()
+        let paths = sent.map(\.0)
+        XCTAssertTrue(paths.contains("suggestions/srv-pa/action") && paths.contains("suggestions/srv-ps/action"), "A's parked ops synced (\(paths))")
+        XCTAssertTrue(sent.allSatisfy { $0.1.caseInsensitiveCompare(a.uuidString) == .orderedSame }, "only under A")
+        XCTAssertNil(ProactiveEngine.shared.parkedOps(for: a.uuidString), "nothing left parked for A")
+        XCTAssertFalse(ProactiveEngine.shared.syncQueue.items.contains { $0.op.local == ca.id || $0.op.local == cs.id }, "nothing stuck")
+    }
+    /// p90i: EventKit items the app created are outside the app — a switch never deletes or edits them; they are recorded
+    /// as pending a user decision (#89's list) under the old account.
+    func testSwitchLeavesEventKitRemindersAndRecordsThemForDecision() async throws {
+        let c = card("xctest-ek-")
+        var done = c; done.status = .done; done.taken = [.init(action: .create_reminder, at: ProactiveClock.now(), outcome: .succeeded)]
+        ProactiveSuggestionStore.shared.adopt(done); ProactiveLocalBackend.save(done)
+        ProactiveEngine.shared.recordPendingReminderForTest(c.id, operationID: "op-\(c.id)-create_reminder")
+        AccountEpoch.shared.activate(account: "XCTEST-B"); ProactiveEngine.shared.claimData(for: "XCTEST-B")
+        let pending = ProactiveEngine.shared.externalPendingDecision(for: "XCTEST-A")
+        XCTAssertEqual(pending.map(\.suggestionID), [c.id]); XCTAssertEqual(pending.first?.operationID, "op-\(c.id)-create_reminder")
+        XCTAssertEqual(pending.first?.kind, "eventkit_reminder")
+        XCTAssertTrue(ProactiveEngine.shared.externalPendingDecision(for: "XCTEST-B").isEmpty)
     }
     /// p90i (三角 trial S5): server ids are partitioned per account; B never resolves A's mapping.
     func testServerIDsPartitionedByAccount() async throws {
