@@ -322,13 +322,19 @@ import UserNotifications
 
     // MARK: Codex PR90f #1 — unknown owner → quarantine; released only on evidence, else expired.
     private func legacyDevice(stamps: [String], serverID: String? = nil) -> ProactiveSuggestion {
-        let legacy = card("xctest-up-"); ProactiveLocalBackend.save(legacy)
+        let legacy = card("xctest-up-"); plantLegacyPlaintextInbox([legacy])   // pre-v1.1 unowned data is plaintext, never sealed
         for (i, a) in stamps.enumerated() {
             ProactiveEngine.shared.syncQueue.enqueue(.init(local: legacy.id, action: "dismiss", operationID: "op-up-\(i)"), key: "op-up-\(i)", account: a, group: legacy.id)
         }
         if let serverID { UserDefaults.standard.set([legacy.id: serverID], forKey: "catpaw.proactive.serverIDs.v1") }
         UserDefaults.standard.removeObject(forKey: ProactiveDataOwner.key)        // what the previous build left behind
         return legacy
+    }
+    /// v1.1 (R2/R3): `ProactiveLocalBackend.save` now writes the active account's sealed L2 record, which the unknown-owner
+    /// quarantine deliberately never copies (R2 P2-3). What an unowned previous build left behind is the plaintext inbox.
+    private func plantLegacyPlaintextInbox(_ cards: [ProactiveSuggestion]) {
+        let all = Dictionary(uniqueKeysWithValues: cards.map { ($0.id, $0) })
+        UserDefaults.standard.set(try? JSONEncoder().encode(all), forKey: ProactiveLocalBackend.storageKey)
     }
     private func assertQuarantined(_ legacy: ProactiveSuggestion, file: StaticString = #filePath, line: UInt = #line) async throws {
         XCTAssertTrue(ProactiveEngine.shared.hasQuarantine, file: file, line: line)
@@ -720,7 +726,7 @@ import UserNotifications
     // MARK: Codex PR90g #1 — per-record evidence: one proven record never releases another.
     func testQuarantineReleasesOnlyTheProvenRecord() async throws {
         let mine = card("xctest-qa-"), other = card("xctest-qb-")
-        ProactiveLocalBackend.save(mine); ProactiveLocalBackend.save(other)
+        plantLegacyPlaintextInbox([mine, other])   // pre-v1.1 unowned data is plaintext, never sealed
         ProactiveEngine.shared.syncQueue.enqueue(.init(local: mine.id, action: "dismiss", operationID: "op-qa"), key: "op-qa", account: "XCTEST-A", group: mine.id)
         ProactiveEngine.shared.syncQueue.enqueue(.init(local: other.id, action: "dismiss", operationID: "op-qb"), key: "op-qb", account: "XCTEST-OTHER", group: other.id)
         UserDefaults.standard.set([mine.id: "srv-qa", other.id: "srv-qb"], forKey: "catpaw.proactive.serverIDs.v1")
