@@ -275,7 +275,7 @@ import EventKit
             var r = DeviceCallResult(call_id: c.call_id, status: .ok, data: ["event_id": .string("stale-" + UUID().uuidString)]); r.savedIdentity = .init(title: title, start: date); return r
         }
         ledger.record(call: dup, result: result(dup, title: "PR89 gate", at: start), token: token)
-        XCTAssertEqual(ledger.undo(callID: dup.call_id), .unknown)
+        do { let u = await ledger.undo(callID: dup.call_id); XCTAssertEqual(u, .unknown) }
         XCTAssertFalse(ledger.isUndone(callID: dup.call_id))
         XCTAssertEqual(events(with: [dup.call_id], around: start), 2, "neither the original nor the copy was deleted")
         // 2) single marker match, identity differs (title) → unknown, kept.
@@ -283,7 +283,7 @@ import EventKit
         defer { cleanup([other.call_id], around: start) }
         try add(other.call_id, title: "someone else's copy", at: start)
         ledger.record(call: other, result: result(other, title: "PR89 gate", at: start), token: token)
-        XCTAssertEqual(ledger.undo(callID: other.call_id), .unknown)
+        do { let u = await ledger.undo(callID: other.call_id); XCTAssertEqual(u, .unknown) }
         XCTAssertFalse(ledger.isUndone(callID: other.call_id))
         XCTAssertEqual(events(with: [other.call_id], around: start), 1)
         // 3) single marker match, start moved → unknown, kept.
@@ -291,26 +291,26 @@ import EventKit
         defer { cleanup([moved.call_id], around: start) }
         try add(moved.call_id, title: "PR89 gate", at: start.addingTimeInterval(7200))
         ledger.record(call: moved, result: result(moved, title: "PR89 gate", at: start), token: token)
-        XCTAssertEqual(ledger.undo(callID: moved.call_id), .unknown)
+        do { let u = await ledger.undo(callID: moved.call_id); XCTAssertEqual(u, .unknown) }
         XCTAssertEqual(events(with: [moved.call_id], around: start), 1)
         // 4) p89h-2: missing identity is never a wildcard — single marker match, no saved identity → unknown, kept.
         let legacy = calCall("xctest-ledger-noid-" + UUID().uuidString, start)
         defer { cleanup([legacy.call_id], around: start) }
         try add(legacy.call_id, title: "PR89 gate", at: start)
         ledger.record(call: legacy, result: .init(call_id: legacy.call_id, status: .ok, data: ["event_id": .string("stale-" + UUID().uuidString)]), token: token)
-        XCTAssertEqual(ledger.undo(callID: legacy.call_id), .unknown)
+        do { let u = await ledger.undo(callID: legacy.call_id); XCTAssertEqual(u, .unknown) }
         XCTAssertEqual(events(with: [legacy.call_id], around: start), 1)
         // 5) p89h-2: empty saved title must equal the object's title (no "empty = any"); saved start nil vs object start → unknown.
         let blank = calCall("xctest-ledger-blank-" + UUID().uuidString, start)
         defer { cleanup([blank.call_id], around: start) }
         try add(blank.call_id, title: "someone's copy", at: start)
         ledger.record(call: blank, result: result(blank, title: "", at: start), token: token)
-        XCTAssertEqual(ledger.undo(callID: blank.call_id), .unknown)
+        do { let u = await ledger.undo(callID: blank.call_id); XCTAssertEqual(u, .unknown) }
         let nostart = calCall("xctest-ledger-nostart-" + UUID().uuidString, start)
         defer { cleanup([nostart.call_id], around: start) }
         try add(nostart.call_id, title: "PR89 gate", at: start)
         ledger.record(call: nostart, result: result(nostart, title: "PR89 gate", at: nil), token: token)
-        XCTAssertEqual(ledger.undo(callID: nostart.call_id), .unknown)
+        do { let u = await ledger.undo(callID: nostart.call_id); XCTAssertEqual(u, .unknown) }
         XCTAssertEqual(events(with: [blank.call_id, nostart.call_id], around: start), 2)
     }
 
@@ -345,11 +345,11 @@ import EventKit
         defer { try? FileManager.default.removeItem(at: url) }
         let ledger = DeviceLedger(url: url, epoch: DeviceCallGate.epoch, items: EventKitLedgerItemStore(store: Self.sharedStore))
         ledger.record(call: call, result: first, token: try XCTUnwrap(DeviceCallGate.epoch.capture()))
-        XCTAssertEqual(ledger.undo(callID: call.call_id), .unknown, "id resolves but the marker is not unique → unknown")
+        do { let u = await ledger.undo(callID: call.call_id); XCTAssertEqual(u, .unknown, "id resolves but the marker is not unique → unknown") }
         XCTAssertFalse(ledger.isUndone(callID: call.call_id))
         XCTAssertEqual(events(with: [call.call_id], around: start), 2, "nothing deleted")
         store.reset(); if let c = store.event(withIdentifier: copyID) { try store.remove(c, span: .thisEvent, commit: true) }
-        XCTAssertEqual(ledger.undo(callID: call.call_id), .undone, "counter-case: unique + identity match → really deleted")
+        do { let u = await ledger.undo(callID: call.call_id); XCTAssertEqual(u, .undone, "counter-case: unique + identity match → really deleted") }
         XCTAssertEqual(events(with: [call.call_id], around: start), 0)
     }
 
@@ -380,14 +380,14 @@ import EventKit
         defer { try? FileManager.default.removeItem(at: url) }
         let ledger = DeviceLedger(url: url, epoch: DeviceCallGate.epoch, items: EventKitLedgerItemStore(store: Self.sharedStore))
         ledger.record(call: call, result: first, token: try XCTUnwrap(DeviceCallGate.epoch.capture()))
-        XCTAssertEqual(ledger.undo(callID: id), .unknown, "id resolves but marker not unique → unknown")
+        do { let u = await ledger.undo(callID: id); XCTAssertEqual(u, .unknown, "id resolves but marker not unique → unknown") }
         let count3 = await marked().count; XCTAssertEqual(count3, 2)
         try store.remove(copy, commit: true)
-        XCTAssertEqual(ledger.undo(callID: id), .undone, "counter-case: unique + identity → deleted")
+        do { let u = await ledger.undo(callID: id); XCTAssertEqual(u, .undone, "counter-case: unique + identity → deleted") }
         let count4 = await marked().count; XCTAssertEqual(count4, 0)
     }
 
-    /// Codex p89e-3: REAL EventKit adapter. A stale id (moved / re-synced item) is resolved by the call marker and removed;
+    /// Codex p89e-3 / p89i-2: REAL EventKit adapter. A stale id is NOT resolved by marker (unknown, kept);
     /// an id that can't be resolved and has no marker stays `.unknown` (never "already gone", never marked undone).
     func testRealEventKitLedgerAdapterKeepsUnknownWhenAbsenceUnproven() async throws {
         try need(.event); try need(.reminder)
@@ -404,17 +404,20 @@ import EventKit
         var movedResult = DeviceCallResult(call_id: moved.call_id, status: .ok, data: ["event_id": .string("stale-" + UUID().uuidString)])
         movedResult.savedIdentity = .init(title: "PR89 gate", start: e.startDate)   // p89h-2: identity of the object actually saved
         ledger.record(call: moved, result: movedResult, token: token)
-        XCTAssertEqual(ledger.undo(callID: moved.call_id), .undone)
-        XCTAssertEqual(events(with: [moved.call_id], around: start), 0, "the real item was removed")
+        // p89i-2: no marker fallback any more — an object found only by marker is exactly what a user copy looks like.
+        do { let u = await ledger.undo(callID: moved.call_id); XCTAssertEqual(u, .unknown, "stale id → unknown, never a marker stand-in") }
+        XCTAssertFalse(ledger.isUndone(callID: moved.call_id))
+        XCTAssertEqual(events(with: [moved.call_id], around: start), 1, "the marker-matched object was NOT removed")
+        cleanup([moved.call_id], around: start)
         // 2) unresolvable id, no marker anywhere → unknown, not undone.
         let ghost = calCall("xctest-ledger-ghost-" + UUID().uuidString, start)
         ledger.record(call: ghost, result: .init(call_id: ghost.call_id, status: .ok, data: ["event_id": .string("gone-" + UUID().uuidString)]), token: token)
-        XCTAssertEqual(ledger.undo(callID: ghost.call_id), .unknown)
+        do { let u = await ledger.undo(callID: ghost.call_id); XCTAssertEqual(u, .unknown) }
         XCTAssertFalse(ledger.isUndone(callID: ghost.call_id))
         // 3) reminder id that doesn't resolve → unknown.
         let rem = DeviceCall(call_id: "xctest-ledger-rem-" + UUID().uuidString, tool: "reminder_create", args: ["title": .string("x")], confirm: .card, ttl_sec: 600)
         ledger.record(call: rem, result: .init(call_id: rem.call_id, status: .ok, data: ["reminder_id": .string("gone-" + UUID().uuidString)]), token: token)
-        XCTAssertEqual(ledger.undo(callID: rem.call_id), .unknown)
+        do { let u = await ledger.undo(callID: rem.call_id); XCTAssertEqual(u, .unknown) }
         XCTAssertFalse(ledger.isUndone(callID: rem.call_id))
     }
 
@@ -434,7 +437,7 @@ import EventKit
     }
 
     /// Codex p89c-b: the ledger is per account; another account can't see or undo; sign-out clears; uncertain → unknown.
-    func testLedgerIsPerAccount() throws {
+    func testLedgerIsPerAccount() async throws {
         final class FakeItems: DeviceLedgerItemStore {
             var removed: [String] = []; var next: DeviceLedgerRemoval = .removed
             func remove(kind: DeviceLedgerEntry.Kind, itemID: String) -> DeviceLedgerRemoval { removed.append(itemID); return next }
@@ -449,22 +452,205 @@ import EventKit
         XCTAssertEqual(ledger.active.map(\.id), ["led-1"])
         epoch.activate(account: "B")
         XCTAssertTrue(ledger.active.isEmpty, "B cannot see A's entries")
-        XCTAssertEqual(ledger.undo(callID: "led-1"), .unknown, "B cannot undo A's item")
+        do { let u = await ledger.undo(callID: "led-1"); XCTAssertEqual(u, .unknown, "B cannot undo A's item") }
         XCTAssertTrue(items.removed.isEmpty)
         ledger.record(call: DeviceCall(call_id: "led-late", tool: "calendar_create", args: [:], confirm: .card, ttl_sec: 600),
                       result: .init(call_id: "led-late", status: .ok, data: ["event_id": .string("evt-late")]), token: tokA)
         epoch.activate(account: "A")
         XCTAssertEqual(ledger.active.map(\.id), ["led-1"], "a late result with A's old token is not recorded")
         items.next = .permissionRevoked
-        XCTAssertEqual(ledger.undo(callID: "led-1"), .unknown, "p89d-5 no permission → unknown, not alreadyGone")
+        do { let u = await ledger.undo(callID: "led-1"); XCTAssertEqual(u, .unknown, "p89d-5 no permission → unknown, not alreadyGone") }
         items.next = .undetermined
-        XCTAssertEqual(ledger.undo(callID: "led-1"), .unknown, "p89d-5 unreadable store → unknown")
+        do { let u = await ledger.undo(callID: "led-1"); XCTAssertEqual(u, .unknown, "p89d-5 unreadable store → unknown") }
         XCTAssertFalse(ledger.isUndone(callID: "led-1"), "an unknown outcome never marks the entry undone")
         items.next = .removed
-        XCTAssertEqual(ledger.undo(callID: "led-1"), .undone); XCTAssertEqual(items.removed, ["evt-A", "evt-A", "evt-A"])
+        do { let u = await ledger.undo(callID: "led-1"); XCTAssertEqual(u, .undone); XCTAssertEqual(items.removed, ["evt-A", "evt-A", "evt-A"]) }
         ledger.signOut(account: "A")
         XCTAssertTrue(ledger.entries.isEmpty)
         XCTAssertTrue(DeviceLedger(url: url, epoch: epoch, items: items).entries.isEmpty, "cleared on disk too")
+    }
+
+    // MARK: p89i — receipts are the only trust source; unprovable → user decision; async undo outside the lock.
+
+    private func tempLedger(_ items: DeviceLedgerItemStore? = nil) -> (DeviceLedger, URL) {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("ledger-p89i-\(UUID().uuidString).json")
+        return (DeviceLedger(url: url, epoch: DeviceCallGate.epoch, items: items ?? EventKitLedgerItemStore(store: Self.sharedStore)), url)
+    }
+    private func tempReceipts() -> DeviceCreationReceipts { DeviceCreationReceipts(url: FileManager.default.temporaryDirectory.appendingPathComponent("receipts-\(UUID().uuidString).json")) }
+    private func markedEvent(_ id: String, title: String, at date: Date) throws -> String {
+        let e = EKEvent(eventStore: store); e.title = title; e.startDate = date; e.endDate = date.addingTimeInterval(1800)
+        e.notes = DeviceToolContract.callMarker(id); e.calendar = store.defaultCalendarForNewEvents
+        try store.save(e, span: .thisEvent, commit: true); return try XCTUnwrap(e.eventIdentifier)
+    }
+    private func exists(_ eventID: String) -> Bool { store.reset(); return store.event(withIdentifier: eventID) != nil }
+    /// A DeviceCallStore as it is found after a kill: the call persisted `.running` for this account, nothing else.
+    private func coldStore(with call: DeviceCall) throws -> DeviceCallStore {
+        let suite = "xctest.cold." + UUID().uuidString, defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        let rec = [call.call_id: DeviceCallStore.Record(phase: .running, call: call, updatedAt: .now, account: "xctest-user")]
+        defaults.set(try JSONEncoder().encode(rec), forKey: DeviceCallStore.storageKey)
+        return DeviceCallStore(defaults: defaults)
+    }
+
+    /// Codex p89i-1 counter-example on the REAL cold-restore chain: persisted `.running` → new Store → resumeInterrupted →
+    /// Router.lookup → finish/recorder → Ledger → undo. A marker match is never trusted on its own.
+    func testColdRestoreNeverTrustsAMarkerMatchAlone() async throws {
+        try need(.event)
+        let receipts = tempReceipts(), router = DeviceToolRouter(store: Self.sharedStore, receipts: receipts)
+        let (ledger, url) = tempLedger(); defer { try? FileManager.default.removeItem(at: url) }
+        DeviceCallHub.executor = router; DeviceCallHub.submitter = DeviceResultSubmitterStub()
+        DeviceCallHub.recorder = { c, r, t in ledger.record(call: c, result: r, token: t) }
+        defer { DeviceCallHub.recorder = nil }
+        // A) original created (receipt written), ledger never written (kill); user copies + edits the copy, deletes the original.
+        let startA = Date().addingTimeInterval(21 * 86400)
+        let a = calCall("xctest-cold-copy-" + UUID().uuidString, startA, title: "p89i cold")
+        DeviceCallGate.receive(a)
+        let created = await router.execute(a, credential: try XCTUnwrap(credential(a))); XCTAssertEqual(created.status, .ok)
+        let originalID = try XCTUnwrap(created.data?["event_id"]?.text)
+        let copyID = try markedEvent(a.call_id, title: "p89i cold (copy, edited)", at: startA.addingTimeInterval(3600))
+        store.reset(); try store.remove(try XCTUnwrap(store.event(withIdentifier: originalID)), span: .thisEvent, commit: true)
+        let stA = try coldStore(with: a); XCTAssertTrue(stA.isInterrupted(a.call_id))
+        await stA.resumeInterrupted(a.call_id)
+        XCTAssertNil(ledger.entry(callID: a.call_id), "the copy found by marker is not recorded as Catpaw's item")
+        switch stA.phase(a.call_id) {
+        case .reportFailed(let r), .done(let r): XCTAssertNotEqual(r.status, .ok, "restore reported unknown, not success")
+        default: XCTFail("restore did not finish")
+        }
+        let attemptA = await ledger.undoAttempt(callID: a.call_id); XCTAssertEqual(attemptA, .done(.unknown))
+        XCTAssertTrue(exists(copyID), "the copy was never deleted")
+        store.reset(); if let c = store.event(withIdentifier: copyID) { try store.remove(c, span: .thisEvent, commit: true) }
+        // B) crash between save and receipt: a marked event, no receipt → unknown, untouched.
+        let startB = Date().addingTimeInterval(22 * 86400)
+        let b = calCall("xctest-cold-noreceipt-" + UUID().uuidString, startB, title: "p89i noreceipt")
+        let bID = try markedEvent(b.call_id, title: "p89i noreceipt", at: startB)
+        let stB = try coldStore(with: b); await stB.resumeInterrupted(b.call_id)
+        XCTAssertNil(ledger.entry(callID: b.call_id)); XCTAssertTrue(exists(bID))
+        store.reset(); if let e = store.event(withIdentifier: bID) { try store.remove(e, span: .thisEvent, commit: true) }
+        // C) counter-case: receipt + intact original → recovered with the RECEIPT identity → undo really deletes it.
+        let startC = Date().addingTimeInterval(23 * 86400)
+        let c = calCall("xctest-cold-ok-" + UUID().uuidString, startC, title: "p89i ok")
+        DeviceCallGate.receive(c)
+        let made = await router.execute(c, credential: try XCTUnwrap(credential(c))); let cID = try XCTUnwrap(made.data?["event_id"]?.text)
+        let stC = try coldStore(with: c); await stC.resumeInterrupted(c.call_id)
+        let entry = try XCTUnwrap(ledger.entry(callID: c.call_id), "recovered from the receipt")
+        XCTAssertEqual(entry.saved, receipts.receipt(c.call_id, account: "xctest-user")?.identity)
+        let attemptC = await ledger.undoAttempt(callID: c.call_id); XCTAssertEqual(attemptC, .done(.undone))
+        XCTAssertFalse(exists(cID))
+    }
+
+    /// Codex p89i-2: explicit query rule — far-future events, copies outside the window, moved objects, copies inside.
+    /// Unprovable cases become a USER decision (candidates; default keep), each choice's effect asserted.
+    func testQueryRuleAndUserDecisionForUnprovableUndo() async throws {
+        try need(.event)
+        let receipts = tempReceipts(), router = DeviceToolRouter(store: Self.sharedStore, receipts: receipts)
+        let (ledger, url) = tempLedger(); defer { try? FileManager.default.removeItem(at: url) }
+        let token = try XCTUnwrap(DeviceCallGate.epoch.capture())
+        func make(_ prefix: String, _ start: Date) async throws -> (DeviceCall, String) {
+            let call = calCall(prefix + UUID().uuidString, start, title: "p89i rule"); DeviceCallGate.receive(call)
+            let r = await router.execute(call, credential: try XCTUnwrap(credential(call))); XCTAssertEqual(r.status, .ok)
+            ledger.record(call: call, result: r, token: token); return (call, try XCTUnwrap(r.data?["event_id"]?.text))
+        }
+        // 1) far future (500 days): window is around the SAVED start → proven → deleted.
+        let (far, farID) = try await make("xctest-far-", Date().addingTimeInterval(500 * 86400))
+        let farAttempt = await ledger.undoAttempt(callID: far.call_id); XCTAssertEqual(farAttempt, .done(.undone)); XCTAssertFalse(exists(farID))
+        // 2) copy OUTSIDE the window (+400 d): not counted; the original is proven by id + identity → deleted; copy untouched.
+        let s2 = Date().addingTimeInterval(24 * 86400)
+        let (out, outID) = try await make("xctest-outwin-", s2)
+        let farCopy = try markedEvent(out.call_id, title: "p89i rule", at: s2.addingTimeInterval(400 * 86400))
+        let outAttempt = await ledger.undoAttempt(callID: out.call_id); XCTAssertEqual(outAttempt, .done(.undone))
+        XCTAssertFalse(exists(outID)); XCTAssertTrue(exists(farCopy), "a copy outside the window can never pass the id check")
+        store.reset(); if let e = store.event(withIdentifier: farCopy) { try store.remove(e, span: .thisEvent, commit: true) }
+        // 3) moved by the user (+1 day): identity differs → user decision, nothing deleted until the choice.
+        let s3 = Date().addingTimeInterval(25 * 86400)
+        let (moved, movedID) = try await make("xctest-moved-", s3)
+        store.reset(); let ev = try XCTUnwrap(store.event(withIdentifier: movedID)); ev.startDate = s3.addingTimeInterval(86400); ev.endDate = s3.addingTimeInterval(88200)
+        try store.save(ev, span: .thisEvent, commit: true)
+        guard case .needsChoice(let c3) = await ledger.undoAttempt(callID: moved.call_id) else { return XCTFail("moved → the user decides") }
+        XCTAssertEqual(c3.map(\.id), [movedID]); XCTAssertTrue(c3[0].isRecorded); XCTAssertTrue(exists(movedID), "prompt only, nothing deleted")
+        ledger.keepAll(callID: moved.call_id); XCTAssertTrue(exists(movedID), "都保留 → kept"); XCTAssertFalse(ledger.isUndone(callID: moved.call_id))
+        XCTAssertEqual(ledger.undoChosen(callID: moved.call_id, itemID: movedID), .undone); XCTAssertFalse(exists(movedID))
+        XCTAssertTrue(ledger.isUndone(callID: moved.call_id), "the recorded object was chosen → undone")
+        // 4) copy INSIDE the window: two candidates; choosing the copy deletes only the copy and does not mark undone.
+        let s4 = Date().addingTimeInterval(26 * 86400)
+        let (dup, dupID) = try await make("xctest-dupchoice-", s4)
+        let copyID = try markedEvent(dup.call_id, title: "p89i rule", at: s4.addingTimeInterval(3600))
+        guard case .needsChoice(let c4) = await ledger.undoAttempt(callID: dup.call_id) else { return XCTFail("copy → the user decides") }
+        XCTAssertEqual(Set(c4.map(\.id)), [dupID, copyID]); XCTAssertEqual(c4.first { $0.isRecorded }?.id, dupID)
+        XCTAssertTrue(exists(dupID) && exists(copyID), "prompt only")
+        XCTAssertEqual(ledger.undoChosen(callID: dup.call_id, itemID: copyID), .undone)
+        XCTAssertFalse(exists(copyID)); XCTAssertTrue(exists(dupID)); XCTAssertFalse(ledger.isUndone(callID: dup.call_id))
+        let after = await ledger.undoAttempt(callID: dup.call_id); XCTAssertEqual(after, .done(.undone), "unique again → proven"); XCTAssertFalse(exists(dupID))
+        XCTAssertTrue(DeviceLedger.decisions.contains { $0.contains("\(moved.call_id): user kept all") })
+        XCTAssertTrue(DeviceLedger.decisions.contains { $0.contains("\(dup.call_id): user chose \(copyID)") })
+    }
+
+    /// Codex p89i-3: the reminder query is async (no semaphore) and runs OUTSIDE the account lock; sign-out / switch /
+    /// edit during the query → the final commit refuses, nothing deleted. Permission gone → the user is asked.
+    func testReminderUndoQueryOutsideLockAndLogoutDuringQuery() async throws {
+        try need(.reminder)
+        let receipts = tempReceipts(), router = DeviceToolRouter(store: Self.sharedStore, receipts: receipts)
+        func make(_ title: String) async throws -> (DeviceCall, String) {
+            let call = DeviceCall(call_id: "xctest-remq-" + UUID().uuidString, tool: "reminder_create", args: ["title": .string(title)], confirm: .card, ttl_sec: 600)
+            DeviceCallGate.receive(call); let r = await router.execute(call, credential: try XCTUnwrap(credential(call))); XCTAssertEqual(r.status, .ok)
+            return (call, try XCTUnwrap(r.data?["reminder_id"]?.text))
+        }
+        func alive(_ id: String) -> Bool { store.reset(); return store.calendarItem(withIdentifier: id) != nil }
+        for scenario in ["signOut", "switch", "edited"] {
+            DeviceCallGate.epoch = AccountEpoch(account: "xctest-user")
+            let (call, rid) = try await make("p89i rem " + scenario)
+            let adapter = EventKitLedgerItemStore(store: Self.sharedStore)
+            let (ledger, url) = tempLedger(adapter); defer { try? FileManager.default.removeItem(at: url) }
+            let token = try XCTUnwrap(DeviceCallGate.epoch.capture())
+            ledger.record(call: call, result: { var r = DeviceCallResult(call_id: call.call_id, status: .ok, data: ["reminder_id": .string(rid)]); r.savedIdentity = receipts.receipt(call.call_id, account: "xctest-user")?.identity; return r }(), token: token)
+            var ran = false
+            adapter.afterQuery = {
+                ran = true
+                XCTAssertTrue(DeviceCallGate.epoch.isValid(token), "the account lock is free during the query (isValid takes it)")
+                switch scenario {
+                case "signOut": DeviceCallGate.epoch.signOut()
+                case "switch": DeviceCallGate.epoch.activate(account: "someone-else")
+                default: if let r = self.store.calendarItem(withIdentifier: rid) as? EKReminder { r.title = "edited by user"; try? self.store.save(r, commit: true) }
+                }
+            }
+            let o = await ledger.undo(callID: call.call_id)
+            XCTAssertTrue(ran, scenario); XCTAssertEqual(o, .unknown, scenario); XCTAssertTrue(alive(rid), "\(scenario): nothing deleted")
+            if let r = store.calendarItem(withIdentifier: rid) as? EKReminder { try? store.remove(r, commit: true) }
+        }
+        // Permission revoked → the user is asked (fake store: the simulator can't revoke in-process); nothing removed.
+        final class NoPermission: DeviceLedgerItemStore {
+            var removed = 0
+            func remove(kind: DeviceLedgerEntry.Kind, itemID: String) -> DeviceLedgerRemoval { removed += 1; return .removed }
+            func prepareRemoval(kind: DeviceLedgerEntry.Kind, itemID: String, callID: String, identity: DeviceSavedIdentity?) async -> DeviceLedgerRemovalPlan { .decided(.permissionRevoked) }
+        }
+        DeviceCallGate.epoch = AccountEpoch(account: "xctest-user")
+        let np = NoPermission(); let (ledger, url) = tempLedger(np); defer { try? FileManager.default.removeItem(at: url) }
+        let call = DeviceCall(call_id: "xctest-noperm-" + UUID().uuidString, tool: "reminder_create", args: ["title": .string("x")], confirm: .card, ttl_sec: 600)
+        ledger.record(call: call, result: .init(call_id: call.call_id, status: .ok, data: ["reminder_id": .string("r1")]), token: try XCTUnwrap(DeviceCallGate.epoch.capture()))
+        let attempt = await ledger.undoAttempt(callID: call.call_id)
+        XCTAssertEqual(attempt, .needsPermission); XCTAssertEqual(np.removed, 0); XCTAssertFalse(ledger.isUndone(callID: call.call_id))
+    }
+
+    /// p89i product decision: logout with device operations in flight lists them; each choice applied deterministically + logged.
+    func testInFlightLogoutChoicesAreAppliedAndLogged() async throws {
+        let call = calCall("xctest-inflight-" + UUID().uuidString, Date().addingTimeInterval(86400)); DeviceCallGate.receive(call)
+        let st = try coldStore(with: call)
+        let items = DeviceInFlight.items(store: st, account: "xctest-user")
+        XCTAssertEqual(items.map(\.id), [call.call_id]); XCTAssertEqual(DeviceInFlight.label(items[0]), "进行中：添加日程「PR89 gate」")
+        XCTAssertTrue(DeviceInFlight.items(store: st, account: "other").isEmpty, "only this account's operations")
+        // keep, finishes within the deadline → left as is, grant untouched
+        Task { @MainActor in try? await Task.sleep(nanoseconds: 200_000_000); st.set(call.call_id, .done(.init(call_id: call.call_id, status: .ok))) }
+        let keep = await DeviceInFlight.apply(.keep, items: items, store: st, deadline: 5)
+        XCTAssertEqual(keep, ["logout choice=keep items=1", "keep \(call.call_id): finished/left as is"])
+        // keep, still running at the deadline → cancelled (and logged)
+        let c2 = calCall("xctest-inflight2-" + UUID().uuidString, Date().addingTimeInterval(86400)); DeviceCallGate.receive(c2)
+        let st2 = try coldStore(with: c2); let i2 = DeviceInFlight.items(store: st2, account: "xctest-user")
+        let late = await DeviceInFlight.apply(.keep, items: i2, store: st2, deadline: 0.3)
+        XCTAssertEqual(late.last, "keep \(c2.call_id): still running at deadline → cancelled"); XCTAssertFalse(DeviceCallGate.isLive(c2.call_id))
+        // cancelAll → grant revoked now, logged
+        let c3 = calCall("xctest-inflight3-" + UUID().uuidString, Date().addingTimeInterval(86400)); DeviceCallGate.receive(c3)
+        XCTAssertTrue(DeviceCallGate.isLive(c3.call_id))
+        let st3 = try coldStore(with: c3)
+        let cancel = await DeviceInFlight.apply(.cancelAll, items: DeviceInFlight.items(store: st3, account: "xctest-user"), store: st3)
+        XCTAssertEqual(cancel, ["logout choice=cancelAll items=1", "cancel running \(c3.call_id) calendar_create"]); XCTAssertFalse(DeviceCallGate.isLive(c3.call_id))
     }
 
     func testCalendarCreateDedupesByCallID() async throws {
@@ -735,7 +921,7 @@ actor HeldStreamUIBackend: ConversationBackend {
         let r2 = await router.execute(w2, credential: c2)
         XCTAssertEqual(r2.status, .error)
         ledger.record(call: w2, result: .init(call_id: id2, status: .ok, data: ["event_id": .string("late")]), token: c2.token)
-        XCTAssertTrue(ledger.active.isEmpty); XCTAssertEqual(ledger.undo(callID: id1), .unknown)
+        XCTAssertTrue(ledger.active.isEmpty); do { let u = await ledger.undo(callID: id1); XCTAssertEqual(u, .unknown) }
         // EventKit: exactly the signed-in write landed.
         ek.reset()
         let all = ek.events(matching: ek.predicateForEvents(withStart: start.addingTimeInterval(-86400), end: start.addingTimeInterval(86400), calendars: nil))

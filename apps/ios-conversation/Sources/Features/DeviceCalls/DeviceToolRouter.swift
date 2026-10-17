@@ -14,7 +14,9 @@ import UserNotifications
     static let tools: Set<String> = Set(DeviceToolContract.clientTools)
     private let store: EKEventStore
     /// Additive: tests share one store (many EKEventStore instances → EventKit error 1021).
-    init(store: EKEventStore = EKEventStore()) { self.store = store; super.init() }
+    /// p89i-1: creation receipts (trusted identity source for restore / dedupe). Tests may inject an isolated one.
+    var receipts: DeviceCreationReceipts
+    init(store: EKEventStore = EKEventStore(), receipts: DeviceCreationReceipts? = nil) { self.store = store; self.receipts = receipts ?? .shared; super.init() }
     private var composeContinuation: CheckedContinuation<DeviceCallStatus, Never>?
     /// p89g-4 test seams (production: real MessageUI availability / controllers / top-controller presentation).
     /// Tests use them to drive sms_compose / mail_compose through the REAL commit-gated `present` on a simulator without MessageUI.
@@ -88,17 +90,31 @@ import UserNotifications
             let marker = DeviceToolContract.callMarker(call.call_id)
             let start = d("start") ?? Date().addingTimeInterval(3600), end = d("end") ?? start.addingTimeInterval(3600)
             // NoBug P0-3: dedupe by call_id — a relaunch after kill must not write a second event.
-            let window = store.predicateForEvents(withStart: start.addingTimeInterval(-86400), end: end.addingTimeInterval(86400), calendars: nil)
-            let marked = store.events(matching: window).filter { $0.notes?.contains(marker) == true }
+            // p89i-2: marker search uses DeviceEventKitRule (±1 year around the requested start); uniqueness only refuses.
+            let account = credential.token.account
+            let marked = DeviceEventKitRule.markedEvents(store, marker: marker, around: start)
             if marked.count > 1 {   // p89h-3: a copy exists — never pick one, never write another
                 Self.trace?("dedupe-ambiguous:calendar")
                 return done(.error, ["reason": .string("duplicate_marker_ambiguous"), "retryable": .bool(false)])
             }
-            if let existing = marked.first {
+            if let rc = receipts.receipt(call.call_id, account: account) {
+                // p89i-1: created before (receipt) → never written again; trusted only as the receipt's own object.
+                guard let e = store.event(withIdentifier: rc.itemID), e.notes?.contains(marker) == true,
+                      DeviceEventKitRule.matches(rc.identity, title: e.title, start: e.startDate) else {
+                    Self.trace?("dedupe-unverified:calendar")
+                    return done(.error, ["reason": .string("original_unverifiable"), "retryable": .bool(false)])
+                }
                 Self.trace?("dedupe-hit:calendar")
                 if let refused = save({}) { return refused }   // p89e-2: a dedupe hit reports success only through the commit gate
-                var r = done(.ok, ["event_id": .string(existing.eventIdentifier ?? ""), "deduped": .bool(true)], open: "calshow:\(Int(existing.startDate.timeIntervalSinceReferenceDate))")
-                r.savedIdentity = .init(title: existing.title ?? "", start: existing.startDate); return r
+                var r = done(.ok, ["event_id": .string(rc.itemID), "deduped": .bool(true)], open: "calshow:\(Int(e.startDate.timeIntervalSinceReferenceDate))")
+                r.savedIdentity = rc.identity; return r
+            }
+            if let existing = marked.first {
+                // p89i-1: marker match without a receipt (crash between save and receipt) → not written again, but the
+                // matched object gets NO trusted identity: the ledger can show it, undo stays unknown.
+                Self.trace?("dedupe-untrusted:calendar")
+                if let refused = save({}) { return refused }
+                return done(.ok, ["event_id": .string(existing.eventIdentifier ?? ""), "deduped": .bool(true)], open: "calshow:\(Int(existing.startDate.timeIntervalSinceReferenceDate))")
             }
             let e = EKEvent(eventStore: store)
             e.title = s("title"); e.location = s("location").isEmpty ? nil : s("location")
@@ -106,7 +122,14 @@ import UserNotifications
             e.startDate = start; e.endDate = end
             if case .array(let alarms)? = a["alarms"] { for case .number(let m) in alarms { e.addAlarm(EKAlarm(relativeOffset: m * 60)) } }
             e.calendar = store.defaultCalendarForNewEvents
-            if let refused = save({ try store.save(e, span: .thisEvent, commit: true) }) { return refused }   // p89d-2 single commit gate
+            // p89i: permission turned off while the card / dedupe ran → stop, nothing written; the card asks the user.
+            guard EKEventStore.authorizationStatus(for: .event) == .fullAccess else { return done(.denied, ["reason": .string("permission_revoked")]) }
+            let receipts = self.receipts
+            if let refused = save({
+                try store.save(e, span: .thisEvent, commit: true)
+                // p89i-1: the receipt is written in the same gated closure, from the object just saved.
+                receipts.put(.init(callID: call.call_id, kind: .event, itemID: e.eventIdentifier ?? "", identity: .init(title: e.title ?? "", start: e.startDate), account: account, createdAt: Date()))
+            }) { return refused }   // p89d-2 single commit gate
             var created = done(.ok, ["event_id": .string(e.eventIdentifier ?? "")], open: "calshow:\(Int(e.startDate.timeIntervalSinceReferenceDate))")
             created.savedIdentity = .init(title: e.title ?? "", start: e.startDate)   // p89h-2: the saved object's identity, not the args
             return created
@@ -114,16 +137,27 @@ import UserNotifications
             // No public alarm API: alarm_set becomes a reminder with an absolute alarm (stated on the card).
             guard await access(.reminder) else { return done(.denied) }
             if let refused = gate() { return refused }   // p89d-5
-            switch await reminderMatches(call.call_id) {   // NoBug P0-3 dedupe; p89h-3 uniqueness
-            case .many:
+            let account = credential.token.account, marker = DeviceToolContract.callMarker(call.call_id)
+            let found = await DeviceEventKitRule.markedReminders(store, marker: marker)   // p89i-2: all reminders, no window
+            if found.count > 1 {   // p89h-3 uniqueness
                 Self.trace?("dedupe-ambiguous:reminder")
                 return done(.error, ["reason": .string("duplicate_marker_ambiguous"), "retryable": .bool(false)])
-            case .one(let existing):
+            }
+            if let rc = receipts.receipt(call.call_id, account: account) {
+                guard let e = store.calendarItem(withIdentifier: rc.itemID) as? EKReminder, e.notes?.contains(marker) == true,
+                      DeviceEventKitRule.matches(rc.identity, title: e.title, start: DeviceSavedIdentity.due(e.dueDateComponents)) else {
+                    Self.trace?("dedupe-unverified:reminder")
+                    return done(.error, ["reason": .string("original_unverifiable"), "retryable": .bool(false)])
+                }
                 Self.trace?("dedupe-hit:reminder")
                 if let refused = save({}) { return refused }   // p89e-2: revoked while the fetch was suspended → refused, not "ok"
-                var r = done(.ok, ["reminder_id": .string(existing.id), "deduped": .bool(true)], open: "x-apple-reminderkit://")
-                r.savedIdentity = existing.identity; return r
-            case .none: break
+                var r = done(.ok, ["reminder_id": .string(rc.itemID), "deduped": .bool(true)], open: "x-apple-reminderkit://")
+                r.savedIdentity = rc.identity; return r
+            }
+            if let existing = found.first {   // p89i-1: no receipt → not rewritten, no trusted identity
+                Self.trace?("dedupe-untrusted:reminder")
+                if let refused = save({}) { return refused }
+                return done(.ok, ["reminder_id": .string(existing.id), "deduped": .bool(true)], open: "x-apple-reminderkit://")
             }
             let r = EKReminder(eventStore: store)
             r.title = call.tool == "alarm_set" ? (s("label").isEmpty ? "闹钟" : s("label")) : s("title")
@@ -132,7 +166,12 @@ import UserNotifications
             }
             r.calendar = store.calendars(for: .reminder).first { $0.title == s("list") } ?? store.defaultCalendarForNewReminders()
             r.notes = "Catpaw · " + DeviceToolContract.callMarker(call.call_id)
-            if let refused = save({ try store.save(r, commit: true) }) { return refused }   // p89d-2 single commit gate
+            guard EKEventStore.authorizationStatus(for: .reminder) == .fullAccess else { return done(.denied, ["reason": .string("permission_revoked")]) }   // p89i
+            let receipts = self.receipts
+            if let refused = save({
+                try store.save(r, commit: true)
+                receipts.put(.init(callID: call.call_id, kind: .reminder, itemID: r.calendarItemIdentifier, identity: .init(title: r.title ?? "", start: DeviceSavedIdentity.due(r.dueDateComponents)), account: account, createdAt: Date()))   // p89i-1
+            }) { return refused }   // p89d-2 single commit gate
             var created = done(.ok, ["reminder_id": .string(r.calendarItemIdentifier)], open: "x-apple-reminderkit://")
             created.savedIdentity = .init(title: r.title ?? "", start: DeviceSavedIdentity.due(r.dueDateComponents))   // p89h-2
             return created
@@ -186,39 +225,32 @@ import UserNotifications
         }
     }
 
-    /// Restart recovery (Codex PR #89): find the original item by call_id marker; never prompts, never writes.
+    /// Restart recovery (Codex PR #89): find the original item; never prompts, never writes.
+    /// p89i-1: trust comes ONLY from the creation receipt of the signed-in account: the receipt's own object (same id, our
+    /// marker, identity equal to the one read back at creation) and a unique marker under DeviceEventKitRule. No receipt,
+    /// id gone, identity changed (moved / edited) or a copy in range → nil (unknown). A marker match alone is never enough.
     func lookup(_ call: DeviceCall) async -> DeviceCallResult? {
         let marker = DeviceToolContract.callMarker(call.call_id)
+        guard let rc = receipts.receipt(call.call_id, account: DeviceCallGate.currentAccount()) else { return nil }
         switch call.tool {
         case "calendar_create":
-            guard EKEventStore.authorizationStatus(for: .event) == .fullAccess else { return nil }
-            let start = DeviceCallDates.parse(call.args["start"]?.text ?? "") ?? Date()
-            let window = store.predicateForEvents(withStart: start.addingTimeInterval(-86400 * 2), end: start.addingTimeInterval(86400 * 2), calendars: nil)
-            let marked = store.events(matching: window).filter { $0.notes?.contains(marker) == true }
-            guard marked.count == 1, let e = marked.first else { return nil }   // p89h-3: none OR several (copy) → unknown, never a guess
-            var r = DeviceCallResult(call_id: call.call_id, status: .ok, data: ["event_id": .string(e.eventIdentifier ?? ""), "deduped": .bool(true), "recovered": .bool(true)])
-            r.savedIdentity = .init(title: e.title ?? "", start: e.startDate); return r
+            guard rc.kind == .event, EKEventStore.authorizationStatus(for: .event) == .fullAccess, let start = rc.identity.start,
+                  DeviceEventKitRule.markedEvents(store, marker: marker, around: start).count == 1,
+                  let e = store.event(withIdentifier: rc.itemID), e.notes?.contains(marker) == true,
+                  DeviceEventKitRule.matches(rc.identity, title: e.title, start: e.startDate) else { return nil }
+            var r = DeviceCallResult(call_id: call.call_id, status: .ok, data: ["event_id": .string(rc.itemID), "deduped": .bool(true), "recovered": .bool(true)])
+            r.savedIdentity = rc.identity; return r
         case "reminder_create", "alarm_set":
-            guard EKEventStore.authorizationStatus(for: .reminder) == .fullAccess, case .one(let m) = await reminderMatches(call.call_id) else { return nil }   // p89h-3
-            var r = DeviceCallResult(call_id: call.call_id, status: .ok, data: ["reminder_id": .string(m.id), "deduped": .bool(true), "recovered": .bool(true)])
-            r.savedIdentity = m.identity; return r
+            guard rc.kind == .reminder, EKEventStore.authorizationStatus(for: .reminder) == .fullAccess else { return nil }
+            let found = await DeviceEventKitRule.markedReminders(store, marker: marker)
+            guard found.count == 1, found[0].id == rc.itemID,
+                  let e = store.calendarItem(withIdentifier: rc.itemID) as? EKReminder, e.notes?.contains(marker) == true,
+                  DeviceEventKitRule.matches(rc.identity, title: e.title, start: DeviceSavedIdentity.due(e.dueDateComponents)) else { return nil }
+            var r = DeviceCallResult(call_id: call.call_id, status: .ok, data: ["reminder_id": .string(rc.itemID), "deduped": .bool(true), "recovered": .bool(true)])
+            r.savedIdentity = rc.identity; return r
         default: return nil
         }
     }
-
-    enum ReminderMatch { case none, one((id: String, identity: DeviceSavedIdentity)), many }
-    /// p89h-3: every marker lookup is uniqueness-checked; several matches (user copy) are ambiguous, never "the first".
-    private func reminderMatches(_ callID: String) async -> ReminderMatch {
-        let marker = DeviceToolContract.callMarker(callID)
-        let predicate = store.predicateForReminders(in: nil)
-        let found: [(String, DeviceSavedIdentity)] = await withCheckedContinuation { c in
-            store.fetchReminders(matching: predicate) { rs in
-                c.resume(returning: (rs ?? []).filter { $0.notes?.contains(marker) == true }.map { ($0.calendarItemIdentifier, DeviceSavedIdentity(title: $0.title ?? "", start: DeviceSavedIdentity.due($0.dueDateComponents))) })
-            }
-        }
-        switch found.count { case 0: return .none; case 1: return .one((found[0].0, found[0].1)); default: return .many }
-    }
-
 
     /// Proactive 「告诉参会人」: present MessageUI. Never invent sent/done — Simulator `canSendText=false` → `.unavailable`.
     enum NotifyComposeOutcome: String, Sendable { case sent, cancelled, unavailable, error }
