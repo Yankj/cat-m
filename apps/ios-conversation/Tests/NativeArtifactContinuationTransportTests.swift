@@ -129,7 +129,8 @@ final class ChatRuntimeBusyRetryTests: XCTestCase {
         XCTAssertEqual(ChatRuntimeBusyRetry.retryAfter(header: "2", body: body(["error": ["retry_after_seconds": 9]])), 2, "the header wins")
         XCTAssertNil(ChatRuntimeBusyRetry.retryAfter(header: "soon", body: body(["error": ["retry_after_seconds": true]])))
         XCTAssertEqual((1...7).map { ChatRuntimeBusyRetry.delay(attempt: $0, retryAfter: nil) }, [1, 2, 4, 8, 16, 16, 16])
-        XCTAssertEqual(ChatRuntimeBusyRetry.delay(attempt: 1, retryAfter: 120), 30, "Retry-After is clamped")
+        XCTAssertEqual(ChatRuntimeBusyRetry.delay(attempt: 1, retryAfter: 120), 60, "Retry-After is clamped to the backend's 1–60 s")
+        XCTAssertEqual(ChatRuntimeBusyRetry.delay(attempt: 4, retryAfter: 45), 45, "Retry-After wins over the backoff step")
     }
     func testQuietRetriesThenSucceedsWithoutSurfacingAnError() async throws {
         let sleeps = Sleeps(); var posts = 0
@@ -141,6 +142,17 @@ final class ChatRuntimeBusyRetryTests: XCTestCase {
         XCTAssertEqual(result, "admitted"); XCTAssertEqual(posts, 4)
         let waited = await sleeps.values
         XCTAssertEqual(waited, [1, 2, 7], "backoff 1 s, 2 s, then the server's Retry-After")
+    }
+    /// Coming backend fix: retryable:true + Retry-After 60 → one quiet 60 s wait fits the budget; a second does not.
+    func testBackendFixShapeRetryAfterSixtyUsesTheWholeBudgetOnce() async throws {
+        XCTAssertTrue(ChatRuntimeBusyRetry.isBusy(body(["schema_version": 1, "error": ["code": "chat_runtime_busy", "retryable": true, "reconciliation_required": false]])))
+        let sleeps = Sleeps(); var posts = 0
+        do {
+            _ = try await ChatRuntimeBusyRetry.run(post: { () async throws -> Int in posts += 1; throw ChatRuntimeBusyRetry.Busy(retryAfter: ChatRuntimeBusyRetry.retryAfter(header: "60", body: Data())) }, sleep: { await sleeps.add($0) })
+            XCTFail("must finally fail")
+        } catch ConversationDispatchFailure.notSent {}
+        let waited = await sleeps.values
+        XCTAssertEqual(waited, [60]); XCTAssertEqual(posts, 2)
     }
     func testGivesUpAsNotSentOnlyAfterTheSixtySecondBudget() async throws {
         let sleeps = Sleeps(); var posts = 0

@@ -1755,9 +1755,10 @@ public actor ChatAttachmentSendCoordinator {
     }
 }
 
-/// catpaw-api v48 `503 chat_runtime_busy`: always retryable on the client (the server flag says false today). Quiet
-/// exponential backoff 1, 2, 4, 8, 16, 16 s (a Retry-After header / retry_after_seconds wins, clamped 0.5–30 s) within a
-/// 60 s budget; only when the budget is spent does the send fail — as not sent, with a calm message.
+/// catpaw-api `503 chat_runtime_busy` (JSON, before the SSE stream starts): always retryable on the client — prod v48
+/// still sends `retryable:false`; the coming backend fix sends `retryable:true` + `Retry-After: 1–60`. Matched on the code
+/// string only. A Retry-After header (or retry_after_seconds) wins, clamped 0.5–60 s; otherwise quiet exponential backoff
+/// 1, 2, 4, 8, 16, 16 s. Total budget 60 s; only then does the send fail — as not sent, with a calm message.
 enum ChatRuntimeBusyRetry {
     static let code = "chat_runtime_busy"
     static let budget: TimeInterval = 60
@@ -1779,7 +1780,7 @@ enum ChatRuntimeBusyRetry {
         return nil
     }
     static func delay(attempt: Int, retryAfter: TimeInterval?) -> TimeInterval {
-        if let retryAfter { return min(max(retryAfter, 0.5), 30) }
+        if let retryAfter { return min(max(retryAfter, 0.5), 60) }
         return min(pow(2, Double(max(1, attempt) - 1)), 16)
     }
     /// `post` throws `Busy` for a busy refusal; any other result or error passes through unchanged.
