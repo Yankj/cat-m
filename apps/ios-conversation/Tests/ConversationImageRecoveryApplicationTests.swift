@@ -181,7 +181,7 @@ private actor ImageRecoveryHeldStore: ConversationImageByteStore {
 
 /// Image-upload rate-limit fix (2026-10-17): countdown/retry schedule, queue recovery, caption isolation.
 final class ConversationRateLimitRecoveryTests: XCTestCase {
-    private func turn(_ id: UUID = UUID(), _ state: ConversationTurnRecord.State, error: String? = nil) -> ConversationTurnRecord {
+    private func turn(_ state: ConversationTurnRecord.State, id: UUID = UUID(), error: String? = nil) -> ConversationTurnRecord {
         ConversationTurnRecord(id: id, request: ConversationTurnRequest(scope: Profiles.user, conversationID: UUID(), threadID: nil, operationID: id, epoch: 1, history: []), state: state, lastSequence: 2, error: error)
     }
     private func session(_ turns: [ConversationTurnRecord]) -> ConversationSession {
@@ -222,7 +222,7 @@ final class ConversationRateLimitRecoveryTests: XCTestCase {
         let id = UUID()
         var state = ConversationFollowupState(); state.paused = true; state.pauseReason = .recovery
         state.inflight = ConversationFollowup(id: id, text: "这张图里有什么？一句话")
-        let next = ConversationFollowupRecovery.normalized(state, session: session([turn(id, .failed, error: "rate_limited")]))
+        let next = ConversationFollowupRecovery.normalized(state, session: session([turn(.failed, id: id, error: "rate_limited")]))
         XCTAssertNotNil(next); XCTAssertNil(next?.inflight); XCTAssertEqual(next?.paused, false)
     }
     func testOtherPausesAreLeftAlone() {
