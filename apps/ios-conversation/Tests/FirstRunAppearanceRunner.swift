@@ -54,9 +54,10 @@ for s in FirstRunAppearance.Scheme.allCases {
 check(tokens.resolve(.color("background"), .dark) == 0x0E0C0A && tokens.resolve(.color("background"), .light) == 0xFFFCF8, "chat canvas light #FFFCF8 / dark #0E0C0A")
 check(tokens.resolve(.color("calmSecondary"), .light) == 0x5F5A55 && tokens.resolve(.color("calmSecondary"), .dark) == 0xB3ADA6, "splash secondary text #5F5A55 / #B3ADA6")
 check(tokens.resolve(.color("calmCTATop"), .light) == 0xC9501A && tokens.resolve(.color("calmCTABottom"), .light) == 0xB8440A, "CTA gradient #C9501A → #B8440A")
-// LaunchCanvas.colorset (the static launch screen, no logo) == the chat's first-frame colour in each mode.
+// LaunchCanvas.colorset and LaunchBackground.colorset (the launch canvases) == the chat's first-frame colour in each mode.
+for set in ["LaunchCanvas", "LaunchBackground"] {
 do {
-    let url = URL(fileURLWithPath: root + "/Resources/Assets.xcassets/LaunchCanvas.colorset/Contents.json")
+    let url = URL(fileURLWithPath: root + "/Resources/Assets.xcassets/\(set).colorset/Contents.json")
     let j = (try? JSONSerialization.jsonObject(with: Data(contentsOf: url))) as? [String: Any]
     var got: [String: UInt32] = [:]
     for c in (j?["colors"] as? [[String: Any]]) ?? [] {
@@ -65,10 +66,14 @@ do {
         let dark = ((c["appearances"] as? [[String: String]]) ?? []).contains { $0["value"] == "dark" }
         got[dark ? "dark" : "light"] = h("red") << 16 | h("green") << 8 | h("blue")
     }
-    check(got["light"] == tokens.resolve(.color("background"), .light) && got["dark"] == tokens.resolve(.color("background"), .dark), "LaunchCanvas \(got) == chat background")
+    check(got["light"] == tokens.resolve(.color("background"), .light) && got["dark"] == tokens.resolve(.color("background"), .dark), "\(set) \(got) == chat background")
+}
 }
 let storyboard = (try? String(contentsOfFile: root + "/Resources/LaunchScreen.storyboard", encoding: .utf8)) ?? ""
-check(!storyboard.contains("<image"), "launch screen has no logo image")
+// User direction 14:48 (replaces the 12:58 "no logo" rule): the launch screen draws 方块's 96 pt LaunchMark tile, centred on
+// the superview, on LaunchBackground — identical to CatpawLaunchMark's first frame.
+check(storyboard.contains("image=\"LaunchMark\"") && storyboard.contains("name=\"LaunchBackground\""), "launch screen draws LaunchMark on LaunchBackground")
+check(storyboard.contains("constant=\"96\"") && storyboard.contains("secondAttribute=\"centerX\"") && storyboard.contains("secondAttribute=\"centerY\""), "launch logo 96 pt, centred")
 // Spec hygiene: no translucent text (the brand label used ink at 0.72).
 for t in FirstRunAppearance.texts { check(t.fgAlpha == 1, "\(t.id) uses translucent text") }
 for sch in [FirstRunAppearance.Scheme.light, .dark] {
