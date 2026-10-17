@@ -22,7 +22,7 @@ const store = createPgStore(sql);
 const quietHours = parseQuietHours(env('CATPAW_PROACTIVE_QUIET_HOURS'));
 const dailyPushCap = Number(env('CATPAW_PROACTIVE_DAILY_PUSH_CAP') ?? 5) || 5;
 const log = (...a: unknown[]) => console.log('[catpaw-proactive]', ...a);
-// Same gate as catpaw-api: env allowlist OR feature_access.enrollments (unset env gate = 'allowlist'; 'true' = everyone).
+// Same gate as catpaw-api: env allowlist OR feature_access.enrollments (unset env gate = on for everyone; CATPAW_FEATURE_BLOCKLIST_SUBJECTS wins).
 const enrolled = createEnrollmentRegistry({ store: createPgEnrollmentStore(sql), log });
 const allows = (gate: string, uid: string, feature: string) => featureAllows(gate, cfg.featureAllowlist, uid, enrolled, feature);
 // Memory: B1 catpaw.agent-memory.v1 (same gate CATPAW_AGENT_MEMORY_ENABLED + allowlist/enrollment, same consent) via the adapter.

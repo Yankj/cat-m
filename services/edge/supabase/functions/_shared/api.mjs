@@ -112,8 +112,8 @@ export async function createCloudRuntime({repository,authenticate,config,retain=
  // relaxation of fresh commands/viewers or an automatic grant for legacy runs.
  runtime.facade.acceptedWorkRouteHash=config.routeHash;
  // A2: catpaw.task-tools.v1 in-process (same deploy bundle). Absent store => no task tools are offered.
- // Feature gates (docs/feature-gates.md): CATPAW_TASK_TOOLS_ENABLED (default on), CATPAW_GENERATIVE_UI_ENABLED (default off),
- // 'allowlist' restricts either to CATPAW_FEATURE_ALLOWLIST_SUBJECTS (demo/staging users) on the same deploy.
+ // Feature gates (docs/feature-gates.md): every CATPAW_*_ENABLED gate is on for everyone when unset; 'allowlist' restricts it to
+ // CATPAW_FEATURE_ALLOWLIST_SUBJECTS / DB enrollment; 'false'/'off' disables it. CATPAW_FEATURE_BLOCKLIST_SUBJECTS wins over all of these.
  // catpaw.feature-enrollment.v1: DB enrollment counts as allowlist membership (docs/feature-enrollment.md).
  const enrolled=enrollmentStore?createEnrollmentRegistry({store:enrollmentStore,log:(...a)=>diagnostic({event:'feature_enrollment',detail:a.join(' ')})}):null;runtime.enrollment=enrolled;
  if(enrolled){const gates={agent_memory:config.agentMemory,task_tools:config.taskTools,generative_ui:config.generativeUI,device_tools:config.deviceTools,proactive:config.proactive};

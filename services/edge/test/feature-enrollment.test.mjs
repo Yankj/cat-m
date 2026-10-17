@@ -19,10 +19,10 @@ function setup(storeOpts) {
   return { store, registry, svc, call, logs };
 }
 
-test('gate: unset env → allowlist (enrollment applies), explicit off stays off, env allowlist still works', () => {
+test('gate: unset env → on (2026-10-17), explicit allowlist uses enrollment, explicit off stays off', () => {
   assert.equal(readFeatureGate(undefined), 'off'); assert.equal(readFeatureGate('', 'allowlist'), 'allowlist'); assert.equal(readFeatureGate('false', 'allowlist'), 'off');
   const c = readConfig(() => undefined);
-  for (const k of ['agentMemory', 'taskTools', 'generativeUI', 'deviceTools', 'proactiveSuggestionsSSE', 'proactive']) assert.equal(c[k], 'allowlist', k);
+  for (const k of ['agentMemory', 'taskTools', 'generativeUI', 'deviceTools', 'proactiveSuggestionsSSE', 'proactive']) assert.equal(c[k], 'on', k);
   const enrolled = { has: (uid, f) => uid === U1 && f === 'agent_memory' };
   assert.ok(featureAllows('allowlist', new Set(), U1, enrolled, 'agent_memory'));
   assert.ok(!featureAllows('allowlist', new Set(), U1, enrolled, 'device_tools'));

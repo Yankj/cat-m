@@ -13,16 +13,24 @@
 
 Server env (Edge Function secrets of catpaw-api):
 
-| secret | values | default |
-|---|---|---|
-| `CATPAW_GENERATIVE_UI_ENABLED` | `true` · `allowlist` · unset/off | off |
-| `CATPAW_TASK_TOOLS_ENABLED` | `true` · `allowlist` · `off` | `true` (current behaviour) |
-| `CATPAW_PROACTIVE_SUGGESTIONS_SSE_ENABLED` | `true` · `allowlist` · unset/off (chat `proactive_suggestion` SSE; needs migrations `20261016030000`, `20261016040000`) | off |
-| `CATPAW_AGENT_MEMORY_ENABLED` | `true` · `allowlist` · unset/off (Wave 2 B1, needs migration `20261016090000`) | off |
-| `CATPAW_DEVICE_TOOLS_ENABLED` | `true` · `allowlist` · unset/off (Wave 2 B3, catpaw.device.v1; no migration) | off |
-| `CATPAW_FEATURE_ALLOWLIST_SUBJECTS` | comma-separated auth user UUIDs (demo/staging accounts) | empty |
+Default (user decision 2026-10-17 08:51): **every gate is on for everyone when unset**; a blocklist turns specific users off.
 
-- `allowlist` offers the tool only when `turn.subject_id` is in the list. Everyone else gets today's behaviour.
+| secret | values | default (unset/empty) |
+|---|---|---|
+| `CATPAW_TASK_TOOLS_ENABLED` | `true` · `allowlist` · `false`/`off` | on |
+| `CATPAW_GENERATIVE_UI_ENABLED` | `true` · `allowlist` · `false`/`off` | on |
+| `CATPAW_AGENT_MEMORY_ENABLED` | `true` · `allowlist` · `false`/`off` (needs the agent_memory migrations) | on |
+| `CATPAW_DEVICE_TOOLS_ENABLED` | `true` · `allowlist` · `false`/`off` (catpaw.device.v1; no migration) | on |
+| `CATPAW_PROACTIVE_SUGGESTIONS_SSE_ENABLED` | `true` · `allowlist` · `false`/`off` (chat `proactive_suggestion` SSE; needs `20261016030000`, `20261016040000`) | on |
+| `CATPAW_PROACTIVE_ENABLED` | `true` · `allowlist` · `false`/`off` (catpaw-proactive) | on |
+| `CATPAW_PROACTIVE_TOOLS_ENABLED` | anything but `false`/`off` creates the proactive store (bootstrap.ts) | on |
+| `CATPAW_FEATURE_ALLOWLIST_SUBJECTS` | comma-separated auth user UUIDs; only used by gates set to `allowlist` | empty |
+| `CATPAW_FEATURE_BLOCKLIST_SUBJECTS` | comma-separated auth user UUIDs: **off for every feature**, even when the gate is on, allowlisted or enrolled; invalid entries are ignored | empty |
+
+Parsing: trimmed, lower-cased; `true`/`1` → on, `allowlist` → allowlist, empty/unset → on, anything else (`false`, `off`, `yes`, typos) → off.
+Per-feature blocking is not supported (enrollment rows only grant); use the gate value or the global blocklist.
+
+- `allowlist` offers the tool only when `turn.subject_id` is in the allowlist or enrolled.
 - A1 (approval.v1) is a negotiated contract that changes nothing by itself: it only matters when a gated tool is
   offered, so gating the tools (A2, render_ui) gates A1 in practice.
 - The client still opts in with headers, so old builds are unaffected even for allowlisted users.
@@ -42,4 +50,4 @@ Worth it only for schema changes that must not touch production (e.g. the unappl
 4. Flipping any gate from `allowlist` to `true`.
 
 ## DB enrollment (catpaw.feature-enrollment.v1)
-Unset gates now mean `allowlist`, and a row in `feature_access.enrollments` counts as allowlist membership. See [feature-enrollment.md](feature-enrollment.md).
+A row in `feature_access.enrollments` counts as allowlist membership for gates set to `allowlist` (unset gates are on for everyone). See [feature-enrollment.md](feature-enrollment.md).
