@@ -19,7 +19,7 @@ import {validateVisionTurn} from './vision-contract.mjs';
 import {UI_CONTRACT,RENDER_UI,UI_DECISIONS,validateResponse,validateUIError,uiResult,uiBlockEvent,uiBlockUpdate,uiBlockResolve,uiPrompt,blockOf,GROUNDED_PROMPT,parseUIKinds,FOLLOWUP_PROMPT} from './generative-ui.mjs';import {toolResultsFrom,groundUIArgs,autoPlaceBlock,ungroundedResult} from './grounded-ui.mjs';
 import {agentMemoryPrompt} from '../../agent-memory/chat-tools.mjs';
 import {DEVICE_CONTRACT,parseDeviceTools,validateDeviceResult,deviceCallEvent,deviceResult,validateDeviceUndo,deviceUndoNote,DEVICE_UNDOABLE_TOOLS} from './device-call.mjs';
-import {withInterruptedTurn,withInteractionOutcomes,turnOutcomeNote} from './turn-outcome.mjs';
+import {withInterruptedTurn,withInteractionOutcomes,turnOutcomeNote,withLateDeviceReport} from './turn-outcome.mjs';
 import {APPROVAL_CONTRACT,gatedCalls,interruptFor,requestedEvent,resolvedEvent,pendingApprovals,validateDecision,settleExpired,resumedTurn,deniedResult,APPROVAL_PREFERENCES,preferenceID,isoAt} from './approval.mjs';
 const positive=v=>Number.isSafeInteger(v)&&v>0;
 const terminal=s=>s!=='running';
@@ -515,6 +515,19 @@ export class ChatService {
       const c=await this.conversation(tx,owner,cid,principal.subject_id,scopeID),t=await tx.get(owner,'native-chat-turns',tid);
       check(t&&t.conversation_id===cid&&t.scope_id===scopeID&&t.subject_id===principal.subject_id,404,'not_found');
       const original=(t.interrupts??[]).find(i=>i.interrupt_id===iid);check(original,404,'not_found');
+      // chat-context-1522 B2: the user moved on (next message superseded this turn) but the phone had already run the call.
+      // Accept its late report idempotently: the turn stays closed (no resume, no revision change), the interaction outcome
+      // becomes ok / user_declined, and the next turn is told what really happened.
+      if(original.kind==='device'&&original.status==='cancelled'&&original.cancel_reason==='superseded'){
+        if(original.late_operation_id===input.operation_id){check(original.late_request_hash===requestHash,409,'approval_operation_conflict');return {saved:t,it:original,resume:false,replayed:true};}
+        check(input.decision==='device_result',422,'approval_schema_invalid');check(!original.late_response,409,'approval_consumed');
+        check(original.args_hash===input.args_hash,409,'approval_stale');check(Date.parse(original.expires_at)>this.now(),409,'approval_expired');
+        const raw=await tx.get(owner,'native-chat-conversations',cid);check(raw&&!raw.content_redacted&&c.state==='active'&&c.grant_epoch===t.grant_epoch,409,'approval_grant_conflict');
+        const late={...original,late_response:clone(input.response),late_reported_at:isoAt(this.now()),late_operation_id:input.operation_id,late_request_hash:requestHash};
+        const saved=await tx.put(owner,'native-chat-turns',{...t,interrupts:t.interrupts.map(i=>i.interrupt_id===iid?late:i)});
+        await tx.put(owner,'native-chat-conversations',withLateDeviceReport(raw,saved,late));
+        return {saved,it:late,resume:false};
+      }
       if(original.decision_operation_id===input.operation_id){check(original.decision_request_hash===requestHash,409,'approval_operation_conflict');return {saved:t,it:original,resume:false,replayed:true};}
       const settled=settleExpired(t,this.now(),(x,type,data)=>this.event(x,type,data));let next=settled.turn;
       const it=next.interrupts.find(i=>i.interrupt_id===iid);
@@ -539,7 +552,9 @@ export class ChatService {
     });
     if(!r.replayed)this.notify(owner,r.saved);if(r.resume)this.startResumed(auth,trusted,cid,r.saved);
     if(r.expired)throw new ApiError(409,'approval_expired');
-    return {turn:r.saved,trusted,resumed:r.resume,afterSequence:Math.max(0,(r.it.resolved_sequence??r.saved.events.length)-1)};
+    // A late device report replays the superseded turn's tail from its approval_resolved (the turn is already terminal).
+    const lateFrom=r.it.late_operation_id?r.saved.events.findIndex(e=>e.type==='approval_resolved'&&e.data?.interrupt_id===iid):-1;
+    return {turn:r.saved,trusted,resumed:r.resume,afterSequence:lateFrom>=0?lateFrom:Math.max(0,(r.it.resolved_sequence??r.saved.events.length)-1)};
     }finally{await this.integration?.release?.(owner);}
   }
   // User cancel of one running turn. The durable turn row is the cancel marker:

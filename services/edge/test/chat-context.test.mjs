@@ -68,7 +68,6 @@ test('a suspended turn no longer blocks the conversation: the next message close
  const old=await turn(s,tid);assert.equal(old.state,'failed');assert.equal(old.error.code,'superseded_by_new_message');
  assert.deepEqual(old.events.slice(-2).map(e=>[e.type,e.data.decision??e.data.code]),[['approval_resolved','cancelled'],['turn_failed','superseded_by_new_message']]);
  assert.equal(old.pending_approvals.length,0);
- assert.equal((await report(s,tid,{call_id:dc.call_id,operation_id:randomUUID(),args_hash:dc.args_hash,status:'ok'})).status,409,'a late phone report cannot resume it');
  const note=lastUser(s.probe.inputs.at(-1));assert.match(note,/没有回应确认卡片/);assert.match(note,/reminder_create/);assert.match(note,/没有在卡片上作答/);assert.ok(note.endsWith('算了，先不加了'));
  assert.equal((await turn(s,next)).state,'completed');
  const c=await conversation(s);assert.equal(c.interaction_outcomes[0].outcome,'abandoned');assert.equal(c.last_turn_id,next);
@@ -150,4 +149,39 @@ test('B1 pure: write/read classification uses the approval declarations; undecla
  assert.deepEqual(planParallelCalls({calls:calls(4)},reg),{calls:calls(4),blocked:[]},'no overflow → unchanged');
  const p=planParallelCalls({calls:calls(4),overflow:[{id:'x',name:'totally_unknown_tool',arguments:{}}]},reg);
  assert.equal(p.calls.length,0);assert.equal(p.blocked.length,5);assert.ok(p.blocked.every(b=>b.result.status==='too_many_parallel_writes'));
+});
+
+// B2 (NoBug round 2): the phone reports after the user's next message superseded the turn.
+async function superseded(){
+ const s=await setup(),{tid,events}=await send(s,'帮我加个提醒'),dc=events.find(e=>e.type==='device_call').data;
+ const {r,tid:next}=await post(s,'顺便问下明天天气');assert.equal(r.status,200);await sse(r);await s.f.runtime.chat.waitIdle();
+ assert.equal((await turn(s,tid)).state,'failed');return {s,tid,next,dc};
+}
+test('B2 late ok: accepted (200, SSE), turn stays closed, outcome → ok, next turn is told it was in fact created',async()=>{
+ const {s,tid,next,dc}=await superseded(),before=await conversation(s),old=await turn(s,tid);
+ const r=await report(s,tid,{call_id:dc.call_id,operation_id:randomUUID(),args_hash:dc.args_hash,status:'ok',data:{id:'ek-1'}});
+ assert.equal(r.status,200);const tail=await sse(r);await s.f.runtime.chat.waitIdle();
+ assert.deepEqual(tail.map(e=>e.type),['approval_resolved','turn_failed'],'replays the closed turn tail, nothing new');
+ const t=await turn(s,tid);assert.equal(t.state,'failed');assert.equal(t.error.code,'superseded_by_new_message');assert.equal(t.events.length,old.events.length,'no event appended to the closed turn');
+ const c=await conversation(s);assert.equal(c.revision,before.revision,'revision unchanged');assert.equal(c.last_turn_id,next);assert.deepEqual(c.messages,before.messages);
+ const o=c.interaction_outcomes.find(x=>x.call_id===dc.call_id);assert.deepEqual([o.outcome,o.device_status,o.late],['ok','ok',true]);
+ assert.equal(c.turn_outcome_notes.at(-1).code,'late_device_report');
+ await send(s,'好');const note=lastUser(s.probe.inputs.at(-1));
+ assert.match(note,/晚到了手机结果/);assert.match(note,/reminder_create/);assert.match(note,/已经执行成功/);assert.ok(note.endsWith('好'));
+ assert.deepEqual((await conversation(s)).turn_outcome_notes,[],'consumed once');
+});
+test('B2 late declined: outcome → user_declined, model told nothing was done',async()=>{
+ const {s,tid,dc}=await superseded();
+ const r=await report(s,tid,{call_id:dc.call_id,operation_id:randomUUID(),args_hash:dc.args_hash,status:'cancelled'});assert.equal(r.status,200);await sse(r);
+ const c=await conversation(s);assert.equal(c.interaction_outcomes.find(x=>x.call_id===dc.call_id).outcome,'user_declined');
+ await send(s,'好');assert.match(lastUser(s.probe.inputs.at(-1)),/点了「取消」，没有执行/);
+});
+test('B2 duplicate late report: same operation replays (200, no change), a different one is 409, stale args 409',async()=>{
+ const {s,tid,dc}=await superseded(),op=randomUUID(),body={call_id:dc.call_id,operation_id:op,args_hash:dc.args_hash,status:'ok'};
+ assert.equal((await report(s,tid,{...body,args_hash:'0'.repeat(64)})).status,409,'stale args');
+ const first=await report(s,tid,body);assert.equal(first.status,200);await sse(first);const after=await conversation(s);
+ const again=await report(s,tid,body);assert.equal(again.status,200,'idempotent replay');await sse(again);
+ assert.deepEqual(await conversation(s),after,'replay changes nothing');assert.equal(after.turn_outcome_notes.filter(n=>n.code==='late_device_report').length,1);
+ const other=await report(s,tid,{...body,operation_id:randomUUID(),status:'cancelled'});assert.equal(other.status,409);assert.equal((await other.json()).error.code,'approval_consumed');
+ assert.equal((await conversation(s)).interaction_outcomes.find(x=>x.call_id===dc.call_id).outcome,'ok');
 });
