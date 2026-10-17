@@ -84,3 +84,6 @@ Not cloud tools: `pay_apple` (merchant entitlement, phase 2), `timer_start`/`foc
   - places_search uses the current location and preference memory.
 
   Their results go only to the turn that requested them.
+
+## v1.1: read-only device calls do not ask for approval
+`turn_suspended` now carries `requires_approval` (bool) and `waiting_for` (`'user'` | `'device'`). When every interrupt of the round is a `kind:'device'` call with `confirm:'none'` (calendar_list, places_search, …), it is `requires_approval:false, waiting_for:'device'`: the phone runs the call without a card and reports it, and clients must not show "waiting for your confirmation". Any card, approval or UI interrupt in the round makes it `true`/`'user'`. Old clients ignore the extra keys (`interrupt_ids` and `expires_at` are unchanged).
