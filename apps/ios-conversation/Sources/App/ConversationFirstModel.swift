@@ -77,7 +77,7 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
     private var imageConsentEpoch=UUID()
     private var cleanedImageOperations:Set<UUID>=[]
     private var recoveredImageOperation:UUID?
-    private var recoveredImageReceipt:String?
+    private var recoveredImageReceipt:UUID?
     private var recoveredImageCaption:String?
     /// 重试 on a failed image turn: restore that image + its own caption, then send through the normal path (consent included).
     private var retrySendAfterRestore:UUID?
