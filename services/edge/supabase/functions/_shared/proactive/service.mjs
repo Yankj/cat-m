@@ -89,7 +89,7 @@ export function createProactiveService({ store, verifyUser, schedulerSecret, mod
     for (const ev of pending) {
       // Codex PR90c #2: delivery ownership is enforced at the sender. A proactive decision is pushed only when the
       // client explicitly handed it off (delivery='remote'); device-owned and legacy (pre-ownership) rows never are.
-      if (ev.kind === 'proactive_decision' && ev.payload?.delivery !== 'remote') { await store.setPush(ev.id, 'skipped', 'device_owned', ev.push_generation); out.skipped++; continue; }
+      if (ev.kind === 'proactive_decision' && ev.payload?.delivery !== 'remote') { await store.setPush(ev.id, 'skipped', ev.payload?.delivery == null ? 'legacy_no_delivery' : 'device_owned', ev.push_generation); out.skipped++; continue; }
       // Codex PR90d #5: only a suggestion that is still pending is pushed (dismissed / snoozed / done never are).
       const sst = ev.payload?.suggestion?.status;
       if (ev.kind === 'proactive_decision' && sst && sst !== 'pending') { await store.setPush(ev.id, 'skipped', 'suggestion_' + sst, ev.push_generation); out.skipped++; continue; }
