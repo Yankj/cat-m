@@ -8,7 +8,7 @@ import {Buffer} from 'node:buffer';
 import {randomUUID} from 'node:crypto';import {ApiError,check,hash,UUID,iso} from './core/facade-r2/src/common.mjs';
 import {createFoundationChatRuntime} from './core/src/foundation-runtime.mjs';import {OpenRouterProvider} from './core/src/openrouter-provider.mjs';import {FreeRouteChainProvider,withRoutePreference,freeRouteStatus,assertRouteSelection,modelRoutesList} from './core/src/free-route-chain.mjs';import {handlePushTokenRoute} from './core/src/apns.mjs';
 import {boundedTick} from './core/integration/edge-adapter/src/bounded-tick.mjs';import {singleStepHandler} from './core/src/single-step-handler.mjs';
-import {assertSourceAuthority,assertAcceptedWorkSourceAuthority,assertAcceptedWorkControlSourceAuthority,revokeAppSession} from './authority.mjs';import {assertConsent,consentId,consentRead,consentWrite} from './consent.mjs';import {authorizeTick} from './tick-auth.mjs';
+import {assertSourceAuthority,assertAcceptedWorkSourceAuthority,assertAcceptedWorkControlSourceAuthority,revokeAppSession} from './authority.mjs';import {effectiveConsent,admissionConsentRow,accountConsentRead,accountConsentWrite,assertConsent,consentId,consentRead,consentWrite} from './consent.mjs';import {authorizeTick} from './tick-auth.mjs';
 import {createChatMetrics} from './core/src/chat-metrics.mjs';
 import {TASK_ACTION_CONTRACT,TASK_ACTION_LIMITS,taskActionUUID} from './core/src/task-action-contract.mjs';
 import {readTaskAction,readTaskActions,proposeTaskAction,decideTaskAction} from './core/src/task-action-service.mjs';
@@ -175,7 +175,7 @@ export async function createCloudRuntime({repository,authenticate,config,retain=
    await assertConsent(tx,owner,source,f.conversation_id,config.routeHash);return selected;
  };
  runtime.chat.modelBudgetMs=config.chatBudgetMs;runtime.chat.providerTimeoutMs=config.modelTimeoutMs;runtime.chat.finalizationReserveMs=config.chatFinalizationReserveMs;runtime.chat.pollMs=250;
- runtime.chat.beforeTurnAdmission=async(tx,{principal,scope,conversation,turn})=>{const source={subject_id:principal.subject_id,scope_id:scope.scope_id,issuer:principal.issuer,session_id:principal.session_id,issued_at:principal.issued_at};await sourceChecker(tx,source,scope);const row=await tx.get(runtime.facade.owner(scope),'provider-consents',consentId(principal.subject_id,conversation.id));check(row?.decision==='allow'&&row.route_hash===config.routeHash,403,'provider_consent_required');checkTextConsent(JSON.stringify(conversation.messages)+JSON.stringify(turn.input),row);turn.source_sensitivity=row.sensitive_confirmed===true?'sensitive':'low';let imageSource={};if(turn.image_attachments?.length){check(vision.enabled&&turn.image_route_hash===vision.routeHash,503,'image_input_unavailable');const imageRow=await tx.get(runtime.facade.owner(scope),'image-provider-consents',consentId(principal.subject_id,conversation.id));imageSource={image_route_hash:vision.routeHash,image_consent_revision:imageRow?.revision};await assertImageConsent(tx,runtime.facade.owner(scope),{...source,...imageSource},conversation.id,vision.routeHash);}return {...source,consent_revision:row.revision,...imageSource};};
+ runtime.chat.beforeTurnAdmission=async(tx,{principal,scope,conversation,turn})=>{const source={subject_id:principal.subject_id,scope_id:scope.scope_id,issuer:principal.issuer,session_id:principal.session_id,issued_at:principal.issued_at};await sourceChecker(tx,source,scope);const row=await admissionConsentRow(tx,runtime.facade.owner(scope),principal,scope.scope_id,conversation.id,config);check(row?.decision==='allow'&&row.route_hash===config.routeHash,403,'provider_consent_required');checkTextConsent(JSON.stringify(conversation.messages)+JSON.stringify(turn.input),row);turn.source_sensitivity=row.sensitive_confirmed===true?'sensitive':'low';let imageSource={};if(turn.image_attachments?.length){check(vision.enabled&&turn.image_route_hash===vision.routeHash,503,'image_input_unavailable');const imageRow=await tx.get(runtime.facade.owner(scope),'image-provider-consents',consentId(principal.subject_id,conversation.id));imageSource={image_route_hash:vision.routeHash,image_consent_revision:imageRow?.revision};await assertImageConsent(tx,runtime.facade.owner(scope),{...source,...imageSource},conversation.id,vision.routeHash);}return {...source,consent_revision:row.revision,...imageSource};};
  // Serialize best-effort kicks for the same accepted turn. This is invocation
  // retention only; durable admission/lease/state still live in the original Store.
  const turnKicks=new Map();
@@ -203,7 +203,7 @@ export async function createCloudRuntime({repository,authenticate,config,retain=
  runtime.facade.beforePlanRead=async(tx,{owner,scope,principal,run})=>{
    const source={subject_id:principal.subject_id,session_id:principal.session_id,issuer:principal.issuer,issued_at:principal.issued_at,scope_id:scope.scope_id};
    await sourceChecker(tx,source,scope);
-   const row=await tx.get(owner,'provider-consents',consentId(principal.subject_id,run.frozen_request.conversation_id));
+   const row=await effectiveConsent(tx,owner,principal.subject_id,run.frozen_request.conversation_id,config.routeHash);
    check(row?.decision==='allow'&&row.scope_id===scope.scope_id&&row.route_hash===config.routeHash,403,'provider_consent_required');
  };
  runtime.facade.beforePlanWrite=async(tx,ctx)=>{
@@ -323,7 +323,7 @@ export async function createCloudRuntime({repository,authenticate,config,retain=
      await sourceChecker(tx,source,identity);
      // Observation uses the viewer's current consent, not a model dispatch grant.
      // Model/write checks above still enforce the turn's frozen consent revision.
-     const consent=await tx.get(owner,'provider-consents',consentId(principal.subject_id,conversation.id));
+     const consent=await effectiveConsent(tx,owner,principal.subject_id,conversation.id,config.routeHash);
      check(consent?.decision==='allow'&&consent.scope_id===scope.scope_id&&consent.route_hash===config.routeHash,403,'provider_consent_required');
    });
  };
@@ -380,8 +380,11 @@ export async function createCloudRuntime({repository,authenticate,config,retain=
   if(path==='/catpaw/privacy/v1/image-model-route'){await authenticate(auth);await refreshImageCapability();return reply({capability:vision.capability,route:vision.route,route_hash:vision.routeHash,consent_default:'deny',live_transmission_available:vision.isLive&&vision.capability.available,non_sensitive_confirmation_required:true,ui:VISION_CONSENT_UI});}
   const imageMatch=/^\/catpaw\/privacy\/v1\/scopes\/([a-f0-9-]+)\/conversations\/([a-f0-9-]+)\/image-model-consent$/.exec(path);
   if(imageMatch){check(UUID.test(imageMatch[1])&&UUID.test(imageMatch[2]),422,'schema_invalid');check(['GET','POST'].includes(request.method),405,'method_not_allowed');const input=request.method==='POST'?await boundedJsonBody(request,2048):null;return reply({consent:await imageConsent(runtime,sourceChecker,auth,imageMatch[1],imageMatch[2],input)});}
+  // v1.1 (b): account-level consent for the current model route (GET state / POST allow|deny).
+  const accountConsent=/^\/catpaw\/privacy\/v1\/scopes\/([a-f0-9-]+)\/model-consent$/.exec(path);
+  if(accountConsent){check(UUID.test(accountConsent[1]),422,'schema_invalid');if(request.method==='GET')return reply(await accountConsentRead(runtime,auth,accountConsent[1],config));check(request.method==='POST',405,'method_not_allowed');const text=await request.text();check(text.length<=2048,413,'request_too_large');let input;try{input=JSON.parse(text);}catch{throw new ApiError(422,'invalid_consent');}return reply(await accountConsentWrite(runtime,auth,accountConsent[1],input,config,{sourceChecker}));}
   const consent=/^\/catpaw\/privacy\/v1\/scopes\/([a-f0-9-]+)\/conversations\/([a-f0-9-]+)\/model-consent$/.exec(path);
-  if(consent){check(UUID.test(consent[1])&&UUID.test(consent[2]),422,'schema_invalid');if(request.method==='GET')return reply({consent:await consentRead(runtime,auth,consent[1],consent[2])});check(request.method==='POST',405,'method_not_allowed');const text=await request.text();check(text.length<=2048,413,'request_too_large');return reply({consent:await consentWrite(runtime,auth,consent[1],consent[2],JSON.parse(text),config)});}
+  if(consent){check(UUID.test(consent[1])&&UUID.test(consent[2]),422,'schema_invalid');if(request.method==='GET')return reply({consent:await consentRead(runtime,auth,consent[1],consent[2])});check(request.method==='POST',405,'method_not_allowed');const text=await request.text();check(text.length<=2048,413,'request_too_large');return reply({consent:await consentWrite(runtime,auth,consent[1],consent[2],JSON.parse(text),config,{sourceChecker})});}
   if(path.startsWith('/catpaw/artifacts/v1/')){
     check(!url.search,422,'artifact_schema_invalid');const parts=path.split('/').filter(Boolean);
     check(parts[3]==='scopes'&&parts[5]==='runs'&&parts[7]==='artifacts',404,'not_found');
