@@ -5,9 +5,17 @@ import {readFreeRouteChain} from './core/src/free-route-chain.mjs';
 import {readApnsConfig,APNS_ENV_NAMES} from './core/src/apns.mjs';
 export const SECRET_NAMES=['CATPAW_DATABASE_URL','CATPAW_PRIVATE_MODEL_KEY','CATPAW_TICK_HMAC_KEY','CATPAW_MEMORY_GUARD_KEY'];
 export const CONFIG_NAMES=['SUPABASE_URL','CATPAW_PUBLISHABLE_KEY'];
-export const OPTIONAL_CONFIG_NAMES=['CATPAW_PUBLIC_SOURCE_POLICY','CATPAW_GEMINI_API_KEY','CATPAW_GROQ_API_KEY','CATPAW_AGNES_API_KEY','CATPAW_AGNES_MODEL','CATPAW_MODEL_ROUTE_ORDER','CATPAW_THINKING_SUMMARY','CATPAW_MODEL_AUTO_FAILOVER','CATPAW_VISION_LIVE_ENABLED','CATPAW_VISION_CONTRACT_ENABLED',...APNS_ENV_NAMES,'CATPAW_APNS_ENV'];
+export const OPTIONAL_CONFIG_NAMES=['CATPAW_PUBLIC_SOURCE_POLICY','CATPAW_GEMINI_API_KEY','CATPAW_GROQ_API_KEY','CATPAW_AGNES_API_KEY','CATPAW_AGNES_MODEL','CATPAW_MODEL_ROUTE_ORDER','CATPAW_THINKING_SUMMARY','CATPAW_MODEL_AUTO_FAILOVER','CATPAW_VISION_LIVE_ENABLED','CATPAW_VISION_CONTRACT_ENABLED','CATPAW_VISION_ROUTE',...APNS_ENV_NAMES,'CATPAW_APNS_ENV'];
 // Version-controlled release capability (from live v22); never overrides an explicit nonempty disable/invalid setting.
 export const RELEASE_VISION_LIVE_DEFAULT=true;
+/** CATPAW_VISION_ROUTE: chain (default once a Gemini interactions key is deployed: Gemini 3.5 Flash-Lite → OpenRouter Gemma 4)
+ * | legacy (single Gemma route, unchanged hash). Without a usable Gemini key the legacy route stays. */
+export function readVisionRouteMode(get,freeChain){
+ const raw=String(get('CATPAW_VISION_ROUTE')??'').trim().toLowerCase()||'chain';
+ if(raw!=='chain')return 'legacy'; // legacy or an unknown value: keep the old single route (never break boot)
+ const gemini=freeChain?.routes?.find(r=>r.id==='gemini'),key=freeChain?.secrets?.gemini;
+ return gemini?.protocol==='interactions'&&typeof key==='string'&&key.trim()!==''?'chain':'legacy';
+}
 const PROJECT_URL='';
 const PROJECT_PUBLISHABLE_KEY='';
 // Supabase-hosted functions inject SUPABASE_PUBLISHABLE_KEYS ({"default":...}) / legacy SUPABASE_ANON_KEY;
@@ -76,7 +84,7 @@ export function readConfig(get){
  // explicit 'false'/'off' → off. CATPAW_FEATURE_BLOCKLIST_SUBJECTS turns every feature off for the listed subjects.
  const G=n=>readFeatureGate(get(n),'on');
  const generativeUI=G('CATPAW_GENERATIVE_UI_ENABLED'),taskTools=G('CATPAW_TASK_TOOLS_ENABLED'),featureAllowlist=withBlocklist(readAllowlist(get('CATPAW_FEATURE_ALLOWLIST_SUBJECTS')),readAllowlist(get('CATPAW_FEATURE_BLOCKLIST_SUBJECTS'))),agentMemory=G('CATPAW_AGENT_MEMORY_ENABLED'),deviceTools=G('CATPAW_DEVICE_TOOLS_ENABLED'),proactiveSuggestionsSSE=G('CATPAW_PROACTIVE_SUGGESTIONS_SSE_ENABLED'),proactive=G('CATPAW_PROACTIVE_ENABLED');
- return {...base,generativeUI,taskTools,featureAllowlist,agentMemory,deviceTools,proactiveSuggestionsSSE,proactive,schedulerSecret:get('CATPAW_SCHEDULER_SECRET')||null,attachmentStorage:typeof serviceRoleKey==='string'&&serviceRoleKey.length>20&&!/[\r\n]/.test(serviceRoleKey)?{url:projectUrl,serviceKey:serviceRoleKey}:null,publicSourcePolicy,visionContractEnabled:get('CATPAW_VISION_CONTRACT_ENABLED')==='true',visionLiveEnabled:visionLiveSetting===undefined||visionLiveSetting===null||visionLiveSetting===''?RELEASE_VISION_LIVE_DEFAULT:visionLiveSetting==='true',ready:missing.length===0&&configurationIssues.length===0,missing,configurationIssues,authReady:!!base.projectUrl&&!!base.publishableKey&&!!base.databaseUrl,modelKey:get('CATPAW_PRIVATE_MODEL_KEY'),tickKey:get('CATPAW_TICK_HMAC_KEY'),guardKey:get('CATPAW_MEMORY_GUARD_KEY'),route:finalRoute,routeHash:hash(finalRoute),freeChain,apns:readApnsConfig(get),chatBudgetMs:freeChain?.routes?.some(r=>r.id==='agnes')?120000:50000,chatFinalizationReserveMs:5000,tickBudgetMs:30000,modelTimeoutMs:20000,dailyCallLimit:readDailyCallLimit(get('CATPAW_DAILY_CALL_LIMIT')),dailyCallExempt:readAllowlist(get('CATPAW_DAILY_MODEL_CALL_EXEMPT_SUBJECTS'))};
+ return {...base,generativeUI,taskTools,featureAllowlist,agentMemory,deviceTools,proactiveSuggestionsSSE,proactive,schedulerSecret:get('CATPAW_SCHEDULER_SECRET')||null,attachmentStorage:typeof serviceRoleKey==='string'&&serviceRoleKey.length>20&&!/[\r\n]/.test(serviceRoleKey)?{url:projectUrl,serviceKey:serviceRoleKey}:null,publicSourcePolicy,visionContractEnabled:get('CATPAW_VISION_CONTRACT_ENABLED')==='true',visionRoute:readVisionRouteMode(get,freeChain),visionLiveEnabled:visionLiveSetting===undefined||visionLiveSetting===null||visionLiveSetting===''?RELEASE_VISION_LIVE_DEFAULT:visionLiveSetting==='true',ready:missing.length===0&&configurationIssues.length===0,missing,configurationIssues,authReady:!!base.projectUrl&&!!base.publishableKey&&!!base.databaseUrl,modelKey:get('CATPAW_PRIVATE_MODEL_KEY'),tickKey:get('CATPAW_TICK_HMAC_KEY'),guardKey:get('CATPAW_MEMORY_GUARD_KEY'),route:finalRoute,routeHash:hash(finalRoute),freeChain,apns:readApnsConfig(get),chatBudgetMs:freeChain?.routes?.some(r=>r.id==='agnes')?120000:50000,chatFinalizationReserveMs:5000,tickBudgetMs:30000,modelTimeoutMs:20000,dailyCallLimit:readDailyCallLimit(get('CATPAW_DAILY_CALL_LIMIT')),dailyCallExempt:readAllowlist(get('CATPAW_DAILY_MODEL_CALL_EXEMPT_SUBJECTS'))};
 }
 
 /** Feature gate: 'true'|'1' → on for everyone, 'allowlist' → env allowlist + DB-enrolled subjects, unset/empty → `unset` (readConfig passes 'on'), anything else → off. */

@@ -1,7 +1,7 @@
 import {Buffer} from 'node:buffer';
 import {createHash} from 'node:crypto';
 import {inflateSync} from 'node:zlib';
-import {LIVE_VISION_ROUTE_HASH} from './live-vision-route.mjs';
+import {VISION_ROUTE_HASHES} from './live-vision-route.mjs';
 import {ApiError,check,shape,UUID,hash,clone} from '../facade-r2/src/common.mjs';
 // Server constants. No caller-supplied URLs, dimensions, limits or route selection.
 export const VISION_LIMITS=Object.freeze({max_count:1,max_image_bytes:5*1024*1024,max_total_image_bytes:5*1024*1024,max_side:2048,max_pixels:2048*2048,max_request_bytes:7100000,mime_types:Object.freeze(['image/png','image/jpeg'])});
@@ -73,7 +73,7 @@ export function mapVisionMessages(messages,attachments,userIndex){
   const mapped=clone(messages);mapped[userIndex].content=[{type:'text',text:messages[userIndex].content},...attachments.map(a=>({type:'image_url',image_url:{url:`data:${a.receipt.mime_type};base64,${a.bytes.toString('base64')}`}}))];return mapped;
 }
 export function createVisionContract(config,provider){
-  const live=config.visionLiveEnabled===true&&provider?.visionContract?.execution_layer==='live_image_adapter'&&provider.liveNetworkEnabled===true&&hash(provider.visionContract.route)===LIVE_VISION_ROUTE_HASH;
+  const live=config.visionLiveEnabled===true&&provider?.visionContract?.execution_layer==='live_image_adapter'&&provider.liveNetworkEnabled===true&&VISION_ROUTE_HASHES.includes(hash(provider.visionContract.route));
   const mock=!live&&config.visionContractEnabled===true&&provider?.visionContract?.execution_layer==='synthetic_mock'&&provider.liveNetworkEnabled===false;
   const route=live||mock?clone(provider.visionContract.route):null;
   if(mock)check(route&&typeof route.id==='string'&&typeof route.provider==='string'&&typeof route.downstream_provider==='string'&&typeof route.model==='string'&&route.model.endsWith(':free')&&route.free===true&&route.data_fields?.includes('user_selected_image_bytes')&&route.purposes?.includes('chat_reply')&&route.retention&&route.zero_retention_claim===false,503,'vision_mock_route_invalid');
