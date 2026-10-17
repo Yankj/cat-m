@@ -16,6 +16,11 @@ import CatpawImageComposer
     var onSignOut: (() -> Void)? = nil
     var isAnonymousAccount = false
     var restrictToFrozenFixture = false
+    /// NoBug B1/B2: the storage-free launch shell. Same chrome, same frames as the account chat; the starter-card slots are
+    /// reserved but empty, and every capability (sidebar, title menu, attach, dictation, send, routes, proactive feed) is
+    /// inert — the composer accepts a draft only.
+    var launchShell = false
+    @State private var cardsRevealed = false
     @Environment(\.scenePhase) private var scene
     @Environment(\.dynamicTypeSize) private var textSize
     @Environment(\.locale) private var uiLocale
@@ -52,6 +57,7 @@ import CatpawImageComposer
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @ScaledMetric(relativeTo: .footnote) private var followupRowHeight = 64.0
     @FocusState private var focused: Bool
+    @State private var composerFocusCount = 0   // chat-ux-1505 #2 haptic trigger
     /// One timeline projection per body pass. Previously every row, the reading-anchor
     /// tracker and each assistant row's `lastAssistantMessageID` re-ran the full projection
     /// (O(n²) per keystroke / streamed token; 235 ms main-thread stalls in Time Profiler).
@@ -60,6 +66,8 @@ import CatpawImageComposer
         var rendered:[RenderedTimelineRow]=[]
         var visible:[RenderedTimelineRow]=[]
         var lastAssistantID:UUID?
+        /// chat-context-1522 #1: the one assistant answer that shows ``catpaw-card:followups`` chips.
+        var followUpHostID:UUID?
         var operations:[UUID:UUID]=[:]
     }
     @State private var timelineMemo=TimelineMemo()
@@ -77,10 +85,15 @@ import CatpawImageComposer
         }
         memo.lastAssistantID=nil
         for row in memo.visible.reversed() { if case .message(let m)=row,m.presentation == .message,m.message.role == .assistant {memo.lastAssistantID=m.message.id;break} }
+        memo.followUpHostID=FollowUpSuggestions.hostMessageID(memo.visible.compactMap { row -> (id:UUID,answer:Bool,user:Bool)? in
+            guard case .message(let m)=row,m.presentation == .message else {return nil}
+            return (m.message.id,m.message.role == .assistant && m.message.toolName == nil,m.message.role == .user)
+        })
     }
 
     init(model:ConversationFirstModel,accountLabel:String?=nil,onSignOut:(()->Void)?=nil,
-         isAnonymousAccount:Bool=false,restrictToFrozenFixture:Bool=false) {
+         isAnonymousAccount:Bool=false,restrictToFrozenFixture:Bool=false,launchShell:Bool=false) {
+        self.launchShell=launchShell
         self.model=model
         let chrome=ConversationComposerChromeAdapter(model:model,sendsEnabled:!restrictToFrozenFixture)
         _composerChrome=StateObject(wrappedValue:chrome)
@@ -109,7 +122,7 @@ import CatpawImageComposer
     @State private var proactiveInboxPresented = false
     @State private var proactiveDebugPresented = false
     private func consumeAppRoute() {
-        guard model.loaded, let route = CatpawRouteCenter.shared.pending else { return }
+        guard model.loaded, !launchShell, let route = CatpawRouteCenter.shared.pending else { return }
         CatpawRouteCenter.shared.pending = nil
         switch route {
         case .conversation(let id): self.route(.conversation(id))
@@ -138,6 +151,8 @@ import CatpawImageComposer
     }
     private var r8Title:String { model.history.first(where:{$0.id==model.conversationID}) == nil ? "Catpaw" : shortConversationTitle }
     private var r8ModelLabel:String {
+        // chat-ux-1505 #1: an explicit picker choice wins so the header shows what the user selected.
+        if let picked = ModelPickerOptions.headerLabel(route: ModelRouteSelection.route, model: ModelRouteSelection.model, routes: routeCatalog.routes) { return picked.count > 18 ? String(picked.prefix(16)) + "…" : picked }
         // Prefer the model the server actually used (SSE / verified reply); else the selected free route.
         if let live = model.connection.model, !live.isEmpty {
             let short = live.split(separator: "/").last.map(String.init) ?? live
@@ -165,6 +180,7 @@ import CatpawImageComposer
             HStack(spacing:8) {
                 PlushMascot(state: headerCatState, size: 28)
                     .frame(width:32,height:32)
+                    .firstRunAnchor(.headerAvatar).firstRunHandedOff(.headerAvatar)   // SPEC-E: the landing cat lands here
                     .accessibilityIdentifier("chat.title.presence")
                 VStack(alignment:.leading,spacing:0) {
                     HStack(spacing:4) {
@@ -180,6 +196,7 @@ import CatpawImageComposer
             }
             .padding(.leading,4).padding(.trailing,12).padding(.vertical,3)
             .background(CatpawColors.card, in: Capsule())
+            .firstRunTitleUnfold()
             .shadow(color: CatpawBrand.clayShadow.opacity(0.08), radius: 8, y: 2)
             .frame(maxWidth:240).contentShape(Capsule())
         }
@@ -255,9 +272,16 @@ import CatpawImageComposer
     }
     /// chat-ux #4: a tapped follow-up chip becomes the next prompt (only when a new turn can start and the draft is empty).
     private func sendFollowUp(_ text:String?) {
-        guard let text,!text.isEmpty,!model.busy,model.draft.isEmpty,model.canAcceptDraft else {return}
+        // Same route as the starter cards: fill the empty composer, then the Send path. (The old guard required
+        // `draft.isEmpty && canAcceptDraft`, which can never both hold, so a chip tap did nothing.)
+        guard model.stageQuickSend(text,attachmentsEmpty:composerChrome.attachments.isEmpty) else {return}
         UIImpactFeedbackGenerator(style:.light).impactOccurred()
-        model.editDraft(text);model.prepareSend();followingLatest=true
+        followingLatest=true;submitDraft()
+    }
+    /// chat-starter-prompts: a starter card goes through the same path as the Send button (instant bubble, same consent).
+    private func sendStarter(_ text:String) {
+        guard model.stageQuickSend(text,attachmentsEmpty:composerChrome.attachments.isEmpty) else {return}
+        submitDraft()
     }
     private var renderedTimelineRows:[RenderedTimelineRow] {timelineMemo.rendered}
     private func computeRenderedTimelineRows()->[RenderedTimelineRow] {
@@ -320,7 +344,7 @@ import CatpawImageComposer
         InteractionFrameProbe.shared.count("chat.body")
         #endif
         return SidebarHost(isPresented:$sidebarPresented,isAtRoot:path.isEmpty && !conversationMenuPresented && !settings && !history && !pendingMessagesPresented && !composerContextPresented && !model.acceptedWorkReviewPresented && model.selectedTaskPlan == nil && model.selectedTaskActions == nil && model.selectedTaskControl == nil && model.pendingModelConsent == nil && model.pendingImageConsent == nil,
-                    snapshot:sidebarSnapshot,theme:sidebarTheme,localize:{ui($0)},allowsContentPan:true,onWillOpen:{UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder),to:nil,from:nil,for:nil)},
+                    snapshot:sidebarSnapshot,theme:sidebarTheme,localize:{ui($0)},allowsContentPan:!launchShell,onWillOpen:{UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder),to:nil,from:nil,for:nil)},
                     onDismissed:{menuFocused=true},onSelect:route) {
         NavigationStack(path:$path) {
             GeometryReader { viewport in
@@ -328,16 +352,7 @@ import CatpawImageComposer
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 0) {
                         if let session = model.session {
-                            if displayMessages.isEmpty {
-                                VStack(alignment: .leading, spacing: 16) {
-                                    Text(ui("想一起完成什么？")).font(CatpawTypography.Role.title.font.weight(.semibold)).accessibilityAddTraits(.isHeader)
-                                    Text(ui("问一个问题，或说一件想做的事。")).foregroundStyle(CatpawColors.secondary)
-                                }.frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(.top, textSize.isAccessibilitySize ? 24 : 64).padding(.bottom, 32)
-                                .background(PlushEmptyBackdrop().frame(height: 360).offset(y: 40), alignment: .top)
-                                .accessibilityIdentifier("chat.empty")
-                                    .transaction { $0.animation = nil }.id("chat.empty")
-                            }
+                            if displayMessages.isEmpty { emptyState(cardsVisible:!launchShell) }
                             let rows=visibleTimelineRows
                             let turnTails=ConversationTurnUIRow.tails(rows.compactMap{row->(UUID,UUID?)? in if case .message(let m)=row {return (m.id,m.turnID)};return nil})
                             ForEach(Array(rows.enumerated()),id:\.element.id) { index,row in
@@ -381,7 +396,8 @@ import CatpawImageComposer
                                 Text(ui("发送结果尚未确认。先读取原请求，避免重复发送；草稿会保留。")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary).fixedSize(horizontal:false,vertical:true).accessibilityIdentifier("chat.recoveryHelp")
                                 Button(ui("读取原请求进展")) { model.readOriginal() }.touchTarget().buttonStyle(CatpawPressButtonStyle()).disabled(model.busy).accessibilityHint(ui("只查询原请求，不重新发送消息")).accessibilityIdentifier("chat.observe")
                             }
-                        } else { ProgressView(ui("打开对话")) }
+                        } else if launchShell { emptyState(cardsVisible:false) }   // B2: the shell's frame 1 is the empty chat, never a spinner
+                        else { ProgressView(ui("打开对话")) }
                         Color.clear.frame(height: 1).id("latest")
                     }.padding(20).frame(maxWidth: 680).frame(maxWidth: .infinity)
                         .background(ConversationReadingAnchorTracker(context:readingAnchorContext,followingLatest:followingLatest,orderedIDs:renderedTimelineRows.map(\.id),coordinator:readingAnchor,onContentSizeChange:{[following = $followingLatest, pending = $scrollTask, empty = displayMessages.isEmpty] in if !empty {Self.scheduleScroll(proxy,following:following,pending:pending)}}).accessibilityHidden(true))
@@ -437,18 +453,20 @@ import CatpawImageComposer
                 // r8 top bar: three bare glyph elements, no per-button glass; whole bar turns glass only after scroll.
                 ToolbarItem(placement:.topBarLeading) {
                     if path.isEmpty {
-                        Button {sidebarPresented=true} label: {
+                        Button {if !launchShell {sidebarPresented=true}} label: {
                             TwoLineMenuGlyph().foregroundStyle(CatpawColors.ink).frame(width:36,height:36).background(CatpawColors.card,in:Circle()).overlay(Circle().strokeBorder(CatpawColors.hairline,lineWidth:0.5)).frame(width:44,height:44).contentShape(Rectangle())
-                        }.buttonStyle(CatpawPressButtonStyle()).accessibilityLabel(ui("打开侧栏")).accessibilityIdentifier("sidebar.open").accessibilityFocused($menuFocused)
+                        }.buttonStyle(CatpawPressButtonStyle()).firstRunChatEntrance("chat.buttons", rise: -6).accessibilityLabel(ui("打开侧栏")).accessibilityIdentifier("sidebar.open").accessibilityFocused($menuFocused)
                     }
                 }.r8HiddenSharedBackground()
-                ToolbarItem(placement:.principal) { conversationTitleMenu }.r8HiddenSharedBackground()
+                ToolbarItem(placement:.principal) { HStack(spacing:6) { conversationTitleMenu; ChatHeaderModelPicker { routeChanged in if routeChanged { model.modelRouteChanged() } } }.allowsHitTesting(!launchShell) }.r8HiddenSharedBackground()
                 ToolbarItem(placement:.topBarTrailing) {
                     Button { model.newConversation() } label: {
                         CircleIcon(systemName:"square.and.pencil").frame(width:44,height:44).contentShape(Rectangle())
                     }
                     .disabled(!model.loaded || model.busy || model.isInputComposing)
+                    .allowsHitTesting(!launchShell)
                     .accessibilityLabel(ui("新对话")).accessibilityIdentifier("chat.new").buttonStyle(CatpawPressButtonStyle())
+                    .firstRunChatEntrance("chat.buttons", rise: -6)
                 }.r8HiddenSharedBackground()
             }
             .toolbarBackground(.automatic, for:.navigationBar)
@@ -474,6 +492,29 @@ import CatpawImageComposer
             }
         }
         }
+    }
+    /// The empty conversation. B2: the starter-card slots always take their space; the shell keeps them empty and the
+    /// account chat fades them in (0.2 s), so nothing moves when the real chat replaces the shell. The first-run entrance
+    /// (SPEC-E §2.2) keeps its own staggered animation.
+    @ViewBuilder private func emptyState(cardsVisible:Bool)->some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text(ui("想一起完成什么？")).font(CatpawTypography.Role.title.font.weight(.semibold)).accessibilityAddTraits(.isHeader)
+                .firstRunChatEntrance("chat.row0")
+            Text(ui("问一个问题，或说一件想做的事。")).foregroundStyle(CatpawColors.secondary)
+                .firstRunChatEntrance("chat.row1")
+            // chat-starter-prompts: one tap sends the full prompt; hidden while the user types their own.
+            let shown=cardsVisible && model.draft.isEmpty && (cardsRevealed || FirstRunTransition.shared.entranceActive)
+            ConversationStarterPromptsView(enabled:cardsVisible && model.loaded && !model.busy,send:sendStarter).padding(.top,8)
+                .opacity(shown ? 1:0).allowsHitTesting(shown).accessibilityHidden(!shown)
+                .animation(FirstRunTransition.shared.entranceActive ? nil : .easeOut(duration:0.2), value:shown)
+                .firstRunChatEntrance("chat.backdrop")
+                .onAppear { if cardsVisible { cardsRevealed=true } }
+        }.frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.top, textSize.isAccessibilitySize ? 24 : 64).padding(.bottom, 32)
+        .background(PlushEmptyBackdrop().firstRunChatEntrance("chat.backdrop").frame(height: 360).offset(y: 40), alignment: .top)
+        .accessibilityIdentifier("chat.empty")
+            // The first-run entrance (SPEC-E §2.2) is the one time the empty state animates.
+            .transaction { if !FirstRunTransition.shared.entranceActive { $0.animation = nil } }.id("chat.empty")
     }
     private func scheduleScroll(_ proxy:ScrollViewProxy) {
         // An empty conversation has nothing to follow; scrolling "latest" to the bottom while the new
@@ -532,6 +573,7 @@ import CatpawImageComposer
         .catpawSheet(isPresented:$composerContextPresented,onDismiss:completeContextAction) {composerContextSheet}
         .task { await model.start() }
         .task(id:model.conversationID) {
+            guard !launchShell else {return}
             proactiveFeed.currentAnchor={ [model] in
                 guard let session=model.session else {return nil}
                 return ConversationTimelineProjection.rows(messages:session.messages,turns:session.turns).last?.id
@@ -540,8 +582,14 @@ import CatpawImageComposer
         }
         .onReceive(NotificationCenter.default.publisher(for:UIApplication.willEnterForegroundNotification)) { _ in proactiveFeed.refreshSoon() }
         #if canImport(ActivityKit) && os(iOS)
-        .task { await CatpawLiveActivityCoordinator.shared.observe(model.service) { [model] in model.conversationID } }
+        .task { guard !launchShell else {return}; await CatpawLiveActivityCoordinator.shared.observe(model.service, conversationID: { [model] in model.conversationID }, taskText: { [model] in model.session?.messages.last(where: { $0.role == .user })?.content }) }
         .task { await CatpawLiveActivityCoordinator.shared.acceptanceProbe() }
+        .onChange(of: scene) { _, phase in   // chat-ux-1505 #4a: keep the Live Activity honest across background/relaunch
+            #if canImport(ActivityKit) && os(iOS)
+            if phase == .background { CatpawLiveActivityCoordinator.shared.sceneDidEnterBackground() }
+            if phase == .active { CatpawLiveActivityCoordinator.shared.sceneDidBecomeActive() }
+            #endif
+        }
         .onChange(of:model.conversationID,initial:true) { _,id in replyVariants.activate(id) }   // regenerate pager variants
         #endif
         .onDisappear {scrollTask?.cancel();scrollTask=nil}
@@ -579,7 +627,7 @@ import CatpawImageComposer
     }
     private var settingsSheet: some View {
         ConversationConnectionView(model: model,embedded:true)
-            .safeAreaInset(edge:.bottom) { if onSignOut != nil { VStack(spacing:12) { if let accountLabel { Text(accountLabel).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary) }; Button(ui("退出此账号"), role:.destructive) { confirmSignOut = true }.touchTarget().accessibilityIdentifier("auth.signOut") }.padding().frame(maxWidth:.infinity).background(CatpawColors.background) } }
+            .safeAreaInset(edge:.bottom) { if onSignOut != nil { VStack(spacing:12) { NativeOAuthAccountSection(); if let accountLabel { Text(accountLabel).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary) }; Button(ui("退出此账号"), role:.destructive) { confirmSignOut = true }.touchTarget().accessibilityIdentifier("auth.signOut") }.padding().frame(maxWidth:.infinity).background(CatpawColors.background) } }
             .confirmationDialog(ui("退出此账号？"), isPresented:$confirmSignOut, titleVisibility:.visible) {
                 Button(ui("确认退出"), role:.destructive) { path=[];settings = false;onSignOut?() }
                 Button(ui("取消"), role:.cancel) { }
@@ -640,7 +688,7 @@ import CatpawImageComposer
             if let target=model.artifactContinuation,budget.showsTarget {
                 artifactContinuationChip(target).padding(.bottom,8)
             }
-            FloatingComposer(model:composerChrome,lineCount:composerLineCount,uploader:attachmentUploader,
+            FloatingComposer(model:composerChrome,lineCount:composerLineCount,uploader:attachmentUploader,inert:launchShell,
                              trailingAccessory:AnyView(
                                 ComposerDictationControls(model:model,responding:composerChrome.runState == .responding,canSend:canSendDraft,
                                                           size:composerControlSize,send:submitDraft,stop:{composerChrome.stop()})
@@ -653,7 +701,9 @@ import CatpawImageComposer
                     placeholder:composerChrome.runState == .responding ? ui("继续追问…") : ui("问问 Catpaw"),
                     lineCountChanged:{composerLineCount=$0},
                     addAttachments:{_ = composerChrome.addAttachments($0,using:attachmentUploader)},
+                    focusChanged:{ if $0 { composerFocusCount += 1 } },
                     submit:{if canSendDraft {submitDraft()}})
+                    .sensoryFeedback(.impact(weight:.light,intensity:0.5),trigger:composerFocusCount)
                     .background{GeometryReader{geometry in Color.clear.preference(key:ConversationComposerMeasurements.self,value:["text":geometry.size.height])}}
             }
                 .onAppear{composerChrome.setSendAction(submitDraft)}
@@ -1068,12 +1118,14 @@ import CatpawImageComposer
         if let turnID,let turn=model.session?.turns.first(where:{$0.id==turnID}),usesPhasedAnswer(turn,message:message) {
             LivePhasedAnswerView(service:model.service,message:message,turn:turn,canQuote:!model.isInputComposing,
                                  onQuote:quote,onVerify:turn.state == .unknown ? {model.readOriginal()}:nil)
+                .environment(\.followUpChipsVisible,message.id==timelineMemo.followUpHostID)
         } else {
             let isLast=message.id==lastAssistantMessageID
             let pastTurn=turnID.flatMap{id in model.session?.turns.first{$0.id==id}}
             ConversationAnswerView(message:message,canQuote:!model.isInputComposing,quote:quote,showsActions:isLast,actions:isLast ? replyActions(message,turnID:turnID):nil,
                                    thoughtSummary:pastTurn?.reasoningSummary,
                                    thoughtSeconds:pastTurn?.thinkingMs.map{max(1,Int(ceil(Double($0)/1000)))})
+                .environment(\.followUpChipsVisible,message.id==timelineMemo.followUpHostID)
         }
     }
     private func usesPhasedAnswer(_ turn:ConversationTurnRecord,message:ConversationTranscriptMessage)->Bool {

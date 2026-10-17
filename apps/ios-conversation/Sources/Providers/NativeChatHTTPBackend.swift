@@ -176,7 +176,18 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
         let metadata = try await json("/catpaw/privacy/v1/model-route",auth:auth),ui = try Self.object(metadata["ui"]),routeHash = try Self.sha(metadata["route_hash"])
         let path = "/catpaw/privacy/v1/scopes/"+configuration.serverScopeID.uuidString.lowercased()+"/conversations/"+conversationID.uuidString.lowercased()+"/model-consent"
         let stored = try await json(path,auth:auth);let prior = stored["consent"] as? [String:Any]
-        if prior?["decision"] as? String == "allow",prior?["route_hash"] as? String == routeHash { return nil }
+        let account = AccountModelConsentMemory(subjectID: configuration.expectedSubjectID, serverScopeID: configuration.serverScopeID)
+        if prior?["decision"] as? String == "allow",prior?["route_hash"] as? String == routeHash { account.remember(routeHash); return nil }
+        // Acceptance #2: the server keys provider consent per (subject, conversation) (_shared/api.mjs:178/207,
+        // consentId(subject_id, conversation.id)), so every NEW conversation came back without a row and the sheet re-asked.
+        // The user already allowed this exact disclosure (same route_hash) for this account: record the per-chat row
+        // silently. A changed route_hash, another account, or an explicit "deny" on this chat still shows the sheet.
+        if prior?["decision"] as? String != "deny", account.allows(routeHash), case let revision = (prior?["revision"] as? Int) ?? 0, revision >= 0 {
+            do {
+                let reply = try await json(path,auth:auth,body:["decision":"allow","expected_revision":revision,"route_hash":routeHash]),row = try Self.object(reply["consent"])
+                if row["decision"] as? String == "allow",row["route_hash"] as? String == routeHash,row["revision"] as? Int == revision+1 { sendDiagnostic("catpaw.send consent carried route=\(routeHash.prefix(8))"); return nil }
+            } catch { sendDiagnostic("catpaw.send consent carry failed; showing sheet") }
+        }
         guard let title = ui["title"] as? String,let body = ui["body"] as? String,title.utf8.count <= 512,body.utf8.count <= 12000 else { throw ConversationSessionError.invalidEvent }
         let revision = prior?["revision"] as? Int ?? 0;guard revision >= 0 else { throw ConversationSessionError.invalidEvent }
         return .init(conversationID:conversationID,title:title,body:Self.consentBody(body,metadata:metadata,ui:ui),routeHash:routeHash,expectedRevision:revision)
@@ -200,6 +211,7 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
         let auth = try await authorization(scope),path = "/catpaw/privacy/v1/scopes/"+configuration.serverScopeID.uuidString.lowercased()+"/conversations/"+consent.conversationID.uuidString.lowercased()+"/model-consent"
         let reply = try await json(path,auth:auth,body:["decision":"allow","expected_revision":consent.expectedRevision,"route_hash":consent.routeHash]),row = try Self.object(reply["consent"])
         guard row["decision"] as? String == "allow",row["route_hash"] as? String == consent.routeHash,row["revision"] as? Int == consent.expectedRevision+1 else { throw ConversationSessionError.invalidEvent }
+        AccountModelConsentMemory(subjectID: configuration.expectedSubjectID, serverScopeID: configuration.serverScopeID).remember(consent.routeHash)
     }
     public func acceptedWorkCapability(scope:DataScope,conversationID:UUID) async throws -> ConversationAcceptedWorkCapability {
         guard scope==configuration.localScope else {throw CatpawError.scopeMismatch}
@@ -312,13 +324,27 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
         let auth: String, grant: Int, upload: URLRequest
         do { (auth, grant, upload) = try await prepare(request) }
         catch { sendDiagnostic("catpaw.send prepare refused op=\(request.operationID.uuidString.prefix(8)) error=\(String(describing:error))");throw ConversationDispatchFailure.notSent(reason: Self.friendlyTransportMessage(error)) }
+        // NoBug P1: the busy re-POST carries this account's Authorization; it may only go out while the same account is
+        // still signed in in the same epoch (captured before the first POST).
+        let principal = AccountEpoch.shared.capture()
         return AsyncThrowingStream { continuation in
             let task = Task {
                 var postInitiated = false
                 do {
                     try Task.checkCancellation()
                     postInitiated = true // From here a transport error cannot prove non-admission.
-                    let (bytes, response) = try await self.session.bytes(for: upload)
+                    // catpaw-api v48: 503 chat_runtime_busy (up to ~60 s after a re-consent) is a refusal before admission,
+                    // whatever its `retryable` flag says. Re-POST the same operation quietly with backoff; the user's
+                    // bubble keeps its in-flight spinner and no error shows unless the budget runs out.
+                    let (bytes, response) = try await ChatRuntimeBusyRetry.run(post: {
+                        let (wire, reply) = try await self.session.bytes(for: upload)
+                        guard Self.supportsResume(request), let busy = reply as? HTTPURLResponse, busy.statusCode == 503 else { return (wire, reply) }
+                        var body = Data(); for try await byte in wire { guard body.count < 65536 else { break }; body.append(byte) }
+                        guard ChatRuntimeBusyRetry.isBusy(body) else { throw NativeChatHTTPFailure.turnResponse(503) }
+                        sendDiagnostic("catpaw.send chat_runtime_busy op=\(request.operationID.uuidString.prefix(8)) quiet retry")
+                        throw ChatRuntimeBusyRetry.Busy(retryAfter: ChatRuntimeBusyRetry.retryAfter(header: busy.value(forHTTPHeaderField: "Retry-After"), body: body))
+                    }, sleep: ChatRuntimeBusyRetry.sleep, stillCurrent: { ChatRuntimeBusyRetry.sameAccount(principal) },
+                       exhausted: { NativeChatHTTPFailure.turnResponse(503) })   // same URLRequest → same Idempotency-Key (= turn_id)
                     guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
                         let status=(response as? HTTPURLResponse)?.statusCode ?? 0
                         if status == 401 { await self.credentials.rejected(scope: request.scope) }
@@ -415,7 +441,11 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
     /// Tools that only exist on approval-negotiated plain turns (services/edge TOOL_APPROVAL).
     static let approvalToolNames: Set<String> = ["render_ui", "list_tasks", "create_task", "update_task", "create_calendar_event", "update_calendar_event", "create_reminder", "update_reminder", "external_write",
         // catpaw.device.v1 (executed on this phone; services/edge/supabase/functions/_shared/core/src/device-call.mjs)
-        "calendar_list", "calendar_create", "reminder_create", "mail_compose", "sms_compose", "phone_call", "contacts_search", "maps_open", "shop_open", "alarm_set", "shortcut_run"]
+        "calendar_list", "calendar_create", "reminder_create", "mail_compose", "sms_compose", "phone_call", "contacts_search", "maps_open", "shop_open", "alarm_set", "shortcut_run",
+        // Acceptance #3: places_search (附近咖啡馆 starter) was advertised in X-Catpaw-Device-Tools but missing here, so its
+        // `tool_call` failed ConversationSessionService.apply → invalidEvent (「服务返回了不匹配的对话或工具结果」).
+        // Must stay a superset of DeviceToolContract.clientTools (DeviceToolNamesContractTests).
+        "places_search"]
     /// Snapshot `pending_approvals`: kind "ui" rows are catpaw.ui.v1 blocks, everything else a tool approval card.
     public static func splitPendingApprovals(_ rows: [[String: Any]]) throws -> (tools: [ConversationApprovalRequest], ui: [ConversationUIApproval]) {
         var tools: [ConversationApprovalRequest] = [], ui: [ConversationUIApproval] = []
@@ -1743,4 +1773,71 @@ public actor ChatAttachmentSendCoordinator {
         kept[retry.operationID] = images; receipts[retry.operationID] = uploaded
         return retry.withAttachmentIDs(uploaded.map(\.id))
     }
+}
+
+/// catpaw-api `503 chat_runtime_busy` (JSON, before the SSE stream starts): always retryable on the client — prod v48
+/// still sends `retryable:false`; the coming backend fix sends `retryable:true` + `Retry-After: 1–60`. Matched on the code
+/// string only. A Retry-After header (or retry_after_seconds) wins, clamped 0.5–60 s; otherwise quiet exponential backoff
+/// 1, 2, 4, 8, 16 s. At most 5 re-POSTs within a 60 s total budget, each the SAME URLRequest (same Idempotency-Key =
+/// turn_id). When exhausted, the existing 503 message (「尚未确认…不要重新发送」) is the final fallback.
+enum ChatRuntimeBusyRetry {
+    static let code = "chat_runtime_busy"
+    static let budget: TimeInterval = 60
+    static let maxRetries = 5
+    struct Busy: Error { let retryAfter: TimeInterval? }
+    nonisolated(unsafe) static var sleep: @Sendable (TimeInterval) async throws -> Void = { try await Task.sleep(nanoseconds: UInt64($0 * 1_000_000_000)) }
+    private static func problem(_ body: Data) -> [String: Any]? {
+        guard let object = try? JSONSerialization.jsonObject(with: body) as? [String: Any] else { return nil }
+        return (object["error"] as? [String: Any]) ?? object
+    }
+    /// True for the busy code regardless of `retryable`.
+    static func isBusy(_ body: Data) -> Bool { problem(body)?["code"] as? String == code }
+    static func retryAfter(header: String?, body: Data) -> TimeInterval? {
+        if let raw = header?.trimmingCharacters(in: .whitespaces), let seconds = Double(raw), seconds.isFinite, seconds >= 0 { return seconds }
+        guard let problem = problem(body) else { return nil }
+        for key in ["retry_after_seconds", "retry_after_sec", "retry_after"] {
+            if let n = problem[key] as? NSNumber, CFGetTypeID(n) != CFBooleanGetTypeID(), n.doubleValue.isFinite, n.doubleValue >= 0 { return n.doubleValue }
+        }
+        return nil
+    }
+    static func delay(attempt: Int, retryAfter: TimeInterval?) -> TimeInterval {
+        if let retryAfter { return min(max(retryAfter, 0.5), 60) }
+        return min(pow(2, Double(max(1, attempt) - 1)), 16)
+    }
+    /// The account that started the send is still the signed-in one, same epoch (no sign-out / switch / restart since).
+    static func sameAccount(_ principal: AccountToken?, epoch: AccountEpoch = .shared) -> Bool {
+        principal.map { epoch.isValid($0) } ?? (epoch.capture() == nil)
+    }
+    /// Shown when a quiet retry is dropped because its account left: a busy refusal proves the turn was never admitted.
+    static let leftAccountMessage = "已退出该账号，这条消息没有发送。"
+    /// `post` throws `Busy` for a busy refusal; any other result or error passes through unchanged. After every sleep and
+    /// before every re-POST: cancellation, then `stillCurrent` (AccountEpoch) — a stale account's turn is never re-sent.
+    static func run<R>(post: () async throws -> R, sleep: (TimeInterval) async throws -> Void, stillCurrent: () -> Bool = { true }, exhausted: () -> Error) async throws -> R {
+        var waited: TimeInterval = 0, attempt = 0
+        while true {
+            do { return try await post() }
+            catch let busy as Busy {
+                attempt += 1
+                let wait = delay(attempt: attempt, retryAfter: busy.retryAfter)
+                guard attempt <= maxRetries, waited + wait <= budget else { throw exhausted() }
+                try Task.checkCancellation()
+                try await sleep(wait); waited += wait
+                try Task.checkCancellation()
+                guard stillCurrent() else { throw ConversationDispatchFailure.notSent(reason: leftAccountMessage) }
+            }
+        }
+    }
+}
+
+/// Acceptance #2: the account-level record of "this user allowed model route `route_hash`". The server stores consent per
+/// conversation; this lets a new conversation of the SAME account inherit the decision until the disclosure changes.
+/// Keyed by subject + server scope (never shared across accounts); stores only the public route hash, no content.
+struct AccountModelConsentMemory {
+    let subjectID: UUID?
+    let serverScopeID: UUID
+    var defaults: UserDefaults = .standard
+    var key: String? { subjectID.map { "catpaw.modelConsent.v1.\($0.uuidString.lowercased()).\(serverScopeID.uuidString.lowercased())" } }
+    func allows(_ routeHash: String) -> Bool { guard let key, !routeHash.isEmpty else { return false }; return defaults.string(forKey: key) == routeHash }
+    func remember(_ routeHash: String) { guard let key, !routeHash.isEmpty else { return }; defaults.set(routeHash, forKey: key) }
+    func forget() { if let key { defaults.removeObject(forKey: key) } }
 }

@@ -590,6 +590,16 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
     }
     func newConversation() { guard !isInputComposing else { return };Task { do { await persistenceTask?.value;try await flushDraft();let id=try await service.create(scope:scope);try await select(id) } catch { self.error=error.localizedDescription } } }
     func updateInputComposition(_ active:Bool) { guard active != isInputComposing else { return };isInputComposing=active }
+    /// One-tap prompts (starter cards, follow-up chips) fill an EMPTY composer and then take the Send path.
+    /// Nothing typed, queued or sent yet (an account-neutral launch chat may then be swapped for the account's own).
+    var isPristine: Bool { draft.isEmpty && outgoingMessages.isEmpty && (session?.turns.isEmpty ?? true) && imageDraft.phase == .empty }
+    /// `canAcceptDraft` itself requires a non-empty draft, so it can only be checked after the fill; a refused fill is rolled back.
+    func stageQuickSend(_ text:String?, attachmentsEmpty:Bool = true) -> Bool {
+        guard let text,!text.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty,!busy,draft.isEmpty,attachmentsEmpty else {return false}
+        editDraft(text)
+        guard canAcceptDraft else {editDraft("");return false}
+        return true
+    }
     func editDraft(_ text:String) {
         guard !continuationClosing else {return}
         draft=text;imageSelectionChanged();draftTask?.cancel();guard let id=conversationID else { return }
@@ -712,6 +722,9 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
     private func presentModelConsent(_ consent:ConversationModelConsent) {
         modelConsentReview=consent;modelConsentReviewToken=UUID();pendingModelConsent=consent
     }
+    /// chat-ux-1505 #1: a different route may carry a different disclosure (route_hash). Drop the cached "consent ok" so
+    /// the next send re-reads model-consent (cheap when still valid; shows the sheet when the hash changed).
+    func modelRouteChanged() { guard modelConsentReview == nil else { return }; consentReady = false; objectWillChange.send() }
     var needsModelConsentReview:Bool {!consentReady && (modelConsentReview != nil || !followups.pending.isEmpty)}
     var canReviewModelConsent:Bool {loaded && foreground && networkAdmissionAllowed && !checkingModelConsent && !busy && session?.unresolved==nil}
     func requestModelConsentReview() {

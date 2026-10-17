@@ -109,6 +109,8 @@ struct ComposerGlass: ViewModifier {
     var uploader: ComposerAttachmentUploading?
     var accessory: AnyView?
     var trailingAccessory: AnyView?
+    /// Launch shell: same pill and icons, but attach / dictation / send take no input (the editor still takes a draft).
+    var inert = false
     var metaText: String? = nil
     var metaWarning = false
     var onDetails: (() -> Void)? = nil
@@ -121,7 +123,7 @@ struct ComposerGlass: ViewModifier {
     private var multiline: Bool { lineCount > 1 || !model.attachments.isEmpty }
 
     init(model: Model, lineCount: Int, uploader: ComposerAttachmentUploading? = nil,
-         accessory: AnyView? = nil, trailingAccessory: AnyView? = nil,
+         inert: Bool = false, accessory: AnyView? = nil, trailingAccessory: AnyView? = nil,
          metaText: String? = nil, metaWarning: Bool = false, onDetails: (() -> Void)? = nil,
          @ViewBuilder editor: () -> Editor) {
         self.metaText = metaText
@@ -133,6 +135,7 @@ struct ComposerGlass: ViewModifier {
         self.accessory = accessory
         self.trailingAccessory = trailingAccessory
         self.editor = editor()
+        self.inert = inert
     }
 
     var body: some View {
@@ -150,12 +153,13 @@ struct ComposerGlass: ViewModifier {
                     ComposerAttachmentStrip(attachments: $model.attachments, onRetry: retry, onRemove: remove)
                         .transition(.opacity.combined(with: .move(edge: .bottom)))
                 }
-                HStack(alignment: .bottom, spacing: 2) { addMenu; editor.frame(maxWidth: .infinity); sendControl }
+                HStack(alignment: .bottom, spacing: 2) { addMenu.allowsHitTesting(!inert); editor.frame(maxWidth: .infinity); sendControl.allowsHitTesting(!inert) }
             }
             .padding(6)
             .overlay { ComposerDictationBarHost() }
             .modifier(ComposerGlass())
             .overlay(RoundedRectangle(cornerRadius: 26, style: .continuous).strokeBorder(CatpawColors.action, lineWidth: dropTargeted ? 2 : 0))
+            .firstRunAnchor(.composer).firstRunHandedOff(.composer)   // SPEC-E: 「开始使用」 morphs into this pill
             .composerDropTarget(isTargeted: $dropTargeted, add: add)
         }
         .padding(.horizontal, 12).padding(.bottom, 8)

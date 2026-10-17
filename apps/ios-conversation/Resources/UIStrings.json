@@ -2607,6 +2607,62 @@
     "en": "What would you like to do together?",
     "zh-Hans": "想一起完成什么？"
   },
+  "试试这些": {
+    "en": "Try one of these",
+    "zh-Hans": "试试这些"
+  },
+  "轻点立即发送": {
+    "en": "Tap to send now",
+    "zh-Hans": "轻点立即发送"
+  },
+  "今天的日程": {
+    "en": "Today's schedule",
+    "zh-Hans": "今天的日程"
+  },
+  "帮我看看今天的日程，有什么要提前准备？": {
+    "en": "Check my schedule for today. What should I prepare for?",
+    "zh-Hans": "帮我看看今天的日程，有什么要提前准备？"
+  },
+  "设个提醒": {
+    "en": "Set a reminder",
+    "zh-Hans": "设个提醒"
+  },
+  "明天上午 10 点提醒我给客户回电话": {
+    "en": "Remind me at 10 AM tomorrow to call the client back",
+    "zh-Hans": "明天上午 10 点提醒我给客户回电话"
+  },
+  "加个会议": {
+    "en": "Add a meeting",
+    "zh-Hans": "加个会议"
+  },
+  "1 小时后在望京 SOHO 开评审会，加进日历": {
+    "en": "Add a review meeting at Wangjing SOHO in 1 hour to my calendar",
+    "zh-Hans": "1 小时后在望京 SOHO 开评审会，加进日历"
+  },
+  "附近咖啡馆": {
+    "en": "Nearby cafés",
+    "zh-Hans": "附近咖啡馆"
+  },
+  "附近有哪些适合办公的咖啡馆？": {
+    "en": "Which cafés nearby are good for working?",
+    "zh-Hans": "附近有哪些适合办公的咖啡馆？"
+  },
+  "拆解任务": {
+    "en": "Break down a task",
+    "zh-Hans": "拆解任务"
+  },
+  "把「下周上线新版本」拆成待办清单": {
+    "en": "Break \"ship the new version next week\" into a to-do list",
+    "zh-Hans": "把「下周上线新版本」拆成待办清单"
+  },
+  "起草周报": {
+    "en": "Draft a weekly update",
+    "zh-Hans": "起草周报"
+  },
+  "帮我起草周报：本周进展、风险、下周计划": {
+    "en": "Draft my weekly update: progress, risks and next week's plan",
+    "zh-Hans": "帮我起草周报：本周进展、风险、下周计划"
+  },
   "想记住的内容": {
     "en": "What to remember",
     "zh-Hans": "想记住的内容"
@@ -6542,5 +6598,157 @@
   "实际生效：关闭（有记忆库已关闭）": {
     "en": "In effect: off (a memory library is off)",
     "zh-Hans": "实际生效：关闭（有记忆库已关闭）"
+  },
+  "正在打开对话…": {
+    "en": "Opening conversation…",
+    "zh-Hans": "正在打开对话…"
+  },
+  "体验账号 · 绑定后可在其他设备登录，对话不丢失": {
+    "en": "Trial account · link one to sign in on other devices and keep your conversations",
+    "zh-Hans": "体验账号 · 绑定后可在其他设备登录，对话不丢失"
+  },
+  "体验身份的对话会留在本机但无法再访问；你创建的系统日历/提醒事项会逐项询问是否撤销。": {
+    "en": "Trial conversations stay on this device but can no longer be opened. Calendar events and reminders Catpaw created will be listed so you can undo or keep each one.",
+    "zh-Hans": "体验身份的对话会留在本机但无法再访问；你创建的系统日历/提醒事项会逐项询问是否撤销。"
+  },
+  "使用 GitHub 继续": {
+    "en": "Continue with GitHub",
+    "zh-Hans": "使用 GitHub 继续"
+  },
+  "使用 Google 继续": {
+    "en": "Continue with Google",
+    "zh-Hans": "使用 Google 继续"
+  },
+  "已有账号？使用 GitHub / Google 登录": {
+    "en": "Have an account? Sign in with GitHub / Google",
+    "zh-Hans": "已有账号？使用 GitHub / Google 登录"
+  },
+  "已绑定 GitHub。": {
+    "en": "GitHub is linked.",
+    "zh-Hans": "已绑定 GitHub。"
+  },
+  "已绑定 Google。": {
+    "en": "Google is linked.",
+    "zh-Hans": "已绑定 Google。"
+  },
+  "已绑定。": {
+    "en": "Linked.",
+    "zh-Hans": "已绑定。"
+  },
+  "已绑定，体验期间的对话都已保留。": {
+    "en": "Linked. All your trial conversations are kept.",
+    "zh-Hans": "已绑定，体验期间的对话都已保留。"
+  },
+  "当前账号的数据会安全停放，再次登录时自动恢复；你创建的系统日历/提醒事项会逐项询问是否撤销。": {
+    "en": "This account's data is parked safely and restored when you sign in again. Calendar events and reminders Catpaw created will be listed so you can undo or keep each one.",
+    "zh-Hans": "当前账号的数据会安全停放，再次登录时自动恢复；你创建的系统日历/提醒事项会逐项询问是否撤销。"
+  },
+  "登录 Catpaw": {
+    "en": "Sign in to Catpaw",
+    "zh-Hans": "登录 Catpaw"
+  },
+  "登录凭据只保存在本机钥匙串，可随时退出。": {
+    "en": "Credentials stay in this device's Keychain. You can sign out anytime.",
+    "zh-Hans": "登录凭据只保存在本机钥匙串，可随时退出。"
+  },
+  "登录方式": {
+    "en": "Sign-in methods",
+    "zh-Hans": "登录方式"
+  },
+  "登录未完成，请稍后重试。": {
+    "en": "Sign-in didn't finish. Try again later.",
+    "zh-Hans": "登录未完成，请稍后重试。"
+  },
+  "绑定已取消。": {
+    "en": "Linking cancelled.",
+    "zh-Hans": "绑定已取消。"
+  },
+  "绑定未完成，请稍后重试。": {
+    "en": "Linking didn't finish. Try again later.",
+    "zh-Hans": "绑定未完成，请稍后重试。"
+  },
+  "该登录方式暂未开放。": {
+    "en": "This sign-in method isn't available yet.",
+    "zh-Hans": "该登录方式暂未开放。"
+  },
+  "该账号已存在，切换过去？": {
+    "en": "This account already exists. Switch to it?",
+    "zh-Hans": "该账号已存在，切换过去？"
+  },
+  "账号绑定暂未开放。": {
+    "en": "Account linking isn't available yet.",
+    "zh-Hans": "账号绑定暂未开放。"
+  },
+  "退出当前账号并切换": {
+    "en": "Sign out and switch",
+    "zh-Hans": "退出当前账号并切换"
+  },
+  "退出未完成，请稍后重试。": {
+    "en": "Sign-out didn't finish. Try again later.",
+    "zh-Hans": "退出未完成，请稍后重试。"
+  },
+  "已退出该账号，这条消息没有发送。": {
+    "en": "You signed out of that account, so this message wasn't sent.",
+    "zh-Hans": "已退出该账号，这条消息没有发送。"
+  },
+  "选择模型": {
+    "en": "Choose model",
+    "zh-Hans": "选择模型"
+  },
+  "等你确认": {
+    "en": "Waiting for you",
+    "zh-Hans": "等你确认"
+  },
+  "正在使用工具…": {
+    "en": "Using a tool…",
+    "zh-Hans": "正在使用工具…"
+  },
+  "正在查日历": {
+    "en": "Checking calendar",
+    "zh-Hans": "正在查日历"
+  },
+  "正在添加日程": {
+    "en": "Adding to calendar",
+    "zh-Hans": "正在添加日程"
+  },
+  "正在设置提醒": {
+    "en": "Setting a reminder",
+    "zh-Hans": "正在设置提醒"
+  },
+  "正在查附近": {
+    "en": "Searching nearby",
+    "zh-Hans": "正在查附近"
+  },
+  "正在打开地图": {
+    "en": "Opening Maps",
+    "zh-Hans": "正在打开地图"
+  },
+  "正在查联系人": {
+    "en": "Looking up contacts",
+    "zh-Hans": "正在查联系人"
+  },
+  "正在起草消息": {
+    "en": "Drafting a message",
+    "zh-Hans": "正在起草消息"
+  },
+  "正在拆解任务": {
+    "en": "Breaking down the task",
+    "zh-Hans": "正在拆解任务"
+  },
+  "正在整理待办": {
+    "en": "Organizing to-dos",
+    "zh-Hans": "正在整理待办"
+  },
+  "打开 Catpaw 查看结果": {
+    "en": "Open Catpaw to see the result",
+    "zh-Hans": "打开 Catpaw 查看结果"
+  },
+  "未执行：{0}": {
+    "en": "Not run: {0}",
+    "zh-Hans": "未执行：{0}"
+  },
+  "没有完成：{0}": {
+    "en": "Not completed: {0}",
+    "zh-Hans": "没有完成：{0}"
   }
 }

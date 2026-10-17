@@ -107,7 +107,13 @@ import SwiftUI
                                                      isPresented = motion.endDrag(velocityX: velocity, width: width, cancelled: cancelled, reduceMotion: reduceMotion)
                                                  }))
                 #endif
-        }.onAppear {
+        }
+        // Full-bleed host: the GeometryReader used to take only the safe-area rect, and the clipShape/clipped above cut the
+        // chat's edge-to-edge canvas to it — the status-bar and home-indicator strips showed the bare window (black in dark,
+        // white in light): the "letterboxed" iPhone 13 report. Children still receive the container insets (the nav bar and
+        // composer stay where they were); the keyboard region is still honoured.
+        .ignoresSafeArea(.container)
+        .onAppear {
             if isAtRoot {
                 if isPresented { onWillOpen(); motion.move(to: true, reduceMotion: reduceMotion) }
             } else { reset() }

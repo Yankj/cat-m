@@ -49,6 +49,9 @@ struct DeviceCallSpec: Sendable {
 /// [执行] [编辑] [取消], then a receipt row ("✓ 已加入日历 · 打开"). Low-risk calls (`confirm: none`) run without asking.
 @MainActor struct DeviceCallConfirmCard: View {
     let call: DeviceCall
+    /// chat-context-1522 #3: final state from the turn journal. Shown when this device holds no final phase for the call
+    /// (another device decided it, local state was cleared, or the card only expired locally) and the call is not live.
+    var recorded: ConversationInteractionOutcome? = nil
     @ObservedObject private var store = DeviceCallStore.shared
     @ObservedObject private var blockStore = GenerativeBlockStore.shared
     @State private var editing = false
@@ -69,6 +72,7 @@ struct DeviceCallSpec: Sendable {
             let phase: DeviceCallStore.Phase = isExpired && store.phase(call.id) == .confirming ? .expired : store.phase(call.id)
             VStack(alignment: .leading, spacing: 12) {
                 header
+                if let journal = journalFinal(phase) { recordedRow(journal) } else {
                 switch phase {
                 case .confirming:
                     fields
@@ -82,6 +86,7 @@ struct DeviceCallSpec: Sendable {
                 case .reportFailed(let result): receipt(result, reportFailed: true)
                 case .expired:
                     Label(ui("已过期，需要的话再跟小猫说一次"), systemImage: "clock").font(CatpawTypography.Role.secondary.font).foregroundStyle(CatpawColors.secondary)
+                }
                 }
             }
             .padding(16).frame(maxWidth: .infinity, alignment: .leading)
@@ -100,6 +105,28 @@ struct DeviceCallSpec: Sendable {
         .sheet(isPresented: $editing) { DeviceCallEditSheet(call: call, spec: spec, values: args) { store.edited[call.id] = $0 } }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("chat.deviceCall." + call.id)
+    }
+
+    /// The journal outcome wins only over a non-final local phase (`confirming`, or `expired` that the journal contradicts).
+    private func journalFinal(_ phase: DeviceCallStore.Phase) -> ConversationInteractionOutcome? {
+        guard let recorded, recorded.isFinal, !DeviceCallGate.isLive(call.id) else { return nil }
+        switch phase {
+        case .confirming: return recorded
+        case .expired: return recorded == .expired ? nil : recorded
+        default: return nil
+        }
+    }
+    private func recordedRow(_ outcome: ConversationInteractionOutcome) -> some View {
+        let name = ui(spec.titleKey)
+        let (text, icon): (String, String) = switch outcome {
+        case .done: (ui(spec.doneKey), "checkmark.circle.fill")
+        case .declined, .cancelled: (ui("已取消，未执行：{0}", [name]), "xmark.circle")
+        case .expired: (ui("已过期，需要的话再跟小猫说一次"), "clock")
+        case .failed: (ui("没有完成：{0}", [name]), "exclamationmark.circle")
+        case .notExecuted, .pending: (ui("未执行：{0}", [name]), "minus.circle")
+        }
+        return Label(text, systemImage: icon).font(CatpawTypography.Role.body.font).foregroundStyle(outcome == .done ? CatpawColors.ink : CatpawColors.secondary)
+            .frame(minHeight: 44, alignment: .leading).accessibilityIdentifier("chat.deviceCall.recorded")
     }
 
     private func expired(at date: Date) -> Bool {

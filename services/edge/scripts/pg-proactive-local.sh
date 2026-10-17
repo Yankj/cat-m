@@ -25,7 +25,8 @@ for f in $(ls supabase/migrations/*proactive*.sql | sort); do
   case "$f" in *20261017010000_*) echo "seed old data: test/fixtures/pg-upgrade-seed-before-010000.sql"; "${P[@]}" -1 -d "$DB" -f test/fixtures/pg-upgrade-seed-before-010000.sql >/dev/null;; esac
   case "$f" in *20261017020000_*) echo "seed old data: test/fixtures/pg-upgrade-seed-before-020000.sql"; "${P[@]}" -1 -d "$DB" -f test/fixtures/pg-upgrade-seed-before-020000.sql >/dev/null;; esac
   case "$f" in *20261017030000_*) echo "seed old data: test/fixtures/pg-upgrade-seed-before-030000.sql"; "${P[@]}" -1 -d "$DB" -f test/fixtures/pg-upgrade-seed-before-030000.sql >/dev/null;; esac
+  case "$f" in *20261017050000_*) echo "seed old data: test/fixtures/pg-upgrade-seed-before-050000.sql"; "${P[@]}" -1 -d "$DB" -f test/fixtures/pg-upgrade-seed-before-050000.sql >/dev/null;; esac
   echo "apply (one transaction, like supabase db push) $f"; "${P[@]}" -1 -d "$DB" -f "$f" >/dev/null
 done
 URL="postgres://${PGUSER:-postgres}@${PGTCPHOST:-localhost}:${PGPORT:-5432}/$DB"
-CATPAW_PG_TEST_URL="$URL" deno test -A --no-check test/proactive-push-pg.test.mjs test/proactive-tasks-pg.test.mjs
+CATPAW_PG_TEST_URL="$URL" deno test -A --no-check test/proactive-push-pg.test.mjs test/proactive-tasks-pg.test.mjs test/proactive-feedback-pg.test.mjs

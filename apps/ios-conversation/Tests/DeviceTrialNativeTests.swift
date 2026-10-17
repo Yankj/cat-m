@@ -341,6 +341,18 @@ final class DeviceTrialNativeTests: XCTestCase {
   XCTAssertThrowsError(try config.makeRequest(route:"//unapproved.example/leak",authorization:"Bearer token"))
   XCTAssertThrowsError(try NativeChatConfiguration(origin:base,localScope:Profiles.user,serverScopeID:UUID(),publishableKey:"sb_secret_never_a_client_key"))
  }
+ /// Follow-up chips used to require `draft.isEmpty && canAcceptDraft` before filling — unsatisfiable, so a tap never sent.
+ @MainActor func testFollowUpChipQuickSendFillsEmptyComposerAndIsAcceptedLikeStarter() async throws {
+  let repo=try Repository(persistence:SelectedConversationTestStorage()),backend=P0LifecycleBackend(),service=ConversationSessionService(repository:repo,backend:backend)
+  let model=ConversationFirstModel(repository:repo,service:service);await model.start()
+  XCTAssertTrue(model.draft.isEmpty);XCTAssertFalse(model.draft.isEmpty && model.canAcceptDraft,"the old chip precondition can never hold")
+  XCTAssertFalse(model.stageQuickSend(nil));XCTAssertFalse(model.stageQuickSend("   "));XCTAssertFalse(model.stageQuickSend("帮我总结一下",attachmentsEmpty:false))
+  XCTAssertTrue(model.draft.isEmpty,"refused quick sends leave the composer untouched")
+  XCTAssertTrue(model.stageQuickSend("帮我总结一下"));XCTAssertEqual(model.draft,"帮我总结一下");XCTAssertTrue(model.canAcceptDraft)
+  XCTAssertFalse(model.stageQuickSend("另一个建议"),"never overwrites a draft");XCTAssertEqual(model.draft,"帮我总结一下")
+  model.prepareSend();XCTAssertTrue(model.draft.isEmpty);XCTAssertEqual(model.outgoingMessages.last?.text,"帮我总结一下")
+  await model.deactivate()
+ }
  @MainActor func testTextConsentSurvivesPresentationBindingClearAndRejectsDuplicate() async throws {
   let repo=try Repository(persistence:SelectedConversationTestStorage()),backend=P0ExperienceBackend(scenario:"p0-ui-consent"),service=ConversationSessionService(repository:repo,backend:backend)
   let model=ConversationFirstModel(repository:repo,service:service);await model.start();model.editDraft("Owned synthetic permission")
