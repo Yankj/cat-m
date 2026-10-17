@@ -12,284 +12,338 @@ import WidgetKit
     }
 }
 
+// MARK: - Catpaw work Live Activity — ux-round-1505 glass redesign (方块 SPEC.md, /workspace/codex-review/ux-round-1505/live-activity)
+
 struct CatpawWorkLiveActivity: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: CatpawWorkAttributes.self) { context in
-            LockScreenWorkView(attributes: context.attributes, state: context.state)
-                .activityBackgroundTint(LA.canvas)
-                .activitySystemActionForegroundColor(LA.ink)
+            LockScreenWorkView(attributes: context.attributes, state: context.state, stale: context.isStale)
+                .modifier(LAGlass())
+                .activitySystemActionForegroundColor(LAPalette.adaptiveInk)
                 .widgetURL(LA.url(context.attributes))
         } dynamicIsland: { context in
-            DynamicIsland {
+            let p = LAPalette(dark: true), m = LAModel(context.state, attributes: context.attributes, stale: context.isStale)
+            return DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
-                    LAStatusMark(state: context.state, onDark: true)
-                        .frame(width: 34, height: 34)
-                        .padding(.leading, 4)
-                }
-                DynamicIslandExpandedRegion(.trailing) {
-                    LAStatusText(state: context.state, onDark: true)
-                        .font(.caption.weight(.semibold))
-                        .padding(.trailing, 4)
+                    LAKitten(model: m, palette: p, size: 44, badge: 18).padding(.leading, 6).padding(.top, 4)
                 }
                 DynamicIslandExpandedRegion(.center) {
-                    VStack(spacing: 2) {
-                        Text(context.state.title.isEmpty ? context.attributes.title : context.state.title)
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.white)
-                            .lineLimit(1)
-                        Text(context.state.body)
-                            .font(.caption)
-                            .foregroundStyle(.white.opacity(0.68))
-                            .lineLimit(1)
-                            .contentTransition(.opacity)
-                    }
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(m.title).font(.callout.weight(.semibold)).foregroundStyle(.white).lineLimit(1).minimumScaleFactor(0.9)
+                        Text(m.status).font(.subheadline).foregroundStyle(p.secondary).lineLimit(m.kind == .needsUser ? 2 : 1).contentTransition(.opacity)
+                    }.frame(maxWidth: .infinity, alignment: .leading)
+                }
+                DynamicIslandExpandedRegion(.trailing) {
+                    LATimer(model: m).font(.subheadline.weight(.medium).monospacedDigit()).foregroundStyle(.white).padding(.trailing, 6)
                 }
                 DynamicIslandExpandedRegion(.bottom) {
-                    VStack(alignment: .leading, spacing: 9) {
-                        if context.state.status == .working {
-                            LAProgressTrack(pose: context.state.pose, onDark: true)
-                        }
-                        if context.state.status == .needsUser || context.state.status == .reminder {
-                            Link(destination: LA.url(context.attributes)) {
-                                Label(LA.s("查看详情", "Open details"), systemImage: "arrow.up.right")
-                                    .font(.caption.weight(.semibold))
-                                    .foregroundStyle(.white)
-                                    .frame(maxWidth: .infinity, minHeight: 34)
-                                    .background(LA.accent.opacity(0.34), in: Capsule())
-                            }
-                        }
-                    }
-                    .padding(.horizontal, 4)
+                    LAFooter(model: m, palette: p, attributes: context.attributes).padding(.leading, 56).padding(.bottom, 6)
                 }
             } compactLeading: {
-                LAStatusMark(state: context.state, onDark: true)
-                    .frame(width: 22, height: 22)
+                LAKitten(model: m, palette: p, size: 24, badge: 11).padding(.leading, 6)
             } compactTrailing: {
-                LACompactStatus(state: context.state)
+                LACompactTrailing(model: m, palette: p)
             } minimal: {
-                LAStatusMark(state: context.state, onDark: true)
-                    .frame(width: 18, height: 18)
+                LAKitten(model: m, palette: p, size: 24, badge: 11)
             }
             .widgetURL(LA.url(context.attributes))
-            .keylineTint(LA.accent)
+            .keylineTint(Color(lahex: 0xE8622A).opacity(0.6))
+        }
+    }
+}
+
+/// iOS 26: system Liquid Glass, no tint. iOS 17–18: translucent tint (white 0.50 light / #161412 0.48 dark); the system blurs behind it.
+struct LAGlass: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 26, *) { content } else { content.activityBackgroundTint(LAPalette.glassTint) }
+    }
+}
+
+extension Color {
+    init(lahex: UInt32, alpha: Double = 1) {
+        self.init(.sRGB, red: Double((lahex >> 16) & 0xFF) / 255, green: Double((lahex >> 8) & 0xFF) / 255, blue: Double(lahex & 0xFF) / 255, opacity: alpha)
+    }
+}
+extension UIColor {
+    convenience init(lahex: UInt32, alpha: CGFloat = 1) {
+        self.init(red: CGFloat((lahex >> 16) & 0xFF) / 255, green: CGFloat((lahex >> 8) & 0xFF) / 255, blue: CGFloat(lahex & 0xFF) / 255, alpha: alpha)
+    }
+}
+
+/// SPEC §2 tokens. Text is only ink / secondary — never orange. Color lives in badges and the current-step dot.
+struct LAPalette {
+    let dark: Bool
+    var ink: Color { dark ? Color(lahex: 0xF5F2EE) : Color(lahex: 0x1C1A18) }
+    var secondary: Color { dark ? Color(lahex: 0xF5F2EE, alpha: 0.64) : Color(lahex: 0x1C1A18, alpha: 0.62) }
+    var tertiary: Color { dark ? Color(lahex: 0xF5F2EE, alpha: 0.30) : Color(lahex: 0x1C1A18, alpha: 0.28) }
+    var stepCurrent: Color { dark ? Color(lahex: 0xF07A45) : Color(lahex: 0xE8622A) }
+    var amber: Color { dark ? Color(lahex: 0xE9A23B) : Color(lahex: 0xD98A1A) }
+    var green: Color { dark ? Color(lahex: 0x3DBA7E) : Color(lahex: 0x2FA36B) }
+    var red: Color { dark ? Color(lahex: 0xF0605A) : Color(lahex: 0xE0483E) }
+    var badgeNeutral: Color { dark ? Color(lahex: 0x2E2C2A) : Color(lahex: 0xF6F4F1) }
+    var badgeStroke: Color { dark ? Color(lahex: 0x161412) : .white }
+    var primaryFill: Color { dark ? Color(lahex: 0xF5F2EE) : Color(lahex: 0x1C1A18) }
+    var primaryText: Color { dark ? Color(lahex: 0x1C1A18) : .white }
+    var secondaryFill: Color { dark ? Color.white.opacity(0.12) : Color(lahex: 0x1C1A18, alpha: 0.08) }
+    static let glassTint = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(lahex: 0x161412, alpha: 0.48) : UIColor(white: 1, alpha: 0.50) })
+    static let adaptiveInk = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(lahex: 0xF5F2EE) : UIColor(lahex: 0x1C1A18) })
+}
+
+/// Presentation model: kind → kitten, badge, spoken status, footer. Pure (no View), so it is unit-testable.
+struct LAModel {
+    enum Kind: Equatable { case thinking, tool, writing, needsUser, done, failed, reminder, unknown }
+    let kind: Kind
+    let title: String
+    let status: String
+    let step: Int
+    let startedAt: Date?
+    let endedAt: Date?
+    let tool: String?
+    let stale: Bool
+
+    init(_ s: CatpawWorkAttributes.ContentState, attributes: CatpawWorkAttributes? = nil, stale: Bool = false) {
+        typealias K = CatpawWorkAttributes.ContentState.Kind
+        switch s.kind {
+        case K.thinking: kind = .thinking
+        case K.working: kind = (s.tool ?? "").isEmpty ? .thinking : .tool
+        case K.tool: kind = .tool
+        case K.writing: kind = .writing
+        case K.needsUser: kind = .needsUser
+        case K.done: kind = .done
+        case K.failed: kind = .failed
+        case "reminder_due": kind = .reminder
+        default: kind = .unknown
+        }
+        self.stale = stale && kind != .done && kind != .failed
+        step = max(0, s.step ?? 0); startedAt = s.startedAt; endedAt = s.endedAt; tool = s.tool
+        let generic: Set<String> = ["", "Catpaw 正在工作", "Catpaw is working", "Catpaw 正在处理"]
+        if let summary = s.summary?.trimmingCharacters(in: .whitespacesAndNewlines), !summary.isEmpty { title = summary }
+        else if !generic.contains(s.title) { title = s.title }
+        else { title = LA.s("Catpaw 正在处理", "Catpaw is on it") }
+        let genericBodies: Set<String> = ["", "正在思考…", "已完成", "未完成，需核对", "等你确认", "正在整理回答…"]
+        let body = genericBodies.contains(s.body) ? nil : s.body
+        if self.stale { status = LA.s("可能已暂停 · 点按查看", "May be paused · Tap to check"); return }
+        switch kind {
+        case .thinking: status = LA.s("正在理解你的请求", "Working out your request")
+        case .tool: status = LA.verb(s.tool)
+        case .writing: status = LA.s("正在整理回复", "Writing the reply")
+        case .needsUser: status = body ?? LA.s("等你确认", "Waiting for you")
+        case .done: status = body ?? LA.s("已完成", "Done")
+        case .failed: status = body ?? LA.s("没能完成", "Couldn't finish")
+        case .reminder: status = LA.s("提醒：", "Reminder: ") + s.title
+        case .unknown: status = s.body
+        }
+    }
+    var kittenName: String {
+        switch kind {
+        case .thinking: "LAKittenThinking"
+        case .tool: "LAKittenTool"
+        case .writing: "LAKittenWriting"
+        case .needsUser: "LAKittenWaiting"
+        case .done: "LAKittenDone"
+        case .failed: "LAKittenFailed"
+        case .reminder, .unknown: "LALogo"
+        }
+    }
+    /// SF Symbol badge; nil = no badge.
+    var badgeSymbol: String? {
+        switch kind {
+        case .thinking, .unknown: nil
+        case .tool: LA.toolGlyph(tool)
+        case .writing: "pencil"
+        case .needsUser: "questionmark"
+        case .done: "checkmark"
+        case .failed: "exclamationmark"
+        case .reminder: "bell.fill"
+        }
+    }
+    var running: Bool { [.thinking, .tool, .writing, .unknown].contains(kind) && !stale }
+    var elapsed: TimeInterval? { guard let startedAt, let endedAt else { return nil }; return max(0, endedAt.timeIntervalSince(startedAt)) }
+    var axKind: String {
+        switch kind {
+        case .thinking: LA.s("思考中", "Thinking")
+        case .tool: LA.s("使用工具", "Using a tool")
+        case .writing: LA.s("整理回复", "Writing")
+        case .needsUser: LA.s("等你确认", "Waiting for you")
+        case .done: LA.s("已完成", "Done")
+        case .failed: LA.s("没能完成", "Couldn't finish")
+        case .reminder: LA.s("提醒", "Reminder")
+        case .unknown: LA.s("进行中", "In progress")
         }
     }
 }
 
 enum LA {
-    /// chat-ux-1505 #4b: cat-state icon per pose (方块 glass redesign). Asset names are the contract with
-    /// /workspace/codex-review/ux-round-1505/live-activity/; missing asset → "LALogo" → SF Symbol status mark.
-    static func catIconName(_ pose: CatpawWorkAttributes.ContentState.Pose) -> String {
-        switch pose {
-        case .thinking: "LACatThinking"
-        case .tool: "LACatTool"
-        case .writing: "LACatWriting"
-        case .waiting: "LACatWaiting"
-        case .done: "LACatDone"
-        case .failed: "LACatFailed"
-        }
-    }
-    static func catIcon(_ pose: CatpawWorkAttributes.ContentState.Pose) -> String? {
-        for name in [catIconName(pose), "LALogo"] where UIImage(named: name) != nil { return name }
-        return nil
-    }
-    static let canvas = Color(red: 0.984, green: 0.969, blue: 0.941)
-    static let ink = Color(red: 0.145, green: 0.125, blue: 0.105)
-    static let muted = Color(red: 0.385, green: 0.345, blue: 0.305)
-    static let accent = Color(red: 0.867, green: 0.333, blue: 0.118)
-    static let attention = Color(red: 0.753, green: 0.459, blue: 0.071)
-    static let success = Color(red: 0.176, green: 0.482, blue: 0.318)
-    static let failure = Color(red: 0.710, green: 0.216, blue: 0.173)
-
     static func s(_ zh: String, _ en: String) -> String {
         Locale.current.language.languageCode?.identifier == "zh" ? zh : en
     }
-
     static func url(_ attributes: CatpawWorkAttributes) -> URL {
         URL(string: "catpawm://conversation/" + attributes.conversationID) ?? URL(string: "catpawm://proactive")!
     }
-
-    static func color(_ status: CatpawWorkAttributes.ContentState.Status) -> Color {
-        switch status {
-        case .needsUser, .reminder: attention
-        case .done: success
-        case .failed: failure
-        case .working: accent
+    /// SPEC §5 tool → spoken verb. Never shows a raw tool id.
+    static func verb(_ tool: String?) -> String {
+        let t = tool ?? ""
+        if t.hasPrefix("delegate_") { return s("正在交给助手处理", "Handing off") }
+        switch t {
+        case "calendar_list": return s("正在查看日历", "Checking your calendar")
+        case "calendar_create", "create_calendar_event": return s("正在添加日程", "Adding the event")
+        case "places_search": return s("正在搜索附近", "Searching nearby")
+        case "reminder_create", "create_reminder", "alarm_set": return s("正在设置提醒", "Setting a reminder")
+        case "web_search": return s("正在搜索网页", "Searching the web")
+        default: return s("正在处理", "Working on it")
         }
     }
-
-    static func label(_ status: CatpawWorkAttributes.ContentState.Status) -> String {
-        switch status {
-        case .working: s("进行中", "Working")
-        case .needsUser: s("需要决定", "Decision needed")
-        case .reminder: s("提醒", "Reminder")
-        case .done: s("已完成", "Completed")
-        case .failed: s("需要核对", "Review needed")
+    static func toolGlyph(_ tool: String?) -> String {
+        switch tool ?? "" {
+        case "calendar_list", "calendar_create", "create_calendar_event": "calendar"
+        case "places_search", "maps_open": "location.fill"
+        case "web_search", "contacts_search": "magnifyingglass"
+        case "reminder_create", "create_reminder", "alarm_set": "bell.fill"
+        default: "wrench.and.screwdriver.fill"
         }
     }
-
-    static func symbol(_ status: CatpawWorkAttributes.ContentState.Status) -> String {
-        switch status {
-        case .working: "arrow.triangle.2.circlepath"
-        case .needsUser: "hand.raised.fill"
-        case .reminder: "bell.fill"
-        case .done: "checkmark"
-        case .failed: "exclamationmark"
-        }
+    static func clock(_ seconds: TimeInterval) -> String {
+        let s = Int(seconds.rounded()); return s >= 3600 ? String(format: "%d:%02d:%02d", s / 3600, s / 60 % 60, s % 60) : String(format: "%d:%02d", s / 60, s % 60)
     }
 }
 
-struct LAStatusMark: View {
-    let state: CatpawWorkAttributes.ContentState
-    let onDark: Bool
-
+/// Kitten (widget-catalog image at display size) + SF Symbol status badge at bottom-trailing.
+struct LAKitten: View {
+    let model: LAModel
+    let palette: LAPalette
+    let size: CGFloat
+    let badge: CGFloat
+    @Environment(\.isLuminanceReduced) private var luminanceReduced
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var body: some View {
-        if let icon = LA.catIcon(state.pose) {
-            Image(icon).resizable().interpolation(.high).scaledToFit()
-                .accessibilityLabel(LA.label(state.status))
-        } else { symbolMark }
-    }
-    private var symbolMark: some View {
-        let color = LA.color(state.status)
-        return ZStack {
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .fill(color.opacity(onDark ? 0.28 : 0.12))
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .strokeBorder(color.opacity(onDark ? 0.62 : 0.28), lineWidth: 1)
-            Image(systemName: LA.symbol(state.status))
-                .font(.system(size: 12, weight: .bold))
-                .foregroundStyle(onDark ? Color.white : color)
+        let asset = size <= 24 ? model.kittenName + "24" : model.kittenName + "36"
+        let name = UIImage(named: asset) != nil ? asset : (size <= 24 ? "LALogo24" : "LALogo36")
+        ZStack(alignment: .bottomTrailing) {
+            Image(name).resizable().interpolation(.high).scaledToFit()
+                .frame(width: size, height: size).opacity(luminanceReduced ? 0.7 : 1)
+                .id(model.kittenName).transition(.opacity)
+            if let symbol = model.badgeSymbol {
+                Image(systemName: symbol)
+                    .font(.system(size: badge * 0.56, weight: .bold))
+                    .foregroundStyle(badgeGlyph)
+                    .frame(width: badge, height: badge)
+                    .background(badgeFill, in: Circle())
+                    .overlay(Circle().strokeBorder(palette.badgeStroke, lineWidth: 1.5))
+                    .offset(x: 3, y: 3)
+                    .transition(reduceMotion ? .opacity : .scale(scale: 0.6).combined(with: .opacity))
+                    .accessibilityHidden(true)
+            }
         }
-        .accessibilityLabel(LA.label(state.status))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Catpaw · " + model.axKind)
+    }
+    private var badgeFill: Color {
+        switch model.kind {
+        case .needsUser, .reminder: palette.amber
+        case .done: palette.green
+        case .failed: palette.red
+        default: palette.badgeNeutral
+        }
+    }
+    private var badgeGlyph: Color { [.needsUser, .reminder, .done, .failed].contains(model.kind) ? .white : palette.ink }
+}
+
+/// Live elapsed time — only when startedAt is known (old payloads: hidden, never faked). Frozen on done/failed.
+struct LATimer: View {
+    let model: LAModel
+    var body: some View {
+        if let elapsed = model.elapsed { Text(LA.clock(elapsed)) }
+        else if model.running, let start = model.startedAt { Text(timerInterval: start...Date.distantFuture, countsDown: false) }
     }
 }
 
-struct LAStatusText: View {
-    let state: CatpawWorkAttributes.ContentState
-    let onDark: Bool
-
+/// Row 2: honest step dots + 第 N 步 / waiting action / done-failed footer.
+struct LAFooter: View {
+    let model: LAModel
+    let palette: LAPalette
+    let attributes: CatpawWorkAttributes
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var body: some View {
-        Text(LA.label(state.status))
-            .foregroundStyle(onDark ? Color.white.opacity(0.86) : LA.color(state.status))
+        switch model.kind {
+        case .needsUser:
+            // 「确认添加」 deliberately not on the lock screen (trust & safety: would write to the calendar from a locked
+            // device). Only 「打开查看」, which deep-links into the chat where the in-app card confirms.
+            Link(destination: LA.url(attributes)) {
+                Text(LA.s("打开查看", "Open")).font(.footnote.weight(.semibold)).foregroundStyle(palette.ink)
+                    .padding(.horizontal, 16).frame(height: 34).background(palette.secondaryFill, in: Capsule())
+            }
+        case .done:
+            Text(doneLine).font(.caption2.weight(.medium)).foregroundStyle(palette.secondary)
+        case .failed:
+            Text(LA.s("点按打开 Catpaw 处理", "Tap to open Catpaw")).font(.caption2.weight(.medium)).foregroundStyle(palette.secondary)
+        default:
+            if model.step > 0 && !model.stale {
+                HStack(spacing: 6) {
+                    HStack(spacing: 4) {
+                        ForEach(0..<min(model.step, 6), id: \.self) { i in
+                            let current = i == min(model.step, 6) - 1
+                            Circle().fill(current ? palette.stepCurrent : palette.tertiary).frame(width: 6, height: 6)
+                                .overlay(current ? Circle().stroke(palette.stepCurrent.opacity(0.25), lineWidth: 2).padding(-2) : nil)
+                        }
+                    }
+                    Text(LA.s("第 \(model.step) 步", "Step \(model.step)")).font(.caption2.weight(.medium)).foregroundStyle(palette.secondary)
+                        .contentTransition(reduceMotion ? .opacity : .numericText())
+                }
+                .accessibilityElement(children: .ignore).accessibilityLabel(LA.s("第 \(model.step) 步", "Step \(model.step)"))
+            }
+        }
+    }
+    private var doneLine: String {
+        var parts: [String] = []
+        if model.step > 0 { parts.append(LA.s("共 \(model.step) 步", "\(model.step) steps")) }
+        if let e = model.elapsed { parts.append(LA.s("用时 ", "") + LA.clock(e)) }
+        return parts.isEmpty ? LA.s("已完成", "Done") : parts.joined(separator: " · ")
     }
 }
 
-struct LACompactStatus: View {
-    let state: CatpawWorkAttributes.ContentState
-
+struct LACompactTrailing: View {
+    let model: LAModel
+    let palette: LAPalette
     var body: some View {
-        Image(systemName: LA.symbol(state.status))
-            .font(.caption.weight(.bold))
-            .foregroundStyle(LA.color(state.status))
-            .accessibilityLabel(LA.label(state.status))
+        switch model.kind {
+        case .needsUser:
+            Text(LA.s("待确认", "Confirm")).font(.caption2.weight(.semibold)).foregroundStyle(.white)
+                .padding(.horizontal, 8).frame(height: 22).background(Color.white.opacity(0.18), in: Capsule())
+        case .done: Image(systemName: "checkmark.circle.fill").font(.system(size: 20)).foregroundStyle(palette.green)
+        case .failed: Image(systemName: "exclamationmark.circle.fill").font(.system(size: 20)).foregroundStyle(palette.red)
+        default: LATimer(model: model).font(.footnote.weight(.semibold).monospacedDigit()).foregroundStyle(.white).frame(maxWidth: 52)
+        }
     }
 }
 
 struct LockScreenWorkView: View {
     let attributes: CatpawWorkAttributes
     let state: CatpawWorkAttributes.ContentState
-
+    var stale = false
+    @Environment(\.colorScheme) private var scheme
     var body: some View {
-        HStack(spacing: 0) {
-            RoundedRectangle(cornerRadius: 2, style: .continuous)
-                .fill(LA.color(state.status))
-                .frame(width: 4)
-                .accessibilityHidden(true)
-
-            VStack(alignment: .leading, spacing: 12) {
-                HStack(alignment: .top, spacing: 11) {
-                    LAStatusMark(state: state, onDark: false)
-                        .frame(width: 38, height: 38)
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(state.title.isEmpty ? attributes.title : state.title)
-                            .font(.headline)
-                            .foregroundStyle(LA.ink)
-                            .lineLimit(1)
-                        Text(state.body)
-                            .font(.subheadline)
-                            .foregroundStyle(LA.muted)
-                            .lineLimit(2)
-                    }
-                    Spacer(minLength: 4)
-                    LAStatusText(state: state, onDark: false)
-                        .font(.caption.weight(.semibold))
-                        .multilineTextAlignment(.trailing)
+        let p = LAPalette(dark: scheme == .dark), m = LAModel(state, attributes: attributes, stale: stale)
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .top, spacing: 11) {
+                LAKitten(model: m, palette: p, size: 36, badge: 16)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(m.title).font(.subheadline.weight(.semibold)).foregroundStyle(p.ink).lineLimit(1).minimumScaleFactor(0.9)
+                    Text(m.status).font(.footnote).foregroundStyle(p.secondary).lineLimit(m.kind == .needsUser ? 2 : 1).truncationMode(.tail)
+                        .contentTransition(.opacity)
                 }
-
-                if state.status == .working {
-                    LAProgressTrack(pose: state.pose, onDark: false)
-                } else if state.status == .needsUser || state.status == .reminder {
-                    Link(destination: LA.url(attributes)) {
-                        HStack {
-                            Text(LA.s("查看详情", "Open details"))
-                            Spacer(minLength: 8)
-                            Image(systemName: "arrow.right")
-                        }
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(LA.accent)
-                        .frame(minHeight: 38)
-                        .padding(.horizontal, 12)
-                        .background(LA.accent.opacity(0.09), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-                    }
-                }
+                Spacer(minLength: 8)
+                LATimer(model: m).font(.footnote.weight(.medium).monospacedDigit()).foregroundStyle(p.ink)
             }
-            .padding(.leading, 12)
-        }
-        .padding(16)
-    }
-}
-
-/// A restrained three-phase indicator for thinking, tool work, and writing. The adjacent status text and
-/// accessibility value keep the state understandable without relying on color alone.
-struct LAProgressTrack: View {
-    let pose: CatpawWorkAttributes.ContentState.Pose
-    let onDark: Bool
-
-    private var reached: Int {
-        switch pose {
-        case .writing: 3
-        case .tool: 2
-        default: 1
-        }
-    }
-
-    private var phase: String {
-        switch reached {
-        case 3: LA.s("整理回答", "Writing response")
-        case 2: LA.s("使用工具", "Using tools")
-        default: LA.s("分析任务", "Analyzing")
-        }
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 5) {
-            HStack(spacing: 5) {
-                ForEach(0..<3, id: \.self) { index in
-                    Capsule()
-                        .fill(index < reached ? LA.accent : (onDark ? Color.white.opacity(0.18) : LA.ink.opacity(0.10)))
-                        .frame(height: 4)
-                }
+            ViewThatFits(in: .vertical) {
+                LAFooter(model: m, palette: p, attributes: attributes).padding(.leading, 47)
+                EmptyView()
             }
-            Text(phase)
-                .font(.caption2.weight(.medium))
-                .foregroundStyle(onDark ? Color.white.opacity(0.62) : LA.muted)
         }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(LA.s("工作进度", "Work progress"))
-        .accessibilityValue(phase)
+        .padding(EdgeInsets(top: 14, leading: 14, bottom: 14, trailing: 16))
+        .dynamicTypeSize(...DynamicTypeSize.xLarge)
+        .accessibilityElement(children: .combine)
     }
 }
-
-#if DEBUG
-#Preview("Lock", as: .content, using: CatpawWorkAttributes(taskID: "t1", conversationID: "c1", title: "一页带来源的报告")) {
-    CatpawWorkLiveActivity()
-} contentStates: {
-    CatpawWorkAttributes.ContentState(title: "一页带来源的报告", body: "读取第 2 份资料", kind: "tool", taskID: "t1")
-    CatpawWorkAttributes.ContentState(title: "喝水提醒", body: "该起来喝杯水了", kind: "reminder_due", taskID: "t2")
-    CatpawWorkAttributes.ContentState(title: "一页带来源的报告", body: "报告已生成", kind: "done", taskID: "t1")
-}
-#endif
-
 
 struct CatpawLeaveLiveActivity: Widget {
     var body: some WidgetConfiguration {
