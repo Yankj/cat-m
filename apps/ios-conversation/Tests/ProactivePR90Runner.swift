@@ -640,6 +640,14 @@ func pr90i_rules() {
     check(lot.accounts == ["user-a"] || lot.accounts == ["USER-A"], "one slot per account")
     check((lot.records.values.first?["k"] as? Int) == 1 && lot.slots["user-a"]?.count == 2, "a second park appends; nothing waiting for a decision is overwritten")
     check(ProactiveParking.Lot(lot.raw).slots["user-a"]?.count == 2, "round-trips through the plist form")
+    // p90i (08:50): the owner signing in again takes its records back (oldest first); nobody else can.
+    check(lot.take(account: "USER-B").isEmpty && lot.slots["user-a"]?.count == 2, "another account takes nothing")
+    let back = lot.take(account: "User-A")
+    check(back.compactMap { $0["k"] as? Int } == [1, 2] && lot.slots["user-a"] == nil, "owner takes its records, oldest first; slot emptied")
+    // EventKit items are outside the app: recorded for the user's decision, never part of the automatic restore.
+    let rec = ProactiveParking.externalItems(inbox: ["s1": ["taken": [["action": "create_reminder", "outcome": "succeeded"]]], "s2": ["taken": [["action": "dismiss"]]]],
+                                             reminderOps: ["s1": "op-s1", "s2": "op-s2"])
+    check(rec.map(\.suggestionID) == ["s1"] && rec.first?.operationID == "op-s1" && rec.first?.kind == "eventkit_reminder", "only created EventKit reminders are listed (\(rec))")
 }
 
 // p90i (#91 S1): the server already applied the learned weights — a cloud decision is never gated a second time on
