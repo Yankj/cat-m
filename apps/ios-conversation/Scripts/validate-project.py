@@ -68,6 +68,16 @@ for iv in doc.iter('imageView'):
         assert box, f'{pdf.name}: no MediaBox'
         x0, y0, x1, y1 = map(float, box.groups())
         assert abs((x1 - x0) - (y1 - y0)) < 0.01, f'{pdf.name}: artboard {x1-x0}x{y1-y0} is not square'
+    imageset = next(catalog.rglob(f"{iv.attrib['image']}.imageset"))
+    entries = json.loads((imageset / 'Contents.json').read_text())['images']
+    for entry in entries:
+        if not entry.get('filename', '').endswith('.png'): continue
+        head = (imageset / entry['filename']).read_bytes()[:24]
+        w, h = int.from_bytes(head[16:20], 'big'), int.from_bytes(head[20:24], 'big')
+        scale = int(entry.get('scale', '1x').rstrip('x'))
+        assert w == h == int(consts['width']) * scale, f"{entry['filename']}: {w}x{h} px, expected square {int(consts['width']) * scale} px"
+    # Rasterised @1x/@2x/@3x PNGs, not a vector-only PDF: the out-of-process launch-screen renderer drew no logo from it.
+    assert {e.get('scale') for e in entries if e.get('filename', '').endswith('.png')} >= {'2x', '3x'}, 'LaunchScreen logo needs @2x and @3x PNGs'
 pinned = [c for c in doc.iter('constraint') if c.attrib.get('firstAttribute') in ('leading', 'trailing', 'top', 'bottom') and c.attrib.get('firstItem') == 'I01']
 assert not pinned, 'LaunchScreen logo must be centred, never edge-pinned'
 # Optional: the BUILT bundle (python3 validate-project.py --built-app path/CatpawM.app)

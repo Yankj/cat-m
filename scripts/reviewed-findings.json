@@ -2337,12 +2337,6 @@
       "reason": "Reviewed 2026-10-17 (re-pin after line drift, NoBug B4): synthetic test password / access- or refresh-token marker consumed only by injected test remotes; no real credential."
     },
     {
-      "path": "apps/ios-conversation/Resources/Assets.xcassets/LaunchMark.imageset/LaunchMark.pdf",
-      "category": "unexpected_binary",
-      "sha256": "7bb13d52e89656ca4ba98e9e7ce52c509c60de96434d5893ed8232c32f977f67",
-      "reason": "Reviewed 2026-10-17: 96x96 pt vector launch tile (cairo PDF, LaunchScreen.storyboard image). Metadata is only Producer=cairo 1.18.4 and CreationDate; no names, paths or embedded data."
-    },
-    {
       "path": "apps/ios-conversation/Tests/NativeOAuthTests.swift",
       "category": "secret_assignment_review",
       "line": 106,
