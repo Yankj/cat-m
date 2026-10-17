@@ -456,7 +456,11 @@ export class ChatService {
       for(const it of interrupts){const call=ck.round.calls.find(c=>c.id===it.call_id);next={...next,events:[...next.events,it.kind==='device'?this.event(next,'device_call',deviceCallEvent(it,clone(call.arguments))):it.kind==='ui'?this.event(next,'ui.block',uiBlockEvent(it.block,it)):this.event(next,'approval_requested',requestedEvent(it,call))]};}
       next={...next,state:'awaiting_approval',suspended_at:isoAt(now),interrupts:[...(t.interrupts??[]).filter(i=>!interrupts.some(n=>n.interrupt_id===i.interrupt_id)),...interrupts],
         approval_checkpoint:{state:'pending',step:ck.step,messages:clone(ck.messages),round:clone(ck.round),text:ck.text,message_id:ck.messageID,seen:clone(ck.seen)}};
-      next={...next,events:[...next.events,this.event(next,'turn_suspended',{interrupt_ids:interrupts.map(i=>i.interrupt_id),expires_at:interrupts.map(i=>i.expires_at).sort()[0]})]};
+      // v1.1 (a): read-only device calls (confirm:'none', e.g. calendar_list / places_search) run on the phone without a card.
+      // The turn still suspends until the phone reports (old clients need turn_suspended to end the stream and keep the call
+      // pending), but the event says no human decision is needed, so clients must not show "waiting for your confirmation".
+      const requiresApproval=interrupts.some(i=>!(i.kind==='device'&&i.confirm==='none'));
+      next={...next,events:[...next.events,this.event(next,'turn_suspended',{interrupt_ids:interrupts.map(i=>i.interrupt_id),expires_at:interrupts.map(i=>i.expires_at).sort()[0],requires_approval:requiresApproval,waiting_for:requiresApproval?'user':'device'})]};
       const saved=await tx.put(env.owner,'native-chat-turns',next);await this.beforeCommit(tx,env,saved);return saved;
     });
     if(!t)return false;this.notify(env.owner,t);return true;
