@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import os
 
 public struct AuthenticatedNativeChatCredentials: NativeChatSessionCredentials {
     let manager: NativeAuthSessionManager
@@ -65,7 +66,14 @@ struct NativeWorkspaceRetrySchedule: Sendable {
     /// recovery task would start an experience.
     static var afterLocalReadHook:(@MainActor () async -> Void)?
     static var offlineRecoveryWillStartExperience:(@MainActor () -> Void)?
-    private var recoveryImpossible=false
+    @Published private(set) var recoveryImpossible=false
+    /// Launch-loader fix: the session cannot be resumed without the explicit 「重新开始」. The UI shows a small
+    /// non-blocking capsule for this; it is never a reason to hold a full-screen loader.
+    var sessionRestartNeeded: Bool { recoveryImpossible && requiresSessionRestart }
+    /// The local (receipt) read of the warm-up has returned — disk only, no network.
+    @Published private(set) var localReadFinished = false
+    /// The attached chat is the account-neutral launch fallback (offline trial store); a real account chat replaces it.
+    private(set) var chatIsLaunchFallback = false
     private struct WorkspaceKey:Equatable {let lifecycleEpoch:Int;let generation:Int;let subject:UUID}
     private var workspaceFlight:(id:UUID,key:WorkspaceKey,task:Task<Void,Never>)?
     private var workspaceReadyKey:WorkspaceKey?
@@ -240,7 +248,10 @@ struct NativeWorkspaceRetrySchedule: Sendable {
         warmup = task; await task.value
     }
     private func warmUp(_ manager: NativeAuthSessionManager) async {
+        LaunchTrace.mark("warmup.localRead.begin")
         await openLocalConversation()
+        localReadFinished = true
+        LaunchTrace.mark("warmup.localRead.end", chat != nil ? "chat" : "none")
         subscription = Task { [weak self] in
             for await snapshot in await manager.changes() { guard let self, !Task.isCancelled else { return }; await self.receive(snapshot) }
         }
@@ -273,6 +284,8 @@ struct NativeWorkspaceRetrySchedule: Sendable {
             } catch {
                 guard !Task.isCancelled,!logoutInProgress,epoch == lifecycleEpoch else{return}
                 let safe=error as? NativeAuthError ?? .unavailable
+                // Another restore / sign-in owns the manager right now: wait for it, never a terminal state.
+                if safe == .busy { await waitForManagerSettled(); guard !Task.isCancelled,!logoutInProgress,epoch == lifecycleEpoch else{return}; continue }
                 if [.unavailable,.rateLimited].contains(safe),await hasSafelyRecoverableCredential() {
                     self.error=nil;chat?.setNetworkAdmissionAllowed(false)
                     if connectionMonitor.pathSatisfied {await waitForRetry(attempt:attempt);attempt += 1}
@@ -474,6 +487,8 @@ struct NativeWorkspaceRetrySchedule: Sendable {
     }
     /// Local chat for entry/offline. Network stays closed until resolveWorkspace admits for real.
     private func admitProvisionalChat(user: NativeAuthUser, configuration: NativeAuthConfiguration) async {
+        // The account-neutral launch fallback yields to the resolved account's own local chat.
+        if chat != nil, chatIsLaunchFallback, !logoutInProgress, !requiresSessionRestart { await detachChat() }
         guard chat == nil, !logoutInProgress, !requiresSessionRestart else { return }
         let openEpoch = lifecycleEpoch, openToken = Self.principal(for: user.id)   // captured at open start
         let serverScope = configuration.serverScopeID
@@ -513,7 +528,7 @@ struct NativeWorkspaceRetrySchedule: Sendable {
         stableID("catpaw-provisional-scope-" + subject.uuidString.lowercased())
     }
     /// First-launch / auth-unreachable: local trial store, no network admission, no fake cloud credential.
-    func openOfflineTrialChat(configuration: NativeAuthConfiguration) async {
+    func openOfflineTrialChat(configuration: NativeAuthConfiguration, launchFallback: Bool = false) async {
         guard chat == nil, !logoutInProgress else { return }
         let openEpoch = lifecycleEpoch
         let subject = offlineTrialSubject()
@@ -529,10 +544,13 @@ struct NativeWorkspaceRetrySchedule: Sendable {
             await opened.start()
             guard attachIfCurrent(opened, openEpoch: openEpoch, token: nil) else { return }
             namespace = partition.namespace
+            chatIsLaunchFallback = launchFallback
             installUIDecisionSubmitter(opened.service, scope: partition.scope)
-            error = nil
-            recoveryImpossible = false
-            requiresSessionRestart = false
+            if !launchFallback {   // the launch fallback keeps any restart notice visible
+                error = nil
+                recoveryImpossible = false
+                requiresSessionRestart = false
+            }
             // When path returns, upgrade to a real anonymous session without blocking entry.
             // p89g-2: owned + cancelled by logout; re-validated against openEpoch after EVERY await.
             offlineRecoveryTask?.cancel()
@@ -616,7 +634,19 @@ struct NativeWorkspaceRetrySchedule: Sendable {
     private func hasSafelyRecoverableCredential() async ->Bool {
         (try? await manager?.canRetryRecovery()) == true
     }
+    /// Polls the manager (no network) until no restore / sign-in / rotation is running. Bounded by the auth timeouts.
+    private func waitForManagerSettled(limit:TimeInterval=40) async {
+        guard let manager else{return}
+        let deadline=Date().addingTimeInterval(limit)
+        while !Task.isCancelled,Date() < deadline,await manager.rotationInFlight() { try? await Task.sleep(nanoseconds:50_000_000) }
+    }
     private func hasAmbiguousCredential() async ->Bool {
+        // The signed-out barrier is written at the START of every rotation: while one is running (or a journaled one can
+        // still be finished) the pair barrier+credential is the normal rotation window, not an abandoned session.
+        if let manager {
+            if await manager.rotationInFlight() {return false}
+            if (try? await manager.canRetryRecovery()) == true {return false}
+        }
         guard let localVault,let localBarrier else{return false}
         return await Task.detached(priority:.userInitiated) {(try? localBarrier.isSignedOut()) == true && (try? localVault.load()) != nil}.value
     }
@@ -650,7 +680,7 @@ struct NativeWorkspaceRetrySchedule: Sendable {
         if !(await finishDetaching(takeChat())) {error="有修改草稿未能保存，请核对此前已保存的版本。"}
     }
     private func takeChat() -> (ConversationFirstModel?,NativeChatHTTPBackend?,String?) {
-        let previous = chat; chat = nil
+        let previous = chat; chat = nil; chatIsLaunchFallback = false
         uiDecisionSubmitter = nil
         GenerativeBlockStore.shared.submitter = nil
         DeviceCallHub.submitter = nil
@@ -670,6 +700,26 @@ struct NativeWorkspaceRetrySchedule: Sendable {
         }
         return saved
     }
+    /// Second and later launches (onboarding completed): never a full-screen loader. The receipt-backed account chat opens
+    /// from disk; when there is none (no receipt, unresolved/ambiguous session, slow or failing network) the account-neutral
+    /// local offline-trial store opens instead — it holds no other account's data — and the resolved account chat replaces
+    /// it as soon as the session is admitted. Network work keeps running in the background.
+    func ensureLaunchChat(grace: TimeInterval = 0.8) async {
+        guard !needsOnboarding, let configuration, manager != nil else { return }
+        let readDeadline = Date().addingTimeInterval(3)
+        while chat == nil, !localReadFinished, !Task.isCancelled, Date() < readDeadline { try? await Task.sleep(nanoseconds: 20_000_000) }
+        let deadline = Date().addingTimeInterval(grace)
+        while chat == nil, !Task.isCancelled, logoutInProgress || (!recoveryImpossible && Date() < deadline) { try? await Task.sleep(nanoseconds: 50_000_000) }
+        guard chat == nil, !Task.isCancelled, !logoutInProgress else { return }
+        LaunchTrace.mark("launch.fallbackChat", sessionRestartNeeded ? "restartNeeded" : "pending")
+        await openOfflineTrialChat(configuration: configuration, launchFallback: true)
+    }
+    /// 「重新开始」 from the non-blocking capsule: close the unrecoverable session (same path as the login page button),
+    /// then start a fresh experience identity. Local stores stay on disk.
+    func restartSession() async {
+        await signOut()
+        await startExperience()
+    }
     func signUp(email: String,password: String) async {
         guard canSignIn,let manager else { return };actionBusy = true;error = nil;registrationNotice = nil;defer { actionBusy = false }
         do { if try await manager.signUp(email:email,password:password) { registrationNotice = "注册请求已受理。请在邮箱点击确认链接，再返回此处登录；若邮箱已有账号，请直接登录。" } }
@@ -682,6 +732,15 @@ struct NativeWorkspaceRetrySchedule: Sendable {
         catch {
             guard !Task.isCancelled,!logoutInProgress,epoch == lifecycleEpoch else{return}
             let failure=error as? NativeAuthError ?? .unavailable
+            // `.busy` = a concurrent cold restore (e.g. 开始使用 tapped while the launch restore is in flight). It says
+            // nothing about the stored credential: wait for that restore and adopt its result.
+            if failure == .busy {
+                await waitForManagerSettled()
+                guard !Task.isCancelled,!logoutInProgress,epoch == lifecycleEpoch else{return}
+                let settled=await manager.snapshot()
+                if settled.phase == .authenticated { await receive(settled) }
+                return
+            }
             if [.unavailable,.rateLimited].contains(failure),await hasSafelyRecoverableCredential() {
                 if !sessionRecoveryActive {await restoreSession(manager,allowAutomaticExperience:false)}
                 return
@@ -844,3 +903,20 @@ private final class NativeAuthColdFixtureStorage: NativeAuthVault, NativeAuthLog
     func setSignedOut(_ value: Bool) throws { lock.lock(); defer { lock.unlock() }; signedOut = value }
 }
 #endif
+
+/// Launch timing marks (Console: subsystem "catpaw", category "launch"). Seconds since process start; no user data.
+enum LaunchTrace {
+    private static let log = Logger(subsystem: "catpaw", category: "launch")
+    static let processStart: Date = {
+        var info = kinfo_proc(); var size = MemoryLayout<kinfo_proc>.stride; var mib: [Int32] = [CTL_KERN, KERN_PROC, KERN_PROC_PID, getpid()]
+        guard sysctl(&mib, 4, &info, &size, nil, 0) == 0 else { return Date() }
+        let t = info.kp_proc.p_starttime
+        return Date(timeIntervalSince1970: TimeInterval(t.tv_sec) + TimeInterval(t.tv_usec) / 1_000_000)
+    }()
+    @MainActor private static var seen: Set<String> = []
+    @MainActor static func mark(_ event: String, _ detail: String = "", once: Bool = false) {
+        if once { guard seen.insert(event).inserted else { return } }
+        let ms = Int(Date().timeIntervalSince(processStart) * 1000)
+        log.notice("launch \(event, privacy: .public) +\(ms, privacy: .public)ms \(detail, privacy: .public)")
+    }
+}

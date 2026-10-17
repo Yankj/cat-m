@@ -88,6 +88,18 @@ public protocol NativeAuthVault: Sendable {
     func load() throws -> NativeAuthCredential?
     func save(_ credential: NativeAuthCredential) throws
     func clear() throws
+    /// Rotation journal (launch-loader fix): a refreshed credential the token endpoint already returned (so the server has
+    /// revoked the previous refresh token) but that is not yet promoted by `persistVerified`. It is written BEFORE the
+    /// read-only `/user` check, so a process kill inside the rotation window no longer strands the account. It never
+    /// replays a refresh token; it only lets the next launch finish the read-only validation. `clear()` removes it too.
+    func loadPending() throws -> NativeAuthCredential?
+    func savePending(_ credential: NativeAuthCredential) throws
+    func clearPending() throws
+}
+public extension NativeAuthVault {
+    func loadPending() throws -> NativeAuthCredential? { nil }
+    func savePending(_ credential: NativeAuthCredential) throws { }
+    func clearPending() throws { }
 }
 public protocol NativeAuthLogoutBarrier: Sendable {
     func isSignedOut() throws -> Bool

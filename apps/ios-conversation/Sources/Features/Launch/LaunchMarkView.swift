@@ -133,6 +133,11 @@ import UIKit
 /// Decide once per process whether to play.
 @MainActor enum LaunchMarkGate {
     /// Decided once per process (App/RootView structs can be initialised more than once; every caller gets the same answer).
-    private static let decision: Bool = !UIAccessibility.isVoiceOverRunning
+    /// Launch-loader fix: the splash belongs to the first run only (before 开始使用 completes). Every later launch goes
+    /// straight from the static LaunchScreen to the chat's first frame — no animation, no interstitial.
+    private static let decision: Bool = !UIAccessibility.isVoiceOverRunning && isFirstRun()
+    nonisolated static func isFirstRun(_ defaults: UserDefaults = .standard, arguments: [String] = ProcessInfo.processInfo.arguments) -> Bool {
+        !(CatpawOnboarding.isCompleted(defaults) || arguments.contains(CatpawOnboarding.skipArgument))
+    }
     static func shouldPlay(openedFromURLOrNotification: Bool) -> Bool { decision && !openedFromURLOrNotification }
 }
