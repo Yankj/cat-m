@@ -66,6 +66,8 @@ import CatpawImageComposer
         var rendered:[RenderedTimelineRow]=[]
         var visible:[RenderedTimelineRow]=[]
         var lastAssistantID:UUID?
+        /// chat-context-1522 #1: the one assistant answer that shows ``catpaw-card:followups`` chips.
+        var followUpHostID:UUID?
         var operations:[UUID:UUID]=[:]
     }
     @State private var timelineMemo=TimelineMemo()
@@ -83,6 +85,10 @@ import CatpawImageComposer
         }
         memo.lastAssistantID=nil
         for row in memo.visible.reversed() { if case .message(let m)=row,m.presentation == .message,m.message.role == .assistant {memo.lastAssistantID=m.message.id;break} }
+        memo.followUpHostID=FollowUpSuggestions.hostMessageID(memo.visible.compactMap { row -> (id:UUID,answer:Bool,user:Bool)? in
+            guard case .message(let m)=row,m.presentation == .message else {return nil}
+            return (m.message.id,m.message.role == .assistant && m.message.toolName == nil,m.message.role == .user)
+        })
     }
 
     init(model:ConversationFirstModel,accountLabel:String?=nil,onSignOut:(()->Void)?=nil,
@@ -1112,12 +1118,14 @@ import CatpawImageComposer
         if let turnID,let turn=model.session?.turns.first(where:{$0.id==turnID}),usesPhasedAnswer(turn,message:message) {
             LivePhasedAnswerView(service:model.service,message:message,turn:turn,canQuote:!model.isInputComposing,
                                  onQuote:quote,onVerify:turn.state == .unknown ? {model.readOriginal()}:nil)
+                .environment(\.followUpChipsVisible,message.id==timelineMemo.followUpHostID)
         } else {
             let isLast=message.id==lastAssistantMessageID
             let pastTurn=turnID.flatMap{id in model.session?.turns.first{$0.id==id}}
             ConversationAnswerView(message:message,canQuote:!model.isInputComposing,quote:quote,showsActions:isLast,actions:isLast ? replyActions(message,turnID:turnID):nil,
                                    thoughtSummary:pastTurn?.reasoningSummary,
                                    thoughtSeconds:pastTurn?.thinkingMs.map{max(1,Int(ceil(Double($0)/1000)))})
+                .environment(\.followUpChipsVisible,message.id==timelineMemo.followUpHostID)
         }
     }
     private func usesPhasedAnswer(_ turn:ConversationTurnRecord,message:ConversationTranscriptMessage)->Bool {

@@ -88,8 +88,12 @@ struct ReplyActionControl {
 @MainActor struct FollowUpChips: View {
     let questions: [String]
     @Environment(\.locale) private var locale
+    @Environment(\.followUpChipsVisible) private var visible
     private func ui(_ k: String, _ a: [String] = []) -> String { AppLanguage(locale: locale).ui(k, arguments: a) }
     var body: some View {
+        if visible { chips }   // chat-context-1522 #1: only under the latest answer (FollowUpSuggestions.hostMessageID)
+    }
+    private var chips: some View {
         VStack(alignment: .leading, spacing: 6) {
             ForEach(Array(questions.enumerated()), id: \.offset) { i, q in
                 Button { NotificationCenter.default.post(name: FollowUpSuggestions.tapNotification, object: q) } label: {
@@ -106,6 +110,15 @@ struct ReplyActionControl {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .contain).accessibilityLabel(ui("建议追问")).accessibilityIdentifier("chat.followups")
+    }
+}
+
+/// Set per assistant row by ConversationFirstView; defaults to visible for other hosts (previews, fixtures).
+private struct FollowUpChipsVisibleKey: EnvironmentKey { static let defaultValue = true }
+extension EnvironmentValues {
+    var followUpChipsVisible: Bool {
+        get { self[FollowUpChipsVisibleKey.self] }
+        set { self[FollowUpChipsVisibleKey.self] = newValue }
     }
 }
 

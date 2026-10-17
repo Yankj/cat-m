@@ -14,6 +14,14 @@ final class ConversationTimelineProjectionTests:XCTestCase {
     private func result(_ turn:ConversationTurnRecord,_ call:String="same-call",name:String="agent_status")->ConversationTranscriptMessage {
         .init(id:stableID("conversation-tool-result-\(turn.id)-\(call)"),role:.tool,content:"{\"original_receipt\":true}",toolCallID:call,toolName:name)
     }
+    /// chat-context-1522 #1: chips only under the latest answer, gone once the user sent something after it.
+    func testFollowUpChipsHostIsTheLatestAnswerOnly() {
+        let h={(rows:[(id:Int,answer:Bool,user:Bool)]) in FollowUpSuggestions.hostMessageID(rows)}
+        XCTAssertEqual(h([(1,false,true),(2,true,false),(3,false,true),(4,true,false)]),4,"older answers never host chips")
+        XCTAssertNil(h([(1,false,true),(2,true,false),(3,false,true)]),"a newer user message hides the chips while the reply is pending")
+        XCTAssertEqual(h([(1,false,true),(2,true,false),(5,false,false)]),2,"tool rows after the answer do not move the host")
+        XCTAssertNil(h([]))
+    }
     func testCallAndVerifiedResultReplaceInPlaceWithoutChangingOriginalMessages() {
         let t=turn(),pending=call(t),body=ConversationTranscriptMessage(role:.assistant,content:"Partial answer",complete:false)
         let live=ConversationTimelineProjection.rows(messages:[pending,body],turns:[t])
