@@ -43,6 +43,12 @@ import UserNotifications
         UserDefaults.standard.removeObject(forKey: ProactiveQuarantine.key)
         UserDefaults.standard.removeObject(forKey: ProactiveParking.key); UserDefaults.standard.removeObject(forKey: ProactiveServerIDMap.key)
         UserDefaults.standard.removeObject(forKey: ProactiveParking.externalKey); ProactiveEngine.shared.externalReminderRemover = nil
+        // v1.1: the inbox / reminder / attendee records are sealed in L2 — give the host tests a real (temp-dir) store.
+        let l2Root = FileManager.default.temporaryDirectory.appendingPathComponent("proactive-l2-\(UUID().uuidString)")
+        let l2Keys = EphemeralL2KeyProvider()
+        let l2 = try L2SecureStore(userID: UUID(), root: l2Root, keys: l2Keys)
+        let vault = try L2SecureStore(userID: ProactiveSealedStore.parkingVaultID, root: l2Root, keys: l2Keys)
+        ProactiveSealedStore.store = { l2 }; ProactiveSealedStore.parkingVault = { vault }
         AccountEpoch.shared.activate(account: "XCTEST-A")
         ProactiveEngine.shared.claimData(for: "XCTEST-A", force: true)   // clean inbox/ledgers, owned by this account
         ProactiveEngine.shared.resetLedger()
@@ -58,6 +64,8 @@ import UserNotifications
         UserDefaults.standard.removeObject(forKey: ProactiveQuarantine.key)
         AccountEpoch.shared.signOut()
         ProactiveClock.now = { Date() }
+        ProactiveSealedStore.store = { L2SecureStore.current }
+        ProactiveSealedStore.parkingVault = { try? L2SecureStore(userID: ProactiveSealedStore.parkingVaultID, root: L2SecureStore.rootDirectory, keys: L2SecureStore.keys) }
         if let savedBackend { ProactiveSuggestionHub.backend = savedBackend }
     }
     private func signal(_ id: String, inMinutes m: Double = 8) -> ProactiveSignal {
@@ -819,5 +827,87 @@ import UserNotifications
         XCTAssertEqual(sent, want, "the queue writes back to the cloud record, in order, with the operation ids the server replays")
         XCTAssertEqual(untils.count, 1); XCTAssertNotNil(untils.first ?? nil, "the snooze carries the device until")
         XCTAssertFalse(ProactiveEngine.shared.syncQueue.items.contains { $0.op.local == card.id }, "nothing left stuck in .retry")
+    }
+}
+
+
+/// v1.1 L2 regression: proactive inbox, reminder and attendee records are sealed per account, migrated once from the
+/// old plaintext UserDefaults keys, never written in plaintext, and parked only sealed.
+@MainActor final class ProactiveSealedStoreTests: XCTestCase {
+    private var defaults: UserDefaults!
+    private var suite = ""
+    private var root: URL!
+    private let keys = EphemeralL2KeyProvider()
+    private let user = UUID()
+
+    override func setUp() async throws {
+        suite = "proactive-sealed-\(UUID().uuidString)"; defaults = UserDefaults(suiteName: suite)
+        root = FileManager.default.temporaryDirectory.appendingPathComponent(suite)
+        let store = try L2SecureStore(userID: user, root: root, keys: keys)
+        let vault = try L2SecureStore(userID: ProactiveSealedStore.parkingVaultID, root: root, keys: keys)
+        ProactiveSealedStore.defaults = defaults
+        ProactiveSealedStore.store = { store }; ProactiveSealedStore.parkingVault = { vault }
+    }
+    override func tearDown() async throws {
+        ProactiveSealedStore.defaults = .standard
+        ProactiveSealedStore.store = { L2SecureStore.current }
+        ProactiveSealedStore.parkingVault = { try? L2SecureStore(userID: ProactiveSealedStore.parkingVaultID, root: L2SecureStore.rootDirectory, keys: L2SecureStore.keys) }
+        UserDefaults().removePersistentDomain(forName: suite)
+        try? FileManager.default.removeItem(at: root)
+    }
+    private func filesContain(_ needle: String) -> Bool {
+        let files = FileManager.default.enumerator(at: root, includingPropertiesForKeys: nil)?.compactMap { $0 as? URL } ?? []
+        return files.contains { (try? Data(contentsOf: $0)).map { String(decoding: $0, as: UTF8.self).contains(needle) } ?? false }
+    }
+
+    func testOwnedPlaintextIsMigratedOnceAndDeleted() {
+        let plain = Data(#"{"s1":{"names":["Alice Secret"],"recipients":["alice@example.com"]}}"#.utf8)
+        defaults.set(plain, forKey: ProactiveSealedStore.attendeesKey)
+        defaults.set(user.uuidString, forKey: ProactiveDataOwner.key)
+        ProactiveSealedStore.migrateAll()
+        XCTAssertNil(defaults.data(forKey: ProactiveSealedStore.attendeesKey), "plaintext deleted")
+        XCTAssertEqual(ProactiveSealedStore.data(forKey: ProactiveSealedStore.attendeesKey), plain, "readable sealed")
+        XCTAssertFalse(filesContain("Alice Secret"), "never on disk in plaintext")
+        defaults.set(Data("stale".utf8), forKey: ProactiveSealedStore.attendeesKey)   // a second legacy copy never overwrites the sealed one
+        ProactiveSealedStore.migrateAll()
+        XCTAssertEqual(ProactiveSealedStore.data(forKey: ProactiveSealedStore.attendeesKey), plain)
+        XCTAssertNil(defaults.data(forKey: ProactiveSealedStore.attendeesKey))
+    }
+    func testOtherOwnersPlaintextIsNotSealedIntoThisAccount() {
+        defaults.set(Data("{}".utf8), forKey: ProactiveSealedStore.inboxKey)
+        defaults.set(UUID().uuidString, forKey: ProactiveDataOwner.key)
+        ProactiveSealedStore.migrateAll()
+        XCTAssertNotNil(defaults.data(forKey: ProactiveSealedStore.inboxKey), "left for the owner / quarantine flow")
+        XCTAssertNil(ProactiveSealedStore.data(forKey: ProactiveSealedStore.inboxKey))
+    }
+    func testWritesNeverFallBackToPlaintext() {
+        ProactiveSealedStore.set(Data("{\"r\":1}".utf8), forKey: ProactiveSealedStore.remindersKey)
+        XCTAssertNil(defaults.data(forKey: ProactiveSealedStore.remindersKey))
+        ProactiveSealedStore.store = { nil }   // signed out
+        ProactiveSealedStore.set(Data("x".utf8), forKey: ProactiveSealedStore.remindersKey)
+        XCTAssertNil(defaults.data(forKey: ProactiveSealedStore.remindersKey), "dropped, not plaintext")
+        XCTAssertNil(ProactiveSealedStore.data(forKey: ProactiveSealedStore.remindersKey))
+        XCTAssertFalse(ProactiveSealedStore.handles("catpaw.proactive.ledger.v1"))
+    }
+    func testSignOutPurge() {
+        ProactiveSealedStore.set(Data("{}".utf8), forKey: ProactiveSealedStore.inboxKey)
+        defaults.set(Data("{}".utf8), forKey: ProactiveSealedStore.attendeesKey)
+        ProactiveSealedStore.purgeForSignOut()
+        XCTAssertNil(ProactiveSealedStore.data(forKey: ProactiveSealedStore.inboxKey))
+        XCTAssertNil(defaults.data(forKey: ProactiveSealedStore.attendeesKey))
+    }
+    func testParkedBlobsAreSealedAndLegacyLotIsResealed() {
+        var blobs: [String: Data] = [:]
+        ProactiveSealedStore.setParked(&blobs, Data("Bob Secret".utf8), ProactiveSealedStore.inboxKey)
+        XCTAssertNil(blobs[ProactiveSealedStore.inboxKey])
+        XCTAssertFalse(String(decoding: blobs[ProactiveSealedStore.parkedPrefix + ProactiveSealedStore.inboxKey] ?? Data(), as: UTF8.self).contains("Bob"))
+        XCTAssertEqual(ProactiveSealedStore.parked(blobs, ProactiveSealedStore.inboxKey), Data("Bob Secret".utf8))
+        XCTAssertEqual(ProactiveSealedStore.openParked(ProactiveSealedStore.parkedPrefix + ProactiveSealedStore.inboxKey, blobs[ProactiveSealedStore.parkedPrefix + ProactiveSealedStore.inboxKey]!)?.1, Data("Bob Secret".utf8))
+        // pre-v1.1 lot with a plaintext copy → re-sealed by the migration
+        defaults.set(["acct": [["blobs": [ProactiveSealedStore.remindersKey: Data("Carol Secret".utf8)]]]], forKey: ProactiveParking.key)
+        ProactiveSealedStore.migrateAll()
+        let rec = ProactiveParking.Lot(defaults.dictionary(forKey: ProactiveParking.key)).slots["acct"]?.first?["blobs"] as? [String: Data] ?? [:]
+        XCTAssertNil(rec[ProactiveSealedStore.remindersKey])
+        XCTAssertEqual(ProactiveSealedStore.parked(rec, ProactiveSealedStore.remindersKey), Data("Carol Secret".utf8))
     }
 }
