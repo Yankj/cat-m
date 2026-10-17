@@ -79,7 +79,8 @@ import UIKit
     }
     var body: some View {
         PhasedAnswerView(model: projection, canQuote: false)
-            .onAppear { if let s = turn.reasoningSummary { projection.thinkingSummary = s } }
+            .onAppear { if let s = turn.reasoningSummary { projection.thinkingSummary = s }; projection.restoreStatus(turn: turn) }
+            .onChange(of: turn.awaitingApproval) { _, _ in projection.restoreStatus(turn: turn) }
             .onChange(of: turn.reasoningSummary) { _, s in if let s { projection.thinkingSummary = s } }
             .transition(.opacity.combined(with: .move(edge: .bottom)))
     }

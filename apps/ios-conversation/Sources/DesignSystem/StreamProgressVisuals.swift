@@ -155,6 +155,7 @@ extension View { func workingShimmer(_ active: Bool = true) -> some View { modif
     @State private var nudge = 0
     @State private var announcer = StatusLineAnnouncementThrottle()
     @State private var lastCategory: String?
+    @State private var replay: Task<Void, Never>?
 
     private var calm: Bool { reduceMotion || lowPower.enabled }
     private var kind: StatusLinePhase.Kind { phase.kind }
@@ -204,7 +205,7 @@ extension View { func workingShimmer(_ active: Bool = true) -> some View { modif
             if !Task.isCancelled { nudge += 1 }
         }
         .onAppear { onScreen = true; announce() }
-        .onDisappear { onScreen = false }
+        .onDisappear { onScreen = false; replay?.cancel() }
         .onChange(of: phase) { _, _ in announce() }
         .accessibilityElement(children: .contain)
     }
@@ -215,9 +216,20 @@ extension View { func workingShimmer(_ active: Bool = true) -> some View { modif
         let category = phase.category
         guard category != lastCategory else { return }
         lastCategory = category
-        let attention = kind == .waiting || kind == .failed
-        guard attention || announcer.allow(at: Date()) else { return }
-        if attention { _ = announcer.allow(at: Date()) }
+        replay?.cancel(); replay = nil
+        // P1-3: stopped counts as attention too; throttled working states are replayed (latest wins), never dropped.
+        let attention = kind != .working
+        if let delay = announcer.request(attention: attention, at: Date()) {
+            replay = Task { @MainActor in
+                try? await Task.sleep(for: .seconds(delay))
+                guard !Task.isCancelled, lastCategory == category, announcer.request(attention: false, at: Date()) == nil else { return }
+                post(attention: false)
+            }
+            return
+        }
+        post(attention: attention)
+    }
+    private func post(attention: Bool) {
         var text = AttributedString(phase.accessibilityTitle(en: en))
         text.accessibilitySpeechAnnouncementPriority = attention ? .high : .low
         AccessibilityNotification.Announcement(text).post()

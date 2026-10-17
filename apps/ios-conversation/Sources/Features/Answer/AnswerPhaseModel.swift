@@ -154,6 +154,7 @@ extension AnswerPhaseProviding {
         if lastSequence == 0 {
             if turn.state == .dispatched, message.content.isEmpty, statusReducer.target == nil { statusReducer.sending(); pushStatus() }
             if turn.state == .failed, turn.error == "rate_limited", message.content.isEmpty { statusReducer.busyRetry(); pushStatus() }
+            if message.content.isEmpty { restoreStatus(turn: turn) }
         }
         if let summary = turn.reasoningSummary { thinkingSummary = summary }
         applyThinkingDuration(turn.thinkingMs)
@@ -169,6 +170,25 @@ extension AnswerPhaseProviding {
         case .notSent, .cancelledBeforeSend:
             break
         }
+    }
+
+    /// P1-1: restore from the snapshot so a rebuilt row (cold start, session switch) is never empty. Later server events
+    /// (sequence-deduped) take over. Also called by PendingThinkingRow, which has no message to reconcile.
+    func restoreStatus(turn: ConversationTurnRecord) {
+        guard !stoppedLocally, lastSequence == 0, turn.state == .running else { return }
+        if let tool = Self.answerableTool(turn) {
+            if statusReducer.target?.kind == .waiting { return }
+            statusReducer.restoreAwaiting(tool: tool.isEmpty ? nil : tool)
+        } else if statusReducer.target == nil { statusReducer.restoreAccepted() } else { return }
+        pushStatus()
+    }
+    /// Tool of the first pending item that needs the user ("" = answerable with no tool), nil = nothing to answer.
+    static func answerableTool(_ turn: ConversationTurnRecord) -> String? {
+        guard turn.awaitingApproval else { return nil }
+        if let a = turn.pendingApprovals?.first { return a.tool }
+        if let d = turn.pendingDeviceCalls?.first(where: { !StatusLineReducer.autoRuns($0) }) { return d.tool }
+        if !turn.pendingUIBlocks.isEmpty || !(turn.pendingUIApprovals ?? []).isEmpty { return "render_ui" }
+        return nil
     }
 
     func apply(_ event: ConversationTurnEvent) {
@@ -359,7 +379,8 @@ struct StatusLineThrottle: Equatable {
 
     private var visibleFrom: Date { turnStart.addingTimeInterval(Self.hideUnder) }
     /// What the row shows at `now` (nil = nothing).
-    func displayed(at now: Date) -> StatusLinePhase? { now >= visibleFrom ? current : nil }
+    /// P1-2: static states (waiting / failed / stopped) bypass the appear gate too.
+    func displayed(at now: Date) -> StatusLinePhase? { (current?.animated == false || now >= visibleFrom) ? current : nil }
     /// Submit a new target. Returns the delay after which `tick` must be called again (nil = nothing scheduled).
     mutating func submit(_ phase: StatusLinePhase, at now: Date) -> TimeInterval? {
         if current == nil || current == phase { if current == nil { current = phase; currentSince = now }; pending = nil; return untilVisible(now) }
@@ -391,6 +412,13 @@ struct StatusLineAnnouncementThrottle {
         if let last, now.timeIntervalSince(last) < Self.interval { return false }
         last = now; return true
     }
+    /// P1-3: nil = announce now; otherwise retry after the returned delay (the caller replays the then-current state).
+    /// Attention states (waiting / failed / stopped) always go out immediately and still reset the window.
+    mutating func request(attention: Bool, at now: Date) -> TimeInterval? {
+        if attention { last = now; return nil }
+        if let last, now.timeIntervalSince(last) < Self.interval { return Self.interval - now.timeIntervalSince(last) }
+        last = now; return nil
+    }
 }
 
 /// Maps the real event stream to status targets (pure; the projection feeds it and owns the throttle).
@@ -399,15 +427,23 @@ struct StatusLineReducer {
     private var toolCounts: [String: Int] = [:]
     private var acceptedCount = 0
     private var composingCount = 0
-    private var running: [String: String] = [:]     // callID → tool
+    private var running: [(call: String, tool: String)] = []   // insertion order (PREREVIEW P2-1: deterministic title)
+    /// Calls that really need an answer (card device calls, approvals, decision ui blocks). B1: `.suspended` only waits on these.
+    private var answerable: Set<String> = []
     private var lastTool: String?
     private var awaiting = false
 
     mutating func sending() { target = .sending }
+    /// P1-1: rebuilt projection (cold start, session switch, row rebuild) — restore the waiting state from the snapshot.
+    mutating func restoreAwaiting(tool: String?) { awaiting = true; answerable.insert("restored"); target = .awaitingUser(tool: tool) }
+    mutating func restoreAccepted() { if target == nil { target = .accepted(occurrence: acceptedCount); acceptedCount += 1 } }
+    static func autoRuns(_ call: ConversationDeviceCall) -> Bool {
+        call.confirm == "none" || DeviceToolContract.autoRunReadOnlyTools.contains(call.tool)
+    }
     mutating func busyRetry() { target = .busyRetry }
     mutating func apply(_ payload: ConversationTurnEvent.Payload) {
         switch payload {
-        case .started: running = [:]; awaiting = false; target = .accepted(occurrence: acceptedCount); acceptedCount += 1
+        case .started: running = []; answerable = []; awaiting = false; target = .accepted(occurrence: acceptedCount); acceptedCount += 1
         case .reasoningSummary:
             guard running.isEmpty, !awaiting else { break }
             switch target { case .accepted?, .composing?, .recallingMemory?, .switchingModel?: break; default: target = .accepted(occurrence: acceptedCount); acceptedCount += 1 }
@@ -415,22 +451,31 @@ struct StatusLineReducer {
             if type == "memory_recalled" || type == "memory.used" { if running.isEmpty && !awaiting { target = .recallingMemory } }
             if type == "model_route", let o = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any], o["failover"] as? Bool == true { target = .switchingModel }
         case .toolStarted(let call, let name, _):
-            running[call] = name; lastTool = name
+            running.removeAll { $0.call == call }; running.append((call, name)); lastTool = name
             let n = toolCounts[name, default: 0]; toolCounts[name] = n + 1
             if !awaiting { target = .tool(name: name, occurrence: n) }
         case .deviceCall(let call):
             lastTool = call.tool
-            if call.confirm == "none" || DeviceToolContract.autoRunReadOnlyTools.contains(call.tool) { break }
-            awaiting = true; target = .awaitingUser(tool: call.tool)
-        case .approvalRequested, .suspended:
-            awaiting = true; target = .awaitingUser(tool: lastTool)
+            if Self.autoRuns(call) {
+                // B1: read-only device tools run without a card — show the tool's working copy, never 「等你确认」.
+                if !awaiting { target = .tool(name: call.tool, occurrence: max(0, toolCounts[call.tool, default: 1] - 1)) }
+                break
+            }
+            answerable.insert(call.callID); awaiting = true; target = .awaitingUser(tool: call.tool)
+        case .approvalRequested(let request):
+            answerable.insert(request.callID); lastTool = request.tool
+            awaiting = true; target = .awaitingUser(tool: request.tool)
+        case .suspended:
+            // B1: the server suspends for every interrupt, including confirm:"none" device calls. Wait only when
+            // something answerable is actually pending this turn.
+            if !answerable.isEmpty { awaiting = true; if target?.kind != .waiting { target = .awaitingUser(tool: lastTool) } }
         case .uiBlock(let ui):
-            if ui.waitsForDecision { awaiting = true; target = .awaitingUser(tool: "render_ui") }
+            if ui.waitsForDecision { answerable.insert("ui:" + ui.id); awaiting = true; target = .awaitingUser(tool: "render_ui") }
         case .approvalResolved, .uiBlockResolve:
-            awaiting = false
-            if let tool = running.values.first { target = .tool(name: tool, occurrence: max(0, toolCounts[tool, default: 1] - 1)) } else { target = .composing(occurrence: composingCount); composingCount += 1 }
+            awaiting = false; answerable = []
+            if let tool = running.last?.tool { target = .tool(name: tool, occurrence: max(0, toolCounts[tool, default: 1] - 1)) } else { target = .composing(occurrence: composingCount); composingCount += 1 }
         case .toolResult(let result):
-            running[result.callID] = nil
+            running.removeAll { $0.call == result.callID }
             if running.isEmpty && !awaiting { target = .composing(occurrence: composingCount); composingCount += 1 }
         case .textDelta: target = nil                       // the answer itself is now the progress
         case .completed: target = nil

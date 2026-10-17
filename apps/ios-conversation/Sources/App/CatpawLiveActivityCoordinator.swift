@@ -31,7 +31,10 @@ enum CatpawWorkPhase: Equatable {
         case .started, .reasoningSummary: return .thinking
         case .toolStarted(_, let name, _): return .tool(name)
         case .deviceCall(let call): return call.confirm == "none" || DeviceToolContract.autoRunReadOnlyTools.contains(call.tool) ? .tool(call.tool) : .awaitingUser
-        case .approvalRequested, .suspended: return .awaitingUser
+        case .approvalRequested: return .awaitingUser
+        // PREREVIEW B1/P2-3: the server suspends for every interrupt, including confirm:"none" device calls; the
+        // answerable ones already arrived as approvalRequested / card deviceCall, so suspended alone changes nothing.
+        case .suspended: return nil
         case .approvalResolved, .toolResult: return .thinking
         case .textDelta: return .writing
         case .completed: return .done
