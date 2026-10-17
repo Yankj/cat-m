@@ -343,6 +343,20 @@ final class StatusLinePrereviewTests: XCTestCase {
         XCTAssertFalse(t.contains("138")); XCTAssertLessThanOrEqual(t.count, CatpawTaskTitle.limit)
         XCTAssertFalse(CatpawTaskTitle.make("联系 bob@example.com 或 021-6543 2100")!.contains("@"))
     }
+    /// R3 (NoBug P2-R2-1): NFKC first (full-width ＠ / － / digits), dash and dot separators; only masked spans change.
+    func testR3FullWidthDashDotAndIDNumbersAreMasked() {
+        XCTAssertEqual(CatpawTaskTitle.make("打138－1234－5678，谢谢"), "打•••，谢谢")   // full-width hyphen; full-width comma kept
+        XCTAssertEqual(CatpawTaskTitle.make("打138—1234—5678"), "打•••")             // em dash
+        XCTAssertEqual(CatpawTaskTitle.make("打138–1234–5678"), "打•••")             // en dash
+        XCTAssertEqual(CatpawTaskTitle.make("打138.1234.5678"), "打•••")
+        XCTAssertEqual(CatpawTaskTitle.make("打138·1234·5678"), "打•••")
+        XCTAssertEqual(CatpawTaskTitle.make("打１３８１２３４５６７８"), "打•••")       // full-width digits
+        XCTAssertEqual(CatpawTaskTitle.make("发给 a＠b.com 吧"), "发给 ••• 吧")       // full-width @
+        XCTAssertEqual(CatpawTaskTitle.make("ｂｏｂ＠ｅｘａｍｐｌｅ．ｃｏｍ"), "•••")
+        XCTAssertEqual(CatpawTaskTitle.make("身份证 11010119900307123X"), "身份证 •••")  // no trailing X
+        XCTAssertEqual(CatpawTaskTitle.make("明天下午三点，提醒我"), "明天下午三点，提醒我")   // unmasked text untouched by NFKC
+        XCTAssertEqual(CatpawTaskTitle.make("房号 3.5 楼"), "房号 3.5 楼")
+    }
     func testHandOffIsPerOperationAndConsumedOnce() {
         let a = UUID(), b = UUID()
         CatpawTaskTitles.note("订明早的车", operationID: a)
