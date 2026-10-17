@@ -139,7 +139,8 @@ final class CatpawAcceptanceUITests: XCTestCase {
         XCTAssertTrue(app.buttons["chat.new"].exists)
         XCTAssertFalse(app.buttons["chat.more"].exists)
         XCTAssertFalse(app.buttons["chat.composer.context"].exists)
-        XCTAssertTrue(app.buttons["chat.composer.voice"].exists, "Empty draft shows voice")
+        XCTAssertTrue(app.buttons["chat.composer.mic"].exists, "Empty draft shows the mic")
+        XCTAssertFalse(app.buttons["chat.composer.voice"].exists, "v1: no voice-conversation button")
         shot(app, "r8-01-empty")
         let field = input(app); field.tap(); field.typeText("第一行\n第二行\n第三行\n第四行\n第五行\n第六行\n第七行\n第八行")
         XCTAssertTrue(app.buttons["chat.send"].waitForExistence(timeout: 5))
@@ -181,13 +182,13 @@ final class CatpawAcceptanceUITests: XCTestCase {
         XCTAssertTrue(done, "Real reply must complete")
     }
 
-    // 9. Composer dictation: mic → (system permission prompt | dictating stop control | friendly notice); voice → coming soon
+    // 9. Composer dictation: mic → (system permission prompt | dictating stop control | friendly notice); no voice button in v1
     func test09ComposerDictation() {
         let app = fixtureApp("p0-ui-acceptance"); app.launch()
         XCTAssertTrue(input(app).waitForExistence(timeout: 20))
-        let voice = app.buttons["chat.composer.voice"]; XCTAssertTrue(voice.waitForExistence(timeout: 10)); voice.tap()
-        XCTAssertTrue(app.descendants(matching: .any)["chat.composer.voice.comingSoon"].waitForExistence(timeout: 3), "Voice conversation must show a coming-soon toast")
-        shot(app, "09a-voice-coming-soon")
+        // v1: the 「语音对话」 waveform button and its coming-soon toast are gone; only the mic remains.
+        XCTAssertFalse(app.buttons["chat.composer.voice"].exists, "v1 hides the voice-conversation button")
+        shot(app, "09a-composer-mic-only")
         let mic = app.buttons["chat.composer.mic"]; XCTAssertTrue(mic.waitForExistence(timeout: 10)); mic.tap()
         let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
         let dictating = app.buttons["chat.composer.dictating"], notice = app.alerts.firstMatch

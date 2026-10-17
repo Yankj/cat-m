@@ -164,7 +164,6 @@ import UIKit
     let send: () -> Void
     let stop: () -> Void
     @ObservedObject private var dictation = ComposerDictation.shared
-    @State private var comingSoon = false
     @Environment(\.scenePhase) private var scene
     @Environment(\.locale) private var locale
     private func ui(_ k: String) -> String { AppLanguage(locale: locale).ui(k) }
@@ -172,7 +171,7 @@ import UIKit
     var body: some View {
         ComposerTrailingControls(responding: responding, draftEmpty: model.draft.isEmpty, canSend: canSend, size: size,
                                  send: { dictation.stopNow(); send() }, stop: stop,
-                                 dictate: { dictation.toggle() }, voice: { showComingSoon() },
+                                 dictate: { dictation.toggle() },
                                  dictating: dictation.dictating,
                                  micOverride: AnyView(HoldToTalkMic(dictation: dictation, size: size)))
             .onAppear { dictation.attach(model); dictation.onSend = { send() }; dictation.voice.language = AppLanguage(locale: locale) }
@@ -181,13 +180,6 @@ import UIKit
             // Only a real background stops: the mic/speech permission alerts make the scene .inactive, and stopping there
             // tore the session down mid-start (overlay flashed in and out, voice mode never entered).
             .onChange(of: scene) { _, value in if value == .background { dictation.stopNow() } }
-            .overlay(alignment: .top) {
-                if comingSoon {
-                    Text(ui("语音对话即将支持")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.ink)
-                        .padding(.horizontal, 12).padding(.vertical, 6).background(.regularMaterial, in: Capsule())
-                        .fixedSize().offset(y: -44).transition(.opacity).accessibilityIdentifier("chat.composer.voice.comingSoon")
-                }
-            }
             .overlay(alignment: .topTrailing) {
                 // Real failures only: a small inline hint above the composer, never a modal alert.
                 if dictation.notice != nil {
@@ -207,10 +199,6 @@ import UIKit
             .animation(.snappy, value: dictation.notice)
     }
 
-    private func showComingSoon() {
-        withAnimation { comingSoon = true }
-        Task { try? await Task.sleep(nanoseconds: 1_800_000_000); withAnimation { comingSoon = false } }
-    }
     private var noticeTitle: String { dictation.notice == .permissionDenied ? ui("需要麦克风和语音识别权限") : ui("暂时无法听写") }
     private var noticeMessage: String {
         switch dictation.notice {

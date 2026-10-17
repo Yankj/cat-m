@@ -343,7 +343,7 @@ private struct JumpGlass: ViewModifier {
 
 
 /// r8 trailing controls (one view, four modes):
-/// empty → mic (dictation) + black waveform (voice) · content → paw-orange send · generating+empty → black stop · generating+draft → send with clock badge (queued).
+/// empty → mic only (tap dictate / hold to talk; voice conversation hidden in v1) · content → paw-orange send · generating+empty → black stop · generating+draft → send with clock badge (queued).
 /// In-progress state comes from turnEvents (adapter.runState), never model.busy.
 @MainActor struct ComposerTrailingControls: View {
     let responding: Bool
@@ -353,7 +353,6 @@ private struct JumpGlass: ViewModifier {
     let send: () -> Void
     let stop: () -> Void
     var dictate: () -> Void = {}
-    var voice: () -> Void = {}
     /// Live dictation: the mic becomes a pulsing paw-orange waveform stop control; send stays available.
     var dictating = false
     /// Replaces the built-in mic/dictating button with one stable view across idle ↔ dictating, so a press-and-hold
@@ -379,11 +378,8 @@ private struct JumpGlass: ViewModifier {
                     CircleIcon(systemName: "mic", diameter: size).contentShape(Circle().inset(by: -4))
                 }.buttonStyle(CatpawPressButtonStyle()).accessibilityLabel(ui("听写")).accessibilityIdentifier("chat.composer.mic")
                     .transition(.scale(scale: 0.6).combined(with: .opacity)) }
-                Button(action: voice) {
-                    Image(systemName: "waveform").font(CatpawTypography.Role.body.font.weight(.semibold)).foregroundStyle(CatpawColors.sendIcon)
-                        .frame(width: size, height: size).background(CatpawColors.ink, in: Circle()).contentShape(Circle().inset(by: -4))
-                }.buttonStyle(CatpawPressButtonStyle()).accessibilityLabel(ui("语音对话")).accessibilityIdentifier("chat.composer.voice")
-                    .transition(.scale(scale: 0.6).combined(with: .opacity))
+                // v1 (user, 18:36): the black waveform 「语音对话」 button is hidden until the real voice conversation lands
+                // (v1.1); only the mic remains — tap to dictate, hold to talk.
             case .dictating:
                 if micOverride == nil { Button(action: dictate) {
                     Image(systemName: "waveform").font(CatpawTypography.Role.body.font.weight(.semibold)).foregroundStyle(CatpawColors.sendIcon)
