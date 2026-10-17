@@ -333,6 +333,11 @@ struct NativeWorkspaceRetrySchedule: Sendable {
     /// Only the disk-only local read is awaited. The account chat is normally pre-warmed (prewarmEntryChat); otherwise an
     /// account-neutral local chat opens from disk at once, and the account's own chat replaces it — while it is still
     /// untouched — as soon as the identity resolves in the background. Fixture runs keep the original awaited path.
+    /// NoBug (1): device capabilities (EventKit scan / pre-schedule) and account-bound work start only once the account is
+    /// resolved — authenticated, its own chat attached (not the account-neutral launch chat), onboarding done, no logout.
+    var deviceCapabilitiesAllowed: Bool {
+        chat != nil && !chatIsLaunchFallback && !needsOnboarding && !logoutInProgress && state.phase == .authenticated && state.user != nil
+    }
     private var nonBlockingEntry: Bool { !isFixture || testEntryHandoff }
     private var testEntryHandoff = false
     #if DEBUG

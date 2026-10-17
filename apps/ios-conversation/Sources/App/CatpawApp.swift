@@ -193,7 +193,9 @@ import AppIntents
     private func scheduleCalendarScan() {
         calendarScan?.cancel()
         calendarScan = Task { @MainActor in
-            let busy: @MainActor () -> Bool = { bootstrap.model == nil && !bootstrap.isP0Fixture && (auth.needsOnboarding && auth.onboarding == .entering || FirstRunTransition.shared.phase == .leaving || (!auth.needsOnboarding && auth.chat == nil)) }
+            // Fixture builds keep their own path; otherwise EventKit is touched only once the account is resolved and its own
+            // chat is up (never for the account-neutral launch chat, the landing, or inside the tap transition).
+            let busy: @MainActor () -> Bool = { bootstrap.model == nil && !bootstrap.isP0Fixture && (!auth.deviceCapabilitiesAllowed || FirstRunTransition.shared.phase == .leaving) }
             while !Task.isCancelled, busy() { try? await Task.sleep(nanoseconds: 250_000_000) }
             try? await Task.sleep(nanoseconds: 3_000_000_000)
             while !Task.isCancelled, busy() { try? await Task.sleep(nanoseconds: 250_000_000) }
@@ -223,7 +225,8 @@ import AppIntents
             .onAppear { LaunchTrace.mark("chat.visible", auth.chatIsLaunchFallback ? "fallback" : "account", once: true) }
             // Launch-loader fix: an unrecoverable session is a small non-blocking capsule over the usable chat.
             .overlay(alignment:.top) { if auth.sessionRestartNeeded { SessionRestartCapsule(auth:auth).padding(.top,52) } }
-            .task(id:auth.state.user?.id) { AccountEpoch.shared.activate(account:auth.state.user?.id.uuidString); L2SecureStore.activate(userID:auth.state.user?.id); CatpawL2Sealing.install(); AtRestMigrationScheduler.shared.sealerMayBeReady(); MemoryLibraryLocal.activate(userID:auth.state.user?.id); GenerativeBlockStore.shared.reloadFromL2(); MemoryCache.shared.reloadFromL2(); await MemoryCache.shared.sync() }
+            // Account-bound stores activate only for the account's own chat — never under the account-neutral launch chat.
+            .task(id:"\(auth.chatIsLaunchFallback)|\(auth.state.user?.id.uuidString ?? "-")|\(ObjectIdentifier(model).hashValue)") { guard !auth.chatIsLaunchFallback else { return }; AccountEpoch.shared.activate(account:auth.state.user?.id.uuidString); L2SecureStore.activate(userID:auth.state.user?.id); CatpawL2Sealing.install(); AtRestMigrationScheduler.shared.sealerMayBeReady(); MemoryLibraryLocal.activate(userID:auth.state.user?.id); GenerativeBlockStore.shared.reloadFromL2(); MemoryCache.shared.reloadFromL2(); await MemoryCache.shared.sync() }
             #if DEBUG
             .overlay(alignment:.topTrailing) {
                 if auth.isFixture {

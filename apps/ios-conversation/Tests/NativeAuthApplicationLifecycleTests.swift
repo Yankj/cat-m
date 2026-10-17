@@ -667,7 +667,10 @@ final class NativeAuthApplicationLifecycleTests:XCTestCase {
     /// chat while anonymous sign-up is still held; the account's own chat replaces it once the identity resolves, and an
     /// unsent draft typed meanwhile is carried over (never lost).
     @MainActor func testFirstRunTapFlipsGateWithoutWaitingOnSignUp() async throws {
+        let flag=UserDefaults.standard.object(forKey:CatpawOnboarding.completedKey)
+        defer {UserDefaults.standard.set(flag,forKey:CatpawOnboarding.completedKey)}
         for typed in [false,true] {
+            UserDefaults.standard.removeObject(forKey:CatpawOnboarding.completedKey)
             let root=FileManager.default.temporaryDirectory.appendingPathComponent("native-first-run-tap-"+UUID().uuidString,isDirectory:true)
             defer {try? FileManager.default.removeItem(at:root)}
             let scope=UUID(),clock=AuthTestClock(),storage=LifecycleStorage(),configuration=try lifecycleConfiguration(scope:scope)
@@ -677,21 +680,61 @@ final class NativeAuthApplicationLifecycleTests:XCTestCase {
             let resolver=LifecycleWorkspaceResolver(subject:subject,scope:scope,steps:[.success,.success],accessToken:"synthetic.anon.signature")
             let app=NativeAuthApplicationModel(configuration:configuration,manager:manager,vault:storage,barrier:storage,root:root,workspaceResolver:resolver,retrySchedule:.init(nominalSeconds:[0],jitter:{$0}))
             app.beginFirstRunForTesting();XCTAssertTrue(app.needsOnboarding)
+            XCTAssertFalse(CatpawOnboarding.isCompleted())
             let started=ProcessInfo.processInfo.systemUptime
             await app.completeOnboarding()
             XCTAssertLessThan(ProcessInfo.processInfo.systemUptime-started,2.0,"the tap only waits for the disk read")
             XCTAssertFalse(app.needsOnboarding)
             let fallback=try XCTUnwrap(app.chat);XCTAssertTrue(app.chatIsLaunchFallback)
             XCTAssertNotEqual(fallback.trustedSubjectID,subject,"no account data before the account is resolved")
+            XCTAssertTrue(CatpawOnboarding.isCompleted(),"the first-run flag is written once a chat really exists")
+            // NoBug (1): nothing account-bound before the account resolves — no network admission (no queue is sent),
+            // no device capability (EventKit scan), no account-bound store activation.
+            XCTAssertFalse(fallback.networkAdmissionAllowed);XCTAssertFalse(app.deviceCapabilitiesAllowed)
             try await waitUntil {await remote.waiting()}   // sign-up is still in flight behind the open chat
             if typed {fallback.editDraft("还没发出去的草稿")}
             await remote.release()
             try await waitUntil {app.chat?.trustedSubjectID == subject}
             XCTAssertFalse(app.chatIsLaunchFallback)
+            try await waitUntil {app.deviceCapabilitiesAllowed}
             XCTAssertEqual(app.chat?.draft,typed ? "还没发出去的草稿" : "","an unsent draft follows the user into the account chat")
             XCTAssertFalse(app.requiresSessionRestart)
             await app.signOut()
         }
+    }
+
+    /// NoBug (2): the first-run-completed flag is written only after a chat was actually created. A tap that cannot open a
+    /// chat (unrecoverable session) leaves the flag unset, so the next launch shows the landing again.
+    @MainActor func testFirstRunFlagIsNotWrittenWhenNoChatOpens() async throws {
+        let flag=UserDefaults.standard.object(forKey:CatpawOnboarding.completedKey)
+        defer {UserDefaults.standard.set(flag,forKey:CatpawOnboarding.completedKey)}
+        UserDefaults.standard.removeObject(forKey:CatpawOnboarding.completedKey)
+        let root=FileManager.default.temporaryDirectory.appendingPathComponent("native-first-run-flag-"+UUID().uuidString,isDirectory:true)
+        defer {try? FileManager.default.removeItem(at:root)}
+        let scope=UUID(),clock=AuthTestClock(),storage=LifecycleStorage(),configuration=try lifecycleConfiguration(scope:scope)
+        let remote=AnonymousTestRemote(issuer:configuration.issuer,clock:clock)
+        try storage.save(await remote.candidate());try storage.setSignedOut(true)   // interrupted rotation, no journal
+        let manager=NativeAuthSessionManager(configuration:configuration,remote:remote,vault:storage,barrier:storage,now:{clock.now()})
+        let app=NativeAuthApplicationModel(configuration:configuration,manager:manager,vault:storage,barrier:storage,root:root,retrySchedule:.init(nominalSeconds:[0],jitter:{$0}))
+        app.beginFirstRunForTesting()
+        await app.start();await app.startExperience()
+        XCTAssertTrue(app.sessionRestartNeeded)
+        await app.completeOnboarding()
+        XCTAssertNil(app.chat);XCTAssertTrue(app.needsOnboarding)
+        XCTAssertFalse(CatpawOnboarding.isCompleted(),"no chat → no first-run flag")
+        if case .failed = app.onboarding {} else {XCTFail("the landing stays with a non-blocking failure notice")}
+    }
+
+    /// NoBug (3): the root gate has no full-screen loader. The only ProgressViews left in CatpawApp are the DEBUG offline
+    /// fixture placeholder and the small floating status capsule; the entering-chat state is the chat's own first frame.
+    func testRootGateHasNoFullScreenProgressView() throws {
+        let source=URL(fileURLWithPath:#filePath).deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("Sources/App/CatpawApp.swift")
+        let text=try String(contentsOf:source,encoding:.utf8)
+        let uses=text.components(separatedBy:"ProgressView(").dropFirst().map{String($0.prefix(60))}
+        let large=uses.filter{!$0.hasPrefix(").controlSize(.small)")}
+        XCTAssertEqual(large,["\"Offline fixture loading\").accessibilityIdentifier(\"qa.p0Fixture.loading\") }"].map{String($0.prefix(60))},"only the DEBUG fixture placeholder is not a small capsule spinner")
+        XCTAssertGreaterThanOrEqual(uses.count-large.count,1,"the floating status capsule")
+        XCTAssertTrue(text.contains("LaunchChatShell(auth:auth)\n                .accessibilityIdentifier(\"onboarding.enteringChat\")"))
     }
 
     /// SPEC-E §5.6: while the landing shows, a restored account's local chat is attached so the tap never waits on it.
