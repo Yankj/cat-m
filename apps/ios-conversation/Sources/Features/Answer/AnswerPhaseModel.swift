@@ -154,12 +154,7 @@ extension AnswerPhaseProviding {
         if lastSequence == 0 {
             if turn.state == .dispatched, message.content.isEmpty, statusReducer.target == nil { statusReducer.sending(); pushStatus() }
             if turn.state == .failed, turn.error == "rate_limited", message.content.isEmpty { statusReducer.busyRetry(); pushStatus() }
-            // P1-1: restore from the snapshot so a rebuilt row is never empty. Later server events (sequence-deduped) take over.
-            if turn.state == .running, message.content.isEmpty, statusReducer.target == nil {
-                if let tool = Self.answerableTool(turn) { statusReducer.restoreAwaiting(tool: tool.isEmpty ? nil : tool) }
-                else { statusReducer.restoreAccepted() }
-                pushStatus()
-            }
+            if message.content.isEmpty { restoreStatus(turn: turn) }
         }
         if let summary = turn.reasoningSummary { thinkingSummary = summary }
         applyThinkingDuration(turn.thinkingMs)
@@ -177,6 +172,16 @@ extension AnswerPhaseProviding {
         }
     }
 
+    /// P1-1: restore from the snapshot so a rebuilt row (cold start, session switch) is never empty. Later server events
+    /// (sequence-deduped) take over. Also called by PendingThinkingRow, which has no message to reconcile.
+    func restoreStatus(turn: ConversationTurnRecord) {
+        guard !stoppedLocally, lastSequence == 0, turn.state == .running else { return }
+        if let tool = Self.answerableTool(turn) {
+            if statusReducer.target?.kind == .waiting { return }
+            statusReducer.restoreAwaiting(tool: tool.isEmpty ? nil : tool)
+        } else if statusReducer.target == nil { statusReducer.restoreAccepted() } else { return }
+        pushStatus()
+    }
     /// Tool of the first pending item that needs the user ("" = answerable with no tool), nil = nothing to answer.
     static func answerableTool(_ turn: ConversationTurnRecord) -> String? {
         guard turn.awaitingApproval else { return nil }
