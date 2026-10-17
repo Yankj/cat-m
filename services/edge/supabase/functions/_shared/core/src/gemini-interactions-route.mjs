@@ -12,6 +12,7 @@ import { safeProviderFailure } from './provider-errors.mjs';
 import { sseData } from './openrouter-provider.mjs';
 
 export const GEMINI_INTERACTIONS_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/interactions?alt=sse';
+export const IMAGE_FAILURE_FIELDS = Object.freeze(['headers', 'category', 'retry_after_seconds', 'retry_at', 'retry_allowed', 'account_daily_reset_utc']);
 const MAX_CALLS = 4, MAX_OVERFLOW_CALLS = 12, STREAM_MAX_BYTES = 4_000_000, THOUGHT_MAX_BYTES = 16000, TEXT_MAX_BYTES = 64000;
 
 /** Per-instance limiter shared by all Gemini routes of this isolate: sliding 60 s window + cooldown after 429.
@@ -113,13 +114,15 @@ export class GeminiInteractionsRoute {
       response = await this.fetchImpl(this.route.endpoint, { method: 'POST', redirect: 'error', signal: controller.signal, headers: { 'x-goog-api-key': this.#secret, 'Content-Type': 'application/json', Accept: 'text/event-stream' }, body: JSON.stringify(body) });
       evidence.http_status = response.status; evidence.protocol = 'interactions';
       if (response.status !== 200) {
-        evidence.failure = await safeProviderFailure(response, { redact: t => t.replaceAll(this.#secret, '[REDACTED]') });
-        const raw = JSON.stringify(evidence.failure ?? {});
+        const failure = await safeProviderFailure(response, { redact: t => t.replaceAll(this.#secret, '[REDACTED]').replace(/data:image\/[^;,\s]+;base64,[A-Za-z0-9+/=]+/gi, '[IMAGE_REDACTED]') });
+        // Image turns keep only the classification fields (same allowlist as the OpenRouter image hop): no upstream text.
+        evidence.failure = input.image_attachments?.length ? Object.fromEntries(Object.entries(failure).filter(([key]) => IMAGE_FAILURE_FIELDS.includes(key))) : failure;
+        const raw = JSON.stringify(failure ?? {}); // classification uses the in-memory failure; only evidence is filtered
         // Daily only from Google's own error (message/quotaId) — the failure envelope always has an account_daily_reset_utc
         // key, so testing the whole JSON made every per-minute 429 look daily (1 h cooldown for a 20 s limit).
-        const daily = evidence.failure?.category === 'account_daily_quota' || /per.?day|PerDay|daily/i.test(JSON.stringify(evidence.failure?.error ?? {})), exhausted = response.status === 429 || /RESOURCE_EXHAUSTED/.test(raw);
+        const daily = failure?.category === 'account_daily_quota' || /per.?day|PerDay|daily/i.test(JSON.stringify(failure?.error ?? {})), exhausted = response.status === 429 || /RESOURCE_EXHAUSTED/.test(raw);
         const retryInfo = /"retryDelay"\s*:\s*"(\d+)s"/.exec(raw);
-        if (exhausted) { const s = this.guard?.backoff({ retryAfterSeconds: evidence.failure?.headers?.retry_after_seconds ?? (retryInfo ? Number(retryInfo[1]) : null), daily, model }); throw Object.assign(new ApiError(429, daily ? 'quota_exhausted' : 'rate_limited'), { retryAfterSeconds: s }); }
+        if (exhausted) { const s = this.guard?.backoff({ retryAfterSeconds: failure?.headers?.retry_after_seconds ?? (retryInfo ? Number(retryInfo[1]) : null), daily, model }); throw Object.assign(new ApiError(429, daily ? 'quota_exhausted' : 'rate_limited'), { retryAfterSeconds: s }); }
         // 400 with tool history usually means missing thought signatures (see cache note) → fail over, never retry here.
         const codes = { 400: body.input.some(s => s.type === 'function_call') ? 'provider_failed' : 'provider_request_invalid', 401: 'unauthorized', 403: 'forbidden', 404: 'free_model_unavailable', 500: 'provider_failed', 502: 'provider_failed', 503: 'provider_overloaded', 504: 'provider_overloaded' };
         throw new ApiError(503, codes[response.status] ?? 'provider_failed');
