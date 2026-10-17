@@ -319,3 +319,66 @@ final class StatusLinePrereviewTests: XCTestCase {
         for t in tools { XCTAssertNotNil(ToolStepCopy.table[t], "ToolStepCopy missing server-gated tool \(t)") }
     }
 }
+
+/// v1.1 item 3: Live Activity title = the user's own task text.
+@MainActor final class CatpawTaskTitleTests: XCTestCase {
+    func testFirstLineTrimmedCollapsedAndCapped() {
+        XCTAssertEqual(CatpawTaskTitle.make("  把评审会   加进日历 \n明天下午三点，提醒我"), "把评审会 加进日历")
+        XCTAssertEqual(CatpawTaskTitle.make("\n\n  hello\nworld"), "hello")
+        let long = CatpawTaskTitle.make("请帮我整理一下这周所有会议的纪要并发给团队每个人")!
+        XCTAssertEqual(long.count, CatpawTaskTitle.limit); XCTAssertTrue(long.hasSuffix("…"))
+        XCTAssertEqual(CatpawTaskTitle.make("abcdefghijabcdefghij"), "abcdefghijabcdefghij")
+        XCTAssertNil(CatpawTaskTitle.make(" \n\t "))
+    }
+    /// R2 (NoBug P1-2): contacts are masked before the 20-character cut; ordinary short numbers stay.
+    func testR2PhonesEmailsAndURLsAreMaskedBeforeTruncation() {
+        XCTAssertEqual(CatpawTaskTitle.make("给张三打 13812345678"), "给张三打 •••")
+        XCTAssertEqual(CatpawTaskTitle.make("给张三打13812345678"), "给张三打•••")
+        XCTAssertEqual(CatpawTaskTitle.make("拨 +86 138-1234-5678 再说"), "拨 ••• 再说")
+        XCTAssertEqual(CatpawTaskTitle.make("发邮件给 alice.w@example.com 说一声"), "发邮件给 ••• 说一声")
+        XCTAssertEqual(CatpawTaskTitle.make("看看https://example.com/a?b=1"), "看看•••")
+        XCTAssertEqual(CatpawTaskTitle.make("明天3点开会 房间 12345"), "明天3点开会 房间 12345")
+        // a long number that would straddle the cut is masked first, so no digits of it survive truncation
+        let t = CatpawTaskTitle.make("请帮我把这段话发给同事并打电话 13812345678 确认")!
+        XCTAssertFalse(t.contains("138")); XCTAssertLessThanOrEqual(t.count, CatpawTaskTitle.limit)
+        XCTAssertFalse(CatpawTaskTitle.make("联系 bob@example.com 或 021-6543 2100")!.contains("@"))
+    }
+    func testHandOffIsPerOperationAndConsumedOnce() {
+        let a = UUID(), b = UUID()
+        CatpawTaskTitles.note("订明早的车", operationID: a)
+        XCTAssertNil(CatpawTaskTitles.take(b))
+        XCTAssertEqual(CatpawTaskTitles.take(a), "订明早的车")
+        XCTAssertNil(CatpawTaskTitles.take(a))
+        CatpawTaskTitles.note("x", operationID: b); CatpawTaskTitles.reset(); XCTAssertNil(CatpawTaskTitles.take(b))
+    }
+}
+
+/// v1.1 item 2 (B8): conversation residue outside the account partition is purged at sign-out.
+final class AccountConversationLocalTests: XCTestCase {
+    func testPurgeRemovesVariantsReactionsAndStagedDraftFiles() throws {
+        let suite = "b8-\(UUID().uuidString)", d = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { UserDefaults().removePersistentDomain(forName: suite) }
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(suite, isDirectory: true)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        try Data("draft".utf8).write(to: dir.appendingPathComponent("a.jpg"))
+        d.set(["m1": "👍"], forKey: AccountConversationLocal.reactionsKey)
+        d.set(Data("{}".utf8), forKey: AccountConversationLocal.replyVariantsPrefix + UUID().uuidString)
+        d.set(true, forKey: "catpaw.onboarding.keep")
+        AccountConversationLocal.purge(defaults: d, stagingDirectory: dir)
+        XCTAssertNil(d.object(forKey: AccountConversationLocal.reactionsKey))
+        XCTAssertFalse(d.dictionaryRepresentation().keys.contains { $0.hasPrefix(AccountConversationLocal.replyVariantsPrefix) })
+        XCTAssertFalse(FileManager.default.fileExists(atPath: dir.path))
+        XCTAssertTrue(d.bool(forKey: "catpaw.onboarding.keep"), "device-level keys untouched")
+    }
+}
+
+#if canImport(ActivityKit) && os(iOS)
+/// R2 (NoBug P1-2): an ended turn's task title leaves the lock screen after ~2 min, whatever the outcome.
+@MainActor final class CatpawLiveActivityLingerTests: XCTestCase {
+    func testR2EndedTurnsLingerAtMostTwoMinutes() {
+        for kind in [CatpawWorkAttributes.ContentState.Kind.done, CatpawWorkAttributes.ContentState.Kind.failed, "stopped"] {
+            XCTAssertLessThanOrEqual(CatpawLiveActivityCoordinator.dismissAfter(kind: kind), 2 * 60, kind)
+        }
+    }
+}
+#endif

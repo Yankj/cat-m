@@ -71,6 +71,41 @@ enum CatpawWorkPhase: Equatable {
         return language.ui(bodyKey.key, arguments: bodyKey.arguments)
     }
 }
+/// v1.1: the Live Activity title is the user's own task — first non-empty line of the user message, whitespace collapsed,
+/// trimmed to ~20 characters. Only the typed text is used (never tool names / arguments); nil → widget generic title.
+/// R2 (NoBug P1-2): emails, URLs and phone-like digit runs (6+ digits, spaces / dashes allowed) are masked BEFORE the cut,
+/// so a contact never reaches the lock screen / Dynamic Island; the widget also marks the title `.privacySensitive()`.
+enum CatpawTaskTitle {
+    static let limit = 20
+    static let mask = "•••"
+    static func make(_ text: String) -> String? {
+        guard let line = text.split(whereSeparator: \.isNewline).lazy
+            .map({ $0.split(whereSeparator: \.isWhitespace).joined(separator: " ") }).first(where: { !$0.isEmpty }) else { return nil }
+        let masked = redact(line)
+        return masked.count <= limit ? masked : String(masked.prefix(limit - 1)).trimmingCharacters(in: .whitespaces) + "…"
+    }
+    static func redact(_ s: String) -> String {
+        var out = s
+        for pattern in [#"[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}"#,   // email
+                        #"(?i)(?:https?://|www\.)\S+"#,                          // URL
+                        #"\+?\d(?:[ \-]?\d){5,}"#] {                             // 6+ digits: phone / card / id numbers
+            out = out.replacingOccurrences(of: pattern, with: mask, options: .regularExpression)
+        }
+        return out
+    }
+}
+
+/// Hand-off from the send path (operation id = turn id) to the Live Activity coordinator.
+@MainActor enum CatpawTaskTitles {
+    private static var pending: [UUID: String] = [:]
+    static func note(_ text: String, operationID: UUID) {
+        if pending.count > 32 { pending.removeAll() }   // bounded: a turn that never starts must not leak titles
+        pending[operationID] = CatpawTaskTitle.make(text)
+    }
+    static func take(_ operationID: UUID) -> String? { pending.removeValue(forKey: operationID) }
+    static func reset() { pending.removeAll() }
+}
+
 #if canImport(ActivityKit) && os(iOS)
 import ActivityKit
 import UIKit
@@ -123,12 +158,9 @@ import UIKit
 
     /// Lock-screen / Dynamic Island title from the user's own words: first non-empty line, whitespace collapsed, at most
     /// `taskTitleLimit` characters (then 「…」). Nil for empty input → the widget's 「Catpaw 正在处理」 fallback.
-    static let taskTitleLimit = 24
-    nonisolated static func taskTitle(_ raw: String?) -> String? {
-        guard let raw else { return nil }
-        guard let line = raw.split(whereSeparator: \.isNewline).lazy.map({ $0.split(whereSeparator: \.isWhitespace).joined(separator: " ") }).first(where: { !$0.isEmpty }) else { return nil }
-        return line.count <= taskTitleLimit ? line : String(line.prefix(taskTitleLimit - 1)) + "…"
-    }
+    /// v1.1 R2: one title rule for both paths — CatpawTaskTitle (masking before the cut, 20 characters).
+    static let taskTitleLimit = CatpawTaskTitle.limit
+    nonisolated static func taskTitle(_ raw: String?) -> String? { raw.flatMap(CatpawTaskTitle.make) }
 
     func handle(_ event: ConversationTurnEvent, conversationID: UUID?, taskText: String? = nil) {
         let id = event.operationID
@@ -145,7 +177,7 @@ import UIKit
         }
         if case .started = event.payload, turns[id] == nil {
             var turn = Turn(conversationID: conversationID?.uuidString ?? "", body: body)
-            turn.summary = Self.taskTitle(taskText)
+            turn.summary = CatpawTaskTitles.take(id) ?? Self.taskTitle(taskText)   // per-operation note first, else the latest user message
             turn.timer = Task { [weak self] in
                 try? await Task.sleep(nanoseconds: UInt64(Self.longTurnThreshold * 1_000_000_000))
                 guard !Task.isCancelled else { return }
@@ -168,13 +200,17 @@ import UIKit
     }
 
     private func ensureTracked(_ id: UUID, conversationID: UUID?) {
-        if turns[id] == nil { turns[id] = Turn(conversationID: conversationID?.uuidString ?? "", body: ui("正在思考…")) }
+        if turns[id] == nil {
+            var turn = Turn(conversationID: conversationID?.uuidString ?? "", body: ui("正在思考…"))
+            turn.summary = CatpawTaskTitles.take(id)
+            turns[id] = turn
+        }
     }
 
     /// Exactly the backend `content-state` shape `{title, body, kind, taskID}`.
     private func state(_ id: UUID, _ turn: Turn, _ kind: String, endedAt: Date? = nil) -> CatpawWorkAttributes.ContentState {
         // ux-round-1505: startedAt drives the on-device timer, step = honest dot count, tool → spoken verb in the widget.
-        // summary = the user's task text (taskTitle); nil only when the turn had none → widget falls back to 「Catpaw 正在处理」.
+        // summary = the user's task text (CatpawTaskTitles, else the latest user message), masked; nil → widget generic title.
         .init(title: ui("Catpaw 正在工作"), body: turn.body, kind: kind, taskID: id.uuidString,
               startedAt: turn.startedAt, endedAt: endedAt, step: turn.step > 0 ? turn.step : nil, tool: turn.tool, summary: turn.summary)
     }
@@ -210,6 +246,7 @@ import UIKit
     /// Codex PR91 p91b-3: sign-out. Cancels every pending 5 s start timer (so no `Activity.request` fires after sign-out),
     /// drops tracked turns and token observers, and ends every work activity — including ones from before a relaunch.
     func resetForSignOut() {
+        CatpawTaskTitles.reset()
         for turn in turns.values { turn.timer?.cancel() }
         turns.removeAll()
         for task in tokenObservers.values { task.cancel() }
@@ -240,8 +277,10 @@ import UIKit
         }
     }
 
-    /// Done lingers 2 min, failed 15 min (needs a look), then the system removes it.
-    static func dismissAfter(kind: String) -> TimeInterval { kind == CatpawWorkAttributes.ContentState.Kind.done ? 2 * 60 : 15 * 60 }
+    /// R2 (NoBug P1-2): every ended turn (done, failed, stopped) lingers 2 min, then the system removes it — the task
+    /// title must not outlive the task on the lock screen (was 15 min for failed / stopped).
+    static let endedLinger: TimeInterval = 2 * 60
+    static func dismissAfter(kind: String) -> TimeInterval { endedLinger }
 
     /// chat-ux-1505 #4a: background / relaunch. (1) While an activity is live, ask for background time so the SSE can
     /// deliver the next stages (and the end) after the user locks the phone. (2) On launch / foreground, end activities

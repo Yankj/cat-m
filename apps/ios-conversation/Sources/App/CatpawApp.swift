@@ -257,7 +257,7 @@ import AppIntents
             // Launch-loader fix: an unrecoverable session is a small non-blocking capsule over the usable chat.
             .overlay(alignment:.top) { if auth.sessionRestartNeeded { SessionRestartCapsule(auth:auth).padding(.top,52) } }
             // Account-bound stores activate only for the account's own chat — the launch shell never reaches this view.
-            .task(id:"\(auth.state.user?.id.uuidString ?? "-")|\(ObjectIdentifier(model).hashValue)") { AccountEpoch.shared.activate(account:auth.state.user?.id.uuidString); L2SecureStore.activate(userID:auth.state.user?.id); CatpawL2Sealing.install(); AtRestMigrationScheduler.shared.sealerMayBeReady(); MemoryLibraryLocal.activate(userID:auth.state.user?.id); GenerativeBlockStore.shared.reloadFromL2(); MemoryCache.shared.reloadFromL2(); await MemoryCache.shared.sync() }
+            .task(id:"\(auth.state.user?.id.uuidString ?? "-")|\(ObjectIdentifier(model).hashValue)") { AccountEpoch.shared.activate(account:auth.state.user?.id.uuidString); L2SecureStore.activate(userID:auth.state.user?.id); ProactiveSealedStore.migrateAll(); CatpawL2Sealing.install(); AtRestMigrationScheduler.shared.sealerMayBeReady(); MemoryLibraryLocal.activate(userID:auth.state.user?.id); GenerativeBlockStore.shared.reloadFromL2(); MemoryCache.shared.reloadFromL2(); await MemoryCache.shared.sync() }
             #if DEBUG
             .overlay(alignment:.topTrailing) {
                 if auth.isFixture {
