@@ -86,5 +86,24 @@ check(FirstRunAppearance.launch(reduceMotion: true, voiceOver: false) == .fade(d
 if case .full(let total) = FirstRunAppearance.launch(reduceMotion: false, voiceOver: false) { check(total <= 1.2, "launch ≤ 1.2 s (got \(total))") } else { check(false, "full launch") }
 check(FirstRunAppearance.launchKeyframes.count <= 4, "few keyframes")
 
+// Transition E (user pick 12:37: D plush leads + B CTA→composer + C chat stagger).
+do {
+    let e = FirstRunAppearance.handoff(reduceMotion: false)
+    func t(_ id: String) -> FirstRunAppearance.Track? { e.first { $0.id == id } }
+    let need = ["copy.fade", "chips.gather", "cat.jump", "cta.morph", "chat.row0", "chat.row1", "chat.row2", "chat.row3"]
+    check(need.allSatisfy { t($0) != nil }, "E has tracks \(need) (got \(e.map(\.id)))")
+    check((e.map(\.end).max() ?? 9) <= 1.2, "E total ≤ 1.2 s after tap")
+    if let g = t("chips.gather"), let j = t("cat.jump") { check(g.start <= j.start && g.end < j.end, "tags gather toward the cat before it lands") }
+    if let j = t("cat.jump"), let c = t("cta.morph"), let r0 = t("chat.row0") { check(r0.start >= min(j.end, c.end) - 0.05, "chat rises once cat + composer have landed") }
+    let rows = (0..<4).compactMap { t("chat.row\($0)") }
+    check(rows.count == 4 && zip(rows, rows.dropFirst()).allSatisfy { $0.start < $1.start }, "chat rows staggered")
+    check(FirstRunAppearance.completeOnboardingAt <= (t("chat.row0")?.start ?? 0), "root swap not before the splash has landed")
+    let rm = FirstRunAppearance.handoff(reduceMotion: true)
+    check(!rm.isEmpty && rm.allSatisfy { $0.kind == .fade } && (rm.map(\.end).max() ?? 9) <= 0.5, "Reduce Motion → fade only, ≤0.5 s")
+    check(e.contains { $0.kind == .move }, "E moves")
+    let login = (try? String(contentsOfFile: root + "/Sources/Features/NativeLoginView.swift", encoding: .utf8)) ?? ""
+    check(login.contains("PlushMascot(") && !login.contains("CalmOrb("), "splash centre is the plush cat, not the orange orb")
+}
+
 print(failures == 0 ? "first-run appearance: all passed" : "first-run appearance: \(failures) failure(s)")
 exit(failures == 0 ? 0 : 1)

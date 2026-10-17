@@ -53,6 +53,11 @@ enum FirstRunAppearance {
     /// 0 mark springs in · 0.35 settle/breathe · 0.65 morph into the orb · 0.9 hand off (overlay fades, done at 1.1).
     static let launchKeyframes: [Double] = [0.35, 0.65, 0.9, 1.1]
 
+    // MARK: start → chat handoff "E" (stub; red)
+    struct Track: Equatable { enum Kind: Equatable { case fade, move }; let id: String; let start: Double; let end: Double; let kind: Kind }
+    static let completeOnboardingAt = 0.0
+    static func handoff(reduceMotion: Bool) -> [Track] { [] }
+
     static func composite(_ fg: UInt32, alpha: Double, over bg: UInt32) -> UInt32 {
         func ch(_ v: UInt32, _ s: UInt32) -> Double { Double((v >> s) & 255) }
         func mix(_ s: UInt32) -> UInt32 { UInt32((ch(fg, s) * alpha + ch(bg, s) * (1 - alpha)).rounded()) << s }
