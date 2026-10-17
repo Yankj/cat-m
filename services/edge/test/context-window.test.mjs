@@ -7,10 +7,10 @@ import {beforeEach} from 'node:test';
 import {memoryHTTPFixture as fixture} from './fixtures/memory-http-fixture.mjs';
 import {readConfig} from '../supabase/functions/_shared/config.mjs';
 import {hash,ApiError} from '../supabase/functions/_shared/core/facade-r2/src/common.mjs';
-import {CONTEXT_LIMITS,WINDOW_NOTE,packWindow,mergeModelMessages,resolveMeta,metaFor,metaValid,boundariesOf,isLegacyBoundary,admitModelHistory,elideOldToolResults,assertStorageLimits,estimateTokens,projectConversation} from '../supabase/functions/_shared/core/src/context-window.mjs';
+import {CONTEXT_LIMITS,WINDOW_NOTE,packWindow,mergeModelMessages,resolveMeta,metaFor,metaValid,boundariesOf,isLegacyBoundary,admitModelHistory,elideOldToolResults,assertStorageLimits,estimateTokens,projectConversation,withoutFailedTurnUser} from '../supabase/functions/_shared/core/src/context-window.mjs';
 import {eraseChatSource} from '../supabase/functions/_shared/core/src/source-erasure.mjs';
 import {FreeRouteChainProvider,readFreeRouteChain,_routeHealthForTests as health} from '../supabase/functions/_shared/core/src/free-route-chain.mjs';
-import {toSteps,geminiRejectReason,GEMINI_SKIP_SIGNATURE,GEMINI_SIGNATURE_FIELD,_signatureCacheForTests} from '../supabase/functions/_shared/core/src/gemini-interactions-route.mjs';
+import {toSteps,geminiRejectReason,GeminiInteractionsRoute,GEMINI_SKIP_SIGNATURE,GEMINI_SIGNATURE_FIELD,_signatureCacheForTests} from '../supabase/functions/_shared/core/src/gemini-interactions-route.mjs';
 globalThis.fetch=()=>{throw Error('external_network_forbidden');};
 beforeEach(()=>health.clear());
 
@@ -179,7 +179,11 @@ test('meta missing (pre-change conversation) → recomputed; unreconcilable → 
  assert.equal((await post(s,'三')).status,200);let c=await stored(s);assert.ok(metaValid(c.model_message_meta,c.model_messages));assert.deepEqual(boundariesOf(c.model_message_meta.entries),[0,2,4]);
  // an extra unexplained user entry in model_messages (counts no longer match the visible messages) and stale meta
  await rewrite(s,c=>({...c,model_messages:[...c.model_messages,{role:'user',content:'unexplained'}]}));
- assert.equal((await post(s,'四')).status,200);c=await stored(s);
+ const logs=[],info=console.info;console.info=(...a)=>{logs.push(a.join(' '));};
+ try{assert.equal((await post(s,'四')).status,200);}finally{console.info=info;}c=await stored(s);
+ const fb=logs.map(l=>{try{return JSON.parse(l);}catch{return null;}}).filter(l=>l?.event==='catpaw_context_meta_fallback');
+ assert.equal(fb.length,1,'R1-P2-2: fallback logged once');assert.deepEqual(Object.keys(fb[0]).sort(),['conversation_id','event','reason','turn_id']);assert.equal(fb[0].conversation_id,s.cid);
+ assert.ok(!logs.some(l=>l.includes('四')),'no message content in logs');
  assert.deepEqual(boundariesOf(c.model_message_meta.entries),[c.model_messages.length-2],'only the new turn is a known boundary');
  assert.equal(s.probe.inputs.at(-1).messages.length,c.model_messages.length-1,'one window: the whole history was sent');
 });
@@ -202,7 +206,8 @@ test('toSteps: placeholder only for current-turn calls without a signature, on t
  _signatureCacheForTests.clear?.();
  const msgs=[{role:'user',content:'早'},{role:'assistant',content:'',tool_calls:[call('old1')]},{role:'tool',tool_call_id:'old1',content:'{}'},{role:'assistant',content:'好'},
   {role:'user',content:'再加两个'},{role:'assistant',content:'',tool_calls:[call('n1'),call('n2')]},{role:'tool',tool_call_id:'n1',content:'{}'},{role:'tool',tool_call_id:'n2',content:'{}'}];
- const steps=toSteps(msgs),ph=steps.filter(s=>s[GEMINI_SIGNATURE_FIELD]===GEMINI_SKIP_SIGNATURE);
+ assert.equal(toSteps(msgs).filter(s=>s[GEMINI_SIGNATURE_FIELD]===GEMINI_SKIP_SIGNATURE).length,0,'R1-P1: default off');
+ const steps=toSteps(msgs,{signaturePlaceholder:true}),ph=steps.filter(s=>s[GEMINI_SIGNATURE_FIELD]===GEMINI_SKIP_SIGNATURE);
  assert.equal(ph.length,1);const i=steps.indexOf(ph[0]);assert.equal(steps[i+1].id,'n1');assert.equal(steps[i+2].id,'n2');
  assert.equal(steps.findIndex(s=>s.id==='old1')>0&&steps[steps.findIndex(s=>s.id==='old1')-1].type,'user_input','previous turns are not validated → no placeholder');
  assert.equal(toSteps(msgs,{signaturePlaceholder:false}).filter(s=>s[GEMINI_SIGNATURE_FIELD]===GEMINI_SKIP_SIGNATURE).length,0);
@@ -216,17 +221,97 @@ test('geminiRejectReason: fixed vocabulary, signature errors recognised',()=>{
 const KEY='gem-test-key-not-real';
 const sseOk=text=>new Response(new ReadableStream({start(c){for(const f of [{choices:[{index:0,delta:{content:text}}]},{choices:[{index:0,delta:{},finish_reason:'stop'}]},'[DONE]'])c.enqueue(new TextEncoder().encode(`data: ${typeof f==='string'?f:JSON.stringify(f)}\n\n`));c.close();}}),{status:200,headers:{'content-type':'text/event-stream'}});
 const toolHistory=[{role:'user',content:'加提醒'},{role:'assistant',content:'',tool_calls:[call('c1')]},{role:'tool',tool_call_id:'c1',content:'{"ok":true}'}];
-async function run(geminiBody){
- const urls=[],c=readFreeRouteChain(k=>({CATPAW_PRIVATE_MODEL_KEY:'o',CATPAW_GEMINI_API_KEY:KEY,CATPAW_GEMINI_ROUTE:'primary'})[k]);
- const p=new FreeRouteChainProvider({...c,fetchImpl:async url=>{urls.push(url);return url.includes('googleapis')?new Response(geminiBody,{status:400}):sseOk('续写');}});
+async function run(geminiBody,extraEnv={}){
+ const urls=[],bodies=[],c=readFreeRouteChain(k=>({CATPAW_PRIVATE_MODEL_KEY:'o',CATPAW_GEMINI_API_KEY:KEY,CATPAW_GEMINI_ROUTE:'primary',...extraEnv})[k]);
+ const p=new FreeRouteChainProvider({...c,fetchImpl:async (url,init)=>{urls.push(url);if(url.includes('googleapis'))bodies.push(JSON.parse(init.body));return url.includes('googleapis')?new Response(geminiBody,{status:400}):sseOk('续写');}});
  const out=[];try{for await(const e of p.stream({messages:toolHistory,system_prompt:'猫爪',tools:[]}))out.push(e);}catch(e){out.push({type:'thrown',code:e.code});}
- return {urls,out};
+ return {urls,out,bodies};
 }
 test('400 classification: thought-signature 400 fails over; any other 400 with tool history stays provider_request_invalid (no failover)',async()=>{
  const sig=await run('{"error":{"code":400,"message":"function call is missing a thought_signature"}}');
+ assert.equal(sig.bodies[0].input.filter(s=>s[GEMINI_SIGNATURE_FIELD]===GEMINI_SKIP_SIGNATURE).length,0,'switch off by default: request is exactly v52 (no placeholder)');
  assert.ok(sig.urls.some(u=>!u.includes('googleapis')),'failed over to the next route');assert.ok(sig.out.some(e=>e.type==='text_delta'&&e.text==='续写'));
  health.clear();
  const other=await run('{"error":{"code":400,"message":"Invalid value at generation_config"}}');
  assert.ok(other.urls.every(u=>u.includes('googleapis')),'no failover on a real request error');
  assert.ok(other.out.some(e=>(e.type==='thrown'||e.type==='error')&&JSON.stringify(e).includes('provider_request_invalid')),JSON.stringify(other.out));
+});
+
+// ---------- NoBug R1-P1: placeholder switch (default off), placeholder-400 failover, widened signature match ----------
+test('R1-P1 (a): CATPAW_GEMINI_PLACEHOLDER_SIGNATURE is off unless exactly "true"; route_hash unchanged either way',()=>{
+ const base={CATPAW_PRIVATE_MODEL_KEY:'o',CATPAW_GEMINI_API_KEY:KEY};
+ for(const v of [undefined,'','false','1','on','TRUE ',' yes'])assert.equal(readFreeRouteChain(k=>({...base,CATPAW_GEMINI_PLACEHOLDER_SIGNATURE:v})[k]).geminiPlaceholderSignature,false,String(v));
+ assert.equal(readFreeRouteChain(k=>({...base,CATPAW_GEMINI_PLACEHOLDER_SIGNATURE:'true'})[k]).geminiPlaceholderSignature,true);
+ const cfg={CATPAW_DATABASE_URL:'offline-unused',CATPAW_PRIVATE_MODEL_KEY:'offline-unused',CATPAW_TICK_HMAC_KEY:'offline-only-at-least-thirty-two-chars',CATPAW_MEMORY_GUARD_KEY:'offline-unused-guard',CATPAW_GEMINI_API_KEY:'offline-gemini-key-placeholder',CATPAW_AGNES_API_KEY:'offline-agnes-key-placeholder'};
+ for(const v of ['true','false',undefined])assert.equal(readConfig(k=>({...cfg,CATPAW_GEMINI_PLACEHOLDER_SIGNATURE:v})[k]).routeHash,'508f5072148ce8e5de53649d460e8b7cdd7e79b16214918be541f204b4234337');
+ const route={model:'gemini-3.5-flash-lite',endpoint:'https://generativelanguage.googleapis.com/v1beta/interactions?alt=sse'},count=b=>b.input.filter(s=>s[GEMINI_SIGNATURE_FIELD]===GEMINI_SKIP_SIGNATURE).length;
+ assert.equal(count(new GeminiInteractionsRoute(route,KEY,{}).payload({messages:toolHistory})),0,'route default off');
+ assert.equal(count(new GeminiInteractionsRoute(route,KEY,{placeholderSignature:true}).payload({messages:toolHistory})),1,'on: one placeholder for the current-turn call');
+ assert.equal(count(new GeminiInteractionsRoute(route,KEY,{placeholderSignature:'true'}).payload({messages:toolHistory})),0,'only boolean true from the chain enables it');
+});
+test('R1-P1 (b): with the switch on, ANY 400 on a request carrying a placeholder fails over; switch off keeps provider_request_invalid',async()=>{
+ const on=await run('{"error":{"code":400,"message":"Invalid value at \'input[1]\' (type.googleapis.com/Step): unknown field"}}',{CATPAW_GEMINI_PLACEHOLDER_SIGNATURE:'true'});
+ assert.equal(on.bodies[0].input.filter(s=>s[GEMINI_SIGNATURE_FIELD]===GEMINI_SKIP_SIGNATURE).length,1,'placeholder was sent');
+ assert.ok(on.urls.some(u=>!u.includes('googleapis')),'failed over');assert.ok(on.out.some(e=>e.type==='text_delta'&&e.text==='续写'));
+ health.clear();
+ const off=await run('{"error":{"code":400,"message":"Invalid value at \'input[1]\' (type.googleapis.com/Step): unknown field"}}');
+ assert.ok(off.urls.every(u=>u.includes('googleapis')),'no placeholder → a real request error stays no-failover (v52 behaviour)');
+ assert.ok(off.out.some(e=>JSON.stringify(e).includes('provider_request_invalid')));
+});
+test('R1-P1 (c): signature 400 match covers thought_signature / thoughtSignature / thought-signature / thought signature / signature missing',()=>{
+ for(const m of ['missing a thought_signature','Function call is missing a thoughtSignature','thought-signature is invalid','missing thought signature','Signature is missing for function call','required signature not present'])
+  assert.equal(geminiRejectReason({error:{message:m}}),'missing_thought_signature',m);
+ assert.equal(geminiRejectReason({error:{message:'Invalid API token'}}),'credential','credential before input_too_large');
+ assert.equal(geminiRejectReason({error:{message:'input token count exceeds the maximum'}}),'input_too_large');
+ assert.equal(geminiRejectReason({error:{message:'Invalid value at generation_config'}}),'invalid_argument');
+});
+
+// ---------- model_history_conflict: the failed turn's user message is taken back (no duplicate on resend, no double count) ----------
+test('withoutFailedTurnUser: removes the visible message and the provable model entry; never guesses',()=>{
+ const admitted={role:'user',content:'二'},t={id:'t2',input:{message:{id:'m3'}},model_history:[{role:'user',content:'一'},{role:'assistant',content:'a'},admitted]};
+ const models=[{role:'user',content:'一'},{role:'assistant',content:'a'},admitted],entries=[{turn_id:'t1',visible:true},null,{turn_id:'t2',visible:true}];
+ const visible=[{id:'m1',role:'user',content:'一'},{id:'m2',role:'assistant',content:'a'},{id:'m3',role:'user',content:'二'}];
+ // valid meta (by turn id), even when something was prepended
+ const pre=[{role:'assistant',content:'x'},...models],preMeta=metaFor(pre,[null,...entries]);
+ const r=withoutFailedTurnUser({messages:visible,model_messages:pre,model_message_meta:preMeta},t);
+ assert.deepEqual(r.conversation.messages.map(m=>m.id),['m1','m2']);assert.deepEqual(r.conversation.model_messages,pre.slice(0,-1));assert.ok(metaValid(r.conversation.model_message_meta,r.conversation.model_messages));
+ assert.deepEqual(r.conversation.model_message_meta.entries,[null,{turn_id:'t1',visible:true},null]);assert.ok(r.visible_removed&&r.model_removed);
+ // invalid meta: only the last entry, only if it equals the admitted entry; meta dropped (recomputed next turn)
+ const r2=withoutFailedTurnUser({messages:visible,model_messages:[{role:'system',content:'?'},...models],model_message_meta:{schema:1}},t);
+ assert.equal(r2.conversation.model_messages.length,3);assert.equal(r2.conversation.model_message_meta,undefined);
+ const odd=[...models,{role:'assistant',content:'appended by someone else'}];
+ const r3=withoutFailedTurnUser({messages:visible,model_messages:odd},t);assert.deepEqual(r3.conversation.model_messages,odd,'not provable → model side untouched');assert.equal(r3.model_removed,false);assert.equal(r3.visible_removed,true);
+ assert.equal(withoutFailedTurnUser({messages:visible.slice(0,2),model_messages:models.slice(0,2)},t),null,'nothing to remove');
+ assert.equal(projectConversation(r.conversation).messages.length,2);
+});
+async function setupConflict(){
+ const probe={inputs:[],hook:null};
+ const f=await fixture({stream:async function*(input){probe.inputs.push({messages:input.messages});if(probe.hook){const h=probe.hook;probe.hook=null;await h();}yield {type:'text_delta',text:'好的'};yield {type:'done',finish_reason:'stop'};}});
+ const cid=await f.newConversation();await f.json(await f.req(`/catpaw/privacy/v1/scopes/${f.scope.scope_id}/conversations/${cid}/model-consent`,{decision:'allow',expected_revision:0,route_hash:f.config.routeHash}));
+ return {f,probe,cid,path:`/catpaw/chat/v1/scopes/${f.scope.scope_id}/conversations/${cid}`};
+}
+for(const keepMeta of [true,false])test(`model_history_conflict (${keepMeta?'valid':'stale'} meta): failed turn's user message leaves messages + model_messages; resend shows it once`,async()=>{
+ const s=await setupConflict();assert.equal((await post(s,'一')).status,200);
+ // Another writer changes the stored model history between admission and complete() (no revision bump) → 409 at merge.
+ s.probe.hook=()=>rewrite(s,c=>{const mm=[{role:'assistant',content:'injected'},...c.model_messages];return {...c,model_messages:mm,model_message_meta:keepMeta?metaFor(mm,[null,...c.model_message_meta.entries]):c.model_message_meta};});
+ const failed=await post(s,'二');assert.ok(failed.body.includes('model_history_conflict'),failed.body);
+ const turn=await s.f.runtime.chat.readTurn('Bearer memory-fixture',s.f.scope.scope_id,s.cid,failed.tid);assert.equal(turn.state,'failed');assert.equal(turn.error.code,'model_history_conflict');
+ let c=await stored(s);
+ assert.deepEqual(c.messages.map(m=>m.content),['一','好的'],'failed user message removed from visible messages');
+ assert.ok(!c.model_messages.some(m=>m.content==='二'),'and from model_messages');assert.ok(noUnderscore(c.model_messages));
+ if(keepMeta)assert.ok(metaValid(c.model_message_meta,c.model_messages));else assert.equal(c.model_message_meta,undefined);
+ const resent=await post(s,'二');assert.equal(resent.status,200,resent.body);assert.ok(!resent.body.includes('turn_failed'),resent.body);
+ c=await stored(s);assert.deepEqual(c.messages.map(m=>m.content),['一','好的','二','好的'],'resend appears exactly once');
+ // the resent entry carries the failed turn's outcome note (text already shown) as its prefix, like any turn after a failure
+ const isTwo=m=>m.role==='user'&&typeof m.content==='string'&&m.content.endsWith('二');
+ assert.equal(c.model_messages.filter(isTwo).length,1,'counted once against storage caps');assert.equal(c.model_messages.length,5,'the other writer\'s entry stays; only the failed turn\'s entry left');
+ assert.equal(s.probe.inputs.at(-1).messages.filter(isTwo).length,1,'model sees the text once');
+ assert.notEqual(c.model_messages.find(isTwo).content,'二','outcome note of the failed turn (text already shown) still reaches the resend');
+ const wire=(await s.f.json(await s.f.req(s.path))).conversation;assert.deepEqual(wire.messages.map(m=>m.content),['一','好的','二','好的']);
+});
+test('other failures keep the user message (unchanged v52 behaviour; retry-busy restarts the same turn)',async()=>{
+ const s=await setupConflict();assert.equal((await post(s,'一')).status,200);
+ s.probe.hook=async()=>{throw new ApiError(503,'provider_failed');};
+ const failed=await post(s,'二');assert.ok(failed.body.includes('turn_failed'),failed.body);
+ assert.deepEqual((await stored(s)).messages.map(m=>m.content),['一','好的','二']);
 });
