@@ -71,6 +71,28 @@ enum CatpawWorkPhase: Equatable {
         return language.ui(bodyKey.key, arguments: bodyKey.arguments)
     }
 }
+/// v1.1: the Live Activity title is the user's own task — first non-empty line of the user message, whitespace collapsed,
+/// trimmed to ~20 characters. Only the typed text is used (never tool names / arguments); nil → widget generic title.
+enum CatpawTaskTitle {
+    static let limit = 20
+    static func make(_ text: String) -> String? {
+        guard let line = text.split(whereSeparator: \.isNewline).lazy
+            .map({ $0.split(whereSeparator: \.isWhitespace).joined(separator: " ") }).first(where: { !$0.isEmpty }) else { return nil }
+        return line.count <= limit ? line : String(line.prefix(limit - 1)).trimmingCharacters(in: .whitespaces) + "…"
+    }
+}
+
+/// Hand-off from the send path (operation id = turn id) to the Live Activity coordinator.
+@MainActor enum CatpawTaskTitles {
+    private static var pending: [UUID: String] = [:]
+    static func note(_ text: String, operationID: UUID) {
+        if pending.count > 32 { pending.removeAll() }   // bounded: a turn that never starts must not leak titles
+        pending[operationID] = CatpawTaskTitle.make(text)
+    }
+    static func take(_ operationID: UUID) -> String? { pending.removeValue(forKey: operationID) }
+    static func reset() { pending.removeAll() }
+}
+
 #if canImport(ActivityKit) && os(iOS)
 import ActivityKit
 import UIKit
@@ -132,6 +154,7 @@ import UIKit
         }
         if case .started = event.payload, turns[id] == nil {
             var turn = Turn(conversationID: conversationID?.uuidString ?? "", body: body)
+            turn.summary = CatpawTaskTitles.take(id)   // v1.1: the user's task text, not 「Catpaw 正在处理」
             turn.timer = Task { [weak self] in
                 try? await Task.sleep(nanoseconds: UInt64(Self.longTurnThreshold * 1_000_000_000))
                 guard !Task.isCancelled else { return }
@@ -154,13 +177,17 @@ import UIKit
     }
 
     private func ensureTracked(_ id: UUID, conversationID: UUID?) {
-        if turns[id] == nil { turns[id] = Turn(conversationID: conversationID?.uuidString ?? "", body: ui("正在思考…")) }
+        if turns[id] == nil {
+            var turn = Turn(conversationID: conversationID?.uuidString ?? "", body: ui("正在思考…"))
+            turn.summary = CatpawTaskTitles.take(id)
+            turns[id] = turn
+        }
     }
 
     /// Exactly the backend `content-state` shape `{title, body, kind, taskID}`.
     private func state(_ id: UUID, _ turn: Turn, _ kind: String, endedAt: Date? = nil) -> CatpawWorkAttributes.ContentState {
         // ux-round-1505: startedAt drives the on-device timer, step = honest dot count, tool → spoken verb in the widget.
-        // summary (the task title) stays nil until the turn's user text is plumbed in; widget falls back to 「Catpaw 正在处理」.
+        // summary = the user's task text (CatpawTaskTitles, v1.1); nil only when none was noted → widget generic title.
         .init(title: ui("Catpaw 正在工作"), body: turn.body, kind: kind, taskID: id.uuidString,
               startedAt: turn.startedAt, endedAt: endedAt, step: turn.step > 0 ? turn.step : nil, tool: turn.tool, summary: turn.summary)
     }
@@ -196,6 +223,7 @@ import UIKit
     /// Codex PR91 p91b-3: sign-out. Cancels every pending 5 s start timer (so no `Activity.request` fires after sign-out),
     /// drops tracked turns and token observers, and ends every work activity — including ones from before a relaunch.
     func resetForSignOut() {
+        CatpawTaskTitles.reset()
         for turn in turns.values { turn.timer?.cancel() }
         turns.removeAll()
         for task in tokenObservers.values { task.cancel() }

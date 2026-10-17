@@ -764,6 +764,7 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
                         if let reference=message.image {let bytes=try await imageStore.read(reference:reference,conversationID:id,operationID:message.id);image = .init(reference:reference,bytes:bytes)} else {image=nil}
                         guard !Task.isCancelled,await self?.canDispatchFollowup == true else {return .heldBeforeAdmission}
                         sendLog.info("catpaw.send dispatch");let t0=Date();defer { sendLog.info("catpaw.send dispatch end \(Date().timeIntervalSince(t0), privacy: .public)s") }
+                        await CatpawTaskTitles.note(message.text,operationID:message.id)   // v1.1 Live Activity title
                         _=try await service.send(scope:scope,conversationID:id,text:message.text,operationID:message.id,preserveDraft:true,image:image,continuation:message.continuation,acceptedWork:message.acceptedWork,revisionWork:message.revisionWork);return .sent
                     }
                     catch {
