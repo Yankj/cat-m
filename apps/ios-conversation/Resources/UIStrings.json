@@ -6862,5 +6862,17 @@
   "新开对话": {
     "en": "New conversation",
     "zh-Hans": "新开对话"
+  },
+  "本对话允许": {
+    "en": "Allow in this chat",
+    "zh-Hans": "本对话允许"
+  },
+  "不发了": {
+    "en": "Don't send",
+    "zh-Hans": "不发了"
+  },
+  "只对本对话有效": {
+    "en": "Applies to this chat only",
+    "zh-Hans": "只对本对话有效"
   }
 }

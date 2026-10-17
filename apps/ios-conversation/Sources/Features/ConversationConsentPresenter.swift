@@ -128,10 +128,13 @@ struct ConversationConsentPresentationCoordinator {
                 VStack(spacing:8) {
                     CatpawConfirmationCheckbox(title:ui(consent.confirmation),isOn:$confirmed).disabled(saving)
                         .accessibilityIdentifier("image.consent.nonSensitive")
+                    // v1.1 inline-status SPEC §4.1: the confirmation is stored on this conversation's record only.
+                    Text(ui("只对本对话有效")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
+                        .frame(maxWidth:.infinity,alignment:.leading).accessibilityIdentifier("image.consent.scope")
                     VStack(spacing:4) {
-                        Button{allow(confirmed)} label:{Text(ui(consent.allowLabel))}
+                        Button{allow(confirmed)} label:{Text(ui("本对话允许"))}
                             .buttonStyle(CatpawSheetPrimaryButtonStyle()).disabled(!confirmed || saving).accessibilityIdentifier("image.consent.allow")
-                        Button(action:cancel){Text(ui(consent.denyLabel))}
+                        Button(action:cancel){Text(ui("不发了"))}
                             .buttonStyle(CatpawSheetSecondaryButtonStyle()).disabled(saving).accessibilityIdentifier("image.consent.cancel")
                     }
                     if saving {ProgressView().accessibilityLabel(ui("正在保存确认…"))}
