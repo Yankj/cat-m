@@ -216,6 +216,31 @@ struct ProactiveFeedbackLedger: Codable, Equatable, Sendable {
     static func round(_ v: Double) -> Double { (v * 1000).rounded() / 1000 }
 }
 
+/// Codex PR91 trial S1 — the learned feedback gate for #90's `ProactiveEngine.feedbackGate` (installed at the #90 merge,
+/// see codex-review/pr91-merge-notes-90.md). Nonisolated and lock-protected, so it can be assigned to #90's plain
+/// `(String, Double, String) -> String` hook from any context. Contract (matches #90's on-device default):
+/// - downgrade-only: never returns a level above `decision`;
+/// - no learned weight for `trigger` → `decision` unchanged (a low confidence alone never demotes);
+/// - weights belong to the account that published them; for any other account (or signed out) → unchanged.
+enum ProactiveLearnedGate {
+    private static let lock = NSLock()
+    nonisolated(unsafe) private static var owner: String?
+    nonisolated(unsafe) private static var weights: [String: ProactiveTriggerWeight] = [:]
+    /// `owner`: AccountEpoch account (uuidString) the ledger was loaded for; nil clears.
+    static func publish(owner o: String?, weights w: [String: ProactiveTriggerWeight]) {
+        lock.lock(); owner = o.map { $0.uppercased() }; weights = o == nil ? [:] : w; lock.unlock()
+    }
+    static func gate(decision: String, confidence: Double, trigger: String) -> String {
+        lock.lock(); let o = owner, w = weights; lock.unlock()
+        guard let o, o == AccountEpoch.shared.currentAccount?.uppercased(), w[trigger] != nil else { return decision }
+        var ledger = ProactiveFeedbackLedger(); ledger.weights = w
+        let gated = ledger.gate(decision: decision, confidence: confidence, trigger: trigger)
+        let L = ProactiveFeedbackLedger.levels
+        guard let i = L.firstIndex(of: decision), let j = L.firstIndex(of: gated) else { return decision }
+        return L[min(i, j)]
+    }
+}
+
 enum ProactiveUndoRules {
     /// Undo only succeeds when what we wrote is gone; a failed delete keeps the current status (nil = no change).
     static func statusAfterUndo(current: ProactiveItemStatus, removal: DeviceUndoOutcome) -> ProactiveItemStatus? {
