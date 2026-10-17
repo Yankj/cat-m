@@ -69,14 +69,20 @@ export function readConfig(get){
  if(publicSourcePolicy){finalRoute.data_fields=[...finalRoute.data_fields,'user_provided_public_urls_and_received_source_text'];finalRoute.purposes=[...finalRoute.purposes,'user_url_sourced_report'];}
  // Supabase injects the service-role key into hosted functions; used only server-side for the private attachment bucket.
  const serviceRoleKey=get('SUPABASE_SERVICE_ROLE_KEY');
- // Unset gate → 'allowlist': env allowlist OR DB enrollment (feature_access.enrollments). Explicit 'false'/'off' → off for everyone.
- const G=n=>readFeatureGate(get(n),'allowlist');
- const generativeUI=G('CATPAW_GENERATIVE_UI_ENABLED'),taskTools=G('CATPAW_TASK_TOOLS_ENABLED'),featureAllowlist=readAllowlist(get('CATPAW_FEATURE_ALLOWLIST_SUBJECTS')),agentMemory=G('CATPAW_AGENT_MEMORY_ENABLED'),deviceTools=G('CATPAW_DEVICE_TOOLS_ENABLED'),proactiveSuggestionsSSE=G('CATPAW_PROACTIVE_SUGGESTIONS_SSE_ENABLED'),proactive=G('CATPAW_PROACTIVE_ENABLED');
+ // Unset gate → 'on' for everyone (user decision 2026-10-17 08:51). 'allowlist' → env allowlist OR DB enrollment;
+ // explicit 'false'/'off' → off. CATPAW_FEATURE_BLOCKLIST_SUBJECTS turns every feature off for the listed subjects.
+ const G=n=>readFeatureGate(get(n),'on');
+ const generativeUI=G('CATPAW_GENERATIVE_UI_ENABLED'),taskTools=G('CATPAW_TASK_TOOLS_ENABLED'),featureAllowlist=withBlocklist(readAllowlist(get('CATPAW_FEATURE_ALLOWLIST_SUBJECTS')),readAllowlist(get('CATPAW_FEATURE_BLOCKLIST_SUBJECTS'))),agentMemory=G('CATPAW_AGENT_MEMORY_ENABLED'),deviceTools=G('CATPAW_DEVICE_TOOLS_ENABLED'),proactiveSuggestionsSSE=G('CATPAW_PROACTIVE_SUGGESTIONS_SSE_ENABLED'),proactive=G('CATPAW_PROACTIVE_ENABLED');
  return {...base,generativeUI,taskTools,featureAllowlist,agentMemory,deviceTools,proactiveSuggestionsSSE,proactive,schedulerSecret:get('CATPAW_SCHEDULER_SECRET')||null,attachmentStorage:typeof serviceRoleKey==='string'&&serviceRoleKey.length>20&&!/[\r\n]/.test(serviceRoleKey)?{url:projectUrl,serviceKey:serviceRoleKey}:null,publicSourcePolicy,visionContractEnabled:get('CATPAW_VISION_CONTRACT_ENABLED')==='true',visionLiveEnabled:visionLiveSetting===undefined||visionLiveSetting===null||visionLiveSetting===''?RELEASE_VISION_LIVE_DEFAULT:visionLiveSetting==='true',ready:missing.length===0&&configurationIssues.length===0,missing,configurationIssues,authReady:!!base.projectUrl&&!!base.publishableKey&&!!base.databaseUrl,modelKey:get('CATPAW_PRIVATE_MODEL_KEY'),tickKey:get('CATPAW_TICK_HMAC_KEY'),guardKey:get('CATPAW_MEMORY_GUARD_KEY'),route:finalRoute,routeHash:hash(finalRoute),freeChain,apns:readApnsConfig(get),chatBudgetMs:freeChain?.routes?.some(r=>r.id==='agnes')?120000:50000,chatFinalizationReserveMs:5000,tickBudgetMs:30000,modelTimeoutMs:20000,dailyCallLimit:20};
 }
 
-/** Feature gate: 'true'|'1' → on for everyone, 'allowlist' → env allowlist + DB-enrolled subjects, unset/empty → `unset`, anything else → off. */
+/** Feature gate: 'true'|'1' → on for everyone, 'allowlist' → env allowlist + DB-enrolled subjects, unset/empty → `unset` (readConfig passes 'on'), anything else → off. */
 export function readFeatureGate(value,unset='off'){const v=String(value??'').trim().toLowerCase();return v===''?unset:v==='true'||v==='1'?'on':v==='allowlist'?'allowlist':'off';}
 export function readAllowlist(value){const UUIDRE=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;return new Set(String(value??'').split(',').map(x=>x.trim().toLowerCase()).filter(x=>UUIDRE.test(x)));}
-/** enrolled: optional {has(subjectID, feature)} (enrollment registry); an enrolled subject counts as allowlisted for that feature. */
-export const featureAllows=(gate,allowlist,subjectID,enrolled=null,feature=null)=>gate==='on'||(gate==='allowlist'&&subjectID!=null&&((allowlist instanceof Set&&allowlist.has(String(subjectID).toLowerCase()))||(typeof enrolled?.has==='function'&&enrolled.has(subjectID,feature))));
+/** The allowlist Set carries the blocklist (`.blocked`), so every existing featureAllows caller honours it. */
+export function withBlocklist(allowlist,blocked){Object.defineProperty(allowlist,'blocked',{value:blocked instanceof Set?blocked:new Set(),enumerable:false});return allowlist;}
+/** True when the subject is blocklisted (invalid UUIDs were dropped by readAllowlist; a blocklisted subject is off for every feature). */
+export const featureBlocked=(allowlist,subjectID,blocklist=null)=>{const b=blocklist instanceof Set?blocklist:allowlist?.blocked;return b instanceof Set&&b.size>0&&subjectID!=null&&b.has(String(subjectID).toLowerCase());};
+/** enrolled: optional {has(subjectID, feature)} (enrollment registry); an enrolled subject counts as allowlisted for that feature.
+ *  The blocklist wins over 'on', the allowlist and enrollment. */
+export const featureAllows=(gate,allowlist,subjectID,enrolled=null,feature=null,blocklist=null)=>!featureBlocked(allowlist,subjectID,blocklist)&&(gate==='on'||(gate==='allowlist'&&subjectID!=null&&((allowlist instanceof Set&&allowlist.has(String(subjectID).toLowerCase()))||(typeof enrolled?.has==='function'&&enrolled.has(subjectID,feature)))));

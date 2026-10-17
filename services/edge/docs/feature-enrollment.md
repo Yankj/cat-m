@@ -4,10 +4,11 @@ This replaces hand-typing demo-account UUIDs into `CATPAW_FEATURE_ALLOWLIST_SUBJ
 
 ## Gate rule
 - Each feature gate env (`CATPAW_AGENT_MEMORY_ENABLED`, `CATPAW_TASK_TOOLS_ENABLED`, `CATPAW_GENERATIVE_UI_ENABLED`, `CATPAW_DEVICE_TOOLS_ENABLED`, `CATPAW_PROACTIVE_SUGGESTIONS_SSE_ENABLED`, new `CATPAW_PROACTIVE_ENABLED`; plus `CATPAW_PROACTIVE_TOOLS_ENABLED` for creating the task store) means:
-  - `true`/`1`: on for everyone.
-  - `allowlist`, **or unset**: on for subjects in `CATPAW_FEATURE_ALLOWLIST_SUBJECTS` **or** with a row in `feature_access.enrollments` for that feature.
+  - `true`/`1`, **or unset/empty**: on for everyone (user decision 2026-10-17 08:51).
+  - `allowlist`: on for subjects in `CATPAW_FEATURE_ALLOWLIST_SUBJECTS` **or** with a row in `feature_access.enrollments` for that feature.
   - anything else (`false`, `off`, …): off for everyone, enrollments ignored.
-- Behaviour change: unset used to mean off (and `CATPAW_TASK_TOOLS_ENABLED` unset used to mean on). With no env set and nobody enrolled, nobody gets anything, which matches production today.
+- `CATPAW_FEATURE_BLOCKLIST_SUBJECTS` (comma-separated UUIDs, invalid entries ignored): those subjects are off for **every** feature, whatever the gate, the allowlist or their enrollments say. Enrollment rows only grant; there is no per-feature block.
+- Behaviour change: unset used to mean `allowlist` (before that: off, with `CATPAW_TASK_TOOLS_ENABLED` unset = on). With no env set, everyone (minus the blocklist) gets every feature.
 - Feature keys: `agent_memory`, `task_tools`, `generative_ui`, `device_tools`, `proactive` (the catpaw-proactive function and the `proactive_suggestion` SSE).
 - catpaw-api and catpaw-proactive keep a per-instance cache of the enrollments table. It is refreshed at most every 30 s on API requests. A successful enroll is visible right away on the instance that handled it, and on the others within 30 s.
 - catpaw-proactive: every user endpoint answers `403 {code: feature_disabled}` unless the caller passes the `proactive` gate. Scheduler (secret) endpoints are not affected.

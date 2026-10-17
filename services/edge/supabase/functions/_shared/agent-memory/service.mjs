@@ -54,9 +54,11 @@ export function createAgentMemoryService({ store, allow = () => false, verifyUse
   async function recallForTurn({ subjectID, query, mode = null, conversationID = null, turnID = null }) {
     if (!allow(subjectID)) return null;
     if (mode === 'ephemeral') return { contract: AGENT_MEMORY_CONTRACT, mode: 'ephemeral', enabled: false, auto_save: false, ids: [], prompt: '' };
-    const s = await settings(subjectID);
+    // Unmigrated schema (42P01 table / 42703 column missing): no memory for this turn instead of failing the chat turn.
+    let s; try { s = await settings(subjectID); } catch (e) { if (e?.code === '42P01' || e?.code === '42703') return null; throw e; }
     if (!active(s)) return { contract: AGENT_MEMORY_CONTRACT, mode: 'normal', enabled: false, auto_save: false, ids: [], prompt: '' };
-    const at = now(), rows = (await store.list(subjectID)).filter(r => live(r, at));
+    let listed; try { listed = await store.list(subjectID); } catch (e) { if (e?.code === '42P01' || e?.code === '42703') return null; throw e; }
+    const at = now(), rows = listed.filter(r => live(r, at));
     const head = rows.filter(r => r.pinned || r.kind === 'profile').sort((a, b) => Number(b.pinned) - Number(a.pinned) || b.updated_at.localeCompare(a.updated_at));
     const picked = []; let budget = LIMITS.pinned_tokens;
     for (const r of head) { const t = estimateTokens(r.content) + 6; if (t > budget) continue; budget -= t; picked.push(r); }
