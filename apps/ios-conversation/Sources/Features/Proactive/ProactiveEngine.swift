@@ -66,10 +66,16 @@ struct ProactiveSignal: Equatable, Sendable {
     static func registerAccountObserver() {
         #if os(iOS)
         AccountChangeObservers.register("proactive") { previous, current in await ProactiveEngine.shared.accountDidChange(previous: previous, current: current) }
-        // p90i v7: EventKit items Catpaw created go through #89's one keep/cancel decision (default keep).
-        if !AccountParkedItems.registeredKeys.contains(ProactiveParking.sourceKey) { AccountParkedItems.register(ProactiveParking.sourceKey, ProactiveParkedSource()) }
+        registerParkedSource()
         #endif
     }
+    /// p90i v7: EventKit items Catpaw created go through #89's one keep/cancel decision (default keep). Also called from
+    /// #89's `registerDeviceParkedSources` so a cold start followed by an immediate sign-out lists them.
+    static func registerParkedSource() {
+        if !AccountParkedItems.registeredKeys.contains(ProactiveParking.sourceKey) { AccountParkedItems.register(ProactiveParking.sourceKey, ProactiveParkedSource()) }
+    }
+    /// Card detail after the user chose to delete the reminder Catpaw created (UIStrings key; zh/en).
+    static let reminderDeletedDetail = "提醒已删除"
     static let notificationCategory = "CATPAW_PROACTIVE"
     static let createAction = "CATPAW_PROACTIVE_CREATE"
     static let laterAction = "CATPAW_PROACTIVE_LATER"
@@ -216,10 +222,36 @@ struct ProactiveSignal: Equatable, Sendable {
         case .remove(let op):
             let r = await (externalReminderRemover ?? Self.removeExternalReminder)(op)
             guard r == "deleted" || r == "already_gone" else { return "kept: \(r)" }
+            let sids = Set((externalStore[account.lowercased()] ?? []).filter { $0.operationID == op }.map(\.suggestionID) + pendingReminders.filter { $0.value.operationID == op }.map(\.key))
+            markReminderDeleted(sids, account: account)   // NoBug p90i (b): the card says 提醒已删除
             var all = externalStore; all[account.lowercased()]?.removeAll { $0.operationID == op }; externalStore = all
             var p = pendingReminders; for (k, v) in p where v.operationID == op { p[k] = nil }; pendingReminders = p   // not re-recorded by the park
             note("external reminder \(op) \(r) on the user's decision")
             return r
+        }
+    }
+    /// Sets the card's create_reminder entry to `reminderDeletedDetail`, in the live inbox (still that account's) and in
+    /// its parked records — the card then shows the reminder is gone instead of "created".
+    private func markReminderDeleted(_ ids: Set<String>, account: String) {
+        guard !ids.isEmpty else { return }
+        func edit(_ data: Data?) -> Data? {
+            guard var inbox = data.flatMap({ try? JSONSerialization.jsonObject(with: $0) as? [String: Any] }) else { return nil }
+            var changed = false
+            for id in ids {
+                guard var card = inbox[id] as? [String: Any], var taken = card["taken"] as? [[String: Any]] else { continue }
+                for i in taken.indices where taken[i]["action"] as? String == "create_reminder" { taken[i]["detail"] = Self.reminderDeletedDetail; changed = true }
+                card["taken"] = taken; inbox[id] = card
+            }
+            return changed ? try? JSONSerialization.data(withJSONObject: inbox) : nil
+        }
+        if let o = dataOwner, o.caseInsensitiveCompare(account) == .orderedSame, let d = edit(defaults.data(forKey: ProactiveLocalBackend.storageKey)) {
+            defaults.set(d, forKey: ProactiveLocalBackend.storageKey)
+            for (id, s) in ProactiveLocalBackend.load() where ids.contains(id) { ProactiveSuggestionStore.shared.adopt(s) }
+        }
+        var lot = ProactiveParking.Lot(defaults.dictionary(forKey: ProactiveParking.key))
+        if var recs = lot.slots[account.lowercased()] {
+            for i in recs.indices { if var b = recs[i]["blobs"] as? [String: Data], let d = edit(b[ProactiveLocalBackend.storageKey]) { b[ProactiveLocalBackend.storageKey] = d; recs[i]["blobs"] = b } }
+            lot.slots[account.lowercased()] = recs; defaults.set(lot.raw, forKey: ProactiveParking.key)
         }
     }
     /// The real delete, only on the user's explicit decision: by the marker of the operation that created it.
@@ -254,6 +286,13 @@ struct ProactiveSignal: Equatable, Sendable {
         guard let recs = ProactiveParking.Lot(defaults.dictionary(forKey: ProactiveParking.key)).slots[account.lowercased()] else { return nil }
         let dec = { (d: Any?) in (d as? Data).flatMap { try? JSONDecoder().decode([CatpawPersistentQueue<SyncOp>.Item].self, from: $0) }?.map(\.op) ?? [] }
         return recs.flatMap { dec($0["queue"]) + dec($0["dead"]) }
+    }
+    /// Read-only: the cards parked under `account` (raw inbox entries, all records merged; newest record wins).
+    func parkedInbox(for account: String) -> [String: Any] {
+        let recs = ProactiveParking.Lot(defaults.dictionary(forKey: ProactiveParking.key)).slots[account.lowercased()] ?? []
+        var out: [String: Any] = [:]
+        for r in recs { for (k, v) in ((r["blobs"] as? [String: Data])?[ProactiveLocalBackend.storageKey]).flatMap({ try? JSONSerialization.jsonObject(with: $0) as? [String: Any] }) ?? [:] { out[k] = v } }
+        return out
     }
     func parkedInbox(for account: String) -> [String: Any] {
         let recs = ProactiveParking.Lot(defaults.dictionary(forKey: ProactiveParking.key)).slots[account.lowercased()] ?? []
