@@ -1,20 +1,29 @@
 // LLM adapter for proactive decisions. Reuses catpaw-api's route catalog + order (OpenRouter first, Agnes fallback);
 // keys come only from env via `get` and are held in this closure (never logged or returned).
 import { FREE_ROUTE_CATALOG, DEFAULT_CHAIN_ORDER } from '../core/src/free-route-chain.mjs';
+import { hash } from '../core/facade-r2/src/common.mjs';
+// p90 F4: routes whose free tier may train on the data (Gemini, Groq, or anything tagged free_tier_may_train) are used
+// only with the user's valid consent for that exact route (route hash); without it they are skipped (rules fallback).
+const NEEDS_CONSENT = id => FREE_ROUTE_CATALOG[id]?.data_note === 'free_tier_may_train' || id === 'gemini' || id === 'groq';
 const SYSTEM = `你是 CatPaw 的主动式助理决策器，场景是会议与出行。根据 signals、context、memories 和 weights 判断是否该主动打扰用户。
 decision 取值：silent（不打扰）、card（应用内卡片）、notify（普通推送）、interrupt（紧急、打断式）。只有真的会造成损失（迟到、误机、冲突）才用 notify/interrupt。
 weights 是用户对该类提醒的历史反馈，weight<1 表示用户不喜欢，应更保守。
 只输出一个 JSON 对象，不要 markdown：{"decision":"...","title":"不超过 16 字的卡片标题","reason":"一句简体中文，说明为什么","confidence":0到1,"trigger":"主要信号类型","suggested_actions":["create_reminder"|"notify_attendees"|"snooze"|"dismiss"],"used_memory_ids":["用到的记忆 id"]}`;
-export function createDecisionModel({ get, fetchImpl = fetch, timeoutMs = 15000, log = () => {} }) {
+export function createDecisionModel({ get, fetchImpl = fetch, timeoutMs = 15000, log = () => {}, consent = async () => false }) {
   const order = (get('CATPAW_MODEL_ROUTE_ORDER') || DEFAULT_CHAIN_ORDER.join(',')).split(',').map(s => s.trim()).filter(id => FREE_ROUTE_CATALOG[id]);
-  const routes = order.map(id => ({ ...FREE_ROUTE_CATALOG[id], model: get(`CATPAW_${id.toUpperCase()}_MODEL`) || FREE_ROUTE_CATALOG[id].model, key: get(FREE_ROUTE_CATALOG[id].secret) })).filter(r => r.key);
+  const routes = order.map(id => ({ ...FREE_ROUTE_CATALOG[id], model: get(`CATPAW_${id.toUpperCase()}_MODEL`) || FREE_ROUTE_CATALOG[id].model, key: get(FREE_ROUTE_CATALOG[id].secret) })).filter(r => r.key)
+    .map(r => ({ ...r, needsConsent: NEEDS_CONSENT(r.id), routeHash: hash({ id: r.id, endpoint: r.endpoint, model: r.model, policy_url: r.policy_url }) }));
   if (!routes.length) return null;
   let last = null;
   return {
     routes: routes.map(r => r.id), lastRoute: () => last,
-    async decide(input) {
+    async decide(input, { uid = null } = {}) {
       let err = null;
       for (const r of routes) {
+        if (r.needsConsent) {
+          let okc = false; try { okc = !!uid && await consent(uid, { id: r.id, routeHash: r.routeHash }) === true; } catch { okc = false; }
+          if (!okc) { log('route_skipped_no_consent', r.id); continue; }
+        }
         const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), timeoutMs);
         try {
           const body = { model: r.model, temperature: 0.2, max_tokens: 400, stream: false, messages: [{ role: 'system', content: SYSTEM }, { role: 'user', content: JSON.stringify(input) }] };
