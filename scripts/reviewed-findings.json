@@ -2116,6 +2116,34 @@
       "line": 604,
       "sha256": "c49146b57db685100c33fcf90b0c4317496e1c99364b71c6ced7e60b1e693eb3",
       "reason": "Reviewed named offline auth fixture: synthetic public-key/access-token markers and injected mock remotes only; no real credential or network request. Exact current bytes and line pinned. Re-pinned 2026-10-17 after adding the PR91 XCTests (same synthetic markers, lines shifted)."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
+      "category": "secret_assignment_review",
+      "line": 157,
+      "sha256": "a62258afa72548b75f9532616306fffd45c3a1d73d9bf69b4af7568a07abdee0",
+      "reason": "Reviewed fixed synthetic lifecycle access-token marker, consumed only by the named injected test remote and local manager. It contains no real credential."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
+      "category": "deployment_public_key",
+      "line": 515,
+      "sha256": "b4a73a74f3ce6c411b52d8db19b6d67c780dddbc2789da72446553b6f45f4568",
+      "reason": "Reviewed named offline auth fixture: synthetic public-key/access-token markers and injected mock remotes only; no real credential or network request. Exact current bytes and line pinned."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
+      "category": "secret_assignment_review",
+      "line": 550,
+      "sha256": "b4a73a74f3ce6c411b52d8db19b6d67c780dddbc2789da72446553b6f45f4568",
+      "reason": "Reviewed named offline auth fixture: synthetic public-key/access-token markers and injected mock remotes only; no real credential or network request. Exact current bytes and line pinned. Re-pinned 2026-10-17 after adding the PR91 XCTests (same synthetic markers, lines shifted)."
+    },
+    {
+      "path": "services/edge/test/model-routes.test.mjs",
+      "category": "secret_assignment_review",
+      "line": 9,
+      "sha256": "b5dc7e0363a6d691465986bc879b2bc48e94bf5161d26eb92748bbb071d2d8c3",
+      "reason": "Reviewed 2026-10-17 (Grok Bot): test env fixture with 9-character placeholder values (or-/oc- prefixed dummy strings), not real provider keys; w-line cc98949/952ca4e test."
     }
   ]
 }
