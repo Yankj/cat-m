@@ -11,6 +11,7 @@ import { collectRound } from './openrouter-provider.mjs';
 import { planParallelCalls } from './parallel-calls.mjs';
 import { packWindow,assertStorageLimits,admitModelHistory,mergeModelMessages,estimateTokens,WINDOW_NOTE,withoutFailedTurnUser } from './context-window.mjs';
 import { clientAcceptsRouteEvents } from './free-route-chain.mjs';
+import { LiveText } from './live-text.mjs';
 import { TextBatcher } from './text-batcher.mjs';
 import { createChatMetrics } from './chat-metrics.mjs';
 import { assertBusyRestartable,restartedTurn } from './busy-restart.mjs';
@@ -41,7 +42,7 @@ export function timeContext(tz,nowMs){
 }
 const LATE_DEVICE_REPORT_MS=24*60*60*1000; // P1-2: late device reports are recorded up to 24 h after the card TTL
 export class ChatService {
-  constructor({facade,provider,integration=null,finishOnDelegationReceipt=false,metrics=createChatMetrics()}){this.facade=facade;this.repository=facade.repository;this.provider=provider;this.active=new Map();this.listeners=new Map();this.integration=integration;this.finishOnDelegationReceipt=finishOnDelegationReceipt;this.metrics=metrics;}
+  constructor({facade,provider,integration=null,finishOnDelegationReceipt=false,metrics=createChatMetrics()}){this.facade=facade;this.repository=facade.repository;this.provider=provider;this.active=new Map();this.listeners=new Map();this.liveTexts=new Map();this.liveTextIntervalMs=100;this.integration=integration;this.finishOnDelegationReceipt=finishOnDelegationReceipt;this.metrics=metrics;}
   async scoped(auth,scope){const started=this.metrics.now();try{return await this.facade.scoped(auth,scope);}finally{this.metrics.record('request_auth',started);}}
   async conversation(tx,owner,id,subject,scopeID){const c=await tx.get(owner,'native-chat-conversations',id);check(c&&c.subject_id===subject&&(!scopeID||c.scope_id===scopeID),404,'not_found');return c;}
   async createConversation(auth,scopeID,input){
@@ -223,7 +224,7 @@ export class ChatService {
   async knownUIBlock(env,id){const t=await this.repository.transaction(async tx=>(await this.live(tx,env)).t);return (t.events??[]).some(e=>e.type==='ui.block'&&e.data?.id===id);}
   async append(env,type,data){
     (env.assertLive??(()=>env.signal.throwIfAborted()))();
-    const started=this.metrics.now();const t=await this.repository.transaction(async tx=>{const {t}=await this.live(tx,env);(env.assertLive??(()=>env.signal.throwIfAborted()))();const saved=await tx.put(env.owner,'native-chat-turns',{...t,events:[...t.events,this.event(t,type,data)]});await this.beforeCommit(tx,env,saved);return saved;});this.metrics.record('text_commit',started,{bytes:type==='text_delta'?Buffer.byteLength(data.text):0});this.notify(env.owner,t);return t;
+    const started=this.metrics.now();const t=await this.repository.transaction(async tx=>{const {t}=await this.live(tx,env);(env.assertLive??(()=>env.signal.throwIfAborted()))();const saved=await tx.put(env.owner,'native-chat-turns',{...t,events:[...t.events,this.event(t,type,data)]});await this.beforeCommit(tx,env,saved);return saved;});this.metrics.record('text_commit',started,{bytes:type==='text_delta'?Buffer.byteLength(data.text):0});if(type==='text_delta')env.liveText?.persisted(t.events.at(-1).sequence,data.text.length);this.notify(env.owner,t);return t;
   }
   async executeTool(env,call){
     let wake=null;
@@ -272,6 +273,10 @@ export class ChatService {
     const stopCancelWatch=this.watchCancel(env);
     const visionUserIndex=env.turn.model_history.length-1;
     const messageID=stableUUID(`${env.turn.id}:assistant`);let text='';const messages=clone(env.turn.model_history);
+    // Live SSE previews (live-text.mjs, opt-in X-Catpaw-Live-Text: 1): in-process mirror of the deltas; DB cadence unchanged.
+    const liveKey=`${env.owner}:${env.turn.id}`,persistedText=(env.turn.events??[]).filter(e=>e.type==='text_delta'&&e.data?.message_id===messageID).map(e=>e.data.text??'').join('');
+    env.liveText=new LiveText({messageID,persisted:persistedText,startSequence:env.turn.events?.length??0,intervalMs:this.liveTextIntervalMs,envelope:{scope_id:env.turn.scope_id,conversation_id:env.turn.conversation_id,turn_id:env.turn.id,grant_epoch:env.turn.grant_epoch,model_reality:this.provider.reality}});
+    this.liveTexts.set(liveKey,env.liveText);
     try {
       if(!env.turn.events.some(e=>e.type==='turn_started'))await this.append(env,'turn_started',{request_hash:env.turn.request_hash,conversation_revision:env.turn.conversation_revision});
       if(!(env.turn.revision_target&&env.turn.dispatch_checkpoint?.state==='received'))this.provider.assertReady?.();
@@ -291,9 +296,10 @@ export class ChatService {
         batcher=new TextBatcher({signal:env.signal,assertLive:env.assertLive,
           persist:delta=>this.append(env,'text_delta',{message_id:messageID,text:delta}),
           onFailure:error=>env.controller?.abort(error)});
+        env.liveText.startStep();
         // R7 optional wire event: provider thought summary, emitted once before the first text_delta.
         let summary='',summarySent=false;const thinkingStarted=this.metrics.now();
-        const round=received?clone(received.round):resumed?clone(resumed.round):await collectRound(this.provider,withRoute(withThinking({messages:clone(messages),system_prompt:prompt,tools,...env.visionAttachments?.length?{image_attachments:env.visionAttachments,vision_user_index:visionUserIndex}:{},signal:env.signal,assertDispatchReady:env.assertDispatchReady,turn_deadline_at:Date.now()+(deadline-now())-(this.finalizationReserveMs??5000),provider_context:{source_auth:env.turn.source_auth,scope_id:env.scope.scope_id,conversation_id:env.turn.conversation_id,...env.visionAttachments?.length?{image_route_hash:env.turn.image_route_hash,turn_id:env.turn.id,resource_owner:env.owner}:{},...env.turn.memory_usage?{memory_usage:clone(env.turn.memory_usage),memory_turn_id:env.turn.id}:{},...env.turn.revision_target?{revision_source_auth:clone(env.turn.revision_target.fresh_source_auth),revision_original_source_auth:clone(env.turn.revision_target.original_source_auth),revision_memory_generation:env.turn.revision_target.memory_generation,...env.turn.revision_work_intent?{revision_work_turn_id:env.turn.id}:{},input_context:[{text:env.turn.revision_target.raw_instruction},{text:env.turn.revision_target.base_body}]}:{}}},delta=>{if(!summarySent&&summary.length<2000)summary+=delta;}),async ri=>{if(ri?.route&&clientAcceptsRouteEvents()&&!env.turn.events.some(e=>e.type==='model_route')){await this.append(env,'model_route',{route:ri.route,model:ri.model??null,requested_route:ri.requested_route??'auto',failover:ri.failover===true,from:ri.from??[],switches:ri.switches??[],attempt:ri.attempt??1});env.turn=await this.repository.transaction(async tx=>(await this.live(tx,env)).t);}}),async delta=>{if(!summarySent){summarySent=true;if(summary.trim())await this.append(env,'reasoning_summary',{message_id:messageID,text:summary.trim().slice(0,2000),thinking_ms:Math.max(0,Math.round(this.metrics.now()-thinkingStarted))});}text+=delta;batcher.push(delta);},{acceptOverflow:true});
+        const round=received?clone(received.round):resumed?clone(resumed.round):await collectRound(this.provider,withRoute(withThinking({messages:clone(messages),system_prompt:prompt,tools,...env.visionAttachments?.length?{image_attachments:env.visionAttachments,vision_user_index:visionUserIndex}:{},signal:env.signal,assertDispatchReady:env.assertDispatchReady,turn_deadline_at:Date.now()+(deadline-now())-(this.finalizationReserveMs??5000),provider_context:{source_auth:env.turn.source_auth,scope_id:env.scope.scope_id,conversation_id:env.turn.conversation_id,...env.visionAttachments?.length?{image_route_hash:env.turn.image_route_hash,turn_id:env.turn.id,resource_owner:env.owner}:{},...env.turn.memory_usage?{memory_usage:clone(env.turn.memory_usage),memory_turn_id:env.turn.id}:{},...env.turn.revision_target?{revision_source_auth:clone(env.turn.revision_target.fresh_source_auth),revision_original_source_auth:clone(env.turn.revision_target.original_source_auth),revision_memory_generation:env.turn.revision_target.memory_generation,...env.turn.revision_work_intent?{revision_work_turn_id:env.turn.id}:{},input_context:[{text:env.turn.revision_target.raw_instruction},{text:env.turn.revision_target.base_body}]}:{}}},delta=>{if(!summarySent&&summary.length<2000)summary+=delta;}),async ri=>{if(ri?.route&&clientAcceptsRouteEvents()&&!env.turn.events.some(e=>e.type==='model_route')){await this.append(env,'model_route',{route:ri.route,model:ri.model??null,requested_route:ri.requested_route??'auto',failover:ri.failover===true,from:ri.from??[],switches:ri.switches??[],attempt:ri.attempt??1});env.turn=await this.repository.transaction(async tx=>(await this.live(tx,env)).t);}}),async delta=>{if(!summarySent){summarySent=true;if(summary.trim())await this.append(env,'reasoning_summary',{message_id:messageID,text:summary.trim().slice(0,2000),thinking_ms:Math.max(0,Math.round(this.metrics.now()-thinkingStarted))});}text+=delta;batcher.push(delta);env.liveText.push(delta);},{acceptOverflow:true});
         if(received)text=round.text;
         // model_route is written once, from the onRoute callback (collectRound calls it for every route_info, before any output).
         phase='text_flush';await batcher.finish();await batcher.stop();batcher=null;env.assertLive();
@@ -335,7 +341,7 @@ export class ChatService {
           const acknowledgement=pending?'记忆候选待确认。请打开菜单中的“记忆”，查看原文来源和使用范围，再决定是否确认。':'没有新增记忆候选。已有的忘记设置仍然生效。';
           // Deterministic receipt wording is not another model answer or confirmation.
           const suffix=(text.trim()?'\n\n':'')+acknowledgement;
-          await this.append(env,'text_delta',{message_id:messageID,text:suffix});text+=suffix;
+          env.liveText.push(suffix);await this.append(env,'text_delta',{message_id:messageID,text:suffix});text+=suffix;
           messages.push({role:'assistant',content:acknowledgement});await this.complete(env,messageID,text,messages);return;
         }
         if(round.calls.some(c=>['revise_current_report_v1','revise_current_report_work_v1'].includes(c.name))||this.finishOnDelegationReceipt&&round.calls.some(c=>['delegate_task','delegate_plan_v1','delegate_sources_v1'].includes(c.name))){await this.complete(env,messageID,text,messages);return;}
@@ -347,7 +353,7 @@ export class ChatService {
       const safeCode=failure instanceof ApiError?failure.code:'turn_interrupted';
       console.info(JSON.stringify({event:'catpaw_chat_interrupted',phase,elapsed_ms:Math.max(0,now()-startedAt),code:safeCode,abort_kind:env.signal.reason instanceof ApiError?env.signal.reason.code:'other',sqlstate:/^[0-9A-Z]{5}$/.test(failure?.code??'')?failure.code:null}));
       try{await this.fail(env,failure);}catch(fenced){if(!this.integration||!['runtime_lease_lost','turn_runtime_fenced'].includes(fenced.code))throw fenced;}
-    }finally{stopCancelWatch();clearTimeout(deadlineTimer);if(batcher)await batcher.stop();for(const attachment of env.visionAttachments??[])attachment.bytes.fill(0);env.visionAttachments=[];}
+    }finally{env.liveText?.close();if(this.liveTexts.get(liveKey)===env.liveText)this.liveTexts.delete(liveKey);stopCancelWatch();clearTimeout(deadlineTimer);if(batcher)await batcher.stop();for(const attachment of env.visionAttachments??[])attachment.bytes.fill(0);env.visionAttachments=[];}
   }
   async complete(env,messageID,text,modelMessages){
     const started=this.metrics.now();
@@ -676,9 +682,11 @@ export class ChatService {
     }finally{await this.integration?.release?.(trusted.owner);}
   }
   async waitIdle(){await Promise.all([...this.active.values()].map(e=>e.promise));}
-  async *observe(auth,scopeID,cid,tid,{signal,afterSequence=0,trusted=null}={}){
+  async *observe(auth,scopeID,cid,tid,{signal,afterSequence=0,trusted=null,liveText=false}={}){
     check(Number.isSafeInteger(afterSequence)&&afterSequence>=0,422,'invalid_cursor');trusted??=await this.scoped(auth,scopeID);const {owner}=trusted;
     let sequence=afterSequence,wake=null,resync=true;const pending=new Map(),key=`${owner}:${tid}`;
+    // live-text.mjs: opt-in previews from this instance's running turn; persisted events always go first.
+    let live=null,previewDue=false,sentEnd=0,gatedAt=-Infinity;const onPreview=()=>{previewDue=true;wake?.();};
     const changed=packet=>{if(packet){pending.set(packet.event.sequence,packet);if(pending.size>1024){pending.clear();resync=true;}}else resync=true;wake?.();};
     const aborted=()=>wake?.();const subscribers=this.listeners.get(key)??new Set();subscribers.add(changed);this.listeners.set(key,subscribers);signal?.addEventListener('abort',aborted);
     try{while(!signal?.aborted){
@@ -698,7 +706,13 @@ export class ChatService {
         if(terminal(packet.state))return;continue;
       }
       if([...pending.keys()].some(n=>n>sequence))continue;
-      await new Promise(resolve=>{const timer=setTimeout(()=>{resync=true;resolve();},this.pollMs??250);wake=()=>{clearTimeout(timer);resolve();};if(signal?.aborted||resync||pending.size)wake();});wake=null;
-    }}finally{subscribers.delete(changed);if(!subscribers.size)this.listeners.delete(key);signal?.removeEventListener('abort',aborted);}
+      if(liveText){
+        if(!live&&this.liveTexts.has(key)){live=this.liveTexts.get(key);live.listeners.add(onPreview);previewDue=true;}
+        if(previewDue&&live){previewDue=false;const p=live.closed?null:live.preview(sequence,sentEnd);
+          if(p){const at=this.now();if(at-gatedAt>=500){await this.observeRetry(()=>this.observationGate(trusted,scopeID,cid,{conversation_id:cid,scope_id:live.envelope.scope_id,subject_id:trusted.principal.subject_id,grant_epoch:live.envelope.grant_epoch}),signal);gatedAt=at;}
+            if(signal?.aborted)return;sentEnd=p.end;yield live.event(sequence,p);continue;}}
+      }
+      await new Promise(resolve=>{const timer=setTimeout(()=>{resync=true;resolve();},this.pollMs??250);wake=()=>{clearTimeout(timer);resolve();};if(signal?.aborted||resync||pending.size||previewDue)wake();});wake=null;
+    }}finally{live?.listeners.delete(onPreview);subscribers.delete(changed);if(!subscribers.size)this.listeners.delete(key);signal?.removeEventListener('abort',aborted);}
   }
 }
