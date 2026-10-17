@@ -414,8 +414,8 @@ extension AccountLocalData {
         MemoryLibraryHub.reset()
         DeviceCallStore.shared.reset()
         ProactiveFeedbackSync.shared.reset()
-        ProactiveEngine.shared.clearForSignOut()           // in-memory log + server ids
-        ProactiveLocalBackend.clearForSignOut()            // sealed inbox
+        // Proactive inbox / ledgers / server ids: #90's AccountChangeObservers("proactive") → ProactiveEngine.claimData parks
+        // the old account's data (never dropped, never shown to the next account); no second wipe here (final-merge B7).
         ProactiveSuggestionStore.shared.clearForSignOut()
         #if os(iOS)
         UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
