@@ -73,12 +73,25 @@ enum CatpawWorkPhase: Equatable {
 }
 /// v1.1: the Live Activity title is the user's own task — first non-empty line of the user message, whitespace collapsed,
 /// trimmed to ~20 characters. Only the typed text is used (never tool names / arguments); nil → widget generic title.
+/// R2 (NoBug P1-2): emails, URLs and phone-like digit runs (6+ digits, spaces / dashes allowed) are masked BEFORE the cut,
+/// so a contact never reaches the lock screen / Dynamic Island; the widget also marks the title `.privacySensitive()`.
 enum CatpawTaskTitle {
     static let limit = 20
+    static let mask = "•••"
     static func make(_ text: String) -> String? {
         guard let line = text.split(whereSeparator: \.isNewline).lazy
             .map({ $0.split(whereSeparator: \.isWhitespace).joined(separator: " ") }).first(where: { !$0.isEmpty }) else { return nil }
-        return line.count <= limit ? line : String(line.prefix(limit - 1)).trimmingCharacters(in: .whitespaces) + "…"
+        let masked = redact(line)
+        return masked.count <= limit ? masked : String(masked.prefix(limit - 1)).trimmingCharacters(in: .whitespaces) + "…"
+    }
+    static func redact(_ s: String) -> String {
+        var out = s
+        for pattern in [#"[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}"#,   // email
+                        #"(?i)(?:https?://|www\.)\S+"#,                          // URL
+                        #"\+?\d(?:[ \-]?\d){5,}"#] {                             // 6+ digits: phone / card / id numbers
+            out = out.replacingOccurrences(of: pattern, with: mask, options: .regularExpression)
+        }
+        return out
     }
 }
 
@@ -254,8 +267,10 @@ import UIKit
         }
     }
 
-    /// Done lingers 2 min, failed 15 min (needs a look), then the system removes it.
-    static func dismissAfter(kind: String) -> TimeInterval { kind == CatpawWorkAttributes.ContentState.Kind.done ? 2 * 60 : 15 * 60 }
+    /// R2 (NoBug P1-2): every ended turn (done, failed, stopped) lingers 2 min, then the system removes it — the task
+    /// title must not outlive the task on the lock screen (was 15 min for failed / stopped).
+    static let endedLinger: TimeInterval = 2 * 60
+    static func dismissAfter(kind: String) -> TimeInterval { endedLinger }
 
     /// chat-ux-1505 #4a: background / relaunch. (1) While an activity is live, ask for background time so the SSE can
     /// deliver the next stages (and the end) after the user locks the phone. (2) On launch / foreground, end activities

@@ -29,7 +29,7 @@ struct CatpawWorkLiveActivity: Widget {
                 }
                 DynamicIslandExpandedRegion(.center) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(m.title).font(.callout.weight(.semibold)).foregroundStyle(.white).lineLimit(1).minimumScaleFactor(0.9)
+                        Text(m.title).font(.callout.weight(.semibold)).foregroundStyle(.white).lineLimit(1).minimumScaleFactor(0.9).privacySensitive()   // R2 P1-2: the user's task text is redacted when the device is locked
                         Text(m.status).font(.subheadline).foregroundStyle(p.secondary).lineLimit(m.kind == .needsUser ? 2 : 1).contentTransition(.opacity)
                     }.frame(maxWidth: .infinity, alignment: .leading)
                 }
@@ -338,7 +338,7 @@ struct LockScreenWorkView: View {
             HStack(alignment: .top, spacing: 11) {
                 LAKitten(model: m, palette: p, size: 36, badge: 16)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(m.title).font(.subheadline.weight(.semibold)).foregroundStyle(p.ink).lineLimit(1).minimumScaleFactor(0.9)
+                    Text(m.title).font(.subheadline.weight(.semibold)).foregroundStyle(p.ink).lineLimit(1).minimumScaleFactor(0.9).privacySensitive()   // R2 P1-2
                     Text(m.status).font(.footnote).foregroundStyle(p.secondary).lineLimit(m.kind == .needsUser ? 2 : 1).truncationMode(.tail)
                         .contentTransition(.opacity)
                 }
