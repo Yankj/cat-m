@@ -8,6 +8,8 @@ export function createAgentMemoryStore() {
     _dump: () => ({ rows: [...rows.values()].map(c), settings: Object.fromEntries(settings), fragments: fragments.map(c) }),
     async getSettings(uid) { return settings.has(uid) ? c(settings.get(uid)) : null; },
     async putSettings(uid, s) { const seq = settings.get(uid)?.use_memory_seq; settings.set(uid, c({ ...s, ...(seq !== undefined ? { use_memory_seq: seq } : {}) })); return c(s); },
+    /** Codex p91w B1: partial update — only the named columns change (use_memory_seq and the rest are kept). */
+    async patchSettings(uid, fields, { unsequencedOnly = false } = {}) { const cur = settings.get(uid) ?? { use_memory: false, auto_save: false, consented_at: null }; if (unsequencedOnly && cur.use_memory_seq !== undefined && cur.use_memory_seq !== null) return null; const n = { ...cur, ...c(fields) }; settings.set(uid, c(n)); const { use_memory_seq, ...out } = n; return c(out); },
     /** Codex PR91 v3-2: atomic last-writer-by-sequence (null when `seq` is not newer than the stored one). */
     async putSettingsIfNewer(uid, s, seq) {
       const prev = settings.get(uid)?.use_memory_seq ?? 0; if (seq <= prev) return null;
