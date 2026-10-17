@@ -84,12 +84,28 @@ enum CatpawTaskTitle {
         let masked = redact(line)
         return masked.count <= limit ? masked : String(masked.prefix(limit - 1)).trimmingCharacters(in: .whitespaces) + "…"
     }
+    /// R3 (NoBug P2-R2-1): matching runs on the NFKC form (full-width ＠ / － / digits fold to ASCII); separators also
+    /// cover dashes (‐‑‒–—―), dots (. · ・). Matches are mapped back per character, so only the masked spans change —
+    /// the rest of the title keeps its own characters (full-width Chinese punctuation stays full-width).
+    static let patterns = [#"[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}"#,                       // email
+                           #"(?i)(?:https?://|www\.)\S+"#,                                           // URL
+                           #"\+?\d(?:[ \-‐‑‒–—―.·・]?\d){5,}(?:[Xx](?![A-Za-z]))?"#]                  // 6+ digits: phone / card / id numbers
     static func redact(_ s: String) -> String {
-        var out = s
-        for pattern in [#"[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}"#,   // email
-                        #"(?i)(?:https?://|www\.)\S+"#,                          // URL
-                        #"\+?\d(?:[ \-]?\d){5,}"#] {                             // 6+ digits: phone / card / id numbers
-            out = out.replacingOccurrences(of: pattern, with: mask, options: .regularExpression)
+        let orig = Array(s)
+        var norm = "", starts: [Int] = []   // UTF-16 offset in `norm` where orig[i]'s NFKC form begins
+        for c in orig { starts.append(norm.utf16.count); norm += String(c).precomposedStringWithCompatibilityMapping }
+        let length = norm.utf16.count
+        var hit = [Bool](repeating: false, count: orig.count)
+        for p in patterns {
+            guard let re = try? NSRegularExpression(pattern: p) else { continue }
+            for m in re.matches(in: norm, range: NSRange(location: 0, length: length)) where m.range.length > 0 {
+                let lo = m.range.location, hi = m.range.location + m.range.length
+                for i in orig.indices where starts[i] < hi && (i + 1 < orig.count ? starts[i + 1] : length) > lo { hit[i] = true }
+            }
+        }
+        var out = "", i = 0
+        while i < orig.count {
+            if hit[i] { out += mask; while i < orig.count && hit[i] { i += 1 } } else { out.append(orig[i]); i += 1 }
         }
         return out
     }
