@@ -119,8 +119,8 @@ test('B1 6-call replay (6497bf72 shape): 6 parallel write calls → NONE runs, e
  const s=await parallelSetup(Array(6).fill('reminder_create')),{tid}=await send(s,'帮我把清单一次全加上');
  const t=await turn(s,tid);assert.equal(t.state,'completed');
  assert.equal(t.events.filter(e=>e.type==='device_call'||e.type==='approval_requested').length,0,'no card, nothing reaches the phone');
- const results=t.events.filter(e=>e.type==='tool_result');assert.equal(results.length,6);
- assert.ok(results.every(e=>e.data.status==='error'&&e.data.result.status==='too_many_parallel_writes'));
+ assert.equal(t.events.filter(e=>e.type==='tool_call'||e.type==='tool_result').length,0,'no wire tool events for calls that did not run');
+ assert.deepEqual(t.parallel_blocked.map(b=>[b.call_id,b.name,b.status]),Array.from({length:6},(_,i)=>['pc'+i,'reminder_create','too_many_parallel_writes']));
  assert.equal(s.probe.toolResults.length,6);assert.ok(s.probe.toolResults.every(r=>r.status==='too_many_parallel_writes'&&/one at a time/.test(r.message)&&r.requested===6));
  const c=await conversation(s);assert.deepEqual(c.model_messages.map(m=>m.role),['user','assistant',...Array(6).fill('tool'),'assistant']);
  assert.equal(c.model_messages[1].tool_calls.length,6,'every call stays paired with its result in history');
@@ -129,15 +129,17 @@ test('B1 6-call replay (6497bf72 shape): 6 parallel write calls → NONE runs, e
 test('B1: a mixed step (read-only calls + one write) runs nothing',async()=>{
  const s=await parallelSetup(['agent_status','agent_status','agent_status','agent_status','reminder_create']),{tid}=await send(s,'帮我把清单一次全加上');
  const t=await turn(s,tid);assert.equal(t.state,'completed');
- assert.ok(t.events.filter(e=>e.type==='tool_result').every(e=>e.data.result.status==='too_many_parallel_writes'));
- assert.equal(t.events.filter(e=>e.type==='device_call').length,0);
+ assert.equal(t.events.filter(e=>e.type==='tool_result'||e.type==='device_call').length,0);
+ assert.ok(t.parallel_blocked.length===5&&t.parallel_blocked.every(b=>b.status==='too_many_parallel_writes'));
 });
 
 test('B1: 6 read-only calls → the first 4 run, the other 2 get not_executed',async()=>{
  const s=await parallelSetup(Array(6).fill('agent_status')),{tid}=await send(s,'帮我把清单一次全加上');
  const t=await turn(s,tid);assert.equal(t.state,'completed',JSON.stringify(t.error));
  const results=t.events.filter(e=>e.type==='tool_result');
- assert.deepEqual(results.map(e=>[e.data.call_id,e.data.status,e.data.result.status??'ran']),[['pc0','ok','ran'],['pc1','ok','ran'],['pc2','ok','ran'],['pc3','ok','ran'],['pc4','error','not_executed'],['pc5','error','not_executed']]);
+ assert.deepEqual(results.map(e=>[e.data.call_id,e.data.status]),[['pc0','ok'],['pc1','ok'],['pc2','ok'],['pc3','ok']],'only the 4 calls that ran have wire results (agent_status results are parsed by the client)');
+ assert.deepEqual(t.parallel_blocked.map(b=>[b.call_id,b.status]),[['pc4','not_executed'],['pc5','not_executed']]);
+ assert.deepEqual(interruptedTurnNote(t,'x').tools.map(x=>[x.call_id,x.outcome]).slice(-2),[['pc4','not_executed'],['pc5','not_executed']],'a later failure note still lists them');
  assert.deepEqual(s.probe.toolResults.map(r=>r.status??'ran'),['ran','ran','ran','ran','not_executed','not_executed']);
 });
 
