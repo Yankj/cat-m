@@ -233,8 +233,13 @@ public struct VoiceChatLoop: Equatable, Sendable {
     /// Filler that alone never makes a turn (a cough or "嗯" picked up between sentences must not be sent).
     static let fillerWords: Set<String> = ["uh", "um", "umm", "uhm", "er", "erm", "ah", "eh", "hmm", "hm", "mm", "mhm", "oh", "huh"]
     static let fillerCharacters: Set<Character> = ["嗯", "啊", "呃", "额", "哦", "噢", "喔", "唔", "哈", "呀", "诶", "欸", "哎", "呢", "吧", "嘛"]
-    /// At least 2 letters/digits left after dropping punctuation and filler (嗯/啊/uh…).
+    /// One-character (or doubled) yes/no answers that ARE a reply, e.g. to "要我帮你订吗？". Sent even though short;
+    /// pure filler (嗯 / 啊 / uh) stays dropped.
+    static let shortReplies: Set<String> = ["好", "行", "对", "不", "是", "嗯嗯", "好好", "对对", "不不", "yes", "no"]
+    /// At least 2 letters/digits left after dropping punctuation and filler (嗯/啊/uh…), or a short yes/no reply.
     public static func isMeaningful(_ text: String) -> Bool {
+        let bare = String(text.lowercased().filter { $0.isLetter || $0.isNumber })
+        if shortReplies.contains(bare) { return true }
         let words = text.lowercased().split(whereSeparator: { !($0.isLetter || $0.isNumber) })
         var count = 0
         for word in words where !fillerWords.contains(String(word)) {

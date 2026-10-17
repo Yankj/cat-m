@@ -518,11 +518,15 @@ final class VoiceChatLoopTests: XCTestCase {
         XCTAssertFalse(VoiceBargeIn.isLikelyEcho(heard: "stop please", speaking: "Your meeting is at three."))
         XCTAssertTrue(VoiceBargeIn.isLikelyEcho(heard: "meeting is at", speaking: "Your meeting is at three."))
     }
-    func testFillerAndSingleCharactersAreNeverSent() {
+    func testFillerIsNeverSentButShortYesNoRepliesAre() {
         XCTAssertFalse(VoiceChatLoop.isMeaningful("嗯"))
+        XCTAssertFalse(VoiceChatLoop.isMeaningful("啊。"))
         XCTAssertFalse(VoiceChatLoop.isMeaningful("嗯嗯啊。"))
         XCTAssertFalse(VoiceChatLoop.isMeaningful("uh, um..."))
-        XCTAssertFalse(VoiceChatLoop.isMeaningful("好"))
+        XCTAssertFalse(VoiceChatLoop.isMeaningful("呃"))
+        for reply in ["好", "行", "对", "不", "是", "嗯嗯", "嗯嗯？", "好。", " 不 ", "Yes", "no."] {
+            XCTAssertTrue(VoiceChatLoop.isMeaningful(reply), "\(reply) is a yes/no reply and must be sent")
+        }
         XCTAssertTrue(VoiceChatLoop.isMeaningful("嗯好的"))
         XCTAssertTrue(VoiceChatLoop.isMeaningful("ok"))
         XCTAssertTrue(VoiceChatLoop.isMeaningful("uh call mom"))
@@ -530,6 +534,9 @@ final class VoiceChatLoopTests: XCTestCase {
         XCTAssertEqual(loop.handle(.silenceElapsed), [], "filler alone does not end the utterance")
         XCTAssertEqual(loop.handle(.listeningEnded("嗯啊")), [.startListening, .haptic(.listen)], "filler is not sent")
         XCTAssertEqual(loop.sent, [])
+        var yes = VoiceChatLoop(); _ = yes.handle(.start); _ = yes.handle(.transcript("好"))
+        _ = yes.handle(.silenceElapsed); _ = yes.handle(.listeningEnded("好"))
+        XCTAssertEqual(yes.sent, ["好"], "a one-character yes is sent")
     }
 }
 
