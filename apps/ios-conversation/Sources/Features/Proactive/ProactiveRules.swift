@@ -155,6 +155,14 @@ enum ProactiveClock {
 }
 
 
+/// One 「使用记忆」 switch for every read path (Codex P0-2): if any library the user can see has it off, no path may read
+/// memory at all (local included), so the reference count is zero.
+enum MemoryRecallGate {
+    static func effective(_ snapshots: [MemoryLibrarySnapshot]) -> [MemoryLibrarySnapshot] {
+        snapshots.contains { !$0.useMemory } ? [] : snapshots
+    }
+}
+
 // MARK: Codex review P0-4 — feedback that measurably changes the next decision, and undo that reports the real outcome.
 
 /// Status of a proactive card (shared by the app and the portable rules).
