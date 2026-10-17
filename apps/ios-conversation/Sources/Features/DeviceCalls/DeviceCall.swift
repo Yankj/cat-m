@@ -548,7 +548,13 @@ extension DeviceCall {
     private let store: DeviceCallStore
     init(store: DeviceCallStore? = nil) { self.store = store ?? .shared }
     func parkedItems(account: String) -> [AccountParkedItem] {
-        store.inFlight(account: account).map { AccountParkedItem(source: Self.key, key: $0.kind.rawValue + ":" + $0.id, title: DeviceInFlight.label($0), detail: $0.tool) }
+        // App-internal → automatic, no prompt: a compose sheet / URL open that hasn't happened is simply cancelled; an
+        // EventKit write in flight is parked (lookup-only restore for that account); undo reports stay queued.
+        store.inFlight(account: account).map { i in
+            let external = ["calendar_create", "reminder_create", "alarm_set"].contains(i.tool)
+            let auto: AccountParkedDecision = (i.kind == .running && !external) ? .cancel : .keep
+            return AccountParkedItem(source: Self.key, key: i.kind.rawValue + ":" + i.id, title: DeviceInFlight.label(i), detail: i.tool, automatic: auto)
+        }
     }
     func apply(_ decision: AccountParkedDecision, to item: AccountParkedItem, account: String) async -> String {
         let parts = item.key.split(separator: ":", maxSplits: 1).map(String.init)

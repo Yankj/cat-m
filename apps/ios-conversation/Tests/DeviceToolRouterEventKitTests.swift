@@ -629,36 +629,36 @@ import EventKit
         XCTAssertEqual(attempt, .needsPermission); XCTAssertEqual(np.removed, 0); XCTAssertFalse(ledger.isUndone(callID: call.call_id))
     }
 
-    /// p89i generic park + per-item decision (AccountParkedItems) with the device-call source: only the leaving account's
-    /// items are collected; per item keep / cancel applied deterministically; unanswered = keep; every line logged.
-    func testParkedDeviceCallsPerItemDecision() async throws {
-        let keepCall = calCall("xctest-park-keep-" + UUID().uuidString, Date().addingTimeInterval(86400))
-        let cancelCall = calCall("xctest-park-cancel-" + UUID().uuidString, Date().addingTimeInterval(86400))
-        let silent = calCall("xctest-park-silent-" + UUID().uuidString, Date().addingTimeInterval(86400))
-        for c in [keepCall, cancelCall, silent] { DeviceCallGate.receive(c) }
+    /// p89i scope: in-flight device calls are app-internal → automatic, NO prompt. A compose sheet / URL open that hasn't
+    /// happened is cancelled; an EventKit write in flight is parked for that account (lookup-only restore); other
+    /// accounts untouched; every decision logged.
+    func testParkedDeviceCallsAreAutomaticNoPrompt() async throws {
+        let ek = calCall("xctest-park-ek-" + UUID().uuidString, Date().addingTimeInterval(86400))
+        let sms = DeviceCall(call_id: "xctest-park-sms-" + UUID().uuidString, tool: "sms_compose", args: ["to": .string("10086"), "body": .string("x")], confirm: .card, ttl_sec: 600)
+        let url = DeviceCall(call_id: "xctest-park-url-" + UUID().uuidString, tool: "maps_open", args: ["query": .string("望京")], confirm: .card, ttl_sec: 600)
+        for c in [ek, sms, url] { DeviceCallGate.receive(c) }
         let suite = "xctest.park." + UUID().uuidString, defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
         defer { UserDefaults().removePersistentDomain(forName: suite) }
         var recs: [String: DeviceCallStore.Record] = [:]
-        for c in [keepCall, cancelCall, silent] { recs[c.call_id] = .init(phase: .running, call: c, updatedAt: .now, account: "xctest-user") }
+        for c in [ek, sms, url] { recs[c.call_id] = .init(phase: .running, call: c, updatedAt: .now, account: "xctest-user") }
         let other = calCall("xctest-park-other-" + UUID().uuidString, Date()); recs[other.call_id] = .init(phase: .running, call: other, updatedAt: .now, account: "someone-else")
         defaults.set(try JSONEncoder().encode(recs), forKey: DeviceCallStore.storageKey)
         let st = DeviceCallStore(defaults: defaults)
         AccountParkedItems.register(DeviceCallParkedSource.key, DeviceCallParkedSource(store: st)); defer { AccountParkedItems.unregister(DeviceCallParkedSource.key) }
         DeviceCallGate.epoch.signOut()   // order step 1 happens before collect
         let items = AccountParkedItems.collect(account: "xctest-user")
-        XCTAssertEqual(Set(items.map(\.key)), Set([keepCall, cancelCall, silent].map { "running:" + $0.call_id }), "only the leaving account's items")
-        XCTAssertTrue(items.allSatisfy { $0.title.hasPrefix("进行中：添加日程") })
-        let lines = await AccountParkedItems.resolve(account: "xctest-user") { _ in
-            ["\(DeviceCallParkedSource.key)/running:\(keepCall.call_id)": .keep, "\(DeviceCallParkedSource.key)/running:\(cancelCall.call_id)": .cancel]
-        }
-        XCTAssertEqual(st.phase(cancelCall.call_id), .expired); XCTAssertFalse(DeviceCallGate.isLive(cancelCall.call_id))
-        XCTAssertEqual(st.phase(keepCall.call_id), .running, "keep → parked for that account"); XCTAssertEqual(st.phase(silent.call_id), .running, "no answer → keep")
+        XCTAssertEqual(items.count, 3, "only the leaving account's items"); XCTAssertTrue(items.allSatisfy { $0.automatic != nil }, "app-internal → automatic")
+        var asked = false
+        let lines = await AccountParkedItems.resolve(account: "xctest-user") { _ in asked = true; return [:] }
+        XCTAssertFalse(asked, "no prompt for app-internal items")
+        XCTAssertEqual(st.phase(sms.call_id), .expired); XCTAssertEqual(st.phase(url.call_id), .expired)
+        XCTAssertFalse(DeviceCallGate.isLive(sms.call_id)); XCTAssertFalse(DeviceCallGate.isLive(url.call_id))
+        XCTAssertEqual(st.phase(ek.call_id), .running, "EventKit write in flight → parked, not cancelled, not executed")
         XCTAssertEqual(st.phase(other.call_id), .running, "another account's item untouched")
-        XCTAssertEqual(lines.count, 4)
-        XCTAssertTrue(lines.contains("\(DeviceCallParkedSource.key)/running:\(cancelCall.call_id) cancel: revoked + card expired"))
-        XCTAssertTrue(lines.contains { $0.hasPrefix("\(DeviceCallParkedSource.key)/running:\(silent.call_id) keep:") })
+        XCTAssertTrue(lines.contains("\(DeviceCallParkedSource.key)/running:\(sms.call_id) cancel (auto): revoked + card expired"))
+        XCTAssertTrue(lines.contains { $0.hasPrefix("\(DeviceCallParkedSource.key)/running:\(ek.call_id) keep (auto):") })
         let reopened = DeviceCallStore(defaults: defaults)
-        XCTAssertFalse(reopened.isInterrupted(cancelCall.call_id), "a cancelled item is never restored"); XCTAssertTrue(reopened.isInterrupted(keepCall.call_id), "a kept item is offered again (lookup-only restore)")
+        XCTAssertFalse(reopened.isInterrupted(sms.call_id)); XCTAssertTrue(reopened.isInterrupted(ek.call_id), "parked write: lookup-only restore when the account returns")
     }
 
     func testCalendarCreateDedupesByCallID() async throws {
