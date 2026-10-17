@@ -8,6 +8,9 @@ import {boundedJsonBody,VISION_LIMITS} from './vision-contract.mjs';
 import {APPROVAL_HEADER} from './approval.mjs';
 import {UI_HEADER,UI_KINDS_HEADER} from './generative-ui.mjs';
 import {DEVICE_HEADER,DEVICE_TOOLS_HEADER,DEVICE_RESULT_MAX_BYTES} from './device-call.mjs';
+/** chat-context-1522 P1-2: a device report the turn no longer waited on is still 200 (recorded, the turn is not reopened);
+ * X-Catpaw-Device-Late says why: 'superseded' (user moved on) or 'ttl_exceeded' (after the card TTL). */
+const lateHeaders=decided=>decided.late?{'X-Catpaw-Device-Late':decided.late}:undefined;
 export function createChatFetchHandler(runtime){
   const {chat,facade}=runtime,taskHandler=createFetchHandler(facade);
   return async request=>{
@@ -74,14 +77,14 @@ export function createChatFetchHandler(runtime){
         if(decided.resumed)runtime.onAccepted?.({owner:decided.trusted.owner,principal:decided.trusted.principal,turnId:tail[3]});
         const requested=u.searchParams.get('after_sequence');const afterSequence=requested===null?decided.afterSequence:Number(requested);
         check(Number.isSafeInteger(afterSequence)&&afterSequence>=0&&afterSequence<=decided.turn.events.length,422,'invalid_cursor');
-        return streamTurn(request,auth,scope,tail[1],tail[3],{trusted:decided.trusted,afterSequence});
+        return streamTurn(request,auth,scope,tail[1],tail[3],{trusted:decided.trusted,afterSequence,headers:lateHeaders(decided)});
       }
       if(method==='POST'&&tail.length===5&&tail[0]==='conversations'&&tail[2]==='turns'&&tail[4]==='device-undo')return json({undo:await chat.submitDeviceUndo(auth,scope,tail[1],tail[3],await boundedJsonBody(request,1024))});   // chat-ux #6
       if(method==='POST'&&tail.length===5&&tail[0]==='conversations'&&tail[2]==='turns'&&tail[4]==='device-result'){
         // catpaw.device.v1: the phone reports one device_call; streams the SAME turn from approval_resolved on.
         const decided=await chat.submitDeviceResult(auth,scope,tail[1],tail[3],await boundedJsonBody(request,DEVICE_RESULT_MAX_BYTES));
         if(decided.resumed)runtime.onAccepted?.({owner:decided.trusted.owner,principal:decided.trusted.principal,turnId:tail[3]});
-        return streamTurn(request,auth,scope,tail[1],tail[3],{trusted:decided.trusted,afterSequence:decided.afterSequence});
+        return streamTurn(request,auth,scope,tail[1],tail[3],{trusted:decided.trusted,afterSequence:decided.afterSequence,headers:lateHeaders(decided)});
       }
       if(method==='POST'&&tail.length===5&&tail[0]==='conversations'&&tail[2]==='turns'&&tail[4]==='retry-busy'){
         const restarted=await chat.restartRateLimited(auth,scope,tail[1],tail[3]);
@@ -110,7 +113,7 @@ export function createChatFetchHandler(runtime){
         runtime.onAccepted?.({owner:started.trusted.owner,principal:started.trusted.principal,turnId:input.turn_id});
         return streamTurn(request,auth,scope,tail[1],input.turn_id,{trusted:started.trusted,initial:started.turn.events[0],afterSequence:1});
       }
-      function streamTurn(request,auth,scope,cid,tid,{initial,...options}){
+      function streamTurn(request,auth,scope,cid,tid,{initial,headers:extraHeaders,...options}){
         const detach=new AbortController();request.signal?.addEventListener('abort',()=>detach.abort(),{once:true});if(request.signal?.aborted)detach.abort();
         const stream=new ReadableStream({
           async start(controller){try{
@@ -124,7 +127,7 @@ export function createChatFetchHandler(runtime){
           }catch(error){console.info(JSON.stringify({event:'catpaw_sse_observe_interrupted',name:error?.name??'unknown',code:error instanceof ApiError?error.code:typeof error?.code==='string'&&/^[A-Za-z0-9_]{1,40}$/.test(error.code)?error.code:null,status:error instanceof ApiError?error.status:null,frames:String(error?.stack??'').split('\n').slice(1,5).map(l=>l.trim().replace(/\(.*?:(\d+):\d+\)/,'@$1').replace(/^at /,'').slice(0,80)),aborted:detach.signal.aborted}));if(!detach.signal.aborted)controller.error(new Error('Observation interrupted; read original turn snapshot'));}},
           cancel(){detach.abort();} // never cancel a durable task or active model turn
         });
-        return new Response(stream,{headers:{'Content-Type':'text/event-stream','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
+        return new Response(stream,{headers:{'Content-Type':'text/event-stream','Cache-Control':'no-store','X-Content-Type-Options':'nosniff',...extraHeaders}});
       }
       throw new ApiError(404,'not_found');
     }catch(e){const known=e instanceof ApiError;return Response.json({schema_version:1,error:{code:known?e.code:'internal_error',retryable:known&&e.retryable===true,reconciliation_required:known?e.reconciliation:false}},{status:known?e.status:500,headers:{'Cache-Control':'no-store',...known&&e.retryAfterSec?{'Retry-After':String(e.retryAfterSec)}:{}}});}

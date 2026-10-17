@@ -73,6 +73,8 @@ export function deviceUndoNote(notes){
 export const deviceCallEvent=(it,args)=>({call_id:it.call_id,tool:it.tool,args,confirm:it.confirm,ttl_sec:it.ttl_sec,interrupt_id:it.interrupt_id,args_hash:it.args_hash,expires_at:it.expires_at});
 /** Model-facing result of a device call. */
 export function deviceResult(it){
+ // P1-2: the report that arrived after the TTL (and itself expired the card) is the truth about the side effect.
+ if(it.status==='expired'&&it.late_response)return {...deviceResult({...it,status:'reported',response:it.late_response}),reported_after_ttl:true};
  if(it.status==='expired')return {status:'pending_timeout',message:'The phone did not report back in time; the action\'s status is unknown (it may already have happened on the phone). Ask the user to verify on the phone before retrying; do not retry automatically.'};
  if(it.status==='cancelled')return {status:'cancelled',message:'The turn was cancelled before the phone reported back.'};
  const data=it.response.data!==undefined&&it.response.data!==null?{data:it.response.data}:{};
