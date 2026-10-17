@@ -19,7 +19,7 @@ import {validateVisionTurn} from './vision-contract.mjs';
 import {UI_CONTRACT,RENDER_UI,UI_DECISIONS,validateResponse,validateUIError,uiResult,uiBlockEvent,uiBlockUpdate,uiBlockResolve,uiPrompt,blockOf,GROUNDED_PROMPT,parseUIKinds,FOLLOWUP_PROMPT} from './generative-ui.mjs';import {toolResultsFrom,groundUIArgs,autoPlaceBlock,ungroundedResult} from './grounded-ui.mjs';
 import {agentMemoryPrompt} from '../../agent-memory/chat-tools.mjs';
 import {DEVICE_CONTRACT,parseDeviceTools,validateDeviceResult,deviceCallEvent,deviceResult,validateDeviceUndo,deviceUndoNote,DEVICE_UNDOABLE_TOOLS} from './device-call.mjs';
-import {withInterruptedTurn,withInteractionOutcomes,turnOutcomeNote,withLateDeviceReport} from './turn-outcome.mjs';
+import {withInterruptedTurn,withInteractionOutcomes,turnOutcomeNote,withLateDeviceReport,whitelistedArgs,boundedParallelBlocked} from './turn-outcome.mjs';
 import {APPROVAL_CONTRACT,gatedCalls,interruptFor,requestedEvent,resolvedEvent,pendingApprovals,validateDecision,settleExpired,resumedTurn,deniedResult,APPROVAL_PREFERENCES,preferenceID,isoAt} from './approval.mjs';
 const positive=v=>Number.isSafeInteger(v)&&v>0;
 const terminal=s=>s!=='running';
@@ -317,8 +317,9 @@ export class ChatService {
         // receipts (delegate_*, agent_status, propose_memory_v1) and would reject a not-executed payload.
         if(blocked.length){
           for(const {call,result} of blocked)messages.push({role:'tool',tool_call_id:call.id,content:JSON.stringify(result)});
-          await this.repository.transaction(async tx=>{const {t}=await this.live(tx,env);const ids=new Set(blocked.map(b=>b.call.id));
-            const saved=await tx.put(env.owner,'native-chat-turns',{...t,parallel_blocked:[...(t.parallel_blocked??[]).filter(b=>!ids.has(b.call_id)),...blocked.map(({call,result})=>({call_id:call.id,name:call.name,arguments:clone(call.arguments),status:result.status}))].slice(-32)});
+          await this.repository.transaction(async tx=>{const {t}=await this.live(tx,env);
+            // P1-1: never the raw arguments — only title/time keys (cut to 40 chars) plus a digest; bounded entries and bytes.
+            const saved=await tx.put(env.owner,'native-chat-turns',{...t,parallel_blocked:boundedParallelBlocked(t.parallel_blocked,blocked.map(({call,result})=>({call_id:String(call.id).slice(0,160),name:String(call.name).slice(0,80),args:whitelistedArgs(call.arguments),args_hash:hash({name:call.name,arguments:call.arguments}),status:result.status})))});
             await this.beforeCommit(tx,env,saved);});
         }
         if(round.calls.some(c=>c.name==='propose_memory_v1')){

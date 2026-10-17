@@ -5,12 +5,27 @@
 // shown. These helpers turn such a turn's durable events into (a) a bounded note that is prepended, as an untrusted
 // system record, to the next user message (same pattern as deviceUndoNote), and (b) per-interaction final states the
 // client can restore cards from (conversation.interaction_outcomes; JSON on the existing record, no migration).
+import { Buffer } from 'node:buffer';
 import { clone } from '../facade-r2/src/common.mjs';
 
 const MAX_NOTES = 4, MAX_TOOLS = 6, MAX_OUTCOMES = 60;
 const cut = (s, n) => { const t = String(s ?? '').replace(/\s+/g, ' ').trim(); return t.length > n ? t.slice(0, n) + '…' : t; };
 // NoBug round 2: only a title and time-like fields (no names, queries, message bodies, subjects or labels).
 const ARG_KEYS = ['title', 'start', 'end', 'due', 'due_at', 'time'];
+/** P1-1: the whitelisted argument keys only (title/time), each cut to 40 chars — what may be stored about a call that did not run. */
+export function whitelistedArgs(args) {
+  const out = {};
+  if (args && typeof args === 'object') for (const k of ARG_KEYS) if (typeof args[k] === 'string' && args[k].trim()) out[k] = cut(args[k], 40);
+  return out;
+}
+const MAX_BLOCKED = 32, MAX_BLOCKED_BYTES = 8000;
+/** P1-1: turn.parallel_blocked after adding entries: whitelisted args + digest, at most 32 entries / 8000 bytes (oldest dropped). */
+export function boundedParallelBlocked(existing, entries) {
+  const ids = new Set(entries.map(e => e.call_id));
+  let out = [...(existing ?? []).filter(b => !ids.has(b.call_id)), ...entries].slice(-MAX_BLOCKED);
+  while (out.length && Buffer.byteLength(JSON.stringify(out)) > MAX_BLOCKED_BYTES) out = out.slice(1);
+  return out;
+}
 function argsSummary(args) {
   if (!args || typeof args !== 'object') return '';
   const parts = [];
@@ -40,7 +55,7 @@ export function turnToolOutcomes(t) {
     out.push({ call_id: id, name: String(e.data.name ?? ''), args: argsSummary(e.data.arguments), outcome });
   }
   // B1: parallel calls that were answered without running (recorded on the row, never as wire events).
-  for (const b of t?.parallel_blocked ?? []) if (!out.some(o => o.call_id === b.call_id)) out.push({ call_id: b.call_id, name: String(b.name ?? ''), args: argsSummary(b.arguments), outcome: 'not_executed' });
+  for (const b of t?.parallel_blocked ?? []) if (!out.some(o => o.call_id === b.call_id)) out.push({ call_id: b.call_id, name: String(b.name ?? ''), args: argsSummary(b.args ?? b.arguments), outcome: 'not_executed' });
   return out;
 }
 
