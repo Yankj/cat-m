@@ -14,6 +14,16 @@ final class ConversationTimelineProjectionTests:XCTestCase {
     private func result(_ turn:ConversationTurnRecord,_ call:String="same-call",name:String="agent_status")->ConversationTranscriptMessage {
         .init(id:stableID("conversation-tool-result-\(turn.id)-\(call)"),role:.tool,content:"{\"original_receipt\":true}",toolCallID:call,toolName:name)
     }
+    /// send-spinner P0 (21:45 「再来一首写产品经理的」): the user bubble is "sent" as soon as the server admitted the turn
+    /// (first event journaled / request hash stamped), not when the reply completes.
+    func testUserBubbleSentAtAdmissionNotAtCompletion() {
+        var t=turn(state:.dispatched);t.lastSequence=0;t.serverRequestHash=nil
+        XCTAssertFalse(ConversationFirstView.isAdmitted(t))
+        t.lastSequence=1;t.state = .running
+        XCTAssertTrue(ConversationFirstView.isAdmitted(t))
+        var stamped=turn(state:.dispatched);stamped.lastSequence=0;stamped.serverRequestHash=String(repeating:"b",count:64)
+        XCTAssertTrue(ConversationFirstView.isAdmitted(stamped))
+    }
     /// chat-context-1522 #3: decided cards keep a final state derived from the journal (prod turn 6497bf72 flow).
     func testInteractionOutcomeFromJournal() {
         var t=turn(state:.running)

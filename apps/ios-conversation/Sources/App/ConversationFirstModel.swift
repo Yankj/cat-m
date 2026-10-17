@@ -905,6 +905,14 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
             } catch { self.error=error.localizedDescription }
         }
     }
+    /// 「没有收到回复 · 点按重发」 on a user row that has no local turn record (imported from the server transcript) and no
+    /// reply: send its text again as a new message. The server does not keep image bytes, so only the text is resent.
+    func resendUnanswered(_ text:String) {
+        let value=text.trimmingCharacters(in:.whitespacesAndNewlines)
+        guard !value.isEmpty else { return }
+        guard draft.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty else { error="请先发送或清空输入框里的文字，再重试这条消息。";return }
+        editDraft(text);send()
+    }
     /// 「删除」 on a failed turn.
     func deleteFailedTurn(_ id:UUID) {
         guard let cid=conversationID else { return }

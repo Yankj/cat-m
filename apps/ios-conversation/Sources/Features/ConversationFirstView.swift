@@ -1007,7 +1007,18 @@ import CatpawImageComposer
     /// sending → tiny spinner only after ~2 s without turn start; failed → red ! + "未发送·点按重试".
     enum BubbleStatus { case none, sending, failed, unverified, tooLong }
     private func bubbleStatus(_ id:UUID) -> BubbleStatus {
-        if let turn=model.session?.turns.first(where:{$0.id == id}),ConversationLengthLimit.isTooLong(turn) { return .tooLong }
+        let journaled=model.session?.turns.first(where:{$0.id == id})
+        if let turn=journaled,ConversationLengthLimit.isTooLong(turn) { return .tooLong }
+        // send-spinner P0: the outgoing intent stays `.sending` until queue.flush returns, i.e. after the whole reply has
+        // streamed (service.send → pump runs to turn_completed). Once the server has admitted the turn (its first event is
+        // journaled: turn_started), the user bubble is sent; every later wait belongs to the assistant row (status line,
+        // glow, streaming text). Only a not-yet-admitted turn may show the bubble spinner.
+        if let turn=journaled,Self.isAdmitted(turn) {
+            if turn.state == .failed && turn.error == ConversationSessionService.outcomeUnverified { return .unverified }
+            if turn.state == .failed && turn.error != "cancelled" && turn.assistantMessageID == nil { return .failed }
+            if turn.state == .unknown { return .failed }
+            return .none
+        }
         if let intent=model.outgoingMessages.first(where:{$0.id == id}) {
             switch intent.state { case .sending: return .sending; case .failed, .unknown: return .failed; default: return .none }
         }
@@ -1017,7 +1028,18 @@ import CatpawImageComposer
         if turn.state == .dispatched && turn.lastSequence == 0 { return .sending }
         return .none
     }
+    nonisolated static func isAdmitted(_ turn:ConversationTurnRecord) -> Bool { turn.lastSequence > 0 || turn.serverRequestHash != nil }
+    /// A user row with no local turn record (e.g. imported by syncServerTranscript after a reinstall / re-sign-in) that
+    /// the conversation moved past without any reply: its turn ended server-side without an answer (18:41 「你看到什么了」,
+    /// vision 429). Never leave it silent. The latest row is excluded: its turn may still be running elsewhere.
+    private func isUnansweredOrphan(_ message:ConversationTranscriptMessage) -> Bool {
+        guard message.role == .user,operationID(message) == nil else { return false }
+        let spoken=displayMessages.filter { $0.role != .tool && $0.toolName == nil }
+        guard let i=spoken.firstIndex(where:{$0.id == message.id}),i+1 < spoken.count else { return false }
+        return spoken[i+1].role == .user
+    }
     private func delivery(_ id:UUID) -> String {
+        if let turn=model.session?.turns.first(where:{$0.id == id}),Self.isAdmitted(turn) { return ui("已发送") }
         if let intent=model.outgoingMessages.first(where:{$0.id == id}) {
             switch intent.state {
             case .savingLocal:return ui("正在本机保存")
@@ -1096,6 +1118,14 @@ import CatpawImageComposer
                             Text(ui("结果待核对 · 可能已执行，核对后再决定是否重发")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
                         }.accessibilityElement(children: .combine).accessibilityIdentifier("chat.bubble.unverified")
                     }
+                } else if isUnansweredOrphan(message) {
+                    // send-spinner P0 Q2: a server-side failure without a local turn record must not look like a sent message.
+                    Button { model.resendUnanswered(message.content) } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "exclamationmark.circle.fill").foregroundStyle(CatpawColors.attention).imageScale(.small)
+                            Text(ui("没有收到回复 · 点按重发")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
+                        }
+                    }.buttonStyle(CatpawPressButtonStyle()).accessibilityIdentifier("chat.bubble.unanswered")
                 }
             }
         } else if message.role == .tool || message.toolName != nil {

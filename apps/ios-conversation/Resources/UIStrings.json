@@ -3651,6 +3651,10 @@
     "en": "Not sent · tap to retry",
     "zh-Hans": "未发送·点按重试"
   },
+  "没有收到回复 · 点按重发": {
+    "en": "No reply · tap to resend",
+    "zh-Hans": "没有收到回复 · 点按重发"
+  },
   "未命名对话": {
     "en": "Untitled conversation",
     "zh-Hans": "未命名对话"
