@@ -201,6 +201,22 @@ final class NativeAuthApplicationLifecycleTests:XCTestCase {
         ProactiveClock.now={Date(timeIntervalSince1970:1_792_040_400)}   // fixed instant 2026-10-15T05:00Z (no wall clock)
         defer {ProactiveClock.now={Date()}}
         ProactiveEngine.registerAccountObserver()
+        // v1.1 R3: proactive inbox records are sealed in the account's L2 store, which production activates from the chat
+        // view's .task (CatpawApp: L2SecureStore.activate(userID:)). This test has no view, so mirror that: one temp-dir
+        // store per account, active exactly while that account is current (nil when signed out), with real ownership.
+        let l2Root=FileManager.default.temporaryDirectory.appendingPathComponent("native-proactive-l2-"+UUID().uuidString,isDirectory:true)
+        let l2Keys=EphemeralL2KeyProvider()
+        var l2Stores:[String:L2SecureStore]=[:]
+        ProactiveSealedStore.store={
+            guard let account=AccountEpoch.shared.currentAccount?.lowercased(),let uid=UUID(uuidString:account) else {return nil}
+            if let s=l2Stores[account] {return s}
+            let s=try? L2SecureStore(userID:uid,root:l2Root,keys:l2Keys); l2Stores[account]=s; return s
+        }
+        ProactiveSealedStore.storeOwnedBy=ProactiveSealedStore.realOwnership
+        defer {
+            ProactiveSealedStore.store={L2SecureStore.current}
+            try? FileManager.default.removeItem(at:l2Root)
+        }
         func session(_ subject:UUID) async throws -> NativeAuthApplicationModel {
             let root=FileManager.default.temporaryDirectory.appendingPathComponent("native-proactive-"+UUID().uuidString,isDirectory:true)
             let scope=UUID(),clock=LifecycleClock(),storage=LifecycleStorage(),configuration=try lifecycleConfiguration(scope:scope)
