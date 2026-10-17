@@ -137,15 +137,29 @@ struct ProactiveServerIDMap: Codable, Equatable {
     }
 }
 
-/// p90i P1-a (interim, until #89's generic park + per-item decision API lands): when the data owner changes, the old
-/// account's local proactive data (inbox, reminder contexts, generations, unsynced write-backs, removed notification
-/// ids) is parked under that account instead of wiped. Parked data is never shown, sent, synced or re-armed — under
-/// any account — until the user decides through #89's API (default keep). Records are appended, never overwritten.
+/// p90i P1-a (user standard 2026-10-17 08:50): app-managed proactive data is bound to its account and managed
+/// automatically, without a prompt. When the data owner changes, the old account's inbox, reminder contexts, generations
+/// and unsynced write-backs are parked under that account (appended, never overwritten, never dropped); never shown or
+/// sent under another account; restored and synced when THAT account signs in again. Only items outside the app
+/// (EventKit reminders the app created) are listed for the user's decision (#89's API) and are never touched here.
 enum ProactiveParking {
     static let key = "catpaw.proactive.parked.v1"
     static func shouldPark(plan: ProactiveDataOwner.Plan, owner: String?, force: Bool) -> Bool {
         guard !force, plan == .wipe, let owner, !owner.isEmpty else { return false }
         return true
+    }
+    static let externalKey = "catpaw.proactive.external.v1"
+    /// An item outside the app the user decides about (#89's list). Never deleted or edited by #90 on a switch.
+    struct ExternalItem: Codable, Equatable, Sendable { var suggestionID: String; var operationID: String; var kind: String }
+    /// The EventKit reminders the app created for these cards: a create_reminder that succeeded (nil outcome = older
+    /// success record) and still is in the card's taken list, with its operation id marker.
+    static func externalItems(inbox: [String: Any], reminderOps: [String: String]) -> [ExternalItem] {
+        inbox.keys.sorted().compactMap { id in
+            let taken = ((inbox[id] as? [String: Any])?["taken"] as? [[String: Any]]) ?? []
+            guard taken.contains(where: { $0["action"] as? String == "create_reminder" && (($0["outcome"] as? String) ?? "succeeded") == "succeeded" }),
+                  let op = reminderOps[id] else { return nil }
+            return ExternalItem(suggestionID: id, operationID: op, kind: "eventkit_reminder")
+        }
     }
     /// account (lower-cased) → parked records, oldest first. Plist-compatible values only.
     struct Lot {
@@ -154,6 +168,8 @@ enum ProactiveParking {
         /// The first parked record per account (the oldest one waiting for a decision).
         var records: [String: [String: Any]] { slots.compactMapValues(\.first) }
         mutating func park(account: String, record: [String: Any]) { slots[account.lowercased(), default: []].append(record) }
+        /// p90i (08:50 standard): the owner signing in again takes its records back, oldest first; the slot is emptied.
+        mutating func take(account: String) -> [[String: Any]] { slots.removeValue(forKey: account.lowercased()) ?? [] }
         init(_ raw: [String: Any]? = nil) { slots = (raw ?? [:]).compactMapValues { $0 as? [[String: Any]] } }
         var raw: [String: Any] { slots }
     }
