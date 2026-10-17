@@ -6854,5 +6854,13 @@
   "先你一步，把事办妥": {
     "en": "A step ahead. Things handled.",
     "zh-Hans": "先你一步，把事办妥"
+  },
+  "这个对话已经很长了，请新开一个对话继续": {
+    "en": "This conversation is getting long. Start a new one to continue.",
+    "zh-Hans": "这个对话已经很长了，请新开一个对话继续"
+  },
+  "新开对话": {
+    "en": "New conversation",
+    "zh-Hans": "新开对话"
   }
 }

@@ -358,6 +358,8 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
                         // not sent with its code so the client shows a quota notice instead of "connection lost".
                         if request.continuation == nil,(response as? HTTPURLResponse)?.mimeType == "application/json",(400...499).contains(status) {
                             var errorData=Data();for try await byte in bytes {guard errorData.count<65536 else {break};errorData.append(byte)}
+                            // 413 conversation_too_long (422 history_limit_reached on older servers): nothing was written; not sent.
+                            if let code=ConversationLengthLimit.code(status:status,body:errorData) {throw ConversationDispatchFailure.notSent(reason:code)}
                             if let envelope=try? JSONSerialization.jsonObject(with:errorData) as? [String:Any] {
                                 let problem=(envelope["error"] as? [String:Any]) ?? envelope
                                 if let code=problem["code"] as? String,ConversationTerminalServerError.isQuota(code) {throw ConversationDispatchFailure.notSent(reason:code)}
