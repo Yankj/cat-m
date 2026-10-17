@@ -815,6 +815,9 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
                     catch {
                         sendLog.error("catpaw.send dispatch failed \(String(describing:error).prefix(160), privacy: .public)")
                         if case ConversationDispatchFailure.notSent(let code)=error,ConversationTerminalServerError.isQuota(code) { await self?.markQuota();return .heldBeforeAdmission }
+                        // 413 conversation_too_long: never retried (the same message is refused again) and never holds the queue;
+                        // the message's own status line offers 「新开对话」 (inline-status SPEC), the text stays as the draft.
+                        if case ConversationDispatchFailure.notSent(let code)=error,ConversationLengthLimit.isTooLong(code:code) { await self?.markTooLong(message.id);return .failedTerminal }
                         let saved=try await service.read(scope:scope,conversationID:id)
                         if !saved.turns.contains(where:{$0.id == message.id}) || saved.turns.first(where:{$0.id == message.id})?.state == .notSent { sendLog.error("catpaw.send held before admission: \(String(describing:error), privacy: .public)");return .heldBeforeAdmission }
                         // Admitted and ended by the server (rate_limited / failed): the bubble offers 重试 / 删除; the queue goes on.
@@ -831,6 +834,24 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
         }
     }
     private func markQuota() { quotaNotice=true;error=nil }
+    private func markTooLong(_ id:UUID) { outgoingMessages.removeAll { $0.id == id };error=nil }
+    /// 「新开对话」 on a 413 conversation_too_long status line: open a new conversation and carry the refused message (plus
+    /// anything typed since) into its composer. The refused turn was never written server-side; it is discarded here so
+    /// the old conversation stays usable and the text is not left behind twice.
+    func continueInNewConversation(from turnID:UUID) {
+        guard !isInputComposing,let old=conversationID else { return }
+        let refused=session?.turns.first(where:{$0.id == turnID}).flatMap { ConversationLengthLimit.isTooLong($0) ? $0.request.history.last?.content : nil } ?? ""
+        let carried=ConversationLengthLimit.carriedDraft(current:draft,refused:refused)
+        Task {
+            do {
+                await persistenceTask?.value
+                try? await service.discardUnsent(scope:scope,conversationID:old,operationID:turnID)
+                editDraft("");try await flushDraft()   // the text moves; it is not left in the old conversation's composer
+                let id=try await service.create(scope:scope);try await select(id)
+                if !carried.isEmpty { editDraft(carried) }
+            } catch { self.error=error.localizedDescription;if draft.isEmpty { editDraft(carried) } }
+        }
+    }
     /// Quota reached: hand every queued (unsent) message back to the composer instead of a paused outbox.
     private func returnQueuedToDraft(_ queue:ConversationFollowupQueueService,conversationID id:UUID) async throws -> ConversationFollowupState {
         let state=try await queue.state()
@@ -875,7 +896,7 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
         }
         Task {
             do {
-                if turn.error == "rate_limited",try await service.retryBusy(scope:scope,conversationID:cid) != nil { await refresh();return }
+                if turn.error == "rate_limited" || turn.error == "model_history_conflict",try await service.retryBusy(scope:scope,conversationID:cid) != nil { await refresh();return }
                 guard draft.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty else { self.error="请先发送或清空输入框里的文字，再重试这条消息。";return }
                 editDraft(text);send()
             } catch { self.error=error.localizedDescription }

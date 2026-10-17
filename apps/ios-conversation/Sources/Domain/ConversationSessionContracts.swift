@@ -30,7 +30,44 @@ public enum ConversationTerminalServerError {
 }
 public enum ConversationDispatchFailure: Error, LocalizedError, Sendable {
     case notSent(reason: String)
-    public var errorDescription: String? { if case .notSent(let reason) = self { return "消息尚未发送，输入已保留。" + reason }; return nil }
+    public var errorDescription: String? {
+        if case .notSent(let reason) = self {
+            if ConversationLengthLimit.isTooLong(code: reason) { return ConversationLengthLimit.message }   // never 「服务异常」
+            return "消息尚未发送，输入已保留。" + reason
+        }
+        return nil
+    }
+}
+/// catpaw-api fix/context-window-v11x: `413 conversation_too_long` at the storage cap or when one message plus its
+/// context exceeds the request budget (older servers: `422 history_limit_reached`). Nothing is written for that turn,
+/// so it is shown inline on the message with 「新开对话」, never retried (the same message is refused again).
+public enum ConversationLengthLimit {
+    public static let codes: Set<String> = ["conversation_too_long", "history_limit_reached"]
+    public static let message = "这个对话已经很长了，请新开一个对话继续"
+    public static let action = "新开对话"
+    public static func isTooLong(code: String?) -> Bool { code.map { codes.contains($0) } ?? false }
+    /// `turn.error` of a not-sent turn holds the dispatch failure's description (or a bare code from older journals).
+    public static func isTooLong(turnError: String?) -> Bool {
+        guard let error = turnError else { return false }
+        return error == message || codes.contains(where: { error == $0 || error.hasSuffix($0) })
+    }
+    public static func isTooLong(_ turn: ConversationTurnRecord) -> Bool { turn.state == .notSent && isTooLong(turnError: turn.error) }
+    /// The refusal code of a POST …/turns error body, nil when it is not a length refusal. Accepts the
+    /// `{"error":{"code":…}}` envelope and a bare `{"code":…}`; 413 and 422 only.
+    public static func code(status: Int, body: Data) -> String? {
+        guard status == 413 || status == 422, let object = try? JSONSerialization.jsonObject(with: body) as? [String: Any] else { return nil }
+        let problem = (object["error"] as? [String: Any]) ?? object
+        guard let code = problem["code"] as? String, isTooLong(code: code) else { return nil }
+        return code
+    }
+    /// What goes into the new conversation's composer: the refused message, plus anything typed since (no duplicates).
+    public static func carriedDraft(current: String, refused: String) -> String {
+        let now = current.trimmingCharacters(in: .whitespacesAndNewlines), old = refused.trimmingCharacters(in: .whitespacesAndNewlines)
+        if now.isEmpty { return old }
+        if old.isEmpty || now.contains(old) { return now }
+        if old.contains(now) { return old }
+        return old + "\n" + now
+    }
 }
 public struct ConversationConnection: Codable, Sendable {
     public enum State: String, Codable, Sendable { case notConfigured = "not_configured", providerUnverified = "provider_unverified", connected, unavailable }

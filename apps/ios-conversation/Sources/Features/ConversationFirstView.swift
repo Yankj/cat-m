@@ -1003,8 +1003,9 @@ import CatpawImageComposer
     }
     /// r9 bubble status: sent → nothing; queued/offline → nothing (pending strip owns it);
     /// sending → tiny spinner only after ~2 s without turn start; failed → red ! + "未发送·点按重试".
-    enum BubbleStatus { case none, sending, failed, unverified }
+    enum BubbleStatus { case none, sending, failed, unverified, tooLong }
     private func bubbleStatus(_ id:UUID) -> BubbleStatus {
+        if let turn=model.session?.turns.first(where:{$0.id == id}),ConversationLengthLimit.isTooLong(turn) { return .tooLong }
         if let intent=model.outgoingMessages.first(where:{$0.id == id}) {
             switch intent.state { case .sending: return .sending; case .failed, .unknown: return .failed; default: return .none }
         }
@@ -1053,6 +1054,18 @@ import CatpawImageComposer
                     switch bubbleStatus(id) {
                     case .none: EmptyView()
                     case .sending: DelayedSendingSpinner().accessibilityIdentifier("chat.bubble.sending")
+                    case .tooLong:
+                        // Inline (SPEC §1.3): on this message's status line, never a panel above the composer. The whole line is the
+                        // tap target; no retry is offered (the same message would be refused again).
+                        Button { model.continueInNewConversation(from: id) } label: {
+                            (Text(Image(systemName: "exclamationmark.circle.fill")).foregroundColor(CatpawColors.attention)
+                             + Text(" " + ui(ConversationLengthLimit.message) + " · ").foregroundColor(CatpawColors.secondary)
+                             + Text(ui(ConversationLengthLimit.action)).fontWeight(.semibold).foregroundColor(CatpawColors.ink))
+                                .font(CatpawTypography.Role.caption.font).multilineTextAlignment(.trailing).fixedSize(horizontal: false, vertical: true)
+                                .frame(minHeight: 44).contentShape(Rectangle())
+                        }.buttonStyle(CatpawPressButtonStyle())
+                            .accessibilityHint(ui(ConversationLengthLimit.action))
+                            .accessibilityIdentifier("chat.bubble.conversationTooLong")
                     case .failed:
                         if model.session?.turns.contains(where:{$0.id == id && $0.state == .failed}) == true {
                             // 「发送失败 · 重试 / 删除」: the turn ended on the server; it never holds the queue.
