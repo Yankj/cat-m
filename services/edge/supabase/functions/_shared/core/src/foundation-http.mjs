@@ -1,5 +1,6 @@
 import {ApiError,check,shape,UUID} from '../facade-r2/src/common.mjs';
 import {createChatFetchHandler} from './http.mjs';
+import {retryAfterParts} from './retry-after.mjs';
 import {MEMORY_CONTRACT,MEMORY_LIMITS,parseMemoryCommand,memoryUUID} from './memory-contract.mjs';
 import {readMemoryState,readMemorySource,readMemoryOperation,applyMemoryCommand} from './memory-service.mjs';
 // Additive typed user memory commands; source purge and existing plans keep their contracts.
@@ -37,6 +38,6 @@ export function createFoundationFetchHandler(runtime){
    const text=await request.text();check(new TextEncoder().encode(text).length<=256,413,'request_too_large');let body;try{body=JSON.parse(text);}catch{throw new ApiError(422,'schema_invalid');}shape(body,[]);
    const result=await runtime.deleteChatSource(request.headers.get('authorization'),parts[4],parts[6]);
    return Response.json({schema_version:1,result},{headers:{'Cache-Control':'no-store'}});
-  }catch(e){return Response.json({schema_version:1,...parts[1]==='memory'?{contract:MEMORY_CONTRACT}:{},error:{code:e instanceof ApiError?e.code:'internal_error',retryable:e instanceof ApiError&&e.retryable===true,reconciliation_required:e instanceof ApiError?e.reconciliation:false}},{status:e instanceof ApiError?e.status:500,headers:{'Cache-Control':'no-store',...e instanceof ApiError&&e.retryAfterSec?{'Retry-After':String(e.retryAfterSec)}:{}}});}
+  }catch(e){return Response.json({schema_version:1,...parts[1]==='memory'?{contract:MEMORY_CONTRACT}:{},error:{code:e instanceof ApiError?e.code:'internal_error',retryable:e instanceof ApiError&&e.retryable===true,reconciliation_required:e instanceof ApiError?e.reconciliation:false,...e instanceof ApiError?retryAfterParts(e).body:{}}},{status:e instanceof ApiError?e.status:500,headers:{'Cache-Control':'no-store',...e instanceof ApiError?retryAfterParts(e).headers:{}}});}
  };
 }
