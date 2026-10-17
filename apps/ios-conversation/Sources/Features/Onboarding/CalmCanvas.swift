@@ -179,18 +179,14 @@ struct StartUsingCTA: View {
     private func content(sheen: Double?) -> some View {
         let shape = RoundedRectangle(cornerRadius: 28, style: .continuous)
         return ZStack {
-            shape.fill(
-                LinearGradient(
-                    colors: [CatpawColors.orbLight, CatpawColors.orbDeep],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            )
+            // first-run-polish: solid brand Deep fill (white label 4.79:1). The old orbLight→Primary gradient put the white
+            // label at 2.76:1. Orange stays a fill; the label is white (FirstRunAppearance.texts).
+            shape.fill(Color(UIColor(rgb: CatpawBrandTokens.deep)))
             if let sheen {
                 GeometryReader { geo in
                     let w = geo.size.width * 0.32
                     LinearGradient(
-                        colors: [CatpawColors.calmGlyph.opacity(0), CatpawColors.calmGlyph.opacity(0.38), CatpawColors.calmGlyph.opacity(0)],
+                        colors: [CatpawColors.calmGlyph.opacity(0), CatpawColors.calmGlyph.opacity(FirstRunAppearance.ctaSheenPeak), CatpawColors.calmGlyph.opacity(0)],
                         startPoint: .leading,
                         endPoint: .trailing
                     )
@@ -216,6 +212,38 @@ struct StartUsingCTA: View {
             }
         }
     }
+}
+
+/// first-run-polish: SwiftUI side of `FirstRunAppearance.transition` for the「开始使用」→ chat handoff.
+/// The splash plays its own exit (`NativeLoginView`), so no root change is required. For a fully continuous handoff the
+/// root gate (CatpawApp.primaryView) can additionally host it with two modifiers + one animation (see NOTES.md):
+///   NativeLoginView(...).firstRunHandoff(.splash)
+///   ConversationFirstView(...).firstRunHandoff(.chat)
+///   .animation(FirstRunMotion.animation(reduceMotion:), value: auth.needsOnboarding) on the container.
+enum FirstRunMotion {
+    enum Role { case splash, chat }
+    static func animation(reduceMotion: Bool) -> Animation {
+        switch FirstRunAppearance.transition(reduceMotion: reduceMotion) {
+        case .spring(let response, let damping): .spring(response: response, dampingFraction: damping)
+        case .crossfade(let duration): .easeInOut(duration: duration)
+        }
+    }
+    static func transition(_ role: Role, reduceMotion: Bool) -> AnyTransition {
+        if reduceMotion { return .opacity }
+        switch role {
+        case .splash: return .asymmetric(insertion: .opacity, removal: .opacity.combined(with: .scale(scale: 0.98)).combined(with: .offset(y: -10)))
+        case .chat: return .asymmetric(insertion: .opacity.combined(with: .offset(y: 12)), removal: .opacity)
+        }
+    }
+}
+private struct FirstRunHandoff: ViewModifier {
+    let role: FirstRunMotion.Role
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    func body(content: Content) -> some View { content.transition(FirstRunMotion.transition(role, reduceMotion: reduceMotion)) }
+}
+extension View {
+    /// Attach on the splash / chat branch of the root gate to get the spring (or Reduce Motion crossfade) handoff.
+    func firstRunHandoff(_ role: FirstRunMotion.Role) -> some View { modifier(FirstRunHandoff(role: role)) }
 }
 
 /// Live waveform: thin orange vertical bars following recent audio levels.

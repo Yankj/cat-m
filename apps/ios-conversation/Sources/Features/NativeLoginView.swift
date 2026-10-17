@@ -28,6 +28,9 @@ import UIKit
     /// Door-lock copy is never shown here. Transient network / model-route failures belong
     /// in-chat later. Hard session-restart and non-config auth errors can still surface.
     private var friendlyError: String? {
+        // first-run-polish: while「开始使用」is entering, a transient auth.error (e.g. the session-restart line set by a
+        // retried restore and cleared moments later) must not flash on the splash — only a terminal gate failure shows.
+        if busy || leaving { return gateFailure.flatMap { isConfigurationError ? nil : ui($0) } }
         let raw = gateFailure ?? auth.error
         guard let e = raw, !isConfigurationError else { return nil }
         if NativeAuthApplicationModel.isTransientConnectFailure(e) { return nil }
@@ -36,6 +39,8 @@ import UIKit
 
 
     @State private var shown = false
+    /// first-run-polish: splash-side exit (lift + fade) played before entering chat; reset if entry fails.
+    @State private var leaving = false
     @ObservedObject private var serif = EditorialSerif.shared
 
     private static let capabilities: [(icon: String, key: String)] = [
@@ -83,37 +88,39 @@ import UIKit
             }
         }
         .foregroundStyle(CatpawColors.ink)
+        .tint(CatpawColors.ink)                      // text buttons: ink, never orange text
+        .opacity(leaving ? 0 : 1)
+        .scaleEffect(leaving && !reduceMotion ? 0.98 : 1)
+        .offset(y: leaving && !reduceMotion ? -10 : 0)
+        .background(CatpawColors.background.ignoresSafeArea())   // = chat background: the handoff never flashes light/dark
         .onAppear {
             serif.ensure()
-            withAnimation(reduceMotion ? nil : .easeOut(duration: 0.55)) { shown = true }
+            // Wait for the launch mark to hand off, so both animations never compete for frames.
+            if !LaunchMarkView.isRunning { reveal() }
         }
+        .onReceive(NotificationCenter.default.publisher(for: LaunchMarkView.didFinish)) { _ in reveal() }
+        .onChange(of: gateFailure) { _, failure in if failure != nil { withAnimation(FirstRunMotion.animation(reduceMotion: reduceMotion)) { leaving = false } } }
         .accessibilityIdentifier("onboarding.pages")
         .overlay { if scene != .active || !UIApplication.shared.isProtectedDataAvailable { CatpawColors.background.ignoresSafeArea() } }
     }
 
+    private func reveal() {
+        guard !shown else { return }
+        withAnimation(reduceMotion ? .easeOut(duration: 0.2) : .spring(response: 0.5, dampingFraction: 0.9)) { shown = true }
+    }
+
+    /// Same adaptive page as chat (`CatpawColors.background`, system scheme). The warm wash lives in the ring only.
     private var landingBackground: some View {
-        ZStack {
-            CatpawColors.calmPage
-            RadialGradient(
-                colors: [
-                    CatpawColors.orbLight.opacity(0.28),
-                    CatpawColors.calmPeach.opacity(0.12),
-                    CatpawColors.calmPage.opacity(0),
-                ],
-                center: .center,
-                startRadius: 20,
-                endRadius: 420
-            )
-        }
-        .ignoresSafeArea()
-        .accessibilityHidden(true)
+        CatpawColors.background
+            .ignoresSafeArea()
+            .accessibilityHidden(true)
     }
 
     private var brandAndCopy: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(ui("Catpaw-m"))
                 .font(CatpawTypography.Role.secondary.font.weight(.semibold))
-                .foregroundStyle(CatpawColors.ink.opacity(0.72))
+                .foregroundStyle(CatpawColors.ink)
                 .accessibilityAddTraits(.isHeader)
                 .accessibilityIdentifier("onboarding.brand")
             Text(ui("你的个人 AI 助手"))
@@ -139,6 +146,11 @@ import UIKit
     /// Center glowing paw + dotted ring + 8 white chips (staggered entrance).
     private func capabilityRing(radius: CGFloat) -> some View {
         ZStack {
+            // Warm wash confined to the ring (peak FirstRunAppearance.washPeak; copy above/below sees ≤ its tail).
+            Circle()
+                .fill(RadialGradient(colors: [CatpawColors.orbLight.opacity(FirstRunAppearance.washPeak), CatpawColors.orbLight.opacity(0)], center: .center, startRadius: 20, endRadius: radius * 1.3))
+                .frame(width: radius * 2.6, height: radius * 2.6)
+                .allowsHitTesting(false)
             Circle()
                 .stroke(style: StrokeStyle(lineWidth: 1.2, dash: [3, 7]))
                 .foregroundStyle(CatpawColors.ink.opacity(0.12))
@@ -188,8 +200,14 @@ import UIKit
 
     private func start() {
         startTapped = true
-        // Hook for Grok Bot / auth gate: completes onboarding then enters main chat.
-        Task { if auth.needsOnboarding { await auth.completeOnboarding() } else { await auth.startExperience() } }
+        // first-run-polish: play the splash exit (spring lift + fade, or a plain crossfade under Reduce Motion) on the same
+        // background as chat, then complete onboarding; the root then swaps to chat with no light→dark cut.
+        withAnimation(FirstRunMotion.animation(reduceMotion: reduceMotion)) { leaving = true }
+        Task {
+            if auth.needsOnboarding { await auth.completeOnboarding() } else { await auth.startExperience() }
+            // Entry did not happen (the gate keeps the splash): bring it back so the error / retry is visible.
+            if auth.needsOnboarding { withAnimation(FirstRunMotion.animation(reduceMotion: reduceMotion)) { leaving = false } }
+        }
     }
 
     @ViewBuilder private var footer: some View {
@@ -292,7 +310,8 @@ struct CapabilityChip: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
-        .background(CatpawColors.calmSurface, in: Capsule())
+        .background(CatpawColors.card, in: Capsule())    // adaptive (white / #1C1B19); calmSurface was white in dark too
+        .overlay(Capsule().stroke(CatpawColors.hairline))
         .shadow(color: CatpawColors.calmShadow.opacity(0.08), radius: 8, y: 3)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(title)
@@ -308,16 +327,16 @@ struct CapabilityFloat: ViewModifier {
     private static let amplitudes: [CGFloat] = [4.0, 6.5, 3.2, 5.6, 7.0, 3.8, 5.0, 6.0]
     private static let periods: [Double] = [3.4, 4.2, 2.9, 3.9, 4.5, 3.1, 3.7, 2.8]
     private static let phases: [Double] = [0.0, 1.9, 4.1, 0.7, 3.3, 5.4, 2.6, 4.8]
+    @State private var up = false
+    // first-run-polish: a repeatForever implicit animation per chip (interpolated by SwiftUI's animation system, no view
+    // re-evaluation per frame) replaces eight 30 fps TimelineViews that re-ran the chip body every frame.
     func body(content: Content) -> some View {
-        if enabled {
-            TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { context in
-                let i = index % Self.periods.count
-                let t = context.date.timeIntervalSinceReferenceDate
-                let y = sin(t / Self.periods[i] * 2 * .pi + Self.phases[i]) * Self.amplitudes[i]
-                content.offset(y: CGFloat(y))
+        let i = index % Self.periods.count
+        content
+            .offset(y: enabled ? (up ? Self.amplitudes[i] : -Self.amplitudes[i]) : 0)
+            .onAppear {
+                guard enabled else { return }
+                withAnimation(.easeInOut(duration: Self.periods[i] / 2).repeatForever(autoreverses: true).delay(Self.phases[i] / 6)) { up = true }
             }
-        } else {
-            content
-        }
     }
 }
