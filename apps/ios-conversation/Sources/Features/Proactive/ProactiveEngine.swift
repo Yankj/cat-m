@@ -122,9 +122,9 @@ struct ProactiveSignal: Equatable, Sendable {
     private func park(owner: String) {
         var blobs: [String: Data] = [:]
         for k in quarantineBlobKeys { if let d = defaults.data(forKey: k) { blobs[k] = d } }
-        let items = syncQueue.extractAll()
+        let (items, dead) = syncQueue.extractSplit()   // p90i: dead letters parked apart, restored as dead letters
         let inbox = blobs[ProactiveLocalBackend.storageKey].flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] } ?? [:]
-        guard !inbox.isEmpty || !items.isEmpty else { return }   // nothing of that account to keep
+        guard !inbox.isEmpty || !items.isEmpty || !dead.isEmpty else { return }   // nothing of that account to keep
         // EventKit reminders the app created are outside the app: never deleted / edited here, listed for the user (#89).
         let ext = ProactiveParking.externalItems(inbox: inbox, reminderOps: pendingReminders.mapValues(\.operationID))
         if !ext.isEmpty {
@@ -134,7 +134,8 @@ struct ProactiveSignal: Equatable, Sendable {
         }
         var lot = ProactiveParking.Lot(defaults.dictionary(forKey: ProactiveParking.key))
         lot.park(account: owner, record: ["at": ProactiveClock.now().timeIntervalSince1970, "blobs": blobs, "localOnly": Array(localOnly),
-                                          "queue": (try? JSONEncoder().encode(items)) ?? Data(), "decision": "keep"])
+                                          "queue": (try? JSONEncoder().encode(items)) ?? Data(),
+                                          "dead": (try? JSONEncoder().encode(dead)) ?? Data(), "decision": "keep"])
         defaults.set(lot.raw, forKey: ProactiveParking.key)
         note("parked \(inbox.count) card(s) / \(items.count) unsynced op(s) of \(owner); restored when it signs in again")
     }
@@ -160,6 +161,8 @@ struct ProactiveSignal: Equatable, Sendable {
             localOnly = localOnly.union(r["localOnly"] as? [String] ?? [])
             let items = (r["queue"] as? Data).flatMap { try? JSONDecoder().decode([CatpawPersistentQueue<SyncOp>.Item].self, from: $0) } ?? []
             syncQueue.reinstate(items, account: account); ops += items.count   // only items stamped with this account (or unstamped)
+            let dead = (r["dead"] as? Data).flatMap { try? JSONDecoder().decode([CatpawPersistentQueue<SyncOp>.Item].self, from: $0) } ?? []
+            syncQueue.reinstateDead(dead, account: account)   // p90i 08:57: stay dead, flagged for the user, never retried
         }
         let all = ProactiveLocalBackend.load()
         for s in all.values { ProactiveSuggestionStore.shared.adopt(s) }
@@ -170,6 +173,11 @@ struct ProactiveSignal: Equatable, Sendable {
     private var externalStore: [String: [ProactiveParking.ExternalItem]] {
         get { defaults.data(forKey: ProactiveParking.externalKey).flatMap { try? JSONDecoder().decode([String: [ProactiveParking.ExternalItem]].self, from: $0) } ?? [:] }
         set { defaults.set(try? JSONEncoder().encode(newValue), forKey: ProactiveParking.externalKey) }
+    }
+    /// p90i: the signed-in account's restored dead letters awaiting the user's retry / discard (no UI yet).
+    func syncNeedingConfirmation() -> [CatpawPersistentQueue<SyncOp>.Item] {
+        guard let a = AccountEpoch.shared.currentAccount else { return [] }
+        return syncQueue.needingConfirmation(account: a)
     }
     /// EventKit items of `account` awaiting the user's decision (#89's list). #90 never removes entries itself.
     func externalPendingDecision(for account: String) -> [ProactiveParking.ExternalItem] { externalStore[account.lowercased()] ?? [] }
@@ -189,7 +197,8 @@ struct ProactiveSignal: Equatable, Sendable {
     /// Read-only views for #89's decision UI and tests.
     func parkedOps(for account: String) -> [SyncOp]? {
         guard let recs = ProactiveParking.Lot(defaults.dictionary(forKey: ProactiveParking.key)).slots[account.lowercased()] else { return nil }
-        return recs.flatMap { r in (r["queue"] as? Data).flatMap { try? JSONDecoder().decode([CatpawPersistentQueue<SyncOp>.Item].self, from: $0) }?.map(\.op) ?? [] }
+        let dec = { (d: Any?) in (d as? Data).flatMap { try? JSONDecoder().decode([CatpawPersistentQueue<SyncOp>.Item].self, from: $0) }?.map(\.op) ?? [] }
+        return recs.flatMap { dec($0["queue"]) + dec($0["dead"]) }
     }
     func parkedInbox(for account: String) -> [String: Any] {
         let recs = ProactiveParking.Lot(defaults.dictionary(forKey: ProactiveParking.key)).slots[account.lowercased()] ?? []
