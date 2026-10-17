@@ -22,7 +22,7 @@ struct ConversationStarterPrompt: Identifiable, Equatable, Sendable {
 enum ConversationStarterPrompts {
     static let schedule = ConversationStarterPrompt(id: "schedule", title: "今天的日程", prompt: "帮我看看今天的日程，有什么要提前准备？", symbol: "calendar", capability: .calendarRead)
     static let reminder = ConversationStarterPrompt(id: "reminder", title: "设个提醒", prompt: "明天上午 10 点提醒我给客户回电话", symbol: "bell", capability: .reminderCreate)
-    static let meeting = ConversationStarterPrompt(id: "meeting", title: "加个会议", prompt: "1 小时后在望京 SOHO 开评审会，帮我加进日历", symbol: "calendar.badge.plus", capability: .calendarCreate)
+    static let meeting = ConversationStarterPrompt(id: "meeting", title: "加个会议", prompt: "1 小时后在望京 SOHO 开评审会，加进日历", symbol: "calendar.badge.plus", capability: .calendarCreate)
     static let nearby = ConversationStarterPrompt(id: "nearby", title: "附近咖啡馆", prompt: "附近有哪些适合办公的咖啡馆？", symbol: "cup.and.saucer", capability: .nearbyPlaces)
     static let breakdown = ConversationStarterPrompt(id: "breakdown", title: "拆解任务", prompt: "把「下周上线新版本」拆成待办清单", symbol: "checklist", capability: .taskBreakdown)
     static let writing = ConversationStarterPrompt(id: "writing", title: "起草周报", prompt: "帮我起草周报：本周进展、风险、下周计划", symbol: "doc.text", capability: .writing)
