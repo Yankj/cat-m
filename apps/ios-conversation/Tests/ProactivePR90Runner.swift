@@ -663,6 +663,35 @@ func pr90i_feedbackGateOnlyLocal() {
     check(ProactiveRules.prescheduleDecision(cloud: nil, leadMinutes: 10, gate: down) == nil && calls == 1, "preschedule: local level gated")
 }
 
+// p90i (Grok Bot 08:57): parking keeps dead letters as dead letters; restoring them to the owner never retries them —
+// they stay dead, flagged as needing the user's confirmation. Live ops restore and sync as before.
+@MainActor func pr90i_deadLettersStayDeadOnRestore() async {
+    let kv = MemKV(); var t = at("2026-10-15T04:00:00Z")
+    let q = CatpawPersistentQueue<SyncOp>(name: "dlr", store: kv, maxAttempts: 2, baseDelay: 1)
+    q.enqueue(SyncOp(local: "s1", action: "snooze"), key: "dead-1", account: "A", group: "s1", now: t)
+    q.enqueue(SyncOp(local: "s2", action: "dismiss"), key: "live-1", account: "A", group: "s2", now: t)
+    for _ in 0..<2 { _ = await q.drain(now: t, account: "A") { op in op.local == "s1" ? .retry : .retry }; t = t.addingTimeInterval(60) }
+    // s1 dead after 2 attempts; s2 also dead → re-enqueue a fresh live op so one live and one dead are parked.
+    q.enqueue(SyncOp(local: "s3", action: "dismiss"), key: "live-2", account: "A", group: "s3", now: t)
+    let parked = q.extractSplit()
+    check(parked.live.map(\.key) == ["live-2"] && Set(parked.dead.map(\.key)) == ["dead-1", "live-1"], "extract keeps live and dead apart (\(parked.live.map(\.key)) / \(parked.dead.map(\.key)))")
+    check(q.items.isEmpty && q.deadLetters.isEmpty, "nothing left behind")
+    q.reinstate(parked.live, account: "A"); q.reinstateDead(parked.dead, account: "A")
+    check(q.items.map(\.key) == ["live-2"], "live op pending again")
+    check(Set(q.deadLetters.map(\.key)) == ["dead-1", "live-1"], "dead letters stay dead letters")
+    check(Set(q.needingConfirmation(account: "a").map(\.key)) == ["dead-1", "live-1"] && q.needingConfirmation(account: "B").isEmpty, "flagged for the owner's confirmation only")
+    var sent: [String] = []
+    t = t.addingTimeInterval(86_400)
+    _ = await q.drain(now: t, account: "A") { op in sent.append(op.local); return .done }
+    check(sent == ["s3"], "only the live op is sent, never a dead letter, past any backoff (\(sent))")
+    q.enqueue(SyncOp(local: "s1", action: "dismiss"), key: "after-1", account: "A", group: "s1", now: t)
+    _ = await q.drain(now: t, account: "A") { op in sent.append(op.local + ":" + op.action); return .done }
+    check(!sent.contains("s1:dismiss"), "the dead op's group stays poisoned — no later op of it overtakes the dead one")
+    // Survives a reload and is never pruned while it awaits confirmation.
+    let r = CatpawPersistentQueue<SyncOp>(name: "dlr", store: kv, maxAttempts: 2, baseDelay: 1)
+    check(Set(r.needingConfirmation(account: "A").map(\.key)).isSuperset(of: ["dead-1", "live-1"]), "flag persisted")
+}
+
 @main enum ProactivePR90Runner {
     static func main() async {
         pr90_3_prescheduleSharesDecisionAndQuota()
@@ -683,7 +712,7 @@ func pr90i_feedbackGateOnlyLocal() {
         pr90h_cloudIdentity()
         pr90f_quarantine(); pr90f_quarantineQueue(); await pr90f_purgeDeadLetters(); await pr90f_snoozeAwaitsAdd(); pr90f_clock(); pr90f_wire(); pr90f_golden()
         pr90g_quarantinePerRecord(); pr90g_restoreVisible(); pr90g_roundTrip()
-        pr90i_rules(); pr90i_feedbackGateOnlyLocal()
+        pr90i_rules(); pr90i_feedbackGateOnlyLocal(); await pr90i_deadLettersStayDeadOnRestore()
         print(failures == 0 ? "PR90 proactive: all passed" : "PR90 proactive: \(failures) failed"); exit(failures == 0 ? 0 : 1)
     }
 }
