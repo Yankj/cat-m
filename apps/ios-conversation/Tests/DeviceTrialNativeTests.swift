@@ -351,7 +351,7 @@ final class DeviceTrialNativeTests: XCTestCase {
   XCTAssertEqual(try Data(contentsOf:resource),bytes)
  }
  func testEdgePrefixAndModernPublicHeaderInsideNativeApp() throws {
-  let base = URL(string:"https://dbyklgxdvjbutxzsjeth.supabase.co/functions/v1/catpaw-agent")!,key = "sb_publishable_native_public_fixture_1234567890"
+  let base = URL(string:"https://dbyklgxdvjbutxzsjeth.supabase.co/functions/v1/catpaw-agent")!,key = "sb_publishable_synthetic_region_12345"
   let config = try NativeChatConfiguration(origin:base,localScope:Profiles.user,serverScopeID:UUID(),publishableKey:key)
   let request = try config.makeRequest(route:"/readyz",authorization:"Bearer native-unit-user-token")
   XCTAssertEqual(request.url?.absoluteString,base.absoluteString+"/readyz");XCTAssertEqual(request.value(forHTTPHeaderField:"apikey"),key);XCTAssertEqual(request.value(forHTTPHeaderField:"Authorization"),"Bearer native-unit-user-token")
