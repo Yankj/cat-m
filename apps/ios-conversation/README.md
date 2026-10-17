@@ -11,3 +11,6 @@ NoBug B slice (meeting leave_at): inject a 望京 meeting from **设置 › 调�
 - Lead minutes write a real memory row in **设置 › 记忆** (not UserDefaults).
 - Out of demo script: phone/shop chains, prod DB migrations, Widget/CLMonitor/auto-SMS.
 
+## Known risks (v1)
+
+- Proactive suggestion data — the inbox (`catpaw.proactive.inbox.v1`), attendees (`catpaw.proactive.attendees.v1`, names and phone numbers), pending reminders (`catpaw.proactive.suggestions.v1`) and parked records — is stored as **plaintext UserDefaults** (iOS data protection only, no L2 encryption). Memory content is still encrypted at rest in `L2SecureStore`. On sign-out this data is parked under the leaving account and never shown to the next one. v1.1 migrates it to `L2SecureStore`.
