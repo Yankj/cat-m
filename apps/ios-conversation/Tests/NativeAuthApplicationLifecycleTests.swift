@@ -904,7 +904,8 @@ final class NativeAuthApplicationLifecycleTests:XCTestCase {
         XCTAssertTrue(app.needsOnboarding,"the tap still fails on an unrecoverable session (unchanged)")
         // The sign-in sheet finishes: a valid session now exists on the manager.
         try storage.setSignedOut(false);try await manager.startExperience()
-        XCTAssertEqual((await manager.snapshot()).phase,.authenticated)
+        let signedInPhase=await manager.snapshot().phase   // await cannot sit inside the XCTAssert autoclosure
+        XCTAssertEqual(signedInPhase,.authenticated)
         await app.completeOnboardingAfterSignIn()
         XCTAssertFalse(app.needsOnboarding,"a completed sign-in opens the gate")
         XCTAssertEqual(app.chat?.trustedSubjectID,subject,"onto the signed-in account's own chat")
