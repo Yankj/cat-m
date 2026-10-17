@@ -640,6 +640,50 @@ final class NativeAuthApplicationLifecycleTests:XCTestCase {
         await app.signOut()
     }
 
+    /// Opening-stall fix (19:41 iPhone 13, 5c84a911): with no account chat the shell's wait is staged and bounded —
+    /// 「仍在连接…」 plus one recovery kick at launchSlowAfter, then the retry capsule at launchStallAfter; 「重试」 restarts it.
+    @MainActor func testLaunchShellWaitIsBoundedSlowThenStalledThenRetry() async throws {
+        let root=FileManager.default.temporaryDirectory.appendingPathComponent("native-launch-stall-"+UUID().uuidString,isDirectory:true)
+        defer {try? FileManager.default.removeItem(at:root)}
+        let slow=NativeAuthApplicationModel.launchSlowAfter,stall=NativeAuthApplicationModel.launchStallAfter
+        NativeAuthApplicationModel.launchSlowAfter=0.05;NativeAuthApplicationModel.launchStallAfter=0.15
+        defer {NativeAuthApplicationModel.launchSlowAfter=slow;NativeAuthApplicationModel.launchStallAfter=stall}
+        let scope=UUID(),subject=UUID(),clock=LifecycleClock(),storage=LifecycleStorage(),configuration=try lifecycleConfiguration(scope:scope)
+        let remote=LifecycleRemote(issuer:configuration.issuer,subject:subject,clock:clock)
+        try storage.save(.init(issuer:configuration.issuer,user:.init(id:subject),accessToken:"offline.lifecycle.signature",refreshToken:"synthetic-lifecycle-only",expiresAt:clock.now().addingTimeInterval(-60)))
+        let manager=NativeAuthSessionManager(configuration:configuration,remote:remote,vault:storage,barrier:storage,now:{clock.now()})
+        let resolver=LifecycleWorkspaceResolver(subject:subject,scope:scope,steps:[.success,.success])
+        let app=NativeAuthApplicationModel(configuration:configuration,manager:manager,vault:storage,barrier:storage,root:root,workspaceResolver:resolver,retrySchedule:.init(nominalSeconds:[0],jitter:{$0}))
+        // The token rotation hangs (the 19:41 shape: no account chat, no answer) — the shell must not spin forever.
+        let startup=Task {await app.start()}
+        try await waitUntil {await remote.refreshIsPending()}
+        XCTAssertNil(app.chat)
+        let watchdog=Task {await app.launchWatchdog()}
+        try await waitUntil {app.launchSlow}
+        XCTAssertFalse(app.launchChatStalled,"slow first: 「仍在连接…」, recovery kicked once")
+        await watchdog.value
+        XCTAssertTrue(app.launchChatStalled,"bounded: the retry capsule replaces the spinner")
+        let attempt=app.launchAttempt
+        app.retryLaunchChat()
+        XCTAssertFalse(app.launchChatStalled);XCTAssertFalse(app.launchSlow);XCTAssertEqual(app.launchAttempt,attempt+1)
+        // When the account chat finally attaches, every stall flag clears.
+        await remote.releaseRefresh()
+        await startup.value
+        try await waitUntil {app.chat != nil}
+        XCTAssertFalse(app.launchChatStalled);XCTAssertFalse(app.launchSlow)
+        await app.signOut()
+    }
+
+    /// Opening-stall fix: the shell overlay runs the watchdog per attempt and has the retry capsule (source contract).
+    func testLaunchShellOverlayHasWatchdogAndRetry() throws {
+        let source=URL(fileURLWithPath:#filePath).deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("Sources/App/CatpawApp.swift")
+        let text=try String(contentsOf:source,encoding:.utf8)
+        XCTAssertTrue(text.contains(".task(id:auth.launchAttempt) { await auth.launchWatchdog() }"))
+        XCTAssertTrue(text.contains("else if auth.launchChatStalled { LaunchOpenFailedCapsule(auth:auth)"))
+        XCTAssertTrue(text.contains("accessibilityIdentifier(\"launch.retryOpen\")"))
+        XCTAssertTrue(text.contains("ConversationFirstModel.endInputComposition ="),"the IME fix has its composition-ending hook")
+    }
+
     /// Launch-loader fix: 开始使用 / startExperience racing the launch restore gets `.busy` from the manager. That is a
     /// transient state — it must never be mistaken for an ambiguous credential (the old 「这次会话需要重新开始」 flash).
     @MainActor func testStartExperienceDuringLaunchRestoreIsTransientNotARestart() async throws {

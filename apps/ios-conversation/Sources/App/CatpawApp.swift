@@ -219,6 +219,8 @@ import AppIntents
         ConversationFirstView(model:model,accountLabel:auth.isFixture ? ui("合成登录测试 · 无真实 Auth/模型") : (auth.state.user?.isAnonymous == true ? ui("体验账号") : auth.state.user?.email),onSignOut:{ CatpawLeaveActivity.stopAll(); Task { let l2User=auth.state.user?.id; await auth.requestSignOut { AccountLocalData.signOut(userID:l2User); if let l2User { L2SecureStore.wipe(userID:l2User) } } } },isAnonymousAccount:auth.state.user?.isAnonymous == true)
             // p89i: one shared confirmation UI for parked items of the leaving account (#89/#90/#91 sources).
             .onAppear { auth.attachParkedPrompt() }
+            // IME fix: a deferred 新对话 commits the marked text by ending editing (resigning the composer).
+            .onAppear { ConversationFirstModel.endInputComposition = { UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder),to:nil,from:nil,for:nil) } }
             .sheet(isPresented:Binding(get:{ !auth.parkedPrompt.isEmpty }, set:{ if !$0 && !auth.parkedPrompt.isEmpty { auth.resolveParked([:]) } })) {
                 AccountParkedDecisionSheet(items:auth.parkedPrompt) { auth.resolveParked($0) }
             }
@@ -290,8 +292,9 @@ private struct LaunchStatusOverlay:View {
         ZStack(alignment:.top) {
             Color.clear.frame(width:1,height:1).accessibilityElement().accessibilityIdentifier("onboarding.enteringChat")
             if auth.sessionRestartNeeded { SessionRestartCapsule(auth:auth).padding(.top,52) }
+            else if auth.launchChatStalled { LaunchOpenFailedCapsule(auth:auth).padding(.top,52) }
             else if late {
-                HStack(spacing:8) { ProgressView().controlSize(.small); Text(ui("正在打开对话…")).font(CatpawTypography.Role.caption.font.weight(.medium)) }
+                HStack(spacing:8) { ProgressView().controlSize(.small); Text(ui(auth.launchSlow ? "仍在连接，请稍候…" : "正在打开对话…")).font(CatpawTypography.Role.caption.font.weight(.medium)) }
                     .foregroundStyle(CatpawColors.ink)
                     .padding(.horizontal,12).padding(.vertical,8)
                     .background(CatpawColors.panel,in:Capsule())
@@ -302,6 +305,29 @@ private struct LaunchStatusOverlay:View {
             }
         }
         .task { try? await Task.sleep(nanoseconds:300_000_000); withAnimation(.easeOut(duration:0.2)) { late=true } }
+        // Opening-stall fix: bounded — 「仍在连接…」 + one recovery kick at launchSlowAfter, retry capsule at launchStallAfter.
+        .task(id:auth.launchAttempt) { await auth.launchWatchdog() }
+    }
+}
+/// Opening-stall fix: the account chat did not attach in time. Small, non-blocking, with an explicit retry.
+private struct LaunchOpenFailedCapsule:View {
+    @ObservedObject var auth:NativeAuthApplicationModel
+    @Environment(\.locale) private var locale
+    private func ui(_ key:String)->String { AppLanguage(locale:locale).ui(key) }
+    var body:some View {
+        HStack(spacing:8) {
+            Image(systemName:"exclamationmark.circle")
+            Text(ui("对话没能打开")).font(CatpawTypography.Role.caption.font.weight(.medium))
+            Button { auth.retryLaunchChat() } label: { Text(ui("重试")).font(CatpawTypography.Role.caption.font.weight(.semibold)) }
+                .buttonStyle(.plain).frame(minHeight:44)
+                .accessibilityIdentifier("launch.retryOpen")
+        }
+        .foregroundStyle(CatpawColors.ink)
+        .padding(.horizontal,12).padding(.vertical,4)
+        .background(CatpawColors.panel,in:Capsule())
+        .shadow(color:.black.opacity(0.08),radius:8,y:2)
+        .accessibilityElement(children:.contain)
+        .accessibilityIdentifier("launch.openFailed")
     }
 }
 /// Non-blocking 「这次会话需要重新开始」 notice with the explicit restart action (same semantics as the login page button).

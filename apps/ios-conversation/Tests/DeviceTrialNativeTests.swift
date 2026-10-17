@@ -142,7 +142,24 @@ final class DeviceTrialNativeTests: XCTestCase {
   let (model,_,service,_)=try makeP0Model();await model.start();let original=model.conversationID,other=try await service.create(scope:Profiles.user)
   model.editDraft("Synthetic composing draft");model.updateInputComposition(true)
   do { try await model.select(other);XCTFail("Active marked draft cannot switch conversation") } catch ConversationSessionError.busy { }
-  model.newConversation();XCTAssertEqual(model.conversationID,original);XCTAssertEqual(model.draft,"Synthetic composing draft");model.updateInputComposition(false);await model.deactivate()
+  model.newConversation();XCTAssertEqual(model.conversationID,original);XCTAssertEqual(model.draft,"Synthetic composing draft");model.updateInputComposition(false)
+  // IME fix: the 新对话 tapped while composing is deferred, not dropped — it opens once composition ends.
+  for _ in 0..<200 where model.conversationID == original { try await Task.sleep(nanoseconds:10_000_000) }
+  XCTAssertNotEqual(model.conversationID,original,"新对话 during marked text opens after the composition ends");await model.deactivate()
+ }
+
+ @MainActor func testNewConversationDuringCompositionEndsCompositionAndProceedsWithinGrace() async throws {
+  let (model,_,_,_)=try makeP0Model();await model.start();let original=model.conversationID
+  var ended=0;ConversationFirstModel.endInputComposition={ended+=1};defer{ConversationFirstModel.endInputComposition=nil}
+  let grace=ConversationFirstModel.newConversationCompositionGrace;ConversationFirstModel.newConversationCompositionGrace=0.05;defer{ConversationFirstModel.newConversationCompositionGrace=grace}
+  model.editDraft("你");model.updateInputComposition(true)
+  model.newConversation();model.newConversation()
+  XCTAssertEqual(ended,1,"composition is ended once; a second tap does not queue a second 新对话")
+  // The IME never reports the end: the grace fallback still proceeds instead of silently dropping the action.
+  for _ in 0..<200 where model.conversationID == original { try await Task.sleep(nanoseconds:10_000_000) }
+  XCTAssertNotEqual(model.conversationID,original)
+  XCTAssertFalse(model.isInputComposing)
+  await model.deactivate()
  }
 
  @MainActor func testP0BackgroundBeforeAdmissionPreservesOriginalPendingIntent() async throws {
