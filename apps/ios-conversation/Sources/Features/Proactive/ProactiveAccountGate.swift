@@ -101,6 +101,12 @@ enum ProactiveQuarantine {
     /// Codex PR90g #1: ownership is proven per record. `stamps[id]`: the accounts stamped on that record's own queued
     /// write-backs (nil = unstamped); `confirmed`: records whose own server id the cloud returned for the current
     /// account. A record is released only on its own evidence; everything else stays quarantined.
+    /// p90i (09:01): which queued items a release moves where. A released record's live ops go back to pending, its dead
+    /// letters back to the dead letters (flagged, never retried); unreleased records keep both, still apart.
+    static func partition<T>(live: [T], dead: [T], released: Set<String>, record: (T) -> String) -> (live: [T], dead: [T], restLive: [T], restDead: [T]) {
+        (live.filter { released.contains(record($0)) }, dead.filter { released.contains(record($0)) },
+         live.filter { !released.contains(record($0)) }, dead.filter { !released.contains(record($0)) })
+    }
     static func releasable(ids: [String], stamps: [String: [String?]], confirmed: Set<String>, current: String?) -> Set<String> {
         guard let current else { return [] }
         return Set(ids.filter { id in
