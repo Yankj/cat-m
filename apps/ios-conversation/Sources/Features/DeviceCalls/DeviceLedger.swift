@@ -219,12 +219,13 @@ enum DeviceEventKitRule {
     private let ledger: DeviceLedger
     init(ledger: DeviceLedger? = nil) { self.ledger = ledger ?? .shared }
     func parkedItems(account: String) -> [AccountParkedItem] {
-        ledger.entries(account: account).map { AccountParkedItem(source: Self.key, key: $0.id, title: ($0.kind == .reminder ? "本机提醒「" : "本机日程「") + $0.title + "」", detail: "可撤销记录") }
+        // EXTERNAL effect (an EventKit item Catpaw created) → the user decides keep vs undo (automatic = nil).
+        ledger.entries(account: account).map { AccountParkedItem(source: Self.key, key: $0.id, title: ($0.kind == .reminder ? "本机提醒「" : "本机日程「") + $0.title + "」", detail: $0.due.map { $0.formatted(date: .abbreviated, time: .shortened) } ?? "") }
     }
     func apply(_ decision: AccountParkedDecision, to item: AccountParkedItem, account: String) async -> String {
         switch decision {
-        case .keep: return "kept for this account (hidden until it signs in again)"
-        case .cancel: ledger.forget(callID: item.key, account: account); return "removed from Catpaw's list; the system item is left untouched (no authority after logout)"
+        case .keep: return "system item kept; entry parked for this account (hidden until it signs in again)"
+        case .cancel: return await ledger.undoLeaving(callID: item.key, account: account)
         }
     }
 }
@@ -349,6 +350,18 @@ enum DeviceEventKitRule {
         entries.removeAll { $0.id == callID && $0.account == account }; save()
         DeviceCreationReceipts.shared.forget(callID: callID, account: account)
     }
+    /// The user chose 撤销 for a leaving account's item: delete it ONLY if it is the proven original (same rule as undo);
+    /// anything unprovable is kept (default keep) and the entry stays parked so the candidates can be shown on return.
+    func undoLeaving(callID: String, account: String) async -> String {
+        guard let entry = entries.first(where: { $0.id == callID && $0.account == account && !$0.undone }) else { return "entry gone" }
+        let plan = await items.prepareRemoval(kind: entry.kind, itemID: entry.itemID, callID: entry.id, identity: entry.saved)
+        guard case .ready(let apply) = plan else { return "not provable → system item kept, entry parked" }
+        switch apply() {
+        case .removed: forget(callID: callID, account: account); return "proven original deleted from the system"
+        case .removeFailed: return "delete failed → kept, entry parked"
+        default: return "not provable → system item kept, entry parked"
+        }
+    }
     /// Explicit full purge (account deletion); not called on logout.
     func signOut(account: String?) {
         guard let account else { return }
@@ -454,7 +467,7 @@ enum DeviceEventKitRule {
                     ForEach(items) { item in
                         Picker(selection: Binding(get: { choice[item.id] ?? .keep }, set: { choice[item.id] = $0 })) {
                             Text(ui("保留")).tag(AccountParkedDecision.keep)
-                            Text(ui("取消")).tag(AccountParkedDecision.cancel)
+                            Text(ui("撤销")).tag(AccountParkedDecision.cancel)
                         } label: {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(item.title).font(CatpawTypography.Role.body.font)
@@ -463,13 +476,13 @@ enum DeviceEventKitRule {
                         }
                         .accessibilityIdentifier("parked." + item.id)
                     }
-                } footer: { Text(ui("已退出登录，这些操作不会再以该账号执行。保留：下次用同一账号登录时再处理；取消：现在放弃。")) }
+                } footer: { Text(ui("这些是 Catpaw 在本机日历、提醒事项里创建的内容。保留：留在系统里；撤销：仅删除能确认是 Catpaw 创建的那一项，无法确认的会保留。")) }
             }
-            .navigationTitle(ui("还有未完成的事项")).navigationBarTitleDisplayMode(.inline)
+            .navigationTitle(ui("要保留本机日程和提醒吗？")).navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button(ui("全部保留")) { done([:]) } }
                 ToolbarItem(placement: .confirmationAction) { Button(ui("完成")) { done(choice) } }
-                ToolbarItem(placement: .bottomBar) { Button(ui("全部取消"), role: .destructive) { done(Dictionary(uniqueKeysWithValues: items.map { ($0.id, .cancel) })) } }
+                ToolbarItem(placement: .bottomBar) { Button(ui("全部撤销"), role: .destructive) { done(Dictionary(uniqueKeysWithValues: items.map { ($0.id, .cancel) })) } }
             }
         }
         .interactiveDismissDisabled(false)

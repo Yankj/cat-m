@@ -81,8 +81,11 @@ public final class AccountEpoch: @unchecked Sendable {
 /// Deterministic logout / account-switch order (the ONLY order; #90/#91 adopt it instead of their own logout paths):
 ///   1. synchronous `AccountEpoch` bump (+ credentials die) — nothing can commit under the leaving account from here;
 ///   2. `AccountParkedItems.collect(account: leaving)` — every source lists its parked items (in key order);
-///   3. user decision per item (`Decider`, one shared confirmation UI); no decider (passive invalidation, tests) or no
-///      answer for an item → `.keep` (the safe default), and that is logged — never a silent cancel or continue;
+///   3. decision per item: the app's OWN data (chats, proactive cards/snoozes, feedback posts, ledger bookkeeping, queued
+///      UI decisions, network tasks) carries an `automatic` decision — parked/isolated under the old account, never run
+///      under the new one, never silently deleted, no prompt. Only items with EXTERNAL effects (EventKit events/reminders
+///      the app created) have `automatic == nil` and go to the user (`Decider`, one shared UI); no decider (passive
+///      invalidation, account switch, tests) or no answer → `.keep`. Every decision is logged;
 ///   4. `apply` per item, in collect order, each returns a log line;
 ///   5. `AccountChangeObservers.notify(previous:current:)` cleanups (unchanged API).
 /// Semantics: `.keep` = the item stays parked for that account (not executed, not deleted) and is offered again when the
@@ -90,9 +93,12 @@ public final class AccountEpoch: @unchecked Sendable {
 /// authority, and says so in its log line.
 public struct AccountParkedItem: Sendable, Equatable, Identifiable {
     public let source: String; public let key: String; public let title: String; public let detail: String
+    /// nil = external effect → the user decides; otherwise the source's automatic decision (app-internal data).
+    public let automatic: AccountParkedDecision?
     public var id: String { source + "/" + key }
-    public init(source: String, key: String, title: String, detail: String = "") { self.source = source; self.key = key; self.title = title; self.detail = detail }
+    public init(source: String, key: String, title: String, detail: String = "", automatic: AccountParkedDecision? = nil) { self.source = source; self.key = key; self.title = title; self.detail = detail; self.automatic = automatic }
 }
+/// keep = leave it (parked for that account / external item left in place); cancel = cancel it, or undo the external effect.
 public enum AccountParkedDecision: String, Sendable, Equatable { case keep, cancel }
 @MainActor public protocol AccountParkedItemSource: AnyObject {
     /// Items `account` still has in this subsystem. Called AFTER the epoch bump; must not re-grant anything.
@@ -112,7 +118,7 @@ public enum AccountParkedDecision: String, Sendable, Equatable { case keep, canc
     /// Step 2. Items are tagged with their registration key as `source`.
     public static func collect(account: String?) -> [AccountParkedItem] {
         guard let account else { return [] }
-        return registeredKeys.flatMap { k in (sources[k]?.parkedItems(account: account) ?? []).map { AccountParkedItem(source: k, key: $0.key, title: $0.title, detail: $0.detail) } }
+        return registeredKeys.flatMap { k in (sources[k]?.parkedItems(account: account) ?? []).map { AccountParkedItem(source: k, key: $0.key, title: $0.title, detail: $0.detail, automatic: $0.automatic) } }
     }
     /// Steps 2–4. Call only AFTER the synchronous epoch bump. Returns the log lines (also written to `sink`).
     @discardableResult public static func resolve(account: String?, decider: Decider?) async -> [String] {
@@ -120,12 +126,15 @@ public enum AccountParkedDecision: String, Sendable, Equatable { case keep, canc
         let items = collect(account: account)
         guard !items.isEmpty else { return [] }
         var lines = ["parked: \(items.count) item(s) for leaving account"]
-        let answers: [String: AccountParkedDecision]
-        if let decider { answers = await decider(items) } else { answers = [:]; lines.append("no decider → default keep") }
+        let ask = items.filter { $0.automatic == nil }
+        var answers: [String: AccountParkedDecision] = [:]
+        if !ask.isEmpty {
+            if let decider { answers = await decider(ask) } else { lines.append("no decider → external items default keep") }
+        }
         for item in items {
-            let d = answers[item.id] ?? .keep
+            let d = item.automatic ?? answers[item.id] ?? .keep
             let effect = await sources[item.source]?.apply(d, to: item, account: account) ?? "source gone"
-            lines.append("\(item.id) \(d.rawValue): \(effect)")
+            lines.append("\(item.id) \(d.rawValue)\(item.automatic != nil ? " (auto)" : ""): \(effect)")
         }
         lines.forEach(log)
         return lines

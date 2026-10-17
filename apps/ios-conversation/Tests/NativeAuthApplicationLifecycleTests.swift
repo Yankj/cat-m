@@ -65,21 +65,22 @@ final class NativeAuthApplicationLifecycleTests:XCTestCase {
             order.append("decide");seenItems=items
             XCTAssertNil(AccountEpoch.shared.currentAccount,"1. the epoch was bumped synchronously BEFORE the decision")
             XCTAssertFalse(DeviceCallGate.isLive(call.call_id),"…and the grant is already dead")
-            // per-item: cancel the running device call, keep the ledger entry
-            return ["\(DeviceCallParkedSource.key)/running:\(call.call_id)":.cancel]
+            XCTAssertTrue(items.allSatisfy { $0.automatic == nil })
+            // only the EXTERNAL item (EventKit entry Catpaw created) is asked; the user picks 撤销
+            return ["\(DeviceLedgerParkedSource.key)/\(rec.call_id)":.cancel]
         }
         await app.signOut()
         XCTAssertEqual(order,["decide","observers"],"deterministic order: decision → apply → observers")
-        XCTAssertEqual(seenItems.map(\.source),[DeviceCallParkedSource.key,DeviceLedgerParkedSource.key],"2. collected from every registered source, key order")
-        XCTAssertEqual(callStore.phase(call.call_id),DeviceCallStore.Phase.expired,"cancel → card expired, never restored")
-        XCTAssertEqual(ledger.entries(account:account).map(\.id),[rec.call_id],"keep (no answer) → ledger entry retained for that account, not silently cleared")
+        XCTAssertEqual(seenItems.map(\.source),[DeviceLedgerParkedSource.key],"only the external EventKit item is asked; app-internal items are automatic")
+        XCTAssertEqual(callStore.phase(call.call_id),DeviceCallStore.Phase.running,"in-flight EventKit write → parked automatically (not run, not deleted)")
+        XCTAssertEqual(ledger.entries(account:account).map(\.id),[rec.call_id],"撤销 of an unprovable item → system item kept, entry parked (never a guess)")
         XCTAssertEqual(lines.first,"parked: 2 item(s) for leaving account")
-        XCTAssertTrue(lines.contains("\(DeviceCallParkedSource.key)/running:\(call.call_id) cancel: revoked + card expired"))
-        XCTAssertTrue(lines.contains { $0.hasPrefix("\(DeviceLedgerParkedSource.key)/\(rec.call_id) keep:") })
+        XCTAssertTrue(lines.contains { $0.hasPrefix("\(DeviceCallParkedSource.key)/running:\(call.call_id) keep (auto):") })
+        XCTAssertTrue(lines.contains("\(DeviceLedgerParkedSource.key)/\(rec.call_id) cancel: not provable → system item kept, entry parked"))
         // no decider (passive invalidation) → default keep, logged
         lines=[];AccountEpoch.shared.activate(account:account)
         let passive=await AccountParkedItems.resolve(account:account,decider:nil)
-        XCTAssertEqual(passive[1],"no decider → default keep");XCTAssertEqual(ledger.entries(account:account).count,1)
+        XCTAssertEqual(passive[1],"no decider → external items default keep");XCTAssertEqual(ledger.entries(account:account).count,1)
         AccountEpoch.shared.activate(account:nil)
         UserDefaults().removePersistentDomain(forName:suite)
     }
