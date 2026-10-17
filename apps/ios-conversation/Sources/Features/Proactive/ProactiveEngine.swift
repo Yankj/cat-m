@@ -400,9 +400,9 @@ struct ProactiveSignal: Equatable, Sendable {
     /// Settings/debug writes the same phrase via `setLeadMinutes` so evaluate has hard evidence.
     func leadTime() async -> (minutes: Int, memory: ProactiveSuggestion.MemoryRef?) {
         // Cloud backend first, then the persisted on-device library (NoBug P0-1: survives cold start).
-        var snaps: [MemoryLibrarySnapshot] = []
-        if let backend = MemoryLibraryHub.backend, let snapshot = try? await backend.load() { snaps.append(snapshot) }
-        if MemoryLibraryHub.backend !== MemoryLibraryHub.local, let local = try? await MemoryLibraryHub.local.load() { snaps.append(local) }
+        // Codex PR91 #3: fail closed — a load error or an unknown cloud switch (last known off) means no memory.
+        let local: (any MemoryLibraryBackend)? = MemoryLibraryHub.backend === MemoryLibraryHub.local ? nil : MemoryLibraryHub.local
+        let snaps = await MemoryRecallLoader.snapshots(cloud: MemoryLibraryHub.backend, local: local, owner: MemoryLibraryHub.local.owner)
         if let hit = ProactiveRules.lead(in: snaps) { return (hit.minutes, .init(id: hit.item.id, content: hit.item.content)) }
         return (defaultLeadMinutes, nil)
     }

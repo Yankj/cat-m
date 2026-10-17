@@ -948,6 +948,17 @@ extension Result { var isFailure: Bool { if case .failure = self { return true }
                && defaults.object(forKey: MemoryRecallLoader.offKeyPrefix + "x") == nil, "PR91 #2 sign-out clears attendees, server ids and the stored 使用记忆 switch")
 
         // #3 使用记忆 fails closed.
+        // Final-merge B2 guard: ProactiveEngine.leadTime() (needs the iOS SDK, so checked at source level here) must read memory only via
+        // the fail-closed MemoryRecallLoader.snapshots, never a raw backend.load() that ignores 使用记忆 off / unknown.
+        do {
+            // Runner cwd is apps/ios-conversation (test-nobug-p0.sh cds there); #filePath is the fallback.
+            let rel = "Sources/Features/Proactive/ProactiveEngine.swift"
+            let candidates = [URL(fileURLWithPath: FileManager.default.currentDirectoryPath).appendingPathComponent(rel),
+                              URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent(rel)]
+            let text = candidates.lazy.compactMap { try? String(contentsOf: $0, encoding: .utf8) }.first ?? ""
+            let body = text.components(separatedBy: "func leadTime()").dropFirst().first?.components(separatedBy: "\n    }").first ?? ""
+            expect(!body.isEmpty && body.contains("MemoryRecallLoader.snapshots(") && !body.contains(".load()"), "B2 leadTime reads memory only through fail-closed MemoryRecallLoader.snapshots")
+        }
         signIn(a)
         MemoryRecallLoader.defaults = defaults
         let owner = LocalMemoryOwner.account(a.uuidString.lowercased())
