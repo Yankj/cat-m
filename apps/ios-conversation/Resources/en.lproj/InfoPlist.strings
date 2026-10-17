@@ -7,3 +7,4 @@
 "NSRemindersFullAccessUsageDescription" = "Catpaw writes a reminder to Reminders only after you confirm.";
 "NSContactsUsageDescription" = "Used to find the person you want to contact, only for this request.";
 "NSPhotoLibraryAddUsageDescription" = "Saves the images you choose to Photos.";
+"NSLocationWhenInUseUsageDescription" = "Used to estimate public transit time to your meeting location, so Catpaw can remind you to leave at the right time.";
