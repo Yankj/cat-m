@@ -1,4 +1,12 @@
 {
+  "结果待核对，请在手机上查看": {
+    "en": "Result unconfirmed — check on your phone",
+    "zh-Hans": "结果待核对，请在手机上查看"
+  },
+  "已在手机上完成（较晚确认）：{0}": {
+    "en": "Done on your phone (confirmed late): {0}",
+    "zh-Hans": "已在手机上完成（较晚确认）：{0}"
+  },
   "\n原文件已保留，未重置存储。请在完整 Xcode 下排查迁移或恢复。": {
     "en": "\nThe original file is preserved. Storage was not reset. Investigate migration or recovery with full Xcode.",
     "zh-Hans": "\n原文件已保留，未重置存储。请在完整 Xcode 下排查迁移或恢复。"

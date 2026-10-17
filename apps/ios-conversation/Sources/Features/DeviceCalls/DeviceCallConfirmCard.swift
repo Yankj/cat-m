@@ -123,9 +123,11 @@ struct DeviceCallSpec: Sendable {
         case .declined, .cancelled: (ui("已取消，未执行：{0}", [name]), "xmark.circle")
         case .expired: (ui("已过期，需要的话再跟小猫说一次"), "clock")
         case .failed: (ui("没有完成：{0}", [name]), "exclamationmark.circle")
+        case .doneLate: (ui("已在手机上完成（较晚确认）：{0}", [name]), "checkmark.circle.fill")
+        case .unverified: (ui("结果待核对，请在手机上查看"), "questionmark.circle")   // P1-5: never invite a duplicate create
         case .notExecuted, .pending: (ui("未执行：{0}", [name]), "minus.circle")
         }
-        return Label(text, systemImage: icon).font(CatpawTypography.Role.body.font).foregroundStyle(outcome == .done ? CatpawColors.ink : CatpawColors.secondary)
+        return Label(text, systemImage: icon).font(CatpawTypography.Role.body.font).foregroundStyle(outcome == .done || outcome == .doneLate ? CatpawColors.ink : CatpawColors.secondary)
             .frame(minHeight: 44, alignment: .leading).accessibilityIdentifier("chat.deviceCall.recorded")
     }
 
