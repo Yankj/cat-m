@@ -176,7 +176,18 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
         let metadata = try await json("/catpaw/privacy/v1/model-route",auth:auth),ui = try Self.object(metadata["ui"]),routeHash = try Self.sha(metadata["route_hash"])
         let path = "/catpaw/privacy/v1/scopes/"+configuration.serverScopeID.uuidString.lowercased()+"/conversations/"+conversationID.uuidString.lowercased()+"/model-consent"
         let stored = try await json(path,auth:auth);let prior = stored["consent"] as? [String:Any]
-        if prior?["decision"] as? String == "allow",prior?["route_hash"] as? String == routeHash { return nil }
+        let account = AccountModelConsentMemory(subjectID: configuration.expectedSubjectID, serverScopeID: configuration.serverScopeID)
+        if prior?["decision"] as? String == "allow",prior?["route_hash"] as? String == routeHash { account.remember(routeHash); return nil }
+        // Acceptance #2: the server keys provider consent per (subject, conversation) (_shared/api.mjs:178/207,
+        // consentId(subject_id, conversation.id)), so every NEW conversation came back without a row and the sheet re-asked.
+        // The user already allowed this exact disclosure (same route_hash) for this account: record the per-chat row
+        // silently. A changed route_hash, another account, or an explicit "deny" on this chat still shows the sheet.
+        if prior?["decision"] as? String != "deny", account.allows(routeHash), case let revision = (prior?["revision"] as? Int) ?? 0, revision >= 0 {
+            do {
+                let reply = try await json(path,auth:auth,body:["decision":"allow","expected_revision":revision,"route_hash":routeHash]),row = try Self.object(reply["consent"])
+                if row["decision"] as? String == "allow",row["route_hash"] as? String == routeHash,row["revision"] as? Int == revision+1 { sendDiagnostic("catpaw.send consent carried route=\(routeHash.prefix(8))"); return nil }
+            } catch { sendDiagnostic("catpaw.send consent carry failed; showing sheet") }
+        }
         guard let title = ui["title"] as? String,let body = ui["body"] as? String,title.utf8.count <= 512,body.utf8.count <= 12000 else { throw ConversationSessionError.invalidEvent }
         let revision = prior?["revision"] as? Int ?? 0;guard revision >= 0 else { throw ConversationSessionError.invalidEvent }
         return .init(conversationID:conversationID,title:title,body:Self.consentBody(body,metadata:metadata,ui:ui),routeHash:routeHash,expectedRevision:revision)
@@ -200,6 +211,7 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
         let auth = try await authorization(scope),path = "/catpaw/privacy/v1/scopes/"+configuration.serverScopeID.uuidString.lowercased()+"/conversations/"+consent.conversationID.uuidString.lowercased()+"/model-consent"
         let reply = try await json(path,auth:auth,body:["decision":"allow","expected_revision":consent.expectedRevision,"route_hash":consent.routeHash]),row = try Self.object(reply["consent"])
         guard row["decision"] as? String == "allow",row["route_hash"] as? String == consent.routeHash,row["revision"] as? Int == consent.expectedRevision+1 else { throw ConversationSessionError.invalidEvent }
+        AccountModelConsentMemory(subjectID: configuration.expectedSubjectID, serverScopeID: configuration.serverScopeID).remember(consent.routeHash)
     }
     public func acceptedWorkCapability(scope:DataScope,conversationID:UUID) async throws -> ConversationAcceptedWorkCapability {
         guard scope==configuration.localScope else {throw CatpawError.scopeMismatch}
@@ -429,7 +441,11 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
     /// Tools that only exist on approval-negotiated plain turns (services/edge TOOL_APPROVAL).
     static let approvalToolNames: Set<String> = ["render_ui", "list_tasks", "create_task", "update_task", "create_calendar_event", "update_calendar_event", "create_reminder", "update_reminder", "external_write",
         // catpaw.device.v1 (executed on this phone; services/edge/supabase/functions/_shared/core/src/device-call.mjs)
-        "calendar_list", "calendar_create", "reminder_create", "mail_compose", "sms_compose", "phone_call", "contacts_search", "maps_open", "shop_open", "alarm_set", "shortcut_run"]
+        "calendar_list", "calendar_create", "reminder_create", "mail_compose", "sms_compose", "phone_call", "contacts_search", "maps_open", "shop_open", "alarm_set", "shortcut_run",
+        // Acceptance #3: places_search (附近咖啡馆 starter) was advertised in X-Catpaw-Device-Tools but missing here, so its
+        // `tool_call` failed ConversationSessionService.apply → invalidEvent (「服务返回了不匹配的对话或工具结果」).
+        // Must stay a superset of DeviceToolContract.clientTools (DeviceToolNamesContractTests).
+        "places_search"]
     /// Snapshot `pending_approvals`: kind "ui" rows are catpaw.ui.v1 blocks, everything else a tool approval card.
     public static func splitPendingApprovals(_ rows: [[String: Any]]) throws -> (tools: [ConversationApprovalRequest], ui: [ConversationUIApproval]) {
         var tools: [ConversationApprovalRequest] = [], ui: [ConversationUIApproval] = []
@@ -1811,4 +1827,17 @@ enum ChatRuntimeBusyRetry {
             }
         }
     }
+}
+
+/// Acceptance #2: the account-level record of "this user allowed model route `route_hash`". The server stores consent per
+/// conversation; this lets a new conversation of the SAME account inherit the decision until the disclosure changes.
+/// Keyed by subject + server scope (never shared across accounts); stores only the public route hash, no content.
+struct AccountModelConsentMemory {
+    let subjectID: UUID?
+    let serverScopeID: UUID
+    var defaults: UserDefaults = .standard
+    var key: String? { subjectID.map { "catpaw.modelConsent.v1.\($0.uuidString.lowercased()).\(serverScopeID.uuidString.lowercased())" } }
+    func allows(_ routeHash: String) -> Bool { guard let key, !routeHash.isEmpty else { return false }; return defaults.string(forKey: key) == routeHash }
+    func remember(_ routeHash: String) { guard let key, !routeHash.isEmpty else { return }; defaults.set(routeHash, forKey: key) }
+    func forget() { if let key { defaults.removeObject(forKey: key) } }
 }
