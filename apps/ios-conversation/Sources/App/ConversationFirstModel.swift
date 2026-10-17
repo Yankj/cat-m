@@ -77,6 +77,10 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
     private var imageConsentEpoch=UUID()
     private var cleanedImageOperations:Set<UUID>=[]
     private var recoveredImageOperation:UUID?
+    private var recoveredImageReceipt:String?
+    private var recoveredImageCaption:String?
+    /// 重试 on a failed image turn: restore that image + its own caption, then send through the normal path (consent included).
+    private var retrySendAfterRestore:UUID?
     private struct ImageReview {let conversation:UUID;let preview:UUID;let hash:String;let captionHash:String;let generation:Int}
     private struct ApprovedImage {let conversation:UUID;let preview:UUID;let hash:String;let captionHash:String;let route:String;let revision:Int}
 
@@ -382,6 +386,12 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
     private var canAdmitImage:Bool {loaded && foreground && networkAdmissionAllowed && !busy && !enqueueing && session?.unresolved==nil && session?.pendingUnsent==nil && followups.pending.isEmpty && followups.inflight==nil}
     var canReviewImage:Bool {canAdmitImage && imageCapability.available && imageCapability.liveTransmissionAvailable && imageDraft.phase == .ready && !isInputComposing && !draft.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty && !checkingImageConsent}
     private func imageSelectionChanged() {
+        // The user replaced / removed a recovered image: that turn's caption leaves the composer (no 「这张呢？这张图里有什么？」).
+        if recoveredImageOperation != nil,let receipt=recoveredImageReceipt,imageDraft.attachment?.id != receipt {
+            let stripped=ConversationCaptionPolicy.strippingRecovered(draft:draft,caption:recoveredImageCaption)
+            if stripped != draft {editDraft(stripped)}
+            recoveredImageOperation=nil;recoveredImageReceipt=nil;recoveredImageCaption=nil
+        }
         if let review=imageReview,!reviewMatches(review) {cancelImageConsent()}
         if !approvedImageMatchesDraft {approvedImage=nil}
     }
@@ -458,7 +468,8 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
             Task {try? await imageStore.remove(conversationID:current.conversationID,operationID:turn.id)}
         }
         guard loaded,imageRecoveryTask==nil,imageDraft.phase == .empty else {return}
-        let candidate=(followups.paused ? followups.pending.first(where:{$0.image != nil}) : nil).map{($0.id,$0.image!,$0.text)} ?? current.turns.last(where:{[.unknown,.failed,.notSent].contains($0.state) && $0.request.image != nil}).map{($0.id,$0.request.image!,$0.request.history.last?.content ?? "")}
+        let forced=retrySendAfterRestore.flatMap{id in current.turns.first(where:{$0.id==id && $0.request.image != nil})}.map{($0.id,$0.request.image!,$0.request.history.last?.content ?? "")}
+        let candidate=forced ?? (followups.paused ? followups.pending.first(where:{$0.image != nil}) : nil).map{($0.id,$0.image!,$0.text)} ?? current.turns.last(where:{[.unknown,.failed,.notSent].contains($0.state) && $0.request.image != nil}).map{($0.id,$0.request.image!,$0.request.history.last?.content ?? "")}
         guard let (operation,reference,text)=candidate else {return}
         let id=current.conversationID,generation=sceneGeneration,token=UUID();imageRecoveryToken=token
         imageRecoveryTask=Task {
@@ -469,7 +480,11 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
                 let packet=try await SystemImageAttachmentEncoder().restoreEncoded(bytes,id:receipt.id,mimeType:receipt.mime_type,sha256:receipt.sha256,sizeBytes:receipt.size_bytes,width:receipt.width,height:receipt.height)
                 guard !Task.isCancelled,conversationID==id,sceneGeneration==generation,loaded,imageDraft.phase == .empty,packet.sha256==reference.receipt.sha256 else {return}
                 let unresolved=(followups.paused && followups.pending.contains(where:{$0.id==operation})) || session?.turns.contains(where:{$0.id==operation && [.unknown,.failed,.notSent].contains($0.state)})==true
-                guard unresolved else {return};approvedImage=nil;imageDraft.restorePrepared(packet);recoveredImageOperation=operation;if draft.isEmpty {draft=text}
+                guard unresolved else {return};approvedImage=nil;imageDraft.restorePrepared(packet);recoveredImageOperation=operation;recoveredImageReceipt=receipt.id
+                // Captions never merge: the failed turn's caption only goes into an empty composer (or replaces it for 重试).
+                let retrying=retrySendAfterRestore==operation;retrySendAfterRestore=nil
+                draft=retrying ? text : ConversationCaptionPolicy.restored(draft:draft,caption:text);recoveredImageCaption=draft==text ? text : nil
+                if retrying {send()}
             } catch {if conversationID==id,loaded,!Task.isCancelled {self.error="本机图片读取未完成，原请求已保留。"}}
         }
     }
@@ -756,6 +771,7 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
             defer { if flightID == token { flightID=nil;busy=false;sending=false;observerLifecycle=session?.unresolved == nil ? .foregroundIdle : .unknown } }
             do {
                 if try await queue.resumePreflightHold() { sendLog.info("catpaw.send resumed preflight hold before drain") }
+                if try await queue.recoverFromTerminalFailure(session:session) { sendLog.info("catpaw.send unpaused queue behind a terminal failure") }
                 try await queue.flush { [service,scope,imageStore,weak self] message in
                     guard !Task.isCancelled,await self?.canDispatchFollowup == true else { return .heldBeforeAdmission }
                     await self?.setIntent(message.id,.sending)
@@ -772,6 +788,8 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
                         if case ConversationDispatchFailure.notSent(let code)=error,ConversationTerminalServerError.isQuota(code) { await self?.markQuota();return .heldBeforeAdmission }
                         let saved=try await service.read(scope:scope,conversationID:id)
                         if !saved.turns.contains(where:{$0.id == message.id}) || saved.turns.first(where:{$0.id == message.id})?.state == .notSent { sendLog.error("catpaw.send held before admission: \(String(describing:error), privacy: .public)");return .heldBeforeAdmission }
+                        // Admitted and ended by the server (rate_limited / failed): the bubble offers 重试 / 删除; the queue goes on.
+                        if ConversationFollowupRecovery.isTerminalFailure(saved.turns.first(where:{$0.id == message.id})) { await self?.setIntent(message.id,.failed,error:nil);return .failedTerminal }
                         throw error
                     }
                 }
@@ -814,6 +832,42 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
         outgoingMessages.removeAll {$0.id == message.id};await refresh()
     }
     func removeFollowup(_ id:UUID) { Task { do { if let conversationID { try await service.discardUnsent(scope:scope,conversationID:conversationID,operationID:id) };try await queue?.remove(id);if let conversationID {try await imageStore.remove(conversationID:conversationID,operationID:id)};outgoingMessages.removeAll { $0.id == id };await refresh() } catch { self.error=error.localizedDescription } } }
+    /// 「发送失败 · 重试」 on a turn bubble: really re-sends. A plain rate-limited turn restarts in place on the server;
+    /// an image turn is restored with its own caption and sent again; another failed text turn is sent as a new message.
+    func retryFailedTurn(_ id:UUID) {
+        guard let cid=conversationID,let turn=session?.turns.first(where:{$0.id == id}),turn.state == .failed,turn.assistantMessageID == nil else { resumeFollowups();return }
+        let text=turn.request.history.last?.content ?? ""
+        if turn.request.image != nil {
+            guard imageDraft.phase == .empty else { error="请先发送或移除输入框里的图片，再重试这条消息。";return }
+            guard draft.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty || draft == recoveredImageCaption else { error="请先发送或清空输入框里的文字，再重试这条消息。";return }
+            retrySendAfterRestore=id;imageRecoveryTask?.cancel();imageRecoveryTask=nil;imageRecoveryToken=nil
+            if let current=session {recoverOrCleanImage(current)}
+            return
+        }
+        Task {
+            do {
+                if turn.error == "rate_limited",try await service.retryBusy(scope:scope,conversationID:cid) != nil { await refresh();return }
+                guard draft.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty else { self.error="请先发送或清空输入框里的文字，再重试这条消息。";return }
+                editDraft(text);send()
+            } catch { self.error=error.localizedDescription }
+        }
+    }
+    /// 「删除」 on a failed turn.
+    func deleteFailedTurn(_ id:UUID) {
+        guard let cid=conversationID else { return }
+        Task {
+            do {
+                _=try await service.dismissFailed(scope:scope,conversationID:cid,operationID:id)
+                try? await imageStore.remove(conversationID:cid,operationID:id)
+                if recoveredImageOperation==id {
+                    let stripped=ConversationCaptionPolicy.strippingRecovered(draft:draft,caption:recoveredImageCaption)
+                    imageDraft.clear();if stripped != draft {editDraft(stripped)}
+                    recoveredImageOperation=nil;recoveredImageReceipt=nil;recoveredImageCaption=nil
+                }
+                outgoingMessages.removeAll { $0.id == id };await refresh()
+            } catch { self.error=error.localizedDescription }
+        }
+    }
     func resumeFollowups() {
         guard foreground,!busy,!editingFollowup,session?.unresolved == nil,let queue else { return }
         Task { do {
@@ -920,6 +974,8 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
         connectionTask=Task { await refreshConnection() }
         await refresh()
         guard generation == sceneGeneration,foreground else { return }
+        // A queue persisted as 「已暂停」 behind a failed / rate-limited turn (survived a relaunch) is unpaused.
+        if let queue,let current=session,(try? await queue.recoverFromTerminalFailure(session:current)) == true { await refresh();guard generation == sceneGeneration,foreground else { return } }
         await restoreAppliedTaskControlDeliveriesAcrossConversations()
         guard generation == sceneGeneration,foreground else {return}
         for id in pendingTaskControlDeliveries.keys {pendingTaskControlDeliveries[id]?.nextAttemptAt = .distantPast}

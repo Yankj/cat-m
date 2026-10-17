@@ -1054,12 +1054,26 @@ import CatpawImageComposer
                     case .none: EmptyView()
                     case .sending: DelayedSendingSpinner().accessibilityIdentifier("chat.bubble.sending")
                     case .failed:
-                        Button { model.resumeFollowups() } label: {
-                            HStack(spacing: 4) {
+                        if model.session?.turns.contains(where:{$0.id == id && $0.state == .failed}) == true {
+                            // 「发送失败 · 重试 / 删除」: the turn ended on the server; it never holds the queue.
+                            HStack(spacing: 6) {
                                 Image(systemName: "exclamationmark.circle.fill").foregroundStyle(CatpawColors.attention).imageScale(.small)
-                                Text(ui("未发送·点按重试")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
+                                Text(ui("发送失败")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
+                                Text("·").font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
+                                Button(ui("重试")) { model.retryFailedTurn(id) }.font(CatpawTypography.Role.caption.font.weight(.semibold))
+                                    .buttonStyle(CatpawPressButtonStyle()).accessibilityIdentifier("chat.bubble.retry")
+                                Text("/").font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
+                                Button(ui("删除")) { model.deleteFailedTurn(id) }.font(CatpawTypography.Role.caption.font.weight(.semibold))
+                                    .buttonStyle(CatpawPressButtonStyle()).accessibilityIdentifier("chat.bubble.delete")
                             }
-                        }.buttonStyle(CatpawPressButtonStyle()).accessibilityIdentifier("chat.bubble.retry")
+                        } else {
+                            Button { model.resumeFollowups() } label: {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "exclamationmark.circle.fill").foregroundStyle(CatpawColors.attention).imageScale(.small)
+                                    Text(ui("未发送·点按重试")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
+                                }
+                            }.buttonStyle(CatpawPressButtonStyle()).accessibilityIdentifier("chat.bubble.retry")
+                        }
                     case .unverified:
                         // Resolved outcome_unknown: the step may have run, so no one-tap resend; the chat is free again.
                         HStack(spacing: 4) {

@@ -6838,5 +6838,9 @@
   "模拟起点": {
     "en": "Simulated origin",
     "zh-Hans": "模拟起点"
+  },
+  "发送失败": {
+    "en": "Not sent",
+    "zh-Hans": "发送失败"
   }
 }
