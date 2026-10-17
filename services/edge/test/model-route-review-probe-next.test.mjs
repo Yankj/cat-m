@@ -1,4 +1,6 @@
-import test from 'node:test';
+import nodeTest from 'node:test';
+import {existsSync} from 'node:fs';
+import {fileURLToPath} from 'node:url';
 import assert from 'node:assert/strict';
 import {randomUUID} from 'node:crypto';
 import {Buffer} from 'node:buffer';
@@ -13,11 +15,18 @@ globalThis.fetch=()=>{throw Error('next_review_external_network_forbidden');};
 // into the frozen r7 data contract, and never read an account/vault/credential.
 const override=process.env.CATPAW_REVIEW_NEXT_PACKAGE_ROOT;
 const root=override?pathToFileURL(resolve(override)+'/'):new URL('../build/model-route-review-20261015/packages-r8/catpaw-api-v21/_shared/',import.meta.url);
-const next=await import(new URL('model-route-review-probe-next.mjs',root));
-const old=await import(new URL('model-route-review-probe.mjs',root));
-const {readConfig}=await import(new URL('config.mjs',root));
-const {membershipOwner}=await import(new URL('authority.mjs',root));
-const {GEMMA_PRIVATE_REVIEW_ID}=await import(new URL('model-route-review.mjs',root));
+// The frozen r8 package lives under the gitignored services/edge/build/ (made by scripts/prepare-model-route-review-next.py).
+// It is a build-artifact test: on a clean checkout (and in CI, issue #81 quarantine) it is skipped, never run against
+// the live source modules (they are intentionally newer than the frozen package and fail its byte-level assertions).
+const present=existsSync(fileURLToPath(new URL('model-route-review-probe-next.mjs',root)));
+const SKIP='frozen review package not built (services/edge/build/… or CATPAW_REVIEW_NEXT_PACKAGE_ROOT)';
+const test=present?nodeTest:(name)=>nodeTest(name,{skip:SKIP},()=>{});
+const load=async n=>present?await import(new URL(n,root)):{};
+const next=await load('model-route-review-probe-next.mjs');
+const old=await load('model-route-review-probe.mjs');
+const {readConfig}=await load('config.mjs');
+const {membershipOwner}=await load('authority.mjs');
+const {GEMMA_PRIVATE_REVIEW_ID}=await load('model-route-review.mjs');
 const {GEMMA_NEXT_REVIEW_PREFIX:P,GEMMA_NEXT_REVIEW_ID:ID,GEMMA_NEXT_REVIEW_CONVERSATION_ID:C,GEMMA_NEXT_REVIEW_TURN_ID:T,GEMMA_NEXT_REVIEW_MESSAGE_ID:M,GEMMA_NEXT_REVIEW_TEXT:TEXT,GEMMA_NEXT_REVIEW_ROUTE_HASH:RH}=next;
 const values={CATPAW_DATABASE_URL:'offline-unused',CATPAW_PRIVATE_MODEL_KEY:'offline-unused',CATPAW_TICK_HMAC_KEY:'offline-unused-at-least-thirty-two-chars',CATPAW_MEMORY_GUARD_KEY:'offline-unused-guard'};
 function repositoryWithSQL(snapshot){

@@ -16,18 +16,20 @@ import { createSupabaseSessionVerifier } from './supabase-auth.mjs';
 import { SupabasePgScopeAuthority } from './supabase-scope-authority.mjs';
 
 // Existing task-9 Store only. No SQL implementation, second scheduler or memory model loop.
-export async function createFoundationChatRuntime({repository,authenticate,provider=new OpenRouterProvider(),guardKey,dataClass='private',holderId=randomUUID(),clock=()=>new Date(),leaseMs=120000,workerOptions={},chatOptions={},handlerOptions={},completionPolicy=null,completionAuthorizer=null,routePolicy=null,beforeProviderRequest=null}){
+export async function createFoundationChatRuntime({repository,authenticate,provider=new OpenRouterProvider(),guardKey,dataClass='private',holderId=randomUUID(),clock=()=>new Date(),leaseMs=120000,workerOptions={},chatOptions={},handlerOptions={},completionPolicy=null,completionAuthorizer=null,routePolicy=null,imageRoutePolicy=null,beforeProviderRequest=null}){
   check(typeof guardKey==='string'&&guardKey.length>=16,503,'memory_guard_not_configured');
   check(['synthetic','private'].includes(dataClass),422,'invalid_data_class');
   const foundation=new Foundation(repository,{guardKey,clock,sourceEraser:eraseChatSource});
-  const fence=new ChatRecoveryFence(repository,{clock,lease_ms:leaseMs}),tokens=new Map(),recoveryReports=[];
+  const fence=new ChatRecoveryFence(repository,{clock,lease_ms:leaseMs}),tokens=new Map(),recoveryReports=[],holds=new Map(),chains=new Map();
+  // Per-owner in-instance serialization of lease acquire/release so a release can never expire a lease a concurrent prepare just took.
+  const serial=(owner,fn)=>{const next=(chains.get(owner)??Promise.resolve()).catch(()=>{}).then(fn);const tail=next.catch(()=>{});chains.set(owner,tail);tail.then(()=>{if(chains.get(owner)===tail)chains.delete(owner);});return next;};
   const routeId=routePolicy?.id??'openrouter-free-synthetic';const route=routePolicy??{free:true,synthetic_only:true,data_classes:['synthetic'],allow_sensitive:false};
-  const policy=new ProviderGateway({routes:{[routeId]:route},complete:async()=>true});
+  const policy=new ProviderGateway({routes:{[routeId]:route,...imageRoutePolicy?{[imageRoutePolicy.id]:imageRoutePolicy}:{}} ,complete:async()=>true});
   const guardedProvider={identity:{...provider.identity,data_class:dataClass,route_policy:routeId},get reality(){return provider.reality;},assertReady:()=>provider.assertReady?.(),async *stream(input){
     // Classification is a server composition constant; no HTTP/model field can downgrade private data.
     input=await resolveMemoryProviderInput(runtime,input);
     if(beforeProviderRequest)await beforeProviderRequest(input);
-    await normalized(()=>policy.complete({consent_verified:!!beforeProviderRequest,purpose:'chat',allowed_route_policy_id:routeId,data_class:dataClass,sensitivity:'low'}));
+    await normalized(()=>policy.complete({consent_verified:!!beforeProviderRequest,purpose:'chat',allowed_route_policy_id:input.image_attachments?.length&&imageRoutePolicy?imageRoutePolicy.id:routeId,data_class:dataClass,sensitivity:'low'}));
     yield*provider.stream(input);
   }};
   const normalized=async fn=>{try{return await fn();}catch(e){if(e?.name==='Error'&&e.code&&Number.isInteger(e.status))throw new ApiError(e.status,e.code,{reconciliation:e.reconciliation_required===true});throw e;}};
@@ -37,9 +39,25 @@ export async function createFoundationChatRuntime({repository,authenticate,provi
     async stageMemoryExtraction(tx,args){return normalized(()=>stageConversationMemoryExtraction(runtime,tx,args));},
     async proposeMemory(tx,args){return normalized(()=>commitConversationMemoryCandidates(runtime,tx,args));},
     async memoryUsage(tx,args){return normalized(()=>freezeMemoryUsage(runtime,tx,args));},
+    // Codex PR91 p91d-3: the legacy user switch was explicitly turned off (memory_user_enabled === false).
+    async memoryUserDisabled(tx,{scope}){return normalized(()=>tx.withScope(scope.scope_id,async scoped=>(await scoped.scope()).memory_user_enabled===false));},
+    // Every prepare() is paired with exactly one release() by ChatService (rejection, completion or throw);
+    // an executing turn adds retain()/release(). The lease is freed (owner-checked) when this instance's last
+    // hold ends; the lease_ms expiry stays as the crash safety net.
     async prepare({owner}){
-      const token=await normalized(()=>fence.acquire(owner,holderId));check(token,503,'chat_runtime_busy');tokens.set(owner,token);
-      recoveryReports.push(await normalized(()=>fence.recoverExpiredOwner(owner,token)));
+      holds.set(owner,(holds.get(owner)??0)+1);
+      try{await serial(owner,async()=>{
+        const token=await normalized(()=>fence.acquire(owner,holderId));
+        if(!token){const ms=await fence.remainingMs(owner).catch(()=>leaseMs);throw new ApiError(503,'chat_runtime_busy',{retryable:true,retryAfterSec:Math.max(1,Math.ceil(ms/1000))});}
+        tokens.set(owner,token);
+        recoveryReports.push(await normalized(()=>fence.recoverExpiredOwner(owner,token)));
+      });}catch(e){await integration.release(owner);throw e;}
+    },
+    retain(owner){holds.set(owner,(holds.get(owner)??0)+1);},
+    async release(owner){
+      const n=(holds.get(owner)??0)-1;if(n>0){holds.set(owner,n);return;}
+      holds.delete(owner);
+      try{await serial(owner,async()=>{if(holds.get(owner))return;const token=tokens.get(owner);tokens.delete(owner);await fence.release(owner,token);});}catch{} // best effort; expiry still frees it
     },
     async beforeWrite(tx,{owner,scope,turn}){
       // Runtime lease precedes scope, conversation, delegation, task on every fenced chat write.

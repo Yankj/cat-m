@@ -7,6 +7,7 @@ import Combine
 
     @ObservedObject var model: AppModel
     @Environment(\.scenePhase) private var phase
+    @State private var launchMarkVisible=LaunchMarkGate.shouldPlay(openedFromURLOrNotification:false)
     private let timer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
     var body: some View {
         NavigationStack(path: $model.path) {
@@ -20,15 +21,22 @@ import Combine
                 .navigationDestination(for: AppRoute.self) { route in destination(route) }
         }
         .id(model.scope.workspaceID)
-        .tint(CatpawColors.accent)
+        .tint(CatpawColors.ink)
         .environment(\.locale, Locale(identifier: model.language.rawValue))
         .preferredColorScheme(model.preference("theme", fallback: "dark") == "system" ? nil : model.preference("theme", fallback: "dark") == "light" ? .light : .dark)
-        .sheet(isPresented: $model.sidebar) { SidebarView(model: model).tint(CatpawColors.accent).presentationDetents([.large]).presentationDragIndicator(.visible) }
+        .sheet(isPresented: $model.sidebar) { SidebarView(model: model).tint(CatpawColors.ink).presentationDetents([.large]).presentationDragIndicator(.visible) }
         .alert(ui("操作未完成"), isPresented: Binding(get: { model.error != nil }, set: { if !$0 { model.error = nil } })) { Button(ui("好")) { model.error = nil } } message: { Text(model.error ?? "") }
+        .overlay {
+            if launchMarkVisible {
+                LaunchMarkView(restoring:!model.loaded) {launchMarkVisible=false}
+                    .transition(.opacity)
+                    .zIndex(100)
+            }
+        }
         .task { if !model.loaded { await model.start() }; await model.tick(resumed: true) }
         .onReceive(timer) { _ in if phase == .active { Task { await model.tick(resumed: false) } } }
         .onChange(of: model.path) { _, _ in model.saveNavigation() }
-        .onOpenURL { model.openDeepLink($0) }
+        .onOpenURL { launchMarkVisible=false;model.openDeepLink($0) }
         .onChange(of: phase) { _, value in Task { if value == .active { await model.tick(resumed: true) } else { await model.suspend() } } }
     }
     @ViewBuilder private func destination(_ route: AppRoute) -> some View {
@@ -81,7 +89,7 @@ import Combine
             ForEach(model.conversations) { r in Button { open(.conversation(r.id)) } label: { ActionRow(title: r.title, symbol: "bubble.left") } }
             Divider(); link(ui("设置"), "gearshape", .settings)
             StatusLabel(text: model.environmentKind == .local ? ui("本机保存 · 云同步关闭") : ui("{0}视图 · 服务未连接", arguments: [String(describing: (model.environmentKind == .cloud ? ui("云端") : ui("电脑")))]))
-        }.background(CatpawColors.background).tint(CatpawColors.accent)
+        }.background(CatpawColors.background).tint(CatpawColors.ink)
     }
     private func open(_ route: AppRoute?) { model.path = route.map { [$0] } ?? []; model.sidebar = false }
     private func link(_ title: String, _ icon: String, _ route: AppRoute?) -> some View { Button { open(route) } label: { ActionRow(title: title, symbol: icon == "sparkles" ? "person.crop.circle" : icon) }.buttonStyle(.plain).accessibilityIdentifier("sidebar.\(icon)") }

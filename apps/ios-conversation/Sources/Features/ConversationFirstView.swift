@@ -5,6 +5,13 @@ import CatpawImageComposer
 
 @MainActor struct ConversationFirstView: View {
     @ObservedObject var model: ConversationFirstModel
+    @ObservedObject private var connectionMonitor = ConnectionMonitor.shared
+    @ObservedObject private var routeCatalog = ModelRouteCatalog.shared
+    @StateObject private var composerChrome:ConversationComposerChromeAdapter
+    @ObservedObject private var proactiveFeed = CatpawProactiveFeed.shared
+    @ObservedObject private var presenceHub = CatpawPresenceHub.shared
+    @StateObject private var attachmentUploader:ModelImageComposerAttachmentUploader
+    @State private var sendAfterImageConsent=false
     var accountLabel: String? = nil
     var onSignOut: (() -> Void)? = nil
     var isAnonymousAccount = false
@@ -21,6 +28,10 @@ import CatpawImageComposer
     @State private var path:[ConversationHostDestination]=[]
     @AccessibilityFocusState private var menuFocused:Bool
     @State private var history = false
+    @State private var replyVariants = ReplyVariantStore()
+    /// chat-ux #1: prompt being edited (root turn of its variant group + current text).
+    private struct EditingPrompt: Identifiable { let root: UUID; let text: String; var id: UUID { root } }
+    @State private var editingPrompt: EditingPrompt?
     @State private var settings = false
     @State private var conversationMenuPresented=false
     @State private var pendingConversationSettings=false
@@ -28,20 +39,87 @@ import CatpawImageComposer
     @State private var confirmSignOut = false
     @State private var pendingMessagesPresented=false
     @State private var composerMeasurements:[String:CGFloat]=[:]
+    @State private var composerLineCount=1
+    @State private var pendingAttachmentIntentID:UUID?
     @State private var visibleViewport:CatpawVisibleViewport?
     @State private var composerContextPresented=false
     private enum ComposerContextAction {case modelConsent,imageConsent,acceptedWork,pendingMessages,settings,latest}
     @State private var pendingContextAction:(action:ComposerContextAction,conversation:UUID?,scope:UUID,modelIdentity:ObjectIdentifier)?
     @State private var contextJumpRequested=false
+    /// Bumped on send so the transcript glides to the new bubble in the same spring
+    /// as its insertion, instead of a 100 ms-late unanimated jump.
+    @State private var sendScrollTick=0
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @ScaledMetric(relativeTo: .footnote) private var followupRowHeight = 64.0
     @FocusState private var focused: Bool
+    /// One timeline projection per body pass. Previously every row, the reading-anchor
+    /// tracker and each assistant row's `lastAssistantMessageID` re-ran the full projection
+    /// (O(n²) per keystroke / streamed token; 235 ms main-thread stalls in Time Profiler).
+    private final class TimelineMemo {
+        var display:[ConversationTranscriptMessage]=[]
+        var rendered:[RenderedTimelineRow]=[]
+        var visible:[RenderedTimelineRow]=[]
+        var lastAssistantID:UUID?
+        var operations:[UUID:UUID]=[:]
+    }
+    @State private var timelineMemo=TimelineMemo()
+    private func refreshTimelineMemo() {
+        var operations:[UUID:UUID]=[:]
+        for turn in model.session?.turns ?? [] {operations[stableID("conversation-user-\(turn.id)")]=turn.id}
+        for intent in model.outgoingMessages {operations[stableID("conversation-user-\(intent.id)")]=intent.id}
+        let memo=timelineMemo
+        memo.operations=operations
+        memo.display=computeDisplayMessages()
+        memo.rendered=computeRenderedTimelineRows()
+        memo.visible=memo.rendered.filter { row in
+            if case .message(let m)=row {return replyVariants.isVisible(turnID:m.turnID,isUserPrompt:m.message.role == .user)}
+            return replyVariants.isVisible(turnID:row.turnID,isUserPrompt:false)
+        }
+        memo.lastAssistantID=nil
+        for row in memo.visible.reversed() { if case .message(let m)=row,m.presentation == .message,m.message.role == .assistant {memo.lastAssistantID=m.message.id;break} }
+    }
+
+    init(model:ConversationFirstModel,accountLabel:String?=nil,onSignOut:(()->Void)?=nil,
+         isAnonymousAccount:Bool=false,restrictToFrozenFixture:Bool=false) {
+        self.model=model
+        let chrome=ConversationComposerChromeAdapter(model:model,sendsEnabled:!restrictToFrozenFixture)
+        _composerChrome=StateObject(wrappedValue:chrome)
+        _attachmentUploader=StateObject(wrappedValue:ModelImageComposerAttachmentUploader(model:model) { [weak chrome] id,status in
+            guard let chrome,let index=chrome.attachments.firstIndex(where:{$0.id==id}) else {return false}
+            chrome.attachments[index].status=status
+            return true
+        })
+        self.accountLabel=accountLabel
+        self.onSignOut=onSignOut
+        self.isAnonymousAccount=isAnonymousAccount
+        self.restrictToFrozenFixture=restrictToFrozenFixture
+    }
     #if DEBUG
     @ObservedObject private var probe=P0ExperienceProbe.shared
     #endif
     private var sidebarSnapshot:SidebarSnapshot {
+        var snapshot = baseSidebarSnapshot; snapshot.capabilities.proactive = true; return snapshot
+    }
+    private var baseSidebarSnapshot:SidebarSnapshot {
         .init(contextID:model.scope.workspaceID.uuidString,selectedConversationID:model.conversationID,
-              conversations:model.history.map{.init(id:$0.id,title:$0.title,preview:$0.conversation?.draftText)},
-              capabilities:.init(canCreateConversation:model.loaded && !model.busy && !model.isInputComposing,canSelectConversation:!model.busy && !model.isInputComposing,tasks:true,results:true,memory:model.loaded && model.memoryConfigured,settings:true))
+              conversations:model.history.map{.init(id:$0.id,title:$0.title,preview:$0.conversation?.draftText,updatedAt:$0.header.updatedAt)},
+              capabilities:.init(canCreateConversation:model.loaded && !model.busy && !model.isInputComposing,canSelectConversation:!model.busy && !model.isInputComposing,tasks:true,results:true,memory:model.loaded && model.memoryConfigured,settings:true),
+              account:.init(name:accountLabel ?? ui("本机用户"),detail:isAnonymousAccount ? ui("未登录") : nil))
+    }
+    @State private var proactiveInboxPresented = false
+    @State private var proactiveDebugPresented = false
+    private func consumeAppRoute() {
+        guard model.loaded, let route = CatpawRouteCenter.shared.pending else { return }
+        CatpawRouteCenter.shared.pending = nil
+        switch route {
+        case .conversation(let id): self.route(.conversation(id))
+        case .newConversation: self.route(.newConversation)
+        case .tasks: path = []; self.route(.tasks)
+        case .proactive: proactiveInboxPresented = true
+        case .proactiveDebug: proactiveDebugPresented = true
+        case .memory: path = []; self.route(.memory)
+        }
+
     }
     private func route(_ destination:SidebarDestination) {
         switch destination {
@@ -51,18 +129,84 @@ import CatpawImageComposer
         case .results:path.append(.results)
         case .settings:path.append(.settings)
         case .memory:if model.loaded && model.memoryConfigured {path.append(.memory)}
+        case .proactive:proactiveInboxPresented=true
         }
     }
     private var conversationTitle:String {
         let title=model.history.first(where:{$0.id==model.conversationID})?.title.trimmingCharacters(in:.whitespacesAndNewlines) ?? ""
         return title.isEmpty ? ui("新对话") : title
     }
+    private var r8Title:String { model.history.first(where:{$0.id==model.conversationID}) == nil ? "Catpaw" : shortConversationTitle }
+    private var r8ModelLabel:String {
+        // Prefer the model the server actually used (SSE / verified reply); else the selected free route.
+        if let live = model.connection.model, !live.isEmpty {
+            let short = live.split(separator: "/").last.map(String.init) ?? live
+            return short.count > 18 ? String(short.prefix(16)) + "…" : short
+        }
+        if let e = routeCatalog.lastEvent { return e.model ?? routeCatalog.displayName(e.route) }
+        let id = ModelRouteSelection.route
+        return id == ModelRouteSelection.autoID ? ui("自动") : routeCatalog.displayName(id)
+    }
+    private var conversationTitleMenu: some View {
+        Menu {
+            Section(ui("模型")) {
+                Button { ModelRouteSelection.resetToAuto() } label: { if ModelRouteSelection.route == ModelRouteSelection.autoID { Label(ui("自动"), systemImage:"checkmark") } else { Text(ui("自动")) } }
+                ForEach(routeCatalog.routes) { r in
+                    Button { ModelRouteSelection.select(route: r.id, model: r.defaultModel) } label: { if ModelRouteSelection.route == r.id { Label(r.display_name, systemImage:"checkmark") } else { Text(r.display_name) } }
+                }
+            }
+            Section {
+                Label(connectionMonitor.state.labelKey.map{ui($0.key,arguments:$0.arguments)} ?? ui("连接正常"), systemImage: connectionMonitor.state == .online ? "wifi" : "wifi.slash")
+                Button { path.append(.settings) } label: { Label(ui("设置"), systemImage:"slider.horizontal.3") }.accessibilityIdentifier("chat.settings")
+            }
+        } label: {
+            // Soft-3D header cat (docs/refs/header-cat/six-states.png) — not flat BrandMark.
+            // Map: offline→ears-down; error→wobble; thinking/working→orbit-load; streaming→spin; done→happy; else idle.
+            HStack(spacing:8) {
+                PlushMascot(state: headerCatState, size: 28)
+                    .frame(width:32,height:32)
+                    .accessibilityIdentifier("chat.title.presence")
+                VStack(alignment:.leading,spacing:0) {
+                    HStack(spacing:4) {
+                        Text(r8Title).font(CatpawTypography.Role.body.font.weight(.semibold)).foregroundStyle(CatpawColors.ink).lineLimit(1).truncationMode(.tail)
+                        Image(systemName:"chevron.down").font(CatpawTypography.Role.caption.font.weight(.semibold)).imageScale(.small).foregroundStyle(CatpawColors.tertiary)
+                    }
+                    Text(headerStatusLine)
+                        .font(CatpawTypography.Role.caption.font.weight(.medium)).foregroundStyle(CatpawColors.secondary).lineLimit(1)
+                        .contentTransition(.opacity).animation(CatpawMotion.statusCapsule, value: headerStatusLine)
+                        .accessibilityIdentifier("chat.title.step")
+                }
+                ConnectionStatusHeaderDot(monitor: connectionMonitor)
+            }
+            .padding(.leading,4).padding(.trailing,12).padding(.vertical,3)
+            .background(CatpawColors.card, in: Capsule())
+            .shadow(color: CatpawBrand.clayShadow.opacity(0.08), radius: 8, y: 2)
+            .frame(maxWidth:240).contentShape(Capsule())
+        }
+        .accessibilityLabel(conversationTitle).accessibilityAddTraits(.isHeader).accessibilityIdentifier("chat.title")
+    }
+    /// Capsule secondary line: live step, else plush pose status while busy, else model label.
+    private var headerStatusLine: String {
+        if presenceHub.state != nil, !presenceHub.step.isEmpty { return presenceHub.step }
+        let pose = PlushMascotPose(headerCatState)
+        return pose == .idle ? r8ModelLabel : ui(pose.statusKey)
+    }
+    /// Header plush pose from connection + turn hub (six-state 毛绒小伙伴 set).
+    private var headerCatState: CatpawPresenceState {
+        let kind = ConnectionStatusKind.from(connectionMonitor.state)
+        if kind == .offline { return .offline }
+        if kind == .error, presenceHub.state == nil { return .error }
+        switch presenceHub.state {
+        case .none: return .waiting
+        case .some(let s): return s
+        }
+    }
     private var shortConversationTitle:String {
         let line=String(conversationTitle.split(separator:"\n",maxSplits:1).first ?? Substring(conversationTitle))
         return line.count>18 ? String(line.prefix(18))+"…" : line
     }
     private var sidebarTheme:SidebarTheme {
-        SidebarTheme.catpaw.typography(title:CatpawTypography.Role.title.font,heading:CatpawTypography.Role.heading.font,body:CatpawTypography.Role.body.font,secondary:CatpawTypography.Role.secondary.font,caption:CatpawTypography.Role.caption.font)
+        SidebarTheme.catpaw.typography(title:CatpawTypography.Role.title.font,heading:CatpawTypography.Role.heading.font,body:CatpawTypography.Role.body.font,secondary:CatpawTypography.Role.secondary.font,caption:CatpawTypography.Role.caption.font).brand(BrandMark(size:26, style: .fill))
     }
     private var readingAnchorContext:ConversationReadingAnchorContext? {
         model.conversationID.map {ConversationReadingAnchorContext(profileID:model.scope.profileID,scopeID:model.scope.workspaceID,conversationID:$0)}
@@ -72,11 +216,54 @@ import CatpawImageComposer
         return ConversationTimelineProjection.rows(messages:displayMessages,turns:session.turns)
     }
     private enum RenderedTimelineRow:Identifiable {
-        case message(ConversationTimelineProjection.Row),activity(ConversationTurnActivitySnapshot)
-        var id:UUID {switch self {case .message(let row):return row.id;case .activity(let activity):return stableID("conversation-activity-\(activity.id)")}}
-        var turnID:UUID? {switch self {case .message(let row):return row.turnID;case .activity(let activity):return activity.id}}
+        case message(ConversationTimelineProjection.Row),activity(ConversationTurnActivitySnapshot),proactive(CatpawProactiveFeed.Entry)
+        var id:UUID {switch self {case .message(let row):return row.id;case .activity(let activity):return stableID("conversation-activity-\(activity.id)");case .proactive(let entry):return entry.rowID}}
+        var turnID:UUID? {switch self {case .message(let row):return row.turnID;case .activity(let activity):return activity.id;case .proactive:return nil}}
+        var isUserMessage:Bool {if case .message(let row)=self {return row.message.role == .user};return false}
     }
-    private var renderedTimelineRows:[RenderedTimelineRow] {
+    /// Regenerate pager: hide re-sent prompts and non-selected variants (ReplyVariantStore).
+    private var visibleTimelineRows:[RenderedTimelineRow] {timelineMemo.visible}
+    private var lastAssistantMessageID:UUID? {timelineMemo.lastAssistantID}
+    private func replyActions(_ message:ConversationTranscriptMessage,turnID:UUID?)->ReplyActionControl? {
+        guard let turnID else {return nil}
+        let group=replyVariants.group(for:turnID),root=replyVariants.original(of:turnID)
+        return ReplyActionControl(index:group?.selected ?? 0,count:group?.turns.count ?? 1,
+                                  canRegenerate:message.complete && !model.busy && model.draft.isEmpty && model.canAcceptDraft,
+                                  onRegenerate:{regenerate(root)},onStep:{replyVariants.step(turnID,by:$0)})
+    }
+    /// Client-side regenerate: re-send the original prompt as a new turn and record it as a variant.
+    private func regenerate(_ root:UUID) {
+        let promptTurn=replyVariants.promptTurn(for:root)   // edited prompt when the user is on an edited version
+        guard model.draft.isEmpty,let prompt=timelineRows.first(where:{$0.turnID==promptTurn && $0.message.role == .user})?.message.content,!prompt.isEmpty else {return}
+        let old=Set(model.outgoingMessages.map(\.id))
+        model.editDraft(prompt);model.prepareSend()
+        if let admitted=model.outgoingMessages.last(where:{!old.contains($0.id)}) {followingLatest=true;replyVariants.addVariant(original:root,newTurn:admitted.id)}
+    }
+    /// chat-ux #1: edit is offered on the latest prompt only (variants are linear), when a new turn can start.
+    private func editAction(_ message:ConversationTranscriptMessage,turnID:UUID?)->((String)->Void)? {
+        guard let turnID,!model.busy,model.draft.isEmpty,model.canAcceptDraft,
+              let last=visibleTimelineRows.last(where:{$0.isUserMessage})?.turnID,replyVariants.original(of:last)==replyVariants.original(of:turnID) else {return nil}
+        let root=replyVariants.original(of:turnID)
+        return {text in editingPrompt=EditingPrompt(root:root,text:text)}
+    }
+    /// Edit & resend: send the edited prompt as a new turn, recorded as an edited version of the same group.
+    private func resendEdited(_ root:UUID,_ text:String) {
+        guard model.draft.isEmpty,!text.isEmpty else {return}
+        let old=Set(model.outgoingMessages.map(\.id))
+        model.editDraft(text);model.prepareSend()
+        if let admitted=model.outgoingMessages.last(where:{!old.contains($0.id)}) {followingLatest=true;replyVariants.addEdit(original:root,newTurn:admitted.id)}
+    }
+    /// chat-ux #4: a tapped follow-up chip becomes the next prompt (only when a new turn can start and the draft is empty).
+    private func sendFollowUp(_ text:String?) {
+        guard let text,!text.isEmpty,!model.busy,model.draft.isEmpty,model.canAcceptDraft else {return}
+        UIImpactFeedbackGenerator(style:.light).impactOccurred()
+        model.editDraft(text);model.prepareSend();followingLatest=true
+    }
+    private var renderedTimelineRows:[RenderedTimelineRow] {timelineMemo.rendered}
+    private func computeRenderedTimelineRows()->[RenderedTimelineRow] {
+        #if DEBUG
+        InteractionFrameProbe.shared.count("timeline.project")
+        #endif
         let rows=timelineRows
         guard let session=model.session else {return rows.map{.message($0)}}
         let activities=ConversationTurnActivityProjection.snapshots(session:session,rows:rows)
@@ -88,13 +275,34 @@ import CatpawImageComposer
             // Pending and plain tool receipts live in the single turn summary.
             // Actual task, result and interactive cards keep their original rows.
             let plainReceipt=row.presentation == .message && row.message.role == .tool &&
-                !["present_cgui_v1","propose_memory_v1","revise_current_report_v1",ConversationRevisionWorkCodec.toolName].contains(row.message.toolName ?? "") && linkedGoal(row.message)==nil && row.message.failure==nil
+                !["present_cgui_v1","propose_memory_v1","create_task","revise_current_report_v1",ConversationRevisionWorkCodec.toolName].contains(row.message.toolName ?? "") && linkedGoal(row.message)==nil && row.message.failure==nil
             let emptyTerminal=row.presentation == .message && row.message.role == .assistant && row.message.toolName==nil && row.message.toolCallID==nil && row.message.complete && row.message.failure==nil && row.message.content.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty
             if !emptyTerminal && (activity==nil || (row.presentation != .processPending && !plainReceipt)) {result.append(.message(row))}
             if row.message.role == .user,let activity,emitted.insert(activity.id).inserted {result.append(.activity(activity))}
         }
         for activity in activities where emitted.insert(activity.id).inserted {result.append(.activity(activity))}
-        return result
+        return Self.interleave(proactiveFeed.entries(for:model.conversationID),into:result)
+    }
+    /// True time order: an event goes after the last row whose time ≤ the event's `created_at`.
+    /// Row time = message `createdAt` (local journal time); activity rows inherit the previous row's time.
+    /// Legacy messages decode `.distantPast`, so they count as older than every event and cards never
+    /// move above old history. Events at the same position keep `created_at` order.
+    private static func interleave(_ entries:[CatpawProactiveFeed.Entry],into rows:[RenderedTimelineRow])->[RenderedTimelineRow] {
+        guard !entries.isEmpty else {return rows}
+        var times:[Date]=[],last=Date.distantPast
+        for row in rows {
+            if case .message(let message)=row {last=message.message.createdAt}
+            times.append(last)
+        }
+        var after:[Int:[CatpawProactiveFeed.Entry]]=[:]   // -1 = before the first row
+        for entry in entries.sorted(by:{$0.event.createdAt<$1.event.createdAt}) {
+            let time=entry.event.createdAt
+            let index=times.lastIndex(where:{$0<=time}) ?? -1
+            after[index,default:[]].append(entry)
+        }
+        var out:[RenderedTimelineRow]=(after[-1] ?? []).map{.proactive($0)}
+        for (index,row) in rows.enumerated() {out.append(row);out.append(contentsOf:(after[index] ?? []).map{.proactive($0)})}
+        return out
     }
     private func renderedSpacing(_ row:RenderedTimelineRow,previous:RenderedTimelineRow?)->CGFloat {
         guard let previous else {return 0}
@@ -102,10 +310,16 @@ import CatpawImageComposer
         return row.turnID != nil && row.turnID==previous.turnID ? 8:24
     }
     @ViewBuilder private func renderedTimelineRow(_ row:RenderedTimelineRow)->some View {
-        switch row {case .message(let message):timelineRow(message);case .activity(let activity):ConversationTurnActivity(activity:activity)}
+        #if DEBUG
+        let _=InteractionFrameProbe.shared.count("timeline.row")
+        #endif
+        switch row {case .message(let message):timelineRow(message);case .activity(let activity):ConversationTurnActivity(activity:activity);case .proactive(let entry):ProactiveReminderCardView(entry:entry,feed:proactiveFeed)}
     }
     private var chatNavigation: some View {
-        SidebarHost(isPresented:$sidebarPresented,isAtRoot:path.isEmpty && !conversationMenuPresented && !settings && !history && !pendingMessagesPresented && !composerContextPresented && !model.acceptedWorkReviewPresented && model.selectedTaskPlan == nil && model.selectedTaskActions == nil && model.selectedTaskControl == nil && model.pendingModelConsent == nil && model.pendingImageConsent == nil,
+        #if DEBUG
+        InteractionFrameProbe.shared.count("chat.body")
+        #endif
+        return SidebarHost(isPresented:$sidebarPresented,isAtRoot:path.isEmpty && !conversationMenuPresented && !settings && !history && !pendingMessagesPresented && !composerContextPresented && !model.acceptedWorkReviewPresented && model.selectedTaskPlan == nil && model.selectedTaskActions == nil && model.selectedTaskControl == nil && model.pendingModelConsent == nil && model.pendingImageConsent == nil,
                     snapshot:sidebarSnapshot,theme:sidebarTheme,localize:{ui($0)},allowsContentPan:true,onWillOpen:{UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder),to:nil,from:nil,for:nil)},
                     onDismissed:{menuFocused=true},onSelect:route) {
         NavigationStack(path:$path) {
@@ -118,19 +332,51 @@ import CatpawImageComposer
                                 VStack(alignment: .leading, spacing: 16) {
                                     Text(ui("想一起完成什么？")).font(CatpawTypography.Role.title.font.weight(.semibold)).accessibilityAddTraits(.isHeader)
                                     Text(ui("问一个问题，或说一件想做的事。")).foregroundStyle(CatpawColors.secondary)
-                                }.padding(.top, textSize.isAccessibilitySize ? 24 : 64).padding(.bottom, 32).accessibilityIdentifier("chat.empty")
+                                }.frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.top, textSize.isAccessibilitySize ? 24 : 64).padding(.bottom, 32)
+                                .background(PlushEmptyBackdrop().frame(height: 360).offset(y: 40), alignment: .top)
+                                .accessibilityIdentifier("chat.empty")
+                                    .transaction { $0.animation = nil }.id("chat.empty")
                             }
-                            let rows=renderedTimelineRows
+                            let rows=visibleTimelineRows
+                            let turnTails=ConversationTurnUIRow.tails(rows.compactMap{row->(UUID,UUID?)? in if case .message(let m)=row {return (m.id,m.turnID)};return nil})
                             ForEach(Array(rows.enumerated()),id:\.element.id) { index,row in
-                                renderedTimelineRow(row).padding(.top,renderedSpacing(row,previous:index>0 ? rows[index-1]:nil))
+                                VStack(alignment:.leading,spacing:0) {
+                                    renderedTimelineRow(row)
+                                    // Per-turn hook: approval card + catpaw.ui.v1 blocks after the turn's last message row.
+                                    if let turn=row.turnID,turnTails[turn]==row.id {ConversationTurnUIRow(model:model,session:session,turnID:turn)}
+                                }.padding(.top,renderedSpacing(row,previous:index>0 ? rows[index-1]:nil))
                                     .background(ConversationReadingAnchorMarker(id:row.id,context:readingAnchorContext,coordinator:readingAnchor).accessibilityHidden(true)).id(row.id)
+                                    .transition(row.isUserMessage && !reduceMotion ? .catpawSendRise : .opacity)
                             }
-                            if let latest = session.turns.last, latest.state == .completed {
-                                Text(ui("回复完成")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary).accessibilityIdentifier("chat.reply.completed").padding(.top,8)
+                            if let pending = session.turns.last, [.dispatched,.running].contains(pending.state), !pending.awaitingApproval, pending.assistantMessageID == nil, !composerChrome.stoppedOperations.contains(pending.id),
+                               !session.messages.contains(where:{ $0.role == .assistant && !$0.complete }) {
+                                PendingThinkingRow(service:model.service,turn:pending).id("pending-\(pending.id)").padding(.top,12)
+                            }
+                            // Fallbacks for a turn with no message row yet; the feed lives in the generative host.
+                            if !turnTails.keys.contains(session.turns.last?.id ?? UUID()) {ConversationApprovalHost(model:model,session:session)}   // catpaw.approval.v1 cards (A2)
+                            ConversationGenerativeUIHost(model:model,session:session,inlineTurns:Set(turnTails.keys))   // catpaw.ui.v1 feed + orphan blocks
+                            if let latest = session.turns.last, latest.state == .completed, !composerChrome.stoppedOperations.contains(latest.id) {
+                                Color.clear.frame(width:1,height:1).accessibilityElement().accessibilityLabel(ui("回复完成")).accessibilityIdentifier("chat.reply.completed")
                             } else if let latest = session.turns.last, latest.state == .failed {
-                                Text(ui("此轮回复未完成")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.attention).accessibilityIdentifier("chat.reply.failed").padding(.top,8)
+                                if ConversationTerminalServerError.isQuota(latest.error) || model.quotaNotice {
+                                    ConversationSystemNotice(kind: .quota, actionTitle: ui("重试")) { model.retryAfterQuota() }
+                                        .accessibilityIdentifier("chat.reply.failed")
+                                } else {
+                                    Text(ui("此轮回复未完成")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary).accessibilityIdentifier("chat.reply.failed").padding(.top,8)
+                                }
+                            } else if model.quotaNotice {
+                                ConversationSystemNotice(kind: .quota, actionTitle: ui("重试")) { model.retryAfterQuota() }
                             }
-                            if let turn = session.unresolved, turn.state == .unknown || !model.sending {
+                            if let routeNotice = routeCatalog.notice {
+                                ConversationSystemNotice(kind: routeNotice).task { try? await Task.sleep(nanoseconds: 4_000_000_000); routeCatalog.notice = nil }
+                            }
+                            if let notice = connectionMonitor.pathNotice {
+                                ConversationSystemNotice(kind: notice == .offline ? .offline : .online)
+                                    .id("path-notice-\(notice)")
+                                    .transition(.opacity)
+                            }
+                            if let turn = session.unresolved, !turn.awaitingApproval, turn.state == .unknown || !model.sending {
                                 Label(turn.error ?? ui("原请求状态待确认"), systemImage: "arrow.clockwise").font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.attention).accessibilityIdentifier("chat.unresolved")
                                 Text(ui("发送结果尚未确认。先读取原请求，避免重复发送；草稿会保留。")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary).fixedSize(horizontal:false,vertical:true).accessibilityIdentifier("chat.recoveryHelp")
                                 Button(ui("读取原请求进展")) { model.readOriginal() }.touchTarget().buttonStyle(CatpawPressButtonStyle()).disabled(model.busy).accessibilityHint(ui("只查询原请求，不重新发送消息")).accessibilityIdentifier("chat.observe")
@@ -138,7 +384,7 @@ import CatpawImageComposer
                         } else { ProgressView(ui("打开对话")) }
                         Color.clear.frame(height: 1).id("latest")
                     }.padding(20).frame(maxWidth: 680).frame(maxWidth: .infinity)
-                        .background(ConversationReadingAnchorTracker(context:readingAnchorContext,followingLatest:followingLatest,orderedIDs:renderedTimelineRows.map(\.id),coordinator:readingAnchor,onContentSizeChange:{[following = $followingLatest, pending = $scrollTask] in Self.scheduleScroll(proxy,following:following,pending:pending)}).accessibilityHidden(true))
+                        .background(ConversationReadingAnchorTracker(context:readingAnchorContext,followingLatest:followingLatest,orderedIDs:renderedTimelineRows.map(\.id),coordinator:readingAnchor,onContentSizeChange:{[following = $followingLatest, pending = $scrollTask, empty = displayMessages.isEmpty] in if !empty {Self.scheduleScroll(proxy,following:following,pending:pending)}}).accessibilityHidden(true))
                         .background(ConversationScrollObserver { distance,userScrolled in
                             latestVisible=distance <= 48
                             if userScrolled {
@@ -150,14 +396,33 @@ import CatpawImageComposer
                             #endif
                         }.frame(width:0,height:0).accessibilityHidden(true))
                 }.scrollDismissesKeyboard(.interactively)
+                    .r9TopAlignedTranscript()
                     .accessibilityIdentifier("chat.transcript")
                     .onChange(of: model.session?.messages.last?.content) { _, _ in scheduleScroll(proxy) }
                     .onChange(of: displayMessages.count) { _, _ in scheduleScroll(proxy) }
                     .onChange(of:model.conversationID) { _,_ in
                         scrollTask?.cancel();scrollTask=nil;followingLatest=true;latestVisible=true
-                        scheduleScroll(proxy)
+                        pendingAttachmentIntentID=nil
+                        composerChrome.discardAttachments(using:attachmentUploader)
+                        if displayMessages.isEmpty {
+                            var reset=Transaction();reset.disablesAnimations=true
+                            withTransaction(reset){proxy.scrollTo("chat.empty",anchor:.top)}
+                        } else {scheduleScroll(proxy)}
                     }
                     .onChange(of:contextJumpRequested){_,_ in proxy.scrollTo("latest",anchor:.bottom)}
+                    .onChange(of:sendScrollTick){_,_ in
+                        scrollTask?.cancel();scrollTask=nil
+                        withAnimation(reduceMotion ? nil : CatpawInteractionMotion.sendRise) {proxy.scrollTo("latest",anchor:.bottom)}
+                    }
+                    .background(CatpawKeyboardFollowScroll(enabled:followingLatest && !reduceMotion) {
+                        scrollTask?.cancel();scrollTask=nil
+                        proxy.scrollTo("latest",anchor:.bottom)
+                    }.frame(width:0,height:0).accessibilityHidden(true))
+                    .safeAreaInset(edge: .top, spacing: 0) {
+                        ConversationConnectionStatusCapsule(service: model.service, scope: model.scope,
+                                                            conversationID: model.conversationID,
+                                                            reportError: { model.error = $0 })
+                    }
                     .safeAreaInset(edge: .bottom, spacing: 0) {
                         composer(budget:composerBudget(viewport),jumpToLatest:{
                             followingLatest=true;scrollTask?.cancel();scrollTask=nil
@@ -169,49 +434,37 @@ import CatpawImageComposer
                 .onPreferenceChange(ConversationComposerMeasurements.self){composerMeasurements=$0}
             .background(CatpawColors.background).navigationTitle(shortConversationTitle).navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement:.topBarLeading) { if path.isEmpty {SidebarMenuButton(localize:{ui($0)}) {sidebarPresented=true}.accessibilityFocused($menuFocused)} }
-                ToolbarItem(placement:.principal) {
-                    Text(shortConversationTitle).font(CatpawTypography.Role.body.font.weight(.semibold)).lineLimit(1)
-                        .accessibilityLabel(conversationTitle).accessibilityAddTraits(.isHeader).accessibilityIdentifier("chat.title")
-                }
-                // The system groups navigation controls; the anchored popover owns
-                // one complete action row with matching visual and hit bounds.
-                ToolbarItemGroup(placement:.topBarTrailing) {
-                    Button { model.newConversation() } label: { Image(systemName:"square.and.pencil").touchTarget() }
-                        .disabled(!model.loaded || model.busy || model.isInputComposing).foregroundStyle(CatpawColors.ink)
-                        .accessibilityLabel(ui("新对话")).accessibilityIdentifier("chat.new").buttonStyle(CatpawPressButtonStyle())
-                    Button {conversationMenuPresented=true} label: {Image(systemName:"ellipsis").foregroundStyle(CatpawColors.ink).touchTarget()}
-                        .accessibilityLabel(ui("更多操作")).accessibilityIdentifier("chat.more").accessibilityFocused($moreFocused)
-                        .popover(isPresented:$conversationMenuPresented,attachmentAnchor:.point(.bottomTrailing),arrowEdge:.top) {
-                            Button {
-                                pendingConversationSettings=true;conversationMenuPresented=false
-                            } label: {
-                                Label(ui("设置"),systemImage:"slider.horizontal.3").font(CatpawTypography.Role.body.font)
-                                    .frame(maxWidth:.infinity,minHeight:44,alignment:.leading).padding(.horizontal,12).contentShape(Rectangle())
-                            }.buttonStyle(CatpawPressButtonStyle()).foregroundStyle(CatpawColors.ink)
-                                .accessibilityIdentifier("chat.settings").padding(8).frame(minWidth:200)
-                                .presentationCompactAdaptation(.popover).presentationBackground(CatpawColors.panel)
-                                .onDisappear {
-                                    // Navigation starts only after the foreground
-                                    // popover releases ownership; consume once.
-                                    if pendingConversationSettings {pendingConversationSettings=false;path.append(.settings)}
-                                    else {moreFocused=true}
-                                }
-                        }
-                }
+                // r8 top bar: three bare glyph elements, no per-button glass; whole bar turns glass only after scroll.
+                ToolbarItem(placement:.topBarLeading) {
+                    if path.isEmpty {
+                        Button {sidebarPresented=true} label: {
+                            TwoLineMenuGlyph().foregroundStyle(CatpawColors.ink).frame(width:36,height:36).background(CatpawColors.card,in:Circle()).overlay(Circle().strokeBorder(CatpawColors.hairline,lineWidth:0.5)).frame(width:44,height:44).contentShape(Rectangle())
+                        }.buttonStyle(CatpawPressButtonStyle()).accessibilityLabel(ui("打开侧栏")).accessibilityIdentifier("sidebar.open").accessibilityFocused($menuFocused)
+                    }
+                }.r8HiddenSharedBackground()
+                ToolbarItem(placement:.principal) { conversationTitleMenu }.r8HiddenSharedBackground()
+                ToolbarItem(placement:.topBarTrailing) {
+                    Button { model.newConversation() } label: {
+                        CircleIcon(systemName:"square.and.pencil").frame(width:44,height:44).contentShape(Rectangle())
+                    }
+                    .disabled(!model.loaded || model.busy || model.isInputComposing)
+                    .accessibilityLabel(ui("新对话")).accessibilityIdentifier("chat.new").buttonStyle(CatpawPressButtonStyle())
+                }.r8HiddenSharedBackground()
             }
+            .toolbarBackground(.automatic, for:.navigationBar)
             .navigationDestination(for:ConversationHostDestination.self){destination in
                 switch destination {
                 case .settings:settingsSheet
                 case .tasks:
                     if let service=model.inboxService {ConversationInboxView(service:service,mode:.tasks,admissionAllowed:{model.loaded && model.networkAdmissionAllowed && scene == .active},onReturn:{item in if await model.returnToReceivedWork(item){path=[];return .returned};return .unavailable(model.error.map{ui($0)} ?? ui("无法回到原对话。当前草稿仍保留，请重新读取后再试。"))})}
-                    else {ConversationTaskList(model:model)}
+                    else {CatpawTaskListView(source:ReminderTaskListSource())}
                 case .results:
                     if let service=model.inboxService {ConversationInboxView(service:service,mode:.results,admissionAllowed:{model.loaded && model.networkAdmissionAllowed && scene == .active},onReturn:{item in if await model.returnToReceivedWork(item){path=[];return .returned};return .unavailable(model.error.map{ui($0)} ?? ui("无法回到原对话。当前草稿仍保留，请重新读取后再试。"))})}
                     else {ConversationResultList(model:model)}
                 case .memory:
                     if let service=model.memoryService {
-                        ConversationMemoryView(service:service,conversationID:model.conversationID,admissionAllowed:{model.loaded && model.networkAdmissionAllowed && scene == .active})
+                        // wave2 V1: new memory page; the reviewed-command page stays reachable as its advanced section.
+                        MemoryLibraryView(backend:MemoryLibraryHub.backend ?? ConversationMemoryLibraryAdapter(service:service),advanced:AnyView(ConversationMemoryView(service:service,conversationID:model.conversationID,admissionAllowed:{model.loaded && model.networkAdmissionAllowed && scene == .active})))
                     }
                 case .task(let id):ConversationTaskDetail(model:model,id:id,openArtifact:{artifact in path.append(.artifact(id,ConversationArtifactIdentity(artifact)))})
                 case .artifact(let goal,let identity):ConversationArtifactDetail(model:model,goalID:goal,identity:identity,continueArtifact:{mode,selected in
@@ -223,6 +476,9 @@ import CatpawImageComposer
         }
     }
     private func scheduleScroll(_ proxy:ScrollViewProxy) {
+        // An empty conversation has nothing to follow; scrolling "latest" to the bottom while the new
+        // conversation's rows swap in briefly lifted the empty state ~60pt before it snapped back.
+        guard !displayMessages.isEmpty else {return}
         Self.scheduleScroll(proxy,following:$followingLatest,pending:$scrollTask)
     }
     private static func scheduleScroll(_ proxy:ScrollViewProxy,following:Binding<Bool>,pending:Binding<Task<Void,Never>?>) {
@@ -235,7 +491,7 @@ import CatpawImageComposer
         }
     }
     private var feedbackNavigation: some View {
-        chatNavigation.tint(CatpawColors.action).foregroundStyle(CatpawColors.ink)
+        chatNavigation.tint(CatpawColors.ink).foregroundStyle(CatpawColors.ink)
             .sensoryFeedback(.selection, trigger: sidebarPresented, condition: { _, opened in opened })
             .sensoryFeedback(.selection, trigger: settings, condition: { _, opened in opened })
             .sensoryFeedback(.impact(weight:.light), trigger:model.enqueueing, condition: { _, accepted in accepted })
@@ -243,7 +499,19 @@ import CatpawImageComposer
             .sensoryFeedback(.warning, trigger: model.error != nil, condition: { _, present in present })
     }
     var body: some View {
-        feedbackNavigation
+        refreshTimelineMemo()
+        return feedbackNavigation
+        .overlay { VoiceModeHost().animation(.easeOut(duration: 0.25), value: ComposerDictation.shared.dictating) }
+        .onChange(of: CatpawRouteCenter.shared.pending) { _, _ in consumeAppRoute() }
+        .sheet(isPresented: $proactiveInboxPresented) { NavigationStack { ProactiveInboxView() } }
+        .sheet(item: $editingPrompt) { e in MessageEditSheet(original: e.text) { resendEdited(e.root, $0) } }
+        .onReceive(NotificationCenter.default.publisher(for: FollowUpSuggestions.tapNotification)) { note in sendFollowUp(note.object as? String) }
+        .composerAttachPopover(isPresented: Binding(get: { ComposerAttachPopoverState.shared.isPresented }, set: { ComposerAttachPopoverState.shared.isPresented = $0 }),
+                               remaining: ComposerAttachPopoverState.shared.remaining,
+                               onAdd: { items in ComposerAttachPopoverState.shared.add(items); ComposerAttachPopoverState.shared.isPresented = false })
+        .sheet(isPresented: $proactiveDebugPresented) { NavigationStack { ProactiveSignalDebugView() } }
+        .onChange(of: model.loaded) { _, _ in consumeAppRoute() }
+        .task { try? await Task.sleep(nanoseconds: 600_000_000); consumeAppRoute() }
         .modifier(ConversationConsentPresenter(model:model))
         .catpawSheet(isPresented:Binding(get:{model.acceptedWorkReviewPresented},set:{if !$0 {model.closeAcceptedWorkReview()}})) {
             ConversationAcceptedWorkReviewView(originalText:model.acceptedWorkReviewOriginalText,capability:model.acceptedWorkCapability,options:$model.acceptedWorkOptions,saving:model.acceptedWorkReviewSaving,error:model.acceptedWorkReviewError,confirm:model.confirmAcceptedWorkReview,close:model.closeAcceptedWorkReview,revisionTargetTitle:model.revisionWorkReviewTarget.map{$0.artifactTitle+" · v\($0.artifactReference.version)"},lockedToolPolicy:model.revisionWorkReviewPolicy?.toolPolicy,sourceLimitFloor:model.revisionWorkReviewPolicy?.sourceCount ?? 0)
@@ -251,7 +519,7 @@ import CatpawImageComposer
                 .onChange(of:model.acceptedWorkOptions){_,_ in model.saveAcceptedWorkReviewOptions()}
         }
         .catpawSheet(isPresented: $history) { ConversationHistoryView(model: model).presentationDetents(textSize.isAccessibilitySize ? [.large] : [.medium, .large]).presentationDragIndicator(.visible) }
-        .catpawSheet(isPresented: $settings) { settingsSheet }
+        .catpawSheet(isPresented: $settings) { NavigationStack { settingsSheet } }
         .catpawSheet(item:$model.selectedTaskPlan) { reference in
             ConversationTaskPlanView(service:model.taskPlanService,reference:reference,admissionAllowed:{model.loaded && model.networkAdmissionAllowed && scene == .active})
         }
@@ -261,24 +529,38 @@ import CatpawImageComposer
         .catpawSheet(item:$model.selectedTaskControl,onDismiss:{Task{await model.refresh()}}) {reference in
             ConversationTaskControlView(service:model.taskControlService,reference:reference,admissionAllowed:{model.loaded && model.networkAdmissionAllowed && scene == .active},onApplied:{envelope in try await model.recordAppliedTaskControl(envelope,reference:reference)}).environment(\.dynamicTypeSize,textSize)
         }
-        .catpawSheet(isPresented:$pendingMessagesPresented) {
-            ConversationPendingMessagesView(model:model)
-                .presentationDetents(textSize.isAccessibilitySize ? [.large] : [.medium,.large]).presentationDragIndicator(.visible)
-        }
         .catpawSheet(isPresented:$composerContextPresented,onDismiss:completeContextAction) {composerContextSheet}
         .task { await model.start() }
+        .task(id:model.conversationID) {
+            proactiveFeed.currentAnchor={ [model] in
+                guard let session=model.session else {return nil}
+                return ConversationTimelineProjection.rows(messages:session.messages,turns:session.turns).last?.id
+            }
+            await proactiveFeed.refresh()
+        }
+        .onReceive(NotificationCenter.default.publisher(for:UIApplication.willEnterForegroundNotification)) { _ in proactiveFeed.refreshSoon() }
+        #if canImport(ActivityKit) && os(iOS)
+        .task { await CatpawLiveActivityCoordinator.shared.observe(model.service) { [model] in model.conversationID } }
+        .task { await CatpawLiveActivityCoordinator.shared.acceptanceProbe() }
+        .onChange(of:model.conversationID,initial:true) { _,id in replyVariants.activate(id) }   // regenerate pager variants
+        #endif
         .onDisappear {scrollTask?.cancel();scrollTask=nil}
+        .onChange(of:model.outgoingMessages) { _,intents in
+            updateAttachmentAdmission(intents)
+            #if DEBUG
+            probe.update(model)
+            #endif
+        }
          .onChange(of: scene) { _, value in model.sceneChanged(value)
             #if DEBUG
             probe.scene(value)
             #endif
         }
         #if DEBUG
-        .onAppear { probe.start();probe.update(model) }
-        .onChange(of:model.outgoingMessages) { _, _ in probe.update(model) }
+        .onAppear { probe.start();probe.update(model);InteractionFrameProbe.shared.start() }
         .onChange(of:model.draft) { _, _ in probe.update(model) }
         .onChange(of:model.session?.turns.last?.lastSequence) { _, _ in probe.update(model) }
-        .overlay(alignment:.topTrailing) { if probe.enabled && P0ExperienceFixture.launchEnvironment["CATPAW_QA_VISUAL_REVIEW"] != "1" { VStack {
+        .overlay(alignment:.topTrailing) { if probe.enabled && CatpawDebugPresentation.showFixtureBadge() && P0ExperienceFixture.launchEnvironment["CATPAW_QA_VISUAL_REVIEW"] != "1" { VStack {
             Text("Synthetic offline fixture").font(.caption2).accessibilityIdentifier("qa.p0Fixture")
             Text("P0 probe").font(.caption2).accessibilityIdentifier("qa.p0Probe").accessibilityValue(probe.json)
             if P0PerformanceLog.shared.enabled {Button("Export metrics"){probe.exportMetrics()}.font(.caption2).accessibilityIdentifier("qa.p0Export")}
@@ -313,7 +595,20 @@ import CatpawImageComposer
         }
     }
     private var draftTooLong: Bool { model.draft.utf16.count > 8000 }
-    private var canSendDraft: Bool { !restrictToFrozenFixture && model.canAcceptDraft && !draftTooLong }
+    /// r8 meta line above the pill: only when there is a status.
+    private var composerMetaText: String? {
+        if draftTooLong { return ui("超出 8000 字") }
+        if model.connectionLifecycle == .offline || model.connection.state == .unavailable || connectionMonitor.state == .offline || !connectionMonitor.waitingForNetwork.isEmpty { return ui("等待网络 · 恢复后自动发送") }
+        if composerChrome.queuedDraftPreview != nil { return ui("已排队 · 当前回复结束后发送") }
+        return nil
+    }
+    private var canSendDraft: Bool { !restrictToFrozenFixture && !draftTooLong && composerChrome.attachmentsAreReady && (model.canAcceptDraft || imageSendNeedsConsent) }
+    /// #64: a chrome image whose only blocker is a consent step; tapping send opens that step and then continues.
+    private var imageSendNeedsConsent: Bool {
+        guard !composerChrome.attachments.isEmpty,let block=model.imageSendBlock,!model.draft.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty else {return false}
+        return block == .imageConsentRequired || block == .textConsentRequired
+    }
+    private var chromeOwnsImage: Bool { !composerChrome.attachments.isEmpty }
     private var composerIsDrafting:Bool { !model.draft.isEmpty || model.isInputComposing }
     private var composerControlSize:CGFloat { max(44,CatpawTypography.font(.body,size:textSize).lineHeight) }
     private func composerBudget(_ viewport:GeometryProxy)->CatpawTextViewport.ComposerBudget {
@@ -333,8 +628,8 @@ import CatpawImageComposer
             ScrollView {
                 VStack(alignment:.leading,spacing:8) {
                     if !followingLatest && !latestVisible {
-                        Button(action:jumpToLatest){Label(ui("回到最新"),systemImage:"arrow.down").font(CatpawTypography.Role.caption.font).frame(minHeight:44)}
-                            .buttonStyle(CatpawPressButtonStyle()).accessibilityHint(ui("返回对话底部，继续跟随新回复")).accessibilityIdentifier("chat.jumpToLatest")
+                        JumpToLatestButton(hasNewContent:model.sending,action:jumpToLatest)
+                            .accessibilityHint(ui("返回对话底部，继续跟随新回复")).frame(maxWidth:.infinity)
                     }
                     composerContext(inDetails:false)
                 }.frame(maxWidth:.infinity,alignment:.leading)
@@ -345,28 +640,27 @@ import CatpawImageComposer
             if let target=model.artifactContinuation,budget.showsTarget {
                 artifactContinuationChip(target).padding(.bottom,8)
             }
-            // One Layout keeps the exact same UIKit editor and control identities
-            // while changing compact/drafting geometry, including marked text.
-            ConversationComposerLayout(drafting:composerIsDrafting) {
-                NativeConversationComposer(model:model,enabled:!restrictToFrozenFixture && !model.switchingArtifactContinuation,maximumVisibleHeight:budget.maximumTextHeight,submit:submitDraft)
+            FloatingComposer(model:composerChrome,lineCount:composerLineCount,uploader:attachmentUploader,
+                             trailingAccessory:AnyView(
+                                ComposerDictationControls(model:model,responding:composerChrome.runState == .responding,canSend:canSendDraft,
+                                                          size:composerControlSize,send:submitDraft,stop:{composerChrome.stop()})
+                             ),
+                             metaText:composerMetaText,metaWarning:draftTooLong,
+                             onDetails:{ guard !model.isInputComposing else {return}; composerContextPresented=true }) {
+                NativeConversationComposer(model:model,
+                    enabled:!restrictToFrozenFixture && !model.switchingArtifactContinuation,
+                    maximumVisibleHeight:min(budget.maximumTextHeight,ComposerMetrics.maxHeight(for:textSize)),
+                    placeholder:composerChrome.runState == .responding ? ui("继续追问…") : ui("问问 Catpaw"),
+                    lineCountChanged:{composerLineCount=$0},
+                    addAttachments:{_ = composerChrome.addAttachments($0,using:attachmentUploader)},
+                    submit:{if canSendDraft {submitDraft()}})
                     .background{GeometryReader{geometry in Color.clear.preference(key:ConversationComposerMeasurements.self,value:["text":geometry.size.height])}}
-                Button {
-                    guard !model.isInputComposing else {return};composerContextPresented=true
-                } label:{
-                    Group {
-                        if let target=model.artifactContinuation,!budget.showsTarget {
-                            Text("v\(target.artifactReference.version)").font(CatpawTypography.Role.caption.font).fixedSize()
-                                .accessibilityLabel(target.artifactTitle+" · v\(target.artifactReference.version)")
-                        } else {Image(systemName:model.artifactContinuation == nil ? "plus":"info.circle").font(CatpawTypography.Role.body.font)}
-                    }.touchTarget(minimum:composerControlSize)
-                }.buttonStyle(CatpawPressButtonStyle()).disabled(model.isInputComposing)
-                    .accessibilityLabel(model.artifactContinuation.flatMap{!budget.showsTarget ? ($0.mode == .reviseReport ? ui("修改这版") : ui("追问这版"))+" · "+$0.artifactTitle+" · v\($0.artifactReference.version) · "+ui("查看输入详情"):nil} ?? ui("查看输入详情")).accessibilityIdentifier("chat.input.context.open")
-                    .accessibilityValue(model.artifactContinuationSendBlock.map{ui($0)} ?? model.error.map{ui($0)} ?? "")
-                Button(action:submitDraft) { Image(systemName:model.sending ? "clock.badge.checkmark" : "arrow.up").font(CatpawTypography.Role.body.font.weight(.semibold)).foregroundStyle(canSendDraft ? CatpawColors.sendIcon : CatpawColors.secondary).frame(width:composerControlSize,height:composerControlSize).background(canSendDraft ? CatpawColors.send : CatpawColors.input,in:Circle()) }
-                    .buttonStyle(CatpawPressButtonStyle()).disabled(!canSendDraft)
-                    .accessibilityLabel(model.sending ? ui("排队发送") : ui("发送")).accessibilityHint(model.session?.unresolved?.state == .unknown ? ui("先读取原请求进展，当前草稿不会重发") : (model.sending ? ui("保存在后续消息队列，仅在前台发送") : ui("发送当前消息"))).accessibilityIdentifier("chat.send")
-            }.padding(.horizontal,12).padding(.vertical,budget.compactPadding ? 0:8)
-                .background(CatpawColors.input,in:RoundedRectangle(cornerRadius:24)).overlay{RoundedRectangle(cornerRadius:24).strokeBorder(CatpawColors.controlEdge)}
+            }
+                .onAppear{composerChrome.setSendAction(submitDraft)}
+                .onChange(of:model.imageSendBlock){_,_ in
+                    guard sendAfterImageConsent,model.imageDraft.phase == .ready else {return}
+                    if !continueImageConsent(start:false) {sendAfterImageConsent=false;submitDraft()}
+                }
                 .accessibilityElement(children:.contain).accessibilityIdentifier("chat.input.container")
         }.background(alignment:.topLeading) {
             if let target=model.artifactContinuation {
@@ -377,8 +671,23 @@ import CatpawImageComposer
                     .background{GeometryReader{geometry in Color.clear.preference(key:ConversationComposerMeasurements.self,value:["targetAnchor":geometry.size.height])}}
                     .hidden().accessibilityHidden(true).allowsHitTesting(false)
             }
-        }.padding(.horizontal,16).padding(.vertical,budget.compactPadding ? 0:8).background(CatpawColors.background)
+        }.padding(.horizontal,4).padding(.top,budget.compactPadding ? 0:4)
+            .background(LinearGradient(colors:[CatpawColors.background.opacity(0),CatpawColors.background],startPoint:.top,endPoint:UnitPoint(x:0.5,y:0.28)))
             .accessibilityElement(children:.contain).accessibilityIdentifier("chat.composer")
+    }
+    private func composerContextButton(budget:CatpawTextViewport.ComposerBudget)->some View {
+        Button {
+            guard !model.isInputComposing else {return};composerContextPresented=true
+        } label:{
+            Group {
+                if let target=model.artifactContinuation,!budget.showsTarget {
+                    Text("v\(target.artifactReference.version)").font(CatpawTypography.Role.caption.font).fixedSize()
+                        .accessibilityLabel(target.artifactTitle+" · v\(target.artifactReference.version)")
+                } else {Image(systemName:model.artifactContinuation == nil ? "info.circle":"info.circle.fill").font(CatpawTypography.Role.body.font)}
+            }.touchTarget(minimum:composerControlSize)
+        }.buttonStyle(CatpawPressButtonStyle()).disabled(model.isInputComposing)
+            .accessibilityLabel(model.artifactContinuation.flatMap{!budget.showsTarget ? ($0.mode == .reviseReport ? ui("修改这版") : ui("追问这版"))+" · "+$0.artifactTitle+" · v\($0.artifactReference.version) · "+ui("查看输入详情"):nil} ?? ui("查看输入详情")).accessibilityIdentifier("chat.input.context.open")
+            .accessibilityValue(model.artifactContinuationSendBlock.map{ui($0)} ?? model.error.map{ui($0)} ?? "")
     }
     private func composerContext(inDetails:Bool)->some View {
         VStack(alignment:.leading,spacing:8) {
@@ -387,8 +696,8 @@ import CatpawImageComposer
                 Text(ui(block)).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.attention).fixedSize(horizontal:false,vertical:true)
                     .accessibilityLabel(ui(block)).accessibilityIdentifier(inDetails ? "chat.input.context.blocked" : "chat.artifact.continuation.blocked")
             }
-            if let block=model.imageSendBlock,block != .unavailable {Text(ui(block.message)).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.attention).accessibilityIdentifier("attachment.sendBlock")}
-            if model.imageDraft.phase == .ready,model.imageCapability.available,!model.imageGate.imageConsentMatchesCurrentRoute {
+            if let block=model.imageSendBlock,block != .unavailable,inDetails || !chromeOwnsImage || !imageSendNeedsConsent {Text(ui(block.message)).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.attention).accessibilityIdentifier("attachment.sendBlock")}
+            if model.imageDraft.phase == .ready,model.imageCapability.available,!model.imageGate.imageConsentMatchesCurrentRoute,inDetails || !chromeOwnsImage {
                 Button(ui("确认图片处理方式")){contextAction(.imageConsent,inDetails:inDetails)}.touchTarget().disabled(!model.canReviewImage).accessibilityIdentifier(inDetails ? "chat.input.context.imageConsent" : "image.consent.review")
             }
             if model.checkingImageConsent {Text(ui("正在读取图片处理方式…")).font(CatpawTypography.Role.caption.font).accessibilityIdentifier("image.consent.loading")}
@@ -402,18 +711,14 @@ import CatpawImageComposer
                 }.padding(10).background(CatpawColors.input,in:RoundedRectangle(cornerRadius:12))
             }
             if !model.followups.pending.isEmpty {
-                Button {contextAction(.pendingMessages,inDetails:inDetails)} label: {
-                    HStack(spacing:8) {
-                        Text(ui("待发送 · {0} 条",arguments:[String(model.followups.pending.count)]))
-                        Text(model.followups.paused ? ui("已暂停") : ui("等待当前回复"))
-                        Spacer(minLength:4)
-                        Image(systemName:"chevron.right").accessibilityHidden(true)
-                    }.font(CatpawTypography.Role.caption.font).frame(minHeight:44).contentShape(Rectangle())
-                }.foregroundStyle(CatpawColors.secondary).buttonStyle(CatpawPressButtonStyle())
-                    .accessibilityHint(ui("查看、编辑或暂停本机待发消息")).accessibilityIdentifier(inDetails ? "chat.input.context.pending" : "chat.pendingSummary")
+                pendingStatusBar(inDetails:inDetails)
             }
             if model.checkingModelConsent { Text(ui("正在准备发送…")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary).accessibilityIdentifier("chat.preparing") }
-            if let error = model.error { Text(ui(error)).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.attention).fixedSize(horizontal:false,vertical:true).accessibilityIdentifier("chat.error") }
+            if model.quotaNotice {
+                ConversationSystemNotice(kind: .quota, actionTitle: ui("重试")) { model.retryAfterQuota() }
+            } else if let error = model.error, !(model.quotaReached && (error == ui("尚未发送的消息已保留，恢复连接后继续。") || error.contains(ui("恢复连接后继续")))) {
+                Text(ui(error)).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary).fixedSize(horizontal:false,vertical:true).accessibilityIdentifier("chat.error")
+            }
             if draftTooLong {
                 Text(ui("消息过长。请缩短后再发送（长度上限 8000）。"))
                     .font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.attention)
@@ -427,11 +732,12 @@ import CatpawImageComposer
                 ImageAttachmentPicker(draft:model.imageDraft,gate:model.imageGate,localize:{ui($0)}).id(model.scope.workspaceID.uuidString+(model.conversationID?.uuidString ?? ""))
                     // Keep its import ticket and selected-item state mounted. The
                     // compact + opens this same scoped draft in input details.
-                    .frame(height:!inDetails && model.imageDraft.phase == .empty ? 0:nil).clipped()
-                    .allowsHitTesting(inDetails || model.imageDraft.phase != .empty)
-                    .accessibilityHidden(!inDetails && model.imageDraft.phase == .empty)
+                    // A composer-chrome image (#64) already shows its own thumbnail; keep the picker mounted but hidden.
+                    .frame(height:!inDetails && (model.imageDraft.phase == .empty || chromeOwnsImage) ? 0:nil).clipped()
+                    .allowsHitTesting(inDetails || (model.imageDraft.phase != .empty && !chromeOwnsImage))
+                    .accessibilityHidden(!inDetails && (model.imageDraft.phase == .empty || chromeOwnsImage))
             }
-            if [.offline,.notConfigured].contains(model.connectionLifecycle) { Button {contextAction(.settings,inDetails:inDetails)} label: {
+            if inDetails, [.offline,.notConfigured].contains(model.connectionLifecycle) { Button {contextAction(.settings,inDetails:inDetails)} label: {
                 HStack(spacing: 8) {
                     Circle().fill(model.connection.state == .connected ? CatpawColors.success : CatpawColors.secondary).frame(width: 5, height: 5).accessibilityHidden(true)
                     Text(connectionSummary).font(CatpawTypography.Role.caption.font)
@@ -440,6 +746,33 @@ import CatpawImageComposer
             }.buttonStyle(CatpawPressButtonStyle()).foregroundStyle(CatpawColors.secondary).accessibilityLabel(ui("模型连接设置")).accessibilityValue(connectionSummary).accessibilityIdentifier("chat.connection") }
         }.frame(maxWidth:.infinity,alignment:.leading)
     }
+    /// Compact pending-send strip above the composer: one 32pt line, hairline outline, no grey slab.
+    /// The inline copy anchors the queue popover; the details copy routes through contextAction.
+    @ViewBuilder private func pendingStatusBar(inDetails:Bool)->some View {
+        if model.quotaReached || model.quotaNotice { EmptyView() } else {
+        let bar=Button {contextAction(.pendingMessages,inDetails:inDetails)} label: {
+            HStack(spacing:6) {
+                Image(systemName:model.followups.paused ? "pause.circle" : "clock").imageScale(.small).accessibilityHidden(true)
+                Text(ui("待发送 · {0} 条",arguments:[String(model.followups.pending.count)])).fontWeight(.medium).foregroundStyle(CatpawColors.ink)
+                Text(verbatim:"·").accessibilityHidden(true)
+                Text(model.followups.paused ? ui("已暂停") : ui("等待当前回复")).lineLimit(1)
+                Spacer(minLength:4)
+                Image(systemName:"chevron.up").imageScale(.small).accessibilityHidden(true)
+            }.font(CatpawTypography.Role.caption.font).padding(.horizontal,12).frame(minHeight:32)
+                .overlay(Capsule().strokeBorder(CatpawColors.separator,lineWidth:0.5))
+                .frame(minHeight:44).contentShape(Rectangle())
+        }.foregroundStyle(CatpawColors.secondary).buttonStyle(CatpawPressButtonStyle())
+            .accessibilityHint(ui("查看、编辑或暂停本机待发消息")).accessibilityIdentifier(inDetails ? "chat.input.context.pending" : "chat.pendingSummary")
+        if inDetails {bar} else {
+            bar.popover(isPresented:$pendingMessagesPresented,arrowEdge:.bottom) {
+                ConversationPendingMessagesView(model:model)
+                    .frame(minWidth:300,idealWidth:340,maxWidth:380)
+                    .presentationCompactAdaptation(.popover)
+            }
+        }
+    }
+        }
+
     private func artifactContinuationChip(_ target:ConversationArtifactContinuationReference)->some View {
         VStack(alignment:.leading,spacing:4) {
             HStack(alignment:.center,spacing:8) {
@@ -508,7 +841,8 @@ import CatpawImageComposer
         return (try? JSONSerialization.data(withJSONObject:values,options:.sortedKeys)).map { String(decoding:$0,as:UTF8.self) } ?? "{}"
     }
     #endif
-    private var displayMessages:[ConversationTranscriptMessage] {
+    private var displayMessages:[ConversationTranscriptMessage] {timelineMemo.display}
+    private func computeDisplayMessages()->[ConversationTranscriptMessage] {
         #if DEBUG
         let timingStart=ProcessInfo.processInfo.systemUptime
         defer {P0PerformanceLog.shared.record("display_messages",start:timingStart,end:ProcessInfo.processInfo.systemUptime,main:true)}
@@ -524,7 +858,13 @@ import CatpawImageComposer
             let id=stableID("conversation-user-\(intent.id)")
             if !messages.contains(where:{$0.id == id}) { messages.append(.init(id:id,role:.user,content:intent.text,image:intent.image)) }
         }
-        return messages
+        // Older busy-retry journals could contain more than one user row for the
+        // same operation. Current retries reuse operationID, so render it once.
+        var seenOperations = Set<UUID>()
+        return messages.filter { message in
+            guard message.role == .user, let operation = operationID(message) else { return true }
+            return seenOperations.insert(operation).inserted
+        }
     }
     private func timelineSpacing(_ row:ConversationTimelineProjection.Row,previous:ConversationTimelineProjection.Row?)->CGFloat {
         guard let previous else {return 0}
@@ -534,11 +874,15 @@ import CatpawImageComposer
     }
     @ViewBuilder private func timelineRow(_ row:ConversationTimelineProjection.Row)->some View {
         switch row.presentation {
-        case .message:messageView(row.message)
+        case .message:messageView(row.message,turnID:row.turnID)
         case .processPending:
-            Label(row.message.toolName == "agent_status" ? ui("读取任务进展…"):ui("正在处理请求…"),systemImage:"circle.dotted")
-                .font(CatpawTypography.Role.caption.font).symbolRenderingMode(.monochrome)
-                .foregroundStyle(CatpawColors.secondary).accessibilityIdentifier("chat.process.\(row.id)")
+            HStack(spacing:10) {
+                PlushMascot(pose:.executing, size:18)
+                StreamShimmerEllipsis(active:!reduceMotion)
+            }
+            .accessibilityElement(children:.combine)
+            .accessibilityLabel(row.message.toolName == "agent_status" ? ui("读取任务进展…"):ui("正在处理请求…"))
+            .accessibilityIdentifier("chat.process.\(row.id)")
         case .fallback:
             VStack(alignment:.leading,spacing:4) {
                 Label(ui("处理进展待核对"),systemImage:"exclamationmark.circle").font(CatpawTypography.Role.caption.font)
@@ -558,16 +902,63 @@ import CatpawImageComposer
             }.accessibilityIdentifier("chat.process.\(row.id)")
         }
     }
+    /// #64 consent chain for a chrome image: text consent (this chat) → image consent (this image) → send.
+    /// Returns true while a consent step is still pending.
+    private func continueImageConsent(start:Bool) -> Bool {
+        switch model.imageSendBlock {
+        case .textConsentRequired?,.imageConsentRequired?:
+            // requestImageConsent asks for this chat's text consent first when needed, then the image consent.
+            if start {sendAfterImageConsent=true
+                if model.pendingImageConsent == nil,model.pendingModelConsent == nil,!model.checkingImageConsent,model.canReviewImage {model.requestImageConsent()}}
+            return true
+        default: return false
+        }
+    }
     private func submitDraft() {
         if canSendDraft {followingLatest=true}
         let time=ProcessInfo.processInfo.systemUptime,old=Set(model.outgoingMessages.map(\.id))
-        model.prepareSend()
+        let hadAttachments = !composerChrome.attachments.isEmpty
+        if continueImageConsent(start:true) {return}
+        sendAfterImageConsent=false
+        let sentAttachment=model.imageDraft.phase == .ready ? model.imageDraft.attachment : nil
+        // One transaction: the draft leaves the composer while the bubble rises into the
+        // transcript (CatpawSendRise) and the composer height collapses on the same spring.
+        withAnimation(reduceMotion ? nil : CatpawInteractionMotion.sendRise) {model.prepareSend()}
+        let admitted=model.outgoingMessages.last(where:{!old.contains($0.id)})
+        // Keep the sent image for the bubble/viewer after the image store drops it at turn completion (#64).
+        if let sentAttachment,let admitted,admitted.image != nil {SentImageCache.shared.store(sentAttachment.encodedData,for:admitted.id,sha:sentAttachment.sha256)}
+        if hadAttachments {pendingAttachmentIntentID=admitted?.id}
+        if admitted != nil {sendScrollTick &+= 1}
         #if DEBUG
-        if let intent=model.outgoingMessages.last,!old.contains(intent.id) { probe.pressed(intent.id,at:time);probe.update(model) }
+        if let intent=admitted { probe.pressed(intent.id,at:time);probe.update(model) }
         #endif
     }
+    private func updateAttachmentAdmission(_ intents:[OutgoingMessageIntent]) {
+        guard let id=pendingAttachmentIntentID,
+              let intent=intents.first(where:{$0.id==id}) else {return}
+        switch intent.state {
+        case .savingLocal:return
+        case .failed:pendingAttachmentIntentID=nil
+        case .queued,.awaitingPermission,.sending,.unknown:
+            pendingAttachmentIntentID=nil
+            composerChrome.discardAttachments(using:attachmentUploader)
+        }
+    }
     private func operationID(_ message:ConversationTranscriptMessage) -> UUID? {
-        model.outgoingMessages.first(where:{stableID("conversation-user-\($0.id)") == message.id})?.id ?? model.session?.turns.first(where:{stableID("conversation-user-\($0.id)") == message.id})?.id
+        guard message.role == .user else {return nil}
+        return timelineMemo.operations[message.id]
+    }
+    /// r9 bubble status: sent → nothing; queued/offline → nothing (pending strip owns it);
+    /// sending → tiny spinner only after ~2 s without turn start; failed → red ! + "未发送·点按重试".
+    enum BubbleStatus { case none, sending, failed }
+    private func bubbleStatus(_ id:UUID) -> BubbleStatus {
+        if let intent=model.outgoingMessages.first(where:{$0.id == id}) {
+            switch intent.state { case .sending: return .sending; case .failed, .unknown: return .failed; default: return .none }
+        }
+        guard let turn = model.session?.turns.first(where:{$0.id == id}) else { return .none }
+        if turn.state == .failed && turn.error != "cancelled" && turn.assistantMessageID == nil { return .failed }
+        if turn.state == .dispatched && turn.lastSequence == 0 { return .sending }
+        return .none
     }
     private func delivery(_ id:UUID) -> String {
         if let intent=model.outgoingMessages.first(where:{$0.id == id}) {
@@ -588,20 +979,35 @@ import CatpawImageComposer
               binding.conversation_id == session.conversationID, let goal = session.goals[binding.task_id], goal.binding?.run_id == binding.run_id else { return nil }
         return goal
     }
-    @ViewBuilder private func messageView(_ message: ConversationTranscriptMessage) -> some View {
+    @ViewBuilder private func messageView(_ message: ConversationTranscriptMessage,turnID:UUID?) -> some View {
         if message.role == .user {
             VStack(alignment:.trailing,spacing:4) {
                 ConversationUserMessageLayout {
-                    Text(message.content).font(CatpawTypography.Role.body.font).textSelection(.enabled)
-                        .foregroundStyle(CatpawColors.userMessageInk).padding(.horizontal,16).padding(.vertical,12)
-                        .background(CatpawColors.userMessageBackground,in:RoundedRectangle(cornerRadius:24))
+                    ConversationUserBubbleText(content:message.content)   // selection moved to the long-press 选择 sheet
+                        .messageLongPress(id:message.id.uuidString,content:.text(message.content),alignment:.trailing,onReply:quote,onEdit:editAction(message,turnID:turnID)){userBubblePreview(message)}   // long-press menu (MessageActions/)
                 }
                     .accessibilityIdentifier("chat.userMessage")
                     #if DEBUG
                     .background { if let id=operationID(message),probe.enabled { P0EchoWitness(operationID:id) } }
                     #endif
-                if message.image != nil {Label(ui("附带图片"),systemImage:"photo").font(CatpawTypography.Role.caption.font).accessibilityIdentifier("chat.message.image")}
-                if let id=operationID(message) { Text(delivery(id)).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary).accessibilityIdentifier("chat.pendingAdmission") }
+                if message.image != nil {MessageImageThumbnail(id:message.id.uuidString,load:{await loadMessageImage(turnID,sha:message.image?.sha256)},onReply:quote)}
+                if let id=operationID(message) {
+                    if connectionMonitor.waitingForNetwork.contains(id) {
+                        Text(ui("等待网络")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
+                            .accessibilityIdentifier("chat.waitingForNetwork")
+                    }
+                    switch bubbleStatus(id) {
+                    case .none: EmptyView()
+                    case .sending: DelayedSendingSpinner().accessibilityIdentifier("chat.bubble.sending")
+                    case .failed:
+                        Button { model.resumeFollowups() } label: {
+                            HStack(spacing: 4) {
+                                Image(systemName: "exclamationmark.circle.fill").foregroundStyle(CatpawColors.attention).imageScale(.small)
+                                Text(ui("未发送·点按重试")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
+                            }
+                        }.buttonStyle(CatpawPressButtonStyle()).accessibilityIdentifier("chat.bubble.retry")
+                    }
+                }
             }
         } else if message.role == .tool || message.toolName != nil {
             if message.toolName == "present_cgui_v1",let session=model.session {
@@ -634,21 +1040,136 @@ import CatpawImageComposer
                     }
                 } else if message.role == .tool || !message.complete {Label(message.role == .tool ? ui("修改回执待核对"):ui("正在核对修改请求…"),systemImage:"circle.dotted").font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)}
             }
+            else if message.toolName=="create_task" { if message.role == .tool || !message.complete { CreateTaskCardView(message:message) } }   // A2 task card
             else if let goal = linkedGoal(message) { ConversationGoalCard(goal: goal, busy: model.busy, refresh: model.readOriginal, openPlan: model.taskPlansConfigured && goal.binding != nil ? { model.openTaskPlan(goal) } : nil,openActions:model.taskReviewsConfigured && goal.binding != nil ? {model.openTaskActions(goal)} : nil,openControl:model.taskControlsConfigured && goal.binding != nil ? {model.openTaskControl(goal)} : nil,openArtifact:{artifact in path.append(.artifact(goal.id,ConversationArtifactIdentity(artifact)))}) }
             else if message.failure != nil { Label(ui("任务请求失败 · ") + (message.failure ?? ""), systemImage: "exclamationmark.circle").font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.attention) }
             else { Label(message.toolName == "agent_status" ? (message.complete ? ui("任务进展已读取") : ui("读取任务进展…")) : (message.complete ? ui("任务请求已记录") : ui("等待后台保存任务…")), systemImage: message.complete ? "checkmark.circle" : "circle.dotted").font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary) }
 
         } else {
-            ConversationAnswerView(message:message,canQuote:!model.isInputComposing) { text in
-                // Preserve the active IME transaction. Quoting is an explicit draft edit.
-                guard !model.isInputComposing else {return}
-                let excerpt=String(text.prefix(2000))
-                let quotation=excerpt.split(separator:"\n",omittingEmptySubsequences:false).map {"> " + $0}.joined(separator:"\n")
-                model.editDraft(model.draft.isEmpty ? quotation + "\n\n" : model.draft + "\n\n" + quotation + "\n\n")
+            assistantMessage(message,turnID:turnID)
+                .accessibilityElement(children:.contain).accessibilityIdentifier("chat.assistant.message")
+                .messageLongPress(id:message.id.uuidString,content:.text(message.content),enabled:message.complete && !message.content.isEmpty,onReply:quote){ConversationAnswerView(message:message,canQuote:false,quote:{_ in})}
+        }
+    }
+    // Long-press / image helpers (MessageActions/). Minimal: no change to row layout.
+    private func userBubblePreview(_ message:ConversationTranscriptMessage)->some View {
+        ConversationUserBubbleText(content:message.content)
+    }
+    private func loadMessageImage(_ turnID:UUID?,sha:String?) async -> Data? {
+        if let sha,let cached=SentImageCache.shared.data(sha:sha) {return cached}
+        guard let turnID else {return nil}
+        if let cached=SentImageCache.shared.data(for:turnID) {return cached}
+        guard let session=model.session,let reference=session.turns.first(where:{$0.id==turnID})?.request.image else {return nil}
+        let data=try? await model.imageStore.read(reference:reference,conversationID:session.conversationID,operationID:turnID)
+        if let data {SentImageCache.shared.store(data,for:turnID)}
+        return data
+    }
+    @ViewBuilder private func assistantMessage(_ message:ConversationTranscriptMessage,turnID:UUID?)->some View {
+        if let turnID,let turn=model.session?.turns.first(where:{$0.id==turnID}),usesPhasedAnswer(turn,message:message) {
+            LivePhasedAnswerView(service:model.service,message:message,turn:turn,canQuote:!model.isInputComposing,
+                                 onQuote:quote,onVerify:turn.state == .unknown ? {model.readOriginal()}:nil)
+        } else {
+            let isLast=message.id==lastAssistantMessageID
+            let pastTurn=turnID.flatMap{id in model.session?.turns.first{$0.id==id}}
+            ConversationAnswerView(message:message,canQuote:!model.isInputComposing,quote:quote,showsActions:isLast,actions:isLast ? replyActions(message,turnID:turnID):nil,
+                                   thoughtSummary:pastTurn?.reasoningSummary,
+                                   thoughtSeconds:pastTurn?.thinkingMs.map{max(1,Int(ceil(Double($0)/1000)))})
+        }
+    }
+    private func usesPhasedAnswer(_ turn:ConversationTurnRecord,message:ConversationTranscriptMessage)->Bool {
+        let live:[ConversationTurnRecord.State]=[.dispatched,.running,.unknown,.failed]
+        return composerChrome.stoppedOperations.contains(turn.id) || (live.contains(turn.state) && !message.complete)
+    }
+    private func quote(_ text:String) {
+        // Preserve the active IME transaction. Quoting is an explicit draft edit.
+        guard !model.isInputComposing else {return}
+        let excerpt=String(text.prefix(2000))
+        let quotation=excerpt.split(separator:"\n",omittingEmptySubsequences:false).map {"> " + $0}.joined(separator:"\n")
+        model.editDraft(model.draft.isEmpty ? quotation + "\n\n" : model.draft + "\n\n" + quotation + "\n\n")
+    }
+}
+
+@MainActor private struct ConversationConnectionStatusCapsule: View {
+    let service: ConversationSessionService
+    let scope: DataScope
+    let conversationID: UUID?
+    let reportError: (String) -> Void
+    @ObservedObject private var monitor = ConnectionMonitor.shared
+    @Environment(\.locale) private var locale
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var actionInFlight = false
+    private func ui(_ key: String, arguments: [String] = []) -> String { AppLanguage(locale: locale).ui(key, arguments: arguments) }
+
+    var body: some View {
+        Group {
+            if monitor.state != .online, let label = monitor.state.labelKey {
+                HStack(spacing: 8) {
+                    statusSymbol
+                    Text(ui(label.key, arguments: label.arguments))
+                        .font(CatpawTypography.Role.caption.font.weight(.medium))
+                        .fixedSize(horizontal: false, vertical: true)
+                    Spacer(minLength: 4)
+                    action
+                }
+                .foregroundStyle(CatpawColors.ink)
+                .padding(.horizontal, 12).padding(.vertical, 8)
+                .frame(maxWidth: 680)
+                .background(CatpawColors.panel, in: Capsule())
+                .overlay(Capsule().strokeBorder(CatpawColors.controlEdge))
+                .padding(.horizontal, 20).padding(.vertical, 6)
+                .transition(.scale(scale: 0.96).combined(with: .opacity))
+                .accessibilityIdentifier("chat.connectionStatus")
             }
+        }
+        .frame(maxWidth: .infinity)
+        .animation(CatpawMotion.resolved(CatpawMotion.statusCapsule, reduceMotion), value: monitor.state)
+    }
+
+    @ViewBuilder private var statusSymbol: some View {
+        switch monitor.state {
+        case .offline: Image(systemName: "wifi.slash")
+        case .reconnecting, .syncing: ProgressView().controlSize(.small)
+        case .resumed: Image(systemName: "checkmark.circle.fill").foregroundStyle(CatpawColors.success)
+        case .unreachable: Image(systemName: "exclamationmark.circle")
+        case .busy: Image(systemName: "clock")
+        case .online: EmptyView()
+        }
+    }
+
+    @ViewBuilder private var action: some View {
+        switch monitor.state {
+        case .unreachable:
+            Button(ui("继续获取")) { performContinue() }
+                .buttonStyle(CatpawPressButtonStyle()).disabled(actionInFlight || conversationID == nil)
+        case .busy:
+            Button(ui("现在重试")) { performBusyRetry() }
+                .buttonStyle(CatpawPressButtonStyle()).disabled(actionInFlight || conversationID == nil)
+        default:
+            EmptyView()
+        }
+    }
+
+    private func performContinue() {
+        guard let conversationID else { return }
+        actionInFlight = true
+        Task {
+            defer { actionInFlight = false }
+            do { try await service.continueFetching(scope: scope, conversationID: conversationID) }
+            catch { reportError(error.localizedDescription) }
+        }
+    }
+
+    private func performBusyRetry() {
+        guard let conversationID else { return }
+        actionInFlight = true
+        Task {
+            defer { actionInFlight = false }
+            do { _ = try await service.retryBusy(scope: scope, conversationID: conversationID, route: ModelRouteSelection.route, automatic: false) }
+            catch { reportError(error.localizedDescription) }
         }
     }
 }
+
 private struct ConversationPendingMessagesView:View {
     @ObservedObject var model:ConversationFirstModel
     @Environment(\.dismiss) private var dismiss
@@ -657,46 +1178,67 @@ private struct ConversationPendingMessagesView:View {
     @State private var preparingEdit=false
     @State private var error:String?
     private func ui(_ key:String)->String {AppLanguage(locale:locale).ui(key)}
+    /// Rows are a single line; the list scrolls once it exceeds this cap.
+    private static let rowHeight:CGFloat=44
+    private static let maxListHeight:CGFloat=264
+    private var listHeight:CGFloat {min(Self.maxListHeight,CGFloat(max(1,model.followups.pending.count))*Self.rowHeight)}
     var body:some View {
-        NavigationStack {
-            List {
-                Section {
-                    Text(ui("待发消息保存在本机，仅在 App 前台发送。编辑会暂停队列，保存或关闭不会继续发送。"))
-                        .font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
-                    if let error {Text(ui(error)).foregroundStyle(CatpawColors.attention).accessibilityIdentifier("chat.followup.error")}
-                    if model.followups.pending.isEmpty {Text(ui("没有待发消息")).accessibilityIdentifier("chat.followup.empty")}
-                    ForEach(model.followups.pending) {message in
-                        VStack(alignment:.leading,spacing:8) {
-                            Text(message.text).textSelection(.enabled).fixedSize(horizontal:false,vertical:true)
-                            if message.image != nil {Text(ui("图片处理许可绑定当前文字。请移除后在输入器重新编辑。")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)}
-                            HStack {
-                                Button {
-                                    preparingEdit=true;error=nil
-                                    Task {do {try await model.pauseQueueForEditing(message);editing=message} catch {self.error=error.localizedDescription};preparingEdit=false}
-                                } label: {Label(ui("编辑并暂停队列"),systemImage:"pencil").frame(minHeight:44)}
-                                    .disabled(preparingEdit || model.editingFollowup || message.image != nil)
-                                    .accessibilityIdentifier("chat.followup.edit."+message.id.uuidString)
-                                Spacer(minLength:8)
-                                Button {model.removeFollowup(message.id)} label: {Image(systemName:"xmark").frame(width:44,height:44)}
-                                    .disabled(preparingEdit || model.editingFollowup)
-                                    .accessibilityLabel(ui("移除后续消息")).accessibilityIdentifier("chat.followup.remove."+message.id.uuidString)
-                            }.buttonStyle(.borderless)
-                        }
+        VStack(alignment:.leading,spacing:0) {
+            HStack(spacing:8) {
+                Text(ui("待发送 · {0} 条").replacingOccurrences(of:"{0}",with:String(model.followups.pending.count)))
+                    .font(CatpawTypography.Role.caption.font.weight(.semibold)).foregroundStyle(CatpawColors.ink)
+                Spacer(minLength:8)
+                if !model.followups.pending.isEmpty {
+                    if model.followups.paused {
+                        Button(ui("继续发送")){model.resumeFollowups()}.accessibilityIdentifier("chat.followup.resume")
+                            .disabled(model.busy || model.editingFollowup || preparingEdit || model.session?.unresolved != nil || ![.connected,.providerUnverified].contains(model.connection.state))
+                    } else {
+                        Button(ui("暂停")){model.pauseFollowups()}.accessibilityIdentifier("chat.followup.pause").disabled(preparingEdit)
                     }
                 }
-            }.navigationTitle(ui("待发消息")).navigationBarTitleDisplayMode(.inline)
-                .toolbar {ToolbarItem(placement:.confirmationAction){Button(ui("完成")){dismiss()}.accessibilityIdentifier("chat.followup.close")}}
-                .safeAreaInset(edge:.bottom) {
-                    if !model.followups.pending.isEmpty {
-                        Group {
-                            if model.followups.paused {
-                                Button(ui("继续发送后续消息")){model.resumeFollowups()}.accessibilityIdentifier("chat.followup.resume")
-                                    .disabled(model.busy || model.editingFollowup || preparingEdit || model.session?.unresolved != nil || ![.connected,.providerUnverified].contains(model.connection.state))
-                            } else {Button(ui("暂停后续消息")){model.pauseFollowups()}.accessibilityIdentifier("chat.followup.pause").disabled(preparingEdit)}
-                        }.touchTarget().buttonStyle(CatpawPressButtonStyle()).padding().frame(maxWidth:.infinity).background(CatpawColors.background)
+                Button(ui("完成")){dismiss()}.accessibilityIdentifier("chat.followup.close")
+            }.font(CatpawTypography.Role.caption.font).buttonStyle(.borderless).tint(CatpawColors.ink)
+                .padding(.horizontal,14).frame(minHeight:40)
+            Divider()
+            ScrollView {
+                LazyVStack(spacing:0) {
+                    if model.followups.pending.isEmpty {
+                        Text(ui("没有待发消息")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
+                            .frame(maxWidth:.infinity,minHeight:Self.rowHeight).accessibilityIdentifier("chat.followup.empty")
                     }
+                    ForEach(model.followups.pending) {message in row(message)}
                 }
-        }.catpawSheet(item:$editing) {message in ConversationPendingMessageEditor(model:model,message:message)}
+            }.frame(height:listHeight).scrollBounceBehavior(.basedOnSize)
+            if let error {
+                Text(ui(error)).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.attention)
+                    .padding(.horizontal,14).padding(.vertical,6).accessibilityIdentifier("chat.followup.error")
+            }
+        }
+        .background(CatpawColors.background)
+        .accessibilityElement(children:.contain)
+        .accessibilityHint(ui("待发消息保存在本机，仅在 App 前台发送。编辑会暂停队列，保存或关闭不会继续发送。"))
+        .catpawSheet(item:$editing) {message in ConversationPendingMessageEditor(model:model,message:message)}
+    }
+    private func row(_ message:ConversationFollowup)->some View {
+        HStack(spacing:4) {
+            if message.image != nil {
+                Image(systemName:"photo").imageScale(.small).foregroundStyle(CatpawColors.secondary).accessibilityLabel(ui("附带图片"))
+            }
+            Text(verbatim:message.text.replacingOccurrences(of:"\n",with:" ")).font(CatpawTypography.Role.body.font)
+                .foregroundStyle(CatpawColors.ink).lineLimit(1).truncationMode(.tail)
+                .frame(maxWidth:.infinity,alignment:.leading)
+            Button {
+                preparingEdit=true;error=nil
+                Task {do {try await model.pauseQueueForEditing(message);editing=message} catch {self.error=error.localizedDescription};preparingEdit=false}
+            } label: {Image(systemName:"pencil").imageScale(.small).frame(width:32,height:Self.rowHeight).contentShape(Rectangle())}
+                .disabled(preparingEdit || model.editingFollowup || message.image != nil)
+                .accessibilityLabel(ui("编辑待发消息")).accessibilityIdentifier("chat.followup.edit."+message.id.uuidString)
+            Button {model.removeFollowup(message.id)} label: {Image(systemName:"trash").imageScale(.small).frame(width:32,height:Self.rowHeight).contentShape(Rectangle())}
+                .disabled(preparingEdit || model.editingFollowup)
+                .accessibilityLabel(ui("移除后续消息")).accessibilityIdentifier("chat.followup.remove."+message.id.uuidString)
+        }.buttonStyle(.borderless).foregroundStyle(CatpawColors.secondary)
+            .padding(.leading,14).padding(.trailing,6).frame(height:Self.rowHeight)
+            .overlay(alignment:.bottom){Divider().padding(.leading,14)}
     }
 }
 private struct ConversationPendingMessageEditor:View {
@@ -769,6 +1311,7 @@ private struct ConversationPendingMessageEditor:View {
     @ObservedObject var model: ConversationFirstModel
     var embedded=false
     @Environment(\.dismiss) private var dismiss
+    @State private var refreshingConnection = false
     private var stateName: String {
         if model.connectionLifecycle == .checking {return ui("正在检查连接")}
         if model.connectionLifecycle == .reconnecting {return ui("正在重新连接")}
@@ -791,17 +1334,86 @@ private struct ConversationPendingMessageEditor:View {
                         .textSelection(.enabled).accessibilityIdentifier("settings.appBuild")
                 }
                 Section(ui("模型连接")) {
-                    LabeledContent(ui("状态")) { Text(stateName).foregroundStyle(CatpawColors.ink) }.accessibilityIdentifier("connection.state")
-
+                    ConnectionStatusRow(
+                        kind: {
+                            if model.connectionLifecycle == .checking || model.connectionLifecycle == .reconnecting { return .error }
+                            switch model.connection.state {
+                            case .connected, .providerUnverified: return .online
+                            case .notConfigured: return .offline
+                            case .unavailable: return .error
+                            }
+                        }(),
+                        detail: ui(model.connection.detail),
+                        refreshing: model.connectionLifecycle == .checking || refreshingConnection
+                    )
+                    .accessibilityIdentifier("connection.state")
                     if let modelID = model.connection.model { LabeledContent(ui("已验证模型")) { Text(modelID).foregroundStyle(CatpawColors.secondary) } }
-                    Text(ui(model.connection.detail)).font(CatpawTypography.Role.caption.font)
                     if let at=model.connection.verifiedReplyAt {LabeledContent(ui("最近确认回复"),value:at.formatted(date:.omitted,time:.shortened))}
-                    Button(ui("重新检查连接")) { Task { await model.refreshConnection() } }.accessibilityIdentifier("connection.refresh")
+                    Button {
+                        Task {
+                            refreshingConnection = true
+                            await model.refreshConnection()
+                            await ModelRouteCatalog.shared.refresh()
+                            refreshingConnection = false
+                        }
+                    } label: {
+                        HStack {
+                            Text(ui("重新检查连接"))
+                            Spacer()
+                            if refreshingConnection || model.connectionLifecycle == .checking { ProgressView().controlSize(.small) }
+                        }
+                    }
+                    .accessibilityIdentifier("connection.refresh")
+                    .disabled(refreshingConnection)
                 }
+                FeatureEnrollmentSection()
+                #if DEBUG || DEVICE_TRIAL
+                ModelRoutesSettingsView()
+                Section(ui("调试")) { NavigationLink(ui("主动信号模拟")) { ProactiveSignalDebugView() }.accessibilityIdentifier("settings.debug.proactiveSignals") }
+                #endif
                 Section(ui("数据")) { Text(model.connection.state == .notConfigured ? ui("当前未连接云端；输入保存在此设备。") : ui("此设备保存对话副本；发送的消息会交给已连接的云端服务处理。")); Text(ui("离开 App 后不会发送排队中的消息。任务后台执行的状态需要重新读取确认。")).font(CatpawTypography.Role.caption.font) }
                 Section { DisclosureGroup(ui("诊断")) { LabeledContent(ui("服务"),value:model.connection.provider); Text(model.connection.state.rawValue).font(CatpawTypography.Role.caption.font).textSelection(.enabled) } }
                 if model.connection.state == .notConfigured { Text(ui("真实模型尚未配置；不会使用演示回复代替模型。")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary) }
             }.foregroundStyle(CatpawColors.ink).navigationTitle(ui("设置"))
+    }
+}
+
+/// Runs `scroll` inside the system keyboard animation curve (willChangeFrame).
+/// Only fires while `enabled` (followingLatest). Avoids a post-keyboard jump.
+@MainActor private struct CatpawKeyboardFollowScroll: UIViewRepresentable {
+    var enabled: Bool
+    var scroll: () -> Void
+    func makeCoordinator() -> Coordinator { Coordinator(enabled: enabled, scroll: scroll) }
+    func makeUIView(context: Context) -> UIView {
+        let v = UIView(); v.isUserInteractionEnabled = false; context.coordinator.attach(); return v
+    }
+    func updateUIView(_ view: UIView, context: Context) {
+        context.coordinator.enabled = enabled; context.coordinator.scroll = scroll
+    }
+    static func dismantleUIView(_ view: UIView, coordinator: Coordinator) { coordinator.detach() }
+    final class Coordinator {
+        var enabled: Bool
+        var scroll: () -> Void
+        private var observers: [NSObjectProtocol] = []
+        init(enabled: Bool, scroll: @escaping () -> Void) { self.enabled = enabled; self.scroll = scroll }
+        func attach() {
+            guard observers.isEmpty else { return }
+            let names = [UIResponder.keyboardWillChangeFrameNotification, UIResponder.keyboardWillHideNotification]
+            for name in names {
+                observers.append(NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] note in
+                    MainActor.assumeIsolated { self?.animate(with: note) }
+                })
+            }
+        }
+        func detach() { observers.forEach(NotificationCenter.default.removeObserver); observers = [] }
+        private func animate(with note: Notification) {
+            guard enabled else { return }
+            let info = note.userInfo ?? [:]
+            let duration = (info[UIResponder.keyboardAnimationDurationUserInfoKey] as? NSNumber)?.doubleValue ?? 0.25
+            let curveRaw = (info[UIResponder.keyboardAnimationCurveUserInfoKey] as? NSNumber)?.intValue ?? 7
+            let options = UIView.AnimationOptions(rawValue: UInt(curveRaw) << 16)
+            UIView.animate(withDuration: duration, delay: 0, options: [options, .beginFromCurrentState]) { self.scroll() }
+        }
     }
 }
 
@@ -908,17 +1520,36 @@ private struct ConversationComposerLayout:Layout {
     }
 }
 
+/// User bubble body. The sent text keeps its raw form (accepted/revision work compares it byte-for-byte),
+/// but trailing newlines/spaces from Return, dictation or paste must not render as empty lines under a
+/// short message: the bubble hugs the visible text (one line = line height + 18pt).
+struct ConversationUserBubbleText:View {
+    let content:String
+    static func display(_ raw:String)->String {
+        var s=Substring(raw)
+        while let last=s.last,last.isWhitespace || last.isNewline {s=s.dropLast()}
+        while let first=s.first,first.isNewline {s=s.dropFirst()}
+        return String(s)
+    }
+    var body:some View {
+        Text(verbatim:Self.display(content)).font(CatpawTypography.Role.body.font)
+            .fixedSize(horizontal:false,vertical:true)
+            .foregroundStyle(CatpawColors.userMessageInk).padding(.horizontal,14).padding(.vertical,9)
+            .background(CatpawColors.userMessageBackground,in:RoundedRectangle(cornerRadius:20,style:.continuous))
+    }
+}
+
 /// The cap is relative to the padded readable column, including on wide devices.
 private struct ConversationUserMessageLayout:Layout {
     func sizeThatFits(proposal:ProposedViewSize,subviews:Subviews,cache:inout ())->CGSize {
         guard let text=subviews.first else {return .zero}
         let proposedWidth=proposal.width ?? CatpawLayout.readableWidth
         let width=proposedWidth.isFinite ? max(0,proposedWidth):CatpawLayout.readableWidth
-        return .init(width:width,height:text.sizeThatFits(.init(width:width*0.88,height:nil)).height)
+        return .init(width:width,height:text.sizeThatFits(.init(width:width*0.75,height:nil)).height)
     }
     func placeSubviews(in bounds:CGRect,proposal:ProposedViewSize,subviews:Subviews,cache:inout ()) {
         guard let text=subviews.first else {return}
-        let size=text.sizeThatFits(.init(width:bounds.width*0.88,height:nil))
+        let size=text.sizeThatFits(.init(width:bounds.width*0.75,height:nil))
         text.place(at:.init(x:bounds.maxX,y:bounds.minY),anchor:.topTrailing,proposal:.init(size))
     }
 }
@@ -926,4 +1557,121 @@ private struct ConversationUserMessageLayout:Layout {
 private struct ConversationComposerMeasurements:PreferenceKey {
     static var defaultValue:[String:CGFloat]=[:]
     static func reduce(value:inout [String:CGFloat],nextValue:()->[String:CGFloat]) {value.merge(nextValue(),uniquingKeysWith:{_,next in next})}
+}
+
+
+private extension ToolbarContent {
+    /// iOS 26: stop the system from wrapping bar buttons in a shared glass capsule (r8).
+    @ToolbarContentBuilder func r8HiddenSharedBackground() -> some ToolbarContent {
+        #if compiler(>=6.2)
+        if #available(iOS 26.0, *) { self.sharedBackgroundVisibility(.hidden) } else { self }
+        #else
+        self
+        #endif
+    }
+}
+
+
+
+/// Centered, small, neutral in-conversation system line (network, quota, route, memory). Not a bubble; not persisted.
+
+/// Small status dot beside the chat title; tap shows a brief popover with the shared status copy.
+private struct ConnectionStatusHeaderDot: View {
+    @ObservedObject var monitor: ConnectionMonitor
+    @State private var showDetail = false
+    @Environment(\.locale) private var locale
+    private func ui(_ k: String, arguments: [String] = []) -> String { AppLanguage(locale: locale).ui(k, arguments: arguments) }
+    private var kind: ConnectionStatusKind { .from(monitor.state) }
+    var body: some View {
+        Button { showDetail.toggle() } label: {
+            ConnectionStatusDot(kind: kind, size: 8)
+                .padding(6)
+                .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(ui(kind.labelKey))
+        .accessibilityIdentifier("chat.title.statusDot")
+        .popover(isPresented: $showDetail, attachmentAnchor: .point(.bottom), arrowEdge: .top) {
+            VStack(alignment: .leading, spacing: 6) {
+                ConnectionStatusRow(kind: kind, detail: monitor.state.labelKey.map { ui($0.key, arguments: $0.arguments) } ?? ui("连接正常"))
+            }
+            .padding(12)
+            .frame(minWidth: 200)
+            .presentationCompactAdaptation(.popover)
+        }
+    }
+}
+
+struct ConversationSystemNotice: View {
+    enum Kind: Equatable { case offline, online, quota, route(String), routeRejected, memorySaved, custom(String) }
+    let kind: Kind
+    var actionTitle: String? = nil
+    var action: (() -> Void)? = nil
+    @Environment(\.locale) private var locale
+    private func ui(_ k: String, arguments: [String] = []) -> String { AppLanguage(locale: locale).ui(k, arguments: arguments) }
+    private var glyph: String {
+        switch kind {
+        case .offline: return "wifi.slash"
+        case .online: return "wifi"
+        case .quota: return "moon.zzz"
+        case .route: return "arrow.triangle.branch"
+        case .routeRejected: return "arrow.uturn.backward"
+        case .memorySaved: return "brain"
+        case .custom: return "info.circle"
+        }
+    }
+    private var label: String {
+        switch kind {
+        case .offline: return ui("已离线")
+        case .online: return ui("已恢复连接")
+        case .quota: return ui("今日对话额度已用完，北京时间 8:00 恢复")
+        case .route(let name): return ui("已切换到 {0}", arguments: [name])
+        case .routeRejected: return ui("所选模型路由暂不可用，已切回自动")
+        case .memorySaved: return ui("已写入记忆")
+        case .custom(let t): return t
+        }
+    }
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: glyph).imageScale(.small).foregroundStyle(CatpawColors.secondary)
+            Text(label).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
+            if let actionTitle, let action {
+                Button(actionTitle, action: action).font(CatpawTypography.Role.caption.font.weight(.semibold)).foregroundStyle(CatpawColors.ink)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 6)
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("chat.system.notice")
+    }
+}
+
+private extension View {
+    /// Short transcripts start right under the nav bar; long/streaming ones still follow the bottom via scrollTo.
+    @ViewBuilder func r9TopAlignedTranscript() -> some View {
+        // Keep top alignment for empty/short transcripts. Do NOT pin .sizeChanges to bottom:
+        // that made the scroll view claim horizontal pans and blocked the sidebar gesture.
+        // Keyboard follow is handled by CatpawKeyboardFollowScroll below.
+        if #available(iOS 18.0, *) { self.defaultScrollAnchor(.top, for: .alignment) } else { self }
+    }
+}
+
+/// Shows a tiny spinner only if sending lasts longer than ~2 s.
+private struct DelayedSendingSpinner: View {
+    @State private var visible = false
+    var body: some View {
+        ProgressView().controlSize(.mini).opacity(visible ? 1 : 0)
+            .task { try? await Task.sleep(nanoseconds: 2_000_000_000); withAnimation(.easeOut(duration: 0.2)) { visible = true } }
+    }
+}
+
+extension View {
+    /// r11: translucent capsule behind the header avatar + title (Liquid Glass on iOS 26, material fallback).
+    @ViewBuilder func r11HeaderGlass() -> some View {
+        #if compiler(>=6.2)
+        if #available(iOS 26.0, *) { self.glassEffect(.regular, in: Capsule()) } else { self.background(.ultraThinMaterial, in: Capsule()) }
+        #else
+        self.background(.ultraThinMaterial, in: Capsule())
+        #endif
+    }
 }

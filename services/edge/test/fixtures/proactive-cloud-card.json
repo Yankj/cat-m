@@ -1,0 +1,13 @@
+{
+  "id": "SERVER-ID",
+  "server_id": "SERVER-ID",
+  "title": "小猫提醒",
+  "reason": "该出发了",
+  "status": "pending",
+  "actions": [
+    "snooze",
+    "dismiss"
+  ],
+  "taken": [],
+  "createdAt": "2026-10-15T02:00:00.000Z"
+}

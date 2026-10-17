@@ -1,0 +1,1359 @@
+import Foundation
+
+// NoBug P0 portable tests (macOS swiftc, no simulator): memory persistence/migration, empty default, device-call
+// durability + dedupe on relaunch, unsupported-tool reason, meituan URL, ProactiveRules (window, dedupe, leave_at, lead).
+@MainActor final class FakeExecutor: DeviceToolExecuting {
+    var supported: Set<String>; var executed: [String] = []; var writes: [String: String] = [:]   // call_id → item id (dedupe)
+    init(_ s: Set<String>) { supported = s }
+    func canExecute(_ tool: String) -> Bool { supported.contains(tool) }
+    var lookedUp: [String] = []
+    func lookup(_ call: DeviceCall) async -> DeviceCallResult? {
+        lookedUp.append(call.call_id)
+        return writes[call.call_id].map { .init(call_id: call.call_id, status: .ok, data: ["event_id": .string($0), "deduped": .bool(true)]) }
+    }
+    /// Simulates an await inside the real router (permission prompt / reminder lookup) before the system write.
+    var beforeCommit: (() -> Void)?
+    func execute(_ call: DeviceCall, credential: DeviceCallGate.Credential) async -> DeviceCallResult {
+        if let why = DeviceCallGate.consume(credential, call) { return DeviceCallGate.rejected(call, why) }   // entry: one-shot, as DeviceToolRouter
+        defer { DeviceCallGate.retire(credential) }
+        executed.append(call.call_id)
+        if let id = writes[call.call_id] { return .init(call_id: call.call_id, status: .ok, data: ["event_id": .string(id), "deduped": .bool(true)]) }
+        beforeCommit?()
+        let id = "evt-\(writes.count + 1)"
+        // final effect inside the single commit gate, as DeviceToolRouter does
+        if case .refused(let why) = DeviceCallGate.commitEffect(credential, call, { writes[call.call_id] = id }) { return DeviceCallGate.rejected(call, why) }
+        return .init(call_id: call.call_id, status: .ok, data: ["event_id": .string(id)])
+    }
+}
+extension Result { var isFailure: Bool { if case .failure = self { return true }; return false } }
+@MainActor final class FakeUndoSubmitter: DeviceResultSubmitting {
+    var online = true; var sent: [String] = []
+    func submit(_ result: DeviceCallResult) async throws {}
+    func reportUndo(callID: String, outcome: DeviceUndoOutcome) async throws { guard online else { throw URLError(.notConnectedToInternet) }; sent.append(callID + ":" + outcome.rawValue) }
+}
+@MainActor final class FakeSubmitter: DeviceResultSubmitting {
+    var sent: [DeviceCallResult] = []; var fail = false
+    func submit(_ result: DeviceCallResult) async throws { if fail { throw URLError(.notConnectedToInternet) }; sent.append(result) }
+}
+@MainActor final class RefusingBackend: MemoryLibraryBackend {
+    var capabilities: MemoryLibraryCapabilities { [] }; var created: [String] = []; var refuse: MemoryLibraryError? = nil
+    var useMemory = true; var emptyID = false; var failAfter: Int? = nil
+    func load() async throws -> MemoryLibrarySnapshot { if refuse == .notEnabled { throw MemoryLibraryError.notEnabled }; return .init(items: created.enumerated().map { .init(id: "cloud-\($0.offset)", group: .preference, content: $0.element) }, useMemory: useMemory, autoSave: nil) }
+    func update(id: String, content: String) async throws {}
+    func forget(ids: [String]) async throws {}
+    func setUseMemory(_ on: Bool) async throws { useMemory = on }
+    func setAutoSave(_ on: Bool) async throws {}
+    func clearAll() async throws {}
+    func undoSave(memoryID: String, undoToken: String?) async throws {}
+    func create(kind: String, content: String) async throws -> String {
+        if let refuse { throw refuse }
+        if !useMemory { throw MemoryLibraryError.failed("409 memory_consent_required") }   // server requireActive
+        if let n = failAfter, created.count >= n { throw MemoryLibraryError.unavailable }
+        created.append(content); return emptyID ? "" : "cloud-\(created.count)" }
+}
+
+@main @MainActor enum NoBugP0Runner {
+    static var passed = 0, failed = 0
+    /// Injected account barrier for device-call tests that are not about sign-out (a signed-in fixture account).
+    static func expect(_ ok: Bool, _ m: String) { if ok { passed += 1; print("PASS \(m)") } else { failed += 1; print("FAIL \(m)") } }
+
+    static func main() async {
+        await memory(); await deviceCalls(); proactive(); nearby(); groundedFixtures(); contactsPrivacy(); replyVariants(); followUps(); await deviceUndo(); dictation(); await codexP0_1(); await codexPR89(); await accountEpoch(); await codexP89c(); proactiveLifecycle(); codexP0_3(); codexP0_3Matrix(); await p02AccountIsolation(); p04FeedbackUndoHandoff(); await p02FromB8f0280(); await pr91Review(); await pr91v2(); pr91FeedbackGate()
+        print("nobug-p0 portable: \(passed) passed, \(failed) failed")
+        exit(failed == 0 ? 0 : 1)
+    }
+
+    static func memory() async {
+        // P0-2: default init carries no sample data.
+        expect(MemoryLibraryStub().items.isEmpty, "P0-2 MemoryLibraryStub() default is empty (no 望京/燕麦拿铁)")
+        let none = MemoryLibraryNotEnabled()
+        do { _ = try await none.load(); expect(false, "P0-2 not-enabled backend throws") } catch { expect((error as? MemoryLibraryError) == .notEnabled, "P0-2 未开通 backend throws .notEnabled") }
+        // P0-1: persistence across a simulated cold start.
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("nobug-mem-\(UUID().uuidString).json")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let a = MemoryLibraryStub(fileURL: url)
+        let id = try! await a.create(kind: "preference", content: "开会提前 25 分钟准备")
+        _ = try! await a.create(kind: "profile", content: "住在杭州")
+        try! await a.setUseMemory(true)
+        let b = MemoryLibraryStub(fileURL: url)   // "relaunch"
+        expect(b.items.count == 2 && b.items.contains { $0.id == id }, "P0-1 local memory survives cold start (file reload)")
+        let snap = try! await b.load()
+        expect(ProactiveRules.lead(in: [snap])?.minutes == 25, "P0-1 lead memory effective after cold start")
+        try! await b.setUseMemory(false)
+        expect(ProactiveRules.lead(in: [try! await MemoryLibraryStub(fileURL: url).load()]) == nil, "使用记忆 off persists and disables lead")
+        try! await b.setUseMemory(true)
+        try! await b.forget(ids: [id])
+        expect(MemoryLibraryStub(fileURL: url).items.count == 1, "forget persists")
+        // Gate opens: migrate local → cloud, then local empty.
+        let cloud = RefusingBackend()
+        let r1 = await MemoryLibraryLocal.migrate(owned(url), to: cloud, targetOwner: .account("t"))
+        expect(r1.migrated == 1 && r1.kept == 0 && cloud.created == ["住在杭州"], "P0-1 gate open → local items migrated to backend")
+        expect(owned(url).items.isEmpty, "P0-1 migrated items removed locally (no double)")
+        // Gate still off: refuse → kept.
+        let c = owned(url); _ = try! await c.create(kind: "preference", content: "提前 5 分钟")
+        let off = RefusingBackend(); off.refuse = .notEnabled
+        let r2 = await MemoryLibraryLocal.migrate(c, to: off, targetOwner: .account("t"))
+        expect(r2.migrated == 0 && r2.kept == 1 && r2.stoppedBy == .notEnabled, "P0-1 gate off → items kept locally")
+        expect(MemoryLibraryLocal.shouldSurfaceLocal(r2), "gate off → local library surfaced in 设置›记忆")
+        // Idempotency: crash after cloud create but before local forget → rerun must not duplicate.
+        let url2 = FileManager.default.temporaryDirectory.appendingPathComponent("nobug-mem2-\(UUID().uuidString).json"); defer { try? FileManager.default.removeItem(at: url2) }
+        let d = owned(url2); _ = try! await d.create(kind: "preference", content: "开会提前 20 分钟准备")
+        let cloud2 = RefusingBackend(); cloud2.created = ["开会提前 20 分钟准备"]   // already created before the "crash"
+        let r3 = await MemoryLibraryLocal.migrate(d, to: cloud2, targetOwner: .account("t"))
+        expect(cloud2.created.count == 1 && r3.deduped == 1 && r3.kept == 0, "P1-3 migration idempotent: content dedupe, no duplicate after crash")
+        // Empty id = failure, local kept.
+        let e = owned(url2); _ = try! await e.create(kind: "preference", content: "喜欢靠窗")
+        let cloud3 = RefusingBackend(); cloud3.emptyID = true
+        let r4 = await MemoryLibraryLocal.migrate(e, to: cloud3, targetOwner: .account("t"))
+        expect(r4.migrated == 0 && r4.kept == 1, "P1-3 empty id from create is an error (local kept)")
+        // useMemory=false carried over.
+        try! await e.setUseMemory(false)
+        let cloud4 = RefusingBackend(); _ = await MemoryLibraryLocal.migrate(e, to: cloud4, targetOwner: .account("t"))
+        expect(cloud4.useMemory == false, "P1-3 local 使用记忆=off carried to cloud")
+        // Order: creates must happen while use_memory is on, setUseMemory(false) last (old order → 409, nothing migrated).
+        let g = owned(url2); try! await g.clearAll(); try! await g.setUseMemory(false)
+        _ = try! await g.create(kind: "preference", content: "开会提前 12 分钟准备"); _ = try! await g.create(kind: "profile", content: "住在苏州")
+        let cloud6 = RefusingBackend()
+        let r6 = await MemoryLibraryLocal.migrate(g, to: cloud6, targetOwner: .account("t"))
+        expect(r6.migrated == 2 && r6.kept == 0 && cloud6.created.count == 2 && cloud6.useMemory == false && r6.stoppedBy == nil,
+               "P1-3 use_memory off: all items created first, then setUseMemory(false) (no 409)")
+        // Partial failure keeps cloud library (no local overwrite).
+        let f = owned(url2); try! await f.clearAll(); _ = try! await f.create(kind: "preference", content: "A"); _ = try! await f.create(kind: "preference", content: "B")
+        let cloud5 = RefusingBackend(); cloud5.failAfter = 1
+        let r5 = await MemoryLibraryLocal.migrate(f, to: cloud5, targetOwner: .account("t"))
+        expect(r5.migrated == 1 && r5.kept == 1 && !MemoryLibraryLocal.shouldSurfaceLocal(r5), "P1-3 partial failure keeps cloud as page backend")
+    }
+
+    /// Pre-P0-2 migration tests now run as the owning account "t" (cross-owner cases: p02AccountIsolation).
+    static func owned(_ url: URL) -> MemoryLibraryStub { MemoryLibraryStub(owner: .account("t"), persistence: FileSnapshotPersistence(url: url)) }
+
+    static func call(_ id: String, _ tool: String = "calendar_create") -> DeviceCall {
+        let c = DeviceCall(call_id: id, tool: tool, args: ["title": .string("评审会"), "start": .string("2026-10-20T10:00:00+08:00")], confirm: .card, ttl_sec: 600)
+        DeviceCallGate.receive(c)   // as the SSE boundary (ConversationDeviceCall.lifecycle) does
+        return c
+    }
+    /// What the card's confirm button does: mint a tap token for the final args, then run.
+    static func tapRun(_ store: DeviceCallStore, _ c: DeviceCall) async {
+        let final = c.args.merging(store.edited[c.id] ?? [:]) { _, new in new }
+        await store.run(c, tap: DeviceCallGate.confirmTap(c, finalArgs: final))
+    }
+
+    /// AccountEpoch (shared barrier for #89/#90/#91): a token captured before an await is refused after sign-out / switch.
+    static func accountEpoch() async {
+        let e = AccountEpoch(account: "user-A")
+        let a = e.capture()!
+        expect(e.isValid(a), "epoch: fresh token is valid")
+        // Logout race: token captured → async op in flight → sign-out → late write must be refused.
+        var written: [String] = []
+        let late = Task { @MainActor in try? await Task.sleep(nanoseconds: 20_000_000); return e.commit(a) { written.append("A-late") } }
+        e.signOut()
+        let r = await late.value
+        expect(r == nil && written.isEmpty, "epoch: late write after sign-out is refused")
+        expect(e.capture() == nil, "epoch: signed out → no token")
+        // Account switch A → B: A's token dies, B's lives.
+        e.activate(account: "user-B")
+        let b = e.capture()!
+        expect(!e.isValid(a) && e.isValid(b) && b.epoch > a.epoch, "epoch: switch A→B invalidates A's token")
+        expect(e.commit(a) { written.append("A") } == nil && e.commit(b) { written.append("B") } != nil && written == ["B"], "epoch: commit runs only for a valid token")
+        // Re-activating the same account keeps tokens (no spurious bump); a different account or nil bumps.
+        e.activate(account: "user-B"); expect(e.isValid(b), "epoch: same account re-activate keeps tokens")
+        e.activate(account: "user-A"); e.activate(account: "user-B"); expect(!e.isValid(b), "epoch: B→A→B is a new epoch (old B token refused)")
+        expect(!e.isValid(nil), "epoch: nil token never valid")
+        // Write is atomic w.r.t. bump: sign-out during commit waits for it (no half-written state after the barrier).
+        let c = e.capture()!
+        // Swift 6: a lock-guarded box (no lock()/unlock() in async code, no captured var mutated concurrently).
+        final class OrderLog: @unchecked Sendable { private let lock = NSLock(); private var items: [String] = []
+            func append(_ s: String) { lock.withLock { items.append(s) } }; var snapshot: [String] { lock.withLock { items } } }
+        let log = OrderLog()
+        DispatchQueue.global().async { usleep(5_000); e.signOut(); log.append("signOut") }
+        e.commit(c) { usleep(30_000); log.append("write") }
+        usleep(60_000)
+        let o = log.snapshot
+        expect(o == ["write", "signOut"], "epoch: bump waits for an in-progress commit")
+        // Thread safety: concurrent captures and bumps.
+        let f = AccountEpoch(account: "u"); let start = f.epoch
+        DispatchQueue.concurrentPerform(iterations: 200) { i in if i % 2 == 0 { f.bump() } else { _ = f.isValid(f.capture()) } }
+        expect(f.epoch == start + 100, "epoch: 100 concurrent bumps counted exactly")
+        // DeviceCallGate uses the shared barrier.
+        let g = AccountEpoch(account: "user-A"); DeviceCallGate.epoch = g; DeviceCallGate.reset()
+        let call = DeviceCall(call_id: "ep-1", tool: "calendar_create", args: [:], confirm: .card, ttl_sec: 600)
+        DeviceCallGate.receive(call)
+        expect(DeviceCallGate.commitCheck("ep-1") == nil, "epoch: gate grant live for its epoch")
+        g.signOut(); expect(DeviceCallGate.commitCheck("ep-1") != nil, "epoch: gate grant dies on AccountEpoch.signOut")
+        g.activate(account: "user-A"); expect(DeviceCallGate.commitCheck("ep-1") != nil, "epoch: same user signing back in does not revive the old grant")
+        DeviceCallGate.epoch = .shared
+    }
+
+    /// Codex p89b / p89c (c025a24, 53381f7): execution credential, cancel revoke, source-token lifecycle, latch, late results.
+    static func codexP89c() async {
+        let suite = "codex.p89c." + UUID().uuidString
+        let defaults = UserDefaults(suiteName: suite)!; defer { defaults.removePersistentDomain(forName: suite) }
+        let exec = FakeExecutor(["calendar_create", "calendar_list"]), sub = FakeSubmitter()
+        DeviceCallHub.executor = exec; DeviceCallHub.submitter = sub; DeviceCallHub.recorder = nil
+        var wall = Date(timeIntervalSince1970: 2_100_000_000), up: TimeInterval = 5000
+        DeviceCallGate.wallClock = { wall }; DeviceCallGate.uptime = { up }
+        DeviceCallGate.reset(); DeviceCallGate.epoch.activate(account: "user-A")
+        func mk(_ id: String, _ tool: String = "calendar_create", args: [String: DeviceCallValue] = ["title": .string("t")]) -> DeviceCall {
+            DeviceCall(call_id: id, tool: tool, args: args, confirm: .card, ttl_sec: 600)
+        }
+        func cred(_ c: DeviceCall, _ final: [String: DeviceCallValue]? = nil) -> DeviceCallGate.Credential? {
+            let f = final ?? c.args
+            if case .success(let x) = DeviceCallGate.authorize(c, finalArgs: f, tap: DeviceCallGate.confirmTap(c, finalArgs: f)) { return x }; return nil
+        }
+        // 1. executor level: no credential path exists; forged / replayed / swapped credentials are refused.
+        let w = mk("c-w"); DeviceCallGate.receive(w)
+        expect(DeviceCallGate.authorize(w, finalArgs: w.args, tap: nil).isFailure, "p89b-1 write without a tap mints no credential")
+        let forged = DeviceCallGate.Credential(callID: "c-w", tool: "calendar_create", finalArgsHash: DeviceCallGate.argsHash(w.args), token: DeviceCallGate.epoch.capture()!, generation: UUID(), nonce: UUID())
+        let r1 = await exec.execute(w, credential: forged)
+        expect(r1.status == .error && exec.writes["c-w"] == nil, "p89b-1 forged credential (wrong grant generation) is refused by the executor")
+        let good = cred(w)!
+        var swapped = w; swapped.args = ["title": .string("换掉")]
+        let r2 = await exec.execute(swapped, credential: good)
+        expect(r2.data?["reason"] == .string("call_mismatch") && exec.writes["c-w"] == nil, "p89b-1 credential is bound to the final args (swap refused)")
+        let ro = mk("c-ro", "calendar_list", args: [:]); DeviceCallGate.receive(ro)
+        let roCred = cred(ro)!
+        let asWrite = DeviceCall(call_id: "c-ro", tool: "calendar_create", args: [:], confirm: .card, ttl_sec: 600)
+        let r3 = await exec.execute(asWrite, credential: roCred)
+        expect(r3.status == .error && exec.writes["c-ro"] == nil, "p89b-1 a read-only grant's credential cannot drive a write tool")
+        let r4 = await exec.execute(w, credential: good)
+        expect(r4.status == .ok, "p89b-1 the real credential executes")
+        exec.writes["c-w"] = nil
+        let r5 = await exec.execute(w, credential: good)
+        expect(r5.data?["reason"] == .string("credential_required") && exec.writes["c-w"] == nil, "p89d-1 the executor consumes the credential once (replay refused, no retire by the caller)")
+        // p89d-1: the confirm policy is part of the grant.
+        let cardList = DeviceCall(call_id: "c-confirm", tool: "calendar_list", args: [:], confirm: .card, ttl_sec: 600); DeviceCallGate.receive(cardList)
+        var asNone = cardList; asNone.confirm = DeviceCall.Confirm.none
+        expect(DeviceCallGate.authorize(asNone, finalArgs: [:], tap: nil).isFailure && DeviceCallGate.authorize(cardList, finalArgs: [:], tap: nil).isFailure,
+               "p89d-1 a .card grant cannot be run tap-less by rewriting confirm to .none")
+        // p89d-2: revoke right after every earlier check (inside the commit seam) → the effect does not run.
+        let rv = mk("c-commit"); DeviceCallGate.receive(rv)
+        DeviceCallGate.beforeCommitHook = { DeviceCallGate.revokedIDs.insert(["c-commit"]) }   // as the service thread does
+        let rr = await exec.execute(rv, credential: cred(rv)!)
+        DeviceCallGate.beforeCommitHook = nil
+        expect(rr.data?["reason"] == .string("call_revoked") && exec.writes["c-commit"] == nil, "p89d-2 revoke between the last check and the effect is caught by the single commit gate")
+        // p89d-4: undo reports belong to the account that did them.
+        let ustore = DeviceCallStore(defaults: UserDefaults(suiteName: suite + ".undo")!)
+        let undoA = FakeUndoSubmitter(); undoA.online = false; DeviceCallHub.submitter = undoA
+        await ustore.reportUndo(callID: "u-1", outcome: .undone)
+        DeviceCallGate.epoch.activate(account: "user-Z"); let undoB = FakeUndoSubmitter(); DeviceCallHub.submitter = undoB
+        await ustore.retryUndoReports()
+        expect(undoB.sent.isEmpty && ustore.undoQueue.pending["u-1"] == .undone, "p89d-4 A's queued undo is never sent through B's submitter")
+        DeviceCallGate.epoch.activate(account: "user-A"); undoA.online = true; DeviceCallHub.submitter = undoA
+        await ustore.retryUndoReports()
+        expect(undoA.sent == ["u-1:undone"] && ustore.undoQueue.isEmpty, "p89d-4 back on A, the queued undo is delivered by A's submitter")
+        await ustore.reportUndo(callID: "u-2", outcome: .unknown)
+        expect(undoA.sent.count == 1, "p89d-5 unknown undo outcomes are never reported")
+        DeviceCallHub.submitter = sub
+        // 3. local cancel revokes before the report await.
+        let store = DeviceCallStore(defaults: defaults)
+        let k = mk("c-cancel"); DeviceCallGate.receive(k)
+        sub.fail = true
+        let tap = DeviceCallGate.confirmTap(k, finalArgs: k.args)
+        await store.cancel(k)
+        expect(!DeviceCallGate.isLive("c-cancel") && store.phase("c-cancel") != .confirming, "p89b-3 local cancel revokes immediately (report failed / pending)")
+        await store.run(k, tap: tap)
+        expect(!exec.executed.contains("c-cancel"), "p89b-3 a tap minted before cancel cannot run")
+        sub.fail = false
+        // 4. lifecycle: source token. A's event applied after B signed in is not granted; revocation is synchronous.
+        DeviceCallGate.installLifecycle()
+        let tokA = DeviceCallGate.epoch.capture()
+        DeviceCallGate.epoch.activate(account: "user-B")
+        let wire = ConversationDeviceCall(interruptID: "i", callID: "c-late", tool: "calendar_create", args: try! JSONEncoder().encode(["title": DeviceCallValue.string("t")]), confirm: "card", ttlSec: 600, argsHash: String(repeating: "a", count: 64), expiresAt: ISO8601DateFormatter().string(from: wall.addingTimeInterval(600)))
+        ConversationDeviceCall.lifecycle?(.received(wire, conversationID: UUID(), turnID: UUID(), token: tokA))
+        try? await Task.sleep(nanoseconds: 50_000_000)
+        expect(!DeviceCallGate.isLive("c-late"), "p89c-4 a delayed event carrying A's source token is not granted under B")
+        ConversationDeviceCall.lifecycle?(.received(wire, conversationID: UUID(), turnID: UUID(), token: nil))
+        try? await Task.sleep(nanoseconds: 50_000_000)
+        expect(!DeviceCallGate.isLive("c-late"), "p89c-4 an event without a source token is never granted")
+        let b = mk("c-sync"); DeviceCallGate.receive(b)
+        ConversationDeviceCall.lifecycle?(.revoked(callIDs: ["c-sync"]))
+        expect(!DeviceCallGate.isLive("c-sync"), "p89c-4 revocation bites synchronously (before the main-actor hop)")
+        // 6. latch.
+        let l = mk("c-latch"); DeviceCallGate.receive(l)
+        wall += 700
+        expect(DeviceCallGate.commitCheck("c-latch") == .expired, "p89b-6 expired after the wall clock passes the deadline")
+        wall -= 700
+        expect(DeviceCallGate.commitCheck("c-latch") == .expired && cred(l) == nil, "p89b-6 clock rollback cannot revive an expired grant (latched)")
+        // p89c-a: a result that returns after sign-out / switch is not written nor reported to the new account's submitter.
+        let subA = FakeSubmitter(), subB = FakeSubmitter()
+        DeviceCallHub.submitter = subA
+        let late = mk("c-after"); DeviceCallGate.receive(late)
+        exec.beforeCommit = { DeviceCallGate.epoch.activate(account: "user-C"); DeviceCallHub.submitter = subB }
+        await store.run(late, tap: DeviceCallGate.confirmTap(late, finalArgs: late.args))
+        exec.beforeCommit = nil
+        expect(exec.writes["c-after"] == nil && subA.sent.isEmpty && subB.sent.isEmpty && store.phase("c-after") == .running,
+               "p89c-a switching account mid-execution: no write, no state write, nothing handed to the new submitter")
+        DeviceCallHub.submitter = sub
+        DeviceCallGate.wallClock = { Date() }; DeviceCallGate.uptime = { ProcessInfo.processInfo.systemUptime }; DeviceCallGate.epoch.activate(account: nil)
+    }
+
+    /// Codex re-review of PR #89 (3f00095): every counterexample from CODEX-PR89-3f00095.md.
+    static func codexPR89() async {
+        let suite = "codex.pr89." + UUID().uuidString
+        let defaults = UserDefaults(suiteName: suite)!; defer { defaults.removePersistentDomain(forName: suite) }
+        let exec = FakeExecutor(["calendar_create", "reminder_create", "alarm_set", "calendar_list"]), sub = FakeSubmitter()
+        DeviceCallHub.executor = exec; DeviceCallHub.submitter = sub; DeviceCallHub.recorder = nil
+        var wall = Date(timeIntervalSince1970: 2_000_000_000), up: TimeInterval = 1000
+        DeviceCallGate.wallClock = { wall }; DeviceCallGate.uptime = { up }
+        DeviceCallGate.reset(); DeviceCallGate.epoch.activate(account: "user-A")
+        func mk(_ id: String, _ tool: String = "calendar_create", ttl: Int = 600, expires: String? = nil, args: [String: DeviceCallValue] = ["title": .string("评审会")]) -> DeviceCall {
+            DeviceCall(call_id: id, tool: tool, args: args, confirm: .card, ttl_sec: ttl, expires_at: expires)
+        }
+        func reason(_ store: DeviceCallStore, _ id: String) -> String? { if case .done(let r) = store.phase(id), case .string(let x)? = r.data?["reason"] { return x }; return nil }
+
+        // 1. Restart recovery with an EMPTY gate (fresh process) must not write; it may only look up the original result.
+        for (id, tool) in [("r1", "calendar_create"), ("r2", "reminder_create"), ("r3", "alarm_set")] {
+            defaults.set(try! JSONEncoder().encode([id: DeviceCallStore.Record(phase: .running, call: mk(id, tool), updatedAt: .now, account: "user-A")]), forKey: DeviceCallStore.storageKey)
+            DeviceCallGate.reset()   // relaunch: no grants
+            let st = DeviceCallStore(defaults: defaults); await st.resumeInterrupted(id)
+            expect(!exec.executed.contains(id) && exec.writes[id] == nil, "PR89-1 resume after restart never writes \(tool) (empty gate)")
+            expect(sub.sent.last?.call_id == id && sub.sent.last?.data?["reason"] == .string("interrupted_outcome_unknown"), "PR89-1 resume with no original result → outcome unknown (\(tool))")
+        }
+        exec.writes["r4"] = "evt-r4"
+        defaults.set(try! JSONEncoder().encode(["r4": DeviceCallStore.Record(phase: .running, call: mk("r4"), updatedAt: .now, account: "user-A")]), forKey: DeviceCallStore.storageKey)
+        let st4 = DeviceCallStore(defaults: defaults); await st4.resumeInterrupted("r4")
+        expect(!exec.executed.contains("r4") && exec.lookedUp.contains("r4") && sub.sent.last?.data?["event_id"] == .string("evt-r4"), "PR89-1 resume reports the original result found by lookup")
+        defaults.set(try! JSONEncoder().encode(["r5": DeviceCallStore.Record(phase: .running, call: mk("r5"), updatedAt: .now, account: "user-B")]), forKey: DeviceCallStore.storageKey)
+        let sent0 = sub.sent.count
+        let st5 = DeviceCallStore(defaults: defaults); await st5.resumeInterrupted("r5")
+        expect(!exec.executed.contains("r5") && !exec.lookedUp.contains("r5") && sub.sent.count == sent0, "PR89-1 another account's interrupted record is neither resumed nor reported")
+        let rec = DeviceCallStore(defaults: defaults)
+        DeviceCallGate.reset()
+        let fresh = mk("acct-rec"); DeviceCallGate.receive(fresh); await tapRun(rec, fresh)
+        expect(rec.record("acct-rec")?.account == "user-A", "PR89-1 persisted records carry the account")
+
+        // 2. Re-validated right before the system write (after awaits).
+        let store = DeviceCallStore(defaults: UserDefaults(suiteName: suite + ".2")!)
+        let e1 = mk("w1", ttl: 60); DeviceCallGate.receive(e1)
+        exec.beforeCommit = { wall += 120; up += 120 }   // user sat on the permission prompt past expiry
+        await tapRun(store, e1)
+        expect(exec.writes["w1"] == nil && reason(store, "w1") == "call_expired", "PR89-2 expiry during the permission await blocks the write")
+        let e2 = mk("w2"); DeviceCallGate.receive(e2)
+        exec.beforeCommit = { DeviceCallGate.reset() }   // signed out while waiting
+        await tapRun(store, e2)
+        expect(exec.writes["w2"] == nil, "PR89-2 sign-out during the await blocks the write")
+        let e3 = mk("w3"); DeviceCallGate.receive(e3)
+        exec.beforeCommit = { DeviceCallGate.revoke(["w3"]) }
+        await tapRun(store, e3)
+        expect(exec.writes["w3"] == nil && reason(store, "w3") == "call_revoked", "PR89-2 revocation during the await blocks the write")
+        exec.beforeCommit = nil
+
+        // 3. Cancelled / resolved calls lose their grant; the stale card cannot run.
+        let c1 = mk("x1"); DeviceCallGate.receive(c1); DeviceCallGate.revoke(["x1"])
+        expect(DeviceCallGate.confirmTap(c1, finalArgs: c1.args) == nil, "PR89-3 a revoked call cannot mint a tap")
+        await tapRun(store, c1)
+        expect(!exec.executed.contains("x1"), "PR89-3 tapping a stale card after cancel/resolve does nothing")
+        let c1b = mk("x1b"); DeviceCallGate.receive(c1b)
+        let shared = DeviceCallStore.shared
+        DeviceCallGate.revoke(["x1b"])
+        expect(shared.phase("x1b") == .expired, "PR89-3 revoke dismisses the confirming card (shows as no longer valid)")
+        ConversationDeviceCall.lifecycle?(.revoked(callIDs: ["x1c"]))   // the service boundary hook is installed by the app
+        let wire = ConversationDeviceCall(interruptID: UUID().uuidString.lowercased(), callID: "x2", tool: "calendar_create", args: try! JSONEncoder().encode(["title": DeviceCallValue.string("t")]), confirm: "card", ttlSec: 600, argsHash: String(repeating: "a", count: 64), expiresAt: ISO8601DateFormatter().string(from: wall.addingTimeInterval(600)))
+        DeviceCallGate.installLifecycle()
+        ConversationDeviceCall.lifecycle?(.received(wire, conversationID: UUID(), turnID: UUID(), token: DeviceCallGate.epoch.capture()))
+        try? await Task.sleep(nanoseconds: 50_000_000)
+        expect(DeviceCallGate.isLive("x2"), "PR89-3/4 the SSE boundary (service lifecycle hook) is the grant source")
+        ConversationDeviceCall.lifecycle?(.revoked(callIDs: ["x2"]))
+        try? await Task.sleep(nanoseconds: 50_000_000)
+        expect(!DeviceCallGate.isLive("x2"), "PR89-3 service-side resolve/cancel revokes through the same hook")
+
+        // 4. Full identity + one-shot tap bound to final args; nil account never passes.
+        let list = mk("same", "calendar_list", args: [:]); DeviceCallGate.receive(list)
+        let swapped = mk("same", "calendar_create")
+        await store.run(swapped, tap: DeviceCallGate.confirmTap(swapped, finalArgs: swapped.args))
+        expect(!exec.executed.contains("same"), "PR89-4 same call_id with a different tool is refused")
+        let a1 = mk("args", args: ["title": .string("A")]); DeviceCallGate.receive(a1)
+        let a2 = mk("args", args: ["title": .string("B")])
+        await store.run(a2, tap: DeviceCallGate.confirmTap(a2, finalArgs: a2.args))
+        expect(!exec.executed.contains("args"), "PR89-4 same call_id with different args is refused")
+        let nt = mk("notap"); DeviceCallGate.receive(nt); await store.run(nt)
+        expect(!exec.executed.contains("notap") && reason(store, "notap") == "tap_required", "PR89-4 a write without a tap token is refused")
+        let ed = mk("edit"); DeviceCallGate.receive(ed)
+        let token = DeviceCallGate.confirmTap(ed, finalArgs: ["title": .string("用户看到的")])
+        store.edited["edit"] = ["title": .string("被换掉的")]
+        await store.run(ed, tap: token)
+        expect(!exec.executed.contains("edit"), "PR89-4 tap token is bound to the final args the user confirmed")
+        let once = mk("once"); DeviceCallGate.receive(once)
+        let t1 = DeviceCallGate.confirmTap(once, finalArgs: once.args)
+        let other = DeviceCallStore(defaults: UserDefaults(suiteName: suite + ".3")!)
+        await store.run(once, tap: t1); await other.run(once, tap: t1)
+        expect(exec.executed.filter { $0 == "once" }.count == 1, "PR89-4 a tap token is one-shot")
+        DeviceCallGate.epoch.activate(account: nil)
+        let anon = mk("anon"); DeviceCallGate.receive(anon); await tapRun(store, anon)
+        expect(!exec.executed.contains("anon"), "PR89-4 no signed-in account → nothing runs (nil never equals nil)")
+        DeviceCallGate.epoch.activate(account: "user-A")
+        let ro = mk("ro", "calendar_list", args: [:]); var roNone = ro; roNone.confirm = DeviceCall.Confirm.none
+        DeviceCallGate.receive(roNone); await store.run(roNone)
+        expect(exec.executed.contains("ro"), "PR89-4 read-only auto-run (calendar_list) still runs without a tap")
+
+        // 5. Strict expiry, no extension, clock rollback.
+        let bad = mk("bad", expires: "garbage"); DeviceCallGate.receive(bad); await tapRun(store, bad)
+        expect(!exec.executed.contains("bad"), "PR89-5 unparsable expires_at is refused (no TTL fallback)")
+        let ext = mk("ext", ttl: 60); DeviceCallGate.receive(ext); wall += 61; up += 61; DeviceCallGate.receive(ext)
+        await tapRun(store, ext)
+        expect(!exec.executed.contains("ext"), "PR89-5 a repeated event does not extend the grant")
+        let rb = mk("rb", ttl: 60); DeviceCallGate.receive(rb); wall -= 3600; up += 61
+        await tapRun(store, rb)
+        expect(!exec.executed.contains("rb"), "PR89-5 wall-clock rollback cannot extend (uptime budget)")
+        let edge = mk("edge", ttl: 60); DeviceCallGate.receive(edge); wall += 60; up += 60
+        await tapRun(store, edge)
+        expect(!exec.executed.contains("edge"), "PR89-5 boundary is fail-first (now == deadline is expired)")
+        let both = mk("both", ttl: 600, expires: ISO8601DateFormatter().string(from: wall.addingTimeInterval(30))); DeviceCallGate.receive(both)
+        wall += 31; up += 31; await tapRun(store, both)
+        expect(!exec.executed.contains("both"), "PR89-5 the earlier of expires_at and ttl wins")
+        DeviceCallGate.wallClock = { Date() }; DeviceCallGate.uptime = { ProcessInfo.processInfo.systemUptime }; DeviceCallGate.epoch.activate(account: nil)
+    }
+
+    /// Codex review P0-1: display content never gains execution rights.
+    static func codexP0_1() async {
+        let suite = "codex.p01." + UUID().uuidString
+        let defaults = UserDefaults(suiteName: suite)!; defer { defaults.removePersistentDomain(forName: suite) }
+        let exec = FakeExecutor(["calendar_create", "reminder_create", "sms_compose", "calendar_list"]), sub = FakeSubmitter()
+        DeviceCallHub.executor = exec; DeviceCallHub.submitter = sub; DeviceCallHub.recorder = nil
+        DeviceCallGate.reset(); DeviceCallGate.epoch.activate(account: "user-A")
+        for tool in ["calendar_create", "reminder_create", "mail_compose", "sms_compose", "phone_call", "maps_open", "shop_open", "alarm_set", "shortcut_run", "contacts_search"] {
+            expect(!DeviceToolContract.runsWithoutTap(tool: tool, confirm: DeviceCall.Confirm.none), "codex P0-1 \(tool) confirm:none still needs a tap")
+        }
+        expect(DeviceToolContract.runsWithoutTap(tool: "calendar_list", confirm: DeviceCall.Confirm.none), "codex P0-1 read-only calendar_list may auto-run")
+        expect(!DeviceToolContract.runsWithoutTap(tool: "unknown_tool", confirm: DeviceCall.Confirm.none), "codex P0-1 unknown tool never auto-runs")
+        expect(!DeviceToolContract.markdownMayCreateDeviceCalls, "codex P0-1 Markdown fences cannot create device calls")
+        let store = DeviceCallStore(defaults: defaults)
+        // Forged (never registered by a typed event) → zero side effects.
+        let forged = DeviceCall(call_id: "forged-1", tool: "calendar_create", args: ["title": .string("x")], confirm: DeviceCall.Confirm.none, ttl_sec: 600)
+        await store.run(forged)
+        expect(!exec.executed.contains("forged-1"), "codex P0-1 unregistered call_id is not executed")
+        if case .done(let r) = store.phase("forged-1") { expect(r.status == .error && r.data?["reason"] == .string("unauthorized_call"), "codex P0-1 forged call → unauthorized_call") } else { expect(false, "codex P0-1 forged call → unauthorized_call") }
+        expect(!sub.sent.contains { $0.call_id == "forged-1" }, "codex P0-1 forged call is not reported to the server")
+        // Registered for account A, run after switching to B → rejected.
+        let a = DeviceCall(call_id: "acct-1", tool: "calendar_create", args: [:], confirm: .card, ttl_sec: 600)
+        DeviceCallGate.receive(a); DeviceCallGate.epoch.activate(account: "user-B")
+        await tapRun(store, a)
+        expect(!exec.executed.contains("acct-1"), "codex P0-1 cross-account call is not executed")
+        DeviceCallGate.epoch.activate(account: "user-A")
+        // Expired grant → rejected.
+        let old = DeviceCall(call_id: "exp-1", tool: "calendar_create", args: [:], confirm: .card, ttl_sec: 60, expires_at: "2020-01-01T00:00:00Z")
+        DeviceCallGate.receive(old)
+        await tapRun(store, old)
+        expect(!exec.executed.contains("exp-1"), "codex P0-1 expired call is not executed")
+        // Valid registered call still works.
+        let ok = DeviceCall(call_id: "ok-1", tool: "calendar_create", args: [:], confirm: .card, ttl_sec: 600)
+        DeviceCallGate.receive(ok); await tapRun(store, ok)
+        expect(exec.executed.contains("ok-1"), "codex P0-1 registered, same-account, unexpired call runs after tap")
+        DeviceCallGate.epoch.activate(account: nil)
+    }
+
+    static func deviceCalls() async {
+        DeviceCallGate.reset(); DeviceCallGate.epoch.activate(account: "user-A"); DeviceCallGate.wallClock = { Date() }
+        let suite = "nobug.devicecall." + UUID().uuidString
+        let defaults = UserDefaults(suiteName: suite)!; defer { defaults.removePersistentDomain(forName: suite) }
+        let exec = FakeExecutor(["calendar_create", "sms_compose"]), sub = FakeSubmitter()
+        DeviceCallHub.executor = exec; DeviceCallHub.submitter = sub; DeviceCallHub.recorder = nil
+
+        // Round trip.
+        let s1 = DeviceCallStore(defaults: defaults)
+        await tapRun(s1, call("c1"))
+        expect(sub.sent.map(\.call_id) == ["c1"] && sub.sent[0].status == .ok, "P0-5 device_call round trip: execute → report ok")
+        if case .done = s1.phase("c1") { expect(true, "phase done after report") } else { expect(false, "phase done after report") }
+        expect(DeviceCallStore(defaults: defaults).phase("c1") != .confirming, "P0-3 done phase persists (card never re-asks after relaunch)")
+        await tapRun(DeviceCallStore(defaults: defaults), call("c1"))
+        expect(exec.executed == ["c1"], "P0-3 relaunched store does not re-execute a finished call")
+
+        // Kill between execute and report: persisted as reportFailed(result) → re-report, no re-execute.
+        sub.fail = true
+        await tapRun(s1, call("c2"))
+        let s2 = DeviceCallStore(defaults: defaults)
+        if case .reportFailed(let r) = s2.phase("c2") { expect(r.status == .ok, "P0-3 executed-but-unreported result persisted") } else { expect(false, "P0-3 executed-but-unreported result persisted") }
+        sub.fail = false
+        await s2.retryReport("c2")
+        expect(sub.sent.last?.call_id == "c2" && exec.executed.filter { $0 == "c2" }.count == 1, "P0-3 report resumes after relaunch without re-execute")
+
+        // P1-4 auto retry of every pending report after relaunch; offline → stays pending, never re-executes.
+        sub.fail = true; await tapRun(s1, call("c2b")); await tapRun(s1, call("c2c"))
+        let s2b = DeviceCallStore(defaults: defaults)
+        expect(Set(s2b.pendingReportIDs).isSuperset(of: ["c2b", "c2c"]), "P1-4 pending reports survive relaunch")
+        expect(await s2b.retryPendingReports() == 0 && s2b.pendingReportIDs.contains("c2b"), "P1-4 offline retry keeps them pending")
+        sub.fail = false
+        let acked = await s2b.retryPendingReports()
+        expect(acked >= 2 && s2b.pendingReportIDs.isEmpty && exec.executed.filter { ["c2b", "c2c"].contains($0) }.count == 2, "P1-4 foreground/relaunch retry acknowledges all, no re-execute")
+        DeviceCallHub.submitter = nil
+        expect(await DeviceCallStore(defaults: defaults).retryPendingReports() == 0, "P1-4 no submitter → no-op")
+        DeviceCallHub.submitter = sub
+
+        // Kill during execute (phase .running persisted) → idempotent tool re-run, executor dedupes by call_id.
+        exec.writes["c3"] = "evt-already"   // event was written before the kill
+        let running = try! JSONEncoder().encode(["c3": DeviceCallStore.Record(phase: .running, call: call("c3"), updatedAt: .now, account: "user-A")])
+        defaults.set(running, forKey: DeviceCallStore.storageKey)
+        let s3 = DeviceCallStore(defaults: defaults)
+        expect(s3.isInterrupted("c3") && s3.phase("c3") == .running, "P0-3 interrupted call detected on relaunch (no confirm card)")
+        await tapRun(s3, call("c3"))
+        expect(exec.executed.filter { $0 == "c3" }.isEmpty, "P0-3 tapping again cannot start a second write")
+        await s3.resumeInterrupted("c3")
+        expect(sub.sent.last?.data?["event_id"] == .string("evt-already") && exec.writes["c3"] == "evt-already", "P0-3 resume finds the existing calendar_create by call_id (lookup, no write)")
+
+        // Non-idempotent interrupted → outcome unknown, not re-run.
+        defaults.set(try! JSONEncoder().encode(["c4": DeviceCallStore.Record(phase: .running, call: call("c4", "sms_compose"), updatedAt: .now, account: "user-A")]), forKey: DeviceCallStore.storageKey)
+        let s4 = DeviceCallStore(defaults: defaults); await s4.resumeInterrupted("c4")
+        expect(sub.sent.last?.data?["reason"] == .string("interrupted_outcome_unknown") && !exec.executed.contains("c4"), "P0-3 interrupted compose → outcome_unknown, never re-sent")
+
+        // P0-4 unsupported tool → error with non-retryable reason.
+        await tapRun(s4, call("c5", "pay_apple"))
+        let last = sub.sent.last
+        expect(last?.status == .error && last?.data?["reason"] == .string("unsupported_tool") && last?.data?["retryable"] == .bool(false), "P0-4 canExecute=false → .error reason unsupported_tool retryable=false")
+        // P0-4 meituan.
+        let m = DeviceToolContract.shopURLs(platform: "meituan", query: "咖啡")
+        expect(m.app?.scheme == "imeituan" && m.web?.host == "i.meituan.com", "P0-4 shop_open meituan → imeituan:// + i.meituan.com fallback")
+        expect(DeviceToolContract.shopURLs(platform: "taobao", query: "x").app?.scheme == "taobao", "shop_open taobao unchanged")
+        expect(Set(DeviceToolContract.clientTools).count == 12 && DeviceToolContract.clientTools.contains("places_search") && DeviceToolContract.clientTools.contains("calendar_list") && DeviceToolContract.clientTools.contains("contacts_search"), "P0-4 client advertises 12 tools incl. calendar_list/contacts_search/places_search")
+    }
+
+    static func proactive() {
+        let now = Date(timeIntervalSince1970: 1_792_000_000)
+        expect(ProactiveRules.inWindow(start: now.addingTimeInterval(60 * 60), now: now), "window: 60 min ahead admitted")
+        expect(!ProactiveRules.inWindow(start: now.addingTimeInterval(181 * 60), now: now), "window: 181 min ahead dropped")
+        expect(!ProactiveRules.inWindow(start: now.addingTimeInterval(-60), now: now), "window: past meeting dropped")
+        let start = now.addingTimeInterval(120 * 60)
+        expect(ProactiveRules.leaveAt(start: start, leadMinutes: 10, travelMinutes: 35, usedETA: true) == start.addingTimeInterval(-45 * 60), "leave_at = start − lead − travel")
+        expect(ProactiveRules.leaveAt(start: start, leadMinutes: 10, travelMinutes: 35, usedETA: false) == start.addingTimeInterval(-10 * 60), "leave_at ignores travel when ETA unused")
+        expect(ProactiveRules.validTravel(181) == nil && ProactiveRules.validTravel(40) == 40, "ETA > 180 min invalid")
+        let h1 = ProactiveRules.signalHash(eventID: "E1", start: start), h2 = ProactiveRules.signalHash(eventID: "E1", start: start.addingTimeInterval(1800))
+        expect(h1 != h2 && h1 == ProactiveRules.signalHash(eventID: "E1", start: start), "signal_hash stable per (event,start); reschedule = new hash")
+        var ledger: [String: Double] = [:]
+        expect(ProactiveRules.admit(h1, ledger: &ledger, now: now) && !ProactiveRules.admit(h1, ledger: &ledger, now: now), "dedupe: same signal admitted once")
+        expect(ProactiveRules.leadMinutes(in: "开会提前 15 分钟准备") == 15 && ProactiveRules.leadMinutes(in: "20 minutes early") == 20, "lead memory parse zh/en")
+        expect(ProactiveRules.leadMinutes(in: "提前 500 分钟") == nil && ProactiveRules.leadMinutes(in: "喜欢靠窗") == nil, "lead memory bounds")
+        let on = MemoryLibrarySnapshot(items: [.init(id: "a", group: .preference, content: "提前 7 分钟")], useMemory: true, autoSave: nil)
+        var off = on; off.useMemory = false
+        expect(ProactiveRules.lead(in: [off, on]) == nil && ProactiveRules.lead(in: [off]) == nil && ProactiveRules.lead(in: [on])?.minutes == 7, "P0-2 lead: any 使用记忆=off library ⇒ no memory at all (was per-library)")
+    }
+
+    static func nearby() {
+        let items: [MemoryLibraryItem] = [.init(id: "t1", group: .preference, content: "喜欢吃辣，不吃香菜"), .init(id: "m1", group: .preference, content: "出门一般坐地铁"),
+                                          .init(id: "x", group: .profile, content: "住在杭州")]
+        let p = NearbyRules.preferences(in: [.init(items: items, useMemory: true, autoSave: nil)])
+        expect(p.tastes.map(\.id) == ["t1"] && p.mode == .transit && p.modeItem?.id == "m1", "nearby: taste + travel-mode memories picked")
+        expect(NearbyRules.preferences(in: [.init(items: items, useMemory: false, autoSave: nil)]) == .init(), "nearby: 使用记忆 off → no memories used")
+        expect(NearbyRules.effectiveMode(arg: "driving", prefs: p) == .driving && NearbyRules.effectiveMode(arg: "", prefs: p) == .transit && NearbyRules.effectiveMode(arg: "", prefs: .init()) == .walking, "nearby: mode arg > memory > walking")
+        let why = NearbyRules.why(prefs: p, mode: .transit, modeFromArg: false, originNote: "起点是你当前的真实位置")
+        let cands: [NearbyRules.Candidate] = [.init(name: "香菜面馆", category: "Restaurant", distance: 100), .init(name: "粤式茶餐厅", category: "Restaurant", distance: 200), .init(name: "重庆麻辣烫", category: "Restaurant", distance: 600)]
+        let kw = NearbyRules.tasteKeywords(p)
+        expect(kw.likes == ["辣"] && kw.dislikes == ["香菜"], "nearby: taste keywords like 辣 / dislike 香菜")
+        let withTaste = NearbyRules.rank(cands, prefs: p), without = NearbyRules.rank(cands, prefs: .init())
+        expect(without == [0, 1, 2] && withTaste == [2, 1, 0] && withTaste != without, "nearby: taste memory changes ranking (with ≠ without)")
+        expect(NearbyRules.needsWiderSearch(2) && !NearbyRules.needsWiderSearch(NearbyRules.minResults), "nearby: < minResults widens radius")
+        let wide = NearbyRules.why(prefs: .init(), mode: .walking, modeFromArg: false, originNote: "o", radius: 8000)
+        expect(wide.contains("3 公里内不足 3 家，已扩到 8 公里"), "nearby: widened search stated in Why")
+        expect(!NearbyRules.why(prefs: .init(), mode: .walking, modeFromArg: false, originNote: "o", radius: 3000).contains("已扩到"), "nearby: no widen note at 3 km")
+        expect(why.contains("调整了排序") && NearbyRules.why(prefs: .init(), mode: .walking, modeFromArg: false, originNote: "o").contains("口味") == false, "nearby: Why mentions taste only when it changed ranking")
+        expect(why.contains("喜欢吃辣") && why.contains("出门一般坐地铁") && why.contains("真实位置"), "nearby: Why cites memories + origin")
+        expect(NearbyRules.telURL("021-6123 4567") == "tel:02161234567" && NearbyRules.telURL(nil) == nil, "nearby: tel url")
+        expect(NearbyRules.mapsURL(lat: 31.2, lng: 121.4, name: "店", mode: .walking).hasSuffix("dirflg=w"), "nearby: maps url mode")
+    }
+
+    /// Mirror of services/edge/test/ui-grounded.test.mjs: every server-grounded block in the shared fixture decodes
+    /// into GenerativeBlock as `.ready` with the same rows; errors/passthrough cases stay out of the client.
+    static func groundedFixtures() {
+        let url = URL(fileURLWithPath: "../../services/edge/docs/fixtures/catpaw-ui-grounded.json")
+        guard let data = try? Data(contentsOf: url), let root = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+              let cases = root["cases"] as? [[String: Any]], let auto = root["auto"] as? [[String: Any]] else { expect(false, "grounded: fixture readable"); return }
+        var decoded = 0
+        for c in cases + auto {
+            let name = c["name"] as? String ?? "?"
+            guard let exp = c["expect"] as? [String: Any], let raw = exp["block"] as? [String: Any] else { continue }
+            let bytes = (try? JSONSerialization.data(withJSONObject: raw)) ?? Data()
+            guard case .ready(let b) = GenerativeBlockCodec.decode(bytes) else { expect(false, "grounded: \(name) decodes .ready"); continue }
+            let rows = (raw["places"] as? [[String: Any]]) ?? (raw["events"] as? [[String: Any]]) ?? []
+            let ids = b.kind == .place ? (b.places ?? []).map(\.id) : (b.events ?? []).map(\.id)
+            let names = b.kind == .place ? (b.places ?? []).map(\.name) : (b.events ?? []).map(\.title)
+            expect(b.kind.isGrounded && !b.needsAnswer && ids == rows.compactMap { $0["id"] as? String }
+                   && names == rows.compactMap { ($0["name"] ?? $0["title"]) as? String } && b.source?.callId == (raw["source"] as? [String: Any])?["callId"] as? String,
+                   "grounded: \(name) mirrors server rows")
+            decoded += 1
+        }
+        expect(decoded == 6, "grounded: 6 server blocks decoded (5 render_ui + 1 auto), got \(decoded)")
+        let fake = #"{"id":"x","kind":"place","source":{"callId":"c"},"places":[{"id":"p1","name":"n","actions":[{"id":"go","label":"去","url":"javascript:alert(1)"}]}]}"#
+        if case .fallback(let card, let err) = GenerativeBlockCodec.decode(Data(fake.utf8)) { expect(card.kind == .card && err.code == "schema_invalid", "grounded: unsafe deep link degrades to card") } else { expect(false, "grounded: unsafe deep link degrades to card") }
+        if case .fallback = GenerativeBlockCodec.decode(Data(#"{"id":"x","kind":"place"}"#.utf8)) { expect(true, "grounded: place without server rows is not rendered") } else { expect(false, "grounded: place without server rows is not rendered") }
+        expect(NearbyRules.placeBlockID(callID: "call-ab:12") == "places-call-ab12", "grounded: auto place block id mirrors server")
+        expect(ConversationUIEvent.kinds.contains("place") && ConversationUIEvent.kindsHeaderValue.contains("event"), "grounded: client advertises place/event")
+    }
+
+    /// chat-ux #7: contacts never leave the phone without a tap; result is minimal.
+    static func contactsPrivacy() {
+        expect(!DeviceToolContract.runsWithoutTap(tool: "contacts_search", confirm: DeviceCall.Confirm.none), "contacts: no auto-run even if an old server sends confirm:none")
+        expect(!DeviceToolContract.runsWithoutTap(tool: "contacts_search", confirm: DeviceCall.Confirm.card), "contacts: card → waits for tap")
+        expect(DeviceToolContract.runsWithoutTap(tool: "calendar_list", confirm: DeviceCall.Confirm.none) && DeviceToolContract.runsWithoutTap(tool: "places_search", confirm: DeviceCall.Confirm.none), "contacts: other read-only tools still auto-run")
+        let row = DeviceToolContract.minimalContact(name: "张三", phones: ["1", "2", "3", "4"], emails: ["a@x.cn"], includeEmail: false)
+        expect(row["emails"] == nil && row["phones"] == .list(["1", "2", "3"]) && Set(row.keys) == ["name", "phones"], "contacts: minimal fields (name + ≤3 phones, no email by default)")
+        expect(DeviceToolContract.minimalContact(name: "张三", phones: [], emails: ["a", "b", "c"], includeEmail: true)["emails"] == .list(["a", "b"]), "contacts: emails only when asked, ≤2")
+    }
+
+    /// chat-ux #1: edit & resend keeps the old answer as a switchable version (ReplyVariantGroup behind ReplyVariantStore).
+    static func replyVariants() {
+        let root = UUID(), regen = UUID(), edited = UUID(), regenEdited = UUID()
+        var g = ReplyVariantGroup(root: root)
+        g.addRegenerate(regen)
+        expect(g.selectedTurn == regen && g.visiblePromptTurn == root && g.isVisible(turn: root, isUserPrompt: true) && !g.isVisible(turn: regen, isUserPrompt: true), "variants: regenerate keeps the original prompt row")
+        g.addEdit(edited)
+        expect(g.turns.count == 3 && g.selected == 2 && g.visiblePromptTurn == edited, "variants: edit → new answer selected, edited prompt shown")
+        expect(g.isVisible(turn: edited, isUserPrompt: true) && !g.isVisible(turn: root, isUserPrompt: true) && g.isVisible(turn: edited, isUserPrompt: false) && !g.isVisible(turn: regen, isUserPrompt: false), "variants: old prompt + old answers hidden while on the edit")
+        g.step(-2)
+        expect(g.selectedTurn == root && g.visiblePromptTurn == root && g.isVisible(turn: root, isUserPrompt: false) && !g.isVisible(turn: edited, isUserPrompt: true), "variants: switch back → original prompt + original answer")
+        g.step(2); g.addRegenerate(regenEdited)
+        expect(g.promptTurn(of: regenEdited) == edited && g.visiblePromptTurn == edited && g.promptTurns == [root, edited], "variants: regenerate on an edited version re-answers the edited prompt")
+        g.addEdit(edited); expect(g.turns.count == 4, "variants: duplicate add ignored")
+        let legacy = Data(#"{"turns":["\#(root.uuidString)"],"selected":0}"#.utf8)
+        expect((try? JSONDecoder().decode(ReplyVariantGroup.self, from: legacy))?.visiblePromptTurn == root, "variants: v1 persisted groups still decode")
+        let round = try? JSONDecoder().decode(ReplyVariantGroup.self, from: (try? JSONEncoder().encode(g)) ?? Data())
+        expect(round == g, "variants: edited groups persist")
+        expect(!MessageEditRules.canSend("  猫吃什么 ", original: "猫吃什么") && !MessageEditRules.canSend("   ", original: "x") && MessageEditRules.canSend("狗吃什么", original: "猫吃什么"), "edit: unchanged / empty edits cannot be sent")
+    }
+
+    /// chat-ux #4: follow-up fence parsing.
+    @MainActor final class FlakyUndoSubmitter: DeviceResultSubmitting {
+        var online = false; var sent: [String] = []
+        func submit(_ result: DeviceCallResult) async throws {}
+        func reportUndo(callID: String, outcome: DeviceUndoOutcome) async throws { guard online else { throw URLError(.notConnectedToInternet) }; sent.append(callID + ":" + outcome.rawValue) }
+    }
+    @MainActor static func deviceUndoQueue() async {
+        let defaults = UserDefaults(suiteName: "nobug-undo-\(UUID())")!
+        let saved = DeviceCallHub.submitter; defer { DeviceCallHub.submitter = saved }
+        let flaky = FlakyUndoSubmitter(); DeviceCallHub.submitter = flaky
+        await DeviceCallStore(defaults: defaults).reportUndo(callID: "u1", outcome: .undone)
+        expect(flaky.sent.isEmpty, "#6 offline undo report not sent yet")
+        let relaunched = DeviceCallStore(defaults: defaults)            // app restart: queue comes back from disk
+        expect(relaunched.undoQueue.pending == ["u1": .undone], "#6 pending undo survives an app restart")
+        flaky.online = true
+        _ = await relaunched.retryPendingReports()
+        expect(flaky.sent == ["u1:undone"] && relaunched.undoQueue.isEmpty, "#6 retryPendingReports delivers the queued undo to the model")
+        expect(DeviceCallStore(defaults: defaults).undoQueue.isEmpty, "#6 acknowledged undo is not re-sent after another restart")
+        var q = DeviceUndoQueue(); q.enqueue("a", .failed); q.enqueue("b", .undone)
+        let left = await q.drained { id, _ in if id == "a" { throw URLError(.timedOut) } }
+        expect(left.pending == ["a": .failed], "#6 drain keeps only failed reports")
+        var idx = DeviceCallTurnIndex(); let c = UUID(), t = UUID(); idx.set("k", conversationID: c, turnID: t)
+        idx.save(defaults); expect(DeviceCallTurnIndex.load(defaults).turn(for: "k").map { $0 == (c, t) } == true, "#6 call→turn index persists for post-restart undo")
+        for i in 0..<(DeviceCallTurnIndex.capacity + 5) { idx.set("x\(i)", conversationID: c, turnID: t, at: Date(timeIntervalSince1970: Double(i))) }
+        expect(idx.entries.count == DeviceCallTurnIndex.capacity, "#6 index is capped")
+    }
+    static func deviceUndo() async {
+        await deviceUndoQueue()
+        expect(DeviceUndoRules.canUndo(tool: "calendar_create", status: "ok", alreadyUndone: false), "#6 ok calendar_create can be undone")
+        expect(DeviceUndoRules.canUndo(tool: "alarm_set", status: "ok", alreadyUndone: false) && DeviceUndoRules.canUndo(tool: "reminder_create", status: "ok", alreadyUndone: false), "#6 reminder/alarm undoable")
+        expect(!DeviceUndoRules.canUndo(tool: "calendar_create", status: "denied", alreadyUndone: false), "#6 failed write has nothing to undo")
+        expect(!DeviceUndoRules.canUndo(tool: "calendar_create", status: "ok", alreadyUndone: true), "#6 undo only once")
+        expect(!DeviceUndoRules.canUndo(tool: "contacts_search", status: "ok", alreadyUndone: false), "#6 reads are not undoable")
+        expect(DeviceUndoRules.outcome(found: true, deleted: true) == .undone && DeviceUndoRules.outcome(found: false, deleted: true) == .alreadyGone && DeviceUndoRules.outcome(found: true, deleted: false) == .failed, "#6 outcome mapping")
+        expect(DeviceUndoOutcome.alreadyGone.removed && !DeviceUndoOutcome.failed.removed, "#6 already gone counts as removed (same as proactive undo)")
+        let op = UUID()
+        expect(DeviceUndoRules.body(callID: "c1", outcome: .alreadyGone, operationID: op) == ["call_id": "c1", "operation_id": op.uuidString.lowercased(), "status": "already_gone"], "#6 wire body matches server statuses")
+        expect(Set(DeviceUndoOutcome.allCases.filter(\.reportable).map(\.rawValue)) == ["undone", "already_gone", "failed"] && !DeviceUndoOutcome.unknown.reportable && !DeviceUndoOutcome.unknown.removed, "#6 reportable statuses mirror DEVICE_UNDO_STATUSES; unknown stays local")
+    }
+    static func dictation() {
+        expect(DictationPolicy.join("帮我订", "明天的会议室") == "帮我订明天的会议室", "dictation: no space joining Chinese")
+        expect(DictationPolicy.join("好的。", "明天见") == "好的。明天见", "dictation: no space after CJK punctuation")
+        expect(DictationPolicy.join("Book", "a room") == "Book a room", "dictation: Latin words get one space")
+        expect(DictationPolicy.join("call", "，谢谢") == "call，谢谢" && DictationPolicy.join("hi\n", "there") == "hi\nthere" && DictationPolicy.join("", "你好") == "你好", "dictation: punctuation/newline/empty joins")
+        expect(DictationPolicy.join("用 Swift", "写") == "用 Swift写", "dictation: Latin then CJK has no inserted space")
+        var t = DictationTranscript(); t.update("明天上午"); t.commit(); t.update("九点开会")
+        expect(t.text == "明天上午九点开会", "dictation: text from a finished segment is kept when the next one starts")
+        t.commit(); t.update(""); expect(t.text == "明天上午九点开会", "dictation: empty new segment keeps the text so far")
+        expect(DictationRestart.decide(failed: false, segmentHadText: true, emptyFailures: 0, sessionHasText: true) == .restart, "dictation: pause (final) restarts a segment")
+        expect(DictationRestart.decide(failed: true, segmentHadText: false, emptyFailures: 0, sessionHasText: false) == .restart, "dictation: one error restarts")
+        expect(DictationRestart.decide(failed: true, segmentHadText: false, emptyFailures: 2, sessionHasText: true) == .finish, "dictation: repeated empty errors finish with the text so far")
+        expect(DictationRestart.decide(failed: true, segmentHadText: false, emptyFailures: 2, sessionHasText: false) == .fail, "dictation: repeated empty errors with nothing said fail")
+        expect(DictationRestart.decide(failed: true, segmentHadText: true, emptyFailures: 2, sessionHasText: true) == .restart, "dictation: an error after text restarts")
+        expect(DictationEngineTier.choose(analyzerOS: true, speechTranscriberReady: true, dictationTranscriberReady: true, recognizerAvailable: true, recognizerOnDevice: true) == .speechTranscriber, "dictation: iOS 26 prefers SpeechTranscriber")
+        expect(DictationEngineTier.choose(analyzerOS: true, speechTranscriberReady: false, dictationTranscriberReady: true, recognizerAvailable: true, recognizerOnDevice: false) == .dictationTranscriber, "dictation: then DictationTranscriber")
+        expect(DictationEngineTier.choose(analyzerOS: false, speechTranscriberReady: false, dictationTranscriberReady: false, recognizerAvailable: true, recognizerOnDevice: false) == .serverRecognizer, "dictation: no on-device support uses server recognition instead of refusing")
+        expect(DictationEngineTier.choose(analyzerOS: false, speechTranscriberReady: false, dictationTranscriberReady: false, recognizerAvailable: true, recognizerOnDevice: true) == .onDeviceRecognizer, "dictation: on-device recognizer when supported")
+        expect(DictationEngineTier.choose(analyzerOS: false, speechTranscriberReady: false, dictationTranscriberReady: false, recognizerAvailable: false, recognizerOnDevice: false) == .unavailable, "dictation: unavailable only when no recognizer")
+        expect(DictationEngineTier.serverRecognizer.segmentLimit == 55 && DictationEngineTier.speechTranscriber.segmentLimit == nil, "dictation: auto-continue before the ~1 min request limit; analyzer has none")
+        expect(DictationPolicy.localeIdentifier(for: .english) == "en-US" && DictationPolicy.localeIdentifier(for: .chinese) == "zh-CN", "dictation: locale follows app language")
+    }
+    static func followUps() {
+        let d = { (t: String) in Data(t.utf8) }
+        expect(FollowUpSuggestions.parse(d("猫能吃鱼吗？\n- 猫一天吃几顿\n2. 猫粮怎么选\n第四个"), closed: true) == ["猫能吃鱼吗？", "猫一天吃几顿", "猫粮怎么选"], "followups: ≤3, bullets/numbers stripped")
+        expect(FollowUpSuggestions.parse(d("a\nb"), closed: false).isEmpty, "followups: unclosed fence renders nothing while streaming")
+        expect(FollowUpSuggestions.parse(d("只有一个"), closed: true).isEmpty && FollowUpSuggestions.parse(d("x\nx"), closed: true).isEmpty, "followups: fewer than 2 distinct → nothing")
+        expect(FollowUpSuggestions.parse(d(String(repeating: "长", count: 31) + "\n短一\n短二"), closed: true) == ["短一", "短二"], "followups: over-long lines dropped")
+        expect(ConversationUIEvent.kindsHeaderValue.hasSuffix(",followups") && !ConversationUIEvent.kinds.contains("followups"), "followups: advertised as capability, not a ui.block kind")
+    }
+    /// Codex review P0-3: the client keeps all four levels and applies its own quiet hours + daily cap.
+    static func codexP0_3() {
+        var cal = Calendar(identifier: .gregorian); cal.timeZone = TimeZone(identifier: "Asia/Shanghai")!
+        let noon = cal.date(from: DateComponents(year: 2026, month: 10, day: 16, hour: 12))!
+        let night = cal.date(from: DateComponents(year: 2026, month: 10, day: 16, hour: 23, minute: 30))!
+        let p = { (l: ProactiveLevel, at: Date, n: Int) in ProactiveRules.delivery(level: l, now: at, deliveredToday: n, calendar: cal) }
+        expect(p(.silent, noon, 0) == .init(level: .silent, inAppCard: false, systemNotification: false, sound: false, timeSensitive: false, liveActivity: false), "codex P0-3 silent → nothing")
+        let card = p(.card, noon, 0)
+        expect(card.inAppCard && !card.systemNotification && !card.sound && !card.liveActivity, "codex P0-3 card → in-app card only, no sound notification")
+        let notify = p(.notify, noon, 0)
+        expect(notify.systemNotification && notify.sound && !notify.timeSensitive, "codex P0-3 notify → notification with sound")
+        let interrupt = p(.interrupt, noon, 0)
+        expect(interrupt.systemNotification && interrupt.timeSensitive && interrupt.liveActivity, "codex P0-3 interrupt → time-sensitive + Live Activity")
+        expect(p(.notify, night, 0).level == .card && !p(.interrupt, night, 0).sound, "codex P0-3 on-device quiet hours (22–8) → card, no sound")
+        expect(p(.notify, noon, ProactiveRules.dailyNotifyCap).level == .card, "codex P0-3 on-device daily cap → card")
+        expect(ProactiveLevel(server: "notify") == .notify && ProactiveLevel(server: "bogus") == .card && ProactiveLevel(server: "silent") == .silent, "codex P0-3 server level parsed, unknown → card (never louder)")
+    }
+
+    /// Codex P0-3 acceptance matrix: night / daily cap / low confidence / offline — actual system notifications == decision.
+    /// Covers both delivery paths: in-app evaluation and the pre-scheduled (app killed / offline) notification.
+    static func codexP0_3Matrix() {
+        var cal = Calendar(identifier: .gregorian); cal.timeZone = TimeZone(identifier: "Asia/Shanghai")!
+        let noon = cal.date(from: DateComponents(year: 2026, month: 10, day: 16, hour: 12))!
+        let night = cal.date(from: DateComponents(year: 2026, month: 10, day: 16, hour: 23, minute: 30))!
+        let cap = ProactiveRules.dailyNotifyCap
+        // (name, server level or nil = offline local rules → notify, at, deliveredToday, expected system notification)
+        let rows: [(String, String?, Date, Int, Bool)] = [
+            ("day notify", "notify", noon, 0, true), ("day card", "card", noon, 0, false),
+            ("night notify", "notify", night, 0, false), ("night interrupt", "interrupt", night, 0, false),
+            ("cap reached", "notify", noon, cap, false), ("low confidence (server silent)", "silent", noon, 0, false),
+            ("offline day", nil, noon, 0, true), ("offline night", nil, night, 0, false), ("offline cap", nil, noon, cap, false),
+        ]
+        var sent = 0, decided = 0
+        for (name, server, at, n, want) in rows {
+            let level = server.map { ProactiveLevel(server: $0) } ?? .notify
+            let d = ProactiveRules.delivery(level: level, now: at, deliveredToday: n, calendar: cal)
+            expect(d.systemNotification == want, "codex P0-3 matrix \(name)")
+            sent += d.systemNotification ? 1 : 0; decided += want ? 1 : 0
+        }
+        expect(sent == decided && sent == 2, "codex P0-3 matrix: notifications sent (\(sent)) == decided (\(decided))")
+        // Pre-scheduled path (fires while the app is killed / offline) obeys the same gate at its fire time.
+        expect(ProactiveRules.prescheduleAllowed(fire: noon, deliveredToday: 0, calendar: cal), "codex P0-3 preschedule daytime allowed")
+        expect(!ProactiveRules.prescheduleAllowed(fire: night, deliveredToday: 0, calendar: cal), "codex P0-3 preschedule never fires in quiet hours")
+        expect(!ProactiveRules.prescheduleAllowed(fire: noon, deliveredToday: cap, calendar: cal), "codex P0-3 preschedule respects the daily cap")
+    }
+    /// P0-5: evaluated ≠ delivered (early silent can be re-evaluated), per-action state, cancelled SMS never synced.
+    static func proactiveLifecycle() {
+        let t0 = Date(timeIntervalSince1970: 1_800_000_000), h = "evt-h1"
+        var l = ProactiveSignalLedger()
+        // 120 min out, lead 10, no ETA → local rules stay silent (too early), but only "evaluated".
+        expect(ProactiveRules.localLevel(minutesUntil: 120, leadMinutes: 10, travelMinutes: nil) == .silent, "P0-5 early meeting → silent")
+        expect(l.shouldEvaluate(h, now: t0), "P0-5 first sighting evaluated")
+        l.markEvaluated(h, now: t0)
+        expect(!l.shouldEvaluate(h, now: t0.addingTimeInterval(120)), "P0-5 re-evaluation throttled (2 min later)")
+        expect(l.shouldEvaluate(h, now: t0.addingTimeInterval(ProactiveSignalLedger.reevaluateAfter)), "P0-5 early silent re-evaluated as the meeting nears")
+        expect(ProactiveRules.localLevel(minutesUntil: 20, leadMinutes: 10, travelMinutes: nil) == .notify, "P0-5 near meeting → reminder")
+        l.markDelivered(h, level: .notify, now: t0.addingTimeInterval(5400))
+        expect(!l.shouldEvaluate(h, now: t0.addingTimeInterval(9000)), "P0-5 delivered once → never again")
+        let data = try! JSONEncoder().encode(l), back = try! JSONDecoder().decode(ProactiveSignalLedger.self, from: data)
+        expect(!back.shouldEvaluate(h, now: t0.addingTimeInterval(9000)) && back.delivered[h] == "notify", "P0-5 ledger survives restart")
+        expect(ProactiveSignalLedger(legacy: ["old": 1]).delivered["old"] != nil, "P0-5 legacy v1 ledger entries treated as delivered (no duplicate after upgrade)")
+        // Per-action state.
+        let all = ["create_reminder", "notify_attendees", "snooze", "dismiss"]
+        var st: [String: ProactiveActionState] = [:]
+        st["create_reminder"] = .succeeded
+        expect(ProactiveActionStates.remaining(all, st) == ["notify_attendees", "snooze", "dismiss"], "P0-5 SMS still offered after reminder created")
+        expect(!ProactiveActionStates.allEffectsDone(all, st), "P0-5 not done while SMS open")
+        st["notify_attendees"] = .cancelled
+        expect(!ProactiveActionStates.shouldSync(.cancelled) && !ProactiveActionStates.shouldSync(.unavailable) && !ProactiveActionStates.shouldSync(.failed) && ProactiveActionStates.shouldSync(.succeeded), "P0-5 only succeeded effects sync to cloud")
+        expect(ProactiveActionStates.remaining(all, st).contains("notify_attendees"), "P0-5 cancelled SMS can be retried")
+        st["notify_attendees"] = .succeeded
+        expect(ProactiveActionStates.allEffectsDone(all, st) && ProactiveActionStates.remaining(all, st).isEmpty, "P0-5 done when every effect succeeded")
+        expect(ProactiveActionStates.from(serverStates: ["create_reminder": "done"]) == ["create_reminder": .succeeded], "P0-5 cloud action_states map to device state")
+    }
+
+    // MARK: Codex review P0-2 — local memory bound to an account (or explicit guest), sign-out purge, one 「使用记忆」 switch.
+    static func p02AccountIsolation() async {
+        let pA = InMemorySnapshotPersistence(), pB = InMemorySnapshotPersistence()
+        MemoryLibraryLocal.activate(owner: .account("aaaa"), persistence: pA)
+        expect(MemoryLibraryLocal.shared.owner == .account("aaaa"), "P0-2 local library is bound to the signed-in account")
+        _ = try? await MemoryLibraryLocal.shared.create(kind: "preference", content: "开会提前 25 分钟准备")
+        expect(pA.read() != nil, "P0-2 A's memory is written to A's (sealed) store, not a shared file")
+        // Account switch without sign-out: B starts empty, A's data stays in A's store.
+        MemoryLibraryLocal.activate(owner: .account("bbbb"), persistence: pB)
+        let bSnap = try? await MemoryLibraryLocal.shared.load()
+        expect(MemoryLibraryLocal.shared.items.isEmpty, "P0-2 B does not see A's local memory")
+        expect(ProactiveRules.lead(in: bSnap.map { [$0] } ?? []) == nil, "P0-2 B cannot recall A's lead memory")
+        MemoryLibraryLocal.activate(owner: .account("aaaa"), persistence: pA)
+        expect(MemoryLibraryLocal.shared.items.count == 1, "P0-2 A's memory survives a cold start in A's own store")
+        // Migration is bound to the original owner.
+        let target = RefusingBackend()
+        let cross = await MemoryLibraryLocal.migrate(MemoryLibraryLocal.shared, to: target, targetOwner: .account("bbbb"))
+        expect(target.created.isEmpty && cross.stoppedBy == .failed("owner_mismatch") && cross.kept == 1, "P0-2 A's local memory is never uploaded into B's cloud library")
+        let guest = MemoryLibraryStub(owner: .guest)
+        _ = try? await guest.create(kind: "preference", content: "guest note")
+        let fromGuest = await MemoryLibraryLocal.migrate(guest, to: target, targetOwner: .account("aaaa"))
+        expect(target.created.isEmpty && fromGuest.stoppedBy == .failed("owner_mismatch"), "P0-2 guest memory is never auto-uploaded into an account")
+        let same = await MemoryLibraryLocal.migrate(MemoryLibraryLocal.shared, to: target, targetOwner: .account("aaaa"))
+        expect(same.migrated == 1 && target.created == ["开会提前 25 分钟准备"], "P0-2 same-owner migration still works")
+        // Sign-out purge: A's store erased, library falls back to an empty in-memory guest.
+        _ = try? await MemoryLibraryLocal.shared.create(kind: "preference", content: "住在杭州")
+        MemoryLibraryLocal.purge(owner: .account("aaaa"))
+        expect(pA.read() == nil && MemoryLibraryLocal.shared.items.isEmpty && MemoryLibraryLocal.shared.owner == .guest, "P0-2 sign-out erases A's local memory")
+        MemoryLibraryLocal.activate(owner: .account("aaaa"), persistence: pA)
+        expect(MemoryLibraryLocal.shared.items.isEmpty, "P0-2 after sign-out nothing of A comes back")
+        // Write errors are not swallowed.
+        let broken = MemoryLibraryStub(owner: .account("cccc"), persistence: FailingPersistence())
+        do { _ = try await broken.create(kind: "preference", content: "x"); expect(false, "P0-2 failed write throws") }
+        catch { expect(true, "P0-2 a failed local write throws instead of pretending it was saved") }
+        // Sign-out also clears proactive items and undelivered device/undo reports.
+        let d = UserDefaults(suiteName: "p02-\(UUID().uuidString)")!
+        for k in AccountLocalData.userDefaultsKeys { d.set(Data([1]), forKey: k) }
+        AccountLocalData.purge(defaults: d)
+        expect(AccountLocalData.userDefaultsKeys.allSatisfy { d.object(forKey: $0) == nil }, "P0-2 sign-out clears proactive inbox/ledger and pending device reports")
+        expect(Set(["catpaw.proactive.inbox.v1", "catpaw.proactive.ledger.v1", "catpaw.proactive.ops.v1", "catpaw.proactive.suggestions.v1", "catpaw.devicecall.records.v1", "catpaw.devicecall.undos.v1"]).isSubset(of: Set(AccountLocalData.userDefaultsKeys)), "P0-2 purge list covers proactive + pending delivery keys")
+        // One switch: cloud 「使用记忆」 off ⇒ no path reads any memory (local included).
+        let off = MemoryLibrarySnapshot(items: [], useMemory: false, autoSave: nil)
+        let local = MemoryLibrarySnapshot(items: [.init(id: "l1", group: .preference, content: "开会提前 25 分钟准备"), .init(id: "l2", group: .preference, content: "喜欢吃辣，爱吃川菜")], useMemory: true, autoSave: true)
+        expect(ProactiveRules.lead(in: [off, local]) == nil, "P0-2 使用记忆 off ⇒ leadTime reads no memory (0 refs)")
+        expect(NearbyRules.preferences(in: [off, local]).cited.isEmpty, "P0-2 使用记忆 off ⇒ nearby search cites no memory (0 refs)")
+        expect(MemoryRecallGate.effective([off, local]).isEmpty && MemoryRecallGate.effective([local]).count == 1, "P0-2 single recall gate for every path")
+        MemoryLibraryLocal.activate(owner: .guest, persistence: nil)
+    }
+    // MARK: Codex review P0-4 — feedback persisted + changes the next decision; undo/handoff report the real outcome.
+    static func p04FeedbackUndoHandoff() {
+        var ledger = ProactiveFeedbackLedger()
+        let before = ledger.gate(decision: "notify", confidence: 0.8, trigger: "meeting_upcoming")
+        expect(before == "notify", "P0-4 baseline: confident notify stays notify")
+        expect(ledger.record(.intrusive, suggestionID: "s1", trigger: "meeting_upcoming", serverID: nil), "P0-4 first feedback applies")
+        expect(!ledger.record(.helpful, suggestionID: "s1", trigger: "meeting_upcoming", serverID: nil), "P0-4 one feedback per suggestion (same as server)")
+        let w = ledger.weights["meeting_upcoming"]
+        expect(w?.weight == 0.7 && w?.threshold_bump == 0.1, "P0-4 intrusive mirrors server weights (×0.7, +0.1)")
+        expect(ledger.gate(decision: "notify", confidence: 0.8, trigger: "meeting_upcoming") == "card", "P0-4 negative feedback measurably downgrades the next same-trigger decision")
+        expect(ledger.gate(decision: "notify", confidence: 0.8, trigger: "flight_status") == "notify", "P0-4 other triggers unaffected")
+        expect(ledger.pendingSync.map(\.suggestionID) == ["s1"], "P0-4 feedback without server id stays queued (待同步)")
+        let data = try! JSONEncoder().encode(ledger)
+        var reloaded = try! JSONDecoder().decode(ProactiveFeedbackLedger.self, from: data)
+        expect(reloaded == ledger, "P0-4 feedback ledger survives restart")
+        reloaded.markSynced("s1"); expect(reloaded.pendingSync.isEmpty, "P0-4 synced feedback leaves the queue")
+        // Undo: a failed EventKit delete keeps the real state.
+        expect(ProactiveUndoRules.statusAfterUndo(current: .done, removal: .failed) == nil, "P0-4 undo with failed delete keeps 已完成 (no fake undo)")
+        expect(ProactiveUndoRules.statusAfterUndo(current: .done, removal: .undone) == .pending && ProactiveUndoRules.statusAfterUndo(current: .done, removal: .alreadyGone) == .pending, "P0-4 undo succeeds only when removed / already gone")
+        // External URL handoff: timeout is unknown, never success.
+        let timedOut = DeviceToolContract.handoffResult(.timedOut, callID: "c1")
+        expect(timedOut.status != .ok && timedOut.data?["reason"] == .string("handoff_unknown"), "P0-4 open-URL timeout is not reported as success")
+        expect(DeviceToolContract.handoffResult(.refused, callID: "c1").status == .error, "P0-4 refused open is an error")
+        let opened = DeviceToolContract.handoffResult(.opened, callID: "c1")
+        expect(opened.status == .ok && opened.data?["handoff"] == .string("requested"), "P0-4 opened = requested, not task done")
+        expect(DeviceToolContract.receiptKey(confirmKey: "运行", status: .ok, data: opened.data) == "已请求打开", "P0-4 shortcut receipt says 已请求打开, not 已运行")
+        expect(DeviceToolContract.receiptKey(confirmKey: "运行", status: timedOut.status, data: timedOut.data) == "已请求打开，结果未知", "P0-4 unknown handoff shows 结果未知")
+    }
+
+
+    // MARK: Codex PR91 review (882db80) — counterexamples as integration assertions on the REAL L2 store
+    // (AES-GCM files under a temp root, injectable key stand-in instead of the Keychain).
+    static func pr91Review() async {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("pr91-l2-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let keys = EphemeralL2KeyProvider()
+        L2SecureStore.rootDirectory = root; L2SecureStore.keys = keys
+        let a = UUID(), b = UUID()
+        func signIn(_ u: UUID) {
+            AccountEpoch.shared.activate(account: u.uuidString); L2SecureStore.activate(userID: u)
+            MemoryLibraryLocal.activate(owner: .account(u.uuidString.lowercased()), persistence: L2SecureStore.current.map { L2MemorySnapshotPersistence(store: $0) })
+            MemoryCache.shared.reloadFromL2()
+        }
+        let defaults = UserDefaults(suiteName: "pr91-\(UUID().uuidString)")!
+        func signOut(_ u: UUID) { AccountLocalData.signOutCore(userID: u, defaults: defaults); L2SecureStore.wipe(userID: u) }
+        let wire = { (id: String, text: String) in Data(#"{"cursor":"c1","memories":[{"id":"\#(id)","kind":"preference","content":"\#(text)","updated_at":"2026-10-16T00:00:00Z"}],"deleted":[]}"#.utf8) }
+
+        // Real L2: sealed on disk, not plaintext; wrong key cannot read.
+        signIn(a)
+        try? L2SecureStore.current?.put(["k": "开会提前 25 分钟"], forKey: "probe")
+        let files = (try? FileManager.default.contentsOfDirectory(at: root.appendingPathComponent(a.uuidString.lowercased()), includingPropertiesForKeys: nil)) ?? []
+        let onDisk = files.compactMap { try? Data(contentsOf: $0) }
+        expect(!onDisk.isEmpty && !onDisk.contains { String(decoding: $0, as: UTF8.self).contains("开会提前") }, "PR91 #5 L2 record is AES-GCM sealed on disk (no plaintext)")
+
+        // #1 A's sync response arrives after B signed in → not merged, not persisted with B's key.
+        var release: CheckedContinuation<Void, Never>?
+        let inflight = Task { @MainActor in
+            await MemoryCache.shared.sync { _ in await withCheckedContinuation { release = $0 }; return wire("ma", "A 的秘密：住在望京") }
+        }
+        while release == nil { await Task.yield() }
+        signOut(a); signIn(b)
+        release?.resume(); await inflight.value
+        expect(MemoryCache.shared.items.isEmpty, "PR91 #1 A's late sync response is not merged into B's cache")
+        MemoryCache.shared.reloadFromL2()
+        expect(MemoryCache.shared.items.isEmpty, "PR91 #1 A's late sync response is not persisted in B's L2 store")
+        // B's own sync still works.
+        await MemoryCache.shared.sync { _ in wire("mb", "B 喜欢川菜") }
+        MemoryCache.shared.reloadFromL2()
+        expect(MemoryCache.shared.items["mb"]?.content == "B 喜欢川菜", "PR91 #1 B's own sync merges + persists in B's store")
+        // SSE event taken under A, delivered after the switch → dropped.
+        let staleToken = AccountToken(account: a.uuidString, epoch: 0)
+        MemoryCache.shared.applyUpdate(op: "updated", ids: ["ma"], memories: [], token: staleToken)
+        MemoryCache.shared.recordUsed(turnID: UUID(), ids: ["ma"], memories: [], token: staleToken)
+        expect(MemoryCache.shared.items["ma"] == nil && MemoryCache.shared.usedByTurn.isEmpty, "PR91 #1 memory.used/update from A's session are dropped in B's")
+        // Sign-out resets the cache (MemoryCache.reset) and the generation.
+        let beforeOut = AccountEpoch.shared.capture()
+        signOut(b)
+        expect(MemoryCache.shared.items.isEmpty && MemoryCache.shared.boundStore == nil && beforeOut != nil && !AccountEpoch.shared.isValid(beforeOut) && AccountEpoch.shared.capture() == nil, "PR91 #1 sign-out resets MemoryCache and closes the generation")
+
+        // #1 (turn token) A's STREAM delivered after B signed in. Goes through the network layer's entry
+        // (ConversationSideChannelEvents.deliver, called from NativeChatHTTPBackend's event switch) and the installed
+        // MemoryEventSink handler; the token comes from the request / turn registry bound at send, never from the test.
+        MemoryEventSink.installSideChannel()
+        func req(_ op: UUID) -> ConversationTurnRequest { ConversationTurnRequest(scope: DataScope(profileID: UUID(), workspaceID: UUID()), conversationID: UUID(), threadID: nil, operationID: op, epoch: 1, history: []) }
+        signIn(a)
+        let turnA = UUID(), turnA2 = UUID()
+        ConversationSideChannelEvents.beginTurn(turnA, token: AccountEpoch.shared.capture())   // what ConversationSessionService.send does
+        var streamA2 = req(turnA2); streamA2.accountToken = ConversationSideChannelEvents.beginTurnToken(turnA2)
+        signOut(a); signIn(b)
+        ConversationSideChannelEvents.deliver(type: "memory.used", request: req(turnA), data: Data(#"{"ids":["sa"],"memories":[{"id":"sa","content":"A 的流"}]}"#.utf8))
+        ConversationSideChannelEvents.deliver(type: "memory.update", request: req(turnA), data: Data(#"{"op":"saved","ids":["sa2"],"memories":[{"id":"sa2","content":"A 的流2"}]}"#.utf8))
+        ConversationSideChannelEvents.deliver(type: "memory.update", request: streamA2, data: Data(#"{"op":"saved","ids":["sa3"],"memories":[{"id":"sa3","content":"A 的流3"}]}"#.utf8))
+        for _ in 0..<20 { await Task.yield() }
+        expect(MemoryCache.shared.items["sa"] == nil && MemoryCache.shared.items["sa2"] == nil && MemoryCache.shared.items["sa3"] == nil && MemoryCache.shared.usedByTurn[turnA] == nil, "PR91 #1 A's stream delivered after B signed in is dropped (token bound at send, carried by the network layer)")
+        let turnB = UUID()
+        ConversationSideChannelEvents.beginTurn(turnB, token: AccountEpoch.shared.capture())
+        ConversationSideChannelEvents.deliver(type: "memory.used", request: req(turnB), data: Data(#"{"ids":["sb"],"memories":[{"id":"sb","content":"B 的流"}]}"#.utf8))
+        for _ in 0..<20 { await Task.yield() }
+        expect(MemoryCache.shared.usedByTurn[turnB] == ["sb"], "PR91 #1 B's own stream still records memory.used")
+        ConversationSideChannelEvents.deliver(type: "memory.used", request: req(UUID()), data: Data(#"{"ids":["sx"],"memories":[]}"#.utf8))
+        expect(ConversationSideChannelEvents.token(forTurn: UUID()) == nil, "PR91 #1 an unknown turn has no token (events refused)")
+        signOut(b)
+        // #1 DeviceCall needs a token: signed out → refused, nothing executed or persisted.
+        let outEpoch = AccountEpoch()
+        let ex0 = FakeExecutor(["calendar_create"]); DeviceCallHub.executor = ex0
+        let d0 = UserDefaults(suiteName: "pr91-out-\(UUID().uuidString)")!
+        // v2 on #89: the store's barrier is DeviceCallGate.epoch (#89 interface); signed out → no grant → refused.
+        let savedGateEpoch = DeviceCallGate.epoch; DeviceCallGate.epoch = outEpoch
+        await DeviceCallStore(defaults: d0).run(DeviceCall(call_id: "c-out", tool: "calendar_create", args: [:]))
+        DeviceCallGate.epoch = savedGateEpoch
+        expect(ex0.executed.isEmpty, "PR91 #2 device call while signed out is refused (no account → no execute)")
+        // P0-2 server side: the switch travels as X-Catpaw-Use-Memory.
+        MemoryRecallLoader.record(off: true, owner: .account("h"))
+        expect(ConversationMemorySwitch.headerValue == "0", "PR91 P0-2 client sends X-Catpaw-Use-Memory: 0 when off")
+        MemoryRecallLoader.record(off: false, owner: .account("h"))
+        expect(ConversationMemorySwitch.headerValue == "1", "PR91 P0-2 client sends X-Catpaw-Use-Memory: 1 when on")
+        // #2 AccountEpoch contract as used here: a token captured before sign-out can never commit; accounts are UUID.uuidString.
+        signIn(a)
+        let preOut = AccountEpoch.shared.capture()
+        expect(preOut?.account == a.uuidString, "PR91 #2 epoch account is the upper-case UUID string")
+        signOut(a); signIn(b)
+        var wroteLate = false
+        let committed: Bool? = AccountEpoch.shared.commit(preOut) { wroteLate = true; return true }
+        expect(committed == nil && !wroteLate, "PR91 #2 A's in-flight write after sign-out + B login is refused by commit")
+        signOut(b)
+        // #2 an in-flight device call finishing after sign-out writes nothing back and reports through nobody.
+        signIn(a)
+        let dd = UserDefaults(suiteName: "pr91-dc-\(UUID().uuidString)")!
+        let store = DeviceCallStore(defaults: dd)
+        let slow = SlowExecutor(); let sub = FakeSubmitter()
+        DeviceCallHub.executor = slow; DeviceCallHub.submitter = sub
+        let call = Self.call("dc-late")   // #89: granted at the (simulated) SSE boundary under A, ttl 600
+        let run = Task { @MainActor in await tapRun(store, call) }
+        for _ in 0..<10_000 where slow.pending == nil { await Task.yield() }
+        expect(slow.pending != nil, "PR91 #2 A's granted call reached the executor")
+        signOut(a); store.reset(); signIn(b)
+        let subB = FakeSubmitter(); DeviceCallHub.submitter = subB
+        slow.pending?.resume(); await run.value
+        expect(subB.sent.isEmpty && sub.sent.isEmpty, "PR91 #2 A's device result after sign-out is not reported with B's submitter")
+        expect(dd.data(forKey: DeviceCallStore.storageKey).map { !String(decoding: $0, as: UTF8.self).contains("dc-late") } ?? true && slow.ran, "PR91 #2 A's device result is not written back after sign-out")
+        // Purge list covers attendees, server ids and the per-account 使用记忆 switch.
+        for k in AccountLocalData.userDefaultsKeys { defaults.set(Data([1]), forKey: k) }
+        defaults.set(true, forKey: MemoryRecallLoader.offKeyPrefix + "x")
+        signOut(b)
+        expect(["catpaw.proactive.attendees.v1", "catpaw.proactive.serverids.v1"].allSatisfy { AccountLocalData.userDefaultsKeys.contains($0) && defaults.object(forKey: $0) == nil }
+               && defaults.object(forKey: MemoryRecallLoader.offKeyPrefix + "x") == nil, "PR91 #2 sign-out clears attendees, server ids and the stored 使用记忆 switch")
+
+        // #3 使用记忆 fails closed.
+        // Final-merge B2 guard: ProactiveEngine.leadTime() (needs the iOS SDK, so checked at source level here) must read memory only via
+        // the fail-closed MemoryRecallLoader.snapshots, never a raw backend.load() that ignores 使用记忆 off / unknown.
+        do {
+            // Runner cwd is apps/ios-conversation (test-nobug-p0.sh cds there); #filePath is the fallback.
+            let rel = "Sources/Features/Proactive/ProactiveEngine.swift"
+            let candidates = [URL(fileURLWithPath: FileManager.default.currentDirectoryPath).appendingPathComponent(rel),
+                              URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent(rel)]
+            let text = candidates.lazy.compactMap { try? String(contentsOf: $0, encoding: .utf8) }.first ?? ""
+            let body = text.components(separatedBy: "func leadTime()").dropFirst().first?.components(separatedBy: "\n    }").first ?? ""
+            expect(!body.isEmpty && body.contains("MemoryRecallLoader.snapshots(") && !body.contains(".load()"), "B2 leadTime reads memory only through fail-closed MemoryRecallLoader.snapshots")
+        }
+        signIn(a)
+        MemoryRecallLoader.defaults = defaults
+        let owner = LocalMemoryOwner.account(a.uuidString.lowercased())
+        let localOn = MemoryLibraryStub(items: [.init(id: "l1", group: .preference, content: "开会提前 25 分钟准备")], owner: owner)
+        let flaky = FlakyBackend()
+        flaky.mode = .fail
+        var snaps = await MemoryRecallLoader.snapshots(cloud: flaky, local: localOn, owner: owner)
+        expect(snaps.isEmpty && ProactiveRules.lead(in: snaps) == nil, "PR91 #3 cloud load failure ⇒ 0 memories (not local-only)")
+        flaky.mode = .off
+        snaps = await MemoryRecallLoader.snapshots(cloud: flaky, local: localOn, owner: owner)
+        expect(snaps.isEmpty && ConversationMemorySwitch.headerValue == "0" && !MemoryRecallLoader.persistedOff(owner), "PR91 #3 cloud off ⇒ 0 memories, header off; the user's own choice is not rewritten (p91d-2)")
+        flaky.mode = .notEnabled
+        snaps = await MemoryRecallLoader.snapshots(cloud: flaky, local: localOn, owner: owner)
+        expect(snaps.isEmpty, "PR91 #3 cloud state unknown + last known off ⇒ still 0 memories")
+        expect(!MemoryRecallLoader.persistedOff(.account("other")), "PR91 #3 the stored switch is per account")
+        flaky.mode = .on
+        snaps = await MemoryRecallLoader.snapshots(cloud: flaky, local: localOn, owner: owner)
+        expect(ProactiveRules.lead(in: snaps)?.minutes == 25, "PR91 #3 recall resumes once the cloud says on")
+        // p91b-4: 未开通 / unsupported cloud never falls back to local memories, even when last known was on.
+        flaky.mode = .notEnabled
+        snaps = await MemoryRecallLoader.snapshots(cloud: flaky, local: localOn, owner: owner)
+        expect(snaps.isEmpty && !MemoryRecallLoader.persistedOff(owner), "PR91 p91b-4 cloud 未开通 ⇒ 0 memories (no local fallback)")
+        flaky.mode = .on
+        // p91b-4: carrying 使用记忆 off at the end of a migration reports its failure.
+        let offLocal = MemoryLibraryStub(items: [.init(id: "m1", group: .preference, content: "喜欢靠窗")], useMemory: false, owner: owner)
+        flaky.failSetUse = true
+        let rOff = await MemoryLibraryLocal.migrate(offLocal, to: flaky, targetOwner: owner)
+        expect(rOff.migrated == 1 && rOff.stoppedBy != nil, "PR91 p91b-4 failed off-carry during migration is reported, not swallowed")
+        flaky.failSetUse = false
+        // p91c-4: local off + failed PATCH → after a restart (global cleared) the header is still "0".
+        MemoryRecallLoader.record(off: true, owner: owner); ConversationMemorySwitch.useMemory = nil
+        MemoryRecallLoader.restoreSwitch(owner: owner)
+        expect(ConversationMemorySwitch.headerValue == "0", "PR91 p91c-4 stored off restores the header at launch")
+        ConversationMemorySwitch.useMemory = nil; flaky.mode = .fail
+        _ = await MemoryRecallLoader.snapshots(cloud: flaky, local: localOn, owner: owner)
+        expect(ConversationMemorySwitch.headerValue == "0", "PR91 p91c-4 cloud load failure still sets the switch from the stored value")
+        MemoryRecallLoader.record(off: false, owner: owner); flaky.mode = .on
+        // p91d-2: an explicit user off is sticky — a (stale) cloud GET saying on never re-enables it.
+        MemoryRecallLoader.userChoice(on: false, owner: owner, token: AccountEpoch.shared.capture(), succeeded: true)
+        flaky.mode = .on
+        snaps = await MemoryRecallLoader.snapshots(cloud: flaky, local: localOn, owner: owner)
+        expect(snaps.isEmpty && ConversationMemorySwitch.headerValue == "0" && MemoryRecallLoader.persistedOff(owner), "PR91 p91d-2 user off wins over a cloud snapshot saying on")
+        MemoryRecallLoader.userChoice(on: true, owner: owner, token: AccountEpoch.shared.capture(), succeeded: false)
+        expect(MemoryRecallLoader.persistedOff(owner), "PR91 p91d-2 a failed user ON keeps the sticky off")
+        MemoryRecallLoader.userChoice(on: true, owner: owner, token: AccountEpoch.shared.capture(), succeeded: true)
+        snaps = await MemoryRecallLoader.snapshots(cloud: flaky, local: localOn, owner: owner)
+        expect(!MemoryRecallLoader.persistedOff(owner) && ConversationMemorySwitch.headerValue == "1" && ProactiveRules.lead(in: snaps)?.minutes == 25, "PR91 p91d-2 only a successful user ON clears it")
+        // p91d-1: a toggle / recall that lands after the account switched never writes back (success or failure).
+        let tokA = AccountEpoch.shared.capture()
+        signOut(a); signIn(b)
+        let ownerB = LocalMemoryOwner.account(b.uuidString.lowercased())
+        ConversationMemorySwitch.useMemory = true
+        expect(!MemoryRecallLoader.userChoice(on: false, owner: owner, token: tokA, succeeded: true) && !MemoryRecallLoader.persistedOff(owner) && ConversationMemorySwitch.headerValue == "1", "PR91 p91d-1 A's late OFF is not written into B's session")
+        expect(!MemoryRecallLoader.userChoice(on: true, owner: owner, token: tokA, succeeded: true), "PR91 p91d-1 A's late ON success is dropped")
+        signOut(b); signIn(a)
+        flaky.mode = .fail
+        flaky.onLoad = { signOut(a); signIn(b); ConversationMemorySwitch.useMemory = true }   // switch lands mid-recall
+        snaps = await MemoryRecallLoader.snapshots(cloud: flaky, local: localOn, owner: owner)
+        expect(snaps.isEmpty && ConversationMemorySwitch.useMemory == true, "PR91 p91d-1 A's late recall failure neither overwrites nor clears B's switch")
+        flaky.mode = .on
+        flaky.onLoad = { signOut(b); signIn(a); ConversationMemorySwitch.useMemory = false }   // A's own value lands first
+        snaps = await MemoryRecallLoader.snapshots(cloud: flaky, local: nil, owner: ownerB)
+        expect(snaps.isEmpty && ConversationMemorySwitch.useMemory == false, "PR91 p91d-1 B's late recall success is not written into A's session")
+        flaky.onLoad = nil
+        MemoryRecallLoader.record(off: false, owner: ownerB)
+        // Empty local library with 使用记忆 off still carries off to the cloud.
+        let emptyOff = MemoryLibraryStub(useMemory: false, owner: owner)
+        let target = RefusingBackend()
+        _ = await MemoryLibraryLocal.migrate(emptyOff, to: target, targetOwner: owner)
+        expect(!target.useMemory, "PR91 #3 empty local library still syncs 使用记忆 off")
+
+        // #4 legacy plaintext is deleted only after a verified sealed copy; failure keeps it.
+        let legacy = root.appendingPathComponent("catpaw-local-memory.v1.json")
+        try? FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        try? Data(#"{"items":[{"id":"x","content":"旧记忆"}]}"#.utf8).write(to: legacy)
+        expect(LegacyMemoryQuarantine.run(legacyFile: legacy, vault: FailingPersistence()) != .quarantined(1) && FileManager.default.fileExists(atPath: legacy.path), "PR91 #4 failed quarantine keeps the old file")
+        expect(LegacyMemoryQuarantine.run(legacyFile: legacy, vault: nil) == .failed("vault_unavailable") && FileManager.default.fileExists(atPath: legacy.path), "PR91 #4 no vault (keychain down) keeps the old file")
+        let vaultStore = try! L2SecureStore(userID: LegacyMemoryQuarantine.vaultID, root: root, keys: keys)
+        let vault = L2MemorySnapshotPersistence(store: vaultStore, key: LegacyMemoryQuarantine.recordKey)
+        expect(LegacyMemoryQuarantine.run(legacyFile: legacy, vault: vault) == .quarantined(1) && !FileManager.default.fileExists(atPath: legacy.path), "PR91 #4 old file removed only after the sealed copy verifies")
+        expect(LegacyMemoryQuarantine.kept(in: vault).first.map { String(decoding: $0, as: UTF8.self).contains("旧记忆") } == true && MemoryLibraryLocal.shared.items.isEmpty, "PR91 #4 unowned data kept sealed, not merged into the account")
+
+        // #5 L2 unavailable → create fails; SwiftData memory rows sealed per subject.
+        let noL2 = MemoryLibraryStub(owner: owner, persistence: UnavailableSnapshotPersistence())
+        do { _ = try await noL2.create(kind: "preference", content: "x"); expect(false, "PR91 #5 create without L2 must fail") }
+        catch { expect(noL2.items.isEmpty, "PR91 #5 L2 unavailable ⇒ create fails, nothing shown as saved") }
+        keys.failNext = true
+        expect((try? L2SecureStore(userID: UUID(), root: root, keys: keys)) == nil, "PR91 #5 keychain failure ⇒ no L2 store (not a plaintext fallback)")
+        let sA = L2SecureStore.current!
+        ConversationMemoryAtRest.sealer = nil; ConversationMemoryAtRest.allowPlaintext = false
+        expect((try? ConversationMemoryAtRest.seal(Data("住在望京".utf8), subject: a)) == nil, "PR91 p91b-5 release build: no sealer ⇒ write refused (no plaintext fallback)")
+        ConversationMemoryAtRest.allowPlaintext = true
+        ConversationMemoryAtRest.sealer = { d, subj in guard subj == sA.userID else { throw L2SecureStoreError.unavailable }; return try sA.seal(d) }
+        ConversationMemoryAtRest.opener = { d, subj in guard subj == sA.userID else { throw L2SecureStoreError.unavailable }; return try sA.openSealed(d) }
+        let row = try! ConversationMemoryAtRest.seal(Data("住在望京".utf8), subject: a)
+        expect(row.hasPrefix("l2:") && !row.contains("望京") && ConversationMemoryAtRest.open(row, subject: a) == Data("住在望京".utf8), "PR91 #5 SwiftData memory row is sealed and opens for its subject")
+        // p91c-5: every plaintext row of the subject is sealed (not only rows that get read), verified, then gated.
+        do {
+            let url = FileManager.default.temporaryDirectory.appendingPathComponent("pr91-atrest-\(UUID().uuidString).json")
+            let repo = try Repository(persistence: FilePersistence(url: url))
+            let sc = DataScope(profileID: UUID(), workspaceID: UUID()), other = UUID()
+            let k1 = ConversationMemoryAtRest.keyPrefix + a.uuidString.lowercased() + ":" + UUID().uuidString.lowercased()
+            let k2 = ConversationMemoryAtRest.keyPrefix + a.uuidString.lowercased() + ":" + UUID().uuidString.lowercased()
+            let k3 = ConversationMemoryAtRest.keyPrefix + other.uuidString.lowercased() + ":" + UUID().uuidString.lowercased()
+            for k in [k1, k2, k3] { try await repo.commit(scope: sc, mutations: [.create(UUID(), .preference(.init(key: k, value: "{\"住址\":\"望京\"}")))]) }
+            let gd = UserDefaults(suiteName: "pr91-atrest-\(UUID().uuidString)")!
+            let realSealer = ConversationMemoryAtRest.sealer
+            ConversationMemoryAtRest.sealer = { _, _ in throw L2SecureStoreError.unavailable }
+            let r0 = await ConversationMemoryAtRest.migrateAll(repo, subject: a, partition: "pA", defaults: gd)
+            expect(r0.failed == 2 && !r0.complete && !ConversationMemoryAtRest.isMigrated(a, partition: "pA", defaults: gd), "PR91 p91c-5 seal failure leaves the gate unset (retried next launch)")
+            ConversationMemoryAtRest.sealer = realSealer
+            let r1 = await ConversationMemoryAtRest.migrateAll(repo, subject: a, partition: "pA", defaults: gd)
+            let rows = await repo.preferenceRecords(keyPrefix: ConversationMemoryAtRest.keyPrefix)
+            let values = rows.compactMap { r -> (String, String)? in if case .preference(let p) = r.payload { return (p.key, p.value) }; return nil }
+            expect(r1.sealed == 2 && r1.complete && ConversationMemoryAtRest.isMigrated(a, partition: "pA", defaults: gd)
+                   && values.filter { $0.0 != k3 }.allSatisfy { ConversationMemoryAtRest.isSealed($0.1) && !$0.1.contains("望京") },
+                   "PR91 p91c-5 retry seals ALL of the subject's rows, verifies them and sets the gate")
+            expect(values.first { $0.0 == k3 }.map { !ConversationMemoryAtRest.isSealed($0.1) } == true, "PR91 p91c-5 another subject's rows are left for that subject")
+            // p91d-4: marker keyed by version + partition + subject; the scheduler waits for the sealer and retries.
+            expect(!ConversationMemoryAtRest.isMigrated(a, partition: "pB", defaults: gd)
+                   && ConversationMemoryAtRest.gateKey(a, partition: "pA").hasPrefix("catpaw.memory.atrest-sealed.v2.pA."),
+                   "PR91 p91d-4 completion marker is per partition and versioned")
+            let url2 = FileManager.default.temporaryDirectory.appendingPathComponent("pr91-atrest-\(UUID().uuidString).json")
+            let repo2 = try Repository(persistence: FilePersistence(url: url2))
+            try await repo2.commit(scope: sc, mutations: [.create(UUID(), .preference(.init(key: ConversationMemoryAtRest.keyPrefix + a.uuidString.lowercased() + ":" + UUID().uuidString.lowercased(), value: "{\"住址\":\"望京\"}")))])
+            let sched = AtRestMigrationScheduler(), sd = UserDefaults(suiteName: "pr91-sched-\(UUID().uuidString)")!
+            final class Flags: @unchecked Sendable { var ready = false, failOnce = true, sleeps = 0 }
+            let flags = Flags()
+            sched.defaults = sd; sched.delays = [1, 1, 1, 1]
+            sched.sealerReady = { _ in flags.ready }
+            sched.sleep = { _ in await MainActor.run { flags.sleeps += 1; flags.ready = true } }
+            let real = ConversationMemoryAtRest.sealer
+            ConversationMemoryAtRest.sealer = { d, subj in
+                if flags.failOnce { flags.failOnce = false; throw L2SecureStoreError.unavailable }
+                return try real!(d, subj)
+            }
+            sched.repositoryOpened(repo2, subject: a, partition: "pB")   // cold start: store open, sealer not ready yet
+            await sched.waitIdle()
+            let key = ConversationMemoryAtRest.gateKey(a, partition: "pB")
+            expect(sched.attempts[key] == 2 && sched.reports[key]?.complete == true && ConversationMemoryAtRest.isMigrated(a, partition: "pB", defaults: sd) && flags.sleeps == 2,
+                   "PR91 p91d-4 scheduler waits for the sealer, retries a failed run, then sets the marker (attempts \(sched.attempts[key] ?? -1), sleeps \(flags.sleeps))")
+            sched.repositoryOpened(repo2, subject: a, partition: "pB"); await sched.waitIdle()
+            expect(sched.attempts[key] == 2, "PR91 p91d-4 a completed partition is not migrated again")
+            ConversationMemoryAtRest.sealer = real
+        } catch { expect(false, "PR91 p91c-5 at-rest migration fixture: \(error)") }
+        expect(ConversationMemoryAtRest.open(row, subject: b) == nil, "PR91 #5 another subject cannot open the row")
+        signOut(a)
+        ConversationMemoryAtRest.opener = { d, _ in guard let s = L2SecureStore.current else { throw L2SecureStoreError.unavailable }; return try s.openSealed(d) }
+        signIn(a)
+        expect(ConversationMemoryAtRest.open(row, subject: a) == nil, "PR91 #5 after sign-out (key shredded) the old row is unreadable")
+        ConversationMemoryAtRest.sealer = nil; ConversationMemoryAtRest.opener = nil
+
+        // #6 L2 put surfaces write failures; feedback ledger survives a real reopen.
+        var ledger = ProactiveFeedbackLedger(); _ = ledger.record(.intrusive, suggestionID: "s9", trigger: "meeting_upcoming", serverID: nil)
+        try? L2SecureStore.current?.put(ledger, forKey: "proactive.feedback-ledger.v1")
+        let reopened = try! L2SecureStore(userID: a, root: root, keys: keys)
+        expect(reopened.get(ProactiveFeedbackLedger.self, forKey: "proactive.feedback-ledger.v1") == ledger, "PR91 #6 feedback ledger survives reopening the real L2 store")
+        try? FileManager.default.removeItem(at: root.appendingPathComponent(a.uuidString.lowercased()))
+        do { try reopened.put(ledger, forKey: "proactive.feedback-ledger.v1"); expect(false, "PR91 #6 put must throw") }
+        catch { expect(true, "PR91 #6 L2 put throws when the write fails (not swallowed)") }
+
+        // #7 open-URL: the completion never comes → unknown within the deadline.
+        let t0 = Date()
+        let outcome = await DeviceToolContract.raceHandoff(timeoutNanoseconds: 200_000_000) { _ in }
+        expect(outcome == .timedOut && Date().timeIntervalSince(t0) < 1.5, "PR91 #7 hung open() returns handoff_unknown on time")
+        let quick = await DeviceToolContract.raceHandoff(timeoutNanoseconds: 2_000_000_000) { done in done(.opened); done(.refused) }
+        expect(quick == .opened, "PR91 #7 first outcome wins, resumed once")
+
+        // #8 undo: unreadable / unmapped = unknown → status kept.
+        expect(ProactiveUndoRules.statusAfterReminderUndo(current: .done, removal: nil) == nil, "PR91 #8 undo without read access keeps 已完成 (unknown, not already gone)")
+        expect(ProactiveUndoRules.statusAfterReminderUndo(current: .done, removal: .alreadyGone) == .pending, "PR91 #8 proven absence still undoes")
+        expect(ProactiveUndoRules.wroteReminder(takenActions: ["create_reminder"]) && !ProactiveUndoRules.wroteReminder(takenActions: ["dismiss"]), "PR91 #8 only a written reminder is looked up")
+        signOut(a)
+        L2SecureStore.rootDirectory = L2SecureStore.defaultRoot; L2SecureStore.keys = L2SecureStore.defaultKeys
+        MemoryLibraryLocal.activate(owner: .guest, persistence: nil)
+    }
+
+    /// Incorporated from b8f0280 (Grok Bot's earlier P0-2): unowned legacy library and cloud-off/local-on cases.
+    static func p02FromB8f0280() async {
+        let legacy = MemoryLibraryStub(items: [.init(id: "l1", group: .preference, content: "旧文件")])
+        let target = RefusingBackend()
+        let r = await MemoryLibraryLocal.migrate(legacy, to: target, targetOwner: .account("user-b"))
+        expect(r.migrated == 0 && target.created.isEmpty, "codex P0-2 (b8f0280) unowned legacy items are not uploaded to a signed-in account")
+        let cloudOff = MemoryLibrarySnapshot(items: [], useMemory: false, autoSave: nil)
+        let localOn = MemoryLibrarySnapshot(items: [.init(id: "x", group: .preference, content: "开会提前 30 分钟准备")], useMemory: true, autoSave: nil)
+        expect(ProactiveRules.lead(in: [cloudOff, localOn]) == nil, "codex P0-2 (b8f0280) cloud 使用记忆 off also disables local lead memory")
+        expect(ProactiveRules.lead(in: [localOn])?.minutes == 30, "codex P0-2 (b8f0280) local lead still used when every switch is on")
+    }
+}
+
+@MainActor final class PR91v2Sender {
+    var sent: [Bool] = []
+    var holds: [CheckedContinuation<Void, Never>] = []
+    var hold = false, fail = false
+    var seqs: [Int64] = []
+    /// Server-side last-writer-by-sequence model (what the edge store does).
+    var serverSeq: Int64 = 0, serverOn = false
+    func send(_ on: Bool, _ seq: Int64) async throws -> Bool {
+        sent.append(on); seqs.append(seq)
+        if hold { await withCheckedContinuation { holds.append($0) } }
+        if seq > serverSeq { serverSeq = seq; serverOn = on }   // the server still runs a request whose client timed out
+        if fail { throw URLError(.notConnectedToInternet) }
+        return serverOn
+    }
+    func release() { let h = holds; holds = []; h.forEach { $0.resume() } }
+}
+extension NoBugP0Runner {
+    /// Codex PR91 trial S1: the learned gate installed into #90's ProactiveEngine.feedbackGate at merge.
+    static func pr91FeedbackGate() {
+        let a = UUID().uuidString, b = UUID().uuidString
+        AccountEpoch.shared.activate(account: a)
+        ProactiveLearnedGate.publish(owner: nil, weights: [:])
+        expect(ProactiveLearnedGate.gate(decision: "notify", confidence: 0.3, trigger: "meeting_upcoming") == "notify", "PR91 S1 no ledger ⇒ unchanged (low confidence alone never demotes)")
+        var l = ProactiveFeedbackLedger(); _ = l.record(.intrusive, suggestionID: "s1", trigger: "meeting_upcoming", serverID: nil)
+        ProactiveLearnedGate.publish(owner: a, weights: l.weights)
+        expect(ProactiveLearnedGate.gate(decision: "notify", confidence: 0.8, trigger: "other_trigger") == "notify", "PR91 S1 no learned weight for the trigger ⇒ unchanged")
+        let g = ProactiveLearnedGate.gate(decision: "notify", confidence: 0.8, trigger: "meeting_upcoming")
+        expect(g == "card" && g == l.gate(decision: "notify", confidence: 0.8, trigger: "meeting_upcoming"), "PR91 S1 learned intrusive ⇒ one step down, same math as decision.mjs (\(g))")
+        var up = ProactiveFeedbackLedger(); for i in 0..<9 { _ = up.record(.helpful, suggestionID: "h\(i)", trigger: "meeting_upcoming", serverID: nil) }
+        ProactiveLearnedGate.publish(owner: a, weights: up.weights)
+        let levels = ProactiveFeedbackLedger.levels
+        let raisedNever = levels.allSatisfy { d in [0.0, 0.3, 0.6, 0.9, 1.0].allSatisfy { c in levels.firstIndex(of: ProactiveLearnedGate.gate(decision: d, confidence: c, trigger: "meeting_upcoming"))! <= levels.firstIndex(of: d)! } }
+        expect(raisedNever, "PR91 S1 downgrade-only: never above the input level for any level/confidence")
+        expect(ProactiveLearnedGate.gate(decision: "silent", confidence: 0.0, trigger: "meeting_upcoming") == "silent", "PR91 S1 silent stays silent")
+        ProactiveLearnedGate.publish(owner: a, weights: l.weights)
+        AccountEpoch.shared.activate(account: b)
+        expect(ProactiveLearnedGate.gate(decision: "notify", confidence: 0.8, trigger: "meeting_upcoming") == "notify", "PR91 S1 A's weights never gate B's decisions")
+        AccountEpoch.shared.signOut()
+        expect(ProactiveLearnedGate.gate(decision: "notify", confidence: 0.8, trigger: "meeting_upcoming") == "notify", "PR91 S1 signed out ⇒ unchanged")
+        ProactiveLearnedGate.publish(owner: nil, weights: [:])
+    }
+    /// Codex PR91 v2 round: same-account out-of-order switch responses, one effective state, at-rest trace.
+    @MainActor static func pr91v2() async {
+        let saved = MemoryRecallLoader.defaults; defer { MemoryRecallLoader.defaults = saved }
+        MemoryRecallLoader.defaults = UserDefaults(suiteName: "pr91v2-\(UUID().uuidString)")!
+        let uid = UUID(); AccountEpoch.shared.activate(account: uid.uuidString)
+        let owner = MemoryRecallLoader.currentOwner!, token = AccountEpoch.shared.capture()
+        func spin() async { for _ in 0..<200 { await Task.yield() } }
+        // v2-2 (Codex counterexample): ON waiting → user OFF → the earlier ON succeeds late → must NOT clear the OFF.
+        do {
+            let s = PR91v2Sender(); s.hold = true
+            let on = Task { @MainActor in await MemoryRecallLoader.submitChoice(on: true, owner: owner, token: token, send: s.send) }
+            await spin()
+            let off = Task { @MainActor in await MemoryRecallLoader.submitChoice(on: false, owner: owner, token: token, send: s.send) }
+            await spin()
+            expect(s.sent == [true], "PR91 v2-2 the later OFF is not sent concurrently (serialized behind the ON)")
+            expect(MemoryRecallLoader.persistedOff(owner) && ConversationMemorySwitch.headerValue == "0", "PR91 v2-2 OFF is effective at once")
+            s.hold = false; s.release()
+            let r1 = await on.value, r2 = await off.value
+            expect(r1 == .superseded && r2 == .applied, "PR91 v2-2 the late ON response is dropped, the OFF applies (\(r1), \(r2))")
+            expect(MemoryRecallLoader.persistedOff(owner) && ConversationMemorySwitch.headerValue == "0" && !MemoryRecallLoader.unsynced(owner),
+                   "PR91 v2-2 a late ON never clears a newer OFF")
+            expect(s.sent == [true, false], "PR91 v2-2 server receives the choices in order; final server state = last choice (off)")
+        }
+        // Coalescing: ON (held) → OFF → ON: the superseded OFF is never sent; final = ON.
+        do {
+            let s = PR91v2Sender(); s.hold = true
+            let a = Task { @MainActor in await MemoryRecallLoader.submitChoice(on: true, owner: owner, token: token, send: s.send) }
+            await spin()
+            let b = Task { @MainActor in await MemoryRecallLoader.submitChoice(on: false, owner: owner, token: token, send: s.send) }
+            await spin()
+            let c = Task { @MainActor in await MemoryRecallLoader.submitChoice(on: true, owner: owner, token: token, send: s.send) }
+            await spin()
+            s.hold = false; s.release()
+            let ra = await a.value, rb = await b.value, rc = await c.value
+            expect(ra == .superseded && rb == .superseded && rc == .applied && s.sent == [true, true], "PR91 v2-2 only the latest choice writes back; superseded choices are not sent (\(s.sent))")
+            expect(!MemoryRecallLoader.persistedOff(owner) && ConversationMemorySwitch.headerValue == "1", "PR91 v2-2 final local state = last choice (on)")
+        }
+        // OFF whose request fails: stays effective, marked unsynced (page shows 已在本机关闭，待同步).
+        do {
+            let s = PR91v2Sender(); s.fail = true
+            let r = await MemoryRecallLoader.submitChoice(on: false, owner: owner, token: token, send: s.send)
+            expect(r == .failed && MemoryRecallLoader.persistedOff(owner) && MemoryRecallLoader.unsynced(owner) && ConversationMemorySwitch.headerValue == "0",
+                   "PR91 v2-4 failed OFF stays effective and is shown as pending sync")
+            // v2-4: one effective rule for the page and the header — a cloud snapshot saying ON never shows ON over a local off.
+            let shown = MemoryRecallLoader.applyEffective(owner: owner, token: token, libraries: [true])
+            expect(shown == false && ConversationMemorySwitch.headerValue == "0", "PR91 v2-4 page state == header value under a persisted off")
+            s.fail = false
+            let r2 = await MemoryRecallLoader.submitChoice(on: true, owner: owner, token: token, send: s.send)
+            expect(r2 == .applied && MemoryRecallLoader.applyEffective(owner: owner, token: token, libraries: [true]) == true && !MemoryRecallLoader.unsynced(owner),
+                   "PR91 v2-4 after a successful ON page and header both show on")
+            expect(MemoryRecallLoader.applyEffective(owner: owner, token: token, libraries: [true, false]) == false, "PR91 v2-4 any library off ⇒ effective off")
+        }
+        // Account changed while a choice waits → stale, nothing written for the old account.
+        do {
+            let s = PR91v2Sender(); s.hold = true
+            let t = Task { @MainActor in await MemoryRecallLoader.submitChoice(on: true, owner: owner, token: token, send: s.send) }
+            await spin(); AccountEpoch.shared.activate(account: UUID().uuidString); s.hold = false; s.release()
+            expect(await t.value == .stale, "PR91 v2-2 a choice whose account changed is stale")
+            AccountEpoch.shared.activate(account: uid.uuidString)
+        }
+        // v3-2: unknown outcome (server ran it, client timed out) → fail closed, re-send with the SAME sequence; the
+        // server's last-writer-by-sequence result is adopted. Sequences are strictly increasing.
+        do {
+            let token = AccountEpoch.shared.capture()   // the stale test above re-activated the account (new epoch)
+            let s = PR91v2Sender(); s.fail = true
+            let r = await MemoryRecallLoader.submitChoice(on: true, owner: owner, token: token, send: s.send)
+            let p = MemoryRecallLoader.pending(owner)
+            expect(r == .failed && ConversationMemorySwitch.headerValue == "0" && p?.on == true && !MemoryRecallLoader.effectiveUse(owner: owner),
+                   "PR91 v3-2 unknown ON outcome is effectively OFF and stays pending")
+            s.fail = false
+            let r2 = await MemoryRecallLoader.reconcile(owner: owner, token: token, send: s.send)
+            expect(r2 == .applied && s.seqs.count == 2 && s.seqs[0] == s.seqs[1] && MemoryRecallLoader.pending(owner) == nil && ConversationMemorySwitch.headerValue == "1",
+                   "PR91 v3-2 reconcile re-sends the same sequence (idempotent) and clears the pending choice")
+            // Another device / a newer choice won on the server: our late ack adopts the server value.
+            s.serverSeq = Int64.max - 1; s.serverOn = false
+            let r3 = await MemoryRecallLoader.submitChoice(on: true, owner: owner, token: token, send: s.send)
+            expect(r3 == .applied && ConversationMemorySwitch.headerValue == "0" && MemoryRecallLoader.persistedOff(owner), "PR91 v3-2 the server's newer state wins over our older choice")
+            let a1 = MemoryRecallLoader.nextSeq(owner), a2 = MemoryRecallLoader.nextSeq(owner)
+            expect(a2 > a1 && a1 > s.seqs[0], "PR91 v3-2 choice sequences strictly increase")
+        }
+        // v3-3: the immediate state is set synchronously by beginChoice (before any await), and the full effective state
+        // aggregates every known library (cloud + on-device).
+        do {
+            let token = AccountEpoch.shared.capture()
+            let t = MemoryRecallLoader.beginChoice(on: true, owner: owner, token: token)
+            expect(t != nil && MemoryRecallLoader.pending(owner)?.on == true && MemoryRecallLoader.isEnabling(owner) && ConversationMemorySwitch.headerValue == "0",
+                   "PR91 v3-3 tap publishes immediately: choice ON pending (正在开启…), effective off until acknowledged")
+            let s = PR91v2Sender(); s.serverSeq = 0
+            if let t { _ = await MemoryRecallLoader.deliver(t, send: s.send) }
+            let cloudLib = FlakyBackend(), localLib = PR91v3OtherLib()
+            MemoryRecallLoader.noteLibrary(cloudLib, on: true, owner: owner); MemoryRecallLoader.noteLibrary(localLib, on: false, owner: owner)
+            expect(MemoryRecallLoader.applyEffective(owner: owner, token: token) == false && ConversationMemorySwitch.headerValue == "0",
+                   "PR91 v3-3 one library off ⇒ full effective off (page summary == header == recall)")
+            MemoryRecallLoader.noteLibrary(localLib, on: true, owner: owner)
+            expect(MemoryRecallLoader.applyEffective(owner: owner, token: token) == true, "PR91 v3-3 all libraries on ⇒ effective on")
+        }
+        // v2-1: the production scheduler path emits a verifiable trace (no ids in the text).
+        do {
+            let url = FileManager.default.temporaryDirectory.appendingPathComponent("pr91v2-atrest-\(UUID().uuidString).json")
+            let repo = try Repository(persistence: FilePersistence(url: url))
+            let sched = AtRestMigrationScheduler(); var lines: [String] = []
+            sched.defaults = UserDefaults(suiteName: "pr91v2-sched-\(UUID().uuidString)")!; sched.delays = [1]; sched.sleep = { _ in }
+            sched.log = { _ in }; sched.trace = { lines.append($0) }
+            final class Ready: @unchecked Sendable { var v = false }
+            let ready = Ready(); sched.sealerReady = { _ in ready.v }
+            let saved = (ConversationMemoryAtRest.sealer, ConversationMemoryAtRest.opener)
+            ConversationMemoryAtRest.sealer = { d, _ in d }; ConversationMemoryAtRest.opener = { d, _ in d }
+            sched.repositoryOpened(repo, subject: uid, partition: "pv2"); await sched.waitIdle()
+            expect(lines.first == "scheduled" && lines.contains("gave-up until sealerMayBeReady"), "PR91 v2-1 cold start before the L2 key: scheduled, waits, gives up (\(lines))")
+            ready.v = true; sched.sealerMayBeReady(); await sched.waitIdle()
+            expect(lines.last == "complete sealed=0" && !lines.joined().contains(uid.uuidString), "PR91 v2-1 L2 key installed → sealerMayBeReady completes; trace carries no ids (\(lines))")
+            ConversationMemoryAtRest.sealer = saved.0; ConversationMemoryAtRest.opener = saved.1
+        } catch { expect(false, "PR91 v2-1 trace fixture: \(error)") }
+    }
+}
+
+final class FailingPersistence: MemorySnapshotPersisting {
+    func read() -> Data? { nil }
+    func write(_ data: Data) throws { throw CocoaError(.fileWriteNoPermission) }
+    func erase() {}
+}
+
+@MainActor final class SlowExecutor: DeviceToolExecuting {
+    var pending: CheckedContinuation<Void, Never>?
+    var ran = false
+    func canExecute(_ tool: String) -> Bool { true }
+    func lookup(_ call: DeviceCall) async -> DeviceCallResult? { nil }
+    func execute(_ call: DeviceCall, credential: DeviceCallGate.Credential) async -> DeviceCallResult {
+        ran = true
+        await withCheckedContinuation { pending = $0 }
+        return .init(call_id: call.call_id, status: .ok, data: ["event_id": .string("evt-late")])
+    }
+}
+/// A second backend type (stands in for the on-device library) for the multi-library effective-state test.
+@MainActor final class PR91v3OtherLib: MemoryLibraryBackend {
+    func create(kind: String, content: String) async throws -> String { "o" }
+    var capabilities: MemoryLibraryCapabilities { [] }
+    func load() async throws -> MemoryLibrarySnapshot { .init(items: [], useMemory: true, autoSave: nil) }
+    func update(id: String, content: String) async throws {}
+    func forget(ids: [String]) async throws {}
+    func setUseMemory(_ on: Bool) async throws {}
+    func setAutoSave(_ on: Bool) async throws {}
+    func clearAll() async throws {}
+    func undoSave(memoryID: String, undoToken: String?) async throws {}
+}
+@MainActor final class FlakyBackend: MemoryLibraryBackend {
+    enum Mode { case on, off, fail, notEnabled }
+    var mode = Mode.on
+    var failSetUse = false
+    var onLoad: (@MainActor () -> Void)?
+    func create(kind: String, content: String) async throws -> String { "f-\(UUID().uuidString)" }
+    var capabilities: MemoryLibraryCapabilities { [] }
+    func load() async throws -> MemoryLibrarySnapshot {
+        onLoad?()
+        switch mode {
+        case .fail: throw MemoryLibraryError.unavailable
+        case .notEnabled: throw MemoryLibraryError.notEnabled
+        case .on, .off: return .init(items: [], useMemory: mode == .on, autoSave: nil)
+        }
+    }
+    func update(id: String, content: String) async throws {}
+    func forget(ids: [String]) async throws {}
+    func setUseMemory(_ on: Bool) async throws { if failSetUse { throw MemoryLibraryError.unavailable } }
+    func setAutoSave(_ on: Bool) async throws {}
+    func clearAll() async throws {}
+    func undoSave(memoryID: String, undoToken: String?) async throws {}
+}
