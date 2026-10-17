@@ -6766,5 +6766,29 @@
   "结果待核对 · 可能已执行，核对后再决定是否重发": {
     "en": "Result unverified · it may have run; check before resending",
     "zh-Hans": "结果待核对 · 可能已执行，核对后再决定是否重发"
+  },
+  "结束语音对话": {
+    "en": "End voice conversation",
+    "zh-Hans": "结束语音对话"
+  },
+  "打断并开始说话": {
+    "en": "Interrupt and speak",
+    "zh-Hans": "打断并开始说话"
+  },
+  "继续语音对话": {
+    "en": "Continue voice conversation",
+    "zh-Hans": "继续语音对话"
+  },
+  "说完了": {
+    "en": "Done speaking",
+    "zh-Hans": "说完了"
+  },
+  "当前为文字回复模式，不朗读": {
+    "en": "Text replies only; nothing is read aloud",
+    "zh-Hans": "当前为文字回复模式，不朗读"
+  },
+  "语音对话已暂停，请先在屏幕上确认": {
+    "en": "Voice conversation paused. Confirm on screen first.",
+    "zh-Hans": "语音对话已暂停，请先在屏幕上确认"
   }
 }

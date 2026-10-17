@@ -215,6 +215,15 @@ final class DictationAudioSink: @unchecked Sendable {
     /// Hard caps so no failure can leave the mic stuck: start (after permissions), capture length, final-result wait.
     static let dictationStartTimeout: UInt64 = 6_000_000_000, dictationMaxCapture: UInt64 = 600_000_000_000, dictationFinishTimeout: UInt64 = 2_500_000_000
 
+    /// v1.1 voice conversation: on-device recognition only (the server tier ends with `.unsupported`) and the
+    /// `.voiceChat` session mode (echo cancellation while the reply plays). Plain dictation leaves it false.
+    var voiceChatMode = false
+    /// Synchronous pre-check for voice conversation: SFSpeechRecognizer on-device support for the app language. On iOS 26
+    /// the SpeechAnalyzer tier may still be available, so this only refuses older systems; the start re-checks the tier.
+    func voiceChatSupportedOnDevice() -> Bool {
+        if #available(iOS 26.0, *) { return true }
+        return SFSpeechRecognizer(locale: Locale(identifier: DictationPolicy.localeIdentifier(for: language)))?.supportsOnDeviceRecognition == true
+    }
     /// Returns immediately; results arrive through the callbacks on the main actor. `onEnd` fires exactly once per accepted start.
     @discardableResult
     func startDictation(onText: @escaping @MainActor (String) -> Void, onEnd: @escaping @MainActor (DictationEnd) -> Void) -> Bool {
@@ -259,6 +268,7 @@ final class DictationAudioSink: @unchecked Sendable {
             dictationTier = DictationEngineTier.choose(analyzerOS: false, speechTranscriberReady: false, dictationTranscriberReady: false,
                                                        recognizerAvailable: recognizer?.isAvailable == true, recognizerOnDevice: recognizer?.supportsOnDeviceRecognition == true)
             guard dictationTier != .unavailable, let recognizer else { return endDictation(epoch, .unsupported) }
+            if voiceChatMode && dictationTier.usesNetwork { return endDictation(epoch, .unsupported) }   // never the server tier in voice chat
             dictationRecognizer = recognizer
         }
         armWatchdog(epoch, after: Self.dictationStartTimeout, phase: .starting)
@@ -267,7 +277,7 @@ final class DictationAudioSink: @unchecked Sendable {
             // duck; defaultToSpeaker so a reply read aloud afterwards isn't stuck on the receiver. No route-change
             // teardown here: a route change rebuilds the input (observeEngineChanges) and dictation carries on.
             let audio = AVAudioSession.sharedInstance()
-            try audio.setCategory(.playAndRecord, mode: .default, options: [.duckOthers, .defaultToSpeaker, .allowBluetooth])
+            try audio.setCategory(.playAndRecord, mode: voiceChatMode ? .voiceChat : .default, options: [.duckOthers, .defaultToSpeaker, .allowBluetooth])
             try audio.setActive(true, options: .notifyOthersOnDeactivation)
             if !analyzerReady { startSegment(epoch) }
             try installDictationTap(epoch)
@@ -352,6 +362,7 @@ final class DictationAudioSink: @unchecked Sendable {
         analyzerEngine = nil
         let recognizer = SFSpeechRecognizer(locale: Locale(identifier: DictationPolicy.localeIdentifier(for: language)))
         guard let recognizer, recognizer.isAvailable else { return endDictation(epoch, dictationTranscript.text.isEmpty ? .failed("") : .finished) }
+        if voiceChatMode && !recognizer.supportsOnDeviceRecognition { return endDictation(epoch, dictationTranscript.text.isEmpty ? .unsupported : .finished) }
         dictationTier = recognizer.supportsOnDeviceRecognition ? .onDeviceRecognizer : .serverRecognizer
         dictationRecognizer = recognizer; dictationTranscript.commit(); startSegment(epoch)
     }
