@@ -77,3 +77,55 @@ final class ConversationTurnActivityTests:XCTestCase {
         XCTAssertEqual(activity.tools[0].titleKey,"工具处理");XCTAssertEqual(activity.tools[0].state,.pending);XCTAssertFalse(activity.tools[0].titleKey.contains("private"));XCTAssertEqual(activity.tools[0].state.labelKey,"等待工具回执")
     }
 }
+
+/// chat-ux-1505 #4a: every stage transition maps to a Live Activity phase (no stage is dropped → no stuck 「正在思考…」).
+final class CatpawWorkPhaseMappingTests: XCTestCase {
+    private func device(_ tool: String, confirm: String) -> ConversationTurnEvent.Payload {
+        .deviceCall(ConversationDeviceCall(interruptID: UUID().uuidString.lowercased(), callID: "c-\(tool)", tool: tool, args: Data("{}".utf8), confirm: confirm, ttlSec: 600, argsHash: String(repeating: "a", count: 64), expiresAt: "2099-01-01T00:00:00Z"))
+    }
+    func testStagesMap() {
+        XCTAssertEqual(CatpawWorkPhase.from(.started(requestHash: "h", conversationRevision: 1, grantEpoch: 1)), .thinking)
+        XCTAssertEqual(CatpawWorkPhase.from(.reasoningSummary(messageID: UUID(), text: "x", thinkingMs: nil)), .thinking)
+        XCTAssertEqual(CatpawWorkPhase.from(.toolStarted(callID: "1", name: "calendar_list", arguments: "{}")), .tool("calendar_list"))
+        XCTAssertEqual(CatpawWorkPhase.from(.suspended(interruptIDs: ["i"], expiresAt: "2099-01-01T00:00:00Z")), .awaitingUser)
+        XCTAssertEqual(CatpawWorkPhase.from(.approvalResolved(interruptID: "i", callID: "1", decision: "allow", remember: false)), .thinking)
+        XCTAssertEqual(CatpawWorkPhase.from(.textDelta(messageID: UUID(), text: "a")), .writing)
+        XCTAssertEqual(CatpawWorkPhase.from(.completed(messageID: UUID(), finalTextHash: "h")), .done)
+        XCTAssertEqual(CatpawWorkPhase.from(.failed(message: "x", reconciliationRequired: false)), .failed)
+        XCTAssertNil(CatpawWorkPhase.from(.thread("t")))
+    }
+    func testDeviceCallsNeedingACardAwaitUser_readOnlyAutoRunStayTool() {
+        XCTAssertEqual(CatpawWorkPhase.from(device("calendar_create", confirm: "card")), .awaitingUser)
+        XCTAssertEqual(CatpawWorkPhase.from(device("places_search", confirm: "card")), .tool("places_search"))
+        XCTAssertEqual(CatpawWorkPhase.from(device("calendar_list", confirm: "none")), .tool("calendar_list"))
+    }
+    func testKindsMatchSharedAttributesAndTerminals() {
+        typealias K = CatpawWorkAttributes.ContentState.Kind
+        XCTAssertEqual(CatpawWorkPhase.thinking.kind, K.thinking)
+        XCTAssertEqual(CatpawWorkPhase.tool("x").kind, K.tool)
+        XCTAssertEqual(CatpawWorkPhase.writing.kind, K.writing)
+        XCTAssertEqual(CatpawWorkPhase.awaitingUser.kind, K.needsUser)
+        XCTAssertEqual(CatpawWorkPhase.done.kind, K.done)
+        XCTAssertEqual(CatpawWorkPhase.failed.kind, K.failed)
+        XCTAssertTrue(CatpawWorkPhase.done.isTerminal && CatpawWorkPhase.failed.isTerminal && !CatpawWorkPhase.awaitingUser.isTerminal)
+        XCTAssertEqual(CatpawWorkPhase.tool("calendar_list").bodyKey.key, "正在查日历")
+        XCTAssertEqual(CatpawWorkPhase.tool("some_unknown_tool").bodyKey.key, "正在使用工具…")
+    }
+}
+
+/// ux-round-1505: ContentState gained optional fields; payloads from older builds and the proactive server must still decode.
+final class CatpawWorkContentStateCompatibilityTests: XCTestCase {
+    func testOldPayloadDecodesWithNilNewFields() throws {
+        let old = #"{"title":"提醒","body":"10 点给客户回电话","kind":"reminder_due","taskID":"t-1"}"#
+        let s = try JSONDecoder().decode(CatpawWorkAttributes.ContentState.self, from: Data(old.utf8))
+        XCTAssertEqual(s.kind, "reminder_due"); XCTAssertEqual(s.taskID, "t-1")
+        XCTAssertNil(s.startedAt); XCTAssertNil(s.endedAt); XCTAssertNil(s.step); XCTAssertNil(s.tool); XCTAssertNil(s.summary)
+    }
+    func testNewPayloadRoundTripsAndStaysSmall() throws {
+        let s = CatpawWorkAttributes.ContentState(title: "Catpaw 正在工作", body: "正在查日历", kind: "tool", taskID: UUID().uuidString,
+                                                  startedAt: Date(timeIntervalSince1970: 1_800_000_000), endedAt: nil, step: 2, tool: "calendar_list", summary: "评审会加进日历")
+        let data = try JSONEncoder().encode(s)
+        XCTAssertLessThan(data.count, 4096)
+        XCTAssertEqual(try JSONDecoder().decode(CatpawWorkAttributes.ContentState.self, from: data), s)
+    }
+}

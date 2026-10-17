@@ -129,13 +129,15 @@ import UIKit
             HStack(spacing: 8) {
                 PlushMascot(pose: model.thinkingSummary != nil ? .thinking : .idle, size: 22)
                     .frame(width: 24, height: 24)
-                TimelineView(.periodic(from: model.thinkingStartedAt, by: 1)) { ctx in
-                    Text(liveTitle(now: ctx.date))
-                        .font(CatpawTypography.Role.secondary.font)
-                        .foregroundStyle(CatpawColors.secondary)
-                        .lineLimit(1).truncationMode(.tail)
-                        .monospacedDigit()
-                }
+                // chat-ux-1505 #3: mascot + 「Catpaw 正在工作」 (or the running tool step) with a shimmer sweep.
+                Text(workingTitle)
+                    .font(CatpawTypography.Role.secondary.font)
+                    .foregroundStyle(CatpawColors.secondary)
+                    .lineLimit(1).truncationMode(.tail)
+                    .workingShimmer()
+                    .contentTransition(.opacity)
+                    .animation(CatpawMotion.resolved(CatpawMotion.thinkingCollapse, reduceMotion), value: workingTitle)
+                    .accessibilityIdentifier("chat.answer.working")
                 Spacer(minLength: 0)
             }
             .frame(minHeight: 32)
@@ -143,10 +145,12 @@ import UIKit
         }
         .buttonStyle(.plain)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel(ui("思考中") + " " + (model.thinkingSummary ?? model.steps.last?.title ?? ""))
+        .accessibilityLabel(workingTitle)
         .accessibilityValue(Self.elapsed(from: model.thinkingStartedAt, to: Date()))
     }
 
+    /// Running tool step title (e.g. 「正在查日历」) else 「Catpaw 正在工作」.
+    private var workingTitle: String { model.steps.last(where: { $0.state == .running })?.title ?? ui("Catpaw 正在工作") }
     private func liveTitle(now: Date) -> String {
         let secs = String(max(0, Int(now.timeIntervalSince(model.thinkingStartedAt))))
         if let running = model.steps.last(where: { $0.state == .running }) { return running.title + " · " + secs + "s" }

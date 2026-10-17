@@ -57,6 +57,7 @@ import CatpawImageComposer
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @ScaledMetric(relativeTo: .footnote) private var followupRowHeight = 64.0
     @FocusState private var focused: Bool
+    @State private var composerFocusCount = 0   // chat-ux-1505 #2 haptic trigger
     /// One timeline projection per body pass. Previously every row, the reading-anchor
     /// tracker and each assistant row's `lastAssistantMessageID` re-ran the full projection
     /// (O(n²) per keystroke / streamed token; 235 ms main-thread stalls in Time Profiler).
@@ -144,6 +145,8 @@ import CatpawImageComposer
     }
     private var r8Title:String { model.history.first(where:{$0.id==model.conversationID}) == nil ? "Catpaw" : shortConversationTitle }
     private var r8ModelLabel:String {
+        // chat-ux-1505 #1: an explicit picker choice wins so the header shows what the user selected.
+        if let picked = ModelPickerOptions.headerLabel(route: ModelRouteSelection.route, model: ModelRouteSelection.model, routes: routeCatalog.routes) { return picked.count > 18 ? String(picked.prefix(16)) + "…" : picked }
         // Prefer the model the server actually used (SSE / verified reply); else the selected free route.
         if let live = model.connection.model, !live.isEmpty {
             let short = live.split(separator: "/").last.map(String.init) ?? live
@@ -449,7 +452,7 @@ import CatpawImageComposer
                         }.buttonStyle(CatpawPressButtonStyle()).firstRunChatEntrance("chat.buttons", rise: -6).accessibilityLabel(ui("打开侧栏")).accessibilityIdentifier("sidebar.open").accessibilityFocused($menuFocused)
                     }
                 }.r8HiddenSharedBackground()
-                ToolbarItem(placement:.principal) { conversationTitleMenu.allowsHitTesting(!launchShell) }.r8HiddenSharedBackground()
+                ToolbarItem(placement:.principal) { HStack(spacing:6) { conversationTitleMenu; ChatHeaderModelPicker { routeChanged in if routeChanged { model.modelRouteChanged() } } }.allowsHitTesting(!launchShell) }.r8HiddenSharedBackground()
                 ToolbarItem(placement:.topBarTrailing) {
                     Button { model.newConversation() } label: {
                         CircleIcon(systemName:"square.and.pencil").frame(width:44,height:44).contentShape(Rectangle())
@@ -575,6 +578,12 @@ import CatpawImageComposer
         #if canImport(ActivityKit) && os(iOS)
         .task { guard !launchShell else {return}; await CatpawLiveActivityCoordinator.shared.observe(model.service) { [model] in model.conversationID } }
         .task { await CatpawLiveActivityCoordinator.shared.acceptanceProbe() }
+        .onChange(of: scene) { _, phase in   // chat-ux-1505 #4a: keep the Live Activity honest across background/relaunch
+            #if canImport(ActivityKit) && os(iOS)
+            if phase == .background { CatpawLiveActivityCoordinator.shared.sceneDidEnterBackground() }
+            if phase == .active { CatpawLiveActivityCoordinator.shared.sceneDidBecomeActive() }
+            #endif
+        }
         .onChange(of:model.conversationID,initial:true) { _,id in replyVariants.activate(id) }   // regenerate pager variants
         #endif
         .onDisappear {scrollTask?.cancel();scrollTask=nil}
@@ -686,7 +695,9 @@ import CatpawImageComposer
                     placeholder:composerChrome.runState == .responding ? ui("继续追问…") : ui("问问 Catpaw"),
                     lineCountChanged:{composerLineCount=$0},
                     addAttachments:{_ = composerChrome.addAttachments($0,using:attachmentUploader)},
+                    focusChanged:{ if $0 { composerFocusCount += 1 } },
                     submit:{if canSendDraft {submitDraft()}})
+                    .sensoryFeedback(.impact(weight:.light,intensity:0.5),trigger:composerFocusCount)
                     .background{GeometryReader{geometry in Color.clear.preference(key:ConversationComposerMeasurements.self,value:["text":geometry.size.height])}}
             }
                 .onAppear{composerChrome.setSendAction(submitDraft)}

@@ -46,3 +46,32 @@ struct BubbleShimmerSweep: View {
         .allowsHitTesting(false).accessibilityHidden(true)
     }
 }
+
+/// chat-ux-1505 #3: continuous left→right highlight sweep across text (Grok-style 「… 正在工作」). No dots, no spinner.
+/// Reduce Motion: gentle opacity pulse instead of motion.
+struct WorkingShimmer: ViewModifier {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    var period: Double = 1.6
+    func body(content: Content) -> some View {
+        if reduceMotion {
+            TimelineView(.periodic(from: .now, by: 1.2)) { ctx in
+                let on = Int(ctx.date.timeIntervalSinceReferenceDate / 1.2) % 2 == 0
+                content.opacity(on ? 1 : 0.55).animation(.easeInOut(duration: 1.2), value: on)
+            }
+        } else {
+            TimelineView(.animation) { ctx in
+                let t = ctx.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: period) / period
+                content.overlay {
+                    GeometryReader { g in
+                        let w = g.size.width, band = max(40, w * 0.45)
+                        LinearGradient(colors: [.clear, CatpawColors.ink.opacity(0.85), .clear], startPoint: .leading, endPoint: .trailing)
+                            .frame(width: band).offset(x: -band + (w + band) * t)
+                    }
+                    .mask(content)
+                    .allowsHitTesting(false)
+                }
+            }
+        }
+    }
+}
+extension View { func workingShimmer() -> some View { modifier(WorkingShimmer()) } }

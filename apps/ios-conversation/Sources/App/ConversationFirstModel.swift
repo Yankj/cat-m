@@ -722,6 +722,9 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
     private func presentModelConsent(_ consent:ConversationModelConsent) {
         modelConsentReview=consent;modelConsentReviewToken=UUID();pendingModelConsent=consent
     }
+    /// chat-ux-1505 #1: a different route may carry a different disclosure (route_hash). Drop the cached "consent ok" so
+    /// the next send re-reads model-consent (cheap when still valid; shows the sheet when the hash changed).
+    func modelRouteChanged() { guard modelConsentReview == nil else { return }; consentReady = false; objectWillChange.send() }
     var needsModelConsentReview:Bool {!consentReady && (modelConsentReview != nil || !followups.pending.isEmpty)}
     var canReviewModelConsent:Bool {loaded && foreground && networkAdmissionAllowed && !checkingModelConsent && !busy && session?.unresolved==nil}
     func requestModelConsentReview() {
