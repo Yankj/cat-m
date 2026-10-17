@@ -118,9 +118,14 @@ import AppIntents
     @Environment(\.scenePhase) private var scene
     @State private var launchMarkVisible = LaunchMarkGate.shouldPlay(openedFromURLOrNotification: false)
     @State private var calendarScan: Task<Void, Never>?
-    /// B2: second and later launches start on the branded logo (identical to LaunchScreen.storyboard) until the chat is ready.
-    @State private var launchLogoVisible = !LaunchMarkGate.isFirstRun()
+    /// B2 (方块's two-stage loader): EVERY launch starts on CatpawLaunchMark, pixel-identical to LaunchScreen.storyboard (96 pt
+    /// tile on LaunchBackground, centred on the full screen), so the app's first frame is the launch image. Second and later
+    /// launches: it loops until the chat is ready, then exits onto the already-mounted chat. First run: it is ready at once
+    /// and exits onto the onboarding orb splash (LaunchMarkView toOrb), which keeps the first-run path unchanged.
+    @State private var launchLogoVisible = true
     @State private var launchHoldExpired = false
+    /// The logo never holds a launch hostage: after this the storage-free launch shell (real chrome + 300 ms capsule) shows.
+    static let launchLogoMaxHold: TimeInterval = 1.5
     #if DEBUG
     @StateObject private var synthetic = NativeSyntheticApplicationModel()
     #endif
@@ -167,12 +172,16 @@ import AppIntents
                 }
             }
             .overlay {
-                if launchLogoVisible, !launchMarkVisible {
-                    CatpawLaunchHandoff(ready: launchChatReady) { launchLogoVisible = false }
-                        .task { try? await Task.sleep(nanoseconds: UInt64(CatpawLaunchHandoff.maxHold * 1_000_000_000)); launchHoldExpired = true }
-                        .zIndex(99)
+                if launchLogoVisible {
+                    CatpawLaunchMark(isReady: launchMarkVisible || launchChatReady) {
+                        LaunchTrace.mark("launch.loaderGone", "", once: true); launchLogoVisible = false
+                    }
+                    .onAppear { LaunchTrace.mark("launch.logo", "", once: true) }
+                    .task { try? await Task.sleep(nanoseconds: UInt64(Self.launchLogoMaxHold * 1_000_000_000)); launchHoldExpired = true }
+                    .zIndex(101)
                 }
             }
+            .onChange(of: launchMarkVisible || launchChatReady, initial: true) { _, ready in if ready { LaunchTrace.mark("launch.handoff", "", once: true) } }
             .onOpenURL { url in launchMarkVisible = false; CatpawRouteCenter.shared.pending = CatpawAppRoute(url: url) }
             .catpawInAppBanner()
             .environment(\.catpawOAuth, oauth)

@@ -150,7 +150,7 @@ A7C7855C7D93B64DE7A2E19A = { isa = PBXFileReference; lastKnownFileType = sourcec
 4B5CA57A007B51C509F40612 = { isa = PBXBuildFile; fileRef = A7C7855C7D93B64DE7A2E19A; };
 0A7B0000000000000000E101 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/Features/Launch/CatpawLaunchMark.swift"; sourceTree = "<group>"; };
 0A7B0000000000000000E201 = { isa = PBXBuildFile; fileRef = 0A7B0000000000000000E101; };
-0A7B0000000000000000E102 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/Features/Launch/CatpawLaunchHandoff.swift"; sourceTree = "<group>"; };
+0A7B0000000000000000E102 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/Features/Launch/CatpawLaunchPaths.swift"; sourceTree = "<group>"; };
 0A7B0000000000000000E202 = { isa = PBXBuildFile; fileRef = 0A7B0000000000000000E102; };
 CA7A1A000000000000000001 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/App/CatpawLiveActivityCoordinator.swift"; sourceTree = "<group>"; };
 CA7A1A000000000000000002 = { isa = PBXBuildFile; fileRef = CA7A1A000000000000000001; };

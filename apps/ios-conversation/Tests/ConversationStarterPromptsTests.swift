@@ -1,4 +1,6 @@
 import XCTest
+import UIKit
+import SwiftUI
 @testable import CatpawM
 
 /// feat/chat-starter-prompts: catalog, time-of-day order and bilingual copy of the empty-conversation starters.
@@ -76,5 +78,53 @@ final class AccountModelConsentMemoryTests: XCTestCase {
         XCTAssertFalse(AccountModelConsentMemory(subjectID: UUID(), serverScopeID: scope, defaults: d).allows("e0a91d27"))
         let anonymous = AccountModelConsentMemory(subjectID: nil, serverScopeID: scope, defaults: d)
         anonymous.remember("e0a91d27"); XCTAssertFalse(anonymous.allows("e0a91d27"))
+    }
+}
+
+/// v1 letterbox blocker (2026-10-17): the BUILT app must carry a valid launch screen — the Info.plist key, a compiled
+/// storyboardc that instantiates, and every asset it draws — or iOS can run it in compatibility mode / draw a blank
+/// first frame. Hosted test: Bundle.main is the built CatpawM.app.
+final class LaunchScreenBundleTests: XCTestCase {
+    func testBuiltAppDeclaresAndShipsItsLaunchScreen() throws {
+        let name = try XCTUnwrap(Bundle.main.object(forInfoDictionaryKey: "UILaunchStoryboardName") as? String, "built Info.plist has no UILaunchStoryboardName")
+        XCTAssertEqual(name, "LaunchScreen")
+        let compiled = try XCTUnwrap(Bundle.main.url(forResource: name, withExtension: "storyboardc"), "\(name).storyboardc missing from the built app")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: compiled.appendingPathComponent("Info.plist").path))
+        let root = try XCTUnwrap(UIStoryboard(name: name, bundle: .main).instantiateInitialViewController(), "launch storyboard has no initial view controller")
+        root.loadViewIfNeeded()
+        XCTAssertNotNil(root.view.backgroundColor, "launch screen background colour asset did not resolve")
+        func images(_ v: UIView) -> [UIImageView] { ((v as? UIImageView).map { [$0] } ?? []) + v.subviews.flatMap(images) }
+        for view in images(root.view) { XCTAssertNotNil(view.image, "launch screen image asset did not resolve") }
+    }
+}
+
+/// User report 15:14 ("launch logo STRETCHED"): both launch stages must draw the tile square at 96 pt.
+@MainActor final class LaunchLogoAspectTests: XCTestCase {
+    func testSwiftUILaunchMarkTileIsSquare() throws {
+        let renderer = ImageRenderer(content: CatpawLaunchMark(isReady: false).frame(width: 390, height: 844).environment(\.colorScheme, .light))
+        renderer.scale = 1
+        let cg = try XCTUnwrap(renderer.cgImage)
+        let w = cg.width, h = cg.height
+        var px = [UInt8](repeating: 0, count: w * h * 4)
+        let ctx = try XCTUnwrap(CGContext(data: &px, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w * 4, space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+        ctx.draw(cg, in: CGRect(x: 0, y: 0, width: w, height: h))
+        var minX = w, maxX = -1, minY = h, maxY = -1
+        for y in 0..<h { for x in 0..<w { let i = (y * w + x) * 4
+            if px[i] > 200, px[i+1] > 60, px[i+1] < 190, px[i+2] < 90 { minX = min(minX, x); maxX = max(maxX, x); minY = min(minY, y); maxY = max(maxY, y) } } }
+        XCTAssertGreaterThan(maxX, minX, "no orange tile drawn")
+        let tw = maxX - minX + 1, th = maxY - minY + 1
+        XCTAssertLessThanOrEqual(abs(tw - th), 2, "launch tile is \(tw)×\(th) pt — stretched")
+        XCTAssertEqual(Double(tw), Double(CatpawLaunchMark.side), accuracy: 2)
+        XCTAssertEqual(Double(minX + tw / 2), 195, accuracy: 1.5, "tile centred horizontally on the full screen")
+        XCTAssertEqual(Double(minY + th / 2), 422, accuracy: 1.5, "tile centred vertically on the full screen")
+    }
+    func testStoryboardLogoIsSquareAndCentredOnIPhone13() throws {
+        let vc = try XCTUnwrap(UIStoryboard(name: "LaunchScreen", bundle: .main).instantiateInitialViewController())
+        vc.view.frame = CGRect(x: 0, y: 0, width: 390, height: 844); vc.view.layoutIfNeeded()
+        let iv = try XCTUnwrap(vc.view.subviews.compactMap { $0 as? UIImageView }.first)
+        XCTAssertEqual(iv.contentMode, .scaleAspectFit)
+        XCTAssertEqual(iv.frame, CGRect(x: 147, y: 374, width: 96, height: 96), "STORYBOARD.md contract: whole-pt origin (147, 374) on iPhone 13")
+        let image = try XCTUnwrap(iv.image)
+        XCTAssertEqual(image.size.width, image.size.height, accuracy: 0.01)
     }
 }
