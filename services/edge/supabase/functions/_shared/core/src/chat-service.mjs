@@ -311,11 +311,14 @@ export class ChatService {
           if(call.name===RENDER_UI&&!call.ungrounded&&!(env.turn.interrupts??[]).some(i=>i.call_id===call.id)&&!(env.turn.ui_shown_calls??[]).includes(call.id)){const block=blockOf(call.arguments),known=await this.knownUIBlock(env,block.id);await this.append(env,known?'ui.block.update':'ui.block',known?uiBlockUpdate(block):uiBlockEvent(block));}
           const result=await this.executeTool(env,call);messages.push({role:'tool',tool_call_id:call.id,content:JSON.stringify(result)});
         }
-        // Calls that did not run still get their own tool_result (model) and durable tool_call/tool_result events (status error).
-        for(const {call,result} of blocked){
-          if(!env.turn.events.some(e=>e.type==='tool_call'&&e.data.call_id===call.id))await this.append(env,'tool_call',{call_id:call.id,name:call.name,arguments:call.arguments});
-          if(!env.turn.events.some(e=>e.type==='tool_result'&&e.data.call_id===call.id))await this.append(env,'tool_result',{call_id:call.id,name:call.name,status:'error',result});
-          messages.push({role:'tool',tool_call_id:call.id,content:JSON.stringify(result)});
+        // Calls that did not run still get their own tool_result for the model. They are recorded on the turn row
+        // (parallel_blocked), not as wire tool_call/tool_result events: clients parse some tools' results as domain
+        // receipts (delegate_*, agent_status, propose_memory_v1) and would reject a not-executed payload.
+        if(blocked.length){
+          for(const {call,result} of blocked)messages.push({role:'tool',tool_call_id:call.id,content:JSON.stringify(result)});
+          await this.repository.transaction(async tx=>{const {t}=await this.live(tx,env);const ids=new Set(blocked.map(b=>b.call.id));
+            const saved=await tx.put(env.owner,'native-chat-turns',{...t,parallel_blocked:[...(t.parallel_blocked??[]).filter(b=>!ids.has(b.call_id)),...blocked.map(({call,result})=>({call_id:call.id,name:call.name,arguments:clone(call.arguments),status:result.status}))].slice(-32)});
+            await this.beforeCommit(tx,env,saved);});
         }
         if(round.calls.some(c=>c.name==='propose_memory_v1')){
           const receipt=messages.at(-1),pending=JSON.parse(receipt.content).candidates.length>0;

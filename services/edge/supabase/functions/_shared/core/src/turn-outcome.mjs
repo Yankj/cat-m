@@ -36,10 +36,11 @@ export function turnToolOutcomes(t) {
     if (e.type !== 'tool_call' || out.some(o => o.call_id === e.data?.call_id)) continue;
     const id = e.data.call_id, it = (t.interrupts ?? []).find(i => i.call_id === id), result = events.find(x => x.type === 'tool_result' && x.data?.call_id === id);
     let outcome = interruptOutcome(it);
-    const notRun = ['too_many_parallel_writes', 'not_executed'].includes(result?.data?.result?.status);
-    if (!it || outcome === 'approved') outcome = result ? (notRun ? 'not_executed' : result.data.status === 'ok' ? 'ok' : result.data.status === 'denied' ? 'user_declined' : 'error') : 'not_executed';
+    if (!it || outcome === 'approved') outcome = result ? (result.data.status === 'ok' ? 'ok' : result.data.status === 'denied' ? 'user_declined' : 'error') : 'not_executed';
     out.push({ call_id: id, name: String(e.data.name ?? ''), args: argsSummary(e.data.arguments), outcome });
   }
+  // B1: parallel calls that were answered without running (recorded on the row, never as wire events).
+  for (const b of t?.parallel_blocked ?? []) if (!out.some(o => o.call_id === b.call_id)) out.push({ call_id: b.call_id, name: String(b.name ?? ''), args: argsSummary(b.arguments), outcome: 'not_executed' });
   return out;
 }
 
