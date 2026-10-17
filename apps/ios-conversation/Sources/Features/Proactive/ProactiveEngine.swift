@@ -1708,9 +1708,18 @@ struct ProactiveInventoryItem: @unchecked Sendable { var id: String; var info: [
 
     /// R2 (NoBug P1-1): background entry points (BGAppRefresh, notification recovery, background saves) can run before
     /// the chat view's `.task` activated L2. Activates the store for `account` (the current AccountEpoch account) only
-    /// when no store is active — never switches an active store to another account.
+    /// when no store is active — never switches an active store to another account. Only while the app is not active
+    /// (background launch / background notification action): in the foreground the chat view's `.task` owns activation
+    /// and deliberately keeps account stores off under the account-neutral launch chat.
+    static var appIsNotActive: @MainActor () -> Bool = {
+        #if canImport(UIKit) && os(iOS)
+        UIApplication.shared.applicationState != .active
+        #else
+        true
+        #endif
+    }
     static func ensureActive(account: String?) {
-        guard store() == nil, let account, let uid = UUID(uuidString: account),
+        guard store() == nil, appIsNotActive(), let account, let uid = UUID(uuidString: account),
               AccountEpoch.shared.currentAccount.map({ $0.caseInsensitiveCompare(account) == .orderedSame }) == true else { return }
         if let activator { activator(uid) } else { L2SecureStore.activate(userID: uid) }
         migrateAll()

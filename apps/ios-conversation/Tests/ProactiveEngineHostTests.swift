@@ -916,6 +916,7 @@ import UserNotifications
         ProactiveSealedStore.store = { L2SecureStore.current }
         ProactiveSealedStore.parkingVault = { try? L2SecureStore(userID: ProactiveSealedStore.parkingVaultID, root: L2SecureStore.rootDirectory, keys: L2SecureStore.keys) }
         ProactiveSealedStore.activator = nil
+        ProactiveSealedStore.appIsNotActive = { true }
         for k in ProactiveSealedStore.sealedKeys { try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: store.fileURL(forKey: k).path) }
         UserDefaults().removePersistentDomain(forName: suite)
         try? FileManager.default.removeItem(at: root)
@@ -1011,6 +1012,11 @@ import UserNotifications
     func testR2BackgroundEntryActivatesL2OnlyForTheCurrentAccount() throws {
         var active: L2SecureStore?
         ProactiveSealedStore.store = { active }
+        ProactiveSealedStore.appIsNotActive = { false }   // foreground: the chat view's .task owns activation
+        AccountEpoch.shared.activate(account: user.uuidString)
+        ProactiveSealedStore.activator = { _ in XCTFail("no activation in the foreground") }
+        ProactiveSealedStore.ensureActive(account: user.uuidString)
+        ProactiveSealedStore.appIsNotActive = { true }    // background launch / background notification action
         let r: URL = root, k = keys
         ProactiveSealedStore.activator = { uid in active = try? L2SecureStore(userID: uid, root: r, keys: k) }
         AccountEpoch.shared.activate(account: user.uuidString)
