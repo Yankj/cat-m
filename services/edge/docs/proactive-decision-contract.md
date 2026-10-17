@@ -95,6 +95,8 @@ The migration file is `supabase/migrations/20261016030000_proactive_decisions.sq
 - `proactive_decision` to the events kind check
 - the `signal_seen`, `trigger_weights` and `feedback` tables, with RLS (owner read; writes only by the service)
 
+Migration `20261017050000_proactive_feedback_kind_intrusive.sql` widens `feedback_kind_check` to `helpful | not_helpful | intrusive | disturbing`. The service stores `intrusive` (legacy `disturbing` is mapped to it); before this migration that insert failed the check and returned 500. Old `disturbing` rows stay valid. Covered by `test/proactive-feedback-pg.test.mjs` via `scripts/pg-proactive-local.sh`.
+
 ## Snooze re-surface
 Migration `20261016040000` adds the function `proactive.resurface_snoozed_suggestions(now)` and the pg_cron job `catpaw-proactive-resurface`, which runs every minute. `/scheduler/tick` also calls the function and reports the count as `resurfaced`.
 
