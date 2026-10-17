@@ -305,3 +305,42 @@ final class StatusLinePrereviewTests: XCTestCase {
         for t in tools { XCTAssertNotNil(ToolStepCopy.table[t], "ToolStepCopy missing server-gated tool \(t)") }
     }
 }
+
+/// v1.1 item 3: Live Activity title = the user's own task text.
+@MainActor final class CatpawTaskTitleTests: XCTestCase {
+    func testFirstLineTrimmedCollapsedAndCapped() {
+        XCTAssertEqual(CatpawTaskTitle.make("  把评审会   加进日历 \n明天下午三点，提醒我"), "把评审会 加进日历")
+        XCTAssertEqual(CatpawTaskTitle.make("\n\n  hello\nworld"), "hello")
+        let long = CatpawTaskTitle.make("请帮我整理一下这周所有会议的纪要并发给团队每个人")!
+        XCTAssertEqual(long.count, CatpawTaskTitle.limit); XCTAssertTrue(long.hasSuffix("…"))
+        XCTAssertEqual(CatpawTaskTitle.make("12345678901234567890"), "12345678901234567890")
+        XCTAssertNil(CatpawTaskTitle.make(" \n\t "))
+    }
+    func testHandOffIsPerOperationAndConsumedOnce() {
+        let a = UUID(), b = UUID()
+        CatpawTaskTitles.note("订明早的车", operationID: a)
+        XCTAssertNil(CatpawTaskTitles.take(b))
+        XCTAssertEqual(CatpawTaskTitles.take(a), "订明早的车")
+        XCTAssertNil(CatpawTaskTitles.take(a))
+        CatpawTaskTitles.note("x", operationID: b); CatpawTaskTitles.reset(); XCTAssertNil(CatpawTaskTitles.take(b))
+    }
+}
+
+/// v1.1 item 2 (B8): conversation residue outside the account partition is purged at sign-out.
+final class AccountConversationLocalTests: XCTestCase {
+    func testPurgeRemovesVariantsReactionsAndStagedDraftFiles() throws {
+        let suite = "b8-\(UUID().uuidString)", d = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { UserDefaults().removePersistentDomain(forName: suite) }
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(suite, isDirectory: true)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        try Data("draft".utf8).write(to: dir.appendingPathComponent("a.jpg"))
+        d.set(["m1": "👍"], forKey: AccountConversationLocal.reactionsKey)
+        d.set(Data("{}".utf8), forKey: AccountConversationLocal.replyVariantsPrefix + UUID().uuidString)
+        d.set(true, forKey: "catpaw.onboarding.keep")
+        AccountConversationLocal.purge(defaults: d, stagingDirectory: dir)
+        XCTAssertNil(d.object(forKey: AccountConversationLocal.reactionsKey))
+        XCTAssertFalse(d.dictionaryRepresentation().keys.contains { $0.hasPrefix(AccountConversationLocal.replyVariantsPrefix) })
+        XCTAssertFalse(FileManager.default.fileExists(atPath: dir.path))
+        XCTAssertTrue(d.bool(forKey: "catpaw.onboarding.keep"), "device-level keys untouched")
+    }
+}
