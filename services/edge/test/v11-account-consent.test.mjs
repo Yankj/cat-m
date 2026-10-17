@@ -56,7 +56,8 @@ test('account revoke (deny) ⇒ conversations that relied on it need re-consent;
 test('per-conversation POST with apply_to:"account" grants the account too; invalid apply_to rejected',async()=>{
  const {f,acct,turn}=await setup();const cid=await f.newConversation(),p=`/catpaw/privacy/v1/scopes/${f.scope.scope_id}/conversations/${cid}/model-consent`;
  const bad=await f.req(p,{decision:'allow',expected_revision:0,route_hash:f.config.routeHash,apply_to:'everything'});assert.equal(bad.status,422);
- await f.json(await f.req(p,{decision:'allow',expected_revision:0,route_hash:f.config.routeHash,apply_to:'account'}));
+ assert.equal((await f.req(p,{decision:'allow',expected_revision:0,route_hash:f.config.routeHash,apply_to:'account'})).status,422,'expected_account_revision is required');
+ await f.json(await f.req(p,{decision:'allow',expected_revision:0,route_hash:f.config.routeHash,apply_to:'account',expected_account_revision:0}));
  assert.equal((await f.json(await f.req(acct))).granted,true);assert.equal((await turn(await f.newConversation())).status,200);
 });
 test('account POST validation: wrong route_hash 422 invalid_consent, stale expected_revision 409',async()=>{
