@@ -56,6 +56,29 @@ final class DeviceToolNamesContractTests: XCTestCase {
         }
         XCTAssertTrue(NativeChatHTTPBackend.approvalToolNames.contains("places_search"))
     }
+
+    /// NoBug §4.6: every server-registered agent-memory tool (MEMORY_TOOLS) must be an accepted tool_call name, and the iOS
+    /// approval classification must match the server's TOOL_APPROVAL declaration. Reads the server source in this checkout.
+    @MainActor func testServerMemoryToolsAreAcceptedAndClassifiedLikeTheServer() throws {
+        let shared = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+            .appendingPathComponent("../../../services/edge/supabase/functions/_shared").standardizedFileURL
+        let contract = try String(contentsOf: shared.appendingPathComponent("agent-memory/contract.mjs"), encoding: .utf8)
+        let registry = try String(contentsOf: shared.appendingPathComponent("core/src/tools.mjs"), encoding: .utf8)
+        func matches(_ pattern: String, _ text: String) -> [[String]] {
+            let re = try! NSRegularExpression(pattern: pattern)
+            return re.matches(in: text, range: NSRange(text.startIndex..., in: text)).map { m in
+                (1..<m.numberOfRanges).map { String(text[Range(m.range(at: $0), in: text)!]) }
+            }
+        }
+        let serverTools = Set(matches(#"fn\('(memory_[a-z_]+)'"#, contract).map { $0[0] })
+        XCTAssertEqual(serverTools, ["memory_search", "memory_save", "memory_update", "memory_forget"], "MEMORY_TOOLS changed; update iOS")
+        let declared = Dictionary(uniqueKeysWithValues: matches(#"(memory_[a-z_]+):\{approval:'([a-z_]+)'"#, registry).map { ($0[0], $0[1] != "never") })
+        for tool in serverTools {
+            XCTAssertTrue(NativeChatHTTPBackend.approvalToolNames.contains(tool), "\(tool) is offered by the server but rejected as tool_call")
+            XCTAssertEqual(NativeChatHTTPBackend.memoryToolApproval[tool], declared[tool], "\(tool) approval classification differs from TOOL_APPROVAL")
+        }
+        XCTAssertEqual(ConversationApprovalCardView.toolTitle("memory_forget") { key, _ in key }, "忘记记忆")
+    }
 }
 
 /// fix/chat-acceptance-3 #2: consent is asked once per account + route_hash, not once per conversation.

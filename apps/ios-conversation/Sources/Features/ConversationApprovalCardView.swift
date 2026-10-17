@@ -145,6 +145,7 @@ import SwiftUI
         case "update_task": ui("更新任务", [])
         case "create_reminder", "update_reminder": ui("设置提醒", [])
         case "create_calendar_event", "update_calendar_event": ui("修改日历", [])
+        case "memory_forget": ui("忘记记忆", [])
         default: ui("执行操作", [])
         }
     }

@@ -73,6 +73,9 @@ enum CatpawWorkPhase: Equatable {
         case "mail_compose", "sms_compose": return "正在起草消息"
         case "delegate_task", "delegate_plan_v1", "delegate_sources_v1": return "正在拆解任务"
         case "list_tasks", "create_task", "update_task": return "正在整理待办"
+        case "memory_search": return "正在回想你说过的事"
+        case "memory_save", "memory_update": return "正在记下来"
+        case "memory_forget": return "正在找要忘记的记忆"
         default: return nil
         }
     }

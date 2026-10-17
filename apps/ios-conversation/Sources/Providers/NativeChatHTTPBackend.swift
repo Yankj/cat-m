@@ -445,7 +445,15 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
         // Acceptance #3: places_search (附近咖啡馆 starter) was advertised in X-Catpaw-Device-Tools but missing here, so its
         // `tool_call` failed ConversationSessionService.apply → invalidEvent (「服务返回了不匹配的对话或工具结果」).
         // Must stay a superset of DeviceToolContract.clientTools (DeviceToolNamesContractTests).
-        "places_search"]
+        "places_search",
+        // NoBug harness review §4.6: catpaw.agent-memory.v1 tools are server-registered gated chat tools (api.mjs gatedChatTools,
+        // agent-memory/contract.mjs MEMORY_TOOLS), offered only on approval.v1 turns with memory on. Missing here, any memory
+        // tool_call failed apply → invalidEvent (「服务返回了不匹配的对话或工具结果」). Server-executed; see memoryToolApproval.
+        "memory_search", "memory_save", "memory_update", "memory_forget"]
+    /// catpaw.approval.v1 classification of the agent-memory tools, mirroring services/…/core/src/tools.mjs TOOL_APPROVAL
+    /// (true = the server suspends with `approval_requested` before executing; false = runs automatically, reversible via
+    /// undo / Settings › 记忆). iOS never executes these; the approval card is driven by the server's interrupt.
+    static let memoryToolApproval: [String: Bool] = ["memory_search": false, "memory_save": false, "memory_update": false, "memory_forget": true]
     /// Snapshot `pending_approvals`: kind "ui" rows are catpaw.ui.v1 blocks, everything else a tool approval card.
     public static func splitPendingApprovals(_ rows: [[String: Any]]) throws -> (tools: [ConversationApprovalRequest], ui: [ConversationUIApproval]) {
         var tools: [ConversationApprovalRequest] = [], ui: [ConversationUIApproval] = []
