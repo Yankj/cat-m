@@ -150,6 +150,46 @@ final class CatpawAcceptanceUITests: XCTestCase {
         app.descendants(matching: .any)["chat.title"].firstMatch.tap(); shot(app, "r8-03-title-menu")
     }
 
+    // TEMP (never commit): second image upload after a sent image.
+    func test95TempImageTwice() throws {
+        guard ProcessInfo.processInfo.environment["CATPAW_ACCEPTANCE_REAL"] == "1" else { throw XCTSkip("real backend only") }
+        let app = XCUIApplication(bundleIdentifier: bundleID); app.launchArguments += ["-CatpawSkipOnboarding"]; app.launch()
+        XCTAssertTrue(input(app).waitForExistence(timeout: 45))
+        app.buttons["chat.new"].tap(); Thread.sleep(forTimeInterval: 1.5)
+        func pick(_ index: Int, _ tag: String) {
+            app.buttons["chat.composer.add"].tap()
+            let photos = app.buttons["照片"].exists ? app.buttons["照片"] : app.buttons["Photos"]
+            XCTAssertTrue(photos.waitForExistence(timeout: 5)); photos.tap()
+            let grid = app.images.matching(identifier: "PXGGridLayout-Info")
+            XCTAssertTrue(grid.firstMatch.waitForExistence(timeout: 15), "photo grid"); Thread.sleep(forTimeInterval: 1)
+            grid.element(boundBy: index).tap(); Thread.sleep(forTimeInterval: 0.6)
+            for l in ["添加", "Add", "完成", "Done"] where app.buttons[l].exists { app.buttons[l].tap(); break }
+            Thread.sleep(forTimeInterval: 4); shot(app, "img-\(tag)-attached")
+        }
+        func sendWithConsent(_ text: String, _ tag: String) -> Bool {
+            let field = input(app); field.tap(); field.typeText(text); Thread.sleep(forTimeInterval: 0.8)
+            let send = app.buttons["chat.send"]; shot(app, "img-\(tag)-before-send"); XCTAssertTrue(send.isEnabled, "\(tag) send enabled")
+            guard send.isEnabled else { return false }
+            send.tap()
+            for _ in 0..<3 {
+                for id in ["chat.consent.review", "chat.modelConsent.allow"] where app.buttons[id].waitForExistence(timeout: 4) { shot(app, "img-\(tag)-consent-\(id)"); app.buttons[id].tap() }
+                let nonSensitive = app.descendants(matching: .any)["image.consent.nonSensitive"].firstMatch
+                if nonSensitive.waitForExistence(timeout: 4) { nonSensitive.tap(); Thread.sleep(forTimeInterval: 0.4); shot(app, "img-\(tag)-image-consent") }
+                if app.buttons["image.consent.allow"].exists { app.buttons["image.consent.allow"].tap() }
+                for l in ["允许此对话", "允许发送图片", "允许"] where app.buttons[l].exists { app.buttons[l].tap() }
+            }
+            let done = app.descendants(matching: .any)["chat.reply.completed"].firstMatch.waitForExistence(timeout: 120)
+            shot(app, "img-\(tag)-reply"); return done
+        }
+        pick(0, "1"); let first = sendWithConsent("这张图里有什么？一句话", "1"); print("TEMP first image reply completed=\(first)")
+        Thread.sleep(forTimeInterval: 2)
+        pick(1, "2")
+        let retry = app.buttons["重试上传"]
+        if retry.exists { shot(app, "img-2-failed"); retry.tap(); Thread.sleep(forTimeInterval: 3); shot(app, "img-2-after-retry") }
+        XCTAssertFalse(app.buttons["重试上传"].exists, "second image must not be failed")
+        XCTAssertTrue(sendWithConsent("这张呢？一句话", "2"), "second image reply")
+    }
+
     // Real backend: anonymous user + cloud consent + real message (CATPAW_ACCEPTANCE_REAL=1, DeviceTrial build).
     func test07RealChatEndToEnd() throws {
         guard ProcessInfo.processInfo.environment["CATPAW_ACCEPTANCE_REAL"] == "1" else { throw XCTSkip("real backend only") }
