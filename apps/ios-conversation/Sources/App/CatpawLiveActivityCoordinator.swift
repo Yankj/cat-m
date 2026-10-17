@@ -62,19 +62,9 @@ enum CatpawWorkPhase: Equatable {
         case .failed: return ("未完成，需核对", [])
         }
     }
+    /// status-line v1.0: one copy table (ToolStepCopy) shared with the chat status row; unknown tools → generic.
     static func toolStepKey(_ name: String) -> String? {
-        switch name {
-        case "calendar_list": return "正在查日历"
-        case "calendar_create", "create_calendar_event", "update_calendar_event": return "正在添加日程"
-        case "reminder_create", "create_reminder", "update_reminder", "alarm_set": return "正在设置提醒"
-        case "places_search": return "正在查附近"
-        case "maps_open": return "正在打开地图"
-        case "contacts_search": return "正在查联系人"
-        case "mail_compose", "sms_compose": return "正在起草消息"
-        case "delegate_task", "delegate_plan_v1", "delegate_sources_v1": return "正在拆解任务"
-        case "list_tasks", "create_task", "update_task": return "正在整理待办"
-        default: return nil
-        }
+        ToolStepCopy.table[name] != nil ? ToolStepCopy.title(name) : nil
     }
 }
 #if canImport(ActivityKit) && os(iOS)

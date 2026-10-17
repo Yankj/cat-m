@@ -99,7 +99,8 @@ import UIKit
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            if thinking { liveRow } else if hasDetail { resultRow }
+            // status-line v1.0: nothing in the first second of a turn (fast turns never flash a row).
+            if thinking { if !model.usesStatusLine || model.statusLine != nil { liveRow } } else if hasDetail { resultRow }
             if expanded && !model.steps.isEmpty {
                 VStack(alignment: .leading, spacing: 10) {
                     ForEach(model.steps) { step in
@@ -134,10 +135,10 @@ import UIKit
                     .font(CatpawTypography.Role.secondary.font)
                     .foregroundStyle(CatpawColors.secondary)
                     .lineLimit(1).truncationMode(.tail)
-                    .workingShimmer()
+                    .workingShimmer(statusAnimated)   // waiting on the user / failed / stopped: static
                     .contentTransition(.opacity)
                     .animation(CatpawMotion.resolved(CatpawMotion.thinkingCollapse, reduceMotion), value: workingTitle)
-                    .accessibilityIdentifier("chat.answer.working")
+                    .accessibilityIdentifier(statusIdentifier)
                 Spacer(minLength: 0)
             }
             .frame(minHeight: 32)
@@ -147,10 +148,24 @@ import UIKit
         .accessibilityElement(children: .combine)
         .accessibilityLabel(workingTitle)
         .accessibilityValue(Self.elapsed(from: model.thinkingStartedAt, to: Date()))
+        .onChange(of: workingTitle) { _, title in
+            // VoiceOver: announce state changes, at most once every 2 s.
+            guard UIAccessibility.isVoiceOverRunning, announcer.allow(at: Date()) else { return }
+            UIAccessibility.post(notification: .announcement, argument: title)
+        }
     }
+    @State private var announcer = StatusLineAnnouncementThrottle()
+    private var statusIdentifier: String {
+        if case .awaitingUser? = model.statusLine { return "chat.answer.awaitingUser" }
+        return "chat.answer.working"
+    }
+    private var statusAnimated: Bool { model.usesStatusLine ? (model.statusLine?.animated ?? false) : true }
 
     /// Running tool step title (e.g. 「正在查日历」) else 「Catpaw 正在工作」.
-    private var workingTitle: String { model.steps.last(where: { $0.state == .running })?.title ?? ui("Catpaw 正在工作") }
+    private var workingTitle: String {
+        if model.usesStatusLine, let line = model.statusLine { return ui(line.title) }
+        return model.steps.last(where: { $0.state == .running })?.title ?? ui("Catpaw 正在工作")
+    }
     private func liveTitle(now: Date) -> String {
         let secs = String(max(0, Int(now.timeIntervalSince(model.thinkingStartedAt))))
         if let running = model.steps.last(where: { $0.state == .running }) { return running.title + " · " + secs + "s" }
@@ -187,6 +202,7 @@ import UIKit
     let step: AnswerToolStep
     let current: Bool
     private var glyph: String {
+        if ToolStepCopy.table[step.kind] != nil { return ToolStepCopy.symbol(step.kind) }
         let k = step.kind.lowercased()
         if k.contains("search") { return "magnifyingglass" }
         if k.contains("fetch") || k.contains("browse") || k.contains("web") || k.contains("url") { return "globe" }

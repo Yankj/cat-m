@@ -183,6 +183,8 @@ enum LA {
     /// SPEC §5 tool → spoken verb. Never shows a raw tool id.
     static func verb(_ tool: String?) -> String {
         let t = tool ?? ""
+        // status-line v1.0: zh copy comes from the shared ToolStepCopy table.
+        if ToolStepCopy.table[t] != nil, s("zh", "en") == "zh" { return ToolStepCopy.title(t) }
         if t.hasPrefix("delegate_") { return s("正在交给助手处理", "Handing off") }
         switch t {
         case "calendar_list": return s("正在查看日历", "Checking your calendar")
@@ -194,7 +196,8 @@ enum LA {
         }
     }
     static func toolGlyph(_ tool: String?) -> String {
-        switch tool ?? "" {
+        if let t = tool, ToolStepCopy.table[t] != nil { return ToolStepCopy.symbol(t) }
+        return switch tool ?? "" {
         case "calendar_list", "calendar_create", "create_calendar_event": "calendar"
         case "places_search", "maps_open": "location.fill"
         case "web_search", "contacts_search": "magnifyingglass"

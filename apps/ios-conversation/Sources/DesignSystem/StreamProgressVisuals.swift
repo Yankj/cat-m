@@ -52,12 +52,10 @@ struct BubbleShimmerSweep: View {
 struct WorkingShimmer: ViewModifier {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var period: Double = 1.6
+    var active = true
     func body(content: Content) -> some View {
-        if reduceMotion {
-            TimelineView(.periodic(from: .now, by: 1.2)) { ctx in
-                let on = Int(ctx.date.timeIntervalSinceReferenceDate / 1.2) % 2 == 0
-                content.opacity(on ? 1 : 0.55).animation(.easeInOut(duration: 1.2), value: on)
-            }
+        if reduceMotion || !active || ProcessInfo.processInfo.isLowPowerModeEnabled {
+            content   // status-line v1.0: Reduce Motion / waiting / Low Power → fully static, no shimmer
         } else {
             TimelineView(.animation) { ctx in
                 let t = ctx.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: period) / period
@@ -74,4 +72,4 @@ struct WorkingShimmer: ViewModifier {
         }
     }
 }
-extension View { func workingShimmer() -> some View { modifier(WorkingShimmer()) } }
+extension View { func workingShimmer(_ active: Bool = true) -> some View { modifier(WorkingShimmer(active: active)) } }
