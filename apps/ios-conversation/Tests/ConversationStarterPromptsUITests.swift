@@ -84,3 +84,50 @@ final class ChatFullBleedUITests: XCTestCase {
         }
     }
 }
+
+/// chat-context-1522 #1/#3 + status-line on BE5C, offline (`p0-ui-device-calendar`: synthetic create_calendar_event approval card,
+/// decision through submitApproval, followups fence on every answer). No network, model or EventKit.
+final class ChatContextDeviceCardUITests: XCTestCase {
+    override func setUp() { continueAfterFailure = false }
+    private func launch(_ store: String) -> XCUIApplication {
+        let app = XCUIApplication(bundleIdentifier: "com.example.CatpawM.ConversationFirst.Auth")
+        app.launchEnvironment = ["CF_UI_TEST_STORE": store, "CF_UI_TEST_SCENARIO": "p0-ui-device-calendar"]
+        app.launchArguments = ["-AppleLanguages", "(zh-Hans)", "-AppleLocale", "zh_CN"]
+        app.launch(); return app
+    }
+    private func shot(_ name: String) { let a = XCTAttachment(screenshot: XCUIScreen.main.screenshot()); a.name = name; a.lifetime = .keepAlways; add(a) }
+    private func send(_ app: XCUIApplication, _ text: String) {
+        let field = app.textViews["chat.input"]; XCTAssertTrue(field.waitForExistence(timeout: 15)); field.tap(); field.typeText(text)
+        app.buttons["chat.send"].firstMatch.tap()
+    }
+    private func any(_ app: XCUIApplication, _ id: String) -> XCUIElementQuery { app.descendants(matching: .any).matching(identifier: id) }
+    private func label(_ app: XCUIApplication, _ text: String) -> XCUIElement { app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", text)).firstMatch }
+    func testCancelledCalendarCardPersistsAndChipsOnlyUnderLatestAnswer() throws {
+        let store = UUID().uuidString
+        var app = launch(store)
+        send(app, "帮我加个明天下午3点的评审会日程")
+        let cancel = app.buttons["chat.approval.deny"].firstMatch
+        let found = cancel.waitForExistence(timeout: 20); shot("cal-00-after-send")
+        XCTAssertTrue(found, "calendar card\n" + app.debugDescription)
+        let waiting = label(app, "等你确认日程")
+        XCTAssertTrue(waiting.waitForExistence(timeout: 5), "status row: static 等你确认日程 while the card is pending")
+        shot("cal-01-waiting"); Thread.sleep(forTimeInterval: 1.0); shot("cal-02-waiting-1s-later")
+        XCTAssertTrue(waiting.exists, "waiting row stays while pending")
+        cancel.tap()
+        XCTAssertTrue(label(app, "已拒绝").waitForExistence(timeout: 10), "card shows its final state (已拒绝) after the decision")
+        XCTAssertTrue(label(app, "没有添加这个日程").waitForExistence(timeout: 10), "turn finished after the device result")
+        let chips = any(app, "chat.followups").firstMatch.waitForExistence(timeout: 5); shot("cal-03-cancelled")
+        XCTAssertTrue(chips, "chips under the answer\n" + app.debugDescription)
+        XCTAssertEqual(any(app, "chat.followups").count, 1)
+        send(app, "好的，再说一句")
+        XCTAssertTrue(label(app, "这是一条测试回答").waitForExistence(timeout: 15))
+        Thread.sleep(forTimeInterval: 1.0); shot("cal-04-second-answer")
+        XCTAssertEqual(any(app, "chat.followups").count, 1, "chips only under the latest answer")
+        XCTAssertTrue(label(app, "已拒绝").exists, "earlier card keeps its final state after a turn change")
+        app.terminate()
+        app = launch(store)
+        XCTAssertTrue(app.textViews["chat.input"].waitForExistence(timeout: 20))
+        XCTAssertTrue(label(app, "已拒绝").waitForExistence(timeout: 10), "final state survives a cold relaunch"); shot("cal-05-relaunched")
+        XCTAssertLessThanOrEqual(any(app, "chat.followups").count, 1)
+    }
+}
