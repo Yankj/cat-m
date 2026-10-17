@@ -37,6 +37,6 @@ export function createFoundationFetchHandler(runtime){
    const text=await request.text();check(new TextEncoder().encode(text).length<=256,413,'request_too_large');let body;try{body=JSON.parse(text);}catch{throw new ApiError(422,'schema_invalid');}shape(body,[]);
    const result=await runtime.deleteChatSource(request.headers.get('authorization'),parts[4],parts[6]);
    return Response.json({schema_version:1,result},{headers:{'Cache-Control':'no-store'}});
-  }catch(e){return Response.json({schema_version:1,...parts[1]==='memory'?{contract:MEMORY_CONTRACT}:{},error:{code:e instanceof ApiError?e.code:'internal_error',retryable:false,reconciliation_required:e instanceof ApiError?e.reconciliation:false}},{status:e instanceof ApiError?e.status:500,headers:{'Cache-Control':'no-store'}});}
+  }catch(e){return Response.json({schema_version:1,...parts[1]==='memory'?{contract:MEMORY_CONTRACT}:{},error:{code:e instanceof ApiError?e.code:'internal_error',retryable:e instanceof ApiError&&e.retryable===true,reconciliation_required:e instanceof ApiError?e.reconciliation:false}},{status:e instanceof ApiError?e.status:500,headers:{'Cache-Control':'no-store',...e instanceof ApiError&&e.retryAfterSec?{'Retry-After':String(e.retryAfterSec)}:{}}});}
  };
 }
