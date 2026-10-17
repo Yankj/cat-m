@@ -185,7 +185,6 @@ struct NativeWorkspaceRetrySchedule: Sendable {
             if !isFixture { let routeScope=partition.scope; ModelRouteCatalog.shared.install { await backend.modelRoutes(scope:routeScope) } }
             let memory=isFixture ? nil : try NativeMemoryComposition.service(repository:repository,configuration:chatConfiguration,credentials:credentials)
             if !isFixture { MemoryLibraryHub.installAgentMemory(configuration:chatConfiguration,credentials:credentials); MemoryEventSink.installSideChannel() }
-            if !isFixture, let uid=state.user?.id { Task { _ = await ConversationMemoryAtRest.migrateAll(repository, subject: uid) } }   // Codex PR91 p91c-5: all rows, gated, retried each launch
             var selected:any ConversationBackend=isFixture ? UnconfiguredConversationBackend() : backend
             #if DEBUG
             selected=CatpawDemoBackendSwitch.select(selected)
