@@ -2063,7 +2063,7 @@
       "path": "apps/ios-conversation/Tests/NoBugP0Runner.swift",
       "category": "email_review",
       "line": 585,
-      "sha256": "d0c30ab892410178b801044aa0b51512891d8957a91abaa7a1689ee62e841172",
+      "sha256": "ca02bd83920fae2a839d81d63a5346f0875ad610d414f46742f104e88f2d59f1",
       "reason": "Test fixture: synthetic contact email (a at x.cn) for the minimalContact privacy test; not a real address.",
       "reviewed_utc_date": "2026-10-17",
       "reviewer": "Grok Bot"
