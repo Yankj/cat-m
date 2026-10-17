@@ -8,7 +8,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import { Buffer } from 'node:buffer';
 import { ApiError, check, clone } from '../facade-r2/src/common.mjs';
 import { safeProviderFailure } from './provider-errors.mjs';
-import { sseData } from './openrouter-provider.mjs';
+import { sseData, retryAfterFromFailure } from './openrouter-provider.mjs';
 import { GeminiInteractionsRoute, GeminiRateGuard, GEMINI_INTERACTIONS_ENDPOINT } from './gemini-interactions-route.mjs';
 
 export const FREE_ROUTE_CATALOG = Object.freeze({
@@ -224,16 +224,16 @@ class OpenAICompatibleRoute {
 
 // One limiter per isolate so concurrent turns share the Gemini RPM budget and 429 cooldown.
 let geminiGuardSingleton = null;
-const sharedGeminiGuard = rpm => { if (!geminiGuardSingleton || geminiGuardSingleton.rpm !== rpm) geminiGuardSingleton = new GeminiRateGuard({ rpm }); return geminiGuardSingleton; };
+export const sharedGeminiGuard = rpm => { if (!geminiGuardSingleton || geminiGuardSingleton.rpm !== rpm) geminiGuardSingleton = new GeminiRateGuard({ rpm }); return geminiGuardSingleton; };
 
 /** Snapshot of configured free routes for /readyz (no secrets). gemini_cooling_seconds > 0 means local RPM/429 guard is holding. */
 export function freeRouteStatus(chain, { now = Date.now(), geminiGuard = geminiGuardSingleton } = {}) {
   if (!chain?.routes?.length) return { schema_version: 1, chain: false, routes: [] };
-  const cool = geminiGuard && typeof geminiGuard.coolUntil === 'number' ? Math.max(0, Math.ceil((geminiGuard.coolUntil - now) / 1000)) : 0;
-  return { schema_version: 1, chain: true, auto_failover: chain.autoFailover !== false, routes: chain.routes.map(r => ({
+  const coolFor = r => geminiGuard ? Math.max(0, Math.ceil(((typeof geminiGuard.coolUntilFor === 'function' ? geminiGuard.coolUntilFor(r.model) : geminiGuard.coolUntil) - now) / 1000)) || 0 : 0;
+  return { schema_version: 1, chain: true, auto_failover: chain.autoFailover !== false, routes: chain.routes.map(r => { const cool = r.id === 'gemini' ? coolFor(r) : 0; return ({
     id: r.id, provider: r.provider, model: r.model, configured: true, available: !(r.id === 'gemini' && cool > 0),
     ...(r.id === 'gemini' && cool > 0 ? { cooling_seconds: cool } : {}), billing: r.billing ?? 'free_tier',
-  })) };
+  }); }) };
 }
 
 // Per-isolate route health (best effort). Only codes and timestamps; no upstream bodies.
@@ -274,7 +274,7 @@ export function modelRoutesList(chain, { now = Date.now(), geminiGuard = geminiG
   const routes = chain?.routes ?? [{ id: 'openrouter', provider: FREE_ROUTE_CATALOG.openrouter.provider, model: FREE_ROUTE_CATALOG.openrouter.model, models: [FREE_ROUTE_CATALOG.openrouter.model], policy_url: FREE_ROUTE_CATALOG.openrouter.policy_url, billing: 'free_tier' }];
   return { contract: 'catpaw.model-routes.v1', default_route: 'auto', primary_route: routes[0]?.id ?? null, chain: routes.map(r => r.id), auto_failover: chain ? chain.autoFailover !== false : false,
     routes: routes.map((r, index) => {
-      const cooling = r.id === 'gemini' && geminiGuard ? Math.max(0, Math.ceil((geminiGuard.coolUntil - now) / 1000)) : 0;
+      const cooling = r.id === 'gemini' && geminiGuard ? Math.max(0, Math.ceil(((typeof geminiGuard.coolUntilFor === 'function' ? geminiGuard.coolUntilFor(r.model) : geminiGuard.coolUntil) - now) / 1000)) || 0 : 0;
       const h = routeHealth.get(r.id);
       return { id: r.id, primary: index === 0, display_name: ROUTE_META[r.id]?.display_name ?? r.id, models: (r.models ?? [r.model]).map(m => ({ id: m, default: m === r.model })),
         status: routeState(r.id, { now, coolingSeconds: cooling }), last_error: h?.lastError ? { code: h.lastError.code, at: new Date(h.lastError.at).toISOString() } : null,
@@ -375,6 +375,8 @@ export class FreeRouteChainProvider {
         if (emitted && e && typeof e === 'object') e.emitted = true;
         if (emitted || !(e instanceof ApiError) || !FAILOVER_CODES.has(e.code)) throw e;
         if (Number.isFinite(ra) && !Number.isFinite(e.retryAfterSeconds)) e.retryAfterSeconds = Math.min(3600, Math.ceil(ra));
+        // Retry-After for the busy card: every rate_limited carries an advisory delay (provider header, daily reset, or default).
+        if (e.code === 'rate_limited' && !Number.isFinite(e.retryAfterSeconds)) e.retryAfterSeconds = retryAfterFromFailure(evidence.failure);
         if (!this.autoFailover) throw e;
         last = e; // busy before any output: try next free route
       }

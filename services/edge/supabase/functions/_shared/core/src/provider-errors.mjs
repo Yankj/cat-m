@@ -14,6 +14,8 @@ export async function safeProviderFailure(response,{redact=v=>v,now=Date.now()}=
  let raw='',overLimit=false;
  if(response.body){const reader=response.body.getReader(),decoder=new TextDecoder();try{while(true){const {done,value}=await reader.read();if(done)break;raw+=decoder.decode(value,{stream:true});if(raw.length>32768){overLimit=true;await reader.cancel();break;}}raw+=decoder.decode();}finally{reader.releaseLock();}}
  let parsed;try{parsed=overLimit?{}:JSON.parse(raw);}catch{parsed={};}const e=parsed.error??{},m=e.metadata??{};
+ // Google RetryInfo (error.details[].retryDelay "20s") counts as Retry-After when no header was sent.
+ if(headers.retry_after_seconds===null&&Array.isArray(e.details)){const d=e.details.map(x=>x?.retryDelay).find(v=>typeof v==='string'&&/^\d+(?:\.\d+)?s$/.test(v));if(d)headers.retry_after_seconds=Math.min(3600,Number(d.slice(0,-1)));}
  const clean=v=>{const s=boundedString(v,512);return s===null?null:redact(s).replace(/Bearer\s+[^\s"']+/gi,'Bearer [REDACTED]').replace(/sk-[a-zA-Z0-9_-]+/g,'[REDACTED]');};
  const metadata={};for(const k of ['limit_source','reason','error_type','provider_name','provider_code'])if(typeof m[k]==='number'||typeof m[k]==='string')metadata[k]=clean(String(m[k]));
  let providerMessage=null;if(typeof m.raw==='string'){try{const r=JSON.parse(m.raw);providerMessage=clean(r.error?.message??r.message);}catch{providerMessage=null;}}
