@@ -98,12 +98,12 @@ test('feedback: idempotent, intrusive (+legacy disturbing) lowers weight and rai
   assert.equal((await call('GET', BASE + '/weights')).body.weights.meeting_conflict.weight, 0.49);
 });
 
-test('decision model adapter: OpenRouter first then Agnes; keys only from env, not exposed', async () => {
+test('decision model adapter: OpenRouter first then Agnes (only with the user\'s consent, B1); keys only from env, not exposed', async () => {
   const env = { CATPAW_PRIVATE_MODEL_KEY: 'k-or-xxxxxxxx', CATPAW_AGNES_API_KEY: 'k-ag-xxxxxxxx' }, hits = [];
   const fetchImpl = async (url, init) => { hits.push(url); if (url.includes('openrouter')) return new Response('busy', { status: 429 }); return Response.json({ choices: [{ message: { content: '<think>..</think>```json\n{"decision":"card","reason":"r","confidence":0.8}\n```' } }] }); };
-  const m = createDecisionModel({ get: n => env[n], fetchImpl });
+  const m = createDecisionModel({ get: n => env[n], fetchImpl, consent: async (uid, r) => uid === 'u1' && r.id === 'agnes' });
   assert.deepEqual(m.routes, ['openrouter', 'agnes']);
-  assert.equal((await m.decide({})).decision, 'card'); assert.equal(m.lastRoute(), 'agnes'); assert.equal(hits.length, 2);
+  assert.equal((await m.decide({}, { uid: 'u1' })).decision, 'card'); assert.equal(m.lastRoute(), 'agnes'); assert.equal(hits.length, 2);
   assert.ok(!JSON.stringify(m).includes('k-or')); assert.equal(createDecisionModel({ get: () => undefined }), null);
 });
 
