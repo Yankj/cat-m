@@ -440,6 +440,42 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
     static let approvalContract = "catpaw.approval.v1"
     static let approvalHeader = "X-Catpaw-Approval-Contract"
     static let timeZoneHeader = "X-Catpaw-Time-Zone"
+    /// fix/context-window-v11x (59b5aae6): opt in to live-only `text_preview` frames on every request whose response is the
+    /// plain turn SSE (POST turns, GET events, retry-busy, approval/device decisions). Servers without it ignore the header.
+    static let liveTextHeader = "X-Catpaw-Live-Text"
+    static func requestLiveText(_ request: inout URLRequest) { request.setValue("1", forHTTPHeaderField: liveTextHeader) }
+    /// `text_preview.data` → preview, or nil when the frame is not mergeable. A bad preview is dropped (no transcript
+    /// effect), never a turn failure: it is advisory and the persisted `text_delta` batches carry the same text.
+    /// Model realities a preview may carry (same set as the strict check in `decode`, minus `not_configured`).
+    private func acceptsLiveReality(_ reality: String?) -> Bool {
+        reality == "provider_unverified" || (configuration.allowInjectedTestProvider && (reality == "injected_test_provider" || (reality == "injected_offline_only" && configuration.origin.scheme=="http" && configuration.origin.host=="127.0.0.1"))) || (configuration.useFrozenFixtureMetadata && reality == "injected_synthetic_fixture")
+    }
+    /// The dropped form of a preview: `ConversationSessionService.isLivePreview` discards it before the journal and the
+    /// sequence checks, and it is never emitted to observers.
+    static func droppedLivePreview(_ request: ConversationTurnRequest) -> ConversationTurnEvent {
+        ConversationTurnEvent(operationID: request.operationID, epoch: request.epoch, sequence: 0, payload: .sideChannel(type: "text_preview", data: Data()), conversationID: request.conversationID, turnID: request.operationID)
+    }
+    /// 三角 (prod v53): a `text_preview` with sequence < 1, a scope/conversation/turn/grant/cursor mismatch, an unexpected
+    /// model reality, a non-plain turn or bad data is DROPPED, never a turn failure. Message-id pinning (one assistant
+    /// message per turn) happens in AnswerPhaseProjection.
+    static func livePreviewEvent(_ wire: [String: Any], request: ConversationTurnRequest, scopeID: UUID, grant: Int, realityAccepted: Bool) -> ConversationTurnEvent {
+        guard realityAccepted, supportsResume(request), (try? chatEnvelope(wire)) != nil,
+              let sequence = try? positive(wire["sequence"]),
+              UUID(uuidString: wire["scope_id"] as? String ?? "") == scopeID,
+              UUID(uuidString: wire["conversation_id"] as? String ?? "") == request.conversationID,
+              UUID(uuidString: wire["turn_id"] as? String ?? "") == request.operationID,
+              (try? positive(wire["grant_epoch"])) == grant,
+              wire["cursor"] as? String == request.operationID.uuidString.lowercased() + ":\(sequence)",
+              let data = wire["data"] as? [String: Any], let preview = textPreview(data, sequence: sequence) else { return droppedLivePreview(request) }
+        return ConversationTurnEvent(operationID: request.operationID, epoch: request.epoch, sequence: sequence, payload: .textPreview(preview), conversationID: request.conversationID, turnID: request.operationID)
+    }
+    static func textPreview(_ data: [String: Any], sequence: Int) -> ConversationTextPreview? {
+        guard boolean(data["live"]) == true, let id = UUID(uuidString: data["message_id"] as? String ?? ""), let text = data["text"] as? String,
+              let offset = data["offset"] as? NSNumber, CFGetTypeID(offset) != CFBooleanGetTypeID(), offset.doubleValue >= 0,
+              offset.doubleValue.rounded() == offset.doubleValue, offset.doubleValue <= Double(Int32.max),
+              let base = try? positive(data["base_sequence"]), base == sequence else { return nil }
+        return ConversationTextPreview(messageID: id, offset: offset.intValue, text: text, baseSequence: base)
+    }
     /// Tools that only exist on approval-negotiated plain turns (services/edge TOOL_APPROVAL).
     static let approvalToolNames: Set<String> = ["render_ui", "list_tasks", "create_task", "update_task", "create_calendar_event", "update_calendar_event", "create_reminder", "update_reminder", "external_write",
         // catpaw.device.v1 (executed on this phone; services/edge/supabase/functions/_shared/core/src/device-call.mjs)
@@ -520,7 +556,7 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
         let route = turnPath(request) + "/" + request.operationID.uuidString.lowercased() + (deviceResult ? "/device-result" : "/interrupts/" + interruptID.lowercased() + "/decision") + "?after_sequence=\(afterSequence)"
         var post = try self.request(route, auth: auth)
         post.httpMethod = "POST"; post.timeoutInterval = ConversationReconnectPolicy.idleTimeout; post.setValue("text/event-stream, application/json", forHTTPHeaderField: "Accept"); post.setValue(TimeZone.current.identifier, forHTTPHeaderField: Self.timeZoneHeader); post.setValue(ConversationMemorySwitch.headerValue, forHTTPHeaderField: ConversationMemorySwitch.header)
-        post.httpBody = try Self.jsonData(decisionBody)
+        post.httpBody = try Self.jsonData(decisionBody); Self.requestLiveText(&post)
         let opened: (URLSession.AsyncBytes, URLResponse)
         do { opened = try await session.bytes(for: post) } catch is URLError { throw ConversationApprovalFailure.transport }
         let bytes = opened.0, response = opened.1
@@ -567,7 +603,7 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
         catch let network as URLError { throw ConversationStreamInterrupted(reason: Self.friendlyTransportMessage(network)) }
         let original = turnPath(request) + "/" + request.operationID.uuidString.lowercased()
         var get = try self.request(busyRestart ? original + "/retry-busy" : original + "/events?after_sequence=\(afterSequence)", auth: auth)
-        get.httpMethod = busyRestart ? "POST" : "GET"; get.timeoutInterval = ConversationReconnectPolicy.idleTimeout; get.setValue("text/event-stream", forHTTPHeaderField: "Accept")
+        get.httpMethod = busyRestart ? "POST" : "GET"; get.timeoutInterval = ConversationReconnectPolicy.idleTimeout; get.setValue("text/event-stream", forHTTPHeaderField: "Accept"); Self.requestLiveText(&get)
         return AsyncThrowingStream { continuation in
             let task = Task {
                 do {
@@ -678,6 +714,7 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
         // catpaw.approval.v1 negotiation: only plain chat turns are offered approval-gated tools.
         if Self.supportsResume(request),request.image==nil,!request.hasUploadedAttachments {upload.setValue(Self.approvalContract,forHTTPHeaderField:Self.approvalHeader);upload.setValue(ConversationUIEvent.contract,forHTTPHeaderField:ConversationUIEvent.header);upload.setValue(ConversationUIEvent.kindsHeaderValue,forHTTPHeaderField:ConversationUIEvent.kindsHeader);if ConversationDeviceCall.clientEnabled {upload.setValue(ConversationDeviceCall.contract,forHTTPHeaderField:ConversationDeviceCall.header);if !ConversationDeviceCall.clientTools.isEmpty {upload.setValue(ConversationDeviceCall.clientTools.joined(separator:","),forHTTPHeaderField:ConversationDeviceCall.toolsHeader)}}}
         upload.setValue(TimeZone.current.identifier,forHTTPHeaderField:Self.timeZoneHeader);upload.setValue(ConversationMemorySwitch.headerValue,forHTTPHeaderField:ConversationMemorySwitch.header) // task tools resolve local times
+        if Self.supportsResume(request) {Self.requestLiveText(&upload)}
         try Task.checkCancellation()
         return (auth, grant, upload)
     }
@@ -738,6 +775,10 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
         return c
     }
     private func decode(_ wire: [String: Any], request: ConversationTurnRequest, grant: Int, auth: String) async throws -> ConversationTurnEvent {
+        // Live-only text_preview bypasses the strict envelope checks below (which would fail the turn): anything off is dropped.
+        if wire["type"] as? String == "text_preview" {
+            return Self.livePreviewEvent(wire, request: request, scopeID: configuration.serverScopeID, grant: grant, realityAccepted: acceptsLiveReality(wire["model_reality"] as? String))
+        }
         try Self.chatEnvelope(wire)
         let sequence = try Self.positive(wire["sequence"])
         guard UUID(uuidString: wire["scope_id"] as? String ?? "") == configuration.serverScopeID,

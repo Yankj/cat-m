@@ -331,11 +331,27 @@ import UIKit
     let text: String
     let complete: Bool
     @State private var pulse = 1.0
+    /// IOS-NOTE rule 6: a failed/cancelled turn retracts the live `text_preview` tail it never saved. The previous
+    /// display stays on top and fades out, so only the unsaved tail disappears (the shared prefix renders identically).
+    @State private var retracted: String?
+    @State private var retractOpacity = 1.0
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var body: some View {
         HStack(alignment: .lastTextBaseline, spacing: 0) {
-            StreamingConversationText(text: text, complete: complete)
-                .opacity(pulse)
+            ZStack(alignment: .topLeading) {
+                StreamingConversationText(text: text, complete: complete)
+                    .opacity(pulse)
+                if let retracted {
+                    StreamingConversationText(text: retracted, complete: false)
+                        .opacity(retractOpacity).allowsHitTesting(false).accessibilityHidden(true)
+                }
+            }
+        }
+        .onChange(of: text) { old, new in
+            // Retraction only: the new text is a strict UTF-16 prefix of the old one (persisted text under a dropped preview).
+            guard !reduceMotion, new.utf16.count < old.utf16.count, old.utf16.starts(with: new.utf16) else { return }
+            retracted = old; retractOpacity = 1
+            withAnimation(.easeOut(duration: 0.35)) { retractOpacity = 0 } completion: { withAnimation(.easeOut(duration: 0.2)) { retracted = nil } }
         }
         .overlay {
             if !complete && !reduceMotion { BubbleShimmerSweep().allowsHitTesting(false) }
