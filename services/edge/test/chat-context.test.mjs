@@ -28,7 +28,9 @@ async function setup(opts={}){
  return {f,probe,path:`/catpaw/chat/v1/scopes/${f.scope.scope_id}/conversations/${cid}`};
 }
 const sse=async r=>(await r.text()).split('\n\n').filter(b=>b.startsWith('data: ')).map(b=>JSON.parse(b.slice(6)));
-const conversation=async s=>(await s.f.json(await s.f.req(s.path))).conversation;
+// Stored row (server-side, includes model_messages). The GET wire projection omits model_messages (context-window v1.1.x).
+const conversation=async s=>s.f.runtime.chat.readConversation('Bearer memory-fixture',s.f.scope.scope_id,s.path.split('/').at(-1));
+const wireConversation=async s=>(await s.f.json(await s.f.req(s.path))).conversation;
 async function post(s,text){
  const c=await conversation(s),tid=randomUUID();
  const r=await s.f.runtime.api(new Request(H+s.path+'/turns',{method:'POST',headers:{Authorization:'Bearer memory-fixture','Content-Type':'application/json','X-Catpaw-Approval-Contract':APPROVAL_CONTRACT,'X-Catpaw-Device-Contract':DEVICE_CONTRACT},body:JSON.stringify({turn_id:tid,expected_revision:c.revision,expected_grant_epoch:c.grant_epoch,message:{id:randomUUID(),text},context:[]})}));

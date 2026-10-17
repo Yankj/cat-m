@@ -21,7 +21,10 @@ export async function eraseChatSource({records,principal,scope_id,source}){
   const removedIDs=new Set([source.id,...assistantIDs]);
   const messages=c.messages.filter(m=>!removedIDs.has(m.id));
   // Rebuild model history from remaining authoritative messages; tool history is redundant and cannot retain deleted copies.
-  await records.put(owner,'native-chat-conversations',{...c,state:c.state==='revoked'?'revoked':'paused',revision:c.revision+1,grant_epoch:c.grant_epoch+1,messages,model_messages:messages.map(({id,...m})=>m),source_purged_at:iso()});
+  // B5 (context-memory PLAN Rev 2): derived copies on the same row go in the same write: next-turn notes (shown text ≤300 chars,
+  // tool titles), interaction outcomes, device undo notes, the v1.2 summary/ledger, and the turn meta (recomputed next turn).
+  const {context_summary,context_ledger,model_message_meta,...kept}=c;
+  await records.put(owner,'native-chat-conversations',{...kept,state:c.state==='revoked'?'revoked':'paused',revision:c.revision+1,grant_epoch:c.grant_epoch+1,messages,model_messages:messages.map(({id,...m})=>m),turn_outcome_notes:[],device_undo_notes:[],interaction_outcomes:[],source_purged_at:iso()});
   for(const t of affected){
     const input={...t.input,message:t.input.message.id===source.id?{...t.input.message,text:''}:t.input.message,context:[]};
     let events=t.events.map(e=>e.type==='turn_started'&&e.data.attachment_receipts?{...e,data:{...e.data,attachment_receipts:[],content_redacted:true}}:e.type==='turn_completed'&&e.data.provider_receipt?{...e,data:{...e.data,provider_receipt:null,content_redacted:true}}:e.type==='text_delta'?{...e,data:{...e.data,text:'',content_redacted:true}}:e.type==='tool_call'?{...e,data:{call_id:e.data.call_id,name:e.data.name,content_redacted:true}}:e.type==='tool_result'?{...e,data:{call_id:e.data.call_id,name:e.data.name,content_redacted:true}}:e);
