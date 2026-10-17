@@ -67,8 +67,8 @@ test('PR90f #4: a crashed claim is recovered after the lease (never attempted â†
   const a = (await call('POST', BASE + '/evaluate', meeting({ delivery: 'remote' }))).body.event_id;
   const b = (await call('POST', BASE + '/evaluate', meeting({ delivery: 'remote' }))).body.event_id;
   const T = () => new Date(clock.t).toISOString();
-  const ca = await store.claimPush(a, T()); assert.ok(ca?.claim, 'claim token');      // crashed before sending
-  const cb = await store.claimPush(b, T()); await store.markPushAttempt(b, cb.claim, T());  // crashed after APNs was called
+  const ca = await store.claimPush(a, T(), 0); assert.ok(ca?.claim, 'claim token');      // crashed before sending
+  const cb = await store.claimPush(b, T(), 0); await store.markPushAttempt(b, cb.claim, T());  // crashed after APNs was called
   await svc.flushPush(); assert.equal(sent.length, 0, 'within the lease nothing is touched');
   clock.t += 5 * 60_000; await svc.flushPush();
   assert.deepEqual(sent.map(e => e.id), [a], 'only the never-attempted row is resent');
