@@ -318,7 +318,17 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
                 do {
                     try Task.checkCancellation()
                     postInitiated = true // From here a transport error cannot prove non-admission.
-                    let (bytes, response) = try await self.session.bytes(for: upload)
+                    // catpaw-api v48: 503 chat_runtime_busy (up to ~60 s after a re-consent) is a refusal before admission,
+                    // whatever its `retryable` flag says. Re-POST the same operation quietly with backoff; the user's
+                    // bubble keeps its in-flight spinner and no error shows unless the budget runs out.
+                    let (bytes, response) = try await ChatRuntimeBusyRetry.run(post: {
+                        let (wire, reply) = try await self.session.bytes(for: upload)
+                        guard Self.supportsResume(request), let busy = reply as? HTTPURLResponse, busy.statusCode == 503 else { return (wire, reply) }
+                        var body = Data(); for try await byte in wire { guard body.count < 65536 else { break }; body.append(byte) }
+                        guard ChatRuntimeBusyRetry.isBusy(body) else { throw NativeChatHTTPFailure.turnResponse(503) }
+                        sendDiagnostic("catpaw.send chat_runtime_busy op=\(request.operationID.uuidString.prefix(8)) quiet retry")
+                        throw ChatRuntimeBusyRetry.Busy(retryAfter: ChatRuntimeBusyRetry.retryAfter(header: busy.value(forHTTPHeaderField: "Retry-After"), body: body))
+                    }, sleep: ChatRuntimeBusyRetry.sleep)
                     guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
                         let status=(response as? HTTPURLResponse)?.statusCode ?? 0
                         if status == 401 { await self.credentials.rejected(scope: request.scope) }
@@ -1742,5 +1752,48 @@ public actor ChatAttachmentSendCoordinator {
         kept[failedOperationID] = nil; receipts[failedOperationID] = nil
         kept[retry.operationID] = images; receipts[retry.operationID] = uploaded
         return retry.withAttachmentIDs(uploaded.map(\.id))
+    }
+}
+
+/// catpaw-api v48 `503 chat_runtime_busy`: always retryable on the client (the server flag says false today). Quiet
+/// exponential backoff 1, 2, 4, 8, 16, 16 s (a Retry-After header / retry_after_seconds wins, clamped 0.5–30 s) within a
+/// 60 s budget; only when the budget is spent does the send fail — as not sent, with a calm message.
+enum ChatRuntimeBusyRetry {
+    static let code = "chat_runtime_busy"
+    static let budget: TimeInterval = 60
+    static let finalMessage = "服务正忙，请稍后重试。"  // shown after 「消息尚未发送，输入已保留。」
+    struct Busy: Error { let retryAfter: TimeInterval? }
+    nonisolated(unsafe) static var sleep: @Sendable (TimeInterval) async throws -> Void = { try await Task.sleep(nanoseconds: UInt64($0 * 1_000_000_000)) }
+    private static func problem(_ body: Data) -> [String: Any]? {
+        guard let object = try? JSONSerialization.jsonObject(with: body) as? [String: Any] else { return nil }
+        return (object["error"] as? [String: Any]) ?? object
+    }
+    /// True for the busy code regardless of `retryable`.
+    static func isBusy(_ body: Data) -> Bool { problem(body)?["code"] as? String == code }
+    static func retryAfter(header: String?, body: Data) -> TimeInterval? {
+        if let raw = header?.trimmingCharacters(in: .whitespaces), let seconds = Double(raw), seconds.isFinite, seconds >= 0 { return seconds }
+        guard let problem = problem(body) else { return nil }
+        for key in ["retry_after_seconds", "retry_after_sec", "retry_after"] {
+            if let n = problem[key] as? NSNumber, CFGetTypeID(n) != CFBooleanGetTypeID(), n.doubleValue.isFinite, n.doubleValue >= 0 { return n.doubleValue }
+        }
+        return nil
+    }
+    static func delay(attempt: Int, retryAfter: TimeInterval?) -> TimeInterval {
+        if let retryAfter { return min(max(retryAfter, 0.5), 30) }
+        return min(pow(2, Double(max(1, attempt) - 1)), 16)
+    }
+    /// `post` throws `Busy` for a busy refusal; any other result or error passes through unchanged.
+    static func run<R>(post: () async throws -> R, sleep: (TimeInterval) async throws -> Void) async throws -> R {
+        var waited: TimeInterval = 0, attempt = 0
+        while true {
+            do { return try await post() }
+            catch let busy as Busy {
+                attempt += 1
+                let wait = delay(attempt: attempt, retryAfter: busy.retryAfter)
+                guard waited + wait <= budget else { throw ConversationDispatchFailure.notSent(reason: finalMessage) }
+                try Task.checkCancellation()
+                try await sleep(wait); waited += wait
+            }
+        }
     }
 }
