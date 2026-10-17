@@ -10,7 +10,11 @@ import {OpenRouterProvider,DEFAULT_RATE_LIMIT_RETRY_SECONDS} from './openrouter-
 import {GeminiInteractionsRoute} from './gemini-interactions-route.mjs';
 import {FAILOVER_CODES,routeTimeouts,sharedGeminiGuard} from './free-route-chain.mjs';
 
-const log=(evidence,startedAt,outcome)=>{try{console.info(JSON.stringify({event:'catpaw_route_attempt',route:'vision-'+evidence.route,model:String(evidence.requested_model??'').slice(0,120),attempt:evidence.attempt,outcome,http_status:evidence.http_status??null,timeout_phase:evidence.timeout_phase??null,retry_after_seconds:Number.isFinite(evidence.retry_after_seconds)?evidence.retry_after_seconds:null,elapsed_ms:Date.now()-startedAt}));}catch{}};
+// A key/config/request fault (not "busy") still falls back for the user, but must not hide behind the next hop's 429:
+// it gets failure_class=provider_config_error on the attempt line plus its own warning event (no bodies, no secrets).
+export const CONFIG_ERROR_CODES=Object.freeze(['unauthorized','forbidden','provider_request_invalid','free_model_unavailable','not_configured','vision_route_not_configured','endpoint_not_allowed','invalid_credential']);
+const failureClass=code=>code==='ok'?null:CONFIG_ERROR_CODES.includes(code)?'provider_config_error':code==='rate_limited'||code==='quota_exhausted'?'provider_busy':'provider_error';
+const log=(evidence,startedAt,outcome)=>{try{const cls=failureClass(outcome);if(cls==='provider_config_error')console.warn(JSON.stringify({event:'catpaw_vision_route_config_error',route:'vision-'+evidence.route,model:String(evidence.requested_model??'').slice(0,120),code:outcome,http_status:evidence.http_status??null}));console.info(JSON.stringify({event:'catpaw_route_attempt',failure_class:cls,route:'vision-'+evidence.route,model:String(evidence.requested_model??'').slice(0,120),attempt:evidence.attempt,outcome,http_status:evidence.http_status??null,timeout_phase:evidence.timeout_phase??null,retry_after_seconds:Number.isFinite(evidence.retry_after_seconds)?evidence.retry_after_seconds:null,elapsed_ms:Date.now()-startedAt}));}catch{}};
 
 export class VisionChainProvider{
   #gemini;#geminiReady;#openrouter;#observations=[];
@@ -43,7 +47,8 @@ export class VisionChainProvider{
       const evidence={attempt:this.#observations.length+1,route:id,requested_model:model,http_status:null,actual_model:null,terminal_validated:false};
       this.#observations.push(evidence);const startedAt=Date.now();let emitted=false;
       try{
-        const events=id==='gemini'?this.#gemini.stream({...input,messages:mapVisionMessages(input.messages,images,input.vision_user_index),tools:input.tools??[]},evidence):this.#openrouter.stream(input);
+        // The consented route says tools:'none' for both hops; enforce it here instead of trusting the caller (chat-service sends [] today).
+        const events=id==='gemini'?this.#gemini.stream({...input,messages:mapVisionMessages(input.messages,images,input.vision_user_index),tools:[]},evidence):this.#openrouter.stream({...input,tools:[]});
         for await(const e of events){
           if(e.type==='thinking_delta')continue;
           if(e.type==='done'){
@@ -55,7 +60,7 @@ export class VisionChainProvider{
         }
         throw new ApiError(503,'incomplete_provider_terminal',{reconciliation:emitted});
       }catch(e){
-        const code=e instanceof ApiError?e.code:'provider_failed';evidence.error=code;
+        const code=e instanceof ApiError?e.code:'provider_failed';evidence.error=code;evidence.failure_class=failureClass(code);
         if(Number.isFinite(e?.retryAfterSeconds))evidence.retry_after_seconds=Math.ceil(e.retryAfterSeconds);
         log(evidence,startedAt,code);input.signal?.throwIfAborted();
         // Fail over only before any output, and never after an uncertain dispatch (reconciliation) unless it is a busy code.

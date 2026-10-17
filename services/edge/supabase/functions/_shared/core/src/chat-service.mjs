@@ -368,7 +368,7 @@ export class ChatService {
       const data={code,retryable:false,reconciliation_required:!!reconciliation};
       // R7 busy card: free-route rate limit carries an advisory retry delay (read-only countdown, never auto-resend).
       // Any rate_limited now carries it (provider header, daily reset or route default), rounded up and capped at 1 h.
-      if(code==='rate_limited'){const ra=retryAfterOf(cause);if(ra!==null)data.retry_after_seconds=ra;}
+      if(code==='rate_limited'||code==='quota_exhausted'){const ra=retryAfterOf(cause);if(ra!==null)data.retry_after_seconds=ra;}
       // Use only the freshly locked row. Never flush buffered text/history/tools during cleanup.
       const saved=await tx.put(env.owner,'native-chat-turns',{...t,state:reconciliation?'outcome_unknown':'failed',error:data,finished_at:iso(),events:[...t.events,this.event(t,'turn_failed',data)]});
       // chat-context-1522: the failed turn's tool calls, the user's decisions and the text already shown reach the next turn.
