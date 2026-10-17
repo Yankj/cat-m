@@ -261,6 +261,13 @@ import CatpawImageComposer
         UIImpactFeedbackGenerator(style:.light).impactOccurred()
         model.editDraft(text);model.prepareSend();followingLatest=true
     }
+    /// chat-starter-prompts: a starter card goes through the same path as the Send button (instant bubble, same consent).
+    private func sendStarter(_ text:String) {
+        guard !text.isEmpty,!model.busy,model.draft.isEmpty,composerChrome.attachments.isEmpty else {return}
+        model.editDraft(text)
+        guard model.canAcceptDraft else {model.editDraft("");return}
+        submitDraft()
+    }
     private var renderedTimelineRows:[RenderedTimelineRow] {timelineMemo.rendered}
     private func computeRenderedTimelineRows()->[RenderedTimelineRow] {
         #if DEBUG
@@ -336,6 +343,10 @@ import CatpawImageComposer
                                         .firstRunChatEntrance("chat.row0")
                                     Text(ui("问一个问题，或说一件想做的事。")).foregroundStyle(CatpawColors.secondary)
                                         .firstRunChatEntrance("chat.row1")
+                                    // chat-starter-prompts: one tap sends the full prompt; hidden while the user types their own.
+                                    ConversationStarterPromptsView(enabled:model.loaded && !model.busy,send:sendStarter).padding(.top,8)
+                                        .opacity(model.draft.isEmpty ? 1:0).allowsHitTesting(model.draft.isEmpty).accessibilityHidden(!model.draft.isEmpty)
+                                        .firstRunChatEntrance("chat.backdrop")
                                 }.frame(maxWidth: .infinity, alignment: .leading)
                                 .padding(.top, textSize.isAccessibilitySize ? 24 : 64).padding(.bottom, 32)
                                 .background(PlushEmptyBackdrop().firstRunChatEntrance("chat.backdrop").frame(height: 360).offset(y: 40), alignment: .top)

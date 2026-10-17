@@ -2607,6 +2607,62 @@
     "en": "What would you like to do together?",
     "zh-Hans": "想一起完成什么？"
   },
+  "试试这些": {
+    "en": "Try one of these",
+    "zh-Hans": "试试这些"
+  },
+  "轻点立即发送": {
+    "en": "Tap to send now",
+    "zh-Hans": "轻点立即发送"
+  },
+  "今天的日程": {
+    "en": "Today's schedule",
+    "zh-Hans": "今天的日程"
+  },
+  "帮我看看今天的日程，有什么要提前准备？": {
+    "en": "Check my schedule for today. What should I prepare for?",
+    "zh-Hans": "帮我看看今天的日程，有什么要提前准备？"
+  },
+  "设个提醒": {
+    "en": "Set a reminder",
+    "zh-Hans": "设个提醒"
+  },
+  "明天上午 10 点提醒我给客户回电话": {
+    "en": "Remind me at 10 AM tomorrow to call the client back",
+    "zh-Hans": "明天上午 10 点提醒我给客户回电话"
+  },
+  "加个会议": {
+    "en": "Add a meeting",
+    "zh-Hans": "加个会议"
+  },
+  "1 小时后在望京 SOHO 开评审会，帮我加进日历": {
+    "en": "Add a review meeting at Wangjing SOHO in 1 hour to my calendar",
+    "zh-Hans": "1 小时后在望京 SOHO 开评审会，帮我加进日历"
+  },
+  "附近咖啡馆": {
+    "en": "Nearby cafés",
+    "zh-Hans": "附近咖啡馆"
+  },
+  "附近有哪些适合办公的咖啡馆？": {
+    "en": "Which cafés nearby are good for working?",
+    "zh-Hans": "附近有哪些适合办公的咖啡馆？"
+  },
+  "拆解任务": {
+    "en": "Break down a task",
+    "zh-Hans": "拆解任务"
+  },
+  "把「下周上线新版本」拆成待办清单": {
+    "en": "Break \"ship the new version next week\" into a to-do list",
+    "zh-Hans": "把「下周上线新版本」拆成待办清单"
+  },
+  "起草周报": {
+    "en": "Draft a weekly update",
+    "zh-Hans": "起草周报"
+  },
+  "帮我起草周报：本周进展、风险、下周计划": {
+    "en": "Draft my weekly update: progress, risks and next week's plan",
+    "zh-Hans": "帮我起草周报：本周进展、风险、下周计划"
+  },
   "想记住的内容": {
     "en": "What to remember",
     "zh-Hans": "想记住的内容"
