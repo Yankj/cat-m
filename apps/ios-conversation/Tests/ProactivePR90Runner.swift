@@ -692,6 +692,14 @@ func pr90i_feedbackGateOnlyLocal() {
     check(Set(r.needingConfirmation(account: "A").map(\.key)).isSuperset(of: ["dead-1", "live-1"]), "flag persisted")
 }
 
+// p90i (09:01): quarantine releases follow the parking rule — a released record's dead letters stay dead (flagged),
+// its live ops are released as before, everything of unreleased records stays quarantined.
+func pr90i_quarantineSplit() {
+    let p = ProactiveQuarantine.partition(live: ["l1", "l2"], dead: ["d1", "d2"], released: ["s1"]) { k in "s" + k.dropFirst() }
+    check(p.live == ["l1"] && p.dead == ["d1"], "released record: live → pending, dead → dead (flagged) (\(p))")
+    check(p.restLive == ["l2"] && p.restDead == ["d2"], "unreleased record: both stay quarantined, still apart")
+}
+
 @main enum ProactivePR90Runner {
     static func main() async {
         pr90_3_prescheduleSharesDecisionAndQuota()
@@ -712,7 +720,7 @@ func pr90i_feedbackGateOnlyLocal() {
         pr90h_cloudIdentity()
         pr90f_quarantine(); pr90f_quarantineQueue(); await pr90f_purgeDeadLetters(); await pr90f_snoozeAwaitsAdd(); pr90f_clock(); pr90f_wire(); pr90f_golden()
         pr90g_quarantinePerRecord(); pr90g_restoreVisible(); pr90g_roundTrip()
-        pr90i_rules(); pr90i_feedbackGateOnlyLocal(); await pr90i_deadLettersStayDeadOnRestore()
+        pr90i_rules(); pr90i_feedbackGateOnlyLocal(); await pr90i_deadLettersStayDeadOnRestore(); pr90i_quarantineSplit()
         print(failures == 0 ? "PR90 proactive: all passed" : "PR90 proactive: \(failures) failed"); exit(failures == 0 ? 0 : 1)
     }
 }

@@ -367,6 +367,33 @@ import UserNotifications
         XCTAssertEqual(ProactiveEngine.shared.syncNeedingConfirmation().map(\.key), deadKeys, "flagged as needing the user's confirmation")
         XCTAssertFalse(ProactiveEngine.shared.syncQueue.items.contains { $0.op.local == dead.id }, "not pending")
     }
+    /// p90i (09:01): a quarantined record released on evidence keeps its dead letters dead (flagged, never sent, its
+    /// group still blocked); its live ops are released and synced as before.
+    func testQuarantineReleaseKeepsDeadLettersDead() async throws {
+        let dead = card("xctest-qd-"), live = card("xctest-ql-")
+        ProactiveLocalBackend.save(dead); ProactiveLocalBackend.save(live)
+        let q = ProactiveEngine.shared.syncQueue
+        q.enqueue(.init(local: dead.id, action: "dismiss", operationID: "op-qd"), key: "op-qd", account: "XCTEST-A", group: dead.id, now: Self.day)
+        for i in 1...12 { _ = await q.drain(now: Self.day.addingTimeInterval(Double(i) * 7200), account: "XCTEST-A") { _ in .retry } }
+        XCTAssertTrue(q.deadLetters.contains { $0.key == "op-qd" }, "precondition: dead letter")
+        q.enqueue(.init(local: live.id, action: "dismiss", operationID: "op-ql"), key: "op-ql", account: "XCTEST-A", group: live.id, now: Self.day)
+        UserDefaults.standard.set([dead.id: "srv-qd", live.id: "srv-ql"], forKey: ProactiveServerIDMap.legacyKey)
+        UserDefaults.standard.removeObject(forKey: ProactiveDataOwner.key)            // what the previous build left behind
+        ProactiveEngine.shared.claimData(for: "XCTEST-A")
+        XCTAssertTrue(ProactiveEngine.shared.hasQuarantine)
+        let v = await ProactiveEngine.shared.reconcileQuarantine()
+        XCTAssertEqual(v, .release, "both records prove A by their stamps")
+        XCTAssertTrue(q.items.contains { $0.key == "op-ql" }, "live op released as pending")
+        XCTAssertFalse(q.items.contains { $0.key == "op-qd" }, "dead letter not moved back to pending")
+        XCTAssertEqual(ProactiveEngine.shared.syncNeedingConfirmation().map(\.key), ["op-qd"], "dead letter flagged for the user")
+        var sent: [String] = []
+        ProactiveEngine.shared.transport = { path, _, _ in sent.append(path); return ["ok": true] }
+        ProactiveClock.now = { Self.day.addingTimeInterval(86_400 * 2) }
+        q.enqueue(.init(local: dead.id, action: "undo", operationID: "undo-qd"), key: "undo-qd", account: "XCTEST-A", group: dead.id)
+        await ProactiveEngine.shared.drainSync(); await settle()
+        XCTAssertTrue(sent.contains("suggestions/srv-ql/action"), "live op synced (\(sent))")
+        XCTAssertFalse(sent.contains { $0.contains("srv-qd") }, "dead letter never sent; its group stays blocked")
+    }
     /// p90i: EventKit items the app created are outside the app — a switch never deletes or edits them; they are recorded
     /// as pending a user decision (#89's list) under the old account.
     func testSwitchLeavesEventKitRemindersAndRecordsThemForDecision() async throws {
