@@ -18,9 +18,18 @@ $$;
 revoke all on function proactive.resurface_snoozed_suggestions(timestamptz) from public, anon, authenticated;
 grant execute on function proactive.resurface_snoozed_suggestions(timestamptz) to service_role;
 
--- 2) Historical rows: pending pushes for proactive decisions written before ownership existed (no 'delivery') or
---    owned by the device are never sent by APNs. Explicit, auditable disposition.
+-- 2) Historical rows: pending pushes for proactive decisions that are not an explicit remote hand-off are never sent
+--    by APNs (the device delivers its own decisions; pushing them too was the PR90 double-delivery bug).
+--    Rows written by catpaw-proactive v6 carry no 'delivery' at all (owner unknown): they get their own marker,
+--    'legacy_no_delivery', so they can be found (and, if an operator decides so, re-queued) by a single query:
+--      update proactive.events set push_state='pending', push_error=null where push_error='legacy_no_delivery';
+--    Production read-only check 2026-10-17 07:5x CST: 0 pending proactive_decision rows (1 skipped card row).
+--    Only push_state / push_error change; terminal rows and non-proactive kinds are untouched.
+update proactive.events
+   set push_state = 'skipped', push_error = 'legacy_no_delivery'
+ where kind = 'proactive_decision' and push_state = 'pending'
+   and payload->>'delivery' is null;
 update proactive.events
    set push_state = 'skipped', push_error = 'device_owned'
  where kind = 'proactive_decision' and push_state = 'pending'
-   and coalesce(payload->>'delivery', 'device') <> 'remote';
+   and payload->>'delivery' is not null and payload->>'delivery' <> 'remote';
