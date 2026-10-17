@@ -1843,14 +1843,14 @@
       "path": "services/edge/test/proactive-decision.test.mjs",
       "category": "secret_assignment_review",
       "line": 102,
-      "sha256": "1b76a3b7ec4ac6de617b7095267b1b7ebce64eb9da3c4aa02176a27d0ea60794",
+      "sha256": "fec33ba89f9c605aab08708ccc0f0d402d9286519cd971621e5f17a011fce076",
       "reason": "PR90h review 2026-10-17: synthetic test literal (offline lifecycle access token / masked k-xx-xxxxxxxx env stub); no real credential."
     },
     {
       "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
       "category": "deployment_public_key",
       "line": 361,
-      "sha256": "06b333afee813d88bcb92a79d8dc3e6774f0675b870b9269709d2eb3fe74f9f8",
+      "sha256": "ea4c56cc4e019b9fcb4e55f8f6b74c53438e38f2fe2a3ce5eee26c87da0f9f82",
       "reason": "Reviewed named offline auth fixture: synthetic public-key/access-token markers and injected mock remotes only; no real credential or network request. Exact current bytes and line pinned. [p90i v7 rebase onto #89 3b7564e: same line bytes, moved 327→361]"
     },
     {
@@ -1864,7 +1864,7 @@
       "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
       "category": "secret_assignment_review",
       "line": 237,
-      "sha256": "06b333afee813d88bcb92a79d8dc3e6774f0675b870b9269709d2eb3fe74f9f8",
+      "sha256": "ea4c56cc4e019b9fcb4e55f8f6b74c53438e38f2fe2a3ce5eee26c87da0f9f82",
       "reason": "PR90h review 2026-10-17: synthetic test literal (offline lifecycle access token / masked k-xx-xxxxxxxx env stub); no real credential. [p90i v7 rebase onto #89 3b7564e: same line bytes, moved 183→237]"
     },
     {
@@ -2062,8 +2062,8 @@
     {
       "path": "apps/ios-conversation/Tests/NoBugP0Runner.swift",
       "category": "email_review",
-      "line": 583,
-      "sha256": "9df59f9a4ec5742396dd1437048dd470d988c9d7b1a003afae333e711d57b02b",
+      "line": 585,
+      "sha256": "d0c30ab892410178b801044aa0b51512891d8957a91abaa7a1689ee62e841172",
       "reason": "Test fixture: synthetic contact email (a at x.cn) for the minimalContact privacy test; not a real address.",
       "reviewed_utc_date": "2026-10-17",
       "reviewer": "Grok Bot"
@@ -2099,8 +2099,8 @@
     {
       "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
       "category": "deployment_public_key",
-      "line": 569,
-      "sha256": "c49146b57db685100c33fcf90b0c4317496e1c99364b71c6ced7e60b1e693eb3",
+      "line": 603,
+      "sha256": "ea4c56cc4e019b9fcb4e55f8f6b74c53438e38f2fe2a3ce5eee26c87da0f9f82",
       "reason": "Reviewed named offline auth fixture: synthetic public-key/access-token markers and injected mock remotes only; no real credential or network request. Exact current bytes and line pinned."
     },
     {
@@ -2113,8 +2113,8 @@
     {
       "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
       "category": "secret_assignment_review",
-      "line": 604,
-      "sha256": "c49146b57db685100c33fcf90b0c4317496e1c99364b71c6ced7e60b1e693eb3",
+      "line": 638,
+      "sha256": "ea4c56cc4e019b9fcb4e55f8f6b74c53438e38f2fe2a3ce5eee26c87da0f9f82",
       "reason": "Reviewed named offline auth fixture: synthetic public-key/access-token markers and injected mock remotes only; no real credential or network request. Exact current bytes and line pinned. Re-pinned 2026-10-17 after adding the PR91 XCTests (same synthetic markers, lines shifted)."
     },
     {
