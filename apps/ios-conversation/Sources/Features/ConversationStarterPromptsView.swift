@@ -12,6 +12,7 @@ struct ConversationStarterPromptsView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var prompts = ConversationStarterPrompts.ordered()
     @State private var appeared = false
+    @State private var tapped = 0   // chat-ux-1505 #2: .sensoryFeedback respects system haptic settings
     private func ui(_ key: String) -> String { AppLanguage(locale: locale).ui(key) }
 
     private var columns: Int { textSize.isAccessibilitySize ? 1 : 2 }
@@ -33,13 +34,14 @@ struct ConversationStarterPromptsView: View {
         .accessibilityElement(children: .contain)
         .accessibilityLabel(ui("试试这些"))
         .accessibilityIdentifier("chat.starters")
+        .sensoryFeedback(.impact(weight: .light), trigger: tapped)
         .onAppear { appeared = true }   // per-card staggered spring below; Reduce Motion shows them at once
     }
 
     private func card(_ prompt: ConversationStarterPrompt, index: Int) -> some View {
         let shape = RoundedRectangle(cornerRadius: 16, style: .continuous)
         return Button {
-            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            tapped += 1
             send(ui(prompt.prompt))
         } label: {
             VStack(alignment: .leading, spacing: 4) {

@@ -52,6 +52,7 @@ import CatpawImageComposer
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @ScaledMetric(relativeTo: .footnote) private var followupRowHeight = 64.0
     @FocusState private var focused: Bool
+    @State private var composerFocusCount = 0   // chat-ux-1505 #2 haptic trigger
     /// One timeline projection per body pass. Previously every row, the reading-anchor
     /// tracker and each assistant row's `lastAssistantMessageID` re-ran the full projection
     /// (O(n²) per keystroke / streamed token; 235 ms main-thread stalls in Time Profiler).
@@ -672,7 +673,9 @@ import CatpawImageComposer
                     placeholder:composerChrome.runState == .responding ? ui("继续追问…") : ui("问问 Catpaw"),
                     lineCountChanged:{composerLineCount=$0},
                     addAttachments:{_ = composerChrome.addAttachments($0,using:attachmentUploader)},
+                    focusChanged:{ if $0 { composerFocusCount += 1 } },
                     submit:{if canSendDraft {submitDraft()}})
+                    .sensoryFeedback(.impact(weight:.light,intensity:0.5),trigger:composerFocusCount)
                     .background{GeometryReader{geometry in Color.clear.preference(key:ConversationComposerMeasurements.self,value:["text":geometry.size.height])}}
             }
                 .onAppear{composerChrome.setSendAction(submitDraft)}
