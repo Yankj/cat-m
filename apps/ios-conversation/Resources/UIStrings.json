@@ -5611,6 +5611,34 @@
     "en": "Account and settings",
     "zh-Hans": "账户与设置"
   },
+  "账户": {
+    "en": "Account",
+    "zh-Hans": "账户"
+  },
+  "当前账户": {
+    "en": "Current account",
+    "zh-Hans": "当前账户"
+  },
+  "切换/添加账户": {
+    "en": "Switch or add account",
+    "zh-Hans": "切换/添加账户"
+  },
+  "使用 Google 账户": {
+    "en": "Use a Google account",
+    "zh-Hans": "使用 Google 账户"
+  },
+  "使用 GitHub 账户": {
+    "en": "Use a GitHub account",
+    "zh-Hans": "使用 GitHub 账户"
+  },
+  "退出登录": {
+    "en": "Sign out",
+    "zh-Hans": "退出登录"
+  },
+  "退出登录？": {
+    "en": "Sign out?",
+    "zh-Hans": "退出登录？"
+  },
   "账户编号": {
     "en": "Account ID",
     "zh-Hans": "账户编号"

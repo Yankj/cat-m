@@ -92,7 +92,24 @@ private struct NativeOAuthSwitchModifier: ViewModifier {
     }
 }
 
-/// Settings → account: linked identities + link buttons. For a trial account linking upgrades it in place.
+/// Floating OAuth notice for the sidebar account menu (the old settings account panel showed it inline). Auto-clears.
+@MainActor struct NativeOAuthNoticeOverlay: View {
+    @ObservedObject var oauth: NativeOAuthCoordinator
+    var body: some View {
+        if let n = oauth.notice {
+            NativeOAuthNoticeCapsule(notice: n)
+                .transition(.opacity.combined(with: .move(edge: .top)))
+                .onTapGesture { oauth.notice = nil }
+                .task(id: n.text) {
+                    try? await Task.sleep(nanoseconds: 4_000_000_000)
+                    if oauth.notice?.text == n.text { withAnimation(.easeOut(duration: 0.2)) { oauth.notice = nil } }
+                }
+        }
+    }
+}
+
+/// Former settings → account panel (linked identities + link buttons). No longer mounted in settings (22:00 IA change);
+/// kept for reuse.
 @MainActor struct NativeOAuthAccountSection: View {
     @Environment(\.catpawOAuth) private var oauth
     var body: some View { if let oauth, oauth.isAvailable { Inner(oauth: oauth) } }

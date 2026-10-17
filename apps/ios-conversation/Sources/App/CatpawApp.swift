@@ -238,7 +238,7 @@ import AppIntents
             }
             #endif
     }
-    /// OAuth shares the exact sign-out sequence of the settings「退出此账号」(park + L2 wipe), so a provider switch
+    /// OAuth shares the exact sign-out sequence of the sidebar account menu「退出登录」(park + L2 wipe), so a provider switch
     /// goes through the same AccountEpoch parking / EventKit prompt path.
     private func bindOAuth() {
         oauth.bind(session: auth.oauthSessionManager, projectURL: auth.oauthProjectURL, signOutAndPark: {

@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import Combine
 import CatpawNavigation
 import CatpawImageComposer
 
@@ -42,6 +43,9 @@ import CatpawImageComposer
     @State private var pendingConversationSettings=false
     @AccessibilityFocusState private var moreFocused:Bool
     @State private var confirmSignOut = false
+    /// Account menu (22:00 IA change): linked providers for the sidebar header detail, refreshed when the drawer opens.
+    @State private var linkedProviders: [String] = []
+    @Environment(\.catpawOAuth) private var oauth
     @State private var pendingMessagesPresented=false
     @State private var composerMeasurements:[String:CGFloat]=[:]
     @State private var composerLineCount=1
@@ -117,7 +121,42 @@ import CatpawImageComposer
         .init(contextID:model.scope.workspaceID.uuidString,selectedConversationID:model.conversationID,
               conversations:model.history.map{.init(id:$0.id,title:$0.title,preview:$0.conversation?.draftText,updatedAt:$0.header.updatedAt)},
               capabilities:.init(canCreateConversation:model.loaded && !model.busy && !model.isInputComposing,canSelectConversation:!model.busy && !model.isInputComposing,tasks:true,results:true,memory:model.loaded && model.memoryConfigured,settings:true),
-              account:.init(name:accountLabel ?? ui("本机用户"),detail:isAnonymousAccount ? ui("未登录") : nil))
+              account:.init(name:accountLabel ?? ui("本机用户"),detail:accountDetail,actions:accountMenuActions))
+    }
+    /// Sidebar header subtitle: 「未登录」 for the trial identity, else the linked providers (Google · GitHub).
+    private var accountDetail:String? {
+        if isAnonymousAccount { return ui("未登录") }
+        let names=linkedProviders.compactMap { $0 == "google" ? "Google" : $0 == "github" ? "GitHub" : nil }
+        return names.isEmpty ? nil : names.joined(separator:" · ")
+    }
+    /// The account menu replaces the old settings-sheet account panel. Each item reuses an existing action:
+    /// trial → link a provider in place (`continueWith(.attach)`); signed in → the switch flow (`.useOtherAccount`, whose
+    /// confirmation + signOutAndPark keeps the EventKit keep/cancel prompt); 退出登录 → the same confirmed `onSignOut`.
+    private var accountMenuActions:[SidebarAccountAction] {
+        guard !launchShell else { return [] }
+        var actions:[SidebarAccountAction]=[]
+        if let oauth, oauth.isAvailable {
+            if isAnonymousAccount {
+                actions.append(.init(id:"google",title:ui("使用 Google 继续"),systemImage:"g.circle"))
+                actions.append(.init(id:"github",title:ui("使用 GitHub 继续"),systemImage:"chevron.left.forwardslash.chevron.right"))
+            } else if onSignOut != nil {
+                actions.append(.init(id:"switch",title:ui("切换/添加账户"),systemImage:"person.crop.circle.badge.plus",children:[
+                    .init(id:"switch.google",title:ui("使用 Google 账户"),systemImage:"g.circle"),
+                    .init(id:"switch.github",title:ui("使用 GitHub 账户"),systemImage:"chevron.left.forwardslash.chevron.right")]))
+            }
+        }
+        if onSignOut != nil { actions.append(.init(id:"signOut",title:ui("退出登录"),systemImage:"rectangle.portrait.and.arrow.right",role:.destructive)) }
+        return actions
+    }
+    private func performAccountAction(_ id:String) {
+        switch id {
+        case "google":Task { await oauth?.continueWith(.google,intent:.attach) }
+        case "github":Task { await oauth?.continueWith(.github,intent:.attach) }
+        case "switch.google":Task { await oauth?.continueWith(.google,intent:.useOtherAccount) }
+        case "switch.github":Task { await oauth?.continueWith(.github,intent:.useOtherAccount) }
+        case "signOut":confirmSignOut=true
+        default:break
+        }
     }
     @State private var proactiveInboxPresented = false
     @State private var proactiveDebugPresented = false
@@ -143,6 +182,7 @@ import CatpawImageComposer
         case .settings:path.append(.settings)
         case .memory:if model.loaded && model.memoryConfigured {path.append(.memory)}
         case .proactive:proactiveInboxPresented=true
+        case .accountAction(let id):performAccountAction(id)
         }
     }
     private var conversationTitle:String {
@@ -172,7 +212,7 @@ import CatpawImageComposer
             }
             Section {
                 Label(connectionMonitor.state.labelKey.map{ui($0.key,arguments:$0.arguments)} ?? ui("连接正常"), systemImage: connectionMonitor.state == .online ? "wifi" : "wifi.slash")
-                Button { path.append(.settings) } label: { Label(ui("设置"), systemImage:"slider.horizontal.3") }.accessibilityIdentifier("chat.settings")
+                // 22:00 IA change: no 设置 here; settings lives on the sidebar's bottom-left gear (sidebar.settings).
             }
         } label: {
             // Soft-3D header cat (docs/refs/header-cat/six-states.png) — not flat BrandMark.
@@ -564,6 +604,14 @@ import CatpawImageComposer
         }
         .catpawSheet(isPresented: $history) { ConversationHistoryView(model: model).presentationDetents(textSize.isAccessibilitySize ? [.large] : [.medium, .large]).presentationDragIndicator(.visible) }
         .catpawSheet(isPresented: $settings) { NavigationStack { settingsSheet } }
+        // Account menu 「退出登录」: same confirmation and the same onSignOut (park + EventKit keep/cancel) as before.
+        .confirmationDialog(ui("退出登录？"), isPresented:$confirmSignOut, titleVisibility:.visible) {
+            Button(ui("确认退出"), role:.destructive) { path=[];settings = false;onSignOut?() }
+            Button(ui("取消"), role:.cancel) { }
+        } message: { Text(isAnonymousAccount ? ui("体验身份暂时无法找回。退出后，你将无法继续访问这些对话。") : ui("退出后需重新登录才能继续访问此账号的对话。")) }
+        .overlay(alignment:.top) { if let oauth { NativeOAuthNoticeOverlay(oauth:oauth).padding(.top,52) } }
+        .task(id:sidebarPresented) { guard sidebarPresented, let oauth else { return }; await oauth.refreshIdentities() }
+        .onReceive(oauth?.$identities.eraseToAnyPublisher() ?? Empty<[NativeLinkedIdentity],Never>().eraseToAnyPublisher()) { ids in linkedProviders=ids.map(\.provider) }
         .catpawSheet(item:$model.selectedTaskPlan) { reference in
             ConversationTaskPlanView(service:model.taskPlanService,reference:reference,admissionAllowed:{model.loaded && model.networkAdmissionAllowed && scene == .active})
         }
@@ -632,11 +680,8 @@ import CatpawImageComposer
     }
     private var settingsSheet: some View {
         ConversationConnectionView(model: model,embedded:true)
-            .safeAreaInset(edge:.bottom) { if onSignOut != nil { VStack(spacing:12) { NativeOAuthAccountSection(); if let accountLabel { Text(accountLabel).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary) }; Button(ui("退出此账号"), role:.destructive) { confirmSignOut = true }.touchTarget().accessibilityIdentifier("auth.signOut") }.padding().frame(maxWidth:.infinity).background(CatpawColors.background) } }
-            .confirmationDialog(ui("退出此账号？"), isPresented:$confirmSignOut, titleVisibility:.visible) {
-                Button(ui("确认退出"), role:.destructive) { path=[];settings = false;onSignOut?() }
-                Button(ui("取消"), role:.cancel) { }
-            } message: { Text(isAnonymousAccount ? ui("体验身份暂时无法找回。退出后，你将无法继续访问这些对话。") : ui("退出后需重新登录才能继续访问此账号的对话。")) }
+            // 22:00 IA change: no account panel here any more (it covered the page); sign-in, switch and 退出登录 live in
+            // the sidebar account menu.
             .presentationDetents(textSize.isAccessibilitySize ? [.large] : [.medium, .large]).presentationDragIndicator(.visible)
     }
     private var connectionSummary: String {

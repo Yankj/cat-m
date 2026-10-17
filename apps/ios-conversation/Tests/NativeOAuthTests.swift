@@ -113,3 +113,59 @@ actor OAuthFakeRemote: NativeAuthRemote, NativeOAuthRemote {
     func linkIdentityURL(accessToken: String, provider: NativeOAuthProvider, pkce: NativeOAuthPKCE) async throws -> URL { linked = true; return URL(string: "https://github.com/login/oauth/authorize")! }
     func identities(accessToken: String) async throws -> [NativeLinkedIdentity] { [.init(provider: "github", label: "demo")] }
 }
+
+/// 2026-10-17 account-menu IA change (source/UI-structure guards): settings carries no account panel, the chat header
+/// title menu has no 设置 item, and the sidebar account header is the only home of sign-in / switch / 退出登录.
+final class AccountMenuStructureTests: XCTestCase {
+    private func source(_ relative: String) throws -> String {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().appendingPathComponent("..").standardizedFileURL
+        return try String(contentsOf: root.appendingPathComponent(relative), encoding: .utf8)
+    }
+    /// Text from `start` up to the next `end` marker (both literal).
+    private func slice(_ text: String, from start: String, to end: String) throws -> String {
+        let s = try XCTUnwrap(text.range(of: start), "missing \(start)")
+        let e = try XCTUnwrap(text.range(of: end, range: s.upperBound..<text.endIndex), "missing \(end)")
+        return String(text[s.lowerBound..<e.lowerBound])
+    }
+    func testSettingsSheetHasNoAccountPanel() throws {
+        let view = try source("Sources/Features/ConversationFirstView.swift")
+        let settings = try slice(view, from: "private var settingsSheet: some View {", to: "private var connectionSummary")
+        for banned in ["NativeOAuthAccountSection", "auth.signOut", "退出此账号", "onSignOut", "safeAreaInset"] {
+            XCTAssertFalse(settings.contains(banned), "settings must not host account UI: \(banned)")
+        }
+    }
+    func testChatHeaderMenuHasNoSettingsItem() throws {
+        let view = try source("Sources/Features/ConversationFirstView.swift")
+        let menu = try slice(view, from: "private var conversationTitleMenu", to: "Soft-3D header cat")
+        XCTAssertFalse(menu.contains("chat.settings"))
+        XCTAssertFalse(menu.contains("path.append(.settings)"))
+        XCTAssertTrue(menu.contains("Section(ui(\"模型\"))"), "model picker stays")
+        XCTAssertTrue(menu.contains("connectionMonitor.state"), "connection label stays")
+        XCTAssertFalse(view.contains("\"chat.settings\""))
+    }
+    func testSidebarAccountMenuOwnsSignInSwitchAndSignOut() throws {
+        let view = try source("Sources/Features/ConversationFirstView.swift")
+        let actions = try slice(view, from: "private var accountMenuActions", to: "private func performAccountAction")
+        for item in ["使用 Google 继续", "使用 GitHub 继续", "切换/添加账户", "退出登录", "role:.destructive"] {
+            XCTAssertTrue(actions.contains(item), item)
+        }
+        XCTAssertFalse(view.contains("退出登陆"), "spelling: 退出登录")
+        let perform = try slice(view, from: "private func performAccountAction", to: "\n    }\n")
+        XCTAssertTrue(perform.contains("intent:.attach") && perform.contains("intent:.useOtherAccount"), "reuses the OAuth coordinator intents")
+        XCTAssertTrue(perform.contains("confirmSignOut=true"), "sign-out keeps its confirmation")
+        XCTAssertTrue(view.contains("case .accountAction(let id):performAccountAction(id)"))
+        let dialog = try slice(view, from: ".confirmationDialog(ui(\"退出登录？\")", to: "} message:")
+        XCTAssertTrue(dialog.contains("onSignOut?()"), "same sign-out path (park + EventKit keep/cancel)")
+        let panel = try source("../../packages/ios-navigation/Sources/CatpawNavigation/SidebarPanel.swift")
+        XCTAssertTrue(panel.contains("Menu {") && panel.contains("\"sidebar.account.current\"") && panel.contains("\"sidebar.account.\" + action.id"))
+        XCTAssertTrue(panel.contains(".destructive"))
+    }
+    func testAccountMenuStringsAreLocalized() throws {
+        let data = try Data(contentsOf: URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+            .appendingPathComponent("../Resources/UIStrings.json").standardizedFileURL)
+        let table = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: [String: String]])
+        for key in ["账户", "当前账户", "切换/添加账户", "使用 Google 账户", "使用 GitHub 账户", "退出登录", "退出登录？", "使用 Google 继续", "使用 GitHub 继续"] {
+            XCTAssertEqual(table[key]?["zh-Hans"], key); XCTAssertFalse((table[key]?["en"] ?? "").isEmpty, key)
+        }
+    }
+}
