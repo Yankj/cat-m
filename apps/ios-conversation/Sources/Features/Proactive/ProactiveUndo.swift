@@ -5,6 +5,15 @@ import Foundation
 /// undo reverts the most recent reversible action; a sent SMS (notify_attendees) is irreversible and kept;
 /// the status is derived from what remains (last snooze/dismiss wins, else done iff every offered effect is done).
 enum ProactiveUndo {
+    /// p90i (三角 trial S2): undoing a created reminder. Without a local mapping or without reminders permission the
+    /// device cannot know whether the reminder exists → `.unknown` (the caller keeps the state and says so). Only an
+    /// authorized lookup that finds nothing is "already gone" (#89's EventKit notFound → alreadyGone).
+    enum ReminderUndoStep: Equatable { case delete, alreadyGone, unknown(String) }
+    static func reminderUndoStep(hasMapping: Bool, authorized: Bool, found: Bool) -> ReminderUndoStep {
+        guard hasMapping else { return .unknown("no_mapping") }
+        guard authorized else { return .unknown("not_authorized") }
+        return found ? .delete : .alreadyGone
+    }
     static let irreversible: Set<String> = ["notify_attendees"]
     struct Plan: Equatable { var removed: String?; var removedIndex: Int?; var after: [String]; var status: String }
     static func plan(offered: [String], taken: [String], status: String) -> Plan {
