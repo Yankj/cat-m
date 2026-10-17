@@ -248,7 +248,15 @@ struct LAKitten: View {
         default: palette.badgeNeutral
         }
     }
-    private var badgeGlyph: Color { [.needsUser, .reminder, .done, .failed].contains(model.kind) ? .white : palette.ink }
+    /// status-line visual SPEC §2.2 contrast fix: white on amber is 2.76:1 and white on dark-mode red is 3.2:1, so those use dark glyphs.
+    private var badgeGlyph: Color {
+        switch model.kind {
+        case .needsUser, .reminder: palette.dark ? Color(lahex: 0x161412) : Color(lahex: 0x1C1A18)
+        case .failed: palette.dark ? Color(lahex: 0x161412) : .white
+        case .done: .white
+        default: palette.ink
+        }
+    }
 }
 
 /// Live elapsed time — only when startedAt is known (old payloads: hidden, never faked). Frozen on done/failed.

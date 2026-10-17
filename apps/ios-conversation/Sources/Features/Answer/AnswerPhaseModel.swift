@@ -293,6 +293,35 @@ enum StatusLinePhase: Equatable, Sendable {
         case .sending, .accepted: return "sparkle"
         }
     }
+    /// Visual SPEC v2 §2.1: kitten pose per state (imagesets StatusKitten<Pose>).
+    enum KittenPose: String, Equatable, Sendable {
+        case thinking = "Thinking", tool = "Tool", writing = "Writing", waiting = "Waiting", done = "Done", failed = "Failed", stopped = "Stopped"
+        var asset: String { "StatusKitten" + rawValue }
+    }
+    enum BadgeTone: Equatable, Sendable { case neutral, waiting, failed, stopped }
+    var pose: KittenPose {
+        switch self {
+        case .sending, .busyRetry, .accepted, .recallingMemory, .switchingModel: return .thinking
+        case .tool(let name, _): return ToolStepCopy.writingTools.contains(name) ? .writing : .tool
+        case .composing: return .writing
+        case .awaitingUser: return .waiting
+        case .failed: return .failed
+        case .stopped: return .stopped
+        }
+    }
+    /// Badge glyph (nil = no badge) and tone, SPEC v2 §2.2–§2.3.
+    var badge: (symbol: String, tone: BadgeTone)? {
+        switch self {
+        case .sending, .accepted, .recallingMemory: return nil
+        case .switchingModel: return ("arrow.triangle.2.circlepath", .neutral)
+        case .busyRetry: return ("hourglass", .neutral)
+        case .tool(let name, _): return (ToolStepCopy.badgeSymbol(name), .neutral)
+        case .composing: return ("pencil", .neutral)
+        case .awaitingUser: return ("arrow.down", .waiting)
+        case .failed: return ("exclamationmark", .failed)
+        case .stopped: return ("stop.fill", .stopped)
+        }
+    }
     /// Announcement category (SPEC §11): announce only when this changes — not on variant swaps inside a category.
     var category: String {
         switch self {
