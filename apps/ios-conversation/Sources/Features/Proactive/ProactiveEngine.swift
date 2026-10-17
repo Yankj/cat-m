@@ -412,12 +412,12 @@ struct ProactiveSignal: Equatable, Sendable {
         // leave_at = meeting_start - lead_minutes - travel_minutes (travel 0 only when ETA unused → lead only)
         let leaveAt = ProactiveRules.leaveAt(start: signal.start, leadMinutes: lead.minutes, travelMinutes: travelMinutes, usedETA: usedETA)
         let remindAt = leaveAt  // remind when user should leave
-        var decision: Decision
-        if let remote = await evaluateRemote(signal, leadMinutes: lead.minutes, travelMinutes: usedETA ? travelMinutes : nil, token: token) { decision = remote }
+        var decision: Decision, fromServer = false
+        if let remote = await evaluateRemote(signal, leadMinutes: lead.minutes, travelMinutes: usedETA ? travelMinutes : nil, token: token) { decision = remote; fromServer = true }
         else { decision = evaluateLocal(signal, leadMinutes: lead.minutes, travelMinutes: usedETA ? travelMinutes : nil, now: now) }
         do {
-            // NoBug / Codex PR90e: learned feedback gates online and offline decisions alike (it can only lower a level).
-            let gated = ProactiveRules.applyFeedbackGate(decision.level, confidence: ProactiveRules.localConfidence(ProactiveRules.localTrigger, Int(signal.start.timeIntervalSince(now) / 60), travelMinutes: usedETA ? travelMinutes : nil), gate: Self.effectiveFeedbackGate)
+            // p90i (#91 S1): only locally produced decisions are gated; the cloud already applied the learned weights.
+            let gated = ProactiveRules.gatedLevel(decision.level, fromServer: fromServer, confidence: ProactiveRules.localConfidence(ProactiveRules.localTrigger, Int(signal.start.timeIntervalSince(now) / 60), travelMinutes: usedETA ? travelMinutes : nil), gate: Self.effectiveFeedbackGate)
             if gated != decision.level { decision = .init(level: gated, why: decision.why + " · feedback gate → \(gated.name)", via: decision.via) }
         }
         guard decision.intervene else { note("decide silent: \(decision.why)"); return nil }
