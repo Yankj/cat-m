@@ -41,12 +41,21 @@ enum CatpawColors {
     static let attention = adaptive(light: 0x895700, dark: 0xE9BC69)
     static let failure = adaptive(light: 0xB3261E, dark: 0xFFB4AB)
     // Calm launch / onboarding / voice (warm page + orb)
-    static let calmPage = adaptive(light: CatpawBrandTokens.background, dark: CatpawBrandTokens.background)
+    // first-run-polish (Grok Bot 12:33): the calm tokens get real dark values — launch screen, splash and chat share one
+    // canvas per mode, so nothing inverts and the system-coloured status bar stays legible.
+    static let calmPage = adaptive(light: CatpawBrandTokens.background, dark: CatpawBrandTokens.canvasDark)
+    /// Splash secondary text: 6.7:1 light / 8.8:1 dark on the canvas (≥4.5 on the ring wash tail).
+    static let calmSecondary = adaptive(light: 0x5F5A55, dark: 0xB3ADA6)
+    /// 「开始使用」gradient (fill only); white label 4.5–5.4:1 at both ends.
+    /// Auxiliary icons only (#929298 in both modes; ≥3:1 on calmSurface white / #1F1B18).
+    static let calmIcon = adaptive(light: CatpawBrandTokens.grey, dark: CatpawBrandTokens.grey)
+    static let calmCTATop = adaptive(light: 0xC9501A, dark: 0xC9501A)
+    static let calmCTABottom = adaptive(light: 0xB8440A, dark: 0xB8440A)
     static let calmPeach = adaptive(light: CatpawBrandTokens.peach, dark: CatpawBrandTokens.peach)
     static let calmLavender = adaptive(light: CatpawBrandTokens.lavender, dark: CatpawBrandTokens.lavender)
     static let orbLight = adaptive(light: CatpawBrandTokens.orbLight, dark: CatpawBrandTokens.orbLight)
     static let orbDeep = adaptive(light: CatpawBrandTokens.primary, dark: CatpawBrandTokens.primary)
-    static let calmSurface = adaptive(light: 0xFFFFFF, dark: 0xFFFFFF)
+    static let calmSurface = adaptive(light: 0xFFFFFF, dark: 0x1F1B18)
     static let calmGlyph = adaptive(light: 0xFFFFFF, dark: 0xFFFFFF)
     static let calmShadow = adaptive(light: 0x000000, dark: 0x000000)
     // Compatibility aliases — never a second palette.

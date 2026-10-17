@@ -22,8 +22,8 @@ enum FirstRunAppearance {
     static let pageBackground: Token = .color("calmPage")
     /// Warm wash behind the capability ring; it is confined to the ring, so copy above/below sees at most its tail.
     static let washPeak = 0.22, washTailAtCopy = 0.10
-    /// CTA sheen peak (white) — kept low so the white label never drops under 3:1 while it sweeps.
-    static let ctaSheenPeak = 0.12
+    /// CTA sheen peak (white). 0 = off: any white sweep under the label drops it below 4.5:1 on #C9501A.
+    static let ctaSheenPeak = 0.0
     private static let wash: (Token, Double) = (.color("orbLight"), washTailAtCopy)
     static let texts: [Text] = [
         .init(id: "brand Catpaw-m", fg: .color("ink"), bg: pageBackground, overlay: wash),

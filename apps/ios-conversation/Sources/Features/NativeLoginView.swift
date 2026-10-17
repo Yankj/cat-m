@@ -30,7 +30,7 @@ import UIKit
     private var friendlyError: String? {
         // first-run-polish: while「开始使用」is entering, a transient auth.error (e.g. the session-restart line set by a
         // retried restore and cleared moments later) must not flash on the splash — only a terminal gate failure shows.
-        if busy || leaving { return gateFailure.flatMap { isConfigurationError ? nil : ui($0) } }
+        if busy { return gateFailure.flatMap { isConfigurationError ? nil : ui($0) } }
         let raw = gateFailure ?? auth.error
         guard let e = raw, !isConfigurationError else { return nil }
         if NativeAuthApplicationModel.isTransientConnectFailure(e) { return nil }
@@ -39,8 +39,8 @@ import UIKit
 
 
     @State private var shown = false
-    /// first-run-polish: splash-side exit (lift + fade) played before entering chat; reset if entry fails.
-    @State private var leaving = false
+    /// The failure capsule currently shown (auto-dismissed).
+    @State private var toast: String?
     @ObservedObject private var serif = EditorialSerif.shared
 
     private static let capabilities: [(icon: String, key: String)] = [
@@ -89,29 +89,27 @@ import UIKit
         }
         .foregroundStyle(CatpawColors.ink)
         .tint(CatpawColors.ink)                      // text buttons: ink, never orange text
-        .opacity(leaving ? 0 : 1)
-        .scaleEffect(leaving && !reduceMotion ? 0.98 : 1)
-        .offset(y: leaving && !reduceMotion ? -10 : 0)
-        .background(CatpawColors.background.ignoresSafeArea())   // = chat background: the handoff never flashes light/dark
+        .overlay(alignment: .top) { if let toast { FirstRunToast(message: toast) { self.toast = nil }.padding(.top, 8) } }
+        .onChange(of: friendlyError, initial: true) { _, message in withAnimation(reduceMotion ? .easeOut(duration: 0.2) : .spring(response: 0.4, dampingFraction: 0.9)) { toast = message } }
         .onAppear {
-            serif.ensure()
-            // Wait for the launch mark to hand off, so both animations never compete for frames.
+            // Wait for the launch mark to hand off, so the splash (entrance, chip float, orb breath, CTA) never competes
+            // with it for frames; the serif font request is deferred to the reveal too.
             if !LaunchMarkView.isRunning { reveal() }
         }
         .onReceive(NotificationCenter.default.publisher(for: LaunchMarkView.didFinish)) { _ in reveal() }
-        .onChange(of: gateFailure) { _, failure in if failure != nil { withAnimation(FirstRunMotion.animation(reduceMotion: reduceMotion)) { leaving = false } } }
         .accessibilityIdentifier("onboarding.pages")
         .overlay { if scene != .active || !UIApplication.shared.isProtectedDataAvailable { CatpawColors.background.ignoresSafeArea() } }
     }
 
     private func reveal() {
         guard !shown else { return }
+        serif.ensure()
         withAnimation(reduceMotion ? .easeOut(duration: 0.2) : .spring(response: 0.5, dampingFraction: 0.9)) { shown = true }
     }
 
-    /// Same adaptive page as chat (`CatpawColors.background`, system scheme). The warm wash lives in the ring only.
+    /// `calmPage` == chat canvas in each mode (FirstRunAppearance). The warm wash lives in the ring only.
     private var landingBackground: some View {
-        CatpawColors.background
+        CatpawColors.calmPage
             .ignoresSafeArea()
             .accessibilityHidden(true)
     }
@@ -125,7 +123,7 @@ import UIKit
                 .accessibilityIdentifier("onboarding.brand")
             Text(ui("你的个人 AI 助手"))
                 .font(CatpawTypography.Role.caption.font)
-                .foregroundStyle(CatpawColors.secondary)
+                .foregroundStyle(CatpawColors.calmSecondary)
                 .accessibilityIdentifier("onboarding.brandSubtitle")
             Text(ui("解放双手，\n让工作自己向前走"))
                 .font(serif.headline)
@@ -136,7 +134,7 @@ import UIKit
                 .accessibilityIdentifier("onboarding.headline")
             Text(ui("从一句话开始，把事情交给我。"))
                 .font(CatpawTypography.Role.secondary.font)
-                .foregroundStyle(CatpawColors.secondary)
+                .foregroundStyle(CatpawColors.calmSecondary)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityIdentifier("onboarding.subtitle")
         }
@@ -155,7 +153,7 @@ import UIKit
                 .stroke(style: StrokeStyle(lineWidth: 1.2, dash: [3, 7]))
                 .foregroundStyle(CatpawColors.ink.opacity(0.12))
                 .frame(width: radius * 2, height: radius * 2)
-            CalmOrb(size: 108)
+            CalmOrb(size: 108, animated: shown)
                 .opacity(shown ? 1 : 0)
                 .scaleEffect(shown ? 1 : 0.92)
             ForEach(Array(Self.capabilities.enumerated()), id: \.offset) { index, item in
@@ -167,7 +165,7 @@ import UIKit
                         reduceMotion ? nil : .easeOut(duration: 0.48).delay(0.12 + Double(index) * 0.05),
                         value: shown
                     )
-                    .modifier(CapabilityFloat(index: index, enabled: !reduceMotion))
+                    .modifier(CapabilityFloat(index: index, enabled: !reduceMotion && shown))
                     .offset(
                         x: CGFloat(cos(angle.radians)) * radius,
                         y: CGFloat(sin(angle.radians)) * radius
@@ -181,7 +179,7 @@ import UIKit
 
     private var accessibilityCapabilityGrid: some View {
         VStack(spacing: 16) {
-            CalmOrb(size: 96)
+            CalmOrb(size: 96, animated: shown)
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 140), spacing: 10)], spacing: 10) {
                 ForEach(Array(Self.capabilities.enumerated()), id: \.offset) { index, item in
                     CapabilityChip(icon: item.icon, title: ui(item.key))
@@ -200,14 +198,9 @@ import UIKit
 
     private func start() {
         startTapped = true
-        // first-run-polish: play the splash exit (spring lift + fade, or a plain crossfade under Reduce Motion) on the same
-        // background as chat, then complete onboarding; the root then swaps to chat with no light→dark cut.
-        withAnimation(FirstRunMotion.animation(reduceMotion: reduceMotion)) { leaving = true }
-        Task {
-            if auth.needsOnboarding { await auth.completeOnboarding() } else { await auth.startExperience() }
-            // Entry did not happen (the gate keeps the splash): bring it back so the error / retry is visible.
-            if auth.needsOnboarding { withAnimation(FirstRunMotion.animation(reduceMotion: reduceMotion)) { leaving = false } }
-        }
+        // Transition slot (HOLD until a prototype is chosen): the exit animation goes here, driven by
+        // FirstRunMotion.animation(reduceMotion:) / .firstRunHandoff(_:) (CalmCanvas.swift).
+        Task { if auth.needsOnboarding { await auth.completeOnboarding() } else { await auth.startExperience() } }
     }
 
     @ViewBuilder private var footer: some View {
@@ -215,28 +208,22 @@ import UIKit
             if auth.state.phase == .restoring {
                 Text(ui("正在复核登录…"))
                     .font(CatpawTypography.Role.caption.font)
-                    .foregroundStyle(CatpawColors.secondary)
+                    .foregroundStyle(CatpawColors.calmSecondary)
                     .accessibilityIdentifier("auth.restoring")
-            }
-            if let message = friendlyError {
-                Text(message)
-                    .font(CatpawTypography.Role.caption.font)
-                    .foregroundStyle(CatpawColors.attention)
-                    .multilineTextAlignment(.center)
-                    .accessibilityIdentifier("auth.error")
             }
             StartUsingCTA(
                 title: busy ? ui("正在开启…") : (auth.requiresSessionRestart ? ui("再试一次") : ui("开始使用")),
                 busy: busy,
+                animated: shown,
                 action: start
             )
             .accessibilityIdentifier("auth.startExperience")
             Text(ui("无需注册，即刻开始"))
                 .font(CatpawTypography.Role.caption.font)
-                .foregroundStyle(CatpawColors.secondary)
+                .foregroundStyle(CatpawColors.calmSecondary)
                 .multilineTextAlignment(.center)
                 .accessibilityIdentifier("onboarding.footer")
-            if auth.requiresSessionRestart {
+            if auth.requiresSessionRestart, !busy {
                 Button(ui("重新开始")) { Task { await auth.signOut() } }
                     .accessibilityIdentifier("auth.closeUnrestoredSession")
             }
@@ -259,7 +246,7 @@ import UIKit
         if isConfigurationError, let e = gateFailure ?? auth.error {
             Text(verbatim: "DEBUG · \(e) Configuration/Local.xcconfig → CATPAW_SUPABASE_* / CATPAW_BACKEND_ORIGIN")
                 .font(CatpawTypography.Role.caption.font)
-                .foregroundStyle(CatpawColors.secondary)
+                .foregroundStyle(CatpawColors.calmSecondary)
                 .padding(8)
                 .background(CatpawColors.panel.opacity(0.8), in: RoundedRectangle(cornerRadius: 10))
                 .padding(.horizontal, 16)
@@ -272,11 +259,11 @@ import UIKit
                 .font(CatpawTypography.Role.caption.font)
                 .foregroundStyle(CatpawColors.attention)
                 .accessibilityIdentifier("auth.fixture")
-            TextField(ui("邮箱"), text: $email, prompt: Text(ui("邮箱")).foregroundStyle(CatpawColors.secondary))
+            TextField(ui("邮箱"), text: $email, prompt: Text(ui("邮箱")).foregroundStyle(CatpawColors.calmSecondary))
                 .textContentType(.username).keyboardType(.emailAddress)
                 .textInputAutocapitalization(.never).autocorrectionDisabled()
                 .accessibilityIdentifier("auth.email")
-            SecureField(ui("密码"), text: $password, prompt: Text(ui("密码")).foregroundStyle(CatpawColors.secondary))
+            SecureField(ui("密码"), text: $password, prompt: Text(ui("密码")).foregroundStyle(CatpawColors.calmSecondary))
                 .textContentType(.password)
                 .accessibilityIdentifier("auth.password")
             Button(ui("登录")) {
@@ -310,7 +297,7 @@ struct CapabilityChip: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
-        .background(CatpawColors.card, in: Capsule())    // adaptive (white / #1C1B19); calmSurface was white in dark too
+        .background(CatpawColors.calmSurface, in: Capsule())    // white / #1F1B18
         .overlay(Capsule().stroke(CatpawColors.hairline))
         .shadow(color: CatpawColors.calmShadow.opacity(0.08), radius: 8, y: 3)
         .accessibilityElement(children: .ignore)
@@ -334,9 +321,45 @@ struct CapabilityFloat: ViewModifier {
         let i = index % Self.periods.count
         content
             .offset(y: enabled ? (up ? Self.amplitudes[i] : -Self.amplitudes[i]) : 0)
-            .onAppear {
-                guard enabled else { return }
-                withAnimation(.easeInOut(duration: Self.periods[i] / 2).repeatForever(autoreverses: true).delay(Self.phases[i] / 6)) { up = true }
-            }
+            .onAppear { if enabled { start(i) } }
+            .onChange(of: enabled) { _, on in if on { start(i) } else { var t = Transaction(); t.disablesAnimations = true; withTransaction(t) { up = false } } }
+    }
+    private func start(_ i: Int) {
+        withAnimation(.easeInOut(duration: Self.periods[i] / 2).repeatForever(autoreverses: true).delay(Self.phases[i] / 6)) { up = true }
+    }
+}
+
+/// Small floating capsule for a splash failure (replaces the amber footer line): neutral surface, ink text, an auxiliary
+/// grey icon, announced to VoiceOver, dismissed by tap or after 4 s (8 s with VoiceOver).
+struct FirstRunToast: View {
+    let message: String
+    let dismiss: () -> Void
+    @Environment(\.accessibilityVoiceOverEnabled) private var voiceOver
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "exclamationmark.circle")
+                .font(CatpawTypography.Role.caption.font.weight(.semibold))
+                .foregroundStyle(CatpawColors.calmIcon)
+                .accessibilityHidden(true)
+            Text(message)
+                .font(CatpawTypography.Role.caption.font)
+                .foregroundStyle(CatpawColors.ink)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.horizontal, 14).padding(.vertical, 10)
+        .background(CatpawColors.calmSurface, in: Capsule())
+        .overlay(Capsule().stroke(CatpawColors.hairline))
+        .shadow(color: CatpawColors.calmShadow.opacity(0.12), radius: 12, y: 4)
+        .padding(.horizontal, 24)
+        .transition(.opacity.combined(with: .move(edge: .top)))
+        .onTapGesture(perform: dismiss)
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isStaticText)
+        .accessibilityIdentifier("auth.error")
+        .task(id: message) {
+            UIAccessibility.post(notification: .announcement, argument: message)
+            try? await Task.sleep(nanoseconds: (voiceOver ? 8 : 4) * 1_000_000_000)
+            withAnimation(.easeOut(duration: 0.2)) { dismiss() }
+        }
     }
 }

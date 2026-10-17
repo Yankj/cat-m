@@ -71,6 +71,11 @@ let storyboard = (try? String(contentsOfFile: root + "/Resources/LaunchScreen.st
 check(!storyboard.contains("<image"), "launch screen has no logo image")
 // Spec hygiene: no translucent text (the brand label used ink at 0.72).
 for t in FirstRunAppearance.texts { check(t.fgAlpha == 1, "\(t.id) uses translucent text") }
+for sch in [FirstRunAppearance.Scheme.light, .dark] {
+    let r = FirstRunAppearance.contrast(tokens.resolve(.color("calmIcon"), sch), tokens.resolve(.color("calmSurface"), sch))
+    print("  toast icon (non-text) \(sch) \(String(format: "%.2f", r))")
+    check(r >= 3 && tokens.resolve(.color("calmIcon"), sch) == 0x929298, "toast icon #929298 ≥3:1 on surface \(sch)")
+}
 check(missing.isEmpty, "unknown tokens \(missing.sorted())")
 // Transition choice.
 check(FirstRunAppearance.transition(reduceMotion: true) == .crossfade(duration: 0.2), "reduce motion → short plain crossfade")

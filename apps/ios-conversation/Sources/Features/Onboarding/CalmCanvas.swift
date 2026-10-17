@@ -40,10 +40,12 @@ struct CalmOrb: View {
     var size: CGFloat = 96
     var glyph: String = "pawprint.fill"
     var level: Double = 0
+    /// first-run-polish: false → still (the splash pauses it until the launch mark has handed off).
+    var animated = true
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1 / 30, paused: reduceMotion)) { tl in
-            let t = reduceMotion ? 0 : tl.date.timeIntervalSinceReferenceDate
+        TimelineView(.animation(minimumInterval: 1 / 30, paused: reduceMotion || !animated)) { tl in
+            let t = reduceMotion || !animated ? 0 : tl.date.timeIntervalSinceReferenceDate
             let b = 0.5 - 0.5 * cos(t * 2 * .pi / 3.6) + level
             ZStack {
                 Circle().fill(CalmPalette.orbLight.opacity(0.28 + 0.14 * b))
@@ -147,6 +149,8 @@ struct SwipeToStart: View {
 struct StartUsingCTA: View {
     let title: String
     var busy = false
+    /// first-run-polish: false → no breath (paused until the launch mark has handed off).
+    var animated = true
     let action: () -> Void
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// Sheen sweeps every `sheenPeriod`s; breathing cycles every `breathPeriod`s.
@@ -155,12 +159,12 @@ struct StartUsingCTA: View {
     private static let breathPeriod: Double = 2.8
     var body: some View {
         Button(action: { if !busy { action() } }) {
-            TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: reduceMotion || busy)) { context in
+            TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: reduceMotion || busy || !animated)) { context in
                 let t = context.date.timeIntervalSinceReferenceDate
-                let animate = !reduceMotion && !busy
+                let animate = !reduceMotion && !busy && animated
                 let breath = animate ? (1 - cos(t / Self.breathPeriod * 2 * .pi)) / 2 : 0
                 let cycle = t.truncatingRemainder(dividingBy: Self.sheenPeriod)
-                let sheen: Double? = animate && cycle < Self.sheenDuration ? cycle / Self.sheenDuration : nil
+                let sheen: Double? = animate && FirstRunAppearance.ctaSheenPeak > 0 && cycle < Self.sheenDuration ? cycle / Self.sheenDuration : nil
                 content(sheen: sheen)
                     .shadow(color: CatpawColors.orbDeep.opacity(0.30 + 0.12 * breath), radius: 16 + 6 * breath, y: 7 + 2 * breath)
                     .scaleEffect(1 + 0.02 * breath)
@@ -179,9 +183,8 @@ struct StartUsingCTA: View {
     private func content(sheen: Double?) -> some View {
         let shape = RoundedRectangle(cornerRadius: 28, style: .continuous)
         return ZStack {
-            // first-run-polish: solid brand Deep fill (white label 4.79:1). The old orbLight→Primary gradient put the white
-            // label at 2.76:1. Orange stays a fill; the label is white (FirstRunAppearance.texts).
-            shape.fill(Color(UIColor(rgb: CatpawBrandTokens.deep)))
+            // first-run-polish: #C9501A → #B8440A (white label 4.5–5.4:1; the old orbLight→Primary gradient gave 2.76:1).
+            shape.fill(LinearGradient(colors: [CatpawColors.calmCTATop, CatpawColors.calmCTABottom], startPoint: .topLeading, endPoint: .bottomTrailing))
             if let sheen {
                 GeometryReader { geo in
                     let w = geo.size.width * 0.32
