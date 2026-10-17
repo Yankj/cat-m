@@ -163,11 +163,13 @@ extension View { func workingShimmer(_ active: Bool = true) -> some View { modif
     private var textColor: Color { kind == .waiting ? CatpawColors.ink : CatpawColors.calmSecondary }
 
     var body: some View {
+        // Swift 6: the alignment-guide closure is @Sendable; read the main-actor @ScaledMetric here and capture the value.
+        let lineOneCentre = nudgeY
         HStack(alignment: .firstTextBaseline, spacing: 8) {
             // Visual SPEC v2 §1–§2: static kitten 22pt in a 24pt slot + 12pt tool badge; centred on line 1.
             StatusKitten(pose: phase.pose, badge: phase.badge?.symbol, tone: phase.badge?.tone ?? .neutral,
                          breathe: kind == .working && !calm && onScreen, nudge: nudge, calm: calm)
-                .alignmentGuide(.firstTextBaseline) { d in d[VerticalAlignment.center] + nudgeY }
+                .alignmentGuide(.firstTextBaseline) { d in d[VerticalAlignment.center] + lineOneCentre }
             ZStack(alignment: .leading) {
                 Text(title)
                     .font(CatpawTypography.Role.secondary.font.weight(kind == .waiting ? .medium : .regular))
