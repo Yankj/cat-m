@@ -1,6 +1,9 @@
 import Combine
 import Foundation
 import CatpawImageComposer
+import os
+
+private let attachLog = Logger(subsystem: "catpaw", category: "attach")
 
 /// Real composer attachment transport (#64 / P0-3). Images are handed to the model's `ImageAttachmentDraft`,
 /// which transcodes to PNG/JPEG ≤2048 px with metadata stripped (`SystemImageAttachmentEncoder`); the send path
@@ -27,10 +30,12 @@ import CatpawImageComposer
         guard let model else { _ = update(attachment.id, .failed(message: "")); return }
         let draft = model.imageDraft
         if let owner, owner != attachment.id {
+            attachLog.error("catpaw.attach refused: owner held by another attachment phase=\(String(describing: draft.phase), privacy: .public)")
             _ = update(attachment.id, .failed(message: ui("每条消息只能附一张图片")))
             return
         }
         guard let data = try? Data(contentsOf: attachment.localURL) else {
+            attachLog.error("catpaw.attach read failed")
             _ = update(attachment.id, .failed(message: ui("图片读取失败")))
             return
         }
@@ -43,10 +48,11 @@ import CatpawImageComposer
             case .loading: _ = self.update(id, .uploading(fraction: 0.2))
             case .encoding: _ = self.update(id, .uploading(fraction: 0.6))
             case .ready: _ = self.update(id, .uploaded(receiptID: draft.attachment?.id.uuidString.lowercased() ?? id.uuidString))
-            case .failed: _ = self.update(id, .failed(message: ui("图片处理失败")))
+            case .failed(let e): attachLog.error("catpaw.attach draft failed \(String(describing: e), privacy: .public)"); _ = self.update(id, .failed(message: ui("图片处理失败")))
             case .empty: break
             }
         }
+        attachLog.info("catpaw.attach upload start phase=\(String(describing: draft.phase), privacy: .public)")
         let ticket = draft.beginSelection()
         draft.receiveSelectedData(data, ticket: ticket)
     }
