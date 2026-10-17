@@ -9,27 +9,61 @@ import AppKit
 /// Reading, temporary surfaces, sending and exact approval are independent roles:
 /// changing an action tint cannot recolor a message or grant an approval emphasis.
 enum CatpawColors {
-    static let background = adaptive(light: 0xFFFFFF, dark: 0x050505)
-    static let panel = adaptive(light: 0xF7F7F7, dark: 0x181818)
-    static let input = adaptive(light: 0xF7F7F7, dark: 0x141414)
+    // Surfaces — brand Background #FFFCF8
+    static let background = adaptive(light: CatpawBrandTokens.background, dark: CatpawBrandTokens.canvasDark)
+    static let panel = adaptive(light: CatpawBrandTokens.panelLight, dark: CatpawBrandTokens.panelDark)
+    static let input = adaptive(light: CatpawBrandTokens.panelLight, dark: 0x141414)
     static let drawer = adaptive(light: 0xF5F5F5, dark: 0x141414)
-    static let ink = adaptive(light: 0x202020, dark: 0xF2F2F2)
+    /// Brand Ink #292622 — primary text
+    static let ink = adaptive(light: CatpawBrandTokens.ink, dark: CatpawBrandTokens.inkDark)
     static let onInk = adaptive(light: 0xFFFFFF, dark: 0x151515)
-    static let secondary = adaptive(light: 0x626262, dark: 0xA3A3A3)
-    static let action = adaptive(light: 0x315BCA, dark: 0x7E9CFF)
+    /// Brand Grey #929298 — secondary text / captions
+    static let secondary = adaptive(light: CatpawBrandTokens.secondaryLight, dark: CatpawBrandTokens.greyDark)
+    static let tertiary = adaptive(light: CatpawBrandTokens.grey, dark: 0x6B6662)  // sheet Grey (muted)
+    static let groupedBackground = adaptive(light: CatpawBrandTokens.background, dark: 0x121110)
+    static let card = adaptive(light: 0xFFFFFF, dark: 0x1C1B19)
+    static let fillSelected = adaptive(light: 0xEAE6E1, dark: 0x2E2B28)
+    static let hairline = adaptiveAlpha(light: CatpawBrandTokens.ink, lightAlpha: 0.08, dark: 0xFFFFFF, darkAlpha: 0.10)
+    static let destructive = adaptive(light: 0xD9402B, dark: 0xFF6B57)
+    /// Brand Primary #FF702A — fills / icons / non-text only (never body copy).
+    static let action = adaptive(light: CatpawBrandTokens.fillLight, dark: CatpawBrandTokens.primaryDark)
+    /// Semantic alias for brand fill (same as `action`).
+    static let fill = action
+    /// Brand Deep #C64A0B — orange text only when unavoidable (≥4.5:1). Prefer `ink`.
+    static let actionText = adaptive(light: CatpawBrandTokens.deep, dark: CatpawBrandTokens.deepDark)
     static let send = adaptive(light: 0x3567EE, dark: 0x3567EE)
     static let sendIcon = adaptive(light: 0xFFFFFF, dark: 0xFFFFFF)
-    static let userMessageBackground = adaptive(light: 0xE8EFFC, dark: 0x102052)
-    static let userMessageInk = adaptive(light: 0x244987, dark: 0xF2F2F2)
+    static let userMessageBackground = adaptive(light: 0xF2EFEB, dark: 0x262422)
+    static let userMessageInk = adaptive(light: CatpawBrandTokens.ink, dark: CatpawBrandTokens.inkDark)
     static let controlEdge = adaptive(light: 0x858585, dark: 0x777777)
-    // Decorative separators do not carry a control's affordance or state.
     static let separator = adaptive(light: 0xDEDEDE, dark: 0x383838)
     static let success = adaptive(light: 0x267146, dark: 0x9BD4AF)
     static let attention = adaptive(light: 0x895700, dark: 0xE9BC69)
     static let failure = adaptive(light: 0xB3261E, dark: 0xFFB4AB)
-    // Compatibility names inherit the shared semantic role, never a second palette.
+    // Calm launch / onboarding / voice (warm page + orb)
+    static let calmPage = adaptive(light: CatpawBrandTokens.background, dark: CatpawBrandTokens.background)
+    static let calmPeach = adaptive(light: CatpawBrandTokens.peach, dark: CatpawBrandTokens.peach)
+    static let calmLavender = adaptive(light: CatpawBrandTokens.lavender, dark: CatpawBrandTokens.lavender)
+    static let orbLight = adaptive(light: CatpawBrandTokens.orbLight, dark: CatpawBrandTokens.orbLight)
+    static let orbDeep = adaptive(light: CatpawBrandTokens.primary, dark: CatpawBrandTokens.primary)
+    static let calmSurface = adaptive(light: 0xFFFFFF, dark: 0xFFFFFF)
+    static let calmGlyph = adaptive(light: 0xFFFFFF, dark: 0xFFFFFF)
+    static let calmShadow = adaptive(light: 0x000000, dark: 0x000000)
+    // Compatibility aliases — never a second palette.
     static let accent = action
     static let green = success
+    static let primary = action
+
+    private static func adaptiveAlpha(light: UInt32, lightAlpha: CGFloat, dark: UInt32, darkAlpha: CGFloat) -> Color {
+        #if os(iOS)
+        func value(_ hex: UInt32, _ a: CGFloat) -> UIColor {
+            UIColor(red: CGFloat((hex >> 16) & 255) / 255, green: CGFloat((hex >> 8) & 255) / 255, blue: CGFloat(hex & 255) / 255, alpha: a)
+        }
+        return Color(UIColor { $0.userInterfaceStyle == .dark ? value(dark, darkAlpha) : value(light, lightAlpha) })
+        #else
+        return Color(NSColor(srgbRed: CGFloat((light >> 16) & 255) / 255, green: CGFloat((light >> 8) & 255) / 255, blue: CGFloat(light & 255) / 255, alpha: lightAlpha))
+        #endif
+    }
 
     private static func adaptive(light: UInt32, dark: UInt32) -> Color {
         #if os(iOS)
@@ -161,9 +195,8 @@ struct CatpawPrimaryButtonStyle: ButtonStyle {
             .foregroundStyle(isEnabled ? CatpawColors.onInk : CatpawColors.secondary)
             .background(isEnabled ? CatpawColors.ink : CatpawColors.input,
                         in: RoundedRectangle(cornerRadius: CatpawLayout.controlRadius, style: .continuous))
-            .opacity(configuration.isPressed ? 0.78 : 1)
-            // Press-down is immediate. Only release may ease back to rest.
-            .animation(reduceMotion || configuration.isPressed ? nil : .easeOut(duration: 0.12), value: configuration.isPressed)
+            // Press-down answers in the touch frame with scale + soft haptic; release springs back.
+            .modifier(CatpawPressEffect(pressed: configuration.isPressed && isEnabled, scale: CatpawInteractionMotion.primaryPressScale, dimmed: 0.86))
     }
 }
 
@@ -173,8 +206,8 @@ struct CatpawPressButtonStyle: ButtonStyle {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .opacity(isEnabled ? (configuration.isPressed ? 0.65 : 1) : 0.55)
-            .animation(reduceMotion || configuration.isPressed ? nil : .easeOut(duration: 0.12), value: configuration.isPressed)
+            .opacity(isEnabled ? 1 : 0.55)
+            .modifier(CatpawPressEffect(pressed: configuration.isPressed && isEnabled, dimmed: 0.7))
     }
 }
 
@@ -190,7 +223,7 @@ struct CatpawConfirmationCheckbox:View {
             HStack(alignment:.firstTextBaseline,spacing:12) {
                 Image(systemName:isOn ? "checkmark.square.fill":"square")
                     .font(CatpawTypography.Role.body.font).symbolRenderingMode(.monochrome)
-                    .foregroundStyle(CatpawColors.action).accessibilityHidden(true)
+                    .foregroundStyle(CatpawColors.ink).accessibilityHidden(true)
                 Text(verbatim:title).font(CatpawTypography.Role.body.font).fixedSize(horizontal:false,vertical:true)
                     .frame(maxWidth:.infinity,alignment:.leading)
             }.frame(maxWidth:.infinity,minHeight:44,alignment:.leading).contentShape(Rectangle())
@@ -202,6 +235,13 @@ struct CatpawConfirmationCheckbox:View {
 
 extension View {
     func primaryAction() -> some View { self.buttonStyle(CatpawPrimaryButtonStyle()) }
+    /// r9 Grok-style answer actions: small thin line glyphs, compact but forgiving hit area.
+    func answerActionIcon() -> some View {
+        // CircleIcon idle pair: light circle + ink glyph (monochrome; brand orange is reserved for the paw).
+        self.font(CatpawTypography.Role.caption.font.weight(.medium)).imageScale(.medium).foregroundStyle(CatpawColors.ink)
+            .frame(width: 30, height: 30).background(CatpawColors.card, in: Circle())
+            .overlay(Circle().strokeBorder(CatpawColors.hairline, lineWidth: 0.5)).contentShape(Circle().inset(by: -6))
+    }
     func touchTarget(minimum:CGFloat = 44) -> some View { self.frame(minWidth: max(44,minimum), minHeight: max(44,minimum)).contentShape(Rectangle()) }
     @ViewBuilder func compactNavigationTitle() -> some View {
         #if os(iOS)
@@ -209,5 +249,44 @@ extension View {
         #else
         self
         #endif
+    }
+}
+
+
+/// r9 §1 sheet footer: stacked full-width ink capsule (52pt) over a quiet text action (44pt).
+struct CatpawSheetActions<Primary: View, Secondary: View>: View {
+    @ViewBuilder var primary: () -> Primary
+    @ViewBuilder var secondary: () -> Secondary
+    var body: some View {
+        VStack(spacing: 4) {
+            primary()
+            secondary()
+        }
+        .padding(.horizontal, 20).padding(.top, 12).padding(.bottom, 8)
+        .frame(maxWidth: CatpawLayout.readableWidth).frame(maxWidth: .infinity)
+        .background(CatpawColors.background)
+        .overlay(alignment: .top) { CatpawColors.hairline.frame(height: 0.5) }
+    }
+}
+
+struct CatpawSheetPrimaryButtonStyle: ButtonStyle {
+    @Environment(\.isEnabled) private var isEnabled
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label.font(.headline)
+            .frame(maxWidth: .infinity, minHeight: 52)
+            .foregroundStyle(isEnabled ? CatpawColors.onInk : CatpawColors.secondary)
+            .background(isEnabled ? CatpawColors.ink : CatpawColors.input, in: Capsule())
+            .contentShape(Capsule())
+            .opacity(configuration.isPressed ? 0.78 : 1)
+    }
+}
+
+struct CatpawSheetSecondaryButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label.font(.body.weight(.medium))
+            .foregroundStyle(CatpawColors.secondary)
+            .frame(maxWidth: .infinity, minHeight: 44)
+            .contentShape(Rectangle())
+            .opacity(configuration.isPressed ? 0.6 : 1)
     }
 }

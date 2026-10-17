@@ -1,0 +1,17 @@
+{
+  "title": "小猫提醒",
+  "reason": "该出发了",
+  "status": "snoozed",
+  "actions": [
+    "snooze",
+    "dismiss"
+  ],
+  "taken": [
+    {
+      "action": "snooze",
+      "at": "2026-10-15T02:20:00.000Z",
+      "until": "2026-10-15T02:10:00.000Z"
+    }
+  ],
+  "id": "LOCAL-SUGGESTION"
+}

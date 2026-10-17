@@ -1,4 +1,7 @@
 import SwiftUI
+#if os(iOS)
+import UserNotifications
+#endif
 import AppIntents
 
 @MainActor final class Bootstrap: ObservableObject {
@@ -82,10 +85,7 @@ import AppIntents
                 // fresh local journal falsely claiming an older server history.
                 _=try await pending.service.create(scope:pending.scope,id:stableID("accepted-work-test-conversation:"+testStore))
             }
-            let id=try await pending.service.openLatest(scope:pending.scope),record=try await pending.repository.record(id,scope:pending.scope)
-            if P0ExperienceFixture.scenario?.hasPrefix("p0-ui-accepted-work") != true,record.conversation?.draftText.isEmpty == true,try await pending.service.read(scope:pending.scope,conversationID:id).messages.isEmpty {
-                try await pending.service.saveDraft(scope:pending.scope,conversationID:id,text:"Saved local draft")
-            }
+            _=try await pending.service.openLatest(scope:pending.scope)
             await pending.start()
             if P0ExperienceFixture.scenario == "p0-ui-consent-handoff" {try await ConversationConsentHandoffFixture.prepare(model:pending)}
             model=pending
@@ -109,12 +109,33 @@ import AppIntents
 @MainActor @main struct CatpawMApp: App {
     @Environment(\.locale) private var uiLocale
     private func ui(_ key: String, arguments: [String] = []) -> String { AppLanguage(locale: uiLocale).ui(key, arguments: arguments) }
+    #if os(iOS)
+    @UIApplicationDelegateAdaptor(CatpawAppDelegate.self) private var appDelegate
+    #endif
     @StateObject private var bootstrap = Bootstrap()
     @StateObject private var auth = NativeAuthApplicationModel()
     @Environment(\.scenePhase) private var scene
+    @State private var launchMarkVisible = LaunchMarkGate.shouldPlay(openedFromURLOrNotification: false)
     #if DEBUG
     @StateObject private var synthetic = NativeSyntheticApplicationModel()
     #endif
+    /// catpaw.ui.v1 blocks render natively inside ```catpaw-card fences (r10 §4).
+    init() {
+        GenerativeBlockAdapter.registerWithMarkdown()
+        MemorySavedChipAdapter.register() // wave2 V1
+        DeviceStatusCardAdapter.register() // wave2 V3 receipt + permission cards
+        PermissionDegradeCardAdapter.register() // proactive demo: permission-denied degrade card
+        DeviceCallCardAdapter.register() // wave2 V3 device_call confirm card
+        ProactiveSuggestionAdapter.register() // wave2 demo proactive_suggestion
+        FollowUpChipsAdapter.register() // chat-ux #4 ```catpaw-card:followups chips
+        #if DEBUG && os(iOS)
+        // PR90g (QA only): ProactiveNotificationAuthUITests launches with this flag so the system prompt appears and can be
+        // allowed once; simctl privacy cannot pre-grant notifications. Debug builds only; no effect without the flag.
+        if CommandLine.arguments.contains("-CatpawRequestNotificationAuth") {
+            Task { _ = try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) }
+        }
+        #endif
+    }
     var body: some Scene {
         WindowGroup {
             Group {
@@ -127,8 +148,35 @@ import AppIntents
                 #else
                 primaryView
                 #endif
-            }.task { if bootstrap.isP0Fixture { await bootstrap.startFixture() } else if bootstrap.model == nil { await auth.start() } }
-                .onChange(of:scene) { _, phase in if phase == .active,bootstrap.model == nil,!bootstrap.isP0Fixture { Task { await auth.foreground() } } }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .overlay {
+                if launchMarkVisible {
+                    LaunchMarkView(restoring: false, toOrb: auth.chat == nil || auth.needsOnboarding) { launchMarkVisible = false }
+                        .transition(.opacity)
+                        .zIndex(100)
+                }
+            }
+            .onOpenURL { url in launchMarkVisible = false; CatpawRouteCenter.shared.pending = CatpawAppRoute(url: url) }
+            .catpawInAppBanner()
+            #if DEBUG || DEVICE_TRIAL
+            .task {
+                // Acceptance: `defaults write … CatpawOpenURL catpawm://tasks` or env CATPAW_ACCEPTANCE_OPEN_URL.
+                let raw = ProcessInfo.processInfo.environment["CATPAW_ACCEPTANCE_OPEN_URL"]
+                    ?? UserDefaults.standard.string(forKey: "CatpawOpenURL")
+                if let raw, let url = URL(string: raw) {
+                    UserDefaults.standard.removeObject(forKey: "CatpawOpenURL")
+                    CatpawRouteCenter.shared.pending = CatpawAppRoute(url: url)
+                }
+                // Demo chains: pin route/model before the first turn (e.g. CATPAW_MODEL_ROUTE=gemini).
+                if let route = ProcessInfo.processInfo.environment["CATPAW_MODEL_ROUTE"], !route.isEmpty {
+                    let model = ProcessInfo.processInfo.environment["CATPAW_MODEL"].flatMap { $0.isEmpty ? nil : $0 }
+                    ModelRouteSelection.select(route: route, model: model)
+                }
+            }
+            #endif
+            .task { if bootstrap.isP0Fixture { await bootstrap.startFixture() } else if bootstrap.model == nil { await auth.start() } }
+                .onChange(of:scene) { _, phase in if phase == .active { Task { try? await Task.sleep(nanoseconds: 1_500_000_000); await ProactiveEngine.shared.scanCalendar(); await ProactiveEngine.shared.prescheduleNextEvent() } }; if phase == .active,bootstrap.model == nil,!bootstrap.isP0Fixture { Task { await auth.foreground() } } }
         }
     }
     @ViewBuilder private var primaryView: some View {
@@ -152,8 +200,16 @@ import AppIntents
             } else { ProgressView("Offline fixture loading").accessibilityIdentifier("qa.p0Fixture.loading") }
             #endif
         }
-        else if let model = auth.chat {
-            ConversationFirstView(model:model,accountLabel:auth.isFixture ? ui("合成登录测试 · 无真实 Auth/模型") : (auth.state.user?.isAnonymous == true ? ui("体验账号") : auth.state.user?.email),onSignOut:{ Task { await auth.signOut() } },isAnonymousAccount:auth.state.user?.isAnonymous == true)
+        // Onboarding gate: intro until「开始使用」; entry is not blocked on provider health.
+        else if let model = auth.chat, !auth.needsOnboarding {
+            ConversationFirstView(model:model,accountLabel:auth.isFixture ? ui("合成登录测试 · 无真实 Auth/模型") : (auth.state.user?.isAnonymous == true ? ui("体验账号") : auth.state.user?.email),onSignOut:{ CatpawLeaveActivity.stopAll(); Task { let l2User=auth.state.user?.id; await auth.requestSignOut { AccountLocalData.signOut(userID:l2User); if let l2User { L2SecureStore.wipe(userID:l2User) } } } },isAnonymousAccount:auth.state.user?.isAnonymous == true)
+                // p89i: one shared confirmation UI for parked items of the leaving account (#89/#90/#91 sources).
+                .onAppear { auth.attachParkedPrompt() }
+                .sheet(isPresented:Binding(get:{ !auth.parkedPrompt.isEmpty }, set:{ if !$0 && !auth.parkedPrompt.isEmpty { auth.resolveParked([:]) } })) {
+                    AccountParkedDecisionSheet(items:auth.parkedPrompt) { auth.resolveParked($0) }
+                }
+                // L2 memory: per-user encrypted store follows the signed-in user (memory-layers.md).
+                .task(id:auth.state.user?.id) { AccountEpoch.shared.activate(account:auth.state.user?.id.uuidString); L2SecureStore.activate(userID:auth.state.user?.id); CatpawL2Sealing.install(); AtRestMigrationScheduler.shared.sealerMayBeReady(); MemoryLibraryLocal.activate(userID:auth.state.user?.id); GenerativeBlockStore.shared.reloadFromL2(); MemoryCache.shared.reloadFromL2(); await MemoryCache.shared.sync() }
                 #if DEBUG
                 .overlay(alignment:.topTrailing) {
                     if auth.isFixture {
@@ -161,6 +217,16 @@ import AppIntents
                     }
                 }
                 #endif
+        }
+        else if !auth.needsOnboarding {
+            // Intro cleared; chat shell still attaching (background auth/workspace). Not a door lock.
+            ZStack {
+                CatpawColors.calmPage.ignoresSafeArea()
+                ProgressView()
+                    .tint(CatpawColors.ink)
+            }
+            .accessibilityIdentifier("onboarding.enteringChat")
+            .task { if auth.chat == nil { await auth.foreground() } }
         }
         else {
             NativeLoginView(auth:auth)
@@ -210,5 +276,25 @@ struct CatpawAppShortcuts: AppShortcutsProvider {
         AppShortcut(intent: OpenCatpawConversationIntent(),
                     phrases: ["Open a conversation in \(.applicationName)", "Open \(.applicationName)"],
                     shortTitle: "Open conversation", systemImageName: "bubble.left.and.bubble.right")
+    }
+}
+
+/// Pending out-of-app route, consumed by ConversationFirstView once the chat is ready.
+@MainActor @Observable final class CatpawRouteCenter {
+    static let shared = CatpawRouteCenter()
+    var pending: CatpawAppRoute?
+}
+
+/// Codex PR91 #5: SwiftData memory rows sealed with the signed-in subject's L2 key; no store → the save fails.
+enum CatpawL2Sealing {
+    static func install() {
+        ConversationMemoryAtRest.sealer = { data, subject in
+            guard let store = L2SecureStore.currentForSealing, store.userID == subject else { throw L2SecureStoreError.unavailable }
+            return try store.seal(data)
+        }
+        ConversationMemoryAtRest.opener = { data, subject in
+            guard let store = L2SecureStore.currentForSealing, store.userID == subject else { throw L2SecureStoreError.unavailable }
+            return try store.openSealed(data)
+        }
     }
 }

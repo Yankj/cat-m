@@ -10,7 +10,7 @@ args=parser.parse_args()
 result=subprocess.check_output(['git','ls-files','--cached','--others','--exclude-standard','-z'],cwd=root)
 paths=sorted(set(x.decode() for x in result.split(b'\0') if x))
 patterns={
-    'credential_prefix':r'gh[pousr]_[A-Za-z0-9_]{20,}|github_pat_[A-Za-z0-9_]{20,}|sk-(?:proj-)?[A-Za-z0-9_-]{24,}|sb_secret_[A-Za-z0-9_-]{20,}|AKIA[0-9A-Z]{16}|ASIA[0-9A-Z]{16}',
+    'credential_prefix':r'gh[pousr]_[A-Za-z0-9_]{20,}|github_pat_[A-Za-z0-9_]{20,}|(?<![A-Za-z0-9])sk-(?:proj-)?[A-Za-z0-9_-]{24,}|sb_secret_[A-Za-z0-9_-]{20,}|AKIA[0-9A-Z]{16}|ASIA[0-9A-Z]{16}',
     'deployment_public_key':r'sb_publishable_[A-Za-z0-9_-]{20,}',
     'private_key':r'-----BEGIN (?:RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----',
     'credential_url':r'https?://[^\s/@:]+:[^\s/@]+@',
@@ -19,6 +19,10 @@ patterns={
     'signed_url':r'[?&](?:X-Amz-Signature|X-Goog-Signature|signature|access_token)=',
     'device_identity':r'(?i)(?:udid|simulator_id|device_id|identifier for vendor)[^\n]{0,60}[A-F0-9]{8}-[A-F0-9]{4}-[A-F0-9]{4}-[A-F0-9]{4}-[A-F0-9]{12}',
 }
+# Exact-match allowlist (full host names, no wildcards) of external domains that the internal_domain pattern flags.
+# www.meituan.com / i.meituan.com: public external jump targets of the shop_open device tool
+# (DeviceToolContract.shopURLs app deep link + web fallback); not internal services.
+allowed_external_domains={'www.meituan.com','i.meituan.com'}
 hits=[]; review=[]; total=0; images=[]
 def finding(path,category,line=None):
     hits.append({'path':path,'category':category,**({'line':line} if line else {})})
@@ -52,13 +56,17 @@ for name in paths:
     except UnicodeDecodeError:finding(name,'unexpected_binary');continue
     for category,pattern in patterns.items():
         for match in re.finditer(pattern,text):
+            if category=='internal_domain' and match.group(0).lower() in allowed_external_domains:continue
             finding(name,category,text.count('\n',0,match.start())+1)
     # Attribute values only; variable names and blank/obvious synthetic literals do not imply secrets.
     for match in re.finditer(r'(?i)(?:api[_-]?key|access[_-]?token|password|client[_-]?secret)\s*[:=]\s*[\"\']([^\"\'\n]{8,})[\"\']',text):
         value=match.group(1)
         if not re.search(r'synthetic|fixture|example|placeholder|not-configured|your[-_]|process\.env',value,re.I):
             review.append({'path':name,'category':'secret_assignment_review','line':text.count('\n',0,match.start())+1})
-    for match in re.finditer(r'[\w.+-]+@([\w.-]+\.[A-Za-z]{2,})',text):
+    # Email: a dotted domain is required after the @. Image scale names (Name@2x.png / @3x.pdf, as used by asset-catalog
+    # Contents.json "filename" fields and the brand scripts) are not addresses.
+    for match in re.finditer(r'[\w.+-]+@([\w-]+(?:\.[\w-]+)*\.[A-Za-z]{2,})',text):
+        if re.fullmatch(r'\d+(?:\.\d+)?x\.(?:png|jpe?g|pdf|svg|heic|webp)',match.group(1),re.I):continue
         if match.group(1).lower() not in ['example.invalid','example.com']:
             review.append({'path':name,'category':'email_review','line':text.count('\n',0,match.start())+1})
 exceptions=json.loads((root/'scripts/reviewed-findings.json').read_text())['findings']

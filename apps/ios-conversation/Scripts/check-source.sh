@@ -18,7 +18,7 @@ for package in ios-navigation ios-image-composer; do
     -module-cache-path .build/module-cache -emit-module-path ".build/check-modules/$module.swiftmodule" \
     ../../packages/$package/Sources/$module/*.swift
 done
-sources=(Sources/Domain/*.swift Sources/Persistence/*.swift Sources/Providers/*.swift Sources/Features/*.swift Sources/Voice/*.swift Sources/DesignSystem/*.swift Sources/App/*.swift)
+sources=(Sources/Domain/**/*.swift Sources/Persistence/**/*.swift Sources/Providers/**/*.swift Sources/Features/**/*.swift Sources/Voice/**/*.swift Sources/DesignSystem/**/*.swift Sources/App/**/*.swift Sources/Shared/**/*.swift)
 swiftc -swift-version 5 -typecheck -parse-as-library -module-name CatpawM \
   -target arm64-apple-ios17.0-simulator -sdk "$(xcrun --sdk iphonesimulator --show-sdk-path)" \
   -module-cache-path .build/module-cache -I .build/check-modules $sources

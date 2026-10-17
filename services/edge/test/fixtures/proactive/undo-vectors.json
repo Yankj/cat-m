@@ -1,0 +1,12 @@
+{
+  "contract": "catpaw.proactive.undo.v1 — undo reverts the most recent reversible action; a sent SMS (notify_attendees) is irreversible and kept; status is derived from what remains. Shared by the device (ProactiveUndo.swift) and the server (decision.mjs undo).",
+  "vectors": [
+    { "name": "reminder", "offered": ["create_reminder", "notify_attendees", "snooze", "dismiss"], "taken": ["create_reminder"], "status": "pending", "removed": "create_reminder", "after": [], "after_status": "pending" },
+    { "name": "reminder_then_sms_keeps_sms", "offered": ["create_reminder", "notify_attendees"], "taken": ["create_reminder", "notify_attendees"], "status": "done", "removed": "create_reminder", "after": ["notify_attendees"], "after_status": "pending" },
+    { "name": "sms_only_is_irreversible", "offered": ["create_reminder", "notify_attendees"], "taken": ["notify_attendees"], "status": "pending", "removed": null, "after": ["notify_attendees"], "after_status": "pending" },
+    { "name": "snooze_after_reminder", "offered": ["create_reminder", "notify_attendees", "snooze"], "taken": ["create_reminder", "snooze"], "status": "snoozed", "removed": "snooze", "after": ["create_reminder"], "after_status": "pending" },
+    { "name": "dismiss", "offered": ["create_reminder", "dismiss"], "taken": ["dismiss"], "status": "dismissed", "removed": "dismiss", "after": [], "after_status": "pending" },
+    { "name": "dismiss_after_sms", "offered": ["notify_attendees", "dismiss"], "taken": ["notify_attendees", "dismiss"], "status": "dismissed", "removed": "dismiss", "after": ["notify_attendees"], "after_status": "done" },
+    { "name": "nothing", "offered": ["create_reminder"], "taken": [], "status": "pending", "removed": null, "after": [], "after_status": "pending" }
+  ]
+}

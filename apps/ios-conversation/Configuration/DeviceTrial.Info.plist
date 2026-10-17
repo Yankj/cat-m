@@ -2,6 +2,10 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>com.yankj.catpawm.proactive.refresh</string>
+	</array>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>zh-Hans</string>
 	<key>CFBundleDisplayName</key>
@@ -18,42 +22,81 @@
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
 	<string>$(MARKETING_VERSION)</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>catpawm</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>catpawm</string>
+			</array>
+		</dict>
+	</array>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>CatpawBackendOrigin</key>
-	<string></string>
+	<string>$(CATPAW_BACKEND_ORIGIN)</string>
 	<key>CatpawDeviceTrialConfigurationVersion</key>
 	<integer>1</integer>
+	<key>CatpawGitSHA</key>
+	<string>78fdd47</string>
 	<key>CatpawServerScopeID</key>
-	<string></string>
+	<string>$(CATPAW_SERVER_SCOPE_ID)</string>
 	<key>CatpawSupabaseProjectURL</key>
-	<string></string>
+	<string>$(CATPAW_SUPABASE_PROJECT_URL)</string>
 	<key>CatpawSupabasePublishableKey</key>
-	<string></string>
+	<string>$(CATPAW_SUPABASE_PUBLISHABLE_KEY)</string>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>imeituan</string>
+		<string>taobao</string>
+		<string>openapp.jdmobile</string>
+		<string>pinduoduo</string>
+		<string>shortcuts</string>
+		<string>mailto</string>
+		<string>tel</string>
+	</array>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>仅在你明确确认日程并允许访问后，创建并核对该日程，用于防止重复创建和找回执行结果。</string>
 	<key>NSCameraUsageDescription</key>
 	<string>仅在你主动选择拍照时打开相机，把确认的图片保存到当前本地项目；不会自动上传。</string>
+	<key>NSContactsUsageDescription</key>
+	<string>用来找到你要联系的人，只在这次请求里使用。</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>用于估算去会议地点的公共交通时间，以便在合适的时间提醒你出发。</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>仅在你主动开始说话时采集本句声音，用于设备支持的本地转写。原音不保存到长期记录。</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>把你选择的图片保存到“照片”。</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>仅在你主动选择相册图片时将该图片保存到当前本地项目；不会自动上传相册内容。</string>
+	<key>NSRemindersFullAccessUsageDescription</key>
+	<string>Catpaw 在你确认后把提醒写入“提醒事项”，不会自动修改。</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
 	<string>仅在你主动启用且设备支持本地识别时，将本句转成可编辑文字；不使用云端识别回退。</string>
+	<key>NSSupportsLiveActivities</key>
+	<true/>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
 		<false/>
 	</dict>
-	<key>UILaunchScreen</key>
-	<dict/>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+	</array>
+	<key>UILaunchStoryboardName</key>
+	<string>LaunchScreen</string>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
-	<key>NSCalendarsFullAccessUsageDescription</key>
-	<string>仅在你明确确认日程并允许访问后，创建并核对该日程，用于防止重复创建和找回执行结果。</string>
 </dict>
 </plist>

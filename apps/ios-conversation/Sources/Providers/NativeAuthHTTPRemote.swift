@@ -3,10 +3,19 @@ import Foundation
 public protocol NativeAuthHTTPTransport: Sendable {
     func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse)
 }
+public protocol NativeApplicationScopeResolving: Sendable {
+    func applicationScope(accessToken: String, subject: UUID) async throws -> UUID
+}
 public struct NativeApplicationSessionError: Error, Sendable, LocalizedError {
     public let httpStatus: Int
     public let code: String?
-    public var errorDescription: String? { "工作区连接失败（HTTP \(httpStatus)" + (code.map { " · " + $0 } ?? "") + "）。请点‘开始体验’重试。" }
+    /// Workspace discovery is a read-only request. Transport timeouts, throttling and server
+    /// availability failures may be retried without replaying a message, consent or effect.
+    public var isRetryable: Bool { httpStatus == 408 || httpStatus == 429 || (500...599).contains(httpStatus) }
+    /// Status/code stay available to policy and diagnostics, but never become end-user copy.
+    public var errorDescription: String? {
+        isRetryable ? "正在连接，恢复后会自动继续。" : "暂时无法打开工作区，本机对话仍会保留。"
+    }
 }
 public final class NativeAuthURLTransport: NativeAuthHTTPTransport, @unchecked Sendable {
     private let session: URLSession
@@ -30,7 +39,7 @@ private final class NativeAuthRejectRedirect: NSObject, URLSessionTaskDelegate {
     func urlSession(_ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse, newRequest request: URLRequest, completionHandler: @escaping (URLRequest?) -> Void) { completionHandler(nil) }
 }
 /// HTTP contract from Supabase Auth's official OpenAPI. No SDK dependency or implicit session.
-public struct NativeAuthHTTPRemote: NativeAuthRemote {
+public struct NativeAuthHTTPRemote: NativeAuthRemote, NativeApplicationScopeResolving {
     private let configuration: NativeAuthConfiguration
     private let transport: any NativeAuthHTTPTransport
     private let now: @Sendable () -> Date

@@ -42,12 +42,12 @@ import SwiftUI
                                 Label(ui("成果已准备好"), systemImage: "doc.text").font(.caption.weight(.medium)).foregroundStyle(CatpawColors.secondary)
                                 Spacer()
                                 Text(model.snapshot.isViewed(scope: model.scope, reference: artifact.documentReference) ? ui("此版本已读") : ui("此版本未读"))
-                                    .font(.caption.weight(.medium)).foregroundStyle(CatpawColors.accent)
+                                    .font(.caption.weight(.medium)).foregroundStyle(CatpawColors.ink)
                             }
                             Text(artifact.title).font(.title3.weight(.semibold)).fixedSize(horizontal: false, vertical: true)
                             StatusLabel(text: ui("本地模拟成果 · v{0}", arguments: [String(artifact.documentReference.version)]), symbol: "info.circle")
                             Divider()
-                            HStack { Text(model.isGatewayOwned(latest.id) ? ui("阅读合成成果 v{0}", arguments: [String(artifact.documentReference.version)]) : ui("阅读与修改")).font(.subheadline.weight(.semibold)); Spacer(); Image(systemName: "arrow.right").accessibilityHidden(true) }.foregroundStyle(CatpawColors.accent).frame(minHeight: 32)
+                            HStack { Text(model.isGatewayOwned(latest.id) ? ui("阅读合成成果 v{0}", arguments: [String(artifact.documentReference.version)]) : ui("阅读与修改")).font(.subheadline.weight(.semibold)); Spacer(); Image(systemName: "arrow.right").accessibilityHidden(true) }.foregroundStyle(CatpawColors.ink).frame(minHeight: 32)
                         }
                     }.buttonStyle(.plain)
                 } else {
@@ -229,7 +229,7 @@ import SwiftUI
             Button { change(record, .active) } label: { Label(ui("恢复"), systemImage: "play").touchTarget() }.buttonStyle(.bordered)
         }
         Button { change(record, .completed) } label: { Label(ui("结束委托"), systemImage: "stop").touchTarget() }
-            .buttonStyle(.bordered).tint(CatpawColors.accent)
+            .buttonStyle(.bordered).tint(CatpawColors.ink)
     }
     private func agreementField(_ title: String, _ value: String) -> some View {
         VStack(alignment: .leading, spacing: 6) {
