@@ -313,8 +313,21 @@ final class StatusLinePrereviewTests: XCTestCase {
         XCTAssertEqual(CatpawTaskTitle.make("\n\n  hello\nworld"), "hello")
         let long = CatpawTaskTitle.make("请帮我整理一下这周所有会议的纪要并发给团队每个人")!
         XCTAssertEqual(long.count, CatpawTaskTitle.limit); XCTAssertTrue(long.hasSuffix("…"))
-        XCTAssertEqual(CatpawTaskTitle.make("12345678901234567890"), "12345678901234567890")
+        XCTAssertEqual(CatpawTaskTitle.make("abcdefghijabcdefghij"), "abcdefghijabcdefghij")
         XCTAssertNil(CatpawTaskTitle.make(" \n\t "))
+    }
+    /// R2 (NoBug P1-2): contacts are masked before the 20-character cut; ordinary short numbers stay.
+    func testR2PhonesEmailsAndURLsAreMaskedBeforeTruncation() {
+        XCTAssertEqual(CatpawTaskTitle.make("给张三打 13812345678"), "给张三打 •••")
+        XCTAssertEqual(CatpawTaskTitle.make("给张三打13812345678"), "给张三打•••")
+        XCTAssertEqual(CatpawTaskTitle.make("拨 +86 138-1234-5678 再说"), "拨 ••• 再说")
+        XCTAssertEqual(CatpawTaskTitle.make("发邮件给 alice.w@example.com 说一声"), "发邮件给 ••• 说一声")
+        XCTAssertEqual(CatpawTaskTitle.make("看看https://example.com/a?b=1"), "看看•••")
+        XCTAssertEqual(CatpawTaskTitle.make("明天3点开会 房间 12345"), "明天3点开会 房间 12345")
+        // a long number that would straddle the cut is masked first, so no digits of it survive truncation
+        let t = CatpawTaskTitle.make("请帮我把这段话发给同事并打电话 13812345678 确认")!
+        XCTAssertFalse(t.contains("138")); XCTAssertLessThanOrEqual(t.count, CatpawTaskTitle.limit)
+        XCTAssertFalse(CatpawTaskTitle.make("联系 bob@example.com 或 021-6543 2100")!.contains("@"))
     }
     func testHandOffIsPerOperationAndConsumedOnce() {
         let a = UUID(), b = UUID()
@@ -344,3 +357,14 @@ final class AccountConversationLocalTests: XCTestCase {
         XCTAssertTrue(d.bool(forKey: "catpaw.onboarding.keep"), "device-level keys untouched")
     }
 }
+
+#if canImport(ActivityKit) && os(iOS)
+/// R2 (NoBug P1-2): an ended turn's task title leaves the lock screen after ~2 min, whatever the outcome.
+@MainActor final class CatpawLiveActivityLingerTests: XCTestCase {
+    func testR2EndedTurnsLingerAtMostTwoMinutes() {
+        for kind in [CatpawWorkAttributes.ContentState.Kind.done, CatpawWorkAttributes.ContentState.Kind.failed, "stopped"] {
+            XCTAssertLessThanOrEqual(CatpawLiveActivityCoordinator.dismissAfter(kind: kind), 2 * 60, kind)
+        }
+    }
+}
+#endif

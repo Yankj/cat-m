@@ -31,6 +31,7 @@ import UserNotifications
     static let day = local(10), night = local(23, 30)
     private var calls: [String] = []
     private var savedBackend: (any ProactiveSuggestionBackend)?
+    private var l2Root: URL!, l2Keys: EphemeralL2KeyProvider!
 
     override func setUp() async throws {
         ProactiveClock.now = { Self.day }
@@ -49,6 +50,8 @@ import UserNotifications
         let l2 = try L2SecureStore(userID: UUID(), root: l2Root, keys: l2Keys)
         let vault = try L2SecureStore(userID: ProactiveSealedStore.parkingVaultID, root: l2Root, keys: l2Keys)
         ProactiveSealedStore.store = { l2 }; ProactiveSealedStore.parkingVault = { vault }
+        ProactiveSealedStore.storeOwnedBy = { _, _ in true }   // one shared temp store for the string accounts below (R2 B1 tests use real ownership)
+        self.l2Root = l2Root; self.l2Keys = l2Keys
         AccountEpoch.shared.activate(account: "XCTEST-A")
         ProactiveEngine.shared.claimData(for: "XCTEST-A", force: true)   // clean inbox/ledgers, owned by this account
         ProactiveEngine.shared.resetLedger()
@@ -66,7 +69,65 @@ import UserNotifications
         ProactiveClock.now = { Date() }
         ProactiveSealedStore.store = { L2SecureStore.current }
         ProactiveSealedStore.parkingVault = { try? L2SecureStore(userID: ProactiveSealedStore.parkingVaultID, root: L2SecureStore.rootDirectory, keys: L2SecureStore.keys) }
+        ProactiveSealedStore.storeOwnedBy = ProactiveSealedStore.realOwnership
+        for k in ProactiveSealedStore.sealedKeys { UserDefaults.standard.removeObject(forKey: k) }
         if let savedBackend { ProactiveSuggestionHub.backend = savedBackend }
+    }
+
+    // MARK: R2 (NoBug B1): account change never hands the previous owner's (or unowned) legacy plaintext to the new account
+
+    private static let legacyInbox = Data(#"{"s-a":{"id":"s-a","title":"Alice Secret 1:1"}}"#.utf8)
+    private static let legacyReminders = Data(#"{"s-a":{"title":"Alice Secret","place":"Room 7"}}"#.utf8)
+    private static let legacyAttendees = Data(#"{"s-a":{"names":["Alice Secret"],"recipients":["alice@example.com"]}}"#.utf8)
+    /// Real per-account ownership: B's store is active; the legacy plaintext is A's (or nobody's).
+    private func activateRealStoreForB() throws -> (UUID, L2SecureStore) {
+        let b = UUID(), storeB = try L2SecureStore(userID: b, root: l2Root, keys: l2Keys)
+        ProactiveSealedStore.store = { storeB }; ProactiveSealedStore.storeOwnedBy = ProactiveSealedStore.realOwnership
+        let d = UserDefaults.standard
+        d.set(Self.legacyInbox, forKey: ProactiveSealedStore.inboxKey)
+        d.set(Self.legacyReminders, forKey: ProactiveSealedStore.remindersKey)
+        d.set(Self.legacyAttendees, forKey: ProactiveSealedStore.attendeesKey)
+        AccountEpoch.shared.activate(account: b.uuidString)
+        return (b, storeB)
+    }
+    private func assertNothingReachedB(_ storeB: L2SecureStore, file: StaticString = #filePath, line: UInt = #line) {
+        for k in ProactiveSealedStore.sealedKeys {
+            XCTAssertNil(UserDefaults.standard.data(forKey: k), "plaintext \(k) dropped", file: file, line: line)
+            XCTAssertNil(storeB.data(forKey: k), "\(k) never sealed into B", file: file, line: line)
+        }
+        XCTAssertTrue(ProactiveLocalBackend.load().isEmpty, "B's inbox shows none of it", file: file, line: line)
+        XCTAssertTrue(ProactiveEngine.shared.attendees(for: "s-a").names.isEmpty, file: file, line: line)
+        XCTAssertNil(ProactiveEngine.shared.pendingReminder(for: "s-a"), file: file, line: line)
+    }
+    func testR2AccountChangeParksPreviousOwnersPlaintextUnderItAndNeverSealsItIntoB() throws {
+        let a = UUID().uuidString
+        let (b, storeB) = try activateRealStoreForB()
+        UserDefaults.standard.set(a, forKey: ProactiveDataOwner.key)
+        ProactiveEngine.shared.claimData(for: b.uuidString)
+        ProactiveSealedStore.migrateAll()   // the lazy migration must find nothing left to seal into B
+        assertNothingReachedB(storeB)
+        XCTAssertEqual(UserDefaults.standard.string(forKey: ProactiveDataOwner.key), b.uuidString)
+        // A's data was parked under A, sealed (vault), never as plaintext
+        XCTAssertNotNil(ProactiveEngine.shared.parkedInbox(for: a)["s-a"], "A's card parked under A")
+        let rec = ProactiveParking.Lot(UserDefaults.standard.dictionary(forKey: ProactiveParking.key)).slots[a.lowercased()]?.last?["blobs"] as? [String: Data] ?? [:]
+        for k in ProactiveSealedStore.sealedKeys {
+            XCTAssertNil(rec[k], "no plaintext copy of \(k) in the lot")
+            XCTAssertNotNil(rec[ProactiveSealedStore.parkedPrefix + k], "\(k) parked sealed")
+        }
+        XCTAssertEqual(ProactiveSealedStore.parked(rec, ProactiveSealedStore.attendeesKey), Self.legacyAttendees)
+        XCTAssertFalse(rec.values.contains { String(decoding: $0, as: UTF8.self).contains("Alice Secret") })
+    }
+    func testR2UnownedLegacyPlaintextIsQuarantinedOnlyAndNeverClaimedForB() throws {
+        let (b, storeB) = try activateRealStoreForB()
+        UserDefaults.standard.removeObject(forKey: ProactiveDataOwner.key)   // pre-PR90 upgrade: no owner recorded
+        ProactiveEngine.shared.claimData(for: b.uuidString)
+        ProactiveSealedStore.migrateAll()
+        assertNothingReachedB(storeB)
+        XCTAssertTrue(ProactiveEngine.shared.hasQuarantine, "isolated, never dropped")
+        let q = UserDefaults.standard.dictionary(forKey: ProactiveQuarantine.key)?["blobs"] as? [String: Data] ?? [:]
+        XCTAssertEqual(q[ProactiveSealedStore.inboxKey], Self.legacyInbox)
+        XCTAssertEqual(q[ProactiveSealedStore.attendeesKey], Self.legacyAttendees)
+        XCTAssertTrue(ProactiveEngine.shared.parkedInbox(for: b.uuidString).isEmpty)
     }
     private func signal(_ id: String, inMinutes m: Double = 8) -> ProactiveSignal {
         ProactiveSignal(source: .simulated, eventID: id + UUID().uuidString, title: "XCTest 会议", start: ProactiveClock.now().addingTimeInterval(m * 60), place: "")
@@ -840,10 +901,12 @@ import UserNotifications
     private let keys = EphemeralL2KeyProvider()
     private let user = UUID()
 
+    private var store: L2SecureStore!
+
     override func setUp() async throws {
         suite = "proactive-sealed-\(UUID().uuidString)"; defaults = UserDefaults(suiteName: suite)
         root = FileManager.default.temporaryDirectory.appendingPathComponent(suite)
-        let store = try L2SecureStore(userID: user, root: root, keys: keys)
+        let store = try L2SecureStore(userID: user, root: root, keys: keys); self.store = store
         let vault = try L2SecureStore(userID: ProactiveSealedStore.parkingVaultID, root: root, keys: keys)
         ProactiveSealedStore.defaults = defaults
         ProactiveSealedStore.store = { store }; ProactiveSealedStore.parkingVault = { vault }
@@ -852,6 +915,8 @@ import UserNotifications
         ProactiveSealedStore.defaults = .standard
         ProactiveSealedStore.store = { L2SecureStore.current }
         ProactiveSealedStore.parkingVault = { try? L2SecureStore(userID: ProactiveSealedStore.parkingVaultID, root: L2SecureStore.rootDirectory, keys: L2SecureStore.keys) }
+        ProactiveSealedStore.activator = nil
+        for k in ProactiveSealedStore.sealedKeys { try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: store.fileURL(forKey: k).path) }
         UserDefaults().removePersistentDomain(forName: suite)
         try? FileManager.default.removeItem(at: root)
     }
@@ -896,6 +961,69 @@ import UserNotifications
         XCTAssertNil(ProactiveSealedStore.data(forKey: ProactiveSealedStore.inboxKey))
         XCTAssertNil(defaults.data(forKey: ProactiveSealedStore.attendeesKey))
     }
+    // MARK: R2 (NoBug P1-1): unreadable ≠ missing; never write or delete over a record that can't be read
+
+    /// Simulates a record that exists but can't be read now (locked before first unlock, I/O / permission error).
+    private func makeUnreadable(_ key: String) throws {
+        try FileManager.default.setAttributes([.posixPermissions: 0o000], ofItemAtPath: store.fileURL(forKey: key).path)
+    }
+    private func makeReadable(_ key: String) throws {
+        try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: store.fileURL(forKey: key).path)
+    }
+    func testR2MissingUnreadableAndValueAreDistinct() throws {
+        XCTAssertEqual(store.read(forKey: ProactiveSealedStore.remindersKey), .missing)
+        let v = Data(#"{"s1":{"title":"t"}}"#.utf8)
+        XCTAssertTrue(ProactiveSealedStore.set(v, forKey: ProactiveSealedStore.remindersKey))
+        XCTAssertEqual(ProactiveSealedStore.read(forKey: ProactiveSealedStore.remindersKey), .value(v))
+        try makeUnreadable(ProactiveSealedStore.remindersKey)
+        XCTAssertEqual(store.read(forKey: ProactiveSealedStore.remindersKey), .unreadable)
+        XCTAssertNil(ProactiveSealedStore.data(forKey: ProactiveSealedStore.remindersKey))
+        ProactiveSealedStore.store = { nil }   // signed out / no store: unreadable, never "empty"
+        XCTAssertEqual(ProactiveSealedStore.read(forKey: ProactiveSealedStore.remindersKey), .unreadable)
+    }
+    func testR2UnreadableRecordIsNeitherDeletedNorOverwritten() throws {
+        let v = Data(#"{"s1":{"names":["Alice Secret"],"recipients":["a@example.com"]}}"#.utf8)
+        XCTAssertTrue(ProactiveSealedStore.set(v, forKey: ProactiveSealedStore.attendeesKey))
+        try makeUnreadable(ProactiveSealedStore.attendeesKey)
+        // a setter that read "nothing" and writes back an empty dictionary maps to nil → must not delete the file
+        XCTAssertFalse(ProactiveSealedStore.set(nil, forKey: ProactiveSealedStore.attendeesKey))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: store.fileURL(forKey: ProactiveSealedStore.attendeesKey).path))
+        // a read-modify-write from an empty read must not replace data it never saw
+        XCTAssertFalse(ProactiveSealedStore.set(Data(#"{"s2":{"names":[],"recipients":[]}}"#.utf8), forKey: ProactiveSealedStore.attendeesKey))
+        try makeReadable(ProactiveSealedStore.attendeesKey)
+        XCTAssertEqual(ProactiveSealedStore.data(forKey: ProactiveSealedStore.attendeesKey), v, "untouched once readable again")
+        XCTAssertTrue(ProactiveSealedStore.set(nil, forKey: ProactiveSealedStore.attendeesKey), "a readable record can be deleted")
+        XCTAssertEqual(store.read(forKey: ProactiveSealedStore.attendeesKey), .missing)
+    }
+    func testR2MigrationNeverOverwritesAnUnreadableSealedCopy() throws {
+        let sealed = Data(#"{"s1":{}}"#.utf8)
+        XCTAssertTrue(ProactiveSealedStore.set(sealed, forKey: ProactiveSealedStore.inboxKey))
+        try makeUnreadable(ProactiveSealedStore.inboxKey)
+        defaults.set(Data("legacy".utf8), forKey: ProactiveSealedStore.inboxKey)
+        defaults.set(user.uuidString, forKey: ProactiveDataOwner.key)
+        ProactiveSealedStore.migrateAll()
+        XCTAssertNotNil(defaults.data(forKey: ProactiveSealedStore.inboxKey), "plaintext kept until the sealed copy is readable")
+        try makeReadable(ProactiveSealedStore.inboxKey)
+        ProactiveSealedStore.migrateAll()
+        XCTAssertEqual(ProactiveSealedStore.data(forKey: ProactiveSealedStore.inboxKey), sealed, "sealed copy wins")
+        XCTAssertNil(defaults.data(forKey: ProactiveSealedStore.inboxKey))
+    }
+    func testR2BackgroundEntryActivatesL2OnlyForTheCurrentAccount() throws {
+        var active: L2SecureStore?
+        ProactiveSealedStore.store = { active }
+        let r: URL = root, k = keys
+        ProactiveSealedStore.activator = { uid in active = try? L2SecureStore(userID: uid, root: r, keys: k) }
+        AccountEpoch.shared.activate(account: user.uuidString)
+        defer { AccountEpoch.shared.signOut() }
+        ProactiveSealedStore.ensureActive(account: UUID().uuidString)   // not the current account
+        XCTAssertNil(active)
+        ProactiveSealedStore.ensureActive(account: user.uuidString)
+        XCTAssertEqual(active?.userID, user)
+        let first = active
+        ProactiveSealedStore.ensureActive(account: user.uuidString)     // idempotent; never switches an active store
+        XCTAssertTrue(active === first)
+    }
+
     func testParkedBlobsAreSealedAndLegacyLotIsResealed() {
         var blobs: [String: Data] = [:]
         ProactiveSealedStore.setParked(&blobs, Data("Bob Secret".utf8), ProactiveSealedStore.inboxKey)
