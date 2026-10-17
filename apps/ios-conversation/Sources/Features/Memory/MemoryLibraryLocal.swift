@@ -413,6 +413,9 @@ extension AccountLocalData {
         ProactiveEngine.shared.claimData(for: nil)
         // Live Activities are keyed by suggestion id: read the inbox before it is purged.
         for id in ProactiveLocalBackend.load().keys { CatpawLeaveActivity.stop(suggestionID: id) }
+        // v1.1: claimData above parked the leaving account's inbox / reminder + attendee contexts sealed (vault key); the live
+        // sealed records and any plaintext copy are purged here, and the L2 wipe after this call shreds the account key.
+        ProactiveSealedStore.purgeForSignOut()
         CatpawLeaveActivity.stopAll()
         signOutCore(userID: userID, defaults: .standard)   // generation first, then memory cache + library + keys
         MemoryLibraryHub.reset()

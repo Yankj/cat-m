@@ -89,6 +89,9 @@ struct ProactiveSignal: Equatable, Sendable {
     private(set) var lastSuggestionID: String?
     var defaultLeadMinutes = 10
     private let defaults = UserDefaults.standard
+    /// v1.1 L2: the inbox, reminder and attendee contexts live sealed in the account's L2SecureStore; other keys stay here.
+    private func blob(_ k: String) -> Data? { ProactiveSealedStore.handles(k) ? ProactiveSealedStore.data(forKey: k) : defaults.data(forKey: k) }
+    private func setBlob(_ d: Data?, _ k: String) { if ProactiveSealedStore.handles(k) { ProactiveSealedStore.set(d, forKey: k) } else { defaults.set(d, forKey: k) } }
     private let ledgerKey = "catpaw.proactive.ledger.v1", opsKey = "catpaw.proactive.ops.v1", suggestionsKey = "catpaw.proactive.suggestions.v1"
     #if canImport(EventKit)
     let store = EKEventStore()
@@ -142,9 +145,14 @@ struct ProactiveSignal: Equatable, Sendable {
     /// to `ProactiveParking.key` under that account. Nothing parked is shown, sent, synced or re-armed.
     private func park(owner: String) {
         var blobs: [String: Data] = [:]
-        for k in quarantineBlobKeys { if let d = defaults.data(forKey: k) { blobs[k] = d } }
+        // v1.1 L2: sensitive blobs (inbox, reminder + attendee contexts) are parked sealed with the device parking vault
+        // key (`sealed:<key>`), never as plaintext; the rest as before.
+        for k in quarantineBlobKeys {
+            if ProactiveSealedStore.handles(k) { if let d = blob(k) { ProactiveSealedStore.setParked(&blobs, d, k) } }
+            else if let d = defaults.data(forKey: k) { blobs[k] = d }
+        }
         let (items, dead) = syncQueue.extractSplit()   // p90i: dead letters parked apart, restored as dead letters
-        let inbox = blobs[ProactiveLocalBackend.storageKey].flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] } ?? [:]
+        let inbox = blob(ProactiveLocalBackend.storageKey).flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] } ?? [:]
         guard !inbox.isEmpty || !items.isEmpty || !dead.isEmpty else { return }   // nothing of that account to keep
         // EventKit reminders the app created are outside the app: never deleted / edited here, listed for the user (#89).
         let ext = ProactiveParking.externalItems(inbox: inbox, reminderOps: pendingReminders.mapValues(\.operationID))
@@ -169,15 +177,17 @@ struct ProactiveSignal: Equatable, Sendable {
         defaults.set(lot.raw, forKey: ProactiveParking.key)
         var ops = 0
         for r in recs {
-            for (k, old) in r["blobs"] as? [String: Data] ?? [:] {
+            for (rawKey, rawOld) in r["blobs"] as? [String: Data] ?? [:] {
+                guard let opened = ProactiveSealedStore.openParked(rawKey, rawOld) else { continue }   // v1.1: sealed:<key>
+                let k = opened.0, old = opened.1
                 if k == Self.generationsKey {
                     let o = (try? JSONDecoder().decode(ProactiveActionGenerations.self, from: old)) ?? .init()
                     var g = generations; for (id, v) in o.values where v > g[id] { g.values[id] = v }; generations = g; continue
                 }
                 let rel = (try? JSONSerialization.jsonObject(with: old) as? [String: Any]) ?? [:]
-                var cur = defaults.data(forKey: k).flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] } ?? [:]
+                var cur = blob(k).flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] } ?? [:]
                 for (id, v) in rel where cur[id] == nil { cur[id] = v }
-                if let d = try? JSONSerialization.data(withJSONObject: cur) { defaults.set(d, forKey: k) }
+                if let d = try? JSONSerialization.data(withJSONObject: cur) { setBlob(d, k) }   // pre-v1.1 parked blobs land sealed
             }
             localOnly = localOnly.union(r["localOnly"] as? [String] ?? [])
             let items = (r["queue"] as? Data).flatMap { try? JSONDecoder().decode([CatpawPersistentQueue<SyncOp>.Item].self, from: $0) } ?? []
@@ -205,7 +215,7 @@ struct ProactiveSignal: Equatable, Sendable {
     func externalParkedItems(account: String) -> [AccountParkedItem] {
         var out = externalPendingDecision(for: account)
         if let o = dataOwner, o.caseInsensitiveCompare(account) == .orderedSame {
-            let inbox = defaults.data(forKey: ProactiveLocalBackend.storageKey).flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] } ?? [:]
+            let inbox = blob(ProactiveLocalBackend.storageKey).flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] } ?? [:]
             for e in ProactiveParking.externalItems(inbox: inbox, reminderOps: pendingReminders.mapValues(\.operationID)) where !out.contains(where: { $0.operationID == e.operationID }) { out.append(e) }
         }
         let reminders = pendingReminders
@@ -248,13 +258,13 @@ struct ProactiveSignal: Equatable, Sendable {
             }
             return changed ? try? JSONSerialization.data(withJSONObject: inbox) : nil
         }
-        if let o = dataOwner, o.caseInsensitiveCompare(account) == .orderedSame, let d = edit(defaults.data(forKey: ProactiveLocalBackend.storageKey)) {
-            defaults.set(d, forKey: ProactiveLocalBackend.storageKey)
+        if let o = dataOwner, o.caseInsensitiveCompare(account) == .orderedSame, let d = edit(blob(ProactiveLocalBackend.storageKey)) {
+            setBlob(d, ProactiveLocalBackend.storageKey)
             for (id, s) in ProactiveLocalBackend.load() where ids.contains(id) { ProactiveSuggestionStore.shared.adopt(s) }
         }
         var lot = ProactiveParking.Lot(defaults.dictionary(forKey: ProactiveParking.key))
         if var recs = lot.slots[account.lowercased()] {
-            for i in recs.indices { if var b = recs[i]["blobs"] as? [String: Data], let d = edit(b[ProactiveLocalBackend.storageKey]) { b[ProactiveLocalBackend.storageKey] = d; recs[i]["blobs"] = b } }
+            for i in recs.indices { if var b = recs[i]["blobs"] as? [String: Data], let d = edit(ProactiveSealedStore.parked(b, ProactiveLocalBackend.storageKey)) { ProactiveSealedStore.setParked(&b, d, ProactiveLocalBackend.storageKey); recs[i]["blobs"] = b } }
             lot.slots[account.lowercased()] = recs; defaults.set(lot.raw, forKey: ProactiveParking.key)
         }
     }
@@ -294,7 +304,7 @@ struct ProactiveSignal: Equatable, Sendable {
     func parkedInbox(for account: String) -> [String: Any] {
         let recs = ProactiveParking.Lot(defaults.dictionary(forKey: ProactiveParking.key)).slots[account.lowercased()] ?? []
         return recs.reduce(into: [:]) { acc, r in
-            let d = (r["blobs"] as? [String: Data])?[ProactiveLocalBackend.storageKey]
+            let d = (r["blobs"] as? [String: Data]).flatMap { ProactiveSealedStore.parked($0, ProactiveLocalBackend.storageKey) }
             for (k, v) in d.flatMap({ try? JSONSerialization.jsonObject(with: $0) as? [String: Any] }) ?? [:] { acc[k] = v }
         }
     }
@@ -308,7 +318,7 @@ struct ProactiveSignal: Equatable, Sendable {
         // p90i: a later unowned set is parked under "(unknown)" rather than wiped.
         guard defaults.dictionary(forKey: ProactiveQuarantine.key) == nil else { park(owner: "(unknown)"); return }
         var blobs: [String: Data] = [:]
-        for k in quarantineBlobKeys { if let d = defaults.data(forKey: k) { blobs[k] = d } }
+        for k in quarantineBlobKeys { if let d = defaults.data(forKey: k) ?? blob(k) { blobs[k] = d } }   // unowned legacy data is still plaintext
         let (items, dead) = syncQueue.extractSplit()   // p90i 09:01: dead letters kept apart (released as dead letters)
         let record: [String: Any] = ["at": ProactiveClock.now().timeIntervalSince1970, "blobs": blobs, "serverIDs": takeLegacyServerIDs(), "localOnly": Array(localOnly),
                                      "queue": (try? JSONEncoder().encode(items)) ?? Data(), "dead": (try? JSONEncoder().encode(dead)) ?? Data(),
@@ -365,9 +375,9 @@ struct ProactiveSignal: Equatable, Sendable {
                 generations = g; blobs[k] = try? JSONEncoder().encode(o); continue
             }
             var rel = (try? JSONSerialization.jsonObject(with: old) as? [String: Any]) ?? [:]
-            var cur = defaults.data(forKey: k).flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] } ?? [:]
+            var cur = blob(k).flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] } ?? [:]
             for id in ids { if let v = rel.removeValue(forKey: id), cur[id] == nil { cur[id] = v } }   // the current owner's entry wins
-            if let d = try? JSONSerialization.data(withJSONObject: cur) { defaults.set(d, forKey: k) }
+            if let d = try? JSONSerialization.data(withJSONObject: cur) { setBlob(d, k) }
             blobs[k] = try? JSONSerialization.data(withJSONObject: rel)
         }
         record["blobs"] = blobs
@@ -926,19 +936,19 @@ struct ProactiveSignal: Equatable, Sendable {
     fileprivate static let attendeesKey = "catpaw.proactive.attendees.v1"
     private var pendingAttendees: [String: (names: [String], recipients: [String])] {
         get {
-            guard let data = defaults.data(forKey: Self.attendeesKey),
+            guard let data = blob(Self.attendeesKey),
                   let raw = try? JSONDecoder().decode([String: AttendeesDTO].self, from: data) else { return [:] }
             return raw.mapValues { ($0.names, $0.recipients) }
         }
         set {
             let raw = newValue.mapValues { AttendeesDTO(names: $0.names, recipients: $0.recipients) }
-            defaults.set(try? JSONEncoder().encode(raw), forKey: Self.attendeesKey)
+            setBlob(raw.isEmpty ? nil : try? JSONEncoder().encode(raw), Self.attendeesKey)
         }
     }
     private struct AttendeesDTO: Codable { var names: [String]; var recipients: [String] }
     private var pendingReminders: [String: PendingReminder] {
-        get { (defaults.data(forKey: suggestionsKey)).flatMap { try? JSONDecoder().decode([String: PendingReminder].self, from: $0) } ?? [:] }
-        set { defaults.set(try? JSONEncoder().encode(newValue), forKey: suggestionsKey) }
+        get { blob(suggestionsKey).flatMap { try? JSONDecoder().decode([String: PendingReminder].self, from: $0) } ?? [:] }
+        set { setBlob(newValue.isEmpty ? nil : try? JSONEncoder().encode(newValue), suggestionsKey) }
     }
 
     func pendingReminder(for suggestionID: String) -> PendingReminder? {
@@ -1294,13 +1304,13 @@ struct ProactiveSignal: Equatable, Sendable {
         AccountEpoch.shared.commit(token) { () -> Void in
             ProactiveEngine.shared.claimData(for: token.account)
             var all = load(); all[s.id] = s
-            UserDefaults.standard.set(try? JSONEncoder().encode(all), forKey: key)
+            ProactiveSealedStore.set(try? JSONEncoder().encode(all), forKey: key)   // v1.1: sealed in the account's L2
             CatpawWidgetSnapshotWriter.write(Array(all.values))
         }
     }
-    static func wipe() { UserDefaults.standard.removeObject(forKey: key); CatpawWidgetSnapshotWriter.write([]) }
+    static func wipe() { ProactiveSealedStore.set(nil, forKey: key); CatpawWidgetSnapshotWriter.write([]) }
     static func load() -> [String: ProactiveSuggestion] {
-        UserDefaults.standard.data(forKey: key).flatMap { try? JSONDecoder().decode([String: ProactiveSuggestion].self, from: $0) } ?? [:]
+        ProactiveSealedStore.data(forKey: key).flatMap { try? JSONDecoder().decode([String: ProactiveSuggestion].self, from: $0) } ?? [:]
     }
     private let mock = ProactiveSuggestionMock([])
     /// Codex PR90e #1: the inbox is shown only to its owner (or, before the upgrade migration ran, to the signed-in account).
@@ -1659,3 +1669,95 @@ struct ProactiveInventoryItem: @unchecked Sendable { var id: String; var info: [
     }
 }
 #endif
+
+
+/// v1.1 L2 regression fix: the proactive inbox and the reminder / attendee contexts (names, recipients, titles, places)
+/// were plaintext UserDefaults. They now live in the signed-in account's `L2SecureStore` (AES-GCM, Keychain key,
+/// `.completeFileProtection`, crypto-shredded by `L2SecureStore.wipe` at sign-out).
+/// - Signed out / no L2 store: reads return nil and writes are dropped — never a plaintext fallback.
+/// - One-time migration: a legacy plaintext value is sealed into the store of the account that owns it
+///   (`ProactiveDataOwner.key`), then the plaintext is deleted. Another account's (or unowned) legacy data is left for the
+///   existing owner / quarantine flow and is never sealed into the wrong account.
+@MainActor enum ProactiveSealedStore {
+    static let inboxKey = "catpaw.proactive.inbox.v1", remindersKey = "catpaw.proactive.suggestions.v1", attendeesKey = "catpaw.proactive.attendees.v1"
+    static let sealedKeys: Set<String> = [inboxKey, remindersKey, attendeesKey]
+    /// Test seams.
+    static var defaults: UserDefaults = .standard
+    static var store: @MainActor () -> L2SecureStore? = { L2SecureStore.current }
+
+    nonisolated static func handles(_ key: String) -> Bool {
+        key == "catpaw.proactive.inbox.v1" || key == "catpaw.proactive.suggestions.v1" || key == "catpaw.proactive.attendees.v1"
+    }
+
+    static func data(forKey key: String) -> Data? {
+        guard handles(key), let store = store() else { return nil }
+        migrate(key, into: store)
+        return store.data(forKey: key)
+    }
+    /// Writes (nil deletes) the sealed record; any plaintext copy of an owned key is removed. Dropped without a store.
+    static func set(_ value: Data?, forKey key: String) {
+        guard handles(key), let store = store() else { return }
+        migrate(key, into: store)
+        do { try store.write(value, forKey: key) } catch { return }
+    }
+    /// Sign-out: after `claimData(for: nil)` parked them (sealed), the leaving account's live sealed records and any
+    /// plaintext copy are purged; `L2SecureStore.wipe` then crypto-shreds the account directory and key.
+    static func purgeForSignOut() {
+        if let store = store() { for k in sealedKeys { try? store.write(nil, forKey: k) } }
+        for k in sealedKeys { defaults.removeObject(forKey: k) }
+    }
+    // MARK: Parking lot (account-independent: survives sign-out like the lot itself, but never as plaintext)
+    static let parkingVaultID = UUID(uuidString: "00000000-0000-0000-0000-00000000c0df")!
+    static var parkingVault: @MainActor () -> L2SecureStore? = {
+        try? L2SecureStore(userID: ProactiveSealedStore.parkingVaultID, root: L2SecureStore.rootDirectory, keys: L2SecureStore.keys)
+    }
+    static let parkedPrefix = "sealed:"
+    /// Stores `value` for `key` in a parked record's blobs, sealed; dropped (never plaintext) when the vault is unavailable.
+    static func setParked(_ blobs: inout [String: Data], _ value: Data, _ key: String) {
+        blobs[key] = nil
+        blobs[parkedPrefix + key] = parkingVault().flatMap { try? $0.seal(value) }
+    }
+    /// A parked record's value for `key` (sealed, or a pre-v1.1 plaintext copy).
+    static func parked(_ blobs: [String: Data], _ key: String) -> Data? {
+        if let sealed = blobs[parkedPrefix + key] { return parkingVault().flatMap { try? $0.openSealed(sealed) } }
+        return blobs[key]
+    }
+    /// Maps one stored blob entry to (key, plaintext); nil when a sealed entry cannot be opened.
+    static func openParked(_ rawKey: String, _ value: Data) -> (String, Data)? {
+        guard rawKey.hasPrefix(parkedPrefix) else { return (rawKey, value) }
+        guard let plain = parkingVault().flatMap({ try? $0.openSealed(value) }) else { return nil }
+        return (String(rawKey.dropFirst(parkedPrefix.count)), plain)
+    }
+    /// One-time: re-seals pre-v1.1 plaintext copies of the sensitive keys already in the parking lot.
+    static func migrateParkingLot() {
+        guard let raw = defaults.dictionary(forKey: ProactiveParking.key), parkingVault() != nil else { return }
+        var lot = ProactiveParking.Lot(raw), changed = false
+        for (account, recs) in lot.slots {
+            var recs = recs
+            for i in recs.indices {
+                guard var b = recs[i]["blobs"] as? [String: Data] else { continue }
+                for k in sealedKeys { if let plain = b[k] { setParked(&b, plain, k); changed = true } }
+                recs[i]["blobs"] = b
+            }
+            lot.slots[account] = recs
+        }
+        if changed { defaults.set(lot.raw, forKey: ProactiveParking.key) }
+    }
+
+    /// Seals every owned legacy plaintext key now (call after `L2SecureStore.activate`; also runs lazily on each access).
+    static func migrateAll() {
+        migrateParkingLot()
+        guard let store = store() else { return }
+        for k in sealedKeys { migrate(k, into: store) }
+    }
+
+    static func migrate(_ key: String, into store: L2SecureStore) {
+        guard let plain = defaults.data(forKey: key) else { return }
+        guard let owner = defaults.object(forKey: ProactiveDataOwner.key) as? String, !owner.isEmpty,
+              owner.caseInsensitiveCompare(store.userID.uuidString) == .orderedSame else { return }
+        if store.data(forKey: key) == nil {
+            do { try store.write(plain, forKey: key) } catch { return }   // keep the plaintext only if sealing failed
+        }
+        defaults.removeObject(forKey: key)
+    }
+}
