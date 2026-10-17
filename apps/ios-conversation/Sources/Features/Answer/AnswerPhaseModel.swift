@@ -246,44 +246,72 @@ enum StatusLinePhase: Equatable, Sendable {
     case failed(reason: String)
     case stopped
 
-    var title: String {
+    /// Visual SPEC §7/§8: working rows shimmer; waiting / failed / stopped are static and bypass the dwell.
+    enum Kind: Equatable, Sendable { case working, waiting, failed, stopped }
+    var kind: Kind {
         switch self {
-        case .sending: return "正在发送"
-        case .busyRetry: return "有点忙，稍后自动重试"
-        case .accepted(let n): return n % 2 == 0 ? "Catpaw 正在工作" : "正在琢磨"
-        case .recallingMemory: return "正在回想相关记忆"
-        case .switchingModel: return "换个模型再试"
-        case .tool(let name, let n): return ToolStepCopy.title(name, occurrence: n)
-        case .awaitingUser(let tool): return ToolStepCopy.confirmTitle(tool)
-        case .composing(let n): return n % 2 == 0 ? "正在整理汇总" : "正在完成"
-        case .failed(let reason): return "没完成：" + reason
-        case .stopped: return "已停止"
+        case .awaitingUser: return .waiting
+        case .failed: return .failed
+        case .stopped: return .stopped
+        default: return .working
         }
     }
+    var title: String { title(en: false) }
+    func title(en: Bool) -> String {
+        func t(_ zh: String, _ e: String) -> String { en ? e : zh }
+        switch self {
+        case .sending: return t("正在发送", "Sending")
+        case .busyRetry: return t("有点忙，稍后自动重试", "Busy — retrying shortly")
+        case .accepted(let n): return n % 2 == 0 ? t("Catpaw 正在工作", "Catpaw is working") : t("正在琢磨", "Thinking it over")
+        case .recallingMemory: return t("正在回想相关记忆", "Recalling what you've told me")
+        case .switchingModel: return t("换个模型再试", "Trying another model")
+        case .tool(let name, let n): return ToolStepCopy.title(name, occurrence: n, en: en)
+        case .awaitingUser(let tool): return ToolStepCopy.confirmTitle(tool, en: en)
+        case .composing: return t("正在整理回答", "Putting the answer together")
+        case .failed(let reason):
+            if reason == Self.timeoutReason { return t("等太久了，可以重试", "Took too long — try again") }
+            return t("没完成：", "Didn't finish: ") + reason
+        case .stopped: return t("已停止", "Stopped")
+        }
+    }
+    /// VoiceOver label (SPEC §11): waiting points at the card below.
+    func accessibilityTitle(en: Bool) -> String {
+        if case .awaitingUser = self { return title(en: en) + (en ? ". Card below." : "，确认卡片在下方") }
+        return title(en: en)
+    }
+    /// SPEC §2 icon table. The icon never shimmers.
     var symbol: String {
         switch self {
         case .tool(let name, _): return ToolStepCopy.symbol(name)
-        case .awaitingUser: return "hand.tap"
+        case .awaitingUser: return "arrow.down"
         case .recallingMemory: return "brain"
         case .switchingModel: return "arrow.triangle.2.circlepath"
+        case .busyRetry: return "hourglass"
+        case .composing: return "pencil"
         case .failed: return "exclamationmark.circle"
         case .stopped: return "stop.circle"
-        default: return "sparkle"
+        case .sending, .accepted: return "sparkle"
+        }
+    }
+    /// Announcement category (SPEC §11): announce only when this changes — not on variant swaps inside a category.
+    var category: String {
+        switch self {
+        case .tool(let name, _): return "tool:" + ToolStepCopy.symbol(name)
+        case .awaitingUser: return "waiting"
+        case .failed: return "failed"
+        case .stopped: return "stopped"
+        default: return "working:" + symbol
         }
     }
     /// Shimmer only while Catpaw is actually working; waiting on the user, failures and stops are static.
-    var animated: Bool {
-        switch self {
-        case .awaitingUser, .failed, .stopped: return false
-        default: return true
-        }
-    }
+    var animated: Bool { kind == .working }
+    static let timeoutReason = "timeout"
     /// Plain, generic failure reasons only — never server messages, arguments or reasoning.
     static func failureReason(_ code: String) -> String {
         switch code {
         case "rate_limited", "chat_runtime_busy", "model_daily_limit", "daily_limit", "quota_exceeded", "model_quota_exceeded": return "模型繁忙"
-        case "timeout", "pending_timeout": return "等太久了，可以重试"
-        default: return "可以重试"
+        case "timeout", "pending_timeout", "provider_timeout": return timeoutReason
+        default: return AnswerFailureCopy.friendly(code)
         }
     }
 }
@@ -293,7 +321,7 @@ enum StatusLinePhase: Equatable, Sendable {
 /// - A displayed state stays at least `minDwell` (measured from when it became visible); newer targets wait, latest wins.
 struct StatusLineThrottle: Equatable {
     static let minDwell: TimeInterval = 0.6
-    static let hideUnder: TimeInterval = 1.0
+    static let hideUnder: TimeInterval = 0.6   // visual SPEC §6 appear delay (brainstorm said 1s)
     let turnStart: Date
     private(set) var current: StatusLinePhase?
     private(set) var currentSince: Date?
@@ -306,6 +334,8 @@ struct StatusLineThrottle: Equatable {
     /// Submit a new target. Returns the delay after which `tick` must be called again (nil = nothing scheduled).
     mutating func submit(_ phase: StatusLinePhase, at now: Date) -> TimeInterval? {
         if current == nil || current == phase { if current == nil { current = phase; currentSince = now }; pending = nil; return untilVisible(now) }
+        // SPEC §6: waiting / failed / stopped bypass the dwell — if the user has to act, don't make them wait.
+        if !phase.animated { current = phase; currentSince = now; pending = nil; return untilVisible(now) }
         pending = phase
         return tick(at: now)
     }
