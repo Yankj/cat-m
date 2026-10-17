@@ -262,3 +262,23 @@ test('pg evidence: PgStore.claimPush from 6 connections — all observed waiting
     assert.equal(won.length, 1, 'exactly one claim token');
   } finally { await sql.end(); await lock.end(); await obs.end(); }
 });
+
+// p90i P2 on real Postgres: a dismiss during a multi-device push stops the remaining devices.
+test('pg p90i: dismiss while d1 is being sent → d2 is not sent, row finished stopped_midsend', { skip: !url }, async () => {
+  const sql = postgres(url, { max: 4, prepare: false, onnotice: () => {} });
+  try {
+    let open; const g = new Promise(r => { open = r; }), calls = [];
+    const apns = { configured: true, send: async t => { calls.push(t.device_id); if (t.device_id === 'pid1') await g; return { ok: true }; } };
+    const clock = { t: Date.parse('2026-10-15T02:00:00Z') }, { U, store, svc, call } = rig(sql, apns, clock);
+    await sql`insert into auth.users(id) values(${U})`;
+    for (const d of ['pid1', 'pid2']) await store.upsertToken(U, { device_id: d, kind: 'apns', token: (d === 'pid1' ? 'ab' : 'cd').repeat(32), environment: 'sandbox', bundle_id: 'app.catpaw', activity_id: null });
+    const id = (await call('POST', '/catpaw/proactive/v1/evaluate', meeting())).body.event_id;
+    await sql`update proactive.events set push_state='skipped' where push_state='pending' and id<>${id}`;
+    const flush = svc.flushPush(); for (let i = 0; i < 50 && !calls.length; i++) await new Promise(r => setTimeout(r, 20));
+    assert.equal((await call('POST', `/catpaw/proactive/v1/suggestions/${id}/action`, { action: 'dismiss', operation_id: 'op-pgi' })).status, 200);
+    open(); await flush;
+    const [r] = await sql`select push_state, push_error from proactive.events where id=${id}`;
+    assert.deepEqual(calls, ['pid1']);
+    assert.deepEqual([r.push_state === 'sending', r.push_error], [false, 'stopped_midsend:suggestion_dismissed']);
+  } finally { await sql.end(); }
+});
