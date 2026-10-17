@@ -31,8 +31,8 @@ final class NativeAuthApplicationLifecycleTests:XCTestCase {
         await app.signOut()
     }
 
-    /// p89i product decision through the REAL logout entry: in-flight device operations → prompt (still signed in);
-    /// 暂不退出 keeps everything; 取消这些操作并退出 revokes them, then logs out. Each step logged.
+    /// p89i generic park + per-item decision through the REAL logout entry: epoch bump first, then collect (device calls +
+    /// ledger), per-item decision, apply, observers — in that order; unanswered = keep; passive (no decider) = keep, logged.
     @MainActor func testLogoutWithInFlightDeviceOperationAsksFirst() async throws {
         let root=FileManager.default.temporaryDirectory.appendingPathComponent("native-inflight-"+UUID().uuidString,isDirectory:true)
         defer {try? FileManager.default.removeItem(at:root)}
@@ -49,16 +49,38 @@ final class NativeAuthApplicationLifecycleTests:XCTestCase {
         DeviceCallGate.receive(call)
         let suite="xctest.inflight."+UUID().uuidString,defaults=try XCTUnwrap(UserDefaults(suiteName:suite))
         defaults.set(try JSONEncoder().encode([call.call_id:DeviceCallStore.Record(phase:.running,call:call,updatedAt:.now,account:account)]),forKey:DeviceCallStore.storageKey)
-        app.deviceCallStore=DeviceCallStore(defaults:defaults)
-        var lines:[String]=[];DeviceDecisionLog.sink={lines.append($0)};defer {DeviceDecisionLog.sink=nil}
-        await app.requestSignOut()
-        XCTAssertEqual(app.logoutPrompt.map(\.id),[call.call_id],"the prompt lists the in-flight operation")
-        XCTAssertNotNil(app.chat,"no logout before the user chooses");XCTAssertEqual(DeviceCallGate.currentAccount(),account)
-        await app.resolveSignOut(nil)
-        XCTAssertTrue(app.logoutPrompt.isEmpty);XCTAssertNotNil(app.chat,"暂不退出 → still signed in");XCTAssertTrue(DeviceCallGate.isLive(call.call_id),"…operation untouched")
-        await app.requestSignOut();await app.resolveSignOut(.cancelAll)
-        XCTAssertFalse(DeviceCallGate.isLive(call.call_id),"cancelled");XCTAssertNil(DeviceCallGate.currentAccount(),"then logged out")
-        XCTAssertEqual(lines,["logout requested: 1 in flight → ask user","logout dismissed: stay signed in","logout requested: 1 in flight → ask user","logout choice=cancelAll items=1","cancel running \(call.call_id) reminder_create"])
+        let callStore=DeviceCallStore(defaults:defaults)
+        // a ledger entry for the same account (previously cleared silently on logout)
+        let ledgerURL=root.appendingPathComponent("ledger.json")
+        let ledger=DeviceLedger(url:ledgerURL,epoch:AccountEpoch.shared,items:nil)
+        let rec=DeviceCall(call_id:"ledger-"+UUID().uuidString,tool:"calendar_create",args:["title":.string("复诊")],confirm:.card,ttl_sec:600)
+        ledger.record(call:rec,result:.init(call_id:rec.call_id,status:.ok,data:["event_id":.string("evt-1")]),token:try XCTUnwrap(AccountEpoch.shared.capture()))
+        AccountParkedItems.register(DeviceCallParkedSource.key,DeviceCallParkedSource(store:callStore))
+        AccountParkedItems.register(DeviceLedgerParkedSource.key,DeviceLedgerParkedSource(ledger:ledger))
+        defer {AccountParkedItems.unregister(DeviceCallParkedSource.key);AccountParkedItems.unregister(DeviceLedgerParkedSource.key)}
+        var lines:[String]=[];AccountParkedItems.sink={lines.append($0)};defer {AccountParkedItems.sink=nil}
+        var order:[String]=[];AccountChangeObservers.register("zz-p89i-order"){_,_ in order.append("observers")};defer {AccountChangeObservers.unregister("zz-p89i-order")}
+        var seenItems:[AccountParkedItem]=[]
+        app.parkedDecider={items in
+            order.append("decide");seenItems=items
+            XCTAssertNil(AccountEpoch.shared.currentAccount,"1. the epoch was bumped synchronously BEFORE the decision")
+            XCTAssertFalse(DeviceCallGate.isLive(call.call_id),"…and the grant is already dead")
+            // per-item: cancel the running device call, keep the ledger entry
+            return ["\(DeviceCallParkedSource.key)/running:\(call.call_id)":.cancel]
+        }
+        await app.signOut()
+        XCTAssertEqual(order,["decide","observers"],"deterministic order: decision → apply → observers")
+        XCTAssertEqual(seenItems.map(\.source),[DeviceCallParkedSource.key,DeviceLedgerParkedSource.key],"2. collected from every registered source, key order")
+        XCTAssertEqual(callStore.phase(call.call_id),DeviceCallStore.Phase.expired,"cancel → card expired, never restored")
+        XCTAssertEqual(ledger.entries(account:account).map(\.id),[rec.call_id],"keep (no answer) → ledger entry retained for that account, not silently cleared")
+        XCTAssertEqual(lines.first,"parked: 2 item(s) for leaving account")
+        XCTAssertTrue(lines.contains("\(DeviceCallParkedSource.key)/running:\(call.call_id) cancel: revoked + card expired"))
+        XCTAssertTrue(lines.contains { $0.hasPrefix("\(DeviceLedgerParkedSource.key)/\(rec.call_id) keep:") })
+        // no decider (passive invalidation) → default keep, logged
+        lines=[];AccountEpoch.shared.activate(account:account)
+        let passive=await AccountParkedItems.resolve(account:account,decider:nil)
+        XCTAssertEqual(passive[1],"no decider → default keep");XCTAssertEqual(ledger.entries(account:account).count,1)
+        AccountEpoch.shared.activate(account:nil)
         UserDefaults().removePersistentDomain(forName:suite)
     }
 

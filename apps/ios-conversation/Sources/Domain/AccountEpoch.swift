@@ -74,3 +74,60 @@ public final class AccountEpoch: @unchecked Sendable {
         for key in observers.keys.sorted() { await observers[key]?(previous, current) }
     }
 }
+
+/// p89i (shared with #90 proactive notifications/snoozes and #91 feedback posts): GENERIC "park + per-item user decision".
+/// A subsystem that may hold account-bound work when the account goes away registers one `AccountParkedItemSource`.
+///
+/// Deterministic logout / account-switch order (the ONLY order; #90/#91 adopt it instead of their own logout paths):
+///   1. synchronous `AccountEpoch` bump (+ credentials die) — nothing can commit under the leaving account from here;
+///   2. `AccountParkedItems.collect(account: leaving)` — every source lists its parked items (in key order);
+///   3. user decision per item (`Decider`, one shared confirmation UI); no decider (passive invalidation, tests) or no
+///      answer for an item → `.keep` (the safe default), and that is logged — never a silent cancel or continue;
+///   4. `apply` per item, in collect order, each returns a log line;
+///   5. `AccountChangeObservers.notify(previous:current:)` cleanups (unchanged API).
+/// Semantics: `.keep` = the item stays parked for that account (not executed, not deleted) and is offered again when the
+/// same account returns; `.cancel` = the source cancels / undoes it as far as it can without the leaving account's
+/// authority, and says so in its log line.
+public struct AccountParkedItem: Sendable, Equatable, Identifiable {
+    public let source: String; public let key: String; public let title: String; public let detail: String
+    public var id: String { source + "/" + key }
+    public init(source: String, key: String, title: String, detail: String = "") { self.source = source; self.key = key; self.title = title; self.detail = detail }
+}
+public enum AccountParkedDecision: String, Sendable, Equatable { case keep, cancel }
+@MainActor public protocol AccountParkedItemSource: AnyObject {
+    /// Items `account` still has in this subsystem. Called AFTER the epoch bump; must not re-grant anything.
+    func parkedItems(account: String) -> [AccountParkedItem]
+    /// Apply the user's decision; returns one log line describing the effect.
+    func apply(_ decision: AccountParkedDecision, to item: AccountParkedItem, account: String) async -> String
+}
+@MainActor public enum AccountParkedItems {
+    public typealias Decider = @MainActor (_ items: [AccountParkedItem]) async -> [String: AccountParkedDecision]
+    private static var sources: [String: AccountParkedItemSource] = [:]
+    public static func register(_ key: String, _ source: AccountParkedItemSource) { sources[key] = source }
+    public static func unregister(_ key: String) { sources[key] = nil }
+    public static var registeredKeys: [String] { sources.keys.sorted() }
+    /// Log sink (tests / diagnostics); every line is also NSLog'ed.
+    public static var sink: ((String) -> Void)?
+    public static func log(_ line: String) { sink?(line); NSLog("catpaw.account.parked %@", line) }
+    /// Step 2. Items are tagged with their registration key as `source`.
+    public static func collect(account: String?) -> [AccountParkedItem] {
+        guard let account else { return [] }
+        return registeredKeys.flatMap { k in (sources[k]?.parkedItems(account: account) ?? []).map { AccountParkedItem(source: k, key: $0.key, title: $0.title, detail: $0.detail) } }
+    }
+    /// Steps 2–4. Call only AFTER the synchronous epoch bump. Returns the log lines (also written to `sink`).
+    @discardableResult public static func resolve(account: String?, decider: Decider?) async -> [String] {
+        guard let account else { return [] }
+        let items = collect(account: account)
+        guard !items.isEmpty else { return [] }
+        var lines = ["parked: \(items.count) item(s) for leaving account"]
+        let answers: [String: AccountParkedDecision]
+        if let decider { answers = await decider(items) } else { answers = [:]; lines.append("no decider → default keep") }
+        for item in items {
+            let d = answers[item.id] ?? .keep
+            let effect = await sources[item.source]?.apply(d, to: item, account: account) ?? "source gone"
+            lines.append("\(item.id) \(d.rawValue): \(effect)")
+        }
+        lines.forEach(log)
+        return lines
+    }
+}

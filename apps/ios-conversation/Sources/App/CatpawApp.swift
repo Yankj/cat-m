@@ -193,12 +193,11 @@ import AppIntents
         // Onboarding gate: intro until「开始使用」; entry is not blocked on provider health.
         else if let model = auth.chat, !auth.needsOnboarding {
             ConversationFirstView(model:model,accountLabel:auth.isFixture ? ui("合成登录测试 · 无真实 Auth/模型") : (auth.state.user?.isAnonymous == true ? ui("体验账号") : auth.state.user?.email),onSignOut:{ Task { let l2User=auth.state.user?.id; await auth.requestSignOut { if let l2User { L2SecureStore.wipe(userID:l2User) } } } },isAnonymousAccount:auth.state.user?.isAnonymous == true)
-                // p89i: device operations in flight → the user decides before logout (cancel/undo them, or keep them).
-                .confirmationDialog(ui("还有未完成的本机操作"), isPresented:Binding(get:{ !auth.logoutPrompt.isEmpty }, set:{ if !$0 && !auth.logoutPrompt.isEmpty { Task { await auth.resolveSignOut(nil) } } }), titleVisibility:.visible) {
-                    Button(ui("取消这些操作并退出"), role:.destructive) { Task { await auth.resolveSignOut(.cancelAll) } }
-                    Button(ui("让它们完成后退出")) { Task { await auth.resolveSignOut(.keep) } }
-                    Button(ui("暂不退出"), role:.cancel) { Task { await auth.resolveSignOut(nil) } }
-                } message: { Text(auth.logoutPrompt.map { DeviceInFlight.label($0) }.joined(separator:"\n")) }
+                // p89i: one shared confirmation UI for parked items of the leaving account (#89/#90/#91 sources).
+                .onAppear { auth.attachParkedPrompt() }
+                .sheet(isPresented:Binding(get:{ !auth.parkedPrompt.isEmpty }, set:{ if !$0 && !auth.parkedPrompt.isEmpty { auth.resolveParked([:]) } })) {
+                    AccountParkedDecisionSheet(items:auth.parkedPrompt) { auth.resolveParked($0) }
+                }
                 // L2 memory: per-user encrypted store follows the signed-in user (memory-layers.md).
                 .task(id:auth.state.user?.id) { AccountEpoch.shared.activate(account:auth.state.user?.id.uuidString); L2SecureStore.activate(userID:auth.state.user?.id); GenerativeBlockStore.shared.reloadFromL2(); MemoryCache.shared.reloadFromL2(); await MemoryCache.shared.sync() }
                 #if DEBUG
