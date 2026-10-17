@@ -6466,5 +6466,9 @@
   "提醒已删除": {
     "en": "Reminder deleted",
     "zh-Hans": "提醒已删除"
+  },
+  "提醒已不存在": {
+    "en": "Reminder no longer exists",
+    "zh-Hans": "提醒已不存在"
   }
 }

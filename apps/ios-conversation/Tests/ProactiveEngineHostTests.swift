@@ -440,6 +440,23 @@ import UserNotifications
         let taken = ((parked.values.first { (($0 as? [String: Any])?["taken"] as? [[String: Any]])?.contains { $0["action"] as? String == "create_reminder" } == true } as? [String: Any])?["taken"] as? [[String: Any]]) ?? []
         XCTAssertEqual(taken.first { $0["action"] as? String == "create_reminder" }?["detail"] as? String, ProactiveEngine.reminderDeletedDetail)
     }
+    /// p90j: the user chose delete but the reminder was already gone → the card reads 提醒已不存在, not 提醒已删除.
+    func testExternalReminderCancelAlreadyGoneShowsGoneOnCard() async throws {
+        ProactiveEngine.registerAccountObserver()
+        let (_, op) = externalFixture()
+        var removed: [String] = []; ProactiveEngine.shared.externalReminderRemover = { removed.append($0); return "already_gone" }
+        AccountEpoch.shared.signOut()
+        await AccountParkedItems.resolve(account: "XCTEST-A", decider: nil)               // passive / switch: no decider → keep
+        XCTAssertTrue(removed.isEmpty, "no decider → never deleted")
+        await AccountParkedItems.resolve(account: "XCTEST-A") { items in Dictionary(uniqueKeysWithValues: items.filter { $0.source == ProactiveParking.sourceKey }.map { ($0.id, .cancel) }) }
+        XCTAssertEqual(removed, [op], "deleted only after the user chose cancel, only that reminder")
+        await AccountChangeObservers.notify(previous: "XCTEST-A", current: nil)
+        XCTAssertTrue(ProactiveEngine.shared.externalPendingDecision(for: "XCTEST-A").isEmpty, "decided → no longer pending")
+        // NoBug p90i (b): the card says so — its create_reminder entry reads 提醒已删除 (kept with the parked card).
+        let parked = ProactiveEngine.shared.parkedInbox(for: "XCTEST-A")
+        let taken = ((parked.values.first { (($0 as? [String: Any])?["taken"] as? [[String: Any]])?.contains { $0["action"] as? String == "create_reminder" } == true } as? [String: Any])?["taken"] as? [[String: Any]]) ?? []
+        XCTAssertEqual(taken.first { $0["action"] as? String == "create_reminder" }?["detail"] as? String, ProactiveEngine.reminderGoneDetail)
+    }
     /// p90i: EventKit items the app created are outside the app — a switch never deletes or edits them; they are recorded
     /// as pending a user decision (#89's list) under the old account.
     func testSwitchLeavesEventKitRemindersAndRecordsThemForDecision() async throws {
