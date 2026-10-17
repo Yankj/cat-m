@@ -5995,6 +5995,14 @@
     "en": "Retry",
     "zh-Hans": "重试"
   },
+  "暂时没能进入": {
+    "en": "Couldn't get you in yet",
+    "zh-Hans": "暂时没能进入"
+  },
+  "正在进入…": {
+    "en": "Getting you in…",
+    "zh-Hans": "正在进入…"
+  },
   "重试上传": {
     "en": "Retry upload",
     "zh-Hans": "重试上传"

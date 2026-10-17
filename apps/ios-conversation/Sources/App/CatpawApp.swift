@@ -244,7 +244,7 @@ import AppIntents
         oauth.bind(session: auth.oauthSessionManager, projectURL: auth.oauthProjectURL, signOutAndPark: {
             CatpawLeaveActivity.stopAll(); let l2User = auth.state.user?.id
             await auth.requestSignOut { AccountLocalData.signOut(userID: l2User); if let l2User { L2SecureStore.wipe(userID: l2User) } }
-        }, afterSignIn: { await auth.completeOnboarding() })
+        }, afterSignIn: { await auth.completeOnboardingAfterSignIn() })   // splash/login P0: sign-in opens the gate reactively
     }
     @ViewBuilder private var primaryView: some View {
         if let model = bootstrap.model {

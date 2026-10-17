@@ -42,9 +42,13 @@ import UIKit
     /// The failure capsule currently shown (auto-dismissed).
     @State private var toast: String?
     // SPEC-E §2.2 (FirstRunTransitionOverlay.swift / FirstRunAppearance.handoff).
-    @State private var leaving = false          // tap: chips fold, copy fades, glow fades
-    @State private var heroFlown = false        // +0.14: the overlay's flying cat has taken over
-    @State private var ctaHidden = false        // +0.12: the overlay's morph has taken over
+    // Splash/login P0: one generation-checked handoff state. The +0.12/+0.14 s timers used to land after a fast
+    // failure's reset and hid the CTA and the cat for good (21:41 iPhone 13 screenshot: copy back, no CTA, no cat).
+    @State private var handoff = FirstRunHandoffState()
+    @State private var handoffTimers: Task<Void, Never>?
+    private var leaving: Bool { handoff.leaving }        // tap: chips fold, copy fades, glow fades
+    private var heroFlown: Bool { handoff.heroFlown }    // +0.14: the overlay's flying cat has taken over
+    private var ctaHidden: Bool { handoff.ctaHidden }    // +0.12: the overlay's morph has taken over
     @State private var ctaReady = false         // hit-testable once the CTA is past 50 % opacity (§2.1)
     @State private var driftOn = false          // chip drift joins at 1.4 s
     @ObservedObject private var serif = EditorialSerif.shared
@@ -61,6 +65,15 @@ import UIKit
         ("bookmark.fill", "onboarding.chip.memory"),
     ]
 
+    /// Splash/login P0: any entry failure (also the transient ones whose text stays hidden) leaves a small retry capsule;
+    /// never a full-screen state. The CTA is back as well (「再试一次」 when the session needs a restart).
+    private var entryRetryVisible: Bool {
+        if case .failed = auth.onboarding, !busy, !leaving { return true }
+        return false
+    }
+    /// After the ≤1.15 s handoff the landing is empty while an attempt still runs (bounded by entryDeadline): a small
+    /// floating capsule says so.
+    private var entryWaitVisible: Bool { leaving && auth.onboarding == .entering && transition.phase == .done }
     private var ctaTitle: String { busy ? ui("正在开启…") : (auth.requiresSessionRestart ? ui("再试一次") : ui("开始使用")) }
 
     var body: some View {
@@ -96,7 +109,11 @@ import UIKit
         .tint(CatpawColors.ink)                      // text buttons: ink, never orange text
         // Reduce Motion (§3): the whole landing fades out 0.10–0.30 s; no flight, no morph.
         .opacity(leaving && reduceMotion ? 0 : 1)
-        .overlay(alignment: .top) { if let toast, !leaving { FirstRunToast(message: toast) { self.toast = nil }.padding(.top, 8) } }
+        .overlay(alignment: .top) {
+            if let toast, !leaving { FirstRunToast(message: toast) { self.toast = nil }.padding(.top, 8) }
+            else if entryRetryVisible { FirstRunEntryCapsule(message: ui("暂时没能进入"), action: ui("重试"), onAction: start).padding(.top, 8) }
+            else if entryWaitVisible { FirstRunEntryCapsule(message: ui("正在进入…"), action: nil, onAction: {}).padding(.top, 8) }
+        }
         // Unhosted (today's root): this view draws the flight/morph itself; hosted, FirstRunTransitionHost does.
         .overlay { if !transition.isHosted { FirstRunTransitionOverlay(ctaTitle: ctaTitle, placeholder: ui("问问 Catpaw")) } }
         .onChange(of: friendlyError, initial: true) { _, message in withAnimation(reduceMotion ? .easeOut(duration: 0.2) : .spring(response: 0.4, dampingFraction: 0.9)) { toast = message } }
@@ -107,7 +124,8 @@ import UIKit
         .onReceive(NotificationCenter.default.publisher(for: LaunchMarkView.didFinish)) { _ in reveal() }
         .onDisappear { if transition.phase == .leaving, !transition.isHosted { transition.finish() } }
         .accessibilityIdentifier("onboarding.pages")
-        .overlay { if scene != .active || !UIApplication.shared.isProtectedDataAvailable { CatpawColors.background.ignoresSafeArea() } }
+        // Same policy as the chat: `.inactive` (the Google sign-in sheet, Control Center) no longer blanks the landing.
+        .modifier(CatpawPrivacyShield(lockedText: nil, identifier: "onboarding.privacyShield"))
     }
 
     /// §2.1 entrance; t = 0 when the landing becomes visible.
@@ -239,13 +257,16 @@ import UIKit
         guard !leaving else { return }
         startTapped = true
         toast = nil
-        leaving = true; driftOn = false
+        let generation = handoff.begin(); driftOn = false
         transition.begin(reduceMotion: reduceMotion)
+        handoffTimers?.cancel(); handoffTimers = nil
         if !reduceMotion {
             let morph = FirstRunAppearance.handoffTrack("cta.morph").start, flight = FirstRunAppearance.handoffTrack("cat.flight").start
-            Task { @MainActor in
-                try? await Task.sleep(nanoseconds: UInt64(morph * 1_000_000_000)); ctaHidden = true
-                try? await Task.sleep(nanoseconds: UInt64((flight - morph) * 1_000_000_000)); heroFlown = true
+            handoffTimers = Task { @MainActor in
+                try? await Task.sleep(nanoseconds: UInt64(morph * 1_000_000_000))
+                guard !Task.isCancelled else { return }; handoff.hideCTA(generation)
+                try? await Task.sleep(nanoseconds: UInt64((flight - morph) * 1_000_000_000))
+                guard !Task.isCancelled else { return }; handoff.flyHero(generation)
             }
         }
         Task { @MainActor in
@@ -260,8 +281,9 @@ import UIKit
             // Entry did not happen (the gate keeps the landing): come back so the toast / retry is usable.
             if auth.needsOnboarding {
                 transition.cancel()
+                handoffTimers?.cancel(); handoffTimers = nil   // a late +0.12/+0.14 s timer can no longer hide the CTA/cat
                 withAnimation(reduceMotion ? .easeOut(duration: 0.2) : .spring(response: 0.45, dampingFraction: 0.9)) {
-                    leaving = false; heroFlown = false; ctaHidden = false
+                    handoff.reset()
                 }
             }
         }
@@ -411,6 +433,31 @@ struct CapabilityFloat: ViewModifier {
 
 /// Small floating capsule for a splash failure (replaces the amber footer line): neutral surface, ink text, an auxiliary
 /// grey icon, announced to VoiceOver, dismissed by tap or after 4 s (8 s with VoiceOver).
+/// Small floating capsule on the landing: 「暂时没能进入 · 重试」 or 「正在进入…」 (spinner). Never full screen.
+struct FirstRunEntryCapsule: View {
+    let message: String
+    let action: String?
+    let onAction: () -> Void
+    var body: some View {
+        HStack(spacing: 8) {
+            if action == nil { ProgressView().controlSize(.small) }
+            Text(message).font(CatpawTypography.Role.caption.font.weight(.medium)).foregroundStyle(CatpawColors.ink)
+            if let action {
+                Button(action, action: onAction)
+                    .font(CatpawTypography.Role.caption.font.weight(.semibold))
+                    .accessibilityIdentifier("onboarding.entryRetry")
+            }
+        }
+        .padding(.horizontal, 14).padding(.vertical, 8)
+        .background(CatpawColors.calmSurface, in: Capsule())
+        .overlay(Capsule().stroke(CatpawColors.hairline))
+        .shadow(color: CatpawColors.calmShadow.opacity(0.12), radius: 12, y: 4)
+        .transition(.opacity.combined(with: .move(edge: .top)))
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("onboarding.entryCapsule")
+    }
+}
+
 struct FirstRunToast: View {
     let message: String
     let dismiss: () -> Void

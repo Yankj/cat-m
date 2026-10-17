@@ -626,7 +626,9 @@ import CatpawImageComposer
             } }
         }.dynamicTypeSize(.large).padding(4).background(CatpawColors.panel).opacity(sidebarPresented ? 0 : 1).allowsHitTesting(!sidebarPresented).accessibilityHidden(sidebarPresented) } }
         #endif
-        .overlay { if scene != .active || !UIApplication.shared.isProtectedDataAvailable { ZStack { CatpawColors.background.ignoresSafeArea(); Label(ui("解锁后查看对话"), systemImage: "lock.fill") }.accessibilityIdentifier("chat.privacyShield") } }
+        // User direction 21:51: shield only the app-switcher snapshot and a locked device, never `.inactive` (Control Center,
+        // permission prompts, the Google sign-in sheet). Blurred chat + Catpaw mark; the unlock line only when locked.
+        .modifier(CatpawPrivacyShield(lockedText: ui("解锁后查看对话"), identifier: "chat.privacyShield"))
     }
     private var settingsSheet: some View {
         ConversationConnectionView(model: model,embedded:true)
@@ -1762,5 +1764,49 @@ extension View {
         #else
         self.background(.ultraThinMaterial, in: Capsule())
         #endif
+    }
+}
+
+/// Privacy shield policy (user direction 2026-10-17 21:51). `.background` is the app-switcher snapshot and is shielded;
+/// `.inactive` (Control Center, notification pull-down, permission alerts, ASWebAuthenticationSession / Google sign-in)
+/// keeps the content visible. A locked device (protected data unavailable) is always shielded and says so.
+enum CatpawPrivacyShieldPolicy {
+    enum Mode: Equatable { case none, snapshot, locked }
+    static func mode(scene: ScenePhase, protectedDataAvailable: Bool) -> Mode {
+        if !protectedDataAvailable { return .locked }
+        return scene == .background ? .snapshot : .none
+    }
+}
+
+/// Blurred content + the Catpaw mark (no black screen). `lockedText` shows only in `.locked`; nil shows no text.
+struct CatpawPrivacyShield: ViewModifier {
+    var lockedText: String?
+    var identifier: String
+    @Environment(\.scenePhase) private var scene
+    @State private var protectedData = UIApplication.shared.isProtectedDataAvailable
+    func body(content: Content) -> some View {
+        let mode = CatpawPrivacyShieldPolicy.mode(scene: scene, protectedDataAvailable: protectedData)
+        content
+            .overlay { if mode != .none { shield(mode) } }
+            .onReceive(NotificationCenter.default.publisher(for: UIApplication.protectedDataWillBecomeUnavailableNotification)) { _ in protectedData = false }
+            .onReceive(NotificationCenter.default.publisher(for: UIApplication.protectedDataDidBecomeAvailableNotification)) { _ in protectedData = true }
+            .onChange(of: scene) { _, _ in protectedData = UIApplication.shared.isProtectedDataAvailable }
+    }
+    private func shield(_ mode: CatpawPrivacyShieldPolicy.Mode) -> some View {
+        ZStack {
+            Rectangle().fill(.thickMaterial).ignoresSafeArea()
+            CatpawColors.background.opacity(0.55).ignoresSafeArea()   // the blur never leaves large text legible
+            VStack(spacing: 16) {
+                Image("LaunchGlyph").resizable().interpolation(.high).scaledToFit().frame(width: 70, height: 56).accessibilityHidden(true)
+                if mode == .locked, let lockedText {
+                    Label(lockedText, systemImage: "lock.fill")
+                        .font(CatpawTypography.Role.caption.font.weight(.medium))
+                        .foregroundStyle(CatpawColors.calmSecondary)
+                }
+            }
+        }
+        .allowsHitTesting(true)
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier(identifier)
     }
 }

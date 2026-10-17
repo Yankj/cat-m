@@ -1,5 +1,6 @@
 import Foundation
 import XCTest
+import SwiftUI
 @testable import CatpawM
 
 /// Exercises real composition and teardown with a named offline login remote.
@@ -878,11 +879,143 @@ final class NativeAuthApplicationLifecycleTests:XCTestCase {
         XCTAssertFalse(LaunchMarkGate.isFirstRun(fresh,arguments:[CatpawOnboarding.skipArgument]))
     }
 
+    // MARK: Splash/login P0 (21:41 iPhone 13, e9e2efce): 开始使用 / Google sign-in left the landing on screen.
+
+    /// The CTA attempt fails on a stale restart flag; the Google sign-in then completes on the session manager (as
+    /// NativeOAuthCoordinator does). afterSignIn must open the gate onto the signed-in account's chat. Before the fix it
+    /// called completeOnboarding(), which failed again on the same stale flag and the landing stayed.
+    @MainActor func testSignInOnLandingOpensGateDespiteStaleRestartFlags() async throws {
+        let flag=UserDefaults.standard.object(forKey:CatpawOnboarding.completedKey)
+        defer {UserDefaults.standard.set(flag,forKey:CatpawOnboarding.completedKey)}
+        UserDefaults.standard.removeObject(forKey:CatpawOnboarding.completedKey)
+        let root=FileManager.default.temporaryDirectory.appendingPathComponent("native-splash-signin-"+UUID().uuidString,isDirectory:true)
+        // root is left in tmp on purpose: removing it under a queued SwiftData save is what 169a6978 avoids.
+        let scope=UUID(),clock=AuthTestClock(),storage=LifecycleStorage(),configuration=try lifecycleConfiguration(scope:scope)
+        let remote=AnonymousTestRemote(issuer:configuration.issuer,clock:clock)
+        try storage.save(await remote.candidate());try storage.setSignedOut(true)   // interrupted rotation, no journal
+        let subject=await remote.id
+        let manager=NativeAuthSessionManager(configuration:configuration,remote:remote,vault:storage,barrier:storage,now:{clock.now()})
+        let resolver=LifecycleWorkspaceResolver(subject:subject,scope:scope,steps:[.success,.success],accessToken:"synthetic.anon.signature")
+        let app=NativeAuthApplicationModel(configuration:configuration,manager:manager,vault:storage,barrier:storage,root:root,workspaceResolver:resolver,retrySchedule:.init(nominalSeconds:[0],jitter:{$0}))
+        app.beginFirstRunForTesting()
+        await app.start();await app.startExperience()
+        XCTAssertTrue(app.sessionRestartNeeded)
+        await app.completeOnboarding()
+        XCTAssertTrue(app.needsOnboarding,"the tap still fails on an unrecoverable session (unchanged)")
+        // The sign-in sheet finishes: a valid session now exists on the manager.
+        try storage.setSignedOut(false);try await manager.startExperience()
+        XCTAssertEqual((await manager.snapshot()).phase,.authenticated)
+        await app.completeOnboardingAfterSignIn()
+        XCTAssertFalse(app.needsOnboarding,"a completed sign-in opens the gate")
+        XCTAssertEqual(app.chat?.trustedSubjectID,subject,"onto the signed-in account's own chat")
+        XCTAssertTrue(CatpawOnboarding.isCompleted())
+        XCTAssertFalse(app.requiresSessionRestart,"the replaced session's restart flag no longer applies")
+        await app.signOut()
+    }
+
+    /// A stalled entry attempt is bounded: the landing gets a retryable failure after entryDeadline (never an endless
+    /// wait), and when the account chat attaches later (here: the warm-up restore + workspace admit) the gate opens
+    /// reactively. The late attempt never writes a failure over the opened gate.
+    @MainActor func testStalledEntryTimesOutAndLateAttachStillOpensGate() async throws {
+        let flag=UserDefaults.standard.object(forKey:CatpawOnboarding.completedKey)
+        defer {UserDefaults.standard.set(flag,forKey:CatpawOnboarding.completedKey)}
+        UserDefaults.standard.removeObject(forKey:CatpawOnboarding.completedKey)
+        let root=FileManager.default.temporaryDirectory.appendingPathComponent("native-splash-stall-"+UUID().uuidString,isDirectory:true)
+        // root is left in tmp on purpose: removing it under a queued SwiftData save is what 169a6978 avoids.
+        let scope=UUID(),clock=AuthTestClock(),storage=LifecycleStorage(),configuration=try lifecycleConfiguration(scope:scope)
+        let remote=AnonymousTestRemote(issuer:configuration.issuer,clock:clock)
+        try storage.save(await remote.candidate())
+        let subject=await remote.id
+        let manager=NativeAuthSessionManager(configuration:configuration,remote:remote,vault:storage,barrier:storage,now:{clock.now()})
+        let resolver=LifecycleWorkspaceResolver(subject:subject,scope:scope,steps:[.success,.success],accessToken:"synthetic.anon.signature")
+        let app=NativeAuthApplicationModel(configuration:configuration,manager:manager,vault:storage,barrier:storage,root:root,workspaceResolver:resolver,retrySchedule:.init(nominalSeconds:[0],jitter:{$0}))
+        app.beginFirstRunForTesting()
+        let hold=SplashEntryHold()
+        app.entryDeadline=0.3
+        app.entryHoldForTesting={ while !hold.released { try? await Task.sleep(nanoseconds:20_000_000) } }
+        let began=ProcessInfo.processInfo.systemUptime
+        await app.completeOnboarding()
+        XCTAssertLessThan(ProcessInfo.processInfo.systemUptime-began,2.0,"the landing never waits past the entry deadline")
+        XCTAssertTrue(app.needsOnboarding)
+        if case .failed = app.onboarding {} else {XCTFail("a timed-out attempt becomes a retryable failure (small capsule)")}
+        await app.start()
+        try await waitUntil {!app.needsOnboarding}
+        XCTAssertEqual(app.chat?.trustedSubjectID,subject)
+        XCTAssertTrue(CatpawOnboarding.isCompleted())
+        hold.released=true
+        try? await Task.sleep(nanoseconds:300_000_000)
+        XCTAssertEqual(app.onboarding,.completed,"the superseded attempt cannot reopen the landing")
+        await app.signOut()
+    }
+
+    /// A second tap (or a sign-in) during an attempt joins it. Before the fix it returned at once with the gate still
+    /// shut, so the landing reset itself and its handoff timers then hid the CTA and the cat.
+    @MainActor func testSecondEntryDuringAttemptJoinsInsteadOfReturningShut() async throws {
+        let flag=UserDefaults.standard.object(forKey:CatpawOnboarding.completedKey)
+        defer {UserDefaults.standard.set(flag,forKey:CatpawOnboarding.completedKey)}
+        UserDefaults.standard.removeObject(forKey:CatpawOnboarding.completedKey)
+        let root=FileManager.default.temporaryDirectory.appendingPathComponent("native-splash-join-"+UUID().uuidString,isDirectory:true)
+        // root is left in tmp on purpose: removing it under a queued SwiftData save is what 169a6978 avoids.
+        let scope=UUID(),clock=AuthTestClock(),storage=LifecycleStorage(),configuration=try lifecycleConfiguration(scope:scope)
+        let remote=AnonymousTestRemote(issuer:configuration.issuer,clock:clock);await remote.behavior(hold:true)
+        let manager=NativeAuthSessionManager(configuration:configuration,remote:remote,vault:storage,barrier:storage,now:{clock.now()})
+        let app=NativeAuthApplicationModel(configuration:configuration,manager:manager,vault:storage,barrier:storage,root:root,retrySchedule:.init(nominalSeconds:[0],jitter:{$0}))
+        app.beginFirstRunForTesting()
+        let hold=SplashEntryHold()
+        app.entryDeadline=5
+        app.entryHoldForTesting={ while !hold.released { try? await Task.sleep(nanoseconds:20_000_000) } }
+        let first=Task { @MainActor in await app.completeOnboarding() }
+        try await waitUntil {app.onboarding == .entering}
+        let second=Task { @MainActor () -> Bool in await app.completeOnboarding(); return app.needsOnboarding }
+        try? await Task.sleep(nanoseconds:200_000_000)
+        hold.released=true
+        await first.value
+        let shutAfterSecond=await second.value
+        XCTAssertFalse(shutAfterSecond,"the second entry returns only once the joined attempt opened the gate")
+        XCTAssertFalse(app.needsOnboarding)
+        await remote.release()
+        await app.signOut()
+    }
+
+    /// The landing's handoff timers are generation-checked: after a reset, a late +0.12 / +0.14 s timer can no longer hide
+    /// the CTA or the cat (the 21:41 screenshot: copy back, CTA and cat gone).
+    func testFirstRunHandoffLateTimersCannotHideCTAAfterReset() {
+        var state=FirstRunHandoffState()
+        let g1=state.begin()
+        XCTAssertTrue(state.leaving)
+        state.reset()                       // fast failure: the landing comes back
+        state.hideCTA(g1);state.flyHero(g1) // the old tap's timers fire late
+        XCTAssertFalse(state.ctaHidden);XCTAssertFalse(state.heroFlown);XCTAssertFalse(state.leaving)
+        let g2=state.begin()
+        state.hideCTA(g2);state.flyHero(g2)
+        XCTAssertTrue(state.ctaHidden);XCTAssertTrue(state.heroFlown,"a current tap still hands off normally")
+        state.reset();XCTAssertEqual(state.ctaHidden,false)
+    }
+
+    /// Privacy shield (user direction 21:51): `.inactive` (Control Center, permission prompts, the Google sign-in sheet)
+    /// shows the content; the app-switcher snapshot (`.background`) and a locked device are shielded.
+    func testPrivacyShieldOnlyForBackgroundSnapshotOrLockedDevice() {
+        XCTAssertEqual(CatpawPrivacyShieldPolicy.mode(scene:.active,protectedDataAvailable:true),.none)
+        XCTAssertEqual(CatpawPrivacyShieldPolicy.mode(scene:.inactive,protectedDataAvailable:true),.none,"no blackout under the OAuth sheet / Control Center")
+        XCTAssertEqual(CatpawPrivacyShieldPolicy.mode(scene:.background,protectedDataAvailable:true),.snapshot)
+        XCTAssertEqual(CatpawPrivacyShieldPolicy.mode(scene:.active,protectedDataAvailable:false),.locked)
+        XCTAssertEqual(CatpawPrivacyShieldPolicy.mode(scene:.inactive,protectedDataAvailable:false),.locked)
+    }
+
     private func lifecycleConfiguration(scope:UUID) throws ->NativeAuthConfiguration {
         try NativeAuthConfiguration(projectURL:URL(string:"https://abcdefghijklmnopqrst.supabase.co")!,publishableKey:"sb_publishable_offline_lifecycle_test",backendOrigin:URL(string:"https://backend.example.invalid")!,serverScopeID:scope)
     }
 }
 
+/// Splash/login P0 tests: holds an entry attempt open (a stalled local open) until released.
+private final class SplashEntryHold:@unchecked Sendable {
+    private let lock=NSLock()
+    private var value=false
+    var released:Bool {
+        get {lock.lock();defer{lock.unlock()};return value}
+        set {lock.lock();value=newValue;lock.unlock()}
+    }
+}
 private struct LifecycleFailure:Error {let message:String}
 private final class LifecycleClock:@unchecked Sendable {
     private let lock=NSLock()

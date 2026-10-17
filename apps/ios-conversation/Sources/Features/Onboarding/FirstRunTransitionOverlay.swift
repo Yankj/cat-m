@@ -67,6 +67,19 @@ enum FirstRunAnchorID: Hashable { case hero, cta, headerAvatar, composer }
     }
 }
 
+/// Splash/login P0: the landing's handoff flags with a generation, so a timer from an earlier tap can never hide the CTA
+/// or the cat after the landing has come back (fast failure / retry).
+struct FirstRunHandoffState: Equatable {
+    private(set) var generation = 0
+    private(set) var leaving = false
+    private(set) var ctaHidden = false
+    private(set) var heroFlown = false
+    mutating func begin() -> Int { generation += 1; leaving = true; ctaHidden = false; heroFlown = false; return generation }
+    mutating func hideCTA(_ g: Int) { guard g == generation, leaving else { return }; ctaHidden = true }
+    mutating func flyHero(_ g: Int) { guard g == generation, leaving else { return }; heroFlown = true }
+    mutating func reset() { generation += 1; leaving = false; ctaHidden = false; heroFlown = false }
+}
+
 // MARK: - Anchors and chat-side modifiers (all no-ops outside a first-run transition)
 
 @MainActor private struct FirstRunAnchorReporter: ViewModifier {
@@ -183,7 +196,8 @@ struct FirstRunTransitionOverlay: View {
         .ignoresSafeArea()
         .allowsHitTesting(false)
         .accessibilityHidden(true)
-        .onChange(of: t.phase) { _, p in if p == .leaving { run() } }
+        // Splash/login P0: a cancelled entry re-arms the overlay so a retry plays the handoff again.
+        .onChange(of: t.phase) { _, p in if p == .leaving { run() } else if p == .idle { started = false; catGone = false; morphGone = false } }
         .onAppear { if t.phase == .leaving { run() } }
     }
 
