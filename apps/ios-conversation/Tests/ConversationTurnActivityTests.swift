@@ -424,13 +424,13 @@ final class VoiceChatLoopTests: XCTestCase {
     }
     func testVoiceLoopCardPausesUntilResume() {
         var loop = VoiceChatLoop(); _ = loop.handle(.start); _ = loop.handle(.transcript("加个日程")); _ = loop.handle(.silenceElapsed); _ = loop.handle(.listeningEnded("加个日程"))
-        XCTAssertEqual(loop.handle(.approvalRequired), [.haptic(.pause), .announceConfirmation])
+        XCTAssertEqual(loop.handle(.approvalRequired), [.haptic(.pause), .announceConfirmation, .releaseAudio])
         XCTAssertEqual(loop.phase, .paused(.needsConfirmation))
         XCTAssertEqual(loop.handle(.replyFinished(.init(speech: "x", speakable: true))), [], "no speaking or listening while paused")
         XCTAssertEqual(loop.handle(.silenceElapsed), [])
         XCTAssertEqual(loop.handle(.resume), [.startListening, .haptic(.listen)])
         var speaking = Self.speakingLoop()
-        XCTAssertEqual(speaking.handle(.approvalRequired), [.stopSpeaking, .haptic(.pause), .announceConfirmation])
+        XCTAssertEqual(speaking.handle(.approvalRequired), [.stopSpeaking, .haptic(.pause), .announceConfirmation, .releaseAudio])
     }
     func testVoiceLoopTextOnlyReplyGoesBackToListening() {
         var loop = VoiceChatLoop(); _ = loop.handle(.start); _ = loop.handle(.listeningEnded("hi"))
@@ -449,10 +449,10 @@ final class VoiceChatLoopTests: XCTestCase {
     }
     func testVoiceLoopInterruptionAndFailurePause() {
         var loop = Self.speakingLoop()
-        XCTAssertEqual(loop.handle(.interruption), [.stopSpeaking, .haptic(.pause)])
+        XCTAssertEqual(loop.handle(.interruption), [.stopSpeaking, .haptic(.pause), .releaseAudio])
         XCTAssertEqual(loop.phase, .paused(.interrupted))
         XCTAssertEqual(loop.handle(.resume), [.startListening, .haptic(.listen)])
-        XCTAssertEqual(loop.handle(.failed), [.stopListening, .haptic(.pause)])
+        XCTAssertEqual(loop.handle(.failed), [.stopListening, .haptic(.pause), .releaseAudio])
         XCTAssertEqual(loop.phase, .paused(.failed))
     }
     static func speakingLoop() -> VoiceChatLoop {
@@ -491,10 +491,10 @@ final class VoiceChatLoopTests: XCTestCase {
         var loop = VoiceChatLoop(); _ = loop.handle(.start); _ = loop.handle(.listeningEnded("加个日程"))
         let line = VoiceSpeechText.cardLine(kind: "calendar", english: false)
         XCTAssertEqual(loop.handle(.replyFinished(.init(speech: line, speakable: true, needsConfirmation: true))), [.haptic(.reply), .speak(line)])
-        XCTAssertEqual(loop.handle(.speechFinished), [.haptic(.pause)], "the card line already asked; no second announcement")
+        XCTAssertEqual(loop.handle(.speechFinished), [.haptic(.pause), .releaseAudio], "the card line already asked; no second announcement")
         XCTAssertEqual(loop.phase, .paused(.needsConfirmation))
         var mute = VoiceChatLoop(); _ = mute.handle(.start); _ = mute.handle(.listeningEnded("加个日程"))
-        XCTAssertEqual(mute.handle(.replyFinished(.init(speech: line, speakable: false, needsConfirmation: true))), [.haptic(.pause), .announceConfirmation])
+        XCTAssertEqual(mute.handle(.replyFinished(.init(speech: line, speakable: false, needsConfirmation: true))), [.haptic(.pause), .announceConfirmation, .releaseAudio])
     }
     func testBargeInEchoFilter() {
         let speaking = "好的，我已经把评审会加到明天下午三点。"
@@ -504,4 +504,207 @@ final class VoiceChatLoopTests: XCTestCase {
         XCTAssertFalse(VoiceBargeIn.isLikelyEcho(heard: "stop please", speaking: "Your meeting is at three."))
         XCTAssertTrue(VoiceBargeIn.isLikelyEcho(heard: "meeting is at", speaking: "Your meeting is at three."))
     }
+    func testFillerAndSingleCharactersAreNeverSent() {
+        XCTAssertFalse(VoiceChatLoop.isMeaningful("嗯"))
+        XCTAssertFalse(VoiceChatLoop.isMeaningful("嗯嗯啊。"))
+        XCTAssertFalse(VoiceChatLoop.isMeaningful("uh, um..."))
+        XCTAssertFalse(VoiceChatLoop.isMeaningful("好"))
+        XCTAssertTrue(VoiceChatLoop.isMeaningful("嗯好的"))
+        XCTAssertTrue(VoiceChatLoop.isMeaningful("ok"))
+        XCTAssertTrue(VoiceChatLoop.isMeaningful("uh call mom"))
+        var loop = VoiceChatLoop(); _ = loop.handle(.start); _ = loop.handle(.transcript("嗯"))
+        XCTAssertEqual(loop.handle(.silenceElapsed), [], "filler alone does not end the utterance")
+        XCTAssertEqual(loop.handle(.listeningEnded("嗯啊")), [.startListening, .haptic(.listen)], "filler is not sent")
+        XCTAssertEqual(loop.sent, [])
+    }
 }
+
+#if os(iOS)
+// MARK: - R2 (NoBug voice-chat review): VoiceChatController with fake audio and a fake conversation host
+
+@MainActor private final class FakeVoiceChatHost: VoiceChatHost {
+    var session: ConversationSession? = ConversationSession(scope: Profiles.user, conversationID: UUID())
+    var draft = ""
+    var conversationID: UUID? = UUID()
+    var hasStagedAttachments = false
+    var edits: [String] = []
+    func editDraft(_ text: String) { draft = text; edits.append(text) }
+}
+
+@MainActor private final class FakeVoiceChatIO: VoiceChatIO {
+    var supported = true
+    var starts = 0, stops = 0, cancels = 0, activations = 0, deactivations = 0
+    var spoken: [String] = []
+    var onText: (@MainActor (String) -> Void)?
+    var onEnd: (@MainActor (NativeVoiceController.DictationEnd) -> Void)?
+    private var finish: (@MainActor () -> Void)?
+    func startRecognizer(onText: @escaping @MainActor (String) -> Void, onEnd: @escaping @MainActor (NativeVoiceController.DictationEnd) -> Void) -> Bool {
+        starts += 1; self.onText = onText; self.onEnd = onEnd; return true
+    }
+    func stopRecognizer() { stops += 1 }
+    func cancelRecognizer() { cancels += 1 }
+    func supportsOnDeviceRecognition(_ language: AppLanguage) -> Bool { supported }
+    func speak(_ text: String, english: Bool, onFinish: @escaping @MainActor () -> Void) { activations += 1; spoken.append(text); finish = onFinish }
+    func stopSpeaking() { finish = nil }
+    var isSpeaking: Bool { finish != nil }
+    func finishSpeaking() { let f = finish; finish = nil; f?() }
+    func activateAudio() { activations += 1 }
+    func deactivateAudio() { deactivations += 1 }
+    func haptic(_ haptic: VoiceChatHaptic) {}
+    func observeSession(onInterruption: @escaping @MainActor () -> Void, onReset: @escaping @MainActor () -> Void) {}
+    func stopObserving() {}
+}
+
+@MainActor final class VoiceChatControllerTests: XCTestCase {
+    private var host: FakeVoiceChatHost!
+    private var io: FakeVoiceChatIO!
+    private var epoch: AccountEpoch!
+    private var controller: VoiceChatController!
+    private var sends = 0
+    private var turnID = UUID()
+
+    override func setUp() {
+        super.setUp()
+        UserDefaults.standard.removeObject(forKey: VoiceChatSpeechPolicy.defaultsKey)
+        host = FakeVoiceChatHost(); io = FakeVoiceChatIO(); epoch = AccountEpoch(account: "voice-account-a"); sends = 0; turnID = UUID()
+        controller = VoiceChatController(io: io, epoch: epoch, observeAccounts: false)
+        controller.pollInterval = 3_600_000_000_000   // the test drives pollReply itself
+    }
+    private func begin() {
+        XCTAssertTrue(controller.begin(host: host, language: .chinese, send: { [unowned self] _ in
+            self.sends += 1
+            let request = ConversationTurnRequest(scope: Profiles.user, conversationID: self.host.session!.conversationID, threadID: nil, operationID: self.turnID, epoch: 1, history: [])
+            self.host.session!.turns.append(ConversationTurnRecord(id: self.turnID, request: request, state: .running, lastSequence: 1, error: nil))
+        }))
+    }
+    /// Says `text`, then 1.2 s of silence and the recognizer's final result.
+    private func say(_ text: String) {
+        io.onText?(text); controller.run(.silenceElapsed); io.onEnd?(.finished)
+    }
+    private func updateTurn(_ change: (inout ConversationTurnRecord) -> Void) {
+        let i = host.session!.turns.firstIndex { $0.id == turnID }!
+        change(&host.session!.turns[i])
+    }
+    private func call(_ tool: String, confirm: String) -> ConversationDeviceCall {
+        ConversationDeviceCall(interruptID: UUID().uuidString.lowercased(), callID: UUID().uuidString, tool: tool, args: Data("{}".utf8), confirm: confirm, ttlSec: 60, argsHash: "h", expiresAt: "2026-10-17T12:00:00Z")
+    }
+    private func complete(_ text: String) {
+        let message = ConversationTranscriptMessage(role: .assistant, content: text)
+        host.session!.messages.append(message)
+        updateTurn { $0.assistantMessageID = message.id; $0.state = .completed; $0.pendingDeviceCalls = nil }
+    }
+
+    func testReadOnlyDeviceCallDoesNotPauseAndTheReplyIsSpoken() {
+        begin(); say("明天有什么安排")
+        XCTAssertEqual(sends, 1); XCTAssertEqual(controller.loop.phase, .waiting)
+        updateTurn { $0.pendingDeviceCalls = [self.call("calendar_list", confirm: "none")]; $0.suspendedRequiresApproval = false; $0.suspendedWaitingFor = "device"; $0.lastSequence = 3 }
+        XCTAssertFalse(controller.pollReply(), "a read-only device call keeps waiting")
+        XCTAssertEqual(controller.loop.phase, .waiting)
+        complete("明天下午三点有评审会。")
+        XCTAssertTrue(controller.pollReply())
+        XCTAssertEqual(controller.loop.phase, .speaking)
+        XCTAssertEqual(io.spoken.last, "明天下午三点有评审会。")
+        io.finishSpeaking()
+        XCTAssertEqual(controller.loop.phase, .listening)
+        XCTAssertEqual(io.deactivations, 0)
+    }
+    func testOldServerReadOnlyCallWithoutRequiresApprovalStillDoesNotPause() {
+        begin(); say("附近有什么咖啡店")
+        updateTurn { $0.pendingDeviceCalls = [self.call("places_search", confirm: "none")] }   // no requires_approval (old server)
+        XCTAssertFalse(controller.pollReply())
+        XCTAssertEqual(controller.loop.phase, .waiting)
+    }
+    func testCardCallPausesAndReleasesAudioAfterTheConfirmationLine() {
+        begin(); say("帮我加个明天三点的日程")
+        updateTurn { $0.pendingDeviceCalls = [self.call("calendar_create", confirm: "card")] }   // old server: confirm decides
+        XCTAssertTrue(controller.pollReply())
+        XCTAssertEqual(controller.loop.phase, .paused(.needsConfirmation))
+        XCTAssertEqual(io.spoken.last, VoiceSpeechText.confirmationLine(english: false))
+        XCTAssertEqual(io.deactivations, 0, "the confirmation line finishes first")
+        io.finishSpeaking()
+        XCTAssertEqual(io.deactivations, 1, "other apps are not left ducked while the user looks at the card")
+        XCTAssertTrue(controller.audioReleased)
+    }
+    func testRequiresApprovalTrueOverridesConfirmNone() {
+        var turn = ConversationTurnRecord(id: UUID(), request: ConversationTurnRequest(scope: Profiles.user, conversationID: UUID(), threadID: nil, operationID: UUID(), epoch: 1, history: []), state: .running, lastSequence: 1, error: nil)
+        turn.pendingDeviceCalls = [call("calendar_list", confirm: "none")]
+        XCTAssertFalse(turn.needsUserDecision); XCTAssertTrue(turn.awaitingApproval)
+        turn.suspendedRequiresApproval = true
+        XCTAssertTrue(turn.needsUserDecision, "a mixed round is decided by the server")
+        turn.suspendedRequiresApproval = false; turn.pendingDeviceCalls = [call("calendar_create", confirm: "card")]
+        XCTAssertFalse(turn.needsUserDecision)
+    }
+    func testSignOutEndsTheConversationAndNeverRestoresTheDraft() {
+        host.draft = "上一个账号的草稿"
+        begin(); host.draft = ""
+        epoch.signOut()
+        controller.exit(.accountChanged)
+        XCTAssertEqual(controller.loop.phase, .ended)
+        XCTAssertEqual(host.draft, "", "the draft never crosses accounts")
+        XCTAssertGreaterThan(io.cancels, 0); XCTAssertGreaterThan(io.deactivations, 0)
+    }
+    func testRevokedSessionStopsTheMicOnTheNextRecognizedWords() {
+        begin()
+        epoch.bump()   // remote revoke / epoch change without a notification reaching the controller yet
+        io.onText?("还在听吗")
+        XCTAssertEqual(controller.loop.phase, .ended)
+        XCTAssertGreaterThan(io.cancels, 0)
+        XCTAssertEqual(sends, 0)
+    }
+    func testConversationSwitchEndsAPausedConversation() {
+        begin(); say("帮我加个日程")
+        updateTurn { $0.pendingDeviceCalls = [self.call("calendar_create", confirm: "card")]; $0.suspendedRequiresApproval = true }
+        controller.pollReply(); io.finishSpeaking()
+        host.conversationID = UUID()
+        controller.orbTapped()   // 继续 after a switch must not resume into another conversation
+        XCTAssertEqual(controller.loop.phase, .ended)
+        controller.exit(.conversationChanged)
+        XCTAssertEqual(controller.loop.phase, .ended)
+    }
+    func testUserExitRestoresTheTypedDraft() {
+        host.draft = "我自己打的字"
+        begin(); host.draft = ""
+        controller.exit()
+        XCTAssertEqual(host.draft, "我自己打的字")
+    }
+    func testFillerIsNotSent() {
+        begin()
+        let starts = io.starts
+        say("嗯")
+        XCTAssertEqual(sends, 0)
+        XCTAssertEqual(controller.loop.phase, .listening)
+        io.onEnd?(.finished)
+        XCTAssertGreaterThan(io.starts, starts, "listens again")
+        XCTAssertEqual(sends, 0)
+    }
+    func testVoiceTurnNeverSendsStagedAttachments() {
+        host.hasStagedAttachments = true
+        begin(); say("把这张图发给他")
+        XCTAssertEqual(sends, 0)
+        XCTAssertEqual(controller.loop.phase, .paused(.failed))
+        XCTAssertTrue(host.edits.isEmpty)
+    }
+    func testReplyIsReadOnlyFromTheExactTurn() {
+        begin()
+        // Another turn's assistant message appears (e.g. an earlier queued turn) before ours is journaled.
+        host.session!.messages.append(ConversationTranscriptMessage(role: .assistant, content: "别的回复"))
+        say("今天天气怎么样")
+        XCTAssertFalse(controller.pollReply())
+        XCTAssertEqual(controller.reply, "", "no fallback to another turn's message")
+    }
+    func testUnsupportedOnDeviceRecognitionDoesNotStart() {
+        io.supported = false
+        XCTAssertFalse(controller.begin(host: host, language: .chinese, send: { _ in }))
+        XCTAssertEqual(controller.notice, "此设备不支持离线语音对话")
+        XCTAssertEqual(io.starts, 0)
+        XCTAssertEqual(controller.loop.phase, .idle)
+    }
+    func testSpokenReplyMasksPhonesAndEmails() {
+        begin(); say("他的联系方式是什么")
+        complete("电话 13800138000，邮箱 bob@example.com。")
+        controller.pollReply()
+        let spoken = io.spoken.last ?? ""
+        XCTAssertFalse(spoken.contains("13800138000")); XCTAssertFalse(spoken.contains("bob@example.com"))
+    }
+}
+#endif
