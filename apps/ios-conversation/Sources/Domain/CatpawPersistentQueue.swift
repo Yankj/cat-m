@@ -20,6 +20,9 @@ extension UserDefaults: CatpawKeyValueStore {}
         /// Ordering group (e.g. the suggestion id): items of one group are sent strictly FIFO; a failure blocks the rest.
         var group: String? = nil
         var attempts: Int; var nextAt: Double; let enqueuedAt: Double
+        /// p90i: a dead letter restored to its owner after an account switch; never retried automatically — the user
+        /// retries or discards it (nil on older records).
+        var needsUserConfirmation: Bool? = nil
     }
     enum Result: Sendable { case done, retry, drop }
     private struct Saved: Codable { var items: [Item]; var dead: [Item]; var poisoned: [String]? = nil }
@@ -47,7 +50,7 @@ extension UserDefaults: CatpawKeyValueStore {}
         guard !items.contains(where: { $0.key == key }) else { return false }
         if let group, poisoned.contains(Self.mark(account, group)) {   // its group already failed: keep the order, never send
             deadLetters.append(Item(key: key, op: op, account: account, group: group, attempts: 0, nextAt: now.timeIntervalSince1970, enqueuedAt: now.timeIntervalSince1970))
-            if deadLetters.count > maxDead { deadLetters.removeFirst(deadLetters.count - maxDead) }
+            pruneDead()
             persist(); return false
         }
         if let group, let supersedes { items.removeAll { $0.group == group && $0.account == account && supersedes($0.op) } }
@@ -65,6 +68,28 @@ extension UserDefaults: CatpawKeyValueStore {}
     /// Codex PR90f #1: move every item (live and dead) out — into the proactive quarantine; nothing of it is sent meanwhile.
     func extractAll() -> [Item] {
         let all = items + deadLetters; items = []; deadLetters = []; poisoned = []; persist(); return all
+    }
+    /// p90i: like `extractAll`, but keeps live items and dead letters apart (parking on an account switch).
+    func extractSplit() -> (live: [Item], dead: [Item]) {
+        let r = (items, deadLetters); items = []; deadLetters = []; poisoned = []; persist(); return r
+    }
+    /// p90i (08:57): the owner's dead letters come back exactly as dead letters (attempts kept), flagged as needing the
+    /// user's confirmation, their groups poisoned again so no later op of them is sent first. Never retried here.
+    func reinstateDead(_ moved: [Item], account: String) {
+        for var i in moved where (i.account == nil || i.account!.caseInsensitiveCompare(account) == .orderedSame) && !deadLetters.contains(where: { $0.key == i.key }) {
+            i.account = account; i.needsUserConfirmation = true; deadLetters.append(i)
+            if let g = i.group { poisoned.insert(Self.mark(account, g)) }
+        }
+        persist()
+    }
+    /// Dead letters of `account` awaiting the user's retry / discard.
+    func needingConfirmation(account: String) -> [Item] {
+        deadLetters.filter { $0.needsUserConfirmation == true && ($0.account ?? "").caseInsensitiveCompare(account) == .orderedSame }
+    }
+    /// Caps diagnostics-only dead letters; ones awaiting the user's confirmation are never pruned.
+    private func pruneDead() {
+        var excess = deadLetters.count - maxDead
+        while excess > 0, let i = deadLetters.firstIndex(where: { $0.needsUserConfirmation != true }) { deadLetters.remove(at: i); excess -= 1 }
     }
     /// Release from quarantine: the items come back bound to the proven owner (never sent under anyone else).
     func reinstate(_ moved: [Item], account: String) {
@@ -107,7 +132,7 @@ extension UserDefaults: CatpawKeyValueStore {}
                         items.removeAll { $0.group == g && $0.account == dead.account }; deadLetters += later; dropped += later.count
                         blocked.insert(g)
                     }
-                    if deadLetters.count > maxDead { deadLetters.removeFirst(deadLetters.count - maxDead) }
+                    pruneDead()
                 } else {
                     items[i].nextAt = now.timeIntervalSince1970 + min(maxDelay, baseDelay * pow(2, Double(items[i].attempts - 1)))
                     retried += 1
