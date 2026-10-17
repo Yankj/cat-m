@@ -20,7 +20,10 @@ function argsSummary(args) {
 /** Final state of one interaction (approval / device / ui interrupt), as a stable label. */
 export function interruptOutcome(it) {
   if (!it) return null;
-  if (it.status === 'reported') { const s = it.response?.status; return s === 'ok' ? 'ok' : s === 'cancelled' ? 'user_declined' : s === 'denied' ? 'permission_denied' : 'error'; }
+  const device = r => { const s = r?.status; return s === 'ok' ? 'ok' : s === 'cancelled' ? 'user_declined' : s === 'denied' ? 'permission_denied' : 'error'; };
+  if (it.status === 'reported') return device(it.response);
+  // B2 (NoBug round 2): the phone reported after the user moved on; its report is the truth about the side effect.
+  if (it.status === 'cancelled' && it.late_response) return device(it.late_response);
   if (it.status === 'cancelled') return it.cancel_reason === 'superseded' ? 'abandoned' : 'cancelled';
   return { approved: 'approved', denied: 'user_declined', expired: 'expired', submitted: 'submitted', dismissed: 'dismissed', errored: 'error', pending: 'pending' }[it.status] ?? String(it.status);
 }
@@ -40,6 +43,7 @@ export function turnToolOutcomes(t) {
 }
 
 const TEXT = { ok: '已执行成功', user_declined: '用户在确认卡片上主动点了「取消/拒绝」，没有执行（这是用户的决定，不是故障）', expired: '用户没有在时限内确认，没有执行', cancelled: '用户停止了这一轮，没有执行', abandoned: '用户没有在卡片上作答就发了新消息，没有执行', permission_denied: '手机权限不允许，没有执行', error: '执行出错', not_executed: '没有执行', pending: '没有执行', submitted: '用户已提交', dismissed: '用户关闭了卡片' };
+const LATE = { ok: '用户其实已经在手机上确认，操作已经执行成功（结果在用户发出新消息之后才回报；之前“没有执行”的说法不对，以这条为准）', user_declined: '用户在手机上点了「取消」，没有执行', permission_denied: '手机权限不允许，没有执行', error: '手机上执行出错' };
 const ENDING = { cancelled: '用户主动停止了这一轮', superseded_by_new_message: '用户没有回应确认卡片，直接发了新消息', approval_expired: '确认已过期' };
 
 /** Note for a turn that ended without complete(); null when nothing happened beyond the user's message. */
@@ -55,6 +59,7 @@ export function interruptedTurnNote(t, code) {
 export function turnOutcomeNote(notes) {
   if (!Array.isArray(notes) || !notes.length) return '';
   const parts = notes.slice(-MAX_NOTES).map(n => {
+    if (n.code === 'late_device_report') return '较早一轮的确认卡片晚到了手机结果：' + (n.tools ?? []).map(x => `${x.name}${x.args ? `（${x.args}）` : ''} → ${LATE[x.outcome] ?? x.outcome}`).join('；') + '。';
     const how = ENDING[n.code] ?? `没有正常结束（${n.code}）`;
     const tools = (n.tools ?? []).map(x => `${x.name}${x.args ? `（${x.args}）` : ''} → ${TEXT[x.outcome] ?? x.outcome}`).join('；');
     return `上一轮回复${how}。` + (tools ? `那一轮的工具调用：${tools}。` : '') + (n.shown_text ? `你当时已经对用户显示了：「${n.shown_text}」。` : '');
@@ -73,9 +78,20 @@ export function withInterruptedTurn(c, t, code) {
 export function withInteractionOutcomes(c, t) {
   const items = (t?.interrupts ?? []).filter(i => i.status !== 'pending').map(it => ({
     turn_id: t.id, interrupt_id: it.interrupt_id, call_id: it.call_id, kind: it.kind ?? 'approval', tool: it.tool,
-    summary: cut(it.summary, 120), outcome: interruptOutcome(it), ...it.kind === 'device' && it.response?.status ? { device_status: it.response.status } : {}, decided_at: it.decided_at ?? null
+    summary: cut(it.summary, 120), outcome: interruptOutcome(it), ...it.kind === 'device' && (it.late_response ?? it.response)?.status ? { device_status: (it.late_response ?? it.response).status } : {},
+    decided_at: it.decided_at ?? null, ...it.late_response ? { late: true, reported_at: it.late_reported_at ?? null } : {}
   }));
   if (!items.length) return {};
   const ids = new Set(items.map(i => i.interrupt_id));
   return { interaction_outcomes: [...(c.interaction_outcomes ?? []).filter(o => !ids.has(o.interrupt_id)), ...clone(items)].slice(-MAX_OUTCOMES) };
+}
+
+/** B2: the phone reported a device call AFTER the user's next message superseded its turn. The turn stays closed and
+ * the conversation revision is unchanged; the outcome is corrected and the next turn is told what really happened. */
+export function withLateDeviceReport(c, t, it) {
+  const call = (t?.events ?? []).find(e => e.type === 'tool_call' && e.data?.call_id === it.call_id);
+  const tool = { call_id: it.call_id, name: String(it.tool ?? call?.data?.name ?? ''), args: argsSummary(call?.data?.arguments), outcome: interruptOutcome(it) };
+  const note = { turn_id: t.id, code: 'late_device_report', tools: [tool], shown_text: '' };
+  const kept = (c.turn_outcome_notes ?? []).filter(n => !(n.turn_id === t.id && n.code === 'late_device_report' && n.tools?.[0]?.call_id === it.call_id));
+  return { ...c, turn_outcome_notes: [...kept, note].slice(-MAX_NOTES), ...withInteractionOutcomes(c, t) };
 }
