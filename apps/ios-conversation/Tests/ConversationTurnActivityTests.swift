@@ -382,3 +382,126 @@ final class AccountConversationLocalTests: XCTestCase {
     }
 }
 #endif
+
+/// v1.1 voice conversation: the hands-free loop (listening → sending → waiting → speaking → listening, barge-in, card
+/// pause, exit) and the speech-text sanitizer. Pure domain code: no audio, no simulator microphone needed.
+final class VoiceChatLoopTests: XCTestCase {
+    // MARK: state machine
+    func testVoiceLoopFullCycleListenSendWaitSpeakListen() {
+        var loop = VoiceChatLoop()
+        XCTAssertEqual(loop.handle(.start), [.startListening, .haptic(.listen)])
+        XCTAssertEqual(loop.phase, .listening)
+        XCTAssertEqual(loop.handle(.silenceElapsed), [], "silence before any speech keeps listening")
+        XCTAssertEqual(loop.handle(.transcript("明天三点")), [])
+        XCTAssertEqual(loop.handle(.transcript("明天三点开评审会")), [])
+        XCTAssertEqual(loop.handle(.silenceElapsed), [.stopListening])
+        XCTAssertEqual(loop.phase, .sending)
+        XCTAssertEqual(loop.handle(.listeningEnded("明天三点开评审会")), [.send("明天三点开评审会"), .haptic(.turnSent)])
+        XCTAssertEqual(loop.phase, .waiting)
+        XCTAssertEqual(loop.sent, ["明天三点开评审会"])
+        XCTAssertEqual(loop.handle(.transcript("late partial")), [], "late recognizer text after the send is ignored")
+        XCTAssertEqual(loop.handle(.replyFinished(.init(speech: "好的，已经记下。", speakable: true))), [.haptic(.reply), .speak("好的，已经记下。")])
+        XCTAssertEqual(loop.phase, .speaking)
+        XCTAssertEqual(loop.handle(.speechFinished), [.startListening, .haptic(.listen)])
+        XCTAssertEqual(loop.phase, .listening)
+    }
+    func testVoiceLoopFinalTextFallsBackToPartialAndEmptyRestartsListening() {
+        var loop = VoiceChatLoop(); _ = loop.handle(.start)
+        _ = loop.handle(.transcript("hello there")); _ = loop.handle(.silenceElapsed)
+        XCTAssertEqual(loop.handle(.listeningEnded("")), [.send("hello there"), .haptic(.turnSent)])
+        var quiet = VoiceChatLoop(); _ = quiet.handle(.start)
+        XCTAssertEqual(quiet.handle(.listeningEnded("  ")), [.startListening, .haptic(.listen)], "nothing heard: listen again, send nothing")
+        XCTAssertTrue(quiet.sent.isEmpty)
+    }
+    func testVoiceLoopBargeInStopsSpeechAndListens() {
+        var loop = Self.speakingLoop()
+        XCTAssertEqual(loop.handle(.bargeIn(alreadyListening: true)), [.stopSpeaking, .haptic(.listen)])
+        XCTAssertEqual(loop.phase, .listening)
+        var tapped = Self.speakingLoop()
+        XCTAssertEqual(tapped.handle(.bargeIn(alreadyListening: false)), [.stopSpeaking, .haptic(.listen), .startListening])
+        var idle = VoiceChatLoop(); _ = idle.handle(.start)
+        XCTAssertEqual(idle.handle(.bargeIn(alreadyListening: true)), [], "barge-in only applies while speaking")
+    }
+    func testVoiceLoopCardPausesUntilResume() {
+        var loop = VoiceChatLoop(); _ = loop.handle(.start); _ = loop.handle(.transcript("加个日程")); _ = loop.handle(.silenceElapsed); _ = loop.handle(.listeningEnded("加个日程"))
+        XCTAssertEqual(loop.handle(.approvalRequired), [.haptic(.pause), .announceConfirmation])
+        XCTAssertEqual(loop.phase, .paused(.needsConfirmation))
+        XCTAssertEqual(loop.handle(.replyFinished(.init(speech: "x", speakable: true))), [], "no speaking or listening while paused")
+        XCTAssertEqual(loop.handle(.silenceElapsed), [])
+        XCTAssertEqual(loop.handle(.resume), [.startListening, .haptic(.listen)])
+        var speaking = Self.speakingLoop()
+        XCTAssertEqual(speaking.handle(.approvalRequired), [.stopSpeaking, .haptic(.pause), .announceConfirmation])
+    }
+    func testVoiceLoopTextOnlyReplyGoesBackToListening() {
+        var loop = VoiceChatLoop(); _ = loop.handle(.start); _ = loop.handle(.listeningEnded("hi"))
+        XCTAssertEqual(loop.handle(.replyFinished(.init(speech: "Hello", speakable: false))), [.startListening, .haptic(.listen)])
+        var empty = VoiceChatLoop(); _ = empty.handle(.start); _ = empty.handle(.listeningEnded("hi"))
+        XCTAssertEqual(empty.handle(.replyFinished(.init(speech: " ", speakable: true))), [.startListening, .haptic(.listen)])
+    }
+    func testVoiceLoopExitAndBackgroundStopEverythingOnce() {
+        var loop = Self.speakingLoop()
+        XCTAssertEqual(loop.handle(.exit), [.stopListening, .stopSpeaking, .deactivateAudio])
+        XCTAssertEqual(loop.phase, .ended)
+        XCTAssertEqual(loop.handle(.start), []); XCTAssertEqual(loop.handle(.exit), [], "ended is terminal")
+        var bg = VoiceChatLoop(); _ = bg.handle(.start)
+        XCTAssertEqual(bg.handle(.background), [.stopListening, .deactivateAudio])
+        XCTAssertFalse(bg.isActive)
+    }
+    func testVoiceLoopInterruptionAndFailurePause() {
+        var loop = Self.speakingLoop()
+        XCTAssertEqual(loop.handle(.interruption), [.stopSpeaking, .haptic(.pause)])
+        XCTAssertEqual(loop.phase, .paused(.interrupted))
+        XCTAssertEqual(loop.handle(.resume), [.startListening, .haptic(.listen)])
+        XCTAssertEqual(loop.handle(.failed), [.stopListening, .haptic(.pause)])
+        XCTAssertEqual(loop.phase, .paused(.failed))
+    }
+    static func speakingLoop() -> VoiceChatLoop {
+        var loop = VoiceChatLoop(); _ = loop.handle(.start); _ = loop.handle(.listeningEnded("hi"))
+        _ = loop.handle(.replyFinished(.init(speech: "Hello", speakable: true))); return loop
+    }
+
+    // MARK: speech-text sanitizer
+    func testSpeechTextSkipsCodeURLsAndMarkdown() {
+        let r = VoiceSpeechText.make("## 结果\n**好的**，详情见 https://example.com/a?b=1 。\n- 第一项\n```swift\nlet x = 1\n```\n[文档](https://x.y) 已更新", english: false)
+        XCTAssertEqual(r.text, "结果好的，详情见 。第一项文档 已更新")
+        XCTAssertTrue(r.hadCode); XCTAssertFalse(r.hadCard)
+        XCTAssertFalse(r.text.contains("http")); XCTAssertFalse(r.text.contains("let x"))
+    }
+    func testSpeechTextCardBecomesOneConfirmLine() {
+        let cal = VoiceSpeechText.make("我帮你排好了。\n```json\n{\"type\":\"catpaw.ui.v1\",\"kind\":\"calendar_event\",\"title\":\"评审会\"}\n```", english: false)
+        XCTAssertTrue(cal.hadCard)
+        XCTAssertEqual(cal.text, "我帮你排好了。我准备了一张日程卡片，请在屏幕上确认。")
+        XCTAssertFalse(cal.text.contains("{"))
+        let bare = VoiceSpeechText.make("{\"type\":\"reminder\",\"title\":\"x\"}", english: true)
+        XCTAssertEqual(bare.text, "I've prepared a reminder card. Please confirm it on screen.")
+        let onlyCode = VoiceSpeechText.make("```\nprint(1)\n```", english: true)
+        XCTAssertEqual(onlyCode.text, "The code is on screen.")
+    }
+    func testSpeechTextLongReplyIsCutAtASentence() {
+        let long = String(repeating: "这是一句比较长的回答内容。", count: 80)
+        let r = VoiceSpeechText.make(long, english: false)
+        XCTAssertTrue(r.text.hasSuffix("其余内容请看屏幕。"))
+        XCTAssertLessThanOrEqual(r.text.count, VoiceSpeechText.maxCharacters + 12)
+        XCTAssertTrue(r.text.dropLast("其余内容请看屏幕。".count).hasSuffix("。"))
+    }
+    func testSpeechTextEnglishJoinsWithSpaces() {
+        XCTAssertEqual(VoiceSpeechText.make("Sure.\n\n1. First step\n2. Second step", english: true).text, "Sure. First step Second step")
+    }
+    func testVoiceLoopCardReplyIsReadThenPauses() {
+        var loop = VoiceChatLoop(); _ = loop.handle(.start); _ = loop.handle(.listeningEnded("加个日程"))
+        let line = VoiceSpeechText.cardLine(kind: "calendar", english: false)
+        XCTAssertEqual(loop.handle(.replyFinished(.init(speech: line, speakable: true, needsConfirmation: true))), [.haptic(.reply), .speak(line)])
+        XCTAssertEqual(loop.handle(.speechFinished), [.haptic(.pause)], "the card line already asked; no second announcement")
+        XCTAssertEqual(loop.phase, .paused(.needsConfirmation))
+        var mute = VoiceChatLoop(); _ = mute.handle(.start); _ = mute.handle(.listeningEnded("加个日程"))
+        XCTAssertEqual(mute.handle(.replyFinished(.init(speech: line, speakable: false, needsConfirmation: true))), [.haptic(.pause), .announceConfirmation])
+    }
+    func testBargeInEchoFilter() {
+        let speaking = "好的，我已经把评审会加到明天下午三点。"
+        XCTAssertTrue(VoiceBargeIn.isLikelyEcho(heard: "评审会加到明天", speaking: speaking))
+        XCTAssertTrue(VoiceBargeIn.isLikelyEcho(heard: "嗯", speaking: speaking), "one syllable never interrupts")
+        XCTAssertFalse(VoiceBargeIn.isLikelyEcho(heard: "等一下 改成四点", speaking: speaking))
+        XCTAssertFalse(VoiceBargeIn.isLikelyEcho(heard: "stop please", speaking: "Your meeting is at three."))
+        XCTAssertTrue(VoiceBargeIn.isLikelyEcho(heard: "meeting is at", speaking: "Your meeting is at three."))
+    }
+}

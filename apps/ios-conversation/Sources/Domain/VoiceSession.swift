@@ -98,3 +98,236 @@ public actor RecordingReadoutAdapter: ReadoutAdapter {
     }
     public func received() -> [ReadoutPlan] { plans }
 }
+
+// MARK: - v1.1 voice conversation (pure, portable: no AVFoundation / UIKit; driven by `VoiceChatController`)
+
+/// Where the hands-free voice loop is. `waiting` = the turn was sent and the assistant is thinking / streaming.
+public enum VoiceChatPhase: Equatable, Sendable {
+    case idle, listening, sending, waiting, speaking
+    case paused(VoiceChatPauseReason)
+    case ended
+}
+public enum VoiceChatPauseReason: Equatable, Sendable {
+    /// A card / approval needs the user on screen (requires_approval or a catpaw.ui card): the loop never acts for them.
+    case needsConfirmation
+    /// Audio interruption (call, Siri) or the output route went away.
+    case interrupted
+    /// The recognizer or the turn failed; the user can resume.
+    case failed
+}
+public enum VoiceChatHaptic: Equatable, Sendable { case listen, turnSent, reply, pause }
+/// Side effects the controller performs, in order. The machine itself never touches audio.
+public enum VoiceChatEffect: Equatable, Sendable {
+    case startListening, stopListening
+    case send(String)
+    case speak(String)
+    case stopSpeaking
+    /// Say (or, text-only, show) that something needs on-screen confirmation.
+    case announceConfirmation
+    case haptic(VoiceChatHaptic)
+    case deactivateAudio
+}
+/// What came back for the sent turn, already reduced to speech (`VoiceSpeechText`).
+public struct VoiceChatReply: Equatable, Sendable {
+    public var speech: String
+    /// false → text-only (TTS not allowed by policy, or nothing speakable): the loop goes straight back to listening.
+    public var speakable: Bool
+    /// The reply carries a card the user must confirm on screen: after its line is read the loop pauses instead of listening.
+    public var needsConfirmation: Bool
+    public init(speech: String, speakable: Bool, needsConfirmation: Bool = false) { self.speech = speech; self.speakable = speakable; self.needsConfirmation = needsConfirmation }
+}
+public enum VoiceChatEvent: Equatable, Sendable {
+    case start
+    /// Live partial transcript of the current utterance.
+    case transcript(String)
+    /// ~1.2 s without new recognized text (`VoiceChatLoop.silenceInterval`).
+    case silenceElapsed
+    /// The recognizer delivered its final text (or stopped on its own; "" = nothing heard).
+    case listeningEnded(String)
+    case replyFinished(VoiceChatReply)
+    case approvalRequired
+    case speechFinished
+    /// The user spoke (or tapped the orb) while the reply was being read: stop speaking and listen.
+    /// `alreadyListening`: the barge-in recognizer is running and simply continues as the next utterance.
+    case bargeIn(alreadyListening: Bool)
+    case resume
+    case interruption
+    case failed
+    /// App went to the background (never on .inactive).
+    case background
+    case exit
+}
+
+/// The hands-free loop: listening → sending → waiting → speaking → listening, with barge-in, card pause and exit.
+/// Pure value type: `handle` returns the effects for the controller to run (unit-tested without audio).
+public struct VoiceChatLoop: Equatable, Sendable {
+    public static let silenceInterval: TimeInterval = 1.2
+    public private(set) var phase: VoiceChatPhase = .idle
+    public private(set) var transcript = ""
+    /// Texts handed to `send`, in order (each one is a normal chat turn in the current conversation).
+    public private(set) var sent: [String] = []
+    private var pauseAfterSpeech = false
+    public init() {}
+
+    public var isActive: Bool { phase != .idle && phase != .ended }
+
+    public mutating func handle(_ event: VoiceChatEvent) -> [VoiceChatEffect] {
+        if phase == .ended { return [] }
+        switch (event, phase) {
+        case (.exit, _), (.background, _):
+            let wasSpeaking = phase == .speaking
+            phase = .ended; transcript = ""
+            return [.stopListening] + (wasSpeaking ? [.stopSpeaking] : []) + [.deactivateAudio]
+        case (.start, .idle), (.resume, .paused):
+            return listen()
+        case (.transcript(let t), .listening):
+            transcript = t; return []
+        case (.transcript(let t), .sending):
+            transcript = t; return []
+        case (.silenceElapsed, .listening):
+            guard !Self.trimmed(transcript).isEmpty else { return [] }   // silence before any speech: keep listening
+            phase = .sending
+            return [.stopListening]
+        case (.listeningEnded(let final), .listening), (.listeningEnded(let final), .sending):
+            let text = Self.trimmed(final).isEmpty ? Self.trimmed(transcript) : Self.trimmed(final)
+            guard !text.isEmpty else { return listen() }   // nothing heard (recognizer timeout): listen again
+            phase = .waiting; transcript = ""; sent.append(text)
+            return [.send(text), .haptic(.turnSent)]
+        case (.replyFinished(let reply), .waiting):
+            guard reply.speakable, !Self.trimmed(reply.speech).isEmpty else {   // text-only fallback
+                if reply.needsConfirmation { phase = .paused(.needsConfirmation); return [.haptic(.pause), .announceConfirmation] }
+                return listen()
+            }
+            phase = .speaking; pauseAfterSpeech = reply.needsConfirmation
+            return [.haptic(.reply), .speak(reply.speech)]
+        case (.approvalRequired, .waiting), (.approvalRequired, .speaking), (.approvalRequired, .listening), (.approvalRequired, .sending):
+            let effects: [VoiceChatEffect] = phase == .speaking ? [.stopSpeaking] : (phase == .listening || phase == .sending) ? [.stopListening] : []
+            phase = .paused(.needsConfirmation); transcript = ""
+            return effects + [.haptic(.pause), .announceConfirmation]
+        case (.speechFinished, .speaking):
+            if pauseAfterSpeech { pauseAfterSpeech = false; phase = .paused(.needsConfirmation); return [.haptic(.pause)] }   // the card line already asked
+            return listen()
+        case (.bargeIn(let already), .speaking):
+            phase = .listening; transcript = ""; pauseAfterSpeech = false
+            return [.stopSpeaking, .haptic(.listen)] + (already ? [] : [.startListening])
+        case (.interruption, .listening), (.interruption, .sending), (.interruption, .waiting), (.interruption, .speaking):
+            let effects: [VoiceChatEffect] = phase == .speaking ? [.stopSpeaking] : phase == .waiting ? [] : [.stopListening]
+            phase = .paused(.interrupted); transcript = ""
+            return effects + [.haptic(.pause)]
+        case (.failed, .listening), (.failed, .sending), (.failed, .waiting), (.failed, .speaking):
+            let effects: [VoiceChatEffect] = phase == .speaking ? [.stopSpeaking] : phase == .waiting ? [] : [.stopListening]
+            phase = .paused(.failed); transcript = ""
+            return effects + [.haptic(.pause)]
+        default:
+            return []   // stale / out-of-order events are ignored (e.g. a late transcript after the turn was sent)
+        }
+    }
+    private mutating func listen() -> [VoiceChatEffect] {
+        phase = .listening; transcript = ""
+        return [.startListening, .haptic(.listen)]
+    }
+    static func trimmed(_ s: String) -> String { s.trimmingCharacters(in: .whitespacesAndNewlines) }
+}
+
+/// Turns an assistant reply into what is read aloud: no code blocks, no card JSON, no URLs, no markdown symbols.
+/// A card becomes one short line asking the user to confirm on screen. Capped so a long answer is summarised by
+/// "the rest is on screen" instead of minutes of speech.
+public enum VoiceSpeechText {
+    public static let maxCharacters = 600
+    public struct Result: Equatable, Sendable {
+        public var text: String
+        public var hadCard: Bool
+        public var hadCode: Bool
+    }
+    public static func cardLine(kind: String?, english: Bool) -> String {
+        switch kind {
+        case "calendar": return english ? "I've prepared a calendar card. Please confirm it on screen." : "我准备了一张日程卡片，请在屏幕上确认。"
+        case "reminder": return english ? "I've prepared a reminder card. Please confirm it on screen." : "我准备了一张提醒卡片，请在屏幕上确认。"
+        default: return english ? "I've prepared a card. Please confirm it on screen." : "我准备了一张卡片，请在屏幕上确认。"
+        }
+    }
+    public static func confirmationLine(english: Bool) -> String {
+        english ? "This needs your confirmation on screen. I'll wait." : "这一步需要你在屏幕上确认，我先暂停。"
+    }
+    static func codeLine(english: Bool) -> String { english ? "The code is on screen." : "代码放在屏幕上了。" }
+    static func moreLine(english: Bool) -> String { english ? "The rest is on screen." : "其余内容请看屏幕。" }
+
+    public static func make(_ content: String, english: Bool) -> Result {
+        var hadCard = false, hadCode = false, cardKind: String?
+        var out: [String] = []
+        var inFence = false, fenceBody: [String] = [], fenceLang = ""
+        for raw in content.components(separatedBy: "\n") {
+            let line = raw.trimmingCharacters(in: .whitespaces)
+            if line.hasPrefix("```") || line.hasPrefix("~~~") {
+                if inFence {
+                    let body = fenceBody.joined(separator: "\n")
+                    if isCard(lang: fenceLang, body: body) { hadCard = true; cardKind = cardKind ?? kind(of: body) } else { hadCode = true }
+                    inFence = false; fenceBody = []
+                } else { inFence = true; fenceLang = String(line.dropFirst(3)).trimmingCharacters(in: .whitespaces).lowercased() }
+                continue
+            }
+            if inFence { fenceBody.append(raw); continue }
+            // A bare JSON card object on its own line(s).
+            if (line.hasPrefix("{") || line.hasPrefix("[")) && (line.contains("\"type\"") || line.contains("catpaw.ui") || line.contains("\":")) {
+                hadCard = true; cardKind = cardKind ?? kind(of: line); continue
+            }
+            let spoken = clean(line)
+            if !spoken.isEmpty { out.append(spoken) }
+        }
+        if inFence { let body = fenceBody.joined(separator: "\n"); if isCard(lang: fenceLang, body: body) { hadCard = true; cardKind = cardKind ?? kind(of: body) } else { hadCode = true } }   // unterminated fence (streamed)
+        var text = out.joined(separator: english ? " " : "")
+        text = text.replacingOccurrences(of: #"\s{2,}"#, with: " ", options: .regularExpression).trimmingCharacters(in: .whitespacesAndNewlines)
+        if text.count > maxCharacters { text = cut(text, english: english) }
+        if hadCode, text.isEmpty { text = codeLine(english: english) }
+        if hadCard { text = text.isEmpty ? cardLine(kind: cardKind, english: english) : text + (english ? " " : "") + cardLine(kind: cardKind, english: english) }
+        return Result(text: text, hadCard: hadCard, hadCode: hadCode)
+    }
+    static func isCard(lang: String, body: String) -> Bool {
+        let b = body.trimmingCharacters(in: .whitespacesAndNewlines)
+        return lang.hasPrefix("json") || lang.contains("catpaw") || lang == "card" || b.hasPrefix("{") || b.contains("catpaw.ui")
+    }
+    static func kind(of body: String) -> String? {
+        let b = body.lowercased()
+        if b.contains("calendar") || b.contains("event") || b.contains("日程") { return "calendar" }
+        if b.contains("reminder") || b.contains("提醒") { return "reminder" }
+        return nil
+    }
+    /// One line of prose: links keep their text, URLs / images / inline code markers / markdown symbols go.
+    static func clean(_ line: String) -> String {
+        var s = line
+        s = s.replacingOccurrences(of: #"!\[[^\]]*\]\([^)]*\)"#, with: "", options: .regularExpression)            // images
+        s = s.replacingOccurrences(of: #"\[([^\]]+)\]\([^)]*\)"#, with: "$1", options: .regularExpression)         // [text](url) → text
+        s = s.replacingOccurrences(of: #"(?i)(?:https?://|www\.)\S+"#, with: "", options: .regularExpression)      // bare URLs
+        s = s.replacingOccurrences(of: #"^\s{0,3}(?:#{1,6}\s+|>\s*|[-*+•]\s+|\d{1,3}[.)]\s+)"#, with: "", options: .regularExpression)   // heading / quote / bullet / number
+        s = s.replacingOccurrences(of: #"^\s*\|?\s*:?-{3,}.*$"#, with: "", options: .regularExpression)           // table rule
+        s = s.replacingOccurrences(of: "|", with: " ")
+        s = s.replacingOccurrences(of: #"(\*\*|__|\*|_|`|~~)"#, with: "", options: .regularExpression)
+        s = s.replacingOccurrences(of: #"\(\s*\)"#, with: "", options: .regularExpression)                       // "()" left by a removed URL
+        return s.trimmingCharacters(in: .whitespaces)
+    }
+    /// Cut at the last sentence end before the cap, then say the rest is on screen.
+    static func cut(_ text: String, english: Bool) -> String {
+        let head = String(text.prefix(maxCharacters))
+        let ends: Set<Character> = ["。", "！", "？", ".", "!", "?", "；", ";"]
+        let cutAt = head.lastIndex(where: { ends.contains($0) }).map { head.index(after: $0) } ?? head.endIndex
+        return String(head[..<cutAt]).trimmingCharacters(in: .whitespaces) + (english ? " " : "") + moreLine(english: english)
+    }
+}
+
+/// Barge-in while the reply is read through the speaker: the recognizer can hear the synthesized voice itself.
+/// A heard fragment that is (mostly) part of what is being spoken is treated as echo, not as the user.
+public enum VoiceBargeIn {
+    public static let minimumCharacters = 2
+    static func normalized(_ s: String) -> [Character] {
+        Array(s.lowercased().precomposedStringWithCompatibilityMapping.filter { $0.isLetter || $0.isNumber })
+    }
+    public static func isLikelyEcho(heard: String, speaking: String) -> Bool {
+        let h = normalized(heard), sp = normalized(speaking)
+        guard h.count >= minimumCharacters else { return true }   // a cough / one syllable never interrupts
+        guard !sp.isEmpty else { return false }
+        if String(sp).contains(String(h)) { return true }
+        let pool = Set(sp)
+        let shared = h.filter { pool.contains($0) }.count
+        return Double(shared) / Double(h.count) >= 0.8
+    }
+}
