@@ -324,7 +324,7 @@ private struct LaunchStatusOverlay:View {
             if auth.sessionRestartNeeded { SessionRestartCapsule(auth:auth).padding(.top,52) }
             else if auth.launchChatStalled { LaunchOpenFailedCapsule(auth:auth).padding(.top,52) }
             else if late {
-                HStack(spacing:8) { ProgressView().controlSize(.small); Text(ui(auth.launchSlow ? "仍在连接，请稍候…" : "正在打开对话…")).font(CatpawTypography.Role.caption.font.weight(.medium)) }
+                HStack(spacing:8) { ProgressView().controlSize(.small); Text(auth.launchSlow ? ui("仍在连接，请稍候…") : ui("正在打开对话…")).font(CatpawTypography.Role.caption.font.weight(.medium)) }
                     .foregroundStyle(CatpawColors.ink)
                     .padding(.horizontal,12).padding(.vertical,8)
                     .background(CatpawColors.panel,in:Capsule())
