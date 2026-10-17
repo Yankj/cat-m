@@ -2440,6 +2440,13 @@
       "line": 1051,
       "sha256": "163f4e72f53dc552ae7e173006565377bad9812f9aa145ef796c52ceccdf6624",
       "reason": "Synthetic three-word lifecycle test access token passed to a local workspace-resolver stub; not a JWT, never sent to a real backend."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeOAuthTests.swift",
+      "category": "secret_assignment_review",
+      "line": 106,
+      "sha256": "b84d14a4345496725120a40688cb784213db623ae313a96647ea6e49fc00c557",
+      "reason": "Reviewed 2026-10-17 (re-pin after line drift, NoBug B4): OAuthFakeRemote synthetic 'oauth.anon.sig' / 'oauth.perm.sig' token markers consumed only by the injected test remote; no real credential."
     }
   ]
 }
