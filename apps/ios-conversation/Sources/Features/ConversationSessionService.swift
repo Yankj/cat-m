@@ -24,6 +24,10 @@ public actor ConversationSessionService {
     /// Resent turn → the turn that first failed, so the 3-try budget spans the whole resend chain.
     private var resendRoots: [UUID: UUID] = [:]
     private func retryRoot(_ id: UUID) -> UUID { resendRoots[id] ?? id }
+    /// Resent turn → the failed `model_history_conflict` turn it replaces. The failed bubble stays until the server admits
+    /// the resend (its `started` event); a resend that is never admitted (offline, refused before dispatch) leaves it in place,
+    /// so the text is never lost (三角 ee6891d0 contract point 2).
+    private var pendingSupersede: [UUID: UUID] = [:]
     private var busyRetry: [UUID: BusyRetry] = [:]
     /// Automatic busy retries already spent per turn (server restarts the SAME turn in place, limit 3).
     private var autoRetryCounts: [UUID: Int] = [:]
@@ -441,6 +445,7 @@ public actor ConversationSessionService {
             if let image=request.image {guard receipts == [image.receipt] else {throw ConversationSessionError.invalidEvent}} else if let ids=request.attachmentIDs,!ids.isEmpty {guard let receipts,receipts.map(\.id)==ids else {throw ConversationSessionError.invalidEvent}} else {guard receipts == nil || receipts?.isEmpty == true else {throw ConversationSessionError.invalidEvent}}
             guard hash.count == 64, revision > 0, grant > 0, turn.serverRequestHash == nil || turn.serverRequestHash == hash, turn.serverGrantEpoch == nil || turn.serverGrantEpoch == grant else { throw ConversationSessionError.invalidEvent }
             turn.serverRequestHash = hash; turn.serverConversationRevision = revision; turn.serverGrantEpoch = grant; session.threadID = request.conversationID.uuidString
+            if let failed = pendingSupersede.removeValue(forKey: request.operationID) { Self.supersede(&session, failed: failed) }
         case .textDelta(let id, let text):
             if let known = turn.assistantMessageID { guard known == id else { throw ConversationSessionError.invalidEvent } }
             else { guard !session.messages.contains(where: { $0.id == id }) else { throw ConversationSessionError.invalidEvent }; turn.assistantMessageID = id; session.messages.append(ConversationTranscriptMessage(id: id, role: .assistant, content: "", complete: false)) }
@@ -620,15 +625,13 @@ public actor ConversationSessionService {
         try? await outbox?.remove(operationID)
         return true
     }
-    /// Before a resend of a `model_history_conflict` turn: the failed turn leaves the local transcript (its user row and any
-    /// partial reply), so the resent message is the only copy shown.
-    private func supersedeForResend(scope: DataScope, conversationID: UUID, operationID: UUID) async throws {
-        var (saved, revision) = try await readVersioned(scope: scope, conversationID: conversationID)
-        guard let i = saved.turns.firstIndex(where: { $0.id == operationID }), saved.turns[i].state == .failed else { return }
-        let reply = saved.turns[i].assistantMessageID
-        saved.turns[i].state = .cancelledBeforeSend
-        saved.messages.removeAll { $0.id == stableID("conversation-user-\(operationID)") || (reply != nil && $0.id == reply) }
-        try await save(saved, expectedRevision: revision)
+    /// When the resend of a `model_history_conflict` turn is admitted: the failed turn leaves the local transcript (its user
+    /// row and any partial reply), in the same journal write as the admission, so the resent message is the only copy shown.
+    static func supersede(_ session: inout ConversationSession, failed operationID: UUID) {
+        guard let i = session.turns.firstIndex(where: { $0.id == operationID }), session.turns[i].state == .failed else { return }
+        let reply = session.turns[i].assistantMessageID
+        session.turns[i].state = .cancelledBeforeSend
+        session.messages.removeAll { $0.id == stableID("conversation-user-\(operationID)") || (reply != nil && $0.id == reply) }
     }
     /// The queue commits this cancellation together with the replacement intent.
     /// A changed payload gets a new operation ID; an admitted/unknown request is immutable.
@@ -781,9 +784,18 @@ public actor ConversationSessionService {
             let root = retryRoot(original.id)
             if automatic { autoRetryCounts[root, default: 0] += 1 } else { busyRetryCancelled.remove(root) }
             await resilience?.clearBusy()
-            try await supersedeForResend(scope: scope, conversationID: conversationID, operationID: original.id)
-            let next = UUID(); resendRoots[next] = root
-            return try await send(scope: scope, conversationID: conversationID, text: text, operationID: next, preserveDraft: true)
+            // New turn_id AND new message.id (stableID of the new operation); expected_revision comes from the GET in prepare.
+            let next = UUID(); resendRoots[next] = root; pendingSupersede[next] = original.id
+            do { return try await send(scope: scope, conversationID: conversationID, text: text, operationID: next, preserveDraft: true) }
+            catch {
+                // Not admitted. Journaled (e.g. notSent): keep the pending supersede, so its later admission still replaces the
+                // failed bubble. Refused before it was journaled: the failed turn stays visible and stays the 重试 target.
+                if (try? await read(scope: scope, conversationID: conversationID))?.turns.contains(where: { $0.id == next }) != true {
+                    pendingSupersede[next] = nil; resendRoots[next] = nil
+                    busyRetry[conversationID] = BusyRetry(due: Date(), operationID: original.id, autoRetried: true, resend: true)
+                }
+                throw error
+            }
         }
         // Same operationID, same user message: no new transcript row; the server restarts the failed turn.
         guard let original = saved.turns.first(where: { $0.id == entry.operationID }), saved.turns.last?.id == original.id,

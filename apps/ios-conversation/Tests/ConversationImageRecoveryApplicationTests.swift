@@ -308,3 +308,57 @@ final class ConversationLengthLimitTests: XCTestCase {
     }
 }
 
+
+private final class ConflictResendWireProtocol:URLProtocol,@unchecked Sendable {
+    static var handler:((URLRequest)throws->(Int,[String:Any]))?
+    override class func canInit(with request:URLRequest)->Bool {true}
+    override class func canonicalRequest(for request:URLRequest)->URLRequest {request}
+    override func startLoading(){do {
+        let (status,value)=try Self.handler!(request)
+        let response=HTTPURLResponse(url:request.url!,statusCode:status,httpVersion:"HTTP/1.1",headerFields:["Content-Type":"application/json"])!
+        client?.urlProtocol(self,didReceive:response,cacheStoragePolicy:.notAllowed)
+        client?.urlProtocol(self,didLoad:try JSONSerialization.data(withJSONObject:value))
+        client?.urlProtocolDidFinishLoading(self)
+    }catch{client?.urlProtocol(self,didFailWithError:error)}}
+    override func stopLoading(){}
+}
+private struct ConflictResendCredentials:NativeChatSessionCredentials {
+    func authorization(scope:DataScope) async throws -> String {"Bearer synthetic-conflict-resend-only"}
+}
+/// 三角 ee6891d0 contract, point 3: the 409 resend takes expected_revision / expected_grant_epoch from GET (the server's
+/// removal of the failed user message does not bump revision); the failed message is simply absent from GET messages.
+final class ConversationConflictResendWireTests:XCTestCase {
+    private func body(_ wire:URLRequest) throws -> Data {
+        if let b=wire.httpBody {return b};guard let stream=wire.httpBodyStream else {throw URLError(.badServerResponse)}
+        stream.open();defer{stream.close()};var bytes=Data(),buffer=[UInt8](repeating:0,count:4096)
+        while stream.hasBytesAvailable {let n=stream.read(&buffer,maxLength:buffer.count);if n<=0 {break};bytes.append(contentsOf:buffer.prefix(n))}
+        return bytes
+    }
+    func testResendUsesGETRevisionAndNewTurnAndMessageIDs() async throws {
+        let server=UUID(),conversation=UUID(),failedOp=UUID(),resendOp=UUID()
+        let first=ConversationTranscriptMessage(id:UUID(),role:.user,content:"第一句"),answer=ConversationTranscriptMessage(id:UUID(),role:.assistant,content:"回答",complete:true)
+        let failedRow=ConversationTranscriptMessage(id:stableID("conversation-user-\(failedOp)"),role:.user,content:"接着上面说")
+        let resendRow=ConversationTranscriptMessage(id:stableID("conversation-user-\(resendOp)"),role:.user,content:"接着上面说")
+        let request=ConversationTurnRequest(scope:Profiles.user,conversationID:conversation,threadID:conversation.uuidString,operationID:resendOp,epoch:3,history:[first,answer,failedRow,resendRow])
+        let config=URLSessionConfiguration.ephemeral;config.protocolClasses=[ConflictResendWireProtocol.self]
+        let backend=NativeChatHTTPBackend(configuration:try .init(origin:URL(string:"http://127.0.0.1:8123")!,localScope:Profiles.user,serverScopeID:server),credentials:ConflictResendCredentials(),sessionConfiguration:config)
+        var posted:[String:Any]?,retryBusyCalls=0
+        let wireMessages:[[String:Any]]=[["id":first.id.uuidString.lowercased(),"role":"user","content":"第一句"],["id":answer.id.uuidString.lowercased(),"role":"assistant","content":"回答"]]
+        ConflictResendWireProtocol.handler={wire in
+            if wire.url!.path.contains("retry-busy") {retryBusyCalls+=1}
+            if wire.httpMethod=="POST" {posted=try JSONSerialization.jsonObject(with:self.body(wire)) as? [String:Any]
+                return (413,["schema_version":1,"error":["code":"conversation_too_long","retryable":false,"reconciliation_required":false]])}
+            return (200,["schema_version":1,"contract":"catpaw.native-chat.v1","conversation":["id":conversation.uuidString.lowercased(),"scope_id":server.uuidString.lowercased(),"state":"active","policy":"conversation-local-output-v1","grant_epoch":2,"revision":7,"messages":wireMessages]])
+        };defer{ConflictResendWireProtocol.handler=nil}
+        do {let stream=try await backend.reply(request);for try await _ in stream {}} catch {}
+        await backend.close()
+        let turn=try XCTUnwrap(posted?["turn"] as? [String:Any] ?? posted)
+        XCTAssertEqual(turn["expected_revision"] as? Int,7,"expected_revision from GET (removal does not bump it)")
+        XCTAssertEqual(turn["expected_grant_epoch"] as? Int,2)
+        XCTAssertEqual(turn["turn_id"] as? String,resendOp.uuidString.lowercased(),"new turn_id")
+        let message=try XCTUnwrap(turn["message"] as? [String:Any])
+        XCTAssertEqual(message["id"] as? String,resendRow.id.uuidString.lowercased(),"new message.id")
+        XCTAssertNotEqual(message["id"] as? String,failedRow.id.uuidString.lowercased())
+        XCTAssertEqual(message["text"] as? String,"接着上面说");XCTAssertEqual(retryBusyCalls,0,"never retry-busy")
+    }
+}
