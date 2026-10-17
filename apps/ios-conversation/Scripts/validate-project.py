@@ -89,7 +89,7 @@ if '--built-app' in sys.argv:
     binfo = plistlib.loads((built / 'Info.plist').read_bytes())
     name = binfo.get('UILaunchStoryboardName')
     assert name == launch_name, f'built Info.plist UILaunchStoryboardName={name!r}'
-    sbc = built / f'{name}.storyboardc'
+    sbc = built / 'Base.lproj' / f'{name}.storyboardc'   # localized launch storyboard (launch-v2)
     assert (sbc / 'Info.plist').is_file() and any(sbc.glob('*.nib')), f'{sbc} missing or empty'
     assert (built / 'Assets.car').is_file(), 'built app has no Assets.car'
     print(f'PASS built app {built.name}: UILaunchStoryboardName={name}, {sbc.name} present')
