@@ -127,7 +127,7 @@ import SwiftUI
         case .cancelled: (ui("已取消，未执行：{0}", [name]), "xmark.circle")
         case .failed: (ui("没有完成：{0}", [name]), "info.circle")
         case .doneLate: (ui("已在手机上完成（较晚确认）：{0}", [name]), "checkmark.circle")
-        case .unverified: (ui("结果待核对，请在手机上查看"), "questionmark.circle")   // P1-5: pending_timeout ≠ 未执行
+        case .unverified: (ui("结果待核对，请在手机上查看", []), "questionmark.circle")   // P1-5: pending_timeout ≠ 未执行
         case .notExecuted, .pending: (ui("未执行：{0}", [name]), "minus.circle")
         }
         return Label(text, systemImage: icon).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
