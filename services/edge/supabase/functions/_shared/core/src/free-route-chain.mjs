@@ -117,7 +117,8 @@ export function readFreeRouteChain(get) {
   // Chain only exists when an extra free route key is deployed; otherwise the frozen single route stays.
   if (!routes.length || !routes.some(r => r.id !== 'openrouter')) return null;
   const secrets = Object.fromEntries(routes.map(r => [r.id, get(FREE_ROUTE_CATALOG[r.id].secret)]));
-  return { routes, secrets, autoFailover: get('CATPAW_MODEL_AUTO_FAILOVER') !== '0' };
+  // NoBug R1-P1 (a): Gemini placeholder thought signature, OFF unless exactly 'true'. Kept outside `routes` so route_hash is unchanged.
+  return { routes, secrets, autoFailover: get('CATPAW_MODEL_AUTO_FAILOVER') !== '0', geminiPlaceholderSignature: String(get('CATPAW_GEMINI_PLACEHOLDER_SIGNATURE') ?? '').trim() === 'true' };
 }
 
 // Reasoning routes (Agnes) may think for a long time before the first event; others keep the
@@ -306,11 +307,11 @@ function logAttempt(evidence, startedAt, firstAt, outcome) {
 /** Provider port compatible with OpenRouterProvider (identity/reality/assertReady/stream). */
 export class FreeRouteChainProvider {
   #routes; #observations = [];
-  constructor({ routes, secrets, fetchImpl, timeoutMs = 20000, beforeStream = null, emitThinking = true, autoFailover = true, maxInPlaceRetrySeconds = 12, geminiGuard = null }) {
+  constructor({ routes, secrets, fetchImpl, timeoutMs = 20000, beforeStream = null, emitThinking = true, autoFailover = true, maxInPlaceRetrySeconds = 12, geminiGuard = null, geminiPlaceholderSignature = false }) {
     check(Array.isArray(routes) && routes.length > 0, 503, 'not_configured');
     const thinkingVisible = () => this.emitThinking && clientAcceptsReasoningSummary();
     this.#routes = routes.map(r => r.id === 'gemini' && r.protocol === 'interactions'
-      ? new GeminiInteractionsRoute(r, secrets[r.id], { fetchImpl, timeouts: routeTimeouts(r, timeoutMs), guard: geminiGuard ?? sharedGeminiGuard(r.rpm), thinkingVisible })
+      ? new GeminiInteractionsRoute(r, secrets[r.id], { fetchImpl, timeouts: routeTimeouts(r, timeoutMs), guard: geminiGuard ?? sharedGeminiGuard(r.rpm), thinkingVisible, placeholderSignature: geminiPlaceholderSignature === true })
       : new OpenAICompatibleRoute(r, secrets[r.id], { fetchImpl, timeoutMs, thinkingVisible }));
     this.beforeStream = beforeStream; this.emitThinking = emitThinking; this.autoFailover = autoFailover; this.maxInPlaceRetrySeconds = maxInPlaceRetrySeconds;
     this.identity = { provider: 'free-route-chain', routes: routes.map(r => ({ id: r.id, model: r.model, endpoint: r.endpoint })), free_only: false, keyed_routes_only: true, billing: routes.map(r => ({ id: r.id, billing: r.billing ?? 'free_tier' })), max_tokens: 2048, adapter_version: 1 };
