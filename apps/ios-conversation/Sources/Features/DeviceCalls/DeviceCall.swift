@@ -529,7 +529,7 @@ extension DeviceCall {
         enum Kind: String, Sendable { case running, pendingUndoReport }
         let id: String; let tool: String; let kind: Kind; let title: String
     }
-    static func items(store: DeviceCallStore = .shared, account: String?) -> [Item] { store.inFlight(account: account) }
+    static func items(store: DeviceCallStore? = nil, account: String?) -> [Item] { (store ?? .shared).inFlight(account: account) }
     static func label(_ i: Item) -> String {
         let what: String
         switch i.tool {
@@ -546,7 +546,7 @@ extension DeviceCall {
 @MainActor final class DeviceCallParkedSource: AccountParkedItemSource {
     static let key = "device-calls"
     private let store: DeviceCallStore
-    init(store: DeviceCallStore = .shared) { self.store = store }
+    init(store: DeviceCallStore? = nil) { self.store = store ?? .shared }
     func parkedItems(account: String) -> [AccountParkedItem] {
         store.inFlight(account: account).map { AccountParkedItem(source: Self.key, key: $0.kind.rawValue + ":" + $0.id, title: DeviceInFlight.label($0), detail: $0.tool) }
     }
@@ -562,21 +562,6 @@ extension DeviceCall {
         }
     }
 }
-@MainActor final class DeviceLedgerParkedSource: AccountParkedItemSource {
-    static let key = "device-ledger"
-    private let ledger: DeviceLedger
-    init(ledger: DeviceLedger = .shared) { self.ledger = ledger }
-    func parkedItems(account: String) -> [AccountParkedItem] {
-        ledger.entries(account: account).map { AccountParkedItem(source: Self.key, key: $0.id, title: ($0.kind == .reminder ? "本机提醒「" : "本机日程「") + $0.title + "」", detail: "可撤销记录") }
-    }
-    func apply(_ decision: AccountParkedDecision, to item: AccountParkedItem, account: String) async -> String {
-        switch decision {
-        case .keep: return "kept for this account (hidden until it signs in again)"
-        case .cancel: ledger.forget(callID: item.key, account: account); return "removed from Catpaw's list; the system item is left untouched (no authority after logout)"
-        }
-    }
-}
-
 /// Local, append-only record of user decisions about device operations (no PII beyond call ids / tools).
 enum DeviceDecisionLog {
     nonisolated(unsafe) static var sink: ((String) -> Void)? = nil
