@@ -181,6 +181,39 @@ final class CatpawAcceptanceUITests: XCTestCase {
         XCTAssertTrue(done, "Real reply must complete")
     }
 
+    // TEMP (not committed): one real turn in a fresh chat with a clean composer (memory / places checks on BE5C).
+    func test98TempRealFreshTurn() throws {
+        guard ProcessInfo.processInfo.environment["CATPAW_TEMP_FRESH"] == "1" else { throw XCTSkip("temp only") }
+        let text = ProcessInfo.processInfo.environment["CATPAW_REAL_TEXT"] ?? "你好"
+        let app = XCUIApplication(bundleIdentifier: bundleID); app.launchArguments += ["-CatpawSkipOnboarding"]; app.launch()
+        XCTAssertTrue(input(app).waitForExistence(timeout: 45)); Thread.sleep(forTimeInterval: 2)
+        let observe = app.buttons["chat.observe"].firstMatch
+        if observe.exists && observe.isHittable { observe.tap(); Thread.sleep(forTimeInterval: 4) }
+        let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        // The stuck outcome_unknown turn re-observes every ~5 s (busy → chat.new disabled); tap it in the idle gap.
+        let newChat = app.buttons["chat.new"].firstMatch; var opened = false; let until = Date().addingTimeInterval(40)
+        while Date() < until && !opened { if newChat.exists && newChat.isEnabled { newChat.tap(); Thread.sleep(forTimeInterval: 1.5); opened = !app.buttons["chat.observe"].exists } }
+        shot(app, "fresh-00-new-chat"); XCTAssertTrue(opened, "fresh chat opened")
+        let field = input(app); field.tap(); Thread.sleep(forTimeInterval: 1.0)
+        if !app.keyboards.firstMatch.exists { field.tap(); Thread.sleep(forTimeInterval: 1.0) }
+        if let v = field.value as? String, !v.isEmpty, v != "有什么我可以帮你？" { field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: v.count + 4)) }
+        field.typeText(text); shot(app, "fresh-01-typed")
+        app.buttons["chat.send"].firstMatch.tap()
+        let review = app.buttons["chat.consent.review"]; if review.waitForExistence(timeout: 6) { review.tap() }
+        let allow = app.buttons["chat.modelConsent.allow"]; if allow.waitForExistence(timeout: 6) { shot(app, "fresh-02-consent"); allow.tap() }
+        var shots = 0; let end = Date().addingTimeInterval(150)
+        while Date() < end {
+            for label in ["允许", "Allow", "使用 App 时允许", "Allow While Using App"] { let b = springboard.buttons[label]; if b.exists { b.tap() } }
+            if review.exists && review.isHittable && review.isEnabled { review.tap(); Thread.sleep(forTimeInterval: 1) }
+            if allow.exists && allow.isHittable { allow.tap(); Thread.sleep(forTimeInterval: 1) }
+            if app.descendants(matching: .any)["chat.reply.completed"].firstMatch.exists { break }
+            if shots < 6 { shot(app, "fresh-03-progress-\(shots)"); shots += 1 }
+            Thread.sleep(forTimeInterval: 1.0)
+        }
+        Thread.sleep(forTimeInterval: 1.5); shot(app, "fresh-04-final")
+        XCTAssertTrue(app.descendants(matching: .any)["chat.reply.completed"].firstMatch.exists, "reply completed")
+    }
+
     // 9. Composer dictation: mic → (system permission prompt | dictating stop control | friendly notice); voice → coming soon
     func test09ComposerDictation() {
         let app = fixtureApp("p0-ui-acceptance"); app.launch()
