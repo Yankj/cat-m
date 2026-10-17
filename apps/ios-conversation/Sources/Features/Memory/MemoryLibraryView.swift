@@ -50,6 +50,14 @@ import SwiftUI
         useUnsynced = pending != nil; enabling = MemoryRecallLoader.isEnabling(owner)
         offLibraries = MemoryRecallLoader.knownLibraries(owner).filter { !$0.value }.count
     }
+    func forget(_ item: MemoryLibraryItem) async {
+        let prior = snapshot
+        snapshot?.items.removeAll { $0.id == item.id }   // optimistic, restored on failure
+        await run(restore: prior) { try await self.backend.forget(ids: [item.id]) }
+    }
+    func update(_ item: MemoryLibraryItem, content: String) async {
+        await run { try await self.backend.update(id: item.id, content: content); self.snapshot = try await self.backend.load() }
+    }
     func setUse(_ on: Bool) async {
         // p91d-1: owner + token bound at the tap. v2-2/v3-2: generation + server-checked sequence. v3-3: the immediate state
         // is published synchronously (beginChoice runs before any await), then the full effective state after delivery.
