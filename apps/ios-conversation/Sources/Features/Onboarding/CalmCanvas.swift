@@ -217,9 +217,8 @@ struct StartUsingCTA: View {
     }
 }
 
-/// first-run-polish: SwiftUI side of `FirstRunAppearance.transition` for the「开始使用」→ chat handoff.
-/// The splash plays its own exit (`NativeLoginView`), so no root change is required. For a fully continuous handoff the
-/// root gate (CatpawApp.primaryView) can additionally host it with two modifiers + one animation (see NOTES.md):
+/// first-run-polish: plain container transition for the landing/chat swap. Superseded by SPEC-E's FirstRunTransitionHost
+/// (FirstRunTransitionOverlay.swift); kept as a smaller fallback for the gate owner:
 ///   NativeLoginView(...).firstRunHandoff(.splash)
 ///   ConversationFirstView(...).firstRunHandoff(.chat)
 ///   .animation(FirstRunMotion.animation(reduceMotion:), value: auth.needsOnboarding) on the container.
@@ -336,7 +335,9 @@ import CoreText
             if state == .didFinish {
                 Task { @MainActor in
                     let ok = EditorialSerif.isInstalled()
-                    withAnimation(.easeOut(duration: 0.3)) { EditorialSerif.shared.ready = ok }
+                    // SPEC-E §7: never re-render the headline with an animation mid-entrance.
+                    var still = Transaction(); still.disablesAnimations = true
+                    withTransaction(still) { EditorialSerif.shared.ready = ok }
                 }
             }
             return true

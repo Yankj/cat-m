@@ -156,6 +156,7 @@ struct ComposerGlass: ViewModifier {
             .overlay { ComposerDictationBarHost() }
             .modifier(ComposerGlass())
             .overlay(RoundedRectangle(cornerRadius: 26, style: .continuous).strokeBorder(CatpawColors.action, lineWidth: dropTargeted ? 2 : 0))
+            .firstRunAnchor(.composer).firstRunHandedOff(.composer)   // SPEC-E: 「开始使用」 morphs into this pill
             .composerDropTarget(isTargeted: $dropTargeted, add: add)
         }
         .padding(.horizontal, 12).padding(.bottom, 8)

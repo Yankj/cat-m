@@ -165,6 +165,7 @@ import CatpawImageComposer
             HStack(spacing:8) {
                 PlushMascot(state: headerCatState, size: 28)
                     .frame(width:32,height:32)
+                    .firstRunAnchor(.headerAvatar).firstRunHandedOff(.headerAvatar)   // SPEC-E: the landing cat lands here
                     .accessibilityIdentifier("chat.title.presence")
                 VStack(alignment:.leading,spacing:0) {
                     HStack(spacing:4) {
@@ -180,6 +181,7 @@ import CatpawImageComposer
             }
             .padding(.leading,4).padding(.trailing,12).padding(.vertical,3)
             .background(CatpawColors.card, in: Capsule())
+            .firstRunTitleUnfold()
             .shadow(color: CatpawBrand.clayShadow.opacity(0.08), radius: 8, y: 2)
             .frame(maxWidth:240).contentShape(Capsule())
         }
@@ -331,12 +333,15 @@ import CatpawImageComposer
                             if displayMessages.isEmpty {
                                 VStack(alignment: .leading, spacing: 16) {
                                     Text(ui("想一起完成什么？")).font(CatpawTypography.Role.title.font.weight(.semibold)).accessibilityAddTraits(.isHeader)
+                                        .firstRunChatEntrance("chat.row0")
                                     Text(ui("问一个问题，或说一件想做的事。")).foregroundStyle(CatpawColors.secondary)
+                                        .firstRunChatEntrance("chat.row1")
                                 }.frame(maxWidth: .infinity, alignment: .leading)
                                 .padding(.top, textSize.isAccessibilitySize ? 24 : 64).padding(.bottom, 32)
-                                .background(PlushEmptyBackdrop().frame(height: 360).offset(y: 40), alignment: .top)
+                                .background(PlushEmptyBackdrop().firstRunChatEntrance("chat.backdrop").frame(height: 360).offset(y: 40), alignment: .top)
                                 .accessibilityIdentifier("chat.empty")
-                                    .transaction { $0.animation = nil }.id("chat.empty")
+                                    // The first-run entrance (SPEC-E §2.2) is the one time the empty state animates.
+                                    .transaction { if !FirstRunTransition.shared.entranceActive { $0.animation = nil } }.id("chat.empty")
                             }
                             let rows=visibleTimelineRows
                             let turnTails=ConversationTurnUIRow.tails(rows.compactMap{row->(UUID,UUID?)? in if case .message(let m)=row {return (m.id,m.turnID)};return nil})
@@ -439,7 +444,7 @@ import CatpawImageComposer
                     if path.isEmpty {
                         Button {sidebarPresented=true} label: {
                             TwoLineMenuGlyph().foregroundStyle(CatpawColors.ink).frame(width:36,height:36).background(CatpawColors.card,in:Circle()).overlay(Circle().strokeBorder(CatpawColors.hairline,lineWidth:0.5)).frame(width:44,height:44).contentShape(Rectangle())
-                        }.buttonStyle(CatpawPressButtonStyle()).accessibilityLabel(ui("打开侧栏")).accessibilityIdentifier("sidebar.open").accessibilityFocused($menuFocused)
+                        }.buttonStyle(CatpawPressButtonStyle()).firstRunChatEntrance("chat.buttons", rise: -6).accessibilityLabel(ui("打开侧栏")).accessibilityIdentifier("sidebar.open").accessibilityFocused($menuFocused)
                     }
                 }.r8HiddenSharedBackground()
                 ToolbarItem(placement:.principal) { conversationTitleMenu }.r8HiddenSharedBackground()
@@ -449,6 +454,7 @@ import CatpawImageComposer
                     }
                     .disabled(!model.loaded || model.busy || model.isInputComposing)
                     .accessibilityLabel(ui("新对话")).accessibilityIdentifier("chat.new").buttonStyle(CatpawPressButtonStyle())
+                    .firstRunChatEntrance("chat.buttons", rise: -6)
                 }.r8HiddenSharedBackground()
             }
             .toolbarBackground(.automatic, for:.navigationBar)

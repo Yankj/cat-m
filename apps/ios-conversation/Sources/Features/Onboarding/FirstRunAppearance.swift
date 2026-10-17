@@ -53,30 +53,78 @@ enum FirstRunAppearance {
     /// 0 mark springs in · 0.35 settle/breathe · 0.65 morph into the orb · 0.9 hand off (overlay fades, done at 1.1).
     static let launchKeyframes: [Double] = [0.35, 0.65, 0.9, 1.1]
 
-    // MARK: start → chat handoff "E" (user pick 2026-10-17 12:37: D plush leads + B CTA → composer + C chat stagger)
-    // Seconds after the tap. The SwiftUI side (FirstRunHandoffE.swift) reads these, so the timings live in one place.
+    // MARK: SPEC-E (/workspace/codex-review/onboarding-motion/SPEC-E.md): D plush leads + B CTA → composer + C chat rises.
+    // Seconds; the SwiftUI side (FirstRunPlushHero / FirstRunTransitionOverlay / NativeLoginView) reads these.
     struct Track: Equatable { enum Kind: Equatable { case fade, move }; let id: String; let start: Double; let end: Double; let kind: Kind }
-    /// The splash has landed (cat in the header slot, CTA shaped like the composer) → hand to the gate.
-    static let completeOnboardingAt = 0.62
-    static let reduceMotionCompleteAt = 0.25
-    static let chatRowCount = 4, chatRowStep = 0.07, chatRowDuration = 0.32
-    static func entrance(reduceMotion: Bool) -> [Track] { [] }   // red stub
-    static let chipDriftScale = 1.0, heroSize = 108.0, headerAvatarSize = 0.0
-    enum Idle { static let breathPeriod = 0.0, breathScaleY = 0.0, breathScaleX = 0.0, blinkEvery = 0.0, blinkDuration = 0.0, tiltEvery = 0.0, tiltDegrees = 0.0, tiltDuration = 0.0, fps = 0.0 }
+    static let heroSize = 120.0, headerAvatarSize = 28.0, headerAvatarSlot = 32.0
+    static let chipDriftScale = 0.45
+    /// Flight arc: −36 pt · sin(π·p) added to y.
+    static let flightArc = 36.0
+    /// §2.3, landing only; stops the moment the tap starts.
+    enum Idle {
+        static let breathPeriod = 3.6, breathScaleY = 1.02, breathScaleX = 0.994, shadowBreathScale = 0.96
+        static let blinkEvery = 4.8, blinkDuration = 0.12
+        static let tiltEvery = 5.2, tiltDegrees = 3.0, tiltDuration = 0.6
+        static let fps = 30.0
+    }
+    /// §2.1 launch → landing, t since the landing becomes visible.
+    static func entrance(reduceMotion: Bool) -> [Track] {
+        if reduceMotion {
+            return ["hero", "glow", "copy", "ring", "chips", "cta", "footer"].map { .init(id: $0, start: 0.15, end: 0.35, kind: .fade) }
+        }
+        var tracks: [Track] = [
+            .init(id: "hero", start: 0.10, end: 0.60, kind: .move), .init(id: "shadow", start: 0.10, end: 0.60, kind: .move),
+            .init(id: "glow", start: 0.20, end: 0.80, kind: .fade),
+            .init(id: "brand", start: 0.35, end: 0.85, kind: .move), .init(id: "brandSubtitle", start: 0.40, end: 0.90, kind: .move),
+            .init(id: "headline", start: 0.45, end: 0.95, kind: .move), .init(id: "subtitle", start: 0.50, end: 1.00, kind: .move),
+            .init(id: "ring", start: 0.47, end: 1.02, kind: .fade),
+        ]
+        for i in 0..<8 {
+            let start: Double = 0.60 + 0.045 * Double(i)
+            tracks.append(Track(id: "chip\(i)", start: start, end: start + 0.45, kind: .move))
+        }
+        tracks += [
+            .init(id: "cta", start: 0.85, end: 1.35, kind: .move), .init(id: "footer", start: 0.93, end: 1.43, kind: .move),
+            .init(id: "drift", start: 1.40, end: 2.20, kind: .move), .init(id: "idle", start: 0.60, end: 0.60, kind: .move),
+        ]
+        return tracks
+    }
+    static func entranceStart(_ id: String, reduceMotion: Bool) -> Double { entrance(reduceMotion: reduceMotion).first { $0.id == id }?.start ?? 0.15 }
+    /// §2.2 tap → chat, t since touch-down. Spring tracks end at their settle time (≈ response + a little).
     static func handoff(reduceMotion: Bool) -> [Track] {
         if reduceMotion {
-            return [.init(id: "splash.fade", start: 0, end: reduceMotionCompleteAt, kind: .fade),
-                    .init(id: "chat.fade", start: reduceMotionCompleteAt, end: reduceMotionCompleteAt + 0.2, kind: .fade)]
+            return [.init(id: "landing.fade", start: 0.10, end: 0.30, kind: .fade), .init(id: "chat.fade", start: 0.25, end: 0.45, kind: .fade)]
         }
-        return [
-            .init(id: "copy.fade", start: 0, end: 0.25, kind: .fade),
-            .init(id: "chips.gather", start: 0, end: 0.35, kind: .move),
-            .init(id: "cta.morph", start: 0.08, end: 0.56, kind: .move),
-            .init(id: "cat.jump", start: 0.12, end: completeOnboardingAt, kind: .move),
-        ] + (0..<chatRowCount).map { i in
-            let start = completeOnboardingAt + Double(i) * chatRowStep
-            return .init(id: "chat.row\(i)", start: start, end: start + chatRowDuration, kind: .move)
+        var tracks: [Track] = [.init(id: "cta.press", start: 0, end: 0.10, kind: .move)]
+        for i in 0..<8 {
+            let start: Double = 0.04 + 0.015 * Double(i)
+            tracks.append(Track(id: "chips.fold\(i)", start: start, end: start + 0.26, kind: .move))
         }
+        tracks += [
+                .init(id: "copy.fade", start: 0.06, end: 0.26, kind: .fade),
+                .init(id: "glow.fade", start: 0.05, end: 0.45, kind: .fade),
+                .init(id: "cat.squash", start: 0.06, end: 0.14, kind: .move),
+                .init(id: "cat.flight", start: 0.14, end: 0.75, kind: .move),
+                .init(id: "cat.crossfade", start: 0.40, end: 0.62, kind: .fade),
+                .init(id: "cat.handoff", start: 0.68, end: 0.78, kind: .fade),
+                .init(id: "cta.morph", start: 0.12, end: 0.62, kind: .move),
+                .init(id: "cta.fill", start: 0.12, end: 0.42, kind: .fade),
+                .init(id: "cta.label", start: 0.12, end: 0.30, kind: .fade),
+                .init(id: "composer.placeholder", start: 0.36, end: 0.56, kind: .fade),
+                .init(id: "composer.add", start: 0.40, end: 0.80, kind: .move),
+                .init(id: "composer.mic", start: 0.44, end: 0.84, kind: .move),
+                .init(id: "composer.send", start: 0.48, end: 0.88, kind: .move),
+                .init(id: "composer.handoff", start: 0.62, end: 0.66, kind: .fade),
+                .init(id: "chat.buttons", start: 0.38, end: 0.88, kind: .move),
+                .init(id: "chat.row0", start: 0.40, end: 0.90, kind: .move),
+                .init(id: "chat.row1", start: 0.44, end: 0.94, kind: .move),
+                .init(id: "chat.backdrop", start: 0.48, end: 0.98, kind: .move),
+                .init(id: "chat.title", start: 0.62, end: 1.12, kind: .move),
+            ]
+        return tracks
+    }
+    static func handoffTrack(_ id: String, reduceMotion: Bool = false) -> Track {
+        handoff(reduceMotion: reduceMotion).first { $0.id == id } ?? .init(id: id, start: 0, end: 0.2, kind: .fade)
     }
 
     static func composite(_ fg: UInt32, alpha: Double, over bg: UInt32) -> UInt32 {
