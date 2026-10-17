@@ -213,6 +213,22 @@ enum DeviceEventKitRule {
     }
 }
 
+/// p89i: ledger entries as parked items of a leaving account (AccountParkedItems).
+@MainActor final class DeviceLedgerParkedSource: AccountParkedItemSource {
+    static let key = "device-ledger"
+    private let ledger: DeviceLedger
+    init(ledger: DeviceLedger? = nil) { self.ledger = ledger ?? .shared }
+    func parkedItems(account: String) -> [AccountParkedItem] {
+        ledger.entries(account: account).map { AccountParkedItem(source: Self.key, key: $0.id, title: ($0.kind == .reminder ? "本机提醒「" : "本机日程「") + $0.title + "」", detail: "可撤销记录") }
+    }
+    func apply(_ decision: AccountParkedDecision, to item: AccountParkedItem, account: String) async -> String {
+        switch decision {
+        case .keep: return "kept for this account (hidden until it signs in again)"
+        case .cancel: ledger.forget(callID: item.key, account: account); return "removed from Catpaw's list; the system item is left untouched (no authority after logout)"
+        }
+    }
+}
+
 /// Codex p89c (shared with #91): per-account local ledger.
 /// - Every entry carries its account; `active` / `entry(callID:)` only ever expose the signed-in account's entries.
 /// - `record` takes the AccountToken captured BEFORE the device call and writes through `AccountEpoch.commit`, so a result
