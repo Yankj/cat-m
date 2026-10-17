@@ -129,3 +129,63 @@ final class CatpawWorkContentStateCompatibilityTests: XCTestCase {
         XCTAssertEqual(try JSONDecoder().decode(CatpawWorkAttributes.ContentState.self, from: data), s)
     }
 }
+
+/// status-line v1.0: copy table coverage, 600 ms dwell / <1 s hidden, confirmation state, VoiceOver throttle.
+final class StatusLineTests: XCTestCase {
+    private func device(_ tool: String, confirm: String) -> ConversationTurnEvent.Payload {
+        .deviceCall(ConversationDeviceCall(interruptID: UUID().uuidString.lowercased(), callID: "c-\(tool)", tool: tool, args: Data("{}".utf8), confirm: confirm, ttlSec: 600, argsHash: String(repeating: "a", count: 64), expiresAt: "2099-01-01T00:00:00Z"))
+    }
+    func testCopyTableCoversAllowlistAndMemoryTools() {
+        let tools = NativeChatHTTPBackend.approvalToolNames.union(DeviceToolContract.clientTools).union(["memory_search", "memory_save", "memory_update", "memory_forget"])
+        for t in tools {
+            XCTAssertNotNil(ToolStepCopy.table[t], "missing copy for \(t)")
+            XCTAssertFalse(ToolStepCopy.title(t).isEmpty); XCTAssertFalse(ToolStepCopy.symbol(t).isEmpty)
+        }
+        XCTAssertEqual(ToolStepCopy.title("some_unknown_tool"), ToolStepCopy.generic.running[0])
+        XCTAssertEqual(ToolStepCopy.confirmTitle(nil), "等你确认")
+    }
+    func testUnderOneSecondShowsNothing() {
+        let t0 = Date(); var th = StatusLineThrottle(turnStart: t0)
+        _ = th.submit(.sending, at: t0)
+        _ = th.submit(.accepted(occurrence: 0), at: t0.addingTimeInterval(0.3))
+        XCTAssertNil(th.displayed(at: t0.addingTimeInterval(0.9)))
+        XCTAssertEqual(th.displayed(at: t0.addingTimeInterval(1.0)), .accepted(occurrence: 0))   // latest wins pre-visibility
+    }
+    func testMinimumDwellAndLatestWins() {
+        let t0 = Date(); var th = StatusLineThrottle(turnStart: t0)
+        _ = th.submit(.accepted(occurrence: 0), at: t0)
+        let delay = th.submit(.tool(name: "calendar_list", occurrence: 0), at: t0.addingTimeInterval(1.2))
+        XCTAssertEqual(delay ?? 0, 0.4, accuracy: 0.001)
+        XCTAssertEqual(th.displayed(at: t0.addingTimeInterval(1.2)), .accepted(occurrence: 0))
+        _ = th.submit(.composing(occurrence: 0), at: t0.addingTimeInterval(1.4))
+        _ = th.tick(at: t0.addingTimeInterval(1.6))
+        XCTAssertEqual(th.displayed(at: t0.addingTimeInterval(1.6)), .composing(occurrence: 0))
+    }
+    func testConfirmationIsStatic() {
+        var r = StatusLineReducer()
+        r.apply(device("calendar_create", confirm: "card"))
+        guard case .awaitingUser? = r.target else { return XCTFail("expected awaitingUser") }
+        XCTAssertFalse(r.target!.animated)
+        var r2 = StatusLineReducer()
+        r2.apply(.toolStarted(callID: "a", name: "create_task", arguments: "{}"))
+        r2.apply(.suspended(interruptIDs: ["i"], expiresAt: "2099-01-01T00:00:00Z"))
+        XCTAssertEqual(r2.target, .awaitingUser(tool: "create_task"))
+        var r3 = StatusLineReducer()
+        r3.apply(device("calendar_list", confirm: "none"))
+        XCTAssertNil(r3.target)
+    }
+    func testToolThenTextHides() {
+        var r = StatusLineReducer()
+        r.apply(.toolStarted(callID: "a", name: "web_search", arguments: "{\"q\":\"secret\"}"))
+        XCTAssertEqual(r.target, .tool(name: "web_search", occurrence: 0))
+        XCTAssertFalse(r.target!.title.contains("secret"))
+        r.apply(.textDelta(messageID: UUID(), text: "hi"))
+        XCTAssertNil(r.target)
+        r.apply(.failed(message: "cancelled", reconciliationRequired: false))
+        XCTAssertEqual(r.target, .stopped)
+    }
+    func testAnnouncementThrottle() {
+        let t0 = Date(); var a = StatusLineAnnouncementThrottle()
+        XCTAssertTrue(a.allow(at: t0)); XCTAssertFalse(a.allow(at: t0.addingTimeInterval(1.9))); XCTAssertTrue(a.allow(at: t0.addingTimeInterval(2.0)))
+    }
+}
