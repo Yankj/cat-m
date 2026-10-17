@@ -97,7 +97,7 @@ export function createDecisionService({ store, model = null, memory = null, now 
     else {
       const rule = ruleDecide(fresh, context);
       if (model) {
-        try { r = validateModelDecision(await model.decide({ signals: fresh, context, memories, weights: Object.fromEntries(fresh.map(s => [s.type, w(s.type)])), now_iso: new Date(at).toISOString(), time_zone: tz }), memories.map(m => m.id)); r.trigger ??= rule.trigger; source = 'llm:' + (model.lastRoute?.() ?? 'model'); }
+        try { r = validateModelDecision(await model.decide({ signals: fresh, context, memories, weights: Object.fromEntries(fresh.map(s => [s.type, w(s.type)])), now_iso: new Date(at).toISOString(), time_zone: tz }, { uid }), memories.map(m => m.id)); r.trigger ??= rule.trigger; source = 'llm:' + (model.lastRoute?.() ?? 'model'); }
         catch (e) { log('decision_model_failed', e.message); trace.push('llm unavailable: ' + String(e.message).slice(0, 60)); }
       }
       if (!r) { r = { ...rule, title: RULE_TITLES[rule.trigger] ?? null, used: rule.decision === 'silent' ? [] : memories.map(m => m.id) }; source = 'rules'; }
