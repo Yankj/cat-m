@@ -6,6 +6,7 @@ import {memoryHTTPFixture as fixture} from './fixtures/memory-http-fixture.mjs';
 import {APPROVAL_CONTRACT} from '../supabase/functions/_shared/core/src/approval.mjs';
 import {ApiError} from '../supabase/functions/_shared/core/facade-r2/src/common.mjs';
 import {createDeviceTools,DEVICE_CONTRACT} from '../supabase/functions/_shared/core/src/device-call.mjs';
+import {isReadOnlyCall,planParallelCalls} from '../supabase/functions/_shared/core/src/parallel-calls.mjs';
 import {interruptedTurnNote,turnOutcomeNote,withInterruptedTurn,interruptOutcome} from '../supabase/functions/_shared/core/src/turn-outcome.mjs';
 globalThis.fetch=()=>{throw Error('external_network_forbidden');};
 const H='https://memory-test.example.invalid';
@@ -100,4 +101,53 @@ test('pure helpers: outcome labels, empty turns produce no note, bounded queue',
  assert.equal(c.turn_outcome_notes.length,4);assert.equal(c.turn_outcome_notes.at(-1).turn_id,'t6');assert.ok(c.turn_outcome_notes[0].shown_text.length<=301);
  const t={id:'t',events:[{type:'tool_call',data:{call_id:'a',name:'create_task',arguments:{title:'喝水'}}},{type:'tool_result',data:{call_id:'a',name:'create_task',status:'ok',result:{}}},{type:'tool_call',data:{call_id:'b',name:'create_task',arguments:{title:'吃饭'}}}]};
  assert.deepEqual(interruptedTurnNote(t,'invalid_tool_index').tools.map(x=>x.outcome),['ok','not_executed']);
+});
+
+// B1 (NoBug round 2): more than 4 parallel calls in one step.
+function parallelModel(probe){
+ return async function*(input){probe.inputs.push(input.messages);const last=input.messages.at(-1);
+  if(last.role==='tool'){const i=input.messages.findLastIndex(m=>m.role==='assistant');probe.toolResults=input.messages.slice(i+1).map(m=>JSON.parse(m.content));yield {type:'text_delta',text:'好，我逐个来。'};yield {type:'done',finish_reason:'stop'};return;}
+  if(String(last.content).endsWith(probe.trigger)){for(const [i,name] of probe.names.entries())yield {type:i<4?'tool_call':'tool_call_overflow',id:'pc'+i,name,arguments:name==='agent_status'?{}:{title:'清单'+i}};yield {type:'done',finish_reason:'tool_calls'};return;}
+  yield {type:'text_delta',text:'好的'};yield {type:'done',finish_reason:'stop'};};
+}
+async function parallelSetup(names){
+ const probe={inputs:[],names,trigger:'一次全加上'},f=await fixture({stream:parallelModel(probe)});f.runtime.chat.facade.gatedChatTools=createDeviceTools();
+ const cid=await f.newConversation();await f.json(await f.req(`/catpaw/privacy/v1/scopes/${f.scope.scope_id}/conversations/${cid}/model-consent`,{decision:'allow',expected_revision:0,route_hash:f.config.routeHash}));
+ return {f,probe,path:`/catpaw/chat/v1/scopes/${f.scope.scope_id}/conversations/${cid}`};
+}
+
+test('B1 6-call replay (6497bf72 shape): 6 parallel write calls → NONE runs, every call gets too_many_parallel_writes',async()=>{
+ const s=await parallelSetup(Array(6).fill('reminder_create')),{tid}=await send(s,'帮我把清单一次全加上');
+ const t=await turn(s,tid);assert.equal(t.state,'completed');
+ assert.equal(t.events.filter(e=>e.type==='device_call'||e.type==='approval_requested').length,0,'no card, nothing reaches the phone');
+ const results=t.events.filter(e=>e.type==='tool_result');assert.equal(results.length,6);
+ assert.ok(results.every(e=>e.data.status==='error'&&e.data.result.status==='too_many_parallel_writes'));
+ assert.equal(s.probe.toolResults.length,6);assert.ok(s.probe.toolResults.every(r=>r.status==='too_many_parallel_writes'&&/one at a time/.test(r.message)&&r.requested===6));
+ const c=await conversation(s);assert.deepEqual(c.model_messages.map(m=>m.role),['user','assistant',...Array(6).fill('tool'),'assistant']);
+ assert.equal(c.model_messages[1].tool_calls.length,6,'every call stays paired with its result in history');
+});
+
+test('B1: a mixed step (read-only calls + one write) runs nothing',async()=>{
+ const s=await parallelSetup(['agent_status','agent_status','agent_status','agent_status','reminder_create']),{tid}=await send(s,'帮我把清单一次全加上');
+ const t=await turn(s,tid);assert.equal(t.state,'completed');
+ assert.ok(t.events.filter(e=>e.type==='tool_result').every(e=>e.data.result.status==='too_many_parallel_writes'));
+ assert.equal(t.events.filter(e=>e.type==='device_call').length,0);
+});
+
+test('B1: 6 read-only calls → the first 4 run, the other 2 get not_executed',async()=>{
+ const s=await parallelSetup(Array(6).fill('agent_status')),{tid}=await send(s,'帮我把清单一次全加上');
+ const t=await turn(s,tid);assert.equal(t.state,'completed',JSON.stringify(t.error));
+ const results=t.events.filter(e=>e.type==='tool_result');
+ assert.deepEqual(results.map(e=>[e.data.call_id,e.data.status,e.data.result.status??'ran']),[['pc0','ok','ran'],['pc1','ok','ran'],['pc2','ok','ran'],['pc3','ok','ran'],['pc4','error','not_executed'],['pc5','error','not_executed']]);
+ assert.deepEqual(s.probe.toolResults.map(r=>r.status??'ran'),['ran','ran','ran','ran','not_executed','not_executed']);
+});
+
+test('B1 pure: write/read classification uses the approval declarations; undeclared tools count as writes',()=>{
+ const reg=createDeviceTools(),calls=n=>Array.from({length:n},(_,i)=>({id:'c'+i,name:'agent_status',arguments:{}}));
+ assert.equal(isReadOnlyCall('agent_status',reg),true);assert.equal(isReadOnlyCall('create_task',reg),false);assert.equal(isReadOnlyCall('memory_save',reg),false,'local_reversible is a write');
+ assert.equal(isReadOnlyCall('reminder_create',reg),false);assert.equal(isReadOnlyCall('totally_unknown_tool',reg),false);
+ const ro=[...reg.entries()].find(([,v])=>v.confirm==='none');if(ro)assert.equal(isReadOnlyCall(ro[0],reg),true,'device read (confirm none)');
+ assert.deepEqual(planParallelCalls({calls:calls(4)},reg),{calls:calls(4),blocked:[]},'no overflow → unchanged');
+ const p=planParallelCalls({calls:calls(4),overflow:[{id:'x',name:'totally_unknown_tool',arguments:{}}]},reg);
+ assert.equal(p.calls.length,0);assert.equal(p.blocked.length,5);assert.ok(p.blocked.every(b=>b.result.status==='too_many_parallel_writes'));
 });
