@@ -12,7 +12,7 @@ export async function effectiveConsent(tx,owner,subject,conversationId,routeHash
 export async function assertConsent(tx,owner,source,conversationId,routeHash){const row=await effectiveConsent(tx,owner,source.subject_id,conversationId,routeHash);check(row?.decision==='allow'&&row.scope_id===source.scope_id&&row.route_hash===routeHash&&row.revision===source.consent_revision,403,'provider_consent_required');return row;}
 export async function consentRead(runtime,auth,scopeId,cid){const {owner,principal}=await runtime.facade.scoped(auth,scopeId);return runtime.repository.transaction(async tx=>{await runtime.chat.conversation(tx,owner,cid,principal.subject_id,scopeId);return await tx.get(owner,'provider-consents',consentId(principal.subject_id,cid));});}
 export async function consentWrite(runtime,auth,scopeId,cid,input,config,{sourceChecker}={}){check(input&&Object.keys(input).every(k=>['decision','expected_revision','route_hash','sensitive_confirmed','apply_to','expected_account_revision'].includes(k))&&(input.apply_to===undefined&&input.expected_account_revision===undefined||input.apply_to==='account'&&input.decision==='allow'&&Number.isInteger(input.expected_account_revision)&&input.expected_account_revision>=0)&&['decision','expected_revision','route_hash'].every(k=>k in input)&&(input.sensitive_confirmed===undefined||typeof input.sensitive_confirmed==='boolean'),422,'invalid_consent');check(['allow','deny'].includes(input.decision)&&Number.isInteger(input.expected_revision)&&input.expected_revision>=0&&input.route_hash===config.routeHash,422,'invalid_consent');const {owner,principal}=await runtime.facade.scoped(auth,scopeId);
- const value=await runtime.repository.transaction(async tx=>{await checkWriterSession(tx,scopeId,principal,sourceChecker);if(runtime.facade.workGrantService)await lockTaskWorkSourceInTransaction(tx,{scope_id:scopeId,owner,source:{subject_id:principal.subject_id,scope_id:scopeId,session_id:principal.session_id,issuer:principal.issuer,issued_at:principal.issued_at}});await tx.lock(owner,'native-chat-conversations',cid);const conversation=await runtime.chat.conversation(tx,owner,cid,principal.subject_id,scopeId);const id=consentId(principal.subject_id,cid);const old=await tx.get(owner,'provider-consents',id);check((old?.revision??0)===input.expected_revision,409,'revision_conflict');
+ const value=await runtime.repository.transaction(async tx=>{await checkWriterSession(tx,scopeId,principal,sourceChecker);await lockConsentWriteOrder(tx,owner,principal,scopeId,config);await tx.lock(owner,'native-chat-conversations',cid);const conversation=await runtime.chat.conversation(tx,owner,cid,principal.subject_id,scopeId);const id=consentId(principal.subject_id,cid);const old=await tx.get(owner,'provider-consents',id);check((old?.revision??0)===input.expected_revision,409,'revision_conflict');
   const row={id,scope_id:scopeId,conversation_id:cid,subject_id:principal.subject_id,route_hash:config.routeHash,revision:(old?.revision??0)+1,decision:input.decision,sensitive_confirmed:input.sensitive_confirmed===true,updated_at:iso()};await tx.put(owner,'provider-consents',row);
   // v1.1 (b): {apply_to:'account'} also grants this route for every conversation of the account (same disclosure, one tap).
   // Account grant is CAS-checked against expected_account_revision. It never widens sensitive_confirmed to the whole account
@@ -37,6 +37,14 @@ export async function consentWrite(runtime,auth,scopeId,cid,input,config,{source
 // tasks/revisions/work grants, observation, plan reads) keeps working unchanged. A conversation's own deny always wins.
 export const accountConsentId=(subject,routeHash)=>stableUUID(`private-model-consent-account:${subject}:${routeHash}`);
 const accountAllows=(row,scopeId,subject,routeHash)=>row?.decision==='allow'&&row.consent_scope==='account'&&row.scope_id===scopeId&&row.subject_id===subject&&row.route_hash===routeHash;
+/** Single lock order for every consent write (conversation POST, apply_to, account allow/deny), independent of the
+ * work-grant feature: (1) task-work source lock of the subject, (2) the account consent record for (subject, current
+ * route_hash), (3) conversation locks in conversation_id order. Turn admission takes only the conversation lock and reads
+ * the account record without locking it, so it can never close a cycle with these paths. */
+async function lockConsentWriteOrder(tx,owner,principal,scopeId,config){
+ await lockTaskWorkSourceInTransaction(tx,{scope_id:scopeId,owner,source:{subject_id:principal.subject_id,scope_id:scopeId,session_id:principal.session_id,issuer:principal.issuer,issued_at:principal.issued_at}});
+ await tx.lock(owner,'provider-consents',accountConsentId(principal.subject_id,config.routeHash));
+}
 async function checkWriterSession(tx,scopeId,principal,sourceChecker){
  // P2: consent writes require a live (not signed-out / revoked) session, like the other authority-bearing endpoints.
  await tx.withScope(scopeId,async scoped=>{if(!sourceChecker)return;const identity=(await scoped.scope()).identity;await sourceChecker(tx,{subject_id:principal.subject_id,scope_id:scopeId,issuer:principal.issuer,session_id:principal.session_id,issued_at:principal.issued_at},identity);});
@@ -57,7 +65,7 @@ export async function accountConsentWrite(runtime,auth,scopeId,input,config,{sou
  const {owner,principal}=await runtime.facade.scoped(auth,scopeId);
  const affected=[];
  const row=await runtime.repository.transaction(async tx=>{await checkWriterSession(tx,scopeId,principal,sourceChecker);
-  if(input.decision==='deny'&&runtime.facade.workGrantService)await lockTaskWorkSourceInTransaction(tx,{scope_id:scopeId,owner,source:{subject_id:principal.subject_id,scope_id:scopeId,session_id:principal.session_id,issuer:principal.issuer,issued_at:principal.issued_at}});
+  await lockConsentWriteOrder(tx,owner,principal,scopeId,config);
   const row=await putAccountConsent(tx,owner,principal,scopeId,input,config);
   // B1: an account deny takes effect immediately for every conversation relying on it — same reducer as a conversation
   // deny (work grants, delegations + their tasks, running turn) minus closing the conversation, so the user can re-consent.
