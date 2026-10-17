@@ -365,7 +365,9 @@ import CatpawImageComposer
                                     .transition(row.isUserMessage && !reduceMotion ? .catpawSendRise : .opacity)
                             }
                             if let pending = session.turns.last, [.dispatched,.running].contains(pending.state), pending.assistantMessageID == nil, !composerChrome.stoppedOperations.contains(pending.id),
-                               !session.messages.contains(where:{ $0.role == .assistant && !$0.complete }) {
+                               // status-line: a tool_call opens an incomplete assistant *tool* row (no visible bubble); it must not hide
+                               // the row, or 正在查看日历 / 等你确认日程 never show (every tool and card turn starts with tool_call).
+                               !session.messages.contains(where:{ $0.role == .assistant && !$0.complete && $0.toolCallID == nil }) {
                                 PendingThinkingRow(service:model.service,turn:pending).id("pending-\(pending.id)").padding(.top,12)
                             }
                             // Fallbacks for a turn with no message row yet; the feed lives in the generative host.
