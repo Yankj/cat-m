@@ -1003,12 +1003,13 @@ import CatpawImageComposer
     }
     /// r9 bubble status: sent → nothing; queued/offline → nothing (pending strip owns it);
     /// sending → tiny spinner only after ~2 s without turn start; failed → red ! + "未发送·点按重试".
-    enum BubbleStatus { case none, sending, failed }
+    enum BubbleStatus { case none, sending, failed, unverified }
     private func bubbleStatus(_ id:UUID) -> BubbleStatus {
         if let intent=model.outgoingMessages.first(where:{$0.id == id}) {
             switch intent.state { case .sending: return .sending; case .failed, .unknown: return .failed; default: return .none }
         }
         guard let turn = model.session?.turns.first(where:{$0.id == id}) else { return .none }
+        if turn.state == .failed && turn.error == ConversationSessionService.outcomeUnverified { return .unverified }
         if turn.state == .failed && turn.error != "cancelled" && turn.assistantMessageID == nil { return .failed }
         if turn.state == .dispatched && turn.lastSequence == 0 { return .sending }
         return .none
@@ -1059,6 +1060,12 @@ import CatpawImageComposer
                                 Text(ui("未发送·点按重试")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
                             }
                         }.buttonStyle(CatpawPressButtonStyle()).accessibilityIdentifier("chat.bubble.retry")
+                    case .unverified:
+                        // Resolved outcome_unknown: the step may have run, so no one-tap resend; the chat is free again.
+                        HStack(spacing: 4) {
+                            Image(systemName: "questionmark.circle").foregroundStyle(CatpawColors.secondary).imageScale(.small)
+                            Text(ui("结果待核对 · 可能已执行，核对后再决定是否重发")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
+                        }.accessibilityElement(children: .combine).accessibilityIdentifier("chat.bubble.unverified")
                     }
                 }
             }

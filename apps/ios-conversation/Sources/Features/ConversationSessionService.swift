@@ -659,7 +659,32 @@ public actor ConversationSessionService {
         try await restoreApprovals(observation, turnID: turn.id, observationToken: observationToken)
         if try await read(scope:scope,conversationID:conversationID).turns.first(where:{$0.id==turn.id})?.state == .completed {await backend.recordCommittedReply(turn.request)}
         if !observation.goals.isEmpty { var (current, revision) = try await readVersioned(scope: scope, conversationID: conversationID); for goal in observation.goals { try Self.merge(goal, into: &current) }; try await save(current, expectedRevision: revision, fence: turn.request, observationToken: observationToken) }
+        try await settleOutcomeUnknown(observation, turnID: turn.id, scope: scope, conversationID: conversationID, request: turn.request, observationToken: observationToken)
     }
+    /// v1 17:55: the server parks an interrupted turn as `outcome_unknown` for good (e.g. the 16:28 42501 memory_save turn).
+    /// Re-observing it never changes anything, but kept the turn `.unknown` → `unresolved` → model.busy forever: 新对话,
+    /// sending and 确认发送许可 disabled, the queue stuck at 「等待当前回复」. After `outcomeUnknownMaxObservations` snapshots
+    /// (or `outcomeUnknownGiveUpSeconds`) with no pending approval, resolve it locally as 「结果待核对」: terminal, never
+    /// auto-resent (the tool may have run), and the conversation is free again. A later readable completion still applies
+    /// through 读取原请求进展, which reconciles by the turn id.
+    private func settleOutcomeUnknown(_ observation: ConversationObservation, turnID: UUID, scope: DataScope, conversationID: UUID, request: ConversationTurnRequest, observationToken: UUID) async throws {
+        guard observation.serverState == Self.serverOutcomeUnknown, observation.pendingApprovals.isEmpty, observation.pendingUIApprovals.isEmpty else { outcomeUnknownSeen[turnID] = nil; return }
+        var (session, revision) = try await readVersioned(scope: scope, conversationID: conversationID)
+        guard let i = session.turns.firstIndex(where: { $0.id == turnID }), [.dispatched, .running, .unknown].contains(session.turns[i].state), !session.turns[i].awaitingApproval else { outcomeUnknownSeen[turnID] = nil; return }
+        let seen = outcomeUnknownSeen[turnID] ?? (0, Date()); let count = seen.count + 1
+        guard count >= Self.outcomeUnknownMaxObservations || Date().timeIntervalSince(seen.first) >= Self.outcomeUnknownGiveUpSeconds else { outcomeUnknownSeen[turnID] = (count, seen.first); return }
+        guard active[conversationID] == observationToken else { throw CancellationError() }
+        observeLog.info("observe settle outcome_unknown after \(count, privacy: .public) snapshots")
+        session.turns[i].state = .failed; session.turns[i].error = Self.outcomeUnverified
+        try await save(session, expectedRevision: revision, fence: request, observationToken: observationToken)
+        outcomeUnknownSeen[turnID] = nil
+    }
+    static let serverOutcomeUnknown = "outcome_unknown"
+    /// Turn error code for a turn resolved as 「结果待核对」 (UI: bubbleStatus .unverified, no one-tap resend).
+    static let outcomeUnverified = "outcome_unverified"
+    static let outcomeUnknownMaxObservations = 3
+    static let outcomeUnknownGiveUpSeconds: TimeInterval = 30
+    private var outcomeUnknownSeen: [UUID: (count: Int, first: Date)] = [:]
     static let rateLimitedCode = "rate_limited"
     static let unknownTurnGiveUpSeconds: TimeInterval = 60
     static let unknownTurnGaveUp = "这条消息没能确认送达，已停止等待。可以重新发送。"

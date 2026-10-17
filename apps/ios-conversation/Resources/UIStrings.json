@@ -6762,5 +6762,9 @@
   "没有完成：{0}": {
     "en": "Not completed: {0}",
     "zh-Hans": "没有完成：{0}"
+  },
+  "结果待核对 · 可能已执行，核对后再决定是否重发": {
+    "en": "Result unverified · it may have run; check before resending",
+    "zh-Hans": "结果待核对 · 可能已执行，核对后再决定是否重发"
   }
 }

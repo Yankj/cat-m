@@ -188,3 +188,57 @@ final class ModelPickerOptionsTests: XCTestCase {
         t.begin(reduceMotion: false); t.cancel(); XCTAssertFalse(t.drawsFlight, "cancelled")
     }
 }
+
+/// v1 17:55: a turn the server parks as `outcome_unknown` must not keep the conversation unresolved (busy) forever.
+actor OutcomeUnknownBackend: ConversationBackend {
+    private(set) var posts = 0, reads = 0
+    private let message = UUID()
+    func connection(scope: DataScope) async -> ConversationConnection { .init(state: .connected, provider: "outcome_unknown fixture", detail: "No network/model") }
+    func reply(_ request: ConversationTurnRequest) async throws -> AsyncThrowingStream<ConversationTurnEvent, Error> {
+        posts += 1
+        let first = posts == 1, message = UUID()
+        return AsyncThrowingStream { c in
+            c.yield(.init(operationID: request.operationID, epoch: request.epoch, sequence: 1, payload: .textDelta(messageID: message, text: "partial")))
+            if !first { c.yield(.init(operationID: request.operationID, epoch: request.epoch, sequence: 2, payload: .completed(messageID: message, finalTextHash: textHash("partial")))) }
+            c.finish()   // first turn: stream ends with no terminal event → local `.unknown`
+        }
+    }
+    func observe(_ request: ConversationTurnRequest) async throws -> ConversationObservation {
+        reads += 1
+        return ConversationObservation(request: request, events: [], serverState: "outcome_unknown")
+    }
+}
+final class OutcomeUnknownSettleTests: XCTestCase {
+    func testOutcomeUnknownSettlesAfterThreeSnapshotsAndFreesTheConversation() async throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("OutcomeUnknown-" + UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let repo = try Repository(persistence: FilePersistence(url: folder.appendingPathComponent("store.json")))
+        let backend = OutcomeUnknownBackend(), service = ConversationSessionService(repository: repo, backend: backend)
+        let id = try await service.create(scope: Profiles.user)
+        do { _ = try await service.send(scope: Profiles.user, conversationID: id, text: "请记住：我最喜欢喝燕麦拿铁", operationID: UUID()) } catch ConversationSessionError.unresolvedOperation { }
+        var saved = try await service.read(scope: Profiles.user, conversationID: id)
+        XCTAssertNotNil(saved.unresolved, "precondition: interrupted turn is unresolved")
+        for n in 1...2 {
+            try await service.observe(scope: Profiles.user, conversationID: id)
+            saved = try await service.read(scope: Profiles.user, conversationID: id)
+            XCTAssertNotNil(saved.unresolved, "still waiting after \(n) outcome_unknown snapshot(s)")
+        }
+        try await service.observe(scope: Profiles.user, conversationID: id)
+        saved = try await service.read(scope: Profiles.user, conversationID: id)
+        XCTAssertNil(saved.unresolved, "settled after 3 snapshots: the conversation is no longer busy")
+        XCTAssertEqual(saved.turns.last?.state, .failed)
+        XCTAssertEqual(saved.turns.last?.error, ConversationSessionService.outcomeUnverified, "rendered as 结果待核对, not 未发送")
+        let posts = await backend.posts
+        XCTAssertEqual(posts, 1, "never auto-resent: the step may have run")
+        // A new message goes out normally afterwards.
+        _ = try await service.send(scope: Profiles.user, conversationID: id, text: "我最喜欢喝什么？", operationID: UUID())
+        saved = try await service.read(scope: Profiles.user, conversationID: id)
+        XCTAssertEqual(saved.turns.last?.state, .completed)
+        let after = await backend.posts
+        XCTAssertEqual(after, 2)
+    }
+    func testBoundsAreThreeSnapshotsOrThirtySeconds() async throws {
+        XCTAssertEqual(ConversationSessionService.outcomeUnknownMaxObservations, 3)
+        XCTAssertEqual(ConversationSessionService.outcomeUnknownGiveUpSeconds, 30)
+    }
+}

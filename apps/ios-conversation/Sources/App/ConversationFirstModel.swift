@@ -870,6 +870,9 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
             guard flightID == token else { return };await refresh()
             guard flightID == token else { return };flightID=nil;busy=false;observerLifecycle=session?.unresolved == nil ? .foregroundIdle : .unknown
             await resumeBackgroundQueueIfSafe()
+            // v1 17:55: a turn that just resolved (completed, failed, or settled 「结果待核对」) frees the conversation;
+            // flush what queued behind it (「待发送 · 等待当前回复」) instead of waiting for the next relaunch.
+            if session?.unresolved == nil { authorizePending() }
         }
     }
     private func resumeBackgroundQueueIfSafe() async {
