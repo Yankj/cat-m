@@ -2,11 +2,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {randomUUID} from 'node:crypto';
+import {Buffer} from 'node:buffer';
 import {memoryHTTPFixture as fixture} from './fixtures/memory-http-fixture.mjs';
 import {APPROVAL_CONTRACT} from '../supabase/functions/_shared/core/src/approval.mjs';
 import {ApiError} from '../supabase/functions/_shared/core/facade-r2/src/common.mjs';
 import {createDeviceTools,DEVICE_CONTRACT} from '../supabase/functions/_shared/core/src/device-call.mjs';
 import {isReadOnlyCall,planParallelCalls} from '../supabase/functions/_shared/core/src/parallel-calls.mjs';
+import {whitelistedArgs,boundedParallelBlocked} from '../supabase/functions/_shared/core/src/turn-outcome.mjs';
 import {interruptedTurnNote,turnOutcomeNote,withInterruptedTurn,interruptOutcome} from '../supabase/functions/_shared/core/src/turn-outcome.mjs';
 globalThis.fetch=()=>{throw Error('external_network_forbidden');};
 const H='https://memory-test.example.invalid';
@@ -121,6 +123,7 @@ test('B1 6-call replay (6497bf72 shape): 6 parallel write calls → NONE runs, e
  assert.equal(t.events.filter(e=>e.type==='device_call'||e.type==='approval_requested').length,0,'no card, nothing reaches the phone');
  assert.equal(t.events.filter(e=>e.type==='tool_call'||e.type==='tool_result').length,0,'no wire tool events for calls that did not run');
  assert.deepEqual(t.parallel_blocked.map(b=>[b.call_id,b.name,b.status]),Array.from({length:6},(_,i)=>['pc'+i,'reminder_create','too_many_parallel_writes']));
+ assert.ok(t.parallel_blocked.every(b=>!('arguments' in b)&&/^[a-f0-9]{64}$/.test(b.args_hash)&&Object.keys(b.args).every(k=>['title','start','end','due','due_at','time'].includes(k))),'P1-1: whitelisted args + digest only');
  assert.equal(s.probe.toolResults.length,6);assert.ok(s.probe.toolResults.every(r=>r.status==='too_many_parallel_writes'&&/one at a time/.test(r.message)&&r.requested===6));
  const c=await conversation(s);assert.deepEqual(c.model_messages.map(m=>m.role),['user','assistant',...Array(6).fill('tool'),'assistant']);
  assert.equal(c.model_messages[1].tool_calls.length,6,'every call stays paired with its result in history');
@@ -235,4 +238,13 @@ test('P1-2 superseded within the TTL keeps X-Catpaw-Device-Late: superseded',asy
  const {s,tid,dc}=await superseded();const r=await report(s,tid,{call_id:dc.call_id,operation_id:randomUUID(),args_hash:dc.args_hash,status:'ok'});
  assert.equal(r.status,200);assert.equal(r.headers.get('x-catpaw-device-late'),'superseded');await sse(r);
  assert.equal((await conversation(s)).interaction_outcomes.find(x=>x.call_id===dc.call_id).ttl_exceeded,undefined);
+});
+
+test('P1-1 parallel_blocked: only title/time keys cut to 40 chars, digest kept, at most 32 entries and 8000 bytes',()=>{
+ const a=whitelistedArgs({title:'标'.repeat(500),due:'2026-10-19T09:00:00+08:00',body:'x'.repeat(10000),to:['138'],name:'张三',query:'家',location:'地址'});
+ assert.deepEqual(Object.keys(a),['title','due']);assert.ok(a.title.length<=41);assert.deepEqual(whitelistedArgs(null),{});
+ const entry=i=>({call_id:'c'+i,name:'reminder_create',args:whitelistedArgs({title:'t'.repeat(400)+i,start:'s'.repeat(400),end:'e'.repeat(400),due:'d'.repeat(400),due_at:'a'.repeat(400),time:'m'.repeat(400)}),args_hash:'f'.repeat(64),status:'too_many_parallel_writes'});
+ let list=[];for(let i=0;i<50;i++)list=boundedParallelBlocked(list,[entry(i)]);
+ assert.ok(list.length<=32);assert.ok(Buffer.byteLength(JSON.stringify(list))<=8000);assert.equal(list.at(-1).call_id,'c49','newest kept');
+ assert.equal(boundedParallelBlocked([entry(1)],[entry(1)]).length,1,'same call id replaces');
 });
