@@ -128,11 +128,13 @@ enum ProactiveEngineError: Error, Equatable { case remindersDenied, writeFailed,
     var onMerged: ((ProactiveSuggestion) -> Void)?
     /// Codex PR90h #3: (device card id, cloud record id) for a card that arrived from the cloud (set by the real backend).
     var onCloudIdentity: ((String, String) -> Void)?
+    #if !PROACTIVE_PORTABLE   // app-only (ProactiveLocalBackend); the portable PR90 runner builds without it
     /// Codex P0-2: sign-out drops every card of the old account (the local backend re-reads the purged inbox).
     func clearForSignOut() {
         items = [:]; busy = []; errorKey = nil
         if ProactiveSuggestionHub.backend is ProactiveLocalBackend { ProactiveSuggestionHub.backend = ProactiveLocalBackend() }
     }
+    #endif
     func adopt(_ s: ProactiveSuggestion) {
         // Codex PR90h #3: a cloud card registers its write-back identity; an offline-created card coming back from the
         // cloud (client_id = one of ours) is the same card — it maps onto ours instead of appearing twice.
@@ -184,8 +186,15 @@ enum ProactiveEngineError: Error, Equatable { case remindersDenied, writeFailed,
     /// Codex P0-4: the result is surfaced (待同步) instead of swallowed; PR91 #7: a failed local write is 没记下, not 待同步.
     func feedback(_ value: ProactiveFeedback, _ s: ProactiveSuggestion) async -> FeedbackOutcome {
         do { try await backend.feedback(value, on: s.id); return .synced }
-        catch ProactiveFeedbackSync.SyncError.notSaved { return .notSaved }
-        catch { return .queued }
+        catch { return Self.isNotSaved(error) ? .notSaved : .queued }
+    }
+    private static func isNotSaved(_ error: Error) -> Bool {
+        #if PROACTIVE_PORTABLE
+        return false   // the portable PR90 runner has no ProactiveFeedbackSync (app-only, L2)
+        #else
+        if case .notSaved? = error as? ProactiveFeedbackSync.SyncError { return true }
+        return false
+        #endif
     }
     func sorted(_ status: ProactiveSuggestion.Status) -> [ProactiveSuggestion] {
         items.values.filter { $0.effectiveStatus == status || (status == .pending && $0.effectiveStatus == .snoozed) }
@@ -193,6 +202,7 @@ enum ProactiveEngineError: Error, Equatable { case remindersDenied, writeFailed,
     }
 }
 
+#if !PROACTIVE_PORTABLE   // app-only (L2SecureStore, ProactiveEngine); excluded from the portable PR90 runner
 /// Codex P0-4: feedback ledger per account in L2 (survives restart, wiped at sign-out), mirrored to the server.
 @MainActor final class ProactiveFeedbackSync {
     static let shared = ProactiveFeedbackSync()
@@ -257,3 +267,4 @@ enum ProactiveEngineError: Error, Equatable { case remindersDenied, writeFailed,
     }
     func reset() { ledger = ProactiveFeedbackLedger(); loadedFor = nil }
 }
+#endif

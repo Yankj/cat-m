@@ -73,13 +73,7 @@ enum MemoryLibraryError: Error, Equatable, Sendable {
     }
 }
 
-/// One 「使用记忆」 switch for every read path (Codex P0-2): if any library the user can see has it off, no path may read
-/// memory at all (local included), so the reference count is zero.
-enum MemoryRecallGate {
-    static func effective(_ snapshots: [MemoryLibrarySnapshot]) -> [MemoryLibrarySnapshot] {
-        snapshots.contains { !$0.useMemory } ? [] : snapshots
-    }
-}
+// MemoryRecallGate lives in Features/Proactive/ProactiveRules.swift (compiled by every portable runner and the app).
 
 /// Seam for the memory page and the "已记住" chip. All calls are async and may throw `MemoryLibraryError`.
 @MainActor protocol MemoryLibraryBackend: AnyObject {
