@@ -178,3 +178,72 @@ private actor ImageRecoveryHeldStore: ConversationImageByteStore {
         try await store!.remove(conversationID: conversationID, operationID: operationID)
     }
 }
+
+/// Image-upload rate-limit fix (2026-10-17): countdown/retry schedule, queue recovery, caption isolation.
+final class ConversationRateLimitRecoveryTests: XCTestCase {
+    private func turn(_ id: UUID = UUID(), _ state: ConversationTurnRecord.State, error: String? = nil) -> ConversationTurnRecord {
+        ConversationTurnRecord(id: id, request: ConversationTurnRequest(scope: Profiles.user, conversationID: UUID(), threadID: nil, operationID: id, epoch: 1, history: []), state: state, lastSequence: 2, error: error)
+    }
+    private func session(_ turns: [ConversationTurnRecord]) -> ConversationSession {
+        var s = ConversationSession(scope: Profiles.user, conversationID: UUID()); s.turns = turns; return s
+    }
+    func testBackoffIsFiveFifteenThirtyThenManual() {
+        XCTAssertEqual(ConversationBusyRetryPolicy.delay(attempt: 1, retryAfterSeconds: nil), 5)
+        XCTAssertEqual(ConversationBusyRetryPolicy.delay(attempt: 2, retryAfterSeconds: nil), 15)
+        XCTAssertEqual(ConversationBusyRetryPolicy.delay(attempt: 3, retryAfterSeconds: nil), 30)
+        XCTAssertNil(ConversationBusyRetryPolicy.delay(attempt: 4, retryAfterSeconds: nil), "after 3 tries: 发送失败 · 重试 / 删除")
+        XCTAssertNil(ConversationBusyRetryPolicy.delay(attempt: 0, retryAfterSeconds: nil))
+    }
+    func testRetryAfterIsHonouredAndClamped() {
+        XCTAssertEqual(ConversationBusyRetryPolicy.delay(attempt: 1, retryAfterSeconds: 42), 42)
+        XCTAssertEqual(ConversationBusyRetryPolicy.delay(attempt: 3, retryAfterSeconds: 0), 1)
+        XCTAssertEqual(ConversationBusyRetryPolicy.delay(attempt: 2, retryAfterSeconds: 99_999), 3600)
+        XCTAssertNil(ConversationBusyRetryPolicy.delay(attempt: 4, retryAfterSeconds: 10), "Retry-After never adds a 4th try")
+    }
+    func testCardShowsTheRealDueTimeNotZero() {
+        XCTAssertEqual(ConversationBusyRetryPolicy.displaySeconds(5), 5)
+        XCTAssertEqual(ConversationBusyRetryPolicy.displaySeconds(14.2), 15)
+        XCTAssertEqual(ConversationSessionService.busyRetryDelay(attempt: 1, retryAfterSeconds: nil, jitter: 0.9), 5, "no jitter: countdown == due")
+    }
+    func testTerminalFailureIsRecognised() {
+        XCTAssertTrue(ConversationFollowupRecovery.isTerminalFailure(turn(.failed, error: "rate_limited")))
+        XCTAssertTrue(ConversationFollowupRecovery.isTerminalFailure(turn(.cancelledBeforeSend)))
+        XCTAssertFalse(ConversationFollowupRecovery.isTerminalFailure(turn(.running)))
+        XCTAssertFalse(ConversationFollowupRecovery.isTerminalFailure(turn(.unknown)))
+        XCTAssertFalse(ConversationFollowupRecovery.isTerminalFailure(nil))
+    }
+    func testPersistedRecoveryPauseBehindTerminalFailureIsUnpaused() {
+        var state = ConversationFollowupState(); state.paused = true; state.pauseReason = .recovery
+        state.pending = [ConversationFollowup(text: "这张呢？一句话")]
+        let next = ConversationFollowupRecovery.normalized(state, session: session([turn(.failed, error: "rate_limited")]))
+        XCTAssertEqual(next?.paused, false); XCTAssertNil(next?.pauseReason); XCTAssertEqual(next?.pending.count, 1)
+    }
+    func testInflightOfATerminalTurnIsDroppedNotResent() {
+        let id = UUID()
+        var state = ConversationFollowupState(); state.paused = true; state.pauseReason = .recovery
+        state.inflight = ConversationFollowup(id: id, text: "这张图里有什么？一句话")
+        let next = ConversationFollowupRecovery.normalized(state, session: session([turn(id, .failed, error: "rate_limited")]))
+        XCTAssertNotNil(next); XCTAssertNil(next?.inflight); XCTAssertEqual(next?.paused, false)
+    }
+    func testOtherPausesAreLeftAlone() {
+        let failed = session([turn(.failed, error: "rate_limited")])
+        for reason in [FollowupPauseReason.user, .background, .preflight] {
+            var state = ConversationFollowupState(); state.paused = true; state.pauseReason = reason
+            XCTAssertNil(ConversationFollowupRecovery.normalized(state, session: failed), "\(reason)")
+        }
+        var state = ConversationFollowupState(); state.paused = true; state.pauseReason = .recovery
+        XCTAssertNil(ConversationFollowupRecovery.normalized(state, session: session([turn(.unknown)])), "an unresolved turn keeps the hold")
+        state.inflight = ConversationFollowup(text: "fate unknown")
+        XCTAssertNil(ConversationFollowupRecovery.normalized(state, session: session([turn(.failed)])), "an in-flight message with no turn stays held")
+    }
+    func testCaptionsNeverMergeAcrossTurns() {
+        let old = "这张图里有什么？一句话"
+        XCTAssertEqual(ConversationCaptionPolicy.restored(draft: "", caption: old), old)
+        XCTAssertEqual(ConversationCaptionPolicy.restored(draft: "这张呢？一句话", caption: old), "这张呢？一句话", "never appended to what the user typed")
+        XCTAssertEqual(ConversationCaptionPolicy.strippingRecovered(draft: "这张呢？一句话" + old, caption: old), "这张呢？一句话", "the screenshot case")
+        XCTAssertEqual(ConversationCaptionPolicy.strippingRecovered(draft: old + "这张呢？", caption: old), "这张呢？")
+        XCTAssertEqual(ConversationCaptionPolicy.strippingRecovered(draft: old, caption: old), "")
+        XCTAssertEqual(ConversationCaptionPolicy.strippingRecovered(draft: "完全不同", caption: old), "完全不同")
+        XCTAssertEqual(ConversationCaptionPolicy.strippingRecovered(draft: "x", caption: nil), "x")
+    }
+}
