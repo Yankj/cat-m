@@ -87,7 +87,7 @@ final class CatpawWorkPhaseMappingTests: XCTestCase {
         XCTAssertEqual(CatpawWorkPhase.from(.started(requestHash: "h", conversationRevision: 1, grantEpoch: 1)), .thinking)
         XCTAssertEqual(CatpawWorkPhase.from(.reasoningSummary(messageID: UUID(), text: "x", thinkingMs: nil)), .thinking)
         XCTAssertEqual(CatpawWorkPhase.from(.toolStarted(callID: "1", name: "calendar_list", arguments: "{}")), .tool("calendar_list"))
-        XCTAssertEqual(CatpawWorkPhase.from(.suspended(interruptIDs: ["i"], expiresAt: "2099-01-01T00:00:00Z")), .awaitingUser)
+        XCTAssertNil(CatpawWorkPhase.from(.suspended(interruptIDs: ["i"], expiresAt: "2099-01-01T00:00:00Z")))   // B1
         XCTAssertEqual(CatpawWorkPhase.from(.approvalResolved(interruptID: "i", callID: "1", decision: "allow", remember: false)), .thinking)
         XCTAssertEqual(CatpawWorkPhase.from(.textDelta(messageID: UUID(), text: "a")), .writing)
         XCTAssertEqual(CatpawWorkPhase.from(.completed(messageID: UUID(), finalTextHash: "h")), .done)
@@ -194,11 +194,9 @@ final class StatusLineTests: XCTestCase {
         XCTAssertFalse(r.target!.animated)
         var r2 = StatusLineReducer()
         r2.apply(.toolStarted(callID: "a", name: "create_task", arguments: "{}"))
+        r2.apply(.approvalRequested(ConversationApprovalRequest(interruptID: "i", callID: "a", tool: "create_task", summary: "", arguments: "{}", argsHash: String(repeating: "a", count: 64), expiresAt: "2099-01-01T00:00:00Z", risk: "local_write", rememberAllowed: true)))
         r2.apply(.suspended(interruptIDs: ["i"], expiresAt: "2099-01-01T00:00:00Z"))
         XCTAssertEqual(r2.target, .awaitingUser(tool: "create_task"))
-        var r3 = StatusLineReducer()
-        r3.apply(device("calendar_list", confirm: "none"))
-        XCTAssertNil(r3.target)
     }
     func testToolThenTextHides() {
         var r = StatusLineReducer()
@@ -233,5 +231,77 @@ final class StatusLineTests: XCTestCase {
     func testAnnouncementThrottle() {
         let t0 = Date(); var a = StatusLineAnnouncementThrottle()
         XCTAssertTrue(a.allow(at: t0)); XCTAssertFalse(a.allow(at: t0.addingTimeInterval(1.9))); XCTAssertTrue(a.allow(at: t0.addingTimeInterval(2.0)))
+    }
+}
+
+/// PREREVIEW fixes (B1, P1-1..P1-3, B2 contract).
+final class StatusLinePrereviewTests: XCTestCase {
+    private func device(_ tool: String, confirm: String, id: String = "c1") -> ConversationTurnEvent.Payload {
+        .deviceCall(ConversationDeviceCall(interruptID: "i-\(id)", callID: id, tool: tool, args: Data("{}".utf8), confirm: confirm, ttlSec: 600, argsHash: String(repeating: "a", count: 64), expiresAt: "2099-01-01T00:00:00Z"))
+    }
+    private let suspended = ConversationTurnEvent.Payload.suspended(interruptIDs: ["i"], expiresAt: "2099-01-01T00:00:00Z")
+
+    /// B1: confirm:"none" device calls are followed by turn_suspended, but must never show 「等你确认」.
+    func testAutoRunDeviceCallNeverWaits() {
+        for tool in ["calendar_list", "places_search"] {
+            var r = StatusLineReducer(); var seen: [StatusLinePhase?] = []
+            for p in [ConversationTurnEvent.Payload.toolStarted(callID: "c1", name: tool, arguments: "{}"), device(tool, confirm: "none"), suspended] {
+                r.apply(p); seen.append(r.target)
+            }
+            XCTAssertFalse(seen.contains { $0?.kind == .waiting }, tool)
+            XCTAssertEqual(r.target, .tool(name: tool, occurrence: 0))
+            XCTAssertEqual(r.target?.title, ToolStepCopy.title(tool))
+        }
+        var card = StatusLineReducer()
+        card.apply(device("calendar_create", confirm: "card")); card.apply(suspended)
+        XCTAssertEqual(card.target, .awaitingUser(tool: "calendar_create"))
+        XCTAssertNil(CatpawWorkPhase.from(suspended))
+    }
+    /// P1-1: a rebuilt projection restores waiting.
+    func testRestoreAwaiting() {
+        var r = StatusLineReducer(); r.restoreAwaiting(tool: "calendar_create")
+        XCTAssertEqual(r.target?.title, "等你确认日程")
+        r.apply(.approvalResolved(interruptID: "i", callID: "c1", decision: "approved", remember: false))
+        XCTAssertEqual(r.target?.kind, .working)
+        var a = StatusLineReducer(); a.restoreAccepted()
+        XCTAssertEqual(a.target, .accepted(occurrence: 0))
+    }
+    /// P1-2: static states are visible immediately, even inside the 0.6 s appear gate.
+    func testStaticStatesBypassAppearGate() {
+        let t0 = Date()
+        for phase in [StatusLinePhase.awaitingUser(tool: nil), .failed(reason: "x"), .stopped] {
+            var th = StatusLineThrottle(turnStart: t0)
+            _ = th.submit(.sending, at: t0)
+            _ = th.submit(phase, at: t0.addingTimeInterval(0.2))
+            XCTAssertEqual(th.displayed(at: t0.addingTimeInterval(0.2)), phase)
+        }
+        var th = StatusLineThrottle(turnStart: t0); _ = th.submit(.sending, at: t0)
+        XCTAssertNil(th.displayed(at: t0.addingTimeInterval(0.2)))
+    }
+    /// P1-3: attention (incl. stopped) always goes out; throttled working states get a replay delay.
+    func testAnnouncementReplayAndStoppedPriority() {
+        let t0 = Date(); var a = StatusLineAnnouncementThrottle()
+        XCTAssertNil(a.request(attention: false, at: t0))
+        XCTAssertEqual(a.request(attention: false, at: t0.addingTimeInterval(0.5)) ?? 0, 1.5, accuracy: 0.001)
+        XCTAssertNil(a.request(attention: StatusLinePhase.stopped.kind != .working, at: t0.addingTimeInterval(0.6)))
+        XCTAssertNotNil(a.request(attention: false, at: t0.addingTimeInterval(1.0)))
+    }
+    /// B2: ToolStepCopy covers every server-gated chat tool (device, memory, task, render_ui). Reads the edge sources in
+    /// this repo; skipped where the checkout is not reachable (on-device runs).
+    func testCopyCoversServerGatedTools() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        let shared = root.appendingPathComponent("services/edge/supabase/functions/_shared")
+        func names(_ rel: String, _ pattern: String) throws -> Set<String> {
+            let text = try String(contentsOf: shared.appendingPathComponent(rel), encoding: .utf8)
+            let re = try NSRegularExpression(pattern: pattern)
+            return Set(re.matches(in: text, range: NSRange(text.startIndex..., in: text)).compactMap { Range($0.range(at: 1), in: text).map { String(text[$0]) } })
+        }
+        guard FileManager.default.fileExists(atPath: shared.path) else { throw XCTSkip("edge sources not reachable from the test host") }
+        var tools = try names("core/src/device-call.mjs", #"fn\('([a-z_0-9]+)'"#)
+        tools.formUnion(try names("agent-memory/contract.mjs", #"fn\('([a-z_0-9]+)'"#))
+        tools.formUnion(try names("proactive/contract.mjs", #"name:\s*'([a-z_0-9]+)'"#))
+        tools.formUnion(try names("core/src/generative-ui.mjs", #"RENDER_UI\s*=\s*'([a-z_0-9]+)'"#))
+        XCTAssertTrue(tools.isSuperset(of: ["calendar_list", "memory_search", "memory_save", "memory_update", "memory_forget", "create_task", "render_ui"]), "\(tools.sorted())")
+        for t in tools { XCTAssertNotNil(ToolStepCopy.table[t], "ToolStepCopy missing server-gated tool \(t)") }
     }
 }
