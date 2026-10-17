@@ -94,6 +94,7 @@ struct DeviceCreationReceipt: Codable, Equatable {
         return r
     }
     func signOut(account: String?) { guard let account else { return }; all = all.filter { $0.value.account != account }; save() }
+    func forget(callID: String, account: String) { if all[callID]?.account == account { all[callID] = nil; save() } }
     private func save() { if let data = try? JSONEncoder().encode(all) { try? data.write(to: url, options: .atomic) } }
 }
 
@@ -325,11 +326,18 @@ enum DeviceEventKitRule {
     private(set) static var decisions: [String] = []
     static func log(_ s: String) { decisions.append(s); DeviceDecisionLog.write(s) }
 
-    /// Sign-out: the account's local ledger is cleared (memory + disk).
+    /// p89i: no silent clearing on logout — the account's entries are offered through `AccountParkedItems`
+    /// (`DeviceLedgerParkedSource`): keep (hidden until that account returns) or forget, per item, logged.
+    func entries(account: String) -> [DeviceLedgerEntry] { entries.filter { $0.account == account && !$0.undone } }
+    func forget(callID: String, account: String) {
+        entries.removeAll { $0.id == callID && $0.account == account }; save()
+        DeviceCreationReceipts.shared.forget(callID: callID, account: account)
+    }
+    /// Explicit full purge (account deletion); not called on logout.
     func signOut(account: String?) {
         guard let account else { return }
         entries.removeAll { $0.account == account }; save()
-        DeviceCreationReceipts.shared.signOut(account: account)   // p89i-1: that account's creation receipts go too
+        DeviceCreationReceipts.shared.signOut(account: account)
     }
 
     private func save() { if let data = try? JSONEncoder().encode(entries) { try? data.write(to: url, options: .atomic) } }
@@ -412,5 +420,42 @@ enum DeviceEventKitRule {
                 Button(ui("去设置")) { DeviceLedger.log("undo \(callID): user → settings"); if let u = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(u) } }
                 Button(ui("先不处理"), role: .cancel) { DeviceLedger.log("undo \(callID): user left it") }
             } message: { Text(ui("权限已关闭，Catpaw 不会删除任何内容。开启后可再次撤销。")) }
+    }
+}
+
+/// p89i: THE confirmation UI for parked items of a leaving account (all sources: #89 device calls / ledger, #90, #91).
+/// System sheet style, Chinese copy, no accent-coloured text. Default per item = 保留; dismiss = keep all.
+@MainActor struct AccountParkedDecisionSheet: View {
+    let items: [AccountParkedItem]
+    let done: ([String: AccountParkedDecision]) -> Void
+    @State private var choice: [String: AccountParkedDecision] = [:]
+    @Environment(\.locale) private var locale
+    private func ui(_ k: String) -> String { AppLanguage(locale: locale).ui(k) }
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    ForEach(items) { item in
+                        Picker(selection: Binding(get: { choice[item.id] ?? .keep }, set: { choice[item.id] = $0 })) {
+                            Text(ui("保留")).tag(AccountParkedDecision.keep)
+                            Text(ui("取消")).tag(AccountParkedDecision.cancel)
+                        } label: {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(item.title).font(CatpawTypography.Role.body.font)
+                                if !item.detail.isEmpty { Text(item.detail).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary) }
+                            }
+                        }
+                        .accessibilityIdentifier("parked." + item.id)
+                    }
+                } footer: { Text(ui("已退出登录，这些操作不会再以该账号执行。保留：下次用同一账号登录时再处理；取消：现在放弃。")) }
+            }
+            .navigationTitle(ui("还有未完成的事项")).navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button(ui("全部保留")) { done([:]) } }
+                ToolbarItem(placement: .confirmationAction) { Button(ui("完成")) { done(choice) } }
+                ToolbarItem(placement: .bottomBar) { Button(ui("全部取消"), role: .destructive) { done(Dictionary(uniqueKeysWithValues: items.map { ($0.id, .cancel) })) } }
+            }
+        }
+        .interactiveDismissDisabled(false)
     }
 }

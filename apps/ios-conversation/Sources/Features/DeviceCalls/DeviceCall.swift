@@ -191,6 +191,8 @@ extension DeviceResultSubmitting { func reportUndo(callID: String, outcome: Devi
             .map { DeviceInFlight.Item(id: $0, tool: records[$0]?.call?.tool ?? "", kind: .pendingUndoReport, title: records[$0]?.call?.args["title"]?.text ?? "") }
         return (running + undos).sorted { $0.id < $1.id }
     }
+    /// Parked-item cancel for a call interrupted by logout: it will never be restored.
+    func expireRunning(_ id: String) { if records[id]?.phase == .running { phases[id] = .expired; interrupted.remove(id); persist(id, .expired, call: nil) } }
     /// "取消/撤销": the pending undo report is dropped for this account (cancelled locally, logged by the caller).
     func dropUndoReport(_ id: String) { undoQueue.acknowledge(id); undoAccounts[id] = nil; saveUndoQueue() }
     func reset() { phases = [:]; edited = [:]; seen = [:]; records = [:]; interrupted = []; defaults.removeObject(forKey: Self.storageKey); undoQueue = .init(); defaults.removeObject(forKey: Self.undoKey) }
@@ -517,18 +519,17 @@ extension DeviceCall {
 }
 
 
-/// p89i product decision: logout / account switch with device operations in flight asks the user first.
-/// - `.cancelAll`: every listed operation loses its execution right NOW (grant + credential revoked → the commit gate refuses
-///   any pending EventKit save / sheet / URL open), pending undo reports are dropped. Then logout.
-/// - `.keep`: logout waits (bounded) for the running operations to finish under the OLD account and for pending undo reports
-///   to be delivered; anything still running at the deadline is cancelled and that is logged too. Then logout.
-/// Either way the choice and its per-item effect are logged; nothing is cancelled or continued silently.
+/// p89i: device-call items for `AccountParkedItems` (generic park + per-item decision; see AccountEpoch.swift).
+/// Runs AFTER the epoch bump, so nothing here can execute under the leaving account.
+/// - running (EventKit write / compose sheet / URL open interrupted by logout): keep → stays `.running` for that account
+///   (on its next sign-in, restore is lookup-only, never a re-execution); cancel → grant revoked, card expired.
+/// - undo report not yet delivered: keep → stays queued for that account; cancel → dropped.
 @MainActor enum DeviceInFlight {
     struct Item: Equatable, Identifiable, Sendable {
         enum Kind: String, Sendable { case running, pendingUndoReport }
         let id: String; let tool: String; let kind: Kind; let title: String
     }
-    enum Choice: String, Sendable { case cancelAll, keep }
+    static func items(store: DeviceCallStore = .shared, account: String?) -> [Item] { store.inFlight(account: account) }
     static func label(_ i: Item) -> String {
         let what: String
         switch i.tool {
@@ -541,31 +542,38 @@ extension DeviceCall {
         let t = i.title.isEmpty ? what : "\(what)「\(i.title)」"
         return i.kind == .pendingUndoReport ? "撤销结果待同步：\(t)" : "进行中：\(t)"
     }
-    static func items(store: DeviceCallStore = .shared, account: String?) -> [Item] { store.inFlight(account: account) }
-    /// Applies the user's choice deterministically. Returns the log lines (also written to `DeviceDecisionLog`).
-    @discardableResult static func apply(_ choice: Choice, items: [Item], store: DeviceCallStore = .shared, deadline: TimeInterval = 15) async -> [String] {
-        var log = ["logout choice=\(choice.rawValue) items=\(items.count)"]
-        switch choice {
-        case .cancelAll:
-            for i in items {
-                switch i.kind {
-                case .running: DeviceCallGate.revoke([i.id]); log.append("cancel running \(i.id) \(i.tool)")
-                case .pendingUndoReport: store.dropUndoReport(i.id); log.append("drop undo-report \(i.id)")
-                }
-            }
-        case .keep:
-            if items.contains(where: { $0.kind == .pendingUndoReport }) { await store.retryPendingReports() }
-            let end = Date().addingTimeInterval(deadline)
-            while Date() < end, items.contains(where: { $0.kind == .running && store.phase($0.id) == .running }) {
-                try? await Task.sleep(nanoseconds: 100_000_000)
-            }
-            for i in items {
-                if i.kind == .running, store.phase(i.id) == .running { DeviceCallGate.revoke([i.id]); log.append("keep \(i.id): still running at deadline → cancelled") }
-                else { log.append("keep \(i.id): finished/left as is") }
-            }
+}
+@MainActor final class DeviceCallParkedSource: AccountParkedItemSource {
+    static let key = "device-calls"
+    private let store: DeviceCallStore
+    init(store: DeviceCallStore = .shared) { self.store = store }
+    func parkedItems(account: String) -> [AccountParkedItem] {
+        store.inFlight(account: account).map { AccountParkedItem(source: Self.key, key: $0.kind.rawValue + ":" + $0.id, title: DeviceInFlight.label($0), detail: $0.tool) }
+    }
+    func apply(_ decision: AccountParkedDecision, to item: AccountParkedItem, account: String) async -> String {
+        let parts = item.key.split(separator: ":", maxSplits: 1).map(String.init)
+        guard parts.count == 2 else { return "malformed" }
+        let (kind, id) = (parts[0], parts[1])
+        switch (decision, kind) {
+        case (.keep, "running"): return "left parked; lookup-only restore on this account's next sign-in"
+        case (.keep, _): return "undo report kept queued for this account"
+        case (.cancel, "running"): DeviceCallGate.revoke([id]); store.expireRunning(id); return "revoked + card expired"
+        case (.cancel, _): store.dropUndoReport(id); return "undo report dropped"
         }
-        log.forEach(DeviceDecisionLog.write)
-        return log
+    }
+}
+@MainActor final class DeviceLedgerParkedSource: AccountParkedItemSource {
+    static let key = "device-ledger"
+    private let ledger: DeviceLedger
+    init(ledger: DeviceLedger = .shared) { self.ledger = ledger }
+    func parkedItems(account: String) -> [AccountParkedItem] {
+        ledger.entries(account: account).map { AccountParkedItem(source: Self.key, key: $0.id, title: ($0.kind == .reminder ? "本机提醒「" : "本机日程「") + $0.title + "」", detail: "可撤销记录") }
+    }
+    func apply(_ decision: AccountParkedDecision, to item: AccountParkedItem, account: String) async -> String {
+        switch decision {
+        case .keep: return "kept for this account (hidden until it signs in again)"
+        case .cancel: ledger.forget(callID: item.key, account: account); return "removed from Catpaw's list; the system item is left untouched (no authority after logout)"
+        }
     }
 }
 
