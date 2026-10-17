@@ -57,6 +57,28 @@ actor QueueBusyBackend:ConversationBackend {
     }
     func observe(_ r:ConversationTurnRequest) async throws -> ConversationObservation {throw CatpawError.missing}
 }
+/// 409 model_history_conflict (fix/context-window-v11x): the first `failures` replies fail with it, then replies complete.
+actor QueueConflictBackend:ConversationBackend {
+    var replies=0, restarts=0
+    let failures:Int
+    init(failures:Int){self.failures=failures}
+    func connection(scope:DataScope) async -> ConversationConnection {.init(state:.providerUnverified,provider:"Synthetic conflict",detail:"No external network")}
+    func reply(_ r:ConversationTurnRequest) async throws -> AsyncThrowingStream<ConversationTurnEvent,Error> {
+        replies+=1
+        let fail=replies<=failures,message=stableID("queue-conflict-reply-\(r.operationID)"),body="Synthetic after conflict"
+        return AsyncThrowingStream {c in
+            c.yield(.init(operationID:r.operationID,epoch:r.epoch,sequence:1,payload:.started(requestHash:textHash(r.operationID.uuidString),conversationRevision:1,grantEpoch:1)))
+            if fail { c.yield(.init(operationID:r.operationID,epoch:r.epoch,sequence:2,payload:.failed(message:"model_history_conflict",reconciliationRequired:false))) }
+            else {
+                c.yield(.init(operationID:r.operationID,epoch:r.epoch,sequence:2,payload:.textDelta(messageID:message,text:body)))
+                c.yield(.init(operationID:r.operationID,epoch:r.epoch,sequence:3,payload:.completed(messageID:message,finalTextHash:textHash(body))))
+            }
+            c.finish()
+        }
+    }
+    func retryBusyTurn(_ r:ConversationTurnRequest,afterSequence:Int) async throws -> AsyncThrowingStream<ConversationTurnEvent,Error> { restarts+=1;throw CatpawError.unavailable("409 turn_not_restartable") }
+    func observe(_ r:ConversationTurnRequest) async throws -> ConversationObservation {throw CatpawError.missing}
+}
 actor QueueEditBackend:ConversationBackend {
     var admitting=false
     var finishes=true
@@ -256,6 +278,27 @@ actor QueueEditBackend:ConversationBackend {
         let ticked=await cs.foregroundTick(scope:Profiles.user,conversationID:cc)
         let cancelRestarts=await cb.restarts
         try check(cancelled?.automatic==false && cancelRestarts==0 && !ticked,"user cancel stops automatic retries")
+        // 409 model_history_conflict: retryable on the busy-retry schedule (5 s first), as a resend of the same text
+        // (the server refuses an in-place restart for this code), superseding the failed turn locally.
+        let hb=QueueConflictBackend(failures:1),hs=ConversationSessionService(repository:repo,backend:hb),hc=try await hs.create(scope:Profiles.user)
+        let conflictOp=UUID()
+        _=try? await hs.send(scope:Profiles.user,conversationID:hc,text:"接着上面说",operationID:conflictOp)
+        let conflictStatus=await hs.busyRetryStatus(conversationID:hc)
+        try check(conflictStatus?.automatic==true && conflictStatus?.attempt==1 && (4...5).contains(conflictStatus?.secondsRemaining ?? 0),"model_history_conflict schedules automatic retry 1/3 after 5 s")
+        let resent=try await hs.retryBusy(scope:Profiles.user,conversationID:hc,automatic:true)
+        let conflictSession=try await hs.read(scope:Profiles.user,conversationID:hc)
+        let conflictRestarts=await hb.restarts
+        try check(resent != nil && resent != conflictOp && conflictRestarts==0,"the retry is a resend (new turn id), never POST …/retry-busy")
+        try check(conflictSession.turns.first(where:{$0.id==conflictOp})?.state == .cancelledBeforeSend && conflictSession.turns.last?.state == .completed,"the failed turn is superseded and the resend completes")
+        try check(conflictSession.messages.filter{$0.role == .user && $0.content == "接着上面说"}.count==1,"the resent text is shown once")
+        let cleared409=await hs.busyRetryStatus(conversationID:hc)
+        try check(cleared409==nil,"no busy entry after the resend completes")
+        let eb=QueueConflictBackend(failures:10),es=ConversationSessionService(repository:repo,backend:eb),ec=try await es.create(scope:Profiles.user)
+        _=try? await es.send(scope:Profiles.user,conversationID:ec,text:"一直冲突",operationID:UUID())
+        for _ in 0..<3 { _=try? await es.retryBusy(scope:Profiles.user,conversationID:ec,automatic:true) }
+        let exhausted409=await es.busyRetryStatus(conversationID:ec)
+        let exhaustedReplies=await eb.replies
+        try check(exhaustedReplies==4 && exhausted409?.automatic==false,"at most 3 automatic resends across the chain, then manual 重试")
         // Image-upload rate-limit fix: a terminal (admitted, server-failed) turn never pauses the queue.
         let tc=try await service.create(scope:Profiles.user)
         let tq=ConversationFollowupQueueService(repository:repo,scope:Profiles.user,conversationID:tc)

@@ -247,3 +247,64 @@ final class ConversationRateLimitRecoveryTests: XCTestCase {
         XCTAssertEqual(ConversationCaptionPolicy.strippingRecovered(draft: "x", caption: nil), "x")
     }
 }
+
+/// fix/context-window-v11x client side: 413 conversation_too_long, 409 model_history_conflict, GET without model_messages.
+final class ConversationLengthLimitTests: XCTestCase {
+    func testTooLongBodyMapsToTheNewCopy() {
+        let body = Data(#"{"schema_version":1,"error":{"code":"conversation_too_long","retryable":false}}"#.utf8)
+        XCTAssertEqual(ConversationLengthLimit.code(status: 413, body: body), "conversation_too_long")
+        XCTAssertEqual(ConversationLengthLimit.code(status: 413, body: Data(#"{"code":"conversation_too_long"}"#.utf8)), "conversation_too_long")
+        XCTAssertEqual(ConversationLengthLimit.code(status: 422, body: Data(#"{"error":{"code":"history_limit_reached"}}"#.utf8)), "history_limit_reached", "older servers")
+        XCTAssertNil(ConversationLengthLimit.code(status: 413, body: Data(#"{"error":{"code":"payload_too_large"}}"#.utf8)))
+        XCTAssertNil(ConversationLengthLimit.code(status: 500, body: body))
+        XCTAssertNil(ConversationLengthLimit.code(status: 413, body: Data("<html>".utf8)))
+    }
+    func testNotSentDescriptionIsTheLengthCopyNotServiceError() {
+        let text = ConversationDispatchFailure.notSent(reason: "conversation_too_long").localizedDescription
+        XCTAssertEqual(text, "这个对话已经很长了，请新开一个对话继续")
+        XCTAssertFalse(text.contains("服务"))
+        XCTAssertTrue(ConversationDispatchFailure.notSent(reason: "model_daily_limit").localizedDescription.hasPrefix("消息尚未发送"))
+    }
+    func testOnlyANotSentLengthTurnShowsTheInlineAction() {
+        let id = UUID()
+        var turn = ConversationTurnRecord(id: id, request: ConversationTurnRequest(scope: Profiles.user, conversationID: UUID(), threadID: nil, operationID: id, epoch: 1, history: []), state: .notSent, lastSequence: 0, error: ConversationDispatchFailure.notSent(reason: "conversation_too_long").localizedDescription)
+        XCTAssertTrue(ConversationLengthLimit.isTooLong(turn))
+        turn.error = "消息尚未发送，输入已保留。history_limit_reached"
+        XCTAssertTrue(ConversationLengthLimit.isTooLong(turn), "a journal written before this change")
+        turn.state = .failed
+        XCTAssertFalse(ConversationLengthLimit.isTooLong(turn))
+        turn.state = .notSent; turn.error = "消息尚未发送，输入已保留。等待网络"
+        XCTAssertFalse(ConversationLengthLimit.isTooLong(turn))
+    }
+    func testDraftIsCarriedIntoTheNewConversation() {
+        XCTAssertEqual(ConversationLengthLimit.carriedDraft(current: "", refused: "帮我总结一下"), "帮我总结一下")
+        XCTAssertEqual(ConversationLengthLimit.carriedDraft(current: "帮我总结一下", refused: "帮我总结一下"), "帮我总结一下", "markNotSent already restored it: no duplicate")
+        XCTAssertEqual(ConversationLengthLimit.carriedDraft(current: "帮我总结一下，简短点", refused: "帮我总结一下"), "帮我总结一下，简短点")
+        XCTAssertEqual(ConversationLengthLimit.carriedDraft(current: "另一件事", refused: "帮我总结一下"), "帮我总结一下\n另一件事", "nothing typed is lost")
+        XCTAssertEqual(ConversationLengthLimit.carriedDraft(current: "另一件事", refused: ""), "另一件事")
+    }
+    func testHistoryConflictUsesTheBusyRetrySchedule() {
+        XCTAssertEqual(ConversationBusyRetryPolicy.delay(attempt: 1, retryAfterSeconds: nil), 5)
+        XCTAssertEqual(ConversationBusyRetryPolicy.delay(attempt: 2, retryAfterSeconds: nil), 15)
+        XCTAssertEqual(ConversationBusyRetryPolicy.delay(attempt: 3, retryAfterSeconds: nil), 30)
+        XCTAssertNil(ConversationBusyRetryPolicy.delay(attempt: 4, retryAfterSeconds: nil))
+        XCTAssertEqual(ConversationSessionService.modelHistoryConflictCode, "model_history_conflict")
+    }
+    /// GET …/conversations/{id} at fix/context-window-v11x no longer carries model_messages / model_message_meta. No client
+    /// code reads them (serverTranscript :190-209 and readConversation :711-722 read id / scope_id / state / policy /
+    /// messages / revision / grant_epoch only), so a payload without them parses and maps.
+    func testConversationWithoutModelMessagesDecodes() throws {
+        let cid = UUID(), scope = UUID(), mid = UUID()
+        let json = """
+        {"schema_version":1,"conversation":{"id":"\(cid.uuidString.lowercased())","scope_id":"\(scope.uuidString.lowercased())","state":"active",
+        "policy":"conversation-local-output-v1","revision":7,"grant_epoch":2,"messages":[{"id":"\(mid.uuidString.lowercased())","role":"user","content":"你好"}]}}
+        """
+        let wrapper = try ConversationStrictJSON.object(Data(json.utf8))
+        let conversation = try XCTUnwrap(wrapper["conversation"] as? [String: Any])
+        XCTAssertNil(conversation["model_messages"]); XCTAssertNil(conversation["model_message_meta"])
+        XCTAssertEqual(conversation["revision"] as? Int, 7); XCTAssertEqual(conversation["grant_epoch"] as? Int, 2)
+        let messages = try XCTUnwrap(conversation["messages"] as? [[String: Any]])
+        XCTAssertEqual(messages.first?["content"] as? String, "你好")
+    }
+}
+

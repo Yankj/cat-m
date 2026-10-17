@@ -6742,5 +6742,13 @@
   "发送失败": {
     "en": "Not sent",
     "zh-Hans": "发送失败"
+  },
+  "这个对话已经很长了，请新开一个对话继续": {
+    "en": "This conversation is getting long. Start a new one to continue.",
+    "zh-Hans": "这个对话已经很长了，请新开一个对话继续"
+  },
+  "新开对话": {
+    "en": "New conversation",
+    "zh-Hans": "新开对话"
   }
 }

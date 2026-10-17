@@ -18,7 +18,12 @@ public actor ConversationSessionService {
     /// The authenticated user id this service belongs to. A token captured for any other account is never attached.
     private let principalAccount: String?
     private let outbox: ConversationOutbox?
-    private struct BusyRetry: Sendable { var due: Date; var operationID: UUID; var autoRetried: Bool }
+    /// `resend`: the server can't restart this failure in place (`model_history_conflict`, refused by POST …/retry-busy
+    /// with 409 turn_not_restartable), so the retry sends the same text as a new turn that supersedes the failed one.
+    private struct BusyRetry: Sendable { var due: Date; var operationID: UUID; var autoRetried: Bool; var resend: Bool = false }
+    /// Resent turn → the turn that first failed, so the 3-try budget spans the whole resend chain.
+    private var resendRoots: [UUID: UUID] = [:]
+    private func retryRoot(_ id: UUID) -> UUID { resendRoots[id] ?? id }
     private var busyRetry: [UUID: BusyRetry] = [:]
     /// Automatic busy retries already spent per turn (server restarts the SAME turn in place, limit 3).
     private var autoRetryCounts: [UUID: Int] = [:]
@@ -361,6 +366,20 @@ public actor ConversationSessionService {
         }
         await resilience?.settled()
         let saved = try await read(scope: scope, conversationID: conversationID)
+        if let last = saved.turns.last, last.id == operationID, last.state == .failed, last.error == Self.modelHistoryConflictCode {
+            // 409 model_history_conflict (fix/context-window-v11x): nothing was written to model history; retryable on the
+            // same 5 / 15 / 30 s schedule, as a resend of the same text (see BusyRetry.resend).
+            let root = retryRoot(operationID), spent = autoRetryCounts[root] ?? 0
+            let delay = Self.isPlain(request) && !busyRetryCancelled.contains(root) ? ConversationBusyRetryPolicy.delay(attempt: spent + 1, retryAfterSeconds: nil) : nil
+            sendDiagnostic("catpaw.send history conflict retry op=\(operationID.uuidString.prefix(8)) attempt=\(spent + 1)/\(Self.maxAutomaticBusyRetries) exhausted=\(delay == nil)")
+            if let delay {
+                busyRetry[conversationID] = BusyRetry(due: Date().addingTimeInterval(delay), operationID: operationID, autoRetried: false, resend: true)
+                await resilience?.busy(retryIn: ConversationBusyRetryPolicy.displaySeconds(delay))
+            } else {
+                busyRetry[conversationID] = Self.isPlain(request) ? BusyRetry(due: Date(), operationID: operationID, autoRetried: true, resend: true) : nil
+                await resilience?.clearBusy()
+            }
+        }
         if let last = saved.turns.last, last.id == operationID, last.state == .failed, last.error == Self.rateLimitedCode {
             // Busy: the card counts down to the real due time, then foregroundTick retries the SAME turn in place.
             // Only plain turns can be restarted in place; an image turn (bytes are not kept by the server) and an
@@ -597,6 +616,16 @@ public actor ConversationSessionService {
         try? await outbox?.remove(operationID)
         return true
     }
+    /// Before a resend of a `model_history_conflict` turn: the failed turn leaves the local transcript (its user row and any
+    /// partial reply), so the resent message is the only copy shown.
+    private func supersedeForResend(scope: DataScope, conversationID: UUID, operationID: UUID) async throws {
+        var (saved, revision) = try await readVersioned(scope: scope, conversationID: conversationID)
+        guard let i = saved.turns.firstIndex(where: { $0.id == operationID }), saved.turns[i].state == .failed else { return }
+        let reply = saved.turns[i].assistantMessageID
+        saved.turns[i].state = .cancelledBeforeSend
+        saved.messages.removeAll { $0.id == stableID("conversation-user-\(operationID)") || (reply != nil && $0.id == reply) }
+        try await save(saved, expectedRevision: revision)
+    }
     /// The queue commits this cancellation together with the replacement intent.
     /// A changed payload gets a new operation ID; an admitted/unknown request is immutable.
     public func cancellationForQueueEdit(scope:DataScope,conversationID:UUID,operationID:UUID) async throws -> Mutation? {
@@ -676,6 +705,7 @@ public actor ConversationSessionService {
         if !observation.goals.isEmpty { var (current, revision) = try await readVersioned(scope: scope, conversationID: conversationID); for goal in observation.goals { try Self.merge(goal, into: &current) }; try await save(current, expectedRevision: revision, fence: turn.request, observationToken: observationToken) }
     }
     static let rateLimitedCode = "rate_limited"
+    static let modelHistoryConflictCode = "model_history_conflict"
     static let unknownTurnGiveUpSeconds: TimeInterval = 60
     static let unknownTurnGaveUp = "这条消息没能确认送达，已停止等待。可以重新发送。"
     private var observeFailures: [UUID: Date] = [:]
@@ -695,14 +725,14 @@ public actor ConversationSessionService {
     /// error with the manual "现在重试" entry (retryBusy automatic:false).
     public func busyRetryStatus(conversationID: UUID) -> ConversationBusyRetryStatus? {
         guard let entry = busyRetry[conversationID] else { return nil }
-        let spent = autoRetryCounts[entry.operationID] ?? 0
+        let spent = autoRetryCounts[retryRoot(entry.operationID)] ?? 0
         return ConversationBusyRetryStatus(attempt: min(spent + 1, Self.maxAutomaticBusyRetries), maxAttempts: Self.maxAutomaticBusyRetries,
                                            secondsRemaining: max(0, Int(entry.due.timeIntervalSinceNow.rounded(.up))), automatic: !entry.autoRetried)
     }
     /// User cancel: stop automatic retries for the pending busy turn (manual retry stays available).
     public func cancelBusyRetry(conversationID: UUID) {
         guard var entry = busyRetry[conversationID] else { return }
-        busyRetryCancelled.insert(entry.operationID); entry.autoRetried = true; busyRetry[conversationID] = entry
+        busyRetryCancelled.insert(entry.operationID); busyRetryCancelled.insert(retryRoot(entry.operationID)); entry.autoRetried = true; busyRetry[conversationID] = entry
         sendDiagnostic("catpaw.send busy retry cancelled op=\(entry.operationID.uuidString.prefix(8))")
     }
     /// "现在重试" / "换一个免费模型": only for a turn the server reported as `failed{rate_limited}`
@@ -715,6 +745,17 @@ public actor ConversationSessionService {
         guard active[conversationID] == nil else { throw ConversationSessionError.busy }
         busyRetry[conversationID] = nil
         let saved = try await read(scope: scope, conversationID: conversationID)
+        if entry.resend {
+            guard let original = saved.turns.first(where: { $0.id == entry.operationID }), saved.turns.last?.id == original.id,
+                  original.state == .failed, original.error == Self.modelHistoryConflictCode, Self.isPlain(original.request),
+                  let text = original.request.history.last?.content, !text.isEmpty else { await resilience?.clearBusy(); return nil }
+            let root = retryRoot(original.id)
+            if automatic { autoRetryCounts[root, default: 0] += 1 } else { busyRetryCancelled.remove(root) }
+            await resilience?.clearBusy()
+            try await supersedeForResend(scope: scope, conversationID: conversationID, operationID: original.id)
+            let next = UUID(); resendRoots[next] = root
+            return try await send(scope: scope, conversationID: conversationID, text: text, operationID: next, preserveDraft: true)
+        }
         // Same operationID, same user message: no new transcript row; the server restarts the failed turn.
         guard let original = saved.turns.first(where: { $0.id == entry.operationID }), saved.turns.last?.id == original.id,
               original.state == .failed, original.error == Self.rateLimitedCode,

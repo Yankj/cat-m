@@ -358,7 +358,7 @@ enum StatusLinePhase: Equatable, Sendable {
     /// Plain, generic failure reasons only — never server messages, arguments or reasoning.
     static func failureReason(_ code: String) -> String {
         switch code {
-        case "rate_limited", "chat_runtime_busy", "model_daily_limit", "daily_limit", "quota_exceeded", "model_quota_exceeded": return "模型繁忙"
+        case "rate_limited", "chat_runtime_busy", "model_daily_limit", "daily_limit", "quota_exceeded", "model_quota_exceeded", "model_history_conflict": return "模型繁忙"
         case "timeout", "pending_timeout", "provider_timeout": return timeoutReason
         default: return AnswerFailureCopy.friendly(code)
         }
