@@ -642,6 +642,19 @@ func pr90i_rules() {
     check(ProactiveParking.Lot(lot.raw).slots["user-a"]?.count == 2, "round-trips through the plist form")
 }
 
+// p90i (#91 S1): the server already applied the learned weights — a cloud decision is never gated a second time on
+// the device; locally produced suggestions still go through the gate (downgrade-only).
+func pr90i_feedbackGateOnlyLocal() {
+    var calls = 0
+    let down: (String, Double, String) -> String = { _, _, _ in calls += 1; return "card" }
+    check(ProactiveRules.gatedLevel(.notify, fromServer: true, confidence: 0.7, gate: down) == .notify && calls == 0, "server decision not downgraded twice (gate not even asked)")
+    check(ProactiveRules.gatedLevel(.notify, fromServer: false, confidence: 0.7, gate: down) == .card && calls == 1, "local suggestion still gated")
+    check(ProactiveRules.gatedLevel(.notify, fromServer: false, confidence: 0.7, gate: { _, _, _ in "interrupt" }) == .notify, "local gate never raises")
+    calls = 0
+    check(ProactiveRules.prescheduleDecision(cloud: .notify, leadMinutes: 10, gate: down) == .notify && calls == 0, "preschedule: cloud level not re-gated")
+    check(ProactiveRules.prescheduleDecision(cloud: nil, leadMinutes: 10, gate: down) == nil && calls == 1, "preschedule: local level gated")
+}
+
 @main enum ProactivePR90Runner {
     static func main() async {
         pr90_3_prescheduleSharesDecisionAndQuota()
@@ -662,7 +675,7 @@ func pr90i_rules() {
         pr90h_cloudIdentity()
         pr90f_quarantine(); pr90f_quarantineQueue(); await pr90f_purgeDeadLetters(); await pr90f_snoozeAwaitsAdd(); pr90f_clock(); pr90f_wire(); pr90f_golden()
         pr90g_quarantinePerRecord(); pr90g_restoreVisible(); pr90g_roundTrip()
-        pr90i_rules()
+        pr90i_rules(); pr90i_feedbackGateOnlyLocal()
         print(failures == 0 ? "PR90 proactive: all passed" : "PR90 proactive: \(failures) failed"); exit(failures == 0 ? 0 : 1)
     }
 }
