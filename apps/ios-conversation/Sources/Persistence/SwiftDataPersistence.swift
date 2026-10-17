@@ -52,21 +52,66 @@ private func waitForPersistence<Value: Sendable>(_ body: @escaping @Sendable () 
     finished.wait()
     return try result.get()
 }
-final class SwiftDataPersistence: SnapshotPersistence {
-    private let store: SnapshotModelActor
-    init(url: URL) throws {
-        store = try waitForPersistence {
+/// Canonical key for one on-disk store, so `/private/var/...` and `/var/...` spellings share an entry.
+func canonicalStorePath(_ url: URL) -> String { url.standardizedFileURL.resolvingSymlinksInPath().path }
+/// Crash fix (CatpawM 0.3.0 (41), 2026-10-17 20:36, `_PFFaultHandlerLookupRow` under `saveOnQueue`):
+/// every `SwiftDataPersistence(url:)` used to build its own `ModelContainer`. Two containers on one SQLite file have
+/// two coordinators that never see each other's deletes, and each save rewrites the full snapshot (deleting rows the
+/// other writer just added), so a setter on a row the other coordinator deleted throws `NSObjectInaccessibleException`.
+/// One process-wide `SnapshotModelActor` per file makes every save and load for that file run serially on one context.
+/// Entries are weak: the container closes when the last persistence for the file is released.
+private final class SnapshotStoreRegistry: @unchecked Sendable {
+    static let shared = SnapshotStoreRegistry()
+    private final class Entry { weak var store: SnapshotModelActor?; init(_ store: SnapshotModelActor) { self.store = store } }
+    private let lock = NSLock()
+    private var entries: [String: Entry] = [:]
+    func store(for url: URL) throws -> SnapshotModelActor {
+        let key = canonicalStorePath(url)
+        lock.lock(); defer { lock.unlock() }
+        if let live = entries[key]?.store { return live }
+        entries = entries.filter { $0.value.store != nil }
+        // Opening inside the lock is intentional: two callers racing on one file must not both build a container.
+        // The opener runs on a detached task that never takes this lock, so it cannot deadlock.
+        let opened = try waitForPersistence {
             try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
             let schema = Schema(CatpawSchemaV1.models)
             let config = ModelConfiguration("CatpawLocal", schema: schema, url: url, cloudKitDatabase: .none)
             let container = try ModelContainer(for: schema, migrationPlan: CatpawMigration.self, configurations: [config])
             return SnapshotModelActor(modelContainer: container)
         }
+        entries[key] = Entry(opened)
+        return opened
+    }
+}
+/// Account stores are opened from several lifecycle paths (local receipt, provisional sign-in, workspace admit, offline
+/// trial) that can overlap. Each `Repository` keeps a full in-memory snapshot and saves it whole, so two repositories
+/// on one file silently drop each other's commits. All openers of the same file share one live `Repository`.
+final class SharedRepositoryRegistry: @unchecked Sendable {
+    static let shared = SharedRepositoryRegistry()
+    private final class Entry { weak var repository: Repository?; init(_ repository: Repository) { self.repository = repository } }
+    private let lock = NSLock()
+    private var entries: [String: Entry] = [:]
+    func repository(at storeURL: URL, open: () throws -> Repository) throws -> Repository {
+        let key = canonicalStorePath(storeURL)
+        lock.lock(); defer { lock.unlock() }
+        if let live = entries[key]?.repository { return live }
+        entries = entries.filter { $0.value.repository != nil }
+        let opened = try open()
+        entries[key] = Entry(opened)
+        return opened
+    }
+}
+final class SwiftDataPersistence: SnapshotPersistence {
+    private let store: SnapshotModelActor
+    init(url: URL) throws {
+        store = try SnapshotStoreRegistry.shared.store(for: url)
     }
     func load() throws -> StoreSnapshot { try waitForPersistence { [store] in try await store.load() } }
     func save(_ snapshot: StoreSnapshot) throws { try waitForPersistence { [store] in try await store.save(snapshot) } }
     #if DEBUG
     func failNextSaveForTesting() { try? waitForPersistence { [store] in await store.failNextSaveForTesting() } }
+    /// Identity of the shared store actor, for the one-container-per-file regression test.
+    var storeIdentityForTesting: ObjectIdentifier { ObjectIdentifier(store) }
     #endif
 }
 @ModelActor private actor SnapshotModelActor {
@@ -74,9 +119,14 @@ final class SwiftDataPersistence: SnapshotPersistence {
     private var failNextCommit = false
     func failNextSaveForTesting() { failNextCommit = true }
     #endif
+    /// Highest snapshot sequence known durable in this file. A save at or below it comes from a writer whose snapshot
+    /// predates another writer's commit; writing it would delete that commit's rows, so it is refused (`.conflict`).
+    private var durableSequence: Int64?
     func load() throws -> StoreSnapshot {
         modelContext.autosaveEnabled = false
-        return try loadOnQueue()
+        let state = try loadOnQueue()
+        if state.sequence > (durableSequence ?? -1) { durableSequence = state.sequence }
+        return state
     }
     private func loadOnQueue() throws -> StoreSnapshot {
         var state = StoreSnapshot()
@@ -95,9 +145,14 @@ final class SwiftDataPersistence: SnapshotPersistence {
         let saveStart=ProcessInfo.processInfo.systemUptime
         defer {P0PerformanceLog.shared.record("swiftdata_save",start:saveStart,end:ProcessInfo.processInfo.systemUptime,main:Thread.isMainThread,count:snapshot.records.count)}
         #endif
+        if let durable = durableSequence, snapshot.sequence <= durable { throw CatpawError.conflict }
         do {
+            // Rows are re-fetched on this context for every save; models never outlive the save or leave the actor.
+            // A row already deleted (or detached from this context) is never written through: its setter would fire a
+            // fault on a missing row. It is skipped, so the record is inserted as a fresh row (the unique id upserts).
             let rows = try modelContext.fetch(FetchDescriptor<CatpawSchemaV1.EntityRow>())
-            var existing = Dictionary(uniqueKeysWithValues: rows.map { ($0.id, $0) })
+            var existing: [UUID: CatpawSchemaV1.EntityRow] = [:]
+            for row in rows where !row.isDeleted && row.modelContext != nil { existing[row.id] = row }
             for r in snapshot.records.values {
                 if let row = existing.removeValue(forKey: r.id) {
                     row.profileID = r.header.scope.profileID; row.workspaceID = r.header.scope.workspaceID
@@ -109,12 +164,13 @@ final class SwiftDataPersistence: SnapshotPersistence {
             var metadata = snapshot; metadata.records = [:]
             let data = try JSONEncoder().encode(metadata)
             let metas = try modelContext.fetch(FetchDescriptor<CatpawSchemaV1.StoreMeta>())
-            if let old = metas.first(where: { $0.key == "metadata" }) { old.data = data }
+            if let old = metas.first(where: { $0.key == "metadata" && !$0.isDeleted && $0.modelContext != nil }) { old.data = data }
             else { modelContext.insert(CatpawSchemaV1.StoreMeta(key: "metadata", data: data)) }
             #if DEBUG
             if failNextCommit { failNextCommit = false; throw CatpawError.unavailable("injected_swiftdata_save_failure") }
             #endif
             try modelContext.save()
+            durableSequence = snapshot.sequence
         } catch {
             modelContext.rollback()
             throw error
