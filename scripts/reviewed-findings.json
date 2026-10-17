@@ -2144,6 +2144,15 @@
       "line": 9,
       "sha256": "b5dc7e0363a6d691465986bc879b2bc48e94bf5161d26eb92748bbb071d2d8c3",
       "reason": "Reviewed 2026-10-17 (Grok Bot): test env fixture with 9-character placeholder values (or-/oc- prefixed dummy strings), not real provider keys; w-line cc98949/952ca4e test."
+    },
+    {
+      "path": "services/edge/test/proactive-decision.test.mjs",
+      "category": "secret_assignment_review",
+      "line": 102,
+      "sha256": "b7744982b1106b2a62a78d5bc00068d527a54186bdd76aa35b1a8b062c903ffc",
+      "reason": "final-513a1b1 B1 re-pin: line 102 bytes unchanged (masked k-or-xxxxxxxx / k-ag-xxxxxxxx env stub, no real credential); file changed only to pass consent to the Agnes fallback test.",
+      "reviewed_utc_date": "2026-10-17",
+      "reviewer": "Grok Bot"
     }
   ]
 }
