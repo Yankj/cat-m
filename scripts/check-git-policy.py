@@ -74,6 +74,12 @@ def push(remote, url):
                 'Outgoing history contains an unrelated-history merge; import reviewed bytes instead.')
     print('PASS destination, protected main, fast-forward and history policy')
 
+USAGE = 'usage: check-git-policy.py branch <name> | commit | push <remote> <url>  (push reads pre-push refs on stdin)'
+need = {'branch': 3, 'commit': 2, 'push': 4}
+if len(sys.argv) < 2 or sys.argv[1] not in need or len(sys.argv) < need[sys.argv[1]]:
+    # Previously an IndexError surfaced as the opaque "REJECT: list index out of range".
+    print('REJECT:', USAGE, file=sys.stderr)
+    sys.exit(1)
 try:
     mode = sys.argv[1]
     if mode == 'branch':

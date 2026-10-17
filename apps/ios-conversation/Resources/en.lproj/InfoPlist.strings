@@ -3,3 +3,7 @@
 "NSCameraUsageDescription" = "Only when you choose Take Photo, open the camera and save the confirmed image to this local project. It is not uploaded automatically.";
 "NSPhotoLibraryUsageDescription" = "Only when you select a photo, save that image to this local project. Your photo library is not uploaded automatically.";
 "NSCalendarsFullAccessUsageDescription" = "Only after you confirm a calendar action and allow access, create and verify that event to prevent duplicates and recover its result.";
+
+"NSRemindersFullAccessUsageDescription" = "Catpaw writes a reminder to Reminders only after you confirm.";
+"NSContactsUsageDescription" = "Used to find the person you want to contact, only for this request.";
+"NSPhotoLibraryAddUsageDescription" = "Saves the images you choose to Photos.";

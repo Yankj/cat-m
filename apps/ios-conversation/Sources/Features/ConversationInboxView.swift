@@ -41,6 +41,7 @@ enum ConversationInboxReturnResult {case returned,unavailable(String)}
                     Text(ui("显示上次读取的内容；本次尚未完成更新。")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
                         .accessibilityIdentifier("inbox.stale")
                 }
+                if mode == .tasks { DeviceLedgerSection() }
                 if mode == .tasks {
                     ForEach(model.items) { item in
                         NavigationLink {
@@ -57,7 +58,7 @@ enum ConversationInboxReturnResult {case returned,unavailable(String)}
                         .accessibilityIdentifier("inbox.artifact." + row.identity.id)
                     }
                 }
-                if model.didLoad && !model.loading && model.errorText == nil && visibleCount == 0 {
+                if model.didLoad && !model.loading && model.errorText == nil && visibleCount == 0 && (mode != .tasks || DeviceLedger.shared.active.isEmpty) {
                     if mode == .results && model.hasMore {
                         Text(ui("当前已读取的工作还没有成果，可以加载更多。")).font(CatpawTypography.Role.secondary.font).foregroundStyle(CatpawColors.secondary)
                     } else {
@@ -232,10 +233,10 @@ enum ConversationInboxReturnResult {case returned,unavailable(String)}
                     switch completed {case .returned:failure=nil;case .unavailable(let message):failure=message}
                 }
             } label: {
-                HStack { if returning { ProgressView().tint(CatpawColors.action) }; Text(returning ? ui("正在返回原对话…") : ui("回到原对话")) }
+                HStack { if returning { ProgressView().tint(CatpawColors.ink) }; Text(returning ? ui("正在返回原对话…") : ui("回到原对话")) }
                     .font(CatpawTypography.Role.body.font.weight(.semibold)).frame(maxWidth: .infinity, minHeight: 44)
             }.buttonStyle(CatpawPressButtonStyle())
-                .foregroundStyle(!allowed || returning ? CatpawColors.secondary : CatpawColors.action)
+                .foregroundStyle(!allowed || returning ? CatpawColors.secondary : CatpawColors.ink)
                 .background(CatpawColors.panel,in:RoundedRectangle(cornerRadius:CatpawLayout.controlRadius,style:.continuous))
                 .disabled(!allowed || returning).accessibilityIdentifier("inbox.return")
         }.padding(.horizontal, 20).padding(.vertical, 10).background(.regularMaterial)

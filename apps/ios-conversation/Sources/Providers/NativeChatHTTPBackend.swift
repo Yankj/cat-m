@@ -29,7 +29,13 @@ public struct NativeChatConfiguration: Sendable {
         var request = URLRequest(url:try NativeAPIBase.endpoint(base:origin,route:route));request.timeoutInterval = 60
         request.setValue(authorization,forHTTPHeaderField:"Authorization");request.setValue("application/json",forHTTPHeaderField:"Content-Type");request.setValue("text/event-stream, application/json",forHTTPHeaderField:"Accept")
         if let publishableKey { request.setValue(publishableKey,forHTTPHeaderField:"apikey") }
-        if let edgeRegion { request.setValue(edgeRegion,forHTTPHeaderField:"x-region") };return request
+        if let edgeRegion { request.setValue(edgeRegion,forHTTPHeaderField:"x-region") }
+        // catpaw.model-routes.v1: always a valid route (auto or a listed id); model only with a concrete route + allow-list.
+        request.setValue(ModelRouteSelection.headerRoute,forHTTPHeaderField:"X-Catpaw-Route")
+        if let model = ModelRouteSelection.headerModel { request.setValue(model,forHTTPHeaderField:"X-Catpaw-Model") }
+        request.setValue("1",forHTTPHeaderField:"X-Catpaw-Route-Events")
+        request.setValue("1",forHTTPHeaderField:"X-Catpaw-Reasoning-Summary") // decodes optional reasoning_summary
+        return request
     }
 }
 /// An authenticated application session, never an OpenRouter key or client-chosen identity.
@@ -63,6 +69,34 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
         session = URLSession(configuration: policy, delegate: NativeChatNoRedirect(), delegateQueue: nil)
     }
     public func close() { session.invalidateAndCancel(); bindingCache.removeAll(); toolTitles.removeAll(); continuationReceipts.removeAll();revisionWorkReceipts.removeAll();continuationSourceHashes.removeAll(); observedModelState = nil;verifiedReplyAt=nil;verifiedModel=nil;replyCandidates.removeAll() }
+    /// Append Gemini / OpenCode disclosures + policy links from GET /catpaw/privacy/v1/model-route → `route`
+    /// (not .../model-consent). `route.gemini_disclosure` (only when Gemini is enabled; free tier may train),
+    /// `route.opencode_disclosure` (only when OpenCode is enabled) +
+    /// `route.policy_url` / `route.policy_urls[]`. Legacy aggregator fields ignored.
+    static func consentBody(_ body:String,metadata:[String:Any],ui:[String:Any]) -> String {
+        _ = ui
+        guard let route = metadata["route"] as? [String:Any] else { return body }
+        var parts: [String] = [body]
+        for key in ["gemini_disclosure", "opencode_disclosure"] {
+            if let d = route[key] as? String, !d.isEmpty, !body.contains(d) { parts.append(d) }
+        }
+        var urls: [String] = []
+        if let list = route["policy_urls"] as? [String] { urls.append(contentsOf: list) }
+        if let one = route["policy_url"] as? String { urls.append(one) }
+        let https = urls.filter { $0.hasPrefix("https://") && !body.contains($0) }
+        var seen = Set<String>(); let ordered = https.filter { seen.insert($0).inserted }
+        if !ordered.isEmpty { parts.append(ordered.joined(separator: "\n")) }
+        guard parts.count > 1 else { return body }
+        let joined = parts.joined(separator: "\n\n")
+        return joined.utf8.count <= 12000 ? joined : body
+    }
+    /// GET /catpaw/model-routes/v1. nil when not deployed / unreachable (callers use `ModelRoutesFixture`).
+    public func modelRoutes(scope: DataScope) async -> ModelRoutesContract? {
+        guard let auth = try? await authorization(scope), let raw = try? await json("/catpaw/model-routes/v1", auth: auth, timeout: 15),
+              let data = try? Self.jsonData(raw), let c = try? JSONDecoder().decode(ModelRoutesContract.self, from: data),
+              c.contract == ModelRoutesContract.contractID else { return nil }
+        return c
+    }
     public func connection(scope: DataScope) async -> ConversationConnection {
         let auth: String
         do { auth = try await authorization(scope) }
@@ -145,7 +179,22 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
         if prior?["decision"] as? String == "allow",prior?["route_hash"] as? String == routeHash { return nil }
         guard let title = ui["title"] as? String,let body = ui["body"] as? String,title.utf8.count <= 512,body.utf8.count <= 12000 else { throw ConversationSessionError.invalidEvent }
         let revision = prior?["revision"] as? Int ?? 0;guard revision >= 0 else { throw ConversationSessionError.invalidEvent }
-        return .init(conversationID:conversationID,title:title,body:body,routeHash:routeHash,expectedRevision:revision)
+        return .init(conversationID:conversationID,title:title,body:Self.consentBody(body,metadata:metadata,ui:ui),routeHash:routeHash,expectedRevision:revision)
+    }
+    public func serverTranscript(scope: DataScope, conversationID: UUID) async throws -> [ConversationTranscriptMessage]? {
+        guard scope == configuration.localScope, !configuration.useFrozenFixtureMetadata else { return nil }
+        let auth = try await authorization(scope)
+        let wrapper: [String: Any]
+        do { wrapper = try await json(scopePath + "/conversations/" + conversationID.uuidString.lowercased(), auth: auth) }
+        catch NativeChatHTTPFailure.status(404) { return [] }
+        try Self.chatEnvelope(wrapper); let c = try Self.object(wrapper["conversation"])
+        guard UUID(uuidString: c["id"] as? String ?? "") == conversationID, UUID(uuidString: c["scope_id"] as? String ?? "") == configuration.serverScopeID else { throw ConversationSessionError.invalidEvent }
+        return try Self.array(c["messages"]).map { wire in
+            guard let id = UUID(uuidString: wire["id"] as? String ?? ""), let role = wire["role"] as? String, role == "user" || role == "assistant",
+                  let content = wire["content"] as? String, content.utf16.count <= 200_000 else { throw ConversationSessionError.invalidEvent }
+            // No server timestamp: the merge orders server-only rows by server order (createdAt .distantPast is replaced there).
+            return ConversationTranscriptMessage(id: id, role: role == "user" ? .user : .assistant, content: content, complete: true, createdAt: .distantPast)
+        }
     }
     public func allowModelConsent(scope: DataScope, consent: ConversationModelConsent) async throws {
         let auth = try await authorization(scope),path = "/catpaw/privacy/v1/scopes/"+configuration.serverScopeID.uuidString.lowercased()+"/conversations/"+consent.conversationID.uuidString.lowercased()+"/model-consent"
@@ -215,16 +264,54 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
         try intent.validate(request:request)
     }
     private func validateHistory(_ conversation:[String:Any],request:ConversationTurnRequest) throws {
-        let remote=try Self.array(conversation["messages"]),previous=request.history.dropLast().filter{$0.role == .user || ($0.role == .assistant && $0.toolName==nil && $0.complete)}
-        guard remote.count==previous.count else {throw CatpawError.conflict}
-        for (wire,local) in zip(remote,previous) {
-            guard UUID(uuidString:wire["id"] as? String ?? "")==local.id,wire["role"] as? String==local.role.rawValue,let content=wire["content"] as? String,content.utf16.elementsEqual(local.content.utf16) else {throw CatpawError.conflict}
+        try Self.checkServerHistory(try Self.array(conversation["messages"]),request:request,strict:true,site:"validateHistory")
+    }
+    /// History check before admission. Strict (acceptedWork / revisionWork / continuation, validateHistory):
+    /// the local wire history must equal the server's exactly. Plain turns: only locally held messages the server
+    /// has confirmed (same id) take part. Every other local message, whatever its role (an unsent user message
+    /// from an old client, a locally generated failed assistant notice), is local-only: it is never compared and
+    /// never posted (only `history.last` is posted). The confirmed subsequence must equal the server list in
+    /// order, role and content; the server holding a message we do not is still a conflict.
+    /// Returns the local message ids treated as local-only.
+    @discardableResult static func checkServerHistory(_ remote:[[String:Any]],request:ConversationTurnRequest,strict:Bool,site:String="prepare") throws -> [UUID] {
+        let previous=Array(request.history.dropLast().filter{$0.role == .user || ($0.role == .assistant && $0.toolName==nil && $0.complete)})
+        func fail(_ reason:String) -> CatpawError { logHistoryConflict(site:site,reason:reason,remote:remote,request:request,strict:strict);return CatpawError.conflict }
+        func same(_ wire:[String:Any],_ local:ConversationTranscriptMessage) -> Bool {
+            guard UUID(uuidString:wire["id"] as? String ?? "")==local.id,wire["role"] as? String==local.role.rawValue,let content=wire["content"] as? String else {return false}
+            return strict ? content.utf16.elementsEqual(local.content.utf16) : content == local.content
         }
+        if strict {
+            guard remote.count==previous.count else {throw fail("strict count")}
+            for (wire,local) in zip(remote,previous) where !same(wire,local) {throw fail("strict mismatch")}
+            return []
+        }
+        let remoteIDs=Set(remote.compactMap{UUID(uuidString:$0["id"] as? String ?? "")})
+        guard remoteIDs.count==remote.count else {throw fail("server ids invalid")}
+        let local=Array(request.history.dropLast())
+        let confirmed=local.filter{remoteIDs.contains($0.id)}
+        let shared=remote.filter{wire in confirmed.contains{$0.id==UUID(uuidString:wire["id"] as? String ?? "")}}
+        for (wire,message) in zip(shared,confirmed) where !same(wire,message) {throw fail("confirmed mismatch")}
+        if shared.count<remote.count {
+            // Plain turns realign on the server: its messages are the authoritative history (e.g. an earlier
+            // outbox turn was admitted but its server ids were never written back). Only `history.last` is posted;
+            // server-side turn idempotency (turn_id == operationID) prevents a duplicate turn for this operation.
+            let unknown=remote.filter{wire in !shared.contains{($0["id"] as? String)==(wire["id"] as? String)}}
+            sendDiagnostic("catpaw.send history realigned op=\(request.operationID.uuidString.prefix(8)) server=\(remote.count) local=\(local.count) confirmed=\(shared.count) serverOnly=\(unknown.count)")
+            if let current=request.history.last,unknown.contains(where:{$0["role"] as? String=="user" && ($0["content"] as? String)==current.content}) {
+                sendDiagnostic("catpaw.send history realigned possible resend op=\(request.operationID.uuidString.prefix(8)) len=\(current.content.utf16.count)")
+            }
+        }
+        return local.filter{!remoteIDs.contains($0.id)}.map(\.id)
+    }
+    private static func logHistoryConflict(site:String,reason:String,remote:[[String:Any]],request:ConversationTurnRequest,strict:Bool) {
+        let localLine=request.history.map{"\($0.role.rawValue):\($0.id.uuidString.prefix(8)):\($0.complete ? "complete" : "partial")\($0.failure == nil ? "" : "+failure")\($0.toolName == nil ? "" : "+tool"):\($0.content.utf16.count)"}.joined(separator:",")
+        let remoteLine=remote.map{"\($0["role"] as? String ?? "?"):\(($0["id"] as? String ?? "?").prefix(8)):\($0["status"] as? String ?? "-"):\(($0["content"] as? String)?.utf16.count ?? -1)"}.joined(separator:",")
+        sendDiagnostic("catpaw.send history conflict site=\(site) reason=\(reason) strict=\(strict) op=\(request.operationID.uuidString.prefix(8)) local=[\(localLine)] server=[\(remoteLine)]")
     }
     public func reply(_ request: ConversationTurnRequest) async throws -> AsyncThrowingStream<ConversationTurnEvent, Error> {
         let auth: String, grant: Int, upload: URLRequest
         do { (auth, grant, upload) = try await prepare(request) }
-        catch { throw ConversationDispatchFailure.notSent(reason: Self.friendlyTransportMessage(error)) }
+        catch { sendDiagnostic("catpaw.send prepare refused op=\(request.operationID.uuidString.prefix(8)) error=\(String(describing:error))");throw ConversationDispatchFailure.notSent(reason: Self.friendlyTransportMessage(error)) }
         return AsyncThrowingStream { continuation in
             let task = Task {
                 var postInitiated = false
@@ -240,6 +327,16 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
                             if let envelope=try? ConversationStrictJSON.object(errorData,maxBytes:65536),(try? Self.positive(envelope["schema_version"]))==1,let problem=envelope["error"] as? [String:Any],
                                Self.boolean(problem["reconciliation_required"])==false,Self.boolean(problem["retryable"])==false,let code=problem["code"] as? String,
                                Self.continuationDenials.contains(code) {throw ConversationDispatchFailure.notSent(reason:code)}
+                        }
+                        // A definite quota refusal (e.g. 429 model_daily_limit) proves non-admission: report it as
+                        // not sent with its code so the client shows a quota notice instead of "connection lost".
+                        if request.continuation == nil,(response as? HTTPURLResponse)?.mimeType == "application/json",(400...499).contains(status) {
+                            var errorData=Data();for try await byte in bytes {guard errorData.count<65536 else {break};errorData.append(byte)}
+                            if let envelope=try? JSONSerialization.jsonObject(with:errorData) as? [String:Any] {
+                                let problem=(envelope["error"] as? [String:Any]) ?? envelope
+                                if let code=problem["code"] as? String,ConversationTerminalServerError.isQuota(code) {throw ConversationDispatchFailure.notSent(reason:code)}
+                                if status == 422,let code=problem["code"] as? String,ModelRouteSelection.rejectionCodes.contains(code) {ModelRouteNotifications.reject(code);throw ConversationDispatchFailure.notSent(reason:code)}
+                            }
                         }
                         throw NativeChatHTTPFailure.turnResponse(status)
                     }
@@ -268,10 +365,192 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
                     }
                     continuation.finish() // EOF is never synthesized into completion.
                 } catch {
-                    let failure: Error = error is URLError
+                    // A broken plain-chat stream after POST is resumable by GET-after-sequence (R7 §5.3).
+                    let resumable = postInitiated && error is URLError && Self.supportsResume(request)
+                    let failure: Error = resumable ? ConversationStreamInterrupted(reason: Self.friendlyTransportMessage(error))
+                        : error is URLError
                         ? CatpawError.unavailable(Self.friendlyTransportMessage(error) + (postInitiated ? "本轮发送结果尚未确认；请读取原请求状态，不要重新发送。" : ""))
                         : error
                     continuation.finish(throwing: postInitiated ? failure : ConversationDispatchFailure.notSent(reason: failure.localizedDescription))
+                }
+            }
+            continuation.onTermination = { _ in task.cancel() } // detaches observation only
+        }
+    }
+    static func supportsResume(_ r: ConversationTurnRequest) -> Bool { r.continuation == nil && r.acceptedWork == nil && r.revisionWork == nil }
+    /// R7 §5.3: reattach to the original turn with `GET …/turns/{id}/events?after_sequence=N`.
+    /// Idle timeout is 15 s; the Edge sends `: keepalive` every 10 s.
+    public func resumeEvents(_ request: ConversationTurnRequest, afterSequence: Int) async throws -> AsyncThrowingStream<ConversationTurnEvent, Error> {
+        try await originalTurnStream(request, afterSequence: afterSequence, busyRestart: false)
+    }
+    /// R7 busy retry: `POST …/turns/{id}/retry-busy` restarts the SAME turn (same operationID and user
+    /// message) when the Edge recorded `failed{rate_limited}` before any output; events continue the sequence.
+    public func retryBusyTurn(_ request: ConversationTurnRequest, afterSequence: Int) async throws -> AsyncThrowingStream<ConversationTurnEvent, Error> {
+        try await originalTurnStream(request, afterSequence: afterSequence, busyRestart: true)
+    }
+    /// R2 stop: `POST …/chat/v1/…/turns/{id}/cancel` with `{}`; the caller may resend on `.transport`.
+    public func cancelTurn(_ request: ConversationTurnRequest) async throws -> ConversationTurnCancelReceipt {
+        let auth: String
+        do { auth = try await authorization(request.scope) } catch { throw ConversationTurnCancelFailure.rejected(status: 401) }
+        let route = path(request) + "/turns/" + request.operationID.uuidString.lowercased() + "/cancel"
+        let reply: [String: Any]
+        do { reply = try await json(route, auth: auth, body: [:], timeout: 15) }
+        catch NativeChatHTTPFailure.status(let status) {
+            if status == 404 { throw ConversationTurnCancelFailure.notFound }
+            if status == 0 || status == 408 || status == 429 || status >= 500 { throw ConversationTurnCancelFailure.transport }
+            throw ConversationTurnCancelFailure.rejected(status: status)
+        }
+        catch is URLError { throw ConversationTurnCancelFailure.transport }
+        catch is CancellationError { throw CancellationError() }
+        catch { throw ConversationTurnCancelFailure.rejected(status: 200) }
+        guard (try? Self.chatEnvelope(reply)) != nil, let cancel = reply["cancel"] as? [String: Any],
+              UUID(uuidString: cancel["turn_id"] as? String ?? "") == request.operationID,
+              let state = cancel["state"] as? String, ["failed", "completed", "outcome_unknown", "running"].contains(state),
+              let cancelled = Self.boolean(cancel["cancelled"]), let terminal = Self.boolean(cancel["already_terminal"]) else { throw ConversationTurnCancelFailure.rejected(status: 200) }
+        return ConversationTurnCancelReceipt(turnID: request.operationID, state: state, cancelled: cancelled, alreadyTerminal: terminal)
+    }
+    static let approvalContract = "catpaw.approval.v1"
+    static let approvalHeader = "X-Catpaw-Approval-Contract"
+    static let timeZoneHeader = "X-Catpaw-Time-Zone"
+    /// Tools that only exist on approval-negotiated plain turns (services/edge TOOL_APPROVAL).
+    static let approvalToolNames: Set<String> = ["render_ui", "list_tasks", "create_task", "update_task", "create_calendar_event", "update_calendar_event", "create_reminder", "update_reminder", "external_write",
+        // catpaw.device.v1 (executed on this phone; services/edge/supabase/functions/_shared/core/src/device-call.mjs)
+        "calendar_list", "calendar_create", "reminder_create", "mail_compose", "sms_compose", "phone_call", "contacts_search", "maps_open", "shop_open", "alarm_set", "shortcut_run"]
+    /// Snapshot `pending_approvals`: kind "ui" rows are catpaw.ui.v1 blocks, everything else a tool approval card.
+    public static func splitPendingApprovals(_ rows: [[String: Any]]) throws -> (tools: [ConversationApprovalRequest], ui: [ConversationUIApproval]) {
+        var tools: [ConversationApprovalRequest] = [], ui: [ConversationUIApproval] = []
+        for row in rows {
+            if row["kind"] as? String == "device" { continue } // restored from the replayed `device_call` event, never an approval card
+            if row["kind"] as? String == "ui" { ui.append(try ConversationUIApproval.decode(row)) } else { tools.append(try approval(row)) }
+        }
+        return (tools, ui)
+    }
+    static func approval(_ raw: [String: Any]) throws -> ConversationApprovalRequest {
+        guard let id = raw["interrupt_id"] as? String, UUID(uuidString: id) != nil, let call = raw["call_id"] as? String, !call.isEmpty, call.utf8.count <= 256,
+              let tool = raw["tool"] as? String, opaque(tool), let summary = raw["summary"] as? String, summary.count <= 240,
+              let hash = try? sha(raw["args_hash"]), let expires = raw["expires_at"] as? String, let risk = raw["risk"] as? String,
+              let remember = boolean(raw["remember_allowed"]) else { throw ConversationSessionError.invalidEvent }
+        let arguments = String(decoding: try jsonData((raw["arguments"] as? [String: Any]) ?? [:]), as: UTF8.self)
+        return ConversationApprovalRequest(interruptID: id, callID: call, tool: tool, summary: summary, arguments: arguments, argsHash: hash, expiresAt: expires, risk: risk, rememberAllowed: remember)
+    }
+    /// catpaw.approval.v1 decision. Idempotent on `operationID`: resend the SAME id after `.transport`.
+    public func submitApproval(_ request: ConversationTurnRequest, interruptID: String, decision: ConversationApprovalDecision, argsHash: String, operationID: UUID, afterSequence: Int) async throws -> AsyncThrowingStream<ConversationTurnEvent, Error> {
+        try await decisionStream(request, interruptID: interruptID, afterSequence: afterSequence, body: ["operation_id": operationID.uuidString.lowercased(), "decision": decision.rawValue, "args_hash": argsHash])
+    }
+    /// catpaw.ui.v1 answer: the SAME approval.v1 decision route; `response` is the raw `ui.response` (submit) or `ui.error` (report_error) JSON object.
+    public func submitUIDecision(_ request: ConversationTurnRequest, interruptID: String, decision: ConversationUIDecision, argsHash: String, response: Data?, operationID: UUID, afterSequence: Int) async throws -> AsyncThrowingStream<ConversationTurnEvent, Error> {
+        var body: [String: Any] = ["operation_id": operationID.uuidString.lowercased(), "decision": decision.rawValue, "args_hash": argsHash]
+        switch decision {
+        case .dismiss: guard response == nil else { throw ConversationApprovalFailure.rejected(status: 422, code: "ui_response_invalid") }
+        case .submit, .reportError:
+            guard let response, response.count <= 32768, let object = (try? JSONSerialization.jsonObject(with: response)) as? [String: Any],
+                  object["type"] as? String == (decision == .submit ? "ui.response" : "ui.error") else { throw ConversationApprovalFailure.rejected(status: 422, code: "ui_response_invalid") }
+            body["response"] = object
+        }
+        return try await decisionStream(request, interruptID: interruptID, afterSequence: afterSequence, body: body)
+    }
+    /// catpaw.device.v1 result. Idempotent on `operationID` (resend the SAME id after `.transport`); bound to the call's `args_hash`.
+    public func submitDeviceResult(_ request: ConversationTurnRequest, call: ConversationDeviceCall, status: String, data: Data?, operationID: UUID, afterSequence: Int) async throws -> AsyncThrowingStream<ConversationTurnEvent, Error> {
+        guard ConversationDeviceCall.statuses.contains(status) else { throw ConversationApprovalFailure.rejected(status: 422, code: "device_result_schema_invalid") }
+        var body: [String: Any] = ["call_id": call.callID, "operation_id": operationID.uuidString.lowercased(), "args_hash": call.argsHash, "status": status]
+        if let data {
+            guard data.count <= 32000, let object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else { throw ConversationApprovalFailure.rejected(status: 422, code: "device_result_schema_invalid") }
+            body["data"] = object
+        }
+        return try await decisionStream(request, interruptID: call.interruptID, afterSequence: afterSequence, body: body, deviceResult: true)
+    }
+    public func submitDeviceUndo(_ request: ConversationTurnRequest, callID: String, outcome: DeviceUndoOutcome, operationID: UUID) async throws {
+        let auth: String
+        do { auth = try await authorization(request.scope) } catch { throw ConversationApprovalFailure.rejected(status: 401, code: nil) }
+        let route = path(request) + "/turns/" + request.operationID.uuidString.lowercased() + "/device-undo"
+        do { _ = try await json(route, auth: auth, body: DeviceUndoRules.body(callID: callID, outcome: outcome, operationID: operationID), timeout: 15) }
+        catch NativeChatHTTPFailure.status(let status) {
+            if status == 0 || status == 408 || status == 429 || status >= 500 { throw ConversationApprovalFailure.transport }
+            throw ConversationApprovalFailure.rejected(status: status, code: nil)
+        }
+        catch is URLError { throw ConversationApprovalFailure.transport }
+    }
+    private func decisionStream(_ request: ConversationTurnRequest, interruptID: String, afterSequence: Int, body decisionBody: [String: Any], deviceResult: Bool = false) async throws -> AsyncThrowingStream<ConversationTurnEvent, Error> {
+        guard Self.supportsResume(request), afterSequence >= 0, UUID(uuidString: interruptID) != nil else { throw ConversationApprovalFailure.unsupported }
+        let auth: String
+        do { auth = try await authorization(request.scope) } catch { throw ConversationApprovalFailure.rejected(status: 401, code: nil) }
+        let grant: Int
+        do { grant = try Self.positive(try await readConversation(request, auth: auth, mayCreate: false)["grant_epoch"]) }
+        catch is URLError { throw ConversationApprovalFailure.transport }
+        let route = turnPath(request) + "/" + request.operationID.uuidString.lowercased() + (deviceResult ? "/device-result" : "/interrupts/" + interruptID.lowercased() + "/decision") + "?after_sequence=\(afterSequence)"
+        var post = try self.request(route, auth: auth)
+        post.httpMethod = "POST"; post.timeoutInterval = ConversationReconnectPolicy.idleTimeout; post.setValue("text/event-stream, application/json", forHTTPHeaderField: "Accept"); post.setValue(TimeZone.current.identifier, forHTTPHeaderField: Self.timeZoneHeader); post.setValue(ConversationMemorySwitch.headerValue, forHTTPHeaderField: ConversationMemorySwitch.header)
+        post.httpBody = try Self.jsonData(decisionBody)
+        let opened: (URLSession.AsyncBytes, URLResponse)
+        do { opened = try await session.bytes(for: post) } catch is URLError { throw ConversationApprovalFailure.transport }
+        let bytes = opened.0, response = opened.1
+        guard let http = response as? HTTPURLResponse else { throw ConversationApprovalFailure.transport }
+        guard http.statusCode == 200, http.mimeType == "text/event-stream" else {
+            if http.statusCode == 401 { await credentials.rejected(scope: request.scope) }
+            var data = Data(); for try await byte in bytes { guard data.count < 65536 else { break }; data.append(byte) }
+            let code = ((try? JSONSerialization.jsonObject(with: data)) as? [String: Any]).flatMap { ($0["error"] as? [String: Any])?["code"] as? String }
+            switch (http.statusCode, code ?? "") {
+            case (404, _): throw ConversationApprovalFailure.notFound
+            case (409, "approval_expired"): throw ConversationApprovalFailure.expired
+            case (409, "approval_consumed"): throw ConversationApprovalFailure.consumed
+            case (409, "approval_stale"): throw ConversationApprovalFailure.stale
+            case (let status, _) where status == 0 || status == 408 || status == 429 || status >= 500: throw ConversationApprovalFailure.transport
+            default: throw ConversationApprovalFailure.rejected(status: http.statusCode, code: code)
+            }
+        }
+        return AsyncThrowingStream { continuation in
+            let task = Task {
+                do {
+                    var line = Data(), afterCR = false
+                    for try await byte in bytes {
+                        try Task.checkCancellation()
+                        if afterCR { afterCR = false; if byte == 0x0a { continue } }
+                        if byte == 0x0a || byte == 0x0d {
+                            if let wire = try Self.sseEventLine(line) { continuation.yield(try await self.decode(wire, request: request, grant: grant, auth: auth)) }
+                            line.removeAll(keepingCapacity: true); afterCR = byte == 0x0d
+                        } else { guard line.count < 262144 else { throw ConversationSessionError.invalidEvent }; line.append(byte) }
+                    }
+                    continuation.finish()
+                } catch {
+                    // The decision is committed once the 200 arrived; a broken stream resumes by GET-after-sequence.
+                    continuation.finish(throwing: error is URLError ? ConversationStreamInterrupted(reason: Self.friendlyTransportMessage(error)) : error)
+                }
+            }
+            continuation.onTermination = { _ in task.cancel() }
+        }
+    }
+    private func originalTurnStream(_ request: ConversationTurnRequest, afterSequence: Int, busyRestart: Bool) async throws -> AsyncThrowingStream<ConversationTurnEvent, Error> {
+        guard Self.supportsResume(request), afterSequence >= 0 else { throw ConversationSessionError.unresolvedOperation }
+        let auth = try await authorization(request.scope)
+        let grant: Int
+        do { grant = try Self.positive(try await readConversation(request, auth: auth, mayCreate: false)["grant_epoch"]) }
+        catch let network as URLError { throw ConversationStreamInterrupted(reason: Self.friendlyTransportMessage(network)) }
+        let original = turnPath(request) + "/" + request.operationID.uuidString.lowercased()
+        var get = try self.request(busyRestart ? original + "/retry-busy" : original + "/events?after_sequence=\(afterSequence)", auth: auth)
+        get.httpMethod = busyRestart ? "POST" : "GET"; get.timeoutInterval = ConversationReconnectPolicy.idleTimeout; get.setValue("text/event-stream", forHTTPHeaderField: "Accept")
+        return AsyncThrowingStream { continuation in
+            let task = Task {
+                do {
+                    let (bytes, response) = try await self.session.bytes(for: get)
+                    guard let http = response as? HTTPURLResponse, http.statusCode == 200, http.mimeType == "text/event-stream" else {
+                        let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+                        if status == 401 { await self.credentials.rejected(scope: request.scope) }
+                        // A definite refusal (409/429) means the original failed turn was not restarted.
+                        if busyRestart, [404, 409, 429].contains(status) { throw CatpawError.unavailable("这条消息暂时无法重试。") }
+                        throw ConversationStreamInterrupted(reason: "暂时无法读取原回复。")
+                    }
+                    var line = Data(), afterCR = false
+                    for try await byte in bytes {
+                        try Task.checkCancellation()
+                        if afterCR { afterCR = false; if byte == 0x0a { continue } }
+                        if byte == 0x0a || byte == 0x0d {
+                            if let wire = try Self.sseEventLine(line) { continuation.yield(try await self.decode(wire, request: request, grant: grant, auth: auth)) }
+                            line.removeAll(keepingCapacity: true); afterCR = byte == 0x0d
+                        } else { guard line.count < 262144 else { throw ConversationSessionError.invalidEvent }; line.append(byte) }
+                    }
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: error is URLError ? ConversationStreamInterrupted(reason: Self.friendlyTransportMessage(error)) : error)
                 }
             }
             continuation.onTermination = { _ in task.cancel() } // detaches observation only
@@ -319,12 +598,7 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
         let revision = try Self.positive(conversation["revision"]), grant = try Self.positive(conversation["grant_epoch"])
         if let intent=request.acceptedWork {guard revision==intent.expectedRevision,grant==intent.expectedGrantEpoch else {throw ConversationAcceptedWorkError.changedSnapshot};try validateHistory(conversation,request:request)}
         if let intent=request.revisionWork {guard revision==intent.expectedRevision,grant==intent.expectedGrantEpoch else {throw ConversationAcceptedWorkError.changedSnapshot};try validateHistory(conversation,request:request)}
-        let remote = try Self.array(conversation["messages"])
-        let previous = request.history.dropLast().filter { $0.role == .user || ($0.role == .assistant && $0.toolName == nil && $0.complete) }
-        guard remote.count == previous.count else { throw CatpawError.conflict }
-        for (wire, local) in zip(remote, previous) {
-            guard UUID(uuidString: wire["id"] as? String ?? "") == local.id, wire["role"] as? String == local.role.rawValue, wire["content"] as? String == local.content else { throw CatpawError.conflict }
-        }
+        try Self.checkServerHistory(try Self.array(conversation["messages"]),request:request,strict:request.acceptedWork != nil || request.revisionWork != nil || request.continuation != nil)
         if let intent=request.acceptedWork {
             try intent.selection.options.validate(now:acceptedWorkClock())
             var upload=try self.request(turnPath(request),auth:auth);upload.httpMethod="POST";upload.httpBody=try intent.wrapper()
@@ -347,13 +621,23 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
             guard row.scope_id==configuration.serverScopeID,row.conversation_id==request.conversationID,row.decision=="allow",row.non_sensitive_confirmed,row.route_hash==image.routeHash,row.revision==image.consentRevision else {throw ConversationSessionError.notConfigured}
             body["schema_version"]=2;body["message"]=["id":message.id.uuidString.lowercased(),"text":message.content,"attachments":[try image.wire(imageBytes,messageID:message.id)]]
         } else {guard request.imageBytes==nil else {throw ConversationSessionError.invalidEvent}}
+        if let ids=request.attachmentIDs,!ids.isEmpty {
+            // catpaw.chat-attachments.v1 §4: uploaded ids instead of inline bytes; plain turns only, never mixed with `attachments`.
+            guard request.image==nil,request.imageBytes==nil,request.continuation==nil,request.acceptedWork==nil,request.revisionWork==nil,ids.count<=1,Set(ids).count==ids.count, // server VISION_LIMITS.max_count
+                  !message.content.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty else {throw ConversationSessionError.invalidEvent}
+            body["schema_version"]=2;body["message"]=ChatAttachmentUploader.turnMessage(id:message.id,text:message.content,ids:ids)
+        }
         let bytes=try Self.jsonData(body);guard bytes.count <= (request.image==nil ? 40000 : 7_100_000) else {throw CatpawError.invalid("本轮上下文超过后台请求上限。")}
 
         let encoded:Data
         if let target=request.continuation {guard request.image==nil,request.imageBytes==nil else {throw ConversationSessionError.invalidEvent};encoded=try Self.jsonData(["turn":body,"target":target.canonicalValue]);guard encoded.count<=48000 else {throw ConversationSessionError.invalidEvent}}
         else {encoded=bytes}
         var upload = try self.request(turnPath(request), auth: auth); upload.httpMethod = "POST"; upload.httpBody = encoded
-        if request.image==nil,request.continuation==nil,request.acceptedWork==nil {upload.setValue(ConversationMemoryProposalReceipt.contractName,forHTTPHeaderField:"X-Catpaw-Memory-Proposal-Contract")}
+        upload.setValue(request.operationID.uuidString.lowercased(),forHTTPHeaderField:"Idempotency-Key") // #63: alias of turn_id (must match)
+        if request.image==nil,!request.hasUploadedAttachments,request.continuation==nil,request.acceptedWork==nil {upload.setValue(ConversationMemoryProposalReceipt.contractName,forHTTPHeaderField:"X-Catpaw-Memory-Proposal-Contract")}
+        // catpaw.approval.v1 negotiation: only plain chat turns are offered approval-gated tools.
+        if Self.supportsResume(request),request.image==nil,!request.hasUploadedAttachments {upload.setValue(Self.approvalContract,forHTTPHeaderField:Self.approvalHeader);upload.setValue(ConversationUIEvent.contract,forHTTPHeaderField:ConversationUIEvent.header);upload.setValue(ConversationUIEvent.kindsHeaderValue,forHTTPHeaderField:ConversationUIEvent.kindsHeader);if ConversationDeviceCall.clientEnabled {upload.setValue(ConversationDeviceCall.contract,forHTTPHeaderField:ConversationDeviceCall.header);if !ConversationDeviceCall.clientTools.isEmpty {upload.setValue(ConversationDeviceCall.clientTools.joined(separator:","),forHTTPHeaderField:ConversationDeviceCall.toolsHeader)}}}
+        upload.setValue(TimeZone.current.identifier,forHTTPHeaderField:Self.timeZoneHeader);upload.setValue(ConversationMemorySwitch.headerValue,forHTTPHeaderField:ConversationMemorySwitch.header) // task tools resolve local times
         try Task.checkCancellation()
         return (auth, grant, upload)
     }
@@ -394,7 +678,9 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
         var seen: Set<String> = []
         for b in bindings where seen.insert(b.task_id).inserted { goals.append(try await projection(b, title: title(b.call_id, turnID: b.turn_id, history: request.history), auth: auth)) }
         if request.continuation != nil {try validateContinuationList(turn["continuations"],request:request,terminal:turn["state"] as? String=="completed");try validateRevisionWorkList(turn["revision_work_receipts"],request:request)}
-        return ConversationObservation(request: request, events: events, requestHash: try Self.sha(turn["request_hash"]), grantEpoch: currentGrant, goals: goals)
+        let rows = try (turn["pending_approvals"] as? [Any] ?? []).map { try Self.object($0) }
+        let pending = try Self.splitPendingApprovals(rows)
+        return ConversationObservation(request: request, events: events, requestHash: try Self.sha(turn["request_hash"]), grantEpoch: currentGrant, goals: goals, pendingApprovals: pending.tools, serverState: turn["state"] as? String, pendingUIApprovals: pending.ui)
     }
     private func readConversation(_ value: ConversationTurnRequest, auth: String, mayCreate: Bool,strict:Bool=false) async throws -> [String: Any] {
         var wrapper: [String: Any]
@@ -422,22 +708,27 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
         observedModelState = reality == "not_configured" ? .notConfigured : .providerUnverified
         let data = try Self.object(wire["data"]), type = wire["type"] as? String
         let payload: ConversationTurnEvent.Payload
+        var retryAfter: Int? = nil
         switch type {
         case "turn_started":
             let receipts:[ConversationImageReceipt]?
             if let raw=data["attachment_receipts"] {receipts=try JSONDecoder().decode([ConversationImageReceipt].self,from:Self.jsonData(raw))} else {receipts=nil}
-            if let image=request.image {guard receipts==[image.receipt] else {throw ConversationSessionError.invalidEvent}} else {guard receipts==nil || receipts?.isEmpty==true else {throw ConversationSessionError.invalidEvent}}
+            if let image=request.image {guard receipts==[image.receipt] else {throw ConversationSessionError.invalidEvent}} else if let ids=request.attachmentIDs,!ids.isEmpty {guard let receipts,receipts.map(\.id)==ids else {throw ConversationSessionError.invalidEvent}} else {guard receipts==nil || receipts?.isEmpty==true else {throw ConversationSessionError.invalidEvent}}
             payload = .started(requestHash: try Self.sha(data["request_hash"]), conversationRevision: try Self.positive(data["conversation_revision"]), grantEpoch: grant,attachmentReceipts:receipts)
         case "text_delta":
             guard reality != "not_configured", let id = UUID(uuidString: data["message_id"] as? String ?? ""), let text = data["text"] as? String else { throw ConversationSessionError.invalidEvent }
             payload = .textDelta(messageID: id, text: text)
+        case "reasoning_summary":
+            guard let id = UUID(uuidString: data["message_id"] as? String ?? ""), let text = data["text"] as? String, text.utf8.count <= 8000 else { throw ConversationSessionError.invalidEvent }
+            let ms = (data["thinking_ms"] as? NSNumber).map { $0.intValue }
+            payload = .reasoningSummary(messageID: id, text: text, thinkingMs: ms.flatMap { $0 >= 0 ? $0 : nil })
         case "tool_call":
-            guard request.image==nil else {throw ConversationSessionError.invalidEvent}
-            guard reality != "not_configured", let name = data["name"] as? String, ((["delegate_task", "delegate_plan_v1", "delegate_sources_v1", "agent_status", "propose_memory_v1"].contains(name) && request.continuation==nil) || (name==(request.revisionWork==nil ? "revise_current_report_v1":ConversationRevisionWorkCodec.toolName) && request.continuation?.intent == .reviseReport)), let id = data["call_id"] as? String, !id.isEmpty else { throw ConversationSessionError.invalidEvent }
+            guard request.image==nil,!request.hasUploadedAttachments else {throw ConversationSessionError.invalidEvent}
+            guard reality != "not_configured", let name = data["name"] as? String, ((["delegate_task", "delegate_plan_v1", "delegate_sources_v1", "agent_status", "propose_memory_v1"].contains(name) && request.continuation==nil) || (Self.approvalToolNames.contains(name) && Self.supportsResume(request)) || (name==(request.revisionWork==nil ? "revise_current_report_v1":ConversationRevisionWorkCodec.toolName) && request.continuation?.intent == .reviseReport)), let id = data["call_id"] as? String, !id.isEmpty else { throw ConversationSessionError.invalidEvent }
             if ["delegate_task", "delegate_plan_v1", "delegate_sources_v1"].contains(name), let args = data["arguments"] as? [String: Any], let title = args["title"] as? String, title.utf16.count <= 160 { toolTitles[request.operationID, default: [:]][id] = title }
             payload = .toolStarted(callID: id, name: name, arguments: String(decoding: try Self.jsonData(Self.object(data["arguments"])), as: UTF8.self))
         case "tool_result":
-            guard request.image==nil else {throw ConversationSessionError.invalidEvent}
+            guard request.image==nil,!request.hasUploadedAttachments else {throw ConversationSessionError.invalidEvent}
             guard reality != "not_configured", let name = data["name"] as? String, let call = data["call_id"] as? String, !call.isEmpty else { throw ConversationSessionError.invalidEvent }
             let result = try Self.object(data["result"]); var goals: [ConversationGoalProjection] = []
             var memoryProposal:ConversationMemoryProposalReceipt?
@@ -477,8 +768,45 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
                     if !(projected.artifacts+projected.artifactHistory).contains(where:{$0.id==result.id && $0.version==result.version && $0.contentHash==result.contentHash}) {projected.artifactHistory.append(result)}
                 }
                 continuationReceipts[request.operationID,default:[:]][call]=receipt;goals.append(projected)
+            } else if Self.approvalToolNames.contains(name),Self.supportsResume(request) {
+                // Approval-lane tools carry no committed domain authority on the wire.
             } else { throw ConversationSessionError.invalidEvent }
-            payload = .toolResult(ConversationToolResult(callID: call, name: name, content: String(decoding: try Self.jsonData(result), as: UTF8.self), committedGoals: goals,continuationReceipt:continuationReceipts[request.operationID]?[call],memoryProposalReceipt:memoryProposal,revisionWorkReceipt:revisionWorkReceipts[request.operationID]?[call]))
+            let status=data["status"] as? String
+            if let status {guard ["ok","denied","error"].contains(status) else {throw ConversationSessionError.invalidEvent}}
+            payload = .toolResult(ConversationToolResult(callID: call, name: name, content: String(decoding: try Self.jsonData(result), as: UTF8.self), committedGoals: goals,continuationReceipt:continuationReceipts[request.operationID]?[call],memoryProposalReceipt:memoryProposal,revisionWorkReceipt:revisionWorkReceipts[request.operationID]?[call]).withStatus(status))
+        case "approval_requested":
+            guard reality != "not_configured", Self.supportsResume(request), request.image==nil else { throw ConversationSessionError.invalidEvent }
+            payload = .approvalRequested(try Self.approval(data))
+        case "turn_suspended":
+            guard let ids = data["interrupt_ids"] as? [String], !ids.isEmpty, ids.allSatisfy({ UUID(uuidString: $0) != nil }), let expires = data["expires_at"] as? String else { throw ConversationSessionError.invalidEvent }
+            payload = .suspended(interruptIDs: ids, expiresAt: expires)
+        case "ui.block", "ui.block.update", "ui.block.resolve":
+            // catpaw.ui.v1: plain approval-negotiated turns only; the data object is passed through for the renderer.
+            guard reality != "not_configured", Self.supportsResume(request), request.image==nil, !request.hasUploadedAttachments, let raw = type else { throw ConversationSessionError.invalidEvent }
+            let ui = try ConversationUIEvent.decode(type: raw, sequence: sequence, payload: try Self.jsonData(data))
+            payload = ui.type == .block ? .uiBlock(ui) : ui.type == .update ? .uiBlockUpdate(ui) : .uiBlockResolve(ui)
+        case "model_route":
+            // Reported once per turn (opt-in X-Catpaw-Route-Events: 1); no transcript effect.
+            let body = try Self.jsonData(data)
+            if let event = try? JSONDecoder().decode(ModelRouteEvent.self, from: body) { ModelRouteNotifications.report(event) }
+            payload = .sideChannel(type: "model_route", data: body)
+        case "memory.used", "memory.update", "memory_recalled", "proactive_suggestion":
+            // Side channel (#63): no transcript effect; raw data goes to MemoryEventSink / proactive store via the installed handler.
+            guard let raw = type else { throw ConversationSessionError.invalidEvent }
+            let body = try Self.jsonData(data)
+            ConversationSideChannelEvents.deliver(type: raw, request: request, data: body)   // token bound at send, not at arrival
+            payload = .sideChannel(type: raw, data: body)
+        case "device_call":
+            guard reality != "not_configured", Self.supportsResume(request), request.image==nil, !request.hasUploadedAttachments,
+                  let id = data["interrupt_id"] as? String, UUID(uuidString: id) != nil, let call = data["call_id"] as? String, !call.isEmpty, call.count <= 160,
+                  let tool = data["tool"] as? String, Self.approvalToolNames.contains(tool), let args = data["args"] as? [String: Any],
+                  let confirm = data["confirm"] as? String, ["card","none"].contains(confirm), let ttl = data["ttl_sec"] as? Int, ttl > 0,
+                  let hash = data["args_hash"] as? String, hash.count == 64, let expires = data["expires_at"] as? String else { throw ConversationSessionError.invalidEvent }
+            payload = .deviceCall(ConversationDeviceCall(interruptID: id.lowercased(), callID: call, tool: tool, args: try Self.jsonData(args), confirm: confirm, ttlSec: ttl, argsHash: hash, expiresAt: expires))
+        case "approval_resolved":
+            guard let id = data["interrupt_id"] as? String, UUID(uuidString: id) != nil, let call = data["call_id"] as? String, !call.isEmpty,
+                  let decision = data["decision"] as? String, ["approved","denied","expired","cancelled"].contains(decision) || (data["kind"] as? String == "ui" && ["submitted","dismissed","error"].contains(decision)) || (data["kind"] as? String == "device" && decision == "reported") else { throw ConversationSessionError.invalidEvent }
+            payload = .approvalResolved(interruptID: id, callID: call, decision: decision, remember: Self.boolean(data["remember"]) ?? false)
         case "turn_completed":
             guard reality != "not_configured", let id = UUID(uuidString: data["message_id"] as? String ?? "") else { throw ConversationSessionError.invalidEvent }
             let bindings = try Self.array(data["task_bindings"]); guard bindings.count <= 1 else { throw ConversationSessionError.invalidEvent }
@@ -495,9 +823,12 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
         case "turn_failed":
             guard let code = data["code"] as? String, let reconciliation = data["reconciliation_required"] as? Bool else { throw ConversationSessionError.invalidEvent }
             payload = .failed(message: code, reconciliationRequired: reconciliation)
-        default: throw ConversationSessionError.invalidEvent
+            if code == "rate_limited", let raw = data["retry_after_seconds"] as? NSNumber, CFGetTypeID(raw) != CFBooleanGetTypeID(), (0...3600).contains(raw.intValue) { retryAfter = raw.intValue }
+        default:
+            // Forward-compatible: unknown event types are ignored (no transcript effect).
+            payload = .sideChannel(type: type ?? "unknown", data: (try? Self.jsonData(data)) ?? Data())
         }
-        return ConversationTurnEvent(operationID: request.operationID, epoch: request.epoch, sequence: sequence, payload: payload)
+        return ConversationTurnEvent(operationID: request.operationID, epoch: request.epoch, sequence: sequence, payload: payload, retryAfterSeconds: retryAfter, conversationID: request.conversationID, turnID: request.operationID)
     }
     private func binding(_ raw: Any, request: ConversationTurnRequest, currentTurn: Bool) throws -> ConversationTaskBinding {
         let b = try JSONDecoder().decode(ConversationTaskBinding.self, from: Self.jsonData(raw))
@@ -791,7 +1122,7 @@ extension NativeChatHTTPBackend: ConversationTaskPlanBackend {
         if http.statusCode == 401 { await credentials.rejected(scope: reference.scope) }
         guard (200..<300).contains(http.statusCode) else {
             if body != nil, let error = try? JSONDecoder().decode(NativeTaskPlanErrorEnvelope.self, from: bytes), error.schemaVersion == 1, !error.error.reconciliationRequired {
-                if http.statusCode == 409 { throw CatpawError.conflict }
+                if http.statusCode == 409 { sendDiagnostic("catpaw.send conflict site=plan409 path=\(wire.url?.path ?? "?")");throw CatpawError.conflict }
                 if [400,401,403,404,405,413,422,429].contains(http.statusCode) {
                     throw ConversationDispatchFailure.notSent(reason: "计划修改未被受理（HTTP \(http.statusCode)）。草稿已保留。")
                 }
@@ -1008,4 +1339,408 @@ private struct NativeFixedVisionRoute:Decodable {
  struct Policy:Decodable {let only:[String];let allow_fallbacks:Bool;let require_parameters:Bool;let data_collection:String;let max_price:[String:Double]}
  let provider:String;let downstream_provider:String;let model:String;let free:Bool;let zero_retention_claim:Bool;let privacy_notice_version:Int;let retention:Retention;let routing_policy:Policy
  var matchesSupportedNotice:Bool {provider=="OpenRouter" && downstream_provider=="Google AI Studio" && model=="google/gemma-4-31b-it:free" && free && !zero_retention_claim && privacy_notice_version==1 && retention.days==55 && retention.human_review_possible && routing_policy.only==["google-ai-studio"] && !routing_policy.allow_fallbacks && routing_policy.require_parameters && routing_policy.data_collection=="deny" && routing_policy.max_price==["prompt":0,"completion":0,"request":0,"image":0]}
+}
+
+// MARK: - catpaw.chat-attachments.v1 client (services/edge/docs/attachments-contract.md)
+
+/// Upload progress / state for the composer chip.
+public enum ChatAttachmentUploadState: Sendable, Equatable {
+    case creating
+    case uploading(fraction: Double)
+    case completing
+    case ready(attachmentID: UUID)
+    case failed(message: String)
+}
+public enum ChatAttachmentUploadError: Error, Sendable, Equatable, LocalizedError {
+    case unsupportedType, tooLarge, rejected(String), expired, notConfigured, server(Int, String)
+    public var errorDescription: String? {
+        switch self {
+        case .unsupportedType: return "只支持 PNG 或 JPEG 图片。"
+        case .tooLarge: return "图片超过 5 MB，请换一张或裁小后再试。"
+        case .rejected: return "图片未通过校验，请重新选择。"
+        case .expired: return "上传已过期，请重新添加图片。"
+        case .notConfigured: return "图片上传尚未配置。"
+        case .server: return "图片上传未完成，请稍后重试。"
+        }
+    }
+}
+/// A ready attachment: put `id` into the turn's `message.attachment_ids` (schema_version 2). Single use:
+/// once a turn is accepted it is consumed; if that turn fails, upload the same local bytes again under a new id.
+public struct ChatAttachmentReceipt: Sendable, Equatable {
+    public let id: UUID
+    public let mimeType: String
+    public let sizeBytes: Int
+    public let sha256: String
+    public let width: Int?
+    public let height: Int?
+}
+/// Minimal HTTP seam so the flow is testable without network. `progress` reports upload fractions (PUT only).
+public protocol ChatAttachmentTransport: Sendable {
+    func send(_ request: URLRequest, body: Data?, progress: (@Sendable (Double) -> Void)?) async throws -> (status: Int, body: Data)
+}
+public final class URLSessionChatAttachmentTransport: NSObject, ChatAttachmentTransport, @unchecked Sendable {
+    private let session: URLSession
+    public init(configuration: URLSessionConfiguration = .ephemeral) { session = URLSession(configuration: configuration) }
+    private final class Progress: NSObject, URLSessionTaskDelegate, @unchecked Sendable {
+        let report: @Sendable (Double) -> Void
+        init(_ report: @escaping @Sendable (Double) -> Void) { self.report = report }
+        func urlSession(_ session: URLSession, task: URLSessionTask, didSendBodyData bytesSent: Int64, totalBytesSent: Int64, totalBytesExpectedToSend: Int64) {
+            guard totalBytesExpectedToSend > 0 else { return }
+            report(min(1, Double(totalBytesSent) / Double(totalBytesExpectedToSend)))
+        }
+        // Signed URLs are credentials: never follow redirects.
+        func urlSession(_ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse, newRequest request: URLRequest) async -> URLRequest? { nil }
+    }
+    public func send(_ request: URLRequest, body: Data?, progress: (@Sendable (Double) -> Void)?) async throws -> (status: Int, body: Data) {
+        let delegate = progress.map { Progress($0) }
+        let (data, response): (Data, URLResponse)
+        if let body { (data, response) = try await session.upload(for: request, from: body, delegate: delegate) }
+        else { (data, response) = try await session.data(for: request, delegate: delegate) }
+        guard let http = response as? HTTPURLResponse else { throw ChatAttachmentUploadError.server(0, "no_http_response") }
+        return (http.statusCode, data)
+    }
+}
+/// create → PUT signed URL → complete. Bytes must already be prepared by the composer encoder
+/// (`SystemImageAttachmentEncoder`: transcode to PNG/JPEG, strip metadata, ≤2048 px); this layer re-checks
+/// type and the 5 MiB limit and never logs the signed URL.
+public actor ChatAttachmentUploader {
+    public static let maxBytes = 5 * 1024 * 1024
+    private let configuration: NativeChatConfiguration
+    private let credentials: any NativeChatSessionCredentials
+    private let transport: any ChatAttachmentTransport
+    private let pause: @Sendable (Double) async -> Void
+    public init(configuration: NativeChatConfiguration, credentials: any NativeChatSessionCredentials, transport: any ChatAttachmentTransport = URLSessionChatAttachmentTransport(),
+                pause: @escaping @Sendable (Double) async -> Void = { try? await Task.sleep(nanoseconds: UInt64($0 * 1_000_000_000)) }) {
+        self.configuration = configuration; self.credentials = credentials; self.transport = transport; self.pause = pause
+    }
+    public static func mimeType(of bytes: Data) -> String? {
+        let head = Array(bytes.prefix(8))
+        if head == [137, 80, 78, 71, 13, 10, 26, 10] { return "image/png" }
+        if head.starts(with: [255, 216, 255]) { return "image/jpeg" }
+        return nil
+    }
+    /// Uploads `bytes` and returns a ready receipt. `attachmentID` defaults to a fresh id; pass a new id (the
+    /// default) when retrying after a failed turn. One automatic restart under a new id on `410 attachment_expired`.
+    public func upload(_ bytes: Data, scope: DataScope, attachmentID: UUID = UUID(), onState: @escaping @Sendable (ChatAttachmentUploadState) -> Void = { _ in }) async throws -> ChatAttachmentReceipt {
+        do { return try await attempt(bytes, scope: scope, id: attachmentID, onState: onState) }
+        catch ChatAttachmentUploadError.expired {
+            do { return try await attempt(bytes, scope: scope, id: UUID(), onState: onState) }
+            catch { onState(.failed(message: error.localizedDescription)); throw error }
+        }
+        catch { onState(.failed(message: error.localizedDescription)); throw error }
+    }
+    /// Turn message body for schema_version 2 with uploaded attachment ids.
+    public static func turnMessage(id: UUID, text: String, attachments: [ChatAttachmentReceipt]) -> [String: Any] {
+        turnMessage(id: id, text: text, ids: attachments.map(\.id))
+    }
+    public static func turnMessage(id: UUID, text: String, ids: [UUID]) -> [String: Any] {
+        ["id": id.uuidString.lowercased(), "text": text, "attachment_ids": ids.map { $0.uuidString.lowercased() }]
+    }
+    private var base: String { "/catpaw/chat/v1/scopes/" + configuration.serverScopeID.uuidString.lowercased() + "/attachments" }
+    private func attempt(_ bytes: Data, scope: DataScope, id: UUID, onState: @escaping @Sendable (ChatAttachmentUploadState) -> Void) async throws -> ChatAttachmentReceipt {
+        guard let mime = Self.mimeType(of: bytes) else { throw ChatAttachmentUploadError.unsupportedType }
+        guard bytes.count <= Self.maxBytes else { throw ChatAttachmentUploadError.tooLarge }
+        guard configuration.publishableKey != nil, scope == configuration.localScope else { throw ChatAttachmentUploadError.notConfigured }
+        let sha = bytesHash(bytes), idText = id.uuidString.lowercased()
+        let auth = try await credentials.authorization(scope: scope)
+        onState(.creating)
+        var create = try configuration.makeRequest(route: base, authorization: auth); create.httpMethod = "POST"
+        let createBody = try JSONSerialization.data(withJSONObject: ["attachment_id": idText, "mime_type": mime, "size_bytes": bytes.count, "sha256": sha], options: [.sortedKeys])
+        let created = try await transport.send(create, body: createBody, progress: nil)
+        let createdJSON = try Self.check(created, expect: [200, 201])
+        guard let attachment = createdJSON["attachment"] as? [String: Any], attachment["id"] as? String == idText,
+              attachment["sha256"] as? String == sha, attachment["size_bytes"] as? Int == bytes.count else { throw ChatAttachmentUploadError.server(created.status, "attachment_mismatch") }
+        if attachment["state"] as? String == "pending" {
+            guard let upload = createdJSON["upload"] as? [String: Any], upload["method"] as? String == "PUT", let urlText = upload["url"] as? String,
+                  let url = URL(string: urlText), url.scheme == "https", let headers = upload["headers"] as? [String: String] else { throw ChatAttachmentUploadError.server(created.status, "upload_missing") }
+            var put = URLRequest(url: url); put.httpMethod = "PUT"; put.timeoutInterval = 120
+            for (key, value) in headers { put.setValue(value, forHTTPHeaderField: key) }
+            onState(.uploading(fraction: 0))
+            let uploaded = try await transport.send(put, body: bytes, progress: { onState(.uploading(fraction: $0)) })
+            guard (200..<300).contains(uploaded.status) else { throw ChatAttachmentUploadError.server(uploaded.status, "upload_failed") }
+            onState(.uploading(fraction: 1))
+        }
+        onState(.completing)
+        var tries = 0
+        while true {
+            var complete = try configuration.makeRequest(route: base + "/" + idText + "/complete", authorization: auth); complete.httpMethod = "POST"
+            let done = try await transport.send(complete, body: Data("{}".utf8), progress: nil)
+            if done.status == 409, Self.code(done.body) == "attachment_upload_missing", tries < 3 { tries += 1; await pause(Double(tries)); continue }
+            let json = try Self.check(done, expect: [200])
+            guard let ready = json["attachment"] as? [String: Any], ready["id"] as? String == idText else { throw ChatAttachmentUploadError.server(done.status, "attachment_mismatch") }
+            switch ready["state"] as? String {
+            case "ready":
+                onState(.ready(attachmentID: id))
+                return ChatAttachmentReceipt(id: id, mimeType: mime, sizeBytes: bytes.count, sha256: sha, width: ready["width"] as? Int, height: ready["height"] as? Int)
+            case "rejected": throw ChatAttachmentUploadError.rejected(ready["reason"] as? String ?? "rejected")
+            default: throw ChatAttachmentUploadError.server(done.status, "attachment_not_ready")
+            }
+        }
+    }
+    private static func code(_ body: Data) -> String? { ((try? JSONSerialization.jsonObject(with: body)) as? [String: Any]).flatMap { ($0["error"] as? [String: Any])?["code"] as? String } }
+    private static func check(_ reply: (status: Int, body: Data), expect: Set<Int>) throws -> [String: Any] {
+        if reply.status == 410 { throw ChatAttachmentUploadError.expired }
+        if reply.status == 413 { throw ChatAttachmentUploadError.tooLarge }
+        if reply.status == 422, code(reply.body) == "image_mime_unsupported" { throw ChatAttachmentUploadError.unsupportedType }
+        guard expect.contains(reply.status), let json = (try? JSONSerialization.jsonObject(with: reply.body)) as? [String: Any] else { throw ChatAttachmentUploadError.server(reply.status, code(reply.body) ?? "unexpected") }
+        return json
+    }
+}
+
+#if DEBUG
+// MARK: - Demo / fixture backend (DEBUG only; see docs/demo-fixture-backend.md)
+/// Enable with launch argument `-CatpawDemoBackend` or `UserDefaults` key `CatpawDemoBackend` = true. Never compiled into Release.
+public enum CatpawDemoBackendSwitch {
+    public static let argument = "-CatpawDemoBackend"
+    public static let defaultsKey = "CatpawDemoBackend"
+    public static func isEnabled(arguments: [String] = ProcessInfo.processInfo.arguments, defaults: UserDefaults = .standard) -> Bool {
+        if arguments.contains(argument) { return true }
+        return defaults.bool(forKey: defaultsKey)
+    }
+    /// Returns the demo backend when enabled, else `fallback` unchanged.
+    public static func select(_ fallback: any ConversationBackend, arguments: [String] = ProcessInfo.processInfo.arguments, defaults: UserDefaults = .standard) -> any ConversationBackend {
+        isEnabled(arguments: arguments, defaults: defaults) ? CatpawDemoConversationBackend.shared : fallback
+    }
+}
+
+/// One catpaw.ui.v1 wire event (`ui.block`, `ui.block.update`, `ui.block.resolve`, `turn_suspended`, `turn_completed`).
+/// `json` is the event's `data` object exactly as the Edge server sends it (docs/fixtures/catpaw-ui-demo.jsonl).
+public struct CatpawDemoUIEvent: Sendable, Equatable {
+    public let sequence: Int
+    public let type: String
+    public let json: String
+}
+public enum CatpawDemoUIDecision: String, Sendable { case submit, dismiss, reportError = "report_error" }
+public enum CatpawDemoUIFailure: Error, Sendable, Equatable { case notFound, consumed, conflict, invalidResponse }
+
+/// Scripted catpaw.ui.v1 session mirroring the recorded server run:
+/// round 1 = card, list, progress (display) + choices (waits); round 2 = progress update + form, confirm, sheet (wait);
+/// after the last answer the turn completes. Decisions are idempotent per `operationID` (same body replays, other body = conflict).
+public actor CatpawDemoUIScript {
+    public static let interactive = ["demo-choices", "demo-form", "demo-confirm", "demo-sheet"]
+    private static let expiresAt = "2026-10-16T00:20:00.000Z"
+    private var sequence = 0
+    private var round = 0
+    private var resolved: [String: (operation: UUID, body: String, events: [CatpawDemoUIEvent])] = [:]
+    private var completed = false
+    public init() {}
+    private func next(_ type: String, _ json: String) -> CatpawDemoUIEvent { sequence += 1; return CatpawDemoUIEvent(sequence: sequence, type: type, json: json) }
+    public static func interruptID(_ blockID: String) -> String { stableID("catpaw-demo-interrupt-\(blockID)").uuidString.lowercased() }
+    private static func interrupt(_ id: String) -> String { "\"interruptId\":\"\(interruptID(id))\",\"argsHash\":\"\(String(repeating: "0", count: 64))\",\"expiresAt\":\"\(expiresAt)\"" }
+    /// Round 1. Calling again returns nothing (the script runs once per instance).
+    public func start() -> [CatpawDemoUIEvent] {
+        guard round == 0 else { return [] }
+        round = 1
+        return [
+            next("ui.block", #"{"id":"demo-card","kind":"card","schemaVersion":1,"title":"今天","body":"**三件事**：写周报、买菜、跑步"}"#),
+            next("ui.block", #"{"id":"demo-list","kind":"list","schemaVersion":1,"title":"待办","items":[{"id":"a","label":"写周报"},{"id":"b","label":"买菜"},{"id":"c","label":"跑步"}]}"#),
+            next("ui.block", #"{"id":"demo-progress","kind":"progress","schemaVersion":1,"title":"整理今天","steps":[{"id":"read","label":"读取日程","state":"running"},{"id":"plan","label":"排优先级","state":"pending"}]}"#),
+            next("ui.block", #"{"id":"demo-choices","kind":"choices","schemaVersion":1,"title":"先做哪件？","selection":"single","allowOther":true,"items":[{"id":"a","label":"写周报"},{"id":"b","label":"买菜"}],"# + Self.interrupt("demo-choices") + "}"),
+            next("turn_suspended", "{\"interrupt_ids\":[\"\(Self.interruptID("demo-choices"))\"],\"expires_at\":\"\(Self.expiresAt)\"}"),
+        ]
+    }
+    private func round2() -> [CatpawDemoUIEvent] {
+        round = 2
+        return [
+            next("ui.block.update", #"{"id":"demo-progress","steps":[{"id":"read","label":"读取日程","state":"done"},{"id":"plan","label":"排优先级","state":"running"}]}"#),
+            next("ui.block", #"{"id":"demo-form","kind":"form","schemaVersion":1,"title":"跑步计划","fields":[{"id":"km","label":"公里","type":"number","required":true},{"id":"at","label":"时间","type":"time"}],"# + Self.interrupt("demo-form") + "}"),
+            next("ui.block", #"{"id":"demo-confirm","kind":"confirm","schemaVersion":1,"title":"创建提醒？","body":"18:30 提醒跑步","actions":[{"id":"approve","label":"创建"},{"id":"deny","label":"取消"}],"# + Self.interrupt("demo-confirm") + "}"),
+            next("ui.block", #"{"id":"demo-sheet","kind":"sheet","schemaVersion":1,"title":"弹窗","body":"这是一个原生弹窗（不是代码）","actions":[{"id":"ok","label":"好的"}],"# + Self.interrupt("demo-sheet") + "}"),
+            next("turn_suspended", "{\"interrupt_ids\":[\"\(Self.interruptID("demo-form"))\",\"\(Self.interruptID("demo-confirm"))\",\"\(Self.interruptID("demo-sheet"))\"],\"expires_at\":\"\(Self.expiresAt)\"}"),
+        ]
+    }
+    /// `POST …/interrupts/{interruptId}/decision` with `{operation_id, decision, args_hash, response?}`.
+    /// `responseJSON` is the `ui.response` (submit) or `ui.error` (report_error) object; nil for dismiss.
+    public func respond(blockID: String, decision: CatpawDemoUIDecision, responseJSON: String?, operationID: UUID) throws -> [CatpawDemoUIEvent] {
+        let open = round == 1 ? ["demo-choices"] : round == 2 ? ["demo-form", "demo-confirm", "demo-sheet"] : []
+        let body = decision.rawValue + "|" + (responseJSON ?? "")
+        if let prior = resolved[blockID] {
+            guard prior.operation == operationID else { throw CatpawDemoUIFailure.consumed }
+            guard prior.body == body else { throw CatpawDemoUIFailure.conflict }
+            return prior.events
+        }
+        guard open.contains(blockID) else { throw CatpawDemoUIFailure.notFound }
+        switch decision {
+        case .submit, .reportError:
+            guard let responseJSON, let data = responseJSON.data(using: .utf8),
+                  let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  object["blockId"] as? String == blockID,
+                  object["type"] as? String == (decision == .submit ? "ui.response" : "ui.error") else { throw CatpawDemoUIFailure.invalidResponse }
+            if blockID == "demo-confirm", decision == .submit { guard object["actionId"] is String else { throw CatpawDemoUIFailure.invalidResponse } }
+        case .dismiss:
+            guard responseJSON == nil else { throw CatpawDemoUIFailure.invalidResponse }
+        }
+        let status = decision == .submit ? "submitted" : decision == .dismiss ? "dismissed" : "error"
+        var events = [
+            next("approval_resolved", "{\"interrupt_id\":\"\(Self.interruptID(blockID))\",\"call_id\":\"call-\(blockID)\",\"kind\":\"ui\",\"decision\":\"\(status)\"}"),
+            next("ui.block.resolve", "{\"id\":\"\(blockID)\",\"status\":\"\(status)\"}"),
+        ]
+        resolved[blockID] = (operationID, body, [])
+        if open.allSatisfy({ resolved[$0] != nil }) {
+            if round == 1 { events += round2() }
+            else if !completed { completed = true; events.append(next("turn_completed", "{\"text\":\"都安排好了。\"}")) }
+        }
+        resolved[blockID] = (operationID, body, events)
+        return events
+    }
+}
+
+/// DEBUG demo `ConversationBackend`, on the same domain path as the HTTP backend:
+/// - reply: turn_started → text_delta → tool_call(create_task) → approval_requested → turn_suspended
+/// - submitApproval: approval_resolved → tool_result(create_task, ok|denied) → catpaw.ui.v1 round 1
+///   (ui.block card/list/progress/choices) → turn_suspended
+/// - submitUIDecision (choices): approval_resolved(kind ui) → ui.block.resolve → round 2 (ui.block.update progress,
+///   ui.block form/confirm/sheet) → turn_suspended; after the last of form/confirm/sheet: text_delta → turn_completed.
+public actor CatpawDemoConversationBackend: ConversationBackend {
+    public static let shared = CatpawDemoConversationBackend()
+    public static let demoTaskCallID = "call-demo-create-task"
+    private struct Turn { var sequence: Int; var messageID: UUID; var text: String; var interruptID: String; var decided: (UUID, ConversationApprovalDecision)?; var resolvedEvents: [ConversationTurnEvent]; var ui: CatpawDemoUIScript; var uiReplies: [String: (UUID, [ConversationTurnEvent])] }
+    private var turns: [UUID: Turn] = [:]
+    public init() {}
+    public func connection(scope: DataScope) async -> ConversationConnection {
+        ConversationConnection(state: .connected, provider: "Demo", detail: "演示后端（DEBUG）：审批、create_task 与 catpaw.ui.v1 全部块类型均为脚本回放。")
+    }
+    private func event(_ request: ConversationTurnRequest, _ payload: ConversationTurnEvent.Payload) -> ConversationTurnEvent {
+        var turn = turns[request.operationID]!
+        turn.sequence += 1; turns[request.operationID] = turn
+        return ConversationTurnEvent(operationID: request.operationID, epoch: 1, sequence: turn.sequence, payload: payload, conversationID: request.conversationID, turnID: request.operationID)
+    }
+    private func nextSequence(_ request: ConversationTurnRequest) -> Int { turns[request.operationID]!.sequence + 1 }
+    private static func stream(_ events: [ConversationTurnEvent]) -> AsyncThrowingStream<ConversationTurnEvent, Error> {
+        AsyncThrowingStream { continuation in for event in events { continuation.yield(event) }; continuation.finish() }
+    }
+    /// Script wire events → domain events with this turn's continuous sequence (same `ConversationUIEvent.decode` as HTTP).
+    private func domain(_ request: ConversationTurnRequest, _ script: [CatpawDemoUIEvent]) throws -> [ConversationTurnEvent] {
+        var out: [ConversationTurnEvent] = []
+        for wire in script {
+            let data = Data(wire.json.utf8)
+            let object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] ?? [:]
+            switch wire.type {
+            case "ui.block", "ui.block.update", "ui.block.resolve":
+                let sequence = nextSequence(request)
+                let ui = try ConversationUIEvent.decode(type: wire.type, sequence: sequence, payload: data)
+                out.append(event(request, ui.type == .block ? .uiBlock(ui) : ui.type == .update ? .uiBlockUpdate(ui) : .uiBlockResolve(ui)))
+            case "turn_suspended":
+                out.append(event(request, .suspended(interruptIDs: object["interrupt_ids"] as? [String] ?? [], expiresAt: object["expires_at"] as? String ?? "")))
+            case "approval_resolved":
+                out.append(event(request, .approvalResolved(interruptID: object["interrupt_id"] as? String ?? "", callID: object["call_id"] as? String ?? "", decision: object["decision"] as? String ?? "", remember: false)))
+            case "turn_completed":
+                let turn = turns[request.operationID]!, tail = "都安排好了。"
+                out.append(event(request, .textDelta(messageID: turn.messageID, text: tail)))
+                out.append(event(request, .completed(messageID: turn.messageID, finalTextHash: textHash(turn.text + tail))))
+            default: throw ConversationSessionError.invalidEvent
+            }
+        }
+        return out
+    }
+    public func reply(_ request: ConversationTurnRequest) async throws -> AsyncThrowingStream<ConversationTurnEvent, Error> {
+        guard turns[request.operationID] == nil else { throw ConversationSessionError.unresolvedOperation }
+        let interruptID = UUID().uuidString.lowercased(), messageID = UUID(), opening = "好的，我先帮你建一个任务。"
+        turns[request.operationID] = Turn(sequence: 0, messageID: messageID, text: opening, interruptID: interruptID, decided: nil, resolvedEvents: [], ui: CatpawDemoUIScript(), uiReplies: [:])
+        let arguments = #"{"due":"2026-10-16","title":"跑步 5 公里"}"#
+        let expires = ISO8601DateFormatter().string(from: Date().addingTimeInterval(600))
+        let approval = ConversationApprovalRequest(interruptID: interruptID, callID: Self.demoTaskCallID, tool: "create_task", summary: "创建任务「跑步 5 公里」（2026-10-16）", arguments: arguments, argsHash: String(repeating: "a", count: 64), expiresAt: expires, risk: "local_write", rememberAllowed: true)
+        let hash = textHash(request.operationID.uuidString.lowercased())
+        var events: [ConversationTurnEvent] = []
+        events.append(event(request, .started(requestHash: hash, conversationRevision: 1, grantEpoch: 1)))
+        events.append(event(request, .textDelta(messageID: messageID, text: opening)))
+        events.append(event(request, .toolStarted(callID: Self.demoTaskCallID, name: "create_task", arguments: arguments)))
+        events.append(event(request, .approvalRequested(approval)))
+        events.append(event(request, .suspended(interruptIDs: [interruptID], expiresAt: expires)))
+        return Self.stream(events)
+    }
+    public func submitApproval(_ request: ConversationTurnRequest, interruptID: String, decision: ConversationApprovalDecision, argsHash: String, operationID: UUID, afterSequence: Int) async throws -> AsyncThrowingStream<ConversationTurnEvent, Error> {
+        guard let turn = turns[request.operationID], turn.interruptID == interruptID else { throw ConversationApprovalFailure.notFound }
+        guard argsHash == String(repeating: "a", count: 64) else { throw ConversationApprovalFailure.stale }
+        if let decided = turn.decided {
+            // Idempotent replay of the same operation; anything else is consumed.
+            guard decided.0 == operationID, decided.1 == decision else { throw ConversationApprovalFailure.consumed }
+            return Self.stream(turn.resolvedEvents.filter { $0.sequence > afterSequence })
+        }
+        let approved = decision != .deny
+        let content = approved ? #"{"status":"ok","task":{"id":"demo-task","title":"跑步 5 公里","due":"2026-10-16"}}"# : #"{"status":"denied"}"#
+        var events: [ConversationTurnEvent] = []
+        events.append(event(request, .approvalResolved(interruptID: interruptID, callID: Self.demoTaskCallID, decision: approved ? "approved" : "denied", remember: decision == .approveAlways)))
+        events.append(event(request, .toolResult(ConversationToolResult(callID: Self.demoTaskCallID, name: "create_task", content: content).withStatus(approved ? "ok" : "denied"))))
+        let round1 = await turn.ui.start()
+        events += try domain(request, round1)
+        var saved = turns[request.operationID]!
+        saved.decided = (operationID, decision); saved.resolvedEvents = events; turns[request.operationID] = saved
+        return Self.stream(events)
+    }
+    public func submitUIDecision(_ request: ConversationTurnRequest, interruptID: String, decision: ConversationUIDecision, argsHash: String, response: Data?, operationID: UUID, afterSequence: Int) async throws -> AsyncThrowingStream<ConversationTurnEvent, Error> {
+        let key = interruptID.lowercased()
+        guard let turn = turns[request.operationID], let blockID = CatpawDemoUIScript.interactive.first(where: { CatpawDemoUIScript.interruptID($0) == key }) else { throw ConversationApprovalFailure.notFound }
+        guard argsHash == String(repeating: "0", count: 64) else { throw ConversationApprovalFailure.stale }
+        let script: [CatpawDemoUIEvent]
+        let responseText = response.map { String(decoding: $0, as: UTF8.self) }
+        do { script = try await turn.ui.respond(blockID: blockID, decision: CatpawDemoUIDecision(rawValue: decision.rawValue) ?? .dismiss, responseJSON: responseText, operationID: operationID) }
+        catch CatpawDemoUIFailure.notFound { throw ConversationApprovalFailure.notFound }
+        catch CatpawDemoUIFailure.consumed { throw ConversationApprovalFailure.consumed }
+        catch CatpawDemoUIFailure.conflict { throw ConversationApprovalFailure.rejected(status: 409, code: "approval_operation_conflict") }
+        catch CatpawDemoUIFailure.invalidResponse { throw ConversationApprovalFailure.rejected(status: 422, code: "ui_response_invalid") }
+        // Same operation and body: replay what was already streamed after `afterSequence`.
+        if let prior = turns[request.operationID]!.uiReplies[key] { return Self.stream(prior.1.filter { $0.sequence > afterSequence }) }
+        let events = try domain(request, script)
+        var saved = turns[request.operationID]!
+        saved.uiReplies[key] = (operationID, events); turns[request.operationID] = saved
+        return Self.stream(events)
+    }
+    public func observe(_ request: ConversationTurnRequest) async throws -> ConversationObservation { throw ConversationSessionError.unresolvedOperation }
+    public func cancelTurn(_ request: ConversationTurnRequest) async throws -> ConversationTurnCancelReceipt {
+        guard turns[request.operationID] != nil else { throw ConversationTurnCancelFailure.notFound }
+        turns[request.operationID] = nil
+        return ConversationTurnCancelReceipt(turnID: request.operationID, state: "failed", cancelled: true, alreadyTerminal: false)
+    }
+}
+#endif
+
+/// Keeps the composer's local image bytes for a turn until `turn_completed`, and re-uploads them under NEW
+/// attachment ids when that turn failed (the server consumed the old ids when it accepted the turn;
+/// catpaw.chat-attachments.v1 §4). Bytes never leave memory except through the uploader.
+public actor ChatAttachmentSendCoordinator {
+    public typealias Upload = @Sendable (_ bytes: Data, _ attachmentID: UUID) async throws -> ChatAttachmentReceipt
+    private let upload: Upload
+    private var kept: [UUID: [Data]] = [:]
+    private var receipts: [UUID: [ChatAttachmentReceipt]] = [:]
+    public init(upload: @escaping Upload) { self.upload = upload }
+    public init(uploader: ChatAttachmentUploader, scope: DataScope) {
+        self.init(upload: { bytes, id in try await uploader.upload(bytes, scope: scope, attachmentID: id) })
+    }
+    /// Uploads each image under a fresh id, keeps the bytes for `request.operationID`, and returns the request
+    /// carrying `attachmentIDs`. Calling again for the same operation reuses the ready ids (no second upload).
+    public func attach(_ images: [Data], to request: ConversationTurnRequest) async throws -> ConversationTurnRequest {
+        guard !images.isEmpty else { return request.withAttachmentIDs(nil) }
+        if let ready = receipts[request.operationID], kept[request.operationID] == images { return request.withAttachmentIDs(ready.map(\.id)) }
+        var uploaded: [ChatAttachmentReceipt] = []
+        for bytes in images {
+            let receipt = try await upload(bytes, UUID())
+            uploaded.append(receipt)
+        }
+        kept[request.operationID] = images; receipts[request.operationID] = uploaded
+        return request.withAttachmentIDs(uploaded.map(\.id))
+    }
+    /// The local copy for a turn (for the bubble preview and for a retry). nil once completed.
+    public func localImages(for operationID: UUID) -> [Data]? { kept[operationID] }
+    public func attachmentIDs(for operationID: UUID) -> [UUID]? { receipts[operationID]?.map(\.id) }
+    /// `turn_completed`: the server has used the image; drop the local bytes.
+    public func turnCompleted(_ operationID: UUID) { kept[operationID] = nil; receipts[operationID] = nil }
+    /// User discarded the draft/turn without retrying.
+    public func discard(_ operationID: UUID) { turnCompleted(operationID) }
+    /// The turn `failed` after the server accepted it: upload the kept bytes again under NEW ids for the retry
+    /// turn `retry` (a new operationID), and move the local copy to it. Throws if nothing was kept.
+    public func reattach(after failedOperationID: UUID, to retry: ConversationTurnRequest) async throws -> ConversationTurnRequest {
+        guard let images = kept[failedOperationID], !images.isEmpty else { throw ChatAttachmentUploadError.expired }
+        let old = Set(receipts[failedOperationID]?.map(\.id) ?? [])
+        var uploaded: [ChatAttachmentReceipt] = []
+        for bytes in images {
+            var id = UUID()
+            while old.contains(id) { id = UUID() }
+            let receipt = try await upload(bytes, id)
+            uploaded.append(receipt)
+        }
+        kept[failedOperationID] = nil; receipts[failedOperationID] = nil
+        kept[retry.operationID] = images; receipts[retry.operationID] = uploaded
+        return retry.withAttachmentIDs(uploaded.map(\.id))
+    }
 }

@@ -10,7 +10,7 @@ export const canonical = v => {
 };
 export const hash = v => createHash('sha256').update(typeof v==='string'?v:canonical(v)).digest('hex');
 export class ApiError extends Error {
-  constructor(status,code,{reconciliation=false}={}) { super(code); this.status=status;this.code=code;this.reconciliation=reconciliation; }
+  constructor(status,code,{reconciliation=false,retryable=false,retryAfterSec=null}={}) { super(code); this.status=status;this.code=code;this.reconciliation=reconciliation;this.retryable=retryable===true;if(Number.isInteger(retryAfterSec)&&retryAfterSec>0)this.retryAfterSec=retryAfterSec; }
 }
 export const check = (ok,status,code,details) => { if (!ok) throw new ApiError(status,code,details); };
 export const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

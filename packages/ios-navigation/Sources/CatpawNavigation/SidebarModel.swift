@@ -1,7 +1,7 @@
 import Foundation
 
 public enum SidebarDestination: Equatable, Sendable {
-    case newConversation, conversation(UUID), tasks, results, memory, settings
+    case newConversation, conversation(UUID), tasks, results, memory, settings, proactive
 }
 
 /// Supply only the current account/scope's records. This package does not fetch or persist them.
@@ -9,8 +9,10 @@ public struct SidebarConversation: Identifiable, Equatable, Sendable {
     public let id: UUID
     public var title: String
     public var preview: String?
-    public init(id: UUID, title: String, preview: String? = nil) {
-        self.id = id; self.title = title; self.preview = preview
+    /// Last activity, shown as a small relative time. Optional so older hosts keep compiling.
+    public var updatedAt: Date?
+    public init(id: UUID, title: String, preview: String? = nil, updatedAt: Date? = nil) {
+        self.id = id; self.title = title; self.preview = preview; self.updatedAt = updatedAt
     }
 }
 public struct SidebarCapabilities: Equatable, Sendable {
@@ -20,6 +22,8 @@ public struct SidebarCapabilities: Equatable, Sendable {
     public var results: Bool
     public var memory: Bool
     public var settings: Bool
+    /// Proactive suggestion inbox (主动). Off by default so older hosts keep their drawer.
+    public var proactive: Bool = false
     public init(canCreateConversation: Bool = true, canSelectConversation: Bool = true,
                 tasks: Bool = false, results: Bool = false, memory: Bool = false, settings: Bool = true) {
         self.canCreateConversation = canCreateConversation; self.canSelectConversation = canSelectConversation
@@ -33,8 +37,15 @@ public struct SidebarCapabilities: Equatable, Sendable {
         case .results: results
         case .memory: memory
         case .settings: settings
+        case .proactive: proactive
         }
     }
+}
+/// Account header shown at the top of the drawer. Tapping it routes to settings.
+public struct SidebarAccount: Equatable, Sendable {
+    public var name: String
+    public var detail: String?
+    public init(name: String, detail: String? = nil) { self.name = name; self.detail = detail }
 }
 public struct SidebarSnapshot: Equatable, Sendable {
     /// A noncredential namespace used to reset transient search across account changes.
@@ -42,10 +53,11 @@ public struct SidebarSnapshot: Equatable, Sendable {
     public var selectedConversationID: UUID?
     public var conversations: [SidebarConversation]
     public var capabilities: SidebarCapabilities
+    public var account: SidebarAccount?
     public init(contextID: String, selectedConversationID: UUID? = nil,
-                conversations: [SidebarConversation], capabilities: SidebarCapabilities = .init()) {
+                conversations: [SidebarConversation], capabilities: SidebarCapabilities = .init(), account: SidebarAccount? = nil) {
         self.contextID = contextID; self.selectedConversationID = selectedConversationID
-        self.conversations = conversations; self.capabilities = capabilities
+        self.conversations = conversations; self.capabilities = capabilities; self.account = account
     }
     public func matching(_ query: String) -> [SidebarConversation] {
         let needle = query.trimmingCharacters(in: .whitespacesAndNewlines)

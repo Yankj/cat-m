@@ -18,7 +18,7 @@ public enum NativeAuthError: Error, LocalizedError, Sendable {
         case .emailNotAuthorized: return "邮件服务不允许向此邮箱发信，请使用项目允许的邮箱或联系维护者配置邮件服务。"
         case .weakPassword: return "密码未满足服务要求，请使用更长且包含不同字符的密码。"
         case .anonymousUnavailable: return "体验登录暂不可用，请稍后重试。"
-        case .sessionRecoveryRequired: return "已有会话未能安全恢复。请明确退出此会话后再开始新体验；原对话文件会保留。"
+        case .sessionRecoveryRequired: return "这次会话需要重新开始，本机对话仍会保留。"
         case .callbackUnsupported: return "当前登录方式不接受外部链接中的会话。"
         }
     }

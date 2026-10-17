@@ -1,5 +1,5 @@
 {
-  "reviewed_utc_date": "2026-10-14",
+  "reviewed_utc_date": "2026-10-15",
   "policy": "An exception applies only to the exact path, category, line and file SHA256. Any byte change requires fresh review.",
   "findings": [
     {
@@ -209,14 +209,14 @@
       "path": "apps/ios-conversation/Tests/DeviceTrialNativeTests.swift",
       "category": "deployment_public_key",
       "line": 296,
-      "sha256": "75ca6fe8c6ef4776f2f87247f508e0dfd53a21488687ae82d643316080690e5f",
+      "sha256": "a3d5501f65c3d068d112c70f7bb5e3652a2d920d9c5c9bd073697c03d31b4cf7",
       "reason": "Explicit synthetic fixture public key in mock-only native test; no real deployment key."
     },
     {
       "path": "apps/ios-conversation/Tests/DeviceTrialNativeTests.swift",
       "category": "deployment_public_key",
       "line": 337,
-      "sha256": "75ca6fe8c6ef4776f2f87247f508e0dfd53a21488687ae82d643316080690e5f",
+      "sha256": "a3d5501f65c3d068d112c70f7bb5e3652a2d920d9c5c9bd073697c03d31b4cf7",
       "reason": "Explicit synthetic fixture public key in mock-only native test; no real deployment key."
     },
     {
@@ -765,8 +765,8 @@
     {
       "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
       "category": "secret_assignment_review",
-      "line": 157,
-      "sha256": "a62258afa72548b75f9532616306fffd45c3a1d73d9bf69b4af7568a07abdee0",
+      "line": 203,
+      "sha256": "c49146b57db685100c33fcf90b0c4317496e1c99364b71c6ced7e60b1e693eb3",
       "reason": "Reviewed fixed synthetic lifecycle access-token marker, consumed only by the named injected test remote and local manager. It contains no real credential."
     },
     {
@@ -1406,6 +1406,781 @@
       "line": 42,
       "sha256": "60b0728a84fb420de87538f9c6a2c9d1c198b30d7294d50e7b4a57da48e13361",
       "reason": "Independently verified byte-identical existing DEBUG-only synthetic fixture basename; its task- substring matches sk- credential detection. No credential or user data. Exact current whole-file hash and line only."
+    },
+    {
+      "path": "apps/ios-conversation/Sources/App/CatpawApp.swift",
+      "category": "credential_prefix",
+      "line": 40,
+      "sha256": "5f4b2436f42305718fd365936426d8be924dcd1bbbdbf54d5f7436505ac0a3fb",
+      "reason": "Re-reviewed after the UI merge: unchanged DEBUG-only synthetic task-actions fixture basename triggers the sk- prefix pattern. No credential or user data is present; exact current whole-file hash and line only."
+    },
+    {
+      "path": "apps/ios-conversation/Sources/App/CatpawApp.swift",
+      "category": "credential_prefix",
+      "line": 42,
+      "sha256": "5f4b2436f42305718fd365936426d8be924dcd1bbbdbf54d5f7436505ac0a3fb",
+      "reason": "Re-reviewed after the UI merge: unchanged DEBUG-only synthetic task-controls fixture basename triggers the sk- prefix pattern. No credential or user data is present; exact current whole-file hash and line only."
+    },
+    {
+      "path": "apps/ios-conversation/Sources/App/CatpawApp.swift",
+      "category": "credential_prefix",
+      "line": 40,
+      "sha256": "4906c98feab61aabbf5be4d52c123fb1d94b96ef085e5ef951e4f5cc96f6764f",
+      "reason": "Re-reviewed on integration v2 (737f3c2 + push-token wiring): unchanged DEBUG-only synthetic task-actions fixture basename; the task- substring matches the sk- credential pattern. Not a credential."
+    },
+    {
+      "path": "apps/ios-conversation/Sources/App/CatpawApp.swift",
+      "category": "credential_prefix",
+      "line": 42,
+      "sha256": "4906c98feab61aabbf5be4d52c123fb1d94b96ef085e5ef951e4f5cc96f6764f",
+      "reason": "Re-reviewed on integration v2 (737f3c2 + push-token wiring): unchanged DEBUG-only synthetic task-controls fixture basename; the task- substring matches the sk- credential pattern. Not a credential."
+    },
+    {
+      "path": "services/edge/supabase/functions/_shared/core/src/source-erasure.mjs",
+      "category": "credential_prefix",
+      "line": 15,
+      "sha256": "3e3dd57b0d875a76c7c7937190a53a97b2ea7200a49a47fe90dfa6e98fbc5f8e",
+      "reason": "Reviewed R0 v22 vision port: line holds public storage collection identifiers (revision artifact receipt kinds); the task- substring matches the sk- credential pattern. The vision change only clears vision_provider_receipt/image_attachments elsewhere. Not a credential."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/AuthTestSupport.swift",
+      "category": "deployment_public_key",
+      "line": 85,
+      "sha256": "4f0c3320733952b019b15823b9f75cabbef9d2093a33e9c84ca247c45ad23f0f",
+      "reason": "Reviewed named offline auth fixture: synthetic public-key/access-token markers and injected mock remotes only; no real credential or network request. Exact current bytes and line pinned."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
+      "category": "deployment_public_key",
+      "line": 327,
+      "sha256": "c49146b57db685100c33fcf90b0c4317496e1c99364b71c6ced7e60b1e693eb3",
+      "reason": "Reviewed named offline auth fixture: synthetic public-key/access-token markers and injected mock remotes only; no real credential or network request. Exact current bytes and line pinned."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
+      "category": "deployment_public_key",
+      "line": 509,
+      "sha256": "3ff6810b9198213ce1974726e3c151bd51b2ac532d9dadfae55114516410713e",
+      "reason": "Reviewed named offline auth fixture: synthetic public-key/access-token markers and injected mock remotes only; no real credential or network request. Exact current bytes and line pinned."
+    },
+    {
+      "path": "apps/ios-conversation/Resources/Assets.xcassets/LaunchGlow.imageset/Contents.json",
+      "category": "email_review",
+      "line": 8,
+      "sha256": "b38ae94627207648c6d95d37d68397522f3051e68cb7ceed9408e8a6c6929697",
+      "reason": "Reviewed unchanged Xcode asset metadata: @2x.png and @3x.png filenames resemble email addresses; no email, account identity or secret. Visual asset bytes are unchanged."
+    },
+    {
+      "path": "apps/ios-conversation/Resources/Assets.xcassets/LaunchGlow.imageset/Contents.json",
+      "category": "email_review",
+      "line": 13,
+      "sha256": "b38ae94627207648c6d95d37d68397522f3051e68cb7ceed9408e8a6c6929697",
+      "reason": "Reviewed unchanged Xcode asset metadata: @2x.png and @3x.png filenames resemble email addresses; no email, account identity or secret. Visual asset bytes are unchanged."
+    },
+    {
+      "path": "apps/ios-conversation/Resources/Assets.xcassets/LaunchPaw.imageset/Contents.json",
+      "category": "email_review",
+      "line": 8,
+      "sha256": "429a2a63d009eb4d23ec0fa782f8b68db08ac4ba56d84d9c6b072a60e021bea8",
+      "reason": "Reviewed unchanged Xcode asset metadata: @2x.png and @3x.png filenames resemble email addresses; no email, account identity or secret. Visual asset bytes are unchanged."
+    },
+    {
+      "path": "apps/ios-conversation/Resources/Assets.xcassets/LaunchPaw.imageset/Contents.json",
+      "category": "email_review",
+      "line": 13,
+      "sha256": "429a2a63d009eb4d23ec0fa782f8b68db08ac4ba56d84d9c6b072a60e021bea8",
+      "reason": "Reviewed unchanged Xcode asset metadata: @2x.png and @3x.png filenames resemble email addresses; no email, account identity or secret. Visual asset bytes are unchanged."
+    },
+    {
+      "path": "apps/ios-conversation/Resources/Assets.xcassets/LaunchPawMark.imageset/Contents.json",
+      "category": "email_review",
+      "line": 8,
+      "sha256": "f4c8f2b02aa08672daa97551cf5c0f5c47611b953638d5ffa9cd9b9aaa003a75",
+      "reason": "Reviewed unchanged Xcode asset metadata: @2x.png and @3x.png filenames resemble email addresses; no email, account identity or secret. Visual asset bytes are unchanged."
+    },
+    {
+      "path": "apps/ios-conversation/Resources/Assets.xcassets/LaunchPawMark.imageset/Contents.json",
+      "category": "email_review",
+      "line": 13,
+      "sha256": "f4c8f2b02aa08672daa97551cf5c0f5c47611b953638d5ffa9cd9b9aaa003a75",
+      "reason": "Reviewed unchanged Xcode asset metadata: @2x.png and @3x.png filenames resemble email addresses; no email, account identity or secret. Visual asset bytes are unchanged."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/AuthTestSupport.swift",
+      "category": "secret_assignment_review",
+      "line": 25,
+      "sha256": "4f0c3320733952b019b15823b9f75cabbef9d2093a33e9c84ca247c45ad23f0f",
+      "reason": "Reviewed named offline auth fixture: synthetic public-key/access-token markers and injected mock remotes only; no real credential or network request. Exact current bytes and line pinned."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/AuthTestSupport.swift",
+      "category": "secret_assignment_review",
+      "line": 26,
+      "sha256": "4f0c3320733952b019b15823b9f75cabbef9d2093a33e9c84ca247c45ad23f0f",
+      "reason": "Reviewed named offline auth fixture: synthetic public-key/access-token markers and injected mock remotes only; no real credential or network request. Exact current bytes and line pinned."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/AuthTestSupport.swift",
+      "category": "secret_assignment_review",
+      "line": 39,
+      "sha256": "4f0c3320733952b019b15823b9f75cabbef9d2093a33e9c84ca247c45ad23f0f",
+      "reason": "Reviewed named offline auth fixture: synthetic public-key/access-token markers and injected mock remotes only; no real credential or network request. Exact current bytes and line pinned."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
+      "category": "secret_assignment_review",
+      "line": 149,
+      "sha256": "cb8ddaa0b7be298d7db183425da215f40265612b003dabfc6103919cb85ab5ff",
+      "reason": "Reviewed named offline auth fixture: synthetic public-key/access-token markers and injected mock remotes only; no real credential or network request. Exact current bytes and line pinned."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
+      "category": "secret_assignment_review",
+      "line": 420,
+      "sha256": "cb8ddaa0b7be298d7db183425da215f40265612b003dabfc6103919cb85ab5ff",
+      "reason": "Reviewed named offline auth fixture: synthetic public-key/access-token markers and injected mock remotes only; no real credential or network request. Exact current bytes and line pinned."
+    },
+    {
+      "path": "scripts/check-git-policy.py",
+      "category": "email_review",
+      "line": 43,
+      "sha256": "14c439d03e28f7c6d0f3199dcf1d1e55a3564c67a64cc333e20bff8b8e7817f7",
+      "reason": "Reviewed unchanged public Git SSH origin allowlist syntax; this is a repository URL, not an email address or credential."
+    },
+    {
+      "path": "services/edge/test/proactive-decision.test.mjs",
+      "category": "secret_assignment_review",
+      "line": 93,
+      "sha256": "ec8e08098ba39e173c9d51fcd3c05726df696e1ffda150f46fa7364256e7f8fb",
+      "reason": "Reviewed unchanged k-or-xxxxxxxx and k-ag-xxxxxxxx mock values in an offline injected transport test; not deployment keys."
+    },
+    {
+      "path": "apps/ios-conversation/Resources/Assets.xcassets/AppIcon.appiconset/AppIcon-dark.png",
+      "category": "png_metadata_requires_review",
+      "sha256": "b75d8bf52afd51b7795ce0f1c7509ac77cab873d154ff1d05285b6a9085ef8a6",
+      "reason": "PR90h review 2026-10-17: the only metadata chunk is a 68-byte eXIf (TIFF header + pixel X/Y dimension tags); no text, device, user, GPS or software identity. Bytes unchanged."
+    },
+    {
+      "path": "apps/ios-conversation/Resources/Assets.xcassets/AppIcon.appiconset/AppIcon-light.png",
+      "category": "png_metadata_requires_review",
+      "sha256": "b75d8bf52afd51b7795ce0f1c7509ac77cab873d154ff1d05285b6a9085ef8a6",
+      "reason": "PR90h review 2026-10-17: the only metadata chunk is a 68-byte eXIf (TIFF header + pixel X/Y dimension tags); no text, device, user, GPS or software identity. Bytes unchanged."
+    },
+    {
+      "path": "apps/ios-conversation/Sources/Features/DeviceCalls/DeviceToolContract.swift",
+      "category": "internal_domain",
+      "line": 54,
+      "sha256": "737b30d3ad2ecd9ed9097651b1e71b72b669c37f4ea6a21da728491473fdd2cd",
+      "reason": "PR90h review 2026-10-17: public consumer Meituan app deep link (the app URL scheme plus its public mobile web fallback) used by the shop_open device tool and its contract test/evidence; not an internal or corporate endpoint."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
+      "category": "deployment_public_key",
+      "line": 307,
+      "sha256": "f7fd59c19cd6172a3d6fc1184c53f8aa897a0eed2fca25f8769d530f99c0c2b5",
+      "reason": "PR90h review 2026-10-17 (re-review after #89 appended tests shifted lines/hash): synthetic placeholder sb_publishable_* literal for the offline lifecycle test against https://abcdefghijklmnopqrst.supabase.co / backend.example.invalid; not a deployment key."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
+      "category": "deployment_public_key",
+      "line": 489,
+      "sha256": "f7fd59c19cd6172a3d6fc1184c53f8aa897a0eed2fca25f8769d530f99c0c2b5",
+      "reason": "PR90h review 2026-10-17 (re-review after #89 appended tests shifted lines/hash): synthetic placeholder sb_publishable_* literal for the offline lifecycle test against https://abcdefghijklmnopqrst.supabase.co / backend.example.invalid; not a deployment key."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NoBugP0Runner.swift",
+      "category": "internal_domain",
+      "line": 500,
+      "sha256": "92f3835ae16e1be15f905ac56ed47fb6145e67939153f9358ab5790bce0c1192",
+      "reason": "PR90h review 2026-10-17 (re-bound after the Swift 6 lock change shifted lines +2): public consumer Meituan app deep link (the app URL scheme plus its public mobile web fallback) used by the shop_open device tool and its contract test/evidence; not an internal or corporate endpoint."
+    },
+    {
+      "path": "docs/refs/brand/03-flat-mark-black.png",
+      "category": "png_metadata_requires_review",
+      "sha256": "901802d063f3edab3338efbdb2096c3d9d4e79381c3751d27b2d52dde97c0159",
+      "reason": "PR90h review 2026-10-17: the only metadata chunk is a 68-byte eXIf (TIFF header + pixel X/Y dimension tags); no text, device, user, GPS or software identity. Bytes unchanged."
+    },
+    {
+      "path": "docs/refs/grok-reply/01-thinking.jpg",
+      "category": "unexpected_binary",
+      "sha256": "8ce534d2e35f6c3258ab121dc6f4f5e13ae12320ed4d474010b85f6af734585a",
+      "reason": "PR90h review 2026-10-17: JPEG reference screenshot; APP1 Exif holds only orientation/resolution tags, APP13 Photoshop resolution block and an ICC profile; no XMP, no device/user/GPS identity. Bytes unchanged."
+    },
+    {
+      "path": "docs/refs/grok-reply/02-steps.jpg",
+      "category": "unexpected_binary",
+      "sha256": "9fa011c70d8ef17bbc841adfe95422051e2a60d1d968365b36d8ccea4423499b",
+      "reason": "PR90h review 2026-10-17: JPEG reference screenshot; APP1 Exif holds only orientation/resolution tags, APP13 Photoshop resolution block and an ICC profile; no XMP, no device/user/GPS identity. Bytes unchanged."
+    },
+    {
+      "path": "docs/refs/grok-reply/03-streaming.jpg",
+      "category": "unexpected_binary",
+      "sha256": "b2a14317f26d8f31abef6e5eeaf3d0fc6ed07bfdb823534ad7a05d2f19219f26",
+      "reason": "PR90h review 2026-10-17: JPEG reference screenshot; APP1 Exif holds only orientation/resolution tags, APP13 Photoshop resolution block and an ICC profile; no XMP, no device/user/GPS identity. Bytes unchanged."
+    },
+    {
+      "path": "docs/refs/grok-reply/04-done.jpg",
+      "category": "unexpected_binary",
+      "sha256": "9abe35fb65143f9dd5dd05674f9fb0ea2aa456aea4246b7c819d666142a662ba",
+      "reason": "PR90h review 2026-10-17: JPEG reference screenshot; APP1 Exif holds only orientation/resolution tags, APP13 Photoshop resolution block and an ICC profile; no XMP, no device/user/GPS identity. Bytes unchanged."
+    },
+    {
+      "path": "docs/refs/landing-capability-hub.png",
+      "category": "png_metadata_requires_review",
+      "sha256": "9c16441a6ff9e2120606209afb14bdb0bbe58f096c7ee44d463725f1d545e932",
+      "reason": "PR90h review 2026-10-17: the only metadata chunk is a 68-byte eXIf (TIFF header + pixel X/Y dimension tags); no text, device, user, GPS or software identity. Bytes unchanged."
+    },
+    {
+      "path": "docs/refs/launch-splash-keyframes.png",
+      "category": "png_metadata_requires_review",
+      "sha256": "56f078e752236949927f31dbd2ffd15d1d1ce87295580b440b1220b102b95f94",
+      "reason": "PR90h review 2026-10-17: the only metadata chunk is a 68-byte eXIf (TIFF header + pixel X/Y dimension tags); no text, device, user, GPS or software identity. Bytes unchanged."
+    },
+    {
+      "path": "docs/submission/NOBUG-P0-EVIDENCE.md",
+      "category": "internal_domain",
+      "line": 8,
+      "sha256": "0a923e948fa892148691ca41d122d73534cafd63b4d95cd371282ee93913657f",
+      "reason": "PR90h review 2026-10-17: public consumer Meituan app deep link (the app URL scheme plus its public mobile web fallback) used by the shop_open device tool and its contract test/evidence; not an internal or corporate endpoint."
+    },
+    {
+      "path": "apps/ios-conversation/Resources/Assets.xcassets/CatpawBrand/BrandMark.imageset/Contents.json",
+      "category": "email_review",
+      "line": 4,
+      "sha256": "3361e255d3daa6271e9ca9d5872dab9c12e8041913ea16cd0f56f23c7ac2fce5",
+      "reason": "PR90h review 2026-10-17: false positive — an asset filename with an at-sign scale suffix (2x / 3x image variants) or a synthetic one-letter test address in a contact fixture; no personal e-mail."
+    },
+    {
+      "path": "apps/ios-conversation/Resources/Assets.xcassets/CatpawBrand/BrandMark.imageset/Contents.json",
+      "category": "email_review",
+      "line": 5,
+      "sha256": "3361e255d3daa6271e9ca9d5872dab9c12e8041913ea16cd0f56f23c7ac2fce5",
+      "reason": "PR90h review 2026-10-17: false positive — an asset filename with an at-sign scale suffix (2x / 3x image variants) or a synthetic one-letter test address in a contact fixture; no personal e-mail."
+    },
+    {
+      "path": "apps/ios-conversation/Resources/Assets.xcassets/CatpawBrand/BrandMarkFill.imageset/Contents.json",
+      "category": "email_review",
+      "line": 4,
+      "sha256": "db2b9f919a244d91a0856d749f67fd65b80c3136c4338a9416dcb4dfbebbb111",
+      "reason": "PR90h review 2026-10-17: false positive — an asset filename with an at-sign scale suffix (2x / 3x image variants) or a synthetic one-letter test address in a contact fixture; no personal e-mail."
+    },
+    {
+      "path": "apps/ios-conversation/Resources/Assets.xcassets/CatpawBrand/BrandMarkFill.imageset/Contents.json",
+      "category": "email_review",
+      "line": 5,
+      "sha256": "db2b9f919a244d91a0856d749f67fd65b80c3136c4338a9416dcb4dfbebbb111",
+      "reason": "PR90h review 2026-10-17: false positive — an asset filename with an at-sign scale suffix (2x / 3x image variants) or a synthetic one-letter test address in a contact fixture; no personal e-mail."
+    },
+    {
+      "path": "apps/ios-conversation/Resources/Assets.xcassets/CatpawBrand/BrandMarkOnOrange.imageset/Contents.json",
+      "category": "email_review",
+      "line": 4,
+      "sha256": "6bdfa2e9e205ccd72964809c23ee9d79208cc66471d618bc68282aaaeab1a11d",
+      "reason": "PR90h review 2026-10-17: false positive — an asset filename with an at-sign scale suffix (2x / 3x image variants) or a synthetic one-letter test address in a contact fixture; no personal e-mail."
+    },
+    {
+      "path": "apps/ios-conversation/Resources/Assets.xcassets/CatpawBrand/BrandMarkOnOrange.imageset/Contents.json",
+      "category": "email_review",
+      "line": 5,
+      "sha256": "6bdfa2e9e205ccd72964809c23ee9d79208cc66471d618bc68282aaaeab1a11d",
+      "reason": "PR90h review 2026-10-17: false positive — an asset filename with an at-sign scale suffix (2x / 3x image variants) or a synthetic one-letter test address in a contact fixture; no personal e-mail."
+    },
+    {
+      "path": "apps/ios-conversation/Resources/Assets.xcassets/CatpawBrand/Mascot/MascotDone.imageset/Contents.json",
+      "category": "email_review",
+      "line": 3,
+      "sha256": "0352b65cb243866245239d2656853b14c7706515d954c951b358ea288fa475e2",
+      "reason": "PR90h review 2026-10-17: false positive — an asset filename with an at-sign scale suffix (2x / 3x image variants) or a synthetic one-letter test address in a contact fixture; no personal e-mail."
+    },
+    {
+      "path": "apps/ios-conversation/Resources/Assets.xcassets/CatpawBrand/Mascot/MascotDone.imageset/Contents.json",
+      "category": "email_review",
+      "line": 4,
+      "sha256": "0352b65cb243866245239d2656853b14c7706515d954c951b358ea288fa475e2",
+      "reason": "PR90h review 2026-10-17: false positive — an asset filename with an at-sign scale suffix (2x / 3x image variants) or a synthetic one-letter test address in a contact fixture; no personal e-mail."
+    },
+    {
+      "path": "apps/ios-conversation/Resources/Assets.xcassets/CatpawBrand/Mascot/MascotError.imageset/Contents.json",
+      "category": "email_review",
+      "line": 3,
+      "sha256": "7a2b198a287ca30c5b16ed48e61d1cef63f21fc5a437ef5c40e5e374bc5e0ba1",
+      "reason": "PR90h review 2026-10-17: false positive — an asset filename with an at-sign scale suffix (2x / 3x image variants) or a synthetic one-letter test address in a contact fixture; no personal e-mail."
+    },
+    {
+      "path": "apps/ios-conversation/Resources/Assets.xcassets/CatpawBrand/Mascot/MascotError.imageset/Contents.json",
+      "category": "email_review",
+      "line": 4,
+      "sha256": "7a2b198a287ca30c5b16ed48e61d1cef63f21fc5a437ef5c40e5e374bc5e0ba1",
+      "reason": "PR90h review 2026-10-17: false positive — an asset filename with an at-sign scale suffix (2x / 3x image variants) or a synthetic one-letter test address in a contact fixture; no personal e-mail."
+    },
+    {
+      "path": "apps/ios-conversation/Resources/Assets.xcassets/CatpawBrand/Mascot/MascotExecuting.imageset/Contents.json",
+      "category": "email_review",
+      "line": 3,
+      "sha256": "8bd7dc4b368342414179a61f9d1ab59a473f9e08d7e149b53a2a1ee8d2a39233",
+      "reason": "PR90h review 2026-10-17: false positive — an asset filename with an at-sign scale suffix (2x / 3x image variants) or a synthetic one-letter test address in a contact fixture; no personal e-mail."
+    },
+    {
+      "path": "apps/ios-conversation/Resources/Assets.xcassets/CatpawBrand/Mascot/MascotExecuting.imageset/Contents.json",
+      "category": "email_review",
+      "line": 4,
+      "sha256": "8bd7dc4b368342414179a61f9d1ab59a473f9e08d7e149b53a2a1ee8d2a39233",
+      "reason": "PR90h review 2026-10-17: false positive — an asset filename with an at-sign scale suffix (2x / 3x image variants) or a synthetic one-letter test address in a contact fixture; no personal e-mail."
+    },
+    {
+      "path": "apps/ios-conversation/Resources/Assets.xcassets/CatpawBrand/Mascot/MascotFront.imageset/Contents.json",
+      "category": "email_review",
+      "line": 3,
+      "sha256": "5bf39f7b27942b8483e45ae1212fa2cb58d9d9fee63b8031a9a7e3eaeb991398",
+      "reason": "PR90h review 2026-10-17: false positive — an asset filename with an at-sign scale suffix (2x / 3x image variants) or a synthetic one-letter test address in a contact fixture; no personal e-mail."
+    },
+    {
+      "path": "apps/ios-conversation/Resources/Assets.xcassets/CatpawBrand/Mascot/MascotFront.imageset/Contents.json",
+      "category": "email_review",
+      "line": 4,
+      "sha256": "5bf39f7b27942b8483e45ae1212fa2cb58d9d9fee63b8031a9a7e3eaeb991398",
+      "reason": "PR90h review 2026-10-17: false positive — an asset filename with an at-sign scale suffix (2x / 3x image variants) or a synthetic one-letter test address in a contact fixture; no personal e-mail."
+    },
+    {
+      "path": "apps/ios-conversation/Resources/Assets.xcassets/CatpawBrand/Mascot/MascotIdle.imageset/Contents.json",
+      "category": "email_review",
+      "line": 3,
+      "sha256": "e0f97a183aae517937b8898e02c6ceca0db109f3aef12f75578df65d940d87d2",
+      "reason": "PR90h review 2026-10-17: false positive — an asset filename with an at-sign scale suffix (2x / 3x image variants) or a synthetic one-letter test address in a contact fixture; no personal e-mail."
+    },
+    {
+      "path": "apps/ios-conversation/Resources/Assets.xcassets/CatpawBrand/Mascot/MascotIdle.imageset/Contents.json",
+      "category": "email_review",
+      "line": 4,
+      "sha256": "e0f97a183aae517937b8898e02c6ceca0db109f3aef12f75578df65d940d87d2",
+      "reason": "PR90h review 2026-10-17: false positive — an asset filename with an at-sign scale suffix (2x / 3x image variants) or a synthetic one-letter test address in a contact fixture; no personal e-mail."
+    },
+    {
+      "path": "apps/ios-conversation/Resources/Assets.xcassets/CatpawBrand/Mascot/MascotThinking.imageset/Contents.json",
+      "category": "email_review",
+      "line": 3,
+      "sha256": "b3a482029bba6d1cfe5c298b81787e6ec6f73aa1f6b84c4d2e4cfd974595a92e",
+      "reason": "PR90h review 2026-10-17: false positive — an asset filename with an at-sign scale suffix (2x / 3x image variants) or a synthetic one-letter test address in a contact fixture; no personal e-mail."
+    },
+    {
+      "path": "apps/ios-conversation/Resources/Assets.xcassets/CatpawBrand/Mascot/MascotThinking.imageset/Contents.json",
+      "category": "email_review",
+      "line": 4,
+      "sha256": "b3a482029bba6d1cfe5c298b81787e6ec6f73aa1f6b84c4d2e4cfd974595a92e",
+      "reason": "PR90h review 2026-10-17: false positive — an asset filename with an at-sign scale suffix (2x / 3x image variants) or a synthetic one-letter test address in a contact fixture; no personal e-mail."
+    },
+    {
+      "path": "apps/ios-conversation/Resources/Assets.xcassets/CatpawBrand/Mascot/MascotWriting.imageset/Contents.json",
+      "category": "email_review",
+      "line": 3,
+      "sha256": "954597bfeae65703ff636600b9b7efcad225ac57374a2576fdad72dc3adfa9d6",
+      "reason": "PR90h review 2026-10-17: false positive — an asset filename with an at-sign scale suffix (2x / 3x image variants) or a synthetic one-letter test address in a contact fixture; no personal e-mail."
+    },
+    {
+      "path": "apps/ios-conversation/Resources/Assets.xcassets/CatpawBrand/Mascot/MascotWriting.imageset/Contents.json",
+      "category": "email_review",
+      "line": 4,
+      "sha256": "954597bfeae65703ff636600b9b7efcad225ac57374a2576fdad72dc3adfa9d6",
+      "reason": "PR90h review 2026-10-17: false positive — an asset filename with an at-sign scale suffix (2x / 3x image variants) or a synthetic one-letter test address in a contact fixture; no personal e-mail."
+    },
+    {
+      "path": "apps/ios-conversation/Resources/Assets.xcassets/LaunchBrandHead.imageset/Contents.json",
+      "category": "email_review",
+      "line": 8,
+      "sha256": "71a1aff09453eb770ea897370e4fdfc1263b08e816e6a5c7f46e10227d0cab02",
+      "reason": "PR90h review 2026-10-17: false positive — an asset filename with an at-sign scale suffix (2x / 3x image variants) or a synthetic one-letter test address in a contact fixture; no personal e-mail."
+    },
+    {
+      "path": "apps/ios-conversation/Resources/Assets.xcassets/LaunchBrandHead.imageset/Contents.json",
+      "category": "email_review",
+      "line": 13,
+      "sha256": "71a1aff09453eb770ea897370e4fdfc1263b08e816e6a5c7f46e10227d0cab02",
+      "reason": "PR90h review 2026-10-17: false positive — an asset filename with an at-sign scale suffix (2x / 3x image variants) or a synthetic one-letter test address in a contact fixture; no personal e-mail."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
+      "category": "secret_assignment_review",
+      "line": 183,
+      "sha256": "f7fd59c19cd6172a3d6fc1184c53f8aa897a0eed2fca25f8769d530f99c0c2b5",
+      "reason": "PR90h review 2026-10-17: synthetic test literal (offline lifecycle access token / masked k-xx-xxxxxxxx env stub); no real credential."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
+      "category": "secret_assignment_review",
+      "line": 524,
+      "sha256": "f7fd59c19cd6172a3d6fc1184c53f8aa897a0eed2fca25f8769d530f99c0c2b5",
+      "reason": "PR90h review 2026-10-17: synthetic test literal (offline lifecycle access token / masked k-xx-xxxxxxxx env stub); no real credential."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NoBugP0Runner.swift",
+      "category": "email_review",
+      "line": 581,
+      "sha256": "92f3835ae16e1be15f905ac56ed47fb6145e67939153f9358ab5790bce0c1192",
+      "reason": "PR90h review 2026-10-17 (re-bound after the Swift 6 lock change shifted lines +2): false positive — an asset filename with an at-sign scale suffix (2x / 3x image variants) or a synthetic one-letter test address in a contact fixture; no personal e-mail."
+    },
+    {
+      "path": "apps/ios-conversation/design/brand/regenerate_appicon.py",
+      "category": "email_review",
+      "line": 25,
+      "sha256": "5c1f211cc31050fe0423093c11640748fbfbc872d6e6f656839e214cc4a1bd15",
+      "reason": "PR90h review 2026-10-17: false positive — an asset filename with an at-sign scale suffix (2x / 3x image variants) or a synthetic one-letter test address in a contact fixture; no personal e-mail."
+    },
+    {
+      "path": "apps/ios-conversation/design/brand/render_brand.py",
+      "category": "email_review",
+      "line": 61,
+      "sha256": "21e640379aaccb3ed2c5314694e4852b98d37c37b044e0c1bd5341e376ef57f4",
+      "reason": "PR90h review 2026-10-17: false positive — an asset filename with an at-sign scale suffix (2x / 3x image variants) or a synthetic one-letter test address in a contact fixture; no personal e-mail."
+    },
+    {
+      "path": "apps/ios-conversation/design/brand/render_brand.py",
+      "category": "email_review",
+      "line": 62,
+      "sha256": "21e640379aaccb3ed2c5314694e4852b98d37c37b044e0c1bd5341e376ef57f4",
+      "reason": "PR90h review 2026-10-17: false positive — an asset filename with an at-sign scale suffix (2x / 3x image variants) or a synthetic one-letter test address in a contact fixture; no personal e-mail."
+    },
+    {
+      "path": "services/edge/test/proactive-decision.test.mjs",
+      "category": "secret_assignment_review",
+      "line": 102,
+      "sha256": "fec33ba89f9c605aab08708ccc0f0d402d9286519cd971621e5f17a011fce076",
+      "reason": "PR90h review 2026-10-17: synthetic test literal (offline lifecycle access token / masked k-xx-xxxxxxxx env stub); no real credential."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
+      "category": "deployment_public_key",
+      "line": 361,
+      "sha256": "ea4c56cc4e019b9fcb4e55f8f6b74c53438e38f2fe2a3ce5eee26c87da0f9f82",
+      "reason": "Reviewed named offline auth fixture: synthetic public-key/access-token markers and injected mock remotes only; no real credential or network request. Exact current bytes and line pinned. [p90i v7 rebase onto #89 3b7564e: same line bytes, moved 327→361]"
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
+      "category": "deployment_public_key",
+      "line": 543,
+      "sha256": "06b333afee813d88bcb92a79d8dc3e6774f0675b870b9269709d2eb3fe74f9f8",
+      "reason": "Reviewed named offline auth fixture: synthetic public-key/access-token markers and injected mock remotes only; no real credential or network request. Exact current bytes and line pinned. [p90i v7 rebase onto #89 3b7564e: same line bytes, moved 509→543]"
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
+      "category": "secret_assignment_review",
+      "line": 237,
+      "sha256": "ea4c56cc4e019b9fcb4e55f8f6b74c53438e38f2fe2a3ce5eee26c87da0f9f82",
+      "reason": "PR90h review 2026-10-17: synthetic test literal (offline lifecycle access token / masked k-xx-xxxxxxxx env stub); no real credential. [p90i v7 rebase onto #89 3b7564e: same line bytes, moved 183→237]"
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
+      "category": "secret_assignment_review",
+      "line": 578,
+      "sha256": "06b333afee813d88bcb92a79d8dc3e6774f0675b870b9269709d2eb3fe74f9f8",
+      "reason": "PR90h review 2026-10-17: synthetic test literal (offline lifecycle access token / masked k-xx-xxxxxxxx env stub); no real credential. [p90i v7 rebase onto #89 3b7564e: same line bytes, moved 524→578]"
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
+      "category": "deployment_public_key",
+      "line": 273,
+      "sha256": "ce734c055ee32a7a0e6977cc9cee353d0dee14ba3bc982665af5d8563da59f26",
+      "reason": "Reviewed named offline auth fixture: synthetic public-key/access-token markers and injected mock remotes only; no real credential or network request. Exact current bytes and line pinned. Re-pinned 2026-10-17 after adding the PR91 XCTests (same synthetic markers, lines shifted)."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
+      "category": "deployment_public_key",
+      "line": 424,
+      "sha256": "ce734c055ee32a7a0e6977cc9cee353d0dee14ba3bc982665af5d8563da59f26",
+      "reason": "Reviewed named offline auth fixture: synthetic public-key/access-token markers and injected mock remotes only; no real credential or network request. Exact current bytes and line pinned. Re-pinned 2026-10-17 after adding the PR91 XCTests (same synthetic markers, lines shifted)."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
+      "category": "secret_assignment_review",
+      "line": 149,
+      "sha256": "ce734c055ee32a7a0e6977cc9cee353d0dee14ba3bc982665af5d8563da59f26",
+      "reason": "Reviewed named offline auth fixture: synthetic public-key/access-token markers and injected mock remotes only; no real credential or network request. Exact current bytes and line pinned. Re-pinned 2026-10-17 after adding the PR91 XCTests (same synthetic markers, lines shifted)."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
+      "category": "secret_assignment_review",
+      "line": 459,
+      "sha256": "ce734c055ee32a7a0e6977cc9cee353d0dee14ba3bc982665af5d8563da59f26",
+      "reason": "Reviewed named offline auth fixture: synthetic public-key/access-token markers and injected mock remotes only; no real credential or network request. Exact current bytes and line pinned. Re-pinned 2026-10-17 after adding the PR91 XCTests (same synthetic markers, lines shifted)."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NoBugP0Runner.swift",
+      "category": "email_review",
+      "line": 256,
+      "sha256": "e7a33b406c66835459c16102d9375da295059532e80abdf761f48085efa96e90",
+      "reason": "Test fixture: synthetic contact email (a at x.cn) for the minimalContact privacy test; not a real address.",
+      "reviewed_utc_date": "2026-10-17",
+      "reviewer": "Grok Bot"
+    },
+    {
+      "path": "services/edge/test/proactive-decision.test.mjs",
+      "category": "secret_assignment_review",
+      "line": 93,
+      "sha256": "cc1bab0a73a324c77e4715c9025baa71834dd53c3d471dc2f499d26be087866e",
+      "reason": "Test fixture: placeholder model keys (k-or-xxxxxxxx / k-ag-xxxxxxxx) in an env stub; no real credential.",
+      "reviewed_utc_date": "2026-10-17",
+      "reviewer": "Grok Bot"
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
+      "category": "deployment_public_key",
+      "line": 273,
+      "sha256": "07ebb2d26d40412ae1a07c55d3e8e1791b2ab815a44425fbb75f2cb46e056606",
+      "reason": "Reviewed named offline auth fixture: synthetic public-key/access-token markers and injected mock remotes only; no real credential or network request. Exact current bytes and line pinned. Re-pinned 2026-10-17 after adding the PR91 XCTests (same synthetic markers, lines shifted)."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
+      "category": "deployment_public_key",
+      "line": 422,
+      "sha256": "07ebb2d26d40412ae1a07c55d3e8e1791b2ab815a44425fbb75f2cb46e056606",
+      "reason": "Reviewed named offline auth fixture: synthetic public-key/access-token markers and injected mock remotes only; no real credential or network request. Exact current bytes and line pinned. Re-pinned 2026-10-17 after adding the PR91 XCTests (same synthetic markers, lines shifted)."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
+      "category": "secret_assignment_review",
+      "line": 149,
+      "sha256": "07ebb2d26d40412ae1a07c55d3e8e1791b2ab815a44425fbb75f2cb46e056606",
+      "reason": "Reviewed named offline auth fixture: synthetic public-key/access-token markers and injected mock remotes only; no real credential or network request. Exact current bytes and line pinned. Re-pinned 2026-10-17 after adding the PR91 XCTests (same synthetic markers, lines shifted)."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
+      "category": "secret_assignment_review",
+      "line": 457,
+      "sha256": "07ebb2d26d40412ae1a07c55d3e8e1791b2ab815a44425fbb75f2cb46e056606",
+      "reason": "Reviewed named offline auth fixture: synthetic public-key/access-token markers and injected mock remotes only; no real credential or network request. Exact current bytes and line pinned. Re-pinned 2026-10-17 after adding the PR91 XCTests (same synthetic markers, lines shifted)."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
+      "category": "deployment_public_key",
+      "line": 273,
+      "sha256": "efb2c2e5da1b2b7377c4429cfec36185fe2e6abd65d1dd3611a2b2dfa163e55c",
+      "reason": "Reviewed named offline auth fixture: synthetic public-key/access-token markers and injected mock remotes only; no real credential or network request. Exact current bytes and line pinned. Re-pinned 2026-10-17 after adding the PR91 XCTests (same synthetic markers, lines shifted)."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
+      "category": "deployment_public_key",
+      "line": 429,
+      "sha256": "efb2c2e5da1b2b7377c4429cfec36185fe2e6abd65d1dd3611a2b2dfa163e55c",
+      "reason": "Reviewed named offline auth fixture: synthetic public-key/access-token markers and injected mock remotes only; no real credential or network request. Exact current bytes and line pinned. Re-pinned 2026-10-17 after adding the PR91 XCTests (same synthetic markers, lines shifted)."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
+      "category": "secret_assignment_review",
+      "line": 149,
+      "sha256": "efb2c2e5da1b2b7377c4429cfec36185fe2e6abd65d1dd3611a2b2dfa163e55c",
+      "reason": "Reviewed named offline auth fixture: synthetic public-key/access-token markers and injected mock remotes only; no real credential or network request. Exact current bytes and line pinned. Re-pinned 2026-10-17 after adding the PR91 XCTests (same synthetic markers, lines shifted)."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
+      "category": "secret_assignment_review",
+      "line": 464,
+      "sha256": "efb2c2e5da1b2b7377c4429cfec36185fe2e6abd65d1dd3611a2b2dfa163e55c",
+      "reason": "Reviewed named offline auth fixture: synthetic public-key/access-token markers and injected mock remotes only; no real credential or network request. Exact current bytes and line pinned. Re-pinned 2026-10-17 after adding the PR91 XCTests (same synthetic markers, lines shifted)."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NoBugP0Runner.swift",
+      "category": "email_review",
+      "line": 256,
+      "sha256": "143cb5c8d187812f2321a25d20f9311e9fb9ee66dc1fd6a2c57fe519a848e1d9",
+      "reason": "Test fixture: synthetic contact email (a at x.cn) for the minimalContact privacy test; not a real address.",
+      "reviewed_utc_date": "2026-10-17",
+      "reviewer": "Grok Bot"
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NoBugP0Runner.swift",
+      "category": "email_review",
+      "line": 553,
+      "sha256": "1ee3230b42f1ac23c7a47afc16dbe2bcb8af2ebec49a030807fbe00e3455a47a",
+      "reason": "Test fixture: synthetic contact email (a at x.cn) for the minimalContact privacy test; not a real address.",
+      "reviewed_utc_date": "2026-10-17",
+      "reviewer": "Grok Bot"
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
+      "category": "deployment_public_key",
+      "line": 273,
+      "sha256": "6757a514b633c5725aba575ad6b3dc833daa16c8f51f67ad0ca39fead7c6f9a4",
+      "reason": "Reviewed named offline auth fixture: synthetic public-key/access-token markers and injected mock remotes only; no real credential or network request. Exact current bytes and line pinned. Re-pinned 2026-10-17 after adding the PR91 XCTests (same synthetic markers, lines shifted)."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
+      "category": "deployment_public_key",
+      "line": 430,
+      "sha256": "6757a514b633c5725aba575ad6b3dc833daa16c8f51f67ad0ca39fead7c6f9a4",
+      "reason": "Reviewed named offline auth fixture: synthetic public-key/access-token markers and injected mock remotes only; no real credential or network request. Exact current bytes and line pinned. Re-pinned 2026-10-17 after adding the PR91 XCTests (same synthetic markers, lines shifted)."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
+      "category": "secret_assignment_review",
+      "line": 149,
+      "sha256": "6757a514b633c5725aba575ad6b3dc833daa16c8f51f67ad0ca39fead7c6f9a4",
+      "reason": "Reviewed named offline auth fixture: synthetic public-key/access-token markers and injected mock remotes only; no real credential or network request. Exact current bytes and line pinned. Re-pinned 2026-10-17 after adding the PR91 XCTests (same synthetic markers, lines shifted)."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
+      "category": "secret_assignment_review",
+      "line": 465,
+      "sha256": "6757a514b633c5725aba575ad6b3dc833daa16c8f51f67ad0ca39fead7c6f9a4",
+      "reason": "Reviewed named offline auth fixture: synthetic public-key/access-token markers and injected mock remotes only; no real credential or network request. Exact current bytes and line pinned. Re-pinned 2026-10-17 after adding the PR91 XCTests (same synthetic markers, lines shifted)."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
+      "category": "deployment_public_key",
+      "line": 273,
+      "sha256": "fcee4df91fa81928b7e1819b69dd1c10d49132290167d6315c13c76a32a21fb6",
+      "reason": "Reviewed named offline auth fixture: synthetic public-key/access-token markers and injected mock remotes only; no real credential or network request. Exact current bytes and line pinned. Re-pinned 2026-10-17 after adding the PR91 XCTests (same synthetic markers, lines shifted)."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
+      "category": "deployment_public_key",
+      "line": 445,
+      "sha256": "fcee4df91fa81928b7e1819b69dd1c10d49132290167d6315c13c76a32a21fb6",
+      "reason": "Reviewed named offline auth fixture: synthetic public-key/access-token markers and injected mock remotes only; no real credential or network request. Exact current bytes and line pinned. Re-pinned 2026-10-17 after adding the PR91 XCTests (same synthetic markers, lines shifted)."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
+      "category": "secret_assignment_review",
+      "line": 149,
+      "sha256": "fcee4df91fa81928b7e1819b69dd1c10d49132290167d6315c13c76a32a21fb6",
+      "reason": "Reviewed named offline auth fixture: synthetic public-key/access-token markers and injected mock remotes only; no real credential or network request. Exact current bytes and line pinned. Re-pinned 2026-10-17 after adding the PR91 XCTests (same synthetic markers, lines shifted)."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
+      "category": "secret_assignment_review",
+      "line": 480,
+      "sha256": "fcee4df91fa81928b7e1819b69dd1c10d49132290167d6315c13c76a32a21fb6",
+      "reason": "Reviewed named offline auth fixture: synthetic public-key/access-token markers and injected mock remotes only; no real credential or network request. Exact current bytes and line pinned. Re-pinned 2026-10-17 after adding the PR91 XCTests (same synthetic markers, lines shifted)."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NoBugP0Runner.swift",
+      "category": "email_review",
+      "line": 553,
+      "sha256": "04dfd1462f04ba6671e582ea0707387c6daa6e955afede9dde51024d7236e331",
+      "reason": "Test fixture: synthetic contact email (a at x.cn) for the minimalContact privacy test; not a real address.",
+      "reviewed_utc_date": "2026-10-17",
+      "reviewer": "Grok Bot"
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NoBugP0Runner.swift",
+      "category": "email_review",
+      "line": 585,
+      "sha256": "ca02bd83920fae2a839d81d63a5346f0875ad610d414f46742f104e88f2d59f1",
+      "reason": "Test fixture: synthetic contact email (a at x.cn) for the minimalContact privacy test; not a real address.",
+      "reviewed_utc_date": "2026-10-17",
+      "reviewer": "Grok Bot"
+    },
+    {
+      "path": "apps/ios-conversation/Tests/DeviceToolRouterEventKitTests.swift",
+      "category": "deployment_public_key",
+      "line": 287,
+      "sha256": "73a39464bef39054daefd2db768571d5216ba2a022f83dede5ee191de8ee822c",
+      "reason": "Synthetic offline fixture (#89 3616c94 EventKit test): placeholder project URL and sb_publishable_offline test key, no real deployment; reviewed 2026-10-17 by Grok Bot"
+    },
+    {
+      "path": "apps/ios-conversation/Tests/DeviceTrialNativeTests.swift",
+      "category": "deployment_public_key",
+      "line": 296,
+      "sha256": "75ca6fe8c6ef4776f2f87247f508e0dfd53a21488687ae82d643316080690e5f",
+      "reason": "Explicit synthetic fixture public key in mock-only native test; no real deployment key."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/DeviceTrialNativeTests.swift",
+      "category": "deployment_public_key",
+      "line": 337,
+      "sha256": "75ca6fe8c6ef4776f2f87247f508e0dfd53a21488687ae82d643316080690e5f",
+      "reason": "Explicit synthetic fixture public key in mock-only native test; no real deployment key."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
+      "category": "deployment_public_key",
+      "line": 273,
+      "sha256": "b4a73a74f3ce6c411b52d8db19b6d67c780dddbc2789da72446553b6f45f4568",
+      "reason": "Reviewed named offline auth fixture: synthetic public-key/access-token markers and injected mock remotes only; no real credential or network request. Exact current bytes and line pinned."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
+      "category": "deployment_public_key",
+      "line": 603,
+      "sha256": "ea4c56cc4e019b9fcb4e55f8f6b74c53438e38f2fe2a3ce5eee26c87da0f9f82",
+      "reason": "Reviewed named offline auth fixture: synthetic public-key/access-token markers and injected mock remotes only; no real credential or network request. Exact current bytes and line pinned."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
+      "category": "secret_assignment_review",
+      "line": 149,
+      "sha256": "b4a73a74f3ce6c411b52d8db19b6d67c780dddbc2789da72446553b6f45f4568",
+      "reason": "Reviewed named offline auth fixture: synthetic public-key/access-token markers and injected mock remotes only; no real credential or network request. Exact current bytes and line pinned."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
+      "category": "secret_assignment_review",
+      "line": 638,
+      "sha256": "ea4c56cc4e019b9fcb4e55f8f6b74c53438e38f2fe2a3ce5eee26c87da0f9f82",
+      "reason": "Reviewed named offline auth fixture: synthetic public-key/access-token markers and injected mock remotes only; no real credential or network request. Exact current bytes and line pinned. Re-pinned 2026-10-17 after adding the PR91 XCTests (same synthetic markers, lines shifted)."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
+      "category": "secret_assignment_review",
+      "line": 157,
+      "sha256": "a62258afa72548b75f9532616306fffd45c3a1d73d9bf69b4af7568a07abdee0",
+      "reason": "Reviewed fixed synthetic lifecycle access-token marker, consumed only by the named injected test remote and local manager. It contains no real credential."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
+      "category": "deployment_public_key",
+      "line": 515,
+      "sha256": "b4a73a74f3ce6c411b52d8db19b6d67c780dddbc2789da72446553b6f45f4568",
+      "reason": "Reviewed named offline auth fixture: synthetic public-key/access-token markers and injected mock remotes only; no real credential or network request. Exact current bytes and line pinned."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
+      "category": "secret_assignment_review",
+      "line": 550,
+      "sha256": "b4a73a74f3ce6c411b52d8db19b6d67c780dddbc2789da72446553b6f45f4568",
+      "reason": "Reviewed named offline auth fixture: synthetic public-key/access-token markers and injected mock remotes only; no real credential or network request. Exact current bytes and line pinned. Re-pinned 2026-10-17 after adding the PR91 XCTests (same synthetic markers, lines shifted)."
+    },
+    {
+      "path": "services/edge/test/model-routes.test.mjs",
+      "category": "secret_assignment_review",
+      "line": 9,
+      "sha256": "b5dc7e0363a6d691465986bc879b2bc48e94bf5161d26eb92748bbb071d2d8c3",
+      "reason": "Reviewed 2026-10-17 (Grok Bot): test env fixture with 9-character placeholder values (or-/oc- prefixed dummy strings), not real provider keys; w-line cc98949/952ca4e test."
+    },
+    {
+      "path": "services/edge/test/proactive-decision.test.mjs",
+      "category": "secret_assignment_review",
+      "line": 102,
+      "sha256": "b7744982b1106b2a62a78d5bc00068d527a54186bdd76aa35b1a8b062c903ffc",
+      "reason": "final-513a1b1 B1 re-pin: line 102 bytes unchanged (masked k-or-xxxxxxxx / k-ag-xxxxxxxx env stub, no real credential); file changed only to pass consent to the Agnes fallback test.",
+      "reviewed_utc_date": "2026-10-17",
+      "reviewer": "Grok Bot"
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
+      "category": "deployment_public_key",
+      "line": 361,
+      "sha256": "28a8b0192a0b33f40b7b5ef8c6ea5f12e65e4a37af43e2db4dd722e6a0df9f54",
+      "reason": "Reviewed named offline auth fixture: synthetic public-key/access-token markers and injected mock remotes only; no real credential or network request. Exact current bytes and line pinned. Re-pinned 2026-10-17 after appending the PR91 p91c-1 XCTest at the end of the file (same synthetic markers, same lines)."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
+      "category": "deployment_public_key",
+      "line": 603,
+      "sha256": "28a8b0192a0b33f40b7b5ef8c6ea5f12e65e4a37af43e2db4dd722e6a0df9f54",
+      "reason": "Reviewed named offline auth fixture: synthetic public-key/access-token markers and injected mock remotes only; no real credential or network request. Exact current bytes and line pinned. Re-pinned 2026-10-17 after appending the PR91 p91c-1 XCTest at the end of the file (same synthetic markers, same lines)."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
+      "category": "secret_assignment_review",
+      "line": 237,
+      "sha256": "28a8b0192a0b33f40b7b5ef8c6ea5f12e65e4a37af43e2db4dd722e6a0df9f54",
+      "reason": "Reviewed named offline auth fixture: synthetic public-key/access-token markers and injected mock remotes only; no real credential or network request. Exact current bytes and line pinned. Re-pinned 2026-10-17 after appending the PR91 p91c-1 XCTest at the end of the file (same synthetic markers, same lines)."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
+      "category": "secret_assignment_review",
+      "line": 638,
+      "sha256": "28a8b0192a0b33f40b7b5ef8c6ea5f12e65e4a37af43e2db4dd722e6a0df9f54",
+      "reason": "Reviewed named offline auth fixture: synthetic public-key/access-token markers and injected mock remotes only; no real credential or network request. Exact current bytes and line pinned. Re-pinned 2026-10-17 after appending the PR91 p91c-1 XCTest at the end of the file (same synthetic markers, same lines)."
     }
   ]
 }

@@ -58,13 +58,13 @@ import XCTest
             XCTAssertEqual(ConversationReviewLaunchConfiguration.resolve(environment:[:],defaults:defaults,now:now)["CATPAW_REVIEW_EXPIRES_AT"],"1792021600")
         }
     }
-    func testExpiredDescriptorRetainsStoreAndOriginalExpiryButDoesNotRenewOrAuthorize() {
+    func testExpiredDescriptorIsDroppedAndNormalLaunchProceeds() {
         isolated {defaults,_ in
-            save(defaults);let original=defaults.data(forKey:ConversationReviewLaunchConfiguration.storageKey)
             for elapsed:TimeInterval in [300,301,86400] {
-                let value=ConversationReviewLaunchConfiguration.resolve(environment:[:],defaults:defaults,now:now.addingTimeInterval(elapsed))
-                XCTAssertEqual(value["CF_UI_TEST_STORE"],store);XCTAssertEqual(value["CATPAW_REVIEW_EXPIRES_AT"],"1792000300");XCTAssertEqual(value["CATPAW_REVIEW_EXPIRED"],"1");XCTAssertNil(value["CATPAW_REVIEW_PERSIST"])
-                XCTAssertEqual(defaults.data(forKey:ConversationReviewLaunchConfiguration.storageKey),original)
+                save(defaults)
+                let value=ConversationReviewLaunchConfiguration.resolve(environment:["OTHER_LOCAL_OPTION":"keep"],defaults:defaults,now:now.addingTimeInterval(elapsed))
+                XCTAssertEqual(value,["OTHER_LOCAL_OPTION":"keep"]);XCTAssertNil(value["CF_UI_TEST_SCENARIO"]);XCTAssertNil(value["CATPAW_REVIEW_EXPIRED"])
+                XCTAssertNil(defaults.data(forKey:ConversationReviewLaunchConfiguration.storageKey))
             }
         }
     }

@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import os
 import Combine
 import CatpawImageComposer
 
@@ -17,6 +18,7 @@ struct OutgoingMessageIntent: Identifiable, Equatable {
 enum ConversationConnectionLifecycle: String { case checking, available, reconnecting, offline, notConfigured }
 enum ConversationObserverLifecycle: String { case foregroundIdle, streaming, reconnecting, background, unknown }
 
+private let sendLog=Logger(subsystem:"catpaw",category:"send")
 @MainActor final class ConversationFirstModel: ObservableObject {
     let repository: Repository
     let service: ConversationSessionService
@@ -111,6 +113,17 @@ enum ConversationObserverLifecycle: String { case foregroundIdle, streaming, rec
     @Published private(set) var isInputComposing = false
     @Published var draft = ""
     @Published var error: String?
+    /// Set when the server says the daily model quota is used up. Sends are held in the composer (never piled
+    /// into the paused outbox) and a neutral system notice explains when it resets.
+    @Published var quotaNotice: Bool = false
+    /// True while the latest turn failed on the daily quota (SSE) or a send was refused for it.
+    var quotaReached: Bool { quotaNotice || (session?.turns.last.map { $0.state == .failed && ConversationTerminalServerError.isQuota($0.error) } ?? false) }
+    func retryAfterQuota() {
+        quotaNotice=false;error=nil
+        if draft.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty, let last=session?.turns.last, last.state == .failed, ConversationTerminalServerError.isQuota(last.error),
+           let text=session?.messages.last(where:{ $0.role == .user })?.content { editDraft(text) }
+        if !draft.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty { send() }
+    }
     @Published private(set) var networkAdmissionAllowed = true
     @Published private(set) var loaded = false
     @Published private(set) var busy = false
@@ -156,6 +169,7 @@ enum ConversationObserverLifecycle: String { case foregroundIdle, streaming, rec
         let validMemory=memoryService?.reference.scope==scope && memoryService?.reference.subjectID==subjectID && subjectID != nil
         self.memoryService=validMemory ? memoryService : nil
         self.memoryConfigured=validMemory
+        MemoryLibraryHub.install(validMemory ? memoryService : nil) // wave2 V1: backend for the inline 已记住 chip
         self.inboxService=inboxService?.reference.scope==scope && inboxService?.reference.subjectID==subjectID ? inboxService : nil
         self.trustedSubjectID=subjectID
         self.acceptedWorkDraftService=ConversationAcceptedWorkDraftService(repository:repository,scope:scope,subjectID:subjectID)
@@ -467,6 +481,8 @@ enum ConversationObserverLifecycle: String { case foregroundIdle, streaming, rec
             subscription=Task { [weak self,repository,scope] in
                 for await notice in await repository.changes(scope:scope,after:snapshot.sequence) { guard let self,!Task.isCancelled else { return };let latest=await repository.read(scope:scope);if !notice.recordIDs.isEmpty,notice.recordIDs.allSatisfy({latest.records[$0]?.payload.kind=="conversationUIState"}) {continue};let headerChanged=notice.recordIDs.contains(where:{id in self.history.contains(where:{$0.id == id}) || id == self.conversationID});await self.refresh(rebuildHistory:headerChanged) }
             }
+            // A start that was still awaiting openLatest when the model was deactivated (logout) must not revive it.
+            guard !continuationClosing else { subscription?.cancel(); subscription=nil; return }
             loaded=true;await resumeForeground()
         } catch { self.error=error.localizedDescription }
     }
@@ -508,6 +524,7 @@ enum ConversationObserverLifecycle: String { case foregroundIdle, streaming, rec
         } catch { self.error=error.localizedDescription }
     }
     func select(_ id:UUID,admission:(()->Bool)?=nil) async throws {
+        quotaNotice=false
         func ensureSelection() throws {try Task.checkCancellation();guard !isInputComposing,admission?() != false else {throw CancellationError()}}
         try ensureSelection()
         guard !busy,!isInputComposing else { throw ConversationSessionError.busy }
@@ -533,7 +550,7 @@ enum ConversationObserverLifecycle: String { case foregroundIdle, streaming, rec
         }
         // Commit all presentation state together after target reads and the last
         // lifecycle gate. An interrupted read cannot leave B with A's queue/draft.
-        permissionTask?.cancel();permissionID=nil;pendingModelConsent=nil;modelConsentReview=nil;modelConsentReviewToken=nil;checkingModelConsent=false;consentReady=false
+        permissionTask?.cancel();permissionID=nil;authorizeRerun=false;pendingModelConsent=nil;modelConsentReview=nil;modelConsentReviewToken=nil;checkingModelConsent=false;consentReady=false
         queue=ConversationFollowupQueueService(repository:repository,scope:scope,conversationID:id)
         acceptedWorkReviewTask?.cancel();acceptedWorkReviewTask=nil;acceptedWorkReviewToken=nil;acceptedWorkReviewPresented=false;acceptedWorkReviewSaving=false;acceptedWorkCapability = .init();revisionWorkReviewTarget=nil
         acceptedWorkDraftTask?.cancel();acceptedWorkDraftTask=nil;acceptedWorkDraft=targetWorkDraft
@@ -549,7 +566,7 @@ enum ConversationObserverLifecycle: String { case foregroundIdle, streaming, rec
         artifactContinuation=composer.activeDraft?.reference;continuationEditSequence=composer.activeDraft?.editSequence ?? 0;ordinaryContinuationImage=nil
         if let active=composer.activeDraft {ordinaryContinuationImage=imageDraft;imageDraft=ImageAttachmentDraft();subscribeToImageDraft();draft=active.raw}else{draft=saved.conversation?.draftText ?? ""}
         continuationDraftSaved=true
-        conversationID=id;session=selected;outgoingMessages=[];tapTimes=[:];isInputComposing=false;error=nil;await refresh();if loaded && foreground && networkAdmissionAllowed {connectionTask?.cancel();connectionTask=Task{await refreshConnection()}}
+        conversationID=id;session=selected;outgoingMessages=[];tapTimes=[:];isInputComposing=false;error=nil;await refresh();if loaded && foreground && networkAdmissionAllowed {connectionTask?.cancel();connectionTask=Task{await refreshConnection()};syncServerTranscript(id)}
         if loaded,let session {await restoreAppliedTaskControlDeliveries(session);drainTaskControlDeliveries()}
     }
     /// Explicit navigation from the scope inbox; inspection never calls this.
@@ -588,7 +605,8 @@ enum ConversationObserverLifecycle: String { case foregroundIdle, streaming, rec
         if let block=artifactContinuationSendBlock {error=block;return}
         if revisionRequiresWorkReview,revisionWork==nil {requestAcceptedWorkReview();return}
         if let block=imageSendBlock { error=block.message;return }
-        guard canAcceptDraft,let id=conversationID,let queue else { return }
+        if quotaNotice { return }   // keep the draft; the quota notice offers 重试
+        guard canAcceptDraft,let id=conversationID,let queue else { sendLog.info("catpaw.send prepare rejected canAccept=\(self.canAcceptDraft, privacy: .public) loaded=\(self.loaded, privacy: .public) conv=\(self.conversationID != nil, privacy: .public) queue=\(self.queue != nil, privacy: .public)");return }
         let tap=ProcessInfo.processInfo.systemUptime
         let prepared=imageDraft.attachment
         let payload:ConversationVisionPayload?
@@ -621,6 +639,7 @@ enum ConversationObserverLifecycle: String { case foregroundIdle, streaming, rec
                 guard conversationID == id else { return }
                 if acceptedWork != nil || revisionWork != nil {acceptedWorkDraft=nil;revisionWorkReviewTarget=nil}
                 setIntent(message.id,.queued);await refresh()
+                sendLog.info("catpaw.send enqueued fg=\(self.foreground, privacy: .public) inflight=\(self.permissionTask != nil, privacy: .public)")
                 if foreground { authorizePending() }
             } catch {
                 if payload != nil {try? await imageStore.remove(conversationID:id,operationID:message.id)}
@@ -632,15 +651,34 @@ enum ConversationObserverLifecycle: String { case foregroundIdle, streaming, rec
     func send() { prepareSend() }
     func outgoingDidRender(_ id:UUID) { if let time=tapTimes.removeValue(forKey:id) { tapToFirstRenderedMs=(ProcessInfo.processInfo.systemUptime-time)*1000 } }
     private func setIntent(_ id:UUID,_ state:OutgoingMessageIntent.State,error:String?=nil) { if let i=outgoingMessages.firstIndex(where:{$0.id == id}) { outgoingMessages[i].state=state;outgoingMessages[i].error=error } }
+    // p89j-1 root cause: start()/resumeForeground launches a consent check that reads the queue BEFORE a just-tapped
+    // send is enqueued (pending=0 -> "authorize skipped"). The post-enqueue authorizePending() then hit
+    // `permissionTask == nil` and returned silently, so the message sat queued with no consent sheet and nothing
+    // re-triggered it. A request arriving while a check is in flight is now coalesced and re-run when that check ends.
+    private var authorizeRerun=false
     private func authorizePending() {
-        guard networkAdmissionAllowed,foreground,loaded,permissionTask == nil,pendingModelConsent == nil,let id=conversationID else { return }
+        guard networkAdmissionAllowed,foreground,loaded,pendingModelConsent == nil,let id=conversationID else { sendLog.info("catpaw.send authorize rejected admission=\(self.networkAdmissionAllowed, privacy: .public) fg=\(self.foreground, privacy: .public) loaded=\(self.loaded, privacy: .public) pendingConsent=\(self.pendingModelConsent != nil, privacy: .public)");return }
+        if permissionTask != nil { authorizeRerun=true;sendLog.info("catpaw.send authorize coalesced (consent check in flight)");return }
+        authorizeRerun=false
         if consentReady { drainQueue();return }
         let token=UUID();permissionID=token;checkingModelConsent=true
         permissionTask=Task {
-            defer { if permissionID == token { permissionTask=nil;checkingModelConsent=false } }
+            defer { if permissionID == token { permissionTask=nil;checkingModelConsent=false;if authorizeRerun,!Task.isCancelled { authorizeRerun=false;sendLog.info("catpaw.send authorize rerun after in-flight check");authorizePending() } } }
             do {
-                let state=try await queue?.state()
-                guard !Task.isCancelled,permissionID == token,foreground,conversationID == id,let state,!state.pending.isEmpty,!state.paused else { return }
+                var state=try await queue?.state()
+                // A preflight hold (send threw before the turn was journaled: readiness timeout, admission
+                // briefly closed during auth refresh) is transient. Nothing else resumes it, so a fresh send
+                // or consent check must, otherwise every later message queues silently behind it.
+                if try await queue?.resumePreflightHold() == true { sendLog.info("catpaw.send resumed preflight hold");state=try await queue?.state() }
+                if let s0=state,s0.paused || s0.pending.isEmpty, !Task.isCancelled,permissionID == token,conversationID == id {
+                    // Gap 2: an old conversation whose consent is already granted must not show the
+                    // consent re-ask banner just because its queue is paused/empty; mark ready silently.
+                    if let granted=try? await { () async throws -> Bool in try await service.modelConsent(scope:scope,conversationID:id) == nil }(), granted {
+                        consentReady=true
+                        if s0.paused,s0.pauseReason == .background || s0.pauseReason == .preflight { try? await queue?.resume();state=try await queue?.state() }
+                    }
+                }
+                guard !Task.isCancelled,permissionID == token,foreground,conversationID == id,let state,!state.pending.isEmpty,!state.paused else { if consentReady { drainQueue() };sendLog.info("catpaw.send authorize skipped paused=\(state?.paused ?? false, privacy: .public) pending=\(state?.pending.count ?? -1, privacy: .public) tokenOK=\(self.permissionID == token, privacy: .public) fg=\(self.foreground, privacy: .public) ready=\(self.consentReady, privacy: .public) busy=\(self.busy, privacy: .public)");return }
                 let consent=try await service.modelConsent(scope:scope,conversationID:id)
                 guard !Task.isCancelled,permissionID == token,foreground,conversationID == id else { return }
                 if let consent { presentModelConsent(consent);for i in outgoingMessages.indices where outgoingMessages[i].state == .queued { outgoingMessages[i].state = .awaitingPermission } }
@@ -661,13 +699,14 @@ enum ConversationObserverLifecycle: String { case foregroundIdle, streaming, rec
               reviewToken.map({modelConsentReviewToken==$0}) ?? true,
               let review=modelConsentReview,review.conversationID==consent.conversationID,
               review.routeHash==consent.routeHash,review.expectedRevision==consent.expectedRevision,
-              review.title==consent.title,review.body==consent.body else {return}
+              review.title==consent.title,review.body==consent.body else {sendLog.info("catpaw.send allow rejected review=\(self.modelConsentReview != nil, privacy: .public)");return}
+        sendLog.info("catpaw.send allow accepted")
         modelConsentReview=nil;modelConsentReviewToken=nil
         permissionTask?.cancel();let token=UUID();permissionID=token;checkingModelConsent=true;pendingModelConsent=nil
         permissionTask=Task {
             defer { if permissionID == token { permissionTask=nil;checkingModelConsent=false } }
             do { try await service.allowModelConsent(scope:scope,consent:consent);guard !Task.isCancelled,permissionID == token,foreground,conversationID == consent.conversationID else { return };consentReady=true;if imageReview != nil {fetchImageConsent()} else {drainQueue()} }
-            catch { if permissionID == token { self.error="许可保存未确认，本机消息已保留，未发送。" } }
+            catch { sendLog.error("catpaw.send allow failed \(String(describing:error), privacy: .public)");if permissionID == token { self.error="许可保存未确认，本机消息已保留，未发送。" } }
         }
     }
     private func presentModelConsent(_ consent:ConversationModelConsent) {
@@ -697,11 +736,13 @@ enum ConversationObserverLifecycle: String { case foregroundIdle, streaming, rec
     }
     private var canDispatchFollowup:Bool { loaded && foreground && networkAdmissionAllowed }
     private func drainQueue() {
-        guard networkAdmissionAllowed,foreground,let id=conversationID,let queue,!busy,session?.unresolved == nil else { return }
+        guard networkAdmissionAllowed,foreground,let id=conversationID,let queue,!busy,session?.unresolved == nil else { sendLog.info("catpaw.send drain skipped admit=\(self.networkAdmissionAllowed, privacy: .public) fg=\(self.foreground, privacy: .public) busy=\(self.busy, privacy: .public) unresolved=\(self.session?.unresolved != nil, privacy: .public)");return }
+        sendLog.info("catpaw.send drain start")
         let token=UUID();flightID=token;busy=true;sending=true;observerLifecycle = .streaming;error=nil
         turnTask=Task {
             defer { if flightID == token { flightID=nil;busy=false;sending=false;observerLifecycle=session?.unresolved == nil ? .foregroundIdle : .unknown } }
             do {
+                if try await queue.resumePreflightHold() { sendLog.info("catpaw.send resumed preflight hold before drain") }
                 try await queue.flush { [service,scope,imageStore,weak self] message in
                     guard !Task.isCancelled,await self?.canDispatchFollowup == true else { return .heldBeforeAdmission }
                     await self?.setIntent(message.id,.sending)
@@ -709,19 +750,41 @@ enum ConversationObserverLifecycle: String { case foregroundIdle, streaming, rec
                         let image:ConversationVisionPayload?
                         if let reference=message.image {let bytes=try await imageStore.read(reference:reference,conversationID:id,operationID:message.id);image = .init(reference:reference,bytes:bytes)} else {image=nil}
                         guard !Task.isCancelled,await self?.canDispatchFollowup == true else {return .heldBeforeAdmission}
+                        sendLog.info("catpaw.send dispatch");let t0=Date();defer { sendLog.info("catpaw.send dispatch end \(Date().timeIntervalSince(t0), privacy: .public)s") }
                         _=try await service.send(scope:scope,conversationID:id,text:message.text,operationID:message.id,preserveDraft:true,image:image,continuation:message.continuation,acceptedWork:message.acceptedWork,revisionWork:message.revisionWork);return .sent
                     }
                     catch {
+                        sendLog.error("catpaw.send dispatch failed \(String(describing:error).prefix(160), privacy: .public)")
+                        if case ConversationDispatchFailure.notSent(let code)=error,ConversationTerminalServerError.isQuota(code) { await self?.markQuota();return .heldBeforeAdmission }
                         let saved=try await service.read(scope:scope,conversationID:id)
-                        if !saved.turns.contains(where:{$0.id == message.id}) || saved.turns.first(where:{$0.id == message.id})?.state == .notSent { return .heldBeforeAdmission }
+                        if !saved.turns.contains(where:{$0.id == message.id}) || saved.turns.first(where:{$0.id == message.id})?.state == .notSent { sendLog.error("catpaw.send held before admission: \(String(describing:error), privacy: .public)");return .heldBeforeAdmission }
                         throw error
                     }
                 }
-                guard flightID == token else { return };let state=try await queue.state()
-                if state.paused && !state.pending.isEmpty { error="尚未发送的消息已保留，恢复连接后继续。";if draft.isEmpty,artifactContinuation==nil,state.pending.first?.continuation==nil { draft=state.pending.first?.text ?? "" } }
+                guard flightID == token else { return };var state=try await queue.state()
+                if quotaNotice { state=try await returnQueuedToDraft(queue,conversationID:id) }
+                if state.paused && !quotaNotice && !state.pending.isEmpty { error=state.pauseReason == .preflight ? "消息尚未发送，已保留在本机；再次发送或确认许可后会自动重试。" : "尚未发送的消息已保留，恢复连接后继续。";if draft.isEmpty,artifactContinuation==nil,state.pending.first?.continuation==nil { draft=state.pending.first?.text ?? "" } }
             } catch { if flightID == token { self.error=error.localizedDescription } }
+            if !quotaNotice { /* keep notice across refresh */ }
             guard flightID == token else { return };await refresh()
         }
+    }
+    private func markQuota() { quotaNotice=true;error=nil }
+    /// Quota reached: hand every queued (unsent) message back to the composer instead of a paused outbox.
+    private func returnQueuedToDraft(_ queue:ConversationFollowupQueueService,conversationID id:UUID) async throws -> ConversationFollowupState {
+        let state=try await queue.state()
+        let plain=state.pending.filter { $0.continuation == nil && $0.acceptedWork == nil && $0.revisionWork == nil && $0.image == nil }
+        guard !plain.isEmpty else { return state }
+        let texts=plain.map(\.text)
+        for message in plain {
+            try? await service.discardUnsent(scope:scope,conversationID:id,operationID:message.id)
+            try await queue.remove(message.id)
+            outgoingMessages.removeAll { $0.id == message.id }
+        }
+        let joined=texts.joined(separator:"\n")
+        draft=draft.isEmpty ? joined : draft+"\n"+joined
+        try? await queue.resume()
+        return try await queue.state()
     }
     func pauseFollowups() { Task { do { try await queue?.pause();await refresh() } catch { self.error=error.localizedDescription } } }
     func pauseQueueForEditing(_ message:ConversationFollowup) async throws {
@@ -760,7 +823,7 @@ enum ConversationObserverLifecycle: String { case foregroundIdle, streaming, rec
         guard allowed != networkAdmissionAllowed else { return };networkAdmissionAllowed=allowed
         Task {await synchronizeServiceAdmission()}
         if allowed { Task { await resumeForeground();authorizePending() } }
-        else { cancelImageConsent();stopTaskControlDelivery();permissionTask?.cancel();permissionTask=nil;permissionID=nil;checkingModelConsent=false;pendingModelConsent=nil;modelConsentReview=nil;modelConsentReviewToken=nil;connectionProbeID=UUID();connectionTask?.cancel();connectionLifecycle = .checking }
+        else { cancelImageConsent();stopTaskControlDelivery();permissionTask?.cancel();permissionTask=nil;permissionID=nil;authorizeRerun=false;checkingModelConsent=false;pendingModelConsent=nil;modelConsentReview=nil;modelConsentReviewToken=nil;connectionProbeID=UUID();connectionTask?.cancel();connectionLifecycle = .checking }
     }
     func refreshConnection() async {
         guard foreground,networkAdmissionAllowed else {connectionLifecycle = .checking;return}
@@ -817,6 +880,15 @@ enum ConversationObserverLifecycle: String { case foregroundIdle, streaming, rec
         @unknown default:break
         }
     }
+    /// Pull-merge server-only messages (e.g. an outbox turn admitted without write-back) so they show in the UI.
+    private func syncServerTranscript(_ id:UUID) {
+        Task { [service,scope,weak self] in
+            do { let added=try await service.syncServerTranscript(scope:scope,conversationID:id)
+                let current=await self?.conversationID
+                if added, current == id { await self?.refresh() } }
+            catch { sendLog.info("catpaw.send transcript sync on open skipped: \(String(describing:error), privacy: .public)") }
+        }
+    }
     func resumeForeground() async {
         guard loaded else { return };sceneGeneration += 1;let generation=sceneGeneration;foreground=true
         await enterForeground(generation:generation)
@@ -825,6 +897,7 @@ enum ConversationObserverLifecycle: String { case foregroundIdle, streaming, rec
         guard loaded,generation == sceneGeneration,foreground else { return }
         await haltTask?.value;guard generation == sceneGeneration,foreground else { return }
         await synchronizeServiceAdmission()
+        if networkAdmissionAllowed,let id=conversationID { syncServerTranscript(id) }
         foregroundTask?.cancel();connectionTask?.cancel()
         // Reachability is informative; it must not block GET of the exact unresolved turn.
         connectionTask=Task { await refreshConnection() }
@@ -834,14 +907,21 @@ enum ConversationObserverLifecycle: String { case foregroundIdle, streaming, rec
         guard generation == sceneGeneration,foreground else {return}
         for id in pendingTaskControlDeliveries.keys {pendingTaskControlDeliveries[id]?.nextAttemptAt = .distantPast}
         drainTaskControlDeliveries()
-        if session?.unresolved != nil { readOriginal() } else { await resumeBackgroundQueueIfSafe();authorizePending() }
+        if session?.unresolved != nil { if session?.unresolved?.awaitingApproval != true { readOriginal() } } else { await resumeBackgroundQueueIfSafe();authorizePending() }
         foregroundTask=Task { [weak self] in
             while !Task.isCancelled {
                 guard let self,self.foreground,self.sceneGeneration == generation else { return }
                 if !self.busy,let session=self.session {
                     if self.drainTaskControlDeliveries() { }
+                    // A turn suspended on our own approval/device card has nothing new to read until we answer; re-observing
+                    // it every tick held the conversation busy and made submitDeviceResult fail with .busy ("结果还没告诉小猫").
+                    else if session.unresolved?.awaitingApproval == true { }
                     else if session.unresolved != nil || session.goals.values.contains(where:{[.queued,.working,.waitingInput,.unknown].contains($0.state)}) { self.readOriginal() }
-                    else { await self.resumeBackgroundQueueIfSafe() }
+                    else {
+                        // R7: due busy auto-retry (once) and offline outbox drain, both service-owned.
+                        if let id=self.conversationID, self.networkAdmissionAllowed, await self.service.foregroundTick(scope:self.scope,conversationID:id) { await self.refresh() }
+                        await self.resumeBackgroundQueueIfSafe()
+                    }
                 }
                 do { try await Task.sleep(nanoseconds:2_000_000_000) } catch { return }
             }
@@ -852,7 +932,7 @@ enum ConversationObserverLifecycle: String { case foregroundIdle, streaming, rec
     }
     private func beginSuspension() -> Task<Void,Never> {
         cancelImageConsent();sceneGeneration += 1;foreground=false;stopTaskControlDelivery();foregroundTask?.cancel();foregroundTask=nil;connectionTask?.cancel()
-        permissionTask?.cancel();permissionTask=nil;permissionID=nil;checkingModelConsent=false;pendingModelConsent=nil;modelConsentReview=nil;modelConsentReviewToken=nil;connectionProbeID=UUID()
+        permissionTask?.cancel();permissionTask=nil;permissionID=nil;authorizeRerun=false;checkingModelConsent=false;pendingModelConsent=nil;modelConsentReview=nil;modelConsentReviewToken=nil;connectionProbeID=UUID()
         let old=turnTask;turnTask=nil;flightID=nil;busy=false;sending=false;observerLifecycle = .background
         let id=conversationID,service=self.service,scope=self.scope,queue=self.queue
         let previous=haltTask,persistence=persistenceTask
@@ -878,6 +958,7 @@ enum ConversationObserverLifecycle: String { case foregroundIdle, streaming, rec
         let artifactDraftsSaved=await artifactEditService.invalidate()
         await taskActionService.invalidate();await taskControlService.invalidate();selectedTaskControl=nil
         await memoryService?.invalidate()
+        MemoryLibraryHub.reset() // wave2 V1
         await inboxService?.invalidate()
         imageDraft.clear();for value in imageDrafts.values {value.clear()};imageDrafts.removeAll();imageCapability=ConversationImageCapability()
         await suspend();subscription?.cancel();subscription=nil;draftTask?.cancel();draftTask=nil

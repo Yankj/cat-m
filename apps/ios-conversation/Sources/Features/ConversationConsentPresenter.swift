@@ -128,15 +128,16 @@ struct ConversationConsentPresentationCoordinator {
                 VStack(spacing:8) {
                     CatpawConfirmationCheckbox(title:ui(consent.confirmation),isOn:$confirmed).disabled(saving)
                         .accessibilityIdentifier("image.consent.nonSensitive")
-                    CatpawAdaptiveActions {
-                        Button(action:cancel){Text(ui(consent.denyLabel)).font(CatpawTypography.Role.body.font).frame(maxWidth:.infinity,minHeight:44).padding(.horizontal,12).contentShape(Rectangle())}
-                            .buttonStyle(CatpawPressButtonStyle()).disabled(saving).accessibilityIdentifier("image.consent.cancel")
-                        Button{allow(confirmed)} label:{Text(ui(consent.allowLabel)).frame(maxWidth:.infinity,minHeight:44).contentShape(Rectangle())}
-                            .primaryAction().disabled(!confirmed || saving).accessibilityIdentifier("image.consent.allow")
+                    VStack(spacing:4) {
+                        Button{allow(confirmed)} label:{Text(ui(consent.allowLabel))}
+                            .buttonStyle(CatpawSheetPrimaryButtonStyle()).disabled(!confirmed || saving).accessibilityIdentifier("image.consent.allow")
+                        Button(action:cancel){Text(ui(consent.denyLabel))}
+                            .buttonStyle(CatpawSheetSecondaryButtonStyle()).disabled(saving).accessibilityIdentifier("image.consent.cancel")
                     }
                     if saving {ProgressView().accessibilityLabel(ui("正在保存确认…"))}
-                }.padding(16).frame(maxWidth:CatpawLayout.readableWidth).frame(maxWidth:.infinity).background(CatpawColors.panel)
+                }.padding(.horizontal,20).padding(.top,12).padding(.bottom,8).frame(maxWidth:CatpawLayout.readableWidth).frame(maxWidth:.infinity)
+                    .background(CatpawColors.background).overlay(alignment:.top){CatpawColors.hairline.frame(height:0.5)}
             }.background(CatpawColors.background)
-        }.tint(CatpawColors.action).foregroundStyle(CatpawColors.ink).presentationDragIndicator(.visible)
+        }.tint(CatpawColors.ink).foregroundStyle(CatpawColors.ink).presentationDragIndicator(.visible)
     }
 }

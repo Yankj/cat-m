@@ -74,7 +74,7 @@ final class DeviceTrialNativeTests: XCTestCase {
  }
  @MainActor func testVisionSaveFailureRollsBackBeforeProviderAndKeepsDraft() async throws {
   let storage=SelectedConversationTestStorage(),backend=VisionFlowTestBackend(),repository=try Repository(persistence:storage),service=ConversationSessionService(repository:repository,backend:backend),model=ConversationFirstModel(repository:repository,service:service)
-  let hash=try await selectVisionImage(model);try await approveVisionImage(model);let before=await repository.read(scope:model.scope);storage.rejectNextSave();model.prepareSend();try await p0Until {!model.enqueueing}
+  print("p0wait stage=vision-1/2 select+approve begin");let hash=try await selectVisionImage(model);try await approveVisionImage(model);print("p0wait stage=vision-1/2 select+approve done");let before=await repository.read(scope:model.scope);storage.rejectNextSave();model.prepareSend();try await p0Until("vision-3 enqueue rollback",state:{await p0State(model)}) {!model.enqueueing}
   let after=await repository.read(scope:model.scope),counts=await backend.counts();XCTAssertEqual(after.sequence,before.sequence);XCTAssertEqual(counts[0],0);XCTAssertEqual(model.draft,"Synthetic image caption");XCTAssertEqual(model.imageDraft.attachment?.sha256,hash);await model.deactivate()
  }
  @MainActor func testVisionUnknownResumesOriginalTurnAfterBackgroundWithoutSecondPost() async throws {
@@ -353,18 +353,18 @@ final class DeviceTrialNativeTests: XCTestCase {
  @MainActor func testDeferredConsentCanBeReopenedAndDispatchesOriginalOnce() async throws {
   let repo=try Repository(persistence:SelectedConversationTestStorage()),backend=P0ExperienceBackend(scenario:"p0-ui-consent"),service=ConversationSessionService(repository:repo,backend:backend)
   let model=ConversationFirstModel(repository:repo,service:service);await model.start();model.editDraft("Owned deferred permission")
-  model.prepareSend();try await p0Until {model.pendingModelConsent != nil}
-  model.deferModelConsent(try XCTUnwrap(model.pendingModelConsent));try await p0Until {model.followups.paused}
+  model.prepareSend();try await p0Until("deferred-1 first consent",state:{await p0State(model,backend)}) {model.pendingModelConsent != nil}
+  model.deferModelConsent(try XCTUnwrap(model.pendingModelConsent));try await p0Until("deferred-2 paused",state:{await p0State(model,backend)}) {model.followups.paused}
   let before=await backend.consentInvocationCounts();XCTAssertEqual(before,[0,0])
-  model.requestModelConsentReview();try await p0Until {model.pendingModelConsent != nil}
-  model.allowPendingModelConsent(try XCTUnwrap(model.pendingModelConsent));try await p0Until {model.session?.turns.last?.state == .completed && !model.busy}
+  model.requestModelConsentReview();try await p0Until("deferred-3 reopened consent",state:{await p0State(model,backend)}) {model.pendingModelConsent != nil}
+  model.allowPendingModelConsent(try XCTUnwrap(model.pendingModelConsent));try await p0Until("deferred-4 completed",state:{await p0State(model,backend)}) {model.session?.turns.last?.state == .completed && !model.busy}
   let after=await backend.consentInvocationCounts();XCTAssertEqual(after,[1,1]);XCTAssertEqual(model.session?.turns.count,1)
   await model.deactivate()
  }
  @MainActor func testChangedConsentRevisionCannotDispatch() async throws {
   let repo=try Repository(persistence:SelectedConversationTestStorage()),backend=P0ExperienceBackend(scenario:"p0-ui-consent"),service=ConversationSessionService(repository:repo,backend:backend)
   let model=ConversationFirstModel(repository:repo,service:service);await model.start();model.editDraft("Owned stale permission")
-  model.prepareSend();try await p0Until {model.pendingModelConsent != nil}
+  model.prepareSend();try await p0Until("changed-1 first consent",state:{await p0State(model,backend)}) {model.pendingModelConsent != nil}
   let review=try XCTUnwrap(model.pendingModelConsent)
   let stale=ConversationModelConsent(conversationID:review.conversationID,title:review.title,body:review.body,routeHash:review.routeHash,expectedRevision:review.expectedRevision+1)
   model.allowPendingModelConsent(stale);await Task.yield()
@@ -411,9 +411,21 @@ private final class SelectedConversationTestStorage: SnapshotPersistence, @unche
  func save(_ snapshot:StoreSnapshot) throws { lock.lock();defer { lock.unlock() };if reject { reject = false;throw CatpawError.unavailable("Synthetic selection save rejection") };state = snapshot }
 }
 
-@MainActor private func p0Until(_ phase:String = "local lifecycle",_ body:() async throws -> Bool) async throws {
- for _ in 0..<6000 { if try await body() { return };try await Task.sleep(nanoseconds:1_000_000) }
+/// p89i-4: every wait is named; success prints the stage + wall time, a timeout prints the stage, wall time, iterations and
+/// a model state dump so the exact stuck stage is in the log (XCTest output), not just the shared ":416" exit.
+@MainActor private func p0Until(_ phase:String = "local lifecycle",state:@MainActor () async -> String = {""},_ body:() async throws -> Bool) async throws {
+ let t0=Date()
+ for i in 0..<6000 {
+  if try await body() { if phase != "local lifecycle" { print("p0wait ok stage=\(phase) iter=\(i) ms=\(Int(Date().timeIntervalSince(t0)*1000))") };return }
+  try await Task.sleep(nanoseconds:1_000_000)
+ }
+ let dump=await state()
+ print("p0wait TIMEOUT stage=\(phase) ms=\(Int(Date().timeIntervalSince(t0)*1000)) state=\(dump)")
  throw CatpawError.invalid("P0 \(phase) deadline")
+}
+@MainActor private func p0State(_ m:ConversationFirstModel,_ b:P0ExperienceBackend? = nil) async -> String {
+ let counts=await b?.consentInvocationCounts() ?? []
+ return "pendingConsent=\(m.pendingModelConsent != nil) paused=\(m.followups.paused) busy=\(m.busy) enqueueing=\(m.enqueueing) turns=\(m.session?.turns.count ?? -1) last=\(String(describing:m.session?.turns.last?.state)) lifecycle=\(m.connectionLifecycle) admission=\(m.networkAdmissionAllowed) consentCalls=\(counts)"
 }
 @MainActor private func makeP0Model() throws -> (ConversationFirstModel,P0ScriptedBackend,ConversationSessionService,Repository) {
  let repository=try Repository(persistence:SelectedConversationTestStorage()),backend=P0ScriptedBackend(),service=ConversationSessionService(repository:repository,backend:backend)
@@ -438,11 +450,11 @@ private actor P0LifecycleBackend: ConversationBackend {
 @MainActor private func selectVisionImage(_ model:ConversationFirstModel) async throws -> String {
  await model.start();await model.refreshConnection();model.editDraft("Synthetic image caption")
  let raw=UIGraphicsImageRenderer(size:CGSize(width:16,height:16)).pngData{ctx in UIColor.blue.setFill();ctx.fill(CGRect(x:0,y:0,width:16,height:16))},ticket=model.imageDraft.beginSelection();model.imageDraft.receiveSelectedData(raw,ticket:ticket)
- try await p0Until {model.imageDraft.phase == .ready};return try XCTUnwrap(model.imageDraft.attachment?.sha256)
+ try await p0Until("vision-1 image ready",state:{await p0State(model)+" image=\(model.imageDraft.phase)"}) {model.imageDraft.phase == .ready};return try XCTUnwrap(model.imageDraft.attachment?.sha256)
 }
 @MainActor private func approveVisionImage(_ model:ConversationFirstModel) async throws {
- model.requestImageConsent();try await p0Until {model.pendingImageConsent != nil};model.allowPendingImageConsent(try XCTUnwrap(model.pendingImageConsent),confirmed:true)
- try await p0Until {model.imageGate.imageConsentMatchesCurrentRoute && !model.checkingImageConsent}
+ model.requestImageConsent();try await p0Until("vision-2a image consent shown",state:{await p0State(model)+" imageConsentPending=\(model.pendingImageConsent != nil) checking=\(model.checkingImageConsent)"}) {model.pendingImageConsent != nil};model.allowPendingImageConsent(try XCTUnwrap(model.pendingImageConsent),confirmed:true)
+ try await p0Until("vision-2b image consent matches route",state:{await p0State(model)+" matches=\(model.imageGate.imageConsentMatchesCurrentRoute) checking=\(model.checkingImageConsent)"}) {model.imageGate.imageConsentMatchesCurrentRoute && !model.checkingImageConsent}
 }
 /// Named offline synthetic provider; no URLSession/Auth or actual model request.
 private actor VisionFlowTestBackend:ConversationBackend {

@@ -8,6 +8,55 @@ actor QueueSendLog {
     func release() { continuation?.resume(); continuation = nil }
     func captured() -> [UUID] { ids }
 }
+actor QueueHistoryBackend:ConversationBackend {
+    var admitting=false
+    var histories:[UUID:[UUID]]=[:]
+    var server:[ConversationTranscriptMessage]?=nil
+    func allow(){admitting=true}
+    func setServer(_ value:[ConversationTranscriptMessage]?){server=value}
+    func serverTranscript(scope:DataScope,conversationID:UUID) async throws -> [ConversationTranscriptMessage]? {server}
+    func history(_ id:UUID)->[UUID]?{histories[id]}
+    func connection(scope:DataScope) async -> ConversationConnection {.init(state:.providerUnverified,provider:"Synthetic history",detail:"No external network")}
+    func reply(_ r:ConversationTurnRequest) async throws -> AsyncThrowingStream<ConversationTurnEvent,Error> {
+        guard admitting else {throw ConversationDispatchFailure.notSent(reason:"Synthetic consent not yet granted")}
+        histories[r.operationID]=r.history.map(\.id)
+        let message=stableID("queue-history-reply-\(r.operationID)"),body="Synthetic reply"
+        return AsyncThrowingStream {c in
+            c.yield(.init(operationID:r.operationID,epoch:r.epoch,sequence:1,payload:.started(requestHash:textHash(r.operationID.uuidString),conversationRevision:1,grantEpoch:1)))
+            c.yield(.init(operationID:r.operationID,epoch:r.epoch,sequence:2,payload:.textDelta(messageID:message,text:body)))
+            c.yield(.init(operationID:r.operationID,epoch:r.epoch,sequence:3,payload:.completed(messageID:message,finalTextHash:textHash(body))))
+            c.finish()
+        }
+    }
+    func observe(_ r:ConversationTurnRequest) async throws -> ConversationObservation {throw CatpawError.missing}
+}
+actor QueueBusyBackend:ConversationBackend {
+    var restarts=0
+    var succeedOnRestart=Int.max
+    func setSucceedOnRestart(_ n:Int){succeedOnRestart=n}
+    func connection(scope:DataScope) async -> ConversationConnection {.init(state:.providerUnverified,provider:"Synthetic busy",detail:"No external network")}
+    func reply(_ r:ConversationTurnRequest) async throws -> AsyncThrowingStream<ConversationTurnEvent,Error> {
+        AsyncThrowingStream {c in
+            c.yield(.init(operationID:r.operationID,epoch:r.epoch,sequence:1,payload:.started(requestHash:textHash(r.operationID.uuidString),conversationRevision:1,grantEpoch:1)))
+            c.yield(.init(operationID:r.operationID,epoch:r.epoch,sequence:2,payload:.failed(message:"rate_limited",reconciliationRequired:false),retryAfterSeconds:7))
+            c.finish()
+        }
+    }
+    func retryBusyTurn(_ r:ConversationTurnRequest,afterSequence:Int) async throws -> AsyncThrowingStream<ConversationTurnEvent,Error> {
+        restarts+=1
+        let ok=restarts>=succeedOnRestart,message=stableID("queue-busy-reply-\(r.operationID)"),body="Synthetic after busy"
+        return AsyncThrowingStream {c in
+            if ok {
+                c.yield(.init(operationID:r.operationID,epoch:r.epoch,sequence:afterSequence+1,payload:.textDelta(messageID:message,text:body)))
+                c.yield(.init(operationID:r.operationID,epoch:r.epoch,sequence:afterSequence+2,payload:.completed(messageID:message,finalTextHash:textHash(body))))
+            } else {
+                c.yield(.init(operationID:r.operationID,epoch:r.epoch,sequence:afterSequence+1,payload:.failed(message:"rate_limited",reconciliationRequired:false)))
+            }
+            c.finish()
+        }
+    }
+    func observe(_ r:ConversationTurnRequest) async throws -> ConversationObservation {throw CatpawError.missing}
+}
 actor QueueEditBackend:ConversationBackend {
     var admitting=false
     var finishes=true
@@ -72,6 +121,20 @@ actor QueueEditBackend:ConversationBackend {
         try await queue.enqueue(d); try await queue.flush { _ in .heldBeforeAdmission }
         state = try await queue.state()
         try check(state.paused && state.pending.map(\.id) == [d.id], "known pre-admission refusal restores same message to queue front on hold")
+        try check(state.pauseReason == .preflight, "pre-admission hold is recorded as a preflight pause")
+        let behind = ConversationFollowup(text: "typed while held")
+        try await queue.enqueue(behind); try await queue.flush { message in await log.send(message); return .sent }
+        state = try await queue.state()
+        let capturedIDs = await log.captured()
+        try check(state.paused && state.pending.map(\.id) == [d.id,behind.id] && !capturedIDs.contains(d.id), "regression: a new message queues silently behind a preflight hold (simulator '待发送·2 条')")
+        let resumed = try await queue.resumePreflightHold()
+        state = try await queue.state()
+        try check(resumed && !state.paused && state.pauseReason == nil && state.pending.map(\.id) == [d.id,behind.id], "a fresh send clears a preflight hold without reordering")
+        try await queue.flush { _ in .heldBeforeAdmission }
+        try await queue.pause()
+        let userResumed = try await queue.resumePreflightHold(); let userPaused = try await queue.state().paused
+        try check(!userResumed && userPaused, "a user pause is never cleared by the preflight resume")
+        try await queue.remove(behind.id)
         try await queue.resume()
         do { try await queue.flush { message in await log.send(message); throw CatpawError.unavailable("explicit test failure after transcript admission") } } catch { }
         try await queue.resume(); try await queue.flush { message in await log.send(message); return .sent }
@@ -114,6 +177,85 @@ actor QueueEditBackend:ConversationBackend {
         do {_=try await editingQueue.edit(unknown,text:"must never replace unknown",session:editingService)} catch ConversationSessionError.unresolvedOperation {unknownRejected=true}
         let unchanged=try await editingQueue.state(),unknownSession=try await editingService.read(scope:Profiles.user,conversationID:editingConversation)
         try check(unknownRejected && unchanged.pending.first?.id == unknown.id && unknownSession.unresolved?.id == unknown.id,"unknown request remains immutable even if a stale pending queue entry exists")
+        // Regression (simulator stuck at "已保存在本机 · 待发送"): a message refused before POST stays in the local
+        // transcript as notSent. It must not enter later turns' wire history, or the server (0 messages) never
+        // matches and every following send is refused as a conflict, pausing the queue forever.
+        let hb=QueueHistoryBackend(),hs=ConversationSessionService(repository:repo,backend:hb)
+        let hc=try await hs.create(scope:Profiles.user),hq=ConversationFollowupQueueService(repository:repo,scope:Profiles.user,conversationID:hc)
+        let refused=ConversationFollowup(text:"你是？")
+        try await hq.enqueue(refused)
+        try await hq.flush {m in do {_=try await hs.send(scope:Profiles.user,conversationID:hc,text:m.text,operationID:m.id,preserveDraft:true);return .sent} catch is ConversationDispatchFailure {return .heldBeforeAdmission}}
+        var hstate=try await hq.state(),hsaved=try await hs.read(scope:Profiles.user,conversationID:hc)
+        try check(hstate.paused && hstate.pauseReason == .preflight && hsaved.turns.first?.state == .notSent && hsaved.messages.count == 1,"refusal before consent journals notSent and holds the queue (preflight)")
+        await hb.allow()
+        let later=ConversationFollowup(text:"第二条")
+        try await hq.enqueue(later)
+        try check(try await hq.resumePreflightHold(),"consent/new send clears the preflight hold")
+        try await hq.flush {m in do {_=try await hs.send(scope:Profiles.user,conversationID:hc,text:m.text,operationID:m.id,preserveDraft:true);return .sent} catch is ConversationDispatchFailure {return .heldBeforeAdmission}}
+        hstate=try await hq.state();hsaved=try await hs.read(scope:Profiles.user,conversationID:hc)
+        let firstUser=stableID("conversation-user-\(refused.id)"),laterUser=stableID("conversation-user-\(later.id)")
+        try check(hstate.pending.isEmpty && !hstate.paused && hsaved.turns.allSatisfy{$0.state == .completed},"held message and the one behind it are both sent after consent")
+        let resentHistory=await hb.history(refused.id),laterHistory=await hb.history(later.id)
+        try check(resentHistory?.last == firstUser && resentHistory?.count == 1,"resent held message carries only itself (server had nothing)")
+        try check(laterHistory?.count == 3 && laterHistory?.first == firstUser && laterHistory?.last == laterUser,"later message history is exactly the admitted prefix plus itself")
+        // Server-only messages (old chat: b09acdc3 admitted by an outbox turn, never written back) merge into the
+        // local transcript idempotently, by server id, keeping local-only unsent messages and failure notices.
+        let t0=Date(timeIntervalSince1970:1_000)
+        let known=ConversationTranscriptMessage(role:.user,content:"早",createdAt:t0)
+        var notice=ConversationTranscriptMessage(role:.assistant,content:"消息尚未发送",createdAt:t0.addingTimeInterval(5));notice.failure="notSent"
+        let unsentLocal=ConversationTranscriptMessage(role:.user,content:"你是？",createdAt:t0.addingTimeInterval(6))
+        let serverOnlyUser=ConversationTranscriptMessage(role:.user,content:String(repeating:"x",count:128),createdAt:.distantPast)
+        let serverOnlyReply=ConversationTranscriptMessage(role:.assistant,content:"服务端回复",createdAt:.distantPast)
+        let serverList=[known,serverOnlyUser,serverOnlyReply]
+        let merged=ConversationSessionService.mergeServerTranscript(local:[known,notice,unsentLocal],server:serverList)
+        try check(merged.map(\.id)==[known.id,notice.id,unsentLocal.id,serverOnlyUser.id,serverOnlyReply.id],"server-only rows are added after the last known server row; local unsent and failure notices are kept")
+        try check(merged.filter{$0.id==notice.id}.first?.failure=="notSent","local failure notice keeps its metadata")
+        try check(merged[3].createdAt>=merged[2].createdAt && merged[4].createdAt>=merged[3].createdAt,"server-only rows get non-decreasing createdAt")
+        let again=ConversationSessionService.mergeServerTranscript(local:merged,server:serverList)
+        try check(again.map(\.id)==merged.map(\.id),"merge is idempotent (dedup by server id)")
+        let between=ConversationSessionService.mergeServerTranscript(local:[known,serverOnlyReply],server:[known,serverOnlyUser,serverOnlyReply])
+        try check(between.map(\.id)==[known.id,serverOnlyUser.id,serverOnlyReply.id],"a server-only row between two known rows is inserted in server order")
+        let sb=QueueHistoryBackend(),ss=ConversationSessionService(repository:repo,backend:sb),sc=try await ss.create(scope:Profiles.user)
+        await sb.setServer([serverOnlyUser,serverOnlyReply])
+        let synced=try await ss.syncServerTranscript(scope:Profiles.user,conversationID:sc)
+        let syncedSession=try await ss.read(scope:Profiles.user,conversationID:sc)
+        try check(synced && syncedSession.messages.map(\.id)==[serverOnlyUser.id,serverOnlyReply.id],"sync writes server-only messages into the local journal so the UI shows them")
+        let second=try await ss.syncServerTranscript(scope:Profiles.user,conversationID:sc)
+        try check(!second,"second sync is a no-op")
+        // Busy (turn_failed rate_limited): automatic retries restart the SAME turn (server busy-restart, limit 3),
+        // exponential backoff with jitter unless the server sent retry_after; status for "模型繁忙，正在重试（n/3）".
+        try check(ConversationSessionService.busyRetryDelay(attempt:1,retryAfterSeconds:nil,jitter:0)==2 && ConversationSessionService.busyRetryDelay(attempt:2,retryAfterSeconds:nil,jitter:0)==4 && ConversationSessionService.busyRetryDelay(attempt:3,retryAfterSeconds:nil,jitter:0)==8,"backoff doubles per attempt")
+        let jittered=ConversationSessionService.busyRetryDelay(attempt:2,retryAfterSeconds:nil,jitter:0.9)
+        try check(jittered>4 && jittered<6,"jitter stretches the delay by at most 50%")
+        try check(ConversationSessionService.busyRetryDelay(attempt:3,retryAfterSeconds:7,jitter:0)==7,"server retry_after wins over backoff")
+        try check(ConversationSessionService.busyRetryDelay(attempt:9,retryAfterSeconds:nil,jitter:0)==30,"backoff is capped")
+        let bb=QueueBusyBackend(),bs=ConversationSessionService(repository:repo,backend:bb),bc=try await bs.create(scope:Profiles.user)
+        let busyOp=UUID()
+        _=try? await bs.send(scope:Profiles.user,conversationID:bc,text:"忙吗",operationID:busyOp)
+        var busyStatus=await bs.busyRetryStatus(conversationID:bc)
+        try check(busyStatus?.automatic==true && busyStatus?.attempt==1 && busyStatus?.message=="模型繁忙，正在重试（1/3）" && (busyStatus?.secondsRemaining ?? 0)>=7,"rate_limited schedules automatic retry 1/3 honoring retry_after")
+        _=try? await bs.retryBusy(scope:Profiles.user,conversationID:bc,automatic:true)
+        busyStatus=await bs.busyRetryStatus(conversationID:bc)
+        try check(busyStatus?.automatic==true && busyStatus?.attempt==2,"second automatic retry is scheduled after a failed restart")
+        _=try? await bs.retryBusy(scope:Profiles.user,conversationID:bc,automatic:true)
+        _=try? await bs.retryBusy(scope:Profiles.user,conversationID:bc,automatic:true)
+        busyStatus=await bs.busyRetryStatus(conversationID:bc)
+        let restarts=await bb.restarts
+        let busySession=try await bs.read(scope:Profiles.user,conversationID:bc)
+        try check(restarts==3 && busyStatus?.automatic==false && busyStatus?.message.contains("点按重试")==true,"after 3 automatic retries the card switches to the manual retry entry")
+        try check(busySession.turns.count==1 && busySession.turns[0].id==busyOp && busySession.messages.filter{$0.role == .user}.count==1,"retries restart the same turn: one operationID, one user message")
+        await bb.setSucceedOnRestart(4)
+        _=try await bs.retryBusy(scope:Profiles.user,conversationID:bc,automatic:false)
+        let doneSession=try await bs.read(scope:Profiles.user,conversationID:bc)
+        let cleared=await bs.busyRetryStatus(conversationID:bc)
+        try check(doneSession.turns.first?.state == .completed && cleared==nil,"manual retry after exhaustion completes the same turn")
+        let cb=QueueBusyBackend(),cs=ConversationSessionService(repository:repo,backend:cb),cc=try await cs.create(scope:Profiles.user)
+        _=try? await cs.send(scope:Profiles.user,conversationID:cc,text:"取消我",operationID:UUID())
+        await cs.cancelBusyRetry(conversationID:cc)
+        let cancelled=await cs.busyRetryStatus(conversationID:cc)
+        let ticked=await cs.foregroundTick(scope:Profiles.user,conversationID:cc)
+        let cancelRestarts=await cb.restarts
+        try check(cancelled?.automatic==false && cancelRestarts==0 && !ticked,"user cancel stops automatic retries")
         print("EVIDENCE: migrated public queue behavior; transport actions in tests are explicit test closures")
     }
 }
