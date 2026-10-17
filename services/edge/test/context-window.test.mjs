@@ -206,7 +206,7 @@ test('toSteps: placeholder only for current-turn calls without a signature, on t
  _signatureCacheForTests.clear?.();
  const msgs=[{role:'user',content:'早'},{role:'assistant',content:'',tool_calls:[call('old1')]},{role:'tool',tool_call_id:'old1',content:'{}'},{role:'assistant',content:'好'},
   {role:'user',content:'再加两个'},{role:'assistant',content:'',tool_calls:[call('n1'),call('n2')]},{role:'tool',tool_call_id:'n1',content:'{}'},{role:'tool',tool_call_id:'n2',content:'{}'}];
- assert.equal(toSteps(msgs).filter(s=>s[GEMINI_SIGNATURE_FIELD]===GEMINI_SKIP_SIGNATURE).length,0,'R1-P1: default off');
+ assert.equal(toSteps(msgs).filter(s=>s[GEMINI_SIGNATURE_FIELD]===GEMINI_SKIP_SIGNATURE).length,1,'default on (shape verified)');
  const steps=toSteps(msgs,{signaturePlaceholder:true}),ph=steps.filter(s=>s[GEMINI_SIGNATURE_FIELD]===GEMINI_SKIP_SIGNATURE);
  assert.equal(ph.length,1);const i=steps.indexOf(ph[0]);assert.equal(steps[i+1].id,'n1');assert.equal(steps[i+2].id,'n2');
  assert.equal(steps.findIndex(s=>s.id==='old1')>0&&steps[steps.findIndex(s=>s.id==='old1')-1].type,'user_input','previous turns are not validated → no placeholder');
@@ -229,32 +229,33 @@ async function run(geminiBody,extraEnv={}){
 }
 test('400 classification: thought-signature 400 fails over; any other 400 with tool history stays provider_request_invalid (no failover)',async()=>{
  const sig=await run('{"error":{"code":400,"message":"function call is missing a thought_signature"}}');
- assert.equal(sig.bodies[0].input.filter(s=>s[GEMINI_SIGNATURE_FIELD]===GEMINI_SKIP_SIGNATURE).length,0,'switch off by default: request is exactly v52 (no placeholder)');
+ assert.equal(sig.bodies[0].input.filter(s=>s[GEMINI_SIGNATURE_FIELD]===GEMINI_SKIP_SIGNATURE).length,1,'switch on by default');
  assert.ok(sig.urls.some(u=>!u.includes('googleapis')),'failed over to the next route');assert.ok(sig.out.some(e=>e.type==='text_delta'&&e.text==='续写'));
  health.clear();
- const other=await run('{"error":{"code":400,"message":"Invalid value at generation_config"}}');
+ const other=await run('{"error":{"code":400,"message":"Invalid value at generation_config"}}',{CATPAW_GEMINI_PLACEHOLDER_SIGNATURE:'false'});
+ assert.equal(other.bodies[0].input.filter(s=>s[GEMINI_SIGNATURE_FIELD]===GEMINI_SKIP_SIGNATURE).length,0,'switch false: request is exactly v52 (no placeholder)');
  assert.ok(other.urls.every(u=>u.includes('googleapis')),'no failover on a real request error');
  assert.ok(other.out.some(e=>(e.type==='thrown'||e.type==='error')&&JSON.stringify(e).includes('provider_request_invalid')),JSON.stringify(other.out));
 });
 
 // ---------- NoBug R1-P1: placeholder switch (default off), placeholder-400 failover, widened signature match ----------
-test('R1-P1 (a): CATPAW_GEMINI_PLACEHOLDER_SIGNATURE is off unless exactly "true"; route_hash unchanged either way',()=>{
+test('R1-P1 (a): CATPAW_GEMINI_PLACEHOLDER_SIGNATURE is on by default (shape verified), "false" turns it off; route_hash unchanged either way',()=>{
  const base={CATPAW_PRIVATE_MODEL_KEY:'o',CATPAW_GEMINI_API_KEY:KEY};
- for(const v of [undefined,'','false','1','on','TRUE ',' yes'])assert.equal(readFreeRouteChain(k=>({...base,CATPAW_GEMINI_PLACEHOLDER_SIGNATURE:v})[k]).geminiPlaceholderSignature,false,String(v));
- assert.equal(readFreeRouteChain(k=>({...base,CATPAW_GEMINI_PLACEHOLDER_SIGNATURE:'true'})[k]).geminiPlaceholderSignature,true);
+ for(const v of [undefined,'','true','1','on'])assert.equal(readFreeRouteChain(k=>({...base,CATPAW_GEMINI_PLACEHOLDER_SIGNATURE:v})[k]).geminiPlaceholderSignature,true,String(v));
+ for(const v of ['false',' FALSE ','False'])assert.equal(readFreeRouteChain(k=>({...base,CATPAW_GEMINI_PLACEHOLDER_SIGNATURE:v})[k]).geminiPlaceholderSignature,false,String(v));
  const cfg={CATPAW_DATABASE_URL:'offline-unused',CATPAW_PRIVATE_MODEL_KEY:'offline-unused',CATPAW_TICK_HMAC_KEY:'offline-only-at-least-thirty-two-chars',CATPAW_MEMORY_GUARD_KEY:'offline-unused-guard',CATPAW_GEMINI_API_KEY:'offline-gemini-key-placeholder',CATPAW_AGNES_API_KEY:'offline-agnes-key-placeholder'};
  for(const v of ['true','false',undefined])assert.equal(readConfig(k=>({...cfg,CATPAW_GEMINI_PLACEHOLDER_SIGNATURE:v})[k]).routeHash,'508f5072148ce8e5de53649d460e8b7cdd7e79b16214918be541f204b4234337');
  const route={model:'gemini-3.5-flash-lite',endpoint:'https://generativelanguage.googleapis.com/v1beta/interactions?alt=sse'},count=b=>b.input.filter(s=>s[GEMINI_SIGNATURE_FIELD]===GEMINI_SKIP_SIGNATURE).length;
- assert.equal(count(new GeminiInteractionsRoute(route,KEY,{}).payload({messages:toolHistory})),0,'route default off');
- assert.equal(count(new GeminiInteractionsRoute(route,KEY,{placeholderSignature:true}).payload({messages:toolHistory})),1,'on: one placeholder for the current-turn call');
- assert.equal(count(new GeminiInteractionsRoute(route,KEY,{placeholderSignature:'true'}).payload({messages:toolHistory})),0,'only boolean true from the chain enables it');
+ assert.equal(count(new GeminiInteractionsRoute(route,KEY,{}).payload({messages:toolHistory})),1,'route default on: one placeholder for the current-turn call');
+ assert.equal(count(new GeminiInteractionsRoute(route,KEY,{placeholderSignature:false}).payload({messages:toolHistory})),0,'off');
+ const p=new FreeRouteChainProvider({...readFreeRouteChain(k=>({...base,CATPAW_GEMINI_PLACEHOLDER_SIGNATURE:'false'})[k])});assert.ok(p,'chain accepts the off flag');
 });
 test('R1-P1 (b): with the switch on, ANY 400 on a request carrying a placeholder fails over; switch off keeps provider_request_invalid',async()=>{
  const on=await run('{"error":{"code":400,"message":"Invalid value at \'input[1]\' (type.googleapis.com/Step): unknown field"}}',{CATPAW_GEMINI_PLACEHOLDER_SIGNATURE:'true'});
  assert.equal(on.bodies[0].input.filter(s=>s[GEMINI_SIGNATURE_FIELD]===GEMINI_SKIP_SIGNATURE).length,1,'placeholder was sent');
  assert.ok(on.urls.some(u=>!u.includes('googleapis')),'failed over');assert.ok(on.out.some(e=>e.type==='text_delta'&&e.text==='续写'));
  health.clear();
- const off=await run('{"error":{"code":400,"message":"Invalid value at \'input[1]\' (type.googleapis.com/Step): unknown field"}}');
+ const off=await run('{"error":{"code":400,"message":"Invalid value at \'input[1]\' (type.googleapis.com/Step): unknown field"}}',{CATPAW_GEMINI_PLACEHOLDER_SIGNATURE:'false'});
  assert.ok(off.urls.every(u=>u.includes('googleapis')),'no placeholder → a real request error stays no-failover (v52 behaviour)');
  assert.ok(off.out.some(e=>JSON.stringify(e).includes('provider_request_invalid')));
 });
