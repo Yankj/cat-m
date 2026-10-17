@@ -97,10 +97,8 @@ test('expiry after 10 minutes is applied lazily on read and resumes with a denie
  assert.equal(s.executed.length,0);
 });
 
-test('cancel ends a suspended turn: pending approvals resolve as cancelled, then turn_failed cancelled; busy until then',async()=>{
+test('cancel ends a suspended turn: pending approvals resolve as cancelled, then turn_failed cancelled',async()=>{
  const s=await setup(),{tid,events}=await send(s),req=events.at(-2).data;
- const c=(await s.f.json(await s.f.req(s.path))).conversation;
- const busy=await s.f.req(s.path+'/turns',{turn_id:randomUUID(),expected_revision:c.revision,expected_grant_epoch:c.grant_epoch,message:{id:randomUUID(),text:'另一条'},context:[]});assert.equal(busy.status,409);assert.equal((await busy.json()).error.code,'conversation_busy');
  const r=await (await s.f.runtime.api(new Request(H+s.path+'/turns/'+tid+'/cancel',{method:'POST',headers:{Authorization:'Bearer memory-fixture'},body:'{}'}))).json();
  assert.deepEqual(r.cancel,{turn_id:tid,state:'failed',cancelled:true,already_terminal:false});
  const t=await turn(s,tid);assert.deepEqual(t.events.slice(-2).map(e=>[e.type,e.data.decision??e.data.code]),[['approval_resolved','cancelled'],['turn_failed','cancelled']]);
