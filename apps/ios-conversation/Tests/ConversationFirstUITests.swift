@@ -118,7 +118,7 @@ final class ConversationFirstUITests: XCTestCase {
         if start.waitForExistence(timeout:10) {
             let enabled = XCTNSPredicateExpectation(predicate:NSPredicate(format:"enabled == true"),object:start)
             XCTAssertEqual(XCTWaiter.wait(for:[enabled],timeout:20),.completed)
-            attach(app,"anonymous-real-start-entry");start.tap()
+            attach(app,"anonymous-real-start-entry");Thread.sleep(forTimeInterval: 1.0) /* SPEC-E: the CTA is hit-testable 0.95 s after the landing appears */; start.tap()
         }
         XCTAssertTrue(input.waitForExistence(timeout:40),"Real auth/user verification and account scope must complete")
         XCTAssertFalse(app.staticTexts["auth.fixture"].exists);XCTAssertFalse(app.buttons["fixture.run"].exists);XCTAssertFalse(app.textFields["auth.email"].exists)

@@ -663,6 +663,59 @@ final class NativeAuthApplicationLifecycleTests:XCTestCase {
         await app.signOut()
     }
 
+    /// first-run integration (SPEC-E §5.6): 开始使用 never waits on sign-up. The gate flips onto a local account-neutral
+    /// chat while anonymous sign-up is still held; the account's own chat replaces it once the identity resolves, and an
+    /// unsent draft typed meanwhile is carried over (never lost).
+    @MainActor func testFirstRunTapFlipsGateWithoutWaitingOnSignUp() async throws {
+        for typed in [false,true] {
+            let root=FileManager.default.temporaryDirectory.appendingPathComponent("native-first-run-tap-"+UUID().uuidString,isDirectory:true)
+            defer {try? FileManager.default.removeItem(at:root)}
+            let scope=UUID(),clock=AuthTestClock(),storage=LifecycleStorage(),configuration=try lifecycleConfiguration(scope:scope)
+            let remote=AnonymousTestRemote(issuer:configuration.issuer,clock:clock);await remote.behavior(hold:true)
+            let subject=await remote.id
+            let manager=NativeAuthSessionManager(configuration:configuration,remote:remote,vault:storage,barrier:storage,now:{clock.now()})
+            let resolver=LifecycleWorkspaceResolver(subject:subject,scope:scope,steps:[.success,.success],accessToken:"synthetic.anon.signature")
+            let app=NativeAuthApplicationModel(configuration:configuration,manager:manager,vault:storage,barrier:storage,root:root,workspaceResolver:resolver,retrySchedule:.init(nominalSeconds:[0],jitter:{$0}))
+            app.beginFirstRunForTesting();XCTAssertTrue(app.needsOnboarding)
+            let started=ProcessInfo.processInfo.systemUptime
+            await app.completeOnboarding()
+            XCTAssertLessThan(ProcessInfo.processInfo.systemUptime-started,2.0,"the tap only waits for the disk read")
+            XCTAssertFalse(app.needsOnboarding)
+            let fallback=try XCTUnwrap(app.chat);XCTAssertTrue(app.chatIsLaunchFallback)
+            XCTAssertNotEqual(fallback.trustedSubjectID,subject,"no account data before the account is resolved")
+            try await waitUntil {await remote.waiting()}   // sign-up is still in flight behind the open chat
+            if typed {fallback.editDraft("还没发出去的草稿")}
+            await remote.release()
+            try await waitUntil {app.chat?.trustedSubjectID == subject}
+            XCTAssertFalse(app.chatIsLaunchFallback)
+            XCTAssertEqual(app.chat?.draft,typed ? "还没发出去的草稿" : "","an unsent draft follows the user into the account chat")
+            XCTAssertFalse(app.requiresSessionRestart)
+            await app.signOut()
+        }
+    }
+
+    /// SPEC-E §5.6: while the landing shows, a restored account's local chat is attached so the tap never waits on it.
+    @MainActor func testLandingPrewarmsRestoredAccountChatSoTheTapNeverWaits() async throws {
+        let root=FileManager.default.temporaryDirectory.appendingPathComponent("native-first-run-prewarm-"+UUID().uuidString,isDirectory:true)
+        defer {try? FileManager.default.removeItem(at:root)}
+        let scope=UUID(),clock=AuthTestClock(),storage=LifecycleStorage(),configuration=try lifecycleConfiguration(scope:scope)
+        let remote=AnonymousTestRemote(issuer:configuration.issuer,clock:clock)
+        try storage.save(await remote.candidate())
+        let subject=await remote.id
+        let manager=NativeAuthSessionManager(configuration:configuration,remote:remote,vault:storage,barrier:storage,now:{clock.now()})
+        let resolver=LifecycleWorkspaceResolver(subject:subject,scope:scope,steps:[.success,.success],accessToken:"synthetic.anon.signature")
+        let app=NativeAuthApplicationModel(configuration:configuration,manager:manager,vault:storage,barrier:storage,root:root,workspaceResolver:resolver,retrySchedule:.init(nominalSeconds:[0],jitter:{$0}))
+        app.beginFirstRunForTesting()
+        await app.start();await app.prewarmEntryChat()
+        try await waitUntil {app.chat != nil}
+        XCTAssertTrue(app.needsOnboarding,"pre-warming never skips the landing")
+        let warmed=try XCTUnwrap(app.chat);XCTAssertEqual(warmed.trustedSubjectID,subject);XCTAssertFalse(app.chatIsLaunchFallback)
+        await app.completeOnboarding()
+        XCTAssertFalse(app.needsOnboarding);XCTAssertTrue(app.chat === warmed,"the tap reuses the pre-warmed chat")
+        let counts=await remote.counts();XCTAssertEqual(counts.0,0,"a restored account never signs up again")
+        await app.signOut()
+    }
+
     /// The splash plays on the first run only; every later launch goes straight to the chat's first frame.
     func testLaunchSplashIsFirstRunOnly() throws {
         let suite="xctest.launchgate."+UUID().uuidString,defaults=try XCTUnwrap(UserDefaults(suiteName:suite))

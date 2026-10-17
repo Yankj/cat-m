@@ -74,6 +74,7 @@ struct NativeWorkspaceRetrySchedule: Sendable {
     @Published private(set) var localReadFinished = false
     /// The attached chat is the account-neutral launch fallback (offline trial store); a real account chat replaces it.
     private(set) var chatIsLaunchFallback = false
+    private var carriedLaunchDraft: String?
     private struct WorkspaceKey:Equatable {let lifecycleEpoch:Int;let generation:Int;let subject:UUID}
     private var workspaceFlight:(id:UUID,key:WorkspaceKey,task:Task<Void,Never>)?
     private var workspaceReadyKey:WorkspaceKey?
@@ -306,6 +307,7 @@ struct NativeWorkspaceRetrySchedule: Sendable {
     func completeOnboarding() async {
         guard onboarding != .entering, onboarding != .completed else { return }
         onboarding = .entering
+        if nonBlockingEntry { await completeOnboardingWithoutWaiting(); return }
         if warmup == nil { await start() } else { await warmup?.value }
         // Only terminal session/storage/config blocks entry — never model API reachability.
         if manager == nil || (error.map { NativeAuthApplicationModel.configurationMessages.contains($0) } == true) {
@@ -324,6 +326,41 @@ struct NativeWorkspaceRetrySchedule: Sendable {
         // Last resort: still do not cite model health — storage/config only.
         onboarding = .failed(error ?? NativeAuthError.storage.localizedDescription)
     }
+    /// SPEC-E §5.6: the gate flips inside the tap transition and never awaits provider work (sign-up, /user, /session).
+    /// Only the disk-only local read is awaited. The account chat is normally pre-warmed (prewarmEntryChat); otherwise an
+    /// account-neutral local chat opens from disk at once, and the account's own chat replaces it — while it is still
+    /// untouched — as soon as the identity resolves in the background. Fixture runs keep the original awaited path.
+    private var nonBlockingEntry: Bool { !isFixture || testEntryHandoff }
+    private var testEntryHandoff = false
+    #if DEBUG
+    /// Tests only: the mock initializer is a fixture with onboarding done; this re-opens the first-run gate.
+    func beginFirstRunForTesting() { testEntryHandoff = true; onboarding = .needsOnboarding }
+    #endif
+    private func completeOnboardingWithoutWaiting() async {
+        if warmup == nil { Task { [weak self] in await self?.start() } }
+        var waited: TimeInterval = 0
+        while !localReadFinished, waited < 3, !Task.isCancelled { try? await Task.sleep(nanoseconds: 20_000_000); waited += 0.02 }
+        // Only terminal session/storage/config blocks entry — never model API reachability.
+        if manager == nil || (error.map { NativeAuthApplicationModel.configurationMessages.contains($0) } == true) {
+            onboarding = .failed(error ?? NativeAuthError.notConfigured.localizedDescription); return
+        }
+        if recoveryImpossible, requiresSessionRestart {
+            onboarding = .failed(error ?? NativeAuthError.sessionRecoveryRequired.localizedDescription); return
+        }
+        if chat == nil, let configuration, let manager {
+            let snap = await manager.snapshot()
+            if snap.phase == .authenticated, let user = snap.user { await admitProvisionalChat(user: user, configuration: configuration) }
+            if chat == nil { await openOfflineTrialChat(configuration: configuration, launchFallback: true) }
+        }
+        guard chat != nil else { onboarding = .failed(error ?? NativeAuthError.storage.localizedDescription); return }
+        error = nil
+        CatpawOnboarding.markCompleted(); onboarding = .completed
+        LaunchTrace.mark("onboarding.completed", chatIsLaunchFallback ? "fallback" : "account")
+        Task { [weak self] in
+            await self?.warmup?.value
+            await self?.retryWarmup()
+        }
+    }
     /// Soft reachability / provider failures — never used as the onboarding door lock.
     static func isTransientConnectFailure(_ message: String) -> Bool {
         message == NativeAuthError.unavailable.localizedDescription
@@ -337,6 +374,17 @@ struct NativeWorkspaceRetrySchedule: Sendable {
         "登录连接尚未配置。",
         "登录公开配置未通过校验。",
     ]
+    /// SPEC-E §5.6: while the landing is visible, attach the already-restored account's local chat so the tap never
+    /// waits on it. Creates no identity and opens no fallback: sign-up / the offline chat stay behind the tap.
+    func prewarmEntryChat() async {
+        guard needsOnboarding, chat == nil, !isFixture, let configuration, let manager else { return }
+        if let warmup { await warmup.value }
+        guard needsOnboarding, chat == nil, !logoutInProgress, !requiresSessionRestart else { return }
+        let snap = await manager.snapshot()
+        guard snap.phase == .authenticated, let user = snap.user else { return }
+        await admitProvisionalChat(user: user, configuration: configuration)
+        LaunchTrace.mark("onboarding.prewarmedChat", chat != nil ? "account" : "none")
+    }
     /// Open a usable chat for entry without requiring live workspace/model APIs.
     private func ensureEntryChat() async {
         if chat != nil { return }
@@ -478,7 +526,13 @@ struct NativeWorkspaceRetrySchedule: Sendable {
         let current = chat == nil && !logoutInProgress && lifecycleEpoch == openEpoch && !(provisional && requiresSessionRestart)
         let attached = current && (token.map { t in AccountEpoch.shared.commit(t) { chat = opened; return true } ?? false } ?? { chat = opened; return true }())
         if !attached { Task { await opened.deactivate() } }
+        if attached { applyCarriedLaunchDraft(opened) }
         return attached
+    }
+    private func applyCarriedLaunchDraft(_ opened: ConversationFirstModel) {
+        guard let carried = carriedLaunchDraft else { return }
+        carriedLaunchDraft = nil
+        if opened.draft.isEmpty, !logoutInProgress, !chatIsLaunchFallback { opened.editDraft(carried) }
     }
     private func workspaceKeyIsCurrent(_ key:WorkspaceKey,user:NativeAuthUser) async -> Bool {
         guard let manager,!logoutInProgress,key.lifecycleEpoch == lifecycleEpoch else{return false}
@@ -488,7 +542,8 @@ struct NativeWorkspaceRetrySchedule: Sendable {
     /// Local chat for entry/offline. Network stays closed until resolveWorkspace admits for real.
     private func admitProvisionalChat(user: NativeAuthUser, configuration: NativeAuthConfiguration) async {
         // The account-neutral launch fallback yields to the resolved account's own local chat.
-        if chat != nil, chatIsLaunchFallback, !logoutInProgress, !requiresSessionRestart { await detachChat() }
+        // Only while it is untouched: a draft or a message typed into it is never thrown away.
+        if let current = chat, chatIsLaunchFallback, current.isPristine, !logoutInProgress, !requiresSessionRestart { await detachChat() }
         guard chat == nil, !logoutInProgress, !requiresSessionRestart else { return }
         let openEpoch = lifecycleEpoch, openToken = Self.principal(for: user.id)   // captured at open start
         let serverScope = configuration.serverScopeID
@@ -605,7 +660,7 @@ struct NativeWorkspaceRetrySchedule: Sendable {
             let opened=ConversationFirstModel(repository:repository,service:ConversationSessionService(repository:repository,backend:selected,resilience:ConnectionMonitorResilience(),outbox:ConversationOutbox(fileURL:directory.appendingPathComponent("conversation-outbox.json")),principalAccount:partition.subject.uuidString),scope:partition.scope,imageStore:imageStore,taskPlanService:isFixture ? nil : ConversationTaskPlanService(repository:repository,scope:partition.scope,backend:http),artifactEditService:isFixture ? nil : ConversationArtifactEditService(repository:repository,scope:partition.scope,backend:http),taskActionService:isFixture ? nil : ConversationTaskActionService(repository:repository,scope:partition.scope,backend:http),taskControlService:isFixture ? nil : ConversationTaskControlService(repository:repository,scope:partition.scope,backend:http),memoryService:memory,inboxService:isFixture ? nil : ConversationInboxService(reference:.init(scope:partition.scope,serverScopeID:chatConfiguration.serverScopeID,subjectID:partition.subject),backend:http),subjectID:partition.subject)
             try await saveLocalReceipt(.init(issuer:configuration.issuer,subject:user.id,serverScopeID:serverScope))
             guard await workspaceKeyIsCurrent(key,user:user),chat == nil else{return}
-            opened.setNetworkAdmissionAllowed(true);chat=opened;installUIDecisionSubmitter(opened.service,scope:partition.scope);namespace=partition.namespace
+            opened.setNetworkAdmissionAllowed(true);chat=opened;applyCarriedLaunchDraft(opened);installUIDecisionSubmitter(opened.service,scope:partition.scope);namespace=partition.namespace
             workspaceReadyKey=key;error=nil;recoveryImpossible=false;requiresSessionRestart=false
         } catch {chat?.setNetworkAdmissionAllowed(false);self.error="此账号的本地存储无法打开；原文件已保留。";recoveryImpossible=true}
     }
@@ -680,7 +735,12 @@ struct NativeWorkspaceRetrySchedule: Sendable {
         if !(await finishDetaching(takeChat())) {error="有修改草稿未能保存，请核对此前已保存的版本。"}
     }
     private func takeChat() -> (ConversationFirstModel?,NativeChatHTTPBackend?,String?) {
-        let previous = chat; chat = nil; chatIsLaunchFallback = false
+        let previous = chat
+        // An unsent draft typed into the account-neutral launch chat follows the user into the account's own chat (the
+        // device user typed it seconds ago, before the identity resolved). Never across a logout.
+        let carry = chatIsLaunchFallback && !logoutInProgress ? previous?.draft : nil
+        carriedLaunchDraft = carry.flatMap { $0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : $0 }
+        chat = nil; chatIsLaunchFallback = false
         uiDecisionSubmitter = nil
         GenerativeBlockStore.shared.submitter = nil
         DeviceCallHub.submitter = nil

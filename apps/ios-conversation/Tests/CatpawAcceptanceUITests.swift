@@ -58,7 +58,7 @@ final class CatpawAcceptanceUITests: XCTestCase {
         shot(app, "02-auth-entrance")
         let start = app.buttons["auth.startExperience"]
         if start.waitForExistence(timeout: 15) {
-            XCTAssertTrue(waitFor(start, "enabled == true", timeout: 20)); start.tap(); shot(app, "02-auth-starting")
+            XCTAssertTrue(waitFor(start, "enabled == true", timeout: 20)); Thread.sleep(forTimeInterval: 1.0) /* SPEC-E: the CTA is hit-testable 0.95 s after the landing appears */; start.tap(); shot(app, "02-auth-starting")
         }
         XCTAssertTrue(input(app).waitForExistence(timeout: 45), "Anonymous session must land in chat")
         XCTAssertFalse(app.buttons["auth.startExperience"].exists)
@@ -154,7 +154,7 @@ final class CatpawAcceptanceUITests: XCTestCase {
         guard ProcessInfo.processInfo.environment["CATPAW_ACCEPTANCE_REAL"] == "1" else { throw XCTSkip("real backend only") }
         let app = XCUIApplication(bundleIdentifier: bundleID); app.launchArguments += ["-CatpawSkipOnboarding"]; app.launch()
         let start = app.buttons["auth.startExperience"]
-        if start.waitForExistence(timeout: 8) { XCTAssertTrue(waitFor(start, "enabled == true", timeout: 20), "开始体验 must be enabled (config present)"); start.tap() }
+        if start.waitForExistence(timeout: 8) { XCTAssertTrue(waitFor(start, "enabled == true", timeout: 20), "开始体验 must be enabled (config present)"); Thread.sleep(forTimeInterval: 1.0) /* SPEC-E: the CTA is hit-testable 0.95 s after the landing appears */; start.tap() }
         XCTAssertTrue(input(app).waitForExistence(timeout: 45))
         let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
         for label in ["允许", "Allow"] { let b = springboard.buttons[label]; if b.waitForExistence(timeout: 3) { b.tap(); break } }
@@ -237,7 +237,7 @@ final class CatpawAcceptanceUITests: XCTestCase {
         let app = XCUIApplication(bundleIdentifier: bundleID)
         app.launchArguments += ["-CatpawDemoBackend", "-CatpawSkipOnboarding"]; forwardPublicConfig(app); app.launch()
         let start = app.buttons["auth.startExperience"]
-        if start.waitForExistence(timeout: 8) { XCTAssertTrue(waitFor(start, "enabled == true", timeout: 20)); start.tap() }
+        if start.waitForExistence(timeout: 8) { XCTAssertTrue(waitFor(start, "enabled == true", timeout: 20)); Thread.sleep(forTimeInterval: 1.0) /* SPEC-E: the CTA is hit-testable 0.95 s after the landing appears */; start.tap() }
         XCTAssertTrue(input(app).waitForExistence(timeout: 45))
         func element(_ id: String) -> XCUIElement { app.descendants(matching: .any)[id].firstMatch }
         func block(_ id: String) -> XCUIElement { element("chat.block." + id) }
@@ -426,7 +426,7 @@ final class CatpawAcceptanceUITests: XCTestCase {
             return false
         }
         if app.buttons["auth.closeUnrestoredSession"].waitForExistence(timeout: 5) { app.buttons["auth.closeUnrestoredSession"].tap(); Thread.sleep(forTimeInterval: 2) }
-        if app.buttons["auth.startExperience"].waitForExistence(timeout: 5) { app.buttons["auth.startExperience"].tap() }
+        if app.buttons["auth.startExperience"].waitForExistence(timeout: 5) { Thread.sleep(forTimeInterval: 1.0) /* SPEC-E: the CTA is hit-testable 0.95 s after the landing appears */; app.buttons["auth.startExperience"].tap() }
         XCTAssertTrue(input(app).waitForExistence(timeout: 60))
         let mic = app.buttons["chat.composer.mic"]; XCTAssertTrue(mic.waitForExistence(timeout: 10)); mic.tap()
         let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")

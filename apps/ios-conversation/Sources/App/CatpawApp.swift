@@ -116,11 +116,15 @@ import AppIntents
     @StateObject private var auth = NativeAuthApplicationModel()
     @Environment(\.scenePhase) private var scene
     @State private var launchMarkVisible = LaunchMarkGate.shouldPlay(openedFromURLOrNotification: false)
+    @State private var calendarScan: Task<Void, Never>?
     #if DEBUG
     @StateObject private var synthetic = NativeSyntheticApplicationModel()
     #endif
     /// catpaw.ui.v1 blocks render natively inside ```catpaw-card fences (r10 §4).
     init() {
+        // Launch path: these are a handful of dictionary inserts (measured via LaunchTrace "adapters.registered"). They stay
+        // synchronous on purpose — a chat restored from disk on the 2nd launch renders its catpaw-card fences in frame 1.
+        LaunchTrace.mark("app.init")
         GenerativeBlockAdapter.registerWithMarkdown()
         MemorySavedChipAdapter.register() // wave2 V1
         DeviceStatusCardAdapter.register() // wave2 V3 receipt + permission cards
@@ -128,6 +132,7 @@ import AppIntents
         DeviceCallCardAdapter.register() // wave2 V3 device_call confirm card
         ProactiveSuggestionAdapter.register() // wave2 demo proactive_suggestion
         FollowUpChipsAdapter.register() // chat-ux #4 ```catpaw-card:followups chips
+        LaunchTrace.mark("adapters.registered")
         #if DEBUG && os(iOS)
         // PR90g (QA only): ProactiveNotificationAuthUITests launches with this flag so the system prompt appears and can be
         // allowed once; simctl privacy cannot pre-grant notifications. Debug builds only; no effect without the flag.
@@ -176,8 +181,52 @@ import AppIntents
             }
             #endif
             .task { if bootstrap.isP0Fixture { await bootstrap.startFixture() } else if bootstrap.model == nil { await auth.start() } }
-                .onChange(of:scene) { _, phase in if phase == .active { Task { try? await Task.sleep(nanoseconds: 1_500_000_000); await ProactiveEngine.shared.scanCalendar(); await ProactiveEngine.shared.prescheduleNextEvent() } }; if phase == .active,bootstrap.model == nil,!bootstrap.isP0Fixture { Task { await auth.foreground() } } }
+                .onChange(of:scene) { _, phase in if phase == .active { scheduleCalendarScan() }; if phase == .active,bootstrap.model == nil,!bootstrap.isP0Fixture { Task { await auth.foreground() } } }
         }
+    }
+    /// SPEC-E §7: the calendar scan never lands in the launch, landing-entrance or tap windows. It runs ≥3 s after the
+    /// landing or chat is stable (landing settled / onboarding finished and the first-run transition done).
+    private func scheduleCalendarScan() {
+        calendarScan?.cancel()
+        calendarScan = Task { @MainActor in
+            let busy: @MainActor () -> Bool = { bootstrap.model == nil && !bootstrap.isP0Fixture && (auth.needsOnboarding && auth.onboarding == .entering || FirstRunTransition.shared.phase == .leaving || (!auth.needsOnboarding && auth.chat == nil)) }
+            while !Task.isCancelled, busy() { try? await Task.sleep(nanoseconds: 250_000_000) }
+            try? await Task.sleep(nanoseconds: 3_000_000_000)
+            while !Task.isCancelled, busy() { try? await Task.sleep(nanoseconds: 250_000_000) }
+            guard !Task.isCancelled else { return }
+            LaunchTrace.mark("calendar.scan")
+            await ProactiveEngine.shared.scanCalendar(); await ProactiveEngine.shared.prescheduleNextEvent()
+        }
+    }
+    /// Chat surface for the root gate: the account's chat, or — never a loader — the chat's own first frame while the
+    /// local store attaches (a fallback local chat opens if no account chat is ready).
+    @ViewBuilder private var chatSurface: some View {
+        if let model = auth.chat { accountChat(model) }
+        else {
+            LaunchChatShell(auth:auth)
+                .accessibilityIdentifier("onboarding.enteringChat")
+                .task { await auth.ensureLaunchChat() }
+        }
+    }
+    @ViewBuilder private func accountChat(_ model: ConversationFirstModel) -> some View {
+        ConversationFirstView(model:model,accountLabel:auth.isFixture ? ui("合成登录测试 · 无真实 Auth/模型") : (auth.state.user?.isAnonymous == true ? ui("体验账号") : auth.state.user?.email),onSignOut:{ CatpawLeaveActivity.stopAll(); Task { let l2User=auth.state.user?.id; await auth.requestSignOut { AccountLocalData.signOut(userID:l2User); if let l2User { L2SecureStore.wipe(userID:l2User) } } } },isAnonymousAccount:auth.state.user?.isAnonymous == true)
+            // p89i: one shared confirmation UI for parked items of the leaving account (#89/#90/#91 sources).
+            .onAppear { auth.attachParkedPrompt() }
+            .sheet(isPresented:Binding(get:{ !auth.parkedPrompt.isEmpty }, set:{ if !$0 && !auth.parkedPrompt.isEmpty { auth.resolveParked([:]) } })) {
+                AccountParkedDecisionSheet(items:auth.parkedPrompt) { auth.resolveParked($0) }
+            }
+            // L2 memory: per-user encrypted store follows the signed-in user (memory-layers.md).
+            .onAppear { LaunchTrace.mark("chat.visible", auth.chatIsLaunchFallback ? "fallback" : "account", once: true) }
+            // Launch-loader fix: an unrecoverable session is a small non-blocking capsule over the usable chat.
+            .overlay(alignment:.top) { if auth.sessionRestartNeeded { SessionRestartCapsule(auth:auth).padding(.top,52) } }
+            .task(id:auth.state.user?.id) { AccountEpoch.shared.activate(account:auth.state.user?.id.uuidString); L2SecureStore.activate(userID:auth.state.user?.id); CatpawL2Sealing.install(); AtRestMigrationScheduler.shared.sealerMayBeReady(); MemoryLibraryLocal.activate(userID:auth.state.user?.id); GenerativeBlockStore.shared.reloadFromL2(); MemoryCache.shared.reloadFromL2(); await MemoryCache.shared.sync() }
+            #if DEBUG
+            .overlay(alignment:.topTrailing) {
+                if auth.isFixture {
+                    NativeAuthFixtureChatProbe(auth:auth,model:model)
+                }
+            }
+            #endif
     }
     @ViewBuilder private var primaryView: some View {
         if let model = bootstrap.model {
@@ -200,39 +249,16 @@ import AppIntents
             } else { ProgressView("Offline fixture loading").accessibilityIdentifier("qa.p0Fixture.loading") }
             #endif
         }
-        // Onboarding gate: intro until「开始使用」; entry is not blocked on provider health.
-        else if let model = auth.chat, !auth.needsOnboarding {
-            ConversationFirstView(model:model,accountLabel:auth.isFixture ? ui("合成登录测试 · 无真实 Auth/模型") : (auth.state.user?.isAnonymous == true ? ui("体验账号") : auth.state.user?.email),onSignOut:{ CatpawLeaveActivity.stopAll(); Task { let l2User=auth.state.user?.id; await auth.requestSignOut { AccountLocalData.signOut(userID:l2User); if let l2User { L2SecureStore.wipe(userID:l2User) } } } },isAnonymousAccount:auth.state.user?.isAnonymous == true)
-                // p89i: one shared confirmation UI for parked items of the leaving account (#89/#90/#91 sources).
-                .onAppear { auth.attachParkedPrompt() }
-                .sheet(isPresented:Binding(get:{ !auth.parkedPrompt.isEmpty }, set:{ if !$0 && !auth.parkedPrompt.isEmpty { auth.resolveParked([:]) } })) {
-                    AccountParkedDecisionSheet(items:auth.parkedPrompt) { auth.resolveParked($0) }
-                }
-                // L2 memory: per-user encrypted store follows the signed-in user (memory-layers.md).
-                .onAppear { LaunchTrace.mark("chat.visible", auth.chatIsLaunchFallback ? "fallback" : "account", once: true) }
-                // Launch-loader fix: an unrecoverable session is a small non-blocking capsule over the usable chat.
-                .overlay(alignment:.top) { if auth.sessionRestartNeeded { SessionRestartCapsule(auth:auth).padding(.top,52) } }
-                .task(id:auth.state.user?.id) { AccountEpoch.shared.activate(account:auth.state.user?.id.uuidString); L2SecureStore.activate(userID:auth.state.user?.id); CatpawL2Sealing.install(); AtRestMigrationScheduler.shared.sealerMayBeReady(); MemoryLibraryLocal.activate(userID:auth.state.user?.id); GenerativeBlockStore.shared.reloadFromL2(); MemoryCache.shared.reloadFromL2(); await MemoryCache.shared.sync() }
-                #if DEBUG
-                .overlay(alignment:.topTrailing) {
-                    if auth.isFixture {
-                        NativeAuthFixtureChatProbe(auth:auth,model:model)
-                    }
-                }
-                #endif
-        }
-        else if !auth.needsOnboarding {
-            // Launch-loader fix: never a full-screen loader. The chat's own first frame is drawn while the local store
-            // attaches (normally a few hundred ms, disk only); a fallback local chat opens if no account chat is ready.
-            LaunchChatShell(auth:auth)
-                .accessibilityIdentifier("onboarding.enteringChat")
-                .task { await auth.ensureLaunchChat() }
-        }
+        // Onboarding gate (SPEC-E §5.3): the landing and the chat share one host. Chat mounts underneath the moment the
+        // gate flips, the landing stays on top for the ≤1.15 s handoff. Later launches have no landing at all.
         else {
-            NativeLoginView(auth:auth)
-                #if DEBUG
-                .overlay(alignment:.topTrailing) { if auth.isFixture { NativeAuthFixtureLoggedOutProbe(auth:auth) } }
-                #endif
+            FirstRunTransitionHost(onboarding: auth.needsOnboarding, chat: chatSurface, ctaTitle: ui("开始使用"), placeholder: ui("问问 Catpaw")) {
+                NativeLoginView(auth:auth)
+                    .task { await auth.prewarmEntryChat() }
+                    #if DEBUG
+                    .overlay(alignment:.topTrailing) { if auth.isFixture { NativeAuthFixtureLoggedOutProbe(auth:auth) } }
+                    #endif
+            }
         }
     }
 }

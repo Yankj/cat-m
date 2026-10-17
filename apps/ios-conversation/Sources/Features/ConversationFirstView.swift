@@ -257,15 +257,15 @@ import CatpawImageComposer
     }
     /// chat-ux #4: a tapped follow-up chip becomes the next prompt (only when a new turn can start and the draft is empty).
     private func sendFollowUp(_ text:String?) {
-        guard let text,!text.isEmpty,!model.busy,model.draft.isEmpty,model.canAcceptDraft else {return}
+        // Same route as the starter cards: fill the empty composer, then the Send path. (The old guard required
+        // `draft.isEmpty && canAcceptDraft`, which can never both hold, so a chip tap did nothing.)
+        guard model.stageQuickSend(text,attachmentsEmpty:composerChrome.attachments.isEmpty) else {return}
         UIImpactFeedbackGenerator(style:.light).impactOccurred()
-        model.editDraft(text);model.prepareSend();followingLatest=true
+        followingLatest=true;submitDraft()
     }
     /// chat-starter-prompts: a starter card goes through the same path as the Send button (instant bubble, same consent).
     private func sendStarter(_ text:String) {
-        guard !text.isEmpty,!model.busy,model.draft.isEmpty,composerChrome.attachments.isEmpty else {return}
-        model.editDraft(text)
-        guard model.canAcceptDraft else {model.editDraft("");return}
+        guard model.stageQuickSend(text,attachmentsEmpty:composerChrome.attachments.isEmpty) else {return}
         submitDraft()
     }
     private var renderedTimelineRows:[RenderedTimelineRow] {timelineMemo.rendered}
