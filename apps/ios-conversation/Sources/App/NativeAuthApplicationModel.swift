@@ -739,6 +739,7 @@ struct NativeWorkspaceRetrySchedule: Sendable {
     static func registerDeviceParkedSources() {
         if !AccountParkedItems.registeredKeys.contains(DeviceCallParkedSource.key) { AccountParkedItems.register(DeviceCallParkedSource.key, DeviceCallParkedSource()) }
         if !AccountParkedItems.registeredKeys.contains(DeviceLedgerParkedSource.key) { AccountParkedItems.register(DeviceLedgerParkedSource.key, DeviceLedgerParkedSource()) }
+        ProactiveEngine.registerParkedSource()   // #90 wiring (one line): EventKit items Catpaw created, cold start → sign-out
     }
     func requestSignOut(after: (@MainActor () async -> Void)? = nil) async { await signOut(); await after?() }
     func signOut() async {
