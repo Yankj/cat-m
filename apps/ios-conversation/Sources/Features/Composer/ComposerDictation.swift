@@ -3,6 +3,11 @@ import SwiftUI
 import AVFoundation
 import Speech
 import UIKit
+import os
+
+/// Voice conversation loop states and effects, for on-device diagnosis in Console (subsystem catpaw, category voiceChat).
+/// Phases, events and counts only: never the transcript or the reply.
+let voiceChatLog = Logger(subsystem: "catpaw", category: "voiceChat")
 #endif
 
 /// Composer dictation on top of `NativeVoiceController` (tiered engine: iOS 26 SpeechAnalyzer → SFSpeechRecognizer on-device → server; locale follows the app language).
@@ -295,10 +300,18 @@ enum VoiceChatSpeechPolicy {
     var conversationID: UUID? { get }
     /// An image / file staged in the composer. A voice turn never carries it.
     var hasStagedAttachments: Bool { get }
+    /// Pinyin / kana marked text still in the composer: the model refuses a send while it is set.
+    var isInputComposing: Bool { get }
+    /// Commit the IME composition (resigns the composer) so a voice turn is never refused for marked text.
+    func endInputComposition()
+    /// Messages admitted by a send (`prepareSend` appends synchronously): used to tell a refused send from a slow reply.
+    var outgoingMessageIDs: [UUID] { get }
     func editDraft(_ text: String)
 }
 extension ConversationFirstModel: VoiceChatHost {
     var hasStagedAttachments: Bool { imageDraft.phase != .empty }
+    func endInputComposition() { Self.endInputComposition?(); updateInputComposition(false) }
+    var outgoingMessageIDs: [UUID] { outgoingMessages.map(\.id) }
 }
 
 /// Microphone, speech, audio session and haptics (seam for controller tests; `SystemVoiceChatIO` is the device one).
@@ -319,6 +332,8 @@ extension ConversationFirstModel: VoiceChatHost {
     /// Interruption began / route lost → `onInterruption`; media services reset → `onReset`.
     func observeSession(onInterruption: @escaping @MainActor () -> Void, onReset: @escaping @MainActor () -> Void)
     func stopObserving()
+    /// The reply plays from the built-in speaker (or receiver): the mic hears it, so no automatic barge-in there.
+    var outputIsBuiltInSpeaker: Bool { get }
 }
 
 @MainActor final class SystemVoiceChatIO: NSObject, VoiceChatIO, AVSpeechSynthesizerDelegate {
@@ -398,6 +413,10 @@ extension ConversationFirstModel: VoiceChatHost {
         })
     }
     func stopObserving() { for o in observers { NotificationCenter.default.removeObserver(o) }; observers = [] }
+    var outputIsBuiltInSpeaker: Bool {
+        let outputs = AVAudioSession.sharedInstance().currentRoute.outputs
+        return outputs.isEmpty || outputs.contains { $0.portType == .builtInSpeaker || $0.portType == .builtInReceiver }
+    }
 }
 
 /// Drives `VoiceChatLoop` with real audio: on-device recognition through `NativeVoiceController` (voice-chat mode: never
@@ -460,6 +479,7 @@ extension ConversationFirstModel: VoiceChatHost {
         loop = VoiceChatLoop(); transcript = ""; reply = ""; quietRestarts = 0; sentTurnID = nil; releaseWhenSilent = false; audioReleased = false
         textOnly = !VoiceChatSpeechPolicy.spokenRepliesAllowed
         owner = (epoch.capture(), host.conversationID)
+        if host.isInputComposing { voiceChatLog.info("voiceChat.begin committing IME composition"); host.endInputComposition() }   // R1
         restoreDraft = host.draft   // a typed draft is kept aside and put back on exit (same account and conversation only)
         io.observeSession(onInterruption: { [weak self] in self?.run(.interruption) }, onReset: { [weak self] in self?.exit(.mediaReset) })
         run(.start)
@@ -493,6 +513,9 @@ extension ConversationFirstModel: VoiceChatHost {
     func run(_ event: VoiceChatEvent) {
         var next = loop
         let effects = next.handle(event)
+        if next.phase != loop.phase || !effects.isEmpty {
+            voiceChatLog.info("voiceChat \(Self.eventName(event), privacy: .public): \(String(describing: self.loop.phase), privacy: .public) → \(String(describing: next.phase), privacy: .public) effects=\(effects.map(Self.effectName).joined(separator: ","), privacy: .public)")
+        }
         loop = next
         if case .transcript(let t) = event { transcript = t }
         for effect in effects { perform(effect) }
@@ -513,6 +536,23 @@ extension ConversationFirstModel: VoiceChatHost {
         case .haptic(let h): io.haptic(h)
         case .releaseAudio: releaseAudio()
         case .deactivateAudio: teardown()
+        }
+    }
+
+    /// Log names without payloads (no transcript / reply text in the log).
+    static func eventName(_ event: VoiceChatEvent) -> String {
+        switch event {
+        case .transcript: return "transcript"
+        case .listeningEnded: return "listeningEnded"
+        case .replyFinished(let r): return "replyFinished(speakable:\(r.speakable),card:\(r.needsConfirmation))"
+        default: return String(describing: event)
+        }
+    }
+    static func effectName(_ effect: VoiceChatEffect) -> String {
+        switch effect {
+        case .send: return "send"
+        case .speak: return "speak"
+        default: return String(describing: effect)
         }
     }
 
@@ -547,11 +587,25 @@ extension ConversationFirstModel: VoiceChatHost {
     private func startListening() {
         transcript = ""
         guard loop.isActive else { return }
-        if !startRecognizer(), loop.isActive { notice = english ? "Voice input isn't available right now." : "暂时无法使用语音输入。"; run(.failed) }
+        if startRecognizer() { return }
+        // R3: right after TTS the recognizer can refuse once while the synthesizer releases audio; retry once, then fail visibly.
+        voiceChatLog.error("voiceChat.listen start refused; retrying once")
+        let gen = generation
+        Task { [weak self] in
+            try? await Task.sleep(nanoseconds: Self.listenRetryDelay)
+            guard let self, self.generation == gen, self.loop.phase == .listening, !self.listening else { return }
+            if !self.startRecognizer(), self.loop.isActive {
+                voiceChatLog.error("voiceChat.listen start failed after retry")
+                self.notice = self.english ? "Voice input isn't available right now." : "暂时无法使用语音输入。"; self.run(.failed)
+            }
+        }
     }
+    static var listenRetryDelay: UInt64 = 300_000_000
     private func heard(_ text: String) {
         guard epoch.isValid(owner.token) else { return exit(.accountChanged) }   // a revoked session never keeps the mic
         if loop.phase == .speaking {
+            // R2: on the built-in speaker the mic hears the reply itself; only an explicit orb tap interrupts there.
+            if io.outputIsBuiltInSpeaker { return }
             // Barge-in: only the user's own words count, not the reply leaking from the speaker into the mic. The next
             // utterance starts on a fresh recognizer so no echoed words end up in what is sent.
             guard !VoiceBargeIn.isLikelyEcho(heard: text, speaking: spoken), VoiceChatLoop.isMeaningful(text) else { return }
@@ -599,8 +653,20 @@ extension ConversationFirstModel: VoiceChatHost {
         }
         knownTurns = Set(host.session?.turns.map(\.id) ?? []); sentTurnID = nil
         reply = ""; streaming = false; notice = nil
+        // R1: marked pinyin in the composer makes the model refuse the send silently; commit it first.
+        if host.isInputComposing { voiceChatLog.info("voiceChat.send committing IME composition"); host.endInputComposition() }
+        let before = Set(host.outgoingMessageIDs)
         host.editDraft(text)
         sendTurn(text)   // the normal composer send: same conversation, same history, same queue / consent rules
+        // R1: admission is synchronous. Nothing admitted → the send was refused; never sit 120 s waiting for a reply.
+        let admitted = host.outgoingMessageIDs.contains { !before.contains($0) } || host.session?.turns.contains { !knownTurns.contains($0.id) } == true
+        guard admitted else {
+            voiceChatLog.error("voiceChat.send refused before admission composing=\(host.isInputComposing, privacy: .public)")
+            if host.draft == text { host.editDraft("") }   // the heard text doesn't stay behind in the composer
+            notice = english ? "That didn't send. Please say it again." : "这句没发出去，请再说一遍。"
+            run(.sendRefused); return
+        }
+        voiceChatLog.info("voiceChat.send admitted")
         watchReply()
     }
     private func watchReply() {
@@ -657,8 +723,10 @@ extension ConversationFirstModel: VoiceChatHost {
             guard let self, self.loop.phase == .speaking else { return }
             self.run(.speechFinished)   // → .startListening: a fresh recognizer replaces the barge-in monitor (no echo carried over)
         }
-        // Barge-in: listen while speaking (the recognizer's text is filtered against `spoken`, see VoiceBargeIn).
-        if !listening { _ = startRecognizer() }
+        // Barge-in: listen while speaking (the recognizer's text is filtered against `spoken`, see VoiceBargeIn) — only on
+        // headphones / Bluetooth. R2: on the built-in speaker there is no automatic barge-in (no echo cancellation for the
+        // recognizer's engine); the orb tap still interrupts, and a fresh recognizer starts when the reply ends.
+        if !listening && !io.outputIsBuiltInSpeaker { _ = startRecognizer() }
     }
 
     // MARK: Teardown
@@ -680,7 +748,13 @@ extension ConversationFirstModel: VoiceChatHost {
     private var lastAnnounced: VoiceChatPhase?
     var statusText: String {
         switch loop.phase {
-        case .idle, .listening: return english ? "Listening" : "正在聆听"
+        case .idle, .listening:
+            // R4: never a silent 「正在聆听」 while the mic / speech model is still coming up.
+            if voice.dictationPhase == .starting || !listening {
+                if voice.preparingSpeechModel { return english ? "Preparing the speech model… (first use may download it)" : "正在准备语音模型…（首次使用可能需要下载）" }
+                return english ? "Starting the microphone…" : "正在打开麦克风…"
+            }
+            return english ? "Listening" : "正在聆听"
         case .sending: return english ? "Got it" : "收到"
         case .waiting: return streaming ? (english ? "Replying" : "正在回复") : (english ? "Thinking" : "正在思考")
         case .speaking: return english ? "Speaking · tap to interrupt" : "正在说 · 轻点打断"

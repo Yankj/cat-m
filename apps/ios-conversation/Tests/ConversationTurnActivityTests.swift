@@ -400,6 +400,18 @@ final class AccountConversationLocalTests: XCTestCase {
 /// v1.1 voice conversation: the hands-free loop (listening → sending → waiting → speaking → listening, barge-in, card
 /// pause, exit) and the speech-text sanitizer. Pure domain code: no audio, no simulator microphone needed.
 final class VoiceChatLoopTests: XCTestCase {
+    func testSendRefusedGoesStraightBackToListeningAndForgetsTheText() {
+        var loop = VoiceChatLoop()
+        _ = loop.handle(.start); _ = loop.handle(.transcript("明天提醒我开会")); _ = loop.handle(.silenceElapsed)
+        _ = loop.handle(.listeningEnded("明天提醒我开会"))
+        XCTAssertEqual(loop.phase, .waiting); XCTAssertEqual(loop.sent, ["明天提醒我开会"])
+        let effects = loop.handle(.sendRefused)
+        XCTAssertEqual(loop.phase, .listening, "no 120 s wait: listen again")
+        XCTAssertEqual(effects, [.haptic(.pause), .startListening, .haptic(.listen)])
+        XCTAssertEqual(loop.sent, [], "a refused text was never sent")
+        XCTAssertEqual(loop.handle(.sendRefused), [], "only meaningful while waiting")
+        XCTAssertEqual(loop.phase, .listening)
+    }
     // MARK: state machine
     func testVoiceLoopFullCycleListenSendWaitSpeakListen() {
         var loop = VoiceChatLoop()
@@ -549,18 +561,28 @@ final class VoiceChatLoopTests: XCTestCase {
     var conversationID: UUID? = UUID()
     var hasStagedAttachments = false
     var edits: [String] = []
+    var isInputComposing = false
+    var compositionEnds = 0
+    var outgoingMessageIDs: [UUID] = []
+    func endInputComposition() { compositionEnds += 1; isInputComposing = false }
     func editDraft(_ text: String) { draft = text; edits.append(text) }
 }
 
 @MainActor private final class FakeVoiceChatIO: VoiceChatIO {
     var supported = true
     var starts = 0, stops = 0, cancels = 0, activations = 0, deactivations = 0
+    /// Headphones by default (barge-in allowed); true = the built-in speaker.
+    var outputIsBuiltInSpeaker = false
+    /// Next N recognizer starts are refused (R3 retry).
+    var refuseStarts = 0
     var spoken: [String] = []
     var onText: (@MainActor (String) -> Void)?
     var onEnd: (@MainActor (NativeVoiceController.DictationEnd) -> Void)?
     private var finish: (@MainActor () -> Void)?
     func startRecognizer(onText: @escaping @MainActor (String) -> Void, onEnd: @escaping @MainActor (NativeVoiceController.DictationEnd) -> Void) -> Bool {
-        starts += 1; self.onText = onText; self.onEnd = onEnd; return true
+        starts += 1
+        if refuseStarts > 0 { refuseStarts -= 1; return false }
+        self.onText = onText; self.onEnd = onEnd; return true
     }
     func stopRecognizer() { stops += 1 }
     func cancelRecognizer() { cancels += 1 }
@@ -615,6 +637,83 @@ final class VoiceChatLoopTests: XCTestCase {
         updateTurn { $0.assistantMessageID = message.id; $0.state = .completed; $0.pendingDeviceCalls = nil }
     }
 
+    // R1: a send the model refuses (pinyin still marked, unresolved turn, …) fails fast with a notice and listens again.
+    func testRefusedSendFailsFastWithNoticeAndResumesListening() {
+        XCTAssertTrue(controller.begin(host: host, language: .chinese, send: { [unowned self] _ in self.sends += 1 }))   // admits nothing
+        let startsBefore = io.starts
+        say("帮我订明天的会议室")
+        XCTAssertEqual(sends, 1)
+        XCTAssertEqual(controller.loop.phase, .listening, "never waits for a reply that can't come")
+        XCTAssertEqual(controller.notice, "这句没发出去，请再说一遍。")
+        XCTAssertEqual(io.starts, startsBefore + 1, "a fresh recognizer listens again")
+        XCTAssertEqual(host.draft, "", "the heard text does not stay in the composer")
+        XCTAssertEqual(controller.loop.sent, [])
+    }
+    func testMarkedPinyinIsCommittedBeforeVoiceChatAndBeforeEachSend() {
+        host.isInputComposing = true
+        begin()
+        XCTAssertEqual(host.compositionEnds, 1, "entering voice chat commits the IME composition")
+        host.isInputComposing = true   // the user typed pinyin behind the overlay
+        say("今天天气怎么样")
+        XCTAssertEqual(host.compositionEnds, 2, "committed again right before the send")
+        XCTAssertEqual(controller.loop.phase, .waiting, "admitted, so it waits for the reply")
+        XCTAssertNil(controller.notice)
+    }
+    func testIDAdmissionCountsAsSentWithoutAJournaledTurnYet() {
+        XCTAssertTrue(controller.begin(host: host, language: .chinese, send: { [unowned self] _ in self.sends += 1; self.host.outgoingMessageIDs.append(UUID()) }))
+        say("讲个笑话")
+        XCTAssertEqual(controller.loop.phase, .waiting, "an admitted intent (still saving locally) is a real send")
+    }
+    // R2: on the built-in speaker the mic hears the reply; only an explicit tap interrupts.
+    func testNoAutomaticBargeInOnBuiltInSpeakerButTapStillInterrupts() {
+        io.outputIsBuiltInSpeaker = true
+        begin(); say("说一首诗")
+        complete("床前明月光，疑是地上霜。")
+        XCTAssertTrue(controller.pollReply()); XCTAssertEqual(controller.loop.phase, .speaking)
+        let startsWhileSpeaking = io.starts
+        io.onText?("今天天气很好啊")   // a stale recognizer callback must not interrupt either
+        XCTAssertEqual(controller.loop.phase, .speaking, "speaker echo / room noise never barges in")
+        XCTAssertEqual(io.starts, startsWhileSpeaking, "no recognizer runs during speech on the speaker")
+        controller.orbTapped()
+        XCTAssertEqual(controller.loop.phase, .listening, "an explicit tap interrupts")
+        XCTAssertEqual(io.starts, startsWhileSpeaking + 1)
+    }
+    // R3: when the reply ends, a fresh recognizer starts (speaker: none was running during speech).
+    func testRecognizerRestartsAfterSpeechFinishesOnSpeaker() {
+        io.outputIsBuiltInSpeaker = true
+        begin(); say("你好")
+        complete("你好，有什么可以帮你？")
+        XCTAssertTrue(controller.pollReply())
+        let starts = io.starts
+        io.finishSpeaking()
+        XCTAssertEqual(controller.loop.phase, .listening)
+        XCTAssertEqual(io.starts, starts + 1, "listening again right after the reply")
+    }
+    func testRecognizerRefusedRightAfterSpeechIsRetriedOnce() async {
+        VoiceChatController.listenRetryDelay = 20_000_000
+        defer { VoiceChatController.listenRetryDelay = 300_000_000 }
+        io.outputIsBuiltInSpeaker = true
+        begin(); say("你好")
+        complete("你好。")
+        XCTAssertTrue(controller.pollReply())
+        let starts = io.starts
+        io.refuseStarts = 1
+        io.finishSpeaking()
+        XCTAssertEqual(io.starts, starts + 1)
+        try? await Task.sleep(nanoseconds: 200_000_000)
+        XCTAssertEqual(io.starts, starts + 2, "one retry")
+        XCTAssertEqual(controller.loop.phase, .listening, "the retry succeeded: still listening, no pause")
+        XCTAssertNil(controller.notice)
+    }
+    func testRecognizerRefusedTwiceFailsVisibly() async {
+        VoiceChatController.listenRetryDelay = 20_000_000
+        defer { VoiceChatController.listenRetryDelay = 300_000_000 }
+        io.refuseStarts = 2
+        XCTAssertTrue(controller.begin(host: host, language: .chinese, send: { _ in }))
+        try? await Task.sleep(nanoseconds: 200_000_000)
+        XCTAssertEqual(controller.loop.phase, .paused(.failed))
+        XCTAssertEqual(controller.notice, "暂时无法使用语音输入。")
+    }
     func testReadOnlyDeviceCallDoesNotPauseAndTheReplyIsSpoken() {
         begin(); say("明天有什么安排")
         XCTAssertEqual(sends, 1); XCTAssertEqual(controller.loop.phase, .waiting)

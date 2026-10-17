@@ -154,6 +154,9 @@ public enum VoiceChatEvent: Equatable, Sendable {
     /// `alreadyListening`: the barge-in recognizer is running and simply continues as the next utterance.
     case bargeIn(alreadyListening: Bool)
     case resume
+    /// The send was refused before admission (e.g. the conversation can't take a draft right now): nothing reached the
+    /// server, so don't wait for a reply — say so (the controller shows the notice) and listen again.
+    case sendRefused
     case interruption
     case failed
     /// App went to the background (never on .inactive).
@@ -196,6 +199,9 @@ public struct VoiceChatLoop: Equatable, Sendable {
             guard Self.isMeaningful(text) else { return listen() }   // nothing heard / filler only (嗯, uh): listen again
             phase = .waiting; transcript = ""; sent.append(text)
             return [.send(text), .haptic(.turnSent)]
+        case (.sendRefused, .waiting):
+            if !sent.isEmpty { sent.removeLast() }   // it was never sent
+            return [.haptic(.pause)] + listen()
         case (.replyFinished(let reply), .waiting):
             guard reply.speakable, !Self.trimmed(reply.speech).isEmpty else {   // text-only fallback
                 if reply.needsConfirmation { phase = .paused(.needsConfirmation); return [.haptic(.pause), .announceConfirmation, .releaseAudio] }

@@ -208,6 +208,8 @@ final class DictationAudioSink: @unchecked Sendable {
     private var segmentRotation: Task<Void, Never>?
     /// Which recognizer this session uses (for the hint text and the WER harness).
     @Published private(set) var dictationTier: DictationEngineTier = .unavailable
+    /// True while the on-device speech model is being prepared (iOS 26 may download it on first use): shown, never silent.
+    @Published private(set) var preparingSpeechModel = false
     private var dictationOnText: (@MainActor (String) -> Void)?
     private var dictationOnEnd: (@MainActor (DictationEnd) -> Void)?
     private var dictationObservers: [NSObjectProtocol] = []
@@ -254,6 +256,8 @@ final class DictationAudioSink: @unchecked Sendable {
         // Root cause 1: tiered engine instead of "on-device or nothing".
         var analyzerReady = false
         if #available(iOS 26.0, *) {
+            preparingSpeechModel = true
+            defer { preparingSpeechModel = false }
             if let engine = await AnalyzerDictationEngine.start(localeID: localeID,
                                                                onText: { [weak self] text in self?.analyzerText(epoch, text) },
                                                                onEnd: { [weak self] failed in self?.analyzerEnded(epoch, failed: failed) }) {
@@ -475,6 +479,7 @@ final class DictationAudioSink: @unchecked Sendable {
     enum DictationEnd: Equatable { case finished, cancelled, interrupted, denied, unsupported, failed(String), timedOut }
     @Published private(set) var dictationPhase: DictationPhase = .idle
     @Published private(set) var audioLevel: Float = 0
+    @Published private(set) var preparingSpeechModel = false
     @discardableResult func startDictation(onText: @escaping @MainActor (String) -> Void, onEnd: @escaping @MainActor (DictationEnd) -> Void) -> Bool { onEnd(.unsupported); return true }
     func stopDictation() {}
     func cancelDictation(_ reason: DictationEnd = .cancelled) {}
