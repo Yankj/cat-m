@@ -7,3 +7,4 @@
 "NSRemindersFullAccessUsageDescription" = "Catpaw 在你确认后把提醒写入“提醒事项”，不会自动修改。";
 "NSContactsUsageDescription" = "用来找到你要联系的人，只在这次请求里使用。";
 "NSPhotoLibraryAddUsageDescription" = "把你选择的图片保存到“照片”。";
+"NSLocationWhenInUseUsageDescription" = "用于估算去会议地点的公共交通时间，以便在合适的时间提醒你出发。";

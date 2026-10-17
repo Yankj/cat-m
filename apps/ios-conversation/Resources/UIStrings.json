@@ -6790,5 +6790,53 @@
   "语音对话已暂停，请先在屏幕上确认": {
     "en": "Voice conversation paused. Confirm on screen first.",
     "zh-Hans": "语音对话已暂停，请先在屏幕上确认"
+  },
+  "构建": {
+    "en": "Build",
+    "zh-Hans": "构建"
+  },
+  "会前提前量（记忆）": {
+    "en": "Pre-meeting lead time (memory)",
+    "zh-Hans": "会前提前量（记忆）"
+  },
+  "提前 {0} 分钟": {
+    "en": "{0} min ahead",
+    "zh-Hans": "提前 {0} 分钟"
+  },
+  "写入记忆并生效": {
+    "en": "Save to memory and apply",
+    "zh-Hans": "写入记忆并生效"
+  },
+  "删除该记忆": {
+    "en": "Delete this memory",
+    "zh-Hans": "删除该记忆"
+  },
+  "记忆库": {
+    "en": "Memory library",
+    "zh-Hans": "记忆库"
+  },
+  "打开 设置 › 记忆": {
+    "en": "Open Settings › Memory",
+    "zh-Hans": "打开 设置 › 记忆"
+  },
+  "一键注入": {
+    "en": "Inject",
+    "zh-Hans": "一键注入"
+  },
+  "注入 {0} 分钟后·望京 SOHO 的会": {
+    "en": "Inject a meeting at Wangjing SOHO in {0} min",
+    "zh-Hans": "注入 {0} 分钟后·望京 SOHO 的会"
+  },
+  "模拟起点（可选）": {
+    "en": "Simulated origin (optional)",
+    "zh-Hans": "模拟起点（可选）"
+  },
+  "请求定位权限（When-In-Use）": {
+    "en": "Request location permission (When In Use)",
+    "zh-Hans": "请求定位权限（When-In-Use）"
+  },
+  "模拟起点": {
+    "en": "Simulated origin",
+    "zh-Hans": "模拟起点"
   }
 }
