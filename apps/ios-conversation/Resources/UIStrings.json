@@ -6450,5 +6450,17 @@
   "这里提到的手机操作没有执行；需要的话再跟小猫说一次": {
     "en": "The phone action mentioned here did not run. Ask the cat again if you need it.",
     "zh-Hans": "这里提到的手机操作没有执行；需要的话再跟小猫说一次"
+  },
+  "没能恢复稍后提醒": {
+    "en": "Couldn't restore the snooze reminder",
+    "zh-Hans": "没能恢复稍后提醒"
+  },
+  "已撤销，但没能重新设置稍后提醒，请重新选择": {
+    "en": "Undone, but the snooze reminder couldn't be set again. Please choose a time again.",
+    "zh-Hans": "已撤销，但没能重新设置稍后提醒，请重新选择"
+  },
+  "没能确认提醒是否已删除，未做改动": {
+    "en": "Couldn't confirm the reminder was removed, so nothing was changed.",
+    "zh-Hans": "没能确认提醒是否已删除，未做改动"
   }
 }

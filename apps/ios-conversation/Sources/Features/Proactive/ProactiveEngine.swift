@@ -99,16 +99,56 @@ struct ProactiveSignal: Equatable, Sendable {
         case .keep: return
         case .adopt, .quarantine:   // PR90f #1: never claimed for whoever is signed in, never dropped
             quarantineUnownedData()
-        case .wipe: break
+        case .wipe:
+            // p90i P1-a: the old account's data is parked under it, never wiped (and never executed under anyone else).
+            if ProactiveParking.shouldPark(plan: plan, owner: owner, force: force), let owner { park(owner: owner) }
         }
         for id in Set(ProactiveSuggestionStore.shared.items.keys).union(ProactiveLocalBackend.load().keys) { CatpawLeaveActivity.stop(suggestionID: id) }
         quota = ProactiveQuotaLedger()
-        syncQueue.purge(account: nil); serverIDs = [:]; localOnly = []; localFeedback = .init()
+        syncQueue.purge(account: nil); localOnly = []; localFeedback = .init()
+        if force { serverIDs = [:] }   // p90i S5: per-account map — another account's ids are simply not visible
         ProactiveLocalBackend.wipe(); ProactiveSuggestionStore.shared.resetForAccountChange()
         pendingReminders = [:]; pendingAttendees = [:]; generations = .init(); ledger = [:]; signalLedger = .init(); lastSuggestionID = nil
         defaults.set(account ?? "", forKey: ProactiveDataOwner.key)
-        if plan == .wipe { note("proactive data owner \(owner ?? "unknown") → \(account ?? "signed out"): previous owner's data wiped") }
+        if plan == .wipe { note("proactive data owner \(owner ?? "unknown") → \(account ?? "signed out"): previous owner's data \(force ? "reset" : "parked")") }
         else { note("proactive data without a recorded owner quarantined (not shown / sent / synced until proven or expired)"); Task { await reconcileQuarantine() } }
+    }
+
+    // MARK: Parking (p90i P1-a; interim until #89's generic decision API)
+
+    /// Snapshot of `owner`'s local data (same blobs as the quarantine + its unsynced write-backs, live and dead), appended
+    /// to `ProactiveParking.key` under that account. Nothing parked is shown, sent, synced or re-armed.
+    private func park(owner: String) {
+        var blobs: [String: Data] = [:]
+        for k in quarantineBlobKeys { if let d = defaults.data(forKey: k) { blobs[k] = d } }
+        let items = syncQueue.extractAll()
+        let inbox = blobs[ProactiveLocalBackend.storageKey].flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] } ?? [:]
+        guard !inbox.isEmpty || !items.isEmpty else { return }   // nothing of that account to keep
+        var lot = ProactiveParking.Lot(defaults.dictionary(forKey: ProactiveParking.key))
+        lot.park(account: owner, record: ["at": ProactiveClock.now().timeIntervalSince1970, "blobs": blobs, "localOnly": Array(localOnly),
+                                          "queue": (try? JSONEncoder().encode(items)) ?? Data(), "decision": "keep"])
+        defaults.set(lot.raw, forKey: ProactiveParking.key)
+        note("parked \(items.count) unsynced op(s) of \(owner) (kept; the user decides)")
+    }
+    private func appendParkedNotifications(owner: String, ids: [String]) {
+        guard !ids.isEmpty else { return }
+        var lot = ProactiveParking.Lot(defaults.dictionary(forKey: ProactiveParking.key))
+        guard var recs = lot.slots[owner.lowercased()], var last = recs.popLast() else { return }
+        last["notifications"] = (last["notifications"] as? [String] ?? []) + ids; recs.append(last); lot.slots[owner.lowercased()] = recs
+        defaults.set(lot.raw, forKey: ProactiveParking.key)
+    }
+    var parkedAccounts: [String] { ProactiveParking.Lot(defaults.dictionary(forKey: ProactiveParking.key)).accounts }
+    /// Read-only views for #89's decision UI and tests.
+    func parkedOps(for account: String) -> [SyncOp]? {
+        guard let recs = ProactiveParking.Lot(defaults.dictionary(forKey: ProactiveParking.key)).slots[account.lowercased()] else { return nil }
+        return recs.flatMap { r in (r["queue"] as? Data).flatMap { try? JSONDecoder().decode([CatpawPersistentQueue<SyncOp>.Item].self, from: $0) }?.map(\.op) ?? [] }
+    }
+    func parkedInbox(for account: String) -> [String: Any] {
+        let recs = ProactiveParking.Lot(defaults.dictionary(forKey: ProactiveParking.key)).slots[account.lowercased()] ?? []
+        return recs.reduce(into: [:]) { acc, r in
+            let d = (r["blobs"] as? [String: Data])?[ProactiveLocalBackend.storageKey]
+            for (k, v) in d.flatMap({ try? JSONSerialization.jsonObject(with: $0) as? [String: Any] }) ?? [:] { acc[k] = v }
+        }
     }
 
     // MARK: Quarantine (Codex PR90f #1)
@@ -117,11 +157,12 @@ struct ProactiveSignal: Equatable, Sendable {
     private var quarantineBlobKeys: [String] { [ProactiveLocalBackend.storageKey, suggestionsKey, Self.attendeesKey, Self.generationsKey] }
     /// The isolated store: a plist dictionary under `ProactiveQuarantine.key`. Only reconcile reads it.
     private func quarantineUnownedData() {
-        guard defaults.dictionary(forKey: ProactiveQuarantine.key) == nil else { return }   // first quarantine wins; later unowned data is wiped below
+        // p90i: a later unowned set is parked under "(unknown)" rather than wiped.
+        guard defaults.dictionary(forKey: ProactiveQuarantine.key) == nil else { park(owner: "(unknown)"); return }
         var blobs: [String: Data] = [:]
         for k in quarantineBlobKeys { if let d = defaults.data(forKey: k) { blobs[k] = d } }
         let items = syncQueue.extractAll()
-        let record: [String: Any] = ["at": ProactiveClock.now().timeIntervalSince1970, "blobs": blobs, "serverIDs": serverIDs, "localOnly": Array(localOnly),
+        let record: [String: Any] = ["at": ProactiveClock.now().timeIntervalSince1970, "blobs": blobs, "serverIDs": takeLegacyServerIDs(), "localOnly": Array(localOnly),
                                      "queue": (try? JSONEncoder().encode(items)) ?? Data(), "stamps": items.compactMap(\.account)]
         defaults.set(record, forKey: ProactiveQuarantine.key)
     }
@@ -156,13 +197,26 @@ struct ProactiveSignal: Equatable, Sendable {
         }
         let left = ids.filter { !released.contains($0) }
         if left.isEmpty { defaults.removeObject(forKey: ProactiveQuarantine.key); return released.isEmpty ? nil : .release }
-        if ProactiveClock.now().timeIntervalSince(at) > ProactiveQuarantine.ttl {
-            defaults.removeObject(forKey: ProactiveQuarantine.key)
-            note("quarantine: \(left.count) unproven record(s) expired after \(Int(ProactiveQuarantine.ttl / 86400)) days → dropped")
-            return released.isEmpty ? .expire : .release
-        }
-        if released.isEmpty { note("quarantine held: \(left.count) record(s) without evidence") }
+        // p90i P1-b: never deleted by age; kept until evidence or the user's own decision (`releaseQuarantineByUser`).
+        if released.isEmpty { note("quarantine held: \(left.count) record(s) without evidence, \(Int(ProactiveClock.now().timeIntervalSince(at) / 86400)) day(s) old") }
         return released.isEmpty ? .hold : .release
+    }
+    /// p90i P1-b: the user confirms the quarantined data is theirs (decision UI, #89 API). Releases every record to the
+    /// signed-in account under its token; false when signed out / switched meanwhile / nothing quarantined.
+    @discardableResult func releaseQuarantineByUser() async -> Bool {
+        guard var record = defaults.dictionary(forKey: ProactiveQuarantine.key), let token = AccountEpoch.shared.capture() else { return false }
+        let items = (record["queue"] as? Data).flatMap { try? JSONDecoder().decode([CatpawPersistentQueue<SyncOp>.Item].self, from: $0) } ?? []
+        let blobs = record["blobs"] as? [String: Data] ?? [:], sids = record["serverIDs"] as? [String: String] ?? [:]
+        let inbox = blobs[ProactiveLocalBackend.storageKey].flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] } ?? [:]
+        let ids = Set(inbox.keys).union(items.map(\.op.local)).union(sids.keys)
+        guard AccountEpoch.shared.commit(token, { () -> Void in
+            claimData(for: token.account)
+            record = releaseQuarantine(record, ids: ids, items: items, to: token.account)
+            defaults.removeObject(forKey: ProactiveQuarantine.key)
+        }) != nil else { return false }
+        note("quarantine released by the user: \(ids.count) record(s) → \(token.account)")
+        Task { await drainSync() }
+        return true
     }
     /// Moves the released records (and only their own entries) into the active stores; returns the remaining record.
     private func releaseQuarantine(_ record: [String: Any], ids: Set<String>, items: [CatpawPersistentQueue<SyncOp>.Item], to account: String) -> [String: Any] {
@@ -474,21 +528,27 @@ struct ProactiveSignal: Equatable, Sendable {
     }
     /// `token`: the account this request is for. Checked before and after the bearer await (so the bearer is that
     /// account's), and the response is discarded if the account changed while it was in flight (Codex PR90d #2).
-    static func post(_ path: String, _ body: [String: Any], token: AccountToken? = nil) async -> [String: Any]? {
-        if let token, !AccountEpoch.shared.isValid(token) { return nil }
+    /// p90i (三角 trial S3): the token is required; nil is rejected (`ProactivePostGate`), never "no account check".
+    static func post(_ path: String, _ body: [String: Any], token: AccountToken?) async -> [String: Any]? {
+        guard ProactivePostGate.admit(token, epoch: .shared) else { return nil }
         guard let base = apiBase(), let bearer = try? await CatpawPushTokenUploader.shared.bearer() else { return nil }
-        if let token, !AccountEpoch.shared.isValid(token) { return nil }
+        guard ProactivePostGate.admit(token, epoch: .shared) else { return nil }
         var request = URLRequest(url: base.appendingPathComponent(path), timeoutInterval: 6)
         request.httpMethod = "POST"; request.setValue(bearer, forHTTPHeaderField: "Authorization"); request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        let payload = try? JSONSerialization.data(withJSONObject: body, options: [.sortedKeys])
+        let payload = encodeBody(body)
         request.httpBody = payload
         // #63 S1: stable per (route, body) so a retry after a dropped response replays instead of re-running.
         let key = (body["operation_id"] as? String).map { "op-\($0)-\(path.split(separator: "/").last ?? "")" }
             ?? "pr-" + SHA256.hash(data: Data(path.utf8) + (payload ?? Data())).prefix(16).map { String(format: "%02x", $0) }.joined()
         request.setValue(String(key.prefix(200)), forHTTPHeaderField: "Idempotency-Key")
         guard let (data, response) = try? await URLSession.shared.data(for: request) else { return nil }
-        if let token, !AccountEpoch.shared.isValid(token) { return nil }
-        let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+        guard ProactivePostGate.admit(token, epoch: .shared) else { return nil }
+        return decodeResponse(status: (response as? HTTPURLResponse)?.statusCode ?? 0, data: data)
+    }
+    /// The exact request bytes `post` sends (p90i P3: the host replay matches these byte for byte).
+    static func encodeBody(_ body: [String: Any]) -> Data? { try? JSONSerialization.data(withJSONObject: body, options: [.sortedKeys]) }
+    /// How `post` reads a response (200 → JSON; 403 → feature disabled; anything else → nil = retry).
+    static func decodeResponse(status: Int, data: Data) -> [String: Any]? {
         if status == 403 { FeatureEnrollment.shared.proactiveDisabled = true; shared.note("server proactive feature_disabled → local rules; enroll prompt shown in Settings") }
         guard status == 200 else { return nil }
         return try? JSONSerialization.jsonObject(with: data) as? [String: Any]
@@ -507,11 +567,35 @@ struct ProactiveSignal: Equatable, Sendable {
     /// The write-back transport (`post`); replaceable in tests so the real drain can be driven offline → online.
     var transport: (String, [String: Any], AccountToken) async -> [String: Any]? = { path, body, token in await ProactiveEngine.post(path, body, token: token) }
     /// Server suggestion id per local suggestion, for action/undo/feedback write-back. Persisted (Codex PR90 #5).
-    private static let serverIDsKey = "catpaw.proactive.serverIDs.v1"
-    private(set) var serverIDs: [String: String] {
-        get { (UserDefaults.standard.dictionary(forKey: Self.serverIDsKey) as? [String: String]) ?? [:] }
-        set { UserDefaults.standard.set(newValue, forKey: Self.serverIDsKey) }
+    /// p90i (三角 trial S5): partitioned by the data owner (`ProactiveServerIDMap`). The pre-p90i global map migrates
+    /// to the recorded owner; with no / a signed-out owner it stays for the quarantine (`takeLegacyServerIDs`).
+    private var serverIDMap: ProactiveServerIDMap {
+        get { UserDefaults.standard.data(forKey: ProactiveServerIDMap.key).flatMap { try? JSONDecoder().decode(ProactiveServerIDMap.self, from: $0) } ?? .init() }
+        set { UserDefaults.standard.set(try? JSONEncoder().encode(newValue), forKey: ProactiveServerIDMap.key) }
     }
+    private var dataOwner: String? { UserDefaults.standard.object(forKey: ProactiveDataOwner.key) as? String }
+    private func migrateLegacyServerIDs() {
+        guard let legacy = UserDefaults.standard.dictionary(forKey: ProactiveServerIDMap.legacyKey) as? [String: String] else { return }
+        let (m, q) = ProactiveServerIDMap.migrate(legacy: legacy, owner: dataOwner)
+        if dataOwner == "" {   // signed-out owner: never handed to the next sign-in — parked as unknown-owner ids
+            var lot = ProactiveParking.Lot(UserDefaults.standard.dictionary(forKey: ProactiveParking.key))
+            lot.park(account: "(unknown)", record: ["at": ProactiveClock.now().timeIntervalSince1970, "serverIDs": q, "decision": "keep"])
+            UserDefaults.standard.set(lot.raw, forKey: ProactiveParking.key); UserDefaults.standard.removeObject(forKey: ProactiveServerIDMap.legacyKey); return
+        }
+        guard q.isEmpty, let o = dataOwner else { return }   // no owner recorded: left for the quarantine
+        var cur = serverIDMap; for (k, v) in m.ids(for: o) where cur.ids(for: o)[k] == nil { cur.set(k, v, account: o) }
+        serverIDMap = cur; UserDefaults.standard.removeObject(forKey: ProactiveServerIDMap.legacyKey)
+    }
+    /// The unowned legacy global map, moved out (into the quarantine record) — never handed to the signed-in account.
+    private func takeLegacyServerIDs() -> [String: String] {
+        let legacy = UserDefaults.standard.dictionary(forKey: ProactiveServerIDMap.legacyKey) as? [String: String] ?? [:]
+        UserDefaults.standard.removeObject(forKey: ProactiveServerIDMap.legacyKey); return legacy
+    }
+    private(set) var serverIDs: [String: String] {
+        get { migrateLegacyServerIDs(); return serverIDMap.ids(for: dataOwner ?? "") }
+        set { migrateLegacyServerIDs(); guard let o = dataOwner, !o.isEmpty else { return }; var m = serverIDMap; m.replace(newValue, account: o); serverIDMap = m }
+    }
+    func serverIDs(for account: String) -> [String: String] { serverIDMap.ids(for: account) }
     /// Pending action/undo write-backs: persisted, retried with backoff, bound to the account (Codex PR90 #5).
     struct SyncOp: Codable, Sendable {
         var local: String; var action: String; var operationID: String
@@ -777,8 +861,17 @@ struct ProactiveSignal: Equatable, Sendable {
     /// PR90d #2: the delete commits only for `token` (the account the undo started under).
     func removeReminderChecked(_ suggestionID: String, token: AccountToken?) async throws {
         guard let token else { throw ProactiveEngineError.writeFailed }
-        guard let p = pendingReminders[suggestionID], let id = await findReminder(marker: URL(string: "catpawm://op/\(p.operationID)")!),
-              let item = store.calendarItem(withIdentifier: id) as? EKReminder else { return }
+        // p90i (三角 trial S2): no mapping / no permission → unknown (caller keeps the state); authorized + not found → gone.
+        let p = pendingReminders[suggestionID], auth = EKEventStore.authorizationStatus(for: .reminder)
+        let authorized = auth == .fullAccess || auth == .authorized
+        let id = (p != nil && authorized) ? await findReminder(marker: URL(string: "catpawm://op/\(p!.operationID)")!) : nil
+        let item = id.flatMap { store.calendarItem(withIdentifier: $0) as? EKReminder }
+        switch ProactiveUndo.reminderUndoStep(hasMapping: p != nil, authorized: authorized, found: item != nil) {
+        case .unknown(let why): note("undo reminder unknown (\(why)) id=\(suggestionID) → state kept"); throw ProactiveEngineError.undoUnknown
+        case .alreadyGone: note("undo reminder already gone id=\(suggestionID)"); return
+        case .delete: break
+        }
+        guard let p, let item else { throw ProactiveEngineError.undoUnknown }
         guard try AccountEpoch.shared.commit(token, { () throws -> Void in try store.remove(item, commit: true) }) != nil else { throw ProactiveEngineError.writeFailed }
         note("undo removed reminder operation_id=\(p.operationID)")
     }
@@ -909,6 +1002,7 @@ struct ProactiveSignal: Equatable, Sendable {
         let p = pending.filter { ProactiveDataOwner.removeOnChange($0.info, current: live) }.map(\.id)
         let d = shown.filter { ProactiveDataOwner.removeOnChange($0.info, current: live) }.map(\.id)
         inventory.remove(pending: p, delivered: d)
+        if let previous, !p.isEmpty { appendParkedNotifications(owner: previous, ids: p) }   // p90i: re-armable from the parked card
         await reconcileQuarantine()
         note("account \(previous ?? "-") → \(current ?? "-"): removed \(p.count) pending / \(d.count) delivered notifications of other accounts")
     }

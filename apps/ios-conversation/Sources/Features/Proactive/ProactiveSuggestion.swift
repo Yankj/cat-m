@@ -61,7 +61,7 @@ struct ProactiveSuggestion: Codable, Sendable, Equatable, Identifiable {
     var allEffectsDone: Bool { ProactiveActionStates.allEffectsDone(effectiveActions.map(\.rawValue), actionStates) }
 }
 
-enum ProactiveEngineError: Error, Equatable { case remindersDenied, writeFailed, smsUnavailable, snoozeNotScheduled }
+enum ProactiveEngineError: Error, Equatable { case remindersDenied, writeFailed, smsUnavailable, snoozeNotScheduled, undoUnknown }
 
 @MainActor protocol ProactiveSuggestionBackend: AnyObject {
     func list() async throws -> [ProactiveSuggestion]
@@ -171,7 +171,8 @@ enum ProactiveEngineError: Error, Equatable { case remindersDenied, writeFailed,
         do {
             let after = try await backend.undo(s.id); items[s.id] = after
             errorKey = after.snoozeRestoreFailed ? "已撤销，但没能重新设置稍后提醒，请重新选择" : nil   // Codex PR90g #2
-        } catch { errorKey = "没有完成，请稍后重试" }
+        } catch let e as ProactiveEngineError where e == .undoUnknown { errorKey = "没能确认提醒是否已删除，未做改动" }   // p90i S2
+        catch { errorKey = "没有完成，请稍后重试" }
     }
     func feedback(_ value: ProactiveFeedback, _ s: ProactiveSuggestion) async { try? await backend.feedback(value, on: s.id) }
     func sorted(_ status: ProactiveSuggestion.Status) -> [ProactiveSuggestion] {
