@@ -2342,6 +2342,62 @@
       "line": 106,
       "sha256": "efee03a5be02ba4542adf858d2ed83024360ceb15a48ff96491e56459d2e3433",
       "reason": "Reviewed 2026-10-17 (re-pin after line drift, NoBug B4): OAuthFakeRemote synthetic 'oauth.anon.sig' / 'oauth.perm.sig' token markers consumed only by the injected test remote; no real credential."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/DeviceTrialNativeTests.swift",
+      "category": "deployment_public_key",
+      "line": 313,
+      "sha256": "f30fe2291ddf76b3637388d26ea6e3b6f8cd8a514c7fa332dbe702e088b879a2",
+      "reason": "Synthetic unit-test publishable key literal (contains \"synthetic\"/\"test\"); never a deployment key and never sent to a real backend."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/DeviceTrialNativeTests.swift",
+      "category": "deployment_public_key",
+      "line": 354,
+      "sha256": "f30fe2291ddf76b3637388d26ea6e3b6f8cd8a514c7fa332dbe702e088b879a2",
+      "reason": "Synthetic unit-test publishable key literal (contains \"synthetic\"/\"test\"); never a deployment key and never sent to a real backend."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
+      "category": "deployment_public_key",
+      "line": 377,
+      "sha256": "08d7f231065adc7d75b112a72b18b13acad4ace2dbbe5b60dacc4f1ae3cd7c98",
+      "reason": "Synthetic unit-test publishable key literal (contains \"synthetic\"/\"test\"); never a deployment key and never sent to a real backend."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
+      "category": "deployment_public_key",
+      "line": 882,
+      "sha256": "08d7f231065adc7d75b112a72b18b13acad4ace2dbbe5b60dacc4f1ae3cd7c98",
+      "reason": "Synthetic unit-test publishable key literal (contains \"synthetic\"/\"test\"); never a deployment key and never sent to a real backend."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
+      "category": "secret_assignment_review",
+      "line": 253,
+      "sha256": "08d7f231065adc7d75b112a72b18b13acad4ace2dbbe5b60dacc4f1ae3cd7c98",
+      "reason": "Synthetic three-word lifecycle test access token passed to a local workspace-resolver stub; not a JWT, never sent to a real backend."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
+      "category": "secret_assignment_review",
+      "line": 669,
+      "sha256": "08d7f231065adc7d75b112a72b18b13acad4ace2dbbe5b60dacc4f1ae3cd7c98",
+      "reason": "Synthetic three-word lifecycle test access token passed to a local workspace-resolver stub; not a JWT, never sent to a real backend."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
+      "category": "secret_assignment_review",
+      "line": 710,
+      "sha256": "08d7f231065adc7d75b112a72b18b13acad4ace2dbbe5b60dacc4f1ae3cd7c98",
+      "reason": "Synthetic three-word lifecycle test access token passed to a local workspace-resolver stub; not a JWT, never sent to a real backend."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
+      "category": "secret_assignment_review",
+      "line": 917,
+      "sha256": "08d7f231065adc7d75b112a72b18b13acad4ace2dbbe5b60dacc4f1ae3cd7c98",
+      "reason": "Synthetic three-word lifecycle test access token passed to a local workspace-resolver stub; not a JWT, never sent to a real backend."
     }
   ]
 }
