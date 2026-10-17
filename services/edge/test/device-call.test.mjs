@@ -61,7 +61,7 @@ test('device_call suspends; device-result resumes the same turn; idempotent per 
 test('user cancel on the phone and read-only confirm:none are reported back to the model',async()=>{
  const s=await setup(CREATE),{tid,events}=await send(s),dc=events.at(-2).data;
  const r=await report(s,tid,{call_id:dc.call_id,operation_id:randomUUID(),args_hash:dc.args_hash,status:'cancelled'});await sse(r);await s.f.runtime.chat.waitIdle();
- assert.deepEqual(s.probe.results.at(-1),{status:'cancelled'});
+ assert.equal(s.probe.results.at(-1).status,'user_declined');assert.equal(s.probe.results.at(-1).device_status,'cancelled');assert.match(s.probe.results.at(-1).message,/not an error/);
  const l=await setup({name:'calendar_list',arguments:{from:'2026-10-20T00:00:00+08:00',to:'2026-10-21T00:00:00+08:00'}}),a=await send(l);assert.equal(a.events.at(-2).data.confirm,'none');
 });
 
@@ -78,7 +78,7 @@ test('chat-ux #7: contacts_search needs a tap — device_call confirm:card, turn
  assert.equal(s.probe.results.length,0,'no contact data before the user taps');
  assert.equal((await turn(s,tid)).pending_approvals[0].device_call.confirm,'card');
  const r=await report(s,tid,{call_id:dc.call_id,operation_id:randomUUID(),args_hash:dc.args_hash,status:'cancelled'});assert.equal(r.status,200);await sse(r);await s.f.runtime.chat.waitIdle();
- assert.deepEqual(s.probe.results.at(-1),{status:'cancelled'},'user declined → model gets no contact fields');
+ assert.deepEqual(Object.keys(s.probe.results.at(-1)).sort(),['device_status','message','status'],'user declined → model gets no contact fields');
  assert.doesNotThrow(()=>createDeviceTools().get('contacts_search').validate({query:'张三',include_email:true}));
  assert.throws(()=>createDeviceTools().get('contacts_search').validate({query:'张三',include_email:'yes'}));
 });
