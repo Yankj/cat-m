@@ -185,6 +185,7 @@ struct NativeWorkspaceRetrySchedule: Sendable {
             if !isFixture { let routeScope=partition.scope; ModelRouteCatalog.shared.install { await backend.modelRoutes(scope:routeScope) } }
             let memory=isFixture ? nil : try NativeMemoryComposition.service(repository:repository,configuration:chatConfiguration,credentials:credentials)
             if !isFixture { MemoryLibraryHub.installAgentMemory(configuration:chatConfiguration,credentials:credentials); MemoryEventSink.installSideChannel() }
+            ProactiveFeedbackSync.shared.activate(); ProactiveEngine.feedbackGate = ProactiveLearnedGate.gate   // #90+#91 merge (PR91 S1): learned, downgrade-only, per-account
             var selected:any ConversationBackend=isFixture ? UnconfiguredConversationBackend() : backend
             #if DEBUG
             selected=CatpawDemoBackendSwitch.select(selected)
