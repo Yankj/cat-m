@@ -61,7 +61,7 @@ struct ProactiveSuggestion: Codable, Sendable, Equatable, Identifiable {
     var allEffectsDone: Bool { ProactiveActionStates.allEffectsDone(effectiveActions.map(\.rawValue), actionStates) }
 }
 
-enum ProactiveEngineError: Error, Equatable { case remindersDenied, writeFailed, smsUnavailable, snoozeNotScheduled, undoFailed, undoUnknown }
+enum ProactiveEngineError: Error, Equatable { case remindersDenied, writeFailed, smsUnavailable, snoozeNotScheduled, undoFailed, undoUnknown, staleAccount }
 
 @MainActor protocol ProactiveSuggestionBackend: AnyObject {
     func list() async throws -> [ProactiveSuggestion]
@@ -180,6 +180,7 @@ enum ProactiveEngineError: Error, Equatable { case remindersDenied, writeFailed,
             errorKey = after.snoozeRestoreFailed ? "已撤销，但没能重新设置稍后提醒，请重新选择" : nil   // Codex PR90g #2
         } catch let e as ProactiveEngineError where e == .undoFailed { errorKey = "提醒没有删掉，状态保持不变，请稍后重试" }
         catch let e as ProactiveEngineError where e == .undoUnknown { errorKey = "没能确认提醒是否已删除，未做改动" }   // p90i S2
+        catch let e as ProactiveEngineError where e == .staleAccount { errorKey = "账号状态已变化，提醒未做改动，请重新登录后再试" }   // NoBug b274c8c :721
         catch { errorKey = "没有完成，请稍后重试" }
     }
     enum FeedbackOutcome: Equatable { case synced, queued, notSaved }

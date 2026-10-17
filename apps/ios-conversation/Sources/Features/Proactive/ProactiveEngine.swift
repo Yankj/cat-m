@@ -1000,6 +1000,7 @@ struct ProactiveSignal: Equatable, Sendable {
     /// PR90d #2: the delete commits only for `token` (the account the undo started under).
     func removeReminderChecked(_ suggestionID: String, token: AccountToken?) async throws {
         guard let token else { throw ProactiveEngineError.writeFailed }
+        guard AccountEpoch.shared.isValid(token) else { note("undo reminder refused: stale account token id=\(suggestionID) → state kept"); throw ProactiveEngineError.staleAccount }   // NoBug b274c8c :721: never report undone on an expired token
         // p90i (三角 trial S2): no mapping / no permission → unknown (caller keeps the state); authorized + not found → gone.
         let p = pendingReminders[suggestionID], auth = EKEventStore.authorizationStatus(for: .reminder)
         let authorized = auth == .fullAccess || auth == .authorized
@@ -1011,7 +1012,7 @@ struct ProactiveSignal: Equatable, Sendable {
         case .delete: break
         }
         guard let p, let item else { throw ProactiveEngineError.undoUnknown }
-        guard try AccountEpoch.shared.commit(token, { () throws -> Void in try store.remove(item, commit: true) }) != nil else { throw ProactiveEngineError.writeFailed }
+        guard try AccountEpoch.shared.commit(token, { () throws -> Void in try store.remove(item, commit: true) }) != nil else { throw ProactiveEngineError.staleAccount }
         reminderDeletes += 1
         note("undo removed reminder operation_id=\(p.operationID)")
     }
