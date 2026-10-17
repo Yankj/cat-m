@@ -69,14 +69,17 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
         session = URLSession(configuration: policy, delegate: NativeChatNoRedirect(), delegateQueue: nil)
     }
     public func close() { session.invalidateAndCancel(); bindingCache.removeAll(); toolTitles.removeAll(); continuationReceipts.removeAll();revisionWorkReceipts.removeAll();continuationSourceHashes.removeAll(); observedModelState = nil;verifiedReplyAt=nil;verifiedModel=nil;replyCandidates.removeAll() }
-    /// Append OpenCode disclosure + policy links from GET /catpaw/privacy/v1/model-route → `route`
-    /// (not .../model-consent). `route.opencode_disclosure` (only when OpenCode is enabled) +
+    /// Append Gemini / OpenCode disclosures + policy links from GET /catpaw/privacy/v1/model-route → `route`
+    /// (not .../model-consent). `route.gemini_disclosure` (only when Gemini is enabled; free tier may train),
+    /// `route.opencode_disclosure` (only when OpenCode is enabled) +
     /// `route.policy_url` / `route.policy_urls[]`. Legacy aggregator fields ignored.
     static func consentBody(_ body:String,metadata:[String:Any],ui:[String:Any]) -> String {
         _ = ui
         guard let route = metadata["route"] as? [String:Any] else { return body }
         var parts: [String] = [body]
-        if let d = route["opencode_disclosure"] as? String, !d.isEmpty, !body.contains(d) { parts.append(d) }
+        for key in ["gemini_disclosure", "opencode_disclosure"] {
+            if let d = route[key] as? String, !d.isEmpty, !body.contains(d) { parts.append(d) }
+        }
         var urls: [String] = []
         if let list = route["policy_urls"] as? [String] { urls.append(contentsOf: list) }
         if let one = route["policy_url"] as? String { urls.append(one) }
