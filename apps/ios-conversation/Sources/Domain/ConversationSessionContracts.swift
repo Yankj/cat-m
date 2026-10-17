@@ -242,7 +242,9 @@ public struct ConversationTurnEvent: Sendable {
         /// catpaw.approval.v1 `approval_requested`: a tool call waits for the user's decision (follows its `toolStarted`).
         case approvalRequested(ConversationApprovalRequest)
         /// catpaw.approval.v1 `turn_suspended`: the turn waits for decisions. NOT terminal; the stream ends here.
-        case suspended(interruptIDs: [String], expiresAt: String)
+        /// v50 adds `requires_approval` (false iff every interrupt is a device call with confirm "none") and `waiting_for`
+        /// ("user" | "device"); both nil from older servers.
+        case suspended(interruptIDs: [String], expiresAt: String, requiresApproval: Bool? = nil, waitingFor: String? = nil)
         /// catpaw.approval.v1 `approval_resolved`: decision is "approved", "denied", "expired" or "cancelled".
         case approvalResolved(interruptID: String, callID: String, decision: String, remember: Bool)
         /// catpaw.ui.v1 `ui.block` (new block; `interruptID` set when it waits for `submitUIDecision`).
@@ -307,6 +309,20 @@ public struct ConversationTurnRecord: Codable, Sendable, Identifiable {
     /// catpaw.device.v1: `device_call`s of this turn still waiting for `POST …/device-result`.
     public var pendingDeviceCalls:[ConversationDeviceCall]? = nil
     public var awaitingApproval:Bool { state == .running && (!(pendingApprovals ?? []).isEmpty || !pendingUIBlocks.isEmpty || !(pendingUIApprovals ?? []).isEmpty || !(pendingDeviceCalls ?? []).isEmpty) }
+    /// `turn_suspended.requires_approval` / `waiting_for` of the latest suspension (nil: older server or not suspended).
+    public var suspendedRequiresApproval:Bool? = nil
+    public var suspendedWaitingFor:String? = nil
+    /// True only when the user must decide something on screen. Read-only device calls (confirm "none", e.g. calendar_list,
+    /// places_search) run by themselves and do not count. Without `requires_approval` (older server) a device call needs
+    /// the user iff its `confirm` is "card".
+    public var needsUserDecision:Bool {
+        guard state == .running else { return false }
+        if !(pendingApprovals ?? []).isEmpty || !pendingUIBlocks.isEmpty || !(pendingUIApprovals ?? []).isEmpty { return true }
+        let calls = pendingDeviceCalls ?? []
+        guard !calls.isEmpty else { return false }
+        if let requires = suspendedRequiresApproval { return requires }
+        return calls.contains { $0.confirm == "card" }
+    }
 }
 /// catpaw.device.v1 `device_call` (services/edge/docs/device-call-contract.md). `args` is the raw JSON object.
 public struct ConversationDeviceCall: Codable, Sendable, Equatable, Identifiable {

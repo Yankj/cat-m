@@ -805,7 +805,7 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
             payload = .approvalRequested(try Self.approval(data))
         case "turn_suspended":
             guard let ids = data["interrupt_ids"] as? [String], !ids.isEmpty, ids.allSatisfy({ UUID(uuidString: $0) != nil }), let expires = data["expires_at"] as? String else { throw ConversationSessionError.invalidEvent }
-            payload = .suspended(interruptIDs: ids, expiresAt: expires)
+            payload = .suspended(interruptIDs: ids, expiresAt: expires, requiresApproval: data["requires_approval"] as? Bool, waitingFor: data["waiting_for"] as? String)
         case "ui.block", "ui.block.update", "ui.block.resolve":
             // catpaw.ui.v1: plain approval-negotiated turns only; the data object is passed through for the renderer.
             guard reality != "not_configured", Self.supportsResume(request), request.image==nil, !request.hasUploadedAttachments, let raw = type else { throw ConversationSessionError.invalidEvent }
@@ -1647,7 +1647,7 @@ public actor CatpawDemoConversationBackend: ConversationBackend {
                 let ui = try ConversationUIEvent.decode(type: wire.type, sequence: sequence, payload: data)
                 out.append(event(request, ui.type == .block ? .uiBlock(ui) : ui.type == .update ? .uiBlockUpdate(ui) : .uiBlockResolve(ui)))
             case "turn_suspended":
-                out.append(event(request, .suspended(interruptIDs: object["interrupt_ids"] as? [String] ?? [], expiresAt: object["expires_at"] as? String ?? "")))
+                out.append(event(request, .suspended(interruptIDs: object["interrupt_ids"] as? [String] ?? [], expiresAt: object["expires_at"] as? String ?? "", requiresApproval: object["requires_approval"] as? Bool, waitingFor: object["waiting_for"] as? String)))
             case "approval_resolved":
                 out.append(event(request, .approvalResolved(interruptID: object["interrupt_id"] as? String ?? "", callID: object["call_id"] as? String ?? "", decision: object["decision"] as? String ?? "", remember: false)))
             case "turn_completed":

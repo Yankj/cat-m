@@ -503,12 +503,13 @@ public actor ConversationSessionService {
             guard Self.isPlain(request) else { throw ConversationSessionError.invalidEvent }
             if !(turn.pendingDeviceCalls ?? []).contains(where: { $0.callID == call.callID }) { turn.pendingDeviceCalls = (turn.pendingDeviceCalls ?? []) + [call] }
             deviceCallIndex[call.callID] = (request.conversationID, request.operationID); rememberDeviceTurn(call.callID, request.conversationID, request.operationID)
-        case .suspended(let ids, _):
+        case .suspended(let ids, _, let requiresApproval, let waitingFor):
             let pending = Set((turn.pendingApprovals ?? []).map(\.interruptID)).union((turn.pendingDeviceCalls ?? []).map(\.interruptID)).union(turn.pendingUIBlocks.compactMap(\.interruptID)).union((turn.pendingUIApprovals ?? []).map(\.interruptID))
             guard !ids.isEmpty, Set(ids).isSubset(of: pending) else { throw ConversationSessionError.invalidEvent }
             // A server-confirmed suspension proves the turn is alive and waiting on this client: an `unknown` left by an
             // earlier failed apply must become `running` again, otherwise awaitingApproval stays false and no card shows.
             if turn.state == .unknown { turn.state = .running }
+            turn.suspendedRequiresApproval = requiresApproval; turn.suspendedWaitingFor = waitingFor
         case .approvalResolved(let id, let call, _, _):
             // A replay/observe may resolve an interrupt this journal never saw pending (e.g. expired while offline).
             if let i = turn.pendingApprovals?.firstIndex(where: { $0.interruptID == id }) { guard turn.pendingApprovals?[i].callID == call else { throw ConversationSessionError.invalidEvent }; turn.pendingApprovals?.remove(at: i) }
