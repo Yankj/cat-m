@@ -8,6 +8,7 @@ actor QueueSendLog {
     func release() { continuation?.resume(); continuation = nil }
     func captured() -> [UUID] { ids }
 }
+actor QueueIDLog { var ids: [UUID] = []; func add(_ id: UUID) { ids.append(id) }; func captured() -> [UUID] { ids } }
 actor QueueHistoryBackend:ConversationBackend {
     var admitting=false
     var histories:[UUID:[UUID]]=[:]
@@ -261,8 +262,8 @@ actor QueueEditBackend:ConversationBackend {
         let tq=ConversationFollowupQueueService(repository:repo,scope:Profiles.user,conversationID:tc)
         let failedImage=ConversationFollowup(text:"这张图里有什么？一句话"),nextImage=ConversationFollowup(text:"这张呢？一句话")
         try await tq.enqueue(failedImage);try await tq.enqueue(nextImage)
-        let tlog=QueueSendLog()
-        try await tq.flush { message in await tlog.send(message);return message.id == failedImage.id ? .failedTerminal : .sent }
+        let tlog=QueueIDLog()   // non-blocking: QueueSendLog parks the first send until release()
+        try await tq.flush { message in await tlog.add(message.id);return message.id == failedImage.id ? .failedTerminal : .sent }
         let tstate=try await tq.state(),tsent=await tlog.captured()
         try check(!tstate.paused && tstate.pending.isEmpty && tstate.inflight == nil && tsent == [failedImage.id,nextImage.id],"rate_limited turn does not pause the queue; the next message goes out (supersedes it)")
         // A queue persisted as paused (recovery) behind a terminal failure is unpaused on launch.
