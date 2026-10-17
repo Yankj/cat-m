@@ -86,24 +86,50 @@ check(FirstRunAppearance.launch(reduceMotion: true, voiceOver: false) == .fade(d
 if case .full(let total) = FirstRunAppearance.launch(reduceMotion: false, voiceOver: false) { check(total <= 1.2, "launch ≤ 1.2 s (got \(total))") } else { check(false, "full launch") }
 check(FirstRunAppearance.launchKeyframes.count <= 4, "few keyframes")
 
-// Transition E (user pick 12:37: D plush leads + B CTA→composer + C chat stagger).
+// SPEC-E (/workspace/codex-review/onboarding-motion/SPEC-E.md) — transition E + landing entrance + idle.
 do {
     let e = FirstRunAppearance.handoff(reduceMotion: false)
     func t(_ id: String) -> FirstRunAppearance.Track? { e.first { $0.id == id } }
-    let need = ["copy.fade", "chips.gather", "cat.jump", "cta.morph", "chat.row0", "chat.row1", "chat.row2", "chat.row3"]
-    check(need.allSatisfy { t($0) != nil }, "E has tracks \(need) (got \(e.map(\.id)))")
-    check((e.map(\.end).max() ?? 9) <= 1.2, "E total ≤ 1.2 s after tap")
-    if let g = t("chips.gather"), let j = t("cat.jump") { check(g.start <= j.start && g.end < j.end, "tags gather toward the cat before it lands") }
-    if let j = t("cat.jump"), let c = t("cta.morph"), let r0 = t("chat.row0") { check(r0.start >= min(j.end, c.end) - 0.05, "chat rises once cat + composer have landed") }
-    let rows = (0..<4).compactMap { t("chat.row\($0)") }
-    check(rows.count == 4 && zip(rows, rows.dropFirst()).allSatisfy { $0.start < $1.start }, "chat rows staggered")
-    check(FirstRunAppearance.completeOnboardingAt <= (t("chat.row0")?.start ?? 0), "root swap not before the splash has landed")
-    let rm = FirstRunAppearance.handoff(reduceMotion: true)
-    check(!rm.isEmpty && rm.allSatisfy { $0.kind == .fade } && (rm.map(\.end).max() ?? 9) <= 0.5, "Reduce Motion → fade only, ≤0.5 s")
+    func near(_ a: Double?, _ b: Double) -> Bool { a.map { abs($0 - b) < 0.011 } ?? false }
+    // §2.2 start times (seconds after touch-down).
+    let starts: [(String, Double)] = [("cta.press", 0), ("chips.fold0", 0.04), ("chips.fold7", 0.145), ("copy.fade", 0.06), ("glow.fade", 0.05),
+        ("cat.squash", 0.06), ("cat.flight", 0.14), ("cat.crossfade", 0.40), ("cat.handoff", 0.68), ("cta.morph", 0.12), ("cta.fill", 0.12), ("cta.label", 0.12),
+        ("composer.placeholder", 0.36), ("composer.add", 0.40), ("composer.mic", 0.44), ("composer.send", 0.48), ("chat.buttons", 0.38),
+        ("chat.row0", 0.40), ("chat.row1", 0.44), ("chat.backdrop", 0.48), ("chat.title", 0.62)]
+    for (id, s0) in starts { check(near(t(id)?.start, s0), "SPEC-E §2.2 \(id) starts at \(s0) (got \(t(id).map { "\($0.start)" } ?? "missing"))") }
+    check(near(t("chips.fold0")?.end, 0.30) && near(t("copy.fade")?.end, 0.26) && near(t("glow.fade")?.end, 0.45) && near(t("cat.squash")?.end, 0.14) && near(t("cta.label")?.end, 0.30) && near(t("cta.fill")?.end, 0.42), "SPEC-E §2.2 fixed-duration ends")
+    check(near(t("cat.flight")?.end, 0.75) && near(t("cta.morph")?.end, 0.62), "flight ~0.75, morph ~0.62")
+    check((e.map(\.end).max() ?? 9) <= 1.15 && (e.map(\.end).max() ?? 0) >= 1.05, "E settles at ≈1.10–1.15 s after the tap")
     check(e.contains { $0.kind == .move }, "E moves")
+    let rm = FirstRunAppearance.handoff(reduceMotion: true)
+    check(rm.count == 2 && rm.allSatisfy { $0.kind == .fade } && near(rm.first { $0.id == "landing.fade" }?.start, 0.10) && near(rm.first { $0.id == "landing.fade" }?.end, 0.30)
+          && near(rm.first { $0.id == "chat.fade" }?.start, 0.25) && near(rm.first { $0.id == "chat.fade" }?.end, 0.45), "§3 Reduce Motion: landing out 0.10–0.30, chat in 0.25–0.45, fades only")
+    // §2.1 landing entrance.
+    let en = FirstRunAppearance.entrance(reduceMotion: false)
+    func n(_ id: String) -> FirstRunAppearance.Track? { en.first { $0.id == id } }
+    let enStarts: [(String, Double)] = [("hero", 0.10), ("shadow", 0.10), ("glow", 0.20), ("brand", 0.35), ("brandSubtitle", 0.40), ("headline", 0.45), ("subtitle", 0.50),
+        ("ring", 0.47), ("chip0", 0.60), ("chip7", 0.915), ("cta", 0.85), ("footer", 0.93), ("drift", 1.40), ("idle", 0.60)]
+    for (id, s0) in enStarts { check(near(n(id)?.start, s0), "SPEC-E §2.1 \(id) at \(s0) (got \(n(id).map { "\($0.start)" } ?? "missing"))") }
+    check(near(n("drift")?.end, 2.20), "chip drift fades in 1.4 → 2.2 s")
+    check(FirstRunAppearance.chipDriftScale == 0.45, "chip drift at 45% amplitude")
+    let enRM = FirstRunAppearance.entrance(reduceMotion: true)
+    check(!enRM.isEmpty && enRM.allSatisfy { $0.kind == .fade && $0.start >= 0.149 && $0.end <= 0.351 }, "§3 Reduce Motion entrance: fades 0.15–0.35 only")
+    // §2.3 idle.
+    let idle = FirstRunAppearance.Idle.self
+    check(idle.breathPeriod == 3.6 && idle.breathScaleY == 1.02 && idle.breathScaleX == 0.994 && idle.blinkEvery == 4.8 && idle.blinkDuration == 0.12
+          && idle.tiltEvery == 5.2 && idle.tiltDegrees == 3 && idle.tiltDuration == 0.6 && idle.fps == 30, "§2.3 idle loop constants")
+    check(FirstRunAppearance.heroSize == 120 && FirstRunAppearance.headerAvatarSize == 28, "hero 120 pt → header avatar 28 pt")
+    // §1 chip icon colours (icon only, ≥3:1 non-text on the chip).
+    check(tokens.resolve(.color("calmChipIcon"), .light) == 0xC64A0B && tokens.resolve(.color("calmChipIcon"), .dark) == 0xFF8A5C, "chip icon #C64A0B / #FF8A5C")
+    for sch in [FirstRunAppearance.Scheme.light, .dark] {
+        let r = FirstRunAppearance.contrast(tokens.resolve(.color("calmChipIcon"), sch), tokens.resolve(.color("calmSurface"), sch))
+        print("  chip icon (non-text) \(sch) \(String(format: "%.2f", r))"); check(r >= 3, "chip icon ≥3:1 \(sch)")
+    }
     let login = (try? String(contentsOfFile: root + "/Sources/Features/NativeLoginView.swift", encoding: .utf8)) ?? ""
-    check(login.contains("PlushMascot(") && !login.contains("CalmOrb("), "splash centre is the plush cat, not the orange orb")
+    check(login.contains("FirstRunPlushHero(") && !login.contains("CalmOrb("), "landing centre is the plush hero, not the orange orb")
+    // §6 asset: derived eyes-closed Front frame, pixel-aligned with MascotFront.
+    let fm = FileManager.default, m = root + "/Resources/Assets.xcassets/CatpawBrand/Mascot/"
+    check(["MascotFrontBlink.imageset/Contents.json", "MascotFrontBlink.imageset/MascotFrontBlink@2x.png", "MascotFrontBlink.imageset/MascotFrontBlink@3x.png"].allSatisfy { fm.fileExists(atPath: m + $0) }, "MascotFrontBlink imageset (@2x/@3x)")
 }
-
 print(failures == 0 ? "first-run appearance: all passed" : "first-run appearance: \(failures) failure(s)")
 exit(failures == 0 ? 0 : 1)

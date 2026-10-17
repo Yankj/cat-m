@@ -53,10 +53,31 @@ enum FirstRunAppearance {
     /// 0 mark springs in · 0.35 settle/breathe · 0.65 morph into the orb · 0.9 hand off (overlay fades, done at 1.1).
     static let launchKeyframes: [Double] = [0.35, 0.65, 0.9, 1.1]
 
-    // MARK: start → chat handoff "E" (stub; red)
+    // MARK: start → chat handoff "E" (user pick 2026-10-17 12:37: D plush leads + B CTA → composer + C chat stagger)
+    // Seconds after the tap. The SwiftUI side (FirstRunHandoffE.swift) reads these, so the timings live in one place.
     struct Track: Equatable { enum Kind: Equatable { case fade, move }; let id: String; let start: Double; let end: Double; let kind: Kind }
-    static let completeOnboardingAt = 0.0
-    static func handoff(reduceMotion: Bool) -> [Track] { [] }
+    /// The splash has landed (cat in the header slot, CTA shaped like the composer) → hand to the gate.
+    static let completeOnboardingAt = 0.62
+    static let reduceMotionCompleteAt = 0.25
+    static let chatRowCount = 4, chatRowStep = 0.07, chatRowDuration = 0.32
+    static func entrance(reduceMotion: Bool) -> [Track] { [] }   // red stub
+    static let chipDriftScale = 1.0, heroSize = 108.0, headerAvatarSize = 0.0
+    enum Idle { static let breathPeriod = 0.0, breathScaleY = 0.0, breathScaleX = 0.0, blinkEvery = 0.0, blinkDuration = 0.0, tiltEvery = 0.0, tiltDegrees = 0.0, tiltDuration = 0.0, fps = 0.0 }
+    static func handoff(reduceMotion: Bool) -> [Track] {
+        if reduceMotion {
+            return [.init(id: "splash.fade", start: 0, end: reduceMotionCompleteAt, kind: .fade),
+                    .init(id: "chat.fade", start: reduceMotionCompleteAt, end: reduceMotionCompleteAt + 0.2, kind: .fade)]
+        }
+        return [
+            .init(id: "copy.fade", start: 0, end: 0.25, kind: .fade),
+            .init(id: "chips.gather", start: 0, end: 0.35, kind: .move),
+            .init(id: "cta.morph", start: 0.08, end: 0.56, kind: .move),
+            .init(id: "cat.jump", start: 0.12, end: completeOnboardingAt, kind: .move),
+        ] + (0..<chatRowCount).map { i in
+            let start = completeOnboardingAt + Double(i) * chatRowStep
+            return .init(id: "chat.row\(i)", start: start, end: start + chatRowDuration, kind: .move)
+        }
+    }
 
     static func composite(_ fg: UInt32, alpha: Double, over bg: UInt32) -> UInt32 {
         func ch(_ v: UInt32, _ s: UInt32) -> Double { Double((v >> s) & 255) }
