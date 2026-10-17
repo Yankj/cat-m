@@ -59,4 +59,21 @@ final class ConversationConsentPresentationTests:XCTestCase {
         guard let content=state.active?.content,case .image(let consent,let preview,let caption)=content else {return XCTFail("Original typed image review required")}
         XCTAssertEqual(consent,c);XCTAssertEqual(preview,bytes);XCTAssertTrue(caption.utf8.elementsEqual(raw.utf8))
     }
+
+    /// W1: the consent sheet shows the Gemini free-tier disclosure (may train / human review) when the route carries it.
+    func testConsentBodyShowsGeminiAndOpenCodeDisclosuresWithPolicyLinks() {
+        let gemini="If the Google Gemini route is used, Google may use it for training. See https://ai.google.dev/gemini-api/terms."
+        let route:[String:Any]=["gemini_disclosure":gemini,"opencode_disclosure":"OpenCode Zen notice","policy_urls":["https://ai.google.dev/gemini-api/terms","https://opencode.ai/legal/privacy-policy"]]
+        let body=NativeChatHTTPBackend.consentBody("Base notice",metadata:["route":route],ui:[:])
+        XCTAssertTrue(body.hasPrefix("Base notice"))
+        XCTAssertTrue(body.contains(gemini))
+        XCTAssertTrue(body.contains("OpenCode Zen notice"))
+        let g=body.range(of:gemini),o=body.range(of:"OpenCode Zen notice")
+        XCTAssertNotNil(g);XCTAssertNotNil(o)
+        if let g,let o { XCTAssertLessThan(g.lowerBound,o.lowerBound) }
+        XCTAssertTrue(body.contains("https://opencode.ai/legal/privacy-policy"))
+        let without=NativeChatHTTPBackend.consentBody("Base notice",metadata:["route":["policy_url":"https://openrouter.ai/privacy"]],ui:[:])
+        XCTAssertFalse(without.contains("Gemini"))
+        XCTAssertEqual(NativeChatHTTPBackend.consentBody("Already: \(gemini)",metadata:["route":["gemini_disclosure":gemini]],ui:[:]),"Already: \(gemini)")
+    }
 }

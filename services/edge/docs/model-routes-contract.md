@@ -102,6 +102,15 @@ OpenCode or changing models forces re-consent. With OpenCode configured the cons
 `opencode_disclosure` (messages and history are sent to OpenCode Zen, with its policy links) and the data field
 `prompt_and_history_sent_to_opencode_zen_free_models`; the consent screen must show that text and the policy URLs.
 
+With a Gemini key configured (Gemini is the auto default first route, `data_note: free_tier_may_train`) the consented
+route carries `gemini_disclosure` (`GEMINI_FREE_TIER_DISCLOSURE` in config.mjs: messages, history and memory context go to
+the Google Gemini API free tier, which may retain them, use them for training and have humans review them; link
+https://ai.google.dev/gemini-api/terms) and the data field `prompt_and_history_sent_to_google_gemini_free_tier`. The iOS
+consent sheet shows it before the OpenCode text (`NativeChatHTTPBackend.consentBody`). Because the disclosure is part of
+the hashed route, adding it or changing its wording changes `routeHash`, so every existing consent must be given again
+(`provider_consent_required` until the user re-consents). The alternative is a paid / zero-retention Gemini setup, in which
+case this disclosure should be revised in the same change.
+
 ## 6. Server configuration (env, no secrets returned)
 
 | Env | Meaning |
