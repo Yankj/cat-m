@@ -181,7 +181,10 @@ import UIKit
                                  micOverride: AnyView(HoldToTalkMic(dictation: dictation, size: size)))
             .onAppear { dictation.attach(model); dictation.onSend = { send() }; dictation.voice.language = AppLanguage(locale: locale) }
             .onChange(of: locale.identifier) { _, _ in dictation.voice.language = AppLanguage(locale: locale) }
-            .onDisappear { dictation.stopNow(); voiceChat.exit(.hostGone); voiceChatPresented = false }
+            // Presenting the full-screen voice view hides this host and fires onDisappear; exiting here closed voice
+            // mode the moment it opened. While the cover is up, sign-out / account / conversation switch / background
+            // still exit through their own observers below.
+            .onDisappear { guard !voiceChatPresented else { return }; dictation.stopNow(); voiceChat.exit(.hostGone); voiceChatPresented = false }
             // P1-3: never carry the conversation across a conversation switch (sign-out / account change: AccountChangeObservers).
             .onChange(of: model.conversationID) { _, _ in voiceChat.exit(.conversationChanged); voiceChatPresented = false }
             // Only a real background stops: the mic/speech permission alerts make the scene .inactive, and stopping there
