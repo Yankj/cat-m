@@ -116,6 +116,15 @@ extension ProactiveRules {
 }
 
 extension ProactiveRules {
+    /// p90i (#91 S1): the device gate applies only to locally produced decisions; a cloud decision already carries the
+    /// server's learned weights and is never downgraded a second time.
+    static func gatedLevel(_ level: ProactiveLevel, fromServer: Bool, confidence: Double, trigger: String = localTrigger,
+                           gate: ((String, Double, String) -> String)?) -> ProactiveLevel {
+        fromServer ? level : applyFeedbackGate(level, trigger: trigger, confidence: confidence, gate: gate)
+    }
+}
+
+extension ProactiveRules {
     /// A signal `data` field value (number / string / bool), as sent to and read by decision.mjs.
     enum SignalValue: Decodable, Equatable {
         case number(Double), string(String), bool(Bool)
@@ -159,11 +168,11 @@ extension ProactiveRules {
     /// Pre-scheduled notification fires when the user should start getting ready: start − lead (no fixed +5).
     static func prescheduleFire(start: Date, leadMinutes: Int) -> Date { start.addingTimeInterval(TimeInterval(-leadMinutes * 60)) }
     /// Level for the pre-scheduled notification: the cloud decision for the fire instant when available, else local rules;
-    /// then the learned feedback gate with the trigger's confidence. nil → don't schedule (silent / card).
+    /// then (local level only — p90i #91 S1) the learned feedback gate with the trigger's confidence. nil → don't schedule (silent / card).
     static func prescheduleDecision(cloud: ProactiveLevel?, leadMinutes: Int, trigger: String = localTrigger,
                                     gate: ((String, Double, String) -> String)?) -> ProactiveLevel? {
         let base = cloud ?? localLevel(minutesUntil: leadMinutes, leadMinutes: leadMinutes, travelMinutes: nil)
-        let level = applyFeedbackGate(base, trigger: trigger, confidence: localConfidence(trigger, leadMinutes, travelMinutes: nil), gate: gate)
+        let level = gatedLevel(base, fromServer: cloud != nil, confidence: localConfidence(trigger, leadMinutes, travelMinutes: nil), trigger: trigger, gate: gate)
         return level >= .notify ? level : nil
     }
 }
