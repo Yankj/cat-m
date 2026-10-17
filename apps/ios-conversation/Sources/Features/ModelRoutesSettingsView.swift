@@ -158,3 +158,58 @@ struct ModelRoutesSettingsView: View {
         return parts.joined(separator: " · ")
     }
 }
+
+/// chat-ux-1505 #1: native model Menu to the right of the chat title pill. Only server-allowed models; checkmark on the
+/// current one; haptic on change. Changing route asks the conversation to re-check provider consent (route_hash).
+struct ChatHeaderModelPicker: View {
+    @Environment(\.locale) private var uiLocale
+    @ObservedObject private var catalog = ModelRouteCatalog.shared
+    @AppStorage(ModelRouteSelection.routeKey) private var routeID = ModelRouteSelection.autoID
+    @AppStorage(ModelRouteSelection.modelKey) private var modelID = ""
+    @State private var changes = 0
+    let onChange: (_ routeChanged: Bool) -> Void
+    private func ui(_ key: String) -> String { AppLanguage(locale: uiLocale).ui(key) }
+    var body: some View {
+        let routes = catalog.routes, options = ModelPickerOptions.build(routes)
+        Menu {
+            ForEach(Array(Dictionary(grouping: options, by: \.route).sorted { $0.key == ModelRouteSelection.autoID || ($1.key != ModelRouteSelection.autoID && $0.key < $1.key) }), id: \.key) { group in
+                Section(group.key == ModelRouteSelection.autoID ? "" : catalog.displayName(group.key)) {
+                    ForEach(group.value) { o in
+                        Button { pick(o) } label: {
+                            if ModelPickerOptions.isSelected(o, route: routeID, model: modelID.isEmpty ? nil : modelID, routes: routes) { Label(o.route == ModelRouteSelection.autoID ? ui("自动") : o.label, systemImage: "checkmark") }
+                            else { Text(o.route == ModelRouteSelection.autoID ? ui("自动") : o.label) }
+                        }.disabled(!o.enabled).accessibilityIdentifier("chat.modelPicker." + o.id)
+                    }
+                }
+            }
+        } label: {
+            Image(systemName: "chevron.up.chevron.down").font(CatpawTypography.Role.caption.font.weight(.semibold))
+                .foregroundStyle(CatpawColors.secondary).frame(width: 30, height: 30)
+                .modifier(ModelPickerGlass())
+                .contentShape(Circle())
+        }
+        .menuOrder(.fixed)
+        .sensoryFeedback(.selection, trigger: changes)
+        .accessibilityLabel(ui("选择模型")).accessibilityIdentifier("chat.modelPicker")
+    }
+    private func pick(_ o: ModelPickerOption) {
+        let routeChanged = o.route != routeID
+        guard routeChanged || (o.model ?? "") != modelID else { return }
+        ModelRouteSelection.select(route: o.route, model: o.model)
+        routeID = o.route; modelID = o.model ?? ""
+        changes += 1; onChange(routeChanged)
+    }
+}
+private struct ModelPickerGlass: ViewModifier {
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    func body(content: Content) -> some View {
+        if reduceTransparency { content.background(CatpawColors.card, in: Circle()) }
+        else {
+            #if compiler(>=6.2)
+            if #available(iOS 26.0, *) { content.glassEffect(.regular, in: Circle()) } else { content.background(.ultraThinMaterial, in: Circle()) }
+            #else
+            content.background(.ultraThinMaterial, in: Circle())
+            #endif
+        }
+    }
+}
