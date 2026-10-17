@@ -1,6 +1,5 @@
 import {LIVE_VISION_ROUTE,LIVE_VISION_ROUTE_HASH,VISION_CATALOG_URL} from './live-vision-route.mjs';
 import {mapVisionMessages} from './vision-contract.mjs';
-import {stripMarkers} from './context-window.mjs';
 import { safeProviderFailure } from './provider-errors.mjs';
 import {matchesGemmaPrivateReview,checkGemmaReviewFrame} from './private-route-review.mjs';
 import { ApiError,check,clone,hash } from '../facade-r2/src/common.mjs';
@@ -73,7 +72,7 @@ export class OpenRouterProvider {
     if(reviewFrames)evidence.review_frame_validation=reviewFrames.validation;
     this.#observations.push(evidence);
     try {
-      const modelMessages=stripMarkers(images.length?mapVisionMessages(messages,images,vision_user_index):clone(messages)); // server-only markers never leave (context-window.mjs)
+      const modelMessages=images.length?mapVisionMessages(messages,images,vision_user_index):clone(messages);
       const payload={model:this.model,messages:[{role:'system',content:system_prompt},...modelMessages],...tools.length?{tools:clone(tools),tool_choice:'auto'}:{},stream:true,max_tokens:this.maxTokens,provider:clone(this.routingPolicy)};
       const fetchStarted=this.chatMetrics?.now();let firstText=false;
       response=await this.fetchImpl(this.endpoint,{method:'POST',redirect:'error',signal:controller.signal,
