@@ -1,132 +1,97 @@
 import SwiftUI
 import UIKit
 
-/// Launch splash matching docs/refs/launch-splash-keyframes.png.
-/// Soft beige canvas; four keyframes (~1.3 s), always completes:
-/// 0.0s 浮现 — cat-head mark emerges from the cream-only launch screen
-/// 0.3s 轻触 — solid cat-head mark forms
-/// 0.7s 呼吸 — slight scale-up + soft outer glow
-/// 1.1s 衔接 — merges into solid orange circle (white cat-head mark) with glow, then enters landing/main
-/// Soft spring-like eased windows. Reduce Motion: short fade of the final circle only.
-/// `toOrb`: next screen is onboarding — leave the circle in place for a seamless handoff to NativeLoginView.
+/// First-install launch mark (first-run-polish). ≤ 1.1 s, skippable (tap), VoiceOver → skipped, Reduce Motion → still
+/// mark + 0.25 s fade (`FirstRunAppearance.launch`).
+///
+/// Why 792587e stuttered: a full-frame-rate `TimelineView(.animation)` inside a `GeometryReader` rebuilt the whole tree
+/// every frame, including a full-screen `RadialGradient` whose opacity changed per frame and a `.blur(radius:)` circle whose
+/// FRAME changed per frame (the Gaussian blur is re-rasterised on every size change — the most expensive part), while the
+/// splash underneath started its own entrance plus ten 30 fps TimelineViews at the same moment.
+/// Now: no TimelineView / GeometryReader; one `keyframeAnimator` drives only scale/opacity of fixed-size layers (cheap to
+/// composite), the glow is a pre-sized radial-gradient disc (no blur), the canvas is a static colour, and the splash waits
+/// for `LaunchMarkView.didFinish` before starting its entrance.
 @MainActor struct LaunchMarkView: View {
     var restoring: Bool = false
-    /// true → next screen is onboarding: keep the merged circle; false → chat: fade the whole splash out.
+    /// Kept for API compatibility with the root gate (both now hand off with the same short fade).
     var toOrb: Bool = false
     var onFinished: () -> Void
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var start: Date?
+    @Environment(\.accessibilityVoiceOverEnabled) private var voiceOver
+    @State private var run = false
     @State private var finished = false
 
-    /// End of merge hold before calling `onFinished`.
-    static let total: Double = 1.45
+    /// True while a launch mark is on screen; the splash defers its entrance until `didFinish` is posted.
+    static private(set) var isRunning = false
+    static let didFinish = Notification.Name("CatpawLaunchMarkDidFinish")
+    static let size: CGFloat = 112
+
+    struct Frame { var mark = 0.82, markOpacity = 0.0, orb = 0.7, orbOpacity = 0.0, glow = 0.0 }
 
     var body: some View {
-        GeometryReader { geo in
-            TimelineView(.animation(paused: finished)) { context in
-                let t = reduceMotion ? Self.total : min(Self.total, start.map { context.date.timeIntervalSince($0) } ?? 0)
-                content(t: t, width: geo.size.width, height: geo.size.height)
-                    .onChange(of: t >= Self.total) { _, done in if done { finish() } }
+        let plan = FirstRunAppearance.launch(reduceMotion: reduceMotion, voiceOver: voiceOver)
+        ZStack {
+            Color("LaunchCanvas").ignoresSafeArea()
+            if case .full = plan {
+                Color.clear.keyframeAnimator(initialValue: Frame(), trigger: run) { _, f in mark(f) } keyframes: { _ in
+                    KeyframeTrack(\.markOpacity) { CubicKeyframe(1, duration: 0.25); LinearKeyframe(1, duration: 0.40); CubicKeyframe(0, duration: 0.2) }
+                    KeyframeTrack(\.mark) { SpringKeyframe(1.0, duration: 0.35, spring: .snappy); CubicKeyframe(1.05, duration: 0.3); CubicKeyframe(0.9, duration: 0.25) }
+                    KeyframeTrack(\.orbOpacity) { LinearKeyframe(0, duration: 0.6); CubicKeyframe(1, duration: 0.25) }
+                    KeyframeTrack(\.orb) { LinearKeyframe(0.7, duration: 0.6); SpringKeyframe(1.0, duration: 0.3, spring: .snappy) }
+                    KeyframeTrack(\.glow) { CubicKeyframe(0.6, duration: 0.35); CubicKeyframe(1, duration: 0.55) }
+                }
+            } else {
+                mark(Frame(mark: 1, markOpacity: 0, orb: 1, orbOpacity: 1, glow: 1))
             }
         }
-        .ignoresSafeArea()
+        .contentShape(Rectangle())
+        .onTapGesture { finish() }          // skippable
         .accessibilityHidden(true)
-        .allowsHitTesting(false)
-        .onAppear { if start == nil { start = Date() } }
+        .onAppear {
+            Self.isRunning = true
+            switch plan {
+            case .skip: finish(animated: false)
+            case .fade, .full: run = true
+            }
+        }
         .task {
-            try? await Task.sleep(nanoseconds: UInt64((reduceMotion ? 0.45 : Self.total + 0.25) * 1_000_000_000))
-            finish()
-            try? await Task.sleep(nanoseconds: 1_200_000_000)
+            let hold: Double
+            switch plan { case .skip: hold = 0; case .fade: hold = 0.3; case .full: hold = FirstRunAppearance.launchKeyframes[2] }
+            try? await Task.sleep(nanoseconds: UInt64(hold * 1_000_000_000))
             finish()
         }
     }
 
-    private func finish() {
+    private func mark(_ f: Frame) -> some View {
+        let s = Self.size
+        return ZStack {
+            Circle().fill(RadialGradient(colors: [CatpawColors.orbLight.opacity(0.32), CatpawColors.orbLight.opacity(0)], center: .center, startRadius: s * 0.3, endRadius: s * 1.05))
+                .frame(width: s * 2.1, height: s * 2.1)
+                .opacity(f.glow)
+            ZStack {
+                Circle().fill(RadialGradient(colors: [CatpawColors.orbLight, CatpawColors.orbDeep], center: UnitPoint(x: 0.38, y: 0.32), startRadius: 2, endRadius: s * 0.55))
+                BrandMark(size: s * 0.42, style: .onOrange)
+            }
+            .frame(width: s, height: s)
+            .scaleEffect(f.orb)
+            .opacity(f.orbOpacity)
+            BrandMark(size: s, style: .fill)
+                .scaleEffect(f.mark)
+                .opacity(f.markOpacity)
+        }
+        .compositingGroup()
+    }
+
+    private func finish(animated: Bool = true) {
         guard !finished else { return }
         finished = true
-        withAnimation(.easeOut(duration: reduceMotion ? 0.28 : 0.22)) { onFinished() }
-    }
-
-    private static func ease(_ x: Double) -> Double {
-        let c = min(1, max(0, x))
-        // Soft ease-out-cubic (spring-like settle without oscillation).
-        return 1 - pow(1 - c, 3)
-    }
-    private static func window(_ t: Double, _ a: Double, _ b: Double) -> Double {
-        guard b > a else { return t >= b ? 1 : 0 }
-        return min(1, max(0, (t - a) / (b - a)))
-    }
-
-    private func content(t: Double, width: CGFloat, height: CGFloat) -> some View {
-        let size = max(96, width * 0.28)
-        // 0.0 → 0.3 浮现：opacity + slight scale
-        let emerge = Self.ease(Self.window(t, 0.0, 0.30))   // fades in from the cream-only launch screen
-        // 0.3 → 0.55 轻触：reach full solid
-        let form = Self.ease(Self.window(t, 0.22, 0.45))
-        // 0.7 → 1.0 呼吸：scale + glow
-        let breathe = Self.ease(Self.window(t, 0.55, 0.85))
-        let breathPulse = 1 + 0.06 * breathe
-        // 1.1 → 1.35 衔接：circle blooms; mark turns white inside
-        let merge = Self.ease(Self.window(t, 1.05, 1.32))
-        // Chat exit: fade splash after merge. Onboarding: keep circle, fade only the pre-merge mark layer.
-        let exitFade = toOrb ? 1.0 : 1 - Self.ease(Self.window(t, 1.32, Self.total))
-        let markOpacity = (0.22 + 0.78 * form) * emerge * (1 - merge) * exitFade
-        let circleOpacity = merge * exitFade
-        let glowStrength = (0.15 + 0.55 * breathe + 0.35 * merge) * emerge * exitFade
-        let markScale = (0.88 + 0.12 * emerge) * breathPulse * (1 - 0.08 * merge)
-        let circleScale = 0.72 + 0.28 * merge
-
-        return ZStack {
-            ZStack {
-                Color("LaunchCanvas")
-                // Soft radial warm wash (matches cream/beige keyframes).
-                RadialGradient(
-                    colors: [
-                        CatpawColors.orbLight.opacity(0.22 * glowStrength),
-                        CatpawColors.calmPage.opacity(0),
-                    ],
-                    center: .center,
-                    startRadius: 4,
-                    endRadius: max(width, height) * 0.55
-                )
-            }
-            .opacity(toOrb ? 1 : exitFade)
-
-            // Soft outer glow behind mark / circle.
-            Circle()
-                .fill(CatpawColors.orbLight.opacity(0.35 * glowStrength))
-                .frame(width: size * (1.6 + 0.35 * breathe + 0.25 * merge))
-                .blur(radius: size * 0.28)
-                .opacity(emerge * exitFade)
-
-            // Merged brand circle (final keyframe + onboarding handoff).
-            ZStack {
-                Circle()
-                    .fill(
-                        RadialGradient(
-                            colors: [CatpawColors.orbLight, CatpawColors.orbDeep],
-                            center: UnitPoint(x: 0.38, y: 0.32),
-                            startRadius: 2,
-                            endRadius: size * 0.55
-                        )
-                    )
-                    .overlay(
-                        Circle()
-                            .fill(LinearGradient(colors: [CatpawColors.calmGlyph.opacity(0.32), .clear], startPoint: .top, endPoint: .center))
-                            .padding(size * 0.08)
-                    )
-                    .shadow(color: CatpawColors.orbDeep.opacity(0.38 * merge), radius: 18, y: 8)
-                BrandMark(size: size * 0.42, style: .onOrange)
-            }
-            .frame(width: size, height: size)
-            .scaleEffect(circleScale)
-            .opacity(circleOpacity)
-
-            // Pre-merge warm-orange cat-head mark (keyframes 1–3).
-            BrandMark(size: size, style: .fill)
-                .scaleEffect(markScale)
-                .opacity(markOpacity)
+        let fade: Double
+        switch FirstRunAppearance.launch(reduceMotion: reduceMotion, voiceOver: voiceOver) {
+        case .skip: fade = 0; case .fade(let d): fade = d; case .full(let total): fade = total - FirstRunAppearance.launchKeyframes[2]
         }
+        if animated && fade > 0 { withAnimation(.easeOut(duration: fade)) { onFinished() } } else { onFinished() }
+        Self.isRunning = false
+        NotificationCenter.default.post(name: Self.didFinish, object: nil)
     }
 }
 

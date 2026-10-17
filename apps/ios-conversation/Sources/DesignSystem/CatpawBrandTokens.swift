@@ -34,5 +34,6 @@ enum CatpawBrandTokens {
     static let clayShadow: UInt32 = 0x8A3A12
     static let panelLight: UInt32 = 0xF7F7F7
     static let panelDark: UInt32 = 0x181818
-    static let canvasDark: UInt32 = 0x0E0C0A  // SPEC-E unified dark canvas (LaunchScreen = landing = chat)
+    /// Dark canvas shared by LaunchCanvas, splash and chat (ink 17.2:1). Was 0x050505 (chat) vs 0x141210 (launch).
+    static let canvasDark: UInt32 = 0x0E0C0A
 }
