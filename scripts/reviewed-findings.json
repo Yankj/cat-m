@@ -1452,15 +1452,15 @@
     {
       "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
       "category": "deployment_public_key",
-      "line": 304,
-      "sha256": "1f4bb7bc6ad323068241456b757e61d273b4fef1ff9bf8a1bba4c6e8ec68bccd",
+      "line": 326,
+      "sha256": "3cf264ceb69e64bc16fa7058c9ad831d064446054d0b7a442a28678b4edbb729",
       "reason": "Reviewed named offline auth fixture: synthetic public-key/access-token markers and injected mock remotes only; no real credential or network request. Exact current bytes and line pinned."
     },
     {
       "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
       "category": "deployment_public_key",
-      "line": 486,
-      "sha256": "1f4bb7bc6ad323068241456b757e61d273b4fef1ff9bf8a1bba4c6e8ec68bccd",
+      "line": 508,
+      "sha256": "3cf264ceb69e64bc16fa7058c9ad831d064446054d0b7a442a28678b4edbb729",
       "reason": "Reviewed named offline auth fixture: synthetic public-key/access-token markers and injected mock remotes only; no real credential or network request. Exact current bytes and line pinned."
     },
     {
