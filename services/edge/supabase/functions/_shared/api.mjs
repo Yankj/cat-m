@@ -122,13 +122,13 @@ export async function createCloudRuntime({repository,authenticate,config,retain=
   const taskGate=config.taskTools??'on',uiGate=config.generativeUI??'off';
   if(proactiveStore&&taskGate!=='off')for(const [name,tool] of createTaskChatTools({service:createProactiveService({store:proactiveStore,verifyUser:async()=>{throw new ApiError(401,'session_required');}})}))registry.set(name,{...tool,offer:turn=>gate(taskGate,turn,'task_tools')});
   if(uiGate!=='off')registry.set(RENDER_UI,createRenderUITool({allow:turn=>gate(uiGate,turn,'generative_ui')}));
-  // catpaw.agent-memory.v1 (Wave 2 B1): CATPAW_AGENT_MEMORY_ENABLED default off; needs migration 20261016090000 (not applied).
+  // catpaw.agent-memory.v1 (Wave 2 B1): CATPAW_AGENT_MEMORY_ENABLED default on (allowlist/off honored; BLOCKLIST_SUBJECTS wins); needs migration 20261016090000 (not applied).
   const memoryGate=config.agentMemory??'off';
   if(agentMemoryStore&&memoryGate!=='off'){const service=createAgentMemoryService({store:agentMemoryStore,allow:uid=>featureAllows(memoryGate,config.featureAllowlist,uid,enrolled,'agent_memory'),verifyUser:typeof verifyToken==='function'?h=>verifyToken(h):null,schedulerSecret:config.schedulerSecret??null,...agentMemoryOptions});
    runtime.facade.agentMemory=service;runtime.agentMemory=service;for(const [name,tool] of createAgentMemoryChatTools({service}))registry.set(name,tool);}
-  // proactive_suggestion SSE (catpaw.proactive.decision.v1): CATPAW_PROACTIVE_SUGGESTIONS_SSE_ENABLED default off; needs migrations 20261016030000 + 20261016040000.
+  // proactive_suggestion SSE (catpaw.proactive.decision.v1): CATPAW_PROACTIVE_SUGGESTIONS_SSE_ENABLED default on (allowlist/off honored; BLOCKLIST_SUBJECTS wins); needs migrations 20261016030000 + 20261016040000.
   const suggestionGate=config.proactiveSuggestionsSSE??'off';if(proactiveStore&&suggestionGate!=='off')runtime.facade.proactiveSuggestions=createSuggestionFeed({store:proactiveStore,allow:uid=>featureAllows(suggestionGate,config.featureAllowlist,uid,enrolled,'proactive')});
-  // catpaw.device.v1 (Wave 2 B3): CATPAW_DEVICE_TOOLS_ENABLED default off; client opts in with X-Catpaw-Device-Contract.
+  // catpaw.device.v1 (Wave 2 B3): CATPAW_DEVICE_TOOLS_ENABLED default on (allowlist/off honored; BLOCKLIST_SUBJECTS wins); client opts in with X-Catpaw-Device-Contract.
   const deviceGate=config.deviceTools??'off';if(deviceGate!=='off')for(const [name,tool] of createDeviceTools({allow:turn=>gate(deviceGate,turn,'device_tools')}))registry.set(name,tool);
   if(registry.size)runtime.facade.gatedChatTools=registry;}
  runtime.facade.acceptedWorkExecutionReady=ACCEPTED_WORK_EXECUTION_CAPABILITY.executor==='bounded_single_step_v1'&&ACCEPTED_WORK_EXECUTION_CAPABILITY.model===true&&ACCEPTED_WORK_EXECUTION_CAPABILITY.public_source===true&&ACCEPTED_WORK_EXECUTION_CAPABILITY.local_continuation===true&&ACCEPTED_WORK_EXECUTION_CAPABILITY.terminal_ack===true; // Maintained composition, not model/scheduler/device acceptance.
