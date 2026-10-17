@@ -2153,6 +2153,34 @@
       "reason": "final-513a1b1 B1 re-pin: line 102 bytes unchanged (masked k-or-xxxxxxxx / k-ag-xxxxxxxx env stub, no real credential); file changed only to pass consent to the Agnes fallback test.",
       "reviewed_utc_date": "2026-10-17",
       "reviewer": "Grok Bot"
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
+      "category": "deployment_public_key",
+      "line": 361,
+      "sha256": "28a8b0192a0b33f40b7b5ef8c6ea5f12e65e4a37af43e2db4dd722e6a0df9f54",
+      "reason": "Reviewed named offline auth fixture: synthetic public-key/access-token markers and injected mock remotes only; no real credential or network request. Exact current bytes and line pinned. Re-pinned 2026-10-17 after appending the PR91 p91c-1 XCTest at the end of the file (same synthetic markers, same lines)."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
+      "category": "deployment_public_key",
+      "line": 603,
+      "sha256": "28a8b0192a0b33f40b7b5ef8c6ea5f12e65e4a37af43e2db4dd722e6a0df9f54",
+      "reason": "Reviewed named offline auth fixture: synthetic public-key/access-token markers and injected mock remotes only; no real credential or network request. Exact current bytes and line pinned. Re-pinned 2026-10-17 after appending the PR91 p91c-1 XCTest at the end of the file (same synthetic markers, same lines)."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
+      "category": "secret_assignment_review",
+      "line": 237,
+      "sha256": "28a8b0192a0b33f40b7b5ef8c6ea5f12e65e4a37af43e2db4dd722e6a0df9f54",
+      "reason": "Reviewed named offline auth fixture: synthetic public-key/access-token markers and injected mock remotes only; no real credential or network request. Exact current bytes and line pinned. Re-pinned 2026-10-17 after appending the PR91 p91c-1 XCTest at the end of the file (same synthetic markers, same lines)."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
+      "category": "secret_assignment_review",
+      "line": 638,
+      "sha256": "28a8b0192a0b33f40b7b5ef8c6ea5f12e65e4a37af43e2db4dd722e6a0df9f54",
+      "reason": "Reviewed named offline auth fixture: synthetic public-key/access-token markers and injected mock remotes only; no real credential or network request. Exact current bytes and line pinned. Re-pinned 2026-10-17 after appending the PR91 p91c-1 XCTest at the end of the file (same synthetic markers, same lines)."
     }
   ]
 }

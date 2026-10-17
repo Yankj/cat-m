@@ -701,3 +701,28 @@ private final class PR91CallOrder:@unchecked Sendable {
     func add(_ value:String){lock.lock();values.append(value);lock.unlock()}
     var calls:[String] {lock.lock();defer{lock.unlock()};return values}
 }
+
+/// Restored PR91 p91c-1 (appended as an extension so the reviewed scan line pins above stay put).
+extension NativeAuthApplicationLifecycleTests {
+    /// PR91 p91c-1 (restored from the dropped PR91ProactiveNativeTests): an undo whose account token expired (sign-out /
+    /// switch) never deletes a system reminder — the EventKit delete count stays 0.
+    @MainActor func testPR91ExpiredTokenNeverDeletesSystemReminder() async throws {
+        let id="pr91-stale-"+UUID().uuidString
+        AccountEpoch.shared.activate(account:UUID().uuidString)
+        defer {AccountEpoch.shared.signOut()}
+        ProactiveEngine.shared.recordPendingReminderForTest(id,operationID:"op-"+UUID().uuidString)
+        let stale=AccountEpoch.shared.capture()
+        XCTAssertNotNil(stale)
+        AccountEpoch.shared.signOut()   // token expiry
+        XCTAssertFalse(AccountEpoch.shared.isValid(stale))
+        let before=ProactiveEngine.shared.reminderDeletes
+        var threw=false
+        do {try await ProactiveEngine.shared.removeReminderChecked(id,token:stale)} catch {threw=true}
+        XCTAssertTrue(threw,"expired token ⇒ not reported as undone")
+        XCTAssertEqual(ProactiveEngine.shared.reminderDeletes-before,0,"no EventKit delete with an expired token")
+        threw=false
+        do {try await ProactiveEngine.shared.removeReminderChecked(id,token:nil)} catch {threw=true}
+        XCTAssertTrue(threw)
+        XCTAssertEqual(ProactiveEngine.shared.reminderDeletes-before,0,"no EventKit delete when signed out")
+    }
+}
