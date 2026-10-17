@@ -576,7 +576,7 @@ import CatpawImageComposer
         }
         .onReceive(NotificationCenter.default.publisher(for:UIApplication.willEnterForegroundNotification)) { _ in proactiveFeed.refreshSoon() }
         #if canImport(ActivityKit) && os(iOS)
-        .task { guard !launchShell else {return}; await CatpawLiveActivityCoordinator.shared.observe(model.service) { [model] in model.conversationID } }
+        .task { guard !launchShell else {return}; await CatpawLiveActivityCoordinator.shared.observe(model.service, conversationID: { [model] in model.conversationID }, taskText: { [model] in model.session?.messages.last(where: { $0.role == .user })?.content }) }
         .task { await CatpawLiveActivityCoordinator.shared.acceptanceProbe() }
         .onChange(of: scene) { _, phase in   // chat-ux-1505 #4a: keep the Live Activity honest across background/relaunch
             #if canImport(ActivityKit) && os(iOS)

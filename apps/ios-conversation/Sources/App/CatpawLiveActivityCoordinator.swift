@@ -114,16 +114,29 @@ import UIKit
     private func ui(_ key: String, _ arguments: [String] = []) -> String { AppLanguage(locale: .current).ui(key, arguments: arguments) }
 
     /// Runs until the calling task is cancelled (attach with SwiftUI `.task`).
-    func observe(_ service: ConversationSessionService, conversationID: @escaping @MainActor () -> UUID?) async {
+    /// `taskText`: the conversation's latest user message, read once when a turn starts — it becomes the activity title.
+    func observe(_ service: ConversationSessionService, conversationID: @escaping @MainActor () -> UUID?,
+                 taskText: @escaping @MainActor () -> String? = { nil }) async {
         observePushToStartTokens()
         let stream = await service.turnEvents()
         for await event in stream {
             if Task.isCancelled { break }
-            handle(event, conversationID: conversationID())
+            var text: String? = nil
+            if case .started = event.payload { text = taskText() }
+            handle(event, conversationID: conversationID(), taskText: text)
         }
     }
 
-    func handle(_ event: ConversationTurnEvent, conversationID: UUID?) {
+    /// Lock-screen / Dynamic Island title from the user's own words: first non-empty line, whitespace collapsed, at most
+    /// `taskTitleLimit` characters (then 「…」). Nil for empty input → the widget's 「Catpaw 正在处理」 fallback.
+    static let taskTitleLimit = 24
+    nonisolated static func taskTitle(_ raw: String?) -> String? {
+        guard let raw else { return nil }
+        guard let line = raw.split(whereSeparator: \.isNewline).lazy.map({ $0.split(whereSeparator: \.isWhitespace).joined(separator: " ") }).first(where: { !$0.isEmpty }) else { return nil }
+        return line.count <= taskTitleLimit ? line : String(line.prefix(taskTitleLimit - 1)) + "…"
+    }
+
+    func handle(_ event: ConversationTurnEvent, conversationID: UUID?, taskText: String? = nil) {
         let id = event.operationID
         guard let phase = CatpawWorkPhase.from(event.payload) else { return }
         let body = ui(phase.bodyKey.key, phase.bodyKey.arguments)
@@ -138,6 +151,7 @@ import UIKit
         }
         if case .started = event.payload, turns[id] == nil {
             var turn = Turn(conversationID: conversationID?.uuidString ?? "", body: body)
+            turn.summary = Self.taskTitle(taskText)
             turn.timer = Task { [weak self] in
                 try? await Task.sleep(nanoseconds: UInt64(Self.longTurnThreshold * 1_000_000_000))
                 guard !Task.isCancelled else { return }
@@ -166,7 +180,7 @@ import UIKit
     /// Exactly the backend `content-state` shape `{title, body, kind, taskID}`.
     private func state(_ id: UUID, _ turn: Turn, _ kind: String, endedAt: Date? = nil) -> CatpawWorkAttributes.ContentState {
         // ux-round-1505: startedAt drives the on-device timer, step = honest dot count, tool → spoken verb in the widget.
-        // summary (the task title) stays nil until the turn's user text is plumbed in; widget falls back to 「Catpaw 正在处理」.
+        // summary = the user's task text (taskTitle); nil only when the turn had none → widget falls back to 「Catpaw 正在处理」.
         .init(title: ui("Catpaw 正在工作"), body: turn.body, kind: kind, taskID: id.uuidString,
               startedAt: turn.startedAt, endedAt: endedAt, step: turn.step > 0 ? turn.step : nil, tool: turn.tool, summary: turn.summary)
     }

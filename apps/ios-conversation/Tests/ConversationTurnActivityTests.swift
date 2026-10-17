@@ -129,3 +129,17 @@ final class CatpawWorkContentStateCompatibilityTests: XCTestCase {
         XCTAssertEqual(try JSONDecoder().decode(CatpawWorkAttributes.ContentState.self, from: data), s)
     }
 }
+
+/// chat-ux-1505 follow-up: the Live Activity title is the user's task text, not always 「Catpaw 正在处理」.
+final class CatpawLiveActivityTaskTitleTests: XCTestCase {
+    func testTaskTitleIsFirstLineCollapsedAndTruncated() {
+        XCTAssertEqual(CatpawLiveActivityCoordinator.taskTitle("附近有哪些适合办公的咖啡馆？"), "附近有哪些适合办公的咖啡馆？")
+        XCTAssertEqual(CatpawLiveActivityCoordinator.taskTitle("\n  帮我  起草周报 \n第二行细节"), "帮我 起草周报")
+        let long = String(repeating: "很", count: 40)
+        let t = CatpawLiveActivityCoordinator.taskTitle(long)
+        XCTAssertEqual(t?.count, CatpawLiveActivityCoordinator.taskTitleLimit)
+        XCTAssertEqual(t?.hasSuffix("…"), true)
+        XCTAssertNil(CatpawLiveActivityCoordinator.taskTitle("  \n \n"))
+        XCTAssertNil(CatpawLiveActivityCoordinator.taskTitle(nil))
+    }
+}
