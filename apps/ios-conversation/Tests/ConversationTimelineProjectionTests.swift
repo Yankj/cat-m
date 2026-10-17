@@ -24,12 +24,27 @@ final class ConversationTimelineProjectionTests:XCTestCase {
         XCTAssertEqual(ConversationInteractionOutcome.device(callID:call.callID,interruptID:call.interruptID,turn:t,toolResult:#"{"status":"user_declined","device_status":"cancelled"}"#),.declined,"new server wording")
         XCTAssertEqual(ConversationInteractionOutcome.device(callID:call.callID,interruptID:call.interruptID,turn:t,toolResult:#"{"status":"cancelled"}"#),.declined,"v49 wording")
         XCTAssertEqual(ConversationInteractionOutcome.device(callID:call.callID,interruptID:call.interruptID,turn:t,toolResult:#"{"status":"ok","data":{}}"#),.done)
-        XCTAssertEqual(ConversationInteractionOutcome.device(callID:call.callID,interruptID:call.interruptID,turn:t,toolResult:#"{"status":"pending_timeout"}"#),.expired)
+        XCTAssertEqual(ConversationInteractionOutcome.device(callID:call.callID,interruptID:call.interruptID,turn:t,toolResult:#"{"status":"pending_timeout"}"#),.unverified,"P1-5: timeout is unknown, not 未执行")
         t.state = .failed;t.interactionDecisions=[call.interruptID:"cancelled"]
         XCTAssertEqual(ConversationInteractionOutcome.device(callID:call.callID,interruptID:call.interruptID,turn:t,toolResult:nil),.cancelled,"stopped / superseded turn")
         t.interactionDecisions=nil
         XCTAssertEqual(ConversationInteractionOutcome.device(callID:call.callID,interruptID:call.interruptID,turn:t,toolResult:nil),.notExecuted,"ended turn without any result")
         t.interactionDecisions=["i1":"denied"];XCTAssertEqual(ConversationInteractionOutcome.approval(interruptID:"I1",turn:t),.declined,"approval decisions are case-insensitive by interrupt id")
+    }
+    /// P1-4: server interaction_outcomes win over the local journal; a late but real create never shows 已取消.
+    func testServerOutcomesWinOverJournal() {
+        var t=turn(state:.failed)
+        let call=ConversationDeviceCall(interruptID:"04b72ebd-ee3c-4032-82c3-92a5d6277a4e",callID:"call_late",tool:"calendar_create",args:Data("{}".utf8),confirm:"card",ttlSec:600,argsHash:String(repeating:"a",count:64),expiresAt:"2026-10-17T07:28:05Z")
+        t.deviceCallLog=[call];t.interactionDecisions=[call.interruptID:"cancelled"]
+        XCTAssertEqual(ConversationInteractionOutcome.device(callID:call.callID,interruptID:call.interruptID,turn:t,toolResult:nil),.cancelled)
+        t.serverOutcomes=[call.callID:.init(outcome:"ok",late:true,ttlExceeded:false)]
+        XCTAssertEqual(ConversationInteractionOutcome.device(callID:call.callID,interruptID:call.interruptID,turn:t,toolResult:nil),.doneLate)
+        t.serverOutcomes=[call.callID:.init(outcome:"ok")]
+        XCTAssertEqual(ConversationInteractionOutcome.device(callID:call.callID,interruptID:call.interruptID,turn:t,toolResult:#"{"status":"pending_timeout"}"#),.done)
+        t.serverOutcomes=nil;t.interactionDecisions=[call.interruptID:"expired"]
+        XCTAssertEqual(ConversationInteractionOutcome.device(callID:call.callID,interruptID:call.interruptID,turn:t,toolResult:nil),.unverified,"server-expired device card")
+        let parsed=ConversationServerOutcome.parse([["call_id":"a","outcome":"ok","late":true,"ttl_exceeded":true],["outcome":"ok"],"junk"] as [Any])
+        XCTAssertEqual(parsed,["a":.init(outcome:"ok",late:true,ttlExceeded:true)])
     }
     /// Journals written before chat-context-1522 decode with the new logs absent.
     func testLegacyJournalTurnDecodesWithoutInteractionLogs() throws {
