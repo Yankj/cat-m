@@ -368,7 +368,7 @@ import CatpawImageComposer
                                     .background(ConversationReadingAnchorMarker(id:row.id,context:readingAnchorContext,coordinator:readingAnchor).accessibilityHidden(true)).id(row.id)
                                     .transition(row.isUserMessage && !reduceMotion ? .catpawSendRise : .opacity)
                             }
-                            if let pending = session.turns.last, [.dispatched,.running].contains(pending.state), !pending.awaitingApproval, pending.assistantMessageID == nil, !composerChrome.stoppedOperations.contains(pending.id),
+                            if let pending = session.turns.last, [.dispatched,.running].contains(pending.state), pending.assistantMessageID == nil, !composerChrome.stoppedOperations.contains(pending.id),
                                !session.messages.contains(where:{ $0.role == .assistant && !$0.complete }) {
                                 PendingThinkingRow(service:model.service,turn:pending).id("pending-\(pending.id)").padding(.top,12)
                             }
@@ -417,6 +417,7 @@ import CatpawImageComposer
                 }.scrollDismissesKeyboard(.interactively)
                     .r9TopAlignedTranscript()
                     .accessibilityIdentifier("chat.transcript")
+                    .environment(\.statusLineScrollToCard, { withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.3)) { proxy.scrollTo(StatusLineCardAnchor.id, anchor: .center) } })
                     .onChange(of: model.session?.messages.last?.content) { _, _ in scheduleScroll(proxy) }
                     .onChange(of: displayMessages.count) { _, _ in scheduleScroll(proxy) }
                     .onChange(of:model.conversationID) { _,_ in

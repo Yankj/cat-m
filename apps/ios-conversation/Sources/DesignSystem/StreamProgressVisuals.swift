@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// Three ink dots that shimmer in sequence. Reduce Motion → static "…".
 /// Used for in-progress / streaming reply affordances (no status-text pile).
@@ -73,3 +74,156 @@ struct WorkingShimmer: ViewModifier {
     }
 }
 extension View { func workingShimmer(_ active: Bool = true) -> some View { modifier(WorkingShimmer(active: active)) } }
+
+// MARK: - status-line v1.0 visual SPEC (/workspace/codex-review/status-line/visual/SPEC.md §1–§11). Deployment target is iOS 17.
+
+/// Low Power Mode as an observable flag (SPEC §10: same path as Reduce Motion).
+@MainActor final class LowPowerObserver: ObservableObject {
+    static let shared = LowPowerObserver()
+    @Published private(set) var enabled = ProcessInfo.processInfo.isLowPowerModeEnabled
+    private var token: NSObjectProtocol?
+    private init() {
+        token = NotificationCenter.default.addObserver(forName: .NSProcessInfoPowerStateDidChange, object: nil, queue: .main) { _ in
+            Task { @MainActor in LowPowerObserver.shared.enabled = ProcessInfo.processInfo.isLowPowerModeEnabled }
+        }
+    }
+}
+
+/// SPEC §5. Text-only sweep: the same text overlaid in `ink`, masked by a soft band tilted 20°.
+/// 1.3 s eased sweep + 0.7 s pause; band clamp(0.35w, 44, 120); peak 0.9; 30 fps; clock does not reset on text change.
+@MainActor struct StatusShimmer: ViewModifier {
+    var active: Bool
+    var start: Date
+    var highlight: Color = CatpawColors.ink
+    static let sweep: Double = 1.3, pause: Double = 0.7
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.scenePhase) private var scenePhase
+    @ObservedObject private var lowPower = LowPowerObserver.shared
+
+    func body(content: Content) -> some View {
+        if !active || reduceMotion || lowPower.enabled || scenePhase != .active {
+            content
+        } else {
+            TimelineView(.animation(minimumInterval: 1.0 / 30)) { ctx in
+                let t = ctx.date.timeIntervalSince(start).truncatingRemainder(dividingBy: Self.sweep + Self.pause)
+                let p = t < Self.sweep ? Self.ease(t / Self.sweep) : 1.0
+                content.overlay {
+                    GeometryReader { g in
+                        let w = g.size.width
+                        let band = min(120, max(44, w * 0.35))
+                        let x = -band + (w + 2 * band) * p
+                        content
+                            .foregroundStyle(highlight)
+                            .mask(alignment: .leading) {
+                                LinearGradient(stops: [.init(color: .clear, location: 0),
+                                                       .init(color: .black.opacity(0.9), location: 0.5),
+                                                       .init(color: .clear, location: 1)],
+                                               startPoint: UnitPoint(x: 0, y: 0.32), endPoint: UnitPoint(x: 1, y: 0.68))
+                                    .frame(width: band, height: g.size.height)
+                                    .offset(x: x - band / 2)
+                            }
+                            .opacity(t < Self.sweep ? 1 : 0)
+                    }
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+                }
+            }
+        }
+    }
+    /// cubic-bezier(0.4, 0, 0.2, 1)
+    static func ease(_ x: Double) -> Double {
+        UnitCurve.bezier(startControlPoint: UnitPoint(x: 0.4, y: 0), endControlPoint: UnitPoint(x: 0.2, y: 1)).value(at: min(1, max(0, x)))
+    }
+}
+
+/// SPEC §1–§4, §6–§8, §10–§11: icon slot + one line, crossfade with ±3pt drift, static waiting / failed / stopped.
+@MainActor struct StatusLineRow<Trailing: View>: View {
+    let phase: StatusLinePhase
+    var en = false
+    /// Turn start, for the shimmer clock and the Reduce Motion / Low Power elapsed time.
+    var startedAt: Date
+    /// e.g. 「 · 已完成 2 步」 on stopped rows.
+    var suffix: String? = nil
+    var onTap: (() -> Void)? = nil
+    @ViewBuilder var trailing: () -> Trailing
+
+    @ScaledMetric(relativeTo: .subheadline) private var slot: CGFloat = 20
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var dts
+    @ObservedObject private var lowPower = LowPowerObserver.shared
+    @State private var nudge = 0
+    @State private var announcer = StatusLineAnnouncementThrottle()
+    @State private var lastCategory: String?
+
+    private var calm: Bool { reduceMotion || lowPower.enabled }
+    private var kind: StatusLinePhase.Kind { phase.kind }
+    private var title: String { phase.title(en: en) + (suffix ?? "") }
+    private var textColor: Color { kind == .waiting ? CatpawColors.ink : CatpawColors.calmSecondary }
+    private var iconColor: Color {
+        switch kind { case .waiting: return CatpawColors.ink; case .failed: return CatpawColors.failure; default: return CatpawColors.calmSecondary }
+    }
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 6) {
+            Image(systemName: phase.symbol)
+                .font(.footnote.weight(.medium)).imageScale(.medium)
+                .symbolRenderingMode(.monochrome).foregroundStyle(iconColor)
+                .frame(width: slot)
+                .contentTransition(calm ? .opacity : .symbolEffect(.replace.downUp))
+                .symbolEffect(.bounce.down, options: .nonRepeating, value: nudge)
+                .accessibilityHidden(true)
+            ZStack(alignment: .leading) {
+                Text(title)
+                    .font(CatpawTypography.Role.secondary.font.weight(kind == .waiting ? .medium : .regular))
+                    .foregroundStyle(textColor)
+                    .lineLimit(dts.isAccessibilitySize ? 2 : 1).truncationMode(.tail)
+                    .modifier(StatusShimmer(active: kind == .working, start: startedAt))
+                    .accessibilityLabel(phase.accessibilityTitle(en: en) + (suffix ?? ""))
+                    .accessibilityValue(kind == .working ? "\(max(0, Int(Date().timeIntervalSince(startedAt))))s" : "")
+                    .accessibilityAddTraits(kind == .working ? .updatesFrequently : [])
+                    .id(title)
+                    .transition(calm ? .opacity : .asymmetric(insertion: .opacity.combined(with: .offset(y: 3)),
+                                                              removal: .opacity.combined(with: .offset(y: -3))))
+            }
+            if calm && kind == .working {
+                // SPEC §10: liveness without motion — static elapsed time after 3 s, 1 Hz.
+                TimelineView(.periodic(from: .now, by: 1)) { ctx in
+                    let secs = Int(ctx.date.timeIntervalSince(startedAt))
+                    if secs >= 3 {
+                        Text("· \(secs)s").font(CatpawTypography.Role.secondary.font).monospacedDigit()
+                            .foregroundStyle(CatpawColors.calmSecondary).accessibilityHidden(true)
+                    }
+                }
+            }
+            Spacer(minLength: 0)
+            trailing()
+        }
+        .frame(minHeight: 32)
+        .contentShape(Rectangle())
+        .onTapGesture { onTap?() }
+        .animation(calm ? .easeInOut(duration: 0.15) : .easeInOut(duration: 0.22), value: title)
+        .task(id: kind) {
+            // SPEC §7: one nudge 0.35 s after waiting appears; never in Reduce Motion / Low Power.
+            guard kind == .waiting, !calm else { return }
+            try? await Task.sleep(for: .milliseconds(350))
+            if !Task.isCancelled { nudge += 1 }
+        }
+        .onAppear { announce() }
+        .onChange(of: phase) { _, _ in announce() }
+        .accessibilityElement(children: .contain)
+    }
+
+    /// SPEC §11: announce only on a category change, ≤ 1 per 2 s; waiting / failed always, high priority; working low.
+    private func announce() {
+        guard UIAccessibility.isVoiceOverRunning else { lastCategory = phase.category; return }
+        let category = phase.category
+        guard category != lastCategory else { return }
+        lastCategory = category
+        let attention = kind == .waiting || kind == .failed
+        guard attention || announcer.allow(at: Date()) else { return }
+        if attention { _ = announcer.allow(at: Date()) }
+        var text = AttributedString(phase.accessibilityTitle(en: en))
+        text.accessibilitySpeechAnnouncementPriority = attention ? .high : .low
+        AccessibilityNotification.Announcement(text).post()
+    }
+}
