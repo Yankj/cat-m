@@ -6738,5 +6738,9 @@
   "打开 Catpaw 查看结果": {
     "en": "Open Catpaw to see the result",
     "zh-Hans": "打开 Catpaw 查看结果"
+  },
+  "发送失败": {
+    "en": "Not sent",
+    "zh-Hans": "发送失败"
   }
 }

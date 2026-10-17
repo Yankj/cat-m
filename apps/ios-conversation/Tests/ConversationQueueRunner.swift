@@ -224,9 +224,9 @@ actor QueueEditBackend:ConversationBackend {
         try check(!second,"second sync is a no-op")
         // Busy (turn_failed rate_limited): automatic retries restart the SAME turn (server busy-restart, limit 3),
         // exponential backoff with jitter unless the server sent retry_after; status for "模型繁忙，正在重试（n/3）".
-        try check(ConversationSessionService.busyRetryDelay(attempt:1,retryAfterSeconds:nil,jitter:0)==2 && ConversationSessionService.busyRetryDelay(attempt:2,retryAfterSeconds:nil,jitter:0)==4 && ConversationSessionService.busyRetryDelay(attempt:3,retryAfterSeconds:nil,jitter:0)==8,"backoff doubles per attempt")
+        try check(ConversationSessionService.busyRetryDelay(attempt:1,retryAfterSeconds:nil,jitter:0)==5 && ConversationSessionService.busyRetryDelay(attempt:2,retryAfterSeconds:nil,jitter:0)==15 && ConversationSessionService.busyRetryDelay(attempt:3,retryAfterSeconds:nil,jitter:0)==30,"backoff is 5 s, 15 s, 30 s")
         let jittered=ConversationSessionService.busyRetryDelay(attempt:2,retryAfterSeconds:nil,jitter:0.9)
-        try check(jittered>4 && jittered<6,"jitter stretches the delay by at most 50%")
+        try check(jittered==15,"no jitter: the card counts down to the real due time")
         try check(ConversationSessionService.busyRetryDelay(attempt:3,retryAfterSeconds:7,jitter:0)==7,"server retry_after wins over backoff")
         try check(ConversationSessionService.busyRetryDelay(attempt:9,retryAfterSeconds:nil,jitter:0)==30,"backoff is capped")
         let bb=QueueBusyBackend(),bs=ConversationSessionService(repository:repo,backend:bb),bc=try await bs.create(scope:Profiles.user)
@@ -256,6 +256,33 @@ actor QueueEditBackend:ConversationBackend {
         let ticked=await cs.foregroundTick(scope:Profiles.user,conversationID:cc)
         let cancelRestarts=await cb.restarts
         try check(cancelled?.automatic==false && cancelRestarts==0 && !ticked,"user cancel stops automatic retries")
+        // Image-upload rate-limit fix: a terminal (admitted, server-failed) turn never pauses the queue.
+        let tc=try await service.create(scope:Profiles.user)
+        let tq=ConversationFollowupQueueService(repository:repo,scope:Profiles.user,conversationID:tc)
+        let failedImage=ConversationFollowup(text:"这张图里有什么？一句话"),nextImage=ConversationFollowup(text:"这张呢？一句话")
+        try await tq.enqueue(failedImage);try await tq.enqueue(nextImage)
+        let tlog=QueueSendLog()
+        try await tq.flush { message in await tlog.send(message);return message.id == failedImage.id ? .failedTerminal : .sent }
+        let tstate=try await tq.state(),tsent=await tlog.captured()
+        try check(!tstate.paused && tstate.pending.isEmpty && tstate.inflight == nil && tsent == [failedImage.id,nextImage.id],"rate_limited turn does not pause the queue; the next message goes out (supersedes it)")
+        // A queue persisted as paused (recovery) behind a terminal failure is unpaused on launch.
+        let stuck=ConversationFollowup(text:"待发送")
+        do { try await tq.flush { _ in throw CatpawError.unavailable("rate_limited") } } catch { }
+        try await tq.enqueue(stuck)
+        do { try await tq.flush { _ in throw CatpawError.unavailable("rate_limited") } } catch { }
+        try await tq.enqueue(ConversationFollowup(text:"第二条"))
+        let pausedState=try await tq.state()
+        try check(pausedState.paused && pausedState.pauseReason == .recovery,"precondition: a thrown send leaves a recovery pause")
+        var failedSession=ConversationSession(scope:Profiles.user,conversationID:tc)
+        var failedTurn=ConversationTurnRecord(id:stuck.id,request:ConversationTurnRequest(scope:Profiles.user,conversationID:tc,threadID:nil,operationID:stuck.id,epoch:1,history:[]),state:.failed,lastSequence:3,error:"rate_limited")
+        failedTurn.retryAfterSeconds=nil;failedSession.turns=[failedTurn]
+        let relaunched=ConversationFollowupQueueService(repository:try Repository(persistence:FilePersistence(url:path)),scope:Profiles.user,conversationID:tc)
+        let recovered=try await relaunched.recoverFromTerminalFailure(session:failedSession)
+        let afterLaunch=try await relaunched.state()
+        try check(recovered && !afterLaunch.paused && afterLaunch.pauseReason == nil && afterLaunch.pending.count == 1,"launch unpauses a queue stuck behind a terminal failure")
+        try await relaunched.pause()
+        let userPauseKept = try await relaunched.recoverFromTerminalFailure(session:failedSession)
+        try check(!userPauseKept,"a user pause is never undone by the launch recovery")
         print("EVIDENCE: migrated public queue behavior; transport actions in tests are explicit test closures")
     }
 }

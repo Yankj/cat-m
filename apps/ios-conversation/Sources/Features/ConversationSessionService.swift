@@ -23,14 +23,12 @@ public actor ConversationSessionService {
     /// Automatic busy retries already spent per turn (server restarts the SAME turn in place, limit 3).
     private var autoRetryCounts: [UUID: Int] = [:]
     private var busyRetryCancelled: Set<UUID> = []
-    public static let maxAutomaticBusyRetries = 3
-    /// Exponential backoff with jitter for automatic busy retries; a server `retry_after_seconds` wins.
-    /// attempt is 1-based; jitter in 0..<1 (injected for tests).
+    public static let maxAutomaticBusyRetries = ConversationBusyRetryPolicy.maxAttempts
+    /// Automatic busy retry delay (`ConversationBusyRetryPolicy`): server `retry_after_seconds` wins, else 5 / 15 / 30 s.
+    /// attempt is 1-based; past the last attempt the 30 s step is returned (callers check the attempt count first).
+    /// `jitter` is kept for source compatibility and ignored: the card counts down to the real due time.
     public static func busyRetryDelay(attempt: Int, retryAfterSeconds: Int?, jitter: Double) -> TimeInterval {
-        let j = min(max(jitter, 0), 0.999)
-        if let retryAfterSeconds { return TimeInterval(max(1, min(retryAfterSeconds, 3600))) + j }
-        let base = min(30.0, 2.0 * pow(2.0, Double(max(1, attempt) - 1)))
-        return base * (1 + 0.5 * j)
+        ConversationBusyRetryPolicy.delay(attempt: min(max(1, attempt), ConversationBusyRetryPolicy.maxAttempts), retryAfterSeconds: retryAfterSeconds) ?? 30
     }
     private var turnObservers: [UUID: AsyncStream<ConversationTurnEvent>.Continuation] = [:]
     private var emittedCancellations: Set<UUID> = []
@@ -364,14 +362,20 @@ public actor ConversationSessionService {
         await resilience?.settled()
         let saved = try await read(scope: scope, conversationID: conversationID)
         if let last = saved.turns.last, last.id == operationID, last.state == .failed, last.error == Self.rateLimitedCode {
-            // R7 busy: countdown, then one automatic retry (see foregroundTick); never for an auto-retried turn.
-            let wait = max(1, last.retryAfterSeconds ?? 20)
+            // Busy: the card counts down to the real due time, then foregroundTick retries the SAME turn in place.
+            // Only plain turns can be restarted in place; an image turn (bytes are not kept by the server) and an
+            // exhausted / cancelled turn get no countdown: the bubble shows 「发送失败 · 重试 / 删除」 instead.
             let spent = autoRetryCounts[operationID] ?? 0
-            let exhausted = spent >= Self.maxAutomaticBusyRetries || busyRetryCancelled.contains(operationID)
-            let busyDelay = exhausted ? TimeInterval(wait) : Self.busyRetryDelay(attempt: spent + 1, retryAfterSeconds: last.retryAfterSeconds, jitter: Double.random(in: 0..<1))
-            sendDiagnostic("catpaw.send busy retry scheduled op=\(operationID.uuidString.prefix(8)) attempt=\(spent + 1)/\(Self.maxAutomaticBusyRetries) exhausted=\(exhausted) delay=\(Int(busyDelay.rounded(.up)))")
-            busyRetry[conversationID] = BusyRetry(due: Date().addingTimeInterval(busyDelay), operationID: operationID, autoRetried: exhausted)
-            await resilience?.busy(retryIn: wait)
+            let delay = Self.isPlain(request) && !busyRetryCancelled.contains(operationID) ? ConversationBusyRetryPolicy.delay(attempt: spent + 1, retryAfterSeconds: last.retryAfterSeconds) : nil
+            sendDiagnostic("catpaw.send busy retry scheduled op=\(operationID.uuidString.prefix(8)) attempt=\(spent + 1)/\(Self.maxAutomaticBusyRetries) exhausted=\(delay == nil) delay=\(delay.map { ConversationBusyRetryPolicy.displaySeconds($0) } ?? -1)")
+            if let delay {
+                busyRetry[conversationID] = BusyRetry(due: Date().addingTimeInterval(delay), operationID: operationID, autoRetried: false)
+                await resilience?.busy(retryIn: ConversationBusyRetryPolicy.displaySeconds(delay))
+            } else {
+                // Kept (autoRetried) so the manual 重试 can still restart a plain turn; never a frozen "0 秒" card.
+                busyRetry[conversationID] = Self.isPlain(request) ? BusyRetry(due: Date(), operationID: operationID, autoRetried: true) : nil
+                await resilience?.clearBusy()
+            }
         }
         if saved.turns.last?.state == .completed { try? await outbox?.remove(operationID); await backend.recordCommittedReply(request);return operationID }
         // catpaw.approval.v1: a suspended turn is admitted and waiting for submitApproval (not an error).
@@ -579,6 +583,20 @@ public actor ConversationSessionService {
         saved.messages.removeAll { $0.id == stableID("conversation-user-\(operationID)") }
         try await save(saved, expectedRevision: revision)
     }
+    /// 「删除」 on a failed turn: the server already ended it (failed / rate_limited, no reply); it leaves the transcript
+    /// locally and stops any pending busy retry. Returns true when something was removed.
+    @discardableResult
+    public func dismissFailed(scope: DataScope, conversationID: UUID, operationID: UUID) async throws -> Bool {
+        var (saved, revision) = try await readVersioned(scope: scope, conversationID: conversationID)
+        guard let i = saved.turns.firstIndex(where: { $0.id == operationID }), saved.turns[i].state == .failed, saved.turns[i].assistantMessageID == nil else { return false }
+        guard active[conversationID] == nil else { throw ConversationSessionError.busy }
+        saved.turns[i].state = .cancelledBeforeSend
+        saved.messages.removeAll { $0.id == stableID("conversation-user-\(operationID)") }
+        try await save(saved, expectedRevision: revision)
+        if busyRetry[conversationID]?.operationID == operationID { busyRetry[conversationID] = nil; await resilience?.clearBusy() }
+        try? await outbox?.remove(operationID)
+        return true
+    }
     /// The queue commits this cancellation together with the replacement intent.
     /// A changed payload gets a new operation ID; an admitted/unknown request is immutable.
     public func cancellationForQueueEdit(scope:DataScope,conversationID:UUID,operationID:UUID) async throws -> Mutation? {
@@ -700,7 +718,7 @@ public actor ConversationSessionService {
         // Same operationID, same user message: no new transcript row; the server restarts the failed turn.
         guard let original = saved.turns.first(where: { $0.id == entry.operationID }), saved.turns.last?.id == original.id,
               original.state == .failed, original.error == Self.rateLimitedCode,
-              original.assistantMessageID == nil, Self.isPlain(original.request) else { return nil }
+              original.assistantMessageID == nil, Self.isPlain(original.request) else { await resilience?.clearBusy(); return nil }   // never leave the card at 0 s
         if let route { ModelRouteSelection.select(route: route) }
         if automatic { autoRetryCounts[original.id, default: 0] += 1 } else { busyRetryCancelled.remove(original.id) }
         await resilience?.clearBusy()
