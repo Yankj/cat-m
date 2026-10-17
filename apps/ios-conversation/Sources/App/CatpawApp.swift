@@ -118,6 +118,9 @@ import AppIntents
     @Environment(\.scenePhase) private var scene
     @State private var launchMarkVisible = LaunchMarkGate.shouldPlay(openedFromURLOrNotification: false)
     @State private var calendarScan: Task<Void, Never>?
+    /// B2: second and later launches start on the branded logo (identical to LaunchScreen.storyboard) until the chat is ready.
+    @State private var launchLogoVisible = !LaunchMarkGate.isFirstRun()
+    @State private var launchHoldExpired = false
     #if DEBUG
     @StateObject private var synthetic = NativeSyntheticApplicationModel()
     #endif
@@ -163,6 +166,13 @@ import AppIntents
                         .zIndex(100)
                 }
             }
+            .overlay {
+                if launchLogoVisible, !launchMarkVisible {
+                    CatpawLaunchHandoff(ready: launchChatReady) { launchLogoVisible = false }
+                        .task { try? await Task.sleep(nanoseconds: UInt64(CatpawLaunchHandoff.maxHold * 1_000_000_000)); launchHoldExpired = true }
+                        .zIndex(99)
+                }
+            }
             .onOpenURL { url in launchMarkVisible = false; CatpawRouteCenter.shared.pending = CatpawAppRoute(url: url) }
             .catpawInAppBanner()
             .environment(\.catpawOAuth, oauth)
@@ -187,6 +197,12 @@ import AppIntents
             .task { if bootstrap.isP0Fixture { await bootstrap.startFixture() } else if bootstrap.model == nil { await auth.start() } }
                 .onChange(of:scene) { _, phase in if phase == .active { scheduleCalendarScan() }; if phase == .active,bootstrap.model == nil,!bootstrap.isP0Fixture { Task { await auth.foreground() } } }
         }
+    }
+    /// The logo hands off once there is something real to show: the account chat attached, a fixture surface, the landing,
+    /// a session that needs 「重新开始」, or — after `maxHold` — the launch shell with its status capsule.
+    private var launchChatReady: Bool {
+        auth.chat != nil || bootstrap.model != nil || bootstrap.isP0Fixture || auth.isFixture || auth.needsOnboarding
+            || auth.sessionRestartNeeded || launchHoldExpired
     }
     /// SPEC-E §7: the calendar scan never lands in the launch, landing-entrance or tap windows. It runs ≥3 s after the
     /// landing or chat is stable (landing settled / onboarding finished and the first-run transition done).

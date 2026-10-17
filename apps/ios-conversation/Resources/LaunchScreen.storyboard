@@ -12,7 +12,20 @@
                     <view key="view" contentMode="scaleToFill" id="V01">
                         <rect key="frame" x="0.0" y="0.0" width="402" height="874"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                        <subviews>
+                            <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" image="BrandMarkFill" translatesAutoresizingMaskIntoConstraints="NO" id="I01" userLabel="LaunchLogo">
+                                <rect key="frame" x="145" y="381" width="112" height="112"/>
+                                <constraints>
+                                    <constraint firstAttribute="width" constant="112" id="C01"/>
+                                    <constraint firstAttribute="height" constant="112" id="C02"/>
+                                </constraints>
+                            </imageView>
+                        </subviews>
                         <color key="backgroundColor" name="LaunchCanvas"/>
+                        <constraints>
+                            <constraint firstItem="I01" firstAttribute="centerX" secondItem="V01" secondAttribute="centerX" id="C03"/>
+                            <constraint firstItem="I01" firstAttribute="centerY" secondItem="V01" secondAttribute="centerY" id="C04"/>
+                        </constraints>
                     </view>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="F01" userLabel="First Responder" sceneMemberID="firstResponder"/>
@@ -20,6 +33,7 @@
         </scene>
     </scenes>
     <resources>
+        <image name="BrandMarkFill" width="112" height="112"/>
         <namedColor name="LaunchCanvas"><color red="1.000" green="0.988" blue="0.973" alpha="1" colorSpace="custom" customColorSpace="sRGB"/></namedColor>
     </resources>
 </document>
