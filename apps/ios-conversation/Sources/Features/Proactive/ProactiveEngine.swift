@@ -92,6 +92,8 @@ struct ProactiveSignal: Equatable, Sendable {
     private let ledgerKey = "catpaw.proactive.ledger.v1", opsKey = "catpaw.proactive.ops.v1", suggestionsKey = "catpaw.proactive.suggestions.v1"
     #if canImport(EventKit)
     let store = EKEventStore()
+    /// Test seam (PR91 p91c-1 parity): EventKit reminder deletes actually committed by `removeReminderChecked`.
+    private(set) var reminderDeletes = 0
     #endif
 
     // MARK: Log + ledger
@@ -1010,6 +1012,7 @@ struct ProactiveSignal: Equatable, Sendable {
         }
         guard let p, let item else { throw ProactiveEngineError.undoUnknown }
         guard try AccountEpoch.shared.commit(token, { () throws -> Void in try store.remove(item, commit: true) }) != nil else { throw ProactiveEngineError.writeFailed }
+        reminderDeletes += 1
         note("undo removed reminder operation_id=\(p.operationID)")
     }
     #endif

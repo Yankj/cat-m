@@ -407,6 +407,10 @@ extension MemoryLibraryLocal {
 extension AccountLocalData {
     /// Sign-out (Codex P0-2): local memory, proactive items + scheduled notifications, undelivered device reports.
     @MainActor static func signOut(userID: UUID?) {
+        // final-merge B8: park the leaving account's proactive inbox / reminder + attendee contexts / write-backs (and list
+        // the EventKit reminders the app created for the user's decision) BEFORE `signOutCore` purges their keys below.
+        // Synchronous (no await): after it the owner is "" and #90's later observer (claimData(for: nil)) is a no-op.
+        ProactiveEngine.shared.claimData(for: nil)
         // Live Activities are keyed by suggestion id: read the inbox before it is purged.
         for id in ProactiveLocalBackend.load().keys { CatpawLeaveActivity.stop(suggestionID: id) }
         CatpawLeaveActivity.stopAll()
@@ -414,8 +418,8 @@ extension AccountLocalData {
         MemoryLibraryHub.reset()
         DeviceCallStore.shared.reset()
         ProactiveFeedbackSync.shared.reset()
-        // Proactive inbox / ledgers / server ids: #90's AccountChangeObservers("proactive") → ProactiveEngine.claimData parks
-        // the old account's data (never dropped, never shown to the next account); no second wipe here (final-merge B7).
+        // Proactive inbox / ledgers / server ids were parked by claimData(for: nil) at the top (B8); never dropped, never
+        // shown to the next account. #90's AccountChangeObservers("proactive") then finds nothing left to park.
         ProactiveSuggestionStore.shared.clearForSignOut()
         #if os(iOS)
         UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
