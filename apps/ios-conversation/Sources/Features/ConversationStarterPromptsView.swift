@@ -10,6 +10,7 @@ struct ConversationStarterPromptsView: View {
     @Environment(\.locale) private var locale
     @Environment(\.dynamicTypeSize) private var textSize
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @ScaledMetric(relativeTo: .subheadline) private var iconSize: CGFloat = 26   // tracks the title size (Dynamic Type)
     @State private var prompts = ConversationStarterPrompts.ordered()
     @State private var appeared = false
     @State private var tapped = 0   // chat-ux-1505 #2: .sensoryFeedback respects system haptic settings
@@ -46,9 +47,14 @@ struct ConversationStarterPromptsView: View {
         } label: {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
-                    Image(systemName: prompt.symbol)
-                        .font(CatpawTypography.Role.secondary.font.weight(.medium))
-                        .foregroundStyle(CatpawColors.action)   // icon fill only; text stays ink / secondary
+                    // v1.1: small 3D soft-clay scene icon before the title (asset catalog "starter-<id>", original
+                    // colors, light+dark safe). Decorative: the card's accessibility label already carries the prompt.
+                    Image(decorative: "starter-" + prompt.id)
+                        .resizable()
+                        .interpolation(.high)
+                        .scaledToFit()
+                        .frame(width: iconSize, height: iconSize)
+                        .padding(.vertical, -iconSize * 0.12)   // keep the row at the title's line height (original card height)
                         .accessibilityHidden(true)
                     Text(ui(prompt.title))
                         .font(CatpawTypography.Role.secondary.font.weight(.semibold))
