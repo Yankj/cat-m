@@ -6742,5 +6742,13 @@
   "打开 Catpaw 查看结果": {
     "en": "Open Catpaw to see the result",
     "zh-Hans": "打开 Catpaw 查看结果"
+  },
+  "未执行：{0}": {
+    "en": "Not run: {0}",
+    "zh-Hans": "未执行：{0}"
+  },
+  "没有完成：{0}": {
+    "en": "Not completed: {0}",
+    "zh-Hans": "没有完成：{0}"
   }
 }

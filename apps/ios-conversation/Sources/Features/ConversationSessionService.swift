@@ -488,6 +488,7 @@ public actor ConversationSessionService {
             guard Self.isPlain(request), session.messages.contains(where: { $0.id == callRow && $0.toolName == approval.tool && !$0.complete }),
                   !(turn.pendingApprovals ?? []).contains(where: { $0.interruptID == approval.interruptID || $0.callID == approval.callID }) else { throw ConversationSessionError.invalidEvent }
             turn.pendingApprovals = (turn.pendingApprovals ?? []) + [approval]
+            if !(turn.approvalLog ?? []).contains(where: { $0.interruptID == approval.interruptID }) { turn.approvalLog = (turn.approvalLog ?? []) + [approval] }   // chat-context-1522 #3
         case .uiBlock(let ui), .uiBlockUpdate(let ui), .uiBlockResolve(let ui):
             guard Self.isPlain(request), ui.sequence == event.sequence else { throw ConversationSessionError.invalidEvent }
             var journal = turn.uiEvents ?? []
@@ -502,6 +503,7 @@ public actor ConversationSessionService {
         case .deviceCall(let call):
             guard Self.isPlain(request) else { throw ConversationSessionError.invalidEvent }
             if !(turn.pendingDeviceCalls ?? []).contains(where: { $0.callID == call.callID }) { turn.pendingDeviceCalls = (turn.pendingDeviceCalls ?? []) + [call] }
+            if !(turn.deviceCallLog ?? []).contains(where: { $0.callID == call.callID }) { turn.deviceCallLog = (turn.deviceCallLog ?? []) + [call] }   // chat-context-1522 #3
             deviceCallIndex[call.callID] = (request.conversationID, request.operationID); rememberDeviceTurn(call.callID, request.conversationID, request.operationID)
         case .suspended(let ids, _):
             let pending = Set((turn.pendingApprovals ?? []).map(\.interruptID)).union((turn.pendingDeviceCalls ?? []).map(\.interruptID)).union(turn.pendingUIBlocks.compactMap(\.interruptID)).union((turn.pendingUIApprovals ?? []).map(\.interruptID))
@@ -509,7 +511,8 @@ public actor ConversationSessionService {
             // A server-confirmed suspension proves the turn is alive and waiting on this client: an `unknown` left by an
             // earlier failed apply must become `running` again, otherwise awaitingApproval stays false and no card shows.
             if turn.state == .unknown { turn.state = .running }
-        case .approvalResolved(let id, let call, _, _):
+        case .approvalResolved(let id, let call, let decision, _):
+            turn.interactionDecisions = (turn.interactionDecisions ?? [:]).merging([id.lowercased(): decision]) { _, new in new }   // chat-context-1522 #3
             // A replay/observe may resolve an interrupt this journal never saw pending (e.g. expired while offline).
             if let i = turn.pendingApprovals?.firstIndex(where: { $0.interruptID == id }) { guard turn.pendingApprovals?[i].callID == call else { throw ConversationSessionError.invalidEvent }; turn.pendingApprovals?.remove(at: i) }
             if turn.pendingApprovals?.isEmpty == true { turn.pendingApprovals = nil }

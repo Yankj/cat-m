@@ -307,6 +307,46 @@ public struct ConversationTurnRecord: Codable, Sendable, Identifiable {
     /// catpaw.device.v1: `device_call`s of this turn still waiting for `POST …/device-result`.
     public var pendingDeviceCalls:[ConversationDeviceCall]? = nil
     public var awaitingApproval:Bool { state == .running && (!(pendingApprovals ?? []).isEmpty || !pendingUIBlocks.isEmpty || !(pendingUIApprovals ?? []).isEmpty || !(pendingDeviceCalls ?? []).isEmpty) }
+    /// chat-context-1522 #3: every `device_call` / `approval_requested` this turn ever showed, never pruned (the pending
+    /// lists above are), plus each interrupt's `approval_resolved` decision. Cards are rebuilt from these on every
+    /// re-render, scroll-back and cold start, so a decided card keeps its final state instead of disappearing.
+    public var deviceCallLog:[ConversationDeviceCall]? = nil
+    public var approvalLog:[ConversationApprovalRequest]? = nil
+    public var interactionDecisions:[String:String]? = nil
+}
+
+/// chat-context-1522 #3: final state of an interactive card, derived only from the turn journal (tool-result row +
+/// `approval_resolved` decision + turn state). Never authority to execute: display only.
+public enum ConversationInteractionOutcome: String, Sendable, Equatable {
+    case pending, done, declined, expired, cancelled, failed, notExecuted
+    public var isFinal: Bool { self != .pending }
+
+    /// Device call `callID` of `turn`. `toolResult` is the content of that call's tool-result row in the transcript (what
+    /// the model saw: `ok`, `user_declined`/`cancelled`, `denied`, `error`, `pending_timeout`); without one, the interrupt
+    /// decision; else the turn's own state.
+    public static func device(callID: String, interruptID: String?, turn: ConversationTurnRecord, toolResult: String?) -> Self {
+        if let toolResult, let object = (try? JSONSerialization.jsonObject(with: Data(toolResult.utf8))) as? [String: Any],
+           let status = object["status"] as? String {
+            switch status {
+            case "ok": return .done
+            case "user_declined", "cancelled": return .declined
+            case "pending_timeout": return .expired
+            default: return .failed
+            }
+        }
+        if let id = interruptID?.lowercased(), let decision = turn.interactionDecisions?[id], decided(decision) != .pending { return decided(decision) }
+        if turn.awaitingApproval, (turn.pendingDeviceCalls ?? []).contains(where: { $0.callID == callID }) { return .pending }
+        return [.completed, .failed].contains(turn.state) ? .notExecuted : .pending
+    }
+    /// Approval card `interruptID` of `turn` (catpaw.approval.v1 decisions).
+    public static func approval(interruptID: String, turn: ConversationTurnRecord) -> Self {
+        if let decision = turn.interactionDecisions?[interruptID.lowercased()] { return decided(decision) }
+        if turn.awaitingApproval, (turn.pendingApprovals ?? []).contains(where: { $0.interruptID == interruptID }) { return .pending }
+        return [.completed, .failed].contains(turn.state) ? .notExecuted : .pending
+    }
+    static func decided(_ decision: String) -> Self {
+        switch decision { case "approved": .done; case "denied": .declined; case "expired": .expired; case "cancelled": .cancelled; default: .pending }
+    }
 }
 /// catpaw.device.v1 `device_call` (services/edge/docs/device-call-contract.md). `args` is the raw JSON object.
 public struct ConversationDeviceCall: Codable, Sendable, Equatable, Identifiable {

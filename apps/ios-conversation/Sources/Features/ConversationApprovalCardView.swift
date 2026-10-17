@@ -22,12 +22,20 @@ import SwiftUI
     }
     private func syncDeviceCalls() {
         let live = (turn?.awaitingApproval == true ? (turn?.pendingDeviceCalls ?? []) : []).compactMap(DeviceCall.init)
-        for call in live where !deviceCalls.contains(where: { $0.id == call.id }) { deviceCalls.append(call) }   // display only — grants come from the SSE boundary (DeviceCallGate.installLifecycle)
+        // chat-context-1522 #3: also the journal's never-pruned log, so a host re-created after the decision (the turn row
+        // moves under the new assistant text, scroll-back, cold start) still shows the card in its final state.
+        let logged = (turn?.deviceCallLog ?? []).compactMap(DeviceCall.init)
+        for call in logged + live where !deviceCalls.contains(where: { $0.id == call.id }) { deviceCalls.append(call) }   // display only — grants come from the SSE boundary (DeviceCallGate.installLifecycle)
+    }
+    /// Approvals of this turn already decided, whose receipt the (fresh) controller does not hold.
+    private var journalReceipts: [ConversationApprovalRequest] {
+        guard let turn else { return [] }
+        return (turn.approvalLog ?? []).filter { a in !pending.contains { $0.interruptID == a.interruptID } && controller.outcomes[a.interruptID] == nil && ConversationInteractionOutcome.approval(interruptID: a.interruptID, turn: turn).isFinal }
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            ForEach(deviceCalls, id: \.id) { call in DeviceCallConfirmCard(call: call) }
+            ForEach(deviceCalls, id: \.id) { call in DeviceCallConfirmCard(call: call, recorded: turn.map { ConversationTurnInteractionHistory.deviceOutcome(call, turn: $0, session: session) }) }
             // Server follow-up after device_result can fail (e.g. provider_timeout). Never leave a dangling turn:
             // state what happened on the phone and offer to continue (a follow-up, not a regenerate that would redo the action).
             if turn?.state == .failed, !doneSummaries.isEmpty {
@@ -50,12 +58,18 @@ import SwiftUI
             ForEach(controller.outcomes.keys.sorted().filter { id in !pending.contains { $0.interruptID == id } }, id: \.self) { id in
                 if let item = controller.outcomes[id] { receipt(item.tool, item.outcome).accessibilityIdentifier("chat.approval.resolved." + id) }
             }
+            if let turn {
+                ForEach(journalReceipts) { a in
+                    ConversationTurnInteractionHistory.approvalReceipt(a.tool, ConversationInteractionOutcome.approval(interruptID: a.interruptID, turn: turn), ui)
+                        .accessibilityIdentifier("chat.approval.resolved." + a.interruptID)
+                }
+            }
         }
-        .padding(.top, pending.isEmpty && controller.outcomes.isEmpty && deviceCalls.isEmpty ? 0 : 12)
+        .padding(.top, pending.isEmpty && controller.outcomes.isEmpty && deviceCalls.isEmpty && journalReceipts.isEmpty ? 0 : 12)
         .onAppear { controller.observe(model, turn: turn); syncDeviceCalls() }
         .onChange(of: turn?.pendingDeviceCalls) { _, _ in syncDeviceCalls() }
         .onChange(of: turn?.state) { _, _ in syncDeviceCalls() }
-        .onChange(of: turn?.id) { _, _ in controller.observe(model, turn: turn) }
+        .onChange(of: turn?.id) { _, _ in controller.observe(model, turn: turn); deviceCalls = []; syncDeviceCalls() }   // this host now shows another turn; the earlier one renders its own history
         .onChange(of: turn?.pendingApprovals) { _, _ in controller.observe(model, turn: turn) }
     }
 
@@ -67,6 +81,51 @@ import SwiftUI
         case .expired: (ui("确认已超时，未执行：{0}", [name]), "clock.badge.exclamationmark")
         case .cancelled: (ui("已取消，未执行：{0}", [name]), "xmark.circle")
         case .failed(let message): (ui(message), "info.circle")
+        }
+        return Label(text, systemImage: icon).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
+    }
+}
+
+/// chat-context-1522 #3: the decided cards of an earlier turn, rebuilt from its journal (`deviceCallLog`, `approvalLog`,
+/// `interactionDecisions`, tool-result rows). Display only: an old card can never run (DeviceCallGate has no grant for it).
+@MainActor struct ConversationTurnInteractionHistory: View {
+    let session: ConversationSession
+    let turn: ConversationTurnRecord
+    @Environment(\.locale) private var locale
+    private func ui(_ k: String, _ a: [String] = []) -> String { AppLanguage(locale: locale).ui(k, arguments: a) }
+    private var calls: [DeviceCall] { (turn.deviceCallLog ?? []).compactMap(DeviceCall.init) }
+    private var approvals: [ConversationApprovalRequest] { turn.approvalLog ?? [] }
+    var isEmpty: Bool { calls.isEmpty && approvals.isEmpty }
+
+    var body: some View {
+        if !isEmpty {
+            VStack(alignment: .leading, spacing: 10) {
+                ForEach(calls, id: \.id) { call in DeviceCallConfirmCard(call: call, recorded: Self.deviceOutcome(call, turn: turn, session: session)) }
+                ForEach(approvals) { a in
+                    Self.approvalReceipt(a.tool, ConversationInteractionOutcome.approval(interruptID: a.interruptID, turn: turn), ui)
+                        .accessibilityIdentifier("chat.approval.resolved." + a.interruptID)
+                }
+            }
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("chat.turn.interactions." + turn.id.uuidString)
+        }
+    }
+
+    static func deviceOutcome(_ call: DeviceCall, turn: ConversationTurnRecord, session: ConversationSession) -> ConversationInteractionOutcome {
+        let row = stableID("conversation-tool-result-\(turn.id)-\(call.call_id)")
+        let result = session.messages.first { $0.id == row && $0.role == .tool }?.content
+        return ConversationInteractionOutcome.device(callID: call.call_id, interruptID: call.interrupt_id, turn: turn, toolResult: result)
+    }
+
+    static func approvalReceipt(_ tool: String, _ outcome: ConversationInteractionOutcome, _ ui: (String, [String]) -> String) -> some View {
+        let name = ConversationApprovalCardView.toolTitle(tool, ui)
+        let (text, icon): (String, String) = switch outcome {
+        case .done: (ui("已允许：{0}", [name]), "checkmark.circle.fill")
+        case .declined: (ui("已拒绝：{0}", [name]), "xmark.circle")
+        case .expired: (ui("确认已超时，未执行：{0}", [name]), "clock.badge.exclamationmark")
+        case .cancelled: (ui("已取消，未执行：{0}", [name]), "xmark.circle")
+        case .failed: (ui("没有完成：{0}", [name]), "info.circle")
+        case .notExecuted, .pending: (ui("未执行：{0}", [name]), "minus.circle")
         }
         return Label(text, systemImage: icon).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
     }
