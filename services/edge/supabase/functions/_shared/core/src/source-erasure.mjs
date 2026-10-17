@@ -22,8 +22,8 @@ export async function eraseChatSource({records,principal,scope_id,source}){
   const messages=c.messages.filter(m=>!removedIDs.has(m.id));
   // Rebuild model history from remaining authoritative messages; tool history is redundant and cannot retain deleted copies.
   // B5 (context-memory PLAN Rev 2): derived copies on the same row go in the same write: next-turn notes (shown text ≤300 chars,
-  // tool titles), interaction outcomes, device undo notes, and the v1.2 summary/ledger. Rebuilt model history carries no markers.
-  const {context_summary,context_ledger,...kept}=c;
+  // tool titles), interaction outcomes, device undo notes, the v1.2 summary/ledger, and the turn meta (recomputed next turn).
+  const {context_summary,context_ledger,model_message_meta,...kept}=c;
   await records.put(owner,'native-chat-conversations',{...kept,state:c.state==='revoked'?'revoked':'paused',revision:c.revision+1,grant_epoch:c.grant_epoch+1,messages,model_messages:messages.map(({id,...m})=>m),turn_outcome_notes:[],device_undo_notes:[],interaction_outcomes:[],source_purged_at:iso()});
   for(const t of affected){
     const input={...t.input,message:t.input.message.id===source.id?{...t.input.message,text:''}:t.input.message,context:[]};

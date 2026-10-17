@@ -7,7 +7,7 @@ import {beforeEach} from 'node:test';
 import {memoryHTTPFixture as fixture} from './fixtures/memory-http-fixture.mjs';
 import {readConfig} from '../supabase/functions/_shared/config.mjs';
 import {hash,ApiError} from '../supabase/functions/_shared/core/facade-r2/src/common.mjs';
-import {CONTEXT_LIMITS,WINDOW_NOTE,packWindow,mergeModelMessages,stripMarkers,markUser,isTurnBoundary,turnBoundaries,elideOldToolResults,assertStorageLimits,estimateTokens,projectConversation} from '../supabase/functions/_shared/core/src/context-window.mjs';
+import {CONTEXT_LIMITS,WINDOW_NOTE,packWindow,mergeModelMessages,resolveMeta,metaFor,metaValid,boundariesOf,isLegacyBoundary,admitModelHistory,elideOldToolResults,assertStorageLimits,estimateTokens,projectConversation} from '../supabase/functions/_shared/core/src/context-window.mjs';
 import {eraseChatSource} from '../supabase/functions/_shared/core/src/source-erasure.mjs';
 import {FreeRouteChainProvider,readFreeRouteChain,_routeHealthForTests as health} from '../supabase/functions/_shared/core/src/free-route-chain.mjs';
 import {toSteps,geminiRejectReason,GEMINI_SKIP_SIGNATURE,GEMINI_SIGNATURE_FIELD,_signatureCacheForTests} from '../supabase/functions/_shared/core/src/gemini-interactions-route.mjs';
@@ -22,53 +22,82 @@ test('route_hash unchanged vs main ef947921 / prod v52 (pinned for base, gemini-
  for(const [env,expected] of cases){const c=readConfig(k=>env[k]);assert.equal(c.routeHash,expected);assert.equal(c.route.history_limit,CONTEXT_LIMITS.window_max_visible_messages);assert.ok(c.route.data_fields.some(f=>f.includes('history_max_40_messages_80kB')));}
 });
 
-// ---------- unit: markers, boundaries, packing ----------
-const U=(text,tid,visible=true)=>markUser({role:'user',content:text},tid,visible);
-const A=text=>({role:'assistant',content:text});
-test('markers: stripMarkers removes every _ key without mutating; boundaries follow _visible, legacy rows skip the revision payload',()=>{
- const m=[U('你好','t1'),A('好'),U(JSON.stringify({selected_report:{},instruction:'改'}),'t1',false)],copy=JSON.parse(JSON.stringify(m));
- const s=stripMarkers(m);assert.deepEqual(m,copy);assert.ok(s.every(x=>Object.keys(x).every(k=>!k.startsWith('_'))));
- assert.deepEqual(turnBoundaries(m),[0]);
- const legacy=[{role:'user',content:'a'},A('b'),{role:'user',content:JSON.stringify({selected_report:{x:1},instruction:'y'})},{role:'user',content:'{"not":"revision"}'}];
- assert.deepEqual(turnBoundaries(legacy),[0,3]);assert.equal(isTurnBoundary({role:'tool',content:'x'}),false);
+// ---------- unit: aligned meta, boundaries, packing ----------
+// Build [message, meta entry] pairs. U(text,tid,visible) = user entry; A(text) = assistant.
+const U=(text,tid,visible=true)=>[{role:'user',content:text},{turn_id:tid,visible}];
+const A=text=>[{role:'assistant',content:text},null];
+const M=pairs=>({full:pairs.map(p=>p[0]),entries:pairs.map(p=>p[1])});
+const noUnderscore=list=>list.every(m=>Object.keys(m).every(k=>!k.startsWith('_')));
+test('meta: bound to the exact model_messages by length + hash; legacy rule skips the revision payload',()=>{
+ const {full,entries}=M([U('你好','t1'),A('好'),U(JSON.stringify({selected_report:{},instruction:'改'}),'t1',false)]);
+ const meta=metaFor(full,entries);assert.ok(metaValid(meta,full));assert.deepEqual(boundariesOf(entries),[0]);
+ assert.equal(metaValid(meta,[...full,{role:'assistant',content:'x'}]),false,'v52 append (rollback window) invalidates it');
+ assert.equal(metaValid(meta,[{...full[0],content:'changed'},...full.slice(1)]),false,'same length, different content invalidates it');
+ assert.equal(metaValid({...meta,entries:entries.slice(1)},full),false);assert.equal(metaValid(undefined,full),false);
+ const legacy=[{role:'user',content:'a'},{role:'assistant',content:'b'},{role:'user',content:JSON.stringify({selected_report:{x:1},instruction:'y'})},{role:'user',content:'{"not":"revision"}'}];
+ assert.deepEqual(legacy.map(isLegacyBoundary),[true,false,false,true]);
 });
 test('packing: short conversation keeps everything (start 0, empty prefix hash), prefix hash covers exactly the dropped part',()=>{
- const full=[U('一','t1'),A('a'),U('二','t2')],history=[{id:'1',role:'user',content:'一'},{id:'2',role:'assistant',content:'a'},{id:'3',role:'user',content:'二'}];
- const p=packWindow({full,history});assert.equal(p.start,0);assert.equal(p.full_length,3);assert.equal(p.prefix_hash,hash([]));assert.equal(p.kept_turns,2);assert.deepEqual(p.window,full);
+ const {full,entries}=M([U('一','t1'),A('a'),U('二','t2')]),history=[{id:'1',role:'user',content:'一'},{id:'2',role:'assistant',content:'a'},{id:'3',role:'user',content:'二'}];
+ const p=packWindow({full,entries,history});assert.equal(p.start,0);assert.equal(p.full_length,3);assert.equal(p.prefix_hash,hash([]));assert.equal(p.kept_turns,2);assert.deepEqual(p.window,full);
 });
 const big=(n,ch='长')=>ch.repeat(n);
-function conv(turns,{userChars=7000}={}){const full=[],history=[];for(let i=0;i<turns;i++){full.push(U(big(userChars)+i,'t'+i),A('答'+i));history.push({id:'u'+i,role:'user',content:big(userChars)+i},{id:'a'+i,role:'assistant',content:'答'+i});}full.pop();history.pop();return {full,history};}
+function conv(turns,{userChars=7000}={}){const pairs=[],history=[];for(let i=0;i<turns;i++){pairs.push(U(big(userChars)+i,'t'+i),A('答'+i));history.push({id:'u'+i,role:'user',content:big(userChars)+i},{id:'a'+i,role:'assistant',content:'答'+i});}pairs.pop();history.pop();return {...M(pairs),history};}
 test('packing: the consented 80 kB visible limit cuts at whole user turns; the current turn is always the last entry',()=>{
- const {full,history}=conv(5),p=packWindow({full,history});
- assert.equal(p.kept_turns,3);assert.ok(isTurnBoundary(full[p.start]));assert.equal(p.window.at(-1),full.at(-1));
- assert.equal(p.prefix_hash,hash(full.slice(0,p.start)));assert.ok(Buffer.byteLength(JSON.stringify(history.slice(-5)))<=80000);
+ const {full,entries,history}=conv(5),p=packWindow({full,entries,history});
+ assert.equal(p.kept_turns,3);assert.equal(entries[p.start].visible,true);assert.equal(p.window.at(-1),full.at(-1));
+ assert.equal(p.prefix_hash,hash(full.slice(0,p.start)));
 });
-test('packing: 40 visible messages is a window limit, no longer a wall (60 messages stored, 40 sent)',()=>{
- const {full,history}=conv(31,{userChars:3});assert.equal(history.length,61);const p=packWindow({full,history});
+test('packing: 40 visible messages is a window limit, no longer a wall (61 messages stored, 39 sent)',()=>{
+ const {full,entries,history}=conv(31,{userChars:3});assert.equal(history.length,61);const p=packWindow({full,entries,history});
  assert.equal(p.kept_turns,20);assert.equal(p.window.length,39);
 });
-test('packing: synthetic revision user (_visible:false) and consecutive users of failed turns map correctly',()=>{
- const full=[U('a','t1'),U('{"selected_report":{},"instruction":"x"}','t1',false),A('r'),U('failed turn','t2'),U('again','t3')];
- assert.deepEqual(turnBoundaries(full),[0,3,4]);
+test('packing: synthetic revision user (visible:false) and consecutive users of failed turns map correctly',()=>{
+ const {full,entries}=M([U('a','t1'),U('{"selected_report":{},"instruction":"x"}','t1',false),A('r'),U('failed turn','t2'),U('again','t3')]);
+ assert.deepEqual(boundariesOf(entries),[0,3,4]);
  const history=[{id:1,role:'user',content:'a'},{id:2,role:'assistant',content:'r'},{id:3,role:'user',content:'failed turn'},{id:4,role:'user',content:'again'}];
- const p=packWindow({full,history});assert.equal(p.start,0);assert.equal(p.kept_turns,3);
+ const p=packWindow({full,entries,history});assert.equal(p.start,0);assert.equal(p.kept_turns,3);
+});
+test('recovery: missing or misaligned meta is recomputed from user-visible messages; if impossible, one window + over-budget order',()=>{
+ const models=[{role:'user',content:'一'},{role:'assistant',content:'a'},{role:'user',content:'{"selected_report":{},"instruction":"x"}'},{role:'assistant',content:'b'}];
+ const visible=[{id:1,role:'user',content:'一'},{id:2,role:'assistant',content:'a'},{id:3,role:'assistant',content:'b'}];
+ const good=metaFor(models,[{turn_id:'t1',visible:true},null,{turn_id:'t1',visible:false},null]);
+ assert.equal(resolveMeta(models,good,visible).source,'stored');
+ const missing=resolveMeta(models,undefined,visible);assert.equal(missing.source,'recomputed');assert.deepEqual(boundariesOf(missing.entries),[0]);
+ // rollback to v52 appended a turn without meta, then roll-forward: stale meta → recomputed
+ const rolled=[...models,{role:'user',content:'二'},{role:'assistant',content:'c'}],v2=[...visible,{id:4,role:'user',content:'二'},{id:5,role:'assistant',content:'c'}];
+ const r=resolveMeta(rolled,good,v2);assert.equal(r.source,'recomputed');assert.deepEqual(boundariesOf(r.entries),[0,4]);
+ // counts cannot be reconciled (e.g. a legacy synthetic entry that does not look like a revision payload) → none
+ const none=resolveMeta([...rolled,{role:'user',content:'synthetic but unrecognisable'}],good,v2);assert.equal(none.source,'none');assert.ok(none.entries.every(e=>e===null));
+ // "none" packs as one window or the current turn only; the over-budget order still applies
+ const full=[...rolled,{role:'user',content:'synthetic'},{role:'user',content:'三'}],entries=[...none.entries,{turn_id:'t9',visible:true}];
+ const h=[...v2,{id:6,role:'user',content:'三'}];
+ const whole=packWindow({full,entries,history:h});assert.equal(whole.start,0);assert.equal(whole.window.length,full.length);
+ const cur=packWindow({full,entries,history:h,limits:{...CONTEXT_LIMITS,history_budget_tokens:5}});assert.equal(cur.start,full.length-1);assert.equal(cur.window.length,1);
+ assert.throws(()=>packWindow({full,entries,history:h,extraTokens:500000}),e=>e.code==='conversation_too_long');
+});
+test('admitModelHistory: v52-shape model_messages + aligned meta; works with no model_messages (derived from messages)',()=>{
+ const c={messages:[{id:'1',role:'user',content:'a'},{id:'2',role:'assistant',content:'b'}]};
+ const a=admitModelHistory(c,{role:'user',content:'c'},'t2');
+ assert.deepEqual(a.full,[{role:'user',content:'a'},{role:'assistant',content:'b'},{role:'user',content:'c'}]);
+ assert.equal(a.meta_source,'recomputed');assert.ok(metaValid(a.meta,a.full));assert.deepEqual(boundariesOf(a.entries),[0,2]);assert.equal(a.entries[2].turn_id,'t2');
 });
 test('over-budget order: (1) old tool results elided, (2) window shrinks by turns, (3) 413 conversation_too_long; current turn never dropped',()=>{
  const toolBlob=JSON.stringify({rows:big(30000,'x')}),limits={...CONTEXT_LIMITS};
- const full=[U('q1','t1'),{role:'assistant',content:'',tool_calls:[{id:'c1',type:'function',function:{name:'search',arguments:'{}'}}]},{role:'tool',tool_call_id:'c1',content:toolBlob},A('a1'),U('q2','t2')];
+ const {full,entries}=M([U('q1','t1'),[{role:'assistant',content:'',tool_calls:[{id:'c1',type:'function',function:{name:'search',arguments:'{}'}}]},null],[{role:'tool',tool_call_id:'c1',content:toolBlob},null],A('a1'),U('q2','t2')]);
  const history=[{id:1,role:'user',content:'q1'},{id:2,role:'assistant',content:'a1'},{id:3,role:'user',content:'q2'}];
- const p=packWindow({full,history,limits});assert.equal(p.kept_turns,2,'step 1: eliding the old result is enough, the turn stays');
+ const p=packWindow({full,entries,history,limits});assert.equal(p.kept_turns,2,'step 1: eliding the old result is enough, the turn stays');
  assert.equal(p.elided,1);assert.equal(JSON.parse(p.window[2].content).status,'elided');assert.equal(full[2].content,toolBlob,'stored history untouched');
  // current-turn tool results are never elided
  assert.equal(elideOldToolResults(full,1)[2].content,toolBlob);
  // step 2: tight history budget → older turn dropped, current kept
- const p2=packWindow({full,history,limits:{...limits,history_budget_tokens:50}});assert.equal(p2.kept_turns,1);assert.equal(p2.window.length,1);
+ const p2=packWindow({full,entries,history,limits:{...limits,history_budget_tokens:50}});assert.equal(p2.kept_turns,1);assert.equal(p2.window.length,1);
  // reservations count: explicit context tokens shrink the window too
- const {full:f3,history:h3}=conv(3,{userChars:5000});
- assert.equal(packWindow({full:f3,history:h3}).kept_turns,3);
- assert.equal(packWindow({full:f3,history:h3,extraTokens:100000}).kept_turns,1);
+ const {full:f3,entries:e3,history:h3}=conv(3,{userChars:5000});
+ assert.equal(packWindow({full:f3,entries:e3,history:h3}).kept_turns,3);
+ assert.equal(packWindow({full:f3,entries:e3,history:h3,extraTokens:100000}).kept_turns,1);
  // step 3: the current turn alone does not fit the request budget → 413, never a silent drop
- assert.throws(()=>packWindow({full:f3,history:h3,extraTokens:200000}),e=>e instanceof ApiError&&e.status===413&&e.code==='conversation_too_long');
+ assert.throws(()=>packWindow({full:f3,entries:e3,history:h3,extraTokens:200000}),e=>e instanceof ApiError&&e.status===413&&e.code==='conversation_too_long');
 });
 test('storage caps replace the 40 / 80 kB wall: 413 conversation_too_long',()=>{
  assertStorageLimits(Array(200).fill({role:'user',content:'x'}),[]);
@@ -77,19 +106,22 @@ test('storage caps replace the 40 / 80 kB wall: 413 conversation_too_long',()=>{
  assert.throws(()=>assertStorageLimits([],[{content:big(1500001,'x')}]),e=>e.code==='conversation_too_long');
  assert.ok(estimateTokens('你好')===2&&estimateTokens('abcdefg')===2);
 });
-test('mergeModelMessages: prefix + new entries, never a truncated history; frozen prefix mismatch → 409 model_history_conflict',()=>{
- const {full,history}=conv(5),p=packWindow({full,history});
- const turn={model_window_start:p.start,model_prefix_hash:p.prefix_hash,model_full_length:p.full_length,model_history:p.window};
- const loop=[...p.window,A('new answer')],merged=mergeModelMessages(full,turn,loop);
- assert.equal(merged.length,full.length+1);assert.deepEqual(merged.slice(0,full.length),full,'elided window copies never overwrite stored originals');assert.equal(merged.at(-1).content,'new answer');
+test('mergeModelMessages: prefix + new entries + aligned meta, never a truncated history; frozen prefix mismatch → 409',()=>{
+ const {full,entries,history}=conv(5),p=packWindow({full,entries,history}),meta=metaFor(full,entries);
+ const turn={id:'t4',model_window_start:p.start,model_prefix_hash:p.prefix_hash,model_full_length:p.full_length,model_history:p.window};
+ const loop=[...p.window,{role:'user',content:'{"selected_report":{},"instruction":"x"}'},{role:'assistant',content:'new answer'}],out=mergeModelMessages(full,meta,turn,loop);
+ assert.equal(out.messages.length,full.length+2);assert.deepEqual(out.messages.slice(0,full.length),full,'elided window copies never overwrite stored originals');
+ assert.ok(metaValid(out.meta,out.messages));assert.deepEqual(out.meta.entries.slice(-2),[{turn_id:'t4',visible:false},null],'synthetic user entry of the turn is not a boundary');
+ assert.deepEqual(out.meta.entries.slice(0,full.length),entries);assert.ok(noUnderscore(out.messages));
+ const stale=mergeModelMessages(full,{...meta,hash:'x'},turn,loop);assert.ok(stale.meta.entries.slice(0,full.length).every(e=>e===null),'invalid stored meta is not trusted');
  const tampered=[...full];tampered[0]={...tampered[0],content:'changed'};
- assert.throws(()=>mergeModelMessages(tampered,turn,loop),e=>e.status===409&&e.code==='model_history_conflict');
- assert.throws(()=>mergeModelMessages([...full,A('x')],turn,loop),e=>e.code==='model_history_conflict');
- assert.throws(()=>mergeModelMessages(full,turn,p.window.slice(1)),e=>e.code==='model_history_conflict');
- assert.deepEqual(mergeModelMessages(full,{model_history:[]},loop),loop,'legacy turn (admitted before the change) keeps old behaviour');
+ assert.throws(()=>mergeModelMessages(tampered,meta,turn,loop),e=>e.status===409&&e.code==='model_history_conflict');
+ assert.throws(()=>mergeModelMessages([...full,{role:'assistant',content:'x'}],meta,turn,loop),e=>e.code==='model_history_conflict');
+ assert.throws(()=>mergeModelMessages(full,meta,turn,p.window.slice(1)),e=>e.code==='model_history_conflict');
+ assert.deepEqual(mergeModelMessages(full,meta,{model_history:[]},loop),{messages:loop,meta:undefined},'legacy turn keeps old behaviour');
 });
-test('GET projection drops model_messages and the future summary/ledger, keeps the iOS-checked messages',()=>{
- const c={id:'c',messages:[{id:'1'}],model_messages:[1],context_summary:'s',context_ledger:[],revision:3};
+test('GET projection drops model_messages, model_message_meta and the future summary/ledger, keeps the iOS-checked messages',()=>{
+ const c={id:'c',messages:[{id:'1'}],model_messages:[1],model_message_meta:{},context_summary:'s',context_ledger:[],revision:3};
  assert.deepEqual(projectConversation(c),{id:'c',messages:[{id:'1'}],revision:3});
 });
 
@@ -105,13 +137,15 @@ async function post(s,text){const c=await stored(s),tid=randomUUID();const r=awa
 test('multi-turn past the window: model_messages grows monotonically with markers, provider sees only the window without markers',async()=>{
  const s=await setup(),lengths=[];
  for(let i=0;i<6;i++){const r=await post(s,big(7000)+i);assert.equal(r.status,200);const c=await stored(s);lengths.push(c.model_messages.length);
-  assert.ok(c.model_messages.filter(m=>m.role==='user').every(m=>m._visible===true&&typeof m._turn_id==='string'));}
+  assert.ok(noUnderscore(c.model_messages),'v52 shape: no inline markers');assert.ok(metaValid(c.model_message_meta,c.model_messages));
+  assert.equal(boundariesOf(c.model_message_meta.entries).length,i+1);}
  assert.deepEqual(lengths,[2,4,6,8,10,12],'full history kept, never truncated');
  const last=s.probe.inputs.at(-1);assert.equal(last.messages.filter(m=>m.role==='user').length,3,'80 kB consented window → last 3 turns');
- assert.ok(last.messages.every(m=>Object.keys(m).every(k=>!k.startsWith('_'))),'server-only markers never reach a provider');
+ assert.ok(noUnderscore(last.messages),'adapters need no stripping: nothing server-only is in the messages');
+ const cc=await stored(s);assert.deepEqual(last.messages,cc.model_messages.slice(-last.messages.length-1,-1),'provider got exactly the stored v52-shape window');
  assert.ok(last.system_prompt.includes(WINDOW_NOTE.trim()));assert.ok(!s.probe.inputs[0].system_prompt.includes(WINDOW_NOTE.trim()));
  const c=await stored(s);assert.equal(c.messages.length,12);
- const wire=(await s.f.json(await s.f.req(s.path))).conversation;assert.equal(wire.messages.length,12);assert.ok(!('model_messages' in wire),'GET omits model_messages');
+ const wire=(await s.f.json(await s.f.req(s.path))).conversation;assert.equal(wire.messages.length,12);assert.ok(!('model_messages' in wire)&&!('model_message_meta' in wire),'GET omits server-only fields');
 });
 test('more than 40 visible messages no longer returns 422 history_limit_reached; storage cap returns 413 conversation_too_long',async()=>{
  const s=await setup();
@@ -121,16 +155,45 @@ test('more than 40 visible messages no longer returns 422 history_limit_reached;
  assert.equal(r.status,413);assert.equal(JSON.parse(r.body).error.code,'conversation_too_long');
 });
 
+const rewrite=async(s,fn)=>{const {owner}=await s.f.runtime.chat.scoped('Bearer memory-fixture',s.f.scope.scope_id);await s.f.repository.transaction(async tx=>{const c=await tx.get(owner,'native-chat-conversations',s.cid);await tx.put(owner,'native-chat-conversations',fn(c));});};
+test('v52-shape compatibility: stored model_messages are exactly what v52 stores ({role,content}), turn meta lives beside them',async()=>{
+ const s=await setup();for(const t of ['一','二','三'])assert.equal((await post(s,t)).status,200);
+ const c=await stored(s);
+ assert.deepEqual(c.model_messages,[{role:'user',content:'一'},{role:'assistant',content:'好的'},{role:'user',content:'二'},{role:'assistant',content:'好的'},{role:'user',content:'三'},{role:'assistant',content:'好的'}]);
+ assert.deepEqual(c.model_message_meta.entries.map(e=>e&&e.visible),[true,null,true,null,true,null]);assert.equal(c.model_message_meta.length,6);
+ const turnIDs=c.model_message_meta.entries.filter(Boolean).map(e=>e.turn_id);assert.equal(new Set(turnIDs).size,3);
+ assert.ok(s.probe.inputs.every(i=>noUnderscore(i.messages)));
+});
+test('rollback then roll-forward: v52 appended turns without meta → meta recomputed from visible messages, history intact',async()=>{
+ const s=await setup();for(const t of ['一','二'])assert.equal((await post(s,t)).status,200);
+ // what v52 would write for one more turn: messages + model_messages grow, model_message_meta untouched (v52 does not know it)
+ await rewrite(s,c=>({...c,revision:c.revision+1,messages:[...c.messages,{id:randomUUID(),role:'user',content:'v52 问'},{id:randomUUID(),role:'assistant',content:'v52 答'}],model_messages:[...c.model_messages,{role:'user',content:'v52 问'},{role:'assistant',content:'v52 答'}]}));
+ assert.equal((await post(s,'回来了')).status,200);
+ const c=await stored(s);assert.equal(c.model_messages.length,8);assert.ok(metaValid(c.model_message_meta,c.model_messages));
+ assert.deepEqual(boundariesOf(c.model_message_meta.entries),[0,2,4,6]);assert.equal(c.model_messages[4].content,'v52 问');
+ assert.equal(s.probe.inputs.at(-1).messages.length,7,'all four turns fit the window');
+});
+test('meta missing (pre-change conversation) → recomputed; unreconcilable → one window, still answers',async()=>{
+ const s=await setup();for(const t of ['一','二'])assert.equal((await post(s,t)).status,200);
+ await rewrite(s,({model_message_meta,...c})=>c);
+ assert.equal((await post(s,'三')).status,200);let c=await stored(s);assert.ok(metaValid(c.model_message_meta,c.model_messages));assert.deepEqual(boundariesOf(c.model_message_meta.entries),[0,2,4]);
+ // an extra unexplained user entry in model_messages (counts no longer match the visible messages) and stale meta
+ await rewrite(s,c=>({...c,model_messages:[...c.model_messages,{role:'user',content:'unexplained'}]}));
+ assert.equal((await post(s,'四')).status,200);c=await stored(s);
+ assert.deepEqual(boundariesOf(c.model_message_meta.entries),[c.model_messages.length-2],'only the new turn is a known boundary');
+ assert.equal(s.probe.inputs.at(-1).messages.length,c.model_messages.length-1,'one window: the whole history was sent');
+});
+
 // ---------- B5: erasure clears derived notes/outcomes and v1.2 summary/ledger in the same write ----------
 test('B5: source erasure clears turn_outcome_notes, device_undo_notes, interaction_outcomes, context_summary/ledger in one put',async()=>{
  const scope={scope_id:'s1',profile_id:'p',workspace_id:'w'},principal={subject_id:'u',scopes:[scope]},puts=[];
  const conv={id:'c1',subject_id:'u',scope_id:'s1',state:'active',revision:2,grant_epoch:1,messages:[{id:'m1',role:'user',content:'删掉我'},{id:'m2',role:'assistant',content:'好'}],
-  model_messages:[U('删掉我','t1'),A('好')],turn_outcome_notes:[{turn_id:'t0',text:'shown'}],device_undo_notes:[{x:1}],interaction_outcomes:[{turn_id:'t0'}],context_summary:'sum',context_ledger:[{a:1}]};
+  model_messages:[{role:'user',content:'删掉我'},{role:'assistant',content:'好'}],model_message_meta:{schema:1},turn_outcome_notes:[{turn_id:'t0',text:'shown'}],device_undo_notes:[{x:1}],interaction_outcomes:[{turn_id:'t0'}],context_summary:'sum',context_ledger:[{a:1}]};
  const records={lock:async()=>{},get:async()=>conv,list:async kind=>kind==='native-chat-turns'?[]:[],put:async(o,kind,v)=>puts.push([kind,v]),withScope:async(_s,fn)=>fn({list:async()=>[],put:async()=>{}})};
  await eraseChatSource({records,principal,scope_id:'s1',source:{type:'chat_message',conversation_id:'c1',id:'m1',turn_id:'t1'}});
  const [kind,c]=puts.find(p=>p[0]==='native-chat-conversations');assert.equal(kind,'native-chat-conversations');
- assert.deepEqual([c.turn_outcome_notes,c.device_undo_notes,c.interaction_outcomes],[[],[],[]]);assert.ok(!('context_summary' in c)&&!('context_ledger' in c));
- assert.deepEqual(c.messages.map(m=>m.id),['m2']);assert.ok(c.model_messages.every(m=>!('_turn_id' in m)));assert.equal(c.revision,3);
+ assert.deepEqual([c.turn_outcome_notes,c.device_undo_notes,c.interaction_outcomes],[[],[],[]]);assert.ok(!('context_summary' in c)&&!('context_ledger' in c)&&!('model_message_meta' in c));
+ assert.deepEqual(c.messages.map(m=>m.id),['m2']);assert.deepEqual(c.model_messages,[{role:'assistant',content:'好'}]);assert.equal(c.revision,3);
 });
 
 // ---------- Gemini: placeholder for current-turn calls without a cached signature; 400 classification ----------
