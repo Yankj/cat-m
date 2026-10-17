@@ -209,14 +209,14 @@
       "path": "apps/ios-conversation/Tests/DeviceTrialNativeTests.swift",
       "category": "deployment_public_key",
       "line": 296,
-      "sha256": "75ca6fe8c6ef4776f2f87247f508e0dfd53a21488687ae82d643316080690e5f",
+      "sha256": "a3d5501f65c3d068d112c70f7bb5e3652a2d920d9c5c9bd073697c03d31b4cf7",
       "reason": "Explicit synthetic fixture public key in mock-only native test; no real deployment key."
     },
     {
       "path": "apps/ios-conversation/Tests/DeviceTrialNativeTests.swift",
       "category": "deployment_public_key",
       "line": 337,
-      "sha256": "75ca6fe8c6ef4776f2f87247f508e0dfd53a21488687ae82d643316080690e5f",
+      "sha256": "a3d5501f65c3d068d112c70f7bb5e3652a2d920d9c5c9bd073697c03d31b4cf7",
       "reason": "Explicit synthetic fixture public key in mock-only native test; no real deployment key."
     },
     {
@@ -1452,15 +1452,15 @@
     {
       "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
       "category": "deployment_public_key",
-      "line": 273,
-      "sha256": "8caa92cf0dabf24f73098e55258336dd69fc624b79859272bc9c525f47a59f28",
+      "line": 304,
+      "sha256": "1f4bb7bc6ad323068241456b757e61d273b4fef1ff9bf8a1bba4c6e8ec68bccd",
       "reason": "Reviewed named offline auth fixture: synthetic public-key/access-token markers and injected mock remotes only; no real credential or network request. Exact current bytes and line pinned."
     },
     {
       "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
       "category": "deployment_public_key",
-      "line": 455,
-      "sha256": "8caa92cf0dabf24f73098e55258336dd69fc624b79859272bc9c525f47a59f28",
+      "line": 486,
+      "sha256": "1f4bb7bc6ad323068241456b757e61d273b4fef1ff9bf8a1bba4c6e8ec68bccd",
       "reason": "Reviewed named offline auth fixture: synthetic public-key/access-token markers and injected mock remotes only; no real credential or network request. Exact current bytes and line pinned."
     },
     {
