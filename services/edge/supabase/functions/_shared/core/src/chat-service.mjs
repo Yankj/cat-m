@@ -7,6 +7,7 @@ import { LOCAL_POLICY,stableUUID } from './local-output-facade.mjs';
 import { chatPromptFor,chatToolsFor,validateProvidedToolCall,assistantToolMessage } from './tools.mjs';
 import { devicePromptFor } from './device-call.mjs';
 import { collectRound } from './openrouter-provider.mjs';
+import { planParallelCalls } from './parallel-calls.mjs';
 import { clientAcceptsRouteEvents } from './free-route-chain.mjs';
 import { TextBatcher } from './text-batcher.mjs';
 import { createChatMetrics } from './chat-metrics.mjs';
@@ -18,6 +19,7 @@ import {validateVisionTurn} from './vision-contract.mjs';
 import {UI_CONTRACT,RENDER_UI,UI_DECISIONS,validateResponse,validateUIError,uiResult,uiBlockEvent,uiBlockUpdate,uiBlockResolve,uiPrompt,blockOf,GROUNDED_PROMPT,parseUIKinds,FOLLOWUP_PROMPT} from './generative-ui.mjs';import {toolResultsFrom,groundUIArgs,autoPlaceBlock,ungroundedResult} from './grounded-ui.mjs';
 import {agentMemoryPrompt} from '../../agent-memory/chat-tools.mjs';
 import {DEVICE_CONTRACT,parseDeviceTools,validateDeviceResult,deviceCallEvent,deviceResult,validateDeviceUndo,deviceUndoNote,DEVICE_UNDOABLE_TOOLS} from './device-call.mjs';
+import {withInterruptedTurn,withInteractionOutcomes,turnOutcomeNote,withLateDeviceReport,whitelistedArgs,boundedParallelBlocked} from './turn-outcome.mjs';
 import {APPROVAL_CONTRACT,gatedCalls,interruptFor,requestedEvent,resolvedEvent,pendingApprovals,validateDecision,settleExpired,resumedTurn,deniedResult,APPROVAL_PREFERENCES,preferenceID,isoAt} from './approval.mjs';
 const positive=v=>Number.isSafeInteger(v)&&v>0;
 const terminal=s=>s!=='running';
@@ -35,6 +37,7 @@ export function timeContext(tz,nowMs){
   const parts=new Intl.DateTimeFormat('en-US',{timeZone:zone,timeZoneName:'longOffset'}).formatToParts(new Date(nowMs)),offset=(parts.find(p=>p.type==='timeZoneName')?.value??'GMT').replace('GMT','')||'+00:00';
   return `\nUser time zone: ${zone}${zone===tz?'':' (fallback: the user time zone is unknown; confirm local times with the user)'}. Current local time: ${local}${offset} (${new Intl.DateTimeFormat('en-US',{timeZone:zone,weekday:'long'}).format(new Date(nowMs))}). Use create_task when the user asks to be reminded; give due_at as absolute ISO-8601 with this offset unless the user names another zone.`;
 }
+const LATE_DEVICE_REPORT_MS=24*60*60*1000; // P1-2: late device reports are recorded up to 24 h after the card TTL
 export class ChatService {
   constructor({facade,provider,integration=null,finishOnDelegationReceipt=false,metrics=createChatMetrics()}){this.facade=facade;this.repository=facade.repository;this.provider=provider;this.active=new Map();this.listeners=new Map();this.integration=integration;this.finishOnDelegationReceipt=finishOnDelegationReceipt;this.metrics=metrics;}
   async scoped(auth,scope){const started=this.metrics.now();try{return await this.facade.scoped(auth,scope);}finally{this.metrics.record('request_auth',started);}}
@@ -79,22 +82,27 @@ export class ChatService {
     check(!memoryProposalContract||(!revisionTarget&&!workIntent),422,'memory_proposal_turn_not_allowed');
     check(!revisionWork||(revisionTarget&&!workIntent&&!memoryProposalContract),422,'revision_work_turn_not_allowed');
     check(!(revisionTarget&&workIntent),422,'work_intent_revision_not_supported');
-    const vision=this.validateInput(input);let transferred=false,heldOwner=null;try{input=vision.input;check(!vision.receipts.length||(!revisionTarget&&!workIntent&&!revisionWork&&!memoryProposalContract),422,'vision_turn_not_allowed');const trusted=await this.scoped(auth,scopeID),{owner,scope,principal}=trusted,acceptedAt=this.metrics.now();
+    const vision=this.validateInput(input);let transferred=false,heldOwner=null,abandoned=null;try{input=vision.input;check(!vision.receipts.length||(!revisionTarget&&!workIntent&&!revisionWork&&!memoryProposalContract),422,'vision_turn_not_allowed');const trusted=await this.scoped(auth,scopeID),{owner,scope,principal}=trusted,acceptedAt=this.metrics.now();
     await this.integration?.prepare({owner,scope,principal});heldOwner=owner;
     const admissionHash=hash({input,...vision.receipts.length?{image_attachments:vision.receipts,image_route_hash:this.vision.routeHash}:{},...revisionWork?{revision_work:revisionWork,revision_work_contract:TASK_REVISION_WORK_CONTRACT}:{},...memoryProposalContract?{memory_proposal_contract:memoryProposalContract}:{},...workIntent?{work_intent:workIntent,work_intent_contract:ACCEPTED_WORK_INTENT_CONTRACT}:{},...revisionTarget?{revision_target:revisionTarget,revision_contract:TASK_REVISION_CONTRACT}:{},...approvalContract?{approval_contract:approvalContract}:{},...uiContract?{ui_contract:uiContract}:{},conversation_id:conversationID,scope,subject:principal.subject_id,model:this.provider.identity});
     const result=await this.repository.transaction(async tx=>{
       await this.integration?.beforeWrite(tx,{owner,scope});
       await tx.lock(owner,'native-chat-conversations',conversationID);
-      const c=await this.conversation(tx,owner,conversationID,principal.subject_id,scopeID);
+      let c=await this.conversation(tx,owner,conversationID,principal.subject_id,scopeID);
       const prior=await tx.get(owner,'native-chat-turns',input.turn_id);
       if(prior){check(prior.conversation_id===c.id&&prior.admission_hash===admissionHash,409,'turn_conflict');return {turn:prior,replayed:true};}
       check((scope.permissions?.local_output??principal.permissions?.local_output)===true,403,'local_output_permission_required');
       check(c.state==='active'&&c.grant_epoch===input.expected_grant_epoch,409,'grant_conflict');check(c.revision===input.expected_revision,409,'revision_conflict');
-      if(c.last_turn_id){const last=await tx.get(owner,'native-chat-turns',c.last_turn_id);check(!['running','awaiting_approval'].includes(last?.state),409,'conversation_busy');}
+      if(c.last_turn_id){const last=await tx.get(owner,'native-chat-turns',c.last_turn_id);check(last?.state!=='running',409,'conversation_busy');
+        // chat-context-1522: a turn left awaiting_approval (card never answered, or the client never showed it) no longer
+        // blocks the conversation until the 10 min TTL. The user's next message closes it: pending interrupts resolve as
+        // cancelled (reason superseded), the turn fails superseded_by_new_message, and the model is told on this turn.
+        if(last?.state==='awaiting_approval'&&last.conversation_id===c.id){abandoned=this.abandonSuspended(last);await tx.put(owner,'native-chat-turns',abandoned);c=withInterruptedTurn(c,abandoned,'superseded_by_new_message');}}
       check(!c.messages.some(m=>m.id===input.message.id),409,'message_conflict');
       const user={id:input.message.id,role:'user',content:input.message.text,...vision.receipts.length?{attachments:vision.receipts}:{}},history=[...c.messages,user];
       // chat-ux #6: undo results from chat receipts reach the model with the next message (then cleared).
-      const undoNote=deviceUndoNote(c.device_undo_notes);
+      // chat-context-1522: turns that ended without complete() (failed / cancelled / abandoned) reach the model the same way.
+      const undoNote=[turnOutcomeNote(c.turn_outcome_notes),deviceUndoNote(c.device_undo_notes)].filter(Boolean).join('\n\n');
       const modelHistory=[...(c.model_messages??c.messages.map(({id,...m})=>m)),{role:'user',content:(undoNote?undoNote+'\n\n':'')+input.message.text}];
       check(history.length<=40&&Buffer.byteLength(JSON.stringify(history))<=80000,422,'history_limit_reached');
       let t={id:input.turn_id,conversation_id:c.id,scope_id:scope.scope_id,subject_id:principal.subject_id,grant_epoch:c.grant_epoch,conversation_revision:c.revision+1,state:'running',
@@ -138,7 +146,7 @@ export class ChatService {
       if(agentMemory?.ids.length&&t.approval_contract)t={...t,events:[...t.events,this.event(t,'memory_recalled',{ids:agentMemory.ids})]};
       if(agentMemory?.ids.length&&t.approval_contract&&agentMemory.items)t={...t,events:[...t.events,this.event(t,'memory.used',{ids:agentMemory.ids,memories:agentMemory.items})]};
       if(this.facade.proactiveSuggestions&&t.approval_contract){claimedSuggestions=await this.facade.proactiveSuggestions.claimForTurn({subjectID:principal.subject_id,conversationID:c.id,turnID:t.id}).catch(()=>[]);for(const s of claimedSuggestions)t={...t,events:[...t.events,this.event(t,'proactive_suggestion',s)]};}
-      check(await tx.insertIfAbsent(owner,'native-chat-turns',t),409,'turn_conflict');await tx.put(owner,'native-chat-conversations',{...c,revision:c.revision+1,messages:history,model_messages:modelHistory,last_turn_id:t.id,device_undo_notes:[]});
+      check(await tx.insertIfAbsent(owner,'native-chat-turns',t),409,'turn_conflict');await tx.put(owner,'native-chat-conversations',{...c,revision:c.revision+1,messages:history,model_messages:modelHistory,last_turn_id:t.id,device_undo_notes:[],turn_outcome_notes:[]});
       await this.integration?.capture(tx,{owner,scope,principal,turn:t});
       const extraction=await this.integration?.stageMemoryExtraction?.(tx,{principal,scope,conversation:c,turn:t});
       if(extraction){
@@ -152,6 +160,7 @@ export class ChatService {
       await this.beforeCommit(tx,{owner,scope},t);if(t.revision_target)await this.assertRevisionLive(tx,{owner,scope,principal},t);return {turn:t,replayed:false};
     });
     this.metrics.record('accept_commit',acceptedAt);
+    if(abandoned&&!result.replayed)this.notify(owner,abandoned);
     if(!result.replayed){
       this.notify(owner,result.turn);
       const controller=new AbortController(),key=`${owner}:${input.turn_id}`;
@@ -214,7 +223,7 @@ export class ChatService {
     const t=await this.repository.transaction(async tx=>{
       (env.assertLive??(()=>env.signal.throwIfAborted()))();const {t,c}=await this.live(tx,env);let result,continuationReceipt=null,status='ok',extraEvents=[];
       const interrupt=(t.interrupts??[]).find(i=>i.call_id===call.id),gated=this.facade.gatedChatTools instanceof Map?this.facade.gatedChatTools.get(call.name):null;
-      if(interrupt?.kind==='device'){result=deviceResult(interrupt);if(call.name==='places_search'&&t.ui_kinds?.includes('place')){const auto=autoPlaceBlock(call.id,result);if(auto&&!(t.events??[]).some(e=>e.type==='ui.block'&&e.data?.id===auto.id))extraEvents.push({type:'ui.block',data:auto});}status=interrupt.status==='reported'&&interrupt.response.status==='ok'?'ok':interrupt.status==='reported'&&interrupt.response.status==='error'?'error':'denied';}
+      if(interrupt?.kind==='device'){result=deviceResult(interrupt);if(call.name==='places_search'&&t.ui_kinds?.includes('place')){const auto=autoPlaceBlock(call.id,result);if(auto&&!(t.events??[]).some(e=>e.type==='ui.block'&&e.data?.id===auto.id))extraEvents.push({type:'ui.block',data:auto});}{const reported=interrupt.status==='reported'?interrupt.response:interrupt.status==='expired'?interrupt.late_response:null;status=reported?.status==='ok'?'ok':reported?.status==='error'?'error':'denied';}}
       else if(interrupt?.kind==='ui'){result=uiResult(interrupt);status=interrupt.status==='submitted'?'ok':'denied';}
       else if(call.name===RENDER_UI&&!interrupt){result=call.ungrounded?ungroundedResult(call.ungrounded):uiResult(null);if(call.ungrounded)status='error';}
       else if(interrupt&&interrupt.status!=='approved'){result=deniedResult(interrupt);status='denied';}
@@ -277,27 +286,42 @@ export class ChatService {
           onFailure:error=>env.controller?.abort(error)});
         // R7 optional wire event: provider thought summary, emitted once before the first text_delta.
         let summary='',summarySent=false;const thinkingStarted=this.metrics.now();
-        const round=received?clone(received.round):resumed?clone(resumed.round):await collectRound(this.provider,withRoute(withThinking({messages:clone(messages),system_prompt:prompt,tools,...env.visionAttachments?.length?{image_attachments:env.visionAttachments,vision_user_index:visionUserIndex}:{},signal:env.signal,assertDispatchReady:env.assertDispatchReady,turn_deadline_at:Date.now()+(deadline-now())-(this.finalizationReserveMs??5000),provider_context:{source_auth:env.turn.source_auth,scope_id:env.scope.scope_id,conversation_id:env.turn.conversation_id,...env.visionAttachments?.length?{image_route_hash:env.turn.image_route_hash,turn_id:env.turn.id,resource_owner:env.owner}:{},...env.turn.memory_usage?{memory_usage:clone(env.turn.memory_usage),memory_turn_id:env.turn.id}:{},...env.turn.revision_target?{revision_source_auth:clone(env.turn.revision_target.fresh_source_auth),revision_original_source_auth:clone(env.turn.revision_target.original_source_auth),revision_memory_generation:env.turn.revision_target.memory_generation,...env.turn.revision_work_intent?{revision_work_turn_id:env.turn.id}:{},input_context:[{text:env.turn.revision_target.raw_instruction},{text:env.turn.revision_target.base_body}]}:{}}},delta=>{if(!summarySent&&summary.length<2000)summary+=delta;}),async ri=>{if(ri?.route&&clientAcceptsRouteEvents()&&!env.turn.events.some(e=>e.type==='model_route')){await this.append(env,'model_route',{route:ri.route,model:ri.model??null,requested_route:ri.requested_route??'auto',failover:ri.failover===true,from:ri.from??[],switches:ri.switches??[],attempt:ri.attempt??1});env.turn=await this.repository.transaction(async tx=>(await this.live(tx,env)).t);}}),async delta=>{if(!summarySent){summarySent=true;if(summary.trim())await this.append(env,'reasoning_summary',{message_id:messageID,text:summary.trim().slice(0,2000),thinking_ms:Math.max(0,Math.round(this.metrics.now()-thinkingStarted))});}text+=delta;batcher.push(delta);});
+        const round=received?clone(received.round):resumed?clone(resumed.round):await collectRound(this.provider,withRoute(withThinking({messages:clone(messages),system_prompt:prompt,tools,...env.visionAttachments?.length?{image_attachments:env.visionAttachments,vision_user_index:visionUserIndex}:{},signal:env.signal,assertDispatchReady:env.assertDispatchReady,turn_deadline_at:Date.now()+(deadline-now())-(this.finalizationReserveMs??5000),provider_context:{source_auth:env.turn.source_auth,scope_id:env.scope.scope_id,conversation_id:env.turn.conversation_id,...env.visionAttachments?.length?{image_route_hash:env.turn.image_route_hash,turn_id:env.turn.id,resource_owner:env.owner}:{},...env.turn.memory_usage?{memory_usage:clone(env.turn.memory_usage),memory_turn_id:env.turn.id}:{},...env.turn.revision_target?{revision_source_auth:clone(env.turn.revision_target.fresh_source_auth),revision_original_source_auth:clone(env.turn.revision_target.original_source_auth),revision_memory_generation:env.turn.revision_target.memory_generation,...env.turn.revision_work_intent?{revision_work_turn_id:env.turn.id}:{},input_context:[{text:env.turn.revision_target.raw_instruction},{text:env.turn.revision_target.base_body}]}:{}}},delta=>{if(!summarySent&&summary.length<2000)summary+=delta;}),async ri=>{if(ri?.route&&clientAcceptsRouteEvents()&&!env.turn.events.some(e=>e.type==='model_route')){await this.append(env,'model_route',{route:ri.route,model:ri.model??null,requested_route:ri.requested_route??'auto',failover:ri.failover===true,from:ri.from??[],switches:ri.switches??[],attempt:ri.attempt??1});env.turn=await this.repository.transaction(async tx=>(await this.live(tx,env)).t);}}),async delta=>{if(!summarySent){summarySent=true;if(summary.trim())await this.append(env,'reasoning_summary',{message_id:messageID,text:summary.trim().slice(0,2000),thinking_ms:Math.max(0,Math.round(this.metrics.now()-thinkingStarted))});}text+=delta;batcher.push(delta);},{acceptOverflow:true});
         if(received)text=round.text;
         // model_route is written once, from the onRoute callback (collectRound calls it for every route_info, before any output).
         phase='text_flush';await batcher.finish();await batcher.stop();batcher=null;env.assertLive();
         phase='tool_or_completion';
-        if(env.visionAttachments?.length)check(round.calls.length===0,422,'vision_tools_not_supported');
+        // chat-context-1522 B1: more parallel calls than the loop runs → none run when any writes, else the first 4 (parallel-calls.mjs).
+        if(round.overflow?.length){check(!env.turn.revision_target,422,'revision_tool_limit');Object.assign(round,planParallelCalls(round,this.facade.gatedChatTools));delete round.overflow;}
+        const blocked=round.blocked??[];
+        if(env.visionAttachments?.length)check(round.calls.length===0&&!blocked.length,422,'vision_tools_not_supported');
         for(const call of round.calls){validateProvidedToolCall(call,'chat',tools,this.facade.gatedChatTools);check(!seen.has(call.id),422,'duplicate_tool_call');seen.add(call.id);}
+        for(const {call} of blocked){check(!seen.has(call.id),422,'duplicate_tool_call');seen.add(call.id);}
         // catpaw.ui.v1 grounded kinds: place/event content is rebuilt from this turn's tool results (never model-written).
         {const results=toolResultsFrom(messages);for(const call of round.calls)if(call.name===RENDER_UI){const g=groundUIArgs(call.arguments,results,env.turn.ui_kinds);if(g.block){call.arguments={block:g.block};delete call.ungrounded;}else if(g.error)call.ungrounded=g.error;}}
         if(round.calls.some(call=>call.name==='propose_memory_v1'))check(round.calls.length===1,422,'memory_proposal_tool_limit');
         if(env.turn.revision_target){check(round.calls.length<=1,422,'revision_tool_limit');if(received)check(received.round_hash===hash(round),409,'revision_received_round_corrupt');else await this.repository.transaction(async tx=>{const {t}=await this.live(tx,env);await this.assertRevisionLive(tx,env,t);const saved=await tx.put(env.owner,'native-chat-turns',{...t,dispatch_checkpoint:{...t.dispatch_checkpoint,state:'received',round:clone(round),round_hash:hash(round),next:0}});await this.beforeCommit(tx,env,saved);await this.assertRevisionLive(tx,env,saved);});}
         // A complete valid provider terminal precedes every tool effect.
-        if(!round.calls.length){env.providerReceipt=round.provider_receipt;await this.complete(env,messageID,text,[...messages,{role:'assistant',content:round.text}]);return;}
+        if(!round.calls.length&&!blocked.length){env.providerReceipt=round.provider_receipt;await this.complete(env,messageID,text,[...messages,{role:'assistant',content:round.text}]);return;}
         const beforeRound=clone(messages);
-        messages.push(assistantToolMessage(round.text,round.calls));
+        messages.push(assistantToolMessage(round.text,[...round.calls,...blocked.map(b=>b.call)]));
         if(received?.next===1){const result=env.turn.revision_work_receipts?.[0]??env.turn.continuations?.[0];check(result,409,'revision_received_result_missing');messages.push({role:'tool',tool_call_id:round.calls[0].id,content:JSON.stringify(result)});await this.complete(env,messageID,text,messages);return;}
-        if(!received&&!resumed&&await this.suspendForApproval(env,{step,messages:beforeRound,round,text,messageID,seen:[...seen].filter(id=>!round.calls.some(c=>c.id===id))}))return;
+        if(!received&&!resumed&&await this.suspendForApproval(env,{step,messages:beforeRound,round,text,messageID,seen:[...seen].filter(id=>!round.calls.some(c=>c.id===id)&&!blocked.some(b=>b.call.id===id))}))return;
         for(const call of round.calls){
           if(!(received||resumed)||!env.turn.events.some(e=>e.type==='tool_call'&&e.data.call_id===call.id))await this.append(env,'tool_call',{call_id:call.id,name:call.name,arguments:call.arguments});
           if(call.name===RENDER_UI&&!call.ungrounded&&!(env.turn.interrupts??[]).some(i=>i.call_id===call.id)&&!(env.turn.ui_shown_calls??[]).includes(call.id)){const block=blockOf(call.arguments),known=await this.knownUIBlock(env,block.id);await this.append(env,known?'ui.block.update':'ui.block',known?uiBlockUpdate(block):uiBlockEvent(block));}
           const result=await this.executeTool(env,call);messages.push({role:'tool',tool_call_id:call.id,content:JSON.stringify(result)});
+        }
+        // Calls that did not run still get their own tool_result for the model. They are recorded on the turn row
+        // (parallel_blocked), not as wire tool_call/tool_result events: clients parse some tools' results as domain
+        // receipts (delegate_*, agent_status, propose_memory_v1) and would reject a not-executed payload.
+        if(blocked.length){
+          for(const {call,result} of blocked)messages.push({role:'tool',tool_call_id:call.id,content:JSON.stringify(result)});
+          await this.repository.transaction(async tx=>{const {t}=await this.live(tx,env);
+            // P1-1: never the raw arguments — only title/time keys (cut to 40 chars); bounded entries and bytes. No args digest:
+            // an unsalted hash of low-entropy args (phone numbers) is brute-forceable offline, and nothing reads it (NoBug R3 P2).
+            const saved=await tx.put(env.owner,'native-chat-turns',{...t,parallel_blocked:boundedParallelBlocked(t.parallel_blocked,blocked.map(({call,result})=>({call_id:String(call.id).slice(0,160),name:String(call.name).slice(0,80),args:whitelistedArgs(call.arguments),status:result.status})))});
+            await this.beforeCommit(tx,env,saved);});
         }
         if(round.calls.some(c=>c.name==='propose_memory_v1')){
           const receipt=messages.at(-1),pending=JSON.parse(receipt.content).candidates.length>0;
@@ -322,7 +346,7 @@ export class ChatService {
     const started=this.metrics.now();
     const t=await this.repository.transaction(async tx=>{
       const {t,c}=await this.live(tx,env);env.assertLive?.();
-      await tx.put(env.owner,'native-chat-conversations',{...c,messages:this.finishOnDelegationReceipt&&!text.trim()?c.messages:[...c.messages,{id:messageID,role:'assistant',content:text}],model_messages:modelMessages});
+      await tx.put(env.owner,'native-chat-conversations',{...c,messages:this.finishOnDelegationReceipt&&!text.trim()?c.messages:[...c.messages,{id:messageID,role:'assistant',content:text}],model_messages:modelMessages,...withInteractionOutcomes(c,t)});
       env.assertLive?.();const saved=await tx.put(env.owner,'native-chat-turns',{...t,state:'completed',...env.providerReceipt?{vision_provider_receipt:clone(env.providerReceipt)}: {},events:[...t.events,this.event(t,'turn_completed',{message_id:messageID,final_text_hash:hash(text),task_bindings:t.task_bindings,...env.providerReceipt?{provider_receipt:clone(env.providerReceipt)}:{},...t.continuations?{continuations:t.continuations}:{},...t.revision_work_receipts?{revision_work_receipts:t.revision_work_receipts}:{}})],finished_at:iso()});
       await this.integration?.capture(tx,{...env,turn:saved});await this.beforeCommit(tx,env,saved);if(saved.revision_target)await this.assertRevisionLive(tx,env,saved);return saved;
     });this.metrics.record('terminal_commit',started);this.notify(env.owner,t);
@@ -345,9 +369,29 @@ export class ChatService {
       if(code==='rate_limited'&&Number.isSafeInteger(cause?.retryAfterSeconds)&&cause.retryAfterSeconds>=0&&cause.retryAfterSeconds<=3600)data.retry_after_seconds=cause.retryAfterSeconds;
       // Use only the freshly locked row. Never flush buffered text/history/tools during cleanup.
       const saved=await tx.put(env.owner,'native-chat-turns',{...t,state:reconciliation?'outcome_unknown':'failed',error:data,finished_at:iso(),events:[...t.events,this.event(t,'turn_failed',data)]});
+      // chat-context-1522: the failed turn's tool calls, the user's decisions and the text already shown reach the next turn.
+      await this.recordInterruptedTurn(tx,env.owner,saved,code);
       // An awaited metadata write can cross lease expiry; reject the transaction before COMMIT.
       await beforeFailure?.call(this.integration,tx,{owner:env.owner,scope:{scope_id:saved.scope_id},turn:saved});return saved;
     });if(t)this.notify(env.owner,t);
+  }
+  /** Conversation-side record of a turn that ended without complete() (no revision bump: history is unchanged). */
+  async recordInterruptedTurn(tx,owner,t,code){
+    const c=await tx.get(owner,'native-chat-conversations',t.conversation_id);if(!c||c.content_redacted)return;
+    const next=withInterruptedTurn(c,t,code);
+    if(next.turn_outcome_notes!==c.turn_outcome_notes||next.interaction_outcomes!==c.interaction_outcomes)await tx.put(owner,'native-chat-conversations',next);
+  }
+  /** chat-context-1522: close a suspended turn the user moved on from (next message). Pending interrupts → cancelled
+   * (cancel_reason superseded; wire decision stays 'cancelled'), then turn_failed{superseded_by_new_message}. */
+  abandonSuspended(t){
+    const now=isoAt(this.now());let next=t;
+    for(const it of t.interrupts??[])if(it.status==='pending'){
+      const r={...it,status:'cancelled',cancel_reason:'superseded',decided_at:now};
+      next={...next,interrupts:next.interrupts.map(i=>i.interrupt_id===it.interrupt_id?r:i)};next={...next,events:[...next.events,this.event(next,'approval_resolved',resolvedEvent(r))]};
+      if(it.kind==='ui')next={...next,events:[...next.events,this.event(next,'ui.block.resolve',uiBlockResolve(it.block.id,'cancelled'))]};
+    }
+    const error={code:'superseded_by_new_message',retryable:false,reconciliation_required:false};
+    return {...next,state:'failed',error,finished_at:iso(),events:[...next.events,this.event(next,'turn_failed',error)]};
   }
   async observationHead(tx,trusted,scopeID,cid){
     const {owner,principal,scope}=trusted;check(scope.scope_id===scopeID,403,'scope_forbidden');
@@ -412,7 +456,11 @@ export class ChatService {
       for(const it of interrupts){const call=ck.round.calls.find(c=>c.id===it.call_id);next={...next,events:[...next.events,it.kind==='device'?this.event(next,'device_call',deviceCallEvent(it,clone(call.arguments))):it.kind==='ui'?this.event(next,'ui.block',uiBlockEvent(it.block,it)):this.event(next,'approval_requested',requestedEvent(it,call))]};}
       next={...next,state:'awaiting_approval',suspended_at:isoAt(now),interrupts:[...(t.interrupts??[]).filter(i=>!interrupts.some(n=>n.interrupt_id===i.interrupt_id)),...interrupts],
         approval_checkpoint:{state:'pending',step:ck.step,messages:clone(ck.messages),round:clone(ck.round),text:ck.text,message_id:ck.messageID,seen:clone(ck.seen)}};
-      next={...next,events:[...next.events,this.event(next,'turn_suspended',{interrupt_ids:interrupts.map(i=>i.interrupt_id),expires_at:interrupts.map(i=>i.expires_at).sort()[0]})]};
+      // v1.1 (a): read-only device calls (confirm:'none', e.g. calendar_list / places_search) run on the phone without a card.
+      // The turn still suspends until the phone reports (old clients need turn_suspended to end the stream and keep the call
+      // pending), but the event says no human decision is needed, so clients must not show "waiting for your confirmation".
+      const requiresApproval=interrupts.some(i=>!(i.kind==='device'&&i.confirm==='none'));
+      next={...next,events:[...next.events,this.event(next,'turn_suspended',{interrupt_ids:interrupts.map(i=>i.interrupt_id),expires_at:interrupts.map(i=>i.expires_at).sort()[0],requires_approval:requiresApproval,waiting_for:requiresApproval?'user':'device'})]};
       const saved=await tx.put(env.owner,'native-chat-turns',next);await this.beforeCommit(tx,env,saved);return saved;
     });
     if(!t)return false;this.notify(env.owner,t);return true;
@@ -477,10 +525,26 @@ export class ChatService {
       const c=await this.conversation(tx,owner,cid,principal.subject_id,scopeID),t=await tx.get(owner,'native-chat-turns',tid);
       check(t&&t.conversation_id===cid&&t.scope_id===scopeID&&t.subject_id===principal.subject_id,404,'not_found');
       const original=(t.interrupts??[]).find(i=>i.interrupt_id===iid);check(original,404,'not_found');
+      // chat-context-1522 B2 / P1-2: the phone had already run a device call the turn no longer waits on — superseded by
+      // the user's next message, or past its card TTL (expired). Its report is recorded idempotently: the turn is never
+      // reopened (no event, no revision change), the outcome becomes ok / user_declined and the next turn is told.
+      if(original.kind==='device'&&(original.status==='expired'||original.status==='cancelled'&&original.cancel_reason==='superseded')){
+        const late=await this.lateDeviceReport(tx,{owner,cid,c,t,it:original,input,requestHash});
+        if(late.replayed)return {saved:t,it:original,resume:false,replayed:true,late:late.flag};
+        const saved=await tx.put(owner,'native-chat-turns',late.turn);await tx.put(owner,'native-chat-conversations',withLateDeviceReport(late.conversation,saved,late.it));
+        return {saved,it:late.it,resume:false,late:late.flag};
+      }
       if(original.decision_operation_id===input.operation_id){check(original.decision_request_hash===requestHash,409,'approval_operation_conflict');return {saved:t,it:original,resume:false,replayed:true};}
       const settled=settleExpired(t,this.now(),(x,type,data)=>this.event(x,type,data));let next=settled.turn;
       const it=next.interrupts.find(i=>i.interrupt_id===iid);
-      if(it.status==='expired'&&settled.changed){if(settled.resume&&this.integration)next=await this.integration.stampTurn(tx,owner,next);const saved=await tx.put(owner,'native-chat-turns',next);await this.beforeCommit(tx,{owner,scope},saved);return {saved,it,resume:settled.resume,expired:true};}
+      if(it.status==='expired'&&settled.changed){if(settled.resume&&this.integration)next=await this.integration.stampTurn(tx,owner,next);
+        // P1-2: this very report is the one that arrived after the TTL. The expiry still resumes the turn as before; the
+        // phone's result is recorded beside it (ttl_exceeded) instead of being dropped with a 409.
+        // A report that fails the late checks (stale args, > 24 h, epoch) keeps the old answer: expiry commits, 409 approval_expired.
+        let late=null;if(it.kind==='device'&&input.decision==='device_result'){try{late=await this.lateDeviceReport(tx,{owner,cid,c,t:next,it,input,requestHash});next=late.turn;}catch(error){if(!(error instanceof ApiError)||error.status>=500)throw error;}}
+        const saved=await tx.put(owner,'native-chat-turns',next);await this.beforeCommit(tx,{owner,scope},saved);
+        if(late){await tx.put(owner,'native-chat-conversations',withLateDeviceReport(late.conversation,saved,late.it));return {saved,it:late.it,resume:settled.resume,late:late.flag};}
+        return {saved,it,resume:settled.resume,expired:true};}
       check(it.status!=='expired',409,'approval_expired');
       check(it.status==='pending'&&next.state==='awaiting_approval',409,'approval_consumed');
       check(it.args_hash===input.args_hash,409,'approval_stale');
@@ -501,8 +565,23 @@ export class ChatService {
     });
     if(!r.replayed)this.notify(owner,r.saved);if(r.resume)this.startResumed(auth,trusted,cid,r.saved);
     if(r.expired)throw new ApiError(409,'approval_expired');
-    return {turn:r.saved,trusted,resumed:r.resume,afterSequence:Math.max(0,(r.it.resolved_sequence??r.saved.events.length)-1)};
+    // A late device report replays the superseded turn's tail from its approval_resolved (the turn is already terminal).
+    const lateFrom=r.it.late_operation_id?r.saved.events.findIndex(e=>e.type==='approval_resolved'&&e.data?.interrupt_id===iid):-1;
+    return {turn:r.saved,trusted,resumed:r.resume,...r.late?{late:r.late}:{},afterSequence:lateFrom>=0?lateFrom:Math.max(0,(r.it.resolved_sequence??r.saved.events.length)-1)};
     }finally{await this.integration?.release?.(owner);}
+  }
+  /** B2 / P1-2: validate and build a late device report ({replayed} | {turn,it,conversation,flag}). flag is
+   * 'ttl_exceeded' when the report came after the card TTL, else 'superseded'. Reports later than LATE_DEVICE_REPORT_MS
+   * after the TTL stay 409 approval_expired (bounded record). Same args_hash / grant-epoch checks as a live decision. */
+  async lateDeviceReport(tx,{owner,cid,c,t,it,input,requestHash}){
+    if(it.late_operation_id===input.operation_id){check(it.late_request_hash===requestHash,409,'approval_operation_conflict');return {replayed:true,flag:it.late_ttl_exceeded?'ttl_exceeded':'superseded'};}
+    check(input.decision==='device_result',422,'approval_schema_invalid');check(!it.late_response,409,'approval_consumed');
+    check(it.args_hash===input.args_hash,409,'approval_stale');
+    const now=this.now(),expires=Date.parse(it.expires_at);check(now<=expires+LATE_DEVICE_REPORT_MS,409,'approval_expired');
+    const raw=await tx.get(owner,'native-chat-conversations',cid);check(raw&&!raw.content_redacted&&c.state==='active'&&c.grant_epoch===t.grant_epoch,409,'approval_grant_conflict');
+    const ttlExceeded=!(now<expires);
+    const late={...it,late_response:clone(input.response),late_reported_at:isoAt(now),late_operation_id:input.operation_id,late_request_hash:requestHash,...ttlExceeded?{late_ttl_exceeded:true}:{}};
+    return {turn:{...t,interrupts:t.interrupts.map(i=>i.interrupt_id===it.interrupt_id?late:i)},it:late,conversation:raw,flag:ttlExceeded?'ttl_exceeded':'superseded'};
   }
   // User cancel of one running turn. The durable turn row is the cancel marker:
   // it commits state 'failed' + turn_failed{code:'cancelled'} under the
@@ -515,7 +594,7 @@ export class ChatService {
     const result=await this.repository.transaction(async tx=>{
       await this.integration?.lockScope?.(tx,scopeID);
       await tx.lock(owner,'native-chat-conversations',cid);
-      await this.conversation(tx,owner,cid,principal.subject_id,scopeID);
+      const c=await this.conversation(tx,owner,cid,principal.subject_id,scopeID);
       const t=await tx.get(owner,'native-chat-turns',tid);
       check(t&&t.conversation_id===cid&&t.scope_id===scopeID&&t.subject_id===principal.subject_id,404,'not_found');
       if(finished(t.state))return {turn:t,cancelled:t.error?.code==='cancelled',changed:false};
@@ -525,6 +604,7 @@ export class ChatService {
       // A suspended turn is cancellable: its pending approvals resolve as cancelled before the terminal event.
       for(const it of t.interrupts??[])if(it.status==='pending'){const r={...it,status:'cancelled',decided_at:isoAt(this.now())};next={...next,interrupts:next.interrupts.map(i=>i.interrupt_id===it.interrupt_id?r:i)};next={...next,events:[...next.events,this.event(next,'approval_resolved',resolvedEvent(r))]};if(it.kind==='ui')next={...next,events:[...next.events,this.event(next,'ui.block.resolve',uiBlockResolve(it.block.id,'cancelled'))]};}
       const saved=await tx.put(owner,'native-chat-turns',{...next,state:'failed',error,cancel_requested_at:iso(),finished_at:iso(),events:[...next.events,this.event(next,'turn_failed',error)]});
+      const noted=withInterruptedTurn(c,saved,'cancelled');if(noted.turn_outcome_notes!==c.turn_outcome_notes||noted.interaction_outcomes!==c.interaction_outcomes)await tx.put(owner,'native-chat-conversations',noted);
       return {turn:saved,cancelled:true,changed:true};
     });
     if(result.changed){this.active.get(`${owner}:${tid}`)?.controller.abort(new ApiError(409,'cancelled'));this.notify(owner,result.turn);}
