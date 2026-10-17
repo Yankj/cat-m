@@ -716,6 +716,26 @@ struct NativeWorkspaceRetrySchedule: Sendable {
             Task { @MainActor in await AccountChangeObservers.notify(previous: previous, current: id) }
         }
     }
+    /// p89i product decision: device operations in flight for this account → ask first (`logoutPrompt`), never cancel or
+    /// continue them silently. Passive invalidation (server revoked the session) can't ask and keeps the synchronous barrier.
+    @Published private(set) var logoutPrompt: [DeviceInFlight.Item] = []
+    private var afterLogout: (@MainActor () async -> Void)?
+    var deviceCallStore: DeviceCallStore = .shared
+    func requestSignOut(after: (@MainActor () async -> Void)? = nil) async {
+        let items = DeviceInFlight.items(store: deviceCallStore, account: DeviceCallGate.currentAccount())
+        guard !items.isEmpty else { await signOut(); await after?(); return }
+        DeviceDecisionLog.write("logout requested: \(items.count) in flight → ask user")
+        afterLogout = after; logoutPrompt = items
+    }
+    /// nil = 暂不退出 (stay signed in, operations untouched).
+    func resolveSignOut(_ choice: DeviceInFlight.Choice?) async {
+        let items = logoutPrompt, after = afterLogout
+        guard !items.isEmpty else { return }
+        logoutPrompt = []; afterLogout = nil
+        guard let choice else { DeviceDecisionLog.write("logout dismissed: stay signed in"); return }
+        await DeviceInFlight.apply(choice, items: items, store: deviceCallStore)
+        await signOut(); await after?()
+    }
     func signOut() async {
         guard let manager, !actionBusy else { return };actionBusy=true;logoutInProgress=true;lifecycleEpoch += 1
         let leaving = AccountEpoch.shared.currentAccount ?? Self.lastBarrierAccount   // captured BEFORE the barrier closes
