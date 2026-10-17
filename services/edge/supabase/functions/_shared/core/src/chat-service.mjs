@@ -79,8 +79,8 @@ export class ChatService {
     check(!memoryProposalContract||(!revisionTarget&&!workIntent),422,'memory_proposal_turn_not_allowed');
     check(!revisionWork||(revisionTarget&&!workIntent&&!memoryProposalContract),422,'revision_work_turn_not_allowed');
     check(!(revisionTarget&&workIntent),422,'work_intent_revision_not_supported');
-    const vision=this.validateInput(input);let transferred=false;try{input=vision.input;check(!vision.receipts.length||(!revisionTarget&&!workIntent&&!revisionWork&&!memoryProposalContract),422,'vision_turn_not_allowed');const trusted=await this.scoped(auth,scopeID),{owner,scope,principal}=trusted,acceptedAt=this.metrics.now();
-    await this.integration?.prepare({owner,scope,principal});
+    const vision=this.validateInput(input);let transferred=false,heldOwner=null;try{input=vision.input;check(!vision.receipts.length||(!revisionTarget&&!workIntent&&!revisionWork&&!memoryProposalContract),422,'vision_turn_not_allowed');const trusted=await this.scoped(auth,scopeID),{owner,scope,principal}=trusted,acceptedAt=this.metrics.now();
+    await this.integration?.prepare({owner,scope,principal});heldOwner=owner;
     const admissionHash=hash({input,...vision.receipts.length?{image_attachments:vision.receipts,image_route_hash:this.vision.routeHash}:{},...revisionWork?{revision_work:revisionWork,revision_work_contract:TASK_REVISION_WORK_CONTRACT}:{},...memoryProposalContract?{memory_proposal_contract:memoryProposalContract}:{},...workIntent?{work_intent:workIntent,work_intent_contract:ACCEPTED_WORK_INTENT_CONTRACT}:{},...revisionTarget?{revision_target:revisionTarget,revision_contract:TASK_REVISION_CONTRACT}:{},...approvalContract?{approval_contract:approvalContract}:{},...uiContract?{ui_contract:uiContract}:{},conversation_id:conversationID,scope,subject:principal.subject_id,model:this.provider.identity});
     const result=await this.repository.transaction(async tx=>{
       await this.integration?.beforeWrite(tx,{owner,scope});
@@ -161,14 +161,14 @@ export class ChatService {
       entry.promise.catch(()=>{});
     }
     return {...result,trusted}; // Internal only; never serialized as HTTP data.
-    }finally{if(!transferred)for(const attachment of vision.attachments)attachment.bytes.fill(0);}
+    }finally{if(!transferred)for(const attachment of vision.attachments)attachment.bytes.fill(0);if(heldOwner)await this.integration?.release?.(heldOwner);}
   }
   /** R7 busy retry: restart the SAME turn in place when it failed with `rate_limited` before any
    * model output. Identity, user message, admission and request hash are unchanged; new events
    * continue the original sequence. Any output or any other failure keeps the original result. */
   async restartRateLimited(auth,scopeID,conversationID,turnID){
     const trusted=await this.scoped(auth,scopeID),{owner,scope,principal}=trusted;
-    await this.integration?.prepare({owner,scope,principal});
+    await this.integration?.prepare({owner,scope,principal});try{
     const turn=await this.repository.transaction(async tx=>{
       await this.integration?.beforeWrite(tx,{owner,scope});
       await tx.lock(owner,'native-chat-conversations',conversationID);
@@ -183,6 +183,7 @@ export class ChatService {
     entry.promise=this.execute({auth,owner,scope,principal,turn,signal:controller.signal,controller}).finally(()=>this.active.delete(key));
     entry.promise.catch(()=>{});
     return {turn,trusted,afterSequence:turn.events.length};
+    }finally{await this.integration?.release?.(owner);}
   }
   async live(tx,{owner,turn,scope}){
     await this.integration?.beforeWrite(tx,{owner,scope:scope??{scope_id:turn.scope_id},turn});
@@ -238,7 +239,14 @@ export class ChatService {
       const saved=await tx.put(env.owner,'native-chat-turns',{...t,...call.name==='propose_memory_v1'?{memory_proposal_receipt:result,memory_proposal_call:{id:call.id,hash:hash({id:call.id,name:call.name,arguments:call.arguments})}}:{},...continuationReceipt?{continuations:[continuationReceipt],...call.name==='revise_current_report_work_v1'?{revision_work_receipts:[result]}:{},dispatch_checkpoint:{...t.dispatch_checkpoint,next:1}}:{},task_bindings:['delegate_task','delegate_plan_v1','delegate_sources_v1'].includes(call.name)?[...t.task_bindings,result]:t.task_bindings,events:[...t.events,event,...extra]});await this.beforeCommit(tx,env,saved);if(t.revision_target)await this.assertRevisionLive(tx,env,saved);return saved;
     });this.notify(env.owner,t);if(wake)try{await this.facade.onTaskRevisionAccepted?.(wake);}catch{}return t.events.findLast(e=>e.type==='tool_result').data.result;
   }
+  /** Runtime-lease hold: each executing turn keeps this instance's per-owner lease; it is released
+   * (owner-checked) when the last hold on this instance ends, not only by lease expiry. retain runs
+   * synchronously before the first await so the caller's own release cannot drop the lease early. */
   async execute(env){
+    this.integration?.retain?.(env.owner);
+    try{return await this.executeHeld(env);}finally{await this.integration?.release?.(env.owner);}
+  }
+  async executeHeld(env){
     const now=this.clockNow??Date.now,startedAt=now(),deadline=startedAt+(this.modelBudgetMs??50000);
     const deadlineError=()=>new ApiError(503,'chat_deadline_exceeded',{reconciliation:true});
     env.assertLive=()=>{if(now()>=deadline&&!env.signal.aborted)env.controller?.abort(deadlineError());env.signal.throwIfAborted();};
@@ -415,7 +423,7 @@ export class ChatService {
     entry.promise=this.execute({auth,owner,scope:trusted.scope,principal,turn,signal:controller.signal,controller}).finally(()=>this.active.delete(key));entry.promise.catch(()=>{});
   }
   async expireDue(auth,trusted,scopeID,cid,tid){
-    const {owner,scope,principal}=trusted;await this.integration?.prepare({owner,scope,principal});
+    const {owner,scope,principal}=trusted;await this.integration?.prepare({owner,scope,principal});try{
     const r=await this.repository.transaction(async tx=>{
       await this.integration?.beforeWrite(tx,{owner,scope});await tx.lock(owner,'native-chat-conversations',cid);
       await this.conversation(tx,owner,cid,principal.subject_id,scopeID);const t=await tx.get(owner,'native-chat-turns',tid);
@@ -425,6 +433,7 @@ export class ChatService {
       const saved=await tx.put(owner,'native-chat-turns',next);await this.beforeCommit(tx,{owner,scope},saved);return {saved,resume:settled.resume};
     });
     if(!r)return false;this.notify(owner,r.saved);if(r.resume)this.startResumed(auth,trusted,cid,r.saved);return true;
+    }finally{await this.integration?.release?.(owner);}
   }
   /** catpaw.device.v1: POST …/turns/{t}/device-result {call_id,operation_id,args_hash,status,data?}.
    * Resolves the kind:'device' interrupt of call_id through decideInterrupt (same idempotency, args_hash, TTL, resume). */
@@ -461,7 +470,7 @@ export class ChatService {
   async decideInterrupt(auth,scopeID,cid,tid,iid,raw){
     check(UUID.test(cid)&&UUID.test(tid)&&UUID.test(iid),404,'not_found');
     const input=validateDecision(raw),trusted=await this.scoped(auth,scopeID),{owner,scope,principal}=trusted;
-    await this.integration?.prepare({owner,scope,principal});
+    await this.integration?.prepare({owner,scope,principal});try{
     const requestHash=hash({contract:APPROVAL_CONTRACT,turn_id:tid,interrupt_id:iid,decision:input.decision,args_hash:input.args_hash,...'response' in input?{response:input.response}:{}});
     const r=await this.repository.transaction(async tx=>{
       await this.integration?.beforeWrite(tx,{owner,scope});await tx.lock(owner,'native-chat-conversations',cid);
@@ -493,6 +502,7 @@ export class ChatService {
     if(!r.replayed)this.notify(owner,r.saved);if(r.resume)this.startResumed(auth,trusted,cid,r.saved);
     if(r.expired)throw new ApiError(409,'approval_expired');
     return {turn:r.saved,trusted,resumed:r.resume,afterSequence:Math.max(0,(r.it.resolved_sequence??r.saved.events.length)-1)};
+    }finally{await this.integration?.release?.(owner);}
   }
   // User cancel of one running turn. The durable turn row is the cancel marker:
   // it commits state 'failed' + turn_failed{code:'cancelled'} under the
@@ -563,7 +573,7 @@ export class ChatService {
   }
   // Explicit trusted recovery of durable received output; observers/replays never call this.
   async resumeReceivedRevision(auth,scopeID,cid,tid){
-    const trusted=await this.scoped(auth,scopeID);check(!this.active.has(`${trusted.owner}:${tid}`),409,'revision_received_recovery_unavailable');await this.integration?.prepare(trusted);
+    const trusted=await this.scoped(auth,scopeID);check(!this.active.has(`${trusted.owner}:${tid}`),409,'revision_received_recovery_unavailable');await this.integration?.prepare(trusted);try{
     const turn=await this.repository.transaction(async tx=>{
       await this.integration?.beforeWrite(tx,{...trusted});await tx.lock(trusted.owner,'native-chat-conversations',cid);const c=await this.conversation(tx,trusted.owner,cid,trusted.principal.subject_id,scopeID),t=await tx.get(trusted.owner,'native-chat-turns',tid);
       check(t?.revision_target&&t.dispatch_checkpoint?.state==='received'&&['running','outcome_unknown'].includes(t.state)&&t.grant_epoch===c.grant_epoch&&t.conversation_revision===c.revision,409,'revision_received_recovery_unavailable');
@@ -571,6 +581,7 @@ export class ChatService {
       let next={...t,state:'running',error:null};if(this.integration)next=await this.integration.stampTurn(tx,trusted.owner,next);const saved=await tx.put(trusted.owner,'native-chat-turns',next);await this.beforeCommit(tx,trusted,saved);await this.assertRevisionLive(tx,trusted,saved);return saved;
     });
     const controller=new AbortController();await this.execute({auth,...trusted,turn,signal:controller.signal,controller});return this.readTurn(auth,scopeID,cid,tid);
+    }finally{await this.integration?.release?.(trusted.owner);}
   }
   async waitIdle(){await Promise.all([...this.active.values()].map(e=>e.promise));}
   async *observe(auth,scopeID,cid,tid,{signal,afterSequence=0,trusted=null}={}){

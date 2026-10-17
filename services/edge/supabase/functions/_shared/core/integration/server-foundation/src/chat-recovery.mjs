@@ -17,6 +17,21 @@ export class ChatRecoveryFence {
       return tx.insertIfAbsent(owner, 'native-chat-runtime-leases', row);
     });
   }
+  /** Read-only: ms until the current lease expires (0 when free/expired). Used for Retry-After. */
+  async remainingMs(owner) {
+    const row = await this.repository.transaction(tx => tx.get(owner, 'native-chat-runtime-leases', 'runtime'));
+    return row ? Math.max(0, Date.parse(row.lease_until) - Date.parse(this.now())) : 0;
+  }
+  /** Owner-checked early release: expires the lease only if it is still held by this exact
+   * holder+generation token, so it can never free another instance's (or a newer) lease. */
+  async release(owner, token) {
+    if (!token) return false;
+    return this.repository.transaction(async tx => {
+      await tx.lock(owner, 'native-chat-runtime-leases', 'runtime'); const live = await tx.get(owner, 'native-chat-runtime-leases', 'runtime');
+      if (!live || live.holder_id !== token.holder_id || live.generation !== token.generation || Date.parse(live.lease_until) <= Date.parse(this.now())) return false;
+      return !!(await tx.compareAndSwap(owner, 'native-chat-runtime-leases', 'runtime', live, { lease_until: this.now() }));
+    });
+  }
   async assertLive(tx, owner, token) {
     await tx.lock(owner, 'native-chat-runtime-leases', 'runtime');
     const live = await tx.get(owner, 'native-chat-runtime-leases', 'runtime');

@@ -127,6 +127,6 @@ export function createChatFetchHandler(runtime){
         return new Response(stream,{headers:{'Content-Type':'text/event-stream','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
       }
       throw new ApiError(404,'not_found');
-    }catch(e){const known=e instanceof ApiError;return Response.json({schema_version:1,error:{code:known?e.code:'internal_error',retryable:false,reconciliation_required:known?e.reconciliation:false}},{status:known?e.status:500,headers:{'Cache-Control':'no-store'}});}
+    }catch(e){const known=e instanceof ApiError;return Response.json({schema_version:1,error:{code:known?e.code:'internal_error',retryable:known&&e.retryable===true,reconciliation_required:known?e.reconciliation:false}},{status:known?e.status:500,headers:{'Cache-Control':'no-store',...known&&e.retryAfterSec?{'Retry-After':String(e.retryAfterSec)}:{}}});}
   };
 }
