@@ -209,6 +209,9 @@ import AppIntents
                     AccountParkedDecisionSheet(items:auth.parkedPrompt) { auth.resolveParked($0) }
                 }
                 // L2 memory: per-user encrypted store follows the signed-in user (memory-layers.md).
+                .onAppear { LaunchTrace.mark("chat.visible", auth.chatIsLaunchFallback ? "fallback" : "account", once: true) }
+                // Launch-loader fix: an unrecoverable session is a small non-blocking capsule over the usable chat.
+                .overlay(alignment:.top) { if auth.sessionRestartNeeded { SessionRestartCapsule(auth:auth).padding(.top,52) } }
                 .task(id:auth.state.user?.id) { AccountEpoch.shared.activate(account:auth.state.user?.id.uuidString); L2SecureStore.activate(userID:auth.state.user?.id); CatpawL2Sealing.install(); AtRestMigrationScheduler.shared.sealerMayBeReady(); MemoryLibraryLocal.activate(userID:auth.state.user?.id); GenerativeBlockStore.shared.reloadFromL2(); MemoryCache.shared.reloadFromL2(); await MemoryCache.shared.sync() }
                 #if DEBUG
                 .overlay(alignment:.topTrailing) {
@@ -219,14 +222,11 @@ import AppIntents
                 #endif
         }
         else if !auth.needsOnboarding {
-            // Intro cleared; chat shell still attaching (background auth/workspace). Not a door lock.
-            ZStack {
-                CatpawColors.calmPage.ignoresSafeArea()
-                ProgressView()
-                    .tint(CatpawColors.ink)
-            }
-            .accessibilityIdentifier("onboarding.enteringChat")
-            .task { if auth.chat == nil { await auth.foreground() } }
+            // Launch-loader fix: never a full-screen loader. The chat's own first frame is drawn while the local store
+            // attaches (normally a few hundred ms, disk only); a fallback local chat opens if no account chat is ready.
+            LaunchChatShell(auth:auth)
+                .accessibilityIdentifier("onboarding.enteringChat")
+                .task { await auth.ensureLaunchChat() }
         }
         else {
             NativeLoginView(auth:auth)
@@ -234,6 +234,77 @@ import AppIntents
                 .overlay(alignment:.topTrailing) { if auth.isFixture { NativeAuthFixtureLoggedOutProbe(auth:auth) } }
                 #endif
         }
+    }
+}
+
+/// The chat screen's first frame (same canvas, header row, empty state and composer) with a small floating status capsule.
+/// Shown only while the local chat attaches; it never blocks and never waits on the network.
+private struct LaunchChatShell:View {
+    @ObservedObject var auth:NativeAuthApplicationModel
+    @Environment(\.locale) private var locale
+    @State private var showStatus=false
+    private func ui(_ key:String)->String { AppLanguage(locale:locale).ui(key) }
+    var body:some View {
+        ZStack {
+            CatpawColors.background.ignoresSafeArea()
+            VStack(alignment:.leading,spacing:0) {
+                HStack {
+                    Image(systemName:"line.3.horizontal").font(CatpawTypography.Role.body.font).foregroundStyle(CatpawColors.ink).frame(width:44,height:44)
+                    Spacer()
+                    Image(systemName:"square.and.pencil").font(CatpawTypography.Role.body.font).foregroundStyle(CatpawColors.ink).frame(width:44,height:44)
+                }.padding(.horizontal,8)
+                VStack(alignment:.leading,spacing:8) {
+                    Text(ui("想一起完成什么？")).font(CatpawTypography.Role.title.font.weight(.semibold)).foregroundStyle(CatpawColors.ink)
+                }.padding(.horizontal,20).padding(.top,56)
+                Spacer()
+                HStack { Text(ui("有什么我可以帮你？")).font(CatpawTypography.Role.body.font).foregroundStyle(CatpawColors.secondary); Spacer() }
+                    .padding(.horizontal,16).frame(minHeight:48)
+                    .background(CatpawColors.input,in:Capsule())
+                    .padding(.horizontal,16).padding(.bottom,8)
+            }
+        }
+        .overlay(alignment:.top) {
+            if auth.sessionRestartNeeded { SessionRestartCapsule(auth:auth).padding(.top,52) }
+            else if showStatus {
+                HStack(spacing:8) { ProgressView().controlSize(.small); Text(ui("正在打开对话…")).font(CatpawTypography.Role.caption.font.weight(.medium)) }
+                    .foregroundStyle(CatpawColors.ink)
+                    .padding(.horizontal,12).padding(.vertical,8)
+                    .background(CatpawColors.panel,in:Capsule())
+                    .shadow(color:.black.opacity(0.08),radius:8,y:2)
+                    .padding(.top,52)
+                    .transition(.opacity)
+                    .accessibilityIdentifier("launch.statusCapsule")
+            }
+        }
+        // Only a slow attach shows the capsule; a normal attach replaces this frame before it would appear.
+        .task { try? await Task.sleep(nanoseconds:500_000_000); withAnimation(.easeOut(duration:0.2)) { showStatus=true } }
+    }
+}
+/// Non-blocking 「这次会话需要重新开始」 notice with the explicit restart action (same semantics as the login page button).
+private struct SessionRestartCapsule:View {
+    @ObservedObject var auth:NativeAuthApplicationModel
+    @Environment(\.locale) private var locale
+    @State private var working=false
+    private func ui(_ key:String)->String { AppLanguage(locale:locale).ui(key) }
+    var body:some View {
+        HStack(spacing:8) {
+            Image(systemName:"arrow.clockwise.circle")
+            Text(ui("这次会话需要重新开始，本机对话仍会保留。")).font(CatpawTypography.Role.caption.font.weight(.medium)).fixedSize(horizontal:false,vertical:true)
+            Spacer(minLength:4)
+            Button { working=true; Task { await auth.restartSession(); working=false } } label: {
+                if working { ProgressView().controlSize(.small) } else { Text(ui("重新开始")).font(CatpawTypography.Role.caption.font.weight(.semibold)) }
+            }
+            .buttonStyle(.plain).disabled(working).frame(minHeight:44)
+            .accessibilityIdentifier("launch.restartSession")
+        }
+        .foregroundStyle(CatpawColors.ink)
+        .padding(.horizontal,12).padding(.vertical,4)
+        .frame(maxWidth:680)
+        .background(CatpawColors.panel,in:Capsule())
+        .overlay(Capsule().strokeBorder(CatpawColors.controlEdge))
+        .shadow(color:.black.opacity(0.08),radius:8,y:2)
+        .padding(.horizontal,20)
+        .accessibilityIdentifier("launch.sessionRestart")
     }
 }
 

@@ -6542,5 +6542,9 @@
   "实际生效：关闭（有记忆库已关闭）": {
     "en": "In effect: off (a memory library is off)",
     "zh-Hans": "实际生效：关闭（有记忆库已关闭）"
+  },
+  "正在打开对话…": {
+    "en": "Opening conversation…",
+    "zh-Hans": "正在打开对话…"
   }
 }

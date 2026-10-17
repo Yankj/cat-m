@@ -26,7 +26,20 @@ public actor NativeAuthSessionManager {
     public func canRetryRecovery() throws -> Bool {
         guard !logoutInProgress, pendingPersistence == nil else { return false }
         if recoveryCandidate != nil { return true }
-        return try !barrier.isSignedOut() && vault.load() != nil
+        if try barrier.isSignedOut() { return journaledRotation() != nil }
+        return try vault.load() != nil
+    }
+    /// True while a cold restore, sign-in or token rotation is running: a signed-out barrier next to a stored credential is
+    /// then the normal rotation window, not an abandoned session.
+    public func rotationInFlight() -> Bool { [.restoring, .refreshing, .signingIn].contains(value.phase) || refreshFlight != nil }
+    /// A journaled rotation result for the SAME account as the stored credential, still within its access-token lifetime.
+    /// Sign-out clears the journal right after closing the barrier, so an interrupted sign-out can never revive an account.
+    private func journaledRotation() -> NativeAuthCredential? {
+        guard let pending = try? vault.loadPending() else { return nil }
+        guard pending.issuer == configuration.issuer, pending.expiresAt > now(), let stored = try? vault.load(), stored.issuer == pending.issuer, stored.user.id == pending.user.id else {
+            try? vault.clearPending(); return nil
+        }
+        return pending
     }
     public func restore() async throws {
         try Task.checkCancellation()
@@ -37,8 +50,12 @@ public actor NativeAuthSessionManager {
         do {
             let saved: NativeAuthCredential
             if let candidate = recoveryCandidate { saved = candidate }
-            else {
-                guard try !barrier.isSignedOut(), let stored = try vault.load() else { publish(.signedOut); return }
+            else if try barrier.isSignedOut() {
+                // A rotation interrupted after the token endpoint answered: finish its read-only validation (no replay).
+                guard let journaled = journaledRotation() else { publish(.signedOut); return }
+                recoveryCandidate = journaled; saved = journaled
+            } else {
+                guard let stored = try vault.load() else { publish(.signedOut); return }
                 saved = stored
             }
             guard saved.issuer == configuration.issuer else { try expireLocally(); return }
@@ -54,6 +71,7 @@ public actor NativeAuthSessionManager {
                 try checkActive(epoch)
                 guard candidate.user.id == saved.user.id else { throw NativeAuthError.invalidResponse }
                 try validate(candidate, user: candidate.user)
+                try? vault.savePending(candidate)   // journal before /user: the old refresh token is already revoked server-side
                 recoveryCandidate = candidate
             } else { candidate = saved }
             let user = try await remote.user(accessToken: candidate.accessToken)
@@ -77,6 +95,7 @@ public actor NativeAuthSessionManager {
         generation += 1;let epoch = generation;refreshFlight?.task.cancel();refreshFlight = nil;credential = nil;pendingPersistence = nil;recoveryCandidate = nil
         var storageFailure = false,remoteFailure = false
         do { try barrier.setSignedOut(true) } catch { storageFailure = true }
+        do { try vault.clearPending() } catch { storageFailure = true }   // before any await: no rotation journal outlives sign-out
         publish(storageFailure ? .storageBlocked : .signedOut)
         if let token {
             do { try await remote.revokeApplicationSession(accessToken:token) } catch { remoteFailure = true }
@@ -93,13 +112,14 @@ public actor NativeAuthSessionManager {
         try validate(pending, user: pending.user)
         do { try vault.save(pending); try barrier.setSignedOut(false) }
         catch { publish(.storageBlocked, message: NativeAuthError.storage.localizedDescription); throw NativeAuthError.storage }
+        try? vault.clearPending()
         pendingPersistence = nil; recoveryCandidate = nil; refreshFlight = nil; credential = pending; publish(.authenticated)
     }
     public func cancelLogin() throws { try closeLocally() }
     public func rejectAuthorization(subject: UUID) throws { if credential?.user.id == subject { try expireLocally() } }
     private func closeLocally() throws {
         generation += 1; refreshFlight?.task.cancel(); refreshFlight = nil; credential = nil; pendingPersistence = nil; recoveryCandidate = nil
-        do { try barrier.setSignedOut(true); try vault.clear() }
+        do { try barrier.setSignedOut(true); try vault.clearPending(); try vault.clear() }
         catch { publish(.storageBlocked, message: NativeAuthError.storage.localizedDescription); throw NativeAuthError.storage }
         publish(.signedOut)
     }
@@ -170,7 +190,7 @@ public actor NativeAuthSessionManager {
         do { saved = try vault.load() } catch { throw NativeAuthError.storage }
         if credential != nil || saved != nil {
             // A failed/uncertain refresh must never silently create a new identity.
-            if credential == nil,try barrier.isSignedOut() { throw NativeAuthError.sessionRecoveryRequired }
+            if credential == nil,try barrier.isSignedOut(),journaledRotation() == nil { throw NativeAuthError.sessionRecoveryRequired }
             try await restore()
             guard value.phase == .authenticated else { throw NativeAuthError.loginRequired }
             return
@@ -205,6 +225,7 @@ public actor NativeAuthSessionManager {
             try barrier.setSignedOut(false); try checkActive(epoch)
         } catch is CancellationError { throw CancellationError() }
         catch { throw NativeAuthError.storage }
+        try? vault.clearPending()
         pendingPersistence = nil; recoveryCandidate = nil; credential = candidate; publish(.authenticated)
     }
     private func validate(_ c: NativeAuthCredential, user: NativeAuthUser) throws {
@@ -235,6 +256,7 @@ public actor NativeAuthSessionManager {
                 try self.checkActive(epoch)
                 guard next.user.id == original.user.id else { throw NativeAuthError.invalidResponse }
                 try self.validate(next, user: next.user)
+                try? self.vault.savePending(next)   // journal before /user (see restore)
                 self.recoveryCandidate = next
                 let user = try await remote.user(accessToken: next.accessToken)
                 try self.checkActive(epoch)
@@ -269,7 +291,7 @@ public actor NativeAuthSessionManager {
     }
     private func expireLocally() throws {
         generation += 1; refreshFlight?.task.cancel(); refreshFlight = nil; credential = nil; pendingPersistence = nil; recoveryCandidate = nil
-        do { try barrier.setSignedOut(true); try vault.clear() }
+        do { try barrier.setSignedOut(true); try vault.clearPending(); try vault.clear() }
         catch { publish(.storageBlocked, message: NativeAuthError.storage.localizedDescription); throw NativeAuthError.storage }
         publish(.loginRequired, message: NativeAuthError.loginRequired.localizedDescription)
     }

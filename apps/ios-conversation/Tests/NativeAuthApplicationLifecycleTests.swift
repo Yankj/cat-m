@@ -599,6 +599,81 @@ final class NativeAuthApplicationLifecycleTests:XCTestCase {
         }
     }
 
+    /// Launch-loader fix (iPhone 13 white screen, 792587e): onboarding completed + logout barrier closed next to the old
+    /// credential with no rotation journal (an interrupted rotation). Before: chat stayed nil forever behind a full-screen
+    /// ProgressView. Now a usable account-neutral local chat opens, the restart need is published for the small capsule,
+    /// and 「重新开始」 reaches a fresh identity whose own chat replaces the fallback.
+    @MainActor func testUnrecoverableSessionOpensLocalChatWithRestartCapsuleNotADeadLoader() async throws {
+        let root=FileManager.default.temporaryDirectory.appendingPathComponent("native-launch-fallback-"+UUID().uuidString,isDirectory:true)
+        defer {try? FileManager.default.removeItem(at:root)}
+        let scope=UUID(),clock=AuthTestClock(),storage=LifecycleStorage(),configuration=try lifecycleConfiguration(scope:scope)
+        let remote=AnonymousTestRemote(issuer:configuration.issuer,clock:clock)
+        try storage.save(await remote.candidate());try storage.setSignedOut(true)
+        let subject=await remote.id
+        let manager=NativeAuthSessionManager(configuration:configuration,remote:remote,vault:storage,barrier:storage,now:{clock.now()})
+        let resolver=LifecycleWorkspaceResolver(subject:subject,scope:scope,steps:[.success,.success],accessToken:"synthetic.anon.signature")
+        let app=NativeAuthApplicationModel(configuration:configuration,manager:manager,vault:storage,barrier:storage,root:root,workspaceResolver:resolver,retrySchedule:.init(nominalSeconds:[0],jitter:{$0}))
+        XCTAssertFalse(app.needsOnboarding)
+        await app.start()
+        XCTAssertTrue(app.localReadFinished)
+        XCTAssertNil(app.chat,"the ambiguous partition must not be opened (fail closed)")
+        await app.startExperience()   // the launch auto-experience path: refuses to mint a new identity silently
+        XCTAssertTrue(app.sessionRestartNeeded)
+        let started=ProcessInfo.processInfo.systemUptime
+        await app.ensureLaunchChat()
+        let fallback=try XCTUnwrap(app.chat,"a usable local chat must open instead of a dead loader")
+        XCTAssertLessThan(ProcessInfo.processInfo.systemUptime-started,2.0,"the fallback never waits on the network")
+        XCTAssertTrue(app.chatIsLaunchFallback)
+        XCTAssertNotEqual(fallback.trustedSubjectID,subject,"no account data is shown before the account is resolved")
+        XCTAssertFalse(fallback.networkAdmissionAllowed)
+        XCTAssertTrue(app.sessionRestartNeeded,"the restart capsule stays visible over the fallback chat")
+        let before=await remote.counts()
+        await app.restartSession()
+        try await waitUntil {app.chat?.trustedSubjectID == subject}
+        XCTAssertFalse(app.sessionRestartNeeded)
+        XCTAssertFalse(app.chatIsLaunchFallback)
+        let after=await remote.counts()
+        XCTAssertEqual(after.0,before.0+1,"restart mints exactly one fresh experience identity")
+        await app.signOut()
+    }
+
+    /// Launch-loader fix: 开始使用 / startExperience racing the launch restore gets `.busy` from the manager. That is a
+    /// transient state — it must never be mistaken for an ambiguous credential (the old 「这次会话需要重新开始」 flash).
+    @MainActor func testStartExperienceDuringLaunchRestoreIsTransientNotARestart() async throws {
+        let root=FileManager.default.temporaryDirectory.appendingPathComponent("native-launch-busy-"+UUID().uuidString,isDirectory:true)
+        defer {try? FileManager.default.removeItem(at:root)}
+        let scope=UUID(),subject=UUID(),clock=LifecycleClock(),storage=LifecycleStorage(),configuration=try lifecycleConfiguration(scope:scope)
+        let remote=LifecycleRemote(issuer:configuration.issuer,subject:subject,clock:clock)
+        try storage.save(.init(issuer:configuration.issuer,user:.init(id:subject),accessToken:"offline.lifecycle.signature",refreshToken:"synthetic-lifecycle-only",expiresAt:clock.now().addingTimeInterval(-60)))
+        let manager=NativeAuthSessionManager(configuration:configuration,remote:remote,vault:storage,barrier:storage,now:{clock.now()})
+        let resolver=LifecycleWorkspaceResolver(subject:subject,scope:scope,steps:[.success,.success])
+        let app=NativeAuthApplicationModel(configuration:configuration,manager:manager,vault:storage,barrier:storage,root:root,workspaceResolver:resolver,retrySchedule:.init(nominalSeconds:[0],jitter:{$0}))
+        let startup=Task {await app.start()}
+        try await waitUntil {await remote.refreshIsPending()}
+        XCTAssertTrue(try storage.isSignedOut(),"inside the rotation window the barrier is closed")
+        let rotating=await manager.rotationInFlight()
+        XCTAssertTrue(rotating)
+        let tap=Task {await app.startExperience()}
+        try await Task.sleep(nanoseconds:50_000_000)
+        XCTAssertFalse(app.requiresSessionRestart,"a tap inside the rotation window is not an ambiguous session")
+        await remote.releaseRefresh()
+        await tap.value;await startup.value
+        try await waitUntil {app.chat?.trustedSubjectID == subject}
+        XCTAssertFalse(app.requiresSessionRestart);XCTAssertFalse(app.recoveryImpossible);XCTAssertNil(app.error)
+        await app.signOut()
+    }
+
+    /// The splash plays on the first run only; every later launch goes straight to the chat's first frame.
+    func testLaunchSplashIsFirstRunOnly() throws {
+        let suite="xctest.launchgate."+UUID().uuidString,defaults=try XCTUnwrap(UserDefaults(suiteName:suite))
+        defer {defaults.removePersistentDomain(forName:suite)}
+        XCTAssertTrue(LaunchMarkGate.isFirstRun(defaults,arguments:[]))
+        CatpawOnboarding.markCompleted(defaults)
+        XCTAssertFalse(LaunchMarkGate.isFirstRun(defaults,arguments:[]))
+        let fresh=try XCTUnwrap(UserDefaults(suiteName:suite+".b"));defer {fresh.removePersistentDomain(forName:suite+".b")}
+        XCTAssertFalse(LaunchMarkGate.isFirstRun(fresh,arguments:[CatpawOnboarding.skipArgument]))
+    }
+
     private func lifecycleConfiguration(scope:UUID) throws ->NativeAuthConfiguration {
         try NativeAuthConfiguration(projectURL:URL(string:"https://abcdefghijklmnopqrst.supabase.co")!,publishableKey:"sb_publishable_offline_lifecycle_test",backendOrigin:URL(string:"https://backend.example.invalid")!,serverScopeID:scope)
     }
