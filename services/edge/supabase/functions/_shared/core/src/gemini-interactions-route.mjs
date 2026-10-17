@@ -48,6 +48,18 @@ const signatureCache = new Map();
 const remember = (id, steps) => { if (!id || !steps.length) return; signatureCache.set(id, { steps: clone(steps), at: Date.now() }); if (signatureCache.size > 500) signatureCache.delete(signatureCache.keys().next().value); };
 const recall = id => { const e = signatureCache.get(id); if (!e) return []; if (Date.now() - e.at > 1800000) { signatureCache.delete(id); return []; } return clone(e.steps); };
 export const _signatureCacheForTests = signatureCache;
+// Placeholder for a missing thought signature (PLAN.md Rev 2, P1-2). Google validates signatures only for function calls of the
+// CURRENT turn (from the latest user input that is not a function result); a miss there is a 400. It happens when an earlier step of
+// this turn was served by another route (Gemma/Agnes failover), when an approval resume lands on another isolate, or when the
+// 30 min cache entry expires while a card waits. Google documents the dummy value "skip_thought_signature_validator" for exactly this
+// (ai.google.dev/gemini-api/docs/generate-content/thought-signatures; Vertex docs; gemini-cli; Vercel AI SDK #15550/#15553).
+// UNVERIFIED for the Interactions protocol: the docs show generateContent's `thoughtSignature` on the functionCall part. Our streamed
+// signature arrives as a `thought` step with field `signature` (see thought_signature delta below), so the placeholder is sent the
+// same way. Both names sit behind these constants; confirm them with ONE consented dev call before deploying.
+export const GEMINI_SKIP_SIGNATURE = 'skip_thought_signature_validator';
+export const GEMINI_SIGNATURE_STEP_TYPE = 'thought', GEMINI_SIGNATURE_FIELD = 'signature';
+const placeholderStep = () => ({ type: GEMINI_SIGNATURE_STEP_TYPE, [GEMINI_SIGNATURE_FIELD]: GEMINI_SKIP_SIGNATURE });
+const hasSignature = steps => steps.some(s => typeof s?.[GEMINI_SIGNATURE_FIELD] === 'string' && s[GEMINI_SIGNATURE_FIELD]);
 
 const textOf = c => typeof c === 'string' ? c : Array.isArray(c) ? c.filter(p => p?.type === 'text').map(p => p.text).join('') : c == null ? '' : JSON.stringify(c);
 /** OpenAI chat content → Interactions content blocks (text + inline base64 images). */
@@ -66,21 +78,35 @@ export function toContent(content) {
   return out.length ? out : [{ type: 'text', text: '' }];
 }
 /** OpenAI-style history → Interactions steps (stateless). */
-export function toSteps(messages) {
-  const names = new Map(), steps = [];
-  for (const m of messages ?? []) {
+export function toSteps(messages, { signaturePlaceholder = true } = {}) {
+  const names = new Map(), steps = [], list = messages ?? [];
+  // Current turn = everything after the latest user message (tool results have role 'tool').
+  let currentFrom = 0; for (let i = list.length - 1; i >= 0; i--) if (list[i]?.role === 'user') { currentFrom = i + 1; break; }
+  for (const [mi, m] of list.entries()) {
     if (m.role === 'user') steps.push({ type: 'user_input', content: toContent(m.content) });
     else if (m.role === 'assistant') {
       const t = textOf(m.content); if (t) steps.push({ type: 'model_output', content: [{ type: 'text', text: t }] });
-      for (const tc of m.tool_calls ?? []) {
+      for (const [ci, tc] of (m.tool_calls ?? []).entries()) {
         let args = tc.function?.arguments ?? '{}'; if (typeof args === 'string') { try { args = JSON.parse(args || '{}'); } catch { args = {}; } }
         names.set(tc.id, tc.function?.name);
-        steps.push(...recall(tc.id), { type: 'function_call', id: tc.id, name: tc.function?.name, arguments: args });
+        let recalled = recall(tc.id);
+        // Only the first call of a step needs a signature (parallel calls share it); only current-turn steps are validated.
+        if (signaturePlaceholder && ci === 0 && mi >= currentFrom && !hasSignature(recalled)) recalled = [...recalled, placeholderStep()];
+        steps.push(...recalled, { type: 'function_call', id: tc.id, name: tc.function?.name, arguments: args });
       }
     } else if (m.role === 'tool') steps.push({ type: 'function_result', call_id: m.tool_call_id, name: m.name ?? names.get(m.tool_call_id) ?? 'tool', result: [{ type: 'text', text: textOf(m.content) }] });
     else if (m.role === 'system') steps.push({ type: 'user_input', content: [{ type: 'text', text: textOf(m.content) }] });
   }
   return steps;
+}
+/** Redacted classification of a Gemini 400 (fixed vocabulary only). */
+export function geminiRejectReason(failure) {
+  const text = [failure?.error?.message, failure?.error?.provider_message].filter(v => typeof v === 'string').join(' ');
+  if (/thought[_ ]?signature/i.test(text)) return 'missing_thought_signature';
+  if (/token|context (?:length|window)|too long|exceeds/i.test(text)) return 'input_too_large';
+  if (/function|tool|schema|parameter/i.test(text)) return 'invalid_tool_request';
+  if (/api key|credential/i.test(text)) return 'credential';
+  return 'invalid_argument';
 }
 export const toTools = tools => (tools ?? []).map(t => ({ type: 'function', name: t.function.name, description: t.function.description ?? '', parameters: clone(t.function.parameters ?? { type: 'object', properties: {} }) }));
 
@@ -123,8 +149,11 @@ export class GeminiInteractionsRoute {
         const daily = failure?.category === 'account_daily_quota' || /per.?day|PerDay|daily/i.test(JSON.stringify(failure?.error ?? {})), exhausted = response.status === 429 || /RESOURCE_EXHAUSTED/.test(raw);
         const retryInfo = /"retryDelay"\s*:\s*"(\d+)s"/.exec(raw);
         if (exhausted) { const s = this.guard?.backoff({ retryAfterSeconds: failure?.headers?.retry_after_seconds ?? (retryInfo ? Number(retryInfo[1]) : null), daily, model }); throw Object.assign(new ApiError(429, daily ? 'quota_exhausted' : 'rate_limited'), { retryAfterSeconds: s }); }
-        // 400 with tool history usually means missing thought signatures (see cache note) → fail over, never retry here.
-        const codes = { 400: body.input.some(s => s.type === 'function_call') ? 'provider_failed' : 'provider_request_invalid', 401: 'unauthorized', 403: 'forbidden', 404: 'free_model_unavailable', 500: 'provider_failed', 502: 'provider_failed', 503: 'provider_overloaded', 504: 'provider_overloaded' };
+        // 400: only a thought-signature rejection fails over (another route can still answer). Any other 400 is a real request
+        // error and stays provider_request_invalid, with a redacted reason code in the log (no upstream text, no key).
+        const reason400 = response.status === 400 ? geminiRejectReason(failure) : null;
+        if (reason400) try { console.warn(JSON.stringify({ event: 'catpaw_gemini_request_rejected', model: String(model).slice(0, 80), reason: reason400, tool_history: body.input.some(s => s.type === 'function_call'), placeholder_signatures: body.input.filter(s => s[GEMINI_SIGNATURE_FIELD] === GEMINI_SKIP_SIGNATURE).length })); } catch {}
+        const codes = { 400: reason400 === 'missing_thought_signature' ? 'provider_failed' : 'provider_request_invalid', 401: 'unauthorized', 403: 'forbidden', 404: 'free_model_unavailable', 500: 'provider_failed', 502: 'provider_failed', 503: 'provider_overloaded', 504: 'provider_overloaded' };
         throw new ApiError(503, codes[response.status] ?? 'provider_failed');
       }
       check(response.headers.get('content-type')?.startsWith('text/event-stream') && response.body, 503, 'invalid_provider_stream');
