@@ -166,6 +166,7 @@ import UIKit
     @ObservedObject private var dictation = ComposerDictation.shared
     @ObservedObject private var voiceChat = ComposerDictationControls.voiceChatController
     @State private var voiceChatPresented = false
+    @State private var voiceChatNotice: String?
     static let voiceChatController = VoiceChatController()
     @State private var comingSoon = false
     @Environment(\.scenePhase) private var scene
@@ -180,7 +181,9 @@ import UIKit
                                  micOverride: AnyView(HoldToTalkMic(dictation: dictation, size: size)))
             .onAppear { dictation.attach(model); dictation.onSend = { send() }; dictation.voice.language = AppLanguage(locale: locale) }
             .onChange(of: locale.identifier) { _, _ in dictation.voice.language = AppLanguage(locale: locale) }
-            .onDisappear { dictation.stopNow() }
+            .onDisappear { dictation.stopNow(); voiceChat.exit(.hostGone); voiceChatPresented = false }
+            // P1-3: never carry the conversation across a conversation switch (sign-out / account change: AccountChangeObservers).
+            .onChange(of: model.conversationID) { _, _ in voiceChat.exit(.conversationChanged); voiceChatPresented = false }
             // Only a real background stops: the mic/speech permission alerts make the scene .inactive, and stopping there
             // tore the session down mid-start (overlay flashed in and out, voice mode never entered).
             .onChange(of: scene) { _, value in if value == .background { dictation.stopNow(); voiceChat.enteredBackground(); voiceChatPresented = false } }
@@ -233,6 +236,16 @@ import UIKit
                     .accessibilityIdentifier("chat.composer.dictation.hint")
                 }
             }
+            .overlay(alignment: .topTrailing) {
+                if let voiceChatNotice {
+                    Text(voiceChatNotice).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.ink).lineLimit(3).fixedSize(horizontal: false, vertical: true)
+                        .padding(.horizontal, 12).padding(.vertical, 8).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .fixedSize(horizontal: false, vertical: true).frame(width: 280, alignment: .trailing).offset(y: -56)
+                        .onTapGesture { self.voiceChatNotice = nil }
+                        .task(id: voiceChatNotice) { try? await Task.sleep(nanoseconds: 4_000_000_000); withAnimation { self.voiceChatNotice = nil } }
+                        .accessibilityIdentifier("chat.voiceChat.unsupported")
+                }
+            }
             .animation(.snappy, value: dictation.notice)
     }
 
@@ -242,7 +255,9 @@ import UIKit
         if AVAudioSession.sharedInstance().recordPermission == .denied || [.denied, .restricted].contains(SFSpeechRecognizer.authorizationStatus()) {
             dictation.notice = .permissionDenied; return
         }
-        voiceChat.begin(model: model, language: AppLanguage(locale: locale), send: { _ in send() })
+        guard voiceChat.begin(host: model, language: AppLanguage(locale: locale), send: { _ in send() }) else {
+            voiceChatNotice = voiceChat.notice; return   // e.g. 此设备不支持离线语音对话: inline, nothing starts
+        }
         voiceChatPresented = true
     }
     private func showComingSoon() {
@@ -270,10 +285,123 @@ enum VoiceChatSpeechPolicy {
     static var spokenRepliesAllowed: Bool { UserDefaults.standard.object(forKey: defaultsKey) as? Bool ?? true }
 }
 
-/// Drives `VoiceChatLoop` with real audio: on-device recognition through `NativeVoiceController` (the same tiered engine
-/// as dictation), end of turn after `VoiceChatLoop.silenceInterval` without new text, the turn sent through the normal
+/// What the voice conversation needs from the conversation screen (seam for controller tests).
+@MainActor protocol VoiceChatHost: AnyObject {
+    var session: ConversationSession? { get }
+    var draft: String { get }
+    var conversationID: UUID? { get }
+    /// An image / file staged in the composer. A voice turn never carries it.
+    var hasStagedAttachments: Bool { get }
+    func editDraft(_ text: String)
+}
+extension ConversationFirstModel: VoiceChatHost {
+    var hasStagedAttachments: Bool { imageDraft.phase != .empty }
+}
+
+/// Microphone, speech, audio session and haptics (seam for controller tests; `SystemVoiceChatIO` is the device one).
+@MainActor protocol VoiceChatIO: AnyObject {
+    /// On-device recognition only (P1-4). Callbacks are already on the main actor.
+    func startRecognizer(onText: @escaping @MainActor (String) -> Void, onEnd: @escaping @MainActor (NativeVoiceController.DictationEnd) -> Void) -> Bool
+    func stopRecognizer()
+    func cancelRecognizer()
+    func supportsOnDeviceRecognition(_ language: AppLanguage) -> Bool
+    /// `onFinish` runs once when the utterance ends by itself (never after `stopSpeaking`).
+    func speak(_ text: String, english: Bool, onFinish: @escaping @MainActor () -> Void)
+    func stopSpeaking()
+    var isSpeaking: Bool { get }
+    func activateAudio()
+    /// setActive(false, .notifyOthersOnDeactivation).
+    func deactivateAudio()
+    func haptic(_ haptic: VoiceChatHaptic)
+    /// Interruption began / route lost → `onInterruption`; media services reset → `onReset`.
+    func observeSession(onInterruption: @escaping @MainActor () -> Void, onReset: @escaping @MainActor () -> Void)
+    func stopObserving()
+}
+
+@MainActor final class SystemVoiceChatIO: NSObject, VoiceChatIO, AVSpeechSynthesizerDelegate {
+    let voice: NativeVoiceController
+    private var synthesizer = AVSpeechSynthesizer()
+    private var current: AVSpeechUtterance?
+    private var finish: (@MainActor () -> Void)?
+    private var observers: [NSObjectProtocol] = []
+    private let light = UIImpactFeedbackGenerator(style: .light)
+    private let medium = UIImpactFeedbackGenerator(style: .medium)
+    private let notify = UINotificationFeedbackGenerator()
+    init(voice: NativeVoiceController = .shared) { self.voice = voice; super.init(); synthesizer.delegate = self }
+
+    func startRecognizer(onText: @escaping @MainActor (String) -> Void, onEnd: @escaping @MainActor (NativeVoiceController.DictationEnd) -> Void) -> Bool {
+        if voice.dictationPhase != .idle { voice.cancelDictation() }
+        voice.voiceChatMode = true
+        return voice.startDictation(onText: onText, onEnd: { [weak self] end in self?.voice.voiceChatMode = false; onEnd(end) })
+    }
+    func stopRecognizer() { if voice.dictationPhase != .idle { voice.stopDictation() } }
+    func cancelRecognizer() { if voice.dictationPhase != .idle { voice.cancelDictation() }; voice.voiceChatMode = false }
+    func supportsOnDeviceRecognition(_ language: AppLanguage) -> Bool { voice.language = language; return voice.voiceChatSupportedOnDevice() }
+    func speak(_ text: String, english: Bool, onFinish: @escaping @MainActor () -> Void) {
+        activateAudio()
+        let u = AVSpeechUtterance(string: text)
+        u.voice = AVSpeechSynthesisVoice(language: english ? "en-US" : "zh-CN")
+        u.rate = AVSpeechUtteranceDefaultSpeechRate
+        current = u; finish = onFinish
+        synthesizer.speak(u)
+    }
+    func stopSpeaking() { current = nil; finish = nil; synthesizer.stopSpeaking(at: .immediate) }
+    var isSpeaking: Bool { current != nil }
+    nonisolated func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {
+        let token = ObjectIdentifier(utterance)
+        Task { @MainActor [weak self] in
+            guard let self, let current = self.current, ObjectIdentifier(current) == token else { return }
+            let done = self.finish; self.current = nil; self.finish = nil
+            done?()
+        }
+    }
+    func activateAudio() {
+        let audio = AVAudioSession.sharedInstance()
+        // .voiceChat: echo cancellation, so the reply leaking into the mic is not heard as the user (barge-in).
+        try? audio.setCategory(.playAndRecord, mode: .voiceChat, options: [.defaultToSpeaker, .allowBluetooth, .duckOthers])
+        try? audio.setActive(true, options: .notifyOthersOnDeactivation)
+    }
+    func deactivateAudio() { try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation) }
+    func haptic(_ haptic: VoiceChatHaptic) {
+        switch haptic {
+        case .listen: light.impactOccurred()
+        case .turnSent: medium.impactOccurred()
+        case .reply: light.impactOccurred(intensity: 0.6)
+        case .pause: notify.notificationOccurred(.warning)
+        }
+    }
+    func observeSession(onInterruption: @escaping @MainActor () -> Void, onReset: @escaping @MainActor () -> Void) {
+        stopObserving()
+        let center = NotificationCenter.default
+        observers.append(center.addObserver(forName: AVAudioSession.interruptionNotification, object: nil, queue: .main) { note in
+            let raw = note.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt
+            guard raw == AVAudioSession.InterruptionType.began.rawValue else { return }
+            Task { @MainActor in onInterruption() }
+        })
+        observers.append(center.addObserver(forName: AVAudioSession.routeChangeNotification, object: nil, queue: .main) { note in
+            let reason = note.userInfo?[AVAudioSessionRouteChangeReasonKey] as? UInt ?? 0
+            // Headphones unplugged / no route: pause (never keep talking out of the speaker unexpectedly). Category changes are ours.
+            guard reason == AVAudioSession.RouteChangeReason.oldDeviceUnavailable.rawValue || reason == AVAudioSession.RouteChangeReason.noSuitableRouteForCategory.rawValue else { return }
+            Task { @MainActor in onInterruption() }
+        })
+        // Media services reset: every audio object is dead. Rebuild the synthesizer and end the conversation cleanly.
+        observers.append(center.addObserver(forName: AVAudioSession.mediaServicesWereResetNotification, object: nil, queue: .main) { [weak self] _ in
+            Task { @MainActor in
+                guard let self else { return }
+                self.current = nil; self.finish = nil
+                self.synthesizer = AVSpeechSynthesizer(); self.synthesizer.delegate = self
+                onReset()
+            }
+        })
+    }
+    func stopObserving() { for o in observers { NotificationCenter.default.removeObserver(o) }; observers = [] }
+}
+
+/// Drives `VoiceChatLoop` with real audio: on-device recognition through `NativeVoiceController` (voice-chat mode: never
+/// the server tier), end of turn after `VoiceChatLoop.silenceInterval` without new text, the turn sent through the normal
 /// composer send (so it lands in the current conversation's history), the reply read with AVSpeechSynthesizer.
-@MainActor final class VoiceChatController: NSObject, ObservableObject, AVSpeechSynthesizerDelegate {
+@MainActor final class VoiceChatController: ObservableObject {
+    enum ExitReason { case user, accountChanged, conversationChanged, hostGone, mediaReset }
     @Published private(set) var loop = VoiceChatLoop()
     @Published private(set) var transcript = ""
     /// The assistant's text for the current turn (streaming, then final) — shown under the status.
@@ -282,59 +410,84 @@ enum VoiceChatSpeechPolicy {
     @Published private(set) var textOnly = false
     @Published private(set) var notice: String?
 
+    let io: VoiceChatIO
     let voice: NativeVoiceController
+    let epoch: AccountEpoch
     var language: AppLanguage = .chinese
-    private weak var model: ConversationFirstModel?
+    private weak var host: VoiceChatHost?
     private var sendTurn: ((String) -> Void)?
-    private let synthesizer = AVSpeechSynthesizer()
-    private var utterance: AVSpeechUtterance?
     private var spoken = ""
     private var listening = false
     private var silenceTask: Task<Void, Never>?
     private var watchTask: Task<Void, Never>?
     private var knownTurns: Set<UUID> = []
-    private var knownMessages: Set<UUID> = []
-    private var observers: [NSObjectProtocol] = []
+    private var sentTurnID: UUID?
     private var restoreDraft = ""
+    private var owner: (token: AccountToken?, conversation: UUID?) = (nil, nil)
     private var quietRestarts = 0
-    private let light = UIImpactFeedbackGenerator(style: .light)
-    private let medium = UIImpactFeedbackGenerator(style: .medium)
-    private let notify = UINotificationFeedbackGenerator()
+    /// A pause asked for the audio session back while the confirmation line was still being spoken.
+    private var releaseWhenSilent = false
+    /// True when the last release really ran (tests).
+    private(set) var audioReleased = false
     static let replyTimeout: UInt64 = 120_000_000_000
+    var pollInterval: UInt64 = 250_000_000
 
-    init(voice: NativeVoiceController = .shared) { self.voice = voice; super.init(); synthesizer.delegate = self }
+    init(io: VoiceChatIO? = nil, voice: NativeVoiceController = .shared, epoch: AccountEpoch = .shared, observeAccounts: Bool = true) {
+        self.voice = voice; self.io = io ?? SystemVoiceChatIO(voice: voice); self.epoch = epoch
+        // Sign-out, account switch and a remote revoke (passive invalidation) all go through AccountChangeObservers.
+        if observeAccounts { AccountChangeObservers.register("voiceChat") { [weak self] _, _ in self?.exit(.accountChanged) } }
+    }
 
     var english: Bool { language == .english }
 
     // MARK: Lifecycle
 
-    func begin(model: ConversationFirstModel, language: AppLanguage, send: @escaping (String) -> Void) {
-        guard !loop.isActive else { return }
-        self.model = model; self.language = language; self.sendTurn = send
-        loop = VoiceChatLoop(); transcript = ""; reply = ""; notice = nil; quietRestarts = 0
+    /// Returns false (with `notice` set) when voice chat cannot start here.
+    @discardableResult
+    func begin(host: VoiceChatHost, language: AppLanguage, send: @escaping (String) -> Void) -> Bool {
+        guard !loop.isActive else { return true }
+        self.language = language
+        notice = nil
+        // P1-4: voice conversation is on-device only.
+        guard io.supportsOnDeviceRecognition(language) else {
+            notice = english ? "Offline voice conversation isn't supported on this device." : "此设备不支持离线语音对话"
+            return false
+        }
+        self.host = host; self.sendTurn = send
+        loop = VoiceChatLoop(); transcript = ""; reply = ""; quietRestarts = 0; sentTurnID = nil; releaseWhenSilent = false; audioReleased = false
         textOnly = !VoiceChatSpeechPolicy.spokenRepliesAllowed
-        restoreDraft = model.draft   // a typed draft is kept aside and put back on exit
-        if voice.dictationPhase != .idle { voice.cancelDictation() }
-        observeAudioSession()
+        owner = (epoch.capture(), host.conversationID)
+        restoreDraft = host.draft   // a typed draft is kept aside and put back on exit (same account and conversation only)
+        io.observeSession(onInterruption: { [weak self] in self?.run(.interruption) }, onReset: { [weak self] in self?.exit(.mediaReset) })
         run(.start)
+        return true
     }
-    /// Close button / swipe down / disappear.
-    func exit() { run(.exit) }
+    /// Close button / swipe down (`.user`), sign-out / account change, conversation switch, host disappeared.
+    func exit(_ reason: ExitReason = .user) {
+        if reason != .user && reason != .hostGone { restoreDraft = "" }   // never carry a draft across accounts / conversations
+        if reason == .mediaReset { notice = english ? "Audio was reset. Voice conversation ended." : "音频服务已重置，语音对话已结束。" }
+        if !loop.isActive { restoreDraft = ""; return }
+        run(.exit)
+    }
     /// Real background only (permission alerts make the scene .inactive; that must not end the session).
     func enteredBackground() { run(.background) }
     /// Orb tap: finish the utterance now / interrupt the reply / resume after a pause.
     func orbTapped() {
         switch loop.phase {
-        case .listening: if !VoiceChatLoop.trimmed(transcript).isEmpty { run(.silenceElapsed) }
+        case .listening: if VoiceChatLoop.isMeaningful(transcript) { run(.silenceElapsed) }
         case .speaking: run(.bargeIn(alreadyListening: false))
-        case .paused: run(.resume)
+        case .paused: guard ownerStillValid() else { return exit(.accountChanged) }; releaseWhenSilent = false; run(.resume)
         default: break
         }
+    }
+    private func ownerStillValid() -> Bool {
+        guard epoch.isValid(owner.token) else { return false }
+        return host?.conversationID == owner.conversation
     }
 
     // MARK: Loop plumbing
 
-    private func run(_ event: VoiceChatEvent) {
+    func run(_ event: VoiceChatEvent) {
         var next = loop
         let effects = next.handle(event)
         loop = next
@@ -346,23 +499,31 @@ enum VoiceChatSpeechPolicy {
     private func perform(_ effect: VoiceChatEffect) {
         switch effect {
         case .startListening: startListening()
-        case .stopListening: silenceTask?.cancel(); if listening { voice.stopDictation() }
+        case .stopListening: silenceTask?.cancel(); if listening { io.stopRecognizer() }
         case .send(let text): send(text)
         case .speak(let text): speak(text)
-        case .stopSpeaking: utterance = nil; synthesizer.stopSpeaking(at: .immediate)
+        case .stopSpeaking: io.stopSpeaking()
         case .announceConfirmation:
             let line = VoiceSpeechText.confirmationLine(english: english)
             notice = line
-            if !textOnly { speak(line, tracked: false) }
-        case .haptic(let h):
-            switch h {
-            case .listen: light.impactOccurred()
-            case .turnSent: medium.impactOccurred()
-            case .reply: light.impactOccurred(intensity: 0.6)
-            case .pause: notify.notificationOccurred(.warning)
-            }
+            if !textOnly { io.speak(line, english: english) { [weak self] in self?.confirmationFinished() } }
+        case .haptic(let h): io.haptic(h)
+        case .releaseAudio: releaseAudio()
         case .deactivateAudio: teardown()
         }
+    }
+
+    // MARK: Pausing (P1-2)
+
+    private func releaseAudio() {
+        if io.isSpeaking { releaseWhenSilent = true; return }   // the confirmation line finishes first
+        silenceTask?.cancel(); generation += 1
+        if listening { io.cancelRecognizer(); listening = false }
+        io.deactivateAudio(); audioReleased = true; releaseWhenSilent = false
+    }
+    private func confirmationFinished() {
+        guard releaseWhenSilent, case .paused = loop.phase else { return }
+        releaseAudio()
     }
 
     // MARK: Listening
@@ -371,23 +532,26 @@ enum VoiceChatSpeechPolicy {
     /// restart can never feed a stale "ended" back into the loop.
     private var generation = 0
     private func startRecognizer() -> Bool {
+        guard ownerStillValid() else { exit(.accountChanged); return false }
         generation += 1
         let gen = generation
-        if voice.dictationPhase != .idle { voice.cancelDictation() }
-        let accepted = voice.startDictation(onText: { [weak self] text in guard let self, self.generation == gen else { return }; self.heard(text) },
-                                            onEnd: { [weak self] reason in guard let self, self.generation == gen else { return }; self.listeningEnded(reason) })
+        audioReleased = false
+        let accepted = io.startRecognizer(onText: { [weak self] text in guard let self, self.generation == gen else { return }; self.heard(text) },
+                                          onEnd: { [weak self] reason in guard let self, self.generation == gen else { return }; self.listeningEnded(reason) })
         listening = accepted
         return accepted
     }
     private func startListening() {
         transcript = ""
-        if !startRecognizer() { notice = english ? "Voice input isn't available right now." : "暂时无法使用语音输入。"; run(.failed) }
+        guard loop.isActive else { return }
+        if !startRecognizer(), loop.isActive { notice = english ? "Voice input isn't available right now." : "暂时无法使用语音输入。"; run(.failed) }
     }
     private func heard(_ text: String) {
+        guard epoch.isValid(owner.token) else { return exit(.accountChanged) }   // a revoked session never keeps the mic
         if loop.phase == .speaking {
             // Barge-in: only the user's own words count, not the reply leaking from the speaker into the mic. The next
             // utterance starts on a fresh recognizer so no echoed words end up in what is sent.
-            guard !VoiceBargeIn.isLikelyEcho(heard: text, speaking: spoken) else { return }
+            guard !VoiceBargeIn.isLikelyEcho(heard: text, speaking: spoken), VoiceChatLoop.isMeaningful(text) else { return }
             run(.bargeIn(alreadyListening: false)); return
         }
         guard loop.phase == .listening || loop.phase == .sending else { return }
@@ -402,17 +566,17 @@ enum VoiceChatSpeechPolicy {
             self?.run(.silenceElapsed)
         }
     }
-    private func listeningEnded(_ reason: NativeVoiceController.DictationEnd) {
+    func listeningEnded(_ reason: NativeVoiceController.DictationEnd) {
         listening = false; silenceTask?.cancel()
         switch reason {
         case .interrupted: run(.interruption)
         case .denied:
             notice = english ? "Allow microphone and speech recognition in Settings." : "请在“设置”中允许麦克风和语音识别。"; run(.failed)
         case .unsupported:
-            notice = english ? "On-device speech recognition isn't supported here." : "此设备暂不支持本地语音识别。"; run(.failed)
+            notice = english ? "Offline voice conversation isn't supported on this device." : "此设备不支持离线语音对话"; run(.failed)
         case .finished, .cancelled, .timedOut, .failed:
             guard loop.phase == .listening || loop.phase == .sending else { return }   // e.g. a barge-in monitor that heard nothing
-            let hadText = !VoiceChatLoop.trimmed(transcript).isEmpty
+            let hadText = VoiceChatLoop.isMeaningful(transcript)
             if !hadText { quietRestarts += 1 } else { quietRestarts = 0 }
             if quietRestarts > 3 {   // a recognizer that keeps failing must not spin: pause, the user taps to resume
                 quietRestarts = 0; notice = english ? "I didn't catch that. Tap to try again." : "没有听清，轻点继续。"; run(.failed); return
@@ -424,21 +588,30 @@ enum VoiceChatSpeechPolicy {
     // MARK: Sending and waiting for the reply
 
     private func send(_ text: String) {
-        guard let model, let sendTurn else { run(.failed); return }
-        knownTurns = Set(model.session?.turns.map(\.id) ?? [])
-        knownMessages = Set(model.session?.messages.map(\.id) ?? [])
+        guard let host, let sendTurn, ownerStillValid() else { run(.failed); return }
+        // P2: a voice turn never carries a staged image / file (the composer send would attach it).
+        guard !host.hasStagedAttachments else {
+            notice = english ? "Remove the attachment to talk, or send it from the keyboard." : "请先移除附件，或用键盘发送附件。"
+            run(.failed); return
+        }
+        knownTurns = Set(host.session?.turns.map(\.id) ?? []); sentTurnID = nil
         reply = ""; streaming = false; notice = nil
-        model.editDraft(text)
+        host.editDraft(text)
         sendTurn(text)   // the normal composer send: same conversation, same history, same queue / consent rules
         watchReply()
     }
     private func watchReply() {
         watchTask?.cancel()
         watchTask = Task { [weak self] in
-            let started = DispatchTime.now().uptimeNanoseconds
+            var started = DispatchTime.now().uptimeNanoseconds
+            var lastSequence = -1
             while !Task.isCancelled {
-                try? await Task.sleep(nanoseconds: 250_000_000)
+                guard let interval = self?.pollInterval else { return }
+                try? await Task.sleep(nanoseconds: interval)
                 guard let self, self.loop.phase == .waiting else { return }
+                guard self.ownerStillValid() else { self.exit(.accountChanged); return }
+                // A read-only device call keeps the turn moving: the timeout counts from the last change, not the send.
+                if let seq = self.sentTurnID.flatMap({ id in self.host?.session?.turns.first(where: { $0.id == id }) })?.lastSequence, seq != lastSequence { lastSequence = seq; started = DispatchTime.now().uptimeNanoseconds }
                 if DispatchTime.now().uptimeNanoseconds - started > Self.replyTimeout {
                     self.notice = self.english ? "No reply yet. Check the conversation on screen." : "还没有回复，请在屏幕上查看对话。"
                     self.run(.failed); return
@@ -448,18 +621,22 @@ enum VoiceChatSpeechPolicy {
         }
     }
     /// One look at the conversation. Returns true when the turn reached a terminal state for the loop.
-    private func pollReply() -> Bool {
-        guard let session = model?.session else { return false }
-        let turn = session.turns.last(where: { !knownTurns.contains($0.id) })
-        let message = turn?.assistantMessageID.flatMap { id in session.messages.first(where: { $0.id == id }) }
-            ?? session.messages.last(where: { $0.role == .assistant && !knownMessages.contains($0.id) })
+    @discardableResult
+    func pollReply() -> Bool {
+        guard let session = host?.session else { return false }
+        // The first turn created after this send is ours; after that only that exact id is ever read (no fallback to
+        // another turn's message).
+        if sentTurnID == nil { sentTurnID = session.turns.first(where: { !knownTurns.contains($0.id) })?.id }
+        guard let id = sentTurnID, let turn = session.turns.first(where: { $0.id == id }) else { return false }   // queued / not journaled yet
+        let message = turn.assistantMessageID.flatMap { mid in session.messages.first(where: { $0.id == mid }) }
         if let message { reply = message.content; streaming = !message.complete }
-        guard let turn else { return false }   // still queued behind a running turn (followup) or not yet journaled
-        if turn.awaitingApproval { run(.approvalRequired); return true }
+        // P1-1: only a decision the user must make pauses. Read-only device calls run by themselves.
+        if turn.needsUserDecision { run(.approvalRequired); return true }
         switch turn.state {
         case .completed:
             let speech = VoiceSpeechText.make(message?.content ?? "", english: english)
-            run(.replyFinished(.init(speech: speech.text, speakable: !textOnly, needsConfirmation: speech.hadCard)))
+            // P2: phone numbers and e-mail addresses are never read aloud (same masker as the Live Activity title).
+            run(.replyFinished(.init(speech: CatpawTaskTitle.redact(speech.text), speakable: !textOnly, needsConfirmation: speech.hadCard)))
             return true
         case .failed, .cancelledBeforeSend, .notSent:
             notice = english ? "That didn't go through. Check the conversation on screen." : "这一轮没有完成，请在屏幕上查看。"
@@ -471,59 +648,28 @@ enum VoiceChatSpeechPolicy {
 
     // MARK: Speaking
 
-    private func speak(_ text: String, tracked: Bool = true) {
-        configureAudioSession()
-        let u = AVSpeechUtterance(string: text)
-        u.voice = AVSpeechSynthesisVoice(language: english ? "en-US" : "zh-CN")
-        u.rate = AVSpeechUtteranceDefaultSpeechRate
-        if tracked { utterance = u; spoken = text }
-        synthesizer.speak(u)
-        // Barge-in: listen while speaking (the recognizer's text is filtered against `spoken`, see VoiceBargeIn).
-        if tracked, !listening { startBargeInMonitor() }
-    }
-    private func startBargeInMonitor() { _ = startRecognizer() }
-    nonisolated func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {
-        let token = ObjectIdentifier(utterance)
-        Task { @MainActor [weak self] in
-            guard let self, let current = self.utterance, ObjectIdentifier(current) == token else { return }
-            self.utterance = nil
+    private func speak(_ text: String) {
+        spoken = text
+        io.speak(text, english: english) { [weak self] in
+            guard let self, self.loop.phase == .speaking else { return }
             self.run(.speechFinished)   // → .startListening: a fresh recognizer replaces the barge-in monitor (no echo carried over)
         }
+        // Barge-in: listen while speaking (the recognizer's text is filtered against `spoken`, see VoiceBargeIn).
+        if !listening { _ = startRecognizer() }
     }
 
-    // MARK: Audio session
+    // MARK: Teardown
 
-    private func configureAudioSession() {
-        let audio = AVAudioSession.sharedInstance()
-        try? audio.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowBluetooth, .duckOthers])
-        try? audio.setActive(true, options: .notifyOthersOnDeactivation)
-    }
-    private func observeAudioSession() {
-        removeObservers()
-        let center = NotificationCenter.default
-        observers.append(center.addObserver(forName: AVAudioSession.interruptionNotification, object: nil, queue: .main) { [weak self] note in
-            let raw = note.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt
-            guard raw == AVAudioSession.InterruptionType.began.rawValue else { return }
-            Task { @MainActor in self?.run(.interruption) }
-        })
-        observers.append(center.addObserver(forName: AVAudioSession.routeChangeNotification, object: nil, queue: .main) { [weak self] note in
-            let reason = note.userInfo?[AVAudioSessionRouteChangeReasonKey] as? UInt ?? 0
-            // Headphones unplugged / no route: pause (never keep talking out of the speaker unexpectedly). Category changes are ours.
-            guard reason == AVAudioSession.RouteChangeReason.oldDeviceUnavailable.rawValue || reason == AVAudioSession.RouteChangeReason.noSuitableRouteForCategory.rawValue else { return }
-            Task { @MainActor in self?.run(.interruption) }
-        })
-    }
-    private func removeObservers() { for o in observers { NotificationCenter.default.removeObserver(o) }; observers = [] }
     private func teardown() {
         silenceTask?.cancel(); watchTask?.cancel()
-        utterance = nil; synthesizer.stopSpeaking(at: .immediate)
+        io.stopSpeaking()
         generation += 1
-        if voice.dictationPhase != .idle { voice.cancelDictation() }
-        listening = false
-        removeObservers()
-        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
-        if let model, model.draft.isEmpty, !restoreDraft.isEmpty { model.editDraft(restoreDraft) }
-        restoreDraft = ""
+        io.cancelRecognizer()
+        listening = false; releaseWhenSilent = false
+        io.stopObserving()
+        io.deactivateAudio(); audioReleased = true
+        if let host, ownerStillValid(), host.draft.isEmpty, !restoreDraft.isEmpty { host.editDraft(restoreDraft) }
+        restoreDraft = ""; sentTurnID = nil; knownTurns = []
     }
 
     // MARK: Accessibility
