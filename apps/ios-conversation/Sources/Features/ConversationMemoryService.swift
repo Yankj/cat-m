@@ -128,8 +128,10 @@ enum ConversationMemoryAtRest {
     nonisolated(unsafe) static var opener: ((Data, UUID) throws -> Data)?
     /// Codex PR91 p91b-5: no plaintext fallback in release builds — without a sealer the write fails.
     /// Debug / fixture builds keep plaintext rows so test runners without L2 still work.
+    /// final-merge B10: the portable swiftc runners (MEMORY_PORTABLE / MEMORY_TRANSPORT_PORTABLE, no -D DEBUG, no L2 key)
+    /// count as fixture builds; the app target never sets these flags.
     nonisolated(unsafe) static var allowPlaintext: Bool = {
-        #if DEBUG
+        #if DEBUG || MEMORY_PORTABLE || MEMORY_TRANSPORT_PORTABLE
         true
         #else
         false
