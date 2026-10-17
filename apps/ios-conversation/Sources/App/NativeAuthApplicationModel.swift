@@ -80,6 +80,18 @@ struct NativeWorkspaceRetrySchedule: Sendable {
     let launchShell: ConversationFirstModel? = NativeAuthApplicationModel.makeLaunchShell()
     /// First run whose tap flipped onto the shell: CatpawOnboarding is written once the account chat really attaches.
     private var firstRunMarkPending = false
+    /// Opening-stall fix (19:41 iPhone 13, 5c84a911: 「正在打开对话…」 for ~2 min, zero requests reached the backend until a
+    /// foreground at 19:43 re-ran the restore). The shell's wait is now staged and bounded:
+    /// `launchSlowAfter` → copy changes to 「仍在连接…」 and the recovery is kicked once (same path as a foreground);
+    /// `launchStallAfter` → the retry capsule. Both reset whenever an account chat attaches.
+    @Published private(set) var launchSlow = false
+    @Published private(set) var launchChatStalled = false
+    /// Bumped by 「重试」; the shell's watchdog restarts for every new value.
+    @Published private(set) var launchAttempt = 0
+    static var launchSlowAfter: TimeInterval = 8
+    static var launchStallAfter: TimeInterval = 15
+    /// The receipt read never gates the session restore for longer than this (the restore used to start only after it).
+    static var localReadBudget: TimeInterval = 3
     nonisolated static let launchShellIssuer = "catpaw-launch-shell"
     static func makeLaunchShell() -> ConversationFirstModel? {
         guard let repository = try? Repository(persistence: LaunchShellPersistence()) else { return nil }
@@ -266,9 +278,18 @@ struct NativeWorkspaceRetrySchedule: Sendable {
     }
     private func warmUp(_ manager: NativeAuthSessionManager) async {
         LaunchTrace.mark("warmup.localRead.begin")
-        await openLocalConversation()
-        localReadFinished = true
-        LaunchTrace.mark("warmup.localRead.end", chat != nil ? "chat" : "none")
+        // Opening-stall fix: the receipt read keeps running, but the session restore no longer waits on it without bound —
+        // before, a slow or stuck local open meant no network request at all (and no account chat) until a foreground.
+        let localRead = Task { @MainActor [weak self] in
+            guard let self else { return }
+            await self.openLocalConversation()
+            self.localReadFinished = true
+            LaunchTrace.mark("warmup.localRead.end", self.chat != nil ? "chat" : "none")
+        }
+        let readBudget = Date().addingTimeInterval(Self.localReadBudget)
+        while !localReadFinished, !Task.isCancelled, Date() < readBudget { try? await Task.sleep(nanoseconds: 20_000_000) }
+        if !localReadFinished { LaunchTrace.mark("warmup.localRead.slow", "restore starts in parallel") }
+        _ = localRead
         subscription = Task { [weak self] in
             for await snapshot in await manager.changes() { guard let self, !Task.isCancelled else { return }; await self.receive(snapshot) }
         }
@@ -285,9 +306,11 @@ struct NativeWorkspaceRetrySchedule: Sendable {
         while !Task.isCancelled,!logoutInProgress,epoch == lifecycleEpoch {
             if !connectionMonitor.pathSatisfied,await hasSafelyRecoverableCredential() {await waitForRecoveryPath();continue}
             do {
+                LaunchTrace.mark("auth.restore.begin", "attempt=\(attempt) path=\(connectionMonitor.pathSatisfied)")
                 try await manager.restore()
                 guard !Task.isCancelled,!logoutInProgress,epoch == lifecycleEpoch else{return}
                 let restored=await manager.snapshot()
+                LaunchTrace.mark("auth.restore.end", "\(restored.phase)")
                 if restored.phase == .authenticated {recoveryImpossible=false;requiresSessionRestart=false;error=nil;await receive(restored)}
                 else if allowAutomaticExperience,!isFixture,restored.phase == .signedOut,restored.user == nil,restored.message == nil,autoAnonymousSession {
                     // Offline: do not block entry waiting for path — provisional chat opens from completeOnboarding.
@@ -301,6 +324,7 @@ struct NativeWorkspaceRetrySchedule: Sendable {
             } catch {
                 guard !Task.isCancelled,!logoutInProgress,epoch == lifecycleEpoch else{return}
                 let safe=error as? NativeAuthError ?? .unavailable
+                LaunchTrace.mark("auth.restore.error", "\(safe)")
                 // Another restore / sign-in owns the manager right now: wait for it, never a terminal state.
                 if safe == .busy { await waitForManagerSettled(); guard !Task.isCancelled,!logoutInProgress,epoch == lifecycleEpoch else{return}; continue }
                 if [.unavailable,.rateLimited].contains(safe),await hasSafelyRecoverableCredential() {
@@ -556,6 +580,7 @@ struct NativeWorkspaceRetrySchedule: Sendable {
     /// into the account chat (only into an empty composer; never across a logout). The shell keeps nothing.
     private func didAttachChat(_ opened: ConversationFirstModel) {
         LaunchTrace.mark("chat.attached", opened.loaded ? "loaded" : "loading", once: true)
+        launchSlow = false; launchChatStalled = false
         if firstRunMarkPending { firstRunMarkPending = false; CatpawOnboarding.markCompleted() }
         guard let shell = launchShell, shell !== opened, !logoutInProgress else { return }
         let carried = shell.draft
@@ -796,6 +821,36 @@ struct NativeWorkspaceRetrySchedule: Sendable {
         guard chat == nil, !Task.isCancelled, !logoutInProgress else { return }
         LaunchTrace.mark("launch.shellOnly", sessionRestartNeeded ? "restartNeeded" : "pending")
         scheduleOfflineRecovery()
+    }
+    /// Opening-stall fix: staged, bounded wait for the account chat while the launch shell is up (driven by the shell's
+    /// `.task(id: launchAttempt)`). Never blocks; never opens any partition itself (NoBug B1 stays intact).
+    func launchWatchdog() async {
+        let slowAfter = Self.launchSlowAfter, stallAfter = max(Self.launchStallAfter, Self.launchSlowAfter)
+        try? await Task.sleep(nanoseconds: UInt64(slowAfter * 1_000_000_000))
+        guard !Task.isCancelled, chat == nil, !sessionRestartNeeded, !needsOnboarding else { return }
+        launchSlow = true
+        kickLaunchRecovery("slow")
+        try? await Task.sleep(nanoseconds: UInt64((stallAfter - slowAfter) * 1_000_000_000))
+        guard !Task.isCancelled, chat == nil, !sessionRestartNeeded, !needsOnboarding else { return }
+        LaunchTrace.mark("launch.chatStalled", launchStateSummary)
+        launchChatStalled = true
+    }
+    /// 「重试」 on the stalled capsule: restart the staged wait and kick the recovery again.
+    func retryLaunchChat() {
+        launchChatStalled = false; launchSlow = false; launchAttempt += 1
+        kickLaunchRecovery("retry")
+    }
+    /// The same recovery a foreground runs (that is what ended the 19:41 stall at 19:43:27): wake any parked retry/path wait,
+    /// then re-run the restore — or, when the session is already authenticated, the workspace admission that attaches the
+    /// account chat. Read-only with respect to identity: never mints a new experience account.
+    func kickLaunchRecovery(_ reason: String) {
+        LaunchTrace.mark("launch.kick", "\(reason) \(launchStateSummary)")
+        wakeRetry()
+        recoveryPathWait?.cancel()
+        Task { [weak self] in await self?.foreground() }
+    }
+    private var launchStateSummary: String {
+        "localRead=\(localReadFinished) recovering=\(sessionRecoveryActive) phase=\(state.phase) flight=\(workspaceFlight != nil) logout=\(logoutInProgress) path=\(connectionMonitor.pathSatisfied)"
     }
     /// 「重新开始」 from the non-blocking capsule: close the unrecoverable session (same path as the login page button),
     /// then start a fresh experience identity. Local stores stay on disk.

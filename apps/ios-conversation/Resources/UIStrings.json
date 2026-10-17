@@ -5975,6 +5975,14 @@
     "en": "Reset demo partition",
     "zh-Hans": "重置演示分区"
   },
+  "对话没能打开": {
+    "en": "Couldn't open the conversation",
+    "zh-Hans": "对话没能打开"
+  },
+  "仍在连接，请稍候…": {
+    "en": "Still connecting, one moment…",
+    "zh-Hans": "仍在连接，请稍候…"
+  },
   "重试": {
     "en": "Retry",
     "zh-Hans": "重试"

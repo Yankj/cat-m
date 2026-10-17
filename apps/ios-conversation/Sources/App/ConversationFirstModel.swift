@@ -603,8 +603,38 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
             return false
         } catch {if current(){self.error=error.localizedDescription};return false}
     }
-    func newConversation() { guard !isInputComposing else { return };Task { do { await persistenceTask?.value;try await flushDraft();let id=try await service.create(scope:scope);try await select(id) } catch { self.error=error.localizedDescription } } }
-    func updateInputComposition(_ active:Bool) { guard active != isInputComposing else { return };isInputComposing=active }
+    /// Set by the app: ends IME composition (resigns the composer's first responder, which commits the marked text).
+    static var endInputComposition: (@MainActor () -> Void)?
+    /// How long a deferred 新对话 waits for the IME to finish before it proceeds with the committed draft.
+    static var newConversationCompositionGrace: TimeInterval = 0.6
+    private var newConversationAfterComposition = false
+    private var newConversationCompositionTimer: Task<Void,Never>?
+    /// IME fix (BE5C 19:49:51, catpawm://new while pinyin 「你」 was marked): 新对话 used to return silently while composing.
+    /// Now it commits the composition and opens the new conversation once composition ends (bounded by the grace).
+    func newConversation() {
+        guard isInputComposing else { openNewConversation(); return }
+        guard !newConversationAfterComposition else { return }
+        newConversationAfterComposition = true
+        sendLog.info("catpaw.newConversation deferred until input composition ends")
+        Self.endInputComposition?()
+        let grace = Self.newConversationCompositionGrace
+        newConversationCompositionTimer = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: UInt64(grace * 1_000_000_000))
+            guard let self, !Task.isCancelled, self.newConversationAfterComposition else { return }
+            sendLog.info("catpaw.newConversation composition did not end within grace; proceeding")
+            self.newConversationAfterComposition = false; self.newConversationCompositionTimer = nil
+            self.isInputComposing = false
+            self.openNewConversation()
+        }
+    }
+    private func openNewConversation() { Task { do { await persistenceTask?.value;try await flushDraft();let id=try await service.create(scope:scope);try await select(id) } catch { self.error=error.localizedDescription } } }
+    func updateInputComposition(_ active:Bool) {
+        guard active != isInputComposing else { return };isInputComposing=active
+        if !active, newConversationAfterComposition {
+            newConversationAfterComposition = false; newConversationCompositionTimer?.cancel(); newConversationCompositionTimer = nil
+            openNewConversation()
+        }
+    }
     /// One-tap prompts (starter cards, follow-up chips) fill an EMPTY composer and then take the Send path.
     /// Nothing typed, queued or sent yet (an account-neutral launch chat may then be swapped for the account's own).
     var isPristine: Bool { draft.isEmpty && outgoingMessages.isEmpty && (session?.turns.isEmpty ?? true) && imageDraft.phase == .empty }
@@ -1027,6 +1057,7 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
     }
     @discardableResult func deactivate() async -> Bool {
         // Close admission before any await; a queued foreground Task cannot revive logout.
+        newConversationAfterComposition=false;newConversationCompositionTimer?.cancel();newConversationCompositionTimer=nil   // IME fix: no deferred 新对话 survives deactivation
         acceptedWorkReviewTask?.cancel();acceptedWorkReviewTask=nil;acceptedWorkReviewToken=nil;acceptedWorkDraftTask?.cancel();acceptedWorkDraftTask=nil;acceptedWorkReviewPresented=false;acceptedWorkReviewSaving=false
         continuationClosing=true;loaded=false;networkAdmissionAllowed=false;stopTaskControlDelivery();pendingTaskControlDeliveries.removeAll();deliveredTaskControlReceipts.removeAll();cancelImageConsent();imageRecoveryTask?.cancel();imageRecoveryTask=nil;imageRecoveryToken=nil
         selectedTaskPlan=nil;selectedTaskActions=nil
