@@ -123,10 +123,26 @@ export function createAgentMemoryService({ store, allow = () => false, verifyUse
     // reaches the server late (client timed out, server still ran it) can never overwrite a newer one.
     if (patch.use_memory_seq !== undefined) {
       delete next.use_memory_seq;
-      const applied = await store.putSettingsIfNewer(uid, next, patch.use_memory_seq);
+      let applied;
+      // B2: migration 20261017040000 not applied (use_memory_seq column missing) → explicit code; the client treats any
+      // non-2xx as an unknown outcome (memory off on the phone, choice kept pending and re-sent).
+      try { applied = await store.putSettingsIfNewer(uid, next, patch.use_memory_seq); }
+      catch (e) { if (e?.code === '42703' || e?.code === '42P01') throw bad('memory_schema_pending', 503); throw e; }
       return applied ? { ...applied, use_memory_seq: patch.use_memory_seq } : { ...(await settings(uid)), stale: true };
     }
-    delete next.use_memory_seq; return store.putSettings(uid, next);
+    // Codex p91w B1: a write without a sequence never rewrites the whole row from a (possibly stale) snapshot. It
+    // updates only the columns it names (auto_save, consented_at, use_memory). use_memory=false is always applied
+    // (turning memory OFF is safe; old clients must still be able to turn it off). use_memory=true without a sequence
+    // (old client) is applied only while no sequenced choice exists for this user; once a sequenced client has written
+    // the switch it is refused with 400 use_memory_seq_required, so a late or stale old-client ON never wins.
+    const fields = {};
+    if (patch.auto_save !== undefined) fields.auto_save = patch.auto_save;
+    if (patch.use_memory !== undefined) fields.use_memory = patch.use_memory;
+    if (patch.consent === true && !s.consented_at) fields.consented_at = next.consented_at;
+    if (!Object.keys(fields).length) return s;
+    const out = await store.patchSettings(uid, fields, { unsequencedOnly: fields.use_memory === true });
+    if (out === null) throw bad('use_memory_seq_required', 400);
+    return out;
   }
   const json = (status, body) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
   async function body(req) { const t = await req.text(); if (t.length > 8000) throw bad('request_too_large', 413); try { return t ? JSON.parse(t) : {}; } catch { throw bad('json_invalid', 400); } }
