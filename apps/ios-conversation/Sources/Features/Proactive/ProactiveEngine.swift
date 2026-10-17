@@ -46,6 +46,15 @@ struct ProactiveSignal: Equatable, Sendable {
     }
 }
 
+/// p90i v7: #90's `AccountParkedItemSource` (#89). Only EventKit items are listed (the app's own data is parked and
+/// restored automatically by `claimData`, no prompt).
+@MainActor final class ProactiveParkedSource: AccountParkedItemSource {
+    func parkedItems(account: String) -> [AccountParkedItem] { ProactiveEngine.shared.externalParkedItems(account: account) }
+    func apply(_ decision: AccountParkedDecision, to item: AccountParkedItem, account: String) async -> String {
+        await ProactiveEngine.shared.applyExternal(decision, item, account: account)
+    }
+}
+
 @MainActor @Observable final class ProactiveEngine {
     static let shared = ProactiveEngine()
 
@@ -57,6 +66,8 @@ struct ProactiveSignal: Equatable, Sendable {
     static func registerAccountObserver() {
         #if os(iOS)
         AccountChangeObservers.register("proactive") { previous, current in await ProactiveEngine.shared.accountDidChange(previous: previous, current: current) }
+        // p90i v7: EventKit items Catpaw created go through #89's one keep/cancel decision (default keep).
+        if !AccountParkedItems.registeredKeys.contains(ProactiveParking.sourceKey) { AccountParkedItems.register(ProactiveParking.sourceKey, ProactiveParkedSource()) }
         #endif
     }
     static let notificationCategory = "CATPAW_PROACTIVE"
@@ -178,6 +189,50 @@ struct ProactiveSignal: Equatable, Sendable {
     func syncNeedingConfirmation() -> [CatpawPersistentQueue<SyncOp>.Item] {
         guard let a = AccountEpoch.shared.currentAccount else { return [] }
         return syncQueue.needingConfirmation(account: a)
+    }
+    /// p90i v7 (#89 AccountParkedItems source). Collected right after the epoch bump, BEFORE the observers park the data,
+    /// so the live owner's created reminders are listed too (plus the ones parked earlier). Titles are the user's own.
+    func externalParkedItems(account: String) -> [AccountParkedItem] {
+        var out = externalPendingDecision(for: account)
+        if let o = dataOwner, o.caseInsensitiveCompare(account) == .orderedSame {
+            let inbox = defaults.data(forKey: ProactiveLocalBackend.storageKey).flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] } ?? [:]
+            for e in ProactiveParking.externalItems(inbox: inbox, reminderOps: pendingReminders.mapValues(\.operationID)) where !out.contains(where: { $0.operationID == e.operationID }) { out.append(e) }
+        }
+        let reminders = pendingReminders
+        return out.map { e in ProactiveParking.parkedItem(e, title: reminders[e.suggestionID].map { "准备：\($0.title)" } ?? "Catpaw 创建的提醒") }
+    }
+    /// Test seam for the EventKit delete (nil → the real store).
+    var externalReminderRemover: ((String) async -> String)?
+    /// Applies #89's decision. keep → left in Reminders and still listed for that account; cancel → the user chose to undo
+    /// it: only the reminder this operation created is removed; on success it is no longer pending (nor re-recorded).
+    func applyExternal(_ d: AccountParkedDecision, _ item: AccountParkedItem, account: String) async -> String {
+        switch ProactiveParking.effect(d, item) {
+        case .leave:
+            var all = externalStore, mine = all[account.lowercased()] ?? []
+            if !mine.contains(where: { $0.operationID == item.key }), let sid = pendingReminders.first(where: { $0.value.operationID == item.key })?.key {
+                mine.append(.init(suggestionID: sid, operationID: item.key, kind: item.detail)); all[account.lowercased()] = mine; externalStore = all
+            }
+            return "kept: left in Reminders"
+        case .remove(let op):
+            let r = await (externalReminderRemover ?? Self.removeExternalReminder)(op)
+            guard r == "deleted" || r == "already_gone" else { return "kept: \(r)" }
+            var all = externalStore; all[account.lowercased()]?.removeAll { $0.operationID == op }; externalStore = all
+            var p = pendingReminders; for (k, v) in p where v.operationID == op { p[k] = nil }; pendingReminders = p   // not re-recorded by the park
+            note("external reminder \(op) \(r) on the user's decision")
+            return r
+        }
+    }
+    /// The real delete, only on the user's explicit decision: by the marker of the operation that created it.
+    static func removeExternalReminder(_ op: String) async -> String {
+        #if canImport(EventKit)
+        let es = ProactiveEngine.shared.store, auth = EKEventStore.authorizationStatus(for: .reminder)
+        guard auth == .fullAccess || auth == .authorized else { return "not_authorized" }
+        guard let id = await ProactiveEngine.shared.findReminder(marker: URL(string: "catpawm://op/\(op)")!),
+              let item = es.calendarItem(withIdentifier: id) as? EKReminder else { return "already_gone" }
+        do { try es.remove(item, commit: true); return "deleted" } catch { return "failed:\(error.localizedDescription)" }
+        #else
+        return "no_eventkit"
+        #endif
     }
     /// EventKit items of `account` awaiting the user's decision (#89's list). #90 never removes entries itself.
     func externalPendingDecision(for account: String) -> [ProactiveParking.ExternalItem] { externalStore[account.lowercased()] ?? [] }

@@ -155,6 +155,18 @@ enum ProactiveParking {
         return true
     }
     static let externalKey = "catpaw.proactive.external.v1"
+    /// p90i v7: #90's registration key in #89's `AccountParkedItems` (the one decision API for external items).
+    static let sourceKey = "proactive"
+    /// An external item as #89 lists it: the user decides (automatic nil); keep is the default.
+    static func parkedItem(_ e: ExternalItem, title: String) -> AccountParkedItem {
+        AccountParkedItem(source: sourceKey, key: e.operationID, title: title, detail: e.kind, automatic: nil)
+    }
+    enum ExternalEffect: Equatable { case leave, remove(operationID: String) }
+    /// keep → the EventKit item is left alone; cancel (the user's explicit choice) → remove only the reminder this
+    /// operation created (found by its `catpawm://op/<id>` marker).
+    static func effect(_ d: AccountParkedDecision, _ item: AccountParkedItem) -> ExternalEffect {
+        d == .cancel ? .remove(operationID: item.key) : .leave
+    }
     /// An item outside the app the user decides about (#89's list). Never deleted or edited by #90 on a switch.
     struct ExternalItem: Codable, Equatable, Sendable { var suggestionID: String; var operationID: String; var kind: String }
     /// The EventKit reminders the app created for these cards: a create_reminder that succeeded (nil outcome = older
