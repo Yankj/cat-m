@@ -55,9 +55,10 @@ export const _signatureCacheForTests = signatureCache;
 // (ai.google.dev/gemini-api/docs/generate-content/thought-signatures; Vertex docs; gemini-cli; Vercel AI SDK #15550/#15553).
 // UNVERIFIED for the Interactions protocol: the docs show generateContent's `thoughtSignature` on the functionCall part. Our streamed
 // signature arrives as a `thought` step with field `signature` (see thought_signature delta below), so the placeholder is sent the
-// same way. Both names sit behind these constants; confirm them with ONE consented dev call before enabling.
-// NoBug R1-P1: OFF by default. Only env CATPAW_GEMINI_PLACEHOLDER_SIGNATURE='true' turns it on (threaded through
-// readFreeRouteChain → FreeRouteChainProvider → GeminiInteractionsRoute → payload). With it off the request is exactly v52's.
+// same way. VERIFIED 2026-10-17 20:4x (UTC+8): one consented dev call (gemini-3.5-flash-lite, v1beta/interactions) with this exact
+// shape before a function_call returned HTTP 200 (GEMINI-SIGNATURE-CHECK.md).
+// NoBug R1-P1: behind env CATPAW_GEMINI_PLACEHOLDER_SIGNATURE, ON by default since the shape is verified; 'false' turns it off
+// (threaded readFreeRouteChain → FreeRouteChainProvider → GeminiInteractionsRoute → payload). Off = exactly v52's request.
 // Any 400 on a request that carried a placeholder fails over (a wrong shape must never be worse than v52).
 export const GEMINI_SKIP_SIGNATURE = 'skip_thought_signature_validator';
 export const GEMINI_SIGNATURE_STEP_TYPE = 'thought', GEMINI_SIGNATURE_FIELD = 'signature';
@@ -81,7 +82,7 @@ export function toContent(content) {
   return out.length ? out : [{ type: 'text', text: '' }];
 }
 /** OpenAI-style history → Interactions steps (stateless). */
-export function toSteps(messages, { signaturePlaceholder = false } = {}) {
+export function toSteps(messages, { signaturePlaceholder = true } = {}) {
   const names = new Map(), steps = [], list = messages ?? [];
   // Current turn = everything after the latest user message (tool results have role 'tool').
   let currentFrom = 0; for (let i = list.length - 1; i >= 0; i--) if (list[i]?.role === 'user') { currentFrom = i + 1; break; }
@@ -102,7 +103,7 @@ export function toSteps(messages, { signaturePlaceholder = false } = {}) {
   }
   return steps;
 }
-/** Redacted classification of a Gemini 400 (fixed vocabulary only). */
+/** Redacted classification of a Gemini 400 (fixed vocabulary only). Only ever called on a non-2xx error body (stream(): status 400). */
 export function geminiRejectReason(failure) {
   const text = [failure?.error?.message, failure?.error?.provider_message].filter(v => typeof v === 'string').join(' ');
   // R1-P1 (c): thought_signature / thoughtSignature / thought-signature / "thought signature", or a signature that is missing/required.
@@ -116,8 +117,8 @@ export const toTools = tools => (tools ?? []).map(t => ({ type: 'function', name
 
 export class GeminiInteractionsRoute {
   #secret;
-  constructor(route, secret, { fetchImpl = globalThis.fetch, maxTokens = 2048, timeouts, guard, thinkingVisible = () => false, placeholderSignature = false } = {}) {
-    this.route = route; this.#secret = secret; this.fetchImpl = fetchImpl; this.maxTokens = maxTokens; this.timeouts = timeouts; this.guard = guard; this.thinkingVisible = thinkingVisible; this.placeholderSignature = placeholderSignature === true;
+  constructor(route, secret, { fetchImpl = globalThis.fetch, maxTokens = 2048, timeouts, guard, thinkingVisible = () => false, placeholderSignature = true } = {}) {
+    this.route = route; this.#secret = secret; this.fetchImpl = fetchImpl; this.maxTokens = maxTokens; this.timeouts = timeouts; this.guard = guard; this.thinkingVisible = thinkingVisible; this.placeholderSignature = placeholderSignature !== false;
   }
   payload({ messages, system_prompt, tools, model_override }) {
     const body = { model: model_override ?? this.route.model, input: toSteps(messages, { signaturePlaceholder: this.placeholderSignature }), stream: true, store: false, generation_config: { max_output_tokens: this.maxTokens } };
