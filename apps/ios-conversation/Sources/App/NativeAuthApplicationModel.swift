@@ -707,46 +707,53 @@ struct NativeWorkspaceRetrySchedule: Sendable {
         if !usable.contains(snapshot.phase) || snapshot.user == nil {
             guard let gone = epoch.currentAccount ?? lastBarrierAccount else { return }   // captured BEFORE signOut()
             lastBarrierAccount = nil
-            epoch.signOut(); DeviceCallGate.reset(); DeviceLedger.shared.signOut(account: gone)
-            Task { @MainActor in await AccountChangeObservers.notify(previous: gone, current: nil) }   // after the sync bump
+            epoch.signOut(); DeviceCallGate.reset()
+            // p89i: passive invalidation can't ask → parked items default to keep (logged), then observers, in that order.
+            Task { @MainActor in registerDeviceParkedSources(); await AccountParkedItems.resolve(account: gone, decider: nil); await AccountChangeObservers.notify(previous: gone, current: nil) }
         } else if fresh, snapshot.phase == .authenticated, let id = snapshot.user?.id.uuidString, id != epoch.currentAccount {
             let previous = epoch.currentAccount ?? lastBarrierAccount
             epoch.activate(account: id); DeviceCallGate.reset(); lastBarrierAccount = id
-            if let previous, previous != id { DeviceLedger.shared.signOut(account: previous) }   // switch: previous account's ledger is cleared
-            Task { @MainActor in await AccountChangeObservers.notify(previous: previous, current: id) }
+            // p89i: switch → previous account's parked items default to keep (hidden, logged), then observers.
+            Task { @MainActor in
+                if let previous, previous != id { registerDeviceParkedSources(); await AccountParkedItems.resolve(account: previous, decider: nil) }
+                await AccountChangeObservers.notify(previous: previous, current: id)
+            }
         }
     }
-    /// p89i product decision: device operations in flight for this account → ask first (`logoutPrompt`), never cancel or
-    /// continue them silently. Passive invalidation (server revoked the session) can't ask and keeps the synchronous barrier.
-    @Published private(set) var logoutPrompt: [DeviceInFlight.Item] = []
-    private var afterLogout: (@MainActor () async -> Void)?
-    var deviceCallStore: DeviceCallStore = .shared
-    func requestSignOut(after: (@MainActor () async -> Void)? = nil) async {
-        let items = DeviceInFlight.items(store: deviceCallStore, account: DeviceCallGate.currentAccount())
-        guard !items.isEmpty else { await signOut(); await after?(); return }
-        DeviceDecisionLog.write("logout requested: \(items.count) in flight → ask user")
-        afterLogout = after; logoutPrompt = items
+    /// p89i: generic parked-item decision (AccountParkedItems). The UI sets `parkedDecider`'s answer through
+    /// `parkedPrompt` + `resolveParked`; with no UI attached (tests, background) the default is keep — logged.
+    @Published private(set) var parkedPrompt: [AccountParkedItem] = []
+    private var parkedAnswer: CheckedContinuation<[String: AccountParkedDecision], Never>?
+    var parkedDecider: AccountParkedItems.Decider?
+    /// Installs the shared confirmation UI decider (CatpawApp).
+    func attachParkedPrompt() {
+        parkedDecider = { [weak self] items in
+            guard let self else { return [:] }
+            return await withCheckedContinuation { c in self.parkedAnswer = c; self.parkedPrompt = items }
+        }
     }
-    /// nil = 暂不退出 (stay signed in, operations untouched).
-    func resolveSignOut(_ choice: DeviceInFlight.Choice?) async {
-        let items = logoutPrompt, after = afterLogout
-        guard !items.isEmpty else { return }
-        logoutPrompt = []; afterLogout = nil
-        guard let choice else { DeviceDecisionLog.write("logout dismissed: stay signed in"); return }
-        await DeviceInFlight.apply(choice, items: items, store: deviceCallStore)
-        await signOut(); await after?()
+    /// Per-item answers; items without an answer are kept. Dismissing the sheet = keep all.
+    func resolveParked(_ answers: [String: AccountParkedDecision]) {
+        parkedPrompt = []; let c = parkedAnswer; parkedAnswer = nil; c?.resume(returning: answers)
     }
+    static func registerDeviceParkedSources() {
+        if !AccountParkedItems.registeredKeys.contains(DeviceCallParkedSource.key) { AccountParkedItems.register(DeviceCallParkedSource.key, DeviceCallParkedSource()) }
+        if !AccountParkedItems.registeredKeys.contains(DeviceLedgerParkedSource.key) { AccountParkedItems.register(DeviceLedgerParkedSource.key, DeviceLedgerParkedSource()) }
+    }
+    func requestSignOut(after: (@MainActor () async -> Void)? = nil) async { await signOut(); await after?() }
     func signOut() async {
         guard let manager, !actionBusy else { return };actionBusy=true;logoutInProgress=true;lifecycleEpoch += 1
         let leaving = AccountEpoch.shared.currentAccount ?? Self.lastBarrierAccount   // captured BEFORE the barrier closes
         Self.lastBarrierAccount = nil
-        AccountEpoch.shared.signOut()   // synchronous barrier FIRST: every in-flight account-bound write is refused from here
-        DeviceLedger.shared.signOut(account: leaving)   // p89c-b: that account's local ledger is cleared
-        DeviceCallGate.reset()          // Codex p89b-4: grants/taps/credentials die synchronously, before any await
+        // p89i deterministic order: 1 sync epoch bump → 2 collect parked → 3 user decision → 4 apply → 5 observers.
+        AccountEpoch.shared.signOut()   // 1. synchronous barrier FIRST: every in-flight account-bound write is refused from here
+        DeviceCallGate.reset()          //    Codex p89b-4: grants/taps/credentials die synchronously, before any await
         warmup?.cancel();recoveryPathWait?.cancel();recoveryPathWait=nil
         offlineRecoveryTask?.cancel();offlineRecoveryTask=nil   // p89g-2
         workspaceFlight?.task.cancel();workspaceFlight=nil;workspaceReadyKey=nil;wakeRetry()
         defer {logoutInProgress=false;actionBusy=false;recoveryImpossible=false;requiresSessionRestart=false}
+        Self.registerDeviceParkedSources()
+        await AccountParkedItems.resolve(account: leaving, decider: parkedDecider)   // 2–4 (no silent clear, default keep)
         await CatpawPushTokenUploader.shared.clearAuthorization()
         let detached=takeChat()
         // Close manager admission immediately; local draining must not postpone its barrier.
