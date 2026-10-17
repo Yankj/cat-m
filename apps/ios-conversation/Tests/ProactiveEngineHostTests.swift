@@ -41,6 +41,7 @@ import UserNotifications
         calls = []; ProactiveEngine.shared.transport = { [weak self] path, _, _ in self?.calls.append(path); return nil }   // offline unless a test says so
         ProactiveEngine.shared.serverProbe = { _, _ in false }
         UserDefaults.standard.removeObject(forKey: ProactiveQuarantine.key)
+        UserDefaults.standard.removeObject(forKey: ProactiveParking.key); UserDefaults.standard.removeObject(forKey: ProactiveServerIDMap.key)
         AccountEpoch.shared.activate(account: "XCTEST-A")
         ProactiveEngine.shared.claimData(for: "XCTEST-A", force: true)   // clean inbox/ledgers, owned by this account
         ProactiveEngine.shared.resetLedger()
@@ -597,6 +598,59 @@ import UserNotifications
     // server's response (fixture written by the Edge suite), the store's perform / undo run the real backend + queue, and
     // the queue writes back to the cloud record. The Edge suite replays exactly these requests on the real service.
     private static let edgeFixtures = URL(fileURLWithPath: #filePath).deletingLastPathComponent().appendingPathComponent("../../../services/edge/test/fixtures")
+    /// p90i P3: one continuous round trip against a recording of the REAL Edge handler (no stitched halves): client
+    /// decode of the cloud card → each user action → the real queue drain encodes the request (byte-compared with the
+    /// recording) → the client's own response decode (`decodeResponse`, incl. the recorded 403) → decode of the card the
+    /// server returns → restore → undo again. Fixture: services/edge/test/fixtures/proactive-cloud-card-replay.json
+    /// (generated and checked by services/edge/test/proactive-codex-pr90i-replay.test.mjs).
+    func testCloudCardContinuousReplay() async throws {
+        let iso = ISO8601DateFormatter(), t0 = try XCTUnwrap(iso.date(from: "2026-10-15T02:00:00Z")); var now = t0
+        ProactiveClock.now = { now }
+        let fx = try XCTUnwrap(try JSONSerialization.jsonObject(with: Data(contentsOf: Self.edgeFixtures.appendingPathComponent("proactive-cloud-card-replay.json"))) as? [String: Any])
+        let ex = try XCTUnwrap(fx["exchanges"] as? [[String: Any]]), until = iso.string(from: t0.addingTimeInterval(600))
+        func bytes(_ o: Any?) -> Data { (o.flatMap { try? JSONSerialization.data(withJSONObject: $0) }) ?? Data() }
+        var cursor = 0, mismatches: [String] = [], statuses: [Int] = []
+        ProactiveEngine.shared.transport = { path, body, _ in
+            guard cursor < ex.count, ex[cursor]["method"] as? String == "POST" else { mismatches.append("unexpected POST \(path) at \(cursor)"); return nil }
+            let e = ex[cursor]; cursor += 1
+            let want = (e["request"] as? String ?? "").replacingOccurrences(of: "__UNTIL__", with: until)
+            let got = ProactiveEngine.encodeBody(body).map { String(decoding: $0, as: UTF8.self) } ?? ""
+            if e["path"] as? String != path || got != want { mismatches.append("\(path) \(got) ≠ \(e["path"] ?? "") \(want)") }
+            let status = e["status"] as? Int ?? 0; statuses.append(status)
+            return ProactiveEngine.decodeResponse(status: status, data: bytes(e["response"]))
+        }
+        func serverCard() throws -> ProactiveSuggestion {   // the GET the app makes after a write, decoded by the real adapter
+            let e = try XCTUnwrap(cursor < ex.count ? ex[cursor] : nil, "recording exhausted"); cursor += 1
+            XCTAssertEqual(e["method"] as? String, "GET", "the recording expects a POST here (\(cursor - 1))")
+            let s = try XCTUnwrap(ProactiveSuggestionAdapter.decode(bytes((e["response"] as? [String: Any])?["suggestion"])))
+            ProactiveSuggestionStore.shared.adopt(s); return s
+        }
+        func drain() async { await ProactiveEngine.shared.drainSync(); await settle() }
+        let card = try serverCard()
+        XCTAssertEqual(ProactiveEngine.shared.serverIDs[card.id], "SERVER-ID")
+        await ProactiveSuggestionStore.shared.perform(.snooze, card); await drain()
+        XCTAssertEqual(statuses, [200]); XCTAssertEqual(try serverCard().effectiveStatus, .snoozed)
+        XCTAssertEqual(ProactiveSuggestionStore.shared.items[card.id]?.effectiveStatus, .snoozed)
+        await ProactiveSuggestionStore.shared.perform(.dismiss, card); await drain()
+        // The recorded refusal: the client decodes 403 as "not recorded" → kept queued, feature-disabled flagged, state kept.
+        XCTAssertEqual(statuses, [200, 403])
+        XCTAssertTrue(ProactiveEngine.shared.syncQueue.items.contains { $0.op.local == card.id && $0.op.action == "dismiss" }, "refused write-back stays queued")
+        XCTAssertTrue(FeatureEnrollment.shared.proactiveDisabled, "403 feature_disabled surfaced"); FeatureEnrollment.shared.proactiveDisabled = false
+        XCTAssertEqual(ProactiveSuggestionStore.shared.items[card.id]?.effectiveStatus, .dismissed)
+        now = t0.addingTimeInterval(120); await drain()                                 // retried after the backoff
+        XCTAssertEqual(statuses, [200, 403, 200]); XCTAssertEqual(try serverCard().effectiveStatus, .dismissed)
+        let addsBefore = poster.adds.count
+        await ProactiveSuggestionStore.shared.undo(card); await drain()                 // restores the snooze
+        XCTAssertGreaterThan(poster.adds.count, addsBefore, "restored snooze re-armed"); XCTAssertNil(ProactiveSuggestionStore.shared.errorKey)
+        let restored = try serverCard()
+        XCTAssertEqual(restored.effectiveStatus, .snoozed); XCTAssertEqual(ProactiveSuggestionStore.shared.items[card.id]?.effectiveStatus, .snoozed)
+        XCTAssertEqual(restored.taken?.last?.until?.timeIntervalSince1970 ?? 0, t0.addingTimeInterval(600).timeIntervalSince1970, accuracy: 1, "the server kept the device until")
+        await ProactiveSuggestionStore.shared.undo(card); await drain()                 // undo again
+        XCTAssertEqual(try serverCard().effectiveStatus, .pending); XCTAssertEqual(ProactiveSuggestionStore.shared.items[card.id]?.effectiveStatus, .pending)
+        XCTAssertEqual(statuses, [200, 403, 200, 200, 200]); XCTAssertEqual(cursor, ex.count, "the whole recording replayed, in order")
+        XCTAssertEqual(mismatches, [], "every request byte-identical to the recording")
+        XCTAssertFalse(ProactiveEngine.shared.syncQueue.items.contains { $0.op.local == card.id })
+    }
     func testCloudCardFullRoundTrip() async throws {
         let card = try XCTUnwrap(ProactiveSuggestionAdapter.decode(try Data(contentsOf: Self.edgeFixtures.appendingPathComponent("proactive-cloud-card.json"))), "real adapter decodes the server response")
         let expected = try XCTUnwrap(try JSONSerialization.jsonObject(with: Data(contentsOf: Self.edgeFixtures.appendingPathComponent("proactive-cloud-card-requests.json"))) as? [String: Any])
