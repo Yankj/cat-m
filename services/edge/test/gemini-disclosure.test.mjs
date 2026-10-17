@@ -44,3 +44,15 @@ test('gemini disclosure is part of routeHash: adding it (or changing its text) i
   await assert.rejects(assertConsent(tx(row(oldHash)), 'owner', source, cid, withG.routeHash), e => e.code === 'provider_consent_required');
   await assertConsent(tx(row(withG.routeHash)), 'owner', source, cid, withG.routeHash);
 });
+
+// W3: model_route is written from one path only (the onRoute callback that collectRound fires for each route_info).
+test('model_route: collectRound fires onRoute once per route_info; chat-service has a single model_route write', async () => {
+  const { collectRound } = await import('../supabase/functions/_shared/core/src/openrouter-provider.mjs');
+  const { readFileSync } = await import('node:fs');
+  const provider = { async *stream() { yield { type: 'route_info', route: 'gemini', model: 'm' }; yield { type: 'text_delta', text: 'hi' }; yield { type: 'done', finish_reason: 'stop' }; } };
+  const seen = []; const input = { messages: [] }; Object.defineProperty(input, 'onRoute', { value: async ri => { seen.push(ri); }, enumerable: false });
+  const round = await collectRound(provider, input);
+  assert.equal(seen.length, 1); assert.equal(seen[0].route, 'gemini'); assert.equal(round.route_info.route, 'gemini');
+  const src = readFileSync(new URL('../supabase/functions/_shared/core/src/chat-service.mjs', import.meta.url), 'utf8');
+  assert.equal(src.match(/append\(env,'model_route'/g)?.length, 1);
+});
