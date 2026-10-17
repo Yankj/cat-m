@@ -327,11 +327,11 @@ export async function createCloudRuntime({repository,authenticate,config,retain=
      check(consent?.decision==='allow'&&consent.scope_id===scope.scope_id&&consent.route_hash===config.routeHash,403,'provider_consent_required');
    });
  };
- const releaseLease=async owner=>{if([...runtime.chat.active.keys()].some(k=>k.startsWith(owner+':')))return;await repository.transaction(async tx=>{await tx.lock(owner,'native-chat-runtime-leases','runtime');const lease=await tx.get(owner,'native-chat-runtime-leases','runtime');if(lease?.holder_id===runtime.holderId)await tx.compareAndSwap(owner,'native-chat-runtime-leases','runtime',lease,{lease_until:iso()});});};
+ // Runtime lease release is owned by ChatService/foundation-runtime (owner+generation checked, every exit path).
  const raw=runtime.fetchHandler;
  runtime.onAccepted=({owner,principal,turnId})=>{
    const promises=[...runtime.chat.active.values()].filter(v=>v.subject_id===principal.subject_id&&v.session_id===principal.session_id).map(v=>v.promise);
-   retain(Promise.allSettled(promises).then(async()=>{await releaseLease(owner);if(autoKick)await kickAcceptedTurn({owner,principal,turnId});}));
+   retain(Promise.allSettled(promises).then(async()=>{if(autoKick)await kickAcceptedTurn({owner,principal,turnId});}));
  };
  const followupHTTP=createFollowupTriggerHTTPHandler({facade:runtime.facade,repository,verifyViewer:(tx,{principal,scope})=>sourceChecker(tx,{subject_id:principal.subject_id,session_id:principal.session_id,issuer:principal.issuer,issued_at:principal.issued_at,scope_id:scope.scope_id},scope)});
  runtime.api=request=>withRoutePreference(request.headers.get('x-catpaw-route'),()=>runtimeApi(request),{reasoningSummary:request.headers.get('x-catpaw-reasoning-summary')==='1',model:request.headers.get('x-catpaw-model'),routeEvents:request.headers.get('x-catpaw-route-events')==='1'});
@@ -418,7 +418,7 @@ export async function createCloudRuntime({repository,authenticate,config,retain=
   }
   const response=await raw(new Request(new URL(path+url.search,url.origin),request));
   return response;
- }catch(e){return reply({error:{code:e instanceof ApiError?e.code:'internal_error',retryable:false,reconciliation_required:e instanceof ApiError?e.reconciliation:false}},e instanceof ApiError?e.status:500);}};
+ }catch(e){const r=reply({error:{code:e instanceof ApiError?e.code:'internal_error',retryable:e instanceof ApiError&&e.retryable===true,reconciliation_required:e instanceof ApiError?e.reconciliation:false}},e instanceof ApiError?e.status:500);if(e instanceof ApiError&&e.retryAfterSec)r.headers.set('Retry-After',String(e.retryAfterSec));return r;}};
  runtime.tick=async request=>{try{await authorizeTick(request,{secret:config.tickKey,repository});let permit=null;for(const row of await repository.transaction(tx=>tx.scan('tasks'))){const task=row.value;if(!task.state?.catpaw||!['queued','scheduled','running'].includes(task.status)||task.status==='scheduled'&&Date.parse(task.nextRunAt)>Date.now()||task.status==='running'&&Date.parse(task.leaseUntil)>Date.now())continue;try{await repository.transaction(async tx=>{const admitted=await runtime.facade.admittedTask(tx,row.owner,task.id);check(await acceptedWorkClaimEligibleInTransaction(tx,runtime.facade.workGrantService,row.owner,admitted.run),409,'accepted_work_due_not_open');});permit={owner:row.owner};break;}catch{}}if(!permit)return reply({tick:{claimed:0,step_calls:0,settled:[]}});const result=await boundedTick({repository,workGrantService:runtime.facade.workGrantService,owners:[permit.owner],admitTask:runtime.facade.admittedTask.bind(runtime.facade),runStep:singleStepHandler(runtime.facade,runtime.provider),budgetMs:config.tickBudgetMs,settleReserveMs:750,leaseMs:60000});return reply({tick:{claimed:result.claimed,step_calls:result.step_calls,settled:result.settled.map(t=>({task_id:t.task_id,status:t.status,nextRunAt:t.nextRunAt}))}});}catch(e){return reply({error:{code:e instanceof ApiError?e.code:'tick_denied',retryable:false}},e instanceof ApiError?e.status:403);}};
  return runtime;
 }
