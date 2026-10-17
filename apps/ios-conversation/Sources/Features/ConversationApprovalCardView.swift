@@ -35,6 +35,7 @@ import SwiftUI
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
+            if !deviceCalls.isEmpty || !pending.isEmpty { Color.clear.frame(height: 0).id(StatusLineCardAnchor.id) }   // status-line tap target
             ForEach(deviceCalls, id: \.id) { call in DeviceCallConfirmCard(call: call, recorded: turn.map { ConversationTurnInteractionHistory.deviceOutcome(call, turn: $0, session: session) }) }
             // Server follow-up after device_result can fail (e.g. provider_timeout). Never leave a dangling turn:
             // state what happened on the phone and offer to continue (a follow-up, not a regenerate that would redo the action).

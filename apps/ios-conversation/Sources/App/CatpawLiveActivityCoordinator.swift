@@ -55,29 +55,17 @@ enum CatpawWorkPhase: Equatable {
     var bodyKey: (key: String, arguments: [String]) {
         switch self {
         case .thinking: return ("正在思考…", [])
-        case .tool(let name): return Self.toolStepKey(name).map { ($0, []) } ?? ("正在使用工具…", [])
+        case .tool(let name): return (ToolStepCopy.short(name), [])   // one table (status-line SPEC §9); unknown → 正在处理
         case .awaitingUser: return ("等你确认", [])
         case .writing: return ("正在整理回答…", [])
         case .done: return ("已完成", [])
         case .failed: return ("未完成，需核对", [])
         }
     }
-    static func toolStepKey(_ name: String) -> String? {
-        switch name {
-        case "calendar_list": return "正在查日历"
-        case "calendar_create", "create_calendar_event", "update_calendar_event": return "正在添加日程"
-        case "reminder_create", "create_reminder", "update_reminder", "alarm_set": return "正在设置提醒"
-        case "places_search": return "正在查附近"
-        case "maps_open": return "正在打开地图"
-        case "contacts_search": return "正在查联系人"
-        case "mail_compose", "sms_compose": return "正在起草消息"
-        case "delegate_task", "delegate_plan_v1", "delegate_sources_v1": return "正在拆解任务"
-        case "list_tasks", "create_task", "update_task": return "正在整理待办"
-        case "memory_search": return "正在回想你说过的事"
-        case "memory_save", "memory_update": return "正在记下来"
-        case "memory_forget": return "正在找要忘记的记忆"
-        default: return nil
-        }
+    /// Localised Live Activity body. Tool copy comes straight from ToolStepCopy (zh/en columns), other phases from UIStrings.
+    func body(_ language: AppLanguage) -> String {
+        if case .tool(let name) = self { return ToolStepCopy.short(name, en: language == .english) }
+        return language.ui(bodyKey.key, arguments: bodyKey.arguments)
     }
 }
 #if canImport(ActivityKit) && os(iOS)
@@ -142,7 +130,7 @@ import UIKit
     func handle(_ event: ConversationTurnEvent, conversationID: UUID?, taskText: String? = nil) {
         let id = event.operationID
         guard let phase = CatpawWorkPhase.from(event.payload) else { return }
-        let body = ui(phase.bodyKey.key, phase.bodyKey.arguments)
+        let body = phase.body(AppLanguage(locale: .current))
         let hub = CatpawPresenceHub.shared
         switch phase {
         case .thinking: hub.set(hub.state == nil ? .waiting : .thinking, step: body)
