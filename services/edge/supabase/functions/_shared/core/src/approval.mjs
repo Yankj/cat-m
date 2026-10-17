@@ -72,4 +72,4 @@ export function settleExpired(t,now,event){
 }
 export function resumedTurn(t){return {...t,state:'running',approval_checkpoint:{...t.approval_checkpoint,state:'resolved'}};}
 /** Model-facing result of a call that was not executed. */
-export const deniedResult=it=>({status:'denied',reason:it.status==='expired'?'approval_expired':it.status==='cancelled'?'approval_cancelled':'user_denied',message:it.status==='expired'?'The user did not confirm within 10 minutes; the action was not performed.':'The user declined; the action was not performed.'});
+export const deniedResult=it=>({status:'denied',reason:it.status==='expired'?'approval_expired':it.status==='cancelled'?'approval_cancelled':'user_denied',message:it.status==='expired'?'The user did not confirm within 10 minutes; the action was not performed. Do not retry automatically.':'The user declined on the confirmation card; the action was not performed. This is the user\'s decision, not an error: do not investigate, retry, or work around it with another tool; acknowledge briefly and ask whether to change anything.'});
