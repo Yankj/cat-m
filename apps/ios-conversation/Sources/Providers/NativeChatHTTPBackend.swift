@@ -328,7 +328,7 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
                         guard ChatRuntimeBusyRetry.isBusy(body) else { throw NativeChatHTTPFailure.turnResponse(503) }
                         sendDiagnostic("catpaw.send chat_runtime_busy op=\(request.operationID.uuidString.prefix(8)) quiet retry")
                         throw ChatRuntimeBusyRetry.Busy(retryAfter: ChatRuntimeBusyRetry.retryAfter(header: busy.value(forHTTPHeaderField: "Retry-After"), body: body))
-                    }, sleep: ChatRuntimeBusyRetry.sleep)
+                    }, sleep: ChatRuntimeBusyRetry.sleep, exhausted: { NativeChatHTTPFailure.turnResponse(503) })   // same URLRequest → same Idempotency-Key (= turn_id)
                     guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
                         let status=(response as? HTTPURLResponse)?.statusCode ?? 0
                         if status == 401 { await self.credentials.rejected(scope: request.scope) }
@@ -1758,11 +1758,12 @@ public actor ChatAttachmentSendCoordinator {
 /// catpaw-api `503 chat_runtime_busy` (JSON, before the SSE stream starts): always retryable on the client — prod v48
 /// still sends `retryable:false`; the coming backend fix sends `retryable:true` + `Retry-After: 1–60`. Matched on the code
 /// string only. A Retry-After header (or retry_after_seconds) wins, clamped 0.5–60 s; otherwise quiet exponential backoff
-/// 1, 2, 4, 8, 16, 16 s. Total budget 60 s; only then does the send fail — as not sent, with a calm message.
+/// 1, 2, 4, 8, 16 s. At most 5 re-POSTs within a 60 s total budget, each the SAME URLRequest (same Idempotency-Key =
+/// turn_id). When exhausted, the existing 503 message (「尚未确认…不要重新发送」) is the final fallback.
 enum ChatRuntimeBusyRetry {
     static let code = "chat_runtime_busy"
     static let budget: TimeInterval = 60
-    static let finalMessage = "服务正忙，请稍后重试。"  // shown after 「消息尚未发送，输入已保留。」
+    static let maxRetries = 5
     struct Busy: Error { let retryAfter: TimeInterval? }
     nonisolated(unsafe) static var sleep: @Sendable (TimeInterval) async throws -> Void = { try await Task.sleep(nanoseconds: UInt64($0 * 1_000_000_000)) }
     private static func problem(_ body: Data) -> [String: Any]? {
@@ -1784,14 +1785,14 @@ enum ChatRuntimeBusyRetry {
         return min(pow(2, Double(max(1, attempt) - 1)), 16)
     }
     /// `post` throws `Busy` for a busy refusal; any other result or error passes through unchanged.
-    static func run<R>(post: () async throws -> R, sleep: (TimeInterval) async throws -> Void) async throws -> R {
+    static func run<R>(post: () async throws -> R, sleep: (TimeInterval) async throws -> Void, exhausted: () -> Error) async throws -> R {
         var waited: TimeInterval = 0, attempt = 0
         while true {
             do { return try await post() }
             catch let busy as Busy {
                 attempt += 1
                 let wait = delay(attempt: attempt, retryAfter: busy.retryAfter)
-                guard waited + wait <= budget else { throw ConversationDispatchFailure.notSent(reason: finalMessage) }
+                guard attempt <= maxRetries, waited + wait <= budget else { throw exhausted() }
                 try Task.checkCancellation()
                 try await sleep(wait); waited += wait
             }

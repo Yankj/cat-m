@@ -115,6 +115,7 @@ final class NativeArtifactContinuationTransportTests:XCTestCase {
 }
 
 /// catpaw-api v48 `503 chat_runtime_busy` after a re-consent: quiet backoff re-POST, no error unless the budget is spent.
+private struct BusyExhausted: Error {}
 final class ChatRuntimeBusyRetryTests: XCTestCase {
     private func body(_ value: [String: Any]) -> Data { try! JSONSerialization.data(withJSONObject: value) }
     private actor Sleeps { var values: [TimeInterval] = []; func add(_ v: TimeInterval) { values.append(v) } }
@@ -138,7 +139,7 @@ final class ChatRuntimeBusyRetryTests: XCTestCase {
             posts += 1
             if posts <= 3 { throw ChatRuntimeBusyRetry.Busy(retryAfter: posts == 3 ? 7 : nil) }
             return "admitted"
-        }, sleep: { await sleeps.add($0) })
+        }, sleep: { await sleeps.add($0) }, exhausted: { BusyExhausted() })
         XCTAssertEqual(result, "admitted"); XCTAssertEqual(posts, 4)
         let waited = await sleeps.values
         XCTAssertEqual(waited, [1, 2, 7], "backoff 1 s, 2 s, then the server's Retry-After")
@@ -148,26 +149,34 @@ final class ChatRuntimeBusyRetryTests: XCTestCase {
         XCTAssertTrue(ChatRuntimeBusyRetry.isBusy(body(["schema_version": 1, "error": ["code": "chat_runtime_busy", "retryable": true, "reconciliation_required": false]])))
         let sleeps = Sleeps(); var posts = 0
         do {
-            _ = try await ChatRuntimeBusyRetry.run(post: { () async throws -> Int in posts += 1; throw ChatRuntimeBusyRetry.Busy(retryAfter: ChatRuntimeBusyRetry.retryAfter(header: "60", body: Data())) }, sleep: { await sleeps.add($0) })
+            _ = try await ChatRuntimeBusyRetry.run(post: { () async throws -> Int in posts += 1; throw ChatRuntimeBusyRetry.Busy(retryAfter: ChatRuntimeBusyRetry.retryAfter(header: "60", body: Data())) }, sleep: { await sleeps.add($0) }, exhausted: { BusyExhausted() })
             XCTFail("must finally fail")
-        } catch ConversationDispatchFailure.notSent {}
+        } catch is BusyExhausted {}
         let waited = await sleeps.values
         XCTAssertEqual(waited, [60]); XCTAssertEqual(posts, 2)
     }
     func testGivesUpAsNotSentOnlyAfterTheSixtySecondBudget() async throws {
         let sleeps = Sleeps(); var posts = 0
         do {
-            _ = try await ChatRuntimeBusyRetry.run(post: { () async throws -> Int in posts += 1; throw ChatRuntimeBusyRetry.Busy(retryAfter: nil) }, sleep: { await sleeps.add($0) })
+            _ = try await ChatRuntimeBusyRetry.run(post: { () async throws -> Int in posts += 1; throw ChatRuntimeBusyRetry.Busy(retryAfter: nil) }, sleep: { await sleeps.add($0) }, exhausted: { BusyExhausted() })
             XCTFail("an always-busy runtime must finally fail")
-        } catch ConversationDispatchFailure.notSent(let reason) { XCTAssertEqual(reason, ChatRuntimeBusyRetry.finalMessage) }
+        } catch is BusyExhausted {}   // production: the existing 503「尚未确认…不要重新发送」message
         let waited = await sleeps.values
-        XCTAssertEqual(waited, [1, 2, 4, 8, 16, 16]); XCTAssertLessThanOrEqual(waited.reduce(0, +), ChatRuntimeBusyRetry.budget)
-        XCTAssertEqual(posts, 7, "the same operation is re-posted; never a different turn")
+        XCTAssertEqual(waited, [1, 2, 4, 8, 16]); XCTAssertLessThanOrEqual(waited.reduce(0, +), ChatRuntimeBusyRetry.budget)
+        XCTAssertEqual(posts, 1 + ChatRuntimeBusyRetry.maxRetries, "a few re-posts of the same operation; never a different turn")
+    }
+    /// NoBug: the resend reuses the SAME URLRequest (Idempotency-Key = turn_id) and falls back to the existing 503 message.
+    func testReplyReusesTheSameUploadAndKeepsTheExisting503Fallback() throws {
+        let source=URL(fileURLWithPath:#filePath).deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("Sources/Providers/NativeChatHTTPBackend.swift")
+        let text=try String(contentsOf:source,encoding:.utf8)
+        XCTAssertTrue(text.contains("let (wire, reply) = try await self.session.bytes(for: upload)"),"every attempt posts the one prepared request")
+        XCTAssertTrue(text.contains("exhausted: { NativeChatHTTPFailure.turnResponse(503) }"))
+        XCTAssertTrue(text.contains("forHTTPHeaderField:\"Idempotency-Key\""))
     }
     func testOtherFailuresPassThroughImmediately() async throws {
         let sleeps = Sleeps()
         do {
-            _ = try await ChatRuntimeBusyRetry.run(post: { () async throws -> Int in throw URLError(.badServerResponse) }, sleep: { await sleeps.add($0) })
+            _ = try await ChatRuntimeBusyRetry.run(post: { () async throws -> Int in throw URLError(.badServerResponse) }, sleep: { await sleeps.add($0) }, exhausted: { BusyExhausted() })
             XCTFail("non-busy failures are not retried here")
         } catch let error as URLError { XCTAssertEqual(error.code, .badServerResponse) }
         let waited = await sleeps.values
