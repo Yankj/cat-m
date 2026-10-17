@@ -550,7 +550,7 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
         }
         // Commit all presentation state together after target reads and the last
         // lifecycle gate. An interrupted read cannot leave B with A's queue/draft.
-        permissionTask?.cancel();permissionID=nil;pendingModelConsent=nil;modelConsentReview=nil;modelConsentReviewToken=nil;checkingModelConsent=false;consentReady=false
+        permissionTask?.cancel();permissionID=nil;authorizeRerun=false;pendingModelConsent=nil;modelConsentReview=nil;modelConsentReviewToken=nil;checkingModelConsent=false;consentReady=false
         queue=ConversationFollowupQueueService(repository:repository,scope:scope,conversationID:id)
         acceptedWorkReviewTask?.cancel();acceptedWorkReviewTask=nil;acceptedWorkReviewToken=nil;acceptedWorkReviewPresented=false;acceptedWorkReviewSaving=false;acceptedWorkCapability = .init();revisionWorkReviewTarget=nil
         acceptedWorkDraftTask?.cancel();acceptedWorkDraftTask=nil;acceptedWorkDraft=targetWorkDraft
@@ -606,7 +606,7 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
         if revisionRequiresWorkReview,revisionWork==nil {requestAcceptedWorkReview();return}
         if let block=imageSendBlock { error=block.message;return }
         if quotaNotice { return }   // keep the draft; the quota notice offers 重试
-        guard canAcceptDraft,let id=conversationID,let queue else { return }
+        guard canAcceptDraft,let id=conversationID,let queue else { sendLog.info("catpaw.send prepare rejected canAccept=\(self.canAcceptDraft, privacy: .public) loaded=\(self.loaded, privacy: .public) conv=\(self.conversationID != nil, privacy: .public) queue=\(self.queue != nil, privacy: .public)");return }
         let tap=ProcessInfo.processInfo.systemUptime
         let prepared=imageDraft.attachment
         let payload:ConversationVisionPayload?
@@ -639,6 +639,7 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
                 guard conversationID == id else { return }
                 if acceptedWork != nil || revisionWork != nil {acceptedWorkDraft=nil;revisionWorkReviewTarget=nil}
                 setIntent(message.id,.queued);await refresh()
+                sendLog.info("catpaw.send enqueued fg=\(self.foreground, privacy: .public) inflight=\(self.permissionTask != nil, privacy: .public)")
                 if foreground { authorizePending() }
             } catch {
                 if payload != nil {try? await imageStore.remove(conversationID:id,operationID:message.id)}
@@ -650,12 +651,19 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
     func send() { prepareSend() }
     func outgoingDidRender(_ id:UUID) { if let time=tapTimes.removeValue(forKey:id) { tapToFirstRenderedMs=(ProcessInfo.processInfo.systemUptime-time)*1000 } }
     private func setIntent(_ id:UUID,_ state:OutgoingMessageIntent.State,error:String?=nil) { if let i=outgoingMessages.firstIndex(where:{$0.id == id}) { outgoingMessages[i].state=state;outgoingMessages[i].error=error } }
+    // p89j-1 root cause: start()/resumeForeground launches a consent check that reads the queue BEFORE a just-tapped
+    // send is enqueued (pending=0 -> "authorize skipped"). The post-enqueue authorizePending() then hit
+    // `permissionTask == nil` and returned silently, so the message sat queued with no consent sheet and nothing
+    // re-triggered it. A request arriving while a check is in flight is now coalesced and re-run when that check ends.
+    private var authorizeRerun=false
     private func authorizePending() {
-        guard networkAdmissionAllowed,foreground,loaded,permissionTask == nil,pendingModelConsent == nil,let id=conversationID else { return }
+        guard networkAdmissionAllowed,foreground,loaded,pendingModelConsent == nil,let id=conversationID else { sendLog.info("catpaw.send authorize rejected admission=\(self.networkAdmissionAllowed, privacy: .public) fg=\(self.foreground, privacy: .public) loaded=\(self.loaded, privacy: .public) pendingConsent=\(self.pendingModelConsent != nil, privacy: .public)");return }
+        if permissionTask != nil { authorizeRerun=true;sendLog.info("catpaw.send authorize coalesced (consent check in flight)");return }
+        authorizeRerun=false
         if consentReady { drainQueue();return }
         let token=UUID();permissionID=token;checkingModelConsent=true
         permissionTask=Task {
-            defer { if permissionID == token { permissionTask=nil;checkingModelConsent=false } }
+            defer { if permissionID == token { permissionTask=nil;checkingModelConsent=false;if authorizeRerun,!Task.isCancelled { authorizeRerun=false;sendLog.info("catpaw.send authorize rerun after in-flight check");authorizePending() } } }
             do {
                 var state=try await queue?.state()
                 // A preflight hold (send threw before the turn was journaled: readiness timeout, admission
@@ -815,7 +823,7 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
         guard allowed != networkAdmissionAllowed else { return };networkAdmissionAllowed=allowed
         Task {await synchronizeServiceAdmission()}
         if allowed { Task { await resumeForeground();authorizePending() } }
-        else { cancelImageConsent();stopTaskControlDelivery();permissionTask?.cancel();permissionTask=nil;permissionID=nil;checkingModelConsent=false;pendingModelConsent=nil;modelConsentReview=nil;modelConsentReviewToken=nil;connectionProbeID=UUID();connectionTask?.cancel();connectionLifecycle = .checking }
+        else { cancelImageConsent();stopTaskControlDelivery();permissionTask?.cancel();permissionTask=nil;permissionID=nil;authorizeRerun=false;checkingModelConsent=false;pendingModelConsent=nil;modelConsentReview=nil;modelConsentReviewToken=nil;connectionProbeID=UUID();connectionTask?.cancel();connectionLifecycle = .checking }
     }
     func refreshConnection() async {
         guard foreground,networkAdmissionAllowed else {connectionLifecycle = .checking;return}
@@ -924,7 +932,7 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
     }
     private func beginSuspension() -> Task<Void,Never> {
         cancelImageConsent();sceneGeneration += 1;foreground=false;stopTaskControlDelivery();foregroundTask?.cancel();foregroundTask=nil;connectionTask?.cancel()
-        permissionTask?.cancel();permissionTask=nil;permissionID=nil;checkingModelConsent=false;pendingModelConsent=nil;modelConsentReview=nil;modelConsentReviewToken=nil;connectionProbeID=UUID()
+        permissionTask?.cancel();permissionTask=nil;permissionID=nil;authorizeRerun=false;checkingModelConsent=false;pendingModelConsent=nil;modelConsentReview=nil;modelConsentReviewToken=nil;connectionProbeID=UUID()
         let old=turnTask;turnTask=nil;flightID=nil;busy=false;sending=false;observerLifecycle = .background
         let id=conversationID,service=self.service,scope=self.scope,queue=self.queue
         let previous=haltTask,persistence=persistenceTask
