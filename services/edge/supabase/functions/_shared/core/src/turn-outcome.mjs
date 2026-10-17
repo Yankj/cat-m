@@ -19,7 +19,7 @@ export function whitelistedArgs(args) {
   return out;
 }
 const MAX_BLOCKED = 32, MAX_BLOCKED_BYTES = 8000;
-/** P1-1: turn.parallel_blocked after adding entries: whitelisted args + digest, at most 32 entries / 8000 bytes (oldest dropped). */
+/** P1-1: turn.parallel_blocked after adding entries: whitelisted args only (no digest), at most 32 entries / 8000 bytes (oldest dropped). */
 export function boundedParallelBlocked(existing, entries) {
   const ids = new Set(entries.map(e => e.call_id));
   let out = [...(existing ?? []).filter(b => !ids.has(b.call_id)), ...entries].slice(-MAX_BLOCKED);
