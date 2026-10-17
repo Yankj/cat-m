@@ -1845,6 +1845,34 @@
       "line": 102,
       "sha256": "1b76a3b7ec4ac6de617b7095267b1b7ebce64eb9da3c4aa02176a27d0ea60794",
       "reason": "PR90h review 2026-10-17: synthetic test literal (offline lifecycle access token / masked k-xx-xxxxxxxx env stub); no real credential."
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
+      "category": "deployment_public_key",
+      "line": 361,
+      "sha256": "06b333afee813d88bcb92a79d8dc3e6774f0675b870b9269709d2eb3fe74f9f8",
+      "reason": "Reviewed named offline auth fixture: synthetic public-key/access-token markers and injected mock remotes only; no real credential or network request. Exact current bytes and line pinned. [p90i v7 rebase onto #89 3b7564e: same line bytes, moved 327→361]"
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
+      "category": "deployment_public_key",
+      "line": 543,
+      "sha256": "06b333afee813d88bcb92a79d8dc3e6774f0675b870b9269709d2eb3fe74f9f8",
+      "reason": "Reviewed named offline auth fixture: synthetic public-key/access-token markers and injected mock remotes only; no real credential or network request. Exact current bytes and line pinned. [p90i v7 rebase onto #89 3b7564e: same line bytes, moved 509→543]"
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
+      "category": "secret_assignment_review",
+      "line": 237,
+      "sha256": "06b333afee813d88bcb92a79d8dc3e6774f0675b870b9269709d2eb3fe74f9f8",
+      "reason": "PR90h review 2026-10-17: synthetic test literal (offline lifecycle access token / masked k-xx-xxxxxxxx env stub); no real credential. [p90i v7 rebase onto #89 3b7564e: same line bytes, moved 183→237]"
+    },
+    {
+      "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
+      "category": "secret_assignment_review",
+      "line": 578,
+      "sha256": "06b333afee813d88bcb92a79d8dc3e6774f0675b870b9269709d2eb3fe74f9f8",
+      "reason": "PR90h review 2026-10-17: synthetic test literal (offline lifecycle access token / masked k-xx-xxxxxxxx env stub); no real credential. [p90i v7 rebase onto #89 3b7564e: same line bytes, moved 524→578]"
     }
   ]
 }
