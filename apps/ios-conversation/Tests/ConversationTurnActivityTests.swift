@@ -108,8 +108,9 @@ final class CatpawWorkPhaseMappingTests: XCTestCase {
         XCTAssertEqual(CatpawWorkPhase.done.kind, K.done)
         XCTAssertEqual(CatpawWorkPhase.failed.kind, K.failed)
         XCTAssertTrue(CatpawWorkPhase.done.isTerminal && CatpawWorkPhase.failed.isTerminal && !CatpawWorkPhase.awaitingUser.isTerminal)
-        XCTAssertEqual(CatpawWorkPhase.tool("calendar_list").bodyKey.key, "正在查日历")
-        XCTAssertEqual(CatpawWorkPhase.tool("some_unknown_tool").bodyKey.key, "正在使用工具…")
+        XCTAssertEqual(CatpawWorkPhase.tool("calendar_list").bodyKey.key, "查看日历")
+        XCTAssertEqual(CatpawWorkPhase.tool("some_unknown_tool").bodyKey.key, "正在处理")
+        XCTAssertEqual(CatpawWorkPhase.tool("calendar_list").body(.english), "Checking calendar")
     }
 }
 
@@ -144,22 +145,47 @@ final class StatusLineTests: XCTestCase {
         XCTAssertEqual(ToolStepCopy.title("some_unknown_tool"), ToolStepCopy.generic.running[0])
         XCTAssertEqual(ToolStepCopy.confirmTitle(nil), "等你确认")
     }
-    func testUnderOneSecondShowsNothing() {
+    func testUnderAppearDelayShowsNothing() {
+        XCTAssertEqual(StatusLineThrottle.hideUnder, 0.6)   // visual SPEC §6
         let t0 = Date(); var th = StatusLineThrottle(turnStart: t0)
         _ = th.submit(.sending, at: t0)
         _ = th.submit(.accepted(occurrence: 0), at: t0.addingTimeInterval(0.3))
-        XCTAssertNil(th.displayed(at: t0.addingTimeInterval(0.9)))
-        XCTAssertEqual(th.displayed(at: t0.addingTimeInterval(1.0)), .accepted(occurrence: 0))   // latest wins pre-visibility
+        XCTAssertNil(th.displayed(at: t0.addingTimeInterval(0.55)))
+        XCTAssertEqual(th.displayed(at: t0.addingTimeInterval(0.6)), .accepted(occurrence: 0))   // latest wins pre-visibility
     }
     func testMinimumDwellAndLatestWins() {
         let t0 = Date(); var th = StatusLineThrottle(turnStart: t0)
         _ = th.submit(.accepted(occurrence: 0), at: t0)
-        let delay = th.submit(.tool(name: "calendar_list", occurrence: 0), at: t0.addingTimeInterval(1.2))
+        let delay = th.submit(.tool(name: "calendar_list", occurrence: 0), at: t0.addingTimeInterval(0.8))
         XCTAssertEqual(delay ?? 0, 0.4, accuracy: 0.001)
-        XCTAssertEqual(th.displayed(at: t0.addingTimeInterval(1.2)), .accepted(occurrence: 0))
-        _ = th.submit(.composing(occurrence: 0), at: t0.addingTimeInterval(1.4))
-        _ = th.tick(at: t0.addingTimeInterval(1.6))
-        XCTAssertEqual(th.displayed(at: t0.addingTimeInterval(1.6)), .composing(occurrence: 0))
+        XCTAssertEqual(th.displayed(at: t0.addingTimeInterval(0.8)), .accepted(occurrence: 0))
+        _ = th.submit(.composing(occurrence: 0), at: t0.addingTimeInterval(1.0))
+        _ = th.tick(at: t0.addingTimeInterval(1.2))
+        XCTAssertEqual(th.displayed(at: t0.addingTimeInterval(1.2)), .composing(occurrence: 0))
+    }
+    func testAttentionStatesBypassDwell() {
+        let t0 = Date(); var th = StatusLineThrottle(turnStart: t0)
+        _ = th.submit(.tool(name: "calendar_create", occurrence: 0), at: t0.addingTimeInterval(0.7))
+        _ = th.submit(.awaitingUser(tool: "calendar_create"), at: t0.addingTimeInterval(0.8))
+        XCTAssertEqual(th.displayed(at: t0.addingTimeInterval(0.8)), .awaitingUser(tool: "calendar_create"))
+        let w = StatusLinePhase.awaitingUser(tool: "calendar_create")
+        XCTAssertEqual(w.title, "等你确认日程"); XCTAssertEqual(w.symbol, "arrow.down"); XCTAssertEqual(w.kind, .waiting)
+        XCTAssertEqual(w.title(en: true), "Waiting for you to confirm the event")
+        XCTAssertEqual(w.accessibilityTitle(en: false), "等你确认日程，确认卡片在下方")
+        XCTAssertEqual(StatusLinePhase.failed(reason: "x").symbol, "exclamationmark.circle")
+        XCTAssertEqual(StatusLinePhase.stopped.symbol, "stop.circle")
+    }
+    func testBilingualColumnsAndAnnouncementCategories() {
+        for (name, e) in ToolStepCopy.table {
+            XCTAssertEqual(e.running.count, e.runningEN.count, name)
+            XCTAssertFalse(e.short.isEmpty || e.shortEN.isEmpty, name)
+            XCTAssertEqual(e.confirm == nil, e.confirmEN == nil, name)
+            XCTAssertFalse((e.running + [e.short] + [e.confirm ?? ""]).contains { $0.contains("…") || $0.contains("！") }, name)
+        }
+        XCTAssertEqual(StatusLinePhase.accepted(occurrence: 0).category, StatusLinePhase.accepted(occurrence: 1).category)
+        XCTAssertEqual(StatusLinePhase.tool(name: "calendar_list", occurrence: 0).category, StatusLinePhase.tool(name: "calendar_list", occurrence: 1).category)
+        XCTAssertNotEqual(StatusLinePhase.tool(name: "calendar_list", occurrence: 0).category, StatusLinePhase.tool(name: "places_search", occurrence: 0).category)
+        XCTAssertEqual(ToolStepCopy.symbol("some_fetch_tool"), "doc.text.magnifyingglass")
     }
     func testConfirmationIsStatic() {
         var r = StatusLineReducer()
