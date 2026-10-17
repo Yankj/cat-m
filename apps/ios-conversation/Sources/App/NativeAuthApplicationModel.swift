@@ -153,7 +153,10 @@ struct NativeWorkspaceRetrySchedule: Sendable {
                 try FileManager.default.createDirectory(at:directory,withIntermediateDirectories:true,attributes:[.protectionKey:FileProtectionType.complete])
                 var excluded = directory; var resource = URLResourceValues(); resource.isExcludedFromBackup = true; try excluded.setResourceValues(resource)
             }
-            let repository=try Repository(persistence:SwiftDataPersistence(url:directory.appendingPathComponent("local.store")))
+            // Overlapping opens of one account (local receipt + provisional + workspace admit) share one Repository and one
+            // ModelContainer; two of either on one file crashed in SwiftData (`_PFFaultHandlerLookupRow`) and lost commits.
+            let storeURL=directory.appendingPathComponent("local.store")
+            let repository=try SharedRepositoryRegistry.shared.repository(at:storeURL) { try Repository(persistence:SwiftDataPersistence(url:storeURL)) }
             return (repository,try FileConversationImageByteStore(root:directory.appendingPathComponent("image-bytes")))
         }.value
     }
