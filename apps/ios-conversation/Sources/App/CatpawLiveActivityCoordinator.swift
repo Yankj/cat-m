@@ -20,8 +20,66 @@ import Combine
         }
     }
 }
+
+/// chat-ux-1505 #4a: pure turn-event → Live Activity phase mapping (unit-tested). Every stage transition maps to a phase,
+/// including the ones that used to be dropped (approval / device call / suspended → 等你确认; approval resolved → working).
+enum CatpawWorkPhase: Equatable {
+    case thinking, tool(String), awaitingUser, writing, done, failed
+    /// nil = event does not change the activity.
+    static func from(_ payload: ConversationTurnEvent.Payload) -> CatpawWorkPhase? {
+        switch payload {
+        case .started, .reasoningSummary: return .thinking
+        case .toolStarted(_, let name, _): return .tool(name)
+        case .deviceCall(let call): return call.confirm == "none" || DeviceToolContract.autoRunReadOnlyTools.contains(call.tool) ? .tool(call.tool) : .awaitingUser
+        case .approvalRequested, .suspended: return .awaitingUser
+        case .approvalResolved, .toolResult: return .thinking
+        case .textDelta: return .writing
+        case .completed: return .done
+        case .failed: return .failed
+        default: return nil
+        }
+    }
+    /// `CatpawWorkAttributes.ContentState.kind` string (Sources/Shared, shared with the widget).
+    var kind: String {
+        switch self {
+        case .thinking: return "thinking"
+        case .tool: return "tool"
+        case .awaitingUser: return "needs_user"
+        case .writing: return "writing"
+        case .done: return "done"
+        case .failed: return "failed"
+        }
+    }
+    var isTerminal: Bool { self == .done || self == .failed }
+    /// UIStrings key + arguments for the body line. Known tools get a human step (「正在查日历」), never a raw tool id.
+    var bodyKey: (key: String, arguments: [String]) {
+        switch self {
+        case .thinking: return ("正在思考…", [])
+        case .tool(let name): return Self.toolStepKey(name).map { ($0, []) } ?? ("正在使用工具…", [])
+        case .awaitingUser: return ("等你确认", [])
+        case .writing: return ("正在整理回答…", [])
+        case .done: return ("已完成", [])
+        case .failed: return ("未完成，需核对", [])
+        }
+    }
+    static func toolStepKey(_ name: String) -> String? {
+        switch name {
+        case "calendar_list": return "正在查日历"
+        case "calendar_create", "create_calendar_event", "update_calendar_event": return "正在添加日程"
+        case "reminder_create", "create_reminder", "update_reminder", "alarm_set": return "正在设置提醒"
+        case "places_search": return "正在查附近"
+        case "maps_open": return "正在打开地图"
+        case "contacts_search": return "正在查联系人"
+        case "mail_compose", "sms_compose": return "正在起草消息"
+        case "delegate_task", "delegate_plan_v1", "delegate_sources_v1": return "正在拆解任务"
+        case "list_tasks", "create_task", "update_task": return "正在整理待办"
+        default: return nil
+        }
+    }
+}
 #if canImport(ActivityKit) && os(iOS)
 import ActivityKit
+import UIKit
 
 /// Drives the `CatpawWorkAttributes` Live Activity (lock screen + Dynamic Island) from
 /// `ConversationSessionService.turnEvents()`.
@@ -44,6 +102,9 @@ import ActivityKit
         var answering = false
         var kind = CatpawWorkAttributes.ContentState.Kind.thinking
         var token = AccountEpoch.shared.capture()   // Codex PR91 p91c-3: account the turn started under
+        /// chat-ux-1505 #4a: ActivityKit updates are chained so they land in event order (separate `Task {update}`s
+        /// could apply an older state last and leave the lock screen on 「正在思考…」).
+        var lastUpdate: Task<Void, Never>?
     }
     private var turns: [UUID: Turn] = [:]
     private var tokenObservers: [String: Task<Void, Never>] = [:]
@@ -62,45 +123,38 @@ import ActivityKit
 
     func handle(_ event: ConversationTurnEvent, conversationID: UUID?) {
         let id = event.operationID
+        guard let phase = CatpawWorkPhase.from(event.payload) else { return }
+        let body = ui(phase.bodyKey.key, phase.bodyKey.arguments)
         let hub = CatpawPresenceHub.shared
-        switch event.payload {
-        case .started: hub.set(.waiting, step: ui("正在思考…"))
-        case .reasoningSummary: hub.set(.thinking, step: ui("正在思考…"))
-        case .toolStarted(_, let name, _): hub.set(.working, step: ui("正在调用工具：{0}", [name]))
-        case .toolResult: hub.set(.thinking, step: ui("正在思考…"))
-        case .textDelta: if hub.state != .streaming { hub.set(.streaming, step: ui("正在整理回答…")) }
-        case .completed: hub.set(.done, step: ui("已完成"))
-        case .failed: hub.set(.error, step: ui("未完成，需核对"))
-        default: break
+        switch phase {
+        case .thinking: hub.set(hub.state == nil ? .waiting : .thinking, step: body)
+        case .tool: hub.set(.working, step: body)
+        case .awaitingUser: hub.set(.waiting, step: body)
+        case .writing: if hub.state != .streaming { hub.set(.streaming, step: body) }
+        case .done: hub.set(.done, step: body)
+        case .failed: hub.set(.error, step: body)
         }
-        switch event.payload {
-        case .started:
-            guard turns[id] == nil else { return }
-            var turn = Turn(conversationID: conversationID?.uuidString ?? "", body: ui("正在思考…"))
+        if case .started = event.payload, turns[id] == nil {
+            var turn = Turn(conversationID: conversationID?.uuidString ?? "", body: body)
             turn.timer = Task { [weak self] in
                 try? await Task.sleep(nanoseconds: UInt64(Self.longTurnThreshold * 1_000_000_000))
                 guard !Task.isCancelled else { return }
                 self?.startIfNeeded(id)
             }
             turns[id] = turn
-        case .reasoningSummary:
-            mutate(id) { $0.kind = CatpawWorkAttributes.ContentState.Kind.thinking; $0.body = self.ui("正在思考…") }
-        case .toolStarted(_, let name, _):
-            ensureTracked(id, conversationID: conversationID)
-            mutate(id) { $0.step += 1; $0.kind = CatpawWorkAttributes.ContentState.Kind.tool; $0.body = self.ui("正在调用工具：{0}", [name]) }
-            if Self.longTaskTools.contains(name) { startIfNeeded(id) }
-        case .toolResult(let result):
-            mutate(id) { $0.kind = CatpawWorkAttributes.ContentState.Kind.thinking; $0.body = self.ui("工具已返回：{0}", [result.name]) }
-        case .textDelta:
-            guard turns[id]?.answering == false else { return }
-            mutate(id) { $0.answering = true; $0.kind = CatpawWorkAttributes.ContentState.Kind.writing; $0.body = self.ui("正在整理回答…") }
-        case .completed:
-            finish(id, kind: CatpawWorkAttributes.ContentState.Kind.done, title: ui("已完成"))
-        case .failed:
-            finish(id, kind: CatpawWorkAttributes.ContentState.Kind.failed, title: ui("未完成，需核对"))
-        default:
-            break
+            return
         }
+        if phase.isTerminal { finish(id, kind: phase.kind, title: body); return }
+        if case .writing = phase, turns[id]?.answering == true { return }   // one update per answer, not per token
+        ensureTracked(id, conversationID: conversationID)
+        mutate(id) {
+            if case .tool = phase { $0.step += 1 }
+            if case .writing = phase { $0.answering = true }
+            $0.kind = phase.kind; $0.body = body
+        }
+        if case .tool(let name) = phase, Self.longTaskTools.contains(name) { startIfNeeded(id) }
+        // Waiting on the user (device call / approval) is exactly when the lock screen matters: show it now.
+        if phase == .awaitingUser { startIfNeeded(id) }
     }
 
     private func ensureTracked(_ id: UUID, conversationID: UUID?) {
@@ -117,7 +171,8 @@ import ActivityKit
         change(&turn); turns[id] = turn
         guard let activity = turn.activity else { return }
         let content = ActivityContent(state: state(id, turn, turn.kind), staleDate: Date().addingTimeInterval(120))
-        Task { await activity.update(content) }
+        let previous = turn.lastUpdate
+        turns[id]?.lastUpdate = Task { await previous?.value; await activity.update(content) }
     }
 
     private func startIfNeeded(_ id: UUID) {
@@ -172,17 +227,44 @@ import ActivityKit
         }
     }
 
+    /// Done lingers 2 min, failed 15 min (needs a look), then the system removes it.
+    static func dismissAfter(kind: String) -> TimeInterval { kind == CatpawWorkAttributes.ContentState.Kind.done ? 2 * 60 : 15 * 60 }
+
+    /// chat-ux-1505 #4a: background / relaunch. (1) While an activity is live, ask for background time so the SSE can
+    /// deliver the next stages (and the end) after the user locks the phone. (2) On launch / foreground, end activities
+    /// no tracked turn owns (app was killed mid-turn) instead of leaving 「正在思考…」 on the lock screen for hours.
+    private var backgroundTask: UIBackgroundTaskIdentifier = .invalid
+    func sceneDidEnterBackground() {
+        guard backgroundTask == .invalid, turns.values.contains(where: { $0.activity != nil }) else { return }
+        backgroundTask = UIApplication.shared.beginBackgroundTask(withName: "catpaw.liveActivity") { [weak self] in self?.endBackgroundTask() }
+    }
+    func sceneDidBecomeActive() { endBackgroundTask(); endOrphanedActivities() }
+    private func endBackgroundTask() {
+        guard backgroundTask != .invalid else { return }
+        UIApplication.shared.endBackgroundTask(backgroundTask); backgroundTask = .invalid
+    }
+    func endOrphanedActivities() {
+        let owned = Set(turns.values.compactMap { $0.activity?.id })
+        for activity in Activity<CatpawWorkAttributes>.activities where !owned.contains(activity.id) && activity.activityState == .active {
+            let final = CatpawWorkAttributes.ContentState(title: ui("Catpaw 正在工作"), body: ui("打开 Catpaw 查看结果"), kind: CatpawWorkAttributes.ContentState.Kind.needsUser, taskID: activity.attributes.taskID)
+            Task { await activity.end(ActivityContent(state: final, staleDate: nil), dismissalPolicy: .after(Date().addingTimeInterval(60))) }
+        }
+    }
+
     private func finish(_ id: UUID, kind: String, title: String) {
         guard var turn = turns.removeValue(forKey: id) else { return }
         turn.timer?.cancel()
-        guard let activity = turn.activity else { return }
+        guard let activity = turn.activity else { if turns.values.allSatisfy({ $0.activity == nil }) { endBackgroundTask() }; return }
         turn.body = title
         let content = ActivityContent(state: state(id, turn, kind), staleDate: nil)
         let activityID = activity.id
         tokenObservers.removeValue(forKey: activityID)?.cancel()
+        let previous = turn.lastUpdate
         Task {
-            await activity.end(content, dismissalPolicy: .after(Date().addingTimeInterval(kind == CatpawWorkAttributes.ContentState.Kind.done ? 5 * 60 : 30 * 60)))
+            await previous?.value   // the final state must land after every pending update
+            await activity.end(content, dismissalPolicy: .after(Date().addingTimeInterval(Self.dismissAfter(kind: kind))))
             await CatpawPushTokenUploader.shared.forgetActivity(activityID)
+            await MainActor.run { if self.turns.values.allSatisfy({ $0.activity == nil }) { self.endBackgroundTask() } }
         }
     }
 

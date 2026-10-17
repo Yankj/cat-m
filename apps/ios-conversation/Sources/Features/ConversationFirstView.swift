@@ -562,6 +562,12 @@ import CatpawImageComposer
         #if canImport(ActivityKit) && os(iOS)
         .task { await CatpawLiveActivityCoordinator.shared.observe(model.service) { [model] in model.conversationID } }
         .task { await CatpawLiveActivityCoordinator.shared.acceptanceProbe() }
+        .onChange(of: scene) { _, phase in   // chat-ux-1505 #4a: keep the Live Activity honest across background/relaunch
+            #if canImport(ActivityKit) && os(iOS)
+            if phase == .background { CatpawLiveActivityCoordinator.shared.sceneDidEnterBackground() }
+            if phase == .active { CatpawLiveActivityCoordinator.shared.sceneDidBecomeActive() }
+            #endif
+        }
         .onChange(of:model.conversationID,initial:true) { _,id in replyVariants.activate(id) }   // regenerate pager variants
         #endif
         .onDisappear {scrollTask?.cancel();scrollTask=nil}
