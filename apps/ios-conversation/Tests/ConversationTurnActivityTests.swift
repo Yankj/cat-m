@@ -729,3 +729,18 @@ final class VoiceChatLoopTests: XCTestCase {
     }
 }
 #endif
+
+/// Voice audit (A): the mic dictates inline in the composer for tap and hold; only the waveform button goes full screen.
+final class ComposerDictationEntryStructureTests: XCTestCase {
+    private func source(_ path: String) throws -> String {
+        try String(contentsOf: URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("Sources/Features/" + path), encoding: .utf8)
+    }
+    func testTapDictationUsesInlineBarAndNeverMountsFullScreenVoiceMode() throws {
+        let hold = try source("Composer/ComposerHoldToTalk.swift"), root = try source("ConversationFirstView.swift")
+        XCTAssertTrue(hold.contains("        if dictation.dictating {\n            ComposerDictationBar("), "inline bar for every dictation mode")
+        XCTAssertFalse(hold.contains("struct VoiceModeHost"), "no full-screen dictation host")
+        XCTAssertFalse(root.contains("VoiceModeHost()"), "the chat root mounts no full-screen dictation layer")
+        let chat = try source("Composer/ComposerDictation.swift")
+        XCTAssertTrue(chat.contains(".fullScreenCover(isPresented: $voiceChatPresented"), "the waveform button keeps the full-screen voice conversation")
+    }
+}

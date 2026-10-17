@@ -181,13 +181,20 @@ final class CatpawAcceptanceUITests: XCTestCase {
         XCTAssertTrue(done, "Real reply must complete")
     }
 
-    // 9. Composer dictation: mic → (system permission prompt | dictating stop control | friendly notice); voice → coming soon
+    // 9. Composer dictation: mic → inline composer bar (| permission prompt | friendly notice); voice → full-screen voice chat (| inline notice)
     func test09ComposerDictation() {
         let app = fixtureApp("p0-ui-acceptance"); app.launch()
         XCTAssertTrue(input(app).waitForExistence(timeout: 20))
         let voice = app.buttons["chat.composer.voice"]; XCTAssertTrue(voice.waitForExistence(timeout: 10)); voice.tap()
-        XCTAssertTrue(app.descendants(matching: .any)["chat.composer.voice.comingSoon"].waitForExistence(timeout: 3), "Voice conversation must show a coming-soon toast")
-        shot(app, "09a-voice-coming-soon")
+        let voiceChat = app.descendants(matching: .any)["chat.voiceChat.mode"], voiceNotice = app.descendants(matching: .any)["chat.voiceChat.unsupported"]
+        let permissionHint = app.descendants(matching: .any)["chat.composer.dictation.hint"], springboardPrompt = XCUIApplication(bundleIdentifier: "com.apple.springboard").alerts.firstMatch
+        let voiceDeadline = Date().addingTimeInterval(10)
+        while Date() < voiceDeadline && !voiceChat.exists && !voiceNotice.exists && !permissionHint.exists && !springboardPrompt.exists { Thread.sleep(forTimeInterval: 0.3) }
+        XCTAssertFalse(app.descendants(matching: .any)["chat.composer.voice.comingSoon"].exists, "the waveform button opens voice chat; the coming-soon toast is gone")
+        XCTAssertTrue(voiceChat.exists || voiceNotice.exists || permissionHint.exists || springboardPrompt.exists, "voice chat opens, or answers inline (unsupported / permission)")
+        shot(app, "09a-voice-chat")
+        if springboardPrompt.exists { springboardPrompt.buttons.element(boundBy: springboardPrompt.buttons.count - 1).tap(); Thread.sleep(forTimeInterval: 0.5) }
+        if app.buttons["chat.voiceChat.close"].exists { app.buttons["chat.voiceChat.close"].tap(); Thread.sleep(forTimeInterval: 0.8) }
         let mic = app.buttons["chat.composer.mic"]; XCTAssertTrue(mic.waitForExistence(timeout: 10)); mic.tap()
         let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
         let dictating = app.buttons["chat.composer.dictating"], notice = app.alerts.firstMatch
@@ -417,10 +424,10 @@ final class CatpawAcceptanceUITests: XCTestCase {
         XCTAssertEqual(app.state, .runningForeground)
     }
     /// Live device_tools check: ask for a Reminder, expect chat.deviceCall confirm, run it.
-    /// Voice mode look: tap mic → full-screen calm voice overlay (glow, transcript, waveform, mic orb, keyboard/camera).
+    /// Tap mic → inline composer dictation bar (✕ · waveform · ✓); dictation never opens a full-screen layer.
     func test17VoiceMode() throws {
         guard ProcessInfo.processInfo.environment["CATPAW_DEVICE_TOUR"] == "1" else { throw XCTSkip("device tour only") }
-        let app = XCUIApplication(bundleIdentifier: bundleID); forwardPublicConfig(app); app.launchArguments += ["-CatpawSkipOnboarding", "-CatpawVoiceModePreview", "YES"]; app.launch()
+        let app = XCUIApplication(bundleIdentifier: bundleID); forwardPublicConfig(app); app.launchArguments += ["-CatpawSkipOnboarding"]; app.launch()
         addUIInterruptionMonitor(withDescription: "perm") { alert in
             for l in ["允许", "Allow", "好", "OK"] where alert.buttons[l].exists { alert.buttons[l].tap(); return true }
             return false
@@ -430,7 +437,7 @@ final class CatpawAcceptanceUITests: XCTestCase {
         XCTAssertTrue(input(app).waitForExistence(timeout: 60))
         let mic = app.buttons["chat.composer.mic"]; XCTAssertTrue(mic.waitForExistence(timeout: 10)); mic.tap()
         let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
-        let mode = app.descendants(matching: .any)["chat.voice.mode"]
+        let mode = app.descendants(matching: .any)["chat.composer.dictation.bar"]
         let deadline = Date().addingTimeInterval(15)
         while Date() < deadline && !mode.exists && !app.alerts.firstMatch.exists {
             let prompt = springboard.alerts.firstMatch
@@ -439,8 +446,9 @@ final class CatpawAcceptanceUITests: XCTestCase {
         }
         let ok = mode.exists
         Thread.sleep(forTimeInterval: 2)
-        shot(app, ok ? "w2-v10-voice-mode" : "w2-v10-voice-missing")
-        XCTAssertTrue(ok, "voice mode overlay must appear on tap-to-dictate")
+        shot(app, ok ? "w2-v10-dictation-inline" : "w2-v10-dictation-missing")
+        XCTAssertTrue(ok, "tap-to-dictate shows the inline composer dictation bar")
+        XCTAssertFalse(app.descendants(matching: .any)["chat.voice.mode"].exists, "dictation must never go full screen")
     }
 
     // test19: one plain send, for capturing the client's failure path (quota etc.).
@@ -493,14 +501,14 @@ final class CatpawAcceptanceUITests: XCTestCase {
         }
         var states: [String] = []
         let t1 = Date()
-        while Date().timeIntervalSince(t1) < 2.5 { states.append(String(format: "%.2f:%@", Date().timeIntervalSince(t1), app.otherElements["chat.voice.mode"].exists ? "V" : (app.buttons["chat.composer.dictating"].exists ? "d" : "_"))) }
+        while Date().timeIntervalSince(t1) < 2.5 { states.append(String(format: "%.2f:%@", Date().timeIntervalSince(t1), app.otherElements["chat.composer.dictation.bar"].exists ? "B" : (app.buttons["chat.composer.dictating"].exists ? "d" : "_"))) }
         NSLog("CATPAW_VOICE_A \(states.joined(separator: " "))")
         shot(app, "t18-voice-after-perm")
-        if app.otherElements["chat.voice.mode"].exists || app.buttons["chat.composer.dictating"].exists { app.buttons["chat.composer.dictation.confirm"].firstMatch.tap(); Thread.sleep(forTimeInterval: 1.5) }
+        if app.otherElements["chat.composer.dictation.bar"].exists || app.buttons["chat.composer.dictating"].exists { app.buttons["chat.composer.dictation.confirm"].firstMatch.tap(); Thread.sleep(forTimeInterval: 1.5) }
         if app.buttons["chat.composer.mic"].firstMatch.exists { app.buttons["chat.composer.mic"].firstMatch.tap() }
         states = []
         let t2 = Date()
-        while Date().timeIntervalSince(t2) < 2.5 { states.append(String(format: "%.2f:%@", Date().timeIntervalSince(t2), app.otherElements["chat.voice.mode"].exists ? "V" : (app.buttons["chat.composer.dictating"].exists ? "d" : "_"))) }
+        while Date().timeIntervalSince(t2) < 2.5 { states.append(String(format: "%.2f:%@", Date().timeIntervalSince(t2), app.otherElements["chat.composer.dictation.bar"].exists ? "B" : (app.buttons["chat.composer.dictating"].exists ? "d" : "_"))) }
         NSLog("CATPAW_VOICE_B \(states.joined(separator: " "))")
         shot(app, "t18-voice-second-tap")
     }
