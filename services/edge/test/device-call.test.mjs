@@ -65,9 +65,9 @@ test('user cancel on the phone and read-only confirm:none are reported back to t
  const l=await setup({name:'calendar_list',arguments:{from:'2026-10-20T00:00:00+08:00',to:'2026-10-21T00:00:00+08:00'}}),a=await send(l);assert.equal(a.events.at(-2).data.confirm,'none');
 });
 
-test('ttl: no result before expires_at → expired, the model hears pending_timeout',async()=>{
+test('ttl: no result before expires_at → expired, the model hears pending_timeout (a report > 24 h after the TTL is still 409, nothing recorded)',async()=>{
  const s=await setup(CREATE),{tid,events}=await send(s),dc=events.at(-2).data;
- const real=s.f.runtime.chat.now.bind(s.f.runtime.chat);s.f.runtime.chat.now=()=>real()+601000;
+ const real=s.f.runtime.chat.now.bind(s.f.runtime.chat);s.f.runtime.chat.now=()=>real()+601000+24*3600*1000;
  const r=await report(s,tid,{call_id:dc.call_id,operation_id:randomUUID(),args_hash:dc.args_hash,status:'ok'});assert.equal(r.status,409);assert.match(await r.text(),/approval_expired/);
  await s.f.runtime.chat.waitIdle();assert.equal(s.probe.results.at(-1).status,'pending_timeout');
 });

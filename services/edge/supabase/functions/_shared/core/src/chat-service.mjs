@@ -37,6 +37,7 @@ export function timeContext(tz,nowMs){
   const parts=new Intl.DateTimeFormat('en-US',{timeZone:zone,timeZoneName:'longOffset'}).formatToParts(new Date(nowMs)),offset=(parts.find(p=>p.type==='timeZoneName')?.value??'GMT').replace('GMT','')||'+00:00';
   return `\nUser time zone: ${zone}${zone===tz?'':' (fallback: the user time zone is unknown; confirm local times with the user)'}. Current local time: ${local}${offset} (${new Intl.DateTimeFormat('en-US',{timeZone:zone,weekday:'long'}).format(new Date(nowMs))}). Use create_task when the user asks to be reminded; give due_at as absolute ISO-8601 with this offset unless the user names another zone.`;
 }
+const LATE_DEVICE_REPORT_MS=24*60*60*1000; // P1-2: late device reports are recorded up to 24 h after the card TTL
 export class ChatService {
   constructor({facade,provider,integration=null,finishOnDelegationReceipt=false,metrics=createChatMetrics()}){this.facade=facade;this.repository=facade.repository;this.provider=provider;this.active=new Map();this.listeners=new Map();this.integration=integration;this.finishOnDelegationReceipt=finishOnDelegationReceipt;this.metrics=metrics;}
   async scoped(auth,scope){const started=this.metrics.now();try{return await this.facade.scoped(auth,scope);}finally{this.metrics.record('request_auth',started);}}
@@ -222,7 +223,7 @@ export class ChatService {
     const t=await this.repository.transaction(async tx=>{
       (env.assertLive??(()=>env.signal.throwIfAborted()))();const {t,c}=await this.live(tx,env);let result,continuationReceipt=null,status='ok',extraEvents=[];
       const interrupt=(t.interrupts??[]).find(i=>i.call_id===call.id),gated=this.facade.gatedChatTools instanceof Map?this.facade.gatedChatTools.get(call.name):null;
-      if(interrupt?.kind==='device'){result=deviceResult(interrupt);if(call.name==='places_search'&&t.ui_kinds?.includes('place')){const auto=autoPlaceBlock(call.id,result);if(auto&&!(t.events??[]).some(e=>e.type==='ui.block'&&e.data?.id===auto.id))extraEvents.push({type:'ui.block',data:auto});}status=interrupt.status==='reported'&&interrupt.response.status==='ok'?'ok':interrupt.status==='reported'&&interrupt.response.status==='error'?'error':'denied';}
+      if(interrupt?.kind==='device'){result=deviceResult(interrupt);if(call.name==='places_search'&&t.ui_kinds?.includes('place')){const auto=autoPlaceBlock(call.id,result);if(auto&&!(t.events??[]).some(e=>e.type==='ui.block'&&e.data?.id===auto.id))extraEvents.push({type:'ui.block',data:auto});}{const reported=interrupt.status==='reported'?interrupt.response:interrupt.status==='expired'?interrupt.late_response:null;status=reported?.status==='ok'?'ok':reported?.status==='error'?'error':'denied';}}
       else if(interrupt?.kind==='ui'){result=uiResult(interrupt);status=interrupt.status==='submitted'?'ok':'denied';}
       else if(call.name===RENDER_UI&&!interrupt){result=call.ungrounded?ungroundedResult(call.ungrounded):uiResult(null);if(call.ungrounded)status='error';}
       else if(interrupt&&interrupt.status!=='approved'){result=deniedResult(interrupt);status='denied';}
@@ -518,23 +519,26 @@ export class ChatService {
       const c=await this.conversation(tx,owner,cid,principal.subject_id,scopeID),t=await tx.get(owner,'native-chat-turns',tid);
       check(t&&t.conversation_id===cid&&t.scope_id===scopeID&&t.subject_id===principal.subject_id,404,'not_found');
       const original=(t.interrupts??[]).find(i=>i.interrupt_id===iid);check(original,404,'not_found');
-      // chat-context-1522 B2: the user moved on (next message superseded this turn) but the phone had already run the call.
-      // Accept its late report idempotently: the turn stays closed (no resume, no revision change), the interaction outcome
-      // becomes ok / user_declined, and the next turn is told what really happened.
-      if(original.kind==='device'&&original.status==='cancelled'&&original.cancel_reason==='superseded'){
-        if(original.late_operation_id===input.operation_id){check(original.late_request_hash===requestHash,409,'approval_operation_conflict');return {saved:t,it:original,resume:false,replayed:true};}
-        check(input.decision==='device_result',422,'approval_schema_invalid');check(!original.late_response,409,'approval_consumed');
-        check(original.args_hash===input.args_hash,409,'approval_stale');check(Date.parse(original.expires_at)>this.now(),409,'approval_expired');
-        const raw=await tx.get(owner,'native-chat-conversations',cid);check(raw&&!raw.content_redacted&&c.state==='active'&&c.grant_epoch===t.grant_epoch,409,'approval_grant_conflict');
-        const late={...original,late_response:clone(input.response),late_reported_at:isoAt(this.now()),late_operation_id:input.operation_id,late_request_hash:requestHash};
-        const saved=await tx.put(owner,'native-chat-turns',{...t,interrupts:t.interrupts.map(i=>i.interrupt_id===iid?late:i)});
-        await tx.put(owner,'native-chat-conversations',withLateDeviceReport(raw,saved,late));
-        return {saved,it:late,resume:false};
+      // chat-context-1522 B2 / P1-2: the phone had already run a device call the turn no longer waits on — superseded by
+      // the user's next message, or past its card TTL (expired). Its report is recorded idempotently: the turn is never
+      // reopened (no event, no revision change), the outcome becomes ok / user_declined and the next turn is told.
+      if(original.kind==='device'&&(original.status==='expired'||original.status==='cancelled'&&original.cancel_reason==='superseded')){
+        const late=await this.lateDeviceReport(tx,{owner,cid,c,t,it:original,input,requestHash});
+        if(late.replayed)return {saved:t,it:original,resume:false,replayed:true,late:late.flag};
+        const saved=await tx.put(owner,'native-chat-turns',late.turn);await tx.put(owner,'native-chat-conversations',withLateDeviceReport(late.conversation,saved,late.it));
+        return {saved,it:late.it,resume:false,late:late.flag};
       }
       if(original.decision_operation_id===input.operation_id){check(original.decision_request_hash===requestHash,409,'approval_operation_conflict');return {saved:t,it:original,resume:false,replayed:true};}
       const settled=settleExpired(t,this.now(),(x,type,data)=>this.event(x,type,data));let next=settled.turn;
       const it=next.interrupts.find(i=>i.interrupt_id===iid);
-      if(it.status==='expired'&&settled.changed){if(settled.resume&&this.integration)next=await this.integration.stampTurn(tx,owner,next);const saved=await tx.put(owner,'native-chat-turns',next);await this.beforeCommit(tx,{owner,scope},saved);return {saved,it,resume:settled.resume,expired:true};}
+      if(it.status==='expired'&&settled.changed){if(settled.resume&&this.integration)next=await this.integration.stampTurn(tx,owner,next);
+        // P1-2: this very report is the one that arrived after the TTL. The expiry still resumes the turn as before; the
+        // phone's result is recorded beside it (ttl_exceeded) instead of being dropped with a 409.
+        // A report that fails the late checks (stale args, > 24 h, epoch) keeps the old answer: expiry commits, 409 approval_expired.
+        let late=null;if(it.kind==='device'&&input.decision==='device_result'){try{late=await this.lateDeviceReport(tx,{owner,cid,c,t:next,it,input,requestHash});next=late.turn;}catch(error){if(!(error instanceof ApiError)||error.status>=500)throw error;}}
+        const saved=await tx.put(owner,'native-chat-turns',next);await this.beforeCommit(tx,{owner,scope},saved);
+        if(late){await tx.put(owner,'native-chat-conversations',withLateDeviceReport(late.conversation,saved,late.it));return {saved,it:late.it,resume:settled.resume,late:late.flag};}
+        return {saved,it,resume:settled.resume,expired:true};}
       check(it.status!=='expired',409,'approval_expired');
       check(it.status==='pending'&&next.state==='awaiting_approval',409,'approval_consumed');
       check(it.args_hash===input.args_hash,409,'approval_stale');
@@ -557,8 +561,21 @@ export class ChatService {
     if(r.expired)throw new ApiError(409,'approval_expired');
     // A late device report replays the superseded turn's tail from its approval_resolved (the turn is already terminal).
     const lateFrom=r.it.late_operation_id?r.saved.events.findIndex(e=>e.type==='approval_resolved'&&e.data?.interrupt_id===iid):-1;
-    return {turn:r.saved,trusted,resumed:r.resume,afterSequence:lateFrom>=0?lateFrom:Math.max(0,(r.it.resolved_sequence??r.saved.events.length)-1)};
+    return {turn:r.saved,trusted,resumed:r.resume,...r.late?{late:r.late}:{},afterSequence:lateFrom>=0?lateFrom:Math.max(0,(r.it.resolved_sequence??r.saved.events.length)-1)};
     }finally{await this.integration?.release?.(owner);}
+  }
+  /** B2 / P1-2: validate and build a late device report ({replayed} | {turn,it,conversation,flag}). flag is
+   * 'ttl_exceeded' when the report came after the card TTL, else 'superseded'. Reports later than LATE_DEVICE_REPORT_MS
+   * after the TTL stay 409 approval_expired (bounded record). Same args_hash / grant-epoch checks as a live decision. */
+  async lateDeviceReport(tx,{owner,cid,c,t,it,input,requestHash}){
+    if(it.late_operation_id===input.operation_id){check(it.late_request_hash===requestHash,409,'approval_operation_conflict');return {replayed:true,flag:it.late_ttl_exceeded?'ttl_exceeded':'superseded'};}
+    check(input.decision==='device_result',422,'approval_schema_invalid');check(!it.late_response,409,'approval_consumed');
+    check(it.args_hash===input.args_hash,409,'approval_stale');
+    const now=this.now(),expires=Date.parse(it.expires_at);check(now<=expires+LATE_DEVICE_REPORT_MS,409,'approval_expired');
+    const raw=await tx.get(owner,'native-chat-conversations',cid);check(raw&&!raw.content_redacted&&c.state==='active'&&c.grant_epoch===t.grant_epoch,409,'approval_grant_conflict');
+    const ttlExceeded=!(now<expires);
+    const late={...it,late_response:clone(input.response),late_reported_at:isoAt(now),late_operation_id:input.operation_id,late_request_hash:requestHash,...ttlExceeded?{late_ttl_exceeded:true}:{}};
+    return {turn:{...t,interrupts:t.interrupts.map(i=>i.interrupt_id===it.interrupt_id?late:i)},it:late,conversation:raw,flag:ttlExceeded?'ttl_exceeded':'superseded'};
   }
   // User cancel of one running turn. The durable turn row is the cancel marker:
   // it commits state 'failed' + turn_failed{code:'cancelled'} under the

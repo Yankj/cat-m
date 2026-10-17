@@ -36,7 +36,9 @@ No schema change, no migration: device calls are approval.v1 interrupts of `kind
 | same `operation_id`, different body | 409 `approval_operation_conflict` |
 | new `operation_id` after it was reported | 409 `approval_consumed` |
 | `args_hash` mismatch | 409 `approval_stale` |
-| past `expires_at` | 409 `approval_expired` (the turn resumes with `pending_timeout`) |
+| past `expires_at`, up to 24 h after it (chat-context-1522 P1-2) | **200** SSE, header `X-Catpaw-Device-Late: ttl_exceeded`. The phone's result is recorded on the interrupt (`late_response`, `late_ttl_exceeded`) and in `conversation.interaction_outcomes` (`late:true, ttl_exceeded:true`), and the next turn gets a note. If this report is the one that expires the card, the resumed round gets the real result (`reported_after_ttl:true`) instead of `pending_timeout`. A turn that already ended is never reopened. Idempotent by `operation_id`; `args_hash` and grant-epoch checks still apply |
+| past `expires_at` by more than 24 h | 409 `approval_expired`, nothing recorded (the turn resumes with `pending_timeout`) |
+| card superseded by the user's next message (turn failed `superseded_by_new_message`) | **200** SSE, header `X-Catpaw-Device-Late: superseded` (or `ttl_exceeded` when also past `expires_at`). The result is recorded the same way, and the turn stays closed |
 | unknown call_id | 404 `device_call_not_found` |
 
 `data` ≤ 32 KB. The model receives `{status, data?}`.

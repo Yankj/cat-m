@@ -199,3 +199,40 @@ test('round 2 (a)(b): the note is a delimited, untrusted prior-history record; q
  assert.match(body,/参数「title= .*due=2026-10-19」/);assert.match(body,/已显示文字|历史文本）：「好的 /);
  for(const q of body.match(/「[^」]*」/g))assert.ok(!/[<>「]/.test(q.slice(1,-1)),'no delimiter inside a quote');
 });
+
+// P1-2: a device report after the card TTL is recorded (ttl_exceeded), never reopens a turn, stays idempotent.
+const later=(s,ms)=>{const real=s.f.runtime.chat.now.bind(s.f.runtime.chat);s.f.runtime.chat.now=()=>real()+ms;};
+test('P1-2 the report that itself expires the card: 200 X-Catpaw-Device-Late ttl_exceeded, model hears the real result, outcome recorded',async()=>{
+ const s=await setup(),{tid,events}=await send(s,'帮我加个提醒'),dc=events.find(e=>e.type==='device_call').data;later(s,601000);
+ const body={call_id:dc.call_id,operation_id:randomUUID(),args_hash:dc.args_hash,status:'ok',data:{id:'ek-9'}};
+ const r=await report(s,tid,body);assert.equal(r.status,200);assert.equal(r.headers.get('x-catpaw-device-late'),'ttl_exceeded');await sse(r);await s.f.runtime.chat.waitIdle();
+ const res=s.probe.results.at(-1);assert.deepEqual([res.status,res.reported_after_ttl],['ok',true],'the resumed round gets the phone result, not pending_timeout');
+ const t=await turn(s,tid);assert.equal(t.state,'completed');assert.equal(t.events.filter(e=>e.type==='tool_result').at(-1).data.status,'ok');
+ const c=await conversation(s),o=c.interaction_outcomes.find(x=>x.call_id===dc.call_id);assert.deepEqual([o.outcome,o.late,o.ttl_exceeded],['ok',true,true]);
+ const n=(await turn(s,tid)).events.length,again=await report(s,tid,body);assert.equal(again.status,200);assert.equal(again.headers.get('x-catpaw-device-late'),'ttl_exceeded');await sse(again);
+ assert.equal((await turn(s,tid)).events.length,n,'idempotent replay appends nothing');assert.deepEqual(await conversation(s),c);
+ await send(s,'好');assert.match(lastUser(s.probe.inputs.at(-1)),/已超过确认时限/);
+});
+test('P1-2 card already expired (model heard pending_timeout): a later cancelled report → user_declined recorded, closed turn untouched',async()=>{
+ const s=await setup(),{tid,events}=await send(s,'帮我加个提醒'),dc=events.find(e=>e.type==='device_call').data;later(s,601000);
+ await turn(s,tid);await s.f.runtime.chat.waitIdle();assert.equal(s.probe.results.at(-1).status,'pending_timeout');
+ const done=await turn(s,tid);assert.equal(done.state,'completed');
+ const r=await report(s,tid,{call_id:dc.call_id,operation_id:randomUUID(),args_hash:dc.args_hash,status:'cancelled'});assert.equal(r.status,200);assert.equal(r.headers.get('x-catpaw-device-late'),'ttl_exceeded');await sse(r);await s.f.runtime.chat.waitIdle();
+ const t=await turn(s,tid);assert.equal(t.state,'completed');assert.equal(t.events.length,done.events.length,'not reopened');
+ const o=(await conversation(s)).interaction_outcomes.find(x=>x.call_id===dc.call_id);assert.deepEqual([o.outcome,o.ttl_exceeded],['user_declined',true]);
+ await send(s,'好');const note=lastUser(s.probe.inputs.at(-1));assert.match(note,/已超过确认时限/);assert.match(note,/点了「取消」，没有执行/);
+});
+test('P1-2 superseded and past the TTL: recorded with ttl_exceeded; checks kept (stale args 409, > 24 h 409 with no record)',async()=>{
+ const {s,tid,dc}=await superseded();later(s,601000);
+ assert.equal((await report(s,tid,{call_id:dc.call_id,operation_id:randomUUID(),args_hash:'0'.repeat(64),status:'ok'})).status,409);
+ const r=await report(s,tid,{call_id:dc.call_id,operation_id:randomUUID(),args_hash:dc.args_hash,status:'ok'});assert.equal(r.status,200);assert.equal(r.headers.get('x-catpaw-device-late'),'ttl_exceeded');await sse(r);
+ const o=(await conversation(s)).interaction_outcomes.find(x=>x.call_id===dc.call_id);assert.deepEqual([o.outcome,o.ttl_exceeded],['ok',true]);assert.equal((await turn(s,tid)).state,'failed');
+ const b=await superseded();later(b.s,601000+24*3600*1000+1000);const before=await conversation(b.s);
+ const x=await report(b.s,b.tid,{call_id:b.dc.call_id,operation_id:randomUUID(),args_hash:b.dc.args_hash,status:'ok'});assert.equal(x.status,409);assert.equal((await x.json()).error.code,'approval_expired');
+ assert.deepEqual(await conversation(b.s),before,'nothing recorded past the bound');
+});
+test('P1-2 superseded within the TTL keeps X-Catpaw-Device-Late: superseded',async()=>{
+ const {s,tid,dc}=await superseded();const r=await report(s,tid,{call_id:dc.call_id,operation_id:randomUUID(),args_hash:dc.args_hash,status:'ok'});
+ assert.equal(r.status,200);assert.equal(r.headers.get('x-catpaw-device-late'),'superseded');await sse(r);
+ assert.equal((await conversation(s)).interaction_outcomes.find(x=>x.call_id===dc.call_id).ttl_exceeded,undefined);
+});
