@@ -55,16 +55,17 @@ enum CatpawWorkPhase: Equatable {
     var bodyKey: (key: String, arguments: [String]) {
         switch self {
         case .thinking: return ("正在思考…", [])
-        case .tool(let name): return Self.toolStepKey(name).map { ($0, []) } ?? ("正在使用工具…", [])
+        case .tool(let name): return (ToolStepCopy.short(name), [])   // one table (status-line SPEC §9); unknown → 正在处理
         case .awaitingUser: return ("等你确认", [])
         case .writing: return ("正在整理回答…", [])
         case .done: return ("已完成", [])
         case .failed: return ("未完成，需核对", [])
         }
     }
-    /// status-line v1.0: one copy table (ToolStepCopy) shared with the chat status row; unknown tools → generic.
-    static func toolStepKey(_ name: String) -> String? {
-        ToolStepCopy.table[name] != nil ? ToolStepCopy.title(name) : nil
+    /// Localised Live Activity body. Tool copy comes straight from ToolStepCopy (zh/en columns), other phases from UIStrings.
+    func body(_ language: AppLanguage) -> String {
+        if case .tool(let name) = self { return ToolStepCopy.short(name, en: language == .english) }
+        return language.ui(bodyKey.key, arguments: bodyKey.arguments)
     }
 }
 #if canImport(ActivityKit) && os(iOS)
@@ -116,7 +117,7 @@ import UIKit
     func handle(_ event: ConversationTurnEvent, conversationID: UUID?) {
         let id = event.operationID
         guard let phase = CatpawWorkPhase.from(event.payload) else { return }
-        let body = ui(phase.bodyKey.key, phase.bodyKey.arguments)
+        let body = phase.body(AppLanguage(locale: .current))
         let hub = CatpawPresenceHub.shared
         switch phase {
         case .thinking: hub.set(hub.state == nil ? .waiting : .thinking, step: body)

@@ -184,7 +184,7 @@ enum LA {
     static func verb(_ tool: String?) -> String {
         let t = tool ?? ""
         // status-line v1.0: zh copy comes from the shared ToolStepCopy table.
-        if ToolStepCopy.table[t] != nil, s("zh", "en") == "zh" { return ToolStepCopy.title(t) }
+        if ToolStepCopy.table[t] != nil { return ToolStepCopy.short(t, en: s("zh", "en") == "en") }
         if t.hasPrefix("delegate_") { return s("正在交给助手处理", "Handing off") }
         switch t {
         case "calendar_list": return s("正在查看日历", "Checking your calendar")

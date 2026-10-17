@@ -70,54 +70,78 @@ struct CatpawLeaveAttributes: ActivityAttributes {
 
 #endif
 
-/// status-line v1.0 (harness-brainstorm §4.5): ONE copy table for every tool the app can see, shared by the chat status
-/// row (ThinkingHeader), the step list glyphs and the Live Activity. Copy names only the tool type and a generic object —
-/// never arguments or reasoning. Tool copy is literal; playful variants exist only for tool-less phases (StatusLineCopy).
+/// status-line v1.0 (harness-brainstorm §4.5, visual SPEC §9): ONE copy table for every tool the app can see, shared by the
+/// chat status row, the step list glyphs and the Live Activity / Dynamic Island (short form). Copy names only the tool type
+/// and a generic object — never arguments or reasoning. Tool copy is literal; playful variants only for tool-less phases.
+/// No 「…」, no 「！」, no 「马上」/「稍等哦」 (SPEC §9 copy rules).
 struct ToolStepCopy: Equatable, Sendable {
-    /// Running copy; variants rotate only when the same tool is entered again (no fake carousel).
+    /// Running copy (zh / en); variants rotate only when the same tool is entered again (no fake carousel).
     let running: [String]
-    let symbol: String
+    let runningEN: [String]
+    /// Live Activity / Dynamic Island form.
+    let short: String
+    let shortEN: String
     /// Copy while a confirmation card for this tool is pending; nil = this tool never shows a card.
     let confirm: String?
+    let confirmEN: String?
+    let symbol: String
 
-    static let generic = ToolStepCopy(running: ["正在处理"], symbol: "sparkle", confirm: "等你确认")
+    static let generic = ToolStepCopy(running: ["正在处理"], runningEN: ["Working on it"], short: "正在处理", shortEN: "Working on it",
+                                      confirm: "等你确认", confirmEN: "Waiting for you", symbol: "sparkle")
     static let table: [String: ToolStepCopy] = {
         var t: [String: ToolStepCopy] = [:]
-        func add(_ names: [String], _ running: [String], _ symbol: String, _ confirm: String?) { for n in names { t[n] = ToolStepCopy(running: running, symbol: symbol, confirm: confirm) } }
-        add(["calendar_list"], ["正在查看你的日程", "正在翻日历"], "calendar", nil)
-        add(["calendar_create", "create_calendar_event"], ["正在准备日程", "正在排进日历"], "calendar.badge.plus", "等你确认日程")
-        add(["update_calendar_event"], ["正在调整日程"], "calendar.badge.clock", "等你确认修改")
-        add(["reminder_create", "create_reminder"], ["正在准备提醒"], "bell.badge", "等你确认提醒")
-        add(["update_reminder"], ["正在调整提醒"], "bell", "等你确认修改")
-        add(["alarm_set"], ["正在定闹钟"], "alarm", "等你确认闹钟")
-        add(["places_search"], ["正在找附近的地方", "正在看看周边"], "mappin.and.ellipse", nil)
-        add(["maps_open"], ["正在规划路线"], "map", "等你确认打开地图")
-        add(["contacts_search"], ["正在找联系人"], "person.crop.circle", "等你允许查找")
-        add(["mail_compose"], ["正在起草邮件"], "envelope", "等你确认草稿")
-        add(["sms_compose"], ["正在起草短信"], "message", "等你确认草稿")
-        add(["phone_call"], ["正在准备拨号"], "phone", "等你确认拨打")
-        add(["shop_open"], ["正在准备购物搜索"], "bag", "等你确认打开")
-        add(["shortcut_run"], ["正在准备快捷指令"], "square.stack.3d.up", "等你确认运行")
-        add(["list_tasks"], ["正在看你的待办"], "checklist", nil)
-        add(["create_task", "update_task"], ["正在整理待办"], "checklist", "等你确认待办")
-        add(["memory_search"], ["正在回想你说过的事"], "brain", nil)
-        add(["memory_save", "memory_update"], ["正在记下来"], "brain.head.profile", nil)
-        add(["memory_forget"], ["正在找要忘记的记忆"], "trash", "等你确认删除")
-        add(["propose_memory_v1"], ["正在整理可记住的内容"], "brain", nil)
-        add(["render_ui", "present_cgui_v1"], ["正在准备卡片"], "rectangle.on.rectangle", "请在卡片上选择")
-        add(["delegate_task", "delegate_plan_v1"], ["正在拆解任务", "正在一点点推进"], "list.bullet.rectangle", nil)
-        add(["delegate_sources_v1"], ["正在阅读你给的链接"], "doc.text.magnifyingglass", nil)
-        add(["agent_status"], ["正在查任务进展"], "clock.arrow.circlepath", nil)
-        add(["revise_current_report_v1", "revise_current_work_v1"], ["正在修改报告"], "pencil", nil)
-        add(["external_write"], ["正在准备外部操作"], "arrow.up.forward.app", "等你确认")
-        add(["web_search"], ["正在搜索网页"], "magnifyingglass", nil)
+        func add(_ names: [String], _ symbol: String, _ running: [String], _ runningEN: [String], _ short: String, _ shortEN: String,
+                 _ confirm: String? = nil, _ confirmEN: String? = nil) {
+            for n in names { t[n] = ToolStepCopy(running: running, runningEN: runningEN, short: short, shortEN: shortEN, confirm: confirm, confirmEN: confirmEN, symbol: symbol) }
+        }
+        add(["calendar_list"], "calendar", ["正在查看你的日程", "正在翻日历"], ["Checking your schedule", "Looking through your calendar"], "查看日历", "Checking calendar")
+        add(["calendar_create", "create_calendar_event"], "calendar.badge.plus", ["正在准备日程"], ["Preparing the event"], "添加日程", "Adding event", "等你确认日程", "Waiting for you to confirm the event")
+        add(["update_calendar_event"], "calendar.badge.clock", ["正在调整日程"], ["Updating the event"], "调整日程", "Updating event", "等你确认修改", "Waiting for you to confirm the change")
+        add(["reminder_create", "create_reminder"], "bell", ["正在准备提醒"], ["Preparing a reminder"], "设置提醒", "Setting reminder", "等你确认提醒", "Waiting for you to confirm the reminder")
+        add(["update_reminder"], "bell", ["正在调整提醒"], ["Updating the reminder"], "调整提醒", "Updating reminder", "等你确认修改", "Waiting for you to confirm the change")
+        add(["alarm_set"], "alarm", ["正在定闹钟"], ["Setting an alarm"], "设置闹钟", "Setting alarm", "等你确认闹钟", "Waiting for you to confirm the alarm")
+        add(["places_search"], "mappin.and.ellipse", ["正在找附近的地方"], ["Finding places nearby"], "搜索附近", "Searching nearby")
+        add(["maps_open"], "map", ["正在规划路线"], ["Planning the route"], "打开地图", "Opening Maps", "等你确认打开地图", "Waiting for you to open Maps")
+        add(["web_search"], "magnifyingglass", ["正在搜索网页"], ["Searching the web"], "搜索网页", "Searching web")
+        add(["delegate_sources_v1"], "doc.text.magnifyingglass", ["正在阅读你给的链接"], ["Reading your link"], "阅读链接", "Reading link")
+        add(["contacts_search"], "person.crop.circle", ["正在找联系人"], ["Looking up contacts"], "查找联系人", "Finding contact", "等你允许查找", "Waiting for your permission")
+        add(["mail_compose"], "envelope", ["正在起草邮件"], ["Drafting the email"], "起草邮件", "Drafting email", "等你确认草稿", "Waiting for you to review the draft")
+        add(["sms_compose"], "message", ["正在起草短信"], ["Drafting the message"], "起草短信", "Drafting message", "等你确认草稿", "Waiting for you to review the draft")
+        add(["phone_call"], "phone", ["正在准备拨号"], ["Preparing the call"], "准备拨号", "Preparing call", "等你确认拨打", "Waiting for you to confirm the call")
+        add(["shop_open"], "bag", ["正在准备购物搜索"], ["Preparing a shopping search"], "打开购物", "Opening shop", "等你确认打开", "Waiting for you to confirm")
+        add(["shortcut_run"], "square.stack.3d.up", ["正在准备快捷指令"], ["Preparing the shortcut"], "运行快捷指令", "Running shortcut", "等你确认运行", "Waiting for you to confirm")
+        add(["list_tasks"], "checklist", ["正在看你的待办"], ["Checking your to-dos"], "查看待办", "Checking to-dos")
+        add(["create_task", "update_task"], "checklist", ["正在整理待办"], ["Updating your to-dos"], "整理待办", "Updating to-dos", "等你确认", "Waiting for you")
+        add(["memory_search"], "brain", ["正在回想你说过的事"], ["Recalling what you said"], "回想记忆", "Recalling")
+        add(["memory_save", "memory_update"], "brain.head.profile", ["正在记下来"], ["Saving this to memory"], "记下来", "Saving")
+        add(["memory_forget"], "trash", ["正在找要忘记的记忆"], ["Finding the memory to forget"], "删除记忆", "Forgetting", "等你确认删除", "Waiting for you to confirm deletion")
+        add(["propose_memory_v1"], "brain", ["正在整理可记住的内容"], ["Noting what to remember"], "回想记忆", "Recalling")
+        add(["render_ui", "present_cgui_v1"], "rectangle.on.rectangle", ["正在准备卡片"], ["Preparing a card"], "准备卡片", "Preparing card", "请在卡片上选择", "Choose on the card")
+        add(["delegate_task", "delegate_plan_v1"], "list.bullet.rectangle", ["正在拆解任务"], ["Breaking the task down"], "拆解任务", "Planning")
+        add(["agent_status"], "list.bullet.rectangle", ["正在查任务进展"], ["Checking task progress"], "查看进展", "Checking progress")
+        add(["revise_current_report_v1", "revise_current_work_v1"], "pencil", ["正在修改报告"], ["Revising the report"], "修改报告", "Revising")
+        add(["external_write"], "arrow.up.forward.app", ["正在准备外部操作"], ["Preparing an external action"], "外部操作", "External action", "等你确认", "Waiting for you")
         return t
     }()
     /// Memory tools are copy-covered even before the Mac integration adds them to the allowlist.
     static let memoryTools = ["memory_search", "memory_save", "memory_update", "memory_forget"]
+    /// Unknown ids: name-pattern fallback for the symbol only (SPEC §2: *search* / *fetch* / *browse*); copy stays generic.
     static func entry(_ tool: String) -> ToolStepCopy { table[tool] ?? generic }
-    static func title(_ tool: String) -> String { entry(tool).running[0] }
-    static func title(_ tool: String, occurrence: Int) -> String { let r = entry(tool).running; return r[max(0, occurrence) % r.count] }
-    static func symbol(_ tool: String) -> String { entry(tool).symbol }
-    static func confirmTitle(_ tool: String?) -> String { tool.flatMap { table[$0]?.confirm } ?? "等你确认" }
+    static func title(_ tool: String, en: Bool = false) -> String { title(tool, occurrence: 0, en: en) }
+    static func title(_ tool: String, occurrence: Int, en: Bool = false) -> String {
+        let e = entry(tool), r = en ? e.runningEN : e.running
+        return r[max(0, occurrence) % r.count]
+    }
+    static func short(_ tool: String, en: Bool = false) -> String { let e = entry(tool); return en ? e.shortEN : e.short }
+    static func symbol(_ tool: String) -> String {
+        if let e = table[tool] { return e.symbol }
+        let k = tool.lowercased()
+        if k.contains("fetch") || k.contains("browse") { return "doc.text.magnifyingglass" }
+        if k.contains("search") { return "magnifyingglass" }
+        return generic.symbol
+    }
+    static func confirmTitle(_ tool: String?, en: Bool = false) -> String {
+        let e = tool.flatMap { table[$0] }
+        return (en ? e?.confirmEN : e?.confirm) ?? (en ? generic.confirmEN! : generic.confirm!)
+    }
 }
