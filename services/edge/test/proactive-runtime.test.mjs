@@ -59,7 +59,7 @@ test('suggestion feed for chat SSE: gate off → nothing; on → each pending su
   const a = await feed.claimForTurn({ subjectID: U, turnID: 't1' }); assert.equal(a.length, 1); assert.equal(a[0].id, id);
   for (const k of ['id', 'title', 'reason', 'memories', 'actions', 'signals', 'status', 'createdAt', 'taken']) assert.ok(k in a[0], k);
   assert.deepEqual(await feed.claimForTurn({ subjectID: U, turnID: 't2' }), []);
-  assert.equal(readConfig(() => undefined).proactiveSuggestionsSSE, 'allowlist');
+  assert.equal(readConfig(() => undefined).proactiveSuggestionsSSE, 'on');
   assert.equal(readConfig(n => n === 'CATPAW_PROACTIVE_SUGGESTIONS_SSE_ENABLED' ? 'allowlist' : undefined).proactiveSuggestionsSSE, 'allowlist');
 });
 
