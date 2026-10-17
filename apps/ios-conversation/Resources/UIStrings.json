@@ -6738,5 +6738,29 @@
   "打开 Catpaw 查看结果": {
     "en": "Open Catpaw to see the result",
     "zh-Hans": "打开 Catpaw 查看结果"
+  },
+  "结束语音对话": {
+    "en": "End voice conversation",
+    "zh-Hans": "结束语音对话"
+  },
+  "打断并开始说话": {
+    "en": "Interrupt and speak",
+    "zh-Hans": "打断并开始说话"
+  },
+  "继续语音对话": {
+    "en": "Continue voice conversation",
+    "zh-Hans": "继续语音对话"
+  },
+  "说完了": {
+    "en": "Done speaking",
+    "zh-Hans": "说完了"
+  },
+  "当前为文字回复模式，不朗读": {
+    "en": "Text replies only; nothing is read aloud",
+    "zh-Hans": "当前为文字回复模式，不朗读"
+  },
+  "语音对话已暂停，请先在屏幕上确认": {
+    "en": "Voice conversation paused. Confirm on screen first.",
+    "zh-Hans": "语音对话已暂停，请先在屏幕上确认"
   }
 }
