@@ -42,8 +42,15 @@ test('request mapping: stateless store=false, system_instruction, tools, inline 
   assert.equal(body.store, false); assert.equal(body.stream, true); assert.equal(body.system_instruction, '你是猫爪'); assert.equal(body.generation_config.tool_choice, 'auto');
   assert.deepEqual(body.tools[0], { type: 'function', name: 'reminder_create', description: '创建提醒', parameters: REMINDER[0].function.parameters });
   assert.deepEqual(body.input[0].content[1], { type: 'image', mime_type: 'image/png', data: 'iVBORw0KGgo=' });
-  assert.deepEqual(body.input.slice(1).map(s => [s.type, s.name ?? null]), [['function_call', 'reminder_create'], ['function_result', 'reminder_create']]);
-  assert.deepEqual(body.input[1].arguments, { title: '喝水' });
+  // Default (switch on, shape verified by a dev call): c1 is a current-turn call with no cached signature → placeholder thought step first.
+  assert.deepEqual(body.input.slice(1).map(s => [s.type, s.name ?? null]), [['thought', null], ['function_call', 'reminder_create'], ['function_result', 'reminder_create']]);
+  assert.equal(body.input[1].signature, 'skip_thought_signature_validator');
+  assert.deepEqual(body.input[2].arguments, { title: '喝水' });
+  // CATPAW_GEMINI_PLACEHOLDER_SIGNATURE=false → exactly the v52 request shape (no thought step).
+  const p2 = chain({ CATPAW_GEMINI_ROUTE: 'primary', CATPAW_GEMINI_PLACEHOLDER_SIGNATURE: 'false' }, { fetchImpl: async (url, init) => { req = { url, init }; return gText('好'); } });
+  await collect(p2, { messages, tools: REMINDER });
+  const body2 = JSON.parse(req.init.body);
+  assert.deepEqual(body2.input.slice(1).map(s => [s.type, s.name ?? null]), [['function_call', 'reminder_create'], ['function_result', 'reminder_create']]);
   assert.throws(() => toContent([{ type: 'image_url', image_url: { url: 'https://example.com/a.png' } }]), /image_input_unsupported/);
 });
 

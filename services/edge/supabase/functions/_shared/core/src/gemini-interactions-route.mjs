@@ -48,6 +48,22 @@ const signatureCache = new Map();
 const remember = (id, steps) => { if (!id || !steps.length) return; signatureCache.set(id, { steps: clone(steps), at: Date.now() }); if (signatureCache.size > 500) signatureCache.delete(signatureCache.keys().next().value); };
 const recall = id => { const e = signatureCache.get(id); if (!e) return []; if (Date.now() - e.at > 1800000) { signatureCache.delete(id); return []; } return clone(e.steps); };
 export const _signatureCacheForTests = signatureCache;
+// Placeholder for a missing thought signature (PLAN.md Rev 2, P1-2). Google validates signatures only for function calls of the
+// CURRENT turn (from the latest user input that is not a function result); a miss there is a 400. It happens when an earlier step of
+// this turn was served by another route (Gemma/Agnes failover), when an approval resume lands on another isolate, or when the
+// 30 min cache entry expires while a card waits. Google documents the dummy value "skip_thought_signature_validator" for exactly this
+// (ai.google.dev/gemini-api/docs/generate-content/thought-signatures; Vertex docs; gemini-cli; Vercel AI SDK #15550/#15553).
+// UNVERIFIED for the Interactions protocol: the docs show generateContent's `thoughtSignature` on the functionCall part. Our streamed
+// signature arrives as a `thought` step with field `signature` (see thought_signature delta below), so the placeholder is sent the
+// same way. VERIFIED 2026-10-17 20:4x (UTC+8): one consented dev call (gemini-3.5-flash-lite, v1beta/interactions) with this exact
+// shape before a function_call returned HTTP 200 (GEMINI-SIGNATURE-CHECK.md).
+// NoBug R1-P1: behind env CATPAW_GEMINI_PLACEHOLDER_SIGNATURE, ON by default since the shape is verified; 'false' turns it off
+// (threaded readFreeRouteChain → FreeRouteChainProvider → GeminiInteractionsRoute → payload). Off = exactly v52's request.
+// Any 400 on a request that carried a placeholder fails over (a wrong shape must never be worse than v52).
+export const GEMINI_SKIP_SIGNATURE = 'skip_thought_signature_validator';
+export const GEMINI_SIGNATURE_STEP_TYPE = 'thought', GEMINI_SIGNATURE_FIELD = 'signature';
+const placeholderStep = () => ({ type: GEMINI_SIGNATURE_STEP_TYPE, [GEMINI_SIGNATURE_FIELD]: GEMINI_SKIP_SIGNATURE });
+const hasSignature = steps => steps.some(s => typeof s?.[GEMINI_SIGNATURE_FIELD] === 'string' && s[GEMINI_SIGNATURE_FIELD]);
 
 const textOf = c => typeof c === 'string' ? c : Array.isArray(c) ? c.filter(p => p?.type === 'text').map(p => p.text).join('') : c == null ? '' : JSON.stringify(c);
 /** OpenAI chat content → Interactions content blocks (text + inline base64 images). */
@@ -66,31 +82,46 @@ export function toContent(content) {
   return out.length ? out : [{ type: 'text', text: '' }];
 }
 /** OpenAI-style history → Interactions steps (stateless). */
-export function toSteps(messages) {
-  const names = new Map(), steps = [];
-  for (const m of messages ?? []) {
+export function toSteps(messages, { signaturePlaceholder = true } = {}) {
+  const names = new Map(), steps = [], list = messages ?? [];
+  // Current turn = everything after the latest user message (tool results have role 'tool').
+  let currentFrom = 0; for (let i = list.length - 1; i >= 0; i--) if (list[i]?.role === 'user') { currentFrom = i + 1; break; }
+  for (const [mi, m] of list.entries()) {
     if (m.role === 'user') steps.push({ type: 'user_input', content: toContent(m.content) });
     else if (m.role === 'assistant') {
       const t = textOf(m.content); if (t) steps.push({ type: 'model_output', content: [{ type: 'text', text: t }] });
-      for (const tc of m.tool_calls ?? []) {
+      for (const [ci, tc] of (m.tool_calls ?? []).entries()) {
         let args = tc.function?.arguments ?? '{}'; if (typeof args === 'string') { try { args = JSON.parse(args || '{}'); } catch { args = {}; } }
         names.set(tc.id, tc.function?.name);
-        steps.push(...recall(tc.id), { type: 'function_call', id: tc.id, name: tc.function?.name, arguments: args });
+        let recalled = recall(tc.id);
+        // Only the first call of a step needs a signature (parallel calls share it); only current-turn steps are validated.
+        if (signaturePlaceholder && ci === 0 && mi >= currentFrom && !hasSignature(recalled)) recalled = [...recalled, placeholderStep()];
+        steps.push(...recalled, { type: 'function_call', id: tc.id, name: tc.function?.name, arguments: args });
       }
     } else if (m.role === 'tool') steps.push({ type: 'function_result', call_id: m.tool_call_id, name: m.name ?? names.get(m.tool_call_id) ?? 'tool', result: [{ type: 'text', text: textOf(m.content) }] });
     else if (m.role === 'system') steps.push({ type: 'user_input', content: [{ type: 'text', text: textOf(m.content) }] });
   }
   return steps;
 }
+/** Redacted classification of a Gemini 400 (fixed vocabulary only). Only ever called on a non-2xx error body (stream(): status 400). */
+export function geminiRejectReason(failure) {
+  const text = [failure?.error?.message, failure?.error?.provider_message].filter(v => typeof v === 'string').join(' ');
+  // R1-P1 (c): thought_signature / thoughtSignature / thought-signature / "thought signature", or a signature that is missing/required.
+  if (/thought[\s_-]?signature|signature.{0,40}(?:missing|required)|(?:missing|required).{0,40}signature/i.test(text)) return 'missing_thought_signature';
+  if (/api[\s_-]?(?:key|token)|credential/i.test(text)) return 'credential'; // before input_too_large: "invalid API token" must not read as size
+  if (/token|context (?:length|window)|too long|exceeds/i.test(text)) return 'input_too_large';
+  if (/function|tool|schema|parameter/i.test(text)) return 'invalid_tool_request';
+  return 'invalid_argument';
+}
 export const toTools = tools => (tools ?? []).map(t => ({ type: 'function', name: t.function.name, description: t.function.description ?? '', parameters: clone(t.function.parameters ?? { type: 'object', properties: {} }) }));
 
 export class GeminiInteractionsRoute {
   #secret;
-  constructor(route, secret, { fetchImpl = globalThis.fetch, maxTokens = 2048, timeouts, guard, thinkingVisible = () => false } = {}) {
-    this.route = route; this.#secret = secret; this.fetchImpl = fetchImpl; this.maxTokens = maxTokens; this.timeouts = timeouts; this.guard = guard; this.thinkingVisible = thinkingVisible;
+  constructor(route, secret, { fetchImpl = globalThis.fetch, maxTokens = 2048, timeouts, guard, thinkingVisible = () => false, placeholderSignature = true } = {}) {
+    this.route = route; this.#secret = secret; this.fetchImpl = fetchImpl; this.maxTokens = maxTokens; this.timeouts = timeouts; this.guard = guard; this.thinkingVisible = thinkingVisible; this.placeholderSignature = placeholderSignature !== false;
   }
   payload({ messages, system_prompt, tools, model_override }) {
-    const body = { model: model_override ?? this.route.model, input: toSteps(messages), stream: true, store: false, generation_config: { max_output_tokens: this.maxTokens } };
+    const body = { model: model_override ?? this.route.model, input: toSteps(messages, { signaturePlaceholder: this.placeholderSignature }), stream: true, store: false, generation_config: { max_output_tokens: this.maxTokens } };
     if (system_prompt) body.system_instruction = system_prompt;
     if (tools?.length) { body.tools = toTools(tools); body.generation_config.tool_choice = 'auto'; }
     if (this.route.thinking_summary && this.thinkingVisible()) body.generation_config.thinking_summaries = 'auto';
@@ -123,8 +154,14 @@ export class GeminiInteractionsRoute {
         const daily = failure?.category === 'account_daily_quota' || /per.?day|PerDay|daily/i.test(JSON.stringify(failure?.error ?? {})), exhausted = response.status === 429 || /RESOURCE_EXHAUSTED/.test(raw);
         const retryInfo = /"retryDelay"\s*:\s*"(\d+)s"/.exec(raw);
         if (exhausted) { const s = this.guard?.backoff({ retryAfterSeconds: failure?.headers?.retry_after_seconds ?? (retryInfo ? Number(retryInfo[1]) : null), daily, model }); throw Object.assign(new ApiError(429, daily ? 'quota_exhausted' : 'rate_limited'), { retryAfterSeconds: s }); }
-        // 400 with tool history usually means missing thought signatures (see cache note) → fail over, never retry here.
-        const codes = { 400: body.input.some(s => s.type === 'function_call') ? 'provider_failed' : 'provider_request_invalid', 401: 'unauthorized', 403: 'forbidden', 404: 'free_model_unavailable', 500: 'provider_failed', 502: 'provider_failed', 503: 'provider_overloaded', 504: 'provider_overloaded' };
+        // 400: only a thought-signature rejection fails over (another route can still answer). Any other 400 is a real request
+        // error and stays provider_request_invalid, with a redacted reason code in the log (no upstream text, no key).
+        // R1-P1 (b): a 400 on a request that carried a placeholder signature also fails over, whatever its text (the placeholder shape
+        // is unverified; a schema 400 caused by it must not become a hard provider_request_invalid).
+        const reason400 = response.status === 400 ? geminiRejectReason(failure) : null;
+        const placeholders = reason400 ? body.input.filter(s => s?.[GEMINI_SIGNATURE_FIELD] === GEMINI_SKIP_SIGNATURE).length : 0;
+        if (reason400) try { console.warn(JSON.stringify({ event: 'catpaw_gemini_request_rejected', model: String(model).slice(0, 80), reason: reason400, tool_history: body.input.some(s => s.type === 'function_call'), placeholder_signatures: placeholders, failover: reason400 === 'missing_thought_signature' || placeholders > 0 })); } catch {}
+        const codes = { 400: reason400 === 'missing_thought_signature' || placeholders > 0 ? 'provider_failed' : 'provider_request_invalid', 401: 'unauthorized', 403: 'forbidden', 404: 'free_model_unavailable', 500: 'provider_failed', 502: 'provider_failed', 503: 'provider_overloaded', 504: 'provider_overloaded' };
         throw new ApiError(503, codes[response.status] ?? 'provider_failed');
       }
       check(response.headers.get('content-type')?.startsWith('text/event-stream') && response.body, 503, 'invalid_provider_stream');
