@@ -218,9 +218,10 @@ struct ProactiveSignal: Equatable, Sendable {
         guard defaults.dictionary(forKey: ProactiveQuarantine.key) == nil else { park(owner: "(unknown)"); return }
         var blobs: [String: Data] = [:]
         for k in quarantineBlobKeys { if let d = defaults.data(forKey: k) { blobs[k] = d } }
-        let items = syncQueue.extractAll()
+        let (items, dead) = syncQueue.extractSplit()   // p90i 09:01: dead letters kept apart (released as dead letters)
         let record: [String: Any] = ["at": ProactiveClock.now().timeIntervalSince1970, "blobs": blobs, "serverIDs": takeLegacyServerIDs(), "localOnly": Array(localOnly),
-                                     "queue": (try? JSONEncoder().encode(items)) ?? Data(), "stamps": items.compactMap(\.account)]
+                                     "queue": (try? JSONEncoder().encode(items)) ?? Data(), "dead": (try? JSONEncoder().encode(dead)) ?? Data(),
+                                     "stamps": (items + dead).compactMap(\.account)]
         defaults.set(record, forKey: ProactiveQuarantine.key)
     }
     var hasQuarantine: Bool { defaults.dictionary(forKey: ProactiveQuarantine.key) != nil }
@@ -233,7 +234,7 @@ struct ProactiveSignal: Equatable, Sendable {
     @discardableResult func reconcileQuarantine() async -> ProactiveQuarantine.Verdict? {
         guard var record = defaults.dictionary(forKey: ProactiveQuarantine.key) else { return nil }
         let at = Date(timeIntervalSince1970: record["at"] as? Double ?? 0), token = AccountEpoch.shared.capture()
-        let items = (record["queue"] as? Data).flatMap { try? JSONDecoder().decode([CatpawPersistentQueue<SyncOp>.Item].self, from: $0) } ?? []
+        let (live, dead) = Self.quarantineQueues(record), items = live + dead   // evidence / ids from both
         let blobs = record["blobs"] as? [String: Data] ?? [:], sids = record["serverIDs"] as? [String: String] ?? [:]
         let inbox = blobs[ProactiveLocalBackend.storageKey].flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] } ?? [:]
         let ids = Array(Set(inbox.keys).union(items.map(\.op.local)).union(sids.keys)).sorted()
@@ -247,7 +248,7 @@ struct ProactiveSignal: Equatable, Sendable {
         if let token, !released.isEmpty {
             guard AccountEpoch.shared.commit(token, { () -> Void in
                 claimData(for: token.account)
-                record = releaseQuarantine(record, ids: released, items: items, to: token.account)
+                record = releaseQuarantine(record, ids: released, live: live, dead: dead, to: token.account)
             }) != nil else { return .hold }
             note("quarantine released \(released.count) of \(ids.count) record(s) to \(token.account) on their own evidence")
             Task { await drainSync() }
@@ -259,7 +260,12 @@ struct ProactiveSignal: Equatable, Sendable {
         return released.isEmpty ? .hold : .release
     }
     /// Moves the released records (and only their own entries) into the active stores; returns the remaining record.
-    private func releaseQuarantine(_ record: [String: Any], ids: Set<String>, items: [CatpawPersistentQueue<SyncOp>.Item], to account: String) -> [String: Any] {
+    /// Live and dead queued items of a quarantine record (records written before p90i keep everything under "queue").
+    private static func quarantineQueues(_ record: [String: Any]) -> (live: [CatpawPersistentQueue<SyncOp>.Item], dead: [CatpawPersistentQueue<SyncOp>.Item]) {
+        let dec = { (d: Any?) in (d as? Data).flatMap { try? JSONDecoder().decode([CatpawPersistentQueue<SyncOp>.Item].self, from: $0) } ?? [] }
+        return (dec(record["queue"]), dec(record["dead"]))
+    }
+    private func releaseQuarantine(_ record: [String: Any], ids: Set<String>, live: [CatpawPersistentQueue<SyncOp>.Item], dead: [CatpawPersistentQueue<SyncOp>.Item], to account: String) -> [String: Any] {
         var record = record, blobs = record["blobs"] as? [String: Data] ?? [:]
         for (k, old) in blobs {
             if k == Self.generationsKey {
@@ -278,9 +284,11 @@ struct ProactiveSignal: Equatable, Sendable {
         for id in ids { if let v = sids.removeValue(forKey: id), cur[id] == nil { cur[id] = v } }
         serverIDs = cur; record["serverIDs"] = sids
         var lo = Set(record["localOnly"] as? [String] ?? []); localOnly = localOnly.union(lo.intersection(ids)); lo.subtract(ids); record["localOnly"] = Array(lo)
-        syncQueue.reinstate(items.filter { ids.contains($0.op.local) }, account: account)     // only this record's, only unstamped / this account's
-        let rest = items.filter { !ids.contains($0.op.local) }
-        record["queue"] = (try? JSONEncoder().encode(rest)) ?? Data(); record["stamps"] = rest.compactMap(\.account)
+        let p = ProactiveQuarantine.partition(live: live, dead: dead, released: ids) { $0.op.local }
+        syncQueue.reinstate(p.live, account: account)       // only this record's, only unstamped / this account's
+        syncQueue.reinstateDead(p.dead, account: account)   // p90i 09:01: stay dead, flagged, group blocked, never retried
+        record["queue"] = (try? JSONEncoder().encode(p.restLive)) ?? Data(); record["dead"] = (try? JSONEncoder().encode(p.restDead)) ?? Data()
+        record["stamps"] = (p.restLive + p.restDead).compactMap(\.account)
         defaults.set(record, forKey: ProactiveQuarantine.key)
         let all = ProactiveLocalBackend.load()
         for id in ids { if let s = all[id] { ProactiveSuggestionStore.shared.adopt(s) } }
