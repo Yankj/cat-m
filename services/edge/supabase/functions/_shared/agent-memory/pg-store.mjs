@@ -11,6 +11,26 @@ export function createPgAgentMemoryStore(sql) {
       const r = await sql.unsafe('insert into agent_memory.memory_settings(user_id,use_memory,auto_save,consented_at,use_memory_seq,updated_at) values($1,$2,$3,$4,$5,now()) on conflict(user_id) do update set use_memory=excluded.use_memory,auto_save=excluded.auto_save,consented_at=excluded.consented_at,use_memory_seq=excluded.use_memory_seq,updated_at=now() where coalesce(agent_memory.memory_settings.use_memory_seq,0) < excluded.use_memory_seq returning user_id', [uid, s.use_memory, s.auto_save, s.consented_at, seq]);
       return r.length ? { ...s } : null;
     },
+    /** Codex p91w B1: partial update — only the named columns (whitelist) are written; use_memory_seq is never touched. */
+    async patchSettings(uid, fields, { unsequencedOnly = false } = {}) {
+      const cols = ['use_memory', 'auto_save', 'consented_at'].filter(k => Object.prototype.hasOwnProperty.call(fields, k));
+      if (!cols.length) return this.getSettings(uid);
+      // UPDATE first: an INSERT … ON CONFLICT candidate row is checked against the consent CHECK before the conflict
+      // is detected, so defaults for the unnamed columns could fail it on an existing row.
+      const set = `${cols.map((k, i) => `${k}=$${i + 2}`).join(',')},updated_at=now()`, args = [uid, ...cols.map(k => fields[k])];
+      let upd;
+      if (unsequencedOnly) {
+        // Old-client ON: only while no sequenced choice exists. Before migration 20261017040000 nobody has a sequence.
+        try { upd = await sql.unsafe(`update agent_memory.memory_settings set ${set} where user_id=$1 and use_memory_seq is null returning user_id`, args); }
+        catch (e) { if (e?.code !== '42703') throw e; upd = await sql.unsafe(`update agent_memory.memory_settings set ${set} where user_id=$1 returning user_id`, args); }
+        if (!upd.length && (await sql.unsafe('select 1 from agent_memory.memory_settings where user_id=$1', [uid])).length) return null;
+      } else upd = await sql.unsafe(`update agent_memory.memory_settings set ${set} where user_id=$1 returning user_id`, args);
+      if (!upd.length) {
+        const all = { use_memory: false, auto_save: false, consented_at: null, ...fields };
+        await sql.unsafe(`insert into agent_memory.memory_settings(user_id,use_memory,auto_save,consented_at,updated_at) values($1,$2,$3,$4,now()) on conflict(user_id) do update set ${cols.map(k => `${k}=excluded.${k}`).join(',')},updated_at=now()`, [uid, all.use_memory, all.auto_save, all.consented_at]);
+      }
+      return this.getSettings(uid);
+    },
     async putSettings(uid, s) { await sql.unsafe('insert into agent_memory.memory_settings(user_id,use_memory,auto_save,consented_at,updated_at) values($1,$2,$3,$4,now()) on conflict(user_id) do update set use_memory=excluded.use_memory,auto_save=excluded.auto_save,consented_at=excluded.consented_at,updated_at=now()', [uid, s.use_memory, s.auto_save, s.consented_at]); return { ...s }; },
     async insert(uid, r) {
       const ins = await sql.unsafe(`insert into agent_memory.memories(id,user_id,kind,content,embedding,pinned,expires_at,source_conversation_id,source_turn_id,operation_id,created_by,undo_token_hash,undo_expires_at,created_at,updated_at)
