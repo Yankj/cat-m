@@ -24,7 +24,7 @@ export const VISION_CHAIN_ROUTE=Object.freeze({
  id:'catpaw-image-free-chain-v2',free:true,provider:'Google Gemini API (free tier) → OpenRouter',downstream_provider:'Google Gemini API、Google AI Studio',model:VISION_GEMINI_MODEL,endpoint:VISION_GEMINI_ENDPOINT,
  routing_policy:{chain:[
   {id:'gemini',provider:'Google Gemini API (free tier)',model:VISION_GEMINI_MODEL,endpoint:VISION_GEMINI_ENDPOINT,store:false,tools:'none'},
-  {id:'openrouter',provider:LIVE_VISION_ROUTE.provider,downstream_provider:LIVE_VISION_ROUTE.downstream_provider,model:LIVE_VISION_ROUTE.model,endpoint:LIVE_VISION_ROUTE.endpoint,routing_policy:LIVE_VISION_ROUTE.routing_policy}],
+  {id:'openrouter',provider:LIVE_VISION_ROUTE.provider,downstream_provider:LIVE_VISION_ROUTE.downstream_provider,model:LIVE_VISION_ROUTE.model,endpoint:LIVE_VISION_ROUTE.endpoint,routing_policy:LIVE_VISION_ROUTE.routing_policy,tools:'none'}],
   failover:'before_first_output_only',max_price:{prompt:0,completion:0,request:0,image:0}},
  data_fields:LIVE_VISION_ROUTE.data_fields,purposes:LIVE_VISION_ROUTE.purposes,zero_retention_claim:false,
  retention:{gemini:'Gemini API free tier: content may be used to improve Google products and may be reviewed by humans',openrouter:LIVE_VISION_ROUTE.retention,local_image_bytes:'current_request_only',local_text_and_receipts:'persisted_until_source_deletion'},

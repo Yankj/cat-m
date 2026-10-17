@@ -7,7 +7,7 @@ import {randomUUID,createHash} from 'node:crypto';
 import {deflateSync} from 'node:zlib';
 import {readConfig,readVisionRouteMode} from '../supabase/functions/_shared/config.mjs';
 import {readFreeRouteChain} from '../supabase/functions/_shared/core/src/free-route-chain.mjs';
-import {LIVE_VISION_ROUTE_HASH,VISION_CHAIN_ROUTE,VISION_CHAIN_ROUTE_HASH,VISION_CHAIN_CONSENT_UI,VISION_CONSENT_UI,VISION_GEMINI_MODEL} from '../supabase/functions/_shared/core/src/live-vision-route.mjs';
+import {LIVE_VISION_ROUTE,LIVE_VISION_ROUTE_HASH,VISION_CHAIN_ROUTE,VISION_CHAIN_ROUTE_HASH,VISION_CHAIN_CONSENT_UI,VISION_CONSENT_UI,VISION_GEMINI_MODEL} from '../supabase/functions/_shared/core/src/live-vision-route.mjs';
 import {VisionChainProvider} from '../supabase/functions/_shared/core/src/vision-route-chain.mjs';
 import {crc32,validateVisionTurn,createVisionContract} from '../supabase/functions/_shared/core/src/vision-contract.mjs';
 import {GeminiRateGuard} from '../supabase/functions/_shared/core/src/gemini-interactions-route.mjs';
@@ -37,6 +37,8 @@ const route=url=>url.includes('googleapis')?'gemini':url.includes('/endpoints')?
 test('route hashes: legacy image hash is byte-identical, text route_hash does not depend on the vision route',()=>{
  assert.equal(LIVE_VISION_ROUTE_HASH,'3665b04ec3ef81e4860e99db87ce2a229c26ed23d17576bd08b5f7a2c5a6ae9e','legacy route unchanged (old consents stay valid on rollback)');
  assert.notEqual(VISION_CHAIN_ROUTE_HASH,LIVE_VISION_ROUTE_HASH);
+ assert.equal(VISION_CHAIN_ROUTE_HASH,'6e430e5817572e6f4d6f89bf32a57ea12f0ce883aa2be64b3281ab137a7b5c43','chain hash pinned (r2: both hops tools:none)');
+ assert.deepEqual(VISION_CHAIN_ROUTE.routing_policy.chain.map(h=>h.tools),['none','none']);
  const withGemini={...BASE,CATPAW_GEMINI_API_KEY:GKEY};
  const chainCfg=readConfig(env(withGemini)),legacyCfg=readConfig(env({...withGemini,CATPAW_VISION_ROUTE:'legacy'}));
  assert.equal(chainCfg.visionRoute,'chain');assert.equal(legacyCfg.visionRoute,'legacy');
@@ -138,4 +140,46 @@ test('end to end: image-model-route serves the chain + v2 consent text; Gemini b
  const res=await f.req(`${chat}/conversations/${cid}/turns`,{schema_version:2,turn_id:randomUUID(),expected_revision:c.revision,expected_grant_epoch:c.grant_epoch,message:{id:randomUUID(),text:'这张图里有什么？一句话',attachments:[{id:randomUUID(),mime_type:'image/png',sha256:sha(bytes),base64:bytes.toString('base64')}]},context:[]});
  assert.equal(res.status,200);const text=await res.text();assert.match(text,/turn_completed/);assert.match(text,/红色小方块/);
  await f.runtime.chat.waitIdle();assert.deepEqual(seen.filter(x=>x!=='catalog'),['gemini','openrouter']);
+});
+
+test('r2 P2-1: tools are never sent on either hop, even if a caller passes some (consent says tools:none)',async()=>{
+ const TOOLS=[{type:'function',function:{name:'reminder_create',description:'x',parameters:{type:'object',properties:{}}}}];
+ const bodies=[];const p=chainProvider(async(url,init)=>{bodies.push({route:route(url),body:init.body?JSON.parse(init.body):null});return route(url)==='gemini'?g429():route(url)==='catalog'?catalog():orText('好');});
+ await collectRound(p,{...imageInput(),tools:TOOLS});
+ const g=bodies.find(b=>b.route==='gemini').body,o=bodies.find(b=>b.route==='openrouter').body;
+ assert.equal(g.tools,undefined);assert.equal(o.tools,undefined);assert.equal(o.tool_choice,undefined);
+});
+
+test('r2 P2-3: Gemini 401 still falls back for the user but is logged as provider_config_error',async()=>{
+ const lines=[];const info=console.info,warn=console.warn;console.info=x=>lines.push(['info',x]);console.warn=x=>lines.push(['warn',x]);
+ try{
+  const p=chainProvider(async url=>route(url)==='gemini'?new Response('{"error":{"code":401,"message":"API key not valid '+GKEY+'"}}',{status:401}):route(url)==='catalog'?catalog():or429({'retry-after':'40'}));
+  await assert.rejects(collectRound(p,imageInput()),e=>e.code==='rate_limited'&&e.retryAfterSeconds===40,'user sees Gemma busy');
+  assert.equal(p.observations[0].error,'unauthorized');assert.equal(p.observations[0].failure_class,'provider_config_error');
+  const warnLine=lines.find(([k,x])=>k==='warn'&&x.includes('catpaw_vision_route_config_error'));assert.ok(warnLine,'distinct warning event');
+  assert.match(lines.find(([k,x])=>k==='info'&&x.includes('vision-gemini'))[1],/"failure_class":"provider_config_error"/);
+  assert.match(lines.find(([k,x])=>k==='info'&&x.includes('vision-openrouter'))[1],/"failure_class":"provider_busy"/);
+  assert.ok(!lines.some(([,x])=>x.includes(GKEY)||x.includes('API key not valid')),'no key, no upstream text in logs');
+ }finally{console.info=info;console.warn=warn;}
+});
+
+test('r2 P2-2: Gemini failure evidence on image turns keeps only the classification fields',async()=>{
+ const p=chainProvider(async url=>route(url)==='gemini'?new Response('{"error":{"code":400,"message":"bad image data:image/png;base64,AAAA secret-ish text","status":"INVALID_ARGUMENT"}}',{status:400}):route(url)==='catalog'?catalog():orText('好'));
+ await collectRound(p,imageInput());
+ const f=p.observations[0].failure ?? {};assert.equal(f.error,undefined);assert.ok(!JSON.stringify(p.observations).includes('base64'));
+ assert.ok(Object.keys(f).every(k=>['headers','category','retry_after_seconds','retry_at','retry_allowed','account_daily_reset_utc'].includes(k)));
+});
+
+test('r2 P2-4: SSE turn_failed quota_exhausted carries retry_after_seconds too',async()=>{
+ const f=await fixture({stream:async function*(){throw Object.assign(new ApiError(429,'quota_exhausted'),{retryAfterSeconds:3600});}});
+ const turn=await f.send(await f.newConversation(),'你好');
+ const failed=turn.events.find(e=>e.type==='turn_failed');assert.equal(failed.data.code,'quota_exhausted');assert.equal(failed.data.retry_after_seconds,3600);
+});
+
+test('r2: /readyz shows the vision route mode and hash (post-deploy check without reading env)',async()=>{
+ const f=await fixture({imageProvider:chainProvider(async url=>route(url)==='catalog'?catalog():gText('x')),env:{CATPAW_GEMINI_API_KEY:GKEY}});
+ const r=await f.json(await f.req('/readyz'));assert.deepEqual(r.vision_route,{mode:'chain',route_hash:VISION_CHAIN_ROUTE_HASH});
+ const legacyProvider=new OpenRouterProvider({model:LIVE_VISION_ROUTE.model,secret:OKEY,liveNetworkEnabled:true,privateRoutingPolicy:LIVE_VISION_ROUTE.routing_policy,beforeStream:async()=>{},expectedProviderDisplay:LIVE_VISION_ROUTE.downstream_provider,allowImageInput:true,fetchImpl:async()=>catalog()});
+ const legacy=await fixture({imageProvider:legacyProvider});assert.deepEqual((await legacy.json(await legacy.req('/readyz'))).vision_route,{mode:'legacy',route_hash:LIVE_VISION_ROUTE_HASH});
+ const mock=await fixture({vision:true});assert.equal((await mock.json(await mock.req('/readyz'))).vision_route.mode,'mock');
 });
