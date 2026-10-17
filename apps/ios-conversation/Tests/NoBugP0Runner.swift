@@ -58,7 +58,7 @@ extension Result { var isFailure: Bool { if case .failure = self { return true }
     static func expect(_ ok: Bool, _ m: String) { if ok { passed += 1; print("PASS \(m)") } else { failed += 1; print("FAIL \(m)") } }
 
     static func main() async {
-        await memory(); await deviceCalls(); proactive(); nearby(); groundedFixtures(); contactsPrivacy(); replyVariants(); followUps(); await deviceUndo(); dictation(); await codexP0_1(); await codexPR89(); await accountEpoch(); await codexP89c(); proactiveLifecycle(); codexP0_3(); codexP0_3Matrix()
+        await memory(); await deviceCalls(); proactive(); nearby(); groundedFixtures(); contactsPrivacy(); replyVariants(); followUps(); await deviceUndo(); dictation(); await codexP0_1(); await codexPR89(); await accountEpoch(); await codexP89c(); proactiveLifecycle(); codexP0_3(); codexP0_3Matrix(); await p02AccountIsolation(); p04FeedbackUndoHandoff(); await p02FromB8f0280(); await pr91Review(); await pr91v2(); pr91FeedbackGate()
         print("nobug-p0 portable: \(passed) passed, \(failed) failed")
         exit(failed == 0 ? 0 : 1)
     }
@@ -752,6 +752,83 @@ extension Result { var isFailure: Bool { if case .failure = self { return true }
         expect(ProactiveActionStates.from(serverStates: ["create_reminder": "done"]) == ["create_reminder": .succeeded], "P0-5 cloud action_states map to device state")
     }
 
+    // MARK: Codex review P0-2 — local memory bound to an account (or explicit guest), sign-out purge, one 「使用记忆」 switch.
+    static func p02AccountIsolation() async {
+        let pA = InMemorySnapshotPersistence(), pB = InMemorySnapshotPersistence()
+        MemoryLibraryLocal.activate(owner: .account("aaaa"), persistence: pA)
+        expect(MemoryLibraryLocal.shared.owner == .account("aaaa"), "P0-2 local library is bound to the signed-in account")
+        _ = try? await MemoryLibraryLocal.shared.create(kind: "preference", content: "开会提前 25 分钟准备")
+        expect(pA.read() != nil, "P0-2 A's memory is written to A's (sealed) store, not a shared file")
+        // Account switch without sign-out: B starts empty, A's data stays in A's store.
+        MemoryLibraryLocal.activate(owner: .account("bbbb"), persistence: pB)
+        let bSnap = try? await MemoryLibraryLocal.shared.load()
+        expect(MemoryLibraryLocal.shared.items.isEmpty, "P0-2 B does not see A's local memory")
+        expect(ProactiveRules.lead(in: bSnap.map { [$0] } ?? []) == nil, "P0-2 B cannot recall A's lead memory")
+        MemoryLibraryLocal.activate(owner: .account("aaaa"), persistence: pA)
+        expect(MemoryLibraryLocal.shared.items.count == 1, "P0-2 A's memory survives a cold start in A's own store")
+        // Migration is bound to the original owner.
+        let target = RefusingBackend()
+        let cross = await MemoryLibraryLocal.migrate(MemoryLibraryLocal.shared, to: target, targetOwner: .account("bbbb"))
+        expect(target.created.isEmpty && cross.stoppedBy == .failed("owner_mismatch") && cross.kept == 1, "P0-2 A's local memory is never uploaded into B's cloud library")
+        let guest = MemoryLibraryStub(owner: .guest)
+        _ = try? await guest.create(kind: "preference", content: "guest note")
+        let fromGuest = await MemoryLibraryLocal.migrate(guest, to: target, targetOwner: .account("aaaa"))
+        expect(target.created.isEmpty && fromGuest.stoppedBy == .failed("owner_mismatch"), "P0-2 guest memory is never auto-uploaded into an account")
+        let same = await MemoryLibraryLocal.migrate(MemoryLibraryLocal.shared, to: target, targetOwner: .account("aaaa"))
+        expect(same.migrated == 1 && target.created == ["开会提前 25 分钟准备"], "P0-2 same-owner migration still works")
+        // Sign-out purge: A's store erased, library falls back to an empty in-memory guest.
+        _ = try? await MemoryLibraryLocal.shared.create(kind: "preference", content: "住在杭州")
+        MemoryLibraryLocal.purge(owner: .account("aaaa"))
+        expect(pA.read() == nil && MemoryLibraryLocal.shared.items.isEmpty && MemoryLibraryLocal.shared.owner == .guest, "P0-2 sign-out erases A's local memory")
+        MemoryLibraryLocal.activate(owner: .account("aaaa"), persistence: pA)
+        expect(MemoryLibraryLocal.shared.items.isEmpty, "P0-2 after sign-out nothing of A comes back")
+        // Write errors are not swallowed.
+        let broken = MemoryLibraryStub(owner: .account("cccc"), persistence: FailingPersistence())
+        do { _ = try await broken.create(kind: "preference", content: "x"); expect(false, "P0-2 failed write throws") }
+        catch { expect(true, "P0-2 a failed local write throws instead of pretending it was saved") }
+        // Sign-out also clears proactive items and undelivered device/undo reports.
+        let d = UserDefaults(suiteName: "p02-\(UUID().uuidString)")!
+        for k in AccountLocalData.userDefaultsKeys { d.set(Data([1]), forKey: k) }
+        AccountLocalData.purge(defaults: d)
+        expect(AccountLocalData.userDefaultsKeys.allSatisfy { d.object(forKey: $0) == nil }, "P0-2 sign-out clears proactive inbox/ledger and pending device reports")
+        expect(Set(["catpaw.proactive.inbox.v1", "catpaw.proactive.ledger.v1", "catpaw.proactive.ops.v1", "catpaw.proactive.suggestions.v1", "catpaw.devicecall.records.v1", "catpaw.devicecall.undos.v1"]).isSubset(of: Set(AccountLocalData.userDefaultsKeys)), "P0-2 purge list covers proactive + pending delivery keys")
+        // One switch: cloud 「使用记忆」 off ⇒ no path reads any memory (local included).
+        let off = MemoryLibrarySnapshot(items: [], useMemory: false, autoSave: nil)
+        let local = MemoryLibrarySnapshot(items: [.init(id: "l1", group: .preference, content: "开会提前 25 分钟准备"), .init(id: "l2", group: .preference, content: "喜欢吃辣，爱吃川菜")], useMemory: true, autoSave: true)
+        expect(ProactiveRules.lead(in: [off, local]) == nil, "P0-2 使用记忆 off ⇒ leadTime reads no memory (0 refs)")
+        expect(NearbyRules.preferences(in: [off, local]).cited.isEmpty, "P0-2 使用记忆 off ⇒ nearby search cites no memory (0 refs)")
+        expect(MemoryRecallGate.effective([off, local]).isEmpty && MemoryRecallGate.effective([local]).count == 1, "P0-2 single recall gate for every path")
+        MemoryLibraryLocal.activate(owner: .guest, persistence: nil)
+    }
+    // MARK: Codex review P0-4 — feedback persisted + changes the next decision; undo/handoff report the real outcome.
+    static func p04FeedbackUndoHandoff() {
+        var ledger = ProactiveFeedbackLedger()
+        let before = ledger.gate(decision: "notify", confidence: 0.8, trigger: "meeting_upcoming")
+        expect(before == "notify", "P0-4 baseline: confident notify stays notify")
+        expect(ledger.record(.intrusive, suggestionID: "s1", trigger: "meeting_upcoming", serverID: nil), "P0-4 first feedback applies")
+        expect(!ledger.record(.helpful, suggestionID: "s1", trigger: "meeting_upcoming", serverID: nil), "P0-4 one feedback per suggestion (same as server)")
+        let w = ledger.weights["meeting_upcoming"]
+        expect(w?.weight == 0.7 && w?.threshold_bump == 0.1, "P0-4 intrusive mirrors server weights (×0.7, +0.1)")
+        expect(ledger.gate(decision: "notify", confidence: 0.8, trigger: "meeting_upcoming") == "card", "P0-4 negative feedback measurably downgrades the next same-trigger decision")
+        expect(ledger.gate(decision: "notify", confidence: 0.8, trigger: "flight_status") == "notify", "P0-4 other triggers unaffected")
+        expect(ledger.pendingSync.map(\.suggestionID) == ["s1"], "P0-4 feedback without server id stays queued (待同步)")
+        let data = try! JSONEncoder().encode(ledger)
+        var reloaded = try! JSONDecoder().decode(ProactiveFeedbackLedger.self, from: data)
+        expect(reloaded == ledger, "P0-4 feedback ledger survives restart")
+        reloaded.markSynced("s1"); expect(reloaded.pendingSync.isEmpty, "P0-4 synced feedback leaves the queue")
+        // Undo: a failed EventKit delete keeps the real state.
+        expect(ProactiveUndoRules.statusAfterUndo(current: .done, removal: .failed) == nil, "P0-4 undo with failed delete keeps 已完成 (no fake undo)")
+        expect(ProactiveUndoRules.statusAfterUndo(current: .done, removal: .undone) == .pending && ProactiveUndoRules.statusAfterUndo(current: .done, removal: .alreadyGone) == .pending, "P0-4 undo succeeds only when removed / already gone")
+        // External URL handoff: timeout is unknown, never success.
+        let timedOut = DeviceToolContract.handoffResult(.timedOut, callID: "c1")
+        expect(timedOut.status != .ok && timedOut.data?["reason"] == .string("handoff_unknown"), "P0-4 open-URL timeout is not reported as success")
+        expect(DeviceToolContract.handoffResult(.refused, callID: "c1").status == .error, "P0-4 refused open is an error")
+        let opened = DeviceToolContract.handoffResult(.opened, callID: "c1")
+        expect(opened.status == .ok && opened.data?["handoff"] == .string("requested"), "P0-4 opened = requested, not task done")
+        expect(DeviceToolContract.receiptKey(confirmKey: "运行", status: .ok, data: opened.data) == "已请求打开", "P0-4 shortcut receipt says 已请求打开, not 已运行")
+        expect(DeviceToolContract.receiptKey(confirmKey: "运行", status: timedOut.status, data: timedOut.data) == "已请求打开，结果未知", "P0-4 unknown handoff shows 结果未知")
+    }
+
 
     // MARK: Codex PR91 review (882db80) — counterexamples as integration assertions on the REAL L2 store
     // (AES-GCM files under a temp root, injectable key stand-in instead of the Keychain).
@@ -1059,4 +1136,213 @@ extension Result { var isFailure: Bool { if case .failure = self { return true }
         expect(ProactiveRules.lead(in: [cloudOff, localOn]) == nil, "codex P0-2 (b8f0280) cloud 使用记忆 off also disables local lead memory")
         expect(ProactiveRules.lead(in: [localOn])?.minutes == 30, "codex P0-2 (b8f0280) local lead still used when every switch is on")
     }
+}
+
+@MainActor final class PR91v2Sender {
+    var sent: [Bool] = []
+    var holds: [CheckedContinuation<Void, Never>] = []
+    var hold = false, fail = false
+    var seqs: [Int64] = []
+    /// Server-side last-writer-by-sequence model (what the edge store does).
+    var serverSeq: Int64 = 0, serverOn = false
+    func send(_ on: Bool, _ seq: Int64) async throws -> Bool {
+        sent.append(on); seqs.append(seq)
+        if hold { await withCheckedContinuation { holds.append($0) } }
+        if seq > serverSeq { serverSeq = seq; serverOn = on }   // the server still runs a request whose client timed out
+        if fail { throw URLError(.notConnectedToInternet) }
+        return serverOn
+    }
+    func release() { let h = holds; holds = []; h.forEach { $0.resume() } }
+}
+extension NoBugP0Runner {
+    /// Codex PR91 trial S1: the learned gate installed into #90's ProactiveEngine.feedbackGate at merge.
+    static func pr91FeedbackGate() {
+        let a = UUID().uuidString, b = UUID().uuidString
+        AccountEpoch.shared.activate(account: a)
+        ProactiveLearnedGate.publish(owner: nil, weights: [:])
+        expect(ProactiveLearnedGate.gate(decision: "notify", confidence: 0.3, trigger: "meeting_upcoming") == "notify", "PR91 S1 no ledger ⇒ unchanged (low confidence alone never demotes)")
+        var l = ProactiveFeedbackLedger(); _ = l.record(.intrusive, suggestionID: "s1", trigger: "meeting_upcoming", serverID: nil)
+        ProactiveLearnedGate.publish(owner: a, weights: l.weights)
+        expect(ProactiveLearnedGate.gate(decision: "notify", confidence: 0.8, trigger: "other_trigger") == "notify", "PR91 S1 no learned weight for the trigger ⇒ unchanged")
+        let g = ProactiveLearnedGate.gate(decision: "notify", confidence: 0.8, trigger: "meeting_upcoming")
+        expect(g == "card" && g == l.gate(decision: "notify", confidence: 0.8, trigger: "meeting_upcoming"), "PR91 S1 learned intrusive ⇒ one step down, same math as decision.mjs (\(g))")
+        var up = ProactiveFeedbackLedger(); for i in 0..<9 { _ = up.record(.helpful, suggestionID: "h\(i)", trigger: "meeting_upcoming", serverID: nil) }
+        ProactiveLearnedGate.publish(owner: a, weights: up.weights)
+        let levels = ProactiveFeedbackLedger.levels
+        let raisedNever = levels.allSatisfy { d in [0.0, 0.3, 0.6, 0.9, 1.0].allSatisfy { c in levels.firstIndex(of: ProactiveLearnedGate.gate(decision: d, confidence: c, trigger: "meeting_upcoming"))! <= levels.firstIndex(of: d)! } }
+        expect(raisedNever, "PR91 S1 downgrade-only: never above the input level for any level/confidence")
+        expect(ProactiveLearnedGate.gate(decision: "silent", confidence: 0.0, trigger: "meeting_upcoming") == "silent", "PR91 S1 silent stays silent")
+        ProactiveLearnedGate.publish(owner: a, weights: l.weights)
+        AccountEpoch.shared.activate(account: b)
+        expect(ProactiveLearnedGate.gate(decision: "notify", confidence: 0.8, trigger: "meeting_upcoming") == "notify", "PR91 S1 A's weights never gate B's decisions")
+        AccountEpoch.shared.signOut()
+        expect(ProactiveLearnedGate.gate(decision: "notify", confidence: 0.8, trigger: "meeting_upcoming") == "notify", "PR91 S1 signed out ⇒ unchanged")
+        ProactiveLearnedGate.publish(owner: nil, weights: [:])
+    }
+    /// Codex PR91 v2 round: same-account out-of-order switch responses, one effective state, at-rest trace.
+    @MainActor static func pr91v2() async {
+        let saved = MemoryRecallLoader.defaults; defer { MemoryRecallLoader.defaults = saved }
+        MemoryRecallLoader.defaults = UserDefaults(suiteName: "pr91v2-\(UUID().uuidString)")!
+        let uid = UUID(); AccountEpoch.shared.activate(account: uid.uuidString)
+        let owner = MemoryRecallLoader.currentOwner!, token = AccountEpoch.shared.capture()
+        func spin() async { for _ in 0..<200 { await Task.yield() } }
+        // v2-2 (Codex counterexample): ON waiting → user OFF → the earlier ON succeeds late → must NOT clear the OFF.
+        do {
+            let s = PR91v2Sender(); s.hold = true
+            let on = Task { @MainActor in await MemoryRecallLoader.submitChoice(on: true, owner: owner, token: token, send: s.send) }
+            await spin()
+            let off = Task { @MainActor in await MemoryRecallLoader.submitChoice(on: false, owner: owner, token: token, send: s.send) }
+            await spin()
+            expect(s.sent == [true], "PR91 v2-2 the later OFF is not sent concurrently (serialized behind the ON)")
+            expect(MemoryRecallLoader.persistedOff(owner) && ConversationMemorySwitch.headerValue == "0", "PR91 v2-2 OFF is effective at once")
+            s.hold = false; s.release()
+            let r1 = await on.value, r2 = await off.value
+            expect(r1 == .superseded && r2 == .applied, "PR91 v2-2 the late ON response is dropped, the OFF applies (\(r1), \(r2))")
+            expect(MemoryRecallLoader.persistedOff(owner) && ConversationMemorySwitch.headerValue == "0" && !MemoryRecallLoader.unsynced(owner),
+                   "PR91 v2-2 a late ON never clears a newer OFF")
+            expect(s.sent == [true, false], "PR91 v2-2 server receives the choices in order; final server state = last choice (off)")
+        }
+        // Coalescing: ON (held) → OFF → ON: the superseded OFF is never sent; final = ON.
+        do {
+            let s = PR91v2Sender(); s.hold = true
+            let a = Task { @MainActor in await MemoryRecallLoader.submitChoice(on: true, owner: owner, token: token, send: s.send) }
+            await spin()
+            let b = Task { @MainActor in await MemoryRecallLoader.submitChoice(on: false, owner: owner, token: token, send: s.send) }
+            await spin()
+            let c = Task { @MainActor in await MemoryRecallLoader.submitChoice(on: true, owner: owner, token: token, send: s.send) }
+            await spin()
+            s.hold = false; s.release()
+            let ra = await a.value, rb = await b.value, rc = await c.value
+            expect(ra == .superseded && rb == .superseded && rc == .applied && s.sent == [true, true], "PR91 v2-2 only the latest choice writes back; superseded choices are not sent (\(s.sent))")
+            expect(!MemoryRecallLoader.persistedOff(owner) && ConversationMemorySwitch.headerValue == "1", "PR91 v2-2 final local state = last choice (on)")
+        }
+        // OFF whose request fails: stays effective, marked unsynced (page shows 已在本机关闭，待同步).
+        do {
+            let s = PR91v2Sender(); s.fail = true
+            let r = await MemoryRecallLoader.submitChoice(on: false, owner: owner, token: token, send: s.send)
+            expect(r == .failed && MemoryRecallLoader.persistedOff(owner) && MemoryRecallLoader.unsynced(owner) && ConversationMemorySwitch.headerValue == "0",
+                   "PR91 v2-4 failed OFF stays effective and is shown as pending sync")
+            // v2-4: one effective rule for the page and the header — a cloud snapshot saying ON never shows ON over a local off.
+            let shown = MemoryRecallLoader.applyEffective(owner: owner, token: token, libraries: [true])
+            expect(shown == false && ConversationMemorySwitch.headerValue == "0", "PR91 v2-4 page state == header value under a persisted off")
+            s.fail = false
+            let r2 = await MemoryRecallLoader.submitChoice(on: true, owner: owner, token: token, send: s.send)
+            expect(r2 == .applied && MemoryRecallLoader.applyEffective(owner: owner, token: token, libraries: [true]) == true && !MemoryRecallLoader.unsynced(owner),
+                   "PR91 v2-4 after a successful ON page and header both show on")
+            expect(MemoryRecallLoader.applyEffective(owner: owner, token: token, libraries: [true, false]) == false, "PR91 v2-4 any library off ⇒ effective off")
+        }
+        // Account changed while a choice waits → stale, nothing written for the old account.
+        do {
+            let s = PR91v2Sender(); s.hold = true
+            let t = Task { @MainActor in await MemoryRecallLoader.submitChoice(on: true, owner: owner, token: token, send: s.send) }
+            await spin(); AccountEpoch.shared.activate(account: UUID().uuidString); s.hold = false; s.release()
+            expect(await t.value == .stale, "PR91 v2-2 a choice whose account changed is stale")
+            AccountEpoch.shared.activate(account: uid.uuidString)
+        }
+        // v3-2: unknown outcome (server ran it, client timed out) → fail closed, re-send with the SAME sequence; the
+        // server's last-writer-by-sequence result is adopted. Sequences are strictly increasing.
+        do {
+            let token = AccountEpoch.shared.capture()   // the stale test above re-activated the account (new epoch)
+            let s = PR91v2Sender(); s.fail = true
+            let r = await MemoryRecallLoader.submitChoice(on: true, owner: owner, token: token, send: s.send)
+            let p = MemoryRecallLoader.pending(owner)
+            expect(r == .failed && ConversationMemorySwitch.headerValue == "0" && p?.on == true && !MemoryRecallLoader.effectiveUse(owner: owner),
+                   "PR91 v3-2 unknown ON outcome is effectively OFF and stays pending")
+            s.fail = false
+            let r2 = await MemoryRecallLoader.reconcile(owner: owner, token: token, send: s.send)
+            expect(r2 == .applied && s.seqs.count == 2 && s.seqs[0] == s.seqs[1] && MemoryRecallLoader.pending(owner) == nil && ConversationMemorySwitch.headerValue == "1",
+                   "PR91 v3-2 reconcile re-sends the same sequence (idempotent) and clears the pending choice")
+            // Another device / a newer choice won on the server: our late ack adopts the server value.
+            s.serverSeq = Int64.max - 1; s.serverOn = false
+            let r3 = await MemoryRecallLoader.submitChoice(on: true, owner: owner, token: token, send: s.send)
+            expect(r3 == .applied && ConversationMemorySwitch.headerValue == "0" && MemoryRecallLoader.persistedOff(owner), "PR91 v3-2 the server's newer state wins over our older choice")
+            let a1 = MemoryRecallLoader.nextSeq(owner), a2 = MemoryRecallLoader.nextSeq(owner)
+            expect(a2 > a1 && a1 > s.seqs[0], "PR91 v3-2 choice sequences strictly increase")
+        }
+        // v3-3: the immediate state is set synchronously by beginChoice (before any await), and the full effective state
+        // aggregates every known library (cloud + on-device).
+        do {
+            let token = AccountEpoch.shared.capture()
+            let t = MemoryRecallLoader.beginChoice(on: true, owner: owner, token: token)
+            expect(t != nil && MemoryRecallLoader.pending(owner)?.on == true && MemoryRecallLoader.isEnabling(owner) && ConversationMemorySwitch.headerValue == "0",
+                   "PR91 v3-3 tap publishes immediately: choice ON pending (正在开启…), effective off until acknowledged")
+            let s = PR91v2Sender(); s.serverSeq = 0
+            if let t { _ = await MemoryRecallLoader.deliver(t, send: s.send) }
+            let cloudLib = FlakyBackend(), localLib = PR91v3OtherLib()
+            MemoryRecallLoader.noteLibrary(cloudLib, on: true, owner: owner); MemoryRecallLoader.noteLibrary(localLib, on: false, owner: owner)
+            expect(MemoryRecallLoader.applyEffective(owner: owner, token: token) == false && ConversationMemorySwitch.headerValue == "0",
+                   "PR91 v3-3 one library off ⇒ full effective off (page summary == header == recall)")
+            MemoryRecallLoader.noteLibrary(localLib, on: true, owner: owner)
+            expect(MemoryRecallLoader.applyEffective(owner: owner, token: token) == true, "PR91 v3-3 all libraries on ⇒ effective on")
+        }
+        // v2-1: the production scheduler path emits a verifiable trace (no ids in the text).
+        do {
+            let url = FileManager.default.temporaryDirectory.appendingPathComponent("pr91v2-atrest-\(UUID().uuidString).json")
+            let repo = try Repository(persistence: FilePersistence(url: url))
+            let sched = AtRestMigrationScheduler(); var lines: [String] = []
+            sched.defaults = UserDefaults(suiteName: "pr91v2-sched-\(UUID().uuidString)")!; sched.delays = [1]; sched.sleep = { _ in }
+            sched.log = { _ in }; sched.trace = { lines.append($0) }
+            final class Ready: @unchecked Sendable { var v = false }
+            let ready = Ready(); sched.sealerReady = { _ in ready.v }
+            let saved = (ConversationMemoryAtRest.sealer, ConversationMemoryAtRest.opener)
+            ConversationMemoryAtRest.sealer = { d, _ in d }; ConversationMemoryAtRest.opener = { d, _ in d }
+            sched.repositoryOpened(repo, subject: uid, partition: "pv2"); await sched.waitIdle()
+            expect(lines.first == "scheduled" && lines.contains("gave-up until sealerMayBeReady"), "PR91 v2-1 cold start before the L2 key: scheduled, waits, gives up (\(lines))")
+            ready.v = true; sched.sealerMayBeReady(); await sched.waitIdle()
+            expect(lines.last == "complete sealed=0" && !lines.joined().contains(uid.uuidString), "PR91 v2-1 L2 key installed → sealerMayBeReady completes; trace carries no ids (\(lines))")
+            ConversationMemoryAtRest.sealer = saved.0; ConversationMemoryAtRest.opener = saved.1
+        } catch { expect(false, "PR91 v2-1 trace fixture: \(error)") }
+    }
+}
+
+final class FailingPersistence: MemorySnapshotPersisting {
+    func read() -> Data? { nil }
+    func write(_ data: Data) throws { throw CocoaError(.fileWriteNoPermission) }
+    func erase() {}
+}
+
+@MainActor final class SlowExecutor: DeviceToolExecuting {
+    var pending: CheckedContinuation<Void, Never>?
+    var ran = false
+    func canExecute(_ tool: String) -> Bool { true }
+    func lookup(_ call: DeviceCall) async -> DeviceCallResult? { nil }
+    func execute(_ call: DeviceCall, credential: DeviceCallGate.Credential) async -> DeviceCallResult {
+        ran = true
+        await withCheckedContinuation { pending = $0 }
+        return .init(call_id: call.call_id, status: .ok, data: ["event_id": .string("evt-late")])
+    }
+}
+/// A second backend type (stands in for the on-device library) for the multi-library effective-state test.
+@MainActor final class PR91v3OtherLib: MemoryLibraryBackend {
+    func create(kind: String, content: String) async throws -> String { "o" }
+    var capabilities: MemoryLibraryCapabilities { [] }
+    func load() async throws -> MemoryLibrarySnapshot { .init(items: [], useMemory: true, autoSave: nil) }
+    func update(id: String, content: String) async throws {}
+    func forget(ids: [String]) async throws {}
+    func setUseMemory(_ on: Bool) async throws {}
+    func setAutoSave(_ on: Bool) async throws {}
+    func clearAll() async throws {}
+    func undoSave(memoryID: String, undoToken: String?) async throws {}
+}
+@MainActor final class FlakyBackend: MemoryLibraryBackend {
+    enum Mode { case on, off, fail, notEnabled }
+    var mode = Mode.on
+    var failSetUse = false
+    var onLoad: (@MainActor () -> Void)?
+    func create(kind: String, content: String) async throws -> String { "f-\(UUID().uuidString)" }
+    var capabilities: MemoryLibraryCapabilities { [] }
+    func load() async throws -> MemoryLibrarySnapshot {
+        onLoad?()
+        switch mode {
+        case .fail: throw MemoryLibraryError.unavailable
+        case .notEnabled: throw MemoryLibraryError.notEnabled
+        case .on, .off: return .init(items: [], useMemory: mode == .on, autoSave: nil)
+        }
+    }
+    func update(id: String, content: String) async throws {}
+    func forget(ids: [String]) async throws {}
+    func setUseMemory(_ on: Bool) async throws { if failSetUse { throw MemoryLibraryError.unavailable } }
+    func setAutoSave(_ on: Bool) async throws {}
+    func clearAll() async throws {}
+    func undoSave(memoryID: String, undoToken: String?) async throws {}
 }

@@ -198,8 +198,12 @@ enum ProactiveEngineError: Error, Equatable { case remindersDenied, writeFailed,
     static let shared = ProactiveFeedbackSync()
     static let recordKey = "proactive.feedback-ledger.v1"
     enum SyncError: Error { case queued, notSaved, staleAccount }
-    private(set) var ledger = ProactiveFeedbackLedger()
-    private var loadedFor: UUID?
+    private(set) var ledger = ProactiveFeedbackLedger() { didSet { publishGate() } }
+    private var loadedFor: UUID? { didSet { publishGate() } }
+    /// PR91 S1: the learned gate (#90 `ProactiveEngine.feedbackGate`) sees this account's weights only.
+    private func publishGate() { ProactiveLearnedGate.publish(owner: loadedFor?.uuidString, weights: ledger.weights) }
+    /// Loads the signed-in account's ledger so the learned gate is current from launch (call on every sign-in open).
+    func activate() { ensureLoaded(); publishGate() }
 
     private func ensureLoaded() {
         guard let store = L2SecureStore.current else { ledger = ProactiveFeedbackLedger(); loadedFor = nil; return }
