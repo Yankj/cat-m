@@ -88,6 +88,7 @@ enum ProactiveDataOwner {
 /// under the current account's bearer (`GET suggestions/<id>`, owner-scoped by RLS) — else it expires after `ttl`.
 enum ProactiveQuarantine {
     static let key = "catpaw.proactive.quarantine.v1"
+    /// p90i P1-b: no longer a deletion bound (kept for the reconcile age log only).
     static let ttl: TimeInterval = 7 * 24 * 3600
     enum Verdict: Equatable { case hold, release, expire }
     static func decide(quarantinedAt: Date, stampedAccounts: [String], current: String?, serverConfirmed: Bool, now: Date) -> Verdict {
@@ -95,7 +96,7 @@ enum ProactiveQuarantine {
             if serverConfirmed { return .release }
             if !stampedAccounts.isEmpty, stampedAccounts.allSatisfy({ $0.caseInsensitiveCompare(current) == .orderedSame }) { return .release }
         }
-        return now.timeIntervalSince(quarantinedAt) > ttl ? .expire : .hold
+        return .hold   // p90i P1-b: never expired by age — kept until evidence or the user's own decision
     }
     /// Codex PR90g #1: ownership is proven per record. `stamps[id]`: the accounts stamped on that record's own queued
     /// write-backs (nil = unstamped); `confirmed`: records whose own server id the cloud returned for the current
@@ -108,5 +109,52 @@ enum ProactiveQuarantine {
             // Every write-back of this record names the current account (an unstamped one is no proof either way).
             return !own.isEmpty && own.count == (stamps[id] ?? []).count && own.allSatisfy { $0.caseInsensitiveCompare(current) == .orderedSame }
         })
+    }
+}
+
+/// p90i (三角 trial S3): every proactive POST names its account. No token → rejected (the account check is never skipped).
+enum ProactivePostGate {
+    static func admit(_ token: AccountToken?, epoch: AccountEpoch) -> Bool {
+        guard let token else { return false }
+        return epoch.isValid(token)
+    }
+}
+
+/// p90i (三角 trial S5): local → server suggestion ids, partitioned by account (keys compared case-insensitively).
+/// The pre-p90i global map migrates to the recorded data owner; with no (or a signed-out "") owner it is handed to the
+/// quarantine, never to whoever is signed in.
+struct ProactiveServerIDMap: Codable, Equatable {
+    static let key = "catpaw.proactive.serverIDs.v2", legacyKey = "catpaw.proactive.serverIDs.v1"
+    var byAccount: [String: [String: String]] = [:]
+    private static func norm(_ a: String) -> String { a.lowercased() }
+    func ids(for account: String) -> [String: String] { account.isEmpty ? [:] : byAccount[Self.norm(account)] ?? [:] }
+    mutating func set(_ local: String, _ server: String, account: String) { guard !account.isEmpty else { return }; byAccount[Self.norm(account), default: [:]][local] = server }
+    mutating func replace(_ ids: [String: String], account: String) { guard !account.isEmpty else { return }; byAccount[Self.norm(account)] = ids.isEmpty ? nil : ids }
+    static func migrate(legacy: [String: String], owner: String?) -> (map: ProactiveServerIDMap, quarantine: [String: String]) {
+        var m = ProactiveServerIDMap()
+        guard let owner, !owner.isEmpty else { return (m, legacy) }
+        m.replace(legacy, account: owner); return (m, [:])
+    }
+}
+
+/// p90i P1-a (interim, until #89's generic park + per-item decision API lands): when the data owner changes, the old
+/// account's local proactive data (inbox, reminder contexts, generations, unsynced write-backs, removed notification
+/// ids) is parked under that account instead of wiped. Parked data is never shown, sent, synced or re-armed — under
+/// any account — until the user decides through #89's API (default keep). Records are appended, never overwritten.
+enum ProactiveParking {
+    static let key = "catpaw.proactive.parked.v1"
+    static func shouldPark(plan: ProactiveDataOwner.Plan, owner: String?, force: Bool) -> Bool {
+        guard !force, plan == .wipe, let owner, !owner.isEmpty else { return false }
+        return true
+    }
+    /// account (lower-cased) → parked records, oldest first. Plist-compatible values only.
+    struct Lot {
+        var slots: [String: [[String: Any]]] = [:]
+        var accounts: [String] { Array(slots.keys) }
+        /// The first parked record per account (the oldest one waiting for a decision).
+        var records: [String: [String: Any]] { slots.compactMapValues(\.first) }
+        mutating func park(account: String, record: [String: Any]) { slots[account.lowercased(), default: []].append(record) }
+        init(_ raw: [String: Any]? = nil) { slots = (raw ?? [:]).compactMapValues { $0 as? [[String: Any]] } }
+        var raw: [String: Any] { slots }
     }
 }

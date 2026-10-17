@@ -468,8 +468,9 @@ func pr90f_quarantine() {
     check(ProactiveQuarantine.decide(quarantinedAt: t0, stampedAccounts: [], current: "USER-A", serverConfirmed: false, now: soon) == .hold, "no evidence → held")
     check(ProactiveQuarantine.decide(quarantinedAt: t0, stampedAccounts: ["USER-B"], current: "USER-A", serverConfirmed: true, now: soon) == .release, "the cloud confirms its server id for this account → released")
     check(ProactiveQuarantine.decide(quarantinedAt: t0, stampedAccounts: [], current: nil, serverConfirmed: false, now: soon) == .hold, "signed out → held")
-    check(ProactiveQuarantine.decide(quarantinedAt: t0, stampedAccounts: [], current: "USER-A", serverConfirmed: false, now: late) == .expire, "no evidence within the bound → expired")
-    check(ProactiveQuarantine.decide(quarantinedAt: t0, stampedAccounts: [], current: nil, serverConfirmed: false, now: late) == .expire, "expires signed out too")
+    // p90i P1-b: no TTL deletion — without evidence it is kept, however old (released only by evidence or the user).
+    check(ProactiveQuarantine.decide(quarantinedAt: t0, stampedAccounts: [], current: "USER-A", serverConfirmed: false, now: late) == .hold, "no evidence, past the old bound → still kept")
+    check(ProactiveQuarantine.decide(quarantinedAt: t0, stampedAccounts: [], current: nil, serverConfirmed: false, now: late) == .hold, "kept signed out too")
     check(ProactiveQuarantine.decide(quarantinedAt: t0, stampedAccounts: ["USER-A"], current: "USER-A", serverConfirmed: false, now: late) == .release, "evidence still wins at expiry time")
 }
 @MainActor func pr90f_purgeDeadLetters() async {
@@ -606,6 +607,41 @@ func pr90g_roundTrip() {
     store.onCloudIdentity = saved; _ = back
 }
 
+// p90i (三角 trial S2/S3/S5, P1-a): pure decisions behind the engine.
+func pr90i_rules() {
+    // S2: reminder undo without a mapping or without permission is unknown (state kept), never a silent success.
+    check(ProactiveUndo.reminderUndoStep(hasMapping: false, authorized: true, found: false) == .unknown("no_mapping"), "no mapping → unknown")
+    check(ProactiveUndo.reminderUndoStep(hasMapping: true, authorized: false, found: false) == .unknown("not_authorized"), "no reminders permission → unknown")
+    check(ProactiveUndo.reminderUndoStep(hasMapping: true, authorized: true, found: false) == .alreadyGone, "authorized + not found → already gone (#89 rule)")
+    check(ProactiveUndo.reminderUndoStep(hasMapping: true, authorized: true, found: true) == .delete, "found → delete")
+    // S3: a post without a token is rejected (no account check is never skipped).
+    let e = AccountEpoch(); e.activate(account: "USER-A")
+    check(!ProactivePostGate.admit(nil, epoch: e), "nil token rejected")
+    let t = e.capture(); check(ProactivePostGate.admit(t, epoch: e), "current token admitted")
+    e.activate(account: "USER-B"); check(!ProactivePostGate.admit(t, epoch: e), "stale token rejected")
+    // S5: server ids partitioned by account; a legacy global map goes to the recorded owner, else quarantine.
+    var m = ProactiveServerIDMap()
+    m.set("l1", "s1", account: "USER-A"); m.set("l1", "s9", account: "USER-B")
+    check(m.ids(for: "user-a") == ["l1": "s1"] && m.ids(for: "USER-B") == ["l1": "s9"], "per-account, case-insensitive")
+    check(m.ids(for: "USER-C").isEmpty, "another account sees none")
+    let (owned, q) = ProactiveServerIDMap.migrate(legacy: ["x": "sx"], owner: "USER-A")
+    check(owned.ids(for: "USER-A") == ["x": "sx"] && q.isEmpty, "legacy global → recorded owner")
+    let (none, q2) = ProactiveServerIDMap.migrate(legacy: ["x": "sx"], owner: nil)
+    check(none.ids(for: "USER-A").isEmpty && q2 == ["x": "sx"], "no owner → quarantined, never claimed")
+    let (blank, q3) = ProactiveServerIDMap.migrate(legacy: ["x": "sx"], owner: "")
+    check(blank.ids(for: "").isEmpty && q3 == ["x": "sx"], "signed-out owner \"\" → quarantined")
+    // P1-a: a switch away from a real owner parks (never wipes); forced reset / signed-out empty owner does not.
+    check(ProactiveParking.shouldPark(plan: .wipe, owner: "USER-A", force: false), "switch parks the old account's data")
+    check(!ProactiveParking.shouldPark(plan: .wipe, owner: "", force: false), "nothing owned → nothing to park")
+    check(!ProactiveParking.shouldPark(plan: .wipe, owner: "USER-A", force: true), "explicit reset is not a park")
+    check(!ProactiveParking.shouldPark(plan: .keep, owner: "USER-A", force: false), "same account → nothing")
+    var lot = ProactiveParking.Lot()
+    lot.park(account: "USER-A", record: ["k": 1]); lot.park(account: "user-a", record: ["k": 2])
+    check(lot.accounts == ["user-a"] || lot.accounts == ["USER-A"], "one slot per account")
+    check((lot.records.values.first?["k"] as? Int) == 1 && lot.slots["user-a"]?.count == 2, "a second park appends; nothing waiting for a decision is overwritten")
+    check(ProactiveParking.Lot(lot.raw).slots["user-a"]?.count == 2, "round-trips through the plist form")
+}
+
 @main enum ProactivePR90Runner {
     static func main() async {
         pr90_3_prescheduleSharesDecisionAndQuota()
@@ -626,6 +662,7 @@ func pr90g_roundTrip() {
         pr90h_cloudIdentity()
         pr90f_quarantine(); pr90f_quarantineQueue(); await pr90f_purgeDeadLetters(); await pr90f_snoozeAwaitsAdd(); pr90f_clock(); pr90f_wire(); pr90f_golden()
         pr90g_quarantinePerRecord(); pr90g_restoreVisible(); pr90g_roundTrip()
+        pr90i_rules()
         print(failures == 0 ? "PR90 proactive: all passed" : "PR90 proactive: \(failures) failed"); exit(failures == 0 ? 0 : 1)
     }
 }
