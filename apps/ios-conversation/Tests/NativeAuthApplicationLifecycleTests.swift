@@ -7,7 +7,7 @@ import XCTest
 final class NativeAuthApplicationLifecycleTests:XCTestCase {
     @MainActor func testActiveKnownRotationRecoversAutomaticallyInSameLocalChat() async throws {
         let root=FileManager.default.temporaryDirectory.appendingPathComponent("native-active-rotation-"+UUID().uuidString,isDirectory:true)
-        defer {try? FileManager.default.removeItem(at:root)}
+        defer {retireStoreRoot(root)}
         let scope=UUID(),clock=AuthTestClock(),storage=LifecycleStorage(),configuration=try lifecycleConfiguration(scope:scope)
         let remote=AnonymousTestRemote(issuer:configuration.issuer,clock:clock)
         try storage.save(await remote.candidate())
@@ -35,7 +35,7 @@ final class NativeAuthApplicationLifecycleTests:XCTestCase {
     /// ledger), per-item decision, apply, observers — in that order; unanswered = keep; passive (no decider) = keep, logged.
     @MainActor func testLogoutWithInFlightDeviceOperationAsksFirst() async throws {
         let root=FileManager.default.temporaryDirectory.appendingPathComponent("native-inflight-"+UUID().uuidString,isDirectory:true)
-        defer {try? FileManager.default.removeItem(at:root)}
+        defer {retireStoreRoot(root)}
         let scope=UUID(),clock=AuthTestClock(),storage=LifecycleStorage(),configuration=try lifecycleConfiguration(scope:scope)
         let remote=AnonymousTestRemote(issuer:configuration.issuer,clock:clock)
         try storage.save(await remote.candidate())
@@ -87,7 +87,7 @@ final class NativeAuthApplicationLifecycleTests:XCTestCase {
 
     @MainActor func testWorkspaceBackoffGrowsAndCapsWithoutNewLogin() async throws {
         let root=FileManager.default.temporaryDirectory.appendingPathComponent("native-workspace-backoff-"+UUID().uuidString,isDirectory:true)
-        defer {try? FileManager.default.removeItem(at:root)}
+        defer {retireStoreRoot(root)}
         let scope=UUID(),subject=UUID(),clock=LifecycleClock(),storage=LifecycleStorage()
         let configuration=try lifecycleConfiguration(scope:scope)
         let remote=LifecycleRemote(issuer:configuration.issuer,subject:subject,clock:clock)
@@ -113,7 +113,7 @@ final class NativeAuthApplicationLifecycleTests:XCTestCase {
 
     @MainActor func testKnownRotationRetriesOnlyUserValidationAndPreservesIdentity() async throws {
         let root=FileManager.default.temporaryDirectory.appendingPathComponent("native-known-rotation-"+UUID().uuidString,isDirectory:true)
-        defer {try? FileManager.default.removeItem(at:root)}
+        defer {retireStoreRoot(root)}
         let scope=UUID(),clock=AuthTestClock(),storage=LifecycleStorage(),configuration=try lifecycleConfiguration(scope:scope)
         let remote=AnonymousTestRemote(issuer:configuration.issuer,clock:clock)
         try storage.save(await remote.candidate(expired:true))
@@ -137,7 +137,7 @@ final class NativeAuthApplicationLifecycleTests:XCTestCase {
 
     @MainActor func testLogoutDuringColdRecoveryCancelsRetryAndNeverReopens() async throws {
         let root=FileManager.default.temporaryDirectory.appendingPathComponent("native-restore-logout-"+UUID().uuidString,isDirectory:true)
-        defer {try? FileManager.default.removeItem(at:root)}
+        defer {retireStoreRoot(root)}
         let scope=UUID(),storage=LifecycleStorage(),configuration=try lifecycleConfiguration(scope:scope)
         let remote=AnonymousTestRemote(issuer:configuration.issuer)
         try storage.save(await remote.candidate());await remote.behavior(unavailable:true)
@@ -155,7 +155,7 @@ final class NativeAuthApplicationLifecycleTests:XCTestCase {
 
     @MainActor func testRejectedWorkspaceStopsWithFriendlyCopyUntilExplicitRestart() async throws {
         let root=FileManager.default.temporaryDirectory.appendingPathComponent("native-workspace-rejected-"+UUID().uuidString,isDirectory:true)
-        defer {try? FileManager.default.removeItem(at:root)}
+        defer {retireStoreRoot(root)}
         let scope=UUID(),subject=UUID(),clock=LifecycleClock(),storage=LifecycleStorage()
         let configuration=try lifecycleConfiguration(scope:scope)
         let remote=LifecycleRemote(issuer:configuration.issuer,subject:subject,clock:clock)
@@ -173,7 +173,7 @@ final class NativeAuthApplicationLifecycleTests:XCTestCase {
 
     @MainActor func testWorkspace503RetriesSilentlyAndCoalescesUntilSuccess() async throws {
         let root=FileManager.default.temporaryDirectory.appendingPathComponent("native-workspace-retry-"+UUID().uuidString,isDirectory:true)
-        defer {try? FileManager.default.removeItem(at:root)}
+        defer {retireStoreRoot(root)}
         let scope=UUID(),subject=UUID(),clock=LifecycleClock(),storage=LifecycleStorage()
         let configuration=try lifecycleConfiguration(scope:scope)
         let remote=LifecycleRemote(issuer:configuration.issuer,subject:subject,clock:clock)
@@ -215,7 +215,7 @@ final class NativeAuthApplicationLifecycleTests:XCTestCase {
         ProactiveSealedStore.storeOwnedBy=ProactiveSealedStore.realOwnership
         defer {
             ProactiveSealedStore.store={L2SecureStore.current}
-            try? FileManager.default.removeItem(at:l2Root)
+            retireStoreRoot(l2Root)
         }
         func session(_ subject:UUID) async throws -> NativeAuthApplicationModel {
             let root=FileManager.default.temporaryDirectory.appendingPathComponent("native-proactive-"+UUID().uuidString,isDirectory:true)
@@ -247,7 +247,7 @@ final class NativeAuthApplicationLifecycleTests:XCTestCase {
 
     @MainActor func testReturningLocalChatStaysReadableAndForegroundWakesRetryInPlace() async throws {
         let root=FileManager.default.temporaryDirectory.appendingPathComponent("native-workspace-local-"+UUID().uuidString,isDirectory:true)
-        defer {try? FileManager.default.removeItem(at:root)}
+        defer {retireStoreRoot(root)}
         let scope=UUID(),subject=UUID(),clock=LifecycleClock(),storage=LifecycleStorage()
         let configuration=try lifecycleConfiguration(scope:scope)
         let credential=NativeAuthCredential(issuer:configuration.issuer,user:.init(id:subject),accessToken:"offline.lifecycle.signature",refreshToken:"synthetic-lifecycle-only",expiresAt:clock.now().addingTimeInterval(3600))
@@ -286,7 +286,7 @@ final class NativeAuthApplicationLifecycleTests:XCTestCase {
 
     @MainActor func testReachabilityAndLogoutFenceWorkspaceResolution() async throws {
         let root=FileManager.default.temporaryDirectory.appendingPathComponent("native-workspace-fence-"+UUID().uuidString,isDirectory:true)
-        defer {try? FileManager.default.removeItem(at:root)}
+        defer {retireStoreRoot(root)}
         let scope=UUID(),subject=UUID(),clock=LifecycleClock(),storage=LifecycleStorage()
         let configuration=try lifecycleConfiguration(scope:scope)
         let remote=LifecycleRemote(issuer:configuration.issuer,subject:subject,clock:clock)
@@ -316,7 +316,7 @@ final class NativeAuthApplicationLifecycleTests:XCTestCase {
 
     @MainActor func testColdValidationRetriesSafelyWithoutCreatingAnotherIdentity() async throws {
         let root=FileManager.default.temporaryDirectory.appendingPathComponent("native-auth-safe-restore-"+UUID().uuidString,isDirectory:true)
-        defer {try? FileManager.default.removeItem(at:root)}
+        defer {retireStoreRoot(root)}
         let scope=UUID(),authClock=AuthTestClock(),storage=LifecycleStorage()
         let configuration=try lifecycleConfiguration(scope:scope)
         let remote=AnonymousTestRemote(issuer:configuration.issuer,clock:authClock)
@@ -346,7 +346,7 @@ final class NativeAuthApplicationLifecycleTests:XCTestCase {
 
     @MainActor func testAmbiguousRefreshStopsWithFriendlyRestartCopyAndNoBlindRetry() async throws {
         let root=FileManager.default.temporaryDirectory.appendingPathComponent("native-auth-ambiguous-"+UUID().uuidString,isDirectory:true)
-        defer {try? FileManager.default.removeItem(at:root)}
+        defer {retireStoreRoot(root)}
         let scope=UUID(),authClock=AuthTestClock(),storage=LifecycleStorage()
         let configuration=try lifecycleConfiguration(scope:scope)
         let remote=AnonymousTestRemote(issuer:configuration.issuer,clock:authClock)
@@ -371,7 +371,7 @@ final class NativeAuthApplicationLifecycleTests:XCTestCase {
 
     @MainActor func testLogoutClosesAuthorityBeforeLocalDrainAndLaterLoginStillOpens() async throws {
         let root=FileManager.default.temporaryDirectory.appendingPathComponent("native-auth-lifecycle-"+UUID().uuidString,isDirectory:true)
-        defer {try? FileManager.default.removeItem(at:root)}
+        defer {retireStoreRoot(root)}
         let configuration=try NativeAuthConfiguration(
             projectURL:URL(string:"https://abcdefghijklmnopqrst.supabase.co")!,
             publishableKey:"sb_publishable_offline_lifecycle_test",
@@ -481,7 +481,7 @@ final class NativeAuthApplicationLifecycleTests:XCTestCase {
     /// Model constructed directly (no start / lifecycle gate); one deterministic await on signOut().
     @MainActor func testPR91SignOutStopsLiveActivitiesBeforeFirstAwait() async throws {
         let root=FileManager.default.temporaryDirectory.appendingPathComponent("native-pr91-signout-order-"+UUID().uuidString,isDirectory:true)
-        defer {try? FileManager.default.removeItem(at:root);AccountEpoch.shared.signOut()}
+        defer {retireStoreRoot(root);AccountEpoch.shared.signOut()}
         let app=try pr91Model(root:root),order=PR91CallOrder()
         AccountEpoch.shared.activate(account:UUID().uuidString)
         app.stopLiveActivities={order.add(AccountEpoch.shared.capture()==nil ? "stopAll(epochClosed)" : "stopAll(epochOpen)")}
@@ -495,7 +495,7 @@ final class NativeAuthApplicationLifecycleTests:XCTestCase {
     /// Synchronous: the injected migrator records the call; no lifecycle gate, no polling.
     @MainActor func testPR91LaunchStartsAtRestMemoryMigration() async throws {
         let root=FileManager.default.temporaryDirectory.appendingPathComponent("native-pr91-atrest-launch-"+UUID().uuidString,isDirectory:true)
-        defer {try? FileManager.default.removeItem(at:root)}
+        defer {retireStoreRoot(root)}
         let app=try pr91Model(root:root),order=PR91CallOrder()
         // Codex PR91 p91d-4: no signed-in user yet (cold-start warmUp) — the partition alone carries the subject.
         XCTAssertNil(app.state.user)
@@ -509,7 +509,7 @@ final class NativeAuthApplicationLifecycleTests:XCTestCase {
     /// repository open; the scheduler's trace line is the same text the unified log shows (category "atrest").
     @MainActor func testPR91ProductionHostOpenSchedulesAtRestMigration() async throws {
         let root=FileManager.default.temporaryDirectory.appendingPathComponent("native-pr91-atrest-host-"+UUID().uuidString,isDirectory:true)
-        defer {try? FileManager.default.removeItem(at:root)}
+        defer {retireStoreRoot(root)}
         let app=try pr91Model(root:root),lines=PR91CallOrder(),scheduler=AtRestMigrationScheduler.shared
         let savedDelays=scheduler.delays;scheduler.delays=[];scheduler.trace={lines.add($0)}
         defer {scheduler.trace=nil;scheduler.delays=savedDelays}
@@ -555,7 +555,7 @@ final class NativeAuthApplicationLifecycleTests:XCTestCase {
     @MainActor func testLogoutDuringFirstLocalReadNeverAttachesOldChat() async throws {
         for logout in [true,false] {
             let root=FileManager.default.temporaryDirectory.appendingPathComponent("native-first-read-"+UUID().uuidString,isDirectory:true)
-            defer {try? FileManager.default.removeItem(at:root);NativeAuthApplicationModel.afterLocalReadHook=nil}
+            defer {retireStoreRoot(root);NativeAuthApplicationModel.afterLocalReadHook=nil}
             let scope=UUID(),subject=UUID(),clock=LifecycleClock(),storage=LifecycleStorage()
             let configuration=try lifecycleConfiguration(scope:scope)
             let remote=LifecycleRemote(issuer:configuration.issuer,subject:subject,clock:clock)
@@ -594,7 +594,7 @@ final class NativeAuthApplicationLifecycleTests:XCTestCase {
         defer {NativeAuthApplicationModel.offlineRecoveryWillStartExperience=nil}
         for logout in [true,false] {
             let root=FileManager.default.temporaryDirectory.appendingPathComponent("native-offline-recovery-"+UUID().uuidString,isDirectory:true)
-            defer {try? FileManager.default.removeItem(at:root)}
+            defer {retireStoreRoot(root)}
             let scope=UUID(),subject=UUID(),clock=LifecycleClock(),storage=LifecycleStorage()
             let configuration=try lifecycleConfiguration(scope:scope)
             let remote=LifecycleRemote(issuer:configuration.issuer,subject:subject,clock:clock)
@@ -625,7 +625,7 @@ final class NativeAuthApplicationLifecycleTests:XCTestCase {
     /// published for the small capsule, and 「重新开始」 reaches a fresh identity whose own chat replaces the shell.
     @MainActor func testUnrecoverableSessionShowsLaunchShellWithRestartCapsuleNotADeadLoader() async throws {
         let root=FileManager.default.temporaryDirectory.appendingPathComponent("native-launch-fallback-"+UUID().uuidString,isDirectory:true)
-        defer {try? FileManager.default.removeItem(at:root)}
+        defer {retireStoreRoot(root)}
         let scope=UUID(),clock=AuthTestClock(),storage=LifecycleStorage(),configuration=try lifecycleConfiguration(scope:scope)
         let remote=AnonymousTestRemote(issuer:configuration.issuer,clock:clock)
         try storage.save(await remote.candidate());try storage.setSignedOut(true)
@@ -660,7 +660,7 @@ final class NativeAuthApplicationLifecycleTests:XCTestCase {
     /// 「仍在连接…」 plus one recovery kick at launchSlowAfter, then the retry capsule at launchStallAfter; 「重试」 restarts it.
     @MainActor func testLaunchShellWaitIsBoundedSlowThenStalledThenRetry() async throws {
         let root=FileManager.default.temporaryDirectory.appendingPathComponent("native-launch-stall-"+UUID().uuidString,isDirectory:true)
-        defer {try? FileManager.default.removeItem(at:root)}
+        defer {retireStoreRoot(root)}
         let slow=NativeAuthApplicationModel.launchSlowAfter,stall=NativeAuthApplicationModel.launchStallAfter
         NativeAuthApplicationModel.launchSlowAfter=0.05;NativeAuthApplicationModel.launchStallAfter=0.15
         defer {NativeAuthApplicationModel.launchSlowAfter=slow;NativeAuthApplicationModel.launchStallAfter=stall}
@@ -704,7 +704,7 @@ final class NativeAuthApplicationLifecycleTests:XCTestCase {
     /// transient state — it must never be mistaken for an ambiguous credential (the old 「这次会话需要重新开始」 flash).
     @MainActor func testStartExperienceDuringLaunchRestoreIsTransientNotARestart() async throws {
         let root=FileManager.default.temporaryDirectory.appendingPathComponent("native-launch-busy-"+UUID().uuidString,isDirectory:true)
-        defer {try? FileManager.default.removeItem(at:root)}
+        defer {retireStoreRoot(root)}
         let scope=UUID(),subject=UUID(),clock=LifecycleClock(),storage=LifecycleStorage(),configuration=try lifecycleConfiguration(scope:scope)
         let remote=LifecycleRemote(issuer:configuration.issuer,subject:subject,clock:clock)
         try storage.save(.init(issuer:configuration.issuer,user:.init(id:subject),accessToken:"offline.lifecycle.signature",refreshToken:"synthetic-lifecycle-only",expiresAt:clock.now().addingTimeInterval(-60)))
@@ -735,7 +735,7 @@ final class NativeAuthApplicationLifecycleTests:XCTestCase {
         for typed in [false,true] {
             UserDefaults.standard.removeObject(forKey:CatpawOnboarding.completedKey)
             let root=FileManager.default.temporaryDirectory.appendingPathComponent("native-first-run-tap-"+UUID().uuidString,isDirectory:true)
-            defer {try? FileManager.default.removeItem(at:root)}
+            defer {retireStoreRoot(root)}
             let scope=UUID(),clock=AuthTestClock(),storage=LifecycleStorage(),configuration=try lifecycleConfiguration(scope:scope)
             let remote=AnonymousTestRemote(issuer:configuration.issuer,clock:clock);await remote.behavior(hold:true)
             let subject=await remote.id
@@ -775,7 +775,7 @@ final class NativeAuthApplicationLifecycleTests:XCTestCase {
         defer {UserDefaults.standard.set(flag,forKey:CatpawOnboarding.completedKey)}
         UserDefaults.standard.removeObject(forKey:CatpawOnboarding.completedKey)
         let root=FileManager.default.temporaryDirectory.appendingPathComponent("native-first-run-flag-"+UUID().uuidString,isDirectory:true)
-        defer {try? FileManager.default.removeItem(at:root)}
+        defer {retireStoreRoot(root)}
         let scope=UUID(),clock=AuthTestClock(),storage=LifecycleStorage(),configuration=try lifecycleConfiguration(scope:scope)
         let remote=AnonymousTestRemote(issuer:configuration.issuer,clock:clock)
         try storage.save(await remote.candidate());try storage.setSignedOut(true)   // interrupted rotation, no journal
@@ -808,7 +808,7 @@ final class NativeAuthApplicationLifecycleTests:XCTestCase {
     /// B's session is still unresolved, and not after B's own chat attaches. The shell itself never opens a partition.
     @MainActor func testAnotherAccountsHistoryNeverReachesTheLaunchFirstFrame() async throws {
         let root=FileManager.default.temporaryDirectory.appendingPathComponent("native-b1-isolation-"+UUID().uuidString,isDirectory:true)
-        defer {try? FileManager.default.removeItem(at:root)}
+        defer {retireStoreRoot(root)}
         let scope=UUID(),subjectA=UUID(),subjectB=UUID(),clock=LifecycleClock(),configuration=try lifecycleConfiguration(scope:scope)
         let secretA="A 的私密草稿 7f3c",offlineA="A 留在离线体验里的草稿 7f3c"
         func leaked(_ model:ConversationFirstModel?)->Bool {
@@ -848,7 +848,7 @@ final class NativeAuthApplicationLifecycleTests:XCTestCase {
     /// SPEC-E §5.6: while the landing shows, a restored account's local chat is attached so the tap never waits on it.
     @MainActor func testLandingPrewarmsRestoredAccountChatSoTheTapNeverWaits() async throws {
         let root=FileManager.default.temporaryDirectory.appendingPathComponent("native-first-run-prewarm-"+UUID().uuidString,isDirectory:true)
-        defer {try? FileManager.default.removeItem(at:root)}
+        defer {retireStoreRoot(root)}
         let scope=UUID(),clock=AuthTestClock(),storage=LifecycleStorage(),configuration=try lifecycleConfiguration(scope:scope)
         let remote=AnonymousTestRemote(issuer:configuration.issuer,clock:clock)
         try storage.save(await remote.candidate())
@@ -1005,3 +1005,11 @@ extension NativeAuthApplicationLifecycleTests {
         XCTAssertEqual(ProactiveEngine.shared.reminderDeletes-before,0,"no EventKit delete when signed out")
     }
 }
+
+/// Lifecycle stores are not deleted at test end: an app's detached deactivate/draft save can still be queued on the
+/// shared store actor after `signOut()` returns, and SwiftData raises an uncatchable `NSInternalInconsistencyException`
+/// ("Unhandled error (NSCocoaErrorDomain, 256) occurred during faulting") when that save faults rows of a deleted
+/// `local.store` — aborting the next test (seen 20:35 and 21:28 on BE5C). Production never deletes a live account store
+/// (`signOut()` removes only the receipt and caches). Roots stay under the simulator app's tmp and go with its container.
+func retireStoreRoot(_ url: URL) { _ = url }
+
