@@ -949,7 +949,9 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
         }
         haltTask=task;return task
     }
-    @discardableResult func deactivate() async -> Bool {
+    /// `persistDrafts:false` is for a model that was never attached (it lost an overlapping open of the same account):
+    /// its composer draft is the text loaded at start, so flushing it would overwrite what the user typed since.
+    @discardableResult func deactivate(persistDrafts:Bool=true) async -> Bool {
         // Close admission before any await; a queued foreground Task cannot revive logout.
         acceptedWorkReviewTask?.cancel();acceptedWorkReviewTask=nil;acceptedWorkReviewToken=nil;acceptedWorkDraftTask?.cancel();acceptedWorkDraftTask=nil;acceptedWorkReviewPresented=false;acceptedWorkReviewSaving=false
         continuationClosing=true;loaded=false;networkAdmissionAllowed=false;stopTaskControlDelivery();pendingTaskControlDeliveries.removeAll();deliveredTaskControlReceipts.removeAll();cancelImageConsent();imageRecoveryTask?.cancel();imageRecoveryTask=nil;imageRecoveryToken=nil
@@ -963,7 +965,7 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
         imageDraft.clear();for value in imageDrafts.values {value.clear()};imageDrafts.removeAll();imageCapability=ConversationImageCapability()
         await suspend();subscription?.cancel();subscription=nil;draftTask?.cancel();draftTask=nil
         let composerSaved:Bool
-        do {try await flushDraft();composerSaved=true}catch{composerSaved=false}
+        if persistDrafts {do {try await flushDraft();composerSaved=true}catch{composerSaved=false}} else {composerSaved=true}
         await acceptedWorkDraftService.invalidate();acceptedWorkDraft=nil;acceptedWorkCapability = .init()
         await artifactContinuationService.invalidate();artifactContinuation=nil;ordinaryContinuationImage?.clear();ordinaryContinuationImage=nil
         await generativeUIStateService.invalidate()

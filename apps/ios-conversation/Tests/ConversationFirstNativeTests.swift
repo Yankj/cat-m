@@ -238,6 +238,19 @@ final class ConversationFirstNativeTests: XCTestCase {
         let state = await reopened.read(scope: Profiles.user)
         for id in acknowledged { XCTAssertNotNil(state.records[id], "acknowledged commit \(id) must be durable") }
     }
+    /// NoBug P2-1: the model that lost an overlapping open never attached; shutting it down must not write back the
+    /// draft it loaded at start over text the user saved in the meantime through the attached model.
+    @MainActor func testNeverAttachedModelDeactivateKeepsNewerPersistedDraft() async throws {
+        let url = swiftDataTestStore("p2-1.json")
+        let repo = try Repository(persistence: FilePersistence(url: url)), service = ConversationSessionService(repository: repo)
+        let id = try await service.openLatest(scope: Profiles.user)
+        try await service.saveDraft(scope: Profiles.user, conversationID: id, text: "loaded at launch")
+        let loser = ConversationFirstModel(repository: repo, service: service); await loser.start()
+        try await service.saveDraft(scope: Profiles.user, conversationID: id, text: "typed after launch")
+        await loser.deactivate(persistDrafts: false)
+        let record = try await repo.record(id, scope: Profiles.user)
+        XCTAssertEqual(record.conversation?.draftText, "typed after launch")
+    }
     #endif
     func testUnconfiguredConversationPreservesDraftAndHasNoSimulatedAnswer() async throws {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)

@@ -195,7 +195,7 @@ struct NativeWorkspaceRetrySchedule: Sendable {
             #endif
             let preview=ConversationFirstModel(repository:repository,service:ConversationSessionService(repository:repository,backend:selected,resilience:ConnectionMonitorResilience(),outbox:ConversationOutbox(fileURL:url.deletingLastPathComponent().appendingPathComponent("conversation-outbox.json")),principalAccount:partition.subject.uuidString),scope:partition.scope,imageStore:imageStore,taskPlanService:isFixture ? nil : ConversationTaskPlanService(repository:repository,scope:partition.scope,backend:backend),artifactEditService:isFixture ? nil : ConversationArtifactEditService(repository:repository,scope:partition.scope,backend:backend),taskActionService:isFixture ? nil : ConversationTaskActionService(repository:repository,scope:partition.scope,backend:backend),taskControlService:isFixture ? nil : ConversationTaskControlService(repository:repository,scope:partition.scope,backend:backend),memoryService:memory,inboxService:isFixture ? nil : ConversationInboxService(reference:.init(scope:partition.scope,serverScopeID:chatConfiguration.serverScopeID,subjectID:partition.subject),backend:backend),subjectID:partition.subject)
             preview.setNetworkAdmissionAllowed(false);await preview.start()
-            guard !Task.isCancelled else { Task { await preview.deactivate() }; return }
+            guard !Task.isCancelled else { Task { await preview.deactivate(persistDrafts:false) }; return }
             guard attachIfCurrent(preview,openEpoch:openEpoch,token:openToken) else { return }
             self.backend=backend;namespace=partition.namespace
             installUIDecisionSubmitter(preview.service,scope:partition.scope)
@@ -467,7 +467,7 @@ struct NativeWorkspaceRetrySchedule: Sendable {
     private func attachIfCurrent(_ opened: ConversationFirstModel, openEpoch: Int, token: AccountToken?, provisional: Bool = false) -> Bool {
         let current = chat == nil && !logoutInProgress && lifecycleEpoch == openEpoch && !(provisional && requiresSessionRestart)
         let attached = current && (token.map { t in AccountEpoch.shared.commit(t) { chat = opened; return true } ?? false } ?? { chat = opened; return true }())
-        if !attached { Task { await opened.deactivate() } }
+        if !attached { Task { await opened.deactivate(persistDrafts:false) } }   // never attached: its draft is stale
         return attached
     }
     private func workspaceKeyIsCurrent(_ key:WorkspaceKey,user:NativeAuthUser) async -> Bool {
