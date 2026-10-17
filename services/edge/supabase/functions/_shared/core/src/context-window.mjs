@@ -123,6 +123,34 @@ export function mergeModelMessages(stored, storedMeta, turn, messages) {
   return { messages: merged, meta: metaFor(merged, [...baseEntries, ...added.map(m => m?.role === 'user' ? userEntry(turn.id, false) : null)]) };
 }
 
+/**
+ * model_history_conflict (complete() could not merge under the conversation lock): the failed turn's admitted user message is
+ * taken back out of the stored conversation in the same locked write that records turn_failed, so the client's resend (a NEW turn
+ * with the same text) neither shows a duplicate nor counts twice against the storage caps. Visible: the message with the turn's
+ * message id. Model side: the entry only when it is provably this turn's (valid meta → entry {turn_id, visible:true} whose content
+ * equals the admitted entry; no valid meta → the LAST entry when it equals the admitted entry; meta then dropped and recomputed
+ * next turn). Otherwise model_messages is left alone (never guessed). model_messages keeps the v52 shape; no revision bump, so the
+ * resend's expected_revision is still the one GET returns. Returns null when there is nothing to remove.
+ */
+export function withoutFailedTurnUser(c, t) {
+  const mid = t?.input?.message?.id, admitted = t?.model_history?.at?.(-1);
+  if (!c || !Array.isArray(c.messages)) return null;
+  const messages = mid ? c.messages.filter(m => !(m?.id === mid && m.role === 'user')) : c.messages;
+  let model_messages = c.model_messages, model_message_meta = c.model_message_meta, modelRemoved = false;
+  if (Array.isArray(model_messages) && admitted?.role === 'user') {
+    const same = m => m?.role === 'user' && hash(m) === hash(admitted);
+    if (metaValid(model_message_meta, model_messages)) {
+      const idx = model_message_meta.entries.reduce((a, e, i) => (e?.turn_id === t.id && e.visible === true && a.push(i), a), []);
+      if (idx.length === 1 && same(model_messages[idx[0]])) {
+        const keep = (_, i) => i !== idx[0], kept = model_messages.filter(keep);
+        model_messages = kept; model_message_meta = metaFor(kept, model_message_meta.entries.filter(keep)); modelRemoved = true;
+      }
+    } else if (same(model_messages.at(-1))) { model_messages = model_messages.slice(0, -1); model_message_meta = undefined; modelRemoved = true; }
+  }
+  if (messages.length === c.messages.length && !modelRemoved) return null;
+  return { conversation: { ...c, messages, model_messages, model_message_meta }, visible_removed: messages.length !== c.messages.length, model_removed: modelRemoved };
+}
+
 /** Admission: full history + new user entry, with aligned meta. */
 export function admitModelHistory(c, userMessage, turnID) {
   const models = c.model_messages ?? c.messages.map(({ id, ...m }) => m), resolved = resolveMeta(models, c.model_message_meta, c.messages);

@@ -9,7 +9,7 @@ import { chatPromptFor,chatToolsFor,validateProvidedToolCall,assistantToolMessag
 import { devicePromptFor } from './device-call.mjs';
 import { collectRound } from './openrouter-provider.mjs';
 import { planParallelCalls } from './parallel-calls.mjs';
-import { packWindow,assertStorageLimits,admitModelHistory,mergeModelMessages,estimateTokens,WINDOW_NOTE } from './context-window.mjs';
+import { packWindow,assertStorageLimits,admitModelHistory,mergeModelMessages,estimateTokens,WINDOW_NOTE,withoutFailedTurnUser } from './context-window.mjs';
 import { clientAcceptsRouteEvents } from './free-route-chain.mjs';
 import { TextBatcher } from './text-batcher.mjs';
 import { createChatMetrics } from './chat-metrics.mjs';
@@ -109,6 +109,8 @@ export class ChatService {
       // model_message_meta; only the window is sent. Storage caps replace the old 40-message / 80 kB wall (422 history_limit_reached).
       const admitted=admitModelHistory(c,{role:'user',content:(undoNote?undoNote+'\n\n':'')+input.message.text},input.turn_id),fullModelHistory=admitted.full;
       assertStorageLimits(history,fullModelHistory);
+      // NoBug R1-P2-2: turn boundaries unknown → the window can only be "everything" or "current turn only". Ids and reason only.
+      if(admitted.meta_source==='none')console.info(JSON.stringify({event:'catpaw_context_meta_fallback',conversation_id:c.id,turn_id:input.turn_id,reason:'turn_markers_unresolved_current_turn_or_all'}));
       const packed=packWindow({full:fullModelHistory,entries:admitted.entries,history,extraTokens:estimateTokens(input.context)}),modelHistory=packed.window;
       let t={id:input.turn_id,conversation_id:c.id,scope_id:scope.scope_id,subject_id:principal.subject_id,grant_epoch:c.grant_epoch,conversation_revision:c.revision+1,state:'running',
         admission_hash:admissionHash,request_hash:hash({history,model_history:modelHistory,...vision.receipts.length?{image_attachments:vision.receipts}:{},context:input.context,scope,subject:principal.subject_id,model:this.provider.identity,policy:LOCAL_POLICY}),
@@ -384,8 +386,12 @@ export class ChatService {
   /** Conversation-side record of a turn that ended without complete() (no revision bump: history is unchanged). */
   async recordInterruptedTurn(tx,owner,t,code){
     const c=await tx.get(owner,'native-chat-conversations',t.conversation_id);if(!c||c.content_redacted)return;
-    const next=withInterruptedTurn(c,t,code);
-    if(next.turn_outcome_notes!==c.turn_outcome_notes||next.interaction_outcomes!==c.interaction_outcomes)await tx.put(owner,'native-chat-conversations',next);
+    let next=withInterruptedTurn(c,t,code);
+    // model_history_conflict: the client resends the same text as a NEW turn (retry-busy refuses it), so the failed turn's user
+    // message leaves messages/model_messages in this same locked write (context-window.mjs withoutFailedTurnUser). Notes stay.
+    const taken=code==='model_history_conflict'?withoutFailedTurnUser(next,t):null;
+    if(taken){next=taken.conversation;console.info(JSON.stringify({event:'catpaw_failed_turn_message_removed',conversation_id:t.conversation_id,turn_id:t.id,reason:code,visible:taken.visible_removed,model:taken.model_removed}));}
+    if(taken||next.turn_outcome_notes!==c.turn_outcome_notes||next.interaction_outcomes!==c.interaction_outcomes)await tx.put(owner,'native-chat-conversations',next);
   }
   /** chat-context-1522: close a suspended turn the user moved on from (next message). Pending interrupts → cancelled
    * (cancel_reason superseded; wire decision stays 'cancelled'), then turn_failed{superseded_by_new_message}. */

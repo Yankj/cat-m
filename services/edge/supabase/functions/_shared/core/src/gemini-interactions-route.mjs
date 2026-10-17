@@ -55,7 +55,10 @@ export const _signatureCacheForTests = signatureCache;
 // (ai.google.dev/gemini-api/docs/generate-content/thought-signatures; Vertex docs; gemini-cli; Vercel AI SDK #15550/#15553).
 // UNVERIFIED for the Interactions protocol: the docs show generateContent's `thoughtSignature` on the functionCall part. Our streamed
 // signature arrives as a `thought` step with field `signature` (see thought_signature delta below), so the placeholder is sent the
-// same way. Both names sit behind these constants; confirm them with ONE consented dev call before deploying.
+// same way. Both names sit behind these constants; confirm them with ONE consented dev call before enabling.
+// NoBug R1-P1: OFF by default. Only env CATPAW_GEMINI_PLACEHOLDER_SIGNATURE='true' turns it on (threaded through
+// readFreeRouteChain → FreeRouteChainProvider → GeminiInteractionsRoute → payload). With it off the request is exactly v52's.
+// Any 400 on a request that carried a placeholder fails over (a wrong shape must never be worse than v52).
 export const GEMINI_SKIP_SIGNATURE = 'skip_thought_signature_validator';
 export const GEMINI_SIGNATURE_STEP_TYPE = 'thought', GEMINI_SIGNATURE_FIELD = 'signature';
 const placeholderStep = () => ({ type: GEMINI_SIGNATURE_STEP_TYPE, [GEMINI_SIGNATURE_FIELD]: GEMINI_SKIP_SIGNATURE });
@@ -78,7 +81,7 @@ export function toContent(content) {
   return out.length ? out : [{ type: 'text', text: '' }];
 }
 /** OpenAI-style history → Interactions steps (stateless). */
-export function toSteps(messages, { signaturePlaceholder = true } = {}) {
+export function toSteps(messages, { signaturePlaceholder = false } = {}) {
   const names = new Map(), steps = [], list = messages ?? [];
   // Current turn = everything after the latest user message (tool results have role 'tool').
   let currentFrom = 0; for (let i = list.length - 1; i >= 0; i--) if (list[i]?.role === 'user') { currentFrom = i + 1; break; }
@@ -102,21 +105,22 @@ export function toSteps(messages, { signaturePlaceholder = true } = {}) {
 /** Redacted classification of a Gemini 400 (fixed vocabulary only). */
 export function geminiRejectReason(failure) {
   const text = [failure?.error?.message, failure?.error?.provider_message].filter(v => typeof v === 'string').join(' ');
-  if (/thought[_ ]?signature/i.test(text)) return 'missing_thought_signature';
+  // R1-P1 (c): thought_signature / thoughtSignature / thought-signature / "thought signature", or a signature that is missing/required.
+  if (/thought[\s_-]?signature|signature.{0,40}(?:missing|required)|(?:missing|required).{0,40}signature/i.test(text)) return 'missing_thought_signature';
+  if (/api[\s_-]?(?:key|token)|credential/i.test(text)) return 'credential'; // before input_too_large: "invalid API token" must not read as size
   if (/token|context (?:length|window)|too long|exceeds/i.test(text)) return 'input_too_large';
   if (/function|tool|schema|parameter/i.test(text)) return 'invalid_tool_request';
-  if (/api key|credential/i.test(text)) return 'credential';
   return 'invalid_argument';
 }
 export const toTools = tools => (tools ?? []).map(t => ({ type: 'function', name: t.function.name, description: t.function.description ?? '', parameters: clone(t.function.parameters ?? { type: 'object', properties: {} }) }));
 
 export class GeminiInteractionsRoute {
   #secret;
-  constructor(route, secret, { fetchImpl = globalThis.fetch, maxTokens = 2048, timeouts, guard, thinkingVisible = () => false } = {}) {
-    this.route = route; this.#secret = secret; this.fetchImpl = fetchImpl; this.maxTokens = maxTokens; this.timeouts = timeouts; this.guard = guard; this.thinkingVisible = thinkingVisible;
+  constructor(route, secret, { fetchImpl = globalThis.fetch, maxTokens = 2048, timeouts, guard, thinkingVisible = () => false, placeholderSignature = false } = {}) {
+    this.route = route; this.#secret = secret; this.fetchImpl = fetchImpl; this.maxTokens = maxTokens; this.timeouts = timeouts; this.guard = guard; this.thinkingVisible = thinkingVisible; this.placeholderSignature = placeholderSignature === true;
   }
   payload({ messages, system_prompt, tools, model_override }) {
-    const body = { model: model_override ?? this.route.model, input: toSteps(messages), stream: true, store: false, generation_config: { max_output_tokens: this.maxTokens } };
+    const body = { model: model_override ?? this.route.model, input: toSteps(messages, { signaturePlaceholder: this.placeholderSignature }), stream: true, store: false, generation_config: { max_output_tokens: this.maxTokens } };
     if (system_prompt) body.system_instruction = system_prompt;
     if (tools?.length) { body.tools = toTools(tools); body.generation_config.tool_choice = 'auto'; }
     if (this.route.thinking_summary && this.thinkingVisible()) body.generation_config.thinking_summaries = 'auto';
@@ -151,9 +155,12 @@ export class GeminiInteractionsRoute {
         if (exhausted) { const s = this.guard?.backoff({ retryAfterSeconds: failure?.headers?.retry_after_seconds ?? (retryInfo ? Number(retryInfo[1]) : null), daily, model }); throw Object.assign(new ApiError(429, daily ? 'quota_exhausted' : 'rate_limited'), { retryAfterSeconds: s }); }
         // 400: only a thought-signature rejection fails over (another route can still answer). Any other 400 is a real request
         // error and stays provider_request_invalid, with a redacted reason code in the log (no upstream text, no key).
+        // R1-P1 (b): a 400 on a request that carried a placeholder signature also fails over, whatever its text (the placeholder shape
+        // is unverified; a schema 400 caused by it must not become a hard provider_request_invalid).
         const reason400 = response.status === 400 ? geminiRejectReason(failure) : null;
-        if (reason400) try { console.warn(JSON.stringify({ event: 'catpaw_gemini_request_rejected', model: String(model).slice(0, 80), reason: reason400, tool_history: body.input.some(s => s.type === 'function_call'), placeholder_signatures: body.input.filter(s => s[GEMINI_SIGNATURE_FIELD] === GEMINI_SKIP_SIGNATURE).length })); } catch {}
-        const codes = { 400: reason400 === 'missing_thought_signature' ? 'provider_failed' : 'provider_request_invalid', 401: 'unauthorized', 403: 'forbidden', 404: 'free_model_unavailable', 500: 'provider_failed', 502: 'provider_failed', 503: 'provider_overloaded', 504: 'provider_overloaded' };
+        const placeholders = reason400 ? body.input.filter(s => s?.[GEMINI_SIGNATURE_FIELD] === GEMINI_SKIP_SIGNATURE).length : 0;
+        if (reason400) try { console.warn(JSON.stringify({ event: 'catpaw_gemini_request_rejected', model: String(model).slice(0, 80), reason: reason400, tool_history: body.input.some(s => s.type === 'function_call'), placeholder_signatures: placeholders, failover: reason400 === 'missing_thought_signature' || placeholders > 0 })); } catch {}
+        const codes = { 400: reason400 === 'missing_thought_signature' || placeholders > 0 ? 'provider_failed' : 'provider_request_invalid', 401: 'unauthorized', 403: 'forbidden', 404: 'free_model_unavailable', 500: 'provider_failed', 502: 'provider_failed', 503: 'provider_overloaded', 504: 'provider_overloaded' };
         throw new ApiError(503, codes[response.status] ?? 'provider_failed');
       }
       check(response.headers.get('content-type')?.startsWith('text/event-stream') && response.body, 503, 'invalid_provider_stream');
