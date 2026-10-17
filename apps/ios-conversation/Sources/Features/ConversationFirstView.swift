@@ -579,7 +579,7 @@ import CatpawImageComposer
     }
     private var settingsSheet: some View {
         ConversationConnectionView(model: model,embedded:true)
-            .safeAreaInset(edge:.bottom) { if onSignOut != nil { VStack(spacing:12) { if let accountLabel { Text(accountLabel).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary) }; Button(ui("退出此账号"), role:.destructive) { confirmSignOut = true }.touchTarget().accessibilityIdentifier("auth.signOut") }.padding().frame(maxWidth:.infinity).background(CatpawColors.background) } }
+            .safeAreaInset(edge:.bottom) { if onSignOut != nil { VStack(spacing:12) { NativeOAuthAccountSection(); if let accountLabel { Text(accountLabel).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary) }; Button(ui("退出此账号"), role:.destructive) { confirmSignOut = true }.touchTarget().accessibilityIdentifier("auth.signOut") }.padding().frame(maxWidth:.infinity).background(CatpawColors.background) } }
             .confirmationDialog(ui("退出此账号？"), isPresented:$confirmSignOut, titleVisibility:.visible) {
                 Button(ui("确认退出"), role:.destructive) { path=[];settings = false;onSignOut?() }
                 Button(ui("取消"), role:.cancel) { }

@@ -76,6 +76,9 @@ struct NativeWorkspaceRetrySchedule: Sendable {
     private var retryClock:any NativeWorkspaceRetryClock
     private var retrySchedule:NativeWorkspaceRetrySchedule
     var canSignIn: Bool { manager != nil && !actionBusy && state.phase != .signingIn && state.phase != .restoring }
+    /// OAuth (feat/oauth-github-google): read-only handle for NativeOAuthCoordinator; no new lifecycle state here.
+    var oauthSessionManager: NativeAuthSessionManager? { manager }
+    var oauthProjectURL: URL? { configuration?.projectURL }
     var canStartExperience: Bool { canSignIn && state.phase != .storageBlocked }
     init() {
         connectionMonitor = .shared

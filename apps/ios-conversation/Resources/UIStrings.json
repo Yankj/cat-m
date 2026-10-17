@@ -6542,5 +6542,89 @@
   "实际生效：关闭（有记忆库已关闭）": {
     "en": "In effect: off (a memory library is off)",
     "zh-Hans": "实际生效：关闭（有记忆库已关闭）"
+  },
+  "体验账号 · 绑定后可在其他设备登录，对话不丢失": {
+    "en": "Trial account · link one to sign in on other devices and keep your conversations",
+    "zh-Hans": "体验账号 · 绑定后可在其他设备登录，对话不丢失"
+  },
+  "体验身份的对话会留在本机但无法再访问；你创建的系统日历/提醒事项会逐项询问是否撤销。": {
+    "en": "Trial conversations stay on this device but can no longer be opened. Calendar events and reminders Catpaw created will be listed so you can undo or keep each one.",
+    "zh-Hans": "体验身份的对话会留在本机但无法再访问；你创建的系统日历/提醒事项会逐项询问是否撤销。"
+  },
+  "使用 GitHub 继续": {
+    "en": "Continue with GitHub",
+    "zh-Hans": "使用 GitHub 继续"
+  },
+  "使用 Google 继续": {
+    "en": "Continue with Google",
+    "zh-Hans": "使用 Google 继续"
+  },
+  "已有账号？使用 GitHub / Google 登录": {
+    "en": "Have an account? Sign in with GitHub / Google",
+    "zh-Hans": "已有账号？使用 GitHub / Google 登录"
+  },
+  "已绑定 GitHub。": {
+    "en": "GitHub is linked.",
+    "zh-Hans": "已绑定 GitHub。"
+  },
+  "已绑定 Google。": {
+    "en": "Google is linked.",
+    "zh-Hans": "已绑定 Google。"
+  },
+  "已绑定。": {
+    "en": "Linked.",
+    "zh-Hans": "已绑定。"
+  },
+  "已绑定，体验期间的对话都已保留。": {
+    "en": "Linked. All your trial conversations are kept.",
+    "zh-Hans": "已绑定，体验期间的对话都已保留。"
+  },
+  "当前账号的数据会安全停放，再次登录时自动恢复；你创建的系统日历/提醒事项会逐项询问是否撤销。": {
+    "en": "This account's data is parked safely and restored when you sign in again. Calendar events and reminders Catpaw created will be listed so you can undo or keep each one.",
+    "zh-Hans": "当前账号的数据会安全停放，再次登录时自动恢复；你创建的系统日历/提醒事项会逐项询问是否撤销。"
+  },
+  "登录 Catpaw": {
+    "en": "Sign in to Catpaw",
+    "zh-Hans": "登录 Catpaw"
+  },
+  "登录凭据只保存在本机钥匙串，可随时退出。": {
+    "en": "Credentials stay in this device's Keychain. You can sign out anytime.",
+    "zh-Hans": "登录凭据只保存在本机钥匙串，可随时退出。"
+  },
+  "登录方式": {
+    "en": "Sign-in methods",
+    "zh-Hans": "登录方式"
+  },
+  "登录未完成，请稍后重试。": {
+    "en": "Sign-in didn't finish. Try again later.",
+    "zh-Hans": "登录未完成，请稍后重试。"
+  },
+  "绑定已取消。": {
+    "en": "Linking cancelled.",
+    "zh-Hans": "绑定已取消。"
+  },
+  "绑定未完成，请稍后重试。": {
+    "en": "Linking didn't finish. Try again later.",
+    "zh-Hans": "绑定未完成，请稍后重试。"
+  },
+  "该登录方式暂未开放。": {
+    "en": "This sign-in method isn't available yet.",
+    "zh-Hans": "该登录方式暂未开放。"
+  },
+  "该账号已存在，切换过去？": {
+    "en": "This account already exists. Switch to it?",
+    "zh-Hans": "该账号已存在，切换过去？"
+  },
+  "账号绑定暂未开放。": {
+    "en": "Account linking isn't available yet.",
+    "zh-Hans": "账号绑定暂未开放。"
+  },
+  "退出当前账号并切换": {
+    "en": "Sign out and switch",
+    "zh-Hans": "退出当前账号并切换"
+  },
+  "退出未完成，请稍后重试。": {
+    "en": "Sign-out didn't finish. Try again later.",
+    "zh-Hans": "退出未完成，请稍后重试。"
   }
 }

@@ -218,6 +218,7 @@ import UIKit
                 .foregroundStyle(CatpawColors.secondary)
                 .multilineTextAlignment(.center)
                 .accessibilityIdentifier("onboarding.footer")
+            NativeOAuthLandingEntry()
             if auth.requiresSessionRestart {
                 Button(ui("重新开始")) { Task { await auth.signOut() } }
                     .accessibilityIdentifier("auth.closeUnrestoredSession")

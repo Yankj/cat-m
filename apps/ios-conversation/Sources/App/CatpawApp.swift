@@ -114,6 +114,7 @@ import AppIntents
     #endif
     @StateObject private var bootstrap = Bootstrap()
     @StateObject private var auth = NativeAuthApplicationModel()
+    @StateObject private var oauth = NativeOAuthCoordinator()   // feat/oauth-github-google
     @Environment(\.scenePhase) private var scene
     @State private var launchMarkVisible = LaunchMarkGate.shouldPlay(openedFromURLOrNotification: false)
     #if DEBUG
@@ -159,6 +160,9 @@ import AppIntents
             }
             .onOpenURL { url in launchMarkVisible = false; CatpawRouteCenter.shared.pending = CatpawAppRoute(url: url) }
             .catpawInAppBanner()
+            .environment(\.catpawOAuth, oauth)
+            .nativeOAuthSwitchConfirmation(oauth)
+            .task { bindOAuth() }
             #if DEBUG || DEVICE_TRIAL
             .task {
                 // Acceptance: `defaults write … CatpawOpenURL catpawm://tasks` or env CATPAW_ACCEPTANCE_OPEN_URL.
@@ -178,6 +182,14 @@ import AppIntents
             .task { if bootstrap.isP0Fixture { await bootstrap.startFixture() } else if bootstrap.model == nil { await auth.start() } }
                 .onChange(of:scene) { _, phase in if phase == .active { Task { try? await Task.sleep(nanoseconds: 1_500_000_000); await ProactiveEngine.shared.scanCalendar(); await ProactiveEngine.shared.prescheduleNextEvent() } }; if phase == .active,bootstrap.model == nil,!bootstrap.isP0Fixture { Task { await auth.foreground() } } }
         }
+    }
+    /// OAuth shares the exact sign-out sequence of the settings「退出此账号」(park + L2 wipe), so a provider switch
+    /// goes through the same AccountEpoch parking / EventKit prompt path.
+    private func bindOAuth() {
+        oauth.bind(session: auth.oauthSessionManager, projectURL: auth.oauthProjectURL, signOutAndPark: {
+            CatpawLeaveActivity.stopAll(); let l2User = auth.state.user?.id
+            await auth.requestSignOut { AccountLocalData.signOut(userID: l2User); if let l2User { L2SecureStore.wipe(userID: l2User) } }
+        }, afterSignIn: { await auth.completeOnboarding() })
     }
     @ViewBuilder private var primaryView: some View {
         if let model = bootstrap.model {

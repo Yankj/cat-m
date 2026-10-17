@@ -274,4 +274,56 @@ public actor NativeAuthSessionManager {
         publish(.loginRequired, message: NativeAuthError.loginRequired.localizedDescription)
     }
 
+
+    // MARK: - OAuth (PKCE) — additive; reuses validate/persistVerified, never touches restore/refresh paths.
+    private var oauthRemote: (any NativeOAuthRemote)? { remote as? any NativeOAuthRemote }
+    /// Fresh sign-in with a provider (nobody signed in). Mirrors signInAnonymously's verified persistence.
+    public func signInWithOAuth(code: String, verifier: String) async throws {
+        guard let oauth = oauthRemote else { throw NativeAuthError.notConfigured }
+        guard !logoutInProgress, credential == nil, value.phase != .signingIn, value.phase != .restoring else { throw NativeAuthError.busy }
+        try Task.checkCancellation()
+        do { try barrier.setSignedOut(true) } catch { publish(.storageBlocked,message:NativeAuthError.storage.localizedDescription);throw NativeAuthError.storage }
+        generation += 1;let epoch = generation;publish(.signingIn)
+        do {
+            let candidate = try await oauth.exchangeOAuthCode(code, verifier: verifier);try checkActive(epoch)
+            guard !candidate.user.isAnonymous else { throw NativeAuthError.invalidResponse }
+            try validate(candidate, user: candidate.user)
+            recoveryCandidate = candidate
+            let user = try await remote.user(accessToken:candidate.accessToken);try checkActive(epoch)
+            try validate(candidate,user:user);try persistVerified(candidate,epoch:epoch)
+        } catch {
+            guard epoch == generation else { throw NativeAuthError.cancelled };credential = nil
+            if error is CancellationError { try closeLocally();throw NativeAuthError.cancelled }
+            let safe = error as? NativeAuthError ?? .unavailable
+            publish(safe == .storage ? .storageBlocked : .signedOut,message:safe.localizedDescription);throw safe
+        }
+    }
+    /// Provider authorize URL for linking an identity to the *current* subject (trial or permanent).
+    public func oauthLinkURL(provider: NativeOAuthProvider, pkce: NativeOAuthPKCE) async throws -> URL {
+        guard let oauth = oauthRemote else { throw NativeAuthError.notConfigured }
+        guard let current = credential, !logoutInProgress else { throw NativeAuthError.loginRequired }
+        let bearer = try await authorization(subject: current.user.id)
+        return try await oauth.linkIdentityURL(accessToken: String(bearer.dropFirst("Bearer ".count)), provider: provider, pkce: pkce)
+    }
+    /// Completes a link: the exchanged session MUST belong to the same subject, so the account-bound local
+    /// partition and all trial data stay in place. Generation is intentionally not bumped (in-flight
+    /// authorizations for the same subject stay valid); a concurrent refresh makes this fail closed (.busy).
+    public func completeOAuthLink(code: String, verifier: String) async throws {
+        guard let oauth = oauthRemote else { throw NativeAuthError.notConfigured }
+        guard let current = credential, value.phase == .authenticated, !logoutInProgress, refreshFlight == nil else { throw NativeAuthError.busy }
+        let epoch = generation
+        let candidate = try await oauth.exchangeOAuthCode(code, verifier: verifier);try checkActive(epoch)
+        guard candidate.user.id == current.user.id, !candidate.user.isAnonymous else { throw NativeAuthError.invalidResponse }
+        try validate(candidate, user: candidate.user)
+        let user = try await remote.user(accessToken: candidate.accessToken);try checkActive(epoch)
+        try validate(candidate, user: user)
+        guard refreshFlight == nil, credential?.user.id == current.user.id else { throw NativeAuthError.busy }
+        try persistVerified(candidate, epoch: epoch)
+    }
+    public func linkedIdentities() async throws -> [NativeLinkedIdentity] {
+        guard let oauth = oauthRemote, let current = credential else { throw NativeAuthError.loginRequired }
+        let bearer = try await authorization(subject: current.user.id)
+        return try await oauth.identities(accessToken: String(bearer.dropFirst("Bearer ".count)))
+    }
+
 }
