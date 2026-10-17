@@ -1265,13 +1265,21 @@ struct ProactiveSignal: Equatable, Sendable {
     }
 
     static func registerBackgroundRefresh() {
-        BGTaskScheduler.shared.register(forTaskWithIdentifier: bgTaskID, using: nil) { task in
-            Task { @MainActor in
+        // Launch handler on the main queue: this closure is formed in a @MainActor context, so running it on the
+        // scheduler's background queue would break its inferred isolation. Without an expiration handler the system
+        // kills the app when the refresh outlives its background time; expiry now cancels the work and completes.
+        BGTaskScheduler.shared.register(forTaskWithIdentifier: bgTaskID, using: .main) { task in
+            let work = Task { @MainActor in
                 ProactiveEngine.shared.note("BGAppRefresh fired")
                 await ProactiveEngine.shared.scanCalendar(source: .background)
                 await ProactiveEngine.shared.prescheduleNextEvent()
                 scheduleBackgroundRefresh()
+                guard !Task.isCancelled else { return }
                 task.setTaskCompleted(success: true)
+            }
+            task.expirationHandler = { @Sendable in
+                work.cancel()
+                task.setTaskCompleted(success: false)
             }
         }
     }
