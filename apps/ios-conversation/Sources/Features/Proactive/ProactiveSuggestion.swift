@@ -253,7 +253,7 @@ enum ProactiveEngineError: Error, Equatable { case remindersDenied, writeFailed,
     }
     /// Transport seam (tests): returns true when the server acknowledged.
     var send: (String, ProactiveFeedback) async -> Bool = { sid, value in
-        await ProactiveEngine.post("suggestions/\(sid)/feedback", ["value": value.rawValue]) != nil
+        await ProactiveEngine.post("suggestions/\(sid)/feedback", ["value": value.rawValue], token: AccountEpoch.shared.capture()) != nil
     }
     private func sync(_ suggestionID: String) async throws {
         guard let e = ledger.pendingSync.first(where: { $0.suggestionID == suggestionID }) else { return }
