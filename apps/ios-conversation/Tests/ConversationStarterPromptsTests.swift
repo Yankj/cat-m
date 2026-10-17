@@ -141,14 +141,23 @@ final class LaunchScreenBundleTests: XCTestCase {
         XCTAssertEqual(Double(minX + tw / 2), 195, accuracy: 1.5, "tile centred horizontally on the full screen")
         XCTAssertEqual(Double(minY + th / 2), 422, accuracy: 1.5, "tile centred vertically on the full screen")
     }
-    func testStoryboardLogoIsSquareAndCentredOnIPhone13() throws {
+    /// launch-v2 (方块): 70×56 LaunchGlyph + slogan in a 100 pt group whose centre sits at 1.22 × the view's centre.
+    func testStoryboardGlyphAndSloganLayoutOnIPhone13() throws {
         let vc = try XCTUnwrap(UIStoryboard(name: "LaunchScreen", bundle: .main).instantiateInitialViewController())
         vc.view.frame = CGRect(x: 0, y: 0, width: 390, height: 844); vc.view.layoutIfNeeded()
-        let iv = try XCTUnwrap(vc.view.subviews.compactMap { $0 as? UIImageView }.first)
+        func all(_ v: UIView) -> [UIView] { [v] + v.subviews.flatMap(all) }
+        let iv = try XCTUnwrap(all(vc.view).compactMap { $0 as? UIImageView }.first)
         XCTAssertEqual(iv.contentMode, .scaleAspectFit)
-        XCTAssertEqual(iv.frame, CGRect(x: 147, y: 374, width: 96, height: 96), "STORYBOARD.md contract: whole-pt origin (147, 374) on iPhone 13")
+        let glyph = iv.convert(iv.bounds, to: vc.view)
+        XCTAssertEqual(glyph.width, 70, accuracy: 0.01); XCTAssertEqual(glyph.height, 56, accuracy: 0.01)
+        XCTAssertEqual(glyph.midX, 195, accuracy: 0.01, "horizontally centred")
+        XCTAssertEqual(glyph.minY, 422 * 1.22 - 50, accuracy: 0.5, "group centreY = 1.22 × view centreY, glyph at group top")
         let image = try XCTUnwrap(iv.image)
-        XCTAssertEqual(image.size.width, image.size.height, accuracy: 0.01)
+        XCTAssertEqual(image.size.width / image.size.height, 70.0 / 56.0, accuracy: 0.01)
+        let slogan = try XCTUnwrap(all(vc.view).compactMap { $0 as? UILabel }.first)
+        let sf = slogan.convert(slogan.bounds, to: vc.view)
+        XCTAssertEqual(sf.minY, glyph.maxY + 20, accuracy: 0.5); XCTAssertEqual(sf.midX, 195, accuracy: 0.5)
+        XCTAssertFalse((slogan.text ?? "").isEmpty)
     }
 }
 
