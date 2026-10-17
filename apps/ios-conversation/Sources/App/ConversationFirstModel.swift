@@ -1024,6 +1024,10 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
                         // R7: due busy auto-retry (once) and offline outbox drain, both service-owned.
                         if let id=self.conversationID, self.networkAdmissionAllowed, await self.service.foregroundTick(scope:self.scope,conversationID:id) { await self.refresh() }
                         await self.resumeBackgroundQueueIfSafe()
+                        // v1 18:20: consent can land (carried or allowed) while another flight holds `busy` (new-chat
+                        // select(), a task-control delivery); drainQueue() then skips and nothing re-ran it, so the
+                        // message sat at 「待发送 · 等待当前回复」 until relaunch. Idle tick is the safety net.
+                        if self.consentReady,self.permissionTask == nil,!self.followups.pending.isEmpty,!self.followups.paused,self.followups.inflight == nil { sendLog.info("catpaw.send tick drain (queued behind idle conversation)");self.drainQueue() }
                     }
                 }
                 do { try await Task.sleep(nanoseconds:2_000_000_000) } catch { return }
