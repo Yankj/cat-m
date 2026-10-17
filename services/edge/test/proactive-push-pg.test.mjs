@@ -31,6 +31,21 @@ test('pg: upgrade with old data — legacy rows seeded before 20261017020000/030
   } finally { await sql.end(); }
 });
 
+// 三角 deploy question 3: what 20261017010000 does to production v6 rows (no payload.delivery). Runs early (before flushes).
+test('pg: upgrade from v6 — legacy pending proactive rows without delivery are skipped auditable (legacy_no_delivery), never sent; explicit remote kept; non-proactive untouched', { skip: !url }, async () => {
+  const sql = postgres(url, { max: 2, prepare: false, onnotice: () => {} });
+  try {
+    const rows = await sql`select dedupe_key, push_state, push_error from proactive.events where dedupe_key like 'v6-seed-%'`;
+    const m = Object.fromEntries(rows.map(r => [r.dedupe_key, [r.push_state, r.push_error]]));
+    assert.equal(rows.length, 5, 'seed present');
+    assert.deepEqual(m['v6-seed-pending-null'], ['skipped', 'legacy_no_delivery'], 'legacy (ambiguous owner) → skipped with its own, reversible-by-query marker');
+    assert.deepEqual(m['v6-seed-pending-device'], ['skipped', 'device_owned']);
+    assert.deepEqual(m['v6-seed-pending-remote'][0], 'pending', 'an explicit remote hand-off is still pushed');
+    assert.deepEqual(m['v6-seed-sent-null'], ['sent', null], 'terminal rows untouched');
+    assert.deepEqual(m['v6-seed-agent'][0], 'pending', 'task / agent pushes untouched');
+  } finally { await sql.end(); }
+});
+
 test('pg: migrations — sending state + generation/claim columns', { skip: !url }, async () => {
   const sql = postgres(url, { max: 2, prepare: false, onnotice: () => {} });
   try {

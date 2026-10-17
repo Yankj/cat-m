@@ -22,6 +22,7 @@ echo "pg-evidence: head=$(git rev-parse HEAD 2>/dev/null) dirty=$(git status --p
 for f in $(ls supabase/migrations/*proactive*.sql | sort); do
   case "$f" in *20261015120100_proactive_cron.sql) echo "skip (pg_cron/pg_net/vault): $f"; continue;; esac
   # Codex PR90g #5: upgrade with old data — seed what the previous code wrote right before the migration that changes it.
+  case "$f" in *20261017010000_*) echo "seed old data: test/fixtures/pg-upgrade-seed-before-010000.sql"; "${P[@]}" -1 -d "$DB" -f test/fixtures/pg-upgrade-seed-before-010000.sql >/dev/null;; esac
   case "$f" in *20261017020000_*) echo "seed old data: test/fixtures/pg-upgrade-seed-before-020000.sql"; "${P[@]}" -1 -d "$DB" -f test/fixtures/pg-upgrade-seed-before-020000.sql >/dev/null;; esac
   case "$f" in *20261017030000_*) echo "seed old data: test/fixtures/pg-upgrade-seed-before-030000.sql"; "${P[@]}" -1 -d "$DB" -f test/fixtures/pg-upgrade-seed-before-030000.sql >/dev/null;; esac
   echo "apply (one transaction, like supabase db push) $f"; "${P[@]}" -1 -d "$DB" -f "$f" >/dev/null
