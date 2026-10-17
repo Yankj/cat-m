@@ -42,6 +42,7 @@ import UserNotifications
         ProactiveEngine.shared.serverProbe = { _, _ in false }
         UserDefaults.standard.removeObject(forKey: ProactiveQuarantine.key)
         UserDefaults.standard.removeObject(forKey: ProactiveParking.key); UserDefaults.standard.removeObject(forKey: ProactiveServerIDMap.key)
+        UserDefaults.standard.removeObject(forKey: ProactiveParking.externalKey); ProactiveEngine.shared.externalReminderRemover = nil
         AccountEpoch.shared.activate(account: "XCTEST-A")
         ProactiveEngine.shared.claimData(for: "XCTEST-A", force: true)   // clean inbox/ledgers, owned by this account
         ProactiveEngine.shared.resetLedger()
@@ -393,6 +394,41 @@ import UserNotifications
         await ProactiveEngine.shared.drainSync(); await settle()
         XCTAssertTrue(sent.contains("suggestions/srv-ql/action"), "live op synced (\(sent))")
         XCTAssertFalse(sent.contains { $0.contains("srv-qd") }, "dead letter never sent; its group stays blocked")
+    }
+    // MARK: p90i v7 — EventKit items through #89's AccountParkedItems (one decision API; default keep).
+    private func externalFixture() -> (ProactiveSuggestion, String) {
+        let c = card("xctest-ap-"), op = "op-\(UUID().uuidString)-create_reminder"
+        var done = c; done.status = .done; done.taken = [.init(action: .create_reminder, at: ProactiveClock.now(), outcome: .succeeded)]
+        ProactiveSuggestionStore.shared.adopt(done); ProactiveLocalBackend.save(done)
+        ProactiveEngine.shared.recordPendingReminderForTest(c.id, operationID: op)
+        return (c, op)
+    }
+    func testExternalReminderRoutedToAccountParkedItemsKeep() async throws {
+        ProactiveEngine.registerAccountObserver()
+        XCTAssertTrue(AccountParkedItems.registeredKeys.contains(ProactiveParking.sourceKey), "proactive registered as a #89 parked source")
+        let (_, op) = externalFixture()
+        var removed: [String] = []; ProactiveEngine.shared.externalReminderRemover = { removed.append($0); return "deleted" }
+        AccountEpoch.shared.signOut()                                                     // #89 order: epoch bump, then resolve
+        var asked: [AccountParkedItem] = []
+        await AccountParkedItems.resolve(account: "XCTEST-A") { items in asked = items; return [:] }   // no answer → keep
+        let mine = asked.filter { $0.source == ProactiveParking.sourceKey }
+        XCTAssertEqual(mine.map(\.key), [op], "the created reminder is offered to the user (before the observers park it)")
+        XCTAssertNil(mine.first?.automatic)
+        XCTAssertTrue(removed.isEmpty, "keep (default) never touches EventKit")
+        await AccountChangeObservers.notify(previous: "XCTEST-A", current: nil)
+        XCTAssertEqual(ProactiveEngine.shared.externalPendingDecision(for: "XCTEST-A").map(\.operationID), [op], "kept → still listed for that account")
+    }
+    func testExternalReminderCancelDeletesOnlyOnUserDecision() async throws {
+        ProactiveEngine.registerAccountObserver()
+        let (_, op) = externalFixture()
+        var removed: [String] = []; ProactiveEngine.shared.externalReminderRemover = { removed.append($0); return "deleted" }
+        AccountEpoch.shared.signOut()
+        await AccountParkedItems.resolve(account: "XCTEST-A", decider: nil)               // passive / switch: no decider → keep
+        XCTAssertTrue(removed.isEmpty, "no decider → never deleted")
+        await AccountParkedItems.resolve(account: "XCTEST-A") { items in Dictionary(uniqueKeysWithValues: items.filter { $0.source == ProactiveParking.sourceKey }.map { ($0.id, .cancel) }) }
+        XCTAssertEqual(removed, [op], "deleted only after the user chose cancel, only that reminder")
+        await AccountChangeObservers.notify(previous: "XCTEST-A", current: nil)
+        XCTAssertTrue(ProactiveEngine.shared.externalPendingDecision(for: "XCTEST-A").isEmpty, "decided → no longer pending")
     }
     /// p90i: EventKit items the app created are outside the app — a switch never deletes or edits them; they are recorded
     /// as pending a user decision (#89's list) under the old account.

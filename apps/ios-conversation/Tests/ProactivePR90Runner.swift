@@ -700,6 +700,15 @@ func pr90i_quarantineSplit() {
     check(p.restLive == ["l2"] && p.restDead == ["d2"], "unreleased record: both stay quarantined, still apart")
 }
 
+// p90i v7: EventKit items #90 recorded go through #89's AccountParkedItems keep/cancel (user decides; default keep).
+func pr90i_externalViaAccountParkedItems() {
+    let e = ProactiveParking.ExternalItem(suggestionID: "s1", operationID: "op-s1", kind: "eventkit_reminder")
+    let item = ProactiveParking.parkedItem(e, title: "准备：评审会")
+    check(item.source == ProactiveParking.sourceKey && item.key == "op-s1" && item.automatic == nil, "external → user decides (automatic nil) (\(item))")
+    check(ProactiveParking.effect(.keep, item) == .leave, "keep → EventKit item left alone")
+    check(ProactiveParking.effect(.cancel, item) == .remove(operationID: "op-s1"), "cancel → remove only that proven reminder")
+}
+
 @main enum ProactivePR90Runner {
     static func main() async {
         pr90_3_prescheduleSharesDecisionAndQuota()
@@ -720,7 +729,7 @@ func pr90i_quarantineSplit() {
         pr90h_cloudIdentity()
         pr90f_quarantine(); pr90f_quarantineQueue(); await pr90f_purgeDeadLetters(); await pr90f_snoozeAwaitsAdd(); pr90f_clock(); pr90f_wire(); pr90f_golden()
         pr90g_quarantinePerRecord(); pr90g_restoreVisible(); pr90g_roundTrip()
-        pr90i_rules(); pr90i_feedbackGateOnlyLocal(); await pr90i_deadLettersStayDeadOnRestore(); pr90i_quarantineSplit()
+        pr90i_rules(); pr90i_feedbackGateOnlyLocal(); await pr90i_deadLettersStayDeadOnRestore(); pr90i_quarantineSplit(); pr90i_externalViaAccountParkedItems()
         print(failures == 0 ? "PR90 proactive: all passed" : "PR90 proactive: \(failures) failed"); exit(failures == 0 ? 0 : 1)
     }
 }
