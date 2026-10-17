@@ -3,6 +3,7 @@
 // in both light and dark (the splash follows the system scheme like chat). Run: Scripts/test-first-run-portable.sh
 import Foundation
 
+nonisolated(unsafe) var missing = Set<String>()
 struct Tokens {
     var brand: [String: UInt32] = [:]
     var adaptive: [String: (UInt32, UInt32)] = [:]
@@ -15,8 +16,8 @@ struct Tokens {
     }
     func resolve(_ t: FirstRunAppearance.Token, _ s: FirstRunAppearance.Scheme) -> UInt32 {
         switch t {
-        case .color(let n): let p = adaptive[n]!; return s == .light ? p.0 : p.1
-        case .brand(let n): return brand[n]!
+        case .color(let n): guard let p = adaptive[n] else { missing.insert(n); return 0 }; return s == .light ? p.0 : p.1
+        case .brand(let n): guard let v = brand[n] else { missing.insert(n); return 0 }; return v
         case .hex(let h): return h
         }
     }
@@ -49,6 +50,28 @@ for s in FirstRunAppearance.Scheme.allCases {
 for s in FirstRunAppearance.Scheme.allCases {
     check(tokens.resolve(FirstRunAppearance.pageBackground, s) == tokens.resolve(.color("background"), s), "splash page background differs from chat in \(s)")
 }
+// Grok Bot 12:33: one dark canvas #0E0C0A for launch screen, splash and chat; light #FFFCF8.
+check(tokens.resolve(.color("background"), .dark) == 0x0E0C0A && tokens.resolve(.color("background"), .light) == 0xFFFCF8, "chat canvas light #FFFCF8 / dark #0E0C0A")
+check(tokens.resolve(.color("calmSecondary"), .light) == 0x5F5A55 && tokens.resolve(.color("calmSecondary"), .dark) == 0xB3ADA6, "splash secondary text #5F5A55 / #B3ADA6")
+check(tokens.resolve(.color("calmCTATop"), .light) == 0xC9501A && tokens.resolve(.color("calmCTABottom"), .light) == 0xB8440A, "CTA gradient #C9501A → #B8440A")
+// LaunchCanvas.colorset (the static launch screen, no logo) == the chat's first-frame colour in each mode.
+do {
+    let url = URL(fileURLWithPath: root + "/Resources/Assets.xcassets/LaunchCanvas.colorset/Contents.json")
+    let j = (try? JSONSerialization.jsonObject(with: Data(contentsOf: url))) as? [String: Any]
+    var got: [String: UInt32] = [:]
+    for c in (j?["colors"] as? [[String: Any]]) ?? [] {
+        let comp = ((c["color"] as? [String: Any])?["components"] as? [String: String]) ?? [:]
+        func h(_ k: String) -> UInt32 { let v = comp[k] ?? "0"; return v.hasPrefix("0x") ? UInt32(v.dropFirst(2), radix: 16)! : UInt32((Double(v) ?? 0) * 255 + 0.5) }
+        let dark = ((c["appearances"] as? [[String: String]]) ?? []).contains { $0["value"] == "dark" }
+        got[dark ? "dark" : "light"] = h("red") << 16 | h("green") << 8 | h("blue")
+    }
+    check(got["light"] == tokens.resolve(.color("background"), .light) && got["dark"] == tokens.resolve(.color("background"), .dark), "LaunchCanvas \(got) == chat background")
+}
+let storyboard = (try? String(contentsOfFile: root + "/Resources/LaunchScreen.storyboard", encoding: .utf8)) ?? ""
+check(!storyboard.contains("<image"), "launch screen has no logo image")
+// Spec hygiene: no translucent text (the brand label used ink at 0.72).
+for t in FirstRunAppearance.texts { check(t.fgAlpha == 1, "\(t.id) uses translucent text") }
+check(missing.isEmpty, "unknown tokens \(missing.sorted())")
 // Transition choice.
 check(FirstRunAppearance.transition(reduceMotion: true) == .crossfade(duration: 0.2), "reduce motion → short plain crossfade")
 if case .spring(let response, let damping) = FirstRunAppearance.transition(reduceMotion: false) { check(response <= 0.5 && damping >= 0.8, "spring is quick and not bouncy") } else { check(false, "motion → spring") }

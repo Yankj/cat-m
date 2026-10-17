@@ -19,7 +19,7 @@ enum FirstRunAppearance {
         /// WCAG large text (≥18pt, or ≥14pt bold) → 3:1, else 4.5:1.
         var large = false
     }
-    static let pageBackground: Token = .color("background")
+    static let pageBackground: Token = .color("calmPage")
     /// Warm wash behind the capability ring; it is confined to the ring, so copy above/below sees at most its tail.
     static let washPeak = 0.22, washTailAtCopy = 0.10
     /// CTA sheen peak (white) — kept low so the white label never drops under 3:1 while it sweeps.
@@ -27,15 +27,15 @@ enum FirstRunAppearance {
     private static let wash: (Token, Double) = (.color("orbLight"), washTailAtCopy)
     static let texts: [Text] = [
         .init(id: "brand Catpaw-m", fg: .color("ink"), bg: pageBackground, overlay: wash),
-        .init(id: "brand subtitle 你的个人 AI 助手", fg: .color("secondary"), bg: pageBackground, overlay: wash),
+        .init(id: "brand subtitle 你的个人 AI 助手", fg: .color("calmSecondary"), bg: pageBackground, overlay: wash),
         .init(id: "headline 解放双手…", fg: .color("ink"), bg: pageBackground, overlay: wash, large: true),
-        .init(id: "subcopy 从一句话开始…", fg: .color("secondary"), bg: pageBackground, overlay: wash),
-        .init(id: "capability chip label ×8", fg: .color("ink"), bg: .color("card")),
-        .init(id: "CTA 开始使用 (sheen peak)", fg: .color("calmGlyph"), bg: .brand("deep"), overlay: (.color("calmGlyph"), ctaSheenPeak), large: true),
-        .init(id: "CTA 开始使用 (rest)", fg: .color("calmGlyph"), bg: .brand("deep")),
-        .init(id: "footer 无需注册，即刻开始", fg: .color("secondary"), bg: pageBackground, overlay: wash),
-        .init(id: "restoring 正在复核登录…", fg: .color("secondary"), bg: pageBackground, overlay: wash),
-        .init(id: "error line", fg: .color("attention"), bg: pageBackground, overlay: wash),
+        .init(id: "subcopy 从一句话开始…", fg: .color("calmSecondary"), bg: pageBackground, overlay: wash),
+        .init(id: "capability chip label ×8", fg: .color("ink"), bg: .color("calmSurface")),
+        .init(id: "CTA 开始使用 (gradient top)", fg: .color("calmGlyph"), bg: .color("calmCTATop")),
+        .init(id: "CTA 开始使用 (gradient bottom)", fg: .color("calmGlyph"), bg: .color("calmCTABottom")),
+        .init(id: "footer 无需注册，即刻开始", fg: .color("calmSecondary"), bg: pageBackground, overlay: wash),
+        .init(id: "restoring 正在复核登录…", fg: .color("calmSecondary"), bg: pageBackground, overlay: wash),
+        .init(id: "error toast (capsule)", fg: .color("ink"), bg: .color("calmSurface")),
         .init(id: "text buttons 重新开始/取消登录", fg: .color("ink"), bg: pageBackground, overlay: wash),
     ]
 
