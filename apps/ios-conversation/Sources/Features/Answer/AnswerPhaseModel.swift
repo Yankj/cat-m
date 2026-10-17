@@ -83,80 +83,17 @@ extension AnswerPhaseProviding {
     private var statusReducer = StatusLineReducer()
     private var statusThrottle: StatusLineThrottle
     private var statusTick: Task<Void, Never>?
-    /// Live text (fix/context-window-v11x `text_preview`): `persistedText` is the authoritative text_delta sum (or the
-    /// journal snapshot); `livePreview` is the latest live-only tail. `text` = merged display, never journaled.
-    private var persistedText = ""
-    private var livePreview: ConversationTextPreview?
-    private var previewMessageID: UUID?
-    private let liveOperationID: UUID?
-    /// Server sends a preview at most every ~100 ms; coalesce bursts so the bubble re-renders at most this often.
-    private let previewInterval: TimeInterval
-    private var lastPreviewPublish = Date.distantPast
-    private var previewFlush: Task<Void, Never>?
 
     init(service: ConversationSessionService? = nil, operationID: UUID? = nil,
          message: ConversationTranscriptMessage? = nil, turn: ConversationTurnRecord? = nil,
-         startedAt: Date = .now, stepTitle: @escaping (String) -> String = { ToolStepCopy.title($0) }, clock: @escaping () -> Date = { .now },
-         previewInterval: TimeInterval = 0.08) {
+         startedAt: Date = .now, stepTitle: @escaping (String) -> String = { ToolStepCopy.title($0) }, clock: @escaping () -> Date = { .now }) {
         thinkingStartedAt = startedAt; self.stepTitle = stepTitle; self.clock = clock
-        self.previewInterval = previewInterval; liveOperationID = operationID ?? turn?.id
         statusThrottle = StatusLineThrottle(turnStart: clock())
         if let message, let turn { reconcile(message: message, turn: turn) }
-        restoreLivePreview(message: message, turn: turn)
         if let service, let operationID { subscribe(to: service, operationID: operationID) }
     }
 
-    deinit { streamTask?.cancel(); statusTick?.cancel(); previewFlush?.cancel() }
-
-    // MARK: live text preview (merge with persisted text; dropped on every terminal state)
-    /// A row rebuilt mid-turn (PendingThinkingRow → LivePhasedAnswerView at the first DB batch) keeps the live tail.
-    private func restoreLivePreview(message: ConversationTranscriptMessage?, turn: ConversationTurnRecord?) {
-        guard let liveOperationID, let cached = LiveTextPreviewCache.preview(for: liveOperationID) else { return }
-        if let turn, ![.dispatched, .running].contains(turn.state) { LiveTextPreviewCache.drop(liveOperationID); return }
-        if let message, message.id != cached.messageID { return }
-        previewMessageID = cached.messageID; livePreview = cached; publishText()
-    }
-    private func applyPreview(_ preview: ConversationTextPreview) {
-        switch phase { case .settled, .interrupted: return; case .thinking, .streaming: break }
-        if let known = previewMessageID, known != preview.messageID { return }
-        previewMessageID = preview.messageID; livePreview = preview
-        if let liveOperationID { LiveTextPreviewCache.store(preview, for: liveOperationID) }
-        let wait = previewInterval - clock().timeIntervalSince(lastPreviewPublish)
-        if wait <= 0 { publishText(); return }
-        guard previewFlush == nil else { return }   // latest preview wins at the trailing edge
-        previewFlush = Task { [weak self] in
-            try? await Task.sleep(nanoseconds: UInt64(max(0.01, wait) * 1_000_000_000))
-            guard !Task.isCancelled else { return }
-            self?.publishText()
-        }
-    }
-    /// Recompute `text` from persisted + preview. Persisted text_delta always wins (the overlap is skipped).
-    private func publishText() {
-        previewFlush?.cancel(); previewFlush = nil
-        let display = livePreview?.display(persisted: persistedText) ?? persistedText
-        if livePreview != nil { lastPreviewPublish = clock() }
-        guard display != text else { return }
-        if livePreview != nil, display.utf16.count > persistedText.utf16.count {
-            // First live text: same phase switch as the first text_delta; the answer itself is now the progress.
-            enterStreaming()
-            if let livePreview, statusReducer.target != nil { statusReducer.apply(.textPreview(livePreview)); pushStatus() }
-        }
-        text = display
-    }
-    private func setPersisted(_ value: String) { persistedText = value; publishText() }
-    /// turn_completed (all text persisted) / turn_failed / cancel / stop: the unsaved tail is dropped.
-    private func dropPreview() {
-        previewFlush?.cancel(); previewFlush = nil
-        if let liveOperationID { LiveTextPreviewCache.drop(liveOperationID) }
-        livePreview = nil
-        if text != persistedText { text = persistedText }
-    }
-    private func enterStreaming() {
-        guard phase == .thinking else { return }
-        thoughtSeconds = providerThinkingMs.map { max(0, Int(ceil(Double($0) / 1_000))) }
-            ?? max(1, Int(clock().timeIntervalSince(thinkingStartedAt).rounded()))
-        phase = .streaming
-    }
+    deinit { streamTask?.cancel(); statusTick?.cancel() }
 
     // MARK: status line plumbing
     private func pushStatus() {
@@ -204,7 +141,6 @@ extension AnswerPhaseProviding {
     func markStopped() {
         guard !stoppedLocally else { return }
         stoppedLocally = true
-        dropPreview()
         // Keep the stream: the server cancel arrives as failed(cancelled) or, if it raced, completed.
         phase = .interrupted(reason: "已停止接收此轮回复", reconciliationRequired: false)
         statusReducer.apply(.failed(message: "cancelled", reconciliationRequired: false)); pushStatus()
@@ -212,11 +148,9 @@ extension AnswerPhaseProviding {
 
     func reconcile(message: ConversationTranscriptMessage, turn: ConversationTurnRecord) {
         if stoppedLocally { return }
-        if previewMessageID == nil { previewMessageID = message.id } else if previewMessageID != message.id { previewMessageID = message.id; dropPreview() }
-        if ![.dispatched, .running].contains(turn.state) { dropPreview() }
-        if needsResync { needsResync = false; setPersisted(message.content); snapshotInitialized = true }
+        if needsResync { needsResync = false; text = message.content; snapshotInitialized = true }
         if turn.state == .failed, turn.error == "cancelled" { phase = .interrupted(reason: "已停止", reconciliationRequired: false); return }
-        if !snapshotInitialized { setPersisted(message.content); snapshotInitialized = true }
+        if !snapshotInitialized { text = message.content; snapshotInitialized = true }
         if lastSequence == 0 {
             if turn.state == .dispatched, message.content.isEmpty, statusReducer.target == nil { statusReducer.sending(); pushStatus() }
             if turn.state == .failed, turn.error == "rate_limited", message.content.isEmpty { statusReducer.busyRetry(); pushStatus() }
@@ -232,7 +166,7 @@ extension AnswerPhaseProviding {
         case .unknown:
             phase = .interrupted(reason: turn.error ?? "原请求状态待确认", reconciliationRequired: true)
         case .dispatched, .running:
-            phase = message.content.isEmpty && text.isEmpty ? .thinking : .streaming   // text: live preview may lead the snapshot
+            phase = message.content.isEmpty ? .thinking : .streaming
         case .notSent, .cancelledBeforeSend:
             break
         }
@@ -259,12 +193,9 @@ extension AnswerPhaseProviding {
 
     func apply(_ event: ConversationTurnEvent) {
         if stoppedLocally { return }
-        // Live-only: sequence == last persisted event, so it is handled before the sequence dedupe and never moves it.
-        if case let .textPreview(preview) = event.payload { applyPreview(preview); return }
         var fresh = false
         defer { if fresh { statusReducer.apply(event.payload); pushStatus() } }
         if case let .failed(message, _) = event.payload, message == "cancelled" {
-            dropPreview()
             fresh = true; phase = .interrupted(reason: "已停止", reconciliationRequired: false); return
         }
         guard event.sequence > lastSequence else { return }
@@ -278,7 +209,7 @@ extension AnswerPhaseProviding {
             thoughtSeconds = nil
             thinkingSummary = nil
             steps = []
-            dropPreview(); previewMessageID = nil; persistedText = ""; text = ""
+            text = ""
             phase = .thinking
         case let .toolStarted(callID, name, _):
             guard !steps.contains(where: { $0.id == callID }) else { return }
@@ -286,24 +217,24 @@ extension AnswerPhaseProviding {
             steps.append(.init(id: callID, title: occurrence == 0 ? stepTitle(name) : ToolStepCopy.title(name, occurrence: occurrence), state: .running, startedAt: clock(), kind: name))
         case let .toolResult(result):
             if let i = steps.firstIndex(where: { $0.id == result.callID }) { steps[i].state = .done; steps[i].endedAt = clock() }
-        case let .textDelta(id, delta):
-            // One assistant message per turn: the persisted batch's message_id is authoritative for preview pinning.
-            if previewMessageID != id { if let stale = livePreview, stale.messageID != id { livePreview = nil; if let liveOperationID { LiveTextPreviewCache.drop(liveOperationID) } }; previewMessageID = id }
+        case let .textDelta(_, delta):
             // Phase switch and first batch land in the same transaction (mapping §2 B) so there's no blank jump.
-            enterStreaming()
-            persistedText += delta; publishText()   // persisted batch wins; a live tail beyond it stays visible
+            if phase == .thinking {
+                thoughtSeconds = providerThinkingMs.map { max(0, Int(ceil(Double($0) / 1_000))) }
+                    ?? max(1, Int(clock().timeIntervalSince(thinkingStartedAt).rounded()))
+                phase = .streaming
+            }
+            text += delta
         case .completed:
-            dropPreview()
             if thoughtSeconds == nil { thoughtSeconds = max(0, Int(clock().timeIntervalSince(thinkingStartedAt).rounded())) }
             generationSeconds = max(0, clock().timeIntervalSince(thinkingStartedAt))
             phase = .settled
         case let .failed(message, reconciliation):
-            dropPreview()   // previewed-only text was never saved
             phase = .interrupted(reason: message, reconciliationRequired: reconciliation)
         case let .reasoningSummary(_, text, thinkingMs):
             thinkingSummary = text
             applyThinkingDuration(thinkingMs)
-        case .approvalRequested, .suspended, .approvalResolved, .uiBlock, .uiBlockUpdate, .uiBlockResolve, .deviceCall, .sideChannel, .textPreview:
+        case .approvalRequested, .suspended, .approvalResolved, .uiBlock, .uiBlockUpdate, .uiBlockResolve, .deviceCall, .sideChannel:
             break // catpaw.approval.v1 / catpaw.ui.v1: presentation is owned by the UI lane (A2, generative UI renderer).
         }
     }
@@ -546,28 +477,10 @@ struct StatusLineReducer {
         case .toolResult(let result):
             running.removeAll { $0.call == result.callID }
             if running.isEmpty && !awaiting { target = .composing(occurrence: composingCount); composingCount += 1 }
-        case .textDelta, .textPreview: target = nil         // the answer itself is now the progress
+        case .textDelta: target = nil                       // the answer itself is now the progress
         case .completed: target = nil
         case .failed(let message, _): target = message == "cancelled" ? .stopped : .failed(reason: StatusLinePhase.failureReason(message))
         default: break
         }
-    }
-}
-
-/// Latest live `text_preview` per turn, shared by the projections of one turn (the pending row and the answer row that
-/// replaces it at the first persisted batch) so the bubble never shrinks back to the persisted text. Memory only.
-@MainActor enum LiveTextPreviewCache {
-    private static var latest: [UUID: ConversationTextPreview] = [:]
-    private static var order: [UUID] = []
-    static func preview(for operationID: UUID) -> ConversationTextPreview? { latest[operationID] }
-    static func store(_ preview: ConversationTextPreview, for operationID: UUID) {
-        if latest.updateValue(preview, forKey: operationID) == nil {
-            order.append(operationID)
-            if order.count > 8 { latest.removeValue(forKey: order.removeFirst()) }
-        }
-    }
-    static func drop(_ operationID: UUID) {
-        guard latest.removeValue(forKey: operationID) != nil else { return }
-        order.removeAll { $0 == operationID }
     }
 }
