@@ -170,6 +170,21 @@ actor P0ExperienceBackend:ConversationBackend {
     private static let calendarFollowUps="\n\n```catpaw-card:followups\n- 改到后天下午可以吗？\n- 帮我设个提前 15 分钟的提醒\n```"
     private func produceDeviceCalendar(_ r:ConversationTurnRequest,message:UUID) async {
         let text=r.history.last(where:{$0.role == .user})?.content ?? ""
+        if text.contains("快") {   // whole reply well under the 0.6 s appear delay: no status row may flash
+            try? await Task.sleep(nanoseconds:200_000_000)
+            let body="收到。"
+            emit(.textDelta(messageID:message,text:body),request:r);emit(.completed(messageID:message,finalTextHash:textHash(body)),request:r);streams[r.operationID]?.finish();return
+        }
+        if text.contains("待办") {   // auto tool phase long enough to see the running copy, then the answer
+            let call="fixture-tasks-"+r.operationID.uuidString.lowercased()
+            try? await Task.sleep(nanoseconds:300_000_000)
+            emit(.toolStarted(callID:call,name:"list_tasks",arguments:"{}"),request:r)
+            try? await Task.sleep(nanoseconds:2_000_000_000)
+            emit(.toolResult(.init(callID:call,name:"list_tasks",content:#"{"tasks":[]}"#)),request:r)
+            try? await Task.sleep(nanoseconds:800_000_000)
+            let body="你现在没有待办。"
+            emit(.textDelta(messageID:message,text:body),request:r);emit(.completed(messageID:message,finalTextHash:textHash(body)),request:r);streams[r.operationID]?.finish();return
+        }
         try? await Task.sleep(nanoseconds:900_000_000)
         if text.contains("日程") || text.contains("日历") {
             let call="fixture-cal-"+r.operationID.uuidString.lowercased(),interrupt=stableID(call+"-interrupt").uuidString.lowercased()

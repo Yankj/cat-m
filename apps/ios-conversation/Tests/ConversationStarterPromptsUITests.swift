@@ -130,4 +130,22 @@ final class ChatContextDeviceCardUITests: XCTestCase {
         XCTAssertTrue(label(app, "已拒绝").waitForExistence(timeout: 10), "final state survives a cold relaunch"); shot("cal-05-relaunched")
         XCTAssertLessThanOrEqual(any(app, "chat.followups").count, 1)
     }
+    /// status-line: a reply that finishes under the 0.6 s appear delay never shows a row; a tool phase shows the table copy.
+    func testFastReplyShowsNoRowAndToolPhaseShowsCopy() throws {
+        let app = launch(UUID().uuidString)
+        send(app, "快速回一句")
+        var seen: [String] = []
+        let end = Date().addingTimeInterval(1.5)
+        while Date() < end {
+            for id in ["chat.answer.working", "chat.answer.awaitingUser"] where app.descendants(matching: .any)[id].exists { seen.append(id) }
+            Thread.sleep(forTimeInterval: 0.05)
+        }
+        XCTAssertTrue(label(app, "收到。").waitForExistence(timeout: 5))
+        XCTAssertTrue(seen.isEmpty, "no status row for a <1 s reply, saw \(seen)"); shot("sl-01-fast-reply")
+        send(app, "看看我的待办")
+        XCTAssertTrue(label(app, "正在看你的待办").waitForExistence(timeout: 5), "tool phase uses ToolStepCopy"); shot("sl-02-tool-phase")
+        XCTAssertTrue(label(app, "你现在没有待办").waitForExistence(timeout: 10))
+        Thread.sleep(forTimeInterval: 0.8)
+        XCTAssertFalse(app.descendants(matching: .any)["chat.answer.working"].exists, "row hides once text arrives"); shot("sl-03-answered")
+    }
 }
