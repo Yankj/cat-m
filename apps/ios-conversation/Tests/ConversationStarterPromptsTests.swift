@@ -175,3 +175,16 @@ final class ModelPickerOptionsTests: XCTestCase {
         XCTAssertEqual(ModelPickerOptions.headerLabel(route: "gemini", model: "google/gemini-3.5-flash", routes: routes), "gemini-3.5-flash")
     }
 }
+
+/// Sidebar 17:24 (B-a): the first-run flying cat is drawn only during the handoff, so a hand-off that fires after the host's
+/// settle (phase already .done) can never leave it stranded at the root, outside the sliding chat page.
+@MainActor final class FirstRunTransitionFlightTests: XCTestCase {
+    func testFlightIsDrawnOnlyWhileLeaving() {
+        let t = FirstRunTransition()
+        XCTAssertFalse(t.drawsFlight, "idle")
+        t.begin(reduceMotion: false); XCTAssertTrue(t.drawsFlight, "leaving")
+        t.finish(); XCTAssertFalse(t.drawsFlight, "done: nothing may stay drawn, even if handOff(.headerAvatar) never ran")
+        t.handOff(.headerAvatar); XCTAssertFalse(t.drawsFlight, "a late hand-off after finish() changes nothing")
+        t.begin(reduceMotion: false); t.cancel(); XCTAssertFalse(t.drawsFlight, "cancelled")
+    }
+}

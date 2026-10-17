@@ -46,6 +46,10 @@ enum FirstRunAnchorID: Hashable { case hero, cta, headerAvatar, composer }
     func handOff(_ id: FirstRunAnchorID) { if phase == .leaving { handedOff.insert(id) } }
     func handOffAll() { handedOff.formUnion([.headerAvatar, .composer]) }
     func finish() { phase = .done; handedOff = [.headerAvatar, .composer] }
+    /// Sidebar 17:24 (B-a): the flying cat / CTA morph are drawn only during the handoff. The cat's hand-off can fire after
+    /// the host's settle has already called finish() (it waits up to 600 ms for the header rect), and its `phase == .leaving`
+    /// guard then never removed it: the cat stayed drawn at the root over the header's old rect, outside the sliding chat.
+    var drawsFlight: Bool { phase == .leaving }
     /// Entry failed: the landing comes back.
     func cancel() { phase = .idle; tapAt = nil; handedOff = [] }
 
@@ -167,11 +171,11 @@ struct FirstRunTransitionOverlay: View {
             let ctaTo = t.composerTarget(screen: screen, safeBottom: g.safeAreaInsets.bottom)
             let local = { (r: CGRect) in r.offsetBy(dx: -screen.minX, dy: -screen.minY) }
             ZStack {
-                if started, !morphGone, ctaFrom != .zero {
+                if t.drawsFlight, started, !morphGone, ctaFrom != .zero {
                     ComposerMorph(p: morph, from: local(ctaFrom), to: local(ctaTo), fill: fill, label: label, title: ctaTitle,
                                   placeholder: placeholder, placeholderOn: placeholderOn, icons: icons)
                 }
-                if started, !catGone, from != .zero {
+                if t.drawsFlight, started, !catGone, from != .zero {
                     CatFlight(p: flight, from: local(from), to: local(to))
                 }
             }

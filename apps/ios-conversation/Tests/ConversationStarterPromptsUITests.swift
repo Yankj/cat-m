@@ -149,3 +149,38 @@ final class ChatContextDeviceCardUITests: XCTestCase {
         XCTAssertFalse(app.descendants(matching: .any)["chat.answer.working"].exists, "row hides once text arrives"); shot("sl-03-answered")
     }
 }
+
+/// Sidebar 17:24 (B-b): with the full-bleed host, the open sidebar must still keep its account row below the status bar
+/// and its settings / search bar above the home indicator.
+final class SidebarSafeAreaUITests: XCTestCase {
+    override func setUp() { continueAfterFailure = false }
+    func testOpenSidebarRespectsTopAndBottomSafeArea() throws {
+        let app = XCUIApplication(bundleIdentifier: "com.example.CatpawM.ConversationFirst.Auth")
+        app.launchEnvironment = ["CF_UI_TEST_STORE": UUID().uuidString, "CF_UI_TEST_SCENARIO": "p0-ui-device-calendar"]
+        app.launchArguments = ["-AppleLanguages", "(zh-Hans)", "-AppleLocale", "zh_CN"]
+        app.launch()
+        let open = app.buttons["sidebar.open"].firstMatch
+        XCTAssertTrue(open.waitForExistence(timeout: 20)); open.tap()
+        let settings = app.descendants(matching: .any)["sidebar.settings"].firstMatch
+        XCTAssertTrue(settings.waitForExistence(timeout: 5)); Thread.sleep(forTimeInterval: 1.0)
+        let shot = XCTAttachment(screenshot: XCUIScreen.main.screenshot()); shot.name = "sidebar-open"; shot.lifetime = .keepAlways; add(shot)
+        let window = app.windows.firstMatch.frame
+        // Every current iPhone has a ≥ 20 pt status bar and, on Face ID models, a 34 pt home-indicator strip.
+        let account = app.descendants(matching: .any)["sidebar.account"].firstMatch
+        XCTAssertTrue(account.exists)
+        let top = account.frame.minY
+        XCTAssertGreaterThanOrEqual(top, 44, "top-most sidebar item sits below the status bar")
+        XCTAssertLessThanOrEqual(settings.frame.maxY, window.maxY - 20, "settings / search bar above the home indicator")
+        let search = app.descendants(matching: .any)["sidebar.search"].firstMatch
+        if search.exists { XCTAssertLessThanOrEqual(search.frame.maxY, window.maxY - 20) }
+        // Keyboard: the search bar rides just above it (one inset, not none and not doubled).
+        search.tap()
+        let keyboard = app.keyboards.firstMatch
+        if keyboard.waitForExistence(timeout: 5) {
+            Thread.sleep(forTimeInterval: 0.8)
+            let kb = XCTAttachment(screenshot: XCUIScreen.main.screenshot()); kb.name = "sidebar-search-keyboard"; kb.lifetime = .keepAlways; add(kb)
+            XCTAssertLessThanOrEqual(search.frame.maxY, keyboard.frame.minY, "search bar above the keyboard")
+            XCTAssertGreaterThan(search.frame.minY, keyboard.frame.minY - 260, "search bar not lifted by a doubled keyboard inset (≈ keyboard height)")
+        }
+    }
+}
