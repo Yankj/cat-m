@@ -105,3 +105,15 @@ test('Gemini stream error event 429 before output → rate_limited failover', as
   const p = chain({ CATPAW_GEMINI_ROUTE: 'primary' }, { geminiGuard: new GeminiRateGuard({ rpm: 10 }), fetchImpl: async url => url.includes('googleapis') ? sse([created, { event_type: 'error', error: { code: 429, status: 'RESOURCE_EXHAUSTED' } }]) : orOk('兜底') });
   assert.equal((await collect(p))[0].text, '兜底');
 });
+
+test('chat-context-1522: a 5th+ parallel function call is dropped instead of failing the turn (prod 6497bf72 invalid_tool_index)', async () => {
+  const TASK = [{ type: 'function', function: { name: 'create_task', description: '待办', parameters: { type: 'object', properties: { title: { type: 'string' } }, required: ['title'] } } }];
+  const frames = [created];
+  for (let i = 0; i < 6; i++) frames.push({ event_type: 'step.start', index: i, step: { type: 'function_call', id: 'fc' + i, name: 'create_task' } }, { event_type: 'step.delta', index: i, delta: { type: 'arguments_delta', arguments: `{"title":"t${i}"}` } }, { event_type: 'step.stop', index: i });
+  frames.push(completed('requires_action'), '[DONE]');
+  const p = chain({ CATPAW_GEMINI_ROUTE: 'primary' }, { fetchImpl: async () => sse(frames) });
+  const out = await collect(p, { tools: TASK });
+  const calls = out.filter(e => e.type === 'tool_call');
+  assert.deepEqual(calls.map(c => c.id), ['fc0', 'fc1', 'fc2', 'fc3']); assert.deepEqual(calls[3].arguments, { title: 't3' });
+  assert.equal(out.at(-1).type, 'done'); assert.equal(out.at(-1).finish_reason, 'tool_calls');
+});
