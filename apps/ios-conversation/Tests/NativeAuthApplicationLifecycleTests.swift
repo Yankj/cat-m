@@ -31,6 +31,37 @@ final class NativeAuthApplicationLifecycleTests:XCTestCase {
         await app.signOut()
     }
 
+    /// p89i product decision through the REAL logout entry: in-flight device operations → prompt (still signed in);
+    /// 暂不退出 keeps everything; 取消这些操作并退出 revokes them, then logs out. Each step logged.
+    @MainActor func testLogoutWithInFlightDeviceOperationAsksFirst() async throws {
+        let root=FileManager.default.temporaryDirectory.appendingPathComponent("native-inflight-"+UUID().uuidString,isDirectory:true)
+        defer {try? FileManager.default.removeItem(at:root)}
+        let scope=UUID(),clock=AuthTestClock(),storage=LifecycleStorage(),configuration=try lifecycleConfiguration(scope:scope)
+        let remote=AnonymousTestRemote(issuer:configuration.issuer,clock:clock)
+        try storage.save(await remote.candidate())
+        let subject=await remote.id
+        let manager=NativeAuthSessionManager(configuration:configuration,remote:remote,vault:storage,barrier:storage,now:{clock.now()})
+        let resolver=LifecycleWorkspaceResolver(subject:subject,scope:scope,steps:[.success,.success],accessToken:"synthetic.anon.signature")
+        let app=NativeAuthApplicationModel(configuration:configuration,manager:manager,vault:storage,barrier:storage,root:root,workspaceResolver:resolver,retryClock:LifecycleRetryClock())
+        await app.start();try await waitUntil {app.chat?.networkAdmissionAllowed == true}
+        let account=try XCTUnwrap(DeviceCallGate.currentAccount())
+        let call=DeviceCall(call_id:"inflight-"+UUID().uuidString,tool:"reminder_create",args:["title":.string("买猫粮")],confirm:.card,ttl_sec:600)
+        DeviceCallGate.receive(call)
+        let suite="xctest.inflight."+UUID().uuidString,defaults=try XCTUnwrap(UserDefaults(suiteName:suite))
+        defaults.set(try JSONEncoder().encode([call.call_id:DeviceCallStore.Record(phase:.running,call:call,updatedAt:.now,account:account)]),forKey:DeviceCallStore.storageKey)
+        app.deviceCallStore=DeviceCallStore(defaults:defaults)
+        var lines:[String]=[];DeviceDecisionLog.sink={lines.append($0)};defer {DeviceDecisionLog.sink=nil}
+        await app.requestSignOut()
+        XCTAssertEqual(app.logoutPrompt.map(\.id),[call.call_id],"the prompt lists the in-flight operation")
+        XCTAssertNotNil(app.chat,"no logout before the user chooses");XCTAssertEqual(DeviceCallGate.currentAccount(),account)
+        await app.resolveSignOut(nil)
+        XCTAssertTrue(app.logoutPrompt.isEmpty);XCTAssertNotNil(app.chat,"暂不退出 → still signed in");XCTAssertTrue(DeviceCallGate.isLive(call.call_id),"…operation untouched")
+        await app.requestSignOut();await app.resolveSignOut(.cancelAll)
+        XCTAssertFalse(DeviceCallGate.isLive(call.call_id),"cancelled");XCTAssertNil(DeviceCallGate.currentAccount(),"then logged out")
+        XCTAssertEqual(lines,["logout requested: 1 in flight → ask user","logout dismissed: stay signed in","logout requested: 1 in flight → ask user","logout choice=cancelAll items=1","cancel running \(call.call_id) reminder_create"])
+        UserDefaults().removePersistentDomain(forName:suite)
+    }
+
     @MainActor func testWorkspaceBackoffGrowsAndCapsWithoutNewLogin() async throws {
         let root=FileManager.default.temporaryDirectory.appendingPathComponent("native-workspace-backoff-"+UUID().uuidString,isDirectory:true)
         defer {try? FileManager.default.removeItem(at:root)}

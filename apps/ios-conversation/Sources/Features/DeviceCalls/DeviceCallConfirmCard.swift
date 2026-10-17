@@ -54,6 +54,8 @@ struct DeviceCallSpec: Sendable {
     @State private var editing = false
     @ObservedObject private var ledger = DeviceLedger.shared
     @State private var undoFailed = false
+    @State private var undoCandidates: [DeviceUndoCandidate] = []
+    @State private var undoNeedsPermission = false
     @Environment(\.openURL) private var openURL
     @Environment(\.locale) private var locale
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -182,10 +184,19 @@ struct DeviceCallSpec: Sendable {
                 Text(ui("已撤销")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary).accessibilityIdentifier("chat.deviceCall.undone")
             } else if DeviceUndoRules.canUndo(tool: call.tool, status: result.status.rawValue, alreadyUndone: false), ledger.entry(callID: call.call_id) != nil {
                 Button(ui("撤销")) { Task { await undo() } }.font(CatpawTypography.Role.body.font).foregroundStyle(CatpawColors.secondary).touchTarget()
+                    .modifier(DeviceUndoDecision(candidates: $undoCandidates, needsPermission: $undoNeedsPermission, callID: call.call_id, ledger: ledger) { o in Task { await finishUndo(o) } })
                     .accessibilityLabel(ui("撤销")).accessibilityIdentifier("chat.deviceCall.undo")
             }
         }
         .frame(minHeight: 44).accessibilityElement(children: .contain).accessibilityIdentifier("chat.deviceCall.receipt")
+        if result.status == .denied, result.data?["reason"]?.text == "permission_revoked" {
+            // p89i: permission turned off during the operation — nothing was written; the user decides what's next.
+            HStack(spacing: 8) {
+                Text(ui("执行中权限被关闭，未写入")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
+                Button(ui("去设置")) { DeviceDecisionLog.write("run \(call.call_id): permission revoked → user → settings"); if let u = URL(string: UIApplication.openSettingsURLString) { openURL(u) } }
+                    .font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.ink).touchTarget().accessibilityIdentifier("chat.deviceCall.settings")
+            }
+        }
         if undoFailed { Text(ui("没能撤销，请到日历或提醒事项里删除")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary) }
         // The place card (server ui.block, kind:place) is the primary nearby view; this list is the fallback for an older server.
         if call.tool == "places_search", blockStore.blocks[NearbyRules.placeBlockID(callID: call.call_id)] == nil { placesList(result) }
@@ -231,7 +242,13 @@ struct DeviceCallSpec: Sendable {
     }
     /// Chat-UX #6: delete by call_id (same ledger/EventKit path as 任务's 撤销), then queue the report for the turn (retried on launch/foreground until acknowledged).
     private func undo() async {
-        let outcome = ledger.undo(callID: call.call_id)
+        switch await ledger.undoAttempt(callID: call.call_id) {
+        case .done(let o): await finishUndo(o)
+        case .needsChoice(let c): undoCandidates = c   // p89i: the user decides; nothing deleted yet
+        case .needsPermission: undoNeedsPermission = true
+        }
+    }
+    private func finishUndo(_ outcome: DeviceUndoOutcome) async {
         undoFailed = !outcome.removed
         if outcome.reportable { await store.reportUndo(callID: call.call_id, outcome: outcome) }   // unknown stays local (p89c)
     }

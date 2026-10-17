@@ -181,6 +181,18 @@ extension DeviceResultSubmitting { func reportUndo(callID: String, outcome: Devi
     func set(_ id: String, _ p: Phase) { phases[id] = p; persist(id, p, call: nil) }
     func isInterrupted(_ id: String) -> Bool { interrupted.contains(id) }
     func record(_ id: String) -> Record? { records[id] }
+    /// p89i product decision: this account's device operations still in flight (`.running`: EventKit writes, compose
+    /// sheets, URL / app opens) plus undo results not yet reported. Shown to the user before logout.
+    func inFlight(account: String?) -> [DeviceInFlight.Item] {
+        guard let account else { return [] }
+        let running = records.filter { $0.value.phase == .running && $0.value.account == account }
+            .map { DeviceInFlight.Item(id: $0.key, tool: $0.value.call?.tool ?? "", kind: .running, title: $0.value.call?.args["title"]?.text ?? $0.value.call?.args["label"]?.text ?? "") }
+        let undos = undoQueue.pending.keys.filter { undoAccounts[$0] == account }
+            .map { DeviceInFlight.Item(id: $0, tool: records[$0]?.call?.tool ?? "", kind: .pendingUndoReport, title: records[$0]?.call?.args["title"]?.text ?? "") }
+        return (running + undos).sorted { $0.id < $1.id }
+    }
+    /// "取消/撤销": the pending undo report is dropped for this account (cancelled locally, logged by the caller).
+    func dropUndoReport(_ id: String) { undoQueue.acknowledge(id); undoAccounts[id] = nil; saveUndoQueue() }
     func reset() { phases = [:]; edited = [:]; seen = [:]; records = [:]; interrupted = []; defaults.removeObject(forKey: Self.storageKey); undoQueue = .init(); defaults.removeObject(forKey: Self.undoKey) }
 
     private func persist(_ id: String, _ p: Phase, call: DeviceCall?, account: String? = nil) {
@@ -502,4 +514,63 @@ extension DeviceCall {
         self.init(call_id: call.callID, tool: call.tool, args: args, confirm: Confirm(rawValue: call.confirm) ?? .card,
                   ttl_sec: call.ttlSec, interrupt_id: call.interruptID, args_hash: call.argsHash, expires_at: call.expiresAt)
     }
+}
+
+
+/// p89i product decision: logout / account switch with device operations in flight asks the user first.
+/// - `.cancelAll`: every listed operation loses its execution right NOW (grant + credential revoked → the commit gate refuses
+///   any pending EventKit save / sheet / URL open), pending undo reports are dropped. Then logout.
+/// - `.keep`: logout waits (bounded) for the running operations to finish under the OLD account and for pending undo reports
+///   to be delivered; anything still running at the deadline is cancelled and that is logged too. Then logout.
+/// Either way the choice and its per-item effect are logged; nothing is cancelled or continued silently.
+@MainActor enum DeviceInFlight {
+    struct Item: Equatable, Identifiable, Sendable {
+        enum Kind: String, Sendable { case running, pendingUndoReport }
+        let id: String; let tool: String; let kind: Kind; let title: String
+    }
+    enum Choice: String, Sendable { case cancelAll, keep }
+    static func label(_ i: Item) -> String {
+        let what: String
+        switch i.tool {
+        case "calendar_create": what = "添加日程"
+        case "reminder_create", "alarm_set": what = "添加提醒"
+        case "sms_compose": what = "短信"
+        case "mail_compose": what = "邮件"
+        default: what = "打开其他 App"
+        }
+        let t = i.title.isEmpty ? what : "\(what)「\(i.title)」"
+        return i.kind == .pendingUndoReport ? "撤销结果待同步：\(t)" : "进行中：\(t)"
+    }
+    static func items(store: DeviceCallStore = .shared, account: String?) -> [Item] { store.inFlight(account: account) }
+    /// Applies the user's choice deterministically. Returns the log lines (also written to `DeviceDecisionLog`).
+    @discardableResult static func apply(_ choice: Choice, items: [Item], store: DeviceCallStore = .shared, deadline: TimeInterval = 15) async -> [String] {
+        var log = ["logout choice=\(choice.rawValue) items=\(items.count)"]
+        switch choice {
+        case .cancelAll:
+            for i in items {
+                switch i.kind {
+                case .running: DeviceCallGate.revoke([i.id]); log.append("cancel running \(i.id) \(i.tool)")
+                case .pendingUndoReport: store.dropUndoReport(i.id); log.append("drop undo-report \(i.id)")
+                }
+            }
+        case .keep:
+            if items.contains(where: { $0.kind == .pendingUndoReport }) { await store.retryPendingReports() }
+            let end = Date().addingTimeInterval(deadline)
+            while Date() < end, items.contains(where: { $0.kind == .running && store.phase($0.id) == .running }) {
+                try? await Task.sleep(nanoseconds: 100_000_000)
+            }
+            for i in items {
+                if i.kind == .running, store.phase(i.id) == .running { DeviceCallGate.revoke([i.id]); log.append("keep \(i.id): still running at deadline → cancelled") }
+                else { log.append("keep \(i.id): finished/left as is") }
+            }
+        }
+        log.forEach(DeviceDecisionLog.write)
+        return log
+    }
+}
+
+/// Local, append-only record of user decisions about device operations (no PII beyond call ids / tools).
+enum DeviceDecisionLog {
+    nonisolated(unsafe) static var sink: ((String) -> Void)? = nil
+    static func write(_ line: String) { sink?(line); NSLog("catpaw.device.decision %@", line) }
 }
