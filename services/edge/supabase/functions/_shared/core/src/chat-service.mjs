@@ -7,6 +7,7 @@ import { LOCAL_POLICY,stableUUID } from './local-output-facade.mjs';
 import { chatPromptFor,chatToolsFor,validateProvidedToolCall,assistantToolMessage } from './tools.mjs';
 import { devicePromptFor } from './device-call.mjs';
 import { collectRound } from './openrouter-provider.mjs';
+import { planParallelCalls } from './parallel-calls.mjs';
 import { clientAcceptsRouteEvents } from './free-route-chain.mjs';
 import { TextBatcher } from './text-batcher.mjs';
 import { createChatMetrics } from './chat-metrics.mjs';
@@ -284,27 +285,37 @@ export class ChatService {
           onFailure:error=>env.controller?.abort(error)});
         // R7 optional wire event: provider thought summary, emitted once before the first text_delta.
         let summary='',summarySent=false;const thinkingStarted=this.metrics.now();
-        const round=received?clone(received.round):resumed?clone(resumed.round):await collectRound(this.provider,withRoute(withThinking({messages:clone(messages),system_prompt:prompt,tools,...env.visionAttachments?.length?{image_attachments:env.visionAttachments,vision_user_index:visionUserIndex}:{},signal:env.signal,assertDispatchReady:env.assertDispatchReady,turn_deadline_at:Date.now()+(deadline-now())-(this.finalizationReserveMs??5000),provider_context:{source_auth:env.turn.source_auth,scope_id:env.scope.scope_id,conversation_id:env.turn.conversation_id,...env.visionAttachments?.length?{image_route_hash:env.turn.image_route_hash,turn_id:env.turn.id,resource_owner:env.owner}:{},...env.turn.memory_usage?{memory_usage:clone(env.turn.memory_usage),memory_turn_id:env.turn.id}:{},...env.turn.revision_target?{revision_source_auth:clone(env.turn.revision_target.fresh_source_auth),revision_original_source_auth:clone(env.turn.revision_target.original_source_auth),revision_memory_generation:env.turn.revision_target.memory_generation,...env.turn.revision_work_intent?{revision_work_turn_id:env.turn.id}:{},input_context:[{text:env.turn.revision_target.raw_instruction},{text:env.turn.revision_target.base_body}]}:{}}},delta=>{if(!summarySent&&summary.length<2000)summary+=delta;}),async ri=>{if(ri?.route&&clientAcceptsRouteEvents()&&!env.turn.events.some(e=>e.type==='model_route')){await this.append(env,'model_route',{route:ri.route,model:ri.model??null,requested_route:ri.requested_route??'auto',failover:ri.failover===true,from:ri.from??[],switches:ri.switches??[],attempt:ri.attempt??1});env.turn=await this.repository.transaction(async tx=>(await this.live(tx,env)).t);}}),async delta=>{if(!summarySent){summarySent=true;if(summary.trim())await this.append(env,'reasoning_summary',{message_id:messageID,text:summary.trim().slice(0,2000),thinking_ms:Math.max(0,Math.round(this.metrics.now()-thinkingStarted))});}text+=delta;batcher.push(delta);});
+        const round=received?clone(received.round):resumed?clone(resumed.round):await collectRound(this.provider,withRoute(withThinking({messages:clone(messages),system_prompt:prompt,tools,...env.visionAttachments?.length?{image_attachments:env.visionAttachments,vision_user_index:visionUserIndex}:{},signal:env.signal,assertDispatchReady:env.assertDispatchReady,turn_deadline_at:Date.now()+(deadline-now())-(this.finalizationReserveMs??5000),provider_context:{source_auth:env.turn.source_auth,scope_id:env.scope.scope_id,conversation_id:env.turn.conversation_id,...env.visionAttachments?.length?{image_route_hash:env.turn.image_route_hash,turn_id:env.turn.id,resource_owner:env.owner}:{},...env.turn.memory_usage?{memory_usage:clone(env.turn.memory_usage),memory_turn_id:env.turn.id}:{},...env.turn.revision_target?{revision_source_auth:clone(env.turn.revision_target.fresh_source_auth),revision_original_source_auth:clone(env.turn.revision_target.original_source_auth),revision_memory_generation:env.turn.revision_target.memory_generation,...env.turn.revision_work_intent?{revision_work_turn_id:env.turn.id}:{},input_context:[{text:env.turn.revision_target.raw_instruction},{text:env.turn.revision_target.base_body}]}:{}}},delta=>{if(!summarySent&&summary.length<2000)summary+=delta;}),async ri=>{if(ri?.route&&clientAcceptsRouteEvents()&&!env.turn.events.some(e=>e.type==='model_route')){await this.append(env,'model_route',{route:ri.route,model:ri.model??null,requested_route:ri.requested_route??'auto',failover:ri.failover===true,from:ri.from??[],switches:ri.switches??[],attempt:ri.attempt??1});env.turn=await this.repository.transaction(async tx=>(await this.live(tx,env)).t);}}),async delta=>{if(!summarySent){summarySent=true;if(summary.trim())await this.append(env,'reasoning_summary',{message_id:messageID,text:summary.trim().slice(0,2000),thinking_ms:Math.max(0,Math.round(this.metrics.now()-thinkingStarted))});}text+=delta;batcher.push(delta);},{acceptOverflow:true});
         if(received)text=round.text;
         // model_route is written once, from the onRoute callback (collectRound calls it for every route_info, before any output).
         phase='text_flush';await batcher.finish();await batcher.stop();batcher=null;env.assertLive();
         phase='tool_or_completion';
-        if(env.visionAttachments?.length)check(round.calls.length===0,422,'vision_tools_not_supported');
+        // chat-context-1522 B1: more parallel calls than the loop runs → none run when any writes, else the first 4 (parallel-calls.mjs).
+        if(round.overflow?.length){check(!env.turn.revision_target,422,'revision_tool_limit');Object.assign(round,planParallelCalls(round,this.facade.gatedChatTools));delete round.overflow;}
+        const blocked=round.blocked??[];
+        if(env.visionAttachments?.length)check(round.calls.length===0&&!blocked.length,422,'vision_tools_not_supported');
         for(const call of round.calls){validateProvidedToolCall(call,'chat',tools,this.facade.gatedChatTools);check(!seen.has(call.id),422,'duplicate_tool_call');seen.add(call.id);}
+        for(const {call} of blocked){check(!seen.has(call.id),422,'duplicate_tool_call');seen.add(call.id);}
         // catpaw.ui.v1 grounded kinds: place/event content is rebuilt from this turn's tool results (never model-written).
         {const results=toolResultsFrom(messages);for(const call of round.calls)if(call.name===RENDER_UI){const g=groundUIArgs(call.arguments,results,env.turn.ui_kinds);if(g.block){call.arguments={block:g.block};delete call.ungrounded;}else if(g.error)call.ungrounded=g.error;}}
         if(round.calls.some(call=>call.name==='propose_memory_v1'))check(round.calls.length===1,422,'memory_proposal_tool_limit');
         if(env.turn.revision_target){check(round.calls.length<=1,422,'revision_tool_limit');if(received)check(received.round_hash===hash(round),409,'revision_received_round_corrupt');else await this.repository.transaction(async tx=>{const {t}=await this.live(tx,env);await this.assertRevisionLive(tx,env,t);const saved=await tx.put(env.owner,'native-chat-turns',{...t,dispatch_checkpoint:{...t.dispatch_checkpoint,state:'received',round:clone(round),round_hash:hash(round),next:0}});await this.beforeCommit(tx,env,saved);await this.assertRevisionLive(tx,env,saved);});}
         // A complete valid provider terminal precedes every tool effect.
-        if(!round.calls.length){env.providerReceipt=round.provider_receipt;await this.complete(env,messageID,text,[...messages,{role:'assistant',content:round.text}]);return;}
+        if(!round.calls.length&&!blocked.length){env.providerReceipt=round.provider_receipt;await this.complete(env,messageID,text,[...messages,{role:'assistant',content:round.text}]);return;}
         const beforeRound=clone(messages);
-        messages.push(assistantToolMessage(round.text,round.calls));
+        messages.push(assistantToolMessage(round.text,[...round.calls,...blocked.map(b=>b.call)]));
         if(received?.next===1){const result=env.turn.revision_work_receipts?.[0]??env.turn.continuations?.[0];check(result,409,'revision_received_result_missing');messages.push({role:'tool',tool_call_id:round.calls[0].id,content:JSON.stringify(result)});await this.complete(env,messageID,text,messages);return;}
-        if(!received&&!resumed&&await this.suspendForApproval(env,{step,messages:beforeRound,round,text,messageID,seen:[...seen].filter(id=>!round.calls.some(c=>c.id===id))}))return;
+        if(!received&&!resumed&&await this.suspendForApproval(env,{step,messages:beforeRound,round,text,messageID,seen:[...seen].filter(id=>!round.calls.some(c=>c.id===id)&&!blocked.some(b=>b.call.id===id))}))return;
         for(const call of round.calls){
           if(!(received||resumed)||!env.turn.events.some(e=>e.type==='tool_call'&&e.data.call_id===call.id))await this.append(env,'tool_call',{call_id:call.id,name:call.name,arguments:call.arguments});
           if(call.name===RENDER_UI&&!call.ungrounded&&!(env.turn.interrupts??[]).some(i=>i.call_id===call.id)&&!(env.turn.ui_shown_calls??[]).includes(call.id)){const block=blockOf(call.arguments),known=await this.knownUIBlock(env,block.id);await this.append(env,known?'ui.block.update':'ui.block',known?uiBlockUpdate(block):uiBlockEvent(block));}
           const result=await this.executeTool(env,call);messages.push({role:'tool',tool_call_id:call.id,content:JSON.stringify(result)});
+        }
+        // Calls that did not run still get their own tool_result (model) and durable tool_call/tool_result events (status error).
+        for(const {call,result} of blocked){
+          if(!env.turn.events.some(e=>e.type==='tool_call'&&e.data.call_id===call.id))await this.append(env,'tool_call',{call_id:call.id,name:call.name,arguments:call.arguments});
+          if(!env.turn.events.some(e=>e.type==='tool_result'&&e.data.call_id===call.id))await this.append(env,'tool_result',{call_id:call.id,name:call.name,status:'error',result});
+          messages.push({role:'tool',tool_call_id:call.id,content:JSON.stringify(result)});
         }
         if(round.calls.some(c=>c.name==='propose_memory_v1')){
           const receipt=messages.at(-1),pending=JSON.parse(receipt.content).candidates.length>0;

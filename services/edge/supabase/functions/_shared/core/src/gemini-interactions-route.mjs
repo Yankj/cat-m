@@ -12,7 +12,7 @@ import { safeProviderFailure } from './provider-errors.mjs';
 import { sseData } from './openrouter-provider.mjs';
 
 export const GEMINI_INTERACTIONS_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/interactions?alt=sse';
-const MAX_CALLS = 4, STREAM_MAX_BYTES = 4_000_000, THOUGHT_MAX_BYTES = 16000, TEXT_MAX_BYTES = 64000;
+const MAX_CALLS = 4, MAX_OVERFLOW_CALLS = 12, STREAM_MAX_BYTES = 4_000_000, THOUGHT_MAX_BYTES = 16000, TEXT_MAX_BYTES = 64000;
 
 /** Per-instance limiter shared by all Gemini routes of this isolate: sliding 60 s window + cooldown after 429. */
 export class GeminiRateGuard {
@@ -116,7 +116,7 @@ export class GeminiInteractionsRoute {
         throw new ApiError(503, codes[response.status] ?? 'provider_failed');
       }
       check(response.headers.get('content-type')?.startsWith('text/event-stream') && response.body, 503, 'invalid_provider_stream');
-      const calls = new Map(), kinds = new Map(), dropped = new Set(); let thoughtSteps = [], textBytes = 0, thoughtBytes = 0, completed = false, status = null;
+      const calls = new Map(), kinds = new Map(); let thoughtSteps = [], textBytes = 0, thoughtBytes = 0, completed = false, status = null;
       for await (const data of sseData(response.body, { maxBytes: STREAM_MAX_BYTES })) {
         active = true; arm(this.timeouts.idleMs);
         if (data === '[DONE]') break;
@@ -131,9 +131,10 @@ export class GeminiInteractionsRoute {
         if (type === 'step.start') {
           const s = ev.step ?? {}; kinds.set(ev.index, s.type);
           // chat-context-1522: a 5th+ parallel call (prod turn 6497bf72: five create_task after a declined reminder) used to
-          // fail the whole turn with invalid_tool_index, which also dropped the turn from model history. Keep the first
-          // MAX_CALLS and ignore the rest (stateless route: the dropped calls are never replayed, so history stays consistent).
-          if (s.type === 'function_call') { if (calls.size >= MAX_CALLS) { dropped.add(ev.index); evidence.dropped_tool_calls = dropped.size; } else calls.set(ev.index, { id: String(s.id ?? ''), name: String(s.name ?? ''), raw: '', thoughts: thoughtSteps }); thoughtSteps = []; }
+          // fail the whole turn with invalid_tool_index. Calls beyond MAX_CALLS (up to MAX_OVERFLOW_CALLS more) are now kept
+          // and surfaced as tool_call_overflow; the chat loop decides (B1 NoBug round 2): with any write in the step NONE run
+          // (too_many_parallel_writes), with read-only calls only the first MAX_CALLS run and the rest get not_executed.
+          if (s.type === 'function_call') { check(calls.size < MAX_CALLS + MAX_OVERFLOW_CALLS, 503, 'invalid_tool_index'); calls.set(ev.index, { id: String(s.id ?? ''), name: String(s.name ?? ''), raw: '', thoughts: thoughtSteps }); thoughtSteps = []; }
           else if (s.type === 'thought') thoughtSteps.push({ ...clone(s), type: 'thought' });
           continue;
         }
@@ -145,7 +146,7 @@ export class GeminiInteractionsRoute {
           } else if (d.type === 'thought_summary') {
             const t = d.content?.text ?? d.text; if (typeof t === 'string' && t) { thoughtBytes += Buffer.byteLength(t); const show = this.thinkingVisible(); if (show) visible = true; if (thoughtBytes <= THOUGHT_MAX_BYTES) yield { type: 'thinking_delta', text: t }; }
           } else if (d.type === 'thought_signature') { const last = thoughtSteps.at(-1); if (last && kind === 'thought') Object.assign(last, Object.fromEntries(Object.entries(d).filter(([k]) => k !== 'type'))); }
-          else if (d.type === 'arguments_delta') { if (dropped.has(ev.index)) continue; const c = calls.get(ev.index); check(c, 503, 'invalid_tool_index'); c.raw += typeof d.arguments === 'string' ? d.arguments : JSON.stringify(d.arguments ?? {}); check(c.raw.length <= 24000, 503, 'tool_too_large'); }
+          else if (d.type === 'arguments_delta') { const c = calls.get(ev.index); check(c, 503, 'invalid_tool_index'); c.raw += typeof d.arguments === 'string' ? d.arguments : JSON.stringify(d.arguments ?? {}); check(c.raw.length <= 24000, 503, 'tool_too_large'); }
           continue;
         }
         if (type === 'interaction.completed') { completed = true; status = ev.interaction?.status ?? null; if (typeof ev.interaction?.model === 'string') evidence.actual_model = ev.interaction.model.slice(0, 200); continue; }
@@ -153,10 +154,12 @@ export class GeminiInteractionsRoute {
       }
       check(completed, 503, 'incomplete_provider_terminal', visible ? { reconciliation: true } : undefined);
       evidence.interaction_status = status;
-      for (const [, c] of [...calls.entries()].sort(([a], [b]) => a - b)) {
+      const ordered = [...calls.entries()].sort(([a], [b]) => a - b).map(([, c]) => c);
+      if (ordered.length > MAX_CALLS) evidence.overflow_tool_calls = ordered.length - MAX_CALLS;
+      for (const [i, c] of ordered.entries()) {
         check(c.id && c.name.length <= 80 && c.id.length <= 160 && input.tools?.some(x => x.function.name === c.name), 503, 'tool_not_allowed');
-        let args; try { args = JSON.parse(c.raw || '{}'); } catch { throw new ApiError(503, 'invalid_tool_arguments'); }
-        remember(c.id, c.thoughts); visible = true; yield { type: 'tool_call', id: c.id, name: c.name, arguments: args };
+        let args; try { args = JSON.parse(c.raw || '{}'); } catch { if (i < MAX_CALLS) throw new ApiError(503, 'invalid_tool_arguments'); args = {}; }
+        remember(c.id, c.thoughts); visible = true; yield { type: i < MAX_CALLS ? 'tool_call' : 'tool_call_overflow', id: c.id, name: c.name, arguments: args };
       }
       this.guard?.ok(); evidence.terminal_validated = true;
       yield { type: 'done', finish_reason: calls.size ? 'tool_calls' : 'stop', response_id: null };
