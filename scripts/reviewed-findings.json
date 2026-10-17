@@ -1590,9 +1590,9 @@
     {
       "path": "apps/ios-conversation/Tests/NoBugP0Runner.swift",
       "category": "internal_domain",
-      "line": 498,
-      "sha256": "067076bc4910aa6d96b5d7e401a126d3782c2de92235bead499809fd1ba59264",
-      "reason": "PR90h review 2026-10-17: public consumer Meituan app deep link (the app URL scheme plus its public mobile web fallback) used by the shop_open device tool and its contract test/evidence; not an internal or corporate endpoint."
+      "line": 500,
+      "sha256": "92f3835ae16e1be15f905ac56ed47fb6145e67939153f9358ab5790bce0c1192",
+      "reason": "PR90h review 2026-10-17 (re-bound after the Swift 6 lock change shifted lines +2): public consumer Meituan app deep link (the app URL scheme plus its public mobile web fallback) used by the shop_open device tool and its contract test/evidence; not an internal or corporate endpoint."
     },
     {
       "path": "docs/refs/brand/03-flat-mark-black.png",
@@ -1814,9 +1814,9 @@
     {
       "path": "apps/ios-conversation/Tests/NoBugP0Runner.swift",
       "category": "email_review",
-      "line": 579,
-      "sha256": "067076bc4910aa6d96b5d7e401a126d3782c2de92235bead499809fd1ba59264",
-      "reason": "PR90h review 2026-10-17: false positive — an asset filename with an at-sign scale suffix (2x / 3x image variants) or a synthetic one-letter test address in a contact fixture; no personal e-mail."
+      "line": 581,
+      "sha256": "92f3835ae16e1be15f905ac56ed47fb6145e67939153f9358ab5790bce0c1192",
+      "reason": "PR90h review 2026-10-17 (re-bound after the Swift 6 lock change shifted lines +2): false positive — an asset filename with an at-sign scale suffix (2x / 3x image variants) or a synthetic one-letter test address in a contact fixture; no personal e-mail."
     },
     {
       "path": "apps/ios-conversation/design/brand/regenerate_appicon.py",
