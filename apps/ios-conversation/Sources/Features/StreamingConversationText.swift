@@ -105,6 +105,7 @@ import UIKit
             let backlog=target.count-visible.count
             if backlog<=0 {return}
             try? await Task.sleep(nanoseconds:33_000_000)
+            guard !Task.isCancelled else {return}   // a cancelled sleep returns at once; never write a stale tick (NoBug P2-9)
             let now=ProcessInfo.processInfo.systemUptime
             carry+=StreamingConversationText.revealRate(backlog:backlog,complete:complete)*(now-last);last=now
             let n=min(backlog,Int(carry))
