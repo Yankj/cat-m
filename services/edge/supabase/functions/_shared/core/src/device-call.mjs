@@ -73,10 +73,17 @@ export function deviceUndoNote(notes){
 export const deviceCallEvent=(it,args)=>({call_id:it.call_id,tool:it.tool,args,confirm:it.confirm,ttl_sec:it.ttl_sec,interrupt_id:it.interrupt_id,args_hash:it.args_hash,expires_at:it.expires_at});
 /** Model-facing result of a device call. */
 export function deviceResult(it){
+ // P1-2: the report that arrived after the TTL (and itself expired the card) is the truth about the side effect.
+ if(it.status==='expired'&&it.late_response)return {...deviceResult({...it,status:'reported',response:it.late_response}),reported_after_ttl:true};
  if(it.status==='expired')return {status:'pending_timeout',message:'The phone did not report back in time; the action\'s status is unknown (it may already have happened on the phone). Ask the user to verify on the phone before retrying; do not retry automatically.'};
  if(it.status==='cancelled')return {status:'cancelled',message:'The turn was cancelled before the phone reported back.'};
- return {status:it.response.status,...it.response.data!==undefined&&it.response.data!==null?{data:it.response.data}:{}};
+ const data=it.response.data!==undefined&&it.response.data!==null?{data:it.response.data}:{};
+ // chat-context-1522: a bare {status:'cancelled'} read as a failure (prod turn 6497bf72: "看起来创建提醒被取消了。我换一个方式…"
+ // then 5 create_task calls). Card 取消 is the user's decision: say so explicitly and forbid work-arounds.
+ if(it.response.status==='cancelled')return {status:'user_declined',device_status:'cancelled',...data,message:USER_DECLINED_MESSAGE};
+ return {status:it.response.status,...data};
 }
+export const USER_DECLINED_MESSAGE='The user tapped 取消 on the confirmation card, so nothing was done on the phone. This is the user\'s own decision, not an error: do not investigate why, do not retry, and do not try another tool or a workaround. Briefly acknowledge that it was not done and ask whether they want to change something and try again.';
 
 // The base chat prompts were written before device tools existed and say "no email/calendar tools exist".
 // With that text the model answered calendar requests in prose instead of calling calendar_create (reminder/sms

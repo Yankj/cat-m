@@ -2,6 +2,7 @@ import test from 'node:test'; import assert from 'node:assert/strict';
 import {beforeEach} from 'node:test';import {_routeHealthForTests as __health} from '../supabase/functions/_shared/core/src/free-route-chain.mjs';
 beforeEach(()=>__health.clear()); // w7: route breaker state is per isolate; isolate tests
 import { FreeRouteChainProvider, readFreeRouteChain, withRoutePreference } from '../supabase/functions/_shared/core/src/free-route-chain.mjs';
+import { collectRound } from '../supabase/functions/_shared/core/src/openrouter-provider.mjs';
 import { GeminiRateGuard, toSteps, toContent, _signatureCacheForTests } from '../supabase/functions/_shared/core/src/gemini-interactions-route.mjs';
 
 const env = o => k => o[k];
@@ -104,4 +105,25 @@ test('provider_timeout fix: hidden thinking then a stall is "before output" and 
 test('Gemini stream error event 429 before output → rate_limited failover', async () => {
   const p = chain({ CATPAW_GEMINI_ROUTE: 'primary' }, { geminiGuard: new GeminiRateGuard({ rpm: 10 }), fetchImpl: async url => url.includes('googleapis') ? sse([created, { event_type: 'error', error: { code: 429, status: 'RESOURCE_EXHAUSTED' } }]) : orOk('兜底') });
   assert.equal((await collect(p))[0].text, '兜底');
+});
+
+test('chat-context-1522 B1: 5th+ parallel function calls are surfaced as tool_call_overflow (never silently dropped, prod 6497bf72)', async () => {
+  const TASK = [{ type: 'function', function: { name: 'create_task', description: '待办', parameters: { type: 'object', properties: { title: { type: 'string' } }, required: ['title'] } } }];
+  const frames = [created];
+  for (let i = 0; i < 6; i++) frames.push({ event_type: 'step.start', index: i, step: { type: 'function_call', id: 'fc' + i, name: 'create_task' } }, { event_type: 'step.delta', index: i, delta: { type: 'arguments_delta', arguments: `{"title":"t${i}"}` } }, { event_type: 'step.stop', index: i });
+  frames.push(completed('requires_action'), '[DONE]');
+  const p = chain({ CATPAW_GEMINI_ROUTE: 'primary' }, { fetchImpl: async () => sse(frames) });
+  const out = await collect(p, { tools: TASK });
+  assert.deepEqual(out.filter(e => e.type === 'tool_call').map(c => c.id), ['fc0', 'fc1', 'fc2', 'fc3']);
+  const extra = out.filter(e => e.type === 'tool_call_overflow');
+  assert.deepEqual(extra.map(c => c.id), ['fc4', 'fc5']); assert.deepEqual(extra[1].arguments, { title: 't5' }, 'overflow arguments are kept for the model-facing result');
+  assert.equal(out.at(-1).type, 'done'); assert.equal(out.at(-1).finish_reason, 'tool_calls');
+  // Only the chat loop accepts overflow; every other collector keeps the old hard limit.
+  const round = await collectRound(chain({ CATPAW_GEMINI_ROUTE: 'primary' }, { fetchImpl: async () => sse(frames) }), { messages: [{ role: 'user', content: 'x' }], system_prompt: 's', tools: TASK }, async () => {}, { acceptOverflow: true });
+  assert.deepEqual([round.calls.length, round.overflow.map(c => c.id)], [4, ['fc4', 'fc5']]);
+  await assert.rejects(collectRound(chain({ CATPAW_GEMINI_ROUTE: 'primary' }, { fetchImpl: async () => sse(frames) }), { messages: [{ role: 'user', content: 'x' }], system_prompt: 's', tools: TASK }), e => e.code === 'invalid_tool_index');
+  // A runaway step beyond 16 calls still fails closed.
+  const many = [created]; for (let i = 0; i < 17; i++) many.push({ event_type: 'step.start', index: i, step: { type: 'function_call', id: 'm' + i, name: 'create_task' } });
+  many.push(completed('requires_action'), '[DONE]');
+  await assert.rejects(collect(chain({ CATPAW_GEMINI_ROUTE: 'primary' }, { fetchImpl: async () => sse(many), autoFailover: false }), { tools: TASK }), e => e.code === 'invalid_tool_index');
 });
