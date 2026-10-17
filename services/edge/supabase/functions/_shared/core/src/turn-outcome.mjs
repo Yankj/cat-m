@@ -24,7 +24,7 @@ export function interruptOutcome(it) {
   const device = r => { const s = r?.status; return s === 'ok' ? 'ok' : s === 'cancelled' ? 'user_declined' : s === 'denied' ? 'permission_denied' : 'error'; };
   if (it.status === 'reported') return device(it.response);
   // B2 (NoBug round 2): the phone reported after the user moved on; its report is the truth about the side effect.
-  if (it.status === 'cancelled' && it.late_response) return device(it.late_response);
+  if ((it.status === 'cancelled' || it.status === 'expired') && it.late_response) return device(it.late_response); // P1-2: also after the TTL
   if (it.status === 'cancelled') return it.cancel_reason === 'superseded' ? 'abandoned' : 'cancelled';
   return { approved: 'approved', denied: 'user_declined', expired: 'expired', submitted: 'submitted', dismissed: 'dismissed', errored: 'error', pending: 'pending' }[it.status] ?? String(it.status);
 }
@@ -65,7 +65,7 @@ const callText = x => `${x.name}${x.args ? `（参数${quote(x.args)}）` : ''}`
 export function turnOutcomeNote(notes) {
   if (!Array.isArray(notes) || !notes.length) return '';
   const parts = notes.slice(-MAX_NOTES).map(n => {
-    if (n.code === 'late_device_report') return '- 较早一轮的确认卡片晚到了手机结果：' + (n.tools ?? []).map(x => `${callText(x)} → ${LATE[x.outcome] ?? x.outcome}`).join('；') + '。';
+    if (n.code === 'late_device_report') return `- 较早一轮的确认卡片晚到了手机结果${n.ttl_exceeded ? '（已超过确认时限，当时按“状态未知/没有执行”处理）' : ''}：` + (n.tools ?? []).map(x => `${callText(x)} → ${LATE[x.outcome] ?? x.outcome}`).join('；') + '。';
     const how = ENDING[n.code] ?? `没有正常结束（${n.code}）`;
     const tools = (n.tools ?? []).map(x => `${callText(x)} → ${TEXT[x.outcome] ?? x.outcome}`).join('；');
     return `- 上一轮回复${how}。` + (tools ? `那一轮的工具调用：${tools}。` : '') + (n.shown_text ? `你当时已经对用户显示了（历史文本）：${quote(n.shown_text)}。` : '');
@@ -86,7 +86,7 @@ export function withInteractionOutcomes(c, t) {
   const items = (t?.interrupts ?? []).filter(i => i.status !== 'pending').map(it => ({
     turn_id: t.id, interrupt_id: it.interrupt_id, call_id: it.call_id, kind: it.kind ?? 'approval', tool: it.tool,
     summary: cut(it.summary, 120), outcome: interruptOutcome(it), ...it.kind === 'device' && (it.late_response ?? it.response)?.status ? { device_status: (it.late_response ?? it.response).status } : {},
-    decided_at: it.decided_at ?? null, ...it.late_response ? { late: true, reported_at: it.late_reported_at ?? null } : {}
+    decided_at: it.decided_at ?? null, ...it.late_response ? { late: true, reported_at: it.late_reported_at ?? null, ...it.late_ttl_exceeded ? { ttl_exceeded: true } : {} } : {}
   }));
   if (!items.length) return {};
   const ids = new Set(items.map(i => i.interrupt_id));
@@ -98,7 +98,7 @@ export function withInteractionOutcomes(c, t) {
 export function withLateDeviceReport(c, t, it) {
   const call = (t?.events ?? []).find(e => e.type === 'tool_call' && e.data?.call_id === it.call_id);
   const tool = { call_id: it.call_id, name: String(it.tool ?? call?.data?.name ?? ''), args: argsSummary(call?.data?.arguments), outcome: interruptOutcome(it) };
-  const note = { turn_id: t.id, code: 'late_device_report', tools: [tool], shown_text: '' };
+  const note = { turn_id: t.id, code: 'late_device_report', tools: [tool], shown_text: '', ...it.late_ttl_exceeded ? { ttl_exceeded: true } : {} };
   const kept = (c.turn_outcome_notes ?? []).filter(n => !(n.turn_id === t.id && n.code === 'late_device_report' && n.tools?.[0]?.call_id === it.call_id));
   return { ...c, turn_outcome_notes: [...kept, note].slice(-MAX_NOTES), ...withInteractionOutcomes(c, t) };
 }
