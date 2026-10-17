@@ -912,6 +912,11 @@ public actor ConversationSessionService {
         // Device calls (catpaw.device.v1) live in the journal (pendingDeviceCalls); the snapshot only confirms the turn is
         // still suspended on them. Revive an `unknown` turn so its confirm card renders instead of an endless re-observe.
         var deviceRevived = false
+        // P1-4: merge server interaction_outcomes for this turn's calls (authoritative final card state).
+        let logged = Set((turn.deviceCallLog ?? []).map(\.callID))
+        let outcomes = observation.interactionOutcomes.filter { logged.contains($0.key) }
+        let outcomesChanged = !outcomes.isEmpty && (turn.serverOutcomes ?? [:]).merging(outcomes) { _, new in new } != (turn.serverOutcomes ?? [:])
+        if outcomesChanged { turn.serverOutcomes = (turn.serverOutcomes ?? [:]).merging(outcomes) { _, new in new } }
         if observation.serverState == "awaiting_approval", !(turn.pendingDeviceCalls ?? []).isEmpty, [.unknown, .dispatched].contains(turn.state) {
             turn.state = .running; turn.error = nil; deviceRevived = true
         }
@@ -924,7 +929,10 @@ public actor ConversationSessionService {
             uiChanged = true; turn.pendingUIApprovals = nil
         } else { uiChanged = false }
         if observation.serverState == "awaiting_approval", !observation.pendingApprovals.isEmpty {
-            guard [.running, .unknown, .dispatched].contains(turn.state) else { return }
+            guard [.running, .unknown, .dispatched].contains(turn.state) else {
+                if outcomesChanged { session.turns[i] = turn; try await save(session, expectedRevision: revision, fence: request, observationToken: observationToken) }
+                return
+            }
             for approval in observation.pendingApprovals {
                 let row = stableID("conversation-call-\(request.operationID)-\(approval.callID)")
                 guard session.messages.contains(where: { $0.id == row && $0.toolName == approval.tool }) else { throw ConversationSessionError.invalidEvent }
@@ -932,7 +940,7 @@ public actor ConversationSessionService {
             turn.state = .running; turn.error = nil; turn.pendingApprovals = observation.pendingApprovals
         } else if turn.pendingApprovals != nil, observation.serverState != nil, observation.serverState != "awaiting_approval" {
             turn.pendingApprovals = nil
-        } else if !uiChanged && !deviceRevived { return }
+        } else if !uiChanged && !deviceRevived && !outcomesChanged { return }
         session.turns[i] = turn
         try await save(session, expectedRevision: revision, fence: request, observationToken: observationToken)
     }
@@ -1125,16 +1133,22 @@ public actor ConversationSessionService {
     @discardableResult
     public func submitDeviceResult(scope: DataScope, callID: String, status: String, data: Data?) async throws -> UUID {
         let sourceToken = pinnedSource()   // p89e-1: account AND login generation, pinned before the first await
-        guard let entry = deviceCallIndex[callID] else { throw ConversationApprovalFailure.noPendingApproval }
+        // P1-4: after a restart / supersede the in-memory index may be gone; the persisted index still knows the turn.
+        guard let entry = deviceCallIndex[callID] ?? DeviceCallTurnIndex.load(.standard).turn(for: callID) else { throw ConversationApprovalFailure.noPendingApproval }
         let (conversationID, turnID) = entry
         // A read-only observer may briefly hold the conversation; give it a moment instead of failing the user's tap.
         for _ in 0..<20 where active[conversationID] != nil { try await Task.sleep(nanoseconds: 250_000_000) }
         guard active[conversationID] == nil, !cancelling.contains(conversationID) else { observeLog.error("device result busy"); throw ConversationSessionError.busy }
         let saved = try await read(scope: scope, conversationID: conversationID)
-        guard let turn = saved.turns.first(where: { $0.id == turnID }), let call = turn.pendingDeviceCalls?.first(where: { $0.callID == callID }) else { throw ConversationApprovalFailure.noPendingApproval }
+        guard let turn = saved.turns.first(where: { $0.id == turnID }) else { throw ConversationApprovalFailure.noPendingApproval }
+        // P1-4: a call that is no longer pending (superseded by the next message, or past its TTL) is still reported —
+        // the server records it (200 + X-Catpaw-Device-Late) so the card and the next turn know it really happened.
+        let pendingCall = turn.pendingDeviceCalls?.first(where: { $0.callID == callID })
+        guard let call = pendingCall ?? turn.deviceCallLog?.first(where: { $0.callID == callID }) else { throw ConversationApprovalFailure.noPendingApproval }
         let operationID = stableID("device-result-\(turnID)-\(callID)")
         let token = claimObservation(conversationID, source: sourceToken)
         defer { if active[conversationID] == token { releaseActive(conversationID) } }
+        if pendingCall == nil { return try await submitLateDeviceResult(turn, call: call, status: status, data: data, operationID: operationID, token: token) }
         let stream: AsyncThrowingStream<ConversationTurnEvent, Error>
         do { stream = try await backend.submitDeviceResult(turn.request, call: call, status: status, data: data, operationID: operationID, afterSequence: turn.lastSequence) }
         catch let failure as ConversationApprovalFailure {
@@ -1150,6 +1164,16 @@ public actor ConversationSessionService {
             if active[conversationID] == token, !(error is CancellationError) { try? await markUnknown(turn.request, reason: "结果已回传，状态待核对；读取原请求后继续。", observationToken: token) }
             throw error
         }
+    }
+    /// P1-4: late report. The turn stays closed: drain the server's reply without pumping it into the journal, then
+    /// refresh the snapshot once so the card picks up `interaction_outcomes` (late / ttl_exceeded).
+    private func submitLateDeviceResult(_ turn: ConversationTurnRecord, call: ConversationDeviceCall, status: String, data: Data?, operationID: UUID, token: UUID) async throws -> UUID {
+        let stream = try await backend.submitDeviceResult(turn.request, call: call, status: status, data: data, operationID: operationID, afterSequence: turn.lastSequence)
+        do { for try await _ in stream {} } catch is CancellationError { throw CancellationError() } catch { observeLog.error("late device result stream ended early") }
+        if active[turn.request.conversationID] == token, let observation = try? await backend.observe(turn.request), active[turn.request.conversationID] == token {
+            try? await restoreApprovals(observation, turnID: turn.id, observationToken: token)
+        }
+        return turn.id
     }
     /// Chat-UX #6: tells the turn that created `callID` that the user undid it on the phone (the model hears it with
     /// the next message). Needs the call to have been seen this session; the local delete never waits on this.

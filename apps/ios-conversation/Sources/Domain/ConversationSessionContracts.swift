@@ -313,28 +313,63 @@ public struct ConversationTurnRecord: Codable, Sendable, Identifiable {
     public var deviceCallLog:[ConversationDeviceCall]? = nil
     public var approvalLog:[ConversationApprovalRequest]? = nil
     public var interactionDecisions:[String:String]? = nil
+    /// P1-4: server `conversation.interaction_outcomes` for this turn's calls (call_id → outcome). Authoritative over the
+    /// local journal: a late report that the server recorded must never render as 已取消 / 已过期.
+    public var serverOutcomes:[String:ConversationServerOutcome]? = nil
+}
+
+/// One `conversation.interaction_outcomes` entry (services/edge device-call contract, chat-context-1522 P1-2).
+public struct ConversationServerOutcome: Codable, Sendable, Equatable {
+    public let outcome: String
+    public let late: Bool
+    public let ttlExceeded: Bool
+    public init(outcome: String, late: Bool = false, ttlExceeded: Bool = false) { self.outcome = outcome; self.late = late; self.ttlExceeded = ttlExceeded }
+    /// Lenient: rows without call_id / outcome are skipped; extra keys ignored.
+    public static func parse(_ value: Any?) -> [String: ConversationServerOutcome] {
+        var out: [String: ConversationServerOutcome] = [:]
+        for row in value as? [Any] ?? [] {
+            guard let o = row as? [String: Any], let id = o["call_id"] as? String, !id.isEmpty, let outcome = o["outcome"] as? String else { continue }
+            out[id] = .init(outcome: outcome, late: o["late"] as? Bool ?? false, ttlExceeded: o["ttl_exceeded"] as? Bool ?? false)
+        }
+        return out
+    }
 }
 
 /// chat-context-1522 #3: final state of an interactive card, derived only from the turn journal (tool-result row +
 /// `approval_resolved` decision + turn state). Never authority to execute: display only.
 public enum ConversationInteractionOutcome: String, Sendable, Equatable {
     case pending, done, declined, expired, cancelled, failed, notExecuted
+    /// P1-4: the phone did it, but the report reached the server late (after the TTL, or after the card was superseded).
+    case doneLate
+    /// P1-5: the server timed the card out (`pending_timeout`) — it may still have happened on the phone.
+    case unverified
     public var isFinal: Bool { self != .pending }
 
     /// Device call `callID` of `turn`. `toolResult` is the content of that call's tool-result row in the transcript (what
     /// the model saw: `ok`, `user_declined`/`cancelled`, `denied`, `error`, `pending_timeout`); without one, the interrupt
     /// decision; else the turn's own state.
     public static func device(callID: String, interruptID: String?, turn: ConversationTurnRecord, toolResult: String?) -> Self {
+        if let server = turn.serverOutcomes?[callID] {
+            switch server.outcome {
+            case "ok": return server.late || server.ttlExceeded ? .doneLate : .done
+            case "user_declined", "cancelled": return .declined
+            case "pending_timeout": return .unverified
+            default: return .failed
+            }
+        }
         if let toolResult, let object = (try? JSONSerialization.jsonObject(with: Data(toolResult.utf8))) as? [String: Any],
            let status = object["status"] as? String {
             switch status {
             case "ok": return .done
             case "user_declined", "cancelled": return .declined
-            case "pending_timeout": return .expired
+            case "pending_timeout": return .unverified   // P1-5: state unknown, never 「未执行」
             default: return .failed
             }
         }
-        if let id = interruptID?.lowercased(), let decision = turn.interactionDecisions?[id], decided(decision) != .pending { return decided(decision) }
+        if let id = interruptID?.lowercased(), let decision = turn.interactionDecisions?[id], decided(decision) != .pending {
+            // P1-5: a device card the server expired is pending_timeout — it may have happened on the phone.
+            return decided(decision) == .expired ? .unverified : decided(decision)
+        }
         if turn.awaitingApproval, (turn.pendingDeviceCalls ?? []).contains(where: { $0.callID == callID }) { return .pending }
         return [.completed, .failed].contains(turn.state) ? .notExecuted : .pending
     }
@@ -540,6 +575,8 @@ public struct ConversationObservation: Sendable {
     public var serverState: String? = nil
     /// Snapshot `pending_approvals` with kind "ui" (kept out of `pendingApprovals`, which stays tool approvals only).
     public var pendingUIApprovals: [ConversationUIApproval] = []
+    /// P1-4: `conversation.interaction_outcomes` from the same snapshot, by call_id.
+    public var interactionOutcomes: [String: ConversationServerOutcome] = [:]
     public init(request: ConversationTurnRequest, events: [ConversationTurnEvent], requestHash: String? = nil, grantEpoch: Int? = nil, goals: [ConversationGoalProjection] = [], pendingApprovals: [ConversationApprovalRequest] = [], serverState: String? = nil, pendingUIApprovals: [ConversationUIApproval] = []) { self.pendingUIApprovals = pendingUIApprovals; self.request = request; self.events = events; self.requestHash = requestHash; self.grantEpoch = grantEpoch; self.goals = goals; self.pendingApprovals = pendingApprovals; self.serverState = serverState }
 }
 /// Client projection seam, not a new Agent engine. A verified server adapter supplies the wire.

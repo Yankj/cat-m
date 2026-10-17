@@ -718,7 +718,9 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
         if request.continuation != nil {try validateContinuationList(turn["continuations"],request:request,terminal:turn["state"] as? String=="completed");try validateRevisionWorkList(turn["revision_work_receipts"],request:request)}
         let rows = try (turn["pending_approvals"] as? [Any] ?? []).map { try Self.object($0) }
         let pending = try Self.splitPendingApprovals(rows)
-        return ConversationObservation(request: request, events: events, requestHash: try Self.sha(turn["request_hash"]), grantEpoch: currentGrant, goals: goals, pendingApprovals: pending.tools, serverState: turn["state"] as? String, pendingUIApprovals: pending.ui)
+        var observation = ConversationObservation(request: request, events: events, requestHash: try Self.sha(turn["request_hash"]), grantEpoch: currentGrant, goals: goals, pendingApprovals: pending.tools, serverState: turn["state"] as? String, pendingUIApprovals: pending.ui)
+        observation.interactionOutcomes = ConversationServerOutcome.parse(conversation["interaction_outcomes"])   // P1-4
+        return observation
     }
     private func readConversation(_ value: ConversationTurnRequest, auth: String, mayCreate: Bool,strict:Bool=false) async throws -> [String: Any] {
         var wrapper: [String: Any]
