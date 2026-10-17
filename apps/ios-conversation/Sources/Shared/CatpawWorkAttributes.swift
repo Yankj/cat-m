@@ -13,6 +13,12 @@ struct CatpawWorkAttributes: ActivityAttributes {
         /// (`working|done|failed|needs_user`). Unknown kinds render as working.
         var kind: String
         var taskID: String
+        /// ux-round-1505 (all optional → payloads from older builds / the proactive server still decode):
+        var startedAt: Date? = nil   // turn start → Text(timerInterval:); nil hides the timer
+        var endedAt: Date? = nil     // freezes elapsed on done / failed
+        var step: Int? = nil         // 1-based count of tool steps started (honest dots, no fake total)
+        var tool: String? = nil      // raw tool id; the widget maps it to a spoken verb, never shown
+        var summary: String? = nil   // the task itself, e.g. 评审会加进日历
 
         /// Presentation-only mapping; not encoded.
         enum Status: Hashable { case working, needsUser, reminder, done, failed }

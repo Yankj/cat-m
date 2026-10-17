@@ -112,3 +112,20 @@ final class CatpawWorkPhaseMappingTests: XCTestCase {
         XCTAssertEqual(CatpawWorkPhase.tool("some_unknown_tool").bodyKey.key, "正在使用工具…")
     }
 }
+
+/// ux-round-1505: ContentState gained optional fields; payloads from older builds and the proactive server must still decode.
+final class CatpawWorkContentStateCompatibilityTests: XCTestCase {
+    func testOldPayloadDecodesWithNilNewFields() throws {
+        let old = #"{"title":"提醒","body":"10 点给客户回电话","kind":"reminder_due","taskID":"t-1"}"#
+        let s = try JSONDecoder().decode(CatpawWorkAttributes.ContentState.self, from: Data(old.utf8))
+        XCTAssertEqual(s.kind, "reminder_due"); XCTAssertEqual(s.taskID, "t-1")
+        XCTAssertNil(s.startedAt); XCTAssertNil(s.endedAt); XCTAssertNil(s.step); XCTAssertNil(s.tool); XCTAssertNil(s.summary)
+    }
+    func testNewPayloadRoundTripsAndStaysSmall() throws {
+        let s = CatpawWorkAttributes.ContentState(title: "Catpaw 正在工作", body: "正在查日历", kind: "tool", taskID: UUID().uuidString,
+                                                  startedAt: Date(timeIntervalSince1970: 1_800_000_000), endedAt: nil, step: 2, tool: "calendar_list", summary: "评审会加进日历")
+        let data = try JSONEncoder().encode(s)
+        XCTAssertLessThan(data.count, 4096)
+        XCTAssertEqual(try JSONDecoder().decode(CatpawWorkAttributes.ContentState.self, from: data), s)
+    }
+}

@@ -105,6 +105,8 @@ import UIKit
         /// chat-ux-1505 #4a: ActivityKit updates are chained so they land in event order (separate `Task {update}`s
         /// could apply an older state last and leave the lock screen on 「正在思考…」).
         var lastUpdate: Task<Void, Never>?
+        var tool: String?
+        var summary: String?
     }
     private var turns: [UUID: Turn] = [:]
     private var tokenObservers: [String: Task<Void, Never>] = [:]
@@ -148,7 +150,7 @@ import UIKit
         if case .writing = phase, turns[id]?.answering == true { return }   // one update per answer, not per token
         ensureTracked(id, conversationID: conversationID)
         mutate(id) {
-            if case .tool = phase { $0.step += 1 }
+            if case .tool(let name) = phase { $0.step += 1; $0.tool = name }
             if case .writing = phase { $0.answering = true }
             $0.kind = phase.kind; $0.body = body
         }
@@ -162,8 +164,11 @@ import UIKit
     }
 
     /// Exactly the backend `content-state` shape `{title, body, kind, taskID}`.
-    private func state(_ id: UUID, _ turn: Turn, _ kind: String) -> CatpawWorkAttributes.ContentState {
-        .init(title: ui("Catpaw 正在工作"), body: turn.body, kind: kind, taskID: id.uuidString)
+    private func state(_ id: UUID, _ turn: Turn, _ kind: String, endedAt: Date? = nil) -> CatpawWorkAttributes.ContentState {
+        // ux-round-1505: startedAt drives the on-device timer, step = honest dot count, tool → spoken verb in the widget.
+        // summary (the task title) stays nil until the turn's user text is plumbed in; widget falls back to 「Catpaw 正在处理」.
+        .init(title: ui("Catpaw 正在工作"), body: turn.body, kind: kind, taskID: id.uuidString,
+              startedAt: turn.startedAt, endedAt: endedAt, step: turn.step > 0 ? turn.step : nil, tool: turn.tool, summary: turn.summary)
     }
 
     private func mutate(_ id: UUID, _ change: (inout Turn) -> Void) {
@@ -172,7 +177,7 @@ import UIKit
         guard let activity = turn.activity else { return }
         let content = ActivityContent(state: state(id, turn, turn.kind), staleDate: Date().addingTimeInterval(120))
         let previous = turn.lastUpdate
-        turns[id]?.lastUpdate = Task { await previous?.value; await activity.update(content) }
+        turns[id]?.lastUpdate = Task { await previous?.value; await activity.update(content, alertConfiguration: nil) }   // local step updates never alert
     }
 
     private func startIfNeeded(_ id: UUID) {
@@ -256,7 +261,7 @@ import UIKit
         turn.timer?.cancel()
         guard let activity = turn.activity else { if turns.values.allSatisfy({ $0.activity == nil }) { endBackgroundTask() }; return }
         turn.body = title
-        let content = ActivityContent(state: state(id, turn, kind), staleDate: nil)
+        let content = ActivityContent(state: state(id, turn, kind, endedAt: Date()), staleDate: nil)
         let activityID = activity.id
         tokenObservers.removeValue(forKey: activityID)?.cancel()
         let previous = turn.lastUpdate
