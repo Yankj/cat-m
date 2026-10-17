@@ -12,25 +12,32 @@ import { safeProviderFailure } from './provider-errors.mjs';
 import { sseData } from './openrouter-provider.mjs';
 
 export const GEMINI_INTERACTIONS_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/interactions?alt=sse';
+export const IMAGE_FAILURE_FIELDS = Object.freeze(['headers', 'category', 'retry_after_seconds', 'retry_at', 'retry_allowed', 'account_daily_reset_utc']);
 const MAX_CALLS = 4, MAX_OVERFLOW_CALLS = 12, STREAM_MAX_BYTES = 4_000_000, THOUGHT_MAX_BYTES = 16000, TEXT_MAX_BYTES = 64000;
 
-/** Per-instance limiter shared by all Gemini routes of this isolate: sliding 60 s window + cooldown after 429. */
+/** Per-instance limiter shared by all Gemini routes of this isolate: sliding 60 s window + cooldown after 429.
+ * Google counts RPM/RPD per project AND per model, so the window and the cooldown are kept per model: one model hitting
+ * its daily quota (e.g. a scarce strong model) no longer pauses the other Gemini models (vision fallback, flash-lite text). */
 export class GeminiRateGuard {
-  constructor({ rpm = 10, now = () => Date.now() } = {}) { this.rpm = rpm; this.now = now; this.sent = []; this.coolUntil = 0; }
+  constructor({ rpm = 10, now = () => Date.now() } = {}) { this.rpm = rpm; this.now = now; this.models = new Map(); }
+  #m(model) { const k = String(model ?? ''); let m = this.models.get(k); if (!m) { m = { sent: [], coolUntil: 0, strikes: 0 }; this.models.set(k, m); } return m; }
+  /** Latest cooldown end across all models (status pages); use coolUntilFor(model) for routing decisions. */
+  get coolUntil() { let t = 0; for (const m of this.models.values()) t = Math.max(t, m.coolUntil); return t; }
+  coolUntilFor(model) { return this.models.get(String(model ?? ''))?.coolUntil ?? 0; }
   /** Throws rate_limited (a failover code) without calling Google when over budget or cooling down. */
-  admit() {
-    const t = this.now(); this.sent = this.sent.filter(x => t - x < 60000);
-    if (t < this.coolUntil) throw Object.assign(new ApiError(429, 'rate_limited'), { retryAfterSeconds: Math.ceil((this.coolUntil - t) / 1000), localGuard: 'cooldown' });
-    if (this.sent.length >= this.rpm) throw Object.assign(new ApiError(429, 'rate_limited'), { retryAfterSeconds: Math.ceil((60000 - (t - this.sent[0])) / 1000), localGuard: 'rpm' });
-    this.sent.push(t);
+  admit(model = '') {
+    const m = this.#m(model), t = this.now(); m.sent = m.sent.filter(x => t - x < 60000);
+    if (t < m.coolUntil) throw Object.assign(new ApiError(429, 'rate_limited'), { retryAfterSeconds: Math.ceil((m.coolUntil - t) / 1000), localGuard: 'cooldown' });
+    if (m.sent.length >= this.rpm) throw Object.assign(new ApiError(429, 'rate_limited'), { retryAfterSeconds: Math.ceil((60000 - (t - m.sent[0])) / 1000), localGuard: 'rpm' });
+    m.sent.push(t);
   }
   /** Back off: honour Retry-After / RetryInfo when given, else exponential (15 s → 30 s → … ≤ 10 min); daily quota → 1 h. */
-  backoff({ retryAfterSeconds = null, daily = false } = {}) {
-    this.strikes = Math.min((this.strikes ?? 0) + 1, 6);
-    const s = daily ? 3600 : Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0 ? Math.min(retryAfterSeconds, 3600) : Math.min(15 * 2 ** (this.strikes - 1), 600);
-    this.coolUntil = Math.max(this.coolUntil, this.now() + s * 1000); return s;
+  backoff({ retryAfterSeconds = null, daily = false, model = '' } = {}) {
+    const m = this.#m(model); m.strikes = Math.min(m.strikes + 1, 6);
+    const s = Math.ceil(daily ? 3600 : Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0 ? Math.min(retryAfterSeconds, 3600) : Math.min(15 * 2 ** (m.strikes - 1), 600));
+    m.coolUntil = Math.max(m.coolUntil, this.now() + s * 1000); return s;
   }
-  ok() { this.strikes = 0; }
+  ok(model = '') { this.#m(model).strikes = 0; }
 }
 
 // Thought signatures: Gemini 3 function calling needs the model's own steps (incl. thought signatures) replayed in
@@ -92,7 +99,8 @@ export class GeminiInteractionsRoute {
   async *stream(input, evidence) {
     const { signal } = input;
     check(typeof this.#secret === 'string' && this.#secret.trim() && !/[\r\n]/.test(this.#secret), 503, 'not_configured');
-    this.guard?.admit();
+    const model = input.model_override ?? this.route.model;
+    this.guard?.admit(model);
     const controller = new AbortController(), cancel = () => controller.abort();
     signal?.addEventListener('abort', cancel, { once: true }); if (signal?.aborted) cancel();
     let timedOut = false, visible = false, active = false, timer = null;
@@ -106,11 +114,15 @@ export class GeminiInteractionsRoute {
       response = await this.fetchImpl(this.route.endpoint, { method: 'POST', redirect: 'error', signal: controller.signal, headers: { 'x-goog-api-key': this.#secret, 'Content-Type': 'application/json', Accept: 'text/event-stream' }, body: JSON.stringify(body) });
       evidence.http_status = response.status; evidence.protocol = 'interactions';
       if (response.status !== 200) {
-        evidence.failure = await safeProviderFailure(response, { redact: t => t.replaceAll(this.#secret, '[REDACTED]') });
-        const raw = JSON.stringify(evidence.failure ?? {});
-        const daily = /per.?day|PerDay|daily/i.test(raw), exhausted = response.status === 429 || /RESOURCE_EXHAUSTED/.test(raw);
+        const failure = await safeProviderFailure(response, { redact: t => t.replaceAll(this.#secret, '[REDACTED]').replace(/data:image\/[^;,\s]+;base64,[A-Za-z0-9+/=]+/gi, '[IMAGE_REDACTED]') });
+        // Image turns keep only the classification fields (same allowlist as the OpenRouter image hop): no upstream text.
+        evidence.failure = input.image_attachments?.length ? Object.fromEntries(Object.entries(failure).filter(([key]) => IMAGE_FAILURE_FIELDS.includes(key))) : failure;
+        const raw = JSON.stringify(failure ?? {}); // classification uses the in-memory failure; only evidence is filtered
+        // Daily only from Google's own error (message/quotaId) — the failure envelope always has an account_daily_reset_utc
+        // key, so testing the whole JSON made every per-minute 429 look daily (1 h cooldown for a 20 s limit).
+        const daily = failure?.category === 'account_daily_quota' || /per.?day|PerDay|daily/i.test(JSON.stringify(failure?.error ?? {})), exhausted = response.status === 429 || /RESOURCE_EXHAUSTED/.test(raw);
         const retryInfo = /"retryDelay"\s*:\s*"(\d+)s"/.exec(raw);
-        if (exhausted) { const s = this.guard?.backoff({ retryAfterSeconds: evidence.failure?.headers?.retry_after_seconds ?? (retryInfo ? Number(retryInfo[1]) : null), daily }); throw Object.assign(new ApiError(429, daily ? 'quota_exhausted' : 'rate_limited'), { retryAfterSeconds: s }); }
+        if (exhausted) { const s = this.guard?.backoff({ retryAfterSeconds: failure?.headers?.retry_after_seconds ?? (retryInfo ? Number(retryInfo[1]) : null), daily, model }); throw Object.assign(new ApiError(429, daily ? 'quota_exhausted' : 'rate_limited'), { retryAfterSeconds: s }); }
         // 400 with tool history usually means missing thought signatures (see cache note) → fail over, never retry here.
         const codes = { 400: body.input.some(s => s.type === 'function_call') ? 'provider_failed' : 'provider_request_invalid', 401: 'unauthorized', 403: 'forbidden', 404: 'free_model_unavailable', 500: 'provider_failed', 502: 'provider_failed', 503: 'provider_overloaded', 504: 'provider_overloaded' };
         throw new ApiError(503, codes[response.status] ?? 'provider_failed');
@@ -124,7 +136,7 @@ export class GeminiInteractionsRoute {
         const type = ev.event_type;
         if (type === 'error' || ev.error) {
           const e = ev.error ?? {}; const busy = Number(e.code) === 429 || e.status === 'RESOURCE_EXHAUSTED';
-          if (busy && !visible) { const s = this.guard?.backoff({}); throw Object.assign(new ApiError(429, 'rate_limited'), { retryAfterSeconds: s }); }
+          if (busy && !visible) { const s = this.guard?.backoff({ model }); throw Object.assign(new ApiError(429, 'rate_limited'), { retryAfterSeconds: s }); }
           throw new ApiError(503, 'provider_stream_error', visible ? { reconciliation: true } : undefined);
         }
         if (type === 'interaction.created') { if (typeof ev.interaction?.model === 'string') evidence.actual_model = ev.interaction.model.slice(0, 200); continue; }
@@ -161,7 +173,7 @@ export class GeminiInteractionsRoute {
         let args; try { args = JSON.parse(c.raw || '{}'); } catch { if (i < MAX_CALLS) throw new ApiError(503, 'invalid_tool_arguments'); args = {}; }
         remember(c.id, c.thoughts); visible = true; yield { type: i < MAX_CALLS ? 'tool_call' : 'tool_call_overflow', id: c.id, name: c.name, arguments: args };
       }
-      this.guard?.ok(); evidence.terminal_validated = true;
+      this.guard?.ok(model); evidence.terminal_validated = true;
       yield { type: 'done', finish_reason: calls.size ? 'tool_calls' : 'stop', response_id: null };
     } catch (e) {
       // Hidden thinking (client did not ask for it) is not user-visible output, so a timeout then is still "before output".

@@ -4,6 +4,7 @@ import { ApiError,check,UUID } from '../facade-r2/src/common.mjs';
 import {TASK_REVISION_CONTRACT,TASK_REVISION_LIMITS} from './task-revision-contract.mjs';
 import {ACCEPTED_WORK_INTENT_CONTRACT,ACCEPTED_WORK_INTENT_BYTES,parseAcceptedWorkJSON} from './accepted-work-intent-contract.mjs';
 import { createFetchHandler } from '../facade-r2/src/http.mjs';
+import {retryAfterParts} from './retry-after.mjs';
 import {boundedJsonBody,VISION_LIMITS} from './vision-contract.mjs';
 import {APPROVAL_HEADER} from './approval.mjs';
 import {UI_HEADER,UI_KINDS_HEADER} from './generative-ui.mjs';
@@ -130,6 +131,6 @@ export function createChatFetchHandler(runtime){
         return new Response(stream,{headers:{'Content-Type':'text/event-stream','Cache-Control':'no-store','X-Content-Type-Options':'nosniff',...extraHeaders}});
       }
       throw new ApiError(404,'not_found');
-    }catch(e){const known=e instanceof ApiError;return Response.json({schema_version:1,error:{code:known?e.code:'internal_error',retryable:known&&e.retryable===true,reconciliation_required:known?e.reconciliation:false}},{status:known?e.status:500,headers:{'Cache-Control':'no-store',...known&&e.retryAfterSec?{'Retry-After':String(e.retryAfterSec)}:{}}});}
+    }catch(e){const known=e instanceof ApiError,ra=known?retryAfterParts(e):{headers:{},body:{}};return Response.json({schema_version:1,error:{code:known?e.code:'internal_error',retryable:known&&e.retryable===true,reconciliation_required:known?e.reconciliation:false,...ra.body}},{status:known?e.status:500,headers:{'Cache-Control':'no-store',...ra.headers}});}
   };
 }

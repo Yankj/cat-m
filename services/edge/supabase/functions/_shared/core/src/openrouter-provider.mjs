@@ -12,12 +12,23 @@ export const ALTERNATE_FREE_MODEL='nvidia/nemotron-3-super-120b-a12b:free';
 export const FREE_PROVIDER_ROUTES=Object.freeze({[FREE_MODEL]:['google-ai-studio'],[ALTERNATE_FREE_MODEL]:['nvidia'],[FREE_ROUTER]:[],[SUCCESSFUL_FREE_MODEL]:['novita/bf16']});
 export const ZERO_PRICE=Object.freeze({only:['google-ai-studio'],allow_fallbacks:false,require_parameters:true,data_collection:'deny',max_price:{prompt:0,completion:0,request:0,image:0}});
 // No env/file lookup. The composition root supplies a manually configured secret later.
+// Advisory Retry-After (seconds, 1..3600) for an OpenRouter 429: the provider header wins; an exhausted account daily
+// free-model quota waits until its UTC reset (capped at 1 h, the client re-checks then); otherwise a short default.
+export const DEFAULT_RATE_LIMIT_RETRY_SECONDS=30;
+export function retryAfterFromFailure(failure,now=Date.now()){
+  const header=failure?.headers?.retry_after_seconds??failure?.retry_after_seconds;
+  if(Number.isFinite(header)&&header>0)return Math.min(3600,Math.ceil(header));
+  if(failure?.category==='account_daily_quota'&&failure.account_daily_reset_utc){const s=Math.ceil((Date.parse(failure.account_daily_reset_utc)-now)/1000);if(Number.isFinite(s)&&s>0)return Math.min(3600,s);}
+  return DEFAULT_RATE_LIMIT_RETRY_SECONDS;
+}
 export class OpenRouterProvider {
   #secret;
   #observations=[];
   #catalog=null;
-  constructor({model=null,secret=null,endpoint=OPENROUTER_ENDPOINT,liveNetworkEnabled=false,allowFreeRouter=false,fetchImpl=globalThis.fetch,maxTokens=2048,timeoutMs=30000,privateRoutingPolicy=null,beforeStream=null,expectedProviderDisplay=null,allowImageInput=false,privateRouteReviewID=null}={}){
+  constructor({model=null,secret=null,endpoint=OPENROUTER_ENDPOINT,liveNetworkEnabled=false,allowFreeRouter=false,fetchImpl=globalThis.fetch,maxTokens=2048,timeoutMs=30000,privateRoutingPolicy=null,beforeStream=null,expectedProviderDisplay=null,allowImageInput=false,privateRouteReviewID=null,imageRouteHash=LIVE_VISION_ROUTE_HASH}={}){
     this.allowImageInput=allowImageInput===true;
+    // Consented image route this adapter serves: the legacy single route, or the vision free chain when it is a hop of it.
+    this.imageRouteHash=imageRouteHash;
     this.model=model;this.endpoint=endpoint;this.#secret=secret;this.liveNetworkEnabled=liveNetworkEnabled;this.allowFreeRouter=allowFreeRouter;this.fetchImpl=fetchImpl;
     check(Number.isInteger(maxTokens)&&maxTokens>0&&maxTokens<=2048&&Number.isInteger(timeoutMs)&&timeoutMs>0&&timeoutMs<=60000,422,'invalid_provider_limits');
     this.maxTokens=maxTokens;this.timeoutMs=timeoutMs;
@@ -50,7 +61,7 @@ export class OpenRouterProvider {
   async *stream({messages,system_prompt,tools,signal,provider_context,assertDispatchReady,image_attachments,vision_user_index}){
     const images=image_attachments??[];
     check(!messages.some(m=>Array.isArray(m.content))&&(!images.length||this.allowImageInput),503,'image_live_route_disabled');
-    if(images.length){check(provider_context?.image_route_hash===LIVE_VISION_ROUTE_HASH,403,'provider_image_context_required');await this.assertImageAvailable(signal);}
+    if(images.length){check(provider_context?.image_route_hash===this.imageRouteHash,403,'provider_image_context_required');await this.assertImageAvailable(signal);}
     this.assertReady();signal?.throwIfAborted();await this.beforeStream?.(provider_context);signal?.throwIfAborted();assertDispatchReady?.();
     const controller=new AbortController(),cancel=()=>controller.abort();
     signal?.addEventListener('abort',cancel,{once:true});if(signal?.aborted)cancel();
@@ -69,12 +80,14 @@ export class OpenRouterProvider {
       evidence.http_status=response.status;
       if(response.status!==200){const failure=await safeProviderFailure(response,{redact:text=>text.replaceAll(this.#secret,'[REDACTED]').replace(/data:image\/[^;,\s]+;base64,[A-Za-z0-9+/=]+/gi,'[IMAGE_REDACTED]')});evidence.failure=images.length?Object.fromEntries(Object.entries(failure).filter(([key])=>['headers','category','retry_after_seconds','retry_at','retry_allowed','account_daily_reset_utc'].includes(key))):failure;}
       const codes={401:'unauthorized',402:'quota_exhausted',403:'forbidden',404:'free_model_unavailable',429:'rate_limited'};
-      check(response.status===200,response.status===429?429:503,codes[response.status]??'provider_failed');
+      if(response.status===429)throw Object.assign(new ApiError(429,'rate_limited'),{retryAfterSeconds:retryAfterFromFailure(evidence.failure)});
+      check(response.status===200,503,codes[response.status]??'provider_failed');
       check(response.headers.get('content-type')?.startsWith('text/event-stream')&&response.body,503,'invalid_provider_stream');
       let finish=null,done=false,responseID=null,textBytes=0;const calls=new Map();
       for await(const data of sseData(response.body)){
         if(data==='[DONE]'){done=true;break;}
         let chunk;try{chunk=JSON.parse(data);}catch{throw new ApiError(503,'malformed_provider_json');}
+        if(chunk.error&&Number(chunk.error?.code)===429&&!textBytes&&!calls.size)throw Object.assign(new ApiError(503,'rate_limited'),{retryAfterSeconds:DEFAULT_RATE_LIMIT_RETRY_SECONDS});
         check(!chunk.error,503,Number(chunk.error?.code)===429?'rate_limited':'provider_stream_error');
         if(chunk.model){const allowed=this.model===FREE_ROUTER?APPROVED_ROUTER_MODELS.flatMap(m=>[m,m.replace(/:free$/,'')]):[this.model,this.model.replace(/:free$/,'')];check(allowed.includes(chunk.model),503,'response_model_mismatch',{reconciliation:images.length>0});}
         if(reviewFrames)checkGemmaReviewFrame(chunk,reviewFrames);
@@ -113,7 +126,7 @@ export class OpenRouterProvider {
       }
       if(reviewFrames)reviewFrames.validation.passed=true;
       evidence.terminal_validated=true;
-      yield {type:'done',finish_reason:finish,response_id:responseID,...images.length?{provider_receipt:{requested_model:this.model,actual_model:evidence.actual_model,actual_provider:evidence.actual_provider,cost:evidence.usage.cost,image_count:evidence.image_count,image_hashes:clone(evidence.image_hashes),image_bytes:evidence.image_bytes,route_hash:LIVE_VISION_ROUTE_HASH,terminal_validated:true,response_id:responseID}}:{}};
+      yield {type:'done',finish_reason:finish,response_id:responseID,...images.length?{provider_receipt:{requested_model:this.model,actual_model:evidence.actual_model,actual_provider:evidence.actual_provider,cost:evidence.usage.cost,image_count:evidence.image_count,image_hashes:clone(evidence.image_hashes),image_bytes:evidence.image_bytes,route_hash:this.imageRouteHash,terminal_validated:true,response_id:responseID}}:{}};
     } catch(e){
       if(timedOut){evidence.error='provider_timeout';throw new ApiError(503,evidence.error,{reconciliation:true});}
       if(e instanceof ApiError){evidence.error=e.code;throw e;}
