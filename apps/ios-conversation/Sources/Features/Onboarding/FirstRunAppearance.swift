@@ -27,7 +27,7 @@ enum FirstRunAppearance {
     private static let wash: (Token, Double) = (.color("orbLight"), washTailAtCopy)
     static let texts: [Text] = [
         .init(id: "brand Catpaw-m", fg: .color("ink"), bg: pageBackground, overlay: wash),
-        .init(id: "brand subtitle 你的个人 AI 助手", fg: .color("calmSecondary"), bg: pageBackground, overlay: wash),
+        .init(id: "brand subtitle 先你一步，把事办妥", fg: .color("calmSecondary"), bg: pageBackground, overlay: wash),
         .init(id: "headline 解放双手…", fg: .color("ink"), bg: pageBackground, overlay: wash, large: true),
         .init(id: "subcopy 从一句话开始…", fg: .color("calmSecondary"), bg: pageBackground, overlay: wash),
         .init(id: "capability chip label ×8", fg: .color("ink"), bg: .color("calmSurface")),

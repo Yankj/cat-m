@@ -1403,12 +1403,12 @@ private struct ConversationPendingMessageEditor:View {
     }
     private var content:some View {
             Form {
-                Section(ui("关于")) {
+                Section {
                     LabeledContent(ui("版本"), value:Bundle.main.object(forInfoDictionaryKey:"CFBundleShortVersionString") as? String ?? "—")
                         .textSelection(.enabled).accessibilityIdentifier("settings.appVersion")
                     LabeledContent(ui("构建号"), value:Bundle.main.object(forInfoDictionaryKey:"CFBundleVersion") as? String ?? "—")
                         .textSelection(.enabled).accessibilityIdentifier("settings.appBuild")
-                }
+                } header: { Text(ui("关于")) } footer: { Text(ui("先你一步，把事办妥")).accessibilityIdentifier("settings.aboutSlogan") }
                 Section(ui("模型连接")) {
                     ConnectionStatusRow(
                         kind: {

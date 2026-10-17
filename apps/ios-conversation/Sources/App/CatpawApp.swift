@@ -116,16 +116,10 @@ import AppIntents
     @StateObject private var auth = NativeAuthApplicationModel()
     @StateObject private var oauth = NativeOAuthCoordinator()   // feat/oauth-github-google
     @Environment(\.scenePhase) private var scene
-    @State private var launchMarkVisible = LaunchMarkGate.shouldPlay(openedFromURLOrNotification: false)
     @State private var calendarScan: Task<Void, Never>?
-    /// B2 (方块's two-stage loader): EVERY launch starts on CatpawLaunchMark, pixel-identical to LaunchScreen.storyboard (96 pt
-    /// tile on LaunchBackground, centred on the full screen), so the app's first frame is the launch image. Second and later
-    /// launches: it loops until the chat is ready, then exits onto the already-mounted chat. First run: it is ready at once
-    /// and exits onto the onboarding orb splash (LaunchMarkView toOrb), which keeps the first-run path unchanged.
-    @State private var launchLogoVisible = true
-    @State private var launchHoldExpired = false
-    /// The logo never holds a launch hostage: after this the storage-free launch shell (real chrome + 300 ms capsule) shows.
-    static let launchLogoMaxHold: TimeInterval = 1.5
+    /// launch-v2 (方块, /workspace/codex-review/launch-v2/SPEC.md): every launch's first frame is CatpawLaunchStatic, a pixel
+    /// copy of Base.lproj/LaunchScreen.storyboard (glyph + slogan), then ONE 220 ms fade-and-rise (Reduce Motion: 200 ms
+    /// fade) onto the chat or onboarding. No loop, no loader, no minimum hold; the chat shows its own state if it is slow.
     #if DEBUG
     @StateObject private var synthetic = NativeSyntheticApplicationModel()
     #endif
@@ -152,7 +146,7 @@ import AppIntents
     }
     var body: some Scene {
         WindowGroup {
-            Group {
+            LaunchHandoff { Group {
                 #if DEBUG
                 if let model = synthetic.chat {
                     ConversationFirstView(model:model,accountLabel:synthetic.fixtureIdentity,restrictToFrozenFixture:true)
@@ -163,26 +157,8 @@ import AppIntents
                 primaryView
                 #endif
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .overlay {
-                if launchMarkVisible {
-                    LaunchMarkView(restoring: false, toOrb: auth.chat == nil || auth.needsOnboarding) { launchMarkVisible = false }
-                        .transition(.opacity)
-                        .zIndex(100)
-                }
-            }
-            .overlay {
-                if launchLogoVisible {
-                    CatpawLaunchMark(isReady: launchMarkVisible || launchChatReady) {
-                        LaunchTrace.mark("launch.loaderGone", "", once: true); launchLogoVisible = false
-                    }
-                    .onAppear { LaunchTrace.mark("launch.logo", "", once: true) }
-                    .task { try? await Task.sleep(nanoseconds: UInt64(Self.launchLogoMaxHold * 1_000_000_000)); launchHoldExpired = true }
-                    .zIndex(101)
-                }
-            }
-            .onChange(of: launchMarkVisible || launchChatReady, initial: true) { _, ready in if ready { LaunchTrace.mark("launch.handoff", "", once: true) } }
-            .onOpenURL { url in launchMarkVisible = false; CatpawRouteCenter.shared.pending = CatpawAppRoute(url: url) }
+            .frame(maxWidth: .infinity, maxHeight: .infinity) }
+            .onOpenURL { url in CatpawRouteCenter.shared.pending = CatpawAppRoute(url: url) }
             .catpawInAppBanner()
             .environment(\.catpawOAuth, oauth)
             .nativeOAuthSwitchConfirmation(oauth)
@@ -206,12 +182,6 @@ import AppIntents
             .task { if bootstrap.isP0Fixture { await bootstrap.startFixture() } else if bootstrap.model == nil { await auth.start() } }
                 .onChange(of:scene) { _, phase in if phase == .active { scheduleCalendarScan() }; if phase == .active,bootstrap.model == nil,!bootstrap.isP0Fixture { Task { await auth.foreground() } } }
         }
-    }
-    /// The logo hands off once there is something real to show: the account chat attached, a fixture surface, the landing,
-    /// a session that needs 「重新开始」, or — after `maxHold` — the launch shell with its status capsule.
-    private var launchChatReady: Bool {
-        auth.chat != nil || bootstrap.model != nil || bootstrap.isP0Fixture || auth.isFixture || auth.needsOnboarding
-            || auth.sessionRestartNeeded || launchHoldExpired
     }
     /// SPEC-E §7: the calendar scan never lands in the launch, landing-entrance or tap windows. It runs ≥3 s after the
     /// landing or chat is stable (landing settled / onboarding finished and the first-run transition done).

@@ -69,11 +69,18 @@ do {
     check(got["light"] == tokens.resolve(.color("background"), .light) && got["dark"] == tokens.resolve(.color("background"), .dark), "\(set) \(got) == chat background")
 }
 }
-let storyboard = (try? String(contentsOfFile: root + "/Resources/LaunchScreen.storyboard", encoding: .utf8)) ?? ""
-// User direction 14:48 (replaces the 12:58 "no logo" rule): the launch screen draws 方块's 96 pt LaunchMark tile, centred on
-// the superview, on LaunchBackground — identical to CatpawLaunchMark's first frame.
-check(storyboard.contains("image=\"LaunchMark\"") && storyboard.contains("name=\"LaunchBackground\""), "launch screen draws LaunchMark on LaunchBackground")
-check(storyboard.contains("constant=\"96\"") && storyboard.contains("secondAttribute=\"centerX\"") && storyboard.contains("secondAttribute=\"centerY\""), "launch logo 96 pt, centred")
+let storyboard = (try? String(contentsOfFile: root + "/Resources/Base.lproj/LaunchScreen.storyboard", encoding: .utf8)) ?? ""
+// launch-v2 (replaces the B2 96 pt tile and the older "no logo" rule): the launch screen HAS a logo — the LaunchGlyph cat
+// glyph 70×56 plus the system-font slogan, group centre at 0.61 H of the superview, on LaunchCanvas — identical to
+// CatpawLaunchStatic's first frame.
+check(storyboard.contains("<image") && storyboard.contains("image=\"LaunchGlyph\""), "launch screen draws the LaunchGlyph logo")
+check(storyboard.contains("name=\"LaunchCanvas\"") && storyboard.contains("name=\"LaunchSlogan\""), "launch screen on LaunchCanvas, slogan in LaunchSlogan")
+check(storyboard.contains("constant=\"70\"") && storyboard.contains("constant=\"56\"") && storyboard.contains("multiplier=\"1.22\""), "glyph 70×56, group centre at 0.61 H")
+check(storyboard.contains("id=\"SLG-01\"") && storyboard.contains("type=\"system\" pointSize=\"17\""), "slogan is system 17 text (SLG-01)")
+for (lang, slogan) in [("en", "A step ahead. Things handled."), ("zh-Hans", "先你一步，把事办妥")] {
+    let s = (try? String(contentsOfFile: root + "/Resources/\(lang).lproj/LaunchScreen.strings", encoding: .utf8)) ?? ""
+    check(s.contains("\"SLG-01.text\" = \"\(slogan)\";"), "launch slogan localized \(lang)")
+}
 // Spec hygiene: no translucent text (the brand label used ink at 0.72).
 for t in FirstRunAppearance.texts { check(t.fgAlpha == 1, "\(t.id) uses translucent text") }
 for sch in [FirstRunAppearance.Scheme.light, .dark] {

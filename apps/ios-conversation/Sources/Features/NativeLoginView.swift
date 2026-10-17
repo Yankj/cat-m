@@ -161,7 +161,7 @@ import UIKit
                 .foregroundStyle(CatpawColors.ink)
                 .accessibilityAddTraits(.isHeader)
                 .accessibilityIdentifier("onboarding.brand"), "brand")
-            rise(Text(ui("你的个人 AI 助手"))
+            rise(Text(ui("先你一步，把事办妥"))
                 .font(CatpawTypography.Role.caption.font)
                 .foregroundStyle(CatpawColors.calmSecondary)
                 .accessibilityIdentifier("onboarding.brandSubtitle"), "brandSubtitle")

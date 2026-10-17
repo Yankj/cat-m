@@ -6842,5 +6842,9 @@
   "发送失败": {
     "en": "Not sent",
     "zh-Hans": "发送失败"
+  },
+  "先你一步，把事办妥": {
+    "en": "A step ahead. Things handled.",
+    "zh-Hans": "先你一步，把事办妥"
   }
 }
