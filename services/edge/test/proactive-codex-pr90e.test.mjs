@@ -33,7 +33,7 @@ test('PR90e #6: a terminal push state is never overwritten by a late setPush', a
   const { call, store } = setup(); await store.upsertToken(U, TOK);
   const id = (await call('POST', BASE + '/evaluate', meeting({ delivery: 'remote' }))).body.event_id;
   await call('POST', `${BASE}/suggestions/${id}/action`, { action: 'dismiss', operation_id: 'op-d' });
-  await store.setPush(id, 'sent', null);
+  await store.setPush(id, 'sent', null, 0);
   assert.equal((await store.getEvent(U, id)).push_state, 'skipped');
 });
 

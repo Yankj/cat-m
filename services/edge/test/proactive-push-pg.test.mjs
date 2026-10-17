@@ -62,11 +62,11 @@ test('pg: concurrent claims → exactly one claim token; claim vs dismiss → ex
     const clock = { t: Date.parse('2026-10-15T02:00:00Z') }, { U, store, call } = rig(sql, { configured: true, send: async () => ({ ok: true }) }, clock);
     await sql`insert into auth.users(id) values(${U})`;
     const id = (await call('POST', '/catpaw/proactive/v1/evaluate', meeting())).body.event_id;
-    const claims = await Promise.all(Array.from({ length: 8 }, () => store.claimPush(id)));
+    const claims = await Promise.all(Array.from({ length: 8 }, () => store.claimPush(id, null, 0)));
     assert.equal(claims.filter(Boolean).length, 1, JSON.stringify(claims));
     for (let i = 0; i < 10; i++) {
       const e = (await call('POST', '/catpaw/proactive/v1/evaluate', meeting())).body.event_id;
-      const [c] = await Promise.all([store.claimPush(e), store.cancelPendingPush(U, e, 'suggestion_dismissed')]);
+      const [c] = await Promise.all([store.claimPush(e, null, 0), store.cancelPendingPush(U, e, 'suggestion_dismissed', 0)]);
       const st = (await sql`select push_state from proactive.events where id=${e}`)[0].push_state;
       assert.ok((c && st === 'sending') || (!c && st === 'skipped'), `round ${i}: claim=${!!c} state=${st}`);
     }
@@ -102,7 +102,7 @@ test('pg: lease recovery — unsent and unknown claims are re-armed exactly once
     const clock = { t: Date.parse('2026-10-15T02:00:00Z') }, { U, store, call } = rig(sql, { configured: true, send: async () => ({ ok: true }) }, clock);
     await sql`insert into auth.users(id) values(${U})`;
     const a = (await call('POST', '/catpaw/proactive/v1/evaluate', meeting())).body.event_id, b = (await call('POST', '/catpaw/proactive/v1/evaluate', meeting())).body.event_id;
-    const ca = await store.claimPush(a), cb = await store.claimPush(b); await store.markPushAttempt(b, cb.claim);
+    const ca = await store.claimPush(a, null, 0), cb = await store.claimPush(b, null, 0); await store.markPushAttempt(b, cb.claim);
     const later = new Date(Date.now() + 10 * 60_000).toISOString();
     const n = await Promise.all([store.recoverStalePush(later, 120), store.recoverStalePush(later, 120)]);
     assert.ok(n[0] + n[1] >= 2, 'both stale claims recovered');
