@@ -117,6 +117,7 @@ struct ProactiveSignal: Equatable, Sendable {
     /// the data is migrated to the signed-in account (only other accounts' queued write-backs go); otherwise the
     /// previous owner's data is wiped. Adopt and wipe both register the new owner, so it never stays "".
     func claimData(for account: String?, force: Bool = false) {
+        ProactiveSealedStore.ensureActive(account: account)   // R2 P1-1: background entry points may run before the view activated L2
         let owner = defaults.object(forKey: ProactiveDataOwner.key) as? String
         let plan: ProactiveDataOwner.Plan = force ? .wipe : ProactiveDataOwner.plan(owner: owner, current: account)
         switch plan {
@@ -127,6 +128,9 @@ struct ProactiveSignal: Equatable, Sendable {
             // p90i P1-a: the old account's data is parked under it (never dropped, never executed under anyone else).
             if ProactiveParking.shouldPark(plan: plan, owner: owner, force: force), let owner { park(owner: owner) }
         }
+        // R2 (NoBug B1): the previous owner's (or unowned) legacy plaintext was parked / quarantined above; it must not
+        // outlive the owner change, or the lazy migration would seal it into the new owner's store.
+        ProactiveSealedStore.dropPlaintext()
         for id in Set(ProactiveSuggestionStore.shared.items.keys).union(ProactiveLocalBackend.load().keys) { CatpawLeaveActivity.stop(suggestionID: id) }
         quota = ProactiveQuotaLedger()
         syncQueue.purge(account: nil); localOnly = []; localFeedback = .init()
@@ -147,15 +151,20 @@ struct ProactiveSignal: Equatable, Sendable {
         var blobs: [String: Data] = [:]
         // v1.1 L2: sensitive blobs (inbox, reminder + attendee contexts) are parked sealed with the device parking vault
         // key (`sealed:<key>`), never as plaintext; the rest as before.
+        // R2 (NoBug B1): the owner's data is its sealed record (only if the active store IS the owner's) or else its
+        // legacy plaintext (pre-v1.1, or another account's store is active) — never the active store of someone else.
+        var raw: [String: Data] = [:]
         for k in quarantineBlobKeys {
-            if ProactiveSealedStore.handles(k) { if let d = blob(k) { ProactiveSealedStore.setParked(&blobs, d, k) } }
-            else if let d = defaults.data(forKey: k) { blobs[k] = d }
+            if ProactiveSealedStore.handles(k) {
+                if let d = ProactiveSealedStore.data(forKey: k, ownedBy: owner) ?? defaults.data(forKey: k) { raw[k] = d; ProactiveSealedStore.setParked(&blobs, d, k) }
+            } else if let d = defaults.data(forKey: k) { blobs[k] = d }
         }
         let (items, dead) = syncQueue.extractSplit()   // p90i: dead letters parked apart, restored as dead letters
-        let inbox = blob(ProactiveLocalBackend.storageKey).flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] } ?? [:]
+        let inbox = raw[ProactiveLocalBackend.storageKey].flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] } ?? [:]
         guard !inbox.isEmpty || !items.isEmpty || !dead.isEmpty else { return }   // nothing of that account to keep
         // EventKit reminders the app created are outside the app: never deleted / edited here, listed for the user (#89).
-        let ext = ProactiveParking.externalItems(inbox: inbox, reminderOps: pendingReminders.mapValues(\.operationID))
+        let ownerReminders = raw[suggestionsKey].flatMap { try? JSONDecoder().decode([String: PendingReminder].self, from: $0) } ?? [:]
+        let ext = ProactiveParking.externalItems(inbox: inbox, reminderOps: ownerReminders.mapValues(\.operationID))
         if !ext.isEmpty {
             var all = externalStore, mine = all[owner.lowercased()] ?? []
             for e in ext where !mine.contains(where: { $0.suggestionID == e.suggestionID }) { mine.append(e) }
@@ -318,7 +327,7 @@ struct ProactiveSignal: Equatable, Sendable {
         // p90i: a later unowned set is parked under "(unknown)" rather than wiped.
         guard defaults.dictionary(forKey: ProactiveQuarantine.key) == nil else { park(owner: "(unknown)"); return }
         var blobs: [String: Data] = [:]
-        for k in quarantineBlobKeys { if let d = defaults.data(forKey: k) ?? blob(k) { blobs[k] = d } }   // unowned legacy data is still plaintext
+        for k in quarantineBlobKeys { if let d = defaults.data(forKey: k) { blobs[k] = d } }   // unowned legacy data is still plaintext; R2 P2-3: never copy the active account's sealed records here
         let (items, dead) = syncQueue.extractSplit()   // p90i 09:01: dead letters kept apart (released as dead letters)
         let record: [String: Any] = ["at": ProactiveClock.now().timeIntervalSince1970, "blobs": blobs, "serverIDs": takeLegacyServerIDs(), "localOnly": Array(localOnly),
                                      "queue": (try? JSONEncoder().encode(items)) ?? Data(), "dead": (try? JSONEncoder().encode(dead)) ?? Data(),
@@ -1226,7 +1235,7 @@ struct ProactiveSignal: Equatable, Sendable {
         // Written only under the token it was scheduled with; an untagged (legacy) payload resumes nothing (Codex PR90d #3).
         guard let token = delivery.resumeToken(userInfo) else { return nil }
         return AccountEpoch.shared.commit(token) { () -> ProactiveSuggestion in
-        claimData(for: token.account)
+        claimData(for: token.account)   // R2 P1-1: also activates L2 for token.account when a lock-screen action cold-started the app
         var seen = ledger
         seen[signal.signalHash] = ProactiveClock.now().timeIntervalSince1970
         ledger = seen
@@ -1278,6 +1287,7 @@ struct ProactiveSignal: Equatable, Sendable {
         BGTaskScheduler.shared.register(forTaskWithIdentifier: bgTaskID, using: nil) { task in
             Task { @MainActor in
                 ProactiveEngine.shared.note("BGAppRefresh fired")
+                ProactiveSealedStore.ensureActive(account: AccountEpoch.shared.currentAccount)   // R2 P1-1: the view's .task may never run on a background launch
                 await ProactiveEngine.shared.scanCalendar(source: .background)
                 await ProactiveEngine.shared.prescheduleNextEvent()
                 scheduleBackgroundRefresh()
@@ -1673,43 +1683,86 @@ struct ProactiveInventoryItem: @unchecked Sendable { var id: String; var info: [
 
 /// v1.1 L2 regression fix: the proactive inbox and the reminder / attendee contexts (names, recipients, titles, places)
 /// were plaintext UserDefaults. They now live in the signed-in account's `L2SecureStore` (AES-GCM, Keychain key,
-/// `.completeFileProtection`, crypto-shredded by `L2SecureStore.wipe` at sign-out).
+/// `.completeFileProtectionUntilFirstUserAuthentication` so BGAppRefresh / lock-screen actions work, crypto-shredded by
+/// `L2SecureStore.wipe` at sign-out).
 /// - Signed out / no L2 store: reads return nil and writes are dropped — never a plaintext fallback.
+/// - R2 (NoBug P1-1): a record that exists but can't be read now is never treated as empty: writes and deletes through
+///   `set` are skipped while it is unreadable (a read-modify-write would otherwise replace or delete unseen data).
 /// - One-time migration: a legacy plaintext value is sealed into the store of the account that owns it
 ///   (`ProactiveDataOwner.key`), then the plaintext is deleted. Another account's (or unowned) legacy data is left for the
-///   existing owner / quarantine flow and is never sealed into the wrong account.
+///   existing owner / quarantine flow and is never sealed into the wrong account; `claimData` drops the plaintext
+///   (after parking / quarantining it) before it records a new owner (R2, NoBug B1).
 @MainActor enum ProactiveSealedStore {
     static let inboxKey = "catpaw.proactive.inbox.v1", remindersKey = "catpaw.proactive.suggestions.v1", attendeesKey = "catpaw.proactive.attendees.v1"
     static let sealedKeys: Set<String> = [inboxKey, remindersKey, attendeesKey]
+    static let protection: L2Protection = .untilFirstUnlock
     /// Test seams.
     static var defaults: UserDefaults = .standard
     static var store: @MainActor () -> L2SecureStore? = { L2SecureStore.current }
+    /// Test seam: activates the real L2 store for an account (nil → `L2SecureStore.activate`).
+    static var activator: (@MainActor (UUID) -> Void)?
 
     nonisolated static func handles(_ key: String) -> Bool {
         key == "catpaw.proactive.inbox.v1" || key == "catpaw.proactive.suggestions.v1" || key == "catpaw.proactive.attendees.v1"
     }
 
-    static func data(forKey key: String) -> Data? {
-        guard handles(key), let store = store() else { return nil }
-        migrate(key, into: store)
-        return store.data(forKey: key)
+    /// R2 (NoBug P1-1): background entry points (BGAppRefresh, notification recovery, background saves) can run before
+    /// the chat view's `.task` activated L2. Activates the store for `account` (the current AccountEpoch account) only
+    /// when no store is active — never switches an active store to another account.
+    static func ensureActive(account: String?) {
+        guard store() == nil, let account, let uid = UUID(uuidString: account),
+              AccountEpoch.shared.currentAccount.map({ $0.caseInsensitiveCompare(account) == .orderedSame }) == true else { return }
+        if let activator { activator(uid) } else { L2SecureStore.activate(userID: uid) }
+        migrateAll()
     }
-    /// Writes (nil deletes) the sealed record; any plaintext copy of an owned key is removed. Dropped without a store.
-    static func set(_ value: Data?, forKey key: String) {
-        guard handles(key), let store = store() else { return }
+
+    static func data(forKey key: String) -> Data? {
+        if case .value(let d) = read(forKey: key) { return d }
+        return nil
+    }
+    /// `.unreadable` also when no store is active (signed out / locked before first unlock): never "empty".
+    static func read(forKey key: String) -> L2ReadResult {
+        guard handles(key), let store = store() else { return .unreadable }
         migrate(key, into: store)
-        do { try store.write(value, forKey: key) } catch { return }
+        return store.read(forKey: key)
+    }
+    /// Writes (nil deletes) the sealed record; any plaintext copy of an owned key is removed. Dropped without a store,
+    /// and skipped (R2 P1-1) while the existing record is unreadable. Returns whether it was written.
+    @discardableResult static func set(_ value: Data?, forKey key: String) -> Bool {
+        guard handles(key), let store = store() else { return false }
+        migrate(key, into: store)
+        guard store.read(forKey: key) != .unreadable else { return false }
+        do { try store.write(value, forKey: key, protection: protection) } catch { return false }
+        return true
+    }
+    /// The sealed record of `key` only when the active store belongs to `owner` (R2 B1: parking reads never take
+    /// another account's store for the leaving owner's data).
+    static func data(forKey key: String, ownedBy owner: String) -> Data? {
+        guard let store = store(), storeOwnedBy(store, owner) else { return nil }
+        return data(forKey: key)
+    }
+    static let realOwnership: @MainActor (L2SecureStore, String) -> Bool = { store, owner in owner.caseInsensitiveCompare(store.userID.uuidString) == .orderedSame }
+    /// Test seam (host tests share one store across their string accounts); the app uses `realOwnership`.
+    static var storeOwnedBy: @MainActor (L2SecureStore, String) -> Bool = realOwnership
+    /// R2 B1: removes the legacy plaintext copies (call only after they were parked / quarantined).
+    static func dropPlaintext() {
+        for k in sealedKeys { defaults.removeObject(forKey: k) }
     }
     /// Sign-out: after `claimData(for: nil)` parked them (sealed), the leaving account's live sealed records and any
     /// plaintext copy are purged; `L2SecureStore.wipe` then crypto-shreds the account directory and key.
     static func purgeForSignOut() {
         if let store = store() { for k in sealedKeys { try? store.write(nil, forKey: k) } }
-        for k in sealedKeys { defaults.removeObject(forKey: k) }
+        dropPlaintext()
     }
     // MARK: Parking lot (account-independent: survives sign-out like the lot itself, but never as plaintext)
     static let parkingVaultID = UUID(uuidString: "00000000-0000-0000-0000-00000000c0df")!
+    /// R2 (NoBug P2-4): one vault instance per process and root (one Keychain read), not one per blob.
+    private static var cachedVault: (root: URL, store: L2SecureStore)?
     static var parkingVault: @MainActor () -> L2SecureStore? = {
-        try? L2SecureStore(userID: ProactiveSealedStore.parkingVaultID, root: L2SecureStore.rootDirectory, keys: L2SecureStore.keys)
+        let root = L2SecureStore.rootDirectory
+        if let c = ProactiveSealedStore.cachedVault, c.root == root { return c.store }
+        guard let v = try? L2SecureStore(userID: ProactiveSealedStore.parkingVaultID, root: root, keys: L2SecureStore.keys) else { return nil }
+        ProactiveSealedStore.cachedVault = (root, v); return v
     }
     static let parkedPrefix = "sealed:"
     /// Stores `value` for `key` in a parked record's blobs, sealed; dropped (never plaintext) when the vault is unavailable.
@@ -1755,8 +1808,10 @@ struct ProactiveInventoryItem: @unchecked Sendable { var id: String; var info: [
         guard let plain = defaults.data(forKey: key) else { return }
         guard let owner = defaults.object(forKey: ProactiveDataOwner.key) as? String, !owner.isEmpty,
               owner.caseInsensitiveCompare(store.userID.uuidString) == .orderedSame else { return }
-        if store.data(forKey: key) == nil {
-            do { try store.write(plain, forKey: key) } catch { return }   // keep the plaintext only if sealing failed
+        switch store.read(forKey: key) {
+        case .unreadable: return   // R2 P1-1: keep the plaintext; never overwrite a sealed copy we can't see
+        case .missing: do { try store.write(plain, forKey: key, protection: protection) } catch { return }   // keep the plaintext only if sealing failed
+        case .value: break   // the sealed copy wins
         }
         defaults.removeObject(forKey: key)
     }
