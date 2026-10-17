@@ -88,14 +88,14 @@ final class NativeOAuthTests: XCTestCase {
         let trial = await m.snapshot().user
         do { try await m.completeOAuthLink(code: "code-12345678", verifier: String(repeating: "v", count: 50)); XCTFail("must not switch subject") }
         catch NativeAuthError.invalidResponse { }
-        XCTAssertEqual(await m.snapshot().user, trial); XCTAssertEqual(try storage.load()?.user, trial)
+        let afterUser = await m.snapshot().user; XCTAssertEqual(afterUser, trial); XCTAssertEqual(try storage.load()?.user, trial)
     }
     func testSignInWhileSignedInIsBusy() async throws {
         let c = try config(), storage = AuthTestStorage(), id = UUID()
         let m = NativeAuthSessionManager(configuration: c, remote: OAuthFakeRemote(issuer: c.issuer, anonymous: id, oauthSubject: UUID()), vault: storage, barrier: storage)
         try await m.startExperience()
         do { try await m.signInWithOAuth(code: "code-12345678", verifier: String(repeating: "v", count: 50)); XCTFail() } catch NativeAuthError.busy { }
-        XCTAssertEqual(await m.snapshot().user?.id, id)
+        let still = await m.snapshot().user?.id; XCTAssertEqual(still, id)
     }
 }
 
