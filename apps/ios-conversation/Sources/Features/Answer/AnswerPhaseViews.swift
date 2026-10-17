@@ -111,9 +111,13 @@ import UIKit
             else if hasDetail { resultRow }
             if expanded && !model.steps.isEmpty {
                 VStack(alignment: .leading, spacing: 10) {
-                    ForEach(model.steps) { step in
-                        ReplyStepRow(step: step, current: thinking && step.id == currentStepID)
+                    // Visual SPEC v2 §1: glyph centre x 12 (= kitten slot centre), step text at x 32.
+                    VStack(alignment: .leading, spacing: 10) {
+                        ForEach(model.steps) { step in
+                            ReplyStepRow(step: step, current: thinking && step.id == currentStepID)
+                        }
                     }
+                    .padding(.leading, 4)
                     if !model.sources.isEmpty { SourceCapsuleStrip(sources: Array(model.sources.prefix(4))) }
                 }
                 .transition(.opacity.combined(with: .move(edge: .top)))
@@ -228,6 +232,9 @@ import UIKit
     /// Stage 4: 「思考结果 ›」 — plain secondary text row, no capsule, chevron rotates when open.
     private var resultRow: some View {
         Button { userExpanded = !expanded } label: {
+          HStack(spacing: 8) {
+            // Visual SPEC v2 §8: done chip led by the happy kitten, no badge; text stays at x 32.
+            if model.usesStatusLine { StatusKitten(pose: .done, badge: nil, tone: .neutral) }
             HStack(spacing: 4) {
                 Text(ui("思考结果")).font(CatpawTypography.Role.secondary.font)
                 if let s = model.thoughtSeconds, s > 0 {
@@ -237,7 +244,8 @@ import UIKit
                     .rotationEffect(.degrees(expanded ? 90 : 0)).accessibilityHidden(true)
             }
             .foregroundStyle(CatpawColors.secondary)
-            .frame(minHeight: 32).contentShape(Rectangle())
+          }
+          .frame(minHeight: 32).contentShape(Rectangle())
         }
         .buttonStyle(CatpawPressButtonStyle())
         .accessibilityValue(expanded ? ui("已展开") : ui("已收起"))
@@ -263,7 +271,7 @@ import UIKit
         return "sparkle"
     }
     var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 10) {
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
             Image(systemName: glyph).font(CatpawTypography.Role.caption.font)
                 .frame(width: 16).accessibilityHidden(true)
             Text(step.title).font(CatpawTypography.Role.secondary.font.weight(current ? .medium : .regular))
@@ -305,7 +313,7 @@ import UIKit
                     .accessibilityLabel(s.title)
                 }
             }
-            .padding(.leading, 26)
+            .padding(.leading, 32)
         }
         .accessibilityIdentifier("chat.answer.stepSources")
     }

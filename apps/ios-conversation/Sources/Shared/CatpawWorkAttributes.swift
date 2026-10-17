@@ -145,3 +145,38 @@ struct ToolStepCopy: Equatable, Sendable {
         return (en ? e?.confirmEN : e?.confirm) ?? (en ? generic.confirmEN! : generic.confirm!)
     }
 }
+
+extension ToolStepCopy {
+    /// status-line visual SPEC v2 §2.3: 7.5pt badge glyphs. Base / .fill symbols only (.badge.plus variants turn to mush).
+    static func badgeSymbol(_ tool: String) -> String {
+        switch tool {
+        case "calendar_list", "calendar_create", "create_calendar_event", "update_calendar_event": return "calendar"
+        case "reminder_create", "create_reminder", "update_reminder": return "bell.fill"
+        case "alarm_set": return "alarm.fill"
+        case "places_search": return "mappin"
+        case "maps_open": return "map.fill"
+        case "web_search": return "magnifyingglass"
+        case "delegate_sources_v1": return "link"
+        case "contacts_search": return "person.fill"
+        case "mail_compose": return "envelope.fill"
+        case "sms_compose": return "message.fill"
+        case "revise_current_report_v1", "revise_current_work_v1": return "pencil"
+        case "list_tasks", "create_task", "update_task": return "checklist"
+        case "memory_search", "memory_save", "memory_update", "propose_memory_v1": return "brain"
+        case "memory_forget": return "trash.fill"
+        case "delegate_task", "delegate_plan_v1", "agent_status": return "list.bullet"
+        case "render_ui", "present_cgui_v1": return "square.grid.2x2.fill"
+        case "phone_call": return "phone.fill"
+        case "shop_open": return "bag.fill"
+        case "shortcut_run": return "square.stack.3d.up.fill"
+        case "external_write": return "arrow.up.forward"
+        default:
+            let k = tool.lowercased()
+            if k.contains("fetch") || k.contains("browse") { return "link" }
+            if k.contains("search") { return "magnifyingglass" }
+            return "ellipsis"
+        }
+    }
+    /// Writing-pose tools (SPEC v2 §2.1: compose tools and report revise use the Writing kitten).
+    static let writingTools: Set<String> = ["mail_compose", "sms_compose", "revise_current_report_v1", "revise_current_work_v1"]
+}

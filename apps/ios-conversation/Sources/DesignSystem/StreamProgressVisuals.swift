@@ -147,7 +147,8 @@ extension View { func workingShimmer(_ active: Bool = true) -> some View { modif
     var onTap: (() -> Void)? = nil
     @ViewBuilder var trailing: () -> Trailing
 
-    @ScaledMetric(relativeTo: .subheadline) private var slot: CGFloat = 20
+    @ScaledMetric(relativeTo: .subheadline) private var nudgeY: CGFloat = 5
+    @State private var onScreen = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var dts
     @ObservedObject private var lowPower = LowPowerObserver.shared
@@ -159,19 +160,13 @@ extension View { func workingShimmer(_ active: Bool = true) -> some View { modif
     private var kind: StatusLinePhase.Kind { phase.kind }
     private var title: String { phase.title(en: en) + (suffix ?? "") }
     private var textColor: Color { kind == .waiting ? CatpawColors.ink : CatpawColors.calmSecondary }
-    private var iconColor: Color {
-        switch kind { case .waiting: return CatpawColors.ink; case .failed: return CatpawColors.failure; default: return CatpawColors.calmSecondary }
-    }
 
     var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 6) {
-            Image(systemName: phase.symbol)
-                .font(.footnote.weight(.medium)).imageScale(.medium)
-                .symbolRenderingMode(.monochrome).foregroundStyle(iconColor)
-                .frame(width: slot)
-                .contentTransition(calm ? .opacity : .symbolEffect(.replace.downUp))
-                .symbolEffect(.bounce.down, options: .nonRepeating, value: nudge)
-                .accessibilityHidden(true)
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            // Visual SPEC v2 §1–§2: static kitten 22pt in a 24pt slot + 12pt tool badge; centred on line 1.
+            StatusKitten(pose: phase.pose, badge: phase.badge?.symbol, tone: phase.badge?.tone ?? .neutral,
+                         breathe: kind == .working && !calm && onScreen, nudge: nudge, calm: calm)
+                .alignmentGuide(.firstTextBaseline) { d in d[VerticalAlignment.center] + nudgeY }
             ZStack(alignment: .leading) {
                 Text(title)
                     .font(CatpawTypography.Role.secondary.font.weight(kind == .waiting ? .medium : .regular))
@@ -208,7 +203,8 @@ extension View { func workingShimmer(_ active: Bool = true) -> some View { modif
             try? await Task.sleep(for: .milliseconds(350))
             if !Task.isCancelled { nudge += 1 }
         }
-        .onAppear { announce() }
+        .onAppear { onScreen = true; announce() }
+        .onDisappear { onScreen = false }
         .onChange(of: phase) { _, _ in announce() }
         .accessibilityElement(children: .contain)
     }
@@ -225,5 +221,92 @@ extension View { func workingShimmer(_ active: Bool = true) -> some View { modif
         var text = AttributedString(phase.accessibilityTitle(en: en))
         text.accessibilitySpeechAnnouncementPriority = attention ? .high : .low
         AccessibilityNotification.Announcement(text).post()
+    }
+}
+
+// MARK: - status-line visual SPEC v2: plush kitten + tool badge
+
+/// Badge colours (SPEC v2 §2.2), with the dark-glyph contrast fix on amber and on dark-mode red.
+enum StatusBadgeColors {
+    private static func c(_ light: UInt32, _ dark: UInt32, _ la: CGFloat = 1, _ da: CGFloat = 1) -> Color {
+        func v(_ h: UInt32, _ a: CGFloat) -> UIColor {
+            UIColor(red: CGFloat((h >> 16) & 255) / 255, green: CGFloat((h >> 8) & 255) / 255, blue: CGFloat(h & 255) / 255, alpha: a)
+        }
+        return Color(UIColor { $0.userInterfaceStyle == .dark ? v(dark, da) : v(light, la) })
+    }
+    static let neutralFill = c(0xF6F4F1, 0x2E2C2A)
+    static let amber = c(0xD98A1A, 0xE9A23B)
+    static let red = c(0xE0483E, 0xF0605A)
+    static let onAmber = c(0x1C1A18, 0x161412)
+    static let onRed = c(0xFFFFFF, 0x161412)
+    static let hairline = c(0x292622, 0xFFFFFF, 0.14, 0.14)
+    static func fill(_ t: StatusLinePhase.BadgeTone) -> Color {
+        switch t { case .waiting: return amber; case .failed: return red; case .neutral, .stopped: return neutralFill }
+    }
+    static func glyph(_ t: StatusLinePhase.BadgeTone) -> Color {
+        switch t { case .waiting: return onAmber; case .failed: return onRed; case .stopped: return CatpawColors.calmSecondary; case .neutral: return CatpawColors.ink }
+    }
+}
+
+/// 12pt circle, 7.5pt semibold glyph, 1pt page-colour ring, 0.5pt hairline on neutral/stopped. Decorative (VO hidden).
+@MainActor struct StatusBadge: View {
+    let symbol: String
+    let tone: StatusLinePhase.BadgeTone
+    var nudge = 0
+    var body: some View {
+        ZStack {
+            Circle().fill(CatpawColors.background).frame(width: 14, height: 14)
+            Circle().fill(StatusBadgeColors.fill(tone)).frame(width: 12, height: 12)
+                .overlay {
+                    if tone == .neutral || tone == .stopped { Circle().strokeBorder(StatusBadgeColors.hairline, lineWidth: 0.5) }
+                }
+            Image(systemName: symbol)
+                .font(.system(size: 7.5, weight: .semibold))
+                .symbolRenderingMode(.monochrome)
+                .foregroundStyle(StatusBadgeColors.glyph(tone))
+                // ≈1.5pt within the 12pt badge; fires only when `nudge` changes (waiting, never in RM / Low Power).
+                .symbolEffect(.bounce.down, options: .nonRepeating, value: nudge)
+        }
+        .frame(width: 12, height: 12)
+        .accessibilityHidden(true)
+    }
+}
+
+/// Static kitten (no PlushMascot wrapper, no shimmer). Pose crossfade 220ms only on pose change; badge 180ms scale 0.6→1 + fade.
+@MainActor struct StatusKitten: View {
+    let pose: StatusLinePhase.KittenPose
+    let badge: String?
+    let tone: StatusLinePhase.BadgeTone
+    var breathe = false
+    var nudge = 0
+    var calm = false
+    @State private var inhale = false
+    private var badgeKey: String { (badge ?? "") + "\(tone)" }
+    var body: some View {
+        ZStack {
+            Image(pose.asset).resizable().interpolation(.high)
+                .frame(width: 22, height: 22)
+                .scaleEffect(breathe && inhale ? 1.03 : 1, anchor: .bottom)
+                .id(pose)
+                .transition(.opacity)
+        }
+        .frame(width: 24, height: 24)
+        .animation(calm ? .easeInOut(duration: 0.15) : .easeInOut(duration: 0.22), value: pose)
+        .overlay(alignment: .bottomTrailing) {
+            ZStack {
+                if let badge {
+                    StatusBadge(symbol: badge, tone: tone, nudge: nudge)
+                        .id(badgeKey)
+                        .transition(calm ? .opacity : .scale(scale: 0.6).combined(with: .opacity))
+                }
+            }
+            .offset(x: 3, y: 3)   // centre (21,21) in the 24pt slot; never clipped
+            .animation(calm ? .easeInOut(duration: 0.15) : .easeOut(duration: 0.18), value: badgeKey)
+        }
+        .onChange(of: breathe, initial: true) { _, on in
+            if on { withAnimation(.easeInOut(duration: 1.8).repeatForever(autoreverses: true)) { inhale = true } }
+            else { var t = Transaction(); t.disablesAnimations = true; withTransaction(t) { inhale = false } }
+        }
+        .accessibilityHidden(true)
     }
 }

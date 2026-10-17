@@ -224,6 +224,26 @@ final class StatusLineTests: XCTestCase {
         r.apply(.failed(message: "cancelled", reconciliationRequired: false))
         XCTAssertEqual(r.target, .stopped)
     }
+    func testKittenPosesAndBadges() {
+        XCTAssertEqual(StatusLinePhase.accepted(occurrence: 0).pose, .thinking)
+        XCTAssertNil(StatusLinePhase.accepted(occurrence: 0).badge)
+        XCTAssertEqual(StatusLinePhase.tool(name: "calendar_create", occurrence: 0).pose, .tool)
+        XCTAssertEqual(StatusLinePhase.tool(name: "calendar_create", occurrence: 0).badge?.symbol, "calendar")
+        XCTAssertEqual(StatusLinePhase.tool(name: "mail_compose", occurrence: 0).pose, .writing)
+        XCTAssertEqual(StatusLinePhase.composing(occurrence: 0).badge?.symbol, "pencil")
+        XCTAssertEqual(StatusLinePhase.awaitingUser(tool: nil).pose, .waiting)
+        XCTAssertEqual(StatusLinePhase.awaitingUser(tool: nil).badge?.tone, .waiting)
+        XCTAssertEqual(StatusLinePhase.failed(reason: "x").badge?.symbol, "exclamationmark")
+        XCTAssertEqual(StatusLinePhase.stopped.badge?.tone, .stopped)
+        XCTAssertEqual(StatusLinePhase.switchingModel.badge?.symbol, "arrow.triangle.2.circlepath")
+        XCTAssertEqual(ToolStepCopy.badgeSymbol("some_unknown_tool"), "ellipsis")
+        for t in NativeChatHTTPBackend.approvalToolNames.union(ToolStepCopy.memoryTools) {
+            XCTAssertFalse(ToolStepCopy.badgeSymbol(t).contains(".badge."), t)
+        }
+        for p in ["Thinking", "Tool", "Writing", "Waiting", "Done", "Failed", "Stopped"] {
+            XCTAssertEqual(StatusLinePhase.KittenPose(rawValue: p)?.asset, "StatusKitten" + p)
+        }
+    }
     func testAnnouncementThrottle() {
         let t0 = Date(); var a = StatusLineAnnouncementThrottle()
         XCTAssertTrue(a.allow(at: t0)); XCTAssertFalse(a.allow(at: t0.addingTimeInterval(1.9))); XCTAssertTrue(a.allow(at: t0.addingTimeInterval(2.0)))
