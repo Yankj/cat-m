@@ -418,6 +418,12 @@ import UserNotifications
         await AccountChangeObservers.notify(previous: "XCTEST-A", current: nil)
         XCTAssertEqual(ProactiveEngine.shared.externalPendingDecision(for: "XCTEST-A").map(\.operationID), [op], "kept → still listed for that account")
     }
+    /// NoBug p90i: cold start then immediate sign-out — the proactive source is registered by #89's own registration step.
+    func testProactiveSourceRegisteredWithDeviceParkedSources() {
+        AccountParkedItems.unregister(ProactiveParking.sourceKey)
+        NativeAuthApplicationModel.registerDeviceParkedSources()
+        XCTAssertTrue(AccountParkedItems.registeredKeys.contains(ProactiveParking.sourceKey))
+    }
     func testExternalReminderCancelDeletesOnlyOnUserDecision() async throws {
         ProactiveEngine.registerAccountObserver()
         let (_, op) = externalFixture()
@@ -429,6 +435,10 @@ import UserNotifications
         XCTAssertEqual(removed, [op], "deleted only after the user chose cancel, only that reminder")
         await AccountChangeObservers.notify(previous: "XCTEST-A", current: nil)
         XCTAssertTrue(ProactiveEngine.shared.externalPendingDecision(for: "XCTEST-A").isEmpty, "decided → no longer pending")
+        // NoBug p90i (b): the card says so — its create_reminder entry reads 提醒已删除 (kept with the parked card).
+        let parked = ProactiveEngine.shared.parkedInbox(for: "XCTEST-A")
+        let taken = ((parked.values.first { (($0 as? [String: Any])?["taken"] as? [[String: Any]])?.contains { $0["action"] as? String == "create_reminder" } == true } as? [String: Any])?["taken"] as? [[String: Any]]) ?? []
+        XCTAssertEqual(taken.first { $0["action"] as? String == "create_reminder" }?["detail"] as? String, ProactiveEngine.reminderDeletedDetail)
     }
     /// p90i: EventKit items the app created are outside the app — a switch never deletes or edits them; they are recorded
     /// as pending a user decision (#89's list) under the old account.
