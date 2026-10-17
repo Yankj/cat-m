@@ -126,6 +126,9 @@ public enum VoiceChatEffect: Equatable, Sendable {
     case announceConfirmation
     case haptic(VoiceChatHaptic)
     case deactivateAudio
+    /// Every pause: give the audio session back (setActive(false, .notifyOthersOnDeactivation)) once the line being
+    /// spoken (the confirmation line) has finished, so other apps are not left ducked while the user looks at the screen.
+    case releaseAudio
 }
 /// What came back for the sent turn, already reduced to speech (`VoiceSpeechText`).
 public struct VoiceChatReply: Equatable, Sendable {
@@ -185,17 +188,17 @@ public struct VoiceChatLoop: Equatable, Sendable {
         case (.transcript(let t), .sending):
             transcript = t; return []
         case (.silenceElapsed, .listening):
-            guard !Self.trimmed(transcript).isEmpty else { return [] }   // silence before any speech: keep listening
+            guard Self.isMeaningful(transcript) else { return [] }   // silence before any speech / only filler: keep listening
             phase = .sending
             return [.stopListening]
         case (.listeningEnded(let final), .listening), (.listeningEnded(let final), .sending):
             let text = Self.trimmed(final).isEmpty ? Self.trimmed(transcript) : Self.trimmed(final)
-            guard !text.isEmpty else { return listen() }   // nothing heard (recognizer timeout): listen again
+            guard Self.isMeaningful(text) else { return listen() }   // nothing heard / filler only (嗯, uh): listen again
             phase = .waiting; transcript = ""; sent.append(text)
             return [.send(text), .haptic(.turnSent)]
         case (.replyFinished(let reply), .waiting):
             guard reply.speakable, !Self.trimmed(reply.speech).isEmpty else {   // text-only fallback
-                if reply.needsConfirmation { phase = .paused(.needsConfirmation); return [.haptic(.pause), .announceConfirmation] }
+                if reply.needsConfirmation { phase = .paused(.needsConfirmation); return [.haptic(.pause), .announceConfirmation, .releaseAudio] }
                 return listen()
             }
             phase = .speaking; pauseAfterSpeech = reply.needsConfirmation
@@ -203,9 +206,9 @@ public struct VoiceChatLoop: Equatable, Sendable {
         case (.approvalRequired, .waiting), (.approvalRequired, .speaking), (.approvalRequired, .listening), (.approvalRequired, .sending):
             let effects: [VoiceChatEffect] = phase == .speaking ? [.stopSpeaking] : (phase == .listening || phase == .sending) ? [.stopListening] : []
             phase = .paused(.needsConfirmation); transcript = ""
-            return effects + [.haptic(.pause), .announceConfirmation]
+            return effects + [.haptic(.pause), .announceConfirmation, .releaseAudio]
         case (.speechFinished, .speaking):
-            if pauseAfterSpeech { pauseAfterSpeech = false; phase = .paused(.needsConfirmation); return [.haptic(.pause)] }   // the card line already asked
+            if pauseAfterSpeech { pauseAfterSpeech = false; phase = .paused(.needsConfirmation); return [.haptic(.pause), .releaseAudio] }   // the card line already asked
             return listen()
         case (.bargeIn(let already), .speaking):
             phase = .listening; transcript = ""; pauseAfterSpeech = false
@@ -213,11 +216,11 @@ public struct VoiceChatLoop: Equatable, Sendable {
         case (.interruption, .listening), (.interruption, .sending), (.interruption, .waiting), (.interruption, .speaking):
             let effects: [VoiceChatEffect] = phase == .speaking ? [.stopSpeaking] : phase == .waiting ? [] : [.stopListening]
             phase = .paused(.interrupted); transcript = ""
-            return effects + [.haptic(.pause)]
+            return effects + [.haptic(.pause), .releaseAudio]
         case (.failed, .listening), (.failed, .sending), (.failed, .waiting), (.failed, .speaking):
             let effects: [VoiceChatEffect] = phase == .speaking ? [.stopSpeaking] : phase == .waiting ? [] : [.stopListening]
             phase = .paused(.failed); transcript = ""
-            return effects + [.haptic(.pause)]
+            return effects + [.haptic(.pause), .releaseAudio]
         default:
             return []   // stale / out-of-order events are ignored (e.g. a late transcript after the turn was sent)
         }
@@ -227,6 +230,18 @@ public struct VoiceChatLoop: Equatable, Sendable {
         return [.startListening, .haptic(.listen)]
     }
     static func trimmed(_ s: String) -> String { s.trimmingCharacters(in: .whitespacesAndNewlines) }
+    /// Filler that alone never makes a turn (a cough or "嗯" picked up between sentences must not be sent).
+    static let fillerWords: Set<String> = ["uh", "um", "umm", "uhm", "er", "erm", "ah", "eh", "hmm", "hm", "mm", "mhm", "oh", "huh"]
+    static let fillerCharacters: Set<Character> = ["嗯", "啊", "呃", "额", "哦", "噢", "喔", "唔", "哈", "呀", "诶", "欸", "哎", "呢", "吧", "嘛"]
+    /// At least 2 letters/digits left after dropping punctuation and filler (嗯/啊/uh…).
+    public static func isMeaningful(_ text: String) -> Bool {
+        let words = text.lowercased().split(whereSeparator: { !($0.isLetter || $0.isNumber) })
+        var count = 0
+        for word in words where !fillerWords.contains(String(word)) {
+            count += word.filter { !fillerCharacters.contains($0) }.count
+        }
+        return count >= 2
+    }
 }
 
 /// Turns an assistant reply into what is read aloud: no code blocks, no card JSON, no URLs, no markdown symbols.
