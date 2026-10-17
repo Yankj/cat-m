@@ -204,13 +204,19 @@ import AppIntents
             await ProactiveEngine.shared.scanCalendar(); await ProactiveEngine.shared.prescheduleNextEvent()
         }
     }
-    /// Chat surface for the root gate: the account's chat, or — never a loader — the chat's own first frame while the
-    /// local store attaches (a fallback local chat opens if no account chat is ready).
+    /// Chat surface for the root gate: the account's chat, or — never a loader and never another account's data — the
+    /// storage-free launch shell rendered by the SAME ConversationFirstView (NoBug B1/B2): identical nav bar, title capsule
+    /// and composer frames, starter-card slots kept empty. The account chat replaces it in place; only content fades in.
     @ViewBuilder private var chatSurface: some View {
         if let model = auth.chat { accountChat(model) }
-        else {
-            LaunchChatShell(auth:auth)
-                .accessibilityIdentifier("onboarding.enteringChat")
+        else if let shell = auth.launchShell, !auth.isFixture {
+            ConversationFirstView(model:shell,launchShell:true)
+                .onAppear { LaunchTrace.mark("chat.firstFrame", "shell", once: true) }
+                .overlay(alignment:.top) { LaunchStatusOverlay(auth:auth) }
+                .task { await auth.ensureLaunchChat() }
+        } else {
+            CatpawColors.background.ignoresSafeArea()
+                .overlay(alignment:.top) { LaunchStatusOverlay(auth:auth) }
                 .task { await auth.ensureLaunchChat() }
         }
     }
@@ -222,11 +228,11 @@ import AppIntents
                 AccountParkedDecisionSheet(items:auth.parkedPrompt) { auth.resolveParked($0) }
             }
             // L2 memory: per-user encrypted store follows the signed-in user (memory-layers.md).
-            .onAppear { LaunchTrace.mark("chat.visible", auth.chatIsLaunchFallback ? "fallback" : "account", once: true) }
+            .onAppear { LaunchTrace.mark("chat.firstFrame", "account", once: true); LaunchTrace.mark("chat.visible", "account", once: true) }
             // Launch-loader fix: an unrecoverable session is a small non-blocking capsule over the usable chat.
             .overlay(alignment:.top) { if auth.sessionRestartNeeded { SessionRestartCapsule(auth:auth).padding(.top,52) } }
-            // Account-bound stores activate only for the account's own chat — never under the account-neutral launch chat.
-            .task(id:"\(auth.chatIsLaunchFallback)|\(auth.state.user?.id.uuidString ?? "-")|\(ObjectIdentifier(model).hashValue)") { guard !auth.chatIsLaunchFallback else { return }; AccountEpoch.shared.activate(account:auth.state.user?.id.uuidString); L2SecureStore.activate(userID:auth.state.user?.id); CatpawL2Sealing.install(); AtRestMigrationScheduler.shared.sealerMayBeReady(); MemoryLibraryLocal.activate(userID:auth.state.user?.id); GenerativeBlockStore.shared.reloadFromL2(); MemoryCache.shared.reloadFromL2(); await MemoryCache.shared.sync() }
+            // Account-bound stores activate only for the account's own chat — the launch shell never reaches this view.
+            .task(id:"\(auth.state.user?.id.uuidString ?? "-")|\(ObjectIdentifier(model).hashValue)") { AccountEpoch.shared.activate(account:auth.state.user?.id.uuidString); L2SecureStore.activate(userID:auth.state.user?.id); CatpawL2Sealing.install(); AtRestMigrationScheduler.shared.sealerMayBeReady(); MemoryLibraryLocal.activate(userID:auth.state.user?.id); GenerativeBlockStore.shared.reloadFromL2(); MemoryCache.shared.reloadFromL2(); await MemoryCache.shared.sync() }
             #if DEBUG
             .overlay(alignment:.topTrailing) {
                 if auth.isFixture {
@@ -278,35 +284,18 @@ import AppIntents
     }
 }
 
-/// The chat screen's first frame (same canvas, header row, empty state and composer) with a small floating status capsule.
-/// Shown only while the local chat attaches; it never blocks and never waits on the network.
-private struct LaunchChatShell:View {
+/// Over the launch shell: the restart notice when the session cannot resume, else — only if the account chat has still
+/// not attached after 300 ms (NoBug B2) — a small floating 「正在打开对话…」 capsule. Never blocks, never full-screen.
+private struct LaunchStatusOverlay:View {
     @ObservedObject var auth:NativeAuthApplicationModel
     @Environment(\.locale) private var locale
-    @State private var showStatus=false
+    @State private var late=false
     private func ui(_ key:String)->String { AppLanguage(locale:locale).ui(key) }
     var body:some View {
-        ZStack {
-            CatpawColors.background.ignoresSafeArea()
-            VStack(alignment:.leading,spacing:0) {
-                HStack {
-                    Image(systemName:"line.3.horizontal").font(CatpawTypography.Role.body.font).foregroundStyle(CatpawColors.ink).frame(width:44,height:44)
-                    Spacer()
-                    Image(systemName:"square.and.pencil").font(CatpawTypography.Role.body.font).foregroundStyle(CatpawColors.ink).frame(width:44,height:44)
-                }.padding(.horizontal,8)
-                VStack(alignment:.leading,spacing:8) {
-                    Text(ui("想一起完成什么？")).font(CatpawTypography.Role.title.font.weight(.semibold)).foregroundStyle(CatpawColors.ink)
-                }.padding(.horizontal,20).padding(.top,56)
-                Spacer()
-                HStack { Text(ui("有什么我可以帮你？")).font(CatpawTypography.Role.body.font).foregroundStyle(CatpawColors.secondary); Spacer() }
-                    .padding(.horizontal,16).frame(minHeight:48)
-                    .background(CatpawColors.input,in:Capsule())
-                    .padding(.horizontal,16).padding(.bottom,8)
-            }
-        }
-        .overlay(alignment:.top) {
+        ZStack(alignment:.top) {
+            Color.clear.frame(width:1,height:1).accessibilityElement().accessibilityIdentifier("onboarding.enteringChat")
             if auth.sessionRestartNeeded { SessionRestartCapsule(auth:auth).padding(.top,52) }
-            else if showStatus {
+            else if late {
                 HStack(spacing:8) { ProgressView().controlSize(.small); Text(ui("正在打开对话…")).font(CatpawTypography.Role.caption.font.weight(.medium)) }
                     .foregroundStyle(CatpawColors.ink)
                     .padding(.horizontal,12).padding(.vertical,8)
@@ -317,8 +306,7 @@ private struct LaunchChatShell:View {
                     .accessibilityIdentifier("launch.statusCapsule")
             }
         }
-        // Only a slow attach shows the capsule; a normal attach replaces this frame before it would appear.
-        .task { try? await Task.sleep(nanoseconds:500_000_000); withAnimation(.easeOut(duration:0.2)) { showStatus=true } }
+        .task { try? await Task.sleep(nanoseconds:300_000_000); withAnimation(.easeOut(duration:0.2)) { late=true } }
     }
 }
 /// Non-blocking 「这次会话需要重新开始」 notice with the explicit restart action (same semantics as the login page button).

@@ -510,7 +510,11 @@ final class NativeAuthApplicationLifecycleTests:XCTestCase {
         let source=URL(fileURLWithPath:#filePath).deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("Sources/App/NativeAuthApplicationModel.swift")
         let text=try String(contentsOf:source,encoding:.utf8)
         XCTAssertEqual(text.components(separatedBy:"Self.openStores(").count-1,1,"only openAccountStores may call the raw store opener")
-        XCTAssertEqual(text.components(separatedBy:"Repository(persistence:").count-1,1,"repositories are created only inside openStores")
+        XCTAssertEqual(text.components(separatedBy:"Repository(persistence:SwiftDataPersistence(").count-1,1,"on-disk repositories are created only inside openStores")
+        // NoBug B1: the one other repository is the launch shell's, over a persistence that never touches the disk.
+        XCTAssertEqual(text.components(separatedBy:"Repository(persistence:").count-1,2)
+        XCTAssertEqual(text.components(separatedBy:"Repository(persistence: LaunchShellPersistence())").count-1,1)
+        XCTAssertEqual(try LaunchShellPersistence().load().records.count,0);XCTAssertNoThrow(try LaunchShellPersistence().save(StoreSnapshot()))
         XCTAssertGreaterThanOrEqual(text.components(separatedBy:"openAccountStores(partition:").count-1,4,"local receipt, sign-in, offline trial and workspace paths")
         XCTAssertEqual(text.components(separatedBy:"launchAtRestMigration(repository, partition: partition)").count-1,1,"openAccountStores itself calls the at-rest hook")
     }
@@ -601,9 +605,9 @@ final class NativeAuthApplicationLifecycleTests:XCTestCase {
 
     /// Launch-loader fix (iPhone 13 white screen, 792587e): onboarding completed + logout barrier closed next to the old
     /// credential with no rotation journal (an interrupted rotation). Before: chat stayed nil forever behind a full-screen
-    /// ProgressView. Now a usable account-neutral local chat opens, the restart need is published for the small capsule,
-    /// and 「重新开始」 reaches a fresh identity whose own chat replaces the fallback.
-    @MainActor func testUnrecoverableSessionOpensLocalChatWithRestartCapsuleNotADeadLoader() async throws {
+    /// ProgressView. Now the storage-free launch shell (real chat chrome, draft only) stays on screen, the restart need is
+    /// published for the small capsule, and 「重新开始」 reaches a fresh identity whose own chat replaces the shell.
+    @MainActor func testUnrecoverableSessionShowsLaunchShellWithRestartCapsuleNotADeadLoader() async throws {
         let root=FileManager.default.temporaryDirectory.appendingPathComponent("native-launch-fallback-"+UUID().uuidString,isDirectory:true)
         defer {try? FileManager.default.removeItem(at:root)}
         let scope=UUID(),clock=AuthTestClock(),storage=LifecycleStorage(),configuration=try lifecycleConfiguration(scope:scope)
@@ -621,17 +625,16 @@ final class NativeAuthApplicationLifecycleTests:XCTestCase {
         XCTAssertTrue(app.sessionRestartNeeded)
         let started=ProcessInfo.processInfo.systemUptime
         await app.ensureLaunchChat()
-        let fallback=try XCTUnwrap(app.chat,"a usable local chat must open instead of a dead loader")
-        XCTAssertLessThan(ProcessInfo.processInfo.systemUptime-started,2.0,"the fallback never waits on the network")
-        XCTAssertTrue(app.chatIsLaunchFallback)
-        XCTAssertNotEqual(fallback.trustedSubjectID,subject,"no account data is shown before the account is resolved")
-        XCTAssertFalse(fallback.networkAdmissionAllowed)
-        XCTAssertTrue(app.sessionRestartNeeded,"the restart capsule stays visible over the fallback chat")
+        XCTAssertLessThan(ProcessInfo.processInfo.systemUptime-started,2.0,"the shell never waits on the network")
+        XCTAssertNil(app.chat,"NoBug B1: no partition (shared offline store included) is opened as a fallback")
+        let shell=try XCTUnwrap(app.launchShell,"the chat chrome is on screen instead of a dead loader")
+        XCTAssertNotEqual(shell.trustedSubjectID,subject,"no account data is shown before the account is resolved")
+        XCTAssertFalse(shell.networkAdmissionAllowed,"the shell cannot send")
+        XCTAssertTrue(app.sessionRestartNeeded,"the restart capsule stays visible over the shell")
         let before=await remote.counts()
         await app.restartSession()
         try await waitUntil {app.chat?.trustedSubjectID == subject}
         XCTAssertFalse(app.sessionRestartNeeded)
-        XCTAssertFalse(app.chatIsLaunchFallback)
         let after=await remote.counts()
         XCTAssertEqual(after.0,before.0+1,"restart mints exactly one fresh experience identity")
         await app.signOut()
@@ -663,9 +666,9 @@ final class NativeAuthApplicationLifecycleTests:XCTestCase {
         await app.signOut()
     }
 
-    /// first-run integration (SPEC-E §5.6): 开始使用 never waits on sign-up. The gate flips onto a local account-neutral
-    /// chat while anonymous sign-up is still held; the account's own chat replaces it once the identity resolves, and an
-    /// unsent draft typed meanwhile is carried over (never lost).
+    /// first-run integration (SPEC-E §5.6): 开始使用 never waits on sign-up. The gate flips onto the storage-free launch
+    /// shell while anonymous sign-up is still held; the account's own chat replaces it once the identity resolves, an
+    /// unsent draft typed into the shell is carried over (never lost), and the first-run flag waits for that real chat.
     @MainActor func testFirstRunTapFlipsGateWithoutWaitingOnSignUp() async throws {
         let flag=UserDefaults.standard.object(forKey:CatpawOnboarding.completedKey)
         defer {UserDefaults.standard.set(flag,forKey:CatpawOnboarding.completedKey)}
@@ -685,19 +688,21 @@ final class NativeAuthApplicationLifecycleTests:XCTestCase {
             await app.completeOnboarding()
             XCTAssertLessThan(ProcessInfo.processInfo.systemUptime-started,2.0,"the tap only waits for the disk read")
             XCTAssertFalse(app.needsOnboarding)
-            let fallback=try XCTUnwrap(app.chat);XCTAssertTrue(app.chatIsLaunchFallback)
-            XCTAssertNotEqual(fallback.trustedSubjectID,subject,"no account data before the account is resolved")
-            XCTAssertTrue(CatpawOnboarding.isCompleted(),"the first-run flag is written once a chat really exists")
+            XCTAssertNil(app.chat,"NoBug B1: no storage-backed fallback chat")
+            let shell=try XCTUnwrap(app.launchShell);await shell.start()
+            XCTAssertNotEqual(shell.trustedSubjectID,subject,"no account data before the account is resolved")
+            XCTAssertFalse(CatpawOnboarding.isCompleted(),"NoBug (b): the first-run flag waits for the account's real chat")
             // NoBug (1): nothing account-bound before the account resolves — no network admission (no queue is sent),
             // no device capability (EventKit scan), no account-bound store activation.
-            XCTAssertFalse(fallback.networkAdmissionAllowed);XCTAssertFalse(app.deviceCapabilitiesAllowed)
-            try await waitUntil {await remote.waiting()}   // sign-up is still in flight behind the open chat
-            if typed {fallback.editDraft("还没发出去的草稿")}
+            XCTAssertFalse(shell.networkAdmissionAllowed);XCTAssertFalse(app.deviceCapabilitiesAllowed)
+            try await waitUntil {await remote.waiting()}   // sign-up is still in flight behind the shell
+            if typed {shell.editDraft("还没发出去的草稿")}
             await remote.release()
             try await waitUntil {app.chat?.trustedSubjectID == subject}
-            XCTAssertFalse(app.chatIsLaunchFallback)
+            XCTAssertTrue(CatpawOnboarding.isCompleted(),"the flag is written once the account chat attaches")
             try await waitUntil {app.deviceCapabilitiesAllowed}
             XCTAssertEqual(app.chat?.draft,typed ? "还没发出去的草稿" : "","an unsent draft follows the user into the account chat")
+            XCTAssertEqual(shell.draft,"","the shell keeps nothing once the draft moved")
             XCTAssertFalse(app.requiresSessionRestart)
             await app.signOut()
         }
@@ -734,7 +739,50 @@ final class NativeAuthApplicationLifecycleTests:XCTestCase {
         let large=uses.filter{!$0.hasPrefix(").controlSize(.small)")}
         XCTAssertEqual(large,["\"Offline fixture loading\").accessibilityIdentifier(\"qa.p0Fixture.loading\") }"].map{String($0.prefix(60))},"only the DEBUG fixture placeholder is not a small capsule spinner")
         XCTAssertGreaterThanOrEqual(uses.count-large.count,1,"the floating status capsule")
-        XCTAssertTrue(text.contains("LaunchChatShell(auth:auth)\n                .accessibilityIdentifier(\"onboarding.enteringChat\")"))
+        XCTAssertTrue(text.contains("ConversationFirstView(model:shell,launchShell:true)"),"the pre-attach surface is the real chat view (B2)")
+        XCTAssertFalse(text.contains("LaunchChatShell"),"no hand-built look-alike shell that can drift from the real chrome")
+    }
+
+    /// NoBug B1: account A leaves history and drafts in its own partition AND in the device-shared offline-trial store.
+    /// Account B's launch shows none of it — not in the very first frame (the launch shell, before any read), not while
+    /// B's session is still unresolved, and not after B's own chat attaches. The shell itself never opens a partition.
+    @MainActor func testAnotherAccountsHistoryNeverReachesTheLaunchFirstFrame() async throws {
+        let root=FileManager.default.temporaryDirectory.appendingPathComponent("native-b1-isolation-"+UUID().uuidString,isDirectory:true)
+        defer {try? FileManager.default.removeItem(at:root)}
+        let scope=UUID(),subjectA=UUID(),subjectB=UUID(),clock=LifecycleClock(),configuration=try lifecycleConfiguration(scope:scope)
+        let secretA="A 的私密草稿 7f3c",offlineA="A 留在离线体验里的草稿 7f3c"
+        func leaked(_ model:ConversationFirstModel?)->Bool {
+            guard let model else {return false}
+            let texts=[model.draft]+model.history.compactMap{$0.conversation?.draftText}+model.history.map(\.title)+(model.session?.messages.map(\.content) ?? [])
+            return texts.contains{$0.contains("7f3c")}
+        }
+        // A: real sign-in (own partition + receipt) and the shared offline-trial store, both holding A's text.
+        let storageA=LifecycleStorage(),remoteA=LifecycleRemote(issuer:configuration.issuer,subject:subjectA,clock:clock)
+        let a=NativeAuthApplicationModel(configuration:configuration,manager:NativeAuthSessionManager(configuration:configuration,remote:remoteA,vault:storageA,barrier:storageA,now:{clock.now()}),vault:storageA,barrier:storageA,root:root)
+        await a.start();await a.signIn(email:"synthetic@example.invalid",password:"fixture-only")
+        try await waitUntil {a.chat?.trustedSubjectID == subjectA}
+        a.chat?.editDraft(secretA);_=await a.chat?.deactivate()
+        let offline=NativeAuthApplicationModel(configuration:configuration,manager:NativeAuthSessionManager(configuration:configuration,remote:remoteA,vault:LifecycleStorage(),barrier:LifecycleStorage(),now:{clock.now()}),vault:LifecycleStorage(),barrier:LifecycleStorage(),root:root)
+        await offline.openOfflineTrialChat(configuration:configuration)
+        let shared=try XCTUnwrap(offline.chat);shared.editDraft(offlineA);_=await shared.deactivate()
+        let probe=NativeAuthApplicationModel(configuration:configuration,manager:NativeAuthSessionManager(configuration:configuration,remote:remoteA,vault:LifecycleStorage(),barrier:LifecycleStorage(),now:{clock.now()}),vault:LifecycleStorage(),barrier:LifecycleStorage(),root:root)
+        await probe.openOfflineTrialChat(configuration:configuration)
+        XCTAssertTrue(leaked(probe.chat),"counter-run: the shared offline store really holds A's text — what 614371f's launch fallback rendered")
+        _=await probe.chat?.deactivate()
+        // B on the same device: B's credential, A's receipt and stores still on disk.
+        let storageB=LifecycleStorage(),remoteB=LifecycleRemote(issuer:configuration.issuer,subject:subjectB,clock:clock)
+        let b=NativeAuthApplicationModel(configuration:configuration,manager:NativeAuthSessionManager(configuration:configuration,remote:remoteB,vault:storageB,barrier:storageB,now:{clock.now()}),vault:storageB,barrier:storageB,root:root)
+        let shell=try XCTUnwrap(b.launchShell)
+        XCTAssertFalse(leaked(shell),"frame 1: the shell exists before any read and holds nothing")
+        await shell.start()
+        XCTAssertFalse(leaked(shell),"the shell's store loads nothing from disk");XCTAssertTrue(shell.history.allSatisfy{($0.conversation?.draftText ?? "").isEmpty})
+        await b.start();await b.ensureLaunchChat(grace:0.1)
+        XCTAssertNil(b.chat,"B is not signed in: no partition is opened, shared offline store included")
+        XCTAssertFalse(leaked(shell));XCTAssertFalse(leaked(b.chat))
+        await b.signIn(email:"synthetic@example.invalid",password:"fixture-only")
+        try await waitUntil {b.chat?.trustedSubjectID == subjectB}
+        XCTAssertFalse(leaked(b.chat),"B's own chat holds none of A's content");XCTAssertFalse(leaked(shell))
+        await b.signOut()
     }
 
     /// SPEC-E §5.6: while the landing shows, a restored account's local chat is attached so the tap never waits on it.
@@ -752,7 +800,7 @@ final class NativeAuthApplicationLifecycleTests:XCTestCase {
         await app.start();await app.prewarmEntryChat()
         try await waitUntil {app.chat != nil}
         XCTAssertTrue(app.needsOnboarding,"pre-warming never skips the landing")
-        let warmed=try XCTUnwrap(app.chat);XCTAssertEqual(warmed.trustedSubjectID,subject);XCTAssertFalse(app.chatIsLaunchFallback)
+        let warmed=try XCTUnwrap(app.chat);XCTAssertEqual(warmed.trustedSubjectID,subject)
         await app.completeOnboarding()
         XCTAssertFalse(app.needsOnboarding);XCTAssertTrue(app.chat === warmed,"the tap reuses the pre-warmed chat")
         let counts=await remote.counts();XCTAssertEqual(counts.0,0,"a restored account never signs up again")

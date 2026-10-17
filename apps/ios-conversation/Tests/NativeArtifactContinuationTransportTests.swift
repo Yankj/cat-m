@@ -165,6 +165,28 @@ final class ChatRuntimeBusyRetryTests: XCTestCase {
         XCTAssertEqual(waited, [1, 2, 4, 8, 16]); XCTAssertLessThanOrEqual(waited.reduce(0, +), ChatRuntimeBusyRetry.budget)
         XCTAssertEqual(posts, 1 + ChatRuntimeBusyRetry.maxRetries, "a few re-posts of the same operation; never a different turn")
     }
+    /// NoBug P1: after every quiet wait and before the re-POST, the account that started the send must still be the
+    /// signed-in one in the same epoch. A sign-out (or switch) during the wait drops the resend as not-sent; counter-run:
+    /// the same account keeps retrying.
+    func testBusyResendChecksAccountEpochAfterTheSleep() async throws {
+        for leave in [true, false] {
+            let epoch = AccountEpoch(account: "account-a"); let token = epoch.capture()
+            var posts = 0
+            do {
+                let result = try await ChatRuntimeBusyRetry.run(post: { () async throws -> String in
+                    posts += 1
+                    if posts == 1 { throw ChatRuntimeBusyRetry.Busy(retryAfter: 1) }
+                    return "admitted"
+                }, sleep: { _ in if leave { epoch.signOut() } }, stillCurrent: { ChatRuntimeBusyRetry.sameAccount(token, epoch: epoch) }, exhausted: { BusyExhausted() })
+                XCTAssertFalse(leave, "a left account's turn must never be re-sent"); XCTAssertEqual(result, "admitted"); XCTAssertEqual(posts, 2)
+            } catch let failure as ConversationDispatchFailure {
+                XCTAssertTrue(leave); XCTAssertEqual(posts, 1, "no re-POST after the account left")
+                guard case .notSent(let reason) = failure else { return XCTFail("a busy refusal proves non-admission: not sent") }
+                XCTAssertEqual(reason, ChatRuntimeBusyRetry.leftAccountMessage)
+            }
+        }
+        XCTAssertFalse(ChatRuntimeBusyRetry.sameAccount(AccountEpoch(account: "a").capture(), epoch: AccountEpoch(account: "b")))
+    }
     /// NoBug: the resend reuses the SAME URLRequest (Idempotency-Key = turn_id) and falls back to the existing 503 message.
     func testReplyReusesTheSameUploadAndKeepsTheExisting503Fallback() throws {
         let source=URL(fileURLWithPath:#filePath).deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("Sources/Providers/NativeChatHTTPBackend.swift")

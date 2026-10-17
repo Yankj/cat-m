@@ -16,6 +16,11 @@ import CatpawImageComposer
     var onSignOut: (() -> Void)? = nil
     var isAnonymousAccount = false
     var restrictToFrozenFixture = false
+    /// NoBug B1/B2: the storage-free launch shell. Same chrome, same frames as the account chat; the starter-card slots are
+    /// reserved but empty, and every capability (sidebar, title menu, attach, dictation, send, routes, proactive feed) is
+    /// inert — the composer accepts a draft only.
+    var launchShell = false
+    @State private var cardsRevealed = false
     @Environment(\.scenePhase) private var scene
     @Environment(\.dynamicTypeSize) private var textSize
     @Environment(\.locale) private var uiLocale
@@ -80,7 +85,8 @@ import CatpawImageComposer
     }
 
     init(model:ConversationFirstModel,accountLabel:String?=nil,onSignOut:(()->Void)?=nil,
-         isAnonymousAccount:Bool=false,restrictToFrozenFixture:Bool=false) {
+         isAnonymousAccount:Bool=false,restrictToFrozenFixture:Bool=false,launchShell:Bool=false) {
+        self.launchShell=launchShell
         self.model=model
         let chrome=ConversationComposerChromeAdapter(model:model,sendsEnabled:!restrictToFrozenFixture)
         _composerChrome=StateObject(wrappedValue:chrome)
@@ -109,7 +115,7 @@ import CatpawImageComposer
     @State private var proactiveInboxPresented = false
     @State private var proactiveDebugPresented = false
     private func consumeAppRoute() {
-        guard model.loaded, let route = CatpawRouteCenter.shared.pending else { return }
+        guard model.loaded, !launchShell, let route = CatpawRouteCenter.shared.pending else { return }
         CatpawRouteCenter.shared.pending = nil
         switch route {
         case .conversation(let id): self.route(.conversation(id))
@@ -329,7 +335,7 @@ import CatpawImageComposer
         InteractionFrameProbe.shared.count("chat.body")
         #endif
         return SidebarHost(isPresented:$sidebarPresented,isAtRoot:path.isEmpty && !conversationMenuPresented && !settings && !history && !pendingMessagesPresented && !composerContextPresented && !model.acceptedWorkReviewPresented && model.selectedTaskPlan == nil && model.selectedTaskActions == nil && model.selectedTaskControl == nil && model.pendingModelConsent == nil && model.pendingImageConsent == nil,
-                    snapshot:sidebarSnapshot,theme:sidebarTheme,localize:{ui($0)},allowsContentPan:true,onWillOpen:{UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder),to:nil,from:nil,for:nil)},
+                    snapshot:sidebarSnapshot,theme:sidebarTheme,localize:{ui($0)},allowsContentPan:!launchShell,onWillOpen:{UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder),to:nil,from:nil,for:nil)},
                     onDismissed:{menuFocused=true},onSelect:route) {
         NavigationStack(path:$path) {
             GeometryReader { viewport in
@@ -337,23 +343,7 @@ import CatpawImageComposer
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 0) {
                         if let session = model.session {
-                            if displayMessages.isEmpty {
-                                VStack(alignment: .leading, spacing: 16) {
-                                    Text(ui("想一起完成什么？")).font(CatpawTypography.Role.title.font.weight(.semibold)).accessibilityAddTraits(.isHeader)
-                                        .firstRunChatEntrance("chat.row0")
-                                    Text(ui("问一个问题，或说一件想做的事。")).foregroundStyle(CatpawColors.secondary)
-                                        .firstRunChatEntrance("chat.row1")
-                                    // chat-starter-prompts: one tap sends the full prompt; hidden while the user types their own.
-                                    ConversationStarterPromptsView(enabled:model.loaded && !model.busy,send:sendStarter).padding(.top,8)
-                                        .opacity(model.draft.isEmpty ? 1:0).allowsHitTesting(model.draft.isEmpty).accessibilityHidden(!model.draft.isEmpty)
-                                        .firstRunChatEntrance("chat.backdrop")
-                                }.frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(.top, textSize.isAccessibilitySize ? 24 : 64).padding(.bottom, 32)
-                                .background(PlushEmptyBackdrop().firstRunChatEntrance("chat.backdrop").frame(height: 360).offset(y: 40), alignment: .top)
-                                .accessibilityIdentifier("chat.empty")
-                                    // The first-run entrance (SPEC-E §2.2) is the one time the empty state animates.
-                                    .transaction { if !FirstRunTransition.shared.entranceActive { $0.animation = nil } }.id("chat.empty")
-                            }
+                            if displayMessages.isEmpty { emptyState(cardsVisible:!launchShell) }
                             let rows=visibleTimelineRows
                             let turnTails=ConversationTurnUIRow.tails(rows.compactMap{row->(UUID,UUID?)? in if case .message(let m)=row {return (m.id,m.turnID)};return nil})
                             ForEach(Array(rows.enumerated()),id:\.element.id) { index,row in
@@ -397,7 +387,8 @@ import CatpawImageComposer
                                 Text(ui("发送结果尚未确认。先读取原请求，避免重复发送；草稿会保留。")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary).fixedSize(horizontal:false,vertical:true).accessibilityIdentifier("chat.recoveryHelp")
                                 Button(ui("读取原请求进展")) { model.readOriginal() }.touchTarget().buttonStyle(CatpawPressButtonStyle()).disabled(model.busy).accessibilityHint(ui("只查询原请求，不重新发送消息")).accessibilityIdentifier("chat.observe")
                             }
-                        } else { ProgressView(ui("打开对话")) }
+                        } else if launchShell { emptyState(cardsVisible:false) }   // B2: the shell's frame 1 is the empty chat, never a spinner
+                        else { ProgressView(ui("打开对话")) }
                         Color.clear.frame(height: 1).id("latest")
                     }.padding(20).frame(maxWidth: 680).frame(maxWidth: .infinity)
                         .background(ConversationReadingAnchorTracker(context:readingAnchorContext,followingLatest:followingLatest,orderedIDs:renderedTimelineRows.map(\.id),coordinator:readingAnchor,onContentSizeChange:{[following = $followingLatest, pending = $scrollTask, empty = displayMessages.isEmpty] in if !empty {Self.scheduleScroll(proxy,following:following,pending:pending)}}).accessibilityHidden(true))
@@ -453,17 +444,18 @@ import CatpawImageComposer
                 // r8 top bar: three bare glyph elements, no per-button glass; whole bar turns glass only after scroll.
                 ToolbarItem(placement:.topBarLeading) {
                     if path.isEmpty {
-                        Button {sidebarPresented=true} label: {
+                        Button {if !launchShell {sidebarPresented=true}} label: {
                             TwoLineMenuGlyph().foregroundStyle(CatpawColors.ink).frame(width:36,height:36).background(CatpawColors.card,in:Circle()).overlay(Circle().strokeBorder(CatpawColors.hairline,lineWidth:0.5)).frame(width:44,height:44).contentShape(Rectangle())
                         }.buttonStyle(CatpawPressButtonStyle()).firstRunChatEntrance("chat.buttons", rise: -6).accessibilityLabel(ui("打开侧栏")).accessibilityIdentifier("sidebar.open").accessibilityFocused($menuFocused)
                     }
                 }.r8HiddenSharedBackground()
-                ToolbarItem(placement:.principal) { conversationTitleMenu }.r8HiddenSharedBackground()
+                ToolbarItem(placement:.principal) { conversationTitleMenu.allowsHitTesting(!launchShell) }.r8HiddenSharedBackground()
                 ToolbarItem(placement:.topBarTrailing) {
                     Button { model.newConversation() } label: {
                         CircleIcon(systemName:"square.and.pencil").frame(width:44,height:44).contentShape(Rectangle())
                     }
                     .disabled(!model.loaded || model.busy || model.isInputComposing)
+                    .allowsHitTesting(!launchShell)
                     .accessibilityLabel(ui("新对话")).accessibilityIdentifier("chat.new").buttonStyle(CatpawPressButtonStyle())
                     .firstRunChatEntrance("chat.buttons", rise: -6)
                 }.r8HiddenSharedBackground()
@@ -491,6 +483,29 @@ import CatpawImageComposer
             }
         }
         }
+    }
+    /// The empty conversation. B2: the starter-card slots always take their space; the shell keeps them empty and the
+    /// account chat fades them in (0.2 s), so nothing moves when the real chat replaces the shell. The first-run entrance
+    /// (SPEC-E §2.2) keeps its own staggered animation.
+    @ViewBuilder private func emptyState(cardsVisible:Bool)->some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text(ui("想一起完成什么？")).font(CatpawTypography.Role.title.font.weight(.semibold)).accessibilityAddTraits(.isHeader)
+                .firstRunChatEntrance("chat.row0")
+            Text(ui("问一个问题，或说一件想做的事。")).foregroundStyle(CatpawColors.secondary)
+                .firstRunChatEntrance("chat.row1")
+            // chat-starter-prompts: one tap sends the full prompt; hidden while the user types their own.
+            let shown=cardsVisible && model.draft.isEmpty && (cardsRevealed || FirstRunTransition.shared.entranceActive)
+            ConversationStarterPromptsView(enabled:cardsVisible && model.loaded && !model.busy,send:sendStarter).padding(.top,8)
+                .opacity(shown ? 1:0).allowsHitTesting(shown).accessibilityHidden(!shown)
+                .animation(FirstRunTransition.shared.entranceActive ? nil : .easeOut(duration:0.2), value:shown)
+                .firstRunChatEntrance("chat.backdrop")
+                .onAppear { if cardsVisible { cardsRevealed=true } }
+        }.frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.top, textSize.isAccessibilitySize ? 24 : 64).padding(.bottom, 32)
+        .background(PlushEmptyBackdrop().firstRunChatEntrance("chat.backdrop").frame(height: 360).offset(y: 40), alignment: .top)
+        .accessibilityIdentifier("chat.empty")
+            // The first-run entrance (SPEC-E §2.2) is the one time the empty state animates.
+            .transaction { if !FirstRunTransition.shared.entranceActive { $0.animation = nil } }.id("chat.empty")
     }
     private func scheduleScroll(_ proxy:ScrollViewProxy) {
         // An empty conversation has nothing to follow; scrolling "latest" to the bottom while the new
@@ -549,6 +564,7 @@ import CatpawImageComposer
         .catpawSheet(isPresented:$composerContextPresented,onDismiss:completeContextAction) {composerContextSheet}
         .task { await model.start() }
         .task(id:model.conversationID) {
+            guard !launchShell else {return}
             proactiveFeed.currentAnchor={ [model] in
                 guard let session=model.session else {return nil}
                 return ConversationTimelineProjection.rows(messages:session.messages,turns:session.turns).last?.id
@@ -557,7 +573,7 @@ import CatpawImageComposer
         }
         .onReceive(NotificationCenter.default.publisher(for:UIApplication.willEnterForegroundNotification)) { _ in proactiveFeed.refreshSoon() }
         #if canImport(ActivityKit) && os(iOS)
-        .task { await CatpawLiveActivityCoordinator.shared.observe(model.service) { [model] in model.conversationID } }
+        .task { guard !launchShell else {return}; await CatpawLiveActivityCoordinator.shared.observe(model.service) { [model] in model.conversationID } }
         .task { await CatpawLiveActivityCoordinator.shared.acceptanceProbe() }
         .onChange(of:model.conversationID,initial:true) { _,id in replyVariants.activate(id) }   // regenerate pager variants
         #endif
@@ -657,7 +673,7 @@ import CatpawImageComposer
             if let target=model.artifactContinuation,budget.showsTarget {
                 artifactContinuationChip(target).padding(.bottom,8)
             }
-            FloatingComposer(model:composerChrome,lineCount:composerLineCount,uploader:attachmentUploader,
+            FloatingComposer(model:composerChrome,lineCount:composerLineCount,uploader:attachmentUploader,inert:launchShell,
                              trailingAccessory:AnyView(
                                 ComposerDictationControls(model:model,responding:composerChrome.runState == .responding,canSend:canSendDraft,
                                                           size:composerControlSize,send:submitDraft,stop:{composerChrome.stop()})

@@ -32,11 +32,12 @@ public actor NativeAuthSessionManager {
     /// True while a cold restore, sign-in or token rotation is running: a signed-out barrier next to a stored credential is
     /// then the normal rotation window, not an abandoned session.
     public func rotationInFlight() -> Bool { [.restoring, .refreshing, .signingIn].contains(value.phase) || refreshFlight != nil }
-    /// A journaled rotation result for the SAME account as the stored credential, still within its access-token lifetime.
+    /// A journaled rotation result for the SAME account (issuer + subject) as the stored credential. NoBug P1: its access
+    /// token may have expired meanwhile — the journaled refresh token is the live one, so restore rotates from it.
     /// Sign-out clears the journal right after closing the barrier, so an interrupted sign-out can never revive an account.
     private func journaledRotation() -> NativeAuthCredential? {
         guard let pending = try? vault.loadPending() else { return nil }
-        guard pending.issuer == configuration.issuer, pending.expiresAt > now(), let stored = try? vault.load(), stored.issuer == pending.issuer, stored.user.id == pending.user.id else {
+        guard pending.issuer == configuration.issuer, let stored = try? vault.load(), stored.issuer == pending.issuer, stored.user.id == pending.user.id else {
             try? vault.clearPending(); return nil
         }
         return pending
@@ -63,8 +64,17 @@ public actor NativeAuthSessionManager {
             // its account nor an authorizable token until remote validation finishes.
             let candidate: NativeAuthCredential
             if recoveryCandidate != nil {
-                guard saved.expiresAt > now() else { throw NativeAuthError.loginRequired }
-                candidate = saved
+                if saved.expiresAt > now().addingTimeInterval(30) { candidate = saved }
+                else {
+                    // The known (journaled) rotation outlived its access token: rotate once from ITS refresh token — the
+                    // one the server issued last — and journal the result before /user again. Never the revoked old one.
+                    candidate = try await remote.refresh(refreshToken: saved.refreshToken)
+                    try checkActive(epoch)
+                    guard candidate.user.id == saved.user.id else { throw NativeAuthError.invalidResponse }
+                    try validate(candidate, user: candidate.user)
+                    try? vault.savePending(candidate)
+                    recoveryCandidate = candidate
+                }
             } else if saved.expiresAt <= now().addingTimeInterval(30) {
                 try barrier.setSignedOut(true)
                 candidate = try await remote.refresh(refreshToken: saved.refreshToken)

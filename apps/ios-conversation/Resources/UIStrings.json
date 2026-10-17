@@ -6686,5 +6686,9 @@
   "退出未完成，请稍后重试。": {
     "en": "Sign-out didn't finish. Try again later.",
     "zh-Hans": "退出未完成，请稍后重试。"
+  },
+  "已退出该账号，这条消息没有发送。": {
+    "en": "You signed out of that account, so this message wasn't sent.",
+    "zh-Hans": "已退出该账号，这条消息没有发送。"
   }
 }

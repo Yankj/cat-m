@@ -312,6 +312,9 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
         let auth: String, grant: Int, upload: URLRequest
         do { (auth, grant, upload) = try await prepare(request) }
         catch { sendDiagnostic("catpaw.send prepare refused op=\(request.operationID.uuidString.prefix(8)) error=\(String(describing:error))");throw ConversationDispatchFailure.notSent(reason: Self.friendlyTransportMessage(error)) }
+        // NoBug P1: the busy re-POST carries this account's Authorization; it may only go out while the same account is
+        // still signed in in the same epoch (captured before the first POST).
+        let principal = AccountEpoch.shared.capture()
         return AsyncThrowingStream { continuation in
             let task = Task {
                 var postInitiated = false
@@ -328,7 +331,8 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
                         guard ChatRuntimeBusyRetry.isBusy(body) else { throw NativeChatHTTPFailure.turnResponse(503) }
                         sendDiagnostic("catpaw.send chat_runtime_busy op=\(request.operationID.uuidString.prefix(8)) quiet retry")
                         throw ChatRuntimeBusyRetry.Busy(retryAfter: ChatRuntimeBusyRetry.retryAfter(header: busy.value(forHTTPHeaderField: "Retry-After"), body: body))
-                    }, sleep: ChatRuntimeBusyRetry.sleep, exhausted: { NativeChatHTTPFailure.turnResponse(503) })   // same URLRequest → same Idempotency-Key (= turn_id)
+                    }, sleep: ChatRuntimeBusyRetry.sleep, stillCurrent: { ChatRuntimeBusyRetry.sameAccount(principal) },
+                       exhausted: { NativeChatHTTPFailure.turnResponse(503) })   // same URLRequest → same Idempotency-Key (= turn_id)
                     guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
                         let status=(response as? HTTPURLResponse)?.statusCode ?? 0
                         if status == 401 { await self.credentials.rejected(scope: request.scope) }
@@ -1784,8 +1788,15 @@ enum ChatRuntimeBusyRetry {
         if let retryAfter { return min(max(retryAfter, 0.5), 60) }
         return min(pow(2, Double(max(1, attempt) - 1)), 16)
     }
-    /// `post` throws `Busy` for a busy refusal; any other result or error passes through unchanged.
-    static func run<R>(post: () async throws -> R, sleep: (TimeInterval) async throws -> Void, exhausted: () -> Error) async throws -> R {
+    /// The account that started the send is still the signed-in one, same epoch (no sign-out / switch / restart since).
+    static func sameAccount(_ principal: AccountToken?, epoch: AccountEpoch = .shared) -> Bool {
+        principal.map { epoch.isValid($0) } ?? (epoch.capture() == nil)
+    }
+    /// Shown when a quiet retry is dropped because its account left: a busy refusal proves the turn was never admitted.
+    static let leftAccountMessage = "已退出该账号，这条消息没有发送。"
+    /// `post` throws `Busy` for a busy refusal; any other result or error passes through unchanged. After every sleep and
+    /// before every re-POST: cancellation, then `stillCurrent` (AccountEpoch) — a stale account's turn is never re-sent.
+    static func run<R>(post: () async throws -> R, sleep: (TimeInterval) async throws -> Void, stillCurrent: () -> Bool = { true }, exhausted: () -> Error) async throws -> R {
         var waited: TimeInterval = 0, attempt = 0
         while true {
             do { return try await post() }
@@ -1795,6 +1806,8 @@ enum ChatRuntimeBusyRetry {
                 guard attempt <= maxRetries, waited + wait <= budget else { throw exhausted() }
                 try Task.checkCancellation()
                 try await sleep(wait); waited += wait
+                try Task.checkCancellation()
+                guard stillCurrent() else { throw ConversationDispatchFailure.notSent(reason: leftAccountMessage) }
             }
         }
     }

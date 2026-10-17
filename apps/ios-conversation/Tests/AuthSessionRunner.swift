@@ -135,7 +135,7 @@ import Foundation
         do { try await aRelaunch.startExperience() } catch NativeAuthError.sessionRecoveryRequired { restartRequired = true }
         let aState = await aRelaunch.snapshot()
         try authCheck(restartRequired && aState.user == nil, "barrier + credential without a journal still requires the explicit restart")
-        // A journal for another account, or an expired one, is discarded and never authenticates.
+        // A journal for another account is discarded and never authenticates; an expired-access one still recovers (P1).
         let xs = AuthTestStorage(), xm = NativeAuthSessionManager(configuration:config,remote:jr,vault:xs,barrier:xs,now:{jc.now()})
         try await xm.signIn(email:"synthetic@example.invalid",password:"fixture-only"); try xs.setSignedOut(true)
         try xs.savePending(.init(issuer:config.issuer,user:.init(id:UUID()),accessToken:"journal.other.signature",refreshToken:"synthetic-journal-other",expiresAt:jc.now().addingTimeInterval(3600)))
@@ -145,7 +145,8 @@ import Foundation
         try xs.savePending(.init(issuer:config.issuer,user:.init(id:id),accessToken:"journal.rotated.signature",refreshToken:"synthetic-journal-rotated",expiresAt:jc.now().addingTimeInterval(-1)))
         let xRelaunch2 = NativeAuthSessionManager(configuration:config,remote:jr,vault:xs,barrier:xs,now:{jc.now()}); try await xRelaunch2.restore()
         let x2State = await xRelaunch2.snapshot()
-        try authCheck(x2State.user == nil && (try xs.loadPending()) == nil, "an expired journal is discarded, never authenticated")
+        let x2Refreshes = await jr.refreshCount()
+        try authCheck(x2State.phase == .authenticated && x2State.user?.id == id && x2Refreshes == refreshesAfter + 1 && (try xs.load())?.accessToken == "journal.rotated.signature" && (try xs.loadPending()) == nil && !(try xs.isSignedOut()), "NoBug P1: a journal whose access token expired (reopened >1 h later) rotates once from its own refresh token and authenticates; only issuer+subject are checked")
         // Sign-out clears the journal before its first await: a kill during server revocation cannot revive the account.
         let os1 = AuthTestStorage(), or1 = AuthJournalRemote(issuer:config.issuer,id:id,clock:jc), om = NativeAuthSessionManager(configuration:config,remote:or1,vault:os1,barrier:os1,now:{jc.now()})
         try await om.signIn(email:"synthetic@example.invalid",password:"fixture-only")
