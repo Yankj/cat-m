@@ -6686,5 +6686,57 @@
   "退出未完成，请稍后重试。": {
     "en": "Sign-out didn't finish. Try again later.",
     "zh-Hans": "退出未完成，请稍后重试。"
+  },
+  "选择模型": {
+    "en": "Choose model",
+    "zh-Hans": "选择模型"
+  },
+  "等你确认": {
+    "en": "Waiting for you",
+    "zh-Hans": "等你确认"
+  },
+  "正在使用工具…": {
+    "en": "Using a tool…",
+    "zh-Hans": "正在使用工具…"
+  },
+  "正在查日历": {
+    "en": "Checking calendar",
+    "zh-Hans": "正在查日历"
+  },
+  "正在添加日程": {
+    "en": "Adding to calendar",
+    "zh-Hans": "正在添加日程"
+  },
+  "正在设置提醒": {
+    "en": "Setting a reminder",
+    "zh-Hans": "正在设置提醒"
+  },
+  "正在查附近": {
+    "en": "Searching nearby",
+    "zh-Hans": "正在查附近"
+  },
+  "正在打开地图": {
+    "en": "Opening Maps",
+    "zh-Hans": "正在打开地图"
+  },
+  "正在查联系人": {
+    "en": "Looking up contacts",
+    "zh-Hans": "正在查联系人"
+  },
+  "正在起草消息": {
+    "en": "Drafting a message",
+    "zh-Hans": "正在起草消息"
+  },
+  "正在拆解任务": {
+    "en": "Breaking down the task",
+    "zh-Hans": "正在拆解任务"
+  },
+  "正在整理待办": {
+    "en": "Organizing to-dos",
+    "zh-Hans": "正在整理待办"
+  },
+  "打开 Catpaw 查看结果": {
+    "en": "Open Catpaw to see the result",
+    "zh-Hans": "打开 Catpaw 查看结果"
   }
 }

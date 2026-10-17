@@ -77,6 +77,22 @@ struct CatpawWorkLiveActivity: Widget {
 }
 
 enum LA {
+    /// chat-ux-1505 #4b: cat-state icon per pose (方块 glass redesign). Asset names are the contract with
+    /// /workspace/codex-review/ux-round-1505/live-activity/; missing asset → "LALogo" → SF Symbol status mark.
+    static func catIconName(_ pose: CatpawWorkAttributes.ContentState.Pose) -> String {
+        switch pose {
+        case .thinking: "LACatThinking"
+        case .tool: "LACatTool"
+        case .writing: "LACatWriting"
+        case .waiting: "LACatWaiting"
+        case .done: "LACatDone"
+        case .failed: "LACatFailed"
+        }
+    }
+    static func catIcon(_ pose: CatpawWorkAttributes.ContentState.Pose) -> String? {
+        for name in [catIconName(pose), "LALogo"] where UIImage(named: name) != nil { return name }
+        return nil
+    }
     static let canvas = Color(red: 0.984, green: 0.969, blue: 0.941)
     static let ink = Color(red: 0.145, green: 0.125, blue: 0.105)
     static let muted = Color(red: 0.385, green: 0.345, blue: 0.305)
@@ -128,8 +144,14 @@ struct LAStatusMark: View {
     let onDark: Bool
 
     var body: some View {
+        if let icon = LA.catIcon(state.pose) {
+            Image(icon).resizable().interpolation(.high).scaledToFit()
+                .accessibilityLabel(LA.label(state.status))
+        } else { symbolMark }
+    }
+    private var symbolMark: some View {
         let color = LA.color(state.status)
-        ZStack {
+        return ZStack {
             RoundedRectangle(cornerRadius: 8, style: .continuous)
                 .fill(color.opacity(onDark ? 0.28 : 0.12))
             RoundedRectangle(cornerRadius: 8, style: .continuous)
