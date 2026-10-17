@@ -18,6 +18,7 @@ import {validateVisionTurn} from './vision-contract.mjs';
 import {UI_CONTRACT,RENDER_UI,UI_DECISIONS,validateResponse,validateUIError,uiResult,uiBlockEvent,uiBlockUpdate,uiBlockResolve,uiPrompt,blockOf,GROUNDED_PROMPT,parseUIKinds,FOLLOWUP_PROMPT} from './generative-ui.mjs';import {toolResultsFrom,groundUIArgs,autoPlaceBlock,ungroundedResult} from './grounded-ui.mjs';
 import {agentMemoryPrompt} from '../../agent-memory/chat-tools.mjs';
 import {DEVICE_CONTRACT,parseDeviceTools,validateDeviceResult,deviceCallEvent,deviceResult,validateDeviceUndo,deviceUndoNote,DEVICE_UNDOABLE_TOOLS} from './device-call.mjs';
+import {withInterruptedTurn,withInteractionOutcomes,turnOutcomeNote} from './turn-outcome.mjs';
 import {APPROVAL_CONTRACT,gatedCalls,interruptFor,requestedEvent,resolvedEvent,pendingApprovals,validateDecision,settleExpired,resumedTurn,deniedResult,APPROVAL_PREFERENCES,preferenceID,isoAt} from './approval.mjs';
 const positive=v=>Number.isSafeInteger(v)&&v>0;
 const terminal=s=>s!=='running';
@@ -79,22 +80,27 @@ export class ChatService {
     check(!memoryProposalContract||(!revisionTarget&&!workIntent),422,'memory_proposal_turn_not_allowed');
     check(!revisionWork||(revisionTarget&&!workIntent&&!memoryProposalContract),422,'revision_work_turn_not_allowed');
     check(!(revisionTarget&&workIntent),422,'work_intent_revision_not_supported');
-    const vision=this.validateInput(input);let transferred=false,heldOwner=null;try{input=vision.input;check(!vision.receipts.length||(!revisionTarget&&!workIntent&&!revisionWork&&!memoryProposalContract),422,'vision_turn_not_allowed');const trusted=await this.scoped(auth,scopeID),{owner,scope,principal}=trusted,acceptedAt=this.metrics.now();
+    const vision=this.validateInput(input);let transferred=false,heldOwner=null,abandoned=null;try{input=vision.input;check(!vision.receipts.length||(!revisionTarget&&!workIntent&&!revisionWork&&!memoryProposalContract),422,'vision_turn_not_allowed');const trusted=await this.scoped(auth,scopeID),{owner,scope,principal}=trusted,acceptedAt=this.metrics.now();
     await this.integration?.prepare({owner,scope,principal});heldOwner=owner;
     const admissionHash=hash({input,...vision.receipts.length?{image_attachments:vision.receipts,image_route_hash:this.vision.routeHash}:{},...revisionWork?{revision_work:revisionWork,revision_work_contract:TASK_REVISION_WORK_CONTRACT}:{},...memoryProposalContract?{memory_proposal_contract:memoryProposalContract}:{},...workIntent?{work_intent:workIntent,work_intent_contract:ACCEPTED_WORK_INTENT_CONTRACT}:{},...revisionTarget?{revision_target:revisionTarget,revision_contract:TASK_REVISION_CONTRACT}:{},...approvalContract?{approval_contract:approvalContract}:{},...uiContract?{ui_contract:uiContract}:{},conversation_id:conversationID,scope,subject:principal.subject_id,model:this.provider.identity});
     const result=await this.repository.transaction(async tx=>{
       await this.integration?.beforeWrite(tx,{owner,scope});
       await tx.lock(owner,'native-chat-conversations',conversationID);
-      const c=await this.conversation(tx,owner,conversationID,principal.subject_id,scopeID);
+      let c=await this.conversation(tx,owner,conversationID,principal.subject_id,scopeID);
       const prior=await tx.get(owner,'native-chat-turns',input.turn_id);
       if(prior){check(prior.conversation_id===c.id&&prior.admission_hash===admissionHash,409,'turn_conflict');return {turn:prior,replayed:true};}
       check((scope.permissions?.local_output??principal.permissions?.local_output)===true,403,'local_output_permission_required');
       check(c.state==='active'&&c.grant_epoch===input.expected_grant_epoch,409,'grant_conflict');check(c.revision===input.expected_revision,409,'revision_conflict');
-      if(c.last_turn_id){const last=await tx.get(owner,'native-chat-turns',c.last_turn_id);check(!['running','awaiting_approval'].includes(last?.state),409,'conversation_busy');}
+      if(c.last_turn_id){const last=await tx.get(owner,'native-chat-turns',c.last_turn_id);check(last?.state!=='running',409,'conversation_busy');
+        // chat-context-1522: a turn left awaiting_approval (card never answered, or the client never showed it) no longer
+        // blocks the conversation until the 10 min TTL. The user's next message closes it: pending interrupts resolve as
+        // cancelled (reason superseded), the turn fails superseded_by_new_message, and the model is told on this turn.
+        if(last?.state==='awaiting_approval'&&last.conversation_id===c.id){abandoned=this.abandonSuspended(last);await tx.put(owner,'native-chat-turns',abandoned);c=withInterruptedTurn(c,abandoned,'superseded_by_new_message');}}
       check(!c.messages.some(m=>m.id===input.message.id),409,'message_conflict');
       const user={id:input.message.id,role:'user',content:input.message.text,...vision.receipts.length?{attachments:vision.receipts}:{}},history=[...c.messages,user];
       // chat-ux #6: undo results from chat receipts reach the model with the next message (then cleared).
-      const undoNote=deviceUndoNote(c.device_undo_notes);
+      // chat-context-1522: turns that ended without complete() (failed / cancelled / abandoned) reach the model the same way.
+      const undoNote=[turnOutcomeNote(c.turn_outcome_notes),deviceUndoNote(c.device_undo_notes)].filter(Boolean).join('\n\n');
       const modelHistory=[...(c.model_messages??c.messages.map(({id,...m})=>m)),{role:'user',content:(undoNote?undoNote+'\n\n':'')+input.message.text}];
       check(history.length<=40&&Buffer.byteLength(JSON.stringify(history))<=80000,422,'history_limit_reached');
       let t={id:input.turn_id,conversation_id:c.id,scope_id:scope.scope_id,subject_id:principal.subject_id,grant_epoch:c.grant_epoch,conversation_revision:c.revision+1,state:'running',
@@ -138,7 +144,7 @@ export class ChatService {
       if(agentMemory?.ids.length&&t.approval_contract)t={...t,events:[...t.events,this.event(t,'memory_recalled',{ids:agentMemory.ids})]};
       if(agentMemory?.ids.length&&t.approval_contract&&agentMemory.items)t={...t,events:[...t.events,this.event(t,'memory.used',{ids:agentMemory.ids,memories:agentMemory.items})]};
       if(this.facade.proactiveSuggestions&&t.approval_contract){claimedSuggestions=await this.facade.proactiveSuggestions.claimForTurn({subjectID:principal.subject_id,conversationID:c.id,turnID:t.id}).catch(()=>[]);for(const s of claimedSuggestions)t={...t,events:[...t.events,this.event(t,'proactive_suggestion',s)]};}
-      check(await tx.insertIfAbsent(owner,'native-chat-turns',t),409,'turn_conflict');await tx.put(owner,'native-chat-conversations',{...c,revision:c.revision+1,messages:history,model_messages:modelHistory,last_turn_id:t.id,device_undo_notes:[]});
+      check(await tx.insertIfAbsent(owner,'native-chat-turns',t),409,'turn_conflict');await tx.put(owner,'native-chat-conversations',{...c,revision:c.revision+1,messages:history,model_messages:modelHistory,last_turn_id:t.id,device_undo_notes:[],turn_outcome_notes:[]});
       await this.integration?.capture(tx,{owner,scope,principal,turn:t});
       const extraction=await this.integration?.stageMemoryExtraction?.(tx,{principal,scope,conversation:c,turn:t});
       if(extraction){
@@ -152,6 +158,7 @@ export class ChatService {
       await this.beforeCommit(tx,{owner,scope},t);if(t.revision_target)await this.assertRevisionLive(tx,{owner,scope,principal},t);return {turn:t,replayed:false};
     });
     this.metrics.record('accept_commit',acceptedAt);
+    if(abandoned&&!result.replayed)this.notify(owner,abandoned);
     if(!result.replayed){
       this.notify(owner,result.turn);
       const controller=new AbortController(),key=`${owner}:${input.turn_id}`;
@@ -322,7 +329,7 @@ export class ChatService {
     const started=this.metrics.now();
     const t=await this.repository.transaction(async tx=>{
       const {t,c}=await this.live(tx,env);env.assertLive?.();
-      await tx.put(env.owner,'native-chat-conversations',{...c,messages:this.finishOnDelegationReceipt&&!text.trim()?c.messages:[...c.messages,{id:messageID,role:'assistant',content:text}],model_messages:modelMessages});
+      await tx.put(env.owner,'native-chat-conversations',{...c,messages:this.finishOnDelegationReceipt&&!text.trim()?c.messages:[...c.messages,{id:messageID,role:'assistant',content:text}],model_messages:modelMessages,...withInteractionOutcomes(c,t)});
       env.assertLive?.();const saved=await tx.put(env.owner,'native-chat-turns',{...t,state:'completed',...env.providerReceipt?{vision_provider_receipt:clone(env.providerReceipt)}: {},events:[...t.events,this.event(t,'turn_completed',{message_id:messageID,final_text_hash:hash(text),task_bindings:t.task_bindings,...env.providerReceipt?{provider_receipt:clone(env.providerReceipt)}:{},...t.continuations?{continuations:t.continuations}:{},...t.revision_work_receipts?{revision_work_receipts:t.revision_work_receipts}:{}})],finished_at:iso()});
       await this.integration?.capture(tx,{...env,turn:saved});await this.beforeCommit(tx,env,saved);if(saved.revision_target)await this.assertRevisionLive(tx,env,saved);return saved;
     });this.metrics.record('terminal_commit',started);this.notify(env.owner,t);
@@ -345,9 +352,29 @@ export class ChatService {
       if(code==='rate_limited'&&Number.isSafeInteger(cause?.retryAfterSeconds)&&cause.retryAfterSeconds>=0&&cause.retryAfterSeconds<=3600)data.retry_after_seconds=cause.retryAfterSeconds;
       // Use only the freshly locked row. Never flush buffered text/history/tools during cleanup.
       const saved=await tx.put(env.owner,'native-chat-turns',{...t,state:reconciliation?'outcome_unknown':'failed',error:data,finished_at:iso(),events:[...t.events,this.event(t,'turn_failed',data)]});
+      // chat-context-1522: the failed turn's tool calls, the user's decisions and the text already shown reach the next turn.
+      await this.recordInterruptedTurn(tx,env.owner,saved,code);
       // An awaited metadata write can cross lease expiry; reject the transaction before COMMIT.
       await beforeFailure?.call(this.integration,tx,{owner:env.owner,scope:{scope_id:saved.scope_id},turn:saved});return saved;
     });if(t)this.notify(env.owner,t);
+  }
+  /** Conversation-side record of a turn that ended without complete() (no revision bump: history is unchanged). */
+  async recordInterruptedTurn(tx,owner,t,code){
+    const c=await tx.get(owner,'native-chat-conversations',t.conversation_id);if(!c||c.content_redacted)return;
+    const next=withInterruptedTurn(c,t,code);
+    if(next.turn_outcome_notes!==c.turn_outcome_notes||next.interaction_outcomes!==c.interaction_outcomes)await tx.put(owner,'native-chat-conversations',next);
+  }
+  /** chat-context-1522: close a suspended turn the user moved on from (next message). Pending interrupts → cancelled
+   * (cancel_reason superseded; wire decision stays 'cancelled'), then turn_failed{superseded_by_new_message}. */
+  abandonSuspended(t){
+    const now=isoAt(this.now());let next=t;
+    for(const it of t.interrupts??[])if(it.status==='pending'){
+      const r={...it,status:'cancelled',cancel_reason:'superseded',decided_at:now};
+      next={...next,interrupts:next.interrupts.map(i=>i.interrupt_id===it.interrupt_id?r:i)};next={...next,events:[...next.events,this.event(next,'approval_resolved',resolvedEvent(r))]};
+      if(it.kind==='ui')next={...next,events:[...next.events,this.event(next,'ui.block.resolve',uiBlockResolve(it.block.id,'cancelled'))]};
+    }
+    const error={code:'superseded_by_new_message',retryable:false,reconciliation_required:false};
+    return {...next,state:'failed',error,finished_at:iso(),events:[...next.events,this.event(next,'turn_failed',error)]};
   }
   async observationHead(tx,trusted,scopeID,cid){
     const {owner,principal,scope}=trusted;check(scope.scope_id===scopeID,403,'scope_forbidden');
@@ -515,7 +542,7 @@ export class ChatService {
     const result=await this.repository.transaction(async tx=>{
       await this.integration?.lockScope?.(tx,scopeID);
       await tx.lock(owner,'native-chat-conversations',cid);
-      await this.conversation(tx,owner,cid,principal.subject_id,scopeID);
+      const c=await this.conversation(tx,owner,cid,principal.subject_id,scopeID);
       const t=await tx.get(owner,'native-chat-turns',tid);
       check(t&&t.conversation_id===cid&&t.scope_id===scopeID&&t.subject_id===principal.subject_id,404,'not_found');
       if(finished(t.state))return {turn:t,cancelled:t.error?.code==='cancelled',changed:false};
@@ -525,6 +552,7 @@ export class ChatService {
       // A suspended turn is cancellable: its pending approvals resolve as cancelled before the terminal event.
       for(const it of t.interrupts??[])if(it.status==='pending'){const r={...it,status:'cancelled',decided_at:isoAt(this.now())};next={...next,interrupts:next.interrupts.map(i=>i.interrupt_id===it.interrupt_id?r:i)};next={...next,events:[...next.events,this.event(next,'approval_resolved',resolvedEvent(r))]};if(it.kind==='ui')next={...next,events:[...next.events,this.event(next,'ui.block.resolve',uiBlockResolve(it.block.id,'cancelled'))]};}
       const saved=await tx.put(owner,'native-chat-turns',{...next,state:'failed',error,cancel_requested_at:iso(),finished_at:iso(),events:[...next.events,this.event(next,'turn_failed',error)]});
+      const noted=withInterruptedTurn(c,saved,'cancelled');if(noted.turn_outcome_notes!==c.turn_outcome_notes||noted.interaction_outcomes!==c.interaction_outcomes)await tx.put(owner,'native-chat-conversations',noted);
       return {turn:saved,cancelled:true,changed:true};
     });
     if(result.changed){this.active.get(`${owner}:${tid}`)?.controller.abort(new ApiError(409,'cancelled'));this.notify(owner,result.turn);}
