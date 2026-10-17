@@ -78,3 +78,27 @@ final class AccountModelConsentMemoryTests: XCTestCase {
         anonymous.remember("e0a91d27"); XCTAssertFalse(anonymous.allows("e0a91d27"))
     }
 }
+
+/// chat-ux-1505 #1: header picker offers only server-allowed models; offline routes disabled; checkmark logic.
+final class ModelPickerOptionsTests: XCTestCase {
+    private func route(_ id: String, _ models: [String], status: String = "online") throws -> ModelRouteInfo {
+        let json = #"{"id":"\#(id)","display_name":"\#(id.uppercased())","status":"\#(status)","models":[\#(models.enumerated().map { #"{"id":"\#($1)","default":\#($0 == 0)}"# }.joined(separator: ","))]}"#
+        return try JSONDecoder().decode(ModelRouteInfo.self, from: Data(json.utf8))
+    }
+    func testOptionsAreAutoPlusAllowListOnly() throws {
+        let routes = [try route("gemini", ["google/gemini-3.5-flash-lite", "google/gemini-3.5-flash"]), try route("openrouter", ["x/free-a"], status: "offline")]
+        let o = ModelPickerOptions.build(routes)
+        XCTAssertEqual(o.map(\.id), ["auto|", "gemini|google/gemini-3.5-flash-lite", "gemini|google/gemini-3.5-flash", "openrouter|x/free-a"])
+        XCTAssertEqual(o[1].label, "gemini-3.5-flash-lite")
+        XCTAssertFalse(o[3].enabled)
+    }
+    func testSelectionAndHeaderLabel() throws {
+        let routes = [try route("gemini", ["google/gemini-3.5-flash-lite", "google/gemini-3.5-flash"])]
+        let o = ModelPickerOptions.build(routes)
+        XCTAssertTrue(ModelPickerOptions.isSelected(o[1], route: "gemini", model: nil, routes: routes))   // route default
+        XCTAssertTrue(ModelPickerOptions.isSelected(o[2], route: "gemini", model: "google/gemini-3.5-flash", routes: routes))
+        XCTAssertFalse(ModelPickerOptions.isSelected(o[1], route: "gemini", model: "google/gemini-3.5-flash", routes: routes))
+        XCTAssertNil(ModelPickerOptions.headerLabel(route: "auto", model: nil, routes: routes))
+        XCTAssertEqual(ModelPickerOptions.headerLabel(route: "gemini", model: "google/gemini-3.5-flash", routes: routes), "gemini-3.5-flash")
+    }
+}
