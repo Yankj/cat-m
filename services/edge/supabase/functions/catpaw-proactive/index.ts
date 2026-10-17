@@ -7,7 +7,7 @@ import { createPgAgentMemoryStore } from '../_shared/agent-memory/pg-store.mjs';
 import { createAgentMemoryRecall } from '../_shared/proactive/memory-recall.mjs';
 import { createProactiveService } from '../_shared/proactive/service.mjs';
 import { createPgStore } from '../_shared/proactive/pg-store.mjs';
-import { createReminderModel } from '../_shared/proactive/model.mjs';
+import { reminderModelFor } from '../_shared/proactive/model.mjs';
 import { createApnsSender } from '../_shared/proactive/apns.mjs';
 import { readProactiveApnsEnv } from '../_shared/proactive/apns-env.mjs';
 import { createDecisionService } from '../_shared/proactive/decision.mjs';
@@ -37,7 +37,7 @@ const service = createProactiveService({
   store, decision,
   verifyUser: createSupabaseTokenVerifier({ projectUrl: env('SUPABASE_URL') ?? cfg.projectUrl }),
   schedulerSecret: env('CATPAW_SCHEDULER_SECRET'),
-  model: createReminderModel({ apiKey: cfg.modelKey ?? env('OPENROUTER_API_KEY'), route: cfg.route }),
+  model: reminderModelFor(cfg, env),   // p90 F4: pinned to OpenRouter + its own key
   apns: createApnsSender(readProactiveApnsEnv(env)),
   quietHours, dailyPushCap,
   allow: async (uid: string) => { await enrolled.fresh(); return allows(gates.proactive, uid, 'proactive'); },

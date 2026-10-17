@@ -1,6 +1,13 @@
 // Proactive reminder text via the existing OpenRouter free route (same key + route policy as catpaw-api).
+// p90 F4: reminder text is pinned to the frozen OpenRouter route (never cfg.route, which becomes the Gemini chain when
+// a Gemini key is deployed) and only ever carries the OpenRouter key.
+export const OPENROUTER_ENDPOINT = 'https://openrouter.ai/api/v1/chat/completions';
+export function reminderModelFor(cfg, get, opts = {}) {
+  const r = cfg?.route, policy = r?.endpoint === OPENROUTER_ENDPOINT ? r.routing_policy : { only: ['novita/bf16'], allow_fallbacks: false, require_parameters: true, data_collection: 'deny', max_price: { prompt: 0, completion: 0, request: 0, image: 0 } };
+  return createReminderModel({ apiKey: cfg?.modelKey ?? get('OPENROUTER_API_KEY'), route: { endpoint: OPENROUTER_ENDPOINT, model: r?.endpoint === OPENROUTER_ENDPOINT ? r.model : 'apodex/apodex-1.1-mini:free', routing_policy: policy }, ...opts });
+}
 export function createReminderModel({ apiKey, route, fetchImpl = fetch, timeoutMs = 12000 }) {
-  if (!apiKey || !route) return null;
+  if (!apiKey || !route || route.endpoint !== OPENROUTER_ENDPOINT) return null;   // F4: the OpenRouter key goes only to OpenRouter
   return {
     async reminder(c, nowMs) {
       const local = new Intl.DateTimeFormat('zh-CN', { timeZone: c.time_zone, dateStyle: 'medium', timeStyle: 'short' }).format(new Date(nowMs));
