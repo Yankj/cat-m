@@ -76,8 +76,10 @@ import UserNotifications
 
     // MARK: R2 (NoBug B1): account change never hands the previous owner's (or unowned) legacy plaintext to the new account
 
-    private static let legacyInbox = Data(#"{"s-a":{"id":"s-a","title":"Alice Secret 1:1"}}"#.utf8)
-    private static let legacyReminders = Data(#"{"s-a":{"title":"Alice Secret","place":"Room 7"}}"#.utf8)
+    /// R3 (NoBug P2-R2-4): the card records a created reminder and the reminder context decodes as a real
+    /// `PendingReminder`, so the B1 reminder / EventKit-listing asserts check real data, not an undecodable fixture.
+    private static let legacyInbox = Data(#"{"s-a":{"id":"s-a","title":"Alice Secret 1:1","taken":[{"action":"create_reminder","outcome":"succeeded"}]}}"#.utf8)
+    private static let legacyReminders = Data(#"{"s-a":{"title":"Alice Secret","due":800000000,"start":800000600,"place":"Room 7","operationID":"op-a","leadMinutes":10,"usedETA":false}}"#.utf8)
     private static let legacyAttendees = Data(#"{"s-a":{"names":["Alice Secret"],"recipients":["alice@example.com"]}}"#.utf8)
     /// Real per-account ownership: B's store is active; the legacy plaintext is A's (or nobody's).
     private func activateRealStoreForB() throws -> (UUID, L2SecureStore) {
@@ -99,6 +101,13 @@ import UserNotifications
         XCTAssertTrue(ProactiveEngine.shared.attendees(for: "s-a").names.isEmpty, file: file, line: line)
         XCTAssertNil(ProactiveEngine.shared.pendingReminder(for: "s-a"), file: file, line: line)
     }
+    func testR3LegacyFixturesDecodeAsTheAppReadsThem() throws {
+        let r = try JSONDecoder().decode([String: ProactiveEngine.PendingReminder].self, from: Self.legacyReminders)
+        XCTAssertEqual(r["s-a"]?.title, "Alice Secret"); XCTAssertEqual(r["s-a"]?.operationID, "op-a")
+        let a = try JSONDecoder().decode([String: AttendeesFixture].self, from: Self.legacyAttendees)
+        XCTAssertEqual(a["s-a"]?.names, ["Alice Secret"])
+    }
+    private struct AttendeesFixture: Decodable { var names: [String]; var recipients: [String] }
     func testR2AccountChangeParksPreviousOwnersPlaintextUnderItAndNeverSealsItIntoB() throws {
         let a = UUID().uuidString
         let (b, storeB) = try activateRealStoreForB()
@@ -115,6 +124,10 @@ import UserNotifications
             XCTAssertNotNil(rec[ProactiveSealedStore.parkedPrefix + k], "\(k) parked sealed")
         }
         XCTAssertEqual(ProactiveSealedStore.parked(rec, ProactiveSealedStore.attendeesKey), Self.legacyAttendees)
+        XCTAssertEqual(ProactiveSealedStore.parked(rec, ProactiveSealedStore.remindersKey), Self.legacyReminders)
+        // R3: the created reminder is listed for A's decision from A's own (plaintext) reminder context, not B's store
+        XCTAssertEqual(ProactiveEngine.shared.externalPendingDecision(for: a).map(\.operationID), ["op-a"])
+        XCTAssertTrue(ProactiveEngine.shared.externalPendingDecision(for: b.uuidString).isEmpty)
         XCTAssertFalse(rec.values.contains { String(decoding: $0, as: UTF8.self).contains("Alice Secret") })
     }
     func testR2UnownedLegacyPlaintextIsQuarantinedOnlyAndNeverClaimedForB() throws {
