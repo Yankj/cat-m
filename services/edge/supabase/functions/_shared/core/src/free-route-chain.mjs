@@ -9,6 +9,7 @@ import { Buffer } from 'node:buffer';
 import { ApiError, check, clone } from '../facade-r2/src/common.mjs';
 import { safeProviderFailure } from './provider-errors.mjs';
 import { sseData, retryAfterFromFailure } from './openrouter-provider.mjs';
+import { stripMarkers } from './context-window.mjs';
 import { GeminiInteractionsRoute, GeminiRateGuard, GEMINI_INTERACTIONS_ENDPOINT } from './gemini-interactions-route.mjs';
 
 export const FREE_ROUTE_CATALOG = Object.freeze({
@@ -145,7 +146,7 @@ class OpenAICompatibleRoute {
     this.timeouts = routeTimeouts(route, timeoutMs);
   }
   payload({ messages, system_prompt, tools, model_override }) {
-    const body = { model: model_override ?? this.route.model, messages: [{ role: 'system', content: system_prompt }, ...clone(messages)], stream: true, max_tokens: this.maxTokens };
+    const body = { model: model_override ?? this.route.model, messages: [{ role: 'system', content: system_prompt }, ...stripMarkers(clone(messages))], stream: true, max_tokens: this.maxTokens };
     if (tools?.length) { body.tools = clone(tools); body.tool_choice = 'auto'; }
     if (this.route.id === 'openrouter') body.provider = { ...((model_override ?? this.route.model) === 'apodex/apodex-1.1-mini:free' ? { only: ['novita/bf16'] } : {}), allow_fallbacks: false, data_collection: 'deny', max_price: { prompt: 0, completion: 0, request: 0, image: 0 } };
     // Gemini OpenAI-compat: request thought summaries; they arrive as separate parts.

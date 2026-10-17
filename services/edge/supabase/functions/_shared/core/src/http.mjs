@@ -5,6 +5,7 @@ import {TASK_REVISION_CONTRACT,TASK_REVISION_LIMITS} from './task-revision-contr
 import {ACCEPTED_WORK_INTENT_CONTRACT,ACCEPTED_WORK_INTENT_BYTES,parseAcceptedWorkJSON} from './accepted-work-intent-contract.mjs';
 import { createFetchHandler } from '../facade-r2/src/http.mjs';
 import {retryAfterParts} from './retry-after.mjs';
+import {projectConversation} from './context-window.mjs';
 import {boundedJsonBody,VISION_LIMITS} from './vision-contract.mjs';
 import {APPROVAL_HEADER} from './approval.mjs';
 import {UI_HEADER,UI_KINDS_HEADER} from './generative-ui.mjs';
@@ -59,7 +60,7 @@ export function createChatFetchHandler(runtime){
       const body=()=>boundedJsonBody(request,chat.vision?.enabled&&method==='POST'&&tail.length===3&&tail[2]==='turns'?VISION_LIMITS.max_request_bytes:42000);
       const json=(v,status=200)=>Response.json({schema_version:1,contract:'catpaw.native-chat.v1',...v},{status,headers:{'Cache-Control':'no-store'}});
       if(method==='POST'&&tail.length===1&&tail[0]==='conversations')return json({conversation:await chat.createConversation(auth,scope,await body())},201);
-      if(method==='GET'&&tail.length===2&&tail[0]==='conversations')return json({conversation:await chat.readConversation(auth,scope,tail[1])});
+      if(method==='GET'&&tail.length===2&&tail[0]==='conversations')return json({conversation:projectConversation(await chat.readConversation(auth,scope,tail[1]))});
       if(method==='GET'&&tail.length===4&&tail[0]==='conversations'&&tail[2]==='turns')return json({turn:await chat.readTurn(auth,scope,tail[1],tail[3],{afterSequence:Number(u.searchParams.get('after_sequence')??0)})});
       if(method==='GET'&&tail.length===5&&tail[0]==='conversations'&&tail[2]==='turns'&&tail[4]==='events'){
         const afterSequence=Number(u.searchParams.get('after_sequence')??0);
