@@ -347,6 +347,7 @@ public actor ConversationSessionService {
                 for try await event in stream {
                     try Task.checkCancellation()
                     guard active[conversationID] == observationToken else { throw CancellationError() }
+                    if Self.isLivePreview(event.payload) { forwardLivePreview(event, request: request); continue }   // never journaled
                     observeLog.info("pump event seq=\(event.sequence, privacy: .public) \(String(describing: event.payload).prefix(60), privacy: .public)")
                     try await apply(event, request: request, observationToken: observationToken)
                     if attempt > 0 { attempt = 0; await resilience?.resumed() }
@@ -415,6 +416,8 @@ public actor ConversationSessionService {
     private func apply(_ event: ConversationTurnEvent, request: ConversationTurnRequest, observing: Bool = false, observationToken: UUID) async throws {
         guard active[request.conversationID] == observationToken else { throw CancellationError() }
         guard event.operationID == request.operationID, event.epoch == request.epoch else { throw ConversationSessionError.invalidEvent }
+        // Live-only text_preview: no journal write, no lastSequence change (its sequence is the last persisted event).
+        if Self.isLivePreview(event.payload) { forwardLivePreview(event, request: request); return }
         var (session, journalRevision) = try await readVersioned(scope: request.scope, conversationID: request.conversationID)
         guard let index = session.turns.firstIndex(where: { $0.id == request.operationID }) else { throw CatpawError.missing }
         var turn = session.turns[index]
@@ -549,7 +552,7 @@ public actor ConversationSessionService {
             if turn.pendingUIApprovals?.isEmpty == true { turn.pendingUIApprovals = nil }
             turn.pendingDeviceCalls?.removeAll { $0.interruptID == id.lowercased() }
             if turn.pendingDeviceCalls?.isEmpty == true { turn.pendingDeviceCalls = nil }
-        case .sideChannel:
+        case .sideChannel, .textPreview:
             break // memory.used / memory.update / proactive_suggestion: forwarded by the backend, no journal change
         case .failed(let reason, let reconciliation):
             turn.state = reconciliation ? .unknown : .failed; turn.error = reason
@@ -568,6 +571,16 @@ public actor ConversationSessionService {
         }
         let deviceCallsGone = deviceCallsBefore.subtracting((turn.pendingDeviceCalls ?? []).map(\.callID))
         if !deviceCallsGone.isEmpty { ConversationDeviceCall.lifecycle?(.revoked(callIDs: deviceCallsGone.sorted())) }
+        emit(event.stamped(conversationID: request.conversationID, turnID: request.operationID))
+    }
+    /// fix/context-window-v11x `text_preview` (valid or not): live-only, so it must never reach the journal or move
+    /// `lastSequence` / `after_sequence`; a resume keeps using the last persisted sequence.
+    static func isLivePreview(_ payload: ConversationTurnEvent.Payload) -> Bool {
+        switch payload { case .textPreview: return true; case .sideChannel(let type, _): return type == "text_preview"; default: return false }
+    }
+    /// Valid previews go to turnEvents() observers (AnswerPhaseProjection merges them with the persisted text).
+    private func forwardLivePreview(_ event: ConversationTurnEvent, request: ConversationTurnRequest) {
+        guard case .textPreview = event.payload, event.operationID == request.operationID, event.epoch == request.epoch else { return }
         emit(event.stamped(conversationID: request.conversationID, turnID: request.operationID))
     }
     /// The SSE `turn_failed{cancelled}` and the cancel response are equivalent; turnEvents() sees one stop per turn.
@@ -667,6 +680,7 @@ public actor ConversationSessionService {
             do {
                 let stream = try await backend.resumeEvents(turn.request, afterSequence: turn.lastSequence)
                 for try await event in stream {
+                    if Self.isLivePreview(event.payload) { guard active[conversationID] == observationToken else { throw CancellationError() }; forwardLivePreview(event, request: turn.request); continue }
                     observeLog.info("observe event seq=\(event.sequence, privacy: .public) \(String(describing: event.payload).prefix(80), privacy: .public)")
                     guard active[conversationID] == observationToken else { throw CancellationError() }
                     try await apply(event, request: turn.request, observing: true, observationToken: observationToken)

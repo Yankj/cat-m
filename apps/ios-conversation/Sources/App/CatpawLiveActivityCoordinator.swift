@@ -36,7 +36,7 @@ enum CatpawWorkPhase: Equatable {
         // answerable ones already arrived as approvalRequested / card deviceCall, so suspended alone changes nothing.
         case .suspended: return nil
         case .approvalResolved, .toolResult: return .thinking
-        case .textDelta: return .writing
+        case .textDelta, .textPreview: return .writing   // live text is the answer appearing (the hub / activity dedupe .writing)
         case .completed: return .done
         case .failed: return .failed
         default: return nil

@@ -270,6 +270,59 @@ public struct ConversationTurnRequest: Codable, Sendable {
         return .init(scope:scope,conversationID:conversationID,threadID:threadID,operationID:operationID,epoch:epoch,history:history,context:context,image:image,imageBytes:imageBytes,continuation:continuation,continuationOriginalBinding:continuationOriginalBinding,continuationSubjectID:continuationSubjectID,acceptedWork:intent)
     }
 }
+/// Live-only `text_preview` frame (catpaw-api fix/context-window-v11x 59b5aae6; opt-in `X-Catpaw-Live-Text: 1`).
+/// Never journaled, never replayed, never a cursor: its `sequence` equals the last persisted event already delivered.
+/// `text` is the whole unsaved tail from `offset` (UTF-16 code units into the assistant message text), not an increment.
+/// Persisted `text_delta` text stays authoritative; a preview only extends what is displayed.
+public struct ConversationTextPreview: Equatable, Sendable {
+    /// Server cap (live-text.mjs); a longer unsaved tail pauses previews until the next DB batch.
+    public static let maxUTF16 = 4000
+    public let messageID: UUID
+    public let offset: Int
+    public let text: String
+    public let baseSequence: Int
+    public init?(messageID: UUID, offset: Int, text: String, baseSequence: Int) {
+        guard offset >= 0, baseSequence > 0, text.utf16.count <= Self.maxUTF16 else { return nil }
+        self.messageID = messageID; self.offset = offset; self.text = text; self.baseSequence = baseSequence
+    }
+    /// IOS-NOTE rule 4, exactly in UTF-16 code units (never Character `.count` / `dropFirst`: 👨‍👩‍👧 is 8 units, 1 Character):
+    /// `skip = persisted.utf16.count - offset; tail = text.utf16[skip...]; display = persisted + tail`.
+    /// Defensive additions (no effect on a correct stream): the overlap `text.utf16[..<skip]` must equal the end of
+    /// `persisted`, and the cut must not land on a low surrogate; otherwise, as for `skip < 0` (offset past a batch this
+    /// client has not applied) or `skip >= count` (persisted caught up), the display is `persisted` only.
+    public func display(persisted: String) -> String {
+        let skip = persisted.utf16.count - offset
+        let u = Array(text.utf16)
+        guard skip >= 0, skip < u.count else { return persisted }
+        guard !(0xDC00...0xDFFF).contains(u[skip]), persisted.utf16.suffix(skip).elementsEqual(u[..<skip]) else { return persisted }
+        return persisted + String(decoding: u[skip...], as: UTF16.self)
+    }
+}
+/// IOS-NOTE rule 6 on screen: when a failed / cancelled / stopped turn retracts the unsaved live tail, only text the user
+/// has actually SEEN may animate away. `frames` erases the revealed tail from its end in a few steps (single layer: no
+/// overlay, no double-drawn overlap, never longer than what was revealed, so the bubble never grows).
+public enum LiveTextRetraction {
+    public static let maxSteps = 8
+    /// Steps from `revealed` (what the paced reveal currently shows) down to `target` (the retracted text), excluding
+    /// `revealed` itself and ending exactly at `target`. Nil = not a retraction of revealed text: `target` is not a strict
+    /// UTF-16 prefix of `revealed` (e.g. the reveal lagged behind `target`, so nothing seen disappears). Cuts fall on
+    /// Character boundaries of the removed tail, so a ZWJ emoji or a combining sequence goes in one step.
+    public static func frames(revealed: String, target: String) -> [String]? {
+        let shown = Array(revealed.utf16), kept = target.utf16.count
+        guard kept < shown.count, shown.starts(with: target.utf16) else { return nil }
+        let tail = Array(String(decoding: shown[kept...], as: UTF16.self))
+        guard !tail.isEmpty else { return nil }
+        let steps = min(maxSteps, tail.count)
+        var out: [String] = []
+        for step in 1...steps {
+            let keep = tail.count - Int((Double(tail.count) * Double(step) / Double(steps)).rounded(.up))
+            let frame = target + String(tail.prefix(max(0, keep)))
+            if out.last != frame { out.append(frame) }
+        }
+        if out.last != target { out.append(target) }
+        return out
+    }
+}
 public struct ConversationTurnEvent: Sendable {
     public enum Payload: Sendable {
         case thread(String), started(requestHash: String, conversationRevision: Int, grantEpoch: Int,attachmentReceipts:[ConversationImageReceipt]?=nil), textDelta(messageID: UUID, text: String), toolStarted(callID: String, name: String, arguments: String)
@@ -296,6 +349,8 @@ public struct ConversationTurnEvent: Sendable {
         /// `proactive_suggestion`). They still occupy a sequence number, so they must be decoded, not dropped.
         /// The raw `data` object is forwarded to `ConversationSideChannelEvents.handler` by the backend.
         case sideChannel(type: String, data: Data)
+        /// Live-only `text_preview` (see `ConversationTextPreview`): forwarded to observers, never applied to the journal.
+        case textPreview(ConversationTextPreview)
     }
     public let operationID: UUID
     public let epoch: Int
