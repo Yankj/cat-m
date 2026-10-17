@@ -339,6 +339,34 @@ import UserNotifications
         XCTAssertNil(ProactiveEngine.shared.parkedOps(for: a.uuidString), "nothing left parked for A")
         XCTAssertFalse(ProactiveEngine.shared.syncQueue.items.contains { $0.op.local == ca.id || $0.op.local == cs.id }, "nothing stuck")
     }
+    /// p90i (Grok Bot 08:57): a dead-lettered op parked on a switch comes back to its owner as a dead letter — never sent,
+    /// even past any backoff — flagged as needing the user's confirmation; normal pending ops restore and sync.
+    func testRestoredDeadLetterStaysDeadAndNeedsConfirmationViaRealSignIn() async throws {
+        ProactiveEngine.registerAccountObserver()
+        let a = UUID(), b = UUID()
+        await login(a)
+        let dead = card("xctest-dl-"); ProactiveSuggestionStore.shared.adopt(dead)
+        ProactiveEngine.shared.adoptCloudIdentity(local: dead.id, server: "srv-dl")
+        let live = card("xctest-lv-"); ProactiveSuggestionStore.shared.adopt(live)
+        ProactiveEngine.shared.adoptCloudIdentity(local: live.id, server: "srv-lv")
+        _ = try await ProactiveLocalBackend().perform(.dismiss, on: dead.id)
+        var t = Self.day                                                                 // fail it until it dead-letters
+        for _ in 0..<12 { t = t.addingTimeInterval(7200); ProactiveClock.now = { t }; await ProactiveEngine.shared.drainSync() }
+        let deadKeys = ProactiveEngine.shared.syncQueue.deadLetters.filter { $0.op.local == dead.id }.map(\.key)
+        XCTAssertFalse(deadKeys.isEmpty, "precondition: the dismiss is a dead letter")
+        _ = try await ProactiveLocalBackend().perform(.dismiss, on: live.id)            // a normal pending op
+        await login(b)
+        var sent: [String] = []
+        ProactiveEngine.shared.transport = { path, _, _ in sent.append(path); return ["ok": true] }
+        await login(a)
+        t = t.addingTimeInterval(86_400); ProactiveClock.now = { t }
+        await ProactiveEngine.shared.drainSync(); await settle()
+        XCTAssertTrue(sent.contains("suggestions/srv-lv/action"), "the pending op restored and synced (\(sent))")
+        XCTAssertFalse(sent.contains("suggestions/srv-dl/action"), "the dead letter is never sent")
+        XCTAssertEqual(ProactiveEngine.shared.syncQueue.deadLetters.filter { $0.op.local == dead.id }.map(\.key), deadKeys, "still a dead letter, as it was")
+        XCTAssertEqual(ProactiveEngine.shared.syncNeedingConfirmation().map(\.key), deadKeys, "flagged as needing the user's confirmation")
+        XCTAssertFalse(ProactiveEngine.shared.syncQueue.items.contains { $0.op.local == dead.id }, "not pending")
+    }
     /// p90i: EventKit items the app created are outside the app — a switch never deletes or edits them; they are recorded
     /// as pending a user decision (#89's list) under the old account.
     func testSwitchLeavesEventKitRemindersAndRecordsThemForDecision() async throws {
