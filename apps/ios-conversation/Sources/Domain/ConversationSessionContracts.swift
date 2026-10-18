@@ -824,7 +824,7 @@ public extension ConversationBackend {
 /// time (`MemoryEventSink.installSideChannel()`), so wire code and portable test scripts do not depend on feature files.
 public enum ConversationSideChannelEvents {
     public typealias Handler = @Sendable (_ type: String, _ turnID: UUID, _ data: Data, _ token: AccountToken?) -> Void
-    public static let types: Set<String> = ["memory.used", "memory.update", "memory_recalled", "proactive_suggestion"]
+    public static let types: Set<String> = ["memory.used", "memory.update", "memory_recalled", "proactive_suggestion", "memory_saved"]
     private static let lock = NSLock()
     nonisolated(unsafe) private static var installed: Handler?
     public static var handler: Handler? {

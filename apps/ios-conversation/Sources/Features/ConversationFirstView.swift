@@ -161,10 +161,12 @@ import CatpawImageComposer
         }
     }
     @State private var proactiveInboxPresented = false
+    @State private var memorySavedNotice = false   // v1.2: server `memory_saved` event → 「已写入记忆 · 查看」
     @State private var proactiveDebugPresented = false
     private func consumeAppRoute() {
         guard model.loaded, !launchShell, let route = CatpawRouteCenter.shared.pending else { return }
         CatpawRouteCenter.shared.pending = nil
+        if route != .proactive && route != .proactiveDebug { proactiveInboxPresented = false }   // v1.2: a jump from the 主动 sheet lands underneath it
         switch route {
         case .conversation(let id): self.route(.conversation(id))
         case .newConversation: self.route(.newConversation)
@@ -172,6 +174,8 @@ import CatpawImageComposer
         case .proactive: proactiveInboxPresented = true
         case .proactiveDebug: proactiveDebugPresented = true
         case .memory: path = []; self.route(.memory)
+        case .results: path = []; self.route(.results)
+        case .settings: path = []; self.route(.settings)
         }
 
     }
@@ -191,7 +195,10 @@ import CatpawImageComposer
         let title=model.history.first(where:{$0.id==model.conversationID})?.title.trimmingCharacters(in:.whitespacesAndNewlines) ?? ""
         return title.isEmpty ? ui("新对话") : title
     }
-    private var r8Title:String { model.history.first(where:{$0.id==model.conversationID}) == nil ? "Catpaw" : firstTitleLine }
+    /// v1.2 header: the bar names the assistant (avatar + 「Catpaw」 + status), not the first message. The conversation title
+    /// moved into the title menu; the v1.1.1 width cap still applies to this text.
+    private var r8Title:String { Self.headerTitle }
+    static let headerTitle = "Catpaw"
     private var firstTitleLine:String { String(conversationTitle.split(separator:"\n",maxSplits:1).first ?? Substring(conversationTitle)) }
     /// v1.1.x title overflow: the principal item is centered, so it may use the bar width minus the leading and trailing
     /// 44pt buttons plus their system margins on both sides; the title then truncates with … instead of running under them.
@@ -225,6 +232,9 @@ import CatpawImageComposer
                 .firstRunAnchor(.headerAvatar).firstRunHandedOff(.headerAvatar)   // SPEC-E: the landing cat lands here
                 .accessibilityIdentifier("chat.title.presence")
             Menu {
+            if model.history.contains(where:{$0.id==model.conversationID}) {
+                Section(ui("当前对话")) { Text(verbatim:firstTitleLine).accessibilityIdentifier("chat.menu.conversationTitle") }
+            }
             Section(ui("模型")) {
                 Button { ModelRouteSelection.resetToAuto() } label: { if ModelRouteSelection.route == ModelRouteSelection.autoID { Label(ui("自动"), systemImage:"checkmark") } else { Text(ui("自动")) } }
                 ForEach(routeCatalog.routes) { r in
@@ -269,7 +279,11 @@ import CatpawImageComposer
     private var headerStatusLine: String {
         if presenceHub.state != nil, !presenceHub.step.isEmpty { return presenceHub.step }
         let pose = PlushMascotPose(headerCatState)
-        return pose == .idle ? r8ModelLabel : ui(pose.statusKey)
+        return pose == .idle ? Self.idleStatus(online: menuPresence.online, offlineLabel: connectionMonitor.state.labelKey.map{ui($0.key,arguments:$0.arguments)}, ui: { ui($0) }) : ui(pose.statusKey)
+    }
+    /// v1.2 idle status line under 「Catpaw」: 「在线 · 随时帮你」, or the connection's own label when offline.
+    static func idleStatus(online: Bool, offlineLabel: String?, ui: (String) -> String) -> String {
+        online ? ui("在线 · 随时帮你") : (offlineLabel ?? ui("未连接"))
     }
     private var menuPresence: ModelRouteCatalog.Presence { routeCatalog.presence(connection: .from(connectionMonitor.state)) }
     /// 「连接正常 · Gemini」 when online; otherwise the monitor's own label.
@@ -457,6 +471,11 @@ import CatpawImageComposer
                             } else if model.quotaNotice {
                                 ConversationSystemNotice(kind: .quota, actionTitle: ui("重试")) { model.retryAfterQuota() }
                             }
+                            if memorySavedNotice {
+                                ConversationSystemNotice(kind: .memorySaved, actionTitle: ui("查看")) { memorySavedNotice = false; route(.memory) }
+                                    .task { try? await Task.sleep(nanoseconds: 4_000_000_000); memorySavedNotice = false }
+                                    .accessibilityIdentifier("chat.memorySavedNotice")
+                            }
                             if let routeNotice = routeCatalog.notice {
                                 ConversationSystemNotice(kind: routeNotice).task { try? await Task.sleep(nanoseconds: 4_000_000_000); routeCatalog.notice = nil }
                             }
@@ -618,6 +637,7 @@ import CatpawImageComposer
         refreshTimelineMemo()
         return feedbackNavigation
         .onChange(of: CatpawRouteCenter.shared.pending) { _, _ in consumeAppRoute() }
+        .onReceive(NotificationCenter.default.publisher(for: MemoryEventSink.savedNotification)) { _ in memorySavedNotice = true }
         .sheet(isPresented: $proactiveInboxPresented) { NavigationStack { ProactiveInboxView() } }
         .sheet(item: $editingPrompt) { e in MessageEditSheet(original: e.text) { resendEdited(e.root, $0) } }
         .onReceive(NotificationCenter.default.publisher(for: FollowUpSuggestions.tapNotification)) { note in sendFollowUp(note.object as? String) }
@@ -1273,10 +1293,13 @@ import CatpawImageComposer
         } else {
             let isLast=message.id==lastAssistantMessageID
             let pastTurn=turnID.flatMap{id in model.session?.turns.first{$0.id==id}}
-            ConversationAnswerView(message:message,canQuote:!model.isInputComposing,quote:quote,showsActions:isLast,actions:isLast ? replyActions(message,turnID:turnID):nil,
-                                   thoughtSummary:pastTurn?.reasoningSummary,
-                                   thoughtSeconds:pastTurn?.thinkingMs.map{max(1,Int(ceil(Double($0)/1000)))})
-                .environment(\.followUpChipsVisible,message.id==timelineMemo.followUpHostID)
+            VStack(alignment:.leading,spacing:8) {
+                ConversationAnswerView(message:message,canQuote:!model.isInputComposing,quote:quote,showsActions:isLast,actions:isLast ? replyActions(message,turnID:turnID):nil,
+                                       thoughtSummary:pastTurn?.reasoningSummary,
+                                       thoughtSeconds:pastTurn?.thinkingMs.map{max(1,Int(ceil(Double($0)/1000)))})
+                    .environment(\.followUpChipsVisible,message.id==timelineMemo.followUpHostID)
+                if message.complete { CapabilityLinkButtons(links:CatpawCapabilityLinks.extract(from:message.content)) }
+            }
         }
     }
     private func usesPhasedAnswer(_ turn:ConversationTurnRecord,message:ConversationTranscriptMessage)->Bool {
@@ -1924,5 +1947,37 @@ struct CatpawPrivacyShield: ViewModifier {
         .allowsHitTesting(true)
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier(identifier)
+    }
+}
+
+/// v1.2: tappable buttons for the catpawm:// capability links in a finished reply (打开记忆 / 查看成果 / …).
+/// Taps go through the same route center as widgets and notifications.
+struct CapabilityLinkButtons: View {
+    let links: [CatpawCapabilityLink]
+    var body: some View {
+        if !links.isEmpty {
+            HStack(spacing: 8) {
+                ForEach(links) { link in
+                    Button { CatpawRouteCenter.shared.pending = link.route } label: {
+                        Label { Text(verbatim: link.label).lineLimit(1) } icon: { Image(systemName: Self.symbol(link.route)) }
+                            .font(CatpawTypography.Role.secondary.font.weight(.semibold)).foregroundStyle(CatpawColors.ink)
+                            .padding(.horizontal, 12).padding(.vertical, 8)
+                            .background(Capsule().fill(CatpawColors.panel)).overlay(Capsule().stroke(CatpawColors.separator, lineWidth: 0.5))
+                    }
+                    .buttonStyle(CatpawPressButtonStyle()).frame(minHeight: 44)
+                    .accessibilityIdentifier("chat.capabilityLink." + (link.url.host ?? ""))
+                }
+            }
+        }
+    }
+    static func symbol(_ route: CatpawAppRoute) -> String {
+        switch route {
+        case .memory: "brain"
+        case .tasks: "checklist"
+        case .proactive: "bell.badge"
+        case .results: "doc.text"
+        case .settings: "gearshape"
+        default: "arrow.up.forward.app"
+        }
     }
 }
