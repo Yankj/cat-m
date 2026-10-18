@@ -1,5 +1,13 @@
 # Catpaw-m workspace instructions
 
+## Quick context (human + AI)
+
+- Stack: Swift 5 / SwiftUI (iOS 17+), SwiftData, URLSession SSE, EventKit; backend Supabase Edge Functions (Deno) + PostgreSQL.
+- Edit only `apps/ios-conversation` (native) and `services/edge/supabase/functions` (backend); other app/service roots are frozen sources.
+- Layers: Views -> `*Service` -> Domain contracts; Providers wrap network/auth/system frameworks; Persistence wraps SwiftData.
+- Domain: Conversation/Turn, TaskPlan, TaskAction (approval), TaskControl, DeviceEffect (calendar/notification), Artifact, Inbox, Memory, GenerativeUI.
+- Overview: [README](README.md), [architecture](docs/architecture.md), [docs index](docs/README.md).
+
 ## Repository architecture and Git rules
 
 - Directory roles are fixed by `docs/development/repository-layout.json`; read `docs/architecture/repository-review-2026-10-13.md` before restructuring. One active native App and one backend maintenance source; historical apps, deployed snapshots and pinned upstreams are separate roles, never competing maintenance roots.
