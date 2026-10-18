@@ -6990,5 +6990,61 @@
   "路由状态": {
     "en": "Route status",
     "zh-Hans": "路由状态"
+  },
+  "在线 · 随时帮你": {
+    "en": "Online · here to help",
+    "zh-Hans": "在线 · 随时帮你"
+  },
+  "查看": {
+    "en": "View",
+    "zh-Hans": "查看"
+  },
+  "已转为任务": {
+    "en": "Turned into a task",
+    "zh-Hans": "已转为任务"
+  },
+  "现在是免打扰时段（22:00–8:00），提醒只放在这里，不推送通知。": {
+    "en": "Quiet hours (22:00–8:00): reminders stay here and don't send notifications.",
+    "zh-Hans": "现在是免打扰时段（22:00–8:00），提醒只放在这里，不推送通知。"
+  },
+  "今天已经提醒过 5 次，到了上限；之后的提醒只放在这里。": {
+    "en": "5 reminders already today, the daily limit; later ones stay here.",
+    "zh-Hans": "今天已经提醒过 5 次，到了上限；之后的提醒只放在这里。"
+  },
+  "接受或处理过的主动提醒会放在这里。": {
+    "en": "Proactive reminders you accepted or handled appear here.",
+    "zh-Hans": "接受或处理过的主动提醒会放在这里。"
+  },
+  "点过「不用了」的提醒会放在这里。": {
+    "en": "Reminders you dismissed appear here.",
+    "zh-Hans": "点过「不用了」的提醒会放在这里。"
+  },
+  "允许日历权限后，开会前我会先来提醒你。": {
+    "en": "Allow calendar access and I'll remind you before meetings.",
+    "zh-Hans": "允许日历权限后，开会前我会先来提醒你。"
+  },
+  "在对话里说「提醒我明天 9 点开会」或「帮我整理一份周报」，要办的事会出现在这里。": {
+    "en": "Say “remind me about the 9am meeting tomorrow” or “draft a weekly report” in chat; work to do shows up here.",
+    "zh-Hans": "在对话里说「提醒我明天 9 点开会」或「帮我整理一份周报」，要办的事会出现在这里。"
+  },
+  "任务办完后，报告和回执会放在这里，点开可以回到原对话。": {
+    "en": "Finished reports and receipts land here; open one to return to its conversation.",
+    "zh-Hans": "任务办完后，报告和回执会放在这里，点开可以回到原对话。"
+  },
+  "最近用过 · {0}": {
+    "en": "Last used · {0}",
+    "zh-Hans": "最近用过 · {0}"
+  },
+  "打开记忆": {
+    "en": "Open memory",
+    "zh-Hans": "打开记忆"
+  },
+  "查看主动提醒": {
+    "en": "View proactive reminders",
+    "zh-Hans": "查看主动提醒"
+  },
+  "打开设置": {
+    "en": "Open settings",
+    "zh-Hans": "打开设置"
   }
 }

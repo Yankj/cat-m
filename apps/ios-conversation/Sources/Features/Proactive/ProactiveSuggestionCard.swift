@@ -29,7 +29,17 @@ import SwiftUI
             case .pending:
                 if s.snoozeRestoreFailed { ProactiveStatusRow(textKey: "没能恢复稍后提醒", symbol: "exclamationmark.circle", accent: false) }
                 actions
-            case .done: ProactiveStatusRow(textKey: "已处理", symbol: "checkmark.circle.fill", accent: true)
+            case .done:
+                if s.actionStates[ProactiveSuggestion.Action.create_reminder.rawValue] == .succeeded {
+                    // v1.2: an accepted card became a reminder task — say so and offer the jump.
+                    HStack(spacing: 8) {
+                        ProactiveStatusRow(textKey: "已转为任务", symbol: "checkmark.circle.fill", accent: true)
+                        Spacer(minLength: 0)
+                        Button(ui("查看任务")) { CatpawRouteCenter.shared.pending = .tasks }
+                            .font(CatpawTypography.Role.caption.font.weight(.semibold)).foregroundStyle(CatpawColors.ink)
+                            .touchTarget().accessibilityIdentifier("chat.proactiveSuggestion.openTasks")
+                    }
+                } else { ProactiveStatusRow(textKey: "已处理", symbol: "checkmark.circle.fill", accent: true) }
             case .snoozed: ProactiveStatusRow(textKey: "稍后再提醒你", symbol: "clock", accent: false)
             case .dismissed: ProactiveStatusRow(textKey: "已忽略", symbol: "minus.circle", accent: false)
             }
@@ -122,9 +132,17 @@ struct ProactiveStatusRow: View {
                     Text(ui("已忽略")).tag(ProactiveSuggestion.Status.dismissed)
                 }.pickerStyle(.segmented)
             }
+            if let notice = ProactiveRules.suppressionNotice(now: Date(), deliveredToday: ProactiveEngine.shared.quota.count(on: Date())) {
+                // v1.2: say why nothing is ringing (quiet hours / today's cap) instead of looking broken.
+                Label(ui(notice), systemImage: "moon.zzz").font(CatpawTypography.Role.secondary.font).foregroundStyle(CatpawColors.secondary)
+                    .accessibilityIdentifier("proactive.inbox.suppressed")
+            }
             let rows = store.sorted(tab)
             if rows.isEmpty {
-                Text(ui("这里还没有内容")).font(CatpawTypography.Role.body.font).foregroundStyle(CatpawColors.secondary)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(ui("这里还没有内容")).font(CatpawTypography.Role.body.font).foregroundStyle(CatpawColors.ink)
+                    Text(ui(ProactiveRules.emptyHint(tab.rawValue))).font(CatpawTypography.Role.secondary.font).foregroundStyle(CatpawColors.secondary)
+                }.accessibilityElement(children: .combine).accessibilityIdentifier("proactive.inbox.empty")
             }
             ForEach(rows) { s in
                 ProactiveSuggestionCard(suggestion: s).listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16)).listRowSeparator(.hidden)
