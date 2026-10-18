@@ -2477,6 +2477,15 @@
       "category": "unexpected_binary",
       "sha256": "e09d9955298e6db0f79d836c2dce8452f418056a3c5be28c431200b0083fc615",
       "reason": "Plush mascot HEVC-alpha loop from a03b3ac (feat/ios-mvp-integration-v2, PR #78), rendered/encoded asset (design/mascot pipeline). Reviewed 2026-10-18: QuickTime atoms are ftyp/wide/mdat/moov only, no udta/meta/keys (no location, device, author or other metadata); mid-clip frame shows only the orange plush cat, no text or real user content. Exact-path/hash binary asset approval; any byte change requires renewed review."
+    },
+    {
+      "path": "services/edge/test/proactive-decision.test.mjs",
+      "category": "secret_assignment_review",
+      "line": 102,
+      "sha256": "f7c20465cc154ef35f908139bba657dd8ce7330f67f91d0624a67b23467f53b5",
+      "reason": "proactive v10 re-pin: line 102 bytes unchanged (masked k-or-xxxxxxxx / k-ag-xxxxxxxx env stub, no real credential); file changed only in the dedupe test (replay instead of silent).",
+      "reviewed_utc_date": "2026-10-18",
+      "reviewer": "三角"
     }
   ]
 }
