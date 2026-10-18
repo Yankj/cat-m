@@ -37,8 +37,6 @@
 	</array>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
-	<key>CatpawGitSHA</key>
-	<string>cfe3d1c</string>
 	<key>LSApplicationQueriesSchemes</key>
 	<array>
 		<string>imeituan</string>
@@ -60,7 +58,7 @@
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>用于估算去会议地点的公共交通时间，以便在合适的时间提醒你出发。</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>仅在你主动开始说话时采集本句声音，用于设备支持的本地转写。原音不保存到长期记录。</string>
+	<string>仅在你主动听写，或打开语音对话期间（持续聆听，直到你结束或暂停）采集声音，用于转写成文字。原音不保存到长期记录。</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>把你选择的图片保存到“照片”。</string>
 	<key>NSPhotoLibraryUsageDescription</key>
@@ -68,7 +66,7 @@
 	<key>NSRemindersFullAccessUsageDescription</key>
 	<string>Catpaw 在你确认后把提醒写入“提醒事项”，不会自动修改。</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
-	<string>仅在你主动启用且设备支持本地识别时，将本句转成可编辑文字；不使用云端识别回退。</string>
+	<string>仅在你主动听写或打开语音对话时将语音转成文字。语音对话只使用设备上的本地识别；听写在设备不支持本地识别时可能使用 Apple 的语音识别服务。</string>
 	<key>NSSupportsLiveActivities</key>
 	<true/>
 	<key>UIApplicationSceneManifest</key>

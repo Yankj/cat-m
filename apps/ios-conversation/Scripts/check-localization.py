@@ -101,8 +101,7 @@ print('PASS L10 %d permission keys have English and Chinese resources in both Ap
 protected={
  'Sources/Features/LibraryViews.swift':['帮我整理这份文档的要点'],
  'Sources/Features/DocumentView.swift':['素材采集','重点筛选','感想共创','内容检查','成果审阅'],
- 'Sources/Features/SchedulesView.swift':['整理工作日志，生成日报摘要','整理会议要点','生成周报','整理邮件摘要','整理待办','清理文档','整理日程','代码审查'],
- 'Sources/Voice/NativeVoiceController.swift':['本周持续跟进 AI 助理的工作机制，先整理一份私有短稿。','本周持续跟进 AI 助理的工作机制。']}
+ 'Sources/Features/SchedulesView.swift':['整理工作日志，生成日报摘要','整理会议要点','生成周报','整理邮件摘要','整理待办','清理文档','整理日程','代码审查']}  # NativeVoiceController sample transcript removed on purpose in 26bbd5f0 (fake 示例转写)
 for name,content in protected.items():
  actual={key(parts) for a,b,parts in literals((root/name).read_text())}
  assert set(content)<=actual,name

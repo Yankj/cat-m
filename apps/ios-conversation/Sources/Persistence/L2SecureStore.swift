@@ -13,7 +13,7 @@ protocol L2KeyProviding: AnyObject, Sendable {
 
 /// L2 on-device memory (docs: catpaw-design/memory-layers.md).
 /// Per-user directory, every record sealed with AES-GCM; the key comes from `L2KeyProviding` (Keychain in the app).
-/// Files use `.completeFileProtection` and are excluded from backup.
+/// Files use `.completeFileProtection` (proactive records: `.completeFileProtectionUntilFirstUserAuthentication`, R2 P1-1) and are excluded from backup.
 /// `wipe(userID:)` deletes the directory and the key (crypto-shred), called at sign-out.
 final class L2SecureStore: @unchecked Sendable {
     /// The store of the signed-in user; `nil` while signed out or when the key/directory is unavailable
@@ -55,7 +55,8 @@ final class L2SecureStore: @unchecked Sendable {
         self.directory = Self.directory(for: userID, root: root)
         #if os(iOS)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true,
-                                                attributes: [.protectionKey: FileProtectionType.complete])
+                                                attributes: [.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication])   // R2 P1-1: every record sets its own class on write (memory: .complete); the directory default only must not block background writes of .untilFirstUnlock records while locked
+        try? FileManager.default.setAttributes([.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication], ofItemAtPath: directory.path)   // directories created by 4094ad94 builds
         #else
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         #endif
@@ -73,13 +74,30 @@ final class L2SecureStore: @unchecked Sendable {
 
     // MARK: Records (one sealed file per key)
     func data(forKey name: String) -> Data? {
+        if case .value(let d) = read(forKey: name) { return d }
+        return nil
+    }
+
+    /// v1.1 R2 (NoBug P1-1): tells "no record" apart from "a record exists but can't be read right now" (device locked
+    /// before first unlock / Data Protection, permissions, I/O error). Callers must not write or delete on `.unreadable`,
+    /// or a read-modify-write would replace (or an empty value delete) data it never saw.
+    /// A record that reads but no longer opens with this key (crypto-shredded / corrupt) is reported `.missing`: it is
+    /// unrecoverable, so it must not block new writes forever.
+    func read(forKey name: String) -> L2ReadResult {
         lock.lock(); defer { lock.unlock() }
-        guard let sealed = try? Data(contentsOf: url(name)) else { return nil }
-        return try? openSealed(sealed)
+        let target = url(name)
+        let sealed: Data
+        do { sealed = try Data(contentsOf: target) } catch {
+            return FileManager.default.fileExists(atPath: target.path) ? .unreadable : .missing
+        }
+        guard let plain = try? openSealed(sealed) else { return .missing }
+        return .value(plain)
     }
 
     /// Writes (or deletes with `nil`) one sealed record. Throws when sealing or the disk write fails (Codex PR91 #7).
-    func write(_ value: Data?, forKey name: String) throws {
+    /// `protection`: `.complete` (default; memory) or `.untilFirstUnlock` for records that background work (BGAppRefresh,
+    /// lock-screen notification actions) must read and write while the device is locked (proactive, NoBug P1-1).
+    func write(_ value: Data?, forKey name: String, protection: L2Protection = .complete) throws {
         lock.lock(); defer { lock.unlock() }
         let target = url(name)
         guard let value else {
@@ -88,11 +106,14 @@ final class L2SecureStore: @unchecked Sendable {
         }
         let combined = try seal(value)
         #if os(iOS)
-        try combined.write(to: target, options: [.atomic, .completeFileProtection])
+        let fileClass: Data.WritingOptions = protection == .untilFirstUnlock ? .completeFileProtectionUntilFirstUserAuthentication : .completeFileProtection
+        try combined.write(to: target, options: [.atomic, fileClass])
         #else
         try combined.write(to: target, options: [.atomic])
         #endif
     }
+    /// Test seam: the on-disk file of one record (to simulate an unreadable record).
+    func fileURL(forKey name: String) -> URL { url(name) }
     /// Best-effort write for caches that can be rebuilt (generative blocks); durable data uses `write` / `put`.
     func set(_ value: Data?, forKey name: String) { try? write(value, forKey: name) }
 
@@ -128,6 +149,11 @@ final class L2SecureStore: @unchecked Sendable {
 }
 
 enum L2SecureStoreError: Error, Equatable { case keychain(Int32), sealFailed, unavailable }
+/// Result of `L2SecureStore.read`: a value, no record, or a record that exists but can't be read now (never treat as empty).
+enum L2ReadResult: Equatable { case value(Data), missing, unreadable }
+/// File protection class of one record. The Keychain key is already AfterFirstUnlock, so `.untilFirstUnlock` adds no
+/// exposure beyond the key itself; it lets background work read/write after the first unlock since boot.
+enum L2Protection: Equatable { case complete, untilFirstUnlock }
 
 /// Test / non-Apple stand-in: keys live in memory only (a "keychain" that forgets on process exit).
 final class EphemeralL2KeyProvider: L2KeyProviding, @unchecked Sendable {

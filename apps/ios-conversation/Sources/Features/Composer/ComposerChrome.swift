@@ -109,6 +109,8 @@ struct ComposerGlass: ViewModifier {
     var uploader: ComposerAttachmentUploading?
     var accessory: AnyView?
     var trailingAccessory: AnyView?
+    /// Launch shell: same pill and icons, but attach / dictation / send take no input (the editor still takes a draft).
+    var inert = false
     var metaText: String? = nil
     var metaWarning = false
     var onDetails: (() -> Void)? = nil
@@ -121,7 +123,7 @@ struct ComposerGlass: ViewModifier {
     private var multiline: Bool { lineCount > 1 || !model.attachments.isEmpty }
 
     init(model: Model, lineCount: Int, uploader: ComposerAttachmentUploading? = nil,
-         accessory: AnyView? = nil, trailingAccessory: AnyView? = nil,
+         inert: Bool = false, accessory: AnyView? = nil, trailingAccessory: AnyView? = nil,
          metaText: String? = nil, metaWarning: Bool = false, onDetails: (() -> Void)? = nil,
          @ViewBuilder editor: () -> Editor) {
         self.metaText = metaText
@@ -133,6 +135,7 @@ struct ComposerGlass: ViewModifier {
         self.accessory = accessory
         self.trailingAccessory = trailingAccessory
         self.editor = editor()
+        self.inert = inert
     }
 
     var body: some View {
@@ -150,12 +153,13 @@ struct ComposerGlass: ViewModifier {
                     ComposerAttachmentStrip(attachments: $model.attachments, onRetry: retry, onRemove: remove)
                         .transition(.opacity.combined(with: .move(edge: .bottom)))
                 }
-                HStack(alignment: .bottom, spacing: 2) { addMenu; editor.frame(maxWidth: .infinity); sendControl }
+                HStack(alignment: .bottom, spacing: 2) { addMenu.allowsHitTesting(!inert); editor.frame(maxWidth: .infinity); sendControl.allowsHitTesting(!inert) }
             }
             .padding(6)
             .overlay { ComposerDictationBarHost() }
             .modifier(ComposerGlass())
             .overlay(RoundedRectangle(cornerRadius: 26, style: .continuous).strokeBorder(CatpawColors.action, lineWidth: dropTargeted ? 2 : 0))
+            .firstRunAnchor(.composer).firstRunHandedOff(.composer)   // SPEC-E: 「开始使用」 morphs into this pill
             .composerDropTarget(isTargeted: $dropTargeted, add: add)
         }
         .padding(.horizontal, 12).padding(.bottom, 8)
@@ -338,6 +342,15 @@ private struct JumpGlass: ViewModifier {
 }
 
 
+/// device-0728: the composer's voice and stop buttons are a black circle with a white glyph in light AND dark mode
+/// (dark adds a faint ring so the circle separates from the dark composer). Disabled = the press style's 0.55 dim.
+struct ComposerBlackCircle: ViewModifier {
+    func body(content: Content) -> some View {
+        content.background(CatpawColors.voiceFill, in: Circle())
+            .overlay(Circle().strokeBorder(CatpawColors.voiceRing, lineWidth: 1))
+    }
+}
+
 /// r8 trailing controls (one view, four modes):
 /// empty → mic (dictation) + black waveform (voice) · content → paw-orange send · generating+empty → black stop · generating+draft → send with clock badge (queued).
 /// In-progress state comes from turnEvents (adapter.runState), never model.busy.
@@ -350,6 +363,8 @@ private struct JumpGlass: ViewModifier {
     let stop: () -> Void
     var dictate: () -> Void = {}
     var voice: () -> Void = {}
+    /// false while the chat can't take a voice turn yet (launch shell / not loaded): dimmed by the press style, inert.
+    var voiceEnabled = true
     /// Live dictation: the mic becomes a pulsing paw-orange waveform stop control; send stays available.
     var dictating = false
     /// Replaces the built-in mic/dictating button with one stable view across idle ↔ dictating, so a press-and-hold
@@ -377,8 +392,8 @@ private struct JumpGlass: ViewModifier {
                     .transition(.scale(scale: 0.6).combined(with: .opacity)) }
                 Button(action: voice) {
                     Image(systemName: "waveform").font(CatpawTypography.Role.body.font.weight(.semibold)).foregroundStyle(CatpawColors.sendIcon)
-                        .frame(width: size, height: size).background(CatpawColors.ink, in: Circle()).contentShape(Circle().inset(by: -4))
-                }.buttonStyle(CatpawPressButtonStyle()).accessibilityLabel(ui("语音对话")).accessibilityIdentifier("chat.composer.voice")
+                        .frame(width: size, height: size).modifier(ComposerBlackCircle()).contentShape(Circle().inset(by: -4))
+                }.buttonStyle(CatpawPressButtonStyle()).disabled(!voiceEnabled).accessibilityLabel(ui("语音对话")).accessibilityIdentifier("chat.composer.voice")
                     .transition(.scale(scale: 0.6).combined(with: .opacity))
             case .dictating:
                 if micOverride == nil { Button(action: dictate) {
@@ -397,7 +412,7 @@ private struct JumpGlass: ViewModifier {
             case .stop:
                 Button { stopCount += 1; stop() } label: {
                     RoundedRectangle(cornerRadius: 3, style: .continuous).fill(CatpawColors.sendIcon).frame(width: 12, height: 12)
-                        .frame(width: size, height: size).background(CatpawColors.ink, in: Circle()).contentShape(Circle().inset(by: -4))
+                        .frame(width: size, height: size).modifier(ComposerBlackCircle()).contentShape(Circle().inset(by: -4))
                 }.buttonStyle(CatpawPressButtonStyle()).accessibilityLabel(ui("停止回答")).accessibilityIdentifier("chat.stop")
                     .transition(.scale(scale: 0.6).combined(with: .opacity))
             case .send, .queue:

@@ -7,7 +7,7 @@ import Combine
 
     @ObservedObject var model: AppModel
     @Environment(\.scenePhase) private var phase
-    @State private var launchMarkVisible=LaunchMarkGate.shouldPlay(openedFromURLOrNotification:false)
+    @State private var launchMarkVisible=true
     private let timer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
     var body: some View {
         NavigationStack(path: $model.path) {
@@ -27,9 +27,9 @@ import Combine
         .sheet(isPresented: $model.sidebar) { SidebarView(model: model).tint(CatpawColors.ink).presentationDetents([.large]).presentationDragIndicator(.visible) }
         .alert(ui("操作未完成"), isPresented: Binding(get: { model.error != nil }, set: { if !$0 { model.error = nil } })) { Button(ui("好")) { model.error = nil } } message: { Text(model.error ?? "") }
         .overlay {
+            // 方块's two-stage loader: the same mark as CatpawApp's (identical geometry), held until this model has loaded.
             if launchMarkVisible {
-                LaunchMarkView(restoring:!model.loaded) {launchMarkVisible=false}
-                    .transition(.opacity)
+                CatpawLaunchMark(isReady:model.loaded) {launchMarkVisible=false}
                     .zIndex(100)
             }
         }

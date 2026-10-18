@@ -1,6 +1,7 @@
 import Foundation
 @main struct AuthSessionRunner {
     static func main() async throws {
+        setvbuf(stdout, nil, _IONBF, 0)   // PASS lines survive a failing check
         let config = try NativeAuthConfiguration(projectURL: URL(string:"https://abcdefghijklmnopqrst.supabase.co")!, publishableKey:"sb_publishable_test_public_value", backendOrigin:URL(string:"https://backend.example.invalid")!,serverScopeID:UUID())
         try authCheck(config.issuer == "https://abcdefghijklmnopqrst.supabase.co/auth/v1", "explicit public configuration is accepted without identity or secret inference")
         let storage = AuthTestStorage(), id = UUID(), remote = AuthTestRemote(issuer: config.issuer, id: id)
@@ -99,5 +100,64 @@ import Foundation
         let blockedRefresh = await m9.snapshot(); try authCheck(storageErrors == 2 && blockedRefresh.user == nil, "both refresh waiters observe failed persistence without authenticated success")
         s9.failures(); try await m9.retryPersistence(); let rotationCount = await r9.refreshCount()
         try authCheck(rotationCount == 1, "retrying known rotated credential persistence never repeats the refresh grant")
+        // Launch-loader fix: rotation journal. The token endpoint answered (server rotated, old refresh token revoked) and the
+        // process died before /user + promotion. The next launch finishes the read-only validation without any refresh replay.
+        let jc = AuthTestClock(), js = AuthTestStorage(), jr = AuthJournalRemote(issuer:config.issuer,id:id,clock:jc)
+        let jm = NativeAuthSessionManager(configuration:config,remote:jr,vault:js,barrier:js,now:{jc.now()})
+        try await jm.signIn(email:"synthetic@example.invalid",password:"fixture-only"); jc.advance(4000)
+        let jrKill = AuthJournalRemote(issuer:config.issuer,id:id,clock:jc); await jrKill.behavior(holdUser:true)
+        let killed = NativeAuthSessionManager(configuration:config,remote:jrKill,vault:js,barrier:js,now:{jc.now()})
+        let killedRestore = Task { try await killed.restore() }
+        for _ in 0..<100 where (try js.loadPending()) == nil { try await Task.sleep(nanoseconds:10_000_000) }
+        let inWindow = await killed.rotationInFlight()
+        try authCheck((try js.loadPending())?.accessToken == "journal.rotated.signature" && (try js.isSignedOut()) && (try js.load())?.accessToken == "journal.login.signature" && inWindow, "rotation result is journaled before /user while the barrier stays closed")
+        _ = killedRestore   // hard kill: that process never resumes (its /user stays suspended); only disk/Keychain survive
+        let relaunched = NativeAuthSessionManager(configuration:config,remote:jr,vault:js,barrier:js,now:{jc.now()})
+        let refreshesBefore = await jr.refreshCount()
+        try await relaunched.restore()
+        let relaunchState = await relaunched.snapshot(), refreshesAfter = await jr.refreshCount()
+        try authCheck(relaunchState.phase == .authenticated && relaunchState.user?.id == id && refreshesAfter == refreshesBefore && (try js.load())?.accessToken == "journal.rotated.signature" && !(try js.isSignedOut()) && (try js.loadPending()) == nil, "relaunch promotes the journaled rotation after read-only /user validation, never replaying a refresh token")
+        // startExperience in the same state recovers instead of throwing sessionRecoveryRequired.
+        let es = AuthTestStorage(), em = NativeAuthSessionManager(configuration:config,remote:jr,vault:es,barrier:es,now:{jc.now()})
+        try await em.signIn(email:"synthetic@example.invalid",password:"fixture-only")
+        try es.setSignedOut(true); try es.savePending(.init(issuer:config.issuer,user:.init(id:id),accessToken:"journal.rotated.signature",refreshToken:"synthetic-journal-rotated",expiresAt:jc.now().addingTimeInterval(3600)))
+        let eRelaunch = NativeAuthSessionManager(configuration:config,remote:jr,vault:es,barrier:es,now:{jc.now()})
+        let eRecoverable = try await eRelaunch.canRetryRecovery()
+        try authCheck(eRecoverable, "a journaled rotation counts as a safely recoverable credential")
+        try await eRelaunch.startExperience()
+        let eState = await eRelaunch.snapshot()
+        try authCheck(eState.phase == .authenticated, "startExperience finishes a journaled rotation instead of demanding a session restart")
+        // Without a journal the ambiguous pair still fails closed (unchanged design).
+        let as1 = AuthTestStorage(), am = NativeAuthSessionManager(configuration:config,remote:jr,vault:as1,barrier:as1,now:{jc.now()})
+        try await am.signIn(email:"synthetic@example.invalid",password:"fixture-only"); try as1.setSignedOut(true)
+        let aRelaunch = NativeAuthSessionManager(configuration:config,remote:jr,vault:as1,barrier:as1,now:{jc.now()})
+        var restartRequired = false
+        do { try await aRelaunch.startExperience() } catch NativeAuthError.sessionRecoveryRequired { restartRequired = true }
+        let aState = await aRelaunch.snapshot()
+        try authCheck(restartRequired && aState.user == nil, "barrier + credential without a journal still requires the explicit restart")
+        // A journal for another account is discarded and never authenticates; an expired-access one still recovers (P1).
+        let xs = AuthTestStorage(), xm = NativeAuthSessionManager(configuration:config,remote:jr,vault:xs,barrier:xs,now:{jc.now()})
+        try await xm.signIn(email:"synthetic@example.invalid",password:"fixture-only"); try xs.setSignedOut(true)
+        try xs.savePending(.init(issuer:config.issuer,user:.init(id:UUID()),accessToken:"journal.other.signature",refreshToken:"synthetic-journal-other",expiresAt:jc.now().addingTimeInterval(3600)))
+        let xRelaunch = NativeAuthSessionManager(configuration:config,remote:jr,vault:xs,barrier:xs,now:{jc.now()}); try await xRelaunch.restore()
+        let xState = await xRelaunch.snapshot()
+        try authCheck(xState.user == nil && (try xs.loadPending()) == nil, "a journal for a different account is discarded, never authenticated")
+        try xs.savePending(.init(issuer:config.issuer,user:.init(id:id),accessToken:"journal.rotated.signature",refreshToken:"synthetic-journal-rotated",expiresAt:jc.now().addingTimeInterval(-1)))
+        let xRelaunch2 = NativeAuthSessionManager(configuration:config,remote:jr,vault:xs,barrier:xs,now:{jc.now()}); try await xRelaunch2.restore()
+        let x2State = await xRelaunch2.snapshot()
+        let x2Refreshes = await jr.refreshCount()
+        try authCheck(x2State.phase == .authenticated && x2State.user?.id == id && x2Refreshes == refreshesAfter + 1 && (try xs.load())?.accessToken == "journal.rotated.signature" && (try xs.loadPending()) == nil && !(try xs.isSignedOut()), "NoBug P1: a journal whose access token expired (reopened >1 h later) rotates once from its own refresh token and authenticates; only issuer+subject are checked")
+        // Sign-out clears the journal before its first await: a kill during server revocation cannot revive the account.
+        let os1 = AuthTestStorage(), or1 = AuthJournalRemote(issuer:config.issuer,id:id,clock:jc), om = NativeAuthSessionManager(configuration:config,remote:or1,vault:os1,barrier:os1,now:{jc.now()})
+        try await om.signIn(email:"synthetic@example.invalid",password:"fixture-only")
+        try os1.savePending(.init(issuer:config.issuer,user:.init(id:id),accessToken:"journal.rotated.signature",refreshToken:"synthetic-journal-rotated",expiresAt:jc.now().addingTimeInterval(3600)))
+        await or1.behavior(holdSignOut:true)
+        let signingOut = Task { try await om.signOut() }
+        for _ in 0..<100 where !(try os1.isSignedOut()) { try await Task.sleep(nanoseconds:10_000_000) }
+        try await Task.sleep(nanoseconds:20_000_000)
+        let oRelaunch = NativeAuthSessionManager(configuration:config,remote:or1,vault:os1,barrier:os1,now:{jc.now()}); try await oRelaunch.restore()
+        let oState = await oRelaunch.snapshot()
+        try authCheck((try os1.loadPending()) == nil && oState.user == nil, "sign-out drops the rotation journal before any await; an interrupted sign-out never revives the account")
+        signingOut.cancel(); _ = try? await signingOut.value
     }
 }

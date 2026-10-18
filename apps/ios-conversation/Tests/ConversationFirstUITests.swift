@@ -118,7 +118,7 @@ final class ConversationFirstUITests: XCTestCase {
         if start.waitForExistence(timeout:10) {
             let enabled = XCTNSPredicateExpectation(predicate:NSPredicate(format:"enabled == true"),object:start)
             XCTAssertEqual(XCTWaiter.wait(for:[enabled],timeout:20),.completed)
-            attach(app,"anonymous-real-start-entry");start.tap()
+            attach(app,"anonymous-real-start-entry");Thread.sleep(forTimeInterval: 1.0) /* SPEC-E: the CTA is hit-testable 0.95 s after the landing appears */; start.tap()
         }
         XCTAssertTrue(input.waitForExistence(timeout:40),"Real auth/user verification and account scope must complete")
         XCTAssertFalse(app.staticTexts["auth.fixture"].exists);XCTAssertFalse(app.buttons["fixture.run"].exists);XCTAssertFalse(app.textFields["auth.email"].exists)
@@ -302,7 +302,7 @@ final class ConversationFirstUITests: XCTestCase {
             let password = app.secureTextFields["auth.password"]; password.tap(); password.typeText("fixture-only"); app.buttons["auth.signIn"].tap()
             XCTAssertTrue(app.textViews["chat.input"].waitForExistence(timeout:15))
         }
-        func logout() { app.buttons["chat.settings"].tap(); let exit = app.buttons["auth.signOut"]; XCTAssertTrue(exit.waitForExistence(timeout:10)); exit.tap(); let confirm = app.buttons["确认退出"]; XCTAssertTrue(confirm.waitForExistence(timeout:5)); confirm.tap(); XCTAssertTrue(app.textFields["auth.email"].waitForExistence(timeout:15)) }
+        func logout() { app.catpawSignOutFromSidebar(); XCTAssertTrue(app.textFields["auth.email"].waitForExistence(timeout:15)) }
         XCTAssertTrue(app.staticTexts["auth.fixture"].waitForExistence(timeout:15)); attach(app,"r7-explicit-fixture-login")
         login("a.test@example.invalid")
         let input = app.textViews["chat.input"]; input.tap(); input.typeText("Account A private synthetic draft")
@@ -363,7 +363,7 @@ final class ConversationFirstUITests: XCTestCase {
         XCTAssertFalse(send.isEnabled)
         XCTAssertEqual(app.otherElements.matching(identifier: "chat.userMessage").count + app.staticTexts.matching(identifier: "chat.userMessage").count, 1)
         attach(app, "r6-foreground-original-unknown-no-redispatch")
-        app.buttons["chat.settings"].tap()
+        app.catpawOpenSettings()
         app.buttons["connection.refresh"].tap()
         XCTAssertTrue(app.staticTexts["合成后端，无模型调用 · 请求次数：1"].waitForExistence(timeout: 10))
         attach(app, "r6-native-harness-one-dispatch-no-model")
@@ -383,7 +383,7 @@ final class ConversationFirstUITests: XCTestCase {
         XCTAssertEqual(input.value as? String, "Plan Friday's customer presentation")
         XCTAssertFalse(app.descendants(matching:.any)["chat.assistantMessage"].exists)
         attach(app, "chat-unconfigured-input-preserved")
-        app.buttons["chat.settings"].tap()
+        app.catpawOpenSettings()
         let connection = app.descendants(matching: .any)["connection.state"].firstMatch
         XCTAssertTrue(connection.waitForExistence(timeout: 10))
         XCTAssertTrue(connection.label.contains("未连接") || (connection.value as? String)?.contains("未连接") == true)
@@ -421,7 +421,7 @@ final class ConversationFirstUITests: XCTestCase {
         let input = app.textViews["chat.input"]
         XCTAssertTrue(input.waitForExistence(timeout:20))
         attach(app, "experience-chat")
-        let controls = ["chat.history", "chat.new", "chat.settings", "chat.send", "chat.connection"]
+        let controls = ["chat.history", "chat.new", "chat.send", "chat.connection"]
         let frames = controls.map { id -> [String:Any] in
             let element = app.buttons[id]; let f = element.frame
             XCTAssertGreaterThanOrEqual(f.width, 44, id)
@@ -434,7 +434,7 @@ final class ConversationFirstUITests: XCTestCase {
         let metadata = XCTAttachment(data:try JSONSerialization.data(withJSONObject:frames,options:.sortedKeys),uniformTypeIdentifier:"public.json")
         metadata.name = "experience-targets"; metadata.lifetime = .keepAlways; add(metadata)
         try app.performAccessibilityAudit(for:[.contrast,.textClipped,.sufficientElementDescription,.hitRegion])
-        app.buttons["chat.settings"].tap()
+        app.catpawOpenSettings()
         XCTAssertTrue(app.descendants(matching:.any)["connection.state"].firstMatch.waitForExistence(timeout:10))
         attach(app, "experience-settings")
         app.buttons["完成"].tap()
@@ -443,7 +443,7 @@ final class ConversationFirstUITests: XCTestCase {
         attach(app, "experience-history")
         app.buttons["完成"].tap()
         // Sheet drag must dismiss without a confirmation or data loss.
-        app.buttons["chat.settings"].tap()
+        app.catpawOpenSettings()
         let sheet = app.descendants(matching:.any)["connection.state"].firstMatch
         XCTAssertTrue(sheet.waitForExistence(timeout:10))
         let navigation = app.navigationBars["设置"]
@@ -507,5 +507,29 @@ final class ConversationFirstUITests: XCTestCase {
     }
     private func attach(_ app: XCUIApplication, _ name: String) {
         let attachment = XCTAttachment(screenshot: app.screenshot()); attachment.name = name; attachment.lifetime = .keepAlways; add(attachment)
+    }
+}
+
+/// 2026-10-17 account-menu IA change: 设置 left the chat header menu (sidebar bottom gear only) and the account actions
+/// left settings (sidebar account header menu only).
+extension XCUIApplication {
+    func catpawOpenSidebar() {
+        let open = buttons["sidebar.open"].firstMatch
+        XCTAssertTrue(open.waitForExistence(timeout: 10)); open.tap()
+    }
+    func catpawOpenSettings() {
+        catpawOpenSidebar()
+        let gear = descendants(matching: .any)["sidebar.settings"].firstMatch
+        XCTAssertTrue(gear.waitForExistence(timeout: 5)); gear.tap()
+    }
+    func catpawSignOutFromSidebar() {
+        catpawOpenSidebar()
+        let account = descendants(matching: .any)["sidebar.account"].firstMatch
+        XCTAssertTrue(account.waitForExistence(timeout: 5)); account.tap()
+        XCTAssertTrue(buttons["sidebar.account.current"].waitForExistence(timeout: 5), "✓ current-account row")
+        let exit = buttons["sidebar.account.signOut"]
+        XCTAssertTrue(exit.waitForExistence(timeout: 5)); XCTAssertEqual(exit.label, "退出登录"); exit.tap()
+        let confirm = buttons["确认退出"]
+        XCTAssertTrue(confirm.waitForExistence(timeout: 5)); confirm.tap()
     }
 }

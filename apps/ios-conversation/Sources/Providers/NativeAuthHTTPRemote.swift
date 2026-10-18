@@ -144,3 +144,44 @@ public struct NativeAuthHTTPRemote: NativeAuthRemote, NativeApplicationScopeReso
     }
     private struct TokenDTO: Decodable { let access_token: String; let refresh_token: String; let token_type: String; let expires_in: Int; let user: UserDTO }
 }
+
+// MARK: - OAuth (PKCE) — GitHub / Google via Supabase Auth. Additive; no existing route changes.
+extension NativeAuthHTTPRemote: NativeOAuthRemote {
+    /// POST /auth/v1/token?grant_type=pkce { auth_code, code_verifier }.
+    public func exchangeOAuthCode(_ code: String, verifier: String) async throws -> NativeAuthCredential {
+        _ = try NativeOAuthPKCE(verifier: verifier)
+        let credential = try await token(grant: "pkce", body: ["auth_code": code, "code_verifier": verifier])
+        guard !credential.user.isAnonymous else { throw NativeAuthError.invalidResponse }
+        return credential
+    }
+    public func linkIdentityURL(accessToken: String, provider: NativeOAuthProvider, pkce: NativeOAuthPKCE) async throws -> URL {
+        try Task.checkCancellation()
+        let request = NativeOAuthRequest.linkIdentityRequest(configuration: configuration, accessToken: accessToken, provider: provider, pkce: pkce)
+        let (data, response) = try await transport.send(request)
+        guard data.count < 65536, response.url == nil || response.url == request.url else { throw NativeAuthError.invalidResponse }
+        guard (200..<300).contains(response.statusCode) else {
+            let object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
+            let raw = object?["error_code"] as? String ?? object?["code"] as? String
+            throw NativeOAuthLinkError(code: raw.flatMap { $0.range(of: "^[a-z0-9_]{1,64}$", options: .regularExpression) != nil ? $0 : nil }, httpStatus: response.statusCode)
+        }
+        guard let text = ((try? JSONSerialization.jsonObject(with: data)) as? [String: Any])?["url"] as? String, let url = URL(string: text) else { throw NativeAuthError.invalidResponse }
+        return try NativeOAuthRequest.validateLinkAuthorizeURL(url, provider: provider)
+    }
+    public func identities(accessToken: String) async throws -> [NativeLinkedIdentity] {
+        let data = try await call("user", token: accessToken)
+        struct Identity: Decodable { let provider: String; let identity_data: [String: JSONScalar]? }
+        struct Body: Decodable { let identities: [Identity]? }
+        guard let body = try? JSONDecoder().decode(Body.self, from: data) else { throw NativeAuthError.invalidResponse }
+        return (body.identities ?? []).compactMap { i in
+            guard i.provider.range(of: "^[a-z0-9_]{1,32}$", options: .regularExpression) != nil else { return nil }
+            let label = i.identity_data?["user_name"]?.text ?? i.identity_data?["email"]?.text
+            return .init(provider: i.provider, label: label.map { String($0.prefix(80)) })
+        }
+    }
+}
+public struct NativeOAuthLinkError: Error, Sendable, Equatable { public let code: String?; public let httpStatus: Int }
+/// Tolerant decoder for identity_data values (strings matter; numbers/bools ignored).
+struct JSONScalar: Decodable {
+    let text: String?
+    init(from decoder: Decoder) throws { text = try? decoder.singleValueContainer().decode(String.self) }
+}
