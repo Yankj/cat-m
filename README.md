@@ -14,7 +14,7 @@
 ![Supabase Edge](https://img.shields.io/badge/Supabase-Edge%20Functions-3ECF8E?logo=supabase&logoColor=white)
 ![Deno](https://img.shields.io/badge/Deno-tests-000000?logo=deno&logoColor=white)
 ![Backend](https://img.shields.io/badge/catpaw--api-v53%20(prod)-3ECF8E)
-![App](https://img.shields.io/badge/App-v1.1%20in%20release-orange)
+![App](https://img.shields.io/badge/App-v1.1.0%20on%20main-brightgreen)
 ![License](https://img.shields.io/badge/license-TBD-lightgrey)
 
 <img src="docs/assets/slides/slide-01.png" alt="CatPaw Mobile 介绍图" width="720">
@@ -26,7 +26,7 @@
 </div>
 
 > [!NOTE]
-> **版本状态（2026-10-18）**：线上后端为 `catpaw-api` **v53**（= `main` 上的 #96）。iOS **v1.1** 正在发版整合中（集成分支 `chore/v11-integration`），下表中标 **v1.1（发版中）** 的能力只在集成分支上，合入 `main` 后会去掉该标记。逐项进展以 [主计划](docs/status/master-plan.md) 为准。
+> **版本状态（2026-10-18）**：iOS **v1.1.0** 已通过发版 PR #98 合入 `main`，下表所有能力都在 `main` 上；版本记录见 [CHANGELOG](CHANGELOG.md)。线上后端为 `catpaw-api` **v53**（= `main` 上的 #96）。逐项进展以 [主计划](docs/status/master-plan.md) 为准。
 
 <details>
 <summary><b>目录</b></summary>
@@ -63,24 +63,24 @@
 
 ## 核心功能
 
-“在哪里”一列：**main** = 已在 `main`；**v1.1（发版中）** = 仅在集成分支 `chore/v11-integration`，随 v1.1 发版 PR 合入。路径相对 `apps/ios-conversation/Sources/`（iOS）或 `services/edge/supabase/functions/`（Edge）。
+“在哪里”一列：**main** = v1.1 之前已在 `main`；**v1.1.0** = 随 v1.1.0 发版（#98）进入 `main`；**线上 v53** = 已部署到生产的后端版本。路径相对 `apps/ios-conversation/Sources/`（iOS）或 `services/edge/supabase/functions/`（Edge）。
 
 | 能力 | 说明 | 在哪里 | 主要代码 |
 |---|---|---|---|
-| 原生 Google / GitHub 登录 | Supabase OAuth（PKCE），回调 `catpawm://auth-callback`；侧栏顶部账号下拉：当前账号、切换/添加账户、退出登录；匿名试用可原地绑定 | v1.1（发版中） | `Domain/NativeOAuth.swift`、`Providers/NativeOAuthWebSession.swift`、`Features/NativeOAuthViews.swift` |
+| 原生 Google / GitHub 登录 | Supabase OAuth（PKCE），回调 `catpawm://auth-callback`；侧栏顶部账号下拉：当前账号、切换/添加账户、退出登录；匿名试用可原地绑定 | v1.1.0 | `Domain/NativeOAuth.swift`、`Providers/NativeOAuthWebSession.swift`、`Features/NativeOAuthViews.swift` |
 | 流式回复 | URLSession SSE，断线按原 turn 恢复；服务端按 512 字符 / 250 ms 批量落库 | main | `Features/ConversationSessionService.swift`、`Providers/NativeChatHTTPBackend.swift` |
-| 实时逐字预览（live text） | 服务端 `text_preview` 帧约每 100 ms 一次，客户端带 `X-Catpaw-Live-Text: 1` 才启用，旧版 App 不受影响 | 服务端 main（线上 v53）；iOS 端 v1.1（发版中） | `_shared/core/src/live-text.mjs`、`Features/Answer/AnswerPhaseModel.swift` |
+| 实时逐字预览（live text） | 服务端 `text_preview` 帧约每 100 ms 一次，客户端带 `X-Catpaw-Live-Text: 1` 才启用，旧版 App 不受影响 | 服务端 main（线上 v53）；iOS 端 v1.1.0 | `_shared/core/src/live-text.mjs`、`Features/Answer/AnswerPhaseModel.swift` |
 | 上下文窗口管理 | 最近 40 条 / 80 kB 窗口按完整 turn 截断；超预算先省略旧工具结果、再缩窗口，最后返回 `413 conversation_too_long`；完整历史保留 | main（线上 v53） | `_shared/core/src/context-window.mjs` |
 | 图片理解 | 相机 / 相册输入；视觉路由链 Gemini Flash-Lite → OpenRouter Gemma，`CATPAW_VISION_ROUTE=chain\|legacy` | main | `packages/ios-image-composer`、`_shared/core/src/vision-route-chain.mjs` |
 | 语音输入 | 听写：iOS 26 用 SpeechAnalyzer，旧系统回退 SFSpeechRecognizer | main | `Voice/`、`Domain/DictationPolicy.swift` |
-| 语音对话 | 免手动循环：听 → 发送 → 思考 → 朗读 → 继续听，支持插话打断、遇到审批卡片暂停 | v1.1（发版中） | `Domain/VoiceSession.swift`、`Features/Composer/ComposerDictation.swift` |
+| 语音对话 | 免手动循环：听 → 发送 → 思考 → 朗读 → 继续听，支持插话打断、遇到审批卡片暂停；语音朗读回复默认开启 | v1.1.0 | `Domain/VoiceSession.swift`、`Features/Composer/ComposerDictation.swift` |
 | 主动任务 | 端上规则 + 配额 + 「为什么找你」说明 + 撤销；Edge `catpaw-proactive` 负责决策与推送；含 Live Activity / Widget | main | `Features/Proactive/`、`catpaw-proactive/`、`App/CatpawLiveActivityCoordinator.swift` |
 | 设备集成 | EventKit（日历查询 / 创建、提醒事项）、Contacts（联系人搜索）、MapKit（附近地点 + 路程 ETA、打开地图），以及短信 / 邮件 / 电话 / 快捷指令跳转 | main | `Features/DeviceCalls/DeviceToolRouter.swift`、`Features/Nearby/NearbyPlaces.swift` |
 | 人在回路 UI 卡片 | 审批卡片、任务计划、设备结果卡、Generative UI 内嵌组件（选择、确认、表单、列表、进度、地点、日程） | main | `Features/ConversationApprovalCardView.swift`、`Features/DeviceCards/`、`Features/GenerativeBlocks/` |
 | 记忆 | 服务端 agent-memory：功能开关 + allowlist 准入，用户可关闭；`memory_forget` 需审批 | main（服务端） | `_shared/agent-memory/` |
-| 记忆工具调用（iOS） | iOS 端审批工具白名单接纳 `memory_search/save/update`（自动）与 `memory_forget`（审批） | v1.1（发版中） | `Providers/NativeChatHTTPBackend.swift` |
+| 记忆工具调用（iOS） | iOS 端审批工具白名单接纳 `memory_search/save/update`（自动）与 `memory_forget`（审批） | v1.1.0 | `Providers/NativeChatHTTPBackend.swift` |
 | 吉祥物动画 | 毛绒猫姿态随对话状态切换（等待 / 思考 / 写作 / 执行 / 完成 / 出错） | main | `DesignSystem/CatpawPlushMascot.swift` |
-| 版本信息 | 设置页显示版本号与构建号；单一版本源 `Configuration/Version.xcconfig` | main | `Features/ConversationFirstView.swift`、`Scripts/app-version.py` |
+| 版本管理 | 设置 › 关于显示「版本 1.1.0 (build N) · 发布于 日期 时间」，轻点显示提交号、长按复制；构建号 = git 提交数，构建时自动写入；版本号只用 `Scripts/bump-version.sh` 修改，见 [CHANGELOG](CHANGELOG.md) 与 [iOS 版本规范](docs/development/ios-versioning.md) | v1.1.0 | `Domain/AppBuildInfo.swift`、`Features/ConversationFirstView.swift`（`AppVersionRow`） |
 | 任务、成果、收件箱 | 计划生成 / 暂停 / 取消、报告阅读与编辑、待办汇总 | main | `Features/ConversationTaskPlan*`、`Features/ConversationArtifact*`、`Features/ConversationInbox*` |
 
 <details>
@@ -282,6 +282,7 @@ catpaw-m/
 ├── qa/                          # 独立 QA 报告
 ├── design/ · research/          # 设计与研究输入
 ├── vendor/openmuse/             # 固定版本上游（MIT）
+├── CHANGELOG.md                 # iOS 版本记录（Keep a Changelog + SemVer）
 ├── AGENTS.md                    # 人机共读的仓库约定
 └── handoff.md                   # 接手说明
 ```
@@ -325,7 +326,7 @@ catpaw-m/
 | `CatpawBackendOrigin` | 后端 API origin |
 | `CatpawServerScopeID` | 服务端作用域标识 |
 | `DEVELOPMENT_TEAM` / `PRODUCT_BUNDLE_IDENTIFIER` | 签名与包名，本地提供 |
-| `MARKETING_VERSION` / `CURRENT_PROJECT_VERSION` | `Configuration/Version.xcconfig`，用 `Scripts/app-version.py bump` 修改 |
+| `MARKETING_VERSION` / `CURRENT_PROJECT_VERSION` | `Configuration/Version.xcconfig`；`MARKETING_VERSION` 只用 `Scripts/bump-version.sh major\|minor\|patch` 修改，真实构建号由「Stamp Build Info」阶段（`Scripts/app-version.py stamp`）按 git 提交数写入 |
 
 权限：相机、麦克风、相册、语音识别、日历、提醒事项、通讯录、定位（使用期间）。
 
@@ -373,8 +374,9 @@ CATPAW_DENO_BIN=<Deno路径> CATPAW_PUBLIC_NPM_CACHE=<公开cache目录> sh scri
 
 ## Roadmap 与已知限制
 
-- [ ] **v1.1 发版**：集成分支合入 `main`（OAuth 登录与账号下拉、iOS live text、语音对话、记忆工具调用等），打 `v1.1.0` 标签
-- [ ] 版本号自动化：构建号自动递增，设置页显示发布时间与提交号
+- [x] **v1.1.0 发版**：已通过 #98 合入 `main`（OAuth 登录与账号下拉、iOS live text、语音对话、记忆工具调用、版本管理等）
+- [x] 版本号自动化：构建号自动递增，设置 › 关于显示发布时间与提交号
+- [ ] 打 `v1.1.0` 标签，并把 [CHANGELOG](CHANGELOG.md) 中 1.1.0 的「未发布」改成发布日期
 - [ ] App 实拍录屏 / GIF 与演示视频
 - [ ] v1.2：EventKit CI 测试、Release / ipa 自动分发
 - [ ] 云电脑托管：仅为[提案](docs/architecture/cloud-computer-proposal.md)
@@ -382,7 +384,8 @@ CATPAW_DENO_BIN=<Deno路径> CATPAW_PUBLIC_NPM_CACHE=<公开cache目录> sh scri
 **已知限制**
 
 - 无配置时只能跑离线合成路径，不产生真实回答。
-- 语音对话在部分真机上识别不启动的问题已定位，修复随 v1.1 发版。
+- 主动提醒：后端兜底规则还不读取「提前 N 分钟」偏好，会前 10–25 分钟的提醒可能不出现；修复（`catpaw-proactive` v10）在评审中，部署需用户批准。
+- 记忆：「自动记住新内容」关闭时，明确说「记住」也可能没有保存；修复（`catpaw-api` v54）在开发中。
 - live text：重连到另一实例时退回普通批量推送；未落库尾部超过 4000 字符时暂停预览。
 - 私有仓库计划下 GitHub 分支保护未生效。
 
@@ -394,7 +397,7 @@ CATPAW_DENO_BIN=<Deno路径> CATPAW_PUBLIC_NPM_CACHE=<公开cache目录> sh scri
 |---|---|---|
 | Tutorials 教程 | 第一次跑起来 | [Quick Start](#quick-start)、[接手说明](handoff.md)、[iOS 工程说明](apps/ios-conversation/README.md) |
 | How-to 操作指南 | 完成具体任务 | [使用](#使用)、[录屏分镜](docs/demo-script.md)、[Edge 离线验证](services/edge/README.md)、[部署清单](services/edge/docs/deploy-checklist.md)、[贡献指南](CONTRIBUTING.md) |
-| Reference 参考 | 查准确信息 | [配置参考](#配置参考)、[Edge 接口契约](services/edge/docs/)、[目录角色](docs/development/repository-layout.json) |
+| Reference 参考 | 查准确信息 | [配置参考](#配置参考)、[CHANGELOG](CHANGELOG.md)、[iOS 版本规范](docs/development/ios-versioning.md)、[Edge 接口契约](services/edge/docs/)、[目录角色](docs/development/repository-layout.json) |
 | Explanation 原理 | 理解为什么 | [架构总览](docs/architecture.md)、[架构索引](docs/architecture/README.md)、[研究索引](docs/research/README.md) |
 
 完整索引见 [docs/README.md](docs/README.md)。
