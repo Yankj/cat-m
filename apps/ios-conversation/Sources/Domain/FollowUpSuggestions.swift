@@ -22,4 +22,14 @@ public enum FollowUpSuggestions {
         }
         return out.count >= 2 ? out : []
     }
+
+    /// chat-context-1522 #1: chips belong to the latest assistant answer only, and disappear once the user has sent
+    /// something after it. `rows` is the visible transcript in order (answer = assistant prose, not a tool row).
+    public static func hostMessageID<ID: Equatable>(_ rows: [(id: ID, answer: Bool, user: Bool)]) -> ID? {
+        for row in rows.reversed() {
+            if row.user { return nil }
+            if row.answer { return row.id }
+        }
+        return nil
+    }
 }

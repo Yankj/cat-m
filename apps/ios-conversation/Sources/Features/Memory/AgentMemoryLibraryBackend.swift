@@ -56,7 +56,15 @@ import Foundation
 
     private static func path(_ id: String) -> String { id.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed.subtracting(CharacterSet(charactersIn: "/"))) ?? id }
 
+    /// Launch-loader follow-up: a server with the agent-memory gate off answers every read with 404. Remember that per
+    /// origin for a while so launch/foreground reads stop hammering it; writes always go through (and reset the window).
+    static var notEnabledBackoff: TimeInterval = 120
+    private static var notEnabledUntil: [String: Date] = [:]
+    static func resetNotEnabledBackoff() { notEnabledUntil = [:] }
     func call(_ method: String, _ route: String, _ body: [String: Any]? = nil) async throws -> Data {
+        let gateKey = configuration.origin.absoluteString
+        if method == "GET", !route.hasPrefix("/items/"), let until = Self.notEnabledUntil[gateKey], until > Date() { throw MemoryLibraryError.notEnabled }
+        if method != "GET" { Self.notEnabledUntil[gateKey] = nil }
         let authorization: String
         do { authorization = try await credentials.authorization(scope: configuration.localScope) } catch { throw MemoryLibraryError.unavailable }
         var request = try configuration.makeRequest(route: Self.base + route, authorization: authorization)
@@ -70,7 +78,10 @@ import Foundation
         case 401: await credentials.rejected(scope: configuration.localScope); throw MemoryLibraryError.unavailable
         // Feature gate off (not granted / not enrolled): not an auth failure, so never drop the session.
         case 403: throw MemoryLibraryError.notEnabled
-        case 404: throw route.hasPrefix("/items/") ? MemoryLibraryError.notFound : MemoryLibraryError.notEnabled
+        case 404:
+            if route.hasPrefix("/items/") { throw MemoryLibraryError.notFound }
+            Self.notEnabledUntil[gateKey] = Date().addingTimeInterval(Self.notEnabledBackoff)
+            throw MemoryLibraryError.notEnabled
         case 409: throw MemoryLibraryError.failed("需要先同意使用记忆。")
         case 410: throw MemoryLibraryError.failed("已超过可撤销时间。")
         default: throw MemoryLibraryError.unavailable

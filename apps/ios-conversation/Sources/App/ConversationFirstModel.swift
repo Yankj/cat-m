@@ -20,6 +20,8 @@ enum ConversationObserverLifecycle: String { case foregroundIdle, streaming, rec
 
 private let sendLog=Logger(subsystem:"catpaw",category:"send")
 @MainActor final class ConversationFirstModel: ObservableObject {
+    /// Set only by `deactivate(persistDrafts:false)`: the suspension it runs must not flush the stale composer either.
+    private var discardComposerOnSuspend=false
     let repository: Repository
     let service: ConversationSessionService
     let taskPlanService:ConversationTaskPlanService
@@ -77,6 +79,10 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
     private var imageConsentEpoch=UUID()
     private var cleanedImageOperations:Set<UUID>=[]
     private var recoveredImageOperation:UUID?
+    private var recoveredImageReceipt:UUID?
+    private var recoveredImageCaption:String?
+    /// 重试 on a failed image turn: restore that image + its own caption, then send through the normal path (consent included).
+    private var retrySendAfterRestore:UUID?
     private struct ImageReview {let conversation:UUID;let preview:UUID;let hash:String;let captionHash:String;let generation:Int}
     private struct ApprovedImage {let conversation:UUID;let preview:UUID;let hash:String;let captionHash:String;let route:String;let revision:Int}
 
@@ -382,6 +388,12 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
     private var canAdmitImage:Bool {loaded && foreground && networkAdmissionAllowed && !busy && !enqueueing && session?.unresolved==nil && session?.pendingUnsent==nil && followups.pending.isEmpty && followups.inflight==nil}
     var canReviewImage:Bool {canAdmitImage && imageCapability.available && imageCapability.liveTransmissionAvailable && imageDraft.phase == .ready && !isInputComposing && !draft.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty && !checkingImageConsent}
     private func imageSelectionChanged() {
+        // The user replaced / removed a recovered image: that turn's caption leaves the composer (no 「这张呢？这张图里有什么？」).
+        if recoveredImageOperation != nil,let receipt=recoveredImageReceipt,imageDraft.attachment?.id != receipt {
+            let stripped=ConversationCaptionPolicy.strippingRecovered(draft:draft,caption:recoveredImageCaption)
+            if stripped != draft {editDraft(stripped)}
+            recoveredImageOperation=nil;recoveredImageReceipt=nil;recoveredImageCaption=nil
+        }
         if let review=imageReview,!reviewMatches(review) {cancelImageConsent()}
         if !approvedImageMatchesDraft {approvedImage=nil}
     }
@@ -458,7 +470,8 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
             Task {try? await imageStore.remove(conversationID:current.conversationID,operationID:turn.id)}
         }
         guard loaded,imageRecoveryTask==nil,imageDraft.phase == .empty else {return}
-        let candidate=(followups.paused ? followups.pending.first(where:{$0.image != nil}) : nil).map{($0.id,$0.image!,$0.text)} ?? current.turns.last(where:{[.unknown,.failed,.notSent].contains($0.state) && $0.request.image != nil}).map{($0.id,$0.request.image!,$0.request.history.last?.content ?? "")}
+        let forced=retrySendAfterRestore.flatMap{id in current.turns.first(where:{$0.id==id && $0.request.image != nil})}.map{($0.id,$0.request.image!,$0.request.history.last?.content ?? "")}
+        let candidate=forced ?? (followups.paused ? followups.pending.first(where:{$0.image != nil}) : nil).map{($0.id,$0.image!,$0.text)} ?? current.turns.last(where:{[.unknown,.failed,.notSent].contains($0.state) && $0.request.image != nil}).map{($0.id,$0.request.image!,$0.request.history.last?.content ?? "")}
         guard let (operation,reference,text)=candidate else {return}
         let id=current.conversationID,generation=sceneGeneration,token=UUID();imageRecoveryToken=token
         imageRecoveryTask=Task {
@@ -469,7 +482,11 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
                 let packet=try await SystemImageAttachmentEncoder().restoreEncoded(bytes,id:receipt.id,mimeType:receipt.mime_type,sha256:receipt.sha256,sizeBytes:receipt.size_bytes,width:receipt.width,height:receipt.height)
                 guard !Task.isCancelled,conversationID==id,sceneGeneration==generation,loaded,imageDraft.phase == .empty,packet.sha256==reference.receipt.sha256 else {return}
                 let unresolved=(followups.paused && followups.pending.contains(where:{$0.id==operation})) || session?.turns.contains(where:{$0.id==operation && [.unknown,.failed,.notSent].contains($0.state)})==true
-                guard unresolved else {return};approvedImage=nil;imageDraft.restorePrepared(packet);recoveredImageOperation=operation;if draft.isEmpty {draft=text}
+                guard unresolved else {return};approvedImage=nil;imageDraft.restorePrepared(packet);recoveredImageOperation=operation;recoveredImageReceipt=receipt.id
+                // Captions never merge: the failed turn's caption only goes into an empty composer (or replaces it for 重试).
+                let retrying=retrySendAfterRestore==operation;retrySendAfterRestore=nil
+                draft=retrying ? text : ConversationCaptionPolicy.restored(draft:draft,caption:text);recoveredImageCaption=draft==text ? text : nil
+                if retrying {send()}
             } catch {if conversationID==id,loaded,!Task.isCancelled {self.error="本机图片读取未完成，原请求已保留。"}}
         }
     }
@@ -588,8 +605,48 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
             return false
         } catch {if current(){self.error=error.localizedDescription};return false}
     }
-    func newConversation() { guard !isInputComposing else { return };Task { do { await persistenceTask?.value;try await flushDraft();let id=try await service.create(scope:scope);try await select(id) } catch { self.error=error.localizedDescription } } }
-    func updateInputComposition(_ active:Bool) { guard active != isInputComposing else { return };isInputComposing=active }
+    /// Set by the app: ends IME composition (resigns the composer's first responder, which commits the marked text).
+    static var endInputComposition: (@MainActor () -> Void)?
+    /// How long a deferred 新对话 waits for the IME to finish before it proceeds with the committed draft.
+    static var newConversationCompositionGrace: TimeInterval = 0.6
+    private var newConversationAfterComposition = false
+    private var newConversationCompositionTimer: Task<Void,Never>?
+    /// IME fix (BE5C 19:49:51, catpawm://new while pinyin 「你」 was marked): 新对话 used to return silently while composing.
+    /// Now it commits the composition and opens the new conversation once composition ends (bounded by the grace).
+    func newConversation() {
+        guard isInputComposing else { openNewConversation(); return }
+        guard !newConversationAfterComposition else { return }
+        newConversationAfterComposition = true
+        sendLog.info("catpaw.newConversation deferred until input composition ends")
+        Self.endInputComposition?()
+        let grace = Self.newConversationCompositionGrace
+        newConversationCompositionTimer = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: UInt64(grace * 1_000_000_000))
+            guard let self, !Task.isCancelled, self.newConversationAfterComposition else { return }
+            sendLog.info("catpaw.newConversation composition did not end within grace; proceeding")
+            self.newConversationAfterComposition = false; self.newConversationCompositionTimer = nil
+            self.isInputComposing = false
+            self.openNewConversation()
+        }
+    }
+    private func openNewConversation() { Task { do { await persistenceTask?.value;try await flushDraft();let id=try await service.create(scope:scope);try await select(id) } catch { self.error=error.localizedDescription } } }
+    func updateInputComposition(_ active:Bool) {
+        guard active != isInputComposing else { return };isInputComposing=active
+        if !active, newConversationAfterComposition {
+            newConversationAfterComposition = false; newConversationCompositionTimer?.cancel(); newConversationCompositionTimer = nil
+            openNewConversation()
+        }
+    }
+    /// One-tap prompts (starter cards, follow-up chips) fill an EMPTY composer and then take the Send path.
+    /// Nothing typed, queued or sent yet (an account-neutral launch chat may then be swapped for the account's own).
+    var isPristine: Bool { draft.isEmpty && outgoingMessages.isEmpty && (session?.turns.isEmpty ?? true) && imageDraft.phase == .empty }
+    /// `canAcceptDraft` itself requires a non-empty draft, so it can only be checked after the fill; a refused fill is rolled back.
+    func stageQuickSend(_ text:String?, attachmentsEmpty:Bool = true) -> Bool {
+        guard let text,!text.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty,!busy,draft.isEmpty,attachmentsEmpty else {return false}
+        editDraft(text)
+        guard canAcceptDraft else {editDraft("");return false}
+        return true
+    }
     func editDraft(_ text:String) {
         guard !continuationClosing else {return}
         draft=text;imageSelectionChanged();draftTask?.cancel();guard let id=conversationID else { return }
@@ -712,6 +769,9 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
     private func presentModelConsent(_ consent:ConversationModelConsent) {
         modelConsentReview=consent;modelConsentReviewToken=UUID();pendingModelConsent=consent
     }
+    /// chat-ux-1505 #1: a different route may carry a different disclosure (route_hash). Drop the cached "consent ok" so
+    /// the next send re-reads model-consent (cheap when still valid; shows the sheet when the hash changed).
+    func modelRouteChanged() { guard modelConsentReview == nil else { return }; consentReady = false; objectWillChange.send() }
     var needsModelConsentReview:Bool {!consentReady && (modelConsentReview != nil || !followups.pending.isEmpty)}
     var canReviewModelConsent:Bool {loaded && foreground && networkAdmissionAllowed && !checkingModelConsent && !busy && session?.unresolved==nil}
     func requestModelConsentReview() {
@@ -743,6 +803,7 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
             defer { if flightID == token { flightID=nil;busy=false;sending=false;observerLifecycle=session?.unresolved == nil ? .foregroundIdle : .unknown } }
             do {
                 if try await queue.resumePreflightHold() { sendLog.info("catpaw.send resumed preflight hold before drain") }
+                if try await queue.recoverFromTerminalFailure(session:session) { sendLog.info("catpaw.send unpaused queue behind a terminal failure") }
                 try await queue.flush { [service,scope,imageStore,weak self] message in
                     guard !Task.isCancelled,await self?.canDispatchFollowup == true else { return .heldBeforeAdmission }
                     await self?.setIntent(message.id,.sending)
@@ -751,13 +812,19 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
                         if let reference=message.image {let bytes=try await imageStore.read(reference:reference,conversationID:id,operationID:message.id);image = .init(reference:reference,bytes:bytes)} else {image=nil}
                         guard !Task.isCancelled,await self?.canDispatchFollowup == true else {return .heldBeforeAdmission}
                         sendLog.info("catpaw.send dispatch");let t0=Date();defer { sendLog.info("catpaw.send dispatch end \(Date().timeIntervalSince(t0), privacy: .public)s") }
+                        await CatpawTaskTitles.note(message.text,operationID:message.id)   // v1.1 Live Activity title
                         _=try await service.send(scope:scope,conversationID:id,text:message.text,operationID:message.id,preserveDraft:true,image:image,continuation:message.continuation,acceptedWork:message.acceptedWork,revisionWork:message.revisionWork);return .sent
                     }
                     catch {
                         sendLog.error("catpaw.send dispatch failed \(String(describing:error).prefix(160), privacy: .public)")
                         if case ConversationDispatchFailure.notSent(let code)=error,ConversationTerminalServerError.isQuota(code) { await self?.markQuota();return .heldBeforeAdmission }
+                        // 413 conversation_too_long: never retried (the same message is refused again) and never holds the queue;
+                        // the message's own status line offers 「新开对话」 (inline-status SPEC), the text stays as the draft.
+                        if case ConversationDispatchFailure.notSent(let code)=error,ConversationLengthLimit.isTooLong(code:code) { await self?.markTooLong(message.id);return .failedTerminal }
                         let saved=try await service.read(scope:scope,conversationID:id)
                         if !saved.turns.contains(where:{$0.id == message.id}) || saved.turns.first(where:{$0.id == message.id})?.state == .notSent { sendLog.error("catpaw.send held before admission: \(String(describing:error), privacy: .public)");return .heldBeforeAdmission }
+                        // Admitted and ended by the server (rate_limited / failed): the bubble offers 重试 / 删除; the queue goes on.
+                        if ConversationFollowupRecovery.isTerminalFailure(saved.turns.first(where:{$0.id == message.id})) { await self?.setIntent(message.id,.failed,error:nil);return .failedTerminal }
                         throw error
                     }
                 }
@@ -770,6 +837,24 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
         }
     }
     private func markQuota() { quotaNotice=true;error=nil }
+    private func markTooLong(_ id:UUID) { outgoingMessages.removeAll { $0.id == id };error=nil }
+    /// 「新开对话」 on a 413 conversation_too_long status line: open a new conversation and carry the refused message (plus
+    /// anything typed since) into its composer. The refused turn was never written server-side; it is discarded here so
+    /// the old conversation stays usable and the text is not left behind twice.
+    func continueInNewConversation(from turnID:UUID) {
+        guard !isInputComposing,let old=conversationID else { return }
+        let refused=session?.turns.first(where:{$0.id == turnID}).flatMap { ConversationLengthLimit.isTooLong($0) ? $0.request.history.last?.content : nil } ?? ""
+        let carried=ConversationLengthLimit.carriedDraft(current:draft,refused:refused)
+        Task {
+            do {
+                await persistenceTask?.value
+                try? await service.discardUnsent(scope:scope,conversationID:old,operationID:turnID)
+                editDraft("");try await flushDraft()   // the text moves; it is not left in the old conversation's composer
+                let id=try await service.create(scope:scope);try await select(id)
+                if !carried.isEmpty { editDraft(carried) }
+            } catch { self.error=error.localizedDescription;if draft.isEmpty { editDraft(carried) } }
+        }
+    }
     /// Quota reached: hand every queued (unsent) message back to the composer instead of a paused outbox.
     private func returnQueuedToDraft(_ queue:ConversationFollowupQueueService,conversationID id:UUID) async throws -> ConversationFollowupState {
         let state=try await queue.state()
@@ -800,6 +885,50 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
         outgoingMessages.removeAll {$0.id == message.id};await refresh()
     }
     func removeFollowup(_ id:UUID) { Task { do { if let conversationID { try await service.discardUnsent(scope:scope,conversationID:conversationID,operationID:id) };try await queue?.remove(id);if let conversationID {try await imageStore.remove(conversationID:conversationID,operationID:id)};outgoingMessages.removeAll { $0.id == id };await refresh() } catch { self.error=error.localizedDescription } } }
+    /// 「发送失败 · 重试」 on a turn bubble: really re-sends. A plain rate-limited turn restarts in place on the server;
+    /// an image turn is restored with its own caption and sent again; another failed text turn is sent as a new message.
+    func retryFailedTurn(_ id:UUID) {
+        guard let cid=conversationID,let turn=session?.turns.first(where:{$0.id == id}),turn.state == .failed,turn.assistantMessageID == nil else { resumeFollowups();return }
+        let text=turn.request.history.last?.content ?? ""
+        if turn.request.image != nil {
+            guard imageDraft.phase == .empty else { error="请先发送或移除输入框里的图片，再重试这条消息。";return }
+            guard draft.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty || draft == recoveredImageCaption else { error="请先发送或清空输入框里的文字，再重试这条消息。";return }
+            retrySendAfterRestore=id;imageRecoveryTask?.cancel();imageRecoveryTask=nil;imageRecoveryToken=nil
+            if let current=session {recoverOrCleanImage(current)}
+            return
+        }
+        Task {
+            do {
+                if turn.error == "rate_limited" || turn.error == "model_history_conflict",try await service.retryBusy(scope:scope,conversationID:cid) != nil { await refresh();return }
+                guard draft.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty else { self.error="请先发送或清空输入框里的文字，再重试这条消息。";return }
+                editDraft(text);send()
+            } catch { self.error=error.localizedDescription }
+        }
+    }
+    /// 「没有收到回复 · 点按重发」 on a user row that has no local turn record (imported from the server transcript) and no
+    /// reply: send its text again as a new message. The server does not keep image bytes, so only the text is resent.
+    func resendUnanswered(_ text:String) {
+        let value=text.trimmingCharacters(in:.whitespacesAndNewlines)
+        guard !value.isEmpty else { return }
+        guard draft.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty else { error="请先发送或清空输入框里的文字，再重试这条消息。";return }
+        editDraft(text);send()
+    }
+    /// 「删除」 on a failed turn.
+    func deleteFailedTurn(_ id:UUID) {
+        guard let cid=conversationID else { return }
+        Task {
+            do {
+                _=try await service.dismissFailed(scope:scope,conversationID:cid,operationID:id)
+                try? await imageStore.remove(conversationID:cid,operationID:id)
+                if recoveredImageOperation==id {
+                    let stripped=ConversationCaptionPolicy.strippingRecovered(draft:draft,caption:recoveredImageCaption)
+                    imageDraft.clear();if stripped != draft {editDraft(stripped)}
+                    recoveredImageOperation=nil;recoveredImageReceipt=nil;recoveredImageCaption=nil
+                }
+                outgoingMessages.removeAll { $0.id == id };await refresh()
+            } catch { self.error=error.localizedDescription }
+        }
+    }
     func resumeFollowups() {
         guard foreground,!busy,!editingFollowup,session?.unresolved == nil,let queue else { return }
         Task { do {
@@ -857,6 +986,9 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
             guard flightID == token else { return };await refresh()
             guard flightID == token else { return };flightID=nil;busy=false;observerLifecycle=session?.unresolved == nil ? .foregroundIdle : .unknown
             await resumeBackgroundQueueIfSafe()
+            // v1 17:55: a turn that just resolved (completed, failed, or settled 「结果待核对」) frees the conversation;
+            // flush what queued behind it (「待发送 · 等待当前回复」) instead of waiting for the next relaunch.
+            if session?.unresolved == nil { authorizePending() }
         }
     }
     private func resumeBackgroundQueueIfSafe() async {
@@ -903,6 +1035,8 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
         connectionTask=Task { await refreshConnection() }
         await refresh()
         guard generation == sceneGeneration,foreground else { return }
+        // A queue persisted as 「已暂停」 behind a failed / rate-limited turn (survived a relaunch) is unpaused.
+        if let queue,let current=session,(try? await queue.recoverFromTerminalFailure(session:current)) == true { await refresh();guard generation == sceneGeneration,foreground else { return } }
         await restoreAppliedTaskControlDeliveriesAcrossConversations()
         guard generation == sceneGeneration,foreground else {return}
         for id in pendingTaskControlDeliveries.keys {pendingTaskControlDeliveries[id]?.nextAttemptAt = .distantPast}
@@ -921,6 +1055,10 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
                         // R7: due busy auto-retry (once) and offline outbox drain, both service-owned.
                         if let id=self.conversationID, self.networkAdmissionAllowed, await self.service.foregroundTick(scope:self.scope,conversationID:id) { await self.refresh() }
                         await self.resumeBackgroundQueueIfSafe()
+                        // v1 18:20: consent can land (carried or allowed) while another flight holds `busy` (new-chat
+                        // select(), a task-control delivery); drainQueue() then skips and nothing re-ran it, so the
+                        // message sat at 「待发送 · 等待当前回复」 until relaunch. Idle tick is the safety net.
+                        if self.consentReady,self.permissionTask == nil,!self.followups.pending.isEmpty,!self.followups.paused,self.followups.inflight == nil { sendLog.info("catpaw.send tick drain (queued behind idle conversation)");self.drainQueue() }
                     }
                 }
                 do { try await Task.sleep(nanoseconds:2_000_000_000) } catch { return }
@@ -944,13 +1082,16 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
             do { if let id { try await service.stopObserving(scope:scope,conversationID:id) };old?.cancel();try await queue?.pause(reason:.background) }
             catch { old?.cancel() }
             await persistence?.value
-            guard generation == sceneGeneration else { return }
+            guard generation == sceneGeneration, !self.discardComposerOnSuspend else { return }   // never-attached deactivate: the loaded draft is stale
             do { try await flushDraft() } catch { self.error=error.localizedDescription }
         }
         haltTask=task;return task
     }
-    @discardableResult func deactivate() async -> Bool {
+    /// `persistDrafts:false` is for a model that was never attached (it lost an overlapping open of the same account):
+    /// its composer draft is the text loaded at start, so flushing it would overwrite what the user typed since.
+    @discardableResult func deactivate(persistDrafts:Bool=true) async -> Bool {
         // Close admission before any await; a queued foreground Task cannot revive logout.
+        newConversationAfterComposition=false;newConversationCompositionTimer?.cancel();newConversationCompositionTimer=nil   // IME fix: no deferred 新对话 survives deactivation
         acceptedWorkReviewTask?.cancel();acceptedWorkReviewTask=nil;acceptedWorkReviewToken=nil;acceptedWorkDraftTask?.cancel();acceptedWorkDraftTask=nil;acceptedWorkReviewPresented=false;acceptedWorkReviewSaving=false
         continuationClosing=true;loaded=false;networkAdmissionAllowed=false;stopTaskControlDelivery();pendingTaskControlDeliveries.removeAll();deliveredTaskControlReceipts.removeAll();cancelImageConsent();imageRecoveryTask?.cancel();imageRecoveryTask=nil;imageRecoveryToken=nil
         selectedTaskPlan=nil;selectedTaskActions=nil
@@ -961,9 +1102,10 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
         MemoryLibraryHub.reset() // wave2 V1
         await inboxService?.invalidate()
         imageDraft.clear();for value in imageDrafts.values {value.clear()};imageDrafts.removeAll();imageCapability=ConversationImageCapability()
+        discardComposerOnSuspend = !persistDrafts
         await suspend();subscription?.cancel();subscription=nil;draftTask?.cancel();draftTask=nil
         let composerSaved:Bool
-        do {try await flushDraft();composerSaved=true}catch{composerSaved=false}
+        if persistDrafts {do {try await flushDraft();composerSaved=true}catch{composerSaved=false}} else {composerSaved=true}
         await acceptedWorkDraftService.invalidate();acceptedWorkDraft=nil;acceptedWorkCapability = .init()
         await artifactContinuationService.invalidate();artifactContinuation=nil;ordinaryContinuationImage?.clear();ordinaryContinuationImage=nil
         await generativeUIStateService.invalidate()
