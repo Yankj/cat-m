@@ -31,7 +31,11 @@ export function createMemoryStore() {
     async markSignalHashes(uid, hashes, atIso) { for (const h of hashes) sig.set(uid + '|' + h, atIso); },
     async getTriggerWeights(uid) { return c(weights.get(uid) ?? {}); },
     async setTriggerWeight(uid, t, w) { const m = weights.get(uid) ?? {}; m[t] = { ...w }; weights.set(uid, m); },
-    async countDecisionsForDay(uid, startIso, endIso, levels) { return events.filter(e => { if (e.user_id !== uid || e.kind !== 'proactive_decision' || !levels.includes(e.payload?.decision)) return false; const t = Date.parse(e.payload?.deliver_at ?? e.created_at); return t >= Date.parse(startIso) && t < Date.parse(endIso); }).length; },
+    // v10 P1-1: the cap counts distinct meetings (first signal_hash; rows without one count individually), and a meeting
+    // in excludeHashes (the request being judged) never counts against itself.
+    async countDecisionsForDay(uid, startIso, endIso, levels, excludeHashes = []) { const keys = new Set(); for (const e of events) { if (e.user_id !== uid || e.kind !== 'proactive_decision' || !levels.includes(e.payload?.decision)) continue; const t = Date.parse(e.payload?.deliver_at ?? e.created_at); if (!(t >= Date.parse(startIso) && t < Date.parse(endIso))) continue; const h = e.payload?.signals?.[0]?.signal_hash; if (h && excludeHashes.includes(h)) continue; keys.add(h ?? 'id:' + e.id); } return keys.size; },
+    // v10 P1-2: newest delivered (non-silent) decision since sinceIso that carried one of these signal hashes.
+    async lastDecisionForHashes(uid, hashes, sinceIso) { const m = events.filter(e => e.user_id === uid && e.kind === 'proactive_decision' && e.payload?.decision !== 'silent' && (e.payload?.evaluated_at ?? e.created_at) > sinceIso && (e.payload?.signals ?? []).some(s => hashes.includes(s.signal_hash))); return m.length ? c(m[m.length - 1]) : null; },
     async countDecisionsSince(uid, sinceIso, levels) { return events.filter(e => e.user_id === uid && e.kind === 'proactive_decision' && levels.includes(e.payload?.decision) && e.created_at >= sinceIso).length; },
     async getFeedback(uid, eid) { return feedback.get(uid + '|' + eid) ?? null; },
     async insertFeedback(uid, eid, kind, at) { const k = uid + '|' + eid; if (feedback.has(k)) return false; feedback.set(k, { kind, created_at: at }); return true; },

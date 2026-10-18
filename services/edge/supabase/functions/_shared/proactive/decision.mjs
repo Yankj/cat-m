@@ -49,11 +49,11 @@ export function ruleDecide(signals, context) {
       const until = Number(d.minutes_until), travel = Number(d.travel_minutes ?? 0);
       if (Number.isFinite(until) && travel > 0 && travel + 5 >= until) consider(until <= travel ? 'interrupt' : 'notify', `「${d.title ?? '会议'}」${until} 分钟后开始，但去${d.location ?? '会场'}需要约 ${travel} 分钟，现在出发${until <= travel ? '已经来不及' : '刚好'}。`, 0.85, acts('create_reminder', 'notify_attendees'), s.type);
       else if (Number.isFinite(until) && until <= 10) consider('card', `「${d.title ?? '会议'}」${until} 分钟后开始。`, 0.7, acts('create_reminder'), s.type);
-      // v10: honour the client's lead time (iOS ProactiveRules.localLevel: 3 ≤ until ≤ lead + travel + 15). Separate `if`
+      // v10: honour the client's lead time (neutral reason: iOS sends its default 10 when no memory exists) (iOS ProactiveRules.localLevel: 3 ≤ until ≤ lead + travel + 15). Separate `if`
       // (not else-if) so the pre-scheduled check at until = lead ≤ 10 still reaches notify; consider() keeps the highest level.
       const win = lead + (travel > 0 ? travel : 0);
       if (lead != null && Number.isFinite(until) && until >= 3 && until <= win + 15)
-        consider(until <= win + 5 ? 'notify' : 'card', `「${d.title ?? '会议'}」${until} 分钟后开始，你习惯提前 ${lead} 分钟准备。`, 0.75, acts('create_reminder', 'notify_attendees'), s.type);
+        consider(until <= win + 5 ? 'notify' : 'card', `「${d.title ?? '会议'}」${until} 分钟后开始，按提前 ${lead} 分钟准备提醒你。`, 0.75, acts('create_reminder', 'notify_attendees'), s.type);
     } else if (s.type === 'flight_status') {
       const delay = Number(d.delay_minutes ?? 0);
       if (d.status === 'cancelled') consider('interrupt', `航班 ${d.flight ?? ''} 已取消。`, 0.9, acts('notify_attendees', 'create_reminder'), s.type);
@@ -104,7 +104,17 @@ export function createDecisionService({ store, model = null, memory = null, now 
     const memories = memory ? await memory.recall(uid, signals.map(s => [s.type, s.data?.title, s.data?.location, s.data?.flight].filter(Boolean).join(' ')).join('; '), 5).catch(e => { log('memory_failed', e.message); return []; }) : [];
     const trace = [];
     let r, source;
-    if (!fresh.length) { r = { decision: 'silent', reason: '同样的情况刚刚已经评估过，不重复打扰。', confidence: 1, actions: [], used: [], trigger: signals[0].type }; source = 'dedupe'; trace.push('dedupe: all signals seen within window'); }
+    if (!fresh.length) {
+      // v10 P1-2: a repeat inside the window is idempotent — replay the prior delivered decision (same event_id, no new row,
+      // nothing counted, no push) instead of 'silent', which iOS reads as "cancel the pre-scheduled notification".
+      // A suggestion the user already acted on / dismissed is not revived: that case stays silent as before.
+      const prior = store.lastDecisionForHashes ? await store.lastDecisionForHashes(uid, hashes, since) : null;
+      if (prior && prior.payload?.suggestion?.status === 'pending' && lvl(prior.payload?.decision) > 0) {
+        const p = prior.payload;
+        return { event_id: prior.id, suggestion: toSuggestion(prior), decision: p.decision, delivery: p.delivery ?? 'device', reason: prior.body, confidence: p.confidence, used_memories: p.memories ?? [], suggested_actions: p.actions ?? [], source: 'dedupe', trace: ['dedupe: replay of ' + prior.id], replayed: true };
+      }
+      r = { decision: 'silent', reason: '同样的情况刚刚已经评估过，不重复打扰。', confidence: 1, actions: [], used: [], trigger: signals[0].type }; source = 'dedupe'; trace.push('dedupe: all signals seen within window');
+    }
     else {
       const rule = ruleDecide(fresh, context);
       if (model) {
@@ -121,7 +131,7 @@ export function createDecisionService({ store, model = null, memory = null, now 
     if (decision !== 'silent' && conf < threshold - cfg.silentMargin) { trace.push(`confidence ${conf.toFixed(2)} < ${(threshold - cfg.silentMargin).toFixed(2)}: ${proposed} → silent`); decision = 'silent'; }
     else if (decision !== 'silent' && conf < threshold) { const steps = conf < threshold - 0.15 ? 2 : 1; decision = LEVELS[Math.max(1, lvl(decision) - steps)]; trace.push(`confidence ${conf.toFixed(2)} < threshold ${threshold.toFixed(2)}: ${proposed} → ${decision}`); }
     if (lvl(decision) >= 2 && isQuiet(when, tz, cfg.quietHours)) { trace.push(`quiet hours: ${decision} → card`); decision = 'card'; }
-    if (lvl(decision) >= 2) { const d0 = localDayStart(when, tz), n = await store.countDecisionsForDay(uid, new Date(d0).toISOString(), new Date(d0 + 86_400_000).toISOString(), ['notify', 'interrupt']); if (n >= cfg.dailyCap) { trace.push(`daily cap ${cfg.dailyCap} reached: ${decision} → card`); decision = 'card'; } }
+    if (lvl(decision) >= 2) { const d0 = localDayStart(when, tz), n = await store.countDecisionsForDay(uid, new Date(d0).toISOString(), new Date(d0 + 86_400_000).toISOString(), ['notify', 'interrupt'], hashes); if (n >= cfg.dailyCap) { trace.push(`daily cap ${cfg.dailyCap} reached: ${decision} → card`); decision = 'card'; } }
     // Codex PR90 #1: "evaluated" ≠ "delivered" in the cloud too. Only a delivered (non-silent) decision closes the
     // dedupe window; a silent verdict (incl. a dedupe hit) never refreshes seen_at, so the meeting is re-evaluated as it nears.
     if (decision !== 'silent') await store.markSignalHashes(uid, hashes, new Date(at).toISOString());
@@ -130,7 +140,7 @@ export function createDecisionService({ store, model = null, memory = null, now 
     // gate (local notification); APNs only delivers decisions the client explicitly hands off (context.delivery='remote').
     const delivery = context.delivery === 'remote' ? 'remote' : 'device';
     const explanation = {
-      time_zone: tz, delivery, deliver_at: new Date(when).toISOString(),   // Codex PR90e P2: the cap counts the delivery day, not the creation day
+      time_zone: tz, delivery, deliver_at: new Date(when).toISOString(), evaluated_at: new Date(at).toISOString(),   // Codex PR90e P2: the cap counts the delivery day, not the creation day
       contract: DECISION_CONTRACT, why: r.reason, proposed, decision, source, trigger: r.trigger,
       confidence: Number(conf.toFixed(3)), raw_confidence: r.confidence, threshold: Number(threshold.toFixed(3)), weight: tw.weight, trace,
       signals: signals.map((s, i) => ({ ...s, signal_hash: hashes[i], duplicate: seen.includes(hashes[i]) })),

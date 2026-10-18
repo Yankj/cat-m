@@ -31,7 +31,7 @@ test('missing / invalid lead_minutes → pre-v10 behaviour exactly', () => {
 
 test('lead rule reason/confidence/actions', () => {
   const r = ruleDecide(mt(14), { lead_minutes: 10 });
-  assert.equal(r.decision, 'notify'); assert.equal(r.confidence, 0.75); assert.match(r.reason, /提前 10 分钟/);
+  assert.equal(r.decision, 'notify'); assert.equal(r.confidence, 0.75); assert.match(r.reason, /按提前 10 分钟准备/); assert.doesNotMatch(r.reason, /习惯/);   // iOS sends its default 10 too
   assert.deepEqual(r.actions, ['create_reminder', 'notify_attendees', 'snooze', 'dismiss']);
 });
 
@@ -53,4 +53,46 @@ test('full pipeline (rules, daytime): pre-scheduled check at until = lead gets �
 
 test('quiet hours still degrade the lead-rule notify to card', async () => {
   assert.equal(levelOf(await evaluate(10, { lead_minutes: 10 }, '2026-10-18T15:00:00Z')), 'card');   // 23:00 Asia/Shanghai
+});
+
+// ── v10 P1-1 / P1-2: repeated pre-scheduling ──────────────────────────────────────────────────────────────────
+const BASE_T = Date.parse('2026-10-18T06:00:00Z');   // meeting M1 at 14:00 Asia/Shanghai
+function rig() {
+  const clock = { t: 0 }, store = createMemoryStore(), svc = createDecisionService({ store, now: () => clock.t });
+  const pre = (key = 'M1') => svc.evaluate('u', { signals: [{ type: 'meeting_upcoming', source: 'bg_refresh', dedupe_key: key, data: { title: '评审', minutes_until: 10 } }], context: { time_zone: 'Asia/Shanghai', lead_minutes: 10, evaluate_at: new Date(BASE_T - 10 * 60_000).toISOString() } });
+  return { clock, store, svc, pre };
+}
+
+test('P1-1: pre-scheduling one meeting 6 times (35 min apart, past the dedupe window) uses one cap slot; another meeting still gets interrupt', async () => {
+  const { clock, store, svc, pre } = rig();
+  for (let m = 210; m >= 35; m -= 35) { clock.t = BASE_T - m * 60_000; assert.equal((await pre()).decision, 'notify', `T-${m}`); }
+  const rows = (await store.listEvents('u', null, 100)).filter(e => e.payload?.decision === 'notify').length;
+  assert.equal(rows, 6, 'six evaluations recorded');
+  // fill 3 more distinct meetings → 4 distinct used of 5
+  for (const k of ['A', 'B', 'C']) assert.equal((await pre(k)).decision, 'notify', k);
+  clock.t = BASE_T - 20 * 60_000;
+  const x = await svc.evaluate('u', { signals: [{ type: 'meeting_upcoming', source: 'calendar', dedupe_key: 'M2', data: { title: '外出', minutes_until: 20, travel_minutes: 25 } }], context: { time_zone: 'Asia/Shanghai', lead_minutes: 10 } });
+  assert.equal(x.decision, 'interrupt', JSON.stringify(x.trace));
+  // a 6th distinct meeting now hits the cap (5 distinct: M1, A, B, C, M2)
+  assert.equal((await pre('D')).decision, 'card');
+  // ...but a meeting that already holds a slot is never capped by itself
+  clock.t += 31 * 60_000; assert.equal((await pre('M1')).decision, 'notify');
+});
+
+test('P1-2: second pre-schedule inside the dedupe window replays the same notify decision (same event_id, no new row)', async () => {
+  const { clock, store, pre } = rig();
+  clock.t = BASE_T - 40 * 60_000; const a = await pre();
+  clock.t = BASE_T - 35 * 60_000; const b = await pre();
+  assert.equal(a.decision, 'notify'); assert.equal(b.decision, 'notify'); assert.equal(b.source, 'dedupe'); assert.equal(b.replayed, true);
+  assert.equal(b.event_id, a.event_id, 'same delivery id → iOS replaces, never duplicates');
+  assert.equal(b.suggestion.id, a.suggestion.id); assert.equal(b.reason, a.reason);
+  assert.equal((await store.listEvents('u', null, 100)).length, 1, 'replay writes nothing');
+});
+
+test('P1-2: a dismissed suggestion is not revived by a replay (stays silent)', async () => {
+  const { clock, store, pre } = rig();
+  clock.t = BASE_T - 40 * 60_000; const a = await pre();
+  const ev = await store.getEvent('u', a.event_id); ev.payload.suggestion.status = 'dismissed'; await store.updateEventPayload('u', a.event_id, ev.payload, ev.payload.suggestion.rev ?? 0);
+  clock.t = BASE_T - 35 * 60_000; const b = await pre();
+  assert.equal(b.decision, 'silent'); assert.equal(b.source, 'dedupe');
 });
