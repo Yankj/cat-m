@@ -56,8 +56,9 @@ test('Codex P0-3: very low confidence is silent, not a card (better say nothing 
 
 test('dedupe by signal_hash within window; quiet hours and daily cap downgrade to card', async () => {
   const { call, clock } = setup({ config: { dailyCap: 1 } });
-  assert.equal((await call('POST', BASE + '/evaluate', sc('meeting_soon_far'))).body.decision, 'interrupt');
-  const d = await call('POST', BASE + '/evaluate', sc('meeting_soon_far')); assert.equal(d.body.decision, 'silent'); assert.equal(d.body.source, 'dedupe');
+  const first = (await call('POST', BASE + '/evaluate', sc('meeting_soon_far'))).body; assert.equal(first.decision, 'interrupt');
+  // v10 P1-2: a repeat inside the window replays the prior decision (idempotent, same event) instead of silent.
+  const d = await call('POST', BASE + '/evaluate', sc('meeting_soon_far')); assert.equal(d.body.decision, 'interrupt'); assert.equal(d.body.source, 'dedupe'); assert.equal(d.body.event_id, first.event_id);
   assert.equal((await call('POST', BASE + '/evaluate', sc('flight_delayed_affects_meeting'))).body.decision, 'card'); // cap 1 used
   clock.t += 3600_000; assert.notEqual((await call('POST', BASE + '/evaluate', sc('meeting_soon_far'))).body.source, 'dedupe'); // window passed
   const q = setup({ t: '2026-10-15T15:30:00Z' }); // 23:30 CST
