@@ -21,7 +21,7 @@
       "trigger": "说「记住……」；或打开侧栏「记忆」管理。",
       "ui_entry": {"label": "侧栏 · 记忆", "anchor": "sidebar.memory", "link": "catpawm://memory", "button": "打开记忆"},
       "status": "shipped",
-      "limits": "只有说「记住」或打开「记忆」页的「自动记住新内容」开关后才会保存；引用或翻译里的「记住」不算。"
+      "limits": "需要打开「使用记忆」并同意记忆说明；在此基础上，只有说「记住」或打开「记忆」页的「自动记住新内容」开关后才会保存；引用或翻译里的「记住」不算。"
     },
     {
       "id": "tasks",
@@ -39,7 +39,7 @@
       "trigger": "允许日历权限后自动出现；在侧栏「主动」查看历史和原因。",
       "ui_entry": {"label": "侧栏 · 主动", "anchor": "sidebar.proactive", "link": "catpawm://proactive", "button": "查看主动提醒"},
       "status": "shipped",
-      "limits": "免打扰时段（22:00–8:00）和每日提醒上限内不会打扰你。"
+      "limits": "免打扰时段和每日提醒上限内不会打扰你（具体时段以设置为准）。"
     },
     {
       "id": "results",
