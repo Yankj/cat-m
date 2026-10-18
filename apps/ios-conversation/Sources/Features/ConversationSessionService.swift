@@ -18,19 +18,26 @@ public actor ConversationSessionService {
     /// The authenticated user id this service belongs to. A token captured for any other account is never attached.
     private let principalAccount: String?
     private let outbox: ConversationOutbox?
-    private struct BusyRetry: Sendable { var due: Date; var operationID: UUID; var autoRetried: Bool }
+    /// `resend`: the server can't restart this failure in place (`model_history_conflict`, refused by POST …/retry-busy
+    /// with 409 turn_not_restartable), so the retry sends the same text as a new turn that supersedes the failed one.
+    private struct BusyRetry: Sendable { var due: Date; var operationID: UUID; var autoRetried: Bool; var resend: Bool = false }
+    /// Resent turn → the turn that first failed, so the 3-try budget spans the whole resend chain.
+    private var resendRoots: [UUID: UUID] = [:]
+    private func retryRoot(_ id: UUID) -> UUID { resendRoots[id] ?? id }
+    /// Resent turn → the failed `model_history_conflict` turn it replaces. The failed bubble stays until the server admits
+    /// the resend (its `started` event); a resend that is never admitted (offline, refused before dispatch) leaves it in place,
+    /// so the text is never lost (三角 ee6891d0 contract point 2).
+    private var pendingSupersede: [UUID: UUID] = [:]
     private var busyRetry: [UUID: BusyRetry] = [:]
     /// Automatic busy retries already spent per turn (server restarts the SAME turn in place, limit 3).
     private var autoRetryCounts: [UUID: Int] = [:]
     private var busyRetryCancelled: Set<UUID> = []
-    public static let maxAutomaticBusyRetries = 3
-    /// Exponential backoff with jitter for automatic busy retries; a server `retry_after_seconds` wins.
-    /// attempt is 1-based; jitter in 0..<1 (injected for tests).
+    public static let maxAutomaticBusyRetries = ConversationBusyRetryPolicy.maxAttempts
+    /// Automatic busy retry delay (`ConversationBusyRetryPolicy`): server `retry_after_seconds` wins, else 5 / 15 / 30 s.
+    /// attempt is 1-based; past the last attempt the 30 s step is returned (callers check the attempt count first).
+    /// `jitter` is kept for source compatibility and ignored: the card counts down to the real due time.
     public static func busyRetryDelay(attempt: Int, retryAfterSeconds: Int?, jitter: Double) -> TimeInterval {
-        let j = min(max(jitter, 0), 0.999)
-        if let retryAfterSeconds { return TimeInterval(max(1, min(retryAfterSeconds, 3600))) + j }
-        let base = min(30.0, 2.0 * pow(2.0, Double(max(1, attempt) - 1)))
-        return base * (1 + 0.5 * j)
+        ConversationBusyRetryPolicy.delay(attempt: min(max(1, attempt), ConversationBusyRetryPolicy.maxAttempts), retryAfterSeconds: retryAfterSeconds) ?? 30
     }
     private var turnObservers: [UUID: AsyncStream<ConversationTurnEvent>.Continuation] = [:]
     private var emittedCancellations: Set<UUID> = []
@@ -340,6 +347,7 @@ public actor ConversationSessionService {
                 for try await event in stream {
                     try Task.checkCancellation()
                     guard active[conversationID] == observationToken else { throw CancellationError() }
+                    if Self.isLivePreview(event.payload) { forwardLivePreview(event, request: request); continue }   // never journaled
                     observeLog.info("pump event seq=\(event.sequence, privacy: .public) \(String(describing: event.payload).prefix(60), privacy: .public)")
                     try await apply(event, request: request, observationToken: observationToken)
                     if attempt > 0 { attempt = 0; await resilience?.resumed() }
@@ -363,15 +371,35 @@ public actor ConversationSessionService {
         }
         await resilience?.settled()
         let saved = try await read(scope: scope, conversationID: conversationID)
+        if let last = saved.turns.last, last.id == operationID, last.state == .failed, last.error == Self.modelHistoryConflictCode {
+            // 409 model_history_conflict (fix/context-window-v11x): nothing was written to model history; retryable on the
+            // same 5 / 15 / 30 s schedule, as a resend of the same text (see BusyRetry.resend).
+            let root = retryRoot(operationID), spent = autoRetryCounts[root] ?? 0
+            let delay = Self.isPlain(request) && !busyRetryCancelled.contains(root) ? ConversationBusyRetryPolicy.delay(attempt: spent + 1, retryAfterSeconds: nil) : nil
+            sendDiagnostic("catpaw.send history conflict retry op=\(operationID.uuidString.prefix(8)) attempt=\(spent + 1)/\(Self.maxAutomaticBusyRetries) exhausted=\(delay == nil)")
+            if let delay {
+                busyRetry[conversationID] = BusyRetry(due: Date().addingTimeInterval(delay), operationID: operationID, autoRetried: false, resend: true)
+                await resilience?.busy(retryIn: ConversationBusyRetryPolicy.displaySeconds(delay))
+            } else {
+                busyRetry[conversationID] = Self.isPlain(request) ? BusyRetry(due: Date(), operationID: operationID, autoRetried: true, resend: true) : nil
+                await resilience?.clearBusy()
+            }
+        }
         if let last = saved.turns.last, last.id == operationID, last.state == .failed, last.error == Self.rateLimitedCode {
-            // R7 busy: countdown, then one automatic retry (see foregroundTick); never for an auto-retried turn.
-            let wait = max(1, last.retryAfterSeconds ?? 20)
+            // Busy: the card counts down to the real due time, then foregroundTick retries the SAME turn in place.
+            // Only plain turns can be restarted in place; an image turn (bytes are not kept by the server) and an
+            // exhausted / cancelled turn get no countdown: the bubble shows 「发送失败 · 重试 / 删除」 instead.
             let spent = autoRetryCounts[operationID] ?? 0
-            let exhausted = spent >= Self.maxAutomaticBusyRetries || busyRetryCancelled.contains(operationID)
-            let busyDelay = exhausted ? TimeInterval(wait) : Self.busyRetryDelay(attempt: spent + 1, retryAfterSeconds: last.retryAfterSeconds, jitter: Double.random(in: 0..<1))
-            sendDiagnostic("catpaw.send busy retry scheduled op=\(operationID.uuidString.prefix(8)) attempt=\(spent + 1)/\(Self.maxAutomaticBusyRetries) exhausted=\(exhausted) delay=\(Int(busyDelay.rounded(.up)))")
-            busyRetry[conversationID] = BusyRetry(due: Date().addingTimeInterval(busyDelay), operationID: operationID, autoRetried: exhausted)
-            await resilience?.busy(retryIn: wait)
+            let delay = Self.isPlain(request) && !busyRetryCancelled.contains(operationID) ? ConversationBusyRetryPolicy.delay(attempt: spent + 1, retryAfterSeconds: last.retryAfterSeconds) : nil
+            sendDiagnostic("catpaw.send busy retry scheduled op=\(operationID.uuidString.prefix(8)) attempt=\(spent + 1)/\(Self.maxAutomaticBusyRetries) exhausted=\(delay == nil) delay=\(delay.map { ConversationBusyRetryPolicy.displaySeconds($0) } ?? -1)")
+            if let delay {
+                busyRetry[conversationID] = BusyRetry(due: Date().addingTimeInterval(delay), operationID: operationID, autoRetried: false)
+                await resilience?.busy(retryIn: ConversationBusyRetryPolicy.displaySeconds(delay))
+            } else {
+                // Kept (autoRetried) so the manual 重试 can still restart a plain turn; never a frozen "0 秒" card.
+                busyRetry[conversationID] = Self.isPlain(request) ? BusyRetry(due: Date(), operationID: operationID, autoRetried: true) : nil
+                await resilience?.clearBusy()
+            }
         }
         if saved.turns.last?.state == .completed { try? await outbox?.remove(operationID); await backend.recordCommittedReply(request);return operationID }
         // catpaw.approval.v1: a suspended turn is admitted and waiting for submitApproval (not an error).
@@ -388,6 +416,8 @@ public actor ConversationSessionService {
     private func apply(_ event: ConversationTurnEvent, request: ConversationTurnRequest, observing: Bool = false, observationToken: UUID) async throws {
         guard active[request.conversationID] == observationToken else { throw CancellationError() }
         guard event.operationID == request.operationID, event.epoch == request.epoch else { throw ConversationSessionError.invalidEvent }
+        // Live-only text_preview: no journal write, no lastSequence change (its sequence is the last persisted event).
+        if Self.isLivePreview(event.payload) { forwardLivePreview(event, request: request); return }
         var (session, journalRevision) = try await readVersioned(scope: request.scope, conversationID: request.conversationID)
         guard let index = session.turns.firstIndex(where: { $0.id == request.operationID }) else { throw CatpawError.missing }
         var turn = session.turns[index]
@@ -418,6 +448,7 @@ public actor ConversationSessionService {
             if let image=request.image {guard receipts == [image.receipt] else {throw ConversationSessionError.invalidEvent}} else if let ids=request.attachmentIDs,!ids.isEmpty {guard let receipts,receipts.map(\.id)==ids else {throw ConversationSessionError.invalidEvent}} else {guard receipts == nil || receipts?.isEmpty == true else {throw ConversationSessionError.invalidEvent}}
             guard hash.count == 64, revision > 0, grant > 0, turn.serverRequestHash == nil || turn.serverRequestHash == hash, turn.serverGrantEpoch == nil || turn.serverGrantEpoch == grant else { throw ConversationSessionError.invalidEvent }
             turn.serverRequestHash = hash; turn.serverConversationRevision = revision; turn.serverGrantEpoch = grant; session.threadID = request.conversationID.uuidString
+            if let failed = pendingSupersede.removeValue(forKey: request.operationID) { Self.supersede(&session, failed: failed) }
         case .textDelta(let id, let text):
             if let known = turn.assistantMessageID { guard known == id else { throw ConversationSessionError.invalidEvent } }
             else { guard !session.messages.contains(where: { $0.id == id }) else { throw ConversationSessionError.invalidEvent }; turn.assistantMessageID = id; session.messages.append(ConversationTranscriptMessage(id: id, role: .assistant, content: "", complete: false)) }
@@ -488,6 +519,7 @@ public actor ConversationSessionService {
             guard Self.isPlain(request), session.messages.contains(where: { $0.id == callRow && $0.toolName == approval.tool && !$0.complete }),
                   !(turn.pendingApprovals ?? []).contains(where: { $0.interruptID == approval.interruptID || $0.callID == approval.callID }) else { throw ConversationSessionError.invalidEvent }
             turn.pendingApprovals = (turn.pendingApprovals ?? []) + [approval]
+            if !(turn.approvalLog ?? []).contains(where: { $0.interruptID == approval.interruptID }) { turn.approvalLog = (turn.approvalLog ?? []) + [approval] }   // chat-context-1522 #3
         case .uiBlock(let ui), .uiBlockUpdate(let ui), .uiBlockResolve(let ui):
             guard Self.isPlain(request), ui.sequence == event.sequence else { throw ConversationSessionError.invalidEvent }
             var journal = turn.uiEvents ?? []
@@ -502,14 +534,17 @@ public actor ConversationSessionService {
         case .deviceCall(let call):
             guard Self.isPlain(request) else { throw ConversationSessionError.invalidEvent }
             if !(turn.pendingDeviceCalls ?? []).contains(where: { $0.callID == call.callID }) { turn.pendingDeviceCalls = (turn.pendingDeviceCalls ?? []) + [call] }
+            if !(turn.deviceCallLog ?? []).contains(where: { $0.callID == call.callID }) { turn.deviceCallLog = (turn.deviceCallLog ?? []) + [call] }   // chat-context-1522 #3
             deviceCallIndex[call.callID] = (request.conversationID, request.operationID); rememberDeviceTurn(call.callID, request.conversationID, request.operationID)
-        case .suspended(let ids, _):
+        case .suspended(let ids, _, let requiresApproval, let waitingFor):
             let pending = Set((turn.pendingApprovals ?? []).map(\.interruptID)).union((turn.pendingDeviceCalls ?? []).map(\.interruptID)).union(turn.pendingUIBlocks.compactMap(\.interruptID)).union((turn.pendingUIApprovals ?? []).map(\.interruptID))
             guard !ids.isEmpty, Set(ids).isSubset(of: pending) else { throw ConversationSessionError.invalidEvent }
             // A server-confirmed suspension proves the turn is alive and waiting on this client: an `unknown` left by an
             // earlier failed apply must become `running` again, otherwise awaitingApproval stays false and no card shows.
             if turn.state == .unknown { turn.state = .running }
-        case .approvalResolved(let id, let call, _, _):
+            turn.suspendedRequiresApproval = requiresApproval; turn.suspendedWaitingFor = waitingFor
+        case .approvalResolved(let id, let call, let decision, _):
+            turn.interactionDecisions = (turn.interactionDecisions ?? [:]).merging([id.lowercased(): decision]) { _, new in new }   // chat-context-1522 #3
             // A replay/observe may resolve an interrupt this journal never saw pending (e.g. expired while offline).
             if let i = turn.pendingApprovals?.firstIndex(where: { $0.interruptID == id }) { guard turn.pendingApprovals?[i].callID == call else { throw ConversationSessionError.invalidEvent }; turn.pendingApprovals?.remove(at: i) }
             if turn.pendingApprovals?.isEmpty == true { turn.pendingApprovals = nil }
@@ -517,7 +552,7 @@ public actor ConversationSessionService {
             if turn.pendingUIApprovals?.isEmpty == true { turn.pendingUIApprovals = nil }
             turn.pendingDeviceCalls?.removeAll { $0.interruptID == id.lowercased() }
             if turn.pendingDeviceCalls?.isEmpty == true { turn.pendingDeviceCalls = nil }
-        case .sideChannel:
+        case .sideChannel, .textPreview:
             break // memory.used / memory.update / proactive_suggestion: forwarded by the backend, no journal change
         case .failed(let reason, let reconciliation):
             turn.state = reconciliation ? .unknown : .failed; turn.error = reason
@@ -536,6 +571,16 @@ public actor ConversationSessionService {
         }
         let deviceCallsGone = deviceCallsBefore.subtracting((turn.pendingDeviceCalls ?? []).map(\.callID))
         if !deviceCallsGone.isEmpty { ConversationDeviceCall.lifecycle?(.revoked(callIDs: deviceCallsGone.sorted())) }
+        emit(event.stamped(conversationID: request.conversationID, turnID: request.operationID))
+    }
+    /// fix/context-window-v11x `text_preview` (valid or not): live-only, so it must never reach the journal or move
+    /// `lastSequence` / `after_sequence`; a resume keeps using the last persisted sequence.
+    static func isLivePreview(_ payload: ConversationTurnEvent.Payload) -> Bool {
+        switch payload { case .textPreview: return true; case .sideChannel(let type, _): return type == "text_preview"; default: return false }
+    }
+    /// Valid previews go to turnEvents() observers (AnswerPhaseProjection merges them with the persisted text).
+    private func forwardLivePreview(_ event: ConversationTurnEvent, request: ConversationTurnRequest) {
+        guard case .textPreview = event.payload, event.operationID == request.operationID, event.epoch == request.epoch else { return }
         emit(event.stamped(conversationID: request.conversationID, turnID: request.operationID))
     }
     /// The SSE `turn_failed{cancelled}` and the cancel response are equivalent; turnEvents() sees one stop per turn.
@@ -579,6 +624,28 @@ public actor ConversationSessionService {
         saved.messages.removeAll { $0.id == stableID("conversation-user-\(operationID)") }
         try await save(saved, expectedRevision: revision)
     }
+    /// 「删除」 on a failed turn: the server already ended it (failed / rate_limited, no reply); it leaves the transcript
+    /// locally and stops any pending busy retry. Returns true when something was removed.
+    @discardableResult
+    public func dismissFailed(scope: DataScope, conversationID: UUID, operationID: UUID) async throws -> Bool {
+        var (saved, revision) = try await readVersioned(scope: scope, conversationID: conversationID)
+        guard let i = saved.turns.firstIndex(where: { $0.id == operationID }), saved.turns[i].state == .failed, saved.turns[i].assistantMessageID == nil else { return false }
+        guard active[conversationID] == nil else { throw ConversationSessionError.busy }
+        saved.turns[i].state = .cancelledBeforeSend
+        saved.messages.removeAll { $0.id == stableID("conversation-user-\(operationID)") }
+        try await save(saved, expectedRevision: revision)
+        if busyRetry[conversationID]?.operationID == operationID { busyRetry[conversationID] = nil; await resilience?.clearBusy() }
+        try? await outbox?.remove(operationID)
+        return true
+    }
+    /// When the resend of a `model_history_conflict` turn is admitted: the failed turn leaves the local transcript (its user
+    /// row and any partial reply), in the same journal write as the admission, so the resent message is the only copy shown.
+    static func supersede(_ session: inout ConversationSession, failed operationID: UUID) {
+        guard let i = session.turns.firstIndex(where: { $0.id == operationID }), session.turns[i].state == .failed else { return }
+        let reply = session.turns[i].assistantMessageID
+        session.turns[i].state = .cancelledBeforeSend
+        session.messages.removeAll { $0.id == stableID("conversation-user-\(operationID)") || (reply != nil && $0.id == reply) }
+    }
     /// The queue commits this cancellation together with the replacement intent.
     /// A changed payload gets a new operation ID; an admitted/unknown request is immutable.
     public func cancellationForQueueEdit(scope:DataScope,conversationID:UUID,operationID:UUID) async throws -> Mutation? {
@@ -613,6 +680,7 @@ public actor ConversationSessionService {
             do {
                 let stream = try await backend.resumeEvents(turn.request, afterSequence: turn.lastSequence)
                 for try await event in stream {
+                    if Self.isLivePreview(event.payload) { guard active[conversationID] == observationToken else { throw CancellationError() }; forwardLivePreview(event, request: turn.request); continue }
                     observeLog.info("observe event seq=\(event.sequence, privacy: .public) \(String(describing: event.payload).prefix(80), privacy: .public)")
                     guard active[conversationID] == observationToken else { throw CancellationError() }
                     try await apply(event, request: turn.request, observing: true, observationToken: observationToken)
@@ -656,8 +724,34 @@ public actor ConversationSessionService {
         try await restoreApprovals(observation, turnID: turn.id, observationToken: observationToken)
         if try await read(scope:scope,conversationID:conversationID).turns.first(where:{$0.id==turn.id})?.state == .completed {await backend.recordCommittedReply(turn.request)}
         if !observation.goals.isEmpty { var (current, revision) = try await readVersioned(scope: scope, conversationID: conversationID); for goal in observation.goals { try Self.merge(goal, into: &current) }; try await save(current, expectedRevision: revision, fence: turn.request, observationToken: observationToken) }
+        try await settleOutcomeUnknown(observation, turnID: turn.id, scope: scope, conversationID: conversationID, request: turn.request, observationToken: observationToken)
     }
+    /// v1 17:55: the server parks an interrupted turn as `outcome_unknown` for good (e.g. the 16:28 42501 memory_save turn).
+    /// Re-observing it never changes anything, but kept the turn `.unknown` → `unresolved` → model.busy forever: 新对话,
+    /// sending and 确认发送许可 disabled, the queue stuck at 「等待当前回复」. After `outcomeUnknownMaxObservations` snapshots
+    /// (or `outcomeUnknownGiveUpSeconds`) with no pending approval, resolve it locally as 「结果待核对」: terminal, never
+    /// auto-resent (the tool may have run), and the conversation is free again. A later readable completion still applies
+    /// through 读取原请求进展, which reconciles by the turn id.
+    private func settleOutcomeUnknown(_ observation: ConversationObservation, turnID: UUID, scope: DataScope, conversationID: UUID, request: ConversationTurnRequest, observationToken: UUID) async throws {
+        guard observation.serverState == Self.serverOutcomeUnknown, observation.pendingApprovals.isEmpty, observation.pendingUIApprovals.isEmpty else { outcomeUnknownSeen[turnID] = nil; return }
+        var (session, revision) = try await readVersioned(scope: scope, conversationID: conversationID)
+        guard let i = session.turns.firstIndex(where: { $0.id == turnID }), [.dispatched, .running, .unknown].contains(session.turns[i].state), !session.turns[i].awaitingApproval else { outcomeUnknownSeen[turnID] = nil; return }
+        let seen = outcomeUnknownSeen[turnID] ?? (0, Date()); let count = seen.count + 1
+        guard count >= Self.outcomeUnknownMaxObservations || Date().timeIntervalSince(seen.first) >= Self.outcomeUnknownGiveUpSeconds else { outcomeUnknownSeen[turnID] = (count, seen.first); return }
+        guard active[conversationID] == observationToken else { throw CancellationError() }
+        observeLog.info("observe settle outcome_unknown after \(count, privacy: .public) snapshots")
+        session.turns[i].state = .failed; session.turns[i].error = Self.outcomeUnverified
+        try await save(session, expectedRevision: revision, fence: request, observationToken: observationToken)
+        outcomeUnknownSeen[turnID] = nil
+    }
+    static let serverOutcomeUnknown = "outcome_unknown"
+    /// Turn error code for a turn resolved as 「结果待核对」 (UI: bubbleStatus .unverified, no one-tap resend).
+    static let outcomeUnverified = "outcome_unverified"
+    static let outcomeUnknownMaxObservations = 3
+    static let outcomeUnknownGiveUpSeconds: TimeInterval = 30
+    private var outcomeUnknownSeen: [UUID: (count: Int, first: Date)] = [:]
     static let rateLimitedCode = "rate_limited"
+    static let modelHistoryConflictCode = "model_history_conflict"
     static let unknownTurnGiveUpSeconds: TimeInterval = 60
     static let unknownTurnGaveUp = "这条消息没能确认送达，已停止等待。可以重新发送。"
     private var observeFailures: [UUID: Date] = [:]
@@ -677,14 +771,14 @@ public actor ConversationSessionService {
     /// error with the manual "现在重试" entry (retryBusy automatic:false).
     public func busyRetryStatus(conversationID: UUID) -> ConversationBusyRetryStatus? {
         guard let entry = busyRetry[conversationID] else { return nil }
-        let spent = autoRetryCounts[entry.operationID] ?? 0
+        let spent = autoRetryCounts[retryRoot(entry.operationID)] ?? 0
         return ConversationBusyRetryStatus(attempt: min(spent + 1, Self.maxAutomaticBusyRetries), maxAttempts: Self.maxAutomaticBusyRetries,
                                            secondsRemaining: max(0, Int(entry.due.timeIntervalSinceNow.rounded(.up))), automatic: !entry.autoRetried)
     }
     /// User cancel: stop automatic retries for the pending busy turn (manual retry stays available).
     public func cancelBusyRetry(conversationID: UUID) {
         guard var entry = busyRetry[conversationID] else { return }
-        busyRetryCancelled.insert(entry.operationID); entry.autoRetried = true; busyRetry[conversationID] = entry
+        busyRetryCancelled.insert(entry.operationID); busyRetryCancelled.insert(retryRoot(entry.operationID)); entry.autoRetried = true; busyRetry[conversationID] = entry
         sendDiagnostic("catpaw.send busy retry cancelled op=\(entry.operationID.uuidString.prefix(8))")
     }
     /// "现在重试" / "换一个免费模型": only for a turn the server reported as `failed{rate_limited}`
@@ -697,10 +791,30 @@ public actor ConversationSessionService {
         guard active[conversationID] == nil else { throw ConversationSessionError.busy }
         busyRetry[conversationID] = nil
         let saved = try await read(scope: scope, conversationID: conversationID)
+        if entry.resend {
+            guard let original = saved.turns.first(where: { $0.id == entry.operationID }), saved.turns.last?.id == original.id,
+                  original.state == .failed, original.error == Self.modelHistoryConflictCode, Self.isPlain(original.request),
+                  let text = original.request.history.last?.content, !text.isEmpty else { await resilience?.clearBusy(); return nil }
+            let root = retryRoot(original.id)
+            if automatic { autoRetryCounts[root, default: 0] += 1 } else { busyRetryCancelled.remove(root) }
+            await resilience?.clearBusy()
+            // New turn_id AND new message.id (stableID of the new operation); expected_revision comes from the GET in prepare.
+            let next = UUID(); resendRoots[next] = root; pendingSupersede[next] = original.id
+            do { return try await send(scope: scope, conversationID: conversationID, text: text, operationID: next, preserveDraft: true) }
+            catch {
+                // Not admitted. Journaled (e.g. notSent): keep the pending supersede, so its later admission still replaces the
+                // failed bubble. Refused before it was journaled: the failed turn stays visible and stays the 重试 target.
+                if (try? await read(scope: scope, conversationID: conversationID))?.turns.contains(where: { $0.id == next }) != true {
+                    pendingSupersede[next] = nil; resendRoots[next] = nil
+                    busyRetry[conversationID] = BusyRetry(due: Date(), operationID: original.id, autoRetried: true, resend: true)
+                }
+                throw error
+            }
+        }
         // Same operationID, same user message: no new transcript row; the server restarts the failed turn.
         guard let original = saved.turns.first(where: { $0.id == entry.operationID }), saved.turns.last?.id == original.id,
               original.state == .failed, original.error == Self.rateLimitedCode,
-              original.assistantMessageID == nil, Self.isPlain(original.request) else { return nil }
+              original.assistantMessageID == nil, Self.isPlain(original.request) else { await resilience?.clearBusy(); return nil }   // never leave the card at 0 s
         if let route { ModelRouteSelection.select(route: route) }
         if automatic { autoRetryCounts[original.id, default: 0] += 1 } else { busyRetryCancelled.remove(original.id) }
         await resilience?.clearBusy()
@@ -909,6 +1023,11 @@ public actor ConversationSessionService {
         // Device calls (catpaw.device.v1) live in the journal (pendingDeviceCalls); the snapshot only confirms the turn is
         // still suspended on them. Revive an `unknown` turn so its confirm card renders instead of an endless re-observe.
         var deviceRevived = false
+        // P1-4: merge server interaction_outcomes for this turn's calls (authoritative final card state).
+        let logged = Set((turn.deviceCallLog ?? []).map(\.callID))
+        let outcomes = observation.interactionOutcomes.filter { logged.contains($0.key) }
+        let outcomesChanged = !outcomes.isEmpty && (turn.serverOutcomes ?? [:]).merging(outcomes) { _, new in new } != (turn.serverOutcomes ?? [:])
+        if outcomesChanged { turn.serverOutcomes = (turn.serverOutcomes ?? [:]).merging(outcomes) { _, new in new } }
         if observation.serverState == "awaiting_approval", !(turn.pendingDeviceCalls ?? []).isEmpty, [.unknown, .dispatched].contains(turn.state) {
             turn.state = .running; turn.error = nil; deviceRevived = true
         }
@@ -921,7 +1040,10 @@ public actor ConversationSessionService {
             uiChanged = true; turn.pendingUIApprovals = nil
         } else { uiChanged = false }
         if observation.serverState == "awaiting_approval", !observation.pendingApprovals.isEmpty {
-            guard [.running, .unknown, .dispatched].contains(turn.state) else { return }
+            guard [.running, .unknown, .dispatched].contains(turn.state) else {
+                if outcomesChanged { session.turns[i] = turn; try await save(session, expectedRevision: revision, fence: request, observationToken: observationToken) }
+                return
+            }
             for approval in observation.pendingApprovals {
                 let row = stableID("conversation-call-\(request.operationID)-\(approval.callID)")
                 guard session.messages.contains(where: { $0.id == row && $0.toolName == approval.tool }) else { throw ConversationSessionError.invalidEvent }
@@ -929,7 +1051,7 @@ public actor ConversationSessionService {
             turn.state = .running; turn.error = nil; turn.pendingApprovals = observation.pendingApprovals
         } else if turn.pendingApprovals != nil, observation.serverState != nil, observation.serverState != "awaiting_approval" {
             turn.pendingApprovals = nil
-        } else if !uiChanged && !deviceRevived { return }
+        } else if !uiChanged && !deviceRevived && !outcomesChanged { return }
         session.turns[i] = turn
         try await save(session, expectedRevision: revision, fence: request, observationToken: observationToken)
     }
@@ -1122,16 +1244,22 @@ public actor ConversationSessionService {
     @discardableResult
     public func submitDeviceResult(scope: DataScope, callID: String, status: String, data: Data?) async throws -> UUID {
         let sourceToken = pinnedSource()   // p89e-1: account AND login generation, pinned before the first await
-        guard let entry = deviceCallIndex[callID] else { throw ConversationApprovalFailure.noPendingApproval }
+        // P1-4: after a restart / supersede the in-memory index may be gone; the persisted index still knows the turn.
+        guard let entry = deviceCallIndex[callID] ?? DeviceCallTurnIndex.load(.standard).turn(for: callID) else { throw ConversationApprovalFailure.noPendingApproval }
         let (conversationID, turnID) = entry
         // A read-only observer may briefly hold the conversation; give it a moment instead of failing the user's tap.
         for _ in 0..<20 where active[conversationID] != nil { try await Task.sleep(nanoseconds: 250_000_000) }
         guard active[conversationID] == nil, !cancelling.contains(conversationID) else { observeLog.error("device result busy"); throw ConversationSessionError.busy }
         let saved = try await read(scope: scope, conversationID: conversationID)
-        guard let turn = saved.turns.first(where: { $0.id == turnID }), let call = turn.pendingDeviceCalls?.first(where: { $0.callID == callID }) else { throw ConversationApprovalFailure.noPendingApproval }
+        guard let turn = saved.turns.first(where: { $0.id == turnID }) else { throw ConversationApprovalFailure.noPendingApproval }
+        // P1-4: a call that is no longer pending (superseded by the next message, or past its TTL) is still reported —
+        // the server records it (200 + X-Catpaw-Device-Late) so the card and the next turn know it really happened.
+        let pendingCall = turn.pendingDeviceCalls?.first(where: { $0.callID == callID })
+        guard let call = pendingCall ?? turn.deviceCallLog?.first(where: { $0.callID == callID }) else { throw ConversationApprovalFailure.noPendingApproval }
         let operationID = stableID("device-result-\(turnID)-\(callID)")
         let token = claimObservation(conversationID, source: sourceToken)
         defer { if active[conversationID] == token { releaseActive(conversationID) } }
+        if pendingCall == nil { return try await submitLateDeviceResult(turn, call: call, status: status, data: data, operationID: operationID, token: token) }
         let stream: AsyncThrowingStream<ConversationTurnEvent, Error>
         do { stream = try await backend.submitDeviceResult(turn.request, call: call, status: status, data: data, operationID: operationID, afterSequence: turn.lastSequence) }
         catch let failure as ConversationApprovalFailure {
@@ -1147,6 +1275,16 @@ public actor ConversationSessionService {
             if active[conversationID] == token, !(error is CancellationError) { try? await markUnknown(turn.request, reason: "结果已回传，状态待核对；读取原请求后继续。", observationToken: token) }
             throw error
         }
+    }
+    /// P1-4: late report. The turn stays closed: drain the server's reply without pumping it into the journal, then
+    /// refresh the snapshot once so the card picks up `interaction_outcomes` (late / ttl_exceeded).
+    private func submitLateDeviceResult(_ turn: ConversationTurnRecord, call: ConversationDeviceCall, status: String, data: Data?, operationID: UUID, token: UUID) async throws -> UUID {
+        let stream = try await backend.submitDeviceResult(turn.request, call: call, status: status, data: data, operationID: operationID, afterSequence: turn.lastSequence)
+        do { for try await _ in stream {} } catch is CancellationError { throw CancellationError() } catch { observeLog.error("late device result stream ended early") }
+        if active[turn.request.conversationID] == token, let observation = try? await backend.observe(turn.request), active[turn.request.conversationID] == token {
+            try? await restoreApprovals(observation, turnID: turn.id, observationToken: token)
+        }
+        return turn.id
     }
     /// Chat-UX #6: tells the turn that created `callID` that the user undid it on the phone (the model hears it with
     /// the next message). Needs the call to have been seen this session; the local delete never waits on this.

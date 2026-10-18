@@ -3,6 +3,11 @@ import SwiftUI
 #if os(iOS)
 import AVFoundation
 import Speech
+import os
+
+/// device-0728: recognizer lifecycle for on-device diagnosis (Console / sysdiagnose, subsystem catpaw, category voice).
+/// Tier, session mode, input format, counts and end reasons only — never recognized text.
+let voiceEngineLog = Logger(subsystem: "catpaw", category: "voice")
 
 // The forwarding closure is registered per session; queued delivery retains that registration.
 @MainActor private final class SystemAudioNotificationSource: AudioNotificationSource {
@@ -208,6 +213,8 @@ final class DictationAudioSink: @unchecked Sendable {
     private var segmentRotation: Task<Void, Never>?
     /// Which recognizer this session uses (for the hint text and the WER harness).
     @Published private(set) var dictationTier: DictationEngineTier = .unavailable
+    /// True while the on-device speech model is being prepared (iOS 26 may download it on first use): shown, never silent.
+    @Published private(set) var preparingSpeechModel = false
     private var dictationOnText: (@MainActor (String) -> Void)?
     private var dictationOnEnd: (@MainActor (DictationEnd) -> Void)?
     private var dictationObservers: [NSObjectProtocol] = []
@@ -215,6 +222,24 @@ final class DictationAudioSink: @unchecked Sendable {
     /// Hard caps so no failure can leave the mic stuck: start (after permissions), capture length, final-result wait.
     static let dictationStartTimeout: UInt64 = 6_000_000_000, dictationMaxCapture: UInt64 = 600_000_000_000, dictationFinishTimeout: UInt64 = 2_500_000_000
 
+    /// v1.1 voice conversation: on-device recognition only (the server tier ends with `.unsupported`). Plain dictation
+    /// leaves it false.
+    var voiceChatMode = false
+    /// device-0728 P0: recognition runs in `.default` mode for dictation AND voice chat. `.voiceChat` (VoIP tuning) was
+    /// only there for barge-in AEC, but barge-in is off on the built-in speaker (R2) and headphones need no AEC; on
+    /// device that mode let the recognizer go deaf after the opening silence (nothing transcribed, no error), while the
+    /// same engine in plain dictation (`.default`) worked.
+    static let recognitionSessionMode: AVAudioSession.Mode = .default
+    /// Voice chat must not sit on 「正在准备语音模型…」 forever: past this the iOS 26 analyzer is abandoned for this
+    /// session (its asset install keeps going for next time) and the on-device SFSpeechRecognizer takes over.
+    static var voiceChatAnalyzerStartTimeout: UInt64 = 15_000_000_000
+    private var firstTextLogged = false
+    /// Synchronous pre-check for voice conversation: SFSpeechRecognizer on-device support for the app language. On iOS 26
+    /// the SpeechAnalyzer tier may still be available, so this only refuses older systems; the start re-checks the tier.
+    func voiceChatSupportedOnDevice() -> Bool {
+        if #available(iOS 26.0, *) { return true }
+        return SFSpeechRecognizer(locale: Locale(identifier: DictationPolicy.localeIdentifier(for: language)))?.supportsOnDeviceRecognition == true
+    }
     /// Returns immediately; results arrive through the callbacks on the main actor. `onEnd` fires exactly once per accepted start.
     @discardableResult
     func startDictation(onText: @escaping @MainActor (String) -> Void, onEnd: @escaping @MainActor (DictationEnd) -> Void) -> Bool {
@@ -244,10 +269,14 @@ final class DictationAudioSink: @unchecked Sendable {
         let localeID = DictationPolicy.localeIdentifier(for: language)
         // Root cause 1: tiered engine instead of "on-device or nothing".
         var analyzerReady = false
+        firstTextLogged = false
         if #available(iOS 26.0, *) {
-            if let engine = await AnalyzerDictationEngine.start(localeID: localeID,
-                                                               onText: { [weak self] text in self?.analyzerText(epoch, text) },
-                                                               onEnd: { [weak self] failed in self?.analyzerEnded(epoch, failed: failed) }) {
+            preparingSpeechModel = true
+            defer { preparingSpeechModel = false }
+            let started = DispatchTime.now().uptimeNanoseconds
+            let analyzer = await startAnalyzer(localeID: localeID, epoch: epoch, timeout: voiceChatMode ? Self.voiceChatAnalyzerStartTimeout : nil)
+            voiceEngineLog.notice("voice.analyzer \(analyzer == nil ? "unavailable" : "ready", privacy: .public) after \((DispatchTime.now().uptimeNanoseconds - started) / 1_000_000, privacy: .public) ms voiceChat=\(self.voiceChatMode, privacy: .public)")
+            if let engine = analyzer {
                 guard epoch == dictationEpoch, dictationPhase == .starting else { engine.cancel(); return }
                 analyzerEngine = engine; dictationTier = engine.tier; analyzerReady = true
                 dictationSink.set { [feeder = engine.feeder] buffer in feeder.feed(buffer) }
@@ -259,6 +288,7 @@ final class DictationAudioSink: @unchecked Sendable {
             dictationTier = DictationEngineTier.choose(analyzerOS: false, speechTranscriberReady: false, dictationTranscriberReady: false,
                                                        recognizerAvailable: recognizer?.isAvailable == true, recognizerOnDevice: recognizer?.supportsOnDeviceRecognition == true)
             guard dictationTier != .unavailable, let recognizer else { return endDictation(epoch, .unsupported) }
+            if voiceChatMode && dictationTier.usesNetwork { return endDictation(epoch, .unsupported) }   // never the server tier in voice chat
             dictationRecognizer = recognizer
         }
         armWatchdog(epoch, after: Self.dictationStartTimeout, phase: .starting)
@@ -267,7 +297,7 @@ final class DictationAudioSink: @unchecked Sendable {
             // duck; defaultToSpeaker so a reply read aloud afterwards isn't stuck on the receiver. No route-change
             // teardown here: a route change rebuilds the input (observeEngineChanges) and dictation carries on.
             let audio = AVAudioSession.sharedInstance()
-            try audio.setCategory(.playAndRecord, mode: .default, options: [.duckOthers, .defaultToSpeaker, .allowBluetooth])
+            try audio.setCategory(.playAndRecord, mode: Self.recognitionSessionMode, options: [.duckOthers, .defaultToSpeaker, .allowBluetooth])
             try audio.setActive(true, options: .notifyOthersOnDeactivation)
             if !analyzerReady { startSegment(epoch) }
             try installDictationTap(epoch)
@@ -275,9 +305,38 @@ final class DictationAudioSink: @unchecked Sendable {
             engine.prepare(); try engine.start()
             guard epoch == dictationEpoch else { return }
             dictationPhase = .recording
+            let input = engine.inputNode.outputFormat(forBus: 0)
+            voiceEngineLog.notice("voice.recording tier=\(String(describing: self.dictationTier), privacy: .public) voiceChat=\(self.voiceChatMode, privacy: .public) mode=\(audio.mode.rawValue, privacy: .public) input=\(Int(input.sampleRate), privacy: .public)Hz/\(input.channelCount, privacy: .public)ch")
             armWatchdog(epoch, after: Self.dictationMaxCapture, phase: .recording)
         } catch {
+            voiceEngineLog.error("voice.start failed: \(error.localizedDescription, privacy: .public)")
             endDictation(epoch, .failed(error.localizedDescription))
+        }
+    }
+
+    /// Analyzer start with an optional deadline (voice chat). A late engine — the download finished after we gave up — is
+    /// cancelled at once, so it never feeds a session that moved on to SFSpeechRecognizer.
+    @available(iOS 26.0, *)
+    private func startAnalyzer(localeID: String, epoch: Int, timeout: UInt64?) async -> AnalyzerDictationEngine? {
+        let start: @MainActor () async -> AnalyzerDictationEngine? = {
+            await AnalyzerDictationEngine.start(localeID: localeID,
+                                                onText: { [weak self] text in self?.analyzerText(epoch, text) },
+                                                onEnd: { [weak self] failed in self?.analyzerEnded(epoch, failed: failed) })
+        }
+        guard let timeout else { return await start() }
+        let once = AnalyzerStartOnce()
+        return await withCheckedContinuation { (continuation: CheckedContinuation<AnalyzerDictationEngine?, Never>) in
+            Task { @MainActor in
+                let engine = await start()
+                if !once.claim() { engine?.cancel(); return }
+                continuation.resume(returning: engine)
+            }
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: timeout)
+                guard once.claim() else { return }
+                voiceEngineLog.error("voice.analyzer start timed out after \(timeout / 1_000_000, privacy: .public) ms; falling back to SFSpeechRecognizer")
+                continuation.resume(returning: nil)
+            }
         }
     }
 
@@ -352,12 +411,14 @@ final class DictationAudioSink: @unchecked Sendable {
         analyzerEngine = nil
         let recognizer = SFSpeechRecognizer(locale: Locale(identifier: DictationPolicy.localeIdentifier(for: language)))
         guard let recognizer, recognizer.isAvailable else { return endDictation(epoch, dictationTranscript.text.isEmpty ? .failed("") : .finished) }
+        if voiceChatMode && !recognizer.supportsOnDeviceRecognition { return endDictation(epoch, dictationTranscript.text.isEmpty ? .unsupported : .finished) }
         dictationTier = recognizer.supportsOnDeviceRecognition ? .onDeviceRecognizer : .serverRecognizer
         dictationRecognizer = recognizer; dictationTranscript.commit(); startSegment(epoch)
     }
     private func deliverDictationText() {
         let text = dictationTranscript.text
         guard !text.isEmpty, text != dictationText else { return }
+        if !firstTextLogged { firstTextLogged = true; voiceEngineLog.notice("voice.firstText tier=\(String(describing: self.dictationTier), privacy: .public) chars=\(text.count, privacy: .public)") }
         dictationText = text; dictationOnText?(text)
     }
 
@@ -427,6 +488,7 @@ final class DictationAudioSink: @unchecked Sendable {
     /// Single exit. Idempotent per epoch; always returns the controller to `.idle` and frees the mic.
     private func endDictation(_ epoch: Int, _ reason: DictationEnd) {
         guard epoch == dictationEpoch, dictationPhase != .idle else { return }
+        voiceEngineLog.notice("voice.end reason=\(String(String(describing: reason).prefix(40)), privacy: .public) phase=\(String(describing: self.dictationPhase), privacy: .public) hadText=\(!self.dictationTranscript.text.isEmpty, privacy: .public)")
         dictationEpoch += 1   // late callbacks from this session are ignored from here on
         teardownDictationAudio(deactivate: true)
         dictationPhase = .idle
@@ -434,6 +496,11 @@ final class DictationAudioSink: @unchecked Sendable {
         onEnd?(reason)
     }
 
+}
+/// First caller wins (analyzer start vs its deadline); both run on the main actor.
+@MainActor private final class AnalyzerStartOnce {
+    private var done = false
+    func claim() -> Bool { if done { return false }; done = true; return true }
 }
 #else
 @MainActor final class NativeVoiceController: ObservableObject {
@@ -464,6 +531,7 @@ final class DictationAudioSink: @unchecked Sendable {
     enum DictationEnd: Equatable { case finished, cancelled, interrupted, denied, unsupported, failed(String), timedOut }
     @Published private(set) var dictationPhase: DictationPhase = .idle
     @Published private(set) var audioLevel: Float = 0
+    @Published private(set) var preparingSpeechModel = false
     @discardableResult func startDictation(onText: @escaping @MainActor (String) -> Void, onEnd: @escaping @MainActor (DictationEnd) -> Void) -> Bool { onEnd(.unsupported); return true }
     func stopDictation() {}
     func cancelDictation(_ reason: DictationEnd = .cancelled) {}

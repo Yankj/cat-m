@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="22155" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" launchScreen="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="L01">
+    <dependencies>
+        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="22131"/>
+        <capability name="Named colors" minToolsVersion="9.0"/>
+        <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
+    </dependencies>
+    <scenes>
+        <scene sceneID="S01">
+            <objects>
+                <viewController id="L01" sceneMemberID="viewController">
+                    <view key="view" contentMode="scaleToFill" id="V01">
+                        <rect key="frame" x="0.0" y="0.0" width="390" height="844"/>
+                        <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                        <subviews>
+                            <!-- Group: 100 pt tall = glyph 56 + gap 20 + slogan line 24. Centre at 61% of the FULL screen height. -->
+                            <view contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="GRP-01" userLabel="Launch Group">
+                                <rect key="frame" x="0.0" y="464.84" width="390" height="100"/>
+                                <subviews>
+                                    <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" image="LaunchGlyph" translatesAutoresizingMaskIntoConstraints="NO" id="IMG-01" userLabel="Glyph">
+                                        <rect key="frame" x="160" y="0.0" width="70" height="56"/>
+                                        <constraints>
+                                            <constraint firstAttribute="width" constant="70" id="C-IW"/>
+                                            <constraint firstAttribute="height" constant="56" id="C-IH"/>
+                                        </constraints>
+                                    </imageView>
+                                    <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="先你一步，把事办妥" textAlignment="center" lineBreakMode="tailTruncation" numberOfLines="1" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="SLG-01" userLabel="Slogan">
+                                        <rect key="frame" x="24" y="76" width="342" height="24"/>
+                                        <constraints>
+                                            <constraint firstAttribute="height" constant="24" id="C-LH"/>
+                                        </constraints>
+                                        <fontDescription key="fontDescription" type="system" pointSize="17"/>
+                                        <color key="textColor" name="LaunchSlogan"/>
+                                        <nil key="highlightedColor"/>
+                                    </label>
+                                </subviews>
+                                <color key="backgroundColor" white="0.0" alpha="0.0" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
+                                <constraints>
+                                    <constraint firstItem="IMG-01" firstAttribute="top" secondItem="GRP-01" secondAttribute="top" id="C-IT"/>
+                                    <constraint firstItem="IMG-01" firstAttribute="centerX" secondItem="GRP-01" secondAttribute="centerX" id="C-IX"/>
+                                    <constraint firstItem="SLG-01" firstAttribute="top" secondItem="IMG-01" secondAttribute="bottom" constant="20" id="C-GAP"/>
+                                    <constraint firstItem="SLG-01" firstAttribute="leading" secondItem="GRP-01" secondAttribute="leading" constant="24" id="C-LL"/>
+                                    <constraint firstAttribute="trailing" secondItem="SLG-01" secondAttribute="trailing" constant="24" id="C-LT"/>
+                                    <constraint firstAttribute="bottom" secondItem="SLG-01" secondAttribute="bottom" id="C-LB"/>
+                                    <constraint firstAttribute="height" constant="100" id="C-GH"/>
+                                </constraints>
+                            </view>
+                        </subviews>
+                        <color key="backgroundColor" name="LaunchCanvas"/>
+                        <constraints>
+                            <!-- Superview (not safe area): group.centerY = 1.22 × view.centerY = 0.61 × height -->
+                            <constraint firstItem="GRP-01" firstAttribute="centerY" secondItem="V01" secondAttribute="centerY" multiplier="1.22" id="C-GY"/>
+                            <constraint firstItem="GRP-01" firstAttribute="leading" secondItem="V01" secondAttribute="leading" id="C-GL"/>
+                            <constraint firstAttribute="trailing" secondItem="GRP-01" secondAttribute="trailing" id="C-GT"/>
+                        </constraints>
+                    </view>
+                </viewController>
+                <placeholder placeholderIdentifier="IBFirstResponder" id="F01" userLabel="First Responder" sceneMemberID="firstResponder"/>
+            </objects>
+            <point key="canvasLocation" x="0" y="0"/>
+        </scene>
+    </scenes>
+    <resources>
+        <image name="LaunchGlyph" width="70" height="56"/>
+        <namedColor name="LaunchCanvas"><color red="1.000" green="0.988" blue="0.973" alpha="1" colorSpace="custom" customColorSpace="sRGB"/></namedColor>
+        <namedColor name="LaunchSlogan"><color red="0.373" green="0.353" blue="0.333" alpha="1" colorSpace="custom" customColorSpace="sRGB"/></namedColor>
+    </resources>
+</document>

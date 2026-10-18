@@ -66,30 +66,65 @@ public struct SidebarPanel: View {
 
     private var header: some View {
         HStack(alignment: .center, spacing: 10) {
-            Button { select(.settings) } label: {
-                HStack(spacing: 10) {
-                    ZStack {
-                        Circle().fill(theme.selection)
-                        SidebarSymbol(name: "person.fill", font: theme.bodyFont).foregroundStyle(theme.secondary)
-                    }.frame(width: 40, height: 40)
-                    VStack(alignment: .leading, spacing: 0) {
-                        HStack(spacing: 4) {
-                            Text(snapshot.account?.name ?? "Catpaw").font(theme.headingFont).lineLimit(1)
-                                .accessibilityAddTraits(.isHeader).accessibilityFocused($headingFocused)
-                            Image(systemName: "chevron.down").font(theme.captionFont).foregroundStyle(theme.secondary).accessibilityHidden(true)
-                        }
-                        if let detail = snapshot.account?.detail, !detail.isEmpty {
-                            Text(detail).font(theme.captionFont).foregroundStyle(theme.secondary).lineLimit(1)
-                        }
+            if let account = snapshot.account, !account.actions.isEmpty {
+                // Account menu (Grok-style dropdown): ✓ current account + provider, divider, actions; 退出登录 destructive.
+                Menu {
+                    Button {} label: {
+                        Label { Text(account.name); if let detail = account.detail, !detail.isEmpty { Text(detail) } } icon: { Image(systemName: "checkmark") }
                     }
-                }.frame(minHeight: 44).contentShape(Rectangle())
-            }.accessibilityHint(localize("账户与设置")).accessibilityIdentifier("sidebar.account")
+                    .accessibilityLabel(localize("当前账户") + " " + account.name + (account.detail.map { " " + $0 } ?? ""))
+                    .accessibilityIdentifier("sidebar.account.current")
+                    Divider()
+                    ForEach(account.actions) { action in accountMenuItem(action) }
+                } label: { headerLabel }
+                .accessibilityLabel(account.name + (account.detail.map { "，" + $0 } ?? ""))
+                .accessibilityHint(localize("账户")).accessibilityIdentifier("sidebar.account")
+            } else {
+                Button { select(.settings) } label: { headerLabel }
+                    .accessibilityHint(localize("账户与设置")).accessibilityIdentifier("sidebar.account")
+            }
             Spacer(minLength: 0)
             Button(action: onClose) {
                 SidebarSymbol(name: "chevron.right", font: theme.bodyFont.weight(.semibold))
-                    .frame(width: 44, height: 44).sidebarGlass(Circle(), fallback: theme.input)
+                    .frame(width: 44, height: 44).sidebarHitCircle().sidebarGlass(Circle(), fallback: theme.input)
             }.accessibilityLabel(localize("收起侧栏")).accessibilityIdentifier("sidebar.close")
         }.padding(.horizontal, 4)
+    }
+
+    private var headerLabel: some View {
+        HStack(spacing: 10) {
+            ZStack {
+                Circle().fill(theme.selection)
+                SidebarSymbol(name: "person.fill", font: theme.bodyFont).foregroundStyle(theme.secondary)
+            }.frame(width: 40, height: 40)
+            VStack(alignment: .leading, spacing: 0) {
+                HStack(spacing: 4) {
+                    Text(snapshot.account?.name ?? "Catpaw").font(theme.headingFont).lineLimit(1)
+                        .accessibilityAddTraits(.isHeader).accessibilityFocused($headingFocused)
+                    Image(systemName: "chevron.down").font(theme.captionFont).foregroundStyle(theme.secondary).accessibilityHidden(true)
+                }
+                if let detail = snapshot.account?.detail, !detail.isEmpty {
+                    Text(detail).font(theme.captionFont).foregroundStyle(theme.secondary).lineLimit(1)
+                }
+            }
+        }.frame(minHeight: 44).contentShape(Rectangle())
+    }
+
+    @ViewBuilder private func accountMenuItem(_ action: SidebarAccountAction) -> some View {
+        if action.children.isEmpty {
+            Button(role: action.role == .destructive ? .destructive : nil) { select(.accountAction(action.id)) } label: {
+                Label(action.title, systemImage: action.systemImage)
+            }.accessibilityIdentifier("sidebar.account." + action.id)
+        } else {
+            Menu {
+                ForEach(action.children) { child in
+                    Button(role: child.role == .destructive ? .destructive : nil) { select(.accountAction(child.id)) } label: {
+                        Label(child.title, systemImage: child.systemImage)
+                    }.accessibilityIdentifier("sidebar.account." + child.id)
+                }
+            } label: { Label(action.title, systemImage: action.systemImage) }
+                .accessibilityIdentifier("sidebar.account." + action.id)
+        }
     }
 
     // MARK: Rows
@@ -138,7 +173,7 @@ public struct SidebarPanel: View {
     private var bottomBar: some View {
         HStack(spacing: 10) {
             Button { select(.settings) } label: {
-                SidebarSymbol(name: "gearshape", font: theme.bodyFont).frame(width: 48, height: 48).sidebarGlass(Circle(), fallback: theme.input)
+                SidebarSymbol(name: "gearshape", font: theme.bodyFont).frame(width: 48, height: 48).sidebarHitCircle().sidebarGlass(Circle(), fallback: theme.input)
             }.disabled(!snapshot.permits(.settings)).accessibilityLabel(localize("设置")).accessibilityIdentifier("sidebar.settings")
             HStack(spacing: 6) {
                 SidebarSymbol(name: "magnifyingglass", font: theme.bodyFont).foregroundStyle(theme.secondary)
@@ -155,7 +190,7 @@ public struct SidebarPanel: View {
             .padding(.horizontal, 14).frame(minHeight: 48).sidebarGlass(Capsule(), fallback: theme.input)
             .contentShape(Capsule()).onTapGesture { searchFocused = true }
             Button { select(.newConversation) } label: {
-                SidebarSymbol(name: "square.and.pencil", font: theme.bodyFont).foregroundStyle(theme.panel).frame(width: 48, height: 48).background(theme.ink, in: Circle())
+                SidebarSymbol(name: "square.and.pencil", font: theme.bodyFont).foregroundStyle(theme.panel).frame(width: 48, height: 48).background(theme.ink, in: Circle()).sidebarHitCircle()
             }.disabled(!snapshot.permits(.newConversation)).accessibilityLabel(localize("新对话")).accessibilityIdentifier("sidebar.new")
         }
         .padding(.horizontal, 12).padding(.top, 20).padding(.bottom, 8)
@@ -177,6 +212,11 @@ public struct SidebarPanel: View {
 }
 
 private extension View {
+    /// device-0728 P0: on iOS 26.x a Button's tap area is only the label's drawn pixels. Liquid Glass is an effect, not
+    /// hit-testable content, so a glass circle around a thin glyph (the gear's hole, the chevron) bounced on touch but
+    /// fired no action unless the finger hit a stroke. The whole visible circle is the target (fixed in later OS
+    /// releases, which is why simulator UI tests on 27 never saw it).
+    func sidebarHitCircle() -> some View { contentShape(Circle()) }
     /// Liquid Glass on iOS 26, material fallback before.
     @ViewBuilder func sidebarGlass<S: Shape>(_ shape: S, fallback: Color) -> some View {
         if #available(iOS 26.0, macOS 26.0, *) {

@@ -84,6 +84,18 @@ import UIKit
     @State private var visible=""
     @State private var pending=""
     @State private var flush:Task<Void,Never>?
+    @State private var retract:Task<Void,Never>?
+    /// IOS-NOTE rule 6: erase only the revealed part of a retracted live tail, in steps over ~0.3 s (LiveTextRetraction).
+    private func runRetraction(_ frames:[String]) async {
+        for frame in frames {
+            guard !Task.isCancelled else {return}   // a newer text change owns `retract` now
+            visible=frame
+            try? await Task.sleep(nanoseconds:UInt64(0.3/Double(max(1,frames.count))*1_000_000_000))
+        }
+        guard !Task.isCancelled else {return}
+        retract=nil
+        if pending != visible,flush == nil {flush=Task {await pace()}}
+    }
     private func pace() async {
         defer {flush=nil}
         var last=ProcessInfo.processInfo.systemUptime, carry=0.0
@@ -93,6 +105,7 @@ import UIKit
             let backlog=target.count-visible.count
             if backlog<=0 {return}
             try? await Task.sleep(nanoseconds:33_000_000)
+            guard !Task.isCancelled else {return}   // a cancelled sleep returns at once; never write a stale tick (NoBug P2-9)
             let now=ProcessInfo.processInfo.systemUptime
             carry+=StreamingConversationText.revealRate(backlog:backlog,complete:complete)*(now-last);last=now
             let n=min(backlog,Int(carry))
@@ -111,12 +124,16 @@ import UIKit
             .onAppear {visible=text;pending=text}
             .onChange(of:text){_,value in
                 pending=value
+                retract?.cancel();retract=nil
+                if !UIAccessibility.isReduceMotionEnabled,let frames=LiveTextRetraction.frames(revealed:visible,target:value) {
+                    flush?.cancel();flush=nil;retract=Task {await runRetraction(frames)};return
+                }
                 // Paced reveal: even if the provider sends one huge text_delta, release it smoothly
                 // (~60 chars/s base, adaptive speed-up for big backlogs). Tail-only fade is applied per append.
                 if !value.hasPrefix(visible) || UIAccessibility.isReduceMotionEnabled {flush?.cancel();flush=nil;visible=value;return}
                 if flush == nil {flush=Task {await pace()}}
             }
-            .onChange(of:complete){_,finished in if finished,flush == nil,visible != text {flush=Task {await pace()}}}
-            .onDisappear{flush?.cancel();flush=nil}
+            .onChange(of:complete){_,finished in if finished,flush == nil,retract == nil,visible != text {flush=Task {await pace()}}}
+            .onDisappear{flush?.cancel();flush=nil;retract?.cancel();retract=nil}
     }
 }

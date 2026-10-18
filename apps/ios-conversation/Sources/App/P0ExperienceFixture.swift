@@ -23,7 +23,7 @@ import SwiftUI
     static var scenario:String? {
         let env=launchEnvironment
         guard let id=env["CF_UI_TEST_STORE"],UUID(uuidString:id) != nil,
-              let s=env["CF_UI_TEST_SCENARIO"],["p0-ui-accepted-work","p0-ui-accepted-work-unknown","p0-ui-echo","p0-ui-consent","p0-ui-consent-handoff","p0-ui-ime","p0-ui-lifecycle","p0-ui-large","p0-ui-large-autoplay","p0-ui-reading","p0-ui-reading-growth","p0-ui-queue","p0-ui-genui","p0-ui-genui-large","p0-ui-genui-table","p0-ui-genui-chart","p0-ui-genui-weighted","p0-ui-plan","p0-ui-plan-pending","p0-ui-plan-unknown","p0-ui-sourced-artifact","p0-ui-large-sourced-artifact","p0-ui-task-action","p0-ui-task-action-unknown","p0-ui-task-action-unavailable","p0-ui-large-task-action","p0-ui-artifact-edit","p0-ui-artifact-edit-unknown","p0-ui-large-artifact-edit","p0-ui-task-control","p0-ui-task-control-unknown","p0-ui-large-task-control","p0-ui-large-task-control-unresolved","p0-ui-acceptance","p0-ui-acceptance-offline"].contains(s) else { return nil };return s
+              let s=env["CF_UI_TEST_SCENARIO"],["p0-ui-accepted-work","p0-ui-accepted-work-unknown","p0-ui-echo","p0-ui-consent","p0-ui-consent-handoff","p0-ui-ime","p0-ui-lifecycle","p0-ui-large","p0-ui-large-autoplay","p0-ui-reading","p0-ui-reading-growth","p0-ui-queue","p0-ui-genui","p0-ui-genui-large","p0-ui-genui-table","p0-ui-genui-chart","p0-ui-genui-weighted","p0-ui-plan","p0-ui-plan-pending","p0-ui-plan-unknown","p0-ui-sourced-artifact","p0-ui-large-sourced-artifact","p0-ui-task-action","p0-ui-task-action-unknown","p0-ui-task-action-unavailable","p0-ui-large-task-action","p0-ui-artifact-edit","p0-ui-artifact-edit-unknown","p0-ui-large-artifact-edit","p0-ui-task-control","p0-ui-task-control-unknown","p0-ui-large-task-control","p0-ui-large-task-control-unresolved","p0-ui-acceptance","p0-ui-device-calendar","p0-ui-acceptance-offline"].contains(s) else { return nil };return s
     }
     static var replyCalls=0,observeCalls=0,consentCalls=0
     static var readingGrowthStage=0
@@ -87,6 +87,7 @@ actor P0ExperienceBackend:ConversationBackend {
         let message=stableID("P0-UI-assistant-"+r.operationID.uuidString)
         if scenario == "p0-ui-reading-growth" {await produceReadingGrowth(r,message:message);return}
         if scenario.hasPrefix("p0-ui-acceptance") {await produceAcceptance(r,message:message);return}
+        if scenario == "p0-ui-device-calendar" {await produceDeviceCalendar(r,message:message);return}
         if scenario.hasSuffix("sourced-artifact") || scenario.contains("artifact-edit") || scenario.contains("task-action") {
             do {
                 let call="synthetic-sourced-"+r.operationID.uuidString,run=stableID(call+"-run"),artifactID=textHash(call+"-artifact")
@@ -162,6 +163,62 @@ actor P0ExperienceBackend:ConversationBackend {
         }
         emit(.completed(messageID:message,finalTextHash:textHash(body)),request:r);streams[r.operationID]?.finish()
     }
+    /// chat-context-1522 / status-line BE5C fixture (no network, model or EventKit): a 「日程」 turn suspends on a real
+    /// catpaw.approval.v1 card for create_calendar_event (server-executed write; device-call cards need a signed-in
+    /// DeviceCallGate grant, which an offline fixture deliberately cannot mint). The decision comes back through
+    /// submitApproval and finishes the SAME turn like the Edge does. Every answer ends with a followups fence.
+    private static let calendarFollowUps="\n\n```catpaw-card:followups\n- 改到后天下午可以吗？\n- 帮我设个提前 15 分钟的提醒\n```"
+    private func produceDeviceCalendar(_ r:ConversationTurnRequest,message:UUID) async {
+        let text=r.history.last(where:{$0.role == .user})?.content ?? ""
+        if text.contains("快") {   // whole reply well under the 0.6 s appear delay: no status row may flash
+            try? await Task.sleep(nanoseconds:200_000_000)
+            let body="收到。"
+            emit(.textDelta(messageID:message,text:body),request:r);emit(.completed(messageID:message,finalTextHash:textHash(body)),request:r);streams[r.operationID]?.finish();return
+        }
+        if text.contains("待办") {   // auto tool phase long enough to see the running copy, then the answer
+            let call="fixture-tasks-"+r.operationID.uuidString.lowercased()
+            try? await Task.sleep(nanoseconds:300_000_000)
+            emit(.toolStarted(callID:call,name:"list_tasks",arguments:"{}"),request:r)
+            try? await Task.sleep(nanoseconds:2_000_000_000)
+            emit(.toolResult(.init(callID:call,name:"list_tasks",content:#"{"tasks":[]}"#)),request:r)
+            try? await Task.sleep(nanoseconds:800_000_000)
+            let body="你现在没有待办。"
+            emit(.textDelta(messageID:message,text:body),request:r);emit(.completed(messageID:message,finalTextHash:textHash(body)),request:r);streams[r.operationID]?.finish();return
+        }
+        try? await Task.sleep(nanoseconds:900_000_000)
+        if text.contains("日程") || text.contains("日历") {
+            let call="fixture-cal-"+r.operationID.uuidString.lowercased(),interrupt=stableID(call+"-interrupt").uuidString.lowercased()
+            let args=#"{"end":"2026-10-18T16:00:00+08:00","start":"2026-10-18T15:00:00+08:00","title":"评审会"}"#
+            emit(.toolStarted(callID:call,name:"create_calendar_event",arguments:args),request:r)
+            try? await Task.sleep(nanoseconds:700_000_000)
+            let expires=ISO8601DateFormatter().string(from:Date().addingTimeInterval(600))
+            emit(.approvalRequested(.init(interruptID:interrupt,callID:call,tool:"create_calendar_event",summary:"明天 15:00–16:00 评审会",arguments:args,argsHash:textHash(args),expiresAt:expires,risk:"device_write",rememberAllowed:false)),request:r)
+            emit(.suspended(interruptIDs:[interrupt],expiresAt:expires),request:r)
+            streams[r.operationID]?.finish();return
+        }
+        let body="这是一条测试回答，用来检查追问建议只出现在最新一条回答下面。"+Self.calendarFollowUps
+        for chunk in [String(body.prefix(12)),String(body.dropFirst(12))] {emit(.textDelta(messageID:message,text:chunk),request:r);try? await Task.sleep(nanoseconds:150_000_000)}
+        emit(.completed(messageID:message,finalTextHash:textHash(body)),request:r);streams[r.operationID]?.finish()
+    }
+    func submitApproval(_ request:ConversationTurnRequest,interruptID:String,decision:ConversationApprovalDecision,argsHash:String,operationID:UUID,afterSequence:Int) async throws -> AsyncThrowingStream<ConversationTurnEvent,Error> {
+        guard scenario == "p0-ui-device-calendar",let r=requests[request.operationID] else {throw ConversationApprovalFailure.unsupported}
+        let call="fixture-cal-"+r.operationID.uuidString.lowercased()
+        return AsyncThrowingStream { c in
+            streams[r.operationID]=c
+            Task {
+                let approved=decision != .deny
+                self.emit(.approvalResolved(interruptID:interruptID,callID:call,decision:approved ? "approved":"denied",remember:false),request:r)
+                // Like the Edge: the model always gets the tool result, a denial included.
+                self.emit(.toolResult(.init(callID:call,name:"create_calendar_event",content:approved ? #"{"status":"ok"}"# : #"{"status":"user_declined"}"#)),request:r)
+                try? await Task.sleep(nanoseconds:400_000_000)
+                let message=stableID("P0-UI-assistant-after-"+r.operationID.uuidString)
+                let body=(approved ? "已经加到日历里了。" : "好的，没有添加这个日程。")+Self.calendarFollowUps
+                self.emit(.textDelta(messageID:message,text:body),request:r)
+                self.emit(.completed(messageID:message,finalTextHash:textHash(body)),request:r);self.finish(r.operationID)
+            }
+        }
+    }
+    private func finish(_ id:UUID){streams[id]?.finish()}
     /// Controlled native-layout fixture: actual transcript events, no network or model.
     /// Test controls only delivery timing; the production renderer owns every pixel.
     private func produceReadingGrowth(_ r:ConversationTurnRequest,message:UUID) async {

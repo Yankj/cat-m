@@ -13,9 +13,27 @@ final class AuthTestStorage: NativeAuthVault, NativeAuthLogoutBarrier, @unchecke
     func failures(save: Bool = false, clear: Bool = false) { lock.lock(); defer { lock.unlock() }; failSave = save; failClear = clear }
     func load() throws -> NativeAuthCredential? { lock.lock(); defer { lock.unlock() }; return credential }
     func save(_ value: NativeAuthCredential) throws { lock.lock(); defer { lock.unlock() }; if failSave { throw NativeAuthError.storage }; credential = value }
-    func clear() throws { lock.lock(); defer { lock.unlock() }; if failClear { throw NativeAuthError.storage }; credential = nil }
+    func clear() throws { lock.lock(); defer { lock.unlock() }; if failClear { throw NativeAuthError.storage }; credential = nil; pending = nil }
     func isSignedOut() throws -> Bool { lock.lock(); defer { lock.unlock() }; return signedOut }
     func setSignedOut(_ value: Bool) throws { lock.lock(); defer { lock.unlock() }; signedOut = value }
+    // Rotation journal (launch-loader fix).
+    private var pending: NativeAuthCredential?
+    func loadPending() throws -> NativeAuthCredential? { lock.lock(); defer { lock.unlock() }; return pending }
+    func savePending(_ value: NativeAuthCredential) throws { lock.lock(); defer { lock.unlock() }; pending = value }
+    func clearPending() throws { lock.lock(); defer { lock.unlock() }; pending = nil }
+}
+/// Rotation-window remote: refresh answers at once (the server has rotated); `/user` and logout can be held open to
+/// simulate a process kill inside the window.
+actor AuthJournalRemote: NativeAuthRemote {
+    let issuer: String; let id: UUID; let clock: AuthTestClock
+    private var holdUser = false, holdSignOut = false, refreshes = 0, users = 0
+    init(issuer: String, id: UUID, clock: AuthTestClock) { self.issuer = issuer; self.id = id; self.clock = clock }
+    func behavior(holdUser: Bool = false, holdSignOut: Bool = false) { self.holdUser = holdUser; self.holdSignOut = holdSignOut }
+    func signIn(email: String, password: String) async throws -> NativeAuthCredential { .init(issuer: issuer, user: .init(id: id), accessToken: "journal.login.signature", refreshToken: "synthetic-journal-login", expiresAt: clock.now().addingTimeInterval(3600)) }
+    func refresh(refreshToken: String) async throws -> NativeAuthCredential { refreshes += 1; return .init(issuer: issuer, user: .init(id: id), accessToken: "journal.rotated.signature", refreshToken: "synthetic-journal-rotated", expiresAt: clock.now().addingTimeInterval(3600)) }
+    func user(accessToken: String) async throws -> NativeAuthUser { users += 1; if holdUser { try await Task.sleep(nanoseconds: 60_000_000_000) }; return .init(id: id) }
+    func signOut(accessToken: String) async throws { if holdSignOut { try await Task.sleep(nanoseconds: 60_000_000_000) } }
+    func refreshCount() -> Int { refreshes }
 }
 actor AuthTestRemote: NativeAuthRemote {
     let issuer: String; let id: UUID; let clock: AuthTestClock; private var logins = 0; private var refreshes = 0

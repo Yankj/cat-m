@@ -80,7 +80,7 @@ extension View { func catpawTextSelection() -> some View { modifier(CatpawTextSe
     let preview: () -> Preview
     @State private var presented = false
     @ObservedObject private var reactions = MessageReactionStore.shared
-    @GestureState private var pressing = false
+    @State private var pressing = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     func body(content view: Content) -> some View {
@@ -91,11 +91,17 @@ extension View { func catpawTextSelection() -> some View { modifier(CatpawTextSe
                 .scaleEffect(pressing && enabled && !reduceMotion ? CatpawInteractionMotion.messagePressScale : 1,
                              anchor: alignment == .trailing ? .trailing : .leading)
                 .animation(pressing ? .easeOut(duration: 0.25).delay(0.09) : CatpawInteractionMotion.pressOut, value: pressing)
-                // simultaneous: assistant Markdown keeps .textSelection, which would otherwise swallow the press
-                .simultaneousGesture(LongPressGesture(minimumDuration: 0.35).updating($pressing) { value, state, _ in state = value }.onEnded { _ in
+                // Acceptance #1 (scroll dead on message content): a `.simultaneousGesture(LongPressGesture().updating)`
+                // inside the transcript ScrollView claims the touch on iOS 18+, so vertical pans that START on a
+                // bubble never reach the scroll view (only empty space scrolled). `onLongPressGesture` with a small
+                // maximumDistance fails as soon as the finger travels, handing the pan to the ScrollView; the empty
+                // `onTapGesture` in front is the documented iOS 18 workaround that keeps the press from delaying the
+                // scroll. Child Buttons / links inside the bubble still win their taps (child gestures take priority).
+                .onTapGesture {}
+                .onLongPressGesture(minimumDuration: 0.35, maximumDistance: 10, perform: {
                     guard enabled else { return }
                     UIImpactFeedbackGenerator(style: .medium).impactOccurred(); setPresented(true)
-                })
+                }, onPressingChanged: { pressing = $0 })
                 .accessibilityAction(named: Text(AppLanguage(locale: .current).ui("更多操作"))) { if enabled { setPresented(true) } }
             if let r = reactions.reaction(id) {
                 Button { reactions.toggle(r, for: id) } label: {
