@@ -7046,5 +7046,45 @@
   "打开设置": {
     "en": "Open settings",
     "zh-Hans": "打开设置"
+  },
+  "记录": {
+    "en": "Records",
+    "zh-Hans": "记录"
+  },
+  "了解你": {
+    "en": "About you",
+    "zh-Hans": "了解你"
+  },
+  "Catpaw 发现": {
+    "en": "Found by Catpaw",
+    "zh-Hans": "Catpaw 发现"
+  },
+  "你交代的": {
+    "en": "You asked",
+    "zh-Hans": "你交代的"
+  },
+  "当前工作区的待办": {
+    "en": "To-dos in this workspace",
+    "zh-Hans": "当前工作区的待办"
+  },
+  "当前工作区的记录": {
+    "en": "Records in this workspace",
+    "zh-Hans": "当前工作区的记录"
+  },
+  "还没有待办": {
+    "en": "No to-dos yet",
+    "zh-Hans": "还没有待办"
+  },
+  "还没有记录": {
+    "en": "No records yet",
+    "zh-Hans": "还没有记录"
+  },
+  "办完的事会记在这里：报告、回执和摘要，点开可以回到原对话。": {
+    "en": "Finished work is recorded here: reports, receipts and summaries. Open one to return to its conversation.",
+    "zh-Hans": "办完的事会记在这里：报告、回执和摘要，点开可以回到原对话。"
+  },
+  "切换对话、待办和记录": {
+    "en": "Switch conversations, to-dos and records",
+    "zh-Hans": "切换对话、待办和记录"
   }
 }
