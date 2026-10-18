@@ -124,6 +124,7 @@ struct CachedMemory: Codable, Sendable, Equatable, Identifiable {
         if let token, !admits(token) { note("memory.used dropped: other account/session"); return }
         for m in memories where items[m.id] == nil { items[m.id] = m.cached(version: "") }
         usedByTurn[turnID] = ids; persist()
+        MemoryLastUsed.record(ids: ids)
     }
     func used(turnID: UUID) -> [CachedMemory] { (usedByTurn[turnID] ?? []).compactMap { items[$0] } }
 
@@ -194,14 +195,33 @@ enum MemoryEventSink {
 }
 
 extension MemoryEventSink {
+    /// v1.2: posted on the main actor when the server reports `memory_saved` for the current turn (chat shows 「已写入记忆」).
+    static let savedNotification = Notification.Name("catpaw.memory.saved")
     /// Routes the network layer's side-channel events here. Call once where the memory service is created.
     static func installSideChannel() {
         ConversationSideChannelEvents.handler = { type, turnID, data, token in
             switch type {
             case "memory.used": MemoryEventSink.used(turnID: turnID, data: data, token: token)
             case "memory.update": MemoryEventSink.update(turnID: turnID, data: data, token: token)
+            case "memory_saved": Task { @MainActor in NotificationCenter.default.post(name: MemoryEventSink.savedNotification, object: nil) }
             default: break
             }
         }
+    }
+}
+
+/// v1.2 记忆 page 「最近用过」: memory id → last instant the server reported it as used (`memory.used`). Device-local,
+/// bounded, ids only (no content), so it never outlives what the memory list itself shows.
+enum MemoryLastUsed {
+    static let key = "memory.lastUsed.v1"
+    static let limit = 500
+    static func all(_ defaults: UserDefaults = .standard) -> [String: Double] { defaults.dictionary(forKey: key) as? [String: Double] ?? [:] }
+    static func date(_ id: String, _ defaults: UserDefaults = .standard) -> Date? { all(defaults)[id].map { Date(timeIntervalSince1970: $0) } }
+    static func record(ids: [String], at now: Date = Date(), _ defaults: UserDefaults = .standard) {
+        guard !ids.isEmpty else { return }
+        var map = all(defaults)
+        for id in ids { map[id] = now.timeIntervalSince1970 }
+        if map.count > limit { for (id, _) in map.sorted(by: { $0.value < $1.value }).prefix(map.count - limit) { map[id] = nil } }
+        defaults.set(map, forKey: key)
     }
 }

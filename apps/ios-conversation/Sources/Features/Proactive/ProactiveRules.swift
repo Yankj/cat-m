@@ -55,6 +55,20 @@ enum ProactiveRules {
 
     // MARK: Codex P0-3 — delivery per level, with on-device quiet hours and daily cap (same defaults as the server).
     static let dailyNotifyCap = 5
+    /// v1.2 主动 page: why a reminder would only appear here instead of ringing right now (nil = nothing suppressed).
+    static func suppressionNotice(now: Date, deliveredToday: Int, calendar: Calendar = .current) -> String? {
+        if isQuiet(now, calendar: calendar) { return "现在是免打扰时段（22:00–8:00），提醒只放在这里，不推送通知。" }
+        if deliveredToday >= dailyNotifyCap { return "今天已经提醒过 5 次，到了上限；之后的提醒只放在这里。" }
+        return nil
+    }
+    /// v1.2 主动 page empty states: one line on how this tab fills up.
+    static func emptyHint(_ status: String) -> String {
+        switch status {
+        case "done": return "接受或处理过的主动提醒会放在这里。"
+        case "dismissed": return "点过「不用了」的提醒会放在这里。"
+        default: return "允许日历权限后，开会前我会先来提醒你。"
+        }
+    }
     static let quietStartHour = 22, quietEndHour = 8
     static func isQuiet(_ now: Date, calendar: Calendar = .current) -> Bool {
         let h = calendar.component(.hour, from: now); return h >= quietStartHour || h < quietEndHour
