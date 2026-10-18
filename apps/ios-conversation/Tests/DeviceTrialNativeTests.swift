@@ -142,7 +142,24 @@ final class DeviceTrialNativeTests: XCTestCase {
   let (model,_,service,_)=try makeP0Model();await model.start();let original=model.conversationID,other=try await service.create(scope:Profiles.user)
   model.editDraft("Synthetic composing draft");model.updateInputComposition(true)
   do { try await model.select(other);XCTFail("Active marked draft cannot switch conversation") } catch ConversationSessionError.busy { }
-  model.newConversation();XCTAssertEqual(model.conversationID,original);XCTAssertEqual(model.draft,"Synthetic composing draft");model.updateInputComposition(false);await model.deactivate()
+  model.newConversation();XCTAssertEqual(model.conversationID,original);XCTAssertEqual(model.draft,"Synthetic composing draft");model.updateInputComposition(false)
+  // IME fix: the 新对话 tapped while composing is deferred, not dropped — it opens once composition ends.
+  for _ in 0..<200 where model.conversationID == original { try await Task.sleep(nanoseconds:10_000_000) }
+  XCTAssertNotEqual(model.conversationID,original,"新对话 during marked text opens after the composition ends");await model.deactivate()
+ }
+
+ @MainActor func testNewConversationDuringCompositionEndsCompositionAndProceedsWithinGrace() async throws {
+  let (model,_,_,_)=try makeP0Model();await model.start();let original=model.conversationID
+  var ended=0;ConversationFirstModel.endInputComposition={ended+=1};defer{ConversationFirstModel.endInputComposition=nil}
+  let grace=ConversationFirstModel.newConversationCompositionGrace;ConversationFirstModel.newConversationCompositionGrace=0.05;defer{ConversationFirstModel.newConversationCompositionGrace=grace}
+  model.editDraft("你");model.updateInputComposition(true)
+  model.newConversation();model.newConversation()
+  XCTAssertEqual(ended,1,"composition is ended once; a second tap does not queue a second 新对话")
+  // The IME never reports the end: the grace fallback still proceeds instead of silently dropping the action.
+  for _ in 0..<200 where model.conversationID == original { try await Task.sleep(nanoseconds:10_000_000) }
+  XCTAssertNotEqual(model.conversationID,original)
+  XCTAssertFalse(model.isInputComposing)
+  await model.deactivate()
  }
 
  @MainActor func testP0BackgroundBeforeAdmissionPreservesOriginalPendingIntent() async throws {
@@ -334,12 +351,24 @@ final class DeviceTrialNativeTests: XCTestCase {
   XCTAssertEqual(try Data(contentsOf:resource),bytes)
  }
  func testEdgePrefixAndModernPublicHeaderInsideNativeApp() throws {
-  let base = URL(string:"https://dbyklgxdvjbutxzsjeth.supabase.co/functions/v1/catpaw-agent")!,key = "sb_publishable_native_public_fixture_1234567890"
+  let base = URL(string:"https://dbyklgxdvjbutxzsjeth.supabase.co/functions/v1/catpaw-agent")!,key = "sb_publishable_synthetic_region_12345"
   let config = try NativeChatConfiguration(origin:base,localScope:Profiles.user,serverScopeID:UUID(),publishableKey:key)
   let request = try config.makeRequest(route:"/readyz",authorization:"Bearer native-unit-user-token")
   XCTAssertEqual(request.url?.absoluteString,base.absoluteString+"/readyz");XCTAssertEqual(request.value(forHTTPHeaderField:"apikey"),key);XCTAssertEqual(request.value(forHTTPHeaderField:"Authorization"),"Bearer native-unit-user-token")
   XCTAssertThrowsError(try config.makeRequest(route:"//unapproved.example/leak",authorization:"Bearer token"))
   XCTAssertThrowsError(try NativeChatConfiguration(origin:base,localScope:Profiles.user,serverScopeID:UUID(),publishableKey:"sb_secret_never_a_client_key"))
+ }
+ /// Follow-up chips used to require `draft.isEmpty && canAcceptDraft` before filling — unsatisfiable, so a tap never sent.
+ @MainActor func testFollowUpChipQuickSendFillsEmptyComposerAndIsAcceptedLikeStarter() async throws {
+  let repo=try Repository(persistence:SelectedConversationTestStorage()),backend=P0LifecycleBackend(),service=ConversationSessionService(repository:repo,backend:backend)
+  let model=ConversationFirstModel(repository:repo,service:service);await model.start()
+  XCTAssertTrue(model.draft.isEmpty);XCTAssertFalse(model.draft.isEmpty && model.canAcceptDraft,"the old chip precondition can never hold")
+  XCTAssertFalse(model.stageQuickSend(nil));XCTAssertFalse(model.stageQuickSend("   "));XCTAssertFalse(model.stageQuickSend("帮我总结一下",attachmentsEmpty:false))
+  XCTAssertTrue(model.draft.isEmpty,"refused quick sends leave the composer untouched")
+  XCTAssertTrue(model.stageQuickSend("帮我总结一下"));XCTAssertEqual(model.draft,"帮我总结一下");XCTAssertTrue(model.canAcceptDraft)
+  XCTAssertFalse(model.stageQuickSend("另一个建议"),"never overwrites a draft");XCTAssertEqual(model.draft,"帮我总结一下")
+  model.prepareSend();XCTAssertTrue(model.draft.isEmpty);XCTAssertEqual(model.outgoingMessages.last?.text,"帮我总结一下")
+  await model.deactivate()
  }
  @MainActor func testTextConsentSurvivesPresentationBindingClearAndRejectsDuplicate() async throws {
   let repo=try Repository(persistence:SelectedConversationTestStorage()),backend=P0ExperienceBackend(scenario:"p0-ui-consent"),service=ConversationSessionService(repository:repo,backend:backend)

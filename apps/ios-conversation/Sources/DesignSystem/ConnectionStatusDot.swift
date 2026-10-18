@@ -5,10 +5,30 @@ import SwiftUI
 extension ConnectionStatusKind {
     var color: Color {
         switch self {
-        case .online: return CatpawColors.success
+        case .online: return ConnectionStatusKind.liveGreen
         case .offline: return CatpawColors.tertiary
         case .error: return CatpawColors.failure
         }
+    }
+}
+
+extension ConnectionStatusKind {
+    /// Brighter, more saturated "live" green for the selected-route / connection dot (settings, menu, header).
+    static let liveGreen = Color(UIColor { $0.userInterfaceStyle == .dark
+        ? UIColor(red: 0.28, green: 0.90, blue: 0.47, alpha: 1)
+        : UIColor(red: 0.10, green: 0.78, blue: 0.33, alpha: 1) })
+    static let neutralDot = Color(UIColor { $0.userInterfaceStyle == .dark
+        ? UIColor(white: 0.55, alpha: 1) : UIColor(white: 0.74, alpha: 1) })
+}
+
+/// Non-template dot image for `Menu` rows (menus re-tint SF Symbols; this keeps the real colour).
+enum StatusDotImage {
+    static func image(_ color: Color, size: CGFloat = 10) -> Image {
+        let ui = UIColor(color)
+        let img = UIGraphicsImageRenderer(size: CGSize(width: size, height: size)).image { _ in
+            ui.setFill(); UIBezierPath(ovalIn: CGRect(x: 0, y: 0, width: size, height: size)).fill()
+        }
+        return Image(uiImage: img.withRenderingMode(.alwaysOriginal))
     }
 }
 

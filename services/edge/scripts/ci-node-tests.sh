@@ -1,9 +1,13 @@
 #!/usr/bin/env bash
-# CI node tests for services/edge. Quarantined files need Deno / Postgres / real jose — tracked in
-# https://github.com/Yankj/catpaw-m/issues/81 (pre-existing on base, not caused by PR #80).
+# CI node tests for services/edge. Real pinned jose/postgres are installed into test/support/vendor
+# (the loader falls back to stubs without them). Remaining quarantine: https://github.com/Yankj/catpaw-m/issues/81
+# model-route-review-probe-next imports a build/ artifact (packages-r8/catpaw-api-v21) that is not in git.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-QUARANTINE=(anonymous-auth proactive-push-pg auth-key-service generative-ui-demo-recording model-route-review-probe-next postgres-json-binding proactive-push-action proactive-tasks-pg proactive-tasks proactive-feedback-pg)
+if [[ ! -d test/support/vendor/node_modules/jose ]]; then
+  mkdir -p test/support/vendor && (cd test/support/vendor && echo '{"private":true}' > package.json && npm i --no-audit --no-fund --silent jose@6.2.12 postgres@3.4.7)
+fi
+QUARANTINE=(model-route-review-probe-next generative-ui-demo-recording proactive-push-pg proactive-feedback-pg)
 files=()
 for f in test/*.test.mjs; do
   name=$(basename "$f" .test.mjs); skip=0

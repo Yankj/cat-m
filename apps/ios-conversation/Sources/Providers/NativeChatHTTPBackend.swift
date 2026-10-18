@@ -55,6 +55,7 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
     private var continuationReceipts:[UUID:[String:ConversationTaskRevisionReceipt]]=[:]
     private var revisionWorkReceipts:[UUID:[String:ConversationRevisionWorkReceipt]]=[:]
     private var continuationSourceHashes:[UUID:String]=[:]
+    private var livePreviewDropLogged: Set<UUID> = []
     public nonisolated var supportsArtifactContinuations:Bool {configuration.expectedSubjectID != nil}
     public nonisolated var artifactContinuationSubjectID:UUID? {configuration.expectedSubjectID}
     private var observedModelState: ConversationConnection.State?
@@ -176,7 +177,18 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
         let metadata = try await json("/catpaw/privacy/v1/model-route",auth:auth),ui = try Self.object(metadata["ui"]),routeHash = try Self.sha(metadata["route_hash"])
         let path = "/catpaw/privacy/v1/scopes/"+configuration.serverScopeID.uuidString.lowercased()+"/conversations/"+conversationID.uuidString.lowercased()+"/model-consent"
         let stored = try await json(path,auth:auth);let prior = stored["consent"] as? [String:Any]
-        if prior?["decision"] as? String == "allow",prior?["route_hash"] as? String == routeHash { return nil }
+        let account = AccountModelConsentMemory(subjectID: configuration.expectedSubjectID, serverScopeID: configuration.serverScopeID)
+        if prior?["decision"] as? String == "allow",prior?["route_hash"] as? String == routeHash { account.remember(routeHash); return nil }
+        // Acceptance #2: the server keys provider consent per (subject, conversation) (_shared/api.mjs:178/207,
+        // consentId(subject_id, conversation.id)), so every NEW conversation came back without a row and the sheet re-asked.
+        // The user already allowed this exact disclosure (same route_hash) for this account: record the per-chat row
+        // silently. A changed route_hash, another account, or an explicit "deny" on this chat still shows the sheet.
+        if prior?["decision"] as? String != "deny", account.allows(routeHash), case let revision = (prior?["revision"] as? Int) ?? 0, revision >= 0 {
+            do {
+                let reply = try await json(path,auth:auth,body:["decision":"allow","expected_revision":revision,"route_hash":routeHash]),row = try Self.object(reply["consent"])
+                if row["decision"] as? String == "allow",row["route_hash"] as? String == routeHash,row["revision"] as? Int == revision+1 { sendDiagnostic("catpaw.send consent carried route=\(routeHash.prefix(8))"); return nil }
+            } catch { sendDiagnostic("catpaw.send consent carry failed; showing sheet") }
+        }
         guard let title = ui["title"] as? String,let body = ui["body"] as? String,title.utf8.count <= 512,body.utf8.count <= 12000 else { throw ConversationSessionError.invalidEvent }
         let revision = prior?["revision"] as? Int ?? 0;guard revision >= 0 else { throw ConversationSessionError.invalidEvent }
         return .init(conversationID:conversationID,title:title,body:Self.consentBody(body,metadata:metadata,ui:ui),routeHash:routeHash,expectedRevision:revision)
@@ -200,6 +212,7 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
         let auth = try await authorization(scope),path = "/catpaw/privacy/v1/scopes/"+configuration.serverScopeID.uuidString.lowercased()+"/conversations/"+consent.conversationID.uuidString.lowercased()+"/model-consent"
         let reply = try await json(path,auth:auth,body:["decision":"allow","expected_revision":consent.expectedRevision,"route_hash":consent.routeHash]),row = try Self.object(reply["consent"])
         guard row["decision"] as? String == "allow",row["route_hash"] as? String == consent.routeHash,row["revision"] as? Int == consent.expectedRevision+1 else { throw ConversationSessionError.invalidEvent }
+        AccountModelConsentMemory(subjectID: configuration.expectedSubjectID, serverScopeID: configuration.serverScopeID).remember(consent.routeHash)
     }
     public func acceptedWorkCapability(scope:DataScope,conversationID:UUID) async throws -> ConversationAcceptedWorkCapability {
         guard scope==configuration.localScope else {throw CatpawError.scopeMismatch}
@@ -312,13 +325,27 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
         let auth: String, grant: Int, upload: URLRequest
         do { (auth, grant, upload) = try await prepare(request) }
         catch { sendDiagnostic("catpaw.send prepare refused op=\(request.operationID.uuidString.prefix(8)) error=\(String(describing:error))");throw ConversationDispatchFailure.notSent(reason: Self.friendlyTransportMessage(error)) }
+        // NoBug P1: the busy re-POST carries this account's Authorization; it may only go out while the same account is
+        // still signed in in the same epoch (captured before the first POST).
+        let principal = AccountEpoch.shared.capture()
         return AsyncThrowingStream { continuation in
             let task = Task {
                 var postInitiated = false
                 do {
                     try Task.checkCancellation()
                     postInitiated = true // From here a transport error cannot prove non-admission.
-                    let (bytes, response) = try await self.session.bytes(for: upload)
+                    // catpaw-api v48: 503 chat_runtime_busy (up to ~60 s after a re-consent) is a refusal before admission,
+                    // whatever its `retryable` flag says. Re-POST the same operation quietly with backoff; the user's
+                    // bubble keeps its in-flight spinner and no error shows unless the budget runs out.
+                    let (bytes, response) = try await ChatRuntimeBusyRetry.run(post: {
+                        let (wire, reply) = try await self.session.bytes(for: upload)
+                        guard Self.supportsResume(request), let busy = reply as? HTTPURLResponse, busy.statusCode == 503 else { return (wire, reply) }
+                        var body = Data(); for try await byte in wire { guard body.count < 65536 else { break }; body.append(byte) }
+                        guard ChatRuntimeBusyRetry.isBusy(body) else { throw NativeChatHTTPFailure.turnResponse(503) }
+                        sendDiagnostic("catpaw.send chat_runtime_busy op=\(request.operationID.uuidString.prefix(8)) quiet retry")
+                        throw ChatRuntimeBusyRetry.Busy(retryAfter: ChatRuntimeBusyRetry.retryAfter(header: busy.value(forHTTPHeaderField: "Retry-After"), body: body))
+                    }, sleep: ChatRuntimeBusyRetry.sleep, stillCurrent: { ChatRuntimeBusyRetry.sameAccount(principal) },
+                       exhausted: { NativeChatHTTPFailure.turnResponse(503) })   // same URLRequest → same Idempotency-Key (= turn_id)
                     guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
                         let status=(response as? HTTPURLResponse)?.statusCode ?? 0
                         if status == 401 { await self.credentials.rejected(scope: request.scope) }
@@ -332,6 +359,8 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
                         // not sent with its code so the client shows a quota notice instead of "connection lost".
                         if request.continuation == nil,(response as? HTTPURLResponse)?.mimeType == "application/json",(400...499).contains(status) {
                             var errorData=Data();for try await byte in bytes {guard errorData.count<65536 else {break};errorData.append(byte)}
+                            // 413 conversation_too_long (422 history_limit_reached on older servers): nothing was written; not sent.
+                            if let code=ConversationLengthLimit.code(status:status,body:errorData) {throw ConversationDispatchFailure.notSent(reason:code)}
                             if let envelope=try? JSONSerialization.jsonObject(with:errorData) as? [String:Any] {
                                 let problem=(envelope["error"] as? [String:Any]) ?? envelope
                                 if let code=problem["code"] as? String,ConversationTerminalServerError.isQuota(code) {throw ConversationDispatchFailure.notSent(reason:code)}
@@ -355,7 +384,7 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
                             try Task.checkCancellation()
                             if afterCR {afterCR=false;if byte==0x0a {continue}}
                             if byte==0x0a || byte==0x0d {
-                                if let wire=try Self.sseEventLine(line,strict:request.continuation != nil || request.acceptedWork != nil) {continuation.yield(try await self.decode(wire, request:request, grant:grant, auth:auth))}
+                                if let wire=try Self.sseEventLine(line,strict:request.continuation != nil || request.acceptedWork != nil) {continuation.yield(try await self.decode(wire, request:request, grant:grant, auth:auth, livePreviews:true))}
                                 line.removeAll(keepingCapacity:true);afterCR=byte==0x0d
                             } else {
                                 guard line.count<262144 else {throw ConversationSessionError.invalidEvent};line.append(byte)
@@ -412,10 +441,71 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
     static let approvalContract = "catpaw.approval.v1"
     static let approvalHeader = "X-Catpaw-Approval-Contract"
     static let timeZoneHeader = "X-Catpaw-Time-Zone"
+    /// fix/context-window-v11x (59b5aae6): opt in to live-only `text_preview` frames on every request whose response is the
+    /// plain turn SSE (POST turns, GET events, retry-busy, approval/device decisions). Servers without it ignore the header.
+    static let liveTextHeader = "X-Catpaw-Live-Text"
+    static func requestLiveText(_ request: inout URLRequest) { request.setValue("1", forHTTPHeaderField: liveTextHeader) }
+    /// One content-free diagnostic per turn for dropped previews (reason token only; never text or ids beyond the op prefix).
+    private func noteDroppedLivePreview(_ operationID: UUID, reason: String) {
+        if livePreviewDropLogged.count > 256 { livePreviewDropLogged.removeAll() }
+        guard livePreviewDropLogged.insert(operationID).inserted else { return }
+        sendDiagnostic("catpaw.live preview dropped op=\(operationID.uuidString.prefix(8)) reason=\(reason)")
+    }
+    /// Model realities a preview may carry (same set as the strict check in `decode`, minus `not_configured`).
+    private func acceptsLiveReality(_ reality: String?) -> Bool {
+        reality == "provider_unverified" || (configuration.allowInjectedTestProvider && (reality == "injected_test_provider" || (reality == "injected_offline_only" && configuration.origin.scheme=="http" && configuration.origin.host=="127.0.0.1"))) || (configuration.useFrozenFixtureMetadata && reality == "injected_synthetic_fixture")
+    }
+    /// The dropped form of a preview: `ConversationSessionService.isLivePreview` discards it before the journal and the
+    /// sequence checks, and it is never emitted to observers.
+    static func droppedLivePreview(_ request: ConversationTurnRequest) -> ConversationTurnEvent {
+        ConversationTurnEvent(operationID: request.operationID, epoch: request.epoch, sequence: 0, payload: .sideChannel(type: "text_preview", data: Data()), conversationID: request.conversationID, turnID: request.operationID)
+    }
+    /// 三角 (prod v53): a `text_preview` with sequence < 1, a scope/conversation/turn/grant/cursor mismatch, an unexpected
+    /// model reality, a non-plain turn or bad data is DROPPED, never a turn failure. Message-id pinning (one assistant
+    /// message per turn) happens in AnswerPhaseProjection.
+    static func livePreviewEvent(_ wire: [String: Any], request: ConversationTurnRequest, scopeID: UUID, grant: Int, realityAccepted: Bool) -> ConversationTurnEvent {
+        livePreviewDecode(wire, request: request, scopeID: scopeID, grant: grant, realityAccepted: realityAccepted).event
+    }
+    /// Same as `livePreviewEvent`, plus a content-free drop reason (an enum-like token, never text) for the diagnostic.
+    static func livePreviewDecode(_ wire: [String: Any], request: ConversationTurnRequest, scopeID: UUID, grant: Int, realityAccepted: Bool) -> (event: ConversationTurnEvent, dropReason: String?) {
+        func drop(_ reason: String) -> (event: ConversationTurnEvent, dropReason: String?) { (droppedLivePreview(request), reason) }
+        guard realityAccepted else { return drop("reality") }
+        guard supportsResume(request) else { return drop("not_plain_turn") }
+        guard (try? chatEnvelope(wire)) != nil else { return drop("envelope") }
+        guard let sequence = try? positive(wire["sequence"]) else { return drop("sequence") }
+        guard UUID(uuidString: wire["scope_id"] as? String ?? "") == scopeID else { return drop("scope") }
+        guard UUID(uuidString: wire["conversation_id"] as? String ?? "") == request.conversationID else { return drop("conversation") }
+        guard UUID(uuidString: wire["turn_id"] as? String ?? "") == request.operationID else { return drop("turn") }
+        guard (try? positive(wire["grant_epoch"])) == grant else { return drop("grant") }
+        guard wire["cursor"] as? String == request.operationID.uuidString.lowercased() + ":\(sequence)" else { return drop("cursor") }
+        guard let data = wire["data"] as? [String: Any], let preview = textPreview(data, sequence: sequence) else { return drop("data") }
+        return (ConversationTurnEvent(operationID: request.operationID, epoch: request.epoch, sequence: sequence, payload: .textPreview(preview), conversationID: request.conversationID, turnID: request.operationID), nil)
+    }
+    /// `text_preview.data` → preview, or nil when the frame is not mergeable. A bad preview is dropped (no transcript
+    /// effect), never a turn failure: it is advisory and the persisted `text_delta` batches carry the same text.
+    static func textPreview(_ data: [String: Any], sequence: Int) -> ConversationTextPreview? {
+        guard boolean(data["live"]) == true, let id = UUID(uuidString: data["message_id"] as? String ?? ""), let text = data["text"] as? String,
+              let offset = data["offset"] as? NSNumber, CFGetTypeID(offset) != CFBooleanGetTypeID(), offset.doubleValue >= 0,
+              offset.doubleValue.rounded() == offset.doubleValue, offset.doubleValue <= Double(Int32.max),
+              let base = try? positive(data["base_sequence"]), base == sequence else { return nil }
+        return ConversationTextPreview(messageID: id, offset: offset.intValue, text: text, baseSequence: base)
+    }
     /// Tools that only exist on approval-negotiated plain turns (services/edge TOOL_APPROVAL).
     static let approvalToolNames: Set<String> = ["render_ui", "list_tasks", "create_task", "update_task", "create_calendar_event", "update_calendar_event", "create_reminder", "update_reminder", "external_write",
         // catpaw.device.v1 (executed on this phone; services/edge/supabase/functions/_shared/core/src/device-call.mjs)
-        "calendar_list", "calendar_create", "reminder_create", "mail_compose", "sms_compose", "phone_call", "contacts_search", "maps_open", "shop_open", "alarm_set", "shortcut_run"]
+        "calendar_list", "calendar_create", "reminder_create", "mail_compose", "sms_compose", "phone_call", "contacts_search", "maps_open", "shop_open", "alarm_set", "shortcut_run",
+        // Acceptance #3: places_search (附近咖啡馆 starter) was advertised in X-Catpaw-Device-Tools but missing here, so its
+        // `tool_call` failed ConversationSessionService.apply → invalidEvent (「服务返回了不匹配的对话或工具结果」).
+        // Must stay a superset of DeviceToolContract.clientTools (DeviceToolNamesContractTests).
+        "places_search",
+        // NoBug harness review §4.6: catpaw.agent-memory.v1 tools are server-registered gated chat tools (api.mjs gatedChatTools,
+        // agent-memory/contract.mjs MEMORY_TOOLS), offered only on approval.v1 turns with memory on. Missing here, any memory
+        // tool_call failed apply → invalidEvent (「服务返回了不匹配的对话或工具结果」). Server-executed; see memoryToolApproval.
+        "memory_search", "memory_save", "memory_update", "memory_forget"]
+    /// catpaw.approval.v1 classification of the agent-memory tools, mirroring services/…/core/src/tools.mjs TOOL_APPROVAL
+    /// (true = the server suspends with `approval_requested` before executing; false = runs automatically, reversible via
+    /// undo / Settings › 记忆). iOS never executes these; the approval card is driven by the server's interrupt.
+    static let memoryToolApproval: [String: Bool] = ["memory_search": false, "memory_save": false, "memory_update": false, "memory_forget": true]
     /// Snapshot `pending_approvals`: kind "ui" rows are catpaw.ui.v1 blocks, everything else a tool approval card.
     public static func splitPendingApprovals(_ rows: [[String: Any]]) throws -> (tools: [ConversationApprovalRequest], ui: [ConversationUIApproval]) {
         var tools: [ConversationApprovalRequest] = [], ui: [ConversationUIApproval] = []
@@ -480,7 +570,7 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
         let route = turnPath(request) + "/" + request.operationID.uuidString.lowercased() + (deviceResult ? "/device-result" : "/interrupts/" + interruptID.lowercased() + "/decision") + "?after_sequence=\(afterSequence)"
         var post = try self.request(route, auth: auth)
         post.httpMethod = "POST"; post.timeoutInterval = ConversationReconnectPolicy.idleTimeout; post.setValue("text/event-stream, application/json", forHTTPHeaderField: "Accept"); post.setValue(TimeZone.current.identifier, forHTTPHeaderField: Self.timeZoneHeader); post.setValue(ConversationMemorySwitch.headerValue, forHTTPHeaderField: ConversationMemorySwitch.header)
-        post.httpBody = try Self.jsonData(decisionBody)
+        post.httpBody = try Self.jsonData(decisionBody); Self.requestLiveText(&post)
         let opened: (URLSession.AsyncBytes, URLResponse)
         do { opened = try await session.bytes(for: post) } catch is URLError { throw ConversationApprovalFailure.transport }
         let bytes = opened.0, response = opened.1
@@ -506,7 +596,7 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
                         try Task.checkCancellation()
                         if afterCR { afterCR = false; if byte == 0x0a { continue } }
                         if byte == 0x0a || byte == 0x0d {
-                            if let wire = try Self.sseEventLine(line) { continuation.yield(try await self.decode(wire, request: request, grant: grant, auth: auth)) }
+                            if let wire = try Self.sseEventLine(line) { continuation.yield(try await self.decode(wire, request: request, grant: grant, auth: auth, livePreviews: true)) }
                             line.removeAll(keepingCapacity: true); afterCR = byte == 0x0d
                         } else { guard line.count < 262144 else { throw ConversationSessionError.invalidEvent }; line.append(byte) }
                     }
@@ -527,7 +617,7 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
         catch let network as URLError { throw ConversationStreamInterrupted(reason: Self.friendlyTransportMessage(network)) }
         let original = turnPath(request) + "/" + request.operationID.uuidString.lowercased()
         var get = try self.request(busyRestart ? original + "/retry-busy" : original + "/events?after_sequence=\(afterSequence)", auth: auth)
-        get.httpMethod = busyRestart ? "POST" : "GET"; get.timeoutInterval = ConversationReconnectPolicy.idleTimeout; get.setValue("text/event-stream", forHTTPHeaderField: "Accept")
+        get.httpMethod = busyRestart ? "POST" : "GET"; get.timeoutInterval = ConversationReconnectPolicy.idleTimeout; get.setValue("text/event-stream", forHTTPHeaderField: "Accept"); if Self.supportsResume(request) { Self.requestLiveText(&get) }   // plain chat turns only (also guarded above)
         return AsyncThrowingStream { continuation in
             let task = Task {
                 do {
@@ -544,7 +634,7 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
                         try Task.checkCancellation()
                         if afterCR { afterCR = false; if byte == 0x0a { continue } }
                         if byte == 0x0a || byte == 0x0d {
-                            if let wire = try Self.sseEventLine(line) { continuation.yield(try await self.decode(wire, request: request, grant: grant, auth: auth)) }
+                            if let wire = try Self.sseEventLine(line) { continuation.yield(try await self.decode(wire, request: request, grant: grant, auth: auth, livePreviews: true)) }
                             line.removeAll(keepingCapacity: true); afterCR = byte == 0x0d
                         } else { guard line.count < 262144 else { throw ConversationSessionError.invalidEvent }; line.append(byte) }
                     }
@@ -638,6 +728,7 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
         // catpaw.approval.v1 negotiation: only plain chat turns are offered approval-gated tools.
         if Self.supportsResume(request),request.image==nil,!request.hasUploadedAttachments {upload.setValue(Self.approvalContract,forHTTPHeaderField:Self.approvalHeader);upload.setValue(ConversationUIEvent.contract,forHTTPHeaderField:ConversationUIEvent.header);upload.setValue(ConversationUIEvent.kindsHeaderValue,forHTTPHeaderField:ConversationUIEvent.kindsHeader);if ConversationDeviceCall.clientEnabled {upload.setValue(ConversationDeviceCall.contract,forHTTPHeaderField:ConversationDeviceCall.header);if !ConversationDeviceCall.clientTools.isEmpty {upload.setValue(ConversationDeviceCall.clientTools.joined(separator:","),forHTTPHeaderField:ConversationDeviceCall.toolsHeader)}}}
         upload.setValue(TimeZone.current.identifier,forHTTPHeaderField:Self.timeZoneHeader);upload.setValue(ConversationMemorySwitch.headerValue,forHTTPHeaderField:ConversationMemorySwitch.header) // task tools resolve local times
+        if Self.supportsResume(request) {Self.requestLiveText(&upload)}
         try Task.checkCancellation()
         return (auth, grant, upload)
     }
@@ -680,7 +771,9 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
         if request.continuation != nil {try validateContinuationList(turn["continuations"],request:request,terminal:turn["state"] as? String=="completed");try validateRevisionWorkList(turn["revision_work_receipts"],request:request)}
         let rows = try (turn["pending_approvals"] as? [Any] ?? []).map { try Self.object($0) }
         let pending = try Self.splitPendingApprovals(rows)
-        return ConversationObservation(request: request, events: events, requestHash: try Self.sha(turn["request_hash"]), grantEpoch: currentGrant, goals: goals, pendingApprovals: pending.tools, serverState: turn["state"] as? String, pendingUIApprovals: pending.ui)
+        var observation = ConversationObservation(request: request, events: events, requestHash: try Self.sha(turn["request_hash"]), grantEpoch: currentGrant, goals: goals, pendingApprovals: pending.tools, serverState: turn["state"] as? String, pendingUIApprovals: pending.ui)
+        observation.interactionOutcomes = ConversationServerOutcome.parse(conversation["interaction_outcomes"])   // P1-4
+        return observation
     }
     private func readConversation(_ value: ConversationTurnRequest, auth: String, mayCreate: Bool,strict:Bool=false) async throws -> [String: Any] {
         var wrapper: [String: Any]
@@ -695,7 +788,15 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
               c["state"] as? String == "active", c["policy"] as? String == "conversation-local-output-v1" else { throw ConversationSessionError.invalidEvent }
         return c
     }
-    private func decode(_ wire: [String: Any], request: ConversationTurnRequest, grant: Int, auth: String) async throws -> ConversationTurnEvent {
+    private func decode(_ wire: [String: Any], request: ConversationTurnRequest, grant: Int, auth: String, livePreviews: Bool = false) async throws -> ConversationTurnEvent {
+        if wire["type"] as? String == "text_preview" {
+            // Previews are never stored: inside a JSON snapshot or a read-back `events` array one means a broken server.
+            guard livePreviews else { throw ConversationSessionError.invalidEvent }
+            // Live SSE only: bypass the strict envelope checks below (which would fail the turn); anything off is dropped.
+            let decoded = Self.livePreviewDecode(wire, request: request, scopeID: configuration.serverScopeID, grant: grant, realityAccepted: acceptsLiveReality(wire["model_reality"] as? String))
+            if let reason = decoded.dropReason { noteDroppedLivePreview(request.operationID, reason: reason) }
+            return decoded.event
+        }
         try Self.chatEnvelope(wire)
         let sequence = try Self.positive(wire["sequence"])
         guard UUID(uuidString: wire["scope_id"] as? String ?? "") == configuration.serverScopeID,
@@ -779,7 +880,7 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
             payload = .approvalRequested(try Self.approval(data))
         case "turn_suspended":
             guard let ids = data["interrupt_ids"] as? [String], !ids.isEmpty, ids.allSatisfy({ UUID(uuidString: $0) != nil }), let expires = data["expires_at"] as? String else { throw ConversationSessionError.invalidEvent }
-            payload = .suspended(interruptIDs: ids, expiresAt: expires)
+            payload = .suspended(interruptIDs: ids, expiresAt: expires, requiresApproval: data["requires_approval"] as? Bool, waitingFor: data["waiting_for"] as? String)
         case "ui.block", "ui.block.update", "ui.block.resolve":
             // catpaw.ui.v1: plain approval-negotiated turns only; the data object is passed through for the renderer.
             guard reality != "not_configured", Self.supportsResume(request), request.image==nil, !request.hasUploadedAttachments, let raw = type else { throw ConversationSessionError.invalidEvent }
@@ -1621,7 +1722,7 @@ public actor CatpawDemoConversationBackend: ConversationBackend {
                 let ui = try ConversationUIEvent.decode(type: wire.type, sequence: sequence, payload: data)
                 out.append(event(request, ui.type == .block ? .uiBlock(ui) : ui.type == .update ? .uiBlockUpdate(ui) : .uiBlockResolve(ui)))
             case "turn_suspended":
-                out.append(event(request, .suspended(interruptIDs: object["interrupt_ids"] as? [String] ?? [], expiresAt: object["expires_at"] as? String ?? "")))
+                out.append(event(request, .suspended(interruptIDs: object["interrupt_ids"] as? [String] ?? [], expiresAt: object["expires_at"] as? String ?? "", requiresApproval: object["requires_approval"] as? Bool, waitingFor: object["waiting_for"] as? String)))
             case "approval_resolved":
                 out.append(event(request, .approvalResolved(interruptID: object["interrupt_id"] as? String ?? "", callID: object["call_id"] as? String ?? "", decision: object["decision"] as? String ?? "", remember: false)))
             case "turn_completed":
@@ -1743,4 +1844,71 @@ public actor ChatAttachmentSendCoordinator {
         kept[retry.operationID] = images; receipts[retry.operationID] = uploaded
         return retry.withAttachmentIDs(uploaded.map(\.id))
     }
+}
+
+/// catpaw-api `503 chat_runtime_busy` (JSON, before the SSE stream starts): always retryable on the client — prod v48
+/// still sends `retryable:false`; the coming backend fix sends `retryable:true` + `Retry-After: 1–60`. Matched on the code
+/// string only. A Retry-After header (or retry_after_seconds) wins, clamped 0.5–60 s; otherwise quiet exponential backoff
+/// 1, 2, 4, 8, 16 s. At most 5 re-POSTs within a 60 s total budget, each the SAME URLRequest (same Idempotency-Key =
+/// turn_id). When exhausted, the existing 503 message (「尚未确认…不要重新发送」) is the final fallback.
+enum ChatRuntimeBusyRetry {
+    static let code = "chat_runtime_busy"
+    static let budget: TimeInterval = 60
+    static let maxRetries = 5
+    struct Busy: Error { let retryAfter: TimeInterval? }
+    nonisolated(unsafe) static var sleep: @Sendable (TimeInterval) async throws -> Void = { try await Task.sleep(nanoseconds: UInt64($0 * 1_000_000_000)) }
+    private static func problem(_ body: Data) -> [String: Any]? {
+        guard let object = try? JSONSerialization.jsonObject(with: body) as? [String: Any] else { return nil }
+        return (object["error"] as? [String: Any]) ?? object
+    }
+    /// True for the busy code regardless of `retryable`.
+    static func isBusy(_ body: Data) -> Bool { problem(body)?["code"] as? String == code }
+    static func retryAfter(header: String?, body: Data) -> TimeInterval? {
+        if let raw = header?.trimmingCharacters(in: .whitespaces), let seconds = Double(raw), seconds.isFinite, seconds >= 0 { return seconds }
+        guard let problem = problem(body) else { return nil }
+        for key in ["retry_after_seconds", "retry_after_sec", "retry_after"] {
+            if let n = problem[key] as? NSNumber, CFGetTypeID(n) != CFBooleanGetTypeID(), n.doubleValue.isFinite, n.doubleValue >= 0 { return n.doubleValue }
+        }
+        return nil
+    }
+    static func delay(attempt: Int, retryAfter: TimeInterval?) -> TimeInterval {
+        if let retryAfter { return min(max(retryAfter, 0.5), 60) }
+        return min(pow(2, Double(max(1, attempt) - 1)), 16)
+    }
+    /// The account that started the send is still the signed-in one, same epoch (no sign-out / switch / restart since).
+    static func sameAccount(_ principal: AccountToken?, epoch: AccountEpoch = .shared) -> Bool {
+        principal.map { epoch.isValid($0) } ?? (epoch.capture() == nil)
+    }
+    /// Shown when a quiet retry is dropped because its account left: a busy refusal proves the turn was never admitted.
+    static let leftAccountMessage = "已退出该账号，这条消息没有发送。"
+    /// `post` throws `Busy` for a busy refusal; any other result or error passes through unchanged. After every sleep and
+    /// before every re-POST: cancellation, then `stillCurrent` (AccountEpoch) — a stale account's turn is never re-sent.
+    static func run<R>(post: () async throws -> R, sleep: (TimeInterval) async throws -> Void, stillCurrent: () -> Bool = { true }, exhausted: () -> Error) async throws -> R {
+        var waited: TimeInterval = 0, attempt = 0
+        while true {
+            do { return try await post() }
+            catch let busy as Busy {
+                attempt += 1
+                let wait = delay(attempt: attempt, retryAfter: busy.retryAfter)
+                guard attempt <= maxRetries, waited + wait <= budget else { throw exhausted() }
+                try Task.checkCancellation()
+                try await sleep(wait); waited += wait
+                try Task.checkCancellation()
+                guard stillCurrent() else { throw ConversationDispatchFailure.notSent(reason: leftAccountMessage) }
+            }
+        }
+    }
+}
+
+/// Acceptance #2: the account-level record of "this user allowed model route `route_hash`". The server stores consent per
+/// conversation; this lets a new conversation of the SAME account inherit the decision until the disclosure changes.
+/// Keyed by subject + server scope (never shared across accounts); stores only the public route hash, no content.
+struct AccountModelConsentMemory {
+    let subjectID: UUID?
+    let serverScopeID: UUID
+    var defaults: UserDefaults = .standard
+    var key: String? { subjectID.map { "catpaw.modelConsent.v1.\($0.uuidString.lowercased()).\(serverScopeID.uuidString.lowercased())" } }
+    func allows(_ routeHash: String) -> Bool { guard let key, !routeHash.isEmpty else { return false }; return defaults.string(forKey: key) == routeHash }
+    func remember(_ routeHash: String) { guard let key, !routeHash.isEmpty else { return }; defaults.set(routeHash, forKey: key) }
+    func forget() { if let key { defaults.removeObject(forKey: key) } }
 }

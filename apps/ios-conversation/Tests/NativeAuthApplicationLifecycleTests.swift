@@ -1,5 +1,6 @@
 import Foundation
 import XCTest
+import SwiftUI
 @testable import CatpawM
 
 /// Exercises real composition and teardown with a named offline login remote.
@@ -7,7 +8,7 @@ import XCTest
 final class NativeAuthApplicationLifecycleTests:XCTestCase {
     @MainActor func testActiveKnownRotationRecoversAutomaticallyInSameLocalChat() async throws {
         let root=FileManager.default.temporaryDirectory.appendingPathComponent("native-active-rotation-"+UUID().uuidString,isDirectory:true)
-        defer {try? FileManager.default.removeItem(at:root)}
+        defer {retireStoreRoot(root)}
         let scope=UUID(),clock=AuthTestClock(),storage=LifecycleStorage(),configuration=try lifecycleConfiguration(scope:scope)
         let remote=AnonymousTestRemote(issuer:configuration.issuer,clock:clock)
         try storage.save(await remote.candidate())
@@ -35,7 +36,7 @@ final class NativeAuthApplicationLifecycleTests:XCTestCase {
     /// ledger), per-item decision, apply, observers — in that order; unanswered = keep; passive (no decider) = keep, logged.
     @MainActor func testLogoutWithInFlightDeviceOperationAsksFirst() async throws {
         let root=FileManager.default.temporaryDirectory.appendingPathComponent("native-inflight-"+UUID().uuidString,isDirectory:true)
-        defer {try? FileManager.default.removeItem(at:root)}
+        defer {retireStoreRoot(root)}
         let scope=UUID(),clock=AuthTestClock(),storage=LifecycleStorage(),configuration=try lifecycleConfiguration(scope:scope)
         let remote=AnonymousTestRemote(issuer:configuration.issuer,clock:clock)
         try storage.save(await remote.candidate())
@@ -87,7 +88,7 @@ final class NativeAuthApplicationLifecycleTests:XCTestCase {
 
     @MainActor func testWorkspaceBackoffGrowsAndCapsWithoutNewLogin() async throws {
         let root=FileManager.default.temporaryDirectory.appendingPathComponent("native-workspace-backoff-"+UUID().uuidString,isDirectory:true)
-        defer {try? FileManager.default.removeItem(at:root)}
+        defer {retireStoreRoot(root)}
         let scope=UUID(),subject=UUID(),clock=LifecycleClock(),storage=LifecycleStorage()
         let configuration=try lifecycleConfiguration(scope:scope)
         let remote=LifecycleRemote(issuer:configuration.issuer,subject:subject,clock:clock)
@@ -113,7 +114,7 @@ final class NativeAuthApplicationLifecycleTests:XCTestCase {
 
     @MainActor func testKnownRotationRetriesOnlyUserValidationAndPreservesIdentity() async throws {
         let root=FileManager.default.temporaryDirectory.appendingPathComponent("native-known-rotation-"+UUID().uuidString,isDirectory:true)
-        defer {try? FileManager.default.removeItem(at:root)}
+        defer {retireStoreRoot(root)}
         let scope=UUID(),clock=AuthTestClock(),storage=LifecycleStorage(),configuration=try lifecycleConfiguration(scope:scope)
         let remote=AnonymousTestRemote(issuer:configuration.issuer,clock:clock)
         try storage.save(await remote.candidate(expired:true))
@@ -137,7 +138,7 @@ final class NativeAuthApplicationLifecycleTests:XCTestCase {
 
     @MainActor func testLogoutDuringColdRecoveryCancelsRetryAndNeverReopens() async throws {
         let root=FileManager.default.temporaryDirectory.appendingPathComponent("native-restore-logout-"+UUID().uuidString,isDirectory:true)
-        defer {try? FileManager.default.removeItem(at:root)}
+        defer {retireStoreRoot(root)}
         let scope=UUID(),storage=LifecycleStorage(),configuration=try lifecycleConfiguration(scope:scope)
         let remote=AnonymousTestRemote(issuer:configuration.issuer)
         try storage.save(await remote.candidate());await remote.behavior(unavailable:true)
@@ -155,7 +156,7 @@ final class NativeAuthApplicationLifecycleTests:XCTestCase {
 
     @MainActor func testRejectedWorkspaceStopsWithFriendlyCopyUntilExplicitRestart() async throws {
         let root=FileManager.default.temporaryDirectory.appendingPathComponent("native-workspace-rejected-"+UUID().uuidString,isDirectory:true)
-        defer {try? FileManager.default.removeItem(at:root)}
+        defer {retireStoreRoot(root)}
         let scope=UUID(),subject=UUID(),clock=LifecycleClock(),storage=LifecycleStorage()
         let configuration=try lifecycleConfiguration(scope:scope)
         let remote=LifecycleRemote(issuer:configuration.issuer,subject:subject,clock:clock)
@@ -173,7 +174,7 @@ final class NativeAuthApplicationLifecycleTests:XCTestCase {
 
     @MainActor func testWorkspace503RetriesSilentlyAndCoalescesUntilSuccess() async throws {
         let root=FileManager.default.temporaryDirectory.appendingPathComponent("native-workspace-retry-"+UUID().uuidString,isDirectory:true)
-        defer {try? FileManager.default.removeItem(at:root)}
+        defer {retireStoreRoot(root)}
         let scope=UUID(),subject=UUID(),clock=LifecycleClock(),storage=LifecycleStorage()
         let configuration=try lifecycleConfiguration(scope:scope)
         let remote=LifecycleRemote(issuer:configuration.issuer,subject:subject,clock:clock)
@@ -201,6 +202,22 @@ final class NativeAuthApplicationLifecycleTests:XCTestCase {
         ProactiveClock.now={Date(timeIntervalSince1970:1_792_040_400)}   // fixed instant 2026-10-15T05:00Z (no wall clock)
         defer {ProactiveClock.now={Date()}}
         ProactiveEngine.registerAccountObserver()
+        // v1.1 R3: proactive inbox records are sealed in the account's L2 store, which production activates from the chat
+        // view's .task (CatpawApp: L2SecureStore.activate(userID:)). This test has no view, so mirror that: one temp-dir
+        // store per account, active exactly while that account is current (nil when signed out), with real ownership.
+        let l2Root=FileManager.default.temporaryDirectory.appendingPathComponent("native-proactive-l2-"+UUID().uuidString,isDirectory:true)
+        let l2Keys=EphemeralL2KeyProvider()
+        var l2Stores:[String:L2SecureStore]=[:]
+        ProactiveSealedStore.store={
+            guard let account=AccountEpoch.shared.currentAccount?.lowercased(),let uid=UUID(uuidString:account) else {return nil}
+            if let s=l2Stores[account] {return s}
+            let s=try? L2SecureStore(userID:uid,root:l2Root,keys:l2Keys); l2Stores[account]=s; return s
+        }
+        ProactiveSealedStore.storeOwnedBy=ProactiveSealedStore.realOwnership
+        defer {
+            ProactiveSealedStore.store={L2SecureStore.current}
+            retireStoreRoot(l2Root)
+        }
         func session(_ subject:UUID) async throws -> NativeAuthApplicationModel {
             let root=FileManager.default.temporaryDirectory.appendingPathComponent("native-proactive-"+UUID().uuidString,isDirectory:true)
             let scope=UUID(),clock=LifecycleClock(),storage=LifecycleStorage(),configuration=try lifecycleConfiguration(scope:scope)
@@ -231,7 +248,7 @@ final class NativeAuthApplicationLifecycleTests:XCTestCase {
 
     @MainActor func testReturningLocalChatStaysReadableAndForegroundWakesRetryInPlace() async throws {
         let root=FileManager.default.temporaryDirectory.appendingPathComponent("native-workspace-local-"+UUID().uuidString,isDirectory:true)
-        defer {try? FileManager.default.removeItem(at:root)}
+        defer {retireStoreRoot(root)}
         let scope=UUID(),subject=UUID(),clock=LifecycleClock(),storage=LifecycleStorage()
         let configuration=try lifecycleConfiguration(scope:scope)
         let credential=NativeAuthCredential(issuer:configuration.issuer,user:.init(id:subject),accessToken:"offline.lifecycle.signature",refreshToken:"synthetic-lifecycle-only",expiresAt:clock.now().addingTimeInterval(3600))
@@ -270,7 +287,7 @@ final class NativeAuthApplicationLifecycleTests:XCTestCase {
 
     @MainActor func testReachabilityAndLogoutFenceWorkspaceResolution() async throws {
         let root=FileManager.default.temporaryDirectory.appendingPathComponent("native-workspace-fence-"+UUID().uuidString,isDirectory:true)
-        defer {try? FileManager.default.removeItem(at:root)}
+        defer {retireStoreRoot(root)}
         let scope=UUID(),subject=UUID(),clock=LifecycleClock(),storage=LifecycleStorage()
         let configuration=try lifecycleConfiguration(scope:scope)
         let remote=LifecycleRemote(issuer:configuration.issuer,subject:subject,clock:clock)
@@ -300,7 +317,7 @@ final class NativeAuthApplicationLifecycleTests:XCTestCase {
 
     @MainActor func testColdValidationRetriesSafelyWithoutCreatingAnotherIdentity() async throws {
         let root=FileManager.default.temporaryDirectory.appendingPathComponent("native-auth-safe-restore-"+UUID().uuidString,isDirectory:true)
-        defer {try? FileManager.default.removeItem(at:root)}
+        defer {retireStoreRoot(root)}
         let scope=UUID(),authClock=AuthTestClock(),storage=LifecycleStorage()
         let configuration=try lifecycleConfiguration(scope:scope)
         let remote=AnonymousTestRemote(issuer:configuration.issuer,clock:authClock)
@@ -330,7 +347,7 @@ final class NativeAuthApplicationLifecycleTests:XCTestCase {
 
     @MainActor func testAmbiguousRefreshStopsWithFriendlyRestartCopyAndNoBlindRetry() async throws {
         let root=FileManager.default.temporaryDirectory.appendingPathComponent("native-auth-ambiguous-"+UUID().uuidString,isDirectory:true)
-        defer {try? FileManager.default.removeItem(at:root)}
+        defer {retireStoreRoot(root)}
         let scope=UUID(),authClock=AuthTestClock(),storage=LifecycleStorage()
         let configuration=try lifecycleConfiguration(scope:scope)
         let remote=AnonymousTestRemote(issuer:configuration.issuer,clock:authClock)
@@ -355,7 +372,7 @@ final class NativeAuthApplicationLifecycleTests:XCTestCase {
 
     @MainActor func testLogoutClosesAuthorityBeforeLocalDrainAndLaterLoginStillOpens() async throws {
         let root=FileManager.default.temporaryDirectory.appendingPathComponent("native-auth-lifecycle-"+UUID().uuidString,isDirectory:true)
-        defer {try? FileManager.default.removeItem(at:root)}
+        defer {retireStoreRoot(root)}
         let configuration=try NativeAuthConfiguration(
             projectURL:URL(string:"https://abcdefghijklmnopqrst.supabase.co")!,
             publishableKey:"sb_publishable_offline_lifecycle_test",
@@ -465,7 +482,7 @@ final class NativeAuthApplicationLifecycleTests:XCTestCase {
     /// Model constructed directly (no start / lifecycle gate); one deterministic await on signOut().
     @MainActor func testPR91SignOutStopsLiveActivitiesBeforeFirstAwait() async throws {
         let root=FileManager.default.temporaryDirectory.appendingPathComponent("native-pr91-signout-order-"+UUID().uuidString,isDirectory:true)
-        defer {try? FileManager.default.removeItem(at:root);AccountEpoch.shared.signOut()}
+        defer {retireStoreRoot(root);AccountEpoch.shared.signOut()}
         let app=try pr91Model(root:root),order=PR91CallOrder()
         AccountEpoch.shared.activate(account:UUID().uuidString)
         app.stopLiveActivities={order.add(AccountEpoch.shared.capture()==nil ? "stopAll(epochClosed)" : "stopAll(epochOpen)")}
@@ -479,7 +496,7 @@ final class NativeAuthApplicationLifecycleTests:XCTestCase {
     /// Synchronous: the injected migrator records the call; no lifecycle gate, no polling.
     @MainActor func testPR91LaunchStartsAtRestMemoryMigration() async throws {
         let root=FileManager.default.temporaryDirectory.appendingPathComponent("native-pr91-atrest-launch-"+UUID().uuidString,isDirectory:true)
-        defer {try? FileManager.default.removeItem(at:root)}
+        defer {retireStoreRoot(root)}
         let app=try pr91Model(root:root),order=PR91CallOrder()
         // Codex PR91 p91d-4: no signed-in user yet (cold-start warmUp) — the partition alone carries the subject.
         XCTAssertNil(app.state.user)
@@ -493,7 +510,7 @@ final class NativeAuthApplicationLifecycleTests:XCTestCase {
     /// repository open; the scheduler's trace line is the same text the unified log shows (category "atrest").
     @MainActor func testPR91ProductionHostOpenSchedulesAtRestMigration() async throws {
         let root=FileManager.default.temporaryDirectory.appendingPathComponent("native-pr91-atrest-host-"+UUID().uuidString,isDirectory:true)
-        defer {try? FileManager.default.removeItem(at:root)}
+        defer {retireStoreRoot(root)}
         let app=try pr91Model(root:root),lines=PR91CallOrder(),scheduler=AtRestMigrationScheduler.shared
         let savedDelays=scheduler.delays;scheduler.delays=[];scheduler.trace={lines.add($0)}
         defer {scheduler.trace=nil;scheduler.delays=savedDelays}
@@ -510,7 +527,11 @@ final class NativeAuthApplicationLifecycleTests:XCTestCase {
         let source=URL(fileURLWithPath:#filePath).deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("Sources/App/NativeAuthApplicationModel.swift")
         let text=try String(contentsOf:source,encoding:.utf8)
         XCTAssertEqual(text.components(separatedBy:"Self.openStores(").count-1,1,"only openAccountStores may call the raw store opener")
-        XCTAssertEqual(text.components(separatedBy:"Repository(persistence:").count-1,1,"repositories are created only inside openStores")
+        XCTAssertEqual(text.components(separatedBy:"Repository(persistence:SwiftDataPersistence(").count-1,1,"on-disk repositories are created only inside openStores")
+        // NoBug B1: the one other repository is the launch shell's, over a persistence that never touches the disk.
+        XCTAssertEqual(text.components(separatedBy:"Repository(persistence:").count-1,2)
+        XCTAssertEqual(text.components(separatedBy:"Repository(persistence: LaunchShellPersistence())").count-1,1)
+        XCTAssertEqual(try LaunchShellPersistence().load().records.count,0);XCTAssertNoThrow(try LaunchShellPersistence().save(StoreSnapshot()))
         XCTAssertGreaterThanOrEqual(text.components(separatedBy:"openAccountStores(partition:").count-1,4,"local receipt, sign-in, offline trial and workspace paths")
         XCTAssertEqual(text.components(separatedBy:"launchAtRestMigration(repository, partition: partition)").count-1,1,"openAccountStores itself calls the at-rest hook")
     }
@@ -535,7 +556,7 @@ final class NativeAuthApplicationLifecycleTests:XCTestCase {
     @MainActor func testLogoutDuringFirstLocalReadNeverAttachesOldChat() async throws {
         for logout in [true,false] {
             let root=FileManager.default.temporaryDirectory.appendingPathComponent("native-first-read-"+UUID().uuidString,isDirectory:true)
-            defer {try? FileManager.default.removeItem(at:root);NativeAuthApplicationModel.afterLocalReadHook=nil}
+            defer {retireStoreRoot(root);NativeAuthApplicationModel.afterLocalReadHook=nil}
             let scope=UUID(),subject=UUID(),clock=LifecycleClock(),storage=LifecycleStorage()
             let configuration=try lifecycleConfiguration(scope:scope)
             let remote=LifecycleRemote(issuer:configuration.issuer,subject:subject,clock:clock)
@@ -574,7 +595,7 @@ final class NativeAuthApplicationLifecycleTests:XCTestCase {
         defer {NativeAuthApplicationModel.offlineRecoveryWillStartExperience=nil}
         for logout in [true,false] {
             let root=FileManager.default.temporaryDirectory.appendingPathComponent("native-offline-recovery-"+UUID().uuidString,isDirectory:true)
-            defer {try? FileManager.default.removeItem(at:root)}
+            defer {retireStoreRoot(root)}
             let scope=UUID(),subject=UUID(),clock=LifecycleClock(),storage=LifecycleStorage()
             let configuration=try lifecycleConfiguration(scope:scope)
             let remote=LifecycleRemote(issuer:configuration.issuer,subject:subject,clock:clock)
@@ -599,11 +620,403 @@ final class NativeAuthApplicationLifecycleTests:XCTestCase {
         }
     }
 
+    /// Launch-loader fix (iPhone 13 white screen, 792587e): onboarding completed + logout barrier closed next to the old
+    /// credential with no rotation journal (an interrupted rotation). Before: chat stayed nil forever behind a full-screen
+    /// ProgressView. Now the storage-free launch shell (real chat chrome, draft only) stays on screen, the restart need is
+    /// published for the small capsule, and 「重新开始」 reaches a fresh identity whose own chat replaces the shell.
+    @MainActor func testUnrecoverableSessionShowsLaunchShellWithRestartCapsuleNotADeadLoader() async throws {
+        let root=FileManager.default.temporaryDirectory.appendingPathComponent("native-launch-fallback-"+UUID().uuidString,isDirectory:true)
+        defer {retireStoreRoot(root)}
+        let scope=UUID(),clock=AuthTestClock(),storage=LifecycleStorage(),configuration=try lifecycleConfiguration(scope:scope)
+        let remote=AnonymousTestRemote(issuer:configuration.issuer,clock:clock)
+        try storage.save(await remote.candidate());try storage.setSignedOut(true)
+        let subject=await remote.id
+        let manager=NativeAuthSessionManager(configuration:configuration,remote:remote,vault:storage,barrier:storage,now:{clock.now()})
+        let resolver=LifecycleWorkspaceResolver(subject:subject,scope:scope,steps:[.success,.success],accessToken:"synthetic.anon.signature")
+        let app=NativeAuthApplicationModel(configuration:configuration,manager:manager,vault:storage,barrier:storage,root:root,workspaceResolver:resolver,retrySchedule:.init(nominalSeconds:[0],jitter:{$0}))
+        XCTAssertFalse(app.needsOnboarding)
+        await app.start()
+        XCTAssertTrue(app.localReadFinished)
+        XCTAssertNil(app.chat,"the ambiguous partition must not be opened (fail closed)")
+        await app.startExperience()   // the launch auto-experience path: refuses to mint a new identity silently
+        XCTAssertTrue(app.sessionRestartNeeded)
+        let started=ProcessInfo.processInfo.systemUptime
+        await app.ensureLaunchChat()
+        XCTAssertLessThan(ProcessInfo.processInfo.systemUptime-started,2.0,"the shell never waits on the network")
+        XCTAssertNil(app.chat,"NoBug B1: no partition (shared offline store included) is opened as a fallback")
+        let shell=try XCTUnwrap(app.launchShell,"the chat chrome is on screen instead of a dead loader")
+        XCTAssertNotEqual(shell.trustedSubjectID,subject,"no account data is shown before the account is resolved")
+        XCTAssertFalse(shell.networkAdmissionAllowed,"the shell cannot send")
+        XCTAssertTrue(app.sessionRestartNeeded,"the restart capsule stays visible over the shell")
+        let before=await remote.counts()
+        await app.restartSession()
+        try await waitUntil {app.chat?.trustedSubjectID == subject}
+        XCTAssertFalse(app.sessionRestartNeeded)
+        let after=await remote.counts()
+        XCTAssertEqual(after.0,before.0+1,"restart mints exactly one fresh experience identity")
+        await app.signOut()
+    }
+
+    /// Opening-stall fix (19:41 iPhone 13, 5c84a911): with no account chat the shell's wait is staged and bounded —
+    /// 「仍在连接…」 plus one recovery kick at launchSlowAfter, then the retry capsule at launchStallAfter; 「重试」 restarts it.
+    @MainActor func testLaunchShellWaitIsBoundedSlowThenStalledThenRetry() async throws {
+        let root=FileManager.default.temporaryDirectory.appendingPathComponent("native-launch-stall-"+UUID().uuidString,isDirectory:true)
+        defer {retireStoreRoot(root)}
+        let slow=NativeAuthApplicationModel.launchSlowAfter,stall=NativeAuthApplicationModel.launchStallAfter
+        NativeAuthApplicationModel.launchSlowAfter=0.05;NativeAuthApplicationModel.launchStallAfter=0.15
+        defer {NativeAuthApplicationModel.launchSlowAfter=slow;NativeAuthApplicationModel.launchStallAfter=stall}
+        let scope=UUID(),subject=UUID(),clock=LifecycleClock(),storage=LifecycleStorage(),configuration=try lifecycleConfiguration(scope:scope)
+        let remote=LifecycleRemote(issuer:configuration.issuer,subject:subject,clock:clock)
+        try storage.save(.init(issuer:configuration.issuer,user:.init(id:subject),accessToken:"offline.lifecycle.signature",refreshToken:"synthetic-lifecycle-only",expiresAt:clock.now().addingTimeInterval(-60)))
+        let manager=NativeAuthSessionManager(configuration:configuration,remote:remote,vault:storage,barrier:storage,now:{clock.now()})
+        let resolver=LifecycleWorkspaceResolver(subject:subject,scope:scope,steps:[.success,.success])
+        let app=NativeAuthApplicationModel(configuration:configuration,manager:manager,vault:storage,barrier:storage,root:root,workspaceResolver:resolver,retrySchedule:.init(nominalSeconds:[0],jitter:{$0}))
+        // The token rotation hangs (the 19:41 shape: no account chat, no answer) — the shell must not spin forever.
+        let startup=Task {await app.start()}
+        try await waitUntil {await remote.refreshIsPending()}
+        XCTAssertNil(app.chat)
+        let watchdog=Task {await app.launchWatchdog()}
+        try await waitUntil {app.launchSlow}
+        XCTAssertFalse(app.launchChatStalled,"slow first: 「仍在连接…」, recovery kicked once")
+        await watchdog.value
+        XCTAssertTrue(app.launchChatStalled,"bounded: the retry capsule replaces the spinner")
+        let attempt=app.launchAttempt
+        app.retryLaunchChat()
+        XCTAssertFalse(app.launchChatStalled);XCTAssertFalse(app.launchSlow);XCTAssertEqual(app.launchAttempt,attempt+1)
+        // When the account chat finally attaches, every stall flag clears.
+        await remote.releaseRefresh()
+        await startup.value
+        try await waitUntil {app.chat != nil}
+        XCTAssertFalse(app.launchChatStalled);XCTAssertFalse(app.launchSlow)
+        await app.signOut()
+    }
+
+    /// Opening-stall fix: the shell overlay runs the watchdog per attempt and has the retry capsule (source contract).
+    func testLaunchShellOverlayHasWatchdogAndRetry() throws {
+        let source=URL(fileURLWithPath:#filePath).deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("Sources/App/CatpawApp.swift")
+        let text=try String(contentsOf:source,encoding:.utf8)
+        XCTAssertTrue(text.contains(".task(id:auth.launchAttempt) { await auth.launchWatchdog() }"))
+        XCTAssertTrue(text.contains("else if auth.launchChatStalled { LaunchOpenFailedCapsule(auth:auth)"))
+        XCTAssertTrue(text.contains("accessibilityIdentifier(\"launch.retryOpen\")"))
+        XCTAssertTrue(text.contains("ConversationFirstModel.endInputComposition ="),"the IME fix has its composition-ending hook")
+    }
+
+    /// Launch-loader fix: 开始使用 / startExperience racing the launch restore gets `.busy` from the manager. That is a
+    /// transient state — it must never be mistaken for an ambiguous credential (the old 「这次会话需要重新开始」 flash).
+    @MainActor func testStartExperienceDuringLaunchRestoreIsTransientNotARestart() async throws {
+        let root=FileManager.default.temporaryDirectory.appendingPathComponent("native-launch-busy-"+UUID().uuidString,isDirectory:true)
+        defer {retireStoreRoot(root)}
+        let scope=UUID(),subject=UUID(),clock=LifecycleClock(),storage=LifecycleStorage(),configuration=try lifecycleConfiguration(scope:scope)
+        let remote=LifecycleRemote(issuer:configuration.issuer,subject:subject,clock:clock)
+        try storage.save(.init(issuer:configuration.issuer,user:.init(id:subject),accessToken:"offline.lifecycle.signature",refreshToken:"synthetic-lifecycle-only",expiresAt:clock.now().addingTimeInterval(-60)))
+        let manager=NativeAuthSessionManager(configuration:configuration,remote:remote,vault:storage,barrier:storage,now:{clock.now()})
+        let resolver=LifecycleWorkspaceResolver(subject:subject,scope:scope,steps:[.success,.success])
+        let app=NativeAuthApplicationModel(configuration:configuration,manager:manager,vault:storage,barrier:storage,root:root,workspaceResolver:resolver,retrySchedule:.init(nominalSeconds:[0],jitter:{$0}))
+        let startup=Task {await app.start()}
+        try await waitUntil {await remote.refreshIsPending()}
+        XCTAssertTrue(try storage.isSignedOut(),"inside the rotation window the barrier is closed")
+        let rotating=await manager.rotationInFlight()
+        XCTAssertTrue(rotating)
+        let tap=Task {await app.startExperience()}
+        try await Task.sleep(nanoseconds:50_000_000)
+        XCTAssertFalse(app.requiresSessionRestart,"a tap inside the rotation window is not an ambiguous session")
+        await remote.releaseRefresh()
+        await tap.value;await startup.value
+        try await waitUntil {app.chat?.trustedSubjectID == subject}
+        XCTAssertFalse(app.requiresSessionRestart);XCTAssertFalse(app.recoveryImpossible);XCTAssertNil(app.error)
+        await app.signOut()
+    }
+
+    /// first-run integration (SPEC-E §5.6): 开始使用 never waits on sign-up. The gate flips onto the storage-free launch
+    /// shell while anonymous sign-up is still held; the account's own chat replaces it once the identity resolves, an
+    /// unsent draft typed into the shell is carried over (never lost), and the first-run flag waits for that real chat.
+    @MainActor func testFirstRunTapFlipsGateWithoutWaitingOnSignUp() async throws {
+        let flag=UserDefaults.standard.object(forKey:CatpawOnboarding.completedKey)
+        defer {UserDefaults.standard.set(flag,forKey:CatpawOnboarding.completedKey)}
+        for typed in [false,true] {
+            UserDefaults.standard.removeObject(forKey:CatpawOnboarding.completedKey)
+            let root=FileManager.default.temporaryDirectory.appendingPathComponent("native-first-run-tap-"+UUID().uuidString,isDirectory:true)
+            defer {retireStoreRoot(root)}
+            let scope=UUID(),clock=AuthTestClock(),storage=LifecycleStorage(),configuration=try lifecycleConfiguration(scope:scope)
+            let remote=AnonymousTestRemote(issuer:configuration.issuer,clock:clock);await remote.behavior(hold:true)
+            let subject=await remote.id
+            let manager=NativeAuthSessionManager(configuration:configuration,remote:remote,vault:storage,barrier:storage,now:{clock.now()})
+            let resolver=LifecycleWorkspaceResolver(subject:subject,scope:scope,steps:[.success,.success],accessToken:"synthetic.anon.signature")
+            let app=NativeAuthApplicationModel(configuration:configuration,manager:manager,vault:storage,barrier:storage,root:root,workspaceResolver:resolver,retrySchedule:.init(nominalSeconds:[0],jitter:{$0}))
+            app.beginFirstRunForTesting();XCTAssertTrue(app.needsOnboarding)
+            XCTAssertFalse(CatpawOnboarding.isCompleted())
+            let started=ProcessInfo.processInfo.systemUptime
+            await app.completeOnboarding()
+            XCTAssertLessThan(ProcessInfo.processInfo.systemUptime-started,2.0,"the tap only waits for the disk read")
+            XCTAssertFalse(app.needsOnboarding)
+            XCTAssertNil(app.chat,"NoBug B1: no storage-backed fallback chat")
+            let shell=try XCTUnwrap(app.launchShell);await shell.start()
+            XCTAssertNotEqual(shell.trustedSubjectID,subject,"no account data before the account is resolved")
+            XCTAssertFalse(CatpawOnboarding.isCompleted(),"NoBug (b): the first-run flag waits for the account's real chat")
+            // NoBug (1): nothing account-bound before the account resolves — no network admission (no queue is sent),
+            // no device capability (EventKit scan), no account-bound store activation.
+            XCTAssertFalse(shell.networkAdmissionAllowed);XCTAssertFalse(app.deviceCapabilitiesAllowed)
+            try await waitUntil {await remote.waiting()}   // sign-up is still in flight behind the shell
+            if typed {shell.editDraft("还没发出去的草稿")}
+            await remote.release()
+            try await waitUntil {app.chat?.trustedSubjectID == subject}
+            XCTAssertTrue(CatpawOnboarding.isCompleted(),"the flag is written once the account chat attaches")
+            try await waitUntil {app.deviceCapabilitiesAllowed}
+            XCTAssertEqual(app.chat?.draft,typed ? "还没发出去的草稿" : "","an unsent draft follows the user into the account chat")
+            XCTAssertEqual(shell.draft,"","the shell keeps nothing once the draft moved")
+            XCTAssertFalse(app.requiresSessionRestart)
+            await app.signOut()
+        }
+    }
+
+    /// NoBug (2): the first-run-completed flag is written only after a chat was actually created. A tap that cannot open a
+    /// chat (unrecoverable session) leaves the flag unset, so the next launch shows the landing again.
+    @MainActor func testFirstRunFlagIsNotWrittenWhenNoChatOpens() async throws {
+        let flag=UserDefaults.standard.object(forKey:CatpawOnboarding.completedKey)
+        defer {UserDefaults.standard.set(flag,forKey:CatpawOnboarding.completedKey)}
+        UserDefaults.standard.removeObject(forKey:CatpawOnboarding.completedKey)
+        let root=FileManager.default.temporaryDirectory.appendingPathComponent("native-first-run-flag-"+UUID().uuidString,isDirectory:true)
+        defer {retireStoreRoot(root)}
+        let scope=UUID(),clock=AuthTestClock(),storage=LifecycleStorage(),configuration=try lifecycleConfiguration(scope:scope)
+        let remote=AnonymousTestRemote(issuer:configuration.issuer,clock:clock)
+        try storage.save(await remote.candidate());try storage.setSignedOut(true)   // interrupted rotation, no journal
+        let manager=NativeAuthSessionManager(configuration:configuration,remote:remote,vault:storage,barrier:storage,now:{clock.now()})
+        let app=NativeAuthApplicationModel(configuration:configuration,manager:manager,vault:storage,barrier:storage,root:root,retrySchedule:.init(nominalSeconds:[0],jitter:{$0}))
+        app.beginFirstRunForTesting()
+        await app.start();await app.startExperience()
+        XCTAssertTrue(app.sessionRestartNeeded)
+        await app.completeOnboarding()
+        XCTAssertNil(app.chat);XCTAssertTrue(app.needsOnboarding)
+        XCTAssertFalse(CatpawOnboarding.isCompleted(),"no chat → no first-run flag")
+        if case .failed = app.onboarding {} else {XCTFail("the landing stays with a non-blocking failure notice")}
+    }
+
+    /// NoBug (3): the root gate has no full-screen loader. The only ProgressViews left in CatpawApp are the DEBUG offline
+    /// fixture placeholder and the small floating status capsule; the entering-chat state is the chat's own first frame.
+    func testRootGateHasNoFullScreenProgressView() throws {
+        let source=URL(fileURLWithPath:#filePath).deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("Sources/App/CatpawApp.swift")
+        let text=try String(contentsOf:source,encoding:.utf8)
+        let uses=text.components(separatedBy:"ProgressView(").dropFirst().map{String($0.prefix(60))}
+        let large=uses.filter{!$0.hasPrefix(").controlSize(.small)")}
+        XCTAssertEqual(large,["\"Offline fixture loading\").accessibilityIdentifier(\"qa.p0Fixture.loading\") }"].map{String($0.prefix(60))},"only the DEBUG fixture placeholder is not a small capsule spinner")
+        XCTAssertGreaterThanOrEqual(uses.count-large.count,1,"the floating status capsule")
+        XCTAssertTrue(text.contains("ConversationFirstView(model:shell,launchShell:true)"),"the pre-attach surface is the real chat view (B2)")
+        XCTAssertFalse(text.contains("LaunchChatShell"),"no hand-built look-alike shell that can drift from the real chrome")
+    }
+
+    /// NoBug B1: account A leaves history and drafts in its own partition AND in the device-shared offline-trial store.
+    /// Account B's launch shows none of it — not in the very first frame (the launch shell, before any read), not while
+    /// B's session is still unresolved, and not after B's own chat attaches. The shell itself never opens a partition.
+    @MainActor func testAnotherAccountsHistoryNeverReachesTheLaunchFirstFrame() async throws {
+        let root=FileManager.default.temporaryDirectory.appendingPathComponent("native-b1-isolation-"+UUID().uuidString,isDirectory:true)
+        defer {retireStoreRoot(root)}
+        let scope=UUID(),subjectA=UUID(),subjectB=UUID(),clock=LifecycleClock(),configuration=try lifecycleConfiguration(scope:scope)
+        let secretA="A 的私密草稿 7f3c",offlineA="A 留在离线体验里的草稿 7f3c"
+        func leaked(_ model:ConversationFirstModel?)->Bool {
+            guard let model else {return false}
+            let texts=[model.draft]+model.history.compactMap{$0.conversation?.draftText}+model.history.map(\.title)+(model.session?.messages.map(\.content) ?? [])
+            return texts.contains{$0.contains("7f3c")}
+        }
+        // A: real sign-in (own partition + receipt) and the shared offline-trial store, both holding A's text.
+        let storageA=LifecycleStorage(),remoteA=LifecycleRemote(issuer:configuration.issuer,subject:subjectA,clock:clock)
+        let a=NativeAuthApplicationModel(configuration:configuration,manager:NativeAuthSessionManager(configuration:configuration,remote:remoteA,vault:storageA,barrier:storageA,now:{clock.now()}),vault:storageA,barrier:storageA,root:root)
+        await a.start();await a.signIn(email:"synthetic@example.invalid",password:"fixture-only")
+        try await waitUntil {a.chat?.trustedSubjectID == subjectA}
+        a.chat?.editDraft(secretA);_=await a.chat?.deactivate()
+        let offline=NativeAuthApplicationModel(configuration:configuration,manager:NativeAuthSessionManager(configuration:configuration,remote:remoteA,vault:LifecycleStorage(),barrier:LifecycleStorage(),now:{clock.now()}),vault:LifecycleStorage(),barrier:LifecycleStorage(),root:root)
+        await offline.openOfflineTrialChat(configuration:configuration)
+        let shared=try XCTUnwrap(offline.chat);shared.editDraft(offlineA);_=await shared.deactivate()
+        let probe=NativeAuthApplicationModel(configuration:configuration,manager:NativeAuthSessionManager(configuration:configuration,remote:remoteA,vault:LifecycleStorage(),barrier:LifecycleStorage(),now:{clock.now()}),vault:LifecycleStorage(),barrier:LifecycleStorage(),root:root)
+        await probe.openOfflineTrialChat(configuration:configuration)
+        XCTAssertTrue(leaked(probe.chat),"counter-run: the shared offline store really holds A's text — what 614371f's launch fallback rendered")
+        _=await probe.chat?.deactivate()
+        // B on the same device: B's credential, A's receipt and stores still on disk.
+        let storageB=LifecycleStorage(),remoteB=LifecycleRemote(issuer:configuration.issuer,subject:subjectB,clock:clock)
+        let b=NativeAuthApplicationModel(configuration:configuration,manager:NativeAuthSessionManager(configuration:configuration,remote:remoteB,vault:storageB,barrier:storageB,now:{clock.now()}),vault:storageB,barrier:storageB,root:root)
+        let shell=try XCTUnwrap(b.launchShell)
+        XCTAssertFalse(leaked(shell),"frame 1: the shell exists before any read and holds nothing")
+        await shell.start()
+        XCTAssertFalse(leaked(shell),"the shell's store loads nothing from disk");XCTAssertTrue(shell.history.allSatisfy{($0.conversation?.draftText ?? "").isEmpty})
+        await b.start();await b.ensureLaunchChat(grace:0.1)
+        XCTAssertNil(b.chat,"B is not signed in: no partition is opened, shared offline store included")
+        XCTAssertFalse(leaked(shell));XCTAssertFalse(leaked(b.chat))
+        await b.signIn(email:"synthetic@example.invalid",password:"fixture-only")
+        try await waitUntil {b.chat?.trustedSubjectID == subjectB}
+        XCTAssertFalse(leaked(b.chat),"B's own chat holds none of A's content");XCTAssertFalse(leaked(shell))
+        await b.signOut()
+    }
+
+    /// SPEC-E §5.6: while the landing shows, a restored account's local chat is attached so the tap never waits on it.
+    @MainActor func testLandingPrewarmsRestoredAccountChatSoTheTapNeverWaits() async throws {
+        let root=FileManager.default.temporaryDirectory.appendingPathComponent("native-first-run-prewarm-"+UUID().uuidString,isDirectory:true)
+        defer {retireStoreRoot(root)}
+        let scope=UUID(),clock=AuthTestClock(),storage=LifecycleStorage(),configuration=try lifecycleConfiguration(scope:scope)
+        let remote=AnonymousTestRemote(issuer:configuration.issuer,clock:clock)
+        try storage.save(await remote.candidate())
+        let subject=await remote.id
+        let manager=NativeAuthSessionManager(configuration:configuration,remote:remote,vault:storage,barrier:storage,now:{clock.now()})
+        let resolver=LifecycleWorkspaceResolver(subject:subject,scope:scope,steps:[.success,.success],accessToken:"synthetic.anon.signature")
+        let app=NativeAuthApplicationModel(configuration:configuration,manager:manager,vault:storage,barrier:storage,root:root,workspaceResolver:resolver,retrySchedule:.init(nominalSeconds:[0],jitter:{$0}))
+        app.beginFirstRunForTesting()
+        await app.start();await app.prewarmEntryChat()
+        try await waitUntil {app.chat != nil}
+        XCTAssertTrue(app.needsOnboarding,"pre-warming never skips the landing")
+        let warmed=try XCTUnwrap(app.chat);XCTAssertEqual(warmed.trustedSubjectID,subject)
+        await app.completeOnboarding()
+        XCTAssertFalse(app.needsOnboarding);XCTAssertTrue(app.chat === warmed,"the tap reuses the pre-warmed chat")
+        let counts=await remote.counts();XCTAssertEqual(counts.0,0,"a restored account never signs up again")
+        await app.signOut()
+    }
+
+    /// The splash plays on the first run only; every later launch goes straight to the chat's first frame.
+    func testLaunchSplashIsFirstRunOnly() throws {
+        let suite="xctest.launchgate."+UUID().uuidString,defaults=try XCTUnwrap(UserDefaults(suiteName:suite))
+        defer {defaults.removePersistentDomain(forName:suite)}
+        XCTAssertTrue(LaunchMarkGate.isFirstRun(defaults,arguments:[]))
+        CatpawOnboarding.markCompleted(defaults)
+        XCTAssertFalse(LaunchMarkGate.isFirstRun(defaults,arguments:[]))
+        let fresh=try XCTUnwrap(UserDefaults(suiteName:suite+".b"));defer {fresh.removePersistentDomain(forName:suite+".b")}
+        XCTAssertFalse(LaunchMarkGate.isFirstRun(fresh,arguments:[CatpawOnboarding.skipArgument]))
+    }
+
+    // MARK: Splash/login P0 (21:41 iPhone 13, e9e2efce): 开始使用 / Google sign-in left the landing on screen.
+
+    /// The CTA attempt fails on a stale restart flag; the Google sign-in then completes on the session manager (as
+    /// NativeOAuthCoordinator does). afterSignIn must open the gate onto the signed-in account's chat. Before the fix it
+    /// called completeOnboarding(), which failed again on the same stale flag and the landing stayed.
+    @MainActor func testSignInOnLandingOpensGateDespiteStaleRestartFlags() async throws {
+        let flag=UserDefaults.standard.object(forKey:CatpawOnboarding.completedKey)
+        defer {UserDefaults.standard.set(flag,forKey:CatpawOnboarding.completedKey)}
+        UserDefaults.standard.removeObject(forKey:CatpawOnboarding.completedKey)
+        let root=FileManager.default.temporaryDirectory.appendingPathComponent("native-splash-signin-"+UUID().uuidString,isDirectory:true)
+        // root is left in tmp on purpose: removing it under a queued SwiftData save is what 169a6978 avoids.
+        let scope=UUID(),clock=AuthTestClock(),storage=LifecycleStorage(),configuration=try lifecycleConfiguration(scope:scope)
+        let remote=AnonymousTestRemote(issuer:configuration.issuer,clock:clock)
+        try storage.save(await remote.candidate());try storage.setSignedOut(true)   // interrupted rotation, no journal
+        let subject=await remote.id
+        let manager=NativeAuthSessionManager(configuration:configuration,remote:remote,vault:storage,barrier:storage,now:{clock.now()})
+        let resolver=LifecycleWorkspaceResolver(subject:subject,scope:scope,steps:[.success,.success],accessToken:"synthetic.anon.signature")
+        let app=NativeAuthApplicationModel(configuration:configuration,manager:manager,vault:storage,barrier:storage,root:root,workspaceResolver:resolver,retrySchedule:.init(nominalSeconds:[0],jitter:{$0}))
+        app.beginFirstRunForTesting()
+        await app.start();await app.startExperience()
+        XCTAssertTrue(app.sessionRestartNeeded)
+        await app.completeOnboarding()
+        XCTAssertTrue(app.needsOnboarding,"the tap still fails on an unrecoverable session (unchanged)")
+        // The sign-in sheet finishes: a valid session now exists on the manager.
+        try storage.setSignedOut(false);try await manager.startExperience()
+        let signedInPhase=await manager.snapshot().phase   // await cannot sit inside the XCTAssert autoclosure
+        XCTAssertEqual(signedInPhase,.authenticated)
+        await app.completeOnboardingAfterSignIn()
+        XCTAssertFalse(app.needsOnboarding,"a completed sign-in opens the gate")
+        XCTAssertEqual(app.chat?.trustedSubjectID,subject,"onto the signed-in account's own chat")
+        XCTAssertTrue(CatpawOnboarding.isCompleted())
+        XCTAssertFalse(app.requiresSessionRestart,"the replaced session's restart flag no longer applies")
+        await app.signOut()
+    }
+
+    /// A stalled entry attempt is bounded: the landing gets a retryable failure after entryDeadline (never an endless
+    /// wait), and when the account chat attaches later (here: the warm-up restore + workspace admit) the gate opens
+    /// reactively. The late attempt never writes a failure over the opened gate.
+    @MainActor func testStalledEntryTimesOutAndLateAttachStillOpensGate() async throws {
+        let flag=UserDefaults.standard.object(forKey:CatpawOnboarding.completedKey)
+        defer {UserDefaults.standard.set(flag,forKey:CatpawOnboarding.completedKey)}
+        UserDefaults.standard.removeObject(forKey:CatpawOnboarding.completedKey)
+        let root=FileManager.default.temporaryDirectory.appendingPathComponent("native-splash-stall-"+UUID().uuidString,isDirectory:true)
+        // root is left in tmp on purpose: removing it under a queued SwiftData save is what 169a6978 avoids.
+        let scope=UUID(),clock=AuthTestClock(),storage=LifecycleStorage(),configuration=try lifecycleConfiguration(scope:scope)
+        let remote=AnonymousTestRemote(issuer:configuration.issuer,clock:clock)
+        try storage.save(await remote.candidate())
+        let subject=await remote.id
+        let manager=NativeAuthSessionManager(configuration:configuration,remote:remote,vault:storage,barrier:storage,now:{clock.now()})
+        let resolver=LifecycleWorkspaceResolver(subject:subject,scope:scope,steps:[.success,.success],accessToken:"synthetic.anon.signature")
+        let app=NativeAuthApplicationModel(configuration:configuration,manager:manager,vault:storage,barrier:storage,root:root,workspaceResolver:resolver,retrySchedule:.init(nominalSeconds:[0],jitter:{$0}))
+        app.beginFirstRunForTesting()
+        let hold=SplashEntryHold()
+        app.entryDeadline=0.3
+        app.entryHoldForTesting={ while !hold.released { try? await Task.sleep(nanoseconds:20_000_000) } }
+        let began=ProcessInfo.processInfo.systemUptime
+        await app.completeOnboarding()
+        XCTAssertLessThan(ProcessInfo.processInfo.systemUptime-began,2.0,"the landing never waits past the entry deadline")
+        XCTAssertTrue(app.needsOnboarding)
+        if case .failed = app.onboarding {} else {XCTFail("a timed-out attempt becomes a retryable failure (small capsule)")}
+        await app.start()
+        try await waitUntil {!app.needsOnboarding}
+        XCTAssertEqual(app.chat?.trustedSubjectID,subject)
+        XCTAssertTrue(CatpawOnboarding.isCompleted())
+        hold.released=true
+        try? await Task.sleep(nanoseconds:300_000_000)
+        XCTAssertEqual(app.onboarding,.completed,"the superseded attempt cannot reopen the landing")
+        await app.signOut()
+    }
+
+    /// A second tap (or a sign-in) during an attempt joins it. Before the fix it returned at once with the gate still
+    /// shut, so the landing reset itself and its handoff timers then hid the CTA and the cat.
+    @MainActor func testSecondEntryDuringAttemptJoinsInsteadOfReturningShut() async throws {
+        let flag=UserDefaults.standard.object(forKey:CatpawOnboarding.completedKey)
+        defer {UserDefaults.standard.set(flag,forKey:CatpawOnboarding.completedKey)}
+        UserDefaults.standard.removeObject(forKey:CatpawOnboarding.completedKey)
+        let root=FileManager.default.temporaryDirectory.appendingPathComponent("native-splash-join-"+UUID().uuidString,isDirectory:true)
+        // root is left in tmp on purpose: removing it under a queued SwiftData save is what 169a6978 avoids.
+        let scope=UUID(),clock=AuthTestClock(),storage=LifecycleStorage(),configuration=try lifecycleConfiguration(scope:scope)
+        let remote=AnonymousTestRemote(issuer:configuration.issuer,clock:clock);await remote.behavior(hold:true)
+        let manager=NativeAuthSessionManager(configuration:configuration,remote:remote,vault:storage,barrier:storage,now:{clock.now()})
+        let app=NativeAuthApplicationModel(configuration:configuration,manager:manager,vault:storage,barrier:storage,root:root,retrySchedule:.init(nominalSeconds:[0],jitter:{$0}))
+        app.beginFirstRunForTesting()
+        let hold=SplashEntryHold()
+        app.entryDeadline=5
+        app.entryHoldForTesting={ while !hold.released { try? await Task.sleep(nanoseconds:20_000_000) } }
+        let first=Task { @MainActor in await app.completeOnboarding() }
+        try await waitUntil {app.onboarding == .entering}
+        let second=Task { @MainActor () -> Bool in await app.completeOnboarding(); return app.needsOnboarding }
+        try? await Task.sleep(nanoseconds:200_000_000)
+        hold.released=true
+        await first.value
+        let shutAfterSecond=await second.value
+        XCTAssertFalse(shutAfterSecond,"the second entry returns only once the joined attempt opened the gate")
+        XCTAssertFalse(app.needsOnboarding)
+        await remote.release()
+        await app.signOut()
+    }
+
+    /// The landing's handoff timers are generation-checked: after a reset, a late +0.12 / +0.14 s timer can no longer hide
+    /// the CTA or the cat (the 21:41 screenshot: copy back, CTA and cat gone).
+    func testFirstRunHandoffLateTimersCannotHideCTAAfterReset() {
+        var state=FirstRunHandoffState()
+        let g1=state.begin()
+        XCTAssertTrue(state.leaving)
+        state.reset()                       // fast failure: the landing comes back
+        state.hideCTA(g1);state.flyHero(g1) // the old tap's timers fire late
+        XCTAssertFalse(state.ctaHidden);XCTAssertFalse(state.heroFlown);XCTAssertFalse(state.leaving)
+        let g2=state.begin()
+        state.hideCTA(g2);state.flyHero(g2)
+        XCTAssertTrue(state.ctaHidden);XCTAssertTrue(state.heroFlown,"a current tap still hands off normally")
+        state.reset();XCTAssertEqual(state.ctaHidden,false)
+    }
+
+    /// Privacy shield (user direction 21:51): `.inactive` (Control Center, permission prompts, the Google sign-in sheet)
+    /// shows the content; the app-switcher snapshot (`.background`) and a locked device are shielded.
+    func testPrivacyShieldOnlyForBackgroundSnapshotOrLockedDevice() {
+        XCTAssertEqual(CatpawPrivacyShieldPolicy.mode(scene:.active,protectedDataAvailable:true),.none)
+        XCTAssertEqual(CatpawPrivacyShieldPolicy.mode(scene:.inactive,protectedDataAvailable:true),.none,"no blackout under the OAuth sheet / Control Center")
+        XCTAssertEqual(CatpawPrivacyShieldPolicy.mode(scene:.background,protectedDataAvailable:true),.snapshot)
+        XCTAssertEqual(CatpawPrivacyShieldPolicy.mode(scene:.active,protectedDataAvailable:false),.locked)
+        XCTAssertEqual(CatpawPrivacyShieldPolicy.mode(scene:.inactive,protectedDataAvailable:false),.locked)
+    }
+
     private func lifecycleConfiguration(scope:UUID) throws ->NativeAuthConfiguration {
         try NativeAuthConfiguration(projectURL:URL(string:"https://abcdefghijklmnopqrst.supabase.co")!,publishableKey:"sb_publishable_offline_lifecycle_test",backendOrigin:URL(string:"https://backend.example.invalid")!,serverScopeID:scope)
     }
 }
 
+/// Splash/login P0 tests: holds an entry attempt open (a stalled local open) until released.
+private final class SplashEntryHold:@unchecked Sendable {
+    private let lock=NSLock()
+    private var value=false
+    var released:Bool {
+        get {lock.lock();defer{lock.unlock()};return value}
+        set {lock.lock();value=newValue;lock.unlock()}
+    }
+}
 private struct LifecycleFailure:Error {let message:String}
 private final class LifecycleClock:@unchecked Sendable {
     private let lock=NSLock()
@@ -726,3 +1139,11 @@ extension NativeAuthApplicationLifecycleTests {
         XCTAssertEqual(ProactiveEngine.shared.reminderDeletes-before,0,"no EventKit delete when signed out")
     }
 }
+
+/// Lifecycle stores are not deleted at test end: an app's detached deactivate/draft save can still be queued on the
+/// shared store actor after `signOut()` returns, and SwiftData raises an uncatchable `NSInternalInconsistencyException`
+/// ("Unhandled error (NSCocoaErrorDomain, 256) occurred during faulting") when that save faults rows of a deleted
+/// `local.store` — aborting the next test (seen 20:35 and 21:28 on BE5C). Production never deletes a live account store
+/// (`signOut()` removes only the receipt and caches). Roots stay under the simulator app's tmp and go with its container.
+func retireStoreRoot(_ url: URL) { _ = url }
+
