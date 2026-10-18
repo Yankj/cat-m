@@ -7,7 +7,7 @@
 | 象限 | 读者目标 | 入口 |
 |---|---|---|
 | **Tutorials 教程** | 第一次跑起来 | [README · Quick Start](../README.md#quick-start)、[接手说明](../handoff.md)、[iOS 工程说明](../apps/ios-conversation/README.md) |
-| **How-to 操作指南** | 完成具体任务 | [演示脚本](../README.md#使用与演示脚本)、[开发与测试](../README.md#开发与测试)、[Edge 离线验证](../services/edge/README.md)、[分支规范](development/branch-management.md)、[贡献指南](../CONTRIBUTING.md)、[长任务开发启动合同](planning/AF-1/development-start-contract.md) |
+| **How-to 操作指南** | 完成具体任务 | [演示脚本](../README.md#使用与演示脚本)、[录屏分镜](demo-script.md)、[开发与测试](../README.md#开发与测试)、[Edge 离线验证](../services/edge/README.md)、[分支规范](development/branch-management.md)、[贡献指南](../CONTRIBUTING.md)、[长任务开发启动合同](planning/AF-1/development-start-contract.md) |
 | **Reference 参考** | 查准确信息 | [配置参考](../README.md#配置参考)、[目录角色](development/repository-layout.json)、[AF-1 底座 spec](product/agent-foundation-spec.md)、[CGUI-1](design/conversation-generative-ui-spec.md)、[设计 tokens](design/design-tokens.json)、[验收索引](acceptance/README.md)、[执行切片](status/delivery-slices.json)、[冻结合同](../services/facade/contract/native-contract-v1.json) |
 | **Explanation 原理** | 理解为什么 | [架构总览](architecture.md)、[架构索引](architecture/README.md)、[最新代码与分支复核](architecture/repository-review-2026-10-15.md)、[ADR-005](architecture/adr-005-runtime-reuse-and-hosting.md)、[研究索引](research/README.md)、[云电脑提案](architecture/cloud-computer-proposal.md) |
 

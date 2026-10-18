@@ -14,8 +14,12 @@
 ![Status](https://img.shields.io/badge/status-restart%20integration-orange)
 ![License](https://img.shields.io/badge/license-TODO-lightgrey)
 
-<!-- TODO(demo): 放入演示 GIF 或截图，例如 docs/assets/demo.gif；当前仓库尚无对外演示素材 -->
-`[ 演示 GIF / 截图：TODO ]` · `[ 3–5 分钟演示视频链接：TODO ]`
+<img src="docs/assets/slides/slide-01.png" alt="Catpaw-m 介绍图" width="720">
+
+<sub>设计示意（演示幻灯片封面），非 App 实拍。</sub>
+
+<!-- TODO(demo): App 实拍 GIF / 录屏待 Mac 录制 -->
+`[ App 实拍 GIF：TODO（待 Mac 录制）]` · `[ 3–5 分钟演示视频链接：TODO ]` · [录屏脚本](docs/demo-script.md)
 
 [快速开始](#quick-start) · [架构](#架构) · [文档索引](docs/README.md) · [详细架构](docs/architecture.md) · [主计划（唯一进度）](docs/status/master-plan.md) · [贡献指南](CONTRIBUTING.md)
 
@@ -73,6 +77,18 @@
 | 账号 | Supabase 匿名 / 登录会话，凭据存安全存储 | `Providers/NativeAuth*`、`Features/NativeLoginView.swift` |
 | 公共网页研究 | Edge 端按审查过的来源策略读取公开网页 | `_shared/public-web-reader.mjs` |
 
+<details>
+<summary><b>主动能力设计示意（#90 分支，未合入 main）</b></summary>
+
+<img src="docs/assets/slides/slide-04.png" alt="主动助理四条设计主张" width="720">
+<img src="docs/assets/slides/slide-06.png" alt="四级主动" width="720">
+<img src="docs/assets/slides/slide-08.png" alt="撤销与离线同步" width="720">
+<img src="docs/assets/slides/slide-09.png" alt="多设备推送按代次领取" width="720">
+
+<sub>设计示意，来自演示幻灯片；所述能力在 #90 分支上，#90 服务端尚未部署。</sub>
+
+</details>
+
 **在途、尚未合入 `main`**（以对应 PR 为准，合入后再更新本表）：设备工具调用安全闸门（#89）、主动推送（#90）、记忆隐私与开关（#91）。附近美食、路线、Contacts / MapKit 集成在 `main` 源码中未找到，未列为现有功能。
 
 <p align="right">(<a href="#readme-top">返回顶部</a>)</p>
@@ -122,6 +138,27 @@ open apps/ios-conversation/CatpawM.xcodeproj
 # 需要先按脚本说明构建好对应的 Simulator 包；脚本不会登录或调用模型
 zsh apps/ios-conversation/Scripts/run-simulator-review.sh plan
 ```
+
+### 主动助理演示场景（#90）
+
+> [!WARNING]
+> 以下 3 个场景基于 **#90 主动推送分支，尚未合入 `main`**，#90 服务端也尚未部署。完整分镜见 [docs/demo-script.md](docs/demo-script.md)；App 实拍录屏 TODO（待 Mac 录制）。
+
+| 场景 | 操作 | 期望表现 |
+|---|---|---|
+| **A 会前主动提醒 +「为什么找你」**（S4） | 「设置 › 调试 › 主动信号模拟」写入记忆「开会提前 15 分钟」→ 注入望京 SOHO 的会 → 点卡片上的「为什么找你」 | 出现「小猫主动提醒」卡片；面板展示日历信号、提前量、路途与出发时间（出发 = 开会 − 提前量 − 路途）；无定位时如实显示「未用到 ETA」 |
+| **B 创建提醒 + 撤销**（S6） | 卡片上点「创建提醒」并授权 → 在「为什么找你」点「撤销」 | 系统提醒事项中新增提醒；撤销后提醒删除、出发倒计时结束。不演示「告诉参会人」发送 |
+| **C 账号停放与恢复**（S7） | 账号 A 有卡片 →「退出此账号」→ 登录 B → 退出 B 再登录 A | B 下看不到 A 的卡片；A 重新登录后卡片自动回来，全程无弹窗。外部提醒的保留 / 删除决策界面属 #89，尚未完成 |
+
+<details>
+<summary><b>场景配图（设计示意）</b></summary>
+
+<img src="docs/assets/slides/slide-05.png" alt="决策流水线与会议出发助理" width="720">
+<img src="docs/assets/slides/slide-07.png" alt="账号停放与恢复" width="720">
+
+<sub>设计示意；虚线框为录屏贴片位，不是实拍画面。</sub>
+
+</details>
 
 <p align="right">(<a href="#readme-top">返回顶部</a>)</p>
 
@@ -182,6 +219,15 @@ sequenceDiagram
 ```
 
 **核心概念**：UI 只通过 typed contract 调用应用服务；组件不持有账号、HTTP 准入或任务执行权。持久化与副作用的授权留在后端；展示层与流结束不能授予权限或宣告完成。合成（fixture）结果与真实模型、云端、设备验证严格区分。
+
+<details>
+<summary><b>含主动推送的目标架构（#90 设计示意）</b></summary>
+
+<img src="docs/assets/slides/slide-11.png" alt="端上抓时机，云端做决策与投递" width="720">
+
+<sub>设计示意：图中 catpaw-proactive、APNs、proactive 模式等属于 #90 分支，尚未合入 main；上方 Mermaid 图描述 main 现状。</sub>
+
+</details>
 
 详细说明见 [docs/architecture.md](docs/architecture.md)。
 
@@ -304,7 +350,7 @@ CATPAW_DENO_BIN=<Deno路径> CATPAW_PUBLIC_NPM_CACHE=<公开cache目录> sh scri
 
 - [ ] 合入 #89 设备调用安全闸门、#90 主动推送、#91 记忆隐私（评审中）
 - [ ] 通过真实产品验收（AF-1 Goal，见 [goal](docs/planning/AF-1/goal.md) 与 [验收标准](docs/acceptance/agent-foundation-acceptance.md)）
-- [ ] 演示视频与截图（TODO）
+- [ ] App 实拍录屏 / GIF 与演示视频（TODO，待 Mac 录制；脚本见 [demo-script](docs/demo-script.md)）
 - [ ] Release / ipa 分发流程（TODO，待决定）
 - [ ] 云电脑托管：仅为[提案](docs/architecture/cloud-computer-proposal.md)，确认零额外成本资源前不实施
 
