@@ -152,6 +152,38 @@ import SwiftUI
         default: ui("执行操作", [])
         }
     }
+    /// v1.1.x: the server summary embeds raw tool args (chat-tools.mjs summarize: `时间：2026-10-19T10:00:00+08:00`).
+    /// Rewrite every ISO-8601 timestamp to local wording: 今天/明天 HH:mm, 周X HH:mm within a week, else M月d日 HH:mm.
+    nonisolated static func friendlySummary(_ summary: String, ui: (String, [String]) -> String, locale: Locale, now: Date = .now, calendar: Calendar = .current) -> String {
+        let pattern = #"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:?\d{2})?"#
+        guard let re = try? NSRegularExpression(pattern: pattern) else { return summary }
+        var out = summary
+        for m in re.matches(in: summary, range: NSRange(summary.startIndex..., in: summary)).reversed() {
+            guard let r = Range(m.range, in: out), let d = parseISO(String(out[r]), calendar: calendar) else { continue }
+            out.replaceSubrange(r, with: friendlyTime(d, ui: ui, locale: locale, now: now, calendar: calendar))
+        }
+        return out
+    }
+    nonisolated static func friendlyTime(_ d: Date, ui: (String, [String]) -> String, locale: Locale, now: Date, calendar cal: Calendar) -> String {
+        let hm = String(format: "%02d:%02d", cal.component(.hour, from: d), cal.component(.minute, from: d))
+        let days = cal.dateComponents([.day], from: cal.startOfDay(for: now), to: cal.startOfDay(for: d)).day ?? 99
+        var style = Date.FormatStyle(locale: locale, calendar: cal, timeZone: cal.timeZone)
+        switch days {
+        case 0: return ui("今天", []) + " " + hm
+        case 1: return ui("明天", []) + " " + hm
+        case 2...6: style = style.weekday(.abbreviated)                  // zh: 周三
+        default: style = style.month(.abbreviated).day()            // zh: 11月2日, en: Nov 2
+        }
+        return d.formatted(style) + " " + hm
+    }
+    nonisolated private static func parseISO(_ s: String, calendar: Calendar) -> Date? {
+        let f = ISO8601DateFormatter()
+        for o: ISO8601DateFormatter.Options in [[.withInternetDateTime, .withFractionalSeconds], [.withInternetDateTime]] { f.formatOptions = o; if let d = f.date(from: s) { return d } }
+        // No zone (e.g. 2026-10-19T10:00): treat as the user's local wall time.
+        let l = DateFormatter(); l.calendar = calendar; l.timeZone = calendar.timeZone; l.locale = Locale(identifier: "en_US_POSIX")
+        for fmt in ["yyyy-MM-dd'T'HH:mm:ss", "yyyy-MM-dd'T'HH:mm"] { l.dateFormat = fmt; if let d = l.date(from: s) { return d } }
+        return nil
+    }
     private var expires: Date? {
         let f = ISO8601DateFormatter(); f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         return f.date(from: approval.expiresAt) ?? ISO8601DateFormatter().date(from: approval.expiresAt)
@@ -175,7 +207,7 @@ import SwiftUI
             }
             Text(Self.toolTitle(approval.tool, ui)).font(CatpawTypography.Role.body.font.weight(.semibold)).foregroundStyle(CatpawColors.ink)
             if !approval.summary.isEmpty {
-                Text(approval.summary).font(CatpawTypography.Role.body.font).foregroundStyle(CatpawColors.ink).fixedSize(horizontal: false, vertical: true)
+                Text(Self.friendlySummary(approval.summary, ui: ui, locale: locale)).font(CatpawTypography.Role.body.font).foregroundStyle(CatpawColors.ink).fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier("chat.approval.summary")
             }
             Text(riskText).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)

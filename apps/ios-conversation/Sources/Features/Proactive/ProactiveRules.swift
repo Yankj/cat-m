@@ -108,6 +108,12 @@ struct ProactiveSignalLedger: Codable, Sendable, Equatable {
     mutating func markDelivered(_ hash: String, level: ProactiveLevel, now: Date) {
         delivered[hash] = level.name; evaluated[hash] = now.timeIntervalSince1970
     }
+    /// 1.1.1: a card-only delivery posted no notification, so it must not cancel the meeting's T-lead pre-scheduled
+    /// notification (opening the app 11–25 min before used to drop it). notify / interrupt / legacy entries still block.
+    func blocksPreschedule(_ hash: String) -> Bool {
+        guard let level = delivered[hash] else { return false }
+        return level != ProactiveLevel.card.name && level != ProactiveLevel.silent.name
+    }
 }
 
 extension ProactiveRules {
