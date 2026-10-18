@@ -7,9 +7,26 @@ public final class NativeAuthKeychainVault: NativeAuthVault, @unchecked Sendable
     private let account: String
     private let lock = NSLock()
     public init(service: String, issuer: String) { self.service = service; account = textHash(issuer) }
-    private var query: [String: Any] { [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service, kSecAttrAccount as String: account, kSecAttrSynchronizable as String: false] }
+    private var query: [String: Any] { query(account) }
+    private func query(_ account: String) -> [String: Any] { [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service, kSecAttrAccount as String: account, kSecAttrSynchronizable as String: false] }
+    private var pendingAccount: String { account + ".pending" }
     public func load() throws -> NativeAuthCredential? {
         lock.lock(); defer { lock.unlock() }
+        return try read(query)
+    }
+    public func loadPending() throws -> NativeAuthCredential? {
+        lock.lock(); defer { lock.unlock() }
+        return try read(query(pendingAccount))
+    }
+    public func savePending(_ credential: NativeAuthCredential) throws {
+        lock.lock(); defer { lock.unlock() }
+        try write(credential, query(pendingAccount))
+    }
+    public func clearPending() throws {
+        lock.lock(); defer { lock.unlock() }
+        try delete(query(pendingAccount))
+    }
+    private func read(_ query: [String: Any]) throws -> NativeAuthCredential? {
         var request = query; request[kSecReturnData as String] = true; request[kSecMatchLimit as String] = kSecMatchLimitOne
         var result: CFTypeRef?; let status = SecItemCopyMatching(request as CFDictionary, &result)
         if status == errSecItemNotFound { return nil }
@@ -18,6 +35,9 @@ public final class NativeAuthKeychainVault: NativeAuthVault, @unchecked Sendable
     }
     public func save(_ credential: NativeAuthCredential) throws {
         lock.lock(); defer { lock.unlock() }
+        try write(credential, query)
+    }
+    private func write(_ credential: NativeAuthCredential, _ query: [String: Any]) throws {
         let data: Data
         do { data = try JSONEncoder().encode(credential) } catch { throw NativeAuthError.storage }
         let attributes: [String: Any] = [kSecValueData as String: data, kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly]
@@ -28,6 +48,10 @@ public final class NativeAuthKeychainVault: NativeAuthVault, @unchecked Sendable
     }
     public func clear() throws {
         lock.lock(); defer { lock.unlock() }
+        try delete(query(pendingAccount))
+        try delete(query)
+    }
+    private func delete(_ query: [String: Any]) throws {
         let status = SecItemDelete(query as CFDictionary)
         guard status == errSecSuccess || status == errSecItemNotFound else { throw NativeAuthError.storage }
     }

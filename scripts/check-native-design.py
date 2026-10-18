@@ -103,7 +103,8 @@ def luminance(value):
 # r9 (design-owner approved 2026-10-15): r9 palette replaces r5 values for these roles.
 # Brand sheet 2026-10 (Primary/Deep/Background/Ink/Grey). Hex authority: CatpawBrandTokens.
 R9_OVERRIDES = {
-    "bg": ("#FFFCF8", "#050505"),
+    # first-run-polish 2026-10-17 (user steering 12:33): one dark canvas #0E0C0A for launch screen, splash and chat.
+    "bg": ("#FFFCF8", "#0E0C0A"),
     "bubble": ("#F2EFEB", "#262422"),
     "bubble_ink": ("#292622", "#F2F0ED"),
     "ink": ("#292622", "#F2F0ED"),
