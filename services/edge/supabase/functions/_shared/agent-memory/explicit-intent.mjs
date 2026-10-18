@@ -26,7 +26,7 @@ const ZH_JIDE = new RegExp(LEAD + String.raw`(?:要)?记得(?:[：:]\s*(\S[\s\S]
 const ZH_TAIL = /^([^：:「」『』“”"《》\n]{4,116})[，,。\s]+(?:你)?记住(?:哦|啊|吧|啦)?[。!！~～]*$/;
 // English: "remember that …", "remember my …", "please remember: …"; "remember to …" is a reminder.
 const EN = /^(?:(?:ok(?:ay)?|so|and|also)[\s,]+)?(?:please[\s,]+|pls[\s,]+)?(?:remember|memori[sz]e|note\s+down|keep\s+in\s+mind|save\s+(?:this|that)\s+(?:to|in)\s+(?:your\s+)?memory)(?:\s*[:：,-]\s*(?!to\b)(\S[\s\S]*)|\s+((?:that|my|i|i'm|i've|i\s+am)\b[\s\S]*))$/i;
-function content(m) { return m ? (m[1] ?? m[2] ?? '').trim() : ''; }
+function matchedText(m) { return m ? (m[1] ?? m[2] ?? '').trim() : ''; }
 export function explicitRememberIntent(text) {
   if (typeof text !== 'string') return false;
   const t = text.slice(0, MAX_CHARS).normalize('NFKC').trim();
@@ -34,7 +34,7 @@ export function explicitRememberIntent(text) {
   const jide = t.match(ZH_JIDE);
   if (/记得/.test(t) && !jide) return false;
   const m = jide ?? t.match(ZH_THIS) ?? t.match(ZH_VERB) ?? t.match(EN);
-  let c = content(m);
+  let c = matchedText(m);
   if (!m) { const tail = t.match(ZH_TAIL); if (!tail || !/我/.test(tail[1]) || /说|讲|告诉|写道|写着/.test(tail[1])) return false; c = tail[1].trim(); }
   return c.length > 0 && !REMINDER.test(c);
 }
