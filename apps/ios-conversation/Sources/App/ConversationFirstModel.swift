@@ -20,6 +20,8 @@ enum ConversationObserverLifecycle: String { case foregroundIdle, streaming, rec
 
 private let sendLog=Logger(subsystem:"catpaw",category:"send")
 @MainActor final class ConversationFirstModel: ObservableObject {
+    /// Set only by `deactivate(persistDrafts:false)`: the suspension it runs must not flush the stale composer either.
+    private var discardComposerOnSuspend=false
     let repository: Repository
     let service: ConversationSessionService
     let taskPlanService:ConversationTaskPlanService
@@ -944,7 +946,7 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
             do { if let id { try await service.stopObserving(scope:scope,conversationID:id) };old?.cancel();try await queue?.pause(reason:.background) }
             catch { old?.cancel() }
             await persistence?.value
-            guard generation == sceneGeneration else { return }
+            guard generation == sceneGeneration, !self.discardComposerOnSuspend else { return }   // never-attached deactivate: the loaded draft is stale
             do { try await flushDraft() } catch { self.error=error.localizedDescription }
         }
         haltTask=task;return task
@@ -963,6 +965,7 @@ private let sendLog=Logger(subsystem:"catpaw",category:"send")
         MemoryLibraryHub.reset() // wave2 V1
         await inboxService?.invalidate()
         imageDraft.clear();for value in imageDrafts.values {value.clear()};imageDrafts.removeAll();imageCapability=ConversationImageCapability()
+        discardComposerOnSuspend = !persistDrafts
         await suspend();subscription?.cancel();subscription=nil;draftTask?.cancel();draftTask=nil
         let composerSaved:Bool
         if persistDrafts {do {try await flushDraft();composerSaved=true}catch{composerSaved=false}} else {composerSaved=true}
