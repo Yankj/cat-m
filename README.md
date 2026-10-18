@@ -27,7 +27,7 @@
 </div>
 
 > [!NOTE]
-> **版本状态（2026-10-18）**：iOS **v1.1.0**（2026-10-18）已通过发版 PR #98 合入 `main`，1.1.1 修复版准备中，下表所有能力都在 `main` 上；版本记录见 [CHANGELOG](CHANGELOG.md)。线上后端为 `catpaw-api` **v53**（= `main` 上的 #96）。逐项进展以 [主计划](docs/status/master-plan.md) 为准。
+> **版本状态（2026-10-18）**：iOS **v1.1.1**（2026-10-18）已发布，见 [Releases](https://github.com/Yankj/catpaw-m/releases/latest)，下表所有能力都在 `main` 上；版本记录见 [CHANGELOG](CHANGELOG.md)。线上后端为 `catpaw-api` **v54**（#100）、`catpaw-proactive` **v10**（#101）。逐项进展以 [主计划](docs/status/master-plan.md) 为准。
 
 <details>
 <summary><b>目录</b></summary>
@@ -128,8 +128,8 @@ open apps/ios-conversation/CatpawM.xcodeproj
 
 > **操作指南（How-to）**：安装已打包的构建。所有构建都在 [Releases](https://github.com/Yankj/catpaw-m/releases/latest) 页面；仓库目前是私有的，需要有仓库访问权限才能下载。
 
-> [!IMPORTANT]
-> 截至 2026-10-18 还没有发布任何 GitHub Release，下面的文件会在首个 Release 发布后出现。在那之前请用方式 C 从源码构建。
+> [!TIP]
+> 最新版本：[Catpaw 1.1.1](https://github.com/Yankj/catpaw-m/releases/tag/v1.1.1)（2026-10-18），文件为 `Catpaw-1.1.1-simulator.zip` 和 `Catpaw-1.1.1.ipa`。
 
 | 方式 | 文件 | 适合 | 限制 |
 |---|---|---|---|
