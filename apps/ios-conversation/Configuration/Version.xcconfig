@@ -2,7 +2,7 @@
 // MARKETING_VERSION: change only with Scripts/bump-version.sh (SemVer).
 // CURRENT_PROJECT_VERSION: fallback only. The real build number is the git commit count, stamped into the
 // packaged Info.plist by the "Stamp Build Info" phase (Scripts/app-version.py stamp).
-MARKETING_VERSION = 1.1.1
+MARKETING_VERSION = 1.2.0
 CURRENT_PROJECT_VERSION = 1
 
 // The stamp phase reads .git and edits the processed Info.plist; Xcode user-script sandboxing would block both.
