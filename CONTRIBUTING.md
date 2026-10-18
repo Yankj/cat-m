@@ -1,4 +1,16 @@
-# 维护约定
+# 贡献指南
+
+[← 返回 README](README.md)
+
+## 快速流程
+
+1. 从最新 `main` 拉短分支（见 [分支规范](docs/development/branch-management.md)），不要在 `main` 直接提交。
+2. 只改维护入口：iOS `apps/ios-conversation`，后端 `services/edge/supabase/functions`；冻结目录不改。
+3. 运行下方提交前检查与相关测试（见 [README · 开发与测试](README.md#开发与测试)）。
+4. 按 [PR 模板](.github/pull_request_template.md) 写明改动、实际运行层与证据。
+5. Bug / 需求请用 [Issue 模板](.github/ISSUE_TEMPLATE/)。
+
+## 维护约定
 
 每次变更在 [唯一主计划](docs/status/master-plan.md) 更新当前进展，适用验收与源码对应证据另按实际版本留存；其他索引只链接主计划，不维护并列状态/里程碑。明确fixture、合成本地façade、真实模型与云服务四层；测试计数写明来源、源码hash和最后实际运行层。没有成功终态的编译/测试不能标通过，局部PASS不代替产品接受。
 
