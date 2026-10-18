@@ -17,7 +17,7 @@ final class ConversationFirstNativeTests: XCTestCase {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString); defer { try? FileManager.default.removeItem(at:dir) }
         let path = dir.appendingPathComponent("r9-state.store")
         func backend() throws -> NativeChatHTTPBackend { NativeChatHTTPBackend(configuration:try NativeChatConfiguration(origin:origin,localScope:Profiles.user,serverScopeID:Profiles.user.workspaceID,allowInjectedTestProvider:true),credentials:NativeR9WireCredentials()) }
-        let service = ConversationSessionService(repository:try Repository(persistence:SwiftDataPersistence(url:path)),backend:try backend())
+        var service = ConversationSessionService(repository:try Repository(persistence:SwiftDataPersistence(url:path)),backend:try backend())
         var evidence:[[String:Any]] = []
         for (mode,expected) in [("wire-scheduled",ConversationGoalProjection.State.queued),("wire-outcome-unknown",.unknown),("wire-future-state",.unknown),("wire-revoked-scheduled",.unknown)] {
             let cid = try await service.create(scope:Profiles.user), tid = UUID()
@@ -31,6 +31,8 @@ final class ConversationFirstNativeTests: XCTestCase {
             let after = try await reopened.read(scope:Profiles.user,conversationID:cid)
             XCTAssertEqual(after.turns.last?.id,tid); XCTAssertEqual(after.goals[goal.id]?.binding,binding); XCTAssertEqual(after.goals[goal.id]?.state,expected)
             evidence.append(["mode":mode,"conversation_id":cid.uuidString,"turn_id":tid.uuidString,"task_id":goal.id,"run_id":binding.run_id.uuidString,"state":goal.state.rawValue,"artifact_hash":goal.artifacts.first?.contentHash ?? "no-authority"])
+            // The reopened repository is now the newest writer of this file; the stale one would be refused (.conflict).
+            service = reopened
         }
         var stats = URLRequest(url:origin.appendingPathComponent("wire-test-stats")); stats.setValue("Bearer explicit-wire-test-only",forHTTPHeaderField:"Authorization")
         let (data,response) = try await URLSession.shared.data(for:stats); XCTAssertEqual((response as? HTTPURLResponse)?.statusCode,200)
@@ -139,6 +141,104 @@ final class ConversationFirstNativeTests: XCTestCase {
         XCTAssertTrue(saved.turns.isEmpty); XCTAssertTrue(saved.messages.isEmpty); XCTAssertTrue(requests.isEmpty)
         XCTAssertEqual(core.conversation?.draftText, "Keep after failed save")
     }
+    // MARK: SwiftData one-container-per-file regression (CatpawM 0.3.0 (41) crash, 2026-10-17 20:36 +0800:
+    // SIGABRT in `_PFFaultHandlerLookupRow` under `SnapshotModelActor.saveOnQueue`, XCTest host).
+    #if DEBUG
+    private func swiftDataTestStore(_ name: String) -> URL {
+        // Not removed at the end: a live container keeps SQLite handles; unlinking under it corrupts test-only state.
+        FileManager.default.temporaryDirectory.appendingPathComponent("CatpawSwiftDataStability-\(UUID())", isDirectory: true).appendingPathComponent(name)
+    }
+    private func seedPreferences(_ repository: Repository, scope: DataScope, count: Int, prefix: String) async throws -> [UUID] {
+        let ids = (0..<count).map { _ in UUID() }
+        try await repository.commit(scope: scope, mutations: ids.enumerated().map { Mutation.create($0.element, .preference(Preference(key: "\(prefix)-\($0.offset)", value: "seed"))) })
+        return ids
+    }
+    func testSwiftDataPersistencesForOneFileShareOneStoreActor() throws {
+        let url = swiftDataTestStore("shared.store")
+        let a = try SwiftDataPersistence(url: url), b = try SwiftDataPersistence(url: url)
+        let other = try SwiftDataPersistence(url: swiftDataTestStore("other.store"))
+        XCTAssertEqual(a.storeIdentityForTesting, b.storeIdentityForTesting, "one ModelContainer/context per SQLite file")
+        XCTAssertNotEqual(a.storeIdentityForTesting, other.storeIdentityForTesting)
+        let aliased = try SwiftDataPersistence(url: url.deletingLastPathComponent().appendingPathComponent(".").appendingPathComponent("shared.store"))
+        XCTAssertEqual(a.storeIdentityForTesting, aliased.storeIdentityForTesting, "path spelling does not open a second container")
+    }
+    func testSharedRepositoryRegistryReturnsOneLiveRepositoryPerStore() throws {
+        let url = swiftDataTestStore("account.store")
+        var opens = 0
+        let first = try SharedRepositoryRegistry.shared.repository(at: url) { opens += 1; return try Repository(persistence: SwiftDataPersistence(url: url)) }
+        let second = try SharedRepositoryRegistry.shared.repository(at: url) { opens += 1; return try Repository(persistence: SwiftDataPersistence(url: url)) }
+        XCTAssertTrue(first === second); XCTAssertEqual(opens, 1)
+        let elsewhere = swiftDataTestStore("account.store")
+        let third = try SharedRepositoryRegistry.shared.repository(at: elsewhere) { try Repository(persistence: SwiftDataPersistence(url: elsewhere)) }
+        XCTAssertFalse(first === third)
+    }
+    /// Two writers of one file with divergent snapshots: the older one is refused instead of deleting the newer rows.
+    func testStaleSwiftDataWriterIsRefusedAndNewerRowsSurvive() async throws {
+        let url = swiftDataTestStore("stale.store")
+        let a = try Repository(persistence: SwiftDataPersistence(url: url))
+        _ = try await seedPreferences(a, scope: Profiles.user, count: 3, prefix: "seed")
+        let b = try Repository(persistence: SwiftDataPersistence(url: url))
+        let newer = UUID(), stale = UUID()
+        try await b.commit(scope: Profiles.user, mutations: [.create(newer, .preference(Preference(key: "newer", value: "b")))])
+        var refused = false
+        do { try await a.commit(scope: Profiles.user, mutations: [.create(stale, .preference(Preference(key: "stale", value: "a")))]) }
+        catch CatpawError.conflict { refused = true }
+        XCTAssertTrue(refused, "a writer whose snapshot predates another commit must not rewrite the file")
+        let reopened = try Repository(persistence: SwiftDataPersistence(url: url))
+        let state = await reopened.read(scope: Profiles.user)
+        XCTAssertNotNil(state.records[newer]); XCTAssertNil(state.records[stale]); XCTAssertEqual(state.list("preference", scope: Profiles.user).count, 4)
+    }
+    /// Purge (row-deleting save: `resetDemo`) racing a pending update save of the same rows from another opener.
+    /// Before the fix each opener had its own container and this aborted the host in `_PFFaultHandlerLookupRow`.
+    func testRowPurgeRacingPendingSaveFromAnotherOpenerNeverCrashes() async throws {
+        for round in 0..<12 {
+            let url = swiftDataTestStore("purge-\(round).store")
+            let purger = try Repository(persistence: SwiftDataPersistence(url: url))
+            let ids = try await seedPreferences(purger, scope: Profiles.demo, count: 40, prefix: "demo")
+            let keep = try await seedPreferences(purger, scope: Profiles.user, count: 5, prefix: "user")
+            let writer = try Repository(persistence: SwiftDataPersistence(url: url))
+            let base = await writer.read(scope: Profiles.demo)
+            let updates: [Mutation] = ids.compactMap { id in base.records[id].map { Mutation.update(id, $0.header.revision, .preference(Preference(key: "demo-updated", value: "\(round)"))) } }
+            let purged = Task { () -> Bool in
+                do { try await purger.resetDemo(); return true } catch { return false }
+            }
+            let updated = Task { () -> Bool in
+                do { try await writer.commit(scope: Profiles.demo, mutations: updates); return true } catch { return false }
+            }
+            let didPurge = await purged.value, didUpdate = await updated.value
+            XCTAssertTrue(didPurge != didUpdate, "exactly one of two writers with the same base sequence wins (round \(round))")
+            let reopened = try Repository(persistence: SwiftDataPersistence(url: url))
+            let demo = await reopened.read(scope: Profiles.demo), user = await reopened.read(scope: Profiles.user)
+            XCTAssertEqual(user.list("preference", scope: Profiles.user).count, keep.count, "unrelated rows survive")
+            let demoCount = demo.list("preference", scope: Profiles.demo).count
+            if didPurge { XCTAssertEqual(demoCount, 0) } else { XCTAssertEqual(demoCount, ids.count) }
+        }
+    }
+    /// Many concurrent commits through two openers of one file: no crash, and every acknowledged commit is durable.
+    func testConcurrentOpenersOfOneSwiftDataFileNeverLoseAcknowledgedCommits() async throws {
+        let url = swiftDataTestStore("concurrent.store")
+        let a = try Repository(persistence: SwiftDataPersistence(url: url))
+        _ = try await seedPreferences(a, scope: Profiles.user, count: 20, prefix: "seed")
+        let b = try Repository(persistence: SwiftDataPersistence(url: url))
+        let acknowledged: [UUID] = await withTaskGroup(of: UUID?.self) { group in
+            for i in 0..<60 {
+                let target = i % 2 == 0 ? a : b
+                group.addTask {
+                    let id = UUID()
+                    do { try await target.commit(scope: Profiles.user, mutations: [.create(id, .preference(Preference(key: "c-\(i)", value: "v")))]); return id }
+                    catch { return nil }
+                }
+            }
+            var ids: [UUID] = []
+            for await id in group { if let id { ids.append(id) } }
+            return ids
+        }
+        XCTAssertFalse(acknowledged.isEmpty)
+        let reopened = try Repository(persistence: SwiftDataPersistence(url: url))
+        let state = await reopened.read(scope: Profiles.user)
+        for id in acknowledged { XCTAssertNotNil(state.records[id], "acknowledged commit \(id) must be durable") }
+    }
+    #endif
     func testUnconfiguredConversationPreservesDraftAndHasNoSimulatedAnswer() async throws {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: dir) }
