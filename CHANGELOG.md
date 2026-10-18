@@ -9,7 +9,7 @@ CatpawM iOS 版本记录。格式参考 [Keep a Changelog](https://keepachangelo
 
 ## [Unreleased]
 
-## [1.2.0] - 未发布
+## [1.2.0] - 2026-10-18
 
 需要部署 `catpaw-api`（#104）后助理才会按能力清单回答并给出跳转按钮；未部署时 App 照常工作，只是不出现按钮。
 
