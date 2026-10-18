@@ -29,10 +29,10 @@ public struct SidebarPanel: View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 0) {
                 header.padding(.bottom, 12)
-                entry(localize("任务"), icon: "checklist", destination: .tasks, identifier: "sidebar.tasks")
-                if snapshot.capabilities.proactive { entry(localize("主动"), icon: "sparkles", destination: .proactive, identifier: "sidebar.proactive") }
-                entry(localize("成果"), icon: "tray", destination: .results, identifier: "sidebar.results")
-                entry(localize("记忆"), icon: "brain", destination: .memory, identifier: "sidebar.memory")
+                // v1.2 IA: 任务 + 主动 → 「待办」 (one list; Catpaw-found cards on top), 成果 → 「记录」, 记忆 → 「了解你」.
+                entry(localize("待办"), icon: "checklist", destination: .tasks, identifier: "sidebar.tasks")
+                entry(localize("记录"), icon: "tray", destination: .results, identifier: "sidebar.results")
+                entry(localize("了解你"), icon: "brain", destination: .memory, identifier: "sidebar.memory")
                 Text(localize("对话")).font(theme.secondaryFont).foregroundStyle(theme.secondary)
                     .accessibilityAddTraits(.isHeader)
                     .padding(.horizontal, 8).padding(.top, 20).padding(.bottom, 6)

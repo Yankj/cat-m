@@ -14,6 +14,8 @@ CatpawM iOS 版本记录。格式参考 [Keep a Changelog](https://keepachangelo
 需要部署 `catpaw-api`（#104）后助理才会按能力清单回答并给出跳转按钮；未部署时 App 照常工作，只是不出现按钮。
 
 ### 新增
+
+- 侧栏改为三项：「待办」（原「任务」+「主动」，Catpaw 发现的卡片在最上面，并标出来源「Catpaw 发现」/「你交代的」）、「记录」（原「成果」）、「了解你」（原「记忆」）；旧链接 catpawm://tasks、proactive、results、memory 仍然可用。
 - 能力清单：`docs/product/capabilities/catpaw-capabilities.json` 列出 Catpaw 每项能力的用途、用法、界面入口、状态和限制；`scripts/check-capabilities.py` 核对清单里的入口和跳转在 App 代码里真实存在。
 - 助理知道自己是谁：后端把能力清单的精简版放进系统提示，回答「你能做什么」「记忆在哪」时按清单说，计划中的功能（如 Gmail）如实说明（需部署 `catpaw-api`，#104）。
 - 跳转按钮：回复里提到记忆、任务、主动、成果、设置时，下面会出现「打开记忆」「查看成果」等按钮，点一下直接打开对应页面；只认清单里的目标。

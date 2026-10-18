@@ -154,7 +154,7 @@ import SwiftUI
         .scrollContentBackground(.hidden).background(CatpawColors.background)
         .font(CatpawTypography.Role.body.font).foregroundStyle(CatpawColors.ink)
         .searchable(text: $model.query, prompt: Text(ui("搜索记忆")))
-        .navigationTitle(ui("记忆")).navigationBarTitleDisplayMode(.inline)
+        .navigationTitle(ui("了解你")).navigationBarTitleDisplayMode(.inline)
         .disabled(model.busy && model.snapshot == nil)
         .refreshable { await model.load() }
         .task { await model.load() }
