@@ -1,5 +1,6 @@
 import Foundation
 import XCTest
+import UIKit
 @testable import CatpawM
 
 final class ConversationTurnActivityTests:XCTestCase {
@@ -1375,5 +1376,49 @@ final class LiveTextWireTests: XCTestCase {
         serve(turn: turn([delta(1), preview(2)]))
         do { _ = try await b.observe(request); XCTFail("a stored text_preview must never be accepted") } catch ConversationSessionError.invalidEvent {}
         await b.close()
+    }
+}
+
+/// v1.1.x: approval card summary shows friendly local times, and the header title width is layout-capped.
+@MainActor final class ApprovalSummaryTimeTests: XCTestCase {
+    private var cal: Calendar { var c = Calendar(identifier: .gregorian); c.timeZone = TimeZone(identifier: "Asia/Shanghai")!; return c }
+    private func at(_ s: String) -> Date { ISO8601DateFormatter().date(from: s)! }
+    func testTomorrowISOWithOffset() {
+        let now = at("2026-10-18T02:00:00Z")   // 10:00 Shanghai
+        XCTAssertEqual(ConversationApprovalCardView.friendlySummary("新建：给客户回电话 · 时间：2026-10-19T10:00:00+08:00", ui: { k, _ in k }, locale: Locale(identifier: "zh_Hans_CN"), now: now, calendar: cal), "新建：给客户回电话 · 时间：明天 10:00")
+    }
+    func testTodayUTCAndWeekdayAndDate() {
+        let now = at("2026-10-18T02:00:00Z")   // Sunday
+        XCTAssertEqual(ConversationApprovalCardView.friendlySummary("时间：2026-10-18T07:30:00.000Z", ui: { k, _ in k }, locale: Locale(identifier: "zh_Hans_CN"), now: now, calendar: cal), "时间：今天 15:30")
+        XCTAssertEqual(ConversationApprovalCardView.friendlySummary("时间→2026-10-21T09:05:00+08:00", ui: { k, _ in k }, locale: Locale(identifier: "zh_Hans_CN"), now: now, calendar: cal), "时间→周三 09:05")
+        XCTAssertEqual(ConversationApprovalCardView.friendlySummary("时间：2026-11-02T09:00", ui: { k, _ in k }, locale: Locale(identifier: "zh_Hans_CN"), now: now, calendar: cal), "时间：11月2日 09:00")
+    }
+    func testNoTimestampUnchanged() {
+        XCTAssertEqual(ConversationApprovalCardView.friendlySummary("修改任务 abcd1234 · 状态→done", ui: { k, _ in k }, locale: Locale(identifier: "zh_Hans_CN")), "修改任务 abcd1234 · 状态→done")
+    }
+    func testPrincipalTitleWidthIsLayoutDerived() {
+        XCTAssertNil(ConversationFirstView.principalTitleMaxWidth(barWidth: 0))
+        XCTAssertEqual(ConversationFirstView.principalTitleMaxWidth(barWidth: 393), 393 - 136)
+        XCTAssertEqual(ConversationFirstView.principalTitleMaxWidth(barWidth: 200), 120)
+        let f = CatpawTypography.font(.body, size: .large)
+        XCTAssertEqual(ConversationFirstView.titleTextWidth("明天上午 10 点提醒我给客户回电话", barWidth: 393, font: f), 393 - 136 - 120, "long title is capped")
+        XCTAssertLessThan(ConversationFirstView.titleTextWidth("Catpaw", barWidth: 393, font: f)!, 80, "short title keeps its natural width")
+    }
+}
+
+/// 1.1.1: a foreground card (opened 11–25 min before) must not cancel the T-lead pre-scheduled notification.
+final class ProactivePrescheduleLedgerTests: XCTestCase {
+    func testCardDeliveryKeepsPrescheduleButStillDedupesScan() {
+        var l = ProactiveSignalLedger(); let now = Date()
+        l.markDelivered("h", level: .card, now: now)
+        XCTAssertFalse(l.blocksPreschedule("h"), "card-only: the T-lead notification must still be scheduled")
+        XCTAssertFalse(l.shouldEvaluate("h", now: now.addingTimeInterval(3600)), "the foreground scan still never re-shows the card")
+    }
+    func testNotifyInterruptAndLegacyStillBlock() {
+        var l = ProactiveSignalLedger(); let now = Date()
+        l.markDelivered("n", level: .notify, now: now); l.markDelivered("i", level: .interrupt, now: now)
+        XCTAssertTrue(l.blocksPreschedule("n")); XCTAssertTrue(l.blocksPreschedule("i"))
+        XCTAssertTrue(ProactiveSignalLedger(legacy: ["g": 1]).blocksPreschedule("g"))
+        XCTAssertFalse(l.blocksPreschedule("unknown"))
     }
 }
