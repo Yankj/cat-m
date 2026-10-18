@@ -2,7 +2,7 @@
   "schema_version": 1,
   "product": "Catpaw",
   "app_version": "1.2.0",
-  "identity": "Catpaw（猫爪图标）是一个中文优先的 iOS 个人助理：在对话里回答问题、记住你的偏好、帮你建提醒和任务、在开会前主动提醒，并把办完的事放进「成果」。",
+  "identity": "Catpaw（猫爪图标）是一个中文优先的 iOS 个人助理：在对话里回答问题、记住你的偏好、帮你建提醒和任务、在开会前主动提醒，并把办完的事放进「记录」。",
   "link_scheme": "catpawm",
   "capabilities": [
     {
@@ -16,37 +16,37 @@
     },
     {
       "id": "memory",
-      "name": "记忆",
-      "purpose": "记住你的偏好和事实，之后的回答会用上；可以随时查看、修改、删除。",
-      "trigger": "说「记住……」；或打开侧栏「记忆」管理。",
-      "ui_entry": {"label": "侧栏 · 记忆", "anchor": "sidebar.memory", "link": "catpawm://memory", "button": "打开记忆"},
+      "name": "了解你",
+      "purpose": "记住你的偏好和事实（也就是「记忆」），之后的回答会用上；可以随时查看、修改、删除。",
+      "trigger": "说「记住……」；或打开侧栏「了解你」管理。",
+      "ui_entry": {"label": "侧栏 · 了解你", "anchor": "sidebar.memory", "link": "catpawm://memory", "button": "打开了解你"},
       "status": "shipped",
-      "limits": "需要打开「使用记忆」并同意记忆说明；在此基础上，只有说「记住」或打开「记忆」页的「自动记住新内容」开关后才会保存；引用或翻译里的「记住」不算。"
+      "limits": "需要打开「使用记忆」并同意记忆说明；在此基础上，只有说「记住」或打开「了解你」页的「自动记住新内容」开关后才会保存；引用或翻译里的「记住」不算。"
     },
     {
       "id": "tasks",
-      "name": "任务",
-      "purpose": "要我去办、还没办完的事：提醒、待办和进行中的执行。",
-      "trigger": "说「提醒我明天 9 点……」或「帮我整理一份……」；在侧栏「任务」查看进度。",
-      "ui_entry": {"label": "侧栏 · 任务", "anchor": "sidebar.tasks", "link": "catpawm://tasks", "button": "查看任务"},
+      "name": "待办",
+      "purpose": "要我留意的事都在这里：你交代的提醒、待办和进行中的执行，加上我先发现的会前提醒卡片（标「Catpaw 发现」）。",
+      "trigger": "说「提醒我明天 9 点……」或「帮我整理一份……」；在侧栏「待办」查看。",
+      "ui_entry": {"label": "侧栏 · 待办", "anchor": "sidebar.tasks", "link": "catpawm://tasks", "button": "查看待办"},
       "status": "shipped",
       "limits": "提醒在本机按时通知；长任务只做当前对话里可以完成的本地整理。"
     },
     {
       "id": "proactive",
-      "name": "主动",
+      "name": "主动提醒（在待办里）",
       "purpose": "我先发现、来找你的事，比如会前提醒卡片和出发提醒。",
-      "trigger": "允许日历权限后自动出现；在侧栏「主动」查看历史和原因。",
-      "ui_entry": {"label": "侧栏 · 主动", "anchor": "sidebar.proactive", "link": "catpawm://proactive", "button": "查看主动提醒"},
+      "trigger": "允许日历权限后自动出现；在侧栏「待办」最上面查看，标「Catpaw 发现」。",
+      "ui_entry": {"label": "侧栏 · 待办", "anchor": "todo.proactive", "link": "catpawm://proactive", "button": "查看待办"},
       "status": "shipped",
       "limits": "免打扰时段和每日提醒上限内不会打扰你（具体时段以设置为准）。"
     },
     {
       "id": "results",
-      "name": "成果",
-      "purpose": "已经办完、能拿出来看的东西：报告、写进日历的回执、网页摘要。",
-      "trigger": "任务完成后自动出现；在侧栏「成果」查看，并可回到原对话。",
-      "ui_entry": {"label": "侧栏 · 成果", "anchor": "sidebar.results", "link": "catpawm://results", "button": "查看成果"},
+      "name": "记录",
+      "purpose": "已经办完的事：报告、写进日历的回执、网页摘要，按时间排。",
+      "trigger": "任务完成后自动出现；在侧栏「记录」查看，左滑可回到原对话。",
+      "ui_entry": {"label": "侧栏 · 记录", "anchor": "sidebar.results", "link": "catpawm://results", "button": "查看记录"},
       "status": "shipped",
       "limits": "只保存当前账号工作区的成果。"
     },

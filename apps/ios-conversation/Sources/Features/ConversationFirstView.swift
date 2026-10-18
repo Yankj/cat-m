@@ -171,7 +171,7 @@ import CatpawImageComposer
         case .conversation(let id): self.route(.conversation(id))
         case .newConversation: self.route(.newConversation)
         case .tasks: path = []; self.route(.tasks)
-        case .proactive: proactiveInboxPresented = true
+        case .proactive: path = []; self.route(.tasks)   // v1.2 IA: 主动 lives inside 「待办」
         case .proactiveDebug: proactiveDebugPresented = true
         case .memory: path = []; self.route(.memory)
         case .results: path = []; self.route(.results)
@@ -187,7 +187,7 @@ import CatpawImageComposer
         case .results:path.append(.results)
         case .settings:path.append(.settings)
         case .memory:if model.loaded && model.memoryConfigured {path.append(.memory)}
-        case .proactive:proactiveInboxPresented=true
+        case .proactive:path.append(.tasks)
         case .accountAction(let id):performAccountAction(id)
         }
     }
@@ -1666,7 +1666,7 @@ private enum ConversationHostDestination:Hashable {case settings,tasks,results,m
  var body:some View {List {
   if model.session?.goals.isEmpty != false {Text(ui("当前对话还没有任务"))}
   ForEach((model.session?.goals.values.map{$0} ?? []).sorted{$0.updatedAt>$1.updatedAt}){goal in NavigationLink(value:ConversationHostDestination.task(goal.id)){VStack(alignment:.leading){Text(goal.title);Text(goal.summary).font(CatpawTypography.Role.caption.font)}}}
- }.navigationTitle(ui("任务")).accessibilityIdentifier("navigation.tasks")}
+ }.navigationTitle(ui("待办")).accessibilityIdentifier("navigation.tasks")}
 }
 @MainActor private struct ConversationTaskDetail:View {
     @Environment(\.locale) private var uiLocale
@@ -1683,7 +1683,7 @@ private enum ConversationHostDestination:Hashable {case settings,tasks,results,m
  var body:some View {List {
   if model.session?.goals.values.flatMap({$0.artifacts}).isEmpty != false {Text(ui("当前对话还没有成果"))}
   ForEach((model.session?.goals.values.map{$0} ?? []).sorted{$0.id<$1.id}){goal in ForEach(goal.artifacts){artifact in NavigationLink(value:ConversationHostDestination.artifact(goal.id,ConversationArtifactIdentity(artifact))){Text(artifact.title+" · v\(artifact.version)")}}}
- }.navigationTitle(ui("成果")).accessibilityIdentifier("navigation.results")}
+ }.navigationTitle(ui("记录")).accessibilityIdentifier("navigation.results")}
 }
 @MainActor private struct ConversationArtifactDetail:View {
     @Environment(\.locale) private var uiLocale

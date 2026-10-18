@@ -25,7 +25,7 @@ enum ConversationInboxReturnResult {case returned,unavailable(String)}
     var body: some View {
         List {
             if allowed && model.matches(service: service, item: nil) {
-                Text(mode == .tasks ? ui("当前工作区的任务") : ui("当前工作区的成果"))
+                Text(mode == .tasks ? ui("当前工作区的待办") : ui("当前工作区的记录"))
                     .font(CatpawTypography.Role.secondary.font).foregroundStyle(CatpawColors.secondary)
                     .listRowBackground(Color.clear)
                 if model.loading && model.items.isEmpty { ProgressView(mode == .tasks ? ui("正在读取任务") : ui("正在读取成果")) }
@@ -41,12 +41,13 @@ enum ConversationInboxReturnResult {case returned,unavailable(String)}
                     Text(ui("显示上次读取的内容；本次尚未完成更新。")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
                         .accessibilityIdentifier("inbox.stale")
                 }
+                if mode == .tasks { ProactiveTodoSection() }   // v1.2 IA: 「待办」 = Catpaw-found cards on top + what you asked for
                 if mode == .tasks { DeviceLedgerSection() }
                 if mode == .tasks {
                     ForEach(model.items) { item in
                         NavigationLink {
                             ConversationInboxDetailView(service: service, item: item, admissionAllowed: admissionAllowed, onReturn: onReturn)
-                        } label: { receiptRow(item, artifact: nil) }
+                        } label: { VStack(alignment: .leading, spacing: 4) { TodoSourceTag(catpaw: false); receiptRow(item, artifact: nil) } }
                         .accessibilityIdentifier("inbox.item." + item.id.uuidString.lowercased())
                     }
                 } else {
@@ -68,8 +69,8 @@ enum ConversationInboxReturnResult {case returned,unavailable(String)}
                         Text(ui("当前已读取的工作还没有成果，可以加载更多。")).font(CatpawTypography.Role.secondary.font).foregroundStyle(CatpawColors.secondary)
                     } else {
                         // v1.2: empty states say how this page fills up.
-                        EmptyState(title: mode == .tasks ? ui("还没有任务") : ui("还没有准备好的成果"),
-                                   detail: mode == .tasks ? ui("在对话里说「提醒我明天 9 点开会」或「帮我整理一份周报」，要办的事会出现在这里。") : ui("任务办完后，报告和回执会放在这里，点开可以回到原对话。"))
+                        EmptyState(title: mode == .tasks ? ui("还没有待办") : ui("还没有记录"),
+                                   detail: mode == .tasks ? ui("在对话里说「提醒我明天 9 点开会」或「帮我整理一份周报」，要办的事会出现在这里。") : ui("办完的事会记在这里：报告、回执和摘要，点开可以回到原对话。"))
                             .listRowBackground(Color.clear).accessibilityIdentifier("inbox.empty")
                     }
                 }
@@ -80,11 +81,11 @@ enum ConversationInboxReturnResult {case returned,unavailable(String)}
                     }.disabled(model.loading).accessibilityIdentifier("inbox.loadMore")
                 }
             } else {
-                EmptyState(title: mode == .tasks ? ui("任务") : ui("成果"), detail: ui("允许网络后可读取当前工作区的任务与成果。"))
+                EmptyState(title: mode == .tasks ? ui("待办") : ui("记录"), detail: ui("允许网络后可读取当前工作区的任务与成果。"))
                     .listRowBackground(Color.clear).accessibilityIdentifier("inbox.unavailable")
             }
         }.font(CatpawTypography.Role.body.font).scrollContentBackground(.hidden).background(CatpawColors.background)
-            .navigationTitle(mode == .tasks ? ui("任务") : ui("成果")).navigationBarTitleDisplayMode(.inline)
+            .navigationTitle(mode == .tasks ? ui("待办") : ui("记录")).navigationBarTitleDisplayMode(.inline)
             .accessibilityIdentifier("inbox.list")
             .refreshable { if let request = model.reload() { await request.value } }
             .task(id: lifecycle) { model.activate(service: service, item: nil, allowed: allowed) }
@@ -134,7 +135,7 @@ enum ConversationInboxReturnResult {case returned,unavailable(String)}
                 Button(ui("重新读取")) { model.reload() }.disabled(!allowed || model.loading)
                     .accessibilityIdentifier("inbox.detail.refresh")
             } }
-            .navigationTitle(artifact == nil ? ui("任务进展") : ui("成果")).navigationBarTitleDisplayMode(.inline)
+            .navigationTitle(artifact == nil ? ui("任务进展") : ui("记录")).navigationBarTitleDisplayMode(.inline)
             .background(CatpawColors.background).accessibilityIdentifier("inbox.detail." + item.id.uuidString.lowercased())
             .safeAreaInset(edge: .bottom) { if allowed && model.matches(service: service, item: item) && model.goal != nil && !model.denied {
                 ConversationInboxReturnAction(item: item, allowed: allowed, onReturn: onReturn)
@@ -354,5 +355,40 @@ private func inboxTone(_ value: ConversationInboxTaskStatus) -> CatpawTone {
     }
     private func mayApply(_ token: UUID, source: ConversationInboxService) -> Bool {
         admitted && generation == token && service === source && !Task.isCancelled
+    }
+}
+
+/// v1.2 IA: the Catpaw-found (proactive) part of 「待办」. Pending suggestions on top, each tagged 「Catpaw 发现」.
+@MainActor struct ProactiveTodoSection: View {
+    @ObservedObject private var store = ProactiveSuggestionStore.shared
+    @Environment(\.locale) private var locale
+    private func ui(_ k: String) -> String { AppLanguage(locale: locale).ui(k) }
+    var body: some View {
+        let rows = store.sorted(.pending).sorted { ($0.createdAt ?? .distantFuture) < ($1.createdAt ?? .distantFuture) }
+        Group {
+            if let notice = ProactiveRules.suppressionNotice(now: Date(), deliveredToday: ProactiveEngine.shared.quota.count(on: Date())) {
+                Label(ui(notice), systemImage: "moon.zzz").font(CatpawTypography.Role.secondary.font).foregroundStyle(CatpawColors.secondary)
+                    .listRowBackground(Color.clear).accessibilityIdentifier("proactive.inbox.suppressed")
+            }
+            ForEach(rows) { s in
+                VStack(alignment: .leading, spacing: 6) { TodoSourceTag(catpaw: true); ProactiveSuggestionCard(suggestion: s) }
+                    .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16)).listRowSeparator(.hidden).listRowBackground(Color.clear)
+            }
+        }
+        .task { await store.load() }
+        .accessibilityIdentifier("todo.proactive")
+    }
+}
+/// Small source tag on a 「待办」 row: 「Catpaw 发现」 (proactive) vs 「你交代的」 (asked in chat).
+struct TodoSourceTag: View {
+    let catpaw: Bool
+    @Environment(\.locale) private var locale
+    var body: some View {
+        Text(catpaw ? AppLanguage(locale: locale).ui("Catpaw 发现") : AppLanguage(locale: locale).ui("你交代的"))
+            .font(CatpawTypography.Role.caption.font.weight(.semibold))
+            .foregroundStyle(catpaw ? CatpawBrand.paw : CatpawColors.secondary)
+            .padding(.horizontal, 8).padding(.vertical, 2)
+            .background((catpaw ? CatpawBrand.paw : CatpawColors.secondary).opacity(0.12), in: Capsule())
+            .accessibilityIdentifier(catpaw ? "todo.tag.catpaw" : "todo.tag.user")
     }
 }

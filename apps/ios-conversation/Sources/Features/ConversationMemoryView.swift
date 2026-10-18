@@ -35,7 +35,7 @@ import SwiftUI
                 if let error=model.error {Text(ui(error)).font(CatpawTypography.Role.secondary.font).foregroundStyle(CatpawColors.attention).fixedSize(horizontal:false,vertical:true).accessibilityIdentifier("memory.error")}
                 Button(ui("读取最新记忆")){Task{await model.load(admissionAllowed:admissionAllowed())}}.touchTarget().disabled(model.busy || !admissionAllowed()).accessibilityIdentifier("memory.refresh")
             }.padding(CatpawLayout.pageInset).frame(maxWidth:CatpawLayout.readableWidth,alignment:.leading).frame(maxWidth:.infinity)
-        }.scrollDismissesKeyboard(.interactively).background(CatpawColors.background).font(CatpawTypography.Role.body.font).foregroundStyle(CatpawColors.ink).navigationTitle(ui("记忆")).navigationBarTitleDisplayMode(.inline).accessibilityIdentifier("memory.viewport")
+        }.scrollDismissesKeyboard(.interactively).background(CatpawColors.background).font(CatpawTypography.Role.body.font).foregroundStyle(CatpawColors.ink).navigationTitle(ui("了解你")).navigationBarTitleDisplayMode(.inline).accessibilityIdentifier("memory.viewport")
             .task{await model.load(admissionAllowed:admissionAllowed())}.onDisappear{Task{await model.flush()}}
             .catpawSheet(isPresented:Binding(get:{model.review != nil},set:{if !$0 && !model.busy{model.review=nil}})){reviewSheet.interactiveDismissDisabled(model.busy)}
             .catpawSheet(item:$model.source){source in sourceSheet(source)}

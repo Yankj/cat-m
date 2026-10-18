@@ -94,7 +94,7 @@ public struct SidebarMenuButton: View {
         Button(action: action) {
             SidebarSymbol(name: "line.3.horizontal", font: font).frame(minWidth: 44, minHeight: 44).contentShape(Rectangle())
         }.buttonStyle(SidebarPressStyle()).disabled(!enabled)
-            .accessibilityLabel(localize("打开侧栏")).accessibilityHint(localize("切换对话、任务和成果"))
+            .accessibilityLabel(localize("打开侧栏")).accessibilityHint(localize("切换对话、待办和记录"))
             .accessibilityIdentifier("sidebar.open")
     }
 }
