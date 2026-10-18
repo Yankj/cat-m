@@ -51,11 +51,9 @@ export function ruleDecide(signals, context) {
       else if (Number.isFinite(until) && until <= 10) consider('card', `「${d.title ?? '会议'}」${until} 分钟后开始。`, 0.7, acts('create_reminder'), s.type);
       // v10: honour the client's lead time (neutral reason: iOS sends its default 10 when no memory exists) (iOS ProactiveRules.localLevel: 3 ≤ until ≤ lead + travel + 15). Separate `if`
       // (not else-if) so the pre-scheduled check at until = lead ≤ 10 still reaches notify; consider() keeps the highest level.
-      // User decision 2026-10-18: notify only once until ≤ lead + travel (the pre-scheduled T−lead instant); before that a
-      // foreground scan gets a card, so no early system notification replaces the scheduled one.
       const win = lead + (travel > 0 ? travel : 0);
       if (lead != null && Number.isFinite(until) && until >= 3 && until <= win + 15)
-        consider(until <= win ? 'notify' : 'card', `「${d.title ?? '会议'}」${until} 分钟后开始，按提前 ${lead} 分钟准备提醒你。`, 0.75, acts('create_reminder', 'notify_attendees'), s.type);
+        consider(until <= win + 5 ? 'notify' : 'card', `「${d.title ?? '会议'}」${until} 分钟后开始，按提前 ${lead} 分钟准备提醒你。`, 0.75, acts('create_reminder', 'notify_attendees'), s.type);
     } else if (s.type === 'flight_status') {
       const delay = Number(d.delay_minutes ?? 0);
       if (d.status === 'cancelled') consider('interrupt', `航班 ${d.flight ?? ''} 已取消。`, 0.9, acts('notify_attendees', 'create_reminder'), s.type);
@@ -100,7 +98,7 @@ export function createDecisionService({ store, model = null, memory = null, now 
     const hashes = await Promise.all(signals.map(signalHash));
     const since = new Date(at - cfg.dedupeWindowSec * 1000).toISOString();
     const seen = await store.seenSignalHashes(uid, hashes, since);
-    let fresh = signals.filter((_, i) => !seen.includes(hashes[i])), escalate = false;
+    const fresh = signals.filter((_, i) => !seen.includes(hashes[i]));
     const weights = await store.getTriggerWeights(uid);
     const w = t => weights[t] ?? { weight: 1, threshold_bump: 0 };
     const memories = memory ? await memory.recall(uid, signals.map(s => [s.type, s.data?.title, s.data?.location, s.data?.flight].filter(Boolean).join(' ')).join('; '), 5).catch(e => { log('memory_failed', e.message); return []; }) : [];
@@ -111,18 +109,13 @@ export function createDecisionService({ store, model = null, memory = null, now 
       // nothing counted, no push) instead of 'silent', which iOS reads as "cancel the pre-scheduled notification".
       // A suggestion the user already acted on / dismissed is not revived: that case stays silent as before.
       const prior = store.lastDecisionForHashes ? await store.lastDecisionForHashes(uid, hashes, since) : null;
-      // Replay only if the prior level still covers what the rules ask for now: a card replay must not block a later
-      // card → notify escalation for the same signal_hash (that case is re-evaluated as fresh).
-      const want = ruleDecide(signals, context).decision;
-      if (prior && prior.payload?.suggestion?.status === 'pending' && lvl(prior.payload?.decision) > 0 && lvl(prior.payload.decision) >= lvl(want)) {
+      if (prior && prior.payload?.suggestion?.status === 'pending' && lvl(prior.payload?.decision) > 0) {
         const p = prior.payload;
         return { event_id: prior.id, suggestion: toSuggestion(prior), decision: p.decision, delivery: p.delivery ?? 'device', reason: prior.body, confidence: p.confidence, used_memories: p.memories ?? [], suggested_actions: p.actions ?? [], source: 'dedupe', trace: ['dedupe: replay of ' + prior.id], replayed: true };
       }
-      if (prior && prior.payload?.suggestion?.status === 'pending' && lvl(want) > lvl(prior.payload?.decision)) { escalate = true; trace.push(`dedupe: escalation ${prior.payload?.decision} → ${want}, re-evaluated`); }
-      else { r = { decision: 'silent', reason: '同样的情况刚刚已经评估过，不重复打扰。', confidence: 1, actions: [], used: [], trigger: signals[0].type }; source = 'dedupe'; trace.push('dedupe: all signals seen within window'); }
+      r = { decision: 'silent', reason: '同样的情况刚刚已经评估过，不重复打扰。', confidence: 1, actions: [], used: [], trigger: signals[0].type }; source = 'dedupe'; trace.push('dedupe: all signals seen within window');
     }
-    if (escalate) fresh = signals;
-    if (!r) {
+    else {
       const rule = ruleDecide(fresh, context);
       if (model) {
         try { r = validateModelDecision(await model.decide({ signals: fresh, context, memories, weights: Object.fromEntries(fresh.map(s => [s.type, w(s.type)])), now_iso: new Date(at).toISOString(), time_zone: tz }, { uid }), memories.map(m => m.id)); r.trigger ??= rule.trigger; source = 'llm:' + (model.lastRoute?.() ?? 'model'); }
