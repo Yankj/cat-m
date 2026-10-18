@@ -10,7 +10,7 @@
 
 | 项 | 要求 |
 |---|---|
-| 构建 | 安装 v1.1 构建（`DeviceTrial` scheme）；「设置 › 调试 › 主动信号模拟」顶部「构建」区的 git SHA 与验收通过的 SHA 一致 |
+| 构建 | 安装 v1.1.0 构建（`DeviceTrial` scheme，设置 › 关于应显示「版本 1.1.0」）；「设置 › 调试 › 主动信号模拟」顶部「构建」区的 git SHA 与验收通过的 SHA 一致 |
 | 模拟器定位 | `xcrun simctl location <设备UDID> set 39.9961,116.4806`（望京） |
 | 录制 | `xcrun simctl io <设备UDID> recordVideo <文件>.mov` |
 | 语言 | 中文环境 |
