@@ -56,13 +56,20 @@ enum ConversationInboxReturnResult {case returned,unavailable(String)}
                                                         admissionAllowed: admissionAllowed, onReturn: onReturn)
                         } label: { receiptRow(row.item, artifact: row.identity) }
                         .accessibilityIdentifier("inbox.artifact." + row.identity.id)
+                        // v1.2: one-tap jump back to the conversation that produced this result.
+                        .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                            Button { Task { _ = await onReturn(row.item) } } label: { Label(ui("回到原对话"), systemImage: "arrow.uturn.backward") }
+                                .tint(CatpawColors.ink).accessibilityIdentifier("inbox.artifact.return")
+                        }
                     }
                 }
                 if model.didLoad && !model.loading && model.errorText == nil && visibleCount == 0 && (mode != .tasks || DeviceLedger.shared.active.isEmpty) {
                     if mode == .results && model.hasMore {
                         Text(ui("当前已读取的工作还没有成果，可以加载更多。")).font(CatpawTypography.Role.secondary.font).foregroundStyle(CatpawColors.secondary)
                     } else {
-                        EmptyState(title: mode == .tasks ? ui("还没有任务") : ui("还没有准备好的成果"), detail: ui("已受理的工作会出现在这里。"))
+                        // v1.2: empty states say how this page fills up.
+                        EmptyState(title: mode == .tasks ? ui("还没有任务") : ui("还没有准备好的成果"),
+                                   detail: mode == .tasks ? ui("在对话里说「提醒我明天 9 点开会」或「帮我整理一份周报」，要办的事会出现在这里。") : ui("任务办完后，报告和回执会放在这里，点开可以回到原对话。"))
                             .listRowBackground(Color.clear).accessibilityIdentifier("inbox.empty")
                     }
                 }
