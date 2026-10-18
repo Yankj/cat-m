@@ -6,17 +6,17 @@ import { createMemoryStore } from '../supabase/functions/_shared/proactive/memor
 const mt = (until, travel) => [{ id: 's1', type: 'meeting_upcoming', source: 'calendar', data: { title: '产品评审会', minutes_until: until, ...(travel != null ? { travel_minutes: travel } : {}) } }];
 const lv = (until, ctx, travel) => ruleDecide(mt(until, travel), ctx).decision;
 
-test('lead 10, no travel: lead rule window 3..25; notify ≤ 15, card 16..25', () => {
+test('lead 10, no travel: lead rule window 3..25; notify ≤ 10 (= lead), card 11..25', () => {
   const c = { lead_minutes: 10 };
   assert.equal(lv(2, c), 'card'); assert.doesNotMatch(ruleDecide(mt(2), c).reason, /提前/);   // < 3: lead rule off, pre-v10 ≤10 card stays
   assert.equal(lv(3, c), 'notify'); assert.equal(lv(10, c), 'notify');
-  assert.equal(lv(15, c), 'notify'); assert.equal(lv(16, c), 'card'); assert.equal(lv(23, c), 'card');
+  assert.equal(lv(11, c), 'card'); assert.equal(lv(15, c), 'card'); assert.equal(lv(16, c), 'card'); assert.equal(lv(23, c), 'card');
   assert.equal(lv(25, c), 'card'); assert.equal(lv(26, c), 'silent');
 });
 
 test('upper boundary includes travel: lead 10 + travel 20 → silent at 46, card at 45, notify at 35', () => {
   const c = { lead_minutes: 10 };
-  assert.equal(lv(46, c, 20), 'silent'); assert.equal(lv(45, c, 20), 'card'); assert.equal(lv(36, c, 20), 'card'); assert.equal(lv(35, c, 20), 'notify');
+  assert.equal(lv(46, c, 20), 'silent'); assert.equal(lv(45, c, 20), 'card'); assert.equal(lv(35, c, 20), 'card'); assert.equal(lv(31, c, 20), 'card'); assert.equal(lv(30, c, 20), 'notify');
   assert.equal(lv(20, c, 20), 'interrupt');   // pre-v10 travel rule still wins (highest level)
 });
 
@@ -30,7 +30,7 @@ test('missing / invalid lead_minutes → pre-v10 behaviour exactly', () => {
 });
 
 test('lead rule reason/confidence/actions', () => {
-  const r = ruleDecide(mt(14), { lead_minutes: 10 });
+  const r = ruleDecide(mt(9), { lead_minutes: 10 });
   assert.equal(r.decision, 'notify'); assert.equal(r.confidence, 0.75); assert.match(r.reason, /按提前 10 分钟准备/); assert.doesNotMatch(r.reason, /习惯/);   // iOS sends its default 10 too
   assert.deepEqual(r.actions, ['create_reminder', 'notify_attendees', 'snooze', 'dismiss']);
 });
@@ -48,6 +48,7 @@ test('full pipeline (rules, daytime): pre-scheduled check at until = lead gets �
     assert.ok(LEVELS.indexOf(levelOf(r)) >= LEVELS.indexOf('notify'), `lead ${lead}: ${levelOf(r)}`);
   }
   assert.equal(levelOf(await evaluate(23, { lead_minutes: 10 })), 'card');
+  assert.equal(levelOf(await evaluate(12, { lead_minutes: 10 })), 'card');   // foreground 11–15: card, no early system notification
   assert.equal(levelOf(await evaluate(10, {})), 'card');      // old clients unchanged
 });
 
@@ -95,4 +96,22 @@ test('P1-2: a dismissed suggestion is not revived by a replay (stays silent)', a
   const ev = await store.getEvent('u', a.event_id); ev.payload.suggestion.status = 'dismissed'; await store.updateEventPayload('u', a.event_id, ev.payload, ev.payload.suggestion.rev ?? 0);
   clock.t = BASE_T - 35 * 60_000; const b = await pre();
   assert.equal(b.decision, 'silent'); assert.equal(b.source, 'dedupe');
+});
+
+test('card at T-12 (calendar scan) never blocks the T-lead pre-schedule notify; cross-source hashes differ server-side', async () => {
+  const { clock, svc, pre } = rig();
+  clock.t = BASE_T - 12 * 60_000;
+  const scan = await svc.evaluate('u', { signals: [{ type: 'meeting_upcoming', source: 'calendar', dedupe_key: 'M1', data: { title: '评审', minutes_until: 12 } }], context: { time_zone: 'Asia/Shanghai', lead_minutes: 10 } });
+  assert.equal(scan.decision, 'card');
+  clock.t = BASE_T - 11.5 * 60_000; const p = await pre();
+  assert.equal(p.decision, 'notify'); assert.notEqual(p.replayed, true);
+});
+
+test('same signal_hash: a card replay does not block a later notify escalation; equal level still replays', async () => {
+  const { clock, svc } = rig();
+  const scan = until => svc.evaluate('u', { signals: [{ type: 'meeting_upcoming', source: 'calendar', dedupe_key: 'M1', data: { title: '评审', minutes_until: until } }], context: { time_zone: 'Asia/Shanghai', lead_minutes: 10 } });
+  clock.t = BASE_T - 14 * 60_000; const a = await scan(14); assert.equal(a.decision, 'card');
+  clock.t = BASE_T - 12 * 60_000; const b = await scan(12); assert.equal(b.decision, 'card'); assert.equal(b.replayed, true); assert.equal(b.event_id, a.event_id);
+  clock.t = BASE_T - 9 * 60_000; const c = await scan(9); assert.equal(c.decision, 'notify'); assert.notEqual(c.event_id, a.event_id); assert.ok(c.trace.some(t => /escalation card → notify/.test(t)), JSON.stringify(c.trace));
+  clock.t = BASE_T - 8 * 60_000; const d = await scan(8); assert.equal(d.decision, 'notify'); assert.equal(d.replayed, true); assert.equal(d.event_id, c.event_id);
 });
