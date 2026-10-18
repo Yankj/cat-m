@@ -1125,7 +1125,7 @@ struct ProactiveSignal: Equatable, Sendable {
         guard fire > now.addingTimeInterval(60) else { return }
         let signal = ProactiveSignal(source: .background, eventID: e.calendarItemIdentifier, title: e.title ?? "日程", start: e.startDate, place: e.location ?? "")
         let hash = signal.signalHash, identity = "evt-" + hash
-        guard signalLedger.delivered[hash] == nil else { return }  // already delivered in-app
+        guard !signalLedger.blocksPreschedule(hash) else { return }  // already notified in-app (a card-only delivery does not count)
         // Codex PR90c #4: the cloud decision for the fire instant (silent → nothing), else local rules; then the learned
         // feedback gate with the trigger's confidence; then the device gate at the fire instant inside the pipeline.
         let cloud = await evaluateRemote(signal, leadMinutes: lead.minutes, minutesUntil: lead.minutes, evaluateAt: fire, token: token)

@@ -49,6 +49,7 @@ import CatpawImageComposer
     @Environment(\.catpawOAuth) private var oauth
     @State private var pendingMessagesPresented=false
     @State private var composerMeasurements:[String:CGFloat]=[:]
+    @State private var navBarWidth:CGFloat=0   // v1.1.x: measured chat width; caps the principal title between the bar buttons
     @State private var composerLineCount=1
     @State private var pendingAttachmentIntentID:UUID?
     @State private var visibleViewport:CatpawVisibleViewport?
@@ -190,7 +191,20 @@ import CatpawImageComposer
         let title=model.history.first(where:{$0.id==model.conversationID})?.title.trimmingCharacters(in:.whitespacesAndNewlines) ?? ""
         return title.isEmpty ? ui("新对话") : title
     }
-    private var r8Title:String { model.history.first(where:{$0.id==model.conversationID}) == nil ? "Catpaw" : shortConversationTitle }
+    private var r8Title:String { model.history.first(where:{$0.id==model.conversationID}) == nil ? "Catpaw" : firstTitleLine }
+    private var firstTitleLine:String { String(conversationTitle.split(separator:"\n",maxSplits:1).first ?? Substring(conversationTitle)) }
+    /// v1.1.x title overflow: the principal item is centered, so it may use the bar width minus the leading and trailing
+    /// 44pt buttons plus their system margins on both sides; the title then truncates with … instead of running under them.
+    /// The Menu label in the principal slot is laid out at its intrinsic size (the bar ignores outer frames), so the title
+    /// Text gets a definite width: its natural one-line width, capped by what is left between the bar buttons once the
+    /// avatar, chevron, status dot, padding and model picker (≈120pt, fixed-size glyphs) are taken out.
+    private var titleTextWidth:CGFloat? { Self.titleTextWidth(r8Title, barWidth:navBarWidth > 0 ? navBarWidth : UIScreen.main.bounds.width, font:CatpawTypography.font(.body,size:textSize)) }
+    static func titleTextWidth(_ title:String, barWidth:CGFloat, font:UIFont) -> CGFloat? {
+        guard let cap = principalTitleMaxWidth(barWidth:barWidth) else { return nil }
+        let natural = ceil((title as NSString).size(withAttributes:[.font:font]).width * 1.06) + 2   // +6%: the label is semibold, the bridge font regular
+        return min(natural, max(48, cap - 120))
+    }
+    static func principalTitleMaxWidth(barWidth:CGFloat) -> CGFloat? { barWidth > 0 ? max(120, barWidth - 2 * (44 + 16 + 8)) : nil }
     private var r8ModelLabel:String {
         // chat-ux-1505 #1: an explicit picker choice wins so the header shows what the user selected.
         if let picked = ModelPickerOptions.headerLabel(route: ModelRouteSelection.route, model: ModelRouteSelection.model, routes: routeCatalog.routes) { return picked.count > 18 ? String(picked.prefix(16)) + "…" : picked }
@@ -230,6 +244,7 @@ import CatpawImageComposer
                     VStack(alignment:.leading,spacing:0) {
                         HStack(spacing:4) {
                             Text(r8Title).font(CatpawTypography.Role.body.font.weight(.semibold)).foregroundStyle(CatpawColors.ink).lineLimit(1).truncationMode(.tail)
+                                .frame(width:titleTextWidth).accessibilityIdentifier("chat.title.text")
                             Image(systemName:"chevron.down").font(CatpawTypography.Role.caption.font.weight(.semibold)).imageScale(.small).foregroundStyle(CatpawColors.tertiary)
                         }
                         Text(headerStatusLine)
@@ -508,7 +523,7 @@ import CatpawImageComposer
             }
             }.background(CatpawViewportObserver{visibleViewport=$0}.accessibilityHidden(true))
                 .onPreferenceChange(ConversationComposerMeasurements.self){composerMeasurements=$0}
-            .background(CatpawColors.background).navigationTitle(shortConversationTitle).navigationBarTitleDisplayMode(.inline)
+            .background(CatpawColors.background).background{GeometryReader{g in Color.clear.onAppear{navBarWidth=g.size.width}.onChange(of:g.size.width){_,w in navBarWidth=w}}}.navigationTitle(shortConversationTitle).navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 // r8 top bar: three bare glyph elements, no per-button glass; whole bar turns glass only after scroll.
                 ToolbarItem(placement:.topBarLeading) {
