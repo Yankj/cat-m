@@ -63,6 +63,8 @@ import UIKit
     var placeholder:String = ""
     var lineCountChanged:((Int)->Void)? = nil
     var addAttachments:(([ComposerAttachment])->Void)? = nil
+    /// chat-ux-1505 #2: composer focus (tap) → host plays a light haptic via .sensoryFeedback.
+    var focusChanged:((Bool)->Void)? = nil
     let submit:() -> Void
     func makeCoordinator() -> Coordinator { Coordinator(self) }
     func makeUIView(context:Context) -> ConversationTextView {
@@ -126,6 +128,7 @@ import UIKit
         var replacing=false
         var measured:(width:CGFloat,pointSize:CGFloat,text:String,size:CGSize)?
         init(_ parent:NativeConversationComposer){self.parent=parent}
+        func textViewDidBeginEditing(_ textView:UITextView){parent.focusChanged?(true)}
         func textViewDidChange(_ textView:UITextView) {
             #if DEBUG
             let changeStart=ProcessInfo.processInfo.systemUptime

@@ -238,4 +238,31 @@ final class SidebarTests: XCTestCase {
         XCTAssertFalse(SidebarGesturePolicy.settlesOpen(direction: .opening, progress: 0.9, velocityX: 1000, cancelled: true))
         XCTAssertTrue(SidebarGesturePolicy.settlesOpen(direction: .closing, progress: 0.1, velocityX: -1000, cancelled: true))
     }
+    /// Account menu (2026-10-17 22:00 IA change): actions route through `.accountAction`, are always permitted, and
+    /// a header without actions keeps the old settings route.
+    func testAccountMenuActionsArePermittedAndCarryRoleAndSubmenu() {
+        let menu = SidebarAccount(name: "kunjie@example.invalid", detail: "Google", actions: [
+            .init(id: "switch", title: "切换/添加账户", systemImage: "person.crop.circle.badge.plus", children: [
+                .init(id: "switch.google", title: "使用 Google 账户", systemImage: "g.circle")]),
+            .init(id: "signOut", title: "退出登录", systemImage: "rectangle.portrait.and.arrow.right", role: .destructive)])
+        var withMenu = snapshot; withMenu.account = menu
+        XCTAssertTrue(withMenu.permits(.accountAction("signOut")))
+        XCTAssertEqual(menu.actions.last?.role, .destructive)
+        XCTAssertEqual(menu.actions.first?.children.map(\.id), ["switch.google"])
+        XCTAssertEqual(SidebarAccount(name: "a").actions, [], "older hosts: no menu, header routes to settings")
+    }
+    /// device-0728 P0: every glass circle button in the drawer (gear, collapse, new) declares a full-circle hit shape
+    /// before its glass, so a tap anywhere on the visible circle fires on iOS 26 (glass itself is not hit-testable).
+    func testGlassCircleButtonsDeclareAFullCircleHitShape() throws {
+        let url = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+            .appendingPathComponent("Sources/CatpawNavigation/SidebarPanel.swift")
+        let source = try String(contentsOf: url, encoding: .utf8)
+        for line in source.components(separatedBy: "\n") where line.contains(".sidebarGlass(Circle()") && !line.contains("func ") {
+            guard let glass = line.range(of: ".sidebarGlass(Circle()"), let hit = line.range(of: ".sidebarHitCircle()") else {
+                return XCTFail("glass circle without a full-circle hit shape: \(line.trimmingCharacters(in: .whitespaces))")
+            }
+            XCTAssertLessThan(hit.lowerBound, glass.lowerBound, "hit shape must be on the label, before the glass")
+        }
+        XCTAssertTrue(source.contains("name: \"gearshape\"") && source.contains("sidebarHitCircle().sidebarGlass"), "gear keeps its hit circle")
+    }
 }

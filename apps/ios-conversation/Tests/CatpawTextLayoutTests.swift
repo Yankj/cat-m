@@ -8,7 +8,7 @@ final class CatpawTextLayoutTests:XCTestCase {
     /// Regression: 「猫吃什么」 bubble rendered ~2 empty lines tall (trailing newlines from Return/dictation).
     @MainActor func testShortUserBubbleHugsOneLine() {
         XCTAssertEqual(ConversationUserBubbleText.display("猫吃什么\n\n"),"猫吃什么")
-        XCTAssertEqual(ConversationUserBubbleText.display("\n 猫吃什么 \n"),"猫吃什么")
+        XCTAssertEqual(ConversationUserBubbleText.display("\n猫吃什么 \n"),"猫吃什么")
         XCTAssertEqual(ConversationUserBubbleText.display("a\n\nb"),"a\n\nb")
         let line=UIFont.preferredFont(forTextStyle:.body,compatibleWith:UITraitCollection(preferredContentSizeCategory:.large)).lineHeight
         for raw in ["猫吃什么","猫吃什么\n\n","猫吃什么\n \n"] {

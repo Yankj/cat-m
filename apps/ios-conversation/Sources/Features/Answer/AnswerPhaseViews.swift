@@ -13,7 +13,7 @@ import UIKit
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            ThinkingHeader(model: model)
+            ThinkingHeader(model: model, onRegenerate: onRegenerate, onVerify: onVerify)
             if model.phase != .thinking {
                 FadingStreamText(text: model.text, complete: model.phase == .settled)
                     .transition(.opacity)
@@ -23,7 +23,8 @@ import UIKit
                 SettledFooter(text: model.text, sources: model.sources, canQuote: canQuote, onQuote: onQuote, onRegenerate: onRegenerate,
                               generationSeconds: model.generationSeconds)
                     .transition(.opacity.combined(with: .offset(y: 4)))
-            case let .interrupted(reason, reconciliation):
+            case let .interrupted(reason, reconciliation) where !model.usesStatusLine:
+                // status-line SPEC §8: one failure surface — with the status row, the row carries reason + button.
                 InterruptedFooter(reason: reason, reconciliationRequired: reconciliation, onVerify: onVerify, onRegenerate: onRegenerate)
             default: EmptyView()
             }
@@ -78,7 +79,8 @@ import UIKit
     }
     var body: some View {
         PhasedAnswerView(model: projection, canQuote: false)
-            .onAppear { if let s = turn.reasoningSummary { projection.thinkingSummary = s } }
+            .onAppear { if let s = turn.reasoningSummary { projection.thinkingSummary = s }; projection.restoreStatus(turn: turn) }
+            .onChange(of: turn.awaitingApproval) { _, _ in projection.restoreStatus(turn: turn) }
             .onChange(of: turn.reasoningSummary) { _, s in if let s { projection.thinkingSummary = s } }
             .transition(.opacity.combined(with: .move(edge: .bottom)))
     }
@@ -88,6 +90,9 @@ import UIKit
 
 @MainActor private struct ThinkingHeader<Model: AnswerPhaseProviding>: View {
     @ObservedObject var model: Model
+    var onRegenerate: (() -> Void)? = nil
+    var onVerify: (() -> Void)? = nil
+    @Environment(\.statusLineScrollToCard) private var scrollToCard
     /// nil = follow the phase (open while thinking with steps, closed once text arrives); set once the user taps.
     @State private var userExpanded: Bool?
     @Environment(\.locale) private var locale
@@ -99,12 +104,21 @@ import UIKit
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            if thinking { liveRow } else if hasDetail { resultRow }
+            // status-line v1.0: nothing in the first second of a turn (fast turns never flash a row).
+            // status-line: nothing in the first 0.6 s of a turn (visual SPEC §6); terminal rows stay in place (§8).
+            if thinking {
+                if !model.usesStatusLine { liveRow } else if let line = model.statusLine { statusRow(line) }
+            } else if model.usesStatusLine, let terminal = terminalStatus { terminalRow(terminal) }
+            else if hasDetail { resultRow }
             if expanded && !model.steps.isEmpty {
                 VStack(alignment: .leading, spacing: 10) {
-                    ForEach(model.steps) { step in
-                        ReplyStepRow(step: step, current: thinking && step.id == currentStepID)
+                    // Visual SPEC v2 §1: glyph centre x 12 (= kitten slot centre), step text at x 32.
+                    VStack(alignment: .leading, spacing: 10) {
+                        ForEach(model.steps) { step in
+                            ReplyStepRow(step: step, current: thinking && step.id == currentStepID)
+                        }
                     }
+                    .padding(.leading, 4)
                     if !model.sources.isEmpty { SourceCapsuleStrip(sources: Array(model.sources.prefix(4))) }
                 }
                 .transition(.opacity.combined(with: .move(edge: .top)))
@@ -129,13 +143,15 @@ import UIKit
             HStack(spacing: 8) {
                 PlushMascot(pose: model.thinkingSummary != nil ? .thinking : .idle, size: 22)
                     .frame(width: 24, height: 24)
-                TimelineView(.periodic(from: model.thinkingStartedAt, by: 1)) { ctx in
-                    Text(liveTitle(now: ctx.date))
-                        .font(CatpawTypography.Role.secondary.font)
-                        .foregroundStyle(CatpawColors.secondary)
-                        .lineLimit(1).truncationMode(.tail)
-                        .monospacedDigit()
-                }
+                // chat-ux-1505 #3: mascot + 「Catpaw 正在工作」 (or the running tool step) with a shimmer sweep.
+                Text(workingTitle)
+                    .font(CatpawTypography.Role.secondary.font)
+                    .foregroundStyle(CatpawColors.secondary)
+                    .lineLimit(1).truncationMode(.tail)
+                    .workingShimmer(statusAnimated)   // waiting on the user / failed / stopped: static
+                    .contentTransition(.opacity)
+                    .animation(CatpawMotion.resolved(CatpawMotion.thinkingCollapse, reduceMotion), value: workingTitle)
+                    .accessibilityIdentifier(statusIdentifier)
                 Spacer(minLength: 0)
             }
             .frame(minHeight: 32)
@@ -143,10 +159,71 @@ import UIKit
         }
         .buttonStyle(.plain)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel(ui("思考中") + " " + (model.thinkingSummary ?? model.steps.last?.title ?? ""))
+        .accessibilityLabel(workingTitle)
         .accessibilityValue(Self.elapsed(from: model.thinkingStartedAt, to: Date()))
+        .onChange(of: workingTitle) { _, title in
+            // VoiceOver: announce state changes, at most once every 2 s.
+            guard UIAccessibility.isVoiceOverRunning, announcer.allow(at: Date()) else { return }
+            UIAccessibility.post(notification: .announcement, argument: title)
+        }
+    }
+    @State private var announcer = StatusLineAnnouncementThrottle()
+    private var statusIdentifier: String {
+        if case .awaitingUser? = model.statusLine { return "chat.answer.awaitingUser" }
+        return "chat.answer.working"
+    }
+    private var statusAnimated: Bool { model.usesStatusLine ? (model.statusLine?.animated ?? false) : true }
+
+    private var en: Bool { AppLanguage(locale: locale) == .english }
+    /// Working / waiting row (visual SPEC). Tap: waiting → scroll to the card; otherwise expand/collapse the steps.
+    private func statusRow(_ line: StatusLinePhase) -> some View {
+        StatusLineRow(phase: line, en: en, startedAt: model.thinkingStartedAt, onTap: {
+            if line.kind == .waiting { scrollToCard?() } else if !model.steps.isEmpty { userExpanded = !expanded }
+        }) {
+            if line.kind != .waiting && !model.steps.isEmpty { chevron }
+        }
+        .accessibilityIdentifier(line.kind == .waiting ? "chat.answer.awaitingUser" : "chat.answer.working")
+    }
+    /// SPEC §8: failed / stopped become static rows in place of the interrupted footer.
+    private var terminalStatus: StatusLinePhase? {
+        guard case let .interrupted(reason, _) = model.phase else { return nil }
+        if model.statusLine == .stopped || reason == "已停止接收此轮回复" || reason == "cancelled" { return .stopped }
+        if case .failed? = model.statusLine { return model.statusLine }
+        return .failed(reason: StatusLinePhase.failureReason(reason))
+    }
+    private var reconciliation: Bool { if case let .interrupted(_, r) = model.phase { return r } else { return false } }
+    private func terminalRow(_ line: StatusLinePhase) -> some View {
+        let n = model.steps.filter { $0.state != .running }.count
+        let suffix: String? = line == .stopped && n > 0 ? (en ? " · \(n) steps done" : " · 已完成 \(n) 步") : nil
+        return StatusLineRow(phase: line, en: en, startedAt: model.thinkingStartedAt, suffix: suffix,
+                             onTap: { if !model.steps.isEmpty { userExpanded = !expanded } }) {
+            HStack(spacing: 8) {
+                if line.kind == .failed {
+                    // Uncertain outcome → only "verify", never resend (R5 rule). Separate VO element (SPEC §11).
+                    if reconciliation, let onVerify {
+                        Button(ui("核对执行结果"), action: onVerify).font(CatpawTypography.Role.caption.font.weight(.semibold))
+                            .foregroundStyle(CatpawColors.ink)
+                    } else if let onRegenerate {
+                        Button(ui("重试"), action: onRegenerate).font(CatpawTypography.Role.caption.font.weight(.semibold))
+                            .foregroundStyle(CatpawColors.ink)
+                    }
+                }
+                if !model.steps.isEmpty { chevron }
+            }
+        }
+        .accessibilityIdentifier("chat.answer.interrupted")
+    }
+    private var chevron: some View {
+        Image(systemName: "chevron.right").font(CatpawTypography.Role.caption.font.weight(.semibold))
+            .foregroundStyle(CatpawColors.calmSecondary)
+            .rotationEffect(.degrees(expanded ? 90 : 0)).accessibilityHidden(true)
     }
 
+    /// Running tool step title (e.g. 「正在查日历」) else 「Catpaw 正在工作」.
+    private var workingTitle: String {
+        if model.usesStatusLine, let line = model.statusLine { return ui(line.title) }
+        return model.steps.last(where: { $0.state == .running })?.title ?? ui("Catpaw 正在工作")
+    }
     private func liveTitle(now: Date) -> String {
         let secs = String(max(0, Int(now.timeIntervalSince(model.thinkingStartedAt))))
         if let running = model.steps.last(where: { $0.state == .running }) { return running.title + " · " + secs + "s" }
@@ -156,6 +233,9 @@ import UIKit
     /// Stage 4: 「思考结果 ›」 — plain secondary text row, no capsule, chevron rotates when open.
     private var resultRow: some View {
         Button { userExpanded = !expanded } label: {
+          HStack(spacing: 8) {
+            // Visual SPEC v2 §8: done chip led by the happy kitten, no badge; text stays at x 32.
+            if model.usesStatusLine { StatusKitten(pose: .done, badge: nil, tone: .neutral) }
             HStack(spacing: 4) {
                 Text(ui("思考结果")).font(CatpawTypography.Role.secondary.font)
                 if let s = model.thoughtSeconds, s > 0 {
@@ -165,7 +245,8 @@ import UIKit
                     .rotationEffect(.degrees(expanded ? 90 : 0)).accessibilityHidden(true)
             }
             .foregroundStyle(CatpawColors.secondary)
-            .frame(minHeight: 32).contentShape(Rectangle())
+          }
+          .frame(minHeight: 32).contentShape(Rectangle())
         }
         .buttonStyle(CatpawPressButtonStyle())
         .accessibilityValue(expanded ? ui("已展开") : ui("已收起"))
@@ -183,6 +264,7 @@ import UIKit
     let step: AnswerToolStep
     let current: Bool
     private var glyph: String {
+        if ToolStepCopy.table[step.kind] != nil { return ToolStepCopy.symbol(step.kind) }
         let k = step.kind.lowercased()
         if k.contains("search") { return "magnifyingglass" }
         if k.contains("fetch") || k.contains("browse") || k.contains("web") || k.contains("url") { return "globe" }
@@ -190,7 +272,7 @@ import UIKit
         return "sparkle"
     }
     var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 10) {
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
             Image(systemName: glyph).font(CatpawTypography.Role.caption.font)
                 .frame(width: 16).accessibilityHidden(true)
             Text(step.title).font(CatpawTypography.Role.secondary.font.weight(current ? .medium : .regular))
@@ -232,7 +314,7 @@ import UIKit
                     .accessibilityLabel(s.title)
                 }
             }
-            .padding(.leading, 26)
+            .padding(.leading, 32)
         }
         .accessibilityIdentifier("chat.answer.stepSources")
     }
@@ -330,6 +412,15 @@ import UIKit
         }
         .foregroundStyle(CatpawColors.ink)
         .accessibilityIdentifier("chat.answer.interrupted")
+    }
+}
+
+/// status-line SPEC §7: tapping the waiting row scrolls to the pending confirmation card.
+enum StatusLineCardAnchor { static let id = "chat.status.pendingCard" }
+private struct StatusLineScrollToCardKey: EnvironmentKey { static let defaultValue: (() -> Void)? = nil }
+extension EnvironmentValues {
+    var statusLineScrollToCard: (() -> Void)? {
+        get { self[StatusLineScrollToCardKey.self] } set { self[StatusLineScrollToCardKey.self] = newValue }
     }
 }
 

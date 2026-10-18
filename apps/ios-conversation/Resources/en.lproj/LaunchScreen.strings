@@ -1,0 +1,2 @@
+/* Launch screen slogan (Base.lproj/LaunchScreen.storyboard, label SLG-01). Keep in sync with UIStrings.json "先你一步，把事办妥". */
+"SLG-01.text" = "A step ahead. Things handled.";
