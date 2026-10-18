@@ -2,6 +2,8 @@ import Foundation
 
 public enum SidebarDestination: Equatable, Sendable {
     case newConversation, conversation(UUID), tasks, results, memory, settings, proactive
+    /// An item of the account header menu (`SidebarAccountAction.id`). The host performs it after the drawer closes.
+    case accountAction(String)
 }
 
 /// Supply only the current account/scope's records. This package does not fetch or persist them.
@@ -38,14 +40,31 @@ public struct SidebarCapabilities: Equatable, Sendable {
         case .memory: memory
         case .settings: settings
         case .proactive: proactive
+        case .accountAction: true
         }
     }
 }
-/// Account header shown at the top of the drawer. Tapping it routes to settings.
+/// Account header shown at the top of the drawer. With `actions` it opens the account menu (current account ✓ row,
+/// divider, actions; a destructive action draws in red). Without actions it routes to settings (older hosts).
 public struct SidebarAccount: Equatable, Sendable {
     public var name: String
     public var detail: String?
-    public init(name: String, detail: String? = nil) { self.name = name; self.detail = detail }
+    public var actions: [SidebarAccountAction]
+    public init(name: String, detail: String? = nil, actions: [SidebarAccountAction] = []) {
+        self.name = name; self.detail = detail; self.actions = actions
+    }
+}
+/// One account-menu item. `children` makes it a submenu (e.g. 切换/添加账户 → Google / GitHub).
+public struct SidebarAccountAction: Identifiable, Equatable, Sendable {
+    public enum Role: Equatable, Sendable { case normal, destructive }
+    public var id: String
+    public var title: String
+    public var systemImage: String
+    public var role: Role
+    public var children: [SidebarAccountAction]
+    public init(id: String, title: String, systemImage: String, role: Role = .normal, children: [SidebarAccountAction] = []) {
+        self.id = id; self.title = title; self.systemImage = systemImage; self.role = role; self.children = children
+    }
 }
 public struct SidebarSnapshot: Equatable, Sendable {
     /// A noncredential namespace used to reset transient search across account changes.

@@ -2,7 +2,9 @@ import Foundation
 // State-machine behavior adapted from OpenMuse conversation-queue.ts, MIT.
 // Copyright (c) 2026 OpenMuse contributors. Full attribution: docs/conversation-first/upstream-review/LICENSE.
 public actor ConversationFollowupQueueService {
-    public enum Disposition: Sendable, Equatable { case sent, heldBeforeAdmission }
+    /// `failedTerminal`: the turn was admitted and the server ended it (e.g. rate_limited). It never pauses the queue;
+    /// the next message goes out (it supersedes the failed turn, like the server's `superseded_by_new_message`).
+    public enum Disposition: Sendable, Equatable { case sent, heldBeforeAdmission, failedTerminal }
     private let repository: Repository
     private let scope: DataScope
     private let conversationID: UUID
@@ -78,6 +80,15 @@ public actor ConversationFollowupQueueService {
     /// Clears only a `.preflight` hold (a send that threw before its turn was journaled). User, background
     /// and recovery pauses are untouched. Returns true when the queue was resumed.
     @discardableResult public func resumePreflightHold() async throws -> Bool { await lockState();defer { unlockState() }; var (s,r) = try await load();guard s.paused,s.pauseReason == .preflight,s.inflight == nil,!s.pending.isEmpty else { return false };s.paused = false;s.pauseReason = nil;try await save(s,r);return true }
+    /// Launch / before a drain: a queue persisted as paused behind a terminal failure is unpaused
+    /// (`ConversationFollowupRecovery.normalized`). Returns true when the state changed.
+    @discardableResult public func recoverFromTerminalFailure(session: ConversationSession?) async throws -> Bool {
+        guard !draining else { return false }
+        await lockState();defer { unlockState() }
+        var (s,r) = try await load()
+        guard let next = ConversationFollowupRecovery.normalized(s, session: session) else { return false }
+        s = next; try await save(s,r); return true
+    }
     public func reconcileInflight(admitted: Bool) async throws {
         guard !draining else { throw ConversationSessionError.busy }
         await lockState();defer { unlockState() }

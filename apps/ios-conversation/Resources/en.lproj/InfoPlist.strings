@@ -1,5 +1,5 @@
-"NSMicrophoneUsageDescription" = "Only when you start speaking, capture this utterance for supported on-device transcription. Raw audio is not stored in long-term records.";
-"NSSpeechRecognitionUsageDescription" = "Only when you enable it and on-device recognition is supported, turn this utterance into editable text. There is no cloud recognition fallback.";
+"NSMicrophoneUsageDescription" = "Only while you dictate, or while voice conversation is open (it keeps listening until you end or pause it), capture audio to turn it into text. Raw audio is not stored in long-term records.";
+"NSSpeechRecognitionUsageDescription" = "Only when you dictate or open voice conversation, turn speech into text. Voice conversation uses on-device recognition only; dictation may use Apple's speech recognition service when on-device recognition isn't supported.";
 "NSCameraUsageDescription" = "Only when you choose Take Photo, open the camera and save the confirmed image to this local project. It is not uploaded automatically.";
 "NSPhotoLibraryUsageDescription" = "Only when you select a photo, save that image to this local project. Your photo library is not uploaded automatically.";
 "NSCalendarsFullAccessUsageDescription" = "Only after you confirm a calendar action and allow access, create and verify that event to prevent duplicates and recover its result.";
@@ -7,3 +7,4 @@
 "NSRemindersFullAccessUsageDescription" = "Catpaw writes a reminder to Reminders only after you confirm.";
 "NSContactsUsageDescription" = "Used to find the person you want to contact, only for this request.";
 "NSPhotoLibraryAddUsageDescription" = "Saves the images you choose to Photos.";
+"NSLocationWhenInUseUsageDescription" = "Used to estimate public transit time to your meeting location, so Catpaw can remind you to leave at the right time.";

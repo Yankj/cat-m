@@ -69,11 +69,12 @@ import SwiftUI
     }
 }
 
-/// Hold-to-talk only (tap mode uses the full-screen VoiceModeOverlay): ✕ · hint · live dotted waveform · ✓ (Grok-style).
+/// Inline composer dictation for tap and hold alike: ✕ · hint · live dotted waveform · ✓ (Grok-style). Dictation never goes full screen;
+/// only the waveform button opens the full-screen voice conversation (`VoiceChatOverlay`).
 @MainActor struct ComposerDictationBarHost: View {
     @ObservedObject private var dictation = ComposerDictation.shared
     var body: some View {
-        if dictation.dictating && dictation.mode == .hold {
+        if dictation.dictating {
             ComposerDictationBar(dictation: dictation, voice: dictation.voice)
                 .transition(.opacity.combined(with: .scale(scale: 0.98)))
         }
@@ -148,16 +149,3 @@ struct DottedWaveform: View {
     }
 }
 
-/// Full-screen calm voice mode while tap-dictating.
-@MainActor struct VoiceModeHost: View {
-    @ObservedObject private var dictation = ComposerDictation.shared
-    @ObservedObject private var voice = ComposerDictation.shared.voice
-    var body: some View {
-        // `-CatpawVoiceModePreview YES` (launch argument) pins the overlay for visual QA on simulators without speech.
-        // Shown once audio is actually live, so permission prompts / a failed start never flash the full-screen layer.
-        if (dictation.dictating && dictation.mode == .tap && voice.dictationPhase == .recording) || UserDefaults.standard.bool(forKey: "CatpawVoiceModePreview") {
-            VoiceModeOverlay(dictation: dictation, voice: dictation.voice)
-                .transition(.opacity)
-        }
-    }
-}

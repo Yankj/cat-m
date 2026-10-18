@@ -47,6 +47,24 @@ import Combine
         if event.failover == true { notice = .route(ModelRouteSelection.displayName(event.route)) }
     }
     func displayName(_ id: String) -> String { routes.first { $0.id == id }?.display_name ?? id }
+
+    /// Single state source for the settings 「模型」 section and the home model menu.
+    /// selected = the user's choice; actual = latest SSE `model_route` route (auto) or the choice;
+    /// online = connection online AND the actual route is not reported offline/degraded.
+    struct Presence: Equatable {
+        let selectedID: String
+        let actualID: String?
+        let online: Bool
+        let failover: Bool
+    }
+    func presence(connection: ConnectionStatusKind) -> Presence {
+        let selected = ModelRouteSelection.route
+        let actual: String? = selected == ModelRouteSelection.autoID ? lastEvent?.route : selected
+        var routeOK = true
+        if let a = actual, let info = routes.first(where: { $0.id == a }) { routeOK = info.statusKind == .online }
+        else if selected == ModelRouteSelection.autoID, !routes.isEmpty { routeOK = routes.contains { $0.statusKind == .online } }
+        return Presence(selectedID: selected, actualID: actual, online: connection == .online && routeOK, failover: lastEvent?.failover == true)
+    }
 }
 
 /// Settings › 模型与接口. Selection persists and drives X-Catpaw-Route / X-Catpaw-Model.
@@ -156,5 +174,263 @@ struct ModelRoutesSettingsView: View {
         if let c = r.cooling_seconds, c > 0 { parts.append(ui("冷却 {0} 秒", arguments: [String(c)])) }
         if r.free == true { parts.append(ui("免费")) }
         return parts.joined(separator: " · ")
+    }
+}
+
+/// chat-ux-1505 #1: native model Menu to the right of the chat title pill. Only server-allowed models; checkmark on the
+/// current one; haptic on change. Changing route asks the conversation to re-check provider consent (route_hash).
+struct ChatHeaderModelPicker: View {
+    @Environment(\.locale) private var uiLocale
+    @ObservedObject private var catalog = ModelRouteCatalog.shared
+    @AppStorage(ModelRouteSelection.routeKey) private var routeID = ModelRouteSelection.autoID
+    @AppStorage(ModelRouteSelection.modelKey) private var modelID = ""
+    @State private var changes = 0
+    let onChange: (_ routeChanged: Bool) -> Void
+    private func ui(_ key: String) -> String { AppLanguage(locale: uiLocale).ui(key) }
+    var body: some View {
+        let routes = catalog.routes, options = ModelPickerOptions.build(routes)
+        Menu {
+            ForEach(Array(Dictionary(grouping: options, by: \.route).sorted { $0.key == ModelRouteSelection.autoID || ($1.key != ModelRouteSelection.autoID && $0.key < $1.key) }), id: \.key) { group in
+                Section(group.key == ModelRouteSelection.autoID ? "" : catalog.displayName(group.key)) {
+                    ForEach(group.value) { o in
+                        Button { pick(o) } label: {
+                            if ModelPickerOptions.isSelected(o, route: routeID, model: modelID.isEmpty ? nil : modelID, routes: routes) { Label(o.route == ModelRouteSelection.autoID ? ui("自动") : o.label, systemImage: "checkmark") }
+                            else { Text(o.route == ModelRouteSelection.autoID ? ui("自动") : o.label) }
+                        }.disabled(!o.enabled).accessibilityIdentifier("chat.modelPicker." + o.id)
+                    }
+                }
+            }
+        } label: {
+            Image(systemName: "chevron.up.chevron.down").font(CatpawTypography.Role.caption.font.weight(.semibold))
+                .foregroundStyle(CatpawColors.secondary).frame(width: 30, height: 30)
+                .modifier(ModelPickerGlass())
+                .contentShape(Circle())
+        }
+        .menuOrder(.fixed)
+        .sensoryFeedback(.selection, trigger: changes)
+        .accessibilityLabel(ui("选择模型")).accessibilityIdentifier("chat.modelPicker")
+    }
+    private func pick(_ o: ModelPickerOption) {
+        let routeChanged = o.route != routeID
+        guard routeChanged || (o.model ?? "") != modelID else { return }
+        ModelRouteSelection.select(route: o.route, model: o.model)
+        routeID = o.route; modelID = o.model ?? ""
+        changes += 1; onChange(routeChanged)
+    }
+}
+private struct ModelPickerGlass: ViewModifier {
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    func body(content: Content) -> some View {
+        if reduceTransparency { content.background(CatpawColors.card, in: Circle()) }
+        else {
+            #if compiler(>=6.2)
+            if #available(iOS 26.0, *) { content.glassEffect(.regular, in: Circle()) } else { content.background(.ultraThinMaterial, in: Circle()) }
+            #else
+            content.background(.ultraThinMaterial, in: Circle())
+            #endif
+        }
+    }
+}
+
+/// Settings › 「模型」: one merged section (current line, re-check, radio list); privacy + tech details on sub-pages.
+struct ModelSettingsSection: View {
+    @Environment(\.locale) private var uiLocale
+    private func ui(_ key: String, arguments: [String] = []) -> String { AppLanguage(locale: uiLocale).ui(key, arguments: arguments) }
+    @ObservedObject var model: ConversationFirstModel
+    @ObservedObject private var catalog = ModelRouteCatalog.shared
+    @ObservedObject private var monitor = ConnectionMonitor.shared
+    @AppStorage(ModelRouteSelection.routeKey) private var routeID = ModelRouteSelection.autoID
+    @AppStorage(ModelRouteSelection.modelKey) private var modelID = ""
+    @State private var refreshing = false
+
+    private var presence: ModelRouteCatalog.Presence {
+        _ = routeID
+        return catalog.presence(connection: .from(monitor.state))
+    }
+    private var isAuto: Bool { routeID == ModelRouteSelection.autoID }
+
+    /// 「当前：自动，实际在用 Gemini · 在线」
+    private var currentLine: String {
+        let p = presence
+        let status = p.online ? ui("在线") : ui("未连接")
+        if isAuto {
+            if let a = p.actualID { return ui("当前：自动，实际在用 {0} · {1}", arguments: [catalog.displayName(a), status]) }
+            return ui("当前：自动 · {0}", arguments: [status])
+        }
+        return ui("当前：{0} · {1}", arguments: [catalog.displayName(routeID), status])
+    }
+
+    var body: some View {
+        Section {
+            HStack(spacing: 10) {
+                ConnectionStatusDot(kind: presence.online ? .online : .offline, size: 10)
+                Text(currentLine).font(CatpawTypography.Role.body.font).foregroundStyle(CatpawColors.ink)
+                Spacer(minLength: 0)
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityIdentifier("settings.model.current")
+            Button {
+                Task {
+                    refreshing = true
+                    await model.refreshConnection()
+                    await catalog.refresh()
+                    refreshing = false
+                }
+            } label: {
+                HStack {
+                    Text(ui("重新检查连接"))
+                    Spacer()
+                    if refreshing || model.connectionLifecycle == .checking { ProgressView().controlSize(.small) }
+                }
+            }
+            .disabled(refreshing)
+            .accessibilityIdentifier("connection.refresh")
+            #if DEBUG || DEVICE_TRIAL
+            autoRow
+            ForEach(catalog.routes) { routeRow($0) }
+            #endif
+            NavigationLink { ModelPrivacyDetailView() } label: { Text(ui("隐私与数据")) }
+                .accessibilityIdentifier("settings.model.privacy")
+            NavigationLink { ModelConnectionDetailView(model: model) } label: { Text(ui("连接详情")) }
+                .accessibilityIdentifier("settings.model.details")
+        } header: {
+            Text(ui("模型"))
+        }
+        .task { if catalog.contract == nil { await catalog.refresh() } }
+    }
+
+    /// Dot: live green only on the selected row and only when online; otherwise neutral.
+    private func dot(selected: Bool) -> some View {
+        Circle().fill(selected && presence.online ? ConnectionStatusKind.liveGreen : ConnectionStatusKind.neutralDot)
+            .frame(width: 9, height: 9).accessibilityHidden(true)
+    }
+
+    private var autoRow: some View {
+        Button { ModelRouteSelection.resetToAuto(); routeID = ModelRouteSelection.autoID; modelID = "" } label: {
+            HStack(spacing: 10) {
+                dot(selected: isAuto)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(ui("自动")).font(CatpawTypography.Role.body.font).foregroundStyle(CatpawColors.ink)
+                    if let chain = catalog.contract?.chain, !chain.isEmpty {
+                        Text(ui("失败时依次切换：{0}", arguments: [chain.map(catalog.displayName).joined(separator: " → ")]))
+                            .font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
+                    }
+                }
+                Spacer(minLength: 0)
+                if isAuto { Image(systemName: "checkmark").foregroundStyle(CatpawColors.ink) }
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("settings.route.auto")
+    }
+
+    private func subtitle(_ r: ModelRouteInfo, selected: Bool) -> String {
+        if r.statusKind == .offline { return ui("离线") }
+        if selected { return [presence.online ? ui("在线") : ui("未连接"), r.free == true ? ui("免费") : nil].compactMap { $0 }.joined(separator: " · ") }
+        return r.free == true ? ui("免费 · 待选") : ui("待选")
+    }
+
+    @ViewBuilder private func routeRow(_ r: ModelRouteInfo) -> some View {
+        let selected = routeID == r.id
+        let inUse = isAuto && presence.actualID == r.id
+        VStack(alignment: .leading, spacing: 6) {
+            Button {
+                ModelRouteSelection.select(route: r.id, model: r.defaultModel)
+                routeID = r.id; modelID = r.defaultModel ?? ""
+            } label: {
+                HStack(spacing: 10) {
+                    dot(selected: selected)
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(spacing: 6) {
+                            Text(r.display_name).font(CatpawTypography.Role.body.font).foregroundStyle(CatpawColors.ink)
+                            if inUse {
+                                Text(ui("实际在用"))
+                                    .font(CatpawTypography.Role.caption.font.weight(.semibold))
+                                    .foregroundStyle(CatpawColors.ink)
+                                    .padding(.horizontal, 6).padding(.vertical, 1)
+                                    .background(Capsule().strokeBorder(CatpawColors.secondary.opacity(0.5), lineWidth: 1))
+                                    .accessibilityIdentifier("settings.route.\(r.id).inUse")
+                            }
+                        }
+                        Text(subtitle(r, selected: selected)).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
+                    }
+                    Spacer(minLength: 0)
+                    if selected { Image(systemName: "checkmark").foregroundStyle(CatpawColors.ink) }
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("settings.route.\(r.id)")
+            if selected, r.models.count > 1 {
+                Picker(ui("模型"), selection: Binding(
+                    get: { r.models.contains { $0.id == modelID } ? modelID : (r.defaultModel ?? "") },
+                    set: { modelID = $0; ModelRouteSelection.select(route: r.id, model: $0) }
+                )) { ForEach(r.models) { Text($0.id).tag($0.id) } }
+                .accessibilityIdentifier("settings.route.\(r.id).model")
+            }
+        }
+        .padding(.vertical, 2)
+    }
+}
+
+/// 「隐私与数据」 detail page (moved out of the main section).
+struct ModelPrivacyDetailView: View {
+    @Environment(\.locale) private var uiLocale
+    private func ui(_ key: String, arguments: [String] = []) -> String { AppLanguage(locale: uiLocale).ui(key, arguments: arguments) }
+    @ObservedObject private var catalog = ModelRouteCatalog.shared
+    var body: some View {
+        Form {
+            Section { Text(ui("只在服务端已同意的免费路由间选择；繁忙时是否切换由服务端配置决定。永不使用付费路由。密钥只在服务端。")) }
+            ForEach(catalog.routes) { r in
+                if r.data_note != nil || r.policy_url != nil {
+                    Section(r.display_name) {
+                        if let n = r.data_note { Text(n).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary) }
+                        if let url = r.policy_url.flatMap(URL.init(string:)) { Link(ui("隐私说明"), destination: url).accessibilityIdentifier("settings.route.\(r.id).privacy") }
+                    }
+                }
+            }
+        }
+        .foregroundStyle(CatpawColors.ink)
+        .navigationTitle(ui("隐私与数据"))
+    }
+}
+
+/// 「连接详情」 secondary page: tech info (verified model, last confirmed reply, route errors / cooling).
+struct ModelConnectionDetailView: View {
+    @Environment(\.locale) private var uiLocale
+    private func ui(_ key: String, arguments: [String] = []) -> String { AppLanguage(locale: uiLocale).ui(key, arguments: arguments) }
+    @ObservedObject var model: ConversationFirstModel
+    @ObservedObject private var catalog = ModelRouteCatalog.shared
+    @ObservedObject private var monitor = ConnectionMonitor.shared
+    var body: some View {
+        Form {
+            Section {
+                ConnectionStatusRow(kind: .from(monitor.state), detail: ui(model.connection.detail))
+                    .accessibilityIdentifier("connection.state")
+                if let m = model.connection.model { LabeledContent(ui("已验证模型")) { Text(m).foregroundStyle(CatpawColors.secondary) } }
+                if let at = model.connection.verifiedReplyAt { LabeledContent(ui("最近确认回复"), value: at.formatted(date: .omitted, time: .shortened)) }
+                if let e = catalog.lastEvent {
+                    LabeledContent(ui("最近路由"), value: catalog.displayName(e.route) + (e.model.map { " · " + $0 } ?? ""))
+                    if e.failover == true, let from = e.from, !from.isEmpty {
+                        LabeledContent(ui("已切换"), value: from.map(catalog.displayName).joined(separator: " → ") + " → " + catalog.displayName(e.route))
+                    }
+                }
+            }
+            Section(ui("路由状态")) {
+                ForEach(catalog.routes) { r in
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(r.display_name)
+                        Text([r.status, r.cooling_seconds.flatMap { $0 > 0 ? ui("冷却 {0} 秒", arguments: [String($0)]) : nil },
+                              r.last_error.map { ui("上次错误 {0}", arguments: [$0.code + ($0.at.map { " · " + $0.prefix(16).replacingOccurrences(of: "T", with: " ") } ?? "")]) }]
+                            .compactMap { $0 }.joined(separator: " · "))
+                            .font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
+                    }
+                }
+                if catalog.usingFixture { Text(ui("示例路由（服务端接口未部署）")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary) }
+            }
+        }
+        .foregroundStyle(CatpawColors.ink)
+        .navigationTitle(ui("连接详情"))
     }
 }

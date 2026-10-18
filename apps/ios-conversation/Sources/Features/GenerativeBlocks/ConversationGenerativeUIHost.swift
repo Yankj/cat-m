@@ -22,10 +22,14 @@ extension ConversationUIDecisionSubmitter: GenerativeUIDecisionSubmitting {}
     }
     private var ids: [String] { store.blockIDs(conversationID: session.conversationID).filter { store.turnID(of: $0) == turnID } }
     private var isLatest: Bool { session.turns.last?.id == turnID }
+    private var turn: ConversationTurnRecord? { session.turns.first { $0.id == turnID } }
+    private var hasHistory: Bool { !isLatest && !((turn?.deviceCallLog ?? []).isEmpty && (turn?.approvalLog ?? []).isEmpty) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             if isLatest { ConversationApprovalHost(model: model, session: session) }
+            // chat-context-1522 #3: earlier turns keep their decided device/approval cards (final state, display only).
+            else if let turn { ConversationTurnInteractionHistory(session: session, turn: turn) }
             MemoryUsedChips(turnID: turnID) // M6: 本次用到的记忆 (memory.used)
             ForEach(ids, id: \.self) { id in
                 if let block = store.blocks[id] {
@@ -33,7 +37,7 @@ extension ConversationUIDecisionSubmitter: GenerativeUIDecisionSubmitting {}
                 }
             }
         }
-        .padding(.top, ids.isEmpty && !isLatest ? 0 : 12)
+        .padding(.top, ids.isEmpty && !isLatest && !hasHistory ? 0 : 12)
         .animation(.smooth(duration: 0.35), value: ids)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("chat.turn.ui." + turnID.uuidString)

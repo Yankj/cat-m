@@ -30,7 +30,44 @@ public enum ConversationTerminalServerError {
 }
 public enum ConversationDispatchFailure: Error, LocalizedError, Sendable {
     case notSent(reason: String)
-    public var errorDescription: String? { if case .notSent(let reason) = self { return "消息尚未发送，输入已保留。" + reason }; return nil }
+    public var errorDescription: String? {
+        if case .notSent(let reason) = self {
+            if ConversationLengthLimit.isTooLong(code: reason) { return ConversationLengthLimit.message }   // never 「服务异常」
+            return "消息尚未发送，输入已保留。" + reason
+        }
+        return nil
+    }
+}
+/// catpaw-api fix/context-window-v11x: `413 conversation_too_long` at the storage cap or when one message plus its
+/// context exceeds the request budget (older servers: `422 history_limit_reached`). Nothing is written for that turn,
+/// so it is shown inline on the message with 「新开对话」, never retried (the same message is refused again).
+public enum ConversationLengthLimit {
+    public static let codes: Set<String> = ["conversation_too_long", "history_limit_reached"]
+    public static let message = "这个对话已经很长了，请新开一个对话继续"
+    public static let action = "新开对话"
+    public static func isTooLong(code: String?) -> Bool { code.map { codes.contains($0) } ?? false }
+    /// `turn.error` of a not-sent turn holds the dispatch failure's description (or a bare code from older journals).
+    public static func isTooLong(turnError: String?) -> Bool {
+        guard let error = turnError else { return false }
+        return error == message || codes.contains(where: { error == $0 || error.hasSuffix($0) })
+    }
+    public static func isTooLong(_ turn: ConversationTurnRecord) -> Bool { turn.state == .notSent && isTooLong(turnError: turn.error) }
+    /// The refusal code of a POST …/turns error body, nil when it is not a length refusal. Accepts the
+    /// `{"error":{"code":…}}` envelope and a bare `{"code":…}`; 413 and 422 only.
+    public static func code(status: Int, body: Data) -> String? {
+        guard status == 413 || status == 422, let object = try? JSONSerialization.jsonObject(with: body) as? [String: Any] else { return nil }
+        let problem = (object["error"] as? [String: Any]) ?? object
+        guard let code = problem["code"] as? String, isTooLong(code: code) else { return nil }
+        return code
+    }
+    /// What goes into the new conversation's composer: the refused message, plus anything typed since (no duplicates).
+    public static func carriedDraft(current: String, refused: String) -> String {
+        let now = current.trimmingCharacters(in: .whitespacesAndNewlines), old = refused.trimmingCharacters(in: .whitespacesAndNewlines)
+        if now.isEmpty { return old }
+        if old.isEmpty || now.contains(old) { return now }
+        if old.contains(now) { return old }
+        return old + "\n" + now
+    }
 }
 public struct ConversationConnection: Codable, Sendable {
     public enum State: String, Codable, Sendable { case notConfigured = "not_configured", providerUnverified = "provider_unverified", connected, unavailable }
@@ -233,6 +270,59 @@ public struct ConversationTurnRequest: Codable, Sendable {
         return .init(scope:scope,conversationID:conversationID,threadID:threadID,operationID:operationID,epoch:epoch,history:history,context:context,image:image,imageBytes:imageBytes,continuation:continuation,continuationOriginalBinding:continuationOriginalBinding,continuationSubjectID:continuationSubjectID,acceptedWork:intent)
     }
 }
+/// Live-only `text_preview` frame (catpaw-api fix/context-window-v11x 59b5aae6; opt-in `X-Catpaw-Live-Text: 1`).
+/// Never journaled, never replayed, never a cursor: its `sequence` equals the last persisted event already delivered.
+/// `text` is the whole unsaved tail from `offset` (UTF-16 code units into the assistant message text), not an increment.
+/// Persisted `text_delta` text stays authoritative; a preview only extends what is displayed.
+public struct ConversationTextPreview: Equatable, Sendable {
+    /// Server cap (live-text.mjs); a longer unsaved tail pauses previews until the next DB batch.
+    public static let maxUTF16 = 4000
+    public let messageID: UUID
+    public let offset: Int
+    public let text: String
+    public let baseSequence: Int
+    public init?(messageID: UUID, offset: Int, text: String, baseSequence: Int) {
+        guard offset >= 0, baseSequence > 0, text.utf16.count <= Self.maxUTF16 else { return nil }
+        self.messageID = messageID; self.offset = offset; self.text = text; self.baseSequence = baseSequence
+    }
+    /// IOS-NOTE rule 4, exactly in UTF-16 code units (never Character `.count` / `dropFirst`: 👨‍👩‍👧 is 8 units, 1 Character):
+    /// `skip = persisted.utf16.count - offset; tail = text.utf16[skip...]; display = persisted + tail`.
+    /// Defensive additions (no effect on a correct stream): the overlap `text.utf16[..<skip]` must equal the end of
+    /// `persisted`, and the cut must not land on a low surrogate; otherwise, as for `skip < 0` (offset past a batch this
+    /// client has not applied) or `skip >= count` (persisted caught up), the display is `persisted` only.
+    public func display(persisted: String) -> String {
+        let skip = persisted.utf16.count - offset
+        let u = Array(text.utf16)
+        guard skip >= 0, skip < u.count else { return persisted }
+        guard !(0xDC00...0xDFFF).contains(u[skip]), persisted.utf16.suffix(skip).elementsEqual(u[..<skip]) else { return persisted }
+        return persisted + String(decoding: u[skip...], as: UTF16.self)
+    }
+}
+/// IOS-NOTE rule 6 on screen: when a failed / cancelled / stopped turn retracts the unsaved live tail, only text the user
+/// has actually SEEN may animate away. `frames` erases the revealed tail from its end in a few steps (single layer: no
+/// overlay, no double-drawn overlap, never longer than what was revealed, so the bubble never grows).
+public enum LiveTextRetraction {
+    public static let maxSteps = 8
+    /// Steps from `revealed` (what the paced reveal currently shows) down to `target` (the retracted text), excluding
+    /// `revealed` itself and ending exactly at `target`. Nil = not a retraction of revealed text: `target` is not a strict
+    /// UTF-16 prefix of `revealed` (e.g. the reveal lagged behind `target`, so nothing seen disappears). Cuts fall on
+    /// Character boundaries of the removed tail, so a ZWJ emoji or a combining sequence goes in one step.
+    public static func frames(revealed: String, target: String) -> [String]? {
+        let shown = Array(revealed.utf16), kept = target.utf16.count
+        guard kept < shown.count, shown.starts(with: target.utf16) else { return nil }
+        let tail = Array(String(decoding: shown[kept...], as: UTF16.self))
+        guard !tail.isEmpty else { return nil }
+        let steps = min(maxSteps, tail.count)
+        var out: [String] = []
+        for step in 1...steps {
+            let keep = tail.count - Int((Double(tail.count) * Double(step) / Double(steps)).rounded(.up))
+            let frame = target + String(tail.prefix(max(0, keep)))
+            if out.last != frame { out.append(frame) }
+        }
+        if out.last != target { out.append(target) }
+        return out
+    }
+}
 public struct ConversationTurnEvent: Sendable {
     public enum Payload: Sendable {
         case thread(String), started(requestHash: String, conversationRevision: Int, grantEpoch: Int,attachmentReceipts:[ConversationImageReceipt]?=nil), textDelta(messageID: UUID, text: String), toolStarted(callID: String, name: String, arguments: String)
@@ -242,7 +332,9 @@ public struct ConversationTurnEvent: Sendable {
         /// catpaw.approval.v1 `approval_requested`: a tool call waits for the user's decision (follows its `toolStarted`).
         case approvalRequested(ConversationApprovalRequest)
         /// catpaw.approval.v1 `turn_suspended`: the turn waits for decisions. NOT terminal; the stream ends here.
-        case suspended(interruptIDs: [String], expiresAt: String)
+        /// v50 adds `requires_approval` (false iff every interrupt is a device call with confirm "none") and `waiting_for`
+        /// ("user" | "device"); both nil from older servers.
+        case suspended(interruptIDs: [String], expiresAt: String, requiresApproval: Bool? = nil, waitingFor: String? = nil)
         /// catpaw.approval.v1 `approval_resolved`: decision is "approved", "denied", "expired" or "cancelled".
         case approvalResolved(interruptID: String, callID: String, decision: String, remember: Bool)
         /// catpaw.ui.v1 `ui.block` (new block; `interruptID` set when it waits for `submitUIDecision`).
@@ -257,6 +349,8 @@ public struct ConversationTurnEvent: Sendable {
         /// `proactive_suggestion`). They still occupy a sequence number, so they must be decoded, not dropped.
         /// The raw `data` object is forwarded to `ConversationSideChannelEvents.handler` by the backend.
         case sideChannel(type: String, data: Data)
+        /// Live-only `text_preview` (see `ConversationTextPreview`): forwarded to observers, never applied to the journal.
+        case textPreview(ConversationTextPreview)
     }
     public let operationID: UUID
     public let epoch: Int
@@ -307,6 +401,95 @@ public struct ConversationTurnRecord: Codable, Sendable, Identifiable {
     /// catpaw.device.v1: `device_call`s of this turn still waiting for `POST …/device-result`.
     public var pendingDeviceCalls:[ConversationDeviceCall]? = nil
     public var awaitingApproval:Bool { state == .running && (!(pendingApprovals ?? []).isEmpty || !pendingUIBlocks.isEmpty || !(pendingUIApprovals ?? []).isEmpty || !(pendingDeviceCalls ?? []).isEmpty) }
+    /// chat-context-1522 #3: every `device_call` / `approval_requested` this turn ever showed, never pruned (the pending
+    /// lists above are), plus each interrupt's `approval_resolved` decision. Cards are rebuilt from these on every
+    /// re-render, scroll-back and cold start, so a decided card keeps its final state instead of disappearing.
+    public var deviceCallLog:[ConversationDeviceCall]? = nil
+    public var approvalLog:[ConversationApprovalRequest]? = nil
+    public var interactionDecisions:[String:String]? = nil
+    /// P1-4: server `conversation.interaction_outcomes` for this turn's calls (call_id → outcome). Authoritative over the
+    /// local journal: a late report that the server recorded must never render as 已取消 / 已过期.
+    public var serverOutcomes:[String:ConversationServerOutcome]? = nil
+    /// `turn_suspended.requires_approval` / `waiting_for` of the latest suspension (nil: older server or not suspended).
+    public var suspendedRequiresApproval:Bool? = nil
+    public var suspendedWaitingFor:String? = nil
+    /// True only when the user must decide something on screen. Read-only device calls (confirm "none", e.g. calendar_list,
+    /// places_search) run by themselves and do not count. Without `requires_approval` (older server) a device call needs
+    /// the user iff its `confirm` is "card".
+    public var needsUserDecision:Bool {
+        guard state == .running else { return false }
+        if !(pendingApprovals ?? []).isEmpty || !pendingUIBlocks.isEmpty || !(pendingUIApprovals ?? []).isEmpty { return true }
+        let calls = pendingDeviceCalls ?? []
+        guard !calls.isEmpty else { return false }
+        if let requires = suspendedRequiresApproval { return requires }
+        return calls.contains { $0.confirm == "card" }
+    }
+}
+
+/// One `conversation.interaction_outcomes` entry (services/edge device-call contract, chat-context-1522 P1-2).
+public struct ConversationServerOutcome: Codable, Sendable, Equatable {
+    public let outcome: String
+    public let late: Bool
+    public let ttlExceeded: Bool
+    public init(outcome: String, late: Bool = false, ttlExceeded: Bool = false) { self.outcome = outcome; self.late = late; self.ttlExceeded = ttlExceeded }
+    /// Lenient: rows without call_id / outcome are skipped; extra keys ignored.
+    public static func parse(_ value: Any?) -> [String: ConversationServerOutcome] {
+        var out: [String: ConversationServerOutcome] = [:]
+        for row in value as? [Any] ?? [] {
+            guard let o = row as? [String: Any], let id = o["call_id"] as? String, !id.isEmpty, let outcome = o["outcome"] as? String else { continue }
+            out[id] = .init(outcome: outcome, late: o["late"] as? Bool ?? false, ttlExceeded: o["ttl_exceeded"] as? Bool ?? false)
+        }
+        return out
+    }
+}
+
+/// chat-context-1522 #3: final state of an interactive card, derived only from the turn journal (tool-result row +
+/// `approval_resolved` decision + turn state). Never authority to execute: display only.
+public enum ConversationInteractionOutcome: String, Sendable, Equatable {
+    case pending, done, declined, expired, cancelled, failed, notExecuted
+    /// P1-4: the phone did it, but the report reached the server late (after the TTL, or after the card was superseded).
+    case doneLate
+    /// P1-5: the server timed the card out (`pending_timeout`) — it may still have happened on the phone.
+    case unverified
+    public var isFinal: Bool { self != .pending }
+
+    /// Device call `callID` of `turn`. `toolResult` is the content of that call's tool-result row in the transcript (what
+    /// the model saw: `ok`, `user_declined`/`cancelled`, `denied`, `error`, `pending_timeout`); without one, the interrupt
+    /// decision; else the turn's own state.
+    public static func device(callID: String, interruptID: String?, turn: ConversationTurnRecord, toolResult: String?) -> Self {
+        if let server = turn.serverOutcomes?[callID] {
+            switch server.outcome {
+            case "ok": return server.late || server.ttlExceeded ? .doneLate : .done
+            case "user_declined", "cancelled": return .declined
+            case "pending_timeout": return .unverified
+            default: return .failed
+            }
+        }
+        if let toolResult, let object = (try? JSONSerialization.jsonObject(with: Data(toolResult.utf8))) as? [String: Any],
+           let status = object["status"] as? String {
+            switch status {
+            case "ok": return .done
+            case "user_declined", "cancelled": return .declined
+            case "pending_timeout": return .unverified   // P1-5: state unknown, never 「未执行」
+            default: return .failed
+            }
+        }
+        if let id = interruptID?.lowercased(), let decision = turn.interactionDecisions?[id], decided(decision) != .pending {
+            // P1-5: a device card the server expired is pending_timeout — it may have happened on the phone.
+            return decided(decision) == .expired ? .unverified : decided(decision)
+        }
+        if turn.awaitingApproval, (turn.pendingDeviceCalls ?? []).contains(where: { $0.callID == callID }) { return .pending }
+        return [.completed, .failed].contains(turn.state) ? .notExecuted : .pending
+    }
+    /// Approval card `interruptID` of `turn` (catpaw.approval.v1 decisions).
+    public static func approval(interruptID: String, turn: ConversationTurnRecord) -> Self {
+        if let decision = turn.interactionDecisions?[interruptID.lowercased()] { return decided(decision) }
+        if turn.awaitingApproval, (turn.pendingApprovals ?? []).contains(where: { $0.interruptID == interruptID }) { return .pending }
+        return [.completed, .failed].contains(turn.state) ? .notExecuted : .pending
+    }
+    static func decided(_ decision: String) -> Self {
+        switch decision { case "approved": .done; case "denied": .declined; case "expired": .expired; case "cancelled": .cancelled; default: .pending }
+    }
 }
 /// catpaw.device.v1 `device_call` (services/edge/docs/device-call-contract.md). `args` is the raw JSON object.
 public struct ConversationDeviceCall: Codable, Sendable, Equatable, Identifiable {
@@ -500,6 +683,8 @@ public struct ConversationObservation: Sendable {
     public var serverState: String? = nil
     /// Snapshot `pending_approvals` with kind "ui" (kept out of `pendingApprovals`, which stays tool approvals only).
     public var pendingUIApprovals: [ConversationUIApproval] = []
+    /// P1-4: `conversation.interaction_outcomes` from the same snapshot, by call_id.
+    public var interactionOutcomes: [String: ConversationServerOutcome] = [:]
     public init(request: ConversationTurnRequest, events: [ConversationTurnEvent], requestHash: String? = nil, grantEpoch: Int? = nil, goals: [ConversationGoalProjection] = [], pendingApprovals: [ConversationApprovalRequest] = [], serverState: String? = nil, pendingUIApprovals: [ConversationUIApproval] = []) { self.pendingUIApprovals = pendingUIApprovals; self.request = request; self.events = events; self.requestHash = requestHash; self.grantEpoch = grantEpoch; self.goals = goals; self.pendingApprovals = pendingApprovals; self.serverState = serverState }
 }
 /// Client projection seam, not a new Agent engine. A verified server adapter supplies the wire.
