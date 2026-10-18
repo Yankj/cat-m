@@ -62,6 +62,11 @@ enum MarkdownTheme {
 
 @MainActor enum MarkdownLinkOpener {
     static func open(_ url: URL) -> OpenURLAction.Result {
+        // v1.2: in-app capability links (catpawm://memory …). Only manifest targets route; any other catpawm:// is swallowed.
+        if url.scheme?.lowercased() == "catpawm" {
+            if CatpawCapabilityLinks.isAllowed(url), let route = CatpawAppRoute(url: url) { CatpawRouteCenter.shared.pending = route }
+            return .handled
+        }
         guard let scheme = url.scheme?.lowercased(), scheme == "http" || scheme == "https" else { return .systemAction }
         let window = UIApplication.shared.connectedScenes.compactMap { ($0 as? UIWindowScene)?.keyWindow }.first
         guard var top = window?.rootViewController else { return .systemAction }

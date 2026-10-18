@@ -891,7 +891,7 @@ public actor NativeChatHTTPBackend: ConversationBackend, ConversationInboxBacken
             let body = try Self.jsonData(data)
             if let event = try? JSONDecoder().decode(ModelRouteEvent.self, from: body) { ModelRouteNotifications.report(event) }
             payload = .sideChannel(type: "model_route", data: body)
-        case "memory.used", "memory.update", "memory_recalled", "proactive_suggestion":
+        case "memory.used", "memory.update", "memory_recalled", "proactive_suggestion", "memory_saved":
             // Side channel (#63): no transcript effect; raw data goes to MemoryEventSink / proactive store via the installed handler.
             guard let raw = type else { throw ConversationSessionError.invalidEvent }
             let body = try Self.jsonData(data)

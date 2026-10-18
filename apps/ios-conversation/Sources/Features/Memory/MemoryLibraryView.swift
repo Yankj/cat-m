@@ -210,8 +210,15 @@ import SwiftUI
 
     private func row(_ item: MemoryLibraryItem) -> some View {
         Button { if model.can.contains(.edit) { editing = item } } label: {
-            Text(item.content).font(CatpawTypography.Role.body.font).foregroundStyle(CatpawColors.ink)
-                .frame(maxWidth: .infinity, alignment: .leading).fixedSize(horizontal: false, vertical: true)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(item.content).font(CatpawTypography.Role.body.font).foregroundStyle(CatpawColors.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+                if let used = MemoryLastUsed.date(item.id) {
+                    Text(ui("最近用过 · {0}", [used.formatted(.relative(presentation: .named))]))
+                        .font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
+                        .accessibilityIdentifier("memory.library.lastUsed")
+                }
+            }.frame(maxWidth: .infinity, alignment: .leading)
         }
         .frame(minHeight: 44)
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
