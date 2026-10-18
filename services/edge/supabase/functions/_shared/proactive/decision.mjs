@@ -42,12 +42,18 @@ export function validateEvaluate(b) {
 export function ruleDecide(signals, context) {
   let best = { decision: 'silent', reason: '没有需要打扰你的事情。', confidence: 0.6, actions: [], trigger: signals[0]?.type ?? 'custom' };
   const consider = (decision, reason, confidence, actions, trigger) => { if (lvl(decision) > lvl(best.decision)) best = { decision, reason, confidence, actions, trigger }; };
+  const lead = leadMinutes(context);
   for (const s of signals) {
     const d = s.data ?? {};
     if (s.type === 'meeting_upcoming') {
       const until = Number(d.minutes_until), travel = Number(d.travel_minutes ?? 0);
       if (Number.isFinite(until) && travel > 0 && travel + 5 >= until) consider(until <= travel ? 'interrupt' : 'notify', `「${d.title ?? '会议'}」${until} 分钟后开始，但去${d.location ?? '会场'}需要约 ${travel} 分钟，现在出发${until <= travel ? '已经来不及' : '刚好'}。`, 0.85, acts('create_reminder', 'notify_attendees'), s.type);
       else if (Number.isFinite(until) && until <= 10) consider('card', `「${d.title ?? '会议'}」${until} 分钟后开始。`, 0.7, acts('create_reminder'), s.type);
+      // v10: honour the client's lead time (iOS ProactiveRules.localLevel: 3 ≤ until ≤ lead + travel + 15). Separate `if`
+      // (not else-if) so the pre-scheduled check at until = lead ≤ 10 still reaches notify; consider() keeps the highest level.
+      const win = lead + (travel > 0 ? travel : 0);
+      if (lead != null && Number.isFinite(until) && until >= 3 && until <= win + 15)
+        consider(until <= win + 5 ? 'notify' : 'card', `「${d.title ?? '会议'}」${until} 分钟后开始，你习惯提前 ${lead} 分钟准备。`, 0.75, acts('create_reminder', 'notify_attendees'), s.type);
     } else if (s.type === 'flight_status') {
       const delay = Number(d.delay_minutes ?? 0);
       if (d.status === 'cancelled') consider('interrupt', `航班 ${d.flight ?? ''} 已取消。`, 0.9, acts('notify_attendees', 'create_reminder'), s.type);
@@ -60,6 +66,11 @@ export function ruleDecide(signals, context) {
   }
   if (context.focus_mode && best.decision === 'interrupt' && best.confidence < 0.9) best = { ...best, decision: 'notify', reason: best.reason + '（你在专注模式）' };
   return best;
+}
+/** v10: client-sent context.lead_minutes — integer 1..180 (else ignored → pre-v10 rules). */
+export function leadMinutes(context) {
+  const v = context?.lead_minutes;
+  return typeof v === 'number' && Number.isInteger(v) && v >= 1 && v <= 180 ? v : null;
 }
 const RULE_TITLES = { meeting_upcoming: '该出发了', flight_status: '航班有变化', meeting_conflict: '会议时间冲突', traffic: '路上会堵' };
 const acts = (...k) => [...k, 'snooze', 'dismiss'];
