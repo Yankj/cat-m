@@ -31,7 +31,7 @@ export const CATPAW_CAPABILITIES=Object.freeze({
     "button": "打开记忆"
    },
    "status": "shipped",
-   "limits": "只有说「记住」或打开「记忆」页的「自动记住新内容」开关后才会保存；引用或翻译里的「记住」不算。"
+   "limits": "需要打开「使用记忆」并同意记忆说明；在此基础上，只有说「记住」或打开「记忆」页的「自动记住新内容」开关后才会保存；引用或翻译里的「记住」不算。"
   },
   {
    "id": "tasks",
@@ -59,7 +59,7 @@ export const CATPAW_CAPABILITIES=Object.freeze({
     "button": "查看主动提醒"
    },
    "status": "shipped",
-   "limits": "免打扰时段（22:00–8:00）和每日提醒上限内不会打扰你。"
+   "limits": "免打扰时段和每日提醒上限内不会打扰你（具体时段以设置为准）。"
   },
   {
    "id": "results",
@@ -175,17 +175,37 @@ export const CATPAW_CAPABILITIES=Object.freeze({
 const LINK=/^catpawm:\/\/([a-z]+)$/;
 /** Allowed in-app link targets (host part of catpawm://<host>), straight from the manifest. */
 export const CAPABILITY_LINK_TARGETS=Object.freeze(CATPAW_CAPABILITIES.capabilities.map(c=>c.ui_entry?.link).filter(Boolean).map(l=>LINK.exec(l)?.[1]).filter(Boolean));
+// Shipped capabilities that depend on a per-turn server flag or tool. When the flag/tool is absent this turn the
+// entry moves to 「这一轮不可用」 with an honest note, so the identity block never claims what the server cannot do now.
+export const TURN_GATED_CAPABILITIES=Object.freeze({
+ web_reading:'现在没有开启，不能打开或读取链接内容，也不能联网；如果用户想让你处理某个网页，请他把正文粘贴进对话。',
+ calendar:'这一轮不能直接写入 iPhone 日历；不要说已经加好了，可以把标题、时间整理好让用户自己添加。',
+});
+/** Which turn-gated capabilities are unavailable, from what this turn actually offers. */
+export function unavailableCapabilities({tools=[],publicSourcesEnabled=false}={}){
+ const names=new Set((tools??[]).map(t=>t?.function?.name).filter(Boolean)),out=[];
+ if(publicSourcesEnabled!==true)out.push('web_reading');
+ if(!names.has('calendar_create'))out.push('calendar');
+ return out;
+}
 /** Compact prompt rendering: one line per capability, then the link rule. Kept short (< 2.5k chars). */
-export function renderCapabilityPrompt(manifest=CATPAW_CAPABILITIES){
- const shipped=manifest.capabilities.filter(c=>c.status==='shipped'),planned=manifest.capabilities.filter(c=>c.status!=='shipped');
+export function renderCapabilityPrompt(manifest=CATPAW_CAPABILITIES,{unavailable=[]}={}){
+ const off=new Set(unavailable);
+ const shipped=manifest.capabilities.filter(c=>c.status==='shipped'&&!off.has(c.id)),gated=manifest.capabilities.filter(c=>c.status==='shipped'&&off.has(c.id)),planned=manifest.capabilities.filter(c=>c.status!=='shipped');
  const line=c=>`- ${c.name}：${c.purpose}${c.trigger?` 用法：${c.trigger}`:''}${c.ui_entry?.label?` 入口：${c.ui_entry.label}。`:''}${c.limits?` 限制：${c.limits}`:''}`;
  const links=shipped.filter(c=>c.ui_entry?.link).map(c=>`[${c.ui_entry.button}](${c.ui_entry.link})`).join(' ');
- return `\n\n# 你是谁\n你是 ${manifest.product}。${manifest.identity}\n被问到「你是谁 / 你能做什么 / 某功能在哪 / 怎么用」时，只按下面的能力清单回答，不要编造清单之外的功能、页面或按钮。\n# 已上线能力\n${shipped.map(line).join('\n')}\n# 计划中（还不能用，如实说明，不要假装能做）\n${planned.map(c=>`- ${c.name}：${c.limits}${c.planned_for?`（计划 ${c.planned_for}）`:''}`).join('\n')}\n# 跳转按钮\n回答里提到上面某个有入口的功能时，可以在末尾附上对应的 Markdown 链接，App 会显示成可点的按钮；只能原样使用这些链接，每次最多 2 个，不要发明其他 catpawm:// 链接：${links}\n`;
+ const gatedBlock=gated.length?`# 这一轮不可用（如实说明，不要假装能做）\n${gated.map(c=>`- ${c.name}：${TURN_GATED_CAPABILITIES[c.id]??'这一轮不可用。'}`).join('\n')}\n`:'';
+ return `\n\n# 你是谁\n你是 ${manifest.product}。${manifest.identity}\n被问到「你是谁 / 你能做什么 / 某功能在哪 / 怎么用」时，只按下面的能力清单回答，不要编造清单之外的功能、页面或按钮。\n# 已上线能力\n${shipped.map(line).join('\n')}\n${gatedBlock}# 计划中（还不能用，如实说明，不要假装能做）\n${planned.map(c=>`- ${c.name}：${c.limits}${c.planned_for?`（计划 ${c.planned_for}）`:''}`).join('\n')}\n# 跳转按钮\n回答里提到上面某个有入口的功能时，可以在末尾附上对应的 Markdown 链接，App 会显示成可点的按钮；只能原样使用这些链接，每次最多 2 个，不要发明其他 catpawm:// 链接：${links}\n`;
 }
 /** Server-side allowlist check for a catpawm:// link (used by tests and any server renderer). */
 export function isAllowedCapabilityLink(url){const m=LINK.exec(String(url??''));return !!m&&CAPABILITY_LINK_TARGETS.includes(m[1]);}
 /** Strip markdown links that point at catpawm:// targets outside the manifest, keeping their label text. */
 export function sanitizeCapabilityLinks(text){return String(text??'').replace(/\[([^\]\n]{1,40})\]\((catpawm:\/\/[^)\s]*)\)/g,(all,label,url)=>isAllowedCapabilityLink(url)?all:label);}
-/** Identity block for a chat turn; empty for report revision/explain turns and image-only turns, which have their own contracts. */
-export function capabilityPromptFor(turn,{imageTurn=false}={}){return turn?.revision_target||imageTurn?'':CAPABILITY_PROMPT;}
+/** Identity block for a chat turn; empty for report revision/explain turns and image-only turns, which have their own contracts.
+ * Turn-gated entries (web_reading, calendar) are listed as available only when this turn's tools/flags provide them. */
+export function capabilityPromptFor(turn,{imageTurn=false,tools=[],publicSourcesEnabled=false}={}){
+ if(turn?.revision_target||imageTurn)return '';
+ return renderCapabilityPrompt(CATPAW_CAPABILITIES,{unavailable:unavailableCapabilities({tools,publicSourcesEnabled})});
+}
+/** Full manifest rendering (every shipped entry available); the per-turn prompt is capabilityPromptFor. */
 export const CAPABILITY_PROMPT=renderCapabilityPrompt();
