@@ -93,7 +93,7 @@ private actor ConsentHandoffBackend: ConversationBackend {
             conversationID: conversationID, previewID: previewID, previewHash: previewHash, routeHash: imageRoute,
             expectedRevision: imageRevision, title: "合成图片处理许可",
             body: "这是明确的本机合成测试。图片只是程序生成的两色色块，不含照片、账户或个人资料。此许可与文字许可分别确认；确认后仍需明确点击发送。此夹具没有网络、图片上传或真实模型。",
-            confirmation: "我确认这张合成图片不含敏感内容。", allowLabel: "允许本次图片处理", denyLabel: "暂不允许")
+            confirmation: "我确认这张合成图片不含敏感内容。", allowLabel: "本对话允许", denyLabel: "不发了")
         imageConsentValue = value; await publish(); return value
     }
     func allowImageConsent(scope: DataScope, consent: ConversationImageConsent, nonSensitiveConfirmed: Bool) async throws -> Int {

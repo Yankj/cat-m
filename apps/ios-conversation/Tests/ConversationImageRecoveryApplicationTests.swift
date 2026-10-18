@@ -178,3 +178,187 @@ private actor ImageRecoveryHeldStore: ConversationImageByteStore {
         try await store!.remove(conversationID: conversationID, operationID: operationID)
     }
 }
+
+/// Image-upload rate-limit fix (2026-10-17): countdown/retry schedule, queue recovery, caption isolation.
+final class ConversationRateLimitRecoveryTests: XCTestCase {
+    private func turn(_ state: ConversationTurnRecord.State, id: UUID = UUID(), error: String? = nil) -> ConversationTurnRecord {
+        ConversationTurnRecord(id: id, request: ConversationTurnRequest(scope: Profiles.user, conversationID: UUID(), threadID: nil, operationID: id, epoch: 1, history: []), state: state, lastSequence: 2, error: error)
+    }
+    private func session(_ turns: [ConversationTurnRecord]) -> ConversationSession {
+        var s = ConversationSession(scope: Profiles.user, conversationID: UUID()); s.turns = turns; return s
+    }
+    func testBackoffIsFiveFifteenThirtyThenManual() {
+        XCTAssertEqual(ConversationBusyRetryPolicy.delay(attempt: 1, retryAfterSeconds: nil), 5)
+        XCTAssertEqual(ConversationBusyRetryPolicy.delay(attempt: 2, retryAfterSeconds: nil), 15)
+        XCTAssertEqual(ConversationBusyRetryPolicy.delay(attempt: 3, retryAfterSeconds: nil), 30)
+        XCTAssertNil(ConversationBusyRetryPolicy.delay(attempt: 4, retryAfterSeconds: nil), "after 3 tries: 发送失败 · 重试 / 删除")
+        XCTAssertNil(ConversationBusyRetryPolicy.delay(attempt: 0, retryAfterSeconds: nil))
+    }
+    func testRetryAfterIsHonouredAndClamped() {
+        XCTAssertEqual(ConversationBusyRetryPolicy.delay(attempt: 1, retryAfterSeconds: 42), 42)
+        XCTAssertEqual(ConversationBusyRetryPolicy.delay(attempt: 3, retryAfterSeconds: 0), 1)
+        XCTAssertEqual(ConversationBusyRetryPolicy.delay(attempt: 2, retryAfterSeconds: 99_999), 3600)
+        XCTAssertNil(ConversationBusyRetryPolicy.delay(attempt: 4, retryAfterSeconds: 10), "Retry-After never adds a 4th try")
+    }
+    func testCardShowsTheRealDueTimeNotZero() {
+        XCTAssertEqual(ConversationBusyRetryPolicy.displaySeconds(5), 5)
+        XCTAssertEqual(ConversationBusyRetryPolicy.displaySeconds(14.2), 15)
+        XCTAssertEqual(ConversationSessionService.busyRetryDelay(attempt: 1, retryAfterSeconds: nil, jitter: 0.9), 5, "no jitter: countdown == due")
+    }
+    func testTerminalFailureIsRecognised() {
+        XCTAssertTrue(ConversationFollowupRecovery.isTerminalFailure(turn(.failed, error: "rate_limited")))
+        XCTAssertTrue(ConversationFollowupRecovery.isTerminalFailure(turn(.cancelledBeforeSend)))
+        XCTAssertFalse(ConversationFollowupRecovery.isTerminalFailure(turn(.running)))
+        XCTAssertFalse(ConversationFollowupRecovery.isTerminalFailure(turn(.unknown)))
+        XCTAssertFalse(ConversationFollowupRecovery.isTerminalFailure(nil))
+    }
+    func testPersistedRecoveryPauseBehindTerminalFailureIsUnpaused() {
+        var state = ConversationFollowupState(); state.paused = true; state.pauseReason = .recovery
+        state.pending = [ConversationFollowup(text: "这张呢？一句话")]
+        let next = ConversationFollowupRecovery.normalized(state, session: session([turn(.failed, error: "rate_limited")]))
+        XCTAssertEqual(next?.paused, false); XCTAssertNil(next?.pauseReason); XCTAssertEqual(next?.pending.count, 1)
+    }
+    func testInflightOfATerminalTurnIsDroppedNotResent() {
+        let id = UUID()
+        var state = ConversationFollowupState(); state.paused = true; state.pauseReason = .recovery
+        state.inflight = ConversationFollowup(id: id, text: "这张图里有什么？一句话")
+        let next = ConversationFollowupRecovery.normalized(state, session: session([turn(.failed, id: id, error: "rate_limited")]))
+        XCTAssertNotNil(next); XCTAssertNil(next?.inflight); XCTAssertEqual(next?.paused, false)
+    }
+    func testOtherPausesAreLeftAlone() {
+        let failed = session([turn(.failed, error: "rate_limited")])
+        for reason in [FollowupPauseReason.user, .background, .preflight] {
+            var state = ConversationFollowupState(); state.paused = true; state.pauseReason = reason
+            XCTAssertNil(ConversationFollowupRecovery.normalized(state, session: failed), "\(reason)")
+        }
+        var state = ConversationFollowupState(); state.paused = true; state.pauseReason = .recovery
+        XCTAssertNil(ConversationFollowupRecovery.normalized(state, session: session([turn(.unknown)])), "an unresolved turn keeps the hold")
+        state.inflight = ConversationFollowup(text: "fate unknown")
+        XCTAssertNil(ConversationFollowupRecovery.normalized(state, session: session([turn(.failed)])), "an in-flight message with no turn stays held")
+    }
+    func testCaptionsNeverMergeAcrossTurns() {
+        let old = "这张图里有什么？一句话"
+        XCTAssertEqual(ConversationCaptionPolicy.restored(draft: "", caption: old), old)
+        XCTAssertEqual(ConversationCaptionPolicy.restored(draft: "这张呢？一句话", caption: old), "这张呢？一句话", "never appended to what the user typed")
+        XCTAssertEqual(ConversationCaptionPolicy.strippingRecovered(draft: "这张呢？一句话" + old, caption: old), "这张呢？一句话", "the screenshot case")
+        XCTAssertEqual(ConversationCaptionPolicy.strippingRecovered(draft: old + "这张呢？", caption: old), "这张呢？")
+        XCTAssertEqual(ConversationCaptionPolicy.strippingRecovered(draft: old, caption: old), "")
+        XCTAssertEqual(ConversationCaptionPolicy.strippingRecovered(draft: "完全不同", caption: old), "完全不同")
+        XCTAssertEqual(ConversationCaptionPolicy.strippingRecovered(draft: "x", caption: nil), "x")
+    }
+}
+
+/// fix/context-window-v11x client side: 413 conversation_too_long, 409 model_history_conflict, GET without model_messages.
+final class ConversationLengthLimitTests: XCTestCase {
+    func testTooLongBodyMapsToTheNewCopy() {
+        let body = Data(#"{"schema_version":1,"error":{"code":"conversation_too_long","retryable":false}}"#.utf8)
+        XCTAssertEqual(ConversationLengthLimit.code(status: 413, body: body), "conversation_too_long")
+        XCTAssertEqual(ConversationLengthLimit.code(status: 413, body: Data(#"{"code":"conversation_too_long"}"#.utf8)), "conversation_too_long")
+        XCTAssertEqual(ConversationLengthLimit.code(status: 422, body: Data(#"{"error":{"code":"history_limit_reached"}}"#.utf8)), "history_limit_reached", "older servers")
+        XCTAssertNil(ConversationLengthLimit.code(status: 413, body: Data(#"{"error":{"code":"payload_too_large"}}"#.utf8)))
+        XCTAssertNil(ConversationLengthLimit.code(status: 500, body: body))
+        XCTAssertNil(ConversationLengthLimit.code(status: 413, body: Data("<html>".utf8)))
+    }
+    func testNotSentDescriptionIsTheLengthCopyNotServiceError() {
+        let text = ConversationDispatchFailure.notSent(reason: "conversation_too_long").localizedDescription
+        XCTAssertEqual(text, "这个对话已经很长了，请新开一个对话继续")
+        XCTAssertFalse(text.contains("服务"))
+        XCTAssertTrue(ConversationDispatchFailure.notSent(reason: "model_daily_limit").localizedDescription.hasPrefix("消息尚未发送"))
+    }
+    func testOnlyANotSentLengthTurnShowsTheInlineAction() {
+        let id = UUID()
+        var turn = ConversationTurnRecord(id: id, request: ConversationTurnRequest(scope: Profiles.user, conversationID: UUID(), threadID: nil, operationID: id, epoch: 1, history: []), state: .notSent, lastSequence: 0, error: ConversationDispatchFailure.notSent(reason: "conversation_too_long").localizedDescription)
+        XCTAssertTrue(ConversationLengthLimit.isTooLong(turn))
+        turn.error = "消息尚未发送，输入已保留。history_limit_reached"
+        XCTAssertTrue(ConversationLengthLimit.isTooLong(turn), "a journal written before this change")
+        turn.state = .failed
+        XCTAssertFalse(ConversationLengthLimit.isTooLong(turn))
+        turn.state = .notSent; turn.error = "消息尚未发送，输入已保留。等待网络"
+        XCTAssertFalse(ConversationLengthLimit.isTooLong(turn))
+    }
+    func testDraftIsCarriedIntoTheNewConversation() {
+        XCTAssertEqual(ConversationLengthLimit.carriedDraft(current: "", refused: "帮我总结一下"), "帮我总结一下")
+        XCTAssertEqual(ConversationLengthLimit.carriedDraft(current: "帮我总结一下", refused: "帮我总结一下"), "帮我总结一下", "markNotSent already restored it: no duplicate")
+        XCTAssertEqual(ConversationLengthLimit.carriedDraft(current: "帮我总结一下，简短点", refused: "帮我总结一下"), "帮我总结一下，简短点")
+        XCTAssertEqual(ConversationLengthLimit.carriedDraft(current: "另一件事", refused: "帮我总结一下"), "帮我总结一下\n另一件事", "nothing typed is lost")
+        XCTAssertEqual(ConversationLengthLimit.carriedDraft(current: "另一件事", refused: ""), "另一件事")
+    }
+    func testHistoryConflictUsesTheBusyRetrySchedule() {
+        XCTAssertEqual(ConversationBusyRetryPolicy.delay(attempt: 1, retryAfterSeconds: nil), 5)
+        XCTAssertEqual(ConversationBusyRetryPolicy.delay(attempt: 2, retryAfterSeconds: nil), 15)
+        XCTAssertEqual(ConversationBusyRetryPolicy.delay(attempt: 3, retryAfterSeconds: nil), 30)
+        XCTAssertNil(ConversationBusyRetryPolicy.delay(attempt: 4, retryAfterSeconds: nil))
+        XCTAssertEqual(ConversationSessionService.modelHistoryConflictCode, "model_history_conflict")
+    }
+    /// GET …/conversations/{id} at fix/context-window-v11x no longer carries model_messages / model_message_meta. No client
+    /// code reads them (serverTranscript :190-209 and readConversation :711-722 read id / scope_id / state / policy /
+    /// messages / revision / grant_epoch only), so a payload without them parses and maps.
+    func testConversationWithoutModelMessagesDecodes() throws {
+        let cid = UUID(), scope = UUID(), mid = UUID()
+        let json = """
+        {"schema_version":1,"conversation":{"id":"\(cid.uuidString.lowercased())","scope_id":"\(scope.uuidString.lowercased())","state":"active",
+        "policy":"conversation-local-output-v1","revision":7,"grant_epoch":2,"messages":[{"id":"\(mid.uuidString.lowercased())","role":"user","content":"你好"}]}}
+        """
+        let wrapper = try ConversationStrictJSON.object(Data(json.utf8))
+        let conversation = try XCTUnwrap(wrapper["conversation"] as? [String: Any])
+        XCTAssertNil(conversation["model_messages"]); XCTAssertNil(conversation["model_message_meta"])
+        XCTAssertEqual(conversation["revision"] as? Int, 7); XCTAssertEqual(conversation["grant_epoch"] as? Int, 2)
+        let messages = try XCTUnwrap(conversation["messages"] as? [[String: Any]])
+        XCTAssertEqual(messages.first?["content"] as? String, "你好")
+    }
+}
+
+
+private final class ConflictResendWireProtocol:URLProtocol,@unchecked Sendable {
+    static var handler:((URLRequest)throws->(Int,[String:Any]))?
+    override class func canInit(with request:URLRequest)->Bool {true}
+    override class func canonicalRequest(for request:URLRequest)->URLRequest {request}
+    override func startLoading(){do {
+        let (status,value)=try Self.handler!(request)
+        let response=HTTPURLResponse(url:request.url!,statusCode:status,httpVersion:"HTTP/1.1",headerFields:["Content-Type":"application/json"])!
+        client?.urlProtocol(self,didReceive:response,cacheStoragePolicy:.notAllowed)
+        client?.urlProtocol(self,didLoad:try JSONSerialization.data(withJSONObject:value))
+        client?.urlProtocolDidFinishLoading(self)
+    }catch{client?.urlProtocol(self,didFailWithError:error)}}
+    override func stopLoading(){}
+}
+private struct ConflictResendCredentials:NativeChatSessionCredentials {
+    func authorization(scope:DataScope) async throws -> String {"Bearer synthetic-conflict-resend-only"}
+}
+/// 三角 ee6891d0 contract, point 3: the 409 resend takes expected_revision / expected_grant_epoch from GET (the server's
+/// removal of the failed user message does not bump revision); the failed message is simply absent from GET messages.
+final class ConversationConflictResendWireTests:XCTestCase {
+    private func body(_ wire:URLRequest) throws -> Data {
+        if let b=wire.httpBody {return b};guard let stream=wire.httpBodyStream else {throw URLError(.badServerResponse)}
+        stream.open();defer{stream.close()};var bytes=Data(),buffer=[UInt8](repeating:0,count:4096)
+        while stream.hasBytesAvailable {let n=stream.read(&buffer,maxLength:buffer.count);if n<=0 {break};bytes.append(contentsOf:buffer.prefix(n))}
+        return bytes
+    }
+    func testResendUsesGETRevisionAndNewTurnAndMessageIDs() async throws {
+        let server=UUID(),conversation=UUID(),failedOp=UUID(),resendOp=UUID()
+        let first=ConversationTranscriptMessage(id:UUID(),role:.user,content:"第一句"),answer=ConversationTranscriptMessage(id:UUID(),role:.assistant,content:"回答",complete:true)
+        let failedRow=ConversationTranscriptMessage(id:stableID("conversation-user-\(failedOp)"),role:.user,content:"接着上面说")
+        let resendRow=ConversationTranscriptMessage(id:stableID("conversation-user-\(resendOp)"),role:.user,content:"接着上面说")
+        let request=ConversationTurnRequest(scope:Profiles.user,conversationID:conversation,threadID:conversation.uuidString,operationID:resendOp,epoch:3,history:[first,answer,failedRow,resendRow])
+        let config=URLSessionConfiguration.ephemeral;config.protocolClasses=[ConflictResendWireProtocol.self]
+        let backend=NativeChatHTTPBackend(configuration:try .init(origin:URL(string:"http://127.0.0.1:8123")!,localScope:Profiles.user,serverScopeID:server),credentials:ConflictResendCredentials(),sessionConfiguration:config)
+        var posted:[String:Any]?,retryBusyCalls=0
+        let wireMessages:[[String:Any]]=[["id":first.id.uuidString.lowercased(),"role":"user","content":"第一句"],["id":answer.id.uuidString.lowercased(),"role":"assistant","content":"回答"]]
+        ConflictResendWireProtocol.handler={wire in
+            if wire.url!.path.contains("retry-busy") {retryBusyCalls+=1}
+            if wire.httpMethod=="POST" {posted=try JSONSerialization.jsonObject(with:self.body(wire)) as? [String:Any]
+                return (413,["schema_version":1,"error":["code":"conversation_too_long","retryable":false,"reconciliation_required":false]])}
+            return (200,["schema_version":1,"contract":"catpaw.native-chat.v1","conversation":["id":conversation.uuidString.lowercased(),"scope_id":server.uuidString.lowercased(),"state":"active","policy":"conversation-local-output-v1","grant_epoch":2,"revision":7,"messages":wireMessages]])
+        };defer{ConflictResendWireProtocol.handler=nil}
+        do {let stream=try await backend.reply(request);for try await _ in stream {}} catch {}
+        await backend.close()
+        let turn=try XCTUnwrap(posted?["turn"] as? [String:Any] ?? posted)
+        XCTAssertEqual(turn["expected_revision"] as? Int,7,"expected_revision from GET (removal does not bump it)")
+        XCTAssertEqual(turn["expected_grant_epoch"] as? Int,2)
+        XCTAssertEqual(turn["turn_id"] as? String,resendOp.uuidString.lowercased(),"new turn_id")
+        let message=try XCTUnwrap(turn["message"] as? [String:Any])
+        XCTAssertEqual(message["id"] as? String,resendRow.id.uuidString.lowercased(),"new message.id")
+        XCTAssertNotEqual(message["id"] as? String,failedRow.id.uuidString.lowercased())
+        XCTAssertEqual(message["text"] as? String,"接着上面说");XCTAssertEqual(retryBusyCalls,0,"never retry-busy")
+    }
+}

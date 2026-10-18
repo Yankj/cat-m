@@ -20,8 +20,111 @@ import Combine
         }
     }
 }
+
+/// chat-ux-1505 #4a: pure turn-event → Live Activity phase mapping (unit-tested). Every stage transition maps to a phase,
+/// including the ones that used to be dropped (approval / device call / suspended → 等你确认; approval resolved → working).
+enum CatpawWorkPhase: Equatable {
+    case thinking, tool(String), awaitingUser, writing, done, failed
+    /// nil = event does not change the activity.
+    static func from(_ payload: ConversationTurnEvent.Payload) -> CatpawWorkPhase? {
+        switch payload {
+        case .started, .reasoningSummary: return .thinking
+        case .toolStarted(_, let name, _): return .tool(name)
+        case .deviceCall(let call): return call.confirm == "none" || DeviceToolContract.autoRunReadOnlyTools.contains(call.tool) ? .tool(call.tool) : .awaitingUser
+        case .approvalRequested: return .awaitingUser
+        // PREREVIEW B1/P2-3: the server suspends for every interrupt, including confirm:"none" device calls; the
+        // answerable ones already arrived as approvalRequested / card deviceCall, so suspended alone changes nothing.
+        case .suspended: return nil
+        case .approvalResolved, .toolResult: return .thinking
+        case .textDelta, .textPreview: return .writing   // live text is the answer appearing (the hub / activity dedupe .writing)
+        case .completed: return .done
+        case .failed: return .failed
+        default: return nil
+        }
+    }
+    /// `CatpawWorkAttributes.ContentState.kind` string (Sources/Shared, shared with the widget).
+    var kind: String {
+        switch self {
+        case .thinking: return "thinking"
+        case .tool: return "tool"
+        case .awaitingUser: return "needs_user"
+        case .writing: return "writing"
+        case .done: return "done"
+        case .failed: return "failed"
+        }
+    }
+    var isTerminal: Bool { self == .done || self == .failed }
+    /// UIStrings key + arguments for the body line. Known tools get a human step (「正在查日历」), never a raw tool id.
+    var bodyKey: (key: String, arguments: [String]) {
+        switch self {
+        case .thinking: return ("正在思考…", [])
+        case .tool(let name): return (ToolStepCopy.short(name), [])   // one table (status-line SPEC §9); unknown → 正在处理
+        case .awaitingUser: return ("等你确认", [])
+        case .writing: return ("正在整理回答…", [])
+        case .done: return ("已完成", [])
+        case .failed: return ("未完成，需核对", [])
+        }
+    }
+    /// Localised Live Activity body. Tool copy comes straight from ToolStepCopy (zh/en columns), other phases from UIStrings.
+    func body(_ language: AppLanguage) -> String {
+        if case .tool(let name) = self { return ToolStepCopy.short(name, en: language == .english) }
+        return language.ui(bodyKey.key, arguments: bodyKey.arguments)
+    }
+}
+/// v1.1: the Live Activity title is the user's own task — first non-empty line of the user message, whitespace collapsed,
+/// trimmed to ~20 characters. Only the typed text is used (never tool names / arguments); nil → widget generic title.
+/// R2 (NoBug P1-2): emails, URLs and phone-like digit runs (6+ digits, spaces / dashes allowed) are masked BEFORE the cut,
+/// so a contact never reaches the lock screen / Dynamic Island; the widget also marks the title `.privacySensitive()`.
+enum CatpawTaskTitle {
+    static let limit = 20
+    static let mask = "•••"
+    static func make(_ text: String) -> String? {
+        guard let line = text.split(whereSeparator: \.isNewline).lazy
+            .map({ $0.split(whereSeparator: \.isWhitespace).joined(separator: " ") }).first(where: { !$0.isEmpty }) else { return nil }
+        let masked = redact(line)
+        return masked.count <= limit ? masked : String(masked.prefix(limit - 1)).trimmingCharacters(in: .whitespaces) + "…"
+    }
+    /// R3 (NoBug P2-R2-1): matching runs on the NFKC form (full-width ＠ / － / digits fold to ASCII); separators also
+    /// cover dashes (‐‑‒–—―), dots (. · ・). Matches are mapped back per character, so only the masked spans change —
+    /// the rest of the title keeps its own characters (full-width Chinese punctuation stays full-width).
+    static let patterns = [#"[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}"#,                       // email
+                           #"(?i)(?:https?://|www\.)\S+"#,                                           // URL
+                           #"\+?\d(?:[ \-‐‑‒–—―.·・]?\d){5,}(?:[Xx](?![A-Za-z]))?"#]                  // 6+ digits: phone / card / id numbers
+    static func redact(_ s: String) -> String {
+        let orig = Array(s)
+        var norm = "", starts: [Int] = []   // UTF-16 offset in `norm` where orig[i]'s NFKC form begins
+        for c in orig { starts.append(norm.utf16.count); norm += String(c).precomposedStringWithCompatibilityMapping }
+        let length = norm.utf16.count
+        var hit = [Bool](repeating: false, count: orig.count)
+        for p in patterns {
+            guard let re = try? NSRegularExpression(pattern: p) else { continue }
+            for m in re.matches(in: norm, range: NSRange(location: 0, length: length)) where m.range.length > 0 {
+                let lo = m.range.location, hi = m.range.location + m.range.length
+                for i in orig.indices where starts[i] < hi && (i + 1 < orig.count ? starts[i + 1] : length) > lo { hit[i] = true }
+            }
+        }
+        var out = "", i = 0
+        while i < orig.count {
+            if hit[i] { out += mask; while i < orig.count && hit[i] { i += 1 } } else { out.append(orig[i]); i += 1 }
+        }
+        return out
+    }
+}
+
+/// Hand-off from the send path (operation id = turn id) to the Live Activity coordinator.
+@MainActor enum CatpawTaskTitles {
+    private static var pending: [UUID: String] = [:]
+    static func note(_ text: String, operationID: UUID) {
+        if pending.count > 32 { pending.removeAll() }   // bounded: a turn that never starts must not leak titles
+        pending[operationID] = CatpawTaskTitle.make(text)
+    }
+    static func take(_ operationID: UUID) -> String? { pending.removeValue(forKey: operationID) }
+    static func reset() { pending.removeAll() }
+}
+
 #if canImport(ActivityKit) && os(iOS)
 import ActivityKit
+import UIKit
 
 /// Drives the `CatpawWorkAttributes` Live Activity (lock screen + Dynamic Island) from
 /// `ConversationSessionService.turnEvents()`.
@@ -44,6 +147,11 @@ import ActivityKit
         var answering = false
         var kind = CatpawWorkAttributes.ContentState.Kind.thinking
         var token = AccountEpoch.shared.capture()   // Codex PR91 p91c-3: account the turn started under
+        /// chat-ux-1505 #4a: ActivityKit updates are chained so they land in event order (separate `Task {update}`s
+        /// could apply an older state last and leave the lock screen on 「正在思考…」).
+        var lastUpdate: Task<Void, Never>?
+        var tool: String?
+        var summary: String?
     }
     private var turns: [UUID: Turn] = [:]
     private var tokenObservers: [String: Task<Void, Never>] = [:]
@@ -51,65 +159,76 @@ import ActivityKit
     private func ui(_ key: String, _ arguments: [String] = []) -> String { AppLanguage(locale: .current).ui(key, arguments: arguments) }
 
     /// Runs until the calling task is cancelled (attach with SwiftUI `.task`).
-    func observe(_ service: ConversationSessionService, conversationID: @escaping @MainActor () -> UUID?) async {
+    /// `taskText`: the conversation's latest user message, read once when a turn starts — it becomes the activity title.
+    func observe(_ service: ConversationSessionService, conversationID: @escaping @MainActor () -> UUID?,
+                 taskText: @escaping @MainActor () -> String? = { nil }) async {
         observePushToStartTokens()
         let stream = await service.turnEvents()
         for await event in stream {
             if Task.isCancelled { break }
-            handle(event, conversationID: conversationID())
+            var text: String? = nil
+            if case .started = event.payload { text = taskText() }
+            handle(event, conversationID: conversationID(), taskText: text)
         }
     }
 
-    func handle(_ event: ConversationTurnEvent, conversationID: UUID?) {
+    /// Lock-screen / Dynamic Island title from the user's own words: first non-empty line, whitespace collapsed, at most
+    /// `taskTitleLimit` characters (then 「…」). Nil for empty input → the widget's 「Catpaw 正在处理」 fallback.
+    /// v1.1 R2: one title rule for both paths — CatpawTaskTitle (masking before the cut, 20 characters).
+    static let taskTitleLimit = CatpawTaskTitle.limit
+    nonisolated static func taskTitle(_ raw: String?) -> String? { raw.flatMap(CatpawTaskTitle.make) }
+
+    func handle(_ event: ConversationTurnEvent, conversationID: UUID?, taskText: String? = nil) {
         let id = event.operationID
+        guard let phase = CatpawWorkPhase.from(event.payload) else { return }
+        let body = phase.body(AppLanguage(locale: .current))
         let hub = CatpawPresenceHub.shared
-        switch event.payload {
-        case .started: hub.set(.waiting, step: ui("正在思考…"))
-        case .reasoningSummary: hub.set(.thinking, step: ui("正在思考…"))
-        case .toolStarted(_, let name, _): hub.set(.working, step: ui("正在调用工具：{0}", [name]))
-        case .toolResult: hub.set(.thinking, step: ui("正在思考…"))
-        case .textDelta: if hub.state != .streaming { hub.set(.streaming, step: ui("正在整理回答…")) }
-        case .completed: hub.set(.done, step: ui("已完成"))
-        case .failed: hub.set(.error, step: ui("未完成，需核对"))
-        default: break
+        switch phase {
+        case .thinking: hub.set(.thinking, step: body) // 70a2c36: a fresh turn (hub nil) used to show .waiting → header stayed on the idle pose until the first text delta
+        case .tool: hub.set(.working, step: body)
+        case .awaitingUser: hub.set(.waiting, step: body)
+        case .writing: if hub.state != .streaming { hub.set(.streaming, step: body) }
+        case .done: hub.set(.done, step: body)
+        case .failed: hub.set(.error, step: body)
         }
-        switch event.payload {
-        case .started:
-            guard turns[id] == nil else { return }
-            var turn = Turn(conversationID: conversationID?.uuidString ?? "", body: ui("正在思考…"))
+        if case .started = event.payload, turns[id] == nil {
+            var turn = Turn(conversationID: conversationID?.uuidString ?? "", body: body)
+            turn.summary = CatpawTaskTitles.take(id) ?? Self.taskTitle(taskText)   // per-operation note first, else the latest user message
             turn.timer = Task { [weak self] in
                 try? await Task.sleep(nanoseconds: UInt64(Self.longTurnThreshold * 1_000_000_000))
                 guard !Task.isCancelled else { return }
                 self?.startIfNeeded(id)
             }
             turns[id] = turn
-        case .reasoningSummary:
-            mutate(id) { $0.kind = CatpawWorkAttributes.ContentState.Kind.thinking; $0.body = self.ui("正在思考…") }
-        case .toolStarted(_, let name, _):
-            ensureTracked(id, conversationID: conversationID)
-            mutate(id) { $0.step += 1; $0.kind = CatpawWorkAttributes.ContentState.Kind.tool; $0.body = self.ui("正在调用工具：{0}", [name]) }
-            if Self.longTaskTools.contains(name) { startIfNeeded(id) }
-        case .toolResult(let result):
-            mutate(id) { $0.kind = CatpawWorkAttributes.ContentState.Kind.thinking; $0.body = self.ui("工具已返回：{0}", [result.name]) }
-        case .textDelta:
-            guard turns[id]?.answering == false else { return }
-            mutate(id) { $0.answering = true; $0.kind = CatpawWorkAttributes.ContentState.Kind.writing; $0.body = self.ui("正在整理回答…") }
-        case .completed:
-            finish(id, kind: CatpawWorkAttributes.ContentState.Kind.done, title: ui("已完成"))
-        case .failed:
-            finish(id, kind: CatpawWorkAttributes.ContentState.Kind.failed, title: ui("未完成，需核对"))
-        default:
-            break
+            return
         }
+        if phase.isTerminal { finish(id, kind: phase.kind, title: body); return }
+        if case .writing = phase, turns[id]?.answering == true { return }   // one update per answer, not per token
+        ensureTracked(id, conversationID: conversationID)
+        mutate(id) {
+            if case .tool(let name) = phase { $0.step += 1; $0.tool = name }
+            if case .writing = phase { $0.answering = true }
+            $0.kind = phase.kind; $0.body = body
+        }
+        if case .tool(let name) = phase, Self.longTaskTools.contains(name) { startIfNeeded(id) }
+        // Waiting on the user (device call / approval) is exactly when the lock screen matters: show it now.
+        if phase == .awaitingUser { startIfNeeded(id) }
     }
 
     private func ensureTracked(_ id: UUID, conversationID: UUID?) {
-        if turns[id] == nil { turns[id] = Turn(conversationID: conversationID?.uuidString ?? "", body: ui("正在思考…")) }
+        if turns[id] == nil {
+            var turn = Turn(conversationID: conversationID?.uuidString ?? "", body: ui("正在思考…"))
+            turn.summary = CatpawTaskTitles.take(id)
+            turns[id] = turn
+        }
     }
 
     /// Exactly the backend `content-state` shape `{title, body, kind, taskID}`.
-    private func state(_ id: UUID, _ turn: Turn, _ kind: String) -> CatpawWorkAttributes.ContentState {
-        .init(title: ui("Catpaw 正在工作"), body: turn.body, kind: kind, taskID: id.uuidString)
+    private func state(_ id: UUID, _ turn: Turn, _ kind: String, endedAt: Date? = nil) -> CatpawWorkAttributes.ContentState {
+        // ux-round-1505: startedAt drives the on-device timer, step = honest dot count, tool → spoken verb in the widget.
+        // summary = the user's task text (CatpawTaskTitles, else the latest user message), masked; nil → widget generic title.
+        .init(title: ui("Catpaw 正在工作"), body: turn.body, kind: kind, taskID: id.uuidString,
+              startedAt: turn.startedAt, endedAt: endedAt, step: turn.step > 0 ? turn.step : nil, tool: turn.tool, summary: turn.summary)
     }
 
     private func mutate(_ id: UUID, _ change: (inout Turn) -> Void) {
@@ -117,7 +236,8 @@ import ActivityKit
         change(&turn); turns[id] = turn
         guard let activity = turn.activity else { return }
         let content = ActivityContent(state: state(id, turn, turn.kind), staleDate: Date().addingTimeInterval(120))
-        Task { await activity.update(content) }
+        let previous = turn.lastUpdate
+        turns[id]?.lastUpdate = Task { await previous?.value; await activity.update(content, alertConfiguration: nil) }   // local step updates never alert
     }
 
     private func startIfNeeded(_ id: UUID) {
@@ -142,6 +262,7 @@ import ActivityKit
     /// Codex PR91 p91b-3: sign-out. Cancels every pending 5 s start timer (so no `Activity.request` fires after sign-out),
     /// drops tracked turns and token observers, and ends every work activity — including ones from before a relaunch.
     func resetForSignOut() {
+        CatpawTaskTitles.reset()
         for turn in turns.values { turn.timer?.cancel() }
         turns.removeAll()
         for task in tokenObservers.values { task.cancel() }
@@ -172,17 +293,46 @@ import ActivityKit
         }
     }
 
+    /// R2 (NoBug P1-2): every ended turn (done, failed, stopped) lingers 2 min, then the system removes it — the task
+    /// title must not outlive the task on the lock screen (was 15 min for failed / stopped).
+    static let endedLinger: TimeInterval = 2 * 60
+    static func dismissAfter(kind: String) -> TimeInterval { endedLinger }
+
+    /// chat-ux-1505 #4a: background / relaunch. (1) While an activity is live, ask for background time so the SSE can
+    /// deliver the next stages (and the end) after the user locks the phone. (2) On launch / foreground, end activities
+    /// no tracked turn owns (app was killed mid-turn) instead of leaving 「正在思考…」 on the lock screen for hours.
+    private var backgroundTask: UIBackgroundTaskIdentifier = .invalid
+    func sceneDidEnterBackground() {
+        guard backgroundTask == .invalid, turns.values.contains(where: { $0.activity != nil }) else { return }
+        backgroundTask = UIApplication.shared.beginBackgroundTask(withName: "catpaw.liveActivity") { [weak self] in self?.endBackgroundTask() }
+    }
+    func sceneDidBecomeActive() { endBackgroundTask(); endOrphanedActivities() }
+    private func endBackgroundTask() {
+        guard backgroundTask != .invalid else { return }
+        UIApplication.shared.endBackgroundTask(backgroundTask); backgroundTask = .invalid
+    }
+    func endOrphanedActivities() {
+        let owned = Set(turns.values.compactMap { $0.activity?.id })
+        for activity in Activity<CatpawWorkAttributes>.activities where !owned.contains(activity.id) && activity.activityState == .active {
+            let final = CatpawWorkAttributes.ContentState(title: ui("Catpaw 正在工作"), body: ui("打开 Catpaw 查看结果"), kind: CatpawWorkAttributes.ContentState.Kind.needsUser, taskID: activity.attributes.taskID)
+            Task { await activity.end(ActivityContent(state: final, staleDate: nil), dismissalPolicy: .after(Date().addingTimeInterval(60))) }
+        }
+    }
+
     private func finish(_ id: UUID, kind: String, title: String) {
         guard var turn = turns.removeValue(forKey: id) else { return }
         turn.timer?.cancel()
-        guard let activity = turn.activity else { return }
+        guard let activity = turn.activity else { if turns.values.allSatisfy({ $0.activity == nil }) { endBackgroundTask() }; return }
         turn.body = title
-        let content = ActivityContent(state: state(id, turn, kind), staleDate: nil)
+        let content = ActivityContent(state: state(id, turn, kind, endedAt: Date()), staleDate: nil)
         let activityID = activity.id
         tokenObservers.removeValue(forKey: activityID)?.cancel()
+        let previous = turn.lastUpdate
         Task {
-            await activity.end(content, dismissalPolicy: .after(Date().addingTimeInterval(kind == CatpawWorkAttributes.ContentState.Kind.done ? 5 * 60 : 30 * 60)))
+            await previous?.value   // the final state must land after every pending update
+            await activity.end(content, dismissalPolicy: .after(Date().addingTimeInterval(Self.dismissAfter(kind: kind))))
             await CatpawPushTokenUploader.shared.forgetActivity(activityID)
+            await MainActor.run { if self.turns.values.allSatisfy({ $0.activity == nil }) { self.endBackgroundTask() } }
         }
     }
 

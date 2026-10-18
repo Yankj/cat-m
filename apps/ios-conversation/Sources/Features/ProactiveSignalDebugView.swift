@@ -124,14 +124,11 @@ import SwiftUI
     }
 
 
-    private static var gitSHA: String {
-        (Bundle.main.object(forInfoDictionaryKey: "CatpawGitSHA") as? String).flatMap { $0.isEmpty ? nil : $0 }
-            ?? String((Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "?").prefix(7))
-    }
+    // Stamped at build time (Scripts/app-version.py stamp); "?" only for an unstamped preview/CI build.
+    private static var gitSHA: String { AppBuildInfo.current.commitLabel ?? "?" }
     private static var bundleVersion: String {
-        let short = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "?"
-        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "?"
-        return "\(short) (\(build))"
+        let info = AppBuildInfo.current
+        return "\(info.version ?? "?") (\(info.build ?? "?"))"
     }
 
     private func stageRow(_ s: ProactiveStageResult) -> some View {
