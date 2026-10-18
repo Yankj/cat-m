@@ -35,7 +35,7 @@ const NO_SAVE_BASE = '\nMemory saving is unavailable in this turn: no tool here 
 const NO_SAVE_REASON = Object.freeze({
   proposal: ' propose_memory_v1 only proposes; the user still has to confirm it, so do not call it saved.',
   ephemeral: ' This is a temporary conversation, which never saves memories. If the user asks you to remember something, say honestly that it was not saved because temporary conversations do not keep memories, then help with the rest of the message.',
-  auto_save_off: ' Auto memory (自动记住新内容) is off for this account. If the user asks you to remember something, say honestly that it was not saved because 自动记住新内容 is off, and that they can turn it on in 设置 › 记忆; then help with the rest of the message.',
+  auto_save_off: ' Auto memory (自动记住新内容) is off for this account, so you only remember what the user explicitly asks you to. If the user wanted you to remember something, say honestly that it was not saved, and that they can send it again starting with 「记住：」 (for example 记住：我开会喜欢提前 10 分钟到) to have it saved; then help with the rest of the message.',
   memory_off: ' Memory is off for this account. If the user asks you to remember something, say honestly that it was not saved because memory is off, and that they can turn on 使用记忆 and 自动记住新内容 in 设置 › 记忆; then help with the rest of the message.',
   image_turn: ' Memories cannot be saved from a message with an image. If the user asks you to remember something, say honestly that it was not saved and ask them to send it again as text without an image.',
   unavailable: ' If the user asks you to remember something, say honestly that it was not saved, then help with the rest of the message.',
@@ -46,13 +46,16 @@ export function memoryNoSaveReason(turn, toolNames, { imageTurn = false } = {}) 
   if (toolNames.includes('propose_memory_v1')) return 'proposal';
   const m = turn?.agent_memory;
   if (m?.mode === 'ephemeral') return 'ephemeral';
+  // Image first (NoBug P2-6): resending 「记住：…」 with the image attached would still not save.
+  if (m?.enabled === true && imageTurn) return 'image_turn';
   if (m?.enabled === true && m.auto_save !== true) return 'auto_save_off';
   if (m && m.enabled !== true) return 'memory_off';
-  if (m?.enabled === true && imageTurn) return 'image_turn';
   return 'unavailable';
 }
 // auto_save off but the user explicitly asked to remember (UI: 「关闭后只在你明确要求时记住」).
-const EXPLICIT_SAVE = '\nAuto memory (自动记住新内容) is off, but the current user message explicitly asks you to remember something, so memory_save is available for that one item only. Save exactly what the user asked to remember as one short sentence, nothing else from the conversation, and never secrets, credentials, health or financial identifiers. Only after memory_save returns status "saved" tell the user plainly that it was saved (for example 已记住：…), and that with 自动记住新内容 off you only remember what they explicitly ask. If it returns anything else, say honestly that it was not saved.';
+// v54 R2 (NoBug P1-1): the detector is a heuristic, so the prompt says the message *appears* to ask, and leaves the
+// model room to decline for quoted, translated, summarised or forwarded text and for reminders.
+const EXPLICIT_SAVE = '\nAuto memory (自动记住新内容) is off, but the current user message appears to ask you to remember something about the user, so memory_save is available for that one item only. If the message is actually quoting, translating, summarising, forwarding or analysing someone else\'s text, or is a reminder or to-do rather than a fact or preference about the user, do not call memory_save. Otherwise save exactly what the user asked to remember as one short sentence, nothing else from the conversation, and never secrets, credentials, health or financial identifiers. Only after memory_save returns status "saved" tell the user plainly that it was saved (for example 已记住：…), and that with 自动记住新内容 off you only remember what they explicitly ask. If it returns anything else, say honestly that it was not saved.';
 export function memoryHonestyPrompt(turn, tools, opts) {
   const names = (tools ?? []).map(t => t?.function?.name);
   if (names.includes('memory_save') && turn?.agent_memory?.explicit_save === true && turn.agent_memory.auto_save !== true) return EXPLICIT_SAVE;
