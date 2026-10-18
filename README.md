@@ -15,18 +15,19 @@
 ![Deno](https://img.shields.io/badge/Deno-tests-000000?logo=deno&logoColor=white)
 ![Backend](https://img.shields.io/badge/catpaw--api-v53%20(prod)-3ECF8E)
 ![App](https://img.shields.io/badge/App-v1.1.0%20on%20main-brightgreen)
+[![下载](https://img.shields.io/badge/%E4%B8%8B%E8%BD%BD-Releases-2EA44F?logo=github&logoColor=white)](https://github.com/Yankj/catpaw-m/releases/latest)
 ![License](https://img.shields.io/badge/license-TBD-lightgrey)
 
 <img src="docs/assets/slides/slide-01.png" alt="CatPaw Mobile 介绍图" width="720">
 
 <sub>设计示意（演示幻灯片封面），非 App 实拍。</sub>
 
-[快速开始](#quick-start) · [功能](#核心功能) · [演示](#演示) · [架构](#架构) · [文档索引](docs/README.md) · [详细架构](docs/architecture.md) · [贡献指南](CONTRIBUTING.md)
+[快速开始](#quick-start) · [下载与安装](#下载与安装) · [功能](#核心功能) · [演示](#演示) · [架构](#架构) · [文档索引](docs/README.md) · [详细架构](docs/architecture.md) · [贡献指南](CONTRIBUTING.md)
 
 </div>
 
 > [!NOTE]
-> **版本状态（2026-10-18）**：iOS **v1.1.0** 已通过发版 PR #98 合入 `main`，下表所有能力都在 `main` 上；版本记录见 [CHANGELOG](CHANGELOG.md)。线上后端为 `catpaw-api` **v53**（= `main` 上的 #96）。逐项进展以 [主计划](docs/status/master-plan.md) 为准。
+> **版本状态（2026-10-18）**：iOS **v1.1.0**（2026-10-18）已通过发版 PR #98 合入 `main`，1.1.1 修复版准备中，下表所有能力都在 `main` 上；版本记录见 [CHANGELOG](CHANGELOG.md)。线上后端为 `catpaw-api` **v53**（= `main` 上的 #96）。逐项进展以 [主计划](docs/status/master-plan.md) 为准。
 
 <details>
 <summary><b>目录</b></summary>
@@ -34,6 +35,7 @@
 - [背景](#背景)
 - [核心功能](#核心功能)
 - [Quick Start](#quick-start)
+- [下载与安装](#下载与安装)
 - [使用](#使用)
 - [演示](#演示)
 - [架构](#架构)
@@ -118,8 +120,56 @@ open apps/ios-conversation/CatpawM.xcodeproj
 2. `⌘R` 运行。未配置 Supabase / 模型时 App 走离线合成路径：可以浏览界面和组件，但**不会产生真实模型回答**。
 3. 真实产品构建用 scheme **`DeviceTrial`**，需在本地提供公开配置与签名（见[配置参考](#配置参考)），仓库里这些值是空的。
 
-> [!NOTE]
-> 目前没有 GitHub Release / ipa 下载；发布流程计划在 v1.2 处理。
+不想自己编译时，可以直接装打包好的构建，见[下载与安装](#下载与安装)。
+
+<p align="right">(<a href="#readme-top">返回顶部</a>)</p>
+
+## 下载与安装
+
+> **操作指南（How-to）**：安装已打包的构建。所有构建都在 [Releases](https://github.com/Yankj/catpaw-m/releases/latest) 页面；仓库目前是私有的，需要有仓库访问权限才能下载。
+
+> [!IMPORTANT]
+> 截至 2026-10-18 还没有发布任何 GitHub Release，下面的文件会在首个 Release 发布后出现。在那之前请用方式 C 从源码构建。
+
+| 方式 | 文件 | 适合 | 限制 |
+|---|---|---|---|
+| A. 模拟器 | `Catpaw-<版本>-simulator.zip` | 在 Mac 上快速体验 | 只能装在 iOS 模拟器上，不能装真机 |
+| B. 真机（开发签名） | `Catpaw-<版本>.ipa` | 已登记的测试设备 | **只能装在开发者描述文件（provisioning profile）里登记过 UDID 的设备上** |
+| C. 从源码构建 | — | 开发、评审 | 需要 Xcode 26 |
+
+**A. 模拟器构建**
+
+1. 从 Releases 下载 `Catpaw-<版本>-simulator.zip`，打开任意 iOS 17+ 模拟器（Xcode › Open Developer Tool › Simulator）。
+2. 解压并安装，bundle id 从安装包自己的 `Info.plist` 读取：
+
+```sh
+unzip Catpaw-<版本>-simulator.zip -d catpaw-sim
+APP=$(find catpaw-sim -maxdepth 2 -name '*.app' | head -1)
+xcrun simctl install booted "$APP"
+BUNDLE_ID=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP/Info.plist")
+xcrun simctl launch booted "$BUNDLE_ID"
+```
+
+也可以直接把解压出来的 `.app` 拖进模拟器窗口安装。仓库里的默认 bundle id 是 `com.example.CatpawM.ConversationFirst.Auth`（Debug / Release）和 `com.example.CatpawM.OpenMuseDemo`（DeviceTrial）；正式包可能在本地签名配置里改过，以 `Info.plist` 为准。
+
+**B. 真机 ipa（开发签名）**
+
+> [!WARNING]
+> 这个 ipa 用开发证书签名，**只能安装在开发者描述文件里登记过的设备上**，其他设备会安装失败。如需加入测试设备，请把设备 UDID 发给维护者重新签名。面向公众的分发需要走 TestFlight 或 App Store，目前还没有。
+
+1. 下载 `Catpaw-<版本>.ipa`，用数据线连接 iPhone 并信任这台电脑。
+2. 安装（二选一）：
+   - **Xcode**：Window › Devices and Simulators › 选中设备 › 「Installed Apps」下的「+」› 选 ipa。
+   - **Apple Configurator**：选中设备 › 添加 › App › 选 ipa（也可以把 ipa 拖到设备上）。
+3. iOS 16 及以上运行开发签名的 App 需要先打开 设置 › 隐私与安全性 › 开发者模式（按提示重启）。如提示未受信任的开发者，在 设置 › 通用 › VPN与设备管理 里信任该开发者。
+
+**C. 从源码构建**
+
+见 [Quick Start](#quick-start)；真机构建用 `DeviceTrial` scheme 并在本地提供签名与公开配置（见[配置参考](#配置参考)）。
+
+**确认版本**
+
+装好后打开 App 的 设置 › 关于，应显示「版本 X.Y.Z (build N) · 发布于 日期 时间」，和 Release 页面、[CHANGELOG](CHANGELOG.md) 里的版本一致。轻点这一行可以看到提交号。
 
 <p align="right">(<a href="#readme-top">返回顶部</a>)</p>
 
@@ -376,7 +426,9 @@ CATPAW_DENO_BIN=<Deno路径> CATPAW_PUBLIC_NPM_CACHE=<公开cache目录> sh scri
 
 - [x] **v1.1.0 发版**：已通过 #98 合入 `main`（OAuth 登录与账号下拉、iOS live text、语音对话、记忆工具调用、版本管理等）
 - [x] 版本号自动化：构建号自动递增，设置 › 关于显示发布时间与提交号
-- [ ] 打 `v1.1.0` 标签，并把 [CHANGELOG](CHANGELOG.md) 中 1.1.0 的「未发布」改成发布日期
+- [x] [CHANGELOG](CHANGELOG.md) 记录 1.1.0 发布日期（2026-10-18）
+- [ ] 打 `v1.1.0` 标签，发布首个 GitHub Release（模拟器 zip + 开发签名 ipa），见[下载与安装](#下载与安装)
+- [ ] 1.1.1 修复版：标题溢出、时间格式（见 [CHANGELOG](CHANGELOG.md)）
 - [ ] App 实拍录屏 / GIF 与演示视频
 - [ ] v1.2：EventKit CI 测试、Release / ipa 自动分发
 - [ ] 云电脑托管：仅为[提案](docs/architecture/cloud-computer-proposal.md)
@@ -396,7 +448,7 @@ CATPAW_DENO_BIN=<Deno路径> CATPAW_PUBLIC_NPM_CACHE=<公开cache目录> sh scri
 | 类型 | 适合 | 入口 |
 |---|---|---|
 | Tutorials 教程 | 第一次跑起来 | [Quick Start](#quick-start)、[接手说明](handoff.md)、[iOS 工程说明](apps/ios-conversation/README.md) |
-| How-to 操作指南 | 完成具体任务 | [使用](#使用)、[录屏分镜](docs/demo-script.md)、[Edge 离线验证](services/edge/README.md)、[部署清单](services/edge/docs/deploy-checklist.md)、[贡献指南](CONTRIBUTING.md) |
+| How-to 操作指南 | 完成具体任务 | [下载与安装](#下载与安装)、[使用](#使用)、[录屏分镜](docs/demo-script.md)、[Edge 离线验证](services/edge/README.md)、[部署清单](services/edge/docs/deploy-checklist.md)、[贡献指南](CONTRIBUTING.md) |
 | Reference 参考 | 查准确信息 | [配置参考](#配置参考)、[CHANGELOG](CHANGELOG.md)、[iOS 版本规范](docs/development/ios-versioning.md)、[Edge 接口契约](services/edge/docs/)、[目录角色](docs/development/repository-layout.json) |
 | Explanation 原理 | 理解为什么 | [架构总览](docs/architecture.md)、[架构索引](docs/architecture/README.md)、[研究索引](docs/research/README.md) |
 
