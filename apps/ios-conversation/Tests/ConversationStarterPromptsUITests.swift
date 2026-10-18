@@ -54,6 +54,30 @@ final class ConversationStarterPromptsUITests: XCTestCase {
         XCTAssertEqual(XCTWaiter.wait(for: [hidden], timeout: 3), .completed)
         XCTAssertFalse(app.descendants(matching: .any)["chat.userMessage"].exists, "Typing never sends a starter")
     }
+    /// v1.1.x title overflow: a long first message stays on one line between the sidebar and new-chat buttons.
+    func testLongTitleTruncatesBetweenBarButtons() {
+        let app = launchEmpty()
+        let card = app.buttons["chat.starter.reminder"]
+        XCTAssertTrue(card.waitForExistence(timeout: 5))
+        let enabled = XCTNSPredicateExpectation(predicate: NSPredicate(format: "enabled == true"), object: card)
+        XCTAssertEqual(XCTWaiter.wait(for: [enabled], timeout: 10), .completed)
+        card.tap()   // the user's case: 「明天上午 10 点提醒我给客户回电话」 becomes the conversation title
+        // A fresh store may first ask for the per-conversation send consent; accept it whenever it shows up.
+        let review = app.buttons["chat.consent.review"], allow = app.buttons["chat.modelConsent.allow"]
+        let titleEl = app.descendants(matching: .any)["chat.title.text"].firstMatch
+        for _ in 0..<30 where !titleEl.label.contains(reminderPrompt) {
+            if allow.exists && allow.isHittable { allow.tap() } else if review.exists && review.isEnabled && review.isHittable { review.tap() }
+            sleep(1)
+        }
+        let title = app.descendants(matching: .any)["chat.title"], side = app.buttons["sidebar.open"], new = app.buttons["chat.new"]
+        let titled = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label BEGINSWITH %@", "明天"), object: titleEl)
+        let ok = XCTWaiter.wait(for: [titled], timeout: 20) == .completed
+        sleep(1); attach(app, "long-title-state"); sleep(6)   // hold for an external simctl screenshot
+        XCTAssertTrue(ok, "header shows the first message as the title: \(title.label)")
+        XCTAssertGreaterThanOrEqual(title.frame.minX, side.frame.maxX, "title must not run under the sidebar button")
+        XCTAssertLessThanOrEqual(title.frame.maxX, new.frame.minX, "title must not run under the new-chat button")
+        attach(app, "long-title-truncated")
+    }
 }
 
 /// v1 letterbox blocker (2026-10-17): the chat canvas must be full-bleed. SidebarHost used to lay out and clip to the
@@ -228,4 +252,5 @@ final class SidebarSettingsRouteUITests: XCTestCase {
         XCTAssertTrue(voice.isEnabled, "the voice button is enabled once the conversation is loaded")
         Thread.sleep(forTimeInterval: 0.8); shot("composer-voice-dark")   // review: black circle, white waveform
     }
+
 }
