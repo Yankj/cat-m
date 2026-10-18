@@ -33,6 +33,14 @@ import SwiftUI
         self.onSelect = onSelect; self.content = content()
     }
     public var body: some View {
+        // Sidebar 17:24 (B-b): the host is full-bleed (.ignoresSafeArea(.container) below, the letterbox fix), so the panel
+        // slot no longer inherited the container insets — its account row ran under the status-bar clock and the settings /
+        // search bar into the home indicator. Read the insets here, outside the full-bleed region, and hand them to the panel.
+        GeometryReader { outer in
+            host(insets: outer.safeAreaInsets)
+        }
+    }
+    private func host(insets: EdgeInsets) -> some View {
         GeometryReader { geometry in
             let width = SidebarGesturePolicy.drawerWidth(available: geometry.size.width)
             let active = isAtRoot && motion.isVisible
@@ -51,6 +59,9 @@ import SwiftUI
                                      guard snapshot.permits(destination) else { return }
                                      close(); onSelect(destination)
                                  }, onClose: close).equatable()
+                    // Exactly the container insets (never doubled): the panel background stays full-bleed, its content does not.
+                    .safeAreaPadding(EdgeInsets(top: insets.top, leading: insets.leading, bottom: insets.bottom, trailing: 0))
+                    .ignoresSafeArea([.container, .keyboard])
                     .frame(width: width, height: geometry.size.height)
                     .offset(x: reduceMotion ? 0 : -width * 0.22 * (1 - min(1, progress)))
                     .allowsHitTesting(active && !motion.isDragging)
@@ -107,7 +118,13 @@ import SwiftUI
                                                      isPresented = motion.endDrag(velocityX: velocity, width: width, cancelled: cancelled, reduceMotion: reduceMotion)
                                                  }))
                 #endif
-        }.onAppear {
+        }
+        // Full-bleed host: the GeometryReader used to take only the safe-area rect, and the clipShape/clipped above cut the
+        // chat's edge-to-edge canvas to it — the status-bar and home-indicator strips showed the bare window (black in dark,
+        // white in light): the "letterboxed" iPhone 13 report. Children still receive the container insets (the nav bar and
+        // composer stay where they were); the keyboard region is still honoured.
+        .ignoresSafeArea(.container)
+        .onAppear {
             if isAtRoot {
                 if isPresented { onWillOpen(); motion.move(to: true, reduceMotion: reduceMotion) }
             } else { reset() }

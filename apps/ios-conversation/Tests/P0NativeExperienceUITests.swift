@@ -17,8 +17,7 @@ final class P0NativeExperienceUITests:XCTestCase {
         XCTAssertTrue(input.isHittable)
         let more=app.buttons["chat.more"]
         XCTAssertTrue(more.isHittable);more.tap()
-        let settings=app.buttons["chat.settings"]
-        XCTAssertTrue(settings.waitForExistence(timeout:4));settings.tap()
+        app.catpawOpenSettings()
         XCTAssertTrue(app.descendants(matching:.any)["connection.state"].waitForExistence(timeout:4))
         XCTAssertTrue(app.descendants(matching:.any)["settings.appVersion"].exists)
         XCTAssertTrue(app.descendants(matching:.any)["settings.appBuild"].exists)

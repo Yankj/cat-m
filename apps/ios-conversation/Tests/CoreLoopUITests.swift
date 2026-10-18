@@ -73,7 +73,7 @@ final class CoreLoopUITests: XCTestCase {
         input.tap();input.typeText(a);app.buttons["chat.new"].tap()
         let empty=XCTNSPredicateExpectation(predicate:NSPredicate(format:"value == '' OR value == %@ OR value == nil","说说你想做的事…"),object:input)
         XCTAssertEqual(XCTWaiter.wait(for:[empty],timeout:12),.completed);input.tap();input.typeText(b)
-        app.buttons["chat.settings"].tap();XCTAssertTrue(app.descendants(matching:.any)["connection.state"].waitForExistence(timeout:10));app.buttons["完成"].tap();value(input,b)
+        app.catpawOpenSettings();XCTAssertTrue(app.descendants(matching:.any)["connection.state"].waitForExistence(timeout:10));app.buttons["完成"].tap();value(input,b)
         app.buttons["chat.history"].tap()
         let aRow=app.buttons.matching(NSPredicate(format:"identifier BEGINSWITH %@ AND label CONTAINS %@","chat.history.row.",a)).firstMatch
         let bRow=app.buttons.matching(NSPredicate(format:"identifier BEGINSWITH %@ AND label CONTAINS %@","chat.history.row.",b)).firstMatch

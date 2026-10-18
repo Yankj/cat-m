@@ -63,6 +63,20 @@ enum AccountLocalData {
     }
 }
 
+/// v1.1 B8: account-bound conversation residue that lives OUTSIDE the account partition and is purged at sign-out:
+/// reply-variant pagers (`catpaw.replyVariants.v1.<conversation>`), message reactions, and staged composer attachments
+/// (pending-draft files in Caches/ComposerStaging). The partition store itself (conversations + saved drafts) is parked by
+/// design (receipt-backed restore on re-sign-in) and its Caches namespace is removed by `finishDetaching`.
+enum AccountConversationLocal {
+    static let reactionsKey = "catpaw.messageReactions.v1"
+    static let replyVariantsPrefix = "catpaw.replyVariants.v1."
+    static func purge(defaults: UserDefaults, stagingDirectory: URL?) {
+        defaults.removeObject(forKey: reactionsKey)
+        for k in defaults.dictionaryRepresentation().keys where k.hasPrefix(replyVariantsPrefix) { defaults.removeObject(forKey: k) }
+        if let stagingDirectory { try? FileManager.default.removeItem(at: stagingDirectory) }
+    }
+}
+
 /// Codex PR91 #3: every memory read path (leadTime, nearby search) goes through here. Fail closed: a cloud load error
 /// (other than "no cloud library": not enabled / unsupported) or a local load error yields NO memories, and the last
 /// known 「使用记忆」 switch is kept per account so an unknown cloud state never re-opens recall.
@@ -413,7 +427,13 @@ extension AccountLocalData {
         ProactiveEngine.shared.claimData(for: nil)
         // Live Activities are keyed by suggestion id: read the inbox before it is purged.
         for id in ProactiveLocalBackend.load().keys { CatpawLeaveActivity.stop(suggestionID: id) }
+        // v1.1: claimData above parked the leaving account's inbox / reminder + attendee contexts sealed (vault key); the live
+        // sealed records and any plaintext copy are purged here, and the L2 wipe after this call shreds the account key.
+        ProactiveSealedStore.purgeForSignOut()
         CatpawLeaveActivity.stopAll()
+        // v1.1 B8: reply variants, reactions and staged draft attachments are purged (never parked).
+        AccountConversationLocal.purge(defaults: .standard, stagingDirectory: FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first?.appendingPathComponent("ComposerStaging", isDirectory: true))
+        MessageReactionStore.shared.reset()
         signOutCore(userID: userID, defaults: .standard)   // generation first, then memory cache + library + keys
         MemoryLibraryHub.reset()
         DeviceCallStore.shared.reset()

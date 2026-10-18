@@ -217,3 +217,37 @@ public enum CatpawDebugPublicConfig {
     }
 }
 #endif
+
+/// chat-ux-1505 #1: header model picker options — only what `catpaw.model-routes.v1` allows (route allow-lists).
+public struct ModelPickerOption: Equatable, Sendable, Identifiable {
+    public let route: String
+    public let model: String?
+    public let label: String
+    public let enabled: Bool
+    public var id: String { route + "|" + (model ?? "") }
+}
+public enum ModelPickerOptions {
+    /// Auto first, then one entry per allowed model of each listed route. Offline routes stay visible but disabled.
+    public static func build(_ routes: [ModelRouteInfo]) -> [ModelPickerOption] {
+        var out = [ModelPickerOption(route: ModelRouteSelection.autoID, model: nil, label: "自动", enabled: true)]
+        for r in routes {
+            let models = r.models.isEmpty ? [nil] : r.models.map { Optional($0.id) }
+            for m in models { out.append(.init(route: r.id, model: m, label: m.map(shortName) ?? r.display_name, enabled: r.statusKind != .offline)) }
+        }
+        return out
+    }
+    public static func shortName(_ model: String) -> String { model.split(separator: "/").last.map(String.init) ?? model }
+    /// The option matching the stored selection (route + model, or route default when no model stored).
+    public static func isSelected(_ o: ModelPickerOption, route: String, model: String?, routes: [ModelRouteInfo]) -> Bool {
+        guard o.route == route else { return false }
+        if route == ModelRouteSelection.autoID { return true }
+        let effective = model ?? routes.first { $0.id == route }?.defaultModel
+        return o.model == effective
+    }
+    /// Header subtitle for an explicit selection; nil for auto (header then shows the server-reported model).
+    public static func headerLabel(route: String, model: String?, routes: [ModelRouteInfo]) -> String? {
+        guard route != ModelRouteSelection.autoID else { return nil }
+        if let m = model ?? routes.first(where: { $0.id == route })?.defaultModel { return shortName(m) }
+        return routes.first { $0.id == route }?.display_name ?? route
+    }
+}

@@ -8,6 +8,7 @@ actor QueueSendLog {
     func release() { continuation?.resume(); continuation = nil }
     func captured() -> [UUID] { ids }
 }
+actor QueueIDLog { var ids: [UUID] = []; func add(_ id: UUID) { ids.append(id) }; func captured() -> [UUID] { ids } }
 actor QueueHistoryBackend:ConversationBackend {
     var admitting=false
     var histories:[UUID:[UUID]]=[:]
@@ -55,6 +56,37 @@ actor QueueBusyBackend:ConversationBackend {
             c.finish()
         }
     }
+    func observe(_ r:ConversationTurnRequest) async throws -> ConversationObservation {throw CatpawError.missing}
+}
+/// 409 model_history_conflict (fix/context-window-v11x): the first `failures` replies fail with it, then replies complete.
+actor QueueConflictBackend:ConversationBackend {
+    var replies=0, restarts=0
+    let failures:Int
+    /// Reply numbers (1-based) refused before admission (no `started`), like an offline or pre-dispatch refusal.
+    let refuse:Set<Int>
+    /// Every POST: (turn_id, message.id) — the wire uses `history.last.id` as message.id.
+    var posts:[(op:UUID,message:UUID)]=[]
+    /// What GET …/conversations/{id} `messages` returns (三角 ee6891d0: the failed user message is absent).
+    var server:[ConversationTranscriptMessage]?=nil
+    init(failures:Int,refuse:Set<Int> = []){self.failures=failures;self.refuse=refuse}
+    func setServer(_ m:[ConversationTranscriptMessage]){server=m}
+    func serverTranscript(scope:DataScope,conversationID:UUID) async throws -> [ConversationTranscriptMessage]? {server}
+    func connection(scope:DataScope) async -> ConversationConnection {.init(state:.providerUnverified,provider:"Synthetic conflict",detail:"No external network")}
+    func reply(_ r:ConversationTurnRequest) async throws -> AsyncThrowingStream<ConversationTurnEvent,Error> {
+        replies+=1;posts.append((r.operationID,r.history.last?.id ?? UUID()))
+        if refuse.contains(replies) {throw ConversationDispatchFailure.notSent(reason:"Synthetic pre-admission refusal")}
+        let fail=(replies-refuse.filter{$0<replies}.count)<=failures,message=stableID("queue-conflict-reply-\(r.operationID)"),body="Synthetic after conflict"
+        return AsyncThrowingStream {c in
+            c.yield(.init(operationID:r.operationID,epoch:r.epoch,sequence:1,payload:.started(requestHash:textHash(r.operationID.uuidString),conversationRevision:1,grantEpoch:1)))
+            if fail { c.yield(.init(operationID:r.operationID,epoch:r.epoch,sequence:2,payload:.failed(message:"model_history_conflict",reconciliationRequired:false))) }
+            else {
+                c.yield(.init(operationID:r.operationID,epoch:r.epoch,sequence:2,payload:.textDelta(messageID:message,text:body)))
+                c.yield(.init(operationID:r.operationID,epoch:r.epoch,sequence:3,payload:.completed(messageID:message,finalTextHash:textHash(body))))
+            }
+            c.finish()
+        }
+    }
+    func retryBusyTurn(_ r:ConversationTurnRequest,afterSequence:Int) async throws -> AsyncThrowingStream<ConversationTurnEvent,Error> { restarts+=1;throw CatpawError.unavailable("409 turn_not_restartable") }
     func observe(_ r:ConversationTurnRequest) async throws -> ConversationObservation {throw CatpawError.missing}
 }
 actor QueueEditBackend:ConversationBackend {
@@ -224,9 +256,9 @@ actor QueueEditBackend:ConversationBackend {
         try check(!second,"second sync is a no-op")
         // Busy (turn_failed rate_limited): automatic retries restart the SAME turn (server busy-restart, limit 3),
         // exponential backoff with jitter unless the server sent retry_after; status for "模型繁忙，正在重试（n/3）".
-        try check(ConversationSessionService.busyRetryDelay(attempt:1,retryAfterSeconds:nil,jitter:0)==2 && ConversationSessionService.busyRetryDelay(attempt:2,retryAfterSeconds:nil,jitter:0)==4 && ConversationSessionService.busyRetryDelay(attempt:3,retryAfterSeconds:nil,jitter:0)==8,"backoff doubles per attempt")
+        try check(ConversationSessionService.busyRetryDelay(attempt:1,retryAfterSeconds:nil,jitter:0)==5 && ConversationSessionService.busyRetryDelay(attempt:2,retryAfterSeconds:nil,jitter:0)==15 && ConversationSessionService.busyRetryDelay(attempt:3,retryAfterSeconds:nil,jitter:0)==30,"backoff is 5 s, 15 s, 30 s")
         let jittered=ConversationSessionService.busyRetryDelay(attempt:2,retryAfterSeconds:nil,jitter:0.9)
-        try check(jittered>4 && jittered<6,"jitter stretches the delay by at most 50%")
+        try check(jittered==15,"no jitter: the card counts down to the real due time")
         try check(ConversationSessionService.busyRetryDelay(attempt:3,retryAfterSeconds:7,jitter:0)==7,"server retry_after wins over backoff")
         try check(ConversationSessionService.busyRetryDelay(attempt:9,retryAfterSeconds:nil,jitter:0)==30,"backoff is capped")
         let bb=QueueBusyBackend(),bs=ConversationSessionService(repository:repo,backend:bb),bc=try await bs.create(scope:Profiles.user)
@@ -256,6 +288,78 @@ actor QueueEditBackend:ConversationBackend {
         let ticked=await cs.foregroundTick(scope:Profiles.user,conversationID:cc)
         let cancelRestarts=await cb.restarts
         try check(cancelled?.automatic==false && cancelRestarts==0 && !ticked,"user cancel stops automatic retries")
+        // 409 model_history_conflict: retryable on the busy-retry schedule (5 s first), as a resend of the same text
+        // (the server refuses an in-place restart for this code), superseding the failed turn locally.
+        let cfb=QueueConflictBackend(failures:1),cfs=ConversationSessionService(repository:repo,backend:cfb),cfc=try await cfs.create(scope:Profiles.user)
+        let conflictOp=UUID()
+        _=try? await cfs.send(scope:Profiles.user,conversationID:cfc,text:"接着上面说",operationID:conflictOp)
+        let conflictStatus=await cfs.busyRetryStatus(conversationID:cfc)
+        try check(conflictStatus?.automatic==true && conflictStatus?.attempt==1 && (4...5).contains(conflictStatus?.secondsRemaining ?? 0),"model_history_conflict schedules automatic retry 1/3 after 5 s")
+        let resent=try await cfs.retryBusy(scope:Profiles.user,conversationID:cfc,automatic:true)
+        let conflictSession=try await cfs.read(scope:Profiles.user,conversationID:cfc)
+        let conflictRestarts=await cfb.restarts
+        try check(resent != nil && resent != conflictOp && conflictRestarts==0,"the retry is a resend (new turn id), never POST …/retry-busy")
+        try check(conflictSession.turns.first(where:{$0.id==conflictOp})?.state == .cancelledBeforeSend && conflictSession.turns.last?.state == .completed,"the failed turn is superseded and the resend completes")
+        try check(conflictSession.messages.filter{$0.role == .user && $0.content == "接着上面说"}.count==1,"the resent text is shown once")
+        let cleared409=await cfs.busyRetryStatus(conversationID:cfc)
+        try check(cleared409==nil,"no busy entry after the resend completes")
+        let eb=QueueConflictBackend(failures:10),es=ConversationSessionService(repository:repo,backend:eb),ec=try await es.create(scope:Profiles.user)
+        _=try? await es.send(scope:Profiles.user,conversationID:ec,text:"一直冲突",operationID:UUID())
+        for _ in 0..<3 { _=try? await es.retryBusy(scope:Profiles.user,conversationID:ec,automatic:true) }
+        let exhausted409=await es.busyRetryStatus(conversationID:ec)
+        let exhaustedReplies=await eb.replies
+        try check(exhaustedReplies==4 && exhausted409?.automatic==false,"at most 3 automatic resends across the chain, then manual 重试")
+        // 三角 ee6891d0 contract, point 1: NEW turn_id and NEW message.id; never retry-busy.
+        let conflictPosts=await cfb.posts
+        try check(conflictPosts.count==2 && conflictPosts[0].op != conflictPosts[1].op && conflictPosts[0].message != conflictPosts[1].message && conflictPosts[1].message==stableID("conversation-user-\(conflictPosts[1].op)") && conflictRestarts==0,
+                  "409 resend: new turn_id AND new message.id, no retry-busy")
+        // Point 2: the failed bubble stays until the resend is admitted; a resend refused before admission never loses the text.
+        let r409b=QueueConflictBackend(failures:1,refuse:[2]),r409s=ConversationSessionService(repository:repo,backend:r409b),r409c=try await r409s.create(scope:Profiles.user),r409Op=UUID()
+        _=try? await r409s.send(scope:Profiles.user,conversationID:r409c,text:"别丢了",operationID:r409Op)
+        _=try? await r409s.retryBusy(scope:Profiles.user,conversationID:r409c,automatic:true)
+        let r409Refused=try await r409s.read(scope:Profiles.user,conversationID:r409c)
+        try check(r409Refused.turns.first(where:{$0.id==r409Op})?.state == .failed && r409Refused.messages.contains{$0.id==stableID("conversation-user-\(r409Op)") && $0.content=="别丢了"},
+                  "409 resend refused before admission: the failed bubble (and its text) stays")
+        let r409AdmittedOp=try await r409s.send(scope:Profiles.user,conversationID:r409c,text:"别丢了",operationID:r409Refused.turns.last!.id,preserveDraft:true)
+        let r409Admitted=try await r409s.read(scope:Profiles.user,conversationID:r409c)
+        try check(r409Admitted.turns.first(where:{$0.id==r409Op})?.state == .cancelledBeforeSend && r409Admitted.turns.first(where:{$0.id==r409AdmittedOp})?.state == .completed && r409Admitted.messages.filter{$0.role == .user && $0.content=="别丢了"}.count==1,
+                  "409 resend: the failed bubble is dropped only once the resend is admitted, text shown once")
+        // Point 4: after 3 failed resends the text stays on the device (failed row → 发送失败 · 重试 / 删除), even after a
+        // server sync whose GET no longer has it.
+        let r409LastFailed=try await es.read(scope:Profiles.user,conversationID:ec)
+        await eb.setServer([ConversationTranscriptMessage(id:UUID(),role:.assistant,content:"earlier server row")])
+        _=try? await es.syncServerTranscript(scope:Profiles.user,conversationID:ec)
+        let r409AfterSync=try await es.read(scope:Profiles.user,conversationID:ec)
+        try check(r409LastFailed.turns.last?.state == .failed && r409LastFailed.turns.last?.error=="model_history_conflict" && r409AfterSync.messages.filter{$0.role == .user && $0.content=="一直冲突"}.count==1
+                  && r409AfterSync.messages.contains{$0.id==stableID("conversation-user-\(r409AfterSync.turns.last!.id)")},
+                  "409 exhausted: the text stays local in the failed row after a GET without it")
+        // Image-upload rate-limit fix: a terminal (admitted, server-failed) turn never pauses the queue.
+        let tc=try await service.create(scope:Profiles.user)
+        let tq=ConversationFollowupQueueService(repository:repo,scope:Profiles.user,conversationID:tc)
+        let failedImage=ConversationFollowup(text:"这张图里有什么？一句话"),nextImage=ConversationFollowup(text:"这张呢？一句话")
+        try await tq.enqueue(failedImage);try await tq.enqueue(nextImage)
+        let tlog=QueueIDLog()   // non-blocking: QueueSendLog parks the first send until release()
+        try await tq.flush { message in await tlog.add(message.id);return message.id == failedImage.id ? .failedTerminal : .sent }
+        let tstate=try await tq.state(),tsent=await tlog.captured()
+        try check(!tstate.paused && tstate.pending.isEmpty && tstate.inflight == nil && tsent == [failedImage.id,nextImage.id],"rate_limited turn does not pause the queue; the next message goes out (supersedes it)")
+        // A queue persisted as paused (recovery) behind a terminal failure is unpaused on launch.
+        let stuck=ConversationFollowup(text:"待发送")
+        do { try await tq.flush { _ in throw CatpawError.unavailable("rate_limited") } } catch { }
+        try await tq.enqueue(stuck)
+        do { try await tq.flush { _ in throw CatpawError.unavailable("rate_limited") } } catch { }
+        try await tq.enqueue(ConversationFollowup(text:"第二条"))
+        let pausedState=try await tq.state()
+        try check(pausedState.paused && pausedState.pauseReason == .recovery,"precondition: a thrown send leaves a recovery pause")
+        var failedSession=ConversationSession(scope:Profiles.user,conversationID:tc)
+        var failedTurn=ConversationTurnRecord(id:stuck.id,request:ConversationTurnRequest(scope:Profiles.user,conversationID:tc,threadID:nil,operationID:stuck.id,epoch:1,history:[]),state:.failed,lastSequence:3,error:"rate_limited")
+        failedTurn.retryAfterSeconds=nil;failedSession.turns=[failedTurn]
+        let relaunched=ConversationFollowupQueueService(repository:try Repository(persistence:FilePersistence(url:path)),scope:Profiles.user,conversationID:tc)
+        let recovered=try await relaunched.recoverFromTerminalFailure(session:failedSession)
+        let afterLaunch=try await relaunched.state()
+        try check(recovered && !afterLaunch.paused && afterLaunch.pauseReason == nil && afterLaunch.pending.count == 1,"launch unpauses a queue stuck behind a terminal failure")
+        try await relaunched.pause()
+        let userPauseKept = try await relaunched.recoverFromTerminalFailure(session:failedSession)
+        try check(!userPauseKept,"a user pause is never undone by the launch recovery")
         print("EVIDENCE: migrated public queue behavior; transport actions in tests are explicit test closures")
     }
 }
