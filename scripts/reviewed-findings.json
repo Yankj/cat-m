@@ -2486,6 +2486,96 @@
       "reason": "proactive v10 re-pin: line 102 bytes unchanged (masked k-or-xxxxxxxx / k-ag-xxxxxxxx env stub, no real credential); file changed only in the dedupe test (replay instead of silent).",
       "reviewed_utc_date": "2026-10-18",
       "reviewer": "三角"
+    },
+    {
+      "path": "apps/website/public/assets/cat-done.webp",
+      "category": "unexpected_binary",
+      "sha256": "40bdaf59d3ba9c8e36f719355b6299b3c14cbc931974d663efdd22848a29b9a1",
+      "reason": "User-provided Catpaw launch media or reviewed brand compression/screenshot crop for the requested website. Provenance: apps/website/ASSETS.md. Exact hash only."
+    },
+    {
+      "path": "apps/website/public/assets/cat-error.webp",
+      "category": "unexpected_binary",
+      "sha256": "47325481f9469bdf16cb3ad46ed8e0508ed5570d1973c1830e78be67b967aec5",
+      "reason": "User-provided Catpaw launch media or reviewed brand compression/screenshot crop for the requested website. Provenance: apps/website/ASSETS.md. Exact hash only."
+    },
+    {
+      "path": "apps/website/public/assets/cat-executing.webp",
+      "category": "unexpected_binary",
+      "sha256": "a80d208ec2b5d110136db79c5dd90c0cf36d26fc50c582aca08b7e171b2f093b",
+      "reason": "User-provided Catpaw launch media or reviewed brand compression/screenshot crop for the requested website. Provenance: apps/website/ASSETS.md. Exact hash only."
+    },
+    {
+      "path": "apps/website/public/assets/cat-front.webp",
+      "category": "unexpected_binary",
+      "sha256": "5f871eb0ac92bc0e6fc8e58a9558376c7cf4c97558d3b02433cbee38380838d6",
+      "reason": "User-provided Catpaw launch media or reviewed brand compression/screenshot crop for the requested website. Provenance: apps/website/ASSETS.md. Exact hash only."
+    },
+    {
+      "path": "apps/website/public/assets/cat-idle.webp",
+      "category": "unexpected_binary",
+      "sha256": "3fda76e25b70b6e5463ddb8f0fcf6b273ffe57ad4c2433bade01f9ac1ce5b64e",
+      "reason": "User-provided Catpaw launch media or reviewed brand compression/screenshot crop for the requested website. Provenance: apps/website/ASSETS.md. Exact hash only."
+    },
+    {
+      "path": "apps/website/public/assets/cat-thinking.webp",
+      "category": "unexpected_binary",
+      "sha256": "b4044fa1ff3f5e21cb2883bcdc5cb1fbdf5966d673a5a0d6af07d2e7ec33e59b",
+      "reason": "User-provided Catpaw launch media or reviewed brand compression/screenshot crop for the requested website. Provenance: apps/website/ASSETS.md. Exact hash only."
+    },
+    {
+      "path": "apps/website/public/assets/cat-writing.webp",
+      "category": "unexpected_binary",
+      "sha256": "7a84c91312eccb7f2e2e2b405e7cfddfc5b75b91a3d4f426b1c1efa9fb7d899b",
+      "reason": "User-provided Catpaw launch media or reviewed brand compression/screenshot crop for the requested website. Provenance: apps/website/ASSETS.md. Exact hash only."
+    },
+    {
+      "path": "apps/website/public/assets/catpaw-product-deck.pdf",
+      "category": "unexpected_binary",
+      "sha256": "8e51b00c4c4344bbed0cc9aeb8537c4e95f8082144cc54b922dfeb76c58a0ea7",
+      "reason": "User-provided Catpaw launch media or reviewed brand compression/screenshot crop for the requested website. Provenance: apps/website/ASSETS.md. Exact hash only."
+    },
+    {
+      "path": "apps/website/public/assets/film-cover.webp",
+      "category": "unexpected_binary",
+      "sha256": "30370aef05de64dcb1b18ed19b559c48699b0584bad9a7024fb53ed54af36725",
+      "reason": "User-provided Catpaw launch media or reviewed brand compression/screenshot crop for the requested website. Provenance: apps/website/ASSETS.md. Exact hash only."
+    },
+    {
+      "path": "apps/website/public/assets/launch-final-v2.mp4",
+      "category": "unexpected_binary",
+      "sha256": "bd531df7a328fac170dba223144f3ba4f28ca5aac4ced0e8683e7019ae53ff1a",
+      "reason": "User-provided Catpaw launch media or reviewed brand compression/screenshot crop for the requested website. Provenance: apps/website/ASSETS.md. Exact hash only."
+    },
+    {
+      "path": "apps/website/public/assets/launch-final-v2.mp4",
+      "category": "file_over_5_MiB",
+      "sha256": "bd531df7a328fac170dba223144f3ba4f28ca5aac4ced0e8683e7019ae53ff1a",
+      "reason": "User-provided Catpaw launch media or reviewed brand compression/screenshot crop for the requested website. Provenance: apps/website/ASSETS.md. Exact hash only."
+    },
+    {
+      "path": "apps/website/public/assets/phone-form.webp",
+      "category": "unexpected_binary",
+      "sha256": "9961e415651020f8165dab1d5b4c0a955908418a71f034e1165c54eadd60322e",
+      "reason": "User-provided Catpaw launch media or reviewed brand compression/screenshot crop for the requested website. Provenance: apps/website/ASSETS.md. Exact hash only."
+    },
+    {
+      "path": "apps/website/public/assets/phone-memory.webp",
+      "category": "unexpected_binary",
+      "sha256": "e9f7cd5cc5343cc6398718eda36d3b85079ed820ba92312f7cebb9f4b3253681",
+      "reason": "User-provided Catpaw launch media or reviewed brand compression/screenshot crop for the requested website. Provenance: apps/website/ASSETS.md. Exact hash only."
+    },
+    {
+      "path": "apps/website/public/assets/phone-proactive.webp",
+      "category": "unexpected_binary",
+      "sha256": "4bcde349a41f4d8a214a19730c33d167c3dbeb2f2b1f5d4ae48733fc19873812",
+      "reason": "User-provided Catpaw launch media or reviewed brand compression/screenshot crop for the requested website. Provenance: apps/website/ASSETS.md. Exact hash only."
+    },
+    {
+      "path": "apps/website/public/assets/phone-receipt.webp",
+      "category": "unexpected_binary",
+      "sha256": "7a149f1afc5ef9b72c3143578fc66f5204a114e29948fda8557e21b814495ffc",
+      "reason": "User-provided Catpaw launch media or reviewed brand compression/screenshot crop for the requested website. Provenance: apps/website/ASSETS.md. Exact hash only."
     }
   ]
 }
