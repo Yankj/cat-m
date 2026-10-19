@@ -1,0 +1,18 @@
+{
+  "name": "Catpaw",
+  "tagline": "先你一步，把事办妥。",
+  "description": "一个住在 iPhone 里的贴心助理。记住你的偏好，在合适的时候提醒你，确认后把事情办好。",
+  "url": "https://catpaw-product.kunjie-yan.chatgpt.site",
+  "repository": "https://github.com/Yankj/catpaw-m",
+  "release": "https://github.com/Yankj/catpaw-m/releases/latest",
+  "appVersion": "1.2.0",
+  "sourceCommit": "cb3bc90a6f35d93e9ad57a6c01c7dc83291d06ee",
+  "sourceDate": "2026-10-19",
+  "demoVersion": "v1.1",
+  "pillars": [
+    {"name":"主动", "text":"到点之前，先来找你", "anchor":"proactive"},
+    {"name":"有记忆", "text":"记住偏好，也真正用上", "anchor":"memory"},
+    {"name":"能执行", "text":"写进日历，留下回执", "anchor":"execution"},
+    {"name":"可信", "text":"先问你，再动手", "anchor":"trust"}
+  ]
+}

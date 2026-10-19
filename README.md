@@ -13,8 +13,8 @@
 ![SwiftUI](https://img.shields.io/badge/SwiftUI-SwiftData-0D96F6?logo=swift&logoColor=white)
 ![Supabase Edge](https://img.shields.io/badge/Supabase-Edge%20Functions-3ECF8E?logo=supabase&logoColor=white)
 ![Deno](https://img.shields.io/badge/Deno-tests-000000?logo=deno&logoColor=white)
-![Backend](https://img.shields.io/badge/catpaw--api-v53%20(prod)-3ECF8E)
-![App](https://img.shields.io/badge/App-v1.1.0%20on%20main-brightgreen)
+![Backend](https://img.shields.io/badge/catpaw--api-v55%20(prod)-3ECF8E)
+![App](https://img.shields.io/badge/App-v1.2.0%20on%20main-brightgreen)
 [![下载](https://img.shields.io/badge/%E4%B8%8B%E8%BD%BD-Releases-2EA44F?logo=github&logoColor=white)](https://github.com/Yankj/catpaw-m/releases/latest)
 ![License](https://img.shields.io/badge/license-TBD-lightgrey)
 
@@ -22,7 +22,7 @@
 
 <sub>设计示意（演示幻灯片封面），非 App 实拍。</sub>
 
-[快速开始](#quick-start) · [下载与安装](#下载与安装) · [功能](#核心功能) · [演示](#演示) · [架构](#架构) · [文档索引](docs/README.md) · [详细架构](docs/architecture.md) · [贡献指南](CONTRIBUTING.md)
+[产品官网](#产品官网) · [快速开始](#quick-start) · [下载与安装](#下载与安装) · [功能](#核心功能) · [演示](#演示) · [架构](#架构) · [文档索引](docs/README.md) · [详细架构](docs/architecture.md) · [贡献指南](CONTRIBUTING.md)
 
 </div>
 
@@ -32,6 +32,7 @@
 <details>
 <summary><b>目录</b></summary>
 
+- [产品官网](#产品官网)
 - [背景](#背景)
 - [核心功能](#核心功能)
 - [Quick Start](#quick-start)
@@ -49,6 +50,21 @@
 - [给 AI 助手的上下文](#给-ai-助手的上下文)
 
 </details>
+
+<!-- CATPAW-WEBSITE:START -->
+## 产品官网
+
+**先你一步，把事办妥。** 一个住在 iPhone 里的贴心助理。记住你的偏好，在合适的时候提醒你，确认后把事情办好。
+
+[浏览官网](https://catpaw-product.kunjie-yan.chatgpt.site/) · [观看产品视频](https://catpaw-product.kunjie-yan.chatgpt.site/#film) · [25 页产品介绍](https://catpaw-product.kunjie-yan.chatgpt.site/assets/catpaw-product-deck.pdf) · [安全与隐私](https://catpaw-product.kunjie-yan.chatgpt.site/trust.html) · [技术设计](https://catpaw-product.kunjie-yan.chatgpt.site/technology.html)
+
+- **主动**：到点之前，先来找你。
+- **有记忆**：记住偏好，也真正用上。
+- **能执行**：写进日历，留下回执。
+- **可信**：先问你，再动手。
+
+官网源码位于 [apps/website](apps/website)，独立构建与部署。演示素材保留 v1.1 版本；当前入口、状态与限制以 [能力清单](docs/product/capabilities/catpaw-capabilities.json) 和 [CHANGELOG](CHANGELOG.md) 为准。
+<!-- CATPAW-WEBSITE:END -->
 
 ## 背景
 
@@ -307,6 +323,7 @@ sequenceDiagram
 ```text
 catpaw-m/
 ├── apps/
+│   ├── website/                 # 独立官网：npm run build → dist/
 │   ├── ios-conversation/        # ★ 当前唯一维护的 iOS App（CatpawM.xcodeproj）
 │   │   ├── Sources/             #   App · Domain · Features · Persistence · Providers · Voice · DesignSystem · Shared
 │   │   ├── Tests/               #   XCTest / UITest 与可移植 runner
