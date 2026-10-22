@@ -5,6 +5,7 @@ create or replace function proactive.claim_due_reminders(p_now timestamptz, p_li
 returns table(task_id uuid, user_id uuid, conversation_id uuid, title text, notes text, due_at timestamptz,
               time_zone text, recurrence jsonb, scheduled_at timestamptz, fire_count integer)
 language plpgsql security definer set search_path = proactive, pg_temp as $$
+#variable_conflict use_column
 begin
   return query
   with due as (
