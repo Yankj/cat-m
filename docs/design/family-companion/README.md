@@ -11,6 +11,10 @@
 5. [技术架构图](assets/technical-architecture.png)：现有原生宿主 + 模块化 Edge 后端 + 一个 Postgres；未新建云服务。
 6. [决策记录](decisions.md)：已确认方向、工程建议和待确认项分开。
 
+## 延后执行计划
+
+[执行 Goal / M0-M5 / 验收与分工](execution-goal.md)已准备为评审 v0.1；状态 PLAN_READY / NOT_STARTED。启动条件、目标主机授权及各执行环境的 gpt-6.1-sol + ultra 实际配置回读尚待确认。本次仅补计划，没有创建/恢复实施 Goal、启动实现或设置自动启动。
+
 ## 当前导航与视觉基准
 
 保留 **conversation-first + 侧栏 + 原生返回**。今天 / 聊聊 / 我们家是内容分区，聊天仍默认入口，不强制底部三栏。成长计划是我们家一级内容，同时连接聊天和今天。

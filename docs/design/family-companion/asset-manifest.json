@@ -18,8 +18,8 @@
     },
     {
       "path": "docs/design/family-companion/README.md",
-      "bytes": 5673,
-      "sha256": "7d3394ad85bffcb50459b0a974640a15ddf37039e70ecdc4718f634814e5a7a1"
+      "bytes": 6014,
+      "sha256": "7f7133e7f3f67cd14fce6ea2342d7144bc88355b529e224c734c25ded4c63086"
     },
     {
       "path": "docs/design/family-companion/assets/cat-product-architecture-v0.1.pdf",
@@ -72,6 +72,11 @@
       "path": "docs/design/family-companion/tools/render-technical-plan.swift",
       "bytes": 8070,
       "sha256": "f29cf578b43185f82c6b3cd070a8e498ee5cddda93ea2dda81d62b1759c34608"
+    },
+    {
+      "path": "docs/design/family-companion/execution-goal.md",
+      "bytes": 16895,
+      "sha256": "d514b8572d985f0c457c3588c1e6aac2e3ffbb17fed1fe803e9ab100892e9418"
     }
   ]
 }
