@@ -13,7 +13,7 @@ import SwiftUI
     var body: some View {
         if !used.isEmpty {
             VStack(alignment: .leading, spacing: 6) {
-                Text(ui("本次用到的记忆")).font(CatpawTypography.Role.secondary.font).foregroundStyle(CatpawColors.secondary)
+                Text(ui("本次用到的记忆")).font(catTypography.Role.secondary.font).foregroundStyle(catColors.secondary)
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) { ForEach(used) { chip($0) } }
                 }
@@ -27,14 +27,14 @@ import SwiftUI
     private func chip(_ m: CachedMemory) -> some View {
         Button { if m.isLive { selected = m } } label: {
             HStack(spacing: 4) {
-                (m.isLive ? AnyView(CategoryPaw(category: .memory)) : AnyView(BrandMark(size: 14, color: CatpawColors.tertiary.opacity(0.5)))).accessibilityHidden(true)
+                (m.isLive ? AnyView(CategoryPaw(category: .memory)) : AnyView(BrandMark(size: 14, color: catColors.tertiary.opacity(0.5)))).accessibilityHidden(true)
                 Text(m.isLive ? m.content : ui("已遗忘的记忆"))
-                    .font(CatpawTypography.Role.secondary.font)
-                    .foregroundStyle(m.isLive ? CatpawColors.ink : CatpawColors.tertiary)
+                    .font(catTypography.Role.secondary.font)
+                    .foregroundStyle(m.isLive ? catColors.ink : catColors.tertiary)
                     .lineLimit(1)
             }
             .padding(.horizontal, 12).frame(minHeight: 44)
-            .background(Capsule().fill(CatpawColors.secondary.opacity(0.12)))
+            .background(Capsule().fill(catColors.secondary.opacity(0.12)))
         }
         .buttonStyle(.plain)
         .disabled(!m.isLive)
@@ -57,12 +57,12 @@ import SwiftUI
     var body: some View {
         NavigationStack {
             VStack(alignment: .leading, spacing: 16) {
-                Text(content).font(CatpawTypography.Role.body.font).foregroundStyle(CatpawColors.ink).fixedSize(horizontal: false, vertical: true)
-                if let errorKey { Text(ui(errorKey)).font(CatpawTypography.Role.secondary.font).foregroundStyle(CatpawColors.attention) }
+                Text(content).font(catTypography.Role.body.font).foregroundStyle(catColors.ink).fixedSize(horizontal: false, vertical: true)
+                if let errorKey { Text(ui(errorKey)).font(catTypography.Role.secondary.font).foregroundStyle(catColors.attention) }
                 HStack(spacing: 12) {
                     if backend?.capabilities.contains(.edit) == true {
                         NavigationLink { MemoryEditSheet(item: memory.libraryItem) { text in Task { await edit(text) } } }
-                        label: { Text(ui("编辑")).foregroundStyle(CatpawColors.ink).frame(maxWidth: .infinity) }
+                        label: { Text(ui("编辑")).foregroundStyle(catColors.ink).frame(maxWidth: .infinity) }
                             .buttonStyle(.bordered).controlSize(.large).disabled(working).accessibilityIdentifier("chat.memoryUsed.edit")
                     }
                     Button(role: .destructive) { confirmForget = true } label: { Text(ui("忘记")).frame(maxWidth: .infinity) }

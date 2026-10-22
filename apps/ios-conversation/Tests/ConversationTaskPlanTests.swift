@@ -1,7 +1,7 @@
 import Foundation
 #if !TASK_PLAN_PORTABLE
 import XCTest
-@testable import CatpawM
+@testable import cat
 
 final class ConversationTaskPlanTests:XCTestCase {
     func testAuthenticatedLocalPartitionKeepsServerBindingAcrossUnknownRestart() async throws {
@@ -21,7 +21,7 @@ final class ConversationTaskPlanTests:XCTestCase {
         let restored=try await reopened.refresh(reference),counts=await backend.counts()
         XCTAssertEqual(restored.draft,draft);XCTAssertEqual(restored.snapshot?.runID,binding.run_id);XCTAssertEqual(restored.submission?.request.operationID,operation);XCTAssertEqual(counts.0,[operation]);XCTAssertEqual(counts.1,[operation])
         let foreign=ConversationTaskPlanReference(scope:Profiles.demo,binding:binding,title:reference.title)
-        do {_ = try await reopened.localState(foreign);XCTFail("The fixed local partition must still fence another account")}catch CatpawError.scopeMismatch{}
+        do {_ = try await reopened.localState(foreign);XCTFail("The fixed local partition must still fence another account")}catch catError.scopeMismatch{}
     }
     func testCanonicalPlanHashMatchesECMAScriptFixturesAndStrictBounds() throws {
         let content=ConversationTaskPlanContent(title:"公开 / 资料",goal:"比较三份资料\n保留“来源”",requirements:"",stopConditions:["已保存 / 已核验"],steps:[.init(id:"compose",title:"撰写",detail:"https://example.com/a/b"),.init(id:"save",title:"保存",detail:""),.init(id:"verify",title:"核验",detail:"中文与🙂")])
@@ -71,7 +71,7 @@ final class ConversationTaskPlanTests:XCTestCase {
         let draft=ConversationTaskPlanDraft(baseRevision:1,basePlanHash:plan.acceptedPlanHash,goal:"Keep user goal",requirements:"Keep user requirements")
         try await initial.saveDraft(reference,draft:draft)
         let conflict=ConversationTaskPlanService(repository:repo,backend:ConflictTaskPlanBackend(base:backend))
-        do {_ = try await conflict.submit(reference);XCTFail("CAS must reject")}catch CatpawError.conflict{}
+        do {_ = try await conflict.submit(reference);XCTFail("CAS must reject")}catch catError.conflict{}
         let saved=try await conflict.localState(reference);XCTAssertEqual(saved.draft,draft);XCTAssertEqual(saved.submission?.state,.rejected)
         let counts=await backend.counts();XCTAssertTrue(counts.0.isEmpty)
     }
@@ -115,7 +115,7 @@ final class ConversationTaskPlanTests:XCTestCase {
         await service.setAdmissionAllowed(false)
         do {_ = try await service.submit(reference);XCTFail("Closed admission cannot dispatch")}catch{}
         let foreign=ConversationTaskPlanReference(scope:Profiles.demo,binding:reference.binding,title:reference.title)
-        do {_ = try await service.localState(foreign);XCTFail("Foreign scope must be denied")}catch CatpawError.scopeMismatch{}
+        do {_ = try await service.localState(foreign);XCTFail("Foreign scope must be denied")}catch catError.scopeMismatch{}
         let counts=await backend.counts();XCTAssertTrue(counts.0.isEmpty)
     }
     func testLateReadAfterLogoutCannotPopulatePlanCache() async throws {
@@ -174,7 +174,7 @@ final class ConversationTaskPlanTests:XCTestCase {
 private struct ConflictTaskPlanBackend:ConversationTaskPlanBackend {
     let base:ConversationTaskPlanFixtureBackend
     func readPlan(_ reference:ConversationTaskPlanReference) async throws -> ConversationTaskPlanEnvelope {try await base.readPlan(reference)}
-    func amendPlan(_ reference:ConversationTaskPlanReference,request:ConversationTaskPlanAmendRequest) async throws -> ConversationTaskPlanEnvelope {throw CatpawError.conflict}
+    func amendPlan(_ reference:ConversationTaskPlanReference,request:ConversationTaskPlanAmendRequest) async throws -> ConversationTaskPlanEnvelope {throw catError.conflict}
     func readAmendment(_ reference:ConversationTaskPlanReference,operationID:UUID) async throws -> ConversationTaskPlanEnvelope {try await base.readAmendment(reference,operationID:operationID)}
 }
 private actor DelayedTaskPlanBackend:ConversationTaskPlanBackend {
@@ -300,7 +300,7 @@ private actor DelayedTaskPlanBackend:ConversationTaskPlanBackend {
         let initial=try await c.service.refresh(c.reference),plan=initial.snapshot!
         let draft=ConversationTaskPlanDraft(baseRevision:plan.acceptedRevision,basePlanHash:plan.acceptedPlanHash,goal:"Exact unknown amendment raw",requirements:"Recover the original operation only")
         try await c.service.saveDraft(c.reference,draft:draft)
-        do {_ = try await c.service.submit(c.reference);throw Failure(description:"Unknown fixture did not interrupt its reply")}catch CatpawError.unavailable{}
+        do {_ = try await c.service.submit(c.reference);throw Failure(description:"Unknown fixture did not interrupt its reply")}catch catError.unavailable{}
         let saved=try await c.service.localState(c.reference),original=saved.submission!.request.operationID,before=await c.backend.counts()
         try check(await c.service.invalidate(),"Unknown receipt prevented local-only teardown")
         let cold=ConversationTaskPlanService(repository:try Repository(persistence:FilePersistence(url:c.path)),backend:c.backend),recovered=try await cold.refresh(c.reference),after=await c.backend.counts()

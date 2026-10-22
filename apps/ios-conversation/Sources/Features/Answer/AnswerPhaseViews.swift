@@ -30,7 +30,7 @@ import UIKit
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .animation(CatpawMotion.resolved(CatpawMotion.thinkingCollapse, reduceMotion), value: model.phase)
+        .animation(catMotion.resolved(catMotion.thinkingCollapse, reduceMotion), value: model.phase)
     }
 }
 
@@ -124,13 +124,13 @@ import UIKit
                 .transition(.opacity.combined(with: .move(edge: .top)))
             }
             if !thinking && expanded, let summary = model.thinkingSummary, !summary.isEmpty {
-                Text(summary).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
+                Text(summary).font(catTypography.Role.caption.font).foregroundStyle(catColors.secondary)
                     .fixedSize(horizontal: false, vertical: true)
                     .transition(.opacity)
             }
         }
-        .animation(CatpawMotion.resolved(CatpawMotion.thinkingCollapse, reduceMotion), value: expanded)
-        .animation(CatpawMotion.resolved(CatpawMotion.thinkingCollapse, reduceMotion), value: model.steps.count)
+        .animation(catMotion.resolved(catMotion.thinkingCollapse, reduceMotion), value: expanded)
+        .animation(catMotion.resolved(catMotion.thinkingCollapse, reduceMotion), value: model.steps.count)
         .accessibilityIdentifier("chat.answer.thinking")
     }
 
@@ -143,14 +143,14 @@ import UIKit
             HStack(spacing: 8) {
                 PlushMascot(pose: model.thinkingSummary != nil ? .thinking : .idle, size: 22)
                     .frame(width: 24, height: 24)
-                // chat-ux-1505 #3: mascot + 「Catpaw 正在工作」 (or the running tool step) with a shimmer sweep.
+                // chat-ux-1505 #3: mascot + 「cat 正在工作」 (or the running tool step) with a shimmer sweep.
                 Text(workingTitle)
-                    .font(CatpawTypography.Role.secondary.font)
-                    .foregroundStyle(CatpawColors.secondary)
+                    .font(catTypography.Role.secondary.font)
+                    .foregroundStyle(catColors.secondary)
                     .lineLimit(1).truncationMode(.tail)
                     .workingShimmer(statusAnimated)   // waiting on the user / failed / stopped: static
                     .contentTransition(.opacity)
-                    .animation(CatpawMotion.resolved(CatpawMotion.thinkingCollapse, reduceMotion), value: workingTitle)
+                    .animation(catMotion.resolved(catMotion.thinkingCollapse, reduceMotion), value: workingTitle)
                     .accessibilityIdentifier(statusIdentifier)
                 Spacer(minLength: 0)
             }
@@ -201,11 +201,11 @@ import UIKit
                 if line.kind == .failed {
                     // Uncertain outcome → only "verify", never resend (R5 rule). Separate VO element (SPEC §11).
                     if reconciliation, let onVerify {
-                        Button(ui("核对执行结果"), action: onVerify).font(CatpawTypography.Role.caption.font.weight(.semibold))
-                            .foregroundStyle(CatpawColors.ink)
+                        Button(ui("核对执行结果"), action: onVerify).font(catTypography.Role.caption.font.weight(.semibold))
+                            .foregroundStyle(catColors.ink)
                     } else if let onRegenerate {
-                        Button(ui("重试"), action: onRegenerate).font(CatpawTypography.Role.caption.font.weight(.semibold))
-                            .foregroundStyle(CatpawColors.ink)
+                        Button(ui("重试"), action: onRegenerate).font(catTypography.Role.caption.font.weight(.semibold))
+                            .foregroundStyle(catColors.ink)
                     }
                 }
                 if !model.steps.isEmpty { chevron }
@@ -214,15 +214,15 @@ import UIKit
         .accessibilityIdentifier("chat.answer.interrupted")
     }
     private var chevron: some View {
-        Image(systemName: "chevron.right").font(CatpawTypography.Role.caption.font.weight(.semibold))
-            .foregroundStyle(CatpawColors.calmSecondary)
+        Image(systemName: "chevron.right").font(catTypography.Role.caption.font.weight(.semibold))
+            .foregroundStyle(catColors.calmSecondary)
             .rotationEffect(.degrees(expanded ? 90 : 0)).accessibilityHidden(true)
     }
 
-    /// Running tool step title (e.g. 「正在查日历」) else 「Catpaw 正在工作」.
+    /// Running tool step title (e.g. 「正在查日历」) else 「cat 正在工作」.
     private var workingTitle: String {
         if model.usesStatusLine, let line = model.statusLine { return ui(line.title) }
-        return model.steps.last(where: { $0.state == .running })?.title ?? ui("Catpaw 正在工作")
+        return model.steps.last(where: { $0.state == .running })?.title ?? ui("cat 正在工作")
     }
     private func liveTitle(now: Date) -> String {
         let secs = String(max(0, Int(now.timeIntervalSince(model.thinkingStartedAt))))
@@ -237,18 +237,18 @@ import UIKit
             // Visual SPEC v2 §8: done chip led by the happy kitten, no badge; text stays at x 32.
             if model.usesStatusLine { StatusKitten(pose: .done, badge: nil, tone: .neutral) }
             HStack(spacing: 4) {
-                Text(ui("思考结果")).font(CatpawTypography.Role.secondary.font)
+                Text(ui("思考结果")).font(catTypography.Role.secondary.font)
                 if let s = model.thoughtSeconds, s > 0 {
-                    Text("· \(s)s").font(CatpawTypography.Role.secondary.font).monospacedDigit()
+                    Text("· \(s)s").font(catTypography.Role.secondary.font).monospacedDigit()
                 }
-                Image(systemName: "chevron.right").font(CatpawTypography.Role.caption.font.weight(.semibold))
+                Image(systemName: "chevron.right").font(catTypography.Role.caption.font.weight(.semibold))
                     .rotationEffect(.degrees(expanded ? 90 : 0)).accessibilityHidden(true)
             }
-            .foregroundStyle(CatpawColors.secondary)
+            .foregroundStyle(catColors.secondary)
           }
           .frame(minHeight: 32).contentShape(Rectangle())
         }
-        .buttonStyle(CatpawPressButtonStyle())
+        .buttonStyle(catPressButtonStyle())
         .accessibilityValue(expanded ? ui("已展开") : ui("已收起"))
         .accessibilityIdentifier("chat.answer.thoughtChip")
     }
@@ -273,14 +273,14 @@ import UIKit
     }
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 12) {
-            Image(systemName: glyph).font(CatpawTypography.Role.caption.font)
+            Image(systemName: glyph).font(catTypography.Role.caption.font)
                 .frame(width: 16).accessibilityHidden(true)
-            Text(step.title).font(CatpawTypography.Role.secondary.font.weight(current ? .medium : .regular))
+            Text(step.title).font(catTypography.Role.secondary.font.weight(current ? .medium : .regular))
                 .lineLimit(1).truncationMode(.tail)
-            if let d = duration { Text(d).font(CatpawTypography.Role.caption.font).monospacedDigit().foregroundStyle(CatpawColors.secondary) }
+            if let d = duration { Text(d).font(catTypography.Role.caption.font).monospacedDigit().foregroundStyle(catColors.secondary) }
             Spacer(minLength: 0)
         }
-        .foregroundStyle(current ? CatpawColors.ink : CatpawColors.secondary)
+        .foregroundStyle(current ? catColors.ink : catColors.secondary)
         .frame(minHeight: 24)
         .accessibilityElement(children: .combine)
         .transition(.opacity)
@@ -303,14 +303,14 @@ import UIKit
                     Button { if let u = s.url { openURL(u) } } label: {
                         HStack(spacing: 5) {
                             Text(String((s.host.isEmpty ? s.title : s.host).prefix(1)).uppercased())
-                                .font(CatpawTypography.Role.caption.font.weight(.bold))
-                                .frame(width: 18, height: 18).background(CatpawColors.separator, in: Circle())
-                            Text(s.host.isEmpty ? s.title : s.host).font(CatpawTypography.Role.caption.font).lineLimit(1)
+                                .font(catTypography.Role.caption.font.weight(.bold))
+                                .frame(width: 18, height: 18).background(catColors.separator, in: Circle())
+                            Text(s.host.isEmpty ? s.title : s.host).font(catTypography.Role.caption.font).lineLimit(1)
                         }
                         .padding(.horizontal, 8).frame(minHeight: 28)
-                        .background(CatpawColors.panel, in: Capsule())
+                        .background(catColors.panel, in: Capsule())
                     }
-                    .buttonStyle(CatpawPressButtonStyle()).foregroundStyle(CatpawColors.secondary)
+                    .buttonStyle(catPressButtonStyle()).foregroundStyle(catColors.secondary)
                     .accessibilityLabel(s.title)
                 }
             }
@@ -369,17 +369,17 @@ import UIKit
                         HStack(spacing: -5) {
                             ForEach(sources.prefix(3)) { s in
                                 Text(String((s.host.isEmpty ? s.title : s.host).prefix(1)).uppercased())
-                                    .font(CatpawTypography.Role.caption.font.weight(.bold))
-                                    .frame(width: 18, height: 18).background(CatpawColors.separator, in: Circle())
-                                    .overlay(Circle().strokeBorder(CatpawColors.card, lineWidth: 1))
+                                    .font(catTypography.Role.caption.font.weight(.bold))
+                                    .frame(width: 18, height: 18).background(catColors.separator, in: Circle())
+                                    .overlay(Circle().strokeBorder(catColors.card, lineWidth: 1))
                             }
                         }.accessibilityHidden(true)
-                        Text(ui("{0} 个来源", [String(sources.count)])).font(CatpawTypography.Role.caption.font)
+                        Text(ui("{0} 个来源", [String(sources.count)])).font(catTypography.Role.caption.font)
                     }
                     .padding(.horizontal, 10).frame(minHeight: 32)
-                    .overlay(Capsule().strokeBorder(CatpawColors.hairline, lineWidth: 0.5))
+                    .overlay(Capsule().strokeBorder(catColors.hairline, lineWidth: 0.5))
                 }
-                .buttonStyle(CatpawPressButtonStyle()).foregroundStyle(CatpawColors.ink)
+                .buttonStyle(catPressButtonStyle()).foregroundStyle(catColors.ink)
                 .accessibilityValue(sourcesOpen ? ui("已展开") : ui("已收起"))
                 .accessibilityIdentifier("chat.answer.sources")
                 if sourcesOpen { SourceCapsuleStrip(sources: sources).padding(.leading, -26).transition(.opacity) }
@@ -405,12 +405,12 @@ import UIKit
             Spacer(minLength: 4)
             // Uncertain outcome → only "verify", never resend (R5 rule).
             if reconciliationRequired, let onVerify {
-                Button(ui("核对执行结果"), action: onVerify).font(CatpawTypography.Role.caption.font.weight(.semibold))
+                Button(ui("核对执行结果"), action: onVerify).font(catTypography.Role.caption.font.weight(.semibold))
             } else if let onRegenerate {
-                Button(ui("重试"), action: onRegenerate).font(CatpawTypography.Role.caption.font.weight(.semibold))
+                Button(ui("重试"), action: onRegenerate).font(catTypography.Role.caption.font.weight(.semibold))
             }
         }
-        .foregroundStyle(CatpawColors.ink)
+        .foregroundStyle(catColors.ink)
         .accessibilityIdentifier("chat.answer.interrupted")
     }
 }

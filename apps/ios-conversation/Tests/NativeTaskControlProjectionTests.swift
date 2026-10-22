@@ -1,7 +1,7 @@
 import Foundation
 #if !TASK_CONTROL_PROJECTION_PORTABLE
 import XCTest
-@testable import CatpawM
+@testable import cat
 #endif
 
 private final class ControlProjectionWire:URLProtocol,@unchecked Sendable {

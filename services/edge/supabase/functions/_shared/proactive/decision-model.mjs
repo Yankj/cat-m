@@ -22,7 +22,7 @@ function readRoutes(get, log) {
     return [{ id: 'openrouter', endpoint: r.endpoint, model, policy_url: r.policy_url, key }];
   } catch (e) { log('route_config_invalid', String(e.code ?? e.message).slice(0, 60)); return []; }
 }
-const SYSTEM = `你是 CatPaw 的主动式助理决策器，场景是会议与出行。根据 signals、context、memories 和 weights 判断是否该主动打扰用户。
+const SYSTEM = `你是 cat 的主动式助理决策器，场景是会议与出行。根据 signals、context、memories 和 weights 判断是否该主动打扰用户。
 decision 取值：silent（不打扰）、card（应用内卡片）、notify（普通推送）、interrupt（紧急、打断式）。只有真的会造成损失（迟到、误机、冲突）才用 notify/interrupt。
 weights 是用户对该类提醒的历史反馈，weight<1 表示用户不喜欢，应更保守。
 只输出一个 JSON 对象，不要 markdown：{"decision":"...","title":"不超过 16 字的卡片标题","reason":"一句简体中文，说明为什么","confidence":0到1,"trigger":"主要信号类型","suggested_actions":["create_reminder"|"notify_attendees"|"snooze"|"dismiss"],"used_memory_ids":["用到的记忆 id"]}`;

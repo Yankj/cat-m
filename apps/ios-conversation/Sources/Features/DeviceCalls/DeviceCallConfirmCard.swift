@@ -76,22 +76,22 @@ struct DeviceCallSpec: Sendable {
                 switch phase {
                 case .confirming:
                     fields
-                    if let note = spec.noteKey { Text(ui(note)).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary).fixedSize(horizontal: false, vertical: true) }
+                    if let note = spec.noteKey { Text(ui(note)).font(catTypography.Role.caption.font).foregroundStyle(catColors.secondary).fixedSize(horizontal: false, vertical: true) }
                     actions
                 case .running:
                     fields
-                    HStack(spacing: 8) { ProgressView(); Text(ui("正在执行…")).font(CatpawTypography.Role.secondary.font).foregroundStyle(CatpawColors.secondary) }
+                    HStack(spacing: 8) { ProgressView(); Text(ui("正在执行…")).font(catTypography.Role.secondary.font).foregroundStyle(catColors.secondary) }
                         .frame(minHeight: 44).accessibilityIdentifier("chat.deviceCall.running")
                 case .done(let result): receipt(result, reportFailed: false)
                 case .reportFailed(let result): receipt(result, reportFailed: true)
                 case .expired:
-                    Label(ui("已过期，需要的话再跟小猫说一次"), systemImage: "clock").font(CatpawTypography.Role.secondary.font).foregroundStyle(CatpawColors.secondary)
+                    Label(ui("已过期，需要的话再跟小猫说一次"), systemImage: "clock").font(catTypography.Role.secondary.font).foregroundStyle(catColors.secondary)
                 }
                 }
             }
             .padding(16).frame(maxWidth: .infinity, alignment: .leading)
-            .background(CatpawColors.panel, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(CatpawColors.ink.opacity(0.08), lineWidth: 0.5))
+            .background(catColors.panel, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(catColors.ink.opacity(0.08), lineWidth: 0.5))
             .animation(reduceMotion ? nil : .smooth(duration: 0.3), value: phase)
             // Codex p89b-6: once shown expired, the card is durably expired (persisted phase) — a clock rollback cannot revive it.
             .onChange(of: isExpired, initial: true) { _, now in if now { store.expireIfConfirming(call.id) } }
@@ -127,7 +127,7 @@ struct DeviceCallSpec: Sendable {
         case .unverified: (ui("结果待核对，请在手机上查看"), "questionmark.circle")   // P1-5: never invite a duplicate create
         case .notExecuted, .pending: (ui("未执行：{0}", [name]), "minus.circle")
         }
-        return Label(text, systemImage: icon).font(CatpawTypography.Role.body.font).foregroundStyle(outcome == .done || outcome == .doneLate ? CatpawColors.ink : CatpawColors.secondary)
+        return Label(text, systemImage: icon).font(catTypography.Role.body.font).foregroundStyle(outcome == .done || outcome == .doneLate ? catColors.ink : catColors.secondary)
             .frame(minHeight: 44, alignment: .leading).accessibilityIdentifier("chat.deviceCall.recorded")
     }
 
@@ -141,7 +141,7 @@ struct DeviceCallSpec: Sendable {
             CircleIcon(systemName: spec.symbol, diameter: 34)
                 .overlay(alignment: .bottomTrailing) { CategoryPaw(category: .forTool(call.tool)).offset(x: 4, y: 3) }
                 .accessibilityHidden(true)
-            Text(ui(spec.titleKey)).font(CatpawTypography.Role.heading.font).foregroundStyle(CatpawColors.ink)
+            Text(ui(spec.titleKey)).font(catTypography.Role.heading.font).foregroundStyle(catColors.ink)
             Spacer(minLength: 0)
         }
     }
@@ -159,12 +159,12 @@ struct DeviceCallSpec: Sendable {
     private func row(label: String, value: String) -> some View {
         ViewThatFits(in: .horizontal) {
             HStack(alignment: .firstTextBaseline, spacing: 12) {
-                Text(label).font(CatpawTypography.Role.secondary.font).foregroundStyle(CatpawColors.secondary).frame(minWidth: 56, alignment: .leading)
-                Text(value).font(CatpawTypography.Role.body.font).foregroundStyle(CatpawColors.ink).frame(maxWidth: .infinity, alignment: .leading)
+                Text(label).font(catTypography.Role.secondary.font).foregroundStyle(catColors.secondary).frame(minWidth: 56, alignment: .leading)
+                Text(value).font(catTypography.Role.body.font).foregroundStyle(catColors.ink).frame(maxWidth: .infinity, alignment: .leading)
             }
             VStack(alignment: .leading, spacing: 2) {   // large Dynamic Type sizes stack label over value
-                Text(label).font(CatpawTypography.Role.secondary.font).foregroundStyle(CatpawColors.secondary)
-                Text(value).font(CatpawTypography.Role.body.font).foregroundStyle(CatpawColors.ink).fixedSize(horizontal: false, vertical: true)
+                Text(label).font(catTypography.Role.secondary.font).foregroundStyle(catColors.secondary)
+                Text(value).font(catTypography.Role.body.font).foregroundStyle(catColors.ink).fixedSize(horizontal: false, vertical: true)
             }
         }
         .accessibilityElement(children: .combine)
@@ -187,32 +187,32 @@ struct DeviceCallSpec: Sendable {
     private var hasEditable: Bool { spec.fields.contains { $0.editable } }
     private var primary: some View {
         Button(ui(spec.confirmKey)) { UIImpactFeedbackGenerator(style: .medium).impactOccurred(); Task { await store.run(call, tap: DeviceCallGate.confirmTap(call, finalArgs: args)) } }   // one-shot tap token for the final args
-            .buttonStyle(CatpawPrimaryButtonStyle()).accessibilityIdentifier("chat.deviceCall.run")
+            .buttonStyle(catPrimaryButtonStyle()).accessibilityIdentifier("chat.deviceCall.run")
     }
     private var editButton: some View {
-        Button(ui("编辑")) { editing = true }.font(CatpawTypography.Role.body.font).foregroundStyle(CatpawColors.ink).touchTarget()
+        Button(ui("编辑")) { editing = true }.font(catTypography.Role.body.font).foregroundStyle(catColors.ink).touchTarget()
             .accessibilityIdentifier("chat.deviceCall.edit")
     }
     private var cancelButton: some View {
-        Button(ui("取消")) { Task { await store.cancel(call) } }.font(CatpawTypography.Role.body.font).foregroundStyle(CatpawColors.secondary).touchTarget()
+        Button(ui("取消")) { Task { await store.cancel(call) } }.font(catTypography.Role.body.font).foregroundStyle(catColors.secondary).touchTarget()
             .accessibilityIdentifier("chat.deviceCall.cancel")
     }
 
     @ViewBuilder private func receipt(_ result: DeviceCallResult, reportFailed: Bool) -> some View {
         HStack(spacing: 8) {
             Image(systemName: result.status == .ok ? "checkmark.circle.fill" : result.status == .cancelled ? "xmark.circle" : "exclamationmark.circle")
-                .foregroundStyle(result.status == .ok ? CatpawBrand.paw : CatpawColors.secondary).accessibilityHidden(true)
-            Text(DeviceToolContract.receiptKey(confirmKey: spec.confirmKey, status: result.status, data: result.data).map { ui($0) } ?? receiptText(result.status)).font(CatpawTypography.Role.body.font).foregroundStyle(CatpawColors.ink)
+                .foregroundStyle(result.status == .ok ? catBrand.paw : catColors.secondary).accessibilityHidden(true)
+            Text(DeviceToolContract.receiptKey(confirmKey: spec.confirmKey, status: result.status, data: result.data).map { ui($0) } ?? receiptText(result.status)).font(catTypography.Role.body.font).foregroundStyle(catColors.ink)
             if result.status == .ok, let raw = result.openURL, let url = URL(string: raw) {
-                Text("·").foregroundStyle(CatpawColors.tertiary).accessibilityHidden(true)
-                Button(ui("打开")) { openURL(url) }.font(CatpawTypography.Role.body.font.weight(.medium)).foregroundStyle(CatpawColors.ink).underline()
+                Text("·").foregroundStyle(catColors.tertiary).accessibilityHidden(true)
+                Button(ui("打开")) { openURL(url) }.font(catTypography.Role.body.font.weight(.medium)).foregroundStyle(catColors.ink).underline()
                     .accessibilityIdentifier("chat.deviceCall.open")
             }
             Spacer(minLength: 0)
             if ledger.isUndone(callID: call.call_id) {
-                Text(ui("已撤销")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary).accessibilityIdentifier("chat.deviceCall.undone")
+                Text(ui("已撤销")).font(catTypography.Role.caption.font).foregroundStyle(catColors.secondary).accessibilityIdentifier("chat.deviceCall.undone")
             } else if DeviceUndoRules.canUndo(tool: call.tool, status: result.status.rawValue, alreadyUndone: false), ledger.entry(callID: call.call_id) != nil {
-                Button(ui("撤销")) { Task { await undo() } }.font(CatpawTypography.Role.body.font).foregroundStyle(CatpawColors.secondary).touchTarget()
+                Button(ui("撤销")) { Task { await undo() } }.font(catTypography.Role.body.font).foregroundStyle(catColors.secondary).touchTarget()
                     .modifier(DeviceUndoDecision(candidates: $undoCandidates, needsPermission: $undoNeedsPermission, callID: call.call_id, ledger: ledger) { o in Task { await finishUndo(o) } })
                     .accessibilityLabel(ui("撤销")).accessibilityIdentifier("chat.deviceCall.undo")
             }
@@ -221,18 +221,18 @@ struct DeviceCallSpec: Sendable {
         if result.status == .denied, result.data?["reason"]?.text == "permission_revoked" {
             // p89i: permission turned off during the operation — nothing was written; the user decides what's next.
             HStack(spacing: 8) {
-                Text(ui("执行中权限被关闭，未写入")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
+                Text(ui("执行中权限被关闭，未写入")).font(catTypography.Role.caption.font).foregroundStyle(catColors.secondary)
                 Button(ui("去设置")) { DeviceDecisionLog.write("run \(call.call_id): permission revoked → user → settings"); if let u = URL(string: UIApplication.openSettingsURLString) { openURL(u) } }
-                    .font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.ink).touchTarget().accessibilityIdentifier("chat.deviceCall.settings")
+                    .font(catTypography.Role.caption.font).foregroundStyle(catColors.ink).touchTarget().accessibilityIdentifier("chat.deviceCall.settings")
             }
         }
-        if undoFailed { Text(ui("没能撤销，请到日历或提醒事项里删除")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary) }
+        if undoFailed { Text(ui("没能撤销，请到日历或提醒事项里删除")).font(catTypography.Role.caption.font).foregroundStyle(catColors.secondary) }
         // The place card (server ui.block, kind:place) is the primary nearby view; this list is the fallback for an older server.
         if call.tool == "places_search", blockStore.blocks[NearbyRules.placeBlockID(callID: call.call_id)] == nil { placesList(result) }
         if reportFailed {
             HStack {
-                Text(ui("结果还没告诉小猫")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.attention)
-                Button(ui("重试")) { Task { await store.retryReport(call.id) } }.font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.ink).touchTarget()
+                Text(ui("结果还没告诉小猫")).font(catTypography.Role.caption.font).foregroundStyle(catColors.attention)
+                Button(ui("重试")) { Task { await store.retryReport(call.id) } }.font(catTypography.Role.caption.font).foregroundStyle(catColors.ink).touchTarget()
             }
         }
     }
@@ -244,29 +244,29 @@ struct DeviceCallSpec: Sendable {
                     if case .object(let p) = row {
                         HStack(alignment: .center, spacing: 8) {
                             VStack(alignment: .leading, spacing: 2) {
-                                Text(p["name"]?.text ?? "").font(CatpawTypography.Role.body.font.weight(.medium)).foregroundStyle(CatpawColors.ink)
+                                Text(p["name"]?.text ?? "").font(catTypography.Role.body.font.weight(.medium)).foregroundStyle(catColors.ink)
                                 Text([p["eta_min"].map { "约 \($0.text) 分钟" }, p["distance_m"].map { "\($0.text) 米" }, p["address"]?.text].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · "))
-                                    .font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary).lineLimit(2)
+                                    .font(catTypography.Role.caption.font).foregroundStyle(catColors.secondary).lineLimit(2)
                             }
                             Spacer(minLength: 0)
                             if let u = p["maps_url"]?.text, let url = URL(string: u) {
-                                Button(ui("导航")) { openURL(url) }.font(CatpawTypography.Role.caption.font.weight(.medium)).foregroundStyle(CatpawColors.ink).touchTarget()
+                                Button(ui("导航")) { openURL(url) }.font(catTypography.Role.caption.font.weight(.medium)).foregroundStyle(catColors.ink).touchTarget()
                                     .accessibilityIdentifier("chat.places.nav.\(i)")
                             }
                             if let t = p["tel_url"]?.text, let url = URL(string: t) {
-                                Button(ui("打电话")) { openURL(url) }.font(CatpawTypography.Role.caption.font.weight(.medium)).foregroundStyle(CatpawColors.ink).touchTarget()
+                                Button(ui("打电话")) { openURL(url) }.font(catTypography.Role.caption.font.weight(.medium)).foregroundStyle(catColors.ink).touchTarget()
                                     .accessibilityIdentifier("chat.places.call.\(i)")
                             }
                         }
                     }
                 }
                 if let why = result.data?["why"]?.text, !why.isEmpty {
-                    Text(why).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary).fixedSize(horizontal: false, vertical: true)
+                    Text(why).font(catTypography.Role.caption.font).foregroundStyle(catColors.secondary).fixedSize(horizontal: false, vertical: true)
                         .accessibilityIdentifier("chat.places.why")
                 }
             }
         } else if let message = result.data?["message"]?.text, result.status == .error {
-            Text(message).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary).fixedSize(horizontal: false, vertical: true)
+            Text(message).font(catTypography.Role.caption.font).foregroundStyle(catColors.secondary).fixedSize(horizontal: false, vertical: true)
         }
     }
     /// Chat-UX #6: delete by call_id (same ledger/EventKit path as 任务's 撤销), then queue the report for the turn (retried on launch/foreground until acknowledged).
@@ -333,7 +333,7 @@ struct DeviceCallSpec: Sendable {
                         values[field.key] = .list(new.split(whereSeparator: { "、,，;；".contains($0) }).map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty })
                     } else { values[field.key] = .string(new) }
                 }), axis: field.kind == .multiline ? .vertical : .horizontal)
-                .font(CatpawTypography.Role.body.font)
+                .font(catTypography.Role.body.font)
                 .keyboardType(field.kind == .phone ? .phonePad : .default)
                 .lineLimit(field.kind == .multiline ? 3...8 : 1...1)
         }
@@ -341,7 +341,7 @@ struct DeviceCallSpec: Sendable {
 }
 
 /// Registers `device_call` with `MarkdownCustomBlockRegistry` (#34) until 三角 surfaces the SSE event; the same view
-/// renders the event later. Called from `CatpawMApp.init`.
+/// renders the event later. Called from `catApp.init`.
 @MainActor enum DeviceCallCardAdapter {
     private static var registered = false
     static func register() {
@@ -359,7 +359,7 @@ struct DeviceCallSpec: Sendable {
     @Environment(\.locale) private var locale
     var body: some View {
         Label(AppLanguage(locale: locale).ui("这里提到的手机操作没有执行；需要的话再跟小猫说一次"), systemImage: "hand.raised")
-            .font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
+            .font(catTypography.Role.caption.font).foregroundStyle(catColors.secondary)
             .accessibilityIdentifier("chat.deviceCall.inert")
     }
 }

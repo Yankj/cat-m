@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# One-click XCUITest acceptance: builds CatpawM, runs CatpawAcceptanceUITests on a Simulator,
+# One-click XCUITest acceptance: builds cat, runs catAcceptanceUITests on a Simulator,
 # exports every keepAlways screenshot from the .xcresult and writes an HTML + Markdown report.
 #   scripts/run-ui-acceptance.sh                     # offline fixture cases only
 #   CATPAW_ACCEPTANCE_LIVE=1 scripts/run-ui-acceptance.sh   # also real anonymous sign-in
 #   SIM_UDID=<udid> | SIM_NAME="iPhone 18 Pro" OUT=build/ui-acceptance scripts/run-ui-acceptance.sh
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-PROJECT="$ROOT/apps/ios-conversation/CatpawM.xcodeproj"
-SCHEME="${SCHEME:-CatpawM}"
+PROJECT="$ROOT/apps/ios-conversation/cat.xcodeproj"
+SCHEME="${SCHEME:-cat}"
 SIM_NAME="${SIM_NAME:-iPhone 18 Pro}"
 STAMP="$(date +%Y%m%d-%H%M%S)"
 OUT="${OUT:-$ROOT/build/ui-acceptance/$STAMP}"
@@ -30,7 +30,7 @@ STATUS_FILE="$OUT/.xcodebuild-status"
   xcodebuild test \
     -project "$PROJECT" -scheme "$SCHEME" -configuration Debug \
     -destination "$DEST" \
-    -only-testing:CatpawMUITests/CatpawAcceptanceUITests \
+    -only-testing:catUITests/catAcceptanceUITests \
     -resultBundlePath "$RESULT" \
     -derivedDataPath "$OUT/DerivedData"; echo $? > "$STATUS_FILE"; } \
   2>&1 | tee "$OUT/xcodebuild.log" | grep -E "Test Case|error:|\*\* TEST" || true
@@ -60,8 +60,8 @@ for t in manifest:
     status=next((v for k,v in results.items() if k.endswith(tid.split("/")[-1].replace("()","")) or k==tid),"?")
     for a in sorted(t.get("attachments",[]),key=lambda a:a.get("suggestedHumanReadableName","")):
         rows.append((tid,status,a.get("suggestedHumanReadableName",""),a["exportedFileName"]))
-md=["# Catpaw UI acceptance report","",f"Result bundle: `{os.path.join(out,'Acceptance.xcresult')}`",""]
-h=["<html><meta charset=utf-8><title>Catpaw UI acceptance</title><style>body{font-family:-apple-system;margin:24px}figure{display:inline-block;margin:8px;width:260px;vertical-align:top}img{width:100%;border:1px solid #ccc;border-radius:12px}.Passed{color:green}.Failed{color:#c00}.Skipped,.Expected\\ Failure{color:#a60}</style><h1>Catpaw UI acceptance</h1>"]
+md=["# cat UI acceptance report","",f"Result bundle: `{os.path.join(out,'Acceptance.xcresult')}`",""]
+h=["<html><meta charset=utf-8><title>cat UI acceptance</title><style>body{font-family:-apple-system;margin:24px}figure{display:inline-block;margin:8px;width:260px;vertical-align:top}img{width:100%;border:1px solid #ccc;border-radius:12px}.Passed{color:green}.Failed{color:#c00}.Skipped,.Expected\\ Failure{color:#a60}</style><h1>cat UI acceptance</h1>"]
 cur=None
 for tid,st,name,f in rows:
     if tid!=cur:

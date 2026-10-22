@@ -2,7 +2,7 @@
 (() => {
   'use strict';
   const $ = id => document.getElementById(id);
-  const M = window.CatpawMotion;
+  const M = window.catMotion;
   const phone = $('phone'), root = $('root'), conversation = $('conversation');
   const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
   const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));

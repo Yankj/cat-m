@@ -33,8 +33,8 @@ struct ReceiptCardPayload: Codable, Sendable, Equatable {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) { content }
             .padding(16).frame(maxWidth: .infinity, alignment: .leading)
-            .background(CatpawColors.panel, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(CatpawColors.ink.opacity(0.08), lineWidth: 0.5))
+            .background(catColors.panel, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(catColors.ink.opacity(0.08), lineWidth: 0.5))
             .opacity(appeared ? 1 : 0).offset(y: appeared || reduceMotion ? 0 : 8)
             .onAppear { withAnimation(reduceMotion ? nil : .smooth(duration: 0.35)) { appeared = true } }
             .accessibilityElement(children: .contain).accessibilityIdentifier(identifier)
@@ -55,10 +55,10 @@ struct ReceiptCardPayload: Codable, Sendable, Equatable {
                     Image(systemName: statusSymbol).font(.body.weight(.semibold)).foregroundStyle(badgeIcon)
                 }.accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(payload.title).font(CatpawTypography.Role.heading.font).foregroundStyle(CatpawColors.ink).fixedSize(horizontal: false, vertical: true)
-                    Text(statusText).font(CatpawTypography.Role.secondary.font).foregroundStyle(CatpawColors.secondary)
+                    Text(payload.title).font(catTypography.Role.heading.font).foregroundStyle(catColors.ink).fixedSize(horizontal: false, vertical: true)
+                    Text(statusText).font(catTypography.Role.secondary.font).foregroundStyle(catColors.secondary)
                     if let detail = payload.detail, !detail.isEmpty {
-                        Text(detail).font(CatpawTypography.Role.secondary.font).foregroundStyle(CatpawColors.secondary).fixedSize(horizontal: false, vertical: true)
+                        Text(detail).font(catTypography.Role.secondary.font).foregroundStyle(catColors.secondary).fixedSize(horizontal: false, vertical: true)
                     }
                 }
                 Spacer(minLength: 0)
@@ -66,9 +66,9 @@ struct ReceiptCardPayload: Codable, Sendable, Equatable {
             if payload.status == .ok, let url = payload.safeURL, let label = payload.action?.label {
                 Button { openURL(url) } label: {
                     HStack(spacing: 4) { Text(label); Image(systemName: "arrow.up.right").accessibilityHidden(true) }
-                        .font(CatpawTypography.Role.body.font.weight(.medium)).foregroundStyle(CatpawColors.ink)
+                        .font(catTypography.Role.body.font.weight(.medium)).foregroundStyle(catColors.ink)
                 }
-                .buttonStyle(CatpawPressButtonStyle()).touchTarget()
+                .buttonStyle(catPressButtonStyle()).touchTarget()
                 .accessibilityIdentifier("chat.receipt.open")
             }
         }
@@ -94,8 +94,8 @@ struct ReceiptCardPayload: Codable, Sendable, Equatable {
         }
     }
     // Orange only as a fill / icon color: success uses the paw fill, everything else stays neutral.
-    private var badgeFill: Color { payload.status == .ok ? CatpawBrand.paw.opacity(0.16) : CatpawColors.ink.opacity(0.06) }
-    private var badgeIcon: Color { payload.status == .ok ? CatpawBrand.paw : CatpawColors.secondary }
+    private var badgeFill: Color { payload.status == .ok ? catBrand.paw.opacity(0.16) : catColors.ink.opacity(0.06) }
+    private var badgeIcon: Color { payload.status == .ok ? catBrand.paw : catColors.secondary }
 }
 
 #Preview("回执") {

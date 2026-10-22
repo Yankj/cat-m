@@ -1,7 +1,7 @@
 import Foundation
 #if !DEVICE_EFFECT_CONTRACT_PORTABLE
 import XCTest
-@testable import CatpawM
+@testable import cat
 #endif
 
 /// Fixed Node-maintained primitive responses. Every provider observation is explicit synthetic data.

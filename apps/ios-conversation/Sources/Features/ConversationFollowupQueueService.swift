@@ -28,31 +28,31 @@ public actor ConversationFollowupQueueService {
     }
     public func enqueue(_ message: ConversationFollowup, remainingDraft: String? = nil,remainingContinuationDraft:ConversationArtifactContinuationDraft?=nil,continuationService:ConversationArtifactContinuationService?=nil,acceptedWorkDraft:ConversationAcceptedWorkDraft?=nil,acceptedWorkDraftService:ConversationAcceptedWorkDraftService?=nil) async throws {
         await lockState();defer { unlockState() }
-        guard !message.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, message.text.utf16.count <= 8000 else { throw CatpawError.invalid("后续消息超过范围。") }
+        guard !message.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, message.text.utf16.count <= 8000 else { throw catError.invalid("后续消息超过范围。") }
         if let intent=message.continuation {try intent.validate();guard message.image==nil,remainingDraft==nil else {throw ConversationArtifactContinuationError.invalidReference}}
         else {guard remainingContinuationDraft==nil else {throw ConversationArtifactContinuationError.invalidReference}}
         if let revision=message.revisionWork {try revision.validate();guard message.image==nil,message.acceptedWork==nil,message.continuation==revision.target,message.text.utf8.elementsEqual(revision.originalText.utf8),acceptedWorkDraft != nil else {throw ConversationSessionError.invalidEvent}}
         if message.acceptedWork != nil {guard message.image==nil,message.continuation==nil,acceptedWorkDraft != nil else {throw ConversationSessionError.invalidEvent}}
         else if message.revisionWork==nil {guard acceptedWorkDraft==nil else {throw ConversationSessionError.invalidEvent}}
         var (state, record) = try await load()
-        if let same = (state.pending + [state.inflight].compactMap { $0 }).first(where: { $0.id == message.id }) { guard same==message else { throw CatpawError.conflict }; return }
+        if let same = (state.pending + [state.inflight].compactMap { $0 }).first(where: { $0.id == message.id }) { guard same==message else { throw catError.conflict }; return }
         state.pending.append(message)
         var additional: [Mutation] = []
         if let target=remainingContinuationDraft,let continuationService,let intent=message.continuation {
-            guard continuationService.scope==scope,target.reference.binding.conversation_id==conversationID else {throw CatpawError.scopeMismatch}
+            guard continuationService.scope==scope,target.reference.binding.conversation_id==conversationID else {throw catError.scopeMismatch}
             additional.append(try await continuationService.queueMutation(remainingDraft:target,intent:intent))
         } else if remainingContinuationDraft != nil {throw ConversationArtifactContinuationError.invalidReference}
         if let remainingDraft {
             let conversation = try await repository.record(conversationID,scope:scope)
-            guard var value = conversation.conversation else { throw CatpawError.missing }
+            guard var value = conversation.conversation else { throw catError.missing }
             value.draftText = remainingDraft
             additional = [.update(conversation.id,conversation.header.revision,.core(.conversation(value)))]
         }
         if let draft=acceptedWorkDraft,let selection=message.acceptedWork,let draftService=acceptedWorkDraftService {
-            guard draft.conversationID==conversationID,draft.raw==message.text,draft.revisionTarget==nil,draftService.scope==scope else {throw CatpawError.conflict}
+            guard draft.conversationID==conversationID,draft.raw==message.text,draft.revisionTarget==nil,draftService.scope==scope else {throw catError.conflict}
             additional.append(try await draftService.queueMutation(draft:draft,selection:selection))
         } else if let draft=acceptedWorkDraft,let selection=message.revisionWork,let draftService=acceptedWorkDraftService {
-            guard draft.conversationID==conversationID,draft.raw.utf8.elementsEqual(message.text.utf8),draftService.scope==scope else {throw CatpawError.conflict}
+            guard draft.conversationID==conversationID,draft.raw.utf8.elementsEqual(message.text.utf8),draftService.scope==scope else {throw catError.conflict}
             additional.append(try await draftService.revisionQueueMutation(draft:draft,selection:selection))
         } else if acceptedWorkDraft != nil {throw ConversationSessionError.invalidEvent}
         try Task.checkCancellation()
@@ -62,12 +62,12 @@ public actor ConversationFollowupQueueService {
     /// Pause is explicit and persists after editing/closing. Claim and edit share the same lock.
     public func edit(_ expected:ConversationFollowup,text:String,session:ConversationSessionService) async throws -> ConversationFollowup {
         await lockState();defer {unlockState()}
-        guard !text.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty,text.utf16.count <= 8000 else {throw CatpawError.invalid("请输入不超过 8000 字符的内容。")}
+        guard !text.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty,text.utf16.count <= 8000 else {throw catError.invalid("请输入不超过 8000 字符的内容。")}
         var (s,r)=try await load()
-        guard s.paused,let i=s.pending.firstIndex(where:{$0.id == expected.id}),s.pending[i]==expected else {throw CatpawError.conflict}
+        guard s.paused,let i=s.pending.firstIndex(where:{$0.id == expected.id}),s.pending[i]==expected else {throw catError.conflict}
         // Image authorization is bound to its caption and must be reviewed in the composer.
-        guard expected.image == nil else {throw CatpawError.invalid("图片处理许可绑定当前文字。请移除后在输入器重新编辑。")}
-        guard expected.acceptedWork == nil,expected.revisionWork == nil else {throw CatpawError.invalid("工作约定绑定原请求。请移除后重新确认，不能沿用旧期限和预算。")}
+        guard expected.image == nil else {throw catError.invalid("图片处理许可绑定当前文字。请移除后在输入器重新编辑。")}
+        guard expected.acceptedWork == nil,expected.revisionWork == nil else {throw catError.invalid("工作约定绑定原请求。请移除后重新确认，不能沿用旧期限和预算。")}
         let cancellation=try await session.cancellationForQueueEdit(scope:scope,conversationID:conversationID,operationID:expected.id)
         let replacement=ConversationFollowup(text:text,continuation:expected.continuation)
         s.pending[i]=replacement
@@ -111,7 +111,7 @@ public actor ConversationFollowupQueueService {
     }
     private func settle(_ message:ConversationFollowup,held:Bool=false,failed:Bool=false) async throws {
         await lockState();defer { unlockState() }
-        var (s,r) = try await load();guard s.inflight == message else { throw CatpawError.conflict }
+        var (s,r) = try await load();guard s.inflight == message else { throw catError.conflict }
         s.inflight=nil
         if held { s.pending.insert(message,at:0) }
         if held || failed { s.paused=true;if s.pauseReason != .background && s.pauseReason != .user { s.pauseReason = held ? .preflight : .recovery } }
@@ -121,8 +121,8 @@ public actor ConversationFollowupQueueService {
     private func load() async throws -> (ConversationFollowupState, StoredRecord?) {
         _ = try await repository.record(conversationID, scope: scope)
         let record: StoredRecord
-        do { record = try await repository.record(recordID, scope: scope) } catch CatpawError.missing { return (ConversationFollowupState(), nil) }
-        guard case .preference(let preference) = record.payload, preference.key == "conversation_followups:\(conversationID)", let data = preference.value.data(using: .utf8) else { throw CatpawError.corrupt("后续消息无法读取，原记录已保留。") }
+        do { record = try await repository.record(recordID, scope: scope) } catch catError.missing { return (ConversationFollowupState(), nil) }
+        guard case .preference(let preference) = record.payload, preference.key == "conversation_followups:\(conversationID)", let data = preference.value.data(using: .utf8) else { throw catError.corrupt("后续消息无法读取，原记录已保留。") }
         return (try JSONDecoder().decode(ConversationFollowupState.self, from: data),record)
     }
     private func save(_ value: ConversationFollowupState, _ record: StoredRecord?, additional:[Mutation] = []) async throws {
@@ -130,7 +130,7 @@ public actor ConversationFollowupQueueService {
         let payload = Payload.preference(Preference(key: "conversation_followups:\(conversationID)", value: String(decoding: try encoder.encode(value), as: UTF8.self)))
         let mutation: Mutation = record.map { .update($0.id,$0.header.revision,payload) } ?? .create(recordID,payload)
         let conversation=try await repository.record(conversationID,scope:scope)
-        guard conversation.conversation != nil else {throw CatpawError.missing}
+        guard conversation.conversation != nil else {throw catError.missing}
         try await repository.commit(scope: scope, mutations: [.requireRevision(conversation.id,conversation.header.revision),mutation] + additional)
     }
 }

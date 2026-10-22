@@ -8,7 +8,7 @@ actor DiscardOneRunResponse: GatewayTransport {
         if !discarded, request.httpMethod == "POST", request.url?.lastPathComponent == "runs", (200...201).contains(response.statusCode) {
             discarded = true
             for try await _ in response.chunks { }
-            throw CatpawError.unavailable("Client-side fault injection discarded an actual successful HTTP Run response.")
+            throw catError.unavailable("Client-side fault injection discarded an actual successful HTTP Run response.")
         }
         return response
     }
@@ -16,7 +16,7 @@ actor DiscardOneRunResponse: GatewayTransport {
 @main struct OpenMuseHTTPRunner {
     static func main() async {
         do {
-            guard CommandLine.arguments.count == 5, let origin = URL(string: CommandLine.arguments[2]) else { throw CatpawError.invalid("phase origin client-directory output-json required") }
+            guard CommandLine.arguments.count == 5, let origin = URL(string: CommandLine.arguments[2]) else { throw catError.invalid("phase origin client-directory output-json required") }
             let phase = CommandLine.arguments[1], root = URL(fileURLWithPath: CommandLine.arguments[3])
             try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
             let repo = try Repository(persistence: FilePersistence(url: root.appendingPathComponent("client-state.json")))
@@ -31,7 +31,7 @@ actor DiscardOneRunResponse: GatewayTransport {
                 title: "Native synthetic restart preview", goal: "Compare fixed Alpha and Beta records", requirements: "Use fixed synthetic data", stopConditions: ["Stop after one report"], syntheticFixture: .previewUnknown)
             var checks: [String] = []
             func require(_ value: Bool, _ description: String) throws {
-                guard value else { throw CatpawError.invalid("FAIL: " + description) }; checks.append(description)
+                guard value else { throw catError.invalid("FAIL: " + description) }; checks.append(description)
             }
             var session: OpenMuseTaskSession
             if phase == "admit-lost" {
@@ -43,7 +43,7 @@ actor DiscardOneRunResponse: GatewayTransport {
                 try await service.recover(scope: input.scope)
                 session = try await service.session(operationID: input.operationID, scope: input.scope)
                 if phase == "read-receipt" {
-                    guard let id = session.approvals.keys.first else { throw CatpawError.missing }
+                    guard let id = session.approvals.keys.first else { throw catError.missing }
                     session = try await service.reconcileReceipt(operationID: input.operationID, scope: input.scope, proposalID: id)
                     session = try await service.reconcileReceipt(operationID: input.operationID, scope: input.scope, proposalID: id, performEvidenceCheck: true)
                     try require(session.approvals[id]?.state == .unknown && session.approvals[id]?.receipt?.verificationEvidence.contains("synthetic-local-projection:resolved_local") == true,
@@ -57,7 +57,7 @@ actor DiscardOneRunResponse: GatewayTransport {
                     }
                     try require(session.serverTaskID != nil && session.projection?.status == .waitingApproval && !session.artifactHistory.isEmpty,
                                 "new Swift client process reads original server Run/task/artifact versions after server restart")
-                    guard let id = session.approvals.keys.first else { throw CatpawError.missing }
+                    guard let id = session.approvals.keys.first else { throw catError.missing }
                     let preview = try await service.preview(operationID: input.operationID, scope: input.scope, proposalID: id)
                     try require(preview.artifact.body.contains("Alpha synthetic record") && preview.snapshot.artifact == preview.artifact.reference && preview.snapshot.toolID == "catpaw.preview",
                                 "actual immutable JSON bytes/hash and facade action digest match native approval preview")

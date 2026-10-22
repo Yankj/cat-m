@@ -21,8 +21,8 @@ struct ConversationGoalCard:View {
                 if let openControl {Button(ui("暂停、恢复或撤回授权"),action:openControl).touchTarget().accessibilityIdentifier("chat.goal.control."+goal.id)}
                 ForEach(goal.artifacts) {artifact in
                     VStack(alignment:.leading,spacing:6) {
-                        Text(artifact.title+" · v\(artifact.version)").font(CatpawTypography.Role.secondary.font.weight(.medium))
-                        Text(artifact.summary).font(CatpawTypography.Role.secondary.font).textSelection(.enabled)
+                        Text(artifact.title+" · v\(artifact.version)").font(catTypography.Role.secondary.font.weight(.medium))
+                        Text(artifact.summary).font(catTypography.Role.secondary.font).textSelection(.enabled)
                         if let openArtifact {
                             Button(ui("查看成果")) {openArtifact(artifact)}.touchTarget().accessibilityIdentifier("chat.artifact.open."+artifact.id)
                         } else {
@@ -31,9 +31,9 @@ struct ConversationGoalCard:View {
                     }.accessibilityElement(children:.contain).accessibilityIdentifier("chat.artifact."+artifact.id)
                 }
                 Button(ui("读取最新进展"),action:refresh).touchTarget().disabled(busy)
-                Text(ui("最近读取 · ")+goal.updatedAt.formatted()).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
+                Text(ui("最近读取 · ")+goal.updatedAt.formatted()).font(catTypography.Role.caption.font).foregroundStyle(catColors.secondary)
             }.padding(.top,10)
-        } label:{CatpawAdaptiveHeader(title:goal.title,detail:status,symbol:"circle.dotted",titleRole:.secondary,weight:.medium)}
-            .padding(14).background(CatpawColors.panel,in:RoundedRectangle(cornerRadius:16)).accessibilityElement(children:.contain).accessibilityIdentifier("chat.goal.\(goal.id)")
+        } label:{catAdaptiveHeader(title:goal.title,detail:status,symbol:"circle.dotted",titleRole:.secondary,weight:.medium)}
+            .padding(14).background(catColors.panel,in:RoundedRectangle(cornerRadius:16)).accessibilityElement(children:.contain).accessibilityIdentifier("chat.goal.\(goal.id)")
     }
 }

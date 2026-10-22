@@ -32,22 +32,22 @@ import Combine
         } label: {
             ZStack(alignment: .topTrailing) {
                 Image(systemName: mode == .stop ? "stop.fill" : "arrow.up")
-                    .font(CatpawTypography.Role.body.font.weight(.bold))
+                    .font(catTypography.Role.body.font.weight(.bold))
                     .contentTransition(.symbolEffect(.replace))
-                    .foregroundStyle(mode == .disabled ? CatpawColors.sendIcon.opacity(0.9) : CatpawColors.sendIcon)
+                    .foregroundStyle(mode == .disabled ? catColors.sendIcon.opacity(0.9) : catColors.sendIcon)
                     .frame(width: 36, height: 36)
-                    .background(mode == .disabled ? CatpawBrand.paw.opacity(0.35) : CatpawBrand.paw, in: Circle())
+                    .background(mode == .disabled ? catBrand.paw.opacity(0.35) : catBrand.paw, in: Circle())
                 if mode == .queue {
-                    Image(systemName: "clock.fill").font(CatpawTypography.Role.caption.font.weight(.bold))
-                        .foregroundStyle(CatpawBrand.paw).background(CatpawColors.background, in: Circle()).offset(x: 3, y: -3)
+                    Image(systemName: "clock.fill").font(catTypography.Role.caption.font.weight(.bold))
+                        .foregroundStyle(catBrand.paw).background(catColors.background, in: Circle()).offset(x: 3, y: -3)
                         .transition(.scale.combined(with: .opacity))
                 }
             }
             .touchTarget()
         }
-        .buttonStyle(CatpawPressButtonStyle())
+        .buttonStyle(catPressButtonStyle())
         .disabled(mode == .disabled)
-        .animation(CatpawMotion.resolved(CatpawMotion.sendMorph, reduceMotion), value: mode)
+        .animation(catMotion.resolved(catMotion.sendMorph, reduceMotion), value: mode)
         .sensoryFeedback(.impact(weight: .light), trigger: sentCount)
         .sensoryFeedback(.impact(weight: .medium), trigger: stopCount)
         .accessibilityLabel(mode == .stop ? ui("停止回答") : (mode == .queue ? ui("回答完成后发送") : ui("发送")))
@@ -65,13 +65,13 @@ import Combine
             HStack(spacing: 8) {
                 Image(systemName: "clock").accessibilityHidden(true)
                 Text(ui("回答完成后发送")).fontWeight(.medium)
-                Text(preview).lineLimit(1).foregroundStyle(CatpawColors.secondary)
+                Text(preview).lineLimit(1).foregroundStyle(catColors.secondary)
                 Spacer(minLength: 4)
-                Button(ui("取消"), action: model.cancelQueued).fontWeight(.semibold).foregroundStyle(CatpawColors.ink)
+                Button(ui("取消"), action: model.cancelQueued).fontWeight(.semibold).foregroundStyle(catColors.ink)
             }
-            .font(CatpawTypography.Role.caption.font)
+            .font(catTypography.Role.caption.font)
             .padding(.horizontal, 12).frame(minHeight: 36)
-            .background(CatpawColors.panel, in: Capsule())
+            .background(catColors.panel, in: Capsule())
             .transition(.move(edge: .bottom).combined(with: .opacity))
             .accessibilityElement(children: .combine)
         }
@@ -84,7 +84,7 @@ struct ComposerGlass: ViewModifier {
     func body(content: Content) -> some View {
         let shape = RoundedRectangle(cornerRadius: 26, style: .continuous)
         if reduceTransparency {
-            content.background(CatpawColors.input, in: shape).overlay(shape.strokeBorder(CatpawColors.controlEdge))
+            content.background(catColors.input, in: shape).overlay(shape.strokeBorder(catColors.controlEdge))
         } else {
             #if compiler(>=6.2)
             if #available(iOS 26.0, *) { content.glassEffect(.regular, in: shape) } else { fallback(content, shape) }
@@ -94,9 +94,9 @@ struct ComposerGlass: ViewModifier {
         }
     }
     private func fallback(_ content: Content, _ shape: RoundedRectangle) -> some View {
-        content.background(CatpawColors.composerPill, in: shape)
-            .overlay(shape.strokeBorder(CatpawColors.hairline, lineWidth: 0.5))
-            .shadow(color: CatpawColors.ink.opacity(0.06), radius: 8, y: 4)
+        content.background(catColors.composerPill, in: shape)
+            .overlay(shape.strokeBorder(catColors.hairline, lineWidth: 0.5))
+            .shadow(color: catColors.ink.opacity(0.06), radius: 8, y: 4)
     }
 }
 
@@ -143,7 +143,7 @@ struct ComposerGlass: ViewModifier {
             if let rejection { rejectionToast(rejection) }
             // r8 meta line: status lives above the pill, never inside it.
             if let metaText {
-                Text(metaText).font(CatpawTypography.Role.caption.font).foregroundStyle(metaWarning ? CatpawColors.attention : CatpawColors.tertiary)
+                Text(metaText).font(catTypography.Role.caption.font).foregroundStyle(metaWarning ? catColors.attention : catColors.tertiary)
                     .frame(maxWidth: .infinity).accessibilityIdentifier("chat.composer.meta")
                     .transition(.opacity.combined(with: .offset(y: 4)))
             }
@@ -158,13 +158,13 @@ struct ComposerGlass: ViewModifier {
             .padding(6)
             .overlay { ComposerDictationBarHost() }
             .modifier(ComposerGlass())
-            .overlay(RoundedRectangle(cornerRadius: 26, style: .continuous).strokeBorder(CatpawColors.action, lineWidth: dropTargeted ? 2 : 0))
+            .overlay(RoundedRectangle(cornerRadius: 26, style: .continuous).strokeBorder(catColors.action, lineWidth: dropTargeted ? 2 : 0))
             .firstRunAnchor(.composer).firstRunHandedOff(.composer)   // SPEC-E: 「开始使用」 morphs into this pill
             .composerDropTarget(isTargeted: $dropTargeted, add: add)
         }
         .padding(.horizontal, 12).padding(.bottom, 8)
-        .animation(CatpawMotion.resolved(CatpawMotion.composer, reduceMotion), value: multiline)
-        .animation(CatpawMotion.resolved(CatpawMotion.composer, reduceMotion), value: model.attachments.count)
+        .animation(catMotion.resolved(catMotion.composer, reduceMotion), value: multiline)
+        .animation(catMotion.resolved(catMotion.composer, reduceMotion), value: model.attachments.count)
         .animation(.easeOut(duration: 0.2), value: metaText)
     }
 
@@ -194,7 +194,7 @@ struct ComposerGlass: ViewModifier {
         case let .unsupported(name): ui("暂不支持 {0}", [name])
         }
         return StatusLabel(text: text, symbol: "exclamationmark.circle", tone: .attention)
-            .padding(.horizontal, 12).frame(minHeight: 32).background(CatpawColors.panel, in: Capsule())
+            .padding(.horizontal, 12).frame(minHeight: 32).background(catColors.panel, in: Capsule())
             .transition(.opacity)
     }
 }
@@ -203,7 +203,7 @@ struct ComposerGlass: ViewModifier {
     /// Max visible editor height = 6 lines (r8) of the conversation font + editor insets (8+8). Beyond that the text scrolls.
     static func maxHeight(for dynamicType: DynamicTypeSize) -> CGFloat {
         let font = ConversationTypeScale.font(dynamicType)
-        return ceil(font.lineHeight * 6 + CatpawTypography.readingLineSpacing(for: font) * 5 + 14)
+        return ceil(font.lineHeight * 6 + catTypography.readingLineSpacing(for: font) * 5 + 14)
     }
 }
 
@@ -315,14 +315,14 @@ struct ComposerGlass: ViewModifier {
         // r10 §2.5: 36pt circle on material above the composer; pawOrange 2pt ring while a reply is streaming.
         Button { withAnimation(.smooth(duration: 0.35)) { action() }; taps += 1 } label: {
             Image(systemName: "arrow.down").font(.footnote.weight(.bold))
-                .foregroundStyle(CatpawColors.ink)
+                .foregroundStyle(catColors.ink)
                 .frame(width: 36, height: 36)
                 .background(.ultraThinMaterial, in: Circle())
-                .overlay(Circle().strokeBorder(CatpawBrand.paw, lineWidth: hasNewContent ? 2 : 0))
+                .overlay(Circle().strokeBorder(catBrand.paw, lineWidth: hasNewContent ? 2 : 0))
                 .shadow(color: .black.opacity(0.08), radius: 4, y: 2)
                 .frame(minWidth: 44, minHeight: 44)
         }
-        .buttonStyle(CatpawPressButtonStyle())
+        .buttonStyle(catPressButtonStyle())
         .sensoryFeedback(.selection, trigger: taps)
         .transition(.scale(scale: 0.8).combined(with: .opacity))
         .accessibilityLabel(ui("回到最新"))
@@ -346,8 +346,8 @@ private struct JumpGlass: ViewModifier {
 /// (dark adds a faint ring so the circle separates from the dark composer). Disabled = the press style's 0.55 dim.
 struct ComposerBlackCircle: ViewModifier {
     func body(content: Content) -> some View {
-        content.background(CatpawColors.voiceFill, in: Circle())
-            .overlay(Circle().strokeBorder(CatpawColors.voiceRing, lineWidth: 1))
+        content.background(catColors.voiceFill, in: Circle())
+            .overlay(Circle().strokeBorder(catColors.voiceRing, lineWidth: 1))
     }
 }
 
@@ -388,51 +388,51 @@ struct ComposerBlackCircle: ViewModifier {
             case .voice:
                 if micOverride == nil { Button(action: dictate) {
                     CircleIcon(systemName: "mic", diameter: size).contentShape(Circle().inset(by: -4))
-                }.buttonStyle(CatpawPressButtonStyle()).accessibilityLabel(ui("听写")).accessibilityIdentifier("chat.composer.mic")
+                }.buttonStyle(catPressButtonStyle()).accessibilityLabel(ui("听写")).accessibilityIdentifier("chat.composer.mic")
                     .transition(.scale(scale: 0.6).combined(with: .opacity)) }
                 Button(action: voice) {
-                    Image(systemName: "waveform").font(CatpawTypography.Role.body.font.weight(.semibold)).foregroundStyle(CatpawColors.sendIcon)
+                    Image(systemName: "waveform").font(catTypography.Role.body.font.weight(.semibold)).foregroundStyle(catColors.sendIcon)
                         .frame(width: size, height: size).modifier(ComposerBlackCircle()).contentShape(Circle().inset(by: -4))
-                }.buttonStyle(CatpawPressButtonStyle()).disabled(!voiceEnabled).accessibilityLabel(ui("语音对话")).accessibilityIdentifier("chat.composer.voice")
+                }.buttonStyle(catPressButtonStyle()).disabled(!voiceEnabled).accessibilityLabel(ui("语音对话")).accessibilityIdentifier("chat.composer.voice")
                     .transition(.scale(scale: 0.6).combined(with: .opacity))
             case .dictating:
                 if micOverride == nil { Button(action: dictate) {
-                    Image(systemName: "waveform").font(CatpawTypography.Role.body.font.weight(.semibold)).foregroundStyle(CatpawColors.sendIcon)
+                    Image(systemName: "waveform").font(catTypography.Role.body.font.weight(.semibold)).foregroundStyle(catColors.sendIcon)
                         .symbolEffect(.variableColor.iterative, isActive: !reduceMotion)
-                        .frame(width: size, height: size).background(CatpawBrand.paw, in: Circle()).contentShape(Circle().inset(by: -4))
-                }.buttonStyle(CatpawPressButtonStyle()).accessibilityLabel(ui("停止听写")).accessibilityIdentifier("chat.composer.dictating")
+                        .frame(width: size, height: size).background(catBrand.paw, in: Circle()).contentShape(Circle().inset(by: -4))
+                }.buttonStyle(catPressButtonStyle()).accessibilityLabel(ui("停止听写")).accessibilityIdentifier("chat.composer.dictating")
                     .transition(.scale(scale: 0.6).combined(with: .opacity)) }
                 if !draftEmpty {
                     Button { sendCount += 1; send() } label: {
-                        Image(systemName: "arrow.up").font(CatpawTypography.Role.body.font.weight(.semibold)).foregroundStyle(CatpawColors.sendIcon)
+                        Image(systemName: "arrow.up").font(catTypography.Role.body.font.weight(.semibold)).foregroundStyle(catColors.sendIcon)
                             .frame(width: size, height: size)
-                            .background(canSend ? CatpawBrand.paw : CatpawBrand.paw.opacity(0.45), in: Circle()).contentShape(Circle().inset(by: -4))
-                    }.buttonStyle(CatpawPressButtonStyle()).disabled(!canSend).accessibilityLabel(ui("发送")).accessibilityIdentifier("chat.send")
+                            .background(canSend ? catBrand.paw : catBrand.paw.opacity(0.45), in: Circle()).contentShape(Circle().inset(by: -4))
+                    }.buttonStyle(catPressButtonStyle()).disabled(!canSend).accessibilityLabel(ui("发送")).accessibilityIdentifier("chat.send")
                 }
             case .stop:
                 Button { stopCount += 1; stop() } label: {
-                    RoundedRectangle(cornerRadius: 3, style: .continuous).fill(CatpawColors.sendIcon).frame(width: 12, height: 12)
+                    RoundedRectangle(cornerRadius: 3, style: .continuous).fill(catColors.sendIcon).frame(width: 12, height: 12)
                         .frame(width: size, height: size).modifier(ComposerBlackCircle()).contentShape(Circle().inset(by: -4))
-                }.buttonStyle(CatpawPressButtonStyle()).accessibilityLabel(ui("停止回答")).accessibilityIdentifier("chat.stop")
+                }.buttonStyle(catPressButtonStyle()).accessibilityLabel(ui("停止回答")).accessibilityIdentifier("chat.stop")
                     .transition(.scale(scale: 0.6).combined(with: .opacity))
             case .send, .queue:
                 Button { sendCount += 1; send() } label: {
                     ZStack(alignment: .topTrailing) {
-                        Image(systemName: "arrow.up").font(CatpawTypography.Role.body.font.weight(.semibold)).foregroundStyle(CatpawColors.sendIcon)
+                        Image(systemName: "arrow.up").font(catTypography.Role.body.font.weight(.semibold)).foregroundStyle(catColors.sendIcon)
                             .frame(width: size, height: size)
-                            .background(canSend ? CatpawBrand.paw : CatpawBrand.paw.opacity(0.45), in: Circle())
+                            .background(canSend ? catBrand.paw : catBrand.paw.opacity(0.45), in: Circle())
                         if mode == .queue {
-                            Image(systemName: "clock.fill").font(CatpawTypography.Role.caption.font.weight(.bold)).imageScale(.small).foregroundStyle(CatpawColors.ink)
-                                .padding(2).background(CatpawColors.background, in: Circle()).offset(x: 3, y: -3)
+                            Image(systemName: "clock.fill").font(catTypography.Role.caption.font.weight(.bold)).imageScale(.small).foregroundStyle(catColors.ink)
+                                .padding(2).background(catColors.background, in: Circle()).offset(x: 3, y: -3)
                                 .accessibilityIdentifier("chat.composer.queuedBadge")
                         }
                     }.contentShape(Circle().inset(by: -4))
-                }.buttonStyle(CatpawPressButtonStyle()).disabled(!canSend)
+                }.buttonStyle(catPressButtonStyle()).disabled(!canSend)
                     .accessibilityLabel(mode == .queue ? ui("排队发送") : ui("发送")).accessibilityIdentifier("chat.send")
                     .transition(.scale(scale: 0.6).combined(with: .opacity))
             }
         }
-        .animation(CatpawMotion.resolved(CatpawMotion.morph, reduceMotion), value: mode)
+        .animation(catMotion.resolved(catMotion.morph, reduceMotion), value: mode)
         .sensoryFeedback(.impact(weight: .light), trigger: sendCount)
         .sensoryFeedback(.impact(weight: .medium), trigger: stopCount)
     }

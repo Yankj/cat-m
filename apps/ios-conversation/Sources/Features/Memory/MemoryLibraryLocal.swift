@@ -90,7 +90,7 @@ enum AccountConversationLocal {
     /// Owner of the signed-in account (AccountEpoch keeps the upper-case uuidString; owners use lower-case).
     static var currentOwner: LocalMemoryOwner? { AccountEpoch.shared.currentAccount.map { .account($0.lowercased()) } }
     static func persistedOff(_ owner: LocalMemoryOwner) -> Bool { offKey(owner).map { defaults.bool(forKey: $0) } ?? false }
-    /// Codex PR91 p91c-4: the global switch (next turn's X-Catpaw-Use-Memory) from the stored per-account value — at
+    /// Codex PR91 p91c-4: the global switch (next turn's X-cat-Use-Memory) from the stored per-account value — at
     /// launch / sign-in and whenever the cloud cannot be read, so a local off whose PATCH failed is still sent.
     static func restoreSwitch(owner: LocalMemoryOwner) {
         guard let k = offKey(owner) else { ConversationMemorySwitch.useMemory = nil; return }
@@ -189,7 +189,7 @@ enum AccountConversationLocal {
         return await deliver(t, send: send)
     }
 
-    // MARK: Codex PR91 v2-4 / v3-3 — one effective state over ALL libraries (UI == X-Catpaw-Use-Memory == recall)
+    // MARK: Codex PR91 v2-4 / v3-3 — one effective state over ALL libraries (UI == X-cat-Use-Memory == recall)
     private static var libraries: [LocalMemoryOwner: [String: Bool]] = [:]
     /// Records a library's own switch (keyed by backend type) as seen by the page or by recall.
     static func noteLibrary(_ backend: any MemoryLibraryBackend, on: Bool, owner: LocalMemoryOwner) {
@@ -214,7 +214,7 @@ enum AccountConversationLocal {
     }
     static func record(off: Bool, owner: LocalMemoryOwner) {
         if let k = offKey(owner) { defaults.set(off, forKey: k) }
-        ConversationMemorySwitch.useMemory = !off   // sent to the server on the next turn (X-Catpaw-Use-Memory)
+        ConversationMemorySwitch.useMemory = !off   // sent to the server on the next turn (X-cat-Use-Memory)
     }
 
     /// `cloud`: the installed backend (nil = none). `local`: the on-device library when it is not the cloud backend.
@@ -426,11 +426,11 @@ extension AccountLocalData {
         // Synchronous (no await): after it the owner is "" and #90's later observer (claimData(for: nil)) is a no-op.
         ProactiveEngine.shared.claimData(for: nil)
         // Live Activities are keyed by suggestion id: read the inbox before it is purged.
-        for id in ProactiveLocalBackend.load().keys { CatpawLeaveActivity.stop(suggestionID: id) }
+        for id in ProactiveLocalBackend.load().keys { catLeaveActivity.stop(suggestionID: id) }
         // v1.1: claimData above parked the leaving account's inbox / reminder + attendee contexts sealed (vault key); the live
         // sealed records and any plaintext copy are purged here, and the L2 wipe after this call shreds the account key.
         ProactiveSealedStore.purgeForSignOut()
-        CatpawLeaveActivity.stopAll()
+        catLeaveActivity.stopAll()
         // v1.1 B8: reply variants, reactions and staged draft attachments are purged (never parked).
         AccountConversationLocal.purge(defaults: .standard, stagingDirectory: FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first?.appendingPathComponent("ComposerStaging", isDirectory: true))
         MessageReactionStore.shared.reset()
@@ -444,7 +444,7 @@ extension AccountLocalData {
         #if os(iOS)
         UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
         UNUserNotificationCenter.current().removeAllDeliveredNotifications()
-        CatpawWidgetSnapshotWriter.write([])
+        catWidgetSnapshotWriter.write([])
         #endif
     }
 }

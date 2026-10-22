@@ -1,5 +1,5 @@
 import XCTest
-@testable import CatpawM
+@testable import cat
 
 /// feat/oauth-github-google: PKCE, callback parsing, authorize URLs, link-vs-switch decision, session link invariants.
 final class NativeOAuthTests: XCTestCase {
@@ -156,7 +156,7 @@ final class AccountMenuStructureTests: XCTestCase {
         XCTAssertTrue(view.contains("case .accountAction(let id):performAccountAction(id)"))
         let dialog = try slice(view, from: ".confirmationDialog(ui(\"退出登录？\")", to: "} message:")
         XCTAssertTrue(dialog.contains("onSignOut?()"), "same sign-out path (park + EventKit keep/cancel)")
-        let panel = try source("../../packages/ios-navigation/Sources/CatpawNavigation/SidebarPanel.swift")
+        let panel = try source("../../packages/ios-navigation/Sources/catNavigation/SidebarPanel.swift")
         XCTAssertTrue(panel.contains("Menu {") && panel.contains("\"sidebar.account.current\"") && panel.contains("\"sidebar.account.\" + action.id"))
         XCTAssertTrue(panel.contains(".destructive"))
     }

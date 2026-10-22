@@ -7,7 +7,7 @@ mode="${1:-work}"
 (( $# <= 1 )) || { print -u2 'Expected only work or resume.'; exit 2; }
 device="${CATPAW_REVIEW_DEVICE:-949DAB72-1A93-4ECF-86E3-2E487B25C27E}"
 text_size="${CATPAW_REVIEW_TEXT_SIZE:-large}"
-app="build/native-accepted-work-20261015/DerivedData/Build/Products/Debug-iphonesimulator/CatpawM.app"
+app="build/native-accepted-work-20261015/DerivedData/Build/Products/Debug-iphonesimulator/cat.app"
 result="docs/acceptance/evidence/native-accepted-work-20261015/RESULT.json"
 case "$mode" in
   work|resume) ;;
@@ -24,7 +24,7 @@ from pathlib import Path
 package,result=map(Path,sys.argv[1:])
 with (package/'Info.plist').open('rb') as file: info=plistlib.load(file)
 assert str(info.get('CFBundleVersion'))=='24','Expected build24; refusing an ambiguous package'
-assert info.get('CFBundleIdentifier')=='com.example.CatpawM.ConversationFirst.Auth','Unexpected review bundle identity'
+assert info.get('CFBundleIdentifier')=='com.example.cat.ConversationFirst.Auth','Unexpected review bundle identity'
 keys=('CatpawSupabaseProjectURL','CatpawSupabasePublishableKey','CatpawBackendOrigin','CatpawServerScopeID','CatpawEdgeRegion')
 assert not any(info.get(key) for key in keys),'Synthetic review refuses a cloud-configured package'
 rows=[{'path':str(p.relative_to(package)),'bytes':p.stat().st_size,'sha256':hashlib.sha256(p.read_bytes()).hexdigest()} for p in sorted(package.rglob('*')) if p.is_file()]
@@ -131,7 +131,7 @@ if [[ "$device_state" != Booted ]]; then /usr/bin/xcrun simctl boot "$device"; f
 "${clean_launch[@]}" \
   SIMCTL_CHILD_CF_UI_TEST_STORE="$store" SIMCTL_CHILD_CF_UI_TEST_SCENARIO=p0-ui-accepted-work \
   SIMCTL_CHILD_CATPAW_ACCEPTED_WORK_PORT=8767 \
-  /usr/bin/xcrun simctl launch --terminate-running-process "$device" com.example.CatpawM.ConversationFirst.Auth
+  /usr/bin/xcrun simctl launch --terminate-running-process "$device" com.example.cat.ConversationFirst.Auth
 open -b com.apple.dt.Devices
 print "build24 — $mode review; real system text size: $text_size. No message was prefilled or sent."
 print '1. Enter a fictional request, open input details, then choose “交给 Agent 完成 / Let Agent complete this”.'

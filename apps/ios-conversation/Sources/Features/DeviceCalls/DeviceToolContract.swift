@@ -3,7 +3,7 @@ import Foundation
 /// catpaw.device.v1 client-side contract (NoBug P0-3/P0-4). Foundation-only so it is unit-testable and parsed by the
 /// server contract test (services/edge/test/device-tool-client-contract.test.mjs reads `clientTools` from this file).
 enum DeviceToolContract {
-    /// Tools this app actually executes. Sent as `X-Catpaw-Device-Tools` so the server offers only these.
+    /// Tools this app actually executes. Sent as `X-cat-Device-Tools` so the server offers only these.
     static let clientTools: [String] = ["calendar_list", "calendar_create", "reminder_create", "mail_compose", "sms_compose", "phone_call", "contacts_search", "maps_open", "shop_open", "alarm_set", "shortcut_run", "places_search"]
     static let toolsHeader = "X-Catpaw-Device-Tools"
     static var toolsHeaderValue: String { clientTools.joined(separator: ",") }

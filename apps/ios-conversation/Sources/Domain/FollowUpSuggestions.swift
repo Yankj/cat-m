@@ -2,7 +2,7 @@ import Foundation
 
 /// chat-ux #4: tappable follow-up questions after an answer. The model ends its reply with
 /// ```catpaw-card:followups (one question per line); the server asks for it only when the client advertises
-/// `followups` in X-Catpaw-UI-Kinds. Pure parser, portable-tested.
+/// `followups` in X-cat-UI-Kinds. Pure parser, portable-tested.
 public enum FollowUpSuggestions {
     public static let kind = "followups"
     public static let maxCount = 3, maxCharacters = 30

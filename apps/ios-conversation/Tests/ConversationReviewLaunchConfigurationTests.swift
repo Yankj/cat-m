@@ -1,6 +1,6 @@
 import Foundation
 import XCTest
-@testable import CatpawM
+@testable import cat
 
 @MainActor final class ConversationReviewLaunchConfigurationTests:XCTestCase {
     private let now=Date(timeIntervalSince1970:1_792_000_000)

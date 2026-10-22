@@ -98,8 +98,8 @@ enum ConversationTurnActivityProjection {
                 EmptyView()
             } else if activity.tools.isEmpty {
                 Label(ui(activity.phase.summaryKey),systemImage:activity.phase == .needsReview ? "exclamationmark.circle":"checkmark.circle")
-                    .font(CatpawTypography.Role.secondary.font)
-                    .foregroundStyle(activity.phase == .needsReview ? CatpawColors.attention:CatpawColors.secondary)
+                    .font(catTypography.Role.secondary.font)
+                    .foregroundStyle(activity.phase == .needsReview ? catColors.attention:catColors.secondary)
                     .accessibilityIdentifier("chat.activity.summary."+activity.id.uuidString)
             } else {
                 VStack(alignment:.leading,spacing:0) {
@@ -110,7 +110,7 @@ enum ConversationTurnActivityProjection {
                             Spacer(minLength:0)
                             Image(systemName:expanded ? "chevron.up":"chevron.down").accessibilityHidden(true)
                         }.frame(maxWidth:.infinity,minHeight:44,alignment:.leading).contentShape(Rectangle())
-                    }.buttonStyle(CatpawPressButtonStyle())
+                    }.buttonStyle(catPressButtonStyle())
                         .accessibilityLabel(ui(activity.phase.summaryKey))
                         .accessibilityValue(expanded ? ui("已展开"):ui("已收起"))
                         .accessibilityHint(ui("查看本次工具记录"))
@@ -120,14 +120,14 @@ enum ConversationTurnActivityProjection {
                             ForEach(activity.tools) {tool in
                                 VStack(alignment:.leading,spacing:4) {
                                     Text(ui(tool.titleKey))
-                                    Text(ui(tool.state.labelKey)).font(CatpawTypography.Role.caption.font)
+                                    Text(ui(tool.state.labelKey)).font(catTypography.Role.caption.font)
                                 }.accessibilityElement(children:.combine)
                                     .accessibilityIdentifier("chat.activity.tool."+tool.id.uuidString)
                             }
                         }.padding(.top,8)
                     }
-                }.font(CatpawTypography.Role.secondary.font)
-                    .foregroundStyle(activity.phase == .needsReview ? CatpawColors.attention:CatpawColors.secondary)
+                }.font(catTypography.Role.secondary.font)
+                    .foregroundStyle(activity.phase == .needsReview ? catColors.attention:catColors.secondary)
             }
         }
         .accessibilityElement(children:.contain)

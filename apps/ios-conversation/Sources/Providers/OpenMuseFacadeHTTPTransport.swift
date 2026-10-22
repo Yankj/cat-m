@@ -9,7 +9,7 @@ public struct OpenMuseFacadeConfiguration: Sendable {
     public init(baseURL: URL = URL(string: "http://127.0.0.1:8796")!) throws {
         guard baseURL.scheme == "http", baseURL.host == "127.0.0.1", baseURL.user == nil, baseURL.password == nil,
               baseURL.query == nil, baseURL.fragment == nil, ["", "/"].contains(baseURL.path),
-              let port = baseURL.port, (1...65535).contains(port) else { throw CatpawError.invalid("Facade demo requires an explicit loopback-only origin.") }
+              let port = baseURL.port, (1...65535).contains(port) else { throw catError.invalid("Facade demo requires an explicit loopback-only origin.") }
         self.baseURL = baseURL
     }
 }
@@ -62,7 +62,7 @@ public actor OpenMuseFacadeHTTPTransport: OpenMuseTaskTransport {
     private func call<T: Decodable>(_ method: String, _ segments: [String], body: [String: Any]? = nil, as: T.Type = T.self) async throws -> T {
         var url = configuration.baseURL
         for segment in segments {
-            guard !segment.isEmpty, !segment.contains(where: { "/\\?#\r\n ".contains($0) }), segment.utf8.count <= 512 else { throw CatpawError.invalid("Invalid facade route identity.") }
+            guard !segment.isEmpty, !segment.contains(where: { "/\\?#\r\n ".contains($0) }), segment.utf8.count <= 512 else { throw catError.invalid("Invalid facade route identity.") }
             url.appendPathComponent(segment)
         }
         var request = URLRequest(url: url); request.httpMethod = method; request.timeoutInterval = 30
@@ -70,13 +70,13 @@ public actor OpenMuseFacadeHTTPTransport: OpenMuseTaskTransport {
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         if let body {
             request.httpBody = try JSONSerialization.data(withJSONObject: body, options: [.sortedKeys, .withoutEscapingSlashes])
-            guard request.httpBody!.count <= 32768 else { throw CatpawError.invalid("Facade request exceeds frozen limit.") }
+            guard request.httpBody!.count <= 32768 else { throw catError.invalid("Facade request exceeds frozen limit.") }
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         }
         requests.append("\(method) \(url.path)")
         let response = try await http.open(request); var data = Data()
         for try await chunk in response.chunks {
-            data.append(chunk); guard data.count <= 4 * 1024 * 1024 else { throw CatpawError.corrupt("Facade response exceeds client limit.") }
+            data.append(chunk); guard data.count <= 4 * 1024 * 1024 else { throw catError.corrupt("Facade response exceeds client limit.") }
         }
         guard (200...201).contains(response.statusCode) else {
             let envelope = try? JSONDecoder().decode(FacadeErrorEnvelope.self, from: data)
@@ -86,7 +86,7 @@ public actor OpenMuseFacadeHTTPTransport: OpenMuseTaskTransport {
     }
     private var scopePath: [String] { ["catpaw", "v1", "scopes", configuration.remoteScope.workspaceID.uuidString.lowercased()] }
     private func checkLayer(_ schema: Int, _ layer: String) throws {
-        guard schema == 1, ["facade_inprocess_test_double", "actual_upstream_taskworker_inprocess"].contains(layer) else { throw CatpawError.corrupt("Unrecognized synthetic facade layer/schema; cannot upgrade model reality.") }
+        guard schema == 1, ["facade_inprocess_test_double", "actual_upstream_taskworker_inprocess"].contains(layer) else { throw catError.corrupt("Unrecognized synthetic facade layer/schema; cannot upgrade model reality.") }
     }
     public func inspectCapabilities() async throws {
         let c: FacadeCapabilities = try await call("GET", ["catpaw", "v1", "capabilities"])
@@ -94,11 +94,11 @@ public actor OpenMuseFacadeHTTPTransport: OpenMuseTaskTransport {
         guard c.contract == "catpaw.facade.v1", c.upstream_commit == "1ac68f3909f2478ab6280883f1ab5ea65eb5719d",
               c.allowed_scopes.contains(where: { $0.scope_id == configuration.remoteScope.workspaceID.uuidString.lowercased() && $0.profile_id == configuration.remoteScope.profileID && $0.workspace_id == configuration.remoteScope.workspaceID }),
               c.supports.task_status_read, c.supports.stable_run_read, c.supports.artifact_versions, c.supports.approval_projection,
-              c.supports.grant_revoke, !c.supports.sse_replay, !c.supports.external_writes else { throw CatpawError.scopeMismatch }
+              c.supports.grant_revoke, !c.supports.sse_replay, !c.supports.external_writes else { throw catError.scopeMismatch }
         didCheckCapabilities = true
     }
     private func checkRequest(_ request: OpenMuseFrozenRequest) async throws {
-        try request.validate(); guard request.input.scope == configuration.localScope else { throw CatpawError.scopeMismatch }
+        try request.validate(); guard request.input.scope == configuration.localScope else { throw catError.scopeMismatch }
         if !didCheckCapabilities { try await inspectCapabilities() }
     }
     private func delegation(_ request: OpenMuseFrozenRequest) async throws -> FacadeDelegation {
@@ -109,17 +109,17 @@ public actor OpenMuseFacadeHTTPTransport: OpenMuseTaskTransport {
         try checkLayer(e.schema_version, e.execution_layer); let d = e.delegation, r = request.input
         guard d.id == r.delegationID, d.title == r.title, d.goal == r.goal, d.requirements == r.requirements,
               d.stop_conditions == r.stopConditions, d.synthetic_fixture_id == r.syntheticFixture.rawValue,
-              d.revision > 0, d.grant_epoch > 0, d.request_hash.count == 64 else { throw CatpawError.corrupt("Frozen delegation content changed.") }
+              d.revision > 0, d.grant_epoch > 0, d.request_hash.count == 64 else { throw catError.corrupt("Frozen delegation content changed.") }
     }
     public func create(_ request: OpenMuseFrozenRequest) async throws -> OpenMuseTaskBinding {
         try await checkRequest(request); let r = request.input
         if r.delegationRevision == 1 && r.grantRevision == 1 {
             let d: FacadeDelegationEnvelope = try await call("POST", scopePath + ["delegations"], body: ["delegation_id": r.delegationID.uuidString.lowercased(), "title": r.title, "goal": r.goal, "requirements": r.requirements, "stop_conditions": r.stopConditions, "synthetic_fixture_id": r.syntheticFixture.rawValue])
             try validateDelegation(d, request)
-            guard d.delegation.state == "active", d.delegation.revision == r.delegationRevision, d.delegation.grant_epoch == r.grantRevision else { throw CatpawError.conflict }
+            guard d.delegation.state == "active", d.delegation.revision == r.delegationRevision, d.delegation.grant_epoch == r.grantRevision else { throw catError.conflict }
         } else {
             let d = try await delegation(request)
-            guard d.state == "active", d.revision == r.delegationRevision, d.grant_epoch == r.grantRevision else { throw CatpawError.conflict }
+            guard d.state == "active", d.revision == r.delegationRevision, d.grant_epoch == r.grantRevision else { throw catError.conflict }
         }
         let e: FacadeRunEnvelope = try await call("POST", scopePath + ["delegations", r.delegationID.uuidString.lowercased(), "runs"], body: ["operation_id": r.operationID.uuidString.lowercased(), "run_id": r.businessRunID.uuidString.lowercased(), "expected_revision": r.delegationRevision, "expected_grant_epoch": r.grantRevision])
         return try binding(e, request)
@@ -129,16 +129,16 @@ public actor OpenMuseFacadeHTTPTransport: OpenMuseTaskTransport {
         guard v.id == r.businessRunID, v.operation_id == r.operationID, v.delegation_id == r.delegationID,
               v.delegation_revision == r.delegationRevision, v.grant_epoch == r.grantRevision,
               v.task_id == e.task.id, v.request_hash.count == 64,
-              ![r.operationID.uuidString.lowercased(), r.businessRunID.uuidString.lowercased()].contains(v.task_id.lowercased()) else { throw CatpawError.scopeMismatch }
+              ![r.operationID.uuidString.lowercased(), r.businessRunID.uuidString.lowercased()].contains(v.task_id.lowercased()) else { throw catError.scopeMismatch }
         return OpenMuseTaskBinding(request: request, taskID: v.task_id, serverRequestHash: v.request_hash, remoteScope: configuration.remoteScope)
     }
     public func readOriginal(_ request: OpenMuseFrozenRequest, knownTaskID: String?) async throws -> OpenMuseTaskProjection {
         try await checkRequest(request); _ = try await delegation(request)
         let operation: FacadeRunEnvelope = try await call("GET", scopePath + ["operations", request.input.operationID.uuidString.lowercased()])
         let original = try binding(operation, request)
-        guard knownTaskID == nil || knownTaskID == original.taskID else { throw CatpawError.scopeMismatch }
+        guard knownTaskID == nil || knownTaskID == original.taskID else { throw catError.scopeMismatch }
         let e: FacadeRunEnvelope = try await call("GET", scopePath + ["runs", request.input.businessRunID.uuidString.lowercased()])
-        let b = try binding(e, request); guard b == original else { throw CatpawError.conflict }
+        let b = try binding(e, request); guard b == original else { throw catError.conflict }
         var projection = OpenMuseTaskProjection(binding: b, revision: 0, status: e.run.state, attempts: e.task.attempts)
         projection.hasAuthoritativeRevision = false; projection.executionLayer = e.execution_layer
         projection.authorizationCurrent = e.run.authorization_state == "current"
@@ -146,15 +146,15 @@ public actor OpenMuseFacadeHTTPTransport: OpenMuseTaskTransport {
         projection.workerAttempts = e.run.attempts.map { OpenMuseWorkerAttempt(upstreamRunID: $0.upstream_run_id, startedAt: $0.started_at, finishedAt: $0.finished_at, status: $0.status) }
         projection.workerRunID = e.run.attempts.last?.upstream_run_id
         guard projection.authorizationCurrent else { return projection }
-        guard e.run.artifact_references.count <= 32, e.run.approval_ids.count <= 32 else { throw CatpawError.corrupt("Run references exceed read budget.") }
+        guard e.run.artifact_references.count <= 32, e.run.approval_ids.count <= 32 else { throw catError.corrupt("Run references exceed read budget.") }
         for ref in e.run.artifact_references {
-            guard (1...128).contains(ref.version) else { throw CatpawError.corrupt("Artifact history requires a paginated contract.") }
+            guard (1...128).contains(ref.version) else { throw catError.corrupt("Artifact history requires a paginated contract.") }
             for version in 1...ref.version {
                 let a: FacadeArtifactEnvelope = try await call("GET", scopePath + ["artifacts", ref.artifact_id, "versions", String(version)])
                 try checkLayer(a.schema_version, a.execution_layer)
                 guard a.artifact.artifact_id == ref.artifact_id, a.artifact.version == version, a.artifact.run_id == request.input.businessRunID,
                       a.artifact.task_id == b.taskID, a.artifact.mime_type == "application/json",
-                      version != ref.version || a.artifact.content_hash == ref.content_hash else { throw CatpawError.corrupt("Artifact reference changed.") }
+                      version != ref.version || a.artifact.content_hash == ref.content_hash else { throw catError.corrupt("Artifact reference changed.") }
                 let reference = OpenMuseArtifactReference(artifactID: ref.artifact_id, version: version, contentHash: a.artifact.content_hash)
                 let object = try JSONSerialization.jsonObject(with: Data(a.artifact.body.utf8)) as? [String: Any]
                 let title = object?["title"] as? String ?? "合成成果"
@@ -169,7 +169,7 @@ public actor OpenMuseFacadeHTTPTransport: OpenMuseTaskTransport {
             if approval.approval.receipt_status != "not_started" { projection.approvalReceipts.append(try receipt(approval.approval, expected: frozen)) }
         }
         let final: FacadeRunEnvelope = try await call("GET", scopePath + ["runs", request.input.businessRunID.uuidString.lowercased()])
-        guard try binding(final, request) == b, final.run.authorization_state == "current" else { throw CatpawError.scopeMismatch }
+        guard try binding(final, request) == b, final.run.authorization_state == "current" else { throw catError.scopeMismatch }
         guard final.run.artifact_references == e.run.artifact_references,
               final.run.approval_ids == e.run.approval_ids else { throw OpenMuseSnapshotReadChanged() }
         projection.status = final.run.state; projection.attempts = final.task.attempts
@@ -179,32 +179,32 @@ public actor OpenMuseFacadeHTTPTransport: OpenMuseTaskTransport {
     public func control(_ request: OpenMuseFrozenRequest, knownTaskID: String?, command: OpenMuseControlCommand, expectedRevision: Int, expectedGrantEpoch: Int) async throws -> OpenMuseControlReceipt {
         try await checkRequest(request)
         let d = try await delegation(request)
-        guard d.revision == expectedRevision, d.grant_epoch == expectedGrantEpoch, let taskID = knownTaskID else { throw CatpawError.conflict }
+        guard d.revision == expectedRevision, d.grant_epoch == expectedGrantEpoch, let taskID = knownTaskID else { throw catError.conflict }
         let e: FacadeDelegationEnvelope = try await call("POST", scopePath + ["delegations", request.input.delegationID.uuidString.lowercased(), "control"], body: ["action": command.rawValue, "expected_revision": expectedRevision, "expected_grant_epoch": expectedGrantEpoch])
         try validateDelegation(e, request)
-        guard let state = OpenMuseLocalControl(rawValue: e.delegation.state) else { throw CatpawError.corrupt("Invalid delegation state.") }
+        guard let state = OpenMuseLocalControl(rawValue: e.delegation.state) else { throw catError.corrupt("Invalid delegation state.") }
         return OpenMuseControlReceipt(binding: OpenMuseTaskBinding(request: request, taskID: taskID), control: state,
                                      grantRevision: e.delegation.grant_epoch, contextEpoch: e.delegation.grant_epoch,
                                      delegationRevision: e.delegation.revision, requiresNewRun: command == .resume)
     }
     private func approvalEnvelope(_ request: OpenMuseFrozenRequest, _ id: String) async throws -> FacadeApprovalEnvelope {
         let e: FacadeApprovalEnvelope = try await call("GET", scopePath + ["approvals", id]); try checkLayer(e.schema_version, e.execution_layer)
-        guard e.approval.id == id, !e.approval.reconciliation.can_retry else { throw CatpawError.corrupt("Unexpected approval replay permission.") }
+        guard e.approval.id == id, !e.approval.reconciliation.can_retry else { throw catError.corrupt("Unexpected approval replay permission.") }
         return e
     }
     private func snapshot(_ a: FacadeApproval, request: OpenMuseFrozenRequest, binding: OpenMuseTaskBinding) throws -> OpenMuseApprovalSnapshot {
         guard a.run_id == request.input.businessRunID, a.operation_id == request.input.operationID, a.task_id == binding.taskID,
               a.delegation_id == request.input.delegationID, a.delegation_revision == request.input.delegationRevision,
-              a.grant_epoch == request.input.grantRevision, a.policy == "synthetic-only-v1" else { throw CatpawError.scopeMismatch }
+              a.grant_epoch == request.input.grantRevision, a.policy == "synthetic-only-v1" else { throw catError.scopeMismatch }
         let arguments: [String: Any] = ["artifactId": a.artifact_reference.artifact_id, "version": a.artifact_reference.version, "contentHash": a.artifact_reference.content_hash, "title": "Synthetic preview only"]
         let args = try JSONSerialization.data(withJSONObject: arguments, options: [.sortedKeys, .withoutEscapingSlashes])
-        guard bytesHash(args) == a.arguments_hash else { throw CatpawError.corrupt("Synthetic preview arguments hash mismatch.") }
+        guard bytesHash(args) == a.arguments_hash else { throw catError.corrupt("Synthetic preview arguments hash mismatch.") }
         let core: [String: Any] = ["id": a.id, "run_id": a.run_id.uuidString.lowercased(), "operation_id": a.operation_id.uuidString.lowercased(), "task_id": a.task_id,
                                   "delegation_id": a.delegation_id.uuidString.lowercased(), "delegation_revision": a.delegation_revision, "grant_epoch": a.grant_epoch,
                                   "artifact_reference": ["artifact_id": a.artifact_reference.artifact_id, "version": a.artifact_reference.version, "content_hash": a.artifact_reference.content_hash],
                                   "arguments_hash": a.arguments_hash, "upstream_hash": a.upstream_hash, "policy": a.policy, "expires_at": a.expires_at]
         let coreBytes = try JSONSerialization.data(withJSONObject: core, options: [.sortedKeys, .withoutEscapingSlashes])
-        guard bytesHash(coreBytes) == a.action_digest, let expiry = Self.date(a.expires_at) else { throw CatpawError.corrupt("Facade action digest/date mismatch.") }
+        guard bytesHash(coreBytes) == a.action_digest, let expiry = Self.date(a.expires_at) else { throw catError.corrupt("Facade action digest/date mismatch.") }
         return OpenMuseApprovalSnapshot(proposalID: a.id, binding: binding,
             artifact: OpenMuseArtifactReference(artifactID: a.artifact_reference.artifact_id, version: a.artifact_reference.version, contentHash: a.artifact_reference.content_hash),
             destination: "本机合成预览", toolID: "catpaw.preview", argumentsJSON: String(decoding: args, as: UTF8.self),
@@ -218,16 +218,16 @@ public actor OpenMuseFacadeHTTPTransport: OpenMuseTaskTransport {
     }
     public func readApproval(_ request: OpenMuseFrozenRequest, taskID: String, proposalID: String) async throws -> OpenMuseApprovalSnapshot {
         try await checkRequest(request); let e = try await approvalEnvelope(request, proposalID)
-        guard e.approval.status == "awaiting_review", e.approval.receipt_status == "not_started" else { throw CatpawError.invalid("Original approval is consumed or unknown; only receipt reads are allowed.") }
+        guard e.approval.status == "awaiting_review", e.approval.receipt_status == "not_started" else { throw catError.invalid("Original approval is consumed or unknown; only receipt reads are allowed.") }
         let original: FacadeRunEnvelope = try await call("GET", scopePath + ["operations", request.input.operationID.uuidString.lowercased()])
         let originalBinding = try binding(original, request)
-        guard originalBinding.taskID == taskID, original.run.authorization_state == "current" else { throw CatpawError.scopeMismatch }
+        guard originalBinding.taskID == taskID, original.run.authorization_state == "current" else { throw catError.scopeMismatch }
         return try snapshot(e.approval, request: request, binding: originalBinding)
     }
     public func decide(_ preview: OpenMuseApprovalPreview, decision: OpenMuseDecision) async throws -> OpenMuseDecisionReceipt {
         let a = preview.snapshot
         guard a.binding.scope == configuration.localScope, a.toolID == "catpaw.preview", a.effectClass == "synthetic_preview",
-              let core = a.wireActionBindingJSON, textHash(core) == a.serverActionDigest else { throw CatpawError.invalid("Only frozen local synthetic preview is permitted.") }
+              let core = a.wireActionBindingJSON, textHash(core) == a.serverActionDigest else { throw catError.invalid("Only frozen local synthetic preview is permitted.") }
         let e: FacadeApprovalEnvelope = try await call("POST", scopePath + ["approvals", a.proposalID, "decisions"], body: ["decision": decision.rawValue, "upstream_hash": a.serverHash, "action_digest": a.serverActionDigest, "expected_grant_epoch": a.grantRevision])
         try checkLayer(e.schema_version, e.execution_layer)
         return try receipt(e.approval, expected: a)
@@ -244,9 +244,9 @@ public actor OpenMuseFacadeHTTPTransport: OpenMuseTaskTransport {
     private func receipt(_ a: FacadeApproval, expected: OpenMuseApprovalSnapshot) throws -> OpenMuseDecisionReceipt {
         guard a.id == expected.proposalID, a.action_digest == expected.serverActionDigest, a.upstream_hash == expected.serverHash,
               a.run_id == expected.binding.businessRunID, a.operation_id == expected.binding.operationID,
-              a.task_id == expected.binding.taskID, a.grant_epoch == expected.grantRevision, !a.reconciliation.can_retry else { throw CatpawError.scopeMismatch }
+              a.task_id == expected.binding.taskID, a.grant_epoch == expected.grantRevision, !a.reconciliation.can_retry else { throw catError.scopeMismatch }
         let state: OpenMuseDecisionState
-        switch a.receipt_status { case "accepted": state = .accepted; case "unknown": state = .unknown; case "cancelled_before_dispatch": state = .denied; default: throw CatpawError.invalid("Original receipt has not been dispatched; do not infer permission to retry.") }
+        switch a.receipt_status { case "accepted": state = .accepted; case "unknown": state = .unknown; case "cancelled_before_dispatch": state = .denied; default: throw catError.invalid("Original receipt has not been dispatched; do not infer permission to retry.") }
         return OpenMuseDecisionReceipt(binding: expected.binding, proposalID: a.id, serverActionDigest: a.action_digest,
                                        status: state, providerStatus: a.status, verificationEvidence: ["synthetic-local-projection:\(a.reconciliation.state)"])
     }

@@ -1,7 +1,7 @@
 import Foundation
 import CryptoKit
 
-public enum CatpawError: Error, LocalizedError, Sendable {
+public enum catError: Error, LocalizedError, Sendable {
     case missing, conflict, scopeMismatch, invalid(String), unavailable(String), corrupt(String)
     public var errorDescription: String? {
         switch self {

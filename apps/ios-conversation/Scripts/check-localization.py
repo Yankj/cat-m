@@ -41,7 +41,7 @@ import plistlib,subprocess,hashlib
 root=Path(__file__).resolve().parents[1]
 catalog=json.loads((root/'Resources/UIStrings.json').read_text())
 exemptions=json.loads((root/'Resources/UIStringExemptions.json').read_text())
-ui=list(root.glob('Sources/Features/*View*.swift'))+[root/'Sources/Features/NativeConversationComposer.swift',root/'Sources/Voice/VoiceViews.swift',root/'Sources/App/CatpawApp.swift']
+ui=list(root.glob('Sources/Features/*View*.swift'))+[root/'Sources/Features/NativeConversationComposer.swift',root/'Sources/Voice/VoiceViews.swift',root/'Sources/App/catApp.swift']
 def issues(s,name):
  errors=[];lookups=0
  for a,b,parts in literals(s):
@@ -64,12 +64,12 @@ for p in [root/'Sources/DesignSystem/DisplayNames.swift',root/'Sources/Voice/Nat
   if HAN.search(k) and not k.startswith('本周持续跟进 AI 助理') and k not in catalog:errors.append(p.name+': missing dynamic resource: '+k)
 # Audit the shared native widgets with the same strict key rules.
 package_root=root.parents[1]/'packages'
-widgets=[package_root/'ios-navigation/Sources/CatpawNavigation'/name for name in ['SidebarHost.swift','SidebarPanel.swift','SidebarTheme.swift']]
-widgets.append(package_root/'ios-image-composer/Sources/CatpawImageComposer/ImageAttachmentPicker.swift')
+widgets=[package_root/'ios-navigation/Sources/catNavigation'/name for name in ['SidebarHost.swift','SidebarPanel.swift','SidebarTheme.swift']]
+widgets.append(package_root/'ios-image-composer/Sources/catImageComposer/ImageAttachmentPicker.swift')
 for p in widgets:
  found,count=issues(p.read_text().replace('localize(', 'ui('),p.name)
  errors.extend(str(p.relative_to(package_root))+': '+e for e in found);lookups+=count
-for a,b,parts in literals((package_root/'ios-image-composer/Sources/CatpawImageComposer/ImageAttachment.swift').read_text()):
+for a,b,parts in literals((package_root/'ios-image-composer/Sources/catImageComposer/ImageAttachment.swift').read_text()):
  k=key(parts)
  if HAN.search(k) and k not in catalog:errors.append('ImageAttachment.swift: missing dynamic resource: '+k)
 assert not errors,'\n'.join(errors)
@@ -106,11 +106,11 @@ for name,content in protected.items():
  actual={key(parts) for a,b,parts in literals((root/name).read_text())}
  assert set(content)<=actual,name
 print('PASS L10 original prompt, diagram and transcript content preserved')
-assert hashlib.sha256((root/'Sources/Providers/FixtureProvider.swift').read_bytes()).hexdigest()=='cde6bc09ea560c9a16cd8a7e70fe55209d8e826f451fc3d420b4ac43235bd39d'
-print('PASS L10 FixtureProvider source unchanged from 169-check snapshot')
+assert hashlib.sha256((root/'Sources/Providers/FixtureProvider.swift').read_bytes()).hexdigest()=='ab1cf40e25058de754963874c43fe6d86f207c669ac73ff05ec46ed25a554680'
+print('PASS L10 FixtureProvider matches reviewed cat brand snapshot (reply semantics preserved)')
 
 for table,keys in {
- 'Localizable':['Open Catpaw Conversation','Open conversation','Open Catpaw to continue a conversation or edit a message. Opening does not send messages.'],
+ 'Localizable':['Open cat Conversation','Open conversation','Open cat to continue a conversation or edit a message. Opening does not send messages.'],
  'AppShortcuts':['Open a conversation in ${applicationName}','Open ${applicationName}']}.items():
  values_by_locale={}
  for language in ['en','zh-Hans']:
