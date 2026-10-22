@@ -1,8 +1,8 @@
 # cat 重启 Goal 与交付计划
 
-## 2026-10-23 家庭成长助理 Goal：M0 准备
+## 2026-10-23 家庭成长助理 Goal：收口后暂停
 
-本线程的家庭成长 Goal 已由控制器读回 **ACTIVE**；本轮只进行执行契约准备与离线缺陷复现，**M0 未签收、产品代码改造未启动**。原 FINAL-G3 暂停记录属于此前线程/日期，不由本轮创建替代或签收。家庭三旅程与 AF-A01–18 / AF-U01–12 / CP-01–03 同版门保留，其余既有合同亦未删减。
+用户明确要求安全保存后暂停，本线程家庭成长 Goal 已由控制器读回 **PAUSED**；3名准备Agent均已回报停止，不再启动模块、Agent或产品测试。**M0 未签收、产品代码改造未启动**。本地/云端汇总、工作树/WIP、逐项结果、仍运行服务及恢复步骤统一见[总handoff](../acceptance/family-companion/handoff-2026-10-23.md)与[停工库存](../acceptance/family-companion/handoff-inventory-2026-10-23.json)。原 FINAL-G3 暂停记录属于此前线程/日期，不由本轮创建替代或签收。家庭三旅程与 AF-A01–18 / AF-U01–12 / CP-01–03 同版门保留，其余既有合同亦未删减。
 
 已核对远端 main `789ad4fe` 与规划 `2419db9b`；Root、QA、记忆用例、来源审计分别使用 `docs/family-m0`、`test/family-m0`、`test/family-memory-cases`、`docs/family-source-audit` 独立工作树，主目录与旧工作树保留。[M0契约](../design/family-companion/m0-contract.md)、[97项初始矩阵](../acceptance/family-companion/acceptance-matrix-v1.json)、[当日证据](../acceptance/family-companion/preparation-2026-10-23.md)已落盘。三名本地准备代理的平台 run 为 `gpt-6.1-sol + ultra`；Root 为 `gpt-6-astra + ultra`，模型分工已询问用户、尚待决定。云端实施的模型/Goal未核验，不计正式实施启动。
 
@@ -14,7 +14,9 @@ Supabase只读管理核验API56/tick16/proactive10及21条迁移历史；tick源
 
 已取得dot统一入口 `test/family-cloud-verification@a54d7f2b`，43份QA资产按原字节收录，原39份未变。[新增契约接收记录](../acceptance/family-companion/product-contract-alignment-2026-10-23.md)将12个家庭场景/36条可观察断言、10类状态/14项UI对应到既有门和冻结记忆集；72行映射全部NOT_RUN，不能累加为测试通过数。未确认说已安排、一次事项永久记忆、取消后复活、模糊猜事实及提醒负担均保留逐项要求；图片/音频只有脚本，不能关闭多模态验收。S10受控原例须取消先赢且零未授权副作用，未知期间不假报终态；完成先赢另列，不放宽未确认草稿的授权边界。
 
-[初始化恢复首片方案](../design/family-companion/bootstrap-recovery-plan.md)已形成，固定同实例恢复、并发共享、池归属、配置绑定与不重放写请求的边界，仍为待实施提案。下一步收齐M0未决条件，再按确认范围进入实现。产品保存/保留策略、云端实施入口、模型分工和部署对账未齐；每日一条等新策略仍为提案。真实Auth/模型/SQL/通知/设备安装/部署、新凭据与新增计算均0；本轮新增产品测试0、产品修复0。不得以本轮准备替代真实家庭闭环或同版真机验收。
+[初始化恢复首片方案](../design/family-companion/bootstrap-recovery-plan.md)已形成，固定同实例恢复、并发共享、池归属、配置绑定与不重放写请求的边界，仍为待实施提案。先等待用户明确恢复，再收齐M0未决条件；不自动进入实现。产品保存/保留策略、云端实施入口、模型分工和部署对账未齐；每日一条等新策略仍为提案。真实Auth/模型/产品SQL验证/通知/设备安装/部署、新凭据与新增计算均0；本轮新增产品测试0、产品修复0。停工核对另做2次只读cron元数据查询，不是PG产品验收。不得以本轮准备替代真实家庭闭环或同版真机验收。
+
+停工现场：集成分支收口前`bae90a0d`已推送，云规划`2419db9b`和QA`a54d7f2b`重新fetch/远端读回一致，已交付文件全部接收。3个准备lane及独立复跑没有遗留产品进程；本Goal无匹配本机定时任务。独立官网任务仍在Desktop主目录的`feat/family-website`工作，WIP与4178预览原地保留，不纳入本Goal或擅自停止。既有Supabase API56/tick16/proactive10仍ACTIVE，两个生产cron仍每分钟启用；开发暂停未授权停生产服务。最终交接以专用分支保存同步，随后等待恢复。
 
 以下为此前日期记录，保留当时原文；其中“当前”“ACTIVE/PAUSED”和版本号不外推为本次家庭 Goal 或今天部署状态。
 
