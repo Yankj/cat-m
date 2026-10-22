@@ -1,0 +1,155 @@
+{
+  "schema_version": 1,
+  "recorded_on": "2026-10-23",
+  "check": "scripts/check-agent-foundation-goals.py",
+  "result": "FAIL",
+  "cause": "Existing Goal source map no longer matches 24 current source files; root work leaves both inputs unchanged.",
+  "product_base": "789ad4feceb0680b8e2e5913083c5b834dc63db1",
+  "changed_inputs": [
+    {
+      "path": "docs/design/ios-codex-experience-spec.md",
+      "declared_sha256": "24f1a5ff3c6c771933e1f91eaa22c19c5b75b5475603f1750e15bc3fe199fc09",
+      "actual_sha256": "0bd9a0027eb99f883b7461d5ac3ed1ce8742224f85b2b143c134733c37287991",
+      "matches_product_base": true
+    },
+    {
+      "path": "docs/design/prototypes/catpaw-ios-ux/index.html",
+      "declared_sha256": "73479eb17f95349513aa1e0958a2b562a282674260ed11efed487f49cff5c130",
+      "actual_sha256": "5a3ce6c25e9db3d8affebb17cfb96061876c1688129a17595a94e4df87dbec10",
+      "matches_product_base": true
+    },
+    {
+      "path": "docs/product/catpaw-final-product-spec.md",
+      "declared_sha256": "a5a5a18cc508689c033bb33e58ee23c5b010b9e0ae79f3476c6cd9f27924213b",
+      "actual_sha256": "90b3bd8d3a2e7927fdcedbdeafad4decd116aac3071a98f902234aa61c253d7e",
+      "matches_product_base": true
+    },
+    {
+      "path": "docs/design/prototypes/catpaw-final/index.html",
+      "declared_sha256": "8e0b2aa1b6f38dd6cabe9181ef3c4204596210f0a9a79925cadafbedb353ab46",
+      "actual_sha256": "3174a40656166452827f1bf661bfed414a67238b356c75630033069b1e18eeb5",
+      "matches_product_base": true
+    },
+    {
+      "path": "docs/planning/AF-1/long-task-development-prompt.md",
+      "declared_sha256": "5cc7393d3727ac18600c41b244d5a309968542453bf2c6df6e03d0a1775583e9",
+      "actual_sha256": "80ac1abe6e474f017ab6f9097d959c6c71efab895fe03e49ff7406c328f3eb4b",
+      "matches_product_base": true
+    },
+    {
+      "path": "docs/design/taste-visual-motion-r2.md",
+      "declared_sha256": "35cc1b992245da042cdbee43d66949bc303942cd472d78358a9c7cedad55a648",
+      "actual_sha256": "db19d1c65e38875a351efb27ca4e07a2399c19b8322f5fe190d2c3cfdc621e5a",
+      "matches_product_base": true
+    },
+    {
+      "path": "docs/design/prototypes/catpaw-taste/index.html",
+      "declared_sha256": "a27d2248a7ebc35cfcfda20de2e87f4d617ba3e98e9a44007d1486590f610f7c",
+      "actual_sha256": "f02cf14c0ed929866693d9e3996ef65b7cd564b8b4e25d43a1e12dc61871ab9f",
+      "matches_product_base": true
+    },
+    {
+      "path": "docs/design/prototypes/catpaw-taste/app.js",
+      "declared_sha256": "cfd4fd875eca1e4ed4ef7620ad6ea51a3c8f5fecef1456e2bd9fa95d0e6fbfb7",
+      "actual_sha256": "ea177b8c8fcf8f8412cf794d8f4b3d12ec8b0dbdd186b823af36c7bff646fe92",
+      "matches_product_base": true
+    },
+    {
+      "path": "docs/design/prototypes/catpaw-interaction-r3/README.md",
+      "declared_sha256": "c17ec6da9f1795cd747825ee7937b3adb33f74459b68677687966442ca372d4f",
+      "actual_sha256": "ec17b21215dfef7553991dbc1b8c07ddd67f53c258c7df34f4e5f90589a96e02",
+      "matches_product_base": true
+    },
+    {
+      "path": "docs/design/prototypes/catpaw-interaction-r3/app.js",
+      "declared_sha256": "ed6be84bd268987e5f44ea30a524d9205dd7c4ab7f562a2f26cd27d726805077",
+      "actual_sha256": "14292fadf8c31b385efaf31119a4cc624ad131e8673db5a311edd529631a6508",
+      "matches_product_base": true
+    },
+    {
+      "path": "docs/design/prototypes/catpaw-interaction-r3/index.html",
+      "declared_sha256": "26d1138eb814cd1584b5d22146e3f2ed77956fadb0b5b5893c0d34d38f91c40f",
+      "actual_sha256": "3c7a33cee894e2ed39595c437671ca1e9d8d18e989959fef116528958151d7b2",
+      "matches_product_base": true
+    },
+    {
+      "path": "docs/design/native-interaction-motion-r4.md",
+      "declared_sha256": "0c76d25089daf0bb587358da97506e0159fbfb5118ebeb649cc10582987577b9",
+      "actual_sha256": "81489d9749f8a4a2ec3ebf50485895bcb256b1702fa0b5e087597e7c3dd9ff7c",
+      "matches_product_base": true
+    },
+    {
+      "path": "docs/design/prototypes/catpaw-motion-study-r4/README.md",
+      "declared_sha256": "fd434f58057cc61347ee119d35698782df8198f064d8e4a2988ffee98fad3ab8",
+      "actual_sha256": "bbb44d7b9d9a08b19cf3fa1a5dc62bf1d0e60d3c79f334d5f90a457f7ebf6125",
+      "matches_product_base": true
+    },
+    {
+      "path": "docs/design/prototypes/catpaw-motion-study-r4/app.js",
+      "declared_sha256": "eaa5ee930dd41e97a25f55dbe85816751e703d08d9478dc373fc47f66213f203",
+      "actual_sha256": "e93194bc8b55009de352246bdfe363f332aa71386249b572e6eb136e7a8e647f",
+      "matches_product_base": true
+    },
+    {
+      "path": "docs/design/prototypes/catpaw-motion-study-r4/index.html",
+      "declared_sha256": "15cb30fdb18402505be121321430019a1b717d6723d4c0026ee7f3edca4a2c8c",
+      "actual_sha256": "120d50620a932a65767ce3541530ba18f5d1cce75967db714c8daf7d2d03cdc1",
+      "matches_product_base": true
+    },
+    {
+      "path": "docs/design/prototypes/catpaw-motion-study-r4/motion.js",
+      "declared_sha256": "c97ff115930bc0277df0995c7be1dc0d44c5f6d1650e76f972c83d6114e4184d",
+      "actual_sha256": "2b7f81d28f53cda60d99954a9fd10d67cd9c87cc7b9fc881fee61f24d305057b",
+      "matches_product_base": true
+    },
+    {
+      "path": "docs/design/codex-color-detail-r4-1.md",
+      "declared_sha256": "570b402f0bff84c08be9ce2aafbf998f2f15296974ef560ba984761399fd1f56",
+      "actual_sha256": "c5f7c49814220b96e84a0953f9bbc794389e7240ac7cede81e47cde6035aa9aa",
+      "matches_product_base": true
+    },
+    {
+      "path": "docs/design/prototypes/catpaw-codex-color-r4-1/README.md",
+      "declared_sha256": "8cf066263a1734ceae441fd8b145bfe9b714fb5bd270bfd10801d5576e52c4e0",
+      "actual_sha256": "b958bf399bd3dcef6c312f5553baff8e098d529ac00c9b228541412e877b7c61",
+      "matches_product_base": true
+    },
+    {
+      "path": "docs/design/prototypes/catpaw-codex-color-r4-1/index.html",
+      "declared_sha256": "073a25fb5aa0692b5a3963e70b29451c5d6d3ba401512beb89fe11609f2a2d2f",
+      "actual_sha256": "9515c81df9b24ef73afcd4db70446d5809b51863cf7fe786e6471a623287eaf1",
+      "matches_product_base": true
+    },
+    {
+      "path": "docs/design/mobile-conversation-reference-r5.md",
+      "declared_sha256": "7789e1c40390789df0a5cd0a2906ceac6a515a1458cb2a0d731d4c30872c403e",
+      "actual_sha256": "e59b4ff14f3876d6057f911322ac74032cf3ed5708a0b816ca300656a58ddf72",
+      "matches_product_base": true
+    },
+    {
+      "path": "docs/design/prototypes/catpaw-mobile-reference-r5/README.md",
+      "declared_sha256": "b9488ec3a380395868ff5fd53ccc5b55e9d9e76b38f5c06554124b0d3681ded2",
+      "actual_sha256": "21454333d7aaafd5f01bdd3affa42153ae6342f78818a75f78e9cf53a91b2a81",
+      "matches_product_base": true
+    },
+    {
+      "path": "docs/design/prototypes/catpaw-mobile-reference-r5/index.html",
+      "declared_sha256": "913ef7f7ca498a8f5a6088f791a90b08e803f61cdaa1c118ff986a15a20eb559",
+      "actual_sha256": "085336bdddabc1dbe691df7ec20aab5be56bee681a4dcfba8305aff302fcab06",
+      "matches_product_base": true
+    },
+    {
+      "path": "docs/design/prototypes/catpaw-mobile-reference-r5/mobile.css",
+      "declared_sha256": "6aaa7124141aff5697158b46e6d1af0ccebc61b0d92f8143dcfb3e5ab0fea819",
+      "actual_sha256": "d3aca487d565eebcb58ad5ff8553908378867729cd73d43c9b918edf84a5e8f9",
+      "matches_product_base": true
+    },
+    {
+      "path": "docs/design/prototypes/catpaw-mobile-reference-r5/mobile.js",
+      "declared_sha256": "1be22dde827d28249f5c289f79667cd0418579b4416682be19029c315d649be0",
+      "actual_sha256": "325c6d571d768be7a4208ec4cbed23460da0dd9e2e0735a9b5ff87ad0053fe78",
+      "matches_product_base": true
+    }
+  ],
+  "resolution": "Preserve historical hashes; reconcile provenance separately before M0 closes. No hash refresh to disguise drift."
+}

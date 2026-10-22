@@ -1,0 +1,1608 @@
+{
+  "schema_version": 1,
+  "version": "family-acceptance.v1",
+  "recorded_on": "2026-10-23",
+  "kind": "initial_requirement_inventory_not_live_status",
+  "result_authority": "docs/status/master-plan.md",
+  "same_release_required": true,
+  "candidate_manifest": null,
+  "status_note": "全部产品项缺少本轮同版证据，初始为NOT_RUN；M1基线反例另见reliability-matrix-v1.json，不能因本表NOT_RUN隐藏FAIL。",
+  "criteria": [
+    {
+      "id": "FAM-M0-WORKSPACE",
+      "milestone": "M0",
+      "requirement": "本地目录、origin/main、规划输入和WIP归属固定",
+      "required": true,
+      "minimum_evidence": [
+        "git_readback",
+        "separate_worktrees"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [],
+      "candidate_manifest": null
+    },
+    {
+      "id": "FAM-M0-GOAL",
+      "milestone": "M0",
+      "requirement": "原生Goal按本线程读回，未重复创建",
+      "required": true,
+      "minimum_evidence": [
+        "goal_controller"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [],
+      "candidate_manifest": null
+    },
+    {
+      "id": "FAM-M0-RUNTIME",
+      "milestone": "M0",
+      "requirement": "每个实际执行端model/effort/Goal能力可核验，差异获决定",
+      "required": true,
+      "minimum_evidence": [
+        "run_context",
+        "user_decision_if_mismatch"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [],
+      "candidate_manifest": null
+    },
+    {
+      "id": "FAM-M0-CLOUD",
+      "milestone": "M0",
+      "requirement": "dot入口与云后端/记忆/QA真实任务句柄及环境接通",
+      "required": true,
+      "minimum_evidence": [
+        "platform_task_readback"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [],
+      "candidate_manifest": null
+    },
+    {
+      "id": "FAM-M0-CONTRACT",
+      "milestone": "M0",
+      "requirement": "API/命令回执/版本/权限/分工/回滚对齐，无共享writer",
+      "required": true,
+      "minimum_evidence": [
+        "reviewed_protocol",
+        "owner_acknowledgements"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [],
+      "candidate_manifest": null
+    },
+    {
+      "id": "FAM-M0-FIXTURES",
+      "milestone": "M0",
+      "requirement": "100条记忆用例、分母、阈值和故障输入经独立审阅冻结",
+      "required": true,
+      "minimum_evidence": [
+        "fixture_hashes",
+        "independent_review"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [],
+      "candidate_manifest": null
+    },
+    {
+      "id": "FAM-M0-DEPLOYMENT",
+      "milestone": "M0",
+      "requirement": "本地与当前部署/迁移/配置manifest对账",
+      "required": true,
+      "minimum_evidence": [
+        "hosted_source_manifest"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [],
+      "candidate_manifest": null
+    },
+    {
+      "id": "FAM-M0-POLICY",
+      "milestone": "M0",
+      "requirement": "首发主体、保存/保留/删除、日志清扫责任冻结",
+      "required": true,
+      "minimum_evidence": [
+        "reviewed_product_policy"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [],
+      "candidate_manifest": null
+    },
+    {
+      "id": "FAM-M1-INIT",
+      "milestone": "M1",
+      "requirement": "首次失败后同实例恢复，100并发single-flight与资源清理",
+      "required": true,
+      "minimum_evidence": [
+        "offline_fault_injection",
+        "isolated_pg"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [],
+      "candidate_manifest": null
+    },
+    {
+      "id": "FAM-M1-REMINDER",
+      "milestone": "M1",
+      "requirement": "中断、取消、写失败、重启后恢复且无重复可见结果",
+      "required": true,
+      "minimum_evidence": [
+        "offline_fault_injection",
+        "real_pg_multi_instance",
+        "device_receipts"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [],
+      "candidate_manifest": null
+    },
+    {
+      "id": "FAM-M1-PRIVACY",
+      "milestone": "M1",
+      "requirement": "对话/媒体/记忆/错误内容不进日志",
+      "required": true,
+      "minimum_evidence": [
+        "synthetic_sentinel_sweep",
+        "native_log_capture"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [],
+      "candidate_manifest": null
+    },
+    {
+      "id": "FAM-M1-LATENCY",
+      "milestone": "M1",
+      "requirement": "分段耗时串联，先真实baseline后冻结延迟门，失败入分母",
+      "required": true,
+      "minimum_evidence": [
+        "30_synthetic_traces",
+        "authorized_real_baseline",
+        "threshold_decision"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [],
+      "candidate_manifest": null
+    },
+    {
+      "id": "FAM-M1-REGRESSION",
+      "milestone": "M1",
+      "requirement": "当前必需原生失败逐项归因修复，定向通过不抵全套失败",
+      "required": true,
+      "minimum_evidence": [
+        "pinned_native_suite",
+        "failure_attribution"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [],
+      "candidate_manifest": null
+    },
+    {
+      "id": "FAM-M2-LOOP",
+      "milestone": "M2",
+      "requirement": "记录→查找→修改→确认→生效→取消的同一家庭对象闭环",
+      "required": true,
+      "minimum_evidence": [
+        "same_candidate_device_e2e",
+        "durable_receipts"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [],
+      "candidate_manifest": null
+    },
+    {
+      "id": "FAM-M2-PROJECTION",
+      "milestone": "M2",
+      "requirement": "今天/对话/我们家读取相同对象revision",
+      "required": true,
+      "minimum_evidence": [
+        "same_candidate_native_ui",
+        "server_projection"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [],
+      "candidate_manifest": null
+    },
+    {
+      "id": "FAM-M2-CONSENT",
+      "milestone": "M2",
+      "requirement": "未确认零写入，改参数或版本后重审",
+      "required": true,
+      "minimum_evidence": [
+        "contract_negative_tests",
+        "device_e2e"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [],
+      "candidate_manifest": null
+    },
+    {
+      "id": "FAM-M2-OFFLINE",
+      "milestone": "M2",
+      "requirement": "断网和冷启动保留草稿/附件合规缓存，不报已云端保存",
+      "required": true,
+      "minimum_evidence": [
+        "native_restart",
+        "offline_injection"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [],
+      "candidate_manifest": null
+    },
+    {
+      "id": "FAM-M2-IDEMPOTENCY",
+      "milestone": "M2",
+      "requirement": "重复点击/超时查原ID，不重复创建或盲重发",
+      "required": true,
+      "minimum_evidence": [
+        "real_pg_concurrency",
+        "http_trace"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [],
+      "candidate_manifest": null
+    },
+    {
+      "id": "FAM-M2-ISOLATION",
+      "milestone": "M2",
+      "requirement": "两家庭/私有/跨账号迟到结果/撤权至少20组零越权",
+      "required": true,
+      "minimum_evidence": [
+        "real_pg_rls",
+        "http_adversarial_tests",
+        "native_account_epoch"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [],
+      "candidate_manifest": null
+    },
+    {
+      "id": "FAM-M3-IMAGE",
+      "milestone": "M3",
+      "requirement": "学校通知图片提取/来源/模糊字段澄清再确认",
+      "required": true,
+      "minimum_evidence": [
+        "authorized_vision_route",
+        "same_candidate_device"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [],
+      "candidate_manifest": null
+    },
+    {
+      "id": "FAM-M3-DICTATION",
+      "milestone": "M3",
+      "requirement": "口述可编辑/可取消，日期姓名否定歧义不猜",
+      "required": true,
+      "minimum_evidence": [
+        "same_candidate_device_dictation"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [],
+      "candidate_manifest": null
+    },
+    {
+      "id": "FAM-M3-RECALL",
+      "milestone": "M3",
+      "requirement": "100条固定跨会话用例，改写召回达冻结阈值",
+      "required": true,
+      "minimum_evidence": [
+        "fixed_100_cases",
+        "authorized_model_results"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [],
+      "candidate_manifest": null
+    },
+    {
+      "id": "FAM-M3-SOURCE",
+      "milestone": "M3",
+      "requirement": "来源与事实/观察/推断可查，无错误家庭背景",
+      "required": true,
+      "minimum_evidence": [
+        "source_revision_trace",
+        "device_memory_ui"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [],
+      "candidate_manifest": null
+    },
+    {
+      "id": "FAM-M3-CORRECTION",
+      "milestone": "M3",
+      "requirement": "旧版本409，保草稿，更正后不得使用旧事实",
+      "required": true,
+      "minimum_evidence": [
+        "real_pg_cas",
+        "two_sessions",
+        "model_injection_trace"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [],
+      "candidate_manifest": null
+    },
+    {
+      "id": "FAM-M3-DELETE",
+      "milestone": "M3",
+      "requirement": "删除后缓存/索引/摘要/迟到job不复活，journal不丢片",
+      "required": true,
+      "minimum_evidence": [
+        "real_pg_recovery",
+        "late_job_trace",
+        "native_restart"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [],
+      "candidate_manifest": null
+    },
+    {
+      "id": "FAM-M3-MEDIA",
+      "milestone": "M3",
+      "requirement": "原媒体TTL/撤销/保留选择按策略处理",
+      "required": true,
+      "minimum_evidence": [
+        "storage_expiry_trace",
+        "device_confirmation"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [],
+      "candidate_manifest": null
+    },
+    {
+      "id": "FAM-M4-WHY",
+      "milestone": "M4",
+      "requirement": "每条提醒/建议可追溯变化、规则和为什么现在",
+      "required": true,
+      "minimum_evidence": [
+        "real_scheduler",
+        "domain_source_refs"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [],
+      "candidate_manifest": null
+    },
+    {
+      "id": "FAM-M4-NO_CHANGE",
+      "milestone": "M4",
+      "requirement": "无变化不制造建议/推送/模型打扰",
+      "required": true,
+      "minimum_evidence": [
+        "no_change_replay",
+        "model_dispatch_counter"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [],
+      "candidate_manifest": null
+    },
+    {
+      "id": "FAM-M4-QUIET",
+      "milestone": "M4",
+      "requirement": "静默、频率限制、暂停/撤销、过期权限有效",
+      "required": true,
+      "minimum_evidence": [
+        "real_scheduler",
+        "device_settings"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [],
+      "candidate_manifest": null
+    },
+    {
+      "id": "FAM-M4-DEDUPE",
+      "milestone": "M4",
+      "requirement": "重复tick/并发/崩溃/取消交错不重复通知，失败恢复",
+      "required": true,
+      "minimum_evidence": [
+        "real_pg_multi_instance",
+        "controlled_notification_receipts"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [],
+      "candidate_manifest": null
+    },
+    {
+      "id": "FAM-M4-HANDOFF",
+      "milestone": "M4",
+      "requirement": "Inbox/APNs接受/用户阅读或接手分开，不假报成功",
+      "required": true,
+      "minimum_evidence": [
+        "delivery_state_trace",
+        "device_e2e"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [],
+      "candidate_manifest": null
+    },
+    {
+      "id": "FAM-M5-MANIFEST",
+      "milestone": "M5",
+      "requirement": "同一App包/后端/迁移/配置/协议release manifest完成全部必需项",
+      "required": true,
+      "minimum_evidence": [
+        "same_release_manifest",
+        "artifact_hashes"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [],
+      "candidate_manifest": null
+    },
+    {
+      "id": "FAM-M5-DEVICE",
+      "milestone": "M5",
+      "requirement": "同版图片/口述/通知/系统动作/后台恢复/断网/升级全链",
+      "required": true,
+      "minimum_evidence": [
+        "physical_device",
+        "system_receipts"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [],
+      "candidate_manifest": null
+    },
+    {
+      "id": "FAM-M5-ACCESSIBILITY",
+      "milestone": "M5",
+      "requirement": "尺寸/浅深/最大字号/VoiceOver/Reduce Motion可完成核心操作",
+      "required": true,
+      "minimum_evidence": [
+        "physical_device_accessibility_matrix"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [],
+      "candidate_manifest": null
+    },
+    {
+      "id": "FAM-M5-FAILURES",
+      "milestone": "M5",
+      "requirement": "必需测试无未解释失败，不跨版本拼通过",
+      "required": true,
+      "minimum_evidence": [
+        "complete_required_results",
+        "failure_attribution"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [],
+      "candidate_manifest": null
+    },
+    {
+      "id": "FAM-M5-DAILY",
+      "milestone": "M5",
+      "requirement": "受控单成人日用测遗漏/重复交代/催办是否减少，再决定扩大",
+      "required": true,
+      "minimum_evidence": [
+        "authorized_daily_journal",
+        "comparison_to_baseline"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [],
+      "candidate_manifest": null
+    },
+    {
+      "id": "FAM-M5-ROLLBACK",
+      "milestone": "M5",
+      "requirement": "删除/导出/恢复/回滚演练及产品发布审批",
+      "required": true,
+      "minimum_evidence": [
+        "isolated_recovery_drill",
+        "explicit_release_decision"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [],
+      "candidate_manifest": null
+    },
+    {
+      "id": "AF-A01",
+      "milestone": "inherited_same_release",
+      "requirement": "原合同逐项保留；具体步骤/分母/证据要求以来源为准",
+      "required": true,
+      "minimum_evidence": [
+        "source_tree_readback",
+        "native_build",
+        "release_manifest"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [
+        {
+          "path": "docs/acceptance/agent-foundation-acceptance.json",
+          "case_id": "AF-A01"
+        }
+      ],
+      "candidate_manifest": null
+    },
+    {
+      "id": "AF-A02",
+      "milestone": "inherited_same_release",
+      "requirement": "原合同逐项保留；具体步骤/分母/证据要求以来源为准",
+      "required": true,
+      "minimum_evidence": [
+        "real_service",
+        "physical_device"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [
+        {
+          "path": "docs/acceptance/agent-foundation-acceptance.json",
+          "case_id": "AF-A02"
+        }
+      ],
+      "candidate_manifest": null
+    },
+    {
+      "id": "AF-A03",
+      "milestone": "inherited_same_release",
+      "requirement": "原合同逐项保留；具体步骤/分母/证据要求以来源为准",
+      "required": true,
+      "minimum_evidence": [
+        "real_service",
+        "physical_device"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [
+        {
+          "path": "docs/acceptance/agent-foundation-acceptance.json",
+          "case_id": "AF-A03"
+        }
+      ],
+      "candidate_manifest": null
+    },
+    {
+      "id": "AF-A04",
+      "milestone": "inherited_same_release",
+      "requirement": "原合同逐项保留；具体步骤/分母/证据要求以来源为准",
+      "required": true,
+      "minimum_evidence": [
+        "real_service",
+        "physical_device"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [
+        {
+          "path": "docs/acceptance/agent-foundation-acceptance.json",
+          "case_id": "AF-A04"
+        }
+      ],
+      "candidate_manifest": null
+    },
+    {
+      "id": "AF-A05",
+      "milestone": "inherited_same_release",
+      "requirement": "原合同逐项保留；具体步骤/分母/证据要求以来源为准",
+      "required": true,
+      "minimum_evidence": [
+        "real_service",
+        "physical_device"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [
+        {
+          "path": "docs/acceptance/agent-foundation-acceptance.json",
+          "case_id": "AF-A05"
+        }
+      ],
+      "candidate_manifest": null
+    },
+    {
+      "id": "AF-A06",
+      "milestone": "inherited_same_release",
+      "requirement": "原合同逐项保留；具体步骤/分母/证据要求以来源为准",
+      "required": true,
+      "minimum_evidence": [
+        "real_service",
+        "physical_device"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [
+        {
+          "path": "docs/acceptance/agent-foundation-acceptance.json",
+          "case_id": "AF-A06"
+        }
+      ],
+      "candidate_manifest": null
+    },
+    {
+      "id": "AF-A07",
+      "milestone": "inherited_same_release",
+      "requirement": "原合同逐项保留；具体步骤/分母/证据要求以来源为准",
+      "required": true,
+      "minimum_evidence": [
+        "real_service",
+        "physical_device"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [
+        {
+          "path": "docs/acceptance/agent-foundation-acceptance.json",
+          "case_id": "AF-A07"
+        }
+      ],
+      "candidate_manifest": null
+    },
+    {
+      "id": "AF-A08",
+      "milestone": "inherited_same_release",
+      "requirement": "原合同逐项保留；具体步骤/分母/证据要求以来源为准",
+      "required": true,
+      "minimum_evidence": [
+        "real_service",
+        "physical_device"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [
+        {
+          "path": "docs/acceptance/agent-foundation-acceptance.json",
+          "case_id": "AF-A08"
+        }
+      ],
+      "candidate_manifest": null
+    },
+    {
+      "id": "AF-A09",
+      "milestone": "inherited_same_release",
+      "requirement": "原合同逐项保留；具体步骤/分母/证据要求以来源为准",
+      "required": true,
+      "minimum_evidence": [
+        "real_service",
+        "physical_device"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [
+        {
+          "path": "docs/acceptance/agent-foundation-acceptance.json",
+          "case_id": "AF-A09"
+        }
+      ],
+      "candidate_manifest": null
+    },
+    {
+      "id": "AF-A10",
+      "milestone": "inherited_same_release",
+      "requirement": "原合同逐项保留；具体步骤/分母/证据要求以来源为准",
+      "required": true,
+      "minimum_evidence": [
+        "real_postgres",
+        "controlled_effect_receipt"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [
+        {
+          "path": "docs/acceptance/agent-foundation-acceptance.json",
+          "case_id": "AF-A10"
+        }
+      ],
+      "candidate_manifest": null
+    },
+    {
+      "id": "AF-A11",
+      "milestone": "inherited_same_release",
+      "requirement": "原合同逐项保留；具体步骤/分母/证据要求以来源为准",
+      "required": true,
+      "minimum_evidence": [
+        "real_postgres",
+        "two_scope_context"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [
+        {
+          "path": "docs/acceptance/agent-foundation-acceptance.json",
+          "case_id": "AF-A11"
+        }
+      ],
+      "candidate_manifest": null
+    },
+    {
+      "id": "AF-A12",
+      "milestone": "inherited_same_release",
+      "requirement": "原合同逐项保留；具体步骤/分母/证据要求以来源为准",
+      "required": true,
+      "minimum_evidence": [
+        "real_scheduler",
+        "real_service"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [
+        {
+          "path": "docs/acceptance/agent-foundation-acceptance.json",
+          "case_id": "AF-A12"
+        }
+      ],
+      "candidate_manifest": null
+    },
+    {
+      "id": "AF-A13",
+      "milestone": "inherited_same_release",
+      "requirement": "原合同逐项保留；具体步骤/分母/证据要求以来源为准",
+      "required": true,
+      "minimum_evidence": [
+        "real_scheduler",
+        "real_service"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [
+        {
+          "path": "docs/acceptance/agent-foundation-acceptance.json",
+          "case_id": "AF-A13"
+        }
+      ],
+      "candidate_manifest": null
+    },
+    {
+      "id": "AF-A14",
+      "milestone": "inherited_same_release",
+      "requirement": "原合同逐项保留；具体步骤/分母/证据要求以来源为准",
+      "required": true,
+      "minimum_evidence": [
+        "real_service",
+        "physical_device"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [
+        {
+          "path": "docs/acceptance/agent-foundation-acceptance.json",
+          "case_id": "AF-A14"
+        }
+      ],
+      "candidate_manifest": null
+    },
+    {
+      "id": "AF-A15",
+      "milestone": "inherited_same_release",
+      "requirement": "原合同逐项保留；具体步骤/分母/证据要求以来源为准",
+      "required": true,
+      "minimum_evidence": [
+        "real_service",
+        "physical_device"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [
+        {
+          "path": "docs/acceptance/agent-foundation-acceptance.json",
+          "case_id": "AF-A15"
+        }
+      ],
+      "candidate_manifest": null
+    },
+    {
+      "id": "AF-A16",
+      "milestone": "inherited_same_release",
+      "requirement": "原合同逐项保留；具体步骤/分母/证据要求以来源为准",
+      "required": true,
+      "minimum_evidence": [
+        "real_service",
+        "physical_device"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [
+        {
+          "path": "docs/acceptance/agent-foundation-acceptance.json",
+          "case_id": "AF-A16"
+        }
+      ],
+      "candidate_manifest": null
+    },
+    {
+      "id": "AF-A17",
+      "milestone": "inherited_same_release",
+      "requirement": "原合同逐项保留；具体步骤/分母/证据要求以来源为准",
+      "required": true,
+      "minimum_evidence": [
+        "real_service",
+        "physical_device"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [
+        {
+          "path": "docs/acceptance/agent-foundation-acceptance.json",
+          "case_id": "AF-A17"
+        }
+      ],
+      "candidate_manifest": null
+    },
+    {
+      "id": "AF-A18",
+      "milestone": "inherited_same_release",
+      "requirement": "原合同逐项保留；具体步骤/分母/证据要求以来源为准",
+      "required": true,
+      "minimum_evidence": [
+        "static"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [
+        {
+          "path": "docs/acceptance/agent-foundation-acceptance.json",
+          "case_id": "AF-A18"
+        }
+      ],
+      "candidate_manifest": null
+    },
+    {
+      "id": "AF-U01",
+      "milestone": "inherited_same_release",
+      "requirement": "原合同逐项保留；具体步骤/分母/证据要求以来源为准",
+      "required": true,
+      "minimum_evidence": [
+        "physical_device",
+        "native_rendered_ui"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [
+        {
+          "path": "docs/acceptance/ios-codex-experience-acceptance.json",
+          "case_id": "AF-U01"
+        }
+      ],
+      "candidate_manifest": null
+    },
+    {
+      "id": "AF-U02",
+      "milestone": "inherited_same_release",
+      "requirement": "原合同逐项保留；具体步骤/分母/证据要求以来源为准",
+      "required": true,
+      "minimum_evidence": [
+        "physical_device",
+        "native_rendered_ui"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [
+        {
+          "path": "docs/acceptance/ios-codex-experience-acceptance.json",
+          "case_id": "AF-U02"
+        }
+      ],
+      "candidate_manifest": null
+    },
+    {
+      "id": "AF-U03",
+      "milestone": "inherited_same_release",
+      "requirement": "原合同逐项保留；具体步骤/分母/证据要求以来源为准",
+      "required": true,
+      "minimum_evidence": [
+        "physical_device",
+        "native_rendered_ui",
+        "parent_case_real_evidence"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [
+        {
+          "path": "docs/acceptance/ios-codex-experience-acceptance.json",
+          "case_id": "AF-U03"
+        }
+      ],
+      "candidate_manifest": null
+    },
+    {
+      "id": "AF-U04",
+      "milestone": "inherited_same_release",
+      "requirement": "原合同逐项保留；具体步骤/分母/证据要求以来源为准",
+      "required": true,
+      "minimum_evidence": [
+        "physical_device",
+        "native_rendered_ui",
+        "parent_case_real_evidence"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [
+        {
+          "path": "docs/acceptance/ios-codex-experience-acceptance.json",
+          "case_id": "AF-U04"
+        }
+      ],
+      "candidate_manifest": null
+    },
+    {
+      "id": "AF-U05",
+      "milestone": "inherited_same_release",
+      "requirement": "原合同逐项保留；具体步骤/分母/证据要求以来源为准",
+      "required": true,
+      "minimum_evidence": [
+        "physical_device",
+        "native_rendered_ui"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [
+        {
+          "path": "docs/acceptance/ios-codex-experience-acceptance.json",
+          "case_id": "AF-U05"
+        }
+      ],
+      "candidate_manifest": null
+    },
+    {
+      "id": "AF-U06",
+      "milestone": "inherited_same_release",
+      "requirement": "原合同逐项保留；具体步骤/分母/证据要求以来源为准",
+      "required": true,
+      "minimum_evidence": [
+        "physical_device",
+        "native_rendered_ui",
+        "parent_case_real_evidence"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [
+        {
+          "path": "docs/acceptance/ios-codex-experience-acceptance.json",
+          "case_id": "AF-U06"
+        }
+      ],
+      "candidate_manifest": null
+    },
+    {
+      "id": "AF-U07",
+      "milestone": "inherited_same_release",
+      "requirement": "原合同逐项保留；具体步骤/分母/证据要求以来源为准",
+      "required": true,
+      "minimum_evidence": [
+        "physical_device",
+        "native_rendered_ui",
+        "parent_case_real_evidence"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [
+        {
+          "path": "docs/acceptance/ios-codex-experience-acceptance.json",
+          "case_id": "AF-U07"
+        }
+      ],
+      "candidate_manifest": null
+    },
+    {
+      "id": "AF-U08",
+      "milestone": "inherited_same_release",
+      "requirement": "原合同逐项保留；具体步骤/分母/证据要求以来源为准",
+      "required": true,
+      "minimum_evidence": [
+        "physical_device",
+        "native_rendered_ui",
+        "parent_case_real_evidence"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [
+        {
+          "path": "docs/acceptance/ios-codex-experience-acceptance.json",
+          "case_id": "AF-U08"
+        }
+      ],
+      "candidate_manifest": null
+    },
+    {
+      "id": "AF-U09",
+      "milestone": "inherited_same_release",
+      "requirement": "原合同逐项保留；具体步骤/分母/证据要求以来源为准",
+      "required": true,
+      "minimum_evidence": [
+        "physical_device",
+        "native_rendered_ui",
+        "parent_case_real_evidence"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [
+        {
+          "path": "docs/acceptance/ios-codex-experience-acceptance.json",
+          "case_id": "AF-U09"
+        }
+      ],
+      "candidate_manifest": null
+    },
+    {
+      "id": "AF-U10",
+      "milestone": "inherited_same_release",
+      "requirement": "原合同逐项保留；具体步骤/分母/证据要求以来源为准",
+      "required": true,
+      "minimum_evidence": [
+        "physical_device",
+        "native_rendered_ui"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [
+        {
+          "path": "docs/acceptance/ios-codex-experience-acceptance.json",
+          "case_id": "AF-U10"
+        }
+      ],
+      "candidate_manifest": null
+    },
+    {
+      "id": "AF-U11",
+      "milestone": "inherited_same_release",
+      "requirement": "原合同逐项保留；具体步骤/分母/证据要求以来源为准",
+      "required": true,
+      "minimum_evidence": [
+        "physical_device",
+        "native_rendered_ui"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [
+        {
+          "path": "docs/acceptance/ios-codex-experience-acceptance.json",
+          "case_id": "AF-U11"
+        }
+      ],
+      "candidate_manifest": null
+    },
+    {
+      "id": "AF-U12",
+      "milestone": "inherited_same_release",
+      "requirement": "原合同逐项保留；具体步骤/分母/证据要求以来源为准",
+      "required": true,
+      "minimum_evidence": [
+        "physical_device",
+        "native_rendered_ui",
+        "parent_case_real_evidence"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [
+        {
+          "path": "docs/acceptance/ios-codex-experience-acceptance.json",
+          "case_id": "AF-U12"
+        }
+      ],
+      "candidate_manifest": null
+    },
+    {
+      "id": "CP-01",
+      "milestone": "inherited_same_release",
+      "requirement": "原合同逐项保留；具体步骤/分母/证据要求以来源为准",
+      "required": true,
+      "minimum_evidence": [
+        "original_contract_evidence"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [
+        {
+          "path": "docs/planning/AF-1/contract.json",
+          "case_id": "CP-01"
+        }
+      ],
+      "candidate_manifest": null
+    },
+    {
+      "id": "CP-02",
+      "milestone": "inherited_same_release",
+      "requirement": "原合同逐项保留；具体步骤/分母/证据要求以来源为准",
+      "required": true,
+      "minimum_evidence": [
+        "original_contract_evidence"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [
+        {
+          "path": "docs/planning/AF-1/contract.json",
+          "case_id": "CP-02"
+        }
+      ],
+      "candidate_manifest": null
+    },
+    {
+      "id": "CP-03",
+      "milestone": "inherited_same_release",
+      "requirement": "原合同逐项保留；具体步骤/分母/证据要求以来源为准",
+      "required": true,
+      "minimum_evidence": [
+        "original_contract_evidence"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [
+        {
+          "path": "docs/planning/AF-1/contract.json",
+          "case_id": "CP-03"
+        }
+      ],
+      "candidate_manifest": null
+    },
+    {
+      "id": "FQ-01",
+      "milestone": "inherited_same_release",
+      "requirement": "原合同逐项保留；具体步骤/分母/证据要求以来源为准",
+      "required": true,
+      "minimum_evidence": [
+        "physical_device",
+        "native_rendered_ui",
+        "real_model",
+        "persistent_decision",
+        "event_trace"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [
+        {
+          "path": "docs/acceptance/catpaw-final-product-acceptance.json",
+          "case_id": "FQ-01"
+        }
+      ],
+      "candidate_manifest": null
+    },
+    {
+      "id": "FQ-02",
+      "milestone": "inherited_same_release",
+      "requirement": "原合同逐项保留；具体步骤/分母/证据要求以来源为准",
+      "required": true,
+      "minimum_evidence": [
+        "physical_device",
+        "real_database",
+        "effect_receipt",
+        "negative_path_trace"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [
+        {
+          "path": "docs/acceptance/catpaw-final-product-acceptance.json",
+          "case_id": "FQ-02"
+        }
+      ],
+      "candidate_manifest": null
+    },
+    {
+      "id": "FQ-03",
+      "milestone": "inherited_same_release",
+      "requirement": "原合同逐项保留；具体步骤/分母/证据要求以来源为准",
+      "required": true,
+      "minimum_evidence": [
+        "physical_device",
+        "real_server_scheduler",
+        "real_database",
+        "two_offline_due_runs",
+        "public_change_fixture"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [
+        {
+          "path": "docs/acceptance/catpaw-final-product-acceptance.json",
+          "case_id": "FQ-03"
+        }
+      ],
+      "candidate_manifest": null
+    },
+    {
+      "id": "FQ-04",
+      "milestone": "inherited_same_release",
+      "requirement": "原合同逐项保留；具体步骤/分母/证据要求以来源为准",
+      "required": true,
+      "minimum_evidence": [
+        "physical_device",
+        "real_database",
+        "real_model",
+        "late_job_deletion_trace"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [
+        {
+          "path": "docs/acceptance/catpaw-final-product-acceptance.json",
+          "case_id": "FQ-04"
+        }
+      ],
+      "candidate_manifest": null
+    },
+    {
+      "id": "FQ-05",
+      "milestone": "inherited_same_release",
+      "requirement": "原合同逐项保留；具体步骤/分母/证据要求以来源为准",
+      "required": true,
+      "minimum_evidence": [
+        "physical_device",
+        "frozen_truth_set",
+        "real_read_tool_receipt",
+        "artifact_hash_revision",
+        "real_database"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [
+        {
+          "path": "docs/acceptance/catpaw-final-product-acceptance.json",
+          "case_id": "FQ-05"
+        }
+      ],
+      "candidate_manifest": null
+    },
+    {
+      "id": "FQ-06",
+      "milestone": "inherited_same_release",
+      "requirement": "原合同逐项保留；具体步骤/分母/证据要求以来源为准",
+      "required": true,
+      "minimum_evidence": [
+        "physical_device",
+        "native_rendered_ui",
+        "native_visual_matrix",
+        "accessibility_operation_record"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [
+        {
+          "path": "docs/acceptance/catpaw-final-product-acceptance.json",
+          "case_id": "FQ-06"
+        }
+      ],
+      "candidate_manifest": null
+    },
+    {
+      "id": "FQ-07",
+      "milestone": "inherited_same_release",
+      "requirement": "原合同逐项保留；具体步骤/分母/证据要求以来源为准",
+      "required": true,
+      "minimum_evidence": [
+        "physical_device",
+        "real_model",
+        "authorized_sample_manifest",
+        "raw_timing_summary"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [
+        {
+          "path": "docs/acceptance/catpaw-final-product-acceptance.json",
+          "case_id": "FQ-07"
+        }
+      ],
+      "candidate_manifest": null
+    },
+    {
+      "id": "FQ-08",
+      "milestone": "inherited_same_release",
+      "requirement": "原合同逐项保留；具体步骤/分母/证据要求以来源为准",
+      "required": true,
+      "minimum_evidence": [
+        "real_database",
+        "multi_instance_trace",
+        "physical_device",
+        "negative_path_trace"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [
+        {
+          "path": "docs/acceptance/catpaw-final-product-acceptance.json",
+          "case_id": "FQ-08"
+        }
+      ],
+      "candidate_manifest": null
+    },
+    {
+      "id": "FQ-09",
+      "milestone": "inherited_same_release",
+      "requirement": "原合同逐项保留；具体步骤/分母/证据要求以来源为准",
+      "required": true,
+      "minimum_evidence": [
+        "physical_device",
+        "authorized_run_manifest",
+        "seven_day_journal",
+        "same_release_manifest"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [
+        {
+          "path": "docs/acceptance/catpaw-final-product-acceptance.json",
+          "case_id": "FQ-09"
+        }
+      ],
+      "candidate_manifest": null
+    },
+    {
+      "id": "BP-01",
+      "milestone": "inherited_same_release",
+      "requirement": "原合同逐项保留；具体步骤/分母/证据要求以来源为准",
+      "required": true,
+      "minimum_evidence": [
+        "original_contract_evidence"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [
+        {
+          "path": "docs/acceptance/catpaw-final-product-acceptance.json",
+          "case_id": "BP-01"
+        }
+      ],
+      "candidate_manifest": null
+    },
+    {
+      "id": "BP-02",
+      "milestone": "inherited_same_release",
+      "requirement": "原合同逐项保留；具体步骤/分母/证据要求以来源为准",
+      "required": true,
+      "minimum_evidence": [
+        "original_contract_evidence"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [
+        {
+          "path": "docs/acceptance/catpaw-final-product-acceptance.json",
+          "case_id": "BP-02"
+        }
+      ],
+      "candidate_manifest": null
+    },
+    {
+      "id": "BP-03",
+      "milestone": "inherited_same_release",
+      "requirement": "原合同逐项保留；具体步骤/分母/证据要求以来源为准",
+      "required": true,
+      "minimum_evidence": [
+        "original_contract_evidence"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [
+        {
+          "path": "docs/acceptance/catpaw-final-product-acceptance.json",
+          "case_id": "BP-03"
+        }
+      ],
+      "candidate_manifest": null
+    },
+    {
+      "id": "BP-04",
+      "milestone": "inherited_same_release",
+      "requirement": "原合同逐项保留；具体步骤/分母/证据要求以来源为准",
+      "required": true,
+      "minimum_evidence": [
+        "original_contract_evidence"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [
+        {
+          "path": "docs/acceptance/catpaw-final-product-acceptance.json",
+          "case_id": "BP-04"
+        }
+      ],
+      "candidate_manifest": null
+    },
+    {
+      "id": "BP-05",
+      "milestone": "inherited_same_release",
+      "requirement": "原合同逐项保留；具体步骤/分母/证据要求以来源为准",
+      "required": true,
+      "minimum_evidence": [
+        "original_contract_evidence"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [
+        {
+          "path": "docs/acceptance/catpaw-final-product-acceptance.json",
+          "case_id": "BP-05"
+        }
+      ],
+      "candidate_manifest": null
+    },
+    {
+      "id": "BP-06",
+      "milestone": "inherited_same_release",
+      "requirement": "原合同逐项保留；具体步骤/分母/证据要求以来源为准",
+      "required": true,
+      "minimum_evidence": [
+        "original_contract_evidence"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [
+        {
+          "path": "docs/acceptance/catpaw-final-product-acceptance.json",
+          "case_id": "BP-06"
+        }
+      ],
+      "candidate_manifest": null
+    },
+    {
+      "id": "BP-07",
+      "milestone": "inherited_same_release",
+      "requirement": "原合同逐项保留；具体步骤/分母/证据要求以来源为准",
+      "required": true,
+      "minimum_evidence": [
+        "original_contract_evidence"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [
+        {
+          "path": "docs/acceptance/catpaw-final-product-acceptance.json",
+          "case_id": "BP-07"
+        }
+      ],
+      "candidate_manifest": null
+    },
+    {
+      "id": "BP-08",
+      "milestone": "inherited_same_release",
+      "requirement": "原合同逐项保留；具体步骤/分母/证据要求以来源为准",
+      "required": true,
+      "minimum_evidence": [
+        "original_contract_evidence"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [
+        {
+          "path": "docs/acceptance/catpaw-final-product-acceptance.json",
+          "case_id": "BP-08"
+        }
+      ],
+      "candidate_manifest": null
+    },
+    {
+      "id": "CG-A01",
+      "milestone": "inherited_same_release",
+      "requirement": "原合同逐项保留；具体步骤/分母/证据要求以来源为准",
+      "required": true,
+      "minimum_evidence": [
+        "native_rendered_ui",
+        "schema_boundary_replay",
+        "fallback_record"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [
+        {
+          "path": "docs/acceptance/conversation-generative-ui-acceptance.json",
+          "case_id": "CG-A01"
+        }
+      ],
+      "candidate_manifest": null
+    },
+    {
+      "id": "CG-A02",
+      "milestone": "inherited_same_release",
+      "requirement": "原合同逐项保留；具体步骤/分母/证据要求以来源为准",
+      "required": true,
+      "minimum_evidence": [
+        "physical_device",
+        "native_rendered_ui",
+        "partial_complete_and_stale_event_trace"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [
+        {
+          "path": "docs/acceptance/conversation-generative-ui-acceptance.json",
+          "case_id": "CG-A02"
+        }
+      ],
+      "candidate_manifest": null
+    },
+    {
+      "id": "CG-A03",
+      "milestone": "inherited_same_release",
+      "requirement": "原合同逐项保留；具体步骤/分母/证据要求以来源为准",
+      "required": true,
+      "minimum_evidence": [
+        "physical_device",
+        "real_model",
+        "real_service",
+        "persistent_intent",
+        "same_work_continuation_trace"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [
+        {
+          "path": "docs/acceptance/conversation-generative-ui-acceptance.json",
+          "case_id": "CG-A03"
+        }
+      ],
+      "candidate_manifest": null
+    },
+    {
+      "id": "CG-A04",
+      "milestone": "inherited_same_release",
+      "requirement": "原合同逐项保留；具体步骤/分母/证据要求以来源为准",
+      "required": true,
+      "minimum_evidence": [
+        "physical_device",
+        "native_rendered_ui",
+        "frozen_algorithm_truth",
+        "request_and_effect_counter_delta",
+        "presented_frame_timing"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [
+        {
+          "path": "docs/acceptance/conversation-generative-ui-acceptance.json",
+          "case_id": "CG-A04"
+        }
+      ],
+      "candidate_manifest": null
+    },
+    {
+      "id": "CG-A05",
+      "milestone": "inherited_same_release",
+      "requirement": "原合同逐项保留；具体步骤/分母/证据要求以来源为准",
+      "required": true,
+      "minimum_evidence": [
+        "physical_device",
+        "real_database",
+        "effect_receipt",
+        "explicit_submit_and_unknown_trace"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [
+        {
+          "path": "docs/acceptance/conversation-generative-ui-acceptance.json",
+          "case_id": "CG-A05"
+        }
+      ],
+      "candidate_manifest": null
+    },
+    {
+      "id": "CG-A06",
+      "milestone": "inherited_same_release",
+      "requirement": "原合同逐项保留；具体步骤/分母/证据要求以来源为准",
+      "required": true,
+      "minimum_evidence": [
+        "physical_device",
+        "native_rendered_ui",
+        "frozen_source_truth",
+        "artifact_revision_hash"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [
+        {
+          "path": "docs/acceptance/conversation-generative-ui-acceptance.json",
+          "case_id": "CG-A06"
+        }
+      ],
+      "candidate_manifest": null
+    },
+    {
+      "id": "CG-A07",
+      "milestone": "inherited_same_release",
+      "requirement": "原合同逐项保留；具体步骤/分母/证据要求以来源为准",
+      "required": true,
+      "minimum_evidence": [
+        "physical_device",
+        "real_database",
+        "native_restart_scope_and_conflict_trace"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [
+        {
+          "path": "docs/acceptance/conversation-generative-ui-acceptance.json",
+          "case_id": "CG-A07"
+        }
+      ],
+      "candidate_manifest": null
+    },
+    {
+      "id": "CG-A08",
+      "milestone": "inherited_same_release",
+      "requirement": "原合同逐项保留；具体步骤/分母/证据要求以来源为准",
+      "required": true,
+      "minimum_evidence": [
+        "physical_device",
+        "native_rendered_ui",
+        "accessibility_operation_record",
+        "native_visual_matrix"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [
+        {
+          "path": "docs/acceptance/conversation-generative-ui-acceptance.json",
+          "case_id": "CG-A08"
+        }
+      ],
+      "candidate_manifest": null
+    },
+    {
+      "id": "CG-A09",
+      "milestone": "inherited_same_release",
+      "requirement": "原合同逐项保留；具体步骤/分母/证据要求以来源为准",
+      "required": true,
+      "minimum_evidence": [
+        "native_rendered_ui",
+        "protocol_error_trace",
+        "effect_vs_delivery_state_record"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [
+        {
+          "path": "docs/acceptance/conversation-generative-ui-acceptance.json",
+          "case_id": "CG-A09"
+        }
+      ],
+      "candidate_manifest": null
+    },
+    {
+      "id": "CG-A10",
+      "milestone": "inherited_same_release",
+      "requirement": "原合同逐项保留；具体步骤/分母/证据要求以来源为准",
+      "required": true,
+      "minimum_evidence": [
+        "physical_device",
+        "real_model",
+        "real_service",
+        "both_composition_paths",
+        "same_release_manifest"
+      ],
+      "status": "NOT_RUN",
+      "evidence_refs": [
+        {
+          "path": "docs/acceptance/conversation-generative-ui-acceptance.json",
+          "case_id": "CG-A10"
+        }
+      ],
+      "candidate_manifest": null
+    }
+  ]
+}

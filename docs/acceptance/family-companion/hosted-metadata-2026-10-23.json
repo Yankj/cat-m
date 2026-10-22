@@ -1,0 +1,117 @@
+{
+  "recorded_on": "2026-10-23",
+  "project_alias": "existing-cat-project",
+  "region": "us-east-1",
+  "database_version": "17.11.0.003",
+  "functions": [
+    {
+      "slug": "catpaw-api",
+      "version": 56,
+      "status": "ACTIVE",
+      "verify_jwt": false,
+      "ezbr_sha256": "c3f704df78f7a449b8b7dbec7ad6e306ac7e6f8205f39ab359120c30ed9c7801"
+    },
+    {
+      "slug": "catpaw-tick",
+      "version": 16,
+      "status": "ACTIVE",
+      "verify_jwt": false,
+      "ezbr_sha256": "8f767ae860bbb1dd09c2caf51aeb3837ef97a8c8a287290c266f2769b4c594aa"
+    },
+    {
+      "slug": "catpaw-proactive",
+      "version": 10,
+      "status": "ACTIVE",
+      "verify_jwt": false,
+      "ezbr_sha256": "2eb0abd2438fcdb6e881f6e4c6cdf7b0e2019ebc0438e766c9fdcbe86636de48"
+    }
+  ],
+  "migrations": [
+    {
+      "version": "20261011235322",
+      "name": "catpaw_foundation_server_only"
+    },
+    {
+      "version": "20261011235413",
+      "name": "catpaw_trigger_search_path"
+    },
+    {
+      "version": "20261012002243",
+      "name": "catpaw_runtime_role"
+    },
+    {
+      "version": "20261012003243",
+      "name": "catpaw_application_auth_reader"
+    },
+    {
+      "version": "20261015133955",
+      "name": "chat_attachments_bucket"
+    },
+    {
+      "version": "20261015174355",
+      "name": "proactive_tasks"
+    },
+    {
+      "version": "20261015174401",
+      "name": "proactive_task_tools_runtime"
+    },
+    {
+      "version": "20261015174405",
+      "name": "proactive_push_throttle"
+    },
+    {
+      "version": "20261015174408",
+      "name": "proactive_push_actions"
+    },
+    {
+      "version": "20261015174412",
+      "name": "proactive_decisions"
+    },
+    {
+      "version": "20261015174415",
+      "name": "agent_memory"
+    },
+    {
+      "version": "20261017053601",
+      "name": "proactive_cron"
+    },
+    {
+      "version": "20261017053615",
+      "name": "proactive_suggestions_runtime"
+    },
+    {
+      "version": "20261017053622",
+      "name": "agent_memory_tombstones"
+    },
+    {
+      "version": "20261017053627",
+      "name": "feature_enrollment"
+    },
+    {
+      "version": "20261017053639",
+      "name": "proactive_delivery_owner"
+    },
+    {
+      "version": "20261017053645",
+      "name": "proactive_push_sending"
+    },
+    {
+      "version": "20261017053656",
+      "name": "proactive_push_generation"
+    },
+    {
+      "version": "20261017053702",
+      "name": "agent_memory_choice_seq"
+    },
+    {
+      "version": "20261017053708",
+      "name": "proactive_feedback_kind_intrusive"
+    },
+    {
+      "version": "20261017090112",
+      "name": "agent_memory_extensions_usage"
+    }
+  ],
+  "source": "Supabase connected read-only management tools",
+  "scope": "No SQL, user records, secrets, runtime function invocation, configuration mutation or deployment"
+}
