@@ -4,7 +4,7 @@ import SwiftUI
 ///
 /// Two inputs feed the same view:
 /// - today: a ```catpaw-card fence `{"kind":"memory_saved","memory":{"id","kind","content"},"undo_token":"…"}` rendered
-///   through `MarkdownCustomBlockRegistry` (registered by `MemorySavedChipAdapter.register()` in `CatpawMApp.init`);
+///   through `MarkdownCustomBlockRegistry` (registered by `MemorySavedChipAdapter.register()` in `catApp.init`);
 /// - later: the SSE `memory_saved` event once 三角's network layer surfaces it (decode with `MemorySavedEvent`).
 struct MemorySavedEvent: Codable, Sendable, Equatable {
     struct Memory: Codable, Sendable, Equatable { let id: String; let kind: String?; let content: String }
@@ -84,10 +84,10 @@ struct MemorySavedEvent: Codable, Sendable, Equatable {
         Button { open = true } label: {
             HStack(alignment: .firstTextBaseline, spacing: 6) {
                 Image(systemName: undone ? "arrow.uturn.backward" : "pawprint.fill")
-                    .foregroundStyle(undone ? CatpawColors.tertiary : CatpawBrand.paw).accessibilityHidden(true)
+                    .foregroundStyle(undone ? catColors.tertiary : catBrand.paw).accessibilityHidden(true)
                 Text(undone ? ui("已撤销记住：{0}", [content]) : ui("已记住：{0}", [content]))
-                    .font(CatpawTypography.Role.secondary.font)
-                    .foregroundStyle(undone ? CatpawColors.tertiary : CatpawColors.secondary)
+                    .font(catTypography.Role.secondary.font)
+                    .foregroundStyle(undone ? catColors.tertiary : catColors.secondary)
                     .strikethrough(undone)
                     .lineLimit(2).multilineTextAlignment(.leading)
                 Spacer(minLength: 0)
@@ -106,16 +106,16 @@ struct MemorySavedEvent: Codable, Sendable, Equatable {
     private var sheet: some View {
         NavigationStack {
             VStack(alignment: .leading, spacing: 16) {
-                Label(ui("小猫记住了"), systemImage: "pawprint.fill").labelStyle(PawLabelStyle()).font(CatpawTypography.Role.heading.font)
-                Text(content).font(CatpawTypography.Role.body.font).foregroundStyle(CatpawColors.ink).fixedSize(horizontal: false, vertical: true)
-                if let errorKey { Text(ui(errorKey)).font(CatpawTypography.Role.secondary.font).foregroundStyle(CatpawColors.attention) }
-                if backend == nil { Text(ui("记忆服务暂时连不上，请稍后重试。")).font(CatpawTypography.Role.secondary.font).foregroundStyle(CatpawColors.secondary) }
+                Label(ui("小猫记住了"), systemImage: "pawprint.fill").labelStyle(PawLabelStyle()).font(catTypography.Role.heading.font)
+                Text(content).font(catTypography.Role.body.font).foregroundStyle(catColors.ink).fixedSize(horizontal: false, vertical: true)
+                if let errorKey { Text(ui(errorKey)).font(catTypography.Role.secondary.font).foregroundStyle(catColors.attention) }
+                if backend == nil { Text(ui("记忆服务暂时连不上，请稍后重试。")).font(catTypography.Role.secondary.font).foregroundStyle(catColors.secondary) }
                 HStack(spacing: 12) {
                     Button(role: .destructive) { Task { await undo() } } label: { Text(ui("撤销")).frame(maxWidth: .infinity) }
                         .buttonStyle(.bordered).controlSize(.large).disabled(!canUndo || working).accessibilityIdentifier("chat.memorySaved.undo")
                     if backend?.capabilities.contains(.edit) == true {
                         NavigationLink { MemoryEditSheet(item: .init(id: id, group: .init(kind: event.memory.kind ?? ""), content: content)) { text in Task { await edit(text) } } }
-                        label: { Text(ui("编辑")).foregroundStyle(CatpawColors.ink).frame(maxWidth: .infinity) }
+                        label: { Text(ui("编辑")).foregroundStyle(catColors.ink).frame(maxWidth: .infinity) }
                             .buttonStyle(.bordered).controlSize(.large).disabled(working || undone).accessibilityIdentifier("chat.memorySaved.edit")
                     }
                 }
@@ -146,7 +146,7 @@ struct MemorySavedEvent: Codable, Sendable, Equatable {
 /// Orange paw icon, ink title (orange rule: claw orange only on fills and icons).
 struct PawLabelStyle: LabelStyle {
     func makeBody(configuration: Configuration) -> some View {
-        HStack(spacing: 8) { configuration.icon.foregroundStyle(CatpawBrand.paw); configuration.title.foregroundStyle(CatpawColors.ink) }
+        HStack(spacing: 8) { configuration.icon.foregroundStyle(catBrand.paw); configuration.title.foregroundStyle(catColors.ink) }
     }
 }
 

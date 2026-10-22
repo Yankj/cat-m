@@ -70,19 +70,19 @@ public struct OperationReducer: Sendable {
 
 public enum ScheduleCalculator {
     public static func next(_ spec: ScheduleSpec, after date: Date) throws -> Date {
-        guard let tz = TimeZone(identifier: spec.timezoneID), spec.missedRunPolicy == "skip" else { throw CatpawError.invalid("定时规则无效。") }
+        guard let tz = TimeZone(identifier: spec.timezoneID), spec.missedRunPolicy == "skip" else { throw catError.invalid("定时规则无效。") }
         if spec.cadence.hasPrefix("interval_"), spec.cadence.hasSuffix("h") {
-            guard let hours = Int(spec.cadence.dropFirst(9).dropLast()), hours > 0, hours <= Int.max / 3600 else { throw CatpawError.invalid("间隔需为可表示的正整数小时。") }
+            guard let hours = Int(spec.cadence.dropFirst(9).dropLast()), hours > 0, hours <= Int.max / 3600 else { throw catError.invalid("间隔需为可表示的正整数小时。") }
             return date.addingTimeInterval(TimeInterval(hours * 3600))
         }
-        guard ["daily", "weekly"].contains(spec.cadence), (0...23).contains(spec.localHour), (0...59).contains(spec.localMinute) else { throw CatpawError.invalid("时间规则无效。") }
+        guard ["daily", "weekly"].contains(spec.cadence), (0...23).contains(spec.localHour), (0...59).contains(spec.localMinute) else { throw catError.invalid("时间规则无效。") }
         var cal = Calendar(identifier: .gregorian); cal.timeZone = tz
-        guard spec.weekdayConvention == nil || spec.weekdayConvention == "iso8601" else { throw CatpawError.invalid("星期编码不支持。") }
+        guard spec.weekdayConvention == nil || spec.weekdayConvention == "iso8601" else { throw catError.invalid("星期编码不支持。") }
         let weekdays = spec.cadence == "weekly" ? ScheduleInput.isoWeekdays(spec) : Array(1...7)
-        guard !weekdays.isEmpty, weekdays.allSatisfy({ (1...7).contains($0) }) else { throw CatpawError.invalid("请选择有效星期。") }
+        guard !weekdays.isEmpty, weekdays.allSatisfy({ (1...7).contains($0) }) else { throw catError.invalid("请选择有效星期。") }
         let matches = weekdays.compactMap { weekday in
             cal.nextDate(after: date, matching: DateComponents(hour: spec.localHour, minute: spec.localMinute, weekday: ScheduleInput.calendarWeekday(weekday)), matchingPolicy: .nextTime, repeatedTimePolicy: .first)
         }
-        guard let result = matches.min() else { throw CatpawError.invalid("无法计算下次时间。") }; return result
+        guard let result = matches.min() else { throw catError.invalid("无法计算下次时间。") }; return result
     }
 }

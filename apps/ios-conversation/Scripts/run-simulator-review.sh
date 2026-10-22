@@ -4,7 +4,7 @@ set -eu
 cd "$(dirname "$0")/../../.."
 mode="${1:-report}"
 device="${CATPAW_REVIEW_DEVICE:-949DAB72-1A93-4ECF-86E3-2E487B25C27E}"
-app="build/typography-trial-20261014/DerivedData/Build/Products/Debug-iphonesimulator/CatpawM.app"
+app="build/typography-trial-20261014/DerivedData/Build/Products/Debug-iphonesimulator/cat.app"
 case "$mode" in
   input) scenario=p0-ui-echo ;;
   plan) scenario=p0-ui-plan ;;
@@ -21,7 +21,7 @@ esac
 import hashlib,json,plistlib,sys
 from pathlib import Path
 with open(sys.argv[1],'rb') as f: info=plistlib.load(f)
-assert info.get('CFBundleIdentifier')=='com.example.CatpawM.ConversationFirst.Auth','Unexpected review bundle identity'
+assert info.get('CFBundleIdentifier')=='com.example.cat.ConversationFirst.Auth','Unexpected review bundle identity'
 keys=('CatpawSupabaseProjectURL','CatpawSupabasePublishableKey','CatpawBackendOrigin','CatpawServerScopeID','CatpawEdgeRegion')
 assert not any(info.get(k) for k in keys),'Offline review refuses a cloud-configured package'
 package=Path(sys.argv[1]).parent
@@ -46,11 +46,11 @@ if [[ -n "$scenario" ]]; then
   store="$(/usr/bin/uuidgen)"
   "${clean_launch[@]}" \
     SIMCTL_CHILD_CF_UI_TEST_STORE="$store" SIMCTL_CHILD_CF_UI_TEST_SCENARIO="$scenario" \
-    /usr/bin/xcrun simctl launch --terminate-running-process "$device" com.example.CatpawM.ConversationFirst.Auth
+    /usr/bin/xcrun simctl launch --terminate-running-process "$device" com.example.cat.ConversationFirst.Auth
   print "build23 — explicit offline $mode review, default system text size. Send a short local message to reveal the native flow. Simulated receipts and sources are not real Agent results."
 else
   "${clean_launch[@]}" \
-    /usr/bin/xcrun simctl launch --terminate-running-process "$device" com.example.CatpawM.ConversationFirst.Auth
+    /usr/bin/xcrun simctl launch --terminate-running-process "$device" com.example.cat.ConversationFirst.Auth
   print 'build23 — normal launch, no fixture. This review package has no cloud configuration.'
 fi
 # Xcode 27 uses Device Hub for simulator windows. A locked Mac needs manual unlock.

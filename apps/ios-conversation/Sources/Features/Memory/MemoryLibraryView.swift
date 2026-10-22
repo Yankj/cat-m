@@ -5,7 +5,7 @@ import SwiftUI
 @MainActor final class MemoryLibraryModel: ObservableObject {
     @Published private(set) var snapshot: MemoryLibrarySnapshot?
     @Published private(set) var busy = false
-    /// Codex PR91 v2-4: what the page shows = the effective state (same rule as X-Catpaw-Use-Memory and the server).
+    /// Codex PR91 v2-4: what the page shows = the effective state (same rule as X-cat-Use-Memory and the server).
     @Published private(set) var effectiveUse = false
     /// The user's last choice is not acknowledged by the server yet (off already effective on this phone).
     @Published private(set) var useUnsynced = false
@@ -118,10 +118,10 @@ import SwiftUI
                     Section { emptyState }
                 } else {
                     let groups = model.grouped()
-                    if groups.isEmpty { Section { Text(ui("没有匹配的记忆")).font(CatpawTypography.Role.body.font).foregroundStyle(CatpawColors.secondary) } }
+                    if groups.isEmpty { Section { Text(ui("没有匹配的记忆")).font(catTypography.Role.body.font).foregroundStyle(catColors.secondary) } }
                     ForEach(groups, id: \.0) { group, rows in
                         Section { ForEach(rows) { row($0) } } header: {
-                            Label(ui(group.titleKey), systemImage: group.symbol).font(CatpawTypography.Role.secondary.font).foregroundStyle(CatpawColors.secondary)
+                            Label(ui(group.titleKey), systemImage: group.symbol).font(catTypography.Role.secondary.font).foregroundStyle(catColors.secondary)
                         }
                     }
                 }
@@ -136,7 +136,7 @@ import SwiftUI
                     let calm = errorKey == MemoryLibraryError.notEnabled.messageKey
                     HStack(alignment: .top, spacing: 10) {
                         if calm { CategoryPaw(category: .memory) }
-                        Text(ui(errorKey)).font(CatpawTypography.Role.secondary.font).foregroundStyle(calm ? CatpawColors.secondary : CatpawColors.attention).fixedSize(horizontal: false, vertical: true)
+                        Text(ui(errorKey)).font(catTypography.Role.secondary.font).foregroundStyle(calm ? catColors.secondary : catColors.attention).fixedSize(horizontal: false, vertical: true)
                     }.accessibilityIdentifier("memory.library.error")
                     if !calm { Button(ui("重试")) { Task { await model.load() } }.touchTarget() }
                 }
@@ -151,8 +151,8 @@ import SwiftUI
             }
         }
         .listStyle(.insetGrouped)
-        .scrollContentBackground(.hidden).background(CatpawColors.background)
-        .font(CatpawTypography.Role.body.font).foregroundStyle(CatpawColors.ink)
+        .scrollContentBackground(.hidden).background(catColors.background)
+        .font(catTypography.Role.body.font).foregroundStyle(catColors.ink)
         .searchable(text: $model.query, prompt: Text(ui("搜索记忆")))
         .navigationTitle(ui("了解你")).navigationBarTitleDisplayMode(.inline)
         .disabled(model.busy && model.snapshot == nil)
@@ -170,40 +170,40 @@ import SwiftUI
         Section {
             Toggle(isOn: Binding(get: { model.choiceOn }, set: { v in Task { await model.setUse(v) } })) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(ui("使用记忆")).font(CatpawTypography.Role.body.font)
+                    Text(ui("使用记忆")).font(catTypography.Role.body.font)
                     Text(ui(model.enabling ? "正在开启…" : (model.useUnsynced && !model.choiceOn ? "已在本机关闭，待同步" : "回复时参考已记住的内容")))
-                        .font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
+                        .font(catTypography.Role.caption.font).foregroundStyle(catColors.secondary)
                         .accessibilityIdentifier("memory.library.use.state")
-                    // v3-3: full effective state (same source as recall and X-Catpaw-Use-Memory).
+                    // v3-3: full effective state (same source as recall and X-cat-Use-Memory).
                     Text(ui(model.effectiveUse ? "实际生效：开启" : (model.useUnsynced ? "实际生效：关闭（结果未确认，已按关闭处理）" : (model.offLibraries > 0 ? "实际生效：关闭（有记忆库已关闭）" : "实际生效：关闭"))))
-                        .font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
+                        .font(catTypography.Role.caption.font).foregroundStyle(catColors.secondary)
                         .accessibilityIdentifier("memory.library.use.effective")
                 }
             }
-            .tint(CatpawBrand.paw)
+            .tint(catBrand.paw)
             .disabled(model.snapshot == nil || !model.can.contains(.toggleUse))
             .accessibilityIdentifier("memory.library.use")
             if model.can.contains(.toggleAutoSave), let auto = model.snapshot?.autoSave {
                 Toggle(isOn: Binding(get: { auto }, set: { v in Task { await model.setAutoSave(v) } })) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(ui("自动记住新内容")).font(CatpawTypography.Role.body.font)
-                        Text(ui("关闭后只在你明确要求时记住")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
+                        Text(ui("自动记住新内容")).font(catTypography.Role.body.font)
+                        Text(ui("关闭后只在你明确要求时记住")).font(catTypography.Role.caption.font).foregroundStyle(catColors.secondary)
                     }
                 }
-                .tint(CatpawBrand.paw)
+                .tint(catBrand.paw)
                 .disabled(model.snapshot?.useMemory != true)
                 .accessibilityIdentifier("memory.library.autoSave")
             }
         } footer: {
-            Text(ui("临时对话不会读取或写入记忆。")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
+            Text(ui("临时对话不会读取或写入记忆。")).font(catTypography.Role.caption.font).foregroundStyle(catColors.secondary)
         }
     }
 
     private var emptyState: some View {
         VStack(spacing: 8) {
-            BrandMark(size: 28, color: CatpawColors.fill, style: .template).accessibilityHidden(true)
-            Text(ui("还没有记住任何内容")).font(CatpawTypography.Role.heading.font)
-            Text(ui("聊天时说“记住……”，小猫就会把它放在这里。")).font(CatpawTypography.Role.secondary.font).foregroundStyle(CatpawColors.secondary).multilineTextAlignment(.center)
+            BrandMark(size: 28, color: catColors.fill, style: .template).accessibilityHidden(true)
+            Text(ui("还没有记住任何内容")).font(catTypography.Role.heading.font)
+            Text(ui("聊天时说“记住……”，小猫就会把它放在这里。")).font(catTypography.Role.secondary.font).foregroundStyle(catColors.secondary).multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity).padding(.vertical, 16).accessibilityElement(children: .combine).accessibilityIdentifier("memory.library.empty")
     }
@@ -211,11 +211,11 @@ import SwiftUI
     private func row(_ item: MemoryLibraryItem) -> some View {
         Button { if model.can.contains(.edit) { editing = item } } label: {
             VStack(alignment: .leading, spacing: 2) {
-                Text(item.content).font(CatpawTypography.Role.body.font).foregroundStyle(CatpawColors.ink)
+                Text(item.content).font(catTypography.Role.body.font).foregroundStyle(catColors.ink)
                     .fixedSize(horizontal: false, vertical: true)
                 if let used = MemoryLastUsed.date(item.id) {
                     Text(ui("最近用过 · {0}", [used.formatted(.relative(presentation: .named))]))
-                        .font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary)
+                        .font(catTypography.Role.caption.font).foregroundStyle(catColors.secondary)
                         .accessibilityIdentifier("memory.library.lastUsed")
                 }
             }.frame(maxWidth: .infinity, alignment: .leading)
@@ -245,7 +245,7 @@ import SwiftUI
     init(item: MemoryLibraryItem, save: @escaping (String) -> Void) { self.item = item; self.save = save; _text = State(initialValue: item.content) }
     var body: some View {
         NavigationStack {
-            Form { TextField(ui("记忆内容"), text: $text, axis: .vertical).font(CatpawTypography.Role.body.font).lineLimit(3...8).accessibilityIdentifier("memory.edit.text") }
+            Form { TextField(ui("记忆内容"), text: $text, axis: .vertical).font(catTypography.Role.body.font).lineLimit(3...8).accessibilityIdentifier("memory.edit.text") }
                 .navigationTitle(ui("编辑记忆")).navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) { Button(ui("取消")) { dismiss() } }

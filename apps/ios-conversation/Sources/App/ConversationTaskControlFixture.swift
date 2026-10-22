@@ -25,10 +25,10 @@ actor ConversationTaskControlFixtureBackend:ConversationTaskControlBackend {
         let identity=key(reference),operation=request.operationID.uuidString.lowercased();var value=try ensure(reference)
         store.posts += 1
         if let receipt=value.operations[operation] {
-            guard receipt.action==request.action,receipt.base_execution_revision==request.expected_execution_revision,receipt.base_snapshot_hash==request.expected_snapshot_hash else {try persist();throw CatpawError.conflict};try persist();return .init(control:value.control,operation:receipt)
+            guard receipt.action==request.action,receipt.base_execution_revision==request.expected_execution_revision,receipt.base_snapshot_hash==request.expected_snapshot_hash else {try persist();throw catError.conflict};try persist();return .init(control:value.control,operation:receipt)
         }
         let base=value.control
-        guard base.snapshot_hash==request.expected_snapshot_hash,base.execution_revision==request.expected_execution_revision,base.grant_epoch==request.expected_grant_epoch,base.plan_reference.revision==request.expected_plan_revision,base.plan_reference.plan_hash==request.expected_plan_hash,base.allows(request.action) else {try persist();throw CatpawError.conflict}
+        guard base.snapshot_hash==request.expected_snapshot_hash,base.execution_revision==request.expected_execution_revision,base.grant_epoch==request.expected_grant_epoch,base.plan_reference.revision==request.expected_plan_revision,base.plan_reference.plan_hash==request.expected_plan_hash,base.allows(request.action) else {try persist();throw catError.conflict}
         value.control.execution_revision += 1;value.control.task_status=request.action == .pause ? "paused":request.action == .resume ? "scheduled":"cancelled"
         value.control.can_pause=request.action == .resume;value.control.can_resume=request.action == .pause && value.control.unresolved_operations.isEmpty;value.control.can_revoke=request.action != .revoke
         value.control.blocked_reason=request.action == .revoke ? "grant_changed":!value.control.unresolved_operations.isEmpty ? "original_outcome_unknown":request.action == .pause ? "user_paused":nil
@@ -39,7 +39,7 @@ actor ConversationTaskControlFixtureBackend:ConversationTaskControlBackend {
         value.operations[operation]=receipt;store.runs[identity]=value
         // Fake server commit is separately durable before intentionally losing the response.
         try persist()
-        if mode == .unknown {throw CatpawError.unavailable("Named offline control fixture lost its POST response after the fake server commit")}
+        if mode == .unknown {throw catError.unavailable("Named offline control fixture lost its POST response after the fake server commit")}
         return envelope
     }
     func goal(_ reference:ConversationTaskControlReference) throws -> ConversationGoalProjection {

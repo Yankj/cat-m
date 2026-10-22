@@ -28,7 +28,7 @@ public actor ConversationArtifactEditFixtureBackend:ConversationArtifactEditBack
     public func readArtifact(_ reference:ConversationArtifactEditReference,version:Int?) async throws -> ConversationArtifactEditEnvelope {
         try seed(reference)
         let work=key(reference),selected=version ?? storage.heads[work]!
-        guard let snapshot=storage.versions[work]?[String(selected)],let head=storage.versions[work]?[String(storage.heads[work]!)] else {throw CatpawError.missing}
+        guard let snapshot=storage.versions[work]?[String(selected)],let head=storage.versions[work]?[String(storage.heads[work]!)] else {throw catError.missing}
         var next=storage;next.reads += 1;try persist(next);await publishStats()
         return .init(artifact:point(snapshot,to:head))
     }
@@ -37,10 +37,10 @@ public actor ConversationArtifactEditFixtureBackend:ConversationArtifactEditBack
         let work=key(reference),operation=request.operationID.uuidString.lowercased()
         var next=storage;next.postOperations.append(request.operationID)
         if let old=next.receipts[operation] {
-            guard next.requests[operation]==request else {throw CatpawError.conflict}
+            guard next.requests[operation]==request else {throw catError.conflict}
             try persist(next);await publishStats();return old
         }
-        guard let head=storage.versions[work]?[String(storage.heads[work]!)],head.version==request.expectedVersion,head.contentHash==request.expectedContentHash,head.grantEpoch==request.expectedGrantEpoch,head.planReference.revision==request.expectedPlanRevision,head.planReference.planHash==request.expectedPlanHash else {try persist(next);await publishStats();throw CatpawError.conflict}
+        guard let head=storage.versions[work]?[String(storage.heads[work]!)],head.version==request.expectedVersion,head.contentHash==request.expectedContentHash,head.grantEpoch==request.expectedGrantEpoch,head.planReference.revision==request.expectedPlanRevision,head.planReference.planHash==request.expectedPlanHash else {try persist(next);await publishStats();throw catError.conflict}
         let stamp="2026-10-14T03:00:00.000Z",body=try ConversationArtifactEditCodec.revisedBody(base:head,request:request,committedAt:stamp)
         let identity=ConversationArtifactVersionReference(artifactID:head.artifactID,version:head.version+1,contentHash:textHash(body)),boundary:ConversationArtifactSourceBoundary=head.sourceEvidenceBoundary == .suppliedContextOnly ? .suppliedContextOnly : .originalSnapshotOnly
         let artifact=copy(head,body:body,createdAt:stamp,origin:.userRevision,identity:identity,current:identity,boundary:boundary)
@@ -59,7 +59,7 @@ public actor ConversationArtifactEditFixtureBackend:ConversationArtifactEditBack
     public func readAmendment(_ reference:ConversationArtifactEditReference,operationID:UUID) async throws -> ConversationArtifactEditEnvelope {
         try seed(reference)
         let operation=operationID.uuidString.lowercased(),work=key(reference)
-        guard let receipt=storage.receipts[operation],receipt.artifact.runID==reference.binding.run_id,receipt.artifact.artifactID==reference.artifact.id,let head=storage.versions[work]?[String(storage.heads[work]!)] else {throw CatpawError.missing}
+        guard let receipt=storage.receipts[operation],receipt.artifact.runID==reference.binding.run_id,receipt.artifact.artifactID==reference.artifact.id,let head=storage.versions[work]?[String(storage.heads[work]!)] else {throw catError.missing}
         var next=storage;next.reads += 1;next.readOperations.append(operationID);try persist(next);await publishStats()
         return .init(artifact:point(receipt.artifact,to:head),amendment:receipt.amendment)
     }

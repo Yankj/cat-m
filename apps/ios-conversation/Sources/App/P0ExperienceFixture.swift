@@ -1,7 +1,7 @@
 #if DEBUG
 import Foundation
 
-enum CatpawDebugPresentation {
+enum catDebugPresentation {
     static func showFixtureBadge(arguments:[String]=ProcessInfo.processInfo.arguments,environment:[String:String]=ProcessInfo.processInfo.environment)->Bool {
         arguments.contains("-CatpawShowFixtureBadge") || ["1","true","yes"].contains(environment["CatpawShowFixtureBadge"]?.lowercased() ?? "")
     }
@@ -245,7 +245,7 @@ actor P0ExperienceBackend:ConversationBackend {
         emit(.completed(messageID:message,finalTextHash:textHash(body)),request:r);streams[r.operationID]?.finish()
     }
     func observe(_ request:ConversationTurnRequest) async throws -> ConversationObservation {
-        guard requests[request.operationID] != nil else { throw CatpawError.missing }
+        guard requests[request.operationID] != nil else { throw catError.missing }
         await MainActor.run { P0ExperienceFixture.observeCalls += 1 }
         return .init(request:request,events:events[request.operationID] ?? [],requestHash:textHash("P0-UI:"+request.operationID.uuidString),grantEpoch:1,goals:[])
     }

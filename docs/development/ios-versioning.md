@@ -17,7 +17,7 @@ App 和小组件扩展都跑 `Stamp Build Info`，同一提交算出的构建号
 ```sh
 python3 apps/ios-conversation/Scripts/app-version.py show                 # 1.1.0 (build 712) 1a2b3c4d
 apps/ios-conversation/Scripts/bump-version.sh patch                       # 1.1.0 -> 1.1.1，并在 CHANGELOG 开新节
-python3 apps/ios-conversation/Scripts/app-version.py check --app <CatpawM.app>   # 核对包内版本、构建号、提交号和构建戳
+python3 apps/ios-conversation/Scripts/app-version.py check --app <cat.app>   # 核对包内版本、构建号、提交号和构建戳
 ```
 
 改动先记在根目录 `CHANGELOG.md` 的「Unreleased」下。修 bug 用 `patch`，新功能用 `minor`，不兼容的大改用 `major`。构建号不用操心：每个提交都会让它变大，不同工作树在同一提交上算出同一个数。
@@ -26,6 +26,6 @@ python3 apps/ios-conversation/Scripts/app-version.py check --app <CatpawM.app>  
 
 1. `python3 apps/ios-conversation/Scripts/app-version.py release-check`：工作树干净、完整历史（不能是浅克隆）、版本比上一个 `vX.Y.Z` tag 新、上一个 tag 是 HEAD 的祖先（保证构建号单调递增）、CHANGELOG 有带日期的本版本小节、工程接线正确。通过时打印要打的 tag。总的发版检查 `release_check.py` 会调用它（`--json`）。
 2. 构建 DeviceTrial/Release 包，再运行 `check --app` 核对包内实际值。
-3. 在发版提交上打 annotated tag `vX.Y.Z`（例如 `git tag -a v1.1.0 -m "CatpawM 1.1.0 (build N)"`），推送与 GitHub Release 由负责发版的人确认后执行。
+3. 在发版提交上打 annotated tag `vX.Y.Z`（例如 `git tag -a v1.1.0 -m "cat 1.1.0 (build N)"`），推送与 GitHub Release 由负责发版的人确认后执行。
 
 禁止用 xcodebuild 参数覆盖 `MARKETING_VERSION` / `CURRENT_PROJECT_VERSION`；`Check App Version` 阶段会拦下。以后的 CI 发版流程（#88）必须 `fetch-depth: 0` 并复用这些脚本，不用 `run_number` 当构建号。安装到手机后，从设置读回的版本、构建号和提交号应与发版记录一致。

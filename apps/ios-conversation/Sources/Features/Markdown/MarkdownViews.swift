@@ -5,7 +5,7 @@ import SafariServices
 // MARK: Theme (r10 §3 rich-render; r9 tokens from Components.swift)
 
 enum MarkdownTheme {
-    static var ink: Color { CatpawColors.ink }
+    static var ink: Color { catColors.ink }
     static let pawOrange = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(rgb: 0xF0A27E) : UIColor(rgb: 0xE8916A) })
     static let codeBackground = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(rgb: 0x1E1C1B) : UIColor(rgb: 0xF6F4F2) })
     static let keyword = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(rgb: 0xF08A62) : UIColor(rgb: 0xC0522D) })
@@ -64,7 +64,7 @@ enum MarkdownTheme {
     static func open(_ url: URL) -> OpenURLAction.Result {
         // v1.2: in-app capability links (catpawm://memory …). Only manifest targets route; any other catpawm:// is swallowed.
         if url.scheme?.lowercased() == "catpawm" {
-            if CatpawCapabilityLinks.isAllowed(url), let route = CatpawAppRoute(url: url) { CatpawRouteCenter.shared.pending = route }
+            if catCapabilityLinks.isAllowed(url), let route = catAppRoute(url: url) { catRouteCenter.shared.pending = route }
             return .handled
         }
         guard let scheme = url.scheme?.lowercased(), scheme == "http" || scheme == "https" else { return .systemAction }
@@ -290,7 +290,7 @@ struct MarkdownBlockView: View, Equatable {
                         .frame(maxWidth: .infinity, minHeight: 36)
                         .contentShape(Rectangle())
                 }.buttonStyle(.plain)
-                    .overlay(alignment: .top) { Rectangle().fill(CatpawColors.hairline).frame(height: 0.5) }
+                    .overlay(alignment: .top) { Rectangle().fill(catColors.hairline).frame(height: 0.5) }
             }
         }
         .background(MarkdownTheme.codeBackground, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
@@ -331,7 +331,7 @@ struct MarkdownBlockView: View, Equatable {
                         }
                     }
                     ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
-                        Rectangle().fill(CatpawColors.hairline).frame(height: 0.5)
+                        Rectangle().fill(catColors.hairline).frame(height: 0.5)
                         GridRow {
                             ForEach(0..<columns, id: \.self) { c in
                                 cell(c < row.count ? row[c] : "", column: c)
@@ -348,10 +348,10 @@ struct MarkdownBlockView: View, Equatable {
                         .font(.footnote).foregroundStyle(MarkdownTheme.ink.opacity(0.55))
                         .frame(maxWidth: .infinity, minHeight: 36).contentShape(Rectangle())
                 }.buttonStyle(.plain)
-                    .overlay(alignment: .top) { Rectangle().fill(CatpawColors.hairline).frame(height: 0.5) }
+                    .overlay(alignment: .top) { Rectangle().fill(catColors.hairline).frame(height: 0.5) }
             }
         }
-        .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(CatpawColors.hairline, lineWidth: 0.5))
+        .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(catColors.hairline, lineWidth: 0.5))
         .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 
@@ -391,8 +391,8 @@ struct MarkdownBlockView: View, Equatable {
             Spacer(minLength: 0)
         }
         .padding(16)
-        .background(CatpawColors.card, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(CatpawColors.hairline, lineWidth: 0.5))
+        .background(catColors.card, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(catColors.hairline, lineWidth: 0.5))
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("chat.markdown.card." + kind)
     }

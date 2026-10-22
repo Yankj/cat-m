@@ -203,13 +203,13 @@ public actor ConversationArtifactEditService {
         state.versions[snapshot.identity.id]=snapshot
     }
     private func load(_ reference:ConversationArtifactEditReference) async throws -> (ConversationArtifactEditLocalState,StoredRecord?) {
-        guard !invalidated,reference.scope==scope else {throw CatpawError.scopeMismatch}
+        guard !invalidated,reference.scope==scope else {throw catError.scopeMismatch}
         let conversation=try await repository.record(reference.binding.conversation_id,scope:scope)
         guard conversation.conversation != nil,reference.artifact.version>0,ConversationArtifactEditCodec.isHash(reference.artifact.id),ConversationArtifactEditCodec.isHash(reference.artifact.contentHash),textHash(reference.artifact.body)==reference.artifact.contentHash else {throw ConversationArtifactEditError.invalidResponse}
         let document=try ConversationArtifactEditCodec.document(reference.artifact.body)
         guard document.title==reference.artifact.title,document.summary==reference.artifact.summary,document.content==reference.artifact.content else {throw ConversationArtifactEditError.invalidResponse}
         let record:StoredRecord
-        do {record=try await repository.record(recordID(reference),scope:scope)} catch CatpawError.missing {return (ConversationArtifactEditLocalState(),nil)}
+        do {record=try await repository.record(recordID(reference),scope:scope)} catch catError.missing {return (ConversationArtifactEditLocalState(),nil)}
         guard case .preference(let value)=record.payload,value.key==key(reference) else {throw ConversationArtifactEditError.invalidResponse}
         let state=try JSONDecoder().decode(ConversationArtifactEditLocalState.self,from:Data(value.value.utf8))
         for snapshot in state.versions.values {try snapshot.validate(reference:reference)}
@@ -227,7 +227,7 @@ public actor ConversationArtifactEditService {
     private func requireAdmission(_ epoch:Int) throws {guard admitted,!invalidated,!closing,generation==epoch else {throw CancellationError()}}
     private func key(_ reference:ConversationArtifactEditReference)->String {"conversation_artifact_edit:\(reference.binding.conversation_id):\(reference.binding.run_id):\(reference.artifact.id)"}
     private func recordID(_ reference:ConversationArtifactEditReference)->UUID {stableID(key(reference))}
-    private static func isConflict(_ error:Error)->Bool {if case CatpawError.conflict=error {return true};return false}
+    private static func isConflict(_ error:Error)->Bool {if case catError.conflict=error {return true};return false}
     private func lock() async {if !locked {locked=true;return};await withCheckedContinuation{waiters.append($0)}}
     private func unlock() {if waiters.isEmpty {locked=false}else{waiters.removeFirst().resume()}}
 }

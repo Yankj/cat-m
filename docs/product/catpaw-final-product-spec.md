@@ -1,4 +1,4 @@
-# Catpaw 终版产品、体验与技术设计
+# cat 终版产品、体验与技术设计
 
 版本：FINAL-1，2026-10-13，产品设计修订R1。综合用户指定的 Grok 分支、现有 AF-1／UX-1、手机观察与四仓源码核读；[本次产品评审](../design/product-experience-review-2026-10-13.md)记录体验取舍。本文固定产品设计和质量标准，不宣称已经实现或优于竞品。当前执行基础仍为 [AF-1-G3-UX1](../planning/AF-1/goal.md)，实时状态只在 [master-plan](../status/master-plan.md)。[终版验收](../acceptance/catpaw-final-product-acceptance.md)定义质量与对照证据。
 
@@ -37,7 +37,7 @@ Grok 固定分支为 [`38c44457…`](https://github.com/Yankj/catpaw-m/tree/38c4
 
 官方资料已经确认这些产品具有移动、后台或审批能力，不能以“它们没有”作为定位：Codex支持手机发起、引导和审批；dots承担长期工作和主动研究；Grok Bot手机可对话、审批、查成果及管理routine，但当前编辑routine指令／计划仍需桌面；Muse是移动个人Agent并具备记忆和敏感动作确认。[Codex mobile](https://openai.com/index/work-with-codex-from-anywhere/)、[dots](https://openai.com/index/introducing-dots/)、[Grok mobile](https://docs.x.ai/grok-bot/mobile)、[Muse](https://about.fb.com/news/2026/09/introducing-muse-personal-ai-agent/)。
 
-Catpaw 的优势目标是：**已开放的能力在手机上有完整闭环；用户少切页面、少重复解释、少处理无意义确认，随时能找回工作与决定。** 这是一项待实测的产品假设。首版不争夺最高模型智力、所有连接器或完整云电脑能力。
+cat 的优势目标是：**已开放的能力在手机上有完整闭环；用户少切页面、少重复解释、少处理无意义确认，随时能找回工作与决定。** 这是一项待实测的产品假设。首版不争夺最高模型智力、所有连接器或完整云电脑能力。
 
 具体目标包括：手机内创建和修改跟进约定；流式回复中出现可行动卡而非等整段文字结束；计划、审批、成果和修改围绕同工作；来源／记忆使用／主动原因可查；掉线、拒绝、过期和结果未知仍有明确下一步。先证明绝对质量，再做同任务配对，避免更多按钮造成更多负担。
 

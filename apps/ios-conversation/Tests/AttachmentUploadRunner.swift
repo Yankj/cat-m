@@ -67,7 +67,7 @@ actor StateLog { var states: [ChatAttachmentUploadState] = []; func add(_ s: Cha
         catch { print("FAIL AttachmentUploadRunner: uncaught \(type(of: error)).\(error) — \(error.localizedDescription)"); exit(1) }
     }
     static func run() async throws {
-        func check(_ condition: Bool, _ text: String) throws { guard condition else { throw CatpawError.invalid(text) }; print("PASS: " + text) }
+        func check(_ condition: Bool, _ text: String) throws { guard condition else { throw catError.invalid(text) }; print("PASS: " + text) }
         // Must satisfy production validation: https origin with /functions/v1/<name>, key ^sb_publishable_[A-Za-z0-9_-]{10,}$ (kept under 20 chars so it can never look like a deployment key).
         let configuration = try NativeChatConfiguration(origin: URL(string: "https://api.invalid/functions/v1/catpaw-api")!, localScope: Profiles.user, serverScopeID: Profiles.user.workspaceID, publishableKey: "sb_publishable_test_fixture")
         let png = Data([137, 80, 78, 71, 13, 10, 26, 10] + Array(repeating: UInt8(7), count: 64))

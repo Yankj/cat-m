@@ -15,31 +15,31 @@ import SwiftUI
     var body: some View {
         NavigationStack {
             List {
-                Section { Text(s.reason).font(CatpawTypography.Role.body.font).foregroundStyle(CatpawColors.ink).fixedSize(horizontal: false, vertical: true) }
+                Section { Text(s.reason).font(catTypography.Role.body.font).foregroundStyle(catColors.ink).fixedSize(horizontal: false, vertical: true) }
                 Section(ui("小猫注意到")) {
-                    if (s.signals ?? []).isEmpty { Text(ui("没有更多信号")).font(CatpawTypography.Role.body.font).foregroundStyle(CatpawColors.secondary) }
+                    if (s.signals ?? []).isEmpty { Text(ui("没有更多信号")).font(catTypography.Role.body.font).foregroundStyle(catColors.secondary) }
                     ForEach(Array((s.signals ?? []).enumerated()), id: \.offset) { _, sig in
-                        Label { Text(sig.text).font(CatpawTypography.Role.body.font).foregroundStyle(CatpawColors.ink) } icon: {
-                            Image(systemName: Self.symbol(sig.kind)).foregroundStyle(CatpawBrand.paw)
+                        Label { Text(sig.text).font(catTypography.Role.body.font).foregroundStyle(catColors.ink) } icon: {
+                            Image(systemName: Self.symbol(sig.kind)).foregroundStyle(catBrand.paw)
                         }
                     }
                 }
                 Section(ui("用到的记忆")) {
-                    if s.usedMemories.isEmpty { Text(ui("这次没有用到记忆")).font(CatpawTypography.Role.body.font).foregroundStyle(CatpawColors.secondary) }
+                    if s.usedMemories.isEmpty { Text(ui("这次没有用到记忆")).font(catTypography.Role.body.font).foregroundStyle(catColors.secondary) }
                     ForEach(s.usedMemories) { m in
                         Button { memoryOpen = true } label: {
-                            Label(m.content, systemImage: "pawprint.fill").labelStyle(PawLabelStyle()).font(CatpawTypography.Role.body.font)
+                            Label(m.content, systemImage: "pawprint.fill").labelStyle(PawLabelStyle()).font(catTypography.Role.body.font)
                         }.accessibilityHint(ui("打开记忆页"))
                     }
                 }
                 Section(ui("已经做了什么")) {
                     let taken = s.taken ?? []
-                    if taken.isEmpty { Text(ui("还没有执行任何操作")).font(CatpawTypography.Role.body.font).foregroundStyle(CatpawColors.secondary) }
+                    if taken.isEmpty { Text(ui("还没有执行任何操作")).font(catTypography.Role.body.font).foregroundStyle(catColors.secondary) }
                     ForEach(Array(taken.enumerated()), id: \.offset) { _, t in
                         HStack {
-                            Text(ui(ProactiveSuggestionCard.label(t.action))).font(CatpawTypography.Role.body.font).foregroundStyle(CatpawColors.ink)
+                            Text(ui(ProactiveSuggestionCard.label(t.action))).font(catTypography.Role.body.font).foregroundStyle(catColors.ink)
                             Spacer()
-                            Text(t.at, style: .time).font(CatpawTypography.Role.secondary.font).foregroundStyle(CatpawColors.secondary)
+                            Text(t.at, style: .time).font(catTypography.Role.secondary.font).foregroundStyle(catColors.secondary)
                         }
                     }
                     if !taken.isEmpty {
@@ -52,7 +52,7 @@ import SwiftUI
                         HStack(spacing: 8) { feedbackButtons }
                         VStack(alignment: .leading, spacing: 6) { feedbackButtons }
                     }
-                    if sent != nil { Text(ui(feedbackState == .notSaved ? "没能记下，请重试" : feedbackState == .queued ? "已记在本机，暂未同步，稍后自动重试" : feedbackState == .synced ? "谢谢，小猫记下了" : "正在记下…")).font(CatpawTypography.Role.secondary.font).foregroundStyle(CatpawColors.secondary) }
+                    if sent != nil { Text(ui(feedbackState == .notSaved ? "没能记下，请重试" : feedbackState == .queued ? "已记在本机，暂未同步，稍后自动重试" : feedbackState == .synced ? "谢谢，小猫记下了" : "正在记下…")).font(catTypography.Role.secondary.font).foregroundStyle(catColors.secondary) }
                 }
             }
             .navigationTitle(ui("为什么找你")).navigationBarTitleDisplayMode(.inline)
@@ -67,9 +67,9 @@ import SwiftUI
         ForEach(ProactiveFeedback.allCases, id: \.self) { f in
             Button { sent = f; Task { feedbackState = await store.feedback(f, s) } } label: {
                 Label(ui(Self.feedbackKey(f)), systemImage: sent == f ? "checkmark.circle.fill" : Self.feedbackSymbol(f))
-                    .font(CatpawTypography.Role.secondary.font).foregroundStyle(CatpawColors.ink)
+                    .font(catTypography.Role.secondary.font).foregroundStyle(catColors.ink)
                     .padding(.horizontal, 10).padding(.vertical, 8)
-                    .background(sent == f ? CatpawBrand.paw.opacity(0.16) : CatpawColors.ink.opacity(0.06), in: Capsule())
+                    .background(sent == f ? catBrand.paw.opacity(0.16) : catColors.ink.opacity(0.06), in: Capsule())
             }
             .buttonStyle(.borderless).disabled(sent != nil).accessibilityIdentifier("proactive.why.feedback." + f.rawValue)
         }

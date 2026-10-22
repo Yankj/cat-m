@@ -1,14 +1,14 @@
 import XCTest
-@testable import CatpawM
+@testable import cat
 
 final class ConversationFirstNativeTests: XCTestCase {
     #if DEBUG
     func testFixtureBadgeRequiresExplicitDebugLaunchOptIn() {
-        XCTAssertFalse(CatpawDebugPresentation.showFixtureBadge(arguments: [], environment: [:]))
-        XCTAssertFalse(CatpawDebugPresentation.showFixtureBadge(arguments: ["-Unrelated"], environment: ["CF_UI_TEST_SCENARIO":"p0-ui-echo"]))
-        XCTAssertTrue(CatpawDebugPresentation.showFixtureBadge(arguments: ["-CatpawShowFixtureBadge"], environment: [:]))
-        XCTAssertTrue(CatpawDebugPresentation.showFixtureBadge(arguments: [], environment: ["CatpawShowFixtureBadge":"1"]))
-        XCTAssertFalse(CatpawDebugPresentation.showFixtureBadge(arguments: [], environment: ["CatpawShowFixtureBadge":"0"]))
+        XCTAssertFalse(catDebugPresentation.showFixtureBadge(arguments: [], environment: [:]))
+        XCTAssertFalse(catDebugPresentation.showFixtureBadge(arguments: ["-Unrelated"], environment: ["CF_UI_TEST_SCENARIO":"p0-ui-echo"]))
+        XCTAssertTrue(catDebugPresentation.showFixtureBadge(arguments: ["-CatpawShowFixtureBadge"], environment: [:]))
+        XCTAssertTrue(catDebugPresentation.showFixtureBadge(arguments: [], environment: ["CatpawShowFixtureBadge":"1"]))
+        XCTAssertFalse(catDebugPresentation.showFixtureBadge(arguments: [], environment: ["CatpawShowFixtureBadge":"0"]))
     }
     #endif
 
@@ -141,7 +141,7 @@ final class ConversationFirstNativeTests: XCTestCase {
         XCTAssertTrue(saved.turns.isEmpty); XCTAssertTrue(saved.messages.isEmpty); XCTAssertTrue(requests.isEmpty)
         XCTAssertEqual(core.conversation?.draftText, "Keep after failed save")
     }
-    // MARK: SwiftData one-container-per-file regression (CatpawM 0.3.0 (41) crash, 2026-10-17 20:36 +0800:
+    // MARK: SwiftData one-container-per-file regression (cat 0.3.0 (41) crash, 2026-10-17 20:36 +0800:
     // SIGABRT in `_PFFaultHandlerLookupRow` under `SnapshotModelActor.saveOnQueue`, XCTest host).
     #if DEBUG
     private func swiftDataTestStore(_ name: String) -> URL {
@@ -182,7 +182,7 @@ final class ConversationFirstNativeTests: XCTestCase {
         try await b.commit(scope: Profiles.user, mutations: [.create(newer, .preference(Preference(key: "newer", value: "b")))])
         var refused = false
         do { try await a.commit(scope: Profiles.user, mutations: [.create(stale, .preference(Preference(key: "stale", value: "a")))]) }
-        catch CatpawError.conflict { refused = true }
+        catch catError.conflict { refused = true }
         XCTAssertTrue(refused, "a writer whose snapshot predates another commit must not rewrite the file")
         let reopened = try Repository(persistence: SwiftDataPersistence(url: url))
         let state = await reopened.read(scope: Profiles.user)
@@ -313,5 +313,5 @@ private actor NativeRecoveryTestBackend: ConversationBackend {
             c.finish()
         }
     }
-    func observe(_ request: ConversationTurnRequest) async throws -> ConversationObservation { throw CatpawError.unavailable("Unused native test observation") }
+    func observe(_ request: ConversationTurnRequest) async throws -> ConversationObservation { throw catError.unavailable("Unused native test observation") }
 }

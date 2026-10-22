@@ -65,11 +65,11 @@ import UIKit
     private func mark(_ f: Frame) -> some View {
         let s = Self.size
         return ZStack {
-            Circle().fill(RadialGradient(colors: [CatpawColors.orbLight.opacity(0.32), CatpawColors.orbLight.opacity(0)], center: .center, startRadius: s * 0.3, endRadius: s * 1.05))
+            Circle().fill(RadialGradient(colors: [catColors.orbLight.opacity(0.32), catColors.orbLight.opacity(0)], center: .center, startRadius: s * 0.3, endRadius: s * 1.05))
                 .frame(width: s * 2.1, height: s * 2.1)
                 .opacity(f.glow)
             ZStack {
-                Circle().fill(RadialGradient(colors: [CatpawColors.orbLight, CatpawColors.orbDeep], center: UnitPoint(x: 0.38, y: 0.32), startRadius: 2, endRadius: s * 0.55))
+                Circle().fill(RadialGradient(colors: [catColors.orbLight, catColors.orbDeep], center: UnitPoint(x: 0.38, y: 0.32), startRadius: 2, endRadius: s * 0.55))
                 BrandMark(size: s * 0.42, style: .onOrange)
             }
             .frame(width: s, height: s)
@@ -102,7 +102,7 @@ import UIKit
     /// straight from the static LaunchScreen to the chat's first frame — no animation, no interstitial.
     private static let decision: Bool = !UIAccessibility.isVoiceOverRunning && isFirstRun()
     nonisolated static func isFirstRun(_ defaults: UserDefaults = .standard, arguments: [String] = ProcessInfo.processInfo.arguments) -> Bool {
-        !(CatpawOnboarding.isCompleted(defaults) || arguments.contains(CatpawOnboarding.skipArgument))
+        !(catOnboarding.isCompleted(defaults) || arguments.contains(catOnboarding.skipArgument))
     }
     static func shouldPlay(openedFromURLOrNotification: Bool) -> Bool { decision && !openedFromURLOrNotification }
 }

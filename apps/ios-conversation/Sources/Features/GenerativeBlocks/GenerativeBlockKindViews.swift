@@ -44,18 +44,18 @@ import SwiftUI
         let on = selected.contains(item.id)
         return Button { toggle(item.id) } label: {
             HStack(spacing: 12) {
-                if let icon = item.icon { Image(systemName: icon).foregroundStyle(CatpawColors.ink).frame(width: 24).accessibilityHidden(true) }
+                if let icon = item.icon { Image(systemName: icon).foregroundStyle(catColors.ink).frame(width: 24).accessibilityHidden(true) }
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(item.label).font(CatpawTypography.Role.body.font).foregroundStyle(CatpawColors.ink)
-                    if let detail = item.detail { Text(detail).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary) }
+                    Text(item.label).font(catTypography.Role.body.font).foregroundStyle(catColors.ink)
+                    if let detail = item.detail { Text(detail).font(catTypography.Role.caption.font).foregroundStyle(catColors.secondary) }
                 }
                 Spacer(minLength: 8)
                 Image(systemName: multiple ? (on ? "checkmark.circle.fill" : "circle") : "checkmark")
-                    .foregroundStyle(on ? CatpawBrand.paw : CatpawColors.tertiary).opacity(multiple || on ? 1 : 0).accessibilityHidden(true)
+                    .foregroundStyle(on ? catBrand.paw : catColors.tertiary).opacity(multiple || on ? 1 : 0).accessibilityHidden(true)
             }
             .padding(.horizontal, 12).frame(minHeight: 48)
-            .background(on ? CatpawBrand.paw.opacity(0.10) : Color.clear, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(on ? CatpawBrand.paw : CatpawColors.ink.opacity(0.08), lineWidth: on ? 1 : 0.5))
+            .background(on ? catBrand.paw.opacity(0.10) : Color.clear, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(on ? catBrand.paw : catColors.ink.opacity(0.08), lineWidth: on ? 1 : 0.5))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -72,7 +72,7 @@ import SwiftUI
             }
         } else {
             Button { otherOpen = true; if !multiple { selected = [] } } label: {
-                Label(ui("其他…"), systemImage: "ellipsis.circle").font(CatpawTypography.Role.body.font).foregroundStyle(CatpawColors.ink)
+                Label(ui("其他…"), systemImage: "ellipsis.circle").font(catTypography.Role.body.font).foregroundStyle(catColors.ink)
                     .padding(.horizontal, 12).frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
             }.buttonStyle(.plain).accessibilityIdentifier("chat.block.other")
         }
@@ -120,9 +120,9 @@ import SwiftUI
                 if expired { GenerativeExpiredLabel() }
                 HStack(spacing: 10) {
                     Button { respond(.init(blockId: block.id, actionId: deny.id)) } label: { Text(deny.label).frame(maxWidth: .infinity, minHeight: 44) }
-                        .buttonStyle(.bordered).tint(CatpawColors.ink).accessibilityIdentifier("chat.block.confirm.deny")
+                        .buttonStyle(.bordered).tint(catColors.ink).accessibilityIdentifier("chat.block.confirm.deny")
                     Button { respond(.init(blockId: block.id, actionId: approve.id)) } label: { Text(approve.label).frame(maxWidth: .infinity, minHeight: 44) }
-                        .buttonStyle(.borderedProminent).tint(destructive ? Color.red : CatpawBrand.paw).accessibilityIdentifier("chat.block.confirm.approve")
+                        .buttonStyle(.borderedProminent).tint(destructive ? Color.red : catBrand.paw).accessibilityIdentifier("chat.block.confirm.approve")
                 }
                 .disabled(expired)
             }
@@ -154,7 +154,7 @@ import SwiftUI
                 GenerativeBlockHeader(block: block)
                 ForEach(fields) { field in
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(field.label + (field.required == true ? " *" : "")).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.ink.opacity(0.55))
+                        Text(field.label + (field.required == true ? " *" : "")).font(catTypography.Role.caption.font).foregroundStyle(catColors.ink.opacity(0.55))
                         control(field)
                     }.accessibilityIdentifier("chat.block.field." + field.id)
                 }
@@ -178,9 +178,9 @@ import SwiftUI
             Picker(f.label, selection: bind(f.id)) {
                 Text(f.placeholder ?? ui("请选择")).tag("")
                 ForEach(f.options ?? [], id: \.self) { Text($0).tag($0) }
-            }.pickerStyle(.menu).tint(CatpawColors.ink)
+            }.pickerStyle(.menu).tint(catColors.ink)
         case .stepper:
-            Stepper(value: Binding(get: { numbers[f.id] ?? 0 }, set: { numbers[f.id] = $0 })) { Text(GenerativeValue.number(numbers[f.id] ?? 0).text).font(CatpawTypography.Role.body.font) }
+            Stepper(value: Binding(get: { numbers[f.id] ?? 0 }, set: { numbers[f.id] = $0 })) { Text(GenerativeValue.number(numbers[f.id] ?? 0).text).font(catTypography.Role.body.font) }
         case .date, .time, .datetime:
             DatePicker(f.label, selection: Binding(get: { dates[f.id] ?? .now }, set: { dates[f.id] = $0 }),
                        displayedComponents: f.type == .date ? [.date] : f.type == .time ? [.hourAndMinute] : [.date, .hourAndMinute])
@@ -273,13 +273,13 @@ import SwiftUI
                 let tappable = !(block.actions ?? []).isEmpty && !expired
                 Button { respond(.init(blockId: block.id, actionId: block.actions?.first?.id, selected: [item.id])) } label: {
                     HStack(spacing: 12) {
-                        Image(systemName: item.icon ?? "circle.fill").foregroundStyle(CatpawColors.secondary).frame(width: 24).accessibilityHidden(true)
+                        Image(systemName: item.icon ?? "circle.fill").foregroundStyle(catColors.secondary).frame(width: 24).accessibilityHidden(true)
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(item.label).font(CatpawTypography.Role.body.font).foregroundStyle(CatpawColors.ink)
-                            if let detail = item.detail { Text(detail).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary) }
+                            Text(item.label).font(catTypography.Role.body.font).foregroundStyle(catColors.ink)
+                            if let detail = item.detail { Text(detail).font(catTypography.Role.caption.font).foregroundStyle(catColors.secondary) }
                         }
                         Spacer()
-                        if tappable { Image(systemName: "chevron.right").foregroundStyle(CatpawColors.tertiary).accessibilityHidden(true) }
+                        if tappable { Image(systemName: "chevron.right").foregroundStyle(catColors.tertiary).accessibilityHidden(true) }
                     }.frame(minHeight: 44).contentShape(Rectangle())
                 }
                 .buttonStyle(.plain).disabled(!tappable).accessibilityIdentifier("chat.block.item." + item.id)
@@ -298,12 +298,12 @@ import SwiftUI
                     Group {
                         switch step.state {
                         case .running: ProgressView()
-                        case .done: Image(systemName: "checkmark.circle.fill").foregroundStyle(CatpawBrand.paw)
-                        case .failed: Image(systemName: "xmark.circle.fill").foregroundStyle(CatpawColors.attention)
-                        case .pending: Image(systemName: "circle").foregroundStyle(CatpawColors.tertiary)
+                        case .done: Image(systemName: "checkmark.circle.fill").foregroundStyle(catBrand.paw)
+                        case .failed: Image(systemName: "xmark.circle.fill").foregroundStyle(catColors.attention)
+                        case .pending: Image(systemName: "circle").foregroundStyle(catColors.tertiary)
                         }
                     }.frame(width: 24).accessibilityHidden(true)
-                    Text(step.label).font(CatpawTypography.Role.body.font).foregroundStyle(step.state == .pending ? CatpawColors.secondary : CatpawColors.ink)
+                    Text(step.label).font(catTypography.Role.body.font).foregroundStyle(step.state == .pending ? catColors.secondary : catColors.ink)
                 }
                 .frame(minHeight: 32)
                 .accessibilityElement(children: .combine)
@@ -323,7 +323,7 @@ import SwiftUI
         ForEach(links.filter(\.isAllowed)) { link in
             if let url = URL(string: link.url) {
                 Button(link.label) { openURL(url) }
-                    .font(CatpawTypography.Role.caption.font.weight(.medium)).foregroundStyle(CatpawColors.ink).touchTarget()
+                    .font(catTypography.Role.caption.font.weight(.medium)).foregroundStyle(catColors.ink).touchTarget()
                     .accessibilityLabel(link.label).accessibilityIdentifier(idPrefix + link.id)
             }
         }
@@ -341,10 +341,10 @@ import SwiftUI
             GenerativeBlockHeader(block: block)
             ForEach(block.places ?? []) { p in
                 HStack(alignment: .center, spacing: 8) {
-                    Image(systemName: "mappin.circle.fill").foregroundStyle(CatpawColors.secondary).frame(width: 24).accessibilityHidden(true)
+                    Image(systemName: "mappin.circle.fill").foregroundStyle(catColors.secondary).frame(width: 24).accessibilityHidden(true)
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(p.name).font(CatpawTypography.Role.body.font.weight(.medium)).foregroundStyle(CatpawColors.ink)
-                        Text(Self.detail(p)).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary).lineLimit(2)
+                        Text(p.name).font(catTypography.Role.body.font.weight(.medium)).foregroundStyle(catColors.ink)
+                        Text(Self.detail(p)).font(catTypography.Role.caption.font).foregroundStyle(catColors.secondary).lineLimit(2)
                     }
                     .accessibilityElement(children: .combine)
                     Spacer(minLength: 0)
@@ -353,7 +353,7 @@ import SwiftUI
                 .frame(minHeight: 44).accessibilityIdentifier("chat.place." + p.id)
             }
             if let caption = block.caption, !caption.isEmpty {
-                Text(caption).font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary).fixedSize(horizontal: false, vertical: true)
+                Text(caption).font(catTypography.Role.caption.font).foregroundStyle(catColors.secondary).fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier("chat.places.why")
             }
         }
@@ -375,11 +375,11 @@ import SwiftUI
             GenerativeBlockHeader(block: block)
             ForEach(block.events ?? []) { e in
                 HStack(alignment: .center, spacing: 8) {
-                    Image(systemName: "calendar").foregroundStyle(CatpawColors.secondary).frame(width: 24).accessibilityHidden(true)
+                    Image(systemName: "calendar").foregroundStyle(catColors.secondary).frame(width: 24).accessibilityHidden(true)
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(e.title.isEmpty ? "（无标题）" : e.title).font(CatpawTypography.Role.body.font.weight(.medium)).foregroundStyle(CatpawColors.ink)
+                        Text(e.title.isEmpty ? "（无标题）" : e.title).font(catTypography.Role.body.font.weight(.medium)).foregroundStyle(catColors.ink)
                         Text([Self.when(e), e.location].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · "))
-                            .font(CatpawTypography.Role.caption.font).foregroundStyle(CatpawColors.secondary).lineLimit(2)
+                            .font(catTypography.Role.caption.font).foregroundStyle(catColors.secondary).lineLimit(2)
                     }
                     .accessibilityElement(children: .combine)
                     Spacer(minLength: 0)

@@ -9,7 +9,7 @@ public struct GatewayConfiguration: Sendable {
         guard baseURL.user == nil, baseURL.password == nil, baseURL.query == nil, baseURL.fragment == nil,
               (baseURL.path.isEmpty || baseURL.path == "/"),
               (localSynthetic ? baseURL.scheme == "http" && baseURL.host == "127.0.0.1" : baseURL.scheme == "https") else {
-            throw CatpawError.invalid("Gateway requires HTTPS or an explicit local synthetic loopback URL.")
+            throw catError.invalid("Gateway requires HTTPS or an explicit local synthetic loopback URL.")
         }
         self.baseURL = baseURL; self.providerID = providerID; self.localSynthetic = localSynthetic
         self.expectedReality = localSynthetic ? .simulated : .remoteAccepted
@@ -22,7 +22,7 @@ public protocol GatewaySessionCredentialProvider: Sendable {
 }
 public struct UnconfiguredGatewayCredentials: GatewaySessionCredentialProvider {
     public init() {}
-    public func sessionAuthorization() async throws -> String { throw CatpawError.unavailable("Gateway session credentials are not configured.") }
+    public func sessionAuthorization() async throws -> String { throw catError.unavailable("Gateway session credentials are not configured.") }
 }
 
 public struct GatewayResponse: Sendable {
@@ -46,7 +46,7 @@ public struct URLSessionGatewayTransport: GatewayTransport {
         let session = URLSession(configuration: configuration, delegate: RejectGatewayRedirects(), delegateQueue: nil)
         do {
             let (bytes, response) = try await session.bytes(for: request)
-            guard let response = response as? HTTPURLResponse else { throw CatpawError.unavailable("Invalid gateway response.") }
+            guard let response = response as? HTTPURLResponse else { throw catError.unavailable("Invalid gateway response.") }
             let stream = AsyncThrowingStream<Data, Error> { continuation in
                 let worker = Task {
                     defer { session.invalidateAndCancel() }
@@ -88,17 +88,17 @@ public struct GatewayWireEvent: Codable, Sendable {
     public func providerEvent() throws -> ProviderEvent? {
         let payload: ProviderEventPayload
         switch type {
-        case "text_delta": guard let text else { throw CatpawError.corrupt("Missing text delta.") }; payload = .textDelta(text)
+        case "text_delta": guard let text else { throw catError.corrupt("Missing text delta.") }; payload = .textDelta(text)
         case "accepted": payload = .accepted(providerOperationID: provider_operation_id ?? "unreported")
         case "message_completed":
-            guard let final_text_hash, let finish_reason else { throw CatpawError.corrupt("Missing message terminal fields.") }
+            guard let final_text_hash, let finish_reason else { throw catError.corrupt("Missing message terminal fields.") }
             payload = .messageCompleted(finalTextHash: final_text_hash, finishReason: finish_reason)
-        case "task_completed": guard let receipt_reference else { throw CatpawError.corrupt("Missing task receipt.") }; payload = .taskCompleted(receiptReference: receipt_reference)
+        case "task_completed": guard let receipt_reference else { throw catError.corrupt("Missing task receipt.") }; payload = .taskCompleted(receiptReference: receipt_reference)
         case "cancelled": payload = .cancelled
         case "outcome_unknown": payload = .outcomeUnknown
         case "failed": payload = .failed(ProviderFailure(code: code ?? "gateway_failed", displayMessage: "Gateway: \(code ?? "failed")", retryable: retryable ?? false, retryAfterSeconds: retry_after_seconds))
         case "tool_call_delta", "tool_call_complete": return nil // proposal only; no executor or permission granted
-        default: throw CatpawError.corrupt("Unsupported gateway event.")
+        default: throw catError.corrupt("Unsupported gateway event.")
         }
         return ProviderEvent(operationID: operation_id, sequence: sequence, runtimeEpoch: runtime_epoch, reality: reality, payload: payload)
     }
@@ -113,7 +113,7 @@ public struct GatewaySSEDecoder {
         while let newline = buffer.firstIndex(of: 10) {
             var line = Data(buffer[..<newline]); buffer.removeSubrange(...newline)
             if line.last == 13 { line.removeLast() }
-            guard let value = String(data: line, encoding: .utf8) else { throw CatpawError.corrupt("Invalid UTF8 SSE.") }
+            guard let value = String(data: line, encoding: .utf8) else { throw catError.corrupt("Invalid UTF8 SSE.") }
             if value.isEmpty {
                 if !fields.isEmpty {
                     events.append(try JSONDecoder().decode(GatewayWireEvent.self, from: Data(fields.joined(separator: "\n").utf8)))
@@ -122,13 +122,13 @@ public struct GatewaySSEDecoder {
             } else if value.hasPrefix("data:") {
                 let field = value.dropFirst(5); fields.append(String(field.first == " " ? field.dropFirst() : field))
             }
-            if fields.joined(separator: "\n").utf8.count > 1024 * 1024 { throw CatpawError.corrupt("SSE frame too large.") }
+            if fields.joined(separator: "\n").utf8.count > 1024 * 1024 { throw catError.corrupt("SSE frame too large.") }
         }
-        guard buffer.count <= 1024 * 1024 else { throw CatpawError.corrupt("SSE frame too large.") }
+        guard buffer.count <= 1024 * 1024 else { throw catError.corrupt("SSE frame too large.") }
         return events
     }
     public func finish() throws {
-        guard buffer.isEmpty, fields.isEmpty else { throw CatpawError.corrupt("SSE ended inside a frame.") }
+        guard buffer.isEmpty, fields.isEmpty else { throw catError.corrupt("SSE ended inside a frame.") }
     }
 }
 
@@ -162,7 +162,7 @@ public actor GatewayAgentProvider: AgentProvider {
     public func reply(to request: ChatRequest) async throws -> AsyncThrowingStream<ProviderEvent, Error> {
         guard request.context.providerID == configuration.providerID, request.frozenTextHash == textHash(request.frozenText),
               ["qwen-beijing", "dots-free", "nemotron-free", "glm-flash"].contains(request.frozenConfiguration.configuration.model),
-              !configuration.localSynthetic || request.context.scope == Profiles.demo else { throw CatpawError.invalid("Gateway request identity, scope or explicit model is invalid.") }
+              !configuration.localSynthetic || request.context.scope == Profiles.demo else { throw catError.invalid("Gateway request identity, scope or explicit model is invalid.") }
         var urlRequest = URLRequest(url: configuration.baseURL.appendingPathComponent("v1/chat"))
         urlRequest.httpMethod = "POST"; urlRequest.timeoutInterval = 35
         urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -172,13 +172,13 @@ public actor GatewayAgentProvider: AgentProvider {
         urlRequest.httpBody = try JSONEncoder().encode(GatewayChatAdmission(operation_id: request.context.operationID, runtime_epoch: request.context.runtimeEpoch,
             model_id: request.frozenConfiguration.configuration.model, text: request.frozenText, frozen_text_hash: request.frozenTextHash, scope: GatewayScope(request.context.scope)))
         let transport = self.transport, expected = configuration.expectedReality, operation = request.context.operationID
-        guard workers[operation] == nil else { throw CatpawError.conflict }
+        guard workers[operation] == nil else { throw catError.conflict }
         return AsyncThrowingStream { continuation in
             let worker = Task {
                 defer { self.removeWorker(operation) }
                 do {
                     let response = try await transport.open(urlRequest)
-                    guard response.statusCode == 200 else { throw CatpawError.unavailable("Gateway HTTP \(response.statusCode).") }
+                    guard response.statusCode == 200 else { throw catError.unavailable("Gateway HTTP \(response.statusCode).") }
                     var decoder = GatewaySSEDecoder(), lastSequence = 0, terminal = false, messageFinished = false, accumulated = "", sawTool = false
                     var accepted = expected == .simulated, finishReason: MessageFinishReason?
                     for try await data in response.chunks {
@@ -186,26 +186,26 @@ public actor GatewayAgentProvider: AgentProvider {
                         for wire in try decoder.feed(data) {
                             let unknownFailure = expected == .remoteAccepted && wire.reality == .unknown && ["failed", "cancelled", "outcome_unknown"].contains(wire.type)
                             guard wire.operation_id == operation, wire.runtime_epoch == request.context.runtimeEpoch,
-                                  wire.sequence > lastSequence, wire.reality == expected || unknownFailure, !terminal else { throw CatpawError.corrupt("Gateway event identity/reality/sequence mismatch.") }
+                                  wire.sequence > lastSequence, wire.reality == expected || unknownFailure, !terminal else { throw catError.corrupt("Gateway event identity/reality/sequence mismatch.") }
                             if wire.type == "accepted" { accepted = true }
-                            guard accepted || unknownFailure else { throw CatpawError.corrupt("Gateway data preceded remote acceptance.") }
+                            guard accepted || unknownFailure else { throw catError.corrupt("Gateway data preceded remote acceptance.") }
                             lastSequence = wire.sequence
                             if wire.type.hasPrefix("tool_call_") { sawTool = true; continue }
                             if wire.type == "text_delta" {
-                                guard !messageFinished else { throw CatpawError.corrupt("Delta after message terminal.") }; accumulated += wire.text ?? ""
+                                guard !messageFinished else { throw catError.corrupt("Delta after message terminal.") }; accumulated += wire.text ?? ""
                             }
                             if wire.type == "message_completed" {
-                                guard !messageFinished, wire.final_text_hash == textHash(accumulated) else { throw CatpawError.corrupt("Gateway final text hash mismatch.") }; messageFinished = true; finishReason = wire.finish_reason
+                                guard !messageFinished, wire.final_text_hash == textHash(accumulated) else { throw catError.corrupt("Gateway final text hash mismatch.") }; messageFinished = true; finishReason = wire.finish_reason
                             }
                             if wire.type == "task_completed" {
-                                guard messageFinished, !sawTool, finishReason == .stop else { throw CatpawError.corrupt("Gateway task terminal without completed text or tool policy.") }; terminal = true
+                                guard messageFinished, !sawTool, finishReason == .stop else { throw catError.corrupt("Gateway task terminal without completed text or tool policy.") }; terminal = true
                             }
                             if ["failed", "cancelled", "outcome_unknown"].contains(wire.type) { terminal = true }
                             if let event = try wire.providerEvent() { continuation.yield(event) }
                         }
                     }
                     try decoder.finish()
-                    guard terminal else { throw CatpawError.unavailable("Gateway ended without an explicit task terminal.") }
+                    guard terminal else { throw catError.unavailable("Gateway ended without an explicit task terminal.") }
                     continuation.finish()
                 } catch { continuation.finish(throwing: error) }
             }
@@ -215,12 +215,12 @@ public actor GatewayAgentProvider: AgentProvider {
         }
     }
     private func removeWorker(_ operation: UUID) { workers.removeValue(forKey: operation); workerContexts.removeValue(forKey: operation) }
-    public func start(_ request: TaskRequest) async throws -> AsyncThrowingStream<ProviderEvent, Error> { throw CatpawError.unavailable("Use the delegation service; chat admission does not authorize a task.") }
-    public func observe(operationID: EntityID, context: ProviderContext) async throws -> ProviderEvent { throw CatpawError.unavailable("Use the gateway observe endpoint; no verified result is inferred locally.") }
+    public func start(_ request: TaskRequest) async throws -> AsyncThrowingStream<ProviderEvent, Error> { throw catError.unavailable("Use the delegation service; chat admission does not authorize a task.") }
+    public func observe(operationID: EntityID, context: ProviderContext) async throws -> ProviderEvent { throw catError.unavailable("Use the gateway observe endpoint; no verified result is inferred locally.") }
     public func cancel(operationID: EntityID, context: ProviderContext) async throws -> ProviderEvent {
         guard let saved = workerContexts[operationID], context.operationID == operationID,
               context.scope == saved.scope, context.runtimeEpoch == saved.runtimeEpoch,
-              context.providerID == configuration.providerID else { throw CatpawError.conflict }
+              context.providerID == configuration.providerID else { throw catError.conflict }
         workers[operationID]?.cancel()
         return ProviderEvent(operationID: operationID, sequence: 1, runtimeEpoch: context.runtimeEpoch, reality: configuration.expectedReality, payload: .cancelled)
     }

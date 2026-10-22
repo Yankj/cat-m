@@ -4,11 +4,11 @@
 
 | 原任务恢复 | 版本绑定审批 |
 |---|---|
-| ![r3原任务恢复](../assets/openmuse-r3/CatpawM-r3-openmuse-http-02-original-task-recovered.png) | ![r3版本审批](../assets/openmuse-r3/CatpawM-r3-openmuse-http-03-version-bound-preview.png) |
+| ![r3原任务恢复](../assets/openmuse-r3/cat-r3-openmuse-http-02-original-task-recovered.png) | ![r3版本审批](../assets/openmuse-r3/cat-r3-openmuse-http-03-version-bound-preview.png) |
 
 | unknown原回执 | 原生成果来源 |
 |---|---|
-| ![r3 unknown回执](../assets/openmuse-r3/CatpawM-r3-openmuse-http-04-unknown-original-receipt.png) | ![r3成果来源](../assets/openmuse-r3/CatpawM-r3-openmuse-http-05-native-artifact-provenance.png) |
+| ![r3 unknown回执](../assets/openmuse-r3/cat-r3-openmuse-http-04-unknown-original-receipt.png) | ![r3成果来源](../assets/openmuse-r3/cat-r3-openmuse-http-05-native-artifact-provenance.png) |
 
 截图显示的实际执行层标签只表示固定Worker合成执行，不表示真实模型/Intelligence/云后台。审批只确认本次本机合成预览；unknown不能重新发，核验只是原本机效果记录。图中来源页Worker attempts=1属于截图时间点，最终服务记录为2次，不能混为两次业务请求。
 

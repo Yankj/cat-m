@@ -3,7 +3,7 @@ import Foundation
 extension WorkspaceService {
     public func markDocumentOpened(scope: DataScope, reference: DocumentReference, now: Date = Date()) async throws {
         let verified = try await readDocument(scope: scope, id: reference.documentID, version: reference.version)
-        guard verified.0.contentHash == reference.contentHash else { throw CatpawError.conflict }
+        guard verified.0.contentHash == reference.contentHash else { throw catError.conflict }
         try await repository.recordViewReceipt(scope: scope, reference: reference, now: now)
     }
 }
@@ -13,7 +13,7 @@ extension Repository {
         let id = ViewReceipt.id(scope: scope, reference: reference)
         let snapshot = read(scope: scope)
         if let previous = snapshot.records[id], previous.header.deletedAt == nil {
-            guard case .viewReceipt(let receipt) = previous.payload, receipt.userID == scope.profileID, receipt.document == reference else { throw CatpawError.conflict }
+            guard case .viewReceipt(let receipt) = previous.payload, receipt.userID == scope.profileID, receipt.document == reference else { throw catError.conflict }
             return
         }
         try commit(operationID: stableID("open-\(id)"), scope: scope, mutations: [.create(id, .viewReceipt(ViewReceipt(userID: scope.profileID, document: reference, openedAt: now)))])

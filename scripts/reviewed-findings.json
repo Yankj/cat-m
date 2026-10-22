@@ -188,8 +188,8 @@
       "path": "apps/ios-conversation/Tests/NativeAuthNativeTests.swift",
       "category": "secret_assignment_review",
       "line": 22,
-      "sha256": "4e3ddd5dea7c96cfe458419ccfadfea2cad2501652b12216f7639cf3fdc4b886",
-      "reason": "Explicit mock-only test token/password literal; test storage/transport has no real credential."
+      "sha256": "130dcbdb08f099602045acc78b43ee29d02b621248a6fb8c6013ac9618547f2f",
+      "reason": "Explicit mock-only test token/password literal; test storage/transport has no real credential. Re-pinned 2026-10-22 after cat branding; triggering fixture line is byte-identical."
     },
     {
       "path": "apps/ios-conversation/Tests/NativeChatWireRunner.swift",
@@ -703,15 +703,15 @@
       "path": "apps/ios-conversation/Tests/ConversationArtifactSourcesTests.swift",
       "category": "credential_url",
       "line": 77,
-      "sha256": "6d4028c94cccd219e691e04ca3944f15eba12c97a50eea0e3e04de26861473c8",
-      "reason": "Re-reviewed after query-gate negative cases: literal user:pass documentation URL is a rejected synthetic fixture, never an emitted request or actual credential."
+      "sha256": "e84189b15b1321a7bbfc2fd114f6bcb1f94ba3ca822eac4b4650f9d714957318",
+      "reason": "Re-reviewed after query-gate negative cases: literal user:pass documentation URL is a rejected synthetic fixture, never an emitted request or actual credential. Re-pinned 2026-10-22 after cat branding; triggering fixture line is byte-identical."
     },
     {
       "path": "apps/ios-conversation/Tests/ConversationArtifactSourcesTests.swift",
       "category": "email_review",
       "line": 77,
-      "sha256": "6d4028c94cccd219e691e04ca3944f15eba12c97a50eea0e3e04de26861473c8",
-      "reason": "Re-reviewed after query-gate negative cases: literal user:pass documentation URL is a rejected synthetic fixture, never an emitted request or actual credential."
+      "sha256": "e84189b15b1321a7bbfc2fd114f6bcb1f94ba3ca822eac4b4650f9d714957318",
+      "reason": "Re-reviewed after query-gate negative cases: literal user:pass documentation URL is a rejected synthetic fixture, never an emitted request or actual credential. Re-pinned 2026-10-22 after cat branding; triggering fixture line is byte-identical."
     },
     {
       "path": "apps/ios-conversation/Tests/NativeChatWireRunner.swift",
@@ -738,15 +738,15 @@
       "path": "apps/ios-conversation/Tests/ConversationTaskActionTests.swift",
       "category": "device_identity",
       "line": 69,
-      "sha256": "8c82f2015430ddf12f61ddb5eeffa4ed9ef94487a58d693870cbb7cfdeddae1a",
-      "reason": "Reviewed fixed repeated-digit UUIDs in the offline synthetic calendar target; no physical device, account or environment identifiers are read."
+      "sha256": "bb854df583631a546dd3a2dd006bfa7968b8782479b0d19f9109383bbfa35952",
+      "reason": "Reviewed fixed repeated-digit UUIDs in the offline synthetic calendar target; no physical device, account or environment identifiers are read. Re-pinned 2026-10-22 after cat branding; triggering fixture line is byte-identical."
     },
     {
       "path": "apps/ios-conversation/Tests/NativeTaskActionTransportTests.swift",
       "category": "device_identity",
       "line": 39,
-      "sha256": "245739940610051475fd69eca3cef909e94ba01edfa8fa2aa0ba545d4839e890",
-      "reason": "Reviewed fixed repeated-digit UUIDs in the intercepted URLProtocol fixture target; test contains no physical device, account or environment identifiers."
+      "sha256": "e100fcf62769be1ee84698af0411ec8598b15e42dd7ee6d59edde760d616a4e4",
+      "reason": "Reviewed fixed repeated-digit UUIDs in the intercepted URLProtocol fixture target; test contains no physical device, account or environment identifiers. Re-pinned 2026-10-22 after cat branding; triggering fixture line is byte-identical."
     },
     {
       "path": "apps/ios-conversation/Tests/ConversationTaskPlanTests.swift",
@@ -1362,22 +1362,22 @@
       "path": "apps/ios-conversation/Tests/NativeChatWireRunner.swift",
       "category": "secret_assignment_review",
       "line": 20,
-      "sha256": "ec395ce51d3c8d02087f06dc2c1396e4c6b560b63189a9e4f8209045e19ed4e8",
-      "reason": "Reviewed unchanged synthetic three-segment test string for missing, expired and cleared session transport assertions. It is not a signed credential; new file bytes add only proposal wire scenarios."
+      "sha256": "b56d150db4e751c3e78f1f4b454ff6dfc41dc2505b8fd25be5587394d18dcc5c",
+      "reason": "Reviewed unchanged synthetic three-segment test string for missing, expired and cleared session transport assertions. It is not a signed credential; new file bytes add only proposal wire scenarios. Re-pinned 2026-10-22 after cat branding; triggering fixture line is byte-identical."
     },
     {
       "path": "apps/ios-conversation/Tests/NativeChatWireRunner.swift",
       "category": "secret_assignment_review",
       "line": 26,
-      "sha256": "ec395ce51d3c8d02087f06dc2c1396e4c6b560b63189a9e4f8209045e19ed4e8",
-      "reason": "Reviewed unchanged synthetic three-segment test string for missing, expired and cleared session transport assertions. It is not a signed credential; new file bytes add only proposal wire scenarios."
+      "sha256": "b56d150db4e751c3e78f1f4b454ff6dfc41dc2505b8fd25be5587394d18dcc5c",
+      "reason": "Reviewed unchanged synthetic three-segment test string for missing, expired and cleared session transport assertions. It is not a signed credential; new file bytes add only proposal wire scenarios. Re-pinned 2026-10-22 after cat branding; triggering fixture line is byte-identical."
     },
     {
       "path": "apps/ios-conversation/Tests/NativeChatWireRunner.swift",
       "category": "secret_assignment_review",
       "line": 30,
-      "sha256": "ec395ce51d3c8d02087f06dc2c1396e4c6b560b63189a9e4f8209045e19ed4e8",
-      "reason": "Reviewed unchanged synthetic three-segment test string for missing, expired and cleared session transport assertions. It is not a signed credential; new file bytes add only proposal wire scenarios."
+      "sha256": "b56d150db4e751c3e78f1f4b454ff6dfc41dc2505b8fd25be5587394d18dcc5c",
+      "reason": "Reviewed unchanged synthetic three-segment test string for missing, expired and cleared session transport assertions. It is not a signed credential; new file bytes add only proposal wire scenarios. Re-pinned 2026-10-22 after cat branding; triggering fixture line is byte-identical."
     },
     {
       "path": "docs/acceptance/evidence/native-r5-20261015/source-snapshot.json",
@@ -2063,8 +2063,8 @@
       "path": "apps/ios-conversation/Tests/NoBugP0Runner.swift",
       "category": "email_review",
       "line": 585,
-      "sha256": "ca02bd83920fae2a839d81d63a5346f0875ad610d414f46742f104e88f2d59f1",
-      "reason": "Test fixture: synthetic contact email (a at x.cn) for the minimalContact privacy test; not a real address.",
+      "sha256": "b39ae9a93933371ca59a5b96a241b46014435afd1ba47362229f2d54cf1d6ad8",
+      "reason": "Test fixture: synthetic contact email (a at x.cn) for the minimalContact privacy test; not a real address. Re-pinned 2026-10-22 after cat branding; triggering fixture line is byte-identical.",
       "reviewed_utc_date": "2026-10-17",
       "reviewer": "Grok Bot"
     },
@@ -2186,8 +2186,8 @@
       "path": "apps/ios-conversation/Tests/AuthTestSupport.swift",
       "category": "deployment_public_key",
       "line": 103,
-      "sha256": "20eb4c9dbacf1187596878974cf0ace07a75ce82a60004b1a635d0285077ff45",
-      "reason": "Reviewed 2026-10-17 (re-pin after line drift, NoBug B4): synthetic publishable-key fixture in a mock-only test; no real deployment key, no network."
+      "sha256": "346681d7c67b9b5e1312269a286c27a24f8a0919ddb6452f89cf9d38b7643320",
+      "reason": "Reviewed 2026-10-17 (re-pin after line drift, NoBug B4): synthetic publishable-key fixture in a mock-only test; no real deployment key, no network. Re-pinned 2026-10-22 after cat branding; triggering fixture line is byte-identical."
     },
     {
       "path": "apps/ios-conversation/Tests/DeviceTrialNativeTests.swift",
@@ -2284,36 +2284,36 @@
       "path": "apps/ios-conversation/Tests/AuthTestSupport.swift",
       "category": "secret_assignment_review",
       "line": 32,
-      "sha256": "20eb4c9dbacf1187596878974cf0ace07a75ce82a60004b1a635d0285077ff45",
-      "reason": "Reviewed 2026-10-17 (re-pin after line drift, NoBug B4): synthetic test password / access- or refresh-token marker consumed only by injected test remotes; no real credential."
+      "sha256": "346681d7c67b9b5e1312269a286c27a24f8a0919ddb6452f89cf9d38b7643320",
+      "reason": "Reviewed 2026-10-17 (re-pin after line drift, NoBug B4): synthetic test password / access- or refresh-token marker consumed only by injected test remotes; no real credential. Re-pinned 2026-10-22 after cat branding; triggering fixture line is byte-identical."
     },
     {
       "path": "apps/ios-conversation/Tests/AuthTestSupport.swift",
       "category": "secret_assignment_review",
       "line": 33,
-      "sha256": "20eb4c9dbacf1187596878974cf0ace07a75ce82a60004b1a635d0285077ff45",
-      "reason": "Reviewed 2026-10-17 (re-pin after line drift, NoBug B4): synthetic test password / access- or refresh-token marker consumed only by injected test remotes; no real credential."
+      "sha256": "346681d7c67b9b5e1312269a286c27a24f8a0919ddb6452f89cf9d38b7643320",
+      "reason": "Reviewed 2026-10-17 (re-pin after line drift, NoBug B4): synthetic test password / access- or refresh-token marker consumed only by injected test remotes; no real credential. Re-pinned 2026-10-22 after cat branding; triggering fixture line is byte-identical."
     },
     {
       "path": "apps/ios-conversation/Tests/AuthTestSupport.swift",
       "category": "secret_assignment_review",
       "line": 43,
-      "sha256": "20eb4c9dbacf1187596878974cf0ace07a75ce82a60004b1a635d0285077ff45",
-      "reason": "Reviewed 2026-10-17 (re-pin after line drift, NoBug B4): synthetic test password / access- or refresh-token marker consumed only by injected test remotes; no real credential."
+      "sha256": "346681d7c67b9b5e1312269a286c27a24f8a0919ddb6452f89cf9d38b7643320",
+      "reason": "Reviewed 2026-10-17 (re-pin after line drift, NoBug B4): synthetic test password / access- or refresh-token marker consumed only by injected test remotes; no real credential. Re-pinned 2026-10-22 after cat branding; triggering fixture line is byte-identical."
     },
     {
       "path": "apps/ios-conversation/Tests/AuthTestSupport.swift",
       "category": "secret_assignment_review",
       "line": 44,
-      "sha256": "20eb4c9dbacf1187596878974cf0ace07a75ce82a60004b1a635d0285077ff45",
-      "reason": "Reviewed 2026-10-17 (re-pin after line drift, NoBug B4): synthetic test password / access- or refresh-token marker consumed only by injected test remotes; no real credential."
+      "sha256": "346681d7c67b9b5e1312269a286c27a24f8a0919ddb6452f89cf9d38b7643320",
+      "reason": "Reviewed 2026-10-17 (re-pin after line drift, NoBug B4): synthetic test password / access- or refresh-token marker consumed only by injected test remotes; no real credential. Re-pinned 2026-10-22 after cat branding; triggering fixture line is byte-identical."
     },
     {
       "path": "apps/ios-conversation/Tests/AuthTestSupport.swift",
       "category": "secret_assignment_review",
       "line": 57,
-      "sha256": "20eb4c9dbacf1187596878974cf0ace07a75ce82a60004b1a635d0285077ff45",
-      "reason": "Reviewed 2026-10-17 (re-pin after line drift, NoBug B4): synthetic test password / access- or refresh-token marker consumed only by injected test remotes; no real credential."
+      "sha256": "346681d7c67b9b5e1312269a286c27a24f8a0919ddb6452f89cf9d38b7643320",
+      "reason": "Reviewed 2026-10-17 (re-pin after line drift, NoBug B4): synthetic test password / access- or refresh-token marker consumed only by injected test remotes; no real credential. Re-pinned 2026-10-22 after cat branding; triggering fixture line is byte-identical."
     },
     {
       "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
@@ -2340,22 +2340,22 @@
       "path": "apps/ios-conversation/Tests/NativeOAuthTests.swift",
       "category": "secret_assignment_review",
       "line": 106,
-      "sha256": "47130511454718f24e16b6a29315ab6b8bf6a39d486ba00f8da053fc92176be7",
-      "reason": "Reviewed 2026-10-17 (re-pin after line drift, NoBug B4): OAuthFakeRemote synthetic 'oauth.anon.sig' / 'oauth.perm.sig' token markers consumed only by the injected test remote; no real credential."
+      "sha256": "ba21694c972d99b4ad68d3fb8d91af746ce601e1aaac6bc372d91428275e9a06",
+      "reason": "Reviewed 2026-10-17 (re-pin after line drift, NoBug B4): OAuthFakeRemote synthetic 'oauth.anon.sig' / 'oauth.perm.sig' token markers consumed only by the injected test remote; no real credential. Re-pinned 2026-10-22 after cat branding; triggering fixture line is byte-identical."
     },
     {
       "path": "apps/ios-conversation/Tests/DeviceTrialNativeTests.swift",
       "category": "deployment_public_key",
       "line": 313,
-      "sha256": "f30fe2291ddf76b3637388d26ea6e3b6f8cd8a514c7fa332dbe702e088b879a2",
-      "reason": "Synthetic unit-test publishable key literal (contains \"synthetic\"/\"test\"); never a deployment key and never sent to a real backend."
+      "sha256": "5b2342c7e06c43cf664f12d56cd92fb5b488a0786d4571546138cb0c9aa63d82",
+      "reason": "Synthetic unit-test publishable key literal (contains \"synthetic\"/\"test\"); never a deployment key and never sent to a real backend. Re-pinned 2026-10-22 after cat branding; triggering fixture line is byte-identical."
     },
     {
       "path": "apps/ios-conversation/Tests/DeviceTrialNativeTests.swift",
       "category": "deployment_public_key",
       "line": 354,
-      "sha256": "f30fe2291ddf76b3637388d26ea6e3b6f8cd8a514c7fa332dbe702e088b879a2",
-      "reason": "Synthetic unit-test publishable key literal (contains \"synthetic\"/\"test\"); never a deployment key and never sent to a real backend."
+      "sha256": "5b2342c7e06c43cf664f12d56cd92fb5b488a0786d4571546138cb0c9aa63d82",
+      "reason": "Synthetic unit-test publishable key literal (contains \"synthetic\"/\"test\"); never a deployment key and never sent to a real backend. Re-pinned 2026-10-22 after cat branding; triggering fixture line is byte-identical."
     },
     {
       "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
@@ -2403,43 +2403,43 @@
       "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
       "category": "deployment_public_key",
       "line": 378,
-      "sha256": "163f4e72f53dc552ae7e173006565377bad9812f9aa145ef796c52ceccdf6624",
-      "reason": "Synthetic unit-test publishable key literal (contains \"synthetic\"/\"test\"); never a deployment key and never sent to a real backend."
+      "sha256": "3f24fc6ff6ddb232428b67c69ed2798f831b5c21a6be05b8833caf56d8d42236",
+      "reason": "Synthetic unit-test publishable key literal (contains \"synthetic\"/\"test\"); never a deployment key and never sent to a real backend. Re-pinned 2026-10-22 after cat branding; triggering fixture line is byte-identical."
     },
     {
       "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
       "category": "deployment_public_key",
       "line": 1007,
-      "sha256": "163f4e72f53dc552ae7e173006565377bad9812f9aa145ef796c52ceccdf6624",
-      "reason": "Synthetic unit-test publishable key literal (contains \"synthetic\"/\"test\"); never a deployment key and never sent to a real backend."
+      "sha256": "3f24fc6ff6ddb232428b67c69ed2798f831b5c21a6be05b8833caf56d8d42236",
+      "reason": "Synthetic unit-test publishable key literal (contains \"synthetic\"/\"test\"); never a deployment key and never sent to a real backend. Re-pinned 2026-10-22 after cat branding; triggering fixture line is byte-identical."
     },
     {
       "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
       "category": "secret_assignment_review",
       "line": 254,
-      "sha256": "163f4e72f53dc552ae7e173006565377bad9812f9aa145ef796c52ceccdf6624",
-      "reason": "Synthetic three-word lifecycle test access token passed to a local workspace-resolver stub; not a JWT, never sent to a real backend."
+      "sha256": "3f24fc6ff6ddb232428b67c69ed2798f831b5c21a6be05b8833caf56d8d42236",
+      "reason": "Synthetic three-word lifecycle test access token passed to a local workspace-resolver stub; not a JWT, never sent to a real backend. Re-pinned 2026-10-22 after cat branding; triggering fixture line is byte-identical."
     },
     {
       "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
       "category": "secret_assignment_review",
       "line": 670,
-      "sha256": "163f4e72f53dc552ae7e173006565377bad9812f9aa145ef796c52ceccdf6624",
-      "reason": "Synthetic three-word lifecycle test access token passed to a local workspace-resolver stub; not a JWT, never sent to a real backend."
+      "sha256": "3f24fc6ff6ddb232428b67c69ed2798f831b5c21a6be05b8833caf56d8d42236",
+      "reason": "Synthetic three-word lifecycle test access token passed to a local workspace-resolver stub; not a JWT, never sent to a real backend. Re-pinned 2026-10-22 after cat branding; triggering fixture line is byte-identical."
     },
     {
       "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
       "category": "secret_assignment_review",
       "line": 711,
-      "sha256": "163f4e72f53dc552ae7e173006565377bad9812f9aa145ef796c52ceccdf6624",
-      "reason": "Synthetic three-word lifecycle test access token passed to a local workspace-resolver stub; not a JWT, never sent to a real backend."
+      "sha256": "3f24fc6ff6ddb232428b67c69ed2798f831b5c21a6be05b8833caf56d8d42236",
+      "reason": "Synthetic three-word lifecycle test access token passed to a local workspace-resolver stub; not a JWT, never sent to a real backend. Re-pinned 2026-10-22 after cat branding; triggering fixture line is byte-identical."
     },
     {
       "path": "apps/ios-conversation/Tests/NativeAuthApplicationLifecycleTests.swift",
       "category": "secret_assignment_review",
       "line": 1051,
-      "sha256": "163f4e72f53dc552ae7e173006565377bad9812f9aa145ef796c52ceccdf6624",
-      "reason": "Synthetic three-word lifecycle test access token passed to a local workspace-resolver stub; not a JWT, never sent to a real backend."
+      "sha256": "3f24fc6ff6ddb232428b67c69ed2798f831b5c21a6be05b8833caf56d8d42236",
+      "reason": "Synthetic three-word lifecycle test access token passed to a local workspace-resolver stub; not a JWT, never sent to a real backend. Re-pinned 2026-10-22 after cat branding; triggering fixture line is byte-identical."
     },
     {
       "path": "apps/ios-conversation/Tests/NativeOAuthTests.swift",

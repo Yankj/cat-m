@@ -160,13 +160,13 @@ public actor ConversationTaskPlanService {
         try await save(state,record:record,reference:reference,epoch:epoch);return state
     }
     private func load(_ reference:ConversationTaskPlanReference) async throws -> (ConversationTaskPlanLocalState,StoredRecord?) {
-        guard !invalidated,reference.scope==scope else {throw CatpawError.scopeMismatch}
+        guard !invalidated,reference.scope==scope else {throw catError.scopeMismatch}
         let conversation=try await repository.record(reference.binding.conversation_id,scope:reference.scope)
         // The fixed local account partition differs from the authenticated server workspace.
         // The HTTP adapter verifies binding.scope_id against its configured serverScopeID.
         guard conversation.conversation != nil,reference.binding.grant_epoch>0,!reference.binding.task_id.isEmpty,reference.binding.task_id.utf16.count<=200 else {throw ConversationTaskPlanError.invalidResponse}
         let record:StoredRecord
-        do {record=try await repository.record(recordID(reference),scope:reference.scope)} catch CatpawError.missing {return (ConversationTaskPlanLocalState(),nil)}
+        do {record=try await repository.record(recordID(reference),scope:reference.scope)} catch catError.missing {return (ConversationTaskPlanLocalState(),nil)}
         guard case .preference(let value)=record.payload,value.key==recordKey(reference) else {throw ConversationTaskPlanError.invalidResponse}
         return (try JSONDecoder().decode(ConversationTaskPlanLocalState.self,from:Data(value.value.utf8)),record)
     }
@@ -181,7 +181,7 @@ public actor ConversationTaskPlanService {
     }
     private func requireAdmission(_ epoch:Int) throws {guard admitted,!invalidated,!closing,generation==epoch else {throw CancellationError()}}
     private func recordID(_ reference:ConversationTaskPlanReference)->UUID {stableID(recordKey(reference))}
-    private static func isConflict(_ error:Error)->Bool {if case CatpawError.conflict=error {return true};return false}
+    private static func isConflict(_ error:Error)->Bool {if case catError.conflict=error {return true};return false}
     private func recordKey(_ reference:ConversationTaskPlanReference)->String {"conversation_task_plan:\(reference.binding.conversation_id):\(reference.binding.run_id)"}
     private func lock() async {if !locked {locked=true;return};await withCheckedContinuation{waiters.append($0)}}
     private func unlock() {if waiters.isEmpty {locked=false}else{waiters.removeFirst().resume()}}

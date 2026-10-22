@@ -54,7 +54,7 @@ import os
     /// L2 (encrypted, per user) is the store of record for the shared instance; tests that inject their own
     /// UserDefaults keep using it. Without a signed-in L2 store, blocks stay in memory only.
     private var usesL2: Bool { defaults === UserDefaults.standard }
-    /// Re-reads the active conversation after the L2 store changes user (called from CatpawApp).
+    /// Re-reads the active conversation after the L2 store changes user (called from catApp).
     func reloadFromL2() {
         blocks = [:]; order = []; responses = [:]; resolved = [:]; contexts = [:]; operationIDs = [:]
         load()
@@ -220,7 +220,7 @@ import os
 }
 
 /// Plug-in adapter for the markdown renderer registry (feat/ios-markdown-render, `MarkdownCustomBlockRegistry`)
-/// (#34, now in integration-v2). `registerWithMarkdown()` is called from `CatpawMApp.init`; `register(into:)` stays
+/// (#34, now in integration-v2). `registerWithMarkdown()` is called from `catApp.init`; `register(into:)` stays
 /// generic so other hosts can plug the same builders in.
 ///
 /// Fence blocks have no interrupt: they render and answer locally (display semantics).

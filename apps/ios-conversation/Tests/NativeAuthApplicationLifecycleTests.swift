@@ -1,7 +1,7 @@
 import Foundation
 import XCTest
 import SwiftUI
-@testable import CatpawM
+@testable import cat
 
 /// Exercises real composition and teardown with a named offline login remote.
 /// The local draft drain is held; no model, HTTP, Keychain or system effect runs.
@@ -67,7 +67,7 @@ final class NativeAuthApplicationLifecycleTests:XCTestCase {
             XCTAssertNil(AccountEpoch.shared.currentAccount,"1. the epoch was bumped synchronously BEFORE the decision")
             XCTAssertFalse(DeviceCallGate.isLive(call.call_id),"…and the grant is already dead")
             XCTAssertTrue(items.allSatisfy { $0.automatic == nil })
-            // only the EXTERNAL item (EventKit entry Catpaw created) is asked; the user picks 撤销
+            // only the EXTERNAL item (EventKit entry cat created) is asked; the user picks 撤销
             return ["\(DeviceLedgerParkedSource.key)/\(rec.call_id)":.cancel]
         }
         await app.signOut()
@@ -203,7 +203,7 @@ final class NativeAuthApplicationLifecycleTests:XCTestCase {
         defer {ProactiveClock.now={Date()}}
         ProactiveEngine.registerAccountObserver()
         // v1.1 R3: proactive inbox records are sealed in the account's L2 store, which production activates from the chat
-        // view's .task (CatpawApp: L2SecureStore.activate(userID:)). This test has no view, so mirror that: one temp-dir
+        // view's .task (catApp: L2SecureStore.activate(userID:)). This test has no view, so mirror that: one temp-dir
         // store per account, active exactly while that account is current (nil when signed out), with real ownership.
         let l2Root=FileManager.default.temporaryDirectory.appendingPathComponent("native-proactive-l2-"+UUID().uuidString,isDirectory:true)
         let l2Keys=EphemeralL2KeyProvider()
@@ -693,7 +693,7 @@ final class NativeAuthApplicationLifecycleTests:XCTestCase {
 
     /// Opening-stall fix: the shell overlay runs the watchdog per attempt and has the retry capsule (source contract).
     func testLaunchShellOverlayHasWatchdogAndRetry() throws {
-        let source=URL(fileURLWithPath:#filePath).deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("Sources/App/CatpawApp.swift")
+        let source=URL(fileURLWithPath:#filePath).deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("Sources/App/catApp.swift")
         let text=try String(contentsOf:source,encoding:.utf8)
         XCTAssertTrue(text.contains(".task(id:auth.launchAttempt) { await auth.launchWatchdog() }"))
         XCTAssertTrue(text.contains("else if auth.launchChatStalled { LaunchOpenFailedCapsule(auth:auth)"))
@@ -731,10 +731,10 @@ final class NativeAuthApplicationLifecycleTests:XCTestCase {
     /// shell while anonymous sign-up is still held; the account's own chat replaces it once the identity resolves, an
     /// unsent draft typed into the shell is carried over (never lost), and the first-run flag waits for that real chat.
     @MainActor func testFirstRunTapFlipsGateWithoutWaitingOnSignUp() async throws {
-        let flag=UserDefaults.standard.object(forKey:CatpawOnboarding.completedKey)
-        defer {UserDefaults.standard.set(flag,forKey:CatpawOnboarding.completedKey)}
+        let flag=UserDefaults.standard.object(forKey:catOnboarding.completedKey)
+        defer {UserDefaults.standard.set(flag,forKey:catOnboarding.completedKey)}
         for typed in [false,true] {
-            UserDefaults.standard.removeObject(forKey:CatpawOnboarding.completedKey)
+            UserDefaults.standard.removeObject(forKey:catOnboarding.completedKey)
             let root=FileManager.default.temporaryDirectory.appendingPathComponent("native-first-run-tap-"+UUID().uuidString,isDirectory:true)
             defer {retireStoreRoot(root)}
             let scope=UUID(),clock=AuthTestClock(),storage=LifecycleStorage(),configuration=try lifecycleConfiguration(scope:scope)
@@ -744,7 +744,7 @@ final class NativeAuthApplicationLifecycleTests:XCTestCase {
             let resolver=LifecycleWorkspaceResolver(subject:subject,scope:scope,steps:[.success,.success],accessToken:"synthetic.anon.signature")
             let app=NativeAuthApplicationModel(configuration:configuration,manager:manager,vault:storage,barrier:storage,root:root,workspaceResolver:resolver,retrySchedule:.init(nominalSeconds:[0],jitter:{$0}))
             app.beginFirstRunForTesting();XCTAssertTrue(app.needsOnboarding)
-            XCTAssertFalse(CatpawOnboarding.isCompleted())
+            XCTAssertFalse(catOnboarding.isCompleted())
             let started=ProcessInfo.processInfo.systemUptime
             await app.completeOnboarding()
             XCTAssertLessThan(ProcessInfo.processInfo.systemUptime-started,2.0,"the tap only waits for the disk read")
@@ -752,7 +752,7 @@ final class NativeAuthApplicationLifecycleTests:XCTestCase {
             XCTAssertNil(app.chat,"NoBug B1: no storage-backed fallback chat")
             let shell=try XCTUnwrap(app.launchShell);await shell.start()
             XCTAssertNotEqual(shell.trustedSubjectID,subject,"no account data before the account is resolved")
-            XCTAssertFalse(CatpawOnboarding.isCompleted(),"NoBug (b): the first-run flag waits for the account's real chat")
+            XCTAssertFalse(catOnboarding.isCompleted(),"NoBug (b): the first-run flag waits for the account's real chat")
             // NoBug (1): nothing account-bound before the account resolves — no network admission (no queue is sent),
             // no device capability (EventKit scan), no account-bound store activation.
             XCTAssertFalse(shell.networkAdmissionAllowed);XCTAssertFalse(app.deviceCapabilitiesAllowed)
@@ -760,7 +760,7 @@ final class NativeAuthApplicationLifecycleTests:XCTestCase {
             if typed {shell.editDraft("还没发出去的草稿")}
             await remote.release()
             try await waitUntil {app.chat?.trustedSubjectID == subject}
-            XCTAssertTrue(CatpawOnboarding.isCompleted(),"the flag is written once the account chat attaches")
+            XCTAssertTrue(catOnboarding.isCompleted(),"the flag is written once the account chat attaches")
             try await waitUntil {app.deviceCapabilitiesAllowed}
             XCTAssertEqual(app.chat?.draft,typed ? "还没发出去的草稿" : "","an unsent draft follows the user into the account chat")
             XCTAssertEqual(shell.draft,"","the shell keeps nothing once the draft moved")
@@ -772,9 +772,9 @@ final class NativeAuthApplicationLifecycleTests:XCTestCase {
     /// NoBug (2): the first-run-completed flag is written only after a chat was actually created. A tap that cannot open a
     /// chat (unrecoverable session) leaves the flag unset, so the next launch shows the landing again.
     @MainActor func testFirstRunFlagIsNotWrittenWhenNoChatOpens() async throws {
-        let flag=UserDefaults.standard.object(forKey:CatpawOnboarding.completedKey)
-        defer {UserDefaults.standard.set(flag,forKey:CatpawOnboarding.completedKey)}
-        UserDefaults.standard.removeObject(forKey:CatpawOnboarding.completedKey)
+        let flag=UserDefaults.standard.object(forKey:catOnboarding.completedKey)
+        defer {UserDefaults.standard.set(flag,forKey:catOnboarding.completedKey)}
+        UserDefaults.standard.removeObject(forKey:catOnboarding.completedKey)
         let root=FileManager.default.temporaryDirectory.appendingPathComponent("native-first-run-flag-"+UUID().uuidString,isDirectory:true)
         defer {retireStoreRoot(root)}
         let scope=UUID(),clock=AuthTestClock(),storage=LifecycleStorage(),configuration=try lifecycleConfiguration(scope:scope)
@@ -787,14 +787,14 @@ final class NativeAuthApplicationLifecycleTests:XCTestCase {
         XCTAssertTrue(app.sessionRestartNeeded)
         await app.completeOnboarding()
         XCTAssertNil(app.chat);XCTAssertTrue(app.needsOnboarding)
-        XCTAssertFalse(CatpawOnboarding.isCompleted(),"no chat → no first-run flag")
+        XCTAssertFalse(catOnboarding.isCompleted(),"no chat → no first-run flag")
         if case .failed = app.onboarding {} else {XCTFail("the landing stays with a non-blocking failure notice")}
     }
 
-    /// NoBug (3): the root gate has no full-screen loader. The only ProgressViews left in CatpawApp are the DEBUG offline
+    /// NoBug (3): the root gate has no full-screen loader. The only ProgressViews left in catApp are the DEBUG offline
     /// fixture placeholder and the small floating status capsule; the entering-chat state is the chat's own first frame.
     func testRootGateHasNoFullScreenProgressView() throws {
-        let source=URL(fileURLWithPath:#filePath).deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("Sources/App/CatpawApp.swift")
+        let source=URL(fileURLWithPath:#filePath).deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("Sources/App/catApp.swift")
         let text=try String(contentsOf:source,encoding:.utf8)
         let uses=text.components(separatedBy:"ProgressView(").dropFirst().map{String($0.prefix(60))}
         let large=uses.filter{!$0.hasPrefix(").controlSize(.small)")}
@@ -873,10 +873,10 @@ final class NativeAuthApplicationLifecycleTests:XCTestCase {
         let suite="xctest.launchgate."+UUID().uuidString,defaults=try XCTUnwrap(UserDefaults(suiteName:suite))
         defer {defaults.removePersistentDomain(forName:suite)}
         XCTAssertTrue(LaunchMarkGate.isFirstRun(defaults,arguments:[]))
-        CatpawOnboarding.markCompleted(defaults)
+        catOnboarding.markCompleted(defaults)
         XCTAssertFalse(LaunchMarkGate.isFirstRun(defaults,arguments:[]))
         let fresh=try XCTUnwrap(UserDefaults(suiteName:suite+".b"));defer {fresh.removePersistentDomain(forName:suite+".b")}
-        XCTAssertFalse(LaunchMarkGate.isFirstRun(fresh,arguments:[CatpawOnboarding.skipArgument]))
+        XCTAssertFalse(LaunchMarkGate.isFirstRun(fresh,arguments:[catOnboarding.skipArgument]))
     }
 
     // MARK: Splash/login P0 (21:41 iPhone 13, e9e2efce): 开始使用 / Google sign-in left the landing on screen.
@@ -885,9 +885,9 @@ final class NativeAuthApplicationLifecycleTests:XCTestCase {
     /// NativeOAuthCoordinator does). afterSignIn must open the gate onto the signed-in account's chat. Before the fix it
     /// called completeOnboarding(), which failed again on the same stale flag and the landing stayed.
     @MainActor func testSignInOnLandingOpensGateDespiteStaleRestartFlags() async throws {
-        let flag=UserDefaults.standard.object(forKey:CatpawOnboarding.completedKey)
-        defer {UserDefaults.standard.set(flag,forKey:CatpawOnboarding.completedKey)}
-        UserDefaults.standard.removeObject(forKey:CatpawOnboarding.completedKey)
+        let flag=UserDefaults.standard.object(forKey:catOnboarding.completedKey)
+        defer {UserDefaults.standard.set(flag,forKey:catOnboarding.completedKey)}
+        UserDefaults.standard.removeObject(forKey:catOnboarding.completedKey)
         let root=FileManager.default.temporaryDirectory.appendingPathComponent("native-splash-signin-"+UUID().uuidString,isDirectory:true)
         // root is left in tmp on purpose: removing it under a queued SwiftData save is what 169a6978 avoids.
         let scope=UUID(),clock=AuthTestClock(),storage=LifecycleStorage(),configuration=try lifecycleConfiguration(scope:scope)
@@ -909,7 +909,7 @@ final class NativeAuthApplicationLifecycleTests:XCTestCase {
         await app.completeOnboardingAfterSignIn()
         XCTAssertFalse(app.needsOnboarding,"a completed sign-in opens the gate")
         XCTAssertEqual(app.chat?.trustedSubjectID,subject,"onto the signed-in account's own chat")
-        XCTAssertTrue(CatpawOnboarding.isCompleted())
+        XCTAssertTrue(catOnboarding.isCompleted())
         XCTAssertFalse(app.requiresSessionRestart,"the replaced session's restart flag no longer applies")
         await app.signOut()
     }
@@ -918,9 +918,9 @@ final class NativeAuthApplicationLifecycleTests:XCTestCase {
     /// wait), and when the account chat attaches later (here: the warm-up restore + workspace admit) the gate opens
     /// reactively. The late attempt never writes a failure over the opened gate.
     @MainActor func testStalledEntryTimesOutAndLateAttachStillOpensGate() async throws {
-        let flag=UserDefaults.standard.object(forKey:CatpawOnboarding.completedKey)
-        defer {UserDefaults.standard.set(flag,forKey:CatpawOnboarding.completedKey)}
-        UserDefaults.standard.removeObject(forKey:CatpawOnboarding.completedKey)
+        let flag=UserDefaults.standard.object(forKey:catOnboarding.completedKey)
+        defer {UserDefaults.standard.set(flag,forKey:catOnboarding.completedKey)}
+        UserDefaults.standard.removeObject(forKey:catOnboarding.completedKey)
         let root=FileManager.default.temporaryDirectory.appendingPathComponent("native-splash-stall-"+UUID().uuidString,isDirectory:true)
         // root is left in tmp on purpose: removing it under a queued SwiftData save is what 169a6978 avoids.
         let scope=UUID(),clock=AuthTestClock(),storage=LifecycleStorage(),configuration=try lifecycleConfiguration(scope:scope)
@@ -942,7 +942,7 @@ final class NativeAuthApplicationLifecycleTests:XCTestCase {
         await app.start()
         try await waitUntil {!app.needsOnboarding}
         XCTAssertEqual(app.chat?.trustedSubjectID,subject)
-        XCTAssertTrue(CatpawOnboarding.isCompleted())
+        XCTAssertTrue(catOnboarding.isCompleted())
         hold.released=true
         try? await Task.sleep(nanoseconds:300_000_000)
         XCTAssertEqual(app.onboarding,.completed,"the superseded attempt cannot reopen the landing")
@@ -952,9 +952,9 @@ final class NativeAuthApplicationLifecycleTests:XCTestCase {
     /// A second tap (or a sign-in) during an attempt joins it. Before the fix it returned at once with the gate still
     /// shut, so the landing reset itself and its handoff timers then hid the CTA and the cat.
     @MainActor func testSecondEntryDuringAttemptJoinsInsteadOfReturningShut() async throws {
-        let flag=UserDefaults.standard.object(forKey:CatpawOnboarding.completedKey)
-        defer {UserDefaults.standard.set(flag,forKey:CatpawOnboarding.completedKey)}
-        UserDefaults.standard.removeObject(forKey:CatpawOnboarding.completedKey)
+        let flag=UserDefaults.standard.object(forKey:catOnboarding.completedKey)
+        defer {UserDefaults.standard.set(flag,forKey:catOnboarding.completedKey)}
+        UserDefaults.standard.removeObject(forKey:catOnboarding.completedKey)
         let root=FileManager.default.temporaryDirectory.appendingPathComponent("native-splash-join-"+UUID().uuidString,isDirectory:true)
         // root is left in tmp on purpose: removing it under a queued SwiftData save is what 169a6978 avoids.
         let scope=UUID(),clock=AuthTestClock(),storage=LifecycleStorage(),configuration=try lifecycleConfiguration(scope:scope)
@@ -996,11 +996,11 @@ final class NativeAuthApplicationLifecycleTests:XCTestCase {
     /// Privacy shield (user direction 21:51): `.inactive` (Control Center, permission prompts, the Google sign-in sheet)
     /// shows the content; the app-switcher snapshot (`.background`) and a locked device are shielded.
     func testPrivacyShieldOnlyForBackgroundSnapshotOrLockedDevice() {
-        XCTAssertEqual(CatpawPrivacyShieldPolicy.mode(scene:.active,protectedDataAvailable:true),.none)
-        XCTAssertEqual(CatpawPrivacyShieldPolicy.mode(scene:.inactive,protectedDataAvailable:true),.none,"no blackout under the OAuth sheet / Control Center")
-        XCTAssertEqual(CatpawPrivacyShieldPolicy.mode(scene:.background,protectedDataAvailable:true),.snapshot)
-        XCTAssertEqual(CatpawPrivacyShieldPolicy.mode(scene:.active,protectedDataAvailable:false),.locked)
-        XCTAssertEqual(CatpawPrivacyShieldPolicy.mode(scene:.inactive,protectedDataAvailable:false),.locked)
+        XCTAssertEqual(catPrivacyShieldPolicy.mode(scene:.active,protectedDataAvailable:true),.none)
+        XCTAssertEqual(catPrivacyShieldPolicy.mode(scene:.inactive,protectedDataAvailable:true),.none,"no blackout under the OAuth sheet / Control Center")
+        XCTAssertEqual(catPrivacyShieldPolicy.mode(scene:.background,protectedDataAvailable:true),.snapshot)
+        XCTAssertEqual(catPrivacyShieldPolicy.mode(scene:.active,protectedDataAvailable:false),.locked)
+        XCTAssertEqual(catPrivacyShieldPolicy.mode(scene:.inactive,protectedDataAvailable:false),.locked)
     }
 
     private func lifecycleConfiguration(scope:UUID) throws ->NativeAuthConfiguration {

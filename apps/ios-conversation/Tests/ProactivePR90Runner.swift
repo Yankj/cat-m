@@ -69,14 +69,14 @@ func pr90_4_serverActionStates() {
     check(w.action_states?["notify_attendees"] == "done", "wire shape")
 }
 
-final class MemKV: CatpawKeyValueStore { var d: [String: Data] = [:]
+final class MemKV: catKeyValueStore { var d: [String: Data] = [:]
     func data(forKey k: String) -> Data? { d[k] }
     func set(_ v: Any?, forKey k: String) { d[k] = v as? Data } }
 struct SyncOp: Codable, Sendable, Equatable { var local: String; var action: String }
 
 @MainActor func pr90_5_persistentQueue() async {
     let kv = MemKV(); var t = at("2026-10-15T04:00:00Z")
-    var q = CatpawPersistentQueue<SyncOp>(name: "t", store: kv, maxAttempts: 3, baseDelay: 30)
+    var q = catPersistentQueue<SyncOp>(name: "t", store: kv, maxAttempts: 3, baseDelay: 30)
     check(q.enqueue(SyncOp(local: "s1", action: "create_reminder"), key: "op-1", account: "A", now: t), "enqueue")
     check(!q.enqueue(SyncOp(local: "s1", action: "create_reminder"), key: "op-1", account: "A", now: t), "same key dedupes")
     _ = q.enqueue(SyncOp(local: "s2", action: "dismiss"), key: "op-2", account: "A", now: t)
@@ -85,7 +85,7 @@ struct SyncOp: Codable, Sendable, Equatable { var local: String; var action: Str
     var r = await q.drain(now: t, account: "A") { op in sends.append(op.local); return .retry }
     check(r.retried == 2 && q.items.count == 2, "failures kept")
     // Restart: a new instance on the same store sees the pending ops.
-    q = CatpawPersistentQueue<SyncOp>(name: "t", store: kv, maxAttempts: 3, baseDelay: 30)
+    q = catPersistentQueue<SyncOp>(name: "t", store: kv, maxAttempts: 3, baseDelay: 30)
     check(q.items.count == 2, "survives restart")
     r = await q.drain(now: t.addingTimeInterval(10), account: "A") { _ in sends.append("early"); return .done }
     check(r.sent == 0 && !sends.contains("early"), "backoff respected")
@@ -263,7 +263,7 @@ func pr90c_undoContract() {
 
 @MainActor func pr90c_queueOrdering() async {
     let kv = MemKV(); let t = at("2026-10-15T04:00:00Z")
-    let q = CatpawPersistentQueue<SyncOp>(name: "o", store: kv, maxAttempts: 5, baseDelay: 30)
+    let q = catPersistentQueue<SyncOp>(name: "o", store: kv, maxAttempts: 5, baseDelay: 30)
     q.enqueue(SyncOp(local: "s1", action: "snooze"), key: "op-snooze", account: "A", group: "s1", now: t)
     q.enqueue(SyncOp(local: "s2", action: "create_reminder"), key: "op-other", account: "A", group: "s2", now: t)
     var server: [String] = []
@@ -279,7 +279,7 @@ func pr90c_undoContract() {
     q.enqueue(SyncOp(local: "s3", action: "dismiss"), key: "op-s3-dismiss", account: "A", group: "s3", supersedes: { $0.action == "snooze" }, now: t)
     check(q.items.map(\.key) == ["op-s3-dismiss"], "superseded snooze dropped")
     // Restart keeps groups.
-    let q2 = CatpawPersistentQueue<SyncOp>(name: "o", store: kv); check(q2.items.first?.group == "s3", "group persisted")
+    let q2 = catPersistentQueue<SyncOp>(name: "o", store: kv); check(q2.items.first?.group == "s3", "group persisted")
 }
 func pr90c_cardMerge() {
     // An existing pending card receives the cloud's later success states (SMS sent elsewhere) and stops offering them.
@@ -351,7 +351,7 @@ func pr90d_legacyRejected() {
 
 @MainActor func pr90d_deadLetterOrdering() async {
     let kv = MemKV(); var t = at("2026-10-15T04:00:00Z")
-    let q = CatpawPersistentQueue<SyncOp>(name: "dl", store: kv, maxAttempts: 2, baseDelay: 1)
+    let q = catPersistentQueue<SyncOp>(name: "dl", store: kv, maxAttempts: 2, baseDelay: 1)
     q.enqueue(SyncOp(local: "s1", action: "snooze"), key: "a", account: "A", group: "s1", now: t)
     q.enqueue(SyncOp(local: "s1", action: "dismiss"), key: "b", account: "A", group: "s1", now: t)
     q.enqueue(SyncOp(local: "s2", action: "dismiss"), key: "c", account: "A", group: "s2", now: t)
@@ -444,7 +444,7 @@ func pr90e_operationIDs() {
 
 @MainActor func pr90e_deadLetterFuture() async {
     let kv = MemKV(); var t = at("2026-10-15T04:00:00Z")
-    let q = CatpawPersistentQueue<SyncOp>(name: "dl2", store: kv, maxAttempts: 1, baseDelay: 1)
+    let q = catPersistentQueue<SyncOp>(name: "dl2", store: kv, maxAttempts: 1, baseDelay: 1)
     q.enqueue(SyncOp(local: "s1", action: "snooze"), key: "a", account: "A", group: "s1", now: t)
     _ = await q.drain(now: t, account: "A") { _ in .retry }
     t = t.addingTimeInterval(60)
@@ -452,7 +452,7 @@ func pr90e_operationIDs() {
     var sent: [String] = []
     _ = await q.drain(now: t, account: "A") { op in sent.append(op.action); return .done }
     check(sent.isEmpty && q.deadLetters.map(\.key).contains("u"), "an op enqueued after its group dead-lettered is parked, not sent (\(sent))")
-    let reloaded = CatpawPersistentQueue<SyncOp>(name: "dl2", store: kv, maxAttempts: 1, baseDelay: 1)
+    let reloaded = catPersistentQueue<SyncOp>(name: "dl2", store: kv, maxAttempts: 1, baseDelay: 1)
     reloaded.enqueue(SyncOp(local: "s1", action: "dismiss"), key: "d", account: "A", group: "s1", now: t)
     check(reloaded.items.isEmpty, "poison survives a restart")
 }
@@ -475,18 +475,18 @@ func pr90f_quarantine() {
 }
 @MainActor func pr90f_purgeDeadLetters() async {
     let kv = MemKV(); let t = at("2026-10-15T04:00:00Z")
-    let q = CatpawPersistentQueue<SyncOp>(name: "pdl", store: kv, maxAttempts: 1, baseDelay: 1)
+    let q = catPersistentQueue<SyncOp>(name: "pdl", store: kv, maxAttempts: 1, baseDelay: 1)
     q.enqueue(SyncOp(local: "s1", action: "snooze"), key: "a", account: "A", group: "s1", now: t)
     q.enqueue(SyncOp(local: "s2", action: "snooze"), key: "b", account: "B", group: "s2", now: t)
     _ = await q.drain(now: t, account: "A") { _ in .retry }; _ = await q.drain(now: t, account: "B") { _ in .retry }
     q.purge(account: "A")
     check(!q.deadLetters.contains { $0.account == "A" } && q.deadLetters.contains { $0.account == "B" }, "purge(account) clears that account's dead letters only")
     q.purge(account: nil); check(q.deadLetters.isEmpty, "purge(nil) clears every dead letter")
-    check(CatpawPersistentQueue<SyncOp>(name: "pdl", store: kv).deadLetters.isEmpty, "persisted")
+    check(catPersistentQueue<SyncOp>(name: "pdl", store: kv).deadLetters.isEmpty, "persisted")
 }
 @MainActor func pr90f_quarantineQueue() {
     let kv = MemKV(); let t = at("2026-10-15T04:00:00Z")
-    let q = CatpawPersistentQueue<SyncOp>(name: "qq", store: kv)
+    let q = catPersistentQueue<SyncOp>(name: "qq", store: kv)
     q.enqueue(SyncOp(local: "s1", action: "dismiss"), key: "a", account: "user-a", group: "s1", now: t)
     q.enqueue(SyncOp(local: "s1", action: "snooze"), key: "n", account: nil, group: "s1", now: t)
     q.enqueue(SyncOp(local: "s2", action: "dismiss"), key: "x", account: "USER-X", group: "s2", now: t)
@@ -667,7 +667,7 @@ func pr90i_feedbackGateOnlyLocal() {
 // they stay dead, flagged as needing the user's confirmation. Live ops restore and sync as before.
 @MainActor func pr90i_deadLettersStayDeadOnRestore() async {
     let kv = MemKV(); var t = at("2026-10-15T04:00:00Z")
-    let q = CatpawPersistentQueue<SyncOp>(name: "dlr", store: kv, maxAttempts: 2, baseDelay: 1)
+    let q = catPersistentQueue<SyncOp>(name: "dlr", store: kv, maxAttempts: 2, baseDelay: 1)
     q.enqueue(SyncOp(local: "s1", action: "snooze"), key: "dead-1", account: "A", group: "s1", now: t)
     q.enqueue(SyncOp(local: "s2", action: "dismiss"), key: "live-1", account: "A", group: "s2", now: t)
     for _ in 0..<2 { _ = await q.drain(now: t, account: "A") { op in op.local == "s1" ? .retry : .retry }; t = t.addingTimeInterval(60) }
@@ -688,7 +688,7 @@ func pr90i_feedbackGateOnlyLocal() {
     _ = await q.drain(now: t, account: "A") { op in sent.append(op.local + ":" + op.action); return .done }
     check(!sent.contains("s1:dismiss"), "the dead op's group stays poisoned — no later op of it overtakes the dead one")
     // Survives a reload and is never pruned while it awaits confirmation.
-    let r = CatpawPersistentQueue<SyncOp>(name: "dlr", store: kv, maxAttempts: 2, baseDelay: 1)
+    let r = catPersistentQueue<SyncOp>(name: "dlr", store: kv, maxAttempts: 2, baseDelay: 1)
     check(Set(r.needingConfirmation(account: "A").map(\.key)).isSuperset(of: ["dead-1", "live-1"]), "flag persisted")
 }
 

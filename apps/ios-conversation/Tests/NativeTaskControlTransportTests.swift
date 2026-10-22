@@ -1,7 +1,7 @@
 import Foundation
 #if !TASK_CONTROL_TRANSPORT_PORTABLE
 import XCTest
-@testable import CatpawM
+@testable import cat
 #endif
 
 private final class ControlWireProtocol:URLProtocol,@unchecked Sendable {
@@ -81,7 +81,7 @@ private enum TaskControlTransportMatrix {
             let (backend,_)=try backend(fixed);defer{ControlWireProtocol.handler=nil}
             for (retry,reconcile,expected) in [(false,false,true),(true,false,false),(false,true,false)] {
                 ControlWireProtocol.handler={_ in .init(status:409,data:try JSONSerialization.data(withJSONObject:["schema_version":1,"error":["code":"control_snapshot_conflict","retryable":retry,"reconciliation_required":reconcile]]))}
-                let error=try await reject{_ = try await backend.submitControl(fixed.reference,request:fixed.pause_input)};let rejected:Bool;if case .conflict?=error as? CatpawError {rejected=true}else{rejected=false};try check(rejected==expected && !(error is ConversationTaskControlDispatchFailure),"409 classification follows authority response")
+                let error=try await reject{_ = try await backend.submitControl(fixed.reference,request:fixed.pause_input)};let rejected:Bool;if case .conflict?=error as? catError {rejected=true}else{rejected=false};try check(rejected==expected && !(error is ConversationTaskControlDispatchFailure),"409 classification follows authority response")
             };await backend.close()
         }
     ]}

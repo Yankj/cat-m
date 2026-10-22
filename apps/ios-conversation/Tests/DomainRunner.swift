@@ -11,11 +11,11 @@ final class FailingPersistence: SnapshotPersistence, @unchecked Sendable {
     func load() throws -> StoreSnapshot { try base.load() }
     func save(_ s: StoreSnapshot) throws {
         lock.lock(); let fail = failure; failure = false; lock.unlock()
-        if fail { throw CatpawError.unavailable("injected_disk_failure") }
+        if fail { throw catError.unavailable("injected_disk_failure") }
         let old = try base.load()
         let introducesFixture = s.records.values.contains { old.records[$0.id] == nil && $0.document?.sourceKind == "fixture" }
         lock.lock(); let failResult = failFixture && introducesFixture; if failResult { failFixture = false }; lock.unlock()
-        if failResult { throw CatpawError.unavailable("injected_fixture_result_failure") }
+        if failResult { throw catError.unavailable("injected_fixture_result_failure") }
         try base.save(s)
     }
 }
@@ -41,12 +41,12 @@ actor SpyProvider: AgentProvider {
 @main struct DomainRunner {
     static var passed = 0
     static func check(_ value: Bool, _ name: String) throws {
-        guard value else { throw CatpawError.invalid("FAIL: \(name)") }
+        guard value else { throw catError.invalid("FAIL: \(name)") }
         passed += 1; print("PASS \(name)")
     }
     static func mustThrow(_ name: String, _ body: () async throws -> Void) async throws {
         do { try await body() } catch { try check(true, name); return }
-        throw CatpawError.invalid("FAIL: \(name) expected rejection")
+        throw catError.invalid("FAIL: \(name) expected rejection")
     }
     static func main() async {
         do {
@@ -129,7 +129,7 @@ actor SpyProvider: AgentProvider {
             let localOnly = await repo.read(scope: Profiles.user)
             try check(localOnly.records[cloudConversation] == nil && localOnly.records[c] != nil, "F02 workspace environment isolation")
             try await mustThrow("F07 foreign environment project rejected") { _ = try await service.createConversation(scope: cloudScope, environment: cloudEnvironment, project: project, configuration: ConversationConfiguration(model: "Auto", safety: true, subagents: false)) }
-            if case .requestConfiguration(let frozen) = localOnly.records[stableID("request-config-\(clientID)")]?.payload { try check(frozen.configuration.subagents == false && frozen.configuration.model == "Auto" && frozen.environmentID == env, "F04 F15 submitted configuration snapshot frozen") } else { throw CatpawError.invalid("missing snapshot") }
+            if case .requestConfiguration(let frozen) = localOnly.records[stableID("request-config-\(clientID)")]?.payload { try check(frozen.configuration.subagents == false && frozen.configuration.model == "Auto" && frozen.environmentID == env, "F04 F15 submitted configuration snapshot frozen") } else { throw catError.invalid("missing snapshot") }
             try await service.preference(scope: Profiles.user, key: "subagents", value: "true")
             let configAfter = await repo.read(scope: Profiles.user)
             if case .requestConfiguration(let frozen) = configAfter.records[stableID("request-config-\(clientID)")]?.payload { try check(!frozen.configuration.subagents, "F15 settings changes do not rewrite old requests") }
@@ -178,7 +178,7 @@ actor SpyProvider: AgentProvider {
             let memoryID = try await service.addMemory(scope: Profiles.user, content: "优先一手资料", scopeID: delegation, sourceMessageID: stableID("user-message-\(clientID)"))
             let artifactID = try await service.runDelegation(scope: Profiles.user, id: delegation)
             let artifactRecord = try await repo.record(artifactID, scope: Profiles.user)
-            guard case .artifact(let artifact) = artifactRecord.payload else { throw CatpawError.missing }
+            guard case .artifact(let artifact) = artifactRecord.payload else { throw catError.missing }
             dr = try await repo.record(delegation, scope: Profiles.user)
             try check(dr.delegation?.state == .active, "IOS11 finished run does not end delegation")
             let oldDocument = try await service.readDocument(scope: Profiles.user, id: artifact.documentReference.documentID, version: 1)

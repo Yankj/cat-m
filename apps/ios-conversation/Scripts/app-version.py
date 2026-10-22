@@ -92,7 +92,7 @@ def build_date():
     return moment.replace(microsecond=0).strftime('%Y-%m-%dT%H:%M:%SZ')
 
 def check(values, app):
-    project = ROOT / 'CatpawM.xcodeproj/project.pbxproj'
+    project = ROOT / 'cat.xcodeproj/project.pbxproj'
     objects = json.loads(subprocess.check_output([shutil.which('plutil') or '/usr/bin/plutil', '-convert', 'json', '-o', '-', str(project)]))['objects']
     native_project = next(x for x in objects.values() if x.get('isa') == 'PBXProject')
     configs = objects[native_project['buildConfigurationList']]['buildConfigurations']
@@ -113,13 +113,13 @@ def check(values, app):
     device_config = (ROOT / 'Configuration/DeviceTrial.xcconfig').read_text()
     if any(re.search(r'^' + k + r'\s*=', device_config, re.M) for k in KEYS):
         raise ValueError('DeviceTrial must inherit the common App version')
-    for name in ('Resources/Info.plist', 'Configuration/DeviceTrial.Info.plist', 'Widgets/CatpawWidgets/Info.plist'):
+    for name in ('Resources/Info.plist', 'Configuration/DeviceTrial.Info.plist', 'Widgets/catWidgets/Info.plist'):
         info = plistlib.loads((ROOT / name).read_bytes())
         if info.get('CFBundleShortVersionString') != '$(MARKETING_VERSION)' or info.get('CFBundleVersion') != '$(CURRENT_PROJECT_VERSION)':
             raise ValueError(name + ' must use the Xcode version variables')
         if any(info.get(k) for k in STAMP_KEYS):
             raise ValueError(name + ' must not commit stamp values (' + ', '.join(STAMP_KEYS) + '); they are written at build time')
-    if os.environ.get('TARGET_NAME') == 'CatpawM':
+    if os.environ.get('TARGET_NAME') == 'cat':
         for key in KEYS:
             if os.environ.get(key) != values[key]:
                 raise ValueError('Build setting differs from Version.xcconfig (no command-line overrides): ' + key)

@@ -4,8 +4,8 @@ import Foundation
 // server history that is a strict prefix (extras = user messages only) for plain turns, and stay strict otherwise.
 @main struct HistoryPrefixRunner {
     static func main() throws {
-        func check(_ condition: Bool, _ text: String) throws { guard condition else { throw CatpawError.invalid(text) }; print("PASS: " + text) }
-        func conflict(_ body: () throws -> Void) -> Bool { do { try body(); return false } catch CatpawError.conflict { return true } catch { return false } }
+        func check(_ condition: Bool, _ text: String) throws { guard condition else { throw catError.invalid(text) }; print("PASS: " + text) }
+        func conflict(_ body: () throws -> Void) -> Bool { do { try body(); return false } catch catError.conflict { return true } catch { return false } }
         let scope = Profiles.user
         let conversation = UUID()
         let admittedUser = ConversationTranscriptMessage(role: .user, content: "早")

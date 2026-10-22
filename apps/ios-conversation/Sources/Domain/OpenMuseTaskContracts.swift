@@ -54,12 +54,12 @@ public struct OpenMuseFrozenRequest: Codable, Sendable {
               input.title.utf16.count <= 160, input.goal.utf16.count <= 4000, input.requirements.utf16.count <= 4000,
               !input.stopConditions.isEmpty, input.stopConditions.count <= 10, input.stopConditions.allSatisfy({ !$0.isEmpty && $0.utf16.count <= 300 }),
               Set([input.operationID, input.businessRunID, input.delegationID]).count == 3 else {
-            throw CatpawError.invalid("OpenMuse demo requires distinct identities, a frozen grant and synthetic demo scope.")
+            throw catError.invalid("OpenMuse demo requires distinct identities, a frozen grant and synthetic demo scope.")
         }
         self.input = input; requestHash = try openMuseDigest(input)
     }
     public func validate() throws {
-        guard requestHash == (try openMuseDigest(input)) else { throw CatpawError.corrupt("OpenMuse frozen request changed.") }
+        guard requestHash == (try openMuseDigest(input)) else { throw catError.corrupt("OpenMuse frozen request changed.") }
         _ = try OpenMuseFrozenRequest(input)
     }
 }
@@ -97,7 +97,7 @@ public struct OpenMuseTaskBinding: Codable, Hashable, Sendable {
     }
     public func validate(_ request: OpenMuseFrozenRequest) throws {
         guard scope == request.input.scope, operationID == request.input.operationID, businessRunID == request.input.businessRunID,
-              requestHash == request.requestHash, !taskID.isEmpty, taskID.utf8.count <= 512 else { throw CatpawError.scopeMismatch }
+              requestHash == request.requestHash, !taskID.isEmpty, taskID.utf8.count <= 512 else { throw catError.scopeMismatch }
     }
 }
 public enum OpenMuseTaskStatus: String, Codable, Sendable {
@@ -148,7 +148,7 @@ public struct OpenMuseArtifactVersion: Codable, Equatable, Sendable {
     }
     public func validate(taskID: String) throws {
         guard self.taskID == taskID, !reference.artifactID.isEmpty, reference.version > 0,
-              reference.contentHash == textHash(body), body.utf8.count <= 1024 * 1024 else { throw CatpawError.corrupt("Artifact version/body/hash mismatch.") }
+              reference.contentHash == textHash(body), body.utf8.count <= 1024 * 1024 else { throw catError.corrupt("Artifact version/body/hash mismatch.") }
     }
 }
 public struct OpenMuseApprovalSnapshot: Codable, Sendable {
