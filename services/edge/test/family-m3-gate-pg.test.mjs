@@ -121,6 +121,7 @@ async function runCase(sql, call, c) {
       const a = A[v?.household_id ?? Object.keys(hhOf)[0]]; const row = a?.memories?.find(m => m.memory_id === o.id); if (!row) return 'absent';
       if (row.status === 'deleted' || row.status === 'retracted') return 'retracted';
       if (row.status === 'superseded') return 'superseded';
+      if (row.status === 'proposed') return 'proposed';   // every draft revision of an unconfirmed candidate is a proposal
       if (row.revision > o.revision && [...actual.entries()].some(([kk, oo]) => oo.id === o.id && oo.revision > o.revision && kk !== k)) return 'superseded';
       if (row.status !== 'active') return row.status;
       if (a.household.status === 'archived') return 'retracted';
@@ -212,7 +213,7 @@ async function runCase(sql, call, c) {
       for (const ref of refs) {
         const v = versions.get(key(ref)); if (!v) continue; const o = actual.get(key(ref));
         if (o) { // an existing proposed candidate: confirm it (same fixture ref, new authoritative revision)
-          const row = await rowOf(v.household_id, o.id);
+          await regSources(v); const row = await rowOf(v.household_id, o.id);
           if (row?.status === 'proposed') { const r = await cmd(v.household_id, { type: 'memory.confirm', target_id: o.id, expected_revision: row.revision }); if (r.status === 'applied') mapObj(key(ref), r.objects[0]); out.push([r.status, row.kind]); }
           else out.push(['already', row?.status]);
           continue;
@@ -361,7 +362,7 @@ async function runCase(sql, call, c) {
   const assertions = (answer.assertions ?? []).map(a => ({ ref: toFix(a), kind: a.kind, status: a.status, value: a.value }));
   let memNow = 0; for (const fhh of Object.keys(hhOf)) memNow += (await audit(fhh)).counts.memories;
   const rbPost = await readback();
-  return { created: memNow - (base.memories ?? memNow), notRun, steps, qpre, status: res.status, returned, used, assertions, answer, dispatch, counts: { pre: rbPre.counts, post: rbPost.counts }, reads: res.body?.memory_reads ?? 0,
+  return { scores: top.map(t => t.score), created: memNow - (base.memories ?? memNow), notRun, steps, qpre, status: res.status, returned, used, assertions, answer, dispatch, counts: { pre: rbPre.counts, post: rbPost.counts }, reads: res.body?.memory_reads ?? 0,
     finalMem: c.expectation.expected_final_statuses.map(f => [key(f.memory_ref), rbPost.memStatus(f.memory_ref), f.status]),
     finalSrc: c.expectation.expected_final_source_statuses.map(f => [key(f.source_ref), rbPost.srcStatus(f.source_ref), f.status]),
     finalRt: checkState(rbPost, { runtime_state: c.expected_final_runtime_state }) };
@@ -414,7 +415,7 @@ test('M3 gate FULL: recall@6, hard assertions (clarification, disposition, dispa
       const status = Object.values(s.H).every(v => v === 'PASS') ? 'PASS' : Object.values(s.H).includes('FAIL') ? 'FAIL' : 'NOT_RUN';
       out.cases.push({ id: c.id, category: c.category, status, eligible: e.retrieval_eligible, recall, hard: s.H, leaked: s.leaked, disposition: r.answer.disposition, expected_disposition: e.expected_structured_result.allowed_dispositions,
         clarification_expected: e.expected_clarification.required_fields, dispatch: r.dispatch, not_run_ops: r.notRun, steps: r.steps, query_pre: r.qpre, final_mismatch: [...r.finalMem, ...r.finalSrc].filter(([, a, b]) => a !== b), final_runtime: r.finalRt,
-        http: r.status, returned: r.returned.slice(0, 6), used: r.used, assertions: r.assertions });
+        http: r.status, returned: r.returned.slice(0, 6), scores: r.scores, used: r.used, assertions: r.assertions });
     }
     const pass = out.cases.filter(x => x.status === 'PASS').length;
     const macro = sum / 50;
