@@ -1,3 +1,4 @@
+import { errCode } from './safe-log.mjs';
 // catpaw.proactive.decision.v1 — "should the assistant speak up?" for meeting & travel signals.
 // Pipeline: validate → signal_hash dedupe (window) → learned trigger weights → memory recall →
 // LLM structured decision (fallback: deterministic rules) → confidence threshold degrade →
@@ -101,7 +102,7 @@ export function createDecisionService({ store, model = null, memory = null, now 
     const fresh = signals.filter((_, i) => !seen.includes(hashes[i]));
     const weights = await store.getTriggerWeights(uid);
     const w = t => weights[t] ?? { weight: 1, threshold_bump: 0 };
-    const memories = memory ? await memory.recall(uid, signals.map(s => [s.type, s.data?.title, s.data?.location, s.data?.flight].filter(Boolean).join(' ')).join('; '), 5).catch(e => { log('memory_failed', e.message); return []; }) : [];
+    const memories = memory ? await memory.recall(uid, signals.map(s => [s.type, s.data?.title, s.data?.location, s.data?.flight].filter(Boolean).join(' ')).join('; '), 5).catch(e => { log('memory_failed', errCode(e)); return []; }) : [];
     const trace = [];
     let r, source;
     if (!fresh.length) {
@@ -119,7 +120,7 @@ export function createDecisionService({ store, model = null, memory = null, now 
       const rule = ruleDecide(fresh, context);
       if (model) {
         try { r = validateModelDecision(await model.decide({ signals: fresh, context, memories, weights: Object.fromEntries(fresh.map(s => [s.type, w(s.type)])), now_iso: new Date(at).toISOString(), time_zone: tz }, { uid }), memories.map(m => m.id)); r.trigger ??= rule.trigger; source = 'llm:' + (model.lastRoute?.() ?? 'model'); }
-        catch (e) { log('decision_model_failed', e.message); trace.push('llm unavailable: ' + String(e.message).slice(0, 60)); }
+        catch (e) { log('decision_model_failed', errCode(e)); trace.push('llm unavailable: ' + errCode(e)); }
       }
       if (!r) { r = { ...rule, title: RULE_TITLES[rule.trigger] ?? null, used: rule.decision === 'silent' ? [] : memories.map(m => m.id) }; source = 'rules'; }
       if (!SIGNAL_TYPES.includes(r.trigger)) r.trigger = fresh[0].type;

@@ -11,6 +11,7 @@ QUARANTINE=(model-route-review-probe-next generative-ui-demo-recording proactive
 files=()
 for f in test/*.test.mjs; do
   name=$(basename "$f" .test.mjs); skip=0
+  [[ "$name" == family-*-pg ]] && skip=1 # deno-only real-PG suites: scripts/pg-all-migrations-local.sh
   for q in "${QUARANTINE[@]}"; do [[ "$name" == "$q" ]] && skip=1; done
   if [[ $skip == 1 ]]; then echo "QUARANTINED (issue #81): $f"; else files+=("$f"); fi
 done

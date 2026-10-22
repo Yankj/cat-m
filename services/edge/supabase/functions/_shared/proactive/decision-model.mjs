@@ -1,3 +1,4 @@
+import { errCode } from './safe-log.mjs';
 // LLM adapter for proactive decisions. Reuses catpaw-api's route catalog + order (Gemini first, then OpenRouter/Groq/OpenCode, Agnes last);
 // keys come only from env via `get` and are held in this closure (never logged or returned).
 import { FREE_ROUTE_CATALOG, ROUTE_META, readFreeRouteChain, readRouteModels } from '../core/src/free-route-chain.mjs';
@@ -20,7 +21,7 @@ function readRoutes(get, log) {
     const r = FREE_ROUTE_CATALOG.openrouter, model = get('CATPAW_OPENROUTER_MODEL') || r.model;
     readRouteModels(get, 'openrouter', model);
     return [{ id: 'openrouter', endpoint: r.endpoint, model, policy_url: r.policy_url, key }];
-  } catch (e) { log('route_config_invalid', String(e.code ?? e.message).slice(0, 60)); return []; }
+  } catch (e) { log('route_config_invalid', errCode(e)); return []; }
 }
 const SYSTEM = `你是 cat 的主动式助理决策器，场景是会议与出行。根据 signals、context、memories 和 weights 判断是否该主动打扰用户。
 decision 取值：silent（不打扰）、card（应用内卡片）、notify（普通推送）、interrupt（紧急、打断式）。只有真的会造成损失（迟到、误机、冲突）才用 notify/interrupt。
@@ -49,7 +50,7 @@ export function createDecisionModel({ get, fetchImpl = fetch, timeoutMs = 15000,
           const text = (await res.json())?.choices?.[0]?.message?.content ?? '';
           const m = String(text).replace(/<think>[\s\S]*?<\/think>/g, '').match(/\{[\s\S]*\}/); if (!m) throw new Error(`${r.id}_no_json`);
           last = r.id; return JSON.parse(m[0]);
-        } catch (e) { err = e; log('route_failed', r.id, String(e.message).slice(0, 80)); }
+        } catch (e) { err = e; log('route_failed', r.id, errCode(e)); }
         finally { clearTimeout(t); }
       }
       throw err ?? new Error('no_route');
