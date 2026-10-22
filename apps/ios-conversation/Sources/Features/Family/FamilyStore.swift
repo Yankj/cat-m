@@ -11,9 +11,9 @@ public final class FamilyStore: ObservableObject {
     @Published public private(set) var lastCards: [FamilyCaptureCard] = []
     @Published public private(set) var busyItem: UUID?
     @Published public var notice: String?
-    private let backend: FamilyHTTPBackend
+    private let backend: any FamilyBackend
     private var household: UUID?
-    public init(backend: FamilyHTTPBackend) { self.backend = backend }
+    public init(backend: any FamilyBackend) { self.backend = backend }
 
     public static func today(_ tz: String = "Asia/Shanghai") -> String {
         let f = DateFormatter(); f.calendar = Calendar(identifier: .gregorian); f.locale = Locale(identifier: "en_US_POSIX")
