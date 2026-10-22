@@ -6,6 +6,8 @@
 
 本地品牌迁移与保留身份见 [兼容说明](docs/development/cat-brand-migration.md)，验证范围见 [本地记录](docs/acceptance/cat-brand-2026-10-22.md)。
 
+家庭成长助理入口：[主计划与当前范围](docs/status/master-plan.md) · [本地与云端总交接](docs/acceptance/family-companion/handoff-2026-10-23.md) · [独立官网候选及验证说明](https://github.com/Yankj/cat-m/tree/7ca0c4535dbfb6419a5000eab8275d08be051ceb/apps/website/family)。
+
 **先你一步，把事办妥。** · *A step ahead. Things handled.*
 
 对话优先的主动式个人助理 iOS App：自然对话 → 可审批的计划与设备动作 → 可恢复的任务与成果，人始终在回路中。
