@@ -260,3 +260,10 @@ HTTP：
 `catpaw.agent-memory.v1` 与 `catpaw` 主动提醒继续服务既有客户端。家庭事实的权威是本协议的 `memory` 对象。既有记忆写入若被家庭删除命令覆盖，重放原 operation 不得复活该事实。迟到的更正若 `expected_revision` 或写入开始时读到的 revision 已过期，返回 `409`，保留较新正文。
 
 既有提醒的 claim 在租约到期后可被下一个调度周期重新领取；取消若先于事件提交成功，则不得再产生 `reminder_due` 或发送。写失败不得清掉仍到期的 `next_fire_at`。日志只记稳定错误码，不记标题、正文、堆栈或异常 message。
+
+### 11.1 v0.1 补充（2026-10-23，已在本地真实 PG17 验证，未部署）
+
+- **提醒租约**：`proactive.claim_due_reminders` 的 occurrence claim 是 30 秒租约。`claimed` 且 `claimed_at` 早于 `now - 30s` 的行可被下一个周期重新领取；`generated` 为终态。过期租约在 `limit` 之前筛选。发送失败删除本 claim（`releaseOccurrence`），保留 `next_fire_at`。`reminder_due` 事件仅当任务仍为 `open`/`snoozed` 且 `next_fire_at` 等于该 occurrence 时原子写入。
+- **记忆更正 `expected_version`**：`PATCH` 既有记忆可带 `expected_version`（上次读到的 `updated_at`，ISO-8601）。缺省时服务端以写入开始时读到的 `updated_at` 作 CAS。不匹配返回 `409 memory_conflict`，保留较新正文；对象已不存在返回 `404`。
+- **删除栅栏**：墓碑记录原 `operation_id`，重放已删除的保存返回 `not_saved` / `previously_deleted`。每用户 `clear_generations` 计数，"全部清除"后，以旧 generation 开始的日记写入被拒绝。
+- **日志**：只记稳定错误码（`code` 或异常类名），不记 `message`、堆栈、标题、正文；静态审计见 `services/edge/test/log-content-audit.test.mjs`。
