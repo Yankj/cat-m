@@ -4,7 +4,7 @@ import SwiftUI
 /// extracted items wait as confirm cards above it.
 struct FamilyTodayView: View {
     @ObservedObject var store: FamilyStore
-    @State private var showCapture = false
+    @State private var showCapture = ProcessInfo.processInfo.arguments.contains("-familyCapture")   // DEBUG screenshot hook; false in normal launches
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {

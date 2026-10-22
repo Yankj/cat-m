@@ -9,12 +9,13 @@ struct FamilyRootView: View {
         _store = StateObject(wrappedValue: FamilyStore(backend: FamilyHTTPBackend(configuration: configuration, credentials: credentials)))
     }
     init(backend: any FamilyBackend) { _store = StateObject(wrappedValue: FamilyStore(backend: backend)) }
+    @State private var tab = ProcessInfo.processInfo.arguments.contains("-familyHome") ? 1 : 0   // screenshot hook
     var body: some View {
-        TabView {
+        TabView(selection: $tab) {
             NavigationStack { FamilyTodayView(store: store) }
-                .tabItem { Label("今天", systemImage: "calendar") }
+                .tabItem { Label("今天", systemImage: "calendar") }.tag(0)
             NavigationStack { FamilyHomeView(store: store) }
-                .tabItem { Label("我们家", systemImage: "person.2") }
+                .tabItem { Label("我们家", systemImage: "person.2") }.tag(1)
         }
         .tint(catColors.action)
     }
