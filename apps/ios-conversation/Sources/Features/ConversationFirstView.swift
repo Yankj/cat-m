@@ -147,6 +147,9 @@ import catImageComposer
                     .init(id:"switch.github",title:ui("使用 GitHub 账户"),systemImage:"chevron.left.forwardslash.chevron.right")]))
             }
         }
+        #if DEBUG
+        actions.append(.init(id:"family",title:ui("我们家（示例数据）"),systemImage:"person.2"))   // family API not deployed: DEBUG demo only
+        #endif
         if onSignOut != nil { actions.append(.init(id:"signOut",title:ui("退出登录"),systemImage:"rectangle.portrait.and.arrow.right",role:.destructive)) }
         return actions
     }
@@ -156,6 +159,7 @@ import catImageComposer
         case "github":Task { await oauth?.continueWith(.github,intent:.attach) }
         case "switch.google":Task { await oauth?.continueWith(.google,intent:.useOtherAccount) }
         case "switch.github":Task { await oauth?.continueWith(.github,intent:.useOtherAccount) }
+        case "family":familyPresented=true
         case "signOut":confirmSignOut=true
         default:break
         }
@@ -163,6 +167,7 @@ import catImageComposer
     @State private var proactiveInboxPresented = false
     @State private var memorySavedNotice = false   // v1.2: server `memory_saved` event → 「已写入记忆 · 查看」
     @State private var proactiveDebugPresented = false
+    @State private var familyPresented = ProcessInfo.processInfo.arguments.contains("-familyDemo")
     private func consumeAppRoute() {
         guard model.loaded, !launchShell, let route = catRouteCenter.shared.pending else { return }
         catRouteCenter.shared.pending = nil
@@ -645,6 +650,15 @@ import catImageComposer
                                remaining: ComposerAttachPopoverState.shared.remaining,
                                onAdd: { items in ComposerAttachPopoverState.shared.add(items); ComposerAttachPopoverState.shared.isPresented = false })
         .sheet(isPresented: $proactiveDebugPresented) { NavigationStack { ProactiveSignalDebugView() } }
+        #if DEBUG
+        .fullScreenCover(isPresented: $familyPresented) {
+            FamilyRootView(backend: FamilyDemoBackend())
+                .overlay(alignment: .topTrailing) {
+                    Button { familyPresented = false } label: { Image(systemName: "xmark.circle.fill").font(.title2).foregroundStyle(.secondary) }
+                        .padding(.trailing, 16).padding(.top, 4).accessibilityLabel("关闭")
+                }
+        }
+        #endif
         .onChange(of: model.loaded) { _, _ in consumeAppRoute() }
         .task { try? await Task.sleep(nanoseconds: 600_000_000); consumeAppRoute() }
         .modifier(ConversationConsentPresenter(model:model))

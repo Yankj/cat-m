@@ -2,7 +2,17 @@ import Foundation
 
 /// catpaw.family.v1 HTTP adapter. Reuses the authenticated session; never retries a POST with a new id.
 /// A lost response becomes `outcomeUnknown(command_id)` and is resolved by GET /commands/{id} (api-v1 §5).
-public actor FamilyHTTPBackend {
+/// The surface FamilyStore needs; HTTP in production, an in-memory demo in DEBUG previews.
+public protocol FamilyBackend: Sendable {
+    func bootstrap() async throws -> [UUID]
+    func ensureHousehold(name: String) async throws -> UUID
+    func projection(_ household: UUID, localDate: String?) async throws -> FamilyProjection
+    func command(_ cmd: FamilyCommand) async throws -> FamilyReceipt
+    func captureText(_ household: UUID, captureID: UUID, text: String) async throws -> FamilyCaptureResponse
+    func capturePhoto(_ household: UUID, captureID: UUID, jpeg: Data) async throws -> FamilyCaptureResponse
+}
+
+public actor FamilyHTTPBackend: FamilyBackend {
     private let configuration: NativeChatConfiguration
     private let credentials: any NativeChatSessionCredentials
     private let session: URLSession
