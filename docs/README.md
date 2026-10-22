@@ -18,7 +18,7 @@
 | 内容 | 入口 |
 |---|---|
 | 长任务开发与对话交互 | [启动合同](planning/AF-1/development-start-contract.md)、[可复制prompt](planning/AF-1/long-task-development-prompt.md)、[CGUI-1](design/conversation-generative-ui-spec.md)、[10项验收](acceptance/conversation-generative-ui-acceptance.md) |
-| 家庭成长助理执行准备 | [M0契约](design/family-companion/m0-contract.md)、[初始验收矩阵](acceptance/family-companion/acceptance-matrix-v1.json)、[2026-10-23准备证据](acceptance/family-companion/preparation-2026-10-23.md)；实时进展见主计划 |
+| 家庭成长助理执行准备 | [M0契约](design/family-companion/m0-contract.md)、[初始验收矩阵](acceptance/family-companion/acceptance-matrix-v1.json)、[准备证据](acceptance/family-companion/preparation-2026-10-23.md)、[dot验证本机复跑回执](acceptance/family-companion/cloud-recheck-2026-10-23.md)；实时进展见主计划 |
 | 终版产品、视觉与技术设计 | [FINAL-1综合规格](product/catpaw-final-product-spec.md)、[日用质量／竞争优势验收](acceptance/catpaw-final-product-acceptance.md)、[可点按状态提案](design/prototypes/catpaw-final/index.html) |
 | 项目架构与开发规则 | [最新代码与分支复核](architecture/repository-review-2026-10-15.md)、[目录角色](development/repository-layout.json)、[分支规范](development/branch-management.md)、[2026-10-13基础审查](architecture/repository-review-2026-10-13.md) |
 | 当前产品与页面/状态/API | [AF-1底座](product/agent-foundation-spec.md)、[UX-1](design/ios-codex-experience-spec.md)、[产品索引](product/README.md) |
