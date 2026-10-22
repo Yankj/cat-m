@@ -61,7 +61,7 @@ async function runCase(sql, call, c) {
   const viewerSubj = subj.get(q.viewer_user_id);
   const grantFor = async (fid, fhh) => {
     const scope = init.authority_state === 'child_a_only' ? c.identities.subjects.filter(s => s.household_id === fhh && s.fixture_role === 'child_a').map(s => memberOf[s.id]) : null;
-    return cmd(fhh, { type: 'grant.upsert', payload: { user_id: await user(fid), member_scope: scope } });
+    return cmd(fhh, { type: 'grant.upsert', payload: { user_id: await user(fid), member_scope: scope, role: init.authority_state === 'active' ? 'caregiver' : 'viewer' } });
   };
   if (hhOf[q.household_id] && hhOf[q.household_id].fowner !== q.viewer_user_id && (scopedViewer || (viewerSubj && viewerSubj.household_id === q.household_id && KIND[viewerSubj.fixture_role] === 'adult')))
     await grantFor(q.viewer_user_id, q.household_id);
@@ -114,6 +114,7 @@ async function runCase(sql, call, c) {
   // ---- authoritative readback in the fixture vocabulary ----
   async function readback() {
     const A = {}; for (const fhh of Object.keys(hhOf)) A[fhh] = await audit(fhh);
+    if (movedFrom) A[rtHh] = (await call(movedFrom.actor, 'GET', `/households/${movedFrom.hh}/memories/audit`)).body;
     const memStatus = ref => {
       const v = versions.get(key(ref)); const k = key(ref); const o = actual.get(k);
       if (!o) return rejected.has(k) ? 'rejected' : 'absent';
@@ -130,15 +131,15 @@ async function runCase(sql, call, c) {
       return 'active';
     };
     const srcStatus = ref => { const s = sources.get(key(ref)); const o = srcOf[key(ref)]; if (!o) return 'absent'; const row = A[s.household_id]?.sources?.find(x => x.source_id === o.id); return row?.status ?? 'absent'; };
-    const qa = A[q.household_id] ?? Object.values(A)[0];
-    const curFid = client.account; const owner = hhOf[q.household_id]?.fowner === curFid;
+    const qa = A[rtHh] ?? Object.values(A)[0];
+    const curFid = q.viewer_user_id; const owner = hhOf[q.household_id]?.fowner === curFid;
     const g = qa?.grants?.find(x => x.user_id === userOf[curFid]);
-    const authority = owner ? 'active' : !g ? 'active' : g.status === 'revoked' ? 'revoked' : g.member_scope ? 'child_a_only' : 'read_only';
+    const authority = owner ? 'active' : !g ? 'active' : g.status === 'revoked' ? 'revoked' : g.member_scope ? 'child_a_only' : g.role === 'caregiver' ? 'active' : 'read_only';
     const allSrc = Object.values(A).flatMap(a => a.sources ?? []);
     const runtime = { authority_state: authority, use_memory: !qa.household.memory_paused, client_use_memory: client.use_memory, mode: client.mode, account_epoch: client.epoch,
       current_account_user_id: client.account, membership_revision: 1 + (qa.household.membership_revision - (base.membership ?? qa.household.membership_revision)), source_access: allSrc.some(s => s.status === 'access_revoked') ? 'revoked' : 'active',
       household_tombstoned: Object.values(A).some(a => a.household.status === 'archived'), raw_media_available: allSrc.every(s => s.raw_media_available),
-      reminder_status: qa.household.reminders_paused ? 'paused' : 'active', setting_sequence: qa.household.setting_sequence, memory_generation: qa.household.memory_generation,
+      reminder_status: qa.household.reminders_paused ? 'paused' : 'active', setting_sequence: qa.household.setting_sequence, memory_generation: init.memory_generation + (qa.household.memory_generation - (base.gen ?? qa.household.memory_generation)),
       recall_snapshot: client.snapshot ? 'frozen' : 'none', dispatch: client.dispatch, late_delivery: client.late };
     if (client.currentHh) runtime.current_household_id = client.currentHh;
     return { memStatus, srcStatus, runtime, counts: Object.fromEntries(Object.entries(A).map(([k, a]) => [k, a.counts])) };
@@ -152,7 +153,7 @@ async function runCase(sql, call, c) {
     return bad;
   };
 
-  const steps = [], notRun = []; const base = {};
+  const steps = [], notRun = []; const base = {}; const rtHh = q.household_id; let movedFrom = null;
   const recallAs = async (who, fhh, extra = '') => { const t = hhOf[fhh]; const qs = `q=${encodeURIComponent(q.text)}&at=${encodeURIComponent(q.at)}${memberOf[q.subject_id] ? '&member_id=' + memberOf[q.subject_id] : ''}${extra}`; return call(who, 'GET', `/households/${t.hh}/memories/recall?${qs}`); };
   const resolveAs = async (who, fhh, refs) => call(who, 'POST', `/households/${hhOf[fhh].hh}/memories/resolve`, { refs });
   const refsActual = refs => refs.map(r => actual.get(key(r))).filter(Boolean).map(o => ({ memory_id: o.id, revision: o.revision }));
@@ -177,7 +178,7 @@ async function runCase(sql, call, c) {
       }
       // a superseded version with no same-id successor was replaced by another memory: load it, then supersede it
       for (const s of seeds) { const v = versions.get(key(s.memory_ref)); if (s.status !== 'superseded' || !v || actual.has(key(v))) continue; await create(v, {}, 'active'); await supersede(key(v), v.household_id); }
-      const a0 = await audit(q.household_id); base.membership = a0.household.membership_revision;
+      const a0 = await audit(q.household_id); base.membership = a0.household.membership_revision; base.gen = a0.household.memory_generation;
       base.memories = 0; for (const fhh of Object.keys(hhOf)) base.memories += (await audit(fhh)).counts.memories;
       label = 'MATERIALIZED';
     } else if (op === 'forget_memory' || op === 'forget_no_relearn') {
@@ -201,7 +202,7 @@ async function runCase(sql, call, c) {
         const exp = op === 'late_update' ? (actual.get(`${from.id}@${inp.expected_revision ?? 1}`)?.revision ?? 1) : (await rowOf(v.household_id, o.id))?.revision ?? o.revision;
         await regSources(vt);
         const r = await cmd(v.household_id, { type: 'memory.correct', target_id: o.id, expected_revision: exp, payload: { text: vt.content.slice(0, 500) } });
-        if (r.status === 'applied' && vt.id === o.id) mapObj(key(vt), r.objects[0]);
+        if (r.status === 'applied' && vt.id === from.id) mapObj(key(vt), r.objects[0]);
         if (r.status !== 'applied' && vt.id !== from.id) rejected.add(key(vt));
         label = r.status === 'applied' ? ({ correct_memory: 'APPLIED_REVISION_2', confirm_source_correction: 'REVISION_2_CONFIRMED', correct_summary_source: 'OLD_SUMMARY_SUPERSEDED' }[op] ?? 'UNEXPECTED:applied')
           : r.error?.code === 'revision_conflict' ? 'CONFLICT_409' : `UNEXPECTED:${r.error?.code}`;
@@ -222,14 +223,14 @@ async function runCase(sql, call, c) {
           const r = await call(actor, 'POST', `/households/${hh}/commands`, body); client[`idem:${inp.idempotency_key}`] = { fhh: v.household_id, body, receipt: r.body };
           if (r.body.status === 'applied') mapObj(key(v), r.body.objects[0]); out.push([r.body.status, v.kind]); continue;
         }
-        const r = await create(v, {}, 'active'); out.push([r.status, v.kind]);
+        const r = await create(v, op === 'explicit_allow_relearn' ? { explicit_relearn: true } : {}, 'active'); out.push([r.status, v.kind]);
       }
       const ok = out.length && out.every(x => x[0] === 'applied');
       label = !ok ? `UNEXPECTED:${JSON.stringify(out)}` : { confirm_memory: 'APPLIED_ONCE', confirm_sensitive_observation: out.every(x => x[1] === 'observation') ? 'OBSERVATION_ONLY_CONFIRMED' : 'UNEXPECTED:kind', confirm_edited_fields: 'REVISION_2_CONFIRMED', create_new_member: 'NEW_ID_CREATED', explicit_allow_relearn: 'NEW_GENERATION_CONFIRMED' }[op];
     } else if (op === 'replay_confirm' || op === 'replay_changed_payload') {
       const prev = client[`idem:${inp.idempotency_key}`];
       if (!prev) label = 'UNEXPECTED:no_original';
-      else { const v = versions.get(key(refs[0])); const { hh, actor } = hhOf[prev.fhh];
+      else { const v = versions.get(key(refs[0])); await regSources(v); const { hh, actor } = hhOf[prev.fhh];
         const body = op === 'replay_confirm' ? prev.body : { ...prev.body, payload: { ...prev.body.payload, text: v.content.slice(0, 500) } };
         const r = await call(actor, 'POST', `/households/${hh}/commands`, body);
         if (op === 'replay_changed_payload' && r.status === 409 && !actual.has(key(v))) rejected.add(key(v));
@@ -254,9 +255,12 @@ async function runCase(sql, call, c) {
       const out = []; for (const ref of refs) { const v = versions.get(key(ref)); if (!v) continue; const r = await create(v, {}, 'active'); out.push(r.status === 'applied' && !!v.valid_to); }
       label = out.length && out.every(Boolean) ? 'TEMPORARY_OVERRIDE_ONLY' : `UNEXPECTED:${out}`;
     } else if (op === 'edit_extracted_field') {
-      // client-side draft edit: never writes
-      const n0 = JSON.stringify((await readback()).counts); label = 'EDITED_DRAFT_NOT_SAVED';
-      if (JSON.stringify((await readback()).counts) !== n0) label = 'UNEXPECTED:write';
+      // the user edits a field of the extracted candidate: the candidate gets a new revision but stays 'proposed' (not saved)
+      const [from, to] = refs; const o = actual.get(key(from)); const v = versions.get(key(from)), vt = versions.get(key(to));
+      const row = o ? await rowOf(v.household_id, o.id) : null; let r = { status: 'unmapped' };
+      if (row?.status === 'proposed') { r = await cmd(v.household_id, { type: 'memory.correct', target_id: o.id, expected_revision: row.revision, payload: { text: vt.content.slice(0, 500) } }); if (r.status === 'applied') mapObj(key(vt), r.objects[0]); }
+      const after = o ? await rowOf(v.household_id, o.id) : null;
+      label = r.status === 'applied' && after?.status === 'proposed' ? 'EDITED_DRAFT_NOT_SAVED' : `UNEXPECTED:${r.error?.code ?? r.status}`;
     } else if (op === 'extract_old_paraphrase' || op === 'sync_old_device' || op === 'complete_old_extraction_job' || op === 'commit_summary') {
       const out = [];
       for (const ref of refs) { const v = versions.get(key(ref)); if (!v || !hhOf[v.household_id]) continue; const g = inp.admitted_generation ?? inp.generation ?? 1; const r = await create(v, { admitted_generation: g }, 'active'); out.push(r.error?.code ?? r.status); }
@@ -271,7 +275,7 @@ async function runCase(sql, call, c) {
       const [dfhh, d] = Object.entries(hhOf).find(([, x]) => x.fowner === client.account) ?? deleted;
       const r = await call(d.actor, 'POST', '/commands', { command_id: U(), type: 'household.ensure', household_id: U(), payload: { name: (c.identities.households.find(h => h.id === q.household_id)?.alias ?? '我们家').slice(0, 80) } });
       const nid = r.body.objects?.[0]?.id;
-      if (nid && nid !== d.hh) { hhOf[q.household_id] = { hh: nid, actor: d.actor, fowner: d.fowner }; client.currentHh = q.household_id; label = 'NEW_HOUSEHOLD_ID'; } else label = `UNEXPECTED:${r.body.status}`;
+      if (nid && nid !== d.hh) { movedFrom = hhOf[q.household_id]; hhOf[q.household_id] = { hh: nid, actor: d.actor, fowner: d.fowner }; client.currentHh = q.household_id; label = 'NEW_HOUSEHOLD_ID'; } else label = `UNEXPECTED:${r.body.status}`;
       void old; void dfhh;
     } else if (op === 'set_client_use_memory') { client.use_memory = !!inp.enabled; label = inp.enabled ? 'UNEXPECTED:enabled' : 'READ_WRITE_DISABLED';
     } else if (op === 'enter_ephemeral_conversation') { client.mode = 'ephemeral'; label = 'EPHEMERAL_READ_WRITE_DISABLED';
@@ -280,13 +284,15 @@ async function runCase(sql, call, c) {
       const r = o ? await cmd(v.household_id, { type: 'memory.share', target_id: o.id, expected_revision: o.revision, payload: {} }) : { status: 'unmapped' };
       label = r.error?.code === 'visibility_confirmation_required' ? 'REQUIRES_VISIBILITY_CONFIRMATION' : `UNEXPECTED:${r.error?.code ?? r.status}`;
     } else if (op === 'freeze_recall_snapshot' || op === 'start_recall') {
-      const who = await user(client.account); const r = await recallAs(who, q.household_id);
+      const fid = op === 'start_recall' ? client.account : q.viewer_user_id; const who = await user(fid);
+      const sfhh = op === 'start_recall' ? (Object.entries(hhOf).find(([, x]) => x.fowner === fid)?.[0] ?? q.household_id) : q.household_id;
+      const r = await recallAs(who, sfhh, hhOf[sfhh].fowner === fid ? '&visibility=private' : '');
       const snap = r.body.snapshot?.refs ?? []; const need = refsActual(refs);
       const has = r.status === 200 && need.every(n => snap.some(s => s.memory_id === n.memory_id && s.revision === n.revision));
       if (op === 'freeze_recall_snapshot') { if (has) client.snapshot = { refs: snap, fhh: q.household_id, epoch: client.epoch }; label = has ? 'SNAPSHOT_FROZEN' : `UNEXPECTED:${r.status}`; }
-      else { client.pending = { refs: snap, fhh: q.household_id, epoch: client.epoch, account: client.account }; label = r.status === 200 ? 'REQUEST_STARTED_ACCOUNT_A' : `UNEXPECTED:${r.status}`; }
+      else { client.pending = { refs: snap, fhh: sfhh, epoch: client.epoch, account: client.account }; label = r.status === 200 ? 'REQUEST_STARTED_ACCOUNT_A' : `UNEXPECTED:${r.status}`; }
     } else if (op === 'resolve_before_output') {
-      const who = await user(client.account); const r = await resolveAs(who, client.snapshot?.fhh ?? q.household_id, client.snapshot?.refs ?? []);
+      const who = await user(q.viewer_user_id); const r = await resolveAs(who, client.snapshot?.fhh ?? q.household_id, client.snapshot?.refs ?? []);
       const fencedAll = r.status === 404 || r.status === 403 || refsActual(refs).every(n => r.body.fenced?.some(f => f.memory_id === n.memory_id));
       if (fencedAll) client.dispatch = 'BLOCKED';
       label = fencedAll ? 'OUTPUT_FENCED' : 'UNEXPECTED:allowed';
@@ -335,11 +341,12 @@ async function runCase(sql, call, c) {
   // ---- final query (third session) as the current client account ----
   const qstep = c.steps.find(s => s.operation === 'query_memory');
   const rbPre = await readback(); const qpre = checkState(rbPre, qstep?.expected_preconditions);
-  const viewerFid = client.account === init.current_account_user_id ? q.viewer_user_id : client.account;
-  const who = await user(viewerFid);
+  const viewerFid = q.viewer_user_id; const who = await user(viewerFid);
   const flags = `${client.use_memory === false ? '&use_memory=false' : ''}${client.mode === 'ephemeral' ? '&ephemeral=true' : ''}`;
   let res, answer, top = [], used = [], dispatch = client.dispatch === 'BLOCKED' ? 'BLOCKED' : 'NOT_REQUESTED';
-  const hadAccess = !!(await (async () => { const g = rbPre.runtime; return g.authority_state !== 'active' || hhOf[q.household_id]?.fowner === viewerFid || (viewerSubj && viewerSubj.household_id === q.household_id); })());
+  // a viewer who holds (or held) a grant on this household is BLOCKED when refused; a stranger simply gets nothing
+  const qAudit = hhOf[q.household_id] ? await audit(q.household_id) : null;
+  const hadAccess = !!qAudit?.grants?.some(g => g.user_id === userOf[viewerFid]);
   if (client.snapshot && dispatch === 'BLOCKED') { // continuation of a frozen answer whose refs were fenced: nothing is output
     res = { status: 200, body: {} }; answer = { disposition: 'BLOCKED', used_memory_refs: [], assertions: [], clarification_fields: [] };
   } else if (dispatch === 'BLOCKED') {
@@ -347,7 +354,7 @@ async function runCase(sql, call, c) {
   } else {
     res = hhOf[q.household_id] ? await recallAs(who, q.household_id, flags) : { status: 404, body: {} };
     if (res.status === 200) { answer = res.body.answer; top = res.body.results ?? []; }
-    else { answer = { disposition: hadAccess && res.status !== 404 || (hadAccess && rbPre.runtime.authority_state === 'revoked') ? 'BLOCKED' : 'NO_REFERENCE', used_memory_refs: [], assertions: [], clarification_fields: [] }; if (answer.disposition === 'BLOCKED') dispatch = 'BLOCKED'; }
+    else { answer = { disposition: hadAccess ? 'BLOCKED' : 'NO_REFERENCE', used_memory_refs: [], assertions: [], clarification_fields: [] }; if (answer.disposition === 'BLOCKED') dispatch = 'BLOCKED'; }
   }
   const toFix = r => back.get(`${r.memory_id}@${r.revision}`) ?? `unmapped:${r.memory_id}@${r.revision}`;
   const returned = top.map(toFix); used = (answer.used_memory_refs ?? []).map(toFix);
