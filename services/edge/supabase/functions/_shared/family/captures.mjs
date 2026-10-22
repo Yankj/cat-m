@@ -3,6 +3,10 @@
 // capture_id, so a retried capture returns the same receipts instead of duplicating cards (api-v1 §5).
 import { FamilyError, UUID_RE, PROTOCOL } from './contract.mjs';
 import { extractItemsFromText } from './extract-text.mjs';
+import { validateImageBytes, VISION_LIMITS } from '../core/src/vision-contract.mjs';
+import { Buffer } from 'node:buffer';
+// Image body: base64 of at most VISION_LIMITS.max_image_bytes plus JSON overhead.
+export const CAPTURE_IMAGE_MAX_BODY = Math.ceil(VISION_LIMITS.max_image_bytes * 4 / 3) + 4096;
 
 export async function derivedId(captureId, n) {
   const d = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`catpaw.family.capture:${captureId}:${n}`))).slice(0, 16);
@@ -17,7 +21,16 @@ export function createCaptureRoute({ extractors = {} } = {}) {
   const ex = { text: async ({ text }, ctx) => extractItemsFromText(text, ctx), ...extractors };
   return async ({ req, actor, hh, sub, ctx }) => {
     if (sub !== '/captures' || req.method !== 'POST') return null;
-    const b = await ctx.body(req);
+    const b = await ctx.body(req, CAPTURE_IMAGE_MAX_BODY);
+    let image = null;
+    if (b?.kind === 'image') {
+      // v0.3: notice photo. Bytes are validated, handed to the extractor, and never stored (source keeps only capture ref).
+      if (!b.image || typeof b.image.data_base64 !== 'string' || typeof b.image.mime !== 'string') throw new FamilyError(422, 'command_invalid');
+      if (!/^[A-Za-z0-9+/]*={0,2}$/.test(b.image.data_base64)) throw new FamilyError(422, 'command_invalid');
+      const bytes = new Uint8Array(Buffer.from(b.image.data_base64, 'base64'));
+      try { image = { bytes, mime: b.image.mime, size: validateImageBytes(Buffer.from(bytes), b.image.mime) }; }
+      catch (e) { throw new FamilyError(e?.status === 413 ? 413 : 422, e?.status === 413 ? 'request_too_large' : 'image_invalid'); }
+    } else if (JSON.stringify(b ?? {}).length > 32 * 1024) throw new FamilyError(413, 'request_too_large');
     if (!b || typeof b.capture_id !== 'string' || !UUID_RE.test(b.capture_id) || !SOURCE_KIND[b.kind]) throw new FamilyError(422, 'command_invalid');
     if ((b.kind === 'text' || b.kind === 'voice_transcript') && (typeof b.text !== 'string' || !b.text.trim() || b.text.length > 2000)) throw new FamilyError(422, 'command_invalid');
     const fn = ex[b.kind === 'voice_transcript' ? 'text' : b.kind];
@@ -27,12 +40,16 @@ export function createCaptureRoute({ extractors = {} } = {}) {
     const today = ctx.todayIn(p.timezone, ctx.now());
     const children = p.home.children.map(c => ({ member_id: c.member_id, display_name: c.display_name }));
     let cands;
-    try { cands = await fn(b, { today, children, timezone: p.timezone }); }
+    try {
+      cands = await fn(image ? { image } : b, { today, children, timezone: p.timezone });
+      // an image extractor may return the notice's text; it then goes through the same text extractor
+      if (typeof cands === 'string') cands = extractItemsFromText(cands, { today, children });
+    }
     catch (e) { if (e instanceof FamilyError) throw e; throw new FamilyError(503, 'extract_unavailable', { retryable: true }); }
     const cards = [];
     for (const [n, c] of (cands ?? []).slice(0, 5).entries()) {
       const payload = { title: c.title, member_id: c.member_id ?? null, local_date: c.local_date ?? null, local_time: c.local_time ?? null,
-        place: c.place ?? null, bring: c.bring ?? [], notes: c.notes ?? null, capture_id: b.capture_id,
+        place: c.place ?? null, bring: c.bring ?? [], notes: c.notes ?? (c.deadline ? '截止日期' : null), capture_id: b.capture_id,
         source: { source_kind: SOURCE_KIND[b.kind], source_ref: `capture:${b.capture_id}:${n}`, captured_at: new Date(ctx.now()).toISOString() } };
       const receipt = await ctx.apply(actor, { command_id: await derivedId(b.capture_id, n), household_id: hh, type: 'item.propose', proposal_id: await derivedId(b.capture_id, `p${n}`), target_id: await derivedId(b.capture_id, `i${n}`), payload }, hh);
       cards.push({ receipt, item_id: receipt.objects?.find(o => o.type === 'item')?.id ?? null, proposal_id: receipt.objects?.find(o => o.type === 'proposal')?.id ?? null,
