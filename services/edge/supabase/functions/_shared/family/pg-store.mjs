@@ -17,6 +17,9 @@ export function createPgFamilyStore(sql) {
       return p;
     }),
     recallCandidates: (actor, hh, at, member, visibility = 'household') => one('select family.memories_for($1::uuid, $2::uuid, $3::timestamptz, $4::uuid, $5) as r', [actor, hh, at, member, visibility]),
+    reader: (actor, hh) => one('select family.reader($1::uuid, $2::uuid) as r', [actor, hh]),
+    resolveRefs: (actor, hh, refs) => one('select family.resolve_refs($1::uuid, $2::uuid, $3::text::jsonb) as r', [actor, hh, JSON.stringify(refs)]),
+    memoryAudit: (actor, hh) => one('select family.memory_audit($1::uuid, $2::uuid) as r', [actor, hh]),
     claimDueReminders: async (nowIso, limit = 50) => sql.unsafe('select * from family.claim_due_reminders($1::timestamptz, $2)', [nowIso, limit]),
     fireReminder: async (id, claimedAt) => (await sql.unsafe('select family.fire_reminder($1::uuid, $2::timestamptz) as r', [id, claimedAt]))[0].r,
     releaseReminder: async (id, claimedAt) => { await sql.unsafe('select family.release_reminder($1::uuid, $2::timestamptz)', [id, claimedAt]); },
